@@ -1,4 +1,5 @@
 import FastMultiplication.Basic
+import Mathlib.Tactic.FinCases
 
 -- /******************************************************************************/
 -- /*                           PROGRAMS & EXECUTION CORE                        */
@@ -29,20 +30,6 @@ def run? {k : ℕ} : Prog k → State k → Option (State k)
   | none    => none
   | some σ' => run? ps σ'
 
-
-
-
---/******************************************************************************/
---/*                           LIST UTILITIES (LOCAL)                           */
---/******************************************************************************/
-
-namespace List
-lemma reverse_map {α β} (f : α → β) (xs : List α) :
-    (xs.map f).reverse = xs.reverse.map f := by
-  induction xs with
-  | nil      => simp
-  | cons x t ih => simp
-end List
 
 
 -- /******************************************************************************/
@@ -105,38 +92,141 @@ def SUB   {k} (dst src : Fin k) (shift : ℕ) : Prog k :=
 
 end Prog
 
+-- /******************************************************************************/
+-- /*      RUN THE PREFIX OF LENGTH t, WITH t < p.length ENFORCED BY THE TYPE    */
+-- /******************************************************************************/
+
+namespace Prog
+
+/-- Execute exactly `t` steps of `p`, where `t < p.length` (so `t : Fin p.length`).
+    This is just `run?` on the prefix `p.take t`. -/
+def runAtStep? {k : ℕ} (p : Prog k) (t : Fin p.length) (σ : State k) : Option (State k) :=
+  run? (p.take t.val) σ
+
+
+end Prog
+
+-- /******************************************************************************/
+-- /*        CHECK THAT `phaseProduct` COVERS EXACTLY THE GIVEN POINT LIST       */
+-- /******************************************************************************/
+
+/-- User-supplied matcher: does the *current* state encode the desired
+    interpolation polynomial at the given Point? Return `true` when it matches. -/
+abbrev MatchesAt (k : Nat) := Register k → Point → Bool
+
+/-- A richer matcher that can inspect the whole state and the destination register. -/
+abbrev MatchesAtState (k : Nat) := State k → Fin k → Point → Bool
+
+
+/-- Expected Vandermonde-style row for a point.
+    - `.int z`  ↦  j ↦ z^j
+    - `.inf`    ↦  unit vector at the last index (leading coeff selector) -/
+def expectedRow {k : Nat} : Point → Register k
+| .int z => fun j => (z : Int) ^ (j : Nat)
+| .inf   =>
+  match k with
+  | 0     => fun j => nomatch j
+  | k+1   =>
+    let last : Fin (k+1) := ⟨k, by simp⟩
+    fun j => if j = last then (1 : Int) else (0 : Int)
+
+/-- Pointwise equality check between a register and `expectedRow pt`. -/
+def regEqExpected {k : Nat} (r : Register k) (pt : Point) : Bool :=
+  (List.finRange k).all (fun j => decide (r j = expectedRow (k := k) pt j))
+
+/-- `MatchesAt` that recognizes whether a register encodes the correct
+    interpolation *row* for the given `Point`. -/
+def matchesAt_pointRow {k : Nat} : MatchesAt k :=
+  fun r pt => regEqExpected (k := k) r pt
+
+/-- Adapter from a register-only matcher to a state-aware matcher. -/
+def MatchesAtState.ofRegister {k : Nat} (m : MatchesAt k) : MatchesAtState k :=
+  fun σ i pt => m (σ i) pt
+
+def matchesAt_pointRow_state {k : Nat} : MatchesAtState k :=
+  fun σ i pt => regEqExpected (k := k) (σ i) pt
+
+
+
+namespace List
+/-- Remove the *first* element satisfying `p`; return `none` if nothing matches. -/
+def eraseFirstMatch? {α} (p : α → Bool) : List α → Option (List α)
+| []       => none
+| x :: xs  =>
+  if p x then
+    some xs
+  else
+    (eraseFirstMatch? p xs).map (fun ys => x :: ys)
+end List
+
+
+def phaseCoverageFrom? {k : ℕ}
+    (matchesAt : MatchesAt k)
+    (p        : Prog k)
+    (σ0       : State k)
+    (pts0     : List Point) : Bool :=
+
+  let rec loop (ops : Prog k) (σ : State k) (todo : List Point) :
+      Option (List Point) :=
+    match ops with
+    | [] => some todo
+    | op :: rest =>
+      match op with
+      | valid_ops.phaseProduct i =>
+          -- Must match *some* remaining point and remove it.
+          let x:=List.eraseFirstMatch? (fun pt => matchesAt (σ i) pt) todo
+          match x with
+          | none       => none
+          | some todo' => loop rest σ todo'
+      | _ =>
+          -- Normal step: advance state (may fail on inexact SHR).
+          match applyOp? σ op with
+          | none     => none
+          | some σ'  => loop rest σ' todo
+
+  match loop p σ0 pts0 with
+  | some [] => true
+  | _       => false
+
+def phaseProduct_coverage_check {k : ℕ}
+    (p        : Prog k)
+    (σ0       : State k)
+    (pts0     : List Point) : Bool :=
+    phaseCoverageFrom? (matchesAt_pointRow (k := k)) p σ0 pts0
+
+
+
 
 -- /******************************************************************************/
 -- /*                                NOTATIONS                                   */
 -- /******************************************************************************/
 
--- sequence operator for programs
-infixl:55 " ;; " => List.append
-
--- i << s= n   (shift left)
-syntax term " <<s= " term : term
+--(shift left)
+syntax:70 term:71 " <<s= " term:70 : term
 macro_rules
   | `($i <<s= $n) => `(Prog.SHL $i $n)
 
--- i >>s= n   (shift right)
-syntax term " >>s= " term : term
+-- (shift right)
+syntax:70 term:71 " >>s= " term:70 : term
 macro_rules
   | `($i >>s= $n) => `(Prog.SHR $i $n)
 
 -- neg i
-syntax "neg " term : term
+syntax:70 "neg " term:70 : term
 macro_rules
   | `(neg $i) => `(Prog.NEG $i)
 
 -- dst +:= src << n
-syntax term " +:= " term " << " term : term
+syntax:70 term:71 " +:= " term:71 " << " term:70 : term
 macro_rules
   | `($dst +:= $src << $n) => `(Prog.ADD $dst $src $n)
 
 -- dst -:= src << n
-syntax term " -:= " term " << " term : term
+syntax:70 term:71 " -:= " term:71 " << " term:70 : term
 macro_rules
   | `($dst -:= $src << $n) => `(Prog.SUB $dst $src $n)
+
+infixl:55 " ;; " => List.append
 
 
 -- /******************************************************************************/
@@ -229,7 +319,166 @@ def demoProg : Prog 4 := (r0 +:= r1 << 2) ;; (r0 >>s= 1) ;; (neg r1)
 
 end Examples
 
+/-- Convenience single-instruction constructor for `phaseProduct`. -/
 
+
+-- /******************************************************************************/
+-- /*                 A SAMPLE PROGRAM & ITS COVERAGE PROOF                      */
+-- /******************************************************************************/
+
+def example_prog_1:Prog 3:=
+  [valid_ops.phaseProduct 0] ;;
+  [valid_ops.phaseProduct 2] ;;
+  (1 +:= 0 << 0) ;;
+  1+:= 2 << 0 ;;
+  [valid_ops.phaseProduct 1]
+
+
+theorem example_prog_1_phase_converage:
+  phaseProduct_coverage_check example_prog_1 State.start_state [Point.int 0,Point.inf,Point.int 1]:=by {
+    unfold phaseProduct_coverage_check phaseCoverageFrom? phaseCoverageFrom?.loop example_prog_1 List.eraseFirstMatch? matchesAt_pointRow regEqExpected State.start_state expectedRow List.eraseFirstMatch?
+    simp
+    have :(∀ (x : Fin 3), x ∈ List.finRange 3 → ((if x = 0 then (1:ℤ) else 0) = 0 ^ x.val))=true:=by {
+      simp
+      intro x
+      split_ifs with h
+      simp[h]
+      fin_cases x<;>simp_all
+    }
+    split_ifs with h
+    simp [Fin.isValue]
+    rfl
+    · simp at h
+      simp at this
+      exfalso
+      rcases h with ⟨x, hxne⟩
+      simp_all
+    · simp_all
+  }
+
+
+/-- Program for the second image (regs 0,1,2). -/
+def example_prog_2 : Prog 3 :=
+  (1 +:= 2 << 0) ;;
+  (1 +:= 0 << 0) ;;
+  -- Product on all registers
+  [valid_ops.phaseProduct 0] ;;
+  [valid_ops.phaseProduct 1] ;;
+  [valid_ops.phaseProduct 2] ;;
+
+  (neg 1) ;;
+  (1 +:= 0 << 0) ;;
+  (1 +:= 2 << 1) ;;
+  (0 +:= 1 << 0) ;;
+  (1 +:= 0 << 0) ;;
+  (1 +:= 2 << 1) ;;
+  -- Product on regs. 1 and 0
+  [valid_ops.phaseProduct 1] ;;
+  [valid_ops.phaseProduct 0] ;;
+
+  (neg 1) ;;
+  (1 +:= 2 << 1) ;;
+  (0 <<s= 1) ;; (0 +:= 1 << 0) ;;
+  (1 +:= 0 << 0) ;;
+  (1 +:= 2 << 1) ;;
+  (1 >>s= 1)
+
+def example_prog_3 : Prog 4 :=
+  (1 +:= 3 << 0) ;;
+  (1 +:= 2 << 0) ;;
+  (1 +:= 0 << 0) ;;
+  -- Product on all registers
+  [valid_ops.phaseProduct 0] ;;
+  [valid_ops.phaseProduct 1] ;;
+  [valid_ops.phaseProduct 3] ;;
+
+  (1 -:= 0 << 0) ;;
+  (1 -:= 2 << 0) ;;
+  (1 -:= 3 << 0) ;;
+  (0 -:= 1 << 0) ;;
+  (0 +:= 2 << 0) ;;
+  (0 -:= 3 << 0) ;;
+  [valid_ops.phaseProduct 0] ;;
+  (0 +:= 3 << 0) ;;
+  (0 -:= 2 << 0) ;;
+  (0 +:= 1 << 0)
+
+
+
+lemma x_fin_checker(k:ℕ)(hk:k>0): (∀ (x : Fin k), x ∈ List.finRange k → ((if x = (Fin.mk 0 (by simp[hk])) then (1:ℤ) else 0) = 0 ^ x.val))=true:=by {
+  simp
+  intro x
+  split_ifs with h
+  simp[h]
+  have hx0 : (x : ℕ) ≠ 0 := by
+    intro hx
+    apply h
+    apply Fin.ext
+    simpa using hx
+  obtain ⟨n, h⟩ := Nat.exists_eq_succ_of_ne_zero hx0
+  simp[h]
+  rw[Int.pow_add]
+  simp
+}
+
+theorem example_prog_2_phase_converage:
+  phaseProduct_coverage_check example_prog_2 State.start_state [Point.int 0,Point.inf,Point.int 1,Point.int (-1),Point.int (-2)]:=by {
+    simp[phaseProduct_coverage_check,phaseCoverageFrom?,phaseCoverageFrom?.loop,example_prog_2,List.eraseFirstMatch?,matchesAt_pointRow,regEqExpected,State.start_state,expectedRow,List.eraseFirstMatch?,Prog.ADD,applyOp?,phaseCoverageFrom?.loop,State.addScaledReg,State.setReg, Register.addScaled]
+    have := x_fin_checker 3 (by simp)
+    split_ifs with h
+    rfl
+    all_goals simp_all
+  }
+
+
+-- /******************************************************************************/
+-- /*                 TACTIC FOR VERIFYING PHASEPRODUCT COVERGE                  */
+-- /******************************************************************************/
+
+open Lean Meta Elab Tactic
+
+-- Define the custom tactic
+elab "prove_coverage" n:num : tactic => do
+  -- Convert the syntax `n` (which is a `num`) to an actual `Nat` value
+  let nVal := n.getNat
+
+  -- We will build the sequence of tactics as syntax
+  let tacstx ← `(tactic|
+    {
+      simp [phaseProduct_coverage_check, phaseCoverageFrom?, phaseCoverageFrom?.loop, List.eraseFirstMatch?, matchesAt_pointRow, regEqExpected,
+            State.start_state, expectedRow, List.eraseFirstMatch?, Prog.ADD,
+            applyOp?, phaseCoverageFrom?.loop, State.addScaledReg, State.setReg,
+            Register.addScaled]
+
+      -- Use the parsed integer `n` here
+      have := x_fin_checker $(quote nVal) (by simp)
+
+      split_ifs with h
+      rfl
+      all_goals simp_all
+    }
+  )
+
+  -- Run the tactic sequence using evalTactic
+  -- This evaluates the tactic block in the current context
+  evalTactic tacstx
+
+theorem example_prog_2_phase_converage_2:
+  phaseProduct_coverage_check example_prog_2 State.start_state [Point.int 0,Point.inf,Point.int 1,Point.int (-1),Point.int (-2)]:=by {
+    unfold example_prog_2
+    prove_coverage 3
+  }
+
+theorem example_prog_2_phase_converage_2_wrong:
+  phaseProduct_coverage_check example_prog_2 State.start_state [Point.int 0,Point.inf,Point.int 1,Point.int (-1),Point.int (-2)]:=by {
+    unfold example_prog_2
+    prove_coverage 3
+  }
+
+theorem example_prog_4_phase_coverage :
+  phaseProduct_coverage_check example_prog_3 State.start_state [Point.int 0,Point.inf,Point.int 1,Point.int (-1)] := by
+    unfold example_prog_3
+    prove_coverage 4
 -- /******************************************************************************/
 -- /*                  INVERSE OF APPEND (TOP-LEVEL VERSION)                     */
 -- /******************************************************************************/
@@ -367,7 +616,7 @@ open ProgEq
 
 /-- `(i <<s= a) ;; (i <<s= b)  ≃ₚ  (i <<s= (a + b))`. -/
 lemma shl_shl_same_reg {k} (i : Fin k) (a b : ℕ) :
-  (i <<s= a) ;; (i <<s= b) ≃ₚ (i <<s= (a + b)) := by
+  i <<s= a ;; i <<s= b ≃ₚ (i <<s= (a + b)) := by
   intro σ
   simp[run?_append,State.shiftL_add]
 
