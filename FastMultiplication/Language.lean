@@ -1,6 +1,6 @@
 import FastMultiplication.Basic
-import Mathlib.Tactic.FinCases
-
+import Mathlib.Tactic
+import Mathlib.Data.ZMod.Basic
 -- /******************************************************************************/
 -- /*                           PROGRAMS & EXECUTION CORE                        */
 -- /******************************************************************************/
@@ -357,7 +357,7 @@ theorem example_prog_1_phase_converage:
   }
 
 
-/-- Program for the second image (regs 0,1,2). -/
+/-- Program for the k=3 (regs 0,1,2). -/
 def example_prog_2 : Prog 3 :=
   (1 +:= 2 << 0) ;;
   (1 +:= 0 << 0) ;;
@@ -417,8 +417,6 @@ lemma x_fin_checker(k:ℕ)(hk:k>0): (∀ (x : Fin k), x ∈ List.finRange k → 
     simpa using hx
   obtain ⟨n, h⟩ := Nat.exists_eq_succ_of_ne_zero hx0
   simp[h]
-  rw[Int.pow_add]
-  simp
 }
 
 theorem example_prog_2_phase_converage:
@@ -437,9 +435,8 @@ theorem example_prog_2_phase_converage:
 
 open Lean Meta Elab Tactic
 
--- Define the custom tactic
+-- Custom tactic
 elab "prove_coverage" n:num : tactic => do
-  -- Convert the syntax `n` (which is a `num`) to an actual `Nat` value
   let nVal := n.getNat
 
   -- We will build the sequence of tactics as syntax
@@ -469,16 +466,84 @@ theorem example_prog_2_phase_converage_2:
     prove_coverage 3
   }
 
-theorem example_prog_2_phase_converage_2_wrong:
-  phaseProduct_coverage_check example_prog_2 State.start_state [Point.int 0,Point.inf,Point.int 1,Point.int (-1),Point.int (-2)]:=by {
-    unfold example_prog_2
-    prove_coverage 3
-  }
+
 
 theorem example_prog_4_phase_coverage :
   phaseProduct_coverage_check example_prog_3 State.start_state [Point.int 0,Point.inf,Point.int 1,Point.int (-1)] := by
     unfold example_prog_3
     prove_coverage 4
+
+
+-- /******************************************************************************/
+-- /*                 RETURN TO ORIGINAL STATE PROOF.                            */
+-- /******************************************************************************/
+
+
+
+/-- Start state entry (usable by `simp`). -/
+@[simp] lemma start_state_entry {k} (i j : Fin k) :
+  State.start_state i j = (if j = i then 1 else 0) := by
+  simp [State.start_state]
+
+
+theorem example_prog_2_returns:
+  run? example_prog_2 State.start_state = some State.start_state:=by {
+    unfold example_prog_2 State.start_state
+    simp [ run?_append,
+         applyOp?,
+         State.addScaledReg, State.negateReg, State.shiftLReg, State.shiftRReg?,
+         State.setReg,
+         Register.addScaled, Register.negate, Register.shiftL, Register.shiftR?]
+    split_ifs with h
+    simp
+    funext j k
+    have h2:=h j
+    fin_cases j<;>fin_cases k<;>simp
+    simp
+    apply h
+    intro j
+    fin_cases j<;>simp
+  }
+
+-- /******************************************************************************/
+-- /*               TACTIC TO PROVE RETURN TO ORIGINAL STATE.                    */
+-- /******************************************************************************/
+
+elab "returns_to_original?": tactic => do
+
+
+  -- We will build the sequence of tactics as syntax
+  let tacstx ← `(tactic|
+    {
+      simp [ run?_append,
+         State.start_state,
+         applyOp?,
+         State.addScaledReg, State.negateReg, State.shiftLReg, State.shiftRReg?,
+         State.setReg,
+         Register.addScaled, Register.negate, Register.shiftL, Register.shiftR?]
+      try (unfold State.setReg)
+      try (funext j k)
+      split_ifs with h
+      simp
+      try (funext j k)
+      have h2:=h j
+      fin_cases j<;>fin_cases k<;>simp
+      simp
+      apply h
+      intro j
+      fin_cases j<;>simp
+    }
+  )
+
+  -- Run the tactic sequence using evalTactic
+  -- This evaluates the tactic block in the current context
+  evalTactic tacstx
+theorem example_prog_2_returns_2:
+  run? example_prog_2 State.start_state = some State.start_state:=by {
+    unfold example_prog_2
+    returns_to_original?
+  }
+
 -- /******************************************************************************/
 -- /*                  INVERSE OF APPEND (TOP-LEVEL VERSION)                     */
 -- /******************************************************************************/
@@ -578,7 +643,6 @@ lemma negate_shiftL_same {k} (σ : State k) (i : Fin k) (n : ℕ) :
     unfold Register.negate Register.shiftL
     funext j
     simp
-    rw[Int.neg_mul]
   · -- other indices are unchanged by the update
     simp [State.negateReg, State.shiftLReg, State.setReg, ht]
 
@@ -663,10 +727,9 @@ lemma shiftR_after_shiftL_exact {k} (σ : State k) (i : Fin k) (n : ℕ) :
    simp
    unfold setReg
    simp
-   funext j k
+   funext j r
    split_ifs with h
    simp[h]
-   sorry
    rfl
 
 /-- If a right-shift succeeded, the corresponding left-shift restores the state. -/
@@ -679,12 +742,16 @@ lemma shiftL_after_shiftR_exact {k} {σ σ' : State k} (i : Fin k) (n : ℕ) :
     · simp
       intro h2
       rw[← h2]
-      funext j k
+      funext j r
       simp
       split_ifs with h3
       simp
-      sorry
-      rfl
+      rw[Int.ediv_mul_cancel]
+      simp[h3]
+      have h4:=h1 j
+      have hm : σ i r % (2 : ℤ) ^ n = 0 := by simpa using h1 r
+      exact Int.dvd_of_emod_eq_zero hm
+      simp
     · simp
 
 /-- Adding a scaled (or negated) source and then the opposite undoes the change. -/
@@ -696,14 +763,6 @@ lemma addScaled_cancel {k} (σ : State k) (dst src : Fin k) (negSrc : Bool) (n :
     simp
     split_ifs with h1 h2 h3 h4 h5 h6 h7 h8
     all_goals try simp_all
-    {
-      rw[Int.neg_mul,Int.neg_add_cancel_right]
-    }
-    {
-      rw[Int.neg_mul, Int.add_assoc]
-      nth_rewrite 2[Int.add_comm]
-      rw[← Int.add_assoc,Int.neg_add_cancel_right]
-    }
 
 /-- Inverse of a single step, for any well-formed op. -/
 lemma run?_inv_singleton_OK {k} (op : valid_ops k) (ok : Prog.OpOK op) :
@@ -786,134 +845,242 @@ end State
 
 
 
+def shiftsOfAux : Nat → Nat → List Nat
+| 0,      _  => []
+| n+1,    sh =>
+  let rest := shiftsOfAux ((n+1) / 2) (sh+1)
+  if Nat.bodd (n+1) then sh :: rest else rest
+-- termination_by n _ => n
+-- decreasing_by
+--   -- simplify the well-founded goal then show (n+1)/2 < (n+1)
+--   exact Nat.div_lt_self (Nat.succ_pos _) (by decide)
 
 
+def shiftsOf (n : Nat) : List Nat := shiftsOfAux n 0
+-- #eval shiftsOf 24  -- expects [3, 4]
+
+/-- Signed power-of-two decomposition.
+    Returns a list of `(neg, shift)` so that
+    `c = ∑ (if neg then -1 else +1) * 2^shift`. -/
+def signedPow2Decomp (c : Int) : List (Bool × Nat) :=
+  if c = 0 then
+    []
+  else
+    let neg'  : Bool := c < 0
+    let mag  : Nat  := Int.natAbs c
+    (shiftsOf mag).map (fun sh => (neg', sh))
+
+/-- Finite index `0 : Fin k` when `k > 0`. -/
+def finZero {k : Nat} (hk : 0 < k) : Fin k := ⟨0, hk⟩
+
+/-- All source registers `j = 1..k-1` (i.e. finRange minus `0`). -/
+def nonzeroFins {k : Nat} (hk : 0 < k) : List (Fin k) :=
+  (List.finRange k).filter (fun j => decide (j ≠ finZero hk))
+
+/-- Turn a `(neg, shift)` pair into one `addScaled` op: `dst += ± (src << shift)`. -/
+def pairToOp {k : Nat} (dst src : Fin k) : (Bool × Nat) → valid_ops k
+| (neg', sh) => valid_ops.addScaled dst src (negSrc := neg') sh
 
 
+/-- Tiny helper: if `p head` is true, the eraser drops the head. -/
+@[simp] lemma eraseFirstMatch?_head_true {α} (p : α → Bool) (x : α) (xs : List α)
+  (hx : p x = true) :
+  List.eraseFirstMatch? p (x :: xs) = some xs := by
+  simp [List.eraseFirstMatch?, hx]
 
 
+lemma phaseProduct_coverage_check_append_cons_of_returns {k : ℕ}
+    (p q : Prog k) (σ : State k)
+    (head : Point) (tail : List Point)
+    (hret : run? p σ = some σ)
+    (hp   : phaseProduct_coverage_check p σ [head] = true)
+    (hq   : phaseProduct_coverage_check q σ tail   = true) :
+  phaseProduct_coverage_check (p ++ q) σ (head :: tail) = true := by {
+    sorry
+  }
+/-- Accumulate all contributions for `.int z` into `dst = 0`, **no uncompute yet**. -/
+def computeLocal {k : Nat} (hk : 0 < k) (z : Int) : Prog k :=
+  let dst := finZero hk
+  (nonzeroFins hk).foldl
+    (fun acc (j:Fin k) =>
+      let c : Int := z ^ (j : Nat)
+      if c = 0 then acc
+      else acc ++ (signedPow2Decomp c).map (pairToOp dst j))
+    ([] : Prog k)
+
+/-- One block per point: build row in reg 0, mark it, then uncompute. -/
+def opsForPointWithProduct {k : Nat} (hk : 0 < k) : Point → Prog k
+| .inf   =>
+    let last : Fin k := ⟨k-1, by have : 0 < k := hk; exact Nat.sub_lt (Nat.succ_le_of_lt this) (by decide)⟩
+    [valid_ops.phaseProduct last]
+| .int z =>
+  let dst   := finZero hk
+  let l := computeLocal hk z
+  l ++ [valid_ops.phaseProduct dst] ++ apply_Op_inverse l
+
+/-- Generator that **does** include the `phaseProduct` checkpoints. -/
+def genOpsWithProduct {k : Nat} (hk : 0 < k) (points : List Point) : Prog k :=
+  points.foldl (fun acc pt => acc ++ opsForPointWithProduct hk pt) ([] : Prog k)
+
+theorem genOpsWithProduct_append (hk : 0 < k)(h:Point)(t:List Point):
+  genOpsWithProduct hk (h::t)=genOpsWithProduct hk [h]++genOpsWithProduct hk t:= by
+    sorry
+
+
+theorem genOpsWithProduct_phase_coverage
+  {k : Nat} (hk : 0 < k) (pts : List Point) :
+  phaseProduct_coverage_check (genOpsWithProduct hk pts) State.start_state pts := by {
+    induction pts with
+    | nil=>{
+      unfold genOpsWithProduct phaseProduct_coverage_check phaseCoverageFrom? matchesAt_pointRow phaseCoverageFrom?.loop
+      simp
+    }
+    | cons head tail ih=>{
+      rw[genOpsWithProduct_append,phaseProduct_coverage_check_append_cons_of_returns]
+      {
+        sorry
+      }
+      {
+        unfold genOpsWithProduct phaseProduct_coverage_check phaseCoverageFrom? matchesAt_pointRow phaseCoverageFrom?.loop opsForPointWithProduct
+        simp
+        cases head with
+        | int x => {
+          simp
+          sorry
+        }
+        | inf=> {
+          --unfold List.eraseFirstMatch? regEqExpected expectedRow
+          simp
+          sorry
+        }
+      }
+      {
+        rw[ih]
+      }
+    }
+  }
 -- /******************************************************************************/
 -- /*                   INTEGER → SIGNED POW2 DECOMPOSITION                      */
 -- /******************************************************************************/
 
-def signedPow2Decomp (c : Int) : List (Int × Nat) :=
-  if c = 0 then
-    []
-  else
-    Id.run do
-      let sgn : Int := if 0 ≤ c then (1 : Int) else (-1 : Int)
-      let mut n  : Nat := c.natAbs
-      let mut sh : Nat := 0
-      let mut out : List (Int × Nat) := []
-      while n ≠ 0 do
-        -- check LSB with modulus, no Nat.bodd needed
-        if n % 2 == (1 : Nat) then
-          out := (sgn, sh) :: out
-        n  := n / 2        -- shift right
-        sh := sh + 1
-      return out.reverse   -- ascending shifts
+-- def signedPow2Decomp (c : Int) : List (Int × Nat) :=
+--   if c = 0 then
+--     []
+--   else
+--     Id.run do
+--       let sgn : Int := if 0 ≤ c then (1 : Int) else (-1 : Int)
+--       let mut n  : Nat := c.natAbs
+--       let mut sh : Nat := 0
+--       let mut out : List (Int × Nat) := []
+--       while n ≠ 0 do
+--         -- check LSB with modulus, no Nat.bodd needed
+--         if n % 2 == (1 : Nat) then
+--           out := (sgn, sh) :: out
+--         n  := n / 2        -- shift right
+--         sh := sh + 1
+--       return out.reverse   -- ascending shifts
 
-lemma decomp_2 :
-  signedPow2Decomp 2= [(1,1)]:=by {
-    unfold signedPow2Decomp
-    simp
-    sorry
-  }
+-- lemma decomp_2 :
+--   signedPow2Decomp 2= [(1,1)]:=by {
+--     unfold signedPow2Decomp
+--     simp
+--     sorry
+--   }
 
-/-- Reconstruct an integer from a decomposition list. -/
-def sumDecomp (L : List (Int × Nat)) : Int :=
-  L.foldl (fun acc (s, sh) => acc + s * (2 : Int) ^ sh) 0
+-- /-- Reconstruct an integer from a decomposition list. -/
+-- def sumDecomp (L : List (Int × Nat)) : Int :=
+--   L.foldl (fun acc (s, sh) => acc + s * (2 : Int) ^ sh) 0
 
-macro "sumDecomp_simp" : tactic =>
-  `(tactic| (unfold sumDecomp; simp))
+-- macro "sumDecomp_simp" : tactic =>
+--   `(tactic| (unfold sumDecomp; simp))
 
-lemma sumDecomp_2:(sumDecomp [(1,1)])=2:=by {
-  sumDecomp_simp
-}
+-- lemma sumDecomp_2:(sumDecomp [(1,1)])=2:=by {
+--   sumDecomp_simp
+-- }
 
-lemma sumDecomp_24:(sumDecomp [(1, 3), (1, 4)])=24:=by {
-  sumDecomp_simp
-}
+-- lemma sumDecomp_24:(sumDecomp [(1, 3), (1, 4)])=24:=by {
+--   sumDecomp_simp
+-- }
 
-/--
-Basic correctness: for all integers `c`, reconstructing from
-`signedPow2Decomp c` gives back `c`.
--/
-theorem signedPow2Decomp_correct (c : Int) :
-    sumDecomp (signedPow2Decomp c) = c := by
-  by_cases hc : c = 0
-  · simp [signedPow2Decomp, hc, sumDecomp]
-  ·
-    let sgn : Int := if 0 ≤ c then 1 else -1
-    let n := c.natAbs
-    -- since our construction collects exactly those (sgn, sh) where the bit is 1,
-    -- we reconstruct sgn * n
-    have : sumDecomp (signedPow2Decomp c) = sgn * n := by
-      -- this mirrors what the loop does; conceptually true
-      admit
-    -- finally show sgn * n = c
-    simp [Int.natAbs_of_nonneg, Int.natAbs_neg, hc] at *
-    by_cases h : 0 ≤ c
-    · simp [this,sgn,h];simp[n];sorry
-    · unfold sumDecomp
-      simp
-      sorry
+-- /--
+-- Basic correctness: for all integers `c`, reconstructing from
+-- `signedPow2Decomp c` gives back `c`.
+-- -/
+-- theorem signedPow2Decomp_correct (c : Int) :
+--     sumDecomp (signedPow2Decomp c) = c := by
+--   by_cases hc : c = 0
+--   · simp [signedPow2Decomp, hc, sumDecomp]
+--   ·
+--     let sgn : Int := if 0 ≤ c then 1 else -1
+--     let n := c.natAbs
+--     -- since our construction collects exactly those (sgn, sh) where the bit is 1,
+--     -- we reconstruct sgn * n
+--     have : sumDecomp (signedPow2Decomp c) = sgn * n := by
+--       -- this mirrors what the loop does; conceptually true
+--       admit
+--     -- finally show sgn * n = c
+--     simp [Int.natAbs_of_nonneg, Int.natAbs_neg, hc] at *
+--     by_cases h : 0 ≤ c
+--     · simp [this,sgn,h];simp[n];sorry
+--     · unfold sumDecomp
+--       simp
+--       sorry
 
--- (TODO: full formalization would replace `admit` with an induction on n.)
+-- -- (TODO: full formalization would replace `admit` with an induction on n.)
 
 
--- /******************************************************************************/
--- /*                 LIST-OF-POWERS SUMS & BINARY BIT SHIFTS                    */
--- /******************************************************************************/
+-- -- /******************************************************************************/
+-- -- /*                 LIST-OF-POWERS SUMS & BINARY BIT SHIFTS                    */
+-- -- /******************************************************************************/
 
- /-- Sum `∑ (2^s)` over a list of shifts. We use lists (not finsets) because the
-    decomposition naturally produces a list. -/
-def sumPow2 (L : List Nat) : ℤ :=
-  L.foldr (fun s acc => (2 : ℤ) ^ s + acc) 0
+--  /-- Sum `∑ (2^s)` over a list of shifts. We use lists (not finsets) because the
+--     decomposition naturally produces a list. -/
+-- def sumPow2 (L : List Nat) : ℤ :=
+--   L.foldr (fun s acc => (2 : ℤ) ^ s + acc) 0
 
-@[simp] lemma sumPow2_nil : sumPow2 [] = 0 := rfl
-@[simp] lemma sumPow2_cons (s : Nat) (L : List Nat) :
-  sumPow2 (s :: L) = (2 : ℤ) ^ s + sumPow2 L := rfl
+-- @[simp] lemma sumPow2_nil : sumPow2 [] = 0 := rfl
+-- @[simp] lemma sumPow2_cons (s : Nat) (L : List Nat) :
+--   sumPow2 (s :: L) = (2 : ℤ) ^ s + sumPow2 L := rfl
 
-lemma sumPow2_append (A B : List Nat) :
-  sumPow2 (A ++ B) = sumPow2 A + sumPow2 B := by
-  induction A with
-  | nil => simp
-  | cons s A IH => simp [IH, Int.add_assoc]
+-- lemma sumPow2_append (A B : List Nat) :
+--   sumPow2 (A ++ B) = sumPow2 A + sumPow2 B := by
+--   induction A with
+--   | nil => simp
+--   | cons s A IH => simp [IH, Int.add_assoc]
 
-/-- Map `succ` over shifts multiplies the sum by 2:  `∑ 2^(s+1) = 2 * ∑ 2^s`. -/
-lemma sumPow2_mapSucc (L : List Nat) :
-  sumPow2 (L.map Nat.succ) = 2 * sumPow2 L := by
-  induction L with
-  | nil => simp
-  | cons s L IH =>
-      simp [IH, Int.pow_succ, Int.two_mul, Int.add_comm, Int.add_left_comm, Int.add_assoc]
-      omega
+-- /-- Map `succ` over shifts multiplies the sum by 2:  `∑ 2^(s+1) = 2 * ∑ 2^s`. -/
+-- lemma sumPow2_mapSucc (L : List Nat) :
+--   sumPow2 (L.map Nat.succ) = 2 * sumPow2 L := by
+--   induction L with
+--   | nil => simp
+--   | cons s L IH =>
+--       simp [IH, Int.pow_succ, Int.two_mul, Int.add_comm, Int.add_left_comm, Int.add_assoc]
+--       omega
 
-/-- Bits‐to‐shifts via `Nat.binaryRec`:
-    For `n = bit b m = 2*m + (if b then 1 else 0)`,
-    shifts are those of `m`, incremented by 1, plus `0` if `b = true`. -/
-def bitShifts (n : Nat) : List Nat :=
-  Nat.binaryRec (motive := fun _ => List Nat)
-    []                                                           -- base: 0 ↦ []
-    (fun b _ acc => acc.map Nat.succ ++ (if b then [0] else [])) -- step: bit b m
-    n
+-- /-- Bits‐to‐shifts via `Nat.binaryRec`:
+--     For `n = bit b m = 2*m + (if b then 1 else 0)`,
+--     shifts are those of `m`, incremented by 1, plus `0` if `b = true`. -/
+-- def bitShifts (n : Nat) : List Nat :=
+--   Nat.binaryRec (motive := fun _ => List Nat)
+--     []                                                           -- base: 0 ↦ []
+--     (fun b _ acc => acc.map Nat.succ ++ (if b then [0] else [])) -- step: bit b m
+--     n
 
-/-- The sum of powers at positions `bitShifts n` equals `n` (as an integer). -/
-lemma bitShifts_sum (n : Nat) : sumPow2 (bitShifts n) = (n : ℤ) := by
-  -- binary induction on `n`
-  refine Nat.binaryRec
-    (motive := fun n => sumPow2 (bitShifts n) = (n : ℤ))
-    ?base ?step n
-  · -- base: n = 0
-    simp [bitShifts]
-  · -- step: n = bit b m = 2*m + (if b then 1 else 0)
-    intro m b IH
-    -- unfold one step of `bitShifts`
-    unfold Nat.bit
-    sorry
+-- /-- The sum of powers at positions `bitShifts n` equals `n` (as an integer). -/
+-- lemma bitShifts_sum (n : Nat) : sumPow2 (bitShifts n) = (n : ℤ) := by
+--   -- binary induction on `n`
+--   refine Nat.binaryRec
+--     (motive := fun n => sumPow2 (bitShifts n) = (n : ℤ))
+--     ?base ?step n
+--   · -- base: n = 0
+--     simp [bitShifts]
+--   · -- step: n = bit b m = 2*m + (if b then 1 else 0)
+--     intro m b IH
+--     -- unfold one step of `bitShifts`
+--     unfold Nat.bit
+--     sorry
 
-/-- Boolean sign to ±1 in ℤ. -/
-@[inline] def sgnInt (b : Bool) : ℤ := if b then -1 else 1
-@[simp] lemma sgnInt_true  : sgnInt true  = (-1 : ℤ) := rfl
-@[simp] lemma sgnInt_false : sgnInt false = ( 1 : ℤ) := rfl
+-- /-- Boolean sign to ±1 in ℤ. -/
+-- @[inline] def sgnInt (b : Bool) : ℤ := if b then -1 else 1
+-- @[simp] lemma sgnInt_true  : sgnInt true  = (-1 : ℤ) := rfl
+-- @[simp] lemma sgnInt_false : sgnInt false = ( 1 : ℤ) := rfl
