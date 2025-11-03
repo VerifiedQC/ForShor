@@ -20,6 +20,13 @@ open Operations
   rw[this]
   simp
 
+theorem inverse_valid {k : ℕ} {p : Prog k} {σ₁ σ: State k}
+  (hrun:run? p σ = some σ₁):
+    ∃ σ₂, run? (apply_Op_inverse p) σ = some σ₂ := by
+  unfold apply_Op_inverse
+  -- (rev.map inv).rev.map inv  →  p.rev.rev.map (inv ∘ inv)
+  sorry
+
 -- /******************************************************************************/
 -- /*                          BASIC `run?` SIMP LEMMAS                          */
 -- /******************************************************************************/
@@ -46,6 +53,29 @@ lemma run?_append {k} (p q : Prog k) (σ : State k) :
       simp
       simp
 
+lemma run?_append_some {k : ℕ} {p q : Prog k} {σ τ : State k}
+  (h : run? (k := k) (p ++ q) σ = some τ) :
+  ∃ σ', run? (k := k) p σ = some σ' ∧ run? (k := k) q σ' = some τ := by {
+    revert σ τ
+    induction p with
+    | nil =>
+        intro σ τ h
+        exact ⟨σ, by simp, h⟩
+    | cons op ps ih =>
+        intro σ τ h
+        -- Peel one step of `run?` on the head `op`
+        cases hstep : applyOp? (k := k) σ op with
+        | none =>
+            -- impossible: then the whole run cannot be `some τ`
+            have : False := by
+              simp[hstep] at h
+            exact this.elim
+        | some σ1 =>
+            -- After the head, the remainder `(ps ++ q)` returns `τ`
+            have hrest : run? (k := k) (ps ++ q) σ1 = some τ := by
+              simpa [List.cons_append, run?, hstep] using h
+            aesop
+  }
 /- Single-step characterizations (good for rewriting) -/
 @[simp] lemma run?_one_shiftL {k} (σ : State k) (i : Fin k) (n : ℕ) :
   run? ([valid_ops.shiftL i n] : Prog k) σ = some (State.shiftLReg σ i n) := rfl
@@ -342,6 +372,13 @@ lemma run?_inv_singleton_OK {k} (op : valid_ops k) (ok : Prog.OpOK op) :
   unfold apply_Op_inverse
   simp [List.reverse_append, List.map_append]
 
+
+theorem WF_cons {k} (op: valid_ops k) (p : Prog k)
+  (h:Prog.WellFormed (op::p)):
+  Prog.WellFormed (p):=by {
+    unfold Prog.WellFormed at *
+    aesop
+  }
 /-- Running the inverse program undoes any well-formed successful run. -/
 theorem run?_inverse_undoes_WF {k}
     (p : Prog k) (WF : Prog.WellFormed p) (σ τ : State k) :
