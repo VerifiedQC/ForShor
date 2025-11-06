@@ -34,8 +34,7 @@ def signedPow2Decomp (c : Int) : List (Bool × Nat) :=
     let mag  : Nat  := Int.natAbs c
     (shiftsOf mag).map (fun sh => (neg', sh))
 
-/-- Finite index `0 : Fin k` when `k > 0`. -/
-def finZero {k : Nat} (hk : 0 < k) : Fin k := ⟨0, hk⟩
+
 
 /-- All source registers `j = 1..k-1` (i.e. finRange minus `0`). -/
 def nonzeroFins {k : Nat} (hk : 0 < k) : List (Fin k) :=
@@ -280,7 +279,6 @@ computeLocal2 hk z = computeLocal hk z:= by {
             simp_all
           }
   simp[h]
-
 }
 /-- One block per point: build row in `dst`, mark it, then uncompute. -/
 def opsForPointWithProduct {k : Nat} (hk : 0 < k) : Point → Prog k
@@ -299,6 +297,332 @@ def genOpsWithProduct {k : Nat} (hk : 0 < k) : List Point → Prog k
 | []       => []
 | p :: ps  => opsForPointWithProduct hk p ++ genOpsWithProduct hk ps
 
+/-- Prop version: the whole row equals the expected row, pointwise. -/
+def rowMatchesProp {k : Nat} (σ : State k) (i : Fin k) (pt : Point) : Prop :=
+  ∀ j : Fin k, σ i j = expectedRow (k := k) pt j
+
+/-- Provide a decidable instance for `rowMatchesProp`. -/
+instance instDecidable_rowMatchesProp
+  {k : Nat} (σ : State k) (i : Fin k) (pt : Point) :
+  Decidable (rowMatchesProp (k := k) σ i pt) := by
+  classical
+  -- This reduces to decidability of ∀ over a finite type with decidable equality
+  -- (`Int` has `DecidableEq`, and equality is decidable).
+  unfold rowMatchesProp
+  infer_instance
+
+
+
+
+
+
+
+
+
+
+
+
+
+/-- Render a `Fin k` as a plain natural number. -/
+def showFin {k} (i : Fin k) : String :=
+  toString i.val
+
+/-- Pretty printer for a single operation. -/
+def opToString {k} : valid_ops k → String
+| .shiftL i n        => s!"(shiftL,  reg={showFin i}, by={n})"
+| .shiftR i n        => s!"(shiftR,  reg={showFin i}, by={n})"
+| .negate i          => s!"(negate,  reg={showFin i})"
+| .addScaled i j b sh =>
+    let sgn := if b then "-" else "+"
+    s!"(add,     dst={showFin i}, src={showFin j}, sign={sgn}1, shift={sh})"
+| .phaseProduct i    => s!"(phaseProduct, reg={showFin i})"
+
+/-- Join a list of strings with ", " and bracket it like a list. -/
+def joinComma : List String → String
+| []      => "[]"
+| xs      =>
+  let body := xs.foldl (fun acc s => if acc = "" then s else acc ++ ", " ++ s) ""
+  "[" ++ body ++ "]"
+
+/-- Pretty print a whole program. -/
+def progToString {k} (p : Prog k) : String :=
+  joinComma (p.map opToString)
+
+/-- String form for a single point. -/
+def pointToString : Point → String
+| .inf    => "inf"
+| .int z  => toString z
+
+/-- Ops for a single point, as a one-line string. -/
+def opsForPointString {k} (hk : 0 < k) (p : Point) : String :=
+  progToString (opsForPointWithProduct (k := k) hk p)
+
+/-- Ops for a whole list of points, as one flat list string. -/
+def genOpsString {k} (hk : 0 < k) (ps : List Point) : String :=
+  progToString (genOpsWithProduct (k := k) hk ps)
+
+
+
+/-- Example: change `k` and `pts` to whatever you want. -/
+def pts : List Point :=
+  [Point.inf, Point.int (-3), Point.int (-2)]
+
+#eval IO.println (genOpsString (k := 3) (by decide) pts)
+
 
 lemma computeLocal2_Valid{k:ℕ}{z:ℤ}(hk:0<k):
   Prog.WellFormed (computeLocal2 hk z):= by sorry
+
+
+
+
+
+
+
+
+
+
+/-- Numeric sum of powers-of-two specified by a list of shifts. -/
+private def sumPow2 (ls : List Nat) : Int :=
+  ls.foldl (fun acc s => acc + (2 : Int) ^ s) 0
+
+lemma tail_all_nonzero
+  {k : ℕ} (hk : 0 < k)
+  {j : Fin k} {js : List (Fin k)}
+  (heq :
+    List.filter (fun u : Fin k => ! decide (u = finZero (k := k) hk))
+                (List.ofFn (fun i : Fin k => i))
+    = j :: js) :
+  ∀ t ∈ js, t ≠ finZero (k := k) hk :=
+by
+  intro t ht
+  -- t ∈ js ⇒ t ∈ j :: js ⇒ t ∈ that filter (by `heq`)
+  have hmemFilt :
+    t ∈ List.filter (fun u : Fin k => ! decide (u = finZero (k := k) hk))
+                    (List.ofFn (fun i : Fin k => i)) := by
+    have : t ∈ (j :: js) := by simp [ht]
+    simpa [heq] using this
+  -- membership in a boolean `filter` gives the predicate is true
+  have hpred : (! decide (t = finZero (k := k) hk)) = true := by
+    -- `mem_filter` ↔ (mem ∧ p=tt); `simp` picks out the boolean guard
+    simpa [List.mem_filter] using hmemFilt
+  -- so `decide (t = 0) = false` ⇒ indeed `t ≠ 0`
+  have hdec : decide (t = finZero (k := k) hk) = false := by simpa using hpred
+  intro hEq;
+  subst hEq
+  simp_all only [List.mem_cons, or_true, decide_true, Bool.not_true, Bool.false_eq_true]
+
+lemma computeLocalAux_zero_nil_of_nonzero
+  {k : ℕ} (hk : 0 < k) :
+  ∀ (js : List (Fin k)), (∀ t ∈ js, t ≠ finZero (k := k) hk) →
+    computeLocalAux (k := k) hk 0 js = []
+| [], _ => by simp [computeLocalAux]
+| (t :: ts), hnon => by
+  have ht_ne0 : t ≠ finZero (k := k) hk := hnon t (by simp)
+  have ht_pos : 0 < (t : ℕ) := by
+    have hval_ne : (t : ℕ) ≠ 0 := by
+      intro h0; apply ht_ne0; apply Fin.ext; simpa [finZero] using h0
+    exact Nat.pos_of_ne_zero hval_ne
+  -- 0^(t:ℕ) = 0 because t>0
+  have hpow : (0 : ℤ) ^ (t : ℕ) = 0 := by
+    rcases Nat.exists_eq_succ_of_ne_zero (ne_of_gt ht_pos) with ⟨m, hm⟩
+    -- 0^(m+1) = (0^m) * 0 = 0
+    simp [hm, pow_succ]  -- uses *_*0 = 0
+  -- tail still has only nonzero indices
+  have htail : ∀ u ∈ ts, u ≠ finZero (k := k) hk := by
+    intro u hu; exact hnon u (by simp [hu])
+  -- unfold once: head ++ tail, but head = []
+  simp [computeLocalAux, addConstFrom, hpow, computeLocalAux_zero_nil_of_nonzero hk ts htail]
+
+
+lemma exists_mid_of_run_append {k}
+  {p q : Prog k} {σ σ₁ : State k}
+  (hr : run? (p ++ q) σ = some σ₁) :
+  ∃ τ, run? p σ = some τ ∧ run? q τ = some σ₁ := by
+  revert q σ σ₁ hr
+  induction p with
+  | nil =>
+      intro q σ σ₁ hr
+      exact ⟨σ, by simp[run?], by simpa[List.nil_append] using hr⟩
+  | cons op ps ih =>
+      intro q σ σ₁ hr
+      -- p ++ q = (op :: ps) ++ q = op :: (ps ++ q)
+      simp [List.cons_append] at hr
+      rcases (show ∃ τ, applyOp? (k := k) σ op = some τ from by
+                cases h:applyOp? (k := k) σ op <;> simp[h] at hr ; aesop) with ⟨τ,hτ⟩
+      have : run? (ps ++ q) τ = some σ₁ := by simpa [hτ] using hr
+      rcases ih this with ⟨μ, hps, hq⟩
+      exact ⟨μ, by simpa [run?, hτ] using hps, hq⟩
+
+/-- From `heq : filter(≠0) (finRange k) = j::js` we get `j ≠ 0` and all `t∈js` are ≠0. -/
+lemma head_and_tail_nonzero
+  {k} (hk:0<k) {j:Fin k} {js:List (Fin k)}
+  (heq : List.filter (fun u : Fin k => !decide (u = finZero (k:=k) hk))
+                     (List.finRange k) = j :: js) :
+  (j ≠ finZero (k:=k) hk) ∧ (∀ t∈js, t ≠ finZero (k:=k) hk) := by
+  have hjmem : j ∈ List.filter (fun u : Fin k => !decide (u = finZero (k:=k) hk))
+                               (List.finRange k) := by simp [heq]
+  have : (!decide (j = finZero (k:=k) hk)) = true := by
+    -- mem of boolean filter implies predicate holds
+    simpa [List.mem_filter] using hjmem
+  have hj0 : j ≠ finZero (k:=k) hk := by
+    intro h; have : decide (j = finZero (k:=k) hk) = true := by simp [h]
+    simp_all
+  refine ⟨hj0, ?_⟩
+  intro t ht
+  have tmem : t ∈ List.filter (fun u : Fin k => !decide (u = finZero (k:=k) hk))
+                              (List.finRange k) := by
+    have : t ∈ (j::js) := by simp_all
+    simpa [heq] using this
+  have : (!decide (t = finZero (k:=k) hk)) = true := by
+    simpa [List.mem_filter] using tmem
+  intro h; have : decide (t = finZero (k:=k) hk) = true := by simp [h]
+  simp_all
+
+
+/-- Pointwise equality of registers as a `Bool`. -/
+def regEqReg {k : Nat} (r s : Register k) : Bool :=
+  (List.finRange k).all (fun u => decide (r u = s u))
+
+def matchesAt_pointRow_state3 {k : Nat} (hk : 0 < k) : MatchesAtState k :=
+  fun σ i pt =>
+    match pt with
+    | .int z =>
+        match run? (computeLocal2 (k := k) hk z) (State.start_state (k := k)) with
+        | some σ' => regEqReg (k := k) (σ i) (σ' (finZero (k := k) hk))
+        | none    => false
+    | .inf =>
+        let last : Fin k := ⟨k-1, by
+          have hk' : 0 < k := hk
+          exact Nat.sub_lt (Nat.succ_le_of_lt hk') (by decide)⟩
+        let target : Register k := fun u => if u = last then (1 : Int) else 0
+        regEqReg (k := k) (σ i) target
+
+
+
+/-- Comparing a register with a concrete row via `regEqReg` is the same as
+    `regEqExpected` when the concrete row *is* that expected row. -/
+lemma regEqReg_to_regEqExpected_int
+  {k : ℕ} (r : Register k) (z : ℤ) :
+  regEqReg (k := k) r (expectedRow (k := k) (.int z))
+  =
+  regEqExpected (k := k) r (.int z) := by
+  classical
+  simp [regEqReg, regEqExpected]
+
+/-- For `.inf`, your state3/2 target register *is* `expectedRow .inf`. -/
+lemma regEqReg_to_regEqExpected_inf
+  {k : ℕ} (hk : 0 < k) (r : Register k) :
+  (let last : Fin k := ⟨k-1, by
+     have hk' : 0 < k := hk
+     exact Nat.sub_lt (Nat.succ_le_of_lt hk') (by decide)⟩
+   let target : Register k := fun u => if u = last then (1 : Int) else 0;
+   regEqReg (k := k) r target)
+  =
+  regEqExpected (k := k) r (.inf) := by
+  classical
+  -- `expectedRow .inf` is exactly that `target`
+  simp [regEqReg, regEqExpected, expectedRow]
+  split
+  next k => simp_all only [List.finRange_zero, zero_tsub, List.all_nil]
+  next k k_1 => simp_all only [Nat.succ_eq_add_one, add_tsub_cancel_right]
+
+lemma computeLocal2_some_state
+(k : ℕ)
+(hk : 0 < k)
+(z : ℤ)
+(σ : State k):
+ ∃ σ₁, run? (computeLocal2 hk z) σ = some σ₁:=by sorry
+
+
+def computeLocal3 {k : ℕ} (hk : 0 < k) (z : ℤ) : Prog k :=
+  let dst := finZero hk
+  (nonzeroFins hk).foldl
+    (fun acc j =>
+      acc ++ addConstFrom dst j (z ^ (j : ℕ)))
+    []
+
+
+
+lemma computeLocal2_some_state_value_main
+(k : ℕ)
+(hk : 0 < k)
+(z : ℤ)
+(j : Fin k)
+(dst : Fin k := ⟨0, hk⟩):
+∀ (js : List (Fin k)) (σ σ' : State k),
+      run? (computeLocalAux (k := k) hk z js) σ = some σ' →
+      (∀ u, σ dst u =
+        if u = ⟨0,hk⟩ then 1 else 0) →
+      (∀ src, src ∈ js →
+        ∀ u, σ src u = (if u = src then 1 else 0)) →
+      ∀ u,
+        σ' dst u =
+          if u = ⟨0,hk⟩ then 1
+          else if u ∈ js then z ^ (u : ℕ) else 0
+  := by
+  intro js σ σ₁ h1 h2 h3 u
+  sorry
+
+
+
+
+
+
+
+
+lemma computeLocal2_some_state_value
+(k : ℕ)
+(hk : 0 < k)
+(z : ℤ)
+(σ₁: State k)
+(hs: run? (computeLocal2 hk z) State.start_state = some σ₁)
+(j: Fin k)
+:
+  σ₁ ⟨0, hk⟩ j = z ^ j.val
+ :=by
+  let dst : Fin k := ⟨0, hk⟩
+
+  have start_is_basis :
+    ∀ (i u : Fin k),
+      (State.start_state (k := k)) i u = (if u = i then 1 else 0) := by
+    intro i u
+    simp [State.start_state]
+  unfold computeLocal2 at hs
+
+  have hdst0 :
+    ∀ u, (State.start_state (k := k)) dst u =
+      if u = ⟨0,hk⟩ then 1 else 0 := by
+    intro u
+    have := start_is_basis dst u
+    rw [this]
+
+  have hsrc0 :
+    ∀ src, src ∈ nonzeroFins (k := k) hk →
+      ∀ u, (State.start_state (k := k)) src u =
+        if u = src then 1 else 0 := by
+    intro src _ u
+    exact start_is_basis src u
+
+  have main:=computeLocal2_some_state_value_main k hk z j
+  have hfinal :=
+    main (nonzeroFins (k := k) hk)
+         (State.start_state (k := k)) σ₁ hs hdst0 hsrc0 j
+
+  have hmem :
+    ∀ (u : Fin k),
+      u ∈ nonzeroFins (k := k) hk ↔ u ≠ dst := by
+    intro u
+    simp [nonzeroFins, dst, finZero]
+
+  have :
+    σ₁ dst j =
+      if j = ⟨0,hk⟩ then 1
+      else if j ≠ dst then z ^ (j : ℕ) else 0 := by
+    simpa [hmem] using hfinal
+
+  by_cases h0 : j = dst
+  · subst h0
+    simp_all only [start_state_entry, implies_true, ne_eq, ↓reduceIte, pow_zero, dst]
+  · have : j ≠ dst := h0
+    simp_all only [start_state_entry, implies_true, ne_eq, not_false_eq_true, ↓reduceIte, dst]

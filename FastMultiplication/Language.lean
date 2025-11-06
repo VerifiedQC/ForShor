@@ -126,8 +126,77 @@ def matchesAt_pointRow {k : Nat} : MatchesAt k :=
 def MatchesAtState.ofRegister {k : Nat} (m : MatchesAt k) : MatchesAtState k :=
   fun σ i pt => m (σ i) pt
 
-def matchesAt_pointRow_state {k : Nat} : MatchesAtState k :=
+def matchesAt_pointRow_state {k : Nat} (hk:k>0): MatchesAtState k :=
   fun σ i pt => regEqExpected (k := k) (σ i) pt
+
+
+/-- Finite index `0 : Fin k` when `k > 0`. -/
+def finZero {k : Nat} (hk : 0 < k) : Fin k := ⟨0, hk⟩
+
+/-- A synthesis-friendly expected row: keep the basis `1` at `i`,
+    and add `z^u` on every *other* coordinate.  For `.inf` we just reuse the
+    original `expectedRow` so equivalence is trivial there. -/
+def expectedRow2 {k : Nat} (i : Fin k) : Point → Register k
+| .int z => fun u => (if u = i then (1 : Int) else 0)
+                     + (if u ≠ i then (z : Int) ^ (u : Nat) else 0)
+| .inf   => expectedRow (k := k) .inf
+
+/-- Boolean row-check against `expectedRow2`. -/
+def matchesAt_pointRow_state2 {k : Nat} : MatchesAtState k :=
+  fun σ i pt =>
+    (List.finRange k).all (fun u => decide (σ i u = expectedRow2 (k := k) i pt u))
+
+/-- Bridge: the Bool for `matchesAt_pointRow_state2` is just pointwise equality. -/
+@[simp] lemma matchesAt_pointRow_state2_true_iff
+  {k : Nat} {σ : State k} {i : Fin k} {pt : Point} :
+  matchesAt_pointRow_state2 (k := k) σ i pt = true
+  ↔ ∀ u : Fin k, σ i u = expectedRow2 (k := k) i pt u := by
+  classical
+  unfold matchesAt_pointRow_state2
+  -- standard `List.all`/`finRange` equivalence
+  constructor
+  · intro hall u
+    have : decide (σ i u = expectedRow2 (k := k) i pt u) = true := by
+      simp_all only [List.all_eq_true, List.mem_finRange, decide_eq_true_eq, forall_const, decide_true]
+    simpa using (decide_eq_true_iff.mp this)
+  · intro hpoint
+    refine List.all_eq_true.mpr ?_
+    intro u _; exact (decide_eq_true_iff.mpr (hpoint u))
+
+/-- When `i` is the zero register, `expectedRow2` for `.int z` *equals*
+    the original Vandermonde row. -/
+@[simp] lemma expectedRow2_finZero_eq_expectedRow_int
+  {k : Nat} (hk : 0 < k) (z : Int) :
+  expectedRow2 (k := k) (finZero (k := k) hk) (.int z)
+    = expectedRow (k := k) (.int z) := by
+  funext u
+  by_cases hu0 : u = finZero (k := k) hk
+  · -- u = 0 : 1 + 0 = z^0
+    subst hu0
+    simp [expectedRow2, expectedRow, finZero, pow_zero]
+  · -- u ≠ 0 : 0 + z^u = z^u
+    simp [expectedRow2, expectedRow, finZero]
+    unfold finZero at hu0
+    simp[hu0]
+
+/-- Consequently, at `i = finZero hk` the two matchers agree for `.int z`. -/
+@[simp] lemma matchesAt_pointRow_state2_eq_state_at_finZero_int
+  {k : Nat} (hk : 0 < k) (σ : State k) (z : Int) :
+  matchesAt_pointRow_state2 (k := k) σ (finZero (k := k) hk) (.int z)
+  = matchesAt_pointRow_state  (k := k) hk σ (finZero (k := k) hk) (.int z) := by
+  classical
+  unfold matchesAt_pointRow_state matchesAt_pointRow_state2
+  -- pointwise equality of the targets inside `all (decide …)`
+  have H : (fun u => decide (σ (finZero hk) u
+                  = expectedRow2 (k := k) (finZero hk) (.int z) u))
+         = (fun u => decide (σ (finZero hk) u
+                  = expectedRow (k := k) (.int z) u)) := by
+    funext u
+    simp [expectedRow2_finZero_eq_expectedRow_int (k := k) hk z]
+  simp_all only [expectedRow2_finZero_eq_expectedRow_int]
+  rfl
+
+
 
 
 
@@ -278,8 +347,8 @@ inductive PhaseProductCoverageM {k : ℕ} (M : MatchesAtState k) :
     (hrest : PhaseProductCoverageM M ps σ pts') :
     PhaseProductCoverageM M (valid_ops.phaseProduct i :: ps) σ pts
 
-def PhaseProductCoverage {k : ℕ} :
+def PhaseProductCoverage {k : ℕ} (hk:k>0):
     Prog k → State k → List Operations.Point → Prop:=
-    PhaseProductCoverageM (k := k) (matchesAt_pointRow_state (k := k))
+    PhaseProductCoverageM (k := k) (matchesAt_pointRow_state (k := k) hk)
 
 namespace PhaseProductCoverage

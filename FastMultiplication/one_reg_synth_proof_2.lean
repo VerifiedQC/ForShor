@@ -16,20 +16,20 @@ namespace List
 
 
 /-- A single `addScaled` always succeeds and consumes no points. -/
-lemma cover_addScaled_nil {k} (σ : State k) (dst src : Fin k) (neg' : Bool) (sh : ℕ) :
-  PhaseProductCoverage [valid_ops.addScaled dst src (negSrc := neg') sh] σ [] := by
+lemma cover_addScaled_nil {k} (hk:k>0) (σ : State k) (dst src : Fin k) (neg' : Bool) (sh : ℕ) :
+  PhaseProductCoverage hk [valid_ops.addScaled dst src (negSrc := neg') sh] σ [] := by
   refine PhaseProductCoverageM.step_op
-    (M := matchesAt_pointRow_state (k := k))
+    (M := matchesAt_pointRow_state hk (k := k))
     (op := valid_ops.addScaled dst src (negSrc := neg') sh)
     (ps := []) (σ := σ)
     (τ := State.addScaledReg σ dst src (negSrc := neg') sh)
     (pts := []) ?hstep ?tail
   · simp [applyOp?]
-  · simpa using PhaseProductCoverageM.nil (M := matchesAt_pointRow_state (k := k)) (σ := _)
+  · simpa using PhaseProductCoverageM.nil (M := matchesAt_pointRow_state hk (k := k)) (σ := _)
 
 /-- A mapped list of `(neg,shift)` pairs to `addScaled` ops consumes no points. -/
-lemma cover_map_pairToOp_nil {k} (σ : State k) (dst src : Fin k) (pairs : List (Bool × Nat)) :
-  PhaseProductCoverage (pairs.map (pairToOp (k := k) dst src)) σ [] := by
+lemma cover_map_pairToOp_nil {k} (hk:k>0) (σ : State k) (dst src : Fin k) (pairs : List (Bool × Nat)) :
+  PhaseProductCoverage hk (pairs.map (pairToOp (k := k) dst src)) σ [] := by
   classical
   revert σ
   induction pairs with
@@ -39,7 +39,7 @@ lemma cover_map_pairToOp_nil {k} (σ : State k) (dst src : Fin k) (pairs : List 
       intro σ
       refine
         PhaseProductCoverageM.step_op
-          (M := matchesAt_pointRow_state (k := k))
+          (M := matchesAt_pointRow_state hk (k := k))
           (op := pairToOp (k := k) dst src p)
           (ps := ps.map (pairToOp (k := k) dst src)) (σ := σ)
           (τ := State.addScaledReg σ dst src (negSrc := p.1) p.2)
@@ -95,11 +95,12 @@ lemma run_tail_of_head {k}
 lemma step_op_append {k}
   {op : valid_ops k} {ps q : Prog k}
   {σ τ : State k}
+  (hk:k>0)
   (hstep : applyOp? (k := k) σ op = some τ)
-  (hrest : PhaseProductCoverage (ps ++ q) τ []) :
-  PhaseProductCoverage ((op :: ps) ++ q) σ [] := by
+  (hrest : PhaseProductCoverage hk (ps ++ q) τ []) :
+  PhaseProductCoverage hk ((op :: ps) ++ q) σ [] := by
   refine PhaseProductCoverageM.step_op
-    (M := matchesAt_pointRow_state (k := k))
+    (M := matchesAt_pointRow_state hk (k := k))
     (op := op) (ps := ps ++ q) (σ := σ) (τ := τ) (pts := [])
     (by simpa [applyOp?] using hstep) ?_
   -- `ps` appended under the cons:
@@ -109,16 +110,17 @@ lemma step_op_append {k}
 
 lemma phaseCoverage_append_nil
   {k} (p q : Prog k) {σ σ₂ : State k}
-  (hp  : PhaseProductCoverage p σ [])
+  (hk:k>0)
+  (hp  : PhaseProductCoverage hk p σ [])
   (hr  : run? p σ = some σ₂)
-  (hq  : PhaseProductCoverage q σ₂ []) :
-  PhaseProductCoverage (p ++ q) σ [] := by
+  (hq  : PhaseProductCoverage hk q σ₂ []) :
+  PhaseProductCoverage hk (p ++ q) σ [] := by
   have aux :
-    ∀ {p σ pts}, PhaseProductCoverage p σ pts → pts = [] →
+    ∀ {p σ pts}, PhaseProductCoverage hk p σ pts → pts = [] →
       ∀ (q : Prog k) (σ₂ : State k),
         run? p σ = some σ₂ →
-        PhaseProductCoverage q σ₂ [] →
-        PhaseProductCoverage (p ++ q) σ [] := by
+        PhaseProductCoverage hk q σ₂ [] →
+        PhaseProductCoverage hk (p ++ q) σ [] := by
     intro p σ pts hcov hpts q σ₂ hr hq
     revert q σ₂
     induction hcov generalizing q σ₂ with
@@ -132,11 +134,11 @@ lemma phaseCoverage_append_nil
           simpa [run?, hstep] using hrun
         -- recurse on (ps ++ q); use pts = [] via `hpts`
         have hrest' :
-          PhaseProductCoverage (ps ++ q) τ [] := by
+          PhaseProductCoverage hk (ps ++ q) τ [] := by
           aesop
         -- rebuild ((op :: ps) ++ q)
         refine PhaseProductCoverageM.step_op
-          (M := matchesAt_pointRow_state (k := k))
+          (M := matchesAt_pointRow_state hk (k := k))
           (op := op) (ps := ps ++ q) (σ := σ) (τ := τ) (pts := [])
           (by simpa [applyOp?] using hstep) ?_
         simpa using hrest'
@@ -165,7 +167,7 @@ private def step {k} (hk : 0 < k) (z : Int) :
 
 
 lemma cover_computeLocal2_nil {k} (hk : 0 < k) (σ : State k) (z : Int) :
-  PhaseProductCoverage (computeLocal2 (k := k) hk z) σ [] := by {
+  PhaseProductCoverage hk (computeLocal2 (k := k) hk z) σ [] := by {
     rw[computeLocal_eq]
     apply cover_computeLocal_nil
   }
@@ -270,103 +272,213 @@ private def evalPairs : List (Bool × Nat) → Int
 def contrib {k : Nat} (z : Int) : List (Fin k) → (Fin k) → Int
 | [],      _ => 0
 | j :: js, u => z ^ (j : Nat) * (State.start_state (k := k) j u) + contrib z js u
+-- If you already have this as one lemma, keep yours and delete these two.
 
 
-lemma run_addConstFrom_effect
-    {k : ℕ} (dst src : Fin k) (c : Int) {σ τ : State k}
+@[simp] lemma addScaled_other {k}
+  (σ : State k) (dst src : Fin k) (b : Bool) (sh : ℕ) {t : Fin k}
+  (hne : t ≠ dst) :
+  (State.addScaledReg σ dst src (negSrc := b) sh) t = σ t := by
+  -- Use your definition of addScaledReg. Typically it is an `if t = dst then … else σ t`.
+  -- This line should close by `simp` once the definition is visible.
+  -- If your project had a lemma `State.addScaledReg_apply`, you can `simpa [hne]` from it.
+  simp [State.addScaledReg, hne]
+
+lemma addScaled_dst {k}
+  (σ : State k) (dst src : Fin k) (b : Bool) (sh : ℕ) (u : Fin k) :
+  (State.addScaledReg σ dst src (negSrc := b) sh) dst u
+    = σ dst u + ((if b then (-1 : ℤ) else 1) * σ src u * (2 : ℤ)^sh) := by
+  -- Same comment as above: this mirrors the ‘dst’-branch of your definition.
+  -- If you already have `State.addScaledReg_apply`, just rewrite with it.
+  simp [State.addScaledReg]
+
+lemma run_addConstAux_preserve_non_dst
+  {k : ℕ} (dst src : Fin k) (neg' : Bool) :
+  ∀ n sh {σ τ : State k},
+    run? (k := k) (addConstAux (k := k) dst src neg' n sh) σ = some τ →
+    ∀ t, t ≠ dst → τ t = σ t := by
+  intro n
+  refine Nat.strong_induction_on n ?step
+  intro n ih sh σ τ hrun t hne
+  cases n with
+  | zero =>
+      -- addConstAux … 0 sh = []; so τ = σ
+      simp[addConstAux] at hrun
+      rw[hrun]
+  | succ m =>
+      -- Definition of addConstAux at n = m+1
+      by_cases hb : Nat.bodd (m+1)
+      ·
+        -- Head present: one addScaled at `sh`, then tail at (sh+1)
+        -- Peel the head and name the post-state
+        have htail :
+          run? (k := k)
+                (addConstAux (k := k) dst src neg' ((m+1)/2) (sh+1))
+                (State.addScaledReg σ dst src (negSrc := neg') sh)
+            = some τ := by
+          -- Unroll run? once using the head step
+          have hb:m.bodd = false:=by aesop
+          simp [addConstAux, hb, applyOp?] at hrun
+          simp[hrun]
+
+        -- Strong IH applies to strictly smaller index ((m+1)/2) < (m+1)
+        have hlt : ((m+1)/2) < (m+1) :=
+          Nat.div_lt_self (Nat.succ_pos _) (by decide)
+        have ihTail :
+          ∀ t, t ≠ dst →
+            τ t
+              = (State.addScaledReg σ dst src (negSrc := neg') sh) t :=
+          by
+            intro t' hne'
+            -- tail preserves non-dst by IH
+            exact ih ((m+1)/2) hlt (sh+1) htail t' hne'
+        -- Head preserves non-dst registers by definition of addScaledReg
+        have headPres :
+          (State.addScaledReg σ dst src (negSrc := neg') sh) t = σ t := by
+          -- This is the “else” branch for t ≠ dst
+          -- (if you have a lemma for this, you can `simp` with it)
+          simp [State.addScaledReg, hne]
+        -- Combine: τ t = (post-head) t = σ t
+        simpa [headPres] using ihTail t hne
+      ·
+        -- Even case: no head, only tail at (sh+1)
+        have htail :
+          run? (k := k)
+              (addConstAux (k := k) dst src neg' ((m+1)/2) (sh+1)) σ
+            = some τ := by
+          have hb:m.bodd = true:=by aesop
+          simp [addConstAux, hb] at hrun
+          simp[hrun]
+        have hlt : ((m+1)/2) < (m+1) :=
+          Nat.div_lt_self (Nat.succ_pos _) (by decide)
+        -- Directly apply IH to the tail
+        exact ih ((m+1)/2) hlt (sh+1) htail t hne
+
+lemma run_addConstFrom_effect_1
+  {k : ℕ} (dst src : Fin k) (c : Int) {σ τ : State k}
     (hr : run? (addConstFrom (k := k) dst src c) σ = some τ) :
-  (∀ t, t ≠ dst → τ t = σ t)
-  ∧ (∀ u, τ dst u = σ dst u + c * σ src u) := by
-
-  sorry
-/-- Invariant: running `computeLocalAux` from the start basis preserves all non-`dst`,
-    and on `dst` it adds the `contrib` for that list. -/
-lemma run_computeLocalAux_from_start
-  {k : ℕ} (hk : 0 < k) (z : ℤ)
-  : ∀ (S : List (Fin k)) {σ : State k},
-      run? (computeLocalAux (k := k) hk z S) (State.start_state (k := k)) = some σ →
-      (∀ t, t ≠ finZero hk → σ t = State.start_state (k := k) t)
-      ∧ (∀ u, σ (finZero hk) u =
-              State.start_state (k := k) (finZero hk) u + contrib (k := k) z S u):=by
-intro s σ h
-cases s with
-| nil =>
-    have : σ = State.start_state (k := k) := by simpa [computeLocalAux] using (Option.some.inj h).symm
-    subst this
-    constructor
-    · intro t ht; rfl
-    · intro u; simp [contrib]
-| cons j js =>
-    -- split head block and tail
-    sorry
-
-
-/-- Specialization to `nonzeroFins hk`: `u` is in the list iff `u ≠ 0`. -/
-lemma contrib_nonzeroFins_eval {k : ℕ} (hk : 0 < k) (z : ℤ) (u : Fin k) :
-  contrib (k := k) z (nonzeroFins (k := k) hk) u
-    = (if u ≠ finZero hk then z ^ (u : Nat) else 0) := by
-    unfold contrib nonzeroFins
+  (∀ t, t ≠ dst → τ t = σ t) := by
+  classical
+  by_cases hc : c = 0
+  · -- trivial: program is []
+    subst hc
+    simp [addConstFrom] at hr
+    simp[hr]
+  ·
+    -- nonzero: `addConstFrom` delegates to `addConstAux` with `n = natAbs c`, `sh = 0`
+    have := run_addConstAux_preserve_non_dst (k := k) dst src (c < 0)
+              (n := Int.natAbs c) (sh := 0) (σ := σ) (τ := τ)
+    -- the `run?` equation matches by unfolding `addConstFrom`
+    simp[addConstFrom,hc] at hr
+    simp[hr] at this
     simp
-    sorry
+    apply this
 
-lemma regEqExpected_after_computeLocal2_of_run
-    {k : ℕ} (hk : 0 < k) (z : ℤ) {σ₁ : State k}
-    (hrun : run? (computeLocal2 (k := k) hk z) (State.start_state (k := k)) = some σ₁) :
-    regEqExpected (k := k) (σ₁ (finZero hk)) (Point.int z) := by
-  -- invariant from the start state on the concrete list `nonzeroFins hk`
-  have inv := run_computeLocalAux_from_start (k := k) hk z
-                (S := nonzeroFins (k := k) hk) hrun
-  rcases inv with ⟨pres, dst⟩
-  -- check all coordinates u : Fin k
-  -- regEqExpected means:  ∀ u, σ₁ dst u = z^u
-  -- and we know:          σ₁ dst u = 1_{u=0} + contrib(nonzeroFins) u
-  -- but contrib(nonzeroFins) u = if u ≠ 0 then z^u else 0.
-  -- Put together, use z^0 = 1.
-  have : (List.finRange k).all
-          (fun j => decide (σ₁ (finZero hk) j = expectedRow (k := k) (Point.int z) j)) = true := by
-    -- show each coordinate holds
-    refine List.all_eq_true.2 ?_
-    intro u hu
-    have hcontrib := contrib_nonzeroFins_eval (k := k) hk z u
-    have hdst := dst u
-    -- expand expectedRow .int z
-    simp [expectedRow, finZero] at *
-    aesop
-  -- finish: regEqExpected is exactly that `all = true`
-  simpa [regEqExpected]
+-- lemma run_addConstAux_effect_dst
+--   {k : ℕ} (dst src : Fin k) (neg' : Bool) (hsd : src ≠ dst) :
+--   ∀ n sh {σ τ : State k},
+--     run? (k := k) (addConstAux (k := k) dst src neg' n sh) σ = some τ →
+--     ∀ u, τ dst u
+--             = σ dst u
+--               + ((if neg' then (-1 : ℤ) else 1) * (2 : ℤ)^sh * (n : ℤ)) * σ src u
+-- := by sorry
+
+-- lemma run_addConstFrom_effect_2
+--     {k : ℕ} (dst src : Fin k) (c : Int) {σ τ : State k}
+--     (hr : run? (addConstFrom (k := k) dst src c) σ = some τ) (hsd:src≠dst):
+--   (∀ u, τ dst u = σ dst u + c * σ src u) := by
+--   by_cases hc : c = 0
+--   · -- trivial: program is []
+--     subst hc
+--     simp [addConstFrom] at hr
+--     simp[hr]
+--   ·
+--     have h :=
+--       run_addConstAux_effect_dst (k := k) dst src (c < 0) hsd
+--         (n := Int.natAbs c) (sh := 0) (σ := σ) (τ := τ)
+--     have h' := h (by simpa [addConstFrom, hc] using hr)
+--     -- (if c<0 then -1 else 1) · 2^0 · natAbs c  =  c
+--     have sgn_abs :
+--       ((if c < 0 then (-1 : ℤ) else 1) * (2 : ℤ)^0 * (Int.ofNat (Int.natAbs c)))
+--         = c := by
+--       -- `2^0 = 1`; the remaining identity is standard: sign·natAbs = c
+--       have : (2 : ℤ)^0 = 1 := by simp
+--       -- `Int.mul_natAbs_sign c : (if c<0 then -1 else 1) * (Int.ofNat (Int.natAbs c)) = c`
+--       aesop
+--       sorry
+--     intro u
+--     have:= h' u
+--     simp[pow_zero] at this
+--     sorry
 
 
+-- lemma run_addConstFrom_effect
+--     {k : ℕ} (dst src : Fin k) (c : Int) {σ τ : State k}
+--     (hr : run? (addConstFrom (k := k) dst src c) σ = some τ) (hsd:src≠dst):
+--   (∀ t, t ≠ dst → τ t = σ t)
+--   ∧ (∀ u, τ dst u = σ dst u + c * σ src u) := by
+--   have := run_addConstFrom_effect_1 dst src c hr
+--   apply And.intro
+--   apply this
+--   apply run_addConstFrom_effect_2 dst src c hr hsd
+
+-- /-- Invariant: running `computeLocalAux` from the start basis preserves all non-`dst`,
+--     and on `dst` it adds the `contrib` for that list. -/
+-- lemma run_computeLocalAux_from_start
+--   {k : ℕ} (hk : 0 < k) (z : ℤ)
+--   : ∀ (S : List (Fin k)) {σ : State k},
+--       run? (computeLocalAux (k := k) hk z S) (State.start_state (k := k)) = some σ →
+--       (∀ t, t ≠ finZero hk → σ t = State.start_state (k := k) t)
+--       ∧ (∀ u, σ (finZero hk) u =
+--               State.start_state (k := k) (finZero hk) u + contrib (k := k) z S u):=by
+-- intro s σ h
+-- cases s with
+-- | nil =>
+--     have : σ = State.start_state (k := k) := by simpa [computeLocalAux] using (Option.some.inj h).symm
+--     subst this
+--     constructor
+--     · intro t ht; rfl
+--     · intro u; simp [contrib]
+-- | cons j js =>
+--     -- split head block and tail
+--     sorry
 
 
-/-- Algebraic correctness of the `computeLocal` builder:
-    starting from `start_state`, after running `computeLocal hk z`
-    the destination register `0` equals the Vandermonde row for `z`. --/
+-- /-- Specialization to `nonzeroFins hk`: `u` is in the list iff `u ≠ 0`. -/
+-- lemma contrib_nonzeroFins_eval {k : ℕ} (hk : 0 < k) (z : ℤ) (u : Fin k) :
+--   contrib (k := k) z (nonzeroFins (k := k) hk) u
+--     = (if u ≠ finZero hk then z ^ (u : Nat) else 0) := by
+--     unfold contrib nonzeroFins
+--     simp
+--     sorry
+
+-- lemma regEqExpected_after_computeLocal2_of_run
+--     {k : ℕ} (hk : 0 < k) (z : ℤ) {σ₁ : State k}
+--     (hrun : run? (computeLocal2 (k := k) hk z) (State.start_state (k := k)) = some σ₁) :
+--     regEqExpected (k := k) (σ₁ (finZero hk)) (Point.int z) := by
+--   -- invariant from the start state on the concrete list `nonzeroFins hk`
+--   have inv := run_computeLocalAux_from_start (k := k) hk z
+--                 (S := nonzeroFins (k := k) hk) hrun
+--   rcases inv with ⟨pres, dst⟩
+--   -- check all coordinates u : Fin k
+--   -- regEqExpected means:  ∀ u, σ₁ dst u = z^u
+--   -- and we know:          σ₁ dst u = 1_{u=0} + contrib(nonzeroFins) u
+--   -- but contrib(nonzeroFins) u = if u ≠ 0 then z^u else 0.
+--   -- Put together, use z^0 = 1.
+--   have : (List.finRange k).all
+--           (fun j => decide (σ₁ (finZero hk) j = expectedRow (k := k) (Point.int z) j)) = true := by
+--     -- show each coordinate holds
+--     refine List.all_eq_true.2 ?_
+--     intro u hu
+--     have hcontrib := contrib_nonzeroFins_eval (k := k) hk z u
+--     have hdst := dst u
+--     -- expand expectedRow .int z
+--     simp [expectedRow, finZero] at *
+--     aesop
+--   -- finish: regEqExpected is exactly that `all = true`
+--   simpa [regEqExpected]
 
 
-lemma computeLocal2_matches_row_start {k} (hk : 0 < k) (z : Int) :
-  ∃ σ₁, run? (computeLocal2 (k := k) hk z) (State.start_state (k := k)) = some σ₁
-      ∧ matchesAt_pointRow_state (k := k) σ₁ (finZero hk) (Point.int z) = true := by {
-        -- 1) Existence of a post-state
-        obtain ⟨σ₁, hrun⟩ := run_some_computeLocal2 (k := k) hk z (State.start_state (k := k))
-        -- 2) Show register `0` is exactly the Vandermonde row for `z`
-        --    i.e., `regEqExpected (σ₁ (finZero hk)) (.int z) = true`.
-        -- We discharge this by unfolding `regEqExpected` and reasoning componentwise
-        -- over `List.finRange k`. The key facts used by `simp` here are:
-        --   • `nonzeroFins hk` excludes `0` (so coordinate 0 stays 1),
-        --   • at start-state, register `j` is the basis vector `e_j`,
-        --   • `addScaled` into destination `0` adds (± 2^sh)·(basis j) componentwise,
-        --   • the mapped block for `z^j` sums to `z^j` at coordinate `j`,
-        --   • the fold accumulates those per-index contributions independently.
-        -- All of these are definitional in your `Basic` module and `simp` can use them.
-        have hrow :
-          regEqExpected (k := k) (σ₁ (finZero hk)) (Point.int z) = true := by
-             exact regEqExpected_after_computeLocal2_of_run (k := k) hk z hrun
-
-          -- ...continue your proof, e.g.
-          -- simpa [regEqExpected, expectedRow, hP, computeLocal, finZero] using ...
-
-        exact ⟨σ₁, hrun, by simpa [matchesAt_pointRow_state] using hrow⟩
-  }
 
 
 
@@ -435,6 +547,8 @@ lemma onlyAddScaled_addConstFrom {k : ℕ}
     simp[hc] at this
     apply h2 this
 /-- Every element of `computeLocalAux hk z js` is an `addScaled`. -/
+
+
 lemma onlyAddScaled_computeLocalAux {k : ℕ}
   (hk : 0 < k) (z : Int) :
   ∀ (js : List (Fin k)) (op : valid_ops k),
@@ -497,8 +611,9 @@ lemma onlyAddScaled_applyInverse
 
 lemma cover_onlyAddScaled_nil
   {k : ℕ} {p : Prog k} (σ : State k)
+  (hk:k>0)
   (hall : ∀ op ∈ p, IsAddScaled op) :
-  PhaseProductCoverage (k := k) p σ [] := by
+  PhaseProductCoverage (k := k) hk p σ [] := by
   classical
   revert σ
   induction p with
@@ -509,7 +624,7 @@ lemma cover_onlyAddScaled_nil
       rcases hall op (by simp) with ⟨dst, src, b, sh, rfl⟩
       refine
         PhaseProductCoverageM.step_op
-          (M := matchesAt_pointRow_state (k := k))
+          (M := matchesAt_pointRow_state hk (k := k))
           (op := valid_ops.addScaled dst src (negSrc := b) sh)
           (ps := ps) (σ := σ)
           (τ := State.addScaledReg σ dst src (negSrc := b) sh)
@@ -522,7 +637,7 @@ lemma cover_onlyAddScaled_nil
         exact hall o (by simp [ho])
 
 lemma cover_applyInverse_computeLocal2_nil {k} (hk : 0 < k) (σ : State k) (z : Int) :
-  PhaseProductCoverage (apply_Op_inverse (computeLocal2 (k := k) hk z)) σ [] := by
+  PhaseProductCoverage hk (apply_Op_inverse (computeLocal2 (k := k) hk z)) σ [] := by
   -- 1) every op inside `computeLocal2` is addScaled …
   have hOnly :
     ∀ op ∈ computeLocal2 (k := k) hk z, IsAddScaled op :=
@@ -533,7 +648,7 @@ lemma cover_applyInverse_computeLocal2_nil {k} (hk : 0 < k) (σ : State k) (z : 
     onlyAddScaled_applyInverse (k := k) (p := computeLocal2 (k := k) hk z) hOnly
   -- 3) An all-addScaled program covers [] from ANY σ (step_op only).
   exact cover_onlyAddScaled_nil (k := k) (p := apply_Op_inverse (computeLocal2 (k := k) hk z))
-           σ hOnlyInv
+           σ hk hOnlyInv
 /-- Append lemma for `run?`: running `p ++ q` equals running `p`
     to some σ' and then running `q` from σ'. -/
 lemma run_append_eq {k} {p q : Prog k} {σ σ' : State k}
@@ -582,12 +697,139 @@ lemma coverage_of_run_prefixM {k M}
   simp [List.eraseFirstMatch?, hx]
 
 
+/-- If every op in `p` is `addScaled`, then `run? p σ` succeeds from any `σ`. -/
+lemma run_some_of_onlyAddScaled {k : ℕ}
+  : ∀ (p : Prog k) (σ : State k),
+      (∀ op ∈ p, IsAddScaled op) →
+      ∃ σ', run? (k := k) p σ = some σ'
+| [],      σ, _    => ⟨σ, by simp [run?]⟩
+| op :: ps, σ, hall =>
+  by
+    -- head is addScaled
+    rcases hall op (by simp) with ⟨dst, src, b, sh, rfl⟩
+    -- run the head (always succeeds), then the tail by IH
+    rcases run_some_of_onlyAddScaled ps
+            (State.addScaledReg σ dst src (negSrc := b) sh)
+            (by intro o ho; exact hall o (by simp [ho])) with ⟨σ', ih⟩
+    exact ⟨σ', by simp [run?, applyOp?, ih]⟩
+
+
+lemma computeLocal2_some_state
+(k : ℕ)
+(hk : 0 < k)
+(z : ℤ)
+(σ : State k):
+ ∃ σ₁, run? (computeLocal2 hk z) σ = some σ₁:=by
+ classical
+  -- all ops are addScaled ⇒ run? cannot fail
+  refine run_some_of_onlyAddScaled (k := k)
+            (p := computeLocal2 (k := k) hk z) (σ := σ) ?hall
+  exact onlyAddScaled_computeLocal2 (k := k) hk z
+
+lemma run_computeLocalAux_from_basis
+  {k : ℕ} (hk : 0 < k) (z : Int) :
+  ∀ (js : List (Fin k)) {σ τ : State k},
+    run? (computeLocalAux (k := k) hk z js) σ = some τ →
+    (∀ t, t ≠ finZero (k := k) hk → σ t = State.start_state (k := k) t) →
+      (∀ u, τ (finZero (k := k) hk) u = σ (finZero (k := k) hk) u + contrib (k := k) z js u)
+      ∧ (∀ t, t ≠ finZero (k := k) hk → τ t = State.start_state (k := k) t)
+| [],      σ, τ, hrun, hpres =>
+  by
+    simp [computeLocalAux] at hrun; subst hrun
+    constructor
+    · intro u; simp [contrib]
+    · intro t _; exact hpres t ‹_›
+| j :: js, σ, τ, hrun, hpres =>
+  by
+    -- split head and tail
+    sorry
+-- /-- Row correctness for `computeLocal2`: from the basis start state, the
+--     destination row equals `expectedRow (.int z)`.  (You’ll prove this once.) -/
+-- lemma contrib_nonzeroFins_eval {k : ℕ} (hk : 0 < k) (z : ℤ) (u : Fin k) :
+--   contrib (k := k) z (nonzeroFins (k := k) hk) u
+--     = (if u ≠ finZero (k := k) hk then z ^ (u : Nat) else 0) := by
+--   classical
+--   -- expand the sum over sources; only the term j = u survives in start-basis
+--   unfold contrib
+--   -- do it by membership predicate:
+--   -- sum of z^j * 1_{u=j} over j∈nonzeroFins = if u∈… then z^u else 0
+--   -- a simple structural proof by induction on the list:
+--   revert u
+--   induction (nonzeroFins (k := k) hk) with
+--   | nil =>
+--       intro u; simp [finZero]; sorry
+--   | cons j js ih =>
+--       intro u
+--       sorry -- the `simp` splits cases u=j
+
+
+-- lemma row_after_computeLocal2_from_start
+--   {k : ℕ} (hk : 0 < k) (z : ℤ) {σ' : State k}
+--   (hrun : run? (computeLocal2 (k := k) hk z) (State.start_state (k := k)) = some σ') :
+--   σ' (finZero (k := k) hk) = expectedRow (k := k) (.int z) := by
+--   classical
+--   sorry
+
+
+theorem matchesAt_pointRow_state3_eq_matchesAt_pointRow_state
+  {k : ℕ} (hk : 0 < k) :
+  matchesAt_pointRow_state3 (k := k) hk = matchesAt_pointRow_state (k := k) hk:= by
+  sorry
+
+-- lemma addConstFrom_from_start_rows
+--   {k : ℕ} (dst src : Fin k) (c : ℤ) :
+--   ∀ {σ₁ : State k},
+--     run? (addConstFrom (k := k) dst src c) (State.start_state (k := k)) = some σ₁ →
+--       (∀ t, t ≠ dst → σ₁ t = State.start_state (k := k) t) ∧
+--       (∀ u, σ₁ dst u = State.start_state (k := k) dst u + c * State.start_state (k := k) src u) := by sorry
+
+-- lemma computeLocalAux_row_from_start
+--   {k : ℕ} (hk : 0 < k) (z : Int) :
+--   ∀ (js : List (Fin k)), ∃ σ₁,
+--     run? (k := k) (computeLocalAux (k := k) hk z js) (State.start_state (k := k)) = some σ₁
+--     ∧ (∀ u, σ₁ (finZero (k := k) hk) u
+--           = (if u = finZero (k := k) hk then 1 else 0)
+--             + (if u ∈ js then z ^ (u : Nat) else 0))
+--     ∧ (∀ t ≠ finZero (k := k) hk, σ₁ t = State.start_state (k := k) t) := by
+--     sorry
+
+
+
+lemma computeLocal2_some_state_matches
+(k : ℕ)
+(hk : 0 < k)
+(σ₁:State k)
+(z : ℤ)
+(hrun: run? (computeLocal2 hk z) State.start_state = some σ₁):
+matchesAt_pointRow_state hk σ₁ (finZero hk) (Point.int z)=true
+:=by
+  rw[← matchesAt_pointRow_state3_eq_matchesAt_pointRow_state]
+  unfold matchesAt_pointRow_state3
+  simp[hrun,regEqReg]
+
+/-- Algebraic correctness of the `computeLocal` builder:
+    starting from `start_state`, after running `computeLocal hk z`
+    the destination register `0` equals the Vandermonde row for `z`. --/
+
+
+lemma computeLocal2_matches_row_start {k} (hk : 0 < k) (z : Int) :
+  ∃ σ₁, run? (computeLocal2 (k := k) hk z) (State.start_state (k := k)) = some σ₁
+      ∧ matchesAt_pointRow_state (k := k) hk σ₁ (finZero hk) (Point.int z) = true := by {
+        -- 1) Existence of a post-state
+        obtain ⟨σ₁, hrun⟩ := computeLocal2_some_state k hk z State.start_state
+        use σ₁
+        have := computeLocal2_some_state_matches k hk σ₁ z hrun
+        simp[this,hrun]
+  }
+
+
+
 
 
 open Operations
 theorem genOpsWithProduct_PhaseProductCoverage
   {k : Nat} (hk : 0 < k) (pts : List Point) :
-  PhaseProductCoverage (genOpsWithProduct hk pts) State.start_state pts := by
+  PhaseProductCoverage hk (genOpsWithProduct hk pts) State.start_state pts := by
     induction pts with
     | nil=>{
       unfold genOpsWithProduct
@@ -595,7 +837,7 @@ theorem genOpsWithProduct_PhaseProductCoverage
     }
     | cons head tail ih=>{
       unfold genOpsWithProduct
-      change PhaseProductCoverage (opsForPointWithProduct hk head ++ genOpsWithProduct hk tail) State.start_state ([head] ++ tail)
+      change PhaseProductCoverage hk (opsForPointWithProduct hk head ++ genOpsWithProduct hk tail) State.start_state ([head] ++ tail)
       apply phaseProduct_coverage_check_append
       {
         cases head with
@@ -617,7 +859,7 @@ theorem genOpsWithProduct_PhaseProductCoverage
             -- sorry
             -- unfold PhaseProductCoverage
             -- apply PhaseProductCoverageM.step_phase
-            have hbuild : PhaseProductCoverage (computeLocal2 (k := k) hk x) (State.start_state (k := k)) [] := by {
+            have hbuild : PhaseProductCoverage hk (computeLocal2 (k := k) hk x) (State.start_state (k := k)) [] := by {
               rw[computeLocal_eq]
               apply cover_computeLocal_nil (k := k) hk (State.start_state (k := k)) x
             }
@@ -627,28 +869,28 @@ theorem genOpsWithProduct_PhaseProductCoverage
 
             -- 3) the single marker consumes `[Point.int x]` at σ₁
             have hphase :
-                PhaseProductCoverage ([valid_ops.phaseProduct (finZero hk)]) σ₁ [Point.int x] := by
+                PhaseProductCoverage hk ([valid_ops.phaseProduct (finZero hk)]) σ₁ [Point.int x] := by
               refine PhaseProductCoverageM.step_phase
-                (M := matchesAt_pointRow_state (k := k))
+                (M := matchesAt_pointRow_state hk (k := k))
                 (i := finZero hk) (ps := []) (σ := σ₁)
                 (pts := [Point.int x]) (pts' := []) ?erase ?tail
               · -- erase the head because the matcher is true at this site
                 simpa [List.eraseFirstMatch?] using
                   eraseFirstMatch?_head_true
-                    (fun pt => matchesAt_pointRow_state (k := k) σ₁ (finZero hk) pt)
+                    (fun pt => matchesAt_pointRow_state hk (k := k) σ₁ (finZero hk) pt)
                     (Point.int x) [] hmatch
-              · simpa using PhaseProductCoverageM.nil (M := matchesAt_pointRow_state (k := k)) (σ := σ₁)
+              · simpa using PhaseProductCoverageM.nil (M := matchesAt_pointRow_state hk (k := k)) (σ := σ₁)
             -- 4) coverage of the inverse suffix (no markers)
-            have huncompute : PhaseProductCoverage
+            have huncompute : PhaseProductCoverage hk
                     (apply_Op_inverse (computeLocal2 (k := k) hk x)) σ₁ [] :=
               cover_applyInverse_computeLocal2_nil (k := k) hk σ₁ x
 
             -- 5) stitch: (build) ++ (phase) covers [] ++ [x] = [x]
             have hprefix :
-                PhaseProductCoverage
+                PhaseProductCoverage hk
                   (computeLocal2 (k := k) hk x ++ [valid_ops.phaseProduct (finZero hk)])
                   (State.start_state (k := k)) [Point.int x] :=
-              phaseProduct_coverage_check_append_general
+              phaseProduct_coverage_check_append_general hk
                 (p := computeLocal2 (k := k) hk x)
                 (q := [valid_ops.phaseProduct (finZero hk)])
                 (σ := State.start_state (k := k)) (σret := σ₁)
@@ -656,7 +898,7 @@ theorem genOpsWithProduct_PhaseProductCoverage
                 (hp := hbuild) (hrun₁) (hphase)
             -- 6) stitch: … ++ (uncompute) covers [x] ++ [] = [x]
             simpa [List.append_assoc]
-              using phaseProduct_coverage_check_append_general
+              using phaseProduct_coverage_check_append_general hk
                 (p := computeLocal2 (k := k) hk x ++ [valid_ops.phaseProduct (finZero hk)])
                 (q := apply_Op_inverse (computeLocal2 (k := k) hk x))
                 (σ := State.start_state (k := k)) (σret := σ₁)
@@ -666,7 +908,11 @@ theorem genOpsWithProduct_PhaseProductCoverage
         }
         |inf => {
           simp
-          sorry
+          apply PhaseProductCoverageM.step_phase
+          -- unfold eraseFirstMatch?
+          -- unfold matchesAt_pointRow_state regEqExpected expectedRow
+          -- simp
+          all_goals sorry
         }
       }
       {

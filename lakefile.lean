@@ -14,3 +14,5 @@ require mathlib from git
 @[default_target]
 lean_lib «FastMultiplication» where
   -- add any library configuration options here
+lean_exe genOps where
+  root := `FastMultiplication.GenOpsMain
