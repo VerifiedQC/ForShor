@@ -1,5 +1,6 @@
 import FastMultiplication.One_register_synthesis_proof
 
+
 open Operations
 
 -- lemma phaseProduct_coverage_check_append_cons_of_returns {k : ℕ}
@@ -661,12 +662,287 @@ lemma run_ExecCL {z}
     (S := S) (σ₀ := State.start_state) (σ := σ) hrun hs
   simp[this]
 
+inductive ExecAddConstAux {k : ℕ}
+    (dst src : Fin k) (neg' : Bool) :
+    ℕ → ℕ → State k → State k → Prop
+| zero {sh σ} :
+    ExecAddConstAux dst src neg' 0 sh σ σ
 
+| succ_even {n sh σ σ₂}
+    (hb : (n + 1).bodd = false)
+    (htail :
+      ExecAddConstAux dst src neg' ((n + 1) / 2) (sh + 1) σ σ₂) :
+    ExecAddConstAux dst src neg' (n + 1) sh σ σ₂
+
+| succ_odd {n sh σ σ₁ σ₂}
+    (hb : (n + 1).bodd = true)
+    (hstep :
+      applyOp? σ (valid_ops.addScaled dst src (negSrc := neg') sh)
+        = some σ₁)
+    (htail :
+      ExecAddConstAux dst src neg' ((n + 1) / 2) (sh + 1) σ₁ σ₂) :
+    ExecAddConstAux dst src neg' (n + 1) sh σ σ₂
+
+
+lemma ExecAddConstAux_run?
+    {k : ℕ} {dst src : Fin k} {neg' : Bool}
+    {n sh : ℕ} {σ τ : State k}
+    (h : ExecAddConstAux dst src neg' n sh σ τ) :
+    run? (addConstAux dst src neg' n sh) σ = some τ := by
+  classical
+  induction h with
+  | zero =>
+      simp [addConstAux]
+  | succ_even hb htail ih =>
+      simp [addConstAux];simp_all
+  | succ_odd hb hstep htail ih =>
+      simp [addConstAux];simp_all
+
+lemma ExecAddConstAux.of_run?
+    {k : ℕ} {dst src : Fin k} {neg' : Bool} :
+  ∀ n sh {σ τ : State k},
+    run? (addConstAux dst src neg' n sh) σ = some τ →
+    ExecAddConstAux dst src neg' n sh σ τ := by
+  classical
+  -- strong recursion on n, with sh/σ/τ generalized inside motive
+  refine fun n => Nat.strongRecOn n ?step
+  -- step : ∀ n,
+  --        (∀ m < n, ∀ sh {σ τ},
+  --           run? (addConstAux dst src neg' m sh) σ = some τ →
+  --           ExecAddConstAux dst src neg' m sh σ τ) →
+  --        ∀ sh {σ τ},
+  --           run? (addConstAux dst src neg' n sh) σ = some τ →
+  --           ExecAddConstAux dst src neg' n sh σ τ
+  intro n ih sh σ τ h
+  cases n with
+  | zero =>
+      -- n = 0
+      simp [addConstAux] at h
+      subst τ
+      exact ExecAddConstAux.zero
+  | succ n =>
+      -- n.succ case
+      -- Expand addConstAux at (n+1, sh)
+      unfold addConstAux at h
+      -- name the tail program
+      set rest :=
+        addConstAux dst src neg' ((n + 1) / 2) (sh + 1)
+        with hrest
+
+      by_cases hb : (n + 1).bodd
+      · -- ODD CASE: addScaled :: rest
+        -- run? (addScaled :: rest) σ = some τ
+        have hb2:n.bodd=false:=by aesop
+        unfold run? at h
+        simp [hb2, hrest] at h
+
+
+        --rcases h with ⟨σ₁, hstep, hrest_run⟩
+
+        -- m = (n+1)/2 is smaller than n+1
+        have hm : (n + 1) / 2 < Nat.succ n :=
+          Nat.div_lt_self (Nat.succ_pos _) (by decide)
+
+        -- apply IH at m, with (sh+1), starting from σ₁
+        -- have htail :
+        --   ExecAddConstAux dst src neg' ((n + 1) / 2) (sh + 1) σ₁ τ :=
+        --   ih ((n + 1) / 2) hm (sh + 1) σ₁ τ
+        --     (by simpa [hrest] using hrest_run)
+
+        -- build the odd-step constructor
+        apply ExecAddConstAux.succ_odd hb (by simp;rfl)
+        aesop
+
+      · -- EVEN CASE: just rest
+        have hb2:n.bodd=true:=by aesop
+        simp [hb2, hrest] at h
+
+        have hm : (n + 1) / 2 < Nat.succ n :=
+          Nat.div_lt_self (Nat.succ_pos _) (by decide)
+
+        have htail :
+          ExecAddConstAux dst src neg' ((n + 1) / 2) (sh + 1) σ τ :=
+          ih ((n + 1) / 2) hm (sh + 1)
+            (by simpa [hrest] using h)
+
+        apply ExecAddConstAux.succ_even
+        simp_all only [Nat.bodd_succ, Bool.not_true, Bool.false_eq_true, not_false_eq_true, Nat.succ_eq_add_one, rest]
+        simp_all only [Nat.bodd_succ, Bool.not_true, Bool.false_eq_true, not_false_eq_true, Nat.succ_eq_add_one, rest]
+
+
+
+lemma run_addConstAux_effect_dst
+  {k : ℕ} (hk:k>0)(dst src : Fin k) (neg' : Bool) (hsd : src ≠ dst) :
+  ∀ n sh {σ τ : State k},
+    run? (k := k) (addConstAux (k := k) dst src neg' n sh) σ = some τ →
+    ∀ u, τ dst u
+            = σ dst u
+              + ((if neg' then (-1 : ℤ) else 1) * (2 : ℤ)^sh * (n : ℤ)) * σ src u
+:= by {
+  intro n sh σ τ h u
+  have h2:=ExecAddConstAux.of_run? n sh h
+  induction h2 with
+  | zero =>
+      -- n = 0, τ = σ
+      simp at *
+  | succ_even =>
+      -- IH:
+      -- ih : ∀ u, σ₂ dst u
+      --        = σ dst u + sgn neg' * 2 ^ (sh+1) * (((n+1)/2 : ℕ)) * σ src u
+      rename_i n sh σ σ₂ hb htail htail_ih
+      have htail2:=ExecAddConstAux_run? htail
+      have ih' := htail_ih htail2
+      simp_all
+      have : 2 ^ (sh + 1) * (((n:ℤ) + 1) / 2) = 2 ^ sh * ((n:ℤ) + 1):=by sorry
+      split
+      next h_1 =>
+        subst h_1
+        simp[this]
+      next h_1 =>
+        simp[this]
+  | succ_odd=>
+      rename_i n sh σ σ₁ σ₂ hb hstep htail htail_ih
+      have htail2:=ExecAddConstAux_run? htail
+      have ih' := htail_ih htail2
+      have htail_run :
+      run? (addConstAux dst src neg' ((n + 1) / 2) (sh + 1)) σ₁ = some σ₂ := by
+        -- unfold addConstAux at (n+1, sh)
+        unfold addConstAux at h
+        simp_all only
+      have h_tail_spec :=
+        htail_ih htail_run
+        -- h_tail_spec :
+        --   σ₂ dst u =
+        --     σ₁ dst u
+        --       + (if neg' = true then -1 else 1)
+        --         * 2 ^ (sh + 1) * ↑((n + 1) / 2) * σ₁ src u
+
+      -- 3. Decode the head addScaled step: identify σ₁
+      have hσ₁ :
+          σ₁ = State.addScaledReg σ dst src neg' sh := by
+        -- from the definition of applyOp?
+        simp [applyOp?] at hstep
+        simp_all only
+
+      -- Effect on dst row:
+      have h_dst₁ :
+          σ₁ dst u =
+            σ dst u
+              + (if neg' = true then -1 else 1)
+                * 2 ^ sh * σ src u := by
+        sorry
+
+      -- Effect on src row (unchanged since src ≠ dst):
+      have h_src₁ :
+          σ₁ src u = σ src u := by
+        -- addScaledReg only changes `dst`
+        have hneq : src ≠ dst := hsd
+        simp_all
+      -- 4. Use oddness to express (n+1) as 2 * ((n+1)/2) + 1
+      have hmod1 : (n + 1) % 2 = 1 := by
+        -- (n+1).bodd = true ↔ (n+1) % 2 = 1
+        sorry
+
+      have hdecomp_nat :
+          n + 1 = 2 * ((n + 1) / 2) + 1 := by
+        -- n+1 = 2 * (div) + mod ; here mod = 1
+        have := Nat.div_add_mod (n + 1) 2
+        -- rewrite mod with hmod1
+        -- (n + 1) = (n + 1) / 2 * 2 + 1
+        simpa [two_mul, hmod1] using this.symm
+
+      have hdecomp_int :
+          (n + 1 : ℤ)
+            = 2 * ((n + 1) / 2 : ℤ) + 1 := by
+        exact_mod_cast hdecomp_nat
+
+      calc
+    σ₂ dst u
+        = σ₁ dst u
+          + (if neg' = true then -1 else 1)
+              * 2 ^ (sh + 1) * ((n + 1) / 2 : ℤ) * σ₁ src u :=
+          h_tail_spec
+    _   = σ₁ dst u
+          + (if neg' = true then -1 else 1)
+              * (2 ^ sh * 2) * ((n + 1) / 2 : ℤ) * σ src u := by
+          -- use pow_succ and h_src₁
+          simp [pow_succ, h_src₁, mul_comm, mul_left_comm]
+    _   = (σ dst u
+            + (if neg' = true then -1 else 1)
+                * 2 ^ sh * σ src u)
+          + (if neg' = true then -1 else 1)
+              * 2 ^ (sh + 1) * ((n + 1) / 2 : ℤ) * σ src u := by
+          -- expand σ₁ dst u via head step
+          simp [h_dst₁, add_assoc]
+          congr
+    _   =
+          σ dst u
+            + (if neg' = true then -1 else 1)
+                * 2 ^ sh
+                * ((2 * ((n + 1) / 2 : ℤ) + 1)) * σ src u := by
+          -- factor out sgn * 2^sh * σ src u; use 2^(sh+1) = 2^sh*2
+          ring_nf
+    _   =
+          σ dst u
+            + (if neg' = true then -1 else 1)
+                * 2 ^ sh * (n + 1 : ℤ) * σ src u := by
+          -- substitute decomposition of (n+1)
+          congr
+          sorry
+}
+
+
+lemma neg_abs_pow_mul_eq_pow_mul
+    {z : ℤ} {j : Fin k} {σ₀: State k}
+    {u : Fin k}
+    (hzj : z ^ (↑j : ℕ) < 0) :
+    - (|z| ^ (↑j : ℕ) * σ₀ j u)
+      = z ^ (↑j : ℕ) * σ₀ j u := by
+  classical
+
+  -- First: |z|^n = |z^n| for n = ↑j
+  have h_abs_pow :
+      (|z| : ℤ) ^ (↑j : ℕ) = |z ^ (↑j : ℕ)| := by
+    -- prove by induction on n = ↑j
+    induction' (↑j : ℕ) with n ih
+    · -- n = 0
+      simp
+    · -- n.succ
+      -- z^(n+1) = z^n * z, abs (z^(n+1)) = abs(z^n) * abs(z)
+      simp
+
+  -- Second: since z^j < 0, |z^j| = - z^j
+  have h_abs_neg : |z ^ (↑j : ℕ)| = - (z ^ (↑j : ℕ)) :=
+    abs_of_neg hzj
+
+  -- So |z|^j = - z^j
+  have h1 :
+      (|z| : ℤ) ^ (↑j : ℕ) = - (z ^ (↑j : ℕ)) := by
+    simp at h_abs_neg
+    rw[h_abs_neg]
+
+  -- Hence -(|z|^j) = z^j
+  have h2 :
+      - ((|z| : ℤ) ^ (↑j : ℕ)) = z ^ (↑j : ℕ) := by
+    calc
+      - ((|z| : ℤ) ^ (↑j : ℕ))
+          = - (- (z ^ (↑j : ℕ))) := by simp[h1]
+      _   = z ^ (↑j : ℕ) := by simp
+
+  -- Push the negation inside the product and use h2
+  calc
+    - (|z| ^ (↑j : ℕ) * σ₀ j u)
+        = - ((|z| : ℤ) ^ (↑j : ℕ)) * σ₀ j u := by
+            -- -(a*b) = (-a)*b
+            simp [neg_mul]
+    _   = (z ^ (↑j : ℕ)) * σ₀ j u := by
+            simp [h2]
 
 
 lemma addConstFrom_effect
     {k : ℕ} (hk : 0 < k) (z : ℤ)
     (j : Fin k)
+    (h_j_ne_dst : j ≠ finZero hk) -- The required hypothesis
     {σ₀ σ₁ : State k}
     (h :
       run? (addConstFrom (finZero hk) j (z ^ (j : ℕ))) σ₀ = some σ₁) :
@@ -674,8 +950,89 @@ lemma addConstFrom_effect
     (∀ u : Fin k,
       σ₁ (finZero hk) u
         = σ₀ (finZero hk) u + z ^ (j : ℕ) * σ₀ j u) :=
-by sorry
+by
+  -- Define aliases for clarity
+  let dst := finZero hk
+  let c := z ^ (j : ℕ)
 
+  -- The definition of 'addConstFrom' splits on c = 0
+  by_cases hc : c = 0
+  · -- Case 1: c = 0
+    change z ^ j.val = 0 at hc
+    rw[hc]
+    -- The program is '[]', so 'addConstFrom' is the empty list.
+    -- 'run? [] σ₀ = some σ₁' implies σ₁ = σ₀
+    have h_run_eq : σ₁ = σ₀ := by
+      simp [addConstFrom, hc] at h
+      rw[h]
+    subst h_run_eq
+    apply And.intro
+    · -- 1. Preservation: 'σ₀ t = σ₀ t'
+      intro t ht; rfl
+    · -- 2. Update: 'σ₀ dst u = σ₀ dst u + 0 * σ₀ j u'
+      intro u; simp [add_zero]
+
+  · -- Case 2: c ≠ 0
+    -- 'addConstFrom' is defined as 'addConstAux ...'
+    apply And.intro
+    · -- Goal 1: Preservation (∀ t ≠ dst, σ₁ t = σ₀ t)
+      -- This is exactly what 'run_addConstFrom_effect_1' proves.
+      apply run_addConstFrom_effect_1
+      exact h
+    · -- Goal 2: Update (∀ u, σ₁ dst u = σ₀ dst u + c * σ₀ j u)
+      intro u
+      -- We use the lemma we just proved: 'run_addConstAux_effect_dst'
+      have hc1:=hc
+      change ¬z ^ j.val = 0 at hc
+      unfold addConstFrom at h
+      simp[hc] at h
+      have := run_addConstAux_effect_dst hk (finZero hk) j (decide (z ^ j.val < 0)) h_j_ne_dst (z.natAbs ^ j.val) 0 (σ:=σ₀) (τ:=σ₁) h u
+      by_cases hzj:z^(j.val)<0
+      ·
+        simp[hzj] at this
+        simp_all only [ne_eq, not_false_eq_true, pow_eq_zero_iff', not_and, Decidable.not_not, decide_true,
+          add_right_inj, c]
+        have h_abs_pow :
+          (|z| : ℤ) ^ (j.val) = - (z ^ (j.val)) := by
+          have h_abs_neg : |z ^ (↑j : ℕ)| = - (z ^ (↑j : ℕ)) :=
+            abs_of_neg hzj
+          -- And |z ^ n| = |z| ^ n
+          have h_abs_pow' : |z ^ (↑j : ℕ)| = (|z| : ℤ) ^ (↑j : ℕ) :=
+            abs_pow z (↑j : ℕ)
+          simp_all only [abs_pow]
+        calc
+        -(|z| ^ ↑j * σ₀ j u)
+            = -((|z| : ℤ) ^ (↑j : ℕ)) * σ₀ j u := by
+                  -- - (a * b) = (-a) * b
+                  simp[neg_mul]  -- or `simp [neg_mul, mul_comm, mul_left_comm, mul_assoc]`
+        _   = (z ^ (↑j : ℕ)) * σ₀ j u := by
+                  -- since (|z|^n) = - z^n, we have -(|z|^n) = z^n
+                  have h_neg :
+                      -((|z| : ℤ) ^ (↑j : ℕ))
+                        = z ^ (↑j : ℕ) := by
+                        calc
+                          -((|z| : ℤ) ^ (↑j : ℕ))
+                              = -(- (z ^ (↑j : ℕ))) := by simp[h_abs_pow]
+                          _   = z ^ (↑j : ℕ) := by simp
+                  simp[h_neg]
+
+      · simp[hzj] at this
+        simp_all only [ne_eq, not_false_eq_true, pow_eq_zero_iff', not_and, Decidable.not_not, decide_false, not_lt,
+          add_right_inj, mul_eq_mul_right_iff,  c]
+        have h_abs_of_nonneg : |z ^ (↑j : ℕ)| = z ^ (↑j : ℕ) :=
+          abs_of_nonneg hzj
+
+        -- And from the helper we know |z|^n = |z^n|
+        have h_abs_pow :
+            (|z| : ℤ) ^ (↑j : ℕ) = |z ^ (↑j : ℕ)| :=
+          by simp_all only [abs_pow]
+
+        -- Combine to get |z|^n = z^n
+        have h_eq : (|z| : ℤ) ^ (↑j : ℕ) = z ^ (↑j : ℕ) := by
+          simpa [h_abs_of_nonneg] using h_abs_pow
+
+        -- So the left disjunct holds; no need for the right one.
+        exact Or.inl h_eq
 
 def contribFrom (σ₀ : State k) (z : ℤ) :
     List (Fin k) → Fin k → ℤ
@@ -736,7 +1093,7 @@ lemma AllNe_implies_mem_ne {k} {dst : Fin k} {s : List (Fin k)}
 
 lemma ExecCL_contrib_inductive_step_equality
     {k : ℕ} (hk : 0 < k) (z : ℤ)
-    (j : Fin k) (js : List (Fin k))
+    (j : Fin k) (hj:j≠finZero hk) (js : List (Fin k))
     {σ₀ σ₁ : State k} (u : Fin k)
     (hhead : run? (addConstFrom (finZero hk) j (z ^ (j : ℕ))) σ₀ = some σ₁)
     (hs_js : AllNe (finZero hk) js) :
@@ -744,7 +1101,7 @@ lemma ExecCL_contrib_inductive_step_equality
 
   have h_effect : (∀ t ≠ finZero hk, σ₁ t = σ₀ t) ∧
                   (∀ u, σ₁ (finZero hk) u = σ₀ (finZero hk) u + z ^ (j : ℕ) * σ₀ j u) := by
-    exact addConstFrom_effect (k := k) hk z j hhead
+    exact addConstFrom_effect (k := k) hk z j hj hhead
 
   rcases h_effect with ⟨h_pres, h_update⟩
   simp only [contribFrom]
@@ -783,7 +1140,7 @@ lemma ExecCL_contrib
       have h1:=helper1 hσ₀ hhead
       have:=ih h1 u
       simp[this]
-      have := ExecCL_contrib_inductive_step_equality hk z j js u hhead hs_js
+      have := ExecCL_contrib_inductive_step_equality hk z j hj_ne js u hhead hs_js
       assumption
 
 
