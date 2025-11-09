@@ -272,24 +272,18 @@ private def evalPairs : List (Bool × Nat) → Int
 def contrib {k : Nat} (z : Int) : List (Fin k) → (Fin k) → Int
 | [],      _ => 0
 | j :: js, u => z ^ (j : Nat) * (State.start_state (k := k) j u) + contrib z js u
--- If you already have this as one lemma, keep yours and delete these two.
 
 
 @[simp] lemma addScaled_other {k}
   (σ : State k) (dst src : Fin k) (b : Bool) (sh : ℕ) {t : Fin k}
   (hne : t ≠ dst) :
   (State.addScaledReg σ dst src (negSrc := b) sh) t = σ t := by
-  -- Use your definition of addScaledReg. Typically it is an `if t = dst then … else σ t`.
-  -- This line should close by `simp` once the definition is visible.
-  -- If your project had a lemma `State.addScaledReg_apply`, you can `simpa [hne]` from it.
   simp [State.addScaledReg, hne]
 
 lemma addScaled_dst {k}
   (σ : State k) (dst src : Fin k) (b : Bool) (sh : ℕ) (u : Fin k) :
   (State.addScaledReg σ dst src (negSrc := b) sh) dst u
     = σ dst u + ((if b then (-1 : ℤ) else 1) * σ src u * (2 : ℤ)^sh) := by
-  -- Same comment as above: this mirrors the ‘dst’-branch of your definition.
-  -- If you already have `State.addScaledReg_apply`, just rewrite with it.
   simp [State.addScaledReg]
 
 lemma run_addConstAux_preserve_non_dst
@@ -302,7 +296,6 @@ lemma run_addConstAux_preserve_non_dst
   intro n ih sh σ τ hrun t hne
   cases n with
   | zero =>
-      -- addConstAux … 0 sh = []; so τ = σ
       simp[addConstAux] at hrun
       rw[hrun]
   | succ m =>
@@ -335,8 +328,6 @@ lemma run_addConstAux_preserve_non_dst
         -- Head preserves non-dst registers by definition of addScaledReg
         have headPres :
           (State.addScaledReg σ dst src (negSrc := neg') sh) t = σ t := by
-          -- This is the “else” branch for t ≠ dst
-          -- (if you have a lemma for this, you can `simp` with it)
           simp [State.addScaledReg, hne]
         -- Combine: τ t = (post-head) t = σ t
         simpa [headPres] using ihTail t hne
@@ -422,61 +413,445 @@ lemma run_addConstFrom_effect_1
 --   apply this
 --   apply run_addConstFrom_effect_2 dst src c hr hsd
 
--- /-- Invariant: running `computeLocalAux` from the start basis preserves all non-`dst`,
---     and on `dst` it adds the `contrib` for that list. -/
--- lemma run_computeLocalAux_from_start
---   {k : ℕ} (hk : 0 < k) (z : ℤ)
---   : ∀ (S : List (Fin k)) {σ : State k},
---       run? (computeLocalAux (k := k) hk z S) (State.start_state (k := k)) = some σ →
---       (∀ t, t ≠ finZero hk → σ t = State.start_state (k := k) t)
---       ∧ (∀ u, σ (finZero hk) u =
---               State.start_state (k := k) (finZero hk) u + contrib (k := k) z S u):=by
--- intro s σ h
--- cases s with
--- | nil =>
---     have : σ = State.start_state (k := k) := by simpa [computeLocalAux] using (Option.some.inj h).symm
---     subst this
---     constructor
---     · intro t ht; rfl
---     · intro u; simp [contrib]
--- | cons j js =>
---     -- split head block and tail
---     sorry
+
+-- lemma computeLocalAux_implies_addConstFrom
+--   (hk:k>0)
+--   (hr:run? (computeLocalAux hk z s) State.start_state = some σ):
+--   run? (addConstFrom (finZero hk) j z) State.start_state = some σ:=by {
+--     induction s with
+--     |nil=>{
+--       simp_all[computeLocalAux,addConstFrom]
+--       aesop
+--     }
+--     |cons head tail ih=>{}
+--   }
+
+lemma run_computeLocalAux_preserve_non_dst
+  {k : ℕ} (hk : 0 < k) (z : ℤ) :
+  ∀ (S : List (Fin k)) {σ σ' : State k},
+    run? (computeLocalAux (k := k) hk z S) σ = some σ' →
+    (∀ t, t ≠ finZero (k := k) hk → σ t = State.start_state (k := k) t) →
+    (∀ t, t ≠ finZero (k := k) hk → σ' t = State.start_state (k := k) t)
+:= by
+  intro S
+  induction S with
+  | nil =>
+      intro σ σ' hrun hσ t ht
+      simp [computeLocalAux] at hrun
+      subst hrun
+      exact hσ t ht
+  | cons j js ih =>
+      intro σ σ' hrun hσ
+      have def2 :
+        computeLocalAux (k := k) hk z (j :: js)
+          = addConstFrom (k := k) (finZero (k := k) hk) j (z ^ (j : Nat))
+              ++ computeLocalAux (k := k) hk z js := by
+        simp [computeLocalAux]
+
+      have hrun' :
+        run? (addConstFrom (k := k) (finZero (k := k) hk) j (z ^ (j : Nat))
+                ++ computeLocalAux (k := k) hk z js) σ
+          = some σ' := by
+        simpa [def2] using hrun
+
+      rcases run?_append_some
+        (p := addConstFrom (k := k) (finZero (k := k) hk) j (z ^ (j : Nat)))
+        (q := computeLocalAux (k := k) hk z js)
+        (σ := σ) hrun' with ⟨τ, hhead, htail⟩
+
+      -- Head block: addConstFrom only touches dst, so non-dst are preserved.
+      have hτ :
+        ∀ t, t ≠ finZero (k := k) hk →
+          τ t = State.start_state (k := k) t := by
+        intro t ht
+        -- First: τ t = σ t for t ≠ dst
+        have hpres :=
+          run_addConstFrom_effect_1
+            (dst := finZero (k := k) hk)
+            (src := j)
+            (c := z ^ (j : Nat))
+            (σ := σ) (τ := τ) hhead t ht
+        -- Then use the hypothesis about σ
+        simpa [hσ t ht] using hpres
+
+      -- Tail: apply IH from τ to σ'
+      intro t ht
+      exact ih (σ := τ) (σ' := σ') htail hτ t ht
+
+lemma run_computeLocalAux_from_start_1
+  {k : ℕ} (hk : 0 < k) (z : ℤ)
+  : ∀ (S : List (Fin k)) {σ : State k},
+      run? (computeLocalAux (k := k) hk z S) (State.start_state (k := k)) = some σ →
+      (∀ t, t ≠ finZero hk → σ t = State.start_state (k := k) t)
+    :=by {
+      intro S σ hrun t ht
+      -- apply the general lemma with σ = start_state, whose non-dst property is trivial
+      have h :=
+        run_computeLocalAux_preserve_non_dst (k := k) hk z
+          S (σ := State.start_state (k := k)) (σ' := σ)
+          hrun
+          (by intro t _; rfl)
+      exact h t ht
+    }
+
+open Operations
+
+lemma run_append_exists
+  {k : ℕ} {p q : Prog k} {σ σ₂ : State k}
+  (h : run? (p ++ q) σ = some σ₂) :
+  ∃ τ, run? p σ = some τ ∧ run? q τ = some σ₂ := by
+  revert σ σ₂ h
+  induction p with
+  | nil =>
+      intro σ σ₂ h
+      -- p = [], so p ++ q = q
+      simp at h
+      -- choose τ = σ
+      exact ⟨σ, by simp[run?], h⟩
+  | cons op ps ih =>
+      intro σ σ₂ h
+      -- p = op :: ps, so p ++ q = op :: (ps ++ q)
+      -- inspect the first step
+      cases hstep : applyOp? (k := k) σ op with
+      | none =>
+          -- then run? (op :: ps ++ q) σ = none, contradicting h = some σ₂
+          simp [hstep, List.cons_append] at h
+      | some τ =>
+          -- from h we get success on ps ++ q starting from τ
+          have h' : run? (ps ++ q) τ = some σ₂ := by
+            simp [hstep, List.cons_append] at h
+            exact h
+          -- apply IH to ps, q, starting from τ
+          rcases ih (σ := τ) (σ₂ := σ₂) h' with ⟨τ', hps, hq⟩
+          -- reconstruct run? (op :: ps) σ = some τ'
+          refine ⟨τ', ?hp, hq⟩
+          simp [run?, hstep, hps]
 
 
--- /-- Specialization to `nonzeroFins hk`: `u` is in the list iff `u ≠ 0`. -/
--- lemma contrib_nonzeroFins_eval {k : ℕ} (hk : 0 < k) (z : ℤ) (u : Fin k) :
---   contrib (k := k) z (nonzeroFins (k := k) hk) u
---     = (if u ≠ finZero hk then z ^ (u : Nat) else 0) := by
---     unfold contrib nonzeroFins
---     simp
---     sorry
+lemma run_append_split {k} {p q : Prog k} {σ σ' : State k}
+  (h : run? (p ++ q) σ = some σ') :
+  ∃ τ, run? p σ = some τ ∧ run? q τ = some σ' := by
+  revert σ σ'
+  induction p with
+  | nil =>
+      intro σ σ' h
+      simp at h
+      exact ⟨σ, rfl, h⟩
+  | cons op ps ih =>
+      intro σ σ' h
+      simp [List.cons_append] at h
+      aesop
 
--- lemma regEqExpected_after_computeLocal2_of_run
---     {k : ℕ} (hk : 0 < k) (z : ℤ) {σ₁ : State k}
---     (hrun : run? (computeLocal2 (k := k) hk z) (State.start_state (k := k)) = some σ₁) :
---     regEqExpected (k := k) (σ₁ (finZero hk)) (Point.int z) := by
---   -- invariant from the start state on the concrete list `nonzeroFins hk`
---   have inv := run_computeLocalAux_from_start (k := k) hk z
---                 (S := nonzeroFins (k := k) hk) hrun
---   rcases inv with ⟨pres, dst⟩
---   -- check all coordinates u : Fin k
---   -- regEqExpected means:  ∀ u, σ₁ dst u = z^u
---   -- and we know:          σ₁ dst u = 1_{u=0} + contrib(nonzeroFins) u
---   -- but contrib(nonzeroFins) u = if u ≠ 0 then z^u else 0.
---   -- Put together, use z^0 = 1.
---   have : (List.finRange k).all
---           (fun j => decide (σ₁ (finZero hk) j = expectedRow (k := k) (Point.int z) j)) = true := by
---     -- show each coordinate holds
---     refine List.all_eq_true.2 ?_
---     intro u hu
---     have hcontrib := contrib_nonzeroFins_eval (k := k) hk z u
---     have hdst := dst u
---     -- expand expectedRow .int z
---     simp [expectedRow, finZero] at *
---     aesop
---   -- finish: regEqExpected is exactly that `all = true`
---   simpa [regEqExpected]
+
+
+
+def AllNe {k} (dst : Fin k) : List (Fin k) → Prop
+| []      => True
+| j :: js => j ≠ dst ∧ AllNe dst js
+
+lemma nonzeroFins_allNe {k} (hk : 0 < k) :
+  AllNe (finZero (k := k) hk) (nonzeroFins (k := k) hk) := by
+  classical
+  unfold nonzeroFins
+  -- filtered by (· ≠ finZero hk)
+  unfold AllNe
+  sorry
+
+
+
+/-- Semantics of `computeLocalAux hk z` as a relational big-step. -/
+inductive ExecCL {k : ℕ} (hk : 0 < k) (z : ℤ) :
+    List (Fin k) → State k → State k → Prop
+| nil {σ} :
+    ExecCL hk z [] σ σ
+| cons {j js σ σ₁ σ₂} :
+    run? (addConstFrom (finZero hk) j (z ^ (j : ℕ))) σ = some σ₁ →
+    ExecCL hk z js σ₁ σ₂ →
+    ExecCL hk z (j :: js) σ σ₂
+
+/-- Semantics of `computeLocalAux hk z` as a relational big-step. -/
+inductive ExecCL_start {k : ℕ} (hk : 0 < k) (z : ℤ) :
+    List (Fin k) → State k → Prop
+| nil :
+    ExecCL_start hk z [] State.start_state
+| cons {j js σ₁ σ₂} :
+    run? (addConstFrom (finZero hk) j (z ^ (j : ℕ))) State.start_state = some σ₁ →
+    ExecCL hk z js σ₁ σ₂ →
+    ExecCL_start hk z (j :: js) σ₂
+
+lemma ExecCL_implies_ExecCL_start
+    {k : ℕ} (hk : 0 < k) (z : ℤ) :
+    ∀ {S : List (Fin k)} {σ : State k},
+       ExecCL (k := k) hk z S (State.start_state) σ →
+      AllNe (finZero (k := k) hk) S →
+      ExecCL_start (k := k) hk z S σ:=by
+  intro S σ h
+  cases h with
+  | nil =>
+      simp[AllNe]
+      apply ExecCL_start.nil
+  | cons hhead htail =>
+      -- computeLocalAux hk z (j :: js) = addConstFrom … ++ computeLocalAux hk z js
+      intro a
+      apply ExecCL_start.cons
+      rw[hhead]
+      apply htail
+
+
+
+
+lemma ExecCL_run {z}
+  (hk: 0 < k)
+  (h : ExecCL hk z S σ₀ σ) :
+  run? (computeLocalAux hk z S) σ₀ = some σ := by
+  induction h with
+  | nil =>
+      simp [computeLocalAux]
+  | cons hhead htail ih =>
+      -- computeLocalAux hk z (j :: js) = addConstFrom … ++ computeLocalAux hk z js
+      simp [computeLocalAux]
+      simp[run?_append]
+      simp_all
+
+
+/-- General form: starting from arbitrary σ₀. -/
+lemma run_ExecCL_aux
+    {k : ℕ} (hk : 0 < k) (z : ℤ) :
+    ∀ {S : List (Fin k)} {σ₀ σ : State k},
+      run? (computeLocalAux hk z S) σ₀ = some σ →
+      AllNe (finZero (k := k) hk) S →
+      ExecCL (k := k) hk z S σ₀ σ
+  | [], σ₀, σ, hrun, _ => by
+      -- computeLocalAux hk z [] = []
+      -- run? [] σ₀ = some σ ⇒ σ = σ₀
+      have hσ : σ₀ = σ := by
+        simpa [computeLocalAux, run?] using hrun
+      subst hσ
+      exact ExecCL.nil
+  | j :: js, σ₀, σ, hrun, hs => by
+      -- AllNe dst (j :: js) = (j ≠ dst ∧ AllNe dst js)
+      rcases hs with ⟨_hj_ne, hs_tail⟩
+      -- unfold computeLocalAux on cons
+      have hdecomp :
+        run? (addConstFrom (finZero (k := k) hk) j (z ^ (j : ℕ))
+                ++ computeLocalAux hk z js) σ₀ = some σ := by
+        simpa [computeLocalAux] using hrun
+      -- split run over the append
+      have := run?_append_some
+        (p := addConstFrom (finZero (k := k) hk) j (z ^ (j : ℕ)))
+        (q := computeLocalAux hk z js)
+        (σ := σ₀) (τ := σ) hdecomp
+      rcases this with ⟨σ₁, hhead, htail⟩
+      -- IH on the tail js starting from σ₁
+      have hExec_tail :
+        ExecCL (k := k) hk z js σ₁ σ :=
+        run_ExecCL_aux (hk := hk) (z := z)
+          (S := js) (σ₀ := σ₁) (σ := σ) htail hs_tail
+      -- stitch head + tail
+      exact ExecCL.cons (hk := hk) (z := z)
+        (j := j) (js := js) hhead hExec_tail
+
+
+lemma run_ExecCL {z}
+  (hk: 0 < k)
+  (hrun : run? (computeLocalAux hk z S) State.start_state = some σ)
+  (hs : AllNe (finZero hk) S) :
+  ExecCL hk z S State.start_state σ := by
+  have :=run_ExecCL_aux (hk := hk) (z := z)
+    (S := S) (σ₀ := State.start_state) (σ := σ) hrun hs
+  simp[this]
+
+
+
+
+lemma addConstFrom_effect
+    {k : ℕ} (hk : 0 < k) (z : ℤ)
+    (j : Fin k)
+    {σ₀ σ₁ : State k}
+    (h :
+      run? (addConstFrom (finZero hk) j (z ^ (j : ℕ))) σ₀ = some σ₁) :
+    (∀ t ≠ finZero hk, σ₁ t = σ₀ t) ∧
+    (∀ u : Fin k,
+      σ₁ (finZero hk) u
+        = σ₀ (finZero hk) u + z ^ (j : ℕ) * σ₀ j u) :=
+by sorry
+
+
+def contribFrom (σ₀ : State k) (z : ℤ) :
+    List (Fin k) → Fin k → ℤ
+| [],      _ => 0
+| j :: js, u => z^(j : ℕ) * σ₀ j u + contribFrom σ₀ z js u
+
+
+lemma helper1
+(hσ₀ : ∀ (t : Fin k), t ≠ finZero hk → σ₀ t = State.start_state t)
+(hhead : run? (addConstFrom (finZero hk) j (z ^ j.val)) σ₀ = some σ₁)
+:(∀ (t : Fin k), ¬t = finZero hk → σ₁ t = State.start_state t):=by {
+  intro t ht
+  have h_preserves : σ₁ t = σ₀ t := by
+    apply run_addConstFrom_effect_1
+    · exact hhead
+    · exact ht
+  rw [h_preserves]
+  exact hσ₀ t ht
+}
+
+lemma contribFrom_eq_of_regs_eq
+    {k : ℕ} {σ₀ σ₁ : State k} {z : ℤ} {s : List (Fin k)} {u : Fin k}
+    (h_regs : ∀ j ∈ s, σ₁ j u = σ₀ j u) :
+    contribFrom σ₁ z s u = contribFrom σ₀ z s u := by
+    induction s with
+  | nil =>
+      simp [contribFrom]
+  | cons j js ih =>
+      simp [contribFrom]
+      have h_j : σ₁ j u = σ₀ j u := by
+        apply h_regs
+        simp
+      have h_js : contribFrom σ₁ z js u = contribFrom σ₀ z js u := by
+        apply ih
+        intro j' hj'
+        apply h_regs
+        simp [hj']
+      rw [h_j, h_js]
+
+/--
+If a list `s` is certified by `AllNe` to not contain `dst`, then any
+element `j` that is a member of `s` cannot be equal to `dst`.
+-/
+lemma AllNe_implies_mem_ne {k} {dst : Fin k} {s : List (Fin k)}
+    (hAll : AllNe dst s) :
+    ∀ j ∈ s, j ≠ dst := by
+  -- We proceed by induction on the list 's'
+  induction s with
+  | nil =>
+      simp
+  | cons j' js ih =>
+      rcases hAll with ⟨hj'_ne, hjs_allne⟩
+      intro j hj_mem
+      by_cases hj:j=j'
+      subst hj
+      simp_all only [ne_eq, forall_const, mem_cons, true_or, not_false_eq_true]
+      simp_all only [ne_eq, forall_const, mem_cons, false_or, not_false_eq_true]
+
+lemma ExecCL_contrib_inductive_step_equality
+    {k : ℕ} (hk : 0 < k) (z : ℤ)
+    (j : Fin k) (js : List (Fin k))
+    {σ₀ σ₁ : State k} (u : Fin k)
+    (hhead : run? (addConstFrom (finZero hk) j (z ^ (j : ℕ))) σ₀ = some σ₁)
+    (hs_js : AllNe (finZero hk) js) :
+    σ₁ (finZero hk) u + contribFrom σ₁ z js u = σ₀ (finZero hk) u + contribFrom σ₀ z (j :: js) u := by
+
+  have h_effect : (∀ t ≠ finZero hk, σ₁ t = σ₀ t) ∧
+                  (∀ u, σ₁ (finZero hk) u = σ₀ (finZero hk) u + z ^ (j : ℕ) * σ₀ j u) := by
+    exact addConstFrom_effect (k := k) hk z j hhead
+
+  rcases h_effect with ⟨h_pres, h_update⟩
+  simp only [contribFrom]
+  rw [h_update]
+  have h_contrib_eq : contribFrom σ₁ z js u = contribFrom σ₀ z js u := by
+    apply contribFrom_eq_of_regs_eq
+    intro j' hj'
+    have hj'_ne : j' ≠ finZero hk := by
+      apply AllNe_implies_mem_ne hs_js
+      assumption
+    rw [h_pres j' hj'_ne]
+  rw [h_contrib_eq]
+  ring
+
+
+lemma ExecCL_contrib
+    {k : ℕ} (hk : 0 < k) (z : ℤ)
+    {s : List (Fin k)} {σ₀ σ : State k}
+    (hs : AllNe (finZero hk) s)
+    (hσ₀ : ∀ t ≠ finZero hk, σ₀ t = State.start_state t)
+    (hExec : ExecCL hk z s σ₀ σ) :
+    ∀ u, σ (finZero hk) u = σ₀ (finZero hk) u + contribFrom σ₀ z s u := by
+  -- we want hs, hσ₀ as parameters to the IH, so revert them
+  revert hs hσ₀
+  -- induct on the ExecCL derivation
+  induction hExec with
+  | nil =>
+      intro _hs _hσ₀ u
+      simp [contribFrom]
+  | @cons j js σ₀ σ₁ σ hhead htail ih =>
+      intro hs hσ₀ u
+      -- Split AllNe for (j :: js)
+      have dst := finZero hk
+      rcases hs with ⟨hj_ne, hs_js⟩
+      simp_all only [ne_eq, forall_const]
+      have h1:=helper1 hσ₀ hhead
+      have:=ih h1 u
+      simp[this]
+      have := ExecCL_contrib_inductive_step_equality hk z j js u hhead hs_js
+      assumption
+
+
+
+
+@[simp] lemma contribFrom_start_eq_contrib
+    {k : ℕ} (z : ℤ) (s : List (Fin k)) (u : Fin k) :
+    contribFrom (State.start_state (k := k)) z s u
+      = contrib z s u := by
+  induction s with
+  | nil =>
+      simp [contribFrom, contrib]
+  | cons j js ih =>
+      simp [contribFrom, contrib, ih]
+
+
+lemma run_computeLocalAux_from_start
+  {k : ℕ} (hk : 0 < k) (z : ℤ)
+  : ∀ (s : List (Fin k)) (_ : AllNe (finZero (k := k) hk) s) {σ : State k},
+      run? (computeLocalAux (k := k) hk z s) (State.start_state (k := k)) = some σ →
+      (∀ t, t ≠ finZero hk → σ t = State.start_state (k := k) t)
+      ∧ (∀ u, σ (finZero hk) u =
+              State.start_state (k := k) (finZero hk) u + contrib (k := k) z s u):=by
+intro s hs σ hrun
+have:=run_computeLocalAux_from_start_1 hk z s (σ:=σ) hrun
+apply And.intro
+assumption
+intro u
+have hExecCL:=run_ExecCL hk hrun hs
+have := ExecCL_contrib hk z hs (σ₀:=State.start_state) (σ:=σ)
+simp at this
+rw[this hExecCL u]
+simp
+
+/-- Specialization to `nonzeroFins hk`: `u` is in the list iff `u ≠ 0`. -/
+lemma contrib_nonzeroFins_eval {k : ℕ} (hk : 0 < k) (z : ℤ) (u : Fin k) :
+  contrib (k := k) z (nonzeroFins (k := k) hk) u
+    = (if u ≠ finZero hk then z ^ (u : Nat) else 0) := by
+    unfold contrib nonzeroFins
+    simp
+    sorry
+
+
+lemma regEqExpected_after_computeLocal2_of_run
+    {k : ℕ} (hk : 0 < k) (z : ℤ) {σ₁ : State k}
+    (hrun : run? (computeLocal2 (k := k) hk z) (State.start_state (k := k)) = some σ₁) :
+    regEqExpected (k := k) (σ₁ (finZero hk)) (Point.int z) := by
+  -- invariant from the start state on the concrete list `nonzeroFins hk`
+  have inv := run_computeLocalAux_from_start (k := k) hk z
+                (s := nonzeroFins (k := k) hk) (nonzeroFins_allNe hk) hrun
+  rcases inv with ⟨pres, dst⟩
+  -- check all coordinates u : Fin k
+  -- regEqExpected means:  ∀ u, σ₁ dst u = z^u
+  -- and we know:          σ₁ dst u = 1_{u=0} + contrib(nonzeroFins) u
+  -- but contrib(nonzeroFins) u = if u ≠ 0 then z^u else 0.
+  -- Put together, use z^0 = 1.
+  have : (List.finRange k).all
+          (fun j => decide (σ₁ (finZero hk) j = expectedRow (k := k) (Point.int z) j)) = true := by
+    -- show each coordinate holds
+    refine List.all_eq_true.2 ?_
+    intro u hu
+    have hcontrib := contrib_nonzeroFins_eval (k := k) hk z u
+    have hdst := dst u
+    -- expand expectedRow .int z
+    simp [expectedRow, finZero] at *
+    aesop
+  -- finish: regEqExpected is exactly that `all = true`
+  simpa [regEqExpected]
 
 
 
@@ -726,73 +1101,54 @@ lemma computeLocal2_some_state
             (p := computeLocal2 (k := k) hk z) (σ := σ) ?hall
   exact onlyAddScaled_computeLocal2 (k := k) hk z
 
-lemma run_computeLocalAux_from_basis
-  {k : ℕ} (hk : 0 < k) (z : Int) :
-  ∀ (js : List (Fin k)) {σ τ : State k},
-    run? (computeLocalAux (k := k) hk z js) σ = some τ →
-    (∀ t, t ≠ finZero (k := k) hk → σ t = State.start_state (k := k) t) →
-      (∀ u, τ (finZero (k := k) hk) u = σ (finZero (k := k) hk) u + contrib (k := k) z js u)
-      ∧ (∀ t, t ≠ finZero (k := k) hk → τ t = State.start_state (k := k) t)
-| [],      σ, τ, hrun, hpres =>
-  by
-    simp [computeLocalAux] at hrun; subst hrun
-    constructor
-    · intro u; simp [contrib]
-    · intro t _; exact hpres t ‹_›
-| j :: js, σ, τ, hrun, hpres =>
-  by
-    -- split head and tail
-    sorry
--- /-- Row correctness for `computeLocal2`: from the basis start state, the
---     destination row equals `expectedRow (.int z)`.  (You’ll prove this once.) -/
--- lemma contrib_nonzeroFins_eval {k : ℕ} (hk : 0 < k) (z : ℤ) (u : Fin k) :
---   contrib (k := k) z (nonzeroFins (k := k) hk) u
---     = (if u ≠ finZero (k := k) hk then z ^ (u : Nat) else 0) := by
---   classical
---   -- expand the sum over sources; only the term j = u survives in start-basis
---   unfold contrib
---   -- do it by membership predicate:
---   -- sum of z^j * 1_{u=j} over j∈nonzeroFins = if u∈… then z^u else 0
---   -- a simple structural proof by induction on the list:
---   revert u
---   induction (nonzeroFins (k := k) hk) with
---   | nil =>
---       intro u; simp [finZero]; sorry
---   | cons j js ih =>
---       intro u
---       sorry -- the `simp` splits cases u=j
 
 
--- lemma row_after_computeLocal2_from_start
---   {k : ℕ} (hk : 0 < k) (z : ℤ) {σ' : State k}
---   (hrun : run? (computeLocal2 (k := k) hk z) (State.start_state (k := k)) = some σ') :
---   σ' (finZero (k := k) hk) = expectedRow (k := k) (.int z) := by
---   classical
---   sorry
+lemma computeLocal2_some_state_value
+(k : ℕ)
+(hk : 0 < k)
+(z : ℤ)
+(σ₁: State k)
+(hs: run? (computeLocal2 hk z) State.start_state = some σ₁)
+(j: Fin k)
+:
+  σ₁ ⟨0, hk⟩ j = z ^ j.val
+ :=by
+  have:=regEqExpected_after_computeLocal2_of_run (hrun:=hs)
+  unfold regEqExpected expectedRow at this
+  simp_all
+  apply this j
 
 
 theorem matchesAt_pointRow_state3_eq_matchesAt_pointRow_state
   {k : ℕ} (hk : 0 < k) :
-  matchesAt_pointRow_state3 (k := k) hk = matchesAt_pointRow_state (k := k) hk:= by
-  sorry
-
--- lemma addConstFrom_from_start_rows
---   {k : ℕ} (dst src : Fin k) (c : ℤ) :
---   ∀ {σ₁ : State k},
---     run? (addConstFrom (k := k) dst src c) (State.start_state (k := k)) = some σ₁ →
---       (∀ t, t ≠ dst → σ₁ t = State.start_state (k := k) t) ∧
---       (∀ u, σ₁ dst u = State.start_state (k := k) dst u + c * State.start_state (k := k) src u) := by sorry
-
--- lemma computeLocalAux_row_from_start
---   {k : ℕ} (hk : 0 < k) (z : Int) :
---   ∀ (js : List (Fin k)), ∃ σ₁,
---     run? (k := k) (computeLocalAux (k := k) hk z js) (State.start_state (k := k)) = some σ₁
---     ∧ (∀ u, σ₁ (finZero (k := k) hk) u
---           = (if u = finZero (k := k) hk then 1 else 0)
---             + (if u ∈ js then z ^ (u : Nat) else 0))
---     ∧ (∀ t ≠ finZero (k := k) hk, σ₁ t = State.start_state (k := k) t) := by
---     sorry
-
+  matchesAt_pointRow_state3 (k := k) hk = matchesAt_pointRow_state (k := k) hk := by
+  unfold matchesAt_pointRow_state3 matchesAt_pointRow_state regEqExpected expectedRow regEqReg
+  simp
+  funext σ i pt
+  cases pt with
+  |int z=>{
+    simp
+    have h:=computeLocal2_some_state k hk z State.start_state
+    rcases h with ⟨σ₁,h⟩
+    simp[h]
+    congr
+    funext j
+    simp[finZero]
+    apply Iff.intro
+    · intro a
+      simp_all
+      apply computeLocal2_some_state_value k hk z σ₁ h
+    · intro a
+      simp_all
+      have := computeLocal2_some_state_value k hk z σ₁ h
+      simp[this]
+  }
+  |inf=>{
+    simp
+    split
+    next k => simp_all only [List.finRange_zero, zero_tsub, List.all_nil]
+    next k k_1 => simp_all only [Nat.succ_eq_add_one, add_tsub_cancel_right]
+  }
 
 
 lemma computeLocal2_some_state_matches

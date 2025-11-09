@@ -34,7 +34,7 @@ lemma eraseFirstMatch?_append_hit {α} (p : α → Bool) :
 end List
 
 
-lemma phaseProduct_coverage_check_append_general
+lemma phaseProduct_coverage_check_append_aux
   {k : ℕ} (hk:k>0) (p q : Prog k) (σ : State k) (a b : List Point)
   (hp : PhaseProductCoverage hk p σ a) :
   ∀ (σret : State k),
@@ -87,7 +87,17 @@ lemma phaseProduct_coverage_check_append
   (hp   : PhaseProductCoverage hk p σ a)
   (hq   : PhaseProductCoverage hk q σ b) :
   PhaseProductCoverage hk (p ++ q) σ (a ++ b) :=
-  phaseProduct_coverage_check_append_general hk p q σ a b hp σ hret hq
+  phaseProduct_coverage_check_append_aux hk p q σ a b hp σ hret hq
+
+
+lemma phaseProduct_coverage_check_append_general
+  {k : ℕ} (hk:k>0) (p q : Prog k) (σ σ₁: State k) (a b : List Point)
+  (hret : run? p σ = some σ₁)
+  (hp   : PhaseProductCoverage hk p σ a)
+  (hq   : PhaseProductCoverage hk q σ₁ b) :
+  PhaseProductCoverage hk (p ++ q) σ (a ++ b) :=
+  phaseProduct_coverage_check_append_aux hk p q σ a b hp σ₁ hret hq
+
 
 lemma PhaseProductCoverage_exists_state_any
   {k : ℕ} {p : Prog k} {σ₁ : State k} {pts : List Point}
@@ -125,7 +135,7 @@ lemma phaseProduct_coverage_check_append_nil
   (hp   : PhaseProductCoverage hk p σ₁ [])
   (hq   : PhaseProductCoverage hk q σ₂ []) :
   PhaseProductCoverage hk (p ++ q) σ₁ ([]) :=by {
-    apply phaseProduct_coverage_check_append_general
+    apply phaseProduct_coverage_check_append_aux
       (k := k) (p := p) (q := q) (σ := σ₁) (a := []) (b := [])
       hk hp σ₂ hret hq
   }
