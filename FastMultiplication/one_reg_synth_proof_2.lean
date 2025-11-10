@@ -275,6 +275,7 @@ def contrib {k : Nat} (z : Int) : List (Fin k) → (Fin k) → Int
 | j :: js, u => z ^ (j : Nat) * (State.start_state (k := k) j u) + contrib z js u
 
 
+
 @[simp] lemma addScaled_other {k}
   (σ : State k) (dst src : Fin k) (b : Bool) (sh : ℕ) {t : Fin k}
   (hne : t ≠ dst) :
@@ -301,7 +302,7 @@ lemma run_addConstAux_preserve_non_dst
       rw[hrun]
   | succ m =>
       -- Definition of addConstAux at n = m+1
-      by_cases hb : Nat.bodd (m+1)
+      by_cases hb : Odd (m+1)
       ·
         -- Head present: one addScaled at `sh`, then tail at (sh+1)
         -- Peel the head and name the post-state
@@ -311,7 +312,6 @@ lemma run_addConstAux_preserve_non_dst
                 (State.addScaledReg σ dst src (negSrc := neg') sh)
             = some τ := by
           -- Unroll run? once using the head step
-          have hb:m.bodd = false:=by aesop
           simp [addConstAux, hb, applyOp?] at hrun
           simp[hrun]
 
@@ -338,7 +338,6 @@ lemma run_addConstAux_preserve_non_dst
           run? (k := k)
               (addConstAux (k := k) dst src neg' ((m+1)/2) (sh+1)) σ
             = some τ := by
-          have hb:m.bodd = true:=by aesop
           simp [addConstAux, hb] at hrun
           simp[hrun]
         have hlt : ((m+1)/2) < (m+1) :=
@@ -554,7 +553,6 @@ lemma nonzeroFins_allNe {k} (hk : 0 < k) :
   AllNe (finZero (k := k) hk) (nonzeroFins (k := k) hk) := by
   classical
   unfold nonzeroFins
-  -- filtered by (· ≠ finZero hk)
   unfold AllNe
   sorry
 
@@ -669,13 +667,13 @@ inductive ExecAddConstAux {k : ℕ}
     ExecAddConstAux dst src neg' 0 sh σ σ
 
 | succ_even {n sh σ σ₂}
-    (hb : (n + 1).bodd = false)
+    (hb : Even (n + 1))
     (htail :
       ExecAddConstAux dst src neg' ((n + 1) / 2) (sh + 1) σ σ₂) :
     ExecAddConstAux dst src neg' (n + 1) sh σ σ₂
 
 | succ_odd {n sh σ σ₁ σ₂}
-    (hb : (n + 1).bodd = true)
+    (hb : Odd (n + 1))
     (hstep :
       applyOp? σ (valid_ops.addScaled dst src (negSrc := neg') sh)
         = some σ₁)
@@ -694,7 +692,8 @@ lemma ExecAddConstAux_run?
   | zero =>
       simp [addConstAux]
   | succ_even hb htail ih =>
-      simp [addConstAux];simp_all
+      unfold addConstAux; rename_i n sh σ σ₁; have :¬ Odd (n+1):=by simp[hb]
+      simp[this];simp_all
   | succ_odd hb hstep htail ih =>
       simp [addConstAux];simp_all
 
@@ -729,12 +728,11 @@ lemma ExecAddConstAux.of_run?
         addConstAux dst src neg' ((n + 1) / 2) (sh + 1)
         with hrest
 
-      by_cases hb : (n + 1).bodd
+      by_cases hb : Odd (n + 1)
       · -- ODD CASE: addScaled :: rest
         -- run? (addScaled :: rest) σ = some τ
-        have hb2:n.bodd=false:=by aesop
         unfold run? at h
-        simp [hb2, hrest] at h
+        simp [hb, hrest] at h
 
 
         --rcases h with ⟨σ₁, hstep, hrest_run⟩
@@ -754,8 +752,7 @@ lemma ExecAddConstAux.of_run?
         aesop
 
       · -- EVEN CASE: just rest
-        have hb2:n.bodd=true:=by aesop
-        simp [hb2, hrest] at h
+        simp [hb, hrest] at h
 
         have hm : (n + 1) / 2 < Nat.succ n :=
           Nat.div_lt_self (Nat.succ_pos _) (by decide)
@@ -766,13 +763,13 @@ lemma ExecAddConstAux.of_run?
             (by simpa [hrest] using h)
 
         apply ExecAddConstAux.succ_even
-        simp_all only [Nat.bodd_succ, Bool.not_true, Bool.false_eq_true, not_false_eq_true, Nat.succ_eq_add_one, rest]
-        simp_all only [Nat.bodd_succ, Bool.not_true, Bool.false_eq_true, not_false_eq_true, Nat.succ_eq_add_one, rest]
+        simp at hb;assumption
+        simp_all only
 
 
 
 lemma run_addConstAux_effect_dst
-  {k : ℕ} (hk:k>0)(dst src : Fin k) (neg' : Bool) (hsd : src ≠ dst) :
+  {k : ℕ} (_:k>0)(dst src : Fin k) (neg' : Bool) (hsd : src ≠ dst) :
   ∀ n sh {σ τ : State k},
     run? (k := k) (addConstAux (k := k) dst src neg' n sh) σ = some τ →
     ∀ u, τ dst u
@@ -783,17 +780,42 @@ lemma run_addConstAux_effect_dst
   have h2:=ExecAddConstAux.of_run? n sh h
   induction h2 with
   | zero =>
-      -- n = 0, τ = σ
       simp at *
   | succ_even =>
-      -- IH:
-      -- ih : ∀ u, σ₂ dst u
-      --        = σ dst u + sgn neg' * 2 ^ (sh+1) * (((n+1)/2 : ℕ)) * σ src u
       rename_i n sh σ σ₂ hb htail htail_ih
       have htail2:=ExecAddConstAux_run? htail
       have ih' := htail_ih htail2
       simp_all
-      have : 2 ^ (sh + 1) * (((n:ℤ) + 1) / 2) = 2 ^ sh * ((n:ℤ) + 1):=by sorry
+      have : 2 ^ (sh + 1) * (((n:ℤ) + 1) / 2) = 2 ^ sh * ((n:ℤ) + 1):=by
+        rcases hb with ⟨m, hm⟩
+
+        -- Cast hm to ℤ and rewrite as (↑n + 1) = 2 * m
+        have hEq : (n + 1 : ℤ) = (2 : ℤ) * (m : ℤ) := by
+          -- hm : n + 1 = m + m
+          have := congrArg (fun x : ℕ => (x : ℤ)) hm
+          -- LHS: ↑(n + 1) = ↑n + 1
+          -- RHS: ↑(m + m) = ↑m + ↑m = 2 * ↑m
+          simpa [Nat.cast_add, two_mul, add_comm, add_left_comm, add_assoc] using this
+
+        -- So 2 ∣ (↑n + 1)
+        have hdiv : (2 : ℤ) ∣ (n + 1) := by
+          refine ⟨↑m, ?_⟩
+          exact hEq
+
+        -- Exact division: ((↑n + 1) / 2) * 2 = ↑n + 1
+        have hmul : (↑n + 1) / 2 * 2 = (↑n + 1) :=by
+          omega
+
+        -- Now just algebra
+        calc
+          (2 : ℤ) ^ (sh + 1) * ((↑n + 1) / 2)
+              = (2 : ℤ) ^ sh * 2 * ((↑n + 1) / 2) := by
+                    -- 2^(sh+1) = 2^sh * 2
+                    simp [pow_succ, mul_comm, mul_left_comm]
+          _   = (2 : ℤ) ^ sh * (((↑n + 1) / 2) * 2) := by
+                    ac_rfl
+          _   = (2 : ℤ) ^ sh * (↑n + 1) := by
+                    simp;omega
       split
       next h_1 =>
         subst h_1
@@ -806,42 +828,31 @@ lemma run_addConstAux_effect_dst
       have ih' := htail_ih htail2
       have htail_run :
       run? (addConstAux dst src neg' ((n + 1) / 2) (sh + 1)) σ₁ = some σ₂ := by
-        -- unfold addConstAux at (n+1, sh)
         unfold addConstAux at h
         simp_all only
       have h_tail_spec :=
         htail_ih htail_run
-        -- h_tail_spec :
-        --   σ₂ dst u =
-        --     σ₁ dst u
-        --       + (if neg' = true then -1 else 1)
-        --         * 2 ^ (sh + 1) * ↑((n + 1) / 2) * σ₁ src u
 
-      -- 3. Decode the head addScaled step: identify σ₁
       have hσ₁ :
           σ₁ = State.addScaledReg σ dst src neg' sh := by
-        -- from the definition of applyOp?
         simp [applyOp?] at hstep
         simp_all only
 
-      -- Effect on dst row:
       have h_dst₁ :
           σ₁ dst u =
             σ dst u
               + (if neg' = true then -1 else 1)
                 * 2 ^ sh * σ src u := by
-        sorry
+        simp_all
+        rw[Int.mul_comm]
 
-      -- Effect on src row (unchanged since src ≠ dst):
+
       have h_src₁ :
           σ₁ src u = σ src u := by
-        -- addScaledReg only changes `dst`
         have hneq : src ≠ dst := hsd
         simp_all
-      -- 4. Use oddness to express (n+1) as 2 * ((n+1)/2) + 1
       have hmod1 : (n + 1) % 2 = 1 := by
-        -- (n+1).bodd = true ↔ (n+1) % 2 = 1
-        sorry
+        apply Nat.odd_iff.mp hb
 
       have hdecomp_nat :
           n + 1 = 2 * ((n + 1) / 2) + 1 := by
@@ -888,7 +899,7 @@ lemma run_addConstAux_effect_dst
                 * 2 ^ sh * (n + 1 : ℤ) * σ src u := by
           -- substitute decomposition of (n+1)
           congr
-          sorry
+          omega
 }
 
 
@@ -1175,14 +1186,97 @@ simp at this
 rw[this hExecCL u]
 simp
 
-/-- Specialization to `nonzeroFins hk`: `u` is in the list iff `u ≠ 0`. -/
-lemma contrib_nonzeroFins_eval {k : ℕ} (hk : 0 < k) (z : ℤ) (u : Fin k) :
-  contrib (k := k) z (nonzeroFins (k := k) hk) u
-    = (if u ≠ finZero hk then z ^ (u : Nat) else 0) := by
-    unfold contrib nonzeroFins
-    simp
-    sorry
+/-- Elements of `nonzeroFins hk` are never `finZero hk`. -/
+lemma mem_nonzeroFins_ne {k : ℕ} (hk : 0 < k) {j : Fin k}
+    (hj : j ∈ nonzeroFins hk) :
+    j ≠ finZero hk := by
+  unfold nonzeroFins at hj
+  rcases List.mem_filter.1 hj with ⟨_, hjne⟩
+  aesop
 
+/-- `nonzeroFins hk` has no duplicates. -/
+lemma nodup_nonzeroFins {k : ℕ} (hk : 0 < k) :
+    (nonzeroFins hk).Nodup :=by unfold nonzeroFins;simp[Nodup];sorry
+
+/-- If every index in `js` is different from `u`, then the contribution at `u` is `0`. -/
+lemma contrib_eq_zero_of_all_ne
+    {k : ℕ} (z : ℤ) (js : List (Fin k)) (u : Fin k)
+    (hall : ∀ j ∈ js, j ≠ u) :
+    contrib z js u = 0 := by
+  classical
+  induction js with
+  | nil =>
+      simp [contrib]
+  | cons j js ih =>
+      have hju : j ≠ u := hall j (by simp)
+      have hall' : ∀ j' ∈ js, j' ≠ u :=
+        fun j' hj' => hall j' (by simp [hj'])
+      simp[contrib]
+      aesop
+
+lemma contrib_of_unique
+    {k : ℕ} (z : ℤ) (js : List (Fin k)) (u : Fin k)
+    (hnd : js.Nodup) (hu : u ∈ js) :
+    contrib z js u = z ^ (u.val) := by
+  classical
+  induction js with
+  | nil =>
+      cases hu
+  | cons j js ih =>
+      have hnd' : js.Nodup := (List.nodup_cons.mp hnd).2
+      have hnot : j ∉ js := (List.nodup_cons.mp hnd).1
+      cases hu with
+      | head hju =>
+          -- show that `u` does not appear in `js`
+          have hall : ∀ j' ∈ js, j' ≠ u := by
+            aesop
+          have hzero := contrib_eq_zero_of_all_ne (z := z) (js := js) (u := u) hall
+          simp [contrib, hzero]
+      | tail hu_js =>
+          -- case `u ∈ js` and hence `j ≠ u`
+          have hju : j ≠ u := by
+            intro h; subst h
+            have hj : j ∈ js := by aesop; exact hnot a
+            exact hnot hj
+          have ih' := ih hnd'
+          simp [contrib]
+          aesop
+
+
+/-- If `u ≠ finZero hk`, then `u` is in `nonzeroFins hk`. -/
+lemma mem_nonzeroFins_of_ne_zero {k : ℕ} (hk : 0 < k)
+    {u : Fin k} (hnez : u ≠ finZero hk) :
+    u ∈ nonzeroFins hk := by
+  unfold nonzeroFins
+  have hrange : u ∈ List.finRange k := by
+    aesop
+  aesop
+
+
+/-- Final lemma: contribution from all nonzero registers. -/
+lemma contrib_nonzeroFins
+    {k : ℕ} (hk : 0 < k) (z : ℤ) (u : Fin k) :
+    contrib z (nonzeroFins hk) u =
+      if u ≠ finZero hk then z ^ (u.val) else 0 := by
+  classical
+  by_cases hnez : u ≠ finZero hk
+  · -- `u` is nonzero: exactly one contributing index `u`
+    have hu : u ∈ nonzeroFins hk :=
+      mem_nonzeroFins_of_ne_zero hk hnez
+    have hnd := nodup_nonzeroFins (k := k) hk
+    have h := contrib_of_unique (z := z)
+                 (js := nonzeroFins hk) (u := u) hnd hu
+    simp [hnez, h]
+  · -- `u = finZero hk`: all indices in the list are ≠ u, so sum is 0
+    have hu0 : u = finZero hk := by
+      push_neg at hnez; exact hnez
+    subst hu0
+    have hall : ∀ j ∈ nonzeroFins hk, j ≠ finZero hk :=
+      fun j hj => mem_nonzeroFins_ne (hk := hk) hj
+    have hzero :=
+      contrib_eq_zero_of_all_ne (z := z)
+        (js := nonzeroFins hk) (u := finZero hk) hall
+    simp [hzero, hnez]
 
 lemma regEqExpected_after_computeLocal2_of_run
     {k : ℕ} (hk : 0 < k) (z : ℤ) {σ₁ : State k}
@@ -1202,11 +1296,18 @@ lemma regEqExpected_after_computeLocal2_of_run
     -- show each coordinate holds
     refine List.all_eq_true.2 ?_
     intro u hu
-    have hcontrib := contrib_nonzeroFins_eval (k := k) hk z u
-    have hdst := dst u
-    -- expand expectedRow .int z
-    simp [expectedRow, finZero] at *
-    aesop
+    unfold expectedRow
+    simp_all only [ne_eq, start_state_entry, mem_finRange, decide_eq_true_eq]
+    split
+    next h =>
+      subst h
+      simp_all only [_root_.finZero_val, pow_zero, add_eq_left]
+      apply contrib_nonzeroFins
+    next h =>
+      simp_all only [zero_add]
+      have:=contrib_nonzeroFins hk z u
+      rw[this]
+      simp[h]
   -- finish: regEqExpected is exactly that `all = true`
   simpa [regEqExpected]
 
@@ -1246,10 +1347,10 @@ lemma onlyAddScaled_addConstAux {k : ℕ}
       have hlt : ((m+1) / 2) < (m+1) :=
         Nat.div_lt_self (Nat.succ_pos _) (by decide)
       -- Split on the `bodd` branch
-      by_cases hb : Nat.bodd (m+1)
+      by_cases hb : Odd (m+1)
       · -- Head present (the addScaled at shift `sh`) plus tail at (sh+1)
-        have hb':m.bodd=false:=by aesop
-        simp [addConstAux,hb'] at hmem
+
+        simp [addConstAux,hb] at hmem
         rcases hmem with hhead | htail
         · -- at head
           subst hhead
@@ -1257,8 +1358,7 @@ lemma onlyAddScaled_addConstAux {k : ℕ}
         · -- in tail: invoke strong IH at the strictly-smaller index ((m+1)/2)
           exact ih ((m+1)/2) hlt (sh+1) op htail
       · -- No head, only the tail at (sh+1)
-        have hb':m.bodd=true:=by aesop
-        simp [addConstAux,hb'] at hmem
+        simp [addConstAux,hb] at hmem
         exact ih ((m+1)/2) hlt (sh+1) op hmem
 
 
@@ -1560,6 +1660,8 @@ theorem genOpsWithProduct_PhaseProductCoverage
             unfold applyOp?
             simp
         | int x =>
+            unfold opsForPointWithProduct
+            simp
             sorry
       }
       {
@@ -1603,7 +1705,7 @@ theorem genOpsWithProduct_PhaseProductCoverage
                 PhaseProductCoverage hk
                   (computeLocal2 (k := k) hk x ++ [valid_ops.phaseProduct (finZero hk)])
                   (State.start_state (k := k)) [Point.int x] :=
-              phaseProduct_coverage_check_append_general hk
+              phaseProduct_coverage_check_append_aux hk
                 (p := computeLocal2 (k := k) hk x)
                 (q := [valid_ops.phaseProduct (finZero hk)])
                 (σ := State.start_state (k := k)) (σret := σ₁)
@@ -1611,7 +1713,7 @@ theorem genOpsWithProduct_PhaseProductCoverage
                 (hp := hbuild) (hrun₁) (hphase)
             -- 6) stitch: … ++ (uncompute) covers [x] ++ [] = [x]
             simpa [List.append_assoc]
-              using phaseProduct_coverage_check_append_general hk
+              using phaseProduct_coverage_check_append_aux hk
                 (p := computeLocal2 (k := k) hk x ++ [valid_ops.phaseProduct (finZero hk)])
                 (q := apply_Op_inverse (computeLocal2 (k := k) hk x))
                 (σ := State.start_state (k := k)) (σret := σ₁)

@@ -13,7 +13,7 @@ def shiftsOfAux : Nat → Nat → List Nat
 | 0,      _  => []
 | n+1,    sh =>
   let rest := shiftsOfAux ((n+1) / 2) (sh+1)
-  if Nat.bodd (n+1) then sh :: rest else rest
+  if Odd (n+1) then sh :: rest else rest
 -- termination_by n _ => n
 -- decreasing_by
 --   -- simplify the well-founded goal then show (n+1)/2 < (n+1)
@@ -81,13 +81,16 @@ def computeLocal {k : Nat} (hk : 0 < k) (z : Int) : Prog k :=
 
 open Operations
 
+
+
+
 /-- Internal block: add `dst += (± 2^sh) * n • src`, compiled structurally by halving `n`. -/
 def addConstAux {k : Nat} (dst src : Fin k) (neg' : Bool) :
     (n sh : Nat) → Prog k
 | 0,      _  => []
 | n+1,    sh =>
   let rest := addConstAux dst src neg' ((n+1)/2) (sh+1)
-  if Nat.bodd (n+1) then
+  if Odd (n+1) then
     valid_ops.addScaled dst src (negSrc := neg') sh :: rest
   else
     rest
@@ -148,7 +151,7 @@ lemma addConstAux_eq_shifts {k}
         (fun s => valid_ops.addScaled dst src (negSrc := neg') s) :=
     addConstAux_eq_shifts (k := k) (dst := dst) (src := src) (neg' := neg') ((n+1)/2) (sh+1)
 
-  by_cases hb : Nat.bodd (n+1)
+  by_cases hb : Odd (n+1)
   · -- odd case: emit a head at `sh`, then the tail
     simp [addConstAux, shiftsOfAux, ih]
     aesop
