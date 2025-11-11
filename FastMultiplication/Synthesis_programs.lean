@@ -373,8 +373,147 @@ def pts : List Point :=
 #eval IO.println (genOpsString (k := 3) (by decide) pts)
 
 
+def AllNe {k} (dst : Fin k) : List (Fin k) → Prop
+| []      => True
+| j :: js => j ≠ dst ∧ AllNe dst js
+
+lemma nonzeroFins_allNe {k} (hk : 0 < k) :
+  AllNe (finZero (k := k) hk) (nonzeroFins (k := k) hk) := by
+  classical
+  unfold nonzeroFins
+  let dst := finZero (k := k) hk
+  have h_aux :
+      ∀ (L : List (Fin k)),
+        AllNe dst (L.filter (fun j => j ≠ dst)) := by
+    intro L
+    induction L with
+    | nil =>
+        simp [AllNe]
+    | cons j js ih =>
+        by_cases h : j = dst
+        ·
+          unfold AllNe
+          simp [h]
+          aesop
+        ·
+          simp [AllNe, h]
+          aesop
+  simpa using h_aux (List.finRange k)
+
+lemma WellFormed_append {k} {p q : Prog k} :
+    Prog.WellFormed p → Prog.WellFormed q → Prog.WellFormed (p ++ q) := by
+  intro hp hq op hop
+  -- membership in p ++ q splits
+  have := List.mem_append.mp hop
+  rcases this with hmem | hmem
+  · exact hp op hmem
+  · exact hq op hmem
+
+
+open Prog
+
+lemma addConstAux_WellFormed
+    {k : ℕ} {dst src : Fin k} (hsd : dst ≠ src) (neg' : Bool) :
+    ∀ n sh, (addConstAux (k := k) dst src neg' n sh).WellFormed := by
+  classical
+  -- Strong induction on n
+  have main :
+      ∀ n, ∀ sh, (addConstAux (k := k) dst src neg' n sh).WellFormed :=
+    fun n =>
+      Nat.strongRecOn n
+        (motive :=
+          fun n => ∀ sh, (addConstAux (k := k) dst src neg' n sh).WellFormed)
+        (fun n ih sh op hop => by
+          cases n with
+          | zero =>
+              simp [addConstAux] at hop
+          | succ n' =>
+              have hlt : (n' + 1) / 2 < n'.succ := by
+                exact Nat.div_lt_self (Nat.succ_pos _) (by decide)
+
+              have wf_tail :
+                  (addConstAux (k := k) dst src neg' ((n' + 1) / 2) (sh + 1)).WellFormed :=
+                ih ((n' + 1) / 2) hlt (sh + 1)
+              dsimp [Prog.WellFormed] at wf_tail
+
+              unfold addConstAux at hop
+              set rest :=
+                addConstAux (k := k) dst src neg' ((n' + 1) / 2) (sh + 1)
+                with hrest
+
+              by_cases hodd : Odd (n' + 1)
+              · -- Odd case: head :: rest
+                simp [hodd, hrest] at hop
+                rcases hop with hhead | hmem
+                · -- op is the head
+                  subst hhead
+                  simp [Prog.OpOK, hsd]
+                · -- op from the tail: use wf_tail
+                  exact wf_tail op (by simpa [hrest] using hmem)
+              · -- Even case: only rest
+                simp [hodd, hrest] at hop
+                exact wf_tail op (by simpa [hrest] using hop)
+        )
+  intro n sh
+  exact main n sh
+
+
+/-- `addConstFrom` is well-formed whenever `dst ≠ src`. -/
+lemma addConstFrom_WellFormed
+    {k : ℕ} {dst src : Fin k} (hsd : dst ≠ src) (c : Int) :
+    Prog.WellFormed (addConstFrom (k := k) dst src c) := by
+  classical
+  by_cases hc : c = 0
+  · -- no ops
+    simp [addConstFrom, hc, Prog.WellFormed]
+  · -- expands to addConstAux dst src (c<0) (|c|) 0
+    have h :=
+      addConstAux_WellFormed (k := k) (dst := dst) (src := src)
+        hsd (neg' := c < 0) (Int.natAbs c) 0
+    simpa [addConstFrom, hc] using h
+/-- `computeLocalAux` is well-formed when all sources in the list are
+    different from `dst = finZero hk`. -/
+lemma computeLocalAux_WellFormed
+    {k : ℕ} (hk : 0 < k) (z : ℤ) :
+    ∀ (js : List (Fin k)),
+      AllNe (finZero (k := k) hk) js →
+      Prog.WellFormed (computeLocalAux (k := k) hk z js)
+  | [], _ => by
+      -- no ops
+      intro op hop
+      simp [computeLocalAux] at hop
+  | j :: js, hAll => by
+      -- AllNe dst (j :: js) gives j ≠ dst and AllNe dst js
+      rcases hAll with ⟨hj_ne, hAll_js⟩
+      -- set names
+      let dst := finZero (k := k) hk
+      let c   := z ^ (j : ℕ)
+      -- head block: addConstFrom dst j c, with dst ≠ j
+      have hheadWF :
+          Prog.WellFormed (addConstFrom (k := k) dst j c) :=
+        addConstFrom_WellFormed
+          (k := k) (dst := dst) (src := j)
+          (by
+            -- hj_ne : j ≠ dst, but lemma expects dst ≠ j
+            intro h; exact hj_ne (by simp [h] : j = dst))
+          c
+      -- tail block: by IH on js
+      have htailWF :
+          Prog.WellFormed (computeLocalAux (k := k) hk z js) := by
+        have :=computeLocalAux_WellFormed hk z js hAll_js
+        simp[this]
+      -- whole list is head ++ tail
+      intro op hop
+      -- expand definition and use append lemma
+      have := WellFormed_append (k := k) hheadWF htailWF op
+      simpa [computeLocalAux] using this hop
+
 lemma computeLocal2_Valid{k:ℕ}{z:ℤ}(hk:0<k):
-  Prog.WellFormed (computeLocal2 hk z):= by sorry
+  Prog.WellFormed (computeLocal2 hk z):= by
+    unfold computeLocal2
+    have hAll : AllNe (finZero (k := k) hk) (nonzeroFins (k := k) hk) :=
+      nonzeroFins_allNe (k := k) hk
+    exact computeLocalAux_WellFormed (k := k) hk z (nonzeroFins hk) hAll
 
 
 
@@ -530,9 +669,104 @@ lemma regEqReg_to_regEqExpected_inf
   next k => simp_all only [List.finRange_zero, zero_tsub, List.all_nil]
   next k k_1 => simp_all only [Nat.succ_eq_add_one, add_tsub_cancel_right]
 
+open Operations
+
+lemma run_some_addConstAux
+    {k : ℕ} (dst src : Fin k) (neg' : Bool) :
+    ∀ (n sh : ℕ) (σ : State k),
+      ∃ τ, run? (addConstAux (k := k) dst src neg' n sh) σ = some τ := by
+  classical
+  -- strong induction on n
+  intro n
+  refine Nat.strongRecOn n ?step
+  -- step : ∀ n, (∀ m < n, ...) → ∀ sh σ, ∃ τ, ...
+  intro n ih sh σ
+  cases n with
+  | zero =>
+      -- n = 0: addConstAux 0 sh = []
+      refine ⟨σ, ?_⟩
+      simp [addConstAux]
+  | succ n' =>
+      set rest :=
+        addConstAux (k := k) dst src neg' ((n' + 1) / 2) (sh + 1)
+        with hrest
+
+      have hlt : (n' + 1) / 2 < n'.succ :=
+        Nat.div_lt_self (Nat.succ_pos _) (by decide)
+
+      have ih_tail :
+          ∀ (sh₁ : ℕ) (σ₁ : State k),
+            ∃ τ, run? rest σ₁ = some τ := by
+        intro sh₁ σ₁
+        have := ih ((n' + 1) / 2) hlt sh₁ σ₁
+        aesop
+
+      by_cases hodd : Odd (n' + 1)
+      · -- odd case: head addScaled then rest
+        let σ₁ := State.addScaledReg σ dst src (negSrc := neg') sh
+        have hstep :
+            applyOp? (k := k) σ
+              (valid_ops.addScaled dst src (negSrc := neg') sh)
+          = some σ₁ := rfl
+
+        -- run the tail starting from σ₁ at shift (sh+1)
+        rcases ih_tail (sh + 1) σ₁ with ⟨τ, hτ⟩
+
+        refine ⟨τ, ?_⟩
+        simp [addConstAux, hodd,  hstep]
+        aesop
+      · -- even case: no head, just rest
+        rcases ih_tail (sh + 1) σ with ⟨τ, hτ⟩
+        refine ⟨τ, ?_⟩
+        simp [addConstAux, hodd]
+        aesop
+
+lemma run_some_addConstFrom
+    {k : ℕ} (dst src : Fin k) (c : ℤ) (σ : State k) :
+    ∃ τ, run? (addConstFrom (k := k) dst src c) σ = some τ := by
+  classical
+  by_cases hc : c = 0
+  · -- empty program
+    subst hc
+    refine ⟨σ, ?_⟩
+    simp [addConstFrom]
+  · -- nonzero: delegates to addConstAux
+    unfold addConstFrom
+    simp[hc]
+    have h := run_some_addConstAux (k := k)
+              dst src (decide (c < 0)) c.natAbs 0 σ
+    rcases h with ⟨τ, hτ⟩
+    simp[hτ]
+
+
+
+lemma run_some_computeLocalAux
+    {k : ℕ} (hk : 0 < k) (z : ℤ) :
+    ∀ (js : List (Fin k)) (σ : State k),
+      ∃ τ, run? (computeLocalAux (k := k) hk z js) σ = some τ := by
+  classical
+  intro js
+  -- IMPORTANT: generalize over σ in the induction
+  induction js with
+  | nil =>
+      simp [computeLocalAux]
+  | cons j js ih =>
+      intro σ
+      -- head: addConstFrom (finZero hk) j (z^j)
+      obtain ⟨σ₁, h₁⟩ :
+          ∃ σ₁, run? (addConstFrom (k := k) (finZero hk) j (z ^ (j : ℕ))) σ = some σ₁ :=
+        run_some_addConstFrom (k := k) (dst := finZero hk) (src := j)
+                              (c := z ^ (j : ℕ)) σ
+      obtain ⟨τ, h₂⟩ := ih σ₁
+      refine ⟨τ, ?_⟩
+      simp [computeLocalAux,run?_append,h₁,h₂]
+
+
 lemma computeLocal2_some_state
 (k : ℕ)
 (hk : 0 < k)
 (z : ℤ)
 (σ : State k):
- ∃ σ₁, run? (computeLocal2 hk z) σ = some σ₁:=by sorry
+ ∃ σ₁, run? (computeLocal2 hk z) σ = some σ₁:=by
+  unfold computeLocal2
+  exact run_some_computeLocalAux (k := k) hk z (nonzeroFins hk) σ
