@@ -34,21 +34,6 @@ theorem example_prog_1_phase_converage:
     · simp_all
   }
 
--- theorem example_prog_1_PhaseCoverage:
---   PhaseProductCoverage example_prog_1 State.start_state [Point.int 0,Point.inf,Point.int 1]:=by {
---     unfold example_prog_1
---     unfold PhaseProductCoverage
---     apply PhaseProductCoverageM.step_op;rfl;simp
---     apply PhaseProductCoverageM.step_phase
---     {
---       rfl
---     }
---     apply PhaseProductCoverageM.step_op;rfl;simp
---     apply PhaseProductCoverageM.step_op;rfl;simp
---     apply PhaseProductCoverageM.step_phase
---     {}
-
---   }
 
 /-- Program for the k=3 (regs 0,1,2). -/
 def example_prog_2 : Prog 3 :=

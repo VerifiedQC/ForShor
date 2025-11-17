@@ -20,12 +20,12 @@ open Operations
   rw[this]
   simp
 
-theorem inverse_valid {k : ℕ} {p : Prog k} {σ₁ σ: State k}
-  (hrun:run? p σ = some σ₁):
-    ∃ σ₂, run? (apply_Op_inverse p) σ = some σ₂ := by
-  unfold apply_Op_inverse
-  -- (rev.map inv).rev.map inv  →  p.rev.rev.map (inv ∘ inv)
-  sorry
+-- theorem inverse_valid {k : ℕ} {p : Prog k} {σ₁ σ: State k}
+--   (hrun:run? p σ = some σ₁):
+--     ∃ σ₂, run? (apply_Op_inverse p) σ = some σ₂ := by
+--   unfold apply_Op_inverse
+--   -- (rev.map inv).rev.map inv  →  p.rev.rev.map (inv ∘ inv)
+--   sorry
 
 -- /******************************************************************************/
 -- /*                          BASIC `run?` SIMP LEMMAS                          */

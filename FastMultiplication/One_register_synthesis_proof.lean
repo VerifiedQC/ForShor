@@ -2,15 +2,6 @@ import FastMultiplication.Synthesis_programs
 
 open Operations
 
--- lemma phaseProduct_coverage_check_append_cons_of_returns {k : ℕ}
---     (p q : Prog k) (σ : State k)
---     (head : Point) (tail : List Point)
---     (hret : run? p σ = some σ)
---     (hp   : phaseProduct_coverage_check p σ [head] = true)
---     (hq   : phaseProduct_coverage_check q σ tail   = true) :
---   phaseProduct_coverage_check (p ++ q) σ (head :: tail) = true := by {
---     sorry
---   }
 
 namespace List
 /-- If `eraseFirstMatch? p xs = some ys` then also
@@ -139,20 +130,6 @@ lemma phaseProduct_coverage_check_append_nil
       (k := k) (p := p) (q := q) (σ := σ₁) (a := []) (b := [])
       hk hp σ₂ hret hq
   }
-
--- lemma phaseProduct_coverage_check_append_nil_reverse
---   {k : ℕ} (p q : Prog k) (σ₁ σ₂ : State k)
---   (hret : run? p σ₁ = some σ₂)
---   (hp:PhaseProductCoverage (p ++ q) σ₁ ([]))
---    :((PhaseProductCoverage q σ₂ [])) :=by {
---     sorry
---   }
-
-
--- theorem genOpsWithProduct_append (hk : 0 < k)(h:Point)(t:List Point):
---   genOpsWithProduct hk (h::t)=genOpsWithProduct hk [h]++genOpsWithProduct hk t:= by
---     sorry
-
 
 
 /-- Abbreviation for the loop so we can state lemmas succinctly. -/
@@ -364,39 +341,6 @@ lemma computeLocal_NoPhase_2 {k} (hk : 0 < k) (z : Int) :
 
 
 
-
-
-
--- theorem genOpsWithProduct_phase_coverage
---   {k : Nat} (hk : 0 < k) (pts : List Point) :
---   phaseProduct_coverage_check (genOpsWithProduct hk pts) State.start_state pts := by {
---     induction pts with
---     | nil=>{
---       unfold genOpsWithProduct phaseProduct_coverage_check phaseCoverageFrom? matchesAt_pointRow phaseCoverageFrom?.loop
---       simp
---     }
---     | cons head tail ih=>{
---       rw[genOpsWithProduct_append,phaseProduct_coverage_check_append_cons_of_returns]
---       {
---         sorry
---       }
---       {
---         unfold genOpsWithProduct opsForPointWithProduct-- phaseProduct_coverage_check matchesAt_pointRow phaseCoverageFrom? phaseCoverageFrom?.loop --matchesAt_pointRow phaseCoverageFrom?.loop opsForPointWithProduct
---         cases head with
---         | int x => {
---           simp
---         }
---         | inf=> {
-
---           sorry
---         }
---       }
---       {
---         rw[ih]
---       }
---     }
---   }
-
 /-- A single `addScaled` always succeeds and consumes no points. -/
 lemma cover_addScaled_nil {k} (hk:k>0) (σ : State k) (dst src : Fin k) (neg' : Bool) (sh : ℕ) :
   PhaseProductCoverage (hk:k>0) [valid_ops.addScaled dst src (negSrc := neg') sh] σ [] := by
@@ -438,16 +382,6 @@ lemma foldl_append_hom {α β} :
 | H, acc, a::xs   => by
   simp [foldl_append_hom H (acc ++ H a) xs, List.append_assoc]
 
--- -- 2) `run?` never fails on a block made of `addScaled` ops (like map pairToOp …)
--- lemma run_some_of_map_pairToOp {k} (dst src : Fin k)
---   : ∀ (pairs : List (Bool × Nat)) (σ : State k),
---       ∃ σ', run? (pairs.map (pairToOp (k := k) dst src)) σ = some σ'
--- | [],      σ => ⟨σ, by simp⟩
--- | p :: ps, σ => by {
---   unfold run?
---   simp
---   sorry
--- }
 
 lemma run_some_of_map_pairToOp {k} (dst src : Fin k) :
   ∀ (pairs : List (Bool × Nat)) (σ : State k),
@@ -698,15 +632,6 @@ private lemma all_true_of_mem {α} (p : α → Bool) :
   | inr h_1 => simp_all only
 
 
--- @[simp] lemma State.addScaledReg_apply
---   (σ : State k) (dst src : Fin k) (b : Bool) (sh : ℕ) (t : Fin k) :
---   (State.addScaledReg σ dst src (negSrc := b) sh) t =
---     if t = dst then
---       fun u => if u = dst then
---         σ dst u + ((if b then (-1 : ℤ) else 1) * ((σ src u) * (2 : ℤ)^sh))
---       else σ dst u
---     else σ t := by sorry
-
 
 open Operations
 
@@ -764,38 +689,6 @@ def wsum : List (Bool × Nat) → Int
 @[simp] lemma wsum_cons (p : Bool × Nat) (ps) :
   wsum (p :: ps) = wsum1 p + wsum ps := rfl
 
--- /-- Numeric value of `signedPow2Decomp` equals the original integer. -/
--- lemma signedPow2Decomp_wsum (c : Int) : wsum (signedPow2Decomp c) = c := by
---   unfold signedPow2Decomp
---   by_cases hc : c = 0
---   · simp [hc]
---   ·
---     set neg' := (c < 0)
---     set m   := Int.natAbs c
---     have hw :
---       wsum ((shiftsOf m).map (fun s => (neg', s)))
---         = (if neg' then (-1 : Int) else 1) *
---             ( (shiftsOf m).foldl (fun acc s => acc + (2 : Int) ^ s) 0 ) := by
---       -- rewrite w.r.t. map; easy induction on `shiftsOf m`
---       revert neg'
---       induction (shiftsOf m) with
---       | nil =>
---           intro; simp
---       | cons s ss ih =>
---           intro; simp [wsum1];aesop;sorry;sorry
---     have hsum :
---       ( (shiftsOf m).foldl (fun acc s => acc + (2 : Int) ^ s) 0 ) = (m : Int) := by
---       -- you already have this as `shiftsOf_sumPow2`
---       simpa using shiftsOf_sumPow2 m
---     have hmag : (m : Int) = |c| := by aesop
---     have sgn :
---         (if neg' then (-1 : Int) else 1) * (m : Int) = c := by
---       by_cases hlt : c < 0
---       · have : (m : Int) = -c := by simp [hmag];simp[le_of_lt hlt]
---         simp [neg', hlt, this]            -- (-1)*(-c) = c
---       · have : (m : Int) = c := by aesop
---         simp [neg', hlt, this]
---     aesop
 
 /-- One mapped block affects only `dst`, and linearly by `wsum` on each coordinate. -/
 lemma run_map_pairToOp_coord
@@ -895,28 +788,6 @@ lemma run_map_pairToOp_preserve
 def Block {k} (dst src : Fin k) (c : Int) : Prog k :=
   if c = 0 then [] else (signedPow2Decomp c).map (pairToOp (k := k) dst src)
 
--- /-- Effect of a single Block on coordinates of `dst`. -/
--- lemma run_Block_dst_coord {k}
---   {dst src : Fin k} {c : Int} {σ τ : State k}
---   (hr : run? (Block (k := k) dst src c) σ = some τ)
---   (hsd : src ≠ dst) :
---   ∀ u, τ dst u = σ dst u + c * σ src u := by
---   classical
---   unfold Block at hr
---   by_cases hc : c = 0
---   · simp [hc];simp[hc] at hr;simp[hr]
---   ·
---     have h := run_map_pairToOp_coord (k := k) dst src (signedPow2Decomp c)
---                  (σ := σ) (τ := τ)
---                  (by simpa [hc, Block] using hr) (by simpa using hsd)
---     intro u
---     aesop
---     by_cases hb:σ src u = 0
---     simp[hb]
---     simp[hb]
---     unfold wsum signedPow2Decomp
---     simp[hc]
---     sorry
 
 /-- `Block` preserves all non-`dst` registers. -/
 lemma run_Block_preserve {k}

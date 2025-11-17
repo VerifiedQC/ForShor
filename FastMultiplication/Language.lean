@@ -126,7 +126,7 @@ def matchesAt_pointRow {k : Nat} : MatchesAt k :=
 def MatchesAtState.ofRegister {k : Nat} (m : MatchesAt k) : MatchesAtState k :=
   fun σ i pt => m (σ i) pt
 
-def matchesAt_pointRow_state {k : Nat} (hk:k>0): MatchesAtState k :=
+def matchesAt_pointRow_state {k : Nat} (_:k>0): MatchesAtState k :=
   fun σ i pt => regEqExpected (k := k) (σ i) pt
 
 
