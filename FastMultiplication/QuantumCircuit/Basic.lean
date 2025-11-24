@@ -7,8 +7,7 @@ open Classical
      Register → Qubit Layout
 ######################## -/
 
-/-- A *bijective* layout between per-register bit slots and global qubits.
-    Use `pack` to go (register, offset) → global, and `unpack` to go back. -/
+
 structure Layout (k : ℕ) where
   (width  : Fin k → ℕ) -- Number of qubits in register i
   (N      : ℕ) -- Total number of qubits in the state
@@ -70,16 +69,196 @@ lemma mem_wires_of_cover (q : Fin L.N) :
 
 end Layout
 
+/-- Classical state of `N` qubits: just an `N`-bit string. -/
+abbrev BitStr (N : ℕ) := Fin N → Bool
+
+/-- Update a single wire. -/
+def setBit {N : ℕ} (x : BitStr N) (q : Fin N) (b : Bool) : BitStr N :=
+  fun r => if h : r = q then b else x r
+
+
+namespace Layout
+
+
+/-- Value of a bitvector at position `b`. -/
+def bitOf {n} (v : BitVec n) (b : Fin n) : Bool :=
+  Nat.testBit v.toNat b
+
+/-- Interpret register `i` as a bitvector, reading from the global bitstring `x`.
+    We treat local index `b` as the bit with weight `2^b`. -/
+def readReg {k : ℕ} (L : Layout k) (x : BitStr L.N) (i : Fin k) : BitVec (L.width i) :=
+  let val : Nat :=
+    ∑ b : Fin (L.width i),
+      if x (L.pack i b) then (2 : Nat) ^ (b : Nat) else 0
+  BitVec.ofNat (L.width i) val
+
+/-- Overwrite all wires of register `i` with the bits of the bitvector `v`
+    (in little-endian order: position `b` has weight `2^b`). -/
+def writeReg {k : ℕ} (L : Layout k) (x : BitStr L.N) (i : Fin k) (v : BitVec (L.width i)) :
+  BitStr L.N :=
+  fun q =>
+    match L.unpack q with
+    | ⟨j, b⟩ =>
+      if h : j = i then
+        -- cast the local index to match `i` and read that bit from `v`
+        let b' : Fin (L.width i) := cast (by cases h; rfl) b
+        bitOf v b'
+      else
+        x q
+
+/-- A classical circuit on global states of size `N`. -/
+abbrev Circuit (N : ℕ) := BitStr N → BitStr N
+
+namespace Circuit
+/-- Sequential composition: run `c₁` then `c₂`. -/
+def seq {N} (c₁ c₂ : Circuit N) : Circuit N :=
+  fun s => c₂ (c₁ s)
+
+infixl:80 " ⋙ " => Circuit.seq
+end Circuit
+
+
+/-- ADD on a triple `(x : m bits, y : n bits, c : 1 bit)`.
+
+    Semantics: interpret `(y,c)` as an (n+1)-bit integer, add `x`, and
+    write the result back into `(y',c')` modulo `2^(n+1)`.
+-/
+def ADD_gate (m n : Nat) :
+    BitVec m × BitVec n × Bool →
+    BitVec m × BitVec n × Bool
+| (x, y, c) =>
+  let base  := Nat.pow 2 n
+  let base1 := Nat.pow 2 (n+1)
+
+  let xNat  := x.toNat
+  let yNat  := y.toNat
+  let cNat  := if c then base else 0
+  let sum   := xNat + yNat + cNat
+
+  let sum'    := sum % base1
+  let lowNat  := sum' % base
+  let highNat := sum' / base   -- in {0,1}
+
+  let y' : BitVec n := BitVec.ofNat n lowNat
+  let c' : Bool     := (highNat % 2 = 1)
+
+  (x, y', c')
+
+
+/-- Precondition you’ll usually assume: the carry wire does not belong
+    to either register `dst` or `src`. -/
+def carryFresh{k : ℕ} (L : Layout k) (dst src : Fin k) (carry : Fin L.N) : Prop :=
+  carry ∉ L.wires dst ∧ carry ∉ L.wires src
+
+/-- Classical ADD on the global layout:
+    given registers `src`, `dst` and a single overflow wire `carry`,
+    perform `(x, y, carry) ↦ (x, y+x, carry')` where `x` is `src` and
+    `y,carry` are `dst` plus overflow.
+-/
+
+def ADD_on_layout{k : ℕ} (L : Layout k) (dst src : Fin k) (carry : Fin L.N) :
+    Circuit L.N :=
+  fun σ =>
+    let xVal : BitVec (L.width src) := L.readReg σ src
+    let yVal : BitVec (L.width dst) := L.readReg σ dst
+    let cVal : Bool := σ carry
+
+    let triple' := ADD_gate (L.width src) (L.width dst) (xVal, yVal, cVal)
+    let xVal'   := triple'.1
+    let yVal'   := triple'.2.1
+    let cVal'   := triple'.2.2
+
+    -- update the two registers and the carry wire
+    let σ₁ := L.writeReg σ src xVal'   -- x is unchanged, but this keeps spec symmetric
+    let σ₂ := L.writeReg σ₁ dst yVal'
+    let σ₃ := setBit σ₂ carry cVal'
+    σ₃
+
+
+namespace Example
+
+variable (L : Layout 2)
+
+-- names for the two registers:
+def xReg : Fin 2 := ⟨0, by decide⟩
+def yReg : Fin 2 := ⟨1, by decide⟩
+
+/-- Interpret `(y,c)` as an (n+1)-bit integer. -/
+def ycVal {n : ℕ} (y : BitVec n) (c : Bool) : ℕ :=
+  let base := 2 ^ n
+  y.toNat + (if c then base else 0)
+
+
+-- convenience:
+abbrev N : ℕ := L.N
+abbrev State := BitStr L.N
+
+lemma ADD_gate_spec (m n : ℕ) (x : BitVec m) (y : BitVec n) (c : Bool) :
+  let base1 := 2 ^ (n+1)
+  let sum   := x.toNat + ycVal y c
+  let triple' := ADD_gate m n (x,y,c)
+  let x' := triple'.1
+  let y' := triple'.2.1
+  let c' := triple'.2.2
+  x' = x ∧ ycVal y' c' = sum % base1 := by
+  -- TODO: prove using BitVec.ofNat/toNat lemmas + modular arithmetic
+  admit
+
+
+
+open Layout
+
+/-- Layout-level ADD on `L`, adding `xReg` into `yReg` using a chosen carry wire. -/
+def add2 (carry : Fin L.N) : Circuit L.N :=
+  fun σ =>
+    -- read local values
+    let xVal : BitVec (L.width (xReg)) := L.readReg σ (xReg)
+    let yVal : BitVec (L.width (yReg)) := L.readReg σ (yReg)
+    let cVal : Bool := σ carry
+
+    let triple' := ADD_gate (L.width (xReg)) (L.width (yReg)) (xVal, yVal, cVal)
+    let xVal'   := triple'.1
+    let yVal'   := triple'.2.1
+    let cVal'   := triple'.2.2
+
+    -- write back
+    let σ₁ := L.writeReg σ (xReg) xVal'   -- x is unchanged, but we stick with the pattern
+    let σ₂ := L.writeReg σ₁ (yReg) yVal'
+    let σ₃ := setBit σ₂ carry cVal'
+    σ₃
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /-! ########################
      Quantum-side scaffolding
 ######################## -/
 
-/-- Abstract QState type for `N` qubits (replace with your concrete type). -/
-axiom QState : ℕ → Type
+/-- Abstract QState type for `N` qubits. -/
+def BitStr (N : ℕ) := Fin N → Bool
+def QState (N : ℕ) := BitStr N
 -- QState n is a type for all n-qubit states
 
-/-- Operator U acts only on the wires W. Define exact definition later -/
-def ActsOn {N : ℕ} (W : Finset (Fin N)) (U : QState N → QState N) : Prop := True
+/-- `sameOutside W x y` means `x` and `y` agree on all qubits *outside* `W`. -/
+def sameOutside {N : ℕ}
+    (W : Finset (Fin N)) (x y : BitStr N) : Prop :=
+  ∀ q : Fin N, q ∉ W → x q = y q
+-- Tell Lean that bitstrings have decidable equality.
+instance instDecidableEqBitstr (N : ℕ) : DecidableEq (BitStr N) := by
+  dsimp [BitStr]; infer_instance
+
 
 /-- Your denotational model, now carrying the fixed layout. -/
 structure Model (k : ℕ) where
@@ -95,22 +274,27 @@ namespace Model
 variable {k : ℕ} (M : Model k)
 
 def wires (i : Fin k) : Finset (Fin M.layout.N) := M.layout.wires i
+
 def span  (dst src : Fin k) : Finset (Fin M.layout.N) := M.layout.span dst src
 end Model
 
+namespace QState
+def GlobalPhaseEq {N} (ψ ψ' : QState N) : Prop :=
+  ∃ c : ℂ, c ≠ 0 ∧ ∀ x, ψ' x = c * ψ x
+end QState
 
 open Operations
 /-- Strengthened primitive-correctness relative to the layout. -/
 class PrimitiveCorrect (M : Model k) : Prop where
-  -- Locality (use your true `ActsOn` later)
+
   (addScaled_local : ∀ dst src neg' sh, ActsOn (M.span dst src) (M.U_addScaled dst src neg' sh))
   (shiftL_local    : ∀ i n, ActsOn (M.wires i) (M.U_shiftL i n))
   (shiftR_local    : ∀ i n, ActsOn (M.wires i) (M.U_shiftR i n))
   (negate_local    : ∀ i,   ActsOn (M.wires i) (M.U_negate i))
   (phaseProd_local : ∀ i,   ActsOn (M.wires i) (M.U_phaseProd i))
-  -- On-basis agreement with your small-step evaluator
+  -- On-basis agreement
   (addScaled_on_basis :
-    ∀ {σ τ} {dst src} {neg'} {sh},
+    ∀ {σ τ} {dst src} {neg'} {sh} ,
       applyOp? (k := k) σ (valid_ops.addScaled dst src (negSrc := neg') sh) = some τ →
       M.U_addScaled dst src neg' sh (M.QStateOfState σ) = M.QStateOfState τ)
   (shiftL_on_basis :
@@ -128,7 +312,9 @@ class PrimitiveCorrect (M : Model k) : Prop where
   (phaseProd_on_basis :
     ∀ {σ τ i},
       applyOp? (k := k) σ (valid_ops.phaseProduct i) = some τ →
-      M.U_phaseProd i (M.QStateOfState σ) = M.QStateOfState τ)
+      QState.GlobalPhaseEq
+      (M.U_phaseProd i (M.QStateOfState σ))
+      (M.QStateOfState σ))
 
 
 /-- One addScaled never changes any register `t ≠ dst`. -/
