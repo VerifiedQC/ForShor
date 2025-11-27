@@ -15,13 +15,13 @@ axiom Qubit : Type
 abbrev QReg := ℕ → Qubit
 
 /-- A logical register: a QReg + a shift + a used range. -/
-structure Register where
+structure Register_w where
   qreg  : QReg
   shift : ℕ
   used  : ℕ
 
-/-- A state of `k` qubit-registers. -/
-def State (k : ℕ) := Fin k → Register
+/-- A state of `k` qubit-Register_ws. -/
+def State (k : ℕ) := Fin k → Register_w
 
 /-- Abstract qubit-level addition on QRegs. -/
 axiom addQReg : QReg → QReg → QReg   --QReg → ℕ → QReg → ℕ → QReg
@@ -29,9 +29,9 @@ axiom addQReg : QReg → QReg → QReg   --QReg → ℕ → QReg → ℕ → QRe
 /-- Abstract qubit-level negation on tapes. -/
 axiom negateQReg : QReg → QReg
 
-/-- Low-level adder on *windows* of the destination and source registers. -/
-noncomputable def add (dst : Register) (dst_ran : ℕ × ℕ)
-    (src : Register) (src_ran : ℕ × ℕ) : Register :=
+/-- Low-level adder on *windows* of the destination and source Register_ws. -/
+noncomputable def add (dst : Register_w) (dst_ran : ℕ × ℕ)
+    (src : Register_w) (src_ran : ℕ × ℕ) : Register_w :=
   let (d1, d2) := dst_ran  -- range of destination qubits used
   let (s1, s2) := src_ran  -- range of source qubits used
   { qreg  := addQReg dst.qreg src.qreg
@@ -39,48 +39,48 @@ noncomputable def add (dst : Register) (dst_ran : ℕ × ℕ)
   , used  := (Nat.max d2 s2 + 1) - (Nat.min d1 s1) -- d1 + Nat.max dlen slen + 1
   }
 
-/-- Logical range of the *used* bits of a register:
+/-- Logical range of the *used* bits of a Register_w:
     indices `[shift, shift + used)`. -/
-def logicalRange (r : Register) : ℕ × ℕ :=
+def logicalRange (r : Register_w) : ℕ × ℕ :=
   (r.shift, r.shift + r.used)
 
-/-- Logical range of the used bits if the register were additionally shifted left
+/-- Logical range of the used bits if the Register_w were additionally shifted left
     by `sh` bits: indices `[shift + sh, shift + sh + used)`. -/
-def shiftedRange (r : Register) (sh : ℕ) : ℕ × ℕ :=
+def shiftedRange (r : Register_w) (sh : ℕ) : ℕ × ℕ :=
   (r.shift + sh, r.shift + sh + r.used)
 
-/-- Scaled addition on single registers: conceptually `dst ← dst + (src << sh)`. -/
-noncomputable def add_Scaled (dst src : Register) (sh : ℕ) : Register :=
+/-- Scaled addition on single Register_ws: conceptually `dst ← dst + (src << sh)`. -/
+noncomputable def add_Scaled (dst src : Register_w) (sh : ℕ) : Register_w :=
   add dst (logicalRange dst) src (shiftedRange src sh)
 
 /-- Logical left shift by `n` bits: multiply by `2^n`. -/
-def shiftL (r : Register) (n : ℕ) : Register :=
+def shiftL (r : Register_w) (n : ℕ) : Register_w :=
   { r with shift := r.shift + n }
 
 /-- Logical right shift by `n` bits: divide by `2^n` (truncating). -/
-def shiftR (r : Register) (n : ℕ) : Register :=
+def shiftR (r : Register_w) (n : ℕ) : Register_w :=
   { r with shift := r.shift - n }
 
-/-- Logical negation of a register: conceptually multiply by `-1`. -/
-noncomputable def negate (r : Register) : Register :=
+/-- Logical negation of a Register_w: conceptually multiply by `-1`. -/
+noncomputable def negate (r : Register_w) : Register_w :=
   { r with qreg := negateQReg r.qreg }
 
-@[simp] lemma shiftL_qreg (r : Register) (n : ℕ) :
+@[simp] lemma shiftL_qreg (r : Register_w) (n : ℕ) :
     (shiftL r n).qreg = r.qreg := rfl
 
-@[simp] lemma shiftL_used (r : Register) (n : ℕ) :
+@[simp] lemma shiftL_used (r : Register_w) (n : ℕ) :
     (shiftL r n).used = r.used := rfl
 
-@[simp] lemma shiftL_shift (r : Register) (n : ℕ) :
+@[simp] lemma shiftL_shift (r : Register_w) (n : ℕ) :
     (shiftL r n).shift = r.shift + n := rfl
 
-@[simp] lemma shiftR_qreg (r : Register) (n : ℕ) :
+@[simp] lemma shiftR_qreg (r : Register_w) (n : ℕ) :
     (shiftR r n).qreg = r.qreg := rfl
 
-@[simp] lemma shiftR_used (r : Register) (n : ℕ) :
+@[simp] lemma shiftR_used (r : Register_w) (n : ℕ) :
     (shiftR r n).used = r.used := rfl
 
-@[simp] lemma shiftR_shift (r : Register) (n : ℕ) :
+@[simp] lemma shiftR_shift (r : Register_w) (n : ℕ) :
     (shiftR r n).shift = r.shift - n := rfl
 
 
@@ -88,33 +88,33 @@ noncomputable def negate (r : Register) : Register :=
 
 namespace StateOps
 
-/-- Overwrite register `i` in the state. -/
-def setReg {k : ℕ} (σ : State k) (i : Fin k) (r : Register) : State k :=
+/-- Overwrite Register_w `i` in the state. -/
+def setReg {k : ℕ} (σ : State k) (i : Fin k) (r : Register_w) : State k :=
   fun j => if h : j = i then (Eq.rec r h.symm) else σ j
 
-@[simp] lemma setReg_self {k : ℕ} (σ : State k) (i : Fin k) (r : Register) :
+@[simp] lemma setReg_self {k : ℕ} (σ : State k) (i : Fin k) (r : Register_w) :
     setReg σ i r i = r := by
   simp [setReg]
 
-@[simp] lemma setReg_other {k : ℕ} (σ : State k) (i j : Fin k) (r : Register)
+@[simp] lemma setReg_other {k : ℕ} (σ : State k) (i j : Fin k) (r : Register_w)
     (h : j ≠ i) :
     setReg σ i r j = σ j := by
   simp [setReg, h]
 
-/-- Logical left shift of register `i` in the state by `n` bits. -/
+/-- Logical left shift of Register_w `i` in the state by `n` bits. -/
 def shiftLReg {k : ℕ} (σ : State k) (i : Fin k) (n : ℕ) : State k :=
   setReg σ i (shiftL (σ i) n)
 
-/-- Logical right shift of register `i` in the state by `n` bits. -/
+/-- Logical right shift of Register_w `i` in the state by `n` bits. -/
 def shiftRReg {k : ℕ} (σ : State k) (i : Fin k) (n : ℕ) : State k :=
   setReg σ i (shiftR (σ i) n)
 
-/-- Negate register `i` in the state. -/
+/-- Negate Register_w `i` in the state. -/
 noncomputable def negateReg {k : ℕ} (σ : State k) (i : Fin k) : State k :=
   setReg σ i (negate (σ i))
 
 /-- **State-level windowed add**:
-    apply the low-level `add` to registers `dst` and `src` using
+    apply the low-level `add` to Register_ws `dst` and `src` using
     explicit ranges, and update only `dst` in the state. -/
 noncomputable def addReg {k : ℕ} (σ : State k)
     (dst src : Fin k) (dst_ran src_ran : ℕ × ℕ) : State k :=
@@ -196,7 +196,7 @@ axiom compileOp_addScaled_neg
 
 /-- Axiom: the compiled negative `addScaled` is the inverse of the
     positive (sign = false) `addScaled` at the qubit level. -/
-axiom compileOp_addScaled_neg_inverse
+axiom compileOp_addScaled_neg_left_inverse
   {k : ℕ} (σ : Qubits.State k) (dst src : Fin k) (sh : ℕ) :
   let (progNeg, _σNeg) := compileOp_addScaled_neg σ dst src sh
   let dst_ran : ℕ × ℕ := Qubits.logicalRange (σ dst)
@@ -205,6 +205,14 @@ axiom compileOp_addScaled_neg_inverse
     Qubits.valid_operation.add dst src dst_ran src_ran
   Qubits.applyProg (opPos :: progNeg) σ = σ
 
+axiom compileOp_addScaled_neg_right_inverse
+  {k : ℕ} (σ : Qubits.State k) (dst src : Fin k) (sh : ℕ) :
+  let (progNeg, _σNeg) := compileOp_addScaled_neg σ dst src sh
+  let dst_ran : ℕ × ℕ := Qubits.logicalRange (σ dst)
+  let src_ran : ℕ × ℕ := Qubits.shiftedRange (σ src) sh
+  let opPos : Qubits.valid_operation k :=
+    Qubits.valid_operation.add dst src dst_ran src_ran
+  Qubits.applyProg (progNeg++[opPos]) σ = σ
 /-- Compile *one* integer-level op, threading the current qubit layout.
 
 Returns:
@@ -252,7 +260,7 @@ noncomputable def compileOp {k : ℕ}
       ([opQ], σ')
 
 /-- Compile a whole list of integer-level ops, threading the qubit layout. -/
-noncomputable def compileProgram {k : ℕ}
+noncomputable def compileProgramAux {k : ℕ}
     (σ0 : Qubits.State k) (ops : Prog k) :
     Qubits.QProg k × Qubits.State k :=
   match ops with
@@ -260,9 +268,13 @@ noncomputable def compileProgram {k : ℕ}
       ([], σ0)
   | op :: ops' =>
       let (prog1, σ1) := compileOp σ0 op
-      let (prog2, σ2) := compileProgram σ1 ops'
+      let (prog2, σ2) := compileProgramAux σ1 ops'
       (prog1 ++ prog2, σ2)
 
+
+noncomputable def compile_Prog {k}
+  (σ0 : Qubits.State k) (ops : Prog k) :
+    Qubits.QProg k := (compileProgramAux σ0 ops).1
 
 /-
 ############################################################
@@ -281,10 +293,10 @@ Concrete "PhaseProduct-style" architecture state:
   z1 : n/2 bits
 -/
 
-/-- Number of registers in the PhaseProduct layout. -/
+/-- Number of Register_ws in the PhaseProduct layout. -/
 def PP_k : ℕ := 4
 
-/-- Indices of the logical registers. -/
+/-- Indices of the logical Register_ws. -/
 def idx_x0 : Fin PP_k := ⟨0, by decide⟩
 def idx_x1 : Fin PP_k := ⟨1, by decide⟩
 def idx_z0 : Fin PP_k := ⟨2, by decide⟩
@@ -340,11 +352,11 @@ theorem compile_PP_ops
   let src_ran : ℕ × ℕ := Qubits.shiftedRange (σ1 idx_x0) 0
   let op2 : Qubits.valid_operation PP_k :=
     Qubits.valid_operation.add idx_z0 idx_x0 dst_ran src_ran
-  compileProgram σ0 PP_ops
+  compileProgramAux σ0 PP_ops
       =
       ( [ Qubits.valid_operation.shiftL idx_x0 1, op2 ],
         Qubits.apply op2 σ1 ) := by
-  simp [PP_ops, compileProgram, compileOp]
+  simp [PP_ops, compileProgramAux, compileOp]
 
 /-- Concrete, range-resolved description of `PP_ops` compilation. -/
 theorem compile_PP_ops_concrete
@@ -355,14 +367,14 @@ theorem compile_PP_ops_concrete
     Qubits.valid_operation.shiftL idx_x0 1
   let op2 : Qubits.valid_operation PP_k :=
     Qubits.valid_operation.add idx_z0 idx_x0 (0, m) (1, 1 + m)
-  compileProgram σ0 PP_ops
+  compileProgramAux σ0 PP_ops
       =
       ( [op1, op2],
         Qubits.apply op2 (Qubits.apply op1 σ0) ) := by
   intro m σ0 op1 op2
   simp [m, σ0, op1, op2,
         PP_ops,
-        compileProgram, compileOp,
+        compileProgramAux, compileOp,
         PP_initState,
         Qubits.apply,
         Qubits.logicalRange, Qubits.shiftedRange,
@@ -379,7 +391,7 @@ theorem compile_PP_ops_concrete
 
 The ADDs use windows `(0,m)` on both destination and source, which is
 exactly what `compileOp` produces when starting from `PP_initState`
-(where all four registers have `shift = 0`, `used = m`). -/
+(where all four Register_ws have `shift = 0`, `used = m`). -/
 def PP_ops_2_prefix (m : ℕ) : QProg PP_k :=
   [ valid_operation.phaseProduct idx_x0,
     valid_operation.phaseProduct idx_z0,
@@ -409,7 +421,7 @@ theorem compile_PP_ops_2
   let σ8  : Qubits.State PP_k := Qubits.applyProg (PP_ops_2_prefix m) σ0
   let res1 := compileOp_addScaled_neg σ8 idx_x1 idx_x0 0
   let res2 := compileOp_addScaled_neg res1.snd idx_z1 idx_z0 0
-  compileProgram σ0 PP_ops_2
+  compileProgramAux σ0 PP_ops_2
     =
     ( PP_ops_2_prefix m ++ res1.fst ++ res2.fst,
       res2.snd ) := by
@@ -430,7 +442,7 @@ open Compile
 
 /-- For any state, compiling `shiftL i n` produces exactly one
     qubit op `shiftL i n`, and the resulting qubit state is
-    `shiftLReg` on that register. -/
+    `shiftLReg` on that Register_w. -/
 theorem compileOp_shiftL_sound
     {k : ℕ} (σ : Qubits.State k) (i : Fin k) (n : ℕ) :
   compileOp σ (Operations.valid_ops.shiftL i n)
@@ -439,7 +451,7 @@ theorem compileOp_shiftL_sound
   simp [compileOp, Qubits.StateOps.shiftLReg, apply]
 
 /-- Similarly, compiling `shiftR i n` produces one qubit `shiftR i n`
-    and the state-level effect is `shiftRReg` on that register. -/
+    and the state-level effect is `shiftRReg` on that Register_w. -/
 theorem compileOp_shiftR_sound
     {k : ℕ} (σ : Qubits.State k) (i : Fin k) (n : ℕ) :
   compileOp σ (Operations.valid_ops.shiftR i n)
@@ -535,25 +547,188 @@ theorem compileOp_sound {k : ℕ}
 
 theorem compileProgram_sound {k : ℕ}
     (σ₀ : Qubits.State k) (ops : List (Operations.valid_ops k)) :
-  let res := compileProgram σ₀ ops
+  let res := compileProgramAux σ₀ ops
   Qubits.applyProg res.1 σ₀ = res.2 := by
   simp
   induction ops generalizing σ₀ with
   | nil =>
-      simp [compileProgram]
+      simp [compileProgramAux]
   | cons op ops ih =>
       -- Expand the definition of compileProgram for (op :: ops)
-      simp [compileProgram] at ih ⊢
+      simp [compileProgramAux] at ih ⊢
       cases h1 : compileOp σ₀ op with
       | mk prog1 σ1 =>
         have hstep : Qubits.applyProg prog1 σ₀ = σ1 := by
           -- single-step correctness for this op
           have := compileOp_sound σ₀ op
           simpa [h1] using this
-        cases h2 : compileProgram σ1 ops with
+        cases h2 : compileProgramAux σ1 ops with
         | mk prog2 σ2 =>
           have htail : Qubits.applyProg prog2 σ1 = σ2 := by
             have := ih σ1
             simpa [h2] using this
           have := Qubits.applyProg_append prog1 prog2 σ₀
           aesop
+
+
+axiom decodeRegister {k : ℕ} : Qubits.Register_w → Register k
+
+/-- Interpret a wiring-level state as a classical integer-coefficient state. -/
+noncomputable def decodeState {k : ℕ} (σ : Qubits.State k) : _root_.State k :=
+  fun i => decodeRegister (σ i)
+
+
+axiom decode_shiftLReg
+  {k : ℕ} (σQ : Qubits.State k) (i : Fin k) (n : ℕ) :
+  decodeState (Qubits.StateOps.shiftLReg σQ i n)
+    = State.shiftLReg (decodeState σQ) i n
+
+/-- Classical semantics for `shiftL`. -/
+axiom applyOp_shiftL
+  {k : ℕ} (σC :  _root_.State k) (i : Fin k) (n : ℕ) :
+  applyOp? σC (Operations.valid_ops.shiftL i n)
+    = some (State.shiftLReg σC i n)
+
+/-- When the qubit-level right shift is applied, the classical right
+    shift is defined and matches the decoded result. -/
+axiom decode_shiftRReg
+  {k : ℕ} (σQ : Qubits.State k) (i : Fin k) (n : ℕ) :
+  State.shiftRReg? (decodeState σQ) i n
+    = some (decodeState (Qubits.StateOps.shiftRReg σQ i n))
+
+/-- Classical semantics for `shiftR`: just the `shiftRReg?` result. -/
+axiom applyOp_shiftR
+  {k : ℕ} (σC : _root_.State k) (i : Fin k) (n : ℕ) :
+  applyOp? σC (Operations.valid_ops.shiftR i n)
+    = State.shiftRReg? σC i n
+
+/-- Decoding commutes with negation of register `i`. -/
+axiom decode_negateReg
+  {k : ℕ} (σQ : Qubits.State k) (i : Fin k) :
+  decodeState (Qubits.StateOps.negateReg σQ i)
+    = State.negateReg (decodeState σQ) i
+
+/-- Classical semantics for `negate`. -/
+axiom applyOp_negate
+  {k : ℕ} (σC : _root_.State k) (i : Fin k) :
+  applyOp? σC (Operations.valid_ops.negate i)
+    = some (State.negateReg σC i)
+
+/-- Decoding commutes with the *scaled* add at the state level,
+    in the `negSrc = false` case. -/
+axiom decode_addScaledReg_pos
+  {k : ℕ} (σQ : Qubits.State k) (dst src : Fin k) (sh : ℕ) :
+  let dst_ran : ℕ × ℕ := Qubits.logicalRange (σQ dst)
+  let src_ran : ℕ × ℕ := Qubits.shiftedRange (σQ src) sh
+  decodeState (Qubits.StateOps.addReg σQ dst src dst_ran src_ran)
+    = State.addScaledReg (decodeState σQ) dst src false sh
+
+
+/-- Classical semantics for `addScaled dst src false sh`. -/
+axiom applyOp_addScaled_pos
+  {k : ℕ} (σC : _root_.State k) (dst src : Fin k) (sh : ℕ) :
+  applyOp? σC (Operations.valid_ops.addScaled dst src false sh)
+    = some (State.addScaledReg σC dst src false sh)
+
+/-- Decode-level correctness of the *negative* addScaled compilation. -/
+axiom decode_compileOp_addScaled_neg
+  {k : ℕ} (σQ : Qubits.State k) (dst src : Fin k) (sh : ℕ) :
+  let σC := decodeState σQ
+  let res := compileOp_addScaled_neg σQ dst src sh
+  decodeState res.2
+    = State.addScaledReg σC dst src true sh
+
+
+/-- Single-step refinement: one integer op vs its compiled qubit program. -/
+theorem compileOp_respects_decode
+    {k : ℕ} (σQ : Qubits.State k) (op : Operations.valid_ops k) :
+  let σC    := decodeState σQ
+  let res   := compileOp σQ op
+  let σQ'   := res.2
+  decodeState σQ'
+    = run? [op] σC := by
+  cases op with
+  |shiftL i sh=>{
+    simp[compileOp,applyOp_shiftL,← decode_shiftLReg,apply]
+  }
+  |shiftR i sh=>{
+    simp[compileOp,applyOp_shiftR,← decode_shiftRReg,apply]
+    cases ((decodeState σQ).shiftRReg? i sh)
+    all_goals simp
+  }
+  |negate=>{
+    simp[compileOp,applyOp_negate,← decode_negateReg,apply]
+  }
+  |addScaled dst src sign sh=>{
+    cases sign with
+    | false =>
+      simp [compileOp,apply,decode_addScaledReg_pos]
+    | true =>
+      have:=decode_compileOp_addScaled_neg σQ dst src sh
+      simp[compileOp] at *
+      simp[this]
+  }
+  |phaseProduct i=>{
+    simp[applyOp?,compileOp,apply]
+  }
+
+
+theorem compileProgram_respects_decode
+    {k : ℕ} (σQ₀ : Qubits.State k) (ops : List (Operations.valid_ops k)) :
+  let σC₀ := decodeState σQ₀
+  let res := Compile.compileProgramAux σQ₀ ops
+  decodeState res.2
+    = run? ops σC₀ :=
+by
+
+  intro σC₀ res
+  induction ops generalizing σQ₀ with
+  | nil =>
+      -- ops = []
+      simp [run?];aesop
+  | cons op ops ih =>
+      simp at ih ⊢
+      cases h1 : compileOp σQ₀ op with
+      | mk prog1 σQ₁ =>
+        -- use the single-step refinement on `op`:
+        have hstep :
+          decodeState σQ₁
+            =run? [op] (decodeState σQ₀) := by
+          -- this is where you use compileOp_respects_decode
+          have := compileOp_respects_decode σQ₀ op
+          simpa [h1] using this
+
+        -- Now recursively compile the tail:
+        cases h2 : compileProgramAux σQ₁ ops with
+        | mk prog2 σQ₂ =>
+          -- use IH on σQ₁, ops:
+          have hres : res.2 = σQ₂ := by
+            -- unfold res and compileProgramAux for the cons case,
+            -- then rewrite with h1 and h2
+            unfold res at *
+            simp [compileProgramAux, h1, h2] at *
+          simp [hres]  -- LHS is now `some (decodeState σQ₂)`
+          -- Now case-split on applyOp? σC₀ op
+          cases hApply : applyOp? σC₀ op with
+          | none =>
+              -- In this branch, run? [op] σC₀ = none
+              have : run? [op] σC₀ = none := by
+                simp [run?, hApply]
+              have := hstep
+              simp [run?] at this
+              aesop
+          | some σC₁ =>
+              -- From hstep and this branch, we can identify σC₁ = decodeState σQ₁
+              have hC₁ : σC₁ = decodeState σQ₁ := by
+                -- hstep: some (decodeState σQ₁) = run? [op] σC₀
+                -- rewrite run? [op] using hApply
+                have := hstep
+                simp [run?] at this
+                aesop
+              -- Apply induction hypothesis on σQ₁ and ops
+              have htail := ih σQ₁
+              have htail'' : some (decodeState σQ₂) = run? ops σC₁ := by
+                simp[h2] at htail
+                simp[htail]
+                rw[hC₁]
+              simpa using htail''
