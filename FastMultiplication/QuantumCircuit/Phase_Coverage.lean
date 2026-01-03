@@ -6,39 +6,201 @@ import FastMultiplication.QuantumCircuit.Abstract_circ
 
 open Operations Compile
 
+section
+
+variable [QubitPrimitives]
+
 @[simp] lemma applyProg_nil {k} (σ : Qubits.State k) :
   Qubits.applyProg ([] : Qubits.QProg k) σ = σ := rfl
 
-@[simp] lemma applyProg_cons {k} (op : Qubits.valid_operation k) (p : Qubits.QProg k) (σ : Qubits.State k) :
+@[simp] lemma applyProg_cons {k}
+    (op : Qubits.valid_operation k) (p : Qubits.QProg k) (σ : Qubits.State k) :
   Qubits.applyProg (op :: p) σ = Qubits.applyProg p (Qubits.apply op σ) := rfl
-/-- Wiring-level "matches at point" for a *single register*.
 
+/--
 This is the qubit analogue of
+  `abbrev MatchesAt (k : Nat) := Register k → Point → Bool`
+on the classical side, but now the register type is `Qubits.Register_w`. -/
+abbrev QMatchesAt (_k : Nat) := Qubits.Register_w → Point → Bool
 
-  abbrev MatchesAt (k : Nat) := Register k → Point → Bool
-
-on the classical side, but now the register type is `Qubits.Register`. -/
-abbrev QMatchesAt (k : Nat) := Qubits.Register_w → Point → Bool
-
-/-- Wiring-level "matches at point" that can see the *whole state* and an index.
-
-Quibit analogue of
- abbrev MatchesAtState (k : Nat) := State k → Fin k → Point → Bool. -/
+/--
+Qubit analogue of
+ `abbrev MatchesAtState (k : Nat) := State k → Fin k → Point → Bool`. -/
 abbrev QMatchesAtState (k : Nat) := Qubits.State k → Fin k → Point → Bool
-
 
 /-- Adapter: lift a register-only wiring matcher to a state-level wiring matcher. -/
 def QMatchesAtState.ofRegister {k : Nat} (m : QMatchesAt k) : QMatchesAtState k :=
   fun σ i pt => m (σ i) pt
 
-/-- Inductive wiring-level phase-product coverage, mirroring `PhaseProductCoverageM`
-    but over `Qubits.State` and `Qubits.valid_operation`.
 
-    Intuition:
-    * `nil`      : empty program covers an empty point list.
-    * `step_op`  : non-`phaseProduct` op just steps the state via `Qubits.apply`.
-    * `step_phase` : when we hit a `phaseProduct i`, we must consume exactly one
-                     point from the "todo" list for which `M σ i pt` holds. -/
+variable {k : ℕ} [AddScaledNegBackend k] [DecodeBackend k]
+
+inductive QPhaseProductCoverage_compiled (hk : 0 < k) :
+    Prog k → Qubits.State k → List Point → Prop where
+| nil {σQ} :
+    QPhaseProductCoverage_compiled hk [] σQ []
+
+| step_op
+    {op : valid_ops k} {ps : Prog k}
+    {σQ : Qubits.State k} {pts : List Point}
+    (hrest      : QPhaseProductCoverage_compiled hk ps (compileOp σQ op).2 pts) :
+    QPhaseProductCoverage_compiled hk (op :: ps) σQ pts
+
+| step_phase
+    {i : Fin k} {ps : Prog k}
+    {σQ : Qubits.State k} {pts pts' : List Point}
+    (hconsume :
+      List.eraseFirstMatch?
+        (fun pt => matchesAt_pointRow_state hk (decodeState σQ) i pt) pts
+      = some pts')
+    (hrest : QPhaseProductCoverage_compiled hk ps σQ pts') :
+    QPhaseProductCoverage_compiled hk (valid_ops.phaseProduct i :: ps) σQ pts
+
+
+
+def PhaseCovMotive
+    (hk : 0 < k)
+    (p : Prog k) (σC : State k) (pts : List Point) : Prop :=
+  ∀ σQ : Qubits.State k,
+    decodeState σQ = σC →
+    QPhaseProductCoverage_compiled (k := k) hk p σQ pts
+
+
+lemma phaseCoverage_preserved_by_compilation_stronger
+    (hk : 0 < k)
+    {p : Prog k} {σC : State k} {pts : List Point}
+    (hClass : PhaseProductCoverage hk p σC pts) :
+  PhaseCovMotive (k := k) hk p σC pts := by
+  -- Induction on the classical coverage derivation
+  induction hClass with
+  | nil =>
+      intro σQ hdec
+      exact QPhaseProductCoverage_compiled.nil
+
+  | step_op hstep hrest IH =>
+      rename_i op ps σC₀ τ pts2
+      intro σQ hdec
+      cases hcomp : compileOp σQ op with
+      | mk prog1 σQ' =>
+        have hdecode' :
+          some (decodeState σQ') = run? [op] σC₀ := by
+            have := compileOp_respects_decode (k := k) σQ op
+            simpa [hcomp, hdec] using this
+
+        have hrun : run? [op] σC₀ = some τ := by
+          simp [run?, hstep]
+
+        have hDec1 : decodeState σQ' = τ := by
+          have hEq : some (decodeState σQ') = some τ := by
+            simpa [hrun] using hdecode'
+          exact Option.some.inj hEq
+
+        have hTailQ' :
+          QPhaseProductCoverage_compiled (k := k) hk ps σQ' pts2 :=
+          IH σQ' hDec1
+
+        have hState : (compileOp σQ op).2 = σQ' := by
+          simp [hcomp]
+
+        have hTailQ :
+          QPhaseProductCoverage_compiled (k := k) hk ps (compileOp σQ op).2 pts2 := by
+          simpa [hState] using hTailQ'
+
+        apply QPhaseProductCoverage_compiled.step_op (k := k) (hk := hk)
+        apply hTailQ
+
+  | step_phase hconsume hrest IH =>
+      rename_i i ps σC pts pts'
+      intro σQ hdec
+      have hconsume' :
+        List.eraseFirstMatch?
+          (fun pt ↦ matchesAt_pointRow_state hk (decodeState σQ) i pt)
+          pts
+        = some pts' := by
+        simpa [hdec] using hconsume
+
+      have hrest_compiled :
+        QPhaseProductCoverage_compiled (k := k) hk ps σQ pts' :=
+        IH σQ hdec
+
+      exact QPhaseProductCoverage_compiled.step_phase
+        (k := k) (hk := hk) hconsume' hrest_compiled
+
+
+theorem phaseCoverage_preserved_by_compilation
+    (hk : 0 < k)
+    (p : Prog k) (σQ₀ : Qubits.State k) (pts : List Point)
+    (hp : PhaseProductCoverage hk p (decodeState σQ₀) pts) :
+  QPhaseProductCoverage_compiled (k := k) hk p σQ₀ pts := by
+  have h := phaseCoverage_preserved_by_compilation_stronger
+              (k := k) hk hp
+  unfold PhaseCovMotive at h
+  exact h σQ₀ rfl
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 inductive QPhaseProductCoverageM {k : ℕ} (M : QMatchesAtState k) :
     Qubits.QProg k → Qubits.State k → List Operations.Point → Prop
 | nil {σ : Qubits.State k} :
@@ -55,277 +217,231 @@ inductive QPhaseProductCoverageM {k : ℕ} (M : QMatchesAtState k) :
     (hrest : QPhaseProductCoverageM M ps σ pts') :
     QPhaseProductCoverageM M (Qubits.valid_operation.phaseProduct i :: ps) σ pts
 
-/-- Wiring-level phase-coverage predicate using a given wiring matcher `M`. -/
-def QPhaseProductCoverage {k : ℕ} (M : QMatchesAtState k) :
-    Qubits.QProg k → Qubits.State k → List Operations.Point → Prop :=
-  QPhaseProductCoverageM (k := k) M
 
 
-/-- Wiring-level matcher that first decodes a qubit state to a classical state
-    and then uses the classical `matchesAt_pointRow_state` row-matcher.
-
-    This is the natural bridge for correctness theorems: it says
-    "the qubit register at index `i` matches the point-row *when decoded*". -/
-noncomputable def Q_matchesAt_pointRow_state {k : Nat} (hk : 0 < k) : QMatchesAtState k :=
-  fun σQ i pt =>
-    matchesAt_pointRow_state (k := k) hk (decodeState σQ) i pt
-
-/-- Wiring-level phase coverage using the decoded Vandermonde row matcher. -/
-def QPhaseProductCoverage_decoded {k : ℕ} (hk : 0 < k) :
-    Qubits.QProg k → Qubits.State k → List Operations.Point → Prop :=
-  QPhaseProductCoverage (k := k) (Q_matchesAt_pointRow_state (k := k) hk)
 
 
-open Compile
-open PhaseProductCoverage
 
-/-- **Phase coverage is preserved by compilation, under decoding.** -/
 
-def PhaseCovMotive
-    {k : ℕ} (hk : 0 < k)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/--
+Quibit-level phase coverage: now the inductive tracks both
+the integer-level program `p` and its compiled qubit-level program `q`.
+-/
+inductive QPhaseProductCoverage_qubit (hk : 0 < k) :
+    Prog k → Qubits.QProg k → Qubits.State k → List Point → Prop where
+| nil {σQ} :
+    QPhaseProductCoverage_qubit hk [] [] σQ []
+
+| step_op
+    {op : valid_ops k} {ps : Prog k}
+    {prog1 prog2 : Qubits.QProg k}
+    {σQ σQ' : Qubits.State k} {pts : List Point}
+    (hcompile : compileOp σQ op = (prog1, σQ'))
+    (hrest    : QPhaseProductCoverage_qubit hk ps prog2 σQ' pts) :
+    QPhaseProductCoverage_qubit hk (op :: ps) (prog1 ++ prog2) σQ pts
+
+| step_phase
+    {i : Fin k} {ps : Prog k}
+    {qprog : Qubits.QProg k}
+    {σQ : Qubits.State k} {pts pts' : List Point}
+    (hconsume :
+      List.eraseFirstMatch?
+        (fun pt => matchesAt_pointRow_state hk (decodeState σQ) i pt) pts
+      = some pts')
+    (hrest : QPhaseProductCoverage_qubit hk ps qprog σQ pts') :
+    -- on the qubit side we *know* the next compiled gate is a phaseProduct
+    QPhaseProductCoverage_qubit hk
+      (valid_ops.phaseProduct i :: ps)
+      (Qubits.valid_operation.phaseProduct i :: qprog)
+      σQ pts
+
+
+
+/-
+Adapter motive: given classical coverage for `(p, σC, pts)`, we want to
+prove that for every wiring-level state `σQ` decoding to `σC`, the
+compiled qubit program `compile_Prog σQ p` satisfies qubit coverage.
+-/
+def PhaseCovMotive_qubit
+    (hk : 0 < k)
     (p : Prog k) (σC : State k) (pts : List Point) : Prop :=
   ∀ σQ : Qubits.State k,
     decodeState σQ = σC →
-    QPhaseProductCoverage_decoded hk (compileProgramAux σQ p).1 σQ pts
+    QPhaseProductCoverage_qubit (k := k) hk p (compile_Prog σQ p) σQ pts
 
-lemma QPhaseProductCoverage_prepend_prog
-    {k : ℕ} {M : QMatchesAtState k}
-    (p₁ p₂ : Qubits.QProg k) (σ₀ : Qubits.State k) (pts : List Point)
-    (hTail : QPhaseProductCoverageM M p₂ (Qubits.applyProg p₁ σ₀) pts) :
-    QPhaseProductCoverageM M (p₁ ++ p₂) σ₀ pts :=
-by
-  induction p₁ generalizing σ₀ with
-  | nil =>
-      -- p₁ = []
-      -- then applyProg p₁ σ₀ = σ₀ and [] ++ p₂ = p₂
-      simpa [Qubits.applyProg] using hTail
-
-  | cons op p₁ ih =>
-      -- p₁ = op :: p₁
-      -- we know: hTail : QPhaseProductCoverageM M p₂ (applyProg (op :: p₁) σ₀) pts
-      have hTail' :
-          QPhaseProductCoverageM M p₂
-            (Qubits.applyProg p₁ (Qubits.apply op σ₀)) pts := by
-        -- unfold applyProg (op :: p₁) σ₀ = applyProg p₁ (apply op σ₀)
-        simpa [Qubits.applyProg] using hTail
-
-      -- Use IH to prepend p₁ in front of p₂, starting at (apply op σ₀)
-      have hRest :
-          QPhaseProductCoverageM M (p₁ ++ p₂)
-            (Qubits.apply op σ₀) pts := by
-        aesop
-
-      -- Now build one more `step_op` for the head `op`
-      apply QPhaseProductCoverageM.step_op
-        (M := M)
-        (op := op)
-        (ps := p₁ ++ p₂)
-        (σ := σ₀)
-        (τ := Qubits.apply op σ₀)
-        (pts := pts)
-        (by rfl)    -- hstep : apply op σ₀ = apply op σ₀
-        hRest
-
-
-
-lemma phaseCov_stepOp_case
-    {k : ℕ} (hk : 0 < k)
-    (op : valid_ops k)(ps : Prog k)
-    (σC τ : State k)(pts : List Point)
-    (hstep : applyOp? σC op = some τ)
-    (hrest : PhaseProductCoverage hk ps τ pts)
-    (IH : PhaseCovMotive hk ps τ pts) :
-    PhaseCovMotive hk (op :: ps) σC pts := by
-  -- unfold the motive
-  intro σQ₀ hdec
-  classical
-
-  ----------------------------------------------------------------
-  -- 1. Compile op at the qubit level and name the pieces
-  ----------------------------------------------------------------
-  -- Create prog1 and σQ₁ *with an equality*:
-  cases h1 : compileOp σQ₀ op with
-  | mk prog1 σQ₁ =>
-    have hDec1 : decodeState σQ₁ = τ := by
-      -- sketch:
-      --   some (decodeState σQ₁) = run? [op] (decodeState σQ₀)
-      --   = applyOp? (decodeState σQ₀) op
-      --   = some τ
-      -- so decodeState σQ₁ = τ
-      have hRun :=
-        compileOp_respects_decode (σQ := σQ₀) (op := op)
-      -- hRun : some (decodeState σQ₁) = run? [op] (decodeState σQ₀)
-      have hRunSingle :
-        run? [op] (decodeState σQ₀) =
-          applyOp? (decodeState σQ₀) op := by
-        simp [run?]
-        aesop
-      have : some (decodeState σQ₁) = some τ := by
-        calc
-          some (decodeState σQ₁)
-              = run? [op] (decodeState σQ₀) := by simp_all
-          _   = applyOp? (decodeState σQ₀) op := hRunSingle
-          _   = some τ := by simpa [hdec] using hstep
-      exact Option.some.inj this
-
-    -- 3. Apply the IH to the tail `ps`, starting from σQ₁
-    have hTail :
-        QPhaseProductCoverage_decoded hk
-          (compileProgramAux σQ₁ ps).1 σQ₁ pts :=
-      IH σQ₁ hDec1
-
-    -- 4. Qubit semantics of the compiled op (prog1, σQ₁)
-    have hProgSound : Qubits.applyProg prog1 σQ₀ = σQ₁ := by
-      have := compileOp_sound (σ := σQ₀) (op := op)
-      simp at this
-      aesop
-
-    -- 5. Use the prepend lemma to stick `prog1` in front of the tail program
-    have hTail' :
-        QPhaseProductCoverageM (Q_matchesAt_pointRow_state hk)
-          (compileProgramAux σQ₁ ps).1
-          (Qubits.applyProg prog1 σQ₀) pts := by
-      -- just rephrase hTail with σQ₁ = applyProg prog1 σQ₀
-      simpa [QPhaseProductCoverage_decoded, hProgSound] using hTail
-
-    have hFull :
-        QPhaseProductCoverageM (Q_matchesAt_pointRow_state hk)
-          (prog1 ++ (compileProgramAux σQ₁ ps).1) σQ₀ pts := by
-      have:=QPhaseProductCoverage_prepend_prog
-        (M := Q_matchesAt_pointRow_state hk)
-        (p₁ := prog1)
-        (p₂ := (compileProgramAux σQ₁ ps).1)
-        (σ₀ := σQ₀) (pts := pts)
-        hTail'
-      aesop
-
-    -- 6. Finally, rewrite `compileProgramAux σQ₀ (op :: ps)` to that concatenation
-    have hComp :
-      compileProgramAux σQ₀ (op :: ps)
-        = (prog1 ++ (compileProgramAux σQ₁ ps).1,
-          (compileProgramAux σQ₁ ps).2) := by
-      simp [compileProgramAux, h1]
-
-    -- wrap up
-    show QPhaseProductCoverage_decoded hk
-        (compileProgramAux σQ₀ (op :: ps)).1 σQ₀ pts
-    -- unfold and rewrite using hComp
-    simpa [QPhaseProductCoverage_decoded, hComp] using hFull
-
-
-lemma phaseCov_phase_case
-    {k : ℕ} (hk : 0 < k)
-    (i : Fin k)
-    {ps : Prog k} {σ : State k}
-    {pts1 pts2 : List Point}
-    (hconsume :
-      List.eraseFirstMatch?
-        (fun pt => matchesAt_pointRow_state hk σ i pt) pts1 = some pts2)
-    (IH :
-      ∀ σQ₀ : Qubits.State k,
-        decodeState σQ₀ = σ →
-          QPhaseProductCoverage_decoded hk
-            (compileProgramAux σQ₀ ps).1 σQ₀ pts2) :
-    ∀ σQ₀ : Qubits.State k,
-      decodeState σQ₀ = σ →
-        QPhaseProductCoverage_decoded hk
-          (compileProgramAux σQ₀ (valid_ops.phaseProduct i :: ps)).1 σQ₀ pts1 := by
-  intro σQ₀ hdec
-  have hTail :
-      QPhaseProductCoverage_decoded hk
-        (compileProgramAux σQ₀ ps).1 σQ₀ pts2 :=
-    IH σQ₀ hdec
-  -- unfold the `_decoded` abbreviation
-  have hTail' :
-      QPhaseProductCoverageM (Q_matchesAt_pointRow_state hk)
-        (compileProgramAux σQ₀ ps).1 σQ₀ pts2 := by
-    simpa [QPhaseProductCoverage_decoded] using hTail
-
-  have hconsumeQ :
-      List.eraseFirstMatch?
-        (fun pt => Q_matchesAt_pointRow_state hk σQ₀ i pt) pts1 = some pts2 := by
-    simpa [Q_matchesAt_pointRow_state, hdec] using hconsume
-
-  have hPhase :
-      QPhaseProductCoverageM (Q_matchesAt_pointRow_state hk)
-        (Qubits.valid_operation.phaseProduct i
-           :: (compileProgramAux σQ₀ ps).1)
-        σQ₀ pts1 :=
-    QPhaseProductCoverageM.step_phase
-      (M      := Q_matchesAt_pointRow_state hk)
-      (i      := i)
-      (ps     := (compileProgramAux σQ₀ ps).1)
-      (σ      := σQ₀)
-      (pts    := pts1)
-      (pts'   := pts2)
-      (hconsume := hconsumeQ)
-      (hrest    := hTail')
-
-  have hOp :
-      compileOp σQ₀ (valid_ops.phaseProduct i)
-        = ([Qubits.valid_operation.phaseProduct i], σQ₀) := by
-    simp [compileOp]
-    aesop
-
-  have hComp :
-      compileProgramAux σQ₀ (valid_ops.phaseProduct i :: ps)
-        = ( [Qubits.valid_operation.phaseProduct i]
-              ++ (compileProgramAux σQ₀ ps).1,
-            (compileProgramAux σQ₀ ps).2 ) := by
-    simp [compileProgramAux, hOp]
-
-  have hPhase_decoded :
-      QPhaseProductCoverage_decoded hk
-        (compileProgramAux σQ₀ (valid_ops.phaseProduct i :: ps)).1
-        σQ₀ pts1 := by
-    have :
-        (compileProgramAux σQ₀ (valid_ops.phaseProduct i :: ps)).1
-          = (Qubits.valid_operation.phaseProduct i
-              :: (compileProgramAux σQ₀ ps).1) := by
-      simp[hComp]
-    simpa [QPhaseProductCoverage_decoded, this] using hPhase
-
-  exact hPhase_decoded
-
-lemma phaseCoverage_preserved_by_compileAux
-    {k} (hk : 0 < k) (p : Prog k) (σC₀ : State k) (pts : List Point)
-    (hClass : PhaseProductCoverage hk p σC₀ pts) :
-  ∀ σQ₀, decodeState σQ₀ = σC₀ →
-    QPhaseProductCoverage_decoded hk (compileProgramAux σQ₀ p).1 σQ₀ pts :=
-by
-  -- induction with motive = PhaseCovMotive hk p σC pts
+/-
+## Main stronger lemma: classical → qubit coverage, for all σQ decoding to σC
+-/
+lemma phaseCoverage_preserved_by_compilation_qubit_stronger
+    (hk : 0 < k)
+    {p : Prog k} {σC : State k} {pts : List Point}
+    (hClass : PhaseProductCoverage hk p σC pts) :
+  PhaseCovMotive_qubit (k := k) hk p σC pts := by
+  -- Induction on the classical coverage derivation
   induction hClass with
   | nil =>
-    intro σQ₀ h
-    unfold QPhaseProductCoverage_decoded QPhaseProductCoverage compileProgramAux
-    simp
-    apply QPhaseProductCoverageM.nil
+      intro σQ hdec
+      have hprog : compile_Prog σQ ([] : Prog k) = ([] : Qubits.QProg k) :=
+        compile_Prog_nil (k := k) σQ
+      simpa [PhaseCovMotive_qubit, hprog] using
+        (QPhaseProductCoverage_qubit.nil (k := k) (hk := hk) (σQ := σQ))
+
   | step_op hstep hrest IH =>
-      intro σQ₀ hdec
       rename_i op ps σC₀ τ pts
-      apply (phaseCov_stepOp_case (hk := hk) op ps σC₀ τ pts hstep (by unfold PhaseProductCoverage;apply hrest) IH)
-      apply hdec
+      intro σQ hdec
+      cases hcomp : compileOp σQ op with
+      | mk prog1 σQ' =>
+        have hdecode' :
+          some (decodeState σQ') = run? [op] σC₀ := by
+            have := compileOp_respects_decode (k := k) σQ op
+            simpa [hcomp, hdec] using this
+
+        have hrun : run? [op] σC₀ = some τ := by
+          simp [run?, hstep]
+
+        -- So decodeState σQ' = τ
+        have hDec1 : decodeState σQ' = τ := by
+          have hEq : some (decodeState σQ') = some τ := by
+            simpa [hrun] using hdecode'
+          exact Option.some.inj hEq
+
+        -- Apply IH at σQ'
+        have hTailQ' :
+          QPhaseProductCoverage_qubit (k := k) hk ps (compile_Prog σQ' ps) σQ' pts :=
+          IH σQ' hDec1
+
+        -- Relate `compile_Prog` on `op :: ps` to `prog1 ++ compile_Prog σQ' ps`
+        have hprog_eq :=
+          compile_Prog_cons (k := k) (σQ := σQ) (op := op) (ps := ps)
+        have hprog_eq' :
+          compile_Prog σQ (op :: ps)
+            = prog1 ++ compile_Prog σQ' ps := by
+          simpa [hcomp] using hprog_eq
+
+        -- Rewrite the qubit-program index and apply step_op
+        refine hprog_eq' ▸ ?_
+        exact QPhaseProductCoverage_qubit.step_op (k := k) (hk := hk)
+          (op := op) (ps := ps)
+          (σQ := σQ) (σQ' := σQ') (pts := pts)
+          (prog1 := prog1) (prog2 := compile_Prog σQ' ps)
+          (hcompile := hcomp)
+          (hrest := hTailQ')
+
   | step_phase hconsume hrest IH =>
-      rename_i i ps σ pts1 pts2
-      have stepCase :=
-        phaseCov_phase_case (k := k) (hk := hk)
-          (i := i)
-          (ps := ps) (σ := σ)
-          (pts1 := pts1) (pts2 := pts2)
-          hconsume IH
-      exact stepCase
+      rename_i i ps σC pts pts'
+      intro σQ hdec
+
+      have hconsume' :
+        List.eraseFirstMatch?
+          (fun pt ↦ matchesAt_pointRow_state hk (decodeState σQ) i pt)
+          pts
+        = some pts' := by
+        simpa [hdec] using hconsume
+
+      have hrest_compiled :
+        QPhaseProductCoverage_qubit (k := k) hk ps (compile_Prog σQ ps) σQ pts' :=
+        IH σQ hdec
+
+      have hprog_eq :=
+        compile_Prog_cons (k := k) (σQ := σQ)
+          (op := valid_ops.phaseProduct i) (ps := ps)
+
+      have hprog_eq' :
+        compile_Prog σQ (valid_ops.phaseProduct i :: ps)
+          = Qubits.valid_operation.phaseProduct i :: compile_Prog σQ ps := by
+        simp [compile_Prog_cons, Compile.compileOp, Qubits.apply] at hprog_eq
+        aesop
+
+      refine hprog_eq' ▸ ?_
+      exact QPhaseProductCoverage_qubit.step_phase (k := k) (hk := hk)
+        (i := i) (ps := ps)
+        (qprog := compile_Prog σQ ps)
+        (σQ := σQ) (pts := pts) (pts' := pts')
+        hconsume'
+        hrest_compiled
 
 
-theorem phaseCoverage_preserved_by_compile
-    {k : ℕ} (hk : 0 < k)
-    (p   : Prog k)
-    (σQ₀ : Qubits.State k)
-    (pts : List Point)
-    (hClass : PhaseProductCoverage hk p (decodeState σQ₀) pts) :
-  let res   := compileProgramAux σQ₀ p
-  let progQ := res.1
-  QPhaseProductCoverage_decoded hk progQ σQ₀ pts := by {
-    have h := phaseCoverage_preserved_by_compileAux (k := k) hk p (decodeState σQ₀) pts hClass
-    intro res progQ
-    simp_all only [progQ, res]
-  }
+theorem phaseCoverage_preserved_to_qubit_prog
+    {k : ℕ} [AddScaledNegBackend k] [DecodeBackend k]
+    (hk : 0 < k)
+    (p : Prog k) (σQ₀ : Qubits.State k) (pts : List Point)
+    (hp : PhaseProductCoverage hk p (decodeState σQ₀) pts) :
+  QPhaseProductCoverage_qubit hk p (compile_Prog σQ₀ p) σQ₀ pts :=
+by
+  have:=phaseCoverage_preserved_by_compilation_qubit_stronger hk hp
+  apply this
+  rfl
