@@ -69,6 +69,120 @@ def eval_prim_op_single [QuantumModel] [RegOps] {k : ℕ}
   | prim_ops.phaseProduct _ =>
       σ
 
+open Operations
+
+/-- Set the `idx`-th entry of a list (if in range). Otherwise leave the list unchanged. -/
+def setAt {α : Type} : List α → Nat → α → List α
+  | [],      _,      _ => []
+  | _ :: xs, 0,      a => a :: xs
+  | x :: xs, idx+1,  a => x :: setAt xs idx a
+/-- Get `lens[idx]` with a default if out of range. -/
+def getLen (curLen : List Nat) (idx : Nat) : Nat :=
+  curLen.getD idx 1
+
+def setLen {k : ℕ} (curLen : List Nat) (i : Fin k) (v : Nat) : List Nat :=
+  setAt curLen i.val v
+
+def incLen {k : ℕ} (curLen : List Nat) (i : Fin k) (n : Nat) : List Nat :=
+  setLen curLen i (getLen curLen i.val + n)
+
+def decLen {k : ℕ} (curLen : List Nat) (i : Fin k) (n : Nat) : List Nat :=
+  setLen curLen i (getLen curLen i.val - n)
+
+def compile_op_to_prim_single {k : ℕ} (op : valid_ops k) (curLen : List Nat) :
+    (List (prim_ops k)) × (List Nat) × (List (Fin k × Nat)) :=
+match op with
+  | .shiftL i n =>
+      -- LSB shift scaffolding => lsb = true in your evaluator
+      ([prim_ops.Alloc i true n], incLen curLen i n, [])
+
+  | .shiftR i n =>
+      ([prim_ops.Free i true n], decLen curLen i n, [])
+
+  | .negate i =>
+      ([prim_ops.negate i], curLen, [])
+
+  | .phaseProduct i =>
+      ([prim_ops.phaseProduct i], curLen, [])
+
+  | .addScaled dst src negSrc sh =>
+      if dst = src then
+        ([], curLen, [])
+      else
+        let negops : List (prim_ops k) :=
+          if negSrc then [prim_ops.negate src] else []
+
+        -- (1) src <<= sh  (LSB alloc)
+        let shiftOps : List (prim_ops k) :=
+          if sh = 0 then [] else [prim_ops.Alloc src true sh]
+        let curLen1 := incLen curLen src sh
+
+        -- (2) optional negate(src) (no length change)
+        let curLen2 := curLen1
+
+        -- lengths *after* the shift (and possible negate doesn't change length)
+        let lenDst := getLen curLen2 dst.val
+        let lenSrc := getLen curLen2 src.val
+
+        -- choose a common target width
+        let target := 1 + Nat.max lenDst lenSrc
+
+        -- (3a) widen dst at MSB to target (remember to free at end)
+        let deltaDst := target - lenDst
+        let widenDstOps : List (prim_ops k) :=
+          if deltaDst = 0 then [] else [prim_ops.Alloc dst false deltaDst]
+        let curLen3 := incLen curLen2 dst deltaDst
+        let msbAdds : List (Fin k × Nat) :=
+          if deltaDst = 0 then [] else [(dst, deltaDst)]
+
+        -- (3b) widen src at MSB to target (temporary; free immediately later)
+        let deltaSrc := target - lenSrc
+        let widenSrcOps : List (prim_ops k) :=
+          if deltaSrc = 0 then [] else [prim_ops.Alloc src false deltaSrc]
+        let curLen4 := incLen curLen3 src deltaSrc
+
+        -- (4) dst += src  (now same width)
+        let adder : List (prim_ops k) := [prim_ops.Add dst src]
+
+        -- (5) undo negate(src)
+        let unNegOps : List (prim_ops k) := negops
+
+        -- (6) undo shift (LSB free)
+        let unShiftOps : List (prim_ops k) :=
+          if sh = 0 then [] else [prim_ops.Free src true sh]
+        let curLen5 := decLen curLen4 src sh
+
+        -- (7) free the temporary MSB widen of src
+        let freeSrcOps : List (prim_ops k) :=
+          if deltaSrc = 0 then [] else [prim_ops.Free src false deltaSrc]
+        let curLen6 := decLen curLen5 src deltaSrc
+
+        (negops ++ shiftOps ++ widenDstOps ++ widenSrcOps ++ adder ++ unNegOps ++ unShiftOps ++ freeSrcOps,
+         curLen6,
+         msbAdds)
+
+def compile_valid_ops {k : ℕ} (ops : List (valid_ops k)) :
+    List (prim_ops k) :=
+  let initLen : Nat := 0
+  let initCurLen : List Nat := List.replicate k initLen
+
+  -- main loop: build primOps in forward order (we'll accumulate with ++ for clarity)
+  let rec go (ops : List (valid_ops k))
+             (curLen : List Nat)
+             (msbStack : List (Fin k × Nat))
+             (out : List (prim_ops k)) : List (prim_ops k) :=
+    match ops with
+    | [] =>
+        let frees : List (prim_ops k) :=
+          msbStack.map (fun p => prim_ops.Free p.1 false p.2)
+        out ++ frees
+    | op :: ops' =>
+        let (ops1, curLen1, msbAdds) := compile_op_to_prim_single (k := k) op curLen
+        let msbStack1 := msbAdds ++ msbStack
+        go ops' curLen1 msbStack1 (out ++ ops1)
+
+  go ops initCurLen [] []
+
 abbrev MatchesAtStateBit [QuantumModel] (k : ℕ) := St k → Fin k → Operations.Point → Bool
 
 /-- Remove the first element satisfying a Bool predicate; fail if none. -/
@@ -105,6 +219,153 @@ def phaseProductCoverage? {k : ℕ} [QuantumModel] [RegOps](M : MatchesAtStateBi
   | _            => false
 
 
+
+class DecodeBackend (k : ℕ) [QuantumModel] [RegOps] where
+  decodeRegister : Reg → Register k
+  decodeState : St k → State k :=
+    fun σ => fun i => decodeRegister (σ i)
+
+  decode_allocLsb_ax :
+    ∀ (σQ : St k) (i : Fin k) (n : ℕ),
+      (decodeState (fun j => if j = i then allocReg (σQ i) true n else σQ j))
+        = State.shiftLReg (decodeState σQ) i n
+
+  decode_freeLsb_ax :
+    ∀ (σQ : St k) (i : Fin k) (n : ℕ),
+      State.shiftRReg? (decodeState σQ) i n
+        = some (decodeState (fun j => if j = i then freeReg (σQ i) true n else σQ j))
+
+  decode_negate_ax :
+    ∀ (σQ : St k) (i : Fin k),
+      (decodeState (fun j => if j = i then RegOps.negate (σQ i) else σQ j))
+        = State.negateReg (decodeState σQ) i
+
+
+  decode_add_ax :
+    ∀ (σQ : St k) (dst src : Fin k),
+      (decodeState (fun j => if j = dst then RegOps.add (σQ dst) (σQ src) else σQ j))
+        = State.addScaledReg (decodeState σQ) dst src false 0
+
+  decode_allocMsb_ax :
+    ∀ (σQ : St k) (i : Fin k) (n : ℕ),
+      (decodeState (fun j => if j = i then allocReg (σQ i) false n else σQ j)) = decodeState σQ
+
+  decode_freeMsb_ax :
+    ∀ (σQ : St k) (i : Fin k) (n : ℕ),
+      (decodeState (fun j => if j = i then freeReg (σQ i) false n else σQ j)) = decodeState σQ
+
+
+
+open DecodeBackend
+
+theorem decode_allocLsb
+  {k : ℕ} [QuantumModel] [RegOps] [DecodeBackend k]
+  (σQ : St k) (i : Fin k) (n : ℕ) :
+  decodeState (fun j => if j = i then allocReg (σQ i) true n else σQ j)
+    = State.shiftLReg (decodeState σQ) i n := by
+  -- literally the axiom, rewritten through decodeState
+  simpa [decodeState] using (DecodeBackend.decode_allocLsb_ax (k := k) σQ i n)
+
+theorem decode_freeLsb
+  {k : ℕ} [QuantumModel] [RegOps] [DecodeBackend k]
+  (σQ : St k) (i : Fin k) (n : ℕ) :
+  State.shiftRReg? (decodeState σQ) i n
+    = some (decodeState (fun j => if j = i then freeReg (σQ i) true n else σQ j)) := by
+  simpa [decodeState] using (DecodeBackend.decode_freeLsb_ax (k := k) σQ i n)
+
+theorem decode_negateReg
+  {k : ℕ} [QuantumModel] [RegOps] [DecodeBackend k]
+  (σQ : St k) (i : Fin k) :
+  decodeState (fun j => if j = i then RegOps.negate (σQ i) else σQ j)
+    = State.negateReg (decodeState σQ) i := by
+  simpa [decodeState] using (DecodeBackend.decode_negate_ax (k := k) σQ i)
+
+theorem decode_addReg
+  {k : ℕ} [QuantumModel] [RegOps] [DecodeBackend k]
+  (σQ : St k) (dst src : Fin k) :
+  decodeState (fun j => if j = dst then RegOps.add (σQ dst) (σQ src) else σQ j)
+    = State.addScaledReg (decodeState σQ) dst src false 0 := by
+  simpa [decodeState] using (DecodeBackend.decode_add_ax (k := k) σQ dst src)
+
+
+theorem decode_allocMsb
+  {k : ℕ} [QuantumModel] [RegOps] [DecodeBackend k]
+  (σQ : St k) (i : Fin k) (n : ℕ) :
+  decodeState (fun j => if j = i then allocReg (σQ i) false n else σQ j)
+    = decodeState σQ := by
+  simpa [decodeState] using (DecodeBackend.decode_allocMsb_ax (k := k) σQ i n)
+
+theorem decode_freeMsb
+  {k : ℕ} [QuantumModel] [RegOps] [DecodeBackend k]
+  (σQ : St k) (i : Fin k) (n : ℕ) :
+  decodeState (fun j => if j = i then freeReg (σQ i) false n else σQ j)
+    = decodeState σQ := by
+  simpa [decodeState] using (DecodeBackend.decode_freeMsb_ax (k := k) σQ i n)
+
+
+
+def compile1 {k : ℕ} (v : valid_ops k) (curLen : List Nat) : List (prim_ops k) :=
+  (compile_op_to_prim_single (k := k) v curLen).1
+
+def evalPrimProg [QuantumModel] [RegOps] {k : ℕ} :
+    List (prim_ops k) → St k → St k
+  | [],      σ => σ
+  | op :: ps, σ => evalPrimProg ps (eval_prim_op_single (k := k) op σ)
+
+
+
+lemma evalPrimProg_cons [QuantumModel] [RegOps] {k : ℕ}
+  (op : prim_ops k) (ps : List (prim_ops k)) (σ : St k) :
+  evalPrimProg (k := k) (op :: ps) σ
+    = evalPrimProg (k := k) ps (eval_prim_op_single (k := k) op σ) := rfl
+
+lemma evalPrimProg_append [QuantumModel] [RegOps] {k : ℕ}
+  (p q : List (prim_ops k)) (σ : St k) :
+  evalPrimProg (k := k) (p ++ q) σ
+    = evalPrimProg (k := k) q (evalPrimProg (k := k) p σ) := by
+  induction p generalizing σ with
+  | nil =>
+      simp [evalPrimProg]
+  | cons op ps ih =>
+      simp [evalPrimProg, ih]
+
+
+
+theorem compile1_respects_decode
+  {k : ℕ} [QuantumModel] [RegOps] [DecodeBackend k]
+  (St1 : St k) (v : valid_ops k) (curLen : List Nat) (hWF:Prog.OpOK v):
+  some (decodeState (k := k) (evalPrimProg (k := k) (compile1 (k := k) v curLen) St1))
+    = applyOp? (k := k) (decodeState (k := k) St1) v := by
+  cases v with
+  | shiftL i n =>
+      -- compile1 = [Alloc i true n]
+      simp [compile1, compile_op_to_prim_single, evalPrimProg, eval_prim_op_single,
+            applyOp?]
+      apply decode_allocLsb
+
+  | shiftR i n =>
+      have h := (decode_freeLsb (k := k) (σQ := St1) i n).symm
+      simp [compile1, compile_op_to_prim_single, evalPrimProg, eval_prim_op_single,
+            applyOp?] at *
+      simp[h]
+
+  | negate i =>
+      -- compile1 = [negate i]
+      simp [compile1, compile_op_to_prim_single, evalPrimProg, eval_prim_op_single,
+            applyOp?, decode_negateReg]
+
+  | phaseProduct i =>
+      -- compile1 = [phaseProduct i], evaluator leaves σ unchanged
+      simp [compile1, compile_op_to_prim_single, evalPrimProg, eval_prim_op_single,
+            applyOp?]
+  | addScaled dst src negSrc sh =>
+      simp [compile1, compile_op_to_prim_single]
+      have: dst≠src:= by {
+        simp[Prog.OpOK] at hWF;simp[hWF]
+      }
+      simp[this]
+      split_ifs<;>simp[evalPrimProg,eval_prim_op_single,decode_addReg]<;>
+      sorry
 
 
 end AbstractFM
