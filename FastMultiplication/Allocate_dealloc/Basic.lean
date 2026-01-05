@@ -314,7 +314,7 @@ def prog : List (valid_ops 3) :=
 ]
 
 lemma h3:0<3:=by simp
-def vop1:=(genOpsWithProduct h3 [Point.int 0, Point.inf, Point.int 1, Point.int (-1)])
+def vop1:=(genOpsWithProduct h3 [Point.int 0, Point.inf, Point.int 1, Point.int (-1), Point.int 2, Point.int (-2)])
 def pop1:=compile_valid_ops vop1
 
 #eval printPrimOps pop1
