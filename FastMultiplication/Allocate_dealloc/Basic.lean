@@ -100,10 +100,11 @@ def AllocLSB (σ : St k) (reg: Fin k) (n:ℕ): St k:=
   else
     σ i
 
-def AllocMSB (σ : St k) (reg: Fin k) (n:ℕ): St k:=
-  fun (i:Fin k)=>
-  if i=reg then
-    ⟨n+(σ reg).1, BitVec.append (BitVec.fill n ((σ reg).2.msb)) (σ reg).2⟩
+def AllocMSB (σ : St k) (reg : Fin k) (n : ℕ) : St k :=
+  fun i =>
+  if i = reg then
+    let val := σ reg
+    ⟨n + val.1, val.2.signExtend (n + val.1)⟩
   else
     σ i
 
@@ -121,15 +122,14 @@ def Negation {k:ℕ} (σ : St k) (dst: Fin k) :=
     else
       σ i
 
-def FreeLSB  (σ : St k) (reg: Fin k) (n:ℕ): St k :=
-  fun (i:Fin k) =>
-    if i = reg then
+def FreeLSB (σ : St k) (reg : Fin k) (n : Nat) : St k :=
+  fun i =>
+    if _h : i = reg then
       let w  := (σ reg).1
       let bv := (σ reg).2
-      let w' : Nat := w - n
-      -- dropping n LSB bits = floor(toNat / 2^n)
-      let nat' : Nat := bv.toNat / ((2 : Nat) ^ n)
-      ⟨w', BitVec.ofNat w' nat'⟩
+      let w' := w - n
+      -- arithmetic shift right then truncate to width w'
+      ⟨w', (BitVec.sshiftRight bv n).truncate w'⟩
     else
       σ i
 
@@ -165,6 +165,7 @@ match op with
   | prim_ops.negate i      =>  Negation σ i
   | prim_ops.Add dst src   =>  Adder σ dst src
   | prim_ops.phaseProduct _ => σ
+
 
 def eval_prim_ops (ops:List (prim_ops k)) (σ: St k):=
 match ops with
@@ -214,22 +215,22 @@ match op with
         let negops : List (prim_ops k) :=
           if negSrc then [prim_ops.negate src] else []
 
-        -- (1) src <<= sh  (LSB alloc)
+        -- (1) optional negate(src)
+        let curLen1 := curLen
+
+        -- (2) src <<= sh  (LSB alloc)
         let shiftOps : List (prim_ops k) :=
           if sh = 0 then [] else [prim_ops.Alloc src true sh]
-        let curLen1 := incLen curLen src sh
+        let curLen2 := incLen curLen1 src sh
 
-        -- (2) optional negate(src) (no length change)
-        let curLen2 := curLen1
-
-        -- lengths *after* the shift (and possible negate doesn't change length)
+        -- lengths after negate (no change) + shift
         let lenDst := getLen curLen2 dst.val
         let lenSrc := getLen curLen2 src.val
 
-        -- choose a common target width
+        -- (3) choose safe width for ONE signed add
         let target := 1 + Nat.max lenDst lenSrc
 
-        -- (3a) widen dst at MSB to target (remember to free at end)
+        -- (4a) widen dst at MSB to target (remember to free at end)
         let deltaDst := target - lenDst
         let widenDstOps : List (prim_ops k) :=
           if deltaDst = 0 then [] else [prim_ops.Alloc dst false deltaDst]
@@ -237,30 +238,31 @@ match op with
         let msbAdds : List (Fin k × Nat) :=
           if deltaDst = 0 then [] else [(dst, deltaDst)]
 
-        -- (3b) widen src at MSB to target (temporary; free immediately later)
+        -- (4b) widen src at MSB to target (temporary; free right after Add)
         let deltaSrc := target - lenSrc
         let widenSrcOps : List (prim_ops k) :=
           if deltaSrc = 0 then [] else [prim_ops.Alloc src false deltaSrc]
         let curLen4 := incLen curLen3 src deltaSrc
 
-        -- (4) dst += src  (now same width)
+        -- (5) dst += src
         let adder : List (prim_ops k) := [prim_ops.Add dst src]
 
-        -- (5) undo negate(src)
-        let unNegOps : List (prim_ops k) := negops
-
-        -- (6) undo shift (LSB free)
-        let unShiftOps : List (prim_ops k) :=
-          if sh = 0 then [] else [prim_ops.Free src true sh]
-        let curLen5 := decLen curLen4 src sh
-
-        -- (7) free the temporary MSB widen of src
+        -- (6) undo src MSB widen
         let freeSrcOps : List (prim_ops k) :=
           if deltaSrc = 0 then [] else [prim_ops.Free src false deltaSrc]
-        let curLen6 := decLen curLen5 src deltaSrc
+        let curLen5 := decLen curLen4 src deltaSrc
 
-        (negops ++ shiftOps ++ widenDstOps ++ widenSrcOps ++ adder ++ unNegOps ++ unShiftOps ++ freeSrcOps,
-         curLen6,
+        -- (7) undo shift (LSB free)
+        let unShiftOps : List (prim_ops k) :=
+          if sh = 0 then [] else [prim_ops.Free src true sh]
+        let curLen6 := decLen curLen5 src sh
+
+        -- (8) undo negate(src)
+        let unNegOps : List (prim_ops k) := negops
+        let curLen7 := curLen6
+
+        (negops ++ shiftOps ++ widenDstOps ++ widenSrcOps ++ adder ++ freeSrcOps ++ unShiftOps ++ unNegOps,
+         curLen7,
          msbAdds)
 
 def compile_valid_ops {k : ℕ} (ops : List (valid_ops k)) :
@@ -284,6 +286,12 @@ def compile_valid_ops {k : ℕ} (ops : List (valid_ops k)) :
         go ops' curLen1 msbStack1 (out ++ ops1)
 
   go ops initCurLen [] []
+
+
+def compile1 {k : ℕ} (op : valid_ops k) (curLen : List Nat) :
+    List (prim_ops k) × List Nat :=
+  let (ops, curLen', _msbAdds) := compile_op_to_prim_single (k := k) op curLen
+  (ops, curLen')
 
 
 namespace DemoValidOps
@@ -330,3 +338,39 @@ def compiled_prog:=compile_valid_ops prog
 
 #eval printPrimOps compiled_prog
 #eval printState (eval_prim_ops (compiled_prog) demo)
+
+
+
+-- def bitsFreedAllEq {w : Nat} (bv : BitVec w) (lsb : Bool) (n : Nat) (target : Bool) : Bool :=
+--   if _h : n ≤ w then
+--     let base : Nat := if lsb then 0 else (w - n)
+--     (List.range n).all (fun j => (Nat.testBit bv.toNat (base + j)) == target)
+--   else
+--     false
+
+
+-- def validFreeStep {w : Nat} (bv : BitVec w) (lsb : Bool) (n : Nat) : Bool :=
+--   if lsb then
+--     bitsFreedAllEq bv true n false
+--   else
+--     bitsFreedAllEq bv false n bv.msb
+
+
+-- def validFree {k : Nat} (ops : List (prim_ops k)) (σ0 : St k) : Bool :=
+--   let rec go (ops : List (prim_ops k)) (σ : St k) : Bool :=
+--     match ops with
+--     | [] => true
+--     | op :: tail =>
+--         match op with
+--         | prim_ops.Free i lsb n =>
+--             let ⟨_, bv⟩ := σ i
+--             if validFreeStep bv lsb n then
+--               go tail (eval_prim_op_single (k := k) op σ)
+--             else
+--               false
+--         | _ =>
+--             go tail (eval_prim_op_single (k := k) op σ)
+--   go ops σ0
+
+
+-- #eval validFree pop1 demo
