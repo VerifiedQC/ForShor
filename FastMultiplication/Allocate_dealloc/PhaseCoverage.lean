@@ -17,9 +17,7 @@ def eraseFirstMatchB {α : Type} (p : α → Bool) : List α → Option (List α
         | some xs'  => some (x :: xs')
 
 /--
-Run the “coverage checker”:
-- returns `none` if a phaseProduct cannot consume a matching point
-- otherwise returns `some (finalState, remainingPts)`
+Run the “coverage checker”
 -/
 def runPhaseCoverage {k : ℕ} (M : MatchesAtStateBit k) :
     List (prim_ops k) → St k → List Operations.Point → Option (St k × List Operations.Point)
@@ -31,7 +29,6 @@ def runPhaseCoverage {k : ℕ} (M : MatchesAtStateBit k) :
           | none      => none
           | some pts' => runPhaseCoverage M ps σ pts'
       | _ =>
-          -- your semantics are total, so we always step
           let σ' := eval_prim_op_single (k := k) op σ
           runPhaseCoverage M ps σ' pts
 
@@ -41,11 +38,6 @@ def phaseProductCoverage? {k : ℕ} (M : MatchesAtStateBit k)
   match runPhaseCoverage (k := k) M prog σ pts with
   | some (_, []) => true
   | _            => false
-
-/-- Prop version (often nicer to use in theorems). -/
-def PhaseProductCoverage_Bit {k : ℕ} (M : MatchesAtStateBit k)
-    (prog : List (prim_ops k)) (σ : St k) (pts : List Operations.Point) : Prop :=
-  ∃ τ, runPhaseCoverage (k := k) M prog σ pts = some (τ, [])
 
 
 /-- Signed (two’s-complement) value stored in a `Reg`. -/
@@ -63,28 +55,6 @@ def x0 (σ0 : St 3) : Int := regToInt (σ0 f0)
 def x1 (σ0 : St 3) : Int := regToInt (σ0 f1)
 def x2 (σ0 : St 3) : Int := regToInt (σ0 f2)
 
--- /-- Your interpolation target function. -/
--- def interpTarget (σ0 : St 3) : Operations.Point → Option Int
---   | Operations.Point.inf => some (x2 σ0)
---   | Operations.Point.int z =>
---       if z = 0 then
---         some (x0 σ0)
---       else if z = 1 then
---         some (x0 σ0 + x1 σ0 + x2 σ0)
---       else if z = (-1) then
---         some (x0 σ0 - x1 σ0 + x2 σ0)
---       else
---         none
-
--- /--
--- Matcher: `M σ i pt` is true iff register `i` currently equals the interpolation target for `pt`,
--- computed from the *initial* state `σ0`.
--- -/
--- def matchesAt_interp (σ0 : St 3) : St 3 → Fin 3 → Operations.Point → Bool :=
---   fun σ i pt =>
---     match interpTarget σ0 pt with
---     | none => false
---     | some t => decide (regToInt (σ i) = t)
 open Operations
 
 
@@ -115,8 +85,6 @@ def interpTarget {k : Nat} (σ0 : St k) : Operations.Point → Option Int
 
 /--
 Matcher for phase coverage:
-`true` iff the *current* register `i` equals the interpolation target for `pt`,
-where the target is computed from the *initial* coefficients in `σ0`.
 -/
 def matchesAt_interp {k : Nat} (σ0 : St k) : St k → Fin k → Operations.Point → Bool :=
   fun σ i pt =>
@@ -125,6 +93,8 @@ def matchesAt_interp {k : Nat} (σ0 : St k) : St k → Fin k → Operations.Poin
     | some t => decide (regToInt (σ i) = t)
 
 def eg_pts_0:=[Point.int 0, Point.inf, Point.int 1, Point.int (-1), Point.int 2, Point.int (-2)]
+
+
 #eval phaseProductCoverage? (k := 3) (matchesAt_interp demo) DemoValidOps.pop1 demo eg_pts_0
 
 def regOfInt (w : Nat) (n : Int) : Reg :=
@@ -135,9 +105,9 @@ def demoσ0 : St 5 :=
   fun i =>
     match i.val with
     | 0 => regOfInt w  1
-    | 1 => regOfInt w  3
-    | 2 => regOfInt w (5)
-    | 3 => regOfInt w  6
+    | 1 => regOfInt w  13
+    | 2 => regOfInt w (50)
+    | 3 => regOfInt w  20
     | _ => regOfInt w  2  -- only remaining case is 4
 
 lemma hk (k:ℕ) (h1:k≠0):0<k:=by omega

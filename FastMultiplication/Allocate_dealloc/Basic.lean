@@ -122,14 +122,13 @@ def Negation {k:ℕ} (σ : St k) (dst: Fin k) :=
     else
       σ i
 
-def FreeLSB (σ : St k) (reg : Fin k) (n : Nat) : St k :=
+def FreeLSB (σ : St k) (reg : Fin k) (n : ℕ) : St k :=
   fun i =>
-    if _h : i = reg then
-      let w  := (σ reg).1
-      let bv := (σ reg).2
+    if i = reg then
+      let w  := (σ reg).fst
+      let bv := (σ reg).snd
       let w' := w - n
-      -- arithmetic shift right then truncate to width w'
-      ⟨w', (BitVec.sshiftRight bv n).truncate w'⟩
+      ⟨w', BitVec.ofNat w' (bv.toNat / (2 ^ n))⟩
     else
       σ i
 
