@@ -595,7 +595,31 @@ lemma bridge_negate
   eval_prim_op_single (k := k) (prim_ops.negate i) (stateToSt σ ρ baseW curLen)
     =
   stateToSt (State.negateReg σ i) ρ baseW curLen := by
-  sorry
+  unfold eval_prim_op_single
+  simp
+  unfold Negation
+  funext j
+  split_ifs with h1
+  {
+    unfold stateToSt
+    subst h1
+    simp_all
+    set a:=(baseW j + curLen.getD (j.val) 0)
+    unfold Register.negate evalRegister
+    have h_sum : (∑ j_1, (fun j_2 => -σ j j_2) j_1 * ρ j_1) = -(∑ j_1, σ j j_1 * ρ j_1) := by
+      simp only [neg_mul, Finset.sum_neg_distrib]
+    rw[h_sum]
+    set S := ∑ j_1, σ j j_1 * ρ j_1
+    have h_ofInt_lhs : BitVec.ofNat a (S.emod (2 ^ a)).toNat = BitVec.ofInt a S := by sorry
+    have h_ofInt_rhs : BitVec.ofNat a ((-S).emod (2 ^ a)).toNat = BitVec.ofInt a (-S) := by sorry
+    change -BitVec.ofNat a (S.emod (2 ^ (a))).toNat = BitVec.ofNat a ((-S).emod (2 ^ (a))).toNat
+    rw [h_ofInt_lhs, h_ofInt_rhs]
+    rw[BitVec.ofInt_neg]
+  }
+  {
+    unfold stateToSt
+    simp_all
+  }
 
 -- Add (dst := dst + src)
 lemma bridge_add
