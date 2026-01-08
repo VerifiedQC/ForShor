@@ -313,7 +313,7 @@ def compile1 {k : ℕ} (op : valid_ops k) (curLen : List Nat) :
   let (ops, curLen', _msbAdds) := compile_op_to_prim_single (k := k) op curLen
   (ops, curLen')
 
-def compileProg {k : ℕ} : List (valid_ops k) → List Nat → (List (prim_ops k)) × List Nat
+@[simp]def compileProg {k : ℕ} : List (valid_ops k) → List Nat → (List (prim_ops k)) × List Nat
   | [],        curLen => ([], curLen)
   | op :: ops, curLen =>
       let (ops1, curLen1) := compile1 (k := k) op curLen

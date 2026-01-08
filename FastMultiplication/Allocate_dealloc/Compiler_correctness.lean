@@ -27,6 +27,24 @@ def stateToSt {k : ℕ}
     let r : Nat := Int.toNat (Int.emod z m)   -- in [0, 2^w)
     ⟨w, BitVec.ofNat w r⟩
 
+/-- `z` fits in signed two’s-complement with width `w` (i.e. no overflow). -/
+def FitsSigned (w : Nat) (z : ℤ) : Prop :=
+  w > 0 ∧ -( (2 : ℤ) ^ (w - 1) ) ≤ z ∧ z < (2 : ℤ) ^ (w - 1)
+/-- Width used by `stateToSt` for register `i`. -/
+def stWidth {k : ℕ} (baseW : Fin k → Nat) (curLen : List Nat) (i : Fin k) : Nat :=
+  baseW i + curLen.getD i.1 0
+
+/-- The evaluated integer for register `i` fits in the signed range of its current width. -/
+def FitsSignedAt {k : ℕ}
+    (σ : State k) (ρ : Fin k → ℤ)
+    (baseW : Fin k → Nat) (curLen : List Nat) (i : Fin k) : Prop :=
+  FitsSigned (stWidth baseW curLen i) (evalRegister (σ i) ρ)
+
+/-- Every register’s evaluated value fits in its current signed width. -/
+def FitsSignedAll {k : ℕ}
+    (σ : State k) (ρ : Fin k → ℤ)
+    (baseW : Fin k → Nat) (curLen : List Nat) : Prop :=
+  ∀ i : Fin k, FitsSignedAt (σ := σ) (ρ := ρ) (baseW := baseW) (curLen := curLen) i
 
 -- def stateToSt {k : ℕ}
 --     (σ : State k)
@@ -93,7 +111,7 @@ def st_plus : St 3 := stateToSt σ_plus ρ3 baseW6 cur0
 #eval printState st_plus
 
 
-
+end StateToStDemo
 
 --------------------------------------------------------------------------------
 -- THE CRUCUIAL THEOREM- COMPILATION WORKS!!
@@ -867,4 +885,57 @@ theorem compileProg_simulates
   let (opsP, curLen') := compileProg (k := k) ops curLen
   eval_prim_ops (k := k) opsP (stateToSt σ ρ baseW curLen)
     =
-  stateToSt σ2 ρ baseW curLen' := by sorry
+  stateToSt σ2 ρ baseW curLen' := by
+  induction ops generalizing σ curLen σ2 with
+  | nil =>
+      -- empty program: applyOps? σ [] = some σ
+      simp [run?] at hstep
+      cases hstep
+      simp [compileProg, eval_prim_ops]
+  | cons op ops ih =>
+      -- peel off head step
+      have hOK_head : Prog.OpOK op := by
+        aesop
+      have hOK_tail : Prog.WellFormed ops := by
+        simp[Prog.WellFormed] at hOK
+        unfold Prog.WellFormed
+        rcases hOK with ⟨hl,hr⟩
+        intro op hop
+        apply hr op hop
+      simp [run?] at hstep
+      -- analyze applyOp? σ op
+      cases hσ1 : applyOp? σ op with
+      | none =>
+          simp [hσ1] at hstep
+      | some σ1 =>
+          -- now we have: applyOps? σ1 ops = some σ2
+          have hstep_tail : run? (k := k) ops σ1 = some σ2 := by
+            simpa [hσ1] using hstep
+          cases hC1 : compile1 (k := k) op curLen with
+          | mk opsP1 curLen1 =>
+              -- length hypothesis for tail
+              have hcurLen1 : curLen1.length = k := by
+                -- from the assumed preservation lemma
+                simpa [hC1] using (compile1_pres_len op curLen hcurLen)
+
+              -- simulation for the head op
+              have hsim_head :
+                eval_prim_ops (k := k) opsP1 (stateToSt σ ρ baseW curLen)
+                  =
+                stateToSt σ1 ρ baseW curLen1 := by
+                -- specialize your theorem
+                simpa [hC1] using
+                  (compile1_simulates (k := k)
+                    (op := op) (σ := σ) (ρ := ρ) (baseW := baseW)
+                    (curLen := curLen) (hcurLen := hcurLen)
+                    (σ2 := σ1) (hstep := hσ1) (hOK := hOK_head))
+              have hsim_tail :
+                let (opsP, curLen') := compileProg (k := k) ops curLen1
+                eval_prim_ops (k := k) opsP (stateToSt σ1 ρ baseW curLen1)
+                  =
+                stateToSt σ2 ρ baseW curLen' := by
+                have:= ih (σ := σ1) (curLen := curLen1) (σ2 := σ2)
+                  (hcurLen := hcurLen1) (hstep := hstep_tail) hOK_tail
+                apply this
+              simp [compileProg, hC1]
+              simpa [eval_prim_ops_append, hsim_head] using hsim_tail

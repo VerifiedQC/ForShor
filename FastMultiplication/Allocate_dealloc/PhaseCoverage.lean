@@ -117,3 +117,59 @@ def vop_1:=(genOpsWithProduct (hk 5 (by simp)) eg_pts_1)
 def pop_1:=compile_valid_ops vop_1
 
 #eval phaseProductCoverage? (k := 5) (matchesAt_interp demoσ0) pop_1 demoσ0 eg_pts_1
+
+
+namespace PhaseProduct_PrimOps
+/-- Bool-valued matcher (computable). -/
+abbrev MatchesAtStateBit (k : ℕ) := St k → Fin k → Operations.Point → Bool
+
+
+lemma eraseFirstMatchB_of_eraseFirstMatch?
+    {α : Type} (p : α → Prop) [DecidablePred p] :
+    ∀ (xs ys : List α),
+      List.eraseFirstMatch? p xs = some ys →
+      eraseFirstMatchB (fun x => decide (p x)) xs = some ys := by
+  intro xs
+  induction xs with
+  | nil =>
+      intro ys h
+      simp [List.eraseFirstMatch?] at h
+  | cons x xs ih =>
+      intro ys h
+      by_cases hx : p x
+      ·
+        simpa [List.eraseFirstMatch?, eraseFirstMatchB, hx] using h
+      ·
+        simp [List.eraseFirstMatch?, eraseFirstMatchB, hx] at h ⊢
+        cases hxs : List.eraseFirstMatch? p xs with
+        | none =>
+            simp [hxs] at h
+        | some ys' =>
+            have hb : eraseFirstMatchB (fun t => decide (p t)) xs = some ys' :=
+              ih ys' hxs
+            simp [hxs] at h
+            cases h
+            simp [hb]
+
+/--
+Prop-level version of your coverage run:
+- when we see `phaseProduct i`, we must consume a point matched by `M σ i`.
+- otherwise we step the state with `eval_prim_op_single` and keep points unchanged.
+- at the end we require that the remaining points list is `[]`.
+-/
+inductive PhaseProductCoverageM_prim {k : ℕ} (M : MatchesAtStateBit k) :
+    List (prim_ops k) → St k → List Operations.Point → Prop
+| nil {σ : St k} :
+    PhaseProductCoverageM_prim M [] σ []
+| step_op {op : prim_ops k} {ps : List (prim_ops k)} {σ : St k} {pts : List Operations.Point}
+    (hrest : PhaseProductCoverageM_prim M ps (eval_prim_op_single (k := k) op σ) pts) :
+    PhaseProductCoverageM_prim M (op :: ps) σ pts
+| step_phase {i : Fin k} {ps : List (prim_ops k)} {σ : St k}
+    {pts pts' : List Operations.Point}
+    (hconsume : eraseFirstMatchB (fun pt => M σ i pt) pts = some pts')
+    (hrest : PhaseProductCoverageM_prim M ps σ pts') :
+    PhaseProductCoverageM_prim M (prim_ops.phaseProduct i :: ps) σ pts
+/-- The “final” predicate you probably want to use: all points are consumed. -/
+def PhaseProductCoverage_prim {k : ℕ}
+    (σinit : St k)(prog : List (prim_ops k)) (σ : St k) (pts : List Operations.Point) : Prop :=
+  PhaseProductCoverageM_prim (k := k) (matchesAt_interp σinit) prog σ pts
