@@ -413,7 +413,8 @@ lemma bridge_allocLSB
     constructor
     {
       unfold incLen setLen
-      rw[getElem?_setAt_ne]
+      have:=getElem?_setAt_ne curLen (i.val) (j.val) (v:=(getLen curLen ↑i + n))
+      rw[this]
       subst hcurLen
       simp_all
       simp_all only [ne_eq]
@@ -610,8 +611,18 @@ lemma bridge_negate
       simp only [neg_mul, Finset.sum_neg_distrib]
     rw[h_sum]
     set S := ∑ j_1, σ j j_1 * ρ j_1
-    have h_ofInt_lhs : BitVec.ofNat a (S.emod (2 ^ a)).toNat = BitVec.ofInt a S := by sorry
-    have h_ofInt_rhs : BitVec.ofNat a ((-S).emod (2 ^ a)).toNat = BitVec.ofInt a (-S) := by sorry
+    have h_ofInt_lhs : BitVec.ofNat a (S.emod (2 ^ a)).toNat = BitVec.ofInt a S := by
+     simp [BitVec.ofInt]
+     conv=>
+        lhs
+        change BitVec.ofNat a (S % (2 ^ a)).toNat
+     rw[BitVec.ofNatLT_eq_ofNat]
+    have h_ofInt_rhs : BitVec.ofNat a ((-S).emod (2 ^ a)).toNat = BitVec.ofInt a (-S) := by
+      simp [BitVec.ofInt]
+      conv=>
+        lhs
+        change BitVec.ofNat a ((-S) % (2 ^ a)).toNat
+      rw[BitVec.ofNatLT_eq_ofNat]
     change -BitVec.ofNat a (S.emod (2 ^ (a))).toNat = BitVec.ofNat a ((-S).emod (2 ^ (a))).toNat
     rw [h_ofInt_lhs, h_ofInt_rhs]
     rw[BitVec.ofInt_neg]
@@ -621,6 +632,8 @@ lemma bridge_negate
     simp_all
   }
 
+
+#print BitVec.ofInt
 -- Add (dst := dst + src)
 lemma bridge_add
   {k : ℕ} (σ : State k) (ρ : Fin k → ℤ) (baseW : Fin k → Nat) (curLen : List Nat)
@@ -649,15 +662,34 @@ lemma bridge_freeMSB
   stateToSt σ ρ baseW (decLen curLen i n) := by
   sorry
 
-@[simp] lemma incLen_zero {k : ℕ} (curLen : List Nat) (i : Fin k) :
-  incLen curLen i 0 = curLen := by
-  simp [incLen, setLen, getLen, Nat.add_zero]
-  sorry
+lemma setAt_getD {α : Type} (xs : List α) (idx : Nat) (d : α) :
+    setAt xs idx (xs.getD idx d) = xs := by
+  induction xs generalizing idx with
+  | nil =>
+      simp [setAt]
+  | cons x xs ih =>
+      cases idx with
+      | zero =>
+          simp [setAt]
+      | succ idx =>
+          -- (x :: xs).getD (idx+1) d = xs.getD idx d
+          have:= ih idx
+          simp [setAt]
+          change setAt xs idx (xs.getD idx d) = xs
+          rw[this]
 
-@[simp] lemma decLen_zero {k : ℕ} (curLen : List Nat) (i : Fin k) :
+
+
+@[simp] theorem incLen_zero (curLen : List ℕ) (i : Fin k) :
+  incLen curLen i 0 = curLen := by
+  simpa [incLen, setLen, getLen, Nat.add_zero] using
+    (setAt_getD (xs := curLen) (idx := i.val) (d := (0 : Nat)))
+
+@[simp] theorem decLen_zero {k : ℕ} (curLen : List Nat) (i : Fin k) :
   decLen curLen i 0 = curLen := by
-  simp [decLen, setLen, getLen, Nat.sub_zero]
-  sorry
+  simpa [decLen, setLen, getLen, Nat.sub_zero] using
+    (setAt_getD (xs := curLen) (idx := i.val) (d := (0 : Nat)))
+
 @[simp] lemma stateToSt_fst {k : ℕ}
   (σ : State k) (ρ : Fin k → ℤ) (baseW : Fin k → Nat) (curLen : List Nat) (j : Fin k) :
   (stateToSt σ ρ baseW curLen j).fst = baseW j + getDelta curLen j.val := by
@@ -791,3 +823,48 @@ theorem compile1_simulates
           sorry
         }
         all_goals sorry
+
+
+
+lemma compile1_pres_len {k} (op : valid_ops k) (curLen : List Nat)
+  (h : curLen.length = k) :
+  (compile1 (k:=k) op curLen).2.length = k :=by
+  cases op with
+  |shiftL i sh=>{
+    unfold compile1 compile_op_to_prim_single
+    simp[incLen_pres_len,h]
+  }
+  |shiftR i sh=>{
+    unfold compile1 compile_op_to_prim_single
+    simp[decLen_pres_len,h]
+  }
+  |addScaled dst src negsrc sh=>{
+    unfold compile1 compile_op_to_prim_single
+    simp
+    split_ifs with h1 h2<;>simp[h,incLen_pres_len,decLen_pres_len]
+  }
+  |negate=>{
+    unfold compile1 compile_op_to_prim_single
+    simp[h]
+  }
+  |phaseProduct=>{
+    unfold compile1 compile_op_to_prim_single
+    simp[h]
+  }
+
+theorem compileProg_simulates
+  {k : ℕ}
+  (ops : Prog k)
+  (σ : State k)
+  (ρ : Fin k → ℤ)
+  (baseW : Fin k → Nat)
+  (curLen : List Nat)
+  (hcurLen : curLen.length = k)
+  (σ2 : State k)
+  (hstep : run? (k := k) ops σ = some σ2)
+  (hOK : Prog.WellFormed ops)
+   :
+  let (opsP, curLen') := compileProg (k := k) ops curLen
+  eval_prim_ops (k := k) opsP (stateToSt σ ρ baseW curLen)
+    =
+  stateToSt σ2 ρ baseW curLen' := by sorry

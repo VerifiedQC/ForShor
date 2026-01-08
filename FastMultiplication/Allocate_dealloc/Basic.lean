@@ -180,7 +180,7 @@ def setAt {α : Type} : List α → Nat → α → List α
   | x :: xs, idx+1,  a => x :: setAt xs idx a
 /-- Get `lens[idx]` with a default if out of range. -/
 def getLen (curLen : List Nat) (idx : Nat) : Nat :=
-  curLen.getD idx 1
+  curLen.getD idx 0
 
 def setLen {k : ℕ} (curLen : List Nat) (i : Fin k) (v : Nat) : List Nat :=
   setAt curLen i.val v
@@ -190,6 +190,27 @@ def incLen {k : ℕ} (curLen : List Nat) (i : Fin k) (n : Nat) : List Nat :=
 
 def decLen {k : ℕ} (curLen : List Nat) (i : Fin k) (n : Nat) : List Nat :=
   setLen curLen i (getLen curLen i.val - n)
+
+
+lemma setAt_length {α} (xs : List α) (i : Nat) (a : α) :
+  (setAt xs i a).length = xs.length := by
+  induction xs generalizing i with
+  | nil =>
+      simp [setAt]
+  | cons x xs ih =>
+      cases i with
+      | zero =>
+          simp [setAt]
+      | succ i =>
+          simp [setAt, ih]
+
+lemma incLen_pres_len {k} (curLen : List Nat) (i : Fin k) (n : Nat) :
+  (incLen curLen i n).length = curLen.length := by
+  simp [incLen, setLen, setAt_length]
+
+lemma decLen_pres_len {k} (curLen : List Nat) (i : Fin k) (n : Nat) :
+  (decLen curLen i n).length = curLen.length := by
+  simp [decLen, setLen, setAt_length]
 
 def compile_op_to_prim_single {k : ℕ} (op : valid_ops k) (curLen : List Nat) :
     (List (prim_ops k)) × (List Nat) × (List (Fin k × Nat)) :=
@@ -292,6 +313,24 @@ def compile1 {k : ℕ} (op : valid_ops k) (curLen : List Nat) :
   let (ops, curLen', _msbAdds) := compile_op_to_prim_single (k := k) op curLen
   (ops, curLen')
 
+def compileProg {k : ℕ} : List (valid_ops k) → List Nat → (List (prim_ops k)) × List Nat
+  | [],        curLen => ([], curLen)
+  | op :: ops, curLen =>
+      let (ops1, curLen1) := compile1 (k := k) op curLen
+      let (ops2, curLen2) := compileProg (k := k) ops curLen1
+      (ops1 ++ ops2, curLen2)
+
+@[simp] lemma compileProg_nil {k : ℕ} (curLen : List Nat) :
+  compileProg (k := k) [] curLen = ([], curLen) := by
+  rfl
+
+@[simp] lemma compileProg_cons {k : ℕ} (op : valid_ops k) (ops : List (valid_ops k)) (curLen : List Nat) :
+  compileProg (k := k) (op :: ops) curLen
+    =
+  let (ops1, curLen1) := compile1 (k := k) op curLen
+  let (ops2, curLen2) := compileProg (k := k) ops curLen1
+  (ops1 ++ ops2, curLen2) := by
+  rfl
 
 namespace DemoValidOps
 -- handy Fin indices for k = 3
