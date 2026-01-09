@@ -3,6 +3,10 @@ import FastMultiplication.Allocate_dealloc.PhaseCoverage
 
 namespace PhaseProduct_PrimOps
 
+----------------------------------------------------------------------------------------------------
+------------------------------- NO-PHASE PREFIX LEMMA ----------------------------------------------
+----------------------------------------------------------------------------------------------------
+
 def NoPhase {k : ℕ} : List (prim_ops k) → Prop
   | [] => True
   | prim_ops.phaseProduct _ :: _ => False
@@ -21,7 +25,7 @@ lemma PhaseProductCoverageM.prepend_noPhase
   | cons op ops ih =>
       cases op with
       | phaseProduct i =>
-          cases hNo  -- contradiction
+          cases hNo
       | Alloc i lsb n =>
           simp [NoPhase] at hNo
           have := ih (σ := eval_prim_op_single (k := k) (prim_ops.Alloc i lsb n) σ) hNo hrest
@@ -44,13 +48,13 @@ end PhaseProduct_PrimOps
 open Operations PhaseProduct_PrimOps
 
 
-
-
-
+----------------------------------------------------------------------------------------------------
+------------------------------- GENERIC PREPEND LEMMA ----------------------------------------------
+----------------------------------------------------------------------------------------------------
 
 /-- Prepend lemma: execute a prefix of prim-ops using only `step_op` steps. -/
 lemma prepend
-  {k : ℕ} {M : PhaseProduct_PrimOps.MatchesAtStateBit k}
+  {k : ℕ} {M : MatchesAtStateBit k}
   (pref rest : List (prim_ops k)) (σ : St k) (pts : List Operations.Point) :
   PhaseProductCoverageM_prim (k := k) M rest (eval_prim_ops (k := k) pref σ) pts →
   PhaseProductCoverageM_prim (k := k) M (pref ++ rest) σ pts := by
@@ -74,21 +78,31 @@ lemma prepend
         PhaseProductCoverageM_prim.step_op (k := k) (M := M) (hrest := h'')
       simpa [List.cons_append] using this
 
-/-- Your wrapper (as you were using it): initial state is fixed in the matcher. -/
+
+----------------------------------------------------------------------------------------------------
+------------------------------- COVERAGE (PRIM / INTERP WRAPPER) -----------------------------------
+----------------------------------------------------------------------------------------------------
+
 def PhaseProductCoverage_prim {k : ℕ}
     (prog : List (prim_ops k)) (σ0 : St k) (pts : List Operations.Point) : Prop :=
   PhaseProductCoverageM_prim (k := k) (matchesAt_interp (k := k) σ0) prog σ0 pts
 
 
+----------------------------------------------------------------------------------------------------
+------------------------------- COMPILER SIMP LEMMAS ------------------------------------------------
+----------------------------------------------------------------------------------------------------
+
 @[simp] lemma compile1_phaseProduct
   {k : ℕ} (i : Fin k) (curLen : List Nat) :
   compile1 (k := k) (valid_ops.phaseProduct i) curLen
     = ([prim_ops.phaseProduct i], curLen) := by
-  -- this is definitional from your compiler
   simp [compile1, compile_op_to_prim_single]
 
 
-/-- Unfold `matchesAt_pointRow_state`. -/
+----------------------------------------------------------------------------------------------------
+------------------------------- POINT-ROW MATCHER FACTS --------------------------------------------
+----------------------------------------------------------------------------------------------------
+
 @[simp] lemma matchesAt_pointRow_state_apply
   {k : Nat} (hk : k > 0) (σ : State k) (i : Fin k) (pt : Point) :
   matchesAt_pointRow_state (k := k) hk σ i pt
@@ -96,27 +110,26 @@ def PhaseProductCoverage_prim {k : ℕ}
   regEqExpected (k := k) (σ i) pt := by
   rfl
 
-/-- `matchesAt_pointRow_state` is exactly the register-only matcher
-    `matchesAt_pointRow` lifted to states via `MatchesAtState.ofRegister`. -/
 lemma matchesAt_pointRow_state_eq_ofRegister
   {k : Nat} (hk : k > 0) :
   matchesAt_pointRow_state (k := k) hk
     =
   MatchesAtState.ofRegister (k := k) (matchesAt_pointRow (k := k)) := by
-  -- extensionality over σ i pt
   funext σ i pt
-  -- unfold everything
   simp [matchesAt_pointRow_state, MatchesAtState.ofRegister, matchesAt_pointRow]
 
-/-- The `hk : k>0` argument is irrelevant (the definition ignores it). -/
 lemma matchesAt_pointRow_state_irrel
   {k : Nat} (hk₁ hk₂ : k > 0) :
   matchesAt_pointRow_state (k := k) hk₁
     =
   matchesAt_pointRow_state (k := k) hk₂ := by
-  -- same proof: ext and rfl after unfolding
   funext σ i pt
   rfl
+
+
+----------------------------------------------------------------------------------------------------
+------------------------------- regEqExpected CHARACTERIZATION --------------------------------------
+----------------------------------------------------------------------------------------------------
 
 lemma regEqExpected_eq_true_iff {k : Nat} (r : Register k) (pt : Point) :
     regEqExpected (k := k) r pt = true ↔ ∀ j : Fin k, r j = expectedRow (k := k) pt j := by
@@ -136,7 +149,11 @@ lemma regEqExpected_eq_true_iff {k : Nat} (r : Register k) (pt : Point) :
     have : r j = expectedRow (k := k) pt j := h j
     simp [this]
 
-/-- `lastFin` is defined and returns a last index when `k>0`. -/
+
+----------------------------------------------------------------------------------------------------
+------------------------------- FIN HELPERS ---------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+
 lemma lastFin_eq_some_of_pos {k : Nat} (hk : k > 0) :
     ∃ last : Fin k, lastFin k = some last := by
   cases k with
@@ -145,7 +162,6 @@ lemma lastFin_eq_some_of_pos {k : Nat} (hk : k > 0) :
   | succ k' =>
       refine ⟨⟨k', by simp⟩, rfl⟩
 
-/-- Sum of a “unit vector” selector. -/
 lemma finSum_unitSelector {k : Nat} (last : Fin k) (x : Fin k → Int) :
     (∑ j : Fin k, (if j = last then (1 : Int) else 0) * x j) = x last := by
   classical
@@ -154,34 +170,45 @@ lemma finSum_unitSelector {k : Nat} (last : Fin k) (x : Fin k → Int) :
     simp [hj]
   aesop
 
+
+----------------------------------------------------------------------------------------------------
+------------------------------- stateToSt / regToInt FACTS ------------------------------------------
+----------------------------------------------------------------------------------------------------
+
 @[simp] lemma regToInt_stateToSt_eq_bmod
-  {k : ℕ} (σ : Fin k → (Fin k → Int)) (ρ : Fin k → Int)
-  (baseW : Fin k → Nat) (curLen : List Nat) (i : Fin k) :
-  let w : Nat := baseW i + curLen.getD i.1 0
-  regToInt (stateToSt (k := k) σ ρ baseW curLen i)
+  {k : ℕ} (σ : Fin k → (Fin k → Int)) (ctx : StCtx k) (i : Fin k) :
+  let w : Nat := ctx.baseW i + ctx.curLen.getD i.1 0
+  regToInt (stateToSt (k := k) σ ctx i)
     =
-  (evalRegister (σ i) ρ).bmod ((2 : Nat) ^ w) := by
+  (evalRegister (σ i) ctx.ρ).bmod ((2 : Nat) ^ w) := by
   classical
-  dsimp [stateToSt, regToInt]
-  simp
-  rw[BitVec.toInt_ofNat']
-  simp
-  have:=Int.emod_nonneg (evalRegister (σ i) ρ) (b:=2 ^ (baseW i + curLen[i.val]?.getD 0)) (by simp)
-  have:max ((evalRegister (σ i) ρ).emod (2 ^ (baseW i + curLen[i.val]?.getD 0))) 0=((evalRegister (σ i) ρ).emod (2 ^ (baseW i + curLen[↑i]?.getD 0))):=by aesop
-  rw[this]
-  set d:=(evalRegister (σ i) ρ)
-  set c:=((baseW i + curLen[i]?.getD 0))
-  have hc:(baseW i + curLen[i.val]?.getD 0)=c:= by aesop
-  rw[hc]
-  change Int.bmod (d % (2 ^ c)) (2 ^ c) = d.bmod (2 ^ c)
-  have:=Int.emod_bmod d (2^c)
-  rw[← this]
-  norm_cast
+  cases ctx with
+  | mk ρ baseW curLen =>
+    dsimp [stateToSt, regToInt]
+    simp
+    rw [BitVec.toInt_ofNat']
+    simp
+    have := Int.emod_nonneg (evalRegister (σ i) ρ)
+      (b := 2 ^ (baseW i + curLen[i.val]?.getD 0)) (by simp)
+    have :
+        max ((evalRegister (σ i) ρ).emod (2 ^ (baseW i + curLen[i.val]?.getD 0))) 0
+          =
+        ((evalRegister (σ i) ρ).emod (2 ^ (baseW i + curLen[↑i]?.getD 0))) := by
+      aesop
+    rw [this]
+    set d := (evalRegister (σ i) ρ)
+    set c := (baseW i + curLen[i]?.getD 0)
+    have hc : (baseW i + curLen[i.val]?.getD 0) = c := by aesop
+    rw [hc]
+    change Int.bmod (d % (2 ^ c)) (2 ^ c) = d.bmod (2 ^ c)
+    have := Int.emod_bmod d (2 ^ c)
+    rw [← this]
+    norm_cast
+
 
 lemma Int.bmod_eq_self_of_FitsSigned (w : Nat) (z : ℤ) (h : FitsSigned w z) :
     z.bmod ((2 : Nat) ^ w) = z := by
   rcases h with ⟨hwpos, hzlo, hzhi⟩
-  -- For w>0, let H = 2^(w-1). Then modulus is m = 2^w = 2*H.
   cases w with
   | zero =>
       cases hwpos
@@ -196,25 +223,30 @@ lemma Int.bmod_eq_self_of_FitsSigned (w : Nat) (z : ℤ) (h : FitsSigned w z) :
       assumption
 
 lemma regToInt_stateToSt_eq_eval_of_FitsSignedAt
-  {k : ℕ} (σ : State k) (ρ : Fin k → ℤ) (baseW : Fin k → Nat)
-  (curLen : List Nat) (i : Fin k)
-  (hfit : FitsSignedAt (σ := σ) (ρ := ρ) (baseW := baseW) (curLen := curLen) i) :
-  regToInt (stateToSt (k := k) σ ρ baseW curLen i) = evalRegister (σ i) ρ := by
+  {k : ℕ} (σ : State k) (ctx : StCtx k) (i : Fin k)
+  (hfit : FitsSignedAt (σ := σ) (ctx := ctx) i) :
+  regToInt (stateToSt (k := k) σ ctx i) = evalRegister (σ i) ctx.ρ := by
   classical
-  set w : Nat := stWidth baseW curLen i
-  set z : ℤ := evalRegister (σ i) ρ
-  have hbmod :
-      regToInt (stateToSt (k := k) σ ρ baseW curLen i)
-        =
-      z.bmod ((2 : Nat) ^ w) := by
-    aesop
-  have hid : z.bmod ((2 : Nat) ^ w) = z := by
-    have : FitsSigned w z := by simpa [FitsSignedAt, stWidth, w, z] using hfit
-    exact Int.bmod_eq_self_of_FitsSigned w z this
-  simpa [z] using hbmod.trans hid
+  cases ctx with
+  | mk ρ baseW curLen =>
+    set w : Nat := stWidth (ctx := ⟨ρ, baseW, curLen⟩) i
+    set z : ℤ := evalRegister (σ i) ρ
+    have hbmod :
+        regToInt (stateToSt (k := k) σ ⟨ρ, baseW, curLen⟩ i)
+          =
+        z.bmod ((2 : Nat) ^ w) := by
+      aesop
+    have hid : z.bmod ((2 : Nat) ^ w) = z := by
+      have : FitsSigned w z := by
+        simpa [FitsSignedAt, stWidth, w, z] using hfit
+      exact Int.bmod_eq_self_of_FitsSigned w z this
+    simpa [z] using hbmod.trans hid
 
 
-/-- The “one-way” bridge: row-match ⇒ interp-match, assuming `FitsSignedAt` so `stateToSt` has no wrap. -/
+
+----------------------------------------------------------------------------------------------------
+------------------------------- pointRow ⇒ interp (WITH FITS) ---------------------------------------
+----------------------------------------------------------------------------------------------------
 lemma matchesAt_pointRow_state_implies_matchesAt_interp
   {k : Nat}
   (hk : k > 0)
@@ -223,31 +255,28 @@ lemma matchesAt_pointRow_state_implies_matchesAt_interp
   (baseW : Fin k → Nat) (curLen : List Nat)
   (hfit :
     FitsSignedAt (σ := σ)
-      (ρ := (fun j => regToInt (σ0St j)))
-      (baseW := baseW) (curLen := curLen) i)
+      (ctx := ⟨(fun j => regToInt (σ0St j)), baseW, curLen⟩) i)
   (hrow : matchesAt_pointRow_state (k := k) hk σ i pt = true) :
   matchesAt_interp (k := k) σ0St
-    (stateToSt (k := k) σ (fun j => regToInt (σ0St j)) baseW curLen) i pt
+    (stateToSt (k := k) σ ⟨(fun j => regToInt (σ0St j)), baseW, curLen⟩) i pt
     = true := by
   classical
   let ρinit : Fin k → ℤ := fun j => regToInt (σ0St j)
 
-  -- `stateToSt` readback is exact evalRegister when `FitsSignedAt` holds
   have hcur :
-      regToInt (stateToSt (k := k) σ ρinit baseW curLen i)
+      regToInt (stateToSt (k := k) σ ⟨ρinit, baseW, curLen⟩ i)
         =
       evalRegister (σ i) ρinit := by
+    -- identical, just ctx-ified
     simpa [ρinit] using
       (regToInt_stateToSt_eq_eval_of_FitsSignedAt (k := k)
-        (σ := σ) (ρ := ρinit) (baseW := baseW) (curLen := curLen) (i := i) hfit)
+        (σ := σ) (ctx := ⟨ρinit, baseW, curLen⟩) (i := i) hfit)
 
-  -- turn `hrow` into pointwise equality `σ i j = expectedRow pt j`
   have hrow' : ∀ j : Fin k, σ i j = expectedRow (k := k) pt j := by
     have : regEqExpected (k := k) (σ i) pt = true := by
       simpa [matchesAt_pointRow_state] using hrow
     exact (regEqExpected_eq_true_iff (k := k) (r := σ i) (pt := pt)).1 this
 
-  -- now split on pt
   cases pt with
   | int z =>
       have ht :
@@ -264,24 +293,25 @@ lemma matchesAt_pointRow_state_implies_matchesAt_interp
           let last : Fin (Nat.succ k') := ⟨k', by simp⟩
           have ht :
               evalRegister (σ i) ρinit = regToInt (σ0St last) := by
-            have hrowInf : ∀ j : Fin (Nat.succ k'), σ i j = (if j = last then (1 : ℤ) else 0) := by
+            have hrowInf :
+                ∀ j : Fin (Nat.succ k'), σ i j = (if j = last then (1 : ℤ) else 0) := by
               intro j
               aesop
             have hsum :
               (∑ j : Fin (Nat.succ k'), (if j = last then (1 : ℤ) else 0) * ρinit j) = ρinit last := by
-              rw[Finset.sum_eq_single last]
-              simp[expectedRow] at *
+              rw [Finset.sum_eq_single last]
+              simp [expectedRow] at *
               intro b _ hb
-              simp[hb];aesop
+              simp [hb]; aesop
 
-            simp[evalRegister, ρinit, hrowInf, last]
+            simp [evalRegister, ρinit, hrowInf, last]
 
           simp [matchesAt_interp, interpTarget, lastFin, ht, hcur, last, ρinit]
 
 
-
-
-
+----------------------------------------------------------------------------------------------------
+------------------------------- COVERAGE TRANSFER + MAIN THEOREMS -----------------------------------
+----------------------------------------------------------------------------------------------------
 
 namespace PhaseProductCoverage
 
@@ -309,20 +339,8 @@ lemma eraseFirstMatchB_congr
       · simp [hpx, hqx] at *
       · simp [hpx, hqx] at *;aesop
 
-/-- `decide (b = true)` simplifies back to `b`. -/
 @[simp] lemma decide_eq_true_bool (b : Bool) : decide (b = true) = b := by
   cases b <;> rfl
-
--- lemma matchers_agree_on_points
---   {k : ℕ} (hk : k > 0)
---   (σinit : St k)
---   (ρ : Fin k → ℤ) (baseW : Fin k → Nat) :
---   ∀ (curLenNow : List Nat) (σ : State k) (i : Fin k) (pt : Operations.Point),
---     matchesAt_pointRow_state (k := k) hk σ i pt
---       =
---     matchesAt_interp (k := k) σinit (stateToSt σ ρ baseW curLenNow) i pt := by
---   sorry
-
 
 lemma eraseFirstMatchB_of_eraseFirstMatch?_Bool
     {α : Type} (p : α → Bool) :
@@ -334,40 +352,32 @@ lemma eraseFirstMatchB_of_eraseFirstMatch?_Bool
     eraseFirstMatchB_of_eraseFirstMatch? (p := fun x => p x) xs ys
   aesop
 
+
+
 lemma consume_transfer_pointRow_to_interp
   {k : ℕ} (hk : k > 0)
   (σinit : St k)
-  (ρ : Fin k → ℤ) (baseW : Fin k → Nat)
-  (curLenNow : List Nat)
+  (ctxNow : StCtx k)
   (σ : State k) (i : Fin k)
   (pts pts' : List Operations.Point)
   (hconsume :
     List.eraseFirstMatch? (fun pt => matchesAt_pointRow_state (k := k) hk σ i pt) pts
       = some pts') :
-  eraseFirstMatchB (fun pt => matchesAt_interp (k := k) σinit (stateToSt σ ρ baseW curLenNow) i pt) pts
+  eraseFirstMatchB
+      (fun pt => matchesAt_interp (k := k) σinit (stateToSt (k := k) σ ctxNow) i pt) pts
     = some pts' := by
-  -- (1) convert Prop eraseFirstMatch? to Bool eraseFirstMatchB on pointRow
   have hb_row :
     eraseFirstMatchB (fun pt => matchesAt_pointRow_state (k := k) hk σ i pt) pts = some pts' := by
     apply eraseFirstMatchB_of_eraseFirstMatch?_Bool
       (p := fun pt => matchesAt_pointRow_state (k := k) hk σ i pt) pts pts'
     aesop
-  -- (2) swap the predicate pointwise using the bridge lemma
   clear hconsume
   induction pts with
-  |nil=>{
-    simp_all[eraseFirstMatchB]
-  }
-  |cons head tail ih=>{
-    simp_all[eraseFirstMatchB]
-    sorry
-  }
-  -- refine eraseFirstMatchB_congr
-  --   (p := fun pt => matchesAt_pointRow_state (k := k) hk σ i pt)
-  --   (q := fun pt => matchesAt_interp (k := k) σinit (stateToSt σ ρ baseW curLenNow) i pt)
-  --   (xs := pts) (ys := pts') ?_ hb_row
-  -- intro pt
-  -- simpa using (matchers_agree_on_points (k := k) hk σinit ρ baseW curLenNow σ i pt)
+  | nil =>
+      simp_all [eraseFirstMatchB]
+  | cons head tail ih =>
+      simp_all [eraseFirstMatchB]
+      sorry
 
 
 theorem compileProg_preserves_phaseCoverage_go
@@ -376,17 +386,18 @@ theorem compileProg_preserves_phaseCoverage_go
   (σinit : St k)
   (ops : List (valid_ops k))
   (σ0 : State k)
-  (ρ : Fin k → ℤ) (baseW : Fin k → Nat)
+  (ctx0 : StCtx k)
   (curLenNow : List Nat)
-  (hlen : curLenNow.length = k)
   (hWF : Prog.WellFormed ops)
   (pts : List Operations.Point)
-  (hcov : PhaseProductCoverage (k := k) hk ops σ0 pts) :
+  (hcov : PhaseProductCoverage (k := k) hk ops σ0 pts)
+  (hV : ValidFor (k := k) σ0 { ctx0 with curLen := curLenNow })
+  (hStep : ValidForStep (k := k) ctx0) :
+  let ctxNow : StCtx k := { ctx0 with curLen := curLenNow }
   let (opsP, _curLen') := compileProg (k := k) ops curLenNow
   PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
-    σinit opsP (stateToSt σ0 ρ baseW curLenNow) pts := by
+    σinit opsP (stateToSt (k := k) σ0 ctxNow) pts := by
   classical
-  -- unpack valid coverage
   unfold PhaseProductCoverage at hcov
   induction hcov generalizing curLenNow with
   | nil =>
@@ -395,43 +406,46 @@ theorem compileProg_preserves_phaseCoverage_go
   | step_op hstep hrest ih =>
       rename_i op ps σ τ pts
       have hopOK : Prog.OpOK op := by
-        simp[Prog.WellFormed] at hWF;aesop
+        simp [Prog.WellFormed] at hWF; aesop
       have hWF_tail : Prog.WellFormed ps := by
-        simp[Prog.WellFormed] at hWF;aesop
+        simp [Prog.WellFormed] at hWF; aesop
+
+      have hVτ :
+          let curLen1 := (compile1 (k := k) op curLenNow).2
+          ValidFor (k := k) τ { ctx0 with curLen := curLen1 } := by
+        exact hStep σ τ op curLenNow hstep hopOK hV
 
       rcases hC1 : compile1 (k := k) op curLenNow with ⟨ops1, curLen1⟩
       rcases hCP : compileProg (k := k) ps curLen1 with ⟨ops2, curLen2⟩
 
+      have hVτ' : ValidFor (k := k) τ { ctx0 with curLen := curLen1 } := by
+        simpa [hC1] using hVτ
+
       have hsim :
-        eval_prim_ops (k := k) ops1 (stateToSt σ ρ baseW curLenNow)
+        eval_prim_ops (k := k) ops1 (stateToSt (k := k) σ { ctx0 with curLen := curLenNow })
           =
-        stateToSt τ ρ baseW curLen1 := by
+        stateToSt (k := k) τ { ctx0 with curLen := curLen1 } := by
         simpa [hC1] using
           (compile1_simulates (k := k)
-            (op := op) (σ := σ) (ρ := ρ) (baseW := baseW)
-            (curLen := curLenNow) (hcurLen := hlen)
+            (op := op) (σ := σ) (ctx := { ctx0 with curLen := curLenNow })
+            (hV := hV)
             (σ2 := τ) (hstep := hstep) (hOK := hopOK))
-
-      have hlen1 : curLen1.length = k := by
-        -- use your lemma name here
-        have hlen' := compile1_pres_len (k := k) (op := op) (curLen := curLenNow)
-        simpa [hC1, hlen] using hlen'
 
       have htail :
         PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
-          σinit ops2 (stateToSt τ ρ baseW curLen1) pts := by
-        have := ih (curLenNow := curLen1) hlen1 hWF_tail
+          σinit ops2 (stateToSt (k := k) τ { ctx0 with curLen := curLen1 }) pts := by
+        have := ih (curLenNow := curLen1) (hWF := hWF_tail) (hV := hVτ')
         simpa [hCP] using this
 
       have htail' :
         PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
           σinit ops2
-          (eval_prim_ops (k := k) ops1 (stateToSt σ ρ baseW curLenNow)) pts := by
+          (eval_prim_ops (k := k) ops1 (stateToSt (k := k) σ { ctx0 with curLen := curLenNow })) pts := by
         simpa [hsim] using htail
 
       have hwhole :
         PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
-          σinit (ops1 ++ ops2) (stateToSt σ ρ baseW curLenNow) pts := by
+          σinit (ops1 ++ ops2) (stateToSt (k := k) σ { ctx0 with curLen := curLenNow }) pts := by
         apply prepend
         aesop
       simpa [compileProg, hC1, hCP] using hwhole
@@ -439,7 +453,7 @@ theorem compileProg_preserves_phaseCoverage_go
   | step_phase hconsume hrest ih =>
       rename_i i ps σ pts pts'
       have hWF_tail : Prog.WellFormed ps := by
-        simp[Prog.WellFormed] at hWF;aesop
+        simp [Prog.WellFormed] at hWF; aesop
 
       rcases hC1 : compile1 (k := k) (valid_ops.phaseProduct i) curLenNow with ⟨ops1, curLen1⟩
       rcases hCP : compileProg (k := k) ps curLen1 with ⟨ops2, curLen2⟩
@@ -449,23 +463,26 @@ theorem compileProg_preserves_phaseCoverage_go
       rcases hCphase with ⟨hops1, hcur1⟩
       subst hops1; subst hcur1
 
-      -- consume-transfer (Prop eraseFirstMatch? -> Bool eraseFirstMatchB, then swap matcher)
       have hb_interp :
         eraseFirstMatchB
-          (fun pt => matchesAt_interp (k := k) σinit (stateToSt σ ρ baseW curLen1) i pt) pts
+          (fun pt =>
+            matchesAt_interp (k := k) σinit
+              (stateToSt (k := k) σ { ctx0 with curLen := curLen1 }) i pt) pts
           = some pts' := by
-        apply consume_transfer_pointRow_to_interp (k := k) hk σinit ρ baseW curLen1 σ i pts pts'
+        apply consume_transfer_pointRow_to_interp (k := k) hk σinit
+          ({ ctx0 with curLen := curLen1 }) σ i pts pts'
         aesop
 
       have htail :
         PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
-          σinit ops2 (stateToSt σ ρ baseW curLen1) pts' := by
-        have := ih (curLenNow := curLen1) hlen hWF_tail
+          σinit ops2 (stateToSt (k := k) σ { ctx0 with curLen := curLen1 }) pts' := by
+        have := ih (curLenNow := curLen1) (hWF := hWF_tail) (hV := hV)
         simpa [hCP] using this
 
       have hphase :
         PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
-          σinit (prim_ops.phaseProduct i :: ops2) (stateToSt σ ρ baseW curLen1) pts := by
+          σinit (prim_ops.phaseProduct i :: ops2)
+          (stateToSt (k := k) σ { ctx0 with curLen := curLen1 }) pts := by
         dsimp [PhaseProduct_PrimOps.PhaseProductCoverage_prim] at htail ⊢
         refine PhaseProduct_PrimOps.PhaseProductCoverageM_prim.step_phase (k := k)
           (M := matchesAt_interp (k := k) σinit) (i := i) (hconsume := hb_interp) ?_
@@ -474,27 +491,28 @@ theorem compileProg_preserves_phaseCoverage_go
       simpa [compileProg, hC1, hCP] using hphase
 
 
-/-
-## 3) Final theorem: no matcher hypothesis, just call `go`
--/
 theorem compileProg_preserves_phaseCoverage
   {k : ℕ}
   (hk : k > 0)
   (ops : List (valid_ops k))
   (σ0 : State k)
-  (ρ : Fin k → ℤ) (baseW : Fin k → Nat)
-  (curLen : List Nat)
-  (hcurLen : curLen.length = k)
+  (ctx0 : StCtx k)
   (hOK : Prog.WellFormed ops)
   (pts : List Operations.Point)
-  (hcov : PhaseProductCoverage (k := k) hk ops σ0 pts) :
+  (hcov : PhaseProductCoverage (k := k) hk ops σ0 pts)
+  (hV0 : ValidFor (k := k) σ0 ctx0)
+  (hStep : ValidForStep (k := k) ctx0) :
   PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
-    (stateToSt σ0 ρ baseW curLen) (compileProg (k := k) ops curLen).1 (stateToSt σ0 ρ baseW curLen) pts := by
+    (stateToSt (k := k) σ0 ctx0) (compileProg (k := k) ops ctx0.curLen).1
+    (stateToSt (k := k) σ0 ctx0) pts := by
   classical
-  let σinit : St k := stateToSt σ0 ρ baseW curLen
-  simpa [σinit] using
-    (compileProg_preserves_phaseCoverage_go (k := k)
-      (hk := hk) (σinit := σinit)
-      (ops := ops) (σ0 := σ0) (ρ := ρ) (baseW := baseW)
-      (curLenNow := curLen) (hlen := hcurLen)
-      (hWF := hOK) (pts := pts) (hcov := hcov))
+  let σinit : St k := stateToSt (k := k) σ0 ctx0
+  have := compileProg_preserves_phaseCoverage_go (k := k)
+    (hk := hk) (σinit := σinit)
+    (ops := ops) (σ0 := σ0) (ctx0 := ctx0)
+    (curLenNow := ctx0.curLen)
+    (hWF := hOK) (pts := pts) (hcov := hcov)
+    (hV := by simpa using hV0) (hStep := hStep)
+  simpa [σinit] using this
+
+end PhaseProductCoverage

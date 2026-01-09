@@ -212,6 +212,14 @@ lemma decLen_pres_len {k} (curLen : List Nat) (i : Fin k) (n : Nat) :
   (decLen curLen i n).length = curLen.length := by
   simp [decLen, setLen, setAt_length]
 
+
+
+structure CompileResult (k : ℕ) where
+  ops      : List (prim_ops k)
+  widths   : List Nat
+  msbAdds  : List (Fin k × Nat)
+
+
 def compile_op_to_prim_single {k : ℕ} (op : valid_ops k) (curLen : List Nat) :
     (List (prim_ops k)) × (List Nat) × (List (Fin k × Nat)) :=
 match op with

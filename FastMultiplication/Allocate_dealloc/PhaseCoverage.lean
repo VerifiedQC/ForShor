@@ -2,6 +2,11 @@ import FastMultiplication.Allocate_dealloc.Basic
 
 open Operations
 
+
+----------------------------------------------------------------------------------------------------
+------------------------------- PHASE COVERAGE (COMPUTABLE) ----------------------------------------
+----------------------------------------------------------------------------------------------------
+
 /-- Bool-valued matcher (so everything is computable). -/
 abbrev MatchesAtStateBit (k : ℕ) := St k → Fin k → Operations.Point → Bool
 
@@ -17,7 +22,9 @@ def eraseFirstMatchB {α : Type} (p : α → Bool) : List α → Option (List α
         | some xs'  => some (x :: xs')
 
 /--
-Run the “coverage checker”
+Run the “coverage checker”:
+- on `phaseProduct i`: consume one matching point from `pts`
+- otherwise: step the state using `eval_prim_op_single`
 -/
 def runPhaseCoverage {k : ℕ} (M : MatchesAtStateBit k) :
     List (prim_ops k) → St k → List Operations.Point → Option (St k × List Operations.Point)
@@ -40,31 +47,14 @@ def phaseProductCoverage? {k : ℕ} (M : MatchesAtStateBit k)
   | _            => false
 
 
+----------------------------------------------------------------------------------------------------
+------------------------------- INTERP MATCHER (FROM INIT STATE) -----------------------------------
+----------------------------------------------------------------------------------------------------
+
 /-- Signed (two’s-complement) value stored in a `Reg`. -/
 def regToInt (r : Reg) : Int :=
   match r with
   | ⟨_, bv⟩ => BitVec.toInt bv
-
-/-- Convenient names for Fin 3 indices. -/
-def f0 : Fin 3 := ⟨0, by decide⟩
-def f1 : Fin 3 := ⟨1, by decide⟩
-def f2 : Fin 3 := ⟨2, by decide⟩
-
-/-- Extract the initial x0,x1,x2 from the *initial* state. -/
-def x0 (σ0 : St 3) : Int := regToInt (σ0 f0)
-def x1 (σ0 : St 3) : Int := regToInt (σ0 f1)
-def x2 (σ0 : St 3) : Int := regToInt (σ0 f2)
-
-open Operations
-
-
-
-/-- Read register `n` from the *initial* state, if `n < k`. -/
-def coeff {k : ℕ} (σ0 : St k) (n : Nat) : Option Int :=
-  if h : n < k then
-    some (regToInt (σ0 ⟨n, h⟩))
-  else
-    none
 
 /-- Evaluate Σ_{j=0}^{k-1} (w^j * x_j) where x_j are the *initial* register values from σ0. -/
 def polyEvalFromInit {k : Nat} (σ0 : St k) (w : Int) : Int :=
@@ -85,6 +75,7 @@ def interpTarget {k : Nat} (σ0 : St k) : Operations.Point → Option Int
 
 /--
 Matcher for phase coverage:
+at `pt`, register `i` matches iff its current value equals the init-derived target.
 -/
 def matchesAt_interp {k : Nat} (σ0 : St k) : St k → Fin k → Operations.Point → Bool :=
   fun σ i pt =>
@@ -92,11 +83,27 @@ def matchesAt_interp {k : Nat} (σ0 : St k) : St k → Fin k → Operations.Poin
     | none   => false
     | some t => decide (regToInt (σ i) = t)
 
-def eg_pts_0:=[Point.int 0, Point.inf, Point.int 1, Point.int (-1), Point.int 2, Point.int (-2)]
+----------------------------------------------------------------------------------------------------
+------------------------------- SMALL DEMOS / EVALS -------------------------------------------------
+----------------------------------------------------------------------------------------------------
 
+/-- Convenient names for Fin 3 indices. -/
+def f0 : Fin 3 := ⟨0, by decide⟩
+def f1 : Fin 3 := ⟨1, by decide⟩
+def f2 : Fin 3 := ⟨2, by decide⟩
 
-#eval phaseProductCoverage? (k := 3) (matchesAt_interp demo) DemoValidOps.pop1 demo eg_pts_0
+/-- Extract the initial x0,x1,x2 from the *initial* state. -/
+def x0 (σ0 : St 3) : Int := regToInt (σ0 f0)
+def x1 (σ0 : St 3) : Int := regToInt (σ0 f1)
+def x2 (σ0 : St 3) : Int := regToInt (σ0 f2)
 
+def eg_pts_0 : List Operations.Point :=
+  [Point.int 0, Point.inf, Point.int 1, Point.int (-1), Point.int 2, Point.int (-2)]
+
+-- example (assuming `demo` and `DemoValidOps.pop1` are in scope):
+-- #eval phaseProductCoverage? (k := 3) (matchesAt_interp demo) DemoValidOps.pop1 demo eg_pts_0
+
+/-- Build a `Reg` from an `Int` using `w`-bit two’s-complement. -/
 def regOfInt (w : Nat) (n : Int) : Reg :=
   ⟨w, BitVec.ofInt w n⟩
 
@@ -106,23 +113,27 @@ def demoσ0 : St 5 :=
     match i.val with
     | 0 => regOfInt w  1
     | 1 => regOfInt w  13
-    | 2 => regOfInt w (50)
+    | 2 => regOfInt w  (50)
     | 3 => regOfInt w  20
     | _ => regOfInt w  2  -- only remaining case is 4
 
-lemma hk (k:ℕ) (h1:k≠0):0<k:=by omega
+lemma hk (k : ℕ) (h1 : k ≠ 0) : 0 < k := by omega
 
-def eg_pts_1:=[Point.int 0, Point.inf, Point.int 1, Point.int (-1), Point.int 2, Point.int (-2), Point.int (3)]
-def vop_1:=(genOpsWithProduct (hk 5 (by simp)) eg_pts_1)
-def pop_1:=compile_valid_ops vop_1
+def eg_pts_1 : List Operations.Point :=
+  [Point.int 0, Point.inf, Point.int 1, Point.int (-1), Point.int 2, Point.int (-2), Point.int 3]
 
-#eval phaseProductCoverage? (k := 5) (matchesAt_interp demoσ0) pop_1 demoσ0 eg_pts_1
+def vop_1 := (genOpsWithProduct (hk 5 (by simp)) eg_pts_1)
+def pop_1 := compile_valid_ops vop_1
 
+-- #eval printPrimOps pop_1
+-- #eval phaseProductCoverage? (k := 5) (matchesAt_interp demoσ0) pop_1 demoσ0 eg_pts_1
+
+
+----------------------------------------------------------------------------------------------------
+------------------------------- PROP VERSION (FOR PROOFS) ------------------------------------------
+----------------------------------------------------------------------------------------------------
 
 namespace PhaseProduct_PrimOps
-/-- Bool-valued matcher (computable). -/
-abbrev MatchesAtStateBit (k : ℕ) := St k → Fin k → Operations.Point → Bool
-
 
 lemma eraseFirstMatchB_of_eraseFirstMatch?
     {α : Type} (p : α → Prop) [DecidablePred p] :
@@ -152,10 +163,7 @@ lemma eraseFirstMatchB_of_eraseFirstMatch?
             simp [hb]
 
 /--
-Prop-level version of your coverage run:
-- when we see `phaseProduct i`, we must consume a point matched by `M σ i`.
-- otherwise we step the state with `eval_prim_op_single` and keep points unchanged.
-- at the end we require that the remaining points list is `[]`.
+Prop version of “phase product coverage” mirroring `runPhaseCoverage`.
 -/
 inductive PhaseProductCoverageM_prim {k : ℕ} (M : MatchesAtStateBit k) :
     List (prim_ops k) → St k → List Operations.Point → Prop
@@ -169,7 +177,10 @@ inductive PhaseProductCoverageM_prim {k : ℕ} (M : MatchesAtStateBit k) :
     (hconsume : eraseFirstMatchB (fun pt => M σ i pt) pts = some pts')
     (hrest : PhaseProductCoverageM_prim M ps σ pts') :
     PhaseProductCoverageM_prim M (prim_ops.phaseProduct i :: ps) σ pts
-/-- The “final” predicate you probably want to use: all points are consumed. -/
+
+/-- Wrapper specialized to `matchesAt_interp σinit`. -/
 def PhaseProductCoverage_prim {k : ℕ}
-    (σinit : St k)(prog : List (prim_ops k)) (σ : St k) (pts : List Operations.Point) : Prop :=
+    (σinit : St k) (prog : List (prim_ops k)) (σ : St k) (pts : List Operations.Point) : Prop :=
   PhaseProductCoverageM_prim (k := k) (matchesAt_interp σinit) prog σ pts
+
+end PhaseProduct_PrimOps
