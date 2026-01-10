@@ -237,6 +237,7 @@ lemma bridge_allocMSB
 -- Negate
 lemma bridge_negate
   {k : ℕ} (σ : State k) (ctx : StCtx k)
+  (hV : ValidFor (k := k) σ ctx)
   (i : Fin k) :
   eval_prim_op_single (k := k) (prim_ops.negate i) (stateToSt (k := k) σ ctx)
     =
@@ -279,16 +280,150 @@ lemma bridge_negate
       simp_all
 
 
+
+@[simp]lemma max_emod_zero(a n:ℤ) (hn:n≠0):
+max (a.emod n) 0 = a.emod n:= by {
+  simp
+  apply Int.emod_nonneg
+  simp[hn]
+}
 -- Add / Free bridges (stubs kept as-is)
 
 lemma bridge_add
   {k : ℕ} (σ : State k) (ctx : StCtx k)
-  (dst src : Fin k) :
+  (dst src : Fin k)
+  (hV : ValidFor (k := k) σ ctx)
+  (hW : stWidth ctx dst ≤ stWidth ctx src)
+  :
   eval_prim_op_single (k := k) (prim_ops.Add dst src) (stateToSt (k := k) σ ctx)
     =
   stateToSt (k := k) (State.addScaledReg σ dst src false 0) ctx := by
+  have hcurLen: ctx.curLen.length=k:=by simpa using hV.curLen_len
+  cases ctx with
+  | mk ρ baseW curLen =>
+    unfold eval_prim_op_single
+    simp
+    unfold Adder
+    funext j
+    split_ifs with h1
+    ·
+      subst h1
+      unfold stateToSt
+      simp
+      --rw [List.getD_eq_getElem?_getD]
+      set wj : Nat := baseW j + curLen.getD (↑j) 0
+      set ws : Nat := baseW src + curLen.getD (↑src) 0
+      have heval_add :
+      evalRegister ((σ j).addScaled (σ src) false 0) ρ
+        = evalRegister (σ j) ρ + evalRegister (σ src) ρ := by
+        unfold Register.addScaled evalRegister
+        simp [pow_zero, Finset.sum_add_distrib, mul_add, add_comm, mul_comm]
+      simp [heval_add]
+      apply (BitVec.toNat_inj).1
+      simp [BitVec.toNat_add, BitVec.toNat_setWidth, BitVec.toNat_ofNat,
+            Nat.add_mod]
+      repeat' (simp)
+      have hpowj_pos : (0 : ℤ) < (2 : ℤ) ^ (baseW j + curLen[↑j]?.getD 0) := by
+        exact pow_pos (by decide : (0 : ℤ) < 2) _
+      have hpowj_lt :
+          (evalRegister (σ j) ρ).emod (2 ^ (baseW j + curLen[↑j]?.getD 0)) <
+            (2 : ℤ) ^ (baseW j + curLen[↑j]?.getD 0) := by
+        -- emod_lt_of_pos
+        simpa using Int.emod_lt_of_pos (evalRegister (σ j) ρ) hpowj_pos
 
-  sorry
+      have hpowsrc_pos : (0 : ℤ) < (2 : ℤ) ^ (baseW src + curLen[↑src]?.getD 0) := by
+        exact pow_pos (by decide : (0 : ℤ) < 2) _
+      have hpowsrc_lt :
+          (evalRegister (σ src) ρ).emod (2 ^ (baseW src + curLen[↑src]?.getD 0)) <
+            (2 : ℤ) ^ (baseW src + curLen[↑src]?.getD 0) := by
+        simpa using Int.emod_lt_of_pos (evalRegister (σ src) ρ) hpowsrc_pos
+      have hj_toNat_lt :
+      ((evalRegister (σ j) ρ).emod (2 ^ (baseW j + curLen[↑j]?.getD 0))).toNat <
+        2 ^ (baseW j + curLen[↑j]?.getD 0) := by
+        -- `toNat_lt` + coercions
+        rw[Int.toNat_lt]
+        aesop
+        apply Int.emod_nonneg
+        simp
+
+
+      have hsrc_toNat_lt :
+          ((evalRegister (σ src) ρ).emod (2 ^ (baseW src + curLen[↑src]?.getD 0))).toNat <
+            2 ^ (baseW src + curLen[↑src]?.getD 0) := by
+        rw[Int.toNat_lt]
+        aesop
+        apply Int.emod_nonneg
+        simp
+
+      have hj_drop :
+          ((evalRegister (σ j) ρ).emod (2 ^ (baseW j + curLen[↑j]?.getD 0))).toNat %
+            2 ^ (baseW j + curLen[↑j]?.getD 0)
+          =
+          ((evalRegister (σ j) ρ).emod (2 ^ (baseW j + curLen[↑j]?.getD 0))).toNat := by
+        exact Nat.mod_eq_of_lt hj_toNat_lt
+
+      have hsrc_drop :
+          ((evalRegister (σ src) ρ).emod (2 ^ (baseW src + curLen[↑src]?.getD 0))).toNat %
+            2 ^ (baseW src + curLen[↑src]?.getD 0)
+          =
+          ((evalRegister (σ src) ρ).emod (2 ^ (baseW src + curLen[↑src]?.getD 0))).toNat := by
+        exact Nat.mod_eq_of_lt hsrc_toNat_lt
+      unfold ws
+      conv_lhs=>
+        arg 1
+        arg 2
+        change ((evalRegister (σ src) ρ).emod (2 ^ (baseW src + curLen[src]?.getD 0))).toNat % 2 ^ (baseW src + curLen[src]?.getD 0)
+      rw[hsrc_drop]
+      have h_rhs_lt : ((evalRegister (σ j) ρ + evalRegister (σ src) ρ).emod (2 ^ wj)).toNat < 2 ^ wj := by
+        rw[Int.toNat_lt]
+        simp
+        have:=Int.emod_lt (a:=(evalRegister (σ j) ρ + evalRegister (σ src) ρ)) (b:=2^wj) (by simp)
+        have h1:((2:ℤ) ^ wj).natAbs=((2:ℤ)^wj):= by norm_cast
+        rw[h1] at this
+        change (evalRegister (σ j) ρ + evalRegister (σ src) ρ) % (2 ^ wj) < 2 ^ wj
+        apply this
+        apply Int.emod_nonneg
+        simp
+      nth_rewrite 2 [Nat.mod_eq_of_lt]
+      apply Int.ofNat_inj.mp
+      push_cast
+      rw [Int.toNat_of_nonneg]
+      rw [Int.add_emod]
+      set a:=(evalRegister (σ j) ρ)
+      set b:=(evalRegister (σ src) ρ)
+      set n:=(baseW j + curLen[j.val]?.getD 0)
+      set m:=(baseW src + curLen[src]?.getD 0)
+      have h_nwj : n = wj := by rfl
+      simp[h_nwj] at *
+      have h_b_nonneg : 0 ≤ b.emod (2 ^ m) := Int.emod_nonneg _ (by positivity)
+      have h_ab_nonneg : 0 ≤ (a + b).emod (2 ^ wj) := Int.emod_nonneg _ (by positivity)
+      change _ = (a+b) % (2^wj)
+      rw[Int.add_emod]
+      set N : ℤ := (2 : ℤ) ^ wj
+      set M : ℤ := (2 : ℤ) ^ m
+      have hN0 : N ≠ 0 := by
+        subst N; exact pow_ne_zero _ (by decide : (2 : ℤ) ≠ 0)
+
+      have hwm:(wj≤m):= by unfold stWidth at hW;simp at hW; unfold wj m; apply hW
+      -- 2^wj ∣ 2^m
+      have hdiv : N ∣ M := by
+        subst N; subst M
+        refine ⟨(2 : ℤ) ^ (m - wj), ?_⟩
+        have hm : wj + (m - wj) = m := Nat.add_sub_of_le hwm
+        calc
+          (2 : ℤ) ^ m
+              = (2 : ℤ) ^ (wj + (m - wj)) := by simp[hm]
+          _   = (2 : ℤ) ^ wj * (2 : ℤ) ^ (m - wj) := by simp [pow_add]
+      change (a % N % N + b % M % N) % N = (a + b) % N
+      rw[Int.emod_emod_of_dvd, Int.emod_emod_of_dvd,← Int.add_emod]
+      apply hdiv
+      simp
+      apply Int.emod_nonneg
+      simp
+      apply h_rhs_lt
+    · unfold stateToSt
+      simp_all
+
 
 lemma bridge_freeLSB
   {k : ℕ} (σ σ' : State k) (ctx : StCtx k)
@@ -678,7 +813,7 @@ theorem compile1_simulates
         simp [compile1, compile_op_to_prim_single, applyOp?] at hstep ⊢
         cases hstep
         simpa [eval_prim_ops_singleton] using
-          (bridge_negate (k := k) (σ := σ) (ctx := ⟨ρ, baseW, curLen⟩) (i := i))
+          (bridge_negate (k := k) (σ := σ) (ctx := ⟨ρ, baseW, curLen⟩) (i := i) hV)
 
     | phaseProduct i =>
         simp [compile1, compile_op_to_prim_single, applyOp?, eval_prim_ops, eval_prim_op_single] at *
@@ -736,7 +871,7 @@ theorem compile1_simulates
                 =
               stateToSt (k := k) (State.addScaledReg σ dst src true 0) ⟨ρ, baseW, curLen⟩ := by
               simp [eval_prim_ops]
-              simp [bridge_negate]
+              rw [bridge_negate]
               rw [bridge_add (k := k)
                     (σ := State.negateReg σ src) (ctx := ⟨ρ, baseW, curLen⟩)
                     (dst := dst) (src := src)]
@@ -744,6 +879,16 @@ theorem compile1_simulates
                     (σ := State.addScaledReg (State.negateReg σ src) dst src false 0)
                     (ctx := ⟨ρ, baseW, curLen⟩) (i := src)]
               simp [negate_add_negate_eq_addScaled_true0 σ dst src hds]
+              constructor
+              simp[hV.curLen_len]
+              {
+                unfold FitsSignedAll FitsSignedAt
+                intro i
+                sorry
+              }
+              sorry
+              sorry
+              aesop
             rw [hSt]
           ·
             subst h1 hstep h2
