@@ -1,4 +1,4 @@
-import FastMultiplication.Allocate_dealloc.Compiler_correctness
+import FastMultiplication.Allocate_dealloc.Bridge_lemmas
 import FastMultiplication.Allocate_dealloc.PhaseCoverage
 
 namespace PhaseProduct_PrimOps
