@@ -262,6 +262,28 @@ lemma incLen_to_sum_of_lt
           have hidx' : idx < xs.length := Nat.lt_of_succ_lt_succ hidx
           simpa [setAt, getLen] using ih idx hidx'
 
+lemma decLen_to_sum_of_lt
+  (curLen : List ℕ)
+  (n : ℕ)
+  (idx : Nat)
+  (hidx : idx < curLen.length) :
+  curLen[idx]?.getD 0 - n =
+    (setAt curLen idx (getLen curLen idx - n))[idx]?.getD 0 := by
+  classical
+  revert idx
+  induction curLen with
+  | nil =>
+      intro idx hidx
+      cases hidx
+  | cons a xs ih =>
+      intro idx hidx
+      cases idx with
+      | zero =>
+          simp [setAt, getLen] at *
+      | succ idx =>
+          have hidx' : idx < xs.length := Nat.lt_of_succ_lt_succ hidx
+          simpa [setAt, getLen] using ih idx hidx'
+
 @[simp]lemma incLen_to_sum
   (k : ℕ)
   (curLen : List ℕ)
@@ -273,6 +295,18 @@ lemma incLen_to_sum_of_lt
     simp[hj]
   simpa [incLen, setLen] using
     (incLen_to_sum_of_lt (curLen := curLen) (n := n) (idx := j.val) hjlt)
+
+@[simp]lemma decLen_to_diff
+  (k : ℕ)
+  (curLen : List ℕ)
+  (n : ℕ)
+  (j : Fin k)
+  (hj : curLen.length = k) :
+  curLen[j.val]?.getD 0 - n = (decLen curLen j n)[j.val]?.getD 0 := by
+  have hjlt : j.val < curLen.length := by
+    simp[hj]
+  simpa [incLen, setLen] using
+    (decLen_to_sum_of_lt (curLen := curLen) (n := n) (idx := j.val) hjlt)
 
 lemma List.getD_eq_of_lt {α : Type} (xs : List α) (idx : Nat) (d₁ d₂ : α)
     (h : idx < xs.length) :
@@ -407,6 +441,112 @@ lemma BitVec.ofNat_append_zeros_eqv (w n z: ℕ) :
     rw[this,pow_add,pow_add, pow_add, pow_add, pow_one]
     simp[mul_assoc]
   }
+
+-- This is the key lemma you can prove *just from h*:
+lemma shiftRReg?_eq_some_implies_divisible
+  {k : ℕ} (σ : State k) (j : Fin k) (n : ℕ) (σ' : State k)
+  (h : σ.shiftRReg? j n = some σ') :
+  ∀ t, (σ j t) % ((2 : ℤ) ^ n) = 0 := by
+  classical
+  unfold State.shiftRReg? at h
+  cases hR : Register.shiftR? (σ j) n with
+  | none =>
+      simp [hR] at h
+  | some r' =>
+      unfold Register.shiftR? at hR
+      set m : ℤ := (2 : ℤ) ^ n with hm
+      -- shiftR? is an if on divisibility
+      by_cases hd : ∀ t, (σ j t) % m = 0
+      ·
+        simpa [hm] using hd
+      · -- if divisibility fails, shiftR? would be none, contradiction with hR = some _
+        aesop
+
+lemma shiftRReg?_eq_some_implies_division
+  {k : ℕ} (σ : State k) (j : Fin k) (n : ℕ) (σ' : State k)
+  (h : σ.shiftRReg? j n = some σ') :
+  ∀ t, σ' j t = (σ j t) / ((2 : ℤ) ^ n) := by
+  classical
+  -- unfold the do-notation
+  unfold State.shiftRReg? at h
+
+  -- split on the Option produced by Register.shiftR?
+  cases hR : Register.shiftR? (σ j) n with
+  | none =>
+      simp [hR] at h
+  | some r' =>
+      have hset : State.setReg σ j r' = σ' := by
+        exact Option.some.inj (by simpa [hR] using h)
+      unfold Register.shiftR? at hR
+      set m : ℤ := (2 : ℤ) ^ n with hm
+      by_cases hd : ∀ t, (σ j t) % m = 0
+      ·
+        have hr' : r' = (fun t => (σ j t) / m) := by
+          have : (some (fun t => (σ j t) / m) : Option (Register k)) = some r' := by
+            simpa [hd] using hR
+          -- extract the function equality
+          exact (Option.some.inj this).symm
+
+        intro t
+        aesop
+      ·
+        have : (none : Option (Register k)) = some r' := by
+          aesop
+        cases this
+
+lemma shiftRReg?_some_iff
+  {k} {σ σ' : State k} {j : Fin k} {n : Nat}
+  (h : State.shiftRReg? σ j n = some σ') :
+  ∃ r',
+    Register.shiftR? (σ j) n = some r' ∧
+    σ' = State.setReg σ j r' ∧
+    (∀ t, (σ j t) % ((2:ℤ)^n) = 0) ∧
+    (∀ t, r' t = (σ j t) / ((2:ℤ)^n)) := by
+    use (σ' j)
+    constructor
+    unfold State.shiftRReg? at *
+    simp at h
+    cases h_shift : (σ j).shiftR? n
+    aesop
+    aesop
+    constructor
+    unfold State.shiftRReg? at *
+    simp at h
+    cases h_shift : (σ j).shiftR? n
+    aesop
+    aesop
+    constructor
+    intro t
+    rw[shiftRReg?_eq_some_implies_divisible σ j n σ']
+    assumption
+    intro t
+    rw[shiftRReg?_eq_some_implies_division σ j n σ' h]
+
+
+lemma evalRegister_setReg_div_pow2
+  {k} (σ σ' : State k) (ρ : Fin k → ℤ) (j : Fin k) (n : Nat)
+  (h : State.shiftRReg? σ j n = some σ')
+  : evalRegister (σ' j) ρ = evalRegister (σ j) ρ / ((2:ℤ)^n) := by
+  unfold evalRegister
+  have h1:=shiftRReg?_eq_some_implies_divisible σ j n σ' h
+  have h2:=shiftRReg?_eq_some_implies_division σ j n σ' h
+  simp[h2]
+  let f:= fun x => (σ j x / 2 ^ n) * ρ x
+  conv_rhs =>
+    arg 1 -- Enter the numerator (the sum)
+    enter [2, x]
+    rw [← Int.mul_ediv_add_emod (σ j x) (2^n), h1 x]
+    simp only [add_zero]
+    rw[mul_assoc]
+    change 2^n * (f x)
+  conv_lhs =>
+    arg 2
+    change f
+  rw [← Finset.mul_sum]
+  simp
+
+
+
 
 
 ----------------------------------------------------------------------------------------------------
@@ -717,20 +857,242 @@ lemma bridge_add
   eval_prim_op_single (k := k) (prim_ops.Add dst src) (stateToSt (k := k) σ ctx)
     =
   stateToSt (k := k) (State.addScaledReg σ dst src false 0) ctx := by
+
   sorry
 
 lemma bridge_freeLSB
   {k : ℕ} (σ σ' : State k) (ctx : StCtx k)
   (i : Fin k) (n : Nat)
-  (h : State.shiftRReg? σ i n = some σ') :
+  (hn : n ≤ ctx.curLen.getD i.1 0)
+  (h : State.shiftRReg? σ i n = some σ')
+  (hV : ValidFor (k := k) σ ctx)
+
+  :
   eval_prim_op_single (k := k) (prim_ops.Free i true n) (stateToSt (k := k) σ ctx)
     =
   stateToSt (k := k) σ' { ctx with curLen := decLen ctx.curLen i n } := by
-  sorry
+  have hcurLen: ctx.curLen.length=k:=by simpa using hV.curLen_len
+  cases ctx with
+  | mk ρ baseW curLen =>
+    unfold eval_prim_op_single
+    simp
+    unfold FreeLSB
+    funext j
+    split_ifs with h1
+    ·
+      subst h1
+      unfold stateToSt
+      simp
+      constructor
+      {
+        rw[add_comm, add_comm, Nat.add_sub_assoc,decLen_to_diff]
+        simpa using hV.curLen_len
+        aesop
+      }
+      {
+        rw[← decLen_to_diff,← Nat.add_sub_assoc]
+        set a:=(baseW j + curLen[j.val]?.getD 0)
+        have:(decLen curLen j n).getD (j.val) 0= curLen.getD (j.val) 0 - n:= by
+          simp
+          rw[decLen_to_diff]
+          simp[hcurLen]
+        rw[this]
+        rw[← Nat.add_sub_assoc]
+        set b:=baseW j + curLen.getD (j.val) 0 - n
+        {
+          have h1:=evalRegister_setReg_div_pow2 σ σ' ρ j n h
+          rw[h1]
+          set c:=(evalRegister (σ j) ρ)
+          congr
+          have h_emod_range : (c.emod (2 ^ a)).toNat < 2 ^ a := by
+            simp
+            have:=Int.emod_lt ((c)) (b:=2^a) (by simp)
+            aesop
+          rw [Nat.mod_eq_of_lt h_emod_range]
+          have h_exp : (2:ℤ) ^ a = 2 ^ n * 2 ^ (a - n) := by
+            rw [← pow_add, Nat.add_sub_cancel']
+            unfold a
+            simp at hn;linarith
+          rw[h_exp]
+          change (c % (2 ^ n * 2 ^ (a - n))).toNat / (2) ^ n = ((c / 2 ^ n) % (2 ^ (a - n))).toNat
+          --rw[Int.toNat_emod, Int.toNat_emod, Int.toNat_mul]
+          have h1:2^n=((2:ℤ) ^ n).toNat:= by norm_cast
+          rw[h1]
+          set N : ℤ := (2 : ℤ) ^ n
+          set K : ℤ := (2 : ℤ) ^ (a - n)
+          set M : ℤ := N * K
+
+          have hNpos : 0 < N := by
+            unfold N; simp
+          have hKpos : 0 < K := by
+            unfold K; simp
+          have hMpos : 0 < M := by
+            simpa [M] using mul_pos hNpos hKpos
+
+          have hN0 : N ≠ 0 := ne_of_gt hNpos
+          have hK0 : K ≠ 0 := ne_of_gt hKpos
+
+          set r : ℤ := c % M
+          set q : ℤ := c / M
+
+          have h_decomp : r + M * q = c := by
+            simpa [r, q] using (Int.emod_add_mul_ediv c M)
+
+          have hr_nonneg : 0 ≤ r := by
+            simpa [r] using Int.emod_nonneg c (ne_of_gt hMpos)
+          have hr_lt : r < M := by
+            simpa [r] using Int.emod_lt_of_pos c hMpos
+
+          -- N divides M*q (since M = N*K)
+          have hNdvd : N ∣ M * q := by
+            refine ⟨K * q, ?_⟩
+            simp [M, mul_assoc]
+
+          -- Divide the decomposition by N; since N ∣ M*q, division distributes
+          have h_div_by_N : c / N = r / N + K * q := by
+            calc
+              c / N = (r + M * q) / N := by simp[h_decomp]
+              _ = r / N + (M * q) / N := by
+                    simpa using (Int.add_ediv_of_dvd_right (a := r) (b := M*q) (c := N) hNdvd)
+              _ = r / N + K * q := by
+                    -- (M*q)/N = (N*(K*q))/N = K*q
+                    have : (M * q) / N = K * q := by
+                      calc
+                        (M * q) / N = (N * (K * q)) / N := by
+                          simp [M, mul_assoc]
+                        _ = K * q := by
+                          simpa using (Int.mul_ediv_cancel_left (a := N) (b := K*q) hN0)
+                    simp[this]
+
+          have h_rem : (c / N) % K = r / N := by
+            have hrN_nonneg : 0 ≤ r / N := by
+              -- ediv_nonneg_iff_of_pos : 0 ≤ r / N ↔ 0 ≤ r when N>0
+              have := (Int.ediv_nonneg_iff_of_pos (a := r) (b := N) hNpos)
+              exact this.mpr hr_nonneg
+
+            have hrN_lt_absK : r / N < |K| := by
+              -- From r < N*K = M, we get r/N < K (since N>0). Then |K| = K.
+              have hrN_ltK : r / N < K := by
+                -- rewrite hr_lt : r < N*K but in the order needed for ediv_lt_of_lt_mul
+                have hr_lt' : r < K * N := by
+                  simpa [M, mul_assoc, mul_left_comm, mul_comm] using hr_lt
+                -- standard lemma: if 0 < N and r < K*N then r/N < K
+                exact Int.ediv_lt_of_lt_mul hNpos hr_lt'
+              simpa [abs_of_pos hKpos] using hrN_ltK
+
+            have hx :
+                (c / N) / K = q ∧ (c / N) % K = r / N := by
+              constructor
+              rw [h_div_by_N]
+              rw [Int.add_mul_ediv_left _ _ hK0]
+              have : r / N / K = 0 := by
+                apply Int.ediv_eq_zero_of_lt hrN_nonneg
+                rwa [abs_of_pos hKpos] at hrN_lt_absK
+              rw [this, Int.zero_add]
+              rw [h_div_by_N]
+              rw [Int.add_mul_emod_self_left]
+              apply Int.emod_eq_of_lt hrN_nonneg
+              rwa [abs_of_pos hKpos] at hrN_lt_absK
+            exact hx.2
+
+          have h_toNat_div : r.toNat / N.toNat = (r / N).toNat := by
+            have hrN_nonneg : 0 ≤ r / N := by
+              have := (Int.ediv_nonneg_iff_of_pos (a := r) (b := N) hNpos)
+              exact this.mpr hr_nonneg
+            have hcoe : ((r.toNat / N.toNat : Nat) : ℤ) = r / N := by
+              have hr_cast : (r.toNat : ℤ) = r := by
+                simp [Int.toNat_of_nonneg hr_nonneg]
+              have hN_cast : (N.toNat : ℤ) = N := by
+                simp[Int.toNat_of_nonneg (le_of_lt hNpos)]
+              simp[hr_cast, hN_cast]
+            have := congrArg Int.toNat hcoe
+            have h1:=Int.toNat_of_nonneg hrN_nonneg
+
+            have h2:(0:ℤ)≤ r.toNat / N.toNat:=by simp_all
+            have h3:=Int.toNat_of_nonneg h2
+            rw[← this]
+            norm_cast at h3
+          calc
+            (c % (2 ^ n * 2 ^ (a - n))).toNat / ((2:ℤ) ^ n).toNat
+                = r.toNat / N.toNat := by
+                    simp [r, N, K, M]
+            _   = (r / N).toNat := by simp [h_toNat_div]
+            _   = ((c / N) % K).toNat := by simp[h_rem]
+            _   = (c / 2 ^ n % 2 ^ (a - n)).toNat := by
+                    simp [N, K]
+
+        }
+        assumption
+        assumption
+        assumption
+      }
+
+    ·
+      unfold stateToSt
+      simp_all
+      constructor
+      ·
+        unfold decLen setLen
+        rw[getElem?_setAt_ne]
+        subst hcurLen
+        simp_all
+        simp_all only [ne_eq]
+        apply Aesop.BuiltinRules.not_intro
+        intro a
+        have: j=i := by omega
+        contradiction
+      ·
+        have:(decLen curLen i n).getD (j.val) 0 = curLen.getD (j.val) 0 := by
+          unfold decLen setLen
+          simp_all
+          rw[getElem?_setAt_ne curLen i.val j.val (getLen curLen i.val - n)]
+          simp_all
+          simp_all only [ne_eq]
+          apply Aesop.BuiltinRules.not_intro
+          intro a
+          have: j=i := by omega
+          contradiction
+        rw[this]
+        unfold State.shiftRReg? at h
+        cases hR : Register.shiftR? (σ i) n with
+        | none =>
+            simp [hR] at h
+        | some r' =>
+            have hσ' : σ' = State.setReg σ i r' := by
+              exact (Option.some.inj (by simpa [hR] using h)).symm
+            have hreg : σ' j = σ j := by
+              subst hσ'
+              unfold State.setReg
+              have : (j = i) = False := by
+                exact propext ⟨(fun hj => False.elim (h1 hj)), (fun hf => False.elim hf)⟩
+              simp [h1]
+            have hlenj :
+              (decLen curLen i n)[↑j]?.getD 0 = curLen.getD (↑j) 0 := by
+                unfold decLen setLen
+                simp_all
+                rw[getElem?_setAt_ne curLen i.val j.val (getLen curLen i.val - n)]
+                simp[hcurLen]
+                simp_all
+                intro a
+                have: j=i := by omega
+                contradiction
+            simp [hreg]
+            congr
+            unfold decLen setLen
+            simp_all
+            rw[getElem?_setAt_ne]
+            aesop
+            intro a
+            have: j=i := by omega
+            contradiction
+
+
 
 lemma bridge_freeMSB
   {k : ℕ} (σ : State k) (ctx : StCtx k)
-  (i : Fin k) (n : Nat) :
+  (i : Fin k) (n : Nat)
+  (hV : ValidFor (k := k) σ ctx)
+  :
   eval_prim_op_single (k := k) (prim_ops.Free i false n) (stateToSt (k := k) σ ctx)
     =
   stateToSt (k := k) σ { ctx with curLen := decLen ctx.curLen i n } := by
@@ -768,27 +1130,24 @@ theorem compile1_simulates
   eval_prim_ops (k := k) opsP (stateToSt (k := k) σ ctx)
     =
   stateToSt (k := k) σ2 { ctx with curLen := curLen' } := by
-  -- keep the old proof shape: unpack ctx into ρ/baseW/curLen
   cases ctx with
   | mk ρ baseW curLen =>
     have hcurLen : curLen.length = k := by
       simpa using hV.curLen_len
 
-    -- now the proof is essentially your original, with only stateToSt calls adjusted
     cases op with
     | shiftL i n =>
         simp [compile1, compile_op_to_prim_single, applyOp?] at hstep ⊢
         cases hstep
-        -- bridge_allocLSB now takes ctx; we pass ⟨ρ,baseW,curLen⟩ (which *is* ctx after cases)
         simpa [eval_prim_ops_singleton] using
           (bridge_allocLSB (k := k) (σ := σ) (ctx := ⟨ρ, baseW, curLen⟩)
             (vF := hV) (i := i) (n := n))
 
     | shiftR i n =>
         simp [compile1, compile_op_to_prim_single, applyOp?] at hstep ⊢
-        simpa [eval_prim_ops_singleton] using
-          (bridge_freeLSB (k := k) (σ := σ) (σ' := σ2) (ctx := ⟨ρ, baseW, curLen⟩)
-            (i := i) (n := n) (h := hstep))
+        have:=(bridge_freeLSB (k := k) (σ := σ) (σ' := σ2) (ctx := ⟨ρ, baseW, curLen⟩)
+            (i := i) (n := n) (h := hstep) (hV:=hV))
+        sorry
 
     | negate i =>
         simp [compile1, compile_op_to_prim_single, applyOp?] at hstep ⊢
