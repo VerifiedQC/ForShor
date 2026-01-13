@@ -141,7 +141,6 @@ lemma bridge_allocMSB
         set b := (evalRegister (σ j) ρ)
         have hl : baseW j + (incLen curLen j n).getD (↑j) 0 = a + n := by
           have := incLen_to_sum k curLen n j hcurLen
-          -- keep the exact same steps you had
           simp_all [a]
           rw[← this, add_assoc]
         have := BitVec.toInt_signExtend_eq_toNat_bmod (v := l) (w := a)
@@ -755,6 +754,17 @@ lemma bridge_freeMSB
         rw[this]
         aesop
 
+open Operations
+
+lemma add_Scaled_compile_curLen(dst src:Fin k) (hds:¬dst=src)(curLen:List ℕ):
+(compile1 (valid_ops.addScaled dst src false 0) curLen).2 = incLen curLen dst (1 + (getLen curLen ↑dst).max (getLen curLen ↑src) - getLen curLen ↑dst):=by
+  unfold compile1 compile_op_to_prim_single
+  simp[hds]
+
+lemma shiftL_compile_curLen(src: Fin k) (curLen: List ℕ):
+  (compile1 (valid_ops.shiftL src sh) curLen).2 = incLen curLen src sh:=by {
+    simp[compile1,compile_op_to_prim_single]
+  }
 ----------------------------------------------------------------------------------------------------
 ------------------------------- Compiler simulation theorems ----------------------------------------
 ----------------------------------------------------------------------------------------------------
@@ -776,6 +786,380 @@ lemma negate_add_negate_eq_addScaled_true0
 
 open Operations
 
+lemma le_one_add_max
+  (a b : Nat) : a ≤ 1 + Nat.max a b := by
+  -- a ≤ max a b
+  have h : a ≤ Nat.max a b := Nat.le_max_left a b
+  -- max a b ≤ 1 + max a b
+  have h' : Nat.max a b ≤ 1 + Nat.max a b := by
+    simp[Nat.le_succ _]
+  exact le_trans h h'
+
+
+
+
+
+lemma bridge_compile1_addScaled
+  {k : ℕ}
+  (σ σ2 : State k)
+  (ctx : StCtx k)
+  (dst src : Fin k)
+  (hds: ¬ dst=src)
+  (sh : ℕ)
+  (hsh:¬ sh=0)
+  (hV : ValidFor (k := k) σ ctx)
+  (hV_step : ValidForStep (k := k) ctx)
+  (hstep : applyOp? σ (valid_ops.addScaled dst src true sh) = some σ2)
+  (hcomp:sh ≤ ctx.curLen.getD (↑src) 0)
+  :
+  eval_prim_ops
+      (compile1 (valid_ops.addScaled dst src true sh) ctx.curLen).1
+      (stateToSt (k := k) σ ctx)
+    =
+  stateToSt (k := k) σ2
+    { ρ := ctx.ρ, baseW := ctx.baseW,
+      curLen := (compile1 (valid_ops.addScaled dst src true sh) ctx.curLen).2 } := by
+      unfold compile1 compile_op_to_prim_single
+      simp[hds,hsh]
+      simp[eval_prim_ops]
+      set a:=1 + (getLen (incLen ctx.curLen src sh) ↑dst).max (getLen (incLen ctx.curLen src sh) ↑src)
+      split_ifs with h1 h2 h3<;>simp
+      {
+        set lenDst : Nat := getLen (incLen ctx.curLen src sh) (↑dst) with hlenDst
+        set lenSrc : Nat := getLen (incLen ctx.curLen src sh) (↑src) with hlenSrc
+
+        have ha_le : a ≤ lenDst := by
+          exact (Nat.sub_eq_zero_iff_le).1 (by simpa [lenDst] using h1)
+        have hlenDst_lt : lenDst < a := by
+          have hle : lenDst ≤ Nat.max lenDst lenSrc := Nat.le_max_left _ _
+          have:=(Nat.lt_succ_of_le hle)
+          simp [lenDst, lenSrc, Nat.succ_eq_add_one] at this
+          unfold lenDst a
+          linarith
+        have : False := (Nat.not_lt_of_ge ha_le) hlenDst_lt
+        exact False.elim this
+      }
+      {
+        set ld : Nat := getLen (incLen ctx.curLen src sh) ↑dst
+        set ls : Nat := getLen (incLen ctx.curLen src sh) ↑src
+
+        have ld_lt_a : ld < a := by
+          have hle : ld + 1 ≤ a := by
+            have : ld ≤ Nat.max ld ls := Nat.le_max_left _ _
+            have : ld + 1 ≤ Nat.max ld ls + 1 := Nat.succ_le_succ this
+            unfold a ld
+            linarith
+          exact Nat.lt_of_lt_of_le (Nat.lt_succ_self ld) hle
+        have a_le_ld : a ≤ ld := by
+          exact (Nat.sub_eq_zero_iff_le).1 (by simpa [ld] using h1)
+        have : False := (Nat.not_le_of_lt ld_lt_a) a_le_ld
+        exact False.elim this
+      }
+      {
+        exfalso
+        set lenSrc : Nat := getLen (incLen ctx.curLen src sh) (↑src) with hlenSrc
+        have h_le_max : lenSrc ≤ (getLen ctx.curLen (↑dst)).max lenSrc := by
+          aesop
+        have h_succ_le_a : lenSrc.succ ≤ a := by
+          dsimp [a];nth_rewrite 2 [add_comm]
+          have:=Nat.succ_le_succ h_le_max
+          simp_all
+        have h_a_le_lenSrc : a ≤ lenSrc := by
+          have : a - lenSrc = 0 := by simpa [lenSrc, hlenSrc] using h3
+          exact (Nat.sub_eq_zero_iff_le).1 this
+        have : lenSrc.succ ≤ lenSrc := le_trans h_succ_le_a h_a_le_lenSrc
+        exact Nat.not_succ_le_self lenSrc this
+      }
+      {
+        simp[eval_prim_ops]
+        have hV4:ValidFor (σ.negateReg src) ctx:=by
+            unfold ValidForStep at *
+            have:= hV_step σ (σ.negateReg src) (valid_ops.negate src) ctx.curLen
+            simp[applyOp?,Prog.OpOK] at this
+            apply this
+            apply hV
+        have hV5:ValidFor ((σ.negateReg src).shiftLReg src sh) { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen src sh }:=by
+          have:= hV_step ((σ.negateReg src)) (((σ.negateReg src).shiftLReg src sh)) (valid_ops.shiftL src sh) (ctx.curLen) (by simp[applyOp?]) (by simp[Prog.OpOK]) hV4
+          simp at this; rw[shiftL_compile_curLen] at this; apply this
+        have hV6:ValidFor ((σ.negateReg src).shiftLReg src sh) { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen (incLen ctx.curLen src sh) dst (a - getLen (incLen ctx.curLen src sh) ↑dst) }:=by
+          have:=ValidFor_incLen dst (n:=(a - getLen (incLen ctx.curLen src sh) ↑dst)) ((σ.negateReg src).shiftLReg src sh) ({ ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen src sh })
+          simp_all
+        have hV2:ValidFor ((σ.negateReg src).shiftLReg src sh) { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen (incLen (incLen ctx.curLen src sh) dst (a - getLen (incLen ctx.curLen src sh) ↑dst)) src (a - getLen (incLen ctx.curLen src sh) ↑src) }:= by
+          have:=ValidFor_incLen src (n:=(a - getLen (incLen ctx.curLen src sh) ↑src)) ((σ.negateReg src).shiftLReg src sh) ({ ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen (incLen ctx.curLen src sh) dst (a - getLen (incLen ctx.curLen src sh) ↑dst) })
+          simp_all
+        have hV3:ValidFor (((σ.negateReg src).shiftLReg src sh).addScaledReg dst src false 0) { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen (incLen (incLen ctx.curLen src sh) dst (a - getLen (incLen ctx.curLen src sh) ↑dst)) src (a - getLen (incLen ctx.curLen src sh) ↑src) }:= by {
+          have:= hV_step ((σ.negateReg src).shiftLReg src sh) (((σ.negateReg src).shiftLReg src sh).addScaledReg dst src false 0) (valid_ops.addScaled dst src false 0) (incLen ctx.curLen src sh)
+          have:= this (by simp) (by simp[Prog.OpOK,hds]) (hV5)
+          simp_all
+          simp[compile1,compile_op_to_prim_single,hds] at this;set c:=(incLen (incLen ctx.curLen src sh) dst (a - getLen (incLen ctx.curLen src sh) ↑dst))
+          have hinc:= ValidFor_incLen src (((σ.negateReg src).shiftLReg src sh).addScaledReg dst src false 0) (n:=(a - getLen (incLen ctx.curLen src sh) ↑src)) ({ ρ := ctx.ρ, baseW := ctx.baseW, curLen := c }) this
+          simp_all
+        }
+
+        have hW:stWidth { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen (incLen (incLen ctx.curLen src sh) dst (a - getLen (incLen ctx.curLen src sh) ↑dst)) src (a - getLen (incLen ctx.curLen src sh) ↑src) } dst = stWidth { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen (incLen (incLen ctx.curLen src sh) dst (a - getLen (incLen ctx.curLen src sh) ↑dst)) src (a - getLen (incLen ctx.curLen src sh) ↑src) } src:=by {
+          unfold stWidth;simp
+          rw[incLen_comm, incLen_incLen_add, ← incLen_to_sum];unfold getLen
+          set l1:=(incLen ctx.curLen src sh);set b:=a - l1.getD (↑src) 0; set c:= a - l1.getD (↑dst) 0
+          conv_rhs=>
+            arg 2
+            change (incLen (incLen ctx.curLen src (sh + b)) dst c).getD src 0
+          rw[incLen_getD_ne'];unfold c l1;rw[incLen_getD_ne'];simp;
+
+          have h1:((incLen ctx.curLen src (sh + b))[dst.val]?.getD 0 + (a - (incLen ctx.curLen src sh).getD (↑dst) 0))=a:=by {
+            rw[add_comm,incLen_getD_ne'];unfold a getLen;simp;simp[← List.getD_eq_getElem?_getD];
+            nth_rewrite 1 [incLen_getD_ne'];nth_rewrite 2 [incLen_getD_ne'];nth_rewrite 2 [incLen_getD_ne'];all_goals try assumption
+            rw[incLen_getD_self];rw[Nat.sub_add_cancel];
+            rw[← Nat.succ_eq_one_add]
+            apply le_trans (Nat.le_max_left _ _) (Nat.le_succ _)
+            all_goals apply hV.curLen_len
+          }
+          rw[incLen_getD_ne'] at h1;simp at h1;rw[h1];rw[← List.getD_eq_getElem?_getD,incLen_getD_self];unfold b l1;rw[incLen_getD_self]
+          simp
+          nth_rewrite 4 [add_comm];rw[hV.baseW_eq (i:=dst) (j:=src)];simp;set s : Nat := ctx.curLen[src.val]?.getD 0
+          symm
+          calc
+            s + (a - (s + sh) + sh)
+                = s + ((a - (s + sh)) + sh) := by simp
+            _   = s + (a - (s + sh)) + sh := by simp [Nat.add_assoc]
+            _   = s + sh + (a - (s + sh)) := by
+                    simp [Nat.add_assoc, Nat.add_comm]
+            _   = (s + sh) + (a - (s + sh)) := by simp [Nat.add_assoc]
+            _   = a := by rw[Nat.add_sub_of_le];unfold a getLen;rw[incLen_getD_self];simp;set b:=(incLen ctx.curLen src sh)[dst.val]?.getD 0; change s + sh ≤ 1 + b.max (s + sh)
+                          have:=le_one_add_max (s+sh) b; rw[Nat.max_eq_max] at this;
+                          rw[Nat.max_eq_max, Nat.max_comm];apply this; apply hV.curLen_len
+          all_goals try apply hV.curLen_len
+          all_goals try simp[hds]
+          all_goals try rw[incLen_pres_len]; try apply hV.curLen_len
+          intro h;simp_all
+        }
+        rw[bridge_negate σ ctx hV,bridge_allocLSB (vF:=hV4), bridge_allocMSB (hV:=hV5), bridge_allocMSB (hV:=hV6), bridge_add (hV:=hV2) (hW:=by simp[hW])]
+        clear hW
+        rw[bridge_freeMSB (hn:=by rw[incLen_getD_self];simp;rw[incLen_pres_len,incLen_pres_len,hV.curLen_len]) (hV:=hV3)];simp
+        set σA :=
+          (((σ.negateReg src).shiftLReg src sh).addScaledReg dst src false 0)
+
+        set ctxA : StCtx k :=
+          { ρ := ctx.ρ, baseW := ctx.baseW,
+            curLen := incLen (incLen ctx.curLen src sh) dst (a - getLen (incLen ctx.curLen src sh) (↑dst)) }
+        have hn : sh ≤ ctxA.curLen.getD src.1 0 := by
+          unfold ctxA;rw[incLen_getD_ne'];simp;rw[← incLen_to_sum];linarith;apply hV.curLen_len;rw[incLen_pres_len];apply hV.curLen_len;intro h;
+          simp_all
+        have hLat:=State.shiftRReg?_after_neg_shiftL_addScaled_eq σ dst src sh hds
+        obtain ⟨σA', hshift⟩ : ∃ σA', State.shiftRReg? σA src sh = some σA' := by
+          unfold σA
+          apply State.exists_shiftRReg_after_neg_shiftL_addScaled
+          simp[hds]
+
+        have hV_A : ValidFor σA ctxA := by
+          unfold ctxA
+          have:= hV_step ((σ.negateReg src).shiftLReg src sh) σA (valid_ops.addScaled dst src false 0)  (incLen ctx.curLen src sh) (by simp[σA]) (by simp[Prog.OpOK,hds]) (hV5)
+          rw[add_Scaled_compile_curLen] at this;unfold a
+          simp_all
+          apply hds
+        have hFree :
+          eval_prim_op_single (k := k) (prim_ops.Free src true sh) (stateToSt (k := k) σA ctxA)
+            =
+          stateToSt (k := k) σA' { ctxA with curLen := decLen ctxA.curLen src sh } :=
+        by
+          simpa [σA, ctxA] using (bridge_freeLSB (k := k) (σ := σA) (σ' := σA') (ctx := ctxA) (i := src) (n := sh) hn hshift hV_A)
+        rw [hFree]
+        rw[bridge_negate];congr
+        {
+          clear hFree hV_A hn hV_step hV hcomp hV6 ctxA hV2 hV3 hV5 hV4 h3 h1 a
+          have hLat' :
+            σA.shiftRReg? src sh = some (State.setReg σA src ((σ.negateReg src) src)) := by
+            unfold σA;simp_all
+          have hσA' : σA' = State.setReg σA src ((σ.negateReg src) src) := by
+            apply Option.some.inj
+            simp_all
+          subst hσA'
+          have h_final :
+              (State.negateReg (State.setReg σA src ((σ.negateReg src) src)) src)
+                =
+              σ.addScaledReg dst src true sh := by {
+                apply setReg_negateReg_pipeline_eq_addScaled σ dst src sh hds
+              }
+          have hσ2 : σ2 = σ.addScaledReg dst src true sh := by
+            have hs : some (σ.addScaledReg dst src true sh) = some σ2 := by
+              simpa [applyOp?] using hstep
+            exact (Option.some.inj hs).symm
+          simpa [hσ2] using h_final
+        }
+        {
+          have:= hV_step σA σA' (valid_ops.shiftR src sh) ctxA.curLen (hshift) (by simp[Prog.OpOK]) hV_A;
+          simp[compile1,compile_op_to_prim_single] at this
+          simp_all[ctxA]
+        }
+      }
+
+
+
+
+
+
+
+
+lemma compile1_addScaled_correct {k : ℕ}
+    (σ σ2: State k) (ctx : StCtx k)
+    (dst src : Fin k) (negSrc : Bool) (sh : ℕ)
+    (hV : ValidFor σ ctx)
+    (hV_step : ValidForStep (k := k) ctx)
+    (hOK : Prog.OpOK (valid_ops.addScaled dst src negSrc sh))
+    (hstep : σ.addScaledReg dst src negSrc sh = σ2)
+    (hPrim :
+      let (ops, _nextLen) := compile1 (valid_ops.addScaled dst src negSrc sh) ctx.curLen
+      PrimOKTrace (k := k) ops ctx)
+    :
+    let (ops, nextLen) := compile1 (valid_ops.addScaled dst src negSrc sh) ctx.curLen
+    eval_prim_ops ops (stateToSt σ ctx) =
+    stateToSt σ2 { ctx with curLen := nextLen } := by
+        simp
+        by_cases hds : dst = src
+        ·
+          simp [compile1, compile_op_to_prim_single, hds] at hstep ⊢
+          cases hstep
+          simp [eval_prim_ops]
+          simp [Prog.OpOK] at hOK
+          contradiction
+        ·
+          by_cases hneg:negSrc<;>by_cases hsh:sh=0
+          {
+            unfold compile1 compile_op_to_prim_single
+            simp[hneg,hds,hsh]
+            set a:=1 + (getLen ctx.curLen ↑dst).max (getLen ctx.curLen ↑src)
+            simp[eval_prim_ops]
+            split_ifs with h1 h2 h3<;>simp
+            {
+              simp[eval_prim_ops]
+              set lenDst : Nat := getLen ctx.curLen (↑dst) with hlenDst
+              have hlt : lenDst < a := by
+                have hle : lenDst ≤ Nat.max lenDst (getLen ctx.curLen (↑src)) := by
+                  exact Nat.le_max_left _ _
+                have:= Nat.lt_succ_of_le hle
+                simp [a, lenDst]
+                linarith
+
+              have hle : a ≤ lenDst := by
+                exact (Nat.sub_eq_zero_iff_le).1 (by simpa [lenDst] using h1)
+              have : False := by
+                have : lenDst < lenDst := Nat.lt_of_lt_of_le hlt hle
+                exact (Nat.lt_irrefl _ this)
+              exact False.elim this
+            }
+            {
+              set ld : Nat := getLen ctx.curLen (↑dst) with hld
+              set ls : Nat := getLen ctx.curLen (↑src) with hls
+
+              have ld_lt_a : ld < a := by
+                have hle : ld + 1 ≤ a := by
+                  have : ld ≤ Nat.max ld ls := Nat.le_max_left _ _
+                  have : ld + 1 ≤ Nat.max ld ls + 1 := Nat.succ_le_succ this
+                  unfold a ld
+                  linarith
+                exact Nat.lt_of_lt_of_le (Nat.lt_succ_self ld) hle
+              have a_le_ld : a ≤ ld := by
+                exact (Nat.sub_eq_zero_iff_le).1 (by simpa [ld] using h1)
+              have : False := (Nat.not_le_of_lt ld_lt_a) a_le_ld
+              exact False.elim this
+            }
+            {
+              exfalso
+              set lenSrc : Nat := getLen ctx.curLen (↑src) with hlenSrc
+              have h_le_max : lenSrc ≤ (getLen ctx.curLen (↑dst)).max lenSrc := by
+                aesop
+              have h_succ_le_a : lenSrc.succ ≤ a := by
+                dsimp [a];nth_rewrite 2 [add_comm]
+                apply Nat.succ_le_succ h_le_max
+
+              have h_a_le_lenSrc : a ≤ lenSrc := by
+                have : a - lenSrc = 0 := by simpa [lenSrc, hlenSrc] using h3
+                exact (Nat.sub_eq_zero_iff_le).1 this
+              have : lenSrc.succ ≤ lenSrc := le_trans h_succ_le_a h_a_le_lenSrc
+              exact Nat.not_succ_le_self lenSrc this
+            }
+            {
+              simp[eval_prim_ops]
+              have hV1:ValidFor (σ.negateReg src) { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen dst (a - getLen ctx.curLen ↑dst) }:=by
+                unfold ValidForStep at *
+                have:= hV_step σ (σ.negateReg src) (valid_ops.negate src) (incLen ctx.curLen dst (a - getLen ctx.curLen ↑dst))
+                simp[applyOp?,Prog.OpOK] at this
+                apply this
+                apply ValidFor_incLen
+                apply hV
+              have hV3:ValidFor (σ.negateReg src) { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen (incLen ctx.curLen dst (a - getLen ctx.curLen ↑dst)) src (a - getLen ctx.curLen ↑src) }:=by
+                have:= hV_step σ (σ.negateReg src) (valid_ops.negate src) (incLen (incLen ctx.curLen dst (a - getLen ctx.curLen ↑dst)) src (a - getLen ctx.curLen ↑src))
+                simp[applyOp?,Prog.OpOK,compile1,compile_op_to_prim_single] at this
+                apply this
+                have hV2:ValidFor σ { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen dst (a - getLen ctx.curLen ↑dst) }:=by apply ValidFor_incLen;assumption
+                have:=ValidFor_incLen (n:=(a - getLen ctx.curLen ↑src)) (k:=k) src σ ({ ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen dst (a - getLen ctx.curLen ↑dst) }) hV2
+                simp at this;apply this
+              have hV4:ValidFor (σ.negateReg src) ctx:=by
+                unfold ValidForStep at *
+                have:= hV_step σ (σ.negateReg src) (valid_ops.negate src) ctx.curLen
+                simp[applyOp?,Prog.OpOK] at this
+                apply this
+                apply hV
+              have:=hV_step (σ.negateReg src) ((σ.negateReg src).addScaledReg dst src false 0) (valid_ops.addScaled dst src false sh) ctx.curLen (by simp[hsh]) hOK hV4;simp at this
+              have hV5:ValidFor ((σ.negateReg src).addScaledReg dst src false 0) { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen dst (a - getLen ctx.curLen ↑dst) }:=by
+                subst hsh;rw[add_Scaled_compile_curLen (k:=k) dst src hds ctx.curLen] at this;aesop
+              have hV6:stWidth { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen (incLen ctx.curLen dst (a - getLen ctx.curLen ↑dst)) src (a - getLen ctx.curLen ↑src) } dst = stWidth { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen (incLen ctx.curLen dst (a - getLen ctx.curLen ↑dst)) src (a - getLen ctx.curLen ↑src) } src:=by {
+                unfold stWidth;simp;have:=incLen_getD_ne' (k:=k);simp at this;rw[this]
+                rw[incLen_incLen_disjoint_comm];nth_rewrite 2[this];rw[← incLen_to_sum];rw[← incLen_to_sum];
+                unfold getLen
+                have h1:(ctx.curLen[dst.val]?.getD 0 + (a - ctx.curLen.getD (↑dst) 0))=a:=by {
+                  simp;rw[add_comm,Nat.sub_add_cancel];unfold a getLen;simp
+                  simpa using le_one_add_max (a := ctx.curLen[↑dst]?.getD 0) (b := ctx.curLen[↑src]?.getD 0)
+                }
+                have h2:(ctx.curLen[src.val]?.getD 0 + (a - ctx.curLen.getD (↑src) 0))=a:=by {
+                  simp;rw[add_comm,Nat.sub_add_cancel];unfold a getLen;simp
+                  have:= le_one_add_max (a := ctx.curLen[↑src]?.getD 0) (b := ctx.curLen[↑dst]?.getD 0)
+                  rw[Nat.max_eq_max,max_comm];aesop
+                }
+                rw[h1,h2,hV.baseW_eq];apply hV.curLen_len;apply hV.curLen_len;rw[incLen_pres_len];apply hV.curLen_len
+                intro h;subst h;simp at hds;simp[hds];rw[incLen_pres_len];apply hV.curLen_len;apply hds
+              }
+              rw[bridge_negate σ ctx hV,bridge_allocMSB (hV:=hV4),bridge_allocMSB (hV:=hV1)]
+              rw[bridge_add (hV:=hV3) (hW:=by simp[hV6]), bridge_freeMSB , bridge_negate (hV:=by simp;apply hV5)]
+              simp;congr;rw[State.negate_addScaledReg_negate];subst hsh;subst negSrc;apply hstep;simp[hds]
+              simp
+              have h1:=incLen_to_sum k ((incLen ctx.curLen dst (a - getLen ctx.curLen ↑dst))) (a - getLen ctx.curLen ↑src) src (by simp_all;rw[incLen_pres_len]; apply hV.curLen_len)
+              simp;rw[← h1];have h2:=incLen_getD_ne' (ctx.curLen) dst src (a - getLen ctx.curLen ↑dst) hV.curLen_len (by aesop)
+              conv_rhs=>
+                arg 1;arg 1;change (incLen ctx.curLen dst (a - getLen ctx.curLen ↑dst)).getD (↑src) 0
+                rw[h2]
+              rw[add_assoc];omega;
+              set σ' := ((σ.negateReg src).addScaledReg dst src false 0)
+              set δdst := a - getLen ctx.curLen ↑dst
+              set δsrc := a - getLen ctx.curLen ↑src
+              set ctxDst : StCtx k := { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen dst δdst }
+              have : ValidFor (k := k) σ' { ctxDst with curLen := incLen ctxDst.curLen src δsrc } := by
+                exact ValidFor_incLen (k := k) (σ := σ') (ctx := ctxDst) (i := src) (n := δsrc) hV5
+              simpa [σ', ctxDst, δdst, δsrc] using this
+            }
+
+          }
+          {
+            subst hneg
+            apply bridge_compile1_addScaled σ σ2 ctx dst src hds sh hsh hV hV_step
+            simp[applyOp?,hstep]
+          }
+          {
+            sorry
+          }
+          {
+            sorry
+          }
+
+
+
+
+
+
+
+
+
+
+
 
 theorem compile1_simulates
   {k : ℕ}
@@ -783,6 +1167,8 @@ theorem compile1_simulates
   (σ : State k)
   (ctx : StCtx k)
   (hV : ValidFor (k := k) σ ctx)
+  (hV_step : ValidForStep (k := k) ctx)
+  (hPrim :  PrimOKTrace (compile1 op ctx.curLen).1 ctx)
   (σ2 : State k)
   (hstep : applyOp? σ op = some σ2)
   (hOK : Prog.OpOK op) :
@@ -807,7 +1193,9 @@ theorem compile1_simulates
         simp [compile1, compile_op_to_prim_single, applyOp?] at hstep ⊢
         have:=(bridge_freeLSB (k := k) (σ := σ) (σ' := σ2) (ctx := ⟨ρ, baseW, curLen⟩)
             (i := i) (n := n) (h := hstep) (hV:=hV))
-        sorry
+        apply this
+        unfold PrimOKForCtxListRun compile1 compile_op_to_prim_single at *
+        simp at *; rcases hPrim with ⟨h1,h2⟩; unfold PrimOKForCtx at h1; simp at h1; assumption
 
     | negate i =>
         simp [compile1, compile_op_to_prim_single, applyOp?] at hstep ⊢
@@ -820,81 +1208,11 @@ theorem compile1_simulates
         simp [hstep]
 
     | addScaled dst src negSrc sh =>
-        by_cases hds : dst = src
-        ·
-          simp [compile1, compile_op_to_prim_single, hds, applyOp?] at hstep ⊢
-          cases hstep
-          simp [eval_prim_ops]
-          simp [Prog.OpOK] at hOK
-          contradiction
-        ·
-          -- from here down, keep your original proof block almost verbatim;
-          -- only replace `(stateToSt σ ρ baseW curLen)` with `stateToSt σ ⟨ρ,baseW,curLen⟩`.
-          simp [compile1, compile_op_to_prim_single, hds, applyOp?] at hstep ⊢
-          split_ifs with h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 h15 <;> simp
-          ·
-            subst h1 hstep h2
-            simp_all
-            ext j
-            by_cases hjd : j = dst
-            ·
-              subst hjd
-              simp [State.addScaledReg, Register.addScaled]
-              have hL :
-                  (eval_prim_ops (k := k)
-                      [prim_ops.negate src, prim_ops.Add j src, prim_ops.negate src]
-                      (stateToSt (k := k) σ ⟨ρ, baseW, curLen⟩) j).fst
-                    =
-                  (stateToSt (k := k) σ ⟨ρ, baseW, curLen⟩ j).fst := by
-                simp [eval_prim_ops, eval_prim_op_single, Negation, Adder, hds]
+        simp_all
+        have:= (compile1_addScaled_correct σ σ2) {ρ:=ρ,baseW:=baseW,curLen:=curLen} dst src negSrc sh hV hV_step hOK hstep
+        apply this
+        simp[hPrim]
 
-              have hR :
-                  (stateToSt (k := k) (σ.setReg j (fun t => σ j t + -σ src t)) ⟨ρ, baseW,
-                      (decLen (decLen (incLen (incLen (incLen curLen src 0) j 0) src 0) src 0) src 0)⟩ j).fst
-                    =
-                  (stateToSt (k := k) σ ⟨ρ, baseW, curLen⟩ j).fst := by
-                simp [stateToSt]
-              aesop
-            ·
-              have hds2 : ¬ src = dst := by sorry
-              by_cases hjs : j = src
-              ·
-                subst hjs
-                simp [eval_prim_ops, eval_prim_op_single, Negation, Adder, hjd, Fin.ext_iff]
-              ·
-                simp [eval_prim_ops, eval_prim_op_single, Negation, Adder, hjd, hjs]
-
-            have hSt :
-              eval_prim_ops (k := k)
-                  [prim_ops.negate src, prim_ops.Add dst src, prim_ops.negate src]
-                  (stateToSt (k := k) σ ⟨ρ, baseW, curLen⟩)
-                =
-              stateToSt (k := k) (State.addScaledReg σ dst src true 0) ⟨ρ, baseW, curLen⟩ := by
-              simp [eval_prim_ops]
-              rw [bridge_negate]
-              rw [bridge_add (k := k)
-                    (σ := State.negateReg σ src) (ctx := ⟨ρ, baseW, curLen⟩)
-                    (dst := dst) (src := src)]
-              rw [bridge_negate (k := k)
-                    (σ := State.addScaledReg (State.negateReg σ src) dst src false 0)
-                    (ctx := ⟨ρ, baseW, curLen⟩) (i := src)]
-              simp [negate_add_negate_eq_addScaled_true0 σ dst src hds]
-              constructor
-              simp[hV.curLen_len]
-              {
-                unfold FitsSignedAll FitsSignedAt
-                intro i
-                sorry
-              }
-              sorry
-              sorry
-              aesop
-            rw [hSt]
-          ·
-            subst h1 hstep h2
-            simp_all only [incLen_zero, decLen_zero]
-            sorry
-          all_goals sorry
 
 
 lemma compile1_pres_len {k} (op : valid_ops k) (curLen : List Nat)
@@ -948,7 +1266,6 @@ theorem compileProg_simulates_go
       have hOK_head : Prog.OpOK op := by
         aesop
       have hOK_tail : Prog.WellFormed ops := by
-        -- same as your existing proof
         simp [Prog.WellFormed] at hOK
         unfold Prog.WellFormed
         rcases hOK with ⟨hl, hr⟩
@@ -966,17 +1283,13 @@ theorem compileProg_simulates_go
           -- compile head
           cases hC1 : compile1 (k := k) op curLenNow with
           | mk opsP1 curLen1 =>
-              -- simulate the head using compile1_simulates (which should now take ValidFor)
+              -- simulate the head using compile1_simulates
               have hsim_head :
                 eval_prim_ops (k := k) opsP1 (stateToSt (k := k) σ { ctx0 with curLen := curLenNow })
                   =
                 stateToSt (k := k) σ1 { ctx0 with curLen := curLen1 } := by
-                simpa [hC1] using
-                  (compile1_simulates (k := k)
-                    (op := op) (σ := σ)
-                    (ctx := { ctx0 with curLen := curLenNow })
-                    (hV := hV)
-                    (σ2 := σ1) (hstep := hσ1) (hOK := hOK_head))
+                  have:=compile1_simulates op σ ctx0 (by sorry)
+                  sorry
 
               -- get ValidFor for the tail state/context via the step-preservation hypothesis
               have hV1 :

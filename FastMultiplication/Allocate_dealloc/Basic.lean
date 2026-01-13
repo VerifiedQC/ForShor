@@ -213,6 +213,248 @@ lemma decLen_pres_len {k} (curLen : List Nat) (i : Fin k) (n : Nat) :
   simp [decLen, setLen, setAt_length]
 
 
+/-- If `idx < length`, then reading back at `idx` after `setAt` gives `some a`. -/
+lemma get?_setAt_eq_of_lt {α} (l : List α) (idx : Nat) (a : α)
+    (h : idx < l.length) :
+    (setAt l idx a)[idx]? = some a := by
+  induction l generalizing idx with
+  | nil => cases h
+  | cons x xs ih =>
+      cases idx with
+      | zero =>
+          simp [setAt]
+      | succ idx =>
+          have h' : idx < xs.length := Nat.lt_of_succ_lt_succ h
+          simp [setAt]
+          simp[ih idx h']
+
+
+lemma get?_setAt_ne {α} (l : List α) (idx i : Nat) (a : α) (h : i ≠ idx) :
+    (setAt l idx a)[i]? = l[i]? := by
+  induction l generalizing idx i with
+  | nil =>
+    simp [setAt]
+  | cons x xs ih =>
+    cases idx with
+    | zero =>
+      cases i with
+      | zero =>
+        contradiction
+      | succ i =>
+        simp [setAt]
+    | succ idx =>
+      cases i with
+      | zero =>
+        simp [setAt]
+      | succ i =>
+        simp [setAt]
+        apply ih
+        intro h_eq
+        subst h_eq
+        exact h rfl
+
+/-- Setting the same index twice keeps only the last write. -/
+lemma setAt_setAt_same {α} (l : List α) (idx : Nat) (a b : α) :
+    setAt (setAt l idx a) idx b = setAt l idx b := by
+  induction l generalizing idx with
+  | nil =>
+      cases idx <;> simp [setAt]
+  | cons x xs ih =>
+      cases idx with
+      | zero => simp [setAt]
+      | succ idx => simp [setAt, ih]
+
+/-- Writes at distinct indices commute. -/
+lemma setAt_comm {α} (l : List α) (i j : Nat) (a b : α) (h : i ≠ j) :
+    setAt (setAt l i a) j b = setAt (setAt l j b) i a := by
+  induction l generalizing i j with
+  | nil =>
+      cases i <;> cases j <;> simp [setAt]
+  | cons x xs ih =>
+      cases i <;> cases j
+      cases h rfl
+      simp [setAt, setAt]  -- second write goes to tail on RHS as well
+      simp [setAt, setAt]
+      rename_i i j
+      have h' : i ≠ j := by
+          intro hij; apply h; exact congrArg Nat.succ hij
+      simp [setAt, ih (i := i) (j := j) h']
+
+/-- If `idx < length`, then setting `l.getD idx d` at `idx` gives back the original list. -/
+lemma setAt_getD_id_of_lt {α} (l : List α) (idx : Nat) (d : α)
+    (h : idx < l.length) :
+    setAt l idx (l.getD idx d) = l := by
+  induction l generalizing idx with
+  | nil => cases h
+  | cons x xs ih =>
+      cases idx with
+      | zero =>
+          simp [setAt, List.getD]
+      | succ idx =>
+          have h' : idx < xs.length := Nat.lt_of_succ_lt_succ h
+          simp [setAt, List.getD]
+          conv_rhs=>
+            rw[← ih idx h']
+          simp
+
+
+
+/-! ## Facts about `getLen/setLen/incLen/decLen` -/
+
+lemma getLen_eq_getD (l : List Nat) (idx : Nat) :
+    getLen l idx = l.getD idx 0 := by rfl
+
+lemma setLen_length {k} (l : List Nat) (i : Fin k) (v : Nat) :
+    (setLen l i v).length = l.length := by
+  simpa [setLen] using setAt_length (xs := l) (i := i.1) (a := v)
+
+/-- In-range index lemma from a length proof. -/
+lemma fin_lt_length {k} (l : List Nat) (i : Fin k) (hlen : l.length = k) :
+    i.1 < l.length := by
+  simp [hlen]
+
+/-- `getLen` at the updated index after `setLen` returns the set value (needs in-range). -/
+lemma getLen_setLen_eq {k} (l : List Nat) (i : Fin k) (v : Nat)
+    (hlen : l.length = k) :
+    getLen (setLen l i v) i.1 = v := by
+  have hi : i.1 < l.length := fin_lt_length (l := l) (i := i) hlen
+  have : (setAt l i.1 v)[i.1]? = some v := get?_setAt_eq_of_lt (l := l) (idx := i.1) (a := v) hi
+  simpa [getLen, setLen] using congrArg (fun o => o.getD 0) this
+
+/-- `getLen` at a different index is unchanged by `setLen`. -/
+lemma getLen_setLen_ne {k} (l : List Nat) (i j : Fin k) (v : Nat) (hij : j ≠ i) :
+    getLen (setLen l i v) j.1 = getLen l j.1 := by
+  have hi : j.1 ≠ i.1 := by
+    intro hji
+    apply hij
+    exact Fin.ext hji
+  have : (setAt l i.1 v)[j.1]? = l[j.1]? := get?_setAt_ne (l := l) (idx := i.1) (i := j.1) (a := v) hi
+  simpa [getLen, setLen] using congrArg (fun o => o.getD 0) this
+
+/-- `incLen` changes only the target index, and by addition. -/
+lemma getLen_incLen_eq {k} (l : List Nat) (i : Fin k) (n : Nat)
+    (hlen : l.length = k) :
+    getLen (incLen l i n) i.1 = getLen l i.1 + n := by
+  simp [incLen, setLen, getLen] at *
+  simpa [incLen, setLen] using
+    (getLen_setLen_eq (l := l) (i := i) (v := getLen l i.1 + n) hlen)
+
+/-- `decLen` changes only the target index, and by subtraction. -/
+lemma getLen_decLen_eq {k} (l : List Nat) (i : Fin k) (n : Nat)
+    (hlen : l.length = k) :
+    getLen (decLen l i n) i.1 = getLen l i.1 - n := by
+  simpa [decLen, setLen] using
+    (getLen_setLen_eq (l := l) (i := i) (v := getLen l i.1 - n) hlen)
+
+/-- `incLen` leaves other indices alone. -/
+lemma getLen_incLen_ne {k} (l : List Nat) (i j : Fin k) (n : Nat) (hij : j ≠ i) :
+    getLen (incLen l i n) j.1 = getLen l j.1 := by
+  simpa [incLen, setLen] using
+    (getLen_setLen_ne (l := l) (i := i) (j := j) (v := getLen l i.1 + n) hij)
+
+/-- `decLen` leaves other indices alone. -/
+lemma getLen_decLen_ne {k} (l : List Nat) (i j : Fin k) (n : Nat) (hij : j ≠ i) :
+    getLen (decLen l i n) j.1 = getLen l j.1 := by
+  simpa [decLen, setLen] using
+    (getLen_setLen_ne (l := l) (i := i) (j := j) (v := getLen l i.1 - n) hij)
+
+/-! ## Cancellation and commutation laws -/
+
+/-- A “no-op” write: setting the current value (in-range) gives back the same list. -/
+lemma setLen_getLen_id {k} (l : List Nat) (i : Fin k) (hlen : l.length = k) :
+    setLen l i (getLen l i.1) = l := by
+  have hi : i.1 < l.length := fin_lt_length (l := l) (i := i) hlen
+  -- setAt_getD_id_of_lt with d=0 and getLen = getD
+  simpa [setLen, getLen] using setAt_getD_id_of_lt (l := l) (idx := i.1) (d := 0) hi
+
+/-- `decLen (incLen l i n) i n = l` (in-range). -/
+lemma dec_inc_cancel {k} (l : List Nat) (i : Fin k) (n : Nat)
+    (hlen : l.length = k) :
+    decLen (incLen l i n) i n = l := by
+  unfold decLen incLen setLen getLen
+  have hi : i.1 < l.length := fin_lt_length (l := l) (i := i) hlen
+  have h_get_after :
+      (setAt l i.1 (l.getD i.1 0 + n)).getD i.1 0 = l.getD i.1 0 + n := by
+    have : (setAt l i.1 (l.getD i.1 0 + n))[i.1]? = some (l.getD i.1 0 + n) :=
+      get?_setAt_eq_of_lt (l := l) (idx := i.1) (a := l.getD i.1 0 + n) hi
+    simpa using congrArg (fun o => o.getD 0) this
+  calc
+    setAt (setAt l i.1 (l.getD i.1 0 + n)) i.1
+        ((setAt l i.1 (l.getD i.1 0 + n)).getD i.1 0 - n)
+        =
+      setAt l i.1 ((l.getD i.1 0 + n) - n) := by
+        -- collapse getD and double-setAt
+        simp [setAt_setAt_same];change setAt l (↑i) ((setAt l (↑i) (l.getD (↑i) 0 + n)).getD (↑i) 0  - n) = setAt l (↑i) (l[↑i]?.getD 0);rw[h_get_after];simp
+    _ = setAt l i.1 (l.getD i.1 0) := by
+        simp
+    _ = l := by
+        simpa using (setAt_getD_id_of_lt (l := l) (idx := i.1) (d := 0) hi)
+
+/-- `incLen` after `decLen` cancels if you have enough length to subtract (`n ≤ getLen`). -/
+lemma inc_dec_cancel_of_le {k} (l : List Nat) (i : Fin k) (n : Nat)
+    (hlen : l.length = k) (hn : n ≤ getLen l i.1) :
+    incLen (decLen l i n) i n = l := by
+  -- same pattern, but uses `Nat.sub_add_cancel hn`
+  unfold incLen decLen setLen getLen
+  have hi : i.1 < l.length := fin_lt_length (l := l) (i := i) hlen
+
+  have h_get_after :
+      (setAt l i.1 (l.getD i.1 0 - n)).getD i.1 0 = l.getD i.1 0 - n := by
+    have : (setAt l i.1 (l.getD i.1 0 - n))[i.1]? = some (l.getD i.1 0 - n) :=
+      get?_setAt_eq_of_lt (l := l) (idx := i.1) (a := l.getD i.1 0 - n) hi
+    simpa using congrArg (fun o => o.getD 0) this
+
+  have hn' : n ≤ l.getD i.1 0 := by simpa [getLen] using hn
+
+  calc
+    setAt (setAt l i.1 (l.getD i.1 0 - n)) i.1
+        ((setAt l i.1 (l.getD i.1 0 - n)).getD i.1 0 + n)
+        =
+      setAt l i.1 ((l.getD i.1 0 - n) + n) := by
+        simp [setAt_setAt_same];change setAt l (↑i) ((setAt l (↑i) (l.getD (↑i) 0 - n)).getD (↑i) 0  + n) = setAt l (↑i) (l[↑i]?.getD 0 - n + n);rw[h_get_after];simp
+
+    _ = setAt l i.1 (l.getD i.1 0) := by
+        rw[Nat.sub_add_cancel];assumption
+    _ = l := by
+        simpa using (setAt_getD_id_of_lt (l := l) (idx := i.1) (d := 0) hi)
+
+/-- `setLen` updates at distinct registers commute. -/
+lemma setLen_comm {k} (l : List Nat) (i j : Fin k) (a b : Nat) (hij : i ≠ j) :
+    setLen (setLen l i a) j b = setLen (setLen l j b) i a := by
+  -- reduce to setAt_comm on Nat indices
+  unfold setLen
+  apply setAt_comm
+  intro h
+  apply hij
+  exact Fin.ext h
+
+lemma getLen_setAt_ne (l : List Nat) (idx i : Nat) (a : Nat) (h : i ≠ idx) :
+    getLen (setAt l idx a) i = getLen l i := by
+  simp [getLen, List.getD]
+  rw [get?_setAt_ne l idx i a h]
+
+/-- `incLen` at distinct indices commute. -/
+lemma incLen_comm {k} (l : List Nat) (i j : Fin k) (ni nj : Nat)
+    (hij : i ≠ j) :
+    incLen (incLen l i ni) j nj = incLen (incLen l j nj) i ni := by
+  unfold incLen
+  have:= setLen_comm (k := k) (l := l) (i := i) (j := j) (a := getLen l i.1 + ni) (b := getLen (incLen l i ni) j.1 + nj) ?_
+  unfold incLen at this;rw[this];
+  have h_ni : getLen (setLen l i (getLen l i.val + ni)) j.val = getLen l j.val := by
+    apply getLen_setAt_ne;intro hij2
+    have h_eq : i = j := by
+      apply Fin.ext
+      exact hij2.symm
+    exact hij h_eq
+  have h_nj : getLen (setLen l j (getLen l j.val + nj)) i.val = getLen l i.val := by
+    apply getLen_setAt_ne;intro hij2
+    have h_eq : i = j := by
+      apply Fin.ext
+      exact hij2
+    exact hij h_eq
+  simp [setLen] at *
+  rw [h_ni, h_nj]
+  exact hij
 
 structure CompileResult (k : ℕ) where
   ops      : List (prim_ops k)
@@ -224,7 +466,6 @@ def compile_op_to_prim_single {k : ℕ} (op : valid_ops k) (curLen : List Nat) :
     (List (prim_ops k)) × (List Nat) × (List (Fin k × Nat)) :=
 match op with
   | .shiftL i n =>
-      -- LSB shift scaffolding => lsb = true in your evaluator
       ([prim_ops.Alloc i true n], incLen curLen i n, [])
 
   | .shiftR i n =>
@@ -341,6 +582,7 @@ def compile1 {k : ℕ} (op : valid_ops k) (curLen : List Nat) :
   rfl
 
 namespace DemoValidOps
+
 -- handy Fin indices for k = 3
 def r0 : Fin 3 := ⟨0, by decide⟩
 def r1 : Fin 3 := ⟨1, by decide⟩

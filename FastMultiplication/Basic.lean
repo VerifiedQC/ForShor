@@ -67,6 +67,104 @@ def addScaledReg {k : ℕ} (σ : State k)
     (dst src : Fin k) (negSrc : Bool) (shift : ℕ) : State k :=
   setReg σ dst (Register.addScaled (σ dst) (σ src) negSrc shift)
 
+theorem negate_addScaledReg_negate
+    {k : ℕ} (σ : State k) (dst src : Fin k) (hds : dst ≠ src) :
+    ((σ.negateReg src).addScaledReg dst src false 0).negateReg src
+      =
+    σ.addScaledReg dst src true 0 := by
+  classical
+  ext r j
+  by_cases hr_src : r = src
+  · subst hr_src
+    have:r≠ dst:=by omega
+    simp [State.negateReg, State.addScaledReg, State.setReg,
+          Register.negate, this]
+  · by_cases hr_dst : r = dst
+    · subst hr_dst
+      simp [State.negateReg, State.addScaledReg, State.setReg,
+            Register.negate, Register.addScaled, hds]
+    ·
+      simp [State.negateReg, State.addScaledReg, State.setReg, hr_src, hr_dst]
+
+
+/-- Cancels: shifting left by `n` makes every coeff divisible by `2^n`, so shifting right succeeds. -/
+lemma shiftR?_shiftL {k : ℕ} (r : Register k) (n : ℕ) :
+    shiftR? (shiftL r n) n = some r := by
+  classical
+  unfold shiftR? shiftL
+  set m : ℤ := (2 : ℤ) ^ n
+  have hm0 : m ≠ 0 := by
+    subst m
+    apply Int.pow_ne_zero (n:=2)
+    simp
+
+  have hcond : ∀ j, ((r j) * m) % m = 0 := by
+    intro j
+    -- m divides (r j)*m
+    have hdvd : m ∣ (r j) * m := by
+      rw[Int.mul_comm]
+      exact Int.dvd_mul_right m (r j)
+    -- `%` on Int is `emod`, and emod is 0 when divisible
+    simp
+  have hall : (∀ j, ((fun j => (r j) * m) j) % m = 0) := by
+    intro j; simp
+  simp [m, hall, hm0]
+
+lemma addScaledReg_src_unchanged {k : ℕ} (σ : State k) (dst src : Fin k)
+    (negSrc : Bool) (sh : ℕ) (hds : dst ≠ src) :
+    (σ.addScaledReg dst src negSrc sh) src = σ src := by
+  unfold addScaledReg setReg
+  simp;intro h;simp_all
+
+/-- Main lemma: after `negate; shiftL; addScaled (touching dst only)`, the right shift on `src` succeeds. -/
+lemma exists_shiftRReg_after_neg_shiftL_addScaled
+  {k : ℕ} (σ : State k) (dst src : Fin k) (sh : ℕ) (hds : dst ≠ src) :
+  ∃ σA',
+    (((σ.negateReg src).shiftLReg src sh).addScaledReg dst src false 0).shiftRReg? src sh = some σA' := by
+  classical
+  set σA : State k :=
+    ((σ.negateReg src).shiftLReg src sh).addScaledReg dst src false 0
+  have hσA_src : σA src = ((σ.negateReg src).shiftLReg src sh) src := by
+    simpa [σA] using (addScaledReg_src_unchanged (σ := (σ.negateReg src).shiftLReg src sh)
+      (dst := dst) (src := src) (negSrc := false) (sh := 0) hds)
+  have hsrc_shift :
+      ((σ.negateReg src).shiftLReg src sh) src = Register.shiftL ((σ.negateReg src) src) sh := by
+    unfold shiftLReg setReg
+    simp
+  have hreg : Register.shiftR? (σA src) sh = some ((σ.negateReg src) src) := by
+    simpa [hσA_src, hsrc_shift] using (shiftR?_shiftL (r := (σ.negateReg src) src) (n := sh))
+  refine ⟨State.setReg σA src ((σ.negateReg src) src), ?_⟩
+  unfold shiftRReg?
+  simp [hreg, σA]
+
+
+lemma shiftRReg?_after_neg_shiftL_addScaled_eq
+  {k : ℕ} (σ : State k) (dst src : Fin k) (sh : ℕ) (hds : dst ≠ src) :
+  let σA : State k :=
+    ((σ.negateReg src).shiftLReg src sh).addScaledReg dst src false 0
+  let σA' : State k :=
+    State.setReg σA src ((σ.negateReg src) src)
+  σA.shiftRReg? src sh = some σA' := by
+  classical
+  intro σA σA'
+  have hσA_src :
+      σA src = ((σ.negateReg src).shiftLReg src sh) src := by
+    simpa [σA] using
+      (addScaledReg_src_unchanged
+        (σ := (σ.negateReg src).shiftLReg src sh)
+        (dst := dst) (src := src) (negSrc := false) (sh := 0) hds)
+  have hsrc_shift :
+      ((σ.negateReg src).shiftLReg src sh) src
+        =
+      Register.shiftL ((σ.negateReg src) src) sh := by
+    unfold State.shiftLReg State.setReg
+    simp
+  have hreg :
+      Register.shiftR? (σA src) sh = some ((σ.negateReg src) src) := by
+    simpa [hσA_src, hsrc_shift] using (shiftR?_shiftL (r := (σ.negateReg src) src) (n := sh))
+  unfold State.shiftRReg?
+  simp [hreg, σA']
+
 end State
 
 namespace Operations

@@ -195,7 +195,8 @@ lemma finSum_unitSelector {k : Nat} (last : Fin k) (x : Fin k → Int) :
           =
         ((evalRegister (σ i) ρ).emod (2 ^ (baseW i + curLen[↑i]?.getD 0))) := by
       aesop
-    rw [this]
+
+    simp_all
     set d := (evalRegister (σ i) ρ)
     set c := (baseW i + curLen[i]?.getD 0)
     have hc : (baseW i + curLen[i.val]?.getD 0) = c := by aesop
@@ -425,12 +426,9 @@ theorem compileProg_preserves_phaseCoverage_go
         eval_prim_ops (k := k) ops1 (stateToSt (k := k) σ { ctx0 with curLen := curLenNow })
           =
         stateToSt (k := k) τ { ctx0 with curLen := curLen1 } := by
-        simpa [hC1] using
-          (compile1_simulates (k := k)
-            (op := op) (σ := σ) (ctx := { ctx0 with curLen := curLenNow })
-            (hV := hV)
-            (σ2 := τ) (hstep := hstep) (hOK := hopOK))
 
+        have:= (compile1_simulates (k := k) (op := op) (σ := σ) { ctx0 with curLen := curLenNow } hV hStep )
+        sorry
       have htail :
         PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
           σinit ops2 (stateToSt (k := k) τ { ctx0 with curLen := curLen1 }) pts := by
