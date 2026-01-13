@@ -137,6 +137,26 @@ lemma exists_shiftRReg_after_neg_shiftL_addScaled
   unfold shiftRReg?
   simp [hreg, σA]
 
+/-- Main lemma: after `negate; shiftL; addScaled (touching dst only)`, the right shift on `src` succeeds. -/
+lemma exists_shiftRReg_after_shiftL_addScaled
+  {k : ℕ} (σ : State k) (dst src : Fin k) (sh : ℕ) (hds : dst ≠ src) :
+  ∃ σA',
+    (((σ).shiftLReg src sh).addScaledReg dst src false 0).shiftRReg? src sh = some σA' := by
+  classical
+  set σA : State k :=
+    ((σ).shiftLReg src sh).addScaledReg dst src false 0
+  have hσA_src : σA src = ((σ).shiftLReg src sh) src := by
+    simpa [σA] using (addScaledReg_src_unchanged (σ := (σ).shiftLReg src sh)
+      (dst := dst) (src := src) (negSrc := false) (sh := 0) hds)
+  have hsrc_shift :
+      ((σ).shiftLReg src sh) src = Register.shiftL ((σ) src) sh := by
+    unfold shiftLReg setReg
+    simp
+  have hreg : Register.shiftR? (σA src) sh = some ((σ) src) := by
+    simpa [hσA_src, hsrc_shift] using (shiftR?_shiftL (r := (σ) src) (n := sh))
+  refine ⟨State.setReg σA src ((σ) src), ?_⟩
+  unfold shiftRReg?
+  simp [hreg, σA]
 
 lemma shiftRReg?_after_neg_shiftL_addScaled_eq
   {k : ℕ} (σ : State k) (dst src : Fin k) (sh : ℕ) (hds : dst ≠ src) :
@@ -165,6 +185,33 @@ lemma shiftRReg?_after_neg_shiftL_addScaled_eq
   unfold State.shiftRReg?
   simp [hreg, σA']
 
+
+lemma shiftRReg?_after_shiftL_addScaled_eq
+  {k : ℕ} (σ : State k) (dst src : Fin k) (sh : ℕ) (hds : dst ≠ src) :
+  let σA : State k :=
+    (σ.shiftLReg src sh).addScaledReg dst src false 0
+  let σA' : State k :=
+    State.setReg σA src (σ src)
+  σA.shiftRReg? src sh = some σA' := by
+  classical
+  intro σA σA'
+  have hσA_src :
+      σA src = (σ.shiftLReg src sh) src := by
+    simpa [σA] using
+      (addScaledReg_src_unchanged
+        (σ := σ.shiftLReg src sh)
+        (dst := dst) (src := src) (negSrc := false) (sh := 0) hds)
+  have hsrc_shift :
+      (σ.shiftLReg src sh) src
+        =
+      Register.shiftL (σ src) sh := by
+    unfold State.shiftLReg State.setReg
+    simp
+  have hreg :
+      Register.shiftR? (σA src) sh = some (σ src) := by
+    simpa [hσA_src, hsrc_shift] using (shiftR?_shiftL (r := σ src) (n := sh))
+  unfold State.shiftRReg?
+  simp [hreg, σA']
 end State
 
 namespace Operations
