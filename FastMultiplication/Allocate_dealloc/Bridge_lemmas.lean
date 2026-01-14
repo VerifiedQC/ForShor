@@ -1562,77 +1562,6 @@ lemma compile1_pres_len {k} (op : valid_ops k) (curLen : List Nat)
     simp[h]
   }
 
-theorem compileProg_simulates_go
-  {k : ℕ}
-  (ops : Prog k)
-  (σ : State k)
-  (ctx0 : StCtx k)
-  (curLenNow : List Nat)
-  (σ2 : State k)
-  (hstep : run? (k := k) ops σ = some σ2)
-  (hOK : Prog.WellFormed ops)
-  (hV : ValidFor (k := k) σ { ctx0 with curLen := curLenNow })
-  (hStepValid : ValidForStep (k := k) ctx0) :
-  let ctxNow : StCtx k := { ctx0 with curLen := curLenNow }
-  let (opsP, curLen') := compileProg (k := k) ops curLenNow
-  eval_prim_ops (k := k) opsP (stateToSt (k := k) σ ctxNow)
-    =
-  stateToSt (k := k) σ2 { ctx0 with curLen := curLen' } := by
-  induction ops generalizing σ curLenNow σ2 with
-  | nil =>
-      simp [run?] at hstep
-      cases hstep
-      simp [compileProg, eval_prim_ops]
-  | cons op ops ih =>
-      have hOK_head : Prog.OpOK op := by
-        aesop
-      have hOK_tail : Prog.WellFormed ops := by
-        simp [Prog.WellFormed] at hOK
-        unfold Prog.WellFormed
-        rcases hOK with ⟨hl, hr⟩
-        intro op hop
-        exact hr op hop
-
-      simp [run?] at hstep
-      cases hσ1 : applyOp? σ op with
-      | none =>
-          simp [hσ1] at hstep
-      | some σ1 =>
-          have hstep_tail : run? (k := k) ops σ1 = some σ2 := by
-            simpa [hσ1] using hstep
-
-          -- compile head
-          cases hC1 : compile1 (k := k) op curLenNow with
-          | mk opsP1 curLen1 =>
-              -- simulate the head using compile1_simulates
-              have hsim_head :
-                eval_prim_ops (k := k) opsP1 (stateToSt (k := k) σ { ctx0 with curLen := curLenNow })
-                  =
-                stateToSt (k := k) σ1 { ctx0 with curLen := curLen1 } := by
-                  have:=compile1_simulates op σ ctx0 (by sorry)
-                  sorry
-
-              -- get ValidFor for the tail state/context via the step-preservation hypothesis
-              have hV1 :
-                ValidFor (k := k) σ1 { ctx0 with curLen := curLen1 } := by
-                -- unfold the step rule at exactly this situation
-                have := hStepValid σ σ1 op curLenNow hσ1 hOK_head hV
-                -- rewrite `curLen1` to match compile1's result
-                simpa [hC1] using this
-
-              -- apply IH to the tail
-              have hsim_tail :
-                let (opsP, curLen') := compileProg (k := k) ops curLen1
-                eval_prim_ops (k := k) opsP (stateToSt (k := k) σ1 { ctx0 with curLen := curLen1 })
-                  =
-                stateToSt (k := k) σ2 { ctx0 with curLen := curLen' } := by
-                simpa using
-                  (ih (σ := σ1) (curLenNow := curLen1) (σ2 := σ2)
-                    (hstep := hstep_tail) (hOK := hOK_tail) (hV := hV1))
-
-              -- stitch head ++ tail
-              simp [compileProg, hC1]
-              simpa [eval_prim_ops_append, hsim_head] using hsim_tail
 
 theorem compileProg_simulates
   {k : ℕ}
@@ -1643,12 +1572,88 @@ theorem compileProg_simulates
   (hstep : run? (k := k) ops σ = some σ2)
   (hOK : Prog.WellFormed ops)
   (hV : ValidFor (k := k) σ ctx)
-  (hStepValid : ValidForStep (k := k) ctx) :
+  (hStepValid : ValidForStep (k := k) ctx)
+  (hPrim : PrimOKTrace (compileProg ops ctx.curLen).1 ctx):
   let (opsP, curLen') := compileProg (k := k) ops ctx.curLen
   eval_prim_ops (k := k) opsP (stateToSt (k := k) σ ctx)
     =
   stateToSt (k := k) σ2 { ctx with curLen := curLen' } := by
-  simpa using
-    (compileProg_simulates_go (k := k)
-      (ops := ops) (σ := σ) (ctx0 := ctx) (curLenNow := ctx.curLen)
-      (σ2 := σ2) (hstep := hstep) (hOK := hOK) (hV := hV) (hStepValid := hStepValid))
+  induction ops generalizing σ ctx σ2 with
+  | nil =>
+      simp [run?] at hstep
+      cases hstep
+      simp [compileProg, eval_prim_ops]
+  | cons op ops ih =>
+      simp [run?] at hstep
+      cases hA : applyOp? (k := k) σ op <;> simp [hA] at hstep
+      case some σ1 =>
+        have hstepTail : run? (k := k) ops σ1 = some σ2 := hstep
+        have hOpOK : Prog.OpOK (k := k) op := by simp[Prog.WellFormed] at hOK;simp[hOK]
+        have hWFtail : Prog.WellFormed (k := k) ops := by simp[Prog.WellFormed] at hOK;simp[Prog.WellFormed];apply hOK.right
+        simp [compileProg] at hPrim ⊢
+        set ops1 : List (prim_ops k) := (compile1 (k := k) op ctx.curLen).1
+        set curLen1 : List Nat := (compile1 (k := k) op ctx.curLen).2
+        set ops2 : List (prim_ops k) := (compileProg (k := k) ops curLen1).1
+        set curLen2 : List Nat := (compileProg (k := k) ops curLen1).2
+
+        simp [ops1, curLen1, ops2, curLen2]
+
+        have hSplit : PrimOKTrace (k := k) ops1 ctx ∧
+            PrimOKTrace (k := k) ops2 (runCtxPrim (k := k) ctx ops1) := by
+          -- hPrim was on (ops1 ++ ops2)
+          have : PrimOKTrace (k := k) (ops1 ++ ops2) ctx := by
+            simpa [ops1, ops2, curLen1, curLen2, compileProg] using hPrim
+          exact (PrimOKTrace.append_inv (k := k) ops1 ops2 ctx this)
+
+        have hPrim1 : PrimOKTrace (k := k) ops1 ctx := hSplit.1
+        have hPrim2_raw : PrimOKTrace (k := k) ops2 (runCtxPrim (k := k) ctx ops1) := hSplit.2
+
+        have hCtx1 :
+          runCtxPrim (k := k) ctx ops1 = { ctx with curLen := curLen1 } := by
+          simpa [ops1, curLen1] using (runCtxPrim_compile1 (k := k) op ctx)
+
+        have hPrim2 : PrimOKTrace (k := k) ops2 { ctx with curLen := curLen1 } := by
+          simpa [hCtx1] using hPrim2_raw
+
+        have hV1 : ValidFor (k := k) σ1 { ctx with curLen := curLen1 } := by
+          simpa [curLen1] using
+            (hStepValid (σ := σ) (σ1 := σ1) (op := op) (curLenNow := ctx.curLen) hA hOpOK hV)
+
+        -- simulate head op using compile1_simulates
+        have hHead :
+          eval_prim_ops (k := k) ops1 (stateToSt (k := k) σ ctx)
+            =
+          stateToSt (k := k) σ1 { ctx with curLen := curLen1 } := by
+
+          simpa [ops1, curLen1] using
+            (compile1_simulates (k := k) op σ ctx hV hStepValid
+              (by simpa [ops1] using hPrim1) σ1 hA hOpOK)
+
+        -- simulate tail using IH, starting from ctx1 = {ctx with curLen := curLen1}
+        have hStepValid1 : ValidForStep (k := k) { ctx with curLen := curLen1 } :=
+          ValidForStep.withCurLen (k := k) ctx curLen1 hStepValid
+
+        have hTail :
+          eval_prim_ops (k := k) ops2 (stateToSt (k := k) σ1 { ctx with curLen := curLen1 })
+            =
+          stateToSt (k := k) σ2 { ctx with curLen := curLen2 } := by
+          -- IH expects hPrim for compileProg ops curLen1
+          -- but ops2/curLen2 are exactly that
+          simpa [ops2, curLen2] using
+            (ih (σ := σ1) (ctx := { ctx with curLen := curLen1 }) (σ2 := σ2)
+              (hstep := hstepTail)
+              (hOK := hWFtail)
+              (hV := hV1)
+              (hStepValid := hStepValid1)
+              (hPrim := by
+                -- hPrim2 is PrimOKTrace on ops2 at ctx1; ops2 = (compileProg ops curLen1).1
+                simpa [ops2] using hPrim2))
+
+        calc
+          eval_prim_ops (k := k) (ops1 ++ ops2) (stateToSt (k := k) σ ctx)
+              = eval_prim_ops (k := k) ops2 (eval_prim_ops (k := k) ops1 (stateToSt (k := k) σ ctx)) := by
+                  simpa using (eval_prim_ops_append (k := k) ops1 ops2 (stateToSt (k := k) σ ctx))
+          _   = eval_prim_ops (k := k) ops2 (stateToSt (k := k) σ1 { ctx with curLen := curLen1 }) := by
+                  simp [hHead]
+          _   = stateToSt (k := k) σ2 { ctx with curLen := curLen2 } := by
+                  simpa using hTail

@@ -59,6 +59,8 @@ open Operations
 One-step preservation for `ValidFor` along compilation/execution of a single op.
 -/
 
+
+
 def ValidForStep
   {k : ℕ} (ctx0 : StCtx k) : Prop :=
   ∀ (σ σ1 : State k) (op : valid_ops k) (curLenNow : List Nat),
@@ -68,6 +70,7 @@ def ValidForStep
     ValidFor (k := k) σ ctxNow →
     let curLen1 := (compile1 (k := k) op curLenNow).2
     ValidFor (k := k) σ1 { ctx0 with curLen := curLen1 }
+
 
 
 
@@ -150,7 +153,16 @@ lemma setAt_getD_id (l : List Nat) (idx : Nat) :
       | succ idx =>
           simpa [setAt, List.getD] using congrArg (fun t => x :: t) (ih idx)
 
-
+lemma ValidForStep.withCurLen
+  {k : ℕ} (ctx : StCtx k) (L : List Nat) :
+  ValidForStep (k := k) ctx → ValidForStep (k := k) { ctx with curLen := L } := by
+  intro h
+  -- eliminate `ctx` so record updates become definitional (rfl) after unfolding
+  cases ctx with
+  | mk ρ baseW curLen =>
+    unfold ValidForStep at h ⊢
+    intro σ σ1 op curLenNow
+    simpa using (h (σ := σ) (σ1 := σ1) (op := op) (curLenNow := curLenNow))
 
 ----------------------------------------------------------------------------------------------------
 ------------------------------- Demo: stateToSt on small examples ----------------------------------
@@ -789,6 +801,106 @@ lemma ValidFor_incLen(i:Fin k) (σ : State k) (ctx : StCtx k) (hV : ValidFor σ 
     simp;apply baseW_eq
     apply FitsSignedAt_incLen σ ctx hcurLen fitsAll
   }
+
+
+
+/-- Split a `PrimOKTrace` over `++` (tail starts at the threaded ctx after ops1). -/
+lemma PrimOKTrace.append_inv {k : ℕ}
+  (ops1 ops2 : List (prim_ops k)) (ctx : StCtx k) :
+  PrimOKTrace (k := k) (ops1 ++ ops2) ctx →
+    (PrimOKTrace (k := k) ops1 ctx ∧
+     PrimOKTrace (k := k) ops2 (runCtxPrim (k := k) ctx ops1)) := by
+  induction ops1 generalizing ctx with
+  | nil =>
+      intro h
+      simp [PrimOKTrace, runCtxPrim] at h ⊢
+      apply h
+  | cons op ops ih =>
+      intro h
+      have h' : PrimOKForCtx (k := k) op ctx ∧
+        PrimOKTrace (k := k) (ops ++ ops2) (stepCtxPrim (k := k) ctx op) := by
+        simpa [PrimOKTrace] using h
+      have tail := ih (ctx := stepCtxPrim (k := k) ctx op) h'.2
+      refine ⟨?_, ?_⟩
+      ·
+        refine ⟨h'.1, tail.1⟩
+      ·
+        simpa [runCtxPrim] using tail.2
+
+
+@[simp] lemma runCtxPrim_singleton {k : ℕ} (ctx : StCtx k) (op : prim_ops k) :
+  runCtxPrim (k := k) ctx [op] = stepCtxPrim (k := k) ctx op := by
+  simp [runCtxPrim]
+
+-- stepCtxPrim does nothing on these
+@[simp] lemma stepCtxPrim_negate {k : ℕ} (ctx : StCtx k) (i : Fin k) :
+  stepCtxPrim (k := k) ctx (prim_ops.negate i) = ctx := by
+  rfl
+
+@[simp] lemma stepCtxPrim_add {k : ℕ} (ctx : StCtx k) (dst src : Fin k) :
+  stepCtxPrim (k := k) ctx (prim_ops.Add dst src) = ctx := by
+  rfl
+
+@[simp] lemma stepCtxPrim_phase {k : ℕ} (ctx : StCtx k) (i : Fin k) :
+  stepCtxPrim (k := k) ctx (prim_ops.phaseProduct i) = ctx := by
+  rfl
+
+lemma runCtxPrim_if_alloc
+  {k : ℕ} (ctx : StCtx k) (i : Fin k) (lsb : Bool) (n : Nat) :
+  runCtxPrim (k := k) ctx (if n = 0 then [] else [prim_ops.Alloc i lsb n])
+    = { ctx with curLen := incLen ctx.curLen i n } := by
+  by_cases hn : n = 0
+  · subst hn
+    simp [runCtxPrim]        -- uses incLen_zero
+  · by_cases h:lsb<;>simp [hn, stepCtxPrim, h]
+
+lemma runCtxPrim_if_free
+  {k : ℕ} (ctx : StCtx k) (i : Fin k) (lsb : Bool) (n : Nat) :
+  runCtxPrim (k := k) ctx (if n = 0 then [] else [prim_ops.Free i lsb n])
+    = { ctx with curLen := decLen ctx.curLen i n } := by
+  by_cases hn : n = 0
+  · subst hn
+    simp [runCtxPrim]        -- uses decLen_zero
+  · by_cases h:lsb<;>simp [hn, h, stepCtxPrim]
+
+lemma runCtxPrim_negops
+  {k : ℕ} (ctx : StCtx k) (src : Fin k) (negSrc : Bool) :
+  runCtxPrim (k := k) ctx (if negSrc then [prim_ops.negate src] else [])
+    = ctx := by
+  cases negSrc <;> simp [runCtxPrim, stepCtxPrim]
+
+lemma runCtxPrim_adder
+  {k : ℕ} (ctx : StCtx k) (dst src : Fin k) :
+  runCtxPrim (k := k) ctx [prim_ops.Add dst src] = ctx := by
+  simp [runCtxPrim, stepCtxPrim]
+
+
+
+lemma runCtxPrim_compile1
+  {k : ℕ} (op : valid_ops k) (ctx : StCtx k) :
+  runCtxPrim (k := k) ctx (compile1 (k := k) op ctx.curLen).1
+    = { ctx with curLen := (compile1 (k := k) op ctx.curLen).2 } := by
+  cases op with
+  | shiftL i n =>
+      simp [compile1, compile_op_to_prim_single, stepCtxPrim]
+  | shiftR i n =>
+      simp [compile1, compile_op_to_prim_single, stepCtxPrim]
+  | negate i =>
+      simp [compile1, compile_op_to_prim_single, stepCtxPrim]
+  | phaseProduct i =>
+      simp [compile1, compile_op_to_prim_single, stepCtxPrim]
+  | addScaled dst src negSrc sh =>
+      by_cases hds : dst = src
+      · -- compiler emits [] and curLen unchanged
+        simp [compile1, compile_op_to_prim_single, hds, runCtxPrim]
+      ·
+        simp (config := { zeta := true }) [compile1, compile_op_to_prim_single, hds]
+        simp (config := { zeta := true })
+          [runCtxPrim_append,
+          runCtxPrim_negops,
+          runCtxPrim_if_alloc,
+          runCtxPrim_if_free,
+          runCtxPrim, stepCtxPrim]
 
 ----------------------------------------------------------------------------------------------------
 ------------------------------- Register arithmetic helpers -----------------------------------------
