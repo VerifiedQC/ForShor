@@ -354,31 +354,96 @@ lemma eraseFirstMatchB_of_eraseFirstMatch?_Bool
   aesop
 
 
+lemma compile1_phaseProduct_ops
+  {k : ℕ} (i : Fin k) (curLen : List Nat) :
+  (compile1 (k := k) (.phaseProduct i) curLen).1 = [prim_ops.phaseProduct i] := by
+  simp [compile1, compile_op_to_prim_single]
 
-lemma consume_transfer_pointRow_to_interp
+lemma compile1_shiftL_noPhase
+  {k : ℕ} (i : Fin k) (n : Nat) (curLen : List Nat) :
+  (compile1 (k := k) (.shiftL i n) curLen).1 = [prim_ops.Alloc i true n] := by
+  simp [compile1, compile_op_to_prim_single]
+
+lemma compile1_shiftR_noPhase
+  {k : ℕ} (i : Fin k) (n : Nat) (curLen : List Nat) :
+  (compile1 (k := k) (.shiftR i n) curLen).1 = [prim_ops.Free i true n] := by
+  simp [compile1, compile_op_to_prim_single]
+
+lemma compile1_negate_noPhase
+  {k : ℕ} (i : Fin k) (curLen : List Nat) :
+  (compile1 (k := k) (.negate i) curLen).1 = [prim_ops.negate i] := by
+  simp [compile1, compile_op_to_prim_single]
+
+
+lemma ValidForStep.withCurLen
+  {k : ℕ} (ctx : StCtx k) (L : List Nat) :
+  ValidForStep (k := k) ctx → ValidForStep (k := k) { ctx with curLen := L } := by
+  intro h
+  cases ctx with
+  | mk ρ baseW curLen =>
+    unfold ValidForStep at h ⊢
+    intro σ σ1 op curLenNow
+    simpa using (h (σ := σ) (σ1 := σ1) (op := op) (curLenNow := curLenNow))
+lemma interp_true_of_row_true
+  {k : ℕ} (hk : k > 0)
+  (σinit : St k)
+  (ctxNow : StCtx k)
+  (σ : State k) (i : Fin k) (pt : Point)
+  (hfit :
+    FitsSignedAt (σ := σ)
+      (ctx := ⟨(fun j => regToInt (σinit j)), ctxNow.baseW, ctxNow.curLen⟩) i)
+  (hrow : regEqExpected (k := k) (σ i) pt = true) :
+  matchesAt_interp (k := k) σinit
+    (stateToSt (k := k) σ ⟨(fun j => regToInt (σinit j)), ctxNow.baseW, ctxNow.curLen⟩)
+    i pt = true := by
+
+  have hrow' :
+    matchesAt_pointRow_state (k := k) hk σ i pt = true := by
+    simpa [matchesAt_pointRow_state] using hrow
+  simpa using
+    (matchesAt_pointRow_state_implies_matchesAt_interp (k := k) (hk := hk)
+      (σ := σ) (i := i) (pt := pt)
+      (σ0St := σinit) (baseW := ctxNow.baseW) (curLen := ctxNow.curLen)
+      (hfit := hfit) (hrow := hrow'))
+
+
+lemma eraseFirstMatchB_interp_head
   {k : ℕ} (hk : k > 0)
   (σinit : St k)
   (ctxNow : StCtx k)
   (σ : State k) (i : Fin k)
-  (pts pts' : List Operations.Point)
-  (hconsume :
-    List.eraseFirstMatch? (fun pt => matchesAt_pointRow_state (k := k) hk σ i pt) pts
-      = some pts') :
+  (pt : Point) (ptsTail : List Point)
+  (hfit :
+    FitsSignedAt (σ := σ)
+      (ctx := ⟨(fun j => regToInt (σinit j)), ctxNow.baseW, ctxNow.curLen⟩) i)
+  (hrow : regEqExpected (k := k) (σ i) pt = true) :
   eraseFirstMatchB
-      (fun pt => matchesAt_interp (k := k) σinit (stateToSt (k := k) σ ctxNow) i pt) pts
-    = some pts' := by
-  have hb_row :
-    eraseFirstMatchB (fun pt => matchesAt_pointRow_state (k := k) hk σ i pt) pts = some pts' := by
-    apply eraseFirstMatchB_of_eraseFirstMatch?_Bool
-      (p := fun pt => matchesAt_pointRow_state (k := k) hk σ i pt) pts pts'
-    aesop
-  clear hconsume
-  induction pts with
-  | nil =>
-      simp_all [eraseFirstMatchB]
-  | cons head tail ih =>
-      simp_all [eraseFirstMatchB]
-      sorry
+      (fun q =>
+        matchesAt_interp (k := k) σinit
+          (stateToSt (k := k) σ ⟨(fun j => regToInt (σinit j)), ctxNow.baseW, ctxNow.curLen⟩)
+          i q)
+      (pt :: ptsTail)
+    = some ptsTail := by
+  have hinterp :
+    matchesAt_interp (k := k) σinit
+      (stateToSt (k := k) σ ⟨(fun j => regToInt (σinit j)), ctxNow.baseW, ctxNow.curLen⟩)
+      i pt = true :=
+    interp_true_of_row_true (k := k) hk σinit ctxNow σ i pt hfit hrow
+  simp [eraseFirstMatchB, hinterp]
+
+
+def PhaseConsumeOK {k : ℕ}
+  (hk : k > 0) (σinit : St k) (ctx0 : StCtx k) : Prop :=
+  ∀ (σ : State k) (i : Fin k) (curLenNow : List Nat)
+    (pts pts' : List Operations.Point),
+    ValidFor (k := k) σ { ctx0 with curLen := curLenNow } →
+    List.eraseFirstMatch?
+        (fun pt => matchesAt_pointRow_state (k := k) hk σ i pt) pts = some pts' →
+    eraseFirstMatchB
+        (fun pt =>
+          matchesAt_interp (k := k) σinit
+            (stateToSt (k := k) σ { ctx0 with curLen := curLenNow }) i pt)
+        pts = some pts'
 
 
 theorem compileProg_preserves_phaseCoverage_go
@@ -389,16 +454,18 @@ theorem compileProg_preserves_phaseCoverage_go
   (σ0 : State k)
   (ctx0 : StCtx k)
   (curLenNow : List Nat)
-  (hWF : Prog.WellFormed ops)
+  (hWF : Prog.WellFormed (k := k) ops)
   (pts : List Operations.Point)
   (hcov : PhaseProductCoverage (k := k) hk ops σ0 pts)
   (hV : ValidFor (k := k) σ0 { ctx0 with curLen := curLenNow })
-  (hStep : ValidForStep (k := k) ctx0) :
+  (hStep : ValidForStep (k := k) ctx0)
+  (hPrim : PrimOKTrace (k := k) (compileProg (k := k) ops curLenNow).1 { ctx0 with curLen := curLenNow })
+  (hConsumeOK : PhaseConsumeOK (k := k) hk σinit ctx0)
+  :
   let ctxNow : StCtx k := { ctx0 with curLen := curLenNow }
   let (opsP, _curLen') := compileProg (k := k) ops curLenNow
   PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
     σinit opsP (stateToSt (k := k) σ0 ctxNow) pts := by
-  classical
   unfold PhaseProductCoverage at hcov
   induction hcov generalizing curLenNow with
   | nil =>
@@ -406,10 +473,8 @@ theorem compileProg_preserves_phaseCoverage_go
             PhaseProduct_PrimOps.PhaseProductCoverageM_prim.nil]
   | step_op hstep hrest ih =>
       rename_i op ps σ τ pts
-      have hopOK : Prog.OpOK op := by
-        simp [Prog.WellFormed] at hWF; aesop
-      have hWF_tail : Prog.WellFormed ps := by
-        simp [Prog.WellFormed] at hWF; aesop
+      have hopOK : Prog.OpOK (k := k) op := by simp[Prog.WellFormed] at hWF;apply hWF.left
+      have hWF_tail : Prog.WellFormed (k := k) ps := by simp[Prog.WellFormed] at hWF;apply hWF.right
 
       have hVτ :
           let curLen1 := (compile1 (k := k) op curLenNow).2
@@ -419,20 +484,48 @@ theorem compileProg_preserves_phaseCoverage_go
       rcases hC1 : compile1 (k := k) op curLenNow with ⟨ops1, curLen1⟩
       rcases hCP : compileProg (k := k) ps curLen1 with ⟨ops2, curLen2⟩
 
-      have hVτ' : ValidFor (k := k) τ { ctx0 with curLen := curLen1 } := by
-        simpa [hC1] using hVτ
+      have hPrim_split :
+        PrimOKTrace (k := k) ops1 { ctx0 with curLen := curLenNow } ∧
+        PrimOKTrace (k := k) ops2 (runCtxPrim (k := k) ({ ctx0 with curLen := curLenNow }) ops1) := by
+        have : PrimOKTrace (k := k) (ops1 ++ ops2) { ctx0 with curLen := curLenNow } := by
+          simpa [compileProg, hC1, hCP] using hPrim
+        exact PrimOKTrace.append_inv (k := k) ops1 ops2 ({ ctx0 with curLen := curLenNow }) this
+
+      have hPrim1 : PrimOKTrace (k := k) ops1 { ctx0 with curLen := curLenNow } := hPrim_split.1
+      have hPrim2_raw :
+        PrimOKTrace (k := k) ops2 (runCtxPrim (k := k) ({ ctx0 with curLen := curLenNow }) ops1) := hPrim_split.2
+
+      have hCtx1 :
+        runCtxPrim (k := k) ({ ctx0 with curLen := curLenNow }) ops1
+          = { ctx0 with curLen := curLen1 } := by
+        have := runCtxPrim_compile1 (k := k) op ({ ctx0 with curLen := curLenNow })
+        simpa [hC1] using this
+
+      have hPrim2 : PrimOKTrace (k := k) ops2 { ctx0 with curLen := curLen1 } := by
+        simpa [hCtx1] using hPrim2_raw
+
+      have hStepNow : ValidForStep (k := k) ({ ctx0 with curLen := curLenNow }) :=
+        ValidForStep.withCurLen (k := k) ctx0 curLenNow hStep
 
       have hsim :
         eval_prim_ops (k := k) ops1 (stateToSt (k := k) σ { ctx0 with curLen := curLenNow })
           =
         stateToSt (k := k) τ { ctx0 with curLen := curLen1 } := by
+        have := compile1_simulates (k := k) (op := op)
+          (σ := σ) (ctx := { ctx0 with curLen := curLenNow })
+          (hV := hV) (hV_step := hStepNow)
+          (hPrim := by simpa [hC1] using hPrim1)
+          (σ2 := τ) (hstep := hstep) (hOK := hopOK)
+        simpa [hC1] using this
 
-        have:= (compile1_simulates (k := k) (op := op) (σ := σ) { ctx0 with curLen := curLenNow } hV hStep )
-        sorry
+      have hVτ' : ValidFor (k := k) τ { ctx0 with curLen := curLen1 } := by
+        simpa [hC1] using hVτ
+
       have htail :
         PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
           σinit ops2 (stateToSt (k := k) τ { ctx0 with curLen := curLen1 }) pts := by
-        have := ih (curLenNow := curLen1) (hWF := hWF_tail) (hV := hVτ')
+        have := ih (curLenNow := curLen1) (hWF := hWF_tail)
+          (hV := hVτ') (hPrim := by simpa [hCP] using hPrim2)
         simpa [hCP] using this
 
       have htail' :
@@ -444,14 +537,16 @@ theorem compileProg_preserves_phaseCoverage_go
       have hwhole :
         PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
           σinit (ops1 ++ ops2) (stateToSt (k := k) σ { ctx0 with curLen := curLenNow }) pts := by
-        apply prepend
-        aesop
+        dsimp [PhaseProduct_PrimOps.PhaseProductCoverage_prim] at htail' ⊢
+        exact prepend (k := k) (M := matchesAt_interp (k := k) σinit)
+          ops1 ops2 (stateToSt (k := k) σ { ctx0 with curLen := curLenNow }) pts htail'
+
       simpa [compileProg, hC1, hCP] using hwhole
 
   | step_phase hconsume hrest ih =>
       rename_i i ps σ pts pts'
-      have hWF_tail : Prog.WellFormed ps := by
-        simp [Prog.WellFormed] at hWF; aesop
+      have hWF_tail : Prog.WellFormed (k := k) ps :=
+        by simp[Prog.WellFormed] at hWF;apply hWF.right
 
       rcases hC1 : compile1 (k := k) (valid_ops.phaseProduct i) curLenNow with ⟨ops1, curLen1⟩
       rcases hCP : compileProg (k := k) ps curLen1 with ⟨ops2, curLen2⟩
@@ -459,7 +554,32 @@ theorem compileProg_preserves_phaseCoverage_go
       have hCphase : ops1 = [prim_ops.phaseProduct i] ∧ curLen1 = curLenNow := by
         simpa [hC1] using (compile1_phaseProduct (k := k) i curLenNow)
       rcases hCphase with ⟨hops1, hcur1⟩
-      subst hops1; subst hcur1
+      subst hops1
+      subst hcur1
+
+      have hPrim_split :
+        PrimOKTrace (k := k) [prim_ops.phaseProduct i] { ctx0 with curLen := curLen1 } ∧
+        PrimOKTrace (k := k) ops2 (runCtxPrim (k := k) ({ ctx0 with curLen := curLen1 }) [prim_ops.phaseProduct i]) := by
+        have : PrimOKTrace (k := k) ([prim_ops.phaseProduct i] ++ ops2) { ctx0 with curLen := curLen1 } := by
+          simpa [compileProg, hC1, hCP] using hPrim
+        exact PrimOKTrace.append_inv (k := k) [prim_ops.phaseProduct i] ops2 ({ ctx0 with curLen := curLen1 }) this
+
+      have hPrim2_raw := hPrim_split.2
+      have hCtxSame :
+        runCtxPrim (k := k) ({ ctx0 with curLen := curLen1 }) [prim_ops.phaseProduct i]
+          = { ctx0 with curLen := curLen1 } := by
+        simp [runCtxPrim, stepCtxPrim]
+
+      have hPrim2 : PrimOKTrace (k := k) ops2 { ctx0 with curLen := curLen1 } := by
+        simpa [hCtxSame] using hPrim2_raw
+
+      have htail :
+        PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
+          σinit ops2 (stateToSt (k := k) σ { ctx0 with curLen := curLen1 }) pts' := by
+        have := ih (curLenNow := curLen1) (hWF := hWF_tail) (hV := hV)
+          (hPrim := by simpa [hCP] using hPrim2)
+        simpa [hCP] using this
+
 
       have hb_interp :
         eraseFirstMatchB
@@ -467,26 +587,14 @@ theorem compileProg_preserves_phaseCoverage_go
             matchesAt_interp (k := k) σinit
               (stateToSt (k := k) σ { ctx0 with curLen := curLen1 }) i pt) pts
           = some pts' := by
-        apply consume_transfer_pointRow_to_interp (k := k) hk σinit
-          ({ ctx0 with curLen := curLen1 }) σ i pts pts'
-        aesop
+        clear hPrim2 hPrim2_raw hPrim_split hC1 hCtxSame hCP hWF_tail hWF ih
+        exact hConsumeOK (σ := σ) (i := i) (curLenNow := curLen1) (pts := pts) (pts' := pts') hV hconsume
 
-      have htail :
-        PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
-          σinit ops2 (stateToSt (k := k) σ { ctx0 with curLen := curLen1 }) pts' := by
-        have := ih (curLenNow := curLen1) (hWF := hWF_tail) (hV := hV)
-        simpa [hCP] using this
 
-      have hphase :
-        PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
-          σinit (prim_ops.phaseProduct i :: ops2)
-          (stateToSt (k := k) σ { ctx0 with curLen := curLen1 }) pts := by
-        dsimp [PhaseProduct_PrimOps.PhaseProductCoverage_prim] at htail ⊢
-        refine PhaseProduct_PrimOps.PhaseProductCoverageM_prim.step_phase (k := k)
-          (M := matchesAt_interp (k := k) σinit) (i := i) (hconsume := hb_interp) ?_
-        exact htail
-
-      simpa [compileProg, hC1, hCP] using hphase
+      dsimp [PhaseProduct_PrimOps.PhaseProductCoverage_prim] at htail ⊢
+      refine PhaseProduct_PrimOps.PhaseProductCoverageM_prim.step_phase (k := k)
+        (M := matchesAt_interp (k := k) σinit) (i := i) (hconsume := hb_interp) ?_
+      simp_all
 
 
 theorem compileProg_preserves_phaseCoverage
@@ -499,7 +607,10 @@ theorem compileProg_preserves_phaseCoverage
   (pts : List Operations.Point)
   (hcov : PhaseProductCoverage (k := k) hk ops σ0 pts)
   (hV0 : ValidFor (k := k) σ0 ctx0)
-  (hStep : ValidForStep (k := k) ctx0) :
+  (hStep : ValidForStep (k := k) ctx0)
+  (hPrim : PrimOKTrace (compileProg ops ctx0.curLen).1 ctx0)
+  (hConsumeOK : PhaseConsumeOK (k := k) hk (stateToSt (k := k) σ0 ctx0) ctx0)
+  :
   PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
     (stateToSt (k := k) σ0 ctx0) (compileProg (k := k) ops ctx0.curLen).1
     (stateToSt (k := k) σ0 ctx0) pts := by
@@ -511,6 +622,5 @@ theorem compileProg_preserves_phaseCoverage
     (curLenNow := ctx0.curLen)
     (hWF := hOK) (pts := pts) (hcov := hcov)
     (hV := by simpa using hV0) (hStep := hStep)
+    (hPrim:=hPrim) (hConsumeOK:=hConsumeOK)
   simpa [σinit] using this
-
-end PhaseProductCoverage

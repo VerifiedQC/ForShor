@@ -286,7 +286,6 @@ max (a.emod n) 0 = a.emod n:= by {
   apply Int.emod_nonneg
   simp[hn]
 }
--- Add / Free bridges (stubs kept as-is)
 
 lemma bridge_add
   {k : ℕ} (σ : State k) (ctx : StCtx k)
@@ -1119,7 +1118,7 @@ lemma shiftRReg?_shiftL_addScaled0_eq_addScaled_sh
     =
   some (σ.addScaledReg dst src false sh) := by
   classical
-  -- Your lemma gives the result as `some σA'` where `σA' = setReg σA src (σ src)`
+
   set σA : State k := (σ.shiftLReg src sh).addScaledReg dst src false 0
   set σA' : State k := State.setReg σA src (σ src)
 
@@ -1144,10 +1143,6 @@ lemma shiftRReg?_shiftL_addScaled0_eq_addScaled_sh
               hr_src, hr_dst]
   simpa [σA, hσA'] using hmain
 
-
--- Now your exact goal shape:
--- hstep : σ.addScaledReg dst src false sh = σ2
--- ⊢ ((σ.shiftLReg src sh).addScaledReg dst src false 0).shiftRReg? src sh = some σ2
 
 lemma bridge_compile1_addScaled_helper3
   {k : ℕ}
@@ -1578,6 +1573,7 @@ theorem compileProg_simulates
   eval_prim_ops (k := k) opsP (stateToSt (k := k) σ ctx)
     =
   stateToSt (k := k) σ2 { ctx with curLen := curLen' } := by
+  simp
   induction ops generalizing σ ctx σ2 with
   | nil =>
       simp [run?] at hstep

@@ -26,7 +26,7 @@ def stateToSt {k : ℕ} (σ : State k) (ctx : StCtx k) : St k :=
     let w : Nat := ctx.baseW i + ctx.curLen.getD i.1 0
     let z : ℤ := evalRegister (σ i) ctx.ρ
     let m : ℤ := (2 : ℤ) ^ w
-    let r : Nat := Int.toNat (Int.emod z m)   -- in [0, 2^w)
+    let r : Nat := Int.toNat (Int.emod z m)
     ⟨w, BitVec.ofNat w r⟩
 
 
@@ -58,8 +58,6 @@ open Operations
 /--
 One-step preservation for `ValidFor` along compilation/execution of a single op.
 -/
-
-
 
 def ValidForStep
   {k : ℕ} (ctx0 : StCtx k) : Prop :=
@@ -263,43 +261,6 @@ lemma freeLSB_undo_shift_toNat
   apply Nat.mod_eq_of_lt h_div_lt
 
 
--- lemma freeLSB_undo_shift
---   {k : ℕ} (st : St k) (i : Fin k) (n : Nat)
---   (hn : n ≤ (st i).fst)
---   (h0 : lowBitsZero (st i).2 n) :
---   BitVec.toInt ((FreeLSB st i n i).2)
---     = BitVec.toInt ((st i).2) / (2 : ℤ) ^ n := by
---   unfold FreeLSB
---   simp[lowBitsZero] at *
---   rw[if_pos rfl]
---   aesop
---   sorry
-
-
-
-
-
--- def msbFreedAreSignExt {w : Nat} (bv : BitVec w) (n : Nat) : Prop :=
---   -- “the top n bits equal the sign bit of the kept part”
---   True  -- fill in
-
--- #check BitVec.sshiftRight
-
--- lemma freeMSB_preserves_value
---   {k : ℕ} (st : St k) (i : Fin k) (n : Nat)
---   (hs : msbFreedAreSignExt (st i).2 n) :
---   BitVec.toInt ((FreeMSB st i n i).2)
---     = BitVec.toInt ((st i).2) := by
---   unfold FreeMSB
---   rw[if_pos rfl]
---   sorry
-
--- lemma adder_correct_equiv
---   {k : ℕ} (st : St k) (dst src : Fin k) :
---   ((Adder st dst src dst).2) ≍ BitVec.add (st dst).2 (BitVec.truncate (st dst).1 (st src).2) := by
---   -- Usually rfl after unfolding Adder;
---   unfold Adder
---   sorry
 
 
 lemma eval_prim_ops_append {k : ℕ}
@@ -901,6 +862,204 @@ lemma runCtxPrim_compile1
           runCtxPrim_if_alloc,
           runCtxPrim_if_free,
           runCtxPrim, stepCtxPrim]
+
+
+lemma PrimOKTrace_if_alloc {k : ℕ}
+  (ctx : StCtx k) (i : Fin k) (lsb : Bool) (n : Nat) :
+  PrimOKTrace (k := k)
+    (if n = 0 then [] else [prim_ops.Alloc i lsb n]) ctx := by
+  by_cases hn : n = 0
+  · subst hn; simp [PrimOKTrace]
+  · simp [hn, PrimOKTrace, PrimOKForCtx]   -- Alloc is always True
+
+lemma PrimOKTrace_if_free
+  {k : ℕ} (ctx : StCtx k) (i : Fin k) (lsb : Bool) (n : Nat)
+  (h : n ≤ ctx.curLen.getD i.1 0) :
+  PrimOKTrace (k := k)
+    (if n = 0 then [] else [prim_ops.Free i lsb n]) ctx := by
+  by_cases hn : n = 0
+  · subst hn; simp [PrimOKTrace]
+  · cases lsb<;>simp [hn, PrimOKTrace, PrimOKForCtx]<;> apply h
+
+lemma PrimOKTrace_negops {k : ℕ}
+  (ctx : StCtx k) (src : Fin k) (negSrc : Bool) :
+  PrimOKTrace (k := k)
+    (if negSrc then [prim_ops.negate src] else []) ctx := by
+  cases negSrc <;> simp [PrimOKTrace, PrimOKForCtx]
+
+lemma PrimOKTrace_adder
+  {k : ℕ} (ctx : StCtx k) (dst src : Fin k)
+  (hW : stWidth (k := k) ctx dst = stWidth (k := k) ctx src) :
+  PrimOKTrace (k := k) [prim_ops.Add dst src] ctx := by
+  simp [PrimOKTrace, PrimOKForCtx, hW]
+
+
+lemma le_getD_incLen_self {k : ℕ} (curLen : List Nat) (i : Fin k) (n : Nat) (hc:curLen.length=k) :
+  n ≤ (incLen curLen i n).getD i.1 0 := by
+  rw[incLen_getD_self]
+  simp
+  assumption
+
+lemma le_getD_incLen_self' {k : ℕ} (ctx : StCtx k) (i : Fin k) (n : Nat) (hc:ctx.curLen.length=k):
+  n ≤ (incLen ctx.curLen i n).getD i.1 0 := by
+  apply le_getD_incLen_self (k := k) ctx.curLen i n hc
+
+lemma PrimOKTrace_append_fwd {k : ℕ}
+  (ops1 ops2 : List (prim_ops k)) (ctx : StCtx k) :
+  PrimOKTrace (k := k) ops1 ctx →
+  PrimOKTrace (k := k) ops2 (runCtxPrim (k := k) ctx ops1) →
+  PrimOKTrace (k := k) (ops1 ++ ops2) ctx := by
+  induction ops1 generalizing ctx with
+  | nil =>
+      intro h1 h2
+      simpa [PrimOKTrace, runCtxPrim] using h2
+  | cons op ops ih =>
+      intro h1 h2
+      have hop : PrimOKForCtx (k := k) op ctx := h1.1
+      have hrest : PrimOKTrace (k := k) ops (stepCtxPrim (k := k) ctx op) := h1.2
+      have := ih (ctx := stepCtxPrim (k := k) ctx op) hrest h2
+      exact ⟨hop, by simpa [PrimOKTrace, runCtxPrim] using this⟩
+
+
+lemma PrimOKTrace_compile1_addScaled
+  {k : ℕ}
+  (ctx : StCtx k)
+  (dst src : Fin k)
+  (negSrc : Bool)
+  (sh : ℕ)
+  (hbase : ∀ i j : Fin k, ctx.baseW i = ctx.baseW j)
+  (hcurLen:ctx.curLen.length = k)
+  :
+  PrimOKTrace (k := k)
+    (compile1 (k := k) (.addScaled dst src negSrc sh) ctx.curLen).1 ctx := by
+  by_cases hds : dst = src
+  {
+    simp [compile1, compile_op_to_prim_single, hds, PrimOKTrace]
+  }
+  {
+    simp (config := { zeta := true }) [compile1, compile_op_to_prim_single, hds]
+    simp[PrimOKTrace_append,PrimOKTrace_cons,PrimOKTrace_negops,PrimOKTrace_if_alloc,
+          runCtxPrim_negops,
+          runCtxPrim_if_alloc,
+          runCtxPrim_if_free,
+           stepCtxPrim]
+    split_ifs with h1 h2 h3
+    {
+      subst h2
+      simp[PrimOKTrace_nil]
+      unfold PrimOKForCtx
+      simp[stWidth];simp[hbase dst src]
+      set a:=1 + (getLen ctx.curLen ↑dst).max (getLen ctx.curLen ↑src)
+      simp[← List.getD_eq_getElem?_getD]
+      rw[incLen_getD_ne',incLen_getD_self,incLen_getD_self,incLen_getD_ne'];unfold getLen; simp
+      rw[← Nat.add_sub_assoc,← Nat.add_sub_assoc];
+      all_goals try simp
+      all_goals try rw[incLen_pres_len]
+      all_goals try assumption
+      all_goals try intro h;simp_all
+      all_goals try unfold a;apply Nat.le_add_left_of_le;unfold getLen;simp
+    }
+    {
+      simp[PrimOKTrace_nil]
+      unfold PrimOKForCtx
+      simp[stWidth];simp[hbase dst src,PrimOKTrace,PrimOKForCtx]
+      set a:=1 + (getLen (incLen ctx.curLen src sh) ↑dst).max (getLen (incLen ctx.curLen src sh) ↑src)
+      constructor
+      {
+        simp[← List.getD_eq_getElem?_getD]
+        rw[incLen_getD_ne',incLen_getD_self,incLen_getD_self,incLen_getD_ne'];unfold getLen; rw[incLen_getD_ne',incLen_getD_ne',incLen_getD_self]; simp
+        rw[← Nat.add_sub_assoc,← Nat.add_sub_assoc];
+        all_goals try simp
+        all_goals try repeat rw[incLen_pres_len];
+        all_goals try assumption
+        all_goals try intro h;simp_all
+        all_goals try unfold a;apply Nat.le_add_left_of_le;unfold getLen;simp
+        right
+        rw[incLen_to_sum]
+        assumption
+        left
+        simp[← List.getD_eq_getElem?_getD];rw[incLen_getD_ne']
+        assumption;simp_all
+      }
+      {
+        simp[← List.getD_eq_getElem?_getD]
+        rw[incLen_getD_ne',incLen_getD_self]; simp
+        assumption
+        rw[incLen_pres_len];assumption
+        intro h;simp_all
+      }
+    }
+    {
+      subst h3
+      simp[PrimOKTrace_nil]
+      simp[PrimOKForCtx,PrimOKTrace]
+      simp[stWidth];simp[hbase dst src]
+      set a:=1 + (getLen ctx.curLen ↑dst).max (getLen ctx.curLen ↑src)
+      simp[← List.getD_eq_getElem?_getD]
+      rw[incLen_getD_ne',incLen_getD_self,incLen_getD_self,incLen_getD_ne'];unfold getLen; simp
+      rw[← Nat.add_sub_assoc,← Nat.add_sub_assoc];
+      all_goals try simp
+      all_goals try rw[incLen_pres_len]
+      all_goals try assumption
+      all_goals try intro h;simp_all
+      all_goals try unfold a;apply Nat.le_add_left_of_le;unfold getLen;simp
+    }
+    {
+      unfold PrimOKForCtx
+      simp
+      constructor
+      {
+        simp[stWidth, hbase dst src]
+        set a:=1 + (getLen (incLen ctx.curLen src sh) ↑dst).max (getLen (incLen ctx.curLen src sh) ↑src); simp[← List.getD_eq_getElem?_getD,getLen]
+        rw[incLen_getD_ne',incLen_getD_self,incLen_getD_ne']
+        rw[incLen_getD_self,incLen_getD_ne',incLen_getD_self]
+        rw[← Nat.add_sub_assoc,← Nat.add_sub_assoc]
+        all_goals try simp
+        all_goals try rw[incLen_pres_len]
+        all_goals try assumption
+        all_goals try intro h;simp_all
+        all_goals try apply Nat.le_add_left_of_le;unfold getLen;simp
+        all_goals try simp[← List.getD_eq_getElem?_getD]
+        rw[incLen_getD_ne',incLen_getD_self];simp;all_goals try assumption
+        rw[incLen_getD_ne',incLen_getD_self];simp;all_goals try assumption
+        all_goals try rw[incLen_pres_len];assumption
+      }
+      {
+        constructor
+        {
+          simp[PrimOKTrace,PrimOKForCtx]
+          set a:=1 + (getLen (incLen ctx.curLen src sh) ↑dst).max (getLen (incLen ctx.curLen src sh) ↑src)
+          simp[← List.getD_eq_getElem?_getD,getLen]
+          rw[incLen_getD_self,incLen_getD_ne']
+          rw[incLen_getD_self]
+          set b:=ctx.curLen.getD (↑src) 0 + sh
+          rw[Nat.add_assoc,Nat.sub_add_cancel]
+          simp
+          unfold b a
+          rw[getLen_incLen_ne,getLen_incLen_eq]
+          simp[getLen]
+          apply Nat.le_add_left_of_le;simp
+          set c:=ctx.curLen[src.val]?.getD 0 + sh
+          all_goals try simp
+          all_goals try rw[incLen_pres_len]
+          all_goals try assumption
+          all_goals try intro h;simp_all
+          rw[incLen_pres_len];assumption
+        }
+        {
+          simp[PrimOKTrace,PrimOKForCtx]
+          set a:=1 + (getLen (incLen ctx.curLen src sh) ↑dst).max (getLen (incLen ctx.curLen src sh) ↑src)
+          simp[← List.getD_eq_getElem?_getD,getLen]
+          rw[incLen_getD_ne',incLen_getD_self];simp
+          all_goals try simp
+          all_goals try rw[incLen_pres_len]
+          all_goals try assumption
+          all_goals try intro h;simp_all
+        }
+      }
+    }
+  }
+
 
 ----------------------------------------------------------------------------------------------------
 ------------------------------- Register arithmetic helpers -----------------------------------------
