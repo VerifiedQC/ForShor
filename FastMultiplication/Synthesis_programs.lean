@@ -120,6 +120,9 @@ def computeLocalAux {k : Nat} (hk : 0 < k) (z : Int) :
 def computeLocal2 {k : Nat} (hk : 0 < k) (z : Int) : Prog k :=
   computeLocalAux hk z (nonzeroFins hk)
 
+open Operations
+
+
 /-- Push an `if` guarding a tail list out through append. -/
 lemma append_ite_nil_eq {β} (acc : List β) (P : Prop) [Decidable P] (L : List β) :
   acc ++ (if P then [] else L) = (if P then acc else acc ++ L) := by
@@ -197,6 +200,61 @@ lemma foldl_congr_step {α β} :
 | [],      f, g, acc, h => by simp
 | a :: xs, f, g, acc, h => by
   simp [List.foldl, h, foldl_congr_step xs f g _ h]
+
+
+
+
+lemma computeLocal_eq_computeLocal2 {k : Nat} (hk : 0 < k) (z : Int) :
+  computeLocal hk z = computeLocal2 hk z := by
+  classical
+  let dst : Fin k := finZero hk
+
+  -- Rewrite computeLocal2 as a fold.
+  have h2 :
+      computeLocal2 (k := k) hk z
+        =
+      (nonzeroFins (k := k) hk).foldl
+        (fun acc j => acc ++ addConstFrom (k := k) dst j (z ^ (j : Nat))) [] := by
+    unfold computeLocal2
+    simpa using (computeLocalAux_eq_fold (k := k) hk z (nonzeroFins (k := k) hk))
+
+  -- Compare the fold steps.
+  have step_eq :
+      ∀ (acc : Prog k) (j : Fin k),
+        (fun acc (j:Fin k) =>
+          let c : Int := z ^ (j : Nat)
+          if c = 0 then acc
+          else acc ++ (signedPow2Decomp c).map (pairToOp (k := k) dst j)) acc j
+        =
+        (fun acc j => acc ++ addConstFrom (k := k) dst j (z ^ (j : Nat))) acc j := by
+    intro acc j
+    set c : Int := z ^ (j : Nat)
+    -- rewrite addConstFrom into signedPow2Decomp form
+    have E :
+        addConstFrom (k := k) dst j c
+          =
+        (if c = 0 then [] else (signedPow2Decomp c).map (pairToOp (k := k) dst j)) := by
+      -- this is your previously proved bridge lemma
+      simpa [c] using (addConstFrom_eq_signedPow2Map (k := k) (dst := dst) (src := j) c)
+    -- now simplify both sides by cases on c=0
+    by_cases hc : c = 0
+    · aesop
+    · simp [c, E, hc]
+
+  -- Now finish: both sides are the same fold over nonzeroFins.
+  unfold computeLocal
+  -- use fold congruence
+  have := foldl_congr_step
+    (xs := nonzeroFins (k := k) hk)
+    (f := fun acc (j:Fin k) =>
+      let c : Int := z ^ (j : Nat)
+      if c = 0 then acc
+      else acc ++ (signedPow2Decomp c).map (pairToOp (k := k) dst j))
+    (g := fun acc j => acc ++ addConstFrom (k := k) dst j (z ^ (j : Nat)))
+    (acc := ([] : Prog k))
+    step_eq
+  aesop
+
 
 /-- Normalize the guard: `z ^ (j:ℕ) = 0` iff `z = 0 ∧ j ≠ 0` (where zero means `finZero`). -/
 lemma pow_guard_iff {k} (hk : 0 < k) (z : ℤ) (j : Fin k) :

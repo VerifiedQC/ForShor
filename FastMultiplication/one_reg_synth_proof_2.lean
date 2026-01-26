@@ -6,37 +6,37 @@ open Operations
 namespace List
 
 
-/-- A single `addScaled` always succeeds and consumes no points. -/
-lemma cover_addScaled_nil {k} (hk:k>0) (σ : State k) (dst src : Fin k) (neg' : Bool) (sh : ℕ) :
-  PhaseProductCoverage hk [valid_ops.addScaled dst src (negSrc := neg') sh] σ [] := by
-  refine PhaseProductCoverageM.step_op
-    (M := matchesAt_pointRow_state hk (k := k))
-    (op := valid_ops.addScaled dst src (negSrc := neg') sh)
-    (ps := []) (σ := σ)
-    (τ := State.addScaledReg σ dst src (negSrc := neg') sh)
-    (pts := []) ?hstep ?tail
-  · simp [applyOp?]
-  · simpa using PhaseProductCoverageM.nil (M := matchesAt_pointRow_state hk (k := k)) (σ := _)
+-- /-- A single `addScaled` always succeeds and consumes no points. -/
+-- lemma cover_addScaled_nil {k} (hk:k>0) (σ : State k) (dst src : Fin k) (neg' : Bool) (sh : ℕ) :
+--   PhaseProductCoverage hk [valid_ops.addScaled dst src (negSrc := neg') sh] σ [] := by
+--   refine PhaseProductCoverageM.step_op
+--     (M := matchesAt_pointRow_state hk (k := k))
+--     (op := valid_ops.addScaled dst src (negSrc := neg') sh)
+--     (ps := []) (σ := σ)
+--     (τ := State.addScaledReg σ dst src (negSrc := neg') sh)
+--     (pts := []) ?hstep ?tail
+--   · simp [applyOp?]
+--   · simpa using PhaseProductCoverageM.nil (M := matchesAt_pointRow_state hk (k := k)) (σ := _)
 
-/-- A mapped list of `(neg,shift)` pairs to `addScaled` ops consumes no points. -/
-lemma cover_map_pairToOp_nil {k} (hk:k>0) (σ : State k) (dst src : Fin k) (pairs : List (Bool × Nat)) :
-  PhaseProductCoverage hk (pairs.map (pairToOp (k := k) dst src)) σ [] := by
-  classical
-  revert σ
-  induction pairs with
-  | nil =>
-      intro σ; apply PhaseProductCoverageM.nil
-  | cons p ps ih =>
-      intro σ
-      refine
-        PhaseProductCoverageM.step_op
-          (M := matchesAt_pointRow_state hk (k := k))
-          (op := pairToOp (k := k) dst src p)
-          (ps := ps.map (pairToOp (k := k) dst src)) (σ := σ)
-          (τ := State.addScaledReg σ dst src (negSrc := p.1) p.2)
-          (pts := []) ?h ?t
-      · simp [applyOp?, pairToOp]
-      · simpa using ih _
+-- /-- A mapped list of `(neg,shift)` pairs to `addScaled` ops consumes no points. -/
+-- lemma cover_map_pairToOp_nil {k} (hk:k>0) (σ : State k) (dst src : Fin k) (pairs : List (Bool × Nat)) :
+--   PhaseProductCoverage hk (pairs.map (pairToOp (k := k) dst src)) σ [] := by
+--   classical
+--   revert σ
+--   induction pairs with
+--   | nil =>
+--       intro σ; apply PhaseProductCoverageM.nil
+--   | cons p ps ih =>
+--       intro σ
+--       refine
+--         PhaseProductCoverageM.step_op
+--           (M := matchesAt_pointRow_state hk (k := k))
+--           (op := pairToOp (k := k) dst src p)
+--           (ps := ps.map (pairToOp (k := k) dst src)) (σ := σ)
+--           (τ := State.addScaledReg σ dst src (negSrc := p.1) p.2)
+--           (pts := []) ?h ?t
+--       · simp [applyOp?, pairToOp]
+--       · simpa using ih _
 
 -- 1) Fold-left with "append-on-the-right" form:  foldl (λ acc a, acc ++ H a)
 lemma foldl_append_hom {α β} :
@@ -72,65 +72,65 @@ lemma run_tail_of_head {k}
   run? ps τ = some σ₂ := by
   simpa [run?, hstep] using hrun
 
-/-- Build coverage for `(op :: ps) ++ q` from a single successful head step
-    and coverage of the rest `(ps ++ q)`. -/
-lemma step_op_append {k}
-  {op : valid_ops k} {ps q : Prog k}
-  {σ τ : State k}
-  (hk:k>0)
-  (hstep : applyOp? (k := k) σ op = some τ)
-  (hrest : PhaseProductCoverage hk (ps ++ q) τ []) :
-  PhaseProductCoverage hk ((op :: ps) ++ q) σ [] := by
-  refine PhaseProductCoverageM.step_op
-    (M := matchesAt_pointRow_state hk (k := k))
-    (op := op) (ps := ps ++ q) (σ := σ) (τ := τ) (pts := [])
-    (by simpa [applyOp?] using hstep) ?_
-  -- `ps` appended under the cons:
-  simpa [List.cons_append] using hrest
+-- /-- Build coverage for `(op :: ps) ++ q` from a single successful head step
+--     and coverage of the rest `(ps ++ q)`. -/
+-- lemma step_op_append {k}
+--   {op : valid_ops k} {ps q : Prog k}
+--   {σ τ : State k}
+--   (hk:k>0)
+--   (hstep : applyOp? (k := k) σ op = some τ)
+--   (hrest : PhaseProductCoverage hk (ps ++ q) τ []) :
+--   PhaseProductCoverage hk ((op :: ps) ++ q) σ [] := by
+--   refine PhaseProductCoverageM.step_op
+--     (M := matchesAt_pointRow_state hk (k := k))
+--     (op := op) (ps := ps ++ q) (σ := σ) (τ := τ) (pts := [])
+--     (by simpa [applyOp?] using hstep) ?_
+--   -- `ps` appended under the cons:
+--   simpa [List.cons_append] using hrest
 
 
 
-lemma phaseCoverage_append_nil
-  {k} (p q : Prog k) {σ σ₂ : State k}
-  (hk:k>0)
-  (hp  : PhaseProductCoverage hk p σ [])
-  (hr  : run? p σ = some σ₂)
-  (hq  : PhaseProductCoverage hk q σ₂ []) :
-  PhaseProductCoverage hk (p ++ q) σ [] := by
-  have aux :
-    ∀ {p σ pts}, PhaseProductCoverage hk p σ pts → pts = [] →
-      ∀ (q : Prog k) (σ₂ : State k),
-        run? p σ = some σ₂ →
-        PhaseProductCoverage hk q σ₂ [] →
-        PhaseProductCoverage hk (p ++ q) σ [] := by
-    intro p σ pts hcov hpts q σ₂ hr hq
-    revert q σ₂
-    induction hcov generalizing q σ₂ with
-    | nil =>
-        intro q σ₂ hrun hq
-        aesop
-    | @step_op op ps σ τ pts hstep hrest ih =>
-        intro q σ₂ hrun hq
-        -- push run? through the head step
-        have htail : run? ps τ = some σ₂ := by
-          simpa [run?, hstep] using hrun
-        -- recurse on (ps ++ q); use pts = [] via `hpts`
-        have hrest' :
-          PhaseProductCoverage hk (ps ++ q) τ [] := by
-          aesop
-        -- rebuild ((op :: ps) ++ q)
-        refine PhaseProductCoverageM.step_op
-          (M := matchesAt_pointRow_state hk (k := k))
-          (op := op) (ps := ps ++ q) (σ := σ) (τ := τ) (pts := [])
-          (by simpa [applyOp?] using hstep) ?_
-        simpa using hrest'
-    | @step_phase i ps σ pts pts' hcons hrest ih =>
-        intro q σ₂ hrun hq
-        -- impossible when pts = []
-        cases hpts
-        have : False := by simp [List.eraseFirstMatch?] at hcons
-        exact this.elim
-  exact aux hp rfl q σ₂ hr hq
+-- lemma phaseCoverage_append_nil
+--   {k} (p q : Prog k) {σ σ₂ : State k}
+--   (hk:k>0)
+--   (hp  : PhaseProductCoverage hk p σ [])
+--   (hr  : run? p σ = some σ₂)
+--   (hq  : PhaseProductCoverage hk q σ₂ []) :
+--   PhaseProductCoverage hk (p ++ q) σ [] := by
+--   have aux :
+--     ∀ {p σ pts}, PhaseProductCoverage hk p σ pts → pts = [] →
+--       ∀ (q : Prog k) (σ₂ : State k),
+--         run? p σ = some σ₂ →
+--         PhaseProductCoverage hk q σ₂ [] →
+--         PhaseProductCoverage hk (p ++ q) σ [] := by
+--     intro p σ pts hcov hpts q σ₂ hr hq
+--     revert q σ₂
+--     induction hcov generalizing q σ₂ with
+--     | nil =>
+--         intro q σ₂ hrun hq
+--         aesop
+--     | @step_op op ps σ τ pts hstep hrest ih =>
+--         intro q σ₂ hrun hq
+--         -- push run? through the head step
+--         have htail : run? ps τ = some σ₂ := by
+--           simpa [run?, hstep] using hrun
+--         -- recurse on (ps ++ q); use pts = [] via `hpts`
+--         have hrest' :
+--           PhaseProductCoverage hk (ps ++ q) τ [] := by
+--           aesop
+--         -- rebuild ((op :: ps) ++ q)
+--         refine PhaseProductCoverageM.step_op
+--           (M := matchesAt_pointRow_state hk (k := k))
+--           (op := op) (ps := ps ++ q) (σ := σ) (τ := τ) (pts := [])
+--           (by simpa [applyOp?] using hstep) ?_
+--         simpa using hrest'
+--     | @step_phase i ps σ pts pts' hcons hrest ih =>
+--         intro q σ₂ hrun hq
+--         -- impossible when pts = []
+--         cases hpts
+--         have : False := by simp [List.eraseFirstMatch?] at hcons
+--         exact this.elim
+--   exact aux hp rfl q σ₂ hr hq
 
 /-- The fold-step function used inside `computeLocal`. -/
 private def step {k} (hk : 0 < k) (z : Int) :
@@ -1287,7 +1287,6 @@ lemma cover_onlyAddScaled_nil
   (hk:k>0)
   (hall : ∀ op ∈ p, IsAddScaled op) :
   PhaseProductCoverage (k := k) hk p σ [] := by
-  classical
   revert σ
   induction p with
   | nil =>
@@ -1295,19 +1294,19 @@ lemma cover_onlyAddScaled_nil
   | cons op ps ih =>
       intro σ
       rcases hall op (by simp) with ⟨dst, src, b, sh, rfl⟩
-      refine
-        PhaseProductCoverageM.step_op
+      have:=PhaseProductCoverageM.step_op
           (M := matchesAt_pointRow_state hk (k := k))
           (op := valid_ops.addScaled dst src (negSrc := b) sh)
           (ps := ps) (σ := σ)
           (τ := State.addScaledReg σ dst src (negSrc := b) sh)
           (pts := []) ?hstep ?hrest
-      · -- one addScaled always succeeds
-        simp [applyOp?]            -- uses your `@[simp] lemma applyOp?_addScaled`
+      apply this
+      all_goals try simp
       · -- recurse on the tail
         apply ih
         intro o ho
         exact hall o (by simp [ho])
+
 
 lemma cover_applyInverse_computeLocal2_nil {k} (hk : 0 < k) (σ : State k) (z : Int) :
   PhaseProductCoverage hk (apply_Op_inverse (computeLocal2 (k := k) hk z)) σ [] := by
@@ -1322,6 +1321,8 @@ lemma cover_applyInverse_computeLocal2_nil {k} (hk : 0 < k) (σ : State k) (z : 
   -- 3) An all-addScaled program covers [] from ANY σ (step_op only).
   exact cover_onlyAddScaled_nil (k := k) (p := apply_Op_inverse (computeLocal2 (k := k) hk z))
            σ hk hOnlyInv
+
+
 /-- Append lemma for `run?`: running `p ++ q` equals running `p`
     to some σ' and then running `q` from σ'. -/
 lemma run_append_eq {k} {p q : Prog k} {σ σ' : State k}
@@ -1338,27 +1339,27 @@ lemma run_append_eq {k} {p q : Prog k} {σ σ' : State k}
 @[simp] lemma run_single_phase {k} (i : Fin k) (σ : State k) :
   run? [valid_ops.phaseProduct i] σ = some σ := by
   simp [run?,applyOp?]
-/-- Prepend a run-able prefix to an existing coverage proof. -/
-lemma coverage_of_run_prefixM {k M}
-  {ops ps : Prog k} {σ σ' : State k} {pts : List Operations.Point}
-  (hrun : run? ops σ = some σ')
-  (hcov : PhaseProductCoverageM M ps σ' pts) :
-  PhaseProductCoverageM M (ops ++ ps) σ pts := by
-  revert σ σ' pts hrun hcov
-  induction ops with
-  | nil =>
-      intro σ σ' pts h hcov; unfold run? at h; aesop
-  | cons op ops ih =>
-      intro σ σ' pts h hcov
-      cases hstep : applyOp? (k := k) σ op <;> simp [run?, hstep] at h
-      {
-        simp_all only [List.cons_append]
-        have rf:=ih h hcov
-        apply PhaseProductCoverageM.step_op
-        simp[hstep]
-        rfl
-        apply rf
-      }
+-- /-- Prepend a run-able prefix to an existing coverage proof. -/
+-- lemma coverage_of_run_prefixM {k M}
+--   {ops ps : Prog k} {σ σ' : State k} {pts : List Operations.Point}
+--   (hrun : run? ops σ = some σ')
+--   (hcov : PhaseProductCoverageM M ps σ' pts) :
+--   PhaseProductCoverageM M (ops ++ ps) σ pts := by
+--   revert σ σ' pts hrun hcov
+--   induction ops with
+--   | nil =>
+--       intro σ σ' pts h hcov; unfold run? at h; aesop
+--   | cons op ops ih =>
+--       intro σ σ' pts h hcov
+--       cases hstep : applyOp? (k := k) σ op <;> simp [run?, hstep] at h
+--       {
+--         simp_all only [List.cons_append]
+--         have rf:=ih h hcov
+--         apply PhaseProductCoverageM.step_op
+--         simp[hstep]
+--         rfl
+--         apply rf
+--       }
 
 
 

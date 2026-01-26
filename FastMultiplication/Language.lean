@@ -339,6 +339,7 @@ inductive PhaseProductCoverageM {k : ℕ} (M : MatchesAtState k) :
 | nil {σ : State k} :
     PhaseProductCoverageM M [] σ []
 | step_op {op : Operations.valid_ops k} {ps : Prog k} {σ τ : State k} {pts : List Operations.Point}
+    (hops  : ∀i, ¬ op = valid_ops.phaseProduct i)
     (hstep : applyOp? (k := k) σ op = some τ)
     (hrest : PhaseProductCoverageM M ps τ pts) :
     PhaseProductCoverageM M (op :: ps) σ pts
@@ -350,5 +351,25 @@ inductive PhaseProductCoverageM {k : ℕ} (M : MatchesAtState k) :
 def PhaseProductCoverage {k : ℕ} (hk:k>0):
     Prog k → State k → List Operations.Point → Prop:=
     PhaseProductCoverageM (k := k) (matchesAt_pointRow_state (k := k) hk)
+
+
+-- inductive PhaseProductCoverageM2 {k : ℕ} (M : MatchesAtState k) :
+--     Prog k → State k → List Operations.Point → Prop
+-- | nil {σ : State k} :
+--     PhaseProductCoverageM2 M [] σ []
+-- | step_op {op : Operations.valid_ops k} {ps : Prog k} {σ τ : State k} {pts : List Operations.Point}
+--     (hops  : ∀i, ¬ op = valid_ops.phaseProduct i)
+--     (hstep : applyOp? (k := k) σ op = some τ)
+--     (hrest : PhaseProductCoverageM2 M ps τ pts) :
+--     PhaseProductCoverageM2 M (op :: ps) σ pts
+-- | step_phase {i : Fin k} {ps : Prog k} {σ : State k} {pts pts' : List Operations.Point}
+--     (hconsume : List.eraseFirstMatch? (fun pt => M σ i pt) pts = some pts')
+--     (hrest : PhaseProductCoverageM2 M ps σ pts') :
+--     PhaseProductCoverageM2 M (valid_ops.phaseProduct i :: ps) σ pts
+
+
+-- def PhaseProductCoverage2 {k : ℕ} (hk:k>0):
+--     Prog k → State k → List Operations.Point → Prop:=
+--     PhaseProductCoverageM2 (k := k) (matchesAt_pointRow_state (k := k) hk)
 
 namespace PhaseProductCoverage

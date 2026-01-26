@@ -170,6 +170,7 @@ inductive PhaseProductCoverageM_prim {k : ℕ} (M : MatchesAtStateBit k) :
 | nil {σ : St k} :
     PhaseProductCoverageM_prim M [] σ []
 | step_op {op : prim_ops k} {ps : List (prim_ops k)} {σ : St k} {pts : List Operations.Point}
+    (hop: ∀ i , op ≠ prim_ops.phaseProduct i)
     (hrest : PhaseProductCoverageM_prim M ps (eval_prim_op_single (k := k) op σ) pts) :
     PhaseProductCoverageM_prim M (op :: ps) σ pts
 | step_phase {i : Fin k} {ps : List (prim_ops k)} {σ : St k}
