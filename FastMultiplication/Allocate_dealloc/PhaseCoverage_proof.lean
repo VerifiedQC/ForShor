@@ -1,6 +1,32 @@
 import FastMultiplication.Allocate_dealloc.Bridge_lemmas
 import FastMultiplication.Allocate_dealloc.PhaseCoverage
 
+/-
+  This file transfers “phase-product coverage” information from the symbolic world to the
+  compiled primitive program.
+
+  Main goal (last theorem):
+    compileProg_preserves_phaseCoverage
+
+  Intuition:
+  - The symbolic coverage predicate (`PhaseProductCoverage hk ops σ pts`) states that every
+    `valid_ops.phaseProduct` step is justified by consuming a matching `Point` from `pts`.
+  - The compiled program is a list of primitive ops (`prim_ops`) which contains
+    `prim_ops.phaseProduct` at the corresponding moments.
+  - The theorem shows that the compiled primitive program satisfies the primitive coverage
+    predicate (`PhaseProductCoverage_prim`) with respect to the concrete state produced by
+    `stateToSt`.
+
+  Proof structure:
+  1) Define a “no phase op occurs in a prefix” predicate (NoPhase) for primitive code.
+  2) Show that a NoPhase prefix can be prepended to a coverage proof without consuming points.
+  3) Establish list/eraseFirstMatch helper lemmas so that point-consumption transfers across append.
+  4) Prove an append theorem for the primitive coverage predicate (PhaseProductCoverageM_prim_append).
+  5) Prove the main inductive theorem on symbolic PhaseProductCoverage (compileProg_preserves_phaseCoverage_go),
+     threading `ValidFor`, `ValidForStep`, and `PrimOKTrace` just like in `compileProg_simulates`,
+     and using bridge lemmas to relate symbolic execution to primitive execution.
+  6) Specialize that to start_state in the last theorem.
+-/
 
 namespace PhaseProduct_PrimOps
 
@@ -8,11 +34,32 @@ namespace PhaseProduct_PrimOps
 ------------------------------- NO-PHASE PREFIX LEMMA ----------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  NoPhase:
+
+  Predicate stating that a primitive-op list contains no `prim_ops.phaseProduct` anywhere.
+  This is used to mark prefixes of compiled code that are guaranteed to never consume points.
+
+  It is used in the main proof when the head validated op is not phaseProduct:
+  - compile1(op) produces a primitive prefix with NoPhase
+  - coverage for that prefix is trivial (consumes [])
+  - then append the tail coverage.
+-/
 def NoPhase {k : ℕ} : List (prim_ops k) → Prop
   | [] => True
   | prim_ops.phaseProduct _ :: _ => False
   | _ :: xs => NoPhase xs
 
+/-
+  PhaseProductCoverageM.prepend_noPhase:
+
+  Core lemma: if a primitive suffix `ps` has phase coverage starting from the state obtained
+  after evaluating a prefix `opsP`, and that prefix contains no phaseProduct ops, then the
+  combined program `opsP ++ ps` has the same phase coverage starting from the original state.
+
+  Key point: NoPhase guarantees the prefix does not consume points, so coverage can be “lifted”
+  over the prefix by repeatedly applying the `step_op` constructor.
+-/
 lemma PhaseProductCoverageM.prepend_noPhase
   {k : ℕ} {M : MatchesAtStateBit k}
   (opsP : List (prim_ops k)) (ps : List (prim_ops k))
@@ -52,6 +99,16 @@ open Operations PhaseProduct_PrimOps
 ------------------------------- LIST / ERASE-FIRSTMATCH HELPERS ------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  eraseFirstMatchB_append_hit:
+
+  If eraseFirstMatchB finds a match in a prefix xs and returns some ys,
+  then appending an unrelated suffix zs preserves that successful deletion:
+    eraseFirstMatchB p (xs ++ zs) = some (ys ++ zs).
+
+  This is used in the primitive append proof when a phaseProduct consumes a point from
+  the left list: consuming from (pts ++ b) results in (pts' ++ b).
+-/
 lemma eraseFirstMatchB_append_hit {α} (p : α → Bool) :
   ∀ {xs ys zs},
     eraseFirstMatchB p xs = some ys →
@@ -68,12 +125,10 @@ lemma eraseFirstMatchB_append_hit {α} (p : α → Bool) :
       cases h
       simp [hx]
     · -- no match at head: recurse on tail
-      -- `eraseFirstMatchB p xs = some t` and ys = x :: t
       cases hxs : eraseFirstMatchB p xs with
       | none =>
           simp [hx, hxs] at h
       | some t =>
-          -- from h, we learn ys = x :: t
           have : ys = x :: t := by
             simp[hx, hxs] at h
             rw[h]
@@ -87,6 +142,12 @@ namespace PhaseProductCoverage
 ------------------------------- ERASE-FIRSTMATCH TRANSFER FACTS ------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  eraseFirstMatchB_congr:
+
+  If two predicates p and q are pointwise equal, eraseFirstMatchB behaves identically.
+  Used to swap predicate presentations when moving between pointRow and interp forms.
+-/
 lemma eraseFirstMatchB_congr
   {α : Type} (p q : α → Bool) :
   ∀ xs ys,
@@ -111,6 +172,14 @@ lemma eraseFirstMatchB_congr
 @[simp] lemma decide_eq_true_bool (b : Bool) : decide (b = true) = b := by
   cases b <;> rfl
 
+/-
+  eraseFirstMatchB_of_eraseFirstMatch?_Bool:
+
+  Bridges the List.eraseFirstMatch? version (used in symbolic coverage definitions)
+  to the eraseFirstMatchB version (used in primitive coverage definitions).
+  This is used in point-consumption transfer lemmas where the symbolic side provides
+  eraseFirstMatch? facts but the primitive side needs eraseFirstMatchB facts.
+-/
 lemma eraseFirstMatchB_of_eraseFirstMatch?_Bool
     {α : Type} (p : α → Bool) :
     ∀ (xs ys : List α),
@@ -127,6 +196,17 @@ end PhaseProductCoverage
 ------------------------------- PHASEPRODUCTCOVERAGEM_PRIM APPEND ----------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  PhaseProductCoverageM_prim_append:
+
+  Append theorem for primitive coverage:
+  - If p has coverage consuming points a from σ
+  - and q has coverage consuming points b from the state after executing p
+  then p ++ q has coverage consuming a ++ b from σ.
+
+  This is the core combinator used repeatedly in the main inductive proof when a NoPhase
+  prefix is handled separately from the tail, and when phaseProduct heads are followed by tail code.
+-/
 theorem PhaseProductCoverageM_prim_append
   {k : ℕ} {M : MatchesAtStateBit k}
   {p q : List (prim_ops k)} {σ : St k} {a b : List Operations.Point}
@@ -179,7 +259,14 @@ theorem PhaseProductCoverageM_prim_append
           (pts := pts ++ b) (pts' := pts' ++ b)
           hconsume' ht
 
-/-- “Returns to σ” -/
+/-
+  phaseProduct_coverage_prim_check_append:
+
+  Specialization of the append theorem for the case where the prefix p returns to σ
+  (i.e. eval_prim_ops p σ = σ). This allows composing two coverages both starting
+  from σ without rewriting the intermediate state.
+-/
+/- “Returns to σ” -/
 lemma phaseProduct_coverage_prim_check_append
   {k : ℕ} {M : MatchesAtStateBit k}
   {p q : List (prim_ops k)} {σ : St k} {a b : List Operations.Point}
@@ -196,6 +283,12 @@ lemma phaseProduct_coverage_prim_check_append
 ------------------------------- COVERAGE WRAPPER ---------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  PhaseProductCoverage_prim:
+
+  Wrapper that fixes the matching predicate M to the “interp matcher” based on σ0.
+  This is the exact coverage predicate used as the target statement in the main theorems.
+-/
 def PhaseProductCoverage_prim {k : ℕ}
     (prog : List (prim_ops k)) (σ0 : St k) (pts : List Operations.Point) : Prop :=
   PhaseProductCoverageM_prim (k := k) (matchesAt_interp (k := k) σ0) prog σ0 pts
@@ -204,6 +297,13 @@ def PhaseProductCoverage_prim {k : ℕ}
 ------------------------------- COMPILER SIMP LEMMAS ------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  compile1_phaseProduct:
+
+  Normal form for compilation of phaseProduct: compile1 emits exactly one prim phaseProduct
+  and does not change curLen. Used to simplify the compiled program shape in proofs that split
+  on whether the head op is phaseProduct.
+-/
 @[simp] lemma compile1_phaseProduct
   {k : ℕ} (i : Fin k) (curLen : List Nat) :
   compile1 (k := k) (valid_ops.phaseProduct i) curLen
@@ -214,6 +314,15 @@ def PhaseProductCoverage_prim {k : ℕ}
 ------------------------------- POINT-ROW MATCHER FACTS --------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  The next block relates the different matching predicates:
+  - matchesAt_pointRow_state: symbolic/table-level matching against a Point row
+  - regEqExpected: equivalent “all coefficients equal expectedRow” formulation
+  - matchesAt_interp: the compiled/primitive-level matcher used in coverage proofs
+
+  These are used to transfer “the head Point matches” facts from the symbolic side
+  to the primitive side (where eraseFirstMatchB consumes based on matchesAt_interp).
+-/
 @[simp] lemma matchesAt_pointRow_state_apply
   {k : Nat} (hk : k > 0) (σ : State k) (i : Fin k) (pt : Point) :
   matchesAt_pointRow_state (k := k) hk σ i pt
@@ -241,6 +350,13 @@ lemma matchesAt_pointRow_state_irrel
 ------------------------------- regEqExpected CHARACTERIZATION --------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  regEqExpected_eq_true_iff:
+
+  Characterizes regEqExpected = true as pointwise equality with expectedRow.
+  Used when converting a boolean match fact into equalities needed for evalRegister proofs
+  (especially the `pt.inf` case which isolates a single coefficient).
+-/
 lemma regEqExpected_eq_true_iff {k : Nat} (r : Register k) (pt : Point) :
     regEqExpected (k := k) r pt = true ↔ ∀ j : Fin k, r j = expectedRow (k := k) pt j := by
   classical
@@ -263,6 +379,11 @@ lemma regEqExpected_eq_true_iff {k : Nat} (r : Register k) (pt : Point) :
 ------------------------------- FIN HELPERS ---------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  lastFin_eq_some_of_pos:
+
+  For k>0, lastFin k exists. This is used in the `pt.inf` case to pick out the last basis vector.
+-/
 lemma lastFin_eq_some_of_pos {k : Nat} (hk : k > 0) :
     ∃ last : Fin k, lastFin k = some last := by
   cases k with
@@ -271,6 +392,13 @@ lemma lastFin_eq_some_of_pos {k : Nat} (hk : k > 0) :
   | succ k' =>
       refine ⟨⟨k', by simp⟩, rfl⟩
 
+/-
+  finSum_unitSelector:
+
+  Standard “delta selector” sum lemma:
+    ∑ (if j=last then 1 else 0) * x j = x last
+  Used in the `pt.inf` case when expectedRow is a unit vector at the last index.
+-/
 lemma finSum_unitSelector {k : Nat} (last : Fin k) (x : Fin k → Int) :
     (∑ j : Fin k, (if j = last then (1 : Int) else 0) * x j) = x last := by
   classical
@@ -283,6 +411,16 @@ lemma finSum_unitSelector {k : Nat} (last : Fin k) (x : Fin k → Int) :
 ------------------------------- stateToSt / regToInt FACTS ------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  regToInt_stateToSt_eq_bmod:
+
+  Expands regToInt(stateToSt σ ctx i) into a bmod form:
+    evalRegister (σ i) ρ, reduced mod 2^w.
+
+  This is the algebraic interface used to compare symbolic evaluation to the concrete
+  integer stored in the bitvector, and it is used later to prove that interp matching
+  corresponds to pointRow matching when FitsSignedAt holds.
+-/
 @[simp] lemma regToInt_stateToSt_eq_bmod
   {k : ℕ} (σ : Fin k → (Fin k → Int)) (ctx : StCtx k) (i : Fin k) :
   let w : Nat := ctx.baseW i + ctx.curLen.getD i.1 0
@@ -314,6 +452,13 @@ lemma finSum_unitSelector {k : Nat} (last : Fin k) (x : Fin k → Int) :
     rw [← this]
     norm_cast
 
+/-
+  Int.bmod_eq_self_of_FitsSigned:
+
+  If z fits in signed width w, then reducing z modulo 2^w (as Nat) returns z itself.
+  This is the key step that lets the proof replace “stored bmod form” with the true
+  integer value, whenever FitsSignedAt is available.
+-/
 lemma Int.bmod_eq_self_of_FitsSigned (w : Nat) (z : ℤ) (h : FitsSigned w z) :
     z.bmod ((2 : Nat) ^ w) = z := by
   rcases h with ⟨hwpos, hzlo, hzhi⟩
@@ -330,6 +475,15 @@ lemma Int.bmod_eq_self_of_FitsSigned (w : Nat) (z : ℤ) (h : FitsSigned w z) :
         exact by aesop
       assumption
 
+/-
+  regToInt_stateToSt_eq_eval_of_FitsSignedAt:
+
+  Specialization: when FitsSignedAt holds at i, the bmod term collapses and
+  regToInt(stateToSt ...) equals evalRegister exactly.
+
+  This is used when converting row-matching hypotheses into interp-matching
+  conclusions in the “pointRow ⇒ interp” lemma below.
+-/
 lemma regToInt_stateToSt_eq_eval_of_FitsSignedAt
   {k : ℕ} (σ : State k) (ctx : StCtx k) (i : Fin k)
   (hfit : FitsSignedAt (σ := σ) (ctx := ctx) i) :
@@ -350,9 +504,6 @@ lemma regToInt_stateToSt_eq_eval_of_FitsSignedAt
       exact Int.bmod_eq_self_of_FitsSigned w z this
     simpa [z] using hbmod.trans hid
 
-----------------------------------------------------------------------------------------------------
-------------------------------- pointRow ⇒ interp (WITH FITS) ---------------------------------------
-----------------------------------------------------------------------------------------------------
 
 lemma matchesAt_pointRow_state_implies_matchesAt_interp
   {k : Nat}
@@ -415,6 +566,8 @@ lemma matchesAt_pointRow_state_implies_matchesAt_interp
 
           simp [matchesAt_interp, interpTarget, lastFin, ht, hcur, last, ρinit]
 
+
+
 ----------------------------------------------------------------------------------------------------
 ------------------------------- COVERAGE TRANSFER / AUX LEMMAS --------------------------------------
 ----------------------------------------------------------------------------------------------------
@@ -424,6 +577,19 @@ namespace PhaseProductCoverage
 open Operations
 open PhaseProduct_PrimOps
 
+/-
+  compile1_*_ops / compile1_*_noPhase:
+
+  These are small “shape” lemmas about the compiler output for specific ops.
+  They are used to prove `NoPhase` for prefixes generated by compile1 when the
+  source op is *not* a phaseProduct, so that these prefixes can be prepended to
+  a coverage proof without consuming points.
+
+  In the main induction (compileProg_preserves_phaseCoverage_go):
+  - if the head op is not phaseProduct, its compiled fragment has NoPhase
+  - coverage for that fragment is trivial (consumes [])
+  - then append tail coverage.
+-/
 lemma compile1_phaseProduct_ops
   {k : ℕ} (i : Fin k) (curLen : List Nat) :
   (compile1 (k := k) (.phaseProduct i) curLen).1 = [prim_ops.phaseProduct i] := by
@@ -444,6 +610,15 @@ lemma compile1_negate_noPhase
   (compile1 (k := k) (.negate i) curLen).1 = [prim_ops.negate i] := by
   simp [compile1, compile_op_to_prim_single]
 
+/-
+  ValidForStep.withCurLen:
+
+  The phase-coverage proof threads contexts exactly like compileProg_simulates:
+  after compiling/executing one op, the tail is proven under `{ctx0 with curLen := curLen1}`.
+
+  This lemma transports the one-step invariant `ValidForStep ctx0` to the updated
+  context with a different curLen field, so the induction can reuse the same step rule.
+-/
 lemma ValidForStep.withCurLen
   {k : ℕ} (ctx : StCtx k) (L : List Nat) :
   ValidForStep (k := k) ctx → ValidForStep (k := k) { ctx with curLen := L } := by
@@ -454,6 +629,19 @@ lemma ValidForStep.withCurLen
     intro σ σ1 op curLenNow
     simpa using (h (σ := σ) (σ1 := σ1) (op := op) (curLenNow := curLenNow))
 
+/-
+  interp_true_of_row_true:
+
+  Converts a symbolic head match (regEqExpected / pointRow) into an interp match.
+
+  This is needed to transfer the point consumption step from symbolic coverage:
+    eraseFirstMatch? (matchesAt_pointRow_state ...) pts = some pts'
+  into the primitive coverage form:
+    eraseFirstMatchB (matchesAt_interp ...) pts = some pts'
+
+  FitsSignedAt is required to ensure regToInt(stateToSt σ ...) equals evalRegister,
+  so interpTarget computes the same value the pointRow matcher expects.
+-/
 lemma interp_true_of_row_true
   {k : ℕ} (hk : k > 0)
   (σinit : St k)
@@ -476,11 +664,26 @@ lemma interp_true_of_row_true
       (σ0St := σinit) (baseW := ctxNow.baseW) (curLen := ctxNow.curLen)
       (hfit := hfit) (hrow := hrow'))
 
+/-
+  eraseFirstMatchB_head_true:
+
+  Small list lemma: if the predicate holds at the head element, eraseFirstMatchB
+  removes that head and returns the tail.
+
+  This is used for phaseProduct coverage steps that consume the first point of the list.
+-/
 @[simp] lemma eraseFirstMatchB_head_true {α} (p : α → Bool) (x : α) (xs : List α)
   (hx : p x = true) :
   eraseFirstMatchB p (x :: xs) = some xs := by
   simp [eraseFirstMatchB, hx]
 
+/-
+  eraseFirstMatchB_interp_head:
+
+  Specializes eraseFirstMatchB_head_true to the interp predicate.
+  This is the exact consumption statement needed by the primitive coverage constructor
+  PhaseProductCoverageM_prim.step_phase, in the situation where the matching point is the head.
+-/
 lemma eraseFirstMatchB_interp_head
   {k : ℕ} (hk : k > 0)
   (σinit : St k)
@@ -505,6 +708,15 @@ lemma eraseFirstMatchB_interp_head
     interp_true_of_row_true (k := k) hk σinit ctxNow σ i pt hfit hrow
   simp [eraseFirstMatchB, hinterp]
 
+/-
+  PhaseConsumeOK:
+
+  Bundles the “consumption transfer” property into a reusable statement.
+  It says: whenever the symbolic side consumes a point under matchesAt_pointRow_state,
+  the primitive side consumes the same point under matchesAt_interp.
+
+  This is exactly what is needed in step_phase cases of the main induction.
+-/
 def PhaseConsumeOK {k : ℕ}
   (hk : k > 0) (σinit : St k) (ctx0 : StCtx k) : Prop :=
   ∀ (σ : State k) (i : Fin k) (curLenNow : List Nat)
@@ -518,6 +730,13 @@ def PhaseConsumeOK {k : ℕ}
             (stateToSt (k := k) σ { ctx0 with curLen := curLenNow }) i pt)
         pts = some pts'
 
+/-
+  consume_transfer_pointRow_to_interp:
+
+  Concrete version of PhaseConsumeOK for the “head point matches” case (pts = pt :: pts').
+  It uses FitsSignedAt and the ρ-alignment hypothesis to replace ctx.ρ with regToInt σinit,
+  then applies matchesAt_pointRow_state_implies_matchesAt_interp and eraseFirstMatchB_head_true.
+-/
 lemma consume_transfer_pointRow_to_interp
   {k : ℕ} (hk : k > 0)
   (σinit : St k)
@@ -552,6 +771,16 @@ lemma consume_transfer_pointRow_to_interp
       (p := fun pt => matchesAt_interp (k := k) σinit (stateToSt (k := k) σ ctx) i pt)
       (x := pt) (xs := pts') hinterp)
 
+/-
+  MatchFirstPhase / ProgConsumesPts:
+
+  These predicates describe how the symbolic program consumes points:
+  - MatchFirstPhase checks that the first phaseProduct encountered matches the head point.
+  - ProgConsumesPts is the full consumption trace: every phaseProduct consumes one point.
+
+  compileProg_preserves_phaseCoverage_go assumes ProgConsumesPts to drive the phase-product
+  consumption part of the primitive coverage proof.
+-/
 def MatchFirstPhase {k : ℕ} (hk : k > 0) : State k → Prog k → List Point → Prop
 | _σ, [], _pts => True
 | σ, op :: ops, pts =>
@@ -565,7 +794,7 @@ def MatchFirstPhase {k : ℕ} (hk : k > 0) : State k → Prog k → List Point �
             MatchFirstPhase hk σ' ops pts
 
 def ProgConsumesPts {k : ℕ} (hk : k > 0) : State k → Prog k → List Point → Prop
-| _σ, [], pts => pts = []   -- or `True` if you allow leftover points
+| _σ, [], pts => pts = []
 | σ, op :: ops, pts =>
   match op with
   | valid_ops.phaseProduct i =>
@@ -577,6 +806,13 @@ def ProgConsumesPts {k : ℕ} (hk : k > 0) : State k → Prog k → List Point �
       ∃ σ', applyOp? (k := k) σ op = some σ' ∧
             ProgConsumesPts hk σ' ops pts
 
+/-
+  NoPhase_compile1_of_not_phaseProduct:
+
+  If the validated op is not a phaseProduct, then compile1 emits a primitive fragment
+  with NoPhase. This is used in the step_op case of the main induction to build trivial
+  prefix coverage consuming [].
+-/
 lemma NoPhase_compile1_of_not_phaseProduct
   {k : ℕ} (op : valid_ops k) (curLen : List Nat)
   (hne : (∀ i, op ≠ valid_ops.phaseProduct i)) :
@@ -585,6 +821,13 @@ lemma NoPhase_compile1_of_not_phaseProduct
   ·  split_ifs<;>simp [PhaseProduct_PrimOps.NoPhase]
   · simp_all
 
+/-
+  compileProg_cons_phaseProduct:
+
+  Shape lemma: if the head validated op is phaseProduct, compileProg emits a primitive
+  phaseProduct at the front and threads the same curLen into the tail compilation.
+  Used to split PrimOKTrace and to structure the step_phase proof cases.
+-/
 @[simp] lemma compileProg_cons_phaseProduct
   {k : ℕ} (i : Fin k) (ps : Prog k) (curLen : List Nat) :
   compileProg (k := k) (valid_ops.phaseProduct i :: ps) curLen
@@ -593,6 +836,13 @@ lemma NoPhase_compile1_of_not_phaseProduct
   ([prim_ops.phaseProduct i] ++ cp.1, cp.2) := by
   simp [compileProg, compile1_phaseProduct]
 
+/-
+  PrimOKTrace_tail_of_cons_phaseProduct:
+
+  When compileProg emits a leading [phaseProduct i] ++ tail, PrimOKTrace on the full program
+  implies PrimOKTrace on the tail (since phaseProduct does not change bookkeeping context).
+  This is used in the step_phase case to recover the safety hypothesis needed for the IH.
+-/
 lemma PrimOKTrace_tail_of_cons_phaseProduct
   {k : ℕ} (i : Fin k) (ps : Prog k) (curLen : List Nat) (ctx : StCtx k)
   (hPrim : PrimOKTrace (k := k)
@@ -615,6 +865,17 @@ lemma PrimOKTrace_tail_of_cons_phaseProduct
     simp [runCtxPrim, stepCtxPrim]
   simpa [hctx] using hs.2
 
+/-
+  eraseFirstMatchB_of_phaseConsume:
+
+  Transfers the consumption result for a phaseProduct op from the symbolic matcher
+  (eraseFirstMatch? over matchesAt_pointRow_state) to the primitive matcher
+  (eraseFirstMatchB over matchesAt_interp), in the specific situation where
+  ProgConsumesPts guarantees the head point matches.
+
+  This lemma is used in step_phase cases of the main induction when constructing the
+  PhaseProductCoverageM_prim.step_phase constructor.
+-/
 lemma eraseFirstMatchB_of_phaseConsume
   {k : ℕ} (hk : k > 0)
   (σinit : St k)
@@ -644,13 +905,10 @@ lemma eraseFirstMatchB_of_phaseConsume
 
   -- compute pts2 from the eraseFirstMatch? fact on a singleton list
   have hpts2 : pts2 = [] := by
-    -- eraseFirstMatch? on [pt] either yields some [] if head matches, else none
-    -- and we know it yields some pts2 and head matches.
     have : List.eraseFirstMatch?
         (fun q ↦ matchesAt_pointRow_state (k := k) hk σ1 i q) [pt]
         = some ([] : List Point) := by
       simp [List.eraseFirstMatch?, hrow]
-    -- compare with given hconsume
     exact Option.some.inj (by simp at hconsume; aesop)
   subst hpts2
 
@@ -661,14 +919,12 @@ lemma eraseFirstMatchB_of_phaseConsume
     simpa [hρ] using (hV.fits_all i)
 
   -- apply interp-head eraser lemma
-  -- need the regEqExpected form, which we already have as hrow
   have : eraseFirstMatchB
       (fun q =>
         matchesAt_interp (k := k) σinit
           (stateToSt (k := k) σ1 ⟨(fun j => regToInt (σinit j)), ctx0.baseW, curLenNow⟩) i q)
       (pt :: [])
     = some [] := by
-    -- eraseFirstMatchB_interp_head expects ptsTail, so here ptsTail = []
     simpa using
       eraseFirstMatchB_interp_head
         (k := k) (hk := hk)
@@ -679,9 +935,14 @@ lemma eraseFirstMatchB_of_phaseConsume
 
   -- rewrite ctx back to ctx0 using hρ and finish
   simpa [hρ, stateToSt] using this
-  -- have:=eraseFirstMatchB_of_eraseFirstMatch? (fun pt ↦ matchesAt_pointRow_state hk σ1 i pt) [pt] pts2 (by simp_all)
-  -- rw[← this]
 
+/-
+  PhaseProductCoverageM_prim_of_NoPhase:
+
+  If a primitive program contains no phaseProduct ops, then it has primitive coverage
+  consuming the empty point list. This is the “trivial prefix coverage” lemma used in
+  step_op cases of the main induction.
+-/
 lemma PhaseProductCoverageM_prim_of_NoPhase
   {k : ℕ} {M : MatchesAtStateBit k}
   (opsP : List (prim_ops k)) (σ : St k)
@@ -689,9 +950,7 @@ lemma PhaseProductCoverageM_prim_of_NoPhase
   PhaseProductCoverageM_prim (k := k) M opsP σ [] := by
   have hrest : PhaseProductCoverageM_prim (k := k) M ([] : List (prim_ops k))
                 (eval_prim_ops (k := k) opsP σ) [] := by
-    -- nil constructor
     simpa using (PhaseProductCoverageM_prim.nil (k := k) (M := M) (σ := eval_prim_ops (k := k) opsP σ))
-  -- prepend_noPhase builds coverage for opsP ++ [] i.e. opsP
   have := PhaseProduct_PrimOps.PhaseProductCoverageM.prepend_noPhase
       (k := k) (M := M) (opsP := opsP) (ps := []) (σ := σ) (pts := [])
       hNo hrest
@@ -708,6 +967,21 @@ namespace PhaseProductCoverage
 open Operations
 open PhaseProduct_PrimOps
 
+/-
+  compileProg_preserves_phaseCoverage_go:
+
+  Main induction that builds primitive phase coverage for the compiled program.
+
+  Inputs:
+  - symbolic phase coverage (PhaseProductCoverage hk ops σ pts)
+  - ValidFor + ValidForStep: numeric invariant and its one-step preservation
+  - PrimOKTrace: primitive safety needed to justify bridge steps
+  - ProgConsumesPts: explicit witness that the symbolic program consumes pts in order
+  - ρ alignment: ctx0.ρ matches the initial concrete state σinit via regToInt
+
+  Output:
+  - primitive coverage for the compiled primitive program opsP starting from stateToSt σ ctxNow.
+-/
 theorem compileProg_preserves_phaseCoverage_go
   {k : ℕ}
   (hk : k > 0)
@@ -742,23 +1016,19 @@ theorem compileProg_preserves_phaseCoverage_go
     rename_i op ops2 σ0 σ1 pts2 ih'
     set ctxNow : StCtx k := { ρ := ctx0.ρ, baseW := ctx0.baseW, curLen := curLenNow }
 
-    -- We'll name the compiled pieces
+    -- Name the compiled pieces for the head op and the tail program.
     set ops1 : List (prim_ops k) := (compile1 (k := k) op curLenNow).1
     set curLen1 : List Nat := (compile1 (k := k) op curLenNow).2
     set cp2 : (List (prim_ops k) × List Nat) := compileProg (k := k) ops2 curLen1
     set opsP2 : List (prim_ops k) := cp2.1
 
-    -- Goal is coverage for ops1 ++ opsP2 from stateToSt σ0 ctxNow
-    -- 1) Extract tail consume predicate from hConsume (this is where rcases failed before)
+    -- Tail consumption witness extracted from ProgConsumesPts.
     have hConsumeTail : ProgConsumesPts hk σ1 ops2 pts2 := by
       cases op with
       | phaseProduct i =>
-          -- impossible in step_op case
           exfalso
           exact hstep i rfl
       | shiftL i n =>
-          -- unfold and extract ∃ σ', applyOp? σ0 op = some σ' ∧ ...
-          -- (simp will reduce applyOp? too)
           simp [ProgConsumesPts] at hConsume
           rcases hConsume with ⟨σ', hσ', ht⟩
           have : σ' = σ1 := Option.some.inj (by simpa [hσ'] using hrest)
@@ -775,20 +1045,22 @@ theorem compileProg_preserves_phaseCoverage_go
           simpa [this] using ht
       | addScaled dst src negSrc sh =>
           simp [ProgConsumesPts] at hConsume
-          unfold applyOp? at hrest;simp at hrest
-          rw[hrest] at hConsume
+          unfold applyOp? at hrest; simp at hrest
+          rw [hrest] at hConsume
           apply hConsume
 
-    -- 2) WellFormed splits
+    -- WellFormed splits into head-op OK and tail program WellFormed.
     have hopOK : Prog.OpOK (k := k) op := by
       simp [Prog.WellFormed] at hWF; apply hWF.left
     have hWF_tail : Prog.WellFormed (k := k) ops2 := by
       simp [Prog.WellFormed] at hWF; apply hWF.right
 
-    -- 3) ValidFor after stepping the source op, with curLen updated to curLen1
+    -- ValidFor after stepping the symbolic state (and updating curLen to curLen1).
     have hV1 : ValidFor (k := k) σ1 { ctx0 with curLen := curLen1 } := by
       apply hStep σ0 σ1 op curLenNow hrest hopOK
       aesop
+
+    -- Split PrimOKTrace for ops1 ++ opsP2 into head and tail traces.
     have hPrim_all :
         PrimOKTrace (k := k) (ops1 ++ opsP2) { ctx0 with curLen := curLenNow } := by
       simp [ops1, opsP2, cp2, curLen1] at hPrim
@@ -805,6 +1077,7 @@ theorem compileProg_preserves_phaseCoverage_go
         PrimOKTrace (k := k) opsP2
           (runCtxPrim (k := k) ({ ctx0 with curLen := curLenNow }) ops1) := hPrim_split.2
 
+    -- Identify the threaded context after ops1 with `{ctx0 with curLen := curLen1}`.
     have hCtx1 :
         runCtxPrim (k := k) ({ ctx0 with curLen := curLenNow }) ops1
           = { ctx0 with curLen := curLen1 } := by
@@ -813,9 +1086,12 @@ theorem compileProg_preserves_phaseCoverage_go
 
     have hPrim2 : PrimOKTrace (k := k) opsP2 { ctx0 with curLen := curLen1 } := by
       simpa [hCtx1] using hPrim2_raw
+
+    -- Transport ValidForStep to the context whose curLen field matches curLenNow.
     have hStepNow : ValidForStep (k := k) ({ ctx0 with curLen := curLenNow }) :=
       PhaseProductCoverage.ValidForStep.withCurLen (k := k) ctx0 curLenNow hStep
 
+    -- Head simulation: compiled ops1 evaluates to the same stateToSt of the stepped symbolic state.
     have hsim :
         eval_prim_ops (k := k) ops1
             (stateToSt (k := k) σ0 { ctx0 with curLen := curLenNow })
@@ -828,6 +1104,8 @@ theorem compileProg_preserves_phaseCoverage_go
         (hPrim := by simpa [ops1] using hPrim1)
         (σ2 := σ1) (hstep := hrest) (hOK := hopOK)
       simpa [ops1, curLen1] using this
+
+    -- Tail coverage from IH (starting at the stepped symbolic state and updated curLen).
     have htail :
         PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
           σinit opsP2
@@ -837,12 +1115,16 @@ theorem compileProg_preserves_phaseCoverage_go
         (by simpa [opsP2, cp2] using hPrim2)
         hConsumeTail
       aesop
+
+    -- Rewrite tail start state to eval_prim_ops ops1 ... using hsim.
     have htail' :
         PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
           σinit opsP2
           (eval_prim_ops (k := k) ops1
             (stateToSt (k := k) σ0 { ctx0 with curLen := curLenNow })) pts2 := by
       simpa [hsim] using htail
+
+    -- Align the ρ field in stateToSt using hρ (needed so matchesAt_interp uses σinit).
     have hstart :
         stateToSt (k := k) σ0
           { ρ := fun j ↦ regToInt (σinit j),
@@ -851,17 +1133,16 @@ theorem compileProg_preserves_phaseCoverage_go
         stateToSt (k := k) σ0
           { ρ := ctx0.ρ,
             baseW := ctx0.baseW, curLen := curLenNow } := by
-      simp[hρ]
+      simp [hρ]
 
-    -- NoPhase for ops1 (compiled from a non-phaseProduct op)
+    -- NoPhase for the compiled head fragment ops1 (since the head validated op is not phaseProduct).
     have hNo : PhaseProduct_PrimOps.NoPhase (k := k) ops1 := by
-      -- hstep : ∀ i, ¬ op = phaseProduct i  (same as ∀ i, op ≠ ...)
       have hne : ∀ i, op ≠ valid_ops.phaseProduct i := by
         intro i hi; exact hstep i (by simp[hi])
       simpa [ops1] using
         NoPhase_compile1_of_not_phaseProduct (k := k) (op := op) (curLen := curLenNow) hne
 
-    -- Prefix coverage consumes no points
+    -- Trivial coverage for a NoPhase prefix consumes no points.
     have hpref :
         PhaseProductCoverageM_prim (k := k) (matchesAt_interp (k := k) σinit)
           ops1
@@ -873,17 +1154,16 @@ theorem compileProg_preserves_phaseCoverage_go
         (stateToSt (k := k) σ0 { ρ := ctx0.ρ, baseW := ctx0.baseW, curLen := curLenNow })
         hNo
 
-    -- Tail coverage (already have htail' but unwrap wrapper)
+    -- Unwrap the tail coverage into the monadic form needed for append.
     have htailM :
         PhaseProductCoverageM_prim (k := k) (matchesAt_interp (k := k) σinit)
           opsP2
           (eval_prim_ops (k := k) ops1
             (stateToSt (k := k) σ0 { ρ := ctx0.ρ, baseW := ctx0.baseW, curLen := curLenNow }))
           pts2 := by
-      -- htail' is the wrapper version
       simpa [PhaseProduct_PrimOps.PhaseProductCoverage_prim] using htail'
 
-    -- Append lemma: ops1 then opsP2 consumes [] then pts2
+    -- Append prefix and tail coverages: ops1 consumes [], opsP2 consumes pts2.
     have happ :
         PhaseProductCoverageM_prim (k := k) (matchesAt_interp (k := k) σinit)
           (ops1 ++ opsP2)
@@ -894,7 +1174,7 @@ theorem compileProg_preserves_phaseCoverage_go
         (hp := hpref)
         (hq := htailM)
 
-    -- back to wrapper + clean up [] ++ pts2, then rewrite start state to the goal’s form
+    -- Rewrap and clean up [] ++ pts2, then rewrite start state via hstart.
     have happ' :
         PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
           σinit (ops1 ++ opsP2)
@@ -905,31 +1185,32 @@ theorem compileProg_preserves_phaseCoverage_go
     simpa [hstart] using happ'
 
   | step_phase hconsume hrest ih =>
+      -- Head validated op is phaseProduct: primitive compilation emits a leading prim phaseProduct.
       rename_i i ops2 σ1 pts1 pts2
+
+      -- Extract the tail consumption witness from ProgConsumesPts.
       have hConsTail : ProgConsumesPts hk σ1 ops2 pts2 := by
         simp [ProgConsumesPts] at hConsume
         rcases hConsume with ⟨pt, ptsTail, hpts1, hrow, hCtail⟩
 
-        -- 2) show pts2 = ptsTail by comparing hconsume with “eraseFirstMatch? hits head”
         have hconsume_head :
             List.eraseFirstMatch?
               (fun q => matchesAt_pointRow_state (k := k) hk σ1 i q) (pt :: ptsTail)
             = some ptsTail := by
-          simp[List.eraseFirstMatch?, hrow]
-        -- rewrite pts1 and conclude pts2 = ptsTail
+          simp [List.eraseFirstMatch?, hrow]
+
         have : pts2 = ptsTail := by
           subst hpts1
-          -- now both sides are `some ...`
           exact Option.some.inj (by simp at hconsume; aesop)
 
         subst this
         exact hCtail
 
-      -- 3) Get tail prim-coverage from IH at same curLenNow
+      -- Tail WellFormed for IH.
       have hWF_tail : Prog.WellFormed (k := k) ops2 := by
         simp [Prog.WellFormed] at hWF; apply hWF.right
 
-        -- Unfold the let/match and rewrite compileProg on the cons
+      -- Remove the leading phaseProduct from PrimOKTrace to obtain tail safety.
       simp [PhaseProduct_PrimOps.PhaseProductCoverage_prim]
       have hPrimTail :
           PrimOKTrace (k := k) (compileProg (k := k) ops2 curLenNow).1
@@ -938,6 +1219,7 @@ theorem compileProg_preserves_phaseCoverage_go
           PrimOKTrace_tail_of_cons_phaseProduct (k := k) i ops2 curLenNow ctx0
             (by simpa using hPrim)
 
+      -- Unpack the head point match and identify pts2 after consumption.
       simp [ProgConsumesPts] at hConsume
       rcases hConsume with ⟨pt, ptsTail, hpts1, hrow, hConsumeTail⟩
       subst hpts1
@@ -951,7 +1233,7 @@ theorem compileProg_preserves_phaseCoverage_go
         exact Option.some.inj (by aesop)
       subst hpts2
 
-      -- 3) Use IH on the tail to get prim coverage for compiled ops2 at pts2
+      -- Tail coverage from IH.
       have htail :
           PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
             σinit (compileProg (k := k) ops2 curLenNow).1
@@ -960,7 +1242,7 @@ theorem compileProg_preserves_phaseCoverage_go
           ih (ctx0 := ctx0) (curLenNow := curLenNow)
             hWF_tail hV hStep hPrimTail hConsumeTail hρ
 
-      -- 4) Build the interp-consumption fact for the head phase
+      -- Build eraseFirstMatchB fact for the head phaseProduct using FitsSignedAt and matcher transfer.
       have hfit :
           FitsSignedAt (σ := σ1)
             (ctx := ⟨(fun j => regToInt (σinit j)), ctx0.baseW, curLenNow⟩) i := by
@@ -977,7 +1259,7 @@ theorem compileProg_preserves_phaseCoverage_go
                   { ctx0 with curLen := curLenNow }) i q)
             (pt :: pts2)
           = some pts2 := by
-        have:=PhaseProductCoverage.eraseFirstMatchB_interp_head
+        have := PhaseProductCoverage.eraseFirstMatchB_interp_head
             (k := k) (hk := hk)
             (σinit := σinit)
             (ctxNow := { ctx0 with curLen := curLenNow })
@@ -985,13 +1267,18 @@ theorem compileProg_preserves_phaseCoverage_go
             (hfit := hfit) (hrow := hrow')
         aesop
 
-      simp_all[PhaseProduct_PrimOps.PhaseProductCoverage_prim]
-      change PhaseProductCoverageM_prim (matchesAt_interp σinit) ([prim_ops.phaseProduct i] ++ (compileProg ops2 curLenNow).1) (stateToSt σ1 { ρ := fun j ↦ regToInt (σinit j), baseW := ctx0.baseW, curLen := curLenNow }) ([pt] ++ pts2)
+      -- Convert into PhaseProductCoverageM_prim: head consumes pt, tail consumes pts2.
+      simp_all [PhaseProduct_PrimOps.PhaseProductCoverage_prim]
+      change PhaseProductCoverageM_prim (matchesAt_interp σinit)
+        ([prim_ops.phaseProduct i] ++ (compileProg ops2 curLenNow).1)
+        (stateToSt σ1 { ρ := fun j ↦ regToInt (σinit j), baseW := ctx0.baseW, curLen := curLenNow })
+        ([pt] ++ pts2)
+
       set σ0 : St k :=
         stateToSt (k := k) σ1
           { ρ := fun j ↦ regToInt (σinit j), baseW := ctx0.baseW, curLen := curLenNow }
 
-      -- 1) Tail coverage from IH
+      -- Tail coverage as a monadic coverage statement.
       have htail :
           PhaseProductCoverageM_prim (k := k) (matchesAt_interp (k := k) σinit)
             (compileProg (k := k) ops2 curLenNow).1
@@ -999,63 +1286,36 @@ theorem compileProg_preserves_phaseCoverage_go
         simpa [σ0] using
           ih (ctx0 := ctx0) (curLenNow := curLenNow) (by aesop) hStep (by aesop) hρ
 
+      -- Coverage for the singleton prefix [phaseProduct i] consuming [pt].
       have hpref :
       PhaseProductCoverageM_prim (k := k) (matchesAt_interp (k := k) σinit)
         [prim_ops.phaseProduct i] σ0 [pt] := by
         have hb1 :
             eraseFirstMatchB (fun q => matchesAt_interp (k := k) σinit σ0 i q) [pt]
               = some ([] : List Point) := by
-          have := eraseFirstMatchB_append_hit
-            (p := fun q => matchesAt_interp (k := k) σinit σ0 i q)
-            (xs := [pt]) (ys := ([] : List Point)) (zs := pts2)
-            ?_
-          · -- now specialize it: eraseFirstMatchB ... ([pt] ++ pts2) = some ([] ++ pts2)
-            -- and compare with hb
-            -- ([] ++ pts2) is pts2, ([pt] ++ pts2) is (pt :: pts2)
-            have : eraseFirstMatchB (fun q => matchesAt_interp (k := k) σinit σ0 i q) ([pt] ++ pts2)
-                    = some (([] : List Point) ++ pts2) := this
-            have hinterp : matchesAt_interp (k := k) σinit σ0 i pt = true := by
-              -- use the lemma that turns row truth into interp truth
-              -- note: `hrow' : regEqExpected (σ1 i) pt = true`
-              -- and `hfit` is FitsSignedAt for the ctx with ρ = regToInt σinit.
-              -- `σ0` is definitional equal to the stateToSt with that ctx.
-              have :=
-                PhaseProductCoverage.interp_true_of_row_true
-                  (k := k) (hk := hk)
-                  (σinit := σinit)
-                  (ctxNow := { ρ := fun j ↦ regToInt (σinit j), baseW := ctx0.baseW, curLen := curLenNow })
-                  (σ := σ1) (i := i) (pt := pt)
-                  (hfit := hfit) (hrow := hrow')
-              -- this lemma’s conclusion matchesAt_interp uses the explicit `stateToSt ...` term,
-              -- rewrite it to σ0
-              simpa [σ0] using this
-            simpa using (PhaseProductCoverage.eraseFirstMatchB_head_true (p := fun q => matchesAt_interp (k := k) σinit σ0 i q) (x := pt) (xs := ([] : List Point)) hinterp)
-          · -- need eraseFirstMatchB ... [pt] = some []
-            -- this follows from the fact the head matches: matchesAt_interp ... pt = true
-            have hinterp :
-                matchesAt_interp (k := k) σinit σ0 i pt = true := by
-              have : matchesAt_interp (k := k) σinit
-                  (stateToSt (k := k) σ1
-                    { ρ := fun j ↦ regToInt (σinit j), baseW := ctx0.baseW, curLen := curLenNow })
-                  i pt = true := by
-                -- use the lemma directly
-                exact PhaseProductCoverage.interp_true_of_row_true
-                  (k := k) (hk := hk) (σinit := σinit)
-                  (ctxNow := { ρ := fun j ↦ regToInt (σinit j), baseW := ctx0.baseW, curLen := curLenNow })
-                  (σ := σ1) (i := i) (pt := pt) (hfit := hfit) (hrow := hrow')
-              simpa [σ0] using this
-            -- now `eraseFirstMatchB` consumes the head of a singleton list
-            -- You already have `eraseFirstMatchB_head_true`
-            simpa using
-              (PhaseProductCoverage.eraseFirstMatchB_head_true
-                (p := fun q => matchesAt_interp (k := k) σinit σ0 i q)
-                (x := pt) (xs := ([] : List Point)) hinterp)
+          have hinterp :
+              matchesAt_interp (k := k) σinit σ0 i pt = true := by
+            have : matchesAt_interp (k := k) σinit
+                (stateToSt (k := k) σ1
+                  { ρ := fun j ↦ regToInt (σinit j), baseW := ctx0.baseW, curLen := curLenNow })
+                i pt = true := by
+              exact PhaseProductCoverage.interp_true_of_row_true
+                (k := k) (hk := hk) (σinit := σinit)
+                (ctxNow := { ρ := fun j ↦ regToInt (σinit j), baseW := ctx0.baseW, curLen := curLenNow })
+                (σ := σ1) (i := i) (pt := pt) (hfit := hfit) (hrow := hrow')
+            simpa [σ0] using this
+          simpa using
+            (PhaseProductCoverage.eraseFirstMatchB_head_true
+              (p := fun q => matchesAt_interp (k := k) σinit σ0 i q)
+              (x := pt) (xs := ([] : List Point)) hinterp)
+
         refine PhaseProductCoverageM_prim.step_phase (k := k)
           (M := matchesAt_interp (k := k) σinit) (i := i)
           (pts := [pt]) (pts' := []) ?_ ?_
         · exact hb1
         · simpa using (PhaseProductCoverageM_prim.nil (k := k) (M := matchesAt_interp (k := k) σinit) (σ := σ0))
 
+      -- Append prefix and tail coverages (phaseProduct does not change σ0).
       have happend :
           PhaseProductCoverageM_prim (k := k) (matchesAt_interp (k := k) σinit)
             ([prim_ops.phaseProduct i] ++ (compileProg (k := k) ops2 curLenNow).1)
@@ -1064,12 +1324,27 @@ theorem compileProg_preserves_phaseCoverage_go
           (M := matchesAt_interp (k := k) σinit)
           (hp := hpref)
           (hq := by
-            -- hq must start from eval_prim_ops of the prefix; prefix is phaseProduct so state unchanged
             simpa [eval_prim_ops, eval_prim_op_single, σ0] using htail)
 
-      -- Finish by unfolding σ0
       simpa [σ0] using happend
 
+/-
+  compileProg_preserves_phaseCoverage:
+
+  Final specialization of the “go” theorem to start_state.
+
+  Inputs match the typical pipeline assumptions:
+  - ops well-formed
+  - symbolic coverage for State.start_state
+  - ValidFor at start_state
+  - one-step validity preservation (ValidForStep)
+  - primitive safety trace for compileProg output (PrimOKTrace)
+  - explicit point consumption witness (ProgConsumesPts)
+  - alignment of ctx0.ρ with regToInt of the initial concrete state (stateToSt start_state ctx0)
+
+  Output:
+  - primitive phase coverage for the compiled program starting from the initial concrete state.
+-/
 theorem compileProg_preserves_phaseCoverage
   {k : ℕ}
   (hk : k > 0)
@@ -1089,7 +1364,6 @@ theorem compileProg_preserves_phaseCoverage
     (compileProg (k := k) ops ctx0.curLen).1
     (stateToSt (k := k) State.start_state ctx0)
     pts := by
-    -- proof goes here
     apply compileProg_preserves_phaseCoverage_go
     apply hOK; apply hcov; apply hV0; apply hStep; apply hPrim; apply hConsume; apply hρ
 

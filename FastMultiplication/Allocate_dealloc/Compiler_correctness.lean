@@ -1,5 +1,20 @@
 import FastMultiplication.Allocate_dealloc.Basic
 
+/-
+  This file sets up the bridge between:
+
+  (A) the table level operations (`State k`, `Register k`, `applyOp?`, `run?`)
+  and
+  (B) the concrete qubit operations (`St k`, `prim_ops k`, `eval_prim_ops`).
+
+  The main theorem `compileProg_simulates` needs a way to:
+  - interpret a symbolic `State` as a concrete qubit state (`stateToSt`)
+  - track widths consistently while compilation emits alloc/free (`curLen`)
+  - enforce “no overflow” so MSB sign-extension is semantics-preserving (`FitsSigned`)
+  - state and use a one-step preservation property (`ValidForStep`)
+  - thread safety conditions for primitive ops (`PrimOKTrace`) to justify using bridge lemmas.
+-/
+
 
 ----------------------------------------------------------------------------------------------------
 ------------------------------- stateToSt + FITS-SIGNED PREDICATES ---------------------------------
@@ -70,16 +85,28 @@ def ValidForStep
     ValidFor (k := k) σ1 { ctx0 with curLen := curLen1 }
 
 
+/-
+  Primitive-op safety tracking:
 
+  `compileProg_simulates` assumes `PrimOKTrace` for the compiled primitive program.
+  This is used to:
+  - extract preconditions for bridge lemmas (especially Free requires `n ≤ curLen[i]`)
+  - split safety across concatenation when compiling `op :: ops`:
+      PrimOKTrace (ops1 ++ ops2) ctx  ⇒  PrimOKTrace ops1 ctx  ∧  PrimOKTrace ops2 (ctx after ops1)
+-/
 
+/-- Side-condition ensuring a primitive op is safe w.r.t. the current context.
 
-
-/-- Side-condition ensuring a primitive op is safe w.r.t. the current context. -/
+    This captures exactly the safety facts that bridge lemmas require:
+    - Free needs enough bits available
+    - Add needs equal widths at the moment it executes
+    Other ops are always safe from the bookkeeping point of view. -/
 def PrimOKForCtx {k : ℕ} : prim_ops k → StCtx k → Prop
 | prim_ops.Free  i false n, ctx => n ≤ ctx.curLen.getD i.1 0
 | prim_ops.Free  i true n,  ctx => n ≤ ctx.curLen.getD i.1 0
 | prim_ops.Add dst src,     ctx => stWidth ctx dst = stWidth ctx src
 | _,                          _ => True   -- fill in any remaining constructors as needed
+
 
 /-- Update `ctx.curLen` as the prim evaluator would (only the bookkeeping part). -/
 def stepCtxPrim {k : ℕ} (ctx : StCtx k) : prim_ops k → StCtx k
@@ -114,6 +141,12 @@ lemma PrimOKTrace_cons {k} (op : prim_ops k) (ops : List (prim_ops k)) (ctx : St
     PrimOKForCtx (k := k) op ctx ∧ PrimOKTrace (k := k) ops (stepCtxPrim ctx op) := by
   rfl
 
+
+/-- Splitting lemma for safety over concatenation.
+
+    Used in `compileProg_simulates` right after expanding
+      compileProg (op :: ops) = ops1 ++ ops2
+    to obtain safety of ops1 at ctx and safety of ops2 at the threaded ctx. -/
 lemma PrimOKTrace_append {k : ℕ}
   (ops1 ops2 : List (prim_ops k)) (ctx : StCtx k) :
   PrimOKTrace (k := k) (ops1 ++ ops2) ctx
@@ -124,6 +157,17 @@ lemma PrimOKTrace_append {k : ℕ}
   | cons op ops1 ih =>
       simp [PrimOKTrace, runCtxPrim, stepCtxPrim, ih, and_assoc]
 
+/-
+  runCtxPrim_append:
+
+  `compileProg` produces primitive code by concatenation: `ops1 ++ ops2`.
+  Safety splitting (`PrimOKTrace_append`) and the main IH both reference the context
+  “after ops1”. That context is defined as `runCtxPrim ctx ops1`.
+
+  This lemma provides associativity of the bookkeeping interpreter:
+    runCtxPrim ctx (xs ++ ys) = runCtxPrim (runCtxPrim ctx xs) ys
+  so the “context after xs” behaves well with program append.
+-/
 lemma runCtxPrim_append {k} (ctx : StCtx k) (xs ys : List (prim_ops k)) :
   runCtxPrim ctx (xs ++ ys) = runCtxPrim (runCtxPrim ctx xs) ys := by
   induction xs generalizing ctx with
@@ -132,13 +176,35 @@ lemma runCtxPrim_append {k} (ctx : StCtx k) (xs ys : List (prim_ops k)) :
   | cons x xs ih =>
       simp [runCtxPrim, ih, List.cons_append, stepCtxPrim]
 
+/-
+  runCtxPrim_if_nil_singleton:
+
+  The compiler often emits “if n=0 then [] else [op]” to avoid no-op allocations/frees.
+  During simulation proofs, contexts need to be rewritten through these conditionals.
+
+  This lemma normalizes runCtxPrim over that pattern:
+    runCtxPrim ctx (if p then [] else [op]) = if p then ctx else stepCtxPrim ctx op
+  It is used heavily when unfolding compile1 for ops with optional alloc/free.
+-/
 lemma runCtxPrim_if_nil_singleton {k}
   (ctx : StCtx k) (p : Prop) [Decidable p] (op : prim_ops k) :
   runCtxPrim ctx (if p then [] else [op])
     = if p then ctx else stepCtxPrim ctx op := by
   by_cases hp : p <;> simp [hp, runCtxPrim, stepCtxPrim]
 
+----------------------------------------------------------------------------------------------------
+------------------------------- Basic list bookkeeping lemma (setAt/getD) ----------------------------
+----------------------------------------------------------------------------------------------------
 
+/-
+  setAt_getD_id:
+
+  A repeating step in proofs is:
+  “write back the value already stored at idx, and the list is unchanged”.
+
+  This lemma is used to prove `incLen_zero` / `decLen_zero` style facts,
+  and more generally to simplify nested setAt updates when an update is a no-op.
+-/
 lemma setAt_getD_id (l : List Nat) (idx : Nat) :
     setAt l idx (l.getD idx 0) = l := by
   induction l generalizing idx with
@@ -151,6 +217,21 @@ lemma setAt_getD_id (l : List Nat) (idx : Nat) :
       | succ idx =>
           simpa [setAt, List.getD] using congrArg (fun t => x :: t) (ih idx)
 
+----------------------------------------------------------------------------------------------------
+------------------------------- ValidForStep transport lemma ----------------------------------------
+----------------------------------------------------------------------------------------------------
+
+/-
+  ValidForStep.withCurLen:
+
+  `compileProg_simulates` performs induction on a program list.
+  After simulating the head op, the IH is applied to the tail with context
+    { ctx with curLen := curLen1 }.
+
+  The hypothesis `hStepValid : ValidForStep ctx` is stated for the original ctx record.
+  This lemma transports that hypothesis to any ctx record that differs only in `curLen`,
+  so the IH can be invoked without re-proving the step property.
+-/
 lemma ValidForStep.withCurLen
   {k : ℕ} (ctx : StCtx k) (L : List Nat) :
   ValidForStep (k := k) ctx → ValidForStep (k := k) { ctx with curLen := L } := by
@@ -232,6 +313,14 @@ end StateToStDemo
 
 open Operations
 
+/-
+  allocMSB_preserves_value:
+
+  MSB allocation uses signExtend on the stored bitvector.
+  The simulation proofs for `bridge_allocMSB` need the fact that signExtend preserves
+  the interpreted integer (BitVec.toInt), assuming the value fits the original width.
+  This lemma isolates the “concrete signExtend preserves toInt” step.
+-/
 lemma allocMSB_preserves_value
   {k : ℕ} (st : St k) (i : Fin k) (n : Nat) :
   BitVec.toInt ((AllocMSB st i n i).2) = BitVec.toInt ((st i).2) := by
@@ -239,9 +328,23 @@ lemma allocMSB_preserves_value
   rw [if_pos rfl]
   simp [BitVec.toInt_signExtend]
 
+/-
+  lowBitsZero:
+
+  Predicate used to express that the lowest `n` bits of a bitvector are all 0.
+  This is useful when reasoning about “shift then unshift” patterns and about
+  divisibility by 2^n in the Nat/toNat representation.
+-/
 def lowBitsZero {w : Nat} (bv : BitVec w) (n : Nat) : Prop :=
   ∀ t : Nat, t < n → Nat.testBit bv.toNat t = false
 
+/-
+  freeLSB_undo_shift_toNat:
+
+  FreeLSB removes `n` LSB bits. In Nat terms this is division by 2^n.
+  Many bridge proofs (especially for shift/unshift subroutines inside addScaled)
+  need to rewrite FreeLSB.toNat into a simple arithmetic form.
+-/
 lemma freeLSB_undo_shift_toNat
   {k : ℕ} (st : St k) (i : Fin k) (n : ℕ)
   (hn : n ≤ (st i).fst) :
@@ -263,6 +366,14 @@ lemma freeLSB_undo_shift_toNat
 
 
 
+/-
+  eval_prim_ops_append:
+
+  `compileProg` emits primitive code as concatenations (ops1 ++ ops2).
+  In `compileProg_simulates`, after simulating ops1 the proof must rewrite the goal
+  into evaluation of ops2 starting from the resulting concrete state.
+  This lemma is exactly that rewrite.
+-/
 lemma eval_prim_ops_append {k : ℕ}
   (xs ys : List (prim_ops k)) (st : St k) :
   eval_prim_ops (k := k) (xs ++ ys) st
@@ -273,6 +384,12 @@ lemma eval_prim_ops_append {k : ℕ}
   | cons x xs ih =>
       simp [eval_prim_ops, ih, List.cons_append]
 
+/-
+  eval_prim_ops_singleton:
+
+  Convenience lemma for compile1 cases that emit exactly one primitive op.
+  Used inside `compile1_simulates` for shiftL/shiftR/negate cases.
+-/
 lemma eval_prim_ops_singleton {k : ℕ} (p : prim_ops k) (st : St k) :
   eval_prim_ops (k := k) [p] st = eval_prim_op_single (k := k) p st := by
   simp [eval_prim_ops]
@@ -282,6 +399,18 @@ lemma eval_prim_ops_singleton {k : ℕ} (p : prim_ops k) (st : St k) :
 ------------------------------- List/len bookkeeping lemmas -----------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  incLen_to_sum_of_lt / decLen_to_sum_of_lt and their Fin-indexed simp versions:
+
+  `stateToSt` and the bridge lemmas frequently require rewriting occurrences of:
+    (incLen curLen i n)[i]? or getD at i
+  into the arithmetic expression “old value + n”.
+  These lemmas provide that rewrite both at Nat indices (with bounds) and at Fin indices
+  (using the length = k invariant).
+
+  These are used throughout `bridge_allocLSB`, `bridge_allocMSB`, and the addScaled
+  simulation proofs, since those proofs depend on tracking widths exactly.
+-/
 lemma incLen_to_sum_of_lt
   (curLen : List ℕ)
   (n : ℕ)
@@ -326,7 +455,7 @@ lemma decLen_to_sum_of_lt
           have hidx' : idx < xs.length := Nat.lt_of_succ_lt_succ hidx
           simpa [setAt, getLen] using ih idx hidx'
 
-@[simp]lemma incLen_to_sum
+@[simp] lemma incLen_to_sum
   (k : ℕ)
   (curLen : List ℕ)
   (n : ℕ)
@@ -338,7 +467,7 @@ lemma decLen_to_sum_of_lt
   simpa [incLen, setLen] using
     (incLen_to_sum_of_lt (curLen := curLen) (n := n) (idx := j.val) hjlt)
 
-@[simp]lemma decLen_to_diff
+@[simp] lemma decLen_to_diff
   (k : ℕ)
   (curLen : List ℕ)
   (n : ℕ)
@@ -352,7 +481,14 @@ lemma decLen_to_sum_of_lt
 
 
 
-@[simp]lemma decLen_incLen_cancel (i:Fin k) (curLen:List ℕ):
+/-
+  Cancellation lemmas:
+
+  These establish that `incLen` and `decLen` invert each other at the same index
+  (under the relevant Nat-side conditions). They are used to simplify “do then undo”
+  patterns in addScaled compilation proofs (shift/unshift and temporary widen/free).
+-/
+@[simp] lemma decLen_incLen_cancel (i:Fin k) (curLen:List ℕ):
 decLen (incLen (curLen) i n) i n=curLen:= by
   cases k with
   | zero =>
@@ -373,7 +509,7 @@ decLen (incLen (curLen) i n) i n=curLen:= by
             have := ih (Fin.castSucc j)
             simpa using this
 
-@[simp]lemma incLen_decLen_cancel (i:Fin k) (curLen:List ℕ) (hN: ∀ x ∈ curLen, n≤x):
+@[simp] lemma incLen_decLen_cancel (i:Fin k) (curLen:List ℕ) (hN: ∀ x ∈ curLen, n≤x):
 incLen (decLen (curLen) i n) i n=curLen:= by
   cases k with
   | zero =>
@@ -396,7 +532,7 @@ incLen (decLen (curLen) i n) i n=curLen:= by
             have := ih (Fin.castSucc j)
             simpa using this
 
-@[simp]lemma incLen_incLen_add (i:Fin k) (curLen:List ℕ) :
+@[simp] lemma incLen_incLen_add (i:Fin k) (curLen:List ℕ) :
 incLen (incLen (curLen) i n) i m = (incLen (curLen) i (n+m)):= by
 cases k with
   | zero =>
@@ -415,6 +551,13 @@ cases k with
                    Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using h
 
 
+/-
+  setAt/getD interaction lemmas:
+
+  These are the core facts for “update one index, read another”.
+  They are used to show that width updates to one register do not affect widths
+  of other registers, which is needed in bridge lemmas and in addScaled width algebra.
+-/
 /-- `setAt` doesn't affect `getD` at a different index. -/
 lemma getD_setAt_ne {α : Type} (xs : List α) (i j : Nat) (a d : α) (h : j ≠ i) :
     (setAt xs i a).getD j d = xs.getD j d := by
@@ -434,6 +577,7 @@ lemma setAt_setAt_comm {α : Type} (xs : List α) (i j : Nat) (a b : α) (hij : 
       cases i <;> cases j <;> simp [setAt] at *
       · aesop
 
+/-- Reading back the updated index after `setAt` gives the written value (when in bounds). -/
 lemma getD_setAt_same {α : Type}
     (xs : List α) (idx : Nat) (a d : α) (h : idx < xs.length) :
     (setAt xs idx a).getD idx d = a := by
@@ -449,6 +593,12 @@ lemma getD_setAt_same {α : Type}
           have:= ih (idx := idx) h'
           aesop
 
+/-
+  getLen_setLen_same / getLen_setLen_other:
+
+  These are the `Nat`-indexed counterparts specialized to `getLen`/`setLen`.
+  They are used everywhere widths are compared or rewritten in bridge proofs.
+-/
 lemma getLen_setLen_same
   (curLen : List ℕ) (i : Fin k) (v : ℕ) (hcurLen : curLen.length = k):
   getLen (setLen curLen i v) (↑i) = v := by
@@ -467,17 +617,35 @@ lemma getLen_setLen_other
 
 
 
+/-
+  setLen_setLen_comm:
+
+  Writes to two different registers commute at the bookkeeping level.
+  This is useful for rearranging width-update sequences when proving that a target width
+  is the same for dst and src after widening.
+-/
 /-- `setLen` at two different `Fin` indices commutes. -/
 lemma setLen_setLen_comm
     {k : ℕ} (curLen : List ℕ) (i j : Fin k) (vi vj : ℕ)
     (hijNat : (↑i : Nat) ≠ (↑j : Nat)) :
     setLen (setLen curLen i vi) j vj = setLen (setLen curLen j vj) i vi := by
   -- unfold to `setAt` and apply `setAt_setAt_comm`
-  simpa [setLen] using
-    (setAt_setAt_comm (xs := curLen) (i := (↑i)) (j := (↑j)) (a := vi) (b := vj) hijNat)
+  simpa [setLen] using (setAt_setAt_comm (xs := curLen) (i := (↑i)) (j := (↑j)) (a := vi) (b := vj) hijNat)
 
 
 /-! ### Disjoint commutation lemmas for inc/dec -/
+
+/-
+  Disjoint commutation lemmas:
+
+  These are used to reorder bookkeeping updates when proving width equalities like:
+    stWidth ctx dst = stWidth ctx src
+  after both registers have been widened to a common target width.
+
+  They keep the main simulation scripts readable by allowing rewrites like
+    incLen (incLen l i ...) j ... = incLen (incLen l j ...) i ...
+  when i ≠ j.
+-/
 
 /-- `incLen` then `incLen` at disjoint indices commutes. -/
 lemma incLen_incLen_disjoint_comm
@@ -581,7 +749,13 @@ lemma decLen_decLen_disjoint_comm
       (vi := getLen curLen (↑i) - n) (vj := getLen curLen (↑j) - m) hijNat)
 
 
-@[simp]theorem getElem?_setAt_ne {α} (xs : List α) (idx m : ℕ) (v : α) (hne : m ≠ idx) :
+/-
+  getElem?_setAt_ne:
+
+  Pointwise “list.get?” version of the “setAt at idx doesn’t affect reads at m≠idx”.
+  This is commonly used when the proof wants to avoid switching between getD and get?.
+-/
+@[simp] theorem getElem?_setAt_ne {α} (xs : List α) (idx m : ℕ) (v : α) (hne : m ≠ idx) :
     (setAt xs idx v)[m]? = xs[m]? := by
   induction xs generalizing idx m with
   | nil => simp [setAt]
@@ -595,6 +769,12 @@ lemma decLen_decLen_disjoint_comm
       apply ih _ _ (by omega)
 
 
+/-
+  List.getD_eq_of_lt:
+
+  When idx is in range, the default argument to getD is irrelevant.
+  This is used to rewrite getD idx 1 into getD idx 0 in `incLen_getD_self`.
+-/
 lemma List.getD_eq_of_lt {α : Type} (xs : List α) (idx : Nat) (d₁ d₂ : α)
     (h : idx < xs.length) :
     xs.getD idx d₁ = xs.getD idx d₂ := by
@@ -612,6 +792,12 @@ lemma List.getD_eq_of_lt {α : Type} (xs : List α) (idx : Nat) (d₁ d₂ : α)
           have h' : idx < xs.length := Nat.lt_of_succ_lt_succ h
           aesop
 
+/-
+  setAt_getD_same:
+
+  “read-after-write at the same index” for getD (when idx < length).
+  Used to prove the self-update lemma for incLen/decLen with getD.
+-/
 lemma setAt_getD_same {α : Type} (xs : List α) (idx : Nat) (a d : α)
     (h : idx < xs.length) :
     (setAt xs idx a).getD idx d = a := by
@@ -629,6 +815,13 @@ lemma setAt_getD_same {α : Type} (xs : List α) (idx : Nat) (a d : α)
           have h' : idx < xs.length := Nat.lt_of_succ_lt_succ h
           aesop
 
+/-
+  incLen_getD_self:
+
+  Concrete “self index update” lemma:
+    (incLen curLen j n).getD j 0 = curLen.getD j 0 + n
+  Used throughout bridge proofs and width-equality proofs (especially for Add safety).
+-/
 lemma incLen_getD_self
   (k : ℕ)
   (curLen : List ℕ)
@@ -645,6 +838,12 @@ lemma incLen_getD_self
       (a := curLen.getD j.val 1 + n) (d := 0) hjlt)
   aesop
 
+/-
+  setAt_getD:
+
+  Another “write-back current value” lemma, generalized over any default.
+  Used to prove `incLen_zero` and `decLen_zero`.
+-/
 lemma setAt_getD {α : Type} (xs : List α) (idx : Nat) (d : α) :
     setAt xs idx (xs.getD idx d) = xs := by
   induction xs generalizing idx with
@@ -660,6 +859,14 @@ lemma setAt_getD {α : Type} (xs : List α) (idx : Nat) (d : α) :
           change setAt xs idx (xs.getD idx d) = xs
           rw[this]
 
+/-
+  incLen_zero / decLen_zero:
+
+  The compiler guards alloc/free with `if n=0 then [] else ...`.
+  These simp lemmas ensure bookkeeping updates collapse when n=0, so
+  context-threading proofs (runCtxPrim_if_alloc/runCtxPrim_if_free style)
+  can simplify cleanly.
+-/
 @[simp] theorem incLen_zero (curLen : List ℕ) (i : Fin k) :
   incLen curLen i 0 = curLen := by
   simpa [incLen, setLen, getLen, Nat.add_zero] using
@@ -670,12 +877,26 @@ lemma setAt_getD {α : Type} (xs : List α) (idx : Nat) (d : α) :
   simpa [decLen, setLen, getLen, Nat.sub_zero] using
     (setAt_getD (xs := curLen) (idx := i.val) (d := (0 : Nat)))
 
+/-
+  stateToSt_fst:
+
+  Convenience simp lemma: the width stored by stateToSt at register j is exactly
+    baseW j + curLen[j]
+  Used constantly in bridge lemmas when comparing widths on both sides.
+-/
 @[simp] lemma stateToSt_fst {k : ℕ}
   (σ : State k) (ctx : StCtx k) (j : Fin k) :
   (stateToSt σ ctx j).fst = ctx.baseW j + ctx.curLen.getD j.val 0 := by
   simp [stateToSt]
 
+/-
+  FitsSigned_mono:
 
+  Widening a register (increasing its width) should never break the “fits in signed range”
+  property. This monotonicity lemma is used whenever the compiler performs MSB widening
+  (AllocMSB / signExtend) and the proof needs to re-establish `ValidFor` for the widened
+  context, especially inside the addScaled simulation pipeline.
+-/
 lemma FitsSigned_mono {w w' : Nat} {z : ℤ} (hw : w ≤ w') :
     FitsSigned w z → FitsSigned w' z := by
   intro hz
@@ -696,18 +917,36 @@ lemma FitsSigned_mono {w w' : Nat} {z : ℤ} (hw : w ≤ w') :
   · -- upper bound becomes larger when width increases
     exact lt_of_lt_of_le hhi hPow
 
+/-
+  incLen_getD_ne':
+
+  Bookkeeping lemma: increasing `curLen` at index `i` does not change the `getD` value
+  at a different index `j`. This is used constantly when proving width equalities and
+  showing that invariants for untouched registers remain unchanged during compilation steps.
+-/
 lemma incLen_getD_ne'
   {k : ℕ} (curLen : List Nat) (i j : Fin k) (n : Nat)
   (hcurLen : curLen.length = k) (hij : j ≠ i) :
   (incLen curLen i n).getD j.1 0 = curLen.getD j.1 0 := by
-  -- unfold incLen / setLen (matches your earlier proofs)
+  -- unfold incLen / setLen (matches the earlier bookkeeping proofs)
   unfold incLen setLen
   simp
   rw [getElem?_setAt_ne curLen i.val j.val (getLen curLen i.val + n)]
   subst hcurLen
   simp
-  intro ha;omega
--- Your goal: FitsSignedAt preserved when increasing curLen at some i.
+  intro ha; omega
+
+/-
+  FitsSignedAt_incLen:
+
+  If all registers fit their signed widths in the original context, then after
+  increasing the width delta list at some index `i` (via incLen), every register
+  still fits in the new context.
+
+  This is the key invariant-propagation step used to prove `ValidFor` is stable
+  under MSB widening (AllocMSB) and under the bookkeeping updates performed by
+  the compiler between bridge steps.
+-/
 lemma FitsSignedAt_incLen
   {k : ℕ}
   (σ : State k)
@@ -722,49 +961,69 @@ lemma FitsSignedAt_incLen
 
   -- Show width only increases
   have hw :
-      stWidth (ctx := ctx) j ≤ stWidth (ctx := { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen i n }) j := by
+      stWidth (ctx := ctx) j ≤
+        stWidth (ctx := { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen i n }) j := by
     unfold stWidth
-    -- reduce to a fact about curLen.getD
     apply Nat.add_le_add_left
     by_cases hji : j = i
     · subst hji
       simp_all
-      rw[← incLen_to_sum]
+      rw [← incLen_to_sum]
       aesop
       apply hcurLen
     ·
-      have hget : (incLen ctx.curLen i n).getD j.val 0 = ctx.curLen.getD j.val 0 := by
-        -- use your existing lemma name here
-        simpa using incLen_getD_ne' (k := k) (curLen := ctx.curLen) (i := i) (j := j) (n := n) hcurLen hji
+      have hget :
+          (incLen ctx.curLen i n).getD j.val 0 = ctx.curLen.getD j.val 0 := by
+        simpa using
+          incLen_getD_ne' (k := k) (curLen := ctx.curLen) (i := i) (j := j) (n := n) hcurLen hji
       aesop
 
   have hjFits : FitsSigned (stWidth (ctx := ctx) j) (evalRegister (σ j) ctx.ρ) := by
     simpa [FitsSignedAt] using hj
 
   have hjFits' :
-      FitsSigned (stWidth (ctx := { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen i n }) j)
+      FitsSigned
+        (stWidth (ctx := { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen i n }) j)
         (evalRegister (σ j) ctx.ρ) :=
-    FitsSigned_mono (w := stWidth (ctx := ctx) j)
-                   (w' := stWidth (ctx := { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen i n }) j)
-                   (z := evalRegister (σ j) ctx.ρ) hw hjFits
+    FitsSigned_mono
+      (w := stWidth (ctx := ctx) j)
+      (w' := stWidth (ctx := { ρ := ctx.ρ, baseW := ctx.baseW, curLen := incLen ctx.curLen i n }) j)
+      (z := evalRegister (σ j) ctx.ρ)
+      hw hjFits
 
   simpa [FitsSignedAt] using hjFits'
 
-lemma ValidFor_incLen(i:Fin k) (σ : State k) (ctx : StCtx k) (hV : ValidFor σ ctx):
-  ValidFor (σ) {ρ:=ctx.ρ, baseW:= ctx.baseW, curLen:= (incLen (ctx.curLen) i n)}:=by {
-    induction hV
-    rename_i hcurLen baseW_eq fitsAll
-    constructor
-    simp[incLen_pres_len,hcurLen]
-    intro j
+/-
+  ValidFor_incLen:
+
+  `ValidFor` is stable under bookkeeping width updates (incLen). This is used whenever
+  the compiler widens widths (AllocMSB) or shifts (AllocLSB) and the proof needs
+  `ValidFor` for the new context before applying the next bridge lemma.
+-/
+lemma ValidFor_incLen (i : Fin k) (σ : State k) (ctx : StCtx k) (hV : ValidFor σ ctx) :
+  ValidFor (σ) { ρ := ctx.ρ, baseW := ctx.baseW, curLen := (incLen (ctx.curLen) i n) } := by
+  induction hV
+  rename_i hcurLen baseW_eq fitsAll
+  constructor
+  · simp [incLen_pres_len, hcurLen]
+  · intro j
     unfold FitsSignedAll at *
     intro j_1
-    simp;apply baseW_eq
-    apply FitsSignedAt_incLen σ ctx hcurLen fitsAll
-  }
+    simp; apply baseW_eq
+  ·
+    -- FitsSigned invariant after widening
+    intro j
+    simpa [FitsSignedAll] using FitsSignedAt_incLen (σ := σ) (ctx := ctx) hcurLen fitsAll i n j
 
 
 
+/-
+  PrimOKTrace.append_inv:
+
+  In the cons case of `compileProg_simulates`, the compiled program is `ops1 ++ ops2`.
+  The proof needs safety for ops1 at the current ctx, and safety for ops2 at the
+  context after running ops1 (runCtxPrim ctx ops1). This lemma extracts exactly that.
+-/
 /-- Split a `PrimOKTrace` over `++` (tail starts at the threaded ctx after ops1). -/
 lemma PrimOKTrace.append_inv {k : ℕ}
   (ops1 ops2 : List (prim_ops k)) (ctx : StCtx k) :
@@ -789,10 +1048,22 @@ lemma PrimOKTrace.append_inv {k : ℕ}
         simpa [runCtxPrim] using tail.2
 
 
+/-
+  runCtxPrim_singleton:
+
+  Convenience lemma: running bookkeeping on a singleton list is just one step.
+  Used when simplifying contexts for one-op compiler outputs.
+-/
 @[simp] lemma runCtxPrim_singleton {k : ℕ} (ctx : StCtx k) (op : prim_ops k) :
   runCtxPrim (k := k) ctx [op] = stepCtxPrim (k := k) ctx op := by
   simp [runCtxPrim]
 
+/-
+  stepCtxPrim_negate/add/phase:
+
+  Negate/Add/phaseProduct do not change widths, so the bookkeeping context is unchanged.
+  Used frequently when normalizing runCtxPrim over compiler-emitted sequences.
+-/
 -- stepCtxPrim does nothing on these
 @[simp] lemma stepCtxPrim_negate {k : ℕ} (ctx : StCtx k) (i : Fin k) :
   stepCtxPrim (k := k) ctx (prim_ops.negate i) = ctx := by
@@ -806,6 +1077,15 @@ lemma PrimOKTrace.append_inv {k : ℕ}
   stepCtxPrim (k := k) ctx (prim_ops.phaseProduct i) = ctx := by
   rfl
 
+/-
+  runCtxPrim_if_alloc / runCtxPrim_if_free:
+
+  The compiler emits alloc/free guarded by `if n = 0 then [] else [op]`.
+  These lemmas rewrite the resulting `runCtxPrim` exactly into `incLen/decLen`,
+  which is needed to:
+  - align the tail context in `compileProg_simulates`
+  - align the updated `curLen` field in `compile1_simulates`.
+-/
 lemma runCtxPrim_if_alloc
   {k : ℕ} (ctx : StCtx k) (i : Fin k) (lsb : Bool) (n : Nat) :
   runCtxPrim (k := k) ctx (if n = 0 then [] else [prim_ops.Alloc i lsb n])
@@ -824,6 +1104,13 @@ lemma runCtxPrim_if_free
     simp [runCtxPrim]        -- uses decLen_zero
   · by_cases h:lsb<;>simp [hn, h, stepCtxPrim]
 
+/-
+  runCtxPrim_negops / runCtxPrim_adder:
+
+  Bookkeeping simplifications for the small fragments emitted by compile_op_to_prim_single.
+  These are used when proving `runCtxPrim_compile1` in the addScaled case by splitting
+  the emitted sequence into chunks (negops, shift, widen, add, frees, etc.).
+-/
 lemma runCtxPrim_negops
   {k : ℕ} (ctx : StCtx k) (src : Fin k) (negSrc : Bool) :
   runCtxPrim (k := k) ctx (if negSrc then [prim_ops.negate src] else [])
@@ -835,8 +1122,19 @@ lemma runCtxPrim_adder
   runCtxPrim (k := k) ctx [prim_ops.Add dst src] = ctx := by
   simp [runCtxPrim, stepCtxPrim]
 
+/-
+  runCtxPrim_compile1:
 
+  Key bookkeeping lemma for `compileProg_simulates`.
 
+  In the cons case, after compiling the head op we define:
+    ops1 := (compile1 op ctx.curLen).1
+    curLen1 := (compile1 op ctx.curLen).2
+
+  The tail IH is stated for context `{ctx with curLen := curLen1}`.
+  This lemma identifies the threaded bookkeeping context after running ops1 as exactly that:
+    runCtxPrim ctx ops1 = {ctx with curLen := curLen1}
+-/
 lemma runCtxPrim_compile1
   {k : ℕ} (op : valid_ops k) (ctx : StCtx k) :
   runCtxPrim (k := k) ctx (compile1 (k := k) op ctx.curLen).1
@@ -863,7 +1161,13 @@ lemma runCtxPrim_compile1
           runCtxPrim_if_free,
           runCtxPrim, stepCtxPrim]
 
+/-
+  PrimOKTrace_if_alloc / PrimOKTrace_if_free / PrimOKTrace_negops / PrimOKTrace_adder:
 
+  These establish safety (`PrimOKTrace`) for the small conditional fragments emitted by compile1.
+  In `compile1_simulates` and `compileProg_simulates`, `PrimOKTrace` is used to justify calling
+  bridge lemmas (notably, Free requires `n ≤ curLen[i]` at the moment it executes).
+-/
 lemma PrimOKTrace_if_alloc {k : ℕ}
   (ctx : StCtx k) (i : Fin k) (lsb : Bool) (n : Nat) :
   PrimOKTrace (k := k)
@@ -893,7 +1197,13 @@ lemma PrimOKTrace_adder
   PrimOKTrace (k := k) [prim_ops.Add dst src] ctx := by
   simp [PrimOKTrace, PrimOKForCtx, hW]
 
+/-
+  le_getD_incLen_self:
 
+  Simple Nat inequality: after incLen at i by n, the stored value at i is ≥ n.
+  Used when proving safety for an immediate Free that undoes a prior Alloc,
+  and when constructing the `hn : n ≤ curLen[i]` side condition for bridge_freeLSB.
+-/
 lemma le_getD_incLen_self {k : ℕ} (curLen : List Nat) (i : Fin k) (n : Nat) (hc:curLen.length=k) :
   n ≤ (incLen curLen i n).getD i.1 0 := by
   rw[incLen_getD_self]
@@ -904,6 +1214,12 @@ lemma le_getD_incLen_self' {k : ℕ} (ctx : StCtx k) (i : Fin k) (n : Nat) (hc:c
   n ≤ (incLen ctx.curLen i n).getD i.1 0 := by
   apply le_getD_incLen_self (k := k) ctx.curLen i n hc
 
+/-
+  PrimOKTrace_append_fwd:
+
+  Forward direction constructor for PrimOKTrace over append.
+  Used when building safety for a concatenated program from safety of its parts.
+-/
 lemma PrimOKTrace_append_fwd {k : ℕ}
   (ops1 ops2 : List (prim_ops k)) (ctx : StCtx k) :
   PrimOKTrace (k := k) ops1 ctx →
@@ -920,7 +1236,20 @@ lemma PrimOKTrace_append_fwd {k : ℕ}
       have := ih (ctx := stepCtxPrim (k := k) ctx op) hrest h2
       exact ⟨hop, by simpa [PrimOKTrace, runCtxPrim] using this⟩
 
+/-
+  PrimOKTrace_compile1_addScaled:
 
+  Special-case safety lemma for compile1(addScaled ...).
+  The addScaled compilation emits a longer sequence containing:
+  - optional negops
+  - optional shift alloc/free
+  - MSB widen alloc/free
+  - Add
+
+  This lemma proves PrimOKTrace for that full sequence under a uniform baseW and a
+  well-formed curLen list. `compile1_simulates` uses this safety to justify applying
+  the bridge lemmas in the addScaled proof.
+-/
 lemma PrimOKTrace_compile1_addScaled
   {k : ℕ}
   (ctx : StCtx k)
@@ -1065,6 +1394,13 @@ lemma PrimOKTrace_compile1_addScaled
 ------------------------------- Register arithmetic helpers -----------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  evalRegister_shiftL:
+
+  Symbolic shiftL corresponds to multiplying the evaluated integer by 2^n.
+  This lemma is used in `bridge_allocLSB` (and in addScaled proofs) to align
+  the symbolic interpretation with the concrete AllocLSB effect on BitVec storage.
+-/
 lemma evalRegister_shiftL {k : ℕ} (r : Register k) (ρ : Fin k → ℤ) (n : ℕ) :
   evalRegister (r.shiftL n) ρ = (evalRegister r ρ) * (2 : ℤ) ^ n := by
   unfold evalRegister Register.shiftL
@@ -1074,6 +1410,14 @@ lemma evalRegister_shiftL {k : ℕ} (r : Register k) (ρ : Fin k → ℤ) (n : �
 #check Int.mul_emod_mul_of_pos
 #check Nat.mul_mod
 
+/-
+  emod_mul_right_helper / Int.emod_mul_right:
+
+  These lemmas support the common pattern “multiply under emod” when translating between:
+  - stateToSt’s storage definition using `emod (2^w)`
+  - LSB shift semantics which multiply by `2^n`
+  They are used in `bridge_allocLSB` to rewrite the new stored Nat after appending zeros.
+-/
 /-- Scaling both the value and modulus by the same *positive* factor scales `emod`. -/
 lemma emod_mul_right_helper (a b c : ℕ ) :
 (a % b) * c = (a * c) % (b * c):=by {
@@ -1094,7 +1438,13 @@ lemma Int.emod_mul_right (a b c : ℤ) (hc : 0 < c) :
     exact h.symm
   }
 
--- exact shape you want to prove/use once:
+/-
+  BitVec.ofNat_append_zeros_eqv:
+
+  Core “AllocLSB = append zeros” arithmetic fact:
+  appending n zeros to a w-bit vector matches storing (oldValue * 2^n) at width w+n.
+  This lemma is the key bitvector step inside `bridge_allocLSB`.
+-/
 lemma BitVec.ofNat_append_zeros_eqv (w n z: ℕ) :
   (BitVec.ofNat w z ++ (0#n)) ≍ BitVec.ofNat (w + n) (z * 2 ^ n) := by
   rw[BitVec.append_def]
@@ -1113,7 +1463,16 @@ lemma BitVec.ofNat_append_zeros_eqv (w n z: ℕ) :
     simp[mul_assoc]
   }
 
--- This is the key lemma you can prove *just from h*:
+/-
+  shiftRReg?_eq_some_implies_divisible / shiftRReg?_eq_some_implies_division:
+
+  These connect the semantic condition “shiftRReg? succeeded” with the arithmetic
+  facts needed to reason about division by 2^n:
+  - divisibility (remainder 0)
+  - the pointwise coefficient update equals division
+
+  These are used in `bridge_freeLSB` (and in any proof that expands shiftRReg?).
+-/
 lemma shiftRReg?_eq_some_implies_divisible
   {k : ℕ} (σ : State k) (j : Fin k) (n : ℕ) (σ' : State k)
   (h : σ.shiftRReg? j n = some σ') :
@@ -1165,6 +1524,13 @@ lemma shiftRReg?_eq_some_implies_division
           aesop
         cases this
 
+/-
+  shiftRReg?_some_iff:
+
+  Packaging lemma: extracts the internal witness register r' from `shiftRReg? = some σ'`,
+  along with the divisibility and division facts. Helpful for proofs that want to avoid
+  re-unfolding the Option/do structure each time.
+-/
 lemma shiftRReg?_some_iff
   {k} {σ σ' : State k} {j : Fin k} {n : Nat}
   (h : State.shiftRReg? σ j n = some σ') :
@@ -1193,7 +1559,15 @@ lemma shiftRReg?_some_iff
     intro t
     rw[shiftRReg?_eq_some_implies_division σ j n σ' h]
 
+/-
+  evalRegister_setReg_div_pow2:
 
+  Main arithmetic step for `bridge_freeLSB`:
+  after a successful symbolic shiftRReg?, the evaluated integer for the updated register
+  is exactly the old evaluated integer divided by 2^n.
+
+  This is the bridge between symbolic coefficient division and concrete `stateToSt` storage.
+-/
 lemma evalRegister_setReg_div_pow2
   {k} (σ σ' : State k) (ρ : Fin k → ℤ) (j : Fin k) (n : Nat)
   (h : State.shiftRReg? σ j n = some σ')
@@ -1224,6 +1598,13 @@ lemma evalRegister_setReg_div_pow2
 ------------------------------- BitVec ↔ Int glue ---------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  BitVec.ofNat_emod_eq_ofInt:
+
+  `stateToSt` stores values using `BitVec.ofNat` applied to `Int.emod ...`.
+  Many BitVec lemmas about toInt are stated for `BitVec.ofInt`.
+  This lemma allows switching between the two representations in bridge proofs.
+-/
 lemma BitVec.ofNat_emod_eq_ofInt (n : ℕ) (i : ℤ) :
     BitVec.ofNat n (i.emod (2 ^ n)).toNat = BitVec.ofInt n i := by
   apply BitVec.eq_of_toInt_eq

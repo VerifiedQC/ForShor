@@ -2,38 +2,61 @@ import FastMultiplication.one_reg_synth_proof_2
 import Mathlib.Data.Bitvec
 import Mathlib.Data.Fin.Basic
 
+/-
+  File overview
+
+  This file provides:
+  - A small primitive instruction set `prim_ops` for a variable-width register machine.
+  - A state model `St k` where each register stores its width and a `BitVec` value.
+  - Pretty-printers for states and primitive programs (for `#eval` debugging).
+  - Concrete semantics for primitive operations (alloc/free at LSB/MSB, add, negate).
+  - A `curLen : List Nat` bookkeeping model used by compilation to track widths.
+  - A compiler from `valid_ops k` into `prim_ops k`, threading/maintaining `curLen`.
+  - Demo code to compile sample programs and evaluate them on a sample state.
+-/
+
+/-- Low-level primitive operations for a `k`-register machine. -/
 inductive prim_ops (k : ℕ) where
+  /-- Allocate `n` bits in register `i`. `lsb=true` allocates at the LSB end, `lsb=false` at the MSB end. -/
   | Alloc         (i : Fin k) (lsb: Bool) (n : ℕ)
+  /-- Free `n` bits from register `i`. `lsb=true` frees from the LSB end, `lsb=false` from the MSB end. -/
   | Free          (i : Fin k) (lsb: Bool) (n : ℕ)
+  /-- Two’s-complement negation (width-preserving). -/
   | negate        (i : Fin k)
+  /-- Add `src` into `dst` (width behavior defined by `Adder`). -/
   | Add           (dst src : Fin k)
+  /-- Phase-product placeholder; treated as a classical no-op in the evaluator. -/
   | phaseProduct  (i : Fin k)
 
-/-- A single register with an arbitrary (stored) bitwidth. -/
+/-- A single register storing its width `w` and a `BitVec w` value. -/
 abbrev Reg := Σ w : ℕ, BitVec w
 
-/-- A `k`-register state with potentially different widths per register. -/
+/-- A `k`-register state: maps each register index to a variable-width `Reg`. -/
 abbrev St (k : ℕ) := Fin k → Reg
 
 
 ----------------------------------------------------------------------------------------------------
 ------------------------------- FORMATTED PRINTER --------------------------------------------------
 ----------------------------------------------------------------------------------------------------
-/-- Convenience constructor: make a `Reg` of width `w` storing `x` mod `2^w`. -/
+
+/-- Construct a register of width `w` storing `x mod 2^w`. -/
 def mkReg (w : Nat) (x : Nat) : Reg :=
   ⟨w, BitVec.ofNat w x⟩
 
-/-- Render a Bool as `'0'`/`'1'`. -/
+/-- Render a bit as `'0'` or `'1'`. -/
 def bitChar (b : Bool) : Char := if b then '1' else '0'
+
+/-- Read bit `i` (LSB-indexed) by converting the `BitVec` to Nat and using `Nat.testBit`. -/
 def getLsb {w : ℕ} (bv : BitVec w) (i : Fin w) : Bool :=
   Nat.testBit bv.toNat i.val
-/-- MSB-left binary string for a `BitVec w`. -/
+
+/-- Convert a `BitVec` to a binary string with the MSB on the left. -/
 def bitVecToBin {w : ℕ} (bv : BitVec w) : String :=
   let chars : List Char :=
     ((List.finRange w).reverse).map (fun i => bitChar (getLsb bv i))
   String.mk chars
 
-/-- Format one variable-width register. -/
+/-- Format one variable-width register: index, bitstring, signed value, and stored width. -/
 def formatReg (idx : Nat) (r : Reg) : String :=
   match r with
   | ⟨w, bv⟩ =>
@@ -41,15 +64,17 @@ def formatReg (idx : Nat) (r : Reg) : String :=
       let signedBits : Nat := w.succ.pred  -- = w-1 when w>0, else 0
       s!"{idx}: {bitVecToBin bv}  (signed={signed}, storedBits={w}, signedBits={signedBits})"
 
-/-- Pretty-print a whole state. -/
+/-- Format an entire state as one line per register. -/
 def formatState {k : ℕ} (σ : St k) : String :=
   let lines : List String :=
     (List.finRange k).map (fun i => formatReg i.val (σ i))
   String.intercalate "\n" lines
 
+/-- Print a formatted state (used by `#eval`). -/
 def printState {k : ℕ} (σ : St k) : IO Unit :=
   IO.println (formatState σ)
 
+/-- Small example state for debugging and sanity checks. -/
 def demo : St 3 :=
   fun i =>
     match i.val with
@@ -86,6 +111,7 @@ def formatPrimOps {k : ℕ} (ops : List (prim_ops k)) : String :=
     | op :: tail => s!"{idx}: {formatPrimOp op}" :: go (idx + 1) tail
   String.intercalate "\n" (go 0 ops)
 
+/-- Print formatted primitive ops (used by `#eval`). -/
 def printPrimOps {k : ℕ} (ops : List (prim_ops k)) : IO Unit :=
   IO.println (formatPrimOps ops)
 
@@ -93,6 +119,18 @@ def printPrimOps {k : ℕ} (ops : List (prim_ops k)) : IO Unit :=
 ------------------------------- ARITHEMTIC OPERATORS -----------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  Concrete state-transformers for each low-level effect:
+
+  - AllocLSB: increases width by appending zeros at the LSB end.
+  - AllocMSB: increases width by sign-extending at the MSB end.
+  - FreeLSB : decreases width by dropping LSB bits (implemented via Nat division by 2^n).
+  - FreeMSB : decreases width by truncating high bits.
+  - Adder   : width-preserving add into `dst` with truncation of `src` to dst width.
+  - Negation: width-preserving two’s-complement negation.
+-/
+
+/-- Allocate `n` bits at the LSB end of `reg` by appending `n` zeros. -/
 def AllocLSB (σ : St k) (reg: Fin k) (n:ℕ): St k:=
   fun (i:Fin k)=>
   if i=reg then
@@ -100,6 +138,7 @@ def AllocLSB (σ : St k) (reg: Fin k) (n:ℕ): St k:=
   else
     σ i
 
+/-- Allocate `n` bits at the MSB end of `reg` by sign-extending to a larger width. -/
 def AllocMSB (σ : St k) (reg : Fin k) (n : ℕ) : St k :=
   fun i =>
   if i = reg then
@@ -108,6 +147,7 @@ def AllocMSB (σ : St k) (reg : Fin k) (n : ℕ) : St k :=
   else
     σ i
 
+/-- Add `src` into `dst`, truncating `src` to `dst` width. -/
 def Adder {k:ℕ} (σ : St k) (dst src: Fin k) :=
   fun (i:Fin k) =>
     if i=dst then
@@ -115,6 +155,7 @@ def Adder {k:ℕ} (σ : St k) (dst src: Fin k) :=
     else
       σ i
 
+/-- Two’s-complement negation of `dst`, width-preserving. -/
 def Negation {k:ℕ} (σ : St k) (dst: Fin k) :=
   fun (i:Fin k) =>
     if i=dst then
@@ -122,6 +163,7 @@ def Negation {k:ℕ} (σ : St k) (dst: Fin k) :=
     else
       σ i
 
+/-- Free `n` bits from the LSB end by reducing width and dividing by `2^n`. -/
 def FreeLSB (σ : St k) (reg : Fin k) (n : ℕ) : St k :=
   fun i =>
     if i = reg then
@@ -132,7 +174,7 @@ def FreeLSB (σ : St k) (reg : Fin k) (n : ℕ) : St k :=
     else
       σ i
 
-
+/-- Free `n` bits from the MSB end by truncating to a smaller width. -/
 def FreeMSB  (σ : St k) (reg: Fin k) (n:ℕ): St k:=
   fun (i:Fin k)=>
   if i=reg then
@@ -157,6 +199,7 @@ def FreeMSB  (σ : St k) (reg: Fin k) (n:ℕ): St k:=
 ------------------------------- Evaluation of PrimOps -----------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-- Evaluate one primitive op on a state. `phaseProduct` is treated as a classical no-op. -/
 def eval_prim_op_single (op:prim_ops k) (σ: St k):=
 match op with
   | prim_ops.Alloc i lsb n =>  if lsb then AllocLSB σ i n else AllocMSB σ i n
@@ -165,7 +208,7 @@ match op with
   | prim_ops.Add dst src   =>  Adder σ dst src
   | prim_ops.phaseProduct _ => σ
 
-
+/-- Evaluate a list of primitive ops in order, threading the state left-to-right. -/
 def eval_prim_ops (ops:List (prim_ops k)) (σ: St k):=
 match ops with
 |List.nil => σ
@@ -173,24 +216,50 @@ match ops with
 
 open Operations
 
+----------------------------------------------------------------------------------------------------
+------------------------------- Width bookkeeping (`curLen`) ---------------------------------------
+----------------------------------------------------------------------------------------------------
+
+/-
+  `curLen : List Nat` tracks the current width of each register by index.
+  This is compiler bookkeeping; it is updated in parallel with emitted alloc/free ops.
+
+  - `setAt` edits a list at an index (if in range).
+  - `getLen` reads `curLen[idx]` with default 0 if out of range.
+  - `setLen/incLen/decLen` update widths for a `Fin k` register index.
+-/
+
 /-- Set the `idx`-th entry of a list (if in range). Otherwise leave the list unchanged. -/
 def setAt {α : Type} : List α → Nat → α → List α
   | [],      _,      _ => []
   | _ :: xs, 0,      a => a :: xs
   | x :: xs, idx+1,  a => x :: setAt xs idx a
-/-- Get `lens[idx]` with a default if out of range. -/
+
+/-- Get `lens[idx]` with a default if out of range. Otherwise leave the list unchanged. -/
 def getLen (curLen : List Nat) (idx : Nat) : Nat :=
   curLen.getD idx 0
 
+/-- Set `curLen[i] := v` using `Fin` index. -/
 def setLen {k : ℕ} (curLen : List Nat) (i : Fin k) (v : Nat) : List Nat :=
   setAt curLen i.val v
 
+/-- Increment `curLen[i]` by `n`. -/
 def incLen {k : ℕ} (curLen : List Nat) (i : Fin k) (n : Nat) : List Nat :=
   setLen curLen i (getLen curLen i.val + n)
 
+/-- Decrement `curLen[i]` by `n` (Nat subtraction). -/
 def decLen {k : ℕ} (curLen : List Nat) (i : Fin k) (n : Nat) : List Nat :=
   setLen curLen i (getLen curLen i.val - n)
 
+
+/-
+  Lemmas in this section support proof automation about `curLen` updates:
+  - length preservation
+  - read-after-write at same index
+  - unchanged reads at different indices
+  - commutation of writes at distinct indices
+  - cancellation laws for increment/decrement under suitable conditions
+-/
 
 lemma setAt_length {α} (xs : List α) (i : Nat) (a : α) :
   (setAt xs i a).length = xs.length := by
@@ -390,7 +459,7 @@ lemma dec_inc_cancel {k} (l : List Nat) (i : Fin k) (n : Nat)
     _ = l := by
         simpa using (setAt_getD_id_of_lt (l := l) (idx := i.1) (d := 0) hi)
 
-/-- `incLen` after `decLen` cancels if you have enough length to subtract (`n ≤ getLen`). -/
+/-- `incLen` after `decLen` cancels if `n ≤ getLen`. -/
 lemma inc_dec_cancel_of_le {k} (l : List Nat) (i : Fin k) (n : Nat)
     (hlen : l.length = k) (hn : n ≤ getLen l i.1) :
     incLen (decLen l i n) i n = l := by
@@ -456,12 +525,37 @@ lemma incLen_comm {k} (l : List Nat) (i j : Fin k) (ni nj : Nat)
   rw [h_ni, h_nj]
   exact hij
 
+----------------------------------------------------------------------------------------------------
+------------------------------- Compilation ---------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+
+/-
+  Compilation pipeline:
+
+  - `compile_op_to_prim_single` compiles one `valid_ops` into a sequence of `prim_ops`,
+    while updating `curLen`. For `addScaled`, it emits a widen/add/unwind sequence.
+
+  - `compile_valid_ops` is a convenience entry point that chooses
+    `initCurLen := replicate k 0` and also emits final frees for persistent MSB widens.
+
+  - `compileProg` is a simpler recursion that compiles a list given an explicit `curLen`
+    and returns `(primOps, finalCurLen)`; it does not manage end-of-program frees.
+-/
+
 structure CompileResult (k : ℕ) where
   ops      : List (prim_ops k)
   widths   : List Nat
   msbAdds  : List (Fin k × Nat)
 
 
+/-
+  Compile one validated op to primitive ops.
+
+  Returns:
+  - emitted primitive ops
+  - updated `curLen`
+  - persistent MSB widenings on dst that should be freed at end of the whole program
+-/
 def compile_op_to_prim_single {k : ℕ} (op : valid_ops k) (curLen : List Nat) :
     (List (prim_ops k)) × (List Nat) × (List (Fin k × Nat)) :=
 match op with
@@ -484,22 +578,22 @@ match op with
         let negops : List (prim_ops k) :=
           if negSrc then [prim_ops.negate src] else []
 
-        -- (1) optional negate(src)
+        -- curLen after negate (no change)
         let curLen1 := curLen
 
-        -- (2) src <<= sh  (LSB alloc)
+        -- src <<= sh (LSB alloc)
         let shiftOps : List (prim_ops k) :=
           if sh = 0 then [] else [prim_ops.Alloc src true sh]
         let curLen2 := incLen curLen1 src sh
 
-        -- lengths after negate (no change) + shift
+        -- tracked lengths after shift
         let lenDst := getLen curLen2 dst.val
         let lenSrc := getLen curLen2 src.val
 
-        -- (3) choose safe width for ONE signed add
+        -- choose safe width for one signed add
         let target := 1 + Nat.max lenDst lenSrc
 
-        -- (4a) widen dst at MSB to target (remember to free at end)
+        -- widen dst at MSB to target (remember to free at end)
         let deltaDst := target - lenDst
         let widenDstOps : List (prim_ops k) :=
           if deltaDst = 0 then [] else [prim_ops.Alloc dst false deltaDst]
@@ -507,26 +601,26 @@ match op with
         let msbAdds : List (Fin k × Nat) :=
           if deltaDst = 0 then [] else [(dst, deltaDst)]
 
-        -- (4b) widen src at MSB to target (temporary; free right after Add)
+        -- widen src at MSB to target (temporary; free right after Add)
         let deltaSrc := target - lenSrc
         let widenSrcOps : List (prim_ops k) :=
           if deltaSrc = 0 then [] else [prim_ops.Alloc src false deltaSrc]
         let curLen4 := incLen curLen3 src deltaSrc
 
-        -- (5) dst += src
+        -- dst += src
         let adder : List (prim_ops k) := [prim_ops.Add dst src]
 
-        -- (6) undo src MSB widen
+        -- undo src MSB widen
         let freeSrcOps : List (prim_ops k) :=
           if deltaSrc = 0 then [] else [prim_ops.Free src false deltaSrc]
         let curLen5 := decLen curLen4 src deltaSrc
 
-        -- (7) undo shift (LSB free)
+        -- undo shift (LSB free)
         let unShiftOps : List (prim_ops k) :=
           if sh = 0 then [] else [prim_ops.Free src true sh]
         let curLen6 := decLen curLen5 src sh
 
-        -- (8) undo negate(src)
+        -- undo negate(src) (apply negate again if it was applied)
         let unNegOps : List (prim_ops k) := negops
         let curLen7 := curLen6
 
@@ -534,12 +628,15 @@ match op with
          curLen7,
          msbAdds)
 
+/--
+Compile a whole program starting from widths all zero and freeing persistent MSB allocations at the end.
+-/
 def compile_valid_ops {k : ℕ} (ops : List (valid_ops k)) :
     List (prim_ops k) :=
   let initLen : Nat := 0
   let initCurLen : List Nat := List.replicate k initLen
 
-  -- main loop: build primOps in forward order (we'll accumulate with ++ for clarity)
+  -- main loop: build primOps in forward order
   let rec go (ops : List (valid_ops k))
              (curLen : List Nat)
              (msbStack : List (Fin k × Nat))
@@ -557,11 +654,13 @@ def compile_valid_ops {k : ℕ} (ops : List (valid_ops k)) :
   go ops initCurLen [] []
 
 
+/-- Compile a single op and thread the width list (no end-of-program frees). -/
 def compile1 {k : ℕ} (op : valid_ops k) (curLen : List Nat) :
     List (prim_ops k) × List Nat :=
   let (ops, curLen', _msbAdds) := compile_op_to_prim_single (k := k) op curLen
   (ops, curLen')
 
+/-- Compile a list of validated ops, threading an explicit initial `curLen`. -/
 @[simp]def compileProg {k : ℕ} : List (valid_ops k) → List Nat → (List (prim_ops k)) × List Nat
   | [],        curLen => ([], curLen)
   | op :: ops, curLen =>
@@ -581,6 +680,10 @@ def compile1 {k : ℕ} (op : valid_ops k) (curLen : List Nat) :
   (ops1 ++ ops2, curLen2) := by
   rfl
 
+----------------------------------------------------------------------------------------------------
+------------------------------- Demo ----------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+
 namespace DemoValidOps
 
 -- handy Fin indices for k = 3
@@ -592,7 +695,7 @@ def r2 : Fin 3 := ⟨2, by decide⟩
 A small program:
 1) r0 += r1
 2) r0 += (r2 << 1)
-3) PhaseProduct on r0 (no classical effect in your eval)
+3) PhaseProduct on r0 (no classical effect in eval)
 4) r0 -= r1   (negSrc=true)
 5) r2 <<= 2
 6) r2 >>= 1
@@ -615,50 +718,10 @@ def pop1:=compile_valid_ops vop1
 
 #eval printPrimOps pop1
 #eval printState (eval_prim_ops (pop1.take 9) demo)
--- def demo : St 3 :=
---   fun i =>
---     match i.val with
---     | 0 => mkReg 5 15  -- 01111 = +15
---     | 1 => mkReg 5  6  -- 00110 = +6
---     | _ => mkReg 5 24  -- 11000 = -8 (24 - 32)
 
 def compiled_prog:=compile_valid_ops prog
 
 #eval printPrimOps compiled_prog
 #eval printState (eval_prim_ops (compiled_prog) demo)
 
-
-
--- def bitsFreedAllEq {w : Nat} (bv : BitVec w) (lsb : Bool) (n : Nat) (target : Bool) : Bool :=
---   if _h : n ≤ w then
---     let base : Nat := if lsb then 0 else (w - n)
---     (List.range n).all (fun j => (Nat.testBit bv.toNat (base + j)) == target)
---   else
---     false
-
-
--- def validFreeStep {w : Nat} (bv : BitVec w) (lsb : Bool) (n : Nat) : Bool :=
---   if lsb then
---     bitsFreedAllEq bv true n false
---   else
---     bitsFreedAllEq bv false n bv.msb
-
-
--- def validFree {k : Nat} (ops : List (prim_ops k)) (σ0 : St k) : Bool :=
---   let rec go (ops : List (prim_ops k)) (σ : St k) : Bool :=
---     match ops with
---     | [] => true
---     | op :: tail =>
---         match op with
---         | prim_ops.Free i lsb n =>
---             let ⟨_, bv⟩ := σ i
---             if validFreeStep bv lsb n then
---               go tail (eval_prim_op_single (k := k) op σ)
---             else
---               false
---         | _ =>
---             go tail (eval_prim_op_single (k := k) op σ)
---   go ops σ0
-
-
--- #eval validFree pop1 demo
+end DemoValidOps

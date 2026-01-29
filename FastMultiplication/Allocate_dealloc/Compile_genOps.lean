@@ -1,10 +1,33 @@
 import FastMultiplication.Allocate_dealloc.PhaseCoverage_proof
 open Operations PhaseProductCoverage List
 
+/-
+  This file supplies two big ingredients needed to prove the *compiled* phase-product
+  coverage theorem for `genOpsWithProduct`:
+
+  (1) Safety: `PrimOKTrace` for the compiled primitive program, derived from the fact that
+      the source program contains no `shiftR` (NoShiftR).
+
+  (2) Consumption: `ProgConsumesPts` for the source program, derived from the symbolic
+      phase coverage theorem plus a prefix-cancellation argument.
+
+  These are combined at the end to prove:
+    genOpsWithProduct_compiled_PhaseProductCoverage
+-/
+
 ----------------------------------------------------------------------------------------------------
 ------------------------------- SHIFT-FREE PREDICATES ----------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  NoShiftR / NoShiftL are syntactic predicates stating a validated-op program contains
+  no `shiftR` / no `shiftL`. They are used to build a “no shiftR” pipeline:
+
+    NoShiftR (source) → PrimOKTrace (compiled)
+
+  because shiftR is the only source op that introduces the tricky “free from LSB”
+  safety obligations and divisibility constraints.
+-/
 def NoShiftR {k : ℕ} : Prog k → Prop
   | [] => True
   | valid_ops.shiftR _ _ :: _ => False
@@ -20,6 +43,11 @@ def NoShiftL {k : ℕ} : Prog k → Prop
 ------------------------------- BASIC SIMPS --------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  S simp lemmas to make `simp [NoShiftR]` / `simp [NoShiftL]` peel the list structure.
+  The addScaled simp lemmas are especially useful because many generator programs are
+  built from addScaled-only fragments.
+-/
 @[simp] lemma NoShiftR_nil {k : ℕ} : NoShiftR (k := k) ([] : Prog k) := by
   simp [NoShiftR]
 
@@ -38,6 +66,11 @@ def NoShiftL {k : ℕ} : Prog k → Prop
 ------------------------------- APPEND PRESERVATION ------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  NoShiftR_append / NoShiftL_append:
+  Both predicates are preserved by append, which is used constantly because most of the
+  programs here are concatenations of blocks.
+-/
 -- “append preserves NoShiftR”
 lemma NoShiftR_append {k : ℕ} :
     ∀ (xs ys : Prog k), NoShiftR (k := k) xs → NoShiftR (k := k) ys → NoShiftR (k := k) (xs ++ ys)
@@ -57,6 +90,11 @@ lemma NoShiftL_append {k : ℕ} :
 ------------------------------- addConst* HAS NO SHIFTS --------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  addConstAux/addConstFrom programs are built out of addScaled operations and recursion on n.
+  The next lemmas show these helpers introduce no shifts, which feeds into the later
+  computeLocal2 “no shifts” proofs.
+-/
 -- Main structural lemma: addConstAux never introduces shiftR
 lemma NoShiftR_addConstAux {k : Nat} (dst src : Fin k) (neg' : Bool) :
     ∀ (n sh : Nat), NoShiftR (k := k) (addConstAux (k := k) dst src neg' n sh)
@@ -115,6 +153,10 @@ lemma NoShiftL_map_addScaled {k : ℕ} (dst src : Fin k) (neg' : Bool) :
 ------------------------------- computeLocalAux HAS NO SHIFTS --------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  computeLocalAux is built by concatenating addConstFrom blocks across a list of indices.
+  Since addConstFrom has no shifts and append preserves NoShift*, computeLocalAux has no shifts.
+-/
 /-- Correct proof: `computeLocalAux` has no `shiftR` by induction on `js`. -/
 lemma NoShiftR_computeLocalAux {k : Nat} (hk : 0 < k) (z : Int) :
     ∀ js : List (Fin k),
@@ -163,6 +205,10 @@ lemma NoShiftL_computeLocalAux {k : Nat} (hk : 0 < k) (z : Int) :
           (computeLocalAux (k := k) hk z js)
           hhead htail
 
+/-
+  computeLocal2 is the “canonical” computeLocalAux call with the standard index list.
+  These two lemmas package the no-shift results for the concrete computeLocal2 definition.
+-/
 lemma NoShiftR_computeLocal2 {k : ℕ} (hk : 0 < k) (z : Int) :
   NoShiftR (k := k) (computeLocal2 (k := k) hk z) := by
   simpa [computeLocal2] using
@@ -177,32 +223,42 @@ lemma NoShiftL_computeLocal2 {k : ℕ} (hk : 0 < k) (z : Int) :
 ------------------------------- NO-SHIFT HELPERS: HEAD/TAIL/REVERSE/INV -----------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  These helper lemmas support the fact that apply_Op_inverse preserves NoShiftR
+  when the original program has neither shiftL nor shiftR:
+
+    - NoShiftR_tail / NoShiftL_tail extract the tail property from a cons
+    - NoShiftR_reverse / NoShiftL_reverse show reverse preserves NoShift*
+    - NoShiftR_single_inv_of_noShiftsHead shows inv(op) cannot introduce shiftR
+      when op is neither shiftL nor shiftR
+    - NoShiftR_map_inv_of_NoShiftL_NoShiftR combines these to handle map inv
+    - NoShiftR_apply_Op_inverse_of_NoShiftL_NoShiftR packages the final result
+-/
 -- helper: pull NoShiftR tail out of NoShiftR (op :: ops)
 lemma NoShiftR_tail {k : ℕ} {op : valid_ops k} {ops : List (valid_ops k)} :
   NoShiftR (k := k) (op :: ops) → NoShiftR (k := k) ops := by
   intro h
   cases op <;> simp [NoShiftR] at h <;> simp_all
 
--- helper: pull NoShiftR tail out of NoShiftR (op :: ops)
+-- helper: pull NoShiftR head out of NoShiftR (op :: ops)
 lemma NoShiftR_head {k : ℕ} {op : valid_ops k} {ops : List (valid_ops k)} :
   NoShiftR (k := k) (op :: ops) → NoShiftR (k := k) [op] := by
   intro h
   cases op <;> simp [NoShiftR] at h <;> simp_all[NoShiftR]
 
--- helper: pull NoShiftR tail out of NoShiftR (op :: ops)
+-- helper: pull NoShiftL tail out of NoShiftL (op :: ops)
 lemma NoShiftL_tail {k : ℕ} {op : valid_ops k} {ops : List (valid_ops k)} :
   NoShiftL (k := k) (op :: ops) → NoShiftL (k := k) ops := by
   intro h
   cases op <;> simp [NoShiftL] at h <;> simp_all
 
--- helper: pull NoShiftR tail out of NoShiftR (op :: ops)
+-- helper: pull NoShiftL head out of NoShiftL (op :: ops)
 lemma NoShiftL_head {k : ℕ} {op : valid_ops k} {ops : List (valid_ops k)} :
   NoShiftL (k := k) (op :: ops) → NoShiftL (k := k) [op] := by
   intro h
   cases op <;> simp [NoShiftL] at h <;> simp_all[NoShiftL]
 
-/-- If `op` is not a shiftL or shiftR, then `inv op` is not a shiftR.
-    (This is the only place that needs `simp [Operations.inv]` to work.) -/
+/-- If `op` is not a shiftL or shiftR, then `inv op` is not a shiftR. -/
 lemma NoShiftR_single_inv_of_noShiftsHead {k : ℕ} :
     ∀ op : valid_ops k,
       (∀ i n, op ≠ valid_ops.shiftL i n) →
@@ -267,6 +323,14 @@ lemma NoShiftR_apply_Op_inverse_of_NoShiftL_NoShiftR {k : ℕ} (p : Prog k) :
 ------------------------------- opsForPoint/genOps NO SHIFT-R ---------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  opsForPointWithProduct produces a block per point:
+  - for inf: just a phaseProduct
+  - for int z: computeLocal2 z ++ [phaseProduct dst] ++ inverse(computeLocal2 z)
+
+  The next lemmas show these blocks contain no shiftR, and then the concatenation over pts
+  contains no shiftR. This is the key prerequisite for the PrimOKTrace pipeline.
+-/
 lemma NoShiftR_opsForPointWithProduct {k : ℕ} (hk : 0 < k) :
   ∀ pt, NoShiftR (k := k) (opsForPointWithProduct (k := k) hk pt)
 | .inf => by
@@ -305,6 +369,15 @@ lemma NoShiftR_genOpsWithProduct {k : ℕ} (hk : 0 < k) :
 ------------------------------- CTX BOOKKEEPING -----------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  runCtxPrim_compileProg:
+  Bookkeeping alignment lemma for compileProg. It states that running the bookkeeping
+  interpreter runCtxPrim on the compiled primitive ops yields exactly the curLen list
+  returned by compileProg.
+
+  This is used whenever proofs need to identify the “post-state context” for the tail
+  in append splits (analogous to runCtxPrim_compile1).
+-/
 /-- Bookkeeping: running ctx updates for the compiled output matches the returned curLen. -/
 lemma runCtxPrim_compileProg
   {k : ℕ} (ops : Prog k) (curLen : List Nat) (ctx0 : StCtx k) :
@@ -332,9 +405,24 @@ lemma runCtxPrim_compileProg
 
 open Operations
 
+/-
+  This section builds a chain:
+    NoShiftR (source program) → PrimOKTrace (compiled program)
+
+  The core reason is that shiftR is ruled out, so compile1 outputs are composed of
+  safe primitive fragments (Alloc, negate, Add, phaseProduct) plus the addScaled
+  compilation pipeline which is already proven safe.
+-/
 lemma FitsSigned_zero_of_pos (w : Nat) (hw : 0 < w) : FitsSigned w (0 : ℤ) := by
   refine ⟨hw, ?_, ?_⟩<;>simp
 
+/-
+  PrimOKTrace_compile1:
+  Local safety for compile1 on a single op, given:
+  - base widths are constant across registers
+  - curLen has correct length
+  - the op is not shiftR (encoded as NoShiftR [op])
+-/
 lemma PrimOKTrace_compile1
   {k : ℕ}
   (ctx : StCtx k)
@@ -363,6 +451,11 @@ lemma PrimOKTrace_compile1
       simp[compile1,compile_op_to_prim_single,PrimOKTrace,PrimOKForCtx]
     }
 
+/-
+  compile1_preserves_curLen_len:
+  compile1 does not change the length of curLen. This is needed to keep the “Fin index in range”
+  invariant when iterating compileProg and applying induction hypotheses.
+-/
 lemma compile1_preserves_curLen_len {k} (op : valid_ops k) (curLen : List ℕ)
   (h : curLen.length = k) : (compile1 (k := k) op curLen).2.length = k := by
   cases op with
@@ -407,11 +500,20 @@ lemma compile1_preserves_curLen_len {k} (op : valid_ops k) (curLen : List ℕ)
     }
   }
 
-
+/-
+  BaseWConst:
+  Convenience predicate: baseW constant across registers. This is a common hypothesis
+  for PrimOKTrace proofs because Add safety wants width equalities, and constant baseW
+  lets those reduce to curLen equalities.
+-/
 def BaseWConst {k : ℕ} (ctx : StCtx k) : Prop :=
   ∀ i j : Fin k, ctx.baseW i = ctx.baseW j
 
-
+/-
+  tail_PrimOKTrace_after_compile1:
+  Helper for the cons case of compileProg safety induction: after compiling the head op,
+  re-run the IH on the tail under the updated context `{ctx with curLen := curLen1}`.
+-/
 lemma tail_PrimOKTrace_after_compile1
   {k : ℕ}
   (ctx : StCtx k)
@@ -448,6 +550,11 @@ lemma tail_PrimOKTrace_after_compile1
     (ih (curLen' := curLen1) (ctx' := { ctx with curLen := curLen1 })
       hbase1 rfl hlen1 hNoTail)
 
+/-
+  PrimOKTrace_compile1_of_NoShiftR_head:
+  Specializes PrimOKTrace_compile1 to a context `{ctx0 with curLen := curLen}`, taking
+  NoShiftR [op] as the condition excluding shiftR.
+-/
 lemma PrimOKTrace_compile1_of_NoShiftR_head
   {k : ℕ} (ctx0 : StCtx k) (curLen : List ℕ)
   (op : valid_ops k)
@@ -478,6 +585,13 @@ lemma PrimOKTrace_compile1_of_NoShiftR_head
       simp[BaseWConst] at hbase
       simp_all
 
+/-
+  PrimOKTrace_compileProg_of_NoShiftR_general:
+  Main structural theorem: if a program has NoShiftR and base widths are constant and curLen length is k,
+  then the compiled primitive program has PrimOKTrace.
+
+  This is the engine used later to derive genOpsWithProduct_PrimOKTrace.
+-/
 theorem PrimOKTrace_compileProg_of_NoShiftR_general
   {k : ℕ} :
   ∀ (ops : Prog k) (curLen : List ℕ) (ctx : StCtx k),
@@ -536,6 +650,11 @@ theorem PrimOKTrace_compileProg_of_NoShiftR_general
         apply PrimOKTrace_append_fwd (k := k) ops1 ops2 ctx h1 h2
       simpa [compileProg, hC1, hCP] using hall
 
+/-
+  PrimOKTrace_compileProg_NoShiftR:
+  Friendly wrapper around the general theorem when the inputs are already in the shape
+  used throughout (ctx, baseW equality, curLen = ctx.curLen, etc.).
+-/
 lemma PrimOKTrace_compileProg_NoShiftR
   {k : ℕ}
   (ctx : StCtx k)
@@ -558,6 +677,13 @@ lemma PrimOKTrace_compileProg_NoShiftR
 ------------------------------- genOpsWithProduct: PrimOKTrace -------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  genOpsWithProduct_PrimOKTrace:
+  Apply the NoShiftR → PrimOKTrace pipeline to `genOpsWithProduct`:
+  - NoShiftR_genOpsWithProduct gives NoShiftR
+  - ValidFor start_state supplies baseW const and curLen length
+  - PrimOKTrace_compileProg_NoShiftR yields PrimOKTrace for the compiled program
+-/
 theorem genOpsWithProduct_PrimOKTrace
   {k : Nat} (hk : 0 < k) (pts : List Point) (ctx0 : StCtx k) (hV0 : ValidFor (k := k) State.start_state ctx0):
   PrimOKTrace (k := k)
@@ -570,6 +696,12 @@ theorem genOpsWithProduct_PrimOKTrace
 ------------------------------- CONSUMPTION PREDICATES & LEMMAS ------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  This section proves that the generated symbolic program consumes exactly the input
+  point list `pts` in order. This is later used as a hypothesis in the phase coverage
+  transfer theorem to the compiled primitive program.
+-/
+
 /-- When `eraseFirstMatch?` succeeds during a phaseProduct check,
     it must be because the *head* matches. -/
 def ConsumeHeadOK {k : ℕ} (hk : k > 0) : Prop :=
@@ -580,6 +712,11 @@ def ConsumeHeadOK {k : ℕ} (hk : k > 0) : Prop :=
         pts' = ptsTail ∧
         matchesAt_pointRow_state (k := k) hk σ i pt = true
 
+/-
+  ProgConsumesPts_append:
+  Concatenation rule for the consumption predicate: if p consumes a and reaches σ',
+  and q consumes b from σ', then p++q consumes a++b from σ.
+-/
 /-- If `p` consumes exactly `a` starting from `σ` and ends in `σ'`,
     and `q` consumes `b` starting from `σ'`,
     then `p ++ q` consumes `a ++ b` starting from `σ`. -/
@@ -681,6 +818,11 @@ theorem ProgConsumesPts_append
 ------------------------------- NO-PHASE ⇒ CONSUMES [] ---------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  ProgConsumesPts_of_run?_NoPhase:
+  If a program has no phaseProduct ops (NoPhase), then it consumes [].
+  This is used for computeLocal blocks and inverse blocks (both NoPhase).
+-/
 lemma ProgConsumesPts_of_run?_NoPhase
   {k : ℕ} (hk : k > 0) :
   ∀ (p : Prog k) (_hNo : NoPhase (k := k) p)
@@ -722,6 +864,11 @@ lemma ProgConsumesPts_of_run?_NoPhase
 ------------------------------- NO-PHASE LEMMAS FOR computeLocal / inverse --------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  NoPhase_computeLocal2 / NoPhaseV_apply_Op_inverse_of_NoPhaseV:
+  computeLocal2 and its inverse block contain no phaseProduct ops, so they consume [].
+  These facts feed into the “block consumes exactly one point” theorem for int points.
+-/
 lemma NoPhase_computeLocal2 {k : ℕ} (hk : 0 < k) (z : Int) :
   NoPhase (k := k) (computeLocal2 (k := k) hk z) := by
   rw[← computeLocal_eq_computeLocal2]
@@ -738,6 +885,19 @@ lemma NoPhaseV_apply_Op_inverse_of_NoPhaseV {k : ℕ} :
 ------------------------------- BLOCK CONSUMES INT/INF AT START -------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  block_consumes_int_start:
+  For an int point z, the “block”
+    computeLocal2 z ++ [phaseProduct dst] ++ inverse(computeLocal2 z)
+  consumes exactly [Point.int z] starting from start_state.
+
+  Proof pattern:
+  - computeLocal2 reaches σ₁ and matches row at dst
+  - computeLocal2 consumes [] because it has NoPhase
+  - singleton phaseProduct consumes [Point.int z]
+  - inverse consumes [] and returns to start_state
+  - glue with ProgConsumesPts_append twice.
+-/
 theorem block_consumes_int_start
   {k : ℕ} (hk : 0 < k) (z : Int)
   (WF : Prog.WellFormed (k := k) (computeLocal2 (k := k) hk z)) :
@@ -760,8 +920,6 @@ theorem block_consumes_int_start
 
   -- Step 3: the single phaseProduct consumes [Point.int z] at σ₁
   have hphase : ProgConsumesPts (k := k) hk σ₁ [valid_ops.phaseProduct (finZero hk)] [Point.int z] := by
-    -- ProgConsumesPts for a phaseProduct op:
-    -- ∃ pt ptsTail, pts = pt::ptsTail ∧ match=true ∧ ProgConsumesPts σ [] ptsTail
     refine ⟨Point.int z, [], by simp, ?_, by simp [ProgConsumesPts]⟩
     simpa using hmatch
 
@@ -780,7 +938,6 @@ theorem block_consumes_int_start
   have h12 :
       ProgConsumesPts (k := k) hk (State.start_state (k := k))
         (p ++ [valid_ops.phaseProduct (finZero hk)]) ([] ++ [Point.int z]) := by
-    -- run? (p ++ [phase]) start = some σ₁ because phaseProduct doesn’t change state
     have hrun2 : run? (k := k) (p ++ [valid_ops.phaseProduct (finZero hk)])
         (State.start_state (k := k)) = some σ₁ := by
       rw[run?_append]
@@ -798,7 +955,6 @@ theorem block_consumes_int_start
       ProgConsumesPts (k := k) hk (State.start_state (k := k))
         ((p ++ [valid_ops.phaseProduct (finZero hk)]) ++ apply_Op_inverse p)
         (([] ++ [Point.int z]) ++ []) := by
-    -- run? of (p ++ [phase]) already computed as some σ₁ above; use hrun2 again
     have hrun2 : run? (k := k) (p ++ [valid_ops.phaseProduct (finZero hk)])
         (State.start_state (k := k)) = some σ₁ := by
       simp [p]
@@ -810,18 +966,19 @@ theorem block_consumes_int_start
 
 open Operations
 
+/-
+  ProgConsumesPts_single_phaseProduct:
+  Convenience lemma: a singleton phaseProduct consumes a singleton point list if the head matches.
+-/
 lemma ProgConsumesPts_single_phaseProduct
   {k : ℕ} (hk : k > 0)
   (σ : State k) (i : Fin k) (pt : Point)
   (hmatch : matchesAt_pointRow_state (k := k) hk σ i pt = true) :
   ProgConsumesPts (k := k) hk σ [valid_ops.phaseProduct i] [pt] := by
-  -- unfold ProgConsumesPts at the singleton program
-  -- phaseProduct case requires an existential witness for head/tail
   refine ⟨pt, ([] : List Point), ?_, ?_, ?_⟩
   · simp
   · exact hmatch
-  · -- remaining program is [], remaining points is []
-    simp [ProgConsumesPts]
+  · simp [ProgConsumesPts]
 
 lemma ProgConsumesPts_phaseProduct_inf_start
   {k : ℕ} (hk : k > 0)
@@ -833,7 +990,12 @@ lemma ProgConsumesPts_phaseProduct_inf_start
 
 open Operations
 
-/-- `start_state` at the last index matches `Point.inf`. -/
+/-
+  matchesAt_pointRow_state_start_inf:
+  Establishes that start_state matches the .inf point at the last index.
+  This provides the “inf block consumes Point.inf” base fact.
+-/
+/- `start_state` at the last index matches `Point.inf`. -/
 lemma matchesAt_pointRow_state_start_inf
   {k : ℕ} (hk : k > 0) :
   let last : Fin k := ⟨k - 1, by
@@ -845,23 +1007,23 @@ lemma matchesAt_pointRow_state_start_inf
   | zero =>
       cases hk
   | succ k' =>
-      -- In `Fin (k'+1)`, the last index is `k'`.
       let last : Fin (Nat.succ k') := ⟨k', by simp⟩
 
-      -- Prove regEqExpected for the unit vector at `last` against expectedRow .inf
       have hreg :
           regEqExpected (k := Nat.succ k') ((State.start_state (k := Nat.succ k')) last) Point.inf = true := by
-        --   regEqExpected_eq_true_iff : regEqExpected r pt = true ↔ ∀ j, r j = expectedRow pt j
         apply (regEqExpected_eq_true_iff (k := Nat.succ k')
           (r := (State.start_state (k := Nat.succ k') last)) (pt := Point.inf)).2
         intro j
-        -- both sides are the same “unit vector at last”
         simp [State.start_state, expectedRow, last]
 
-      -- matchesAt_pointRow_state is regEqExpected on σ i
       simpa [matchesAt_pointRow_state_apply, last] using hreg
 
-/-- singleton phaseProduct consumes `[Point.inf]` at start_state. -/
+/-
+  ProgConsumesPts_start_single_inf:
+  Packs the “start_state matches inf at last index” into a ProgConsumesPts statement
+  for a singleton phaseProduct program.
+-/
+/- singleton phaseProduct consumes `[Point.inf]` at start_state. -/
 lemma ProgConsumesPts_start_single_inf
   {k : ℕ} (hk : k > 0) :
   ProgConsumesPts (k := k) hk (State.start_state (k := k))
@@ -869,7 +1031,6 @@ lemma ProgConsumesPts_start_single_inf
       have hk' : 0 < k := hk
       exact Nat.sub_lt (Nat.succ_le_of_lt hk') (by decide)⟩]
     [Point.inf] := by
-  -- hcov is unused; the statement is purely about the matcher at start_state.
   have hmatch :
       matchesAt_pointRow_state (k := k) hk (State.start_state (k := k))
         ⟨k - 1, by
@@ -890,6 +1051,12 @@ lemma ProgConsumesPts_start_single_inf
 ------------------------------- COVERAGE ⇒ CONSUMPTION (genOps) -------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  PhaseProductCoverageM_cancel_prefix:
+  Cancellation lemma for symbolic coverage: if p has coverage consuming a and run? p σ = some σ',
+  and p++q has coverage consuming a++b from σ, then q has coverage consuming b from σ'.
+  This is the key tool used to extract tail coverage in the induction for consumesPts.
+-/
 /-- Cancel a covered prefix from a covered append. -/
 theorem PhaseProductCoverageM_cancel_prefix
   {k : ℕ}  :
@@ -918,14 +1085,11 @@ theorem PhaseProductCoverageM_cancel_prefix
           have hτ : τ = _ := Option.some.inj (by simpa [happ] using hstep)
           subst hτ
           -- Now peel the same op from hall
-          -- (hall must be a step_op with same head op)
           cases hall with
           | step_op hop2 hall_rest =>
-              -- hall_rest : coverage of (ps ++ q) at the stepped state
               have := ih (σ' := σ') (q := q) (b := b)
               aesop
           | step_phase hcons _ =>
-              -- impossible: head op is not phaseProduct
               exfalso
               rcases hcons with _
               simp_all only [valid_ops.phaseProduct.injEq, forall_eq']
@@ -948,6 +1112,14 @@ theorem PhaseProductCoverageM_cancel_prefix
             aesop
           exact ih (q := q) (σ' := σ') (b := b) hrun hrest'
 
+/-
+  PhaseProductCoverage_consumesPts:
+  Main consumption theorem for genOpsWithProduct. It derives ProgConsumesPts from the known
+  symbolic coverage theorem by induction on the point list. The critical step is:
+  - build consumption for the head block (int or inf)
+  - cancel the head coverage from the full coverage to obtain tail coverage (using the cancel lemma)
+  - apply IH to tail, then append consumptions.
+-/
 theorem PhaseProductCoverage_consumesPts
   {k : ℕ} (hk : k > 0) (pts : List Point)
   (hcov : PhaseProductCoverage (k := k) hk (genOpsWithProduct hk pts) State.start_state pts)
@@ -1007,17 +1179,240 @@ theorem PhaseProductCoverage_consumesPts
     }
   }
 
+
+----------------------------------------------------------------------------------------------------
+------------------------------- GEN_OPS WF Lemmas ------------------------------------
+----------------------------------------------------------------------------------------------------
+
+open Operations
+
+namespace Prog
+
+/-- `WellFormed` is closed under cons. -/
+lemma WF_cons_intro {k : ℕ} {op : valid_ops k} {p : Prog k} :
+    OpOK (k := k) op → WellFormed (k := k) p → WellFormed (k := k) (op :: p) := by
+  intro hopOK hWF
+  unfold WellFormed at *
+  intro op' hop'
+  simp at hop'
+  rcases hop' with rfl | hop'
+  · exact hopOK
+  · exact hWF op' hop'
+
+/-- `WellFormed` is closed under append. -/
+lemma WF_append {k : ℕ} {p q : Prog k} :
+    WellFormed (k := k) p → WellFormed (k := k) q → WellFormed (k := k) (p ++ q) := by
+  intro hp hq
+  unfold WellFormed at *
+  intro op hop
+  simp at hop
+  rcases hop with hop | hop
+  · exact hp op hop
+  · exact hq op hop
+
+@[simp] lemma WF_nil {k : ℕ} : WellFormed (k := k) ([] : Prog k) := by
+  unfold WellFormed
+  intro op hop
+  cases hop
+
+@[simp] lemma OpOK_phaseProduct {k : ℕ} (i : Fin k) :
+    OpOK (k := k) (valid_ops.phaseProduct i) := by
+  simp [OpOK]
+
+@[simp] lemma OpOK_shiftL {k : ℕ} (i : Fin k) (n : Nat) :
+    OpOK (k := k) (valid_ops.shiftL i n) := by
+  simp [OpOK]
+
+@[simp] lemma OpOK_shiftR {k : ℕ} (i : Fin k) (n : Nat) :
+    OpOK (k := k) (valid_ops.shiftR i n) := by
+  simp [OpOK]
+
+@[simp] lemma OpOK_negate {k : ℕ} (i : Fin k) :
+    OpOK (k := k) (valid_ops.negate i) := by
+  simp [OpOK]
+
+/-- The only nontrivial OpOK case is `addScaled`: it requires `dst ≠ src`. -/
+@[simp] lemma OpOK_addScaled {k : ℕ} (dst src : Fin k) (b : Bool) (sh : Nat) :
+    OpOK (k := k) (valid_ops.addScaled dst src (negSrc := b) sh) ↔ dst ≠ src := by
+  simp [OpOK]
+
+end Prog
+
+open Prog
+
+/-
+  Now prove WF for your synthesis pieces.
+
+  Assumes your current definitions exist in scope:
+  - addConstAux
+  - addConstFrom
+  - computeLocalAux
+  - computeLocal2
+  - nonzeroFins
+  - opsForPointWithProduct
+  - genOpsWithProduct
+-/
+
+section WF_Synthesis
+
+/-- `addConstAux` emits only `addScaled dst src ...`, so WF holds if `dst ≠ src`. -/
+lemma WF_addConstAux {k : ℕ} (dst src : Fin k) (neg' : Bool) (hds : dst ≠ src) :
+    ∀ (n sh : Nat), Prog.WellFormed (k := k) (addConstAux (k := k) dst src neg' n sh) := by
+  -- strong induction because the recursive call is on (n/2)
+  intro n
+  induction n using Nat.strong_induction_on with
+  | h n ih =>
+      intro sh
+      cases n with
+      | zero =>
+          simp [addConstAux, Prog.WellFormed]
+      | succ n =>
+          -- Let N = n+1 for readability
+          set N : Nat := Nat.succ n
+          -- the recursive argument is N/2, and it is strictly smaller than N
+          have hlt : (N / 2) < N := by
+            simpa [N] using Nat.div_lt_self (Nat.succ_pos n) (by decide : 1 < 2)
+
+          have hrest :
+              Prog.WellFormed (k := k)
+                (addConstAux (k := k) dst src neg' (N / 2) (sh + 1)) :=
+            ih (N / 2) hlt (sh + 1)
+
+          by_cases hOdd : Odd N
+          · -- odd case: head is addScaled :: rest
+            have hopOK : Prog.OpOK (k := k) (valid_ops.addScaled dst src (negSrc := neg') sh) := by
+              -- OpOK for addScaled is dst ≠ src
+              simpa [Prog.OpOK] using hds
+            have hcons :
+                Prog.WellFormed (k := k)
+                  (valid_ops.addScaled dst src (negSrc := neg') sh
+                    :: addConstAux (k := k) dst src neg' (N / 2) (sh + 1)) :=
+              Prog.WF_cons_intro (k := k) (op := valid_ops.addScaled dst src (negSrc := neg') sh)
+                hopOK hrest
+            simpa [addConstAux, N, hOdd] using hcons
+
+          ·
+            simpa [addConstAux, N, hOdd] using hrest
+
+/-- `addConstFrom` is WF if `dst ≠ src`. -/
+lemma WF_addConstFrom {k : ℕ} (dst src : Fin k) (c : Int) (hds : dst ≠ src) :
+    Prog.WellFormed (k := k) (addConstFrom (k := k) dst src c) := by
+  classical
+  by_cases hc : c = 0
+  · simp [addConstFrom, hc, Prog.WellFormed]
+  ·
+    -- unfold to addConstAux
+    simp [addConstFrom, hc]
+    exact WF_addConstAux (k := k) (dst := dst) (src := src) (neg' := (c < 0)) (hds := hds) (n := Int.natAbs c) (sh := 0)
+
+lemma WF_computeLocalAux_finZero {k : ℕ} (hk : 0 < k) (z : Int) :
+  ∀ (js : List (Fin k)),
+    (∀ j, j ∈ js → finZero hk ≠ j) →
+    (computeLocalAux (k := k) hk z js).WellFormed := by
+  intro js
+  induction js with
+  | nil =>
+      intro _; simp [computeLocalAux, Prog.WellFormed]
+  | cons j js ih =>
+      intro h
+      have hdstj : finZero hk ≠ j := h j (by simp)
+      have hhead :
+          (addConstFrom (k := k) (finZero hk) j (z ^ (j : Nat))).WellFormed :=
+        WF_addConstFrom (k := k) (finZero hk) j (z ^ (j : Nat)) hdstj
+      have htail :
+          (computeLocalAux (k := k) hk z js).WellFormed :=
+        ih (by
+          intro j' hj'
+          exact h j' (by simp [hj']))
+      simpa [computeLocalAux] using Prog.WF_append (k := k) hhead htail
+
+
+
+/-- Every element of `nonzeroFins hk` is not `finZero hk`. -/
+lemma mem_nonzeroFins_ne_zero {k : ℕ} (hk : 0 < k) :
+    ∀ j : Fin k, j ∈ nonzeroFins (k := k) hk → j ≠ finZero hk := by
+  classical
+  intro j hj
+  unfold nonzeroFins at hj
+  have : decide (j ≠ finZero hk) = true := by
+    have := List.mem_filter.1 hj
+    exact this.2
+  exact by aesop
+
+/-- `computeLocal2` is WF. -/
+lemma WF_computeLocal2 {k : ℕ} (hk : 0 < k) (z : Int) :
+    Prog.WellFormed (k := k) (computeLocal2 (k := k) hk z) := by
+  unfold computeLocal2
+  refine WF_computeLocalAux_finZero (k := k) hk z (js := nonzeroFins (k := k) hk) ?_
+  intro j hj
+  have : j ≠ finZero hk := mem_nonzeroFins_ne_zero (k := k) hk j hj
+  exact Ne.symm this
+
+/-- `opsForPointWithProduct` is WF (using your `apply_Op_inverse_preserves_WF`). -/
+lemma WF_opsForPointWithProduct {k : ℕ} (hk : 0 < k) :
+    ∀ pt, Prog.WellFormed (k := k) (opsForPointWithProduct (k := k) hk pt)
+  | .inf => by
+      simp [opsForPointWithProduct, Prog.WellFormed, Prog.OpOK]
+  | .int z => by
+      let dst : Fin k := finZero hk
+      let l : Prog k := computeLocal2 (k := k) hk z
+      have hL : Prog.WellFormed (k := k) l := by
+        simpa [l] using WF_computeLocal2 (k := k) hk z
+      have hP : Prog.WellFormed (k := k) ([valid_ops.phaseProduct dst] : Prog k) := by
+        simp [Prog.WellFormed, Prog.OpOK]
+      have hInv : Prog.WellFormed (k := k) (apply_Op_inverse (k := k) l) := by
+        exact apply_Op_inverse_preserves_WF (k := k) (p := l) hL
+      have hLP : Prog.WellFormed (k := k) (l ++ [valid_ops.phaseProduct dst]) :=
+        Prog.WF_append (k := k) hL hP
+      have hAll : Prog.WellFormed (k := k) ((l ++ [valid_ops.phaseProduct dst]) ++ apply_Op_inverse l) :=
+        Prog.WF_append (k := k) hLP hInv
+      simpa [opsForPointWithProduct, l, dst, List.append_assoc] using hAll
+
+/-- Finally, `genOpsWithProduct` is WF for any point list. -/
+theorem WF_genOpsWithProduct {k : ℕ} (hk : 0 < k) :
+    ∀ (pts : List Point),
+      Prog.WellFormed (k := k) (genOpsWithProduct (k := k) hk pts) := by
+  intro pts
+  induction pts with
+  | nil =>
+      simp [genOpsWithProduct, Prog.WellFormed]
+  | cons pt pts ih =>
+      have hHead : Prog.WellFormed (k := k) (opsForPointWithProduct (k := k) hk pt) :=
+        WF_opsForPointWithProduct (k := k) hk pt
+      have hTail : Prog.WellFormed (k := k) (genOpsWithProduct (k := k) hk pts) :=
+        ih
+      simpa [genOpsWithProduct] using Prog.WF_append (k := k) hHead hTail
+
+end WF_Synthesis
+
+
 ----------------------------------------------------------------------------------------------------
 ------------------------------- FINAL COMPILED COVERAGE THEOREM ------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  genOpsWithProduct_compiled_PhaseProductCoverage:
+  Final assembly theorem.
+
+  Inputs provide:
+  - ValidFor/ValidForStep for start_state in the concrete ctx0
+  - ρ alignment between ctx0.ρ and the initial concrete state
+  - WellFormed for the generated source program
+
+  The proof supplies:
+  - symbolic coverage (genOpsWithProduct_PhaseProductCoverage)
+  - PrimOKTrace for compiled program (genOpsWithProduct_PrimOKTrace)
+  - ProgConsumesPts for source program (PhaseProductCoverage_consumesPts)
+
+  Then it invokes PhaseProductCoverage.compileProg_preserves_phaseCoverage to transfer
+  coverage to the compiled primitive program.
+-/
 theorem genOpsWithProduct_compiled_PhaseProductCoverage
   {k : Nat} (hk : 0 < k) (pts : List Point)
   (ctx0 : StCtx k)
   (hV0 : ValidFor (k := k) State.start_state ctx0)
   (hStep : ValidForStep (k := k) ctx0)
-  (hρ : ctx0.ρ = fun j ↦ regToInt (stateToSt State.start_state ctx0 j))
-  (hWF : Prog.WellFormed (k := k) (genOpsWithProduct hk pts)) :
+  (hρ : ctx0.ρ = fun j ↦ regToInt (stateToSt State.start_state ctx0 j)) :
   PhaseProduct_PrimOps.PhaseProductCoverage_prim (k := k)
     (stateToSt (k := k) State.start_state ctx0)
     (compileProg (k := k) (genOpsWithProduct hk pts) ctx0.curLen).1
@@ -1025,6 +1420,9 @@ theorem genOpsWithProduct_compiled_PhaseProductCoverage
   have hcov :
     PhaseProductCoverage (k := k) hk (genOpsWithProduct hk pts) State.start_state pts :=
       genOpsWithProduct_PhaseProductCoverage (k := k) hk pts
+  have hWF : Prog.WellFormed (k := k) (genOpsWithProduct hk pts):= by {
+    apply WF_genOpsWithProduct
+  }
   apply PhaseProductCoverage.compileProg_preserves_phaseCoverage
     (k := k) (hk := hk)
     (ops := genOpsWithProduct hk pts)

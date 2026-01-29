@@ -1,8 +1,36 @@
 import FastMultiplication.Allocate_dealloc.Compiler_correctness
+/-
+  This file contains the semantic bridge needed for the main induction theorem:
+
+    compileProg_simulates
+
+  The compiler produces qubit-level ops (`prim_ops`) and the evaluator runs them on a concrete
+  qubit-state model (`St k`). The source semantics runs table-level symbolic ops (`valid_ops k`) on the
+  symbolic/table model (`State k`).
+
+  Proof structure used later:
+  - First prove “one primitive op simulates one symbolic op” for each primitive constructor
+    that appears in compiled output (AllocLSB, AllocMSB, FreeLSB, FreeMSB, Negate, Add).
+    These are the `bridge_*` lemmas below.
+  - Then package those into `compile1_simulates` (one validated op compiles to a short prim program).
+  - Finally prove `compileProg_simulates` by induction on the program list, using:
+      * `PrimOKTrace.append_inv` to split safety for ops1 ++ ops2
+      * `runCtxPrim_compile1` to identify the tail context `{ctx with curLen := curLen1}`
+      * `ValidForStep.withCurLen` to re-use the step invariant after the head update
+      * `eval_prim_ops_append` to rewrite eval over concatenation.
+-/
+
 ----------------------------------------------------------------------------------------------------
 ------------------------------- Bridge lemmas: prim-op ⇔ symbolic -----------------------------------
 ----------------------------------------------------------------------------------------------------
 
+/-
+  bridge_allocLSB:
+  Allocating at LSB is the concrete version of shifting left (multiplying by 2^n).
+  This lemma is used in:
+  - the `shiftL` case of `compile1_simulates`
+  - the “temporary shift” subroutine inside the `addScaled` compilation sequence.
+-/
 -- LSB alloc simulates symbolic shiftL, and updates delta-len
 lemma bridge_allocLSB
   {k : ℕ} (σ : State k) (ctx : StCtx k)
@@ -98,6 +126,17 @@ lemma bridge_allocLSB
           contradiction
         rw [this]
         aesop
+
+/-
+  bridge_allocMSB:
+  Allocating at MSB is width widening via sign-extension.
+  The symbolic integer must remain unchanged; only the tracked width changes.
+  This lemma is used in:
+  - MSB widening steps emitted by `compile_op_to_prim_single` for `addScaled`
+    (both dst widening and temporary src widening).
+  It relies on the `ValidFor` invariant (`FitsSigned`) to rule out overflow so that
+  signExtend preserves `BitVec.toInt`.
+-/
 
 -- MSB alloc is sign-extend: symbolic value unchanged, only length delta updates
 lemma bridge_allocMSB
@@ -233,7 +272,14 @@ lemma bridge_allocMSB
         rw[this]
         aesop
 
--- Negate
+
+/--
+  bridge_negate:
+  Concrete negation matches symbolic `State.negateReg`.
+  Used in:
+  - the `negate` case of `compile1_simulates`
+  - the optional negate/unnegate wrapper used to implement subtraction in `addScaled`.
+-/
 lemma bridge_negate
   {k : ℕ} (σ : State k) (ctx : StCtx k)
   (hV : ValidFor (k := k) σ ctx)
@@ -279,7 +325,11 @@ lemma bridge_negate
       simp_all
 
 
-
+/--
+  max_emod_zero:
+  Normalization lemma: emod is nonnegative when modulus ≠ 0, so `max (emod ...) 0` simplifies.
+  This is a small helper for `bridge_add` (and similar emod-toInt manipulations).
+-/
 @[simp]lemma max_emod_zero(a n:ℤ) (hn:n≠0):
 max (a.emod n) 0 = a.emod n:= by {
   simp
@@ -287,6 +337,17 @@ max (a.emod n) 0 = a.emod n:= by {
   simp[hn]
 }
 
+
+/-
+  bridge_add:
+  Concrete Add corresponds to symbolic `addScaledReg ... false 0`.
+  The compilation pipeline ensures Add executes only when the widths are aligned/safe;
+  that requirement is encoded here as `hW`.
+
+  This lemma is used in:
+  - the `addScaled` case of `compile1_simulates`, after the widening steps
+  - helper theorems that simulate the internal “Add then unwind” sequence.
+-/
 lemma bridge_add
   {k : ℕ} (σ : State k) (ctx : StCtx k)
   (dst src : Fin k)
@@ -422,7 +483,17 @@ lemma bridge_add
     · unfold stateToSt
       simp_all
 
+/--
+  bridge_freeLSB:
+  Concrete Free at LSB corresponds to symbolic `shiftRReg?` (division by 2^n).
+  This lemma needs:
+  - a bookkeeping precondition `hn : n ≤ curLen[i]` (supplied by `PrimOKTrace`)
+  - a semantic success fact `shiftRReg? σ i n = some σ'` (from symbolic execution)
 
+  Used in:
+  - the `shiftR` case of `compile1_simulates`
+  - undoing the temporary shift inside the `addScaled` compilation sequence.
+-/
 lemma bridge_freeLSB
   {k : ℕ} (σ σ' : State k) (ctx : StCtx k)
   (i : Fin k) (n : Nat)
@@ -649,7 +720,12 @@ lemma bridge_freeLSB
             have: j=i := by omega
             contradiction
 
-
+/--
+  ofNat_emod_pow2_lowbits_eq:
+  Low-bit stability lemma for modulus changes. Truncating width removes MSB bits,
+  so the low `b` bits depend only on `mod 2^b`, regardless of a larger modulus.
+  This is the main arithmetic fact used by `bridge_freeMSB`.
+-/
 lemma ofNat_emod_pow2_lowbits_eq
   (b a1 a2 : ℕ) (c : ℤ)
   (hb1 : b ≤ a1) (hb2 : b ≤ a2) :
@@ -680,6 +756,16 @@ lemma ofNat_emod_pow2_lowbits_eq
     · simp
   rw[h_mod a1 hb1, h_mod a2 hb2]
 
+
+/--
+  bridge_freeMSB:
+  Concrete Free at MSB corresponds to shrinking width by truncation.
+  The symbolic integer is unchanged, but `stateToSt` stores it at a smaller modulus.
+  This lemma is used to:
+  - undo temporary src MSB widening after Add
+  - undo dst MSB widening in cases where a proof script uses explicit frees
+    (even if some dst frees are deferred to end-of-program in other compilation variants).
+-/
 lemma bridge_freeMSB
   {k : ℕ} (σ : State k) (ctx : StCtx k)
   (i : Fin k) (n : Nat)
@@ -796,6 +882,28 @@ lemma le_one_add_max
 
 
 
+
+/-
+  bridge_compile1_addScaled / helper2 / helper3:
+
+  These are “macro-bridge” lemmas for the `addScaled` case of `compile1_simulates`.
+  Each one simulates the entire primitive sequence emitted by compile1 for `addScaled`,
+  by chaining the small bridge lemmas in the same order the compiler emits ops.
+
+  They exist because `addScaled` compilation is not a single primitive op; it is:
+    optional negate(src)
+    optional shiftL(src, sh)
+    widen dst/src at MSB (target width)
+    Add(dst, src)
+    free src MSB widen
+    undo shift
+    undo negate
+  and the proof needs intermediate `ValidFor` states at each stage.
+
+  - `bridge_compile1_addScaled` handles negSrc=true and sh≠0 (full pipeline)
+  - `bridge_compile1_addScaled_helper2` handles sh=0 (no shift/unshift)
+  - `bridge_compile1_addScaled_helper3` handles negSrc=false and sh≠0
+-/
 
 
 lemma bridge_compile1_addScaled
@@ -1312,7 +1420,14 @@ lemma bridge_compile1_addScaled_helper3
         simp[compile1, compile_op_to_prim_single,hds] at this;unfold δdst a;simp_all
       }
 
+/-
+  compile1_addScaled_correct:
 
+  Wrapper that chooses the right `bridge_compile1_addScaled*` lemma based on cases:
+  - dst=src is rejected by OpOK (and compiles to [])
+  - negSrc true/false and sh=0/nonzero pick the corresponding helper
+  This is the piece `compile1_simulates` uses.
+-/
 lemma compile1_addScaled_correct {k : ℕ}
     (σ σ2: State k) (ctx : StCtx k)
     (dst src : Fin k) (negSrc : Bool) (sh : ℕ)
@@ -1467,16 +1582,15 @@ lemma compile1_addScaled_correct {k : ℕ}
           }
 
 
+/-
+  compile1_simulates:
 
-
-
-
-
-
-
-
-
-
+  Main single-step simulation theorem used by compileProg_simulates.
+  For each `valid_ops` constructor:
+  - simplify compile1 output and symbolic step
+  - apply the appropriate bridge lemma
+  - use `PrimOKTrace` to supply Free preconditions (n ≤ curLen[i])
+-/
 theorem compile1_simulates
   {k : ℕ}
   (op : valid_ops k)
@@ -1530,7 +1644,12 @@ theorem compile1_simulates
         simp[hPrim]
 
 
+/-
+  compile1_pres_len:
 
+  Lemma ensuring compile1 preserves the “curLen length = k” invariant.
+  This is used indirectly when threading ValidFor/PrimOK contexts across induction steps.
+-/
 lemma compile1_pres_len {k} (op : valid_ops k) (curLen : List Nat)
   (h : curLen.length = k) :
   (compile1 (k:=k) op curLen).2.length = k :=by
@@ -1557,7 +1676,25 @@ lemma compile1_pres_len {k} (op : valid_ops k) (curLen : List Nat)
     simp[h]
   }
 
+/-
+  compileProg_simulates:
 
+  Main theorem of this file.
+
+  Induction on ops:
+  - nil: trivial (no prim ops and no symbolic change)
+  - cons op ops:
+      1) execute symbolic head: applyOp? σ op = some σ1
+      2) split PrimOKTrace for compiled (ops1 ++ ops2) into:
+           PrimOKTrace ops1 ctx
+           PrimOKTrace ops2 (runCtxPrim ctx ops1)
+      3) rewrite runCtxPrim ctx ops1 as {ctx with curLen := curLen1}
+         using runCtxPrim_compile1 so the IH has the correct context shape
+      4) simulate the head using compile1_simulates
+      5) update ValidFor using ValidForStep for the new ctx
+      6) apply IH to simulate the tail
+      7) combine head and tail using eval_prim_ops_append.
+-/
 theorem compileProg_simulates
   {k : ℕ}
   (ops : Prog k)
@@ -1600,6 +1737,7 @@ theorem compileProg_simulates
           have : PrimOKTrace (k := k) (ops1 ++ ops2) ctx := by
             simpa [ops1, ops2, curLen1, curLen2, compileProg] using hPrim
           exact (PrimOKTrace.append_inv (k := k) ops1 ops2 ctx this)
+
 
         have hPrim1 : PrimOKTrace (k := k) ops1 ctx := hSplit.1
         have hPrim2_raw : PrimOKTrace (k := k) ops2 (runCtxPrim (k := k) ctx ops1) := hSplit.2
