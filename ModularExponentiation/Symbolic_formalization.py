@@ -1,7 +1,8 @@
 from __future__ import annotations
 import numpy as np
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Hashable, Protocol, runtime_checkable, Sequence
+import math
+from typing import Any, Callable, Dict, Hashable, Protocol, runtime_checkable, Sequence, Tuple
 
 # ============================================================
 # 0) Basic scalars / labels
@@ -345,6 +346,7 @@ def CPHASE(control: int, target: int, theta: float) -> Gate:
     """Controlled phase rotation (convention decided by eval)."""
     return PrimGate("CPHASE", (control, target, theta))
 
+
 def CTRL(control: int, U: Gate) -> Gate:
     """
     Controlled-U as a single symbolic gate node.
@@ -352,4 +354,425 @@ def CTRL(control: int, U: Gate) -> Gate:
     """
     return PrimGate("CTRL", (control, U))
 
+@dataclass(frozen=True)
+class PhaseProduct(Gate):
+    """
+    PhaseProduct(phi, x_reg, z_reg) acts as:
+      |x>|z> -> exp(i * phi * x * z) |x>|z>
+    where x and z are the integer values encoded by those registers.
+    """
+    phi: Scalar
+    x_reg: Tuple[int, int]   # half-open [lo, hi)
+    z_reg: Tuple[int, int]   # half-open [lo, hi)
+
+    def __repr__(self) -> str:
+        return f"PhaseProduct(phi={self.phi}, x={self.x_reg}, z={self.z_reg})"
+
+
+@dataclass(frozen=True)
+class CPhaseProduct(Gate):
+    """
+    Controlled PhaseProduct
+    """
+    control: int
+    phi: Scalar
+    x_reg: Tuple[int,int]
+    z_reg: Tuple[int,int]
+
+    def __repr__(self) -> str:
+        return f"CPhaseProduct(ctrl={self.control}, phi={self.phi}, x={tuple(self.x_reg)}, z={tuple(self.z_reg)})"
+
+
+
+
+def U_cxq(x_reg: Tuple[int,int], z_reg: Tuple[int,int], a: int):
+    l=z_reg[1]-z_reg[0]
+    return IQFT(z_reg) @ PhaseProduct(phi=(2*math.pi*a/(2**l)),x_reg=x_reg, z_reg=z_reg) @ QFT(z_reg)
+
+def C_U_cxq(ctrl: int, x_reg: Sequence[int], z_reg: Sequence[int], a: int):
+    l=z_reg[1]-z_reg[0]
+    return IQFT(z_reg) @ CPhaseProduct(phi=(2*math.pi*a/(2**l)), x_reg=x_reg, z_reg=z_reg, control=ctrl) @ QFT(z_reg)
+
+def reg_len(r: Tuple[int, int]) -> int:
+    return r[1] - r[0]
+
+def reg_qubits(r: Tuple[int, int]) -> range:
+    return range(r[0], r[1])
+
+def H_reg(r: Tuple[int, int]) -> Gate:
+    """
+    Symbolic H^{⊗m} on the register r.
+    Order doesn't matter; we just build a deterministic composition.
+    """
+    qs = list(reg_qubits(r))
+    if not qs:
+        return PrimGate("ID", None) 
+    U = H(qs[0])
+    for q in qs[1:]:
+        U = H(q) @ U
+    return U
+
+
+
+def nbits_for_modulus(N: int) -> int:
+    """Smallest n such that N <= 2^n."""
+    if N <= 0:
+        raise ValueError("N must be positive")
+    return (N - 1).bit_length()
+
+def choose_m(n: int, eta: float) -> int:
+    """
+    Paper: m = n + ceil( 2 log( 2 + 1/(2η) ) ).
+    Here we take log base 2 (consistent with qubits / bit growth).
+    """
+    if not (0 < eta < 1):
+        raise ValueError("eta must be in (0,1)")
+    extra = math.ceil(2.0 * math.log2(2.0 + 1.0/(2.0*eta)))
+    return n + extra
+
+
+def step1(c: int, N: int,x_reg: Tuple[int, int],z_reg:Tuple[int, int]):
+
+    phi = (2.0 * math.pi * ((c - 1) % N)) / float(N)
+    U = IQFT(z_reg) @ PhaseProduct(phi=phi, x_reg=x_reg, z_reg=z_reg) @ H_reg(z_reg)
+    return U
+
+def step2(N: int, x_reg: Tuple[int,int], w_reg: Tuple[int,int]):
+    """
+    Step 2:
+      add one ancilla to the top of x, then compute |x>|w> -> |x + Nw>|w>.
+
+    Implemented using U_cxq:
+      U_cxq(x_reg = w_reg, z_reg = x_ext_reg, a = N)
+    """
+    # x_ext is x plus one extra top bit
+    x_ext = (x_reg[0], x_reg[1] + 1)
+
+    # U_cxq takes (x_reg, z_reg, a) and does z <- z + a*x (mod 2^len(z))
+    # Here we want x_ext <- x_ext + N*w, so:
+    return x_ext, U_cxq(x_reg=w_reg, z_reg=x_ext, a=N)
+
+
+# ============================================================
+# Steps 3, 4, 5 for Algorithm 1
+#   Step 3: flag := [x_ext > N]; x_ext -= N controlled by flag
+#   Step 4: uncompute flag via comparison operator
+#   Step 5: uncompute w by subtracting w' = ((1 - c^{-1}) * (cx mod N) mod N) / N from w_reg
+# ============================================================
+
+# --- Comparison / controlled-sub primitives (symbolic tags) ----
+
+def CMP_GT_CONST(x_reg: Tuple[int, int], N: int, flag: int) -> Gate:
+    """
+    flag ^= [ value(x_reg) > N ].
+    (Evaluator defines strictness / encoding.)
+    """
+    return PrimGate("CMP_GT_CONST", (x_reg, N, flag))
+
+def CSUB_CONST(flag: int, x_reg: Tuple[int, int], N: int) -> Gate:
+    """
+    If flag==1, do x_reg <- x_reg - N (in-place).
+    """
+    return PrimGate("CSUB_CONST", (flag, x_reg, N))
+
+def CMP_LT_NW(x_reg: Tuple[int, int], w_reg: Tuple[int, int], N: int, flag: int) -> Gate:
+    """
+    Uncompute flag by comparing whether (left) < N*w.
+    In the paper: "compute whether cx mod N < Nw via a comparison operator".
+    """
+    return PrimGate("CMP_LT_NW", (x_reg, w_reg, N, flag))
+
+
+# --- Step 3 ----------------------------------------------------
+
+def step3(N: int, x_ext_reg: Tuple[int, int], flag: int) -> Gate:
+    """
+    Step 3 (symbolic):
+      compute flag = [x_ext > N];
+      subtract N controlled by flag.
+    """
+    return CSUB_CONST(flag, x_ext_reg, N) @ CMP_GT_CONST(x_ext_reg, N, flag)
+
+
+# --- Step 4 ----------------------------------------------------
+
+def step4(N: int, x_ext_reg: Tuple[int, int], w_reg: Tuple[int, int], flag: int) -> Gate:
+    """
+    Step 4 (symbolic):
+      Uncompute the flag ancilla by computing whether (cx mod N) < Nw.
+    """
+    return CMP_LT_NW(x_ext_reg, w_reg, N, flag)
+
+
+# --- Step 5 ----------------------------------------------------
+# Use the same phase-estimation-style Step 1 but as a SUBTRACT / uncompute on w.
+# We'll make a symbolic gate that means:
+#   |x>|w> -> |x>|w - approx(((k*x mod N)/N))>
+# where k = (1 - c^{-1}) mod N and x is the *current left register* holding cx mod N.
+
+@dataclass(frozen=True)
+class CQMulFracSub(Gate):
+    """
+    Symbolic inverse/uncompute version of Step-1-style fraction loading:
+      subtract from w_reg the (approx) fraction (k*x mod N)/N.
+    """
+    k: int
+    N: int
+    eta: float
+    x_reg: Tuple[int, int]
+    w_reg: Tuple[int, int]
+
+    def __repr__(self) -> str:
+        return f"CQMulFracSub(k={self.k},N={self.N},eta={self.eta},x={self.x_reg},w={self.w_reg})"
+
+
+def step5(c: int, N: int, eta: float, x_ext_reg: Tuple[int, int], w_reg: Tuple[int, int]) -> Gate:
+    """
+    Step 5 (symbolic):
+      Subtract w' from the second register to reset it to |0...0|, where
+        w' = ((1 - c^{-1}) * (cx mod N) mod N)/N   (approx)
+    """
+    c_inv = pow(c, -1, N)          # multiplicative inverse mod N
+    k5 = (1 - c_inv) % N
+    return CQMulFracSub(k=k5, N=N, eta=eta, x_reg=x_ext_reg, w_reg=w_reg)
+
+
+
+def mod_mul_InPlace(c: int, N: int, eta: float) -> Gate:
+    """
+    The full symbolic in-place modular multiplication unitary from Algorithm 1:
+
+        |x>|0^m>|0>|0>  ->  |(c x mod N)>|0^m>|0>|0>    (up to error eta)
+
+    Returns a Gate representing: step5 @ step4 @ step3 @ step2 @ step1
+    """
+    if N <= 0:
+        raise ValueError("N must be positive")
+    if not (0 < eta < 1):
+        raise ValueError("eta must be in (0,1)")
+
+    # n-qubit x register sufficient to hold values mod N
+    n = nbits_for_modulus(N)
+    m = choose_m(n, eta)
+
+    # Layout (contiguous)
+    x_reg: Tuple[int, int] = (0, n)
+    z_reg: Tuple[int, int] = (n + 1, n + m+1)          # this is the "w"/phase-estimation register
+    flag_ancilla: int = n + m + 1                # comparison/control ancilla
+
+    # Step 1: produce |x>|0^m> -> |x>|w~> (via H, PhaseProduct, IQFT)
+    U1 = step1(c=c, N=N, x_reg=x_reg, z_reg=z_reg)
+
+    # Step 2: extend x with top_ancilla and add N*w into x (using U_cxq)
+    x_ext_reg, U2 = step2(N=N, x_reg=x_reg, w_reg=z_reg)
+
+    # Step 3: compute flag = [x_ext > N], then subtract N controlled by flag
+    U3 = step3(N=N, x_ext_reg=x_ext_reg, flag=flag_ancilla)
+
+    # Step 4: uncompute flag via comparison operator (cx mod N < Nw)
+    U4 = step4(N=N, x_ext_reg=x_ext_reg, w_reg=z_reg, flag=flag_ancilla)
+
+    # Step 5: uncompute w register back to |0^m>
+    U5 = step5(c=c, N=N, eta=eta, x_ext_reg=x_ext_reg, w_reg=z_reg)
+
+    # Full algorithm: 5 ∘ 4 ∘ 3 ∘ 2 ∘ 1
+    return U5 @ U4 @ U3 @ U2 @ U1
+
+# ----------------------------------------------------------------------------------------
+# ---------------------------------Controlled Version-------------------------------------
+# ----------------------------------------------------------------------------------------
+
+def CH(target: int, ctrl: int) -> Gate:
+    """Controlled-H on one qubit (symbolic)."""
+    return PrimGate("CH", (ctrl, target))
+
+def CH_reg(reg: Tuple[int, int], ctrl: int) -> Gate:
+    """Controlled H^{⊗m} over a contiguous register interval."""
+    lo, hi = reg
+    if lo >= hi:
+        return PrimGate("ID", None)
+    U = CH(lo, ctrl)
+    for q in range(lo + 1, hi):
+        U = CH(q, ctrl) @ U
+    return U
+
+def CQFT(reg: Tuple[int, int], ctrl: int) -> Gate:
+    """Controlled QFT on a register (symbolic primitive)."""
+    return PrimGate("CQFT", (ctrl, reg))
+
+def CIQFT(reg: Tuple[int, int], ctrl: int) -> Gate:
+    """Controlled inverse QFT on a register (symbolic primitive)."""
+    return PrimGate("CIQFT", (ctrl, reg))
+
+
+
+def step1_ctrl(c: int, N: int, x_reg: Tuple[int,int], z_reg: Tuple[int,int], ctrl: int) -> Gate:
+    phi = (2.0 * math.pi * ((c - 1) % N)) / float(N)
+    return CIQFT(z_reg, ctrl) @ CPhaseProduct(control=ctrl, phi=phi, x_reg=x_reg, z_reg=z_reg) @ CH_reg(z_reg, ctrl)
+
+def step2_ctrl(N: int, x_reg: Tuple[int,int], w_reg: Tuple[int,int], ctrl: int):
+    x_ext = (x_reg[0], x_reg[1] + 1)
+    return x_ext, C_U_cxq(ctrl=ctrl, x_reg=w_reg, z_reg=x_ext, a=N)
+
+
+# ============================================================
+# Controlled variants of the *specific* Step3/Step4 primitives
+# ============================================================
+
+def CCMP_GT_CONST(ctrl: int, x_reg: Tuple[int, int], N: int, flag: int) -> Gate:
+    """
+    Controlled compare:
+      if ctrl=1: flag ^= [ value(x_reg) > N ]
+      else: do nothing
+    """
+    return PrimGate("CCMP_GT_CONST", (ctrl, x_reg, N, flag))
+
+def CCSUB_CONST(ctrl: int, flag: int, x_reg: Tuple[int, int], N: int) -> Gate:
+    """
+    Controlled subtract:
+      if ctrl=1 and flag=1: x_reg <- x_reg - N
+      else: do nothing
+    """
+    return PrimGate("CCSUB_CONST", (ctrl, flag, x_reg, N))
+
+def CCMP_LT_NW(ctrl: int, x_reg: Tuple[int, int], w_reg: Tuple[int, int], N: int, flag: int) -> Gate:
+    """
+    Controlled uncompute-compare:
+      if ctrl=1: uncompute flag via (x_reg < N*w_reg) comparison rule used in Step 4
+      else: do nothing
+    """
+    return PrimGate("CCMP_LT_NW", (ctrl, x_reg, w_reg, N, flag))
+
+
+def step3_ctrl(N: int, x_ext_reg: Tuple[int, int], flag: int, ctrl: int) -> Gate:
+    """
+    Controlled Step 3:
+      if ctrl=1:
+        flag := [x_ext > N]
+        if flag: x_ext -= N
+      else identity
+    """
+    return CCSUB_CONST(ctrl, flag, x_ext_reg, N) @ CCMP_GT_CONST(ctrl, x_ext_reg, N, flag)
+
+
+def step4_ctrl(N: int, x_ext_reg: Tuple[int, int], w_reg: Tuple[int, int], flag: int, ctrl: int) -> Gate:
+    """
+    Controlled Step 4:
+      if ctrl=1: uncompute flag using the comparison operator
+      else identity
+    """
+    return CCMP_LT_NW(ctrl, x_ext_reg, w_reg, N, flag)
+
+
+def step5_ctrl(c: int, N: int, x_ext_reg: Tuple[int, int], w_reg: Tuple[int, int], ctrl: int) -> Gate:
+    """
+    Controlled Step 5 as the inverse-style uncompute using negative phase.
+    """
+    c_inv = pow(c, -1, N)
+    k5 = (1 - c_inv) % N
+    phi = (2.0 * math.pi * k5) / float(N)
+    return CIQFT(w_reg, ctrl) @ CPhaseProduct(control=ctrl, phi=-phi, x_reg=x_ext_reg, z_reg=w_reg) @ CH_reg(w_reg, ctrl)
+
+def mod_mul_InPlace_ctrl(ctrl: int, c: int, N: int, eta: float) -> Gate:
+    """
+    Fully controlled Algorithm-1 in-place modular multiplication:
+      ctrl=0: identity
+      ctrl=1: perform the 5 steps
+
+    Uses the same contiguous layout as your mod_mul_InPlace().
+    """
+    if N <= 0:
+        raise ValueError("N must be positive")
+    if not (0 < eta < 1):
+        raise ValueError("eta must be in (0,1)")
+
+    n = nbits_for_modulus(N)
+    m = choose_m(n, eta)
+
+    x_reg: Tuple[int, int] = (0, n)
+    w_reg: Tuple[int, int] = (n + 1, n + m + 1)
+    flag_ancilla: int = n + m + 1
+
+    U1 = step1_ctrl(c, N, eta, x_reg, w_reg, ctrl)
+    x_ext_reg, U2 = step2_ctrl(N, x_reg, w_reg, ctrl)
+    U3 = step3_ctrl(N, x_ext_reg, flag_ancilla, ctrl)
+    U4 = step4_ctrl(N, x_ext_reg, w_reg, flag_ancilla, ctrl)
+    U5 = step5_ctrl(c, N, eta, x_ext_reg, w_reg, ctrl)
+
+    return U5 @ U4 @ U3 @ U2 @ U1
+
+
+
+@dataclass(frozen=True)
+class Shifted(Gate):
+    """
+    Wrap a gate but indicate it should act on qubits shifted by an offset.
+    Evaluator can implement this by rewriting all qubit indices in tags/meta.
+
+    This avoids rewriting mod_mul_InPlace_ctrl which hard-codes
+    x_reg=(0,n), w_reg=(n+1,...), etc.
+    """
+    offset: int
+    U: Gate
+
+    def __repr__(self) -> str:
+        return f"Shifted(offset={self.offset}, U={self.U})"
+
+
+def shift_gate(U: Gate, offset: int) -> Gate:
+    """Convenience constructor."""
+    if offset == 0:
+        return U
+    return Shifted(offset=offset, U=U)
+
+
+def modexp_inplace(a: int, N: int, eta: float,
+                   x_reg: Tuple[int, int],
+                   y_reg: Tuple[int, int]) -> Gate:
+    """
+    Symbolic modular exponentiation using repeated controlled in-place modular multiplication.
+
+    Intended action (standard Shor primitive, extended by linearity):
+        |x>|y>  ->  |x>| y * a^x mod N >
+
+    Typical usage for Shor:
+        y starts as |1>, so output is |a^x mod N>.
+
+    Inputs:
+      - a, N: integers (Shor instance)
+      - eta: error target for each controlled multiplier
+      - x_reg: (lo, hi) exponent register (bits x_0..x_{t-1})
+      - y_reg: (lo, hi) value register holding numbers mod N (n qubits)
+
+    Construction:
+      For k=0..t-1:
+        c_k = a^(2^k) mod N  (classically precomputed)
+        apply controlled in-place multiply-by-c_k on y, controlled by x_k.
+    """
+    # sanity
+    n = nbits_for_modulus(N)
+    if (y_reg[1] - y_reg[0]) != n:
+        raise ValueError(f"y_reg must have length n={n} (got {y_reg[1]-y_reg[0]})")
+    t = x_reg[1] - x_reg[0]
+    if t <= 0:
+        return PrimGate("ID", None)
+    
+    # Build product of controlled multiplications:
+    U_total: Gate = PrimGate("ID", None)
+
+    for k in range(t):
+        ctrl_qubit = x_reg[0] + k
+        c_k = pow(a, 1 << k, N)  # a^(2^k) mod N
+
+        # Build the controlled in-place multiplier circuit
+        U_k_local = mod_mul_InPlace_ctrl(ctrl=ctrl_qubit, c=c_k, N=N, eta=eta)
+
+        # Shift that local layout so that its "y_reg=(0,n)" aligns to your actual y_reg.
+        # local y_reg starts at 0, actual y_reg starts at y_reg[0]
+        U_k = shift_gate(U_k_local, offset=y_reg[0])
+
+        # Compose
+        U_total = U_k @ U_total
+
+    return U_total
 
