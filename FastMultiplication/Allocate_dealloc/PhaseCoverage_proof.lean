@@ -1343,7 +1343,7 @@ theorem compileProg_preserves_phaseCoverage_go
   - alignment of ctx0.ρ with regToInt of the initial concrete state (stateToSt start_state ctx0)
 
   Output:
-  - primitive phase coverage for the compiled program starting from the initial concrete state.
+  - phase coverage for the compiled program starting from the initial concrete state.
 -/
 theorem compileProg_preserves_phaseCoverage
   {k : ℕ}

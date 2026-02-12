@@ -5,53 +5,14 @@ import math
 from typing import Any, Callable, Dict, Hashable, Protocol, runtime_checkable, Sequence, Tuple
 
 # ============================================================
-# 0) Basic scalars / labels
+# Basic scalars / labels
 # ============================================================
 
 Scalar = complex
-Basis = Hashable  # int / tuple / custom basis label
-
-
-# ============================================================
-# 1) Concrete layer: Hilbert spaces + vectors
-# ============================================================
-
-class FinHilbert(Protocol):
-    """
-    A finite-dimensional Hilbert space over C.
-    Intrinsic: dimension and inner product exist.
-    Representation is NOT fixed.
-    """
-    dim: int
-
-    def inner(self, x: "Vec", y: "Vec") -> Scalar: ...
-    def add(self, x: "Vec", y: "Vec") -> "Vec": ...
-    def smul(self, a: Scalar, x: "Vec") -> "Vec": ...
-
-
-class Vec(Protocol):
-    """
-    An element of a particular Hilbert space H.
-    Intrinsic: belongs to H.
-    """
-    def space(self) -> FinHilbert: ...
-
-    # intrinsic operations
-    def inner(self, other: "Vec") -> Scalar: ...
-    def add(self, other: "Vec") -> "Vec": ...
-    def smul(self, a: Scalar) -> "Vec": ...
-
-    # derived intrinsic notions
-    def norm2(self) -> float:
-        z = self.inner(self)
-        return float(z.real)
-
-    def is_normalized(self, atol: float = 1e-12) -> bool:
-        return abs(self.norm2() - 1.0) <= atol
-
+Basis = Hashable  
 
 # ============================================================
-# 2) Symbolic layer: states + gates (purely abstract AST)
+# Symbolic layer: states + gates 
 # ============================================================
 
 class QState:
@@ -67,7 +28,6 @@ class QState:
         return Add(self, Smul(-1, other))
 
     def __rmul__(self, a: Scalar) -> "QState":
-        # scalar * state
         return Smul(a, self)
 
 
@@ -121,11 +81,10 @@ class Gate:
             return Compose(self, other)
         return NotImplemented
 
-    # dagger / adjoint
+    # dagger 
     def __invert__(self) -> "Gate":
         return Adjoint(self)
 
-    # optional scalar multiplication of gates (purely symbolic)
     def __rmul__(self, a: Scalar) -> "Gate":
         return ScaleGate(a, self)
 
@@ -138,7 +97,6 @@ class PrimGate(Gate):
     Examples:
       PrimGate("H", 0)
       PrimGate("CNOT", (0,1))
-      PrimGate(my_backend_handle, meta)
     """
     tag: Any
     meta: Any = None
@@ -161,7 +119,7 @@ class Compose(Gate):
 
 @dataclass(frozen=True)
 class Adjoint(Gate):
-    """U†"""
+    """ U† """
     U: Gate
 
     def __repr__(self) -> str:
@@ -173,7 +131,6 @@ class ScaleGate(Gate):
     """a * U (optional; useful for global phases)"""
     a: Scalar
     U: Gate
-
     def __repr__(self) -> str:
         return f"({self.a} * {self.U})"
 
@@ -187,121 +144,12 @@ def G(tag: Any, meta: Any = None) -> Gate:
 
 
 # ============================================================
-# 3) Concrete layer: linear maps + evaluator
+# Shor's Algorithm gates
 # ============================================================
 
-@runtime_checkable
-class LinearMap(Protocol):
-    """A concrete linear operator on vectors of some Hilbert space."""
-    def apply(self, x: Vec) -> Vec: ...
-    def adjoint(self) -> "LinearMap": ...
-
-
-@dataclass(frozen=True)
-class EvalHooks:
-    """
-    You provide these two functions to give meaning to primitives.
-    Everything else is structural recursion on the AST.
-    """
-    eval_ket: Callable[[FinHilbert, Basis], Vec]
-    eval_prim_gate: Callable[[FinHilbert, Any, Any], LinearMap]
-
-
-@dataclass(frozen=True)
-class _ComposeMap:
-    """Concrete combinator: (op2 ∘ op1)."""
-    op2: LinearMap
-    op1: LinearMap
-
-    def apply(self, x: Vec) -> Vec:
-        return self.op2.apply(self.op1.apply(x))
-
-    def adjoint(self) -> LinearMap:
-        # (op2 ∘ op1)† = op1† ∘ op2†
-        return _ComposeMap(self.op1.adjoint(), self.op2.adjoint())
-
-
-@dataclass(frozen=True)
-class _ScaleMap:
-    """Concrete combinator: a * op."""
-    a: Scalar
-    op: LinearMap
-
-    def apply(self, x: Vec) -> Vec:
-        return self.op.apply(x).smul(self.a)
-
-    def adjoint(self) -> LinearMap:
-        return _ScaleMap(self.a.conjugate(), self.op.adjoint())
-
-
-class Evaluator:
-    """
-    Evaluates symbolic QState/Gate into concrete Vec/LinearMap inside a chosen FinHilbert space.
-    Primitive meanings are supplied by EvalHooks.
-    """
-    def __init__(self, hooks: EvalHooks):
-        self.hooks = hooks
-        self._gate_cache: Dict[tuple[int, int], LinearMap] = {}
-        self._state_cache: Dict[tuple[int, int], Vec] = {}
-
-    def eval_state(self, H: FinHilbert, s: QState) -> Vec:
-        key = (id(H), id(s))
-        if key in self._state_cache:
-            return self._state_cache[key]
-
-        if isinstance(s, Ket):
-            v = self.hooks.eval_ket(H, s.b)
-
-        elif isinstance(s, Add):
-            v = H.add(self.eval_state(H, s.psi), self.eval_state(H, s.phi))
-
-        elif isinstance(s, Smul):
-            v = H.smul(s.a, self.eval_state(H, s.psi))
-
-        elif isinstance(s, Apply):
-            op = self.eval_gate(H, s.U)
-            v = op.apply(self.eval_state(H, s.psi))
-
-        else:
-            raise TypeError(f"Unknown QState node: {type(s)}")
-
-        self._state_cache[key] = v
-        return v
-
-    def eval_gate(self, H: FinHilbert, U: Gate) -> LinearMap:
-        key = (id(H), id(U))
-        if key in self._gate_cache:
-            return self._gate_cache[key]
-
-        if isinstance(U, PrimGate):
-            op = self.hooks.eval_prim_gate(H, U.tag, U.meta)
-
-        elif isinstance(U, Compose):
-            op = _ComposeMap(self.eval_gate(H, U.U2), self.eval_gate(H, U.U1))
-
-        elif isinstance(U, Adjoint):
-            op = self.eval_gate(H, U.U).adjoint()
-
-        elif isinstance(U, ScaleGate):
-            op = _ScaleMap(U.a, self.eval_gate(H, U.U))
-
-        else:
-            raise TypeError(f"Unknown Gate node: {type(U)}")
-
-        self._gate_cache[key] = op
-        return op
-
-
-
-# ============================================================
-# 4) Shor's Algorithm gates
-# ============================================================
-
-def H(target: int | None = None) -> Gate:
+def H(target: int ) -> Gate:
     """
     Symbolic Hadamard gate.
-    - If target is provided: Hadamard on that qubit index (common convention).
-    - If target is None: a generic Hadamard (eval decides how to interpret).
     """
     return PrimGate("H", target)
 
@@ -338,21 +186,7 @@ def SWAP(q1: int, q2: int) -> Gate:
     """Swap two qubits."""
     return PrimGate("SWAP", (q1, q2))
 
-def PHASE(target: int, theta: float) -> Gate:
-    """Single-qubit phase rotation (convention decided by eval)."""
-    return PrimGate("PHASE", (target, theta))
 
-def CPHASE(control: int, target: int, theta: float) -> Gate:
-    """Controlled phase rotation (convention decided by eval)."""
-    return PrimGate("CPHASE", (control, target, theta))
-
-
-def CTRL(control: int, U: Gate) -> Gate:
-    """
-    Controlled-U as a single symbolic gate node.
-    (You can choose whether your evaluator expands this or supports it natively.)
-    """
-    return PrimGate("CTRL", (control, U))
 
 @dataclass(frozen=True)
 class PhaseProduct(Gate):
@@ -362,8 +196,8 @@ class PhaseProduct(Gate):
     where x and z are the integer values encoded by those registers.
     """
     phi: Scalar
-    x_reg: Tuple[int, int]   # half-open [lo, hi)
-    z_reg: Tuple[int, int]   # half-open [lo, hi)
+    x_reg: Tuple[int, int]
+    z_reg: Tuple[int, int]
 
     def __repr__(self) -> str:
         return f"PhaseProduct(phi={self.phi}, x={self.x_reg}, z={self.z_reg})"
@@ -401,7 +235,7 @@ def reg_qubits(r: Tuple[int, int]) -> range:
 
 def H_reg(r: Tuple[int, int]) -> Gate:
     """
-    Symbolic H^{⊗m} on the register r.
+    Symbolic H^{m} on the register r.
     Order doesn't matter; we just build a deterministic composition.
     """
     qs = list(reg_qubits(r))
@@ -437,37 +271,41 @@ def step1(c: int, N: int,x_reg: Tuple[int, int],z_reg:Tuple[int, int]):
     U = IQFT(z_reg) @ PhaseProduct(phi=phi, x_reg=x_reg, z_reg=z_reg) @ H_reg(z_reg)
     return U
 
+
+# Step 2:
 def step2(N: int, x_reg: Tuple[int,int], w_reg: Tuple[int,int]):
     """
     Step 2:
-      add one ancilla to the top of x, then compute |x>|w> -> |x + Nw>|w>.
+      extend x with a top ancilla bit (n -> n+1),
+      then compute |x>|w> -> |x + N*w>|w>  (mod 2^(n+1))
+    where w is stored as an m-bit fraction (integer w_int representing w_int / 2^m).
 
-    Implemented using U_cxq:
-      U_cxq(x_reg = w_reg, z_reg = x_ext_reg, a = N)
     """
-    # x_ext is x plus one extra top bit
-    x_ext = (x_reg[0], x_reg[1] + 1)
+    x_ext = (x_reg[0], x_reg[1] + 1)  # n+1 qubits
+    n1 = reg_len(x_ext)
+    m  = reg_len(w_reg)
 
-    # U_cxq takes (x_reg, z_reg, a) and does z <- z + a*x (mod 2^len(z))
-    # Here we want x_ext <- x_ext + N*w, so:
-    return x_ext, U_cxq(x_reg=w_reg, z_reg=x_ext, a=N)
+    phi = 2.0 * math.pi * N / float(1 << (m + n1))
 
+    U = IQFT(x_ext) @ PhaseProduct(phi=phi, x_reg=w_reg, z_reg=x_ext) @ QFT(x_ext)
+    return x_ext, U
 
 # ============================================================
 # Steps 3, 4, 5 for Algorithm 1
-#   Step 3: flag := [x_ext > N]; x_ext -= N controlled by flag
-#   Step 4: uncompute flag via comparison operator
-#   Step 5: uncompute w by subtracting w' = ((1 - c^{-1}) * (cx mod N) mod N) / N from w_reg
 # ============================================================
 
-# --- Comparison / controlled-sub primitives (symbolic tags) ----
 
-def CMP_GT_CONST(x_reg: Tuple[int, int], N: int, flag: int) -> Gate:
+from dataclasses import dataclass
+import math
+from typing import Any, Tuple
+
+# --- Comparison / controlled-sub primitives ----
+
+def CMP_GE_CONST(x_reg: Tuple[int, int], N: int, flag: int) -> Gate:
     """
-    flag ^= [ value(x_reg) > N ].
-    (Evaluator defines strictness / encoding.)
+    flag ^= [ value(x_reg) >= N ].
     """
-    return PrimGate("CMP_GT_CONST", (x_reg, N, flag))
+    return PrimGate("CMP_GE_CONST", (x_reg, N, flag))
 
 def CSUB_CONST(flag: int, x_reg: Tuple[int, int], N: int) -> Gate:
     """
@@ -477,209 +315,66 @@ def CSUB_CONST(flag: int, x_reg: Tuple[int, int], N: int) -> Gate:
 
 def CMP_LT_NW(x_reg: Tuple[int, int], w_reg: Tuple[int, int], N: int, flag: int) -> Gate:
     """
-    Uncompute flag by comparing whether (left) < N*w.
-    In the paper: "compute whether cx mod N < Nw via a comparison operator".
+    Uncompute flag by comparing whether (left) < N*w,
+    where w_reg stores an m-bit fraction as an integer w_int and N*w means floor(N*w_int/2^m).
     """
     return PrimGate("CMP_LT_NW", (x_reg, w_reg, N, flag))
 
 
-# --- Step 3 ----------------------------------------------------
+# --- Step 3 -------------------------------------------------
 
 def step3(N: int, x_ext_reg: Tuple[int, int], flag: int) -> Gate:
     """
-    Step 3 (symbolic):
-      compute flag = [x_ext > N];
-      subtract N controlled by flag.
+    Step 3:
+      flag := [x_ext >= N]
+      if flag: x_ext -= N
     """
-    return CSUB_CONST(flag, x_ext_reg, N) @ CMP_GT_CONST(x_ext_reg, N, flag)
+    return CSUB_CONST(flag, x_ext_reg, N) @ CMP_GE_CONST(x_ext_reg, N, flag)
 
 
 # --- Step 4 ----------------------------------------------------
 
 def step4(N: int, x_ext_reg: Tuple[int, int], w_reg: Tuple[int, int], flag: int) -> Gate:
     """
-    Step 4 (symbolic):
-      Uncompute the flag ancilla by computing whether (cx mod N) < Nw.
+    Step 4:
+      uncompute flag via the paper’s comparison operator
+      (semantics live in evaluator).
     """
     return CMP_LT_NW(x_ext_reg, w_reg, N, flag)
 
 
-# --- Step 5 ----------------------------------------------------
-# Use the same phase-estimation-style Step 1 but as a SUBTRACT / uncompute on w.
-# We'll make a symbolic gate that means:
-#   |x>|w> -> |x>|w - approx(((k*x mod N)/N))>
-# where k = (1 - c^{-1}) mod N and x is the *current left register* holding cx mod N.
 
-@dataclass(frozen=True)
-class CQMulFracSub(Gate):
+# Step 5: MUST be the inverse unitary of a Step-1-style frac loader
+
+def frac_load(k: int, N: int, x_reg: Tuple[int,int], w_reg: Tuple[int,int]) -> Gate:
     """
-    Symbolic inverse/uncompute version of Step-1-style fraction loading:
-      subtract from w_reg the (approx) fraction (k*x mod N)/N.
+    Same structure as Step 1:
+      |x>|0^m> -> |x>|~w>
+    where ~w approximates ((k*x mod N)/N) as an m-bit fraction.
     """
-    k: int
-    N: int
-    eta: float
-    x_reg: Tuple[int, int]
-    w_reg: Tuple[int, int]
+    phi = (2.0 * math.pi * (k % N)) / float(N)
+    return IQFT(w_reg) @ PhaseProduct(phi=phi, x_reg=x_reg, z_reg=w_reg) @ H_reg(w_reg)
 
-    def __repr__(self) -> str:
-        return f"CQMulFracSub(k={self.k},N={self.N},eta={self.eta},x={self.x_reg},w={self.w_reg})"
-
-
-def step5(c: int, N: int, eta: float, x_ext_reg: Tuple[int, int], w_reg: Tuple[int, int]) -> Gate:
+def step5(c: int, N: int, eta: float, x_ext_reg: Tuple[int,int], w_reg: Tuple[int,int]) -> Gate:
     """
-    Step 5 (symbolic):
-      Subtract w' from the second register to reset it to |0...0|, where
-        w' = ((1 - c^{-1}) * (cx mod N) mod N)/N   (approx)
-    """
-    c_inv = pow(c, -1, N)          # multiplicative inverse mod N
-    k5 = (1 - c_inv) % N
-    return CQMulFracSub(k=k5, N=N, eta=eta, x_reg=x_ext_reg, w_reg=w_reg)
-
-
-
-def mod_mul_InPlace(c: int, N: int, eta: float) -> Gate:
-    """
-    The full symbolic in-place modular multiplication unitary from Algorithm 1:
-
-        |x>|0^m>|0>|0>  ->  |(c x mod N)>|0^m>|0>|0>    (up to error eta)
-
-    Returns a Gate representing: step5 @ step4 @ step3 @ step2 @ step1
-    """
-    if N <= 0:
-        raise ValueError("N must be positive")
-    if not (0 < eta < 1):
-        raise ValueError("eta must be in (0,1)")
-
-    # n-qubit x register sufficient to hold values mod N
-    n = nbits_for_modulus(N)
-    m = choose_m(n, eta)
-
-    # Layout (contiguous)
-    x_reg: Tuple[int, int] = (0, n)
-    z_reg: Tuple[int, int] = (n + 1, n + m+1)          # this is the "w"/phase-estimation register
-    flag_ancilla: int = n + m + 1                # comparison/control ancilla
-
-    # Step 1: produce |x>|0^m> -> |x>|w~> (via H, PhaseProduct, IQFT)
-    U1 = step1(c=c, N=N, x_reg=x_reg, z_reg=z_reg)
-
-    # Step 2: extend x with top_ancilla and add N*w into x (using U_cxq)
-    x_ext_reg, U2 = step2(N=N, x_reg=x_reg, w_reg=z_reg)
-
-    # Step 3: compute flag = [x_ext > N], then subtract N controlled by flag
-    U3 = step3(N=N, x_ext_reg=x_ext_reg, flag=flag_ancilla)
-
-    # Step 4: uncompute flag via comparison operator (cx mod N < Nw)
-    U4 = step4(N=N, x_ext_reg=x_ext_reg, w_reg=z_reg, flag=flag_ancilla)
-
-    # Step 5: uncompute w register back to |0^m>
-    U5 = step5(c=c, N=N, eta=eta, x_ext_reg=x_ext_reg, w_reg=z_reg)
-
-    # Full algorithm: 5 ∘ 4 ∘ 3 ∘ 2 ∘ 1
-    return U5 @ U4 @ U3 @ U2 @ U1
-
-# ----------------------------------------------------------------------------------------
-# ---------------------------------Controlled Version-------------------------------------
-# ----------------------------------------------------------------------------------------
-
-def CH(target: int, ctrl: int) -> Gate:
-    """Controlled-H on one qubit (symbolic)."""
-    return PrimGate("CH", (ctrl, target))
-
-def CH_reg(reg: Tuple[int, int], ctrl: int) -> Gate:
-    """Controlled H^{⊗m} over a contiguous register interval."""
-    lo, hi = reg
-    if lo >= hi:
-        return PrimGate("ID", None)
-    U = CH(lo, ctrl)
-    for q in range(lo + 1, hi):
-        U = CH(q, ctrl) @ U
-    return U
-
-def CQFT(reg: Tuple[int, int], ctrl: int) -> Gate:
-    """Controlled QFT on a register (symbolic primitive)."""
-    return PrimGate("CQFT", (ctrl, reg))
-
-def CIQFT(reg: Tuple[int, int], ctrl: int) -> Gate:
-    """Controlled inverse QFT on a register (symbolic primitive)."""
-    return PrimGate("CIQFT", (ctrl, reg))
-
-
-
-def step1_ctrl(c: int, N: int, x_reg: Tuple[int,int], z_reg: Tuple[int,int], ctrl: int) -> Gate:
-    phi = (2.0 * math.pi * ((c - 1) % N)) / float(N)
-    return CIQFT(z_reg, ctrl) @ CPhaseProduct(control=ctrl, phi=phi, x_reg=x_reg, z_reg=z_reg) @ CH_reg(z_reg, ctrl)
-
-def step2_ctrl(N: int, x_reg: Tuple[int,int], w_reg: Tuple[int,int], ctrl: int):
-    x_ext = (x_reg[0], x_reg[1] + 1)
-    return x_ext, C_U_cxq(ctrl=ctrl, x_reg=w_reg, z_reg=x_ext, a=N)
-
-
-# ============================================================
-# Controlled variants of the *specific* Step3/Step4 primitives
-# ============================================================
-
-def CCMP_GT_CONST(ctrl: int, x_reg: Tuple[int, int], N: int, flag: int) -> Gate:
-    """
-    Controlled compare:
-      if ctrl=1: flag ^= [ value(x_reg) > N ]
-      else: do nothing
-    """
-    return PrimGate("CCMP_GT_CONST", (ctrl, x_reg, N, flag))
-
-def CCSUB_CONST(ctrl: int, flag: int, x_reg: Tuple[int, int], N: int) -> Gate:
-    """
-    Controlled subtract:
-      if ctrl=1 and flag=1: x_reg <- x_reg - N
-      else: do nothing
-    """
-    return PrimGate("CCSUB_CONST", (ctrl, flag, x_reg, N))
-
-def CCMP_LT_NW(ctrl: int, x_reg: Tuple[int, int], w_reg: Tuple[int, int], N: int, flag: int) -> Gate:
-    """
-    Controlled uncompute-compare:
-      if ctrl=1: uncompute flag via (x_reg < N*w_reg) comparison rule used in Step 4
-      else: do nothing
-    """
-    return PrimGate("CCMP_LT_NW", (ctrl, x_reg, w_reg, N, flag))
-
-
-def step3_ctrl(N: int, x_ext_reg: Tuple[int, int], flag: int, ctrl: int) -> Gate:
-    """
-    Controlled Step 3:
-      if ctrl=1:
-        flag := [x_ext > N]
-        if flag: x_ext -= N
-      else identity
-    """
-    return CCSUB_CONST(ctrl, flag, x_ext_reg, N) @ CCMP_GT_CONST(ctrl, x_ext_reg, N, flag)
-
-
-def step4_ctrl(N: int, x_ext_reg: Tuple[int, int], w_reg: Tuple[int, int], flag: int, ctrl: int) -> Gate:
-    """
-    Controlled Step 4:
-      if ctrl=1: uncompute flag using the comparison operator
-      else identity
-    """
-    return CCMP_LT_NW(ctrl, x_ext_reg, w_reg, N, flag)
-
-
-def step5_ctrl(c: int, N: int, x_ext_reg: Tuple[int, int], w_reg: Tuple[int, int], ctrl: int) -> Gate:
-    """
-    Controlled Step 5 as the inverse-style uncompute using negative phase.
+    Step 5:
+      uncompute w by applying the adjoint of the frac loader with k = (1 - c^{-1}) mod N
     """
     c_inv = pow(c, -1, N)
     k5 = (1 - c_inv) % N
-    phi = (2.0 * math.pi * k5) / float(N)
-    return CIQFT(w_reg, ctrl) @ CPhaseProduct(control=ctrl, phi=-phi, x_reg=x_ext_reg, z_reg=w_reg) @ CH_reg(w_reg, ctrl)
+    return ~frac_load(k5, N, x_ext_reg, w_reg)
 
-def mod_mul_InPlace_ctrl(ctrl: int, c: int, N: int, eta: float) -> Gate:
+
+
+
+# ============================================================
+# Algorithm 1: In-place modular multiplication
+# ============================================================
+
+def mod_mul_InPlace(c: int, N: int, eta: float) -> Gate:
     """
-    Fully controlled Algorithm-1 in-place modular multiplication:
-      ctrl=0: identity
-      ctrl=1: perform the 5 steps
-
-    Uses the same contiguous layout as your mod_mul_InPlace().
+    In-place classical-quantum modular multiplication :
+        |x>|0^m>|0>|0>  ->  |(c x mod N)>|0^m>|0>|0>    (up to error eta)
     """
     if N <= 0:
         raise ValueError("N must be positive")
@@ -693,7 +388,120 @@ def mod_mul_InPlace_ctrl(ctrl: int, c: int, N: int, eta: float) -> Gate:
     w_reg: Tuple[int, int] = (n + 1, n + m + 1)
     flag_ancilla: int = n + m + 1
 
-    U1 = step1_ctrl(c, N, eta, x_reg, w_reg, ctrl)
+    # Step 1: load w = ((c-1)x mod N)/N into w_reg
+    U1 = step1(c=c, N=N, x_reg=x_reg, z_reg=w_reg)
+
+    # Step 2: extend x and add N*w into x 
+    x_ext_reg, U2 = step2(N=N, x_reg=x_reg, w_reg=w_reg)
+
+    # Step 3: flag := [x_ext >= N]; x_ext -= N if flag
+    U3 = step3(N=N, x_ext_reg=x_ext_reg, flag=flag_ancilla)
+
+    # Step 4: uncompute flag
+    U4 = step4(N=N, x_ext_reg=x_ext_reg, w_reg=w_reg, flag=flag_ancilla)
+
+    # Step 5: uncompute w_reg back to |0^m>
+    U5 = step5(c=c, N=N, eta=eta, x_ext_reg=x_ext_reg, w_reg=w_reg)
+
+    return U5 @ U4 @ U3 @ U2 @ U1
+
+
+# ----------------------------------------------------------------------------------------
+# ---------------------------------Controlled Version ------------------------------------
+# ----------------------------------------------------------------------------------------
+
+def CH(target: int, ctrl: int) -> Gate:
+    return PrimGate("CH", (ctrl, target))
+
+def CH_reg(reg: Tuple[int, int], ctrl: int) -> Gate:
+    lo, hi = reg
+    if lo >= hi:
+        return PrimGate("ID", None)
+    U = CH(lo, ctrl)
+    for q in range(lo + 1, hi):
+        U = CH(q, ctrl) @ U
+    return U
+
+def CQFT(reg: Tuple[int, int], ctrl: int) -> Gate:
+    return PrimGate("CQFT", (ctrl, reg))
+
+def CIQFT(reg: Tuple[int, int], ctrl: int) -> Gate:
+    return PrimGate("CIQFT", (ctrl, reg))
+
+
+def step1_ctrl(c: int, N: int, x_reg: Tuple[int,int], w_reg: Tuple[int,int], ctrl: int) -> Gate:
+    phi = (2.0 * math.pi * ((c - 1) % N)) / float(N)
+    return CIQFT(w_reg, ctrl) @ CPhaseProduct(control=ctrl, phi=phi, x_reg=x_reg, z_reg=w_reg) @ CH_reg(w_reg, ctrl)
+
+
+def step2_ctrl(N: int, x_reg: Tuple[int,int], w_reg: Tuple[int,int], ctrl: int):
+    """
+    Controlled Step 2 (matches fixed Step 2 structure).
+    """
+    x_ext = (x_reg[0], x_reg[1] + 1)
+    n1 = reg_len(x_ext)
+    m  = reg_len(w_reg)
+
+    phi = 2.0 * math.pi * N / float(1 << (m + n1))
+
+    U = CIQFT(x_ext, ctrl) @ CPhaseProduct(control=ctrl, phi=phi, x_reg=w_reg, z_reg=x_ext) @ CQFT(x_ext, ctrl)
+    return x_ext, U
+
+
+# Controlled compare/sub primitives
+def CCMP_GE_CONST(ctrl: int, x_reg: Tuple[int, int], N: int, flag: int) -> Gate:
+    """
+    if ctrl=1: flag ^= [value(x_reg) >= N]
+    """
+    return PrimGate("CCMP_GE_CONST", (ctrl, x_reg, N, flag))
+
+def CCSUB_CONST(ctrl: int, flag: int, x_reg: Tuple[int, int], N: int) -> Gate:
+    """
+    if ctrl=1 and flag=1: x_reg <- x_reg - N
+    """
+    return PrimGate("CCSUB_CONST", (ctrl, flag, x_reg, N))
+
+def CCMP_LT_NW(ctrl: int, x_reg: Tuple[int, int], w_reg: Tuple[int, int], N: int, flag: int) -> Gate:
+    return PrimGate("CCMP_LT_NW", (ctrl, x_reg, w_reg, N, flag))
+
+
+def step3_ctrl(N: int, x_ext_reg: Tuple[int, int], flag: int, ctrl: int) -> Gate:
+    return CCSUB_CONST(ctrl, flag, x_ext_reg, N) @ CCMP_GE_CONST(ctrl, x_ext_reg, N, flag)
+
+def step4_ctrl(N: int, x_ext_reg: Tuple[int, int], w_reg: Tuple[int, int], flag: int, ctrl: int) -> Gate:
+    return CCMP_LT_NW(ctrl, x_ext_reg, w_reg, N, flag)
+
+
+def frac_load_ctrl(k: int, N: int, x_reg: Tuple[int,int], w_reg: Tuple[int,int], ctrl: int) -> Gate:
+    phi = (2.0 * math.pi * (k % N)) / float(N)
+    return CIQFT(w_reg, ctrl) @ CPhaseProduct(control=ctrl, phi=phi, x_reg=x_reg, z_reg=w_reg) @ CH_reg(w_reg, ctrl)
+
+def step5_ctrl(c: int, N: int, eta: float, x_ext_reg: Tuple[int, int], w_reg: Tuple[int, int], ctrl: int) -> Gate:
+    """
+    Controlled Step 5: adjoint of frac_load_ctrl(k5,...).
+    """
+    c_inv = pow(c, -1, N)
+    k5 = (1 - c_inv) % N
+    return ~frac_load_ctrl(k5, N, x_ext_reg, w_reg, ctrl)
+
+
+def mod_mul_InPlace_ctrl(ctrl: int, c: int, N: int, eta: float) -> Gate:
+    """
+    Controlled Algorithm-1 in-place modular multiplication:
+    """
+    if N <= 0:
+        raise ValueError("N must be positive")
+    if not (0 < eta < 1):
+        raise ValueError("eta must be in (0,1)")
+
+    n = nbits_for_modulus(N)
+    m = choose_m(n, eta)
+
+    x_reg: Tuple[int, int] = (0, n)
+    w_reg: Tuple[int, int] = (n + 1, n + m + 1)
+    flag_ancilla: int = n + m + 1
+
+    U1 = step1_ctrl(c, N, x_reg, w_reg, ctrl)
     x_ext_reg, U2 = step2_ctrl(N, x_reg, w_reg, ctrl)
     U3 = step3_ctrl(N, x_ext_reg, flag_ancilla, ctrl)
     U4 = step4_ctrl(N, x_ext_reg, w_reg, flag_ancilla, ctrl)
@@ -702,77 +510,45 @@ def mod_mul_InPlace_ctrl(ctrl: int, c: int, N: int, eta: float) -> Gate:
     return U5 @ U4 @ U3 @ U2 @ U1
 
 
+# ----------------------------------------------------------------------------------------
+# Shift wrapper 
+# ----------------------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class Shifted(Gate):
-    """
-    Wrap a gate but indicate it should act on qubits shifted by an offset.
-    Evaluator can implement this by rewriting all qubit indices in tags/meta.
-
-    This avoids rewriting mod_mul_InPlace_ctrl which hard-codes
-    x_reg=(0,n), w_reg=(n+1,...), etc.
-    """
     offset: int
     U: Gate
-
     def __repr__(self) -> str:
         return f"Shifted(offset={self.offset}, U={self.U})"
 
-
 def shift_gate(U: Gate, offset: int) -> Gate:
-    """Convenience constructor."""
     if offset == 0:
         return U
     return Shifted(offset=offset, U=U)
 
 
+# ----------------------------------------------------------------------------------------
+# Modular exponentiation using controlled in-place mod-mul
+# ----------------------------------------------------------------------------------------
+
 def modexp_inplace(a: int, N: int, eta: float,
                    x_reg: Tuple[int, int],
                    y_reg: Tuple[int, int]) -> Gate:
-    """
-    Symbolic modular exponentiation using repeated controlled in-place modular multiplication.
-
-    Intended action (standard Shor primitive, extended by linearity):
-        |x>|y>  ->  |x>| y * a^x mod N >
-
-    Typical usage for Shor:
-        y starts as |1>, so output is |a^x mod N>.
-
-    Inputs:
-      - a, N: integers (Shor instance)
-      - eta: error target for each controlled multiplier
-      - x_reg: (lo, hi) exponent register (bits x_0..x_{t-1})
-      - y_reg: (lo, hi) value register holding numbers mod N (n qubits)
-
-    Construction:
-      For k=0..t-1:
-        c_k = a^(2^k) mod N  (classically precomputed)
-        apply controlled in-place multiply-by-c_k on y, controlled by x_k.
-    """
-    # sanity
     n = nbits_for_modulus(N)
     if (y_reg[1] - y_reg[0]) != n:
         raise ValueError(f"y_reg must have length n={n} (got {y_reg[1]-y_reg[0]})")
     t = x_reg[1] - x_reg[0]
     if t <= 0:
         return PrimGate("ID", None)
-    
-    # Build product of controlled multiplications:
+
     U_total: Gate = PrimGate("ID", None)
 
     for k in range(t):
         ctrl_qubit = x_reg[0] + k
-        c_k = pow(a, 1 << k, N)  # a^(2^k) mod N
+        c_k = pow(a, 1 << k, N)
 
-        # Build the controlled in-place multiplier circuit
         U_k_local = mod_mul_InPlace_ctrl(ctrl=ctrl_qubit, c=c_k, N=N, eta=eta)
-
-        # Shift that local layout so that its "y_reg=(0,n)" aligns to your actual y_reg.
-        # local y_reg starts at 0, actual y_reg starts at y_reg[0]
         U_k = shift_gate(U_k_local, offset=y_reg[0])
-
-        # Compose
         U_total = U_k @ U_total
 
     return U_total
-
