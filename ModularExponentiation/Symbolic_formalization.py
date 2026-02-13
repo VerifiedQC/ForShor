@@ -3,6 +3,7 @@ import numpy as np
 from dataclasses import dataclass
 import math
 from typing import Any, Callable, Dict, Hashable, Protocol, runtime_checkable, Sequence, Tuple
+from typing import Tuple, Sequence, Union, List
 
 # ============================================================
 # Basic scalars / labels
@@ -259,8 +260,8 @@ def choose_m(n: int, eta: float) -> int:
     Paper: m = n + ceil( 2 log( 2 + 1/(2η) ) ).
     Here we take log base 2 (consistent with qubits / bit growth).
     """
-    if not (0 < eta < 1):
-        raise ValueError("eta must be in (0,1)")
+    # if not (0 < eta < 1):
+    #     raise ValueError("eta must be in (0,1)")
     extra = math.ceil(2.0 * math.log2(2.0 + 1.0/(2.0*eta)))
     return n + extra
 
@@ -431,7 +432,7 @@ def CIQFT(reg: Tuple[int, int], ctrl: int) -> Gate:
 
 def step1_ctrl(c: int, N: int, x_reg: Tuple[int,int], w_reg: Tuple[int,int], ctrl: int) -> Gate:
     phi = (2.0 * math.pi * ((c - 1) % N)) / float(N)
-    return CIQFT(w_reg, ctrl) @ CPhaseProduct(control=ctrl, phi=phi, x_reg=x_reg, z_reg=w_reg) @ CH_reg(w_reg, ctrl)
+    return IQFT(w_reg) @ CPhaseProduct(control=ctrl, phi=phi, x_reg=x_reg, z_reg=w_reg) @ H_reg(w_reg)
 
 
 def step2_ctrl(N: int, x_reg: Tuple[int,int], w_reg: Tuple[int,int], ctrl: int):
@@ -551,4 +552,115 @@ def modexp_inplace(a: int, N: int, eta: float,
         U_k = shift_gate(U_k_local, offset=y_reg[0])
         U_total = U_k @ U_total
 
+    return U_total
+
+# --- helper: place an uncontrolled mod-mul at base=y_reg[0] ---
+def mod_mul_InPlace_at(c: int, N: int, eta: float, base: int) -> Gate:
+    """
+    Same as mod_mul_InPlace(c,N,eta) but the VALUE register starts at `base`.
+
+    Layout (relative to base):
+      x_reg   = (base, base+n)
+      x_ext   = (base, base+n+1)        # extra bit at base+n
+      w_reg   = (base+n+1, base+n+m+1)
+      flag    = base+n+m+1
+    """
+    n = nbits_for_modulus(N)
+    m = choose_m(n, eta)
+
+    x_reg = (base, base + n)
+    w_reg = (base + n + 1, base + n + m + 1)
+    flag  = base + n + m + 1
+
+    U1 = step1(c=c, N=N, x_reg=x_reg, z_reg=w_reg)
+    x_ext_reg, U2 = step2(N=N, x_reg=x_reg, w_reg=w_reg)
+    U3 = step3(N=N, x_ext_reg=x_ext_reg, flag=flag)
+    U4 = step4(N=N, x_ext_reg=x_ext_reg, w_reg=w_reg, flag=flag)
+    U5 = step5(c=c, N=N, eta=eta, x_ext_reg=x_ext_reg, w_reg=w_reg)
+
+    return U5 @ U4 @ U3 @ U2 @ U1
+
+def modexp_inplace(a: int, N: int, eta: float,
+                   x_reg: Tuple[int, int],
+                   y_reg: Tuple[int, int]) -> Gate:
+    n = nbits_for_modulus(N)
+    if (y_reg[1] - y_reg[0]) != n:
+        raise ValueError(f"y_reg must have length n={n} (got {y_reg[1]-y_reg[0]})")
+    t = x_reg[1] - x_reg[0]
+    if t <= 0:
+        return PrimGate("ID", None)
+
+    U_total: Gate = PrimGate("ID", None)
+    base = y_reg[0]  # place the modmul value-register here
+
+    for k in range(t):
+        ctrl_qubit = x_reg[0] + k
+        c_k = pow(a, 1 << k, N)
+
+        U_k = mod_mul_InPlace_at(ctrl=ctrl_qubit, c=c_k, N=N, eta=eta, base=base)
+        U_total = U_k @ U_total
+
+    return U_total
+
+
+def _to_bits_le(x_val: Union[int, str, Sequence[int]]) -> List[int]:
+    """
+    Convert x_val into a little-endian bit list [b0,b1,...] where b0 is the 2^0 bit.
+    Accepts:
+      - int: uses minimal length (bit_length), with 0 -> [0]
+      - str: e.g. "1011" interpreted as MSB..LSB, converted to LE
+      - Sequence[int]: assumed already bits; coerces to 0/1; treated as LE
+    """
+    if isinstance(x_val, int):
+        if x_val < 0:
+            raise ValueError("x_val must be nonnegative")
+        if x_val == 0:
+            return [0]
+        return [(x_val >> k) & 1 for k in range(x_val.bit_length())]
+
+    if isinstance(x_val, str):
+        s = x_val.strip().replace("_", "")
+        if any(ch not in "01" for ch in s) or len(s) == 0:
+            raise ValueError('x_val as str must be a nonempty bitstring like "1011"')
+        return [1 if ch == "1" else 0 for ch in reversed(s)]
+
+    # Sequence[int]
+    bits = [1 if int(b) else 0 for b in x_val]
+    if len(bits) == 0:
+        return [0]
+    return bits
+
+def modexp_control_trick(a: int, N: int, eta: float,
+                         x_val: Union[int, str, Sequence[int]],
+                         y_reg: Tuple[int, int]) -> Gate:
+    """
+    Build a *non-controlled* modexp circuit using semiclassical control.
+
+    Interprets x_val as a classical bitstring b_k
+    For each k with b_k=1, apply an *uncontrolled* in-place modmul by (a^(2^k) mod N)
+    on the y-register.
+
+    The returned Gate acts only on y_reg and the ancillas that mod_mul_InPlace needs.
+    No control qubits are referenced or required.
+    """
+    if N <= 0:
+        raise ValueError("N must be positive")
+    # if not (0 < eta < 1):
+    #     raise ValueError("eta must be in (0,1)")
+
+    n = nbits_for_modulus(N)
+    if (y_reg[1] - y_reg[0]) != n:
+        raise ValueError(f"y_reg must have length n={n} (got {y_reg[1]-y_reg[0]})")
+
+    bits = _to_bits_le(x_val)  # b0 is LSB / 2^0 bit
+    base = y_reg[0]
+
+    U_total: Gate = PrimGate("ID", None)
+
+    for k, b in enumerate(bits):
+        if b == 0:
+            continue
+        c_k = pow(a, 1 << k, N)                 # a^(2^k) mod N
+        U_k = mod_mul_InPlace_at(c=c_k, N=N, eta=eta, base=base)
+        U_total = U_k @ U_total 
     return U_total

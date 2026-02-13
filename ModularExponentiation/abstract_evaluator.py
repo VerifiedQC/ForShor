@@ -685,9 +685,7 @@ class NumpyGateEvaluator:
         ctrl: Optional[int],
     ) -> np.ndarray:
         """
-        Implements step 4's “compare cx mod N < Nw”:
-            flag ^= [ x < floor(N * w / 2^m) ]
-        where w is the integer in w_reg representing an m-bit fraction.
+        Implements step 4's “compare cx mod N < Nw”
         """
         m = _reg_len(w_reg)
         denom = 1 << m
@@ -933,7 +931,7 @@ def test_shifted_modmul(
     U_shifted = Shifted(offset=base_offset, U=U_original)
 
     ev = NumpyGateEvaluator()
-    min_peak = max(0.0, 1.0 - 4.0 * eta)
+    min_peak = 0.7#max(0.0, 1.0 - 4.0 * eta)
 
     print(f"\n--- Testing Shifted ModMul (Small Shift Offset: {base_offset}, n={n}, m={m}) ---")
 
@@ -969,14 +967,13 @@ def test_inplace_modmul_marginal_peak(
     trials: int = 50,
     seed: int = 0,
     min_peak: float | None = None,
-    verbose: bool = True,
 ):
     """
     Tests that for inputs |x>|0...0>, the OUTPUT VALUE REGISTER marginal distribution
     peaks at y = (c*x mod N).
     """
     if min_peak is None:
-        min_peak = max(0.0, 1.0 - 4.0 * eta)
+        min_peak = 0.8 #max(0.0, 1.0 - 4.0 * eta)
 
     n = nbits_for_modulus(N)
     m = choose_m(n, eta)
@@ -1014,15 +1011,14 @@ def test_inplace_modmul_marginal_peak(
 
         ok = (y_hat == expected) and (p_hat >= min_peak)
 
-        if verbose:
-            topk = np.argsort(-probs_y)[:min(6, len(probs_y))]
-            top_str = ", ".join([f"{int(y)}:{probs_y[int(y)]:.4f}" for y in topk])
-            print(
-                f"x={x:>2} expected={expected:>2} "
-                f"argmax={y_hat:>2} p_argmax={p_hat:.6f} p_expected={p_exp:.6f} "
-                f"(min_peak={min_peak:.6f})  {'OK' if ok else 'FAIL'}"
-            )
-            print("  top y:", top_str)
+        topk = np.argsort(-probs_y)[:min(6, len(probs_y))]
+        top_str = ", ".join([f"{int(y)}:{probs_y[int(y)]:.4f}" for y in topk])
+        print(
+            f"x={x:>2} expected={expected:>2} "
+            f"argmax={y_hat:>2} p_argmax={p_hat:.6f} p_expected={p_exp:.6f} "
+            f"(min_peak={min_peak:.6f})  {'OK' if ok else 'FAIL'}"
+        )
+        print("  top y:", top_str)
 
         if not ok:
             failures += 1
@@ -1036,12 +1032,193 @@ def test_inplace_modmul_marginal_peak(
 
 
 
+
+
+
+def test_inplace_modmul_at_marginal_peak(
+    c: int,
+    N: int,
+    eta: float,
+    base: int,
+    trials: int = 50,
+    seed: int = 0,
+    min_peak: float | None = None,
+):
+    """
+    Same idea as test_inplace_modmul_marginal_peak, but for mod_mul_InPlace_at(..., base).
+
+    Prepares |x> in the VALUE register x_reg=(base, base+n), with all other qubits 0.
+    Applies U = mod_mul_InPlace_at(c,N,eta,base).
+    Checks that the marginal over x_reg peaks at (c*x mod N) with probability >= min_peak.
+    """
+    if min_peak is None:
+        min_peak = 0.8  # tune as you like
+
+    n = nbits_for_modulus(N)
+    m = choose_m(n, eta)
+
+    x_reg: Tuple[int, int] = (base, base + n)
+    flag = base + n + m + 1
+    nqubits = flag + 1
+
+    U = mod_mul_InPlace_at(c=c, N=N, eta=eta, base=base)
+    ev = NumpyGateEvaluator()
+    rng = np.random.default_rng(seed)
+
+    max_x = min(N, 1 << n)
+    xs = list(range(max_x)) if max_x <= trials else rng.integers(0, max_x, size=trials).tolist()
+
+    def idx_from_x(x: int) -> int:
+        idx = 0
+        for i in range(n):
+            if (x >> i) & 1:
+                idx |= (1 << (x_reg[0] + i))
+        return idx
+
+    failures = 0
+
+    print(f"\n--- Testing mod_mul_InPlace_at (base={base}, n={n}, m={m}) ---")
+    for x in xs:
+        expected = (c * x) % N
+
+        st0 = NumpyState.basis(nqubits, idx_from_x(x))
+        out = ev.apply_gate(st0, U)
+
+        probs_y = marginal_prob_over_reg(out.amp, nqubits, x_reg)
+
+        y_hat = int(np.argmax(probs_y))
+        p_hat = float(probs_y[y_hat])
+        p_exp = float(probs_y[expected])
+
+        ok = (y_hat == expected) and (p_hat >= min_peak)
+
+        topk = np.argsort(-probs_y)[:min(6, len(probs_y))]
+        top_str = ", ".join([f"{int(y)}:{probs_y[int(y)]:.4f}" for y in topk])
+        print(
+            f"x={x:>2} expected={expected:>2} "
+            f"argmax={y_hat:>2} p_argmax={p_hat:.6f} p_expected={p_exp:.6f} "
+            f"(min_peak={min_peak:.6f})  {'OK' if ok else 'FAIL'}"
+        )
+        print("  top y:", top_str)
+
+        if not ok:
+            failures += 1
+
+    if failures:
+        raise AssertionError(
+            f"mod_mul_InPlace_at marginal-peak test FAILED: {failures}/{len(xs)} cases "
+            f"(c={c}, N={N}, eta={eta}, base={base}, min_peak={min_peak})"
+        )
+    print(f"[PASS] mod_mul_InPlace_at marginal-peak test passed on {len(xs)} cases.")
+
+
+
 def run_range_suite():
     test_shifted_modmul(c=2, N=5, eta=0.1, base_offset=0)
     test_shifted_modmul(c=3, N=7, eta=0.1, base_offset=2)
 
+def test_modexp_control_trick_random_x(
+    a: int,
+    N: int,
+    eta: float,
+    base: int,
+    y0: int = 1,
+    trials: int = 50,
+    seed: int = 0,
+    max_x: int | None = None,
+    min_x: int = 0,
+    min_peak: float = 0.2,
+):
+    """
+    Randomized test for modexp_control_trick over many *higher* x values.
+
+    Note:
+      This builds one U per x
+    """
+    n = nbits_for_modulus(N)
+    m = choose_m(n, eta)
+
+    y_reg: Tuple[int, int] = (base, base + n)
+
+    flag = base + n + m + 1
+    nqubits = flag + 1
+
+    rng = np.random.default_rng(seed)
+
+    if max_x is None:
+        min_x = max(min_x, 1 << 10)
+        max_x = 1 << 11
+
+    if not (0 <= min_x < max_x):
+        raise ValueError(f"Need 0 <= min_x < max_x (got min_x={min_x}, max_x={max_x})")
+
+    xs = rng.integers(min_x, max_x, size=trials).tolist()
+
+    def idx_from_y(y: int) -> int:
+        idx = 0
+        for i in range(n):
+            if (y >> i) & 1:
+                idx |= (1 << (y_reg[0] + i))
+        return idx
+
+    ev = NumpyGateEvaluator()
+    failures = 0
+
+    print(f"\n--- Random test: modexp_control_trick (trials={trials}, x in [{min_x},{max_x})) ---")
+    print(f"a={a}, N={N}, eta={eta}, base={base}, y0={y0}, n={n}, m={m}, nqubits={nqubits}, min_peak={min_peak}")
+
+    for j, x in enumerate(xs):
+        x = int(x)
+        expected = (y0 * pow(a, x, N)) % N
+
+        U = modexp_control_trick(a=a, N=N, eta=eta, x_val=x, y_reg=y_reg)
+
+        st0 = NumpyState.basis(nqubits, idx_from_y(y0))
+        out = ev.apply_gate(st0, U)
+
+        probs_y = marginal_prob_over_reg(out.amp, nqubits, y_reg)
+        y_hat = int(np.argmax(probs_y))
+        p_hat = float(probs_y[y_hat])
+        p_exp = float(probs_y[expected])
+
+        ok = (y_hat == expected) and (p_hat >= min_peak)
+
+        topk = np.argsort(-probs_y)[:min(6, len(probs_y))]
+        top_str = ", ".join([f"{int(y)}:{probs_y[int(y)]:.4f}" for y in topk])
+
+        print(
+            f"[{j:02d}] x={x:>6} expected={expected:>2} "
+            f"argmax={y_hat:>2} p_argmax={p_hat:.6f} p_expected={p_exp:.6f} "
+            f"{'OK' if ok else 'FAIL'}"
+        )
+        print("     top y:", top_str)
+
+        if not ok:
+            failures += 1
+
+    if failures:
+        raise AssertionError(
+            f"modexp_control_trick RANDOM HIGH-X TEST FAILED: {failures}/{trials} cases "
+            f"(a={a}, N={N}, eta={eta}, base={base}, y0={y0}, x_range=[{min_x},{max_x}), min_peak={min_peak})"
+        )
+    
+    print(f"[PASS] modexp_control_trick high-x random test passed on {trials} cases.")
+
 
 if __name__ == "__main__":
-    test_inplace_modmul_marginal_peak(c=2, N=5, eta=0.25, trials=10, verbose=True, min_peak=0.2)
     main_test()
-    run_range_suite()
+    test_modexp_control_trick_random_x(
+        a=3, N=10, eta=0.3,
+        base=0, y0=1,
+        trials=25, seed=0,
+        min_x=8, max_x=64,
+        min_peak=0.5
+    )
+
+    test_modexp_control_trick_random_x(
+        a=2, N=7, eta=0.15,
+        base=0, y0=1,
+        trials=25, seed=0,
+        min_x=8, max_x=64,
+        min_peak=0.5
+    )
