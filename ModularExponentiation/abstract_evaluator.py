@@ -1117,6 +1117,53 @@ def run_range_suite():
     test_shifted_modmul(c=2, N=5, eta=0.1, base_offset=0)
     test_shifted_modmul(c=3, N=7, eta=0.1, base_offset=2)
 
+def popcount(x: int) -> int:
+    # Python 3.8+: int has bit_count()
+    return x.bit_count()
+
+def _to_bits_le(x_val: Union[int, str, Sequence[int]]) -> List[int]:
+    """
+    Convert x_val into a little-endian bit list [b0,b1,...] where b0 is the 2^0 bit.
+    Accepts:
+      - int: uses minimal length (bit_length), with 0 -> [0]
+      - str: e.g. "1011" interpreted as MSB..LSB, converted to LE
+      - Sequence[int]: assumed already bits; coerces to 0/1; treated as LE
+    """
+    if isinstance(x_val, int):
+        if x_val < 0:
+            raise ValueError("x_val must be nonnegative")
+        if x_val == 0:
+            return [0]
+        return [(x_val >> k) & 1 for k in range(x_val.bit_length())]
+
+    if isinstance(x_val, str):
+        s = x_val.strip().replace("_", "")
+        if any(ch not in "01" for ch in s) or len(s) == 0:
+            raise ValueError('x_val as str must be a nonempty bitstring like "1011"')
+        return [1 if ch == "1" else 0 for ch in reversed(s)]
+
+    # Sequence[int]
+    bits = [1 if int(b) else 0 for b in x_val]
+    if len(bits) == 0:
+        return [0]
+    return bits 
+
+
+def nontrivial_factors_for_x(a: int, N: int, x: int):
+    """
+    Return list of (k, c_k) for each 1-bit of x (little-endian bit index k),
+    and count how many are nontrivial (c_k != 1 mod N).
+    """
+    bits = _to_bits_le(x)   # your helper: little-endian [b0,b1,...]
+    factors = []
+    for k, b in enumerate(bits):
+        if b == 0:
+            continue
+        c_k = pow(a, 1 << k, N)
+        factors.append((k, c_k))
+    nontriv = [(k, c) for (k, c) in factors if c != 1]
+    return factors, nontriv
+
 def test_modexp_control_trick_random_x(
     a: int,
     N: int,
@@ -1128,12 +1175,10 @@ def test_modexp_control_trick_random_x(
     max_x: int | None = None,
     min_x: int = 0,
     min_peak: float = 0.2,
+    debug_factors: bool = True,   # <--- NEW
 ):
     """
     Randomized test for modexp_control_trick over many *higher* x values.
-
-    Note:
-      This builds one U per x
     """
     n = nbits_for_modulus(N)
     m = choose_m(n, eta)
@@ -1164,12 +1209,21 @@ def test_modexp_control_trick_random_x(
     ev = NumpyGateEvaluator()
     failures = 0
 
+    # NEW: failure correlation stats
+    fail_nontriv_counts = []
+    ok_nontriv_counts = []
+
     print(f"\n--- Random test: modexp_control_trick (trials={trials}, x in [{min_x},{max_x})) ---")
     print(f"a={a}, N={N}, eta={eta}, base={base}, y0={y0}, n={n}, m={m}, nqubits={nqubits}, min_peak={min_peak}")
 
     for j, x in enumerate(xs):
         x = int(x)
         expected = (y0 * pow(a, x, N)) % N
+
+        # NEW: compute how many nontrivial multiplications we apply
+        factors, nontriv = nontrivial_factors_for_x(a, N, x)
+        nontriv_count = len(nontriv)
+        ones = popcount(x)
 
         U = modexp_control_trick(a=a, N=N, eta=eta, x_val=x, y_reg=y_reg)
 
@@ -1186,39 +1240,73 @@ def test_modexp_control_trick_random_x(
         topk = np.argsort(-probs_y)[:min(6, len(probs_y))]
         top_str = ", ".join([f"{int(y)}:{probs_y[int(y)]:.4f}" for y in topk])
 
+        # NEW: print nontrivial info inline
         print(
-            f"[{j:02d}] x={x:>6} expected={expected:>2} "
+            f"[{j:02d}] x={x:>6} ones={ones} nontriv={nontriv_count} expected={expected:>2} "
             f"argmax={y_hat:>2} p_argmax={p_hat:.6f} p_expected={p_exp:.6f} "
             f"{'OK' if ok else 'FAIL'}"
         )
         print("     top y:", top_str)
 
+        if debug_factors:
+            # show the actual multipliers used
+            # example: k:ck list and also which are nontrivial
+            fac_str = ", ".join([f"{k}:{c}" for (k, c) in factors]) if factors else "(none)"
+            nontriv_str = ", ".join([f"{k}:{c}" for (k, c) in nontriv]) if nontriv else "(none)"
+            print("     factors (k:c_k):", fac_str)
+            print("     nontriv (k:c_k):", nontriv_str)
+
         if not ok:
             failures += 1
+            fail_nontriv_counts.append(nontriv_count)
+        else:
+            ok_nontriv_counts.append(nontriv_count)
+
+    # NEW: summary correlation
+    if ok_nontriv_counts:
+        print(f"\nSummary: OK cases nontriv_count avg={sum(ok_nontriv_counts)/len(ok_nontriv_counts):.2f}, "
+              f"max={max(ok_nontriv_counts)}")
+    if fail_nontriv_counts:
+        print(f"Summary: FAIL cases nontriv_count avg={sum(fail_nontriv_counts)/len(fail_nontriv_counts):.2f}, "
+              f"min={min(fail_nontriv_counts)}")
 
     if failures:
         raise AssertionError(
             f"modexp_control_trick RANDOM HIGH-X TEST FAILED: {failures}/{trials} cases "
             f"(a={a}, N={N}, eta={eta}, base={base}, y0={y0}, x_range=[{min_x},{max_x}), min_peak={min_peak})"
         )
-    
+
     print(f"[PASS] modexp_control_trick high-x random test passed on {trials} cases.")
 
 
 if __name__ == "__main__":
     main_test()
+
+    # test_modexp_control_trick_random_x(
+    #     a=3, N=10, eta=0.3,
+    #     base=0, y0=1,
+    #     trials=25, seed=0,
+    #     min_x=8, max_x=64,
+    #     min_peak=0.5,
+    #     debug_factors=True,
+    # )
+
     test_modexp_control_trick_random_x(
-        a=3, N=10, eta=0.3,
+        a=5, N=7, eta=0.03,
         base=0, y0=1,
         trials=25, seed=0,
         min_x=8, max_x=64,
-        min_peak=0.5
+        min_peak=0.5,
+        debug_factors=True,
     )
 
     test_modexp_control_trick_random_x(
-        a=2, N=7, eta=0.15,
+        a=5, N=7, eta=0.3,
         base=0, y0=1,
         trials=25, seed=0,
         min_x=8, max_x=64,
-        min_peak=0.5
+        min_peak=0.5,
+        debug_factors=True,
     )
+
+    
