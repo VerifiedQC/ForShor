@@ -6,16 +6,157 @@ import Mathlib.Tactic
 universe u
 namespace Shor
 
+/-! ## Registers and encodings -/
+
 structure Reg where
   lo : ℕ
   hi : ℕ
+
+def Disjoint (a b : Reg) : Prop := a.hi ≤ b.lo ∨ b.hi ≤ a.lo
+
+/-- Register length (#qubits) as a Nat. -/
+def regSize (r : Reg) : ℕ := r.hi - r.lo
 
 class RegEncoding (Basis : Type u) where
   toNat    : Reg → Basis → ℕ
   writeNat : Reg → ℕ → Basis → Basis
   bit      : ℕ → Basis → Bool
+
   toNat_writeNat : ∀ r v b, toNat r (writeNat r v b) = v
   writeNat_toNat : ∀ r b, writeNat r (toNat r b) b = b
+
+  -- ext / locality
+  basis_ext : ∀ b1 b2 : Basis, (∀ q, bit q b1 = bit q b2) → b1 = b2
+
+  bit_writeNat_in  :
+    ∀ r v b1 b2 q, r.lo ≤ q → q < r.hi →
+      bit q (writeNat r v b1) = bit q (writeNat r v b2)
+
+  bit_writeNat_out :
+    ∀ r v b q, q < r.lo ∨ r.hi ≤ q →
+      bit q (writeNat r v b) = bit q b
+
+  toNat_left_write_right :
+    ∀ (left right : Reg) (_h : Disjoint left right) (b : Basis) (yR : ℕ),
+      toNat left (writeNat right yR b) = toNat left b
+
+  toNat_right_write_left :
+    ∀ (left right : Reg) (_h : Disjoint left right) (b : Basis) (yL : ℕ),
+      toNat right (writeNat left yL b) = toNat right b
+
+  writeNat_split :
+    writeNat r (k1 + A * k0) b
+    =
+    writeNat right k0 (writeNat left k1 b)
+
+  toNat_split :
+    toNat r b
+    =
+    toNat left b * (2^(regSize right)) + toNat right b
+
+/-! ## Encoding lemma: disjoint writes commute -/
+
+lemma writeNat_comm_of_disjoint
+  {Basis : Type u} [RegEncoding Basis]
+  (left right : Reg) (hdisj : Disjoint left right)
+  (yL yR : ℕ) (b : Basis) :
+  RegEncoding.writeNat left yL (RegEncoding.writeNat right yR b)
+    =
+  RegEncoding.writeNat right yR (RegEncoding.writeNat left yL b) := by
+  classical
+  apply RegEncoding.basis_ext
+  intro q
+  by_cases hqL : left.lo ≤ q ∧ q < left.hi
+  ·
+    have : q < right.lo ∨ right.hi ≤ q := by
+      cases hdisj with
+      | inl h =>
+          left
+          have : q < right.lo := lt_of_lt_of_le hqL.2 h
+          exact this
+      | inr h =>
+          right
+          have : right.hi ≤ q := le_trans h hqL.1
+          exact this
+    have h_outR₁ :
+        RegEncoding.bit q (RegEncoding.writeNat right yR b) = RegEncoding.bit q b :=
+      RegEncoding.bit_writeNat_out (r := right) (v := yR) (b := b) (q := q) this
+    have h_outR₂ :
+        RegEncoding.bit q (RegEncoding.writeNat right yR (RegEncoding.writeNat left yL b))
+          = RegEncoding.bit q (RegEncoding.writeNat left yL b) :=
+      RegEncoding.bit_writeNat_out (r := right) (v := yR) (b := RegEncoding.writeNat left yL b) (q := q) this
+
+    have h_inL :
+      RegEncoding.bit q (RegEncoding.writeNat left yL (RegEncoding.writeNat right yR b))
+        =
+      RegEncoding.bit q (RegEncoding.writeNat left yL b) :=
+      RegEncoding.bit_writeNat_in (r := left) (v := yL)
+        (b1 := RegEncoding.writeNat right yR b) (b2 := b)
+        (q := q) hqL.1 hqL.2
+
+    calc
+      RegEncoding.bit q (RegEncoding.writeNat left yL (RegEncoding.writeNat right yR b))
+          = RegEncoding.bit q (RegEncoding.writeNat left yL b) := h_inL
+      _   = RegEncoding.bit q (RegEncoding.writeNat right yR (RegEncoding.writeNat left yL b)) := by
+              symm
+              exact h_outR₂
+  ·
+    have h_outL : q < left.lo ∨ left.hi ≤ q := by
+      have : ¬(left.lo ≤ q ∧ q < left.hi) := hqL
+      exact (not_and_or.mp this) |> (fun h => by
+        cases h with
+        | inl h1 => exact Or.inl (lt_of_not_ge h1)
+        | inr h2 => exact Or.inr (le_of_not_gt h2))
+
+    have outL₁ :
+        RegEncoding.bit q (RegEncoding.writeNat left yL (RegEncoding.writeNat right yR b))
+          =
+        RegEncoding.bit q (RegEncoding.writeNat right yR b) :=
+      RegEncoding.bit_writeNat_out (r := left) (v := yL)
+        (b := RegEncoding.writeNat right yR b) (q := q) h_outL
+
+    have outL₂ :
+        RegEncoding.bit q (RegEncoding.writeNat left yL b) = RegEncoding.bit q b :=
+      RegEncoding.bit_writeNat_out (r := left) (v := yL) (b := b) (q := q) h_outL
+
+    by_cases hqR : right.lo ≤ q ∧ q < right.hi
+    ·
+      have inR :
+        RegEncoding.bit q (RegEncoding.writeNat right yR b)
+          =
+        RegEncoding.bit q (RegEncoding.writeNat right yR (RegEncoding.writeNat left yL b)) :=
+        RegEncoding.bit_writeNat_in (r := right) (v := yR)
+          (b1 := b) (b2 := RegEncoding.writeNat left yL b)
+          (q := q) hqR.1 hqR.2
+      calc
+        RegEncoding.bit q (RegEncoding.writeNat left yL (RegEncoding.writeNat right yR b))
+            = RegEncoding.bit q (RegEncoding.writeNat right yR b) := outL₁
+        _   = RegEncoding.bit q (RegEncoding.writeNat right yR (RegEncoding.writeNat left yL b)) := inR
+    ·
+      have h_outR : q < right.lo ∨ right.hi ≤ q := by
+        have : ¬(right.lo ≤ q ∧ q < right.hi) := hqR
+        exact (not_and_or.mp this) |> (fun h => by
+          cases h with
+          | inl h1 => exact Or.inl (lt_of_not_ge h1)
+          | inr h2 => exact Or.inr (le_of_not_gt h2))
+      have outR₁ :
+        RegEncoding.bit q (RegEncoding.writeNat right yR b) = RegEncoding.bit q b :=
+        RegEncoding.bit_writeNat_out (r := right) (v := yR) (b := b) (q := q) h_outR
+      have outR₂ :
+        RegEncoding.bit q (RegEncoding.writeNat right yR (RegEncoding.writeNat left yL b))
+          = RegEncoding.bit q (RegEncoding.writeNat left yL b) := by
+        simpa using
+          (RegEncoding.bit_writeNat_out (r := right) (v := yR)
+            (b := RegEncoding.writeNat left yL b) (q := q) h_outR)
+      calc
+        RegEncoding.bit q (RegEncoding.writeNat left yL (RegEncoding.writeNat right yR b))
+            = RegEncoding.bit q (RegEncoding.writeNat right yR b) := outL₁
+        _   = RegEncoding.bit q b := outR₁
+        _   = RegEncoding.bit q (RegEncoding.writeNat left yL b) := by simp [outL₂]
+        _   = RegEncoding.bit q (RegEncoding.writeNat right yR (RegEncoding.writeNat left yL b)) := by
+              simp[outR₂]
+
+/-! ## Register notation helpers -/
 
 namespace Reg
 variable {Basis : Type u} [RegEncoding Basis]
@@ -23,9 +164,8 @@ def toInt (r : Reg) (b : Basis) : ℕ := RegEncoding.toNat r b
 def writeInt (r : Reg) (v : ℕ) (b : Basis) : Basis := RegEncoding.writeNat r v b
 end Reg
 
-/--
-Gate language.
--/
+/-! ## Gate language -/
+
 inductive Gate : Type
   | id : Gate
   | seq : Gate → Gate → Gate
@@ -42,9 +182,8 @@ infixr:80 " ;; " => Gate.seq
 prefix:90 "†" => Gate.adj
 end Gate
 
-/--
-Abstract quantum semantics.
--/
+/-! ## Abstract quantum semantics -/
+
 class QSemantics where
   Basis : Type u
   State : Type u
@@ -66,9 +205,59 @@ class QSemantics where
 
   hsub : ∀ U ψ φ, eval U (ψ - φ) = eval U ψ - eval U φ
 
+  state_induction :
+  ∀ (P : State → Prop),
+    P 0 →
+    (∀ ψ φ, P ψ → P φ → P (ψ + φ)) →
+    (∀ (a : ℂ) ψ, P ψ → P (a • ψ)) →
+    (∀ b : Basis, P (ket b)) →
+    ∀ ψ, P ψ
+
+  tensor : State → State → State
+
+  tensor_add_left  : ∀ ψ₁ ψ₂ φ, tensor (ψ₁ + ψ₂) φ = tensor ψ₁ φ + tensor ψ₂ φ
+  tensor_add_right : ∀ ψ φ₁ φ₂, tensor ψ (φ₁ + φ₂) = tensor ψ φ₁ + tensor ψ φ₂
+  tensor_smul_left : ∀ (a : ℂ) ψ φ, tensor (a • ψ) φ = a • tensor ψ φ
+  tensor_smul_right: ∀ (a : ℂ) ψ φ, tensor ψ (a • φ) = a • tensor ψ φ
+
+  inner_tensor :
+    ∀ ψ₁ ψ₂ φ₁ φ₂,
+      inner ℂ (tensor ψ₁ φ₁) (tensor ψ₂ φ₂)
+        = (inner ℂ ψ₁ ψ₂) * (inner ℂ φ₁ φ₂)
+
 open QSemantics
 attribute [instance] QSemantics.instNormed
 attribute [instance] QSemantics.instIP
+
+/-! ## Eval linearity over sums -/
+
+lemma eval_sum {α : Type} [QSemantics] (U : Gate) (s : Finset α) (f : α → QSemantics.State) :
+    QSemantics.eval U (∑ a ∈ s, f a) = ∑ a ∈ s, QSemantics.eval U (f a) := by
+  classical
+  refine Finset.induction_on s ?h0 ?hs
+  · simp [QSemantics.eval_zero]
+  · intro a s ha hs
+    simp [Finset.sum_insert ha, QSemantics.eval_add, hs]
+
+lemma eval_sum_univ {α : Type} [QSemantics] [Fintype α] (U : Gate) (f : α → State) :
+    eval U (∑ a : α, f a) = ∑ a : α, eval U (f a) := by
+  have:= (eval_sum U (Finset.univ) f)
+  aesop
+
+/-! ## Encoding transport lemmas specialized to QSemantics -/
+
+lemma toNat_left_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
+  (left right : Reg) (h : Disjoint left right) (b : QSemantics.Basis) (yR : ℕ) :
+  RegEncoding.toNat left (RegEncoding.writeNat right yR b)
+    = RegEncoding.toNat left b := by
+  simpa using (RegEncoding.toNat_left_write_right (left := left) (right := right) (_h := h) (b := b) (yR := yR))
+
+lemma toNat_right_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
+  (b : Basis) (yR : ℕ) :
+  RegEncoding.toNat right (RegEncoding.writeNat right yR b) = yR := by
+  simpa using (RegEncoding.toNat_writeNat right yR b)
+
+/-! ## Norm / overlap inequalities -/
 
 /-- A convenient lemma: `eval U` is an isometry if it preserves inner products. -/
 lemma eval_isometry
@@ -145,7 +334,6 @@ lemma dist_le_sqrt_two_mul_overlap
         (1 - Complex.re (inner ℂ ψ φ)) ≤ ‖(1 : ℂ) - inner ℂ ψ φ‖ := by
       have h : Complex.re ((1 : ℂ) - inner ℂ ψ φ) ≤ ‖(1 : ℂ) - inner ℂ ψ φ‖ := by
         simpa using (Complex.re_le_norm ((1 : ℂ) - inner ℂ ψ φ))
-      -- expand `re(1 - z) = 1 - re(z)`
       simpa [Complex.sub_re, Complex.one_re] using h
 
     calc
@@ -161,7 +349,8 @@ lemma dist_le_sqrt_two_mul_overlap
   apply Real.le_sqrt_of_sq_le
   exact hmain
 
-/-- A Spec is relative to a given semantics instance. -/
+/-! ## Specification interface -/
+
 class Spec (qs : QSemantics) [RegEncoding qs.Basis] where
   idealModMul     : (c N : ℕ) → (x : Reg) → Gate
   idealCtrlModMul : (c N : ℕ) → (x : Reg) → (ctrl : ℕ) → Gate
@@ -169,16 +358,7 @@ class Spec (qs : QSemantics) [RegEncoding qs.Basis] where
 open QSemantics
 open Gate
 
-
-
-
-------------------------------------------------------------------------------------
---Defining Modular multiplication and exponentiation
-------------------------------------------------------------------------------------
-
-
-/-- Register length (#qubits) as a Nat. -/
-def regSize (r : Reg) : ℕ := r.hi - r.lo
+/-! ## Modular multiplication and exponentiation circuits -/
 
 def IQFT (r : Reg) : Gate := †(Gate.QFT r)
 def extendHi (r : Reg) : Reg := ⟨r.lo, r.hi + 1⟩
@@ -224,9 +404,6 @@ noncomputable def frac_load (k N : ℕ) (ctrl:ℕ) (x_reg w_reg : Reg) : Gate :=
 noncomputable def step5 (k5 N : ℕ) (ctrl:ℕ) (x_ext w_reg : Reg) : Gate :=
   †(frac_load k5 N ctrl x_ext w_reg)
 
-/--
-In-place mod-mul circuit
--/
 noncomputable def CmodMulInPlaceCore
   (c N k5 : ℕ) (ctrl: ℕ) (x_reg w_reg : Reg) (flag : ℕ)  : Gate :=
   let U1 : Gate := step1 c N ctrl x_reg w_reg
@@ -236,7 +413,6 @@ noncomputable def CmodMulInPlaceCore
   let U5 : Gate := step5 k5 N ctrl x_ext w_reg
   U5 ;; U4 ;; U3 ;; U2 ;; U1
 
-/-- Final function for in-place mod mul -/
 noncomputable def CmodMulInPlace
   (base n m c N k5 ctrl: ℕ) : Gate :=
   let x_reg : Reg := ⟨base, base + n⟩
@@ -244,14 +420,10 @@ noncomputable def CmodMulInPlace
   let flag  : ℕ := base + n + m + 1
   CmodMulInPlaceCore c N ctrl k5 x_reg w_reg flag
 
-
-
 class ModMul (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] where
   η : ℝ
   η_nonneg : 0 ≤ η
-
   k5 : ℕ → ℕ → ℕ
-
   theorem1_ctrl_gen :
     ∃ K : ℝ, 0 ≤ K ∧
       ∀ (c N : ℕ) (x_reg w_reg : Reg) (flag ctrl : ℕ) (ψ : qs.State),
@@ -260,12 +432,8 @@ class ModMul (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] where
             (qs.eval (Spec.idealCtrlModMul (qs := qs) c N x_reg ctrl) ψ)‖
         ≤ K * η
 
-
-
--- helper: number of control qubits = x.hi - x.lo
 def tbits (x : Reg) : ℕ := x.hi - x.lo
 
-/-- Ideal modexp as a sequence of ideal controlled modmuls. -/
 def modExpIdealSteps (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs]
     (a N : ℕ) (x y : Reg) : ℕ → ℕ → Gate
   | _q, 0     => Gate.id
@@ -278,7 +446,6 @@ def modExpIdeal' (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs]
     (a N : ℕ) (x y : Reg) : Gate :=
   modExpIdealSteps qs a N x y x.lo (tbits x)
 
-/-- Approximate modexp uses the *concrete* in-place circuit each step. -/
 noncomputable def modExpApproxSteps (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] [ModMul qs]
     (a N : ℕ) (x y w_reg : Reg) (flag : ℕ) : ℕ → ℕ → Gate
   | _q, 0     => Gate.id
@@ -293,6 +460,8 @@ noncomputable def modExpApprox' (qs : QSemantics) [RegEncoding qs.Basis] [Spec q
   modExpApproxSteps qs a N x y w_reg flag x.lo (tbits x)
 
 noncomputable def stepErr (K η : ℝ) : ℝ := Real.sqrt (2 * (K * η))
+
+/-! ## Modexp error propagation theorems -/
 
 lemma ctrlMul_step_dist_bound
   (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] [ModMul qs] :
@@ -379,7 +548,6 @@ by
         modExpIdealSteps (qs := qs) a N x y q (n+1) = I ;; RI := by
         simp [modExpIdealSteps, hk, hc, hI, hRI]
 
-      -- states *after the head gate*
       set ψA0 : qs.State := qs.eval A ψ
       set ψI0 : qs.State := qs.eval I ψ
 
@@ -389,13 +557,11 @@ by
       have hψI0_unit : ‖ψI0‖ = 1 := by
         simpa [ψI0, hψ] using (eval_norm_preserved (qs := qs) I ψ)
 
-      -- head error: A vs I on the same input ψ
       have h_head :
         ‖ψA0 - ψI0‖ ≤ stepErr K (ModMul.η (qs := qs)) := by
         have := hstep c N y w_reg flag q ψ hψ
         simpa [ψA0, ψI0, hA, hI] using this
 
-      -- IH applied to the *same* input ψI0 (important!)
       have h_tail :
         ‖ qs.eval RA ψI0 - qs.eval RI ψI0‖
           ≤ (n : ℝ) * stepErr K (ModMul.η (qs := qs)) := by
@@ -411,7 +577,6 @@ by
       have tri :
         ‖qs.eval RA ψA0 - qs.eval RI ψI0‖
           ≤ ‖qs.eval RA ψA0 - qs.eval RA ψI0‖ + ‖qs.eval RA ψI0 - qs.eval RI ψI0‖ := by
-        -- rewrite the LHS as ‖(RA ψA0 - RA ψI0) + (RA ψI0 - RI ψI0)‖
         have hdecomp :
           qs.eval RA ψA0 - qs.eval RI ψI0
             = (qs.eval RA ψA0 - qs.eval RA ψI0) + (qs.eval RA ψI0 - qs.eval RI ψI0) := by
@@ -439,7 +604,6 @@ by
             _ ≤ stepErr K (ModMul.η (qs := qs)) + (n : ℝ) * stepErr K (ModMul.η (qs := qs)) := by
                   gcongr
             _ = (n+1 : ℝ) * stepErr K (ModMul.η (qs := qs)) := by ring
-        -- rewrite goals to the sequenced forms
         simpa [hApprox, hIdeal, ψA0, ψI0, eval_seq_simp] using this
       aesop
 
@@ -502,6 +666,5 @@ by
     le_trans hov_le_dist hdist'
 
   simpa [stepErr] using this
-
 
 end Shor
