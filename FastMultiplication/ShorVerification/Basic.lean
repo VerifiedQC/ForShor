@@ -17,6 +17,8 @@ def Disjoint (a b : Reg) : Prop := a.hi ≤ b.lo ∨ b.hi ≤ a.lo
 /-- Register length (#qubits) as a Nat. -/
 def regSize (r : Reg) : ℕ := r.hi - r.lo
 
+def ASize (r : Reg) : ℕ := 2^(regSize r)
+
 class RegEncoding (Basis : Type u) where
   toNat    : Reg → Basis → ℕ
   writeNat : Reg → ℕ → Basis → Basis
@@ -45,11 +47,15 @@ class RegEncoding (Basis : Type u) where
       toNat right (writeNat left yL b) = toNat right b
 
   writeNat_split :
-    writeNat r (k1 + A * k0) b
+    let left : Reg := ⟨r.lo, r.lo + m⟩
+    let right: Reg := ⟨r.lo + m, r.hi⟩
+    writeNat r (k1 + (ASize left) * k0) b
     =
     writeNat right k0 (writeNat left k1 b)
 
   toNat_split :
+    let left : Reg := ⟨r.lo, r.lo + m⟩
+    let right: Reg := ⟨r.lo + m, r.hi⟩
     toNat r b
     =
     toNat left b * (2^(regSize right)) + toNat right b
@@ -176,6 +182,11 @@ inductive Gate : Type
   | PhaseProd  : (phi : Real) → (x z : Reg) → Gate
   | CPhaseProd : (ctrl : ℕ) → (phi : Real) → (x z : Reg) → Gate
   | Prim : String → List ℕ → Gate
+  | ShiftL    : (r : Reg) → (n : ℕ) → Gate
+  | ShiftR    : (r : Reg) → (n : ℕ) → Gate
+  | Negate    : (r : Reg) → Gate
+  | AddScaled : (dst src : Reg) → (negSrc : Bool) → (shift : ℕ) → Gate
+
 
 namespace Gate
 infixr:80 " ;; " => Gate.seq
@@ -224,6 +235,7 @@ class QSemantics where
     ∀ ψ₁ ψ₂ φ₁ φ₂,
       inner ℂ (tensor ψ₁ φ₁) (tensor ψ₂ φ₂)
         = (inner ℂ ψ₁ ψ₂) * (inner ℂ φ₁ φ₂)
+
 
 open QSemantics
 attribute [instance] QSemantics.instNormed

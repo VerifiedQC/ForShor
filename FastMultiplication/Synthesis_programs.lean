@@ -96,8 +96,7 @@ def addConstAux {k : Nat} (dst src : Fin k) (neg' : Bool) :
     rest
 termination_by n _ => n
 decreasing_by
-  simp_wf
-  exact Nat.div_lt_self (Nat.succ_pos _) (by decide)
+  omega
 
 /-- Top-level constant adder: emit ops for `dst := dst + c • src`. -/
 def addConstFrom {k : Nat} (dst src : Fin k) (c : Int) : Prog k :=
