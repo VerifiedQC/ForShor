@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Basic
-import FastMultiplication.one_reg_synth_proof_2
+import FastMultiplication.Table_Blocks
 import Mathlib.Data.Finset.Basic
 
 namespace Shor
@@ -528,100 +528,6 @@ noncomputable def compileOpsToGate
     k hk phi phaseCoeff (initLayoutState x z k) annOps
 
 
-def annotatedPointBlock
-  (k : ℕ)
-  (hk : 0 < k)
-  (ptsF : Fin (q k) → Point)
-  (l : Fin (q k)) : List (AnnotatedOp k) :=
-  annotatePhaseTermsAux k l.1 (opsForPointWithProduct hk (ptsF l))
-
-
-def updateLayoutStateList {k : ℕ}
-  (st : LayoutState k) (ops : List (AnnotatedOp k)) : LayoutState k :=
-  ops.foldl (fun st a => updateLayoutState st a.op) st
-
--- def nextStateAfterPoint
---   (k : ℕ) (hk: 0 < k)
---   (st : LayoutState k)
---   (l : Fin (q k))
---   (pt : Point) : LayoutState k :=
---   updateLayoutStateList st
---     (annotatePhaseTermsAux k l.1 (opsForPointWithProduct hk pt))
-
-def annotatedPointBlockFromList
-  (k : ℕ)
-  (hk0 : 0 < k)
-  (n : ℕ)
-  (pt : Point) : List (AnnotatedOp k) :=
-  annotatePhaseTermsAux k n (opsForPointWithProduct hk0 pt)
-
--- /-- The layout state after one point-block. -/
--- def nextStateAfterPointBlock
---   (k : ℕ)
---   (hk0 : 0 < k)
---   (st : LayoutState k)
---   (n : ℕ)
---   (pt : Point) : LayoutState k :=
---   updateLayoutStateList st (annotatedPointBlockFromList k hk0 n pt)
-
-/-- Compile exactly one point-block from the current layout state. -/
-noncomputable def compilePointBlock
-  (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
-  (phaseCoeff : Fin (q k) → ℚ)
-  (st : LayoutState k)
-  (n : ℕ)
-  (pt : Point) : Gate :=
-  compileAnnotatedOpsToGateAux
-    k hk phi phaseCoeff st
-    (annotatedPointBlockFromList k (by omega) n pt)
-
-/--
-Recursive point-structured compiler.
-
-This is the version whose recursion matches the syntax of `pts`.
--/
-noncomputable def compilePointsAux
-  (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
-  (phaseCoeff : Fin (q k) → ℚ) :
-  LayoutState k → ℕ → List Point → Gate
-  | _st, _, [] => Gate.id
-  | st, n, pt :: pts =>
-      let block :=
-        compilePointBlock k hk phi phaseCoeff st n pt
-      -- let st' :=
-      --   nextStateAfterPointBlock k (by omega) st n pt
-      Gate.seq block (compilePointsAux k hk phi phaseCoeff st (n + 1) pts)
-
-
-/-- Top-level point-structured compiler for `genOpsWithProduct`. -/
-noncomputable def compileGenOpsToGate
-  (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
-  (x z : Reg)
-  (phaseCoeff : Fin (q k) → ℚ)
-  (pts : List Point) : Gate :=
-  compilePointsAux
-    k hk phi phaseCoeff
-    (initLayoutState x z k) 0 pts
-
-
-
-/-! =========================================================
-    Section 10: Small register arithmetic lemmas
-========================================================= -/
-
-/-- Removing the leftmost qubit decreases register size by one. -/
-@[simp] lemma regSize_rest (r : Reg) :
-    regSize (⟨r.lo + 1, r.hi⟩ : Reg) = regSize r - 1 := by
-  simp [regSize, Nat.sub_sub]
-
-/-! =========================================================
-    Section 11: Semantics for low-level gates
-========================================================= -/
-
-
 
 
 def tcMod (r : Reg) (z : ℤ) : ℕ :=
@@ -665,75 +571,6 @@ class GateSemanticsFacts (qs : QSemantics) [RegEncoding qs.Basis] : Type where
       (Complex.exp (phi * Complex.I *
           ((RegEncoding.toNat x b : ℂ) * (RegEncoding.toNat z b : ℂ)))) •
         qs.ket b
-
-  eval_ShiftL_pair_ket :
-    ∀ {k : ℕ} (st : LayoutState k) (i : Fin k) (n : ℕ) (b : qs.Basis),
-      ∃ b' : qs.Basis,
-        qs.eval
-          (Gate.seq
-            (Gate.ShiftL (st.xslot i) n)
-            (Gate.ShiftL (st.zslot i) n))
-          (qs.ket b)
-          = qs.ket b' ∧
-        RegEncoding.toNat ((applyShiftL st i n).xslot i) b'
-          =
-        RegEncoding.toNat (st.xslot i) b * 2^n ∧
-        RegEncoding.toNat ((applyShiftL st i n).zslot i) b'
-          =
-        RegEncoding.toNat (st.zslot i) b * 2^n
-
-  eval_ShiftR_pair_ket :
-    ∀ {k : ℕ} (st : LayoutState k) (i : Fin k) (n : ℕ) (b : qs.Basis),
-      RegEncoding.toNat (st.xslot i) b % 2^n = 0 →
-      RegEncoding.toNat (st.zslot i) b % 2^n = 0 →
-      ∃ b' : qs.Basis,
-        qs.eval
-          (Gate.seq
-            (Gate.ShiftR (st.xslot i) n)
-            (Gate.ShiftR (st.zslot i) n))
-          (qs.ket b)
-          = qs.ket b' ∧
-        RegEncoding.toNat ((applyShiftR st i n).xslot i) b'
-          =
-        RegEncoding.toNat (st.xslot i) b / 2^n ∧
-        RegEncoding.toNat ((applyShiftR st i n).zslot i) b'
-          =
-        RegEncoding.toNat (st.zslot i) b / 2^n
-
-  eval_Negate_pair_ket :
-    ∀ {k : ℕ} (st : LayoutState k) (i : Fin k) (b : qs.Basis),
-      ∃ b' : qs.Basis,
-        qs.eval
-          (Gate.seq
-            (Gate.Negate (st.xslot i))
-            (Gate.Negate (st.zslot i)))
-          (qs.ket b)
-          = qs.ket b' ∧
-        RegEncoding.toNat (st.xslot i) b'
-          =
-        tcNegVal (st.xslot i) (RegEncoding.toNat (st.xslot i) b) ∧
-        RegEncoding.toNat (st.zslot i) b'
-          =
-        tcNegVal (st.zslot i) (RegEncoding.toNat (st.zslot i) b)
-
-  eval_AddScaled_pair_ket :
-    ∀ {k : ℕ} (st : LayoutState k) (dst src : Fin k) (negSrc : Bool) (sh : ℕ)
-      (b : qs.Basis),
-      ∃ b' : qs.Basis,
-        qs.eval
-          (Gate.seq
-            (Gate.AddScaled (st.xslot dst) (st.xslot src) negSrc sh)
-            (Gate.AddScaled (st.zslot dst) (st.zslot src) negSrc sh))
-          (qs.ket b)
-          = qs.ket b' ∧
-        RegEncoding.toNat ((applyAddScaled st dst src sh).xslot dst) b'
-          =
-        tcAddScaledVal ((applyAddScaled st dst src sh).xslot dst)
-          (st.xslot src) negSrc sh b ∧
-        RegEncoding.toNat ((applyAddScaled st dst src sh).zslot dst) b'
-          =
-        tcAddScaledVal ((applyAddScaled st dst src sh).zslot dst)
-          (st.zslot src) negSrc sh b
 
 
 variable (qs : QSemantics) [RegEncoding qs.Basis]
@@ -1050,415 +887,6 @@ lemma eval_compileAnnotatedOpsToGateAux_cons
 
 
 
-lemma eval_compileAnnotatedOpsToGateAux_append
-  (qs : QSemantics) [RegEncoding qs.Basis]
-  (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
-  (phaseCoeff : Fin (q k) → ℚ)
-  (st : LayoutState k)
-  (ops₁ ops₂ : List (AnnotatedOp k))
-  (ψ : qs.State) :
-  qs.eval (compileAnnotatedOpsToGateAux k hk phi phaseCoeff st (ops₁ ++ ops₂)) ψ
-    =
-  qs.eval
-    ((compileAnnotatedOpsToGateAux k hk phi phaseCoeff st ops₁) ;;
-     (compileAnnotatedOpsToGateAux k hk phi phaseCoeff
-        (updateLayoutStateList st ops₁) ops₂))
-    ψ := by
-  induction ops₁ generalizing st ψ with
-  | nil =>
-      simp [compileAnnotatedOpsToGateAux_nil, updateLayoutStateList, qs.eval_seq, qs.eval_id]
-  | cons a rest ih =>
-    rw [List.cons_append]
-    rw [eval_compileAnnotatedOpsToGateAux_cons]
-    simp [updateLayoutStateList, qs.eval_seq]
-    rw [ih (st := updateLayoutState st a.op)
-           (ψ := qs.eval (compileAnnotatedOpsToGateAux k hk phi phaseCoeff st [a]) ψ)]
-    simp [updateLayoutStateList, qs.eval_seq]
-    have hcons :=
-      (eval_compileAnnotatedOpsToGateAux_cons
-        (qs := qs) (k := k) (hk := hk) (phi := phi)
-        (phaseCoeff := phaseCoeff) (st := st)
-        (a := a) (rest := rest) (ψ := ψ))
-    rw [qs.eval_seq] at hcons
-    aesop
-
-
-
-/-- This is the version that matches the actual type of `pointEval` in your file. -/
-lemma computeLocal2_zero_slot_spec
-  {qs : QSemantics} [RegEncoding qs.Basis] [GateSemanticsFacts qs]
-  (k : ℕ) (hk : 1 < k)
-  (phi : ℝ) (coeff : Fin (q k) → ℚ)
-  (x z : Reg) (n : ℕ) (c : Int) (b : qs.Basis) :
-  ∃ b' : qs.Basis,
-    qs.eval
-      (compileAnnotatedOpsToGateAux k hk phi coeff
-        (initLayoutState x z k)
-        (annotatePhaseTermsAux k n (computeLocal2 (k := k) (by omega) c)))
-      (qs.ket b)
-    =
-    qs.ket b'
-    ∧
-    (RegEncoding.toNat
-      ((updateLayoutStateList
-          (initLayoutState x z k)
-          (annotatePhaseTermsAux k n (computeLocal2 (k := k) (by omega) c))).xslot
-        (finZero (by omega))) b' : ℝ)
-      =
-      pointEval x k (by omega) b (Point.int c)
-    ∧
-    (RegEncoding.toNat
-      ((updateLayoutStateList
-          (initLayoutState x z k)
-          (annotatePhaseTermsAux k n (computeLocal2 (k := k) (by omega) c))).zslot
-        (finZero (by omega))) b' : ℝ)
-      =
-      pointEval z k (by omega) b (Point.int c) := by
-  sorry
-
-
-
--- lemma computeLocal2_zero_slot_spec
---   {qs : QSemantics} [RegEncoding qs.Basis] [GateSemanticsFacts qs]
---   (k : ℕ) (hk : 1 < k)
---   (phi : ℝ) (coeff : Fin (q k) → ℚ)
---   (x z : Reg) (n : ℕ) (c : Int) (b : qs.Basis) :
---   ∃ b' : qs.Basis,
---     qs.eval
---       (compileAnnotatedOpsToGateAux k hk phi coeff
---         (initLayoutState x z k)
---         (annotatePhaseTermsAux k n (computeLocal2 (k := k) (by omega) c)))
---       (qs.ket b)
---     =
---     qs.ket b'
---     ∧
---     RegEncoding.toNat
---       ((updateLayoutStateList
---           (initLayoutState x z k)
---           (annotatePhaseTermsAux k n (computeLocal2 (k := k) (by omega) c))).xslot
---         (finZero (by omega))) b'
---       =
---       pointEval x k (by omega) b (Point.int c)
---     ∧
---     RegEncoding.toNat
---       ((updateLayoutStateList
---           (initLayoutState x z k)
---           (annotatePhaseTermsAux k n (computeLocal2 (k := k) (by omega) c))).zslot
---         (finZero (by omega))) b'
---       =
---       pointEval z k (by omega) b (Point.int c) := by
-
-
---   sorry
-
-lemma eval_apply_inverse_computeLocal2_ket
-  (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
-  (k : ℕ) (hk : 1 < k)
-  (phi : ℝ) (coeff : Fin (q k) → ℚ)
-  (x z : Reg) (b : qs.Basis) (n : ℕ) (c : Int)
-  (b' : qs.Basis)
-  (hb' :
-    qs.eval
-      (compileAnnotatedOpsToGateAux k hk phi coeff
-        (initLayoutState x z k)
-        (annotatePhaseTermsAux k n (computeLocal2 (k := k) (by omega) c)))
-      (qs.ket b)
-    =
-    qs.ket b') :
-  qs.eval
-    (compileAnnotatedOpsToGateAux k hk phi coeff
-      (updateLayoutStateList (initLayoutState x z k)
-        (annotatePhaseTermsAux k n (computeLocal2 (k := k) (by omega) c)))
-      (annotatePhaseTermsAux k (n + 1)
-        (apply_Op_inverse (computeLocal2 (k := k) (by omega) c))))
-    (qs.ket b')
-  =
-  qs.ket b := by
-  sorry
-
-/-- Compiling one point block applies the exact phase for that point.
-    Because we uncompute, the basis state `b` remains untouched. -/
-lemma eval_compilePointBlock_ket
-  (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
-  (k : ℕ) (hk : 1 < k) (phi : ℝ) (coeff : Fin (q k) → ℚ)
-  (x z : Reg) (b : qs.Basis) (n : ℕ) (pt : Point)
-  (hn : n < q k) :
-  qs.eval (compilePointBlock k hk phi coeff (initLayoutState x z k) n pt) (qs.ket b) =
-  (Complex.exp (phi * Complex.I * (coeff ⟨n, hn⟩ : ℝ) *
-    pointEval x k (by omega) b pt * pointEval z k (by omega) b pt)) • qs.ket b := by
-    unfold compilePointBlock annotatedPointBlockFromList opsForPointWithProduct
-    by_cases hpt: pt = Point.inf <;> simp[hpt]
-    · unfold annotatePhaseTermsAux
-      simp[hn,annotatePhaseTermsAux,compileAnnotatedOpsToGateAux]
-      rw[qs.eval_id]
-      rw[GateSemanticsFacts.eval_PhaseProd_ket]
-      congr 2;simp[mul_assoc,mul_comm]
-      simp[pointEval,initLayoutState]
-
-    · cases pt with
-      |inf=> simp at hpt
-      |int c =>
-        clear hpt
-        simp
-        simp[annotatePhaseTermsAux_append]
-        simp[eval_compileAnnotatedOpsToGateAux_append]
-        set st0 := initLayoutState x z k
-        set annC := annotatePhaseTermsAux k n (computeLocal2 (k := k) (by omega) c)
-        set st1 := updateLayoutStateList st0 annC
-        rcases computeLocal2_zero_slot_spec
-            (qs := qs) (k := k) (hk := hk) (phi := phi) (coeff := coeff)
-            (x := x) (z := z) (n := n) (c := c) (b := b)
-          with ⟨b', hb', hx', hz'⟩
-
-        rw [hb']
-        have hcons :
-          annotatePhaseTermsAux k n
-            (valid_ops.phaseProduct (finZero (by omega))
-              :: apply_Op_inverse (computeLocal2 (k := k) (by omega) c))
-          =
-          ⟨valid_ops.phaseProduct (finZero (by omega)), some ⟨n, hn⟩⟩
-            :: annotatePhaseTermsAux k (n+1)
-                (apply_Op_inverse (computeLocal2 (k := k) (by omega) c)) := by
-          simp [annotatePhaseTermsAux, hn]
-
-
-        rw [hcons]
-        simp [compileAnnotatedOpsToGateAux]
-
-        rw [GateSemanticsFacts.eval_PhaseProd_ket]
-
-        set s1:=↑(RegEncoding.toNat ((updateLayoutStateList (initLayoutState x z k) (annotatePhaseTermsAux k n (computeLocal2 (by omega) c))).xslot (finZero (by omega))) b')
-        set s2:=↑(RegEncoding.toNat ((updateLayoutStateList (initLayoutState x z k) (annotatePhaseTermsAux k n (computeLocal2 (by omega) c))).zslot (finZero (by omega))) b')
-        rw[← hx', ← hz']
-        norm_cast
-        simp[mul_assoc, mul_comm]
-        rw[qs.eval_smul]
-        congr
-        have huncompute :=
-          eval_apply_inverse_computeLocal2_ket
-            (qs := qs) (k := k) (hk := hk)
-            (phi := phi) (coeff := coeff)
-            (x := x) (z := z) (b := b) (n := n) (c := c)
-            (b' := b') hb'
-
-        simpa [st0, annC, st1] using huncompute
-
-
-/-- Full structural induction proving that the loop accumulates phases point-by-point. -/
-lemma eval_compilePointsAux_accumulate
-  (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
-  (k : ℕ) (hk : 1 < k) (phi : ℝ) (coeff : Fin (q k) → ℚ)
-  (x z : Reg) (b : qs.Basis)
-  (pts_sub : List Point) :
-  ∀ (n : ℕ) (h_bound : n + pts_sub.length ≤ q k),
-  qs.eval (compilePointsAux k hk phi coeff (initLayoutState x z k) n pts_sub) (qs.ket b) =
-  (Complex.exp (phi * Complex.I * ((∑ i : Fin pts_sub.length,
-    (coeff ⟨n + i.val, by omega⟩ : ℝ) *
-    pointEval x k (by omega) b (pts_sub.get i) *
-    pointEval z k (by omega) b (pts_sub.get i)) : ℂ))) • qs.ket b := by
-  induction pts_sub with
-  | nil =>
-    intro n h_bound
-    unfold compilePointsAux
-    rw [qs.eval_id]
-    simp
-  | cons pt pts ih =>
-    intro n h_bound
-    unfold compilePointsAux
-    rw [qs.eval_seq]
-    have hn : n < q k := by simp at h_bound; omega
-    rw [eval_compilePointBlock_ket qs k hk phi coeff x z b n pt hn]
-
-    rw [qs.eval_smul]
-
-    have h_bound' : n + 1 + pts.length ≤ q k := by simp at h_bound;omega
-    have := ih (n+1) h_bound'
-    rw [ih (n + 1) h_bound']
-
-    -- Combine the scalar multiplications (a • b • v = (a * b) • v)
-    rw [smul_smul];rw [← Complex.exp_add];congr 1;congr 1
-    simp only [List.length_cons]; rw [Fin.sum_univ_succ]
-
-    rw [mul_add];simp only [Fin.val_zero, add_zero, Fin.val_succ,List.get_cons_zero]
-    congr 1
-    ring
-    congr 1;apply Finset.sum_congr rfl
-    intro i _;simp;left;left;congr 1
-    simp
-    linarith
-
-lemma eval_compileGenOpsToGate_ket
-  (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
-  (x z : Reg)
-  (pts : List Point)
-  (hpts : List.length pts = q k)
-  (b : qs.Basis) :
-  let coeff : Fin (q k) → ℚ :=
-    phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k)
-  qs.eval
-      (compileGenOpsToGate k hk phi x z coeff pts) (qs.ket b)
-    =
-  qs.eval (Gate.PhaseProd phi x z) (qs.ket b) := by
-  intro coeff
-  unfold compileGenOpsToGate
-
-  have h_accum := eval_compilePointsAux_accumulate qs k hk phi coeff x z b pts 0 (by omega)
-  rw [h_accum]
-
-  rw [GateSemanticsFacts.eval_PhaseProd_ket]
-
-  congr 1
-  congr 1
-
-  have h_sum_eq :
-    (∑ i : Fin (List.length pts), (coeff ⟨0 + i.val, by omega⟩ : ℝ) * pointEval x k (by omega) b (pts.get i) * pointEval z k (by omega) b (pts.get i))
-    =
-    (∑ i : Fin (List.length pts), (coeff ⟨i.val, by rw [←hpts]; exact i.is_lt⟩ : ℝ) * pointEval x k (by omega) b (pts.get i) * pointEval z k (by omega) b (pts.get i)) := by
-    apply Finset.sum_congr rfl
-    simp
-  have h_decomp := toom_cook_decomposition k hk x z b pts hpts coeff rfl
-
-  norm_cast at *
-  rw[h_sum_eq]
-  rw [h_decomp]
-  push_cast
-  congr 1
-
-
-lemma eval_compileGenOpsToGate
-  (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
-  (x z : Reg)
-  (pts : List Point)
-  (hpts : List.length pts = q k)
-  (ψ : qs.State) :
-  let coeff : Fin (q k) → ℚ :=
-    phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k)
-  qs.eval
-      (compileGenOpsToGate k hk phi x z coeff pts) ψ
-    =
-  qs.eval (Gate.PhaseProd phi x z) ψ := by
-  apply gate_eq_of_ket_eq (qs := qs)
-  intro b
-  apply eval_compileGenOpsToGate_ket
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/-! =========================================================
-    Section 12: Compiler unfolding lemmas
-========================================================= -/
-variable (qs : QSemantics) [RegEncoding qs.Basis]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
--- /-- Paper decomposition: φ x z = Σℓ φℓ (Ax)ℓ (Az)ℓ. -/
--- lemma phaseProd_decomposition
---   (k : ℕ) (hk : 1 < k)
---   (phi : ℝ) (x z : Reg)
---   (pts : List Point) (hpts : pts.length = q k)
---   (b : qs.Basis) :
---   phi * (RegEncoding.toNat x b : ℝ) * (RegEncoding.toNat z b : ℝ)
---     =
---   ∑ ℓ : Fin (q k),
---     phi
---       * (((phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k) ℓ : ℚ) : ℝ))
---       * (pointValue (qs := qs) k (ptsToFin k pts hpts ℓ) x b : ℝ)
---       * (pointValue (qs := qs) k (ptsToFin k pts hpts ℓ) z b : ℝ) := by
---   sorry
-
--- lemma eval_compile_opsForPointWithProduct_ket
---   (k : ℕ) (hk : 1 < k)
---   (phi : ℝ) (x z : Reg)
---   (pts : List Point) (hpts : pts.length = q k)
---   (l : Fin (q k))
---   (b : qs.Basis) :
---   let pt := ptsToFin k pts hpts l
---   qs.eval
---     (compileAnnotatedOpsToGateAux
---       k hk phi
---       (phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k))
---       (initLayoutState x z k)
---       (annotatePhaseTermsAux k l.1 (opsForPointWithProduct (by omega) pt)))
---     (qs.ket b)
---   =
---   (Complex.exp
---       (phi * Complex.I *
---         ((((phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k) l : ℚ) : ℝ) : ℂ)
---           * (pointValue (qs := qs) k pt x b : ℂ)
---           * (pointValue (qs := qs) k pt z b : ℂ)))) •
---     (qs.ket b) := by
---   sorry
-
-
-variable [GateSemanticsFacts qs]
-
-
--- lemma eval_compileOpsToGate_genOpsWithProduct_as_sum_ket
---   (k : ℕ) (hk : 1 < k)
---   (phi : ℝ)
---   (x z : Reg)
---   (pts : List Point)
---   (hpts : pts.length = q k)
---   (b : qs.Basis) :
---   let coeff : Fin (q k) → ℚ :=
---     phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k)
---   let summand : Fin (q k) → ℝ :=
---     fun l =>
---       phi
---         * (((coeff l : ℚ) : ℝ))
---         * (pointValue (qs := qs) k (ptsToFin k pts hpts l) x b : ℝ)
---         * (pointValue (qs := qs) k (ptsToFin k pts hpts l) z b : ℝ)
---   qs.eval
---     (compileOpsToGate k hk phi x z coeff (genOpsWithProduct (by omega) pts))
---     (qs.ket b)
---     =
---   (Complex.exp (Complex.I * (((∑ l : Fin (q k), summand l) : ℝ) : ℂ))) •
---     (qs.ket b) := by
---   simp
---   unfold compileOpsToGate
---   simp
---   set etb:=(phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k))
---   set st:=(initLayoutState x z k)
-
---   sorry
-#check pointValue
-
 lemma compileOpsToGate_ofPts_eq_aux
   (k : ℕ) (hk : 1 < k)
   (phi : ℝ) (x z : Reg)
@@ -1473,91 +901,593 @@ lemma compileOpsToGate_ofPts_eq_aux
     k hk phi (phaseCoeffOfPts k x pts hpts) (initLayoutState x z k) annOps := by
   rfl
 
+/-- Integer value of the original `j`-th chunk of register `r0` in the
+    original basis state `b0`. -/
+def chunkVal
+  (qs : QSemantics) [RegEncoding qs.Basis]
+  (r0 : Reg) (k : ℕ) (j : Fin k) (b0 : qs.Basis) : ℤ :=
+  (RegEncoding.toNat ((layoutOfReg r0 k).slot j) b0 : ℤ)
 
--- lemma eval_compileOpsToGate_genOpsWithProduct_ket
---   (k : ℕ) (hk : 1 < k)
---   (phi : ℝ)
---   (x z : Reg)
---   (pts : List Point)
---   (hpts : pts.length = q k)
---   (b : qs.Basis) :
---   let coeff : Fin (q k) → ℚ :=
---     phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k)
---   qs.eval
---       (compileOpsToGate k hk phi x z coeff (genOpsWithProduct (by omega) pts))
---       (qs.ket b)
---     =
---   qs.eval (Gate.PhaseProd phi x z) (qs.ket b) := by
---   let coeff : Fin (q k) → ℚ :=
---     phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k)
+/-- Evaluate the symbolic row `σ i` against the original chunks of `r0`
+    from the original basis state `b0`. -/
+def symbRowEval
+  (qs : QSemantics) [RegEncoding qs.Basis]
+  (r0 : Reg) (k : ℕ)
+  (σ : State k) (i : Fin k) (b0 : qs.Basis) : ℤ :=
+  ∑ j : Fin k, (σ i j) * chunkVal qs r0 k j b0
 
---   let summand : Fin (q k) → ℝ :=
---     fun ℓ =>
---       phi
---         * (((coeff ℓ : ℚ) : ℝ))
---         * (pointValue (qs := qs) k (ptsToFin k pts hpts ℓ) x b : ℝ)
---         * (pointValue (qs := qs) k (ptsToFin k pts hpts ℓ) z b : ℝ)
+/-- `b` realizes the symbolic table-state `σ` in the current layout `st`,
+    relative to the original input chunks of `x` and `z` taken from `b0`.
+ -/
+def EncodesState
+  (qs : QSemantics) [RegEncoding qs.Basis]
+  (x z : Reg) (k : ℕ)
+  (st : LayoutState k)
+  (σ : State k)
+  (b0 b : qs.Basis) : Prop :=
+  (∀ i : Fin k,
+      RegEncoding.toNat (st.xslot i) b
+        =
+      tcMod (st.xslot i) (symbRowEval qs x k σ i b0))
+  ∧
+  (∀ i : Fin k,
+      RegEncoding.toNat (st.zslot i) b
+        =
+      tcMod (st.zslot i) (symbRowEval qs z k σ i b0))
 
---   have hblocks :
---       qs.eval
---         (compileOpsToGate k hk phi x z coeff (genOpsWithProduct (by omega) pts))
---         (qs.ket b)
---       =
---       (Complex.exp (Complex.I * (((∑ ℓ : Fin (q k), summand ℓ) : ℝ) : ℂ))) •
---         (qs.ket b) := by
---     simpa [coeff, summand] using
---       (eval_compileOpsToGate_genOpsWithProduct_as_sum_ket
---         (qs := qs) k hk phi x z pts hpts b)
+/-- Thread the layout-state through a whole program. -/
+def updateLayoutStateList {k : ℕ} (st : LayoutState k) : Prog k → LayoutState k
+  | [] => st
+  | op :: ops => updateLayoutStateList (updateLayoutState st op) ops
 
---   have hdecomp :
---       phi * (RegEncoding.toNat x b : ℝ) * (RegEncoding.toNat z b : ℝ)
---         =
---       ∑ ℓ : Fin (q k), summand ℓ := by
---     simpa [summand, coeff] using
---       phaseProd_decomposition (qs := qs) k hk phi x z pts hpts b
+noncomputable def phaseSumFrom
+  (qs : QSemantics) [RegEncoding qs.Basis]
+  (k : ℕ) (hk : 1 < k) (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (n : ℕ)
+  (x z : Reg)
+  (pts : List Point)
+  (b0 : qs.Basis)
+  (hn : n + pts.length ≤ q k) : ℂ :=
+  ∑ i : Fin pts.length,
+    ((phi : ℂ) * Complex.I *
+      ((((coeff ⟨n + i.1, by omega⟩ : ℚ) : ℝ) : ℂ)) *
+      (((pointEval (qs := qs) x k (by omega) b0 (pts.get i) : ℝ) : ℂ)) *
+      (((pointEval (qs := qs) z k (by omega) b0 (pts.get i) : ℝ) : ℂ)))
 
---   have hexp :
---       Complex.exp (Complex.I * (((∑ ℓ : Fin (q k), summand ℓ) : ℝ) : ℂ))
---         =
---       Complex.exp
---         (phi * Complex.I *
---           ((RegEncoding.toNat x b : ℂ) * (RegEncoding.toNat z b : ℂ))) := by
---     have hdecompC :
---         ((((∑ ℓ : Fin (q k), summand ℓ) : ℝ) : ℂ))
---           =
---         ((phi * (RegEncoding.toNat x b : ℝ) * (RegEncoding.toNat z b : ℝ) : ℝ) : ℂ) := by
---       exact congrArg (fun t : ℝ => (t : ℂ)) hdecomp.symm
---     rw [hdecompC]
---     congr 1
---     norm_num
---     ring
---   unfold coeff at *
---   simp
---   rw [hblocks, GateSemanticsFacts.eval_PhaseProd_ket]
---   rw [hexp]
+/-- Appending programs threads the layout state. -/
+lemma updateLayoutStateList_append
+  {k : ℕ} (st : LayoutState k) (ops₁ ops₂ : Prog k) :
+  updateLayoutStateList st (ops₁ ++ ops₂)
+    =
+  updateLayoutStateList (updateLayoutStateList st ops₁) ops₂ := by
+  induction ops₁ generalizing st with
+  | nil =>
+      simp [updateLayoutStateList]
+  | cons op ops₁ ih =>
+      simp [updateLayoutStateList, ih]
+
+/-- The phase sum over an empty point list is zero. -/
+@[simp] lemma phaseSumFrom_nil
+  (qs : QSemantics) [RegEncoding qs.Basis]
+  (k : ℕ) (hk : 1 < k) (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (n : ℕ) (x z : Reg)
+  (b0 : qs.Basis)
+  (hn : n + ([] : List Point).length ≤ q k) :
+  phaseSumFrom qs k hk phi coeff n x z [] b0 hn = 0 := by
+  simp [phaseSumFrom]
+
+/-- Split the phase sum into the head point and the tail. -/
+lemma phaseSumFrom_cons
+  (qs : QSemantics) [RegEncoding qs.Basis]
+  (k : ℕ) (hk : 1 < k) (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (n : ℕ) (x z : Reg)
+  (pt : Point) (pts : List Point)
+  (b0 : qs.Basis)
+  (hn : n + (pt :: pts).length ≤ q k) :
+  phaseSumFrom qs k hk phi coeff n x z (pt :: pts) b0 hn
+    =
+  phaseSumFrom qs k hk phi coeff n x z [pt] b0 (by simp_all;omega)
+    +
+  phaseSumFrom qs k hk phi coeff (n + 1) x z pts b0 (by simp_all;omega) := by
+  sorry
+
+/-- Count of `phaseProduct`s in a no-phase program is zero. -/
+lemma phaseProductCount_eq_zero_of_NoPhase
+  {k : ℕ} {ops : Prog k}
+  (hNP : NoPhase ops) :
+  phaseProductCount ops = 0 := by
+  sorry
+
+/-- A single `PhaseBlock` contributes exactly one `phaseProduct`. -/
+lemma phaseProductCount_toProg_phaseBlock
+  {k : ℕ} (hk : k > 0)
+  {σ : State k} {pt : Point}
+  (B : PhaseBlock hk σ pt) :
+  phaseProductCount B.toProg = 1 := by
+  unfold PhaseBlock.toProg
+  rw [phaseProductCount_append, phaseProductCount_eq_zero_of_NoPhase B.noPhase_pre]
+  simp [phaseProductCount]
+
+/-- Running a `PhaseBlock` program leaves the symbolic state at `σmid`. -/
+lemma run?_toProg_phaseBlock
+  {k : ℕ} (hk : k > 0)
+  {σ : State k} {pt : Point}
+  (B : PhaseBlock hk σ pt) :
+  run? B.toProg σ = some B.σmid := by
+  unfold PhaseBlock.toProg
+  rw [run?_append]
+  simp [B.run_pre, applyOp?]
+
+/-- Evaluate compilation of an appended program by sequencing the two compiled pieces. -/
+lemma eval_compileAnnotatedOpsToGateAux_annotate_append
+  (qs : QSemantics) [RegEncoding qs.Basis]
+  (k : ℕ) (hk : 1 < k)
+  (phi : ℝ) (coeff : Fin (q k) → ℚ)
+  (n : ℕ)
+  (st : LayoutState k)
+  (ops₁ ops₂ : Prog k)
+  (b : qs.Basis) :
+  qs.eval
+    (compileAnnotatedOpsToGateAux k hk phi coeff st
+      (annotatePhaseTermsAux k n (ops₁ ++ ops₂)))
+    (qs.ket b)
+    =
+  qs.eval
+    (compileAnnotatedOpsToGateAux k hk phi coeff
+      (updateLayoutStateList st ops₁)
+      (annotatePhaseTermsAux k (n + phaseProductCount ops₁) ops₂))
+    (qs.eval
+      (compileAnnotatedOpsToGateAux k hk phi coeff st
+        (annotatePhaseTermsAux k n ops₁))
+      (qs.ket b)) := by
+  sorry
+
+/-- A no-phase program contributes no phase and preserves the encoding relation. -/
+lemma eval_compileAnnotatedOpsToGateAux_of_noPhase
+  (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+  (k : ℕ) (hk : 1 < k)
+  (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (n : ℕ)
+  (x z : Reg)
+  (σ : State k)
+  (ops : Prog k)
+  (st : LayoutState k)
+  (b0 b : qs.Basis)
+  (hNP : NoPhase ops)
+  (hEnc : EncodesState qs x z k st σ b0 b) :
+  ∃ (σ' : State k) (b' : qs.Basis),
+    run? ops σ = some σ' ∧
+    qs.eval
+      (compileAnnotatedOpsToGateAux k hk phi coeff st
+        (annotatePhaseTermsAux k n ops))
+      (qs.ket b)
+      =
+    qs.ket b' ∧
+    EncodesState qs x z k (updateLayoutStateList st ops) σ' b0 b' := by
+  sorry
+
+/-- A single `PhaseBlock` contributes exactly the phase for its one point. -/
+lemma eval_compileAnnotatedOpsToGateAux_of_phaseBlock
+  (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+  (k : ℕ) (hk : 1 < k)
+  (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (n : ℕ)
+  (x z : Reg)
+  (σ : State k)
+  (pt : Point)
+  (st : LayoutState k)
+  (b0 b : qs.Basis)
+  (B : PhaseBlock (k := k) (by omega) σ pt)
+  (hn1 : n + 1 ≤ q k)
+  (hEnc : EncodesState qs x z k st σ b0 b) :
+  ∃ bmid : qs.Basis,
+    qs.eval
+      (compileAnnotatedOpsToGateAux k hk phi coeff st
+        (annotatePhaseTermsAux k n B.toProg))
+      (qs.ket b)
+      =
+    Complex.exp
+      (phaseSumFrom qs k hk phi coeff n x z [pt] b0 (by simpa using hn1))
+      • qs.ket bmid
+    ∧
+    EncodesState qs x z k (updateLayoutStateList st B.toProg) B.σmid b0 bmid := by
+  sorry
 
 
-/-! =========================================================
-    Induction over the point list
-========================================================= -/
+lemma eval_compileAnnotatedOpsToGateAux_of_blockDecomposition
+  (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+  (k : ℕ) (hk : 1 < k)
+  (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (n : ℕ)
+  (x z : Reg)
+  (σ : State k)
+  (ops : Prog k)
+  (pts : List Point)
+  (st : LayoutState k)
+  (b0 b : qs.Basis)
+  (hB : BlockDecomposition (k := k) (by omega) σ ops pts)
+  (hn : n + pts.length ≤ q k)
+  (hEnc : EncodesState qs x z k st σ b0 b) :
+  ∃ (σ' : State k) (b' : qs.Basis),
+    run? ops σ = some σ' ∧
+    qs.eval
+      (compileAnnotatedOpsToGateAux k hk phi coeff st
+        (annotatePhaseTermsAux k n ops))
+      (qs.ket b)
+      =
+    Complex.exp (phaseSumFrom qs k hk phi coeff n x z pts b0 hn) • qs.ket b' ∧
+    EncodesState qs x z k (updateLayoutStateList st ops) σ' b0 b' := by
+  induction hB generalizing n st b with
+  | nil σ tail hNP =>
+      rcases
+        eval_compileAnnotatedOpsToGateAux_of_noPhase
+          qs k hk phi coeff n x z σ tail st b0 b hNP hEnc
+        with ⟨σ', b', hrun, heval, hEnc'⟩
+      refine ⟨σ', b', hrun, ?_, hEnc'⟩
+      simpa [phaseSumFrom]
+
+  | cons B hrest ih =>
+      simp_all
+      rename_i σ1 pt pts2 ops_rest
+      have hrun_head : run? B.toProg σ1 = some B.σmid := by
+        exact run?_toProg_phaseBlock (hk := by omega) B
+
+      have hcount : phaseProductCount B.toProg = 1 := by
+        exact phaseProductCount_toProg_phaseBlock (hk := by omega) B
+
+      have hn_head : n + 1 ≤ q k := by
+        simp at hn; omega
+
+      have hn_tail : (n + 1) + pts2.length ≤ q k := by
+        simp at hn;omega
+
+      rcases
+        eval_compileAnnotatedOpsToGateAux_of_phaseBlock
+          qs k hk phi coeff n x z σ1 pt st b0 b B hn_head hEnc
+        with ⟨bmid, hEval_head, hEnc_mid⟩
+
+      rcases
+        ih (n + 1) (updateLayoutStateList st B.toProg) bmid hn_tail hEnc_mid
+        with ⟨σ', hrun_tail, b', hEval_tail, hEnc_tail⟩
+
+      refine ⟨σ', ?_, ?_⟩
+      · rw [run?_append, hrun_head]
+        simpa using hrun_tail
+
+      · refine ⟨b', ?_, ?_⟩
+
+        · calc
+            qs.eval
+              (compileAnnotatedOpsToGateAux k hk phi coeff st
+                (annotatePhaseTermsAux k n (B.toProg ++ ops_rest)))
+              (qs.ket b)
+                =
+            qs.eval
+              (compileAnnotatedOpsToGateAux k hk phi coeff
+                (updateLayoutStateList st B.toProg)
+                (annotatePhaseTermsAux k (n + phaseProductCount B.toProg) ops_rest))
+              (qs.eval
+                (compileAnnotatedOpsToGateAux k hk phi coeff st
+                  (annotatePhaseTermsAux k n B.toProg))
+                (qs.ket b)) := by
+                  simpa using
+                    eval_compileAnnotatedOpsToGateAux_annotate_append
+                      qs k hk phi coeff n st B.toProg ops_rest b
+            _ =
+            qs.eval
+              (compileAnnotatedOpsToGateAux k hk phi coeff
+                (updateLayoutStateList st B.toProg)
+                (annotatePhaseTermsAux k (n + 1) ops_rest))
+              (qs.eval
+                (compileAnnotatedOpsToGateAux k hk phi coeff st
+                  (annotatePhaseTermsAux k n B.toProg))
+                (qs.ket b)) := by
+                  simp [hcount]
+            _ =
+            qs.eval
+              (compileAnnotatedOpsToGateAux k hk phi coeff
+                (updateLayoutStateList st B.toProg)
+                (annotatePhaseTermsAux k (n + 1) ops_rest))
+              (Complex.exp
+                (phaseSumFrom qs k hk phi coeff n x z [pt] b0 (by simpa using hn_head))
+                • qs.ket bmid) := by
+                  rw [hEval_head]
+            _ =
+            Complex.exp
+              (phaseSumFrom qs k hk phi coeff n x z [pt] b0 (by simpa using hn_head))
+              •
+            qs.eval
+              (compileAnnotatedOpsToGateAux k hk phi coeff
+                (updateLayoutStateList st B.toProg)
+                (annotatePhaseTermsAux k (n + 1) ops_rest))
+              (qs.ket bmid) := by
+                rw [qs.eval_smul]
+            _ =
+            Complex.exp
+              (phaseSumFrom qs k hk phi coeff n x z [pt] b0 (by simpa using hn_head))
+              •
+            (Complex.exp
+              (phaseSumFrom qs k hk phi coeff (n + 1) x z pts2 b0 hn_tail)
+              • qs.ket b') := by
+                rw [hEval_tail]
+            _ =
+            (Complex.exp
+              (phaseSumFrom qs k hk phi coeff n x z [pt] b0 (by simpa using hn_head))
+              *
+            Complex.exp
+              (phaseSumFrom qs k hk phi coeff (n + 1) x z pts2 b0 hn_tail))
+              • qs.ket b' := by
+                rw [smul_smul]
+            _ =
+            Complex.exp
+              (phaseSumFrom qs k hk phi coeff n x z [pt] b0 (by simpa using hn_head)
+              +
+              phaseSumFrom qs k hk phi coeff (n + 1) x z pts2 b0 hn_tail)
+              • qs.ket b' := by
+                rw [← Complex.exp_add]
+            _ =
+            Complex.exp
+              (phaseSumFrom qs k hk phi coeff n x z (pt :: pts2) b0 hn)
+              • qs.ket b' := by
+                rw [← phaseSumFrom_cons qs k hk phi coeff n x z pt pts2 b0 hn]
+
+        · simpa [updateLayoutStateList_append] using hEnc_tail
+
+/-- Initially, the initial layout encodes the symbolic start state. -/
+lemma encodesState_init
+  (qs : QSemantics) [RegEncoding qs.Basis]
+  (x z : Reg) (k : ℕ) (b : qs.Basis) :
+  EncodesState qs x z k (initLayoutState x z k) State.start_state b b := by
+  unfold EncodesState State.start_state symbRowEval chunkVal initLayoutState tcMod
+  simp
+  constructor
+  · intro i
+    set xval:=RegEncoding.toNat ((layoutOfReg x k).slot i) b
+    sorry
+  sorry
 
 
--- /-- Full-state compiler correctness for the generated op list. -/
--- lemma eval_compileOpsToGate_genOpsWithProduct
---   (k : ℕ) (hk : 1 < k)
---   (phi : ℝ)
---   (x z : Reg)
---   (pts : List Point)
---   (hpts : List.length pts = q k)
---   (ψ : qs.State) :
---   let coeff : Fin (q k) → ℚ :=
---     phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k)
---   qs.eval
---       (compileOpsToGate k hk phi x z coeff (genOpsWithProduct (by omega) pts)) ψ
---     =
---   qs.eval (Gate.PhaseProd phi x z) ψ := by
---   apply gate_eq_of_ket_eq (qs := qs)
---   intro b
---   simpa using
---     (eval_compileOpsToGate_genOpsWithProduct_ket
---       (qs := qs) k hk phi x z pts hpts b)
+
+-- /-- For the concrete synthesized program, the layout also returns to the initial layout. -/
+-- lemma updateLayoutStateList_init
+--   {k : ℕ} (hk : 1 < k) (x z : Reg) (ops : Prog k) (pts: List Point)
+--   (hC : ProgConsumesPts (k := k) (by omega) State.start_state ops pts) :
+--   updateLayoutStateList (initLayoutState x z k) ops = initLayoutState x z k := by
+
+--   sorry
+
+/-- If the final symbolic state is `start_state` in the initial layout,
+    then the realized basis is the original basis. -/
+lemma encodesState_start_unique
+  (qs : QSemantics) [RegEncoding qs.Basis]
+  (x z : Reg) (k : ℕ)
+  (b0 b' : qs.Basis)
+  (hEnc : EncodesState qs x z k (initLayoutState x z k) State.start_state b0 b') :
+  b' = b0 := by
+  unfold EncodesState State.start_state symbRowEval chunkVal initLayoutState tcMod at hEnc
+  simp_all
+  cases hEnc
+  rename_i hx hz
+
+  sorry
+
+/-- The summed point phases equal the single `PhaseProd` exponent. -/
+lemma phaseSumFrom_eq_phaseProd_exponent
+  (qs : QSemantics) [RegEncoding qs.Basis]
+  (k : ℕ) (hk : 1 < k)
+  (phi : ℝ)
+  (x z : Reg)
+  (pts : List Point) (hpts : pts.length = q k)
+  (b : qs.Basis) :
+  let coeff : Fin (q k) → ℚ :=
+    phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k)
+  phaseSumFrom qs k hk phi coeff 0 x z pts b (by simp[hpts])
+    =
+  phi * Complex.I *
+    (((RegEncoding.toNat x b : ℂ) * (RegEncoding.toNat z b : ℂ))) := by
+    simp[phaseSumFrom]
+    have:=toom_cook_decomposition k hk x z b pts hpts (phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k)) (rfl)
+    norm_cast at *
+    sorry
+
+lemma compiled_ops_return_same_basis_if_run_returns_start
+  (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+  (k : ℕ) (hk : 1 < k)
+  (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (x z : Reg)
+  (b : qs.Basis) (ops : Prog k)
+  (hRun : run? ops State.start_state = some State.start_state)
+  (hEnc0 : EncodesState qs x z k (initLayoutState x z k) State.start_state b b) :
+  ∃ θ : ℂ,
+    qs.eval
+      (compileAnnotatedOpsToGateAux k hk phi coeff (initLayoutState x z k)
+        (annotatePhaseTermsAux k 0 ops))
+      (qs.ket b)
+    = θ • qs.ket b := by
+  sorry
+
+/-- Two basis kets equal up to nonzero scalar only if the basis labels agree. -/
+lemma basis_eq_of_smul_ket_eq_smul_ket
+  (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+  {b₁ b₂ : qs.Basis} {α β : ℂ}
+  (hα : α ≠ 0) (hβ : β ≠ 0)
+  (h : α • qs.ket b₁ = β • qs.ket b₂) :
+  b₁ = b₂ := by
+  sorry
+
+
+lemma basis_eq_of_EncodesState_start_final
+  (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+  (k : ℕ) (hk : 1 < k) (x z : Reg)
+  (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (b b' : qs.Basis)
+  (ops : Prog k)
+  (pts : List Point)
+  (hpts : List.length pts = q k)
+  (run_ops_start_state : run? ops State.start_state = some State.start_state)
+  (heval :
+    qs.eval
+      (compileAnnotatedOpsToGateAux k hk phi coeff (initLayoutState x z k)
+        (annotatePhaseTermsAux k 0 ops))
+      (qs.ket b)
+    =
+    Complex.exp (phaseSumFrom qs k hk phi coeff 0 x z pts b (by simp [hpts])) •
+      qs.ket b')
+  (hEnc0 : EncodesState qs x z k (initLayoutState x z k) State.start_state b b) :
+  b' = b := by
+  rcases compiled_ops_return_same_basis_if_run_returns_start
+      qs k hk phi coeff x z b ops run_ops_start_state hEnc0 with
+    ⟨θ, hθ⟩
+  have hexp_ne :
+      Complex.exp (phaseSumFrom qs k hk phi coeff 0 x z pts b (by simp [hpts])) ≠ 0 := by
+    exact Complex.exp_ne_zero _
+  have hθ_ne : θ ≠ 0 := by
+    intro hzero
+    rw [hzero, zero_smul] at hθ
+    subst hzero
+    simp_all
+    have hket_zero : QSemantics.ket b' = 0 := by
+      symm at heval
+      apply smul_eq_zero.mp at heval
+      simpa [heval] using heval.symm
+    apply qs.ket_ne_zero at hket_zero
+    contradiction
+  have hsmul :
+      θ • qs.ket b =
+      Complex.exp (phaseSumFrom qs k hk phi coeff 0 x z pts b (by simp [hpts])) • qs.ket b' := by
+    rw [← hθ, heval]
+  have hb : b = b' := by
+    exact basis_eq_of_smul_ket_eq_smul_ket qs hθ_ne hexp_ne hsmul
+  simpa using hb.symm
+
+lemma eval_compileOpsToGate_correct_ket
+  (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+  (k : ℕ) (hk : 1 < k)
+  (phi : ℝ)
+  (x z : Reg)
+  (pts : List Point)
+  (hpts : List.length pts = q k)
+  (b: qs.Basis)
+  (ops : Prog k)
+  (hC : ProgConsumesPts (k:=k) (by omega) State.start_state ops pts)
+  (run_ops_start_state: run? ops State.start_state = some State.start_state)
+  :
+  let coeff : Fin (q k) → ℚ :=
+    phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k)
+  qs.eval
+      (compileOpsToGate k hk phi x z coeff ops)
+      (qs.ket b)
+    =
+  qs.eval (Gate.PhaseProd phi x z) (qs.ket b) := by
+  have hB:(BlockDecomposition (k:=k) (by omega) State.start_state ops pts):=by
+    have:=progConsumesPts_has_blockDecomposition (k:=k) (by omega) ops State.start_state pts hC
+    apply this
+  intro coeff
+  rw [compileOpsToGate_eq_aux]
+
+  have hEnc0 :
+      EncodesState qs x z k (initLayoutState x z k) State.start_state b b :=
+    encodesState_init (qs := qs) x z k b
+
+  have hMain :=
+    eval_compileAnnotatedOpsToGateAux_of_blockDecomposition
+      (qs := qs) (k := k) (hk := hk)
+      (phi := phi) (coeff := coeff) (n := 0)
+      (x := x) (z := z)
+      (σ := State.start_state)
+      (ops := ops) (pts := pts)
+      (st := initLayoutState x z k)
+      (b0 := b) (b := b)
+      hB
+      (by simp[hpts])
+      hEnc0
+
+  rcases hMain with ⟨σ', b', hrun, heval, hEnc'⟩
+
+  have hσ' : σ' = State.start_state := by
+    simp_all
+
+  subst hσ'
+  have hket : b' = b := by
+    have:=basis_eq_of_EncodesState_start_final qs k hk  x z phi coeff b b' ops pts hpts hrun heval hEnc0
+    apply this
+
+  have hphase :
+    Complex.exp (phaseSumFrom qs k hk phi coeff 0 x z pts b (by simp[hpts]))
+      =
+    Complex.exp (phi * Complex.I *
+        ((RegEncoding.toNat x b : ℂ) * (RegEncoding.toNat z b : ℂ))) := by
+    have:=phaseSumFrom_eq_phaseProd_exponent qs k hk phi x z pts hpts b
+    simp at this;unfold coeff
+    simp[this]
+
+  calc
+    QSemantics.eval
+        (by
+          have annOps := annotatePhaseTermsAux k 0 ops
+          exact compileAnnotatedOpsToGateAux k hk phi coeff (initLayoutState x z k) annOps)
+        (QSemantics.ket b)
+      =
+    Complex.exp (phaseSumFrom qs k hk phi coeff 0 x z pts b (by simp[hpts])) • QSemantics.ket b' := by
+        simpa using heval
+    _ =
+    Complex.exp (phaseSumFrom qs k hk phi coeff 0 x z pts b (by simp[hpts])) • QSemantics.ket b := by
+        simp [hket]
+    _ =
+    Complex.exp (phi * Complex.I *
+        ((RegEncoding.toNat x b : ℂ) * (RegEncoding.toNat z b : ℂ))) • QSemantics.ket b := by
+        simp [hphase]
+    _ = QSemantics.eval (PhaseProd phi x z) (QSemantics.ket b) := by
+        symm
+        simpa using (GateSemanticsFacts.eval_PhaseProd_ket (qs := qs) phi x z b)
+
+
+
+
+/-- Full-state compiler correctness for the generated op list. -/
+lemma eval_compileOpsToGate_correct
+  (k : ℕ) (hk : 1 < k)
+  (phi : ℝ)
+  (x z : Reg)
+  (pts : List Point)
+  (hpts : List.length pts = q k)
+  (ψ : qs.State)
+  (ops : Prog k)
+  (hC : ProgConsumesPts (k:=k) (by omega) State.start_state ops (pts))
+  (run_ops_start_state: run? ops State.start_state = some State.start_state)
+  :
+  let coeff : Fin (q k) → ℚ :=
+    phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k)
+  qs.eval
+      (compileOpsToGate k hk phi x z coeff (ops)) ψ
+    =
+  qs.eval (Gate.PhaseProd phi x z) ψ := by
+  have := eval_compileOpsToGate_correct_ket qs k hk phi x z pts hpts (ops:=ops) (hC:=hC) (run_ops_start_state:=run_ops_start_state)
+  apply gate_eq_of_ket_eq qs this
+
+/-- Full-state compiler correctness for the generated op list. -/
+lemma eval_compileOpsToGate_genOpsWithProduct
+  (k : ℕ) (hk : 1 < k)
+  (phi : ℝ)
+  (x z : Reg)
+  (pts : List Point)
+  (hpts : List.length pts = q k)
+  (ψ : qs.State) :
+  let coeff : Fin (q k) → ℚ :=
+    phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k)
+  qs.eval
+      (compileOpsToGate k hk phi x z coeff (genOpsWithProduct (by omega) pts)) ψ
+    =
+  qs.eval (Gate.PhaseProd phi x z) ψ := by
+  have h1:=(List.genOpsWithProduct_returns_to_original (k:=k) (by omega) pts)
+  apply eval_compileOpsToGate_correct qs k hk phi x z pts hpts ψ (genOpsWithProduct (by omega) pts)
+  sorry
+  apply h1

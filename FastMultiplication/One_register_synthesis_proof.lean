@@ -522,8 +522,7 @@ lemma run_some_computeLocal {k : ℕ} (hk : 0 < k) (z : Int) (σ : State k) :
         ∀ (dst src : Fin k) (pairs : List (Bool × Nat)) (σ : State k),
           ∃ σ', run? (pairs.map (pairToOp (k := k) dst src)) σ = some σ'
       := by
-        intro dst src
-        intro pairs σ0
+        intro dst src pairs σ0
         revert σ0
         induction pairs with
         | nil =>

@@ -235,7 +235,8 @@ class QSemantics where
     ∀ ψ₁ ψ₂ φ₁ φ₂,
       inner ℂ (tensor ψ₁ φ₁) (tensor ψ₂ φ₂)
         = (inner ℂ ψ₁ ψ₂) * (inner ℂ φ₁ φ₂)
-
+  ket_ne_zero (b : Basis) :
+    ket b ≠ 0
 
 open QSemantics
 attribute [instance] QSemantics.instNormed
