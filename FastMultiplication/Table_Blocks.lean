@@ -24,7 +24,6 @@ structure PhaseBlock {k : ℕ} (hk : k > 0)
   i : Fin k
   arith : Prog k
   σmid : State k
-
   noPhase_pre : NoPhase arith
   run_pre : run? arith σ = some σmid
   match_pt : matchesAt_pointRow_state (k := k) hk σmid i pt = true
@@ -41,9 +40,11 @@ inductive BlockDecomposition
     {k : ℕ} (hk : k > 0) :
     State k → Prog k → List Point → Prop
 | nil
-    (σ : State k)
+    (σ σ': State k)
     (tail : Prog k)
-    (hNP : NoPhase tail) :
+    (hNP : NoPhase tail)
+    (hrun : run? tail σ = some σ')
+    :
     BlockDecomposition hk σ tail []
 | cons
     {σ : State k} {pt : Point} {pts : List Point}
@@ -87,7 +88,8 @@ lemma progConsumesPts_has_blockDecomposition_aux
 | [], σ1, pts, hC, σ0, pre, hNP, hrun => by
     simp [ProgConsumesPts] at hC
     subst hC
-    simpa using BlockDecomposition.nil (hk := hk) σ0 pre hNP
+    simp
+    apply BlockDecomposition.nil (hk := hk) σ0 σ1 pre hNP hrun
 
 | op :: ops, σ1, pts, hC, σ0, pre, hNP, hrun => by
     cases op with

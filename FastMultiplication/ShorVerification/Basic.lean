@@ -6,19 +6,25 @@ import Mathlib.Tactic
 universe u
 namespace Shor
 
-/-! ## Registers and encodings -/
+/-! =========================================================
+    Section 1: Registers and basic encodings
+========================================================= -/
 
+/-- A contiguous register occupying qubit indices `[lo, hi)`. -/
 structure Reg where
   lo : ℕ
   hi : ℕ
 
+/-- Two registers are disjoint if their intervals do not overlap. -/
 def Disjoint (a b : Reg) : Prop := a.hi ≤ b.lo ∨ b.hi ≤ a.lo
 
-/-- Register length (#qubits) as a Nat. -/
+/-- Register length (#qubits) as a natural number. -/
 def regSize (r : Reg) : ℕ := r.hi - r.lo
 
+/-- Register cardinality `2^(regSize r)`. -/
 def ASize (r : Reg) : ℕ := 2^(regSize r)
 
+/-- Basis-level encoding interface for ordinary registers. -/
 class RegEncoding (Basis : Type u) where
   toNat    : Reg → Basis → ℕ
   writeNat : Reg → ℕ → Basis → Basis
@@ -27,7 +33,7 @@ class RegEncoding (Basis : Type u) where
   toNat_writeNat : ∀ r v b, toNat r (writeNat r v b) = v
   writeNat_toNat : ∀ r b, writeNat r (toNat r b) b = b
 
-  -- ext / locality
+  -- extensionality / locality
   basis_ext : ∀ b1 b2 : Basis, (∀ q, bit q b1 = bit q b2) → b1 = b2
 
   bit_writeNat_in  :
@@ -48,20 +54,23 @@ class RegEncoding (Basis : Type u) where
 
   writeNat_split :
     let left : Reg := ⟨r.lo, r.lo + m⟩
-    let right: Reg := ⟨r.lo + m, r.hi⟩
+    let right : Reg := ⟨r.lo + m, r.hi⟩
     writeNat r (k1 + (ASize left) * k0) b
-    =
+      =
     writeNat right k0 (writeNat left k1 b)
 
   toNat_split :
     let left : Reg := ⟨r.lo, r.lo + m⟩
-    let right: Reg := ⟨r.lo + m, r.hi⟩
+    let right : Reg := ⟨r.lo + m, r.hi⟩
     toNat r b
-    =
+      =
     toNat left b * (2^(regSize right)) + toNat right b
 
-/-! ## Encoding lemma: disjoint writes commute -/
+/-! =========================================================
+    Section 2: Encoding lemmas and register helpers
+========================================================= -/
 
+/-- Writes to disjoint registers commute. -/
 lemma writeNat_comm_of_disjoint
   {Basis : Type u} [RegEncoding Basis]
   (left right : Reg) (hdisj : Disjoint left right)
@@ -160,17 +169,98 @@ lemma writeNat_comm_of_disjoint
         _   = RegEncoding.bit q b := outR₁
         _   = RegEncoding.bit q (RegEncoding.writeNat left yL b) := by simp [outL₂]
         _   = RegEncoding.bit q (RegEncoding.writeNat right yR (RegEncoding.writeNat left yL b)) := by
-              simp[outR₂]
-
-/-! ## Register notation helpers -/
+              simp [outR₂]
 
 namespace Reg
-variable {Basis : Type u} [RegEncoding Basis]
-def toInt (r : Reg) (b : Basis) : ℕ := RegEncoding.toNat r b
-def writeInt (r : Reg) (v : ℕ) (b : Basis) : Basis := RegEncoding.writeNat r v b
+
+
+/-- Namespace alias for reading a register as a natural number. -/
+def toNat {Basis : Type u} [RegEncoding Basis] (r : Reg) (b : Basis) : ℕ := RegEncoding.toNat r b
+
+/-- Namespace alias for writing a natural number into a register. -/
+def writeNat {Basis : Type u} [RegEncoding Basis]  (r : Reg) (v : ℕ) (b : Basis) : Basis := RegEncoding.writeNat r v b
+
 end Reg
 
-/-! ## Gate language -/
+/-! =========================================================
+    Section 3: Extended-register views
+========================================================= -/
+
+/-- A register together with a semantic high-bit extension budget. -/
+structure ExtReg where
+  base  : Reg
+  extra : ℕ
+
+namespace ExtReg
+
+/-- A plain register with no extra logical high bits. -/
+def ofReg (r : Reg) : ExtReg := ⟨r, 0⟩
+
+/-- Logical width seen by signed phase semantics. -/
+def width (e : ExtReg) : ℕ := regSize e.base + e.extra
+
+/-- Increase the logical width descriptor by `n` high bits. -/
+def addExtra (e : ExtReg) (n : ℕ) : ExtReg := ⟨e.base, e.extra + n⟩
+
+@[simp] theorem addExtra_base (e : ExtReg) (n : ℕ) :
+    (addExtra e n).base = e.base := rfl
+
+@[simp] theorem addExtra_extra (e : ExtReg) (n : ℕ) :
+    (addExtra e n).extra = e.extra + n := rfl
+
+@[simp] theorem width_addExtra (e : ExtReg) (n : ℕ) :
+    width (addExtra e n) = width e + n := by
+  simp [width, addExtra, regSize, Nat.add_assoc]
+
+end ExtReg
+
+/-- Width-based two's-complement decoding. -/
+def tcDecodeWidth : ℕ → ℕ → ℤ
+  | 0, _ => 0
+  | w + 1, n =>
+      if _h : n < 2^w then
+        (n : ℤ)
+      else
+        (n : ℤ) - ((2^(w + 1) : ℕ) : ℤ)
+
+/-- How an extended register is read from a basis state.
+    Extension itself is operationalized later as a gate. -/
+class ExtRegEncoding (Basis : Type u) [RegEncoding Basis] where
+  extToNat : ExtReg → Basis → ℕ
+
+  extToNat_base :
+    ∀ r b, extToNat (ExtReg.ofReg r) b = RegEncoding.toNat r b
+
+  extToNat_write_disjoint :
+    ∀ (e : ExtReg) (r : Reg) (_h : Disjoint e.base r) (v : ℕ) (b : Basis),
+      extToNat e (RegEncoding.writeNat r v b) = extToNat e b
+
+namespace ExtReg
+
+
+/-- Read an extended register as a natural number. -/
+def toNat {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis] (e : ExtReg) (b : Basis) : ℕ :=
+  ExtRegEncoding.extToNat e b
+
+@[simp] theorem toNat_ofReg {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis] (r : Reg) (b : Basis) :
+    ExtReg.toNat (ExtReg.ofReg r) b = RegEncoding.toNat r b := by
+  simpa [ExtReg.toNat] using
+    (ExtRegEncoding.extToNat_base (Basis := Basis) r b)
+
+end ExtReg
+
+namespace ExtRegEncoding
+variable {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+
+/-- Signed interpretation of an extended register via two's-complement decoding. -/
+def extToInt (e : ExtReg) (b : Basis) : ℤ :=
+  tcDecodeWidth (ExtReg.width e) (ExtReg.toNat e b)
+
+end ExtRegEncoding
+
+/-! =========================================================
+    Section 4: Gate language
+========================================================= -/
 
 inductive Gate : Type
   | id : Gate
@@ -179,21 +269,87 @@ inductive Gate : Type
   | H : ℕ → Gate
   | X : ℕ → Gate
   | QFT : Reg → Gate
-  | PhaseProd  : (phi : Real) → (x z : Reg) → Gate
-  | CPhaseProd : (ctrl : ℕ) → (phi : Real) → (x z : Reg) → Gate
+  | SignedPhaseProd  : (phi : Real) → (x z : ExtReg) → Gate
+  | CSignedPhaseProd : (ctrl : ℕ) → (phi : Real) → (x z : ExtReg) → Gate
   | Prim : String → List ℕ → Gate
-  | ShiftL    : (r : Reg) → (n : ℕ) → Gate
-  | ShiftR    : (r : Reg) → (n : ℕ) → Gate
-  | Negate    : (r : Reg) → Gate
-  | AddScaled : (dst src : Reg) → (negSrc : Bool) → (shift : ℕ) → Gate
-
+  | ShiftL    : (r : ExtReg) → (n : ℕ) → Gate
+  | ShiftR    : (r : ExtReg) → (n : ℕ) → Gate
+  | Negate    : (r : ExtReg) → Gate
+  | AddScaled : (dst src : ExtReg) → (negSrc : Bool) → (shift : ℕ) → Gate
+  | zeroExtend : (r : ExtReg) → (n : ℕ) → Gate
+  | signExtend : (r : ExtReg) → (n : ℕ) → Gate
+  | zeroDealloc : (r : ExtReg) → (n : ℕ) → Gate
+  | signDealloc : (r : ExtReg) → (n : ℕ) → Gate
 
 namespace Gate
+
 infixr:80 " ;; " => Gate.seq
 prefix:90 "†" => Gate.adj
+
+def unsignedView (r : Reg) : ExtReg :=
+  ExtReg.addExtra (ExtReg.ofReg r) 1
+
+def PhaseProd
+    (phi : Real) (x z : Reg) : Gate :=
+  Gate.zeroExtend (ExtReg.ofReg x) 1 ;;
+  Gate.zeroExtend (ExtReg.ofReg z) 1 ;;
+  Gate.SignedPhaseProd phi (unsignedView x) (unsignedView z) ;;
+  Gate.zeroDealloc (ExtReg.ofReg z) 1 ;;
+  Gate.zeroDealloc (ExtReg.ofReg x) 1
+
+def CPhaseProd
+    (ctrl : ℕ) (phi : Real) (x z : Reg) : Gate :=
+  Gate.zeroExtend (ExtReg.ofReg x) 1 ;;
+  Gate.zeroExtend (ExtReg.ofReg z) 1 ;;
+  Gate.CSignedPhaseProd ctrl phi (unsignedView x) (unsignedView z) ;;
+  Gate.zeroDealloc (ExtReg.ofReg z) 1 ;;
+  Gate.zeroDealloc (ExtReg.ofReg x) 1
+
+-- @[simp] theorem PhaseProd_def
+--     {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+--     (phi : Real) (x z : Reg) :
+--     Gate.PhaseProd (Basis := Basis) phi x z
+--       =
+--     Gate.zeroExtend (ExtReg.ofReg x) 1 ;;
+--     Gate.zeroExtend (ExtReg.ofReg z) 1 ;;
+--     Gate.SignedPhaseProd phi (unsignedView x) (unsignedView z) := rfl
+
+-- @[simp] theorem CPhaseProd_def
+--     {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+--     (ctrl : ℕ) (phi : Real) (x z : Reg) :
+--     Gate.CPhaseProd (Basis := Basis) ctrl phi x z
+--       =
+--     Gate.zeroExtend (ExtReg.ofReg x) 1 ;;
+--     Gate.zeroExtend (ExtReg.ofReg z) 1 ;;
+--     Gate.CSignedPhaseProd ctrl phi (unsignedView x) (unsignedView z) := rfl
+
 end Gate
 
-/-! ## Abstract quantum semantics -/
+/-! =========================================================
+    Section 5: Core QFT phase helpers
+========================================================= -/
+
+/-- A 1-qubit register at index `q`. -/
+def qubitReg (q : ℕ) : Reg := ⟨q, q + 1⟩
+
+/-- Standard QFT phase schedule. -/
+noncomputable def qftPhi (m : ℕ) : ℝ := (2 * Real.pi) / (2^m)
+
+/-- Primitive `N`-th root of unity `exp(2πi/N)`. -/
+noncomputable def ω (N : ℕ) : ℂ :=
+  Complex.exp (2 * (Real.pi : ℂ) * Complex.I / (N : ℂ))
+
+/-- Power of the primitive root `ω N`. -/
+noncomputable def ωPow (N k : ℕ) : ℂ :=
+  (ω N) ^ k
+
+/-- QFT phase factor `ω_N^(x*y)`. -/
+noncomputable def qftPhase (N x y : ℕ) : ℂ :=
+  ωPow N (x * y)
+
+/-! =========================================================
+    Section 6: Abstract quantum semantics
+========================================================= -/
 
 class QSemantics where
   Basis : Type u
@@ -217,12 +373,12 @@ class QSemantics where
   hsub : ∀ U ψ φ, eval U (ψ - φ) = eval U ψ - eval U φ
 
   state_induction :
-  ∀ (P : State → Prop),
-    P 0 →
-    (∀ ψ φ, P ψ → P φ → P (ψ + φ)) →
-    (∀ (a : ℂ) ψ, P ψ → P (a • ψ)) →
-    (∀ b : Basis, P (ket b)) →
-    ∀ ψ, P ψ
+    ∀ (P : State → Prop),
+      P 0 →
+      (∀ ψ φ, P ψ → P φ → P (ψ + φ)) →
+      (∀ (a : ℂ) ψ, P ψ → P (a • ψ)) →
+      (∀ b : Basis, P (ket b)) →
+      ∀ ψ, P ψ
 
   tensor : State → State → State
 
@@ -235,6 +391,7 @@ class QSemantics where
     ∀ ψ₁ ψ₂ φ₁ φ₂,
       inner ℂ (tensor ψ₁ φ₁) (tensor ψ₂ φ₂)
         = (inner ℂ ψ₁ ψ₂) * (inner ℂ φ₁ φ₂)
+
   ket_ne_zero (b : Basis) :
     ket b ≠ 0
 
@@ -242,7 +399,180 @@ open QSemantics
 attribute [instance] QSemantics.instNormed
 attribute [instance] QSemantics.instIP
 
-/-! ## Eval linearity over sums -/
+/-! =========================================================
+    Section 7: Gate semantic facts
+========================================================= -/
+
+/-- Basis-ket semantics for the non-primitive helpers and extension gates. -/
+class GateSemanticsFacts
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis] : Type where
+
+  eval_QFT_size0 :
+    ∀ (r : Reg) (ψ : qs.State),
+      regSize r = 0 →
+      qs.eval (Gate.QFT r) ψ = qs.eval Gate.id ψ
+
+  eval_QFT_size1 :
+    ∀ (r : Reg) (ψ : qs.State),
+      regSize r = 1 →
+      qs.eval (Gate.QFT r) ψ = qs.eval (Gate.H r.lo) ψ
+
+  eval_QFT_ket :
+    ∀ (r : Reg) (b : qs.Basis),
+      qs.eval (Gate.QFT r) (qs.ket b)
+        =
+      ((1 / Real.sqrt ((2^(regSize r) : ℕ) : ℝ) : ℂ)) •
+        ∑ y : Fin (2^(regSize r)),
+          (qftPhase (2^(regSize r)) (RegEncoding.toNat r b) y.1) •
+            qs.ket (RegEncoding.writeNat r y.1 b)
+
+  eval_SignedPhaseProd_ket :
+    ∀ (phi : ℝ) (x z : ExtReg) (b : qs.Basis),
+      qs.eval (Gate.SignedPhaseProd phi x z) (qs.ket b)
+        =
+      (Complex.exp
+        (phi * Complex.I *
+          (((ExtRegEncoding.extToInt x b : ℤ) : ℂ) *
+           (((ExtRegEncoding.extToInt z b : ℤ) : ℂ))))) •
+        qs.ket b
+
+  eval_zeroExtend_ket :
+    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
+      ∃ b' : qs.Basis,
+        qs.eval (Gate.zeroExtend r n) (qs.ket b) = qs.ket b' ∧
+        RegEncoding.toNat r.base b' = RegEncoding.toNat r.base b ∧
+        ExtRegEncoding.extToNat (ExtReg.addExtra r n) b'
+          = ExtRegEncoding.extToNat r b ∧
+        (∀ s : Reg, Disjoint s r.base →
+          RegEncoding.toNat s b' = RegEncoding.toNat s b)
+
+  eval_signExtend_ket :
+    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
+      ∃ b' : qs.Basis,
+        qs.eval (Gate.signExtend r n) (qs.ket b) = qs.ket b' ∧
+        RegEncoding.toNat r.base b' = RegEncoding.toNat r.base b ∧
+        ExtRegEncoding.extToInt (ExtReg.addExtra r n) b'
+          = ExtRegEncoding.extToInt r b ∧
+        (∀ s : Reg, Disjoint s r.base →
+          RegEncoding.toNat s b' = RegEncoding.toNat s b)
+
+  eval_zeroExtend_zeroDealloc :
+  ∀ r n ψ, qs.eval (Gate.zeroExtend r n ;; Gate.zeroDealloc r n) ψ = ψ
+
+  eval_signExtend_signDealloc :
+    ∀ r n ψ, qs.eval (Gate.signExtend r n ;; Gate.signDealloc r n) ψ = ψ
+
+  zeroExtend_ofReg_extToInt :
+  ∀ (r : Reg) (b b' : qs.Basis) (n : ℕ) (_hn: n > 0),
+    qs.eval (Gate.zeroExtend (ExtReg.ofReg r) n) (qs.ket b) = qs.ket b' →
+    ExtRegEncoding.extToInt (ExtReg.addExtra (ExtReg.ofReg r) n) b'
+      = (RegEncoding.toNat r b : ℤ)
+
+  zeroExtend_preserves_disjoint_extToInt :
+  ∀ (r e : ExtReg) (n : ℕ) (b b' : qs.Basis),
+    Disjoint r.base e.base →
+    qs.eval (Gate.zeroExtend r n) (qs.ket b) = qs.ket b' →
+    ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b
+
+namespace GateSemanticsFacts
+
+variable {qs : QSemantics}
+variable [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+variable [GateSemanticsFacts qs]
+
+theorem eval_PhaseProd_ket
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  (phi : ℝ) (x z : Reg) (b : qs.Basis)
+  (hdisj : Disjoint x z) :
+  qs.eval (Gate.PhaseProd phi x z) (qs.ket b) =
+    Complex.exp
+      (phi * Complex.I *
+        ((RegEncoding.toNat x b) * (RegEncoding.toNat z b))) •
+      qs.ket b := by
+  have hdisj' : Disjoint z x := by
+    cases hdisj with
+    | inl h => exact Or.inr h
+    | inr h => exact Or.inl h
+
+  rw [Gate.PhaseProd]
+  simp[qs.eval_seq]
+
+  rcases GateSemanticsFacts.eval_zeroExtend_ket
+      (qs := qs) (r := ExtReg.ofReg x) (n := 1) (b := b) with
+    ⟨b₁, hx_eval, hx_base, hx_nat, hx_loc⟩
+
+  rcases GateSemanticsFacts.eval_zeroExtend_ket
+      (qs := qs) (r := ExtReg.ofReg z) (n := 1) (b := b₁) with
+    ⟨b₂, hz_eval, hz_base, hz_nat, hz_loc⟩
+
+  rw [hx_eval, hz_eval]
+  rw [GateSemanticsFacts.eval_SignedPhaseProd_ket]
+
+  rw [qs.eval_smul, qs.eval_smul]
+
+  have hundo_z :
+      qs.eval (Gate.zeroDealloc (ExtReg.ofReg z) 1) (qs.ket b₂) = qs.ket b₁ := by
+    have h :=
+      GateSemanticsFacts.eval_zeroExtend_zeroDealloc
+        (qs := qs) (r := ExtReg.ofReg z) (n := 1) (ψ := qs.ket b₁)
+    rw [qs.eval_seq] at h
+    rw [hz_eval] at h
+    simpa using h
+
+  have hundo_x :
+      qs.eval (Gate.zeroDealloc (ExtReg.ofReg x) 1) (qs.ket b₁) = qs.ket b := by
+    have h :=
+      GateSemanticsFacts.eval_zeroExtend_zeroDealloc
+        (qs := qs) (r := ExtReg.ofReg x) (n := 1) (ψ := qs.ket b)
+    rw [qs.eval_seq] at h
+    rw [hx_eval] at h
+    simpa using h
+
+  rw [hundo_z, hundo_x]
+  congr 3
+
+  have hx_ext₁ :
+      ExtRegEncoding.extToInt (Gate.unsignedView x) b₁ =
+        (RegEncoding.toNat x b : ℤ) := by
+    apply zeroExtend_ofReg_extToInt
+    simp
+    apply hx_eval
+
+  have hz_ext₂ :
+      ExtRegEncoding.extToInt (Gate.unsignedView z) b₂ =
+        (RegEncoding.toNat z b₁ : ℤ) := by
+    apply zeroExtend_ofReg_extToInt
+    simp
+    apply hz_eval
+
+
+  have hz_same :
+      RegEncoding.toNat z b₁ = RegEncoding.toNat z b := by
+    exact hx_loc z hdisj'
+
+  have hx_ext₂ :
+    ExtRegEncoding.extToInt (Gate.unsignedView x) b₂ =
+      ExtRegEncoding.extToInt (Gate.unsignedView x) b₁ := by
+    exact
+      GateSemanticsFacts.zeroExtend_preserves_disjoint_extToInt
+        (qs := qs)
+        (r := ExtReg.ofReg z)
+        (e := Gate.unsignedView x)
+        (n := 1)
+        (b := b₁)
+        (b' := b₂)
+        (by simpa [Gate.unsignedView, ExtReg.addExtra, ExtReg.ofReg] using hdisj')
+        hz_eval
+  simp [hx_ext₁, hx_ext₂, hz_ext₂, hz_same]
+
+end GateSemanticsFacts
+
+/-! =========================================================
+    Section 8: General linearity lemmas for `eval`
+========================================================= -/
 
 lemma eval_sum {α : Type} [QSemantics] (U : Gate) (s : Finset α) (f : α → QSemantics.State) :
     QSemantics.eval U (∑ a ∈ s, f a) = ∑ a ∈ s, QSemantics.eval U (f a) := by
@@ -254,25 +584,31 @@ lemma eval_sum {α : Type} [QSemantics] (U : Gate) (s : Finset α) (f : α → Q
 
 lemma eval_sum_univ {α : Type} [QSemantics] [Fintype α] (U : Gate) (f : α → State) :
     eval U (∑ a : α, f a) = ∑ a : α, eval U (f a) := by
-  have:= (eval_sum U (Finset.univ) f)
+  have := (eval_sum U (Finset.univ) f)
   aesop
 
-/-! ## Encoding transport lemmas specialized to QSemantics -/
+/-! =========================================================
+    Section 9: Encoding transport lemmas
+========================================================= -/
 
 lemma toNat_left_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
   (left right : Reg) (h : Disjoint left right) (b : QSemantics.Basis) (yR : ℕ) :
   RegEncoding.toNat left (RegEncoding.writeNat right yR b)
     = RegEncoding.toNat left b := by
-  simpa using (RegEncoding.toNat_left_write_right (left := left) (right := right) (_h := h) (b := b) (yR := yR))
+  simpa using
+    (RegEncoding.toNat_left_write_right
+      (left := left) (right := right) (_h := h) (b := b) (yR := yR))
 
 lemma toNat_right_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
-  (b : Basis) (yR : ℕ) :
+  (right : Reg) (b : QSemantics.Basis) (yR : ℕ) :
   RegEncoding.toNat right (RegEncoding.writeNat right yR b) = yR := by
   simpa using (RegEncoding.toNat_writeNat right yR b)
 
-/-! ## Norm / overlap inequalities -/
+/-! =========================================================
+    Section 10: Norm and overlap inequalities
+========================================================= -/
 
-/-- A convenient lemma: `eval U` is an isometry if it preserves inner products. -/
+/-- `eval U` is an isometry if it preserves inner products. -/
 lemma eval_isometry
   (qs : QSemantics)
   (U : Gate)
@@ -303,7 +639,7 @@ lemma overlap_err_invariant
     ‖ (1 : ℂ) - inner ℂ ψ φ‖ := by
   simp [qs.inner_preserved W ψ φ]
 
-/-- `‖1 - inner ψ φ‖ ≤ ‖ψ - φ‖` when `‖ψ‖=1`. -/
+/-- `‖1 - inner ψ φ‖ ≤ ‖ψ - φ‖` when `‖ψ‖ = 1`. -/
 lemma overlap_le_dist
   (qs : QSemantics) (ψ φ : qs.State) :
   ‖ψ‖ = 1 →
@@ -323,7 +659,7 @@ lemma overlap_le_dist
             simpa using (norm_inner_le_norm ψ (ψ - φ))
     _   = ‖ψ - φ‖ := by simp [hψ]
 
-/-- distance ≤ sqrt(2 * overlap error) for unit vectors. -/
+/-- Distance is bounded by the square root of twice the overlap error for unit vectors. -/
 lemma dist_le_sqrt_two_mul_overlap
   (qs : QSemantics) (ψ φ : qs.State) :
   ‖ψ‖ = 1 → ‖φ‖ = 1 →
@@ -362,35 +698,47 @@ lemma dist_le_sqrt_two_mul_overlap
   apply Real.le_sqrt_of_sq_le
   exact hmain
 
-/-! ## Specification interface -/
+/-! =========================================================
+    Section 11: Specification interface
+========================================================= -/
 
-class Spec (qs : QSemantics) [RegEncoding qs.Basis] where
+class Spec where
   idealModMul     : (c N : ℕ) → (x : Reg) → Gate
   idealCtrlModMul : (c N : ℕ) → (x : Reg) → (ctrl : ℕ) → Gate
 
 open QSemantics
 open Gate
 
-/-! ## Modular multiplication and exponentiation circuits -/
+/-! =========================================================
+    Section 12: Modular multiplication and exponentiation circuits
+========================================================= -/
 
+/-- Inverse QFT. -/
 def IQFT (r : Reg) : Gate := †(Gate.QFT r)
+
+/-- Extend a register by one physical high qubit. -/
 def extendHi (r : Reg) : Reg := ⟨r.lo, r.hi + 1⟩
 
+/-- List of qubit indices in a register. -/
 def regQubits (r : Reg) : List ℕ :=
   (List.range (regSize r)).map (fun k => r.lo + k)
 
+/-- Apply Hadamards across all qubits of a register. -/
 def H_reg (r : Reg) : Gate :=
   (regQubits r).foldl (fun acc q => (Gate.H q) ;; acc) Gate.id
 
+/-- Primitive gate wrapper. -/
 def PrimN (tag : String) (args : List ℕ) : Gate := Gate.Prim tag args
 
-noncomputable def step1 (c N : ℕ) (ctrl:ℕ) (x_reg w_reg : Reg) : Gate :=
+noncomputable def step1 {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+    (c N : ℕ) (ctrl : ℕ) (x_reg w_reg : Reg) : Gate :=
   let phi : ℝ := (2 * Real.pi * ((c + N - 1) % N)) / (N : ℝ)
   (IQFT w_reg) ;;
   (Gate.CPhaseProd ctrl phi x_reg w_reg) ;;
   (H_reg w_reg)
 
-noncomputable def step2 (N : ℕ) (x_reg w_reg : Reg) : (Reg × Gate) :=
+noncomputable def step2 {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+    (N : ℕ) (x_reg w_reg : Reg) : (Reg × Gate) :=
   let x_ext : Reg := extendHi x_reg
   let n1 : ℕ := regSize x_ext
   let m  : ℕ := regSize w_reg
@@ -400,6 +748,13 @@ noncomputable def step2 (N : ℕ) (x_reg w_reg : Reg) : (Reg × Gate) :=
     (Gate.PhaseProd phi w_reg x_ext) ;;
     (Gate.QFT x_ext))
 
+noncomputable def frac_load
+    (k N : ℕ) (ctrl : ℕ) (x_reg w_reg : Reg) : Gate :=
+  let phi : ℝ := (2 * Real.pi * ((k % N) : ℝ)) / (N : ℝ)
+  (IQFT w_reg) ;;
+  (Gate.CPhaseProd ctrl phi x_reg w_reg) ;;
+  (QFT w_reg)
+
 def step3 (N : ℕ) (x_ext : Reg) (flag : ℕ) : Gate :=
   (PrimN "CMP_GE_CONST" [x_ext.lo, x_ext.hi, N, flag]) ;;
   (PrimN "CSUB_CONST"   [flag, x_ext.lo, x_ext.hi, N])
@@ -407,33 +762,27 @@ def step3 (N : ℕ) (x_ext : Reg) (flag : ℕ) : Gate :=
 def step4 (N : ℕ) (x_ext w_reg : Reg) (flag : ℕ) : Gate :=
   PrimN "CMP_LT_NW" [x_ext.lo, x_ext.hi, w_reg.lo, w_reg.hi, N, flag]
 
-noncomputable def frac_load (k N : ℕ) (ctrl:ℕ) (x_reg w_reg : Reg) : Gate :=
-  let phi : ℝ := (2 * Real.pi * ((k % N) : ℝ)) / (N : ℝ)
-  (IQFT w_reg) ;;
-  (Gate.CPhaseProd ctrl phi x_reg w_reg) ;;
-  (QFT w_reg)
-
-/-- Step 5: uncompute w using the provided k5 = (1 - c^{-1}) mod N. -/
-noncomputable def step5 (k5 N : ℕ) (ctrl:ℕ) (x_ext w_reg : Reg) : Gate :=
+noncomputable def step5 {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+    (k5 N : ℕ) (ctrl : ℕ) (x_ext w_reg : Reg) : Gate :=
   †(frac_load k5 N ctrl x_ext w_reg)
 
-noncomputable def CmodMulInPlaceCore
-  (c N k5 : ℕ) (ctrl: ℕ) (x_reg w_reg : Reg) (flag : ℕ)  : Gate :=
-  let U1 : Gate := step1 c N ctrl x_reg w_reg
-  let (x_ext, U2) := step2 N x_reg w_reg
+noncomputable def CmodMulInPlaceCore {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+    (c N k5 : ℕ) (ctrl : ℕ) (x_reg w_reg : Reg) (flag : ℕ) : Gate :=
+  let U1 : Gate := step1 (Basis := Basis) c N ctrl x_reg w_reg
+  let (x_ext, U2) := step2 (Basis := Basis) N x_reg w_reg
   let U3 : Gate := step3 N x_ext flag
   let U4 : Gate := step4 N x_ext w_reg flag
-  let U5 : Gate := step5 k5 N ctrl x_ext w_reg
+  let U5 : Gate := step5 (Basis := Basis) k5 N ctrl x_ext w_reg
   U5 ;; U4 ;; U3 ;; U2 ;; U1
 
-noncomputable def CmodMulInPlace
-  (base n m c N k5 ctrl: ℕ) : Gate :=
+noncomputable def CmodMulInPlace {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+    (base n m c N k5 ctrl : ℕ) : Gate :=
   let x_reg : Reg := ⟨base, base + n⟩
   let w_reg : Reg := ⟨base + n + 1, base + n + m + 1⟩
   let flag  : ℕ := base + n + m + 1
-  CmodMulInPlaceCore c N ctrl k5 x_reg w_reg flag
+  CmodMulInPlaceCore (Basis := Basis) c N k5 ctrl x_reg w_reg flag
 
-class ModMul (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] where
+class ModMul (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [Spec] where
   η : ℝ
   η_nonneg : 0 ≤ η
   k5 : ℕ → ℕ → ℕ
@@ -441,48 +790,52 @@ class ModMul (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] where
     ∃ K : ℝ, 0 ≤ K ∧
       ∀ (c N : ℕ) (x_reg w_reg : Reg) (flag ctrl : ℕ) (ψ : qs.State),
         ‖ (1 : ℂ) - inner ℂ
-            (qs.eval (CmodMulInPlaceCore c N (k5 c N) ctrl x_reg w_reg flag) ψ)
-            (qs.eval (Spec.idealCtrlModMul (qs := qs) c N x_reg ctrl) ψ)‖
+            (qs.eval (CmodMulInPlaceCore (Basis := qs.Basis) c N (k5 c N) ctrl x_reg w_reg flag) ψ)
+            (qs.eval (Spec.idealCtrlModMul c N x_reg ctrl) ψ)‖
         ≤ K * η
+
+noncomputable def modExpApproxSteps
+    (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [Spec] [ModMul qs]
+    (a N : ℕ) (x y w_reg : Reg) (flag : ℕ) : ℕ → ℕ → Gate
+  | _q, 0   => Gate.id
+  | q, n+1 =>
+      let k : ℕ := q - x.lo
+      let c : ℕ := ((a ^ (2 ^ k)) % N)
+      (CmodMulInPlaceCore (Basis := qs.Basis) c N (ModMul.k5 (qs := qs) c N) q y w_reg flag) ;;
+      modExpApproxSteps qs a N x y w_reg flag (q+1) n
 
 def tbits (x : Reg) : ℕ := x.hi - x.lo
 
-def modExpIdealSteps (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs]
-    (a N : ℕ) (x y : Reg) : ℕ → ℕ → Gate
-  | _q, 0     => Gate.id
-  | q, n+1   =>
-      let k : ℕ := q - x.lo
-      (Spec.idealCtrlModMul (qs := qs) ((a ^ (2 ^ k)) % N) N y q) ;;
-      modExpIdealSteps qs a N x y (q+1) n
-
-def modExpIdeal' (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs]
-    (a N : ℕ) (x y : Reg) : Gate :=
-  modExpIdealSteps qs a N x y x.lo (tbits x)
-
-noncomputable def modExpApproxSteps (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] [ModMul qs]
-    (a N : ℕ) (x y w_reg : Reg) (flag : ℕ) : ℕ → ℕ → Gate
-  | _q, 0     => Gate.id
-  | q, n+1   =>
-      let k : ℕ := q - x.lo
-      let c : ℕ := ((a ^ (2 ^ k)) % N)
-      (CmodMulInPlaceCore c N (ModMul.k5 (qs := qs) c N) q y w_reg flag) ;;
-      modExpApproxSteps qs a N x y w_reg flag (q+1) n
-
-noncomputable def modExpApprox' (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] [ModMul qs]
+noncomputable def modExpApprox'
+    (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [Spec] [ModMul qs]
     (a N : ℕ) (x y w_reg : Reg) (flag : ℕ) : Gate :=
   modExpApproxSteps qs a N x y w_reg flag x.lo (tbits x)
 
+def modExpIdealSteps (qs : QSemantics) [RegEncoding qs.Basis] [Spec]
+    (a N : ℕ) (x y : Reg) : ℕ → ℕ → Gate
+  | _q, 0   => Gate.id
+  | q, n+1  =>
+      let k : ℕ := q - x.lo
+      (Spec.idealCtrlModMul ((a ^ (2 ^ k)) % N) N y q) ;;
+      modExpIdealSteps qs a N x y (q+1) n
+
+def modExpIdeal' (qs : QSemantics) [RegEncoding qs.Basis] [Spec]
+    (a N : ℕ) (x y : Reg) : Gate :=
+  modExpIdealSteps qs a N x y x.lo (tbits x)
+
 noncomputable def stepErr (K η : ℝ) : ℝ := Real.sqrt (2 * (K * η))
 
-/-! ## Modexp error propagation theorems -/
+/-! =========================================================
+    Section 13: Modular exponentiation error propagation
+========================================================= -/
 
 lemma ctrlMul_step_dist_bound
-  (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] [ModMul qs] :
+  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [Spec] [ModMul qs] :
   ∃ K : ℝ, 0 ≤ K ∧
     ∀ (c N : ℕ) (x_reg w_reg : Reg) (flag ctrl : ℕ) (ψ : qs.State),
       ‖ψ‖ = 1 →
-      ‖ qs.eval (CmodMulInPlaceCore c N (ModMul.k5 (qs := qs) c N) ctrl x_reg w_reg flag) ψ
-        - qs.eval (Spec.idealCtrlModMul (qs := qs) c N x_reg ctrl) ψ‖
+      ‖ qs.eval (CmodMulInPlaceCore (Basis := qs.Basis) c N (ModMul.k5 (qs := qs) c N) ctrl x_reg w_reg flag) ψ
+        - qs.eval (Spec.idealCtrlModMul c N x_reg ctrl) ψ‖
       ≤ stepErr K (ModMul.η (qs := qs)) :=
 by
   rcases ModMul.theorem1_ctrl_gen (qs := qs) with ⟨K, K_nonneg, hK⟩
@@ -490,19 +843,19 @@ by
   intro c N x_reg w_reg flag ctrl ψ hψ
 
   set ψA : qs.State :=
-    qs.eval (CmodMulInPlaceCore c N (ModMul.k5 (qs := qs) c N) ctrl x_reg w_reg flag) ψ
+    qs.eval (CmodMulInPlaceCore (Basis := qs.Basis) c N (ModMul.k5 (qs := qs) c N) ctrl x_reg w_reg flag) ψ
   set ψI : qs.State :=
-    qs.eval (Spec.idealCtrlModMul (qs := qs) c N x_reg ctrl) ψ
+    qs.eval (Spec.idealCtrlModMul c N x_reg ctrl) ψ
 
   have hψA : ‖ψA‖ = 1 := by
     simpa [ψA, hψ] using
       (eval_norm_preserved (qs := qs)
-        (CmodMulInPlaceCore c N (ModMul.k5 (qs := qs) c N) ctrl x_reg w_reg flag) ψ)
+        (CmodMulInPlaceCore (Basis := qs.Basis) c N (ModMul.k5 (qs := qs) c N) ctrl x_reg w_reg flag) ψ)
 
   have hψI : ‖ψI‖ = 1 := by
     simpa [ψI, hψ] using
       (eval_norm_preserved (qs := qs)
-        (Spec.idealCtrlModMul (qs := qs) c N x_reg ctrl) ψ)
+        (Spec.idealCtrlModMul c N x_reg ctrl) ψ)
 
   have hdist :
       ‖ψA - ψI‖ ≤ Real.sqrt (2 * ‖(1 : ℂ) - inner ℂ ψA ψI‖) :=
@@ -527,7 +880,7 @@ by
   simpa [ψA, ψI, stepErr] using this
 
 theorem modExpSteps_dist_bound
-  (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] [ModMul qs] :
+  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [Spec] [ModMul qs] :
   ∃ K : ℝ, 0 ≤ K ∧
     ∀ (a N : ℕ) (x y w_reg : Reg) (flag : ℕ) (q n : ℕ) (ψ : qs.State),
       ‖ψ‖ = 1 →
@@ -543,13 +896,13 @@ by
   | zero =>
       intro q ψ hψ
       simp [modExpApproxSteps, modExpIdealSteps, qs.eval_id]
-    | succ n ih =>
+  | succ n ih =>
       intro q ψ hψ
       set k : ℕ := q - x.lo with hk
       set c : ℕ := ((a ^ (2 ^ k)) % N) with hc
 
-      set A : Gate := CmodMulInPlaceCore c N (ModMul.k5 (qs := qs) c N) q y w_reg flag with hA
-      set I : Gate := Spec.idealCtrlModMul (qs := qs) c N y q with hI
+      set A : Gate := CmodMulInPlaceCore (Basis := qs.Basis) c N (ModMul.k5 (qs := qs) c N) q y w_reg flag with hA
+      set I : Gate := Spec.idealCtrlModMul c N y q with hI
       set RA : Gate := modExpApproxSteps (qs := qs) a N x y w_reg flag (q+1) n with hRA
       set RI : Gate := modExpIdealSteps  (qs := qs) a N x y (q+1) n with hRI
 
@@ -578,7 +931,6 @@ by
       have h_tail :
         ‖ qs.eval RA ψI0 - qs.eval RI ψI0‖
           ≤ (n : ℝ) * stepErr K (ModMul.η (qs := qs)) := by
-
         have := ih (q := q+1) (ψ := ψI0) hψI0_unit
         simpa [hRA, hRI] using this
 
@@ -587,6 +939,7 @@ by
         simpa using
           (eval_isometry qs RA
             (by intro ψ φ; simpa using qs.inner_preserved RA ψ φ) ψA0 ψI0)
+
       have tri :
         ‖qs.eval RA ψA0 - qs.eval RI ψI0‖
           ≤ ‖qs.eval RA ψA0 - qs.eval RA ψI0‖ + ‖qs.eval RA ψI0 - qs.eval RI ψI0‖ := by
@@ -597,11 +950,13 @@ by
         calc
           ‖qs.eval RA ψA0 - qs.eval RI ψI0‖
               = ‖(qs.eval RA ψA0 - qs.eval RA ψI0) + (qs.eval RA ψI0 - qs.eval RI ψI0)‖ := by
-                  simp_all
+                  rw [hdecomp]
           _ ≤ ‖qs.eval RA ψA0 - qs.eval RA ψI0‖ + ‖qs.eval RA ψI0 - qs.eval RI ψI0‖ := by
-                  simpa using (norm_add_le
-                    (qs.eval RA ψA0 - qs.eval RA ψI0)
-                    (qs.eval RA ψI0 - qs.eval RI ψI0))
+                  simpa using
+                    (norm_add_le
+                      (qs.eval RA ψA0 - qs.eval RA ψI0)
+                      (qs.eval RA ψI0 - qs.eval RI ψI0))
+
       have hmain :
         ‖ qs.eval (modExpApproxSteps (qs := qs) a N x y w_reg flag q (n+1)) ψ
           - qs.eval (modExpIdealSteps  (qs := qs) a N x y q (n+1)) ψ‖
@@ -621,7 +976,7 @@ by
       aesop
 
 theorem modExp_dist_bound
-  (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] [ModMul qs] :
+  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [Spec] [ModMul qs] :
   ∃ K : ℝ, 0 ≤ K ∧
     ∀ (a N : ℕ) (x y w_reg : Reg) (flag : ℕ) (ψ : qs.State),
       ‖ψ‖ = 1 →
@@ -636,7 +991,7 @@ by
     (h a N x y w_reg flag x.lo (tbits x) ψ hψ)
 
 theorem modExp_overlap_bound_sqrt
-  (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] [ModMul qs] :
+  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [Spec] [ModMul qs] :
   ∃ K : ℝ, 0 ≤ K ∧
     ∀ (a N : ℕ) (x y w_reg : Reg) (flag : ℕ) (ψ : qs.State),
       ‖ψ‖ = 1 →

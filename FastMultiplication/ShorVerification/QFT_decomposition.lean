@@ -16,7 +16,8 @@ attribute [simp] LowerGateClass.evalL_seq
     regSize (⟨r.lo + m, r.hi⟩ : Reg) = regSize r - m := by
   simp [regSize, Nat.sub_sub]
 
-variable (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs] [GateSemanticsFacts qs]
+variable (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  [LowerGateClass qs] [GateSemanticsFacts qs]
 
 def nTot (r : Reg) : ℕ := regSize r
 def mHalf (r : Reg) : ℕ := (nTot r) / 2
@@ -266,7 +267,12 @@ lemma step2_PhaseProd_after_step1
                 ((RegEncoding.toNat left (RegEncoding.writeNat left k1.1 b) : ℂ) *
                   (RegEncoding.toNat right (RegEncoding.writeNat left k1.1 b) : ℂ))))
               • QSemantics.ket (RegEncoding.writeNat left k1.1 b) := by
-        simp [GateSemanticsFacts.eval_PhaseProd_ket]
+        congr
+        funext k1
+        have hDisj: Disjoint left right:= by
+          simp[Disjoint,left,right,leftReg,rightReg]
+        rw[GateSemanticsFacts.eval_PhaseProd_ket qs (2 * Real.pi / (↑A * ↑B)) left right (RegEncoding.writeNat left (↑k1) b) hDisj]
+        simp
     _ =
       ((1 / (Real.sqrt ((A : ℕ) : ℝ)) : ℂ)) •
         ∑ k1 : Fin A,
@@ -688,6 +694,7 @@ lemma Fin.coe_cast_typeEq
 lemma eval_QFT_split_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
   [LowerGateClass qs]
   [GateSemanticsFacts qs]
   :
@@ -879,8 +886,10 @@ lemma eval_QFT_split_ket
   simp[this]
   simp[A]
 
+
 theorem eval_QFT_split
-  (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs] [GateSemanticsFacts qs]:
+  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  [LowerGateClass qs] [GateSemanticsFacts qs]:
     ∀ (r : Reg) (ψ : qs.State),
       regSize r ≥ 2 →
       let nTot  : ℕ := regSize r
@@ -942,11 +951,12 @@ theorem eval_QFT_split
 
 /-! ## Correctness of lowered QFT (aux, main) -/
 variable {k : ℕ} (hk : 1 < k)
-
 lemma eval_lowerQFTAux_strong
-  (qs : QSemantics) (RE : RegEncoding qs.Basis) [LowerGateClass qs] [GateSemanticsFacts qs]
+  (qs : QSemantics) (RE : RegEncoding qs.Basis) [ExtRegEncoding qs.Basis]
+  [LowerGateClass qs] [GateSemanticsFacts qs]
   (ops : Prog k)
-  (hPC : PhaseProductCoverage (by omega) ops State.start_state (genInterpolationPoints k)) :
+  (hC : ProgConsumesPts (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (run_ops_start_state : run? ops State.start_state = some State.start_state) :
   ∀ n : ℕ, ∀ (r : Reg) (ψ : qs.State),
     regSize r = n →
     (LowerGateClass.evalL (qs := qs) (lowerQFTAux k hk ops n r) ψ) = qs.eval (Gate.QFT r) ψ := by
@@ -1061,12 +1071,15 @@ lemma eval_lowerQFTAux_strong
                   QSemantics.eval (QFT right)
                     (QSemantics.eval (PhaseProd (qftPhi nTot) left right)
                       (QSemantics.eval (QFT left) ψ)) := by
-                      simp [ihL, ihR]
-                      have:=(evalL_lowerPhaseProd
+                      rw [ihL, ihR]
+                      have:=evalL_lowerPhaseProd
                           (qs := qs) (k := k) (hk := hk)
                           (p := qftPhi nTot) (x := left) (z := right)
-                          (ops := ops) (hPC := hPC) (ψ := qs.eval (QFT left) ψ))
-                      congr
+                          (ops := ops)
+                          (hC := hC)
+                          (run_ops_start_state := run_ops_start_state)
+                          (ψ := qs.eval (QFT left) ψ)
+                      rw[this]
                 _ =
                   QSemantics.eval (QFT left ;; PhaseProd (qftPhi nTot) left right ;; QFT right) ψ := by
                       simp
@@ -1074,81 +1087,95 @@ lemma eval_lowerQFTAux_strong
                   QSemantics.eval (QFT r) ψ := by
                       exact hSplit'
 
+
 lemma eval_lowerQFT
-  (qs : QSemantics) (RE : RegEncoding qs.Basis) [LowerGateClass qs] [GateSemanticsFacts qs]
+  (qs : QSemantics) (RE : RegEncoding qs.Basis) [ExtRegEncoding qs.Basis]
+  [LowerGateClass qs] [GateSemanticsFacts qs]
   (ops : Prog k)
-  (hPC : PhaseProductCoverage (by omega) ops State.start_state (genInterpolationPoints k)) :
+  (hC : ProgConsumesPts (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (run_ops_start_state : run? ops State.start_state = some State.start_state) :
   ∀ (r : Reg) (ψ : qs.State),
     (LowerGateClass.evalL (qs := qs) (lowerQFT k hk r ops) ψ) = qs.eval (Gate.QFT r) ψ := by
   intro r ψ
   simpa [lowerQFT] using
     (eval_lowerQFTAux_strong
       (qs := qs) (RE := RE) (k := k) (hk := hk)
-      (ops := ops) (hPC := hPC)
+      (ops := ops)
+      (hC := hC)
+      (run_ops_start_state := run_ops_start_state)
       (regSize r) r ψ rfl)
-
-/-! ## Whole-program lowering correctness -/
 
 /-! ## Whole-program lowering correctness -/
 
 theorem lowerGate_correctness
   (G : Gate) (qs : QSemantics) (RE : RegEncoding qs.Basis)
-  [LowerGateClass qs] [GateSemanticsFacts qs]
+  [ExtRegEncoding qs.Basis] [LowerGateClass qs] [GateSemanticsFacts qs]
   (ops : Prog k)
-  (hPC : PhaseProductCoverage (by omega) ops State.start_state (genInterpolationPoints k)) :
-  ∀ ψ, (LowerGateClass.evalL (qs := qs) (lowerGate k hk ops G) ψ) = qs.eval G ψ := by
+  (hC : ProgConsumesPts (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (run_ops_start_state : run? ops State.start_state = some State.start_state) :
+  ∀ ψ, LowerGateClass.evalL (qs := qs) (lowerGate k hk ops G) ψ = qs.eval G ψ := by
   intro ψ
   induction G generalizing ψ with
   | id =>
-      simp [lowerGate, QSemantics.eval_id]
-  | H q =>
-      simp [lowerGate, LowerGateClass.evalL_H (qs := qs)]
-  | X q =>
-      simp [lowerGate, LowerGateClass.evalL_X (qs := qs) q]
-  | PhaseProd p x z =>
-      simpa [lowerGate] using
-        (evalL_lowerPhaseProd
-          (qs := qs) (k := k) (hk := hk)
-          (p := p) (x := x) (z := z)
-          (ops := ops) (hPC := hPC) (ψ := ψ))
-  | CPhaseProd c p x z =>
-      simpa [lowerGate] using
-        (evalL_lowerCPhaseProd
-          (qs := qs) (k := k) (hk := hk)
-          (ctrl := c) (p := p) (x := x) (z := z) (ψ := ψ))
-  | QFT r =>
-      simpa [lowerGate] using
-        (eval_lowerQFT
-          (qs := qs) (RE := RE) (k := k) (hk := hk)
-          (ops := ops) (hPC := hPC) r ψ)
+      simp [lowerGate, LowerGateClass.evalL_id, qs.eval_id]
+
   | seq U V ihU ihV =>
-      calc
-        LowerGateClass.evalL (qs := qs) (lowerGate k hk ops (U ;; V)) ψ
-            =
-        LowerGateClass.evalL (qs := qs) (lowerGate k hk ops V)
-          (LowerGateClass.evalL (qs := qs) (lowerGate k hk ops U) ψ) := by
-              simp [lowerGate, LowerGateClass.evalL_seq (qs := qs)]
-        _ =
-        LowerGateClass.evalL (qs := qs) (lowerGate k hk ops V) (qs.eval U ψ) := by
-              simpa using congrArg
-                (fun t => LowerGateClass.evalL (qs := qs) (lowerGate k hk ops V) t) (ihU ψ)
-        _ =
-        qs.eval V (qs.eval U ψ) := by
-              simpa using (ihV (qs.eval U ψ))
-        _ =
-        qs.eval (U ;; V) ψ := by
-              simp
+      simp [lowerGate, LowerGateClass.evalL_seq, qs.eval_seq, ihU, ihV]
+
   | adj U ih =>
       simpa [lowerGate] using
-        (LowerGateClass.evalL_adj_of_lowered k hk (qs := qs) U ψ ops)
+        (LowerGateClass.evalL_adj_of_lowered
+          (qs := qs) (k := k) (hk := hk) (U := U) (ψ := ψ) (ops := ops))
+
+  | H q =>
+      simp [lowerGate, LowerGateClass.evalL_H]
+
+  | X q =>
+      simp [lowerGate, LowerGateClass.evalL_X]
+
+  | QFT r =>
+      have:= (eval_lowerQFT
+          (qs := qs) (RE := RE) (k := k) (hk := hk)
+          (ops := ops) (hC := hC) run_ops_start_state r ψ)
+      simp[this]
+
+  | SignedPhaseProd p x z =>
+      simpa [lowerGate] using
+        (evalL_lowerSignedPhaseProd
+          (qs := qs) (k := k) (hk := hk) (p := p) (x := x) (z := z)
+          (ψ := ψ) (ops := ops)
+          (hC := hC) (run_ops_start_state := run_ops_start_state))
+
+  | CSignedPhaseProd c p x z =>
+      simpa [lowerGate] using
+        (LowerGateClass.evalL_naive_cphaseProd
+          (qs := qs) (c := c) (p := p) (x := x) (z := z) (ψ := ψ))
+
   | Prim tag args =>
-      simp [lowerGate, LowerGateClass.evalL_Prim (qs := qs) tag args ψ]
+      simp [lowerGate, LowerGateClass.evalL_Prim]
+
   | ShiftL r n =>
-      simp [lowerGate, LowerGateClass.evalL_shiftL (qs := qs)]
+      simp [lowerGate, LowerGateClass.evalL_shiftL]
+
   | ShiftR r n =>
-      simp [lowerGate, LowerGateClass.evalL_shiftR (qs := qs)]
-  | AddScaled dst src negSrc shift =>
-      simp [lowerGate, LowerGateClass.evalL_addScaled]
+      simp [lowerGate, LowerGateClass.evalL_shiftR]
+
   | Negate r =>
       simp [lowerGate, LowerGateClass.evalL_negate]
+
+  | AddScaled dst src negSrc sh =>
+      simp [lowerGate, LowerGateClass.evalL_addScaled]
+
+  | zeroExtend r n =>
+      simp [lowerGate, LowerGateClass.evalL_zeroExtend]
+
+  | signExtend r n =>
+      simp [lowerGate, LowerGateClass.evalL_signExtend]
+
+  | zeroDealloc r n =>
+      simp [lowerGate, LowerGateClass.evalL_zeroDealloc]
+
+  | signDealloc r n =>
+      simp [lowerGate, LowerGateClass.evalL_signDealloc]
+
 end Shor
