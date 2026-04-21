@@ -81,7 +81,7 @@ lemma step1_QFT_left_ket
     ∑ k1 : Fin A,
       (qftPhase A (RegEncoding.toNat left b) k1.1) •
         qs.ket (RegEncoding.writeNat left k1.1 b) := by
-  simpa [ASize, leftReg] using (GateSemanticsFacts.eval_QFT_ket (qs := qs) (r := leftReg r) (b := b))
+  simpa [ASize, leftReg] using (QFTSemantics.eval_QFT_ket (qs := qs) (r := leftReg r) (b := b))
 
 lemma disjoint_left_right (r : Reg) :
   Disjoint (leftReg r) (rightReg r) := by
@@ -208,7 +208,7 @@ lemma step2_PhaseProd_after_step1
           (qftPhase A (RegEncoding.toNat left b) k1.1) •
             qs.ket (RegEncoding.writeNat left k1.1 b) := by
     simpa [ASize, A, left] using
-      (GateSemanticsFacts.eval_QFT_ket (qs := qs) (r := left) (b := b))
+      (QFTSemantics.eval_QFT_ket (qs := qs) (r := left) (b := b))
 
   have phase_scalar_eq (k1 : Fin A) :
       (Complex.exp (((2 * Real.pi) / (A * B : ℝ)) * Complex.I *
@@ -414,7 +414,7 @@ lemma step3_QFT_right_after_step2
                   qs.ket (RegEncoding.writeNat right k0.1 (RegEncoding.writeNat left k1.1 b)) ) := by
           congr 2; funext x; congr 1
           simpa [ASize, B] using
-            (GateSemanticsFacts.eval_QFT_ket (qs := qs) (r := right)
+            (QFTSemantics.eval_QFT_ket (qs := qs) (r := right)
               (b := RegEncoding.writeNat left (↑x) b))
     _ =
       (((1 / Real.sqrt ((A : ℕ) : ℝ) : ℂ)) * ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ))) •
@@ -783,7 +783,7 @@ lemma eval_QFT_split_ket
     rhs;arg 1;arg 1;arg 1;arg 1
     rw[this]
 
-  rw[GateSemanticsFacts.eval_QFT_ket]
+  rw[QFTSemantics.eval_QFT_ket]
   simp[ASize]
   norm_cast
   congr 1
@@ -977,13 +977,13 @@ lemma eval_lowerQFTAux_strong
       cases n with
       | zero =>
           simp [lowerQFTAux]
-          have h0 := GateSemanticsFacts.eval_QFT_size0 (qs := qs) (r := r) (ψ := ψ) hsz
+          have h0 := QFTSemantics.eval_QFT_size0 (qs := qs) (r := r) (ψ := ψ) hsz
           simpa [qs.eval_id] using h0.symm
       | succ n1 =>
           cases n1 with
           | zero =>
               simp [lowerQFTAux]
-              have h1 := GateSemanticsFacts.eval_QFT_size1 (qs := qs) (r := r) (ψ := ψ) hsz
+              have h1 := QFTSemantics.eval_QFT_size1 (qs := qs) (r := r) (ψ := ψ) hsz
               simpa [LowerGateClass.evalL_H] using h1.symm
           | succ n2 =>
               let nTot : ℕ := n2 + 2
@@ -1071,6 +1071,9 @@ lemma eval_lowerQFTAux_strong
                   QSemantics.eval (QFT right)
                     (QSemantics.eval (PhaseProd (qftPhi nTot) left right)
                       (QSemantics.eval (QFT left) ψ)) := by
+                      have hWF_r:WellFormedReg right:=by
+                        simp[WellFormedReg,right];simp only [regSize] at hsz; have hm_le : m ≤ r.hi - r.lo := by (unfold m nTot at *; omega)
+                        omega
                       rw [ihL, ihR]
                       have:=evalL_lowerPhaseProd
                           (qs := qs) (k := k) (hk := hk)
@@ -1078,7 +1081,7 @@ lemma eval_lowerQFTAux_strong
                           (ops := ops)
                           (hC := hC)
                           (run_ops_start_state := run_ops_start_state)
-                          (ψ := qs.eval (QFT left) ψ)
+                          (ψ := qs.eval (QFT left) ψ) (by simp[Disjoint,left,right]) (by simp[WellFormedReg,left]) hWF_r
                       rw[this]
                 _ =
                   QSemantics.eval (QFT left ;; PhaseProd (qftPhi nTot) left right ;; QFT right) ψ := by
@@ -1105,10 +1108,40 @@ lemma eval_lowerQFT
       (run_ops_start_state := run_ops_start_state)
       (regSize r) r ψ rfl)
 
+
+def GateGeomOK : Gate → Prop
+  | Gate.id => True
+  | Gate.seq U V => GateGeomOK U ∧ GateGeomOK V
+  | Gate.adj U => GateGeomOK U
+  | Gate.H _ => True
+  | Gate.X _ => True
+  | Gate.Prim _ _ => True
+  | Gate.ShiftL r _ => WellFormedReg r.base
+  | Gate.ShiftR r _ => WellFormedReg r.base
+  | Gate.Negate r => WellFormedReg r.base
+  | Gate.AddScaled dst src _ _ =>
+      WellFormedReg dst.base ∧
+      WellFormedReg src.base ∧
+      Disjoint dst.base src.base
+  | Gate.QFT r => WellFormedReg r
+  | Gate.SignedPhaseProd _ x z =>
+      WellFormedReg x.base ∧
+      WellFormedReg z.base ∧
+      Disjoint x.base z.base
+  | Gate.CSignedPhaseProd _ _ x z =>
+      WellFormedReg x.base ∧
+      WellFormedReg z.base ∧
+      Disjoint x.base z.base
+  | Gate.zeroExtend r _ => WellFormedReg r.base
+  | Gate.signExtend r _ => WellFormedReg r.base
+  | Gate.zeroDealloc r _ => WellFormedReg r.base
+  | Gate.signDealloc r _ => WellFormedReg r.base
+
+
 /-! ## Whole-program lowering correctness -/
 
 theorem lowerGate_correctness
-  (G : Gate) (qs : QSemantics) (RE : RegEncoding qs.Basis)
+  (G : Gate) (hGeom : GateGeomOK G) (qs : QSemantics) (RE : RegEncoding qs.Basis)
   [ExtRegEncoding qs.Basis] [LowerGateClass qs] [GateSemanticsFacts qs]
   (ops : Prog k)
   (hC : ProgConsumesPts (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
@@ -1120,7 +1153,8 @@ theorem lowerGate_correctness
       simp [lowerGate, LowerGateClass.evalL_id, qs.eval_id]
 
   | seq U V ihU ihV =>
-      simp [lowerGate, LowerGateClass.evalL_seq, qs.eval_seq, ihU, ihV]
+      rcases hGeom with ⟨hU, hV⟩
+      simp [lowerGate, LowerGateClass.evalL_seq, qs.eval_seq, ihU hU, ihV hV]
 
   | adj U ih =>
       simpa [lowerGate] using
@@ -1140,9 +1174,12 @@ theorem lowerGate_correctness
       simp[this]
 
   | SignedPhaseProd p x z =>
+      rcases hGeom with ⟨hxwf, hzwf, hxz⟩
       simpa [lowerGate] using
         (evalL_lowerSignedPhaseProd
-          (qs := qs) (k := k) (hk := hk) (p := p) (x := x) (z := z)
+          (qs := qs) (k := k) (hk := hk) (p := p)
+          (x := x) (z := z)
+          (hxz := hxz) (hxwf := hxwf) (hzwf := hzwf)
           (ψ := ψ) (ops := ops)
           (hC := hC) (run_ops_start_state := run_ops_start_state))
 

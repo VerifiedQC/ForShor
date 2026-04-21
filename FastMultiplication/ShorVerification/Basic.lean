@@ -15,6 +15,7 @@ structure Reg where
   lo : ℕ
   hi : ℕ
 
+
 /-- Two registers are disjoint if their intervals do not overlap. -/
 def Disjoint (a b : Reg) : Prop := a.hi ≤ b.lo ∨ b.hi ≤ a.lo
 
@@ -66,6 +67,8 @@ class RegEncoding (Basis : Type u) where
       =
     toNat left b * (2^(regSize right)) + toNat right b
 
+  /-- add this to RegEncoding -/
+  toNat_lt_ASize : ∀ r b, toNat r b < ASize r
 /-! =========================================================
     Section 2: Encoding lemmas and register helpers
 ========================================================= -/
@@ -235,6 +238,8 @@ class ExtRegEncoding (Basis : Type u) [RegEncoding Basis] where
     ∀ (e : ExtReg) (r : Reg) (_h : Disjoint e.base r) (v : ℕ) (b : Basis),
       extToNat e (RegEncoding.writeNat r v b) = extToNat e b
 
+
+
 namespace ExtReg
 
 
@@ -395,6 +400,9 @@ class QSemantics where
   ket_ne_zero (b : Basis) :
     ket b ≠ 0
 
+  ket_inj : Function.Injective ket
+
+
 open QSemantics
 attribute [instance] QSemantics.instNormed
 attribute [instance] QSemantics.instIP
@@ -402,9 +410,38 @@ attribute [instance] QSemantics.instIP
 /-! =========================================================
     Section 7: Gate semantic facts
 ========================================================= -/
+def tcModWidth (w : ℕ) (z : ℤ) : ℕ :=
+  Int.toNat (z % ((2^w : ℕ) : ℤ))
 
-/-- Basis-ket semantics for the non-primitive helpers and extension gates. -/
-class GateSemanticsFacts
+def tcWrapInt (w : ℕ) (z : ℤ) : ℤ :=
+  tcDecodeWidth w (tcModWidth w z)
+
+def signedLo (w : ℕ) : ℤ :=
+  -(((2^(w-1) : ℕ) : ℤ))
+
+def signedHi (w : ℕ) : ℤ :=
+  (((2^(w-1) : ℕ) : ℤ))
+
+def tcModExt (e : ExtReg) (z : ℤ) : ℕ :=
+  tcModWidth (ExtReg.width e) z
+/-! =========================================================
+    Section 7: Gate semantic facts (split by topic)
+========================================================= -/
+
+
+def signedMin (w : ℕ) : ℤ :=
+  -(((2^(w-1) : ℕ) : ℤ))
+
+/-- Exclusive upper bound of the signed `w`-bit two's-complement range. -/
+def signedMax (w : ℕ) : ℤ :=
+  (((2^(w-1) : ℕ) : ℤ))
+
+/-- Predicate saying `z` fits in signed `w`-bit range. -/
+def FitsSignedWidth (w : ℕ) (z : ℤ) : Prop :=
+  signedMin w ≤ z ∧ z < signedMax w
+
+/-- QFT-specific semantic facts. -/
+class QFTSemantics
   (qs : QSemantics)
   [RegEncoding qs.Basis]
   [ExtRegEncoding qs.Basis] : Type where
@@ -428,6 +465,13 @@ class GateSemanticsFacts
           (qftPhase (2^(regSize r)) (RegEncoding.toNat r b) y.1) •
             qs.ket (RegEncoding.writeNat r y.1 b)
 
+
+/-- Signed phase-product semantic facts. -/
+class PhaseSemantics
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis] : Type where
+
   eval_SignedPhaseProd_ket :
     ∀ (phi : ℝ) (x z : ExtReg) (b : qs.Basis),
       qs.eval (Gate.SignedPhaseProd phi x z) (qs.ket b)
@@ -438,49 +482,264 @@ class GateSemanticsFacts
            (((ExtRegEncoding.extToInt z b : ℤ) : ℂ))))) •
         qs.ket b
 
+/-- Zero/sign extension and deallocation semantic facts. -/
+class ExtensionSemantics
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis] : Type where
+
   eval_zeroExtend_ket :
-    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
-      ∃ b' : qs.Basis,
-        qs.eval (Gate.zeroExtend r n) (qs.ket b) = qs.ket b' ∧
-        RegEncoding.toNat r.base b' = RegEncoding.toNat r.base b ∧
-        ExtRegEncoding.extToNat (ExtReg.addExtra r n) b'
-          = ExtRegEncoding.extToNat r b ∧
-        (∀ s : Reg, Disjoint s r.base →
-          RegEncoding.toNat s b' = RegEncoding.toNat s b)
+  ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
+    ∃ b' : qs.Basis,
+      qs.eval (Gate.zeroExtend r n) (qs.ket b) = qs.ket b' ∧
+      ExtReg.toNat r b' = ExtReg.toNat r b ∧
+      ExtReg.toNat (ExtReg.addExtra r n) b'
+        = ExtReg.toNat r b ∧
+      (∀ e : ExtReg, Disjoint e.base r.base →
+        ExtReg.toNat e b' = ExtReg.toNat e b)
 
   eval_signExtend_ket :
     ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
       ∃ b' : qs.Basis,
         qs.eval (Gate.signExtend r n) (qs.ket b) = qs.ket b' ∧
-        RegEncoding.toNat r.base b' = RegEncoding.toNat r.base b ∧
+        ExtReg.toNat r b' = ExtReg.toNat r b ∧
         ExtRegEncoding.extToInt (ExtReg.addExtra r n) b'
           = ExtRegEncoding.extToInt r b ∧
-        (∀ s : Reg, Disjoint s r.base →
-          RegEncoding.toNat s b' = RegEncoding.toNat s b)
+        (∀ e : ExtReg, Disjoint e.base r.base →
+          ExtReg.toNat e b' = ExtReg.toNat e b)
 
   eval_zeroExtend_zeroDealloc :
-  ∀ r n ψ, qs.eval (Gate.zeroExtend r n ;; Gate.zeroDealloc r n) ψ = ψ
+    ∀ r n ψ,
+      qs.eval (Gate.zeroExtend r n ;; Gate.zeroDealloc r n) ψ = ψ
 
   eval_signExtend_signDealloc :
-    ∀ r n ψ, qs.eval (Gate.signExtend r n ;; Gate.signDealloc r n) ψ = ψ
+    ∀ r n ψ,
+      qs.eval (Gate.signExtend r n ;; Gate.signDealloc r n) ψ = ψ
 
-  zeroExtend_ofReg_extToInt :
-  ∀ (r : Reg) (b b' : qs.Basis) (n : ℕ) (_hn: n > 0),
-    qs.eval (Gate.zeroExtend (ExtReg.ofReg r) n) (qs.ket b) = qs.ket b' →
-    ExtRegEncoding.extToInt (ExtReg.addExtra (ExtReg.ofReg r) n) b'
-      = (RegEncoding.toNat r b : ℤ)
+  extToNat_lt_width :
+  ∀ (e : ExtReg) (b : qs.Basis),
+    ExtRegEncoding.extToNat e b < 2 ^ (ExtReg.width e)
 
-  zeroExtend_preserves_disjoint_extToInt :
-  ∀ (r e : ExtReg) (n : ℕ) (b b' : qs.Basis),
-    Disjoint r.base e.base →
-    qs.eval (Gate.zeroExtend r n) (qs.ket b) = qs.ket b' →
-    ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b
+
+lemma tcDecodeWidth_succ_eq_of_lt {w n : ℕ} (h : n < 2 ^ w) :
+  tcDecodeWidth (w + 1) n = (n : ℤ) := by
+  simp [tcDecodeWidth, h]
+
+lemma zeroExtend_extToInt
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtensionSemantics qs]
+  (r : ExtReg) (n : ℕ) (b b' : qs.Basis)
+  (hn : 0 < n)
+  (hEval : qs.eval (Gate.zeroExtend r n) (qs.ket b) = qs.ket b') :
+  ExtRegEncoding.extToInt (ExtReg.addExtra r n) b'
+    = (ExtReg.toNat r b : ℤ) := by
+  rcases ExtensionSemantics.eval_zeroExtend_ket
+      (qs := qs) (r := r) (n := n) (b := b) with
+    ⟨bout, hBoutEval, _hself, hwide, _hloc⟩
+
+  have hket : Function.Injective qs.ket := qs.ket_inj
+  have hbout : bout = b' := by
+    apply hket
+    simpa [hBoutEval] using hEval
+  subst hbout
+
+  rcases Nat.exists_eq_succ_of_ne_zero (Nat.ne_of_gt hn) with ⟨m, rfl⟩
+
+  have hlt0 : ExtReg.toNat r b < 2 ^ (ExtReg.width r) := by
+    simpa [ExtReg.toNat] using
+      ExtensionSemantics.extToNat_lt_width (qs := qs) (e := r) (b := b)
+
+  have hle :
+      2 ^ (ExtReg.width r) ≤ 2 ^ (ExtReg.width r + m) := by
+    exact Nat.pow_le_pow_right (by decide : 1 ≤ 2) (Nat.le_add_right _ _)
+
+  have hlt :
+      ExtReg.toNat r b < 2 ^ (ExtReg.width r + m) := by
+    exact lt_of_lt_of_le hlt0 hle
+
+  have hdecode :
+      tcDecodeWidth (ExtReg.width r + (m + 1)) (ExtReg.toNat r b)
+        = (ExtReg.toNat r b : ℤ) := by
+    have :=
+      tcDecodeWidth_succ_eq_of_lt
+        (w := ExtReg.width r + m)
+        (n := ExtReg.toNat r b)
+        hlt
+    simpa [Nat.add_assoc] using this
+
+  unfold ExtRegEncoding.extToInt
+  change tcDecodeWidth (ExtReg.width (ExtReg.addExtra r (m + 1)))
+      (ExtRegEncoding.extToNat (ExtReg.addExtra r (m + 1)) bout)
+    = (ExtRegEncoding.extToNat r b : ℤ)
+  simp [ExtReg.width_addExtra]
+  calc
+  tcDecodeWidth (r.width + (m + 1))
+      (ExtRegEncoding.extToNat (r.addExtra (m + 1)) bout)
+    = tcDecodeWidth (r.width + (m + 1)) (ExtRegEncoding.extToNat r b) := by
+        simpa [ExtReg.toNat] using congrArg
+          (tcDecodeWidth (r.width + (m + 1))) hwide
+  _ = ↑(ExtRegEncoding.extToNat r b) := hdecode
+
+lemma zeroExtend_ofReg_extToInt
+  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [ExtensionSemantics qs]
+  (r : Reg) (b b' : qs.Basis) (n : ℕ) (hn : n > 0)
+  (heval : qs.eval (Gate.zeroExtend (ExtReg.ofReg r) n) (qs.ket b) = qs.ket b') :
+  ExtRegEncoding.extToInt (ExtReg.addExtra (ExtReg.ofReg r) n) b'
+    = (RegEncoding.toNat r b : ℤ) := by
+  rcases ExtensionSemantics.eval_zeroExtend_ket
+      (qs := qs) (r := ExtReg.ofReg r) (n := n) (b := b) with
+    ⟨bout, heval', _, hwide, _⟩
+  have hbout : bout = b' := qs.ket_inj (by rw [← heval', ← heval])
+  subst hbout
+  unfold ExtRegEncoding.extToInt ExtReg.toNat at *
+  rw [hwide]
+  rcases Nat.exists_eq_succ_of_ne_zero (Nat.ne_of_gt hn) with ⟨m, rfl⟩
+  unfold ExtRegEncoding.extToNat
+  simp [ExtReg.width, ExtReg.ofReg, regSize]
+  have hlt :=
+    ExtensionSemantics.extToNat_lt_width
+      (qs := qs) (e := ExtReg.ofReg r) (b := b)
+  simp [ExtReg.width, ExtReg.ofReg, regSize] at hlt
+  have hpow :
+      RegEncoding.toNat r b < 2 ^ (regSize r + m) := by
+    calc
+      RegEncoding.toNat r b < 2 ^ regSize r := by
+        simp[regSize]
+        have:=ExtRegEncoding.extToNat_base (Basis:=qs.Basis) r b
+        simp[ExtReg.ofReg] at this
+        aesop
+      _ ≤ 2 ^ (regSize r + m) :=
+        Nat.pow_le_pow_right (by norm_num) (Nat.le_add_right _ _)
+  have:=ExtRegEncoding.extToNat_base (Basis:=qs.Basis) r b
+  simp[ExtReg.ofReg] at this
+  have htc:=tcDecodeWidth_succ_eq_of_lt hpow
+  simp[regSize] at *
+  simp[add_assoc] at *
+  rw[← htc]
+  unfold RegEncoding.toNat
+  congr
+
+
+lemma zeroExtend_preserves_disjoint_extToInt
+  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [ExtensionSemantics qs]
+  (r e : ExtReg) (n : ℕ) (b b' : qs.Basis)
+  (hdisj : Disjoint r.base e.base)
+  (heval : qs.eval (Gate.zeroExtend r n) (qs.ket b) = qs.ket b') :
+  ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b := by
+  rcases ExtensionSemantics.eval_zeroExtend_ket
+      (qs := qs) (r := r) (n := n) (b := b) with
+    ⟨bout, heval', _, _, hloc⟩
+  have hbout : bout = b' := qs.ket_inj (by rw [← heval', ← heval])
+  subst hbout
+  unfold ExtRegEncoding.extToInt ExtReg.toNat
+  have hdisj' : Disjoint e.base r.base := by
+    cases hdisj with
+    | inl h => exact Or.inr h
+    | inr h => exact Or.inl h
+  congr 1
+  exact hloc e hdisj'
+
+lemma signExtend_preserves_disjoint_extToInt
+  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [ExtensionSemantics qs]
+  (r e : ExtReg) (n : ℕ) (b b' : qs.Basis)
+  (hdisj : Disjoint r.base e.base)
+  (heval : qs.eval (Gate.signExtend r n) (qs.ket b) = qs.ket b') :
+  ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b := by
+  rcases ExtensionSemantics.eval_signExtend_ket
+      (qs := qs) (r := r) (n := n) (b := b) with
+    ⟨bout, heval', _, _, hloc⟩
+  have hbout : bout = b' := qs.ket_inj (by rw [← heval', ← heval])
+  subst hbout
+  unfold ExtRegEncoding.extToInt ExtReg.toNat
+  have hdisj' : Disjoint e.base r.base := by
+    cases hdisj with
+    | inl h => exact Or.inr h
+    | inr h => exact Or.inl h
+  congr 1
+  exact hloc e hdisj'
+
+
+/-- Arithmetic-gate semantic facts. -/
+class ArithmeticSemantics
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis] : Type where
+
+  /-- Left shift is width-`w` modular multiplication by `2^n`. -/
+  eval_ShiftL_ket_mod :
+    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
+      ∃ b' : qs.Basis,
+        qs.eval (Gate.ShiftL r n) (qs.ket b) = qs.ket b' ∧
+        ExtRegEncoding.extToInt r b'
+          = tcWrapInt (ExtReg.width r)
+              (((2 : ℤ)^n) * ExtRegEncoding.extToInt r b) ∧
+        (∀ e : ExtReg,
+          Disjoint e.base r.base →
+          ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b)
+
+  /-- Right shift is only allowed when the current signed value is exactly divisible
+      by `2^n`; then it produces the exact quotient. -/
+  eval_ShiftR_ket_exact :
+    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis) (q : ℤ),
+      ExtRegEncoding.extToInt r b = ((2 : ℤ)^n) * q →
+      ∃ b' : qs.Basis,
+        qs.eval (Gate.ShiftR r n) (qs.ket b) = qs.ket b' ∧
+        ExtRegEncoding.extToInt r b' = q ∧
+        (∀ e : ExtReg,
+          Disjoint e.base r.base →
+          ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b)
+
+  /-- Negation is width-`w` modular additive inverse. -/
+  eval_Negate_ket_mod :
+    ∀ (r : ExtReg) (b : qs.Basis),
+      ∃ b' : qs.Basis,
+        qs.eval (Gate.Negate r) (qs.ket b) = qs.ket b' ∧
+        ExtRegEncoding.extToInt r b'
+          = tcWrapInt (ExtReg.width r) (- ExtRegEncoding.extToInt r b) ∧
+        (∀ e : ExtReg,
+          Disjoint e.base r.base →
+          ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b)
+
+  /-- Scaled add updates `dst` modulo the destination width, preserves `src`,
+      and preserves every other disjoint register. -/
+  eval_AddScaled_ket_mod :
+    ∀ (dst src : ExtReg) (negSrc : Bool) (sh : ℕ) (b : qs.Basis),
+      Disjoint dst.base src.base →
+      ∃ b' : qs.Basis,
+        qs.eval (Gate.AddScaled dst src negSrc sh) (qs.ket b) = qs.ket b' ∧
+        ExtRegEncoding.extToInt dst b'
+          =
+          tcWrapInt (ExtReg.width dst)
+            (ExtRegEncoding.extToInt dst b
+              + (if negSrc then (-1 : ℤ) else 1)
+                  * ((2 : ℤ)^sh)
+                  * ExtRegEncoding.extToInt src b) ∧
+        ExtRegEncoding.extToInt src b'
+          = ExtRegEncoding.extToInt src b ∧
+        (∀ e : ExtReg,
+          Disjoint e.base dst.base →
+          Disjoint e.base src.base →
+          ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b)
+
+/-- Optional aggregate class.
+    Keep this if you still want one bundled assumption in some later theorems. -/
+class GateSemanticsFacts
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]:
+  Type extends QFTSemantics qs, PhaseSemantics qs, ExtensionSemantics qs, ArithmeticSemantics qs
+
 
 namespace GateSemanticsFacts
 
 variable {qs : QSemantics}
+
 variable [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
 variable [GateSemanticsFacts qs]
+
+
 
 theorem eval_PhaseProd_ket
   (qs : QSemantics)
@@ -498,25 +757,24 @@ theorem eval_PhaseProd_ket
     | inr h => exact Or.inl h
 
   rw [Gate.PhaseProd]
-  simp[qs.eval_seq]
+  simp [qs.eval_seq]
 
-  rcases GateSemanticsFacts.eval_zeroExtend_ket
+  rcases ExtensionSemantics.eval_zeroExtend_ket
       (qs := qs) (r := ExtReg.ofReg x) (n := 1) (b := b) with
-    ⟨b₁, hx_eval, hx_base, hx_nat, hx_loc⟩
+    ⟨b₁, hx_eval, hx_nat_self, hx_nat_wide, hx_loc⟩
 
-  rcases GateSemanticsFacts.eval_zeroExtend_ket
+  rcases ExtensionSemantics.eval_zeroExtend_ket
       (qs := qs) (r := ExtReg.ofReg z) (n := 1) (b := b₁) with
-    ⟨b₂, hz_eval, hz_base, hz_nat, hz_loc⟩
+    ⟨b₂, hz_eval, hz_nat_self, hz_nat_wide, hz_loc⟩
 
   rw [hx_eval, hz_eval]
-  rw [GateSemanticsFacts.eval_SignedPhaseProd_ket]
-
+  rw [PhaseSemantics.eval_SignedPhaseProd_ket]
   rw [qs.eval_smul, qs.eval_smul]
 
   have hundo_z :
       qs.eval (Gate.zeroDealloc (ExtReg.ofReg z) 1) (qs.ket b₂) = qs.ket b₁ := by
     have h :=
-      GateSemanticsFacts.eval_zeroExtend_zeroDealloc
+      ExtensionSemantics.eval_zeroExtend_zeroDealloc
         (qs := qs) (r := ExtReg.ofReg z) (n := 1) (ψ := qs.ket b₁)
     rw [qs.eval_seq] at h
     rw [hz_eval] at h
@@ -525,7 +783,7 @@ theorem eval_PhaseProd_ket
   have hundo_x :
       qs.eval (Gate.zeroDealloc (ExtReg.ofReg x) 1) (qs.ket b₁) = qs.ket b := by
     have h :=
-      GateSemanticsFacts.eval_zeroExtend_zeroDealloc
+      ExtensionSemantics.eval_zeroExtend_zeroDealloc
         (qs := qs) (r := ExtReg.ofReg x) (n := 1) (ψ := qs.ket b)
     rw [qs.eval_seq] at h
     rw [hx_eval] at h
@@ -538,36 +796,38 @@ theorem eval_PhaseProd_ket
       ExtRegEncoding.extToInt (Gate.unsignedView x) b₁ =
         (RegEncoding.toNat x b : ℤ) := by
     apply zeroExtend_ofReg_extToInt
-    simp
-    apply hx_eval
+    · simp
+    · exact hx_eval
 
   have hz_ext₂ :
       ExtRegEncoding.extToInt (Gate.unsignedView z) b₂ =
         (RegEncoding.toNat z b₁ : ℤ) := by
     apply zeroExtend_ofReg_extToInt
-    simp
-    apply hz_eval
-
+    · simp
+    · exact hz_eval
 
   have hz_same :
       RegEncoding.toNat z b₁ = RegEncoding.toNat z b := by
-    exact hx_loc z hdisj'
+    have h :=
+      hx_loc (ExtReg.ofReg z) hdisj'
+    simpa using h
 
   have hx_ext₂ :
-    ExtRegEncoding.extToInt (Gate.unsignedView x) b₂ =
-      ExtRegEncoding.extToInt (Gate.unsignedView x) b₁ := by
+      ExtRegEncoding.extToInt (Gate.unsignedView x) b₂ =
+        ExtRegEncoding.extToInt (Gate.unsignedView x) b₁ := by
     exact
-      GateSemanticsFacts.zeroExtend_preserves_disjoint_extToInt
+      zeroExtend_preserves_disjoint_extToInt
         (qs := qs)
         (r := ExtReg.ofReg z)
         (e := Gate.unsignedView x)
         (n := 1)
         (b := b₁)
         (b' := b₂)
-        (by simpa [Gate.unsignedView, ExtReg.addExtra, ExtReg.ofReg] using hdisj')
+        (by
+          simpa [Gate.unsignedView, ExtReg.addExtra, ExtReg.ofReg] using hdisj')
         hz_eval
-  simp [hx_ext₁, hx_ext₂, hz_ext₂, hz_same]
 
+  simp [hx_ext₁, hx_ext₂, hz_ext₂, hz_same]
 end GateSemanticsFacts
 
 /-! =========================================================

@@ -12,7 +12,7 @@ def initY1 (y : Reg) : Gate :=
 
 /-- Approximate (in-place) quantum order-finding circuit. -/
 noncomputable def orderFindingApprox
-  (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs] [ModMul qs]
+  (qs : QSemantics) [RegEncoding qs.Basis] [Spec] [ExtRegEncoding QSemantics.Basis] [ModMul qs]
   (a N : ℕ) (x y w_reg : Reg) (flag : ℕ) : Gate :=
   (H_reg x) ;;
   (initY1 y) ;;
@@ -21,7 +21,7 @@ noncomputable def orderFindingApprox
 
 /-- Approximate (in-place) quantum order-finding circuit. -/
 noncomputable def orderFindingIdeal
-  (qs : QSemantics) [RegEncoding qs.Basis] [Spec qs]
+  (qs : QSemantics) [RegEncoding qs.Basis] [Spec]
   (a N : ℕ) (x y : Reg) : Gate :=
   (H_reg x) ;;
   (initY1 y) ;;
@@ -191,7 +191,7 @@ lemma CF_recovers_denominator [ContinuedFractionPost]
 
 
 
-variable [ContinuedFractionPost] [Spec qs]
+variable [ContinuedFractionPost] [Spec]
 
 
 abbrev OrderVerifier := ℕ → Bool
