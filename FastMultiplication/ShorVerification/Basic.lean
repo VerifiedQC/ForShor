@@ -238,6 +238,13 @@ class ExtRegEncoding (Basis : Type u) [RegEncoding Basis] where
     ∀ (e : ExtReg) (r : Reg) (_h : Disjoint e.base r) (v : ℕ) (b : Basis),
       extToNat e (RegEncoding.writeNat r v b) = extToNat e b
 
+  extToNat_lt :
+    ∀ e b, extToNat e b < 2 ^ (ExtReg.width e)
+
+  extToNat_lowBits :
+    ∀ e b,
+      RegEncoding.toNat e.base b
+        = extToNat e b % 2 ^ (regSize e.base)
 
 
 namespace ExtReg
@@ -260,6 +267,103 @@ variable {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
 /-- Signed interpretation of an extended register via two's-complement decoding. -/
 def extToInt (e : ExtReg) (b : Basis) : ℤ :=
   tcDecodeWidth (ExtReg.width e) (ExtReg.toNat e b)
+
+
+lemma tcDecodeWidth_inj_of_lt
+  {w n1 n2 : ℕ}
+  (h1 : n1 < 2 ^ w)
+  (h2 : n2 < 2 ^ w)
+  (h : tcDecodeWidth w n1 = tcDecodeWidth w n2) :
+  n1 = n2 := by
+  cases w with
+  | zero =>
+      have hn1 : n1 = 0 := by omega
+      have hn2 : n2 = 0 := by omega
+      simp[hn1, hn2]
+  | succ w =>
+      by_cases hs1 : n1 < 2 ^ w
+      · by_cases hs2 : n2 < 2 ^ w
+        · have h' : (n1 : ℤ) = (n2 : ℤ) := by
+            simpa [tcDecodeWidth, hs1, hs2] using h
+          exact_mod_cast h'
+        · have hneg2 : tcDecodeWidth (w + 1) n2 < 0 := by
+            have h2' : n2 < 2 ^ (w + 1) := h2
+            simp [tcDecodeWidth, hs2]
+            have : (n2 : ℤ) < (((2 ^ (w + 1)) : ℕ) : ℤ) := by
+              exact_mod_cast h2'
+            linarith
+          have hnonneg1 : 0 ≤ tcDecodeWidth (w + 1) n1 := by
+            simp [tcDecodeWidth, hs1]
+          have : 0 ≤ tcDecodeWidth (w + 1) n2 := by
+            simpa [h] using hnonneg1
+          linarith
+      · by_cases hs2 : n2 < 2 ^ w
+        · have hneg1 : tcDecodeWidth (w + 1) n1 < 0 := by
+            have h1' : n1 < 2 ^ (w + 1) := h1
+            simp [tcDecodeWidth, hs1]
+            have : (n1 : ℤ) < (((2 ^ (w + 1)) : ℕ) : ℤ) := by
+              exact_mod_cast h1'
+            linarith
+          have hnonneg2 : 0 ≤ tcDecodeWidth (w + 1) n2 := by
+            simp [tcDecodeWidth, hs2]
+          have : 0 ≤ tcDecodeWidth (w + 1) n1 := by
+            simpa [h] using hnonneg2
+          linarith
+        · have h' : (n1 : ℤ) = (n2 : ℤ) := by
+            simpa [tcDecodeWidth, hs1, hs2] using h
+          exact_mod_cast h'
+
+
+lemma bit_eq_of_toNat_eq_on_reg
+  {Basis : Type u} [RegEncoding Basis]
+  {r : Reg} {b1 b2 : Basis} {q : ℕ}
+  (hNat : RegEncoding.toNat r b1 = RegEncoding.toNat r b2)
+  (hqlo : r.lo ≤ q) (hqhi : q < r.hi) :
+  RegEncoding.bit q b1 = RegEncoding.bit q b2 := by
+  calc
+    RegEncoding.bit q b1
+        = RegEncoding.bit q (RegEncoding.writeNat r (RegEncoding.toNat r b1) b1) := by
+            rw [RegEncoding.writeNat_toNat]
+    _   = RegEncoding.bit q (RegEncoding.writeNat r (RegEncoding.toNat r b1) b2) := by
+            exact RegEncoding.bit_writeNat_in
+              (r := r) (v := RegEncoding.toNat r b1)
+              (b1 := b1) (b2 := b2) (q := q) hqlo hqhi
+    _   = RegEncoding.bit q (RegEncoding.writeNat r (RegEncoding.toNat r b2) b2) := by
+            rw [hNat]
+    _   = RegEncoding.bit q b2 := by
+            rw [RegEncoding.writeNat_toNat]
+
+
+lemma hbit_of_ext
+  {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+  (e : ExtReg) (b1 b2 : Basis) (q : ℕ)
+  (hInt : ExtRegEncoding.extToInt e b1 = ExtRegEncoding.extToInt e b2)
+  (hqlo : e.base.lo ≤ q) (hqhi : q < e.base.hi) :
+  RegEncoding.bit q b1 = RegEncoding.bit q b2 := by
+  have hExtNat :
+      ExtRegEncoding.extToNat e b1 = ExtRegEncoding.extToNat e b2 := by
+    apply tcDecodeWidth_inj_of_lt
+    · simpa [ExtRegEncoding.extToInt, ExtReg.toNat] using
+        (ExtRegEncoding.extToNat_lt e b1)
+    · simpa [ExtRegEncoding.extToInt, ExtReg.toNat] using
+        (ExtRegEncoding.extToNat_lt e b2)
+    · simpa [ExtRegEncoding.extToInt, ExtReg.toNat] using hInt
+
+  have hBaseNat :
+      RegEncoding.toNat e.base b1 = RegEncoding.toNat e.base b2 := by
+    calc
+      RegEncoding.toNat e.base b1
+          = ExtRegEncoding.extToNat e b1 % 2 ^ (regSize e.base) := by
+              simpa [ExtReg.toNat] using
+                (ExtRegEncoding.extToNat_lowBits e b1)
+      _   = ExtRegEncoding.extToNat e b2 % 2 ^ (regSize e.base) := by
+              rw [hExtNat]
+      _   = RegEncoding.toNat e.base b2 := by
+              symm
+              simpa [ExtReg.toNat] using
+                (ExtRegEncoding.extToNat_lowBits e b2)
+
+  exact bit_eq_of_toNat_eq_on_reg hBaseNat hqlo hqhi
 
 end ExtRegEncoding
 
@@ -438,7 +542,102 @@ def signedMax (w : ℕ) : ℤ :=
 
 /-- Predicate saying `z` fits in signed `w`-bit range. -/
 def FitsSignedWidth (w : ℕ) (z : ℤ) : Prop :=
-  signedMin w ≤ z ∧ z < signedMax w
+  0 < w ∧ signedMin w ≤ z ∧ z < signedMax w
+
+lemma FitsSignedWidth_mono
+  {w w' : ℕ} {z : ℤ} (hw : w ≤ w') :
+  FitsSignedWidth w z → FitsSignedWidth w' z := by
+  intro hz
+  rcases hz with ⟨hwpos, hlo, hhi⟩
+  unfold FitsSignedWidth signedMin signedMax at *
+  have hwpos' : 0 < w' := lt_of_lt_of_le hwpos hw
+  have hExp : w - 1 ≤ w' - 1 := Nat.sub_le_sub_right hw 1
+  have hPowNat : (2 : ℕ) ^ (w - 1) ≤ (2 : ℕ) ^ (w' - 1) :=
+    Nat.pow_le_pow_right (by norm_num) hExp
+  have hPow : (2 : ℤ) ^ (w - 1) ≤ (2 : ℤ) ^ (w' - 1) := by
+    exact_mod_cast hPowNat
+  refine ⟨hwpos', ?_, ?_⟩
+  ·
+    have hneg :
+        -((2 : ℤ) ^ (w' - 1)) ≤ -((2 : ℤ) ^ (w - 1)) := by
+      exact neg_le_neg hPow
+    exact le_trans hneg hlo
+  ·
+    exact lt_of_lt_of_le hhi hPow
+
+/-- Wrap is the identity on values that already fit the target signed width.
+    This is the bridge from the raw symbolic arithmetic semantics to the
+    wrapped machine-level gate semantics. -/
+lemma tcWrapInt_eq_of_fits
+  {w : ℕ} {z : ℤ}
+  (hw : 0 < w)
+  (hfit : FitsSignedWidth w z) :
+  tcWrapInt w z = z := by
+  rcases Nat.exists_eq_succ_of_ne_zero (Nat.pos_iff_ne_zero.mp hw) with ⟨w', rfl⟩
+  rcases hfit with ⟨_, hlo, hhi⟩
+  unfold signedMin signedMax at *
+  -- Now w = w' + 1, so w - 1 = w', and we have:
+  --   -(2^w' : ℤ) ≤ z < (2^w' : ℤ)
+  have hlo' : -((2 : ℤ) ^ w') ≤ z := by
+    have := hlo
+    push_cast at this
+    simpa using this
+  have hhi' : z < (2 : ℤ) ^ w' := by
+    have := hhi
+    push_cast at this
+    simpa using this
+  have hpow_pos : (0 : ℤ) < (2 : ℤ) ^ (w' + 1) := by positivity
+  have hpow_w'_pos : (0 : ℤ) < (2 : ℤ) ^ w' := by positivity
+  have h2pow_split : (2 : ℤ) ^ (w' + 1) = 2 * (2 : ℤ) ^ w' := by
+    rw [pow_succ]; ring
+  -- Split on sign of z
+  unfold tcWrapInt tcModWidth
+  by_cases hz : 0 ≤ z
+  · -- z ≥ 0 case: z % 2^(w'+1) = z, since 0 ≤ z < 2^w' < 2^(w'+1)
+    have hz_lt_pow : z < (2 : ℤ) ^ (w' + 1) := by
+      rw [h2pow_split]
+      linarith
+    have hmod : z % ((2 ^ (w' + 1) : ℕ) : ℤ) = z := by
+      push_cast
+      exact Int.emod_eq_of_lt hz hz_lt_pow
+    rw [hmod]
+    have htoNat : (Int.toNat z : ℤ) = z := Int.toNat_of_nonneg hz
+    have htoNat_lt : Int.toNat z < 2 ^ w' := by
+      have : (Int.toNat z : ℤ) < (2 : ℤ) ^ w' := by rw [htoNat]; exact hhi'
+      exact_mod_cast this
+    unfold tcDecodeWidth
+    simp [htoNat_lt, htoNat]
+  · -- z < 0 case: z % 2^(w'+1) = z + 2^(w'+1), which is in [2^w', 2^(w'+1))
+    push_neg at hz
+    have hz_neg : z < 0 := hz
+    set M : ℤ := (2 : ℤ) ^ (w' + 1) with hM_def
+    have hM_pos : 0 < M := hpow_pos
+    have hzM_nonneg : 0 ≤ z + M := by
+      rw [h2pow_split] at *
+      linarith
+    have hzM_lt : z + M < M := by linarith
+    have hmod : z % ((2 ^ (w' + 1) : ℕ) : ℤ) = z + M := by
+      have hcast : ((2 ^ (w' + 1) : ℕ) : ℤ) = M := by push_cast; rfl
+      rw [hcast]
+      rw [show z = (z + M) + (-1) * M from by ring]
+      simp
+      have:= Int.emod_eq_of_lt hzM_nonneg hzM_lt
+      simp at this
+      apply this
+
+    rw [hmod]
+    have htoNat_val : (Int.toNat (z + M) : ℤ) = z + M :=
+      Int.toNat_of_nonneg hzM_nonneg
+    have htoNat_ge : ¬ Int.toNat (z + M) < 2 ^ w' := by
+      intro hcontra
+      have hcontra' : (Int.toNat (z + M) : ℤ) < (2 : ℤ) ^ w' := by exact_mod_cast hcontra
+      rw [htoNat_val] at hcontra'
+      rw [h2pow_split] at hcontra'
+      linarith
+    unfold tcDecodeWidth
+    simp [htoNat_ge, htoNat_val]
+    have hcast : ((2 ^ (w' + 1) : ℕ) : ℤ) = M := by push_cast; rfl
+    ring
 
 /-- QFT-specific semantic facts. -/
 class QFTSemantics
@@ -1294,5 +1493,7 @@ by
     le_trans hov_le_dist hdist'
 
   simpa [stepErr] using this
+
+
 
 end Shor

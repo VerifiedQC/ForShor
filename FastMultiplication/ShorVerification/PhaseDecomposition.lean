@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.LowGate_compilation
+import FastMultiplication.ShorVerification.LowGate_compilationProofs
 
 namespace Shor
 open Gate
@@ -723,7 +723,7 @@ lemma evalL_lowerGateRec_strong_of_compile
     ∀ (k : ℕ) (hk : 1 < k)
       (pts : List Point) (hpts : pts.length = q k)
       (ops : Prog k)
-      (_hC : ProgConsumesPts (k := k) (by omega) State.start_state ops pts)
+      (_hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
       (_run_ops_start_state : run? ops State.start_state = some State.start_state)
       (U : Gate) (_hU : LowerablePhaseGate U) (_hOK : SignedPhaseProdOK U) (ψ : qs.State),
       LowerGateClass.evalL (lowerGateRec n k hk pts hpts ops U) ψ
@@ -825,7 +825,7 @@ lemma evalL_lowerGateRec_strong
     ∀ (k : ℕ) (hk : 1 < k)
       (pts : List Point) (hpts : pts.length = q k)
       (ops : Prog k)
-      (_hC : ProgConsumesPts (k := k) (by omega) State.start_state ops pts)
+      (_hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
       (_run_ops_start_state : run? ops State.start_state = some State.start_state)
       (U : Gate) (_hU : LowerablePhaseGate U) (_hOK : SignedPhaseProdOK U) (ψ : qs.State),
       LowerGateClass.evalL (lowerGateRec n k hk pts hpts ops U) ψ
@@ -850,7 +850,7 @@ lemma evalL_lowerSignedPhaseProd
   (hxwf : WellFormedReg x.base)
   (hzwf : WellFormedReg z.base)
   (ψ : qs.State) (ops : Prog k)
-  (hC : ProgConsumesPts (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
   (run_ops_start_state : run? ops State.start_state = some State.start_state)
   :
   LowerGateClass.evalL (lowerSignedPhaseProd k hk p x z ops) ψ
@@ -915,7 +915,7 @@ lemma evalL_lowerPhaseProd
   (hxwf : WellFormedReg x)
   (hzwf : WellFormedReg z)
   (ψ : qs.State) (ops : Prog k)
-  (hC : ProgConsumesPts (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
   (run_ops_start_state : run? ops State.start_state = some State.start_state)
   :
   LowerGateClass.evalL (lowerPhaseProd k hk p x z ops) ψ

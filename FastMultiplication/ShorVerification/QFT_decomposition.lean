@@ -955,7 +955,7 @@ lemma eval_lowerQFTAux_strong
   (qs : QSemantics) (RE : RegEncoding qs.Basis) [ExtRegEncoding qs.Basis]
   [LowerGateClass qs] [GateSemanticsFacts qs]
   (ops : Prog k)
-  (hC : ProgConsumesPts (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
   (run_ops_start_state : run? ops State.start_state = some State.start_state) :
   ∀ n : ℕ, ∀ (r : Reg) (ψ : qs.State),
     regSize r = n →
@@ -1095,7 +1095,7 @@ lemma eval_lowerQFT
   (qs : QSemantics) (RE : RegEncoding qs.Basis) [ExtRegEncoding qs.Basis]
   [LowerGateClass qs] [GateSemanticsFacts qs]
   (ops : Prog k)
-  (hC : ProgConsumesPts (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
   (run_ops_start_state : run? ops State.start_state = some State.start_state) :
   ∀ (r : Reg) (ψ : qs.State),
     (LowerGateClass.evalL (qs := qs) (lowerQFT k hk r ops) ψ) = qs.eval (Gate.QFT r) ψ := by
@@ -1144,7 +1144,7 @@ theorem lowerGate_correctness
   (G : Gate) (hGeom : GateGeomOK G) (qs : QSemantics) (RE : RegEncoding qs.Basis)
   [ExtRegEncoding qs.Basis] [LowerGateClass qs] [GateSemanticsFacts qs]
   (ops : Prog k)
-  (hC : ProgConsumesPts (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
   (run_ops_start_state : run? ops State.start_state = some State.start_state) :
   ∀ ψ, LowerGateClass.evalL (qs := qs) (lowerGate k hk ops G) ψ = qs.eval G ψ := by
   intro ψ

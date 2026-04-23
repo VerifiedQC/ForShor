@@ -2,6 +2,11 @@ import FastMultiplication.one_reg_synth_proof_2
 
 open List Operations
 
+def SafeProg {k : ℕ} (ops : Prog k) : Prop :=
+  ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
+    ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest →
+      d ≠ s
+
 def ProgConsumesPts {k : ℕ} (hk : k > 0) : State k → Prog k → List Point → Prop
 | _σ, [], pts => pts = []
 | σ, op :: ops, pts =>
@@ -14,6 +19,10 @@ def ProgConsumesPts {k : ℕ} (hk : k > 0) : State k → Prog k → List Point �
   | _ =>
       ∃ σ', applyOp? (k := k) σ op = some σ' ∧
             ProgConsumesPts hk σ' ops pts
+
+structure ProgConsumesPtsSafe {k : ℕ} (hk : k > 0) (σ : State k) (ops : Prog k) (pts : List Point) : Prop where
+  consumes : ProgConsumesPts hk σ ops pts
+  safe_add : SafeProg ops
 
 open Operations
 
