@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.LowGate_compilationCore
+import FastMultiplication.ShorVerification.Toom_Cook_formula
 
 namespace Shor
 open Gate
@@ -61,7 +62,7 @@ lemma chunkStart_add_chunkSize_le
       (i.1 + 1) * q + r ≤ (k + 1) * q + r := Nat.add_le_add_right hmul r
       _ = n := by simpa [Nat.mul_comm, q, r] using hdiv
 
-lemma slot_subset_base {k : ℕ} (r : Reg) (i : Fin k) (hWF: WellFormedReg r):
+lemma slot_subset_base {k : ℕ} (r : Reg) (i : Fin k) (_hWF: WellFormedReg r):
   r.lo ≤ ((layoutOfReg r k).slot i).lo ∧
   ((layoutOfReg r k).slot i).hi ≤ r.hi := by
   cases k with
@@ -74,17 +75,7 @@ lemma slot_subset_base {k : ℕ} (r : Reg) (i : Fin k) (hWF: WellFormedReg r):
       · have hmain :
             chunkStart (regSize r) (k + 1) i + chunkSize (regSize r) (k + 1) i ≤ regSize r := by
           simpa using chunkStart_add_chunkSize_le (regSize r) k i
-        have:=Nat.add_le_add_left hmain r.lo
-        simp[regSize] at *
-        have hmain' :
-            r.lo + (chunkStart (r.hi - r.lo) (k + 1) i + chunkSize (r.hi - r.lo) (k + 1) i)
-              ≤ r.lo + (r.hi - r.lo) := by
-          exact Nat.add_le_add_left hmain r.lo
-        have htop : r.lo + (r.hi - r.lo) = r.hi := by
-          simp[WellFormedReg] at hWF
-          omega
-        rw [htop] at hmain'
-        simpa [Nat.add_assoc] using hmain'
+        simpa [Reg.hi, regSize, Nat.add_assoc] using Nat.add_le_add_left hmain r.lo
 
 lemma layout_slot_disjoint_of_base_disjoint {k : ℕ} (r s : Reg)
   (hrs : Disjoint r s) (i j : Fin k) (hWFr: WellFormedReg r) (hWFs: WellFormedReg s):
@@ -97,79 +88,156 @@ lemma layout_slot_disjoint_of_base_disjoint {k : ℕ} (r s : Reg)
 
 
 
+/-! =========================================================
+    Proof replacements for the phase-layout path
+
+Paste these into the proof file that imports `LowGate_compilationCore`,
+replacing the old layout/allocation lemmas that still unfold `layoutOfReg`
+and `splitLogicalWidth`.
+========================================================= -/
+
+/-- Slots of a single phase layout are disjoint from each other. -/
+lemma phase_layout_slot_disjoint_slot {k : ℕ}
+    (r : Reg) (W : ℕ) (i j : Fin k) (hij : i ≠ j) :
+    Disjoint ((phaseLayoutOfReg r k W).slot i) ((phaseLayoutOfReg r k W).slot j) :=
+  (phaseLayoutOfReg r k W).disjoint i j hij
+
+/-- A phase-layout slot is physically contained in its base register. -/
+lemma phase_slot_subset_base {k : ℕ}
+    (r : Reg) (W : ℕ) (i : Fin k) (_hWF : WellFormedReg r) :
+    r.lo ≤ ((phaseLayoutOfReg r k W).slot i).lo ∧
+    ((phaseLayoutOfReg r k W).slot i).hi ≤ r.hi := by
+  constructor
+  · dsimp [phaseLayoutOfReg, phaseSlot, phaseChunkStart]
+    omega
+  · have hhi :
+        (if isTopChunk i then regSize r else Nat.min (regSize r) (phaseChunkEnd W i.1))
+          ≤ regSize r := by
+      by_cases htop : isTopChunk i
+      · simp [htop]
+      · simp [htop]
+    change (phaseSlot r k W i).hi ≤ r.hi
+    rw [phaseSlot_hi_eq (r := r) (k := k) (W := W) (i := i)]
+    simpa [Reg.hi, regSize] using Nat.add_le_add_left hhi r.lo
+
+/-- Phase-layout slots over disjoint base registers are disjoint. -/
+lemma phase_layout_slot_disjoint_of_base_disjoint {k : ℕ}
+    (r s : Reg) (W : ℕ)
+    (hrs : Disjoint r s) (i j : Fin k)
+    (hWFr : WellFormedReg r) (hWFs : WellFormedReg s) :
+    Disjoint ((phaseLayoutOfReg r k W).slot i) ((phaseLayoutOfReg s k W).slot j) := by
+  rcases phase_slot_subset_base r W i hWFr with ⟨hri_lo, hri_hi⟩
+  rcases phase_slot_subset_base s W j hWFs with ⟨hsj_lo, hsj_hi⟩
+  cases hrs with
+  | inl h => exact Or.inl (le_trans hri_hi (le_trans h hsj_lo))
+  | inr h => exact Or.inr (le_trans hsj_hi (le_trans h hri_lo))
+
+/-- The initial x width is included in the full width scan. -/
+lemma scanNeededWidths_x_ge_init
+    {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) (i : Fin k) :
+    (initWidthState x z k).xw i ≤ (scanNeededWidths x z ops).xneed i := by
+  simp [scanNeededWidths]
+  exact
+    scanNeededWidthsAux_x_ge
+      (i := i)
+      ops
+      (initWidthState x z k)
+      (widthsOfState (initWidthState x z k))
+
+/-- The initial z width is included in the full width scan. -/
+lemma scanNeededWidths_z_ge_init
+    {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) (i : Fin k) :
+    (initWidthState x z k).zw i ≤ (scanNeededWidths x z ops).zneed i := by
+  simp [scanNeededWidths]
+  exact
+    scanNeededWidthsAux_z_ge
+      (i := i)
+      ops
+      (initWidthState x z k)
+      (widthsOfState (initWidthState x z k))
+
+
+
+
+/-- The widened final x-slot is the initial slot plus exactly its `extraDelta`. -/
 lemma stFinal_xslot_eq_addExtra
-  {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
-  let stInit := initSignedLayoutState x z k
-  let stFinal := targetSignedLayoutState x z k (scanNeededWidths x z ops)
-  stFinal.xslot i = ExtReg.addExtra (stInit.xslot i)
-      (extraDelta (stInit.xslot i) (stFinal.xslot i)) := by
-  dsimp [initSignedLayoutState, targetSignedLayoutState, ExtReg.addExtra, extraDelta, withLogicalWidth]
-  set r := (layoutOfReg x.base k).slot i
-  set splitW := splitLogicalWidth (ExtReg.width x) k i
+    {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
+    let stInit := initSignedLayoutState x z k
+    let stFinal := targetSignedLayoutState x z k (scanNeededWidths x z ops)
+    stFinal.xslot i = ExtReg.addExtra (stInit.xslot i)
+        (extraDelta (stInit.xslot i) (stFinal.xslot i)) := by
+  dsimp [initSignedLayoutState, targetSignedLayoutState,
+    ExtReg.addExtra, extraDelta, withLogicalWidth]
+  set r := (phaseLayoutOfReg x.base k (phaseLimbWidth x z k)).slot i
+  set splitW := phaseSplitLogicalWidth (ExtReg.width x) (phaseLimbWidth x z k) k i
   set W := commonNeededWidth (scanNeededWidths x z ops)
   have hrs : regSize r ≤ splitW := by
-    simpa [r, splitW] using slot_size_le_splitLogicalWidth_x x i
+    simpa [r, splitW, initWidthState] using phaseSlot_size_le_initWidth_x x z i
   have hscan : splitW ≤ (scanNeededWidths x z ops).xneed i := by
-    simpa [splitW] using scanNeededWidths_x_ge_init x z ops i
+    simpa [splitW, initWidthState] using scanNeededWidths_x_ge_init x z ops i
   have hW : splitW ≤ W := by
     have := commonNeededWidth_ge_xneed (scanNeededWidths x z ops) i
     omega
   congr
   omega
 
+/-- The widened final z-slot is the initial slot plus exactly its `extraDelta`. -/
 lemma stFinal_zslot_eq_addExtra
-  {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
-  let stInit := initSignedLayoutState x z k
-  let stFinal := targetSignedLayoutState x z k (scanNeededWidths x z ops)
-  stFinal.zslot i = ExtReg.addExtra (stInit.zslot i)
-      (extraDelta (stInit.zslot i) (stFinal.zslot i)) := by
-  dsimp [initSignedLayoutState, targetSignedLayoutState, ExtReg.addExtra, extraDelta, withLogicalWidth]
-  set r := (layoutOfReg z.base k).slot i
-  set splitW := splitLogicalWidth (ExtReg.width z) k i
+    {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
+    let stInit := initSignedLayoutState x z k
+    let stFinal := targetSignedLayoutState x z k (scanNeededWidths x z ops)
+    stFinal.zslot i = ExtReg.addExtra (stInit.zslot i)
+        (extraDelta (stInit.zslot i) (stFinal.zslot i)) := by
+  dsimp [initSignedLayoutState, targetSignedLayoutState,
+    ExtReg.addExtra, extraDelta, withLogicalWidth]
+  set r := (phaseLayoutOfReg z.base k (phaseLimbWidth x z k)).slot i
+  set splitW := phaseSplitLogicalWidth (ExtReg.width z) (phaseLimbWidth x z k) k i
   set W := commonNeededWidth (scanNeededWidths x z ops)
   have hrs : regSize r ≤ splitW := by
-    simpa [r, splitW] using slot_size_le_splitLogicalWidth_z z i
+    simpa [r, splitW, initWidthState] using phaseSlot_size_le_initWidth_z x z i
   have hscan : splitW ≤ (scanNeededWidths x z ops).zneed i := by
-    simpa [splitW] using scanNeededWidths_z_ge_init x z ops i
+    simpa [splitW, initWidthState] using scanNeededWidths_z_ge_init x z ops i
   have hW : splitW ≤ W := by
     have := commonNeededWidth_ge_zneed (scanNeededWidths x z ops) i
     omega
   congr
   omega
 
+/-- The x-slot allocation delta is positive. -/
 lemma extraDelta_xslot_pos
-  {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
-  let stInit := initSignedLayoutState x z k
-  let stFinal := targetSignedLayoutState x z k (scanNeededWidths x z ops)
-  0 < extraDelta (stInit.xslot i) (stFinal.xslot i) := by
-  dsimp [initSignedLayoutState, targetSignedLayoutState, extraDelta, withLogicalWidth]
-  set r := (layoutOfReg x.base k).slot i
-  set splitW := splitLogicalWidth (ExtReg.width x) k i
-  set W := commonNeededWidth (scanNeededWidths x z ops)
+    {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
+    let stInit := initSignedLayoutState x z k
+    let stFinal := targetSignedLayoutState  x z k (scanNeededWidths  x z ops)
+    0 < extraDelta (stInit.xslot i) (stFinal.xslot i) := by
+  dsimp [initSignedLayoutState , targetSignedLayoutState , extraDelta, withLogicalWidth]
+  set r := (phaseLayoutOfReg x.base k (phaseLimbWidth x z k)).slot i
+  set splitW := phaseSplitLogicalWidth (ExtReg.width x) (phaseLimbWidth x z k) k i
+  set W := commonNeededWidth (scanNeededWidths  x z ops)
   have hrs : regSize r ≤ splitW := by
-    simpa [r, splitW] using slot_size_le_splitLogicalWidth_x x  i
-  have hscan : splitW ≤ (scanNeededWidths x z ops).xneed i := by
-    simpa [splitW] using scanNeededWidths_x_ge_init x z ops i
+    simpa [r, splitW, initWidthState ] using phaseSlot_size_le_initWidth_x x z i
+  have hscan : splitW ≤ (scanNeededWidths  x z ops).xneed i := by
+    simpa [splitW, initWidthState ] using scanNeededWidths_x_ge_init x z ops i
   have hW : splitW + 1 ≤ W := by
-    have := commonNeededWidth_ge_xneed (scanNeededWidths x z ops) i
+    have := commonNeededWidth_ge_xneed (scanNeededWidths  x z ops) i
     omega
   omega
 
+/-- The z-slot allocation delta is positive. -/
 lemma extraDelta_zslot_pos
-  {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
-  let stInit := initSignedLayoutState x z k
-  let stFinal := targetSignedLayoutState x z k (scanNeededWidths x z ops)
-  0 < extraDelta (stInit.zslot i) (stFinal.zslot i) := by
-  dsimp [initSignedLayoutState, targetSignedLayoutState, extraDelta, withLogicalWidth]
-  set r := (layoutOfReg z.base k).slot i
-  set splitW := splitLogicalWidth (ExtReg.width z) k i
-  set W := commonNeededWidth (scanNeededWidths x z ops)
+    {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
+    let stInit := initSignedLayoutState  x z k
+    let stFinal := targetSignedLayoutState  x z k (scanNeededWidths  x z ops)
+    0 < extraDelta (stInit.zslot i) (stFinal.zslot i) := by
+  dsimp [initSignedLayoutState , targetSignedLayoutState , extraDelta, withLogicalWidth]
+  set r := (phaseLayoutOfReg z.base k (phaseLimbWidth x z k)).slot i
+  set splitW := phaseSplitLogicalWidth (ExtReg.width z) (phaseLimbWidth x z k) k i
+  set W := commonNeededWidth (scanNeededWidths  x z ops)
   have hrs : regSize r ≤ splitW := by
-    simpa [r, splitW] using slot_size_le_splitLogicalWidth_z z i
-  have hscan : splitW ≤ (scanNeededWidths x z ops).zneed i := by
-    simpa [splitW] using scanNeededWidths_z_ge_init x z ops i
+    simpa [r, splitW, initWidthState ] using phaseSlot_size_le_initWidth_z x z i
+  have hscan : splitW ≤ (scanNeededWidths  x z ops).zneed i := by
+    simpa [splitW, initWidthState ] using scanNeededWidths_z_ge_init x z ops i
   have hW : splitW + 1 ≤ W := by
-    have := commonNeededWidth_ge_zneed (scanNeededWidths x z ops) i
+    have := commonNeededWidth_ge_zneed (scanNeededWidths  x z ops) i
     omega
   omega
 
@@ -221,25 +289,45 @@ lemma eval_allocChunkGate_x_ket
   have hδne : δ ≠ 0 := Nat.ne_of_gt hδpos
 
   have hdisj_xx_src (j : Fin k) (hji : j ≠ i) :
-      Disjoint (stInit.xslot i).base (stInit.xslot j).base := by
+    Disjoint (stInit.xslot i).base (stInit.xslot j).base := by
     simpa [stInit, initSignedLayoutState, withLogicalWidth]
-      using layout_slot_disjoint_slot x.base i j (Ne.symm hji)
+      using
+        phase_layout_slot_disjoint_slot
+          x.base
+          (phaseLimbWidth x z k)
+          i j
+          (Ne.symm hji)
 
   have hdisj_xx_tgt (j : Fin k) (hji : j ≠ i) :
       Disjoint (stInit.xslot i).base (stFinal.xslot j).base := by
-    simpa [stInit, stFinal, initSignedLayoutState, targetSignedLayoutState, withLogicalWidth]
-      using layout_slot_disjoint_slot x.base i j (Ne.symm hji)
+    simpa [stInit, initSignedLayoutState, withLogicalWidth]
+      using
+        phase_layout_slot_disjoint_slot
+          x.base
+          (phaseLimbWidth x z k)
+          i j
+          (Ne.symm hji)
 
   have hdisj_xz_src (j : Fin k) :
       Disjoint (stInit.xslot i).base (stInit.zslot j).base := by
-    simpa [stInit, initSignedLayoutState, withLogicalWidth]
-      using layout_slot_disjoint_of_base_disjoint x.base z.base hxz i j hxwf hzwf
-
+      simpa [stInit, initSignedLayoutState, withLogicalWidth]
+        using
+          phase_layout_slot_disjoint_of_base_disjoint
+            x.base z.base
+            (phaseLimbWidth x z k)
+            hxz
+            i j
+            hxwf hzwf
   have hdisj_xz_tgt (j : Fin k) :
       Disjoint (stInit.xslot i).base (stFinal.zslot j).base := by
-    simpa [stInit, stFinal, initSignedLayoutState, targetSignedLayoutState, withLogicalWidth]
-      using layout_slot_disjoint_of_base_disjoint x.base z.base hxz i j hxwf hzwf
-
+      simpa [stInit, initSignedLayoutState, withLogicalWidth]
+        using
+          phase_layout_slot_disjoint_of_base_disjoint
+            x.base z.base
+            (phaseLimbWidth x z k)
+            hxz
+            i j
+            hxwf hzwf
   by_cases htop : isTopChunk i
   ·
     have hgate :
@@ -459,34 +547,73 @@ lemma eval_allocChunkGate_z_ket
   have hδne : δ ≠ 0 := Nat.ne_of_gt hδpos
 
   have hdisj_zx_src (j : Fin k) :
-      Disjoint (stInit.zslot i).base (stInit.xslot j).base := by
+    Disjoint (stInit.zslot i).base (stInit.xslot j).base := by
     simpa [stInit, initSignedLayoutState, withLogicalWidth]
-      using layout_slot_disjoint_of_base_disjoint z.base x.base hxz' i j hzwf hxwf
+      using
+        phase_layout_slot_disjoint_of_base_disjoint
+          z.base x.base
+          (phaseLimbWidth x z k)
+          hxz'
+          i j
+          hzwf hxwf
 
   have hdisj_zx_tgt (j : Fin k) :
       Disjoint (stInit.zslot i).base (stFinal.xslot j).base := by
     simpa [stInit, stFinal, initSignedLayoutState, targetSignedLayoutState, withLogicalWidth]
-      using layout_slot_disjoint_of_base_disjoint z.base x.base hxz' i j hzwf hxwf
+      using
+        phase_layout_slot_disjoint_of_base_disjoint
+          z.base x.base
+          (phaseLimbWidth x z k)
+          hxz'
+          i j
+          hzwf hxwf
 
   have hdisj_xz_src_rev (j : Fin k) :
       Disjoint (stInit.xslot j).base (stInit.zslot i).base := by
     simpa [stInit, initSignedLayoutState, withLogicalWidth]
-      using layout_slot_disjoint_of_base_disjoint x.base z.base hxz j i hxwf hzwf
+      using
+        phase_layout_slot_disjoint_of_base_disjoint
+          x.base z.base
+          (phaseLimbWidth x z k)
+          hxz
+          j i
+          hxwf hzwf
 
   have hdisj_zz_src (j : Fin k) (hji : j ≠ i) :
       Disjoint (stInit.zslot i).base (stInit.zslot j).base := by
     simpa [stInit, initSignedLayoutState, withLogicalWidth]
-      using layout_slot_disjoint_slot z.base i j (by omega)
+      using
+        phase_layout_slot_disjoint_slot
+          z.base
+          (phaseLimbWidth x z k)
+          i j
+          (by
+            intro hij
+            apply hji
+            exact hij.symm)
 
   have hdisj_zz_src_rev (j : Fin k) (hji : j ≠ i) :
       Disjoint (stInit.zslot j).base (stInit.zslot i).base := by
     simpa [stInit, initSignedLayoutState, withLogicalWidth]
-      using layout_slot_disjoint_slot z.base j i hji
+      using
+        phase_layout_slot_disjoint_slot
+          z.base
+          (phaseLimbWidth x z k)
+          j i
+          hji
 
   have hdisj_zz_tgt (j : Fin k) (hji : j ≠ i) :
       Disjoint (stInit.zslot i).base (stFinal.zslot j).base := by
     simpa [stInit, stFinal, initSignedLayoutState, targetSignedLayoutState, withLogicalWidth]
-      using layout_slot_disjoint_slot z.base i j (by omega)
+      using
+        phase_layout_slot_disjoint_slot
+          z.base
+          (phaseLimbWidth x z k)
+          i j
+          (by
+            intro hij
+            apply hji
+            exact hij.symm)
 
   by_cases htop : isTopChunk i
   ·
@@ -944,53 +1071,79 @@ lemma encodesFrom_after_shiftL_ket
     | inl hab => exact Or.inr hab
     | inr hba => exact Or.inl hba
 
-  rcases ArithmeticSemantics.eval_ShiftL_ket_mod
-      (qs := qs) (r := dst.xslot i) (n := m) (b := bCur) with
+  have hσ1 : σ1 = State.shiftLReg σ i m := by
+    simp [applyOp?] at hstep
+    simpa using hstep.symm
+  subst hσ1
+
+  have hrow_shift_x :
+      evalRowX (qs := qs) src ((σ i).shiftL m) bRef
+        =
+      ((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef := by
+    simpa using
+      (evalRowX_shiftL_raw
+        (qs := qs) (src := src) (r := σ i) (m := m) (b := bRef))
+
+  have hfit_shift_x :
+      FitsSignedWidth (ExtReg.width (dst.xslot i))
+        (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.xslot i) bCur) := by
+    have hfit_post :
+        FitsSignedWidth (ExtReg.width (dst.xslot i))
+          (((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef) := by
+      simpa [State.shiftLReg, hrow_shift_x] using hFit1x i
+    rw [hEnc.1.1 i]
+    exact hfit_post
+
+  rcases ArithmeticSemantics.eval_ShiftL_ket_exact
+      (qs := qs) (r := dst.xslot i) (n := m) (b := bCur) hfit_shift_x with
     ⟨bx, hbx_eval, hbx_val, hbx_keep⟩
 
-  rcases ArithmeticSemantics.eval_ShiftL_ket_mod
-      (qs := qs) (r := dst.zslot i) (n := m) (b := bx) with
+  have hz_same_on_bx :
+      ExtRegEncoding.extToInt (dst.zslot i) bx
+        = ExtRegEncoding.extToInt (dst.zslot i) bCur := by
+    exact hbx_keep (dst.zslot i) (disjoint_symm (hxz i i))
+
+  have hrow_shift_z :
+      evalRowZ (qs := qs) src ((σ i).shiftL m) bRef
+        =
+      ((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef := by
+    simpa using
+      (evalRowZ_shiftL_raw
+        (qs := qs) (src := src) (r := σ i) (m := m) (b := bRef))
+
+  have hfit_shift_z :
+      FitsSignedWidth (ExtReg.width (dst.zslot i))
+        (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bx) := by
+    have hfit_post :
+        FitsSignedWidth (ExtReg.width (dst.zslot i))
+          (((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef) := by
+      simpa [State.shiftLReg, hrow_shift_z] using hFit1z i
+    rw [hz_same_on_bx, hEnc.1.2 i]
+    exact hfit_post
+
+  rcases ArithmeticSemantics.eval_ShiftL_ket_exact
+      (qs := qs) (r := dst.zslot i) (n := m) (b := bx) hfit_shift_z with
     ⟨bz, hbz_eval, hbz_val, hbz_keep⟩
 
   refine ⟨bz, ?_, ?_⟩
   · simp [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, hbx_eval, hbz_eval, qs.eval_id]
-
   ·
-    have hσ1 : σ1 = State.shiftLReg σ i m := by
-      simp [applyOp?] at hstep;simp[hstep]
-    subst hσ1
     refine ⟨?_, hFit1x, hFit1z⟩
     constructor
     · intro j
       by_cases hji : i = j
       · subst hji
-        have hrow_shift :
-            evalRowX (qs := qs) src ((σ i).shiftL m) bRef
-              =
-            ((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef := by
-          simpa using
-            (evalRowX_shiftL_raw
-              (qs := qs) (src := src) (r := σ i) (m := m) (b := bRef))
-        have hfit_post :
-            FitsSignedWidth (ExtReg.width (dst.xslot i))
-              (((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef) := by
-          simpa [State.shiftLReg, hrow_shift] using hFit1x i
         calc
           ExtRegEncoding.extToInt (dst.xslot i) bz
               = ExtRegEncoding.extToInt (dst.xslot i) bx := by
                   exact hbz_keep (dst.xslot i) (hxz i i)
-          _   = tcWrapInt (ExtReg.width (dst.xslot i))
-                    (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.xslot i) bCur) := by
+          _   = ((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.xslot i) bCur := by
                   simpa using hbx_val
-          _   = tcWrapInt (ExtReg.width (dst.xslot i))
-                    (((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef) := by
+          _   = ((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef := by
                   rw [hEnc.1.1 i]
           _   = evalRowX (qs := qs) src ((State.shiftLReg σ i m) i) bRef := by
-                  rw [show ((State.shiftLReg σ i m) i) = (σ i).shiftL m by
-                        simp [State.shiftLReg]]
-                  rw [hrow_shift]
                   symm
-                  exact (tcWrapInt_eq_of_fits hfit_post.1 hfit_post).symm
+                  simpa [State.shiftLReg] using hrow_shift_x
       ·
         have hkeep1 :
             ExtRegEncoding.extToInt (dst.xslot j) bx
@@ -1012,44 +1165,20 @@ lemma encodesFrom_after_shiftL_ket
                   simpa [EncodesStateFrom] using hEnc.1.1 j
           _   = evalRowX (qs := qs) src ((State.shiftLReg σ i m) j) bRef := by
                   simp [State.shiftLReg, State.setReg, hji']
-
     · intro j
       by_cases hji : i = j
       · subst hji
-        have hz_same_on_bx :
-            ExtRegEncoding.extToInt (dst.zslot i) bx
-              = ExtRegEncoding.extToInt (dst.zslot i) bCur := by
-          exact hbx_keep (dst.zslot i)
-            (disjoint_symm (hxz i i))
-        have hrow_shift :
-            evalRowZ (qs := qs) src ((σ i).shiftL m) bRef
-              =
-            ((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef := by
-          simpa using
-            (evalRowZ_shiftL_raw
-              (qs := qs) (src := src) (r := σ i) (m := m) (b := bRef))
-        have hfit_post :
-            FitsSignedWidth (ExtReg.width (dst.zslot i))
-              (((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef) := by
-          simpa [State.shiftLReg, hrow_shift] using hFit1z i
         calc
           ExtRegEncoding.extToInt (dst.zslot i) bz
-              = tcWrapInt (ExtReg.width (dst.zslot i))
-                  (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bx) := by
+              = ((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bx := by
                     simpa using hbz_val
-          _   = tcWrapInt (ExtReg.width (dst.zslot i))
-                  (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bCur) := by
+          _   = ((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bCur := by
                     rw [hz_same_on_bx]
-          _   = tcWrapInt (ExtReg.width (dst.zslot i))
-                  (((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef) := by
+          _   = ((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef := by
                     rw [hEnc.1.2 i]
           _   = evalRowZ (qs := qs) src ((State.shiftLReg σ i m) i) bRef := by
-                  rw [show ((State.shiftLReg σ i m) i) = (σ i).shiftL m by
-                        simp [State.shiftLReg]]
-                  rw [hrow_shift]
-                  symm
-                  exact (tcWrapInt_eq_of_fits hfit_post.1 hfit_post).symm
-
+                    symm
+                    simpa [State.shiftLReg] using hrow_shift_z
       ·
         have hkeep1 :
             ExtRegEncoding.extToInt (dst.zslot j) bx
@@ -1136,7 +1265,8 @@ lemma encodesFrom_after_shiftR_ket
       rcases ArithmeticSemantics.eval_ShiftR_ket_exact
           (qs := qs) (r := dst.xslot i) (n := m) (b := bCur)
           (q := evalRowX (qs := qs) src r' bRef)
-          hx_pre with
+          hx_pre
+          (by simpa [State.setReg] using hFit1x i) with
         ⟨bx, hbx_eval, hbx_val, hbx_keep⟩
 
       have hz_pre :
@@ -1158,7 +1288,8 @@ lemma encodesFrom_after_shiftR_ket
       rcases ArithmeticSemantics.eval_ShiftR_ket_exact
           (qs := qs) (r := dst.zslot i) (n := m) (b := bx)
           (q := evalRowZ (qs := qs) src r' bRef)
-          hz_pre with
+          hz_pre
+          (by simpa [State.setReg] using hFit1z i) with
         ⟨bz, hbz_eval, hbz_val, hbz_keep⟩
 
       refine ⟨bz, ?_, ?_⟩
@@ -1703,6 +1834,12 @@ lemma sameOutside_after_shiftL_single
   (hdisj : LayoutSlotsDisjoint dst)
   (i : Fin k) (m : ℕ)
   (bCur b1 : qs.Basis)
+  (hFitX :
+    FitsSignedWidth (ExtReg.width (dst.xslot i))
+      (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.xslot i) bCur))
+  (hFitZ :
+    FitsSignedWidth (ExtReg.width (dst.zslot i))
+      (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bCur))
   (heval :
     qs.eval
       (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
@@ -1712,11 +1849,24 @@ lemma sameOutside_after_shiftL_single
     qs.ket b1) :
   SameOutsideLayout qs dst bCur b1 := by
   rcases hdisj with ⟨hxx, hzz, hxz⟩
-  rcases ArithmeticSemantics.eval_ShiftL_ket_mod
-      (qs := qs) (r := dst.xslot i) (n := m) (b := bCur) with
+  have disjoint_symm {a b : Reg} : Disjoint a b → Disjoint b a := by
+    intro h
+    cases h with
+    | inl hab => exact Or.inr hab
+    | inr hba => exact Or.inl hba
+  rcases ArithmeticSemantics.eval_ShiftL_ket_exact
+      (qs := qs) (r := dst.xslot i) (n := m) (b := bCur) hFitX with
     ⟨bx, hbx_eval, _hbx_val, hbx_keep⟩
-  rcases ArithmeticSemantics.eval_ShiftL_ket_mod
-      (qs := qs) (r := dst.zslot i) (n := m) (b := bx) with
+  have hz_same_on_bx :
+      ExtRegEncoding.extToInt (dst.zslot i) bx
+        = ExtRegEncoding.extToInt (dst.zslot i) bCur := by
+    exact hbx_keep (dst.zslot i) (disjoint_symm (hxz i i))
+  have hFitZ' :
+      FitsSignedWidth (ExtReg.width (dst.zslot i))
+        (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bx) := by
+    simpa [hz_same_on_bx] using hFitZ
+  rcases ArithmeticSemantics.eval_ShiftL_ket_exact
+      (qs := qs) (r := dst.zslot i) (n := m) (b := bx) hFitZ' with
     ⟨bz, hbz_eval, _hbz_val, hbz_keep⟩
 
   have hbz : bz = b1 := by
@@ -1749,6 +1899,12 @@ lemma sameOutside_after_shiftR_single
   (bRef bCur b1 : qs.Basis)
   (hstep : applyOp? σ (.shiftR i m) = some σ1)
   (hEnc : EncodesStateFromFits (qs := qs) src dst σ bRef bCur)
+  (hFit1x : ∀ j : Fin k,
+    FitsSignedWidth (ExtReg.width (dst.xslot j))
+      (evalRowX (qs := qs) src (σ1 j) bRef))
+  (hFit1z : ∀ j : Fin k,
+    FitsSignedWidth (ExtReg.width (dst.zslot j))
+      (evalRowZ (qs := qs) src (σ1 j) bRef))
   (heval :
     qs.eval
       (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
@@ -1771,6 +1927,8 @@ lemma sameOutside_after_shiftR_single
         simp [applyOp?, State.shiftRReg?, hreg] at hstep
       exact False.elim this
   | some r' =>
+      have hσ1 : State.setReg σ i r' = σ1 := by
+        simpa [applyOp?, State.shiftRReg?, hreg] using hstep
       have hx_pre :
           ExtRegEncoding.extToInt (dst.xslot i) bCur
             =
@@ -1787,7 +1945,13 @@ lemma sameOutside_after_shiftR_single
 
       rcases ArithmeticSemantics.eval_ShiftR_ket_exact
           (qs := qs) (r := dst.xslot i) (n := m) (b := bCur)
-          (q := evalRowX (qs := qs) src r' bRef) hx_pre with
+          (q := evalRowX (qs := qs) src r' bRef) hx_pre
+          (by
+            have hFitXi :
+                FitsSignedWidth (ExtReg.width (dst.xslot i))
+                  (evalRowX (qs := qs) src ((State.setReg σ i r') i) bRef) := by
+              simpa [← hσ1] using hFit1x i
+            simpa [State.setReg] using hFitXi) with
         ⟨bx, hbx_eval, _hbx_val, hbx_keep⟩
 
       have hz_pre :
@@ -1808,7 +1972,13 @@ lemma sameOutside_after_shiftR_single
 
       rcases ArithmeticSemantics.eval_ShiftR_ket_exact
           (qs := qs) (r := dst.zslot i) (n := m) (b := bx)
-          (q := evalRowZ (qs := qs) src r' bRef) hz_pre with
+          (q := evalRowZ (qs := qs) src r' bRef) hz_pre
+          (by
+            have hFitZi :
+                FitsSignedWidth (ExtReg.width (dst.zslot i))
+                  (evalRowZ (qs := qs) src ((State.setReg σ i r') i) bRef) := by
+              simpa [← hσ1] using hFit1z i
+            simpa [State.setReg] using hFitZi) with
         ⟨bz, hbz_eval, _hbz_val, hbz_keep⟩
 
       have hbz : bz = b1 := by
@@ -2004,10 +2174,46 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
 
               have hSO1 :
                   SameOutsideLayout qs dst bCur b1 := by
+                have hσ1 : σ1 = State.shiftLReg σ i m := by
+                  simp [applyOp?] at hstep
+                  simpa using hstep.symm
+                have hrow_shift_x :
+                    evalRowX (qs := qs) src ((σ i).shiftL m) bRef
+                      =
+                    ((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef := by
+                  simpa using
+                    (evalRowX_shiftL_raw
+                      (qs := qs) (src := src) (r := σ i) (m := m) (b := bRef))
+                have hFitX :
+                    FitsSignedWidth (ExtReg.width (dst.xslot i))
+                      (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.xslot i) bCur) := by
+                  have hfit_post :
+                      FitsSignedWidth (ExtReg.width (dst.xslot i))
+                        (((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef) := by
+                    simpa [hσ1, State.shiftLReg, hrow_shift_x] using hFit1.1 i
+                  rw [hEnc.1.1 i]
+                  exact hfit_post
+                have hrow_shift_z :
+                    evalRowZ (qs := qs) src ((σ i).shiftL m) bRef
+                      =
+                    ((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef := by
+                  simpa using
+                    (evalRowZ_shiftL_raw
+                      (qs := qs) (src := src) (r := σ i) (m := m) (b := bRef))
+                have hFitZ :
+                    FitsSignedWidth (ExtReg.width (dst.zslot i))
+                      (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bCur) := by
+                  have hfit_post :
+                      FitsSignedWidth (ExtReg.width (dst.zslot i))
+                        (((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef) := by
+                    simpa [hσ1, State.shiftLReg, hrow_shift_z] using hFit1.2 i
+                  rw [hEnc.1.2 i]
+                  exact hfit_post
                 exact sameOutside_after_shiftL_single
                   (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
                   (dst := dst) (hdisj := hdisj)
-                  (i := i) (m := m) (bCur := bCur) (b1 := b1) hEval1
+                  (i := i) (m := m) (bCur := bCur) (b1 := b1)
+                  hFitX hFitZ hEval1
 
               have hFitsTail :
                 ∀ {τ : State k},
@@ -2090,7 +2296,7 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (i := i) (m := m)
                   (σ := σ) (σ1 := σ1)
                   (bRef := bRef) (bCur := bCur) (b1 := b1)
-                  hstep hEnc hEval1
+                  hstep hEnc hFit1.1 hFit1.2 hEval1
 
               have hFitsTail :
                 ∀ {τ : State k},
@@ -2759,7 +2965,6 @@ lemma encodesFrom_after_noPhase_run_ket_gen
     (σ := σ) (σ' := σ') (bRef := bRef) (bCur := bCur) (n := n)
     hdisj hFits hSafeAdd hNP hrun hEnc
 
-
 lemma eval_matched_phase_ket_from
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -3312,6 +3517,7 @@ lemma qubit_in_layout_or_outside
           unfold Disjoint qubitReg
           simp at *; simp[ExtReg.ofReg]
           omega))
+
 lemma phaseScalarFrom_ne_zero
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
@@ -3595,8 +3801,6 @@ lemma eval_compileSignedDeallocations_alloc_id
     simp at this
     simp[compileSignedAllocations,compileSignedDeallocations,this]
 
-
-
 lemma eval_compileSignedDeallocations_ket_from_alloc
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -3611,7 +3815,6 @@ lemma eval_compileSignedDeallocations_ket_from_alloc
     rw[← hAlloc]; simp at this
     simp[this]
 
-
 lemma eval_compileSignedDeallocations_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -3622,6 +3825,7 @@ lemma eval_compileSignedDeallocations_ket
   qs.eval (compileSignedDeallocations k src dst) (qs.ket bAlloc) = qs.ket b := by
   have:=eval_compileSignedDeallocations_ket_from_alloc qs (k:=k) src dst b bAlloc hAlloc
   apply this
+
 lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_then_dealloc
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -3697,31 +3901,770 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_then_dealloc
   rw [qs.eval_smul]
   rw [hDealloc]
 
+open scoped BigOperators
+
+/-- Use the standalone math definition as the real meaning of good Toom-Cook points. -/
+def GoodToomCookPoints
+  (k : ℕ)
+  (pts : List Point)
+  (hpts : pts.length = q k) : Prop :=
+  ToomCookMath.GoodInterpolationPoints
+    (row := interpEntry k)
+    (pts := ToomCookMath.listToFin pts hpts)
+
+/--
+The point term used by the abstract math theorem.
+
+This is the rational version of the integer phase term already appearing in
+`phaseScalarFrom`.
+-/
+def tcPointTerm
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  {k : ℕ}
+  (st : LayoutState k)
+  (b : qs.Basis)
+  (pts : List Point)
+  (hpts : pts.length = q k) :
+  Fin (q k) → ℚ :=
+  fun i =>
+    ((evalRowX (qs := qs) st
+        (expectedRow (k := k) ((ToomCookMath.listToFin pts hpts) i)) b
+      *
+      evalRowZ (qs := qs) st
+        (expectedRow (k := k) ((ToomCookMath.listToFin pts hpts) i)) b : ℤ) : ℚ)
+
+/-- The final target product, as a rational number. -/
+def tcTarget
+  (qs : QSemantics)
+  [RegEncoding QSemantics.Basis]
+  [ExtRegEncoding qs.Basis]
+  (x z : ExtReg)
+  (b : qs.Basis) : ℚ :=
+  (((ExtRegEncoding.extToInt x b) *
+    (ExtRegEncoding.extToInt z b) : ℤ) : ℚ)
+
+def tcProductCoeff
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  {k : ℕ}
+  (st : LayoutState k)
+  (b : qs.Basis) :
+  Fin (q k) → ℚ :=
+  fun l =>
+    ∑ ij : Fin k × Fin k,
+      if _h : ij.1.1 + ij.2.1 = l.1 then
+        ((sourceChunkXInt (qs := qs) st ij.1 b *
+          sourceChunkZInt (qs := qs) st ij.2 b : ℤ) : ℚ)
+      else
+        0
+
+lemma phaseCoeffFromPtsWidth_eq_interpCoeff
+  {k W : ℕ}
+  (pts : List Point)
+  (hpts : pts.length = q k) :
+  phaseCoeffFromPtsWidth k W pts hpts
+    =
+  ToomCookMath.interpCoeff
+    (row := interpEntry k)
+    (pts := ToomCookMath.listToFin pts hpts)
+    ((2 : ℚ) ^ W) := by
+  funext i
+  simp [ phaseCoeffFromPtsWidth, phaseCoeffFromPts, ToomCookMath.interpCoeff]
+  unfold ToomCookMath.interpMatrix ToomCookMath.radixRow interpMatrix radixRow ptsToFin ToomCookMath.listToFin
+  simp
+
+open scoped BigOperators
 
 
+lemma phaseScalarFrom_eq_phaseScalarFromList_aux
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  {k : ℕ}
+  (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (st : LayoutState k)
+  (b : qs.Basis)
+  (full : List Point)
+  (hfull : full.length = q k) :
+  ∀ (rest : List Point) (n : ℕ)
+    (hn : n + rest.length = q k),
+    full.drop n = rest →
+    phaseScalarFrom (qs := qs) k phi coeff st b rest n hn
+      =
+    ToomCookMath.phaseScalarFromList
+      phi coeff (tcPointTerm qs st b full hfull) rest n hn := by
+  intro rest
+  induction rest with
+  | nil =>
+      intro n hn hdrop
+      simp [phaseScalarFrom, ToomCookMath.phaseScalarFromList]
 
--- theorem toom_cook_interpolation
---   (qs : QSemantics)
---   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
---   {k : ℕ} (hk : 1 < k)
---   (x z : ExtReg)
---   (pts : List Point) (hpts : pts.length = q k)
---   (W : ℕ)
---   (hW_x : ExtReg.width x ≤ k * W)
---   (hW_z : ExtReg.width z ≤ k * W)
---   (b0 : qs.Basis) :
---   (ExtRegEncoding.extToInt x b0 : ℝ) * (ExtRegEncoding.extToInt z b0 : ℝ)
---     =
---   ∑ l : Fin (q k),
---     ((phaseCoeffFromPtsWidth k W pts hpts l : ℚ) : ℝ) *
---       ((evalRowX (qs := qs)
---         (initSignedLayoutState x z k)
---         (expectedRow (k := k) (pts.get ⟨l.val, by rw [hpts]; exact l.is_lt⟩))
---         b0 : ℤ) : ℝ) *
---       ((evalRowZ (qs := qs)
---         (initSignedLayoutState x z k)
---         (expectedRow (k := k) (pts.get ⟨l.val, by rw [hpts]; exact l.is_lt⟩))
---         b0 : ℤ) : ℝ):= by sorry
+  | cons pt rest ih =>
+      intro n hn hdrop
+
+      have hnlt : n < full.length := by
+        rw [hfull]
+        simp at hn
+        omega
+
+      have hget :
+          (ToomCookMath.listToFin full hfull)
+            ⟨n, by simpa [hfull] using hnlt⟩ = pt := by
+        unfold ToomCookMath.listToFin
+        simp_all
+        have hget? : full[n]? = some pt := by
+          have h0 := congrArg (fun xs : List Point => xs[0]?) hdrop
+          simpa [List.getElem?_drop, Nat.zero_add] using h0
+
+        have hget?₂ : some full[n] = some pt := by
+          simpa [List.getElem?_eq_getElem hnlt] using hget?
+
+        exact Option.some.inj hget?₂
+
+      have htail_drop :
+          full.drop (n + 1) = rest := by
+        have := congrArg List.tail hdrop
+        have htail : (List.drop n full).tail = rest := by
+          simpa using this
+
+        have hdrop_tail :
+            ∀ (xs : List Point) (m : ℕ),
+              (List.drop m xs).tail = List.drop (m + 1) xs := by
+          simp
+
+        have htail : (List.drop n full).tail = rest := by
+          simpa using this
+
+        rw [← hdrop_tail full n]
+        exact htail
+
+      simp [phaseScalarFrom, ToomCookMath.phaseScalarFromList]
+
+      have hterm :
+          tcPointTerm qs st b full hfull
+            ⟨n, by
+              rw [← hn]
+              simp
+            ⟩
+          =
+          ((evalRowX (qs := qs) st (expectedRow (k := k) pt) b *
+            evalRowZ (qs := qs) st (expectedRow (k := k) pt) b : ℤ) : ℚ) := by
+        unfold tcPointTerm
+        simp [hget]
+
+      rw [hterm]
+
+      have htail :
+          phaseScalarFrom (qs := qs) k phi coeff st b rest (n + 1)
+            (by
+              simp at hn
+              omega)
+          =
+          ToomCookMath.phaseScalarFromList
+            phi coeff (tcPointTerm qs st b full hfull) rest (n + 1)
+            (by
+              simp at hn
+              omega) := by
+        exact ih (n + 1) (by
+          simp at hn
+          omega) htail_drop
+
+      rw [htail]
+      unfold ToomCookMath.phaseFactor
+
+      have hprodC :
+          (((evalRowX (qs := qs) st (expectedRow (k := k) pt) b *
+              evalRowZ (qs := qs) st (expectedRow (k := k) pt) b : ℤ) : ℚ) : ℂ)
+            =
+          ((evalRowX (qs := qs) st (expectedRow (k := k) pt) b : ℂ) *
+          (evalRowZ (qs := qs) st (expectedRow (k := k) pt) b : ℂ)) := by
+        norm_num
+
+      rw [hprodC]
+      simp[mul_comm]
+
+lemma phaseScalarFrom_eq_phaseScalarFromList
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  {k : ℕ}
+  (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (st : LayoutState k)
+  (b : qs.Basis)
+  (pts : List Point)
+  (hpts : pts.length = q k) :
+  phaseScalarFrom (qs := qs) k phi coeff st b pts 0 (by simpa using hpts)
+    =
+  ToomCookMath.phaseScalarFromList phi coeff (tcPointTerm qs st b pts hpts) pts 0
+    (by simpa using hpts) := by
+  simpa using
+    phaseScalarFrom_eq_phaseScalarFromList_aux
+      (qs := qs)
+      (phi := phi)
+      (coeff := coeff)
+      (st := st)
+      (b := b)
+      (full := pts)
+      (hfull := hpts)
+      (rest := pts)
+      (n := 0)
+      (hn := by simpa using hpts)
+      (by simp)
+
+lemma expectedRow_mul_expectedRow_eq_interpEntry
+  {k : ℕ}
+  (hk : 1 < k)
+  (pt : Point)
+  (i j : Fin k) :
+  (((expectedRow (k := k) pt i) *
+    (expectedRow (k := k) pt j) : ℤ) : ℚ)
+    =
+  interpEntry k pt
+    ⟨i.1 + j.1, by
+      simp [q]
+      omega
+    ⟩ := by
+  cases pt with
+  | int z =>
+      simp [expectedRow, interpEntry]
+      norm_cast
+      rw [pow_add]
+  | inf =>
+      simp [expectedRow, interpEntry, q]
+      by_cases hi : i.1 + 1 = k
+      · by_cases hj : j.1 + 1 = k
+        · have hij : i.1 + j.1 = 2 * k - 2 := by omega
+          cases k with
+          | zero =>
+              omega
+
+          | succ k' =>
+              have hi_last : i = ⟨k', by omega⟩ := by
+                apply Fin.ext
+                exact Nat.succ_injective hi
+
+              have hj_last : j = ⟨k', by omega⟩ := by
+                apply Fin.ext
+                exact Nat.succ_injective hj
+
+              have hdeg : i.1 + j.1 = 2 * (k' + 1) - 1 - 1 := by
+                omega
+              simp [hdeg]
+              simp_all only [lt_add_iff_pos_left, ↓reduceIte]
+        · have hij : i.1 + j.1 ≠ 2 * k - 2 := by omega
+
+          cases k with
+          | zero =>
+              omega
+
+          | succ k' =>
+              have hi_last : i = ⟨k', by omega⟩ := by
+                apply Fin.ext
+                exact Nat.succ_injective hi
+
+              have hj_not_last : j ≠ ⟨k', by omega⟩ := by
+                intro hj_last
+                apply hj
+                rw [hj_last]
+              have hdeg : k' + j.1 ≠ 2 * (k' + 1) - 1 - 1 := by
+                omega
+              aesop
+
+      · by_cases hj : j.1 + 1 = k
+        · have hij : i.1 + j.1 ≠ 2 * k - 2 := by omega
+          cases k with
+          | zero =>
+              omega
+
+          | succ k' =>
+              have hj_last : j = ⟨k', by omega⟩ := by
+                apply Fin.ext
+                exact Nat.succ_injective hj
+
+              have hi_not_last : i ≠ ⟨k', by omega⟩ := by
+                intro hi_last
+                apply hi
+                rw [hi_last]
+
+              aesop
+        · have hij : i.1 + j.1 ≠ 2 * k - 2 := by omega
+
+          cases k with
+          | zero =>
+              omega
+
+          | succ k' =>
+              have hi_not_last : i ≠ ⟨k', by omega⟩ := by
+                intro hi_last
+                apply hi
+                rw [hi_last]
+              have hj_not_last : j ≠ ⟨k', by omega⟩ := by
+                intro hj_last
+                apply hj
+                rw [hj_last]
+              have hdeg : i.1 + j.1 ≠ 2 * (k' + 1) - 1 - 1 := by
+                omega
+              simp [hi_not_last, hj_not_last, hdeg]
+
+lemma sum_degree_group
+  {k : ℕ}
+  (hk : 1 < k)
+  (A : Fin k × Fin k → ℚ)
+  (row : Fin (q k) → ℚ) :
+  (∑ l : Fin (q k),
+      (∑ ij : Fin k × Fin k,
+        if _h : ij.1.1 + ij.2.1 = l.1 then
+          A ij
+        else
+          0) * row l)
+    =
+  ∑ ij : Fin k × Fin k,
+    A ij * row
+      ⟨ij.1.1 + ij.2.1, by
+        simp [q]
+        omega
+      ⟩ := by
+  classical
+  calc
+    (∑ l : Fin (q k),
+        (∑ ij : Fin k × Fin k,
+          if _h : ij.1.1 + ij.2.1 = l.1 then
+            A ij
+          else
+            0) * row l)
+        =
+      ∑ l : Fin (q k),
+        ∑ ij : Fin k × Fin k,
+          (if _h : ij.1.1 + ij.2.1 = l.1 then
+            A ij
+          else
+            0) * row l := by
+          simp [Finset.sum_mul]
+    _ =
+      ∑ ij : Fin k × Fin k,
+        ∑ l : Fin (q k),
+          (if _h : ij.1.1 + ij.2.1 = l.1 then
+            A ij
+          else
+            0) * row l := by
+          rw [Finset.sum_comm]
+    _ =
+      ∑ ij : Fin k × Fin k,
+        A ij * row
+          ⟨ij.1.1 + ij.2.1, by
+            simp [q]
+            omega
+          ⟩ := by
+          apply Finset.sum_congr rfl
+          intro ij hij
+          let d : Fin (q k) :=
+            ⟨ij.1.1 + ij.2.1, by
+              simp [q]
+              omega
+            ⟩
+          have hsingle :
+              (∑ l : Fin (q k),
+                (if _h : ij.1.1 + ij.2.1 = l.1 then
+                  A ij
+                else
+                  0) * row l)
+              =
+              A ij * row d := by
+            trans
+              ((if _h : ij.1.1 + ij.2.1 = d.1 then A ij else 0) * row d)
+            · refine Finset.sum_eq_single d ?_ ?_
+              · intro l hl hld
+                have hne : ij.1.1 + ij.2.1 ≠ l.1 := by
+                  intro h
+                  apply hld
+                  apply Fin.ext
+                  dsimp [d]
+                  rw[h]
+                simp [hne]
+              · intro hd
+                exfalso
+                exact hd (Finset.mem_univ d)
+            · dsimp [d]
+              simp
+          simpa [d] using hsingle
+
+lemma tcPointTerm_eq_evalAtPoint_tcProductCoeff
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  {k : ℕ}
+  (hk : 1 < k)
+  (st : LayoutState k)
+  (b : qs.Basis)
+  (pts : List Point)
+  (hpts : pts.length = q k) :
+  tcPointTerm qs st b pts hpts =
+    fun i : Fin (q k) =>
+      ToomCookMath.evalAtPoint
+        (q k)
+        (interpEntry k)
+        (tcProductCoeff qs st b)
+        ((ptsToFin k pts hpts) i) := by
+  funext i
+  unfold ToomCookMath.evalAtPoint
+
+  let pt : Point := ptsToFin k pts hpts i
+  let X : Fin k → ℤ := fun a => sourceChunkXInt (qs := qs) st a b
+  let Z : Fin k → ℤ := fun a => sourceChunkZInt (qs := qs) st a b
+
+  have hlist :
+      (ToomCookMath.listToFin pts hpts) i = ptsToFin k pts hpts i := by
+    unfold ToomCookMath.listToFin ptsToFin
+    rfl
+
+  unfold tcPointTerm tcProductCoeff evalRowX evalRowZ
+
+  change
+    (((∑ a : Fin k,
+          expectedRow (k := k) pt a * X a) *
+       (∑ b : Fin k,
+          expectedRow (k := k) pt b * Z b) : ℤ) : ℚ)
+      =
+    ∑ l : Fin (q k),
+      (∑ ij : Fin k × Fin k,
+        if _h : ij.1.1 + ij.2.1 = l.1 then
+          ((X ij.1 * Z ij.2 : ℤ) : ℚ)
+        else
+          0) *
+        interpEntry k pt l
+
+  calc
+    (((∑ a : Fin k,
+          expectedRow (k := k) pt a * X a) *
+       (∑ b : Fin k,
+          expectedRow (k := k) pt b * Z b) : ℤ) : ℚ)
+        =
+      ∑ ij : Fin k × Fin k,
+        (((expectedRow (k := k) pt ij.1 * X ij.1) *
+          (expectedRow (k := k) pt ij.2 * Z ij.2) : ℤ) : ℚ) := by
+          norm_cast
+          calc
+            (∑ a : Fin k, expectedRow pt a * X a) *
+                (∑ b : Fin k, expectedRow pt b * Z b)
+                =
+              ∑ a : Fin k,
+                (expectedRow pt a * X a) *
+                  (∑ b : Fin k, expectedRow pt b * Z b) := by
+                rw [Finset.sum_mul]
+            _ =
+              ∑ a : Fin k,
+                ∑ b : Fin k,
+                  (expectedRow pt a * X a) *
+                    (expectedRow pt b * Z b) := by
+                apply Finset.sum_congr rfl
+                intro a ha
+                rw [Finset.mul_sum]
+            _ =
+              ∑ ij : Fin k × Fin k,
+                (expectedRow pt ij.1 * X ij.1) *
+                  (expectedRow pt ij.2 * Z ij.2) := by
+                  simpa using
+                    (Finset.sum_product
+                      (s := (Finset.univ : Finset (Fin k)))
+                      (t := (Finset.univ : Finset (Fin k)))
+                      (f := fun ij : Fin k × Fin k =>
+                        expectedRow pt ij.1 * X ij.1 *
+                          (expectedRow pt ij.2 * Z ij.2))).symm
+            _ =
+              ∑ ij : Fin k × Fin k,
+                expectedRow pt ij.1 * X ij.1 *
+                  (expectedRow pt ij.2 * Z ij.2) := by
+                apply Finset.sum_congr rfl
+                intro ij hij
+                ring
+
+    _ =
+      ∑ ij : Fin k × Fin k,
+        ((X ij.1 * Z ij.2 : ℤ) : ℚ) *
+          interpEntry k pt
+            ⟨ij.1.1 + ij.2.1, by
+              simp [q]
+              omega
+            ⟩ := by
+          apply Finset.sum_congr rfl
+          intro ij _
+          have hrow :=
+            expectedRow_mul_expectedRow_eq_interpEntry
+              (k := k) hk pt ij.1 ij.2
+          calc
+            (((expectedRow (k := k) pt ij.1 * X ij.1) *
+              (expectedRow (k := k) pt ij.2 * Z ij.2) : ℤ) : ℚ)
+                =
+              (((expectedRow (k := k) pt ij.1 *
+                 expectedRow (k := k) pt ij.2) *
+                (X ij.1 * Z ij.2) : ℤ) : ℚ) := by
+                  norm_num
+                  ring
+            _ =
+              (((expectedRow (k := k) pt ij.1 *
+                 expectedRow (k := k) pt ij.2 : ℤ) : ℚ) *
+                ((X ij.1 * Z ij.2 : ℤ) : ℚ)) := by
+                  norm_num
+            _ =
+              ((X ij.1 * Z ij.2 : ℤ) : ℚ) *
+                interpEntry k pt
+                  ⟨ij.1.1 + ij.2.1, by
+                    simp [q]
+                    omega
+                  ⟩ := by
+                    rw [hrow]
+                    ring
+    _ =
+      ∑ l : Fin (q k),
+        (∑ ij : Fin k × Fin k,
+          if _h : ij.1.1 + ij.2.1 = l.1 then
+            ((X ij.1 * Z ij.2 : ℤ) : ℚ)
+          else
+            0) *
+          interpEntry k pt l := by
+          symm
+          exact sum_degree_group
+            (k := k)
+            hk
+            (fun ij => ((X ij.1 * Z ij.2 : ℤ) : ℚ))
+            (fun l => interpEntry k pt l)
+
+lemma GoodToomCookPoints.to_GoodInterpolationPoints
+  {k : ℕ}
+  {pts : List Point}
+  (hpts : pts.length = q k)
+  (hInterp : GoodToomCookPoints k pts hpts) :
+  ToomCookMath.GoodInterpolationPoints
+    (interpEntry k)
+    (ptsToFin k pts hpts) := by
+  -- probably by unfolding GoodToomCookPoints
+  simpa [GoodToomCookPoints, ptsToFin]
+
+open scoped BigOperators
+
+lemma evalAtRadix_tcProductCoeff_eq_chunk_product
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  {k : ℕ}
+  (hk : 1 < k)
+  (st : LayoutState k)
+  (b : qs.Basis)
+  (B : ℚ) :
+  ToomCookMath.evalAtRadix
+      (q k)
+      (tcProductCoeff qs st b)
+      B
+    =
+  (∑ i : Fin k,
+      ((sourceChunkXInt (qs := qs) st i b : ℤ) : ℚ) * B ^ (i : ℕ))
+    *
+  (∑ j : Fin k,
+      ((sourceChunkZInt (qs := qs) st j b : ℤ) : ℚ) * B ^ (j : ℕ)) := by
+  classical
+
+  let X : Fin k → ℚ :=
+    fun i => ((sourceChunkXInt (qs := qs) st i b : ℤ) : ℚ)
+
+  let Z : Fin k → ℚ :=
+    fun i => ((sourceChunkZInt (qs := qs) st i b : ℤ) : ℚ)
+
+  unfold ToomCookMath.evalAtRadix tcProductCoeff
+
+  calc
+    (∑ l : Fin (q k),
+        (∑ ij : Fin k × Fin k,
+          if _h : ij.1.1 + ij.2.1 = l.1 then
+            ((sourceChunkXInt (qs := qs) st ij.1 b *
+              sourceChunkZInt (qs := qs) st ij.2 b : ℤ) : ℚ)
+          else
+            0) *
+          B ^ (l : ℕ))
+        =
+      ∑ ij : Fin k × Fin k,
+        (X ij.1 * Z ij.2) *
+          B ^ (ij.1.1 + ij.2.1) := by
+        simpa [X, Z] using
+          sum_degree_group
+            (k := k)
+            hk
+            (fun ij : Fin k × Fin k => X ij.1 * Z ij.2)
+            (fun l : Fin (q k) => B ^ (l : ℕ))
+
+    _ =
+      ∑ ij : Fin k × Fin k,
+        (X ij.1 * B ^ (ij.1 : ℕ)) *
+          (Z ij.2 * B ^ (ij.2 : ℕ)) := by
+        apply Finset.sum_congr rfl
+        intro ij _
+        have hp :
+            B ^ (ij.1.1 + ij.2.1)
+              =
+            B ^ (ij.1 : ℕ) * B ^ (ij.2 : ℕ) := by
+          rw [pow_add]
+        rw [hp]
+        ring
+
+    _ =
+      (∑ i : Fin k, X i * B ^ (i : ℕ)) *
+      (∑ j : Fin k, Z j * B ^ (j : ℕ)) := by
+        symm
+        calc
+          (∑ i : Fin k, X i * B ^ (i : ℕ)) *
+          (∑ j : Fin k, Z j * B ^ (j : ℕ))
+              =
+            ∑ i : Fin k,
+              (X i * B ^ (i : ℕ)) *
+              (∑ j : Fin k, Z j * B ^ (j : ℕ)) := by
+              rw [Finset.sum_mul]
+
+          _ =
+            ∑ i : Fin k,
+              ∑ j : Fin k,
+                (X i * B ^ (i : ℕ)) *
+                (Z j * B ^ (j : ℕ)) := by
+              apply Finset.sum_congr rfl
+              intro i _
+              rw [Finset.mul_sum]
+
+          _ =
+            ∑ ij : Fin k × Fin k,
+              (X ij.1 * B ^ (ij.1 : ℕ)) *
+              (Z ij.2 * B ^ (ij.2 : ℕ)) := by
+              simpa using
+                (Finset.sum_product
+                  (s := (Finset.univ : Finset (Fin k)))
+                  (t := (Finset.univ : Finset (Fin k)))
+                  (f := fun ij : Fin k × Fin k =>
+                    X ij.1 * B ^ (ij.1 : ℕ) * (Z ij.2 * B ^ (ij.2 : ℕ)))).symm
+    _ =
+      (∑ i : Fin k,
+          ((sourceChunkXInt (qs := qs) st i b : ℤ) : ℚ) * B ^ (i : ℕ))
+        *
+      (∑ j : Fin k,
+          ((sourceChunkZInt (qs := qs) st j b : ℤ) : ℚ) * B ^ (j : ℕ)) := by
+        simp [X, Z]
+
+
+lemma sourceChunks_reconstruct_x
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  {k : ℕ}
+  (hk : 1 < k)
+  (x z : ExtReg)
+  (b : qs.Basis) :
+  let stInit : LayoutState k := initSignedLayoutState x z k
+  let W : ℕ := phaseLimbWidth x z k
+  let B : ℚ := (2 : ℚ) ^ W
+  ((ExtRegEncoding.extToInt x b : ℤ) : ℚ)
+    =
+  ∑ i : Fin k,
+    ((sourceChunkXInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
+  sorry
+
+lemma sourceChunks_reconstruct_z
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  {k : ℕ}
+  (hk : 1 < k)
+  (x z : ExtReg)
+  (b : qs.Basis) :
+  let stInit : LayoutState k := initSignedLayoutState x z k
+  let W : ℕ := phaseLimbWidth x z k
+  let B : ℚ := (2 : ℚ) ^ W
+  ((ExtRegEncoding.extToInt z b : ℤ) : ℚ)
+    =
+  ∑ i : Fin k,
+    ((sourceChunkZInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
+  sorry
+
+lemma evalAtRadix_tcProductCoeff_eq_ext_product
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  {k : ℕ}
+  (hk : 1 < k)
+  (x z : ExtReg)
+  (b : qs.Basis) :
+  let stInit : LayoutState k := initSignedLayoutState x z k
+  let W : ℕ := phaseLimbWidth x z k
+  let B : ℚ := (2 : ℚ) ^ W
+  ToomCookMath.evalAtRadix
+      (q k)
+      (tcProductCoeff qs stInit b)
+      B
+    =
+  (((ExtRegEncoding.extToInt x b *
+     ExtRegEncoding.extToInt z b : ℤ) : ℚ)) := by
+  dsimp
+
+  set stInit : LayoutState k := initSignedLayoutState x z k
+  set W : ℕ := phaseLimbWidth x z k
+  set B : ℚ := (2 : ℚ) ^ W
+
+  have hChunk :
+      ToomCookMath.evalAtRadix
+          (q k)
+          (tcProductCoeff qs stInit b)
+          B
+        =
+      (∑ i : Fin k,
+          ((sourceChunkXInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ))
+        *
+      (∑ j : Fin k,
+          ((sourceChunkZInt (qs := qs) stInit j b : ℤ) : ℚ) * B ^ (j : ℕ)) := by
+    exact evalAtRadix_tcProductCoeff_eq_chunk_product
+      (qs := qs)
+      (hk := hk)
+      (st := stInit)
+      (b := b)
+      (B := B)
+
+  have hx :
+      ((ExtRegEncoding.extToInt x b : ℤ) : ℚ)
+        =
+      ∑ i : Fin k,
+        ((sourceChunkXInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
+    simpa [stInit, W, B] using
+      sourceChunks_reconstruct_x
+        (qs := qs)
+        (hk := hk)
+        (x := x)
+        (z := z)
+        (b := b)
+
+  have hz :
+      ((ExtRegEncoding.extToInt z b : ℤ) : ℚ)
+        =
+      ∑ i : Fin k,
+        ((sourceChunkZInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
+    simpa [stInit, W, B] using
+      sourceChunks_reconstruct_z
+        (qs := qs)
+        (hk := hk)
+        (x := x)
+        (z := z)
+        (b := b)
+
+  calc
+    ToomCookMath.evalAtRadix
+        (q k)
+        (tcProductCoeff qs stInit b)
+        B
+        =
+      (∑ i : Fin k,
+          ((sourceChunkXInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ))
+        *
+      (∑ j : Fin k,
+          ((sourceChunkZInt (qs := qs) stInit j b : ℤ) : ℚ) * B ^ (j : ℕ)) := hChunk
+
+    _ =
+      ((ExtRegEncoding.extToInt x b : ℤ) : ℚ) *
+      ((ExtRegEncoding.extToInt z b : ℤ) : ℚ) := by
+        rw [← hx, ← hz]
+
+    _ =
+      (((ExtRegEncoding.extToInt x b *
+         ExtRegEncoding.extToInt z b : ℤ) : ℚ)) := by
+        norm_num
 
 lemma toom_cook_interpolation
   (qs : QSemantics)
@@ -3732,20 +4675,180 @@ lemma toom_cook_interpolation
   (x z : ExtReg)
   (pts : List Point)
   (hpts : pts.length = q k)
-  (ops : Prog k)
-  (hB : BlockDecomposition (k := k) (by omega) State.start_state ops pts)
+  (hInterp : GoodToomCookPoints k pts hpts)
   (b : qs.Basis) :
-  let need : NeededWidths k := scanNeededWidths x z ops
   let stInit : LayoutState k := initSignedLayoutState x z k
-  let W : ℕ := commonNeededWidth need
-  let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k W pts hpts
+  let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsForRegs k x z pts hpts
   phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
     =
   Complex.exp
     (phi * Complex.I *
       (((ExtRegEncoding.extToInt x b : ℤ) : ℂ) *
        (((ExtRegEncoding.extToInt z b : ℤ) : ℂ)))) := by
-  sorry
+  dsimp
+
+  set stInit : LayoutState k := initSignedLayoutState x z k
+  set W : ℕ := phaseLimbWidth x z k
+  set B : ℚ := (2 : ℚ) ^ W
+  set coeff : Fin (q k) → ℚ := phaseCoeffFromPtsForRegs k x z pts hpts
+  set polyCoeff : Fin (q k) → ℚ := tcProductCoeff qs stInit b
+
+  have hCoeff :
+      coeff =
+        ToomCookMath.interpCoeff
+          (interpEntry k)
+          (ptsToFin k pts hpts)
+          B := by
+    simpa [coeff, phaseCoeffFromPtsForRegs, W, B] using
+      phaseCoeffFromPtsWidth_eq_interpCoeff
+        (k := k)
+        (W := W)
+        (pts := pts)
+        (hpts := hpts)
+
+  have hPoint :
+      tcPointTerm qs stInit b pts hpts =
+        fun i : Fin (q k) =>
+          ToomCookMath.evalAtPoint
+            (q k)
+            (interpEntry k)
+            polyCoeff
+            ((ptsToFin k pts hpts) i) := by
+    simpa [polyCoeff] using
+      tcPointTerm_eq_evalAtPoint_tcProductCoeff
+        (qs := qs)
+        (hk := hk)
+        (st := stInit)
+        (b := b)
+        (pts := pts)
+        (hpts := hpts)
+
+  have hInterpSum :
+      (∑ i : Fin (q k),
+          coeff i *
+            ToomCookMath.evalAtPoint
+              (q k)
+              (interpEntry k)
+              polyCoeff
+              ((ptsToFin k pts hpts) i))
+        =
+      ToomCookMath.evalAtRadix
+        (q k)
+        polyCoeff
+        B := by
+    rw [hCoeff]
+    exact ToomCookMath.interpCoeff_correct
+      (row := interpEntry k)
+      (pts := ptsToFin k pts hpts)
+      (B := B)
+      (polyCoeff := polyCoeff)
+      (hGood :=
+        GoodToomCookPoints.to_GoodInterpolationPoints
+          (hpts := hpts)
+          hInterp)
+
+  have hRadix :
+      ToomCookMath.evalAtRadix
+          (q k)
+          polyCoeff
+          B
+        =
+      (((ExtRegEncoding.extToInt x b *
+         ExtRegEncoding.extToInt z b : ℤ) : ℚ)) := by
+    simpa [polyCoeff, stInit, W, B] using
+      evalAtRadix_tcProductCoeff_eq_ext_product
+        (qs := qs)
+        (hk := hk)
+        (x := x)
+        (z := z)
+        (b := b)
+
+  have hScalar :
+      phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
+        =
+      Complex.exp
+        (phi * Complex.I *
+          (((∑ i : Fin (q k),
+              coeff i *
+                ToomCookMath.evalAtPoint
+                  (q k)
+                  (interpEntry k)
+                  polyCoeff
+                  ((ptsToFin k pts hpts) i) : ℚ) : ℂ))) := by
+      have hScalarList :
+          phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
+            =
+          ToomCookMath.phaseScalarFromList
+            phi coeff (tcPointTerm qs stInit b pts hpts) pts 0
+            (by simpa using hpts) := by
+        simpa using
+          phaseScalarFrom_eq_phaseScalarFromList
+            (qs := qs)
+            (phi := phi)
+            (coeff := coeff)
+            (st := stInit)
+            (b := b)
+            (pts := pts)
+            (hpts := hpts)
+
+      rw [hScalarList]
+
+      have hTerms :
+          (tcPointTerm qs stInit b pts hpts)
+            =
+          fun i : Fin (q k) =>
+            ToomCookMath.evalAtPoint
+              (q k)
+              (interpEntry k)
+              polyCoeff
+              (ptsToFin k pts hpts i) := hPoint
+
+      rw [hTerms]
+
+      exact
+        ToomCookMath.phaseScalarFromList_eq_exp_sum
+          (k := k)
+          (phi := phi)
+          (coeff := coeff)
+          (terms := fun i : Fin (q k) =>
+            ToomCookMath.evalAtPoint
+              (q k)
+              (interpEntry k)
+              polyCoeff
+              (ptsToFin k pts hpts i))
+          (pts := pts)
+          (hpts := hpts)
+
+  calc
+    phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
+        =
+      Complex.exp
+        (phi * Complex.I *
+          (((∑ i : Fin (q k),
+              coeff i *
+                ToomCookMath.evalAtPoint
+                  (q k)
+                  (interpEntry k)
+                  polyCoeff
+                  ((ptsToFin k pts hpts) i) : ℚ) : ℂ))) := hScalar
+    _ =
+      Complex.exp
+        (phi * Complex.I *
+          (((ToomCookMath.evalAtRadix (q k) polyCoeff B : ℚ) : ℂ))) := by
+        rw [hInterpSum]
+    _ =
+      Complex.exp
+        (phi * Complex.I *
+          (((((ExtRegEncoding.extToInt x b *
+               ExtRegEncoding.extToInt z b : ℤ) : ℚ)) : ℂ))) := by
+        rw [hRadix]
+    _ =
+      Complex.exp
+        (phi * Complex.I *
+          (((ExtRegEncoding.extToInt x b : ℤ) : ℂ) *
+           (((ExtRegEncoding.extToInt z b : ℤ) : ℂ)))) := by
+        congr 2
+        norm_num
 
 lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
   (qs : QSemantics)
@@ -3758,16 +4861,17 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
   (hzwf : WellFormedReg z.base)
   (pts : List Point)
   (hpts : List.length pts = q k)
+  (hInterp : GoodToomCookPoints k pts hpts)
   (b : qs.Basis)
   (ops : Prog k)
   (hB : BlockDecomposition (k := k) (by omega) State.start_state ops pts)
   (run_ops_start_state : run? ops State.start_state = some State.start_state)
   (hSafeAdd :
-  ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
-    ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s)
+    ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
+      ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s)
   :
-  let W : ℕ := commonNeededWidth (scanNeededWidths x z ops)
-  let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k W pts hpts
+  let Wphase : ℕ := phaseLimbWidth x z k
+  let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k Wphase pts hpts
   qs.eval
       (compileOpsToSignedGate k hk phi x z coeff ops)
       (qs.ket b)
@@ -3775,13 +4879,16 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
   qs.eval
       (Gate.SignedPhaseProd phi x z)
       (qs.ket b) := by
+  dsimp
+
   set need : NeededWidths k := scanNeededWidths x z ops
   set stInit : LayoutState k := initSignedLayoutState x z k
   set stFinal : LayoutState k := targetSignedLayoutState x z k need
-  set W : ℕ := commonNeededWidth need
-  set coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k W pts hpts
 
-  simp [compileOpsToSignedGate, need, W]
+  -- This is the important correction:
+  -- coefficients use the original phase decomposition radix, not the work width.
+  set Wphase : ℕ := phaseLimbWidth x z k
+  set coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k Wphase pts hpts
 
   rcases eval_compileSignedAllocations_ket_fits
       (qs := qs)
@@ -3789,6 +4896,7 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
       (hxz := hxz) (hxwf := hxwf) (hzwf := hzwf)
       (ops := ops) (b := b) with
     ⟨bAlloc, hAllocEval, hEncAlloc⟩
+
   have hFitsFinal :
     ∀ {τ : State k},
       (∃ pre rest, ops = pre ++ rest ∧ run? pre State.start_state = some τ) →
@@ -3803,34 +4911,36 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
       (allocated_widths_sound
         (qs := qs) (x := x) (z := z) (ops := ops) (b := b)
         (σ := τ) hτ)
-  have hdisjFinal : LayoutSlotsDisjoint stFinal := by
-    rcases hxz with hxy | hyx
-    ·
-      subst stFinal
-      dsimp [targetSignedLayoutState, LayoutSlotsDisjoint]
-      refine ⟨?_, ?_, ?_⟩
+
+  have hLayoutDisjoint : LayoutSlotsDisjoint stFinal := by
+    subst stFinal
+    unfold LayoutSlotsDisjoint
+    constructor
+    · intro i j hij
+      simpa [targetSignedLayoutState, withLogicalWidth]
+        using
+          phase_layout_slot_disjoint_slot
+            x.base
+            (phaseLimbWidth x z k)
+            i j hij
+    · constructor
       · intro i j hij
-        simpa [withLogicalWidth] using
-          (layout_slot_disjoint_slot x.base i j hij)
-      · intro i j hij
-        simpa [withLogicalWidth] using
-          (layout_slot_disjoint_slot z.base i j hij)
+        simpa [targetSignedLayoutState, withLogicalWidth]
+          using
+            phase_layout_slot_disjoint_slot
+              z.base
+              (phaseLimbWidth x z k)
+              i j hij
       · intro i j
-        simpa [withLogicalWidth] using
-          (layout_slot_disjoint_of_base_disjoint x.base z.base (Or.inl hxy) i j hxwf hzwf)
-    ·
-      subst stFinal
-      dsimp [targetSignedLayoutState, LayoutSlotsDisjoint]
-      refine ⟨?_, ?_, ?_⟩
-      · intro i j hij
-        simpa [withLogicalWidth] using
-          (layout_slot_disjoint_slot x.base i j hij)
-      · intro i j hij
-        simpa [withLogicalWidth] using
-          (layout_slot_disjoint_slot z.base i j hij)
-      · intro i j
-        simpa [withLogicalWidth] using
-          (layout_slot_disjoint_of_base_disjoint x.base z.base (Or.inr hyx) i j hxwf hzwf)
+        simpa [targetSignedLayoutState, withLogicalWidth]
+          using
+            phase_layout_slot_disjoint_of_base_disjoint
+              x.base z.base
+              (phaseLimbWidth x z k)
+              hxz
+              i j
+              hxwf hzwf
+
   have hBodyDealloc :
     qs.eval
         (compileAnnotatedOpsToSignedGateAux k hk phi coeff stFinal
@@ -3852,9 +4962,9 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
       (b0 := b)
       (bMid := bAlloc)
       (ops := ops)
-      hdisjFinal
+      hLayoutDisjoint
       hFitsFinal
-      hSafeAdd -- replace with your actual safe-add hypothesis if named differently
+      hSafeAdd
       hEncAlloc
       hAllocEval
       hB
@@ -3867,7 +4977,7 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
         (phi * Complex.I *
           (((ExtRegEncoding.extToInt x b : ℤ) : ℂ) *
           (((ExtRegEncoding.extToInt z b : ℤ) : ℂ)))) := by
-    simpa [need, stInit, W, coeff] using
+    simpa [stInit, Wphase, coeff] using
       toom_cook_interpolation
         (qs := qs)
         (hk := hk)
@@ -3876,49 +4986,36 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
         (z := z)
         (pts := pts)
         (hpts := hpts)
-        (ops := ops)
-        (hB := hB)
+        (hInterp := hInterp)
         (b := b)
 
   calc
     qs.eval
-        (compileSignedDeallocations k (initSignedLayoutState x z k)
-          (targetSignedLayoutState x z k (scanNeededWidths x z ops)))
-        (qs.eval
-          (compileAnnotatedOpsToSignedGateAux k hk phi
-            (phaseCoeffFromPtsWidth k (commonNeededWidth (scanNeededWidths x z ops)) pts hpts)
-            (targetSignedLayoutState x z k (scanNeededWidths x z ops))
-            (annotatePhaseTermsAux k 0 ops))
-          (qs.eval
-            (compileSignedAllocations k (initSignedLayoutState x z k)
-              (targetSignedLayoutState x z k (scanNeededWidths x z ops)))
-            (qs.ket b)))
-      =
-    qs.eval
+        (compileOpsToSignedGate k hk phi x z coeff ops)
+        (qs.ket b)
+        =
+      qs.eval
         (compileAnnotatedOpsToSignedGateAux k hk phi coeff stFinal
           (annotatePhaseTermsAux k 0 ops) ;;
-        compileSignedDeallocations k stInit stFinal)
+         compileSignedDeallocations k stInit stFinal)
         (qs.ket bAlloc) := by
-          rw [qs.eval_seq]
-          simp [stInit, stFinal, coeff, hAllocEval]
-          simp_all only [exists_and_right, forall_exists_index, and_imp,
-            eval_seq_simp, stFinal, need, stInit, coeff, W]
+          simp [compileOpsToSignedGate, stInit, stFinal, need, hAllocEval, qs.eval_seq]
     _ =
-    phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts) •
-      qs.ket b := hBodyDealloc
+      phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts) •
+        qs.ket b := hBodyDealloc
     _ =
-    (Complex.exp
+      Complex.exp
         (phi * Complex.I *
           (((ExtRegEncoding.extToInt x b : ℤ) : ℂ) *
-          (((ExtRegEncoding.extToInt z b : ℤ) : ℂ))))) •
-      qs.ket b := by
-        rw [hScalar]
-    _ = qs.eval (SignedPhaseProd phi x z) (qs.ket b) := by
+          (((ExtRegEncoding.extToInt z b : ℤ) : ℂ)))) •
+        qs.ket b := by
+          rw [hScalar]
+    _ =
+      qs.eval (SignedPhaseProd phi x z) (qs.ket b) := by
         symm
         simpa using
           (PhaseSemantics.eval_SignedPhaseProd_ket
             (qs := qs) (phi := phi) (x := x) (z := z) (b := b))
-
 
 lemma eval_compileOpsToSignedGate_correct_ket
   (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -3930,13 +5027,14 @@ lemma eval_compileOpsToSignedGate_correct_ket
   (hzwf : WellFormedReg z.base)
   (pts : List Point)
   (hpts : List.length pts = q k)
+  (hInterp : GoodToomCookPoints k pts hpts)
   (b : qs.Basis)
   (ops : Prog k)
   (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
   (run_ops_start_state : run? ops State.start_state = some State.start_state)
   :
-  let W : ℕ := commonNeededWidth (scanNeededWidths x z ops)
-  let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k W pts hpts
+  let Wphase : ℕ := phaseLimbWidth x z k
+  let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k Wphase pts hpts
   qs.eval
       (compileOpsToSignedGate k hk phi x z coeff ops)
       (qs.ket b)
@@ -3960,6 +5058,7 @@ lemma eval_compileOpsToSignedGate_correct_ket
       (hB := hB)
       (run_ops_start_state := run_ops_start_state)
       (hxz:=hxz) hxwf hzwf (hSafeAdd:=hC.2)
+      (hInterp)
       )
 
 lemma eval_compileOpsToSignedGate_correct
@@ -3972,13 +5071,14 @@ lemma eval_compileOpsToSignedGate_correct
   (hzwf : WellFormedReg z.base)
   (pts : List Point)
   (hpts : List.length pts = q k)
+  (hInterp : GoodToomCookPoints k pts hpts)
   (ψ : qs.State)
   (ops : Prog k)
   (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
   (run_ops_start_state : run? ops State.start_state = some State.start_state)
   :
-  let W : ℕ := commonNeededWidth (scanNeededWidths x z ops)
-  let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k W pts hpts
+  let Wphase : ℕ := phaseLimbWidth x z k
+  let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k Wphase pts hpts
   qs.eval
       (compileOpsToSignedGate k hk phi x z coeff ops)
       ψ
@@ -3993,4 +5093,5 @@ lemma eval_compileOpsToSignedGate_correct
       (pts := pts) (hpts := hpts)
       (ops := ops) (hC := hC)
       (run_ops_start_state := run_ops_start_state) (hxz) hxwf hzwf
-  exact gate_eq_of_ket_eq qs hket ψ
+  have h2:= hket hInterp
+  exact gate_eq_of_ket_eq qs h2 ψ

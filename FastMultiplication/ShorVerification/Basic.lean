@@ -10,20 +10,105 @@ namespace Shor
     Section 1: Registers and basic encodings
 ========================================================= -/
 
-/-- A contiguous register occupying qubit indices `[lo, hi)`. -/
 structure Reg where
-  lo : ℕ
-  hi : ℕ
+  lo   : ℕ
+  size : ℕ
+deriving DecidableEq, Repr
 
+namespace Reg
+
+/-- Exclusive upper endpoint of the register interval. -/
+def hi (r : Reg) : ℕ :=
+  r.lo + r.size
+
+@[simp] theorem hi_eq (r : Reg) :
+    r.hi = r.lo + r.size := rfl
+
+@[simp] theorem lo_le_hi (r : Reg) :
+    r.lo ≤ r.hi := by
+  unfold hi
+  omega
+
+end Reg
 
 /-- Two registers are disjoint if their intervals do not overlap. -/
-def Disjoint (a b : Reg) : Prop := a.hi ≤ b.lo ∨ b.hi ≤ a.lo
+def Disjoint (a b : Reg) : Prop :=
+  a.hi ≤ b.lo ∨ b.hi ≤ a.lo
 
-/-- Register length (#qubits) as a natural number. -/
-def regSize (r : Reg) : ℕ := r.hi - r.lo
+/-- Register length, i.e. number of qubits. -/
+def regSize (r : Reg) : ℕ :=
+  r.size
 
 /-- Register cardinality `2^(regSize r)`. -/
-def ASize (r : Reg) : ℕ := 2^(regSize r)
+def ASize (r : Reg) : ℕ :=
+  2 ^ regSize r
+
+@[simp] theorem regSize_mk (lo size : ℕ) :
+    regSize ({ lo := lo, size := size } : Reg) = size := rfl
+
+@[simp] theorem ASize_mk (lo size : ℕ) :
+    ASize ({ lo := lo, size := size } : Reg) = 2 ^ size := rfl
+
+/-- Construct a register from endpoints `[lo, hi)`, truncating malformed
+    endpoint choices to size `0` when `hi < lo`.
+
+    Prefer using `{ lo := ..., size := ... }` directly in new code.
+-/
+def Reg.ofBounds (lo hi : ℕ) : Reg :=
+  { lo := lo, size := hi - lo }
+
+@[simp] theorem Reg.ofBounds_lo (lo hi : ℕ) :
+    (Reg.ofBounds lo hi).lo = lo := rfl
+
+@[simp] theorem Reg.ofBounds_size (lo hi : ℕ) :
+    (Reg.ofBounds lo hi).size = hi - lo := rfl
+
+@[simp] theorem Reg.ofBounds_hi_of_le {lo hi : ℕ} (h : lo ≤ hi) :
+    (Reg.ofBounds lo hi).hi = hi := by
+  unfold Reg.ofBounds Reg.hi
+  simp
+  omega
+
+/-- A one-qubit register at index `q`. -/
+def qubitReg (q : ℕ) : Reg :=
+  { lo := q, size := 1 }
+
+/-- Extend a register by one high qubit. -/
+def extendHi (r : Reg) : Reg :=
+  { lo := r.lo, size := r.size + 1 }
+
+/-- List of qubit indices in a register. -/
+def regQubits (r : Reg) : List ℕ :=
+  (List.range r.size).map (fun k => r.lo + k)
+
+/-- A valid split point of a register. -/
+abbrev SplitPoint (r : Reg) : Type :=
+  { m : ℕ // m ≤ regSize r }
+
+/-- Left part of a valid split. -/
+def splitLeft (r : Reg) (m : SplitPoint r) : Reg :=
+  { lo := r.lo, size := m.1 }
+
+/-- Right part of a valid split. -/
+def splitRight (r : Reg) (m : SplitPoint r) : Reg :=
+  { lo := r.lo + m.1, size := r.size - m.1 }
+
+@[simp] theorem splitLeft_size (r : Reg) (m : SplitPoint r) :
+    regSize (splitLeft r m) = m.1 := rfl
+
+@[simp] theorem splitRight_size (r : Reg) (m : SplitPoint r) :
+    regSize (splitRight r m) = r.size - m.1 := rfl
+
+@[simp] theorem splitLeft_lo (r : Reg) (m : SplitPoint r) :
+    (splitLeft r m).lo = r.lo := rfl
+
+@[simp] theorem splitRight_lo (r : Reg) (m : SplitPoint r) :
+    (splitRight r m).lo = r.lo + m.1 := rfl
+
+theorem splitLeft_splitRight_disjoint (r : Reg) (m : SplitPoint r) :
+    Disjoint (splitLeft r m) (splitRight r m) := by
+  unfold Disjoint splitLeft splitRight Reg.hi
+  simp
 
 /-- Basis-level encoding interface for ordinary registers. -/
 class RegEncoding (Basis : Type u) where
@@ -31,44 +116,93 @@ class RegEncoding (Basis : Type u) where
   writeNat : Reg → ℕ → Basis → Basis
   bit      : ℕ → Basis → Bool
 
-  toNat_writeNat : ∀ r v b, toNat r (writeNat r v b) = v
-  writeNat_toNat : ∀ r b, writeNat r (toNat r b) b = b
+  toNat_writeNat_of_lt :
+    ∀ r v b,
+      v < ASize r →
+      toNat r (writeNat r v b) = v
 
-  -- extensionality / locality
-  basis_ext : ∀ b1 b2 : Basis, (∀ q, bit q b1 = bit q b2) → b1 = b2
+  writeNat_toNat :
+    ∀ r b,
+      writeNat r (toNat r b) b = b
 
-  bit_writeNat_in  :
-    ∀ r v b1 b2 q, r.lo ≤ q → q < r.hi →
+  toNat_lt_ASize :
+    ∀ r b,
+      toNat r b < ASize r
+
+  basis_ext :
+    ∀ b1 b2 : Basis,
+      (∀ q, bit q b1 = bit q b2) → b1 = b2
+
+  bit_writeNat_in :
+    ∀ r v b1 b2 q,
+      r.lo ≤ q →
+      q < r.hi →
       bit q (writeNat r v b1) = bit q (writeNat r v b2)
 
   bit_writeNat_out :
-    ∀ r v b q, q < r.lo ∨ r.hi ≤ q →
+    ∀ r v b q,
+      q < r.lo ∨ r.hi ≤ q →
       bit q (writeNat r v b) = bit q b
 
   toNat_left_write_right :
-    ∀ (left right : Reg) (_h : Disjoint left right) (b : Basis) (yR : ℕ),
-      toNat left (writeNat right yR b) = toNat left b
+    ∀ (left right : Reg),
+      Disjoint left right →
+      ∀ b yR,
+        toNat left (writeNat right yR b) = toNat left b
 
   toNat_right_write_left :
-    ∀ (left right : Reg) (_h : Disjoint left right) (b : Basis) (yL : ℕ),
-      toNat right (writeNat left yL b) = toNat right b
+    ∀ (left right : Reg),
+      Disjoint left right →
+      ∀ b yL,
+        toNat right (writeNat left yL b) = toNat right b
 
   writeNat_split :
-    let left : Reg := ⟨r.lo, r.lo + m⟩
-    let right : Reg := ⟨r.lo + m, r.hi⟩
-    writeNat r (k1 + (ASize left) * k0) b
-      =
-    writeNat right k0 (writeNat left k1 b)
+    ∀ (r : Reg) (m : SplitPoint r) (k0 k1 : ℕ) (b : Basis),
+      let left  : Reg := splitLeft r m
+      let right : Reg := splitRight r m
+      k1 < ASize left →
+      k0 < ASize right →
+      writeNat r (k1 + (ASize left) * k0) b
+        =
+      writeNat right k0 (writeNat left k1 b)
 
   toNat_split :
-    let left : Reg := ⟨r.lo, r.lo + m⟩
-    let right : Reg := ⟨r.lo + m, r.hi⟩
-    toNat r b
-      =
-    toNat left b * (2^(regSize right)) + toNat right b
+    ∀ (r : Reg) (m : SplitPoint r) (b : Basis),
+      let left  : Reg := splitLeft r m
+      let right : Reg := splitRight r m
+      toNat r b =
+        toNat left b + (ASize left) * toNat right b
 
-  /-- add this to RegEncoding -/
-  toNat_lt_ASize : ∀ r b, toNat r b < ASize r
+/-- A register together with a semantic high-bit extension budget. -/
+structure ExtReg where
+  base  : Reg
+  extra : ℕ
+deriving DecidableEq, Repr
+
+namespace ExtReg
+
+def ofReg (r : Reg) : ExtReg :=
+  { base := r, extra := 0 }
+
+def width (e : ExtReg) : ℕ :=
+  regSize e.base + e.extra
+
+def addExtra (e : ExtReg) (n : ℕ) : ExtReg :=
+  { base := e.base, extra := e.extra + n }
+
+@[simp] theorem addExtra_base (e : ExtReg) (n : ℕ) :
+    (addExtra e n).base = e.base := rfl
+
+@[simp] theorem addExtra_extra (e : ExtReg) (n : ℕ) :
+    (addExtra e n).extra = e.extra + n := rfl
+
+@[simp] theorem width_addExtra (e : ExtReg) (n : ℕ) :
+    width (addExtra e n) = width e + n := by
+  unfold width addExtra regSize
+  simp
+  omega
+
+end ExtReg
 /-! =========================================================
     Section 2: Encoding lemmas and register helpers
 ========================================================= -/
@@ -174,48 +308,6 @@ lemma writeNat_comm_of_disjoint
         _   = RegEncoding.bit q (RegEncoding.writeNat right yR (RegEncoding.writeNat left yL b)) := by
               simp [outR₂]
 
-namespace Reg
-
-
-/-- Namespace alias for reading a register as a natural number. -/
-def toNat {Basis : Type u} [RegEncoding Basis] (r : Reg) (b : Basis) : ℕ := RegEncoding.toNat r b
-
-/-- Namespace alias for writing a natural number into a register. -/
-def writeNat {Basis : Type u} [RegEncoding Basis]  (r : Reg) (v : ℕ) (b : Basis) : Basis := RegEncoding.writeNat r v b
-
-end Reg
-
-/-! =========================================================
-    Section 3: Extended-register views
-========================================================= -/
-
-/-- A register together with a semantic high-bit extension budget. -/
-structure ExtReg where
-  base  : Reg
-  extra : ℕ
-
-namespace ExtReg
-
-/-- A plain register with no extra logical high bits. -/
-def ofReg (r : Reg) : ExtReg := ⟨r, 0⟩
-
-/-- Logical width seen by signed phase semantics. -/
-def width (e : ExtReg) : ℕ := regSize e.base + e.extra
-
-/-- Increase the logical width descriptor by `n` high bits. -/
-def addExtra (e : ExtReg) (n : ℕ) : ExtReg := ⟨e.base, e.extra + n⟩
-
-@[simp] theorem addExtra_base (e : ExtReg) (n : ℕ) :
-    (addExtra e n).base = e.base := rfl
-
-@[simp] theorem addExtra_extra (e : ExtReg) (n : ℕ) :
-    (addExtra e n).extra = e.extra + n := rfl
-
-@[simp] theorem width_addExtra (e : ExtReg) (n : ℕ) :
-    width (addExtra e n) = width e + n := by
-  simp [width, addExtra, regSize, Nat.add_assoc]
-
-end ExtReg
 
 /-- Width-based two's-complement decoding. -/
 def tcDecodeWidth : ℕ → ℕ → ℤ
@@ -226,26 +318,27 @@ def tcDecodeWidth : ℕ → ℕ → ℤ
       else
         (n : ℤ) - ((2^(w + 1) : ℕ) : ℤ)
 
-/-- How an extended register is read from a basis state.
-    Extension itself is operationalized later as a gate. -/
 class ExtRegEncoding (Basis : Type u) [RegEncoding Basis] where
   extToNat : ExtReg → Basis → ℕ
 
   extToNat_base :
-    ∀ r b, extToNat (ExtReg.ofReg r) b = RegEncoding.toNat r b
+    ∀ r b,
+      extToNat (ExtReg.ofReg r) b = RegEncoding.toNat r b
 
   extToNat_write_disjoint :
-    ∀ (e : ExtReg) (r : Reg) (_h : Disjoint e.base r) (v : ℕ) (b : Basis),
-      extToNat e (RegEncoding.writeNat r v b) = extToNat e b
+    ∀ (e : ExtReg) (r : Reg),
+      Disjoint e.base r →
+      ∀ v b,
+        extToNat e (RegEncoding.writeNat r v b) = extToNat e b
 
   extToNat_lt :
-    ∀ e b, extToNat e b < 2 ^ (ExtReg.width e)
+    ∀ e b,
+      extToNat e b < 2 ^ (ExtReg.width e)
 
   extToNat_lowBits :
     ∀ e b,
       RegEncoding.toNat e.base b
         = extToNat e b % 2 ^ (regSize e.base)
-
 
 namespace ExtReg
 
@@ -378,6 +471,7 @@ inductive Gate : Type
   | H : ℕ → Gate
   | X : ℕ → Gate
   | QFT : Reg → Gate
+  | RadixReverse : (r : Reg) → (m : ℕ) → Gate
   | SignedPhaseProd  : (phi : Real) → (x z : ExtReg) → Gate
   | CSignedPhaseProd : (ctrl : ℕ) → (phi : Real) → (x z : ExtReg) → Gate
   | Prim : String → List ℕ → Gate
@@ -389,6 +483,13 @@ inductive Gate : Type
   | signExtend : (r : ExtReg) → (n : ℕ) → Gate
   | zeroDealloc : (r : ExtReg) → (n : ℕ) → Gate
   | signDealloc : (r : ExtReg) → (n : ℕ) → Gate
+
+
+def radixReverseIndex (r : Reg) (m : ℕ) (hm : m ≤ regSize r) (kL kH : ℕ) : ℕ :=
+  let sp : SplitPoint r := ⟨m, hm⟩
+  let right := splitRight r sp
+  (ASize right) * kL + kH
+
 
 namespace Gate
 
@@ -414,32 +515,11 @@ def CPhaseProd
   Gate.zeroDealloc (ExtReg.ofReg z) 1 ;;
   Gate.zeroDealloc (ExtReg.ofReg x) 1
 
--- @[simp] theorem PhaseProd_def
---     {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
---     (phi : Real) (x z : Reg) :
---     Gate.PhaseProd (Basis := Basis) phi x z
---       =
---     Gate.zeroExtend (ExtReg.ofReg x) 1 ;;
---     Gate.zeroExtend (ExtReg.ofReg z) 1 ;;
---     Gate.SignedPhaseProd phi (unsignedView x) (unsignedView z) := rfl
-
--- @[simp] theorem CPhaseProd_def
---     {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
---     (ctrl : ℕ) (phi : Real) (x z : Reg) :
---     Gate.CPhaseProd (Basis := Basis) ctrl phi x z
---       =
---     Gate.zeroExtend (ExtReg.ofReg x) 1 ;;
---     Gate.zeroExtend (ExtReg.ofReg z) 1 ;;
---     Gate.CSignedPhaseProd ctrl phi (unsignedView x) (unsignedView z) := rfl
-
 end Gate
 
 /-! =========================================================
     Section 5: Core QFT phase helpers
 ========================================================= -/
-
-/-- A 1-qubit register at index `q`. -/
-def qubitReg (q : ℕ) : Reg := ⟨q, q + 1⟩
 
 /-- Standard QFT phase schedule. -/
 noncomputable def qftPhi (m : ℕ) : ℝ := (2 * Real.pi) / (2^m)
@@ -664,6 +744,27 @@ class QFTSemantics
           (qftPhase (2^(regSize r)) (RegEncoding.toNat r b) y.1) •
             qs.ket (RegEncoding.writeNat r y.1 b)
 
+class RadixReverseSemantics
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] : Type where
+
+  eval_RadixReverse_ket :
+    ∀ (r : Reg) (m : ℕ) (hm : m ≤ regSize r)
+      (b : qs.Basis) (kL kH : ℕ),
+      let sp : SplitPoint r := ⟨m, hm⟩
+      let left  : Reg := splitLeft r sp
+      let right : Reg := splitRight r sp
+      kL < ASize left →
+      kH < ASize right →
+      qs.eval (Gate.RadixReverse r m)
+        (qs.ket
+          (RegEncoding.writeNat left kL
+            (RegEncoding.writeNat right kH b)))
+      =
+      qs.ket
+        (RegEncoding.writeNat r
+          (radixReverseIndex r m hm kL kH)
+          b)
 
 /-- Signed phase-product semantic facts. -/
 class PhaseSemantics
@@ -681,6 +782,19 @@ class PhaseSemantics
            (((ExtRegEncoding.extToInt z b : ℤ) : ℂ))))) •
         qs.ket b
 
+  eval_CSignedPhaseProd_ket :
+    ∀ (ctrl : ℕ) (phi : ℝ) (x z : ExtReg) (b : qs.Basis),
+      qs.eval (Gate.CSignedPhaseProd ctrl phi x z) (qs.ket b)
+        =
+      if RegEncoding.bit ctrl b then
+        (Complex.exp
+          (phi * Complex.I *
+            (((ExtRegEncoding.extToInt x b : ℤ) : ℂ) *
+             (((ExtRegEncoding.extToInt z b : ℤ) : ℂ))))) •
+          qs.ket b
+      else
+        qs.ket b
+
 /-- Zero/sign extension and deallocation semantic facts. -/
 class ExtensionSemantics
   (qs : QSemantics)
@@ -688,14 +802,15 @@ class ExtensionSemantics
   [ExtRegEncoding qs.Basis] : Type where
 
   eval_zeroExtend_ket :
-  ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
-    ∃ b' : qs.Basis,
-      qs.eval (Gate.zeroExtend r n) (qs.ket b) = qs.ket b' ∧
-      ExtReg.toNat r b' = ExtReg.toNat r b ∧
-      ExtReg.toNat (ExtReg.addExtra r n) b'
-        = ExtReg.toNat r b ∧
-      (∀ e : ExtReg, Disjoint e.base r.base →
-        ExtReg.toNat e b' = ExtReg.toNat e b)
+    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
+      ∃ b' : qs.Basis,
+        qs.eval (Gate.zeroExtend r n) (qs.ket b) = qs.ket b' ∧
+        ExtReg.toNat r b' = ExtReg.toNat r b ∧
+        ExtReg.toNat (ExtReg.addExtra r n) b'
+          = ExtReg.toNat r b ∧
+        (∀ e : ExtReg,
+          Disjoint e.base r.base →
+          ExtReg.toNat e b' = ExtReg.toNat e b)
 
   eval_signExtend_ket :
     ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
@@ -704,7 +819,8 @@ class ExtensionSemantics
         ExtReg.toNat r b' = ExtReg.toNat r b ∧
         ExtRegEncoding.extToInt (ExtReg.addExtra r n) b'
           = ExtRegEncoding.extToInt r b ∧
-        (∀ e : ExtReg, Disjoint e.base r.base →
+        (∀ e : ExtReg,
+          Disjoint e.base r.base →
           ExtReg.toNat e b' = ExtReg.toNat e b)
 
   eval_zeroExtend_zeroDealloc :
@@ -716,8 +832,8 @@ class ExtensionSemantics
       qs.eval (Gate.signExtend r n ;; Gate.signDealloc r n) ψ = ψ
 
   extToNat_lt_width :
-  ∀ (e : ExtReg) (b : qs.Basis),
-    ExtRegEncoding.extToNat e b < 2 ^ (ExtReg.width e)
+    ∀ (e : ExtReg) (b : qs.Basis),
+      ExtRegEncoding.extToNat e b < 2 ^ (ExtReg.width e)
 
 
 lemma tcDecodeWidth_succ_eq_of_lt {w n : ℕ} (h : n < 2 ^ w) :
@@ -866,23 +982,26 @@ class ArithmeticSemantics
   [RegEncoding qs.Basis]
   [ExtRegEncoding qs.Basis] : Type where
 
-  /-- Left shift is width-`w` modular multiplication by `2^n`. -/
-  eval_ShiftL_ket_mod :
+  /-- Left shift is only specified when the exact result still fits in the
+      same signed width. -/
+  eval_ShiftL_ket_exact :
     ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
+      FitsSignedWidth (ExtReg.width r)
+        (((2 : ℤ)^n) * ExtRegEncoding.extToInt r b) →
       ∃ b' : qs.Basis,
         qs.eval (Gate.ShiftL r n) (qs.ket b) = qs.ket b' ∧
         ExtRegEncoding.extToInt r b'
-          = tcWrapInt (ExtReg.width r)
-              (((2 : ℤ)^n) * ExtRegEncoding.extToInt r b) ∧
+          = ((2 : ℤ)^n) * ExtRegEncoding.extToInt r b ∧
         (∀ e : ExtReg,
           Disjoint e.base r.base →
           ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b)
 
-  /-- Right shift is only allowed when the current signed value is exactly divisible
-      by `2^n`; then it produces the exact quotient. -/
+  /-- Right shift is only specified when the current signed value is exactly
+      divisible by `2^n`. -/
   eval_ShiftR_ket_exact :
     ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis) (q : ℤ),
       ExtRegEncoding.extToInt r b = ((2 : ℤ)^n) * q →
+      FitsSignedWidth (ExtReg.width r) q →
       ∃ b' : qs.Basis,
         qs.eval (Gate.ShiftR r n) (qs.ket b) = qs.ket b' ∧
         ExtRegEncoding.extToInt r b' = q ∧
@@ -902,7 +1021,11 @@ class ArithmeticSemantics
           ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b)
 
   /-- Scaled add updates `dst` modulo the destination width, preserves `src`,
-      and preserves every other disjoint register. -/
+      and preserves every other disjoint register.
+
+      This is sound as a total modular operation because, for fixed `src`,
+      addition into `dst` is bijective.
+  -/
   eval_AddScaled_ket_mod :
     ∀ (dst src : ExtReg) (negSrc : Bool) (sh : ℕ) (b : qs.Basis),
       Disjoint dst.base src.base →
@@ -922,23 +1045,44 @@ class ArithmeticSemantics
           Disjoint e.base src.base →
           ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b)
 
-/-- Optional aggregate class.
-    Keep this if you still want one bundled assumption in some later theorems. -/
 class GateSemanticsFacts
   (qs : QSemantics)
   [RegEncoding qs.Basis]
-  [ExtRegEncoding qs.Basis]:
-  Type extends QFTSemantics qs, PhaseSemantics qs, ExtensionSemantics qs, ArithmeticSemantics qs
-
+  [ExtRegEncoding qs.Basis] :
+  Type extends
+    QFTSemantics qs,
+    PhaseSemantics qs,
+    ExtensionSemantics qs,
+    ArithmeticSemantics qs,
+    RadixReverseSemantics qs
 
 namespace GateSemanticsFacts
 
 variable {qs : QSemantics}
-
 variable [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
 variable [GateSemanticsFacts qs]
 
-
+theorem eval_RadixReverse_split_ket
+  (r : Reg) (m : ℕ) (hm : m ≤ regSize r) (b : qs.Basis)
+  (kL kH : ℕ)
+  (hkL : kL < ASize (splitLeft r ⟨m, hm⟩))
+  (hkH : kH < ASize (splitRight r ⟨m, hm⟩)) :
+  qs.eval (Gate.RadixReverse r m)
+    (qs.ket
+      (RegEncoding.writeNat (splitLeft r ⟨m, hm⟩) kL
+        (RegEncoding.writeNat (splitRight r ⟨m, hm⟩) kH b)))
+  =
+  qs.ket
+    (RegEncoding.writeNat r
+      (radixReverseIndex r m hm kL kH)
+      b) := by
+  simpa [radixReverseIndex] using
+    (RadixReverseSemantics.eval_RadixReverse_ket
+      (qs := qs)
+      (r := r) (m := m) (hm := hm) (b := b)
+      (kL := kL) (kH := kH)
+      hkL
+      hkH)
 
 theorem eval_PhaseProd_ket
   (qs : QSemantics)
@@ -1056,12 +1200,12 @@ lemma toNat_left_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
     = RegEncoding.toNat left b := by
   simpa using
     (RegEncoding.toNat_left_write_right
-      (left := left) (right := right) (_h := h) (b := b) (yR := yR))
+      (left := left) (right := right) (Basis:=QSemantics.Basis) (b := b) (yR := yR) h)
 
-lemma toNat_right_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
-  (right : Reg) (b : QSemantics.Basis) (yR : ℕ) :
-  RegEncoding.toNat right (RegEncoding.writeNat right yR b) = yR := by
-  simpa using (RegEncoding.toNat_writeNat right yR b)
+-- lemma toNat_right_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
+--   (right : Reg) (b : QSemantics.Basis) (yR : ℕ) :
+--   RegEncoding.toNat right (RegEncoding.writeNat right yR b) = yR := by
+--   simpa using (RegEncoding.toNat_writeNat right yR b)
 
 /-! =========================================================
     Section 10: Norm and overlap inequalities
@@ -1173,30 +1317,27 @@ open Gate
 ========================================================= -/
 
 /-- Inverse QFT. -/
-def IQFT (r : Reg) : Gate := †(Gate.QFT r)
-
-/-- Extend a register by one physical high qubit. -/
-def extendHi (r : Reg) : Reg := ⟨r.lo, r.hi + 1⟩
-
-/-- List of qubit indices in a register. -/
-def regQubits (r : Reg) : List ℕ :=
-  (List.range (regSize r)).map (fun k => r.lo + k)
+def IQFT (r : Reg) : Gate :=
+  †(Gate.QFT r)
 
 /-- Apply Hadamards across all qubits of a register. -/
 def H_reg (r : Reg) : Gate :=
   (regQubits r).foldl (fun acc q => (Gate.H q) ;; acc) Gate.id
 
 /-- Primitive gate wrapper. -/
-def PrimN (tag : String) (args : List ℕ) : Gate := Gate.Prim tag args
+def PrimN (tag : String) (args : List ℕ) : Gate :=
+  Gate.Prim tag args
 
-noncomputable def step1 {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+noncomputable def step1
+    {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
     (c N : ℕ) (ctrl : ℕ) (x_reg w_reg : Reg) : Gate :=
   let phi : ℝ := (2 * Real.pi * ((c + N - 1) % N)) / (N : ℝ)
   (IQFT w_reg) ;;
   (Gate.CPhaseProd ctrl phi x_reg w_reg) ;;
   (H_reg w_reg)
 
-noncomputable def step2 {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+noncomputable def step2
+    {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
     (N : ℕ) (x_reg w_reg : Reg) : (Reg × Gate) :=
   let x_ext : Reg := extendHi x_reg
   let n1 : ℕ := regSize x_ext
@@ -1208,11 +1349,12 @@ noncomputable def step2 {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Bas
     (Gate.QFT x_ext))
 
 noncomputable def frac_load
+    {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
     (k N : ℕ) (ctrl : ℕ) (x_reg w_reg : Reg) : Gate :=
   let phi : ℝ := (2 * Real.pi * ((k % N) : ℝ)) / (N : ℝ)
   (IQFT w_reg) ;;
   (Gate.CPhaseProd ctrl phi x_reg w_reg) ;;
-  (QFT w_reg)
+  (Gate.QFT w_reg)
 
 def step3 (N : ℕ) (x_ext : Reg) (flag : ℕ) : Gate :=
   (PrimN "CMP_GE_CONST" [x_ext.lo, x_ext.hi, N, flag]) ;;
@@ -1221,25 +1363,34 @@ def step3 (N : ℕ) (x_ext : Reg) (flag : ℕ) : Gate :=
 def step4 (N : ℕ) (x_ext w_reg : Reg) (flag : ℕ) : Gate :=
   PrimN "CMP_LT_NW" [x_ext.lo, x_ext.hi, w_reg.lo, w_reg.hi, N, flag]
 
-noncomputable def step5 {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+noncomputable def step5
+    {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
     (k5 N : ℕ) (ctrl : ℕ) (x_ext w_reg : Reg) : Gate :=
-  †(frac_load k5 N ctrl x_ext w_reg)
+  †(frac_load (Basis := Basis) k5 N ctrl x_ext w_reg)
 
-noncomputable def CmodMulInPlaceCore {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+noncomputable def CmodMulInPlaceCore
+    {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
     (c N k5 : ℕ) (ctrl : ℕ) (x_reg w_reg : Reg) (flag : ℕ) : Gate :=
   let U1 : Gate := step1 (Basis := Basis) c N ctrl x_reg w_reg
-  let (x_ext, U2) := step2 (Basis := Basis) N x_reg w_reg
+  let pair := step2 (Basis := Basis) N x_reg w_reg
+  let x_ext : Reg := pair.1
+  let U2 : Gate := pair.2
   let U3 : Gate := step3 N x_ext flag
   let U4 : Gate := step4 N x_ext w_reg flag
   let U5 : Gate := step5 (Basis := Basis) k5 N ctrl x_ext w_reg
   U5 ;; U4 ;; U3 ;; U2 ;; U1
 
-noncomputable def CmodMulInPlace {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+noncomputable def CmodMulInPlace
+    {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
     (base n m c N k5 ctrl : ℕ) : Gate :=
-  let x_reg : Reg := ⟨base, base + n⟩
-  let w_reg : Reg := ⟨base + n + 1, base + n + m + 1⟩
+  let x_reg : Reg := { lo := base, size := n }
+  let w_reg : Reg := { lo := base + n + 1, size := m }
   let flag  : ℕ := base + n + m + 1
   CmodMulInPlaceCore (Basis := Basis) c N k5 ctrl x_reg w_reg flag
+
+def tbits (x : Reg) : ℕ :=
+  regSize x
+
 
 class ModMul (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [Spec] where
   η : ℝ
@@ -1263,7 +1414,6 @@ noncomputable def modExpApproxSteps
       (CmodMulInPlaceCore (Basis := qs.Basis) c N (ModMul.k5 (qs := qs) c N) q y w_reg flag) ;;
       modExpApproxSteps qs a N x y w_reg flag (q+1) n
 
-def tbits (x : Reg) : ℕ := x.hi - x.lo
 
 noncomputable def modExpApprox'
     (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [Spec] [ModMul qs]

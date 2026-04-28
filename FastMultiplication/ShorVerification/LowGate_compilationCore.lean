@@ -103,6 +103,7 @@ inductive LowGate : Type
   | signExtend : (r : ExtReg) → (n : ℕ) → LowGate
   | zeroDealloc : (r : ExtReg) → (n : ℕ) → LowGate
   | signDealloc : (r : ExtReg) → (n : ℕ) → LowGate
+  | RadixReverse : (r : Reg) → (m : ℕ) → LowGate
 deriving Inhabited
 
 namespace LowGate
@@ -136,133 +137,143 @@ def chunkStart (n k : ℕ) (i : Fin k) : ℕ :=
   let rem := n % k
   i.1 * q + Nat.min i.1 rem
 
+/-- Helper: in a near-even chunk split, the end of an earlier chunk is before
+    the start of a later chunk. -/
+lemma chunkStart_mono (n k : ℕ) {i j : Fin k} (hij : i.1 ≤ j.1) :
+    chunkStart n k i ≤ chunkStart n k j := by
+  unfold chunkStart
+  exact Nat.add_le_add
+    (Nat.mul_le_mul_right _ hij)
+    (min_le_min_right _ hij)
+
+lemma chunkStart_succ_eq_add_chunkSize
+  (n k : ℕ) {i : Fin k} (hnext : i.1 + 1 < k) :
+  chunkStart n k ⟨i.1 + 1, hnext⟩ = chunkStart n k i + chunkSize n k i := by
+  by_cases hi : i.1 < n % k
+  · have hmin_i : Nat.min i.1 (n % k) = i.1 :=
+      Nat.min_eq_left (Nat.le_of_lt hi)
+    have hmin_succ : Nat.min (i.1 + 1) (n % k) = i.1 + 1 :=
+      Nat.min_eq_left (Nat.succ_le_of_lt hi)
+    simp [chunkStart, chunkSize, hi, hmin_i]
+    ring
+  · have hge : n % k ≤ i.1 := Nat.le_of_not_gt hi
+    have hmin_i : Nat.min i.1 (n % k) = n % k :=
+      Nat.min_eq_right hge
+    have hmin_succ : Nat.min (i.1 + 1) (n % k) = n % k :=
+      Nat.min_eq_right (le_trans hge (Nat.le_succ _))
+    simp [chunkStart, chunkSize, hi, hmin_i, hmin_succ]
+    ring
+
+lemma chunkStart_add_chunkSize_le_chunkStart_of_lt
+  (n k : ℕ) {i j : Fin k}
+  (hlt : i.1 < j.1) :
+  chunkStart n k i + chunkSize n k i ≤ chunkStart n k j := by
+  have hsucc : i.1 + 1 ≤ j.1 := Nat.succ_le_of_lt hlt
+  have hnext : i.1 + 1 < k := lt_of_le_of_lt hsucc j.is_lt
+  calc
+    chunkStart n k i + chunkSize n k i
+        = chunkStart n k ⟨i.1 + 1, hnext⟩ := by
+            symm
+            exact chunkStart_succ_eq_add_chunkSize n k hnext
+    _ ≤ chunkStart n k j :=
+      chunkStart_mono n k hsucc
+
 /-- Contiguous near-even splitting of a register into `k` chunks. -/
 def layoutOfReg (r : Reg) (k : ℕ) : Layout k where
   slot := fun i =>
     let n := regSize r
     let s := chunkStart n k i
     let m := chunkSize n k i
-    ⟨r.lo + s, r.lo + s + m⟩
+    { lo := r.lo + s, size := m }
   disjoint := by
     intro i j hij
-    wlog hlt : i.1 < j.1 generalizing i j
-    · have hji : j.1 < i.1 := by
-        have hne : j.1 ≠ i.1 := by
-          intro h
-          apply hij
-          apply Fin.ext
-          rw [h]
-        omega
-      simp [Disjoint] at *
-      have h_not_eq : j ≠ i := by omega
-      have final_or := this j i h_not_eq hji
+
+    have hij_val : i.1 ≠ j.1 := by
+      intro h
+      apply hij
+      exact Fin.ext h
+
+    rcases lt_or_gt_of_ne hij_val with hlt | hgt
+    · left
+      dsimp
+      have hmain :
+          chunkStart (regSize r) k i + chunkSize (regSize r) k i
+            ≤ chunkStart (regSize r) k j :=
+        chunkStart_add_chunkSize_le_chunkStart_of_lt
+          (regSize r) k hlt
+      simp[add_assoc]
+      set a:=chunkStart (regSize r) k i + chunkSize (regSize r) k i
       omega
-    left
-    simp [chunkStart, chunkSize, regSize]
-    have hmain :
-      chunkStart (regSize r) k i + chunkSize (regSize r) k i
-        ≤ chunkStart (regSize r) k j := by
-      unfold chunkStart chunkSize regSize
-      simp
-      split_ifs
-      have h_le : i.val + 1 ≤ j.val := Nat.succ_le_of_lt hlt
-      set N := r.hi - r.lo
-      set Q := N / k
-      set R := N % k
-      by_cases hj : ↑j < R
-      · have hi : i.val < R := by omega
-        have h1 : (j.val).min R = ↑j := Nat.min_eq_left (Nat.le_of_lt hj)
-        have : (i.val).min R = ↑i := Nat.min_eq_left (Nat.le_of_lt hi)
-        rw [this, h1]
-        have hQ : i.1 * Q + i.1 + (Q + 1) = (i.1 + 1) * (Q + 1) := by
-          ring
-        have hJ : j.1 * Q + j.1 = j.1 * (Q + 1) := by
-          ring
-        rw [hQ, hJ]
-        gcongr
-      · have hi : i.val < R := by omega
-        have hi_min : (i.1).min R = i.1 := Nat.min_eq_left (Nat.le_of_lt hi)
-        have hj_min : (j.1).min R = R := Nat.min_eq_right (Nat.le_of_not_gt hj)
-        have h_le : i.1 + 1 ≤ j.1 := Nat.succ_le_of_lt hlt
-        rw [hi_min, hj_min]
-        have hiR : i.1 + 1 ≤ R := Nat.succ_le_of_lt hi
-        have hmul : Q * (i.1 + 1) ≤ Q * j.1 :=
-          Nat.mul_le_mul_left Q h_le
-        have hsum : Q * (i.1 + 1) + (i.1 + 1) ≤ Q * j.1 + R :=
-          Nat.add_le_add hmul hiR
-        have hrewriteL : i.1 * Q + i.1 + (Q + 1) = Q * (i.1 + 1) + (i.1 + 1) := by
-          ring
-        have hrewriteR : j.1 * Q + R = Q * j.1 + R := by
-          ring
-        rw [hrewriteL, hrewriteR]
-        exact hsum
-      · set N : ℕ := r.hi - r.lo
-        set Q : ℕ := N / k
-        set R : ℕ := N % k
-        have hi : ¬ i.val < R := by omega
-        have hi_ge : R ≤ i.1 := Nat.le_of_not_gt hi
-        have hj_ge : R ≤ j.1 := le_trans hi_ge (Nat.le_of_lt hlt)
-        have hi_min : (i.1).min R = R := Nat.min_eq_right hi_ge
-        have hj_min : (j.1).min R = R := Nat.min_eq_right hj_ge
-        have hle : i.1 + 1 ≤ j.1 := Nat.succ_le_of_lt hlt
-        rw [hi_min, hj_min]
-        have hmul : (i.1 + 1) * Q ≤ j.1 * Q := Nat.mul_le_mul_right Q hle
-        have hrewrite : i.1 * Q + R + (Q + 0) = (i.1 + 1) * Q + R := by
-          ring
-        rw [hrewrite]
-        exact Nat.add_le_add_right hmul R
-    have := Nat.add_le_add_left hmain r.lo
-    simpa [chunkStart, chunkSize, regSize, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using this
+
+    · right
+      dsimp
+      have hmain :
+          chunkStart (regSize r) k j + chunkSize (regSize r) k j
+            ≤ chunkStart (regSize r) k i :=
+        chunkStart_add_chunkSize_le_chunkStart_of_lt
+          (regSize r) k hgt
+      omega
 
 /-- Each slot in a split layout has size at most the original register. -/
 lemma slot_size_le (x : Reg) (k : ℕ) (hk : 1 ≤ k) (i : Fin k) :
   regSize ((layoutOfReg x k).slot i) ≤ regSize x := by
   dsimp [layoutOfReg]
-  simp [regSize]
-  generalize (x.hi - x.lo) = n
+  let n := regSize x
+  change chunkSize n k i ≤ n
   unfold chunkSize
-  have hk : 1 ≤ k := by omega
+  have hk0 : 0 < k := by omega
   have hdiv : n / k * k + n % k = n := by
     rw [mul_comm]
     exact Nat.div_add_mod n k
-  have hmul : n / k ≤ n / k * k := by
-    calc
-      n / k = n / k * 1 := by rw [Nat.mul_one]
-      _ ≤ n / k * k := Nat.mul_le_mul_left (n / k) hk
   simp
   split_ifs with h
-  · have hrem : 1 ≤ n % k := by omega
+  · have hrem_lt : n % k < k := Nat.mod_lt _ hk0
+    have hrem_pos : 1 ≤ n % k := by
+      omega
+    have hmul : n / k ≤ n / k * k := by
+      calc
+        n / k = n / k * 1 := by rw [Nat.mul_one]
+        _ ≤ n / k * k := Nat.mul_le_mul_left _ hk
     omega
-  · omega
+  · have hmul : n / k ≤ n / k * k := by
+      calc
+        n / k = n / k * 1 := by rw [Nat.mul_one]
+        _ ≤ n / k * k := Nat.mul_le_mul_left _ hk
+    omega
 
 /-- If `k > 1` and the register is nontrivial, each slot is strictly smaller. -/
 lemma slot_size_lt (x : Reg) {k : ℕ} (hk : 1 < k) (hx : 1 < regSize x) (i : Fin k) :
   regSize ((layoutOfReg x k).slot i) < regSize x := by
-  dsimp [layoutOfReg] at *
-  simp [regSize] at *
-  generalize h_n : (x.hi - x.lo) = n at *
+  dsimp [layoutOfReg]
+  let n := regSize x
+  change chunkSize n k i < n
   unfold chunkSize
+  have hk0 : 0 < k := by omega
+  have hk2 : 2 ≤ k := by omega
   have hdiv : n / k * k + n % k = n := by
     rw [mul_comm]
     exact Nat.div_add_mod n k
   simp
   split_ifs with h
-  ·
-    by_cases hq : n / k = 0
-    · omega
-    · have hq_pos : 1 ≤ n / k := by
-        have hq_pos : 0 < n / k := Nat.pos_of_ne_zero hq
+  · by_cases hq : n / k = 0
+    · have hrem_lt : n % k < k := Nat.mod_lt _ hk0
+      have hrem_pos : 1 ≤ n % k := by
         omega
-      have hmul : n / k * 2 ≤ n / k * k := Nat.mul_le_mul_left (n / k) hk
       omega
-  ·
-    by_cases hq : n / k = 0
+    · have hq_pos : 1 ≤ n / k := by
+        exact Nat.succ_le_of_lt (Nat.pos_of_ne_zero hq)
+      have hmul : n / k * 2 ≤ n / k * k :=
+        Nat.mul_le_mul_left (n / k) hk2
+      have hrem_lt : n % k < k := Nat.mod_lt _ hk0
+      have hrem_pos : 1 ≤ n % k := by
+        omega
+      omega
+  · by_cases hq : n / k = 0
     · omega
     · have hq_pos : 1 ≤ n / k := by
-        have hq_pos : 0 < n / k := Nat.pos_of_ne_zero hq
-        omega
-      have hmul : n / k * 2 ≤ n / k * k := Nat.mul_le_mul_left (n / k) hk
-      have hrem : 0 ≤ n % k := by omega
+        exact Nat.succ_le_of_lt (Nat.pos_of_ne_zero hq)
+      have hmul : n / k * 2 ≤ n / k * k :=
+        Nat.mul_le_mul_left (n / k) hk2
       omega
 
 /-! =========================================================
@@ -282,11 +293,11 @@ structure WidthState (k : ℕ) where
 def splitLogicalWidth (w k : ℕ) (i : Fin k) : ℕ :=
   chunkSize w k i
 
-/-- Initial logical widths come from the current semantic widths of `x` and `z`,
-    not just from the raw physical register sizes. -/
-def initWidthState (x z : ExtReg) (k : ℕ) : WidthState k where
-  xw := fun i => splitLogicalWidth (ExtReg.width x) k i
-  zw := fun i => splitLogicalWidth (ExtReg.width z) k i
+-- /-- Initial logical widths come from the current semantic widths of `x` and `z`,
+--     not just from the raw physical register sizes. -/
+-- def initWidthState (x z : ExtReg) (k : ℕ) : WidthState k where
+--   xw := fun i => splitLogicalWidth (ExtReg.width x) k i
+--   zw := fun i => splitLogicalWidth (ExtReg.width z) k i
 
 def updateWidthState {k : ℕ} (st : WidthState k) : valid_ops k → WidthState k
   | .shiftL i n =>
@@ -317,6 +328,181 @@ def mergeNeededWidths {k : ℕ} (a b : NeededWidths k) : NeededWidths k where
 def widthsOfState {k : ℕ} (st : WidthState k) : NeededWidths k where
   xneed := st.xw
   zneed := st.zw
+/-- Ceiling division. Kept because other code may still use it. -/
+def ceilDiv (n k : ℕ) : ℕ :=
+  (n + k - 1) / k
+
+/--
+Lower-limb width for the top-heavy phase layout.
+
+This deliberately uses floor division. The lower `k - 1` limbs have width `w / k`,
+and the most significant limb absorbs all remaining bits.
+For example, `w = 5`, `k = 4` gives widths `1, 1, 1, 2`.
+-/
+def phaseLimbWidthOfWidth (w k : ℕ) : ℕ :=
+  w / k
+
+/--
+Common radix width for decomposing both operands.
+
+Use `min`, not `max`: the lower limbs must fit inside both operands.
+The larger operand simply gets a larger top chunk.
+-/
+def phaseLimbWidth (x z : ExtReg) (k : ℕ) : ℕ :=
+  min (phaseLimbWidthOfWidth (ExtReg.width x) k)
+      (phaseLimbWidthOfWidth (ExtReg.width z) k)
+
+/-! =========================================================
+    Top-heavy uniform lower-limb layout for PhaseProduct decomposition
+========================================================= -/
+
+/-- The most significant chunk is the last chunk. -/
+def isTopChunk {k : ℕ} (i : Fin k) : Prop :=
+  i.1 + 1 = k
+
+instance {k : ℕ} (i : Fin k) : Decidable (isTopChunk i) := by
+  unfold isTopChunk
+  infer_instance
+
+/-- Start offset of chunk `i` in the uniform-radix phase layout. -/
+def phaseChunkStart (W : ℕ) (i : ℕ) : ℕ :=
+  i * W
+
+/--
+End offset of a non-top chunk.
+
+For the new top-heavy layout, this is only used for non-top chunks.
+The top chunk ends at the full physical register size.
+-/
+def phaseChunkEnd (W : ℕ) (i : ℕ) : ℕ :=
+  (i + 1) * W
+
+/--
+Physical slot for chunk `i` using the top-heavy uniform-radix layout.
+
+Non-top chunks are `[i * W, (i + 1) * W)`.
+The top chunk is `[(k - 1) * W, regSize r)`, so all leftover MSB bits go into
+the top chunk.
+-/
+def phaseSlot (r : Reg) (k W : ℕ) (i : Fin k) : Reg :=
+  let n := regSize r
+  let loOff := Nat.min n (phaseChunkStart W i.1)
+  let hiOff :=
+    if isTopChunk i then
+      n
+    else
+      Nat.min n (phaseChunkEnd W i.1)
+  { lo := r.lo + loOff, size := hiOff - loOff }
+
+lemma phaseSlot_loOff_le_hiOff (r : Reg) (k W : ℕ) (i : Fin k) :
+    Nat.min (regSize r) (phaseChunkStart W i.1) ≤
+      if isTopChunk i then
+        regSize r
+      else
+        Nat.min (regSize r) (phaseChunkEnd W i.1) := by
+  by_cases htop : isTopChunk i
+  · simp [htop]
+  · simpa [htop, phaseChunkStart, phaseChunkEnd] using
+      (min_le_min_left (regSize r) (Nat.mul_le_mul_right W (Nat.le_succ i.1)))
+
+lemma phaseSlot_hi_eq (r : Reg) (k W : ℕ) (i : Fin k) :
+    (phaseSlot r k W i).hi =
+      r.lo +
+        (if isTopChunk i then
+          regSize r
+        else
+          Nat.min (regSize r) (phaseChunkEnd W i.1)) := by
+  let n := regSize r
+  let loOff := Nat.min n (phaseChunkStart W i.1)
+  let hiOff := if isTopChunk i then n else Nat.min n (phaseChunkEnd W i.1)
+  have hle : loOff ≤ hiOff := by
+    dsimp [loOff, hiOff, n]
+    exact phaseSlot_loOff_le_hiOff r k W i
+  unfold phaseSlot Reg.hi
+  simp [loOff, hiOff, n, hle]
+
+/--
+Uniform lower-limb layout with all excess placed in the most significant chunk.
+
+This is the layout wanted for radix reconstruction:
+`x = x₀ + x₁ B + ... + x_{k-1} B^{k-1}`,
+where `B = 2^W`.
+-/
+def phaseLayoutOfReg (r : Reg) (k W : ℕ) : Layout k where
+  slot := fun i => phaseSlot r k W i
+  disjoint := by
+    intro i j hij
+    have hij_val : i.1 ≠ j.1 := by
+      intro hEq
+      apply hij
+      exact Fin.ext hEq
+    rcases lt_or_gt_of_ne hij_val with hlt | hgt
+    · left
+      have hi_not_top : ¬ isTopChunk i := by
+        intro htop
+        unfold isTopChunk at htop
+        omega
+      have hsucc : i.1 + 1 ≤ j.1 := Nat.succ_le_of_lt hlt
+      have hmul : (i.1 + 1) * W ≤ j.1 * W :=
+        Nat.mul_le_mul_right W hsucc
+      have hmin :
+          Nat.min (regSize r) (phaseChunkEnd W i.1)
+            ≤ Nat.min (regSize r) (phaseChunkStart W j.1) := by
+        unfold phaseChunkEnd phaseChunkStart
+        exact min_le_min_left _ hmul
+      rw [phaseSlot_hi_eq (r := r) (k := k) (W := W) (i := i)]
+      simpa [phaseSlot, hi_not_top, phaseChunkStart] using
+        Nat.add_le_add_left hmin r.lo
+    · right
+      have hj_not_top : ¬ isTopChunk j := by
+        intro htop
+        unfold isTopChunk at htop
+        omega
+      have hsucc : j.1 + 1 ≤ i.1 := Nat.succ_le_of_lt hgt
+      have hmul : (j.1 + 1) * W ≤ i.1 * W :=
+        Nat.mul_le_mul_right W hsucc
+      have hmin :
+          Nat.min (regSize r) (phaseChunkEnd W j.1)
+            ≤ Nat.min (regSize r) (phaseChunkStart W i.1) := by
+        unfold phaseChunkEnd phaseChunkStart
+        exact min_le_min_left _ hmul
+      rw [phaseSlot_hi_eq (r := r) (k := k) (W := W) (i := j)]
+      simpa [phaseSlot, hj_not_top, phaseChunkStart] using
+        Nat.add_le_add_left hmin r.lo
+
+/--
+Logical width of chunk `i`.
+
+All non-top chunks have width `W`. The top chunk has the remaining width.
+With the new top-heavy physical layout, this now matches the physical split.
+-/
+def phaseSplitLogicalWidth (w W k : ℕ) (i : Fin k) : ℕ :=
+  if isTopChunk i then
+    w - i.1 * W
+  else
+    W
+
+/--
+This compatibility predicate is now optional.
+
+For the new floor/min top-heavy layout, the relevant compatibility condition is
+true by construction for the lower chunks. I am leaving the definition in place
+so older lemmas depending on the name do not immediately break.
+-/
+def PhaseLayoutCompatibleWidth (w W k : ℕ) : Prop :=
+  ∀ i : Fin k, ¬ isTopChunk i → (i.1 + 1) * W ≤ w
+
+/-- Compatibility for both operands. Kept for backward compatibility. -/
+def PhaseLayoutCompatible (x z : ExtReg) (k : ℕ) : Prop :=
+  let W := phaseLimbWidth x z k
+  PhaseLayoutCompatibleWidth (ExtReg.width x) W k ∧
+  PhaseLayoutCompatibleWidth (ExtReg.width z) W k
+
+/-- Initial width bookkeeping now uses the uniform lower-limb phase layout. -/
+def initWidthState (x z : ExtReg) (k : ℕ) : WidthState k :=
+  let W := phaseLimbWidth x z k
+  { xw := fun i => phaseSplitLogicalWidth (ExtReg.width x) W k i
+    zw := fun i => phaseSplitLogicalWidth (ExtReg.width z) W k i }
 
 /-- Pull the recursion in `scanNeededWidths` out to a top-level helper. -/
 def scanNeededWidthsAux {k : ℕ} (cur : WidthState k) (mx : NeededWidths k) :
@@ -327,10 +513,13 @@ def scanNeededWidthsAux {k : ℕ} (cur : WidthState k) (mx : NeededWidths k) :
       let mx' := mergeNeededWidths mx (widthsOfState cur')
       scanNeededWidthsAux cur' mx' rest
 
+/-- Scan needed widths using the new initial width state. -/
 def scanNeededWidths {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) :
     NeededWidths k :=
-  scanNeededWidthsAux (initWidthState x z k) (widthsOfState (initWidthState x z k)) ops
-
+  scanNeededWidthsAux
+    (initWidthState x z k)
+    (widthsOfState (initWidthState x z k))
+    ops
 /-- Build an `ExtReg` over a physical slot with the requested logical width. -/
 def withLogicalWidth (r : Reg) (w : ℕ) : ExtReg :=
   { base := r, extra := w - regSize r }
@@ -339,26 +528,42 @@ def withLogicalWidth (r : Reg) (w : ℕ) : ExtReg :=
 def commonNeededWidth {k : ℕ} (need : NeededWidths k) : ℕ :=
   1 + Finset.univ.sup (fun i : Fin k => max (need.xneed i) (need.zneed i))
 
-/-- Initial chunk views, reflecting the current semantic widths of `x` and `z`
-    before any additional allocation performed by the compiler. -/
-def initSignedLayoutState (x z : ExtReg) (k : ℕ) : LayoutState k :=
-  { xslot := fun i =>
-      let r := (layoutOfReg x.base k).slot i
-      withLogicalWidth r (splitLogicalWidth (ExtReg.width x) k i)
-    zslot := fun i =>
-      let r := (layoutOfReg z.base k).slot i
-      withLogicalWidth r (splitLogicalWidth (ExtReg.width z) k i) }
 
-/-- Final widened chunk views used by the compiled signed body.
-    Every chunk is widened to the same common width `W`. -/
-def targetSignedLayoutState (x z : ExtReg) (k : ℕ) (need : NeededWidths k) : LayoutState k :=
-  let W := commonNeededWidth need
+
+/-! =========================================================
+    Replacement definitions for Section 5
+========================================================= -/
+
+
+
+/-- Initial chunk views for the uniform-radix phase decomposition. -/
+def initSignedLayoutState (x z : ExtReg) (k : ℕ) : LayoutState k :=
+  let W := phaseLimbWidth x z k
   { xslot := fun i =>
-      let r := (layoutOfReg x.base k).slot i
-      withLogicalWidth r W
+      let r := (phaseLayoutOfReg x.base k W).slot i
+      withLogicalWidth r (phaseSplitLogicalWidth (ExtReg.width x) W k i)
     zslot := fun i =>
-      let r := (layoutOfReg z.base k).slot i
-      withLogicalWidth r W }
+      let r := (phaseLayoutOfReg z.base k W).slot i
+      withLogicalWidth r (phaseSplitLogicalWidth (ExtReg.width z) W k i) }
+
+/--
+Final widened chunk views for the compiled signed body.
+
+The physical slots are still the uniform-radix slots from `phaseLayoutOfReg`.
+Only the logical storage width is widened to the work width `commonNeededWidth need`.
+-/
+def targetSignedLayoutState
+    (x z : ExtReg) (k : ℕ) (need : NeededWidths k) : LayoutState k :=
+  let Wphase := phaseLimbWidth x z k
+  let Wwork := commonNeededWidth need
+  { xslot := fun i =>
+      let r := (phaseLayoutOfReg x.base k Wphase).slot i
+      withLogicalWidth r Wwork
+    zslot := fun i =>
+      let r := (phaseLayoutOfReg z.base k Wphase).slot i
+      withLogicalWidth r Wwork }
+
+
 
 /-! =========================================================
     Section 6: Interpolation and phase coefficients
@@ -395,6 +600,7 @@ noncomputable def phaseCoeffFromPts
   let v : Matrix (Fin 1) (Fin (q k)) ℚ := radixRow k b * B⁻¹
   fun i => v 0 i
 
+
 /-- Convert a point list of the right length into a `Fin`-indexed family. -/
 def ptsToFin
   (k : ℕ)
@@ -425,6 +631,13 @@ noncomputable def phaseCoeffFromPtsWidth
   (pts : List Point) (hpts : pts.length = q k) :
   Fin (q k) → ℚ :=
   phaseCoeffFromPts k (ptsToFin k pts hpts) ((2 : ℚ) ^ W)
+
+noncomputable def phaseCoeffFromPtsForRegs
+  (k : ℕ) (x z : ExtReg)
+  (pts : List Point) (hpts : pts.length = q k) :
+  Fin (q k) → ℚ :=
+  phaseCoeffFromPtsWidth k (phaseLimbWidth x z k) pts hpts
+
 
 /-- The size parameter used when deciding whether a signed phase product
     should recurse again. -/
@@ -485,8 +698,7 @@ lemma annotatePhaseTermsAux_append_zero
 
 /-- The most significant chunk is the last chunk. It gets sign-extension;
     all lower chunks get zero-extension. -/
-def isTopChunk {k : ℕ} (i : Fin k) : Prop :=
-  i.1 + 1 = k
+
 instance {k : ℕ} (i : Fin k) : Decidable (isTopChunk i) := by
   unfold isTopChunk
   infer_instance
@@ -637,6 +849,29 @@ noncomputable def compileOpsToSignedGate
   allocs ;; body ;; deallocs
 
 
+-- noncomputable def compileOpsToSignedGate
+--   (k : ℕ) (hk : 1 < k)
+--   (phi : ℝ)
+--   (x z : ExtReg)
+--   (phaseCoeff : Fin (q k) → ℚ)
+--   (ops : List (valid_ops k)) : Gate :=
+--   let annOps : List (AnnotatedOp k) :=
+--     annotatePhaseTermsAux k 0 ops
+--   let need : NeededWidths k :=
+--     scanNeededWidths x z ops
+--   let stInit : LayoutState k :=
+--     initSignedLayoutState x z k
+--   let stFinal : LayoutState k :=
+--     targetSignedLayoutState x z k need
+--   let allocs : Gate :=
+--     compileSignedAllocations k stInit stFinal
+--   let body : Gate :=
+--     compileAnnotatedOpsToSignedGateAux k hk phi phaseCoeff stFinal annOps
+--   let deallocs : Gate :=
+--     compileSignedDeallocations k stInit stFinal
+--   allocs ;; body ;; deallocs
+
+
 def tcMod (r : Reg) (z : ℤ) : ℕ :=
   Int.toNat (z % (ASize r : ℤ))
 
@@ -690,8 +925,7 @@ open scoped BigOperators
 
 open scoped BigOperators
 
-/-- Mathematically exact polynomial evaluation of a register's chunks at a point.
-    (No sorry here, purely constructive). -/
+/-- Mathematically exact polynomial evaluation of a register's chunks at a point. -/
 noncomputable def pointEval {qs : QSemantics} [RegEncoding qs.Basis]
   (r : Reg) (k : ℕ) (hk : 0 < k) (b : qs.Basis) (pt : Point) : ℝ :=
   match pt with
@@ -701,18 +935,6 @@ noncomputable def pointEval {qs : QSemantics} [RegEncoding qs.Basis]
       RegEncoding.toNat ((layoutOfReg r k).slot ⟨k - 1, Nat.sub_lt hk (by decide)⟩) b
 
 
-
--- /-- The mathematical Toom-Cook phase decomposition theorem. -/
--- lemma toom_cook_decomposition
---   {qs : QSemantics} [RegEncoding qs.Basis]
---   (k : ℕ) (hk : 1 < k) (x z : Reg) (b : qs.Basis)
---   (pts : List Point) (hpts : pts.length = q k)
---   (coeff : Fin (q k) → ℚ)
---   (hcoeff : coeff = phaseCoeffFromPts k (ptsToFin k pts hpts) (phaseRadix x k)) :
---   (∑ i : Fin pts.length, (coeff ⟨i.val, by rw [←hpts]; exact i.is_lt⟩ : ℝ) *
---     pointEval x k (by omega) b (pts.get i) *
---     pointEval z k (by omega) b (pts.get i))
---   = (RegEncoding.toNat x b : ℝ) * (RegEncoding.toNat z b : ℝ) := by sorry
 
 @[simp] lemma phaseProductCount_addConstAux
   {k : ℕ} (dst src : Fin k) (neg' : Bool) (n sh : ℕ) :
@@ -1028,53 +1250,6 @@ lemma scanNeededWidthsAux_z_ge
           (mergeNeededWidths mx (widthsOfState (updateWidthState cur op)))
       exact le_trans (le_max_left _ _) htail
 
-lemma scanNeededWidths_x_ge_init
-  {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) (i : Fin k) :
-  splitLogicalWidth (ExtReg.width x) k i ≤ (scanNeededWidths x z ops).xneed i := by
-  rw [scanNeededWidths_eq_aux]
-  simpa [initWidthState, widthsOfState] using
-    (scanNeededWidthsAux_x_ge
-      (i := i)
-      ops
-      (initWidthState x z k)
-      (widthsOfState (initWidthState x z k)))
-
-lemma scanNeededWidths_z_ge_init
-  {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) (i : Fin k) :
-  splitLogicalWidth (ExtReg.width z) k i ≤ (scanNeededWidths x z ops).zneed i := by
-  rw [scanNeededWidths_eq_aux]
-  simpa [initWidthState, widthsOfState] using
-    (scanNeededWidthsAux_z_ge
-      (i := i)
-      ops
-      (initWidthState x z k)
-      (widthsOfState (initWidthState x z k)))
-
-
-
-lemma stInit_xslot_width {k : ℕ} (x z : ExtReg) (i : Fin k)
-  (h : regSize ((layoutOfReg x.base k).slot i) ≤ splitLogicalWidth (ExtReg.width x) k i) :
-  ExtReg.width ((initSignedLayoutState x z k).xslot i) = splitLogicalWidth (ExtReg.width x) k i := by
-  simp [initSignedLayoutState, withLogicalWidth, ExtReg.width]
-  set a:=regSize ((layoutOfReg z.base k).slot i)
-  set b:=splitLogicalWidth (regSize z.base + z.extra) k i
-  have := Nat.add_sub_cancel a b
-  rw[← Nat.add_sub_assoc, Nat.add_comm,Nat.add_sub_cancel]
-  unfold b ExtReg.width at *
-  simp[h]
-
-lemma stInit_zslot_width {k : ℕ} (x z : ExtReg) (i : Fin k)
-  (h : regSize ((layoutOfReg z.base k).slot i) ≤ splitLogicalWidth (ExtReg.width z) k i) :
-  ExtReg.width ((initSignedLayoutState x z k).zslot i) = splitLogicalWidth (ExtReg.width z) k i := by
-  simp [initSignedLayoutState, withLogicalWidth, ExtReg.width]
-  set a:=regSize ((layoutOfReg z.base k).slot i)
-  set b:=splitLogicalWidth (regSize z.base + z.extra) k i
-  have := Nat.add_sub_cancel a b
-  rw[← Nat.add_sub_assoc, Nat.add_comm,Nat.add_sub_cancel]
-  unfold b ExtReg.width at *
-  simp[h]
-
-
 
 /-! =========================================================
     Helper stack for `allocated_widths_sound`
@@ -1167,83 +1342,6 @@ lemma extToInt_fits_width_succ
         (qs := qs) (e := e) (b := b))
   exact tcDecodeWidth_fits_succ hlt
 
-/-- Lower/upper chunk of the initial x-layout fits its logical width plus one
-    extra sign bit. -/
-lemma sourceChunkXInt_init_fits
-  (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
-  {k : ℕ} (x z : ExtReg) (i : Fin k) (b : qs.Basis) :
-  FitsSignedWidth (splitLogicalWidth (ExtReg.width x) k i + 1)
-    (sourceChunkXInt (qs := qs) (initSignedLayoutState x z k) i b) := by
-  unfold sourceChunkXInt
-  by_cases htop : isTopChunk i
-  · simp [htop]
-    have hwidth :
-        ExtReg.width ((initSignedLayoutState x z k).xslot i)
-          = splitLogicalWidth (ExtReg.width x) k i := by
-      apply stInit_xslot_width
-      simpa using slot_size_le_splitLogicalWidth_x x i
-    have hfit0 :
-        FitsSignedWidth
-          (ExtReg.width ((initSignedLayoutState x z k).xslot i) + 1)
-          (ExtRegEncoding.extToInt ((initSignedLayoutState x z k).xslot i) b) := by
-      exact extToInt_fits_width_succ
-        (qs := qs) ((initSignedLayoutState x z k).xslot i) b
-    simpa [hwidth] using hfit0
-  · simp [htop]
-    have hwidth :
-        ExtReg.width ((initSignedLayoutState x z k).xslot i)
-          = splitLogicalWidth (ExtReg.width x) k i := by
-      apply stInit_xslot_width
-      simpa using slot_size_le_splitLogicalWidth_x x i
-    have hlt :
-        ExtReg.toNat ((initSignedLayoutState x z k).xslot i) b
-          < 2 ^ (splitLogicalWidth (ExtReg.width x) k i) := by
-      simpa [ExtReg.toNat, hwidth] using
-        (ExtensionSemantics.extToNat_lt_width
-          (qs := qs)
-          (e := (initSignedLayoutState x z k).xslot i)
-          (b := b))
-    exact FitsSignedWidth_of_nonneg_lt_pow hlt
-
-/-- Lower/upper chunk of the initial z-layout fits its logical width plus one
-    extra sign bit. -/
-lemma sourceChunkZInt_init_fits
-  (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
-  {k : ℕ} (x z : ExtReg) (i : Fin k) (b : qs.Basis) :
-  FitsSignedWidth (splitLogicalWidth (ExtReg.width z) k i + 1)
-    (sourceChunkZInt (qs := qs) (initSignedLayoutState x z k) i b) := by
-  unfold sourceChunkZInt
-  by_cases htop : isTopChunk i
-  · simp [htop]
-    have hwidth :
-        ExtReg.width ((initSignedLayoutState x z k).zslot i)
-          = splitLogicalWidth (ExtReg.width z) k i := by
-      apply stInit_zslot_width
-      simpa using slot_size_le_splitLogicalWidth_z z i
-    have hfit0 :
-        FitsSignedWidth
-          (ExtReg.width ((initSignedLayoutState x z k).zslot i) + 1)
-          (ExtRegEncoding.extToInt ((initSignedLayoutState x z k).zslot i) b) := by
-      exact extToInt_fits_width_succ
-        (qs := qs) ((initSignedLayoutState x z k).zslot i) b
-    simpa [hwidth] using hfit0
-  · simp [htop]
-    have hwidth :
-        ExtReg.width ((initSignedLayoutState x z k).zslot i)
-          = splitLogicalWidth (ExtReg.width z) k i := by
-      apply stInit_zslot_width
-      simpa using slot_size_le_splitLogicalWidth_z z i
-    have hlt :
-        ExtReg.toNat ((initSignedLayoutState x z k).zslot i) b
-          < 2 ^ (splitLogicalWidth (ExtReg.width z) k i) := by
-      simpa [ExtReg.toNat, hwidth] using
-        (ExtensionSemantics.extToNat_lt_width
-          (qs := qs)
-          (e := (initSignedLayoutState x z k).zslot i)
-          (b := b))
-    exact FitsSignedWidth_of_nonneg_lt_pow hlt
 
 /-- If `z` fits signed width `w+1`, then `(2^n) * z` fits signed width `w+n+1`. -/
 lemma FitsSignedWidth_shiftL_raw
@@ -1447,8 +1545,205 @@ lemma evalRowZ_start_state
   unfold evalRowZ State.start_state
   classical
   simp
-/-- Base case for the proof-only invariant. This is the place where the
-    mixed signed/unsigned source semantics is handled. -/
+
+/-- If a physical slot is given logical width `w`, and its physical size is at most
+    `w`, then the resulting `ExtReg` has width exactly `w`. -/
+lemma withLogicalWidth_width_eq_of_le
+  (r : Reg) (w : ℕ)
+  (h : regSize r ≤ w) :
+  ExtReg.width (withLogicalWidth r w) = w := by
+  unfold withLogicalWidth ExtReg.width
+  simp
+  omega
+
+/-- Small Nat lemma: clipping both endpoints by the same upper bound cannot
+    increase the interval length. -/
+lemma min_sub_min_le_sub
+  {n a b : ℕ}
+  (hab : a ≤ b) :
+  Nat.min n b - Nat.min n a ≤ b - a := by
+  by_cases hna : n ≤ a
+  · have hnb : n ≤ b := le_trans hna hab
+    simp [Nat.min_eq_left hna, Nat.min_eq_left hnb]
+  · have han : a < n := Nat.lt_of_not_ge hna
+    by_cases hnb : n ≤ b
+    · have hmina : Nat.min n a = a := Nat.min_eq_right (Nat.le_of_lt han)
+      have hminb : Nat.min n b = n := Nat.min_eq_left hnb
+      rw [hmina, hminb]
+      omega
+    · have hbn : b < n := Nat.lt_of_not_ge hnb
+      have hmina : Nat.min n a = a := Nat.min_eq_right (Nat.le_of_lt han)
+      have hminb : Nat.min n b = b := Nat.min_eq_right (Nat.le_of_lt hbn)
+      rw [hmina, hminb]
+/-- Physical size of a phase slot is bounded by its logical top-heavy width. -/
+lemma regSize_phaseSlot_le_splitWidth
+    (r : Reg) (k W : ℕ) (i : Fin k)
+    (w : ℕ)
+    (hphys : regSize r ≤ w)
+    (_hWle : W ≤ w / k) :
+    regSize (phaseSlot r k W i) ≤ phaseSplitLogicalWidth w W k i := by
+  by_cases htop : isTopChunk i
+  · have hgoal : regSize r - Nat.min (regSize r) (i.1 * W) ≤ w - i.1 * W := by
+      by_cases hle : regSize r ≤ i.1 * W
+      · have hmin : Nat.min (regSize r) (i.1 * W) = regSize r :=
+          Nat.min_eq_left hle
+        rw [hmin]
+        simp
+      · have hlt : i.1 * W < regSize r := Nat.lt_of_not_ge hle
+        have hmin : Nat.min (regSize r) (i.1 * W) = i.1 * W :=
+          Nat.min_eq_right (Nat.le_of_lt hlt)
+        rw [hmin]
+        exact Nat.sub_le_sub_right hphys _
+    simpa [phaseSlot, phaseSplitLogicalWidth, phaseChunkStart, htop, regSize] using hgoal
+  · have hgoal : Nat.min (regSize r) ((i.1 + 1) * W) - Nat.min (regSize r) (i.1 * W) ≤ W := by
+      have hstart_end : i.1 * W ≤ (i.1 + 1) * W := by
+        exact Nat.mul_le_mul_right W (Nat.le_succ i.1)
+      have hmin_le :
+          Nat.min (regSize r) ((i.1 + 1) * W)
+            - Nat.min (regSize r) (i.1 * W)
+            ≤ ((i.1 + 1) * W) - (i.1 * W) :=
+        min_sub_min_le_sub hstart_end
+      have hdiff : ((i.1 + 1) * W) - (i.1 * W) = W := by
+        rw [Nat.add_mul, Nat.one_mul]
+        omega
+      exact le_trans hmin_le (by simp [hdiff])
+    simpa [phaseSlot, phaseSplitLogicalWidth, phaseChunkStart, phaseChunkEnd, htop, regSize] using hgoal
+
+/-- The physical x-slot chosen by the phase layout fits inside its initial logical width. -/
+lemma phaseSlot_size_le_initWidth_x
+    {k : ℕ} (x z : ExtReg) (i : Fin k) :
+    regSize ((phaseLayoutOfReg x.base k (phaseLimbWidth x z k)).slot i)
+      ≤
+    (initWidthState x z k).xw i := by
+  dsimp [phaseLayoutOfReg, initWidthState]
+  apply regSize_phaseSlot_le_splitWidth
+  · simp [ExtReg.width]
+  ·
+    unfold phaseLimbWidth phaseLimbWidthOfWidth
+    exact Nat.min_le_left _ _
+
+/-- The physical z-slot chosen by the phase layout fits inside its initial logical width. -/
+lemma phaseSlot_size_le_initWidth_z
+    {k : ℕ} (x z : ExtReg) (i : Fin k) :
+    regSize ((phaseLayoutOfReg z.base k (phaseLimbWidth x z k)).slot i)
+      ≤
+    (initWidthState x z k).zw i := by
+  dsimp [phaseLayoutOfReg, initWidthState]
+  apply regSize_phaseSlot_le_splitWidth
+  · simp [ExtReg.width]
+  ·
+    unfold phaseLimbWidth phaseLimbWidthOfWidth
+    exact Nat.min_le_right _ _
+
+/-- Initial x-slot has exactly the width recorded in `initWidthState`. -/
+lemma stInit_xslot_width
+  {k : ℕ} (x z : ExtReg) (i : Fin k) :
+  ExtReg.width ((initSignedLayoutState x z k).xslot i)
+    =
+  (initWidthState x z k).xw i := by
+  dsimp [initSignedLayoutState, initWidthState]
+  exact withLogicalWidth_width_eq_of_le
+    ((phaseLayoutOfReg x.base k (phaseLimbWidth x z k)).slot i)
+    (phaseSplitLogicalWidth (ExtReg.width x) (phaseLimbWidth x z k) k i)
+    (by simpa [initWidthState] using phaseSlot_size_le_initWidth_x x z i)
+
+/-- Initial z-slot has exactly the width recorded in `initWidthState`. -/
+lemma stInit_zslot_width
+  {k : ℕ} (x z : ExtReg) (i : Fin k) :
+  ExtReg.width ((initSignedLayoutState x z k).zslot i)
+    =
+  (initWidthState x z k).zw i := by
+  dsimp [initSignedLayoutState, initWidthState]
+  exact withLogicalWidth_width_eq_of_le
+    ((phaseLayoutOfReg z.base k (phaseLimbWidth x z k)).slot i)
+    (phaseSplitLogicalWidth (ExtReg.width z) (phaseLimbWidth x z k) k i)
+    (by simpa [initWidthState] using phaseSlot_size_le_initWidth_z x z i)
+
+/-- Lower/top chunk of the initial x-layout fits its tracked initial width plus
+    one extra sign bit. -/
+lemma sourceChunkXInt_init_fits
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  {k : ℕ} (x z : ExtReg) (i : Fin k) (b : qs.Basis) :
+  FitsSignedWidth ((initWidthState x z k).xw i + 1)
+    (sourceChunkXInt (qs := qs) (initSignedLayoutState x z k) i b) := by
+  unfold sourceChunkXInt
+  by_cases htop : isTopChunk i
+  · simp [htop]
+    have hwidth :
+        ExtReg.width ((initSignedLayoutState x z k).xslot i)
+          =
+        (initWidthState x z k).xw i :=
+      stInit_xslot_width x z i
+    have hfit :
+        FitsSignedWidth
+          (ExtReg.width ((initSignedLayoutState x z k).xslot i) + 1)
+          (ExtRegEncoding.extToInt ((initSignedLayoutState x z k).xslot i) b) :=
+      extToInt_fits_width_succ
+        (qs := qs)
+        ((initSignedLayoutState x z k).xslot i)
+        b
+    simpa [hwidth] using hfit
+  · simp [htop]
+    have hwidth :
+        ExtReg.width ((initSignedLayoutState x z k).xslot i)
+          =
+        (initWidthState x z k).xw i :=
+      stInit_xslot_width x z i
+    have hlt :
+        ExtReg.toNat ((initSignedLayoutState x z k).xslot i) b
+          <
+        2 ^ ((initWidthState x z k).xw i) := by
+      simpa [ExtReg.toNat, hwidth] using
+        (ExtensionSemantics.extToNat_lt_width
+          (qs := qs)
+          (e := (initSignedLayoutState x z k).xslot i)
+          (b := b))
+    exact FitsSignedWidth_of_nonneg_lt_pow hlt
+
+
+/-- Lower/top chunk of the initial z-layout fits its tracked initial width plus
+    one extra sign bit. -/
+lemma sourceChunkZInt_init_fits
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  {k : ℕ} (x z : ExtReg) (i : Fin k) (b : qs.Basis) :
+  FitsSignedWidth ((initWidthState x z k).zw i + 1)
+    (sourceChunkZInt (qs := qs) (initSignedLayoutState x z k) i b) := by
+  unfold sourceChunkZInt
+  by_cases htop : isTopChunk i
+  · simp [htop]
+    have hwidth :
+        ExtReg.width ((initSignedLayoutState x z k).zslot i)
+          =
+        (initWidthState x z k).zw i :=
+      stInit_zslot_width x z i
+    have hfit :
+        FitsSignedWidth
+          (ExtReg.width ((initSignedLayoutState x z k).zslot i) + 1)
+          (ExtRegEncoding.extToInt ((initSignedLayoutState x z k).zslot i) b) :=
+      extToInt_fits_width_succ
+        (qs := qs)
+        ((initSignedLayoutState x z k).zslot i)
+        b
+    simpa [hwidth] using hfit
+  · simp [htop]
+    have hwidth :
+        ExtReg.width ((initSignedLayoutState x z k).zslot i)
+          =
+        (initWidthState x z k).zw i :=
+      stInit_zslot_width x z i
+    have hlt :
+        ExtReg.toNat ((initSignedLayoutState x z k).zslot i) b
+          <
+        2 ^ ((initWidthState x z k).zw i) := by
+      simpa [ExtReg.toNat, hwidth] using
+        (ExtensionSemantics.extToNat_lt_width
+          (qs := qs)
+          (e := (initSignedLayoutState x z k).zslot i)
+          (b := b))
+    exact FitsSignedWidth_of_nonneg_lt_pow hlt
+
 lemma widthStateSoundPlus_start_state
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -1460,24 +1755,19 @@ lemma widthStateSoundPlus_start_state
     (initSignedLayoutState x z k)
     (initWidthState x z k)
     State.start_state
-    b := by
+    b :=
+  by
   constructor
   · intro i
-    rw [show evalRowX (qs := qs) (initSignedLayoutState x z k) (State.start_state i) b
-          = sourceChunkXInt (qs := qs) (initSignedLayoutState x z k) i b by
-          simpa using
-            (evalRowX_start_state
-              (qs := qs) (st := initSignedLayoutState x z k) (i := i) (b := b))]
+    rw [evalRowX_start_state]
     simpa [WidthStateSoundPlus, initWidthState] using
-      (sourceChunkXInt_init_fits (qs := qs) (x := x) (z := z) (i := i) (b := b))
+      (sourceChunkXInt_init_fits
+        (qs := qs) (x := x) (z := z) (i := i) (b := b))
   · intro i
-    rw [show evalRowZ (qs := qs) (initSignedLayoutState x z k) (State.start_state i) b
-          = sourceChunkZInt (qs := qs) (initSignedLayoutState x z k) i b by
-          simpa using
-            (evalRowZ_start_state
-              (qs := qs) (st := initSignedLayoutState x z k) (i := i) (b := b))]
+    rw [evalRowZ_start_state]
     simpa [WidthStateSoundPlus, initWidthState] using
-      (sourceChunkZInt_init_fits (qs := qs) (x := x) (z := z) (i := i) (b := b))
+      (sourceChunkZInt_init_fits
+        (qs := qs) (x := x) (z := z) (i := i) (b := b))
 
 lemma evalRowX_shiftL_raw
   (qs : QSemantics)
@@ -2105,20 +2395,28 @@ lemma commonNeededWidth_ge_zneed {k : ℕ} (need : NeededWidths k) (i : Fin k) :
   have h' : need.zneed i ≤ _ := le_trans (le_max_right _ _) h
   omega
 
-lemma stFinal_xslot_width {k : ℕ} (x z : ExtReg) (need : NeededWidths k) (i : Fin k)
-  (h : regSize ((layoutOfReg x.base k).slot i) ≤ commonNeededWidth need) :
-  ExtReg.width ((targetSignedLayoutState x z k need).xslot i) = commonNeededWidth need := by
+
+lemma stFinal_xslot_width
+  {k : ℕ} (x z : ExtReg) (need : NeededWidths k) (i : Fin k)
+  (h :
+    regSize ((phaseLayoutOfReg x.base k (phaseLimbWidth x z k)).slot i)
+      ≤ commonNeededWidth need) :
+  ExtReg.width ((targetSignedLayoutState x z k need).xslot i)
+    =
+  commonNeededWidth need := by
   simp [targetSignedLayoutState, withLogicalWidth, ExtReg.width]
   omega
 
-lemma stFinal_zslot_width {k : ℕ} (x z : ExtReg) (need : NeededWidths k) (i : Fin k)
-  (h : regSize ((layoutOfReg z.base k).slot i) ≤ commonNeededWidth need) :
-  ExtReg.width ((targetSignedLayoutState x z k need).zslot i) = commonNeededWidth need := by
+lemma stFinal_zslot_width
+  {k : ℕ} (x z : ExtReg) (need : NeededWidths k) (i : Fin k)
+  (h :
+    regSize ((phaseLayoutOfReg z.base k (phaseLimbWidth x z k)).slot i)
+      ≤ commonNeededWidth need) :
+  ExtReg.width ((targetSignedLayoutState x z k need).zslot i)
+    =
+  commonNeededWidth need := by
   simp [targetSignedLayoutState, withLogicalWidth, ExtReg.width]
   omega
-
-
-
 
 lemma targetSignedLayoutState_xslot_width_scan
   {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
@@ -2126,16 +2424,24 @@ lemma targetSignedLayoutState_xslot_width_scan
     =
   commonNeededWidth (scanNeededWidths x z ops) := by
   apply stFinal_xslot_width
-  have hrs :
-      regSize ((layoutOfReg x.base k).slot i)
-        ≤ splitLogicalWidth (ExtReg.width x) k i := by
-    simpa using slot_size_le_splitLogicalWidth_x x i
-  have hsplt :
-      splitLogicalWidth (ExtReg.width x) k i
-        ≤ commonNeededWidth (scanNeededWidths x z ops) := by
-    have hscan := scanNeededWidths_x_ge_init x z ops i
-    have hW := commonNeededWidth_ge_xneed (scanNeededWidths x z ops) i
-    omega
+  have hslot :
+      regSize ((phaseLayoutOfReg x.base k (phaseLimbWidth x z k)).slot i)
+        ≤ (initWidthState x z k).xw i :=
+    phaseSlot_size_le_initWidth_x x z i
+  have hscan :
+      (initWidthState x z k).xw i
+        ≤ (scanNeededWidths x z ops).xneed i := by
+    rw [scanNeededWidths_eq_aux]
+    simpa [widthsOfState] using
+      scanNeededWidthsAux_x_ge
+        (i := i)
+        ops
+        (initWidthState x z k)
+        (widthsOfState (initWidthState x z k))
+  have hW :
+      (scanNeededWidths x z ops).xneed i + 1
+        ≤ commonNeededWidth (scanNeededWidths x z ops) :=
+    commonNeededWidth_ge_xneed (scanNeededWidths x z ops) i
   omega
 
 lemma targetSignedLayoutState_zslot_width_scan
@@ -2144,16 +2450,24 @@ lemma targetSignedLayoutState_zslot_width_scan
     =
   commonNeededWidth (scanNeededWidths x z ops) := by
   apply stFinal_zslot_width
-  have hrs :
-      regSize ((layoutOfReg z.base k).slot i)
-        ≤ splitLogicalWidth (ExtReg.width z) k i := by
-    simpa using slot_size_le_splitLogicalWidth_z z i
-  have hsplt :
-      splitLogicalWidth (ExtReg.width z) k i
-        ≤ commonNeededWidth (scanNeededWidths x z ops) := by
-    have hscan := scanNeededWidths_z_ge_init x z ops i
-    have hW := commonNeededWidth_ge_zneed (scanNeededWidths x z ops) i
-    omega
+  have hslot :
+      regSize ((phaseLayoutOfReg z.base k (phaseLimbWidth x z k)).slot i)
+        ≤ (initWidthState x z k).zw i :=
+    phaseSlot_size_le_initWidth_z x z i
+  have hscan :
+      (initWidthState x z k).zw i
+        ≤ (scanNeededWidths x z ops).zneed i := by
+    rw [scanNeededWidths_eq_aux]
+    simpa [widthsOfState] using
+      scanNeededWidthsAux_z_ge
+        (i := i)
+        ops
+        (initWidthState x z k)
+        (widthsOfState (initWidthState x z k))
+  have hW :
+      (scanNeededWidths x z ops).zneed i + 1
+        ≤ commonNeededWidth (scanNeededWidths x z ops) :=
+    commonNeededWidth_ge_zneed (scanNeededWidths x z ops) i
   omega
 
 /-- Final theorem: any symbolic state reachable after a prefix of `ops`
@@ -2216,33 +2530,47 @@ lemma allocated_widths_sound
 
   constructor
   · intro i
-    have hfitPre := hpre.1 i
+    have hfitPre :
+        FitsSignedWidth (curPre.xw i + 1)
+          (evalRowX (qs := qs) (initSignedLayoutState x z k) (σ i) b) :=
+      hpre.1 i
+
+    have hprele :
+        curPre.xw i ≤ (scanNeededWidths x z ops).xneed i := by
+      simpa [curPre, cur0] using
+        prefix_foldl_updateWidthState_x_le_scanNeeded
+          (x := x) (z := z)
+          (ops := ops) (pre := pre) (rest := rest)
+          (i := i) hops
+
     rw [targetSignedLayoutState_xslot_width_scan x z ops i]
-    apply FitsSignedWidth_mono
-    have hprele :=
-      prefix_foldl_updateWidthState_x_le_scanNeeded x z ops pre rest i hops
-    have hW := commonNeededWidth_ge_xneed (scanNeededWidths x z ops) i
-    omega
-    simp_all
-    have hprele :
-    curPre.xw i ≤ (scanNeededWidths x z (pre ++ rest)).xneed i := by
-      simpa [curPre, cur0, hops] using
-        (prefix_foldl_updateWidthState_x_le_scanNeeded
-          (x := x) (z := z) (ops := ops) (pre := pre) (rest := rest) (i := i) hops)
 
-    exact FitsSignedWidth_mono (by omega) hfitPre
+    exact FitsSignedWidth_mono
+      (by
+        have hW :=
+          commonNeededWidth_ge_xneed (scanNeededWidths x z ops) i
+        omega)
+      hfitPre
+
   · intro i
-    have hfitPre := hpre.2 i
-    rw [targetSignedLayoutState_zslot_width_scan x z ops i]
-    apply FitsSignedWidth_mono
-    have hprele :=
-      prefix_foldl_updateWidthState_z_le_scanNeeded x z ops pre rest i hops
-    have hW := commonNeededWidth_ge_zneed (scanNeededWidths x z ops) i
-    omega
-    have hprele :
-    curPre.zw i ≤ (scanNeededWidths x z (pre ++ rest)).zneed i := by
-      simpa [curPre, cur0, hops] using
-        (prefix_foldl_updateWidthState_z_le_scanNeeded
-          (x := x) (z := z) (ops := ops) (pre := pre) (rest := rest) (i := i) hops)
+    have hfitPre :
+        FitsSignedWidth (curPre.zw i + 1)
+          (evalRowZ (qs := qs) (initSignedLayoutState x z k) (σ i) b) :=
+      hpre.2 i
 
-    exact FitsSignedWidth_mono (by rw[hops];omega) hfitPre
+    have hprele :
+        curPre.zw i ≤ (scanNeededWidths x z ops).zneed i := by
+      simpa [curPre, cur0] using
+        prefix_foldl_updateWidthState_z_le_scanNeeded
+          (x := x) (z := z)
+          (ops := ops) (pre := pre) (rest := rest)
+          (i := i) hops
+
+    rw [targetSignedLayoutState_zslot_width_scan x z ops i]
+
+    exact FitsSignedWidth_mono
+      (by
+        have hW :=
+          commonNeededWidth_ge_zneed (scanNeededWidths x z ops) i
+        omega)
+      hfitPre
