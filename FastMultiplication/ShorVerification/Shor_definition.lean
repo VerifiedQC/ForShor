@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.LowGate_compilation
+import FastMultiplication.ShorVerification.QFT_decomposition
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic

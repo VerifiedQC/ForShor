@@ -6,8 +6,25 @@ import Mathlib.Tactic
 universe u
 namespace Shor
 
+/-!
+# Shor verification core
+
+This file contains the foundational register model, abstract gate language,
+semantic interfaces, and the modular-exponentiation error-propagation skeleton.
+
+The order is mostly dependency-driven:
+
+1. Ordinary register structure and basis encodings.
+2. Extended-register interpretation and two's-complement helpers.
+3. Gate language and derived gate macros.
+4. Abstract quantum semantics.
+5. Gate-specific semantic fact classes.
+6. General evaluation, norm, and overlap lemmas.
+7. Modular multiplication / exponentiation circuits and error bounds.
+-/
+
 /-! =========================================================
-    Section 1: Registers and basic encodings
+    Section 1: Ordinary registers, intervals, and splitting
 ========================================================= -/
 
 structure Reg where
@@ -110,7 +127,11 @@ theorem splitLeft_splitRight_disjoint (r : Reg) (m : SplitPoint r) :
   unfold Disjoint splitLeft splitRight Reg.hi
   simp
 
-/-- Basis-level encoding interface for ordinary registers. -/
+/--
+`RegEncoding` is the basis-level interface for ordinary finite registers.
+It specifies reads, writes, bit observations, register extensionality, and
+split/register-locality laws used throughout later semantic proofs.
+-/
 class RegEncoding (Basis : Type u) where
   toNat    : Reg → Basis → ℕ
   writeNat : Reg → ℕ → Basis → Basis
@@ -173,6 +194,10 @@ class RegEncoding (Basis : Type u) where
       toNat r b =
         toNat left b + (ASize left) * toNat right b
 
+/-! =========================================================
+    Section 2: Register-encoding lemmas and extended registers
+========================================================= -/
+
 /-- A register together with a semantic high-bit extension budget. -/
 structure ExtReg where
   base  : Reg
@@ -203,9 +228,6 @@ def addExtra (e : ExtReg) (n : ℕ) : ExtReg :=
   omega
 
 end ExtReg
-/-! =========================================================
-    Section 2: Encoding lemmas and register helpers
-========================================================= -/
 
 /-- Writes to disjoint registers commute. -/
 lemma writeNat_comm_of_disjoint
@@ -308,7 +330,6 @@ lemma writeNat_comm_of_disjoint
         _   = RegEncoding.bit q (RegEncoding.writeNat right yR (RegEncoding.writeNat left yL b)) := by
               simp [outR₂]
 
-
 /-- Width-based two's-complement decoding. -/
 def tcDecodeWidth : ℕ → ℕ → ℤ
   | 0, _ => 0
@@ -318,6 +339,11 @@ def tcDecodeWidth : ℕ → ℕ → ℤ
       else
         (n : ℤ) - ((2^(w + 1) : ℕ) : ℤ)
 
+/--
+`ExtRegEncoding` interprets an `ExtReg` as a wider two's-complement view of
+its base register. The extra width is semantic; layout correctness is handled
+by compiler-level invariants using this interface.
+-/
 class ExtRegEncoding (Basis : Type u) [RegEncoding Basis] where
   extToNat : ExtReg → Basis → ℕ
 
@@ -342,7 +368,6 @@ class ExtRegEncoding (Basis : Type u) [RegEncoding Basis] where
 
 namespace ExtReg
 
-
 /-- Read an extended register as a natural number. -/
 def toNat {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis] (e : ExtReg) (b : Basis) : ℕ :=
   ExtRegEncoding.extToNat e b
@@ -355,12 +380,12 @@ def toNat {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis] (e : ExtRe
 end ExtReg
 
 namespace ExtRegEncoding
+
 variable {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
 
 /-- Signed interpretation of an extended register via two's-complement decoding. -/
 def extToInt (e : ExtReg) (b : Basis) : ℤ :=
   tcDecodeWidth (ExtReg.width e) (ExtReg.toNat e b)
-
 
 lemma tcDecodeWidth_inj_of_lt
   {w n1 n2 : ℕ}
@@ -406,7 +431,6 @@ lemma tcDecodeWidth_inj_of_lt
             simpa [tcDecodeWidth, hs1, hs2] using h
           exact_mod_cast h'
 
-
 lemma bit_eq_of_toNat_eq_on_reg
   {Basis : Type u} [RegEncoding Basis]
   {r : Reg} {b1 b2 : Basis} {q : ℕ}
@@ -425,7 +449,6 @@ lemma bit_eq_of_toNat_eq_on_reg
             rw [hNat]
     _   = RegEncoding.bit q b2 := by
             rw [RegEncoding.writeNat_toNat]
-
 
 lemma hbit_of_ext
   {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
@@ -461,9 +484,14 @@ lemma hbit_of_ext
 end ExtRegEncoding
 
 /-! =========================================================
-    Section 4: Gate language
+    Section 3: Gate language and derived gate macros
 ========================================================= -/
 
+/--
+Abstract gate language used by the verification layer. Low-level gates such
+as `Prim` coexist with structured arithmetic, QFT, phase-product, extension,
+and deallocation gates.
+-/
 inductive Gate : Type
   | id : Gate
   | seq : Gate → Gate → Gate
@@ -484,12 +512,10 @@ inductive Gate : Type
   | zeroDealloc : (r : ExtReg) → (n : ℕ) → Gate
   | signDealloc : (r : ExtReg) → (n : ℕ) → Gate
 
-
 def radixReverseIndex (r : Reg) (m : ℕ) (hm : m ≤ regSize r) (kL kH : ℕ) : ℕ :=
   let sp : SplitPoint r := ⟨m, hm⟩
   let right := splitRight r sp
   (ASize right) * kL + kH
-
 
 namespace Gate
 
@@ -518,7 +544,7 @@ def CPhaseProd
 end Gate
 
 /-! =========================================================
-    Section 5: Core QFT phase helpers
+    Section 4: QFT phase helpers
 ========================================================= -/
 
 /-- Standard QFT phase schedule. -/
@@ -537,9 +563,13 @@ noncomputable def qftPhase (N x y : ℕ) : ℂ :=
   ωPow N (x * y)
 
 /-! =========================================================
-    Section 6: Abstract quantum semantics
+    Section 5: Abstract quantum semantics
 ========================================================= -/
 
+/--
+Abstract Hilbert-space semantics for gates. The semantic facts below add
+constructor-specific behavior on top of this linear/isometric interface.
+-/
 class QSemantics where
   Basis : Type u
   State : Type u
@@ -586,14 +616,14 @@ class QSemantics where
 
   ket_inj : Function.Injective ket
 
-
 open QSemantics
 attribute [instance] QSemantics.instNormed
 attribute [instance] QSemantics.instIP
 
 /-! =========================================================
-    Section 7: Gate semantic facts
+    Section 6: Two's-complement modular arithmetic helpers
 ========================================================= -/
+
 def tcModWidth (w : ℕ) (z : ℤ) : ℕ :=
   Int.toNat (z % ((2^w : ℕ) : ℤ))
 
@@ -608,10 +638,6 @@ def signedHi (w : ℕ) : ℤ :=
 
 def tcModExt (e : ExtReg) (z : ℤ) : ℕ :=
   tcModWidth (ExtReg.width e) z
-/-! =========================================================
-    Section 7: Gate semantic facts (split by topic)
-========================================================= -/
-
 
 def signedMin (w : ℕ) : ℤ :=
   -(((2^(w-1) : ℕ) : ℤ))
@@ -645,9 +671,11 @@ lemma FitsSignedWidth_mono
   ·
     exact lt_of_lt_of_le hhi hPow
 
-/-- Wrap is the identity on values that already fit the target signed width.
-    This is the bridge from the raw symbolic arithmetic semantics to the
-    wrapped machine-level gate semantics. -/
+/--
+Wrap is the identity on values that already fit the target signed width.
+This bridges raw symbolic integer arithmetic to wrapped machine-level gate
+semantics.
+-/
 lemma tcWrapInt_eq_of_fits
   {w : ℕ} {z : ℤ}
   (hw : 0 < w)
@@ -719,6 +747,10 @@ lemma tcWrapInt_eq_of_fits
     have hcast : ((2 ^ (w' + 1) : ℕ) : ℤ) = M := by push_cast; rfl
     ring
 
+/-! =========================================================
+    Section 7: Gate-specific semantic fact classes
+========================================================= -/
+
 /-- QFT-specific semantic facts. -/
 class QFTSemantics
   (qs : QSemantics)
@@ -743,6 +775,8 @@ class QFTSemantics
         ∑ y : Fin (2^(regSize r)),
           (qftPhase (2^(regSize r)) (RegEncoding.toNat r b) y.1) •
             qs.ket (RegEncoding.writeNat r y.1 b)
+
+
 
 class RadixReverseSemantics
   (qs : QSemantics)
@@ -831,11 +865,6 @@ class ExtensionSemantics
     ∀ r n ψ,
       qs.eval (Gate.signExtend r n ;; Gate.signDealloc r n) ψ = ψ
 
-  extToNat_lt_width :
-    ∀ (e : ExtReg) (b : qs.Basis),
-      ExtRegEncoding.extToNat e b < 2 ^ (ExtReg.width e)
-
-
 lemma tcDecodeWidth_succ_eq_of_lt {w n : ℕ} (h : n < 2 ^ w) :
   tcDecodeWidth (w + 1) n = (n : ℤ) := by
   simp [tcDecodeWidth, h]
@@ -864,7 +893,7 @@ lemma zeroExtend_extToInt
 
   have hlt0 : ExtReg.toNat r b < 2 ^ (ExtReg.width r) := by
     simpa [ExtReg.toNat] using
-      ExtensionSemantics.extToNat_lt_width (qs := qs) (e := r) (b := b)
+      ExtRegEncoding.extToNat_lt (Basis := qs.Basis) (e := r) (b := b)
 
   have hle :
       2 ^ (ExtReg.width r) ≤ 2 ^ (ExtReg.width r + m) := by
@@ -914,8 +943,7 @@ lemma zeroExtend_ofReg_extToInt
   unfold ExtRegEncoding.extToNat
   simp [ExtReg.width, ExtReg.ofReg, regSize]
   have hlt :=
-    ExtensionSemantics.extToNat_lt_width
-      (qs := qs) (e := ExtReg.ofReg r) (b := b)
+    ExtRegEncoding.extToNat_lt (Basis := qs.Basis) (e := ExtReg.ofReg r) (b := b)
   simp [ExtReg.width, ExtReg.ofReg, regSize] at hlt
   have hpow :
       RegEncoding.toNat r b < 2 ^ (regSize r + m) := by
@@ -935,7 +963,6 @@ lemma zeroExtend_ofReg_extToInt
   rw[← htc]
   unfold RegEncoding.toNat
   congr
-
 
 lemma zeroExtend_preserves_disjoint_extToInt
   (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [ExtensionSemantics qs]
@@ -974,7 +1001,6 @@ lemma signExtend_preserves_disjoint_extToInt
     | inr h => exact Or.inl h
   congr 1
   exact hloc e hdisj'
-
 
 /-- Arithmetic-gate semantic facts. -/
 class ArithmeticSemantics
@@ -1045,6 +1071,7 @@ class ArithmeticSemantics
           Disjoint e.base src.base →
           ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b)
 
+/-- Bundled semantic interface for all gate families used in this file. -/
 class GateSemanticsFacts
   (qs : QSemantics)
   [RegEncoding qs.Basis]
@@ -1171,10 +1198,11 @@ theorem eval_PhaseProd_ket
         hz_eval
 
   simp [hx_ext₁, hx_ext₂, hz_ext₂, hz_same]
+
 end GateSemanticsFacts
 
 /-! =========================================================
-    Section 8: General linearity lemmas for `eval`
+    Section 8: General algebraic lemmas for `eval`
 ========================================================= -/
 
 lemma eval_sum {α : Type} [QSemantics] (U : Gate) (s : Finset α) (f : α → QSemantics.State) :
@@ -1202,13 +1230,8 @@ lemma toNat_left_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
     (RegEncoding.toNat_left_write_right
       (left := left) (right := right) (Basis:=QSemantics.Basis) (b := b) (yR := yR) h)
 
--- lemma toNat_right_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
---   (right : Reg) (b : QSemantics.Basis) (yR : ℕ) :
---   RegEncoding.toNat right (RegEncoding.writeNat right yR b) = yR := by
---   simpa using (RegEncoding.toNat_writeNat right yR b)
-
 /-! =========================================================
-    Section 10: Norm and overlap inequalities
+    Section 10: Norm, isometry, and overlap inequalities
 ========================================================= -/
 
 /-- `eval U` is an isometry if it preserves inner products. -/
@@ -1302,7 +1325,7 @@ lemma dist_le_sqrt_two_mul_overlap
   exact hmain
 
 /-! =========================================================
-    Section 11: Specification interface
+    Section 11: Ideal specification interface
 ========================================================= -/
 
 class Spec where
@@ -1391,7 +1414,10 @@ noncomputable def CmodMulInPlace
 def tbits (x : Reg) : ℕ :=
   regSize x
 
-
+/--
+Approximate controlled modular multiplication assumption used to derive the
+modular-exponentiation error bound.
+-/
 class ModMul (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [Spec] where
   η : ℝ
   η_nonneg : 0 ≤ η
@@ -1414,7 +1440,6 @@ noncomputable def modExpApproxSteps
       (CmodMulInPlaceCore (Basis := qs.Basis) c N (ModMul.k5 (qs := qs) c N) q y w_reg flag) ;;
       modExpApproxSteps qs a N x y w_reg flag (q+1) n
 
-
 noncomputable def modExpApprox'
     (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [Spec] [ModMul qs]
     (a N : ℕ) (x y w_reg : Reg) (flag : ℕ) : Gate :=
@@ -1432,7 +1457,8 @@ def modExpIdeal' (qs : QSemantics) [RegEncoding qs.Basis] [Spec]
     (a N : ℕ) (x y : Reg) : Gate :=
   modExpIdealSteps qs a N x y x.lo (tbits x)
 
-noncomputable def stepErr (K η : ℝ) : ℝ := Real.sqrt (2 * (K * η))
+noncomputable def stepErr (K η : ℝ) : ℝ :=
+  Real.sqrt (2 * (K * η))
 
 /-! =========================================================
     Section 13: Modular exponentiation error propagation
@@ -1643,7 +1669,5 @@ by
     le_trans hov_le_dist hdist'
 
   simpa [stepErr] using this
-
-
 
 end Shor

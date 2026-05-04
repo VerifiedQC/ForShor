@@ -4,8 +4,27 @@ namespace Shor
 open Gate
 open Operations
 
+/-!
+# Recursive lowering from `Gate` to `LowGate`
+
+This file defines the recursive lowering pass for signed phase products and QFT,
+the semantic interface for interpreting `LowGate`, and the proof infrastructure
+showing that the lowering agrees with the abstract `Gate` semantics on the
+lowerable phase-product fragment.
+
+Main components:
+
+1. Recursive lowering definitions.
+2. Low-level semantic interface.
+3. Lowerability predicates for recursive phase-product lowering.
+4. `SignedPhaseProdOK`, the side condition needed for recursive phase-product nodes.
+5. Strong induction proof for `lowerGateRec`.
+6. Bridge lemmas for the generated interpolation point set.
+7. Final correctness lemmas for lowered signed and unsigned phase products.
+-/
+
 /-! =========================================================
-    Section 15: Lowering helpers
+    Section 1: Recursive lowering definitions
 ========================================================= -/
 
 /-- Controlled signed phase lowering currently stays at the naive low-level node. -/
@@ -15,19 +34,22 @@ def lowerCSignedPhaseProd
 
 /-- Recursively lower a gate into the low-level language using a size cutoff. -/
 noncomputable def lowerGateRec
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
   (initSize : ℕ) (k : ℕ) (hk : 1 < k)
   (pts : List Point)
   (hpts : List.length pts = q k)
-  (ops : Prog k)
-  :
+  (ops : Prog k) :
   Gate → LowGate
   | Gate.id => LowGate.id
   | Gate.seq U V =>
       LowGate.seq
-        (lowerGateRec initSize k hk pts hpts ops U)
-        (lowerGateRec initSize k hk pts hpts ops V)
+        (lowerGateRec (Basis := Basis) initSize k hk pts hpts ops U)
+        (lowerGateRec (Basis := Basis) initSize k hk pts hpts ops V)
   | Gate.adj U =>
-      LowGate.adj (lowerGateRec initSize k hk pts hpts ops U)
+      LowGate.adj (lowerGateRec (Basis := Basis) initSize k hk pts hpts ops U)
   | Gate.H q => LowGate.H q
   | Gate.X q => LowGate.X q
   | Gate.Prim s qs => LowGate.Prim s qs
@@ -39,11 +61,14 @@ noncomputable def lowerGateRec
   | Gate.QFT r =>
       LowGate.Prim "QFT" [r.lo, r.hi]
   | Gate.SignedPhaseProd phi x z =>
-      let W := nextSignedWidth x z ops
-      if _hrec : W < initSize then
-        let coeff := phaseCoeffFromPtsWidth k W pts hpts
-        let g := compileOpsToSignedGate k hk phi x z coeff ops
-        lowerGateRec W k hk pts hpts ops g
+      let Wrec := nextSignedWidth x z ops
+      if _hrec : Wrec < initSize then
+        let Wphase := phaseLimbWidth x z k
+        let coeff := phaseCoeffFromPtsWidth k Wphase pts hpts
+        let g :=
+          compileOpsToSignedGate
+            (Basis := Basis) k hk phi x z coeff ops
+        lowerGateRec (Basis := Basis) Wrec k hk pts hpts ops g
       else
         LowGate.Naive_SignedPhaseProd phi x z
   | Gate.CSignedPhaseProd ctrl phi x z =>
@@ -70,48 +95,49 @@ def alternatingPoint (i : ℕ) : Point :=
 def genInterpolationPoints (k : ℕ) : List Point :=
   (List.range (2 * k - 1)).map alternatingPoint
 
-
-
 /-- Lower a signed phase product by interpolation-based decomposition. -/
 noncomputable def lowerSignedPhaseProd
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
   (k : ℕ) (hk : 1 < k) (phi : ℝ) (x z : ExtReg) (ops : Prog k) :=
   let pts := genInterpolationPoints k
   let hpts : pts.length = q k := by
     simp [pts, genInterpolationPoints, q]
-  let W := nextSignedWidth x z ops
-  if _hrec : W < phaseInputSize x z then
-    let coeff := phaseCoeffFromPtsWidth k W pts hpts
-    let g := compileOpsToSignedGate k hk phi x z coeff ops
-    lowerGateRec W k hk pts hpts ops g
+  let Wrec := nextSignedWidth x z ops
+  if _hrec : Wrec < phaseInputSize x z then
+    let Wphase := phaseLimbWidth x z k
+    let coeff := phaseCoeffFromPtsWidth k Wphase pts hpts
+    let g :=
+      compileOpsToSignedGate
+        (Basis := Basis) k hk phi x z coeff ops
+    lowerGateRec (Basis := Basis) Wrec k hk pts hpts ops g
   else
     LowGate.Naive_SignedPhaseProd phi x z
 
 /-- Lower an unsigned phase product by interpolation-based decomposition. -/
 noncomputable def lowerPhaseProd
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
   (k : ℕ) (hk : 1 < k) (phi : ℝ) (x z : Reg) (ops : Prog k) :=
   let pts := genInterpolationPoints k
   let hpts : pts.length = q k := by
-    simp [pts,genInterpolationPoints, q]
+    simp [pts, genInterpolationPoints, q]
   let op1 := Gate.PhaseProd phi x z
   lowerGateRec
+    (Basis := Basis)
     (phaseInputSize (Gate.unsignedView x) (Gate.unsignedView z))
     k hk pts hpts ops op1
 
--- /-- Recursive QFT lowering on a register of known size. -/
--- noncomputable def lowerQFTAux (k : ℕ) (hk : 1 < k) (ops: Prog k): ℕ → Reg → LowGate
---   | 0,   _ => .id
---   | 1,   r => .H r.lo
---   | n+2, r =>
---       let nTot : ℕ := n + 2
---       let m : ℕ := nTot / 2
---       let left  : Reg := ⟨r.lo, r.lo + m⟩
---       let right : Reg := ⟨r.lo + m, r.hi⟩
---       (lowerQFTAux k hk ops m left) ;;
---       (lowerPhaseProd k hk (qftPhi nTot) left right ops) ;;
---       (lowerQFTAux k hk ops (nTot - m) right);;
---       (LowGate.RadixReverse r m)
-
-noncomputable def lowerQFTAux (k : ℕ) (hk : 1 < k) (ops : Prog k) : ℕ → Reg → LowGate
+noncomputable def lowerQFTAux
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
+  (k : ℕ) (hk : 1 < k) (ops : Prog k) : ℕ → Reg → LowGate
   | 0,   _ => .id
   | 1,   r => .H r.lo
   | n+2, r =>
@@ -119,25 +145,36 @@ noncomputable def lowerQFTAux (k : ℕ) (hk : 1 < k) (ops : Prog k) : ℕ → Re
       let m : ℕ := nTot / 2
       let left  : Reg := { lo := r.lo, size := m }
       let right : Reg := { lo := r.lo + m, size := regSize r - m }
-      (lowerQFTAux k hk ops (nTot - m) right) ;;
-      (lowerPhaseProd k hk (qftPhi nTot) left right ops) ;;
-      (lowerQFTAux k hk ops m left) ;;
+      (lowerQFTAux (Basis := Basis) k hk ops (nTot - m) right) ;;
+      (lowerPhaseProd (Basis := Basis) k hk (qftPhi nTot) left right ops) ;;
+      (lowerQFTAux (Basis := Basis) k hk ops m left) ;;
       (LowGate.RadixReverse r m)
 
-/-- Lower a full QFT gate. -/
-noncomputable def lowerQFT (k : ℕ) (hk : 1 < k) (r : Reg) (ops: Prog k): LowGate :=
-  lowerQFTAux k hk ops (regSize r) r
+noncomputable def lowerQFT
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
+  (k : ℕ) (hk : 1 < k) (r : Reg) (ops : Prog k) : LowGate :=
+  lowerQFTAux (Basis := Basis) k hk ops (regSize r) r
 
 /-- Global lowering function from `Gate` to `LowGate`. -/
-noncomputable def lowerGate (k : ℕ) (hk : 1 < k) (ops: Prog k): Gate → LowGate
+noncomputable def lowerGate
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
+  (k : ℕ) (hk : 1 < k) (ops : Prog k) : Gate → LowGate
   | .id => .id
-  | .seq U V => (lowerGate k hk ops U ) ;; (lowerGate k hk ops V)
-  | .adj U => †(lowerGate k hk ops U)
+  | .seq U V =>
+      (lowerGate (Basis := Basis) k hk ops U) ;;
+      (lowerGate (Basis := Basis) k hk ops V)
+  | .adj U => †(lowerGate (Basis := Basis) k hk ops U)
   | .H q => .H q
   | .X q => .X q
-  | .QFT r => lowerQFT k hk r ops
+  | .QFT r => lowerQFT (Basis := Basis) k hk r ops
   | .SignedPhaseProd p x z =>
-      lowerSignedPhaseProd k hk p x z ops
+      lowerSignedPhaseProd (Basis := Basis) k hk p x z ops
   | .CSignedPhaseProd c p x z =>
       LowGate.Naive_CSignedPhaseProd c p x z
   | .Prim tag args => .Prim tag args
@@ -147,12 +184,20 @@ noncomputable def lowerGate (k : ℕ) (hk : 1 < k) (ops: Prog k): Gate → LowGa
   | .Negate r => .Negate r
   | Gate.zeroExtend r n => LowGate.zeroExtend r n
   | Gate.signExtend r n => LowGate.signExtend r n
-  | Gate.zeroDealloc r n =>  LowGate.zeroDealloc r n
+  | Gate.zeroDealloc r n => LowGate.zeroDealloc r n
   | Gate.signDealloc r n => LowGate.signDealloc r n
   | Gate.RadixReverse r m => LowGate.RadixReverse r m
 
-/-- Semantics of the low-level target language. -/
-class LowerGateClass (qs : QSemantics) [RegEncoding qs.Basis] : Type where
+/-! =========================================================
+    Section 2: Low-level semantic interface
+========================================================= -/
+
+class LowerGateClass
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [ExtRegSplitSemantics qs.Basis] : Type where
+
   evalL : LowGate → qs.State → qs.State
 
   evalL_id :
@@ -202,8 +247,8 @@ class LowerGateClass (qs : QSemantics) [RegEncoding qs.Basis] : Type where
         = qs.eval (Gate.CSignedPhaseProd c p x z) ψ
 
   evalL_adj_of_lowered :
-    ∀ (k : ℕ) (hk : 1 < k) (U : Gate) (ψ : qs.State) (ops: Prog k),
-      evalL (†(lowerGate k hk ops U)) ψ = qs.eval (†U) ψ
+    ∀ (k : ℕ) (hk : 1 < k) (U : Gate) (ψ : qs.State) (ops : Prog k),
+      evalL (†(lowerGate (Basis := qs.Basis) k hk ops U)) ψ = qs.eval (†U) ψ
 
   evalL_zeroExtend :
     ∀ r n ψ,
@@ -225,10 +270,13 @@ class LowerGateClass (qs : QSemantics) [RegEncoding qs.Basis] : Type where
     ∀ r m ψ,
       evalL (LowGate.RadixReverse r m) ψ = qs.eval (Gate.RadixReverse r m) ψ
 
-
 namespace LowerGateClass
 
-variable {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass qs]
+variable {qs : QSemantics}
+variable [RegEncoding qs.Basis]
+variable [ExtRegEncoding qs.Basis]
+variable [ExtRegSplitSemantics qs.Basis]
+variable [LowerGateClass qs]
 
 theorem evalL_naive_phaseProd
   (p : ℝ) (x z : ExtReg) (ψ : qs.State) :
@@ -236,7 +284,6 @@ theorem evalL_naive_phaseProd
     =
   qs.eval (Gate.SignedPhaseProd p x z) ψ := by
   simp[(LowerGateClass.evalL_naive_signedPhaseProd (qs := qs) (p := p))]
-
 
 theorem evalL_naive_cphaseProd
   (c : ℕ) (p : ℝ) (x z : ExtReg) (ψ : qs.State) :
@@ -246,34 +293,44 @@ theorem evalL_naive_cphaseProd
   simp[(LowerGateClass.evalL_naive_csignedPhaseProd (qs := qs) (c := c) (p := p))]
 
 end LowerGateClass
+
 /-! =========================================================
-    Section 9: Basic simplification lemmas for lowering
+    Section 3: Basic simplification lemmas for lowering
 ========================================================= -/
 
 namespace LowGate
 
+variable {Basis : Type u}
+variable [RegEncoding Basis]
+variable [ExtRegEncoding Basis]
+variable [ExtRegSplitSemantics Basis]
+
 variable (k : ℕ) (hk : 1 < k)
 
-/-- Simplification rule for lowering the identity gate. -/
-@[simp] lemma lowerGate_id (ops: Prog k): lowerGate k hk ops Gate.id = (LowGate.id) := rfl
+@[simp] lemma lowerGate_id (ops : Prog k) :
+    lowerGate (Basis := Basis) k hk ops Gate.id = LowGate.id := rfl
 
-/-- Simplification rule for lowering sequential composition. -/
-@[simp] lemma lowerGate_seq (U V : Gate) (ops: Prog k):
-    lowerGate k hk ops (U ;; V) = (lowerGate k hk ops U) ;; (lowerGate k hk ops V) := by
+@[simp] lemma lowerGate_seq (U V : Gate) (ops : Prog k) :
+    lowerGate (Basis := Basis) k hk ops (U ;; V)
+      =
+    (lowerGate (Basis := Basis) k hk ops U) ;;
+    (lowerGate (Basis := Basis) k hk ops V) := by
   simp [lowerGate]
 
-/-- Simplification rule for lowering adjoints. -/
-@[simp] lemma lowerGate_adj (U : Gate) (ops: Prog k):
-    lowerGate k hk ops (†U) = †(lowerGate k hk ops U) := rfl
+@[simp] lemma lowerGate_adj (U : Gate) (ops : Prog k) :
+    lowerGate (Basis := Basis) k hk ops (†U)
+      =
+    †(lowerGate (Basis := Basis) k hk ops U) := rfl
 
-/-- Simplification rule for lowering QFT. -/
-@[simp] lemma lowerGate_QFT (r : Reg) (ops: Prog k):
-    lowerGate k hk ops (Gate.QFT r) = lowerQFT k hk r  ops:= rfl
+@[simp] lemma lowerGate_QFT (r : Reg) (ops : Prog k) :
+    lowerGate (Basis := Basis) k hk ops (Gate.QFT r)
+      =
+    lowerQFT (Basis := Basis) k hk r ops := rfl
+
 end LowGate
 
-
 /-! =========================================================
-    Section 16: Lowerable phase-gate fragment
+    Section 4: Lowerable phase-gate fragment
 ========================================================= -/
 
 /-- Gates that can appear during recursive phase-product lowering. -/
@@ -335,8 +392,6 @@ inductive LowerablePhaseGate : Gate → Prop where
       ∀ (r : ExtReg) (n : ℕ),
         LowerablePhaseGate (Gate.signDealloc r n)
 
-
-
 namespace LowerablePhaseGate
 
 @[simp] theorem not_adj (U : Gate) : ¬ LowerablePhaseGate (Gate.adj U) := by
@@ -384,7 +439,7 @@ namespace LowerablePhaseGate
 end LowerablePhaseGate
 
 /-! =========================================================
-    Section 17: Lowerability of compiled signed op lists
+    Section 5: Lowerability of compiled signed op lists
 ========================================================= -/
 
 lemma lowerable_allocChunkGate
@@ -433,13 +488,11 @@ lemma lowerable_compileSignedAllocationsAux
           (LowerablePhaseGate.seq _ _ hx hz)
       simpa [hk', i] using hseq
 
-
 lemma lowerable_compileSignedAllocations
   (k : ℕ) (src dst : LayoutState k) :
   LowerablePhaseGate (compileSignedAllocations k src dst) := by
   unfold compileSignedAllocations
   simpa using lowerable_compileSignedAllocationsAux (src := src) (dst := dst) k le_rfl
-
 
 lemma lowerable_compileSignedDeallocationsAux
   {k : ℕ} (src dst : LayoutState k) :
@@ -498,43 +551,64 @@ lemma lowerable_compileAnnotatedOpsToSignedGateAux
           LowerablePhaseGate.AddScaled,
           LowerablePhaseGate.SignedPhaseProd]
 
-@[simp] lemma lowerGate_PP (p : ℝ) (x z : Reg) (ops : Prog k) :
-    lowerGate k hk ops (Gate.PhaseProd p x z) = lowerPhaseProd k hk p x z ops := by
+@[simp] lemma lowerGate_PP
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
+  (p : ℝ) (x z : Reg) (ops : Prog k) :
+    lowerGate (Basis := Basis) k hk ops (Gate.PhaseProd p x z)
+      =
+    lowerPhaseProd (Basis := Basis) k hk p x z ops := by
   simp [lowerGate, lowerPhaseProd, lowerSignedPhaseProd, lowerGateRec, Gate.PhaseProd]
 
-/-! =========================================================
-    Section 17: Lowerability of compiled signed op lists
-========================================================= -/
-
+@[simp] lemma lowerGate_SPP
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
+  (p : ℝ) (x z : ExtReg) (ops : Prog k) :
+    lowerGate (Basis := Basis) k hk ops (Gate.SignedPhaseProd p x z)
+      =
+    lowerSignedPhaseProd (Basis := Basis) k hk p x z ops := by
+  simp [lowerGate, lowerSignedPhaseProd]
 
 lemma lowerable_compileOpsToSignedGate
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
   (k : ℕ) (hk : 1 < k) (phi : ℝ)
-  (x z : ExtReg) (pts : List Point) (hpts : pts.length = q k)
+  (x z : ExtReg)
+  (coeff : Fin (q k) → ℚ)
   (ops : List (valid_ops k)) :
-  let W := commonNeededWidth (scanNeededWidths x z ops)
-  let coeff := phaseCoeffFromPtsWidth k W pts hpts
   LowerablePhaseGate
-    (compileOpsToSignedGate k hk phi x z coeff ops) := by
+    (compileOpsToSignedGate (Basis := Basis) k hk phi x z coeff ops) := by
   dsimp [compileOpsToSignedGate]
   refine LowerablePhaseGate.seq _ _ ?_ ?_
   · exact
       lowerable_compileSignedAllocations
         k
-        (initSignedLayoutState x z k)
-        (targetSignedLayoutState x z k (scanNeededWidths x z ops))
+        (initSignedLayoutState (Basis := Basis) x z k)
+        (targetSignedLayoutState
+          (Basis := Basis) x z k (scanNeededWidths x z ops))
   · refine LowerablePhaseGate.seq _ _ ?_ ?_
     · exact
         lowerable_compileAnnotatedOpsToSignedGateAux
-          k hk phi
-          (phaseCoeffFromPtsWidth k
-            (commonNeededWidth (scanNeededWidths x z ops)) pts hpts)
-          (targetSignedLayoutState x z k (scanNeededWidths x z ops))
+          k hk phi coeff
+          (targetSignedLayoutState
+            (Basis := Basis) x z k (scanNeededWidths x z ops))
           (annotatePhaseTermsAux k 0 ops)
     · exact
         lowerable_compileSignedDeallocations
           k
-          (initSignedLayoutState x z k)
-          (targetSignedLayoutState x z k (scanNeededWidths x z ops))
+          (initSignedLayoutState (Basis := Basis) x z k)
+          (targetSignedLayoutState
+            (Basis := Basis) x z k (scanNeededWidths x z ops))
+
+/-! =========================================================
+    Section 6: Signed phase-product side condition
+========================================================= -/
 
 /-- Extra recursive side-condition needed only for signed phase-product nodes. -/
 def SignedPhaseProdOK : Gate → Prop
@@ -550,21 +624,13 @@ def SignedPhaseProdOK : Gate → Prop
   | Gate.AddScaled _ _ _ _ => True
   | Gate.QFT _ => False
   | Gate.SignedPhaseProd _ x z =>
-      Disjoint x.base z.base ∧ WellFormedReg x.base ∧ WellFormedReg z.base
+      Disjoint x.base z.base
   | Gate.CSignedPhaseProd _ _ _ _ => False
   | Gate.zeroExtend _ _ => True
   | Gate.signExtend _ _ => True
   | Gate.zeroDealloc _ _ => True
   | Gate.signDealloc _ _ => True
   | Gate.RadixReverse _ _ => True
-
-
-lemma wellFormed_layout_slot {k : ℕ} (r : Reg) (i : Fin k) (hr : WellFormedReg r) :
-  WellFormedReg ((layoutOfReg r k).slot i) := by
-  rcases slot_subset_base r i hr with ⟨hlo, hhi⟩
-  unfold WellFormedReg at *
-  dsimp [layoutOfReg] at hlo hhi ⊢
-  omega
 
 lemma signedPhaseProdOK_allocChunkGate
   {k : ℕ} (i : Fin k) (src dst : ExtReg) :
@@ -644,9 +710,7 @@ lemma signedPhaseProdOK_compileAnnotatedOpsToSignedGateAux
   (phaseCoeff : Fin (q k) → ℚ)
   (st : LayoutState k)
   (ops : List (AnnotatedOp k))
-  (hdisj : ∀ i : Fin k, Disjoint (st.xslot i).base (st.zslot i).base)
-  (hwfx : ∀ i : Fin k, WellFormedReg (st.xslot i).base)
-  (hwfz : ∀ i : Fin k, WellFormedReg (st.zslot i).base) :
+  (hdisj : ∀ i : Fin k, Disjoint (st.xslot i).base (st.zslot i).base) :
   SignedPhaseProdOK (compileAnnotatedOpsToSignedGateAux k hk phi phaseCoeff st ops) := by
   induction ops with
   | nil =>
@@ -668,26 +732,27 @@ lemma signedPhaseProdOK_compileAnnotatedOpsToSignedGateAux
             | none =>
                 simp [compileAnnotatedOpsToSignedGateAux, ih]
             | some l =>
-                simp [compileAnnotatedOpsToSignedGateAux, SignedPhaseProdOK, ih, hdisj i, hwfx i, hwfz i]
+                simp [compileAnnotatedOpsToSignedGateAux, SignedPhaseProdOK, ih, hdisj i]
 
-/-- Compiled signed gates preserve the SignedPhaseProdOK invariant. -/
 lemma signedPhaseProdOK_compileOpsToSignedGate
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
   (k : ℕ) (hk : 1 < k)
   (phi : ℝ) (x z : ExtReg)
-  (pts : List Point) (hpts : pts.length = q k)
+  (coeff : Fin (q k) → ℚ)
   (ops : Prog k)
-  (hxz : Disjoint x.base z.base)
-  (hxwf : WellFormedReg x.base)
-  (hzwf : WellFormedReg z.base) :
+  (hxz : Disjoint x.base z.base) :
   SignedPhaseProdOK
-    (compileOpsToSignedGate k hk phi x z
-      (phaseCoeffFromPtsWidth k (nextSignedWidth x z ops) pts hpts) ops) := by
+    (compileOpsToSignedGate (Basis := Basis) k hk phi x z coeff ops) := by
   unfold compileOpsToSignedGate
-  dsimp [nextSignedWidth]
 
   let need : NeededWidths k := scanNeededWidths x z ops
-  let stInit : LayoutState k := initSignedLayoutState x z k
-  let stFinal : LayoutState k := targetSignedLayoutState x z k need
+  let stInit : LayoutState k :=
+    initSignedLayoutState (Basis := Basis) x z k
+  let stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := Basis) x z k need
   let annOps : List (AnnotatedOp k) := annotatePhaseTermsAux k 0 ops
 
   have hAlloc : SignedPhaseProdOK (compileSignedAllocations k stInit stFinal) := by
@@ -699,34 +764,22 @@ lemma signedPhaseProdOK_compileOpsToSignedGate
   have hdisj :
       ∀ i : Fin k, Disjoint (stFinal.xslot i).base (stFinal.zslot i).base := by
     intro i
-    -- simpa [stFinal, targetSignedLayoutState, withLogicalWidth]
-    --   using layout_slot_disjoint_of_base_disjoint x.base z.base hxz i i hxwf hzwf
-    sorry
-
-  have hwfxslot :
-      ∀ i : Fin k, WellFormedReg (stFinal.xslot i).base := by
-    intro i
-    -- simpa [stFinal, targetSignedLayoutState, withLogicalWidth]
-    --   using wellFormed_layout_slot x.base i hxwf
-    sorry
-  have hwfzslot :
-      ∀ i : Fin k, WellFormedReg (stFinal.zslot i).base := by
-    intro i
-    -- simpa [stFinal, targetSignedLayoutState, withLogicalWidth]
-    --   using wellFormed_layout_slot z.base i hzwf
-    sorry
+    have hsrc :
+        Disjoint
+          ((initSignedLayoutState (Basis := Basis) x z k).xslot i).base
+          ((initSignedLayoutState (Basis := Basis) x z k).zslot i).base := by
+      simpa [initSignedLayoutState] using
+        splitExtReg_disjoint_of_disjoint
+          (Basis := Basis)
+          x z k (phaseLimbWidth x z k) i i hxz
+    simpa [stFinal, targetSignedLayoutState, widenExtRegTo] using hsrc
 
   have hBody :
       SignedPhaseProdOK
         (compileAnnotatedOpsToSignedGateAux
-          k hk phi
-          (phaseCoeffFromPtsWidth k (commonNeededWidth need) pts hpts)
-          stFinal annOps) := by
+          k hk phi coeff stFinal annOps) := by
     exact signedPhaseProdOK_compileAnnotatedOpsToSignedGateAux
-      k hk phi
-      (phaseCoeffFromPtsWidth k (commonNeededWidth need) pts hpts)
-      stFinal annOps
-      hdisj hwfxslot hwfzslot
+      k hk phi coeff stFinal annOps hdisj
 
   simpa [need, stInit, stFinal, annOps, SignedPhaseProdOK] using
     And.intro hAlloc (And.intro hBody hDealloc)
@@ -734,38 +787,45 @@ lemma signedPhaseProdOK_compileOpsToSignedGate
 /-- Unsigned PhaseProd is SignedPhaseProdOK when its registers are disjoint and well formed. -/
 lemma signedPhaseProdOK_PhaseProd
   (p : ℝ) (x z : Reg)
-  (hxz : Disjoint x z)
-  (hxwf : WellFormedReg x)
-  (hzwf : WellFormedReg z) :
+  (hxz : Disjoint x z) :
   SignedPhaseProdOK (Gate.PhaseProd p x z) := by
   unfold Gate.PhaseProd
-  simp [SignedPhaseProdOK, Gate.unsignedView, ExtReg.ofReg, hxz, hxwf, hzwf]
+  simp [SignedPhaseProdOK, Gate.unsignedView, ExtReg.ofReg, hxz]
 
-/-- Strong induction theorem for semantic correctness of `lowerGateRec`,
-    now carrying the recursive SignedPhaseProd side-condition. -/
+/-! =========================================================
+    Section 7: Strong correctness theorem for recursive lowering
+========================================================= -/
+
 lemma evalL_lowerGateRec_strong_of_compile
-  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
-  [LowerGateClass qs] [GateSemanticsFacts qs] :
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [LowerGateClass qs]
+  [GateSemanticsFacts qs] :
   ∀ n,
     ∀ (k : ℕ) (hk : 1 < k)
       (pts : List Point) (hpts : pts.length = q k)
+      (_hInterp : GoodToomCookPoints k pts hpts)
       (ops : Prog k)
       (_hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
       (_run_ops_start_state : run? ops State.start_state = some State.start_state)
       (U : Gate) (_hU : LowerablePhaseGate U) (_hOK : SignedPhaseProdOK U) (ψ : qs.State),
-      LowerGateClass.evalL (lowerGateRec n k hk pts hpts ops U) ψ
+      LowerGateClass.evalL
+          (lowerGateRec (Basis := qs.Basis) n k hk pts hpts ops U) ψ
         =
       qs.eval U ψ := by
   intro n
   induction' n using Nat.strong_induction_on with n IH
-  intro k hk pts hpts ops hC run_ops_start_state U hU hOK ψ
+  intro k hk pts hpts hInterp ops hC run_ops_start_state U hU hOK ψ
   induction hU generalizing ψ with
   | id =>
       simp [lowerGateRec, LowerGateClass.evalL_id, qs.eval_id]
 
   | seq U V hU hV ihU ihV =>
       rcases hOK with ⟨hOKU, hOKV⟩
-      simp [lowerGateRec, LowerGateClass.evalL_seq, qs.eval_seq, ihU hOKU, ihV hOKV]
+      simp [lowerGateRec, LowerGateClass.evalL_seq, qs.eval_seq,
+        ihU hOKU, ihV hOKV]
 
   | H =>
       simp [lowerGateRec, LowerGateClass.evalL_H]
@@ -789,50 +849,68 @@ lemma evalL_lowerGateRec_strong_of_compile
       simp [lowerGateRec, LowerGateClass.evalL_addScaled]
 
   | SignedPhaseProd phi x z =>
-      rcases hOK with ⟨hxz, hxwf, hzwf⟩
+      have hxz : Disjoint x.base z.base := by
+        simp [SignedPhaseProdOK] at hOK
+        simp[hOK]
+
       unfold lowerGateRec
       dsimp
-      let W := nextSignedWidth x z ops
-      by_cases hrec : W < n
-      · simp [W, hrec]
-        let coeff := phaseCoeffFromPtsWidth k W pts hpts
-        let g := compileOpsToSignedGate k hk phi x z coeff ops
+
+      let Wrec : ℕ := nextSignedWidth x z ops
+
+      by_cases hrec : Wrec < n
+      · simp [Wrec, hrec]
+
+        let Wphase : ℕ := phaseLimbWidth x z k
+        let coeff : Fin (q k) → ℚ :=
+          phaseCoeffFromPtsWidth k Wphase pts hpts
+        let g : Gate :=
+          compileOpsToSignedGate
+            (Basis := qs.Basis) k hk phi x z coeff ops
 
         have hg : LowerablePhaseGate g := by
           dsimp [g, coeff]
-          simpa [W, nextSignedWidth] using
-            (lowerable_compileOpsToSignedGate k hk phi x z pts hpts ops)
+          exact
+            lowerable_compileOpsToSignedGate
+              (Basis := qs.Basis)
+              k hk phi x z coeff ops
 
         have hgOK : SignedPhaseProdOK g := by
           dsimp [g, coeff]
-          simpa [W, nextSignedWidth] using
-            (signedPhaseProdOK_compileOpsToSignedGate
-              k hk phi x z pts hpts ops hxz hxwf hzwf)
+          exact
+            signedPhaseProdOK_compileOpsToSignedGate
+              (Basis := qs.Basis)
+              k hk phi x z coeff ops hxz
 
         have hIH :
-            LowerGateClass.evalL (lowerGateRec W k hk pts hpts ops g) ψ
+            LowerGateClass.evalL
+                (lowerGateRec (Basis := qs.Basis) Wrec k hk pts hpts ops g) ψ
               =
             qs.eval g ψ := by
-          exact IH W hrec k hk pts hpts ops hC run_ops_start_state g hg hgOK ψ
+          exact
+            IH Wrec hrec
+              k hk pts hpts hInterp ops
+              hC run_ops_start_state
+              g hg hgOK ψ
 
         rw [hIH]
-        -- simpa [g, coeff, W, nextSignedWidth] using
-        --   (eval_compileOpsToSignedGate_correct
-        --     (qs := qs)
-        --     (k := k) (hk := hk)
-        --     (phi := phi)
-        --     (x := x) (z := z)
-        --     (hxz := hxz)
-        --     (hxwf := hxwf)
-        --     (hzwf := hzwf)
-        --     (pts := pts) (hpts := hpts)
-        --     (ψ := ψ)
-        --     (ops := ops)
-        --     (hC := hC)
-        --     (run_ops_start_state := run_ops_start_state))
-        sorry
 
-      · simp [W, hrec, LowerGateClass.evalL_naive_phaseProd]
+        simpa [g, coeff, Wphase] using
+          (eval_compileOpsToSignedGate_correct
+            (qs := qs)
+            (k := k) (hk := hk)
+            (phi := phi)
+            (x := x) (z := z)
+            (hxz := hxz)
+            (pts := pts) (hpts := hpts)
+            (hInterp := hInterp)
+            (ψ := ψ)
+            (ops := ops)
+            (hC := hC)
+            (run_ops_start_state := run_ops_start_state))
+
+      ·
+        simp [Wrec, hrec, LowerGateClass.evalL_naive_phaseProd]
 
   | zeroExtend r m =>
       simp [lowerGateRec, LowerGateClass.evalL_zeroExtend]
@@ -847,119 +925,250 @@ lemma evalL_lowerGateRec_strong_of_compile
       simp [lowerGateRec, LowerGateClass.evalL_signDealloc]
 
 lemma evalL_lowerGateRec_strong
-  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
-  [LowerGateClass qs] [GateSemanticsFacts qs] :
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [LowerGateClass qs]
+  [GateSemanticsFacts qs] :
   ∀ n,
     ∀ (k : ℕ) (hk : 1 < k)
       (pts : List Point) (hpts : pts.length = q k)
+      (_hInterp : GoodToomCookPoints k pts hpts)
       (ops : Prog k)
       (_hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
       (_run_ops_start_state : run? ops State.start_state = some State.start_state)
       (U : Gate) (_hU : LowerablePhaseGate U) (_hOK : SignedPhaseProdOK U) (ψ : qs.State),
-      LowerGateClass.evalL (lowerGateRec n k hk pts hpts ops U) ψ
+      LowerGateClass.evalL
+          (lowerGateRec (Basis := qs.Basis) n k hk pts hpts ops U) ψ
         =
       qs.eval U ψ := by
-  intro n k hk pts hpts ops hC run_ops_start_state U hU hOK ψ
-  apply evalL_lowerGateRec_strong_of_compile (qs := qs) n k hk pts hpts ops
-  · exact hC
-  · exact run_ops_start_state
-  · exact hU
-  · exact hOK
+  intro n k hk pts hpts hInterp ops hC run_ops_start_state U hU hOK ψ
+  exact
+    evalL_lowerGateRec_strong_of_compile
+      (qs := qs)
+      n k hk pts hpts hInterp ops
+      hC run_ops_start_state
+      U hU hOK ψ
 
-@[simp] lemma lowerGate_SPP (p : ℝ) (x z : ExtReg) (ops : Prog k) :
-    lowerGate k hk ops (Gate.SignedPhaseProd p x z) = lowerSignedPhaseProd k hk p x z ops := by
-  simp [lowerGate, lowerSignedPhaseProd]
+/-! =========================================================
+    Section 8: Bridge from generated points to Toom-Cook good points
+========================================================= -/
+
+/-- Convert Shor interpolation points to the pure math point type. -/
+def toMathPoint : Point → ToomCookMath.Point
+  | Point.int z => ToomCookMath.Point.int z
+  | Point.inf   => ToomCookMath.Point.inf
+
+lemma toMathPoint_interpEntry
+    {k : ℕ}
+    (p : Point)
+    (j : Fin (q k)) :
+    ToomCookMath.pointRow (q k) (toMathPoint p) j
+      =
+    interpEntry k p j := by
+  cases p with
+  | int z =>
+      simp [toMathPoint, ToomCookMath.pointRow, interpEntry]
+  | inf =>
+      simp [toMathPoint, ToomCookMath.pointRow, interpEntry, q]
+
+lemma toMathPoint_alternatingPoint
+    (i : ℕ) :
+    toMathPoint (alternatingPoint i)
+      =
+    ToomCookMath.alternatingPoint i := by
+  unfold alternatingPoint ToomCookMath.alternatingPoint
+  unfold ToomCookMath.alternatingInt
+  by_cases h : i % 2 == 0
+  · simp [h, toMathPoint]
+  · simp [h, toMathPoint]
+
+lemma listToFin_genInterpolationPoints_toMathPoint
+    (k : ℕ)
+    (hpts : (genInterpolationPoints k).length = q k)
+    (hmath :
+      (ToomCookMath.genFiniteInterpolationPoints (q k)).length = q k)
+    (i : Fin (q k)) :
+    ToomCookMath.listToFin
+        (ToomCookMath.genFiniteInterpolationPoints (q k)) hmath i
+      =
+    toMathPoint
+      (ToomCookMath.listToFin (genInterpolationPoints k) hpts i) := by
+  simp [
+    ToomCookMath.listToFin,
+    genInterpolationPoints,
+    ToomCookMath.genFiniteInterpolationPoints,
+    toMathPoint_alternatingPoint
+  ]
+
+lemma genInterpolationPoints_good
+    (k : ℕ) :
+    GoodToomCookPoints k
+      (genInterpolationPoints k)
+      (by simp [genInterpolationPoints, q]) := by
+  let hpts : (genInterpolationPoints k).length = q k := by
+    simp [genInterpolationPoints, q]
+
+  let hmath :
+      (ToomCookMath.genFiniteInterpolationPoints (q k)).length = q k := by
+    simp [ToomCookMath.genFiniteInterpolationPoints]
+
+  unfold GoodToomCookPoints
+
+  have hgoodMath :
+      ToomCookMath.GoodInterpolationPoints
+        (row := ToomCookMath.pointRow (q k))
+        (pts :=
+          ToomCookMath.listToFin
+            (ToomCookMath.genFiniteInterpolationPoints (q k)) hmath) := by
+    exact ToomCookMath.genFiniteInterpolationPoints_good (q k) hmath
+
+  apply ToomCookMath.GoodInterpolationPoints.congr_matrix
+    (rowA := ToomCookMath.pointRow (q k))
+    (rowB := interpEntry k)
+    (ptsA :=
+      ToomCookMath.listToFin
+        (ToomCookMath.genFiniteInterpolationPoints (q k)) hmath)
+    (ptsB :=
+      ToomCookMath.listToFin (genInterpolationPoints k) hpts)
+
+  · intro i j
+    rw [listToFin_genInterpolationPoints_toMathPoint
+      (k := k)
+      (hpts := hpts)
+      (hmath := hmath)
+      (i := i)]
+    exact toMathPoint_interpEntry
+      (k := k)
+      ((ToomCookMath.listToFin (genInterpolationPoints k) hpts) i)
+      j
+
+  · exact hgoodMath
+
+/-! =========================================================
+    Section 9: Final correctness lemmas for lowered phase products
+========================================================= -/
 
 lemma evalL_lowerSignedPhaseProd
-  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
-  [LowerGateClass qs] [GateSemanticsFacts qs]
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [LowerGateClass qs]
+  [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k) (p : ℝ) (x z : ExtReg)
   (hxz : Disjoint x.base z.base)
-  (hxwf : WellFormedReg x.base)
-  (hzwf : WellFormedReg z.base)
   (ψ : qs.State) (ops : Prog k)
-  (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
-  (run_ops_start_state : run? ops State.start_state = some State.start_state)
-  :
-  LowerGateClass.evalL (lowerSignedPhaseProd k hk p x z ops) ψ
+  (hC : ProgConsumesPtsSafe
+    (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (run_ops_start_state : run? ops State.start_state = some State.start_state) :
+  LowerGateClass.evalL
+      (lowerSignedPhaseProd (Basis := qs.Basis) k hk p x z ops) ψ
     =
   qs.eval (Gate.SignedPhaseProd p x z) ψ := by
   unfold lowerSignedPhaseProd
-  let pts := genInterpolationPoints k
+
+  let pts : List Point := genInterpolationPoints k
+  have hInterp : GoodToomCookPoints k pts (by simp[pts,genInterpolationPoints,q]) := by
+    simpa [pts] using genInterpolationPoints_good k
   have hpts : pts.length = q k := by
     simp [pts, genInterpolationPoints, q]
-  let W := nextSignedWidth x z ops
-  by_cases hrec : W < phaseInputSize x z
-  · simp [W, hrec]
-    let coeff := phaseCoeffFromPtsWidth k W pts hpts
-    let g := compileOpsToSignedGate k hk p x z coeff ops
+
+  let Wrec : ℕ := nextSignedWidth x z ops
+
+  by_cases hrec : Wrec < phaseInputSize x z
+  · simp [Wrec, hrec]
+
+    let Wphase : ℕ := phaseLimbWidth x z k
+    let coeff : Fin (q k) → ℚ :=
+      phaseCoeffFromPtsWidth k Wphase pts hpts
+    let g : Gate :=
+      compileOpsToSignedGate
+        (Basis := qs.Basis) k hk p x z coeff ops
 
     have hg : LowerablePhaseGate g := by
       dsimp [g, coeff]
-      simpa [W, nextSignedWidth] using
-        (lowerable_compileOpsToSignedGate k hk p x z pts hpts ops)
+      exact
+        lowerable_compileOpsToSignedGate
+          (Basis := qs.Basis)
+          k hk p x z coeff ops
 
     have hgOK : SignedPhaseProdOK g := by
       dsimp [g, coeff]
-      simpa [W, nextSignedWidth] using
-        (signedPhaseProdOK_compileOpsToSignedGate
-          k hk p x z pts hpts ops hxz hxwf hzwf)
+      exact
+        signedPhaseProdOK_compileOpsToSignedGate
+          (Basis := qs.Basis)
+          k hk p x z coeff ops hxz
+
+    have hInterpPts : GoodToomCookPoints k pts hpts := by
+      simpa [pts] using hInterp
 
     have h1 :
-        LowerGateClass.evalL (lowerGateRec W k hk pts hpts ops g) ψ
+        LowerGateClass.evalL
+            (lowerGateRec (Basis := qs.Basis) Wrec k hk pts hpts ops g) ψ
           =
         qs.eval g ψ := by
-      apply evalL_lowerGateRec_strong
-      · simpa [pts] using hC
-      · exact run_ops_start_state
-      · exact hg
-      · exact hgOK
+      exact
+        evalL_lowerGateRec_strong
+          (qs := qs)
+          Wrec k hk pts hpts hInterpPts ops
+          (by simpa [pts] using hC)
+          run_ops_start_state
+          g hg hgOK ψ
 
     rw [h1]
 
-    -- simpa [g, coeff, W, nextSignedWidth] using
-    --   (eval_compileOpsToSignedGate_correct
-    --     (qs := qs)
-    --     (k := k) (hk := hk)
-    --     (phi := p)
-    --     (x := x) (z := z)
-    --     (hxz := hxz)
-    --     (hxwf := hxwf)
-    --     (hzwf := hzwf)
-    --     (pts := pts) (hpts := hpts)
-    --     (ψ := ψ)
-    --     (ops := ops)
-    --     (hC := by simpa [pts] using hC)
-    --     (run_ops_start_state := run_ops_start_state))
-    sorry
-  · simpa [pts, hpts, W, hrec] using
+    simpa [g, coeff, Wphase] using
+      (eval_compileOpsToSignedGate_correct
+        (qs := qs)
+        (k := k) (hk := hk)
+        (phi := p)
+        (x := x) (z := z)
+        (hxz := hxz)
+        (pts := pts) (hpts := hpts)
+        (hInterp := hInterpPts)
+        (ψ := ψ)
+        (ops := ops)
+        (hC := by simpa [pts] using hC)
+        (run_ops_start_state := run_ops_start_state))
+
+  ·
+    simpa [pts, hpts, Wrec, hrec] using
       (LowerGateClass.evalL_naive_phaseProd
         (qs := qs) (p := p) (x := x) (z := z) (ψ := ψ))
 
 lemma evalL_lowerPhaseProd
-  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
-  [LowerGateClass qs] [GateSemanticsFacts qs]
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [LowerGateClass qs]
+  [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k) (p : ℝ) (x z : Reg)
   (hxz : Disjoint x z)
-  (hxwf : WellFormedReg x)
-  (hzwf : WellFormedReg z)
   (ψ : qs.State) (ops : Prog k)
-  (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
-  (run_ops_start_state : run? ops State.start_state = some State.start_state)
-  :
-  LowerGateClass.evalL (lowerPhaseProd k hk p x z ops) ψ
+  (hC : ProgConsumesPtsSafe
+    (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (run_ops_start_state : run? ops State.start_state = some State.start_state) :
+  LowerGateClass.evalL
+      (lowerPhaseProd (Basis := qs.Basis) k hk p x z ops) ψ
     =
   qs.eval (Gate.PhaseProd p x z) ψ := by
   unfold lowerPhaseProd
-  let pts := genInterpolationPoints k
+
+  let pts : List Point := genInterpolationPoints k
+
   have hpts : pts.length = q k := by
     simp [pts, genInterpolationPoints, q]
 
+  have hInterpPts : GoodToomCookPoints k pts hpts := by
+    apply genInterpolationPoints_good
   have hU : LowerablePhaseGate (Gate.PhaseProd p x z) := by
     simp
 
   have hOK : SignedPhaseProdOK (Gate.PhaseProd p x z) := by
-    exact signedPhaseProdOK_PhaseProd p x z hxz hxwf hzwf
+    exact signedPhaseProdOK_PhaseProd p x z hxz
 
   simpa [pts] using
     (evalL_lowerGateRec_strong
@@ -967,6 +1176,7 @@ lemma evalL_lowerPhaseProd
       (n := phaseInputSize (Gate.unsignedView x) (Gate.unsignedView z))
       (k := k) (hk := hk)
       (pts := pts) (hpts := hpts)
+      (_hInterp := hInterpPts)
       (ops := ops)
       (_hC := by simpa [pts] using hC)
       (_run_ops_start_state := run_ops_start_state)

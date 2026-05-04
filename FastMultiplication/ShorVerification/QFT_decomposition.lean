@@ -6,10 +6,105 @@ open Gate
 attribute [simp] LowerGateClass.evalL_id
 attribute [simp] LowerGateClass.evalL_seq
 
-/-! ## Register arithmetic and split helpers -/
+/-!
+# QFT decomposition and whole-program lowering correctness
 
-variable (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
-  [LowerGateClass qs] [GateSemanticsFacts qs]
+This file proves the exact split decomposition of QFT, then uses that
+decomposition to prove correctness of the recursive QFT lowering and the
+whole-program `lowerGate` pass.
+
+The organization is dependency-driven:
+
+1. Register-split helpers and normalization facts.
+2. QFT phase and sum-manipulation lemmas.
+3. Stepwise split-QFT derivation.
+4. Reindexing and radix-reversal lemmas.
+5. Exact QFT split on basis states and arbitrary states.
+6. Correctness of lowered QFT.
+7. Whole-program lowering correctness.
+-/
+
+
+/-! =========================================================
+    Section 1: Register arithmetic and split helpers
+========================================================= -/
+
+/-- Equivalence between `Fin A × Fin B` and `Fin (A * B)`. -/
+noncomputable def finMulAddEquiv (A B : ℕ) :
+    (Fin A × Fin B) ≃ Fin (A * B) where
+  toFun p :=
+    let i : Fin A := p.1
+    let j : Fin B := p.2
+    ⟨i.1 + A * j.1, by
+      rcases i with ⟨i, hi⟩
+      rcases j with ⟨j, hj⟩
+      calc
+        i + A * j < A + A * j := Nat.add_lt_add_right hi _
+        _ = A * (j + 1)       := by
+              simp [Nat.mul_add, Nat.add_comm]
+        _ ≤ A * B             := by
+              exact Nat.mul_le_mul_left A (Nat.succ_le_of_lt hj)
+    ⟩
+
+  invFun n :=
+    if hA : 0 < A then
+      (⟨n.1 % A, Nat.mod_lt _ hA⟩,
+       ⟨n.1 / A, by
+          exact Nat.div_lt_of_lt_mul (by
+            simp)⟩)
+    else
+      by
+        have : False := by
+          have hA0 : A = 0 := Nat.eq_zero_of_not_pos hA
+          subst hA0
+          simp_all
+          simp at n
+          simpa using n.elim0
+        exact False.elim this
+
+  left_inv := by
+    intro p
+    rcases p with ⟨i, j⟩
+    cases A with
+    | zero =>
+        exact i.elim0
+    | succ A =>
+        have hA : 0 < A.succ := Nat.succ_pos _
+        simp
+        constructor
+        · apply Fin.ext
+          have hi_lt : (i.1) < (A + 1) := i.2
+          simp [Nat.mod_eq_of_lt hi_lt]
+        · apply Fin.ext
+          have hi_lt : (i.1) < (A + 1) := i.2
+          have hi_div : (i.1 / (A + 1)) = 0 := by
+            exact Nat.div_eq_of_lt hi_lt
+          calc
+            (i.1 + (A + 1) * j.1) / (A + 1)
+                = j.1 + (i.1 / (A + 1)) := by
+                    simpa [Nat.mul_comm, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
+                      using (Nat.add_mul_div_right i.1 j.1 (Nat.succ_pos A))
+            _   = j.1 := by simp [hi_div]
+
+  right_inv := by
+    intro n
+    cases A with
+    | zero =>
+        simp at n
+        exact n.elim0
+    | succ A =>
+        have hA : 0 < A.succ := Nat.succ_pos _
+        ext
+        simp
+        simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using
+          (Nat.mod_add_div (n.1) (A + 1))
+
+variable (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [LowerGateClass qs]
+  [GateSemanticsFacts qs]
 
 def nTot (r : Reg) : ℕ := regSize r
 def mHalf (r : Reg) : ℕ := (nTot r) / 2
@@ -67,6 +162,7 @@ def j0 (r : Reg) (b : qs.Basis) : ℕ := RegEncoding.toNat (leftReg r) b
 def j1 (r : Reg) (b : qs.Basis) : ℕ := RegEncoding.toNat (rightReg r) b
 
 omit [LowerGateClass qs] in
+omit [ExtRegSplitSemantics QSemantics.Basis] in
 lemma step1_QFT_right_ket
   (r : Reg) (b : qs.Basis) :
   let right : Reg := rightReg r
@@ -85,7 +181,9 @@ lemma disjoint_left_right (r : Reg) :
     (splitLeft_splitRight_disjoint (r := r) (m := halfSplitPoint r))
 
 
-/-! ## Encoding-only lemmas (no LowerGateClass needed) -/
+/-! =========================================================
+    Section 2: Encoding-only split-register lemmas
+========================================================= -/
 
 section EncodingOnly
 variable (qs : QSemantics) [RegEncoding qs.Basis]
@@ -103,7 +201,9 @@ lemma toNat_right_after_write_left
       (b := b) (yL := yL))
 end EncodingOnly
 
-/-! ## Exponential / qftPhase bridge lemmas -/
+/-! =========================================================
+    Section 3: Exponential and qftPhase bridge lemmas
+========================================================= -/
 
 lemma exp_phaseProd_eq_qftPhase (N x y : ℕ) :
     Complex.exp
@@ -125,7 +225,9 @@ lemma exp_phaseProd_eq_qftPhase_of_casts
   simpa [Nat.cast_mul, mul_assoc, mul_left_comm, mul_comm] using
     (exp_phaseProd_eq_qftPhase (N := A * B) (x := k1) (y := jR))
 
-/-! ## Sum pushing lemmas -/
+/-! =========================================================
+    Section 4: Sum-pushing and scalar helper lemmas
+========================================================= -/
 
 lemma eval_sum_univ_qs
   (qs : QSemantics)
@@ -139,8 +241,6 @@ lemma eval_sum_univ_qs
     · simp [qs.eval_zero]
     · intro a s ha hs
       simp [Finset.sum_insert ha, qs.eval_add, hs])
-
-/-! ## toNat/writeNat helper lemmas for split registers -/
 
 lemma Complex.exp_mul_eq_pow (z : ℂ) (n : ℕ) :
     Complex.exp ((n : ℂ) * z) = (Complex.exp z) ^ n := by
@@ -173,7 +273,6 @@ lemma toNat_mul_after_write_left_eq
 
   simp [hL, hR, mul_comm]
 
-/-! ## Low-left split helper: right writes preserve left reads -/
 
 lemma toNat_left_after_write_right
   (qs : QSemantics) [RegEncoding qs.Basis]
@@ -190,10 +289,13 @@ lemma toNat_left_after_write_right
       hdisj
       (b := b) (yR := yR))
 
-/-! ## Step 2 and Step 3 of the split QFT proof -/
+/-! =========================================================
+    Section 5: First split-QFT steps
+========================================================= -/
 
 omit [LowerGateClass qs] in
 omit [LowerGateClass qs] in
+omit [ExtRegSplitSemantics QSemantics.Basis] in
 lemma step2_PhaseProd_after_QFT_right
   (r : Reg) (b : qs.Basis) :
   let left  : Reg := leftReg r
@@ -337,6 +439,7 @@ lemma step2_PhaseProd_after_QFT_right
         simp [h']
 
 omit [LowerGateClass qs] in
+omit [ExtRegSplitSemantics QSemantics.Basis] in
 lemma step3_QFT_left_after_step2
   (r : Reg) (b : qs.Basis) :
   let left  : Reg := leftReg r
@@ -466,7 +569,9 @@ lemma step3_QFT_left_after_step2
               left, right, A, B,
               smul_smul, mul_assoc, mul_left_comm, mul_comm]
 
-/-! ## Phase-combination lemma for reindexing -/
+/-! =========================================================
+    Section 6: Phase-combination lemmas
+========================================================= -/
 
 lemma exp_helper_lemma(A B : ℕ) (hA : 0 < A) (hB : 0 < B) :
     Complex.exp ((A : ℂ) * ((B : ℂ) * (Complex.I * ((Real.pi : ℂ) * 2) / ((A : ℂ) * (B : ℂ))))) = 1 := by
@@ -478,8 +583,6 @@ lemma exp_helper_lemma(A B : ℕ) (hA : 0 < A) (hB : 0 < B) :
       2 * (Real.pi : ℂ) * Complex.I := by
     field_simp [hA0, hB0, mul_assoc, mul_left_comm, mul_comm]
   simpa [hexp, mul_assoc, mul_left_comm, mul_comm] using (Complex.exp_two_pi_mul_I)
-
-
 
 lemma step4_phase_combine
   (A B j0 j1 k1 k0 : ℕ)
@@ -636,7 +739,9 @@ lemma step4_phase_combine_lowLeft
     Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc,
     Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h
 
-/-! ## Reindexing sums and cast utilities -/
+/-! =========================================================
+    Section 7: Reindexing sums and cast utilities
+========================================================= -/
 
 lemma step5_reindex_sum
   {α : Type} [AddCommMonoid α]
@@ -718,12 +823,15 @@ lemma Fin.coe_cast_typeEq
   subst h_nat
   rfl
 
-/-! ## QFT split on basis kets and general states -/
+/-! =========================================================
+    Section 8: QFT split on basis kets
+========================================================= -/
 
 lemma eval_QFT_split_lowLeft_digitRev_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis]
   [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
   [LowerGateClass qs]
   [GateSemanticsFacts qs] :
   ∀ (r : Reg) (b : qs.Basis),
@@ -838,7 +946,9 @@ lemma eval_QFT_split_lowLeft_digitRev_ket
                 simp [ASize])
         simp [hphase]
 
-/-! ## Exact QFT split with final radix reversal -/
+/-! =========================================================
+    Section 9: Radix reversal and exact QFT split
+========================================================= -/
 
 lemma radix_reverse_reindex_sum
   {α : Type} [AddCommMonoid α]
@@ -1051,6 +1161,7 @@ lemma eval_QFT_split_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis]
   [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
   [LowerGateClass qs]
   [GateSemanticsFacts qs] :
   ∀ (r : Reg) (b : qs.Basis),
@@ -1246,7 +1357,7 @@ lemma eval_QFT_split_ket
         simp [qs.eval_seq]
 
 theorem eval_QFT_split
-  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [ExtRegSplitSemantics qs.Basis]
   [LowerGateClass qs] [GateSemanticsFacts qs] :
     ∀ (r : Reg) (ψ : qs.State),
       regSize r ≥ 2 →
@@ -1292,22 +1403,30 @@ theorem eval_QFT_split
 
   exact hP ψ
 
-/-! ## Exact QFT split with final radix reversal -/
-
-open scoped BigOperators
-
-/-! ## Correctness of lowered QFT (aux, main) -/
-
+/-! =========================================================
+    Section 10: Correctness of lowered QFT
+========================================================= -/
 variable {k : ℕ} (hk : 1 < k)
+
 lemma eval_lowerQFTAux_strong
-  (qs : QSemantics) (RE : RegEncoding qs.Basis) [ExtRegEncoding qs.Basis]
-  [LowerGateClass qs] [GateSemanticsFacts qs]
+  (qs : QSemantics)
+  (RE : RegEncoding qs.Basis)
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [LowerGateClass qs]
+  [GateSemanticsFacts qs]
   (ops : Prog k)
-  (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (hC : ProgConsumesPtsSafe
+    (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
   (run_ops_start_state : run? ops State.start_state = some State.start_state) :
   ∀ n : ℕ, ∀ (r : Reg) (ψ : qs.State),
     regSize r = n →
-    (LowerGateClass.evalL (qs := qs) (lowerQFTAux k hk ops n r) ψ) = qs.eval (Gate.QFT r) ψ := by
+    LowerGateClass.evalL
+      (qs := qs)
+      (lowerQFTAux (Basis := qs.Basis) k hk ops n r)
+      ψ
+      =
+    qs.eval (Gate.QFT r) ψ := by
   classical
   letI : RegEncoding qs.Basis := RE
 
@@ -1315,7 +1434,10 @@ lemma eval_lowerQFTAux_strong
     fun n =>
       ∀ (r : Reg) (ψ : qs.State),
         regSize r = n →
-        LowerGateClass.evalL (qs := qs) (lowerQFTAux k hk ops n r) ψ
+        LowerGateClass.evalL
+          (qs := qs)
+          (lowerQFTAux (Basis := qs.Basis) k hk ops n r)
+          ψ
           =
         qs.eval (Gate.QFT r) ψ
 
@@ -1368,20 +1490,16 @@ lemma eval_lowerQFTAux_strong
                 unfold m nTot
                 exact Nat.div_pos (by omega : 2 ≤ n2 + 2) (by decide : 0 < 2)
 
-              have hm_lt : m < nTot := by
-                have hnpos : 0 < nTot := by
-                  unfold nTot
-                  omega
-                simpa [m] using
-                  (Nat.div_lt_self hnpos (by decide : 1 < 2))
-
               have hnm_lt : nTot - m < nTot := by
                 exact Nat.sub_lt (by omega) hm_pos
 
               have ihR :
                   ∀ χ : qs.State,
-                    LowerGateClass.evalL (qs := qs)
-                      (lowerQFTAux k hk ops (nTot - m) right) χ
+                    LowerGateClass.evalL
+                      (qs := qs)
+                      (lowerQFTAux
+                        (Basis := qs.Basis) k hk ops (nTot - m) right)
+                      χ
                     =
                     qs.eval (Gate.QFT right) χ := by
                 intro χ
@@ -1390,8 +1508,11 @@ lemma eval_lowerQFTAux_strong
 
               have ihL :
                   ∀ χ : qs.State,
-                    LowerGateClass.evalL (qs := qs)
-                      (lowerQFTAux k hk ops m left) χ
+                    LowerGateClass.evalL
+                      (qs := qs)
+                      (lowerQFTAux
+                        (Basis := qs.Basis) k hk ops m left)
+                      χ
                     =
                     qs.eval (Gate.QFT left) χ := by
                 intro χ
@@ -1405,26 +1526,17 @@ lemma eval_lowerQFTAux_strong
                 simpa [hsz'] using this
 
               have hSplit :
-                  QSemantics.eval (QFT r) ψ
+                  qs.eval (Gate.QFT r) ψ
                     =
-                  QSemantics.eval
-                    ((QFT right) ;;
-                    (PhaseProd (qftPhi nTot) left right) ;;
-                    (QFT left) ;;
-                    (RadixReverse r m)) ψ := by
-                have hge : regSize r ≥ 2 := by
-                  have : (2 : ℕ) ≤ nTot := by
-                    unfold nTot
-                    omega
-                  simpa [hsz'] using this
-
+                  qs.eval
+                    ((Gate.QFT right) ;;
+                     (Gate.PhaseProd (qftPhi nTot) left right) ;;
+                     (Gate.QFT left) ;;
+                     (Gate.RadixReverse r m)) ψ := by
                 have hs :=
                   eval_QFT_split
                     (qs := qs) (r := r) (ψ := ψ) hge
-
-                -- `hs` uses `regSize r` directly; your target uses local `nTot`, `m`, `left`, `right`.
                 simpa [nTot, m, left, right, hsz'] using hs
-
 
               have hSplit' :
                   qs.eval
@@ -1446,24 +1558,39 @@ lemma eval_lowerQFTAux_strong
                 simp [WellFormedReg, right, regSize]
 
               calc
-                LowerGateClass.evalL (qs := qs)
-                    (lowerQFTAux k hk ops (n2 + 1 + 1) r) ψ
+                LowerGateClass.evalL
+                    (qs := qs)
+                    (lowerQFTAux
+                      (Basis := qs.Basis) k hk ops (n2 + 1 + 1) r)
+                    ψ
                     =
-                  LowerGateClass.evalL (qs := qs)
-                    ((lowerQFTAux k hk ops (nTot - m) right) ;;
-                     (lowerPhaseProd k hk (qftPhi nTot) left right ops) ;;
-                     (lowerQFTAux k hk ops m left) ;;
-                     (LowGate.RadixReverse r m)) ψ := by
+                  LowerGateClass.evalL
+                    (qs := qs)
+                    ((lowerQFTAux
+                        (Basis := qs.Basis) k hk ops (nTot - m) right) ;;
+                     (lowerPhaseProd
+                        (Basis := qs.Basis) k hk (qftPhi nTot) left right ops) ;;
+                     (lowerQFTAux
+                        (Basis := qs.Basis) k hk ops m left) ;;
+                     (LowGate.RadixReverse r m))
+                    ψ := by
                       simp [lowerQFTAux, nTot, m, left, right]
 
                 _ =
                   LowerGateClass.evalL (qs := qs) (LowGate.RadixReverse r m)
-                    (LowerGateClass.evalL (qs := qs)
-                      (lowerQFTAux k hk ops m left)
-                      (LowerGateClass.evalL (qs := qs)
-                        (lowerPhaseProd k hk (qftPhi nTot) left right ops)
-                        (LowerGateClass.evalL (qs := qs)
-                          (lowerQFTAux k hk ops (nTot - m) right) ψ))) := by
+                    (LowerGateClass.evalL
+                      (qs := qs)
+                      (lowerQFTAux
+                        (Basis := qs.Basis) k hk ops m left)
+                      (LowerGateClass.evalL
+                        (qs := qs)
+                        (lowerPhaseProd
+                          (Basis := qs.Basis) k hk (qftPhi nTot) left right ops)
+                        (LowerGateClass.evalL
+                          (qs := qs)
+                          (lowerQFTAux
+                            (Basis := qs.Basis) k hk ops (nTot - m) right)
+                          ψ))) := by
                       simp [LowerGateClass.evalL_seq]
 
                 _ =
@@ -1475,13 +1602,15 @@ lemma eval_lowerQFTAux_strong
 
                       have hPhase :=
                         evalL_lowerPhaseProd
-                          (qs := qs) (k := k) (hk := hk)
-                          (p := qftPhi nTot) (x := left) (z := right)
+                          (qs := qs)
+                          (k := k) (hk := hk)
+                          (p := qftPhi nTot)
+                          (x := left) (z := right)
+                          (hxz := hdisj)
+                          (ψ := qs.eval (Gate.QFT right) ψ)
                           (ops := ops)
                           (hC := hC)
                           (run_ops_start_state := run_ops_start_state)
-                          (ψ := qs.eval (Gate.QFT right) ψ)
-                          hdisj hWF_left hWF_right
                       rw [hPhase]
 
                       rw [ihL
@@ -1496,7 +1625,6 @@ lemma eval_lowerQFTAux_strong
                             qs.eval (Gate.QFT left)
                               (qs.eval (Gate.PhaseProd (qftPhi nTot) left right)
                                 (qs.eval (Gate.QFT right) ψ)))
-
                       rw [hRR]
 
                 _ =
@@ -1511,15 +1639,24 @@ lemma eval_lowerQFTAux_strong
                   qs.eval (Gate.QFT r) ψ := by
                       exact hSplit'
 
-
 lemma eval_lowerQFT
-  (qs : QSemantics) (RE : RegEncoding qs.Basis) [ExtRegEncoding qs.Basis]
-  [LowerGateClass qs] [GateSemanticsFacts qs]
+  (qs : QSemantics)
+  (RE : RegEncoding qs.Basis)
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [LowerGateClass qs]
+  [GateSemanticsFacts qs]
   (ops : Prog k)
-  (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (hC : ProgConsumesPtsSafe
+    (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
   (run_ops_start_state : run? ops State.start_state = some State.start_state) :
   ∀ (r : Reg) (ψ : qs.State),
-    (LowerGateClass.evalL (qs := qs) (lowerQFT k hk r ops) ψ) = qs.eval (Gate.QFT r) ψ := by
+    LowerGateClass.evalL
+      (qs := qs)
+      (lowerQFT (Basis := qs.Basis) k hk r ops)
+      ψ
+      =
+    qs.eval (Gate.QFT r) ψ := by
   intro r ψ
   simpa [lowerQFT] using
     (eval_lowerQFTAux_strong
@@ -1529,55 +1666,45 @@ lemma eval_lowerQFT
       (run_ops_start_state := run_ops_start_state)
       (regSize r) r ψ rfl)
 
-
 def GateGeomOK : Gate → Prop
-  | Gate.id => True
   | Gate.seq U V => GateGeomOK U ∧ GateGeomOK V
   | Gate.adj U => GateGeomOK U
-  | Gate.H _ => True
-  | Gate.X _ => True
-  | Gate.Prim _ _ => True
-  | Gate.ShiftL r _ => WellFormedReg r.base
-  | Gate.ShiftR r _ => WellFormedReg r.base
-  | Gate.Negate r => WellFormedReg r.base
   | Gate.AddScaled dst src _ _ =>
-      WellFormedReg dst.base ∧
-      WellFormedReg src.base ∧
       Disjoint dst.base src.base
   | Gate.QFT r => WellFormedReg r
   | Gate.SignedPhaseProd _ x z =>
-      WellFormedReg x.base ∧
-      WellFormedReg z.base ∧
       Disjoint x.base z.base
   | Gate.CSignedPhaseProd _ _ x z =>
-      WellFormedReg x.base ∧
-      WellFormedReg z.base ∧
       Disjoint x.base z.base
-  | Gate.zeroExtend r _ => WellFormedReg r.base
-  | Gate.signExtend r _ => WellFormedReg r.base
-  | Gate.zeroDealloc r _ => WellFormedReg r.base
-  | Gate.signDealloc r _ => WellFormedReg r.base
-  | Gate.RadixReverse r _ => WellFormedReg r
+  | _ => True
 
-
-
-/-! ## Whole-program lowering correctness -/
+/-! =========================================================
+    Section 11: Whole-program lowering correctness
+========================================================= -/
 
 theorem lowerGate_correctness
-  (G : Gate) (hGeom : GateGeomOK G) (qs : QSemantics) (RE : RegEncoding qs.Basis)
-  [ExtRegEncoding qs.Basis] [LowerGateClass qs] [GateSemanticsFacts qs]
+  (G : Gate) (hGeom: GateGeomOK G)
+  (qs : QSemantics) (RE : RegEncoding qs.Basis)
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [LowerGateClass qs]
+  [GateSemanticsFacts qs]
   (ops : Prog k)
-  (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (hC : ProgConsumesPtsSafe
+    (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
   (run_ops_start_state : run? ops State.start_state = some State.start_state) :
-  ∀ ψ, LowerGateClass.evalL (qs := qs) (lowerGate k hk ops G) ψ = qs.eval G ψ := by
+  ∀ ψ, LowerGateClass.evalL
+    (qs := qs)
+    (lowerGate (Basis := qs.Basis) k hk ops G)
+    ψ = qs.eval G ψ := by
   intro ψ
   induction G generalizing ψ with
   | id =>
       simp [lowerGate, LowerGateClass.evalL_id, qs.eval_id]
 
   | seq U V ihU ihV =>
-      rcases hGeom with ⟨hU, hV⟩
-      simp [lowerGate, LowerGateClass.evalL_seq, qs.eval_seq, ihU hU, ihV hV]
+      rcases hGeom with ⟨h1, h2⟩
+      simp [lowerGate, LowerGateClass.evalL_seq, qs.eval_seq, ihU h1, ihV h2]
 
   | adj U ih =>
       simpa [lowerGate] using
@@ -1597,14 +1724,15 @@ theorem lowerGate_correctness
       simp[this]
 
   | SignedPhaseProd p x z =>
-      rcases hGeom with ⟨hxwf, hzwf, hxz⟩
+      simp[GateGeomOK] at hGeom
       simpa [lowerGate] using
         (evalL_lowerSignedPhaseProd
           (qs := qs) (k := k) (hk := hk) (p := p)
           (x := x) (z := z)
-          (hxz := hxz) (hxwf := hxwf) (hzwf := hzwf)
+          (hxz := hGeom)
           (ψ := ψ) (ops := ops)
-          (hC := hC) (run_ops_start_state := run_ops_start_state))
+          (hC := hC)
+          (run_ops_start_state := run_ops_start_state))
 
   | CSignedPhaseProd c p x z =>
       simpa [lowerGate] using
@@ -1640,4 +1768,5 @@ theorem lowerGate_correctness
 
   | RadixReverse r m =>
       simp [lowerGate, LowerGateClass.evalL_lowerRadixReverse]
+
 end Shor

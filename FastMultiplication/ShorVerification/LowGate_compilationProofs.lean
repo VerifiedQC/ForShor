@@ -4,133 +4,35 @@ import FastMultiplication.ShorVerification.Toom_Cook_formula
 namespace Shor
 open Gate
 open Operations
+open scoped BigOperators
 
-variable (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
-variable [GateSemanticsFacts qs]
-
+/-!
+This file proves semantic correctness helpers for signed allocation and for
+compiled annotated operation blocks. It builds on the core compiler and layout
+definitions from `LowGate_compilationCore`, and it uses the Toom-Cook / phase
+formula interface developed in `Toom_Cook_formula`.
+-/
 
 /-! =========================================================
-    Helper lemmas for layout disjointness and width bounds
+    Section 1: Setup and global assumptions
+========================================================= -/
+
+variable (qs : QSemantics)
+variable [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+variable [ExtRegSplitSemantics qs.Basis]
+variable [GateSemanticsFacts qs]
+
+/-! =========================================================
+    Section 2: Basic register and layout helpers
 ========================================================= -/
 
 def WellFormedReg (r : Reg) : Prop :=
   r.lo ≤ r.hi
 
 
-/-- Slots of a single layout are disjoint from each other. -/
-lemma layout_slot_disjoint_slot {k : ℕ} (r : Reg) (i j : Fin k) (hij : i ≠ j) :
-  Disjoint ((layoutOfReg r k).slot i) ((layoutOfReg r k).slot j) :=
-  (layoutOfReg r k).disjoint i j hij
-
-lemma chunkStart_add_chunkSize_le
-  (n k : ℕ) (i : Fin (k + 1)) :
-  chunkStart n (k + 1) i + chunkSize n (k + 1) i ≤ n := by
-  unfold chunkStart chunkSize
-  set q : ℕ := n / (k + 1)
-  set r : ℕ := n % (k + 1)
-  have hdiv : q * (k + 1) + r = n := by
-    dsimp [q, r]
-    have:=Nat.div_add_mod n (k + 1)
-    rw[mul_comm,this]
-  have hi : i.1 < k + 1 := i.is_lt
-  by_cases hir : i.1 < r
-  · have hmin : min i.1 r = i.1 := Nat.min_eq_left (Nat.le_of_lt hir)
-    simp at *
-    simp_all only [inf_of_le_left, ↓reduceIte, q, r]
-    have h1 : i.1 + 1 ≤ r := Nat.succ_le_of_lt hir
-    calc
-      i.1 * q + i.1 + (q + 1)
-          = (i.1 + 1) * q + (i.1 + 1) := by ring
-      _ ≤ r * q + r := by
-          gcongr
-      _ ≤ q * (k + 1) + r := by
-          have hrle : r ≤ k + 1 := by
-            have hmod : n % (k + 1) < k + 1 := Nat.mod_lt _ (Nat.succ_pos _)
-            omega
-          simp
-          rw[mul_comm]
-          exact Nat.mul_le_mul_left q hrle
-      _ = n := by simp [q, r];exact hdiv
-  · have hmin : min i.1 r = r := Nat.min_eq_right (Nat.le_of_not_gt hir)
-    simp[hir]
-    simp_all
-    have hmul : (i.1 + 1) * q ≤ (k + 1) * q := Nat.mul_le_mul_right q (by simp[hi])
-    have hrewrite : i.1 * q + r + q = (i.1 + 1) * q + r := by
-      ring
-    rw [hrewrite]
-    calc
-      (i.1 + 1) * q + r ≤ (k + 1) * q + r := Nat.add_le_add_right hmul r
-      _ = n := by simpa [Nat.mul_comm, q, r] using hdiv
-
-lemma slot_subset_base {k : ℕ} (r : Reg) (i : Fin k) (_hWF: WellFormedReg r):
-  r.lo ≤ ((layoutOfReg r k).slot i).lo ∧
-  ((layoutOfReg r k).slot i).hi ≤ r.hi := by
-  cases k with
-  | zero =>
-      apply i.elim0
-  | succ k =>
-      dsimp [layoutOfReg]
-      constructor
-      · omega
-      · have hmain :
-            chunkStart (regSize r) (k + 1) i + chunkSize (regSize r) (k + 1) i ≤ regSize r := by
-          simpa using chunkStart_add_chunkSize_le (regSize r) k i
-        simpa [Reg.hi, regSize, Nat.add_assoc] using Nat.add_le_add_left hmain r.lo
-
-lemma layout_slot_disjoint_of_base_disjoint {k : ℕ} (r s : Reg)
-  (hrs : Disjoint r s) (i j : Fin k) (hWFr: WellFormedReg r) (hWFs: WellFormedReg s):
-  Disjoint ((layoutOfReg r k).slot i) ((layoutOfReg s k).slot j) := by
-  rcases slot_subset_base r i hWFr with ⟨hri_lo, hri_hi⟩
-  rcases slot_subset_base s j hWFs with ⟨hsj_lo, hsj_hi⟩
-  cases hrs with
-  | inl h => exact Or.inl (le_trans hri_hi (le_trans h hsj_lo))
-  | inr h => exact Or.inr (le_trans hsj_hi (le_trans h hri_lo))
-
-
-
 /-! =========================================================
-    Proof replacements for the phase-layout path
-
-Paste these into the proof file that imports `LowGate_compilationCore`,
-replacing the old layout/allocation lemmas that still unfold `layoutOfReg`
-and `splitLogicalWidth`.
+    Section 3: Width-scan and extra-delta facts
 ========================================================= -/
-
-/-- Slots of a single phase layout are disjoint from each other. -/
-lemma phase_layout_slot_disjoint_slot {k : ℕ}
-    (r : Reg) (W : ℕ) (i j : Fin k) (hij : i ≠ j) :
-    Disjoint ((phaseLayoutOfReg r k W).slot i) ((phaseLayoutOfReg r k W).slot j) :=
-  (phaseLayoutOfReg r k W).disjoint i j hij
-
-/-- A phase-layout slot is physically contained in its base register. -/
-lemma phase_slot_subset_base {k : ℕ}
-    (r : Reg) (W : ℕ) (i : Fin k) (_hWF : WellFormedReg r) :
-    r.lo ≤ ((phaseLayoutOfReg r k W).slot i).lo ∧
-    ((phaseLayoutOfReg r k W).slot i).hi ≤ r.hi := by
-  constructor
-  · dsimp [phaseLayoutOfReg, phaseSlot, phaseChunkStart]
-    omega
-  · have hhi :
-        (if isTopChunk i then regSize r else Nat.min (regSize r) (phaseChunkEnd W i.1))
-          ≤ regSize r := by
-      by_cases htop : isTopChunk i
-      · simp [htop]
-      · simp [htop]
-    change (phaseSlot r k W i).hi ≤ r.hi
-    rw [phaseSlot_hi_eq (r := r) (k := k) (W := W) (i := i)]
-    simpa [Reg.hi, regSize] using Nat.add_le_add_left hhi r.lo
-
-/-- Phase-layout slots over disjoint base registers are disjoint. -/
-lemma phase_layout_slot_disjoint_of_base_disjoint {k : ℕ}
-    (r s : Reg) (W : ℕ)
-    (hrs : Disjoint r s) (i j : Fin k)
-    (hWFr : WellFormedReg r) (hWFs : WellFormedReg s) :
-    Disjoint ((phaseLayoutOfReg r k W).slot i) ((phaseLayoutOfReg s k W).slot j) := by
-  rcases phase_slot_subset_base r W i hWFr with ⟨hri_lo, hri_hi⟩
-  rcases phase_slot_subset_base s W j hWFs with ⟨hsj_lo, hsj_hi⟩
-  cases hrs with
-  | inl h => exact Or.inl (le_trans hri_hi (le_trans h hsj_lo))
-  | inr h => exact Or.inr (le_trans hsj_hi (le_trans h hri_lo))
 
 /-- The initial x width is included in the full width scan. -/
 lemma scanNeededWidths_x_ge_init
@@ -156,106 +58,98 @@ lemma scanNeededWidths_z_ge_init
       (initWidthState x z k)
       (widthsOfState (initWidthState x z k))
 
-
-
-
-/-- The widened final x-slot is the initial slot plus exactly its `extraDelta`. -/
-lemma stFinal_xslot_eq_addExtra
-    {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
-    let stInit := initSignedLayoutState x z k
-    let stFinal := targetSignedLayoutState x z k (scanNeededWidths x z ops)
-    stFinal.xslot i = ExtReg.addExtra (stInit.xslot i)
-        (extraDelta (stInit.xslot i) (stFinal.xslot i)) := by
-  dsimp [initSignedLayoutState, targetSignedLayoutState,
-    ExtReg.addExtra, extraDelta, withLogicalWidth]
-  set r := (phaseLayoutOfReg x.base k (phaseLimbWidth x z k)).slot i
-  set splitW := phaseSplitLogicalWidth (ExtReg.width x) (phaseLimbWidth x z k) k i
-  set W := commonNeededWidth (scanNeededWidths x z ops)
-  have hrs : regSize r ≤ splitW := by
-    simpa [r, splitW, initWidthState] using phaseSlot_size_le_initWidth_x x z i
-  have hscan : splitW ≤ (scanNeededWidths x z ops).xneed i := by
-    simpa [splitW, initWidthState] using scanNeededWidths_x_ge_init x z ops i
-  have hW : splitW ≤ W := by
-    have := commonNeededWidth_ge_xneed (scanNeededWidths x z ops) i
-    omega
-  congr
-  omega
-
-/-- The widened final z-slot is the initial slot plus exactly its `extraDelta`. -/
-lemma stFinal_zslot_eq_addExtra
-    {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
-    let stInit := initSignedLayoutState x z k
-    let stFinal := targetSignedLayoutState x z k (scanNeededWidths x z ops)
-    stFinal.zslot i = ExtReg.addExtra (stInit.zslot i)
-        (extraDelta (stInit.zslot i) (stFinal.zslot i)) := by
-  dsimp [initSignedLayoutState, targetSignedLayoutState,
-    ExtReg.addExtra, extraDelta, withLogicalWidth]
-  set r := (phaseLayoutOfReg z.base k (phaseLimbWidth x z k)).slot i
-  set splitW := phaseSplitLogicalWidth (ExtReg.width z) (phaseLimbWidth x z k) k i
-  set W := commonNeededWidth (scanNeededWidths x z ops)
-  have hrs : regSize r ≤ splitW := by
-    simpa [r, splitW, initWidthState] using phaseSlot_size_le_initWidth_z x z i
-  have hscan : splitW ≤ (scanNeededWidths x z ops).zneed i := by
-    simpa [splitW, initWidthState] using scanNeededWidths_z_ge_init x z ops i
-  have hW : splitW ≤ W := by
-    have := commonNeededWidth_ge_zneed (scanNeededWidths x z ops) i
-    omega
-  congr
-  omega
-
-/-- The x-slot allocation delta is positive. -/
 lemma extraDelta_xslot_pos
+    (qs : QSemantics)
+    [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+    [ExtRegSplitSemantics qs.Basis]
     {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
-    let stInit := initSignedLayoutState x z k
-    let stFinal := targetSignedLayoutState  x z k (scanNeededWidths  x z ops)
+    let stInit := initSignedLayoutState (Basis := qs.Basis) x z k
+    let stFinal := targetSignedLayoutState
+      (Basis := qs.Basis) x z k (scanNeededWidths x z ops)
     0 < extraDelta (stInit.xslot i) (stFinal.xslot i) := by
-  dsimp [initSignedLayoutState , targetSignedLayoutState , extraDelta, withLogicalWidth]
-  set r := (phaseLayoutOfReg x.base k (phaseLimbWidth x z k)).slot i
-  set splitW := phaseSplitLogicalWidth (ExtReg.width x) (phaseLimbWidth x z k) k i
-  set W := commonNeededWidth (scanNeededWidths  x z ops)
-  have hrs : regSize r ≤ splitW := by
-    simpa [r, splitW, initWidthState ] using phaseSlot_size_le_initWidth_x x z i
-  have hscan : splitW ≤ (scanNeededWidths  x z ops).xneed i := by
-    simpa [splitW, initWidthState ] using scanNeededWidths_x_ge_init x z ops i
-  have hW : splitW + 1 ≤ W := by
-    have := commonNeededWidth_ge_xneed (scanNeededWidths  x z ops) i
-    omega
-  omega
+  dsimp
+  let stInit := initSignedLayoutState (Basis := qs.Basis) x z k
+  let Wwork := commonNeededWidth (scanNeededWidths x z ops)
 
-/-- The z-slot allocation delta is positive. -/
+  have hinit :
+      ExtReg.width (stInit.xslot i) = (initWidthState x z k).xw i := by
+    simpa [stInit] using
+      stInit_xslot_width (Basis := qs.Basis) x z i
+
+  have hscan :
+      (initWidthState x z k).xw i ≤
+        (scanNeededWidths x z ops).xneed i :=
+    scanNeededWidths_x_ge_init x z ops i
+
+  have hW :
+      (scanNeededWidths x z ops).xneed i + 1 ≤ Wwork :=
+    commonNeededWidth_ge_xneed (scanNeededWidths x z ops) i
+
+  have hlt : ExtReg.width (stInit.xslot i) < Wwork := by
+    rw [hinit]
+    omega
+
+  simpa [targetSignedLayoutState, stInit, Wwork] using
+    extraDelta_widenExtRegTo_pos (stInit.xslot i) Wwork hlt
+
 lemma extraDelta_zslot_pos
+    (qs : QSemantics)
+    [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+    [ExtRegSplitSemantics qs.Basis]
     {k : ℕ} (x z : ExtReg) (ops : Prog k) (i : Fin k) :
-    let stInit := initSignedLayoutState  x z k
-    let stFinal := targetSignedLayoutState  x z k (scanNeededWidths  x z ops)
+    let stInit := initSignedLayoutState (Basis := qs.Basis) x z k
+    let stFinal := targetSignedLayoutState
+      (Basis := qs.Basis) x z k (scanNeededWidths x z ops)
     0 < extraDelta (stInit.zslot i) (stFinal.zslot i) := by
-  dsimp [initSignedLayoutState , targetSignedLayoutState , extraDelta, withLogicalWidth]
-  set r := (phaseLayoutOfReg z.base k (phaseLimbWidth x z k)).slot i
-  set splitW := phaseSplitLogicalWidth (ExtReg.width z) (phaseLimbWidth x z k) k i
-  set W := commonNeededWidth (scanNeededWidths  x z ops)
-  have hrs : regSize r ≤ splitW := by
-    simpa [r, splitW, initWidthState ] using phaseSlot_size_le_initWidth_z x z i
-  have hscan : splitW ≤ (scanNeededWidths  x z ops).zneed i := by
-    simpa [splitW, initWidthState ] using scanNeededWidths_z_ge_init x z ops i
-  have hW : splitW + 1 ≤ W := by
-    have := commonNeededWidth_ge_zneed (scanNeededWidths  x z ops) i
+  dsimp
+  let stInit := initSignedLayoutState (Basis := qs.Basis) x z k
+  let Wwork := commonNeededWidth (scanNeededWidths x z ops)
+
+  have hinit :
+      ExtReg.width (stInit.zslot i) = (initWidthState x z k).zw i := by
+    simpa [stInit] using
+      stInit_zslot_width (Basis := qs.Basis) x z i
+
+  have hscan :
+      (initWidthState x z k).zw i ≤
+        (scanNeededWidths x z ops).zneed i :=
+    scanNeededWidths_z_ge_init x z ops i
+
+  have hW :
+      (scanNeededWidths x z ops).zneed i + 1 ≤ Wwork :=
+    commonNeededWidth_ge_zneed (scanNeededWidths x z ops) i
+
+  have hlt : ExtReg.width (stInit.zslot i) < Wwork := by
+    rw [hinit]
     omega
-  omega
 
+  simpa [targetSignedLayoutState, stInit, Wwork] using
+    extraDelta_widenExtRegTo_pos (stInit.zslot i) Wwork hlt
 
+/-! =========================================================
+    Section 4: Single-chunk allocation correctness
+========================================================= -/
+
+/-- These lemmas show that allocating one `x`/`z` chunk sends a basis state to
+another basis state, installs the correct target value on the allocated slot,
+and preserves all other target slots and source-chunk interpretations. -/
 lemma eval_allocChunkGate_x_ket
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [GateSemanticsFacts qs]
   {k : ℕ}
   (x z : ExtReg)
   (hxz : Disjoint x.base z.base)
-  (hxwf : WellFormedReg x.base)
-  (hzwf : WellFormedReg z.base)
   (ops : Prog k)
   (i : Fin k)
   (bcur : qs.Basis) :
   let need : NeededWidths k := scanNeededWidths x z ops
-  let stInit : LayoutState k := initSignedLayoutState x z k
-  let stFinal : LayoutState k := targetSignedLayoutState x z k need
+  let stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
+  let stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := qs.Basis) x z k need
   ∃ bX : qs.Basis,
     qs.eval (allocChunkGate i (stInit.xslot i) (stFinal.xslot i)) (qs.ket bcur) = qs.ket bX ∧
     ExtRegEncoding.extToInt (stFinal.xslot i) bX = sourceChunkXInt (qs := qs) stInit i bcur ∧
@@ -273,61 +167,65 @@ lemma eval_allocChunkGate_x_ket
         sourceChunkZInt (qs := qs) stInit j bcur) := by
   dsimp
   set need : NeededWidths k := scanNeededWidths x z ops
-  set stInit : LayoutState k := initSignedLayoutState x z k
-  set stFinal : LayoutState k := targetSignedLayoutState x z k need
+  set stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
+  set stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := qs.Basis) x z k need
   set δ : ℕ := extraDelta (stInit.xslot i) (stFinal.xslot i)
+
+  have disjoint_symm {a b : Reg} : Disjoint a b → Disjoint b a := by
+    intro h
+    cases h with
+    | inl hab => exact Or.inr hab
+    | inr hba => exact Or.inl hba
 
   have hδpos : 0 < δ := by
     simpa [δ, need, stInit, stFinal] using
-      (extraDelta_xslot_pos (x := x) (z := z) (ops := ops) (i := i))
+      (extraDelta_xslot_pos
+        (qs := qs) (x := x) (z := z) (ops := ops) (i := i))
 
   have hslot :
       stFinal.xslot i = ExtReg.addExtra (stInit.xslot i) δ := by
     simpa [δ, need, stInit, stFinal] using
-      (stFinal_xslot_eq_addExtra (x := x) (z := z) (ops := ops) (i := i))
+      (stFinal_xslot_eq_addExtra
+        (Basis := qs.Basis) (x := x) (z := z) (ops := ops) (i := i))
 
   have hδne : δ ≠ 0 := Nat.ne_of_gt hδpos
 
   have hdisj_xx_src (j : Fin k) (hji : j ≠ i) :
-    Disjoint (stInit.xslot i).base (stInit.xslot j).base := by
-    simpa [stInit, initSignedLayoutState, withLogicalWidth]
-      using
-        phase_layout_slot_disjoint_slot
-          x.base
-          (phaseLimbWidth x z k)
-          i j
-          (Ne.symm hji)
+      Disjoint (stInit.xslot i).base (stInit.xslot j).base := by
+    simpa [stInit, initSignedLayoutState] using
+      splitExtReg_disjoint
+        (Basis := qs.Basis)
+        x k (phaseLimbWidth x z k)
+        i j (Ne.symm hji)
 
   have hdisj_xx_tgt (j : Fin k) (hji : j ≠ i) :
       Disjoint (stInit.xslot i).base (stFinal.xslot j).base := by
-    simpa [stInit, initSignedLayoutState, withLogicalWidth]
-      using
-        phase_layout_slot_disjoint_slot
-          x.base
-          (phaseLimbWidth x z k)
-          i j
-          (Ne.symm hji)
+    have hsrc : Disjoint (stInit.xslot i).base (stInit.xslot j).base :=
+      hdisj_xx_src j hji
+    have hbase :
+        (stFinal.xslot j).base = (stInit.xslot j).base := by
+      simp [stFinal, targetSignedLayoutState, widenExtRegTo, initSignedLayoutState, stInit]
+    simpa [hbase] using hsrc
 
   have hdisj_xz_src (j : Fin k) :
       Disjoint (stInit.xslot i).base (stInit.zslot j).base := by
-      simpa [stInit, initSignedLayoutState, withLogicalWidth]
-        using
-          phase_layout_slot_disjoint_of_base_disjoint
-            x.base z.base
-            (phaseLimbWidth x z k)
-            hxz
-            i j
-            hxwf hzwf
+    simpa [stInit, initSignedLayoutState] using
+      splitExtReg_disjoint_of_disjoint
+        (Basis := qs.Basis)
+        x z k (phaseLimbWidth x z k)
+        i j hxz
+
   have hdisj_xz_tgt (j : Fin k) :
       Disjoint (stInit.xslot i).base (stFinal.zslot j).base := by
-      simpa [stInit, initSignedLayoutState, withLogicalWidth]
-        using
-          phase_layout_slot_disjoint_of_base_disjoint
-            x.base z.base
-            (phaseLimbWidth x z k)
-            hxz
-            i j
-            hxwf hzwf
+    have hsrc : Disjoint (stInit.xslot i).base (stInit.zslot j).base :=
+      hdisj_xz_src j
+    have hbase :
+        (stFinal.zslot j).base = (stInit.zslot j).base := by
+      simp [stFinal, targetSignedLayoutState, widenExtRegTo, initSignedLayoutState, stInit]
+    simpa [hbase] using hsrc
+
   by_cases htop : isTopChunk i
   ·
     have hgate :
@@ -378,35 +276,45 @@ lemma eval_allocChunkGate_x_ket
       intro j
       unfold sourceChunkXInt
       by_cases hjtop : isTopChunk j
-      · simp [hjtop]
+      ·
+        simp [hjtop]
         by_cases hji : j = i
-        · subst hji
+        ·
+          subst hji
           unfold ExtRegEncoding.extToInt ExtReg.toNat
           have := congrArg (tcDecodeWidth (ExtReg.width (stInit.xslot j))) hToNat
           simpa [ExtReg.toNat] using this
-        · exact signExtend_preserves_disjoint_extToInt
+        ·
+          exact signExtend_preserves_disjoint_extToInt
             (qs := qs)
             (r := stInit.xslot i) (e := stInit.xslot j)
             (n := δ) (b := bcur) (b' := bX)
             (hdisj_xx_src j hji) hEval0
-      · simp [hjtop]
+      ·
+        simp [hjtop]
         by_cases hji : j = i
-        · subst hji
+        ·
+          subst hji
           simpa using hToNat
-        · exact hLoc (stInit.xslot j) (by have := hdisj_xx_src j hji;simp[Disjoint] at *;omega)
+        ·
+          exact hLoc (stInit.xslot j)
+            (disjoint_symm (hdisj_xx_src j hji))
 
     ·
       intro j
       unfold sourceChunkZInt
       by_cases hjtop : isTopChunk j
-      · simp [hjtop]
+      ·
+        simp [hjtop]
         exact signExtend_preserves_disjoint_extToInt
           (qs := qs)
           (r := stInit.xslot i) (e := stInit.zslot j)
           (n := δ) (b := bcur) (b' := bX)
           (hdisj_xz_src j) hEval0
-      · simp [hjtop]
-        exact hLoc (stInit.zslot j) (by have := hdisj_xz_src j;simp[Disjoint] at *;omega)
+      ·
+        simp [hjtop]
+        exact hLoc (stInit.zslot j)
+          (disjoint_symm (hdisj_xz_src j))
 
   ·
     have hgate :
@@ -466,49 +374,62 @@ lemma eval_allocChunkGate_x_ket
       intro j
       unfold sourceChunkXInt
       by_cases hjtop : isTopChunk j
-      · simp [hjtop]
+      ·
+        simp [hjtop]
         by_cases hji : j = i
-        · subst hji
+        ·
+          subst hji
           exfalso
           exact htop hjtop
-        · exact zeroExtend_preserves_disjoint_extToInt
+        ·
+          exact zeroExtend_preserves_disjoint_extToInt
             (qs := qs)
             (r := stInit.xslot i) (e := stInit.xslot j)
             (n := δ) (b := bcur) (b' := bX)
             (hdisj_xx_src j hji) hEval0
-      · simp [hjtop]
+      ·
+        simp [hjtop]
         by_cases hji : j = i
-        · subst hji
+        ·
+          subst hji
           simpa using hToNat
-        · exact hLoc (stInit.xslot j) (by have := (hdisj_xx_src j hji);simp[Disjoint] at *;omega)
+        ·
+          exact hLoc (stInit.xslot j)
+            (disjoint_symm (hdisj_xx_src j hji))
 
     ·
       intro j
       unfold sourceChunkZInt
       by_cases hjtop : isTopChunk j
-      · simp [hjtop]
+      ·
+        simp [hjtop]
         exact zeroExtend_preserves_disjoint_extToInt
           (qs := qs)
           (r := stInit.xslot i) (e := stInit.zslot j)
           (n := δ) (b := bcur) (b' := bX)
           (hdisj_xz_src j) hEval0
-      · simp [hjtop]
-        exact hLoc (stInit.zslot j) (by have := (hdisj_xz_src j);simp[Disjoint] at *;omega)
+      ·
+        simp [hjtop]
+        exact hLoc (stInit.zslot j)
+          (disjoint_symm (hdisj_xz_src j))
 
 lemma eval_allocChunkGate_z_ket
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [GateSemanticsFacts qs]
   {k : ℕ}
   (x z : ExtReg)
   (hxz : Disjoint x.base z.base)
-  (hxwf : WellFormedReg x.base)
-  (hzwf : WellFormedReg z.base)
   (ops : Prog k)
   (i : Fin k)
   (bcur : qs.Basis) :
   let need : NeededWidths k := scanNeededWidths x z ops
-  let stInit : LayoutState k := initSignedLayoutState x z k
-  let stFinal : LayoutState k := targetSignedLayoutState x z k need
+  let stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
+  let stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := qs.Basis) x z k need
   ∃ bZ : qs.Basis,
     qs.eval (allocChunkGate i (stInit.zslot i) (stFinal.zslot i)) (qs.ket bcur) = qs.ket bZ ∧
     ExtRegEncoding.extToInt (stFinal.zslot i) bZ = sourceChunkZInt (qs := qs) stInit i bcur ∧
@@ -526,8 +447,10 @@ lemma eval_allocChunkGate_z_ket
         sourceChunkZInt (qs := qs) stInit j bcur) := by
   dsimp
   set need : NeededWidths k := scanNeededWidths x z ops
-  set stInit : LayoutState k := initSignedLayoutState x z k
-  set stFinal : LayoutState k := targetSignedLayoutState x z k need
+  set stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
+  set stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := qs.Basis) x z k need
   set δ : ℕ := extraDelta (stInit.zslot i) (stFinal.zslot i)
 
   have hxz' : Disjoint z.base x.base := by
@@ -537,83 +460,65 @@ lemma eval_allocChunkGate_z_ket
 
   have hδpos : 0 < δ := by
     simpa [δ, need, stInit, stFinal] using
-      (extraDelta_zslot_pos (x := x) (z := z) (ops := ops) (i := i))
+      (extraDelta_zslot_pos
+        (qs := qs) (x := x) (z := z) (ops := ops) (i := i))
 
   have hslot :
       stFinal.zslot i = ExtReg.addExtra (stInit.zslot i) δ := by
     simpa [δ, need, stInit, stFinal] using
-      (stFinal_zslot_eq_addExtra (x := x) (z := z) (ops := ops) (i := i))
+      (stFinal_zslot_eq_addExtra
+        (Basis := qs.Basis) (x := x) (z := z) (ops := ops) (i := i))
 
   have hδne : δ ≠ 0 := Nat.ne_of_gt hδpos
-
   have hdisj_zx_src (j : Fin k) :
-    Disjoint (stInit.zslot i).base (stInit.xslot j).base := by
-    simpa [stInit, initSignedLayoutState, withLogicalWidth]
-      using
-        phase_layout_slot_disjoint_of_base_disjoint
-          z.base x.base
-          (phaseLimbWidth x z k)
-          hxz'
-          i j
-          hzwf hxwf
+      Disjoint (stInit.zslot i).base (stInit.xslot j).base := by
+    simpa [stInit, initSignedLayoutState] using
+      splitExtReg_disjoint_of_disjoint
+        (Basis := qs.Basis)
+        z x k (phaseLimbWidth x z k)
+        i j hxz'
 
   have hdisj_zx_tgt (j : Fin k) :
       Disjoint (stInit.zslot i).base (stFinal.xslot j).base := by
-    simpa [stInit, stFinal, initSignedLayoutState, targetSignedLayoutState, withLogicalWidth]
-      using
-        phase_layout_slot_disjoint_of_base_disjoint
-          z.base x.base
-          (phaseLimbWidth x z k)
-          hxz'
-          i j
-          hzwf hxwf
+    have hsrc : Disjoint (stInit.zslot i).base (stInit.xslot j).base :=
+      hdisj_zx_src j
+    have hbase :
+        (stFinal.xslot j).base = (stInit.xslot j).base := by
+      simp [stFinal, targetSignedLayoutState, widenExtRegTo, initSignedLayoutState, stInit]
+    simpa [hbase] using hsrc
 
   have hdisj_xz_src_rev (j : Fin k) :
       Disjoint (stInit.xslot j).base (stInit.zslot i).base := by
-    simpa [stInit, initSignedLayoutState, withLogicalWidth]
-      using
-        phase_layout_slot_disjoint_of_base_disjoint
-          x.base z.base
-          (phaseLimbWidth x z k)
-          hxz
-          j i
-          hxwf hzwf
+    simpa [stInit, initSignedLayoutState] using
+      splitExtReg_disjoint_of_disjoint
+        (Basis := qs.Basis)
+        x z k (phaseLimbWidth x z k)
+        j i hxz
 
   have hdisj_zz_src (j : Fin k) (hji : j ≠ i) :
       Disjoint (stInit.zslot i).base (stInit.zslot j).base := by
-    simpa [stInit, initSignedLayoutState, withLogicalWidth]
-      using
-        phase_layout_slot_disjoint_slot
-          z.base
-          (phaseLimbWidth x z k)
-          i j
-          (by
-            intro hij
-            apply hji
-            exact hij.symm)
+    simpa [stInit, initSignedLayoutState] using
+      splitExtReg_disjoint
+        (Basis := qs.Basis)
+        z k (phaseLimbWidth x z k)
+        i j (Ne.symm hji)
 
   have hdisj_zz_src_rev (j : Fin k) (hji : j ≠ i) :
       Disjoint (stInit.zslot j).base (stInit.zslot i).base := by
-    simpa [stInit, initSignedLayoutState, withLogicalWidth]
-      using
-        phase_layout_slot_disjoint_slot
-          z.base
-          (phaseLimbWidth x z k)
-          j i
-          hji
+    simpa [stInit, initSignedLayoutState] using
+      splitExtReg_disjoint
+        (Basis := qs.Basis)
+        z k (phaseLimbWidth x z k)
+        j i hji
 
   have hdisj_zz_tgt (j : Fin k) (hji : j ≠ i) :
       Disjoint (stInit.zslot i).base (stFinal.zslot j).base := by
-    simpa [stInit, stFinal, initSignedLayoutState, targetSignedLayoutState, withLogicalWidth]
-      using
-        phase_layout_slot_disjoint_slot
-          z.base
-          (phaseLimbWidth x z k)
-          i j
-          (by
-            intro hij
-            apply hji
-            exact hij.symm)
+    have hsrc : Disjoint (stInit.zslot i).base (stInit.zslot j).base :=
+      hdisj_zz_src j hji
+    have hbase :
+        (stFinal.zslot j).base = (stInit.zslot j).base := by
+      simp [stFinal, targetSignedLayoutState, widenExtRegTo, initSignedLayoutState,stInit]
+    simpa [hbase] using hsrc
 
   by_cases htop : isTopChunk i
   ·
@@ -683,10 +588,12 @@ lemma eval_allocChunkGate_z_ket
       ·
         simp [hjtop]
         by_cases hji : j = i
-        · subst hji
+        ·
+          subst hji
           have := congrArg (tcDecodeWidth (ExtReg.width (stInit.zslot j))) hToNat
           simpa [ExtReg.toNat] using this
-        · exact signExtend_preserves_disjoint_extToInt
+        ·
+          exact signExtend_preserves_disjoint_extToInt
             (qs := qs)
             (r := stInit.zslot i) (e := stInit.zslot j)
             (n := δ) (b := bcur) (b' := bZ)
@@ -694,10 +601,12 @@ lemma eval_allocChunkGate_z_ket
       ·
         simp [hjtop]
         by_cases hji : j = i
-        · subst hji
+        ·
+          subst hji
           exfalso
           exact hjtop htop
-        · exact hLoc (stInit.zslot j) (hdisj_zz_src_rev j hji)
+        ·
+          exact hLoc (stInit.zslot j) (hdisj_zz_src_rev j hji)
 
   ·
     have hgate :
@@ -775,10 +684,12 @@ lemma eval_allocChunkGate_z_ket
       ·
         simp [hjtop]
         by_cases hji : j = i
-        · subst hji
+        ·
+          subst hji
           exfalso
           exact htop hjtop
-        · exact zeroExtend_preserves_disjoint_extToInt
+        ·
+          exact zeroExtend_preserves_disjoint_extToInt
             (qs := qs)
             (r := stInit.zslot i) (e := stInit.zslot j)
             (n := δ) (b := bcur) (b' := bZ)
@@ -786,23 +697,35 @@ lemma eval_allocChunkGate_z_ket
       ·
         simp [hjtop]
         by_cases hji : j = i
-        · subst hji
+        ·
+          subst hji
           simpa using hToNat
-        · exact hLoc (stInit.zslot j) (hdisj_zz_src_rev j hji)
+        ·
+          exact hLoc (stInit.zslot j) (hdisj_zz_src_rev j hji)
 
+/-! =========================================================
+    Section 5: Full allocation correctness
+========================================================= -/
+
+/-- The auxiliary allocation lemma establishes the encoding invariant after
+allocating the first `n` chunks. The specialized full-allocation lemmas then
+package the `n = k` case and combine it with `allocated_widths_sound`. -/
 lemma eval_compileSignedAllocationsAux_ket
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [GateSemanticsFacts qs]
   {k : ℕ}
   (x z : ExtReg)
   (hxz : Disjoint x.base z.base)
-  (hxwf : WellFormedReg x.base)
-  (hzwf : WellFormedReg z.base)
   (ops : Prog k)
   (b : qs.Basis) :
   let need : NeededWidths k := scanNeededWidths x z ops
-  let stInit : LayoutState k := initSignedLayoutState x z k
-  let stFinal : LayoutState k := targetSignedLayoutState x z k need
+  let stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
+  let stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := qs.Basis) x z k need
   ∀ (n : ℕ) (hn : n ≤ k),
     ∃ bAlloc : qs.Basis,
       qs.eval (compileSignedAllocationsAux stInit stFinal n hn) (qs.ket b) = qs.ket bAlloc ∧
@@ -820,8 +743,10 @@ lemma eval_compileSignedAllocationsAux_ket
           sourceChunkZInt (qs := qs) stInit i b) := by
   dsimp
   set need : NeededWidths k := scanNeededWidths x z ops
-  set stInit : LayoutState k := initSignedLayoutState x z k
-  set stFinal : LayoutState k := targetSignedLayoutState x z k need
+  set stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
+  set stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := qs.Basis) x z k need
   intro n hn
   induction n generalizing b with
   | zero =>
@@ -846,7 +771,7 @@ lemma eval_compileSignedAllocationsAux_ket
         (eval_allocChunkGate_x_ket
           (qs := qs)
           (x := x) (z := z)
-          (hxz := hxz) (hxwf := hxwf) (hzwf := hzwf)
+          (hxz := hxz)
           (ops := ops)
           (i := idx)
           (bcur := bMid))
@@ -856,33 +781,39 @@ lemma eval_compileSignedAllocationsAux_ket
         (eval_allocChunkGate_z_ket
           (qs := qs)
           (x := x) (z := z)
-          (hxz := hxz) (hxwf := hxwf) (hzwf := hzwf)
+          (hxz := hxz)
           (ops := ops)
           (i := idx)
           (bcur := bX))
         with ⟨bAlloc, hZEval, hZVal, hZKeepX, hZKeepZ, hZKeepSrcX, hZKeepSrcZ⟩
 
       refine ⟨bAlloc, ?_, ?_, ?_, ?_, ?_⟩
-      · rw [compileSignedAllocationsAux_succ (src := stInit) (dst := stFinal) (n := n) (hn := hn)]
+      ·
+        rw [compileSignedAllocationsAux_succ
+          (src := stInit) (dst := stFinal) (n := n) (hn := hn)]
         rw [QSemantics.eval_seq]
         rw [hMidEval]
         rw [QSemantics.eval_seq]
         rw [hXEval]
         simpa [QSemantics.eval_seq, hk', idx] using hZEval
-      · intro j hj
+
+      ·
+        intro j hj
         by_cases hji : j = idx
-        · subst hji
+        ·
+          subst hji
           calc
             ExtRegEncoding.extToInt (stFinal.xslot idx) bAlloc
                 = ExtRegEncoding.extToInt (stFinal.xslot idx) bX := by
                     simpa using hZKeepX idx
             _ = sourceChunkXInt (qs := qs) stInit idx bMid := hXVal
             _ = sourceChunkXInt (qs := qs) stInit idx b := by
-                  exact hKeepX idx (by change n ≤ n;exact Nat.le_refl n)
+                  exact hKeepX idx (by change n ≤ n; exact Nat.le_refl n)
             _ = evalRowX (qs := qs) stInit (State.start_state idx) b := by
                   symm
                   simpa using evalRowX_start_state (qs := qs) stInit idx b
-        · have hjn : j.1 < n := by
+        ·
+          have hjn : j.1 < n := by
             have hjne : j.1 ≠ n := by
               intro hEq
               apply hji
@@ -896,20 +827,24 @@ lemma eval_compileSignedAllocationsAux_ket
             _ = ExtRegEncoding.extToInt (stFinal.xslot j) bMid := by
                   exact hXKeepX j hji
             _ = evalRowX (qs := qs) stInit (State.start_state j) b := hMidX j hjn
-      · intro j hj
+
+      ·
+        intro j hj
         by_cases hji : j = idx
-        · subst hji
+        ·
+          subst hji
           calc
             ExtRegEncoding.extToInt (stFinal.zslot idx) bAlloc
                 = sourceChunkZInt (qs := qs) stInit idx bX := hZVal
             _ = sourceChunkZInt (qs := qs) stInit idx bMid := by
                   simpa using hXKeepSrcZ idx
             _ = sourceChunkZInt (qs := qs) stInit idx b := by
-                  exact hKeepZ idx (by change n ≤ n;exact Nat.le_refl n)
+                  exact hKeepZ idx (by change n ≤ n; exact Nat.le_refl n)
             _ = evalRowZ (qs := qs) stInit (State.start_state idx) b := by
                   symm
                   simpa using evalRowZ_start_state (qs := qs) stInit idx b
-        · have hjn : j.1 < n := by
+        ·
+          have hjn : j.1 < n := by
             have hjne : j.1 ≠ n := by
               intro hEq
               apply hji
@@ -923,7 +858,9 @@ lemma eval_compileSignedAllocationsAux_ket
             _ = ExtRegEncoding.extToInt (stFinal.zslot j) bMid := by
                   simpa using hXKeepZTarget j
             _ = evalRowZ (qs := qs) stInit (State.start_state j) b := hMidZ j hjn
-      · intro j hj
+
+      ·
+        intro j hj
         calc
           sourceChunkXInt (qs := qs) stInit j bAlloc
               = sourceChunkXInt (qs := qs) stInit j bX := by
@@ -931,7 +868,9 @@ lemma eval_compileSignedAllocationsAux_ket
           _ = sourceChunkXInt (qs := qs) stInit j bMid := by
                 simpa using hXKeepSrcX j
           _ = sourceChunkXInt (qs := qs) stInit j b := hKeepX j (by omega)
-      · intro j hj
+
+      ·
+        intro j hj
         calc
           sourceChunkZInt (qs := qs) stInit j bAlloc
               = sourceChunkZInt (qs := qs) stInit j bX := by
@@ -942,17 +881,20 @@ lemma eval_compileSignedAllocationsAux_ket
 
 lemma eval_compileSignedAllocations_ket
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [GateSemanticsFacts qs]
   {k : ℕ}
   (x z : ExtReg)
   (hxz : Disjoint x.base z.base)
-  (hxwf : WellFormedReg x.base)
-  (hzwf : WellFormedReg z.base)
   (ops : Prog k)
   (b : qs.Basis) :
   let need : NeededWidths k := scanNeededWidths x z ops
-  let stInit : LayoutState k := initSignedLayoutState x z k
-  let stFinal : LayoutState k := targetSignedLayoutState x z k need
+  let stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
+  let stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := qs.Basis) x z k need
   ∃ bAlloc : qs.Basis,
     qs.eval (compileSignedAllocations k stInit stFinal) (qs.ket b) = qs.ket bAlloc ∧
     EncodesStateFrom (qs := qs) stInit stFinal State.start_state b bAlloc := by
@@ -961,7 +903,7 @@ lemma eval_compileSignedAllocations_ket
     (eval_compileSignedAllocationsAux_ket
       (qs := qs)
       (x := x) (z := z)
-      (hxz := hxz) (hxwf := hxwf) (hzwf := hzwf)
+      (hxz := hxz)
       (ops := ops) (b := b)
       k le_rfl)
     with ⟨bAlloc, hEval, hX, hZ, _hKeepX, _hKeepZ⟩
@@ -974,31 +916,54 @@ lemma eval_compileSignedAllocations_ket
 
 lemma eval_compileSignedAllocations_ket_fits
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [GateSemanticsFacts qs]
   {k : ℕ}
   (x z : ExtReg)
   (hxz : Disjoint x.base z.base)
-  (hxwf : WellFormedReg x.base)
-  (hzwf : WellFormedReg z.base)
   (ops : Prog k)
   (b : qs.Basis) :
   let need : NeededWidths k := scanNeededWidths x z ops
-  let stInit : LayoutState k := initSignedLayoutState x z k
-  let stFinal : LayoutState k := targetSignedLayoutState x z k need
+  let stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
+  let stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := qs.Basis) x z k need
   ∃ bAlloc : qs.Basis,
     qs.eval (compileSignedAllocations k stInit stFinal) (qs.ket b) = qs.ket bAlloc ∧
     EncodesStateFromFits (qs := qs) stInit stFinal State.start_state b bAlloc := by
-  have := eval_compileSignedAllocations_ket qs x z hxz hxwf hzwf ops b
-  rcases this with ⟨bAlloc, hB1, hB2⟩
-  refine ⟨bAlloc, hB1, ?_, ?_⟩
-  · exact hB2
-  · exact allocated_widths_sound
+  have hAlloc :=
+    eval_compileSignedAllocations_ket
+      (qs := qs)
+      (x := x) (z := z)
+      (hxz := hxz)
+      (ops := ops)
+      (b := b)
+
+  rcases hAlloc with ⟨bAlloc, hEval, hEnc⟩
+
+  have hFits :
+      let src := initSignedLayoutState (Basis := qs.Basis) x z k
+      let dst := targetSignedLayoutState
+        (Basis := qs.Basis) x z k (scanNeededWidths x z ops)
+      (∀ i : Fin k,
+        FitsSignedWidth (ExtReg.width (dst.xslot i))
+          (evalRowX (qs := qs) src (State.start_state i) b)) ∧
+      (∀ i : Fin k,
+        FitsSignedWidth (ExtReg.width (dst.zslot i))
+          (evalRowZ (qs := qs) src (State.start_state i) b)) := by
+    exact allocated_widths_sound
       (qs := qs) (x := x) (z := z) (ops := ops) (b := b)
       (σ := State.start_state)
       ⟨[], ops, by simp, by simp [run?]⟩
 
+  refine ⟨bAlloc, hEval, ?_⟩
+  dsimp at hFits
+  exact ⟨hEnc, hFits.1, hFits.2⟩
+
 /-! =========================================================
-    Helpers for the block induction proof
+    Section 6: Sequencing compiled annotated programs
 ========================================================= -/
 
 lemma eval_compileAnnotatedOpsToSignedGateAux_append
@@ -1029,13 +994,22 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_append
             simp [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, ih]
           aesop
 
+/-! =========================================================
+    Section 7: Layout disjointness
+========================================================= -/
+
 def LayoutSlotsDisjoint {k : ℕ} (st : LayoutState k) : Prop :=
   (∀ i j : Fin k, i ≠ j → Disjoint (st.xslot i).base (st.xslot j).base) ∧
   (∀ i j : Fin k, i ≠ j → Disjoint (st.zslot i).base (st.zslot j).base) ∧
   (∀ i j : Fin k, Disjoint (st.xslot i).base (st.zslot j).base)
 
+/-! =========================================================
+    Section 8: One-step encoded-state preservation
+========================================================= -/
 
-
+/-- These lemmas prove correctness of a single compiled annotated operation on a
+basis state, assuming the next symbolic state already fits the target layout
+widths. -/
 lemma encodesFrom_after_shiftL_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -1780,7 +1754,11 @@ lemma encodesFrom_after_addScaled_ket
             _   = evalRowZ (qs := qs) src (σ j) bRef := by
                     simpa [EncodesStateFrom] using hEnc.1.2 j
             _   = evalRowZ (qs := qs) src ((State.addScaledReg σ dsti srci negSrc sh) j) bRef := by
-                    simp [State.addScaledReg, State.setReg, hjd]
+                      simp [State.addScaledReg, State.setReg, hjd]
+
+/-! =========================================================
+    Section 9: Arithmetic-prefix and no-phase helpers
+========================================================= -/
 
 def OutsideLayout {k : ℕ} (dst : LayoutState k) (e : ExtReg) : Prop :=
   (∀ i : Fin k, Disjoint e.base (dst.xslot i).base) ∧
@@ -1884,7 +1862,6 @@ lemma sameOutside_after_shiftL_single
     _   = ExtRegEncoding.extToInt e bz := by
             symm
             exact hbz_keep e (he.2 i)
-
 
 lemma sameOutside_after_shiftR_single
   (qs : QSemantics)
@@ -1997,7 +1974,6 @@ lemma sameOutside_after_shiftR_single
                 symm
                 exact hbz_keep e (he.2 i)
 
-
 lemma sameOutside_after_negate_single
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -2039,7 +2015,6 @@ lemma sameOutside_after_negate_single
     _   = ExtRegEncoding.extToInt e bz := by
             symm
             exact hbz_keep e (he.2 i)
-
 
 lemma sameOutside_after_addScaled_single
   (qs : QSemantics)
@@ -2091,7 +2066,6 @@ lemma sameOutside_after_addScaled_single
     _   = ExtRegEncoding.extToInt e bz := by
             symm
             exact hbz_keep e (he.2 dsti) (he.2 srci)
-
 
 lemma sameOutside_after_noPhase_run_ket_gen_aux
   (qs : QSemantics)
@@ -2572,7 +2546,6 @@ lemma basis_eq_of_sameOutside_and_slots
       (by simp [qubitReg, ExtReg.ofReg])
       (by simp [qubitReg, ExtReg.ofReg])
 
-
 lemma encodesFrom_after_noPhase_run_ket_gen_aux
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -2965,6 +2938,10 @@ lemma encodesFrom_after_noPhase_run_ket_gen
     (σ := σ) (σ' := σ') (bRef := bRef) (bCur := bCur) (n := n)
     hdisj hFits hSafeAdd hNP hrun hEnc
 
+/-! =========================================================
+    Section 10: Phase-block helpers
+========================================================= -/
+
 lemma eval_matched_phase_ket_from
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -3000,8 +2977,6 @@ lemma eval_matched_phase_ket_from
   rw [hEnc.1 i, hσi]
   rw [hEnc.2 i, hσi]
 
-
-
 @[simp] lemma phaseProductCount_eq_zero_of_NoPhase
   {k : ℕ} {ops : Prog k} (hNo : NoPhase ops) :
   phaseProductCount ops = 0 := by
@@ -3025,9 +3000,7 @@ lemma eval_matched_phase_ket_from
           exfalso
           exact hNo i (by simp)
 
-/-! =========================================================
-    Induction-friendly existential body theorem
-========================================================= -/
+/- Induction-friendly existential body theorem for the phase-block proof stack. -/
 
 lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
   (qs : QSemantics)
@@ -3496,7 +3469,6 @@ lemma qubit_in_layout_or_outside
   (∃ i : Fin k, (dst.xslot i).base.lo ≤ q ∧ q < (dst.xslot i).base.hi) ∨
   (∃ i : Fin k, (dst.zslot i).base.lo ≤ q ∧ q < (dst.zslot i).base.hi) ∨
   OutsideLayout dst (ExtReg.ofReg (qubitReg q)) := by
-  classical
   by_cases hx : ∃ i : Fin k, (dst.xslot i).base.lo ≤ q ∧ q < (dst.xslot i).base.hi
   · exact Or.inl hx
   · by_cases hz : ∃ i : Fin k, (dst.zslot i).base.lo ≤ q ∧ q < (dst.zslot i).base.hi
@@ -3709,7 +3681,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks
   subst hbNext_eq
   simpa using hBody
 
-
 lemma encodesStateFrom_start_unique_of_ext
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -3740,9 +3711,8 @@ lemma encodesStateFrom_start_unique_of_ext
           = evalRowZ (qs := qs) src (State.start_state i) b0 := h1.2 i
       _ = ExtRegEncoding.extToInt (dst.zslot i) b2 := (h2.2 i).symm
 
-/-! =========================================================
-    Your theorem as a corollary
-========================================================= -/
+/- Allocation/deallocation cancellation lemmas used when closing the compiled
+body back to the original allocated basis state. -/
 lemma allocChunkGate_deallocChunkGate_cancel
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -3786,7 +3756,6 @@ lemma alloc_dealloc_aux_cancel
       have:=allocChunkGate_deallocChunkGate_cancel qs i
       simp at *
       simp[this,ih]
-
 
 lemma eval_compileSignedDeallocations_alloc_id
   (qs : QSemantics)
@@ -3901,8 +3870,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_then_dealloc
   rw [qs.eval_smul]
   rw [hDealloc]
 
-open scoped BigOperators
-
 /-- Use the standalone math definition as the real meaning of good Toom-Cook points. -/
 def GoodToomCookPoints
   (k : ℕ)
@@ -3913,8 +3880,6 @@ def GoodToomCookPoints
     (pts := ToomCookMath.listToFin pts hpts)
 
 /--
-The point term used by the abstract math theorem.
-
 This is the rational version of the integer phase term already appearing in
 `phaseScalarFrom`.
 -/
@@ -3973,8 +3938,6 @@ lemma phaseCoeffFromPtsWidth_eq_interpCoeff
   simp [ phaseCoeffFromPtsWidth, phaseCoeffFromPts, ToomCookMath.interpCoeff]
   unfold ToomCookMath.interpMatrix ToomCookMath.radixRow interpMatrix radixRow ptsToFin ToomCookMath.listToFin
   simp
-
-open scoped BigOperators
 
 
 lemma phaseScalarFrom_eq_phaseScalarFromList_aux
@@ -4440,8 +4403,6 @@ lemma GoodToomCookPoints.to_GoodInterpolationPoints
   -- probably by unfolding GoodToomCookPoints
   simpa [GoodToomCookPoints, ptsToFin]
 
-open scoped BigOperators
-
 lemma evalAtRadix_tcProductCoeff_eq_chunk_product
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
@@ -4544,47 +4505,85 @@ lemma evalAtRadix_tcProductCoeff_eq_chunk_product
           ((sourceChunkZInt (qs := qs) st j b : ℤ) : ℚ) * B ^ (j : ℕ)) := by
         simp [X, Z]
 
-
 lemma sourceChunks_reconstruct_x
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
   {k : ℕ}
-  (hk : 1 < k)
+  (hk : 0 < k)
   (x z : ExtReg)
   (b : qs.Basis) :
-  let stInit : LayoutState k := initSignedLayoutState x z k
+  let stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
   let W : ℕ := phaseLimbWidth x z k
   let B : ℚ := (2 : ℚ) ^ W
   ((ExtRegEncoding.extToInt x b : ℤ) : ℚ)
     =
   ∑ i : Fin k,
     ((sourceChunkXInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
-  sorry
+  dsimp
+  let W : ℕ := phaseLimbWidth x z k
+  have hValid : ValidPhaseSplit x k W := by
+    dsimp [W]
+    exact phaseLimbWidth_valid_left x z hk
+  have hrec :
+      ((ExtRegEncoding.extToInt x b : ℤ) : ℚ)
+        =
+      ∑ i : Fin k,
+        ((splitChunkInt x W i b : ℤ) : ℚ)
+          * ((2 : ℚ) ^ W) ^ (i : ℕ) := by
+    exact
+      splitExtReg_reconstruct_int
+        (Basis := qs.Basis)
+        x k W b hValid
+  simpa [initSignedLayoutState, sourceChunkXInt, splitChunkInt, W] using hrec
 
 lemma sourceChunks_reconstruct_z
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
   {k : ℕ}
-  (hk : 1 < k)
+  (hk : 0 < k)
   (x z : ExtReg)
   (b : qs.Basis) :
-  let stInit : LayoutState k := initSignedLayoutState x z k
+  let stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
   let W : ℕ := phaseLimbWidth x z k
   let B : ℚ := (2 : ℚ) ^ W
   ((ExtRegEncoding.extToInt z b : ℤ) : ℚ)
     =
   ∑ i : Fin k,
     ((sourceChunkZInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
-  sorry
+  dsimp
+  let W : ℕ := phaseLimbWidth x z k
+  have hValid : ValidPhaseSplit z k W := by
+    dsimp [W]
+    exact phaseLimbWidth_valid_right x z hk
+  have hrec :
+      ((ExtRegEncoding.extToInt z b : ℤ) : ℚ)
+        =
+      ∑ i : Fin k,
+        ((splitChunkInt z W i b : ℤ) : ℚ)
+          * ((2 : ℚ) ^ W) ^ (i : ℕ) := by
+    exact
+      splitExtReg_reconstruct_int
+        (Basis := qs.Basis)
+        z k W b hValid
+  simpa [initSignedLayoutState, sourceChunkZInt, splitChunkInt, W] using hrec
 
 lemma evalAtRadix_tcProductCoeff_eq_ext_product
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
   {k : ℕ}
   (hk : 1 < k)
   (x z : ExtReg)
   (b : qs.Basis) :
-  let stInit : LayoutState k := initSignedLayoutState x z k
+  let stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
   let W : ℕ := phaseLimbWidth x z k
   let B : ℚ := (2 : ℚ) ^ W
   ToomCookMath.evalAtRadix
@@ -4596,7 +4595,8 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
      ExtRegEncoding.extToInt z b : ℤ) : ℚ)) := by
   dsimp
 
-  set stInit : LayoutState k := initSignedLayoutState x z k
+  set stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
   set W : ℕ := phaseLimbWidth x z k
   set B : ℚ := (2 : ℚ) ^ W
 
@@ -4626,10 +4626,10 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
     simpa [stInit, W, B] using
       sourceChunks_reconstruct_x
         (qs := qs)
-        (hk := hk)
         (x := x)
         (z := z)
         (b := b)
+        (by omega)
 
   have hz :
       ((ExtRegEncoding.extToInt z b : ℤ) : ℚ)
@@ -4639,10 +4639,10 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
     simpa [stInit, W, B] using
       sourceChunks_reconstruct_z
         (qs := qs)
-        (hk := hk)
         (x := x)
         (z := z)
         (b := b)
+        (by omega)
 
   calc
     ToomCookMath.evalAtRadix
@@ -4655,12 +4655,10 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
         *
       (∑ j : Fin k,
           ((sourceChunkZInt (qs := qs) stInit j b : ℤ) : ℚ) * B ^ (j : ℕ)) := hChunk
-
     _ =
       ((ExtRegEncoding.extToInt x b : ℤ) : ℚ) *
       ((ExtRegEncoding.extToInt z b : ℤ) : ℚ) := by
         rw [← hx, ← hz]
-
     _ =
       (((ExtRegEncoding.extToInt x b *
          ExtRegEncoding.extToInt z b : ℤ) : ℚ)) := by
@@ -4668,7 +4666,10 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
 
 lemma toom_cook_interpolation
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [GateSemanticsFacts qs]
   {k : ℕ}
   (hk : 1 < k)
   (phi : ℝ)
@@ -4677,7 +4678,8 @@ lemma toom_cook_interpolation
   (hpts : pts.length = q k)
   (hInterp : GoodToomCookPoints k pts hpts)
   (b : qs.Basis) :
-  let stInit : LayoutState k := initSignedLayoutState x z k
+  let stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
   let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsForRegs k x z pts hpts
   phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
     =
@@ -4687,7 +4689,8 @@ lemma toom_cook_interpolation
        (((ExtRegEncoding.extToInt z b : ℤ) : ℂ)))) := by
   dsimp
 
-  set stInit : LayoutState k := initSignedLayoutState x z k
+  set stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
   set W : ℕ := phaseLimbWidth x z k
   set B : ℚ := (2 : ℚ) ^ W
   set coeff : Fin (q k) → ℚ := phaseCoeffFromPtsForRegs k x z pts hpts
@@ -4850,15 +4853,20 @@ lemma toom_cook_interpolation
         congr 2
         norm_num
 
+/-! =========================================================
+    Section 11: Main compiled-body correctness theorem
+========================================================= -/
+
 lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (phi : ℝ)
   (x z : ExtReg)
   (hxz : Disjoint x.base z.base)
-  (hxwf : WellFormedReg x.base)
-  (hzwf : WellFormedReg z.base)
   (pts : List Point)
   (hpts : List.length pts = q k)
   (hInterp : GoodToomCookPoints k pts hpts)
@@ -4868,12 +4876,12 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
   (run_ops_start_state : run? ops State.start_state = some State.start_state)
   (hSafeAdd :
     ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
-      ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s)
-  :
+      ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s) :
   let Wphase : ℕ := phaseLimbWidth x z k
   let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k Wphase pts hpts
   qs.eval
-      (compileOpsToSignedGate k hk phi x z coeff ops)
+      (compileOpsToSignedGate
+        (Basis := qs.Basis) k hk phi x z coeff ops)
       (qs.ket b)
     =
   qs.eval
@@ -4882,18 +4890,18 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
   dsimp
 
   set need : NeededWidths k := scanNeededWidths x z ops
-  set stInit : LayoutState k := initSignedLayoutState x z k
-  set stFinal : LayoutState k := targetSignedLayoutState x z k need
+  set stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
+  set stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := qs.Basis) x z k need
 
-  -- This is the important correction:
-  -- coefficients use the original phase decomposition radix, not the work width.
   set Wphase : ℕ := phaseLimbWidth x z k
   set coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k Wphase pts hpts
 
   rcases eval_compileSignedAllocations_ket_fits
       (qs := qs)
       (x := x) (z := z)
-      (hxz := hxz) (hxwf := hxwf) (hzwf := hzwf)
+      (hxz := hxz)
       (ops := ops) (b := b) with
     ⟨bAlloc, hAllocEval, hEncAlloc⟩
 
@@ -4917,29 +4925,39 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
     unfold LayoutSlotsDisjoint
     constructor
     · intro i j hij
-      simpa [targetSignedLayoutState, withLogicalWidth]
-        using
-          phase_layout_slot_disjoint_slot
-            x.base
-            (phaseLimbWidth x z k)
+      have hsrc :
+          Disjoint
+            ((initSignedLayoutState (Basis := qs.Basis) x z k).xslot i).base
+            ((initSignedLayoutState (Basis := qs.Basis) x z k).xslot j).base := by
+        simpa [initSignedLayoutState] using
+          splitExtReg_disjoint
+            (Basis := qs.Basis)
+            x k (phaseLimbWidth x z k)
             i j hij
+      simpa [targetSignedLayoutState, widenExtRegTo] using hsrc
     · constructor
       · intro i j hij
-        simpa [targetSignedLayoutState, withLogicalWidth]
-          using
-            phase_layout_slot_disjoint_slot
-              z.base
-              (phaseLimbWidth x z k)
+        have hsrc :
+            Disjoint
+              ((initSignedLayoutState (Basis := qs.Basis) x z k).zslot i).base
+              ((initSignedLayoutState (Basis := qs.Basis) x z k).zslot j).base := by
+          simpa [initSignedLayoutState] using
+            splitExtReg_disjoint
+              (Basis := qs.Basis)
+              z k (phaseLimbWidth x z k)
               i j hij
+        simpa [targetSignedLayoutState, widenExtRegTo] using hsrc
       · intro i j
-        simpa [targetSignedLayoutState, withLogicalWidth]
-          using
-            phase_layout_slot_disjoint_of_base_disjoint
-              x.base z.base
-              (phaseLimbWidth x z k)
-              hxz
-              i j
-              hxwf hzwf
+        have hsrc :
+            Disjoint
+              ((initSignedLayoutState (Basis := qs.Basis) x z k).xslot i).base
+              ((initSignedLayoutState (Basis := qs.Basis) x z k).zslot j).base := by
+          simpa [initSignedLayoutState] using
+            splitExtReg_disjoint_of_disjoint
+              (Basis := qs.Basis)
+              x z k (phaseLimbWidth x z k)
+              i j hxz
+        simpa [targetSignedLayoutState, widenExtRegTo] using hsrc
 
   have hBodyDealloc :
     qs.eval
@@ -4991,7 +5009,8 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
 
   calc
     qs.eval
-        (compileOpsToSignedGate k hk phi x z coeff ops)
+        (compileOpsToSignedGate
+          (Basis := qs.Basis) k hk phi x z coeff ops)
         (qs.ket b)
         =
       qs.eval
@@ -4999,7 +5018,14 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
           (annotatePhaseTermsAux k 0 ops) ;;
          compileSignedDeallocations k stInit stFinal)
         (qs.ket bAlloc) := by
-          simp [compileOpsToSignedGate, stInit, stFinal, need, hAllocEval, qs.eval_seq]
+          simp [
+            compileOpsToSignedGate,
+            stInit,
+            stFinal,
+            need,
+            hAllocEval,
+            qs.eval_seq
+          ]
     _ =
       phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts) •
         qs.ket b := hBodyDealloc
@@ -5018,25 +5044,27 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
             (qs := qs) (phi := phi) (x := x) (z := z) (b := b))
 
 lemma eval_compileOpsToSignedGate_correct_ket
-  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (phi : ℝ)
   (x z : ExtReg)
   (hxz : Disjoint x.base z.base)
-  (hxwf : WellFormedReg x.base)
-  (hzwf : WellFormedReg z.base)
   (pts : List Point)
   (hpts : List.length pts = q k)
   (hInterp : GoodToomCookPoints k pts hpts)
   (b : qs.Basis)
   (ops : Prog k)
   (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
-  (run_ops_start_state : run? ops State.start_state = some State.start_state)
-  :
+  (run_ops_start_state : run? ops State.start_state = some State.start_state) :
   let Wphase : ℕ := phaseLimbWidth x z k
   let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k Wphase pts hpts
   qs.eval
-      (compileOpsToSignedGate k hk phi x z coeff ops)
+      (compileOpsToSignedGate
+        (Basis := qs.Basis) k hk phi x z coeff ops)
       (qs.ket b)
     =
   qs.eval
@@ -5052,46 +5080,70 @@ lemma eval_compileOpsToSignedGate_correct_ket
       (k := k) (hk := hk)
       (phi := phi)
       (x := x) (z := z)
+      (hxz := hxz)
       (pts := pts) (hpts := hpts)
+      (hInterp := hInterp)
       (b := b)
       (ops := ops)
       (hB := hB)
       (run_ops_start_state := run_ops_start_state)
-      (hxz:=hxz) hxwf hzwf (hSafeAdd:=hC.2)
-      (hInterp)
-      )
+      (hSafeAdd := hC.2))
 
 lemma eval_compileOpsToSignedGate_correct
-  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (phi : ℝ)
   (x z : ExtReg)
   (hxz : Disjoint x.base z.base)
-  (hxwf : WellFormedReg x.base)
-  (hzwf : WellFormedReg z.base)
   (pts : List Point)
   (hpts : List.length pts = q k)
   (hInterp : GoodToomCookPoints k pts hpts)
   (ψ : qs.State)
   (ops : Prog k)
   (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
-  (run_ops_start_state : run? ops State.start_state = some State.start_state)
-  :
+  (run_ops_start_state : run? ops State.start_state = some State.start_state) :
   let Wphase : ℕ := phaseLimbWidth x z k
   let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k Wphase pts hpts
   qs.eval
-      (compileOpsToSignedGate k hk phi x z coeff ops)
+      (compileOpsToSignedGate
+        (Basis := qs.Basis) k hk phi x z coeff ops)
       ψ
     =
   qs.eval
       (Gate.SignedPhaseProd phi x z)
       ψ := by
-  have hket :=
-    eval_compileOpsToSignedGate_correct_ket
-      (qs := qs) (k := k) (hk := hk)
-      (phi := phi) (x := x) (z := z)
-      (pts := pts) (hpts := hpts)
-      (ops := ops) (hC := hC)
-      (run_ops_start_state := run_ops_start_state) (hxz) hxwf hzwf
-  have h2:= hket hInterp
-  exact gate_eq_of_ket_eq qs h2 ψ
+  have hket :
+      ∀ b : qs.Basis,
+        let Wphase : ℕ := phaseLimbWidth x z k
+        let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k Wphase pts hpts
+        qs.eval
+            (compileOpsToSignedGate
+              (Basis := qs.Basis) k hk phi x z coeff ops)
+            (qs.ket b)
+          =
+        qs.eval
+            (Gate.SignedPhaseProd phi x z)
+            (qs.ket b) := by
+    intro b
+    exact
+      eval_compileOpsToSignedGate_correct_ket
+        (qs := qs)
+        (k := k) (hk := hk)
+        (phi := phi)
+        (x := x) (z := z)
+        (hxz := hxz)
+        (pts := pts)
+        (hpts := hpts)
+        (hInterp := hInterp)
+        (b := b)
+        (ops := ops)
+        (hC := hC)
+        (run_ops_start_state := run_ops_start_state)
+
+  exact gate_eq_of_ket_eq qs (by intro b; simpa using hket b) ψ
+
+end Shor
