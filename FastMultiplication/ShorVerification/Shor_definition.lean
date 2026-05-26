@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.QFT_decomposition
+import FastMultiplication.ShorVerification.compilation_correctness
 import FastMultiplication.ShorVerification.ModExpBounds
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
