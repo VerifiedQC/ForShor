@@ -1,4 +1,4 @@
-import FastMultiplication.Basic
+import FastMultiplication.Table_Generation.Basic
 import Mathlib.Tactic
 import Mathlib.Data.ZMod.Basic
 -- /******************************************************************************/

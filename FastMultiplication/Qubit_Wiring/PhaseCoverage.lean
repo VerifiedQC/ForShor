@@ -1,4 +1,4 @@
-import FastMultiplication.Allocate_dealloc.Basic
+import FastMultiplication.Qubit_Wiring.Basic
 
 open Operations
 

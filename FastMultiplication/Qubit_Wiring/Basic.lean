@@ -1,4 +1,4 @@
-import FastMultiplication.one_reg_synth_proof_2
+import FastMultiplication.Table_Generation.One_register_synthesis_combined
 import Mathlib.Data.Bitvec
 import Mathlib.Data.Fin.Basic
 
@@ -54,7 +54,7 @@ def getLsb {w : ℕ} (bv : BitVec w) (i : Fin w) : Bool :=
 def bitVecToBin {w : ℕ} (bv : BitVec w) : String :=
   let chars : List Char :=
     ((List.finRange w).reverse).map (fun i => bitChar (getLsb bv i))
-  String.mk chars
+  String.ofList chars
 
 /-- Format one variable-width register: index, bitstring, signed value, and stored width. -/
 def formatReg (idx : Nat) (r : Reg) : String :=

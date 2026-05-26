@@ -1,4 +1,4 @@
-import FastMultiplication.one_reg_synth_proof_2
+import FastMultiplication.Table_Generation.One_register_synthesis_combined
 
 open List Operations
 

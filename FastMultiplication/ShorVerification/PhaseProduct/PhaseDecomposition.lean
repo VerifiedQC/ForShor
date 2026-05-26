@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.LowGate_compilationProofs
+import FastMultiplication.ShorVerification.PhaseProduct.CompilationCorrectness
 
 namespace Shor
 open Gate
@@ -7,20 +7,10 @@ open Operations
 /-!
 # Recursive lowering from `Gate` to `LowGate`
 
-This file defines the recursive lowering pass for signed phase products and QFT,
-the semantic interface for interpreting `LowGate`, and the proof infrastructure
-showing that the lowering agrees with the abstract `Gate` semantics on the
-lowerable phase-product fragment.
-
-Main components:
-
-1. Recursive lowering definitions.
-2. Low-level semantic interface.
-3. Lowerability predicates for recursive phase-product lowering.
-4. `SignedPhaseProdOK`, the side condition needed for recursive phase-product nodes.
-5. Strong induction proof for `lowerGateRec`.
-6. Bridge lemmas for the generated interpolation point set.
-7. Final correctness lemmas for lowered signed and unsigned phase products.
+This file defines the recursive lowering pass and its correctness theorems.
+The interpolation-point helpers now live in `SupportLemmas`, and the compiled
+phase-product correctness stack lives in the smaller proof modules imported
+through `LowGate_compilationProofs`.
 -/
 
 /-! =========================================================
@@ -83,17 +73,6 @@ noncomputable def lowerGateRec
       LowGate.signDealloc r n
   | Gate.RadixReverse r m =>
       LowGate.RadixReverse r m
-
-/-- Alternating integer interpolation points around zero. -/
-def alternatingPoint (i : ℕ) : Point :=
-  if i % 2 == 0 then
-    Point.int (i / 2 : ℤ)
-  else
-    Point.int (-((i + 1) / 2 : ℤ))
-
-/-- Generate the canonical `2k - 1` interpolation points. -/
-def genInterpolationPoints (k : ℕ) : List Point :=
-  (List.range (2 * k - 1)).map alternatingPoint
 
 /-- Lower a signed phase product by interpolation-based decomposition. -/
 noncomputable def lowerSignedPhaseProd
@@ -951,100 +930,6 @@ lemma evalL_lowerGateRec_strong
       hC run_ops_start_state
       U hU hOK ψ
 
-/-! =========================================================
-    Section 8: Bridge from generated points to Toom-Cook good points
-========================================================= -/
-
-/-- Convert Shor interpolation points to the pure math point type. -/
-def toMathPoint : Point → ToomCookMath.Point
-  | Point.int z => ToomCookMath.Point.int z
-  | Point.inf   => ToomCookMath.Point.inf
-
-lemma toMathPoint_interpEntry
-    {k : ℕ}
-    (p : Point)
-    (j : Fin (q k)) :
-    ToomCookMath.pointRow (q k) (toMathPoint p) j
-      =
-    interpEntry k p j := by
-  cases p with
-  | int z =>
-      simp [toMathPoint, ToomCookMath.pointRow, interpEntry]
-  | inf =>
-      simp [toMathPoint, ToomCookMath.pointRow, interpEntry, q]
-
-lemma toMathPoint_alternatingPoint
-    (i : ℕ) :
-    toMathPoint (alternatingPoint i)
-      =
-    ToomCookMath.alternatingPoint i := by
-  unfold alternatingPoint ToomCookMath.alternatingPoint
-  unfold ToomCookMath.alternatingInt
-  by_cases h : i % 2 == 0
-  · simp [h, toMathPoint]
-  · simp [h, toMathPoint]
-
-lemma listToFin_genInterpolationPoints_toMathPoint
-    (k : ℕ)
-    (hpts : (genInterpolationPoints k).length = q k)
-    (hmath :
-      (ToomCookMath.genFiniteInterpolationPoints (q k)).length = q k)
-    (i : Fin (q k)) :
-    ToomCookMath.listToFin
-        (ToomCookMath.genFiniteInterpolationPoints (q k)) hmath i
-      =
-    toMathPoint
-      (ToomCookMath.listToFin (genInterpolationPoints k) hpts i) := by
-  simp [
-    ToomCookMath.listToFin,
-    genInterpolationPoints,
-    ToomCookMath.genFiniteInterpolationPoints,
-    toMathPoint_alternatingPoint
-  ]
-
-lemma genInterpolationPoints_good
-    (k : ℕ) :
-    GoodToomCookPoints k
-      (genInterpolationPoints k)
-      (by simp [genInterpolationPoints, q]) := by
-  let hpts : (genInterpolationPoints k).length = q k := by
-    simp [genInterpolationPoints, q]
-
-  let hmath :
-      (ToomCookMath.genFiniteInterpolationPoints (q k)).length = q k := by
-    simp [ToomCookMath.genFiniteInterpolationPoints]
-
-  unfold GoodToomCookPoints
-
-  have hgoodMath :
-      ToomCookMath.GoodInterpolationPoints
-        (row := ToomCookMath.pointRow (q k))
-        (pts :=
-          ToomCookMath.listToFin
-            (ToomCookMath.genFiniteInterpolationPoints (q k)) hmath) := by
-    exact ToomCookMath.genFiniteInterpolationPoints_good (q k) hmath
-
-  apply ToomCookMath.GoodInterpolationPoints.congr_matrix
-    (rowA := ToomCookMath.pointRow (q k))
-    (rowB := interpEntry k)
-    (ptsA :=
-      ToomCookMath.listToFin
-        (ToomCookMath.genFiniteInterpolationPoints (q k)) hmath)
-    (ptsB :=
-      ToomCookMath.listToFin (genInterpolationPoints k) hpts)
-
-  · intro i j
-    rw [listToFin_genInterpolationPoints_toMathPoint
-      (k := k)
-      (hpts := hpts)
-      (hmath := hmath)
-      (i := i)]
-    exact toMathPoint_interpEntry
-      (k := k)
-      ((ToomCookMath.listToFin (genInterpolationPoints k) hpts) i)
-      j
-
-  · exact hgoodMath
 
 /-! =========================================================
     Section 9: Final correctness lemmas for lowered phase products
@@ -1184,3 +1069,5 @@ lemma evalL_lowerPhaseProd
       (_hU := hU)
       (_hOK := hOK)
       (ψ := ψ))
+
+end Shor

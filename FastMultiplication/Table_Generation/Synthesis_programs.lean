@@ -1,4 +1,4 @@
-import FastMultiplication.Lemmas_and_Theorems
+import FastMultiplication.Table_Generation.Lemmas_and_Theorems
 
 
 

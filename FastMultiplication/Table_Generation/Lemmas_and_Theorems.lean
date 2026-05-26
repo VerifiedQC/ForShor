@@ -1,5 +1,4 @@
-import FastMultiplication.Tactics
-import FastMultiplication.Example_progs
+import FastMultiplication.Table_Generation.Tactics
 
 -- /******************************************************************************/
 -- /*                 RETURN TO ORIGINAL STATE PROOF.                            */

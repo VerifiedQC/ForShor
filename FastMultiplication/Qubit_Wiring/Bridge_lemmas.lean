@@ -1,4 +1,4 @@
-import FastMultiplication.Allocate_dealloc.Compiler_correctness
+import FastMultiplication.Qubit_Wiring.Compiler_correctness
 /-
   This file contains the semantic bridge needed for the main induction theorem:
 

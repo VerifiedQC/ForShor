@@ -1,5 +1,5 @@
-import FastMultiplication.Allocate_dealloc.Bridge_lemmas
-import FastMultiplication.Allocate_dealloc.PhaseCoverage
+import FastMultiplication.Qubit_Wiring.Bridge_lemmas
+import FastMultiplication.Qubit_Wiring.PhaseCoverage
 
 /-
   This file transfers “phase-product coverage” information from the symbolic world to the

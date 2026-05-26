@@ -1,4 +1,4 @@
-import FastMultiplication.Language
+import FastMultiplication.Table_Generation.Language
 
 open Operations
 
