@@ -2328,6 +2328,185 @@ theorem genOpsWithProduct_returns_to_original
     }
   }
 
+lemma progConsumesPts_append
+  {k : Nat} (hk : 0 < k)
+  {p q : Prog k} {σ σret : State k} {a b : List Point}
+  (hp : ProgConsumesPts hk σ p a)
+  (hrun : run? p σ = some σret)
+  (hq : ProgConsumesPts hk σret q b) :
+  ProgConsumesPts hk σ (p ++ q) (a ++ b) := by
+  revert σ a
+  induction p with
+  | nil =>
+      intro σ a hp hrun
+      simp [ProgConsumesPts] at hp hrun ⊢
+      subst hp
+      subst hrun
+      simpa using hq
+  | cons op ps ih =>
+      intro σ a hp hrun
+      cases op with
+      | shiftL i n =>
+          simp [ProgConsumesPts] at hp ⊢
+          rcases hp with ⟨σ', hstep, htail⟩
+          refine ⟨σ', hstep, ?_⟩
+          apply ih htail
+          simpa [run?, hstep] using hrun
+      | shiftR i n =>
+          simp [ProgConsumesPts] at hp ⊢
+          rcases hp with ⟨σ', hstep, htail⟩
+          refine ⟨σ', hstep, ?_⟩
+          apply ih htail
+          simpa [run?, hstep] using hrun
+      | negate i =>
+          simp [ProgConsumesPts] at hp ⊢
+          rcases hp with ⟨σ', hstep, htail⟩
+          refine ⟨σ', hstep, ?_⟩
+          apply ih htail
+          simpa [run?, hstep] using hrun
+      | addScaled dst src negSrc sh =>
+          simp [ProgConsumesPts] at hp ⊢
+          refine ih hp ?_
+          simpa [run?, applyOp?] using hrun
+      | phaseProduct i =>
+          simp [ProgConsumesPts] at hp ⊢
+          rcases hp with ⟨pt, ptsTail, hpts, hmatch, htail⟩
+          subst hpts
+          refine ⟨pt, ptsTail ++ b, by simp, hmatch, ?_⟩
+          apply ih htail
+          simpa [run?, applyOp?] using hrun
+
+lemma progConsumesPts_of_noPhase_run
+  {k : Nat} (hk : 0 < k)
+  {p : Prog k} {σ σ' : State k}
+  (hNP : NoPhase p)
+  (hrun : run? p σ = some σ') :
+  ProgConsumesPts hk σ p [] := by
+  revert σ
+  induction p with
+  | nil =>
+      intro σ hrun
+      simp [ProgConsumesPts]
+  | cons op ps ih =>
+      intro σ hrun
+      have hNP_tail : NoPhase ps := by
+        intro i hi
+        exact hNP i (by simp [hi])
+      cases op with
+      | shiftL i n =>
+          cases hstep : applyOp? (k := k) σ (valid_ops.shiftL i n) with
+          | none =>
+              simp [run?, hstep] at hrun
+          | some τ =>
+              simp [ProgConsumesPts]
+              exact ⟨τ, hstep, ih hNP_tail (by simpa [run?, hstep] using hrun)⟩
+      | shiftR i n =>
+          cases hstep : applyOp? (k := k) σ (valid_ops.shiftR i n) with
+          | none =>
+              simp [run?, hstep] at hrun
+          | some τ =>
+              simp [ProgConsumesPts]
+              exact ⟨τ, hstep, ih hNP_tail (by simpa [run?, hstep] using hrun)⟩
+      | negate i =>
+          cases hstep : applyOp? (k := k) σ (valid_ops.negate i) with
+          | none =>
+              simp [run?, hstep] at hrun
+          | some τ =>
+              simp [ProgConsumesPts]
+              exact ⟨τ, hstep, ih hNP_tail (by simpa [run?, hstep] using hrun)⟩
+      | addScaled dst src negSrc sh =>
+          simp [ProgConsumesPts, applyOp?]
+          exact ih hNP_tail (by simpa [run?, applyOp?] using hrun)
+      | phaseProduct i =>
+          have : valid_ops.phaseProduct (k := k) i ∉ valid_ops.phaseProduct i :: ps :=
+            hNP i
+          simp at this
+
+lemma opsForPointWithProduct_ProgConsumesPts
+  {k : Nat} (hk : 0 < k) (head : Point) :
+  ProgConsumesPts hk State.start_state (opsForPointWithProduct hk head) [head] := by
+  cases head with
+  | inf =>
+      simp [opsForPointWithProduct, ProgConsumesPts]
+      let i : Fin k := ⟨k - 1, last_lt hk⟩
+      have hmatch :
+          matchesAt_pointRow_state (k := k) hk (State.start_state (k := k)) i Point.inf
+          = true := by
+        unfold matchesAt_pointRow_state
+        apply List.all_eq_true.mpr
+        intro j _
+        apply decide_eq_true_iff.mpr
+        have hne0 : k ≠ 0 := ne_of_gt hk
+        simp [expectedRow, i]
+        aesop
+      exact hmatch
+  | int x =>
+      unfold opsForPointWithProduct
+      let l : Prog k := computeLocal2 (k := k) hk x
+      obtain ⟨σ₁, hrun₁, hmatch⟩ := computeLocal2_matches_row_start (k := k) hk x
+      have hbuildNP : NoPhase l := by
+        dsimp [l]
+        rw [computeLocal_eq]
+        exact computeLocal_NoPhase (k := k) hk x
+      have hbuildC : ProgConsumesPts hk (State.start_state (k := k)) l [] :=
+        progConsumesPts_of_noPhase_run (k := k) hk hbuildNP (by simpa [l] using hrun₁)
+      have hphaseC :
+          ProgConsumesPts hk σ₁ [valid_ops.phaseProduct (finZero hk)] [Point.int x] := by
+        simp [ProgConsumesPts, hmatch]
+      have hprefixC :
+          ProgConsumesPts hk (State.start_state (k := k))
+            (l ++ [valid_ops.phaseProduct (finZero hk)]) [Point.int x] := by
+        simpa using
+          progConsumesPts_append (k := k) hk
+            (p := l) (q := [valid_ops.phaseProduct (finZero hk)])
+            (σ := State.start_state (k := k)) (σret := σ₁)
+            (a := []) (b := [Point.int x])
+            hbuildC (by simpa [l] using hrun₁) hphaseC
+      have hprefixRun :
+          run? (l ++ [valid_ops.phaseProduct (finZero hk)]) (State.start_state (k := k))
+            = some σ₁ := by
+        simp [run?_append, hrun₁, l, applyOp?]
+      have hcleanupRun :
+          run? (apply_Op_inverse l) σ₁ = some (State.start_state (k := k)) := by
+        dsimp [l]
+        exact
+          State.run?_inverse_undoes_WF
+            (computeLocal2 (k := k) hk x)
+            (computeLocal2_Valid (k := k) (z := x) hk)
+            (State.start_state (k := k)) σ₁ hrun₁
+      have hcleanupNP : NoPhase (apply_Op_inverse l) := by
+        dsimp [l]
+        rw [computeLocal_eq]
+        exact (computeLocal_NoPhase_2 (k := k) hk x).2
+      have hcleanupC : ProgConsumesPts hk σ₁ (apply_Op_inverse l) [] :=
+        progConsumesPts_of_noPhase_run (k := k) hk hcleanupNP hcleanupRun
+      simpa [l, List.append_assoc] using
+        progConsumesPts_append (k := k) hk
+          (p := l ++ [valid_ops.phaseProduct (finZero hk)])
+          (q := apply_Op_inverse l)
+          (σ := State.start_state (k := k)) (σret := σ₁)
+          (a := [Point.int x]) (b := [])
+          hprefixC hprefixRun hcleanupC
+
+theorem genOpsWithProduct_ProgConsumesPts
+  {k : Nat} (hk : 0 < k) (pts : List Point) :
+  ProgConsumesPts hk State.start_state (genOpsWithProduct hk pts) pts := by
+  induction pts with
+  | nil =>
+      simp [genOpsWithProduct, ProgConsumesPts]
+  | cons head tail ih =>
+      simp [genOpsWithProduct]
+      simpa using
+        progConsumesPts_append (k := k) hk
+          (p := opsForPointWithProduct hk head)
+          (q := genOpsWithProduct hk tail)
+          (σ := State.start_state (k := k))
+          (σret := State.start_state (k := k))
+          (a := [head]) (b := tail)
+          (opsForPointWithProduct_ProgConsumesPts (k := k) hk head)
+          (opsForPointWithProduct_returns_to_original (k := k) hk head)
+          ih
+
 theorem genOpsWithProduct_PhaseProductCoverage
   {k : Nat} (hk : 0 < k) (pts : List Point) :
   PhaseProductCoverage hk (genOpsWithProduct hk pts) State.start_state pts := by

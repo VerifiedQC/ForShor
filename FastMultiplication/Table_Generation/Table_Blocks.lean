@@ -7,19 +7,6 @@ def SafeProg {k : ℕ} (ops : Prog k) : Prop :=
     ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest →
       d ≠ s
 
-def ProgConsumesPts {k : ℕ} (hk : k > 0) : State k → Prog k → List Point → Prop
-| _σ, [], pts => pts = []
-| σ, op :: ops, pts =>
-  match op with
-  | valid_ops.phaseProduct i =>
-      ∃ pt ptsTail,
-        pts = pt :: ptsTail ∧
-        matchesAt_pointRow_state (k := k) hk σ i pt = true ∧
-        ProgConsumesPts hk σ ops ptsTail
-  | _ =>
-      ∃ σ', applyOp? (k := k) σ op = some σ' ∧
-            ProgConsumesPts hk σ' ops pts
-
 structure ProgConsumesPtsSafe {k : ℕ} (hk : k > 0) (σ : State k) (ops : Prog k) (pts : List Point) : Prop where
   consumes : ProgConsumesPts hk σ ops pts
   safe_add : SafeProg ops

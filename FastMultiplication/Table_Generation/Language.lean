@@ -352,6 +352,22 @@ def PhaseProductCoverage {k : ℕ} (hk:k>0):
     Prog k → State k → List Operations.Point → Prop:=
     PhaseProductCoverageM (k := k) (matchesAt_pointRow_state (k := k) hk)
 
+/-- Ordered point consumption for a program with `phaseProduct` checkpoints.
+    Unlike `PhaseProductCoverage`, this proposition consumes the supplied points
+    from left to right. -/
+def ProgConsumesPts {k : ℕ} (hk : k > 0) : State k → Prog k → List Point → Prop
+| _σ, [], pts => pts = []
+| σ, op :: ops, pts =>
+  match op with
+  | valid_ops.phaseProduct i =>
+      ∃ pt ptsTail,
+        pts = pt :: ptsTail ∧
+        matchesAt_pointRow_state (k := k) hk σ i pt = true ∧
+        ProgConsumesPts hk σ ops ptsTail
+  | _ =>
+      ∃ σ', applyOp? (k := k) σ op = some σ' ∧
+            ProgConsumesPts hk σ' ops pts
+
 
 -- inductive PhaseProductCoverageM2 {k : ℕ} (M : MatchesAtState k) :
 --     Prog k → State k → List Operations.Point → Prop
