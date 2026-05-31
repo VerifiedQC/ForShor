@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Basic
-import FastMultiplication.Table_Generation.Table_Blocks
+import FastMultiplication.ShorVerification.MathBackBone.Table_Generation.Table_Blocks
 import Mathlib.Data.Finset.Basic
 
 namespace Shor

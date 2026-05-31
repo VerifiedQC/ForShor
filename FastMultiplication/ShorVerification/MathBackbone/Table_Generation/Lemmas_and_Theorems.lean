@@ -1,4 +1,4 @@
-import FastMultiplication.Table_Generation.Tactics
+import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Tactics
 
 -- /******************************************************************************/
 -- /*                 RETURN TO ORIGINAL STATE PROOF.                            */

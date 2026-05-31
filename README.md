@@ -1,19 +1,19 @@
 # Fast_multiplication
 
-The repo is easiest to understand if you separate it into three layers:
+The repo is easiest to understand if you separate it into two main Lean layers, plus auxiliary Python experiments:
 
-- `Table_Generation` consists of the definition of the algorithm for generating the interpolation tables. This folder also proves the correctness of this algorithm. This is one of the "mathematical backbones" needed to prove the correctness of Phase Product.
-- `Qubit_Wiring` is a more concrete compilation formalization, showing how those source programs can be compiled to a variable-width register machine.
+- `ShorVerification/MathBackbone` contains the source-level arithmetic and interpolation material. In particular, `Table_Generation` defines the algorithm for generating the interpolation tables and proves its correctness. This is one of the mathematical backbones needed to prove the correctness of Phase Product.
 - `ShorVerification` is the main abstract semantic formalization. It proves that the synthesized phase-product and QFT constructions really implement the intended quantum gates, and it is the conceptual heart of the repo.
 
 The most important dependency story is:
 
-`Table_Generation` produces the source programs and phase-point structure.  
-`ShorVerification/PhaseProduct` imports that structure and proves correctness of compiled signed phase-product circuits.  
-`ShorVerification/QFT` then uses the phase-product result to prove correctness of lowered QFT.  
-`ShorVerification/compilation_correctness.lean` lifts this to general gate lowering, and `ShorVerification/Shor_definition.lean` sits at the top of the stack.
+- `ShorVerification/MathBackbone/Table_Generation` produces the source programs and phase-point structure.
+- `ShorVerification/MathBackbone/Toom_Cook_formula.lean` supplies the interpolation algebra.
+- `ShorVerification/PhaseProduct` imports that material and proves correctness of compiled signed phase-product circuits.
+- `ShorVerification/QFT` then uses the phase-product result to prove correctness of lowered QFT.
+- `ShorVerification/compilation_correctness.lean` lifts this to general gate lowering, and `ShorVerification/Shor_definition.lean` sits at the top of the stack.
 
-## Table_Generation
+## ShorVerification/MathBackbone/Table_Generation
 
 This folder is the source-level arithmetic side of the project. It works entirely with symbolic registers and symbolic programs before any concrete bit-level or abstract quantum semantics enter the picture.
 
@@ -21,13 +21,13 @@ The internal dependency chain is:
 
 `Basic.lean -> Language.lean -> Basic_lemmas.lean/Tactics.lean/Lemmas_and_Theorems.lean -> Synthesis_programs.lean -> One_register_synthesis_combined.lean -> Table_Blocks.lean`
 
-### `FastMultiplication/Table_Generation/Basic.lean`
+### `FastMultiplication/ShorVerification/MathBackbone/Table_Generation/Basic.lean`
 
 This is the foundational definitions file for the source language. It defines symbolic registers, symbolic states, and the core register operations such as shift, negate, and add-scaled. It also defines inverse source operations.
 
 This file is not trying to prove one global theorem. Instead, it establishes the local algebraic facts that every later file uses. Typical results here show how shifts compose, how exact right shifts behave, and how `addScaledReg` interacts with the other basic operations.
 
-### `FastMultiplication/Table_Generation/Language.lean`
+### `FastMultiplication/ShorVerification/MathBackbone/Table_Generation/Language.lean`
 
 This file turns the raw operations into a programming language. It defines:
 
@@ -39,7 +39,7 @@ This file turns the raw operations into a programming language. It defines:
 
 Conceptually, this is the file that says what a symbolic multiplication program means. It is mostly definitional, but it introduces one of the key predicates used later throughout the repo: `PhaseProductCoverage`.
 
-### `FastMultiplication/Table_Generation/Basic_lemmas.lean`
+### `FastMultiplication/ShorVerification/MathBackbone/Table_Generation/Basic_lemmas.lean`
 
 This is a helper lemma file. Its role is to make the source language usable in proofs. The important results here are not "main theorems" of the repo; they are structural lemmas such as:
 
@@ -49,15 +49,15 @@ This is a helper lemma file. Its role is to make the source language usable in p
 
 This file is best thought of as infrastructure for reasoning about source programs.
 
-### `FastMultiplication/Table_Generation/Tactics.lean`
+### `FastMultiplication/ShorVerification/MathBackbone/Table_Generation/Tactics.lean`
 
 This is also a helper file. It contains tactic support and small example programs used to test or automate phase-coverage arguments. It is not a conceptual endpoint of the project.
 
-### `FastMultiplication/Table_Generation/Lemmas_and_Theorems.lean`
+### `FastMultiplication/ShorVerification/MathBackbone/Table_Generation/Lemmas_and_Theorems.lean`
 
 Despite the name, this is not the main climax of the folder. It records useful source-level example results and local program identities. Theorems here are mainly sanity checks and algebraic rewrites rather than the final purpose of the table-generation pipeline.
 
-### `FastMultiplication/Table_Generation/Synthesis_programs.lean`
+### `FastMultiplication/ShorVerification/MathBackbone/Table_Generation/Synthesis_programs.lean`
 
 This file begins the actual synthesis story. It defines the source programs that implement the table generation.
 
@@ -69,7 +69,7 @@ It also shows that the synthesized source programs are executable and well-behav
 
 In other words, this file produces the symbolic programs that later become the input to the phase-product story.
 
-### `FastMultiplication/Table_Generation/One_register_synthesis_combined.lean`
+### `FastMultiplication/ShorVerification/MathBackbone/Table_Generation/One_register_synthesis_combined.lean`
 
 This is the largest and most important file in `Table_Generation`. It gathers the synthesis material into one long proof development and pushes it to the point where the phase-product machinery can use it.
 
@@ -81,7 +81,7 @@ The main source-level theorems this file is aiming at are:
 
 The first two say that the generated arithmetic programs return the symbolic state to its original form after doing the needed work. The last theorem is the crucial one for the rest of the repo: it proves that the generated source program consumes the right interpolation points in the right way. That is exactly the bridge needed by the later phase-product correctness proofs.
 
-### `FastMultiplication/Table_Generation/Table_Blocks.lean`
+### `FastMultiplication/ShorVerification/MathBackbone/Table_Generation/Table_Blocks.lean`
 
 This file repackages phase coverage into a block-decomposition form that is easier to use in the large `ShorVerification/PhaseProduct` proofs.
 
@@ -93,13 +93,9 @@ Its important theorems are:
 
 Conceptually, this file says that a covered source program can be broken into phase blocks with clean interfaces. This is the version of the source-level result that the quantum correctness proofs actually want to consume.
 
-## Qubit_Wiring
-
-This folder is a more concrete compilation branch. It takes the symbolic programs from `Table_Generation` and compiles them to a primitive variable-width register machine. `Basic.lean` defines the machine and the compiler, `Compiler_correctness.lean` and `Bridge_lemmas.lean` relate the machine semantics back to the symbolic semantics, and `PhaseCoverage_proof.lean` transfers source-level phase coverage to compiled primitive code.
-
 ## A Supporting Math File
 
-### `FastMultiplication/Toom_Cook_formula.lean`
+### `FastMultiplication/ShorVerification/MathBackbone/Toom_Cook_formula.lean`
 
 This file is a self-contained interpolation file. It defines interpolation matrices, evaluation-at-radix maps, and generic nonsingularity statements for good interpolation points.
 
@@ -110,7 +106,7 @@ Its purpose is to support `ShorVerification/PhaseProduct/InterpolationCorrectnes
 This is the core of the repository. The guiding idea is:
 
 - define an abstract gate language and the semantic interfaces it should satisfy,
-- build a verified phase-product implementation using the source programs from `Table_Generation`,
+- build a verified phase-product implementation using the source programs from `ShorVerification/MathBackbone/Table_Generation`,
 - use that verified phase-product to derive a verified QFT decomposition,
 - lift that to a correctness theorem for general gate lowering,
 - and finally formulate the top-level Shor/order-finding statement.
