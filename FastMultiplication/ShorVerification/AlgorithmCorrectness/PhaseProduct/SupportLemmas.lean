@@ -1,10 +1,26 @@
-import FastMultiplication.ShorVerification.PhaseProduct.Core
+import FastMultiplication.ShorVerification.AlgorithmCorrectness.PhaseProduct.Core
 import FastMultiplication.ShorVerification.MathBackBone.Toom_Cook_formula
+
+/-!
+# Phase-Product Compiler Support Lemmas
+
+This file collects reusable facts for the phase-product correctness stack:
+split-register disjointness, source-row arithmetic, layout coverage, and the
+chosen interpolation points.  Larger correctness files import this rather than
+reproving these local facts inline.
+-/
 
 namespace Shor
 open Gate
 open Operations
 open scoped BigOperators
+
+/-! =========================================================
+    Section: Register and split-layout basics
+
+    The first block supplies well-formedness and abstract split-register
+    properties used throughout the compiler proofs.
+========================================================= -/
 
 def WellFormedReg (r : Reg) : Prop :=
   r.lo ≤ r.hi
@@ -550,7 +566,7 @@ lemma FitsSignedWidth_addScaled_widen
   · constructor <;> omega
 
 /-! =========================================================
-    Section 19: Start-state and layout-width lemmas
+    Section: Start-state and layout-width lemmas
 ========================================================= -/
 
 /-- Start-state row evaluation picks out the requested x-slot. -/
@@ -654,7 +670,7 @@ lemma stFinal_zslot_eq_addExtra
   exact widenExtRegTo_eq_addExtra _ _
 
 /-! =========================================================
-    Section 20: Row-evaluation arithmetic lemmas
+    Section: Row-evaluation arithmetic lemmas
 ========================================================= -/
 
 
@@ -1012,7 +1028,7 @@ lemma targetSignedLayoutState_zslot_width_scan
   omega
 
 /-! =========================================================
-    Section 24: Source chunk fit and initial soundness
+    Section: Source chunk fit and initial soundness
 ========================================================= -/
 
 lemma sourceChunkXInt_fits_width_succ
@@ -1177,7 +1193,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_append
           aesop
 
 /-! =========================================================
-    Section 7: Layout disjointness
+    Section: Layout disjointness
 ========================================================= -/
 
 def LayoutSlotsDisjoint {k : ℕ} (st : LayoutState k) : Prop :=

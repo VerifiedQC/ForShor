@@ -1,4 +1,12 @@
-import FastMultiplication.ShorVerification.QFT.QFT_decomposition_one_layer
+import FastMultiplication.ShorVerification.AlgorithmCorrectness.QFT.Decomposition
+
+/-!
+# Lowered QFT Correctness
+
+This file belongs to the abstract-machine layer: it uses the high-level QFT
+split identity from `AlgorithmCorrectness/QFT/Decomposition.lean` to prove that
+the recursive `LowGate` QFT lowering has the same semantics as `Gate.QFT`.
+-/
 
 /-! =========================================================
     Section 10: Correctness of lowered QFT

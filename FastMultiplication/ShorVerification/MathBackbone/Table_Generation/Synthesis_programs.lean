@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Lemmas_and_Theorems
+import FastMultiplication.ShorVerification.MathBackBone.Table_Generation.Lemmas_and_Theorems
 
 
 

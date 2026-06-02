@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.One_register_synthesis_combined
+import FastMultiplication.ShorVerification.MathBackBone.Table_Generation.One_register_synthesis_combined
 
 open List Operations
 

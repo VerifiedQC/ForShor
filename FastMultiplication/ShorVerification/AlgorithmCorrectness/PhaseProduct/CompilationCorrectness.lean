@@ -1,13 +1,21 @@
-import FastMultiplication.ShorVerification.PhaseProduct.BodyCorrectness
-import FastMultiplication.ShorVerification.PhaseProduct.InterpolationCorrectness
+import FastMultiplication.ShorVerification.AlgorithmCorrectness.PhaseProduct.BodyCorrectness
+import FastMultiplication.ShorVerification.AlgorithmCorrectness.PhaseProduct.InterpolationCorrectness
 
 namespace Shor
 open Gate
 open Operations
 open scoped BigOperators
 
+/-!
+# Compiled Phase-Product Correctness
+
+This file assembles allocation correctness, body/deallocation correctness, and
+the Toom-Cook interpolation identity into the compiled phase-product circuit theorem for
+`compileOpsToSignedGate`.
+-/
+
 /-! =========================================================
-    Section 11: Main compiled-body correctness theorem
+    Section: Main compiled-body correctness theorem
 ========================================================= -/
 
 lemma eval_compileOpsToSignedGate_correct_ket_of_blocks

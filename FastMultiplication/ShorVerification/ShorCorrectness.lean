@@ -1,5 +1,6 @@
-import FastMultiplication.ShorVerification.compilation_correctness
-import FastMultiplication.ShorVerification.ModExpBounds
+import FastMultiplication.ShorVerification.AbstractMachine.WholeProgramCorrectness
+import FastMultiplication.ShorVerification.AlgorithmCorrectness.ModExpBounds
+import FastMultiplication.ShorVerification.MathBackBone.ShorAlgorithm
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
@@ -7,6 +8,21 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 namespace Shor
 open Gate
 
+/-!
+# Shor/order-finding circuit statement
+
+This file keeps the quantum-facing part of the Shor statement: the ideal and
+approximate order-finding circuits, the measurement interface, and the final
+success-probability theorem.  Classical order and continued-fraction material
+lives in `MathBackBone/ShorAlgorithm.lean`.
+-/
+
+/-! =========================================================
+    Section 1: Order-finding circuits
+
+    These definitions assemble the high-level gates used by the ideal and
+    approximate order-finding algorithms.
+========================================================= -/
 
 def initY1 (y : Reg) : Gate :=
   Gate.X y.lo
@@ -33,20 +49,12 @@ noncomputable def orderFindingIdeal
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 
+/-! =========================================================
+    Section 2: Measurement and success probabilities
 
-/--r is the multiplicative order of a mod N-/
-def Order (a N r : ℕ) : Prop :=
-  ∃ h : Nat.Coprime a N, r = orderOf (ZMod.unitOfCoprime a h)
-
-noncomputable def ord (a N : ℕ) (hgcd : Nat.gcd a N = 1) : ℕ :=
-  orderOf (ZMod.unitOfCoprime a ((Nat.coprime_iff_gcd_eq_one).2 hgcd))
-
-/--These are the classical conditions that will be used in the correctness proof-/
-def BasicSetting (a r N m n : ℕ) : Prop :=
-  0 < a ∧ a < N ∧
-  Order a r N ∧
-  N^2 < 2^m ∧ 2^m ≤ 2 * N^2 ∧
-  N < 2^n ∧ 2^n ≤ 2 * N
+    `MeasureClass` abstracts measurement probabilities, while the lemmas below
+    record the basic monotonicity and range facts used by the final statement.
+========================================================= -/
 
 /--Modelling “measurement”-/
 class MeasureClass (qs : QSemantics) [RegEncoding qs.Basis] where
@@ -161,54 +169,7 @@ lemma successProbAfterFinset_inter_range_eq
           exact hdecomp
   simp[this]
 
-noncomputable def GoodOutcome (j m N r : ℕ) : Prop :=
-  ∃ k, Nat.Coprime k r ∧
-    |((j:ℝ)/(2^m:ℝ)) - ((k:ℝ)/(r:ℝ))| < (1 / (2*(N:ℝ)^2))
-
-
-structure CFOut where
-  num : ℕ
-  den : ℕ
-deriving DecidableEq
-
-
-def approxRat (o Q k r : ℕ) (δ : ℝ) : Prop :=
-  (Q > 0) ∧
-  abs ((o : ℝ)/(Q : ℝ) - (k : ℝ)/(r : ℝ)) ≤ δ
-
-/-- Abstract continued-fraction / rational-approximation postprocessing. -/
-class ContinuedFractionPost where
-  step : ℕ → ℕ → ℕ → CFOut
-  denom : ℕ → ℕ → ℕ → ℕ := fun t o Q => (step t o Q).den
-
-
-lemma CF_recovers_denominator [ContinuedFractionPost]
-  (T : ℕ → ℕ)
-  {o Q k r : ℕ}
-  (happrox : approxRat o Q k r (1 / (2 * (Q : ℝ))))
-  (hgcd : Nat.gcd k r = 1) :
-  ∃ t, t < T Q ∧ ContinuedFractionPost.denom t o Q = r := by
-  sorry
-
-
-
 variable [ContinuedFractionPost] [Spec]
-
-
-abbrev OrderVerifier := ℕ → Bool
-
-noncomputable def OF_post
-  (T : ℕ → ℕ) (verify : OrderVerifier) (o Q : ℕ) : ℕ :=
-  let Tmax := T Q
-  let rec go : ℕ → ℕ
-    | 0      => 0
-    | t + 1  =>
-        let d := ContinuedFractionPost.denom t o Q
-        if verify d then d else go t
-  go Tmax
-
-noncomputable def r_found (T : ℕ → ℕ) (verify : OrderVerifier) (o Q r : ℕ) : ℝ :=
-  if OF_post (T := T) verify o Q = r then (1 : ℝ) else 0
 
 noncomputable def probability_of_success
   (T : ℕ → ℕ) (verify : OrderVerifier)
@@ -217,7 +178,12 @@ noncomputable def probability_of_success
     (r_found (T := T) verify o.1 Q r) *
       (measProbAfter (qs := qs) x o.1 G ψ)
 
-noncomputable def κ : ℝ := (4 * Real.exp (-2)) / (Real.pi ^ 2)
+/-! =========================================================
+    Section 3: Final correctness statement
+
+    This is the top-level theorem shape: the ideal order-finding circuit has
+    at least the standard inverse-polylogarithmic success probability.
+========================================================= -/
 
 /-- Shor/order-finding correctness statement -/
 theorem Shor_correct

@@ -1,12 +1,20 @@
-import FastMultiplication.ShorVerification.PhaseProduct.WidthSoundness
+import FastMultiplication.ShorVerification.AlgorithmCorrectness.PhaseProduct.WidthSoundness
 
 namespace Shor
 open Gate
 open Operations
 open scoped BigOperators
 
+/-!
+# Phase-Product Allocation Correctness
+
+This file proves that the allocation half of the compiled phase-product circuit
+copies each symbolic source chunk into the widened target layout while
+preserving the values needed by the remaining slots.
+-/
+
 /-! =========================================================
-    Section 4: Single-chunk allocation correctness
+    Section: Single-chunk allocation correctness
 ========================================================= -/
 
 /-- These lemmas show that allocating one `x`/`z` chunk sends a basis state to
@@ -583,7 +591,7 @@ lemma eval_allocChunkGate_z_ket
           exact hLoc (stInit.zslot j) (hdisj_zz_src_rev j hji)
 
 /-! =========================================================
-    Section 5: Full allocation correctness
+    Section: Full allocation correctness
 ========================================================= -/
 
 /-- The auxiliary allocation lemma establishes the encoding invariant after

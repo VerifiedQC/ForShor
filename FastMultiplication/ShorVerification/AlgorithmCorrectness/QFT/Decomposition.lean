@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.PhaseProduct.PhaseDecomposition
+import FastMultiplication.ShorVerification.AbstractMachine.Lowering
 
 namespace Shor
 open Gate
@@ -7,11 +7,11 @@ attribute [simp] LowerGateClass.evalL_id
 attribute [simp] LowerGateClass.evalL_seq
 
 /-!
-# QFT decomposition and whole-program lowering correctness
+# QFT Decomposition
 
-This file proves the exact split decomposition of QFT, then uses that
-decomposition to prove correctness of the recursive QFT lowering and the
-whole-program `lowerGate` pass.
+This file proves the high-level circuit identity that splits QFT into recursive
+QFTs, a phase product, and radix reversal.  Low-level lowering correctness is
+proved separately in `AbstractMachine/QFTLoweringCorrectness.lean`.
 
 The organization is dependency-driven:
 
@@ -20,8 +20,6 @@ The organization is dependency-driven:
 3. Stepwise split-QFT derivation.
 4. Reindexing and radix-reversal lemmas.
 5. Exact QFT split on basis states and arbitrary states.
-6. Correctness of lowered QFT.
-7. Whole-program lowering correctness.
 -/
 
 

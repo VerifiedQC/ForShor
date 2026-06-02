@@ -1,9 +1,24 @@
-import FastMultiplication.ShorVerification.PhaseProduct.SupportLemmas
+import FastMultiplication.ShorVerification.AlgorithmCorrectness.PhaseProduct.SupportLemmas
 
 namespace Shor
 open Gate
 open Operations
 open scoped BigOperators
+
+/-!
+# Phase-Product Interpolation Correctness
+
+This file proves the high-level algebraic identity behind phase-product
+compilation: the phase accumulated at interpolation points is equal to the
+target signed product phase.
+-/
+
+/-! =========================================================
+    Section: Rational point terms and product coefficients
+
+    These definitions translate source-row values into the rational polynomial
+    that the Toom-Cook interpolation theorem consumes.
+========================================================= -/
 
 /--
 This is the rational version of the integer phase term already appearing in
@@ -65,6 +80,12 @@ lemma phaseCoeffFromPtsWidth_eq_interpCoeff
   unfold ToomCookMath.interpMatrix ToomCookMath.radixRow interpMatrix radixRow ptsToFin ToomCookMath.listToFin
   simp
 
+/-! =========================================================
+    Section: Phase scalar and point-evaluation bridge
+
+    The lemmas here connect the compiler's phase accumulator to the generic
+    Toom-Cook point-evaluation API.
+========================================================= -/
 
 lemma phaseScalarFrom_eq_phaseScalarFromList_aux
   (qs : QSemantics)
@@ -377,6 +398,13 @@ lemma sum_degree_group
             · dsimp [d]
               simp
           simpa [d] using hsingle
+
+/-! =========================================================
+    Section: Polynomial reconstruction
+
+    This block proves that the product polynomial evaluated at the radix
+    reconstructs the product of the original extended-register values.
+========================================================= -/
 
 lemma tcPointTerm_eq_evalAtPoint_tcProductCoeff
   (qs : QSemantics)
@@ -789,6 +817,13 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
       (((ExtRegEncoding.extToInt x b *
          ExtRegEncoding.extToInt z b : ℤ) : ℚ)) := by
         norm_num
+
+/-! =========================================================
+    Section: Final Toom-Cook phase identity
+
+    The final theorem combines point interpolation, radix reconstruction, and
+    the compiler phase scalar to produce the signed phase-product scalar.
+========================================================= -/
 
 lemma toom_cook_interpolation
   (qs : QSemantics)

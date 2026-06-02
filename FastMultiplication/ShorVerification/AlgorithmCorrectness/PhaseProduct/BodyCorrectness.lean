@@ -1,12 +1,20 @@
-import FastMultiplication.ShorVerification.PhaseProduct.AllocationCorrectness
+import FastMultiplication.ShorVerification.AlgorithmCorrectness.PhaseProduct.AllocationCorrectness
 
 namespace Shor
 open Gate
 open Operations
 open scoped BigOperators
 
+/-!
+# Phase-Product Body Correctness
+
+This file handles the compiled annotated operation list after allocation.  It
+shows one-step encoded-state preservation, then lifts that to phase blocks and
+the final deallocation step.
+-/
+
 /-! =========================================================
-    Section 8: One-step encoded-state preservation
+    Section: One-step encoded-state preservation
 ========================================================= -/
 
 /-- These lemmas prove correctness of a single compiled annotated operation on a
@@ -1837,7 +1845,7 @@ lemma encodesFrom_after_noPhase_run_ket_gen
     hdisj hFits hSafeAdd hNP hrun hEnc
 
 /-! =========================================================
-    Section 10: Phase-block helpers
+    Section: Phase-block helpers
 ========================================================= -/
 
 lemma eval_matched_phase_ket_from

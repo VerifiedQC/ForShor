@@ -1,6 +1,21 @@
-import FastMultiplication.ShorVerification.QFT.QFT_decomp_correctness
+import FastMultiplication.ShorVerification.AbstractMachine.QFTLoweringCorrectness
 
 namespace Shor
+
+/-!
+# Whole-Program Lowering Correctness
+
+This file is the outer correctness theorem for the abstract machine: every
+geometrically well-formed high-level gate lowers to a `LowGate` circuit with
+the same semantics.
+-/
+
+/-! =========================================================
+    Section 1: Geometric side conditions
+
+    `GateGeomOK` records the disjointness and well-formedness assumptions that
+    the recursive lowering theorem needs at the high-level syntax boundary.
+========================================================= -/
 
 def GateGeomOK : Gate → Prop
   | Gate.seq U V => GateGeomOK U ∧ GateGeomOK V
@@ -15,7 +30,7 @@ def GateGeomOK : Gate → Prop
   | _ => True
 
 /-! =========================================================
-    Section: Whole-program lowering correctness
+    Section 2: Whole-program lowering correctness
 ========================================================= -/
 
 theorem lowerGate_correctness

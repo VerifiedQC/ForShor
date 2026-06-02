@@ -1,12 +1,20 @@
-import FastMultiplication.ShorVerification.PhaseProduct.SupportLemmas
+import FastMultiplication.ShorVerification.AlgorithmCorrectness.PhaseProduct.SupportLemmas
 
 namespace Shor
 open Gate
 open Operations
 open scoped BigOperators
 
+/-!
+# Phase-Product Width Soundness
+
+This file proves that the width scan computed from a symbolic phase-product
+program is large enough for every symbolic row value reached during execution.
+The final theorem feeds directly into allocation and body correctness.
+-/
+
 /-! =========================================================
-    Section 21: Width-state preservation through symbolic execution
+    Section: Width-state preservation through symbolic execution
 ========================================================= -/
 
 lemma widthStateSoundPlus_step
@@ -287,7 +295,7 @@ lemma widthStateSoundPlus_run
             ih (cur := updateWidthState cur op) (σ := σ1) (σf := σf) hrunTail hfit1
 
 /-! =========================================================
-    Section 22: Prefix/scan bound lemmas
+    Section: Prefix/scan bound lemmas
 ========================================================= -/
 
 /-- Prefix-folded x-widths are bounded by the full scan result. -/
@@ -429,7 +437,7 @@ lemma widthStateSoundPlus_start_state
     simpa [st] using hfit
 
 /-! =========================================================
-    Section 25: Final theorem
+    Section: Final theorem
 ========================================================= -/
 
 lemma allocated_widths_sound

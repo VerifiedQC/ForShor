@@ -1,4 +1,5 @@
-import FastMultiplication.ShorVerification.PhaseProduct.CompilationCorrectness
+import FastMultiplication.ShorVerification.AbstractMachine.LowGate
+import FastMultiplication.ShorVerification.AlgorithmCorrectness.PhaseProduct.CompilationCorrectness
 
 namespace Shor
 open Gate
@@ -8,13 +9,16 @@ open Operations
 # Recursive lowering from `Gate` to `LowGate`
 
 This file defines the recursive lowering pass and its correctness theorems.
-The interpolation-point helpers now live in `SupportLemmas`, and the compiled
-phase-product correctness stack lives in the smaller proof modules imported
-through `LowGate_compilationProofs`.
+The translation from the high-level `Gate` language to the low-level `LowGate`
+machine is kept here, while the high-level circuit identities it depends on
+live under `AlgorithmCorrectness`.
 -/
 
 /-! =========================================================
     Section 1: Recursive lowering definitions
+
+    These definitions lower high-level gates structurally, delegating
+    phase-product and QFT nodes to specialized recursive lowerers.
 ========================================================= -/
 
 /-- Controlled signed phase lowering currently stays at the naive low-level node. -/
