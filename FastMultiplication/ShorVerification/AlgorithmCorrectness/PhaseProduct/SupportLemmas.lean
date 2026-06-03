@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.AlgorithmCorrectness.PhaseProduct.Core
-import FastMultiplication.ShorVerification.MathBackBone.Toom_Cook_formula
+import FastMultiplication.ShorVerification.MathBackbone.Toom_Cook_formula
 
 /-!
 # Phase-Product Compiler Support Lemmas

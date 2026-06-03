@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.AbstractMachine.WholeProgramCorrectness
 import FastMultiplication.ShorVerification.AlgorithmCorrectness.ModExpBounds
-import FastMultiplication.ShorVerification.MathBackBone.ShorAlgorithm
+import FastMultiplication.ShorVerification.MathBackbone.ShorAlgorithm
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
@@ -14,7 +14,7 @@ open Gate
 This file keeps the quantum-facing part of the Shor statement: the ideal and
 approximate order-finding circuits, the measurement interface, and the final
 success-probability theorem.  Classical order and continued-fraction material
-lives in `MathBackBone/ShorAlgorithm.lean`.
+lives in `MathBackbone/ShorAlgorithm.lean`.
 -/
 
 /-! =========================================================

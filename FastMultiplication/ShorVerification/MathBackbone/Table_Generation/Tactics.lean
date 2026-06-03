@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.MathBackBone.Table_Generation.Basic_lemmas
+import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Basic_lemmas
 -- /******************************************************************************/
 -- /*                 TACTIC FOR VERIFYING PHASEPRODUCT COVERGE                  */
 -- /******************************************************************************/
