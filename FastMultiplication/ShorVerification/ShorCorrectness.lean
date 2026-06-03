@@ -1,12 +1,14 @@
 import FastMultiplication.ShorVerification.AbstractMachine.WholeProgramCorrectness
 import FastMultiplication.ShorVerification.AlgorithmCorrectness.ModExpBounds
 import FastMultiplication.ShorVerification.MathBackbone.ShorAlgorithm
+import FastMultiplication.ShorVerification.MathBackbone.Factoring_Reduction.Reduction
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 
 namespace Shor
 open Gate
+open Classical
 
 /-!
 # Shor/order-finding circuit statement
@@ -177,7 +179,6 @@ noncomputable def probability_of_success
   ∑ o : Fin Q,
     (r_found (T := T) verify o.1 Q r) *
       (measProbAfter (qs := qs) x o.1 G ψ)
-
 /-! =========================================================
     Section 3: Final correctness statement
 
@@ -204,3 +205,106 @@ theorem Shor_correct
   ≥ κ / (Nat.log2 N : ℝ)^4 := by
 
   sorry
+
+/-- Theorem stating that there is a 1/2 chance of a randomly selected 'a' being a successful choice -/
+theorem shors_probability_bound (N : ℕ)
+(h_odd : Odd N)
+(h_gt_one : N > 1)
+(h_not_prime_power : ∀ (p k : ℕ), Nat.Prime p → N ≠ p ^ k) :
+2 * (successful_choices N).card ≥ (valid_choices N).card := by {
+  -- Step 1: Extract two distinct prime factors
+  obtain ⟨p, q, hp, hq, hpq, hpN, hqN⟩ := exists_two_distinct_prime_factors h_gt_one h_not_prime_power
+  -- Step 2: Both primes are odd (since N is odd and p, q ∣ N)
+  have hp2 : p ≠ 2 := by
+    rintro rfl; obtain ⟨k, hk⟩ := h_odd; obtain ⟨m, hm⟩ := hpN; omega
+  have hq2 : q ≠ 2 := by
+    rintro rfl; obtain ⟨k, hk⟩ := h_odd; obtain ⟨m, hm⟩ := hqN; omega
+  -- Step 3: Counting
+  have hvc := valid_choices_card_general h_gt_one
+  -- Partition coprime residues into successful and unsuccessful
+  set S := (Finset.range N).filter (fun a => Nat.gcd a N = 1) with hS_def
+  have hS_card : S.card = Nat.totient N := by
+    unfold Nat.totient; congr 1
+    apply Finset.filter_congr; intro a _
+    show Nat.gcd a N = 1 ↔ Nat.Coprime N a; rw [Nat.gcd_comm]
+  have h_unsucc_bound :
+      2 * (S.filter (fun a => ¬is_successful_choice a N)).card ≤ Nat.totient N := by
+    have : S.filter (fun a => ¬is_successful_choice a N) =
+        (Finset.range N).filter (fun a => Nat.gcd a N = 1 ∧ ¬is_successful_choice a N) := by
+      rw [hS_def, Finset.filter_filter]
+    rw [this]; exact general_unsuccessful_bound hp hq hpq hp2 hq2 hpN hqN
+  have h_partition := Finset.card_filter_add_card_filter_not
+    (fun a => is_successful_choice a N) (s := S)
+  -- successful_choices = S.filter(successful) (a=0 not coprime, a=1 not successful)
+  have h_succ_eq : successful_choices N = S.filter (fun a => is_successful_choice a N) := by
+    unfold successful_choices valid_choices
+    rw [Finset.filter_filter, hS_def, Finset.filter_filter]
+    apply Finset.filter_congr; intro a ha
+    rw [Finset.mem_range] at ha
+    constructor
+    · rintro ⟨⟨-, hg⟩, hs⟩; exact ⟨hg, hs⟩
+    · rintro ⟨hg, hs⟩
+      refine ⟨⟨?_, hg⟩, hs⟩
+      have ha0 : a ≠ 0 := by rintro rfl; simp at hg; omega
+      have ha1 : a ≠ 1 := fun h => by subst h; exact one_not_successful_choice _ hs
+      omega
+  rw [hvc, h_succ_eq]
+  omega
+}
+
+/-- Shor/order-finding correctness statement -/
+theorem Shor_end_to_end_factoring
+(T : ℕ → ℕ) (N : ℕ)
+(h_odd : Odd N)
+(h_N : N > 2)
+(h_not_prime_power : ∀ (p k : ℕ), Nat.Prime p → N ≠ p ^ k)
+(x y w : Reg) (flag : ℕ)
+(ψ0 : qs.State)
+(hm : regSize x = Nat.log2 (2 * N^2))
+(hn : regSize y = Nat.log2 (2 * N))
+(hset : ∀ a, a ∈ valid_choices N →
+  ∃ hgcd, BasicSetting a (ord a N hgcd) N (regSize x) (regSize y)) :
+  -- Classical probability bound (probability of successful 'a' ≥ 1/2)
+  (2 * (successful_choices N).card ≥ (valid_choices N).card)
+  ∧
+  -- For every successful 'a', the quantum order-finding and classical reduction are correct
+  (∀ a ∈ successful_choices N,
+    ∃ (hgcd : Nat.gcd a N = 1),
+    (probability_of_success (qs := qs) (T := T)
+      (verify := fun d => decide ((a ^ d) % N = 1))
+      (x := x) (r := ord a N hgcd) (Q := 2^(regSize x))
+      (G := orderFindingIdeal (qs := qs) a N x y)
+      (ψ := ψ0)
+    ≥ κ / (Nat.log2 N : ℝ)^4)
+    ∧
+    (is_nontrivial_factor (Nat.gcd ((a ^ (ord a N hgcd / 2)) - 1) N) N ∨
+     is_nontrivial_factor (Nat.gcd ((a ^ (ord a N hgcd / 2)) + 1) N) N)) := by {
+  constructor
+  { exact shors_probability_bound N h_odd (by omega) h_not_prime_power }
+  {
+    intro a h_a_in_successful
+    -- Extract successful conditions
+    obtain ⟨⟨ha1, ha2⟩, hgcd⟩ := success_eq_conditions a N h_a_in_successful
+    obtain ⟨hgcd_set, hset_a⟩ := hset a (by simp [valid_choices, ha1, ha2, hgcd])
+    -- State that 'a' meets the success conditions
+    have h_succ : shor_success_conditions a (ord a N hgcd) N := by {
+      have h_a_is_succ : is_successful_choice a N := by {
+        unfold successful_choices at h_a_in_successful
+        simp_all
+      }
+      unfold is_successful_choice is_period at h_a_is_succ
+      obtain ⟨r, h_per, h_cond⟩ := h_a_is_succ
+      have h_r_eq : r = ord a N hgcd := by {
+        have h_bridge := is_period_ord a N hgcd
+        subst h_per
+        simpa
+      }
+      rwa [h_r_eq] at h_cond
+    }
+    exists hgcd
+    exact ⟨
+      Shor_correct T a N ⟨by omega, ha2⟩ hgcd x y w flag ψ0 hm hn hset_a,
+      shors_classical_reduction a (ord a N hgcd) N h_N ⟨ha1, ha2⟩ hgcd (is_period_ord a N hgcd) h_succ
+    ⟩
+  }
+}
