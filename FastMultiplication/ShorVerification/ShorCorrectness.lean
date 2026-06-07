@@ -172,6 +172,8 @@ lemma successProbAfterFinset_inter_range_eq
   simp[this]
 
 variable [ContinuedFractionPost] [Spec]
+variable [ExtRegEncoding qs.Basis]
+variable [ModMul qs]
 
 noncomputable def probability_of_success
   (T : ℕ → ℕ) (verify : OrderVerifier)
@@ -206,7 +208,30 @@ theorem Shor_correct
 
   sorry
 
-/-- Theorem stating that there is a 1/2 chance of a randomly selected 'a' being a successful choice -/
+theorem Shor_correct_approx
+  (T : ℕ → ℕ)
+  (a N : ℕ)
+  (ha : 0 < a ∧ a < N)
+  (hgcd : Nat.gcd a N = 1)
+  (x y w : Reg) (flag : ℕ)
+  (ψ0 : qs.State)
+  (hψ0 : ‖ψ0‖ = 1)
+  (hm : regSize x = Nat.log2 (2 * N^2))
+  (hn : regSize y = Nat.log2 (2 * N))
+  (hset : BasicSetting a (ord a N hgcd) N (regSize x) (regSize y)) :
+  ∃ K : ℝ, 0 ≤ K ∧
+    probability_of_success (qs := qs) (T := T)
+      (verify := fun d => decide ((a ^ d) % N = 1))
+      (x := x) (r := ord a N hgcd) (Q := 2^(regSize x))
+      (G := orderFindingApprox (qs := qs) a N x y w flag)
+      (ψ := ψ0)
+    ≥
+      κ / (Nat.log2 N : ℝ)^4
+      - 2 * (tbits x : ℝ) * stepErr K (ModMul.η (qs := qs)) := by
+  sorry
+
+-- Theorem stating that there is a 1/2 chance of a randomly selected 'a' being a successful choice 
+omit [ContinuedFractionPost] [Spec] in
 theorem shors_probability_bound (N : ℕ)
 (h_odd : Odd N)
 (h_gt_one : N > 1)

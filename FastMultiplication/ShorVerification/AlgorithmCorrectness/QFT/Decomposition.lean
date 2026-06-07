@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.AbstractMachine.Lowering
+import FastMultiplication.ShorVerification.AbstractMachine.PhaseProductLoweringCorrectness
 
 namespace Shor
 open Gate
