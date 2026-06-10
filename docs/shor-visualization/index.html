@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ShorVerification Proof Graph</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <p class="eyebrow">FastMultiplication / ShorVerification</p>
+          <h1>Proof Dependency Graph</h1>
+          <p id="viewSubtitle" class="view-subtitle"></p>
+        </div>
+        <div class="toolbar" aria-label="Graph controls">
+          <input id="searchInput" type="search" placeholder="Search definitions or proofs" autocomplete="off">
+          <button id="zoomOutButton" class="icon-button" type="button" title="Zoom out" aria-label="Zoom out">-</button>
+          <button id="zoomInButton" class="icon-button" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+          <button id="fitButton" type="button" title="Fit graph">Fit</button>
+          <button id="focusToggleButton" type="button" title="Toggle focus dimming" aria-pressed="true">Focus on</button>
+          <button id="resetButton" type="button" title="Open top-level graph">Top</button>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <aside class="rail" aria-label="Graph views">
+          <div class="rail-title">Views</div>
+          <nav id="viewList" class="view-list"></nav>
+          <div class="rail-card">
+            <div class="rail-title">Legend</div>
+            <div id="legend" class="legend"></div>
+          </div>
+        </aside>
+
+        <section class="graph-stage" aria-label="Interactive proof graph">
+          <div class="graph-hud">
+            <div>
+              <div class="breadcrumb" id="breadcrumb"></div>
+              <p id="viewDescription" class="view-description"></p>
+            </div>
+            <div id="graphStats" class="graph-stats"></div>
+          </div>
+          <svg id="graph" role="img" aria-label="ShorVerification proof graph"></svg>
+          <div id="emptyState" class="empty-state" hidden>No matching nodes</div>
+        </section>
+
+        <aside class="details" aria-label="Selected item details">
+          <div id="detailsContent"></div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

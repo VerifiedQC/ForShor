@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.AbstractMachine.WholeProgramCorrectness
 import FastMultiplication.ShorVerification.AlgorithmCorrectness.ModExpBounds
-import FastMultiplication.ShorVerification.MathBackbone.ShorAlgorithm
+import FastMultiplication.ShorVerification.MathBackbone.ShorDefinition
 import FastMultiplication.ShorVerification.MathBackbone.Factoring_Reduction.Reduction
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
@@ -230,7 +230,7 @@ theorem Shor_correct_approx
       - 2 * (tbits x : ℝ) * stepErr K (ModMul.η (qs := qs)) := by
   sorry
 
--- Theorem stating that there is a 1/2 chance of a randomly selected 'a' being a successful choice 
+-- Theorem stating that there is a 1/2 chance of a randomly selected 'a' being a successful choice
 omit [ContinuedFractionPost] [Spec] in
 theorem shors_probability_bound (N : ℕ)
 (h_odd : Odd N)

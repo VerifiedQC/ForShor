@@ -1,3 +1,3 @@
 -- This module serves as the root of the `FastMultiplication` library.
 -- Import modules here that should be built as part of the library.
-import FastMultiplication.ShorVerification.AlgorithmCorrectness.ShorDefinition
+import FastMultiplication.ShorVerification.ShorCorrectness
