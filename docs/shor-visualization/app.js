@@ -365,9 +365,278 @@ const kindColors = {
   final: "#be3f50"
 };
 
+const edgeCatalog = {
+  "coverage theorem": {
+    theorem: "genOpsWithProduct_PhaseProductCoverage",
+    description: "Shows that the generated symbolic source program consumes exactly the interpolation phase points required by the later phase-product compiler.",
+    proof: "The proof comes from the table-generation synthesis chain: generated operations are shown to return the symbolic state to its original form while preserving the phase-point coverage invariant."
+  },
+  "interpolation proof": {
+    theorem: "toom_cook_interpolation",
+    description: "Turns the accumulated phase contributions at Toom-Cook interpolation points into the intended signed phase-product scalar.",
+    proof: "The proof uses the interpolation matrix and radix-evaluation lemmas from the Toom-Cook algebra layer, then specializes them to the compiler's phase-scalar bookkeeping."
+  },
+  "gate semantics": {
+    theorem: "eval_PhaseProd_ket",
+    description: "Connects the abstract gate semantics to the ket-level behavior that phase-product correctness statements reason about.",
+    proof: "The core semantic facts in Basic.lean expose phase-product evaluation as a reusable theorem, so the compiler proof can use semantics without reopening the model."
+  },
+  "QFT semantics": {
+    theorem: "QFTSemantics.eval_QFT_size0/1",
+    description: "Provides the semantic base cases and interfaces needed by the QFT decomposition and lowering proofs.",
+    proof: "The QFT proofs depend on the abstract QFT semantic class and its small-register facts before applying the recursive split theorem."
+  },
+  "phase product identity": {
+    theorem: "eval_QFT_split",
+    description: "Identifies the phase product that appears between the two recursive QFT calls in the split QFT circuit.",
+    proof: "The theorem rewrites QFT over a register into right-QFT, phase product, left-QFT, and radix reversal."
+  },
+  "lower phase products": {
+    theorem: "evalL_lowerPhaseProd",
+    description: "Proves that the low-level lowering of a high-level phase product preserves the high-level semantics.",
+    proof: "The proof invokes the phase-product compiler correctness theorem and the recursive low-level lowering semantics."
+  },
+  "lower QFT": {
+    theorem: "eval_lowerQFT",
+    description: "Proves that the recursive low-level QFT lowering has the same semantics as high-level Gate.QFT.",
+    proof: "The proof uses eval_QFT_split and, for the middle split phase product, calls evalL_lowerPhaseProd."
+  },
+  "exact lowering": {
+    theorem: "lowerGate_correctness",
+    description: "Lifts phase-product and QFT lowering correctness to arbitrary geometrically well-formed high-level Gate programs.",
+    proof: "The proof is by induction over Gate syntax, dispatching QFT and signed phase-product cases to their specialized lowering theorems."
+  },
+  "approx bounds": {
+    theorem: "modExp_overlap_bound_sqrt",
+    description: "Transfers approximate modular-exponentiation error into an overlap-style bound usable by the final Shor statement.",
+    proof: "The proof packages per-step distance bounds into a whole-circuit distance theorem and then converts distance control into overlap control."
+  },
+  "factor recovery": {
+    theorem: "shors_classical_reduction",
+    description: "Connects successful order recovery to extracting a nontrivial factor with a gcd computation.",
+    proof: "The proof uses the classical Shor success conditions to show one of the standard gcd candidates yields a nontrivial divisor."
+  },
+  "norm facts": {
+    theorem: "eval_norm_preserved",
+    description: "Supplies the norm-preservation facts needed when modular-exponentiation approximation bounds are composed.",
+    proof: "The semantic core proves evaluation is isometric, allowing later distance and overlap arguments to control circuit errors."
+  },
+  "read/write laws": {
+    theorem: "writeNat_comm_of_disjoint",
+    description: "Shows that writes to disjoint registers commute, which is a basic locality fact for register reasoning.",
+    proof: "The proof uses the RegEncoding bit-level locality axioms and basis extensionality."
+  },
+  "signed views": {
+    theorem: "zeroExtend_extToInt",
+    description: "Relates ordinary register data to extended signed-register interpretation.",
+    proof: "The proof unfolds the two's-complement decoding interface and records how extension operations preserve integer meaning."
+  },
+  "gate operands": {
+    theorem: "Gate.PhaseProd",
+    description: "Builds phase-product gate syntax from register operands and extended unsigned views.",
+    proof: "This is a definitional bridge from register structures to high-level gate constructors."
+  },
+  "eval interface": {
+    theorem: "QSemantics.eval",
+    description: "Moves from syntactic Gate values to their abstract action on quantum states.",
+    proof: "The semantic interface supplies evaluation and composition laws used by every later circuit proof."
+  },
+  "basis laws": {
+    theorem: "toNat_left_write_right",
+    description: "States that writing one side of a disjoint split preserves the other side's numeric interpretation.",
+    proof: "The proof instantiates RegEncoding locality on the split-register geometry."
+  },
+  "phase semantics": {
+    theorem: "eval_PhaseProd_ket",
+    description: "Gives the ket-level behavior of phase-product gates.",
+    proof: "This theorem packages the PhaseSemantics class into a form suitable for downstream compiler proofs."
+  },
+  "proof lemmas": {
+    theorem: "eval_norm_preserved",
+    description: "Records that gate evaluation preserves norm.",
+    proof: "The proof follows from the semantic isometry theorem."
+  },
+  "ops become Prog": {
+    theorem: "run?",
+    description: "Defines whole-program execution for symbolic operations.",
+    proof: "The language layer folds single-step operation semantics into the executable program interpreter."
+  },
+  "run? facts": {
+    theorem: "run?_append",
+    description: "Shows how execution distributes over appended symbolic programs.",
+    proof: "The proof follows the list structure of Prog execution and is used to reason compositionally about generated programs."
+  },
+  "execution support": {
+    theorem: "run_some_computeLocalAux",
+    description: "Shows that key synthesized local computations execute successfully.",
+    proof: "The synthesis proofs use the execution lemmas to establish successful runs for generated helper programs."
+  },
+  "generated ops": {
+    theorem: "opsForPointWithProduct_returns_to_original",
+    description: "Shows generated operations for an interpolation point restore the symbolic state after doing the needed work.",
+    proof: "The proof follows the generated operation sequence and tracks how each symbolic register is restored."
+  },
+  "coverage proof": {
+    theorem: "progConsumesPts_has_blockDecomposition",
+    description: "Packages phase-point consumption into a block decomposition for the compiler proof.",
+    proof: "The proof converts coverage of the generated program into block-level structure with clean phase interfaces."
+  },
+  "definitions": {
+    theorem: "compileOpsToSignedGate",
+    description: "Introduces the compiler object whose correctness is proved by the later phase-product modules.",
+    proof: "This is a definitional edge: later proofs consume the layout and annotated-operation definitions introduced here."
+  },
+  "layout facts": {
+    theorem: "allocated_widths_sound",
+    description: "Proves width bookkeeping remains sound throughout symbolic execution.",
+    proof: "The proof uses support lemmas about layouts, split extended registers, and generated rows."
+  },
+  "fits widths": {
+    theorem: "eval_compileSignedAllocations_ket_fits",
+    description: "Shows allocation creates an encoded state that fits the computed signed widths.",
+    proof: "The allocation proof combines width soundness with ket-level allocation semantics."
+  },
+  "encoded start": {
+    theorem: "eval_compileAnnotatedOpsToSignedGateAux_of_blocks",
+    description: "Runs the compiled operation body from the allocated encoded state.",
+    proof: "The proof walks through block-structured annotated operations while preserving the encoded-state invariant."
+  },
+  "row facts": {
+    theorem: "expectedRow_mul_expectedRow_eq_interpEntry",
+    description: "Relates compiler row bookkeeping to interpolation matrix entries.",
+    proof: "The proof is one of the algebraic bridges used before the final Toom-Cook phase-scalar equality."
+  },
+  "compiled semantics": {
+    theorem: "eval_compileAnnotatedOpsToSignedGateAux_of_blocks_then_dealloc",
+    description: "Combines the compiled body with deallocation to return to the intended output layout.",
+    proof: "The proof composes body correctness with deallocation cancellation lemmas."
+  },
+  "phase equality": {
+    theorem: "eval_compileOpsToSignedGate_correct",
+    description: "Assembles interpolation equality with compiled circuit semantics into the main compiler theorem.",
+    proof: "Compilation correctness combines allocation, body/deallocation, and toom_cook_interpolation."
+  },
+  "nonsingularity": {
+    theorem: "GoodToomCookPoints.to_GoodInterpolationPoints",
+    description: "Converts good Toom-Cook point assumptions into the interpolation hypotheses needed downstream.",
+    proof: "The proof packages the point assumptions into the generic good-interpolation interface."
+  },
+  "coefficients": {
+    theorem: "phaseCoeffFromPtsWidth_eq_interpCoeff",
+    description: "Relates phase-coefficient extraction to interpolation coefficients.",
+    proof: "The proof unfolds the coefficient definitions and aligns compiler indexing with interpolation indexing."
+  },
+  "reconstruction": {
+    theorem: "evalAtRadix_tcProductCoeff_eq_ext_product",
+    description: "Reconstructs the product value from Toom-Cook coefficient evaluation.",
+    proof: "The proof combines chunk reconstruction lemmas for the source operands."
+  },
+  "good point class": {
+    theorem: "GoodToomCookPoints.to_GoodInterpolationPoints",
+    description: "Supplies the good-point hypothesis used by the compiler bridge theorem.",
+    proof: "The proof is a typeclass/interface conversion between the Toom-Cook and interpolation layers."
+  },
+  "semantic facts": {
+    theorem: "eval_RadixReverse_split_ket",
+    description: "Provides register-split semantic facts used inside the QFT split proof.",
+    proof: "The proof comes from the core semantics of radix reversal on split registers."
+  },
+  "register halves": {
+    theorem: "splitLeft_splitRight_disjoint",
+    description: "Proves the left and right halves of a split register are disjoint.",
+    proof: "The proof is arithmetic over register intervals."
+  },
+  "cross-term proof": {
+    theorem: "eval_QFT_split",
+    description: "Proves the cross terms in the QFT split are exactly represented by a phase product.",
+    proof: "The proof expands the QFT split structure and matches the phase contribution."
+  },
+  "target semantics": {
+    theorem: "LowerGateClass.evalL",
+    description: "Provides the semantic interface for evaluating LowGate programs.",
+    proof: "The low-level correctness theorems are stated by comparing evalL of lowered LowGate programs with high-level Gate evaluation."
+  },
+  "lowers split phase product": {
+    theorem: "evalL_lowerPhaseProd",
+    description: "Supplies the phase-product lowering theorem used inside recursive QFT lowering.",
+    proof: "In eval_lowerQFTAux_strong, the proof rewrites the lowered middle phase product using evalL_lowerPhaseProd."
+  },
+  "recursive case": {
+    theorem: "lowerGate_correctness",
+    description: "Uses the specialized lowering theorem as one recursive case of whole-program lowering.",
+    proof: "The whole-program theorem inducts over Gate syntax and dispatches each constructor to its matching semantic lemma."
+  },
+  "error model": {
+    theorem: "ctrlMul_step_dist_bound",
+    description: "Introduces the local controlled-multiplication error bound.",
+    proof: "The proof applies the ModMul specification to a single modular multiplication step."
+  },
+  "iteration": {
+    theorem: "modExpSteps_dist_bound",
+    description: "Lifts the local step error over the modular-exponentiation loop.",
+    proof: "The proof accumulates stepwise norm-distance errors across the iteration."
+  },
+  "whole gate": {
+    theorem: "modExp_dist_bound",
+    description: "Packages the iterated step bound as a statement about the whole modular-exponentiation gate.",
+    proof: "The proof specializes the step theorem to the full circuit wrapper."
+  },
+  "overlap lemma": {
+    theorem: "modExp_overlap_bound_sqrt",
+    description: "Converts modular-exponentiation distance control into overlap control.",
+    proof: "The proof applies the distance-to-overlap lemmas from the same file."
+  },
+  "finite sets": {
+    theorem: "valid_choices_card_general",
+    description: "Counts the valid choices of bases used in the classical reduction.",
+    proof: "The proof unfolds the finite set of coprime residues and relates it to Euler's totient."
+  },
+  "success conditions": {
+    theorem: "shors_classical_reduction",
+    description: "Uses the success predicate to derive a nontrivial factor from the recovered order.",
+    proof: "The proof applies the standard Shor gcd identities under the success-condition hypotheses."
+  },
+  "counting theorem": {
+    theorem: "shors_probability_bound",
+    description: "Shows that at least half of the valid choices are successful under the classical assumptions.",
+    proof: "The proof combines the unsuccessful-choice bound with the partition of valid choices."
+  },
+  "factor theorem": {
+    theorem: "Shor_end_to_end_factoring",
+    description: "Feeds the classical factor-recovery theorem into the end-to-end factoring statement.",
+    proof: "The final theorem combines the classical reduction with the quantum order-finding success theorem."
+  },
+  "run and measure": {
+    theorem: "measProbAfter",
+    description: "Defines the probability of a measurement outcome after running an order-finding circuit.",
+    proof: "This is the definitional bridge from circuits to measurement probabilities."
+  },
+  "success expression": {
+    theorem: "probability_of_success",
+    description: "Packages measurement probabilities into the success expression used by Shor correctness.",
+    proof: "The definition sums over measurement outcomes weighted by the continued-fraction verifier."
+  },
+  "ideal baseline": {
+    theorem: "Shor_correct_approx",
+    description: "Uses the ideal theorem as the baseline for the approximation-aware statement.",
+    proof: "The approximate theorem subtracts an explicit modular-exponentiation error term from the ideal success lower bound."
+  },
+  "order finding": {
+    theorem: "Shor_end_to_end_factoring",
+    description: "Feeds ideal order-finding correctness into the end-to-end factoring theorem.",
+    proof: "The end-to-end theorem invokes Shor_correct for every successful choice of base."
+  },
+  "probability API": {
+    theorem: "successProbAfterFinset_mono",
+    description: "Provides basic monotonicity and range facts for success probabilities.",
+    proof: "The proof uses nonnegativity of measurement probabilities and finite-set summation facts."
+  }
+};
+
 let viewport = { width: 900, height: 640 };
 let scene;
 let didDrag = false;
+let pendingNodeClick = null;
 
 function make(tag, attrs = {}, parent = null) {
   const el = document.createElementNS(ns, tag);
@@ -419,6 +688,33 @@ function getRelatedEdges(id) {
   };
 }
 
+function getEdgeInfo(link) {
+  const catalogEntry = edgeCatalog[link.label] || {};
+  return {
+    theorem: link.theorem || catalogEntry.theorem || link.label,
+    description: link.description || catalogEntry.description || `This proof edge connects ${link.source} to ${link.target}.`,
+    proof: link.proof || catalogEntry.proof || "This edge is a curated dependency bridge in the proof architecture.",
+    relation: link.label
+  };
+}
+
+function getNodeProfile(node, view) {
+  const related = getRelatedEdges(node.id);
+  const endpoints = node.declarations?.slice(-2).join(", ") || "the module declarations";
+  const incoming = related.incoming.length
+    ? `It consumes ${related.incoming.length} upstream proof bridge${related.incoming.length === 1 ? "" : "s"}.`
+    : "It is an entry point for this graph layer.";
+  const outgoing = related.outgoing.length
+    ? `It feeds ${related.outgoing.length} downstream proof bridge${related.outgoing.length === 1 ? "" : "s"}.`
+    : "It is an endpoint of this graph layer.";
+
+  return {
+    role: node.summary || view.description,
+    why:
+      `${incoming} ${outgoing} The main things to look for here are ${endpoints}.`
+  };
+}
+
 function topologicalLevels(view) {
   const indegree = new Map(view.nodes.map((node) => [node.id, 0]));
   view.links.forEach((link) => indegree.set(link.target, (indegree.get(link.target) || 0) + 1));
@@ -451,15 +747,16 @@ function layout(view) {
   });
 
   const levelCount = Math.max(1, groups.size);
-  const minGap = viewport.width < 760 ? 270 : 320;
+  const minGap = viewport.width < 760 ? 330 : 420;
   const xGap = Math.max(minGap, (viewport.width - 160) / Math.max(1, levelCount - 1));
   const nextPositions = new Map();
 
   [...groups.entries()].sort((a, b) => a[0] - b[0]).forEach(([level, nodes]) => {
-    const yGap = Math.max(154, (viewport.height - 130) / Math.max(1, nodes.length));
+    const minVerticalGap = viewport.width < 760 ? 250 : 285;
+    const yGap = Math.max(minVerticalGap, (viewport.height - 130) / Math.max(1, nodes.length));
     nodes.forEach((node, index) => {
       const x = 90 + level * xGap;
-      const y = Math.max(70, (viewport.height - yGap * (nodes.length - 1)) / 2 + index * yGap);
+      const y = Math.max(90, (viewport.height - yGap * (nodes.length - 1)) / 2 + index * yGap);
       nextPositions.set(node.id, { x, y });
     });
   });
@@ -494,11 +791,21 @@ function fitGraph() {
   const maxY = Math.max(...points.map((point) => point.y + nodeHeight));
   const graphWidth = maxX - minX;
   const graphHeight = maxY - minY;
-  const scale = Math.min(1.08, (viewport.width - 84) / graphWidth, (viewport.height - 110) / graphHeight);
+  const minReadableScale = viewport.width < 760 ? 0.46 : 0.54;
+  const scale = Math.max(
+    minReadableScale,
+    Math.min(1.08, (viewport.width - 84) / graphWidth, (viewport.height - 110) / graphHeight)
+  );
+  const scaledWidth = graphWidth * scale;
+  const scaledHeight = graphHeight * scale;
   state.transform = {
     scale,
-    x: (viewport.width - graphWidth * scale) / 2 - minX * scale,
-    y: (viewport.height - graphHeight * scale) / 2 - minY * scale + 18
+    x: scaledWidth > viewport.width - 84
+      ? 42 - minX * scale
+      : (viewport.width - scaledWidth) / 2 - minX * scale,
+    y: scaledHeight > viewport.height - 110
+      ? 120 - minY * scale
+      : (viewport.height - scaledHeight) / 2 - minY * scale + 18
   };
   applyTransform();
   renderStats();
@@ -584,13 +891,29 @@ function renderEdgeList(title, edges, direction) {
 function renderDetails(item = null, link = null) {
   const view = graphData[state.viewId];
   if (link) {
+    const info = getEdgeInfo(link);
     const source = view.nodes.find((node) => node.id === link.source);
     const target = view.nodes.find((node) => node.id === link.target);
     detailsContent.innerHTML = `
       <div class="details-card">
-        <div class="detail-kicker"><span class="detail-type">proof edge</span></div>
-        <h2>${link.label}</h2>
-        <p>${source?.label || link.source} feeds ${target?.label || link.target}.</p>
+        <div class="detail-kicker">
+          <span class="detail-type">proof edge</span>
+          <span class="detail-type">${info.relation}</span>
+        </div>
+        <h2>${source?.label || link.source} to ${target?.label || link.target}</h2>
+        <p>${info.description}</p>
+        <div class="detail-section">
+          <h3>Relation</h3>
+          <p>${link.label}</p>
+        </div>
+        <div class="detail-section">
+          <h3>Main theorem or declaration</h3>
+          <div class="pill-list"><span class="pill">${info.theorem}</span></div>
+        </div>
+        <div class="detail-section">
+          <h3>Why the arrow exists</h3>
+          <p>${info.proof}</p>
+        </div>
         <div class="detail-section">
           <h3>Source</h3>
           <button class="edge-chip" type="button" data-node-id="${source?.id || link.source}">
@@ -612,11 +935,46 @@ function renderDetails(item = null, link = null) {
     return;
   }
 
-  const selected = item || view.nodes.find((node) => node.id === state.selectedId) || view.nodes[0];
+  const selected = item || view.nodes.find((node) => node.id === state.selectedId);
   state.selectedId = selected?.id || null;
 
   if (!selected) {
-    detailsContent.innerHTML = "";
+    const kinds = getViewKinds(view).map((kind) => kindLabels[kind] || kind).join(", ");
+    detailsContent.innerHTML = `
+      <div class="details-card">
+        <div class="detail-kicker">
+          <span class="detail-type">graph view</span>
+          <span class="detail-type">${view.nodes.length} nodes / ${view.links.length} proofs</span>
+        </div>
+        <h2>${view.title}</h2>
+        <p>${view.description}</p>
+        <div class="detail-section">
+          <h3>Layers</h3>
+          <p>${kinds}</p>
+        </div>
+        <div class="detail-section">
+          <h3>Proof bridges</h3>
+          <div class="edge-list">
+            ${view.links.map((edge) => {
+              const source = view.nodes.find((node) => node.id === edge.source);
+              const target = view.nodes.find((node) => node.id === edge.target);
+              return `
+                <button class="edge-chip" type="button" data-edge-key="${edgeKey(edge)}">
+                  <strong>${edge.label}</strong>
+                  <span>${source?.label || edge.source} to ${target?.label || edge.target}</span>
+                </button>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      </div>
+    `;
+    detailsContent.querySelectorAll("[data-edge-key]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const edge = view.links.find((candidate) => edgeKey(candidate) === button.dataset.edgeKey);
+        if (edge) selectEdge(edge);
+      });
+    });
     return;
   }
 
@@ -628,6 +986,7 @@ function renderDetails(item = null, link = null) {
     ? `<a class="file-link" href="${fileHref(selected.file)}">${selected.file}</a>`
     : "";
   const related = getRelatedEdges(selected.id);
+  const profile = getNodeProfile(selected, view);
 
   detailsContent.innerHTML = `
     <div class="details-card">
@@ -636,8 +995,12 @@ function renderDetails(item = null, link = null) {
         <span class="detail-type">${related.incoming.length} in / ${related.outgoing.length} out</span>
       </div>
       <h2>${selected.label}</h2>
-      <p>${selected.summary || view.description}</p>
+      <p>${profile.role}</p>
       ${drillDown}
+      <div class="detail-section">
+        <h3>Why this node matters</h3>
+        <p>${profile.why}</p>
+      </div>
       <div class="detail-section">
         <h3>Lean declarations</h3>
         <div class="pill-list">${declarations || '<span class="pill">module</span>'}</div>
@@ -663,19 +1026,100 @@ function renderDetails(item = null, link = null) {
   });
 }
 
-function pathBetween(a, b) {
+function edgeLaneOffset(view, link) {
+  const incoming = view.links.filter((candidate) => candidate.target === link.target);
+  const outgoing = view.links.filter((candidate) => candidate.source === link.source);
+  const incomingIndex = incoming.findIndex((candidate) => edgeKey(candidate) === edgeKey(link));
+  const outgoingIndex = outgoing.findIndex((candidate) => edgeKey(candidate) === edgeKey(link));
+  const targetOffset = incoming.length > 1 ? (incomingIndex - (incoming.length - 1) / 2) * 150 : 0;
+  const sourceOffset = outgoing.length > 1 ? (outgoingIndex - (outgoing.length - 1) / 2) * 88 : 0;
+  return targetOffset + sourceOffset;
+}
+
+function cubicPoint(p0, p1, p2, p3, t) {
+  const mt = 1 - t;
+  return {
+    x: mt ** 3 * p0.x + 3 * mt ** 2 * t * p1.x + 3 * mt * t ** 2 * p2.x + t ** 3 * p3.x,
+    y: mt ** 3 * p0.y + 3 * mt ** 2 * t * p1.y + 3 * mt * t ** 2 * p2.y + t ** 3 * p3.y
+  };
+}
+
+function cubicTangent(p0, p1, p2, p3, t) {
+  const mt = 1 - t;
+  return {
+    x: 3 * mt ** 2 * (p1.x - p0.x) + 6 * mt * t * (p2.x - p1.x) + 3 * t ** 2 * (p3.x - p2.x),
+    y: 3 * mt ** 2 * (p1.y - p0.y) + 6 * mt * t * (p2.y - p1.y) + 3 * t ** 2 * (p3.y - p2.y)
+  };
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function rectsOverlap(a, b, padding = 0) {
+  return (
+    a.x < b.x + b.width + padding &&
+    a.x + a.width > b.x - padding &&
+    a.y < b.y + b.height + padding &&
+    a.y + a.height > b.y - padding
+  );
+}
+
+function labelOverlapCount(view, point, labelWidth, labelHeight) {
+  const labelRect = {
+    x: point.x - labelWidth / 2,
+    y: point.y - labelHeight + 4,
+    width: labelWidth,
+    height: labelHeight
+  };
+  return view.nodes.reduce((count, node) => {
+    const nodePoint = state.positions.get(node.id);
+    if (!nodePoint) return count;
+    const nodeRect = { x: nodePoint.x, y: nodePoint.y, width: nodeWidth, height: nodeHeight };
+    return count + (rectsOverlap(labelRect, nodeRect, 24) ? 1 : 0);
+  }, 0);
+}
+
+function clearLabelPoint(view, route, labelWidth, labelHeight) {
+  const laneSign = Math.sign(route.lane);
+  const candidates = laneSign >= 0
+    ? [0, 110, -110, 175, -175, 245, -245, 320, -320]
+    : [0, -110, 110, -175, 175, -245, 245, -320, 320];
+  let best = route.label;
+  let bestCount = Infinity;
+
+  for (const dy of candidates) {
+    const candidate = { x: route.label.x, y: route.label.y + dy };
+    const overlapCount = labelOverlapCount(view, candidate, labelWidth, labelHeight);
+    if (overlapCount === 0) return candidate;
+    if (overlapCount < bestCount) {
+      best = candidate;
+      bestCount = overlapCount;
+    }
+  }
+
+  return best;
+}
+
+function edgeRoute(view, link, a, b) {
   const x1 = a.x + nodeWidth;
   const y1 = a.y + nodeHeight / 2;
   const x2 = b.x;
   const y2 = b.y + nodeHeight / 2;
-  const dx = Math.max(58, (x2 - x1) * 0.48);
-  return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
-}
-
-function labelPoint(a, b) {
+  const dx = Math.max(96, Math.abs(x2 - x1) * 0.46);
+  const lane = edgeLaneOffset(view, link);
+  const p0 = { x: x1, y: y1 };
+  const p1 = { x: x1 + dx, y: y1 + lane };
+  const p2 = { x: x2 - dx, y: y2 + lane };
+  const p3 = { x: x2, y: y2 };
+  const label = cubicPoint(p0, p1, p2, p3, 0.5);
+  const tangent = cubicTangent(p0, p1, p2, p3, 0.5);
+  const angle = clamp(Math.atan2(tangent.y, tangent.x) * 180 / Math.PI, -12, 12);
   return {
-    x: (a.x + nodeWidth + b.x) / 2,
-    y: (a.y + b.y) / 2 + nodeHeight / 2 - 8
+    d: `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${p3.x} ${p3.y}`,
+    label,
+    angle,
+    lane
   };
 }
 
@@ -716,10 +1160,19 @@ function renderGraph() {
     const isNeighbor = selectedId && linkTouches(link, selectedId);
     const focusDim = state.focusMode && ((selectedEdgeKey && !isSelectedEdge) || (selectedId && !isNeighbor));
     const dim = focusDim || state.query && !(matches.has(link.source) || matches.has(link.target));
+    const route = edgeRoute(view, link, source, target);
     const path = make("path", {
       class: `edge${isSelectedEdge ? " selected" : ""}${isNeighbor ? " neighbor" : ""}${dim ? " dimmed" : ""}`,
-      d: pathBetween(source, target)
+      d: route.d
     }, edgesLayer);
+    const hitPath = make("path", {
+      class: "edge-hit",
+      d: route.d
+    }, edgesLayer);
+    hitPath.addEventListener("click", (event) => {
+      event.stopPropagation();
+      selectEdge(link);
+    });
     path.addEventListener("click", (event) => {
       event.stopPropagation();
       selectEdge(link);
@@ -731,28 +1184,49 @@ function renderGraph() {
     const source = state.positions.get(link.source);
     const target = state.positions.get(link.target);
     if (!source || !target) return;
-    const point = labelPoint(source, target);
+    const route = edgeRoute(view, link, source, target);
     const isSelectedEdge = selectedEdgeKey === edgeKey(link);
     const isNeighbor = selectedId && linkTouches(link, selectedId);
     const focusDim = state.focusMode && ((selectedEdgeKey && !isSelectedEdge) || (selectedId && !isNeighbor));
     const dim = focusDim || state.query && !(matches.has(link.source) || matches.has(link.target));
-    const labelWidth = Math.min(190, Math.max(74, link.label.length * 7.1 + 20));
-    make("rect", {
-      class: `edge-label-bg${dim ? " dimmed" : ""}`,
+    const lines = splitTextLines(link.label, 22, 2);
+    const labelWidth = Math.min(170, Math.max(92, Math.max(...lines.map((line) => line.length)) * 7.1 + 22));
+    const labelHeight = 12 + lines.length * 14;
+    const point = clearLabelPoint(view, route, labelWidth, labelHeight);
+    const labelGroup = make("g", {
+      class: `edge-label-group${dim ? " dimmed" : ""}`,
+      tabindex: "0",
+      role: "button",
+      "aria-label": link.label
+    }, labelsLayer);
+    labelGroup.addEventListener("click", (event) => {
+      event.stopPropagation();
+      selectEdge(link);
+    });
+    labelGroup.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectEdge(link);
+      }
+    });
+    const labelBg = make("rect", {
+      class: "edge-label-bg",
       x: point.x - labelWidth / 2,
-      y: point.y - 17,
+      y: point.y - labelHeight + 4,
       width: labelWidth,
-      height: 22,
+      height: labelHeight,
       rx: 6,
       ry: 6
-    }, labelsLayer);
+    }, labelGroup);
     const text = make("text", {
-      class: `edge-label${dim ? " dimmed" : ""}`,
+      class: "edge-label",
       x: point.x,
-      y: point.y,
       "text-anchor": "middle"
-    }, labelsLayer);
-    text.textContent = link.label;
+    }, labelGroup);
+    lines.forEach((line, index) => {
+      const tspan = make("tspan", { x: point.x, y: point.y - (lines.length - 1) * 7 + index * 14 }, text);
+      tspan.textContent = line;
+    });
   });
 
   const nodesLayer = make("g", { class: "nodes" }, scene);
@@ -798,10 +1272,14 @@ function renderGraph() {
     group.addEventListener("click", (event) => {
       event.stopPropagation();
       if (didDrag) return;
-      selectNode(node.id);
+      scheduleNodeSelect(node.id);
     });
     group.addEventListener("dblclick", (event) => {
       event.stopPropagation();
+      if (pendingNodeClick) {
+        clearTimeout(pendingNodeClick);
+        pendingNodeClick = null;
+      }
       if (node.view) setView(node.view);
     });
     group.addEventListener("keydown", (event) => {
@@ -820,7 +1298,7 @@ function renderGraph() {
   applyTransform();
 }
 
-function makeText(parent, text, x, y, size, className, lineLimit = 24, maxLines = 2) {
+function splitTextLines(text, lineLimit = 24, maxLines = 2) {
   const words = String(text).split(/\s+/);
   const lines = [];
   let current = "";
@@ -833,7 +1311,12 @@ function makeText(parent, text, x, y, size, className, lineLimit = 24, maxLines 
     }
   });
   if (current) lines.push(current);
-  lines.slice(0, maxLines).forEach((line, index) => {
+  return lines.slice(0, maxLines);
+}
+
+function makeText(parent, text, x, y, size, className, lineLimit = 24, maxLines = 2) {
+  const lines = splitTextLines(text, lineLimit, maxLines);
+  lines.forEach((line, index) => {
     const el = make("text", { x, y: y + index * (size + 2), "font-size": size, class: className }, parent);
     el.textContent = line;
   });
@@ -846,6 +1329,14 @@ function selectNode(id) {
   renderGraph();
 }
 
+function scheduleNodeSelect(id) {
+  if (pendingNodeClick) clearTimeout(pendingNodeClick);
+  pendingNodeClick = setTimeout(() => {
+    pendingNodeClick = null;
+    selectNode(id);
+  }, 140);
+}
+
 function selectEdge(link) {
   state.selectedId = null;
   state.selectedEdge = link;
@@ -856,7 +1347,7 @@ function selectEdge(link) {
 function setView(id) {
   if (!graphData[id]) return;
   state.viewId = id;
-  state.selectedId = graphData[id].nodes[0]?.id || null;
+  state.selectedId = null;
   state.selectedEdge = null;
   state.query = "";
   searchInput.value = "";
