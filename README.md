@@ -198,6 +198,3 @@ The culminating theorem is:
 
 Conceptually, this file is where everything finally comes together. The earlier files prove that the required subcircuits are lowered correctly or approximated within control; this file turns those ingredients into the final order-finding statement.
 
-## Auxiliary Python Files
-
-The Python files in `ModularExponentiation/` and `ModularMultiplication/` are auxiliary experiments and prototypes. They are not part of the main Lean proof dependency chain described above.
