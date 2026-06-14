@@ -16,6 +16,10 @@ explain how each cluster of lemmas feeds into that theorem.
 
 open Operations
 
+/-! =========================================================
+    Section 1: Prelude list helpers
+========================================================= -/
+
 infix:50 " <+ " => List.Sublist
 
 theorem mem_cons {α : Type _} {a y : α} {l : List α} :
@@ -30,8 +34,8 @@ theorem mem_finRange {n : ℕ} (i : Fin n) :
     i ∈ List.finRange n :=
   List.mem_finRange i
 
-/-!
-## Coverage Bookkeeping: List-Level Erasure
+/-! =========================================================
+    Section 2: Coverage bookkeeping and list-level erasure
 
 How this section contributes to the final theorem:
 - `List.eraseFirstMatch?_append_hit` is the base list lemma that lets a
@@ -39,7 +43,7 @@ How this section contributes to the final theorem:
   the right.
 - That bookkeeping fact is used directly in the append-style coverage theorems
   that later stitch together the build, phase, and inverse blocks.
--/
+========================================================= -/
 
 namespace List
 /-- If `eraseFirstMatch? p xs = some ys` then also
@@ -64,8 +68,8 @@ end List
 
 
 
-/-!
-## Coverage Composition for Concatenated Programs
+/-! =========================================================
+    Section 3: Coverage composition for concatenated programs
 
 How these lemmas contribute to `genOpsWithProduct_PhaseProductCoverage`:
 - `phaseProduct_coverage_check_append_aux` is the main composition theorem for
@@ -81,7 +85,7 @@ How these lemmas contribute to `genOpsWithProduct_PhaseProductCoverage`:
   can name the intermediate state explicitly.
 - `phaseProduct_coverage_check_append_nil` is the empty-point specialization used
   when composing arithmetic-only fragments that should not consume any points.
--/
+========================================================= -/
 
 lemma phaseProduct_coverage_check_append_aux
   {k : ℕ} (hk:k>0) (p q : Prog k) (σ : State k) (a b : List Point)
@@ -141,8 +145,6 @@ lemma phaseProduct_coverage_check_append
   PhaseProductCoverage hk (p ++ q) σ (a ++ b) :=
   phaseProduct_coverage_check_append_aux hk p q σ a b hp σ hret hq
 
-
-
 lemma phaseProduct_coverage_check_append_general
   {k : ℕ} (hk:k>0) (p q : Prog k) (σ σ₁: State k) (a b : List Point)
   (hret : run? p σ = some σ₁)
@@ -194,10 +196,8 @@ lemma phaseProduct_coverage_check_append_nil
       hk hp σ₂ hret hq
   }
 
-
-
-/-!
-## Programs With No `phaseProduct`
+/-! =========================================================
+    Section 4: Programs with no `phaseProduct`
 
 How this section contributes to the final theorem:
 - `NoPhase` marks arithmetic-only programs that cannot consume a target point.
@@ -213,7 +213,7 @@ How this section contributes to the final theorem:
 - `computeLocal_NoPhase` and `computeLocal_NoPhase_2` prove that both the build
   program and its inverse are arithmetic-only, which is exactly what the final
   theorem needs for the build/phase/unbuild pattern.
--/
+========================================================= -/
 
 /-- Abbreviation for the loop so we can state lemmas succinctly. -/
 local notation "Loop" => phaseCoverageFrom?.loop
@@ -305,13 +305,6 @@ lemma loop_no_phase_nil_todo_success {k}
   List.eraseFirstMatch? p (x :: xs) = some xs := by
   simp [List.eraseFirstMatch?, hx]
 
--- lemma singleton_inf_covers {k} (hk : 0 < k) :
---   phaseCoverageFrom? (fun r pt ↦ regEqExpected r pt)
---     (opsForPointWithProduct hk .inf) State.start_state [.inf] = true := by
---   simp [opsForPointWithProduct, phaseCoverageFrom?, phaseCoverageFrom?.loop,
---         regEqExpected, expectedRow, State.start_state, List.eraseFirstMatch?]
---   sorry
-
 /-- If the predicate is true on the head, a singleton `phaseProduct`
     consumes it and leaves `[]`. -/
 lemma loop_single_phase_consumes_head {k}
@@ -319,7 +312,6 @@ lemma loop_single_phase_consumes_head {k}
     (hmatch : m (σ i) head = true) :
   Loop m [valid_ops.phaseProduct i] σ [head] = some [] := by
   simp [phaseCoverageFrom?.loop, eraseFirstMatch_head_true (p := fun pt => m (σ i) pt) head _ hmatch]
-
 
 lemma NoPhase_append {k} {p q : Prog k}
   (hp : NoPhase p) (hq : NoPhase q) : NoPhase (p ++ q) := by
@@ -402,8 +394,6 @@ lemma computeLocal_NoPhase {k} (hk : 0 < k) (z : Int) :
     aesop
    }
 
-
-
 /-- Main: `computeLocal` and its inverse contain no `phaseProduct`. -/
 lemma computeLocal_NoPhase_2 {k} (hk : 0 < k) (z : Int) :
   NoPhase (computeLocal hk z) ∧ NoPhase (apply_Op_inverse (computeLocal hk z)) := by
@@ -418,13 +408,8 @@ lemma computeLocal_NoPhase_2 {k} (hk : 0 < k) (z : Int) :
 
   exact ⟨nop, nop_inv⟩
 
-
-
-
-
-
-/-!
-## Coverage-Neutral Arithmetic Blocks
+/-! =========================================================
+    Section 5: Coverage-neutral arithmetic blocks
 
 How this section contributes to the final theorem:
 - `cover_addScaled_nil` and `cover_map_pairToOp_nil` prove that the primitive
@@ -441,7 +426,7 @@ How this section contributes to the final theorem:
   `wsum_cons`, `run_map_pairToOp_coord`, `run_map_pairToOp_preserve`, `Block`,
   `run_Block_preserve`, and `computeLocal_eq_foldBlocks` describe the precise
   effect of the arithmetic blocks that eventually build the desired row.
--/
+========================================================= -/
 
 /-- A single `addScaled` always succeeds and consumes no points. -/
 lemma cover_addScaled_nil {k} (hk:k>0) (σ : State k) (dst src : Fin k) (neg' : Bool) (sh : ℕ) :
@@ -603,8 +588,6 @@ lemma cover_computeLocal_nil {k} (hk : 0 < k) (σ : State k) (z : Int) :
   unfold dst
   simp[cov_all]
 
-
-
 /-- Existence: `computeLocal hk z` never fails; it returns *some* state from any input. -/
 lemma run_some_computeLocal {k : ℕ} (hk : 0 < k) (z : Int) (σ : State k) :
   ∃ σ', run? (computeLocal (k := k) hk z) σ = some σ' := by {
@@ -678,7 +661,6 @@ lemma run_some_computeLocal {k : ℕ} (hk : 0 < k) (z : Int) (σ : State k) :
     simpa [computeLocal, step] using main (nonzeroFins (k := k) hk) [] base_run σ
   }
 
-
 /-- Pull a single membership out of `xs.all p = true`. -/
 private lemma all_true_of_mem {α} (p : α → Bool) :
   ∀ {xs : List α} {x : α}, xs.all p = true → x ∈ xs → p x = true
@@ -691,8 +673,6 @@ private lemma all_true_of_mem {α} (p : α → Bool) :
     subst h
     simp_all only
   | inr h_1 => simp_all only
-
-
 
 open Operations
 
@@ -718,11 +698,9 @@ open Operations
   -- filtered by predicate (· ≠ finZero hk)
   simp [finZero]
 
-
 /-- Start state is the “basis”: register `i` is the unit vector `e_i`. -/
 @[simp] lemma State.start_state_apply {k} (i j : Fin k) :
   (State.start_state (k := k)) i j = (if j = i then (1 : Int) else 0) := rfl
-
 
 
 --/****************  SIGNED POW2 DECOMP: EVALUATION  ******************/
@@ -749,7 +727,6 @@ def wsum : List (Bool × Nat) → Int
 @[simp] lemma wsum_nil : wsum ([] : List (Bool × Nat)) = 0 := rfl
 @[simp] lemma wsum_cons (p : Bool × Nat) (ps) :
   wsum (p :: ps) = wsum1 p + wsum ps := rfl
-
 
 /-- One mapped block affects only `dst`, and linearly by `wsum` on each coordinate. -/
 lemma run_map_pairToOp_coord
@@ -841,9 +818,9 @@ lemma run_map_pairToOp_preserve
         (State.addScaledReg σ dst src (negSrc := p.1) p.2) t = σ t := by
         simp [State.addScaledReg, State.setReg, ht]
       aesop
--- /******************************************************************************/
--- /*                         One block (for a single j)                         */
--- /******************************************************************************/
+/-! =========================================================
+    Section 6: One arithmetic block for a single source
+========================================================= -/
 
 -- Your block for source j with weight c going into dst
 def Block {k} (dst src : Fin k) (c : Int) : Prog k :=
@@ -895,8 +872,8 @@ lemma computeLocal_eq_foldBlocks {k} (hk : 0 < k) (z : Int) :
 
 
 
-/-!
-## `computeLocal2` Wrappers and Basic Execution Facts
+/-! =========================================================
+    Section 7: `computeLocal2` wrappers and basic execution facts
 
 How this section contributes to the final theorem:
 - `cover_computeLocal2_nil` and `run_some_computeLocal2` transfer the earlier
@@ -922,8 +899,8 @@ lemma run_some_computeLocal2 {k : ℕ} (hk : 0 < k) (z : Int) (σ : State k) :
   }
 
 
-/-!
-## Register-Level Contribution Accounting
+/-! =========================================================
+    Section 8: Register-level contribution accounting
 
 How this section contributes to the final theorem:
 - `contrib` is the target algebraic expression for the destination register.
@@ -1148,8 +1125,8 @@ lemma run_append_split {k} {p q : Prog k} {σ σ' : State k}
       aesop
 
 
-/-!
-## Relational Semantics for `computeLocalAux`
+/-! =========================================================
+    Section 9: Relational semantics for `computeLocalAux`
 
 How this section contributes to the final theorem:
 - `ExecCL` and `ExecCL_start` package `computeLocalAux` execution as inductive
@@ -1261,8 +1238,8 @@ lemma run_ExecCL {z}
   simp[this]
 
 
-/-!
-## Relational Semantics for `addConstAux`
+/-! =========================================================
+    Section 10: Relational semantics for `addConstAux`
 
 How this section contributes to the final theorem:
 - `ExecAddConstAux`, `ExecAddConstAux_run?`, and `ExecAddConstAux.of_run?` give a
@@ -1644,8 +1621,8 @@ by
         exact Or.inl h_eq
 
 
-/-!
-## Reconstructing the Expected Row
+/-! =========================================================
+    Section 11: Reconstructing the expected row
 
 How this section contributes to the final theorem:
 - `contribFrom`, `helper1`, `contribFrom_eq_of_regs_eq`, `AllNe_implies_mem_ne`,
@@ -1938,8 +1915,8 @@ lemma regEqExpected_after_computeLocal2_of_run
 
 
 
-/-!
-## Arithmetic-Only Inverse Programs
+/-! =========================================================
+    Section 12: Arithmetic-only inverse programs
 
 How this section contributes to the final theorem:
 - `IsAddScaled`, `onlyAddScaled_addConstAux`, `onlyAddScaled_addConstFrom`,
@@ -2171,8 +2148,8 @@ lemma run_some_of_onlyAddScaled {k : ℕ}
 
 
 
-/-!
-## Matching and Final Assembly
+/-! =========================================================
+    Section 13: Matching and final assembly
 
 How this section contributes to the final theorem:
 - `computeLocal2_some_state` is reused from `Synthesis_programs` to produce a

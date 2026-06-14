@@ -4,7 +4,7 @@ import FastMultiplication.ShorVerification.MathBackbone.Toom_Cook_formula
 /-!
 # Phase-Product Compiler Support Lemmas
 
-This file collects reusable facts for the phase-product correctness stack:
+This file collects reusable facts for the phase-product correctness:
 split-register disjointness, source-row arithmetic, layout coverage, and the
 chosen interpolation points.  Larger correctness files import this rather than
 reproving these local facts inline.
@@ -16,7 +16,7 @@ open Operations
 open scoped BigOperators
 
 /-! =========================================================
-    Section: Register and split-layout basics
+    Section 1: Register and split-layout basics
 
     The first block supplies well-formedness and abstract split-register
     properties used throughout the compiler proofs.
@@ -566,7 +566,7 @@ lemma FitsSignedWidth_addScaled_widen
   · constructor <;> omega
 
 /-! =========================================================
-    Section: Start-state and layout-width lemmas
+    Section 2: Start-state and layout-width lemmas
 ========================================================= -/
 
 /-- Start-state row evaluation picks out the requested x-slot. -/
@@ -670,7 +670,7 @@ lemma stFinal_zslot_eq_addExtra
   exact widenExtRegTo_eq_addExtra _ _
 
 /-! =========================================================
-    Section: Row-evaluation arithmetic lemmas
+    Section 3: Row-evaluation arithmetic lemmas
 ========================================================= -/
 
 
@@ -1028,7 +1028,7 @@ lemma targetSignedLayoutState_zslot_width_scan
   omega
 
 /-! =========================================================
-    Section: Source chunk fit and initial soundness
+    Section 4: Source chunk fit and initial soundness
 ========================================================= -/
 
 lemma sourceChunkXInt_fits_width_succ
@@ -1193,7 +1193,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_append
           aesop
 
 /-! =========================================================
-    Section: Layout disjointness
+    Section 5: Layout disjointness and basis extensionality
 ========================================================= -/
 
 def LayoutSlotsDisjoint {k : ℕ} (st : LayoutState k) : Prop :=
@@ -1398,6 +1398,10 @@ lemma encodesStateFrom_start_unique_of_ext
           = evalRowZ (qs := qs) src (State.start_state i) b0 := h1.2 i
       _ = ExtRegEncoding.extToInt (dst.zslot i) b2 := (h2.2 i).symm
 
+
+/-! =========================================================
+    Section 6: Canonical interpolation points
+========================================================= -/
 
 /-- Alternating integer interpolation points around zero. -/
 def alternatingPoint (i : ℕ) : Point :=

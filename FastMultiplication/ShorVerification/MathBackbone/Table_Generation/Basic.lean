@@ -3,6 +3,18 @@ import Mathlib.Data.Fin.Basic
 import Mathlib.Algebra.EuclideanDomain.Basic
 -- import Mathlib.Tactic
 
+/-!
+# Table-generation linear state model
+
+This file defines the symbolic register/state model used by the table
+generation proofs, together with the primitive operations and basic algebraic
+facts about shifts, negation, scaled addition, and right-shift success.
+-/
+
+/-! =========================================================
+    Section 1: Registers and coefficient operations
+========================================================= -/
+
 /-- A register is a linear combo of `x₀,…,x_{k-1}` with **integer** coefficients. -/
 abbrev Register (k : ℕ) := Fin k → ℤ
 
@@ -37,6 +49,10 @@ def addScaled {k : ℕ} (dst src : Register k) (negSrc : Bool) (shift : ℕ) : R
   fun j => (dst j) + sgn * (src j) * (2 : ℤ) ^ shift
 
 end Register
+
+/-! =========================================================
+    Section 2: State updates and cancellation helpers
+========================================================= -/
 
 namespace State
 open Register
@@ -214,6 +230,10 @@ lemma shiftRReg?_after_shiftL_addScaled_eq
   simp [hreg, σA']
 end State
 
+/-! =========================================================
+    Section 3: Primitive operations and inverses
+========================================================= -/
+
 namespace Operations
 
 inductive Point where
@@ -242,6 +262,10 @@ def inv {k : ℕ} : valid_ops k → valid_ops k
     inv (inv op) = op := by
   cases op <;> simp [inv]
 end Operations
+
+/-! =========================================================
+    Section 4: Register simp lemmas and right-shift facts
+========================================================= -/
 
 namespace Register
 
@@ -302,7 +326,9 @@ lemma shiftR?_some_value {k : ℕ} {r r' : Register k} {n : ℕ}
 
 end Register
 
---State lemmas
+/-! =========================================================
+    Section 5: State simp lemmas
+========================================================= -/
 
 namespace State
 open Register

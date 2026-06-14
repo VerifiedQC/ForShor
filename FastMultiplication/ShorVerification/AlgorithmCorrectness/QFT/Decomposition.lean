@@ -13,7 +13,7 @@ This file proves the high-level circuit identity that splits QFT into recursive
 QFTs, a phase product, and radix reversal.  Low-level lowering correctness is
 proved separately in `AbstractMachine/QFTLoweringCorrectness.lean`.
 
-The organization is dependency-driven:
+The organization :
 
 1. Register-split helpers and normalization facts.
 2. QFT phase and sum-manipulation lemmas.

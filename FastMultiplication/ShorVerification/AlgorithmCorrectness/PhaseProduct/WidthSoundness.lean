@@ -14,7 +14,7 @@ The final theorem feeds directly into allocation and body correctness.
 -/
 
 /-! =========================================================
-    Section: Width-state preservation through symbolic execution
+    Section 1: Width-state preservation through symbolic execution
 ========================================================= -/
 
 lemma widthStateSoundPlus_step
@@ -295,7 +295,7 @@ lemma widthStateSoundPlus_run
             ih (cur := updateWidthState cur op) (σ := σ1) (σf := σf) hrunTail hfit1
 
 /-! =========================================================
-    Section: Prefix/scan bound lemmas
+    Section 2: Prefix/scan bound lemmas
 ========================================================= -/
 
 /-- Prefix-folded x-widths are bounded by the full scan result. -/
@@ -437,7 +437,7 @@ lemma widthStateSoundPlus_start_state
     simpa [st] using hfit
 
 /-! =========================================================
-    Section: Final theorem
+    Section 3: Final theorem
 ========================================================= -/
 
 lemma allocated_widths_sound

@@ -1,8 +1,15 @@
 import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Tactics
 
--- /******************************************************************************/
--- /*                 RETURN TO ORIGINAL STATE PROOF.                            */
--- /******************************************************************************/
+/-!
+# Table-generation example theorems and state helpers
+
+This file uses the tactics from `Tactics` to certify the running examples and
+records a few state-update lemmas that are used by the synthesis proofs.
+-/
+
+/-! =========================================================
+    Section 1: Example return and coverage theorems
+========================================================= -/
 
 open Operations
 
@@ -54,6 +61,11 @@ theorem example_prog_2_returns_2:
 
 
 open State
+
+/-! =========================================================
+    Section 2: State-update helper lemmas
+========================================================= -/
+
 /-- If `dst ≠ src`, `addScaledReg dst src ...` does not change register `src`. -/
 lemma addScaledReg_src_unchanged
   {k : ℕ} (σ : State k) (dst src : Fin k) (negSrc : Bool) (sh : ℕ)

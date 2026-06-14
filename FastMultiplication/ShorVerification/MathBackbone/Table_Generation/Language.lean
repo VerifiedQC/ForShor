@@ -1,9 +1,18 @@
 import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Basic
 import Mathlib.Tactic
 import Mathlib.Data.ZMod.Basic
--- /******************************************************************************/
--- /*                           PROGRAMS & EXECUTION CORE                        */
--- /******************************************************************************/
+
+/-!
+# Table-generation program language
+
+This file defines programs over the symbolic table-generation operations, their
+partial execution semantics, point-row matchers, phase-product coverage
+predicates, notation, and lightweight program equivalence.
+-/
+
+/-! =========================================================
+    Section 1: Programs and execution core
+========================================================= -/
 
 open Operations
 
@@ -31,12 +40,9 @@ def run? {k : ℕ} : Prog k → State k → Option (State k)
   | some σ' => run? ps σ'
 
 
-
-
-
--- /******************************************************************************/
--- /*                     WELL-FORMEDNESS & SMALL CONSTRUCTORS                   */
--- /******************************************************************************/
+/-! =========================================================
+    Section 2: Well-formedness and small constructors
+========================================================= -/
 
 namespace Prog
 
@@ -75,9 +81,9 @@ def SUB   {k} (dst src : Fin k) (shift : ℕ) : Prog k :=
 
 end Prog
 
--- /******************************************************************************/
--- /*      RUN THE PREFIX OF LENGTH t, WITH t < p.length ENFORCED BY THE TYPE    */
--- /******************************************************************************/
+/-! =========================================================
+    Section 3: Prefix execution
+========================================================= -/
 
 namespace Prog
 
@@ -89,9 +95,9 @@ def runAtStep? {k : ℕ} (p : Prog k) (t : Fin p.length) (σ : State k) : Option
 
 end Prog
 
--- /******************************************************************************/
--- /*        CHECK THAT `phaseProduct` COVERS EXACTLY THE GIVEN POINT LIST       */
--- /******************************************************************************/
+/-! =========================================================
+    Section 4: Point-row matchers and Boolean coverage
+========================================================= -/
 
 /-- User-supplied matcher: does the *current* state encode the desired
     interpolation polynomial at the given Point? Return `true` when it matches. -/
@@ -247,11 +253,9 @@ def phaseProduct_coverage_check {k : ℕ}
     phaseCoverageFrom? (matchesAt_pointRow (k := k)) p σ0 pts0
 
 
-
-
--- /******************************************************************************/
--- /*                                NOTATIONS                                   */
--- /******************************************************************************/
+/-! =========================================================
+    Section 5: Program notation
+========================================================= -/
 
 --(shift left)
 syntax:70 term:71 " <<s= " term:70 : term
@@ -280,13 +284,9 @@ macro_rules
 
 infixl:55 " ;; " => List.append
 
-
-
-
-
--- /******************************************************************************/
--- /*                                  EXAMPLES                                  */
--- /******************************************************************************/
+/-! =========================================================
+    Section 6: Examples
+========================================================= -/
 
 section Examples
 set_option linter.unusedVariables false
@@ -300,15 +300,9 @@ def demoProg : Prog 4 := (r0 +:= r1 << 2) ;; (r0 >>s= 1) ;; (neg r1)
 
 end Examples
 
-
-
-
-
-
-
--- /******************************************************************************/
--- /*                  INVERSE OF APPEND (TOP-LEVEL VERSION)                     */
--- /******************************************************************************/
+/-! =========================================================
+    Section 7: Inverse append and program equivalence
+========================================================= -/
 
 @[simp] theorem apply_Op_inverse_append {k : ℕ} (p q : Prog k) :
     apply_Op_inverse ((p;;q)) = apply_Op_inverse q ;; apply_Op_inverse p := by
@@ -316,23 +310,15 @@ end Examples
   -- reverse (p ++ q) = reverse q ++ reverse p; then `map` distributes over `++`
   simp [List.reverse_append, List.map_append]
 
-
--- /******************************************************************************/
--- /*                     LIGHTWEIGHT PROGRAM EQUIVALENCE                        */
--- /******************************************************************************/
-
 -- Two programs are equivalent if they produce the same (optional) state on all inputs.
 def ProgEq {k : ℕ} (p q : Prog k) : Prop :=
   ∀ σ, run? p σ = run? q σ
 
 notation:50 p:51 " ≃ₚ " q:50 => ProgEq p q
 
-
-
--- /******************************************************************************/
--- /*        CHECK THAT `phaseProduct` COVERS EXACTLY THE GIVEN POINT LIST       */
--- /******************************************************************************/
-
+/-! =========================================================
+    Section 8: Propositional phase-product coverage
+========================================================= -/
 
 inductive PhaseProductCoverageM {k : ℕ} (M : MatchesAtState k) :
     Prog k → State k → List Operations.Point → Prop
@@ -367,25 +353,3 @@ def ProgConsumesPts {k : ℕ} (hk : k > 0) : State k → Prog k → List Point �
   | _ =>
       ∃ σ', applyOp? (k := k) σ op = some σ' ∧
             ProgConsumesPts hk σ' ops pts
-
-
--- inductive PhaseProductCoverageM2 {k : ℕ} (M : MatchesAtState k) :
---     Prog k → State k → List Operations.Point → Prop
--- | nil {σ : State k} :
---     PhaseProductCoverageM2 M [] σ []
--- | step_op {op : Operations.valid_ops k} {ps : Prog k} {σ τ : State k} {pts : List Operations.Point}
---     (hops  : ∀i, ¬ op = valid_ops.phaseProduct i)
---     (hstep : applyOp? (k := k) σ op = some τ)
---     (hrest : PhaseProductCoverageM2 M ps τ pts) :
---     PhaseProductCoverageM2 M (op :: ps) σ pts
--- | step_phase {i : Fin k} {ps : Prog k} {σ : State k} {pts pts' : List Operations.Point}
---     (hconsume : List.eraseFirstMatch? (fun pt => M σ i pt) pts = some pts')
---     (hrest : PhaseProductCoverageM2 M ps σ pts') :
---     PhaseProductCoverageM2 M (valid_ops.phaseProduct i :: ps) σ pts
-
-
--- def PhaseProductCoverage2 {k : ℕ} (hk:k>0):
---     Prog k → State k → List Operations.Point → Prop:=
---     PhaseProductCoverageM2 (k := k) (matchesAt_pointRow_state (k := k) hk)
-
-namespace PhaseProductCoverage

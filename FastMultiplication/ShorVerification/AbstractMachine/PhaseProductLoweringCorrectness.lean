@@ -6,7 +6,7 @@ open Gate
 open Operations
 
 /-!
-# Recursive lowering from `Gate` to `LowGate`
+# Phase-Product Lowering Correctness
 
 This file defines the recursive lowering pass and its correctness theorems.
 The translation from the high-level `Gate` language to the low-level `LowGate`
@@ -936,7 +936,7 @@ lemma evalL_lowerGateRec_strong
 
 
 /-! =========================================================
-    Section 9: Final correctness lemmas for lowered phase products
+    Section 8: Final correctness lemmas for lowered phase products
 ========================================================= -/
 
 lemma evalL_lowerSignedPhaseProd

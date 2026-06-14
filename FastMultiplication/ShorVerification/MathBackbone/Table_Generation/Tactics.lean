@@ -1,7 +1,15 @@
 import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Basic_lemmas
--- /******************************************************************************/
--- /*                 TACTIC FOR VERIFYING PHASEPRODUCT COVERGE                  */
--- /******************************************************************************/
+
+/-!
+# Table-generation tactics
+
+This file contains small example programs plus tactic elaborators that automate
+the repetitive phase-product coverage and return-to-original-state checks.
+-/
+
+/-! =========================================================
+    Section 1: Example programs for coverage checks
+========================================================= -/
 
 open Lean Meta Elab Tactic
 open Operations
@@ -108,6 +116,10 @@ theorem example_prog_2_phase_converage:
     all_goals simp_all
   }
 
+/-! =========================================================
+    Section 2: Phase-product coverage tactic
+========================================================= -/
+
 -- Custom tactic
 elab "prove_coverage" n:num : tactic => do
   let nVal := n.getNat
@@ -134,9 +146,9 @@ elab "prove_coverage" n:num : tactic => do
   evalTactic tacstx
 
 
--- /******************************************************************************/
--- /*               TACTIC TO PROVE RETURN TO ORIGINAL STATE.                    */
--- /******************************************************************************/
+/-! =========================================================
+    Section 3: Return-to-original-state tactic
+========================================================= -/
 
 elab "returns_to_original?": tactic => do
 

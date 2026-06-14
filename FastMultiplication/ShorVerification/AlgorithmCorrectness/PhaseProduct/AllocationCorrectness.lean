@@ -14,7 +14,7 @@ preserving the values needed by the remaining slots.
 -/
 
 /-! =========================================================
-    Section: Single-chunk allocation correctness
+    Section 1: Single-chunk allocation correctness
 ========================================================= -/
 
 /-- These lemmas show that allocating one `x`/`z` chunk sends a basis state to
@@ -591,7 +591,7 @@ lemma eval_allocChunkGate_z_ket
           exact hLoc (stInit.zslot j) (hdisj_zz_src_rev j hji)
 
 /-! =========================================================
-    Section: Full allocation correctness
+    Section 2: Full allocation correctness
 ========================================================= -/
 
 /-- The auxiliary allocation lemma establishes the encoding invariant after

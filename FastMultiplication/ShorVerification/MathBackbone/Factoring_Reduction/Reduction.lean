@@ -5,7 +5,17 @@ import FastMultiplication.ShorVerification.MathBackbone.Factoring_Reduction.Prob
 
 open Classical
 
-/- Helper Lemmas -/
+/-!
+# Classical factoring reduction
+
+This file proves the deterministic postprocessing step of Shor's algorithm:
+given a suitable multiplicative period, one of the two gcd computations yields
+a nontrivial factor.
+-/
+
+/-! =========================================================
+    Section 1: Algebraic helper lemmas
+========================================================= -/
 
 /-- Show equivalence between two period definitions -/
 lemma is_period_ord (a N : ℕ) (hgcd : Nat.gcd a N = 1) :
@@ -62,7 +72,9 @@ lemma gcd_nontrivial_from_product (x N : ℕ)
       (fun h_eq => h_N_ndvd_xm1 (h_eq ▸ Nat.gcd_dvd_left _ _))
 }
 
-/- Classical Reduction Theorem: Factoring to Order Finding -/
+/-! =========================================================
+    Section 2: Reduction from factoring to order finding
+========================================================= -/
 
 /-- If we find the period r, and it meets the success conditions,
     then one of the two GCD equations will output a non-trivial factor of N. -/

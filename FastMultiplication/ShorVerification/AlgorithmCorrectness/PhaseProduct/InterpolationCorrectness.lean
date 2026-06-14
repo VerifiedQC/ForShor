@@ -14,7 +14,7 @@ target signed product phase.
 -/
 
 /-! =========================================================
-    Section: Rational point terms and product coefficients
+    Section 1: Rational point terms and product coefficients
 
     These definitions translate source-row values into the rational polynomial
     that the Toom-Cook interpolation theorem consumes.
@@ -81,10 +81,10 @@ lemma phaseCoeffFromPtsWidth_eq_interpCoeff
   simp
 
 /-! =========================================================
-    Section: Phase scalar and point-evaluation bridge
+    Section 2: Phase scalar and point-evaluation bridge
 
     The lemmas here connect the compiler's phase accumulator to the generic
-    Toom-Cook point-evaluation API.
+    Toom-Cook point-evaluation.
 ========================================================= -/
 
 lemma phaseScalarFrom_eq_phaseScalarFromList_aux
@@ -400,7 +400,7 @@ lemma sum_degree_group
           simpa [d] using hsingle
 
 /-! =========================================================
-    Section: Polynomial reconstruction
+    Section 3: Polynomial reconstruction
 
     This block proves that the product polynomial evaluated at the radix
     reconstructs the product of the original extended-register values.
@@ -819,7 +819,7 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
         norm_num
 
 /-! =========================================================
-    Section: Final Toom-Cook phase identity
+    Section 4: Final Toom-Cook phase identity
 
     The final theorem combines point interpolation, radix reconstruction, and
     the compiler phase scalar to produce the signed phase-product scalar.

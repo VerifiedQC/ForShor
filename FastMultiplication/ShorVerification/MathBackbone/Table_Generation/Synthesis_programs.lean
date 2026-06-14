@@ -1,10 +1,18 @@
 import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Lemmas_and_Theorems
 
+/-!
+# Table-generation synthesis programs
 
+This file defines the concrete program generators used to synthesize
+phase-product checkpoints from interpolation points. It also proves structural
+bridges between the original fold-based generator and the recursive generator,
+plus well-formedness and execution support lemmas for the generated programs.
+-/
 
--- /******************************************************************************/
--- /*                DEFINING BASIC SYNTHESIS PROGRAM                            */
--- /******************************************************************************/
+/-! =========================================================
+    Section 1: Fold-based synthesis primitives
+========================================================= -/
+
 open Operations
 
 
@@ -14,14 +22,8 @@ def shiftsOfAux : Nat → Nat → List Nat
 | n+1,    sh =>
   let rest := shiftsOfAux ((n+1) / 2) (sh+1)
   if Odd (n+1) then sh :: rest else rest
--- termination_by n _ => n
--- decreasing_by
---   -- simplify the well-founded goal then show (n+1)/2 < (n+1)
---   exact Nat.div_lt_self (Nat.succ_pos _) (by decide)
-
 
 def shiftsOf (n : Nat) : List Nat := shiftsOfAux n 0
---#eval shiftsOf 24  -- expects [3, 4]
 
 /-- Signed power-of-two decomposition.
     Returns a list of `(neg, shift)` so that
@@ -34,8 +36,6 @@ def signedPow2Decomp (c : Int) : List (Bool × Nat) :=
     let mag  : Nat  := Int.natAbs c
     (shiftsOf mag).map (fun sh => (neg', sh))
 
-
-
 /-- All source registers `j = 1..k-1` (i.e. finRange minus `0`). -/
 def nonzeroFins {k : Nat} (hk : 0 < k) : List (Fin k) :=
   (List.finRange k).filter (fun j => decide (j ≠ finZero hk))
@@ -44,14 +44,11 @@ def nonzeroFins {k : Nat} (hk : 0 < k) : List (Fin k) :=
 def pairToOp {k : Nat} (dst src : Fin k) : (Bool × Nat) → valid_ops k
 | (neg', sh) => valid_ops.addScaled dst src (negSrc := neg') sh
 
-
 /-- Tiny helper: if `p head` is true, the eraser drops the head. -/
 @[simp] lemma eraseFirstMatch?_head_true {α} (p : α → Bool) (x : α) (xs : List α)
   (hx : p x = true) :
   List.eraseFirstMatch? p (x :: xs) = some xs := by
   simp [List.eraseFirstMatch?, hx]
-
-
 
 /-- Accumulate all contributions for `.int z` into `dst = 0`, **no uncompute yet**. -/
 def computeLocal {k : Nat} (hk : 0 < k) (z : Int) : Prog k :=
@@ -63,26 +60,11 @@ def computeLocal {k : Nat} (hk : 0 < k) (z : Int) : Prog k :=
       else acc ++ (signedPow2Decomp c).map (pairToOp dst j))
     ([] : Prog k)
 
--- /-- One block per point: build row in reg 0, mark it, then uncompute. -/
--- def opsForPointWithProduct {k : Nat} (hk : 0 < k) : Point → Prog k
--- | .inf   =>
---     let last : Fin k := ⟨k-1, by have : 0 < k := hk; exact Nat.sub_lt (Nat.succ_le_of_lt this) (by decide)⟩
---     [valid_ops.phaseProduct last]
--- | .int z =>
---   let dst   := finZero hk
---   let l := computeLocal hk z
---   l ++ [valid_ops.phaseProduct dst] ++ apply_Op_inverse l
-
--- /-- Generator that **does** include the `phaseProduct` checkpoints. -/
--- def genOpsWithProduct {k : Nat} (hk : 0 < k) (points : List Point) : Prog k :=
---   points.foldl (fun acc pt => acc ++ opsForPointWithProduct hk pt) ([] : Prog k)
-
---New synthesis program (no folds)
+/-! =========================================================
+    Section 2: Recursive synthesis primitives
+========================================================= -/
 
 open Operations
-
-
-
 
 /-- Internal block: add `dst += (± 2^sh) * n • src`, compiled structurally by halving `n`. -/
 def addConstAux {k : Nat} (dst src : Fin k) (neg' : Bool) :
@@ -121,6 +103,9 @@ def computeLocal2 {k : Nat} (hk : 0 < k) (z : Int) : Prog k :=
 
 open Operations
 
+/-! =========================================================
+    Section 3: Equivalence of fold-based and recursive builders
+========================================================= -/
 
 /-- Push an `if` guarding a tail list out through append. -/
 lemma append_ite_nil_eq {β} (acc : List β) (P : Prop) [Decidable P] (L : List β) :
@@ -132,7 +117,6 @@ lemma append_ite_nil_eq {β} (acc : List β) (P : Prop) [Decidable P] (L : List 
   (fun s : Nat => pairToOp (k := k) dst src (neg', s))
   = (fun s : Nat => valid_ops.addScaled dst src (negSrc := neg') s) := by
   funext s; simp [pairToOp]
-
 
 /-- Structural equality: `addConstAux` enumerates exactly the shifts that
     `shiftsOfAux` does, mapping each shift `s` to `addScaled … s`. -/
@@ -160,7 +144,6 @@ lemma addConstAux_eq_shifts {k}
   · -- even case: just the tail
     simp [addConstAux, shiftsOfAux, ih]
     aesop
-
 
 lemma addConstFrom_eq_signedPow2Map {k}
     (dst src : Fin k) (c : Int) :
@@ -199,9 +182,6 @@ lemma foldl_congr_step {α β} :
 | [],      f, g, acc, h => by simp
 | a :: xs, f, g, acc, h => by
   simp [List.foldl, h, foldl_congr_step xs f g _ h]
-
-
-
 
 lemma computeLocal_eq_computeLocal2 {k : Nat} (hk : 0 < k) (z : Int) :
   computeLocal hk z = computeLocal2 hk z := by
@@ -254,7 +234,6 @@ lemma computeLocal_eq_computeLocal2 {k : Nat} (hk : 0 < k) (z : Int) :
     step_eq
   aesop
 
-
 /-- Normalize the guard: `z ^ (j:ℕ) = 0` iff `z = 0 ∧ j ≠ 0` (where zero means `finZero`). -/
 lemma pow_guard_iff {k} (hk : 0 < k) (z : ℤ) (j : Fin k) :
   (z ^ (j : Nat) = 0) ↔ (z = 0 ∧ j ≠ finZero hk) := by
@@ -269,7 +248,6 @@ lemma pow_guard_iff {k} (hk : 0 < k) (z : ℤ) (j : Fin k) :
     constructor
     · intro h; aesop
     · intro hzj; have hz : z = 0 := hzj.left; aesop
-
 
 theorem computeLocal_eq(hk: 0 < k):
 computeLocal2 hk z = computeLocal hk z:= by {
@@ -340,6 +318,11 @@ computeLocal2 hk z = computeLocal hk z:= by {
           }
   simp[h]
 }
+
+/-! =========================================================
+    Section 4: Point programs and row-matching interfaces
+========================================================= -/
+
 /-- One block per point: build row in `dst`, mark it, then uncompute. -/
 def opsForPointWithProduct {k : Nat} (hk : 0 < k) : Point → Prog k
 | .inf   =>
@@ -371,17 +354,9 @@ instance instDecidable_rowMatchesProp
   unfold rowMatchesProp
   infer_instance
 
-
-
-
-
-
-
-
-
-
-
-
+/-! =========================================================
+    Section 5: Pretty-printing generated programs
+========================================================= -/
 
 /-- Render a `Fin k` as a plain natural number. -/
 def showFin {k} (i : Fin k) : String :=
@@ -429,6 +404,9 @@ def pts : List Point :=
 
 #eval IO.println (genOpsString (k := 3) (by decide) pts)
 
+/-! =========================================================
+    Section 6: Well-formedness of generated arithmetic
+========================================================= -/
 
 def AllNe {k} (dst : Fin k) : List (Fin k) → Prop
 | []      => True
@@ -465,7 +443,6 @@ lemma WellFormed_append {k} {p q : Prog k} :
   rcases this with hmem | hmem
   · exact hp op hmem
   · exact hq op hmem
-
 
 open Prog
 
@@ -514,7 +491,6 @@ lemma addConstAux_WellFormed
   intro n sh
   exact main n sh
 
-
 /-- `addConstFrom` is well-formed whenever `dst ≠ src`. -/
 lemma addConstFrom_WellFormed
     {k : ℕ} {dst src : Fin k} (hsd : dst ≠ src) (c : Int) :
@@ -528,6 +504,7 @@ lemma addConstFrom_WellFormed
       addConstAux_WellFormed (k := k) (dst := dst) (src := src)
         hsd (neg' := c < 0) (Int.natAbs c) 0
     simpa [addConstFrom, hc] using h
+
 /-- `computeLocalAux` is well-formed when all sources in the list are
     different from `dst = finZero hk`. -/
 lemma computeLocalAux_WellFormed
@@ -572,14 +549,9 @@ lemma computeLocal2_Valid{k:ℕ}{z:ℤ}(hk:0<k):
       nonzeroFins_allNe (k := k) hk
     exact computeLocalAux_WellFormed (k := k) hk z (nonzeroFins hk) hAll
 
-
-
-
-
-
-
-
-
+/-! =========================================================
+    Section 7: Execution support and computed row matchers
+========================================================= -/
 
 /-- Numeric sum of powers-of-two specified by a list of shifts. -/
 private def sumPow2 (ls : List Nat) : Int :=
@@ -633,7 +605,6 @@ lemma computeLocalAux_zero_nil_of_nonzero
   -- unfold once: head ++ tail, but head = []
   simp [computeLocalAux, addConstFrom, hpow, computeLocalAux_zero_nil_of_nonzero hk ts htail]
 
-
 lemma exists_mid_of_run_append {k}
   {p q : Prog k} {σ σ₁ : State k}
   (hr : run? (p ++ q) σ = some σ₁) :
@@ -678,7 +649,6 @@ lemma head_and_tail_nonzero
   intro h; have : decide (t = finZero (k:=k) hk) = true := by simp [h]
   simp_all
 
-
 /-- Pointwise equality of registers as a `Bool`. -/
 def regEqReg {k : Nat} (r s : Register k) : Bool :=
   (List.finRange k).all (fun u => decide (r u = s u))
@@ -696,8 +666,6 @@ def matchesAt_pointRow_state3 {k : Nat} (hk : 0 < k) : MatchesAtState k :=
           exact Nat.sub_lt (Nat.succ_le_of_lt hk') (by decide)⟩
         let target : Register k := fun u => if u = last then (1 : Int) else 0
         regEqReg (k := k) (σ i) target
-
-
 
 /-- Comparing a register with a concrete row via `regEqReg` is the same as
     `regEqExpected` when the concrete row *is* that expected row. -/
@@ -817,7 +785,6 @@ lemma run_some_computeLocalAux
       obtain ⟨τ, h₂⟩ := ih σ₁
       refine ⟨τ, ?_⟩
       simp [computeLocalAux,run?_append,h₁,h₂]
-
 
 lemma computeLocal2_some_state
 (k : ℕ)

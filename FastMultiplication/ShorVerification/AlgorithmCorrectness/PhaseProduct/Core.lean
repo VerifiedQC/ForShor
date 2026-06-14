@@ -17,7 +17,7 @@ open Operations
 open scoped BigOperators
 
 /-! =========================================================
-    Section: Layout states and width bookkeeping
+    Section 1: Layout states and width bookkeeping
 ========================================================= -/
 /-- Mutable slot assignment state for both `x` and `z` blocks. -/
 structure LayoutState (k : ℕ) where
@@ -81,7 +81,7 @@ def phaseLimbWidth (x z : ExtReg) (k : ℕ) : ℕ :=
       (phaseLimbWidthOfWidth (ExtReg.width z) k)
 
 /-! =========================================================
-    Section: Top-heavy phase splitting parameters
+    Section 2: Top-heavy phase splitting parameters
 ========================================================= -/
 
 /-- The most significant chunk is the last chunk. -/
@@ -100,7 +100,7 @@ def phaseSplitLogicalWidth (w W k : ℕ) (i : Fin k) : ℕ :=
 
 
 /-! =========================================================
-    Section: Abstract `ExtReg` split interface
+    Section 3: Abstract `ExtReg` split interface
 ========================================================= -/
 def ValidPhaseSplit (e : ExtReg) (k W : ℕ) : Prop :=
   0 < k ∧ (k - 1) * W ≤ ExtReg.width e
@@ -174,7 +174,7 @@ def splitChunkInt
 
 
 /-! =========================================================
-    Section: Width scanning and target-width definitions
+    Section 4: Width scanning and target-width definitions
 ========================================================= -/
 
 /-- Initial width bookkeeping now uses the uniform lower-limb phase layout. -/
@@ -208,7 +208,7 @@ def commonNeededWidth {k : ℕ} (need : NeededWidths k) : ℕ :=
 
 
 /-! =========================================================
-    Section: Interpolation and phase coefficients
+    Section 5: Interpolation and phase coefficients
 ========================================================= -/
 
 /-- Number of interpolation points used for radix-`k` phase decomposition. -/
@@ -291,7 +291,7 @@ def nextSignedWidth {k : ℕ} (x z : ExtReg) (ops : Prog k) : ℕ :=
   commonNeededWidth (scanNeededWidths x z ops)
 
 /-! =========================================================
-    Section: Annotated operations and phase-product counting
+    Section 6: Annotated operations and phase-product counting
 ========================================================= -/
 
 
@@ -324,7 +324,7 @@ def phaseProductCount {k : ℕ} : List (valid_ops k) → ℕ
 
 
 /-! =========================================================
-    Section: Signed layout construction and allocation/deallocation gates
+    Section 7: Signed layout construction and allocation/deallocation gates
 ========================================================= -/
 
 /-- Number of additional high bits needed to go from `src` to `dst`. -/
@@ -438,7 +438,7 @@ def compileSignedDeallocations (k : ℕ) (src dst : LayoutState k) : Gate :=
   compileSignedDeallocationsAux src dst k (le_rfl)
 
 /-! =========================================================
-    Section: Compilation from `valid_ops` to `Gate`
+    Section 8: Compilation from `valid_ops` to `Gate`
 ========================================================= -/
 
 /-- Signed compiler for annotated ops.  The layout state already contains
@@ -504,7 +504,7 @@ noncomputable def compileOpsToSignedGate
   allocs ;; body ;; deallocs
 
 /-! =========================================================
-    Section: Legacy ordinary-register modular helpers
+    Section 9: Legacy ordinary-register modular helpers
 ========================================================= -/
 
 def tcMod (r : Reg) (z : ℤ) : ℕ :=
@@ -525,7 +525,7 @@ variable (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
 variable [GateSemanticsFacts qs]
 
 /-! =========================================================
-    Section: Source-row semantics
+    Section 10: Source-row semantics
 ========================================================= -/
 
 open ExtRegEncoding
@@ -560,7 +560,7 @@ def evalRowZ
   ∑ j : Fin k, r j * sourceChunkZInt (qs := qs) st j b
 
 /-! =========================================================
-    Section: Encoding invariants
+    Section 11: Encoding invariants
 ========================================================= -/
 
 /-- Two-layout version: the current widened machine state is read signed on `dst`,
@@ -615,7 +615,7 @@ def EncodesStateFromWithWidths
   WidthStateDominatedByLayout cur dst
 
 /-! =========================================================
-    Section: Phase scalar
+    Section 12: Phase scalar
 ========================================================= -/
 
 /-- The accumulated scalar now uses the same mixed source-row semantics as
@@ -642,7 +642,7 @@ noncomputable def phaseScalarFrom
 
 
 /-! =========================================================
-    Section: Width-state invariant and signed-width arithmetic lemmas
+    Section 13: Width-state invariant and signed-width arithmetic lemmas
 ========================================================= -/
 
 /-- Proof-only width invariant: the symbolic value fits in the tracked width

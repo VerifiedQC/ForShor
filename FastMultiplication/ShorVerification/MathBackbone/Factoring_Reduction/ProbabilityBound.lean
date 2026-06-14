@@ -2,9 +2,18 @@ import FastMultiplication.ShorVerification.MathBackbone.Factoring_Reduction.Defs
 
 open Classical
 
-/-
-  Math-related lemmas for success conditions
+/-!
+# Probability bound for the factoring reduction
+
+This file collects the number-theoretic counting facts behind the classical
+success probability argument. The main path starts with residue/counting
+lemmas, specializes to products of two primes, and then lifts the bad-choice
+bound to composite moduli with two distinct prime factors.
 -/
+
+/-! =========================================================
+    Section 1: Basic residue and choice-counting lemmas
+========================================================= -/
 
 lemma zmod_eq_zero_iff_dvd {N : ℕ} (x : ℕ) :
 ((x : ZMod N) = 0) ↔ N ∣ x := by
@@ -87,6 +96,10 @@ lemma coprime_count {p q : ℕ} (hp : Nat.Prime p) (hq : Nat.Prime q)
   change Nat.totient (p * q) = (p - 1) * (q - 1)
   rw [Nat.totient_mul ((Nat.coprime_primes hp hq).mpr hpq),
       Nat.totient_prime hp, Nat.totient_prime hq]
+
+/-! =========================================================
+    Section 2: CRT and order criteria for bad choices
+========================================================= -/
 
 /-- CRT sends natural number casts to the pair of casts. -/
 lemma crt_natCast_eq {m n : ℕ} (h : Nat.Coprime m n) (a : ℕ) :
@@ -399,6 +412,10 @@ lemma bad_nat_iff_pair_factorization_eq {p q a : ℕ} (hp : Nat.Prime p) (hq : N
       exact (not_successful_iff a (p * q)).2 (Or.inr (by simpa [hN] using hneg))
     · exact (not_successful_iff a (p * q)).2 (Or.inl (by simpa [hN] using hle))
 
+/-! =========================================================
+    Section 3: Prime-product unsuccessful-choice bounds
+========================================================= -/
+
 /-- Multiplying by a generator of `(ZMod p)ˣ` changes the 2-adic valuation of the order. -/
 lemma order_factorization_two_mul_generator_ne {p : ℕ} (hp : Nat.Prime p) (hp2 : p ≠ 2)
     {g u : (ZMod p)ˣ} (hg : orderOf g = p - 1) :
@@ -589,6 +606,10 @@ lemma crt_counting_bound {p q : ℕ} (hp : Nat.Prime p) (hq : Nat.Prime q)
     rw [← h_unsucc]; exact unsuccessful_bound hp hq hpq hp2 hq2
   rw [h_succ]
   omega
+
+/-! =========================================================
+    Section 4: General composite-modulus bounds
+========================================================= -/
 
 /-- For distinct odd primes p, q dividing N, if a is coprime to N and unsuccessful,
     then the 2-adic valuations of its orders mod p and mod q match.
@@ -927,6 +948,10 @@ lemma general_unsuccessful_bound {N p q : ℕ}
       _ ≤ n * Fintype.card ((ZMod p)ˣ × (ZMod q)ˣ) := Nat.mul_le_mul_left n h_badPairs_bound
       _ ≤ Fintype.card U := h_total_lower
       _ = Nat.totient N := hUcard
+
+/-! =========================================================
+    Section 5: Public success-condition API
+========================================================= -/
 
 /-- Lemma for defining the conditions for 'a', given that a is a successful choice -/
 lemma success_eq_conditions (a N : ℕ) (h : a ∈ successful_choices N) :

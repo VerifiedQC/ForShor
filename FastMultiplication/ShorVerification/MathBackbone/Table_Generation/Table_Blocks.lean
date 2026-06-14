@@ -2,6 +2,18 @@ import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.One_reg
 
 open List Operations
 
+/-!
+# Phase-block decomposition for table-generation programs
+
+This file packages ordered point consumption into explicit phase blocks. The
+main results turn `ProgConsumesPts` proofs into block decompositions and then
+back into unordered `PhaseProductCoverage` proofs.
+-/
+
+/-! =========================================================
+    Section 1: Safety and phase-block structures
+========================================================= -/
+
 def SafeProg {k : ℕ} (ops : Prog k) : Prop :=
   ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
     ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest →
@@ -50,6 +62,9 @@ inductive BlockDecomposition
     BlockDecomposition hk σ (B.toProg ++ ops_rest) (pt :: pts)
 
 
+/-! =========================================================
+    Section 2: Building block decompositions
+========================================================= -/
 
 lemma NoPhase_nil {k : ℕ} : NoPhase ([] : Prog k) := by
   intro i h
@@ -174,7 +189,9 @@ theorem progConsumesPts_has_blockDecomposition
   simpa using
     progConsumesPts_has_blockDecomposition_aux hk ops hC σ [] NoPhase_nil (by simp [run?])
 
-
+/-! =========================================================
+    Section 3: Coverage consequences of ordered consumption
+========================================================= -/
 
 theorem progConsumesPts_implies_phaseProductCoverage
   {k : ℕ} (hk : k > 0) :
@@ -276,7 +293,6 @@ theorem progConsumesPts_implies_phaseProductCoverage
                 (p := fun q => matchesAt_pointRow_state (k := k) hk σ i q)
                 pt ptsTail hmatch)
           · exact ih σ ptsTail htail
-
 
 theorem phaseProductCoverage_peel_block
   {k : ℕ} (hk : k > 0)

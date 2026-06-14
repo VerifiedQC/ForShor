@@ -15,7 +15,7 @@ the Toom-Cook interpolation identity into the compiled phase-product circuit the
 -/
 
 /-! =========================================================
-    Section: Main compiled-body correctness theorem
+    Section 1: Main compiled-body correctness theorem
 ========================================================= -/
 
 lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
@@ -203,6 +203,10 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
         simpa using
           (PhaseSemantics.eval_SignedPhaseProd_ket
             (qs := qs) (phi := phi) (x := x) (z := z) (b := b))
+
+/-! =========================================================
+    Section 2: Public correctness wrappers
+========================================================= -/
 
 lemma eval_compileOpsToSignedGate_correct_ket
   (qs : QSemantics)

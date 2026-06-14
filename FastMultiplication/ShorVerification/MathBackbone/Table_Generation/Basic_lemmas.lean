@@ -2,9 +2,17 @@ import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Languag
 
 open Operations
 
--- /******************************************************************************/
--- /*                      BASIC FACTS ABOUT INVERSE PROGRAMS                    */
--- /******************************************************************************/
+/-!
+# Basic table-generation lemmas
+
+This file provides the first reusable proof layer over the table-generation
+language: inverse-program facts, `run?` simp lemmas, state algebra, program
+equivalence, and the well-formed undo theorem.
+-/
+
+/-! =========================================================
+    Section 1: Basic facts about inverse programs
+========================================================= -/
 
 @[simp] theorem apply_Op_inverse_involutive {k : ℕ} (p : Prog k) :
     apply_Op_inverse (apply_Op_inverse p) = p := by
@@ -20,16 +28,9 @@ open Operations
   rw[this]
   simp
 
--- theorem inverse_valid {k : ℕ} {p : Prog k} {σ₁ σ: State k}
---   (hrun:run? p σ = some σ₁):
---     ∃ σ₂, run? (apply_Op_inverse p) σ = some σ₂ := by
---   unfold apply_Op_inverse
---   -- (rev.map inv).rev.map inv  →  p.rev.rev.map (inv ∘ inv)
---   sorry
-
--- /******************************************************************************/
--- /*                          BASIC `run?` SIMP LEMMAS                          */
--- /******************************************************************************/
+/-! =========================================================
+    Section 2: Basic `run?` simp lemmas
+========================================================= -/
 
 @[simp] lemma run?_nil {k} (σ : State k) :
   run? ([] : Prog k) σ = some σ := rfl
@@ -123,9 +124,9 @@ lemma run?_append_some {k : ℕ} {p q : Prog k} {σ τ : State k}
   run? (dst -:= src << n) σ
     = some (State.addScaledReg σ dst src (negSrc := true) n) := rfl
 
--- /******************************************************************************/
--- /*                   STATE-LEVEL COMMUTING/ALGEBRA HELPERS                    */
--- /******************************************************************************/
+/-! =========================================================
+    Section 3: State-level commuting and algebra helpers
+========================================================= -/
 
 namespace State
 open State
@@ -192,9 +193,9 @@ lemma shiftL_add (σ : State k) (i: Fin k) (a b : ℕ)
   · rfl
 end State
 
--- /******************************************************************************/
--- /*                     LIGHTWEIGHT PROGRAM EQUIVALENCE                        */
--- /******************************************************************************/
+/-! =========================================================
+    Section 4: Lightweight program equivalence
+========================================================= -/
 namespace ProgEq
 
 variable {k : ℕ}
@@ -230,11 +231,11 @@ lemma nil_right (p : Prog k) : (p ;; ([] : Prog k)) ≃ₚ p := by
 
 end ProgEq
 
--- /******************************************************************************/
--- /*                 PROGRAM EQUIVALENCES USING STATE HELPERS                   */
--- /******************************************************************************/
-
 open ProgEq
+
+/-! =========================================================
+    Section 5: Program equivalences from state helpers
+========================================================= -/
 
 /-- `(i <<s= a) ;; (i <<s= b)  ≃ₚ  (i <<s= (a + b))`. -/
 lemma shl_shl_same_reg {k} (i : Fin k) (a b : ℕ) :
@@ -276,9 +277,9 @@ lemma neg_shl_diff_comm {k} (i j : Fin k) (n : ℕ) (hij : i ≠ j) :
 
 
 
--- /******************************************************************************/
--- /*                INVERSE-CANCEL LEMMAS & STRONG UNDO THEOREM                 */
--- /******************************************************************************/
+/-! =========================================================
+    Section 6: Inverse-cancel lemmas and strong undo theorem
+========================================================= -/
 
 namespace State
 

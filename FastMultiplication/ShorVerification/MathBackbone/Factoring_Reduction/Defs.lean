@@ -13,13 +13,27 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 
 open Classical
 
+/-!
+# Factoring reduction definitions
+
+This file contains the classical predicates used by the factoring-to-order
+finding reduction: periods, Shor's success conditions, nontrivial factors, and
+the finite choice sets used for probability statements.
+-/
+
+/-! =========================================================
+    Section 1: Periods and multiplicative order
+========================================================= -/
+
 def is_period (a r N : ℕ) : Prop :=
   orderOf (a : ZMod N) = r
 
 noncomputable def ord (a N : ℕ) (hgcd : Nat.gcd a N = 1) : ℕ :=
   orderOf (ZMod.unitOfCoprime a ((Nat.coprime_iff_gcd_eq_one).2 hgcd))
 
-/- Shor's Success Conditions -/
+/-! =========================================================
+    Section 2: Success conditions and factors
+========================================================= -/
 
 -- Two conditions:
 -- (1) r is even
@@ -31,7 +45,9 @@ def shor_success_conditions (a r N : ℕ) : Prop :=
 def is_nontrivial_factor (d N : ℕ) : Prop :=
   1 < d ∧ d < N ∧ d ∣ N
 
-/- Probability of Success -/
+/-! =========================================================
+    Section 3: Choice sets for success probabilities
+========================================================= -/
 
 -- a is a successful choice if there exists a period r that satisfies the success conditions
 def is_successful_choice (a N : ℕ) : Prop :=

@@ -9,7 +9,7 @@ the recursive `LowGate` QFT lowering has the same semantics as `Gate.QFT`.
 -/
 
 /-! =========================================================
-    Section 10: Correctness of lowered QFT
+    Section 1: Correctness of lowered QFT
 ========================================================= -/
 namespace Shor
 variable {k : ℕ} (hk : 1 < k)

@@ -14,7 +14,7 @@ the final deallocation step.
 -/
 
 /-! =========================================================
-    Section: One-step encoded-state preservation
+    Section 1: One-step encoded-state preservation
 ========================================================= -/
 
 /-- These lemmas prove correctness of a single compiled annotated operation on a
@@ -1845,7 +1845,7 @@ lemma encodesFrom_after_noPhase_run_ket_gen
     hdisj hFits hSafeAdd hNP hrun hEnc
 
 /-! =========================================================
-    Section: Phase-block helpers
+    Section 2: Phase-block helpers
 ========================================================= -/
 
 lemma eval_matched_phase_ket_from
@@ -1906,8 +1906,7 @@ lemma eval_matched_phase_ket_from
           exfalso
           exact hNo i (by simp)
 
-/- Induction-friendly existential body theorem for the phase-block proof stack. -/
-
+/-- Induction-friendly existential body theorem for the phase-block proof stack. -/
 lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
   (qs : QSemantics)
   [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
@@ -2525,6 +2524,10 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks
   subst hbNext_eq
   simpa using hBody
 
+
+/-! =========================================================
+    Section 3: Deallocation and body/deallocation composition
+========================================================= -/
 
 /- Allocation/deallocation cancellation lemmas used when closing the compiled
 body back to the original allocated basis state. -/

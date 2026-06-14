@@ -13,6 +13,19 @@ namespace ToomCookMath
 
 universe u
 
+/-!
+# Toom-Cook interpolation formula
+
+This file develops the pure interpolation algebra used by the phase-product
+compiler: interpolation points, Vandermonde-style invertibility, reconstruction
+at a radix, and the exponential phase scalars obtained from weighted point
+sums.
+-/
+
+/-! =========================================================
+    Section 1: Points, rows, and interpolation matrices
+========================================================= -/
+
 inductive Point where
   | int : ℤ → Point
   | inf : Point
@@ -52,6 +65,10 @@ def GoodInterpolationPoints {Point : Type u} {m : ℕ}
     (row : Point → Fin m → ℚ)
     (pts : Fin m → Point) : Prop :=
   Matrix.det (interpMatrix row pts) ≠ 0
+
+/-! =========================================================
+    Section 2: Invertibility and interpolation correctness
+========================================================= -/
 
 /--
 Pure mathematical Vandermonde fact.
@@ -199,6 +216,10 @@ theorem interpCoeff_correct {Point : Type u} {m : ℕ}
     _ =
       evalAtRadix m polyCoeff B := hRight.symm
 
+/-! =========================================================
+    Section 3: Phase scalar products
+========================================================= -/
+
 /-- Weighted sum appearing in the exponent. -/
 def weightedPointSum {m : ℕ}
     (coeff : Fin m → ℚ)
@@ -228,6 +249,10 @@ noncomputable def phaseScalarFromList {Point : Type u} {m : ℕ}
       let hn' : n + 1 + rest.length = m := by simp at hn;omega
       phaseFactor phi (coeff i) (pointTerm i) *
         phaseScalarFromList phi coeff pointTerm rest (n + 1) hn'
+
+/-! =========================================================
+    Section 4: Canonical finite interpolation points
+========================================================= -/
 
 /-- Integer coordinate used by the canonical alternating point sequence. -/
 def alternatingInt (i : ℕ) : ℤ :=
@@ -398,6 +423,10 @@ lemma genFiniteInterpolationPoints_good
     simp [listToFin, genFiniteInterpolationPoints,
       pointRow, pointCoordQ, alternatingPoint]
   · exact hCoordGood
+
+/-! =========================================================
+    Section 5: Tail-weighted sums and phase scalar identities
+========================================================= -/
 
 def tailWeightedPointSum {m : ℕ}
     (coeff : Fin m → ℚ)
