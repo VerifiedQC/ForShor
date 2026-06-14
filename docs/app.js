@@ -350,6 +350,8 @@ const emptyState = document.getElementById("emptyState");
 const ns = "http://www.w3.org/2000/svg";
 const nodeWidth = 214;
 const nodeHeight = 98;
+const githubRepoUrl = "https://github.com/VerifiedQC/ForShor";
+const githubBranch = "main";
 const kindLabels = {
   core: "Semantic core",
   math: "Math backbone",
@@ -647,7 +649,8 @@ function make(tag, attrs = {}, parent = null) {
 
 function fileHref(file) {
   if (!file || file.includes("://")) return file;
-  return `../../${file}`;
+  const githubView = file.includes(".") ? "blob" : "tree";
+  return `${githubRepoUrl}/${githubView}/${githubBranch}/${file.split("/").map(encodeURIComponent).join("/")}`;
 }
 
 function nodeMatches(node, query) {
@@ -983,7 +986,7 @@ function renderDetails(item = null, link = null) {
     ? `<button class="detail-action" type="button" data-open-view="${selected.view}">Open ${graphData[selected.view].title}</button>`
     : "";
   const file = selected.file
-    ? `<a class="file-link" href="${fileHref(selected.file)}">${selected.file}</a>`
+    ? `<a class="file-link" href="${fileHref(selected.file)}" target="_blank" rel="noopener noreferrer">${selected.file}</a>`
     : "";
   const related = getRelatedEdges(selected.id);
   const profile = getNodeProfile(selected, view);
