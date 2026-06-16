@@ -332,6 +332,7 @@ const state = {
 };
 
 const svg = document.getElementById("graph");
+const graphStage = document.querySelector(".graph-stage");
 const viewList = document.getElementById("viewList");
 const detailsContent = document.getElementById("detailsContent");
 const breadcrumb = document.getElementById("breadcrumb");
@@ -352,6 +353,7 @@ const nodeWidth = 214;
 const nodeHeight = 98;
 const githubRepoUrl = "https://github.com/VerifiedQC/ForShor";
 const githubBranch = "main";
+const verticalLayoutBreakpoint = 560;
 const kindLabels = {
   core: "Semantic core",
   math: "Math backbone",
@@ -740,6 +742,10 @@ function topologicalLevels(view) {
   return level;
 }
 
+function usesVerticalLayout() {
+  return viewport.width < verticalLayoutBreakpoint;
+}
+
 function layout(view) {
   const levels = topologicalLevels(view);
   const groups = new Map();
@@ -749,13 +755,36 @@ function layout(view) {
     groups.get(level).push(node);
   });
 
-  const levelCount = Math.max(1, groups.size);
-  const minGap = viewport.width < 760 ? 330 : 420;
-  const xGap = Math.max(minGap, (viewport.width - 160) / Math.max(1, levelCount - 1));
   const nextPositions = new Map();
+  const sortedGroups = [...groups.entries()].sort((a, b) => a[0] - b[0]);
 
-  [...groups.entries()].sort((a, b) => a[0] - b[0]).forEach(([level, nodes]) => {
-    const minVerticalGap = viewport.width < 760 ? 250 : 285;
+  if (usesVerticalLayout()) {
+    const nodeX = Math.max(64, (viewport.width - nodeWidth) / 2);
+    const nodeGap = 124;
+    const levelGap = 160;
+    let yCursor = 178;
+
+    sortedGroups.forEach(([, nodes]) => {
+      nodes.forEach((node, index) => {
+        nextPositions.set(node.id, {
+          x: nodeX,
+          y: yCursor + index * (nodeHeight + nodeGap)
+        });
+      });
+      yCursor += nodes.length * nodeHeight + Math.max(0, nodes.length - 1) * nodeGap + levelGap;
+    });
+
+    state.positions = nextPositions;
+    state.positionsViewId = state.viewId;
+    return;
+  }
+
+  const levelCount = Math.max(1, groups.size);
+  const minGap = viewport.width < 760 ? 430 : 500;
+  const xGap = Math.max(minGap, (viewport.width - 160) / Math.max(1, levelCount - 1));
+
+  sortedGroups.forEach(([level, nodes]) => {
+    const minVerticalGap = viewport.width < 760 ? 290 : 330;
     const yGap = Math.max(minVerticalGap, (viewport.height - 130) / Math.max(1, nodes.length));
     nodes.forEach((node, index) => {
       const x = 90 + level * xGap;
@@ -787,13 +816,46 @@ function setScale(nextScale, center = null) {
 function fitGraph() {
   const view = graphData[state.viewId];
   if (!view || !view.nodes.length) return;
+  const vertical = usesVerticalLayout();
   const points = view.nodes.map((node) => state.positions.get(node.id)).filter(Boolean);
-  const minX = Math.min(...points.map((point) => point.x));
-  const maxX = Math.max(...points.map((point) => point.x + nodeWidth));
-  const minY = Math.min(...points.map((point) => point.y));
-  const maxY = Math.max(...points.map((point) => point.y + nodeHeight));
+  const xValues = points.flatMap((point) => [point.x, point.x + nodeWidth]);
+  const yValues = points.flatMap((point) => [point.y, point.y + nodeHeight]);
+
+  if (vertical) {
+    view.links.forEach((link) => {
+      const source = state.positions.get(link.source);
+      const target = state.positions.get(link.target);
+      if (!source || !target) return;
+      const route = edgeRoute(view, link, source, target);
+      xValues.push(route.p0.x, route.p1.x, route.p2.x, route.p3.x, route.label.x - 100, route.label.x + 100);
+      yValues.push(route.p0.y, route.p1.y, route.p2.y, route.p3.y, route.label.y - 32, route.label.y + 32);
+    });
+  }
+
+  const minX = Math.min(...xValues);
+  const maxX = Math.max(...xValues);
+  const minY = Math.min(...yValues);
+  const maxY = Math.max(...yValues);
   const graphWidth = maxX - minX;
   const graphHeight = maxY - minY;
+
+  if (vertical) {
+    const scale = Math.min(1.02, (viewport.width - 46) / graphWidth);
+    const stageHeight = Math.ceil(graphHeight * scale + 230);
+    graphStage.style.minHeight = `${Math.max(820, stageHeight)}px`;
+    svg.style.minHeight = `${Math.max(820, stageHeight)}px`;
+    state.transform = {
+      scale,
+      x: (viewport.width - graphWidth * scale) / 2 - minX * scale,
+      y: 146 - minY * scale
+    };
+    applyTransform();
+    renderStats();
+    return;
+  }
+
+  graphStage.style.minHeight = "";
+  svg.style.minHeight = "";
   const minReadableScale = viewport.width < 760 ? 0.46 : 0.54;
   const scale = Math.max(
     minReadableScale,
@@ -1030,13 +1092,23 @@ function renderDetails(item = null, link = null) {
 }
 
 function edgeLaneOffset(view, link) {
+  if (usesVerticalLayout()) {
+    const edgeIndex = Math.max(0, view.links.findIndex((candidate) => edgeKey(candidate) === edgeKey(link)));
+    const side = edgeIndex % 2 === 0 ? -1 : 1;
+    const band = Math.floor(edgeIndex / 2) % 3;
+    return side * (190 + band * 40);
+  }
+
+  const levels = topologicalLevels(view);
   const incoming = view.links.filter((candidate) => candidate.target === link.target);
   const outgoing = view.links.filter((candidate) => candidate.source === link.source);
   const incomingIndex = incoming.findIndex((candidate) => edgeKey(candidate) === edgeKey(link));
   const outgoingIndex = outgoing.findIndex((candidate) => edgeKey(candidate) === edgeKey(link));
   const targetOffset = incoming.length > 1 ? (incomingIndex - (incoming.length - 1) / 2) * 150 : 0;
   const sourceOffset = outgoing.length > 1 ? (outgoingIndex - (outgoing.length - 1) / 2) * 88 : 0;
-  return targetOffset + sourceOffset;
+  const span = Math.abs((levels.get(link.target) || 0) - (levels.get(link.source) || 0));
+  const skipOffset = span > 1 ? -170 * (span - 1) : 0;
+  return targetOffset + sourceOffset + skipOffset;
 }
 
 function cubicPoint(p0, p1, p2, p3, t) {
@@ -1071,7 +1143,7 @@ function rectsOverlap(a, b, padding = 0) {
 function labelOverlapCount(view, point, labelWidth, labelHeight) {
   const labelRect = {
     x: point.x - labelWidth / 2,
-    y: point.y - labelHeight + 4,
+    y: point.y - labelHeight / 2,
     width: labelWidth,
     height: labelHeight
   };
@@ -1083,28 +1155,52 @@ function labelOverlapCount(view, point, labelWidth, labelHeight) {
   }, 0);
 }
 
-function clearLabelPoint(view, route, labelWidth, labelHeight) {
-  const laneSign = Math.sign(route.lane);
-  const candidates = laneSign >= 0
-    ? [0, 110, -110, 175, -175, 245, -245, 320, -320]
-    : [0, -110, 110, -175, 175, -245, 245, -320, 320];
+function edgeLabelPoint(view, route, labelWidth, labelHeight) {
+  const candidates = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.18, 0.82];
   let best = route.label;
-  let bestCount = Infinity;
+  let bestScore = Infinity;
 
-  for (const dy of candidates) {
-    const candidate = { x: route.label.x, y: route.label.y + dy };
-    const overlapCount = labelOverlapCount(view, candidate, labelWidth, labelHeight);
-    if (overlapCount === 0) return candidate;
-    if (overlapCount < bestCount) {
-      best = candidate;
-      bestCount = overlapCount;
+  candidates.forEach((t) => {
+    const point = cubicPoint(route.p0, route.p1, route.p2, route.p3, t);
+    const overlapCount = labelOverlapCount(view, point, labelWidth, labelHeight);
+    const centerPenalty = Math.abs(t - 0.5) * 10;
+    const score = overlapCount * 1000 + centerPenalty;
+    if (score < bestScore) {
+      best = point;
+      bestScore = score;
     }
-  }
+  });
 
   return best;
 }
 
 function edgeRoute(view, link, a, b) {
+  if (usesVerticalLayout()) {
+    const x1 = a.x + nodeWidth / 2;
+    const y1 = a.y + nodeHeight;
+    const x2 = b.x + nodeWidth / 2;
+    const y2 = b.y;
+    const dy = Math.max(94, Math.abs(y2 - y1) * 0.42);
+    const lane = edgeLaneOffset(view, link);
+    const p0 = { x: x1, y: y1 };
+    const p1 = { x: x1 + lane, y: y1 + dy };
+    const p2 = { x: x2 + lane, y: y2 - dy };
+    const p3 = { x: x2, y: y2 };
+    const label = cubicPoint(p0, p1, p2, p3, 0.5);
+    const tangent = cubicTangent(p0, p1, p2, p3, 0.5);
+    const angle = Math.atan2(tangent.y, tangent.x) * 180 / Math.PI;
+    return {
+      d: `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${p3.x} ${p3.y}`,
+      label,
+      angle,
+      lane,
+      p0,
+      p1,
+      p2,
+      p3
+    };
+  }
+
   const x1 = a.x + nodeWidth;
   const y1 = a.y + nodeHeight / 2;
   const x2 = b.x;
@@ -1122,7 +1218,11 @@ function edgeRoute(view, link, a, b) {
     d: `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${p3.x} ${p3.y}`,
     label,
     angle,
-    lane
+    lane,
+    p0,
+    p1,
+    p2,
+    p3
   };
 }
 
@@ -1195,7 +1295,7 @@ function renderGraph() {
     const lines = splitTextLines(link.label, 22, 2);
     const labelWidth = Math.min(170, Math.max(92, Math.max(...lines.map((line) => line.length)) * 7.1 + 22));
     const labelHeight = 12 + lines.length * 14;
-    const point = clearLabelPoint(view, route, labelWidth, labelHeight);
+    const point = edgeLabelPoint(view, route, labelWidth, labelHeight);
     const labelGroup = make("g", {
       class: `edge-label-group${dim ? " dimmed" : ""}`,
       tabindex: "0",
@@ -1215,7 +1315,7 @@ function renderGraph() {
     const labelBg = make("rect", {
       class: "edge-label-bg",
       x: point.x - labelWidth / 2,
-      y: point.y - labelHeight + 4,
+      y: point.y - labelHeight / 2,
       width: labelWidth,
       height: labelHeight,
       rx: 6,
@@ -1227,7 +1327,7 @@ function renderGraph() {
       "text-anchor": "middle"
     }, labelGroup);
     lines.forEach((line, index) => {
-      const tspan = make("tspan", { x: point.x, y: point.y - (lines.length - 1) * 7 + index * 14 }, text);
+      const tspan = make("tspan", { x: point.x, y: point.y - (lines.length - 1) * 7 + index * 14 + 4 }, text);
       tspan.textContent = line;
     });
   });
