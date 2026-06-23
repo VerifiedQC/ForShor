@@ -1180,7 +1180,18 @@ class GateSemanticsFacts
     ExtensionSemantics qs,
     ArithmeticSemantics qs,
     RadixReverseSemantics qs,
-    HadamardSemantics qs
+    HadamardSemantics qs where
+
+  eval_Hreg_zero_eq_QFT :
+    ∀ (r : Reg) (b : qs.Basis),
+      RegEncoding.toNat r b = 0 →
+      qs.eval
+          ((regQubits r).foldl
+            (fun acc q => Gate.seq (Gate.H q) acc)
+            Gate.id)
+          (qs.ket b)
+        =
+      qs.eval (Gate.QFT r) (qs.ket b)
 
 namespace GateSemanticsFacts
 
@@ -1297,6 +1308,291 @@ theorem eval_PhaseProd_ket
         hz_eval
 
   simp [hx_ext₁, hx_ext₂, hz_ext₂, hz_same]
+
+private lemma zeroExtend_preserves_bit
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [ExtensionSemantics qs]
+    (r : ExtReg)
+    (n : ℕ)
+    (b b' : qs.Basis)
+    (q : ℕ)
+    (hEval :
+      qs.eval (Gate.zeroExtend r n) (qs.ket b) = qs.ket b') :
+    RegEncoding.bit q b' = RegEncoding.bit q b := by
+  classical
+  rcases ExtensionSemantics.eval_zeroExtend_ket
+      (qs := qs) (r := r) (n := n) (b := b) with
+    ⟨bout, hBoutEval, hself, _hwide, hloc⟩
+
+  have hbout : bout = b' := by
+    apply qs.ket_inj
+    calc
+      qs.ket bout
+          = qs.eval (Gate.zeroExtend r n) (qs.ket b) := hBoutEval.symm
+      _ = qs.ket b' := hEval
+  subst bout
+
+  by_cases hqin : r.base.lo ≤ q ∧ q < r.base.hi
+  ·
+    have hbase :
+        RegEncoding.toNat r.base b' = RegEncoding.toNat r.base b := by
+      calc
+        RegEncoding.toNat r.base b'
+            = ExtReg.toNat r b' % 2 ^ regSize r.base := by
+                simpa [ExtReg.toNat] using
+                  (ExtRegEncoding.extToNat_lowBits
+                    (Basis := qs.Basis) r b')
+        _ = ExtReg.toNat r b % 2 ^ regSize r.base := by
+              rw [hself]
+        _ = RegEncoding.toNat r.base b := by
+              symm
+              simpa [ExtReg.toNat] using
+                (ExtRegEncoding.extToNat_lowBits
+                  (Basis := qs.Basis) r b)
+
+    exact
+      ExtRegEncoding.bit_eq_of_toNat_eq_on_reg
+        hbase hqin.1 hqin.2
+
+  ·
+    have hqout : q < r.base.lo ∨ r.base.hi ≤ q := by
+      rcases not_and_or.mp hqin with hqlo | hqhi
+      · exact Or.inl (lt_of_not_ge hqlo)
+      · exact Or.inr (le_of_not_gt hqhi)
+
+    have hqdisj : Disjoint (qubitReg q) r.base := by
+      unfold Shor.Disjoint qubitReg Reg.hi
+      simp
+      simp_all only [Reg.hi_eq, not_and, not_lt]
+
+    have hqNat :
+        RegEncoding.toNat (qubitReg q) b'
+          =
+        RegEncoding.toNat (qubitReg q) b := by
+      simpa using
+        (hloc (ExtReg.ofReg (qubitReg q)) hqdisj)
+
+    exact
+      ExtRegEncoding.bit_eq_of_toNat_eq_on_reg
+        hqNat
+        (by simp [qubitReg])
+        (by simp [qubitReg, Reg.hi])
+
+lemma eval_CSignedPhaseProd_ket_as_if_SignedPhaseProd
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [PhaseSemantics qs]
+    (ctrl : ℕ)
+    (phi : ℝ)
+    (x z : ExtReg)
+    (b : qs.Basis) :
+    qs.eval (Gate.CSignedPhaseProd ctrl phi x z) (qs.ket b)
+      =
+    if RegEncoding.bit ctrl b then
+      qs.eval (Gate.SignedPhaseProd phi x z) (qs.ket b)
+    else
+      qs.ket b := by
+  by_cases hctrl : RegEncoding.bit ctrl b
+  ·
+    rw [PhaseSemantics.eval_CSignedPhaseProd_ket]
+    rw [if_pos hctrl, if_pos hctrl]
+    exact
+      (PhaseSemantics.eval_SignedPhaseProd_ket
+        (qs := qs) phi x z b).symm
+  ·
+    rw [PhaseSemantics.eval_CSignedPhaseProd_ket]
+    rw [if_neg hctrl, if_neg hctrl]
+
+private lemma eval_CPhaseProd_ket_eq_PhaseProd_of_ctrl
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    (ctrl : ℕ)
+    (phi : ℝ)
+    (x z : Reg)
+    (b : qs.Basis)
+    (hctrl : RegEncoding.bit ctrl b) :
+    qs.eval (Gate.CPhaseProd ctrl phi x z) (qs.ket b)
+      =
+    qs.eval (Gate.PhaseProd phi x z) (qs.ket b) := by
+  simp only [Gate.CPhaseProd, Gate.PhaseProd, qs.eval_seq]
+
+  rcases ExtensionSemantics.eval_zeroExtend_ket
+      (qs := qs) (r := ExtReg.ofReg x) (n := 1) (b := b) with
+    ⟨b₁, hx_eval, _hx_self, _hx_wide, _hx_loc⟩
+
+  rcases ExtensionSemantics.eval_zeroExtend_ket
+      (qs := qs) (r := ExtReg.ofReg z) (n := 1) (b := b₁) with
+    ⟨b₂, hz_eval, _hz_self, _hz_wide, _hz_loc⟩
+
+  simp only [hx_eval, hz_eval]
+
+  have hctrl₁ :
+      RegEncoding.bit ctrl b₁ = RegEncoding.bit ctrl b :=
+    zeroExtend_preserves_bit
+      qs (ExtReg.ofReg x) 1 b b₁ ctrl hx_eval
+
+  have hctrl₂eq :
+      RegEncoding.bit ctrl b₂ = RegEncoding.bit ctrl b := by
+    calc
+      RegEncoding.bit ctrl b₂
+          = RegEncoding.bit ctrl b₁ :=
+        zeroExtend_preserves_bit
+          qs (ExtReg.ofReg z) 1 b₁ b₂ ctrl hz_eval
+      _ = RegEncoding.bit ctrl b := hctrl₁
+
+  have hctrl₂ : RegEncoding.bit ctrl b₂ := by
+    rw [hctrl₂eq]
+    exact hctrl
+
+  rw [eval_CSignedPhaseProd_ket_as_if_SignedPhaseProd]
+  rw [if_pos hctrl₂]
+
+private lemma eval_CPhaseProd_ket_eq_ket_of_not_ctrl
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    (ctrl : ℕ)
+    (phi : ℝ)
+    (x z : Reg)
+    (b : qs.Basis)
+    (hctrl : ¬ RegEncoding.bit ctrl b) :
+    qs.eval (Gate.CPhaseProd ctrl phi x z) (qs.ket b)
+      =
+    qs.ket b := by
+  simp only [Gate.CPhaseProd, qs.eval_seq]
+
+  rcases ExtensionSemantics.eval_zeroExtend_ket
+      (qs := qs) (r := ExtReg.ofReg x) (n := 1) (b := b) with
+    ⟨b₁, hx_eval, _hx_self, _hx_wide, _hx_loc⟩
+
+  rcases ExtensionSemantics.eval_zeroExtend_ket
+      (qs := qs) (r := ExtReg.ofReg z) (n := 1) (b := b₁) with
+    ⟨b₂, hz_eval, _hz_self, _hz_wide, _hz_loc⟩
+
+  simp only [hx_eval, hz_eval]
+
+  have hctrl₁ :
+      RegEncoding.bit ctrl b₁ = RegEncoding.bit ctrl b :=
+    zeroExtend_preserves_bit
+      qs (ExtReg.ofReg x) 1 b b₁ ctrl hx_eval
+
+  have hctrl₂eq :
+      RegEncoding.bit ctrl b₂ = RegEncoding.bit ctrl b := by
+    calc
+      RegEncoding.bit ctrl b₂
+          = RegEncoding.bit ctrl b₁ :=
+        zeroExtend_preserves_bit
+          qs (ExtReg.ofReg z) 1 b₁ b₂ ctrl hz_eval
+      _ = RegEncoding.bit ctrl b := hctrl₁
+
+  have hctrl₂ : ¬ RegEncoding.bit ctrl b₂ := by
+    intro h
+    apply hctrl
+    rw [← hctrl₂eq]
+    exact h
+
+  rw [eval_CSignedPhaseProd_ket_as_if_SignedPhaseProd]
+  rw [if_neg hctrl₂]
+
+  have hundo_z :
+      qs.eval (Gate.zeroDealloc (ExtReg.ofReg z) 1) (qs.ket b₂)
+        =
+      qs.ket b₁ := by
+    have h :=
+      ExtensionSemantics.eval_zeroExtend_zeroDealloc
+        (qs := qs)
+        (r := ExtReg.ofReg z)
+        (n := 1)
+        (ψ := qs.ket b₁)
+    rw [qs.eval_seq, hz_eval] at h
+    simpa using h
+
+  have hundo_x :
+      qs.eval (Gate.zeroDealloc (ExtReg.ofReg x) 1) (qs.ket b₁)
+        =
+      qs.ket b := by
+    have h :=
+      ExtensionSemantics.eval_zeroExtend_zeroDealloc
+        (qs := qs)
+        (r := ExtReg.ofReg x)
+        (n := 1)
+        (ψ := qs.ket b)
+    rw [qs.eval_seq, hx_eval] at h
+    simpa using h
+
+  rw [hundo_z, hundo_x]
+
+lemma eval_CPhaseProd_ket
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    (ctrl : ℕ)
+    (phi : ℝ)
+    (data work : Reg)
+    (b : qs.Basis)
+    (hdisj : Disjoint data work) :
+    qs.eval (Gate.CPhaseProd ctrl phi data work) (qs.ket b)
+      =
+    (if RegEncoding.bit ctrl b then
+        Complex.exp
+          (phi * Complex.I *
+            ((RegEncoding.toNat data b : ℂ) *
+             (RegEncoding.toNat work b : ℂ)))
+      else
+        1) •
+      qs.ket b := by
+  by_cases hctrl : RegEncoding.bit ctrl b
+  ·
+    calc
+      qs.eval (Gate.CPhaseProd ctrl phi data work) (qs.ket b)
+          =
+          qs.eval (Gate.PhaseProd phi data work) (qs.ket b) :=
+        eval_CPhaseProd_ket_eq_PhaseProd_of_ctrl
+          qs ctrl phi data work b hctrl
+      _ =
+          Complex.exp
+            (phi * Complex.I *
+              ((RegEncoding.toNat data b : ℂ) *
+               (RegEncoding.toNat work b : ℂ))) •
+            qs.ket b := by
+          simpa [Nat.cast_mul] using
+            (GateSemanticsFacts.eval_PhaseProd_ket
+              qs phi data work b hdisj)
+      _ =
+          (if RegEncoding.bit ctrl b then
+              Complex.exp
+                (phi * Complex.I *
+                  ((RegEncoding.toNat data b : ℂ) *
+                   (RegEncoding.toNat work b : ℂ)))
+            else
+              1) •
+            qs.ket b := by
+          simp [hctrl]
+
+  ·
+    calc
+      qs.eval (Gate.CPhaseProd ctrl phi data work) (qs.ket b)
+          =
+          qs.ket b :=
+        eval_CPhaseProd_ket_eq_ket_of_not_ctrl
+          qs ctrl phi data work b hctrl
+      _ =
+          (if RegEncoding.bit ctrl b then
+              Complex.exp
+                (phi * Complex.I *
+                  ((RegEncoding.toNat data b : ℂ) *
+                   (RegEncoding.toNat work b : ℂ)))
+            else
+              1) •
+            qs.ket b := by
+          simp [hctrl]
 
 end GateSemanticsFacts
 

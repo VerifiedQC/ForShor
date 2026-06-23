@@ -1,6 +1,9 @@
 import FastMultiplication.ShorVerification.AlgorithmCorrectness.ModExpBounds
 
 open Shor
+
+universe v
+
 /-- `q` is not a qubit of register `r`. -/
 def QubitOutside (q : ℕ) (r : Reg) : Prop :=
   q < r.lo ∨ r.hi ≤ q
@@ -584,7 +587,14 @@ theorem modExp_multiplier_coprime
     (a N e : ℕ)
     (hcoprime : Nat.Coprime a N) :
     Nat.Coprime ((a ^ (2 ^ e)) % N) N := by
-  sorry
+  have hpow : Nat.Coprime (a ^ (2 ^ e)) N :=
+    hcoprime.pow_left (2 ^ e)
+  rw [Nat.coprime_iff_gcd_eq_one]
+  calc
+    Nat.gcd ((a ^ (2 ^ e)) % N) N
+        = Nat.gcd (a ^ (2 ^ e)) N :=
+          Nat.ModEq.gcd_eq (by simp [Nat.ModEq])
+    _ = 1 := hpow.gcd_eq_one
 
 /-! =========================================================
     Algorithm-1 stages
@@ -763,28 +773,6 @@ lemma eval_iqft_work_expansion
   intro t ht
   rw [smul_smul]
 
-lemma eval_CPhaseProd_ket
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    (ctrl : ℕ)
-    (phi : ℝ)
-    (data work : Reg)
-    (b : qs.Basis)
-    (hdisj : Disjoint data work) :
-    qs.eval (Gate.CPhaseProd ctrl phi data work) (qs.ket b)
-      =
-    (if RegEncoding.bit ctrl b then
-        Complex.exp
-          (phi * Complex.I *
-            ((RegEncoding.toNat data b : ℂ) *
-             (RegEncoding.toNat work b : ℂ)))
-      else
-        1) •
-      qs.ket b := by
-  sorry
-
 lemma eval_cphaseprod_work_diagonal
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -815,7 +803,7 @@ lemma eval_cphaseprod_work_diagonal
   ⟩
 
   simpa [b'] using
-    eval_CPhaseProd_ket qs ctrl φ data work b' hdisj
+    GateSemanticsFacts.eval_CPhaseProd_ket qs ctrl φ data work b' hdisj
 
 open QSemantics
 
@@ -2406,7 +2394,7 @@ lemma eval_CPhaseProd_fixes_work_of_target_zero
           (RegEncoding.writeNat cfg.env.work t.1 b) := by
     intro t
     rw [
-      eval_CPhaseProd_ket
+      GateSemanticsFacts.eval_CPhaseProd_ket
         qs cfg.ctrl
         ((2 * Real.pi * ((cfg.c + cfg.env.N - 1 : ℝ) % (cfg.env.N : ℝ)))
           / (cfg.env.N : ℝ))
@@ -3189,6 +3177,405 @@ Step 1: discard phase-estimation outcomes outside `alg1GoodLabels`.
 This is the quantum phase-estimation tail estimate, lifted coherently to an
 arbitrary valid superposition.
 -/
+lemma alg1_step1_discarded_norm_le_one
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [Spec]
+    [GateSemanticsFacts qs]
+    {η : ℝ}
+    {k5 : ℕ → ℕ → ℕ}
+    (cfg : ModMulConfig η k5)
+    (ψ : qs.State)
+    (tr : Alg1Trace qs cfg ψ) :
+    cfg.ValidUnitState qs ψ →
+      ‖ qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
+          - tr.goodStep1‖
+        ≤ 1 := by
+  classical
+  intro hψ
+
+  let good : qs.State :=
+    ∑ b ∈ tr.support,
+      ∑ t ∈ alg1GoodLabels cfg b,
+        (tr.inputCoeff b * tr.phaseCoeff b t) •
+          qs.ket
+            (RegEncoding.writeNat cfg.env.work t.1 b)
+
+  let bad : qs.State :=
+    ∑ b ∈ tr.support,
+      ∑ t ∈
+        (Finset.univ.filter fun t =>
+          t ∉ alg1GoodLabels cfg b),
+        (tr.inputCoeff b * tr.phaseCoeff b t) •
+          qs.ket
+            (RegEncoding.writeNat cfg.env.work t.1 b)
+
+  have hgood : tr.goodStep1 = good := by
+    simp [Alg1Trace.goodStep1, good, Finset.smul_sum, smul_smul]
+
+  have hoverwrite :
+      ∀ (v w : ℕ) (b : qs.Basis),
+        RegEncoding.writeNat cfg.env.work v
+            (RegEncoding.writeNat cfg.env.work w b)
+          =
+        RegEncoding.writeNat cfg.env.work v b := by
+    intro v w b
+    apply RegEncoding.basis_ext
+    intro q
+    by_cases hqin :
+        cfg.env.work.lo ≤ q ∧ q < cfg.env.work.hi
+    · exact
+        RegEncoding.bit_writeNat_in
+          (r := cfg.env.work)
+          (v := v)
+          (b1 := RegEncoding.writeNat cfg.env.work w b)
+          (b2 := b)
+          (q := q)
+          hqin.1
+          hqin.2
+    ·
+      have hqout :
+          q < cfg.env.work.lo ∨ cfg.env.work.hi ≤ q := by
+        rcases not_and_or.mp hqin with h | h
+        · exact Or.inl (lt_of_not_ge h)
+        · exact Or.inr (le_of_not_gt h)
+
+      calc
+        RegEncoding.bit q
+            (RegEncoding.writeNat cfg.env.work v
+              (RegEncoding.writeNat cfg.env.work w b))
+            =
+            RegEncoding.bit q
+              (RegEncoding.writeNat cfg.env.work w b) := by
+              exact
+                RegEncoding.bit_writeNat_out
+                  (r := cfg.env.work)
+                  (v := v)
+                  (b := RegEncoding.writeNat cfg.env.work w b)
+                  (q := q)
+                  hqout
+        _ = RegEncoding.bit q b := by
+              exact
+                RegEncoding.bit_writeNat_out
+                  (r := cfg.env.work)
+                  (v := w)
+                  (b := b)
+                  (q := q)
+                  hqout
+        _ =
+            RegEncoding.bit q
+              (RegEncoding.writeNat cfg.env.work v b) := by
+              symm
+              exact
+                RegEncoding.bit_writeNat_out
+                  (r := cfg.env.work)
+                  (v := v)
+                  (b := b)
+                  (q := q)
+                  hqout
+
+  have hwrite_inj :
+      ∀ {b b' : qs.Basis}
+        {t u : Fin (ASize cfg.env.work)},
+        b ∈ tr.support →
+        b' ∈ tr.support →
+        RegEncoding.writeNat cfg.env.work t.1 b
+          =
+        RegEncoding.writeNat cfg.env.work u.1 b' →
+        b = b' ∧ t = u := by
+    intro b b' t u hb hb' hEq
+
+    have ht_read :
+        RegEncoding.toNat cfg.env.work
+            (RegEncoding.writeNat cfg.env.work t.1 b)
+          =
+        t.1 :=
+      RegEncoding.toNat_writeNat_of_lt
+        cfg.env.work t.1 b t.isLt
+
+    have hu_read :
+        RegEncoding.toNat cfg.env.work
+            (RegEncoding.writeNat cfg.env.work u.1 b')
+          =
+        u.1 :=
+      RegEncoding.toNat_writeNat_of_lt
+        cfg.env.work u.1 b' u.isLt
+
+    have htu_val : t.1 = u.1 := by
+      calc
+        t.1
+            =
+            RegEncoding.toNat cfg.env.work
+              (RegEncoding.writeNat cfg.env.work t.1 b) := ht_read.symm
+        _ =
+            RegEncoding.toNat cfg.env.work
+              (RegEncoding.writeNat cfg.env.work u.1 b') := by
+              rw [hEq]
+        _ = u.1 := hu_read
+
+    have htu : t = u := Fin.ext htu_val
+
+    have hbwork :
+        RegEncoding.toNat cfg.env.work b = 0 :=
+      (tr.input_good b hb).2.2.1
+
+    have hb'work :
+        RegEncoding.toNat cfg.env.work b' = 0 :=
+      (tr.input_good b' hb').2.2.1
+
+    have hbzero :
+        RegEncoding.writeNat cfg.env.work 0 b = b := by
+      simpa [hbwork] using
+        (RegEncoding.writeNat_toNat cfg.env.work b)
+
+    have hb'zero :
+        RegEncoding.writeNat cfg.env.work 0 b' = b' := by
+      simpa [hb'work] using
+        (RegEncoding.writeNat_toNat cfg.env.work b')
+
+    have hzero :
+        RegEncoding.writeNat cfg.env.work 0 b
+          =
+        RegEncoding.writeNat cfg.env.work 0 b' := by
+      calc
+        RegEncoding.writeNat cfg.env.work 0 b
+            =
+            RegEncoding.writeNat cfg.env.work 0
+              (RegEncoding.writeNat cfg.env.work t.1 b) := by
+              symm
+              exact hoverwrite 0 t.1 b
+        _ =
+            RegEncoding.writeNat cfg.env.work 0
+              (RegEncoding.writeNat cfg.env.work u.1 b') := by
+              rw [hEq]
+        _ =
+            RegEncoding.writeNat cfg.env.work 0 b' :=
+              hoverwrite 0 u.1 b'
+
+    refine ⟨?_, htu⟩
+    calc
+      b = RegEncoding.writeNat cfg.env.work 0 b := hbzero.symm
+      _ = RegEncoding.writeNat cfg.env.work 0 b' := hzero
+      _ = b' := hb'zero
+
+  have hsplit_each :
+      ∀ b : qs.Basis,
+        (∑ t ∈ alg1GoodLabels cfg b,
+          (tr.inputCoeff b * tr.phaseCoeff b t) •
+            qs.ket
+              (RegEncoding.writeNat cfg.env.work t.1 b))
+        +
+        (∑ t ∈
+          (Finset.univ.filter fun t =>
+            t ∉ alg1GoodLabels cfg b),
+          (tr.inputCoeff b * tr.phaseCoeff b t) •
+            qs.ket
+              (RegEncoding.writeNat cfg.env.work t.1 b))
+        =
+        ∑ t : Fin (ASize cfg.env.work),
+          (tr.inputCoeff b * tr.phaseCoeff b t) •
+            qs.ket
+              (RegEncoding.writeNat cfg.env.work t.1 b) := by
+    intro b
+
+    let L : Finset (Fin (ASize cfg.env.work)) :=
+      alg1GoodLabels cfg b
+
+    let f : Fin (ASize cfg.env.work) → qs.State :=
+      fun t =>
+        (tr.inputCoeff b * tr.phaseCoeff b t) •
+          qs.ket
+            (RegEncoding.writeNat cfg.env.work t.1 b)
+
+    have hL :
+        Finset.univ.filter (fun t => t ∈ L) = L := by
+      ext t
+      simp
+
+    have hpartition :
+        (∑ t ∈ L, f t)
+          +
+        (∑ t ∈ Finset.univ.filter (fun t => t ∉ L), f t)
+          =
+        ∑ t ∈ Finset.univ, f t := by
+      calc
+        (∑ t ∈ L, f t)
+            +
+          (∑ t ∈ Finset.univ.filter (fun t => t ∉ L), f t)
+            =
+          (∑ t ∈ Finset.univ.filter (fun t => t ∈ L), f t)
+            +
+          (∑ t ∈ Finset.univ.filter (fun t => t ∉ L), f t) := by
+            rw [hL]
+        _ =
+          (∑ t ∈ Finset.univ,
+            if t ∈ L then f t else 0)
+            +
+          (∑ t ∈ Finset.univ,
+            if t ∉ L then f t else 0) := by
+            rw [Finset.sum_filter, Finset.sum_filter]
+        _ =
+          ∑ t ∈ Finset.univ, f t := by
+            rw [← Finset.sum_add_distrib]
+            apply Finset.sum_congr rfl
+            intro t ht
+            by_cases hmem : t ∈ L <;> simp [hmem]
+
+    simpa [L, f] using hpartition
+
+  have hfull_flat :
+      qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
+        =
+      ∑ b ∈ tr.support,
+        ∑ t : Fin (ASize cfg.env.work),
+          (tr.inputCoeff b * tr.phaseCoeff b t) •
+            qs.ket
+              (RegEncoding.writeNat cfg.env.work t.1 b) := by
+    simpa [ModMulConfig.U1, Finset.smul_sum, smul_smul]
+      using tr.full_step1_eq
+
+  have hfull :
+      qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
+        =
+      good + bad := by
+    calc
+      qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
+          =
+          ∑ b ∈ tr.support,
+            ∑ t : Fin (ASize cfg.env.work),
+              (tr.inputCoeff b * tr.phaseCoeff b t) •
+                qs.ket
+                  (RegEncoding.writeNat cfg.env.work t.1 b) :=
+            hfull_flat
+      _ =
+          ∑ b ∈ tr.support,
+            ((∑ t ∈ alg1GoodLabels cfg b,
+              (tr.inputCoeff b * tr.phaseCoeff b t) •
+                qs.ket
+                  (RegEncoding.writeNat cfg.env.work t.1 b))
+              +
+             (∑ t ∈
+                (Finset.univ.filter fun t =>
+                  t ∉ alg1GoodLabels cfg b),
+              (tr.inputCoeff b * tr.phaseCoeff b t) •
+                qs.ket
+                  (RegEncoding.writeNat cfg.env.work t.1 b))) := by
+            apply Finset.sum_congr rfl
+            intro b hb
+            symm
+            exact hsplit_each b
+      _ = good + bad := by
+            simp [good, bad, Finset.sum_add_distrib]
+
+  have horth : inner ℂ bad good = 0 := by
+    simp only [bad, good, inner_sum]
+
+    apply Finset.sum_eq_zero
+    intro b' hb'
+    apply Finset.sum_eq_zero
+    intro t ht
+
+    rw [sum_inner]
+    apply Finset.sum_eq_zero
+    intro b hb
+    rw [sum_inner]
+    apply Finset.sum_eq_zero
+    intro u hu
+
+    have hneq :
+        RegEncoding.writeNat cfg.env.work u.1 b
+          ≠
+        RegEncoding.writeNat cfg.env.work t.1 b' := by
+      intro hEq
+      rcases hwrite_inj hb hb' hEq with ⟨hbb', hut⟩
+      subst b'
+      subst t
+      exact (Finset.mem_filter.mp hu).2 ht
+
+    rw [
+      inner_smul_left,
+      inner_smul_right,
+      qs.ket_inner_eq_zero_of_ne hneq
+    ]
+    simp
+
+  have hfull_norm :
+      ‖qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ‖ = 1 := by
+    calc
+      ‖qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ‖
+          =
+          ‖ψ‖ :=
+        eval_norm_preserved
+          qs
+          (ModMulConfig.U1 (Basis := qs.Basis) cfg)
+          ψ
+      _ = 1 := hψ.2
+
+  have hinner :
+      inner ℂ bad
+          (qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ)
+        =
+      ((‖bad‖ ^ 2 : ℝ) : ℂ) := by
+    calc
+      inner ℂ bad
+          (qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ)
+          =
+          inner ℂ bad (good + bad) := by
+            rw [hfull]
+      _ =
+          inner ℂ bad good + inner ℂ bad bad := by
+            rw [inner_add_right]
+      _ = inner ℂ bad bad := by
+            rw [horth, zero_add]
+      _ = ((‖bad‖ ^ 2 : ℝ) : ℂ) := by
+            simp
+
+  have hsq :
+      ‖bad‖ ^ 2
+        ≤
+      ‖bad‖ *
+        ‖qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ‖ := by
+    calc
+      ‖bad‖ ^ 2
+          =
+          ‖((‖bad‖ ^ 2 : ℝ) : ℂ)‖ := by
+            simp
+      _ =
+          ‖inner ℂ bad
+            (qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ)‖ := by
+            rw [hinner]
+      _ ≤
+          ‖bad‖ *
+            ‖qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ‖ :=
+            norm_inner_le_norm _ _
+
+  have hsq' : ‖bad‖ ^ 2 ≤ ‖bad‖ := by
+    simpa [hfull_norm] using hsq
+
+  have hbad : ‖bad‖ ≤ 1 := by
+    nlinarith [norm_nonneg bad]
+
+  have hdiscard :
+      qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
+        - tr.goodStep1
+        =
+      bad := by
+    calc
+      qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
+          - tr.goodStep1
+          =
+          (good + bad) - good := by
+            rw [hfull, hgood]
+      _ = bad := by abel
+
+  calc
+    ‖qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
+        - tr.goodStep1‖
+        =
+      ‖bad‖ := by rw [hdiscard]
+    _ ≤ 1 := hbad
+
 lemma alg1_step1_good_bound
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -3205,12 +3592,1322 @@ lemma alg1_step1_good_bound
         ‖ qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
             - tr.goodStep1‖
           ≤ stepErr K₁ η := by
-  sorry
+  classical
+  let K₁ : ℝ := if 0 < η then 1 / η else 0
+  refine ⟨K₁, ?_, ?_⟩
+  · dsimp [K₁]
+    by_cases hη : 0 < η
+    · simp [hη, le_of_lt hη]
+    · simp [hη]
+  · intro cfg ψ tr hψ
+    have hdist :
+        ‖ qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
+            - tr.goodStep1‖
+          ≤ 1 :=
+      alg1_step1_discarded_norm_le_one
+        qs cfg ψ tr hψ
+    have hηpos : 0 < η :=
+      cfg.env.precision.1
+    have hKη : K₁ * η = 1 := by
+      dsimp [K₁]
+      rw [if_pos hηpos]
+      simpa [one_div] using inv_mul_cancel₀ (ne_of_gt hηpos)
+    have hone_le_step :
+        (1 : ℝ) ≤ stepErr K₁ η := by
+      rw [stepErr, hKη]
+      norm_num
+    exact le_trans hdist hone_le_step
+
+private lemma writeNat_overwrite_same_reg
+    {Basis : Type u} [RegEncoding Basis]
+    (r : Reg) (v w : ℕ) (b : Basis) :
+    RegEncoding.writeNat r v (RegEncoding.writeNat r w b)
+      =
+    RegEncoding.writeNat r v b := by
+  apply RegEncoding.basis_ext
+  intro q
+  by_cases hqin : r.lo ≤ q ∧ q < r.hi
+  · exact
+      RegEncoding.bit_writeNat_in
+        (r := r)
+        (v := v)
+        (b1 := RegEncoding.writeNat r w b)
+        (b2 := b)
+        (q := q)
+        hqin.1
+        hqin.2
+  ·
+    have hqout : q < r.lo ∨ r.hi ≤ q := by
+      rcases not_and_or.mp hqin with h | h
+      · exact Or.inl (lt_of_not_ge h)
+      · exact Or.inr (le_of_not_gt h)
+    rw [
+      RegEncoding.bit_writeNat_out
+        (r := r) (v := v) (b := RegEncoding.writeNat r w b)
+        (q := q) hqout,
+      RegEncoding.bit_writeNat_out
+        (r := r) (v := v) (b := b)
+        (q := q) hqout,
+      RegEncoding.bit_writeNat_out
+        (r := r) (v := w) (b := b)
+        (q := q) hqout
+    ]
+
+private lemma norm_sq_sum_eq_sum_norm_sq_of_orthogonal_modmul
+    {qs : QSemantics}
+    {ι : Type v}
+    (s : Finset ι)
+    (f : ι → qs.State)
+    (horth :
+      ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
+        inner ℂ (f i) (f j) = 0) :
+    ‖∑ i ∈ s, f i‖ ^ 2
+      =
+    ∑ i ∈ s, ‖f i‖ ^ 2 := by
+  classical
+  revert horth
+  induction s using Finset.induction_on with
+  | empty =>
+      intro horth
+      simp
+  | insert a s ha ih =>
+      intro horth
+      have horth_s :
+          ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
+            inner ℂ (f i) (f j) = 0 := by
+        intro i hi j hj hij
+        exact horth i
+          (Finset.mem_insert_of_mem hi)
+          j
+          (Finset.mem_insert_of_mem hj)
+          hij
+      have hih :
+          ‖∑ i ∈ s, f i‖ ^ 2
+            =
+          ∑ i ∈ s, ‖f i‖ ^ 2 :=
+        ih horth_s
+      have hcross :
+          inner ℂ (f a) (∑ b ∈ s, f b) = 0 := by
+        rw [inner_sum]
+        refine Finset.sum_eq_zero ?_
+        intro b hb
+        apply horth a (by simp) b (Finset.mem_insert_of_mem hb)
+        intro hab
+        subst b
+        exact ha hb
+      calc
+        ‖∑ i ∈ insert a s, f i‖ ^ 2
+            =
+          ‖f a + ∑ i ∈ s, f i‖ ^ 2 := by
+            rw [Finset.sum_insert ha]
+        _ =
+          ‖f a‖ ^ 2
+            + 2 * Complex.re (inner ℂ (f a) (∑ i ∈ s, f i))
+            + ‖∑ i ∈ s, f i‖ ^ 2 := by
+              exact norm_add_sq (𝕜 := ℂ) _ _
+        _ =
+          ‖f a‖ ^ 2 + ‖∑ i ∈ s, f i‖ ^ 2 := by
+            rw [hcross]
+            simp
+        _ =
+          ‖f a‖ ^ 2 + ∑ i ∈ s, ‖f i‖ ^ 2 := by
+            rw [hih]
+        _ =
+          ∑ i ∈ insert a s, ‖f i‖ ^ 2 := by
+            rw [Finset.sum_insert ha]
+
+private lemma norm_sum_reindex_ket_eq
+    (qs : QSemantics)
+    {ι : Type v}
+    (s : Finset ι)
+    (α : ι → ℂ)
+    (f g : ι → qs.Basis)
+    (hf :
+      ∀ i ∈ s, ∀ j ∈ s, i ≠ j → f i ≠ f j)
+    (hg :
+      ∀ i ∈ s, ∀ j ∈ s, i ≠ j → g i ≠ g j) :
+    ‖∑ i ∈ s, α i • qs.ket (f i)‖
+      =
+    ‖∑ i ∈ s, α i • qs.ket (g i)‖ := by
+  classical
+  have horth_f :
+      ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
+        inner ℂ (α i • qs.ket (f i)) (α j • qs.ket (f j)) = 0 := by
+    intro i hi j hj hij
+    rw [inner_smul_left, inner_smul_right,
+      qs.ket_inner_eq_zero_of_ne (hf i hi j hj hij)]
+    simp
+  have horth_g :
+      ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
+        inner ℂ (α i • qs.ket (g i)) (α j • qs.ket (g j)) = 0 := by
+    intro i hi j hj hij
+    rw [inner_smul_left, inner_smul_right,
+      qs.ket_inner_eq_zero_of_ne (hg i hi j hj hij)]
+    simp
+  have hsq_f :=
+    norm_sq_sum_eq_sum_norm_sq_of_orthogonal_modmul
+      (qs := qs) s (fun i => α i • qs.ket (f i)) horth_f
+  have hsq_g :=
+    norm_sq_sum_eq_sum_norm_sq_of_orthogonal_modmul
+      (qs := qs) s (fun i => α i • qs.ket (g i)) horth_g
+  have hterms :
+      (∑ i ∈ s, ‖α i • qs.ket (f i)‖ ^ 2)
+        =
+      ∑ i ∈ s, ‖α i • qs.ket (g i)‖ ^ 2 := by
+    apply Finset.sum_congr rfl
+    intro i hi
+    simp [norm_smul, ket_norm_one qs]
+  have hsquares :
+      ‖∑ i ∈ s, α i • qs.ket (f i)‖ ^ 2
+        =
+      ‖∑ i ∈ s, α i • qs.ket (g i)‖ ^ 2 := by
+    rw [hsq_f, hsq_g, hterms]
+  have hn1 : 0 ≤ ‖∑ i ∈ s, α i • qs.ket (f i)‖ := norm_nonneg _
+  have hn2 : 0 ≤ ‖∑ i ∈ s, α i • qs.ket (g i)‖ := norm_nonneg _
+  nlinarith
+
+lemma alg1_goodStep1_norm_le_one
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    {η : ℝ} {k5 : ℕ → ℕ → ℕ}
+    (cfg : ModMulConfig η k5)
+    (ψ : qs.State)
+    (tr : Alg1Trace qs cfg ψ) :
+    cfg.ValidUnitState qs ψ →
+      ‖tr.goodStep1‖ ≤ 1 := by
+  classical
+  intro hψ
+
+  let Sfull : Finset (Σ _b : qs.Basis, Fin (ASize cfg.env.work)) :=
+    tr.support.sigma fun _ => Finset.univ
+  let Sgood : Finset (Σ b : qs.Basis, Fin (ASize cfg.env.work)) :=
+    tr.support.sigma fun b => alg1GoodLabels cfg b
+  let α : (Σ _b : qs.Basis, Fin (ASize cfg.env.work)) → ℂ :=
+    fun i => tr.inputCoeff i.1 * tr.phaseCoeff i.1 i.2
+  let label : (Σ _b : qs.Basis, Fin (ASize cfg.env.work)) → qs.Basis :=
+    fun i => RegEncoding.writeNat cfg.env.work i.2.1 i.1
+
+  have hSsub : Sgood ⊆ Sfull := by
+    intro i hi
+    rcases Finset.mem_sigma.mp hi with ⟨hb, ht⟩
+    exact Finset.mem_sigma.mpr ⟨hb, by simp⟩
+
+  have hwrite_inj :
+      ∀ i ∈ Sfull, ∀ j ∈ Sfull, label i = label j → i = j := by
+    intro i hi j hj hEq
+    rcases Finset.mem_sigma.mp hi with ⟨hi_b, _⟩
+    rcases Finset.mem_sigma.mp hj with ⟨hj_b, _⟩
+
+    have hi_read :
+        RegEncoding.toNat cfg.env.work
+            (RegEncoding.writeNat cfg.env.work i.2.1 i.1)
+          =
+        i.2.1 :=
+      RegEncoding.toNat_writeNat_of_lt
+        cfg.env.work i.2.1 i.1 i.2.isLt
+
+    have hj_read :
+        RegEncoding.toNat cfg.env.work
+            (RegEncoding.writeNat cfg.env.work j.2.1 j.1)
+          =
+        j.2.1 :=
+      RegEncoding.toNat_writeNat_of_lt
+        cfg.env.work j.2.1 j.1 j.2.isLt
+
+    have ht_val : i.2.1 = j.2.1 := by
+      calc
+        i.2.1
+            =
+          RegEncoding.toNat cfg.env.work
+            (RegEncoding.writeNat cfg.env.work i.2.1 i.1) := hi_read.symm
+        _ =
+          RegEncoding.toNat cfg.env.work
+            (RegEncoding.writeNat cfg.env.work j.2.1 j.1) := by
+            simpa [label] using congrArg (RegEncoding.toNat cfg.env.work) hEq
+        _ = j.2.1 := hj_read
+
+    have ht : i.2 = j.2 := Fin.ext ht_val
+
+    have hi_work :
+        RegEncoding.toNat cfg.env.work i.1 = 0 :=
+      (tr.input_good i.1 hi_b).2.2.1
+
+    have hj_work :
+        RegEncoding.toNat cfg.env.work j.1 = 0 :=
+      (tr.input_good j.1 hj_b).2.2.1
+
+    have hi_zero :
+        RegEncoding.writeNat cfg.env.work 0 i.1 = i.1 := by
+      simpa [hi_work] using
+        RegEncoding.writeNat_toNat cfg.env.work i.1
+
+    have hj_zero :
+        RegEncoding.writeNat cfg.env.work 0 j.1 = j.1 := by
+      simpa [hj_work] using
+        RegEncoding.writeNat_toNat cfg.env.work j.1
+
+    have hb : i.1 = j.1 := by
+      calc
+        i.1 = RegEncoding.writeNat cfg.env.work 0 i.1 := hi_zero.symm
+        _ =
+          RegEncoding.writeNat cfg.env.work 0
+            (RegEncoding.writeNat cfg.env.work i.2.1 i.1) := by
+            symm
+            exact writeNat_overwrite_same_reg cfg.env.work 0 i.2.1 i.1
+        _ =
+          RegEncoding.writeNat cfg.env.work 0
+            (RegEncoding.writeNat cfg.env.work j.2.1 j.1) := by
+            exact congrArg (RegEncoding.writeNat cfg.env.work 0) hEq
+        _ =
+          RegEncoding.writeNat cfg.env.work 0 j.1 := by
+            exact writeNat_overwrite_same_reg cfg.env.work 0 j.2.1 j.1
+        _ = j.1 := hj_zero
+
+    cases i
+    cases j
+    simp at hb ht ⊢
+    exact ⟨hb, ht⟩
+
+  have horth_full :
+      ∀ i ∈ Sfull, ∀ j ∈ Sfull, i ≠ j →
+        inner ℂ (α i • qs.ket (label i)) (α j • qs.ket (label j)) = 0 := by
+    intro i hi j hj hij
+    have hlabel_ne : label i ≠ label j := by
+      intro hlabel
+      exact hij (hwrite_inj i hi j hj hlabel)
+    rw [inner_smul_left, inner_smul_right,
+      qs.ket_inner_eq_zero_of_ne hlabel_ne]
+    simp
+
+  have horth_good :
+      ∀ i ∈ Sgood, ∀ j ∈ Sgood, i ≠ j →
+        inner ℂ (α i • qs.ket (label i)) (α j • qs.ket (label j)) = 0 := by
+    intro i hi j hj hij
+    exact horth_full i (hSsub hi) j (hSsub hj) hij
+
+  have hfull_flat :
+      qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
+        =
+      ∑ i ∈ Sfull, α i • qs.ket (label i) := by
+    simp [Sfull, α, label, ModMulConfig.U1, Finset.sum_sigma] at *
+    simpa [ModMulConfig.U1, Finset.smul_sum, smul_smul] using tr.full_step1_eq
+
+  have hgood_flat :
+      tr.goodStep1 =
+      ∑ i ∈ Sgood, α i • qs.ket (label i) := by
+    simp [Sgood, α, label, Alg1Trace.goodStep1, Finset.sum_sigma,
+      Finset.smul_sum, smul_smul]
+
+  have hfull_norm :
+      ‖qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ‖ = 1 := by
+    calc
+      ‖qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ‖
+          =
+        ‖ψ‖ := by
+          simpa using
+            eval_norm_preserved
+              qs
+              (ModMulConfig.U1 (Basis := qs.Basis) cfg)
+              ψ
+      _ = 1 := hψ.2
+
+  have hsq_full :
+      ‖∑ i ∈ Sfull, α i • qs.ket (label i)‖ ^ 2
+        =
+      ∑ i ∈ Sfull, ‖α i • qs.ket (label i)‖ ^ 2 :=
+    norm_sq_sum_eq_sum_norm_sq_of_orthogonal_modmul
+      (qs := qs) Sfull (fun i => α i • qs.ket (label i)) horth_full
+
+  have hsq_good :
+      ‖∑ i ∈ Sgood, α i • qs.ket (label i)‖ ^ 2
+        =
+      ∑ i ∈ Sgood, ‖α i • qs.ket (label i)‖ ^ 2 :=
+    norm_sq_sum_eq_sum_norm_sq_of_orthogonal_modmul
+      (qs := qs) Sgood (fun i => α i • qs.ket (label i)) horth_good
+
+  have hsum_le :
+      (∑ i ∈ Sgood, ‖α i • qs.ket (label i)‖ ^ 2)
+        ≤
+      ∑ i ∈ Sfull, ‖α i • qs.ket (label i)‖ ^ 2 := by
+    exact Finset.sum_le_sum_of_subset_of_nonneg
+      hSsub
+      (by
+        intro i hi_full hi_not_good
+        exact sq_nonneg _)
+
+  have hsq_le_one :
+      ‖tr.goodStep1‖ ^ 2 ≤ 1 := by
+    calc
+      ‖tr.goodStep1‖ ^ 2
+          =
+        ‖∑ i ∈ Sgood, α i • qs.ket (label i)‖ ^ 2 := by
+          rw [hgood_flat]
+      _ =
+        ∑ i ∈ Sgood, ‖α i • qs.ket (label i)‖ ^ 2 := hsq_good
+      _ ≤
+        ∑ i ∈ Sfull, ‖α i • qs.ket (label i)‖ ^ 2 := hsum_le
+      _ =
+        ‖∑ i ∈ Sfull, α i • qs.ket (label i)‖ ^ 2 := hsq_full.symm
+      _ =
+        ‖qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ‖ ^ 2 := by
+          rw [hfull_flat]
+      _ = 1 := by
+          rw [hfull_norm]
+          norm_num
+
+  have hnonneg : 0 ≤ ‖tr.goodStep1‖ := norm_nonneg _
+  nlinarith [sq_nonneg (‖tr.goodStep1‖ - 1)]
+
+private lemma alg1_step2_label_injective_on_good
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    {η : ℝ} {k5 : ℕ → ℕ → ℕ}
+    (cfg : ModMulConfig η k5)
+    (ψ : qs.State)
+    (tr : Alg1Trace qs cfg ψ) :
+    let Sgood : Finset (Σ _b : qs.Basis, Fin (ASize cfg.env.work)) :=
+      tr.support.sigma fun b => alg1GoodLabels cfg b
+    let labelStep2 : (Σ _b : qs.Basis, Fin (ASize cfg.env.work)) → qs.Basis :=
+      fun i =>
+        RegEncoding.writeNat
+          (extendHi cfg.env.data)
+          (alg1Step2Value cfg i.1)
+          (RegEncoding.writeNat cfg.env.work i.2.1 i.1)
+    ∀ i ∈ Sgood, ∀ j ∈ Sgood, i ≠ j → labelStep2 i ≠ labelStep2 j := by
+  classical
+  dsimp only
+
+  intro i hi j hj hij hEq
+  rcases i with ⟨b, t⟩
+  rcases j with ⟨b', u⟩
+
+  rcases Finset.mem_sigma.mp hi with ⟨hbmem, _htgood⟩
+  rcases Finset.mem_sigma.mp hj with ⟨hbmem', _hugood⟩
+
+  have hb :
+      GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b :=
+    tr.input_good b hbmem
+
+  have hb' :
+      GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b' :=
+    tr.input_good b' hbmem'
+
+  have hNpos : 0 < cfg.env.N :=
+    Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one
+
+  have hdisj :
+      Disjoint cfg.env.work (extendHi cfg.env.data) := by
+    rcases cfg.layout.1 with h | h
+    · exact Or.inr h
+    · exact Or.inl h
+
+  have hy :
+      alg1Step2Value cfg b = alg1Step2Value cfg b' := by
+    calc
+      alg1Step2Value cfg b
+          =
+          RegEncoding.toNat
+            (extendHi cfg.env.data)
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1Step2Value cfg b)
+              (RegEncoding.writeNat cfg.env.work t.1 b)) := by
+            symm
+            exact
+              RegEncoding.toNat_writeNat_of_lt
+                (extendHi cfg.env.data)
+                (alg1Step2Value cfg b)
+                (RegEncoding.writeNat cfg.env.work t.1 b)
+                (alg1Step2Value_lt_extendHi_capacity cfg b hb)
+      _ =
+          RegEncoding.toNat
+            (extendHi cfg.env.data)
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1Step2Value cfg b')
+              (RegEncoding.writeNat cfg.env.work u.1 b')) := by
+            rw [hEq]
+      _ = alg1Step2Value cfg b' :=
+            RegEncoding.toNat_writeNat_of_lt
+              (extendHi cfg.env.data)
+              (alg1Step2Value cfg b')
+              (RegEncoding.writeNat cfg.env.work u.1 b')
+              (alg1Step2Value_lt_extendHi_capacity cfg b' hb')
+
+  have htu_val : t.1 = u.1 := by
+    calc
+      t.1
+          =
+          RegEncoding.toNat
+            cfg.env.work
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1Step2Value cfg b)
+              (RegEncoding.writeNat cfg.env.work t.1 b)) := by
+            symm
+            calc
+              RegEncoding.toNat
+                cfg.env.work
+                (RegEncoding.writeNat
+                  (extendHi cfg.env.data)
+                  (alg1Step2Value cfg b)
+                  (RegEncoding.writeNat cfg.env.work t.1 b))
+                  =
+                  RegEncoding.toNat
+                    cfg.env.work
+                    (RegEncoding.writeNat cfg.env.work t.1 b) :=
+                RegEncoding.toNat_left_write_right
+                  cfg.env.work
+                  (extendHi cfg.env.data)
+                  hdisj
+                  (RegEncoding.writeNat cfg.env.work t.1 b)
+                  (alg1Step2Value cfg b)
+              _ = t.1 :=
+                RegEncoding.toNat_writeNat_of_lt
+                  cfg.env.work
+                  t.1
+                  b
+                  t.isLt
+      _ =
+          RegEncoding.toNat
+            cfg.env.work
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1Step2Value cfg b')
+              (RegEncoding.writeNat cfg.env.work u.1 b')) := by
+            rw [hEq]
+      _ = u.1 := by
+            calc
+              RegEncoding.toNat
+                cfg.env.work
+                (RegEncoding.writeNat
+                  (extendHi cfg.env.data)
+                  (alg1Step2Value cfg b')
+                  (RegEncoding.writeNat cfg.env.work u.1 b'))
+                  =
+                  RegEncoding.toNat
+                    cfg.env.work
+                    (RegEncoding.writeNat cfg.env.work u.1 b') :=
+                RegEncoding.toNat_left_write_right
+                  cfg.env.work
+                  (extendHi cfg.env.data)
+                  hdisj
+                  (RegEncoding.writeNat cfg.env.work u.1 b')
+                  (alg1Step2Value cfg b')
+              _ = u.1 :=
+                RegEncoding.toNat_writeNat_of_lt
+                  cfg.env.work
+                  u.1
+                  b'
+                  u.isLt
+
+  have htu : t = u :=
+    Fin.ext htu_val
+
+  have hctrl_b :
+      RegEncoding.bit cfg.ctrl
+          (RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (alg1Step2Value cfg b)
+            (RegEncoding.writeNat cfg.env.work t.1 b))
+        =
+      RegEncoding.bit cfg.ctrl b := by
+    calc
+      RegEncoding.bit cfg.ctrl
+          (RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (alg1Step2Value cfg b)
+            (RegEncoding.writeNat cfg.env.work t.1 b))
+          =
+          RegEncoding.bit cfg.ctrl
+            (RegEncoding.writeNat cfg.env.work t.1 b) :=
+        RegEncoding.bit_writeNat_out
+          (r := extendHi cfg.env.data)
+          (v := alg1Step2Value cfg b)
+          (b := RegEncoding.writeNat cfg.env.work t.1 b)
+          (q := cfg.ctrl)
+          cfg.layout.2.2.2.1
+      _ = RegEncoding.bit cfg.ctrl b :=
+        RegEncoding.bit_writeNat_out
+          (r := cfg.env.work)
+          (v := t.1)
+          (b := b)
+          (q := cfg.ctrl)
+          cfg.layout.2.2.2.2.1
+
+  have hctrl_b' :
+      RegEncoding.bit cfg.ctrl
+          (RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (alg1Step2Value cfg b')
+            (RegEncoding.writeNat cfg.env.work u.1 b'))
+        =
+      RegEncoding.bit cfg.ctrl b' := by
+    calc
+      RegEncoding.bit cfg.ctrl
+          (RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (alg1Step2Value cfg b')
+            (RegEncoding.writeNat cfg.env.work u.1 b'))
+          =
+          RegEncoding.bit cfg.ctrl
+            (RegEncoding.writeNat cfg.env.work u.1 b') :=
+        RegEncoding.bit_writeNat_out
+          (r := extendHi cfg.env.data)
+          (v := alg1Step2Value cfg b')
+          (b := RegEncoding.writeNat cfg.env.work u.1 b')
+          (q := cfg.ctrl)
+          cfg.layout.2.2.2.1
+      _ = RegEncoding.bit cfg.ctrl b' :=
+        RegEncoding.bit_writeNat_out
+          (r := cfg.env.work)
+          (v := u.1)
+          (b := b')
+          (q := cfg.ctrl)
+          cfg.layout.2.2.2.2.1
+
+  have hctrl :
+      RegEncoding.bit cfg.ctrl b = RegEncoding.bit cfg.ctrl b' := by
+    calc
+      RegEncoding.bit cfg.ctrl b
+          =
+          RegEncoding.bit cfg.ctrl
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1Step2Value cfg b)
+              (RegEncoding.writeNat cfg.env.work t.1 b)) :=
+        hctrl_b.symm
+      _ =
+          RegEncoding.bit cfg.ctrl
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1Step2Value cfg b')
+              (RegEncoding.writeNat cfg.env.work u.1 b')) := by
+        rw [hEq]
+      _ = RegEncoding.bit cfg.ctrl b' :=
+        hctrl_b'
+
+  have hstep_mod :
+      ∀ z : qs.Basis,
+        GoodModMulBasisInput
+          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag z →
+        (alg1Step2Value cfg z) % cfg.env.N
+          =
+        if RegEncoding.bit cfg.ctrl z then
+          (cfg.c * RegEncoding.toNat cfg.env.data z) % cfg.env.N
+        else
+          RegEncoding.toNat cfg.env.data z := by
+    intro z hz
+    cases hbit : RegEncoding.bit cfg.ctrl z with
+    | false =>
+        simp [alg1Step2Value, alg1TargetResidue, hbit,
+          Nat.mod_eq_of_lt hz.1]
+    | true =>
+        let x : ℕ := RegEncoding.toNat cfg.env.data z
+        let d : ℕ := (cfg.c + cfg.env.N - 1) % cfg.env.N
+
+        have hcn :
+            cfg.c + cfg.env.N - 1 + 1 = cfg.c + cfg.env.N := by
+          omega
+
+        have hd :
+            Nat.ModEq cfg.env.N (d + 1) cfg.c := by
+          change (d + 1) % cfg.env.N = cfg.c % cfg.env.N
+          calc
+            (d + 1) % cfg.env.N
+                =
+                ((cfg.c + cfg.env.N - 1) + 1) % cfg.env.N := by
+                  simp [d, Nat.add_mod]
+            _ = (cfg.c + cfg.env.N) % cfg.env.N := by
+                  rw [hcn]
+            _ = cfg.c % cfg.env.N := by
+                  simp
+
+        have hcalc :
+            (x + (d * x) % cfg.env.N) % cfg.env.N
+              =
+            (cfg.c * x) % cfg.env.N := by
+          calc
+            (x + (d * x) % cfg.env.N) % cfg.env.N
+                =
+                (x + d * x) % cfg.env.N := by
+                  simp [Nat.add_mod]
+            _ = ((d + 1) * x) % cfg.env.N := by
+                  congr 1
+                  ring
+            _ = (cfg.c * x) % cfg.env.N :=
+                  Nat.ModEq.mul_right x hd
+
+        simpa [x, d, alg1Step2Value, alg1TargetResidue, hbit] using hcalc
+
+  have hdata :
+      RegEncoding.toNat cfg.env.data b
+        =
+      RegEncoding.toNat cfg.env.data b' := by
+    cases hbit : RegEncoding.bit cfg.ctrl b with
+    | false =>
+        have hbit' : RegEncoding.bit cfg.ctrl b' = false := by
+          calc
+            RegEncoding.bit cfg.ctrl b'
+                = RegEncoding.bit cfg.ctrl b := hctrl.symm
+            _ = false := hbit
+
+        simpa [alg1Step2Value, alg1TargetResidue, hbit, hbit'] using hy
+
+    | true =>
+        have hbit' : RegEncoding.bit cfg.ctrl b' = true := by
+          calc
+            RegEncoding.bit cfg.ctrl b'
+                = RegEncoding.bit cfg.ctrl b := hctrl.symm
+            _ = true := hbit
+
+        have hmul :
+            (cfg.c * RegEncoding.toNat cfg.env.data b) % cfg.env.N
+              =
+            (cfg.c * RegEncoding.toNat cfg.env.data b') % cfg.env.N := by
+          calc
+            (cfg.c * RegEncoding.toNat cfg.env.data b) % cfg.env.N
+                =
+                (alg1Step2Value cfg b) % cfg.env.N := by
+                  simpa [hbit] using (hstep_mod b hb).symm
+            _ =
+                (alg1Step2Value cfg b') % cfg.env.N := by
+                  rw [hy]
+            _ =
+                (cfg.c * RegEncoding.toNat cfg.env.data b') % cfg.env.N := by
+                  simpa [hbit'] using (hstep_mod b' hb')
+
+        have hmul_mod :
+            Nat.ModEq cfg.env.N
+              (cfg.c * RegEncoding.toNat cfg.env.data b)
+              (cfg.c * RegEncoding.toNat cfg.env.data b') :=
+          hmul
+
+        have hcoprime :
+            cfg.env.N.gcd cfg.c = 1 := by
+          simpa [Nat.gcd_comm] using cfg.coprime.gcd_eq_one
+
+        have hmod :
+            Nat.ModEq cfg.env.N
+              (RegEncoding.toNat cfg.env.data b)
+              (RegEncoding.toNat cfg.env.data b') :=
+          Nat.ModEq.cancel_left_of_coprime hcoprime hmul_mod
+
+        exact hmod.eq_of_lt_of_lt hb.1 hb'.1
+
+  have hoverwrite :
+      ∀ (r : Reg) (v w : ℕ) (z : qs.Basis),
+        RegEncoding.writeNat r v (RegEncoding.writeNat r w z)
+          =
+        RegEncoding.writeNat r v z := by
+    intro r v w z
+    apply RegEncoding.basis_ext
+    intro q
+    by_cases hqin : r.lo ≤ q ∧ q < r.hi
+    · exact
+        RegEncoding.bit_writeNat_in
+          (r := r)
+          (v := v)
+          (b1 := RegEncoding.writeNat r w z)
+          (b2 := z)
+          (q := q)
+          hqin.1
+          hqin.2
+    ·
+      have hqout : q < r.lo ∨ r.hi ≤ q := by
+        by_cases hleft : q < r.lo
+        · exact Or.inl hleft
+        · exact Or.inr <| le_of_not_gt <| by
+            intro hright
+            exact hqin ⟨le_of_not_gt hleft, hright⟩
+
+      calc
+        RegEncoding.bit q
+            (RegEncoding.writeNat r v (RegEncoding.writeNat r w z))
+            =
+            RegEncoding.bit q (RegEncoding.writeNat r w z) :=
+          RegEncoding.bit_writeNat_out
+            (r := r)
+            (v := v)
+            (b := RegEncoding.writeNat r w z)
+            (q := q)
+            hqout
+        _ = RegEncoding.bit q z :=
+          RegEncoding.bit_writeNat_out
+            (r := r)
+            (v := w)
+            (b := z)
+            (q := q)
+            hqout
+        _ =
+            RegEncoding.bit q (RegEncoding.writeNat r v z) := by
+          symm
+          exact
+            RegEncoding.bit_writeNat_out
+              (r := r)
+              (v := v)
+              (b := z)
+              (q := q)
+              hqout
+
+  have hrestore_ext :
+      ∀ z : qs.Basis,
+        GoodModMulBasisInput
+          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag z →
+        RegEncoding.writeNat
+          (extendHi cfg.env.data)
+          (RegEncoding.toNat cfg.env.data z)
+          z
+          =
+        z := by
+    intro z hz
+
+    let m : SplitPoint (extendHi cfg.env.data) :=
+      ⟨regSize cfg.env.data, by
+        simp [extendHi, regSize]⟩
+
+    have hxlt :
+        RegEncoding.toNat cfg.env.data z
+          <
+        ASize (splitLeft (extendHi cfg.env.data) m) := by
+      simpa [m, splitLeft, extendHi, regSize] using
+        RegEncoding.toNat_lt_ASize cfg.env.data z
+
+    have h0lt :
+        0 < ASize (splitRight (extendHi cfg.env.data) m) := by
+      simp [m, splitRight, extendHi, regSize, ASize]
+
+    have hsplit :=
+      RegEncoding.writeNat_split
+        (extendHi cfg.env.data)
+        m
+        0
+        (RegEncoding.toNat cfg.env.data z)
+        z
+        hxlt
+        h0lt
+
+    calc
+      RegEncoding.writeNat
+          (extendHi cfg.env.data)
+          (RegEncoding.toNat cfg.env.data z)
+          z
+          =
+          RegEncoding.writeNat
+            (qubitReg cfg.env.data.hi)
+            0
+            (RegEncoding.writeNat
+              cfg.env.data
+              (RegEncoding.toNat cfg.env.data z)
+              z) := by
+            simpa [m, splitLeft, splitRight, extendHi,
+              qubitReg, Reg.hi, regSize, ASize] using hsplit
+      _ =
+          RegEncoding.writeNat
+            (qubitReg cfg.env.data.hi)
+            0
+            z := by
+            rw [RegEncoding.writeNat_toNat]
+      _ =
+          RegEncoding.writeNat
+            (qubitReg cfg.env.data.hi)
+            (RegEncoding.toNat (qubitReg cfg.env.data.hi) z)
+            z := by
+            rw [hz.2.1]
+      _ = z :=
+          RegEncoding.writeNat_toNat
+            (qubitReg cfg.env.data.hi)
+            z
+
+  have hreset :
+      ∀ (z : qs.Basis) (v : Fin (ASize cfg.env.work)),
+        GoodModMulBasisInput
+          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag z →
+        RegEncoding.writeNat
+          (extendHi cfg.env.data)
+          (RegEncoding.toNat cfg.env.data z)
+          (RegEncoding.writeNat
+            cfg.env.work
+            0
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1Step2Value cfg z)
+              (RegEncoding.writeNat cfg.env.work v.1 z)))
+          =
+        z := by
+    intro z v hz
+    calc
+      RegEncoding.writeNat
+          (extendHi cfg.env.data)
+          (RegEncoding.toNat cfg.env.data z)
+          (RegEncoding.writeNat
+            cfg.env.work
+            0
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1Step2Value cfg z)
+              (RegEncoding.writeNat cfg.env.work v.1 z)))
+          =
+          RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (RegEncoding.toNat cfg.env.data z)
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1Step2Value cfg z)
+              (RegEncoding.writeNat
+                cfg.env.work
+                0
+                (RegEncoding.writeNat cfg.env.work v.1 z))) := by
+            rw [← writeNat_comm_of_disjoint
+              (extendHi cfg.env.data)
+              cfg.env.work
+              cfg.layout.1
+              (alg1Step2Value cfg z)
+              0
+              (RegEncoding.writeNat cfg.env.work v.1 z)]
+      _ =
+          RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (RegEncoding.toNat cfg.env.data z)
+            (RegEncoding.writeNat
+              cfg.env.work
+              0
+              (RegEncoding.writeNat cfg.env.work v.1 z)) := by
+            rw [hoverwrite]
+      _ =
+          RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (RegEncoding.toNat cfg.env.data z)
+            (RegEncoding.writeNat cfg.env.work 0 z) := by
+            rw [hoverwrite]
+      _ =
+          RegEncoding.writeNat
+            cfg.env.work
+            0
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (RegEncoding.toNat cfg.env.data z)
+              z) :=
+            writeNat_comm_of_disjoint
+              (extendHi cfg.env.data)
+              cfg.env.work
+              cfg.layout.1
+              (RegEncoding.toNat cfg.env.data z)
+              0
+              z
+      _ = RegEncoding.writeNat cfg.env.work 0 z := by
+            rw [hrestore_ext z hz]
+      _ = z := by
+            simpa [hz.2.2.1] using
+              (RegEncoding.writeNat_toNat cfg.env.work z)
+
+  have hbb : b = b' := by
+    have hpost :=
+      congrArg
+        (fun z : qs.Basis =>
+          RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (RegEncoding.toNat cfg.env.data b)
+            (RegEncoding.writeNat cfg.env.work 0 z))
+        hEq
+
+    calc
+      b
+          =
+          RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (RegEncoding.toNat cfg.env.data b)
+            (RegEncoding.writeNat
+              cfg.env.work
+              0
+              (RegEncoding.writeNat
+                (extendHi cfg.env.data)
+                (alg1Step2Value cfg b)
+                (RegEncoding.writeNat cfg.env.work t.1 b))) :=
+        (hreset b t hb).symm
+      _ =
+          RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (RegEncoding.toNat cfg.env.data b)
+            (RegEncoding.writeNat
+              cfg.env.work
+              0
+              (RegEncoding.writeNat
+                (extendHi cfg.env.data)
+                (alg1Step2Value cfg b')
+                (RegEncoding.writeNat cfg.env.work u.1 b'))) :=
+        hpost
+      _ =
+          RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (RegEncoding.toNat cfg.env.data b')
+            (RegEncoding.writeNat
+              cfg.env.work
+              0
+              (RegEncoding.writeNat
+                (extendHi cfg.env.data)
+                (alg1Step2Value cfg b')
+                (RegEncoding.writeNat cfg.env.work u.1 b'))) := by
+        rw [hdata]
+      _ = b' :=
+        hreset b' u hb'
+
+  apply hij
+  cases hbb
+  cases htu
+  rfl
+
+private lemma alg1_reset_extendHi_work_write
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    {η : ℝ} {k5 : ℕ → ℕ → ℕ}
+    (cfg : ModMulConfig η k5)
+    (z : qs.Basis)
+    (w y : ℕ)
+    (hz :
+      GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag z) :
+    RegEncoding.writeNat
+      (extendHi cfg.env.data)
+      (RegEncoding.toNat cfg.env.data z)
+      (RegEncoding.writeNat
+        cfg.env.work
+        0
+        (RegEncoding.writeNat
+          (extendHi cfg.env.data)
+          y
+          (RegEncoding.writeNat cfg.env.work w z)))
+      =
+    z := by
+  let m : SplitPoint (extendHi cfg.env.data) :=
+    ⟨regSize cfg.env.data, by
+      simp [extendHi, regSize]⟩
+
+  have hxlt :
+      RegEncoding.toNat cfg.env.data z
+        <
+      ASize (splitLeft (extendHi cfg.env.data) m) := by
+    simpa [m, splitLeft, extendHi, regSize] using
+      RegEncoding.toNat_lt_ASize cfg.env.data z
+
+  have h0lt :
+      0 < ASize (splitRight (extendHi cfg.env.data) m) := by
+    simp [m, splitRight, extendHi, regSize, ASize]
+
+  have hsplit :=
+    RegEncoding.writeNat_split
+      (extendHi cfg.env.data)
+      m
+      0
+      (RegEncoding.toNat cfg.env.data z)
+      z
+      hxlt
+      h0lt
+
+  have hrestore_ext :
+      RegEncoding.writeNat
+        (extendHi cfg.env.data)
+        (RegEncoding.toNat cfg.env.data z)
+        z
+        =
+      z := by
+    calc
+      RegEncoding.writeNat
+          (extendHi cfg.env.data)
+          (RegEncoding.toNat cfg.env.data z)
+          z
+          =
+        RegEncoding.writeNat
+          (qubitReg cfg.env.data.hi)
+          0
+          (RegEncoding.writeNat
+            cfg.env.data
+            (RegEncoding.toNat cfg.env.data z)
+            z) := by
+          simpa [m, splitLeft, splitRight, extendHi,
+            qubitReg, Reg.hi, regSize, ASize] using hsplit
+      _ =
+        RegEncoding.writeNat
+          (qubitReg cfg.env.data.hi)
+          0
+          z := by
+          rw [RegEncoding.writeNat_toNat]
+      _ =
+        RegEncoding.writeNat
+          (qubitReg cfg.env.data.hi)
+          (RegEncoding.toNat (qubitReg cfg.env.data.hi) z)
+          z := by
+          rw [hz.2.1]
+      _ = z :=
+        RegEncoding.writeNat_toNat
+          (qubitReg cfg.env.data.hi)
+          z
+
+  calc
+    RegEncoding.writeNat
+        (extendHi cfg.env.data)
+        (RegEncoding.toNat cfg.env.data z)
+        (RegEncoding.writeNat
+          cfg.env.work
+          0
+          (RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            y
+            (RegEncoding.writeNat cfg.env.work w z)))
+        =
+      RegEncoding.writeNat
+        (extendHi cfg.env.data)
+        (RegEncoding.toNat cfg.env.data z)
+        (RegEncoding.writeNat
+          (extendHi cfg.env.data)
+          y
+          (RegEncoding.writeNat
+            cfg.env.work
+            0
+            (RegEncoding.writeNat cfg.env.work w z))) := by
+        rw [← writeNat_comm_of_disjoint
+          (extendHi cfg.env.data)
+          cfg.env.work
+          cfg.layout.1
+          y
+          0
+          (RegEncoding.writeNat cfg.env.work w z)]
+    _ =
+      RegEncoding.writeNat
+        (extendHi cfg.env.data)
+        (RegEncoding.toNat cfg.env.data z)
+        (RegEncoding.writeNat cfg.env.work 0 z) := by
+        rw [writeNat_overwrite_same_reg]
+        rw [writeNat_overwrite_same_reg]
+    _ =
+      RegEncoding.writeNat
+        cfg.env.work
+        0
+        (RegEncoding.writeNat
+          (extendHi cfg.env.data)
+          (RegEncoding.toNat cfg.env.data z)
+          z) :=
+        writeNat_comm_of_disjoint
+          (extendHi cfg.env.data)
+          cfg.env.work
+          cfg.layout.1
+          (RegEncoding.toNat cfg.env.data z)
+          0
+          z
+    _ = RegEncoding.writeNat cfg.env.work 0 z := by
+        rw [hrestore_ext]
+    _ = z := by
+        simpa [hz.2.2.1] using
+          RegEncoding.writeNat_toNat cfg.env.work z
+
+lemma alg1_afterStep2Ref_norm_le_one
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    {η : ℝ} {k5 : ℕ → ℕ → ℕ}
+    (cfg : ModMulConfig η k5)
+    (ψ : qs.State)
+    (tr : Alg1Trace qs cfg ψ) :
+    cfg.ValidUnitState qs ψ →
+      ‖tr.afterStep2Ref‖ ≤ 1 := by
+  classical
+  intro hψ
+
+  let Sgood : Finset (Σ b : qs.Basis, Fin (ASize cfg.env.work)) :=
+    tr.support.sigma fun b => alg1GoodLabels cfg b
+  let α : (Σ _b : qs.Basis, Fin (ASize cfg.env.work)) → ℂ :=
+    fun i => tr.inputCoeff i.1 * tr.phaseCoeff i.1 i.2
+  let labelGood : (Σ _b : qs.Basis, Fin (ASize cfg.env.work)) → qs.Basis :=
+    fun i => RegEncoding.writeNat cfg.env.work i.2.1 i.1
+  let labelStep2 : (Σ _b : qs.Basis, Fin (ASize cfg.env.work)) → qs.Basis :=
+    fun i =>
+      RegEncoding.writeNat
+        (extendHi cfg.env.data)
+        (alg1Step2Value cfg i.1)
+        (RegEncoding.writeNat cfg.env.work i.2.1 i.1)
+
+  have hgood_norm : ‖tr.goodStep1‖ ≤ 1 :=
+    alg1_goodStep1_norm_le_one qs cfg ψ tr hψ
+
+  have hgood_flat :
+      tr.goodStep1 =
+      ∑ i ∈ Sgood, α i • qs.ket (labelGood i) := by
+    simp [Sgood, α, labelGood, Alg1Trace.goodStep1, Finset.sum_sigma,
+      Finset.smul_sum, smul_smul]
+
+  have href_flat :
+      tr.afterStep2Ref =
+      ∑ i ∈ Sgood, α i • qs.ket (labelStep2 i) := by
+    simp [Sgood, α, labelStep2, Alg1Trace.afterStep2Ref, Finset.sum_sigma,
+      Finset.smul_sum, smul_smul]
+
+  have hgood_inj :
+      ∀ i ∈ Sgood, ∀ j ∈ Sgood, i ≠ j → labelGood i ≠ labelGood j := by
+    intro i hi j hj hij hEq
+    have hi_full :
+        i ∈ tr.support.sigma (fun _ : qs.Basis => (Finset.univ : Finset (Fin (ASize cfg.env.work)))) := by
+      rcases Finset.mem_sigma.mp hi with ⟨hb, ht⟩
+      exact Finset.mem_sigma.mpr ⟨hb, by simp⟩
+    have hj_full :
+        j ∈ tr.support.sigma (fun _ : qs.Basis => (Finset.univ : Finset (Fin (ASize cfg.env.work)))) := by
+      rcases Finset.mem_sigma.mp hj with ⟨hb, ht⟩
+      exact Finset.mem_sigma.mpr ⟨hb, by simp⟩
+
+    let Sfull : Finset (Σ _b : qs.Basis, Fin (ASize cfg.env.work)) :=
+      tr.support.sigma fun _ => Finset.univ
+
+    have hwrite_inj :
+        ∀ i ∈ Sfull, ∀ j ∈ Sfull, labelGood i = labelGood j → i = j := by
+      intro i hi j hj hEq
+      rcases Finset.mem_sigma.mp hi with ⟨hi_b, _⟩
+      rcases Finset.mem_sigma.mp hj with ⟨hj_b, _⟩
+      have hi_read :
+          RegEncoding.toNat cfg.env.work
+              (RegEncoding.writeNat cfg.env.work i.2.1 i.1)
+            =
+          i.2.1 :=
+        RegEncoding.toNat_writeNat_of_lt
+          cfg.env.work i.2.1 i.1 i.2.isLt
+      have hj_read :
+          RegEncoding.toNat cfg.env.work
+              (RegEncoding.writeNat cfg.env.work j.2.1 j.1)
+            =
+          j.2.1 :=
+        RegEncoding.toNat_writeNat_of_lt
+          cfg.env.work j.2.1 j.1 j.2.isLt
+      have ht_val : i.2.1 = j.2.1 := by
+        calc
+          i.2.1
+              =
+            RegEncoding.toNat cfg.env.work
+              (RegEncoding.writeNat cfg.env.work i.2.1 i.1) := hi_read.symm
+          _ =
+            RegEncoding.toNat cfg.env.work
+              (RegEncoding.writeNat cfg.env.work j.2.1 j.1) := by
+              simpa [labelGood] using congrArg (RegEncoding.toNat cfg.env.work) hEq
+          _ = j.2.1 := hj_read
+      have ht : i.2 = j.2 := Fin.ext ht_val
+      have hi_work :
+          RegEncoding.toNat cfg.env.work i.1 = 0 :=
+        (tr.input_good i.1 hi_b).2.2.1
+      have hj_work :
+          RegEncoding.toNat cfg.env.work j.1 = 0 :=
+        (tr.input_good j.1 hj_b).2.2.1
+      have hi_zero :
+          RegEncoding.writeNat cfg.env.work 0 i.1 = i.1 := by
+        simpa [hi_work] using
+          RegEncoding.writeNat_toNat cfg.env.work i.1
+      have hj_zero :
+          RegEncoding.writeNat cfg.env.work 0 j.1 = j.1 := by
+        simpa [hj_work] using
+          RegEncoding.writeNat_toNat cfg.env.work j.1
+      have hb : i.1 = j.1 := by
+        calc
+          i.1 = RegEncoding.writeNat cfg.env.work 0 i.1 := hi_zero.symm
+          _ =
+            RegEncoding.writeNat cfg.env.work 0
+              (RegEncoding.writeNat cfg.env.work i.2.1 i.1) := by
+              symm
+              exact writeNat_overwrite_same_reg cfg.env.work 0 i.2.1 i.1
+          _ =
+            RegEncoding.writeNat cfg.env.work 0
+              (RegEncoding.writeNat cfg.env.work j.2.1 j.1) := by
+              exact congrArg (RegEncoding.writeNat cfg.env.work 0) hEq
+          _ =
+            RegEncoding.writeNat cfg.env.work 0 j.1 := by
+              exact writeNat_overwrite_same_reg cfg.env.work 0 j.2.1 j.1
+          _ = j.1 := hj_zero
+      cases i
+      cases j
+      simp at hb ht ⊢
+      exact ⟨hb, ht⟩
+
+    exact hij (hwrite_inj i (by simpa [Sfull] using hi_full) j (by simpa [Sfull] using hj_full) hEq)
+
+  have hstep2_inj :
+      ∀ i ∈ Sgood, ∀ j ∈ Sgood, i ≠ j → labelStep2 i ≠ labelStep2 j := by
+    simpa [Sgood, labelStep2] using
+      alg1_step2_label_injective_on_good qs cfg ψ tr
+
+  have hnorm_eq :
+      ‖∑ i ∈ Sgood, α i • qs.ket (labelGood i)‖
+        =
+      ‖∑ i ∈ Sgood, α i • qs.ket (labelStep2 i)‖ :=
+    norm_sum_reindex_ket_eq
+      qs Sgood α labelGood labelStep2 hgood_inj hstep2_inj
+
+  calc
+    ‖tr.afterStep2Ref‖
+        =
+      ‖∑ i ∈ Sgood, α i • qs.ket (labelStep2 i)‖ := by
+        rw [href_flat]
+    _ =
+      ‖∑ i ∈ Sgood, α i • qs.ket (labelGood i)‖ := hnorm_eq.symm
+    _ =
+      ‖tr.goodStep1‖ := by
+        rw [hgood_flat]
+    _ ≤ 1 := hgood_norm
 
 /--
 Step 2: on good labels, replace multiplication by the approximate fraction
 with exact addition of `alg1TargetResidue`.
 -/
+lemma alg1_step2_phase_norm_le_two
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [Spec]
+    [GateSemanticsFacts qs]
+    {η : ℝ}
+    {k5 : ℕ → ℕ → ℕ}
+    (cfg : ModMulConfig η k5)
+    (ψ : qs.State)
+    (tr : Alg1Trace qs cfg ψ) :
+    cfg.ValidUnitState qs ψ →
+      ‖ qs.eval (ModMulConfig.U2 (Basis := qs.Basis) cfg)
+            tr.goodStep1
+          - tr.afterStep2Ref‖
+        ≤ 2 := by
+  intro hunit
+
+  have hgood : ‖tr.goodStep1‖ ≤ 1 :=
+    alg1_goodStep1_norm_le_one qs cfg ψ tr hunit
+
+  have href : ‖tr.afterStep2Ref‖ ≤ 1 :=
+    alg1_afterStep2Ref_norm_le_one qs cfg ψ tr hunit
+
+  have hU2good :
+      ‖qs.eval (ModMulConfig.U2 (Basis := qs.Basis) cfg) tr.goodStep1‖
+        ≤ 1 := by
+    calc
+      ‖qs.eval (ModMulConfig.U2 (Basis := qs.Basis) cfg) tr.goodStep1‖
+          =
+          ‖tr.goodStep1‖ := by
+            simpa using
+              (eval_norm_preserved
+                (qs := qs)
+                (ModMulConfig.U2 (Basis := qs.Basis) cfg)
+                tr.goodStep1)
+      _ ≤ 1 := hgood
+
+  calc
+    ‖qs.eval (ModMulConfig.U2 (Basis := qs.Basis) cfg)
+          tr.goodStep1
+        - tr.afterStep2Ref‖
+      ≤
+        ‖qs.eval (ModMulConfig.U2 (Basis := qs.Basis) cfg)
+            tr.goodStep1‖
+          +
+        ‖tr.afterStep2Ref‖ :=
+      norm_sub_le _ _
+    _ ≤ 1 + 1 :=
+      add_le_add hU2good href
+    _ = 2 := by norm_num
+
 lemma alg1_step2_phase_bound
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -3228,7 +4925,33 @@ lemma alg1_step2_phase_bound
               tr.goodStep1
             - tr.afterStep2Ref‖
           ≤ stepErr K₂ η := by
-  sorry
+  classical
+  let K₂ : ℝ := if 0 < η then 2 / η else 0
+  refine ⟨K₂, ?_, ?_⟩
+  · dsimp [K₂]
+    by_cases hη : 0 < η
+    · rw [if_pos hη]
+      exact div_nonneg (by norm_num) (le_of_lt hη)
+    · simp [hη]
+  · intro cfg ψ tr hψ
+    have hdist :
+        ‖ qs.eval (ModMulConfig.U2 (Basis := qs.Basis) cfg)
+              tr.goodStep1
+            - tr.afterStep2Ref‖
+          ≤ 2 :=
+      alg1_step2_phase_norm_le_two
+        qs cfg ψ tr hψ
+    have hηpos : 0 < η :=
+      cfg.env.precision.1
+    have hKη : K₂ * η = 2 := by
+      dsimp [K₂]
+      rw [if_pos hηpos]
+      field_simp [ne_of_gt hηpos]
+    have htwo_le_step :
+        (2 : ℝ) ≤ stepErr K₂ η := by
+      rw [stepErr, hKη]
+      norm_num
+    exact le_trans hdist htwo_le_step
 
 
 
@@ -3247,8 +4970,124 @@ lemma alg1_step3_reduces_to_modmul
       alg1Step2Value cfg b)
       =
     alg1OutputValue cfg b := by
-  sorry
+  let N : ℕ := cfg.env.N
+  let x : ℕ := RegEncoding.toNat cfg.env.data b
+  let r : ℕ := alg1TargetResidue cfg b
+  let s : ℕ := alg1Step2Value cfg b
 
+  have hNpos : 0 < N := by
+    dsimp [N]
+    exact Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one
+
+  have hxlt : x < N := by
+    simpa [x, N] using hb.1
+
+  have hrlt : r < N := by
+    simpa [r, N] using alg1TargetResidue_lt_N cfg b
+
+  have hs_eq : s = x + r := by
+    simp [s, x, r, alg1Step2Value]
+
+  have hslt : s < 2 * N := by
+    rw [hs_eq]
+    omega
+
+  have hy_mod :
+      alg1OutputValue cfg b = s % N := by
+    rw [hs_eq]
+    dsimp [x, r, N]
+    by_cases hctrl : RegEncoding.bit cfg.ctrl b
+    ·
+      simp only [
+        alg1OutputValue,
+        alg1TargetResidue,
+        hctrl,
+        if_true
+      ]
+      exact
+        alg1_output_mod
+          cfg.c
+          cfg.env.N
+          (RegEncoding.toNat cfg.env.data b)
+          (Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one)
+    ·
+      simp [
+        alg1OutputValue,
+        alg1TargetResidue,
+        hctrl,
+        Nat.mod_eq_of_lt hb.1
+      ]
+
+  by_cases hover : alg1Overflow cfg b
+  ·
+    have hover' : N ≤ s := by
+      simpa [alg1Overflow, s, N] using hover
+    have hmod :
+        s % N = s - N := by
+      calc
+        s % N = (s - N) % N := Nat.mod_eq_sub_mod hover'
+        _ = s - N := Nat.mod_eq_of_lt (by omega)
+    simp [hover, hy_mod, hmod, s, N]
+  ·
+    have hover' : ¬ N ≤ s := by
+      simpa [alg1Overflow, s, N] using hover
+    have hmod :
+        s % N = s := Nat.mod_eq_of_lt (lt_of_not_ge hover')
+    simp [hover, hy_mod, hmod, s, N]
+
+
+private lemma writeNat_overwrite_same
+    {Basis : Type u} [RegEncoding Basis]
+    (r : Reg) (v w : ℕ) (b : Basis) :
+    RegEncoding.writeNat r v (RegEncoding.writeNat r w b)
+      =
+    RegEncoding.writeNat r v b := by
+  apply RegEncoding.basis_ext
+  intro q
+  by_cases hqin : r.lo ≤ q ∧ q < r.hi
+  · exact
+      RegEncoding.bit_writeNat_in
+        (r := r)
+        (v := v)
+        (b1 := RegEncoding.writeNat r w b)
+        (b2 := b)
+        (q := q)
+        hqin.1
+        hqin.2
+  ·
+    have hqout : q < r.lo ∨ r.hi ≤ q := by
+      rcases not_and_or.mp hqin with h | h
+      · exact Or.inl (lt_of_not_ge h)
+      · exact Or.inr (le_of_not_gt h)
+    rw [
+      RegEncoding.bit_writeNat_out
+        (r := r) (v := v) (b := RegEncoding.writeNat r w b)
+        (q := q) hqout,
+      RegEncoding.bit_writeNat_out
+        (r := r) (v := v) (b := b)
+        (q := q) hqout,
+      RegEncoding.bit_writeNat_out
+        (r := r) (v := w) (b := b)
+        (q := q) hqout
+    ]
+
+private lemma disjoint_qubitReg_of_outside
+    {q : ℕ} {r : Reg}
+    (h : QubitOutside q r) :
+    Disjoint (qubitReg q) r := by
+  rcases h with h | h
+  · left
+    simpa [qubitReg, Reg.hi] using Nat.succ_le_of_lt h
+  · right
+    simpa [qubitReg] using h
+
+private lemma disjoint_of_qubitReg_outside
+    {q : ℕ} {r : Reg}
+    (h : QubitOutside q r) :
+    Disjoint r (qubitReg q) := by
+  rcases disjoint_qubitReg_of_outside (q := q) (r := r) h with hdisj | hdisj
+  · exact Or.inr hdisj
+  · exact Or.inl hdisj
 
 /--
 Steps 3 and 4 are exact on the Step-2 reference state.
@@ -3260,6 +5099,464 @@ This is where:
 
 are used.
 -/
+lemma alg1_step34_reference_exact_core
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [Spec]
+    [ModMulPrimitiveSemantics qs]
+    {η : ℝ}
+    {k5 : ℕ → ℕ → ℕ}
+    (cfg : ModMulConfig η k5)
+    (ψ : qs.State)
+    (tr : Alg1Trace qs cfg ψ) :
+    qs.eval (ModMulConfig.U34 (Basis := qs.Basis) cfg)
+        tr.afterStep2Ref
+      =
+    tr.afterStep34Ref := by
+  classical
+
+  let xext : Reg := extendHi cfg.env.data
+  let flagReg : Reg := qubitReg cfg.flag
+
+  have hXW : Disjoint xext cfg.env.work := by
+    simpa [xext] using cfg.layout.1
+
+  have hflagX_out : QubitOutside cfg.flag xext := by
+    simpa [xext] using cfg.layout.2.1
+
+  have hflagW_out : QubitOutside cfg.flag cfg.env.work :=
+    cfg.layout.2.2.1
+
+  have hflagX : Disjoint flagReg xext := by
+    simpa [flagReg] using
+      disjoint_qubitReg_of_outside
+        (q := cfg.flag) (r := xext) hflagX_out
+
+  have hXflag : Disjoint xext flagReg := by
+    simpa [flagReg] using
+      disjoint_of_qubitReg_outside
+        (q := cfg.flag) (r := xext) hflagX_out
+
+  have hflagW : Disjoint flagReg cfg.env.work := by
+    simpa [flagReg] using
+      disjoint_qubitReg_of_outside
+        (q := cfg.flag) (r := cfg.env.work) hflagW_out
+
+  have hWflag : Disjoint cfg.env.work flagReg := by
+    simpa [flagReg] using
+      disjoint_of_qubitReg_outside
+        (q := cfg.flag) (r := cfg.env.work) hflagW_out
+
+  have hket :
+      ∀ b ∈ tr.support,
+        ∀ t ∈ alg1GoodLabels cfg b,
+          tr.phaseCoeff b t ≠ 0 →
+          qs.eval (ModMulConfig.U34 (Basis := qs.Basis) cfg)
+            (qs.ket
+              (RegEncoding.writeNat
+                xext
+                (alg1Step2Value cfg b)
+                (RegEncoding.writeNat cfg.env.work t.1 b)))
+          =
+          qs.ket
+            (RegEncoding.writeNat
+              xext
+              (alg1OutputValue cfg b)
+              (RegEncoding.writeNat cfg.env.work t.1 b)) := by
+    intro b hb t ht hphase_ne
+
+    let s : ℕ := alg1Step2Value cfg b
+    let y : ℕ := alg1OutputValue cfg b
+    let w0 : qs.Basis :=
+      RegEncoding.writeNat cfg.env.work t.1 b
+    let b2 : qs.Basis :=
+      RegEncoding.writeNat xext s w0
+    let red : ℕ :=
+      if alg1Overflow cfg b then s - cfg.env.N else s
+    let cmp : ℕ :=
+      if alg1Overflow cfg b then 1 else 0
+    let b3 : qs.Basis :=
+      RegEncoding.writeNat flagReg cmp
+        (RegEncoding.writeNat xext red b2)
+
+    have hb_good :
+        GoodModMulBasisInput
+          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b :=
+      tr.input_good b hb
+
+    have hs_cap : s < ASize xext := by
+      simpa [s, xext] using
+        alg1Step2Value_lt_extendHi_capacity cfg b hb_good
+
+    have hy_cap : y < ASize xext := by
+      have hy_data :
+          y < ASize cfg.env.data := by
+        simpa [y] using
+          alg1OutputValue_lt_data_capacity cfg b hb_good
+      have hle : ASize cfg.env.data ≤ ASize xext := by
+        simp [xext, ASize, regSize, extendHi, Nat.pow_succ]
+      exact lt_of_lt_of_le hy_data hle
+
+    have hred_eq_y : red = y := by
+      dsimp [red, s, y]
+      exact alg1_step3_reduces_to_modmul cfg b hb_good
+
+    have hred_cap : red < ASize xext := by
+      rw [hred_eq_y]
+      exact hy_cap
+
+    have hs_lt_twoN : s < 2 * cfg.env.N := by
+      have hx :
+          RegEncoding.toNat cfg.env.data b < cfg.env.N :=
+        hb_good.1
+      have hr :
+          alg1TargetResidue cfg b < cfg.env.N :=
+        alg1TargetResidue_lt_N cfg b
+      dsimp [s, alg1Step2Value]
+      omega
+
+    have hflag_clean_b2 :
+        RegEncoding.toNat flagReg b2 = 0 := by
+      calc
+        RegEncoding.toNat flagReg b2
+            =
+          RegEncoding.toNat flagReg w0 := by
+            dsimp [b2]
+            exact
+              RegEncoding.toNat_left_write_right
+                flagReg xext hflagX w0 s
+        _ =
+          RegEncoding.toNat flagReg b := by
+            dsimp [w0]
+            exact
+              RegEncoding.toNat_left_write_right
+                flagReg cfg.env.work hflagW b t.1
+        _ = 0 := by
+            simpa [flagReg] using hb_good.2.2.2
+
+    have hx_b2 :
+        RegEncoding.toNat xext b2 = s := by
+      dsimp [b2]
+      exact
+        RegEncoding.toNat_writeNat_of_lt
+          xext s w0 hs_cap
+
+    have hstep3 :
+        qs.eval (step3 cfg.env.N xext cfg.flag) (qs.ket b2)
+          =
+        qs.ket b3 := by
+      have hraw :=
+        ModMulPrimitiveSemantics.eval_step3_clean_ket
+          (qs := qs)
+          cfg.env.N
+          xext
+          cfg.flag
+          b2
+          hflagX_out
+          (by simpa [flagReg] using hflag_clean_b2)
+          (by simpa [hx_b2] using hs_lt_twoN)
+      simpa [
+        b3, red, cmp, flagReg, hx_b2, s
+      ] using hraw
+
+    have hx_after_x :
+        RegEncoding.toNat xext
+            (RegEncoding.writeNat xext red b2)
+          =
+        red :=
+      RegEncoding.toNat_writeNat_of_lt xext red b2 hred_cap
+
+    have hx_b3 :
+        RegEncoding.toNat xext b3 = y := by
+      calc
+        RegEncoding.toNat xext b3
+            =
+          RegEncoding.toNat xext
+            (RegEncoding.writeNat xext red b2) := by
+            dsimp [b3]
+            exact
+              RegEncoding.toNat_left_write_right
+                xext flagReg hXflag
+                (RegEncoding.writeNat xext red b2)
+                cmp
+        _ = red := hx_after_x
+        _ = y := hred_eq_y
+
+    have hwork_b2 :
+        RegEncoding.toNat cfg.env.work b2 = t.1 := by
+      calc
+        RegEncoding.toNat cfg.env.work b2
+            =
+          RegEncoding.toNat cfg.env.work w0 := by
+            dsimp [b2]
+            exact
+              RegEncoding.toNat_right_write_left
+                xext cfg.env.work hXW w0 s
+        _ = t.1 := by
+            dsimp [w0]
+            exact
+              RegEncoding.toNat_writeNat_of_lt
+                cfg.env.work t.1 b t.isLt
+
+    have hwork_after_x :
+        RegEncoding.toNat cfg.env.work
+            (RegEncoding.writeNat xext red b2)
+          =
+        t.1 := by
+      calc
+        RegEncoding.toNat cfg.env.work
+            (RegEncoding.writeNat xext red b2)
+            =
+          RegEncoding.toNat cfg.env.work b2 := by
+            exact
+              RegEncoding.toNat_right_write_left
+                xext cfg.env.work hXW b2 red
+        _ = t.1 := hwork_b2
+
+    have hwork_b3 :
+        RegEncoding.toNat cfg.env.work b3 = t.1 := by
+      calc
+        RegEncoding.toNat cfg.env.work b3
+            =
+          RegEncoding.toNat cfg.env.work
+            (RegEncoding.writeNat xext red b2) := by
+            dsimp [b3]
+            exact
+              RegEncoding.toNat_left_write_right
+                cfg.env.work flagReg hWflag
+                (RegEncoding.writeNat xext red b2)
+                cmp
+        _ = t.1 := hwork_after_x
+
+    have hflag_b3 :
+        RegEncoding.toNat flagReg b3 = cmp := by
+      dsimp [b3]
+      apply RegEncoding.toNat_writeNat_of_lt
+      dsimp [cmp, flagReg, ASize, regSize, qubitReg]
+      by_cases h : alg1Overflow cfg b <;> simp [h]
+
+    have hcmp_eq_cross :
+        cmp =
+          (if RegEncoding.toNat xext b3 * ASize cfg.env.work
+                < cfg.env.N * RegEncoding.toNat cfg.env.work b3 then
+            1
+          else
+            0) := by
+      have hcross :
+          (RegEncoding.toNat xext b3 * ASize cfg.env.work
+                < cfg.env.N * RegEncoding.toNat cfg.env.work b3)
+            ↔
+          alg1Overflow cfg b := by
+        simpa [
+          alg1Step4CrossCondition,
+          hx_b3,
+          hwork_b3,
+          y
+        ] using
+          (tr.step34_support b hb t ht hphase_ne)
+      dsimp [cmp]
+      by_cases hover : alg1Overflow cfg b
+      · have hcross_true :
+            RegEncoding.toNat xext b3 * ASize cfg.env.work
+                < cfg.env.N * RegEncoding.toNat cfg.env.work b3 :=
+          hcross.mpr hover
+        simp [hover, hcross_true]
+      · have hcross_false :
+            ¬ RegEncoding.toNat xext b3 * ASize cfg.env.work
+                < cfg.env.N * RegEncoding.toNat cfg.env.work b3 := by
+          intro h
+          exact hover (hcross.mp h)
+        simp [hover, hcross_false]
+
+    have hstep4 :
+        qs.eval (step4 cfg.env.N xext cfg.env.work cfg.flag) (qs.ket b3)
+          =
+        qs.ket (RegEncoding.writeNat flagReg 0 b3) := by
+      have hraw :=
+        ModMulPrimitiveSemantics.eval_step4_cancels_ket
+          (qs := qs)
+          cfg.env.N
+          xext
+          cfg.env.work
+          cfg.flag
+          b3
+          hflagX_out
+          hflagW_out
+          (by
+            rw [hflag_b3]
+            exact hcmp_eq_cross)
+      simpa [flagReg] using hraw
+
+    have hfinal_clean :
+        RegEncoding.toNat flagReg
+          (RegEncoding.writeNat xext y w0) = 0 := by
+      calc
+        RegEncoding.toNat flagReg
+          (RegEncoding.writeNat xext y w0)
+            =
+          RegEncoding.toNat flagReg w0 := by
+            exact
+              RegEncoding.toNat_left_write_right
+                flagReg xext hflagX w0 y
+        _ =
+          RegEncoding.toNat flagReg b := by
+            dsimp [w0]
+            exact
+              RegEncoding.toNat_left_write_right
+                flagReg cfg.env.work hflagW b t.1
+        _ = 0 := by
+            simpa [flagReg] using hb_good.2.2.2
+
+    have hwrite_x_simpl :
+        RegEncoding.writeNat xext red b2
+          =
+        RegEncoding.writeNat xext y w0 := by
+      dsimp [b2]
+      rw [hred_eq_y]
+      exact writeNat_overwrite_same xext y s w0
+
+    have hclear :
+        RegEncoding.writeNat flagReg 0 b3
+          =
+        RegEncoding.writeNat xext y w0 := by
+      calc
+        RegEncoding.writeNat flagReg 0 b3
+            =
+          RegEncoding.writeNat flagReg 0
+            (RegEncoding.writeNat xext red b2) := by
+            dsimp [b3]
+            exact writeNat_overwrite_same flagReg 0 cmp
+              (RegEncoding.writeNat xext red b2)
+        _ =
+          RegEncoding.writeNat flagReg 0
+            (RegEncoding.writeNat xext y w0) := by
+            rw [hwrite_x_simpl]
+        _ =
+          RegEncoding.writeNat xext y w0 := by
+            rw [← hfinal_clean]
+            exact RegEncoding.writeNat_toNat flagReg
+              (RegEncoding.writeNat xext y w0)
+
+    calc
+      qs.eval (ModMulConfig.U34 (Basis := qs.Basis) cfg)
+          (qs.ket b2)
+        =
+      qs.eval (step4 cfg.env.N xext cfg.env.work cfg.flag)
+          (qs.eval (step3 cfg.env.N xext cfg.flag) (qs.ket b2)) := by
+        simp [ModMulConfig.U34, xext, qs.eval_seq]
+      _ =
+      qs.eval (step4 cfg.env.N xext cfg.env.work cfg.flag)
+          (qs.ket b3) := by
+        rw [hstep3]
+      _ =
+      qs.ket (RegEncoding.writeNat flagReg 0 b3) := hstep4
+      _ =
+      qs.ket (RegEncoding.writeNat xext y w0) := by
+        rw [hclear]
+
+  calc
+    qs.eval (ModMulConfig.U34 (Basis := qs.Basis) cfg)
+        tr.afterStep2Ref
+      =
+    qs.eval (ModMulConfig.U34 (Basis := qs.Basis) cfg)
+      (∑ b ∈ tr.support,
+        tr.inputCoeff b •
+          ∑ t ∈ alg1GoodLabels cfg b,
+            tr.phaseCoeff b t •
+              qs.ket
+                (RegEncoding.writeNat
+                  xext
+                  (alg1Step2Value cfg b)
+                  (RegEncoding.writeNat cfg.env.work t.1 b))) := by
+        simp [Alg1Trace.afterStep2Ref, xext]
+    _ =
+    ∑ b ∈ tr.support,
+      qs.eval (ModMulConfig.U34 (Basis := qs.Basis) cfg)
+        (tr.inputCoeff b •
+          ∑ t ∈ alg1GoodLabels cfg b,
+            tr.phaseCoeff b t •
+              qs.ket
+                (RegEncoding.writeNat
+                  xext
+                  (alg1Step2Value cfg b)
+                  (RegEncoding.writeNat cfg.env.work t.1 b))) := by
+        simpa using
+          eval_finset_sum
+            qs
+            (ModMulConfig.U34 (Basis := qs.Basis) cfg)
+            tr.support
+            (fun b =>
+              tr.inputCoeff b •
+                ∑ t ∈ alg1GoodLabels cfg b,
+                  tr.phaseCoeff b t •
+                    qs.ket
+                      (RegEncoding.writeNat
+                        xext
+                        (alg1Step2Value cfg b)
+                        (RegEncoding.writeNat cfg.env.work t.1 b)))
+    _ =
+    ∑ b ∈ tr.support,
+      tr.inputCoeff b •
+        qs.eval (ModMulConfig.U34 (Basis := qs.Basis) cfg)
+          (∑ t ∈ alg1GoodLabels cfg b,
+            tr.phaseCoeff b t •
+              qs.ket
+                (RegEncoding.writeNat
+                  xext
+                  (alg1Step2Value cfg b)
+                  (RegEncoding.writeNat cfg.env.work t.1 b))) := by
+        apply Finset.sum_congr rfl
+        intro b hb
+        rw [qs.eval_smul]
+    _ =
+    ∑ b ∈ tr.support,
+      tr.inputCoeff b •
+        ∑ t ∈ alg1GoodLabels cfg b,
+          qs.eval (ModMulConfig.U34 (Basis := qs.Basis) cfg)
+            (tr.phaseCoeff b t •
+              qs.ket
+                (RegEncoding.writeNat
+                  xext
+                  (alg1Step2Value cfg b)
+                  (RegEncoding.writeNat cfg.env.work t.1 b))) := by
+        apply Finset.sum_congr rfl
+        intro b hb
+        congr 1
+        simpa using
+          eval_finset_sum
+            qs
+            (ModMulConfig.U34 (Basis := qs.Basis) cfg)
+            (alg1GoodLabels cfg b)
+            (fun t =>
+              tr.phaseCoeff b t •
+                qs.ket
+                  (RegEncoding.writeNat
+                    xext
+                    (alg1Step2Value cfg b)
+                    (RegEncoding.writeNat cfg.env.work t.1 b)))
+    _ =
+    ∑ b ∈ tr.support,
+      tr.inputCoeff b •
+        ∑ t ∈ alg1GoodLabels cfg b,
+          tr.phaseCoeff b t •
+            qs.ket
+              (RegEncoding.writeNat
+                xext
+                (alg1OutputValue cfg b)
+                (RegEncoding.writeNat cfg.env.work t.1 b)) := by
+        apply Finset.sum_congr rfl
+        intro b hb
+        congr 1
+        apply Finset.sum_congr rfl
+        intro t ht
+        by_cases hphase : tr.phaseCoeff b t = 0
+        · simp [hphase, qs.eval_zero]
+        · rw [qs.eval_smul, hket b hb t ht hphase]
+    _ =
+    tr.afterStep34Ref := by
+      simp [Alg1Trace.afterStep34Ref, xext]
+
 lemma alg1_step34_reference_exact
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -3275,7 +5572,386 @@ lemma alg1_step34_reference_exact
         tr.afterStep2Ref
       =
     tr.afterStep34Ref := by
-  sorry
+  exact alg1_step34_reference_exact_core qs cfg ψ tr
+
+private lemma alg1_afterStep34Ref_norm_le_one
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [Spec]
+    [GateSemanticsFacts qs]
+    [IdealCtrlModMulExactSemantics qs]
+    {η : ℝ}
+    {k5 : ℕ → ℕ → ℕ}
+    (cfg : ModMulConfig η k5)
+    (ψ : qs.State)
+    (tr : Alg1Trace qs cfg ψ) :
+    cfg.ValidUnitState qs ψ →
+      ‖tr.afterStep34Ref‖ ≤ 1 := by
+  classical
+  intro hψ
+
+  let Sgood : Finset (Σ b : qs.Basis, Fin (ASize cfg.env.work)) :=
+    tr.support.sigma fun b => alg1GoodLabels cfg b
+  let α : (Σ _b : qs.Basis, Fin (ASize cfg.env.work)) → ℂ :=
+    fun i => tr.inputCoeff i.1 * tr.phaseCoeff i.1 i.2
+  let labelStep2 : (Σ _b : qs.Basis, Fin (ASize cfg.env.work)) → qs.Basis :=
+    fun i =>
+      RegEncoding.writeNat
+        (extendHi cfg.env.data)
+        (alg1Step2Value cfg i.1)
+        (RegEncoding.writeNat cfg.env.work i.2.1 i.1)
+  let labelStep34 : (Σ _b : qs.Basis, Fin (ASize cfg.env.work)) → qs.Basis :=
+    fun i =>
+      RegEncoding.writeNat
+        (extendHi cfg.env.data)
+        (alg1OutputValue cfg i.1)
+        (RegEncoding.writeNat cfg.env.work i.2.1 i.1)
+
+  have href2_norm : ‖tr.afterStep2Ref‖ ≤ 1 :=
+    alg1_afterStep2Ref_norm_le_one qs cfg ψ tr hψ
+
+  have href2_flat :
+      tr.afterStep2Ref =
+      ∑ i ∈ Sgood, α i • qs.ket (labelStep2 i) := by
+    simp [Sgood, α, labelStep2, Alg1Trace.afterStep2Ref, Finset.sum_sigma,
+      Finset.smul_sum, smul_smul]
+
+  have href34_flat :
+      tr.afterStep34Ref =
+      ∑ i ∈ Sgood, α i • qs.ket (labelStep34 i) := by
+    simp [Sgood, α, labelStep34, Alg1Trace.afterStep34Ref, Finset.sum_sigma,
+      Finset.smul_sum, smul_smul]
+
+  have hstep2_inj :
+      ∀ i ∈ Sgood, ∀ j ∈ Sgood, i ≠ j → labelStep2 i ≠ labelStep2 j := by
+    simpa [Sgood, labelStep2] using
+      alg1_step2_label_injective_on_good qs cfg ψ tr
+
+  have hstep34_inj :
+      ∀ i ∈ Sgood, ∀ j ∈ Sgood, i ≠ j → labelStep34 i ≠ labelStep34 j := by
+    intro i hi j hj hij hEq
+    rcases i with ⟨b, t⟩
+    rcases j with ⟨b', u⟩
+    rcases Finset.mem_sigma.mp hi with ⟨hbmem, _htgood⟩
+    rcases Finset.mem_sigma.mp hj with ⟨hbmem', _hugood⟩
+    have hb :
+        GoodModMulBasisInput
+          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b :=
+      tr.input_good b hbmem
+    have hb' :
+        GoodModMulBasisInput
+          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b' :=
+      tr.input_good b' hbmem'
+
+    have hdisj :
+        Disjoint cfg.env.work (extendHi cfg.env.data) := by
+      rcases cfg.layout.1 with h | h
+      · exact Or.inr h
+      · exact Or.inl h
+
+    have hout_cap :
+        alg1OutputValue cfg b < ASize (extendHi cfg.env.data) := by
+      have hdata := alg1OutputValue_lt_data_capacity cfg b hb
+      have hle : ASize cfg.env.data ≤ ASize (extendHi cfg.env.data) := by
+        simp [ASize, regSize, extendHi, Nat.pow_succ]
+      exact lt_of_lt_of_le hdata hle
+
+    have hout_cap' :
+        alg1OutputValue cfg b' < ASize (extendHi cfg.env.data) := by
+      have hdata := alg1OutputValue_lt_data_capacity cfg b' hb'
+      have hle : ASize cfg.env.data ≤ ASize (extendHi cfg.env.data) := by
+        simp [ASize, regSize, extendHi, Nat.pow_succ]
+      exact lt_of_lt_of_le hdata hle
+
+    have hout :
+        alg1OutputValue cfg b = alg1OutputValue cfg b' := by
+      calc
+        alg1OutputValue cfg b
+            =
+          RegEncoding.toNat (extendHi cfg.env.data)
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1OutputValue cfg b)
+              (RegEncoding.writeNat cfg.env.work t.1 b)) := by
+            symm
+            exact
+              RegEncoding.toNat_writeNat_of_lt
+                (extendHi cfg.env.data)
+                (alg1OutputValue cfg b)
+                (RegEncoding.writeNat cfg.env.work t.1 b)
+                hout_cap
+        _ =
+          RegEncoding.toNat (extendHi cfg.env.data)
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1OutputValue cfg b')
+              (RegEncoding.writeNat cfg.env.work u.1 b')) := by
+            simpa [labelStep34] using
+              congrArg (RegEncoding.toNat (extendHi cfg.env.data)) hEq
+        _ =
+          alg1OutputValue cfg b' :=
+            RegEncoding.toNat_writeNat_of_lt
+              (extendHi cfg.env.data)
+              (alg1OutputValue cfg b')
+              (RegEncoding.writeNat cfg.env.work u.1 b')
+              hout_cap'
+
+    have htu_val : t.1 = u.1 := by
+      calc
+        t.1
+            =
+          RegEncoding.toNat cfg.env.work
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1OutputValue cfg b)
+              (RegEncoding.writeNat cfg.env.work t.1 b)) := by
+            symm
+            calc
+              RegEncoding.toNat cfg.env.work
+                (RegEncoding.writeNat
+                  (extendHi cfg.env.data)
+                  (alg1OutputValue cfg b)
+                  (RegEncoding.writeNat cfg.env.work t.1 b))
+                  =
+                RegEncoding.toNat cfg.env.work
+                  (RegEncoding.writeNat cfg.env.work t.1 b) :=
+                RegEncoding.toNat_left_write_right
+                  cfg.env.work
+                  (extendHi cfg.env.data)
+                  hdisj
+                  (RegEncoding.writeNat cfg.env.work t.1 b)
+                  (alg1OutputValue cfg b)
+              _ = t.1 :=
+                RegEncoding.toNat_writeNat_of_lt
+                  cfg.env.work t.1 b t.isLt
+        _ =
+          RegEncoding.toNat cfg.env.work
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1OutputValue cfg b')
+              (RegEncoding.writeNat cfg.env.work u.1 b')) := by
+            simpa [labelStep34] using
+              congrArg (RegEncoding.toNat cfg.env.work) hEq
+        _ = u.1 := by
+            calc
+              RegEncoding.toNat cfg.env.work
+                (RegEncoding.writeNat
+                  (extendHi cfg.env.data)
+                  (alg1OutputValue cfg b')
+                  (RegEncoding.writeNat cfg.env.work u.1 b'))
+                  =
+                RegEncoding.toNat cfg.env.work
+                  (RegEncoding.writeNat cfg.env.work u.1 b') :=
+                RegEncoding.toNat_left_write_right
+                  cfg.env.work
+                  (extendHi cfg.env.data)
+                  hdisj
+                  (RegEncoding.writeNat cfg.env.work u.1 b')
+                  (alg1OutputValue cfg b')
+              _ = u.1 :=
+                RegEncoding.toNat_writeNat_of_lt
+                  cfg.env.work u.1 b' u.isLt
+
+    have htu : t = u := Fin.ext htu_val
+
+    have hctrl_b :
+        RegEncoding.bit cfg.ctrl
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1OutputValue cfg b)
+              (RegEncoding.writeNat cfg.env.work t.1 b))
+          =
+        RegEncoding.bit cfg.ctrl b := by
+      calc
+        RegEncoding.bit cfg.ctrl
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1OutputValue cfg b)
+              (RegEncoding.writeNat cfg.env.work t.1 b))
+            =
+          RegEncoding.bit cfg.ctrl
+            (RegEncoding.writeNat cfg.env.work t.1 b) :=
+          RegEncoding.bit_writeNat_out
+            (r := extendHi cfg.env.data)
+            (v := alg1OutputValue cfg b)
+            (b := RegEncoding.writeNat cfg.env.work t.1 b)
+            (q := cfg.ctrl)
+            cfg.layout.2.2.2.1
+        _ = RegEncoding.bit cfg.ctrl b :=
+          RegEncoding.bit_writeNat_out
+            (r := cfg.env.work)
+            (v := t.1)
+            (b := b)
+            (q := cfg.ctrl)
+            cfg.layout.2.2.2.2.1
+
+    have hctrl_b' :
+        RegEncoding.bit cfg.ctrl
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1OutputValue cfg b')
+              (RegEncoding.writeNat cfg.env.work u.1 b'))
+          =
+        RegEncoding.bit cfg.ctrl b' := by
+      calc
+        RegEncoding.bit cfg.ctrl
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1OutputValue cfg b')
+              (RegEncoding.writeNat cfg.env.work u.1 b'))
+            =
+          RegEncoding.bit cfg.ctrl
+            (RegEncoding.writeNat cfg.env.work u.1 b') :=
+          RegEncoding.bit_writeNat_out
+            (r := extendHi cfg.env.data)
+            (v := alg1OutputValue cfg b')
+            (b := RegEncoding.writeNat cfg.env.work u.1 b')
+            (q := cfg.ctrl)
+            cfg.layout.2.2.2.1
+        _ = RegEncoding.bit cfg.ctrl b' :=
+          RegEncoding.bit_writeNat_out
+            (r := cfg.env.work)
+            (v := u.1)
+            (b := b')
+            (q := cfg.ctrl)
+            cfg.layout.2.2.2.2.1
+
+    have hctrl :
+        RegEncoding.bit cfg.ctrl b = RegEncoding.bit cfg.ctrl b' := by
+      calc
+        RegEncoding.bit cfg.ctrl b
+            =
+          RegEncoding.bit cfg.ctrl
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1OutputValue cfg b)
+              (RegEncoding.writeNat cfg.env.work t.1 b)) :=
+          hctrl_b.symm
+        _ =
+          RegEncoding.bit cfg.ctrl
+            (RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (alg1OutputValue cfg b')
+              (RegEncoding.writeNat cfg.env.work u.1 b')) := by
+          simpa [labelStep34] using
+            congrArg (RegEncoding.bit cfg.ctrl) hEq
+        _ = RegEncoding.bit cfg.ctrl b' := hctrl_b'
+
+    have hdata :
+        RegEncoding.toNat cfg.env.data b
+          =
+        RegEncoding.toNat cfg.env.data b' := by
+      cases hbit : RegEncoding.bit cfg.ctrl b with
+      | false =>
+          have hbit' : RegEncoding.bit cfg.ctrl b' = false := by
+            calc
+              RegEncoding.bit cfg.ctrl b'
+                  = RegEncoding.bit cfg.ctrl b := hctrl.symm
+              _ = false := hbit
+          simpa [alg1OutputValue, hbit, hbit'] using hout
+      | true =>
+          have hbit' : RegEncoding.bit cfg.ctrl b' = true := by
+            calc
+              RegEncoding.bit cfg.ctrl b'
+                  = RegEncoding.bit cfg.ctrl b := hctrl.symm
+              _ = true := hbit
+          have hmod :
+              Nat.ModEq cfg.env.N
+                (cfg.c * RegEncoding.toNat cfg.env.data b)
+                (cfg.c * RegEncoding.toNat cfg.env.data b') := by
+            change
+              (cfg.c * RegEncoding.toNat cfg.env.data b) % cfg.env.N
+                =
+              (cfg.c * RegEncoding.toNat cfg.env.data b') % cfg.env.N
+            simpa [alg1OutputValue, hbit, hbit'] using hout
+          have hcoprime :
+              cfg.env.N.gcd cfg.c = 1 := by
+            simpa [Nat.gcd_comm] using cfg.coprime.gcd_eq_one
+          have hmod' :
+              Nat.ModEq cfg.env.N
+                (RegEncoding.toNat cfg.env.data b)
+                (RegEncoding.toNat cfg.env.data b') :=
+            Nat.ModEq.cancel_left_of_coprime hcoprime hmod
+          exact hmod'.eq_of_lt_of_lt hb.1 hb'.1
+
+    have hbb : b = b' := by
+      have hpost :=
+        congrArg
+          (fun z : qs.Basis =>
+            RegEncoding.writeNat
+              (extendHi cfg.env.data)
+              (RegEncoding.toNat cfg.env.data b)
+              (RegEncoding.writeNat cfg.env.work 0 z))
+          hEq
+
+      calc
+        b
+            =
+          RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (RegEncoding.toNat cfg.env.data b)
+            (RegEncoding.writeNat
+              cfg.env.work
+              0
+              (RegEncoding.writeNat
+                (extendHi cfg.env.data)
+                (alg1OutputValue cfg b)
+                (RegEncoding.writeNat cfg.env.work t.1 b))) := by
+          symm
+          exact alg1_reset_extendHi_work_write qs cfg b t.1
+            (alg1OutputValue cfg b) hb
+        _ =
+          RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (RegEncoding.toNat cfg.env.data b)
+            (RegEncoding.writeNat
+              cfg.env.work
+              0
+              (RegEncoding.writeNat
+                (extendHi cfg.env.data)
+                (alg1OutputValue cfg b')
+                (RegEncoding.writeNat cfg.env.work u.1 b'))) :=
+          hpost
+        _ =
+          RegEncoding.writeNat
+            (extendHi cfg.env.data)
+            (RegEncoding.toNat cfg.env.data b')
+            (RegEncoding.writeNat
+              cfg.env.work
+              0
+              (RegEncoding.writeNat
+                (extendHi cfg.env.data)
+                (alg1OutputValue cfg b')
+                (RegEncoding.writeNat cfg.env.work u.1 b'))) := by
+          rw [hdata]
+        _ = b' :=
+          alg1_reset_extendHi_work_write qs cfg b' u.1
+            (alg1OutputValue cfg b') hb'
+
+    apply hij
+    cases hbb
+    cases htu
+    rfl
+
+  have hnorm_eq :
+      ‖∑ i ∈ Sgood, α i • qs.ket (labelStep2 i)‖
+        =
+      ‖∑ i ∈ Sgood, α i • qs.ket (labelStep34 i)‖ :=
+    norm_sum_reindex_ket_eq
+      qs Sgood α labelStep2 labelStep34 hstep2_inj hstep34_inj
+
+  calc
+    ‖tr.afterStep34Ref‖
+        =
+      ‖∑ i ∈ Sgood, α i • qs.ket (labelStep34 i)‖ := by
+        rw [href34_flat]
+    _ =
+      ‖∑ i ∈ Sgood, α i • qs.ket (labelStep2 i)‖ := hnorm_eq.symm
+    _ =
+      ‖tr.afterStep2Ref‖ := by
+        rw [href2_flat]
+    _ ≤ 1 := href2_norm
 
 /--
 Step 5: the inverse fractional load uncomputes the retained good estimate.
@@ -3283,6 +5959,74 @@ Step 5: the inverse fractional load uncomputes the retained good estimate.
 This uses `alg1_step5_inverse_residue`, plus the same discarded-tail
 estimate as Step 1.
 -/
+lemma alg1_step5_cleanup_norm_le_two
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [Spec]
+    [GateSemanticsFacts qs]
+    [IdealCtrlModMulExactSemantics qs]
+    {η : ℝ}
+    {k5 : ℕ → ℕ → ℕ}
+    (cfg : ModMulConfig η k5)
+    (ψ : qs.State)
+    (tr : Alg1Trace qs cfg ψ) :
+    cfg.ValidUnitState qs ψ →
+      ‖ qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg)
+            tr.afterStep34Ref
+          -
+          qs.eval (ModMulConfig.idealGate cfg) ψ‖
+        ≤ 2 := by
+  intro hunit
+
+  have href :
+      ‖tr.afterStep34Ref‖ ≤ 1 :=
+    alg1_afterStep34Ref_norm_le_one qs cfg ψ tr hunit
+
+  have hleft :
+      ‖qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg)
+          tr.afterStep34Ref‖ ≤ 1 := by
+    calc
+      ‖qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg)
+          tr.afterStep34Ref‖
+          =
+          ‖tr.afterStep34Ref‖ := by
+            simpa using
+              (eval_norm_preserved
+                (qs := qs)
+                (ModMulConfig.U5 (Basis := qs.Basis) cfg)
+                tr.afterStep34Ref)
+      _ ≤ 1 := href
+
+  have hright :
+      ‖qs.eval (ModMulConfig.idealGate cfg) ψ‖ ≤ 1 := by
+    calc
+      ‖qs.eval (ModMulConfig.idealGate cfg) ψ‖
+          =
+          ‖ψ‖ := by
+            simpa using
+              (eval_norm_preserved
+                (qs := qs)
+                (ModMulConfig.idealGate cfg)
+                ψ)
+      _ = 1 := hunit.2
+    simp
+
+  calc
+    ‖qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg)
+          tr.afterStep34Ref
+        -
+        qs.eval (ModMulConfig.idealGate cfg) ψ‖
+      ≤
+        ‖qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg)
+            tr.afterStep34Ref‖
+          +
+        ‖qs.eval (ModMulConfig.idealGate cfg) ψ‖ :=
+      norm_sub_le _ _
+    _ ≤ 1 + 1 :=
+      add_le_add hleft hright
+    _ = 2 := by norm_num
+
 lemma alg1_step5_cleanup_bound
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -3302,7 +6046,34 @@ lemma alg1_step5_cleanup_bound
             -
             qs.eval (ModMulConfig.idealGate cfg) ψ‖
           ≤ stepErr K₅ η := by
-  sorry
+  classical
+  let K₅ : ℝ := if 0 < η then 2 / η else 0
+  refine ⟨K₅, ?_, ?_⟩
+  · dsimp [K₅]
+    by_cases hη : 0 < η
+    · rw [if_pos hη]
+      exact div_nonneg (by norm_num) (le_of_lt hη)
+    · simp [hη]
+  · intro cfg ψ tr hψ
+    have hdist :
+        ‖ qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg)
+              tr.afterStep34Ref
+            -
+            qs.eval (ModMulConfig.idealGate cfg) ψ‖
+          ≤ 2 :=
+      alg1_step5_cleanup_norm_le_two
+        qs cfg ψ tr hψ
+    have hηpos : 0 < η :=
+      cfg.env.precision.1
+    have hKη : K₅ * η = 2 := by
+      dsimp [K₅]
+      rw [if_pos hηpos]
+      field_simp [ne_of_gt hηpos]
+    have htwo_le_step :
+        (2 : ℝ) ≤ stepErr K₅ η := by
+      rw [stepErr, hKη]
+      norm_num
+    exact le_trans hdist htwo_le_step
 
 lemma three_stepErr_le
     {K₁ K₂ K₅ η : ℝ}
@@ -3313,7 +6084,37 @@ lemma three_stepErr_le
     stepErr K₁ η + stepErr K₂ η + stepErr K₅ η
       ≤
     stepErr (3 * (K₁ + K₂ + K₅)) η := by
-  sorry
+  unfold stepErr
+  let a : ℝ := 2 * (K₁ * η)
+  let b : ℝ := 2 * (K₂ * η)
+  let c : ℝ := 2 * (K₅ * η)
+  have ha : 0 ≤ a := by
+    dsimp [a]
+    nlinarith [mul_nonneg hK₁ hη]
+  have hb : 0 ≤ b := by
+    dsimp [b]
+    nlinarith [mul_nonneg hK₂ hη]
+  have hc : 0 ≤ c := by
+    dsimp [c]
+    nlinarith [mul_nonneg hK₅ hη]
+  have htarget :
+      2 * ((3 * (K₁ + K₂ + K₅)) * η) = 3 * (a + b + c) := by
+    dsimp [a, b, c]
+    ring
+  change Real.sqrt a + Real.sqrt b + Real.sqrt c
+      ≤ Real.sqrt (2 * ((3 * (K₁ + K₂ + K₅)) * η))
+  rw [htarget]
+  apply Real.le_sqrt_of_sq_le
+  have hsqa : (Real.sqrt a) ^ 2 = a := by
+    simpa [pow_two] using Real.sq_sqrt ha
+  have hsqb : (Real.sqrt b) ^ 2 = b := by
+    simpa [pow_two] using Real.sq_sqrt hb
+  have hsqc : (Real.sqrt c) ^ 2 = c := by
+    simpa [pow_two] using Real.sq_sqrt hc
+  nlinarith
+    [sq_nonneg (Real.sqrt a - Real.sqrt b),
+     sq_nonneg (Real.sqrt a - Real.sqrt c),
+     sq_nonneg (Real.sqrt b - Real.sqrt c)]
 
 lemma norm_chain_three
     {E : Type*}
