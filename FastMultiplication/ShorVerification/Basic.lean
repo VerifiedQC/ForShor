@@ -193,6 +193,11 @@ class RegEncoding (Basis : Type u) where
       toNat r b =
         toNat left b + (ASize left) * toNat right b
 
+  bit_eq_testBit_toNat :
+    ∀ r b q,
+      r.lo ≤ q →
+      q < r.hi →
+      bit q b = Nat.testBit (toNat r b) (q - r.lo)
 /-! =========================================================
     Section 2: Register-encoding lemmas and extended registers
 ========================================================= -/
@@ -625,6 +630,14 @@ class QSemantics where
       b₁ ≠ b₂ →
       inner ℂ (ket b₁) (ket b₂) = 0
 
+  eval_adj_apply :
+    ∀ (U : Gate) (ψ : State),
+      eval (Gate.adj U) (eval U ψ) = ψ
+
+  eval_apply_adj :
+    ∀ (U : Gate) (ψ : State),
+      eval U (eval (Gate.adj U) ψ) = ψ
+
 
 
 open QSemantics
@@ -838,7 +851,30 @@ class QFTSemantics
           (qftPhase (2^(regSize r)) (RegEncoding.toNat r b) y.1) •
             qs.ket (RegEncoding.writeNat r y.1 b)
 
+  eval_adj_QFT_ket :
+    ∀ (r : Reg) (b : qs.Basis),
+      qs.eval (Gate.adj (Gate.QFT r)) (qs.ket b)
+        =
+      ((1 / Real.sqrt ((ASize r : ℕ) : ℝ) : ℂ)) •
+        ∑ y : Fin (ASize r),
+          star (qftPhase (ASize r) (RegEncoding.toNat r b) y.1) •
+            qs.ket (RegEncoding.writeNat r y.1 b)
 
+class HadamardSemantics
+    (qs : QSemantics)
+    [RegEncoding qs.Basis] : Type where
+
+  eval_H_ket :
+    ∀ (q : ℕ) (b : qs.Basis),
+      qs.eval (Gate.H q) (qs.ket b)
+        =
+      ((1 / Real.sqrt (2 : ℝ) : ℂ)) •
+        (
+          qs.ket (RegEncoding.writeNat (qubitReg q) 0 b)
+          +
+          (if RegEncoding.bit q b then (-1 : ℂ) else 1) •
+            qs.ket (RegEncoding.writeNat (qubitReg q) 1 b)
+        )
 
 class RadixReverseSemantics
   (qs : QSemantics)
@@ -1143,7 +1179,8 @@ class GateSemanticsFacts
     PhaseSemantics qs,
     ExtensionSemantics qs,
     ArithmeticSemantics qs,
-    RadixReverseSemantics qs
+    RadixReverseSemantics qs,
+    HadamardSemantics qs
 
 namespace GateSemanticsFacts
 

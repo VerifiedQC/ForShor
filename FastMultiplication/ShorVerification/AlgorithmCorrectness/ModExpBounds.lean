@@ -89,6 +89,7 @@ class Spec where
   idealModMul     : (c N : ℕ) → (x : Reg) → Gate
   idealCtrlModMul : (c N : ℕ) → (x : Reg) → (ctrl : ℕ) → Gate
 
+
 /-! =========================================================
     Section 1: Modular multiplication and exponentiation circuits
 ========================================================= -/
@@ -109,29 +110,29 @@ noncomputable def step1
     {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
     (c N : ℕ) (ctrl : ℕ) (x_reg w_reg : Reg) : Gate :=
   let phi : ℝ := (2 * Real.pi * ((c + N - 1) % N)) / (N : ℝ)
-  (IQFT w_reg) ;;
+  (H_reg w_reg) ;;
   (Gate.CPhaseProd ctrl phi x_reg w_reg) ;;
-  (H_reg w_reg)
+  (IQFT w_reg)
 
 noncomputable def step2
     {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
-    (N : ℕ) (x_reg w_reg : Reg) : (Reg × Gate) :=
+    (N : ℕ) (x_reg w_reg : Reg) : Reg × Gate :=
   let x_ext : Reg := extendHi x_reg
   let n1 : ℕ := regSize x_ext
   let m  : ℕ := regSize w_reg
   let phi : ℝ := (2 * Real.pi * (N : ℝ)) / ((2 : ℝ) ^ (m + n1))
   (x_ext,
-    (IQFT x_ext) ;;
+    (Gate.QFT x_ext) ;;
     (Gate.PhaseProd phi w_reg x_ext) ;;
-    (Gate.QFT x_ext))
+    (IQFT x_ext))
 
 noncomputable def frac_load
     {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
     (k N : ℕ) (ctrl : ℕ) (x_reg w_reg : Reg) : Gate :=
   let phi : ℝ := (2 * Real.pi * ((k % N) : ℝ)) / (N : ℝ)
-  (IQFT w_reg) ;;
+  (H_reg w_reg) ;;
   (Gate.CPhaseProd ctrl phi x_reg w_reg) ;;
-  (Gate.QFT w_reg)
+  (IQFT w_reg)
 
 def step3 (N : ℕ) (x_ext : Reg) (flag : ℕ) : Gate :=
   (PrimN "CMP_GE_CONST" [x_ext.lo, x_ext.hi, N, flag]) ;;
@@ -155,7 +156,7 @@ noncomputable def CmodMulInPlaceCore
   let U3 : Gate := step3 N x_ext flag
   let U4 : Gate := step4 N x_ext w_reg flag
   let U5 : Gate := step5 (Basis := Basis) k5 N ctrl x_ext w_reg
-  U5 ;; U4 ;; U3 ;; U2 ;; U1
+  U1 ;; U2 ;; U3 ;; U4 ;; U5
 
 noncomputable def CmodMulInPlace
     {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
