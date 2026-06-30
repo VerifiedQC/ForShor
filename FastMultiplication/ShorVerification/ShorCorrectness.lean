@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.AbstractMachine.WholeProgramCorrectness
-import FastMultiplication.ShorVerification.AlgorithmCorrectness.ModExpBounds
+import FastMultiplication.ShorVerification.AlgorithmCorrectness.ModMulBounds.ModExp
 import FastMultiplication.ShorVerification.MathBackbone.ShorDefinition
 import FastMultiplication.ShorVerification.MathBackbone.Factoring_Reduction.Reduction
 import Mathlib.Data.Real.Basic
@@ -29,13 +29,20 @@ lives in `MathBackbone/ShorAlgorithm.lean`.
 def initY1 (y : Reg) : Gate :=
   Gate.X y.lo
 
-/-- Approximate (in-place) quantum order-finding circuit. -/
+/-- Approximate order finding using the proved valid-input ModExp circuit. -/
 noncomputable def orderFindingApprox
-  (qs : QSemantics) [RegEncoding qs.Basis] [Spec] [ExtRegEncoding qs.Basis] [ModMul qs]
-  (a N : ℕ) (x y w_reg : Reg) (flag : ℕ) : Gate :=
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [Spec]
+    [ExtRegEncoding qs.Basis]
+    (a N : ℕ)
+    (x y work : Reg)
+    (flag : ℕ) : Gate :=
   (H_reg x) ;;
   (initY1 y) ;;
-  (modExpApprox' (qs := qs) a N x y w_reg flag) ;;
+  (modExpApproxValid
+    (Basis := qs.Basis)
+    a N x y work flag) ;;
   (Gate.QFT x)
 
 /-- Ideal order-finding circuit using exact modular exponentiation. -/
@@ -698,7 +705,6 @@ lemma successProbAfterFinset_inter_range_eq [MeasureClass qs]
 
 variable [ContinuedFractionPost] [Spec]
 variable [ExtRegEncoding qs.Basis]
-variable [ModMul qs]
 
 /-- Success probability after running `G` and then applying classical
 continued-fraction/order-verification postprocessing to the measured `x`
@@ -767,7 +773,7 @@ lemma dist_eval_common_suffix_le
                 (qs.eval I ψ))
     _ ≤ ε := h
 
-omit [MeasureClass qs] [Spec] [ExtRegEncoding QSemantics.Basis] [ModMul qs] in
+omit [MeasureClass qs] [Spec] [ExtRegEncoding QSemantics.Basis] in
 /-- Convert a state-distance bound between two complete circuits into a lower
 bound on the approximate circuit's postprocessed success probability. -/
 lemma probability_of_success_eval_dist [MeasureClass qs]
@@ -854,170 +860,40 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
 
   exact lower_bound_of_abs_sub_le hprob
 
-omit [RegEncoding qs.Basis] [MeasureClass qs] [ContinuedFractionPost] [Spec] [ExtRegEncoding qs.Basis] [ModMul qs] in
-/-- Gate evaluation is an isometry for state distance. -/
-lemma eval_common_gate_dist_eq
-    (W : Gate) (ψ φ : qs.State) :
-    ‖qs.eval W ψ - qs.eval W φ‖ = ‖ψ - φ‖ := by
-  simpa using
-    (eval_isometry qs W
-      (by
-        intro ψ φ
-        simpa using qs.inner_preserved W ψ φ)
-      ψ φ)
+/-- The input basis state is clean on every register used by Shor. -/
+def ShorCleanInput
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    (x y work : Reg) (flag : ℕ)
+    (b0 : qs.Basis) : Prop :=
+  RegEncoding.toNat x b0 = 0 ∧
+  RegEncoding.toNat y b0 = 0 ∧
+  RegEncoding.bit y.hi b0 = false ∧
+  RegEncoding.toNat work b0 = 0 ∧
+  RegEncoding.bit flag b0 = false
 
-omit [RegEncoding qs.Basis] [MeasureClass qs] [ContinuedFractionPost] [Spec] [ExtRegEncoding qs.Basis] [ModMul qs] in
-/-- Gate evaluation preserves the norm of a state. -/
-lemma eval_norm_preserved_from_inner
-    (W : Gate) (ψ : qs.State) :
-    ‖qs.eval W ψ‖ = ‖ ψ‖ := by
-  have h :=
-    eval_common_gate_dist_eq (qs := qs) W ψ 0
-  simpa [qs.eval_zero W] using h
-
-omit [RegEncoding qs.Basis] [MeasureClass qs] [ContinuedFractionPost] [Spec] [ExtRegEncoding qs.Basis] [ModMul qs] in
-/-- A distance bound in the middle of a circuit survives identical pre- and
-post-contexts. -/
-lemma eval_common_context_dist_bound
-    (Upre A I Upost : Gate)
-    (ψ : qs.State)
-    (ε : ℝ)
-    (hmid :
-      ‖ qs.eval A (qs.eval Upre ψ)
-        - qs.eval I (qs.eval Upre ψ)‖ ≤ ε) :
-    ‖ qs.eval ((Upre ;; A) ;; Upost) ψ
-      - qs.eval ((Upre ;; I) ;; Upost) ψ‖ ≤ ε := by
-  calc
-    ‖ qs.eval ((Upre ;; A) ;; Upost) ψ
-      - qs.eval ((Upre ;; I) ;; Upost) ψ‖
-        =
-      ‖ qs.eval Upost (qs.eval A (qs.eval Upre ψ))
-        - qs.eval Upost (qs.eval I (qs.eval Upre ψ))‖ := by
-          simp [qs.eval_seq]
-    _ =
-      ‖ qs.eval A (qs.eval Upre ψ)
-        - qs.eval I (qs.eval Upre ψ)‖ := by
-          exact eval_common_gate_dist_eq
-            (qs := qs)
-            Upost
-            (qs.eval A (qs.eval Upre ψ))
-            (qs.eval I (qs.eval Upre ψ))
-    _ ≤ ε := hmid
-
-omit [RegEncoding qs.Basis] [MeasureClass qs] [ContinuedFractionPost] [Spec] [ExtRegEncoding qs.Basis] [ModMul qs] in
-/-- Version of `eval_common_context_dist_bound` where the middle bound is only
-known for unit inputs. -/
-lemma eval_common_context_dist_bound_of_unit_input
-    (Upre A I Upost : Gate)
-    (ψ : qs.State)
-    (ε : ℝ)
-    (hψ : ‖ψ‖ = 1)
-    (hmid :
-      ∀ φ : qs.State,
-        ‖φ‖ = 1 →
-        ‖ qs.eval A φ - qs.eval I φ‖ ≤ ε) :
-    ‖ qs.eval ((Upre ;; A) ;; Upost) ψ
-      - qs.eval ((Upre ;; I) ;; Upost) ψ‖ ≤ ε := by
-  apply eval_common_context_dist_bound (qs := qs)
-  apply hmid
-  simpa [hψ] using
-    eval_norm_preserved_from_inner (qs := qs) Upre ψ
-
-omit [MeasureClass qs] [ContinuedFractionPost] in
-/-- Generic context lemma for order-finding circuits once the pre/post
-decomposition is supplied explicitly. -/
-lemma orderFindingApprox_eval_dist_bound_of_decomp
-    (K : ℝ)
-    (hmodExp :
-      ∀ (a N : ℕ) (x y w_reg : Reg) (flag : ℕ) (ψ : qs.State),
-        ‖ψ‖ = 1 →
-        ‖ qs.eval (modExpApprox' (qs := qs) a N x y w_reg flag) ψ
-          - qs.eval (modExpIdeal'  (qs := qs) a N x y) ψ‖
-        ≤ (tbits x : ℝ) * stepErr K (ModMul.η (qs := qs)))
+/--
+Public assumptions for the approximate implementation of Shor.
+-/
+structure ShorApproxSetup
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    (η : ℝ)
     (a N : ℕ)
-    (x y w : Reg)
+    (x y work : Reg)
     (flag : ℕ)
-    (ψ0 : qs.State)
-    (hψ0 : ‖ψ0‖ = 1)
-    (Upre Upost : Gate)
-    (hApprox :
-      orderFindingApprox (qs := qs) a N x y w flag
-        =
-      ((Upre ;; modExpApprox' (qs := qs) a N x y w flag) ;; Upost))
-    (hIdeal :
-      orderFindingIdeal (qs := qs) a N x y
-        =
-      ((Upre ;; modExpIdeal' (qs := qs) a N x y) ;; Upost)) :
-    ‖ qs.eval (orderFindingApprox (qs := qs) a N x y w flag) ψ0
-      - qs.eval (orderFindingIdeal  (qs := qs) a N x y) ψ0‖
-      ≤ (tbits x : ℝ) * stepErr K (ModMul.η (qs := qs)) := by
-  rw [hApprox, hIdeal]
-  apply eval_common_context_dist_bound_of_unit_input (qs := qs)
-  · exact hψ0
-  · intro φ hφ
-    exact hmodExp a N x y w flag φ hφ
+    (b0 : qs.Basis) : Prop where
+  /-- The exponent, data, work, carry, and flag qubits do not overlap. -/
+  register_layout :
+    ModExpLayout x y work flag
 
-omit [MeasureClass qs] [ContinuedFractionPost] in
-/-- Distance between the approximate and ideal order-finding circuits follows
-from the modular-exponentiation distance bound, since the surrounding gates are
-common isometries. -/
-lemma orderFindingApprox_eval_dist_bound
- (K : ℝ)
-  (hmodExp :
-    ∀ (a N : ℕ) (x y w_reg : Reg) (flag : ℕ) (ψ : qs.State),
-      ‖ψ‖ = 1 →
-      ‖ qs.eval (modExpApprox' (qs := qs) a N x y w_reg flag) ψ
-        - qs.eval (modExpIdeal'  (qs := qs) a N x y) ψ‖
-      ≤ (tbits x : ℝ) * stepErr K (ModMul.η (qs := qs)))
-  (a N : ℕ)
-  (x y w : Reg)
-  (flag : ℕ)
-  (ψ0 : qs.State)
-  (hψ0 : ‖ψ0‖ = 1) :
-  ‖ qs.eval (orderFindingApprox (qs := qs) a N x y w flag) ψ0
-    - qs.eval (orderFindingIdeal  (qs := qs) a N x y) ψ0‖
-    ≤ (tbits x : ℝ) * stepErr K (ModMul.η (qs := qs)) := by
-  let ψpre : qs.State :=
-    qs.eval (initY1 y) (qs.eval (H_reg x) ψ0)
+  /-- The work register has enough extra bits for precision `η`. -/
+  work_precision :
+    Algorithm1Precision η y work
 
-  have hH_unit :
-      ‖qs.eval (H_reg x) ψ0‖ = 1 := by
-    simpa [hψ0] using
-      (eval_norm_preserved_from_inner
-        (qs := qs)
-        (H_reg x)
-        ψ0)
-
-  have hpre_unit : ‖ψpre‖ = 1 := by
-    dsimp [ψpre]
-    simpa [hH_unit] using
-      (eval_norm_preserved_from_inner
-        (qs := qs)
-        (initY1 y)
-        (qs.eval (H_reg x) ψ0))
-
-  have hmid :
-      ‖ qs.eval (modExpApprox' (qs := qs) a N x y w flag) ψpre
-        - qs.eval (modExpIdeal'  (qs := qs) a N x y) ψpre‖
-      ≤ (tbits x : ℝ) * stepErr K (ModMul.η (qs := qs)) := by
-    exact hmodExp a N x y w flag ψpre hpre_unit
-
-  have hpost :
-      ‖ qs.eval (Gate.QFT x)
-            (qs.eval (modExpApprox' (qs := qs) a N x y w flag) ψpre)
-        - qs.eval (Gate.QFT x)
-            (qs.eval (modExpIdeal'  (qs := qs) a N x y) ψpre)‖
-      ≤ (tbits x : ℝ) * stepErr K (ModMul.η (qs := qs)) := by
-    exact dist_eval_common_suffix_le
-      (qs := qs)
-      (Gate.QFT x)
-      (modExpApprox' (qs := qs) a N x y w flag)
-      (modExpIdeal'  (qs := qs) a N x y)
-      ψpre
-      hmid
-
-  simpa [orderFindingApprox, orderFindingIdeal, ψpre, qs.eval_seq] using hpost
-
+  /-- Shor begins in `|0⋯0⟩` on all registers it uses. -/
+  clean_input :
+    ShorCleanInput qs x y work flag b0
 
 /-! =========================================================
     Section 4: Final correctness statements
@@ -1052,106 +928,736 @@ theorem Shor_correct
   ≥ κ / (Nat.log2 N : ℝ)^4 := by
   sorry
 
+omit [MeasureClass qs] [ContinuedFractionPost] [Spec] [ExtRegEncoding qs.Basis] in
+lemma qubit_toNat_eq_zero_of_bit_false
+    {q : ℕ} {b : qs.Basis}
+    (hbit : RegEncoding.bit q b = false) :
+    RegEncoding.toNat (qubitReg q) b = 0 := by
+  have hlt :
+      RegEncoding.toNat (qubitReg q) b < 2 := by
+    simpa [ASize, regSize, qubitReg] using
+      RegEncoding.toNat_lt_ASize (qubitReg q) b
+  have hbit_toNat :
+      false = Nat.testBit (RegEncoding.toNat (qubitReg q) b) 0 := by
+    calc
+      false = RegEncoding.bit q b := hbit.symm
+      _ = Nat.testBit (RegEncoding.toNat (qubitReg q) b) (q - (qubitReg q).lo) := by
+        exact RegEncoding.bit_eq_testBit_toNat
+          (r := qubitReg q) (b := b) (q := q)
+          (by simp [qubitReg])
+          (by simp [qubitReg, Reg.hi])
+      _ = Nat.testBit (RegEncoding.toNat (qubitReg q) b) 0 := by
+        simp [qubitReg]
+  have hcases :
+      RegEncoding.toNat (qubitReg q) b = 0 ∨
+        RegEncoding.toNat (qubitReg q) b = 1 := by
+    omega
+  rcases hcases with hzero | hone
+  · exact hzero
+  · exfalso
+    simp [hone] at hbit_toNat
 
-omit [MeasureClass qs] in
-/-- Approximate order-finding inherits the ideal lower bound, with a penalty
-controlled by the modular-exponentiation distance estimate. -/
-theorem Shor_correct_approx [MeasureClass qs]
-  (T : ℕ → ℕ)
-  (a N : ℕ)
-  (ha : 0 < a ∧ a < N)
-  (hgcd : Nat.gcd a N = 1)
-  (x y w : Reg) (flag : ℕ)
-  (ψ0 : qs.State)
-  (hψ0 : ‖ψ0‖ = 1)
-  (hm : regSize x = Nat.log2 (2 * N^2))
-  (hn : regSize y = Nat.log2 (2 * N))
-  (hset : BasicSetting a (ord a N hgcd) N (regSize x) (regSize y)) :
-  ∃ K : ℝ, 0 ≤ K ∧
-    probability_of_success (qs := qs) (T := T)
-      (verify := fun d => decide ((a ^ d) % N = 1))
-      (x := x) (r := ord a N hgcd) (Q := 2^(regSize x))
-      (G := orderFindingApprox (qs := qs) a N x y w flag)
-      (ψ := ψ0)
-    ≥
-      κ / (Nat.log2 N : ℝ)^4
-      - 2 * (tbits x : ℝ) * (Real.sqrt (2 * (K * (ModMul.η (qs := qs))))) := by
-  rcases modExp_dist_bound (qs := qs) with ⟨K, hK_nonneg, hmodExp⟩
+omit [MeasureClass qs] [ContinuedFractionPost] [Spec] [ExtRegEncoding qs.Basis] in
+lemma disjoint_of_forall_qubits_outside
+    (x r : Reg)
+    (hx : 0 < regSize x)
+    (hr : 0 < regSize r)
+    (hout :
+      ∀ q : ℕ, x.lo ≤ q → q < x.hi → QubitOutside q r) :
+    Disjoint x r := by
+  by_contra hdisj
+  simp [Disjoint] at hdisj
+  by_cases hxr : x.lo ≤ r.lo
+  · have hrlo_xhi : r.lo < x.hi := by
+      simpa [Reg.hi] using hdisj.1
+    have hrlo_rhi : r.lo < r.hi := by
+      simp [Reg.hi, regSize] at hr ⊢
+      omega
+    rcases hout r.lo hxr hrlo_xhi with hleft | hright
+    · exact (Nat.lt_irrefl r.lo hleft).elim
+    · omega
+  · have hrx : r.lo ≤ x.lo := by omega
+    have hxlo_xhi : x.lo < x.hi := by
+      simp [Reg.hi, regSize] at hx ⊢
+      omega
+    have hxlo_rhi : x.lo < r.hi := by
+      simpa [Reg.hi] using hdisj.2
+    rcases hout x.lo (le_rfl) hxlo_xhi with hleft | hright
+    · omega
+    · omega
+
+omit [MeasureClass qs] [ContinuedFractionPost] [Spec] [ExtRegEncoding qs.Basis] in
+lemma disjoint_of_forall_qubits_ne
+    (x : Reg) (q₀ : ℕ)
+    (hx : 0 < regSize x)
+    (hne :
+      ∀ q : ℕ, x.lo ≤ q → q < x.hi → q ≠ q₀) :
+    Disjoint x (qubitReg q₀) := by
+  apply disjoint_of_forall_qubits_outside
+  · exact hx
+  · simp [qubitReg, regSize]
+  · intro q hqlo hqhi
+    unfold QubitOutside
+    have hne' := hne q hqlo hqhi
+    simp [qubitReg, Reg.hi]
+    omega
+
+omit [ContinuedFractionPost] [Spec] in
+/--
+After Shor's Hadamards on `x` and initialization of `y` to `1`,
+the state is a valid input for modular exponentiation.
+
+This must be proved from `hsetup.clean_input`, `hsetup.register_layout`,
+the `H_reg` expansion/locality theorem, and the semantics of `Gate.X`.
+-/
+lemma ShorApproxSetup.prepared_state_valid
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    {η : ℝ}
+    {a N : ℕ}
+    {x y work : Reg}
+    {flag : ℕ}
+    {b0 : qs.Basis}
+    (ha : 0 < a ∧ a < N)
+    (hxpos : 0 < regSize x)
+    (hn : regSize y = Nat.log2 (2 * N))
+    (hsetup : ShorApproxSetup qs η a N x y work flag b0) :
+    qs.eval (initY1 y) (qs.eval (H_reg x) (qs.ket b0))
+      ∈ ValidModMulState qs N y work flag := by
+  classical
+  rcases hsetup.clean_input with
+    ⟨hx0, hy0, hcarry_bit, hwork0, hflag_bit⟩
+
+  have hN : 1 < N := by
+    omega
+
+  have hypos : 0 < regSize y := by
+    have harg_ne : 2 * N ≠ 0 := by omega
+    have hle_log : 1 ≤ Nat.log2 (2 * N) := by
+      rw [Nat.le_log2 harg_ne]
+      have hN_ge_two : 2 ≤ N := by omega
+      omega
+    rw [hn]
+    omega
+
+  have hy_one_lt : 1 < ASize y := by
+    have : regSize y ≠ 0 := Nat.ne_of_gt hypos
+    simpa [ASize] using this
+
+  have hy_one_lt_cap : 1 < ASize y := hy_one_lt
+
+  have hLayoutTail :
+      ModExpTailLayout x y work flag x.lo (tbits x) := by
+    simpa [ModExpLayout] using hsetup.register_layout
+  rcases hLayoutTail with ⟨_hxlo, _hxhi, hcontrols⟩
+
+  have hcore0 : ModMulCoreLayout y work flag x.lo := by
+    simpa [tbits] using hcontrols 0 (by simpa [tbits] using hxpos)
+
+  rcases hcore0 with
+    ⟨hext_work, hflag_ext, _hflag_work, _hctrl_ext0, _hctrl_work0, _hctrl_ne0⟩
+
+  have hwork_y : Disjoint work y := by
+    rcases hext_work with h | h
+    · right
+      exact le_trans
+        (show y.hi ≤ (extendHi y).hi by simp [extendHi, Reg.hi])
+        h
+    · left
+      simpa [extendHi] using h
+
+  have hcarry_y : Disjoint (qubitReg y.hi) y := by
+    right
+    simp [qubitReg]
+
+  have hflag_y : Disjoint (qubitReg flag) y := by
+    unfold QubitOutside at hflag_ext
+    rcases hflag_ext with h | h
+    · left
+      change flag + 1 ≤ y.lo
+      exact Nat.succ_le_of_lt h
+    · right
+      exact le_trans
+        (show y.hi ≤ (extendHi y).hi by simp [extendHi, Reg.hi])
+        h
+
+  have hx_ext : Disjoint x (extendHi y) := by
+    apply disjoint_of_forall_qubits_outside
+    · exact hxpos
+    · simp [extendHi, regSize]
+    · intro q hqlo hqhi
+      let j : ℕ := q - x.lo
+      have hj : j < tbits x := by
+        have hqhi' : q < x.lo + regSize x := by
+          simpa [Reg.hi, regSize] using hqhi
+        dsimp [j, tbits]
+        omega
+      have hq_eq : x.lo + j = q := by
+        dsimp [j]
+        omega
+      have hcore := hcontrols j hj
+      rcases hcore with ⟨_, _, _, hctrl_ext, _, _⟩
+      simpa [hq_eq] using hctrl_ext
+
+  have hy_x : Disjoint y x := by
+    rcases hx_ext with h | h
+    · right
+      simpa [extendHi] using h
+    · left
+      exact le_trans
+        (show y.hi ≤ (extendHi y).hi by simp [extendHi, Reg.hi])
+        h
+
+  have hcarry_x : Disjoint (qubitReg y.hi) x := by
+    rcases hx_ext with h | h
+    · right
+      exact le_trans h (by simp [extendHi, qubitReg])
+    · left
+      simpa [extendHi, qubitReg, Reg.hi] using h
+
+  have hwork_x_of_pos : 0 < regSize work → Disjoint work x := by
+    intro hwork_pos
+    have hx_work : Disjoint x work := by
+      apply disjoint_of_forall_qubits_outside
+      · exact hxpos
+      · exact hwork_pos
+      · intro q hqlo hqhi
+        let j : ℕ := q - x.lo
+        have hj : j < tbits x := by
+          have hqhi' : q < x.lo + regSize x := by
+            simpa [Reg.hi, regSize] using hqhi
+          dsimp [j, tbits]
+          omega
+        have hq_eq : x.lo + j = q := by
+          dsimp [j]
+          omega
+        have hcore := hcontrols j hj
+        rcases hcore with ⟨_, _, _, _, hctrl_work, _⟩
+        simpa [hq_eq] using hctrl_work
+    rcases hx_work with h | h
+    · right
+      exact h
+    · left
+      exact h
+
+  have hflag_x : Disjoint (qubitReg flag) x := by
+    have hx_flag : Disjoint x (qubitReg flag) := by
+      apply disjoint_of_forall_qubits_ne
+      · exact hxpos
+      · intro q hqlo hqhi
+        let j : ℕ := q - x.lo
+        have hj : j < tbits x := by
+          have hqhi' : q < x.lo + regSize x := by
+            simpa [Reg.hi, regSize] using hqhi
+          dsimp [j, tbits]
+          omega
+        have hq_eq : x.lo + j = q := by
+          dsimp [j]
+          omega
+        have hcore := hcontrols j hj
+        rcases hcore with ⟨_, _, _, _, _, hctrl_ne⟩
+        simpa [hq_eq] using hctrl_ne
+    rcases hx_flag with h | h
+    · right
+      exact h
+    · left
+      exact h
+
+  let validSet : Set qs.State :=
+    { ψ : qs.State |
+      ∃ b : qs.Basis,
+        GoodModMulBasisInput qs N y work flag b ∧
+        ψ = qs.ket b }
+
+  have hH_expansion :
+      ∃ β : Fin (ASize x) → ℂ,
+        qs.eval (H_reg x) (qs.ket b0)
+          =
+        ∑ t : Fin (ASize x),
+          β t • qs.ket (RegEncoding.writeNat x t.1 b0) := by
+    rcases RegisterHadamardSemantics.eval_Hreg_ket
+        (qs := qs) x b0 with ⟨β, hβ⟩
+    refine ⟨β, ?_⟩
+    simpa [H_reg] using hβ
+
+  rcases hH_expansion with ⟨β, hβ⟩
+
+  change
+    qs.eval (initY1 y) (qs.eval (H_reg x) (qs.ket b0))
+      ∈ Submodule.span ℂ validSet
+
+  rw [hβ]
+  have hsum_eval :
+      qs.eval (initY1 y)
+          (∑ t : Fin (ASize x),
+            β t • qs.ket (RegEncoding.writeNat x t.1 b0))
+        =
+      ∑ t : Fin (ASize x),
+        qs.eval (initY1 y)
+          (β t • qs.ket (RegEncoding.writeNat x t.1 b0)) := by
+    simpa using
+      eval_finset_sum
+        qs
+        (initY1 y)
+        Finset.univ
+        (fun t : Fin (ASize x) =>
+          β t • qs.ket (RegEncoding.writeNat x t.1 b0))
+  rw [hsum_eval]
+
+  apply Submodule.sum_mem
+  intro t _ht
+  rw [qs.eval_smul]
+  apply (Submodule.span ℂ validSet).smul_mem
+
+  let b : qs.Basis := RegEncoding.writeNat x t.1 b0
+
+  have hy_b : RegEncoding.toNat y b = 0 := by
+    calc
+      RegEncoding.toNat y b
+          = RegEncoding.toNat y b0 := by
+            simpa [b] using
+              RegEncoding.toNat_left_write_right y x hy_x b0 t.1
+      _ = 0 := hy0
+
+  have hwork_b : RegEncoding.toNat work b = 0 := by
+    by_cases hwork_zero : regSize work = 0
+    · have hlt := RegEncoding.toNat_lt_ASize work b
+      simp [ASize, hwork_zero] at hlt
+      omega
+    · have hwork_pos : 0 < regSize work := Nat.pos_of_ne_zero hwork_zero
+      calc
+        RegEncoding.toNat work b
+            = RegEncoding.toNat work b0 := by
+              simpa [b] using
+                RegEncoding.toNat_left_write_right
+                  work x (hwork_x_of_pos hwork_pos) b0 t.1
+        _ = 0 := hwork0
+
+  have hcarry_b :
+      RegEncoding.toNat (qubitReg y.hi) b = 0 := by
+    calc
+      RegEncoding.toNat (qubitReg y.hi) b
+          = RegEncoding.toNat (qubitReg y.hi) b0 := by
+            simpa [b] using
+              RegEncoding.toNat_left_write_right
+                (qubitReg y.hi) x hcarry_x b0 t.1
+      _ = 0 := qubit_toNat_eq_zero_of_bit_false (qs := qs) hcarry_bit
+
+  have hflag_b :
+      RegEncoding.toNat (qubitReg flag) b = 0 := by
+    calc
+      RegEncoding.toNat (qubitReg flag) b
+          = RegEncoding.toNat (qubitReg flag) b0 := by
+            simpa [b] using
+              RegEncoding.toNat_left_write_right
+                (qubitReg flag) x hflag_x b0 t.1
+      _ = 0 := qubit_toNat_eq_zero_of_bit_false (qs := qs) hflag_bit
+
+  have hinit :
+      qs.eval (initY1 y) (qs.ket b)
+        =
+      qs.ket (RegEncoding.writeNat y 1 b) := by
+    simpa [initY1] using
+      PauliXSemantics.eval_X_low_zero_reg_ket
+        (qs := qs) y b hypos hy_b
+
+  rw [hinit]
+  apply Submodule.subset_span
+  refine ⟨RegEncoding.writeNat y 1 b, ?_, rfl⟩
+
+  have hdata_out :
+      RegEncoding.toNat y (RegEncoding.writeNat y 1 b) = 1 := by
+    exact RegEncoding.toNat_writeNat_of_lt y 1 b hy_one_lt_cap
+
+  have hcarry_out :
+      RegEncoding.toNat (qubitReg y.hi)
+          (RegEncoding.writeNat y 1 b) = 0 := by
+    calc
+      RegEncoding.toNat (qubitReg y.hi)
+          (RegEncoding.writeNat y 1 b)
+          = RegEncoding.toNat (qubitReg y.hi) b := by
+            exact
+              RegEncoding.toNat_left_write_right
+                (qubitReg y.hi) y hcarry_y b 1
+      _ = 0 := hcarry_b
+
+  have hwork_out :
+      RegEncoding.toNat work (RegEncoding.writeNat y 1 b) = 0 := by
+    calc
+      RegEncoding.toNat work (RegEncoding.writeNat y 1 b)
+          = RegEncoding.toNat work b := by
+            exact RegEncoding.toNat_left_write_right work y hwork_y b 1
+      _ = 0 := hwork_b
+
+  have hflag_out :
+      RegEncoding.toNat (qubitReg flag)
+          (RegEncoding.writeNat y 1 b) = 0 := by
+    calc
+      RegEncoding.toNat (qubitReg flag)
+          (RegEncoding.writeNat y 1 b)
+          = RegEncoding.toNat (qubitReg flag) b := by
+            exact
+              RegEncoding.toNat_left_write_right
+                (qubitReg flag) y hflag_y b 1
+      _ = 0 := hflag_b
+
+  refine ⟨?_, hcarry_out, hwork_out, hflag_out⟩
+  calc
+    RegEncoding.toNat y (RegEncoding.writeNat y 1 b) = 1 := hdata_out
+    _ < N := hN
+
+omit [ContinuedFractionPost] [Spec] in
+lemma shor_data_capacity_from_log2
+    (N : ℕ) :
+    N ≤ 2 ^ Nat.log2 (2 * N) := by
+  rcases N with _ | N
+  · simp
+  · have hlt :
+        2 * (N + 1) < 2 ^ (Nat.log 2 (2 * (N + 1))).succ := by
+      exact Nat.lt_pow_succ_log_self Nat.one_lt_two (2 * (N + 1))
+    rw [← Nat.log2_eq_log_two] at hlt
+    rw [Nat.pow_succ] at hlt
+    have hdouble_le :
+        (N + 1) * 2 ≤ 2 ^ Nat.log2 (2 * (N + 1)) * 2 := by
+      simpa [Nat.mul_comm] using hlt.le
+    exact Nat.le_of_mul_le_mul_right hdouble_le (by norm_num : 0 < 2)
+
+def ShorApproxSetup.toModExpConfig
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    {a N : ℕ}
+    {y : Reg}
+    {η : ℝ}
+    {x work : Reg}
+    {flag : ℕ}
+    {b0 : qs.Basis}
+    (ha : 0 < a ∧ a < N)
+    (hgcd : Nat.gcd a N = 1)
+    (hn : regSize y = Nat.log2 (2 * N))
+    (hsetup : ShorApproxSetup qs η a N x y work flag b0) :
+    ModExpConfig η := by
+  have hN : 1 < N := by
+    omega
+  have hcapacity : N ≤ ASize y := by
+    simpa [ASize, hn] using shor_data_capacity_from_log2 N
+  have hcoprime : Nat.Coprime a N := by
+    rw [Nat.coprime_iff_gcd_eq_one]
+    exact hgcd
+  refine
+    { env :=
+        { N := N
+          data := y
+          work := work
+          modulus_gt_one := hN
+          data_capacity := hcapacity
+          precision := hsetup.work_precision }
+      a := a
+      x := x
+      flag := flag
+      layout := hsetup.register_layout
+      arithmetic := ?_ }
+  intro j hj
+  dsimp
+  exact modExp_tail_coprime a N x x.lo (tbits x) hcoprime j hj
+
+/--
+Uniform approximate Shor order-finding bound.
+
+`K` is chosen before `η`, so it is independent of the precision parameter.
+It may depend on the fixed instance data `qs`, `T`, `a`, `N`, `x`, `y`,
+`w`, `flag`, `b0`, and the fixed size/arithmetic hypotheses.
+-/
+theorem Shor_correct_approx_uniform
+    [GateSemanticsFacts qs]
+    [IdealCtrlModMulExactSemantics qs]
+    [ModMulPrimitiveSemantics qs]
+    (T : ℕ → ℕ)
+    (a N : ℕ)
+    (ha : 0 < a ∧ a < N)
+    (hgcd : Nat.gcd a N = 1)
+    (x y w : Reg)
+    (flag : ℕ)
+    (b0 : qs.Basis)
+    (hm : regSize x = Nat.log2 (2 * N^2))
+    (hn : regSize y = Nat.log2 (2 * N))
+    (hset : BasicSetting a (ord a N hgcd) N (regSize x) (regSize y)) :
+    ∃ K : ℝ, 0 ≤ K ∧
+      ∀ (η : ℝ)
+        (_hS: ShorApproxSetup qs η a N x y w flag b0),
+        probability_of_success (qs := qs) (T := T)
+          (verify := fun d => decide ((a ^ d) % N = 1))
+          (x := x)
+          (r := ord a N hgcd)
+          (Q := 2 ^ regSize x)
+          (G := orderFindingApprox (qs := qs) a N x y w flag)
+          (ψ := qs.ket b0)
+        ≥
+          κ / (Nat.log2 N : ℝ)^4
+            - 2 * (tbits x : ℝ) *
+                Real.sqrt (2 * (K * η)) := by
+  classical
+
+  rcases modExpApprox_valid_dist_uniform (qs := qs) with
+    ⟨K, hK_nonneg, hmodExp⟩
+
   refine ⟨K, hK_nonneg, ?_⟩
+  intro η hsetup
 
-  let verify : ℕ → Bool := fun d => decide ((a ^ d) % N = 1)
-  let r : ℕ := ord a N hgcd
-  let Q : ℕ := 2 ^ regSize x
-  let ε : ℝ := (tbits x : ℝ) * stepErr K (ModMul.η (qs := qs))
+  let cfg : ModExpConfig η :=
+    ShorApproxSetup.toModExpConfig ha hgcd hn hsetup
 
-  have hε_nonneg : 0 ≤ ε := by
-    dsimp [ε]
-    exact mul_nonneg (Nat.cast_nonneg _)
-      (by
-        unfold stepErr
-        exact Real.sqrt_nonneg _)
+  let ψpre : qs.State :=
+    qs.eval (initY1 y) (qs.eval (H_reg x) (qs.ket b0))
+
+  have hxpos : 0 < regSize x := by
+    have harg_ne : 2 * N ^ 2 ≠ 0 := by
+      have hNpos : 0 < N := by
+        omega
+      positivity
+
+    have hle_log : 1 ≤ Nat.log2 (2 * N ^ 2) := by
+      rw [Nat.le_log2 harg_ne]
+      have hNsq_pos : 0 < N ^ 2 := by
+        have hNpos : 0 < N := by
+          omega
+        positivity
+      exact Nat.mul_le_mul_left 2 hNsq_pos
+
+    rw [hm]
+    omega
+
+  have hpreValid :
+      ψpre ∈ ValidModMulState qs N y w flag := by
+    simpa [ψpre] using
+      (ShorApproxSetup.prepared_state_valid
+        (qs := qs)
+        ha
+        hxpos
+        hn
+        hsetup)
+
+  have hpreUnit : ‖ψpre‖ = 1 := by
+    dsimp [ψpre]
+    calc
+      ‖qs.eval (initY1 y) (qs.eval (H_reg x) (qs.ket b0))‖
+          =
+          ‖qs.eval (H_reg x) (qs.ket b0)‖ := by
+            simpa using
+              (eval_norm_preserved qs
+                (initY1 y)
+                (qs.eval (H_reg x) (qs.ket b0)))
+      _ = ‖qs.ket b0‖ := by
+            simpa using
+              (eval_norm_preserved qs (H_reg x) (qs.ket b0))
+      _ = 1 := ket_norm_one qs b0
+
+  have hpre :
+      ModExpConfig.ValidUnitState qs cfg ψpre := by
+    simpa [
+      ModExpConfig.ValidUnitState,
+      cfg,
+      ShorApproxSetup.toModExpConfig
+    ] using
+      (And.intro hpreValid hpreUnit)
+
+  let ε : ℝ := (tbits x : ℝ) * stepErr K η
+
+  have hmid :
+      ‖qs.eval
+          (modExpApproxValid
+            (Basis := qs.Basis)
+            a N x y w flag)
+          ψpre
+        -
+        qs.eval (modExpIdeal' (qs := qs) a N x y) ψpre‖
+      ≤ ε := by
+    simpa [
+      ε,
+      cfg,
+      ShorApproxSetup.toModExpConfig,
+      ModExpConfig.approxGate,
+      ModExpConfig.idealGate
+    ] using
+      (hmodExp η cfg ψpre hpre)
+
+  have hpost :
+      ‖qs.eval (Gate.QFT x)
+          (qs.eval
+            (modExpApproxValid
+              (Basis := qs.Basis)
+              a N x y w flag)
+            ψpre)
+        -
+        qs.eval (Gate.QFT x)
+          (qs.eval (modExpIdeal' (qs := qs) a N x y) ψpre)‖
+      ≤ ε := by
+    exact dist_eval_common_suffix_le
+      (qs := qs)
+      (Gate.QFT x)
+      (modExpApproxValid
+        (Basis := qs.Basis)
+        a N x y w flag)
+      (modExpIdeal' (qs := qs) a N x y)
+      ψpre
+      hmid
 
   have hdist_full :
-      ‖ qs.eval (orderFindingApprox (qs := qs) a N x y w flag) ψ0
-        - qs.eval (orderFindingIdeal  (qs := qs) a N x y) ψ0‖
+      ‖qs.eval
+          (orderFindingApprox (qs := qs) a N x y w flag)
+          (qs.ket b0)
+        -
+        qs.eval
+          (orderFindingIdeal (qs := qs) a N x y)
+          (qs.ket b0)‖
       ≤ ε := by
-    dsimp [ε]
-    exact orderFindingApprox_eval_dist_bound
-      (qs := qs)
-      K hmodExp
-      a N x y w flag ψ0 hψ0
+    simpa [
+      orderFindingApprox,
+      orderFindingIdeal,
+      ψpre,
+      qs.eval_seq
+    ] using hpost
+
+  let verify : ℕ → Bool :=
+    fun d => decide ((a ^ d) % N = 1)
+
+  let r : ℕ := ord a N hgcd
+  let Q : ℕ := 2 ^ regSize x
 
   have htransfer :
       probability_of_success (qs := qs) (T := T)
         (verify := verify)
         (x := x) (r := r) (Q := Q)
         (G := orderFindingApprox (qs := qs) a N x y w flag)
-        (ψ := ψ0)
+        (ψ := qs.ket b0)
       ≥
       probability_of_success (qs := qs) (T := T)
         (verify := verify)
         (x := x) (r := r) (Q := Q)
         (G := orderFindingIdeal (qs := qs) a N x y)
-        (ψ := ψ0)
+        (ψ := qs.ket b0)
       - 2 * ε := by
     exact probability_of_success_eval_dist
       (qs := qs)
-      T verify x r Q
+      T
+      verify
+      x
+      r
+      Q
       (orderFindingApprox (qs := qs) a N x y w flag)
-      (orderFindingIdeal  (qs := qs) a N x y)
-      ψ0 ε hψ0 hdist_full
+      (orderFindingIdeal (qs := qs) a N x y)
+      (qs.ket b0)
+      ε
+      (ket_norm_one qs b0)
+      hdist_full
 
   have hideal :
       probability_of_success (qs := qs) (T := T)
         (verify := verify)
         (x := x) (r := r) (Q := Q)
         (G := orderFindingIdeal (qs := qs) a N x y)
-        (ψ := ψ0)
+        (ψ := qs.ket b0)
       ≥ κ / (Nat.log2 N : ℝ)^4 := by
     simpa [verify, r, Q] using
       (Shor_correct
         (qs := qs)
-        T a N ha hgcd x y w ψ0 hψ0 hm hn hset)
+        T
+        a
+        N
+        ha
+        hgcd
+        x
+        y
+        w
+        (qs.ket b0)
+        (ket_norm_one qs b0)
+        hm
+        hn
+        hset)
 
   calc
     probability_of_success (qs := qs) (T := T)
         (verify := fun d => decide ((a ^ d) % N = 1))
-        (x := x) (r := ord a N hgcd) (Q := 2^(regSize x))
+        (x := x)
+        (r := ord a N hgcd)
+        (Q := 2 ^ regSize x)
         (G := orderFindingApprox (qs := qs) a N x y w flag)
-        (ψ := ψ0)
-        ≥
-      probability_of_success (qs := qs) (T := T)
-        (verify := verify)
-        (x := x) (r := r) (Q := Q)
-        (G := orderFindingIdeal (qs := qs) a N x y)
-        (ψ := ψ0)
+        (ψ := qs.ket b0)
+      ≥
+        probability_of_success (qs := qs) (T := T)
+          (verify := verify)
+          (x := x)
+          (r := r)
+          (Q := Q)
+          (G := orderFindingIdeal (qs := qs) a N x y)
+          (ψ := qs.ket b0)
         - 2 * ε := by
           simpa [verify, r, Q] using htransfer
-    _ ≥ κ / (Nat.log2 N : ℝ)^4 - 2 * ε := by
+    _ ≥
+        κ / (Nat.log2 N : ℝ)^4 - 2 * ε := by
           exact sub_le_sub_right hideal (2 * ε)
-    _ = κ / (Nat.log2 N : ℝ)^4
-        - 2 * (tbits x : ℝ) * stepErr K (ModMul.η (qs := qs)) := by
-          simp [ε, mul_assoc]
+    _ =
+        κ / (Nat.log2 N : ℝ)^4
+          - 2 * (tbits x : ℝ) *
+              Real.sqrt (2 * (K * η)) := by
+          simp [ε, stepErr, mul_assoc]
+
+
+/--
+Fixed-precision form, retained for compatibility.
+
+Its witness is inherited from `Shor_correct_approx_uniform`, hence it is
+independent of `η` even though that independence is not visible in this
+weaker statement.
+-/
+theorem Shor_correct_approx
+    [GateSemanticsFacts qs]
+    [IdealCtrlModMulExactSemantics qs]
+    [ModMulPrimitiveSemantics qs]
+    (T : ℕ → ℕ)
+    (a N : ℕ)
+    (ha : 0 < a ∧ a < N)
+    (hgcd : Nat.gcd a N = 1)
+    (η : ℝ)
+    (x y w : Reg)
+    (flag : ℕ)
+    (b0 : qs.Basis)
+    (hsetup : ShorApproxSetup qs η a N x y w flag b0)
+    (hm : regSize x = Nat.log2 (2 * N^2))
+    (hn : regSize y = Nat.log2 (2 * N))
+    (hset : BasicSetting a (ord a N hgcd) N (regSize x) (regSize y)) :
+    ∃ K : ℝ, 0 ≤ K ∧
+      probability_of_success (qs := qs) (T := T)
+        (verify := fun d => decide ((a ^ d) % N = 1))
+        (x := x)
+        (r := ord a N hgcd)
+        (Q := 2 ^ regSize x)
+        (G := orderFindingApprox (qs := qs) a N x y w flag)
+        (ψ := qs.ket b0)
+      ≥
+        κ / (Nat.log2 N : ℝ)^4
+          - 2 * (tbits x : ℝ) *
+              Real.sqrt (2 * (K * η)) := by
+  rcases Shor_correct_approx_uniform
+      (qs := qs)
+      T
+      a
+      N
+      ha
+      hgcd
+      x
+      y
+      w
+      flag
+      b0
+      hm
+      hn
+      hset with
+    ⟨K, hK, hUniform⟩
+
+  exact ⟨K, hK, hUniform η hsetup⟩
+
 
 omit [ContinuedFractionPost] [Spec] in
 /-- At least half of the coprime classical choices are successful for the

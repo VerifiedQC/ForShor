@@ -876,6 +876,44 @@ class HadamardSemantics
             qs.ket (RegEncoding.writeNat (qubitReg q) 1 b)
         )
 
+class PauliXSemantics
+    (qs : QSemantics)
+    [RegEncoding qs.Basis] : Type where
+
+  eval_X_ket :
+    ∀ (q : ℕ) (b : qs.Basis),
+      qs.eval (Gate.X q) (qs.ket b)
+        =
+      qs.ket
+        (RegEncoding.writeNat
+          (qubitReg q)
+          (if RegEncoding.bit q b then 0 else 1)
+          b)
+
+  eval_X_low_zero_reg_ket :
+    ∀ (r : Reg) (b : qs.Basis),
+      0 < regSize r →
+      RegEncoding.toNat r b = 0 →
+      qs.eval (Gate.X r.lo) (qs.ket b)
+        =
+      qs.ket (RegEncoding.writeNat r 1 b)
+
+class RegisterHadamardSemantics
+    (qs : QSemantics)
+    [RegEncoding qs.Basis] : Type where
+
+  eval_Hreg_ket :
+    ∀ (r : Reg) (b : qs.Basis),
+      ∃ α : Fin (ASize r) → ℂ,
+        qs.eval
+            ((regQubits r).foldl
+              (fun acc q => Gate.seq (Gate.H q) acc)
+              Gate.id)
+            (qs.ket b)
+          =
+        ∑ t : Fin (ASize r),
+          α t • qs.ket (RegEncoding.writeNat r t.1 b)
+
 class RadixReverseSemantics
   (qs : QSemantics)
   [RegEncoding qs.Basis] : Type where
@@ -1180,7 +1218,9 @@ class GateSemanticsFacts
     ExtensionSemantics qs,
     ArithmeticSemantics qs,
     RadixReverseSemantics qs,
-    HadamardSemantics qs where
+    HadamardSemantics qs,
+    PauliXSemantics qs,
+    RegisterHadamardSemantics qs where
 
   eval_Hreg_zero_eq_QFT :
     ∀ (r : Reg) (b : qs.Basis),
