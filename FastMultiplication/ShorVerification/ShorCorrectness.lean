@@ -33,7 +33,6 @@ def initY1 (y : Reg) : Gate :=
 noncomputable def orderFindingApprox
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [ExtRegEncoding qs.Basis]
     (a N : ℕ)
     (x y work : Reg)
@@ -44,6 +43,22 @@ noncomputable def orderFindingApprox
     (Basis := qs.Basis)
     a N x y work flag) ;;
   (Gate.QFT x)
+
+/-- The lowered implementation of approximate order finding. -/
+noncomputable def orderFindingApproxLow
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [ExtRegSplitSemantics qs.Basis]
+    (k : ℕ) (hk : 1 < k)
+    (ops : Prog k)
+    (a N : ℕ)
+    (x y work : Reg)
+    (flag : ℕ) :=
+  lowerGate
+    (Basis := qs.Basis)
+    k hk ops
+    (orderFindingApprox (qs := qs) a N x y work flag)
 
 /-- Ideal order-finding circuit using exact modular exponentiation. -/
 noncomputable def orderFindingIdeal
@@ -115,6 +130,19 @@ class MeasureClass (qs : QSemantics) [RegEncoding qs.Basis] where
     ∀ r ψ,
       (∑ o : Fin (2 ^ regSize r), measProj r o.1 ψ) = ψ
 
+
+/--
+Run an arbitrary circuit-like object `C` using `evalC`, then measure `r`.
+-/
+noncomputable def measProbAfter
+    [MeasureClass qs]
+    {Circuit : Type}
+    (evalC : Circuit → qs.State → qs.State)
+    (r : Reg)
+    (o : ℕ)
+    (C : Circuit)
+    (ψ : qs.State) : ℝ :=
+  MeasureClass.probMeas (qs := qs) r o (evalC C ψ)
 
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
@@ -630,14 +658,15 @@ lemma probMeas_weighted_dist [MeasureClass qs] :
 
 /-! ## Success probabilities and range facts -/
 
-/-- Run the circuit G on input state ψ, then measure register r, and ask for probability of outcome o -/
-noncomputable def measProbAfter (r : Reg) (o : ℕ) (G : Gate) (ψ : qs.State) : ℝ :=
-  MeasureClass.probMeas (qs := qs) r o (qs.eval G ψ)
+-- /-- Run the circuit G on input state ψ, then measure register r, and ask for probability of outcome o -/
+-- noncomputable def measProbAfter (r : Reg) (o : ℕ) (G : Gate) (ψ : qs.State) : ℝ :=
+--   MeasureClass.probMeas (qs := qs) r o (qs.eval G ψ)
+
 
 /-- Given a finite set Good of outcomes that are “successful,” sum the measurement probability over those outcomes. -/
 noncomputable def successProbAfterFinset
   (r : Reg) (Good : Finset ℕ) (G : Gate) (ψ : qs.State) : ℝ :=
-  ∑ o ∈ Good, measProbAfter (qs := qs) r o G ψ
+  ∑ o ∈ Good, measProbAfter (qs := qs) qs.eval r o G ψ
 
 /-- The Born-rule probability of an out-of-range outcome is zero. -/
 lemma probMeas_outOfRange_of_born
@@ -706,15 +735,24 @@ lemma successProbAfterFinset_inter_range_eq [MeasureClass qs]
 variable [ContinuedFractionPost] [Spec]
 variable [ExtRegEncoding qs.Basis]
 
-/-- Success probability after running `G` and then applying classical
-continued-fraction/order-verification postprocessing to the measured `x`
-register outcome. -/
+/--
+Success probability after an arbitrary circuit-like object `C`.
+
+`evalC` specifies how that circuit type acts on states.
+-/
 noncomputable def probability_of_success
-  (T : ℕ → ℕ) (verify : OrderVerifier)
-  (x : Reg) (r Q : ℕ) (G : Gate) (ψ : qs.State) : ℝ :=
+    {Circuit : Type}
+    (evalC : Circuit → qs.State → qs.State)
+    (T : ℕ → ℕ)
+    (verify : OrderVerifier)
+    (x : Reg)
+    (r Q : ℕ)
+    (C : Circuit)
+    (ψ : qs.State) : ℝ :=
   ∑ o : Fin Q,
     (r_found (T := T) verify o.1 Q r) *
-      (measProbAfter (qs := qs) x o.1 G ψ)
+      measProbAfter
+        (qs := qs) evalC x o.1 C ψ
 
 
 /-! =========================================================
@@ -790,13 +828,15 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
   probability_of_success (qs := qs) (T := T)
       (verify := verify)
       (x := x) (r := r) (Q := Q)
-      (G := Gapprox)
+      (evalC := qs.eval)
+      (C := Gapprox)
       (ψ := ψ)
     ≥
   probability_of_success (qs := qs) (T := T)
       (verify := verify)
       (x := x) (r := r) (Q := Q)
-      (G := Gideal)
+      (evalC := qs.eval)
+      (C := Gideal)
       (ψ := ψ)
     - 2 * ε := by
   let ψA : qs.State := qs.eval Gapprox ψ
@@ -826,13 +866,15 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
       |probability_of_success (qs := qs) (T := T)
           (verify := verify)
           (x := x) (r := r) (Q := Q)
-          (G := Gapprox)
+          (evalC := qs.eval)
+          (C := Gapprox)
           (ψ := ψ)
         -
         probability_of_success (qs := qs) (T := T)
           (verify := verify)
           (x := x) (r := r) (Q := Q)
-          (G := Gideal)
+          (evalC := qs.eval)
+          (C := Gideal)
           (ψ := ψ)|
       ≤ 2 * ‖qs.eval Gapprox ψ - qs.eval Gideal ψ‖ := by
     have hmain :=
@@ -846,13 +888,15 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
       |probability_of_success (qs := qs) (T := T)
           (verify := verify)
           (x := x) (r := r) (Q := Q)
-          (G := Gapprox)
+          (evalC := qs.eval)
+          (C := Gapprox)
           (ψ := ψ)
         -
         probability_of_success (qs := qs) (T := T)
           (verify := verify)
           (x := x) (r := r) (Q := Q)
-          (G := Gideal)
+          (evalC := qs.eval)
+          (C := Gideal)
           (ψ := ψ)|
       ≤ 2 * ε := by
     exact le_trans hprob_dist
@@ -923,7 +967,8 @@ theorem Shor_correct
   probability_of_success (qs := qs) (T := T)
     (verify := fun d => decide ((a ^ d) % N = 1))
     (x := x) (r := ord a N hgcd) (Q := 2^(regSize x))
-    (G := orderFindingIdeal (qs := qs) a N x y)
+    (evalC := qs.eval)
+    (C := orderFindingIdeal (qs := qs) a N x y)
     (ψ := ψ0)
   ≥ κ / (Nat.log2 N : ℝ)^4 := by
   sorry
@@ -1391,7 +1436,8 @@ theorem Shor_correct_approx_uniform
           (x := x)
           (r := ord a N hgcd)
           (Q := 2 ^ regSize x)
-          (G := orderFindingApprox (qs := qs) a N x y w flag)
+          (evalC := qs.eval)
+          (C := orderFindingApprox (qs := qs) a N x y w flag)
           (ψ := qs.ket b0)
         ≥
           κ / (Nat.log2 N : ℝ)^4
@@ -1529,13 +1575,15 @@ theorem Shor_correct_approx_uniform
       probability_of_success (qs := qs) (T := T)
         (verify := verify)
         (x := x) (r := r) (Q := Q)
-        (G := orderFindingApprox (qs := qs) a N x y w flag)
+        (evalC := qs.eval)
+        (C := orderFindingApprox (qs := qs) a N x y w flag)
         (ψ := qs.ket b0)
       ≥
       probability_of_success (qs := qs) (T := T)
         (verify := verify)
         (x := x) (r := r) (Q := Q)
-        (G := orderFindingIdeal (qs := qs) a N x y)
+        (evalC := qs.eval)
+        (C := orderFindingIdeal (qs := qs) a N x y)
         (ψ := qs.ket b0)
       - 2 * ε := by
     exact probability_of_success_eval_dist
@@ -1556,7 +1604,8 @@ theorem Shor_correct_approx_uniform
       probability_of_success (qs := qs) (T := T)
         (verify := verify)
         (x := x) (r := r) (Q := Q)
-        (G := orderFindingIdeal (qs := qs) a N x y)
+        (evalC := qs.eval)
+        (C := orderFindingIdeal (qs := qs) a N x y)
         (ψ := qs.ket b0)
       ≥ κ / (Nat.log2 N : ℝ)^4 := by
     simpa [verify, r, Q] using
@@ -1582,7 +1631,8 @@ theorem Shor_correct_approx_uniform
         (x := x)
         (r := ord a N hgcd)
         (Q := 2 ^ regSize x)
-        (G := orderFindingApprox (qs := qs) a N x y w flag)
+        (evalC := qs.eval)
+        (C := orderFindingApprox (qs := qs) a N x y w flag)
         (ψ := qs.ket b0)
       ≥
         probability_of_success (qs := qs) (T := T)
@@ -1590,7 +1640,8 @@ theorem Shor_correct_approx_uniform
           (x := x)
           (r := r)
           (Q := Q)
-          (G := orderFindingIdeal (qs := qs) a N x y)
+          (evalC := qs.eval)
+          (C := orderFindingIdeal (qs := qs) a N x y)
           (ψ := qs.ket b0)
         - 2 * ε := by
           simpa [verify, r, Q] using htransfer
@@ -1603,60 +1654,151 @@ theorem Shor_correct_approx_uniform
               Real.sqrt (2 * (K * η)) := by
           simp [ε, stepErr, mul_assoc]
 
-
+omit [Spec] in
 /--
-Fixed-precision form, retained for compatibility.
-
-Its witness is inherited from `Shor_correct_approx_uniform`, hence it is
-independent of `η` even though that independence is not visible in this
-weaker statement.
+Lowering preserves the order-finding success probability exactly.
 -/
-theorem Shor_correct_approx
+lemma probability_of_success_lowerGate_eq
+    [ExtRegSplitSemantics qs.Basis]
+    [LowerGateClass qs]
+    [GateSemanticsFacts qs]
+    (k : ℕ) (hk : 1 < k)
+    (ops : Prog k)
+    (hC : ProgConsumesPtsSafe
+      (k := k) (by omega)
+      State.start_state ops
+      (genInterpolationPoints k))
+    (hRun : run? ops State.start_state = some State.start_state)
+    (T : ℕ → ℕ)
+    (verify : OrderVerifier)
+    (x : Reg)
+    (r Q : ℕ)
+    (G : Gate)
+    (hGeom : GateGeomOK G)
+    (ψ : qs.State) :
+    probability_of_success
+        (qs := qs)
+        (evalC := LowerGateClass.evalL (qs := qs))
+        (T := T)
+        (verify := verify)
+        (x := x) (r := r) (Q := Q)
+        (C := lowerGate (Basis := qs.Basis) k hk ops G)
+        (ψ := ψ)
+      =
+    probability_of_success
+        (qs := qs)
+        (evalC := qs.eval)
+        (T := T)
+        (verify := verify)
+        (x := x) (r := r) (Q := Q)
+        (C := G)
+        (ψ := ψ) := by
+  have hEval :
+      LowerGateClass.evalL
+          (qs := qs)
+          (lowerGate (Basis := qs.Basis) k hk ops G)
+          ψ
+        =
+      qs.eval G ψ :=
+    lowerGate_correctness
+      (k := k)
+      (hk := hk)
+      G
+      hGeom
+      qs
+      (inferInstance : RegEncoding qs.Basis)
+      ops
+      hC
+      hRun
+      ψ
+
+  unfold probability_of_success measProbAfter
+  apply Finset.sum_congr rfl
+  intro o ho
+  rw [hEval]
+
+theorem Shor_correct_approx_uniform_low
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs]
     [ModMulPrimitiveSemantics qs]
+    [ExtRegSplitSemantics qs.Basis]
+    [LowerGateClass qs]
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hRun : run? ops State.start_state = some State.start_state)
     (T : ℕ → ℕ)
     (a N : ℕ)
     (ha : 0 < a ∧ a < N)
     (hgcd : Nat.gcd a N = 1)
-    (η : ℝ)
     (x y w : Reg)
     (flag : ℕ)
     (b0 : qs.Basis)
-    (hsetup : ShorApproxSetup qs η a N x y w flag b0)
     (hm : regSize x = Nat.log2 (2 * N^2))
     (hn : regSize y = Nat.log2 (2 * N))
-    (hset : BasicSetting a (ord a N hgcd) N (regSize x) (regSize y)) :
+    (hset : BasicSetting a (ord a N hgcd) N (regSize x) (regSize y))
+    (hGeom :
+      GateGeomOK
+        (orderFindingApprox (qs := qs) a N x y w flag)) :
     ∃ K : ℝ, 0 ≤ K ∧
-      probability_of_success (qs := qs) (T := T)
+      ∀ (η : ℝ)
+        (hsetup : ShorApproxSetup qs η a N x y w flag b0),
+        probability_of_success (evalC := LowerGateClass.evalL (qs := qs)) (T := T) (verify := fun d => decide ((a ^ d) % N = 1)) (x := x)
+          (r := ord a N hgcd) (Q := 2 ^ regSize x) (C := orderFindingApproxLow qs k hk ops a N x y w flag)
+            (ψ := qs.ket b0)
+          ≥
+        κ / (Nat.log2 N : ℝ)^4 - 2 * (tbits x : ℝ) * Real.sqrt (2 * (K * η)) := by
+  rcases Shor_correct_approx_uniform
+      (qs := qs)
+      T a N ha hgcd x y w flag b0 hm hn hset with
+    ⟨K, hK, hHigh⟩
+
+  refine ⟨K, hK, ?_⟩
+  intro η hsetup
+
+  calc
+    probability_of_success
+        (qs := qs)
+        (evalC := LowerGateClass.evalL (qs := qs))
+        (T := T)
         (verify := fun d => decide ((a ^ d) % N = 1))
         (x := x)
         (r := ord a N hgcd)
         (Q := 2 ^ regSize x)
-        (G := orderFindingApprox (qs := qs) a N x y w flag)
+        (C :=
+          orderFindingApproxLow
+            (qs := qs)
+            k hk ops a N x y w flag)
         (ψ := qs.ket b0)
-      ≥
-        κ / (Nat.log2 N : ℝ)^4
-          - 2 * (tbits x : ℝ) *
-              Real.sqrt (2 * (K * η)) := by
-  rcases Shor_correct_approx_uniform
-      (qs := qs)
-      T
-      a
-      N
-      ha
-      hgcd
-      x
-      y
-      w
-      flag
-      b0
-      hm
-      hn
-      hset with
-    ⟨K, hK, hUniform⟩
-
-  exact ⟨K, hK, hUniform η hsetup⟩
+      =
+    probability_of_success
+        (qs := qs)
+        (evalC := qs.eval)
+        (T := T)
+        (verify := fun d => decide ((a ^ d) % N = 1))
+        (x := x)
+        (r := ord a N hgcd)
+        (Q := 2 ^ regSize x)
+        (C := orderFindingApprox (qs := qs) a N x y w flag)
+        (ψ := qs.ket b0) := by
+          simpa [orderFindingApproxLow] using
+            (probability_of_success_lowerGate_eq
+              (qs := qs)
+              k hk ops hC hRun
+              T
+              (fun d => decide ((a ^ d) % N = 1))
+              x
+              (ord a N hgcd)
+              (2 ^ regSize x)
+              (orderFindingApprox (qs := qs) a N x y w flag)
+              hGeom
+              (qs.ket b0))
+    _ ≥
+      κ / (Nat.log2 N : ℝ)^4
+        - 2 * (tbits x : ℝ) *
+            Real.sqrt (2 * (K * η)) :=
+      hHigh η hsetup
 
 
 omit [ContinuedFractionPost] [Spec] in
@@ -1733,7 +1875,8 @@ theorem Shor_end_to_end_factoring [MeasureClass qs]
     (probability_of_success (qs := qs) (T := T)
       (verify := fun d => decide ((a ^ d) % N = 1))
       (x := x) (r := ord a N hgcd) (Q := 2^(regSize x))
-      (G := orderFindingIdeal (qs := qs) a N x y)
+      (evalC := qs.eval)
+      (C := orderFindingIdeal (qs := qs) a N x y)
       (ψ := ψ0)
     ≥ κ / (Nat.log2 N : ℝ)^4)
     ∧
