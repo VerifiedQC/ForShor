@@ -323,7 +323,6 @@ theorem modExpApproxSteps_valid_dist_uniform
         qs.eval_seq
       ] using hMain
 
-
 /-- Uniform approximation theorem for full modular exponentiation. -/
 theorem modExpApprox_valid_dist_uniform
     (qs : QSemantics)
@@ -336,9 +335,7 @@ theorem modExpApprox_valid_dist_uniform
     ∃ K : ℝ, 0 ≤ K ∧
       ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
         ModExpConfig.ValidUnitState qs cfg ψ →
-        ‖qs.eval
-            (ModExpConfig.approxGate
-              (Basis := qs.Basis) cfg) ψ
+        ‖qs.eval (ModExpConfig.approxGate (Basis := qs.Basis) cfg) ψ
           -
           qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
         ≤ (tbits cfg.x : ℝ) * stepErr K η := by
@@ -395,3 +392,162 @@ theorem modExpApprox_valid_dist_uniform
     modExpIdeal'
   ] using h
 
+-- /--
+-- Real-overlap consequence of the uniform tail distance bound.
+
+-- If the approximate and ideal modular-exponentiation tails differ by at most
+-- `n * stepErr K η` in norm, their real overlap differs from `1` by at most
+-- `n^2 * K * η`.
+-- -/
+-- theorem modExpApproxSteps_valid_re_overlap_uniform
+--     (qs : QSemantics)
+--     [RegEncoding qs.Basis]
+--     [ExtRegEncoding qs.Basis]
+--     [Spec]
+--     [IdealCtrlModMulExactSemantics qs]
+--     [GateSemanticsFacts qs]
+--     [ModMulPrimitiveSemantics qs] :
+--     ∃ K : ℝ, 0 ≤ K ∧
+--       ∀ (η : ℝ)
+--         (a N : ℕ) (x data work : Reg) (flag q n : ℕ) (ψ : qs.State),
+--         1 < N →
+--         N ≤ ASize data →
+--         Algorithm1Precision η data work →
+--         ModExpTailLayout x data work flag q n →
+--         ModExpTailArithmeticOK a N x q n →
+--         ψ ∈ ValidModMulState qs N data work flag →
+--         ‖ψ‖ = 1 →
+--         1 -
+--             Complex.re
+--               (inner ℂ
+--                 (qs.eval (modExpApproxStepsValid (Basis := qs.Basis) a N x data work flag q n) ψ)
+--                 (qs.eval (modExpIdealSteps qs a N x data q n) ψ))
+--           ≤
+--         ((n : ℝ) ^ 2 * K) * η := by
+--   rcases modExpApproxSteps_valid_dist_uniform qs with
+--     ⟨K, hK, hdist⟩
+
+--   refine ⟨K, hK, ?_⟩
+--   intro η a N x data work flag q n ψ
+--     hN hcap hprecision hlayout harith hvalid hnorm
+
+--   let A : qs.State :=
+--     qs.eval
+--       (modExpApproxStepsValid
+--         (Basis := qs.Basis)
+--         a N x data work flag q n)
+--       ψ
+
+--   let I : qs.State :=
+--     qs.eval
+--       (modExpIdealSteps qs a N x data q n)
+--       ψ
+
+--   have hη : 0 ≤ η :=
+--     le_of_lt hprecision.1
+
+--   have hdistAI :
+--       ‖A - I‖ ≤ (n : ℝ) * stepErr K η := by
+--     simpa [A, I] using
+--       hdist η a N x data work flag q n ψ
+--         hN hcap hprecision hlayout harith hvalid hnorm
+
+--   have eval_norm
+--       (G : Gate) (φ : qs.State) :
+--       ‖qs.eval G φ‖ = ‖φ‖ := by
+--     have hIso :
+--         ‖qs.eval G φ - qs.eval G 0‖
+--           =
+--         ‖φ - 0‖ := by
+--       exact
+--         eval_isometry qs G
+--           (by
+--             intro ξ ζ
+--             simpa using qs.inner_preserved G ξ ζ)
+--           φ 0
+--     simpa[QSemantics.eval_zero] using hIso
+
+--   have hA : ‖A‖ = 1 := by
+--     dsimp [A]
+--     calc
+--       ‖qs.eval
+--           (modExpApproxStepsValid
+--             (Basis := qs.Basis)
+--             a N x data work flag q n)
+--           ψ‖
+--           =
+--         ‖ψ‖ :=
+--         eval_norm
+--           (modExpApproxStepsValid
+--             (Basis := qs.Basis)
+--             a N x data work flag q n)
+--           ψ
+--       _ = 1 := hnorm
+
+--   have hI : ‖I‖ = 1 := by
+--     dsimp [I]
+--     calc
+--       ‖qs.eval (modExpIdealSteps qs a N x data q n) ψ‖
+--           =
+--         ‖ψ‖ :=
+--         eval_norm (modExpIdealSteps qs a N x data q n) ψ
+--       _ = 1 := hnorm
+
+--   have hbound_nonneg :
+--       0 ≤ (n : ℝ) * stepErr K η := by
+--     apply mul_nonneg
+--     · positivity
+--     · unfold stepErr
+--       exact Real.sqrt_nonneg _
+
+--   have hdistSq :
+--       ‖A - I‖ ^ 2
+--         ≤
+--       ((n : ℝ) * stepErr K η) ^ 2 := by
+--     have hfactor :
+--         0 ≤
+--           ((n : ℝ) * stepErr K η - ‖A - I‖) *
+--             ((n : ℝ) * stepErr K η + ‖A - I‖) := by
+--       apply mul_nonneg
+--       · exact sub_nonneg.mpr hdistAI
+--       · exact add_nonneg hbound_nonneg (norm_nonneg _)
+--     nlinarith
+
+--   have hrad : 0 ≤ 2 * (K * η) := by
+--     exact mul_nonneg (by norm_num) (mul_nonneg hK hη)
+
+--   have hstepSq :
+--       (stepErr K η) ^ 2 = 2 * (K * η) := by
+--     unfold stepErr
+--     simpa using Real.sq_sqrt hrad
+
+--   have hnormSub :
+--       ‖A - I‖ ^ 2
+--         =
+--       2 * (1 - Complex.re (inner ℂ A I)) := by
+--     have h :=
+--       norm_sub_sq (𝕜 := ℂ) A I
+--     rw [hA, hI] at h
+--     simp[h]
+--     nlinarith [h]
+
+--   change
+--     1 - Complex.re (inner ℂ A I)
+--       ≤ ((n : ℝ) ^ 2 * K) * η
+
+--   calc
+--     1 - Complex.re (inner ℂ A I)
+--         =
+--       ‖A - I‖ ^ 2 / 2 := by
+--         rw [hnormSub]
+--         ring
+--     _ ≤
+--       ((n : ℝ) * stepErr K η) ^ 2 / 2 := by
+--         nlinarith
+--     _ =
+--       ((n : ℝ) ^ 2 * (stepErr K η) ^ 2) / 2 := by
+--         ring
+--     _ =
+--       ((n : ℝ) ^ 2 * K) * η := by
+--         rw [hstepSq]
+--         ring

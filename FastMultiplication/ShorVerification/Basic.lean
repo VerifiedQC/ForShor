@@ -59,6 +59,7 @@ def regSize (r : Reg) : ℕ :=
 def ASize (r : Reg) : ℕ :=
   2 ^ regSize r
 
+
 @[simp] theorem regSize_mk (lo size : ℕ) :
     regSize ({ lo := lo, size := size } : Reg) = size := rfl
 
@@ -88,6 +89,7 @@ def Reg.ofBounds (lo hi : ℕ) : Reg :=
 /-- A one-qubit register at index `q`. -/
 def qubitReg (q : ℕ) : Reg :=
   { lo := q, size := 1 }
+
 
 /-- Extend a register by one high qubit. -/
 def extendHi (r : Reg) : Reg :=
@@ -218,6 +220,10 @@ def width (e : ExtReg) : ℕ :=
 
 def addExtra (e : ExtReg) (n : ℕ) : ExtReg :=
   { base := e.base, extra := e.extra + n }
+
+def CtrlDisjoint (ctrl : ℕ) (x z : ExtReg) : Prop :=
+  Disjoint (qubitReg ctrl) x.base ∧
+  Disjoint (qubitReg ctrl) z.base
 
 @[simp] theorem addExtra_base (e : ExtReg) (n : ℕ) :
     (addExtra e n).base = e.base := rfl

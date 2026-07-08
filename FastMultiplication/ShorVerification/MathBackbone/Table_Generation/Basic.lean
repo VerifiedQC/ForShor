@@ -238,7 +238,9 @@ namespace Operations
 
 inductive Point where
   | int  (z : Int)
-  | inf
+  | frac (m : Int)
+deriving Repr, DecidableEq
+
 /-- Valid operations on registers. -/
 inductive valid_ops (k : ℕ) where
   | shiftL    (i : Fin k) (n : ℕ)

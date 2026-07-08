@@ -1883,6 +1883,122 @@ lemma eval_matched_phase_ket_from
   rw [hEnc.1 i, hσi]
   rw [hEnc.2 i, hσi]
 
+lemma eval_matched_cphase_ket_from
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  {k : ℕ}
+  (src dst : LayoutState k)
+  (σ : State k)
+  (b0 b1 : qs.Basis)
+  (hk0 : 0 < k)
+  (ctrl : ℕ)
+  (i : Fin k)
+  (pt : Point)
+  (phi : ℝ)
+  (hEnc : EncodesStateFrom (qs := qs) src dst σ b0 b1)
+  (hmatch : matchesAt_pointRow_state (k := k) hk0 σ i pt) :
+  qs.eval
+      (Gate.CSignedPhaseProd ctrl phi (dst.xslot i) (dst.zslot i))
+      (qs.ket b1)
+    =
+  if RegEncoding.bit ctrl b1 then
+    (Complex.exp
+        (phi * Complex.I *
+          (((evalRowX (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ) *
+           (((evalRowZ (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ))))) •
+      qs.ket b1
+  else
+    qs.ket b1 := by
+  by_cases hctrl : RegEncoding.bit ctrl b1
+  · rw [PhaseSemantics.eval_CSignedPhaseProd_ket]
+    rw [if_pos hctrl, if_pos hctrl]
+    have hσi : σ i = expectedRow (k := k) pt := by
+      unfold matchesAt_pointRow_state regEqExpected at hmatch
+      have hall : ∀ j : Fin k, σ i j = expectedRow (k := k) pt j := by
+        intro j
+        have hmem : j ∈ List.finRange k := List.mem_finRange j
+        have := List.all_eq_true.mp hmatch j hmem
+        simpa using of_decide_eq_true this
+      funext j
+      exact hall j
+    rw [hEnc.1 i, hσi]
+    rw [hEnc.2 i, hσi]
+  · rw [PhaseSemantics.eval_CSignedPhaseProd_ket]
+    rw [if_neg hctrl, if_neg hctrl]
+
+lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_append
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  {k : ℕ} (hk : 1 < k)
+  (ctrl : ℕ)
+  (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (st : LayoutState k)
+  (xs ys : List (AnnotatedOp k))
+  (ψ : qs.State) :
+  qs.eval
+      (controlPhaseLeaves ctrl
+        (compileAnnotatedOpsToSignedGateAux k hk phi coeff st (xs ++ ys)))
+      ψ
+    =
+  qs.eval
+      (controlPhaseLeaves ctrl
+        (compileAnnotatedOpsToSignedGateAux k hk phi coeff st ys))
+      (qs.eval
+        (controlPhaseLeaves ctrl
+          (compileAnnotatedOpsToSignedGateAux k hk phi coeff st xs))
+        ψ) := by
+  induction xs generalizing ψ with
+  | nil =>
+      simp [compileAnnotatedOpsToSignedGateAux, controlPhaseLeaves, qs.eval_id]
+  | cons a xs ih =>
+      cases a with
+      | mk op term? =>
+          cases op <;>
+            cases term? <;>
+            simp [compileAnnotatedOpsToSignedGateAux, controlPhaseLeaves,
+              qs.eval_seq, ih]
+
+lemma controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_NoPhase
+  {k : ℕ} (hk : 1 < k)
+  (ctrl : ℕ)
+  (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (st : LayoutState k)
+  (ops : Prog k)
+  (n : ℕ)
+  (hNo : NoPhase ops) :
+  controlPhaseLeaves ctrl
+      (compileAnnotatedOpsToSignedGateAux k hk phi coeff st
+        (annotatePhaseTermsAux k n ops))
+    =
+  compileAnnotatedOpsToSignedGateAux k hk phi coeff st
+    (annotatePhaseTermsAux k n ops) := by
+  induction ops generalizing n with
+  | nil =>
+      simp [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux,
+        controlPhaseLeaves]
+  | cons op ops ih =>
+      have hNoTail : NoPhase ops := by
+        intro i hi
+        exact hNo i (by simp [hi])
+      cases op with
+      | shiftL i m =>
+          simp [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux,
+            controlPhaseLeaves, ih n hNoTail]
+      | shiftR i m =>
+          simp [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux,
+            controlPhaseLeaves, ih n hNoTail]
+      | negate i =>
+          simp [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux,
+            controlPhaseLeaves, ih n hNoTail]
+      | addScaled dst src negSrc sh =>
+          simp [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux,
+            controlPhaseLeaves, ih n hNoTail]
+      | phaseProduct i =>
+          exfalso
+          exact hNo i (by simp)
+
 @[simp] lemma phaseProductCount_eq_zero_of_NoPhase
   {k : ℕ} {ops : Prog k} (hNo : NoPhase ops) :
   phaseProductCount ops = 0 := by
@@ -2369,6 +2485,326 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
       rw [hEvalTail]
       simp [phaseScalarFrom, mul_assoc, smul_smul]
 
+lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  (k : ℕ) (hk : 1 < k)
+  (ctrl : ℕ)
+  (phi : ℝ)
+  (coeff : Fin (q k) → ℚ)
+  (src dst : LayoutState k) :
+  ∀ {σ : State k} {ops : Prog k} {pts : List Point},
+    BlockDecomposition (k := k) (by omega) σ ops pts →
+    ∀ (n : ℕ) (hn : n + pts.length = q k) (b0 bCur : qs.Basis),
+      (hdisj : LayoutSlotsDisjoint dst) →
+      (hCtrlOutside : OutsideLayout dst (ExtReg.ofReg (qubitReg ctrl))) →
+      RegEncoding.bit ctrl bCur = RegEncoding.bit ctrl b0 →
+      (hFits :
+        ∀ {τ : State k},
+          (∃ pre rest, ops = pre ++ rest ∧ run? pre σ = some τ) →
+            (∀ j : Fin k,
+              FitsSignedWidth (ExtReg.width (dst.xslot j))
+                (evalRowX (qs := qs) src (τ j) b0)) ∧
+            (∀ j : Fin k,
+              FitsSignedWidth (ExtReg.width (dst.zslot j))
+                (evalRowZ (qs := qs) src (τ j) b0))) →
+      (hSafeAdd :
+        ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
+          ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s) →
+      EncodesStateFromFits (qs := qs) src dst σ b0 bCur →
+      ∃ σf bNext,
+        run? ops σ = some σf ∧
+        qs.eval
+            (controlPhaseLeaves ctrl
+              (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
+                (annotatePhaseTermsAux k n ops)))
+            (qs.ket bCur)
+          =
+        (if RegEncoding.bit ctrl b0 then
+          phaseScalarFrom (qs := qs) k phi coeff src b0 pts n hn
+        else
+          1) •
+          qs.ket bNext
+        ∧
+        EncodesStateFromFits (qs := qs) src dst σf b0 bNext ∧
+        SameOutsideLayout qs dst bCur bNext := by
+  intro σ ops pts hB
+  induction hB with
+  | nil σ σ' tail hNP hrun =>
+      intro n hn b0 bCur hdisj hCtrlOutside hCtrlCur hFits hSafeAdd hEnc
+      rcases encodesFrom_after_noPhase_run_ket_gen
+          (qs := qs)
+          (hk := hk)
+          (phi := phi)
+          (coeff := coeff)
+          (src := src) (dst := dst)
+          (ops := tail)
+          (σ := σ) (σ' := σ')
+          (bRef := b0) (bCur := bCur)
+          (n := n)
+          hdisj hFits hSafeAdd hNP hrun hEnc with
+        ⟨bEnc, hEvalEnc, hEncNext⟩
+      rcases sameOutside_after_noPhase_run_ket_gen_aux
+          (qs := qs)
+          (hk := hk)
+          (phi := phi)
+          (coeff := coeff)
+          (src := src) (dst := dst)
+          (ops := tail)
+          (σ := σ) (σ' := σ')
+          (bRef := b0) (bCur := bCur)
+          (n := n)
+          hdisj hFits hSafeAdd hNP hrun hEnc with
+        ⟨bSO, hEvalSO, hSO⟩
+      have hbSO : bSO = bEnc := by
+        apply qs.ket_inj
+        calc
+          qs.ket bSO
+              = qs.eval
+                  (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
+                    (annotatePhaseTermsAux k n tail))
+                  (qs.ket bCur) := hEvalSO.symm
+          _ = qs.ket bEnc := hEvalEnc
+      subst bSO
+      refine ⟨σ', bEnc, hrun, ?_, hEncNext, hSO⟩
+      have hNoCtrl :
+          controlPhaseLeaves ctrl
+              (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
+                (annotatePhaseTermsAux k n tail))
+            =
+          compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
+            (annotatePhaseTermsAux k n tail) := by
+        exact controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_NoPhase
+          hk ctrl phi coeff dst tail n hNP
+      rw [hNoCtrl]
+      by_cases hc : RegEncoding.bit ctrl b0
+      · simp [phaseScalarFrom, hc]
+        simpa [phaseScalarFrom] using hEvalEnc
+      · simp [hc]
+        simpa using hEvalEnc
+
+  | cons B hrest ih =>
+      intro n hn b0 bCur hdisj hCtrlOutside hCtrlCur hFits hSafeAdd hEnc
+      rename_i σ2 pt pts2 oprest
+
+      have hlt : n < q k := by
+        simp at hn
+        omega
+
+      have hFitsArith :
+          ∀ {τ : State k},
+            (∃ pre rest, B.arith = pre ++ rest ∧ run? pre σ2 = some τ) →
+              (∀ j : Fin k,
+                FitsSignedWidth (ExtReg.width (dst.xslot j))
+                  (evalRowX (qs := qs) src (τ j) b0)) ∧
+              (∀ j : Fin k,
+                FitsSignedWidth (ExtReg.width (dst.zslot j))
+                  (evalRowZ (qs := qs) src (τ j) b0)) := by
+        intro τ hτ
+        rcases hτ with ⟨pre, rest, hsplit, hrunpre⟩
+        apply hFits
+        refine ⟨pre, rest ++ [.phaseProduct B.i] ++ oprest, ?_, ?_⟩
+        · simp [PhaseBlock.toProg, hsplit, List.append_assoc]
+        · exact hrunpre
+
+      have hSafeAddArith :
+          ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
+            B.arith = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s := by
+        intro pre rest d s negSrc sh hadd
+        exact hSafeAdd
+          (pre := pre)
+          (rest := rest ++ [valid_ops.phaseProduct B.i] ++ oprest)
+          (d := d) (s := s) (negSrc := negSrc) (sh := sh)
+          (by
+            rw [PhaseBlock.toProg]
+            simp [hadd, List.append_assoc])
+
+      rcases encodesFrom_after_noPhase_run_ket_gen
+          (qs := qs)
+          (hk := hk)
+          (phi := phi)
+          (coeff := coeff)
+          (src := src) (dst := dst)
+          (ops := B.arith)
+          (σ := σ2) (σ' := B.σmid)
+          (bRef := b0) (bCur := bCur)
+          (n := n)
+          hdisj hFitsArith hSafeAddArith
+          B.noPhase_pre B.run_pre hEnc with
+        ⟨bMid, hArithEval, hArithEnc⟩
+
+      rcases sameOutside_after_noPhase_run_ket_gen_aux
+          (qs := qs)
+          (hk := hk)
+          (phi := phi)
+          (coeff := coeff)
+          (src := src) (dst := dst)
+          (ops := B.arith)
+          (σ := σ2) (σ' := B.σmid)
+          (bRef := b0) (bCur := bCur)
+          (n := n)
+          hdisj hFitsArith hSafeAddArith
+          B.noPhase_pre B.run_pre hEnc with
+        ⟨bMid', hArithEval', hArithSO'⟩
+
+      have hbMid' : bMid' = bMid := by
+        apply qs.ket_inj
+        simp [hArithEval] at hArithEval'
+        simp [hArithEval']
+
+      have hArithSO : SameOutsideLayout qs dst bCur bMid := by
+        simpa [hbMid'] using hArithSO'
+
+      have hCtrlMid : RegEncoding.bit ctrl bMid = RegEncoding.bit ctrl b0 := by
+        calc
+          RegEncoding.bit ctrl bMid
+              = RegEncoding.bit ctrl bCur :=
+                SameOutsideLayout.bit_eq_of_outside
+                  (qs := qs) hArithSO ctrl hCtrlOutside
+          _ = RegEncoding.bit ctrl b0 := hCtrlCur
+
+      have hRunBlock : run? B.toProg σ2 = some B.σmid := by
+        simp [PhaseBlock.toProg, run?_append, B.run_pre, applyOp?]
+
+      have hFitsTail :
+          ∀ {τ : State k},
+            (∃ pre rest, oprest = pre ++ rest ∧ run? pre B.σmid = some τ) →
+              (∀ j : Fin k,
+                FitsSignedWidth (ExtReg.width (dst.xslot j))
+                  (evalRowX (qs := qs) src (τ j) b0)) ∧
+              (∀ j : Fin k,
+                FitsSignedWidth (ExtReg.width (dst.zslot j))
+                  (evalRowZ (qs := qs) src (τ j) b0)) := by
+        intro τ hτ
+        rcases hτ with ⟨pre, rest, hsplit, hrunpre⟩
+        apply hFits
+        refine ⟨B.toProg ++ pre, rest, ?_, ?_⟩
+        · simp [PhaseBlock.toProg, hsplit, List.append_assoc]
+        · rw [run?_append, hRunBlock]
+          simpa using hrunpre
+
+      have hSafeAddTail :
+          ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
+            oprest = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s := by
+        intro pre rest d s negSrc sh hadd
+        exact hSafeAdd
+          (pre := B.toProg ++ pre)
+          (rest := rest)
+          (d := d) (s := s) (negSrc := negSrc) (sh := sh)
+          (by simp [hadd, List.append_assoc])
+
+      have hnTail : n + 1 + pts2.length = q k := by
+        simp at hn
+        omega
+
+      rcases ih (n + 1) hnTail b0 bMid hdisj hCtrlOutside hCtrlMid
+          hFitsTail hSafeAddTail hArithEnc with
+        ⟨σf, bNext, hRunTail, hEvalTail, hEncTail, hTailSO⟩
+
+      have hRunAll : run? (B.toProg ++ oprest) σ2 = some σf := by
+        rw [run?_append, hRunBlock]
+        exact hRunTail
+
+      refine ⟨σf, bNext, hRunAll, ?_, hEncTail,
+        SameOutsideLayout.trans (qs := qs) hArithSO hTailSO⟩
+
+      have hAnnAll :
+          annotatePhaseTermsAux k n (B.toProg ++ oprest) =
+            annotatePhaseTermsAux k n B.toProg ++
+              annotatePhaseTermsAux k (n + 1) oprest := by
+        have hCountBlock : phaseProductCount B.toProg = 1 := by
+          simp [PhaseBlock.toProg, phaseProductCount, B.noPhase_pre]
+        rw [annotatePhaseTermsAux_append]
+        simp [hCountBlock]
+
+      have hAnnBlock :
+          annotatePhaseTermsAux k n B.toProg =
+            annotatePhaseTermsAux k n B.arith ++
+              [{ op := .phaseProduct B.i, phaseTerm? := some ⟨n, hlt⟩ }] := by
+        simp [PhaseBlock.toProg]
+        rw [annotatePhaseTermsAux_append]
+        simp [annotatePhaseTermsAux, hlt,
+          phaseProductCount_eq_zero_of_NoPhase, B.noPhase_pre]
+
+      rw [hAnnAll]
+      rw [eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_append
+            (qs := qs) (hk := hk) (ctrl := ctrl) (phi := phi) (coeff := coeff)
+            (st := dst)
+            (xs := annotatePhaseTermsAux k n B.toProg)
+            (ys := annotatePhaseTermsAux k (n + 1) oprest)
+            (ψ := qs.ket bCur)]
+
+      rw [hAnnBlock]
+      rw [eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_append
+            (qs := qs) (hk := hk) (ctrl := ctrl) (phi := phi) (coeff := coeff)
+            (st := dst)
+            (xs := annotatePhaseTermsAux k n B.arith)
+            (ys := [{ op := .phaseProduct B.i, phaseTerm? := some ⟨n, hlt⟩ }])
+            (ψ := qs.ket bCur)]
+
+      have hNoCtrlArith :
+          controlPhaseLeaves ctrl
+              (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
+                (annotatePhaseTermsAux k n B.arith))
+            =
+          compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
+            (annotatePhaseTermsAux k n B.arith) := by
+        exact controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_NoPhase
+          hk ctrl phi coeff dst B.arith n B.noPhase_pre
+
+      rw [hNoCtrlArith]
+      rw [hArithEval]
+
+      have hPhase :
+          qs.eval
+              (controlPhaseLeaves ctrl
+                (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
+                  [{ op := .phaseProduct B.i, phaseTerm? := some ⟨n, hlt⟩ }]))
+              (qs.ket bMid)
+            =
+          if RegEncoding.bit ctrl bMid then
+            (Complex.exp
+              ((phi * ((coeff ⟨n, hlt⟩ : ℚ) : ℝ)) * Complex.I *
+                (((evalRowX (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ) *
+                 (((evalRowZ (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ))))) •
+              qs.ket bMid
+          else
+            qs.ket bMid := by
+        simp [compileAnnotatedOpsToSignedGateAux, controlPhaseLeaves,
+          qs.eval_seq, qs.eval_id]
+        simpa using
+          (eval_matched_cphase_ket_from
+            (qs := qs)
+            (src := src)
+            (dst := dst)
+            (σ := B.σmid)
+            (b0 := b0)
+            (b1 := bMid)
+            (hk0 := by omega)
+            (ctrl := ctrl)
+            (i := B.i)
+            (pt := pt)
+            (phi := phi * ((coeff ⟨n, hlt⟩ : ℚ) : ℝ))
+            hArithEnc.1
+            B.match_pt)
+
+      rw [hPhase]
+      by_cases hc : RegEncoding.bit ctrl b0
+      · have hcMid : RegEncoding.bit ctrl bMid = true := by
+          simpa [hc] using hCtrlMid
+        simp [hc, hcMid]
+        rw [qs.eval_smul]
+        rw [hEvalTail]
+        simp [phaseScalarFrom, hc, mul_assoc, smul_smul]
+      · have hcMid : RegEncoding.bit ctrl bMid = false := by
+          cases hmid : RegEncoding.bit ctrl bMid <;> simp
+          · have : RegEncoding.bit ctrl b0 = true := by
+              simpa [hmid] using hCtrlMid.symm
+            exact False.elim (hc this)
+        simp [hc, hcMid]
+        rw [hEvalTail]
+        simp [hc]
+
 
 lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks
   (qs : QSemantics)
@@ -2524,6 +2960,185 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks
   subst hbNext_eq
   simpa using hBody
 
+lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  (k : ℕ) (hk : 1 < k)
+  (ctrl : ℕ)
+  (phi : ℝ)
+  (pts : List Point)
+  (hpts : pts.length = q k)
+  (coeff : Fin (q k) → ℚ)
+  (src dst : LayoutState k)
+  (b0 bMid : qs.Basis)
+  (ops : Prog k)
+  (hdisj : LayoutSlotsDisjoint dst)
+  (hCtrlOutside : OutsideLayout dst (ExtReg.ofReg (qubitReg ctrl)))
+  (hCtrlMid : RegEncoding.bit ctrl bMid = RegEncoding.bit ctrl b0)
+  (hFits :
+    ∀ {τ : State k},
+      (∃ pre rest, ops = pre ++ rest ∧ run? pre State.start_state = some τ) →
+        (∀ j : Fin k,
+          FitsSignedWidth (ExtReg.width (dst.xslot j))
+            (evalRowX (qs := qs) src (τ j) b0)) ∧
+        (∀ j : Fin k,
+          FitsSignedWidth (ExtReg.width (dst.zslot j))
+            (evalRowZ (qs := qs) src (τ j) b0)))
+  (hSafeAdd :
+    ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
+      ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s)
+  (hEnc : EncodesStateFromFits (qs := qs) src dst State.start_state b0 bMid)
+  (hB : BlockDecomposition (k := k) (by omega) State.start_state ops pts)
+  (run_ops_start_state : run? ops State.start_state = some State.start_state) :
+  qs.eval
+      (controlPhaseLeaves ctrl
+        (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
+          (annotatePhaseTermsAux k 0 ops)))
+      (qs.ket bMid)
+    =
+  (if RegEncoding.bit ctrl b0 then
+    phaseScalarFrom (qs := qs) k phi coeff src b0 pts 0 (by simpa using hpts)
+  else
+    1) •
+    qs.ket bMid := by
+  rcases eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
+      (qs := qs)
+      (k := k) (hk := hk)
+      (ctrl := ctrl)
+      (phi := phi)
+      (coeff := coeff)
+      (src := src) (dst := dst)
+      (σ := State.start_state)
+      (ops := ops)
+      (pts := pts)
+      hB
+      0
+      (by simp [hpts])
+      b0
+      bMid
+      hdisj
+      hCtrlOutside
+      hCtrlMid
+      hFits
+      hSafeAdd
+      hEnc with
+    ⟨σf, bNext, hRun, hBody, hEncNextFits, hSO⟩
+
+  rcases hEncNextFits with ⟨hEncNext, hOutX, hOutZ⟩
+
+  have hσf : σf = State.start_state := by
+    have hs : some σf = some State.start_state := by
+      calc
+        some σf = run? ops State.start_state := by simp [hRun]
+        _ = some State.start_state := run_ops_start_state
+    exact Option.some.inj hs
+
+  subst hσf
+
+  have hXslots :
+      ∀ i : Fin k,
+        ExtRegEncoding.extToInt (dst.xslot i) bNext =
+          ExtRegEncoding.extToInt (dst.xslot i) bMid := by
+    intro i
+    calc
+      ExtRegEncoding.extToInt (dst.xslot i) bNext
+          = evalRowX (qs := qs) src (State.start_state i) b0 := by
+              simpa [EncodesStateFrom] using hEncNext.1 i
+      _   = ExtRegEncoding.extToInt (dst.xslot i) bMid := by
+              symm
+              simpa [EncodesStateFrom] using hEnc.1.1 i
+
+  have hZslots :
+      ∀ i : Fin k,
+        ExtRegEncoding.extToInt (dst.zslot i) bNext =
+          ExtRegEncoding.extToInt (dst.zslot i) bMid := by
+    intro i
+    calc
+      ExtRegEncoding.extToInt (dst.zslot i) bNext
+          = evalRowZ (qs := qs) src (State.start_state i) b0 := by
+              simpa [EncodesStateFrom] using hEncNext.2 i
+      _   = ExtRegEncoding.extToInt (dst.zslot i) bMid := by
+              symm
+              simpa [EncodesStateFrom] using hEnc.1.2 i
+
+  have hbNext_eq : bNext = bMid := by
+    exact basis_eq_of_sameOutside_and_slots
+      (qs := qs)
+      (dst := dst)
+      (bMid := bMid)
+      (bNext := bNext)
+      hSO
+      hXslots
+      hZslots
+      (qubit_in_layout_or_outside dst)
+      (fun e b1 b2 q hInt hqlo hqhi =>
+        ExtRegEncoding.hbit_of_ext (e := e) (b1 := b1) (b2 := b2) (q := q) hInt hqlo hqhi)
+
+  subst hbNext_eq
+  simpa using hBody
+
+lemma controlPhaseLeaves_allocChunkGate
+  {k : ℕ} (ctrl : ℕ) (i : Fin k) (src dst : ExtReg) :
+  controlPhaseLeaves ctrl (allocChunkGate i src dst) = allocChunkGate i src dst := by
+  unfold allocChunkGate
+  by_cases htop : isTopChunk i <;>
+    by_cases hδ : extraDelta src dst = 0 <;>
+    simp [htop, hδ, controlPhaseLeaves]
+
+lemma controlPhaseLeaves_deallocChunkGate
+  {k : ℕ} (ctrl : ℕ) (i : Fin k) (src dst : ExtReg) :
+  controlPhaseLeaves ctrl (deallocChunkGate i src dst) = deallocChunkGate i src dst := by
+  unfold deallocChunkGate
+  by_cases htop : isTopChunk i <;>
+    by_cases hδ : extraDelta src dst = 0 <;>
+    simp [htop, hδ, controlPhaseLeaves]
+
+lemma controlPhaseLeaves_compileSignedAllocationsAux
+  {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
+  ∀ (n : ℕ) (hn : n ≤ k),
+    controlPhaseLeaves ctrl (compileSignedAllocationsAux src dst n hn) =
+      compileSignedAllocationsAux src dst n hn := by
+  intro n hn
+  induction n with
+  | zero =>
+      simp [compileSignedAllocationsAux_zero, controlPhaseLeaves]
+  | succ n ih =>
+      rw [compileSignedAllocationsAux_succ (src := src) (dst := dst) (n := n) (hn := hn)]
+      let hk' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
+      let i : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
+      simp [controlPhaseLeaves, ih hk',
+        controlPhaseLeaves_allocChunkGate]
+
+lemma controlPhaseLeaves_compileSignedAllocations
+  {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
+  controlPhaseLeaves ctrl (compileSignedAllocations k src dst) =
+    compileSignedAllocations k src dst := by
+  unfold compileSignedAllocations
+  exact controlPhaseLeaves_compileSignedAllocationsAux ctrl src dst k le_rfl
+
+lemma controlPhaseLeaves_compileSignedDeallocationsAux
+  {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
+  ∀ (n : ℕ) (hn : n ≤ k),
+    controlPhaseLeaves ctrl (compileSignedDeallocationsAux src dst n hn) =
+      compileSignedDeallocationsAux src dst n hn := by
+  intro n hn
+  induction n with
+  | zero =>
+      simp [compileSignedDeallocationsAux_zero, controlPhaseLeaves]
+  | succ n ih =>
+      rw [compileSignedDeallocationsAux_succ (src := src) (dst := dst) (n := n) (hn := hn)]
+      let hk' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
+      let i : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
+      simp [controlPhaseLeaves, ih hk',
+        controlPhaseLeaves_deallocChunkGate]
+
+lemma controlPhaseLeaves_compileSignedDeallocations
+  {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
+  controlPhaseLeaves ctrl (compileSignedDeallocations k src dst) =
+    compileSignedDeallocations k src dst := by
+  unfold compileSignedDeallocations
+  exact controlPhaseLeaves_compileSignedDeallocationsAux ctrl src dst k le_rfl
+
 
 /-! =========================================================
     Section 3: Deallocation and body/deallocation composition
@@ -2669,6 +3284,95 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_then_dealloc
       (b0 := b0) (bMid := bMid)
       (ops := ops)
       hdisj
+      hFits
+      hSafeAdd
+      hEnc
+      hB
+      run_ops_start_state
+
+  have hDealloc :
+      qs.eval (compileSignedDeallocations k src dst) (qs.ket bMid) = qs.ket b0 := by
+    exact eval_compileSignedDeallocations_ket
+      (qs := qs)
+      (src := src) (dst := dst)
+      (b := b0) (bAlloc := bMid)
+      hAlloc
+
+  rw [qs.eval_seq]
+  rw [hBody]
+  rw [qs.eval_smul]
+  rw [hDealloc]
+
+lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_then_dealloc
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  (k : ℕ) (hk : 1 < k)
+  (ctrl : ℕ)
+  (phi : ℝ)
+  (pts : List Point)
+  (hpts : pts.length = q k)
+  (coeff : Fin (q k) → ℚ)
+  (src dst : LayoutState k)
+  (b0 bMid : qs.Basis)
+  (ops : Prog k)
+  (hdisj : LayoutSlotsDisjoint dst)
+  (hCtrlOutside : OutsideLayout dst (ExtReg.ofReg (qubitReg ctrl)))
+  (hCtrlMid : RegEncoding.bit ctrl bMid = RegEncoding.bit ctrl b0)
+  (hFits :
+    ∀ {τ : State k},
+      (∃ pre rest, ops = pre ++ rest ∧ run? pre State.start_state = some τ) →
+        (∀ j : Fin k,
+          FitsSignedWidth (ExtReg.width (dst.xslot j))
+            (evalRowX (qs := qs) src (τ j) b0)) ∧
+        (∀ j : Fin k,
+          FitsSignedWidth (ExtReg.width (dst.zslot j))
+            (evalRowZ (qs := qs) src (τ j) b0)))
+  (hSafeAdd :
+    ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
+      ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s)
+  (hEnc : EncodesStateFromFits (qs := qs) src dst State.start_state b0 bMid)
+  (hAlloc :
+    qs.eval (compileSignedAllocations k src dst) (qs.ket b0) = qs.ket bMid)
+  (hB : BlockDecomposition (k := k) (by omega) State.start_state ops pts)
+  (run_ops_start_state : run? ops State.start_state = some State.start_state) :
+  qs.eval
+      (controlPhaseLeaves ctrl
+        (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
+          (annotatePhaseTermsAux k 0 ops)) ;;
+       compileSignedDeallocations k src dst)
+      (qs.ket bMid)
+    =
+  (if RegEncoding.bit ctrl b0 then
+    phaseScalarFrom (qs := qs) k phi coeff src b0 pts 0 (by simpa using hpts)
+  else
+    1) •
+    qs.ket b0 := by
+  have hBody :
+      qs.eval
+          (controlPhaseLeaves ctrl
+            (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
+              (annotatePhaseTermsAux k 0 ops)))
+          (qs.ket bMid)
+        =
+      (if RegEncoding.bit ctrl b0 then
+        phaseScalarFrom (qs := qs) k phi coeff src b0 pts 0 (by simpa using hpts)
+      else
+        1) •
+        qs.ket bMid := by
+    exact eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks
+      (qs := qs)
+      (k := k) (hk := hk)
+      (ctrl := ctrl)
+      (phi := phi)
+      (pts := pts)
+      (hpts := hpts)
+      (coeff := coeff)
+      (src := src) (dst := dst)
+      (b0 := b0) (bMid := bMid)
+      (ops := ops)
+      hdisj
+      hCtrlOutside
+      hCtrlMid
       hFits
       hSafeAdd
       hEnc

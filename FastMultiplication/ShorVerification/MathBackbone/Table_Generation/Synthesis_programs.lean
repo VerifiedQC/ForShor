@@ -323,17 +323,58 @@ computeLocal2 hk z = computeLocal hk z:= by {
     Section 4: Point programs and row-matching interfaces
 ========================================================= -/
 
-/-- One block per point: build row in `dst`, mark it, then uncompute. -/
+def pointDst {k : Nat} (hk : 0 < k) : Point → Fin k
+| .int _  => finZero hk
+| .frac _ => finLast hk
+
+@[simp] lemma expectedRow_pointDst
+    {k : Nat} (hk : 0 < k) (pt : Point) :
+    expectedRow (k := k) pt (pointDst hk pt) = 1 := by
+  cases pt <;>
+    simp [expectedRow, pointDst, finZero, finLast]
+
+/-- All registers except the final one. -/
+def nonlastFins {k : Nat} (hk : 0 < k) : List (Fin k) :=
+  (List.finRange k).filter (fun j => decide (j ≠ finLast hk))
+
+/-- Coefficient of `x_j` in the scaled evaluation row for 1/c. -/
+def fracCoeff {k : Nat} (c : Int) (j : Fin k) : Int :=
+  c ^ (k - 1 - j.val)
+
+/--
+Build the row
+
+  [c^(k-1), c^(k-2), ..., c, 1]
+
+in the final register.
+
+The final register already contributes its own coefficient `1`,
+so we add only the other source registers.
+-/
+def computeFracLocalAux {k : Nat} (hk : 0 < k) (c : Int) :
+    List (Fin k) → Prog k
+| []       => []
+| j :: js  =>
+    addConstFrom (finLast hk) j (fracCoeff (k := k) c j) ++
+      computeFracLocalAux hk c js
+
+def computeFracLocal2 {k : Nat} (hk : 0 < k) (c : Int) : Prog k :=
+  computeFracLocalAux hk c (nonlastFins hk)
+
+
 def opsForPointWithProduct {k : Nat} (hk : 0 < k) : Point → Prog k
-| .inf   =>
-  let last : Fin k := ⟨k-1, by
-    have hk' : 0 < k := hk
-    exact Nat.sub_lt (Nat.succ_le_of_lt hk') (by decide)⟩
-  [valid_ops.phaseProduct last]
 | .int z =>
-  let dst := finZero hk
-  let l   := computeLocal2 hk z
-  l ++ [valid_ops.phaseProduct dst] ++ apply_Op_inverse l
+    let dst := finZero hk
+    let l   := computeLocal2 hk z
+    l ++ [valid_ops.phaseProduct dst] ++ apply_Op_inverse l
+
+| .frac c =>
+    if _hc : c = 0 then
+      [valid_ops.phaseProduct (finLast hk)]
+    else
+      let dst := finLast hk
+      let l   := computeFracLocal2 hk c
+      l ++ [valid_ops.phaseProduct dst] ++ apply_Op_inverse l
 
 /-- Generator that includes `phaseProduct` checkpoints (no folds). -/
 def genOpsWithProduct {k : Nat} (hk : 0 < k) : List Point → Prog k
@@ -385,8 +426,8 @@ def progToString {k} (p : Prog k) : String :=
 
 /-- String form for a single point. -/
 def pointToString : Point → String
-| .inf    => "inf"
 | .int z  => toString z
+| .frac c => if c = 0 then "inf" else "1/" ++ toString c
 
 /-- Ops for a single point, as a one-line string. -/
 def opsForPointString {k} (hk : 0 < k) (p : Point) : String :=
@@ -396,13 +437,6 @@ def opsForPointString {k} (hk : 0 < k) (p : Point) : String :=
 def genOpsString {k} (hk : 0 < k) (ps : List Point) : String :=
   progToString (genOpsWithProduct (k := k) hk ps)
 
-
-
-/-- Example: change `k` and `pts` to whatever you want. -/
-def pts : List Point :=
-  [Point.inf, Point.int (-3), Point.int (-2)]
-
-#eval IO.println (genOpsString (k := 3) (by decide) pts)
 
 /-! =========================================================
     Section 6: Well-formedness of generated arithmetic
@@ -432,6 +466,27 @@ lemma nonzeroFins_allNe {k} (hk : 0 < k) :
           aesop
         ·
           simp [AllNe, h]
+          aesop
+  simpa using h_aux (List.finRange k)
+
+lemma nonlastFins_allNe {k} (hk : 0 < k) :
+  AllNe (finLast (k := k) hk) (nonlastFins (k := k) hk) := by
+  classical
+  unfold nonlastFins
+  let dst := finLast (k := k) hk
+  have h_aux :
+      ∀ (L : List (Fin k)),
+        AllNe dst (L.filter (fun j => j ≠ dst)) := by
+    intro L
+    induction L with
+    | nil =>
+        simp [AllNe]
+    | cons j js ih =>
+        by_cases h : j = dst
+        · unfold AllNe
+          simp [h]
+          aesop
+        · simp [AllNe, h]
           aesop
   simpa using h_aux (List.finRange k)
 
@@ -549,6 +604,42 @@ lemma computeLocal2_Valid{k:ℕ}{z:ℤ}(hk:0<k):
       nonzeroFins_allNe (k := k) hk
     exact computeLocalAux_WellFormed (k := k) hk z (nonzeroFins hk) hAll
 
+lemma computeFracLocalAux_WellFormed
+    {k : ℕ} (hk : 0 < k) (c : ℤ) :
+    ∀ (js : List (Fin k)),
+      AllNe (finLast (k := k) hk) js →
+      Prog.WellFormed (computeFracLocalAux (k := k) hk c js)
+  | [], _ => by
+      intro op hop
+      simp [computeFracLocalAux] at hop
+  | j :: js, hAll => by
+      rcases hAll with ⟨hj_ne, hAll_js⟩
+      let dst := finLast (k := k) hk
+      let coeff := fracCoeff (k := k) c j
+      have hheadWF :
+          Prog.WellFormed (addConstFrom (k := k) dst j coeff) :=
+        addConstFrom_WellFormed
+          (k := k) (dst := dst) (src := j)
+          (by
+            intro h
+            exact hj_ne (by simp [h] : j = dst))
+          coeff
+      have htailWF :
+          Prog.WellFormed (computeFracLocalAux (k := k) hk c js) :=
+        computeFracLocalAux_WellFormed hk c js hAll_js
+      intro op hop
+      have := WellFormed_append (k := k) hheadWF htailWF op
+      simpa [computeFracLocalAux, dst, coeff] using this hop
+
+lemma computeFracLocal2_Valid
+    {k : ℕ} {c : ℤ} (hk : 0 < k) :
+    Prog.WellFormed (computeFracLocal2 (k := k) hk c) := by
+  unfold computeFracLocal2
+  have hAll : AllNe (finLast (k := k) hk) (nonlastFins (k := k) hk) :=
+    nonlastFins_allNe (k := k) hk
+  exact computeFracLocalAux_WellFormed
+    (k := k) hk c (nonlastFins (k := k) hk) hAll
+
 /-! =========================================================
     Section 7: Execution support and computed row matchers
 ========================================================= -/
@@ -653,19 +744,6 @@ lemma head_and_tail_nonzero
 def regEqReg {k : Nat} (r s : Register k) : Bool :=
   (List.finRange k).all (fun u => decide (r u = s u))
 
-def matchesAt_pointRow_state3 {k : Nat} (hk : 0 < k) : MatchesAtState k :=
-  fun σ i pt =>
-    match pt with
-    | .int z =>
-        match run? (computeLocal2 (k := k) hk z) (State.start_state (k := k)) with
-        | some σ' => regEqReg (k := k) (σ i) (σ' (finZero (k := k) hk))
-        | none    => false
-    | .inf =>
-        let last : Fin k := ⟨k-1, by
-          have hk' : 0 < k := hk
-          exact Nat.sub_lt (Nat.succ_le_of_lt hk') (by decide)⟩
-        let target : Register k := fun u => if u = last then (1 : Int) else 0
-        regEqReg (k := k) (σ i) target
 
 /-- Comparing a register with a concrete row via `regEqReg` is the same as
     `regEqExpected` when the concrete row *is* that expected row. -/
@@ -676,23 +754,6 @@ lemma regEqReg_to_regEqExpected_int
   regEqExpected (k := k) r (.int z) := by
   classical
   simp [regEqReg, regEqExpected]
-
-/-- For `.inf`, your state3/2 target register *is* `expectedRow .inf`. -/
-lemma regEqReg_to_regEqExpected_inf
-  {k : ℕ} (hk : 0 < k) (r : Register k) :
-  (let last : Fin k := ⟨k-1, by
-     have hk' : 0 < k := hk
-     exact Nat.sub_lt (Nat.succ_le_of_lt hk') (by decide)⟩
-   let target : Register k := fun u => if u = last then (1 : Int) else 0;
-   regEqReg (k := k) r target)
-  =
-  regEqExpected (k := k) r (.inf) := by
-  classical
-  -- `expectedRow .inf` is exactly that `target`
-  simp [regEqReg, regEqExpected, expectedRow]
-  split
-  next k => simp_all only [List.finRange_zero, zero_tsub, List.all_nil]
-  next k k_1 => simp_all only [Nat.succ_eq_add_one, add_tsub_cancel_right]
 
 open Operations
 
@@ -794,3 +855,46 @@ lemma computeLocal2_some_state
  ∃ σ₁, run? (computeLocal2 hk z) σ = some σ₁:=by
   unfold computeLocal2
   exact run_some_computeLocalAux (k := k) hk z (nonzeroFins hk) σ
+
+lemma run_some_computeFracLocalAux
+    {k : ℕ} (hk : 0 < k) (c : ℤ) :
+    ∀ (js : List (Fin k)) (σ : State k),
+      ∃ τ, run? (computeFracLocalAux (k := k) hk c js) σ = some τ := by
+  classical
+  intro js
+  induction js with
+  | nil =>
+      simp [computeFracLocalAux]
+  | cons j js ih =>
+      intro σ
+      obtain ⟨σ₁, h₁⟩ :
+          ∃ σ₁,
+            run? (addConstFrom (k := k) (finLast hk) j
+              (fracCoeff (k := k) c j)) σ = some σ₁ :=
+        run_some_addConstFrom
+          (k := k) (dst := finLast hk) (src := j)
+          (c := fracCoeff (k := k) c j) σ
+      obtain ⟨τ, h₂⟩ := ih σ₁
+      refine ⟨τ, ?_⟩
+      simp [computeFracLocalAux, run?_append, h₁, h₂]
+
+lemma computeFracLocal2_some_state
+    (k : ℕ)
+    (hk : 0 < k)
+    (c : ℤ)
+    (σ : State k) :
+    ∃ σ₁, run? (computeFracLocal2 (k := k) hk c) σ = some σ₁ := by
+  unfold computeFracLocal2
+  exact run_some_computeFracLocalAux (k := k) hk c (nonlastFins hk) σ
+
+example :
+    Prog.WellFormed
+      (computeFracLocal2 (k := 4) (by decide : 0 < 4) 2) := by
+  exact computeFracLocal2_Valid (k := 4) (c := 2) (by decide)
+
+example :
+    ∃ σ₁,
+      run? (computeFracLocal2 (k := 4) (by decide : 0 < 4) 2)
+        (State.start_state (k := 4)) = some σ₁ := by
+  exact computeFracLocal2_some_state
+    4 (by decide) 2 (State.start_state (k := 4))

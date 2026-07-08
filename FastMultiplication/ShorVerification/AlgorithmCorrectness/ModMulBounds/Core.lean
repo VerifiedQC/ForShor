@@ -165,10 +165,6 @@ def ValidModMulState
 
 /--
 Exact basis semantics required of the ideal controlled modular multiplier.
-
-The ideal gate writes the controlled modular-product value to `data` and
-leaves all other qubits unchanged. The weaker existential formulation is
-derived below as `IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket`.
 -/
 class IdealCtrlModMulExactSemantics
     (qs : QSemantics)
@@ -1359,7 +1355,7 @@ end Alg1Trace
 Canonical Step-1 phase-estimation coefficient.
 
 This is the actual amplitude of the work-label basis vector in the Step-1
-output. 
+output.
 -/
 noncomputable def alg1PhaseCoeff
     (qs : QSemantics)

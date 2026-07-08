@@ -221,7 +221,6 @@ lemma phaseScalarFrom_eq_phaseScalarFromList
       (n := 0)
       (hn := by simpa using hpts)
       (by simp)
-
 lemma expectedRow_mul_expectedRow_eq_interpEntry
   {k : ℕ}
   (hk : 1 < k)
@@ -240,82 +239,18 @@ lemma expectedRow_mul_expectedRow_eq_interpEntry
       simp [expectedRow, interpEntry]
       norm_cast
       rw [pow_add]
-  | inf =>
-      simp [expectedRow, interpEntry, q]
-      by_cases hi : i.1 + 1 = k
-      · by_cases hj : j.1 + 1 = k
-        · have hij : i.1 + j.1 = 2 * k - 2 := by omega
-          cases k with
-          | zero =>
-              omega
 
-          | succ k' =>
-              have hi_last : i = ⟨k', by omega⟩ := by
-                apply Fin.ext
-                exact Nat.succ_injective hi
+  | frac c =>
+      change
+        (((c ^ (k - 1 - i.1) * c ^ (k - 1 - j.1) : ℤ) : ℚ)
+          =
+        (c : ℚ) ^ (q k - 1 - (i.1 + j.1)))
 
-              have hj_last : j = ⟨k', by omega⟩ := by
-                apply Fin.ext
-                exact Nat.succ_injective hj
-
-              have hdeg : i.1 + j.1 = 2 * (k' + 1) - 1 - 1 := by
-                omega
-              simp [hdeg]
-              simp_all only [lt_add_iff_pos_left, ↓reduceIte]
-        · have hij : i.1 + j.1 ≠ 2 * k - 2 := by omega
-
-          cases k with
-          | zero =>
-              omega
-
-          | succ k' =>
-              have hi_last : i = ⟨k', by omega⟩ := by
-                apply Fin.ext
-                exact Nat.succ_injective hi
-
-              have hj_not_last : j ≠ ⟨k', by omega⟩ := by
-                intro hj_last
-                apply hj
-                rw [hj_last]
-              have hdeg : k' + j.1 ≠ 2 * (k' + 1) - 1 - 1 := by
-                omega
-              aesop
-
-      · by_cases hj : j.1 + 1 = k
-        · have hij : i.1 + j.1 ≠ 2 * k - 2 := by omega
-          cases k with
-          | zero =>
-              omega
-
-          | succ k' =>
-              have hj_last : j = ⟨k', by omega⟩ := by
-                apply Fin.ext
-                exact Nat.succ_injective hj
-
-              have hi_not_last : i ≠ ⟨k', by omega⟩ := by
-                intro hi_last
-                apply hi
-                rw [hi_last]
-
-              aesop
-        · have hij : i.1 + j.1 ≠ 2 * k - 2 := by omega
-
-          cases k with
-          | zero =>
-              omega
-
-          | succ k' =>
-              have hi_not_last : i ≠ ⟨k', by omega⟩ := by
-                intro hi_last
-                apply hi
-                rw [hi_last]
-              have hj_not_last : j ≠ ⟨k', by omega⟩ := by
-                intro hj_last
-                apply hj
-                rw [hj_last]
-              have hdeg : i.1 + j.1 ≠ 2 * (k' + 1) - 1 - 1 := by
-                omega
-              simp [hi_not_last, hj_not_last, hdeg]
+      norm_cast
+      rw [← pow_add]
+      congr 1
+      simp [q]
+      omega
 
 lemma sum_degree_group
   {k : ℕ}

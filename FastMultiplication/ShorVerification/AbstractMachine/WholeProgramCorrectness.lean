@@ -86,9 +86,15 @@ theorem lowerGate_correctness
           (run_ops_start_state := run_ops_start_state))
 
   | CSignedPhaseProd c p x z =>
+      simp[GateGeomOK] at hGeom
       simpa [lowerGate] using
-        (LowerGateClass.evalL_naive_cphaseProd
-          (qs := qs) (c := c) (p := p) (x := x) (z := z) (ψ := ψ))
+        (evalL_lowerCSignedPhaseProd
+          (qs := qs) (k := k) (hk := hk) (ctrl := c) (p := p)
+          (x := x) (z := z)
+          (hxz := hGeom)
+          (ψ := ψ) (ops := ops)
+          (hC := hC)
+          (run_ops_start_state := run_ops_start_state))
 
   | Prim tag args =>
       simp [lowerGate, LowerGateClass.evalL_Prim]

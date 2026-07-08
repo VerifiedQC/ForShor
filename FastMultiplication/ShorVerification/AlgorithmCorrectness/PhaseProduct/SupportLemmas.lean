@@ -1243,6 +1243,24 @@ lemma SameOutsideLayout.trans
     ExtRegEncoding.extToInt e b1 = ExtRegEncoding.extToInt e b2 := h12 e he
     _ = ExtRegEncoding.extToInt e b3 := h23 e he
 
+lemma SameOutsideLayout.bit_eq_of_outside
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  {k : ℕ} {dst : LayoutState k} {b1 b2 : qs.Basis}
+  (hSO : SameOutsideLayout qs dst b1 b2)
+  (q : ℕ)
+  (hout : OutsideLayout dst (ExtReg.ofReg (qubitReg q))) :
+  RegEncoding.bit q b2 = RegEncoding.bit q b1 := by
+  exact
+    ExtRegEncoding.hbit_of_ext
+      (e := ExtReg.ofReg (qubitReg q))
+      (b1 := b2) (b2 := b1) (q := q)
+      (by
+        symm
+        exact hSO (ExtReg.ofReg (qubitReg q)) hout)
+      (by simp [qubitReg, ExtReg.ofReg])
+      (by simp [qubitReg, ExtReg.ofReg])
+
 
 def CoversLayoutBits {k : ℕ} (dst : LayoutState k) : Prop :=
   ∀ q : ℕ,
@@ -1423,11 +1441,17 @@ def GoodToomCookPoints
     (row := interpEntry k)
     (pts := ToomCookMath.listToFin pts hpts)
 
-/-- Convert Shor interpolation points to the pure math point type. -/
-def toMathPoint : Point → ToomCookMath.Point
-  | Point.int z => ToomCookMath.Point.int z
-  | Point.inf   => ToomCookMath.Point.inf
+/--
+Convert a compiler interpolation point to the pure-math point representation.
 
+-/
+def toMathPoint : Point → ToomCookMath.Point
+  | Point.int z  => ToomCookMath.Point.int z
+  | Point.frac c => ToomCookMath.Point.frac c
+
+/--
+The compiler's interpolation row is definitionally the pure-math adjusted row.
+-/
 lemma toMathPoint_interpEntry
     {k : ℕ}
     (p : Point)
@@ -1435,11 +1459,7 @@ lemma toMathPoint_interpEntry
     ToomCookMath.pointRow (q k) (toMathPoint p) j
       =
     interpEntry k p j := by
-  cases p with
-  | int z =>
-      simp [toMathPoint, ToomCookMath.pointRow, interpEntry]
-  | inf =>
-      simp [toMathPoint, ToomCookMath.pointRow, interpEntry, q]
+  cases p <;> rfl
 
 lemma toMathPoint_alternatingPoint
     (i : ℕ) :

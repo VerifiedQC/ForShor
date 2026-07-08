@@ -5,6 +5,38 @@ open Gate
 open Operations
 open scoped BigOperators
 
+lemma allocChunkGate_preserves_disjoint_extToInt
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  {k : ℕ} (i : Fin k) (src dst e : ExtReg)
+  (b b' : qs.Basis)
+  (hdisj : Disjoint e.base src.base)
+  (hEval : qs.eval (allocChunkGate i src dst) (qs.ket b) = qs.ket b') :
+  ExtRegEncoding.extToInt e b' = ExtRegEncoding.extToInt e b := by
+  have hdisj' : Disjoint src.base e.base := by
+    cases hdisj with
+    | inl h => exact Or.inr h
+    | inr h => exact Or.inl h
+  unfold allocChunkGate at hEval
+  by_cases hδ : extraDelta src dst = 0
+  · simp [hδ, qs.eval_id] at hEval
+    have hb : b = b' := qs.ket_inj hEval
+    subst hb
+    rfl
+  · by_cases htop : isTopChunk i
+    · simp [hδ, htop] at hEval
+      exact
+        signExtend_preserves_disjoint_extToInt
+          (qs := qs) (r := src) (e := e)
+          (n := extraDelta src dst)
+          (b := b) (b' := b') hdisj' hEval
+    · simp [hδ, htop] at hEval
+      exact
+        zeroExtend_preserves_disjoint_extToInt
+          (qs := qs) (r := src) (e := e)
+          (n := extraDelta src dst)
+          (b := b) (b' := b') hdisj' hEval
+
 /-!
 # Phase-Product Allocation Correctness
 
@@ -766,6 +798,98 @@ lemma eval_compileSignedAllocationsAux_ket
                 simpa using hXKeepSrcZ j
           _ = sourceChunkZInt (qs := qs) stInit j b := hKeepZ j (by omega)
 
+lemma eval_compileSignedAllocationsAux_sameOutside
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [GateSemanticsFacts qs]
+  {k : ℕ}
+  (x z : ExtReg)
+  (hxz : Disjoint x.base z.base)
+  (ops : Prog k)
+  (b : qs.Basis) :
+  let need : NeededWidths k := scanNeededWidths x z ops
+  let stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
+  let stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := qs.Basis) x z k need
+  ∀ (n : ℕ) (hn : n ≤ k),
+    ∃ bAlloc : qs.Basis,
+      qs.eval (compileSignedAllocationsAux stInit stFinal n hn) (qs.ket b) = qs.ket bAlloc ∧
+      SameOutsideLayout qs stFinal b bAlloc := by
+  dsimp
+  set need : NeededWidths k := scanNeededWidths x z ops
+  set stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
+  set stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := qs.Basis) x z k need
+  intro n hn
+  induction n generalizing b with
+  | zero =>
+      refine ⟨b, ?_, ?_⟩
+      · simp [compileSignedAllocationsAux_zero, qs.eval_id]
+      · exact SameOutsideLayout.refl qs stFinal b
+  | succ n ih =>
+      let hk' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
+      let idx : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
+
+      rcases ih b hk' with ⟨bMid, hMidEval, hMidSO⟩
+      rcases
+        (eval_allocChunkGate_x_ket
+          (qs := qs)
+          (x := x) (z := z)
+          (hxz := hxz)
+          (ops := ops)
+          (i := idx)
+          (bcur := bMid))
+        with ⟨bX, hXEval, _hXVal, _hXKeepX, _hXKeepZTarget, _hXKeepSrcX, _hXKeepSrcZ⟩
+      rcases
+        (eval_allocChunkGate_z_ket
+          (qs := qs)
+          (x := x) (z := z)
+          (hxz := hxz)
+          (ops := ops)
+          (i := idx)
+          (bcur := bX))
+        with ⟨bAlloc, hZEval, _hZVal, _hZKeepX, _hZKeepZ, _hZKeepSrcX, _hZKeepSrcZ⟩
+
+      refine ⟨bAlloc, ?_, ?_⟩
+      · rw [compileSignedAllocationsAux_succ
+          (src := stInit) (dst := stFinal) (n := n) (hn := hn)]
+        rw [QSemantics.eval_seq]
+        rw [hMidEval]
+        rw [QSemantics.eval_seq]
+        rw [hXEval]
+        simpa [QSemantics.eval_seq, hk', idx] using hZEval
+      ·
+        have hXSO : SameOutsideLayout qs stFinal bMid bX := by
+          intro e he
+          symm
+          exact
+            allocChunkGate_preserves_disjoint_extToInt
+              (qs := qs) idx (stInit.xslot idx) (stFinal.xslot idx) e
+              bMid bX
+              (by
+                have hxout := he.1 idx
+                simpa [stFinal, targetSignedLayoutState, widenExtRegTo,
+                  stInit, initSignedLayoutState] using hxout)
+              hXEval
+        have hZSO : SameOutsideLayout qs stFinal bX bAlloc := by
+          intro e he
+          symm
+          exact
+            allocChunkGate_preserves_disjoint_extToInt
+              (qs := qs) idx (stInit.zslot idx) (stFinal.zslot idx) e
+              bX bAlloc
+              (by
+                have hzout := he.2 idx
+                simpa [stFinal, targetSignedLayoutState, widenExtRegTo,
+                  stInit, initSignedLayoutState] using hzout)
+              hZEval
+        exact SameOutsideLayout.trans (qs := qs)
+          (SameOutsideLayout.trans (qs := qs) hMidSO hXSO) hZSO
+
 lemma eval_compileSignedAllocations_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis]
@@ -800,6 +924,34 @@ lemma eval_compileSignedAllocations_ket
     exact hX i i.is_lt
   · intro i
     exact hZ i i.is_lt
+
+lemma eval_compileSignedAllocations_sameOutside
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [GateSemanticsFacts qs]
+  {k : ℕ}
+  (x z : ExtReg)
+  (hxz : Disjoint x.base z.base)
+  (ops : Prog k)
+  (b : qs.Basis) :
+  let need : NeededWidths k := scanNeededWidths x z ops
+  let stInit : LayoutState k :=
+    initSignedLayoutState (Basis := qs.Basis) x z k
+  let stFinal : LayoutState k :=
+    targetSignedLayoutState (Basis := qs.Basis) x z k need
+  ∃ bAlloc : qs.Basis,
+    qs.eval (compileSignedAllocations k stInit stFinal) (qs.ket b) = qs.ket bAlloc ∧
+    SameOutsideLayout qs stFinal b bAlloc := by
+  dsimp [compileSignedAllocations]
+  exact
+    eval_compileSignedAllocationsAux_sameOutside
+      (qs := qs)
+      (x := x) (z := z)
+      (hxz := hxz)
+      (ops := ops) (b := b)
+      k le_rfl
 
 lemma eval_compileSignedAllocations_ket_fits
   (qs : QSemantics)

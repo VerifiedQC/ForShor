@@ -446,6 +446,52 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.class-pill {
+  border-color: rgba(35, 104, 184, 0.28);
+  background: #f1f7ff;
+  color: #214f82;
+}
+
+.empty-pill {
+  color: var(--soft);
+}
+
+.class-catalog {
+  display: grid;
+  gap: 8px;
+}
+
+.class-row {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 9px 10px;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.class-row:hover {
+  border-color: var(--line-strong);
+  background: #f4f7fb;
+}
+
+.class-row strong {
+  font-size: 13px;
+}
+
+.class-row span {
+  color: #214f82;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .edge-list {
   display: grid;
   gap: 8px;

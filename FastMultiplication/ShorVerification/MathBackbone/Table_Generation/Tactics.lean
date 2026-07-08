@@ -23,7 +23,7 @@ def example_prog_1:Prog 3:=
 
 
 theorem example_prog_1_phase_converage:
-  phaseProduct_coverage_check example_prog_1 State.start_state [Point.int 0,Point.inf,Point.int 1]:=by {
+  phaseProduct_coverage_check example_prog_1 State.start_state [Point.int 0,Point.frac 0,Point.int 1]:=by {
     unfold phaseProduct_coverage_check phaseCoverageFrom? phaseCoverageFrom?.loop example_prog_1 List.eraseFirstMatch? matchesAt_pointRow regEqExpected State.start_state expectedRow List.eraseFirstMatch?
     simp
     have :(∀ (x : Fin 3), x ∈ List.finRange 3 → ((if x = 0 then (1:ℤ) else 0) = 0 ^ x.val))=true:=by {
@@ -108,7 +108,7 @@ lemma x_fin_checker(k:ℕ)(hk:k>0): (∀ (x : Fin k), x ∈ List.finRange k → 
 }
 
 theorem example_prog_2_phase_converage:
-  phaseProduct_coverage_check example_prog_2 State.start_state [Point.int 0,Point.inf,Point.int 1,Point.int (-1),Point.int (-2)]:=by {
+  phaseProduct_coverage_check example_prog_2 State.start_state [Point.int 0,Point.frac 0,Point.int 1,Point.int (-1),Point.int (-2)]:=by {
     simp[phaseProduct_coverage_check,phaseCoverageFrom?,phaseCoverageFrom?.loop,example_prog_2,List.eraseFirstMatch?,matchesAt_pointRow,regEqExpected,State.start_state,expectedRow,List.eraseFirstMatch?,Prog.ADD,applyOp?,phaseCoverageFrom?.loop,State.addScaledReg,State.setReg, Register.addScaled]
     have := x_fin_checker 3 (by simp)
     split_ifs with h

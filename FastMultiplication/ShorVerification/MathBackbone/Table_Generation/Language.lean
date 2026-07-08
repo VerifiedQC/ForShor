@@ -107,17 +107,23 @@ abbrev MatchesAt (k : Nat) := Register k → Point → Bool
 abbrev MatchesAtState (k : Nat) := State k → Fin k → Point → Bool
 
 
-/-- Expected Vandermonde-style row for a point.
-    - `.int z`  ↦  j ↦ z^j
-    - `.inf`    ↦  unit vector at the last index (leading coeff selector) -/
+/--
+The integral row stored for an interpolation point.
+
+For `int z`, this is `[1, z, z², ..., z^(k-1)]`.
+
+For `frac m`, representing `1/m`, this is the rescaled row
+
+  `m^(k-1) * [1, 1/m, ..., 1/m^(k-1)]`
+
+namely `[m^(k-1), m^(k-2), ..., m, 1]`.
+
+At `m = 0`, this becomes the leading-coefficient selector.
+-/
 def expectedRow {k : Nat} : Point → Register k
-| .int z => fun j => (z : Int) ^ (j : Nat)
-| .inf   =>
-  match k with
-  | 0     => fun j => nomatch j
-  | k+1   =>
-    let last : Fin (k+1) := ⟨k, by simp⟩
-    fun j => if j = last then (1 : Int) else (0 : Int)
+| .int z  => fun j => z ^ j.val
+| .frac m => fun j => m ^ (k - 1 - j.val)
+
 
 /-- Pointwise equality check between a register and `expectedRow pt`. -/
 def regEqExpected {k : Nat} (r : Register k) (pt : Point) : Bool :=
@@ -139,13 +145,9 @@ def matchesAt_pointRow_state {k : Nat} (_:k>0): MatchesAtState k :=
 /-- Finite index `0 : Fin k` when `k > 0`. -/
 def finZero {k : Nat} (hk : 0 < k) : Fin k := ⟨0, hk⟩
 
-/-- A synthesis-friendly expected row: keep the basis `1` at `i`,
-    and add `z^u` on every *other* coordinate.  For `.inf` we just reuse the
-    original `expectedRow` so equivalence is trivial there. -/
 def expectedRow2 {k : Nat} (i : Fin k) : Point → Register k
-| .int z => fun u => (if u = i then (1 : Int) else 0)
-                     + (if u ≠ i then (z : Int) ^ (u : Nat) else 0)
-| .inf   => expectedRow (k := k) .inf
+  | pt => fun u =>
+      if u = i then 1 else expectedRow (k := k) pt u
 
 /-- Boolean row-check against `expectedRow2`. -/
 def matchesAt_pointRow_state2 {k : Nat} : MatchesAtState k :=
@@ -185,6 +187,32 @@ def matchesAt_pointRow_state2 {k : Nat} : MatchesAtState k :=
     unfold finZero at hu0
     simp[hu0]
 
+lemma last_lt {k : ℕ} (hk : 0 < k) : k - 1 < k := by
+  omega
+
+def finLast {k : ℕ} (hk : 0 < k) : Fin k :=
+  ⟨k - 1, last_lt hk⟩
+
+def pointAnchor {k : ℕ} (hk : 0 < k) : Point → Fin k
+  | .int _  => finZero hk
+  | .frac _ => finLast hk
+
+@[simp] lemma expectedRow_at_pointAnchor
+    {k : ℕ} (hk : 0 < k) (pt : Point) :
+    expectedRow (k := k) pt (pointAnchor hk pt) = 1 := by
+  cases pt <;> simp [pointAnchor, expectedRow, finZero, finLast]
+
+lemma expectedRow2_anchor_eq_expectedRow
+    {k : ℕ} (hk : 0 < k) (pt : Point) :
+    expectedRow2 (k := k) (pointAnchor hk pt) pt
+      =
+    expectedRow (k := k) pt := by
+  funext u
+  by_cases hu : u = pointAnchor hk pt
+  · subst hu
+    simp [expectedRow2, expectedRow_at_pointAnchor]
+  · simp [expectedRow2, hu]
+
 /-- Consequently, at `i = finZero hk` the two matchers agree for `.int z`. -/
 @[simp] lemma matchesAt_pointRow_state2_eq_state_at_finZero_int
   {k : Nat} (hk : 0 < k) (σ : State k) (z : Int) :
@@ -201,9 +229,6 @@ def matchesAt_pointRow_state2 {k : Nat} : MatchesAtState k :=
     simp [expectedRow2_finZero_eq_expectedRow_int (k := k) hk z]
   simp_all only [expectedRow2_finZero_eq_expectedRow_int]
   rfl
-
-
-
 
 
 namespace List

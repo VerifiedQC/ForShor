@@ -40,7 +40,7 @@ theorem example_prog_2_returns:
 
 
 theorem example_prog_2_phase_converage_2:
-  phaseProduct_coverage_check example_prog_2 State.start_state [Point.int 0,Point.inf,Point.int 1,Point.int (-1),Point.int (-2)]:=by {
+  phaseProduct_coverage_check example_prog_2 State.start_state [Point.int 0,Point.frac 0,Point.int 1,Point.int (-1),Point.int (-2)]:=by {
     unfold example_prog_2
     prove_coverage 3
   }
@@ -48,7 +48,7 @@ theorem example_prog_2_phase_converage_2:
 
 
 theorem example_prog_4_phase_coverage :
-  phaseProduct_coverage_check example_prog_3 State.start_state [Point.int 0,Point.inf,Point.int 1,Point.int (-1)] := by
+  phaseProduct_coverage_check example_prog_3 State.start_state [Point.int 0,Point.frac 0,Point.int 1,Point.int (-1)] := by
     unfold example_prog_3
     prove_coverage 4
 

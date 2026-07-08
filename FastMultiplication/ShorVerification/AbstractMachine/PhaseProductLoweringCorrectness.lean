@@ -21,11 +21,6 @@ live under `AlgorithmCorrectness`.
     phase-product and QFT nodes to specialized recursive lowerers.
 ========================================================= -/
 
-/-- Controlled signed phase lowering currently stays at the naive low-level node. -/
-def lowerCSignedPhaseProd
-  (k : ℕ) (_hk : 1 < k) (ctrl : ℕ) (phi : ℝ) (x z : ExtReg) : LowGate :=
-  LowGate.Naive_CSignedPhaseProd ctrl phi x z
-
 /-- Recursively lower a gate into the low-level language using a size cutoff. -/
 noncomputable def lowerGateRec
   {Basis : Type u}
@@ -66,7 +61,22 @@ noncomputable def lowerGateRec
       else
         LowGate.Naive_SignedPhaseProd phi x z
   | Gate.CSignedPhaseProd ctrl phi x z =>
-      lowerCSignedPhaseProd k hk ctrl phi x z
+      by
+        classical
+        let Wrec := nextSignedWidth x z ops
+        exact
+          if _hctrl : ExtReg.CtrlDisjoint ctrl x z then
+            if _hrec : Wrec < initSize then
+              let Wphase := phaseLimbWidth x z k
+              let coeff := phaseCoeffFromPtsWidth k Wphase pts hpts
+              let g :=
+                compileOpsToCSignedGate
+                  (Basis := Basis) k hk ctrl phi x z coeff ops
+              lowerGateRec (Basis := Basis) Wrec k hk pts hpts ops g
+            else
+              LowGate.Naive_CSignedPhaseProd ctrl phi x z
+          else
+            LowGate.Naive_CSignedPhaseProd ctrl phi x z
   | Gate.zeroExtend r n =>
       LowGate.zeroExtend r n
   | Gate.signExtend r n =>
@@ -98,6 +108,34 @@ noncomputable def lowerSignedPhaseProd
     lowerGateRec (Basis := Basis) Wrec k hk pts hpts ops g
   else
     LowGate.Naive_SignedPhaseProd phi x z
+
+/-- Lower a controlled signed phase product by the same interpolation path as
+    signed phase products when the control is disjoint from both operands. -/
+noncomputable def lowerCSignedPhaseProd
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
+  (k : ℕ) (hk : 1 < k) (ctrl : ℕ) (phi : ℝ) (x z : ExtReg)
+  (ops : Prog k) : LowGate := by
+  classical
+  let pts := genInterpolationPoints k
+  let hpts : pts.length = q k := by
+    simp [pts, genInterpolationPoints, q]
+  let Wrec := nextSignedWidth x z ops
+  exact
+    if _hctrl : ExtReg.CtrlDisjoint ctrl x z then
+      if _hrec : Wrec < phaseInputSize x z then
+        let Wphase := phaseLimbWidth x z k
+        let coeff := phaseCoeffFromPtsWidth k Wphase pts hpts
+        let g :=
+          compileOpsToCSignedGate
+            (Basis := Basis) k hk ctrl phi x z coeff ops
+        lowerGateRec (Basis := Basis) Wrec k hk pts hpts ops g
+      else
+        LowGate.Naive_CSignedPhaseProd ctrl phi x z
+    else
+      LowGate.Naive_CSignedPhaseProd ctrl phi x z
 
 /-- Lower an unsigned phase product by interpolation-based decomposition. -/
 noncomputable def lowerPhaseProd
@@ -159,7 +197,7 @@ noncomputable def lowerGate
   | .SignedPhaseProd p x z =>
       lowerSignedPhaseProd (Basis := Basis) k hk p x z ops
   | .CSignedPhaseProd c p x z =>
-      LowGate.Naive_CSignedPhaseProd c p x z
+      lowerCSignedPhaseProd (Basis := Basis) k hk c p x z ops
   | .Prim tag args => .Prim tag args
   | .ShiftL r n => .ShiftL r n
   | .ShiftR r n => .ShiftR r n
@@ -359,6 +397,10 @@ inductive LowerablePhaseGate : Gate → Prop where
       ∀ (phi : ℝ) (x z : ExtReg),
         LowerablePhaseGate (Gate.SignedPhaseProd phi x z)
 
+  | CSignedPhaseProd :
+      ∀ (ctrl : ℕ) (phi : ℝ) (x z : ExtReg),
+        LowerablePhaseGate (Gate.CSignedPhaseProd ctrl phi x z)
+
   | zeroExtend :
       ∀ (r : ExtReg) (n : ℕ),
         LowerablePhaseGate (Gate.zeroExtend r n)
@@ -385,11 +427,6 @@ namespace LowerablePhaseGate
   intro h
   cases h
 
-@[simp] theorem not_CSignedPhaseProd (c : ℕ) (phi : ℝ) (x z : ExtReg) :
-    ¬ LowerablePhaseGate (Gate.CSignedPhaseProd c phi x z) := by
-  intro h
-  cases h
-
 @[simp] theorem lowerable_PhaseProd (p : ℝ) (x z : Reg) :
     LowerablePhaseGate (Gate.PhaseProd p x z) := by
   unfold Gate.PhaseProd
@@ -404,20 +441,6 @@ namespace LowerablePhaseGate
       · refine LowerablePhaseGate.seq _ _ ?_ ?_
         · exact LowerablePhaseGate.zeroDealloc (ExtReg.ofReg z) 1
         · exact LowerablePhaseGate.zeroDealloc (ExtReg.ofReg x) 1
-
-@[simp] theorem not_CPhaseProd (c : ℕ) (phi : ℝ) (x z : Reg) :
-    ¬ LowerablePhaseGate (Gate.CPhaseProd c phi x z) := by
-  intro h
-  unfold Gate.CPhaseProd at h
-  cases h with
-  | seq _ _ _ h =>
-      cases h with
-      | seq _ _ _ h =>
-          cases h with
-          | seq _ _ h _ =>
-              exact
-                not_CSignedPhaseProd c phi
-                  (Gate.unsignedView x) (Gate.unsignedView z) h
 
 end LowerablePhaseGate
 
@@ -589,6 +612,59 @@ lemma lowerable_compileOpsToSignedGate
           (targetSignedLayoutState
             (Basis := Basis) x z k (scanNeededWidths x z ops))
 
+lemma lowerable_controlPhaseLeaves
+  (ctrl : ℕ) {U : Gate}
+  (hU : LowerablePhaseGate U) :
+  LowerablePhaseGate (controlPhaseLeaves ctrl U) := by
+  induction hU with
+  | id =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.id]
+  | seq U V _ _ ihU ihV =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.seq, ihU, ihV]
+  | H q =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.H]
+  | X q =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.X]
+  | Prim s args =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.Prim]
+  | ShiftL r n =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.ShiftL]
+  | ShiftR r n =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.ShiftR]
+  | Negate r =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.Negate]
+  | AddScaled dst src negSrc sh =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.AddScaled]
+  | SignedPhaseProd phi x z =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.CSignedPhaseProd]
+  | CSignedPhaseProd ctrl' phi x z =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.CSignedPhaseProd]
+  | zeroExtend r n =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.zeroExtend]
+  | signExtend r n =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.signExtend]
+  | zeroDealloc r n =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.zeroDealloc]
+  | signDealloc r n =>
+      simp [controlPhaseLeaves, LowerablePhaseGate.signDealloc]
+
+lemma lowerable_compileOpsToCSignedGate
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
+  (k : ℕ) (hk : 1 < k) (ctrl : ℕ) (phi : ℝ)
+  (x z : ExtReg)
+  (coeff : Fin (q k) → ℚ)
+  (ops : List (valid_ops k)) :
+  LowerablePhaseGate
+    (compileOpsToCSignedGate (Basis := Basis) k hk ctrl phi x z coeff ops) := by
+  unfold compileOpsToCSignedGate
+  exact
+    lowerable_controlPhaseLeaves ctrl
+      (lowerable_compileOpsToSignedGate
+        (Basis := Basis) k hk phi x z coeff ops)
+
 /-! =========================================================
     Section 6: Signed phase-product side condition
 ========================================================= -/
@@ -608,7 +684,8 @@ def SignedPhaseProdOK : Gate → Prop
   | Gate.QFT _ => False
   | Gate.SignedPhaseProd _ x z =>
       Disjoint x.base z.base
-  | Gate.CSignedPhaseProd _ _ _ _ => False
+  | Gate.CSignedPhaseProd _ _ x z =>
+      Disjoint x.base z.base
   | Gate.zeroExtend _ _ => True
   | Gate.signExtend _ _ => True
   | Gate.zeroDealloc _ _ => True
@@ -767,6 +844,54 @@ lemma signedPhaseProdOK_compileOpsToSignedGate
   simpa [need, stInit, stFinal, annOps, SignedPhaseProdOK] using
     And.intro hAlloc (And.intro hBody hDealloc)
 
+lemma signedPhaseProdOK_controlPhaseLeaves
+  (ctrl : ℕ) :
+  ∀ U : Gate,
+    SignedPhaseProdOK U →
+    SignedPhaseProdOK (controlPhaseLeaves ctrl U)
+  | Gate.id, hOK => hOK
+  | Gate.seq U V, hOK => by
+      rcases hOK with ⟨hU, hV⟩
+      exact
+        And.intro
+          (signedPhaseProdOK_controlPhaseLeaves ctrl U hU)
+          (signedPhaseProdOK_controlPhaseLeaves ctrl V hV)
+  | Gate.adj U, hOK => False.elim hOK
+  | Gate.H q, hOK => hOK
+  | Gate.X q, hOK => hOK
+  | Gate.Prim tag args, hOK => hOK
+  | Gate.ShiftL r n, hOK => hOK
+  | Gate.ShiftR r n, hOK => hOK
+  | Gate.Negate r, hOK => hOK
+  | Gate.AddScaled dst src negSrc sh, hOK => hOK
+  | Gate.QFT r, hOK => False.elim hOK
+  | Gate.SignedPhaseProd phi x z, hOK => hOK
+  | Gate.CSignedPhaseProd ctrl' phi x z, hOK => hOK
+  | Gate.zeroExtend r n, hOK => hOK
+  | Gate.signExtend r n, hOK => hOK
+  | Gate.zeroDealloc r n, hOK => hOK
+  | Gate.signDealloc r n, hOK => hOK
+  | Gate.RadixReverse r m, hOK => hOK
+
+lemma signedPhaseProdOK_compileOpsToCSignedGate
+  {Basis : Type u}
+  [RegEncoding Basis]
+  [ExtRegEncoding Basis]
+  [ExtRegSplitSemantics Basis]
+  (k : ℕ) (hk : 1 < k)
+  (ctrl : ℕ) (phi : ℝ) (x z : ExtReg)
+  (coeff : Fin (q k) → ℚ)
+  (ops : Prog k)
+  (hxz : Disjoint x.base z.base) :
+  SignedPhaseProdOK
+    (compileOpsToCSignedGate (Basis := Basis) k hk ctrl phi x z coeff ops) := by
+  unfold compileOpsToCSignedGate
+  exact
+    signedPhaseProdOK_controlPhaseLeaves ctrl
+      (compileOpsToSignedGate (Basis := Basis) k hk phi x z coeff ops)
+      (signedPhaseProdOK_compileOpsToSignedGate
+        (Basis := Basis) k hk phi x z coeff ops hxz)
+
 /-- Unsigned PhaseProd is SignedPhaseProdOK when its registers are disjoint and well formed. -/
 lemma signedPhaseProdOK_PhaseProd
   (p : ℝ) (x z : Reg)
@@ -894,6 +1019,74 @@ lemma evalL_lowerGateRec_strong_of_compile
 
       ·
         simp [Wrec, hrec, LowerGateClass.evalL_naive_phaseProd]
+
+  | CSignedPhaseProd ctrl phi x z =>
+      have hxz : Disjoint x.base z.base := by
+        simpa [SignedPhaseProdOK] using hOK
+
+      unfold lowerGateRec
+      dsimp
+
+      let Wrec : ℕ := nextSignedWidth x z ops
+
+      by_cases hctrl : ExtReg.CtrlDisjoint ctrl x z
+      · by_cases hrec : Wrec < n
+        · simp [Wrec, hctrl, hrec]
+
+          let Wphase : ℕ := phaseLimbWidth x z k
+          let coeff : Fin (q k) → ℚ :=
+            phaseCoeffFromPtsWidth k Wphase pts hpts
+          let g : Gate :=
+            compileOpsToCSignedGate
+              (Basis := qs.Basis) k hk ctrl phi x z coeff ops
+
+          have hg : LowerablePhaseGate g := by
+            dsimp [g, coeff]
+            exact
+              lowerable_compileOpsToCSignedGate
+                (Basis := qs.Basis)
+                k hk ctrl phi x z coeff ops
+
+          have hgOK : SignedPhaseProdOK g := by
+            dsimp [g, coeff]
+            exact
+              signedPhaseProdOK_compileOpsToCSignedGate
+                (Basis := qs.Basis)
+                k hk ctrl phi x z coeff ops hxz
+
+          have hIH :
+              LowerGateClass.evalL
+                  (lowerGateRec (Basis := qs.Basis) Wrec k hk pts hpts ops g) ψ
+                =
+              qs.eval g ψ := by
+            exact
+              IH Wrec hrec
+                k hk pts hpts hInterp ops
+                hC run_ops_start_state
+                g hg hgOK ψ
+
+          rw [hIH]
+
+          simpa [g, coeff, Wphase] using
+            (eval_compileOpsToCSignedGate_correct
+              (qs := qs)
+              (k := k) (hk := hk)
+              (ctrl := ctrl) (phi := phi)
+              (x := x) (z := z)
+              (hxz := hxz)
+              (hctrl := hctrl)
+              (pts := pts) (hpts := hpts)
+              (hInterp := hInterp)
+              (ops := ops)
+              (hC := hC)
+              (hRun := run_ops_start_state)
+              (ψ := ψ))
+
+        ·
+          simp [Wrec, hctrl, hrec, LowerGateClass.evalL_naive_cphaseProd]
+
+      ·
+        simp [hctrl, LowerGateClass.evalL_naive_cphaseProd]
 
   | zeroExtend r m =>
       simp [lowerGateRec, LowerGateClass.evalL_zeroExtend]
@@ -1026,6 +1219,99 @@ lemma evalL_lowerSignedPhaseProd
     simpa [pts, hpts, Wrec, hrec] using
       (LowerGateClass.evalL_naive_phaseProd
         (qs := qs) (p := p) (x := x) (z := z) (ψ := ψ))
+
+lemma evalL_lowerCSignedPhaseProd
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [ExtRegEncoding qs.Basis]
+  [ExtRegSplitSemantics qs.Basis]
+  [LowerGateClass qs]
+  [GateSemanticsFacts qs]
+  (k : ℕ) (hk : 1 < k) (ctrl : ℕ) (p : ℝ) (x z : ExtReg)
+  (hxz : Disjoint x.base z.base)
+  (ψ : qs.State) (ops : Prog k)
+  (hC : ProgConsumesPtsSafe
+    (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+  (run_ops_start_state : run? ops State.start_state = some State.start_state) :
+  LowerGateClass.evalL
+      (lowerCSignedPhaseProd (Basis := qs.Basis) k hk ctrl p x z ops) ψ
+    =
+  qs.eval (Gate.CSignedPhaseProd ctrl p x z) ψ := by
+  unfold lowerCSignedPhaseProd
+
+  let pts : List Point := genInterpolationPoints k
+  have hpts : pts.length = q k := by
+    simp [pts, genInterpolationPoints, q]
+
+  let Wrec : ℕ := nextSignedWidth x z ops
+
+  by_cases hctrl' : ExtReg.CtrlDisjoint ctrl x z
+  · by_cases hrec : Wrec < phaseInputSize x z
+    · simp [Wrec, hctrl', hrec]
+
+      let Wphase : ℕ := phaseLimbWidth x z k
+      let coeff : Fin (q k) → ℚ :=
+        phaseCoeffFromPtsWidth k Wphase pts hpts
+      let g : Gate :=
+        compileOpsToCSignedGate
+          (Basis := qs.Basis) k hk ctrl p x z coeff ops
+
+      have hInterpPts : GoodToomCookPoints k pts hpts := by
+        simpa [pts] using genInterpolationPoints_good k
+
+      have hg : LowerablePhaseGate g := by
+        dsimp [g, coeff]
+        exact
+          lowerable_compileOpsToCSignedGate
+            (Basis := qs.Basis)
+            k hk ctrl p x z coeff ops
+
+      have hgOK : SignedPhaseProdOK g := by
+        dsimp [g, coeff]
+        exact
+          signedPhaseProdOK_compileOpsToCSignedGate
+            (Basis := qs.Basis)
+            k hk ctrl p x z coeff ops hxz
+
+      have h1 :
+          LowerGateClass.evalL
+              (lowerGateRec (Basis := qs.Basis) Wrec k hk pts hpts ops g) ψ
+            =
+          qs.eval g ψ := by
+        exact
+          evalL_lowerGateRec_strong
+            (qs := qs)
+            Wrec k hk pts hpts hInterpPts ops
+            (by simpa [pts] using hC)
+            run_ops_start_state
+            g hg hgOK ψ
+
+      rw [h1]
+
+      simpa [g, coeff, Wphase] using
+        (eval_compileOpsToCSignedGate_correct
+          (qs := qs)
+          (k := k) (hk := hk)
+          (ctrl := ctrl) (phi := p)
+          (x := x) (z := z)
+          (hxz := hxz)
+          (hctrl := hctrl')
+          (pts := pts) (hpts := hpts)
+          (hInterp := hInterpPts)
+          (ops := ops)
+          (hC := by simpa [pts] using hC)
+          (hRun := run_ops_start_state)
+          (ψ := ψ))
+
+    ·
+      simpa [pts, hpts, Wrec, hctrl', hrec] using
+        (LowerGateClass.evalL_naive_cphaseProd
+          (qs := qs) (c := ctrl) (p := p) (x := x) (z := z) (ψ := ψ))
+
+  ·
+    simpa [pts, hpts, Wrec, hctrl'] using
+      (LowerGateClass.evalL_naive_cphaseProd
+        (qs := qs) (c := ctrl) (p := p) (x := x) (z := z) (ψ := ψ))
 
 lemma evalL_lowerPhaseProd
   (qs : QSemantics)

@@ -217,8 +217,10 @@ def q (k : ℕ) : ℕ := 2 * k - 1
 /-- One entry of the interpolation matrix. -/
 def interpEntry (k : ℕ) (p : Point) (j : Fin (q k)) : ℚ :=
   match p with
-  | .int z => (z : ℚ) ^ (j : ℕ)
-  | .inf   => if (j : ℕ) = q k - 1 then 1 else 0
+  | .int z =>
+      (z : ℚ) ^ (j : ℕ)
+  | .frac c =>
+      (c : ℚ) ^ (q k - 1 - (j : ℕ))
 
 /-- Interpolation matrix built from the chosen point set. -/
 def interpMatrix
@@ -503,6 +505,28 @@ noncomputable def compileOpsToSignedGate
     compileSignedDeallocations k stInit stFinal
   allocs ;; body ;; deallocs
 
+def controlPhaseLeaves (ctrl : ℕ) : Gate → Gate
+  | .id => .id
+  | .seq U V => controlPhaseLeaves ctrl U ;; controlPhaseLeaves ctrl V
+  | .SignedPhaseProd phi x z => .CSignedPhaseProd ctrl phi x z
+  | .ShiftL r n => .ShiftL r n
+  | .ShiftR r n => .ShiftR r n
+  | .Negate r => .Negate r
+  | .AddScaled dst src negSrc sh => .AddScaled dst src negSrc sh
+  | .zeroExtend r n => .zeroExtend r n
+  | .signExtend r n => .signExtend r n
+  | .zeroDealloc r n => .zeroDealloc r n
+  | .signDealloc r n => .signDealloc r n
+  | U => U
+
+noncomputable def compileOpsToCSignedGate
+    {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+    [ExtRegSplitSemantics Basis]
+    (k : ℕ) (hk : 1 < k)
+    (ctrl : ℕ) (phi : ℝ) (x z : ExtReg)
+    (coeff : Fin (q k) → ℚ) (ops : Prog k) : Gate :=
+  controlPhaseLeaves ctrl
+    (compileOpsToSignedGate (Basis := Basis) k hk phi x z coeff ops)
 /-! =========================================================
     Section 9: Legacy ordinary-register modular helpers
 ========================================================= -/

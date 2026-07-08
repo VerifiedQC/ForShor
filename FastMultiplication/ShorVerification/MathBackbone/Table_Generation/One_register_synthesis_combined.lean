@@ -1879,6 +1879,214 @@ lemma contrib_nonzeroFins
         (js := nonzeroFins hk) (u := finZero hk) hall
     simp [hzero, hnez]
 
+lemma addConstFrom_effect_const
+    {k : ℕ} (hk : 0 < k)
+    (dst src : Fin k) (c : ℤ)
+    (h_src_ne_dst : src ≠ dst)
+    {σ₀ σ₁ : State k}
+    (h : run? (addConstFrom (k := k) dst src c) σ₀ = some σ₁) :
+    (∀ t ≠ dst, σ₁ t = σ₀ t) ∧
+    (∀ u : Fin k, σ₁ dst u = σ₀ dst u + c * σ₀ src u) := by
+  by_cases hc : c = 0
+  · subst c
+    simp [addConstFrom] at h
+    subst σ₁
+    constructor
+    · intro t ht
+      rfl
+    · intro u
+      simp
+  · have hrunAux :
+        run? (addConstAux (k := k) dst src (decide (c < 0)) c.natAbs 0) σ₀
+          = some σ₁ := by
+      simpa [addConstFrom, hc] using h
+    constructor
+    · exact run_addConstFrom_effect_1
+        (dst := dst) (src := src) (c := c) h
+    · intro u
+      have heff :=
+        run_addConstAux_effect_dst
+          (k := k) hk dst src (decide (c < 0)) h_src_ne_dst
+          c.natAbs 0 (σ := σ₀) (τ := σ₁) hrunAux u
+      by_cases hneg : c < 0
+      · have hnonneg : 0 ≤ -c := by omega
+        have hnat : (c.natAbs : ℤ) = -c := by
+          simpa [Int.natAbs_neg] using
+            (Int.natAbs_of_nonneg (a := -c) hnonneg)
+        simpa [hneg, hnat, mul_assoc] using heff
+      · have hnonneg : 0 ≤ c := by omega
+        have hnat : (c.natAbs : ℤ) = c :=
+          Int.natAbs_of_nonneg hnonneg
+        simpa [hneg, hnat, mul_assoc] using heff
+
+def fracContrib {k : Nat} (c : Int) : List (Fin k) → Fin k → Int
+| [],      _ => 0
+| j :: js, u =>
+    fracCoeff (k := k) c j * (State.start_state (k := k)) j u
+      + fracContrib c js u
+
+lemma fracContrib_eq_zero_of_all_ne
+    {k : ℕ} (c : ℤ) (js : List (Fin k)) (u : Fin k)
+    (hall : ∀ j ∈ js, j ≠ u) :
+    fracContrib (k := k) c js u = 0 := by
+  classical
+  induction js with
+  | nil =>
+      simp [fracContrib]
+  | cons j js ih =>
+      have hju : j ≠ u := hall j (by simp)
+      have hall' : ∀ j' ∈ js, j' ≠ u :=
+        fun j' hj' => hall j' (by simp [hj'])
+      have htail := ih hall'
+      have huj : u ≠ j := Ne.symm hju
+      simp [fracContrib, huj, htail]
+
+lemma fracContrib_of_unique
+    {k : ℕ} (c : ℤ) (js : List (Fin k)) (u : Fin k)
+    (hnd : js.Nodup) (hu : u ∈ js) :
+    fracContrib (k := k) c js u = fracCoeff (k := k) c u := by
+  classical
+  induction js with
+  | nil =>
+      cases hu
+  | cons j js ih =>
+      have hnd' : js.Nodup := (List.nodup_cons.mp hnd).2
+      have hnot : j ∉ js := (List.nodup_cons.mp hnd).1
+      cases hu with
+      | head =>
+        have hall : ∀ j' ∈ js, j' ≠ u := by
+          intro j' hj' hEq
+          subst hEq
+          exact hnot hj'
+        have hzero :=
+          fracContrib_eq_zero_of_all_ne (c := c) (js := js) (u := u) hall
+        simp [fracContrib, hzero]
+      | tail _ hu_tail =>
+        have hju : j ≠ u := by
+          intro hEq
+          subst hEq
+          exact hnot hu_tail
+        have htail := ih hnd' hu_tail
+        have huj : u ≠ j := Ne.symm hju
+        simp [fracContrib, huj, htail]
+
+lemma mem_nonlastFins_ne {k : ℕ} (hk : 0 < k) {j : Fin k}
+    (hj : j ∈ nonlastFins hk) :
+    j ≠ finLast hk := by
+  unfold nonlastFins at hj
+  rcases List.mem_filter.1 hj with ⟨_, hjne⟩
+  exact of_decide_eq_true hjne
+
+lemma nodup_nonlastFins {k : ℕ} (hk : 0 < k) :
+    (nonlastFins hk).Nodup := by
+  unfold nonlastFins
+  have hsub :
+      ((List.finRange k).filter (fun j : Fin k => decide (j ≠ finLast hk)))
+        <+ List.finRange k := by
+    aesop
+  exact (List.nodup_finRange k).sublist hsub
+
+lemma mem_nonlastFins_of_ne_last {k : ℕ} (hk : 0 < k)
+    {u : Fin k} (hnel : u ≠ finLast hk) :
+    u ∈ nonlastFins hk := by
+  unfold nonlastFins
+  have hrange : u ∈ List.finRange k := by
+    aesop
+  exact List.mem_filter.2 ⟨hrange, by exact decide_eq_true hnel⟩
+
+lemma fracContrib_nonlastFins
+    {k : ℕ} (hk : 0 < k) (c : ℤ) (u : Fin k) :
+    fracContrib (k := k) c (nonlastFins hk) u =
+      if u ≠ finLast hk then fracCoeff (k := k) c u else 0 := by
+  classical
+  by_cases hnel : u ≠ finLast hk
+  · have hu : u ∈ nonlastFins hk :=
+      mem_nonlastFins_of_ne_last hk hnel
+    have hnd := nodup_nonlastFins (k := k) hk
+    have h := fracContrib_of_unique (c := c)
+      (js := nonlastFins hk) (u := u) hnd hu
+    simp [hnel, h]
+  · have hul : u = finLast hk := by
+      push_neg at hnel
+      exact hnel
+    subst hul
+    have hall : ∀ j ∈ nonlastFins hk, j ≠ finLast hk :=
+      fun j hj => mem_nonlastFins_ne (hk := hk) hj
+    have hzero :=
+      fracContrib_eq_zero_of_all_ne (c := c)
+        (js := nonlastFins hk) (u := finLast hk) hall
+    simp [hzero, hnel]
+
+lemma run_computeFracLocalAux_effect
+    {k : ℕ} (hk : 0 < k) (c : ℤ) :
+    ∀ (s : List (Fin k)) (_ : AllNe (finLast (k := k) hk) s)
+      {σ₀ σ : State k},
+      (∀ t, t ≠ finLast hk → σ₀ t = State.start_state (k := k) t) →
+      run? (computeFracLocalAux (k := k) hk c s) σ₀ = some σ →
+      (∀ t, t ≠ finLast hk → σ t = State.start_state (k := k) t)
+      ∧
+      (∀ u, σ (finLast hk) u =
+          σ₀ (finLast hk) u + fracContrib (k := k) c s u)
+  | [], _, σ₀, σ, hσ₀, hrun => by
+      simp [computeFracLocalAux] at hrun
+      subst σ
+      constructor
+      · exact hσ₀
+      · intro u
+        simp [fracContrib]
+  | j :: js, hAll, σ₀, σ, hσ₀, hrun => by
+      rcases hAll with ⟨hj_ne, hAll_js⟩
+      have hdecomp :
+          run?
+            (addConstFrom (k := k) (finLast hk) j (fracCoeff (k := k) c j)
+              ++ computeFracLocalAux (k := k) hk c js) σ₀ = some σ := by
+        simpa [computeFracLocalAux] using hrun
+      rcases run?_append_some
+        (p := addConstFrom (k := k) (finLast hk) j (fracCoeff (k := k) c j))
+        (q := computeFracLocalAux (k := k) hk c js)
+        (σ := σ₀) hdecomp with ⟨τ, hhead, htail⟩
+      have heff :=
+        addConstFrom_effect_const
+          (k := k) hk (finLast hk) j (fracCoeff (k := k) c j)
+          (by
+            intro h
+            exact hj_ne (by simp [h]))
+          hhead
+      rcases heff with ⟨hhead_pres, hhead_dst⟩
+      have hτ :
+          ∀ t, t ≠ finLast hk → τ t = State.start_state (k := k) t := by
+        intro t ht
+        rw [hhead_pres t ht]
+        exact hσ₀ t ht
+      rcases run_computeFracLocalAux_effect
+        (k := k) hk c js hAll_js hτ htail with ⟨htail_pres, htail_dst⟩
+      constructor
+      · exact htail_pres
+      · intro u
+        rw [htail_dst u, hhead_dst u]
+        have hj_start : σ₀ j u = (State.start_state (k := k)) j u := by
+          have hreg := hσ₀ j (by
+            intro h
+            exact hj_ne (by simp [h]))
+          simpa using congrFun hreg u
+        simp [fracContrib, hj_start]
+        ring
+
+lemma run_computeFracLocalAux_from_start
+    {k : ℕ} (hk : 0 < k) (c : ℤ)
+    (s : List (Fin k)) (hs : AllNe (finLast (k := k) hk) s)
+    {σ : State k}
+    (hrun :
+      run? (computeFracLocalAux (k := k) hk c s)
+        (State.start_state (k := k)) = some σ) :
+    (∀ t, t ≠ finLast hk → σ t = State.start_state (k := k) t)
+    ∧
+    (∀ u, σ (finLast hk) u =
+        State.start_state (k := k) (finLast hk) u
+          + fracContrib (k := k) c s u) :=
+  run_computeFracLocalAux_effect
+    (k := k) hk c s hs (by intro t _; rfl) hrun
+
 lemma regEqExpected_after_computeLocal2_of_run
     {k : ℕ} (hk : 0 < k) (z : ℤ) {σ₁ : State k}
     (hrun : run? (computeLocal2 (k := k) hk z) (State.start_state (k := k)) = some σ₁) :
@@ -2018,6 +2226,48 @@ lemma onlyAddScaled_computeLocal2
   simpa [computeLocal2] using
     (onlyAddScaled_computeLocalAux (k := k) hk z (nonzeroFins (k := k) hk) op hmem)
 
+lemma onlyAddScaled_computeFracLocalAux {k : ℕ}
+  (hk : 0 < k) (c : Int) :
+  ∀ (js : List (Fin k)) (op : valid_ops k),
+    op ∈ computeFracLocalAux (k := k) hk c js → IsAddScaled op := by
+  intro js
+  induction js with
+  | nil =>
+      intro op hmem
+      simp [computeFracLocalAux] at hmem
+  | cons j js ih =>
+      intro op hmem
+      simp [computeFracLocalAux] at hmem
+      rcases hmem with hhead | htail
+      · exact
+          onlyAddScaled_addConstFrom
+            (k := k) (finLast (k := k) hk) j
+            (fracCoeff (k := k) c j) op hhead
+      · exact ih op htail
+
+lemma onlyAddScaled_computeFracLocal2
+  {k : ℕ} (hk : 0 < k) (c : Int) :
+  ∀ op ∈ computeFracLocal2 (k := k) hk c, IsAddScaled op := by
+  intro op hmem
+  simpa [computeFracLocal2] using
+    (onlyAddScaled_computeFracLocalAux
+      (k := k) hk c (nonlastFins (k := k) hk) op hmem)
+
+lemma NoPhase_of_onlyAddScaled
+    {k : ℕ} {p : Prog k}
+    (hall : ∀ op ∈ p, IsAddScaled op) :
+    NoPhase p := by
+  intro i hmem
+  rcases hall (valid_ops.phaseProduct i) hmem with
+    ⟨dst, src, b, sh, hEq⟩
+  cases hEq
+
+lemma computeFracLocal2_NoPhase
+    {k : ℕ} (hk : 0 < k) (c : Int) :
+    NoPhase (computeFracLocal2 (k := k) hk c) :=
+  NoPhase_of_onlyAddScaled
+    (onlyAddScaled_computeFracLocal2 (k := k) hk c)
+
 @[simp] lemma inv_isAddScaled {k}
   {dst src : Fin k} {b : Bool} {sh : Nat} :
   IsAddScaled (Operations.inv (valid_ops.addScaled dst src (negSrc := b) sh)) := by
@@ -2039,6 +2289,20 @@ lemma onlyAddScaled_applyInverse
   -- `o` was addScaled; its inverse is addScaled too
   rcases hall o ho' with ⟨dst, src, b, sh, rfl⟩
   simp[inv_isAddScaled (k := k) (dst := dst) (src := src) (b := b) (sh := sh)]
+
+lemma computeFracLocal2_NoPhase_2
+    {k : ℕ} (hk : 0 < k) (c : Int) :
+    NoPhase (computeFracLocal2 (k := k) hk c) ∧
+      NoPhase (apply_Op_inverse (computeFracLocal2 (k := k) hk c)) := by
+  have hOnly :
+      ∀ op ∈ computeFracLocal2 (k := k) hk c, IsAddScaled op :=
+    onlyAddScaled_computeFracLocal2 (k := k) hk c
+  have hOnlyInv :
+      ∀ op ∈ apply_Op_inverse (k := k) (computeFracLocal2 (k := k) hk c),
+        IsAddScaled op :=
+    onlyAddScaled_applyInverse
+      (k := k) (p := computeFracLocal2 (k := k) hk c) hOnly
+  exact ⟨NoPhase_of_onlyAddScaled hOnly, NoPhase_of_onlyAddScaled hOnlyInv⟩
 
 lemma cover_onlyAddScaled_nil
   {k : ℕ} {p : Prog k} (σ : State k)
@@ -2079,6 +2343,39 @@ lemma cover_applyInverse_computeLocal2_nil {k} (hk : 0 < k) (σ : State k) (z : 
   -- 3) An all-addScaled program covers [] from ANY σ (step_op only).
   exact cover_onlyAddScaled_nil (k := k) (p := apply_Op_inverse (computeLocal2 (k := k) hk z))
            σ hk hOnlyInv
+
+lemma cover_computeFracLocal2_nil
+    {k : ℕ}
+    (hk : 0 < k)
+    (σ : State k)
+    (c : ℤ) :
+    PhaseProductCoverage hk (computeFracLocal2 (k := k) hk c) σ [] := by
+  have hOnly :
+      ∀ op ∈ computeFracLocal2 (k := k) hk c, IsAddScaled op :=
+    onlyAddScaled_computeFracLocal2 (k := k) hk c
+  exact cover_onlyAddScaled_nil
+    (k := k) (p := computeFracLocal2 (k := k) hk c) σ hk hOnly
+
+lemma cover_applyInverse_computeFracLocal2_nil
+    {k : ℕ}
+    (hk : 0 < k)
+    (σ : State k)
+    (c : ℤ) :
+    PhaseProductCoverage hk
+      (apply_Op_inverse (computeFracLocal2 (k := k) hk c))
+      σ [] := by
+  have hOnly :
+      ∀ op ∈ computeFracLocal2 (k := k) hk c, IsAddScaled op :=
+    onlyAddScaled_computeFracLocal2 (k := k) hk c
+  have hOnlyInv :
+      ∀ op ∈ apply_Op_inverse (k := k) (computeFracLocal2 (k := k) hk c),
+        IsAddScaled op :=
+    onlyAddScaled_applyInverse
+      (k := k) (p := computeFracLocal2 (k := k) hk c) hOnly
+  exact cover_onlyAddScaled_nil
+    (k := k)
+    (p := apply_Op_inverse (computeFracLocal2 (k := k) hk c))
+    σ hk hOnlyInv
 
 
 /-- Append lemma for `run?`: running `p ++ q` equals running `p`
@@ -2184,50 +2481,69 @@ lemma computeLocal2_some_state_value
   simp_all
   apply this j
 
-
-theorem matchesAt_pointRow_state3_eq_matchesAt_pointRow_state
-  {k : ℕ} (hk : 0 < k) :
-  matchesAt_pointRow_state3 (k := k) hk = matchesAt_pointRow_state (k := k) hk := by
-  unfold matchesAt_pointRow_state3 matchesAt_pointRow_state regEqExpected expectedRow regEqReg
-  simp
-  funext σ i pt
-  cases pt with
-  |int z=>{
-    simp
-    have h:=computeLocal2_some_state k hk z State.start_state
-    rcases h with ⟨σ₁,h⟩
-    simp[h]
-    congr
-    funext j
-    simp[finZero]
-    apply Iff.intro
-    · intro a
-      simp_all
-      apply computeLocal2_some_state_value k hk z σ₁ h
-    · intro a
-      simp_all
-      have := computeLocal2_some_state_value k hk z σ₁ h
-      simp[this]
-  }
-  |inf=>{
-    simp
-    split
-    next k => simp_all only [List.finRange_zero, zero_tsub, List.all_nil]
-    next k k_1 => simp_all only [Nat.succ_eq_add_one, add_tsub_cancel_right]
-  }
-
-
 lemma computeLocal2_some_state_matches
-(k : ℕ)
-(hk : 0 < k)
-(σ₁:State k)
-(z : ℤ)
-(hrun: run? (computeLocal2 hk z) State.start_state = some σ₁):
-matchesAt_pointRow_state hk σ₁ (finZero hk) (Point.int z)=true
-:=by
-  rw[← matchesAt_pointRow_state3_eq_matchesAt_pointRow_state]
-  unfold matchesAt_pointRow_state3
-  simp[hrun,regEqReg]
+    (k : ℕ)
+    (hk : 0 < k)
+    (σ₁ : State k)
+    (z : ℤ)
+    (hrun :
+      run? (computeLocal2 hk z) State.start_state = some σ₁) :
+    matchesAt_pointRow_state hk σ₁ (finZero hk) (Point.int z) = true := by
+  simpa [matchesAt_pointRow_state] using
+    regEqExpected_after_computeLocal2_of_run
+      (k := k) hk z hrun
+
+lemma regEqExpected_after_computeFracLocal2_of_run
+    {k : ℕ} (hk : 0 < k) (c : ℤ) {σ₁ : State k}
+    (hrun :
+      run? (computeFracLocal2 (k := k) hk c)
+        (State.start_state (k := k)) = some σ₁) :
+    regEqExpected (k := k) (σ₁ (finLast hk)) (Point.frac c) := by
+  have hAll : AllNe (finLast (k := k) hk) (nonlastFins (k := k) hk) :=
+    nonlastFins_allNe (k := k) hk
+  have inv :=
+    run_computeFracLocalAux_from_start (k := k) hk c
+      (nonlastFins (k := k) hk) hAll (by
+        simpa [computeFracLocal2] using hrun)
+  rcases inv with ⟨_pres, hdst⟩
+  have :
+      (List.finRange k).all
+        (fun j =>
+          decide (σ₁ (finLast hk) j = expectedRow (k := k) (Point.frac c) j))
+        = true := by
+    refine List.all_eq_true.2 ?_
+    intro u hu
+    apply decide_eq_true_iff.mpr
+    unfold expectedRow
+    rw [hdst u]
+    have hcontrib := fracContrib_nonlastFins (k := k) hk c u
+    by_cases hul : u = finLast hk
+    · have hnot : ¬u ≠ finLast hk := by simp [hul]
+      have hcontribLast :
+          fracContrib (k := k) c (nonlastFins hk) u = 0 := by
+        simpa [hnot] using hcontrib
+      rw [hcontribLast]
+      simp [hul, finLast]
+    · have hcontribU :
+          fracContrib (k := k) c (nonlastFins hk) u =
+            fracCoeff (k := k) c u := by
+        simpa [hul] using hcontrib
+      simp [hcontribU, fracCoeff, hul]
+  simpa [regEqExpected] using this
+
+lemma computeFracLocal2_matches_row_start
+    {k : ℕ} (hk : 0 < k) (c : ℤ) :
+    ∃ σ₁,
+      run? (computeFracLocal2 (k := k) hk c)
+        (State.start_state (k := k)) = some σ₁
+      ∧
+      matchesAt_pointRow_state hk σ₁ (finLast hk) (Point.frac c) = true := by
+  obtain ⟨σ₁, hrun⟩ :=
+    computeFracLocal2_some_state k hk c State.start_state
+  refine ⟨σ₁, hrun, ?_⟩
+  simpa [matchesAt_pointRow_state] using
+    regEqExpected_after_computeFracLocal2_of_run
+      (k := k) hk c hrun
 
 /-- Algebraic correctness of the `computeLocal` builder:
     starting from `start_state`, after running `computeLocal hk z`
@@ -2244,27 +2560,12 @@ lemma computeLocal2_matches_row_start {k} (hk : 0 < k) (z : Int) :
         simp[this,hrun]
   }
 
-
-
-lemma last_lt {k : ℕ} (hk : 0 < k) : k - 1 < k := by
-  cases h : k with
-  | zero =>
-      have : (0 : ℕ) < 0 := by simp[h] at hk
-      simp at this
-  | succ n =>
-      simp
-
 open Operations
 
 theorem opsForPointWithProduct_returns_to_original
   {k : Nat} (hk : 0 < k) (head : Point) :
   run? (opsForPointWithProduct hk head) State.start_state = some State.start_state := by {
     cases head with
-        | inf =>
-            -- opsForPointWithProduct .inf = [phaseProduct last]
-            simp [opsForPointWithProduct, run?]         -- done
-            unfold applyOp?
-            simp
         | int x =>
             unfold opsForPointWithProduct
             simp
@@ -2275,6 +2576,17 @@ theorem opsForPointWithProduct_returns_to_original
             apply State.run?_inverse_undoes_WF
             apply computeLocal2_Valid
             apply this
+        | frac c =>
+            unfold opsForPointWithProduct
+            by_cases hc : c = 0
+            · simp [hc, run?, applyOp?]
+            · simp [hc, run?_append]
+              have:= computeFracLocal2_some_state k hk c State.start_state
+              rcases this with ⟨σ₁,this⟩
+              simp[this,applyOp?]
+              apply State.run?_inverse_undoes_WF
+              apply computeFracLocal2_Valid
+              apply this
   }
 
 theorem genOpsWithProduct_returns_to_original
@@ -2403,20 +2715,6 @@ lemma opsForPointWithProduct_ProgConsumesPts
   {k : Nat} (hk : 0 < k) (head : Point) :
   ProgConsumesPts hk State.start_state (opsForPointWithProduct hk head) [head] := by
   cases head with
-  | inf =>
-      simp [opsForPointWithProduct, ProgConsumesPts]
-      let i : Fin k := ⟨k - 1, last_lt hk⟩
-      have hmatch :
-          matchesAt_pointRow_state (k := k) hk (State.start_state (k := k)) i Point.inf
-          = true := by
-        unfold matchesAt_pointRow_state
-        apply List.all_eq_true.mpr
-        intro j _
-        apply decide_eq_true_iff.mpr
-        have hne0 : k ≠ 0 := ne_of_gt hk
-        simp [expectedRow, i]
-        aesop
-      exact hmatch
   | int x =>
       unfold opsForPointWithProduct
       let l : Prog k := computeLocal2 (k := k) hk x
@@ -2464,6 +2762,84 @@ lemma opsForPointWithProduct_ProgConsumesPts
           (σ := State.start_state (k := k)) (σret := σ₁)
           (a := [Point.int x]) (b := [])
           hprefixC hprefixRun hcleanupC
+  | frac c =>
+      unfold opsForPointWithProduct
+      by_cases hc : c = 0
+      · subst c
+        simp [ProgConsumesPts]
+        let i : Fin k := finLast hk
+        have hmatch :
+            matchesAt_pointRow_state (k := k) hk (State.start_state (k := k)) i (Point.frac 0)
+            = true := by
+          unfold matchesAt_pointRow_state
+          apply List.all_eq_true.mpr
+          intro j _
+          apply decide_eq_true_iff.mpr
+          by_cases hj : j = i
+          · subst j
+            simp [expectedRow, i, finLast]
+          · have hjlt : j.val < k - 1 := by
+              have hjle : j.val ≤ k - 1 := Nat.le_pred_of_lt j.isLt
+              have hjne : j.val ≠ k - 1 := by
+                intro hv
+                apply hj
+                apply Fin.ext
+                simpa [i, finLast] using hv
+              omega
+            have hpos : 0 < k - 1 - j.val := by omega
+            have hpow : (0 : Int) ^ (k - 1 - j.val) = 0 :=
+              zero_pow (Nat.ne_of_gt hpos)
+            have hjLast : ¬j = ⟨k - 1, last_lt hk⟩ := by
+              intro hEq
+              apply hj
+              apply Fin.ext
+              simpa [i, finLast] using congrArg Fin.val hEq
+            simp [expectedRow, i, finLast, hjLast, hpow]
+        exact hmatch
+      · simp [hc]
+        let l : Prog k := computeFracLocal2 (k := k) hk c
+        obtain ⟨σ₁, hrun₁, hmatch⟩ := computeFracLocal2_matches_row_start (k := k) hk c
+        have hbuildNP : NoPhase l := by
+          dsimp [l]
+          exact computeFracLocal2_NoPhase (k := k) hk c
+        have hbuildC : ProgConsumesPts hk (State.start_state (k := k)) l [] :=
+          progConsumesPts_of_noPhase_run (k := k) hk hbuildNP (by simpa [l] using hrun₁)
+        have hphaseC :
+            ProgConsumesPts hk σ₁ [valid_ops.phaseProduct (finLast hk)] [Point.frac c] := by
+          simp [ProgConsumesPts, hmatch]
+        have hprefixC :
+            ProgConsumesPts hk (State.start_state (k := k))
+              (l ++ [valid_ops.phaseProduct (finLast hk)]) [Point.frac c] := by
+          simpa using
+            progConsumesPts_append (k := k) hk
+              (p := l) (q := [valid_ops.phaseProduct (finLast hk)])
+              (σ := State.start_state (k := k)) (σret := σ₁)
+              (a := []) (b := [Point.frac c])
+              hbuildC (by simpa [l] using hrun₁) hphaseC
+        have hprefixRun :
+            run? (l ++ [valid_ops.phaseProduct (finLast hk)]) (State.start_state (k := k))
+              = some σ₁ := by
+          simp [run?_append, hrun₁, l, applyOp?]
+        have hcleanupRun :
+            run? (apply_Op_inverse l) σ₁ = some (State.start_state (k := k)) := by
+          dsimp [l]
+          exact
+            State.run?_inverse_undoes_WF
+              (computeFracLocal2 (k := k) hk c)
+              (computeFracLocal2_Valid (k := k) (c := c) hk)
+              (State.start_state (k := k)) σ₁ hrun₁
+        have hcleanupNP : NoPhase (apply_Op_inverse l) := by
+          dsimp [l]
+          exact (computeFracLocal2_NoPhase_2 (k := k) hk c).2
+        have hcleanupC : ProgConsumesPts hk σ₁ (apply_Op_inverse l) [] :=
+          progConsumesPts_of_noPhase_run (k := k) hk hcleanupNP hcleanupRun
+        simpa [l, List.append_assoc] using
+          progConsumesPts_append (k := k) hk
+            (p := l ++ [valid_ops.phaseProduct (finLast hk)])
+            (q := apply_Op_inverse l)
+            (σ := State.start_state (k := k)) (σret := σ₁)
+            (a := [Point.frac c]) (b := [])
+            hprefixC hprefixRun hcleanupC
 
 theorem genOpsWithProduct_ProgConsumesPts
   {k : Nat} (hk : 0 < k) (pts : List Point) :
@@ -2546,30 +2922,91 @@ theorem genOpsWithProduct_PhaseProductCoverage
                 (hp := hprefix) (by simp[run?_append,hrun₁,applyOp?])
                 (huncompute)
         }
-        |inf => {
-          simp
-          let i : Fin k := ⟨k - 1, last_lt hk⟩
-          have hmatch :
-              matchesAt_pointRow_state (k := k) hk (State.start_state (k := k)) i Point.inf
-              = true := by
-            unfold matchesAt_pointRow_state
-            apply List.all_eq_true.mpr
-            intro j _
-            apply decide_eq_true_iff.mpr
-            have hne0 : k ≠ 0 := ne_of_gt hk
-            simp [expectedRow, i]
-            aesop
-          refine PhaseProductCoverageM.step_phase
-            (M := matchesAt_pointRow_state hk)
-            (i := i)
-            (ps := [])
-            (σ := State.start_state (k := k))
-            (pts := [Point.inf])
-            (pts' := []) ?consume ?rest
-          · -- eraseFirstMatch? consumes Point.inf using hmatch
-            simp [List.eraseFirstMatch?, hmatch]
-          · -- tail: empty program, empty point list
-            exact PhaseProductCoverageM.nil
+        |frac c => {
+          by_cases hc : c = 0
+          · subst c
+            simp
+            let i : Fin k := finLast hk
+            have hmatch :
+                matchesAt_pointRow_state (k := k) hk (State.start_state (k := k)) i (Point.frac 0)
+                = true := by
+              unfold matchesAt_pointRow_state
+              apply List.all_eq_true.mpr
+              intro j _
+              apply decide_eq_true_iff.mpr
+              by_cases hj : j = i
+              · subst j
+                simp [expectedRow, i, finLast]
+              · have hjlt : j.val < k - 1 := by
+                  have hjle : j.val ≤ k - 1 := Nat.le_pred_of_lt j.isLt
+                  have hjne : j.val ≠ k - 1 := by
+                    intro hv
+                    apply hj
+                    apply Fin.ext
+                    simpa [i, finLast] using hv
+                  omega
+                have hpos : 0 < k - 1 - j.val := by omega
+                have hpow : (0 : Int) ^ (k - 1 - j.val) = 0 :=
+                  zero_pow (Nat.ne_of_gt hpos)
+                have hjLast : ¬j = ⟨k - 1, last_lt hk⟩ := by
+                  intro hEq
+                  apply hj
+                  apply Fin.ext
+                  simpa [i, finLast] using congrArg Fin.val hEq
+                simp [expectedRow, i, finLast, hjLast, hpow]
+            refine PhaseProductCoverageM.step_phase
+              (M := matchesAt_pointRow_state hk)
+              (i := i)
+              (ps := [])
+              (σ := State.start_state (k := k))
+              (pts := [Point.frac 0])
+              (pts' := []) ?consume ?rest
+            · simp [List.eraseFirstMatch?, hmatch]
+            · exact PhaseProductCoverageM.nil
+          · simp [hc]
+            have hbuild :
+                PhaseProductCoverage hk
+                  (computeFracLocal2 (k := k) hk c)
+                  (State.start_state (k := k)) [] :=
+              cover_computeFracLocal2_nil (k := k) hk (State.start_state (k := k)) c
+
+            obtain ⟨σ₁, hrun₁, hmatch⟩ := computeFracLocal2_matches_row_start (k := k) hk c
+
+            have hphase :
+                PhaseProductCoverage hk ([valid_ops.phaseProduct (finLast hk)]) σ₁ [Point.frac c] := by
+              refine PhaseProductCoverageM.step_phase
+                (M := matchesAt_pointRow_state hk (k := k))
+                (i := finLast hk) (ps := []) (σ := σ₁)
+                (pts := [Point.frac c]) (pts' := []) ?eraseFrac ?tailFrac
+              ·
+                simpa [List.eraseFirstMatch?] using
+                  eraseFirstMatch?_head_true
+                    (fun pt => matchesAt_pointRow_state hk (k := k) σ₁ (finLast hk) pt)
+                    (Point.frac c) [] hmatch
+              · simpa using PhaseProductCoverageM.nil (M := matchesAt_pointRow_state hk (k := k)) (σ := σ₁)
+            have huncompute : PhaseProductCoverage hk
+                    (apply_Op_inverse (computeFracLocal2 (k := k) hk c)) σ₁ [] :=
+              cover_applyInverse_computeFracLocal2_nil (k := k) hk σ₁ c
+
+            have hprefix :
+                PhaseProductCoverage hk
+                  (computeFracLocal2 (k := k) hk c ++ [valid_ops.phaseProduct (finLast hk)])
+                  (State.start_state (k := k)) [Point.frac c] :=
+              phaseProduct_coverage_check_append_aux hk
+                (p := computeFracLocal2 (k := k) hk c)
+                (q := [valid_ops.phaseProduct (finLast hk)])
+                (σ := State.start_state (k := k)) (σret := σ₁)
+                (a := []) (b := [Point.frac c])
+                (hp := hbuild) (hrun₁) (hphase)
+
+            simpa [List.append_assoc]
+              using phaseProduct_coverage_check_append_aux hk
+                (p := computeFracLocal2 (k := k) hk c ++ [valid_ops.phaseProduct (finLast hk)])
+                (q := apply_Op_inverse (computeFracLocal2 (k := k) hk c))
+                (σ := State.start_state (k := k)) (σret := σ₁)
+                (a := [Point.frac c]) (b := [])
+                (hp := hprefix) (by simp[run?_append,hrun₁,applyOp?])
+                (huncompute)
         }
       }
       {

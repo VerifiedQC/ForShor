@@ -22,7 +22,7 @@ const graphData = {
         subtitle: "source programs and coverage",
         kind: "math",
         view: "table",
-        file: "FastMultiplication/ShorVerification/MathBackBone/Table_Generation",
+        file: "FastMultiplication/ShorVerification/MathBackbone/Table_Generation",
         declarations: ["Prog", "run?", "PhaseProductCoverage", "genOpsWithProduct_PhaseProductCoverage"],
         summary:
           "Builds symbolic arithmetic programs and proves that generated operations consume the interpolation phase points needed by the phase-product compiler."
@@ -33,7 +33,7 @@ const graphData = {
         subtitle: "interpolation matrix facts",
         kind: "math",
         view: "toom",
-        file: "FastMultiplication/ShorVerification/MathBackBone/Toom_Cook_formula.lean",
+        file: "FastMultiplication/ShorVerification/MathBackbone/Toom_Cook_formula.lean",
         declarations: ["GoodInterpolationPoints", "evalAtRadix", "interpCoeff"],
         summary:
           "Supplies the interpolation algebra that turns phase contributions at points into the intended signed multiplication phase scalar."
@@ -73,14 +73,14 @@ const graphData = {
       },
       {
         id: "modexp",
-        label: "ModExp bounds",
-        subtitle: "approximation control",
+        label: "ModMul bounds",
+        subtitle: "valid-input approximation",
         kind: "algorithm",
         view: "modexp",
-        file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModExpBounds.lean",
-        declarations: ["modExpSteps_dist_bound", "modExp_dist_bound", "modExp_overlap_bound_sqrt"],
+        file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModMulBounds",
+        declarations: ["modMul_approx_valid_dist_uniform", "modExpApprox_valid_dist_uniform", "stepErr"],
         summary:
-          "Packages quantitative norm-distance and overlap bounds for approximate modular exponentiation."
+          "Packages the staged modular-multiplication approximation proof and lifts it to a uniform valid-input modular-exponentiation distance bound."
       },
       {
         id: "classical",
@@ -88,7 +88,7 @@ const graphData = {
         subtitle: "order finding to factoring",
         kind: "math",
         view: "classical",
-        file: "FastMultiplication/ShorVerification/MathBackBone/Factoring_Reduction",
+        file: "FastMultiplication/ShorVerification/MathBackbone/Factoring_Reduction",
         declarations: ["shors_classical_reduction", "shors_probability_bound"],
         summary:
           "Contains the number-theoretic reduction and probability arguments that connect successful order finding to nontrivial factors."
@@ -100,9 +100,9 @@ const graphData = {
         kind: "final",
         view: "shor",
         file: "FastMultiplication/ShorVerification/ShorCorrectness.lean",
-        declarations: ["Shor_correct", "Shor_correct_approx", "Shor_end_to_end_factoring"],
+        declarations: ["MeasureClass", "probability_of_success", "Shor_correct", "Shor_correct_approx_uniform", "Shor_end_to_end_factoring"],
         summary:
-          "Combines ideal/approximate order-finding circuits, measurement probabilities, approximation control, and classical reduction into the top-level statements."
+          "Combines ideal/approximate order-finding circuits, generalized measurement probabilities, valid-input approximation control, and classical reduction into the top-level statements."
       }
     ],
     links: [
@@ -152,12 +152,12 @@ const graphData = {
       "This subgraph follows the source-program side of the project: define a symbolic language, synthesize operations, prove execution properties, then package phase-point coverage.",
     parent: "overview",
     nodes: [
-      { id: "tg-basic", label: "Basic", subtitle: "symbolic states", kind: "math", file: "FastMultiplication/ShorVerification/MathBackBone/Table_Generation/Basic.lean", declarations: ["Register", "State", "shiftL", "shiftR", "addScaledReg"], summary: "Core symbolic register operations." },
-      { id: "language", label: "Language", subtitle: "Prog and run?", kind: "math", file: "FastMultiplication/ShorVerification/MathBackBone/Table_Generation/Language.lean", declarations: ["Prog", "applyOp?", "run?", "PhaseProductCoverage"], summary: "Turns symbolic operations into executable source programs and coverage predicates." },
-      { id: "basic-lemmas", label: "Basic lemmas", subtitle: "execution algebra", kind: "math", file: "FastMultiplication/ShorVerification/MathBackBone/Table_Generation/Basic_lemmas.lean", declarations: ["run?_append", "run?_inverse_undoes_WF"], summary: "Reusable program execution and inverse lemmas." },
-      { id: "synthesis", label: "Synthesis", subtitle: "generated programs", kind: "math", file: "FastMultiplication/ShorVerification/MathBackBone/Table_Generation/Synthesis_programs.lean", declarations: ["opsForPointWithProduct", "genOpsWithProduct", "run_some_computeLocalAux"], summary: "Defines source programs that generate the required phase-point behavior." },
-      { id: "combined", label: "Combined proof", subtitle: "coverage endpoint", kind: "math", file: "FastMultiplication/ShorVerification/MathBackBone/Table_Generation/One_register_synthesis_combined.lean", declarations: ["opsForPointWithProduct_returns_to_original", "genOpsWithProduct_returns_to_original", "genOpsWithProduct_PhaseProductCoverage"], summary: "Proves the generated programs return state and satisfy phase-product coverage." },
-      { id: "blocks", label: "Table blocks", subtitle: "block decomposition", kind: "math", file: "FastMultiplication/ShorVerification/MathBackBone/Table_Generation/Table_Blocks.lean", declarations: ["progConsumesPts_has_blockDecomposition", "progConsumesPts_implies_phaseProductCoverage", "phaseProductCoverage_peel_block"], summary: "Repackages coverage into phase blocks for the compiler proof." }
+      { id: "tg-basic", label: "Basic", subtitle: "symbolic states", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/Table_Generation/Basic.lean", declarations: ["Register", "State", "shiftL", "shiftR", "addScaledReg"], summary: "Core symbolic register operations." },
+      { id: "language", label: "Language", subtitle: "Prog and run?", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/Table_Generation/Language.lean", declarations: ["Prog", "applyOp?", "run?", "PhaseProductCoverage"], summary: "Turns symbolic operations into executable source programs and coverage predicates." },
+      { id: "basic-lemmas", label: "Basic lemmas", subtitle: "execution algebra", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/Table_Generation/Basic_lemmas.lean", declarations: ["run?_append", "run?_inverse_undoes_WF"], summary: "Reusable program execution and inverse lemmas." },
+      { id: "synthesis", label: "Synthesis", subtitle: "generated programs", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/Table_Generation/Synthesis_programs.lean", declarations: ["opsForPointWithProduct", "genOpsWithProduct", "run_some_computeLocalAux"], summary: "Defines source programs that generate the required phase-point behavior." },
+      { id: "combined", label: "Combined proof", subtitle: "coverage endpoint", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/Table_Generation/One_register_synthesis_combined.lean", declarations: ["opsForPointWithProduct_returns_to_original", "genOpsWithProduct_returns_to_original", "genOpsWithProduct_PhaseProductCoverage"], summary: "Proves the generated programs return state and satisfy phase-product coverage." },
+      { id: "blocks", label: "Table blocks", subtitle: "block decomposition", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/Table_Generation/Table_Blocks.lean", declarations: ["progConsumesPts_has_blockDecomposition", "progConsumesPts_implies_phaseProductCoverage", "phaseProductCoverage_peel_block"], summary: "Repackages coverage into phase blocks for the compiler proof." }
     ],
     links: [
       { source: "tg-basic", target: "language", label: "ops become Prog" },
@@ -201,9 +201,9 @@ const graphData = {
       "This layer is mostly independent algebra. The compiler correctness proof consumes it through `toom_cook_interpolation`.",
     parent: "overview",
     nodes: [
-      { id: "points", label: "Good points", subtitle: "interpolation hypotheses", kind: "math", file: "FastMultiplication/ShorVerification/MathBackBone/Toom_Cook_formula.lean", declarations: ["GoodInterpolationPoints", "GoodToomCookPoints"], summary: "Packages the assumptions required for nonsingular interpolation." },
-      { id: "matrix", label: "Matrix facts", subtitle: "coefficients", kind: "math", file: "FastMultiplication/ShorVerification/MathBackBone/Toom_Cook_formula.lean", declarations: ["interpCoeff", "interpEntry"], summary: "Defines the interpolation matrix and coefficient accessors." },
-      { id: "radix", label: "Radix evaluation", subtitle: "chunk reconstruction", kind: "math", file: "FastMultiplication/ShorVerification/MathBackBone/Toom_Cook_formula.lean", declarations: ["evalAtRadix"], summary: "Relates coefficient lists and radix/chunk evaluation." },
+      { id: "points", label: "Good points", subtitle: "interpolation hypotheses", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/Toom_Cook_formula.lean", declarations: ["GoodInterpolationPoints", "GoodToomCookPoints"], summary: "Packages the assumptions required for nonsingular interpolation." },
+      { id: "matrix", label: "Matrix facts", subtitle: "coefficients", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/Toom_Cook_formula.lean", declarations: ["interpCoeff", "interpEntry"], summary: "Defines the interpolation matrix and coefficient accessors." },
+      { id: "radix", label: "Radix evaluation", subtitle: "chunk reconstruction", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/Toom_Cook_formula.lean", declarations: ["evalAtRadix"], summary: "Relates coefficient lists and radix/chunk evaluation." },
       { id: "tc-proof", label: "Compiler bridge", subtitle: "toom_cook_interpolation", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/PhaseProduct/InterpolationCorrectness.lean", declarations: ["toom_cook_interpolation"], summary: "The algorithm layer's theorem that applies Toom-Cook algebra to phase scalars." }
     ],
     links: [
@@ -255,23 +255,28 @@ const graphData = {
   },
 
   modexp: {
-    title: "ModExp bounds",
-    subtitle: "Approximate modular exponentiation",
+    title: "ModMul bounds",
+    subtitle: "Approximate modular multiplication and exponentiation",
     description:
-      "This branch controls the distance between approximate and ideal modular exponentiation, then packages that as an overlap bound for Shor correctness.",
+      "This branch proves the staged Algorithm-1 modular-multiplication bound, packages valid-input side conditions, and lifts the result to a uniform modular-exponentiation distance theorem.",
     parent: "overview",
     nodes: [
-      { id: "spec", label: "Spec and gates", subtitle: "ideal/approx interface", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModExpBounds.lean", declarations: ["Spec", "ModMul", "modExpIdealSteps", "modExpIdeal'"], summary: "Defines the specification classes and ideal/approximate modular exponentiation gates." },
-      { id: "local", label: "Step bound", subtitle: "single multiply", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModExpBounds.lean", declarations: ["ctrlMul_step_dist_bound"], summary: "Controls the error for one controlled multiplication step." },
-      { id: "steps", label: "Steps bound", subtitle: "iterated distance", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModExpBounds.lean", declarations: ["modExpSteps_dist_bound"], summary: "Lifts local step error to the iterated modular exponentiation loop." },
-      { id: "dist", label: "Circuit distance", subtitle: "modExp_dist_bound", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModExpBounds.lean", declarations: ["modExp_dist_bound"], summary: "Packages the full approximate-vs-ideal distance bound." },
-      { id: "overlap", label: "Overlap", subtitle: "success transfer", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModExpBounds.lean", declarations: ["modExp_overlap_bound_sqrt"], summary: "Converts norm-distance control into an overlap-style bound for the final theorem." }
+      { id: "core", label: "Core setup", subtitle: "interfaces and configs", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModMulBounds/Core.lean", declarations: ["Spec", "IdealCtrlModMulExactSemantics", "ModMulPrimitiveSemantics", "ModExpConfig", "ModMulConfig"], summary: "Defines ideal semantics, primitive-gate semantics, valid-state predicates, precision assumptions, and shared circuit/configuration objects." },
+      { id: "expansion", label: "Algorithm 1 expansion", subtitle: "trace construction", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModMulBounds/Algorithm1Expansion.lean", declarations: ["alg1_trace_of_valid", "eval_Hreg_zero_eq_QFT", "eval_approxGate_eq_staged"], summary: "Expands the staged approximate modular multiplier into the reference trace used by the quantitative bounds." },
+      { id: "qpe", label: "QPE mass", subtitle: "bad-label control", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModMulBounds/Step1QPE.lean", declarations: ["alg1_trace_bad_mass_le_of_basis_tail", "qpeKernel_bad_mass_le_grid_ratio", "alg1_trace_input_mass_one"], summary: "Controls the discarded QPE label mass and relates the trace error packets to the kernel bounds." },
+      { id: "step2", label: "Step-2 bound", subtitle: "Fourier packet error", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModMulBounds/Step2Bound.lean", declarations: ["alg1_step2_good_label_branch_uniform", "alg1_step2_good_packet_operator_sq_bound"], summary: "Bounds the Step-2 Fourier packet error on good labels using the trace and contraction estimates." },
+      { id: "step34", label: "Step 3/4 exactness", subtitle: "primitive semantics", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModMulBounds/Step34Exact.lean", declarations: ["alg1_step34_reference_exact", "alg1_step3_reduces_to_modmul"], summary: "Proves the comparator/subtractor primitive stages exactly implement the reference state update under clean-layout assumptions." },
+      { id: "modmul", label: "ModMul bound", subtitle: "uniform single multiply", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModMulBounds/FinalModMul.lean", declarations: ["modMul_approx_valid_dist_uniform", "three_stepErr_le", "norm_chain_three"], summary: "Combines the staged errors into a uniform distance bound for one approximate controlled modular multiplication." },
+      { id: "modexp-final", label: "ModExp lift", subtitle: "iterated valid distance", kind: "algorithm", file: "FastMultiplication/ShorVerification/AlgorithmCorrectness/ModMulBounds/ModExp.lean", declarations: ["modExpApproxSteps_valid_dist_uniform", "modExpApprox_valid_dist_uniform", "ideal_preserves_valid"], summary: "Iterates the single-multiply theorem across exponent bits and packages the full modular-exponentiation approximation theorem used by Shor correctness." }
     ],
     links: [
-      { source: "spec", target: "local", label: "error model" },
-      { source: "local", target: "steps", label: "iteration" },
-      { source: "steps", target: "dist", label: "whole gate" },
-      { source: "dist", target: "overlap", label: "overlap lemma" }
+      { source: "core", target: "expansion", label: "trace setup" },
+      { source: "core", target: "step34", label: "primitive semantics" },
+      { source: "expansion", target: "qpe", label: "trace mass" },
+      { source: "qpe", target: "step2", label: "bad-label bound" },
+      { source: "step2", target: "modmul", label: "fourier packet bound" },
+      { source: "step34", target: "modmul", label: "exact stages" },
+      { source: "modmul", target: "modexp-final", label: "iteration" }
     ]
   },
 
@@ -282,9 +287,9 @@ const graphData = {
       "The classical branch models successful choices of `a`, order recovery, and the reduction from a good order to a nontrivial factor.",
     parent: "overview",
     nodes: [
-      { id: "defs", label: "Definitions", subtitle: "success predicates", kind: "math", file: "FastMultiplication/ShorVerification/MathBackBone/Factoring_Reduction/Defs.lean", declarations: ["valid_choices", "successful_choices", "is_successful_choice"], summary: "Defines the classical sets and predicates used by the factoring theorem." },
-      { id: "prob", label: "Probability bound", subtitle: "successful choices", kind: "math", file: "FastMultiplication/ShorVerification/MathBackBone/Factoring_Reduction/ProbabilityBound.lean", declarations: ["valid_choices_card_general", "general_unsuccessful_bound"], summary: "Counts successful choices among coprime residues." },
-      { id: "reduction", label: "Reduction", subtitle: "gcd factors", kind: "math", file: "FastMultiplication/ShorVerification/MathBackBone/Factoring_Reduction/Reduction.lean", declarations: ["shors_classical_reduction"], summary: "Shows good order information yields a nontrivial factor." },
+      { id: "defs", label: "Definitions", subtitle: "success predicates", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/Factoring_Reduction/Defs.lean", declarations: ["valid_choices", "successful_choices", "is_successful_choice"], summary: "Defines the classical sets and predicates used by the factoring theorem." },
+      { id: "prob", label: "Probability bound", subtitle: "successful choices", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/Factoring_Reduction/ProbabilityBound.lean", declarations: ["valid_choices_card_general", "general_unsuccessful_bound"], summary: "Counts successful choices among coprime residues." },
+      { id: "reduction", label: "Reduction", subtitle: "gcd factors", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/Factoring_Reduction/Reduction.lean", declarations: ["shors_classical_reduction"], summary: "Shows good order information yields a nontrivial factor." },
       { id: "bound", label: "Shor probability", subtitle: "repo theorem", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["shors_probability_bound"], summary: "Top-level use of the classical counting theorem." }
     ],
     links: [
@@ -299,22 +304,62 @@ const graphData = {
     title: "Shor correctness",
     subtitle: "Final assembly",
     description:
-      "`ShorCorrectness.lean` defines order-finding circuits and measurement probabilities, then states ideal, approximate, and end-to-end factoring theorems.",
+      "`ShorCorrectness.lean` defines ideal, approximate, and lowered order-finding circuits; a generalized measurement/probability interface; and the ideal, approximate, and end-to-end factoring theorems.",
     parent: "overview",
     nodes: [
-      { id: "circuits", label: "Order-finding circuits", subtitle: "ideal and approximate", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["initY1", "orderFindingApprox", "orderFindingIdeal"], summary: "Assembles H, initialization, modular exponentiation, and QFT into order-finding gates." },
-      { id: "measure", label: "Measurement model", subtitle: "success probability", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["MeasureClass", "measProbAfter", "successProbAfterFinset", "probability_of_success"], summary: "Abstracts measurement and packages success probabilities." },
+      { id: "post", label: "Postprocessing API", subtitle: "continued fractions", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/ShorDefinition.lean", declarations: ["ContinuedFractionPost", "OF_post", "r_found", "κ"], summary: "Defines order-recovery postprocessing, the verifier-driven success indicator, and the asymptotic success constant." },
+      { id: "circuits", label: "Order-finding circuits", subtitle: "ideal, approximate, lowered", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["initY1", "orderFindingApprox", "orderFindingApproxLow", "orderFindingIdeal"], summary: "Assembles H, initialization, valid modular exponentiation, QFT, and the lowered approximate implementation." },
+      { id: "measure", label: "Measurement model", subtitle: "polymorphic success probability", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["MeasureClass", "measProbAfter", "successProbAfterFinset", "probability_of_success"], summary: "Abstracts measurement projectors and packages success probabilities for any circuit-like object via an explicit evaluator." },
+      { id: "transfer", label: "Probability transfer", subtitle: "state distance to success", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["probMeas_weighted_dist", "probability_of_success_eval_dist", "transfer_lower_bound_from_abs_prob"], summary: "Turns norm-distance control between evaluated circuits into a lower bound on postprocessed success probability." },
       { id: "ideal", label: "Ideal theorem", subtitle: "Shor_correct", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["Shor_correct"], summary: "States the ideal order-finding correctness lower bound." },
-      { id: "approx", label: "Approx theorem", subtitle: "Shor_correct_approx", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["Shor_correct_approx"], summary: "States the approximation-aware order-finding lower bound." },
+      { id: "setup", label: "Approx setup", subtitle: "layout and precision", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["ShorCleanInput", "ShorApproxSetup", "ShorApproxSetup.toModExpConfig"], summary: "Packages the register layout, work-register precision, and clean-input assumptions required by the approximate implementation." },
+      { id: "approx", label: "Approx theorem", subtitle: "uniform and fixed precision", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["Shor_correct_approx_uniform", "Shor_correct_approx"], summary: "Transfers the uniform modular-exponentiation distance theorem to an approximation-aware order-finding lower bound." },
       { id: "factoring", label: "End-to-end factoring", subtitle: "Shor_end_to_end_factoring", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["Shor_end_to_end_factoring"], summary: "Combines classical choice probability and quantum order finding into a factoring statement." }
     ],
     links: [
+      { source: "post", target: "measure", label: "success expression" },
       { source: "circuits", target: "measure", label: "run and measure" },
+      { source: "measure", target: "transfer", label: "probability API" },
       { source: "measure", target: "ideal", label: "success expression" },
+      { source: "transfer", target: "approx", label: "distance transfer" },
+      { source: "setup", target: "approx", label: "valid setup" },
       { source: "ideal", target: "approx", label: "ideal baseline" },
       { source: "ideal", target: "factoring", label: "order finding" },
       { source: "measure", target: "factoring", label: "probability API" }
     ]
+  }
+};
+
+const nodeClasses = {
+  overview: {
+    basic: ["RegEncoding", "ExtRegEncoding", "QSemantics", "QFTSemantics", "HadamardSemantics", "PauliXSemantics", "RegisterHadamardSemantics", "RadixReverseSemantics", "PhaseSemantics", "ExtensionSemantics", "ArithmeticSemantics", "GateSemanticsFacts"],
+    qft: ["QFTSemantics", "RadixReverseSemantics", "PhaseSemantics"],
+    phase: ["ExtRegSplitSemantics"],
+    machine: ["LowerGateClass"],
+    modexp: ["Spec", "IdealCtrlModMulExactSemantics", "ModMulPrimitiveSemantics"],
+    shor: ["ContinuedFractionPost", "MeasureClass"]
+  },
+  basic: {
+    regenc: ["RegEncoding"],
+    extreg: ["ExtRegEncoding"],
+    sem: ["QSemantics", "QFTSemantics", "HadamardSemantics", "PauliXSemantics", "RegisterHadamardSemantics", "RadixReverseSemantics", "PhaseSemantics", "ExtensionSemantics", "ArithmeticSemantics"],
+    facts: ["GateSemanticsFacts"]
+  },
+  phase: {
+    core: ["ExtRegSplitSemantics"]
+  },
+  qft: {
+    "qft-sem": ["QFTSemantics", "RadixReverseSemantics", "PhaseSemantics"]
+  },
+  machine: {
+    "phase-lower": ["LowerGateClass"]
+  },
+  modexp: {
+    core: ["Spec", "IdealCtrlModMulExactSemantics", "ModMulPrimitiveSemantics"]
+  },
+  shor: {
+    post: ["ContinuedFractionPost"],
+    measure: ["MeasureClass"]
   }
 };
 
@@ -411,9 +456,9 @@ const edgeCatalog = {
     proof: "The proof is by induction over Gate syntax, dispatching QFT and signed phase-product cases to their specialized lowering theorems."
   },
   "approx bounds": {
-    theorem: "modExp_overlap_bound_sqrt",
-    description: "Transfers approximate modular-exponentiation error into an overlap-style bound usable by the final Shor statement.",
-    proof: "The proof packages per-step distance bounds into a whole-circuit distance theorem and then converts distance control into overlap control."
+    theorem: "modExpApprox_valid_dist_uniform",
+    description: "Transfers valid-input approximate modular-exponentiation error into the final Shor approximation statement.",
+    proof: "The proof packages the staged modular-multiplication bound into an iterated modular-exponentiation distance theorem, which Shor correctness then converts into a success-probability lower bound."
   },
   "factor recovery": {
     theorem: "shors_classical_reduction",
@@ -570,25 +615,40 @@ const edgeCatalog = {
     description: "Uses the specialized lowering theorem as one recursive case of whole-program lowering.",
     proof: "The whole-program theorem inducts over Gate syntax and dispatches each constructor to its matching semantic lemma."
   },
-  "error model": {
-    theorem: "ctrlMul_step_dist_bound",
-    description: "Introduces the local controlled-multiplication error bound.",
-    proof: "The proof applies the ModMul specification to a single modular multiplication step."
+  "trace setup": {
+    theorem: "alg1_trace_of_valid",
+    description: "Expands a valid approximate modular-multiplication input into the trace used by the staged proof.",
+    proof: "The expansion proof rewrites the approximate gate into staged subcircuits and records the reference packets needed by the QPE, Step-2, and exact-stage lemmas."
+  },
+  "primitive semantics": {
+    theorem: "ModMulPrimitiveSemantics",
+    description: "Supplies the restricted comparator/subtractor semantics used by Algorithm 1 Steps 3 and 4.",
+    proof: "The exact-stage proof applies the primitive semantic class under the clean flag and layout assumptions from the core configuration."
+  },
+  "trace mass": {
+    theorem: "alg1_trace_bad_mass_le_of_basis_tail",
+    description: "Relates the expanded trace to the QPE bad-label mass bound.",
+    proof: "The proof connects the trace's bad packet norm to the QPE kernel tail estimate while preserving the input mass normalization."
+  },
+  "bad-label bound": {
+    theorem: "alg1_step2_good_label_branch_uniform",
+    description: "Feeds QPE bad-label control into the Step-2 Fourier packet estimate.",
+    proof: "The Step-2 proof uses the good-label branch theorem and the QPE tail estimate to bound the packet error uniformly."
+  },
+  "fourier packet bound": {
+    theorem: "modMul_approx_valid_dist_uniform",
+    description: "Contributes the dominant Fourier-packet error term to the final single-multiply distance bound.",
+    proof: "The final modular-multiplication proof chains the Step-2 estimate with the other staged errors through norm-triangle lemmas."
+  },
+  "exact stages": {
+    theorem: "alg1_step34_reference_exact",
+    description: "Shows the primitive middle stages exactly match the reference state update.",
+    proof: "The final modular-multiplication theorem uses this exactness result so the approximate distance budget only needs to pay for the genuinely approximate stages."
   },
   "iteration": {
-    theorem: "modExpSteps_dist_bound",
-    description: "Lifts the local step error over the modular-exponentiation loop.",
-    proof: "The proof accumulates stepwise norm-distance errors across the iteration."
-  },
-  "whole gate": {
-    theorem: "modExp_dist_bound",
-    description: "Packages the iterated step bound as a statement about the whole modular-exponentiation gate.",
-    proof: "The proof specializes the step theorem to the full circuit wrapper."
-  },
-  "overlap lemma": {
-    theorem: "modExp_overlap_bound_sqrt",
-    description: "Converts modular-exponentiation distance control into overlap control.",
-    proof: "The proof applies the distance-to-overlap lemmas from the same file."
+    theorem: "modExpApprox_valid_dist_uniform",
+    description: "Lifts the uniform single-multiply bound over the modular-exponentiation loop.",
+    proof: "The proof iterates across exponent bits, preserves valid states with the ideal semantics, and accumulates the `stepErr` contribution."
   },
   "finite sets": {
     theorem: "valid_choices_card_general",
@@ -612,18 +672,28 @@ const edgeCatalog = {
   },
   "run and measure": {
     theorem: "measProbAfter",
-    description: "Defines the probability of a measurement outcome after running an order-finding circuit.",
-    proof: "This is the definitional bridge from circuits to measurement probabilities."
+    description: "Defines the probability of a measurement outcome after running an arbitrary circuit-like object through an explicit evaluator.",
+    proof: "The generalized wrapper applies `evalC` to the chosen circuit object and then uses `MeasureClass.probMeas` on the resulting state."
   },
   "success expression": {
     theorem: "probability_of_success",
     description: "Packages measurement probabilities into the success expression used by Shor correctness.",
-    proof: "The definition sums over measurement outcomes weighted by the continued-fraction verifier."
+    proof: "The definition sums over measurement outcomes weighted by `r_found`, so the same success expression can be used for high-level gates or any future circuit representation with an evaluator."
+  },
+  "distance transfer": {
+    theorem: "probability_of_success_eval_dist",
+    description: "Converts a norm-distance bound between evaluated circuits into a lower bound on approximate success probability.",
+    proof: "The proof applies the weighted measurement-distribution distance lemma to the postprocessed success expression."
+  },
+  "valid setup": {
+    theorem: "ShorApproxSetup.toModExpConfig",
+    description: "Turns public Shor layout, precision, and clean-input assumptions into the modular-exponentiation config expected by the approximation theorem.",
+    proof: "The setup lemmas derive valid modular-exponentiation state and arithmetic side conditions from the Shor register layout."
   },
   "ideal baseline": {
-    theorem: "Shor_correct_approx",
+    theorem: "Shor_correct_approx_uniform",
     description: "Uses the ideal theorem as the baseline for the approximation-aware statement.",
-    proof: "The approximate theorem subtracts an explicit modular-exponentiation error term from the ideal success lower bound."
+    proof: "The approximate theorem subtracts the explicit valid-input modular-exponentiation distance term from the ideal success lower bound."
   },
   "order finding": {
     theorem: "Shor_end_to_end_factoring",
@@ -631,9 +701,9 @@ const edgeCatalog = {
     proof: "The end-to-end theorem invokes Shor_correct for every successful choice of base."
   },
   "probability API": {
-    theorem: "successProbAfterFinset_mono",
-    description: "Provides basic monotonicity and range facts for success probabilities.",
-    proof: "The proof uses nonnegativity of measurement probabilities and finite-set summation facts."
+    theorem: "probMeas_weighted_dist",
+    description: "Provides the measurement-distribution estimates needed by success-probability transfer.",
+    proof: "The proof uses Born-rule projectors, finite sums, and nonnegative verifier weights to bound postprocessed probabilities by state distance."
   }
 };
 
@@ -657,7 +727,7 @@ function fileHref(file) {
 
 function nodeMatches(node, query) {
   if (!query) return true;
-  const haystack = [node.label, node.subtitle, node.summary, node.file, ...(node.declarations || [])]
+  const haystack = [node.label, node.subtitle, node.summary, node.file, ...(node.declarations || []), ...getNodeClasses(node)]
     .join(" ")
     .toLowerCase();
   return haystack.includes(query.toLowerCase());
@@ -683,6 +753,20 @@ function getDominantKind(view) {
 
 function getNode(id) {
   return graphData[state.viewId].nodes.find((node) => node.id === id);
+}
+
+function getNodeClasses(node, viewId = state.viewId) {
+  return node?.classes || nodeClasses[viewId]?.[node?.id] || [];
+}
+
+function getViewClassRows(view, viewId = state.viewId) {
+  return view.nodes
+    .map((node) => ({ node, classes: getNodeClasses(node, viewId) }))
+    .filter((row) => row.classes.length > 0);
+}
+
+function getViewClassCount(view, viewId = state.viewId) {
+  return new Set(getViewClassRows(view, viewId).flatMap((row) => row.classes)).size;
 }
 
 function getRelatedEdges(id) {
@@ -916,9 +1000,11 @@ function renderMeta() {
 function renderStats() {
   const view = graphData[state.viewId];
   const matches = view.nodes.filter((node) => nodeMatches(node, state.query)).length;
+  const classCount = getViewClassCount(view);
   graphStats.innerHTML = `
     <div class="stat"><strong>${view.nodes.length}</strong><span>nodes</span></div>
     <div class="stat"><strong>${view.links.length}</strong><span>proofs</span></div>
+    <div class="stat"><strong>${classCount}</strong><span>classes</span></div>
     <div class="stat"><strong>${Math.round(state.transform.scale * 100)}%</strong><span>zoom</span></div>
     <div class="stat"><strong>${state.query ? matches : getViewKinds(view).length}</strong><span>${state.query ? "matches" : "layers"}</span></div>
   `;
@@ -949,6 +1035,30 @@ function renderEdgeList(title, edges, direction) {
     <div class="detail-section">
       <h3>${title}</h3>
       <div class="edge-list">${rows}</div>
+    </div>
+  `;
+}
+
+function renderClassPills(classes) {
+  return classes.length
+    ? classes.map((className) => `<span class="pill class-pill">${className}</span>`).join("")
+    : '<span class="pill empty-pill">none</span>';
+}
+
+function renderClassCatalog(view) {
+  const rows = getViewClassRows(view);
+  if (!rows.length) return "";
+  return `
+    <div class="detail-section">
+      <h3>Lean classes</h3>
+      <div class="class-catalog">
+        ${rows.map(({ node, classes }) => `
+          <button class="class-row" type="button" data-node-id="${node.id}">
+            <strong>${node.label}</strong>
+            <span>${classes.join(", ")}</span>
+          </button>
+        `).join("")}
+      </div>
     </div>
   `;
 }
@@ -1017,6 +1127,7 @@ function renderDetails(item = null, link = null) {
           <h3>Layers</h3>
           <p>${kinds}</p>
         </div>
+        ${renderClassCatalog(view)}
         <div class="detail-section">
           <h3>Proof bridges</h3>
           <div class="edge-list">
@@ -1040,10 +1151,14 @@ function renderDetails(item = null, link = null) {
         if (edge) selectEdge(edge);
       });
     });
+    detailsContent.querySelectorAll("[data-node-id]").forEach((button) => {
+      button.addEventListener("click", () => selectNode(button.dataset.nodeId));
+    });
     return;
   }
 
   const declarations = (selected.declarations || []).map((decl) => `<span class="pill">${decl}</span>`).join("");
+  const classes = getNodeClasses(selected);
   const drillDown = selected.view && graphData[selected.view]
     ? `<button class="detail-action" type="button" data-open-view="${selected.view}">Open ${graphData[selected.view].title}</button>`
     : "";
@@ -1069,6 +1184,10 @@ function renderDetails(item = null, link = null) {
       <div class="detail-section">
         <h3>Lean declarations</h3>
         <div class="pill-list">${declarations || '<span class="pill">module</span>'}</div>
+      </div>
+      <div class="detail-section">
+        <h3>Lean classes</h3>
+        <div class="pill-list">${renderClassPills(classes)}</div>
       </div>
       ${renderEdgeList("Inputs", related.incoming, "incoming")}
       ${renderEdgeList("Outputs", related.outgoing, "outgoing")}

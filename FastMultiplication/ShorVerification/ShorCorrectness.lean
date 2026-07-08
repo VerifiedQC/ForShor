@@ -904,6 +904,57 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
 
   exact lower_bound_of_abs_sub_le hprob
 
+/-- Arithmetic, width, and continued-fraction assumptions for one
+order-finding instance. -/
+structure ShorOrderFindingInstance where
+  /-- The base whose order is being found. -/
+  a : ℕ
+  /-- The modulus to factor. -/
+  N : ℕ
+  /-- The exponent/control register. -/
+  x : Reg
+  /-- The modular-exponentiation data register. -/
+  y : Reg
+  /-- The sampled base is in the valid range. -/
+  range : 0 < a ∧ a < N
+  /-- The sampled base is coprime to the modulus. -/
+  coprime : Nat.gcd a N = 1
+  /-- The exponent register has the standard Shor width. -/
+  x_width : regSize x = Nat.log2 (2 * N^2)
+  /-- The data register has enough room for residues modulo `N`. -/
+  y_width : regSize y = Nat.log2 (2 * N)
+  /-- The continued-fraction/postprocessing assumptions for this instance. -/
+  order_setting :
+    BasicSetting a (ord a N coprime) N (regSize x) (regSize y)
+
+/-- Low-level lowering assumptions shared by lowered Shor statements. -/
+structure ShorLoweringSetup where
+  /-- Number of synthesis registers used by the lowering program. -/
+  k : ℕ
+  /-- At least two synthesis registers are available. -/
+  hk : 1 < k
+  /-- Program that consumes the interpolation points used by lowering. -/
+  ops : Prog k
+  /-- The point-consuming program is safe. -/
+  consumes :
+    ProgConsumesPtsSafe
+      (k := k) (by omega)
+      State.start_state ops
+      (genInterpolationPoints k)
+  /-- The point-consuming program uncomputes back to the start state. -/
+  returns : run? ops State.start_state = some State.start_state
+
+/-- Classical assumptions on a modulus for the final factoring theorem. -/
+structure ShorFactoringInstance where
+  /-- The modulus to factor. -/
+  N : ℕ
+  /-- Shor's classical reduction is stated for odd composite moduli. -/
+  odd : Odd N
+  /-- The modulus is nontrivial. -/
+  gt_two : N > 2
+  /-- The modulus is not a prime power. -/
+  not_prime_power : ∀ (p k : ℕ), Nat.Prime p → N ≠ p ^ k
+
 /-- The input basis state is clean on every register used by Shor. -/
 def ShorCleanInput
     (qs : QSemantics)
@@ -955,22 +1006,17 @@ the ideal order-finding circuit recovers the order with at least the standard
 inverse-polylogarithmic probability. -/
 theorem Shor_correct
   (T : ℕ → ℕ)
-  (a N : ℕ)
-  (ha : 0 < a ∧ a < N)
-  (hgcd : Nat.gcd a N = 1)
-  (x y w : Reg)
+  (inst : ShorOrderFindingInstance)
   (ψ0 : qs.State)
-  (hψ0 : ‖ψ0‖ = 1)
-  (hm : regSize x = Nat.log2 (2 * N^2))
-  (hn : regSize y = Nat.log2 (2 * N))
-  (hset : BasicSetting a (ord a N hgcd) N (regSize x) (regSize y)) :
+  (hψ0 : ‖ψ0‖ = 1) :
   probability_of_success (qs := qs) (T := T)
-    (verify := fun d => decide ((a ^ d) % N = 1))
-    (x := x) (r := ord a N hgcd) (Q := 2^(regSize x))
+    (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+    (x := inst.x) (r := ord inst.a inst.N inst.coprime)
+    (Q := 2^(regSize inst.x))
     (evalC := qs.eval)
-    (C := orderFindingIdeal (qs := qs) a N x y)
+    (C := orderFindingIdeal (qs := qs) inst.a inst.N inst.x inst.y)
     (ψ := ψ0)
-  ≥ κ / (Nat.log2 N : ℝ)^4 := by
+  ≥ κ / (Nat.log2 inst.N : ℝ)^4 := by
   sorry
 
 omit [MeasureClass qs] [ContinuedFractionPost] [Spec] [ExtRegEncoding qs.Basis] in
@@ -1419,31 +1465,33 @@ theorem Shor_correct_approx_uniform
     [IdealCtrlModMulExactSemantics qs]
     [ModMulPrimitiveSemantics qs]
     (T : ℕ → ℕ)
-    (a N : ℕ)
-    (ha : 0 < a ∧ a < N)
-    (hgcd : Nat.gcd a N = 1)
-    (x y w : Reg)
+    (inst : ShorOrderFindingInstance)
+    (w : Reg)
     (flag : ℕ)
-    (b0 : qs.Basis)
-    (hm : regSize x = Nat.log2 (2 * N^2))
-    (hn : regSize y = Nat.log2 (2 * N))
-    (hset : BasicSetting a (ord a N hgcd) N (regSize x) (regSize y)) :
+    (b0 : qs.Basis) :
     ∃ K : ℝ, 0 ≤ K ∧
       ∀ (η : ℝ)
-        (_hS: ShorApproxSetup qs η a N x y w flag b0),
+        (_hS: ShorApproxSetup qs η inst.a inst.N inst.x inst.y w flag b0),
         probability_of_success (qs := qs) (T := T)
-          (verify := fun d => decide ((a ^ d) % N = 1))
-          (x := x)
-          (r := ord a N hgcd)
-          (Q := 2 ^ regSize x)
+          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+          (x := inst.x)
+          (r := ord inst.a inst.N inst.coprime)
+          (Q := 2 ^ regSize inst.x)
           (evalC := qs.eval)
-          (C := orderFindingApprox (qs := qs) a N x y w flag)
+          (C := orderFindingApprox (qs := qs) inst.a inst.N inst.x inst.y w flag)
           (ψ := qs.ket b0)
         ≥
-          κ / (Nat.log2 N : ℝ)^4
-            - 2 * (tbits x : ℝ) *
-                Real.sqrt (2 * (K * η)) := by
+          κ / (Nat.log2 inst.N : ℝ)^4
+            - 2 * (tbits inst.x : ℝ) * Real.sqrt (2 * (K * η)) := by
   classical
+  let a := inst.a
+  let N := inst.N
+  let x := inst.x
+  let y := inst.y
+  have ha : 0 < a ∧ a < N := inst.range
+  have hgcd : Nat.gcd a N = 1 := inst.coprime
+  have hm : regSize x = Nat.log2 (2 * N^2) := inst.x_width
+  have hn : regSize y = Nat.log2 (2 * N) := inst.y_width
 
   rcases modExpApprox_valid_dist_uniform (qs := qs) with
     ⟨K, hK_nonneg, hmodExp⟩
@@ -1612,18 +1660,9 @@ theorem Shor_correct_approx_uniform
       (Shor_correct
         (qs := qs)
         T
-        a
-        N
-        ha
-        hgcd
-        x
-        y
-        w
+        inst
         (qs.ket b0)
-        (ket_norm_one qs b0)
-        hm
-        hn
-        hset)
+        (ket_norm_one qs b0))
 
   calc
     probability_of_success (qs := qs) (T := T)
@@ -1718,40 +1757,35 @@ lemma probability_of_success_lowerGate_eq
   rw [hEval]
 
 theorem Shor_correct_approx_uniform_low
-    [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
-    [ModMulPrimitiveSemantics qs]
-    [ExtRegSplitSemantics qs.Basis]
-    [LowerGateClass qs]
-    (k : ℕ)
-    (hk : 1 < k)
-    (ops : Prog k)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
-    (hRun : run? ops State.start_state = some State.start_state)
+    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs] [ModMulPrimitiveSemantics qs]
+    [ExtRegSplitSemantics qs.Basis] [LowerGateClass qs]
+    (low : ShorLoweringSetup)
     (T : ℕ → ℕ)
-    (a N : ℕ)
-    (ha : 0 < a ∧ a < N)
-    (hgcd : Nat.gcd a N = 1)
-    (x y w : Reg)
+    (inst : ShorOrderFindingInstance)
+    (w : Reg)
     (flag : ℕ)
     (b0 : qs.Basis)
-    (hm : regSize x = Nat.log2 (2 * N^2))
-    (hn : regSize y = Nat.log2 (2 * N))
-    (hset : BasicSetting a (ord a N hgcd) N (regSize x) (regSize y))
-    (hGeom :
-      GateGeomOK
-        (orderFindingApprox (qs := qs) a N x y w flag)) :
+    (hGeom : GateGeomOK (orderFindingApprox (qs := qs) inst.a inst.N inst.x inst.y w flag)) :
     ∃ K : ℝ, 0 ≤ K ∧
-      ∀ (η : ℝ)
-        (hsetup : ShorApproxSetup qs η a N x y w flag b0),
-        probability_of_success (evalC := LowerGateClass.evalL (qs := qs)) (T := T) (verify := fun d => decide ((a ^ d) % N = 1)) (x := x)
-          (r := ord a N hgcd) (Q := 2 ^ regSize x) (C := orderFindingApproxLow qs k hk ops a N x y w flag)
-            (ψ := qs.ket b0)
+      ∀ (η : ℝ),
+        (hsetup : ShorApproxSetup qs η inst.a inst.N inst.x inst.y w flag b0) →
+        probability_of_success
+            (evalC := LowerGateClass.evalL (qs := qs)) (T := T)
+            (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+            (x := inst.x) (r := ord inst.a inst.N inst.coprime) (Q := 2 ^ regSize inst.x)
+            (C := orderFindingApproxLow qs low.k low.hk low.ops inst.a inst.N inst.x inst.y w flag) (ψ := qs.ket b0)
           ≥
-        κ / (Nat.log2 N : ℝ)^4 - 2 * (tbits x : ℝ) * Real.sqrt (2 * (K * η)) := by
+        κ / (Nat.log2 inst.N : ℝ)^4
+          - 2 * (tbits inst.x : ℝ) *
+              Real.sqrt (2 * (K * η)) := by
+  let a := inst.a
+  let N := inst.N
+  let x := inst.x
+  let y := inst.y
+  have hgcd : Nat.gcd a N = 1 := inst.coprime
   rcases Shor_correct_approx_uniform
       (qs := qs)
-      T a N ha hgcd x y w flag b0 hm hn hset with
+      T inst w flag b0 with
     ⟨K, hK, hHigh⟩
 
   refine ⟨K, hK, ?_⟩
@@ -1769,7 +1803,7 @@ theorem Shor_correct_approx_uniform_low
         (C :=
           orderFindingApproxLow
             (qs := qs)
-            k hk ops a N x y w flag)
+            low.k low.hk low.ops a N x y w flag)
         (ψ := qs.ket b0)
       =
     probability_of_success
@@ -1785,7 +1819,7 @@ theorem Shor_correct_approx_uniform_low
           simpa [orderFindingApproxLow] using
             (probability_of_success_lowerGate_eq
               (qs := qs)
-              k hk ops hC hRun
+              low.k low.hk low.ops low.consumes low.returns
               T
               (fun d => decide ((a ^ d) % N = 1))
               x
@@ -1857,41 +1891,50 @@ omit [MeasureClass qs] in
 /-- End-to-end statement combining the classical choice probability, ideal
 quantum order-finding, and the classical factor extraction theorem. -/
 theorem Shor_end_to_end_factoring [MeasureClass qs]
-(T : ℕ → ℕ) (N : ℕ)
-(h_odd : Odd N)
-(h_N : N > 2)
-(h_not_prime_power : ∀ (p k : ℕ), Nat.Prime p → N ≠ p ^ k)
-(x y w : Reg)
+(T : ℕ → ℕ)
+(fact : ShorFactoringInstance)
+(x y : Reg)
 (ψ0 : qs.State)
 (hψ0 : ‖ψ0‖ = 1)
-(hm : regSize x = Nat.log2 (2 * N^2))
-(hn : regSize y = Nat.log2 (2 * N))
-(hset : ∀ a, a ∈ valid_choices N →
-  ∃ hgcd, BasicSetting a (ord a N hgcd) N (regSize x) (regSize y)) :
-  (2 * (successful_choices N).card ≥ (valid_choices N).card)
+(hm : regSize x = Nat.log2 (2 * fact.N^2))
+(hn : regSize y = Nat.log2 (2 * fact.N))
+(hset : ∀ a, a ∈ valid_choices fact.N →
+  ∃ hgcd, BasicSetting a (ord a fact.N hgcd) fact.N (regSize x) (regSize y)) :
+  (2 * (successful_choices fact.N).card ≥ (valid_choices fact.N).card)
   ∧
-  (∀ a ∈ successful_choices N,
-    ∃ (hgcd : Nat.gcd a N = 1),
+  (∀ a ∈ successful_choices fact.N,
+    ∃ (hgcd : Nat.gcd a fact.N = 1),
     (probability_of_success (qs := qs) (T := T)
-      (verify := fun d => decide ((a ^ d) % N = 1))
-      (x := x) (r := ord a N hgcd) (Q := 2^(regSize x))
+      (verify := fun d => decide ((a ^ d) % fact.N = 1))
+      (x := x) (r := ord a fact.N hgcd) (Q := 2^(regSize x))
       (evalC := qs.eval)
-      (C := orderFindingIdeal (qs := qs) a N x y)
+      (C := orderFindingIdeal (qs := qs) a fact.N x y)
       (ψ := ψ0)
-    ≥ κ / (Nat.log2 N : ℝ)^4)
+    ≥ κ / (Nat.log2 fact.N : ℝ)^4)
     ∧
-    (is_nontrivial_factor (Nat.gcd ((a ^ (ord a N hgcd / 2)) - 1) N) N ∨
-     is_nontrivial_factor (Nat.gcd ((a ^ (ord a N hgcd / 2)) + 1) N) N)) := by {
+    (is_nontrivial_factor (Nat.gcd ((a ^ (ord a fact.N hgcd / 2)) - 1) fact.N) fact.N ∨
+     is_nontrivial_factor (Nat.gcd ((a ^ (ord a fact.N hgcd / 2)) + 1) fact.N) fact.N)) := by {
+  let N := fact.N
+  have h_odd : Odd N := fact.odd
+  have h_N : N > 2 := fact.gt_two
+  have h_not_prime_power : ∀ (p k : ℕ), Nat.Prime p → N ≠ p ^ k :=
+    fact.not_prime_power
   constructor
   { exact shors_probability_bound N h_odd (by omega) h_not_prime_power }
   {
     intro a h_a_in_successful
     obtain ⟨⟨ha1, ha2⟩, hgcd⟩ := success_eq_conditions a N h_a_in_successful
-    obtain ⟨hgcd_set, hset_a⟩ := hset a (by simp [valid_choices, ha1, ha2, hgcd])
+    have hvalid_N : a ∈ valid_choices N := by
+      simp [valid_choices, ha1, ha2, hgcd]
+    have hvalid_fact : a ∈ valid_choices fact.N := by
+      simpa [N] using hvalid_N
+    obtain ⟨hgcd_set, hset_a⟩ := hset a hvalid_fact
 
     have h_succ : shor_success_conditions a (ord a N hgcd) N := by {
+      have h_a_in_successful_N : a ∈ successful_choices N := by
+        simpa [N] using h_a_in_successful
       have h_a_is_succ : is_successful_choice a N := by {
-        unfold successful_choices at h_a_in_successful
+        unfold successful_choices at h_a_in_successful_N
         simp_all
       }
       unfold is_successful_choice is_period at h_a_is_succ
@@ -1905,8 +1948,19 @@ theorem Shor_end_to_end_factoring [MeasureClass qs]
     }
 
     exists hgcd
+    let inst : ShorOrderFindingInstance :=
+      { a := a
+        N := N
+        x := x
+        y := y
+        range := ⟨by omega, ha2⟩
+        coprime := hgcd
+        x_width := hm
+        y_width := hn
+        order_setting := by
+          simpa using hset_a }
     exact ⟨
-      Shor_correct T a N ⟨by omega, ha2⟩ hgcd x y w ψ0 hψ0 hm hn hset_a,
+      Shor_correct T inst ψ0 hψ0,
       shors_classical_reduction a (ord a N hgcd) N h_N ⟨ha1, ha2⟩ hgcd (is_period_ord a N hgcd) h_succ
     ⟩
   }

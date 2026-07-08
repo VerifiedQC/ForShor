@@ -25,20 +25,20 @@ sums.
 /-! =========================================================
     Section 1: Points, rows, and interpolation matrices
 ========================================================= -/
-
 inductive Point where
-  | int : ℤ → Point
-  | inf : Point
+  | int  : ℤ → Point
+  | frac : ℤ → Point
 deriving DecidableEq, Repr
 
 def pointRow (m : ℕ) (p : Point) (j : Fin m) : ℚ :=
   match p with
-  | Point.int z => (z : ℚ) ^ (j : ℕ)
-  | Point.inf   => if (j : ℕ) = m - 1 then 1 else 0
+  | Point.int z  => (z : ℚ) ^ j.val
+  | Point.frac c => (c : ℚ) ^ (m - 1 - j.val)
 
 def pointCoordQ : Point → ℚ
-  | Point.int z => (z : ℚ)
-  | Point.inf   => 0
+  | Point.int z  => (z : ℚ)
+  | Point.frac c =>
+      if c = 0 then 0 else 1 / (c : ℚ)
 
 /-- Convert a list of length `m` into a `Fin m`-indexed function. -/
 def listToFin {α : Type u} {m : ℕ}
