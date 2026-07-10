@@ -18,8 +18,7 @@ structure LowGateCostModel where
 namespace LowGate
 
 def gateCount (M : LowGateCostModel) : LowGate → ℕ
-  | .id =>
-      0
+  | .id => 0
   | .seq U V =>
       gateCount M U + gateCount M V
   | .adj U =>
@@ -91,11 +90,10 @@ def radixReverseGateCount (_r : Reg) (m : ℕ) : ℕ :=
   3 * (m / 2)
 
 def phaseProductCostModel
-    (primCost : String → List ℕ → ℕ)
-    (shiftLCost : ExtReg → ℕ → ℕ := fun _ _ => 0)
-    (shiftRCost : ExtReg → ℕ → ℕ := fun _ _ => 0) :
+    (shiftLCost : ExtReg → ℕ → ℕ := fun _ _ => 1)
+    (shiftRCost : ExtReg → ℕ → ℕ := fun _ _ => 1) :
     LowGateCostModel where
-  prim := primCost
+  prim := 0
 
   shiftL := shiftLCost
   shiftR := shiftRCost
@@ -119,6 +117,5 @@ def phaseProductCostModel
   radixReverse := radixReverseGateCount
 
 def phaseProductGateCount
-    (primCost : String → List ℕ → ℕ)
     (U : LowGate) : ℕ :=
-  LowGate.gateCount (phaseProductCostModel primCost) U
+  LowGate.gateCount (phaseProductCostModel) U

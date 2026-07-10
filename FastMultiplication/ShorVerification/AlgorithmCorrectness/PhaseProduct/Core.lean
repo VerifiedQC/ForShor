@@ -525,8 +525,8 @@ noncomputable def compileOpsToCSignedGate
     (k : ℕ) (hk : 1 < k)
     (ctrl : ℕ) (phi : ℝ) (x z : ExtReg)
     (coeff : Fin (q k) → ℚ) (ops : Prog k) : Gate :=
-  controlPhaseLeaves ctrl
-    (compileOpsToSignedGate (Basis := Basis) k hk phi x z coeff ops)
+  controlPhaseLeaves ctrl (compileOpsToSignedGate (Basis := Basis) k hk phi x z coeff ops)
+
 /-! =========================================================
     Section 9: Legacy ordinary-register modular helpers
 ========================================================= -/
