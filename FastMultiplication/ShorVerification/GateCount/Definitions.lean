@@ -90,8 +90,8 @@ def radixReverseGateCount (_r : Reg) (m : ℕ) : ℕ :=
   3 * (m / 2)
 
 def phaseProductCostModel
-    (shiftLCost : ExtReg → ℕ → ℕ := fun _ _ => 1)
-    (shiftRCost : ExtReg → ℕ → ℕ := fun _ _ => 1) :
+    (shiftLCost : ExtReg → ℕ → ℕ := fun _ _ => 0)
+    (shiftRCost : ExtReg → ℕ → ℕ := fun _ _ => 0) :
     LowGateCostModel where
   prim := 0
 
@@ -119,3 +119,76 @@ def phaseProductCostModel
 def phaseProductGateCount
     (U : LowGate) : ℕ :=
   LowGate.gateCount (phaseProductCostModel) U
+
+
+/--
+ log_k (2k - 1).
+-/
+noncomputable def phaseProductExponent (k : ℕ) : ℝ :=
+  Real.log (q k : ℝ) / Real.log (k : ℝ)
+
+/-- The comparison function `n ↦ n^(log_k (2k - 1))`. -/
+noncomputable def phaseProductGateRate (k n : ℕ) : ℝ :=
+  Real.rpow (n : ℝ) (phaseProductExponent k)
+
+def phaseProductInputSize (x z : Reg) : ℕ :=
+  max (regSize x) (regSize z)
+
+#check lowerGate
+
+/--
+For fixed `k` and `ops`, every sufficiently large PhaseProduct instance
+has gate count bounded by C * n^(log_k (2k - 1)),
+where `n` is the maximum width of its two input registers.
+-/
+def PhaseProductGateCountBound
+    {Basis : Type u}
+    [RegEncoding Basis]
+    [ExtRegEncoding Basis]
+    [ExtRegSplitSemantics Basis]
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k) : Prop :=
+  ∃ C : ℝ, 0 < C ∧
+  ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+    ∀ (φ : ℝ) (x z : Reg),
+      let n := max (regSize x) (regSize z)
+      WellFormedReg x → WellFormedReg z → Disjoint x z →
+      n₀ ≤ n →
+      (LowGate.gateCount
+          (phaseProductCostModel)
+          (lowerGate (Basis := Basis) k hk ops (Gate.PhaseProd φ x z)) : ℝ)
+        ≤  C * Real.rpow n (phaseProductExponent k)
+
+-- Correctness of the table
+def PhaseProductProgramOK
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k) : Prop :=
+  let pts := genInterpolationPoints k
+  let hpts : pts.length = q k := by
+    simp [pts, genInterpolationPoints, q]
+  GoodToomCookPoints k pts hpts ∧
+  ProgConsumesPtsSafe
+    (k := k) (by omega)
+    State.start_state ops pts ∧
+  run? ops State.start_state = some State.start_state ∧
+  phaseProductCount ops = 2*k - 1
+
+theorem exists_phaseProduct_gateCount_fixed_k
+    {Basis : Type u}
+    [RegEncoding Basis]
+    [ExtRegEncoding Basis]
+    [ExtRegSplitSemantics Basis]
+    (k : ℕ)
+    (hk : 1 < k) :
+    ∃ ops : Prog k,
+      PhaseProductProgramOK k hk ops ∧
+      PhaseProductGateCountBound (Basis := Basis) k hk ops := by
+  -- The table that we get from computing one value at a time allows for the bound
+  use (genOpsWithProduct (k:=k) (by linarith) (genInterpolationPoints k))
+  constructor
+  · simp[PhaseProductProgramOK]
+    sorry
+
+  sorry
