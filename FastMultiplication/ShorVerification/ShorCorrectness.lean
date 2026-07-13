@@ -1775,9 +1775,7 @@ theorem Shor_correct_approx_uniform_low
             (x := inst.x) (r := ord inst.a inst.N inst.coprime) (Q := 2 ^ regSize inst.x)
             (C := orderFindingApproxLow qs low.k low.hk low.ops inst.a inst.N inst.x inst.y w flag) (ψ := qs.ket b0)
           ≥
-        κ / (Nat.log2 inst.N : ℝ)^4
-          - 2 * (tbits inst.x : ℝ) *
-              Real.sqrt (2 * (K * η)) := by
+        κ / (Nat.log2 inst.N : ℝ)^4 - 2 * (tbits inst.x : ℝ) * Real.sqrt (2 * (K * η)) := by
   let a := inst.a
   let N := inst.N
   let x := inst.x
