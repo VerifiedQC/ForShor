@@ -118,10 +118,11 @@ def radixReverseGateCount (_r : Reg) (m : ℕ) : ℕ :=
 bookkeeping are free, arithmetic is linear, and direct PhaseProduct is
 quadratic. -/
 def phaseProductCostModel
+    (primCost : String → List ℕ → ℕ)
     (shiftLCost : ExtReg → ℕ → ℕ := fun _ _ => 0)
     (shiftRCost : ExtReg → ℕ → ℕ := fun _ _ => 0) :
     LowGateCostModel where
-  prim := 0
+  prim := primCost
 
   shiftL := shiftLCost
   shiftR := shiftRCost
@@ -144,11 +145,54 @@ def phaseProductCostModel
 
   radixReverse := radixReverseGateCount
 
+/--
+A conservative linear elementary-gate bound for a reversible arithmetic
+primitive acting on `w` qubits.
+-/
+def linearPrimitiveGateBound (w : ℕ) : ℕ :=
+  20 * w + 10
+
+/--
+Concrete costs for every opaque primitive used by the Shor circuit.
+
+The payload formats come from:
+
+* `CMP_GE_CONST [x.lo, x.hi, N, flag]`
+* `CSUB_CONST   [flag, x.lo, x.hi, N]`
+* `CMP_LT_NW    [x.lo, x.hi, w.lo, w.hi, N, flag]`
+
+Malformed or unknown primitives are counted as one gate. That fallback should
+not be reached by the current Shor circuit.
+-/
+def shorPrimCost (tag : String) (args : List ℕ) : ℕ :=
+  if tag = "CMP_GE_CONST" then
+    match args with
+    | [lo, hi, _N, _flag] =>
+        linearPrimitiveGateBound (hi - lo)
+    | _ => 1
+  else if tag = "CSUB_CONST" then
+    match args with
+    | [_flag, lo, hi, _N] =>
+        linearPrimitiveGateBound (hi - lo)
+    | _ => 1
+  else if tag = "CMP_LT_NW" then
+    match args with
+    | [xlo, xhi, wlo, whi, _N, _flag] =>
+        linearPrimitiveGateBound
+          ((xhi - xlo) + (whi - wlo))
+    | _ => 1
+  else
+    1
+
+/-- Concrete gate-cost model used by all paper-level bounds. -/
+def shorGateCostModel : LowGateCostModel :=
+  phaseProductCostModel shorPrimCost
+
 /-- Gate count of a lowered gate under the PhaseProduct-specialized cost
 model. -/
 def phaseProductGateCount
     (U : LowGate) : ℕ :=
-  LowGate.gateCount (phaseProductCostModel) U
+  LowGate.gateCount shorGateCostModel U
 
 
 /--
@@ -185,7 +229,7 @@ def PhaseProductGateCountBound
       let n := max (regSize x) (regSize z)
       WellFormedReg x → WellFormedReg z → Disjoint x z →
       n₀ ≤ n →
-      (LowGate.gateCount (phaseProductCostModel)
+      (LowGate.gateCount shorGateCostModel
           (lowerGate (Basis := Basis) k hk ops (Gate.PhaseProd φ x z)) : ℝ)
         ≤  C * Real.rpow n (phaseProductExponent k)
 
@@ -208,6 +252,7 @@ def PhaseProductProgramOK
     State.start_state ops pts ∧
   run? ops State.start_state = some State.start_state ∧
   phaseProductCount ops = q k
+
 
 /-- Well-formed generated programs are safe for point-consumption, giving the
 table correctness predicate its safety component. -/
@@ -338,6 +383,13 @@ lemma phaseProductCount_genOpsWithProduct {k : ℕ} (hk : 0 < k) :
         phaseProductCount_opsForPointWithProduct (k := k) hk pt,
         phaseProductCount_genOpsWithProduct (k := k) hk pts, Nat.add_comm]
 
+/--
+The qubit `q` lies outside the half-open interval represented by `r`.
+-/
+def QubitOutsideReg (q : ℕ) (r : Reg) : Prop :=
+  q < r.lo ∨ r.hi ≤ q
+
+
 /-! =========================================================
     Paper-style PhaseProduct gate-count proof
 ========================================================= -/
@@ -363,7 +415,7 @@ noncomputable def signedPhaseProductGateCount
     (φ : ℝ)
     (x z : ExtReg) : ℕ :=
   LowGate.gateCount
-    phaseProductCostModel
+    shorGateCostModel
     (lowerSignedPhaseProd
       (Basis := Basis) k hk φ x z ops)
 
@@ -1047,7 +1099,7 @@ lemma genOpsWithProduct_no_recurse_implies_small_operand
 
 /-! Auxiliary lemmas computing the low-gate cost of the recursively lowered
     signed compilation.  Throughout, `COST g` abbreviates the gate count of
-    `lowerGateRec` applied to `g` in `phaseProductCostModel`. -/
+    `lowerGateRec` applied to `g` in `shorGateCostModel`. -/
 section OneLevelCost
 open Gate
 
@@ -1056,7 +1108,7 @@ variable {Basis : Type u}
 variable (W k : ℕ) (hk : 1 < k) (pts : List Point) (hpts : pts.length = q k ) (ops : Prog k)
 
 local notation "COST " g =>
-  LowGate.gateCount phaseProductCostModel
+  LowGate.gateCount shorGateCostModel
     (lowerGateRec (Basis := Basis) W k hk pts hpts ops g)
 
 -- Structural reduction lemmas: `lowerGateRec` uses well-founded recursion, so we
@@ -1322,7 +1374,7 @@ lemma lowerSignedPhaseProd_one_level_cost_le
     exact le_trans (by positivity) this
   -- each recursive child costs at most R
   have hchild : ∀ (ψ : ℝ) (i : Fin k),
-      ((LowGate.gateCount phaseProductCostModel
+      ((LowGate.gateCount shorGateCostModel
         (lowerGateRec (Basis := Basis) (nextSignedWidth x z ops) k hk
           (genInterpolationPoints k) hpts ops
           (Gate.SignedPhaseProd ψ
@@ -1491,7 +1543,7 @@ lemma signedPhaseProductGateCount_bounded_on_bounded_inputs
         lowerSignedPhaseProd,
         hsize0,
         LowGate.gateCount,
-        phaseProductCostModel,
+        shorGateCostModel, phaseProductCostModel,
         directSignedPhaseProductGateCount,
         hx,
         hz
@@ -1581,7 +1633,7 @@ lemma signedPhaseProductGateCount_bounded_on_bounded_inputs
             lowerSignedPhaseProd,
             hrec,
             LowGate.gateCount,
-            phaseProductCostModel,
+            shorGateCostModel, phaseProductCostModel,
             directSignedPhaseProductGateCount
           ]
 
@@ -1964,14 +2016,14 @@ lemma lowerGate_PhaseProd_gateCount_eq_signed_unsignedView
     (ops : Prog k)
     (φ : ℝ)
     (x z : Reg) :
-    LowGate.gateCount phaseProductCostModel
+    LowGate.gateCount shorGateCostModel
       (lowerGate (Basis := Basis) k hk ops (Gate.PhaseProd φ x z))
       =
     signedPhaseProductGateCount
       (Basis := Basis) k hk ops φ
       (Gate.unsignedView x) (Gate.unsignedView z) := by
   simp [lowerGate, Gate.PhaseProd, signedPhaseProductGateCount,
-    lowerSignedPhaseProd, LowGate.gateCount, phaseProductCostModel]
+    lowerSignedPhaseProd, LowGate.gateCount, shorGateCostModel, phaseProductCostModel]
 
 /-- Unsigned views add exactly one high extension bit to an ordinary register. -/
 @[simp]
@@ -2130,7 +2182,7 @@ lemma signedPhaseProductGateCount_eq_direct_of_not_recurse
     lowerSignedPhaseProd,
     hno,
     LowGate.gateCount,
-    phaseProductCostModel,
+    shorGateCostModel, phaseProductCostModel,
     directSignedPhaseProductGateCount
   ]
 
@@ -3041,3 +3093,93 @@ theorem phaseProductGateCountBound_of_programOK
       hgrowth
       hnarrow
       C hC hbalanced
+
+/-! =========================================================
+    Paper-level bounds for CPhaseProduct, QFT, and Shor
+========================================================= -/
+
+/--
+The paper's final comparison function for Shor:
+
+  n ↦ n^(2 + ε).
+
+The `max 1 n` wrapper makes the rate well behaved at `n = 0`; all asymptotic
+statements below are eventually restricted to positive `n`.
+-/
+noncomputable def shorGateRate (ε : ℝ) (n : ℕ) : ℝ :=
+  Real.rpow
+    (((max 1 n : ℕ) : ℝ))
+    (2 + ε)
+
+
+/-! ---------------------------------------------------------
+    Controlled PhaseProduct
+--------------------------------------------------------- -/
+
+/--
+For fixed `k` and interpolation program `ops`, controlled PhaseProduct has the
+same asymptotic exponent as ordinary PhaseProduct:
+
+  O(n^(log_k(2k - 1))).
+
+The control qubit is required to lie outside both operand registers.
+-/
+def CPhaseProductGateCountBound
+    {Basis : Type u}
+    [RegEncoding Basis]
+    [ExtRegEncoding Basis]
+    [ExtRegSplitSemantics Basis]
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k) : Prop :=
+  ∃ C : ℝ, 0 < C ∧
+  ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+    ∀ (ctrl : ℕ) (φ : ℝ) (x z : Reg),
+      let n := max (regSize x) (regSize z)
+      WellFormedReg x →
+      WellFormedReg z →
+      Disjoint x z →
+      (ctrl < x.lo ∨ x.hi ≤ ctrl) →
+      (ctrl < z.lo ∨ z.hi ≤ ctrl) →
+      n₀ ≤ n →
+      (LowGate.gateCount shorGateCostModel
+          (lowerGate
+            (Basis := Basis)
+            k hk ops
+            (Gate.CPhaseProd ctrl φ x z)) : ℝ)
+        ≤
+      C * phaseProductSafeRate k n
+
+/--
+Adding one external control does not change the PhaseProduct exponent.
+-/
+theorem cPhaseProductGateCountBound_of_phaseProduct
+    {Basis : Type u}
+    [RegEncoding Basis]
+    [ExtRegEncoding Basis]
+    [ExtRegSplitSemantics Basis]
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k)
+    (hPhase :
+      PhaseProductGateCountBound
+        (Basis := Basis) k hk ops) :
+    CPhaseProductGateCountBound
+      (Basis := Basis) k hk ops := by
+  sorry
+
+/--
+Generated interpolation programs satisfy the controlled PhaseProduct bound.
+-/
+theorem cPhaseProductGateCountBound_of_programOK
+    {Basis : Type u}
+    [RegEncoding Basis]
+    [ExtRegEncoding Basis]
+    [ExtRegSplitSemantics Basis]
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k)
+    (hops : PhaseProductProgramOK k hk ops) :
+    CPhaseProductGateCountBound
+      (Basis := Basis) k hk ops := by
+  sorry
