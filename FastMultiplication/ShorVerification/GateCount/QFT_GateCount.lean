@@ -1,128 +1,30 @@
-import FastMultiplication.ShorVerification.GateCount.Definitions
+import FastMultiplication.ShorVerification.GateCount.PhaseProduct_GateCount
+import FastMultiplication.ShorVerification.GateCount.Lemmas.LowGateCount
 
 open Shor
-
-/-! ---------------------------------------------------------
-    Exact QFT
---------------------------------------------------------- -/
-
-/--
-For fixed `k` and interpolation program `ops`, the recursively lowered exact
-QFT has the same exponent as PhaseProduct:
-
-  O(n^(log_k(2k - 1))).
-
-This corresponds to the recurrence consisting of two half-sized QFTs, one
-PhaseProduct between the two halves, and a linear-cost radix reversal.
--/
-def QFTGateCountBound
-    {Basis : Type u}
-    [RegEncoding Basis]
-    [ExtRegEncoding Basis]
-    [ExtRegSplitSemantics Basis]
-    (k : ℕ)
-    (hk : 1 < k)
-    (ops : Prog k) : Prop :=
-  ∃ C : ℝ, 0 < C ∧
-  ∃ n₀ : ℕ, 1 ≤ n₀ ∧
-    ∀ r : Reg,
-      WellFormedReg r →
-      n₀ ≤ regSize r →
-      (LowGate.gateCount shorGateCostModel
-          (lowerGate
-            (Basis := Basis)
-            k hk ops
-            (Gate.QFT r)) : ℝ)
-        ≤
-      C * phaseProductSafeRate k (regSize r)
 
 /-! =========================================================
     Exact-QFT gate-count proof
 ========================================================= -/
 
 /-! ---------------------------------------------------------
-    The balanced QFT split used by the paper
+    Geometry of the balanced split
 --------------------------------------------------------- -/
 
-/-- The paper chooses the split point `m = n / 2`. -/
-def qftHalfWidth (r : Reg) : ℕ :=
-  regSize r / 2
-
-/-- The first half of the QFT register. -/
-def qftLeftReg (r : Reg) : Reg :=
-  { lo := r.lo
-    size := qftHalfWidth r }
-
-/-- The second half of the QFT register. -/
-def qftRightReg (r : Reg) : Reg :=
-  { lo := r.lo + qftHalfWidth r
-    size := regSize r - qftHalfWidth r }
-
-/-- Gate count of the recursively lowered exact QFT. -/
-noncomputable def loweredQFTGateCount
-    {Basis : Type u}
-    [RegEncoding Basis]
-    [ExtRegEncoding Basis]
-    [ExtRegSplitSemantics Basis]
-    (k : ℕ)
-    (hk : 1 < k)
-    (ops : Prog k)
-    (r : Reg) : ℕ :=
-  LowGate.gateCount
-    shorGateCostModel
-    (lowerGate
-      (Basis := Basis)
-      k hk ops
-      (Gate.QFT r))
-
-/--
-Gate count of the PhaseProduct joining the two halves of one QFT recursion
-node.
--/
-noncomputable def qftSplitPhaseGateCount
-    {Basis : Type u}
-    [RegEncoding Basis]
-    [ExtRegEncoding Basis]
-    [ExtRegSplitSemantics Basis]
-    (k : ℕ)
-    (hk : 1 < k)
-    (ops : Prog k)
-    (r : Reg) : ℕ :=
-  LowGate.gateCount
-    shorGateCostModel
-    (lowerGate
-      (Basis := Basis)
-      k hk ops
-      (Gate.PhaseProd
-        (qftPhi (regSize r))
-        (qftLeftReg r)
-        (qftRightReg r)))
-
-/-- Gate count of the final radix reversal at one QFT recursion node. -/
-def qftSplitRadixGateCount (r : Reg) : ℕ :=
-  LowGate.gateCount
-    shorGateCostModel
-    (LowGate.RadixReverse r (qftHalfWidth r))
-
-
-/-! ---------------------------------------------------------
-    Step 1: geometry of the half split
---------------------------------------------------------- -/
-
-/-- The left register has width `floor(n / 2)`. -/
-@[simp]
 lemma regSize_qftLeftReg (r : Reg) :
     regSize (qftLeftReg r) = regSize r / 2 := by
   rfl
 
 /-- The right register has width `n - floor(n / 2) = ceil(n / 2)`. -/
 @[simp]
+
 lemma regSize_qftRightReg (r : Reg) :
     regSize (qftRightReg r) =
       regSize r - regSize r / 2 := by
   rfl
 
 /-- The two QFT halves are disjoint. -/
+
 lemma qftSplit_disjoint (r : Reg) :
     Disjoint (qftLeftReg r) (qftRightReg r) := by
   left
@@ -130,6 +32,7 @@ lemma qftSplit_disjoint (r : Reg) :
   simp [regSize]
 
 /-- Splitting a well-formed register produces two well-formed registers. -/
+
 lemma qftSplit_wellFormed
     (r : Reg)
     (_hr : WellFormedReg r) :
@@ -142,6 +45,7 @@ lemma qftSplit_wellFormed
 Both recursive QFT calls are strictly smaller whenever the parent has at
 least two qubits.
 -/
+
 lemma qftSplit_strictly_smaller
     (r : Reg)
     (hsize : 2 ≤ regSize r) :
@@ -156,6 +60,7 @@ lemma qftSplit_strictly_smaller
     omega
 
 /-- The larger half has size `ceil(n / 2)`. -/
+
 lemma qftSplit_max_size (r : Reg) :
     max
         (regSize (qftLeftReg r))
@@ -174,6 +79,7 @@ lemma qftSplit_max_size (r : Reg) :
 The PhaseProduct joining the two halves acts on registers whose maximum width
 lies between `floor(n / 2)` and `n`.
 -/
+
 lemma qftSplit_phase_size_bounds (r : Reg) :
     regSize r / 2
         ≤
@@ -191,18 +97,11 @@ lemma qftSplit_phase_size_bounds (r : Reg) :
     exact Nat.sub_le _ _
 
 
+
 /-! ---------------------------------------------------------
-    Step 2: exact gate-count decomposition
+    Exact gate-count decomposition
 --------------------------------------------------------- -/
 
-/--
-The right recursive call produced by one QFT recursion node is exactly the
-lowering of the right half register.
-
-Both sides reduce to `lowerQFTAux` applied to `qftRightReg r` at its own width
-`regSize r - qftHalfWidth r`, so the equality is definitional once `lowerGate`
-and `lowerQFT` are unfolded.
--/
 lemma lowerQFT_right_eq
     {Basis : Type u}
     [RegEncoding Basis]
@@ -228,6 +127,7 @@ lowering of the left half register.
 As with `lowerQFT_right_eq`, both sides reduce to `lowerQFTAux` applied to
 `qftLeftReg r` at its own width `qftHalfWidth r`.
 -/
+
 lemma lowerQFT_left_eq
     {Basis : Type u}
     [RegEncoding Basis]
@@ -255,6 +155,7 @@ Both lower `Gate.PhaseProd φ x z` to the same recursive signed PhaseProduct: th
 initial-size cutoff of `lowerPhaseProd` is exactly `phaseInputSize` of the two
 unsigned views, which is the branch condition `lowerSignedPhaseProd` uses.
 -/
+
 lemma lowerGate_split_phase_eq
     {Basis : Type u}
     [RegEncoding Basis]
@@ -286,6 +187,7 @@ This is the gate-count form of the paper's exact-QFT decomposition:
 
 It follows by unfolding `lowerGate`, `lowerQFT`, and `lowerQFTAux`.
 -/
+
 lemma loweredQFTGateCount_split
     {Basis : Type u}
     [RegEncoding Basis]
@@ -337,7 +239,7 @@ lemma loweredQFTGateCount_split
           + LowGate.gateCount shorGateCostModel
             (LowGate.RadixReverse r (qftHalfWidth r)) := by
     rw [loweredQFTGateCount, lowerGate, lowerQFT, hsplit]
-    simp only [LowGate.gateCount_seq]
+    simp only [LowGate.gateCount_seq_eq]
     omega
   -- The internal PhaseProduct matches the public `qftSplitPhaseGateCount`.
   have hB :
@@ -349,8 +251,9 @@ lemma loweredQFTGateCount_split
   rw [hLHS, lowerQFT_right_eq, lowerQFT_left_eq, hB]
   rfl
 
+
 /-! ---------------------------------------------------------
-    Step 3: bounding the nonrecursive work
+    Local asymptotic estimates
 --------------------------------------------------------- -/
 
 /-- The PhaseProduct comparison function is monotone in its size argument. -/
@@ -384,6 +287,7 @@ The PhaseProduct cost at one QFT recursion node is then bounded by the parent's
 
 rate.
 -/
+
 lemma qftSplitPhaseGateCount_eventually_le
     {Basis : Type u}
     [RegEncoding Basis]
@@ -453,6 +357,7 @@ A linear function is eventually bounded by `n^α` when `α > 1`.
 This is the analytic fact used to absorb radix reversal into the
 PhaseProduct-rate term.
 -/
+
 lemma linear_eventually_le_phaseProductGateRate
     (k : ℕ)
     (hk : 1 < k) :
@@ -472,6 +377,7 @@ lemma linear_eventually_le_phaseProductGateRate
 Radix reversal costs only linearly many gates, so it is eventually bounded by
 the PhaseProduct rate because `phaseProductExponent k > 1`.
 -/
+
 lemma qftSplitRadixGateCount_eventually_le
     (k : ℕ)
     (hk : 1 < k) :
@@ -523,6 +429,7 @@ gives the one-level QFT recurrence
 
   Q(n) ≤ Q(ceil(n/2)) + Q(floor(n/2)) + A n^α.
 -/
+
 lemma loweredQFTGateCount_one_level_recurrence
     {Basis : Type u}
     [RegEncoding Basis]
@@ -636,14 +543,11 @@ lemma loweredQFTGateCount_one_level_recurrence
         ring
 
 
+
 /-! ---------------------------------------------------------
-    Step 4: finite base cases
+    Bounded-size base cases
 --------------------------------------------------------- -/
 
-/--
-The PhaseProduct occurring in a QFT node has uniformly bounded cost when the
-parent QFT width is bounded.
--/
 lemma qftSplitPhaseGateCount_bounded_on_bounded_sizes
     {Basis : Type u}
     [RegEncoding Basis]
@@ -694,6 +598,7 @@ lemma qftSplitPhaseGateCount_bounded_on_bounded_sizes
 
 
 /-- Radix reversal at a QFT node has linear gate count. -/
+
 lemma qftSplitRadixGateCount_le
     (r : Reg) :
     qftSplitRadixGateCount r ≤
@@ -722,6 +627,7 @@ gate-count bound.
 This handles the finitely many leaves where either the QFT recursion stops or
 the PhaseProduct asymptotic bound has not yet become applicable.
 -/
+
 lemma loweredQFTGateCount_bounded_on_bounded_sizes
     {Basis : Type u}
     [RegEncoding Basis]
@@ -882,18 +788,11 @@ lemma loweredQFTGateCount_bounded_on_bounded_sizes
           exact Nat.le_max_right _ _
 
 
+
 /-! ---------------------------------------------------------
-    Step 5: solve the binary recurrence
+    Binary recurrence solution
 --------------------------------------------------------- -/
 
-/--
-The two half-size recursive rates contract by a fixed factor below one because
-
-  phaseProductExponent k > 1.
-
-This is the precise fact distinguishing the PhaseProduct toll from the linear
-binary-recursion contribution.
--/
 lemma qft_half_rate_contraction
     (k : ℕ)
     (_hk : 1 < k)
@@ -1236,6 +1135,7 @@ satisfy
 
 where `ρ < 1` is the contraction factor for the two recursive halves.
 -/
+
 lemma qft_binary_recurrence_solution
     {Basis : Type u}
     [RegEncoding Basis]
@@ -1586,13 +1486,11 @@ lemma qft_binary_recurrence_solution
       rfl
 
 
+
 /-! ---------------------------------------------------------
-    Final assembly
+    Final QFT bounds
 --------------------------------------------------------- -/
 
-/--
-The PhaseProduct bound implies the exact-QFT bound.
--/
 theorem qftGateCountBound_of_phaseProduct
     {Basis : Type u}
     [RegEncoding Basis]
@@ -1653,6 +1551,7 @@ theorem qftGateCountBound_of_phaseProduct
 /--
 Generated interpolation programs satisfy the exact-QFT bound.
 -/
+
 theorem qftGateCountBound_of_programOK
     {Basis : Type u}
     [RegEncoding Basis]

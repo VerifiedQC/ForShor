@@ -1,3 +1,4 @@
 -- This module serves as the root of the `FastMultiplication` library.
 -- Import modules here that should be built as part of the library.
 import FastMultiplication.ShorVerification.ShorCorrectness
+import FastMultiplication.ShorVerification.GateCount.QFT_GateCount

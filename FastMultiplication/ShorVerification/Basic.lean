@@ -609,18 +609,6 @@ class QSemantics where
       (∀ b : Basis, P (ket b)) →
       ∀ ψ, P ψ
 
-  tensor : State → State → State
-
-  tensor_add_left  : ∀ ψ₁ ψ₂ φ, tensor (ψ₁ + ψ₂) φ = tensor ψ₁ φ + tensor ψ₂ φ
-  tensor_add_right : ∀ ψ φ₁ φ₂, tensor ψ (φ₁ + φ₂) = tensor ψ φ₁ + tensor ψ φ₂
-  tensor_smul_left : ∀ (a : ℂ) ψ φ, tensor (a • ψ) φ = a • tensor ψ φ
-  tensor_smul_right: ∀ (a : ℂ) ψ φ, tensor ψ (a • φ) = a • tensor ψ φ
-
-  inner_tensor :
-    ∀ ψ₁ ψ₂ φ₁ φ₂,
-      inner ℂ (tensor ψ₁ φ₁) (tensor ψ₂ φ₂)
-        = (inner ℂ ψ₁ ψ₂) * (inner ℂ φ₁ φ₂)
-
   ket_ne_zero (b : Basis) :
     ket b ≠ 0
 

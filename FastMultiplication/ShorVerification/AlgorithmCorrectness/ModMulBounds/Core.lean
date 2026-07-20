@@ -1,5 +1,6 @@
 import FastMultiplication.ShorVerification.Basic
 import Mathlib.Data.Int.GCD
+import Mathlib.Analysis.SpecialFunctions.Log.Base
 
 open Shor
 
@@ -553,6 +554,9 @@ theorem idealCtrlModMul_preserves_valid
     Concrete Algorithm-1 side conditions
 ========================================================= -/
 
+noncomputable def algorithm1ExtraBits (η : ℝ) : ℕ :=
+  ⌈2 * Real.logb 2 (2 + 1 / (2 * η))⌉₊
+
 /--
 A sufficient precision condition for the work register.
 
@@ -567,9 +571,114 @@ def Algorithm1Precision
     (η : ℝ) (data work : Reg) : Prop :=
   0 < η ∧
   η < (1 / 2 : ℝ) ∧
-  (2 : ℝ) ^ (regSize work - regSize data)
-    ≥ (2 + 1 / (2 * η)) ^ 2
+  regSize work =
+    regSize data + algorithm1ExtraBits η
+/-- The error parameter is positive. -/
+lemma eta_pos
+    {η : ℝ}
+    {data work : Reg}
+    (h : Algorithm1Precision η data work) :
+    0 < η :=
+  h.1
 
+/-- The error parameter lies in the small-error regime. -/
+lemma eta_lt_half
+    {η : ℝ}
+    {data work : Reg}
+    (h : Algorithm1Precision η data work) :
+    η < (1 / 2 : ℝ) :=
+  h.2.1
+
+/-- The work register has exactly the width prescribed by Algorithm 1. -/
+lemma work_width
+    {η : ℝ}
+    {data work : Reg}
+    (h : Algorithm1Precision η data work) :
+    regSize work =
+      regSize data + algorithm1ExtraBits η :=
+  h.2.2
+
+/-- Algorithm 1's work register is at least as wide as the data register. -/
+lemma data_width_le_work_width
+    {η : ℝ}
+    {data work : Reg}
+    (h : Algorithm1Precision η data work) :
+    regSize data ≤ regSize work := by
+  rw [work_width h]
+  simp
+
+/--
+The difference between the work width and the data width is exactly the
+number of extra bits prescribed by Algorithm 1.
+-/
+lemma work_width_sub_data_width
+    {η : ℝ}
+    {data work : Reg}
+    (h : Algorithm1Precision η data work) :
+    regSize work - regSize data =
+      algorithm1ExtraBits η := by
+  rw [work_width h]
+  omega
+
+/--
+The exact workspace choice made by Algorithm 1 implies the quantitative
+precision inequality previously stored directly in `Algorithm1Precision`:
+
+  2^(m - n) ≥ (2 + 1/(2η))^2.
+-/
+lemma pow_bound
+    {η : ℝ}
+    {data work : Reg}
+    (h : Algorithm1Precision η data work) :
+    (2 : ℝ) ^ (regSize work - regSize data)
+      ≥
+    (2 + 1 / (2 * η)) ^ 2 := by
+  let a : ℝ := 2 + 1 / (2 * η)
+
+  have ha : 0 < a := by
+    dsimp [a]
+    have hη : 0 < η := eta_pos h
+    positivity
+
+  have hdiff :
+      regSize work - regSize data =
+        algorithm1ExtraBits η :=
+    work_width_sub_data_width h
+
+  rw [hdiff]
+
+  have hceil :
+      2 * Real.logb 2 a
+        ≤
+      (algorithm1ExtraBits η : ℝ) := by
+    dsimp [algorithm1ExtraBits]
+    exact Nat.le_ceil _
+
+
+  have hlog :
+      Real.logb 2 (a ^ 2)
+        ≤
+      (algorithm1ExtraBits η : ℝ) := by
+    rw [Real.logb_pow]
+    simpa using hceil
+
+  have hrpow :
+      a ^ 2
+        ≤
+      (2 : ℝ) ^ (algorithm1ExtraBits η : ℝ) := by
+    exact
+      (Real.logb_le_iff_le_rpow
+        (by norm_num : (1 : ℝ) < 2)
+        (by positivity : 0 < a ^ 2)).1
+        hlog
+
+  have hpow :
+      a ^ 2
+        ≤
+      (2 : ℝ) ^ algorithm1ExtraBits η := by
+    simpa [Real.rpow_natCast] using hrpow
+
+  simpa [a] using hpow
 /--
 The Step-5 constant represents `1 - c⁻¹ mod N`.
 

@@ -2678,6 +2678,8 @@ lemma alg1_precision_grid_ratio
       (ASize cfg.env.data : ℝ) := by
   rcases cfg.env.precision with ⟨hη, hηhalf, hprec⟩
 
+  have hprec:= pow_bound cfg.env.precision
+
   let n : ℕ := regSize cfg.env.data
   let m : ℕ := regSize cfg.env.work
 
@@ -2716,7 +2718,6 @@ lemma alg1_precision_grid_ratio
     rw [hsub] at hprec
     norm_num at hprec
     simp_all [n, m]
-    linarith
 
   have hpow :
       (2 : ℝ) ^ m
