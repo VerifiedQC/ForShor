@@ -2459,71 +2459,210 @@ lemma exists_k_phaseProductExponent_le
     ∃ k : ℕ,
       1 < k ∧
       phaseProductExponent k ≤ 1 + ε := by
+  obtain ⟨m : ℕ, hm⟩ :=
+    exists_nat_gt (1 / ε)
 
-  let m : ℕ := ⌈1 / ε⌉₊
-  let k : ℕ := 2 ^ m
+  let k : ℕ := 2 ^ (m + 1)
 
-  have hm_pos : 1 ≤ m := by
-    -- because 0 < 1 / ε
-    sorry
+  have hpowpos :
+      0 < 2 ^ m := by
+    positivity
 
-  have hmε : 1 ≤ (m : ℝ) * ε := by
-    -- from 1 / ε ≤ m
-    sorry
-
-  have hk : 1 < k := by
+  have hk :
+      1 < k := by
     dsimp [k]
-    -- m ≥ 1 implies 2^m ≥ 2
-    sorry
-
-  refine ⟨k, hk, ?_⟩
-
-  have hkR : 1 < (k : ℝ) := by
-    exact_mod_cast hk
-
-  have hlogk_pos : 0 < Real.log (k : ℝ) :=
-    Real.log_pos hkR
-
-  have hq_le :
-      (q k : ℝ) ≤ 2 * (k : ℝ) := by
-    unfold q
-    push_cast
-    norm_cast
+    rw [pow_succ]
     omega
 
-  have hlogq_le :
-      Real.log (q k : ℝ)
-        ≤ Real.log (2 * (k : ℝ)) := by
-    apply Real.log_le_log
-    · simp[q];positivity
-    · exact hq_le
+  have hkR :
+      (1 : ℝ) < (k : ℝ) := by
+    exact_mod_cast hk
+
+  have hlogk_pos :
+      0 < Real.log (k : ℝ) :=
+    Real.log_pos hkR
+
+  have hm_succ :
+      1 / ε < ((m + 1 : ℕ) : ℝ) := by
+    calc
+      1 / ε < (m : ℝ) := hm
+      _ < ((m + 1 : ℕ) : ℝ) := by
+        exact_mod_cast Nat.lt_succ_self m
+
+  have hmε :
+      1 < ((m + 1 : ℕ) : ℝ) * ε := by
+    exact (div_lt_iff₀ hε).mp hm_succ
+
+  have hk_cast :
+      (k : ℝ) = (2 : ℝ) ^ (m + 1) := by
+    simp [k]
 
   have hlogk :
       Real.log (k : ℝ)
         =
-      (m : ℝ) * Real.log 2 := by
-    -- k = 2^m
-    dsimp [k]
-    push_cast
-    rw [Real.log_pow]
+      ((m + 1 : ℕ) : ℝ) * Real.log 2 := by
+    rw [hk_cast, Real.log_pow]
+
+  have hlog2_pos :
+      0 < Real.log (2 : ℝ) :=
+    Real.log_pos (by norm_num)
 
   have hlog2_le :
       Real.log 2
-        ≤ ε * Real.log (k : ℝ) := by
-    rw [hlogk]
-    have hlog2pos : 0 < Real.log 2 :=
-      Real.log_pos (by norm_num)
-    nlinarith
+        ≤
+      ε * Real.log (k : ℝ) := by
+    have hmε_le :
+        (1 : ℝ) ≤ ((m + 1 : ℕ) : ℝ) * ε :=
+      le_of_lt hmε
+
+    calc
+      Real.log 2
+          =
+        1 * Real.log 2 := by
+          ring
+
+      _ ≤
+        (((m + 1 : ℕ) : ℝ) * ε) *
+          Real.log 2 :=
+        mul_le_mul_of_nonneg_right
+          hmε_le
+          (le_of_lt hlog2_pos)
+
+      _ =
+        ε * Real.log (k : ℝ) := by
+          rw [hlogk]
+          ring
+  have hq_pos_nat :
+      0 < q k := by
+    unfold q
+    omega
+
+  have hq_lt_nat :
+      q k < 2 * k := by
+    unfold q
+    omega
+
+  have hq_pos :
+      0 < (q k : ℝ) := by
+    exact_mod_cast hq_pos_nat
+
+  have hq_lt :
+      (q k : ℝ) < 2 * (k : ℝ) := by
+    exact_mod_cast hq_lt_nat
+
+  have hlogq_le :
+      Real.log (q k : ℝ)
+        ≤
+      Real.log (2 * (k : ℝ)) := by
+    exact
+      le_of_lt
+        (Real.log_lt_log hq_pos hq_lt)
+
+  refine ⟨k, hk, ?_⟩
 
   unfold phaseProductExponent
-
   rw [div_le_iff₀ hlogk_pos]
 
   calc
     Real.log (q k : ℝ)
-        ≤ Real.log (2 * (k : ℝ)) :=
-      hlogq_le
-    _ = Real.log 2 + Real.log (k : ℝ) := by
-      rw [Real.log_mul (by norm_num) (by positivity)]
-    _ ≤ (1 + ε) * Real.log (k : ℝ) := by
-      nlinarith
+        ≤
+      Real.log (2 * (k : ℝ)) :=
+        hlogq_le
+
+    _ =
+      Real.log 2 + Real.log (k : ℝ) := by
+        rw [Real.log_mul
+          (by norm_num : (2 : ℝ) ≠ 0)
+          (by positivity : (k : ℝ) ≠ 0)]
+
+    _ ≤
+      (1 + ε) * Real.log (k : ℝ) := by
+        nlinarith [hlog2_le]
+/--
+For every interpolation arity `k > 1`, there exists a generated
+interpolation program satisfying `PhaseProductProgramOK`.
+
+The witness is the canonical program produced by `genOpsWithProduct`
+on `genInterpolationPoints k`.
+-/
+theorem exists_phaseProductProgramOK
+    (k : ℕ)
+    (hk : 1 < k) :
+    ∃ ops : Prog k,
+      PhaseProductProgramOK k hk ops := by
+
+  have hk0 : 0 < k := by
+    omega
+
+  refine
+    ⟨genOpsWithProduct (k := k)  hk0  (genInterpolationPoints k), ?_⟩
+
+  unfold PhaseProductProgramOK
+  dsimp
+
+  constructor
+
+  · simpa using genInterpolationPoints_good k
+
+  constructor
+
+  · exact genOpsWithProduct_ProgConsumesPtsSafe (k := k) hk0 (genInterpolationPoints k)
+
+  constructor
+
+  · exact genOpsWithProduct_returns_to_original (k := k) hk0 (genInterpolationPoints k)
+
+  · simpa [genInterpolationPoints, q] using
+      phaseProductCount_genOpsWithProduct
+        (k := k)
+        hk0
+        (genInterpolationPoints k)
+
+theorem exists_shorGateCountBound
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [ExtRegSplitSemantics qs.Basis]
+    (ε δ : ℝ)
+    (hδ : 0 < δ)
+    (hε : 0 < ε) :
+    ∃ k : ℕ,
+    ∃ hk : 1 < k,
+    ∃ ops : Prog k,
+      PhaseProductProgramOK k hk ops ∧
+      ShorGateCountBound qs ε δ k hk ops := by
+  rcases exists_k_phaseProductExponent_le ε hε with
+    ⟨k, hk, hExponent⟩
+
+  rcases exists_phaseProductProgramOK k hk with
+    ⟨ops, hops⟩
+
+  refine ⟨k, hk, ops, hops, ?_⟩
+
+  exact
+    shorGateCountBound_of_programOK
+      qs ε δ hδ k hk hExponent
+      ops hops
+
+/--
+For every `ε > 0`, there is a recursion parameter `k` such that every
+interpolation program satisfying `PhaseProductProgramOK` gives the complete
+Shor gate-count bound `O(n^(2 + ε))`.
+
+The selected `k` depends only on `ε`. The constant and threshold inside
+`ShorGateCountBound` may depend on `δ`, `k`, and `ops`.
+-/
+theorem exists_k_shorGateCountBound_of_programOK
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [ExtRegEncoding qs.Basis]
+    [ExtRegSplitSemantics qs.Basis]
+    (ε δ : ℝ)
+    (hε : 0 < ε)
+    (hδ : 0 < δ) :
+    ∃ (k : ℕ) (hk : 1 < k),
+      ∀ ops : Prog k,
+        PhaseProductProgramOK k hk ops →
+        ShorGateCountBound qs ε δ k hk ops := by
+  rcases exists_k_phaseProductExponent_le ε hε with ⟨k, hk, hExponent⟩
+  exact ⟨k, hk, shorGateCountBound_of_programOK qs ε δ hδ k hk hExponent⟩
