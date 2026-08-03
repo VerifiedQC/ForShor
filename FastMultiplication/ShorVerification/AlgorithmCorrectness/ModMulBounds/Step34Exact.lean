@@ -2,7 +2,7 @@ import FastMultiplication.ShorVerification.AlgorithmCorrectness.ModMulBounds.Ste
 
 open Shor
 
-universe v
+universe u v
 
 /-!
 # Steps 3 and 4 Exactness
@@ -11,8 +11,22 @@ Focus theorem: `alg1_step34_reference_exact`.
 
 This file reduces the Step-2 value to the ideal modular multiplication result
 and proves the exactness of Steps 3 and 4 on the reference state.
+
+The proof is organized into four layers:
+
+* an arithmetic reduction from the Step-2 sum to modular multiplication;
+* register-disjointness and overwrite helpers;
+* exact basis-state semantics for Steps 3 and 4, lifted by linearity; and
+* the public reference-state exactness theorem.
 -/
 
+/-! ## Step-3 Arithmetic Reduction -/
+
+/--
+Conditional subtraction of `N` from the Step-2 value produces exactly the
+controlled modular-multiplication output. The proof uses that the unreduced sum
+is below `2N`, so at most one subtraction is required.
+-/
 lemma alg1_step3_reduces_to_modmul
     [QSemantics] [RegEncoding QSemantics.Basis]
     {η : ℝ}
@@ -28,8 +42,9 @@ lemma alg1_step3_reduces_to_modmul
       alg1Step2Value cfg b)
       =
     alg1OutputValue cfg b := by
+  -- Name the modulus, input, target residue, and unreduced Step-2 sum.
   let N : ℕ := cfg.env.N
-  let x : ℕ := RegEncoding.toNat cfg.env.data b
+  let x : ℕ := RegEncoding.toNat cfg.env.data.active b
   let r : ℕ := alg1TargetResidue cfg b
   let s : ℕ := alg1Step2Value cfg b
 
@@ -66,7 +81,7 @@ lemma alg1_step3_reduces_to_modmul
         alg1_output_mod
           cfg.c
           cfg.env.N
-          (RegEncoding.toNat cfg.env.data b)
+          (RegEncoding.toNat cfg.env.data.active b)
           (Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one)
     ·
       simp [
@@ -93,66 +108,46 @@ lemma alg1_step3_reduces_to_modmul
         s % N = s := Nat.mod_eq_of_lt (lt_of_not_ge hover')
     simp [hover, hy_mod, hmod, s, N]
 
-
+/-- Writing a register twice retains only the final written value. -/
 private lemma writeNat_overwrite_same
     {Basis : Type u} [RegEncoding Basis]
     (r : Reg) (v w : ℕ) (b : Basis) :
     RegEncoding.writeNat r v (RegEncoding.writeNat r w b)
       =
-    RegEncoding.writeNat r v b := by
-  apply RegEncoding.basis_ext
-  intro q
-  by_cases hqin : r.lo ≤ q ∧ q < r.hi
-  · exact
-      RegEncoding.bit_writeNat_in
-        (r := r)
-        (v := v)
-        (b1 := RegEncoding.writeNat r w b)
-        (b2 := b)
-        (q := q)
-        hqin.1
-        hqin.2
-  ·
-    have hqout : q < r.lo ∨ r.hi ≤ q := by
-      rcases not_and_or.mp hqin with h | h
-      · exact Or.inl (lt_of_not_ge h)
-      · exact Or.inr (le_of_not_gt h)
-    rw [
-      RegEncoding.bit_writeNat_out
-        (r := r) (v := v) (b := RegEncoding.writeNat r w b)
-        (q := q) hqout,
-      RegEncoding.bit_writeNat_out
-        (r := r) (v := v) (b := b)
-        (q := q) hqout,
-      RegEncoding.bit_writeNat_out
-        (r := r) (v := w) (b := b)
-        (q := q) hqout
-    ]
+    RegEncoding.writeNat r v b :=
+  writeNat_overwrite_same_reg r v w b
 
+/-- A qubit outside a register forms a disjoint singleton register. -/
 private lemma disjoint_qubitReg_of_outside
     {q : ℕ} {r : Reg}
     (h : QubitOutside q r) :
-    Disjoint (qubitReg q) r := by
-  rcases h with h | h
-  · left
-    simpa [qubitReg, Reg.hi] using Nat.succ_le_of_lt h
-  · right
-    simpa [qubitReg] using h
+    Shor.Disjoint (qubitReg q) r := by
+  rw [Shor.Disjoint, List.disjoint_left]
+  intro p hp hr
 
+  have hpq : p = q := by
+    simpa [qubitReg, Reg.singleton] using hp
+
+  subst p
+  exact h hr
+
+/-- Symmetric form of singleton-qubit/register disjointness. -/
 private lemma disjoint_of_qubitReg_outside
     {q : ℕ} {r : Reg}
     (h : QubitOutside q r) :
-    Disjoint r (qubitReg q) := by
-  rcases disjoint_qubitReg_of_outside (q := q) (r := r) h with hdisj | hdisj
-  · exact Or.inr hdisj
-  · exact Or.inl hdisj
+    Shor.Disjoint r (qubitReg q) :=
+  Shor.Disjoint.symm
+    (disjoint_qubitReg_of_outside (q := q) (r := r) h)
+
+/-! ## Exact Basis-State Semantics of Steps 3 and 4 -/
 
 /--
 Steps 3 and 4 are exact on the Step-2 reference state.
 
 This is where:
-* `alg1_step3_reduces_to_modmul`,
-* `alg1_step4_comparison_recovers_overflow`,
+
+* `alg1_step3_reduces_to_modmul`;
+* `alg1_step4_comparison_recovers_overflow`;
 * register-locality lemmas for the primitive comparator/subtractor
 
 are used.
@@ -160,7 +155,7 @@ are used.
 lemma alg1_step34_reference_exact_core
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
+
     [Spec]
     [ModMulPrimitiveSemantics qs]
     {η : ℝ}
@@ -173,37 +168,54 @@ lemma alg1_step34_reference_exact_core
     tr.afterStep34Ref := by
   classical
 
-  let xext : Reg := extendHi cfg.env.data
+  -- Abbreviate the three registers touched by Steps 3 and 4.
+  let xext : Reg := (cfg.env.data.grow 1).active
+  let work : Reg := cfg.env.work.active
   let flagReg : Reg := qubitReg cfg.flag
 
-  have hXW : Disjoint xext cfg.env.work := by
-    simpa [xext] using cfg.layout.1
+  have hXW : Shor.Disjoint xext work := by
+    rw [Shor.Disjoint, List.disjoint_left]
+    intro q hqX hqW
+
+    have h :=
+      cfg.env.circuit_workspace.dataCarry_work_disjoint
+
+    rw [ExtReg.OwnedDisjoint, List.disjoint_left] at h
+
+    exact h
+      (List.mem_append_left _ hqX)
+      (List.mem_append_left _ hqW)
+
+  have hWX : Shor.Disjoint work xext :=
+    Shor.Disjoint.symm hXW
 
   have hflagX_out : QubitOutside cfg.flag xext := by
-    simpa [xext] using cfg.layout.2.1
+    intro hq
 
-  have hflagW_out : QubitOutside cfg.flag cfg.env.work :=
-    cfg.layout.2.2.1
+    apply cfg.layout.2.1
 
-  have hflagX : Disjoint flagReg xext := by
-    simpa [flagReg] using
-      disjoint_qubitReg_of_outside
-        (q := cfg.flag) (r := xext) hflagX_out
+    have howned :
+        cfg.flag ∈ (cfg.env.data.grow 1).ownedQubits :=
+      List.mem_append_left _ hq
 
-  have hXflag : Disjoint xext flagReg := by
-    simpa [flagReg] using
-      disjoint_of_qubitReg_outside
-        (q := cfg.flag) (r := xext) hflagX_out
+    simpa [Gate.ExtReg.ownedQubits_grow] using howned
 
-  have hflagW : Disjoint flagReg cfg.env.work := by
-    simpa [flagReg] using
-      disjoint_qubitReg_of_outside
-        (q := cfg.flag) (r := cfg.env.work) hflagW_out
+  have hflagW_out : QubitOutside cfg.flag work := by
+    intro hq
+    exact cfg.layout.2.2.1
+      (List.mem_append_left _ hq)
 
-  have hWflag : Disjoint cfg.env.work flagReg := by
-    simpa [flagReg] using
-      disjoint_of_qubitReg_outside
-        (q := cfg.flag) (r := cfg.env.work) hflagW_out
+  have hflagX : Shor.Disjoint flagReg xext :=
+    disjoint_qubitReg_of_outside hflagX_out
+
+  have hXflag : Shor.Disjoint xext flagReg :=
+    disjoint_of_qubitReg_outside hflagX_out
+
+  have hflagW : Shor.Disjoint flagReg work :=
+    disjoint_qubitReg_of_outside hflagW_out
+
+  have hWflag : Shor.Disjoint work flagReg :=
+    disjoint_of_qubitReg_outside hflagW_out
 
   have hket :
       ∀ b ∈ tr.support,
@@ -214,19 +226,20 @@ lemma alg1_step34_reference_exact_core
               (RegEncoding.writeNat
                 xext
                 (alg1Step2Value cfg b)
-                (RegEncoding.writeNat cfg.env.work t.1 b)))
+                (RegEncoding.writeNat cfg.env.work.active t.1 b)))
           =
           qs.ket
             (RegEncoding.writeNat
               xext
               (alg1OutputValue cfg b)
-              (RegEncoding.writeNat cfg.env.work t.1 b)) := by
+              (RegEncoding.writeNat cfg.env.work.active t.1 b)) := by
     intro b hb t ht hphase_ne
 
+    -- Name the intermediate arithmetic values and basis states.
     let s : ℕ := alg1Step2Value cfg b
     let y : ℕ := alg1OutputValue cfg b
     let w0 : qs.Basis :=
-      RegEncoding.writeNat cfg.env.work t.1 b
+      RegEncoding.writeNat cfg.env.work.active t.1 b
     let b2 : qs.Basis :=
       RegEncoding.writeNat xext s w0
     let red : ℕ :=
@@ -244,15 +257,30 @@ lemma alg1_step34_reference_exact_core
 
     have hs_cap : s < ASize xext := by
       simpa [s, xext] using
-        alg1Step2Value_lt_extendHi_capacity cfg b hb_good
+        alg1Step2Value_lt_dataCarry_capacity cfg b hb_good
 
     have hy_cap : y < ASize xext := by
       have hy_data :
-          y < ASize cfg.env.data := by
+          y < ASize cfg.env.data.active := by
         simpa [y] using
           alg1OutputValue_lt_data_capacity cfg b hb_good
-      have hle : ASize cfg.env.data ≤ ASize xext := by
-        simp [xext, ASize, regSize, extendHi, Nat.pow_succ]
+
+      have hwidth :
+          regSize xext =
+            regSize cfg.env.data.active + 1 := by
+        dsimp [xext]
+        simpa [ExtReg.width] using
+          ExtReg.width_grow
+            cfg.env.data
+            1
+            cfg.env.circuit_workspace.data_canGrow_one
+
+      have hle :
+          ASize cfg.env.data.active ≤ ASize xext := by
+        unfold ASize
+        rw [hwidth, pow_succ]
+        omega
+
       exact lt_of_lt_of_le hy_data hle
 
     have hred_eq_y : red = y := by
@@ -265,7 +293,7 @@ lemma alg1_step34_reference_exact_core
 
     have hs_lt_twoN : s < 2 * cfg.env.N := by
       have hx :
-          RegEncoding.toNat cfg.env.data b < cfg.env.N :=
+          RegEncoding.toNat cfg.env.data.active b < cfg.env.N :=
         hb_good.1
       have hr :
           alg1TargetResidue cfg b < cfg.env.N :=
@@ -288,9 +316,9 @@ lemma alg1_step34_reference_exact_core
             dsimp [w0]
             exact
               RegEncoding.toNat_left_write_right
-                flagReg cfg.env.work hflagW b t.1
+                flagReg cfg.env.work.active hflagW b t.1
         _ = 0 := by
-            simpa [flagReg] using hb_good.2.2.2
+            simpa [flagReg] using hb_good.2.2.2.2
 
     have hx_b2 :
         RegEncoding.toNat xext b2 = s := by
@@ -341,47 +369,47 @@ lemma alg1_step34_reference_exact_core
         _ = y := hred_eq_y
 
     have hwork_b2 :
-        RegEncoding.toNat cfg.env.work b2 = t.1 := by
+        RegEncoding.toNat cfg.env.work.active b2 = t.1 := by
       calc
-        RegEncoding.toNat cfg.env.work b2
+        RegEncoding.toNat cfg.env.work.active b2
             =
-          RegEncoding.toNat cfg.env.work w0 := by
+          RegEncoding.toNat cfg.env.work.active w0 := by
             dsimp [b2]
             exact
               RegEncoding.toNat_right_write_left
-                xext cfg.env.work hXW w0 s
+                xext cfg.env.work.active hXW w0 s
         _ = t.1 := by
             dsimp [w0]
             exact
               RegEncoding.toNat_writeNat_of_lt
-                cfg.env.work t.1 b t.isLt
+                cfg.env.work.active t.1 b t.isLt
 
     have hwork_after_x :
-        RegEncoding.toNat cfg.env.work
+        RegEncoding.toNat cfg.env.work.active
             (RegEncoding.writeNat xext red b2)
           =
         t.1 := by
       calc
-        RegEncoding.toNat cfg.env.work
+        RegEncoding.toNat cfg.env.work.active
             (RegEncoding.writeNat xext red b2)
             =
-          RegEncoding.toNat cfg.env.work b2 := by
+          RegEncoding.toNat cfg.env.work.active b2 := by
             exact
               RegEncoding.toNat_right_write_left
-                xext cfg.env.work hXW b2 red
+                xext cfg.env.work.active hXW b2 red
         _ = t.1 := hwork_b2
 
     have hwork_b3 :
-        RegEncoding.toNat cfg.env.work b3 = t.1 := by
+        RegEncoding.toNat cfg.env.work.active b3 = t.1 := by
       calc
-        RegEncoding.toNat cfg.env.work b3
+        RegEncoding.toNat cfg.env.work.active b3
             =
-          RegEncoding.toNat cfg.env.work
+          RegEncoding.toNat cfg.env.work.active
             (RegEncoding.writeNat xext red b2) := by
             dsimp [b3]
             exact
               RegEncoding.toNat_left_write_right
-                cfg.env.work flagReg hWflag
+                cfg.env.work.active flagReg hWflag
                 (RegEncoding.writeNat xext red b2)
                 cmp
         _ = t.1 := hwork_after_x
@@ -390,19 +418,27 @@ lemma alg1_step34_reference_exact_core
         RegEncoding.toNat flagReg b3 = cmp := by
       dsimp [b3]
       apply RegEncoding.toNat_writeNat_of_lt
-      dsimp [cmp, flagReg, ASize, regSize, qubitReg]
+      dsimp [
+        cmp,
+        flagReg,
+        ASize,
+        regSize,
+        qubitReg,
+        Reg.singleton,
+        Reg.width
+      ]
       by_cases h : alg1Overflow cfg b <;> simp [h]
 
     have hcmp_eq_cross :
         cmp =
-          (if RegEncoding.toNat xext b3 * ASize cfg.env.work
-                < cfg.env.N * RegEncoding.toNat cfg.env.work b3 then
+          (if RegEncoding.toNat xext b3 * ASize cfg.env.work.active
+                < cfg.env.N * RegEncoding.toNat cfg.env.work.active b3 then
             1
           else
             0) := by
       have hcross :
-          (RegEncoding.toNat xext b3 * ASize cfg.env.work
-                < cfg.env.N * RegEncoding.toNat cfg.env.work b3)
+          (RegEncoding.toNat xext b3 * ASize cfg.env.work.active
+                < cfg.env.N * RegEncoding.toNat cfg.env.work.active b3)
             ↔
           alg1Overflow cfg b := by
         simpa [
@@ -414,28 +450,37 @@ lemma alg1_step34_reference_exact_core
           (tr.step34_support b hb t ht hphase_ne)
       dsimp [cmp]
       by_cases hover : alg1Overflow cfg b
-      · have hcross_true :
-            RegEncoding.toNat xext b3 * ASize cfg.env.work
-                < cfg.env.N * RegEncoding.toNat cfg.env.work b3 :=
+      ·
+        have hcross_true :
+            RegEncoding.toNat xext b3 * ASize cfg.env.work.active
+                < cfg.env.N * RegEncoding.toNat cfg.env.work.active b3 :=
           hcross.mpr hover
         simp [hover, hcross_true]
-      · have hcross_false :
-            ¬ RegEncoding.toNat xext b3 * ASize cfg.env.work
-                < cfg.env.N * RegEncoding.toNat cfg.env.work b3 := by
+      ·
+        have hcross_false :
+            ¬ RegEncoding.toNat xext b3 * ASize cfg.env.work.active
+                < cfg.env.N * RegEncoding.toNat cfg.env.work.active b3 := by
           intro h
           exact hover (hcross.mp h)
         simp [hover, hcross_false]
 
     have hstep4 :
-        qs.eval (step4 cfg.env.N xext cfg.env.work cfg.flag) (qs.ket b3)
+        qs.eval
+            (step4
+              cfg.env.N
+              xext
+              cfg.env.work.active
+              cfg.flag)
+            (qs.ket b3)
           =
-        qs.ket (RegEncoding.writeNat flagReg 0 b3) := by
+        qs.ket
+          (RegEncoding.writeNat flagReg 0 b3) := by
       have hraw :=
         ModMulPrimitiveSemantics.eval_step4_cancels_ket
           (qs := qs)
           cfg.env.N
           xext
-          cfg.env.work
+          cfg.env.work.active
           cfg.flag
           b3
           hflagX_out
@@ -461,9 +506,9 @@ lemma alg1_step34_reference_exact_core
             dsimp [w0]
             exact
               RegEncoding.toNat_left_write_right
-                flagReg cfg.env.work hflagW b t.1
+                flagReg cfg.env.work.active hflagW b t.1
         _ = 0 := by
-            simpa [flagReg] using hb_good.2.2.2
+            simpa [flagReg] using hb_good.2.2.2.2
 
     have hwrite_x_simpl :
         RegEncoding.writeNat xext red b2
@@ -499,11 +544,11 @@ lemma alg1_step34_reference_exact_core
       qs.eval (ModMulConfig.U34 (Basis := qs.Basis) cfg)
           (qs.ket b2)
         =
-      qs.eval (step4 cfg.env.N xext cfg.env.work cfg.flag)
+      qs.eval (step4 cfg.env.N xext cfg.env.work.active cfg.flag)
           (qs.eval (step3 cfg.env.N xext cfg.flag) (qs.ket b2)) := by
         simp [ModMulConfig.U34, xext, qs.eval_seq]
       _ =
-      qs.eval (step4 cfg.env.N xext cfg.env.work cfg.flag)
+      qs.eval (step4 cfg.env.N xext cfg.env.work.active cfg.flag)
           (qs.ket b3) := by
         rw [hstep3]
       _ =
@@ -512,6 +557,7 @@ lemma alg1_step34_reference_exact_core
       qs.ket (RegEncoding.writeNat xext y w0) := by
         rw [hclear]
 
+  -- Extend the basis-state identity across the finite reference packet.
   calc
     qs.eval (ModMulConfig.U34 (Basis := qs.Basis) cfg)
         tr.afterStep2Ref
@@ -525,7 +571,7 @@ lemma alg1_step34_reference_exact_core
                 (RegEncoding.writeNat
                   xext
                   (alg1Step2Value cfg b)
-                  (RegEncoding.writeNat cfg.env.work t.1 b))) := by
+                  (RegEncoding.writeNat cfg.env.work.active t.1 b))) := by
         simp [Alg1Trace.afterStep2Ref, xext]
     _ =
     ∑ b ∈ tr.support,
@@ -537,7 +583,7 @@ lemma alg1_step34_reference_exact_core
                 (RegEncoding.writeNat
                   xext
                   (alg1Step2Value cfg b)
-                  (RegEncoding.writeNat cfg.env.work t.1 b))) := by
+                  (RegEncoding.writeNat cfg.env.work.active t.1 b))) := by
         simpa using
           eval_finset_sum
             qs
@@ -551,7 +597,7 @@ lemma alg1_step34_reference_exact_core
                       (RegEncoding.writeNat
                         xext
                         (alg1Step2Value cfg b)
-                        (RegEncoding.writeNat cfg.env.work t.1 b)))
+                        (RegEncoding.writeNat cfg.env.work.active t.1 b)))
     _ =
     ∑ b ∈ tr.support,
       tr.inputCoeff b •
@@ -562,7 +608,7 @@ lemma alg1_step34_reference_exact_core
                 (RegEncoding.writeNat
                   xext
                   (alg1Step2Value cfg b)
-                  (RegEncoding.writeNat cfg.env.work t.1 b))) := by
+                  (RegEncoding.writeNat cfg.env.work.active t.1 b))) := by
         apply Finset.sum_congr rfl
         intro b hb
         rw [qs.eval_smul]
@@ -576,7 +622,7 @@ lemma alg1_step34_reference_exact_core
                 (RegEncoding.writeNat
                   xext
                   (alg1Step2Value cfg b)
-                  (RegEncoding.writeNat cfg.env.work t.1 b))) := by
+                  (RegEncoding.writeNat cfg.env.work.active t.1 b))) := by
         apply Finset.sum_congr rfl
         intro b hb
         congr 1
@@ -591,7 +637,7 @@ lemma alg1_step34_reference_exact_core
                   (RegEncoding.writeNat
                     xext
                     (alg1Step2Value cfg b)
-                    (RegEncoding.writeNat cfg.env.work t.1 b)))
+                    (RegEncoding.writeNat cfg.env.work.active t.1 b)))
     _ =
     ∑ b ∈ tr.support,
       tr.inputCoeff b •
@@ -601,7 +647,7 @@ lemma alg1_step34_reference_exact_core
               (RegEncoding.writeNat
                 xext
                 (alg1OutputValue cfg b)
-                (RegEncoding.writeNat cfg.env.work t.1 b)) := by
+                (RegEncoding.writeNat cfg.env.work.active t.1 b)) := by
         apply Finset.sum_congr rfl
         intro b hb
         congr 1
@@ -614,10 +660,15 @@ lemma alg1_step34_reference_exact_core
     tr.afterStep34Ref := by
       simp [Alg1Trace.afterStep34Ref, xext]
 
+/-! ## Public Step-3/4 Exactness Theorem -/
+
+/--
+Steps 3 and 4 map the complete Step-2 reference state exactly to the
+post-Step-3/4 reference state.
+-/
 lemma alg1_step34_reference_exact
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [Spec]
     [ModMulPrimitiveSemantics qs]
     {η : ℝ}
@@ -629,4 +680,3 @@ lemma alg1_step34_reference_exact
       =
     tr.afterStep34Ref := by
   exact alg1_step34_reference_exact_core qs cfg ψ tr
-

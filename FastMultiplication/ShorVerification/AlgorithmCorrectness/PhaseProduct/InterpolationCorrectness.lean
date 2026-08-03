@@ -7,26 +7,23 @@ open scoped BigOperators
 
 /-!
 # Phase-Product Interpolation Correctness
-
-This file proves the high-level algebraic identity behind phase-product
-compilation: the phase accumulated at interpolation points is equal to the
-target signed product phase.
+This file proves the algebraic identity behind phase-product compilation. The
+accumulated phase over the Toom-Cook interpolation points is converted into a
+polynomial interpolation sum, evaluated at the limb radix, and shown to equal the
+signed product phase on the original extended registers.
 -/
 
 /-! =========================================================
     Section 1: Rational point terms and product coefficients
-
-    These definitions translate source-row values into the rational polynomial
-    that the Toom-Cook interpolation theorem consumes.
+    These definitions translate source-row values into the rational data used by
+    Toom-Cook interpolation: point terms, the final product target, and grouped
+    product-polynomial coefficients.
 ========================================================= -/
 
-/--
-This is the rational version of the integer phase term already appearing in
-`phaseScalarFrom`.
--/
+/-- Rational version of the integer point phase term used by `phaseScalarFrom`. -/
 def tcPointTerm
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  [RegEncoding qs.Basis]
   {k : ℕ}
   (st : LayoutState k)
   (b : qs.Basis)
@@ -43,16 +40,16 @@ def tcPointTerm
 /-- The final target product, as a rational number. -/
 def tcTarget
   (qs : QSemantics)
-  [RegEncoding QSemantics.Basis]
-  [ExtRegEncoding qs.Basis]
+  [RegEncoding qs.Basis]
   (x z : ExtReg)
   (b : qs.Basis) : ℚ :=
-  (((ExtRegEncoding.extToInt x b) *
-    (ExtRegEncoding.extToInt z b) : ℤ) : ℚ)
+  (((extToInt x b) *
+    (extToInt z b) : ℤ) : ℚ)
 
+/-- Coefficients of the product polynomial, grouped by total chunk degree. -/
 def tcProductCoeff
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  [RegEncoding qs.Basis]
   {k : ℕ}
   (st : LayoutState k)
   (b : qs.Basis) :
@@ -65,6 +62,7 @@ def tcProductCoeff
       else
         0
 
+/-- The compiler's phase coefficients are exactly the generic interpolation coefficients. -/
 lemma phaseCoeffFromPtsWidth_eq_interpCoeff
   {k W : ℕ}
   (pts : List Point)
@@ -76,20 +74,20 @@ lemma phaseCoeffFromPtsWidth_eq_interpCoeff
     (pts := ToomCookMath.listToFin pts hpts)
     ((2 : ℚ) ^ W) := by
   funext i
-  simp [ phaseCoeffFromPtsWidth, phaseCoeffFromPts, ToomCookMath.interpCoeff]
+  simp [phaseCoeffFromPtsWidth, phaseCoeffFromPts, ToomCookMath.interpCoeff]
   unfold ToomCookMath.interpMatrix ToomCookMath.radixRow interpMatrix radixRow ptsToFin ToomCookMath.listToFin
   simp
 
 /-! =========================================================
     Section 2: Phase scalar and point-evaluation bridge
-
     The lemmas here connect the compiler's phase accumulator to the generic
     Toom-Cook point-evaluation.
 ========================================================= -/
 
+/-- Tail-indexed bridge from the compiler scalar recursion to the generic list scalar recursion. -/
 lemma phaseScalarFrom_eq_phaseScalarFromList_aux
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ}
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -109,15 +107,9 @@ lemma phaseScalarFrom_eq_phaseScalarFromList_aux
   | nil =>
       intro n hn hdrop
       simp [phaseScalarFrom, ToomCookMath.phaseScalarFromList]
-
   | cons pt rest ih =>
       intro n hn hdrop
-
-      have hnlt : n < full.length := by
-        rw [hfull]
-        simp at hn
-        omega
-
+      have hnlt : n < full.length := by rw [hfull]; simp at hn; omega
       have hget :
           (ToomCookMath.listToFin full hfull)
             ⟨n, by simpa [hfull] using hnlt⟩ = pt := by
@@ -126,31 +118,16 @@ lemma phaseScalarFrom_eq_phaseScalarFromList_aux
         have hget? : full[n]? = some pt := by
           have h0 := congrArg (fun xs : List Point => xs[0]?) hdrop
           simpa [List.getElem?_drop, Nat.zero_add] using h0
-
         have hget?₂ : some full[n] = some pt := by
           simpa [List.getElem?_eq_getElem hnlt] using hget?
-
         exact Option.some.inj hget?₂
-
       have htail_drop :
           full.drop (n + 1) = rest := by
         have := congrArg List.tail hdrop
-        have htail : (List.drop n full).tail = rest := by
-          simpa using this
-
-        have hdrop_tail :
-            ∀ (xs : List Point) (m : ℕ),
-              (List.drop m xs).tail = List.drop (m + 1) xs := by
-          simp
-
-        have htail : (List.drop n full).tail = rest := by
-          simpa using this
-
+        have hdrop_tail : ∀ (xs : List Point) (m : ℕ), (List.drop m xs).tail = List.drop (m + 1) xs := by simp
         rw [← hdrop_tail full n]
-        exact htail
-
+        simpa using this
       simp [phaseScalarFrom, ToomCookMath.phaseScalarFromList]
-
       have hterm :
           tcPointTerm qs st b full hfull
             ⟨n, by
@@ -162,41 +139,22 @@ lemma phaseScalarFrom_eq_phaseScalarFromList_aux
             evalRowZ (qs := qs) st (expectedRow (k := k) pt) b : ℤ) : ℚ) := by
         unfold tcPointTerm
         simp [hget]
-
       rw [hterm]
-
       have htail :
-          phaseScalarFrom (qs := qs) k phi coeff st b rest (n + 1)
-            (by
-              simp at hn
-              omega)
-          =
-          ToomCookMath.phaseScalarFromList
-            phi coeff (tcPointTerm qs st b full hfull) rest (n + 1)
-            (by
-              simp at hn
-              omega) := by
-        exact ih (n + 1) (by
-          simp at hn
-          omega) htail_drop
-
+          phaseScalarFrom (qs := qs) k phi coeff st b rest (n + 1) (by simp at hn; omega) =
+          ToomCookMath.phaseScalarFromList phi coeff (tcPointTerm qs st b full hfull) rest (n + 1) (by simp at hn; omega) := by
+        exact ih (n + 1) (by simp at hn; omega) htail_drop
       rw [htail]
       unfold ToomCookMath.phaseFactor
-
-      have hprodC :
-          (((evalRowX (qs := qs) st (expectedRow (k := k) pt) b *
-              evalRowZ (qs := qs) st (expectedRow (k := k) pt) b : ℤ) : ℚ) : ℂ)
-            =
-          ((evalRowX (qs := qs) st (expectedRow (k := k) pt) b : ℂ) *
-          (evalRowZ (qs := qs) st (expectedRow (k := k) pt) b : ℂ)) := by
-        norm_num
-
+      have hprodC : (((evalRowX (qs := qs) st (expectedRow (k := k) pt) b * evalRowZ (qs := qs) st (expectedRow (k := k) pt) b : ℤ) : ℚ) : ℂ) =
+          ((evalRowX (qs := qs) st (expectedRow (k := k) pt) b : ℂ) * (evalRowZ (qs := qs) st (expectedRow (k := k) pt) b : ℂ)) := by norm_num
       rw [hprodC]
       simp[mul_comm]
 
+/-- The full compiler scalar agrees with the generic list scalar over the same point list. -/
 lemma phaseScalarFrom_eq_phaseScalarFromList
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ}
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -221,6 +179,7 @@ lemma phaseScalarFrom_eq_phaseScalarFromList
       (n := 0)
       (hn := by simpa using hpts)
       (by simp)
+/-- Multiplying two expected-row entries gives the interpolation row entry at their total degree. -/
 lemma expectedRow_mul_expectedRow_eq_interpEntry
   {k : ℕ}
   (hk : 1 < k)
@@ -239,19 +198,18 @@ lemma expectedRow_mul_expectedRow_eq_interpEntry
       simp [expectedRow, interpEntry]
       norm_cast
       rw [pow_add]
-
   | frac c =>
       change
         (((c ^ (k - 1 - i.1) * c ^ (k - 1 - j.1) : ℤ) : ℚ)
           =
         (c : ℚ) ^ (q k - 1 - (i.1 + j.1)))
-
       norm_cast
       rw [← pow_add]
       congr 1
       simp [q]
       omega
 
+/-- Reindex a double sum by total degree, collapsing the indicator-weighted outer sum. -/
 lemma sum_degree_group
   {k : ℕ}
   (hk : 1 < k)
@@ -266,10 +224,7 @@ lemma sum_degree_group
     =
   ∑ ij : Fin k × Fin k,
     A ij * row
-      ⟨ij.1.1 + ij.2.1, by
-        simp [q]
-        omega
-      ⟩ := by
+      ⟨ij.1.1 + ij.2.1, by simp [q]; omega⟩ := by
   classical
   calc
     (∑ l : Fin (q k),
@@ -303,11 +258,7 @@ lemma sum_degree_group
           ⟩ := by
           apply Finset.sum_congr rfl
           intro ij hij
-          let d : Fin (q k) :=
-            ⟨ij.1.1 + ij.2.1, by
-              simp [q]
-              omega
-            ⟩
+          let d : Fin (q k) := ⟨ij.1.1 + ij.2.1, by simp [q]; omega⟩
           have hsingle :
               (∑ l : Fin (q k),
                 (if _h : ij.1.1 + ij.2.1 = l.1 then
@@ -322,10 +273,7 @@ lemma sum_degree_group
               · intro l hl hld
                 have hne : ij.1.1 + ij.2.1 ≠ l.1 := by
                   intro h
-                  apply hld
-                  apply Fin.ext
-                  dsimp [d]
-                  rw[h]
+                  apply hld; apply Fin.ext; dsimp [d]; rw [h]
                 simp [hne]
               · intro hd
                 exfalso
@@ -336,14 +284,14 @@ lemma sum_degree_group
 
 /-! =========================================================
     Section 3: Polynomial reconstruction
-
-    This block proves that the product polynomial evaluated at the radix
-    reconstructs the product of the original extended-register values.
+    This block proves that evaluating the grouped product polynomial at the limb
+    radix reconstructs the product of the original extended-register values.
 ========================================================= -/
 
+/-- Point terms are evaluations of the grouped product polynomial at the Toom-Cook points. -/
 lemma tcPointTerm_eq_evalAtPoint_tcProductCoeff
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  [RegEncoding qs.Basis]
   {k : ℕ}
   (hk : 1 < k)
   (st : LayoutState k)
@@ -359,18 +307,13 @@ lemma tcPointTerm_eq_evalAtPoint_tcProductCoeff
         ((ptsToFin k pts hpts) i) := by
   funext i
   unfold ToomCookMath.evalAtPoint
-
   let pt : Point := ptsToFin k pts hpts i
   let X : Fin k → ℤ := fun a => sourceChunkXInt (qs := qs) st a b
   let Z : Fin k → ℤ := fun a => sourceChunkZInt (qs := qs) st a b
-
   have hlist :
       (ToomCookMath.listToFin pts hpts) i = ptsToFin k pts hpts i := by
-    unfold ToomCookMath.listToFin ptsToFin
     rfl
-
   unfold tcPointTerm tcProductCoeff evalRowX evalRowZ
-
   change
     (((∑ a : Fin k,
           expectedRow (k := k) pt a * X a) *
@@ -384,7 +327,6 @@ lemma tcPointTerm_eq_evalAtPoint_tcProductCoeff
         else
           0) *
         interpEntry k pt l
-
   calc
     (((∑ a : Fin k,
           expectedRow (k := k) pt a * X a) *
@@ -429,7 +371,6 @@ lemma tcPointTerm_eq_evalAtPoint_tcProductCoeff
                 apply Finset.sum_congr rfl
                 intro ij hij
                 ring
-
     _ =
       ∑ ij : Fin k × Fin k,
         ((X ij.1 * Z ij.2 : ℤ) : ℚ) *
@@ -481,6 +422,7 @@ lemma tcPointTerm_eq_evalAtPoint_tcProductCoeff
             (fun ij => ((X ij.1 * Z ij.2 : ℤ) : ℚ))
             (fun l => interpEntry k pt l)
 
+/-- The phase-product point condition is the generic interpolation-point condition. -/
 lemma GoodToomCookPoints.to_GoodInterpolationPoints
   {k : ℕ}
   {pts : List Point}
@@ -489,12 +431,12 @@ lemma GoodToomCookPoints.to_GoodInterpolationPoints
   ToomCookMath.GoodInterpolationPoints
     (interpEntry k)
     (ptsToFin k pts hpts) := by
-  -- probably by unfolding GoodToomCookPoints
   simpa [GoodToomCookPoints, ptsToFin]
 
+/-- Radix evaluation of the product coefficients factors into the two chunk-value polynomials. -/
 lemma evalAtRadix_tcProductCoeff_eq_chunk_product
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  [RegEncoding qs.Basis]
   {k : ℕ}
   (hk : 1 < k)
   (st : LayoutState k)
@@ -511,15 +453,11 @@ lemma evalAtRadix_tcProductCoeff_eq_chunk_product
   (∑ j : Fin k,
       ((sourceChunkZInt (qs := qs) st j b : ℤ) : ℚ) * B ^ (j : ℕ)) := by
   classical
-
   let X : Fin k → ℚ :=
     fun i => ((sourceChunkXInt (qs := qs) st i b : ℤ) : ℚ)
-
   let Z : Fin k → ℚ :=
     fun i => ((sourceChunkZInt (qs := qs) st i b : ℤ) : ℚ)
-
   unfold ToomCookMath.evalAtRadix tcProductCoeff
-
   calc
     (∑ l : Fin (q k),
         (∑ ij : Fin k × Fin k,
@@ -539,21 +477,14 @@ lemma evalAtRadix_tcProductCoeff_eq_chunk_product
             hk
             (fun ij : Fin k × Fin k => X ij.1 * Z ij.2)
             (fun l : Fin (q k) => B ^ (l : ℕ))
-
     _ =
       ∑ ij : Fin k × Fin k,
         (X ij.1 * B ^ (ij.1 : ℕ)) *
           (Z ij.2 * B ^ (ij.2 : ℕ)) := by
         apply Finset.sum_congr rfl
         intro ij _
-        have hp :
-            B ^ (ij.1.1 + ij.2.1)
-              =
-            B ^ (ij.1 : ℕ) * B ^ (ij.2 : ℕ) := by
-          rw [pow_add]
-        rw [hp]
-        ring
-
+        have hp : B ^ (ij.1.1 + ij.2.1) = B ^ (ij.1 : ℕ) * B ^ (ij.2 : ℕ) := by rw [pow_add]
+        rw [hp]; ring
     _ =
       (∑ i : Fin k, X i * B ^ (i : ℕ)) *
       (∑ j : Fin k, Z j * B ^ (j : ℕ)) := by
@@ -566,7 +497,6 @@ lemma evalAtRadix_tcProductCoeff_eq_chunk_product
               (X i * B ^ (i : ℕ)) *
               (∑ j : Fin k, Z j * B ^ (j : ℕ)) := by
               rw [Finset.sum_mul]
-
           _ =
             ∑ i : Fin k,
               ∑ j : Fin k,
@@ -575,7 +505,6 @@ lemma evalAtRadix_tcProductCoeff_eq_chunk_product
               apply Finset.sum_congr rfl
               intro i _
               rw [Finset.mul_sum]
-
           _ =
             ∑ ij : Fin k × Fin k,
               (X ij.1 * B ^ (ij.1 : ℕ)) *
@@ -594,101 +523,101 @@ lemma evalAtRadix_tcProductCoeff_eq_chunk_product
           ((sourceChunkZInt (qs := qs) st j b : ℤ) : ℚ) * B ^ (j : ℕ)) := by
         simp [X, Z]
 
+/-- The source `x` chunks reconstruct the signed value of the original `x` register at the limb radix. -/
 lemma sourceChunks_reconstruct_x
   (qs : QSemantics)
   [RegEncoding qs.Basis]
-  [ExtRegEncoding qs.Basis]
-  [ExtRegSplitSemantics qs.Basis]
   {k : ℕ}
-  (hk : 0 < k)
-  (x z : ExtReg)
+  {x z : ExtReg}
+  (layout : Gate.PhaseProductLayout x z k)
   (b : qs.Basis) :
   let stInit : LayoutState k :=
-    initSignedLayoutState (Basis := qs.Basis) x z k
+    initSignedLayoutState layout
   let W : ℕ := phaseLimbWidth x z k
   let B : ℚ := (2 : ℚ) ^ W
-  ((ExtRegEncoding.extToInt x b : ℤ) : ℚ)
+  ((extToInt x b : ℤ) : ℚ)
     =
   ∑ i : Fin k,
     ((sourceChunkXInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
   dsimp
-  let W : ℕ := phaseLimbWidth x z k
-  have hValid : ValidPhaseSplit x k W := by
-    dsimp [W]
-    exact phaseLimbWidth_valid_left x z hk
-  have hrec :
-      ((ExtRegEncoding.extToInt x b : ℤ) : ℚ)
-        =
-      ∑ i : Fin k,
-        ((splitChunkInt x W i b : ℤ) : ℚ)
-          * ((2 : ℚ) ^ W) ^ (i : ℕ) := by
-    exact
-      splitExtReg_reconstruct_int
-        (Basis := qs.Basis)
-        x k W b hValid
-  simpa [initSignedLayoutState, sourceChunkXInt, splitChunkInt, W] using hrec
+  have hchunk :
+      ∀ i : Fin k,
+        sourceChunkXInt (qs := qs) (initSignedLayoutState layout) i b
+          = splitChunkInt layout.xSplit i b := by
+    intro i
+    by_cases htop : i.1 + 1 = k
+    · have hw :
+          (layout.xSplit.child i).width
+            = x.width - i.1 * phaseLimbWidth x z k := by
+        rw [PhaseSplitLayout.child_width]
+        simp [phaseSplitLogicalWidth, isTopChunk, htop]
+      simp only [sourceChunkXInt, splitChunkInt, initSignedLayoutState,
+        isTopChunk, if_pos htop, extToInt, hw]
+    · simp only [sourceChunkXInt, splitChunkInt, initSignedLayoutState,
+        isTopChunk, if_neg htop]
+  rw [splitChunkInt_reconstruct layout.xSplit b]
+  push_cast
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  rw [hchunk i, ← pow_mul, Nat.mul_comm]
 
+/-- The source `z` chunks reconstruct the signed value of the original `z` register at the limb radix. -/
 lemma sourceChunks_reconstruct_z
   (qs : QSemantics)
   [RegEncoding qs.Basis]
-  [ExtRegEncoding qs.Basis]
-  [ExtRegSplitSemantics qs.Basis]
   {k : ℕ}
-  (hk : 0 < k)
-  (x z : ExtReg)
+  {x z : ExtReg}
+  (layout : Gate.PhaseProductLayout x z k)
   (b : qs.Basis) :
   let stInit : LayoutState k :=
-    initSignedLayoutState (Basis := qs.Basis) x z k
+    initSignedLayoutState layout
   let W : ℕ := phaseLimbWidth x z k
   let B : ℚ := (2 : ℚ) ^ W
-  ((ExtRegEncoding.extToInt z b : ℤ) : ℚ)
+  ((extToInt z b : ℤ) : ℚ)
     =
   ∑ i : Fin k,
     ((sourceChunkZInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
   dsimp
-  let W : ℕ := phaseLimbWidth x z k
-  have hValid : ValidPhaseSplit z k W := by
-    dsimp [W]
-    exact phaseLimbWidth_valid_right x z hk
-  have hrec :
-      ((ExtRegEncoding.extToInt z b : ℤ) : ℚ)
-        =
-      ∑ i : Fin k,
-        ((splitChunkInt z W i b : ℤ) : ℚ)
-          * ((2 : ℚ) ^ W) ^ (i : ℕ) := by
-    exact
-      splitExtReg_reconstruct_int
-        (Basis := qs.Basis)
-        z k W b hValid
-  simpa [initSignedLayoutState, sourceChunkZInt, splitChunkInt, W] using hrec
+  have hchunk :
+      ∀ i : Fin k,
+        sourceChunkZInt (qs := qs) (initSignedLayoutState layout) i b
+          = splitChunkInt layout.zSplit i b := by
+    intro i
+    by_cases htop : i.1 + 1 = k
+    · have hw :
+          (layout.zSplit.child i).width
+            = z.width - i.1 * phaseLimbWidth x z k := by
+        rw [PhaseSplitLayout.child_width]
+        simp [phaseSplitLogicalWidth, isTopChunk, htop]
+      simp only [sourceChunkZInt, splitChunkInt, initSignedLayoutState,
+        isTopChunk, if_pos htop, extToInt, hw]
+    · simp only [sourceChunkZInt, splitChunkInt, initSignedLayoutState,
+        isTopChunk, if_neg htop]
+  rw [splitChunkInt_reconstruct layout.zSplit b]
+  push_cast
+  refine Finset.sum_congr rfl (fun i _ => ?_)
+  rw [hchunk i, ← pow_mul, Nat.mul_comm]
 
+/-- Radix evaluation of the product coefficients is the signed product of the original registers. -/
 lemma evalAtRadix_tcProductCoeff_eq_ext_product
   (qs : QSemantics)
   [RegEncoding qs.Basis]
-  [ExtRegEncoding qs.Basis]
-  [ExtRegSplitSemantics qs.Basis]
   {k : ℕ}
   (hk : 1 < k)
-  (x z : ExtReg)
+  {x z : ExtReg}
+  (layout : Gate.PhaseProductLayout x z k)
   (b : qs.Basis) :
   let stInit : LayoutState k :=
-    initSignedLayoutState (Basis := qs.Basis) x z k
+    initSignedLayoutState layout
   let W : ℕ := phaseLimbWidth x z k
   let B : ℚ := (2 : ℚ) ^ W
-  ToomCookMath.evalAtRadix
-      (q k)
-      (tcProductCoeff qs stInit b)
-      B
+  ToomCookMath.evalAtRadix (q k) (tcProductCoeff qs stInit b) B
     =
-  (((ExtRegEncoding.extToInt x b *
-     ExtRegEncoding.extToInt z b : ℤ) : ℚ)) := by
+  (((extToInt x b * extToInt z b : ℤ) : ℚ)) := by
   dsimp
-
   set stInit : LayoutState k :=
-    initSignedLayoutState (Basis := qs.Basis) x z k
+    initSignedLayoutState layout
   set W : ℕ := phaseLimbWidth x z k
   set B : ℚ := (2 : ℚ) ^ W
-
   have hChunk :
       ToomCookMath.evalAtRadix
           (q k)
@@ -700,39 +629,21 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
         *
       (∑ j : Fin k,
           ((sourceChunkZInt (qs := qs) stInit j b : ℤ) : ℚ) * B ^ (j : ℕ)) := by
-    exact evalAtRadix_tcProductCoeff_eq_chunk_product
-      (qs := qs)
-      (hk := hk)
-      (st := stInit)
-      (b := b)
-      (B := B)
-
+    exact evalAtRadix_tcProductCoeff_eq_chunk_product (qs := qs) (hk := hk) (st := stInit) (b := b) (B := B)
   have hx :
-      ((ExtRegEncoding.extToInt x b : ℤ) : ℚ)
+      ((extToInt x b : ℤ) : ℚ)
         =
       ∑ i : Fin k,
         ((sourceChunkXInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
     simpa [stInit, W, B] using
-      sourceChunks_reconstruct_x
-        (qs := qs)
-        (x := x)
-        (z := z)
-        (b := b)
-        (by omega)
-
+      sourceChunks_reconstruct_x (qs := qs) (layout := layout) (b := b)
   have hz :
-      ((ExtRegEncoding.extToInt z b : ℤ) : ℚ)
+      ((extToInt z b : ℤ) : ℚ)
         =
       ∑ i : Fin k,
         ((sourceChunkZInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
     simpa [stInit, W, B] using
-      sourceChunks_reconstruct_z
-        (qs := qs)
-        (x := x)
-        (z := z)
-        (b := b)
-        (by omega)
-
+      sourceChunks_reconstruct_z (qs := qs) (layout := layout) (b := b)
   calc
     ToomCookMath.evalAtRadix
         (q k)
@@ -745,53 +656,46 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
       (∑ j : Fin k,
           ((sourceChunkZInt (qs := qs) stInit j b : ℤ) : ℚ) * B ^ (j : ℕ)) := hChunk
     _ =
-      ((ExtRegEncoding.extToInt x b : ℤ) : ℚ) *
-      ((ExtRegEncoding.extToInt z b : ℤ) : ℚ) := by
+      ((extToInt x b : ℤ) : ℚ) *
+      ((extToInt z b : ℤ) : ℚ) := by
         rw [← hx, ← hz]
     _ =
-      (((ExtRegEncoding.extToInt x b *
-         ExtRegEncoding.extToInt z b : ℤ) : ℚ)) := by
+      (((extToInt x b *
+         extToInt z b : ℤ) : ℚ)) := by
         norm_num
 
 /-! =========================================================
     Section 4: Final Toom-Cook phase identity
-
     The final theorem combines point interpolation, radix reconstruction, and
     the compiler phase scalar to produce the signed phase-product scalar.
 ========================================================= -/
 
+/-- Final interpolation theorem: the accumulated phase scalar is the signed product phase. -/
 lemma toom_cook_interpolation
   (qs : QSemantics)
   [RegEncoding qs.Basis]
-  [ExtRegEncoding qs.Basis]
-  [ExtRegSplitSemantics qs.Basis]
   [GateSemanticsFacts qs]
   {k : ℕ}
   (hk : 1 < k)
   (phi : ℝ)
   (x z : ExtReg)
+  (layout : Gate.PhaseProductLayout x z k)
   (pts : List Point)
   (hpts : pts.length = q k)
   (hInterp : GoodToomCookPoints k pts hpts)
   (b : qs.Basis) :
-  let stInit : LayoutState k :=
-    initSignedLayoutState (Basis := qs.Basis) x z k
+  let stInit : LayoutState k := initSignedLayoutState layout
   let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsForRegs k x z pts hpts
   phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
     =
-  Complex.exp
-    (phi * Complex.I *
-      (((ExtRegEncoding.extToInt x b : ℤ) : ℂ) *
-       (((ExtRegEncoding.extToInt z b : ℤ) : ℂ)))) := by
+  Complex.exp (phi * Complex.I * (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))) := by
   dsimp
-
   set stInit : LayoutState k :=
-    initSignedLayoutState (Basis := qs.Basis) x z k
+    initSignedLayoutState layout
   set W : ℕ := phaseLimbWidth x z k
   set B : ℚ := (2 : ℚ) ^ W
   set coeff : Fin (q k) → ℚ := phaseCoeffFromPtsForRegs k x z pts hpts
   set polyCoeff : Fin (q k) → ℚ := tcProductCoeff qs stInit b
-
   have hCoeff :
       coeff =
         ToomCookMath.interpCoeff
@@ -800,11 +704,7 @@ lemma toom_cook_interpolation
           B := by
     simpa [coeff, phaseCoeffFromPtsForRegs, W, B] using
       phaseCoeffFromPtsWidth_eq_interpCoeff
-        (k := k)
-        (W := W)
-        (pts := pts)
-        (hpts := hpts)
-
+        (k := k) (W := W) (pts := pts) (hpts := hpts)
   have hPoint :
       tcPointTerm qs stInit b pts hpts =
         fun i : Fin (q k) =>
@@ -815,13 +715,7 @@ lemma toom_cook_interpolation
             ((ptsToFin k pts hpts) i) := by
     simpa [polyCoeff] using
       tcPointTerm_eq_evalAtPoint_tcProductCoeff
-        (qs := qs)
-        (hk := hk)
-        (st := stInit)
-        (b := b)
-        (pts := pts)
-        (hpts := hpts)
-
+        (qs := qs) (hk := hk) (st := stInit) (b := b) (pts := pts) (hpts := hpts)
   have hInterpSum :
       (∑ i : Fin (q k),
           coeff i *
@@ -842,26 +736,18 @@ lemma toom_cook_interpolation
       (B := B)
       (polyCoeff := polyCoeff)
       (hGood :=
-        GoodToomCookPoints.to_GoodInterpolationPoints
-          (hpts := hpts)
-          hInterp)
-
+        GoodToomCookPoints.to_GoodInterpolationPoints (hpts := hpts) hInterp)
   have hRadix :
       ToomCookMath.evalAtRadix
           (q k)
           polyCoeff
           B
         =
-      (((ExtRegEncoding.extToInt x b *
-         ExtRegEncoding.extToInt z b : ℤ) : ℚ)) := by
+      (((extToInt x b *
+         extToInt z b : ℤ) : ℚ)) := by
     simpa [polyCoeff, stInit, W, B] using
       evalAtRadix_tcProductCoeff_eq_ext_product
-        (qs := qs)
-        (hk := hk)
-        (x := x)
-        (z := z)
-        (b := b)
-
+        (qs := qs) (hk := hk) (x := x) (z := z) (layout := layout) (b := b)
   have hScalar :
       phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
         =
@@ -882,16 +768,8 @@ lemma toom_cook_interpolation
             (by simpa using hpts) := by
         simpa using
           phaseScalarFrom_eq_phaseScalarFromList
-            (qs := qs)
-            (phi := phi)
-            (coeff := coeff)
-            (st := stInit)
-            (b := b)
-            (pts := pts)
-            (hpts := hpts)
-
+            (qs := qs) (phi := phi) (coeff := coeff) (st := stInit) (b := b) (pts := pts) (hpts := hpts)
       rw [hScalarList]
-
       have hTerms :
           (tcPointTerm qs stInit b pts hpts)
             =
@@ -901,9 +779,7 @@ lemma toom_cook_interpolation
               (interpEntry k)
               polyCoeff
               (ptsToFin k pts hpts i) := hPoint
-
       rw [hTerms]
-
       exact
         ToomCookMath.phaseScalarFromList_eq_exp_sum
           (k := k)
@@ -917,7 +793,6 @@ lemma toom_cook_interpolation
               (ptsToFin k pts hpts i))
           (pts := pts)
           (hpts := hpts)
-
   calc
     phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
         =
@@ -938,16 +813,15 @@ lemma toom_cook_interpolation
     _ =
       Complex.exp
         (phi * Complex.I *
-          (((((ExtRegEncoding.extToInt x b *
-               ExtRegEncoding.extToInt z b : ℤ) : ℚ)) : ℂ))) := by
+          (((((extToInt x b *
+               extToInt z b : ℤ) : ℚ)) : ℂ))) := by
         rw [hRadix]
     _ =
       Complex.exp
         (phi * Complex.I *
-          (((ExtRegEncoding.extToInt x b : ℤ) : ℂ) *
-           (((ExtRegEncoding.extToInt z b : ℤ) : ℂ)))) := by
+          (((extToInt x b : ℤ) : ℂ) *
+           (((extToInt z b : ℤ) : ℂ)))) := by
         congr 2
         norm_num
-
 
 end Shor

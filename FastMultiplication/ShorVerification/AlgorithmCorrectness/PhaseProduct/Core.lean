@@ -4,11 +4,11 @@ import Mathlib.Data.Finset.Basic
 
 /-!
 # Phase-Product Compiler Core
-
-This file defines the bookkeeping used by the phase-product compiler: layouts,
-width scans, annotated source operations, allocation/deallocation gates, and
-encoded-state predicates.  The low-level `LowGate` target syntax lives in
-`AbstractMachine/LowGate.lean`.
+This file contains the definition-level core of the recursive phase-product compiler.
+It is grouped by role: chunk layouts, width scans, interpolation data, compiler
+syntax, semantic invariants, and the concrete register-splitting construction that
+realizes the abstract layouts. The lower `LowGate` target syntax lives elsewhere;
+this module describes the higher-level gates and proofs they need.
 -/
 
 namespace Shor
@@ -19,16 +19,28 @@ open scoped BigOperators
 /-! =========================================================
     Section 1: Layout states and width bookkeeping
 ========================================================= -/
-/-- Mutable slot assignment state for both `x` and `z` blocks. -/
+
+/-- Current chunk-to-register assignment for the paired `x` and `z` work arrays. -/
 structure LayoutState (k : ℕ) where
   xslot : Fin k → ExtReg
   zslot : Fin k → ExtReg
+
+/-- Every slot has enough reserve to grow to common target width `W`. -/
+def LayoutState.CanGrowTo {k : ℕ} (st : LayoutState k) (W : ℕ) : Prop :=
+  (∀ i, (st.xslot i).CanGrow (W - (st.xslot i).width)) ∧ (∀ i, (st.zslot i).CanGrow (W - (st.zslot i).width))
+
+/-- All owned qubits in the layout are pairwise separated across `x`, `z`, and cross slots. -/
+def LayoutState.OwnedPairwiseDisjoint {k : ℕ} (st : LayoutState k) : Prop :=
+  (∀ i j, i ≠ j → ExtReg.OwnedDisjoint (st.xslot i) (st.xslot j)) ∧
+  (∀ i j, i ≠ j → ExtReg.OwnedDisjoint (st.zslot i) (st.zslot j)) ∧
+  (∀ i j, ExtReg.OwnedDisjoint (st.xslot i) (st.zslot j))
 
 /-- Width bookkeeping only: current logical widths of each chunk. -/
 structure WidthState (k : ℕ) where
   xw : Fin k → ℕ
   zw : Fin k → ℕ
 
+/-- Symbolic width transition for one source operation. -/
 def updateWidthState {k : ℕ} (st : WidthState k) : valid_ops k → WidthState k
   | .shiftL i n =>
       { xw := Function.update st.xw i (st.xw i + n)
@@ -47,131 +59,123 @@ def updateWidthState {k : ℕ} (st : WidthState k) : valid_ops k → WidthState 
   | .phaseProduct _ =>
       st
 
+/-- Per-slot maximum widths discovered by scanning the source program. -/
 structure NeededWidths (k : ℕ) where
   xneed : Fin k → ℕ
   zneed : Fin k → ℕ
 
+/-- Pointwise maximum of two width-demand records. -/
 def mergeNeededWidths {k : ℕ} (a b : NeededWidths k) : NeededWidths k where
   xneed := fun i => max (a.xneed i) (b.xneed i)
   zneed := fun i => max (a.zneed i) (b.zneed i)
 
+/-- Regard current widths as the current lower bound on needed widths. -/
 def widthsOfState {k : ℕ} (st : WidthState k) : NeededWidths k where
   xneed := st.xw
   zneed := st.zw
 
-
 /--
 Lower-limb width for the top-heavy phase layout.
-
 This deliberately uses floor division. The lower `k - 1` limbs have width `w / k`,
 and the most significant limb absorbs all remaining bits.
 For example, `w = 5`, `k = 4` gives widths `1, 1, 1, 2`.
 -/
-def phaseLimbWidthOfWidth (w k : ℕ) : ℕ :=
-  w / k
+
+def phaseLimbWidthOfWidth (w k : ℕ) : ℕ := w / k
 
 /--
 Common radix width for decomposing both operands.
-
 Use `min`, not `max`: the lower limbs must fit inside both operands.
 The larger operand simply gets a larger top chunk.
 -/
+
 def phaseLimbWidth (x z : ExtReg) (k : ℕ) : ℕ :=
-  min (phaseLimbWidthOfWidth (ExtReg.width x) k)
-      (phaseLimbWidthOfWidth (ExtReg.width z) k)
+  min (phaseLimbWidthOfWidth x.width k) (phaseLimbWidthOfWidth z.width k)
 
 /-! =========================================================
     Section 2: Top-heavy phase splitting parameters
 ========================================================= -/
 
 /-- The most significant chunk is the last chunk. -/
-def isTopChunk {k : ℕ} (i : Fin k) : Prop :=
-  i.1 + 1 = k
-
+def isTopChunk {k : ℕ} (i : Fin k) : Prop := i.1 + 1 = k
 instance {k : ℕ} (i : Fin k) : Decidable (isTopChunk i) := by
   unfold isTopChunk
   infer_instance
 
-def phaseSplitLogicalWidth (w W k : ℕ) (i : Fin k) : ℕ :=
-  if isTopChunk i then
-    w - i.1 * W
-  else
-    W
+/-- Logical width of chunk `i`; the last chunk absorbs the remainder. -/
+def phaseSplitLogicalWidth (w W k : ℕ) (i : Fin k) : ℕ := if isTopChunk i then w - i.1 * W else W
 
+/-- Starting bit offset of chunk `i` in the parent active register. -/
+def phaseChunkStart {k : ℕ} (W : ℕ) (i : Fin k) : ℕ := i.1 * W
+
+/-- Concrete active register slice corresponding to chunk `i`. -/
+def phaseChunkActive (e : ExtReg) (k W : ℕ) (i : Fin k) : Reg :=
+  (e.active.drop (phaseChunkStart W i)).take (phaseSplitLogicalWidth e.width W k i)
 
 /-! =========================================================
     Section 3: Abstract `ExtReg` split interface
 ========================================================= -/
+
+/-- Validity conditions for the top-heavy split of `parent` into `k` chunks of lower width `W`. -/
 def ValidPhaseSplit (e : ExtReg) (k W : ℕ) : Prop :=
-  0 < k ∧ (k - 1) * W ≤ ExtReg.width e
+  0 < k ∧ (k - 1) * W ≤ e.width ∧ (e.width = 0 ∨ (k - 1) * W < e.width)
 
-class ExtRegSplitSemantics
-    (Basis : Type u)
-    [RegEncoding Basis]
-    [ExtRegEncoding Basis] where
-  split : ExtReg → (k W : ℕ) → Fin k → ExtReg
+/-- Abstract split of one extendable register into active chunks plus a reserve partition. -/
+structure PhaseSplitLayout (parent : ExtReg) (k W : ℕ) where
+  valid : ValidPhaseSplit parent k W
 
-  split_width :
-    ∀ (e : ExtReg) (k W : ℕ) (i : Fin k),
-      ValidPhaseSplit e k W →
-      ExtReg.width (split e k W i)
-        =
-      phaseSplitLogicalWidth (ExtReg.width e) W k i
+  reserve : Fin k → Reg
 
-  split_disjoint :
-    ∀ (e : ExtReg) (k W : ℕ) (i j : Fin k),
-      i ≠ j →
-      Disjoint (split e k W i).base (split e k W j).base
+  active_reserve_disjoint :
+    ∀ i, Disjoint (phaseChunkActive parent k W i) (reserve i)
 
-  split_disjoint_of_disjoint :
-    ∀ (x z : ExtReg) (k W : ℕ) (i j : Fin k),
-      Disjoint x.base z.base →
-      Disjoint (split x k W i).base (split z k W j).base
+  reserve_partition :
+    (List.ofFn fun i => (reserve i).qubits).flatten
+      =
+    parent.reserve.qubits
 
-  split_disjoint_reg_of_disjoint :
-    ∀ (e : ExtReg) (r : Reg) (k W : ℕ) (i : Fin k),
-      Disjoint e.base r →
-      Disjoint (split e k W i).base r
+  child_owned_pairwise :
+    ∀ i j, i ≠ j →
+      List.Disjoint
+        ((phaseChunkActive parent k W i).qubits ++ (reserve i).qubits)
+        ((phaseChunkActive parent k W j).qubits ++ (reserve j).qubits)
 
-  split_reconstruct_int :
-    ∀ (e : ExtReg) (k W : ℕ) (b : Basis),
-      ValidPhaseSplit e k W →
-      ((ExtRegEncoding.extToInt e b : ℤ) : ℚ)
-        =
-      ∑ i : Fin k,
-        ((if isTopChunk i then
-            ExtRegEncoding.extToInt (split e k W i) b
-          else
-            (ExtReg.toNat (split e k W i) b : ℤ)) : ℚ)
-          * ((2 : ℚ) ^ W) ^ (i : ℕ)
+/-- The `i`th child extendable register induced by a split layout. -/
+def PhaseSplitLayout.child
+  {parent : ExtReg} {k W : ℕ}
+  (layout : PhaseSplitLayout parent k W)
+  (i : Fin k) : ExtReg :=
+  ExtReg.withReserve (phaseChunkActive parent k W i)
+    (layout.reserve i) (layout.active_reserve_disjoint i)
 
-/-- Convenient wrapper for the abstract split operation. -/
-def splitExtReg
-    {Basis : Type u}
-    [RegEncoding Basis]
-    [ExtRegEncoding Basis]
-    [ExtRegSplitSemantics Basis]
-    (e : ExtReg) (k W : ℕ) (i : Fin k) : ExtReg :=
-  ExtRegSplitSemantics.split (Basis:=Basis) e k W i
+theorem PhaseSplitLayout.child_owned_disjoint
+    {parent : ExtReg}
+    {k W : ℕ}
+    (layout : PhaseSplitLayout parent k W)
+    {i j : Fin k}
+    (hij : i ≠ j) :
+    ExtReg.OwnedDisjoint (layout.child i) (layout.child j) := by
+  simpa [PhaseSplitLayout.child, ExtReg.OwnedDisjoint, ExtReg.ownedQubits]
+    using layout.child_owned_pairwise i j hij
 
-/--
-Integer value of one split chunk.
+/-- Pair of compatible split layouts for the two operands of a phase product. -/
+structure Gate.PhaseProductLayout (x z : ExtReg) (k : ℕ) where
+  xSplit : PhaseSplitLayout x k (phaseLimbWidth x z k)
 
-Lower chunks are unsigned radix digits.
-The top chunk is signed.
--/
+  zSplit : PhaseSplitLayout z k (phaseLimbWidth x z k)
+
+  cross_owned_disjoint :
+    ∀ i j,
+      ExtReg.OwnedDisjoint (xSplit.child i) (zSplit.child j)
+
+/-- Interpret a child chunk as unsigned, except for the top chunk, which is signed. -/
 def splitChunkInt
-    {Basis : Type u}
-    [RegEncoding Basis]
-    [ExtRegEncoding Basis]
-    [ExtRegSplitSemantics Basis]
-    {k : ℕ}
-    (e : ExtReg) (W : ℕ) (i : Fin k) (b : Basis) : ℤ :=
-  if isTopChunk i then
-    ExtRegEncoding.extToInt (splitExtReg (Basis:=Basis) e k W i) b
-  else
-    (ExtReg.toNat (splitExtReg (Basis:=Basis) e k W i) b : ℤ)
-
+    {Basis : Type u} [RegEncoding Basis]
+    {parent : ExtReg} {k W : ℕ}
+  (layout : PhaseSplitLayout parent k W) (i : Fin k) (b : Basis) : ℤ :=
+  if i.1 + 1 = k
+    then tcDecodeWidth (parent.width - i.1 * W) ((layout.child i).toNat b)
+    else (layout.child i).toNat b
 
 /-! =========================================================
     Section 4: Width scanning and target-width definitions
@@ -184,8 +188,7 @@ def initWidthState (x z : ExtReg) (k : ℕ) : WidthState k :=
     zw := fun i => phaseSplitLogicalWidth (ExtReg.width z) W k i }
 
 /-- Pull the recursion in `scanNeededWidths` out to a top-level helper. -/
-def scanNeededWidthsAux {k : ℕ} (cur : WidthState k) (mx : NeededWidths k) :
-    List (valid_ops k) → NeededWidths k
+def scanNeededWidthsAux {k : ℕ} (cur : WidthState k) (mx : NeededWidths k) : List (valid_ops k) → NeededWidths k
   | [] => mx
   | op :: rest =>
       let cur' := updateWidthState cur op
@@ -193,19 +196,12 @@ def scanNeededWidthsAux {k : ℕ} (cur : WidthState k) (mx : NeededWidths k) :
       scanNeededWidthsAux cur' mx' rest
 
 /-- Scan needed widths using the new initial width state. -/
-def scanNeededWidths {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) :
-    NeededWidths k :=
-  scanNeededWidthsAux
-    (initWidthState x z k)
-    (widthsOfState (initWidthState x z k))
-    ops
+def scanNeededWidths {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) : NeededWidths k :=
+  scanNeededWidthsAux (initWidthState x z k) (widthsOfState (initWidthState x z k)) ops
 
-
-/-- Common target width so that all chunks are widened to the same size. -/
+/-- Uniform target width chosen to dominate every scanned `x` and `z` need, plus a sign bit. -/
 def commonNeededWidth {k : ℕ} (need : NeededWidths k) : ℕ :=
   1 + Finset.univ.sup (fun i : Fin k => max (need.xneed i) (need.zneed i))
-
-
 
 /-! =========================================================
     Section 5: Interpolation and phase coefficients
@@ -223,89 +219,58 @@ def interpEntry (k : ℕ) (p : Point) (j : Fin (q k)) : ℚ :=
       (c : ℚ) ^ (q k - 1 - (j : ℕ))
 
 /-- Interpolation matrix built from the chosen point set. -/
-def interpMatrix
-  (k : ℕ)
-  (pts : Fin (q k) → Point) :
-  Matrix (Fin (q k)) (Fin (q k)) ℚ :=
+def interpMatrix (k : ℕ) (pts : Fin (q k) → Point) : Matrix (Fin (q k)) (Fin (q k)) ℚ :=
   fun i j => interpEntry k (pts i) j
 
 /-- Row vector `[1, b, b^2, ...]` used for interpolation evaluation. -/
-def radixRow (k : ℕ) (b : ℚ) :
-  Matrix (Fin 1) (Fin (q k)) ℚ :=
-  fun _ j => b ^ (j : ℕ)
+def radixRow (k : ℕ) (b : ℚ) : Matrix (Fin 1) (Fin (q k)) ℚ := fun _ j => b ^ (j : ℕ)
 
-/-- Interpolated phase coefficients evaluated at radix `b`. -/
-noncomputable def phaseCoeffFromPts
-  (k : ℕ)
-  (pts : Fin (q k) → Point)
-  (b : ℚ) :
-  Fin (q k) → ℚ :=
+/-- Coefficients obtained by multiplying the radix row by the inverse interpolation matrix. -/
+noncomputable def phaseCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) : Fin (q k) → ℚ :=
   let B : Matrix (Fin (q k)) (Fin (q k)) ℚ := interpMatrix k pts
   let v : Matrix (Fin 1) (Fin (q k)) ℚ := radixRow k b * B⁻¹
   fun i => v 0 i
 
-
 /-- Convert a point list of the right length into a `Fin`-indexed family. -/
-def ptsToFin
-  (k : ℕ)
-  (pts : List Point)
-  (hpts : pts.length = q k) :
-  Fin (q k) → Point :=
-  fun i =>
-    pts.get
-      ⟨
-        i.val,
-        by
-          have hi : i.val < q k := i.is_lt
-          simp [hpts]
-      ⟩
+def ptsToFin (k : ℕ) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → Point :=
+  fun i => pts.get ⟨i.val, by have hi : i.val < q k := i.is_lt; simp [hpts]⟩
 
 /-- Radix used for chunked phase decomposition. -/
-def phaseRadix (x : Reg) (k : ℕ) : ℚ :=
-  (2 : ℚ) ^ ((regSize x) / k)
+def phaseRadix (x : Reg) (k : ℕ) : ℚ := (2 : ℚ) ^ (regSize x / k)
 
-def phaseRadixWidth (w k : ℕ) : ℚ :=
-  (2 : ℚ) ^ (w / k)
+/-- Radix determined directly by an operand width. -/
+def phaseRadixWidth (w k : ℕ) : ℚ := (2 : ℚ) ^ (w / k)
 
-def chunkRadix (W : ℕ) : ℚ :=
-  (2 : ℚ) ^ W
+/-- Radix for an already chosen chunk width. -/
+def chunkRadix (W : ℕ) : ℚ := (2 : ℚ) ^ W
 
-noncomputable def phaseCoeffFromPtsWidth
-  (k : ℕ) (W : ℕ)
-  (pts : List Point) (hpts : pts.length = q k) :
-  Fin (q k) → ℚ :=
+/-- Phase coefficients for a fixed chunk width. -/
+noncomputable def phaseCoeffFromPtsWidth (k W : ℕ) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → ℚ :=
   phaseCoeffFromPts k (ptsToFin k pts hpts) ((2 : ℚ) ^ W)
 
-noncomputable def phaseCoeffFromPtsForRegs
-  (k : ℕ) (x z : ExtReg)
-  (pts : List Point) (hpts : pts.length = q k) :
-  Fin (q k) → ℚ :=
+/-- Phase coefficients selected from the common limb width of two operands. -/
+noncomputable def phaseCoeffFromPtsForRegs (k : ℕ) (x z : ExtReg) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → ℚ :=
   phaseCoeffFromPtsWidth k (phaseLimbWidth x z k) pts hpts
-
 
 /-- The size parameter used when deciding whether a signed phase product
     should recurse again. -/
-def phaseInputSize (x z : ExtReg) : ℕ :=
-  max (ExtReg.width x) (ExtReg.width z)
+
+def phaseInputSize (x z : ExtReg) : ℕ := max x.width z.width
 
 /-- The actual width of the recursively compiled chunk phase products. -/
-def nextSignedWidth {k : ℕ} (x z : ExtReg) (ops : Prog k) : ℕ :=
-  commonNeededWidth (scanNeededWidths x z ops)
+def nextSignedWidth {k : ℕ} (x z : ExtReg) (ops : Prog k) : ℕ := commonNeededWidth (scanNeededWidths x z ops)
 
 /-! =========================================================
     Section 6: Annotated operations and phase-product counting
 ========================================================= -/
 
-
+/-- A source operation plus the interpolation term assigned to a phase-product leaf, if any. -/
 structure AnnotatedOp (k : ℕ) where
   op : valid_ops k
   phaseTerm? : Option (Fin (q k))
 
-def annotatePhaseTermsAux
-  (k : ℕ)
-  (n : ℕ)
-  (ops : List (valid_ops k)) :
-  List (AnnotatedOp k) :=
+/-- Attach interpolation-term indices to phase-product operations in source order. -/
+def annotatePhaseTermsAux (k n : ℕ) (ops : List (valid_ops k)) : List (AnnotatedOp k) :=
   match ops with
   | [] => []
   | op :: rest =>
@@ -317,6 +282,7 @@ def annotatePhaseTermsAux
       | _ =>
           ⟨op, none⟩ :: annotatePhaseTermsAux k n rest
 
+/-- Number of recursive phase-product leaves in a source program. -/
 def phaseProductCount {k : ℕ} : List (valid_ops k) → ℕ
   | [] => 0
   | op :: ops =>
@@ -324,72 +290,62 @@ def phaseProductCount {k : ℕ} : List (valid_ops k) → ℕ
       | .phaseProduct _ => phaseProductCount ops + 1
       | _               => phaseProductCount ops
 
-
 /-! =========================================================
     Section 7: Signed layout construction and allocation/deallocation gates
 ========================================================= -/
 
-/-- Number of additional high bits needed to go from `src` to `dst`. -/
-def extraDelta (src dst : ExtReg) : ℕ :=
-  dst.extra - src.extra
+/-- Number of high bits added when growing `src` into `dst`. -/
+def extraDelta (src dst : ExtReg) : ℕ := dst.width - src.width
 
+/-- Grow an extendable register just enough to reach target width `W`. -/
+def growExtRegTo (e : ExtReg) (W : ℕ) : ExtReg := e.grow (W - e.width)
 
+/-- The reserve has enough bits for `growExtRegTo e W`. -/
+def ExtReg.CanGrowTo (e : ExtReg) (W : ℕ) : Prop := e.CanGrow (W - e.width)
 
-/-- Widen an abstract chunk to at least logical width `W`.
-This keeps the same abstract base chunk and only adds semantic high bits.
--/
-def widenExtRegTo (e : ExtReg) (W : ℕ) : ExtReg :=
-  ExtReg.addExtra e (W - ExtReg.width e)
+theorem width_growExtRegTo
+    (e : ExtReg)
+    (W : ℕ)
+    (hle : e.width ≤ W)
+    (hcap : e.CanGrowTo W) :
+    (growExtRegTo e W).width = W := by
+  unfold growExtRegTo ExtReg.CanGrowTo at *
+  rw [ExtReg.width_grow e (W - e.width) hcap]
+  omega
 
-@[simp] lemma widenExtRegTo_base (e : ExtReg) (W : ℕ) :
-    (widenExtRegTo e W).base = e.base := by
-  rfl
+/-- Initial signed compiler layout obtained by taking the split children as slots. -/
+def initSignedLayoutState {x z : ExtReg} {k : ℕ} (layout : Gate.PhaseProductLayout x z k) : LayoutState k :=
+  { xslot := fun i => layout.xSplit.child i, zslot := fun i => layout.zSplit.child i }
 
-lemma widenExtRegTo_eq_addExtra (e : ExtReg) (W : ℕ) :
-    widenExtRegTo e W =
-      ExtReg.addExtra e (extraDelta e (widenExtRegTo e W)) := by
-  cases e with
-  | mk base extra =>
-      simp [widenExtRegTo, extraDelta, ExtReg.addExtra, ExtReg.width]
-
-lemma extraDelta_widenExtRegTo_pos
-    (e : ExtReg) (W : ℕ)
-    (h : ExtReg.width e < W) :
-    0 < extraDelta e (widenExtRegTo e W) := by
-  cases e with
-  | mk base extra =>
-      simp [widenExtRegTo, extraDelta, ExtReg.addExtra, ExtReg.width] at *
-      omega
-
-/-- Initial chunk views for the uniform-radix phase decomposition. -/
-def initSignedLayoutState
-    {Basis : Type u}
-    [RegEncoding Basis]
-    [ExtRegEncoding Basis]
-    [ExtRegSplitSemantics Basis]
-    (x z : ExtReg) (k : ℕ) : LayoutState k :=
-  let W := phaseLimbWidth x z k
-  { xslot := fun i => splitExtReg (Basis := Basis) x k W i
-    zslot := fun i => splitExtReg (Basis := Basis) z k W i }
+theorem initSignedLayoutState_owned_disjoint
+    {x z : ExtReg}
+    {k : ℕ}
+    (layout : Gate.PhaseProductLayout x z k) :
+    (initSignedLayoutState layout).OwnedPairwiseDisjoint := by
+  constructor
+  · intro i j hij
+    exact layout.xSplit.child_owned_disjoint hij
+  constructor
+  · intro i j hij
+    exact layout.zSplit.child_owned_disjoint hij
+  · intro i j
+    exact layout.cross_owned_disjoint i j
 
 /-- Final widened chunk views for the compiled signed body.
-
 Each final slot is obtained by widening the corresponding abstract initial
 split chunk. No concrete register splitting is used here.
 -/
-def targetSignedLayoutState
-    {Basis : Type u}
-    [RegEncoding Basis]
-    [ExtRegEncoding Basis]
-    [ExtRegSplitSemantics Basis]
-    (x z : ExtReg) (k : ℕ) (need : NeededWidths k) : LayoutState k :=
-  let stInit := initSignedLayoutState (Basis := Basis) x z k
+
+def targetSignedLayoutState {k : ℕ} (src : LayoutState k) (need : NeededWidths k) : LayoutState k :=
   let Wwork := commonNeededWidth need
-  { xslot := fun i => widenExtRegTo (stInit.xslot i) Wwork
-    zslot := fun i => widenExtRegTo (stInit.zslot i) Wwork }
+  { xslot := fun i => growExtRegTo (src.xslot i) Wwork, zslot := fun i => growExtRegTo (src.zslot i) Wwork }
+
+/-- `src` has enough reserve to realize all scanned width needs. -/
+def LayoutState.CanGrowToNeeds {k : ℕ} (src : LayoutState k) (need : NeededWidths k) : Prop := src.CanGrowTo (commonNeededWidth need)
 
 /-- Allocation gate for a single chunk. Lower chunks are zero-extended;
     the top chunk is sign-extended. -/
+
 def allocChunkGate {k : ℕ} (i : Fin k) (src dst : ExtReg) : Gate :=
   let n := extraDelta src dst
   if _h0 : n = 0 then
@@ -446,6 +402,7 @@ def compileSignedDeallocations (k : ℕ) (src dst : LayoutState k) : Gate :=
 /-- Signed compiler for annotated ops.  The layout state already contains
     enough extra width in each slot, so compilation only emits gates and does
     not resize the state further. -/
+
 def compileAnnotatedOpsToSignedGateAux
   (k : ℕ) (hk : 1 < k)
   (phi : ℝ)
@@ -479,24 +436,18 @@ def compileAnnotatedOpsToSignedGateAux
           | none =>
               tail
 
+/-- Full signed phase-product lowering: allocate widths, compile the annotated body, then deallocate. -/
 noncomputable def compileOpsToSignedGate
-  {Basis : Type u}
-  [RegEncoding Basis]
-  [ExtRegEncoding Basis]
-  [ExtRegSplitSemantics Basis]
-  (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
-  (x z : ExtReg)
-  (phaseCoeff : Fin (q k) → ℚ)
-  (ops : List (valid_ops k)) : Gate :=
+  (k : ℕ) (hk : 1 < k) (phi : ℝ) (x z : ExtReg) (layout : Gate.PhaseProductLayout x z k)
+  (phaseCoeff : Fin (q k) → ℚ) (ops : List (valid_ops k)) : Gate :=
   let annOps : List (AnnotatedOp k) :=
     annotatePhaseTermsAux k 0 ops
   let need : NeededWidths k :=
     scanNeededWidths x z ops
   let stInit : LayoutState k :=
-    initSignedLayoutState (Basis := Basis) x z k
+    initSignedLayoutState layout
   let stFinal : LayoutState k :=
-    targetSignedLayoutState (Basis := Basis) x z k need
+    targetSignedLayoutState stInit need
   let allocs : Gate :=
     compileSignedAllocations k stInit stFinal
   let body : Gate :=
@@ -505,6 +456,7 @@ noncomputable def compileOpsToSignedGate
     compileSignedDeallocations k stInit stFinal
   allocs ;; body ;; deallocs
 
+/-- Add a shared control to phase-product leaves while leaving structural and arithmetic gates unchanged. -/
 def controlPhaseLeaves (ctrl : ℕ) : Gate → Gate
   | .id => .id
   | .seq U V => controlPhaseLeaves ctrl U ;; controlPhaseLeaves ctrl V
@@ -519,24 +471,27 @@ def controlPhaseLeaves (ctrl : ℕ) : Gate → Gate
   | .signDealloc r n => .signDealloc r n
   | U => U
 
+/-- Controlled signed lowering obtained by compiling first and controlling phase leaves. -/
 noncomputable def compileOpsToCSignedGate
-    {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
-    [ExtRegSplitSemantics Basis]
-    (k : ℕ) (hk : 1 < k)
-    (ctrl : ℕ) (phi : ℝ) (x z : ExtReg)
-    (coeff : Fin (q k) → ℚ) (ops : Prog k) : Gate :=
-  controlPhaseLeaves ctrl (compileOpsToSignedGate (Basis := Basis) k hk phi x z coeff ops)
+    (k : ℕ) (hk : 1 < k) (ctrl : ℕ) (phi : ℝ) (x z : ExtReg)
+    (layout : Gate.PhaseProductLayout x z k) (coeff : Fin (q k) → ℚ) (ops : Prog k) : Gate :=
+  controlPhaseLeaves ctrl (compileOpsToSignedGate k hk phi x z layout coeff ops)
+
+/-- The control qubit is outside every child register touched by a phase-product layout. -/
+def Gate.PhaseProductLayout.ControlDisjoint {x z : ExtReg} {k : ℕ} (layout : Gate.PhaseProductLayout x z k) (ctrl : ℕ) : Prop :=
+  (∀ i, ctrl ∉ (layout.xSplit.child i).ownedQubits) ∧ (∀ i, ctrl ∉ (layout.zSplit.child i).ownedQubits)
 
 /-! =========================================================
     Section 9: Legacy ordinary-register modular helpers
 ========================================================= -/
 
-def tcMod (r : Reg) (z : ℤ) : ℕ :=
-  Int.toNat (z % (ASize r : ℤ))
+/-- Ordinary-register modular reduction retained for legacy arithmetic gate statements. -/
+def tcMod (r : Reg) (z : ℤ) : ℕ := Int.toNat (z % (ASize r : ℤ))
 
-def tcNegVal (r : Reg) (x : ℕ) : ℕ :=
-  tcMod r (-(x : ℤ))
+/-- Two's-complement negation value for an ordinary register. -/
+def tcNegVal (r : Reg) (x : ℕ) : ℕ := tcMod r (-(x : ℤ))
 
+/-- Ordinary-register value update for an add-scaled arithmetic step. -/
 def tcAddScaledVal
     {β : Type} [RegEncoding β]
     (dst src : Reg) (negSrc : Bool) (sh : ℕ) (b : β) : ℕ :=
@@ -544,22 +499,19 @@ def tcAddScaledVal
   tcMod dst
     ((RegEncoding.toNat dst b : ℤ) +
       sgn * (RegEncoding.toNat src b : ℤ) * ((2 : ℤ) ^ sh))
-
-variable (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
-variable [GateSemanticsFacts qs]
+variable (qs : QSemantics) [RegEncoding qs.Basis]
 
 /-! =========================================================
     Section 10: Source-row semantics
 ========================================================= -/
 
-open ExtRegEncoding
-
 /-- How the original source basis should be read when forming chunk rows:
     lower chunks are ordinary radix digits, while the top chunk is signed. -/
+
 def sourceChunkXInt
   (st : LayoutState k) (i : Fin k) (b : qs.Basis) : ℤ :=
   if isTopChunk i then
-    ExtRegEncoding.extToInt (st.xslot i) b
+    extToInt (st.xslot i) b
   else
     (ExtReg.toNat (st.xslot i) b : ℤ)
 
@@ -567,41 +519,43 @@ def sourceChunkXInt
 def sourceChunkZInt
   (st : LayoutState k) (i : Fin k) (b : qs.Basis) : ℤ :=
   if isTopChunk i then
-    ExtRegEncoding.extToInt (st.zslot i) b
+    extToInt (st.zslot i) b
   else
     (ExtReg.toNat (st.zslot i) b : ℤ)
 
 /-- Row evaluation of `x` against the original basis:
     lower chunks contribute as unsigned digits, top chunk as signed. -/
+
 def evalRowX
   (st : LayoutState k) (r : Register k) (b : qs.Basis) : ℤ :=
   ∑ j : Fin k, r j * sourceChunkXInt (qs := qs) st j b
 
 /-- Row evaluation of `z` against the original basis:
     lower chunks contribute as unsigned digits, top chunk as signed. -/
+
 def evalRowZ
   (st : LayoutState k) (r : Register k) (b : qs.Basis) : ℤ :=
   ∑ j : Fin k, r j * sourceChunkZInt (qs := qs) st j b
 
 /-! =========================================================
-    Section 11: Encoding invariants
+    Section 10: Encoding invariants
 ========================================================= -/
 
 /-- Two-layout version: the current widened machine state is read signed on `dst`,
     while the original basis is interpreted using the mixed chunk semantics on `src`. -/
+
 def EncodesStateFrom
   (src dst : LayoutState k) (σ : State k) (b0 b : qs.Basis) : Prop :=
   (∀ i : Fin k,
-    ExtRegEncoding.extToInt (dst.xslot i) b
+    extToInt (dst.xslot i) b
       = evalRowX (qs := qs) src (σ i) b0) ∧
   (∀ i : Fin k,
-    ExtRegEncoding.extToInt (dst.zslot i) b
+    extToInt (dst.zslot i) b
       = evalRowZ (qs := qs) src (σ i) b0)
 
+/-- `EncodesStateFrom` plus signed-fit obligations for every widened destination slot. -/
 def EncodesStateFromFits
-  (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
-  {k : ℕ}
+  (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
   (src dst : LayoutState k) (σ : State k) (b0 b : qs.Basis) : Prop :=
   EncodesStateFrom (qs := qs) src dst σ b0 b ∧
   (∀ i : Fin k,
@@ -611,35 +565,30 @@ def EncodesStateFromFits
     FitsSignedWidth (ExtReg.width (dst.zslot i))
       (evalRowZ (qs := qs) src (σ i) b0))
 
-def WidthStateSound
-  (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
-  {k : ℕ}
-  (src : LayoutState k) (cur : WidthState k) (σ : State k) (b0 : qs.Basis) : Prop :=
+/-- Current symbolic row values fit one sign bit beyond the scanned unsigned widths. -/
+def WidthStateSoundPlus
+    (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
+    (src : LayoutState k) (cur : WidthState k) (σ : State k) (b0 : qs.Basis) : Prop :=
   (∀ i : Fin k,
-    FitsSignedWidth (cur.xw i)
-      (evalRowX (qs := qs) src (σ i) b0)) ∧
+    FitsSignedWidth (cur.xw i + 1) (evalRowX (qs := qs) src (σ i) b0))
+    ∧
   (∀ i : Fin k,
-    FitsSignedWidth (cur.zw i)
-      (evalRowZ (qs := qs) src (σ i) b0))
+    FitsSignedWidth (cur.zw i + 1) (evalRowZ (qs := qs) src (σ i) b0))
 
-def WidthStateDominatedByLayout
-  {k : ℕ} (cur : WidthState k) (dst : LayoutState k) : Prop :=
-  (∀ i : Fin k, cur.xw i ≤ ExtReg.width (dst.xslot i)) ∧
-  (∀ i : Fin k, cur.zw i ≤ ExtReg.width (dst.zslot i))
+/-- The concrete destination layout is at least as wide as the symbolic scan says. -/
+def WidthStateDominatedByLayout {k : ℕ} (cur : WidthState k) (dst : LayoutState k) : Prop :=
+  (∀ i : Fin k, cur.xw i + 1 ≤ (dst.xslot i).width) ∧ (∀ i : Fin k, cur.zw i + 1 ≤ (dst.zslot i).width)
 
+/-- Main body invariant: encoded rows, symbolic fit bounds, and layout domination. -/
 def EncodesStateFromWithWidths
-  (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
-  {k : ℕ}
-  (src dst : LayoutState k) (cur : WidthState k)
-  (σ : State k) (b0 b : qs.Basis) : Prop :=
+  (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
+  (src dst : LayoutState k) (cur : WidthState k) (σ : State k) (b0 b : qs.Basis) : Prop :=
   EncodesStateFrom (qs := qs) src dst σ b0 b ∧
-  WidthStateSound (qs := qs) src cur σ b0 ∧
+  WidthStateSoundPlus (qs := qs) src cur σ b0 ∧
   WidthStateDominatedByLayout cur dst
 
 /-! =========================================================
-    Section 12: Phase scalar
+    Section 11: Phase scalar
 ========================================================= -/
 
 /-- The accumulated scalar now uses the same mixed source-row semantics as
@@ -664,23 +613,46 @@ noncomputable def phaseScalarFrom
          (((evalRowZ (qs := qs) st (expectedRow (k := k) pt) b0 : ℤ) : ℂ))))
     * phaseScalarFrom k phi coeff st b0 pts (n + 1) hn'
 
+/-- All reserve bits that would be activated when growing to `W` are zero in basis `b`. -/
+def LayoutState.CleanForGrowth {Basis : Type u} [RegEncoding Basis] {k : ℕ} (src : LayoutState k) (W : ℕ) (b : Basis) : Prop :=
+  (∀ i, ExtReg.FreshFor (src.xslot i) (W - (src.xslot i).width) b) ∧
+  (∀ i, ExtReg.FreshFor (src.zslot i) (W - (src.zslot i).width) b)
 
-/-! =========================================================
-    Section 13: Width-state invariant and signed-width arithmetic lemmas
-========================================================= -/
+/-- Concrete workspace hypothesis for running allocation gates from `src` to the scanned width. -/
+def CompilerWorkspaceOK {Basis : Type u} [RegEncoding Basis] {k : ℕ} (src : LayoutState k) (need : NeededWidths k) (b : Basis) : Prop :=
+  let Wwork := commonNeededWidth need
+  src.CanGrowTo Wwork ∧ src.CleanForGrowth Wwork b
 
-/-- Proof-only width invariant: the symbolic value fits in the tracked width
-    plus one extra sign bit. This matches `commonNeededWidth = 1 + sup ...`. -/
-def WidthStateSoundPlus
-  (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
-  {k : ℕ}
-  (src : LayoutState k) (cur : WidthState k) (σ : State k) (b0 : qs.Basis) : Prop :=
-  (∀ i : Fin k,
-    FitsSignedWidth (cur.xw i + 1)
-      (evalRowX (qs := qs) src (σ i) b0)) ∧
-  (∀ i : Fin k,
-    FitsSignedWidth (cur.zw i + 1)
-      (evalRowZ (qs := qs) src (σ i) b0))
+/-- Linear closure of basis states whose relevant compiler workspace is clean. -/
+inductive CleanWorkspaceState (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ} (src : LayoutState k) (need : NeededWidths k) : qs.State → Prop
+  | ket
+      (b : qs.Basis)
+      (hworkspace : CompilerWorkspaceOK src need b) :
+      CleanWorkspaceState qs src need (qs.ket b)
+  | zero :
+      CleanWorkspaceState qs src need 0
+  | add
+      {ψ φ : qs.State}
+      (hψ : CleanWorkspaceState qs src need ψ)
+      (hφ : CleanWorkspaceState qs src need φ) :
+      CleanWorkspaceState qs src need (ψ + φ)
+  | smul
+      (a : ℂ)
+      {ψ : qs.State}
+      (hψ : CleanWorkspaceState qs src need ψ) :
+      CleanWorkspaceState qs src need (a • ψ)
+
+/-- Partition of a parent reserve into `k` child reserve sizes. -/
+structure ReserveBudget (parent : ExtReg) (k : ℕ) where
+  size : Fin k → ℕ
+  total : (List.ofFn size).sum = parent.capacity
+
+/-- Starting reserve offset for child `i`. -/
+def ReserveBudget.offset {parent : ExtReg} {k : ℕ} (budget : ReserveBudget parent k) (i : Fin k) : ℕ :=
+  ((List.ofFn budget.size).take i.1).sum
+
+/-- Concrete reserve slice assigned to child `i`. -/
+def ReserveBudget.childReserve {parent : ExtReg} {k : ℕ} (budget : ReserveBudget parent k) (i : Fin k) : Reg :=
+  (parent.reserve.drop (budget.offset i)).take (budget.size i)
 
 end Shor

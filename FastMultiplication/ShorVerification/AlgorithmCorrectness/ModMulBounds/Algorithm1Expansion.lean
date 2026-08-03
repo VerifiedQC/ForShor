@@ -4,25 +4,30 @@ open Shor
 
 universe v
 
-/-!
-# Algorithm 1 Expansion Lemmas
-
-Focus theorem: `alg1_trace_of_valid`.
-
-This file expands the staged Algorithm-1 gates on valid basis states and builds
-the reference trace used by the quantitative bounds.
--/
-
 /-! =========================================================
-    Staged-gate equivalence
+    Algorithm 1 Expansion Lemmas
+
+This file expands the staged Algorithm 1 gates on valid basis states and builds
+the finite reference trace used by the quantitative modular-multiplication
+bounds. The main endpoint is `alg1_trace_of_valid`, which packages a valid input
+state as an `Alg1Trace` with Step-1 coefficients and the Step-3/4 support
+condition needed later.
 ========================================================= -/
+
+/-! ---------------------------------------------------------
+    Staged-gate equivalence
+
+The public approximate modular-multiplication gate is definitionally the same
+as the staged `U1 ; U2 ; U34 ; U5` presentation used by the error proof.
+--------------------------------------------------------- -/
+
+section StagedGateEquivalence
 
 namespace ModMulConfig
 
 lemma eval_approxGate_eq_staged
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State) :
@@ -35,10 +40,19 @@ lemma eval_approxGate_eq_staged
 
 end ModMulConfig
 
-/-! =========================================================
-    Primitive-gate expansion lemmas
-========================================================= -/
+end StagedGateEquivalence
 
+/-! ---------------------------------------------------------
+    Linear expansion helpers
+
+These lemmas push gate evaluation through finite sums and expose the two basic
+Step-1 pieces: inverse QFT on the work register and the controlled PhaseProduct
+as a diagonal operation on each work label.
+--------------------------------------------------------- -/
+
+section LinearExpansionHelpers
+
+/-- Gate evaluation distributes over finite sums by linearity. -/
 lemma eval_finset_sum
     (qs : QSemantics)
     (U : Gate)
@@ -56,44 +70,52 @@ lemma eval_finset_sum
       simp [Finset.sum_insert, ha, qs.eval_add, ih]
 
 
+/-- Expands inverse QFT on an extended work register as a finite basis sum over its active labels. -/
 lemma eval_iqft_work_expansion
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [QFTSemantics qs]
-    (work : Reg)
+    (work : ExtReg)
     (b : qs.Basis) :
-    ∃ α : Fin (ASize work) → ℂ,
+    ∃ α : Fin (ASize work.active) → ℂ,
       qs.eval (IQFT work) (qs.ket b)
         =
-      ∑ t : Fin (ASize work),
-        α t • qs.ket (RegEncoding.writeNat work t.1 b) := by
+      ∑ t : Fin (ASize work.active),
+        α t •
+          qs.ket
+            (RegEncoding.writeNat work.active t.1 b) := by
   refine ⟨
     fun t =>
-      ((1 / Real.sqrt ((ASize work : ℕ) : ℝ) : ℂ) *
-        star (qftPhase (ASize work) (RegEncoding.toNat work b) t.1)),
+      (1 / Real.sqrt ((ASize work.active : ℕ) : ℝ) : ℂ) *
+        star
+          (qftPhase
+            (ASize work.active)
+            (RegEncoding.toNat work.active b)
+            t.1),
     ?_
   ⟩
-  rw [IQFT]
+  unfold IQFT
   rw [QFTSemantics.eval_adj_QFT_ket]
   rw [Finset.smul_sum]
   apply Finset.sum_congr rfl
   intro t ht
   rw [smul_smul]
+  simp [ExtReg.toNat]
 
-lemma eval_cphaseprod_work_diagonal
+/-- On a clean unsigned PhaseProduct workspace, the controlled phase product is diagonal in the work label. -/
+lemma eval_cphaseprodusing_work_diagonal
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     (ctrl : ℕ)
     (φ : ℝ)
     (data work : Reg)
+    (ws : Gate.PhaseProdWorkspace data work)
     (b : qs.Basis)
     (z : Fin (ASize work))
-    (hdisj : Disjoint data work) :
+    (hclean : ws.Clean (RegEncoding.writeNat work z.1 b)) :
     ∃ L : ℂ,
-      qs.eval (Gate.CPhaseProd ctrl φ data work)
+      qs.eval (Gate.CPhaseProdUsing ctrl φ data work ws)
           (qs.ket (RegEncoding.writeNat work z.1 b))
         =
       L • qs.ket (RegEncoding.writeNat work z.1 b) := by
@@ -111,7 +133,21 @@ lemma eval_cphaseprod_work_diagonal
   ⟩
 
   simpa [b'] using
-    GateSemanticsFacts.eval_CPhaseProd_ket qs ctrl φ data work b' hdisj
+    GateSemanticsFacts.eval_CPhaseProdUsing_ket qs ctrl φ data work ws b' hclean
+
+
+end LinearExpansionHelpers
+
+/-! ---------------------------------------------------------
+    Work-register support spans
+
+The Step-1 expansion needs to show that applying Hadamards to the work register
+keeps the state supported on basis states obtained by writing only that register.
+The private `HRegWorkSpan` predicate and helper lemmas provide this local
+closure argument.
+--------------------------------------------------------- -/
+
+section WorkRegisterSupportSpans
 
 open QSemantics
 
@@ -129,6 +165,7 @@ private def HRegWorkSpan
           qs.ket (RegEncoding.writeNat work t.1 base)
 
 
+/-- The zero state is trivially supported on the work-register span. -/
 private lemma hregWorkSpan_zero
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -139,6 +176,7 @@ private lemma hregWorkSpan_zero
   simp
 
 
+/-- Work-register support is closed under addition. -/
 private lemma hregWorkSpan_add
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -157,6 +195,7 @@ private lemma hregWorkSpan_add
   simp [add_smul]
 
 
+/-- Work-register support is closed under scalar multiplication. -/
 private lemma hregWorkSpan_smul
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -175,6 +214,7 @@ private lemma hregWorkSpan_smul
   rw [smul_smul]
 
 
+/-- A finite sum of work-supported states is work-supported. -/
 private lemma hregWorkSpan_sum
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -199,6 +239,7 @@ private lemma hregWorkSpan_sum
         exact hf i (by simp [hi])
 
 
+/-- A single basis state obtained by writing `work` is in the work-register span. -/
 private lemma hregWorkSpan_ket_write
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -222,8 +263,7 @@ private lemma qubit_write_eq_work_write
     (work : Reg)
     (base : qs.Basis)
     (q : ℕ)
-    (hqlo : work.lo ≤ q)
-    (hqhi : q < work.hi)
+    (hq : q ∈ work.qubits)
     (z : Fin (ASize work))
     (v : ℕ) :
     ∃ t : Fin (ASize work),
@@ -251,7 +291,7 @@ private lemma qubit_write_eq_work_write
   apply RegEncoding.basis_ext
   intro p
 
-  by_cases hp : work.lo ≤ p ∧ p < work.hi
+  by_cases hp : p ∈ work.qubits
 
   ·
     have hrewrite :
@@ -265,14 +305,7 @@ private lemma qubit_write_eq_work_write
           =
         RegEncoding.bit p
             (RegEncoding.writeNat work t.1 bout) :=
-      RegEncoding.bit_writeNat_in
-        (r := work)
-        (v := t.1)
-        (b1 := base)
-        (b2 := bout)
-        (q := p)
-        hp.1
-        hp.2
+      RegEncoding.bit_writeNat_in work t.1 base bout p hp
 
     calc
       RegEncoding.bit p bout
@@ -287,22 +320,13 @@ private lemma qubit_write_eq_work_write
             exact hin
 
   ·
-    have hpout : p < work.lo ∨ work.hi ≤ p := by
-      by_cases hplow : p < work.lo
-      · exact Or.inl hplow
-      · right
-        omega
+    have hne : p ≠ q := by
+      intro hpq
+      subst hpq
+      exact hp hq
 
-    have hqout :
-        p < (qubitReg q).lo ∨ (qubitReg q).hi ≤ p := by
-      unfold qubitReg Reg.hi
-      rcases hpout with hpout | hpout
-      · left
-        simp_all
-        omega
-      · right
-        simp_all
-        omega
+    have hqout : p ∉ (qubitReg q).qubits := by
+      simp [qubitReg, Reg.singleton, hne]
 
     have hout_qubit :
         RegEncoding.bit p bout
@@ -327,7 +351,7 @@ private lemma qubit_write_eq_work_write
         (v := z.1)
         (b := base)
         (q := p)
-        hpout
+        hp
 
     have hout_work_t :
         RegEncoding.bit p
@@ -339,7 +363,7 @@ private lemma qubit_write_eq_work_write
         (v := t.1)
         (b := base)
         (q := p)
-        hpout
+        hp
 
     calc
       RegEncoding.bit p bout
@@ -357,14 +381,14 @@ private lemma qubit_write_eq_work_write
             exact hout_work_t
 
 
+/-- A one-qubit write inside `work` still lands in the whole-work-register span. -/
 private lemma hregWorkSpan_qubit_write
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     (work : Reg)
     (base : qs.Basis)
     (q : ℕ)
-    (hqlo : work.lo ≤ q)
-    (hqhi : q < work.hi)
+    (hq : q ∈ work.qubits)
     (z : Fin (ASize work))
     (v : ℕ) :
     HRegWorkSpan qs work base
@@ -375,13 +399,14 @@ private lemma hregWorkSpan_qubit_write
           (RegEncoding.writeNat work z.1 base))) := by
   rcases
       qubit_write_eq_work_write
-        qs work base q hqlo hqhi z v with
+        qs work base q hq z v with
     ⟨t, ht⟩
 
   rw [ht]
   exact hregWorkSpan_ket_write qs work base t
 
 
+/-- A Hadamard on a qubit inside `work` preserves work-register support. -/
 private lemma eval_H_preserves_hregWorkSpan
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -389,8 +414,7 @@ private lemma eval_H_preserves_hregWorkSpan
     (work : Reg)
     (base : qs.Basis)
     (q : ℕ)
-    (hqlo : work.lo ≤ q)
-    (hqhi : q < work.hi)
+    (hq : q ∈ work.qubits)
     (ψ : qs.State) :
     HRegWorkSpan qs work base ψ →
     HRegWorkSpan qs work base (qs.eval (Gate.H q) ψ) := by
@@ -461,13 +485,13 @@ private lemma eval_H_preserves_hregWorkSpan
 
     · exact
         hregWorkSpan_qubit_write
-          qs work base q hqlo hqhi t 0
+          qs work base q hq t 0
 
     ·
       apply hregWorkSpan_smul qs work base
       exact
         hregWorkSpan_qubit_write
-          qs work base q hqlo hqhi t 1
+          qs work base q hq t 1
 
   have hsum :
       HRegWorkSpan qs work base
@@ -484,21 +508,7 @@ private lemma eval_H_preserves_hregWorkSpan
   exact hsum
 
 
-private lemma mem_regQubits_bounds
-    (work : Reg)
-    {q : ℕ}
-    (hq : q ∈ regQubits work) :
-    work.lo ≤ q ∧ q < work.hi := by
-  unfold regQubits at hq
-  rcases List.mem_map.mp hq with ⟨i, hi, rfl⟩
-  have hi' : i < work.size := List.mem_range.mp hi
-
-  constructor
-  · omega
-  · unfold Reg.hi
-    omega
-
-
+/-- A fold of Hadamards over qubits contained in `work` preserves work-register support. -/
 private lemma eval_foldl_H_preserves_hregWorkSpan
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -506,7 +516,7 @@ private lemma eval_foldl_H_preserves_hregWorkSpan
     (work : Reg)
     (base : qs.Basis)
     (qsList : List ℕ) :
-    (∀ q, q ∈ qsList → work.lo ≤ q ∧ q < work.hi) →
+    (∀ q, q ∈ qsList → q ∈ work.qubits) →
     ∀ (acc : Gate),
       (∀ ξ : qs.State,
         HRegWorkSpan qs work base ξ →
@@ -525,15 +535,15 @@ private lemma eval_foldl_H_preserves_hregWorkSpan
       simpa using hacc ξ hξ
 
   | cons q qsList ih =>
-      intro hbounds acc hacc ξ hξ
+      intro hmem acc hacc ξ hξ
 
-      have hq : work.lo ≤ q ∧ q < work.hi :=
-        hbounds q (by simp)
+      have hq : q ∈ work.qubits :=
+        hmem q (by simp)
 
       have htail :
-          ∀ r, r ∈ qsList → work.lo ≤ r ∧ r < work.hi := by
+          ∀ r, r ∈ qsList → r ∈ work.qubits := by
         intro r hr
-        exact hbounds r (by simp [hr])
+        exact hmem r (by simp [hr])
 
       have hacc' :
           ∀ ξ : qs.State,
@@ -546,7 +556,7 @@ private lemma eval_foldl_H_preserves_hregWorkSpan
             HRegWorkSpan qs work base
               (qs.eval (Gate.H q) ξ) :=
           eval_H_preserves_hregWorkSpan
-            qs work base q hq.1 hq.2 ξ hξ
+            qs work base q hq ξ hξ
 
         simpa [qs.eval_seq] using
           hacc (qs.eval (Gate.H q) ξ) hH
@@ -560,10 +570,10 @@ private lemma eval_foldl_H_preserves_hregWorkSpan
           hξ
 
 
+/-- Applying register Hadamards to a work-written basis state expands over work labels only. -/
 lemma eval_Hreg_work_expansion
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [HadamardSemantics qs]
     (work : Reg)
     (b : qs.Basis)
@@ -583,9 +593,9 @@ lemma eval_Hreg_work_expansion
     hregWorkSpan_ket_write qs work b z
 
   have hbounds :
-      ∀ q, q ∈ regQubits work → work.lo ≤ q ∧ q < work.hi := by
+      ∀ q, q ∈ regQubits work → q ∈ work.qubits := by
     intro q hq
-    exact mem_regQubits_bounds work hq
+    simpa [regQubits] using hq
 
   have hid :
       ∀ ξ : qs.State,
@@ -616,10 +626,183 @@ lemma eval_Hreg_work_expansion
   refine ⟨β, ?_⟩
   simpa [H_reg] using hβ
 
+end WorkRegisterSupportSpans
+
+/-! ---------------------------------------------------------
+    Step-1 clean workspace and QPE expansion
+
+This section combines reserve-freshness lemmas with the work-span expansion to
+obtain the concrete Step-1 QPE packet and identify its coefficients by inner
+products.
+--------------------------------------------------------- -/
+
+section Step1QPEExpansion
+
+/-- Freshness of two reserve bits implies freshness of the first reserve bit. -/
+lemma ExtReg.freshFor_one_of_two
+    {Basis : Type v}
+    [RegEncoding Basis]
+    (e : ExtReg)
+    (b : Basis)
+    (hcap : e.CanGrow 2)
+    (hfresh : e.FreshFor 2 b) :
+    e.FreshFor 1 b := by
+  unfold ExtReg.FreshFor FreshZero at hfresh ⊢
+
+  let r2 : Reg := e.newBits 2
+
+  have hr2 : regSize r2 = 2 := by
+    simp [
+      r2,
+      ExtReg.newBits,
+      Reg.take,
+      regSize,
+      Reg.width,
+      ExtReg.CanGrow,
+      ExtReg.capacity
+    ] at hcap ⊢
+    omega
+
+  let m : SplitPoint r2 :=
+    ⟨1, by omega⟩
+
+  have hsplit :=
+    RegEncoding.toNat_split
+      (r := r2)
+      (m := m)
+      (b := b)
+
+  have hleft :
+      splitLeft r2 m = e.newBits 1 := by
+    cases e
+    simp [
+      r2,
+      m,
+      splitLeft,
+      ExtReg.newBits,
+      Reg.take,
+      List.take_take
+    ]
+
+  have hr2zero :
+      RegEncoding.toNat r2 b = 0 := by
+    simpa [r2] using hfresh
+
+  dsimp at hsplit
+  rw [hr2zero] at hsplit
+
+  have hzero :
+      RegEncoding.toNat (splitLeft r2 m) b = 0 := by
+    omega
+
+  simpa [hleft] using hzero
+
+/-- Writing an owned-disjoint active register preserves freshness of another register's reserve. -/
+lemma ExtReg.freshFor_write_active_of_ownedDisjoint
+    {Basis : Type v}
+    [RegEncoding Basis]
+    (x z : ExtReg)
+    (n value : ℕ)
+    (b : Basis)
+    (hdisj : ExtReg.OwnedDisjoint x z)
+    (hfresh : x.FreshFor n b) :
+    x.FreshFor n
+      (RegEncoding.writeNat z.active value b) := by
+  unfold ExtReg.FreshFor at hfresh ⊢
+
+  apply FreshZero.of_eq_on_bits
+    (x.newBits n)
+    b
+    (RegEncoding.writeNat z.active value b)
+    ?_
+    hfresh
+
+  intro q hqNew
+
+  have hqReserve :
+      q ∈ x.reserve.qubits :=
+    List.mem_of_mem_take hqNew
+
+  have hqOwnedX :
+      q ∈ x.ownedQubits := by
+    exact List.mem_append_right _ hqReserve
+
+  have hqNotActiveZ :
+      q ∉ z.active.qubits := by
+    intro hqActiveZ
+
+    have hqOwnedZ :
+        q ∈ z.ownedQubits :=
+      List.mem_append_left _ hqActiveZ
+
+    have h := hdisj
+    rw [
+      ExtReg.OwnedDisjoint,
+      List.disjoint_left
+    ] at h
+
+    exact h hqOwnedX hqOwnedZ
+
+  exact
+    RegEncoding.bit_writeNat_out
+      (r := z.active)
+      (v := value)
+      (b := b)
+      (q := q)
+      hqNotActiveZ
+
+/-- Writing a work label preserves the clean Step-1 unsigned PhaseProduct workspace. -/
+lemma step1Workspace_clean_write
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    {η : ℝ}
+    (cfg : ModMulConfig η)
+    (b : qs.Basis)
+    (hb :
+      GoodModMulBasisInput
+        qs cfg.env.N
+        cfg.env.data cfg.env.work
+        cfg.flag b)
+    (z : Fin (ASize cfg.env.work.active)) :
+    cfg.env.circuit_workspace.step1Workspace.Clean
+      (RegEncoding.writeNat
+        cfg.env.work.active z.1 b) := by
+  change
+    cfg.env.data.FreshFor 1
+        (RegEncoding.writeNat
+          cfg.env.work.active z.1 b)
+      ∧
+    cfg.env.work.FreshFor 1
+        (RegEncoding.writeNat
+          cfg.env.work.active z.1 b)
+
+  constructor
+
+  · apply ExtReg.freshFor_write_active_of_ownedDisjoint
+      cfg.env.data
+      cfg.env.work
+      1
+      z.1
+      b
+      cfg.env.circuit_workspace.2.2
+
+    exact ExtReg.freshFor_one_of_two
+      cfg.env.data
+      b
+      cfg.env.circuit_workspace.1
+      hb.2.1
+
+  · exact
+      ExtReg.freshFor_write_active
+        cfg.env.work
+        1
+        z.1
+        b
+        hb.2.2.2.1
+/-- Step 1 maps one good basis input to a coherent work-label packet. -/
 lemma alg1_step1_ket_expansion
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -627,344 +810,258 @@ lemma alg1_step1_ket_expansion
     (hb :
       GoodModMulBasisInput
         qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
-    ∃ α : Fin (ASize cfg.env.work) → ℂ,
+    ∃ α : Fin (ASize cfg.env.work.active) → ℂ,
       qs.eval
           (step1
             (Basis := qs.Basis)
-            cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work)
+            cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
           (qs.ket b)
         =
-      ∑ t : Fin (ASize cfg.env.work),
+      ∑ t : Fin (ASize cfg.env.work.active),
         α t •
           qs.ket
-            (RegEncoding.writeNat cfg.env.work t.1 b) := by
-  classical
+            (RegEncoding.writeNat cfg.env.work.active t.1 b) := by
+    classical
+
+  let workReg : Reg := cfg.env.work.active
+  let dataReg : Reg := cfg.env.data.active
+  let ws :=
+    cfg.env.circuit_workspace.step1Workspace
 
   let φ : ℝ :=
     (2 * Real.pi *
-        (((cfg.c + cfg.env.N - 1) % cfg.env.N : ℕ) : ℝ))
+        (((cfg.c + cfg.env.N - 1) %
+          cfg.env.N : ℕ) : ℝ))
       / (cfg.env.N : ℝ)
 
-  have hwork_zero : RegEncoding.toNat cfg.env.work b = 0 := hb.2.2.1
+  have hworkZero :
+      RegEncoding.toNat workReg b = 0 := by
+    exact hb.2.2.1
 
-  have hdatawork : Disjoint cfg.env.data cfg.env.work := by
-    rcases cfg.layout.1 with h | h
-    · left
-      apply le_trans ?_ h
-      change cfg.env.data.lo + cfg.env.data.size
-        ≤ cfg.env.data.lo + (cfg.env.data.size + 1)
-      omega
-    · exact Or.inr h
-
-  have hwrite_overwrite :
+  have hwriteOverwrite :
       ∀ v w : ℕ,
-        RegEncoding.writeNat cfg.env.work v
-            (RegEncoding.writeNat cfg.env.work w b)
+        RegEncoding.writeNat workReg v
+            (RegEncoding.writeNat workReg w b)
           =
-        RegEncoding.writeNat cfg.env.work v b := by
+        RegEncoding.writeNat workReg v b := by
     intro v w
     apply RegEncoding.basis_ext
     intro q
-    by_cases hqlo : cfg.env.work.lo ≤ q
-    · by_cases hqhi : q < cfg.env.work.hi
-      · exact
-          RegEncoding.bit_writeNat_in
-            (r := cfg.env.work) (v := v)
-            (b1 := RegEncoding.writeNat cfg.env.work w b)
-            (b2 := b) (q := q) hqlo hqhi
-      · have hout : q < cfg.env.work.lo ∨ cfg.env.work.hi ≤ q :=
-          Or.inr (Nat.le_of_not_gt hqhi)
-        rw [RegEncoding.bit_writeNat_out
-              (r := cfg.env.work) (v := v)
-              (b := RegEncoding.writeNat cfg.env.work w b)
-              (q := q) hout,
-            RegEncoding.bit_writeNat_out
-              (r := cfg.env.work) (v := v)
-              (b := b) (q := q) hout,
-            RegEncoding.bit_writeNat_out
-              (r := cfg.env.work) (v := w)
-              (b := b) (q := q) hout]
-    · have hout : q < cfg.env.work.lo ∨ cfg.env.work.hi ≤ q :=
-        Or.inl (Nat.lt_of_not_ge hqlo)
-      rw [RegEncoding.bit_writeNat_out
-            (r := cfg.env.work) (v := v)
-            (b := RegEncoding.writeNat cfg.env.work w b)
-            (q := q) hout,
-          RegEncoding.bit_writeNat_out
-            (r := cfg.env.work) (v := v)
-            (b := b) (q := q) hout,
-          RegEncoding.bit_writeNat_out
-            (r := cfg.env.work) (v := w)
-            (b := b) (q := q) hout]
 
-  let z0 : Fin (ASize cfg.env.work) :=
+    by_cases hq : q ∈ workReg.qubits
+
+    · exact
+        RegEncoding.bit_writeNat_in
+          workReg
+          v
+          (RegEncoding.writeNat workReg w b)
+          b
+          q
+          hq
+
+    · simp only [
+        RegEncoding.bit_writeNat_out
+          workReg v
+          (RegEncoding.writeNat workReg w b)
+          q hq,
+        RegEncoding.bit_writeNat_out
+          workReg v b q hq,
+        RegEncoding.bit_writeNat_out
+          workReg w b q hq
+      ]
+
+  let z0 : Fin (ASize workReg) :=
     ⟨0, by
-      simpa [← hwork_zero] using
-        RegEncoding.toNat_lt_ASize cfg.env.work b⟩
+      have hlt :=
+        RegEncoding.toNat_lt_ASize
+          workReg b
+      simpa [hworkZero] using hlt⟩
 
-  have hz0 : RegEncoding.writeNat cfg.env.work z0.1 b = b := by
-    change RegEncoding.writeNat cfg.env.work 0 b = b
-    rw [← hwork_zero]
-    exact RegEncoding.writeNat_toNat (r := cfg.env.work) (b := b)
+  have hz0 :
+      RegEncoding.writeNat workReg z0.1 b = b := by
+    change RegEncoding.writeNat workReg 0 b = b
+    rw [← hworkZero]
+    exact RegEncoding.writeNat_toNat workReg b
 
-  rcases eval_Hreg_work_expansion qs cfg.env.work b z0 with
-    ⟨a, ha⟩
+  obtain ⟨a, ha⟩ :=
+    eval_Hreg_work_expansion
+      qs workReg b z0
 
-  let L : Fin (ASize cfg.env.work) → ℂ :=
+  have hH :
+      qs.eval (H_reg workReg) (qs.ket b)
+        =
+      ∑ z : Fin (ASize workReg),
+        a z •
+          qs.ket
+            (RegEncoding.writeNat workReg z.1 b) := by
+    calc
+      qs.eval (H_reg workReg) (qs.ket b)
+          =
+        qs.eval (H_reg workReg)
+          (qs.ket
+            (RegEncoding.writeNat
+              workReg z0.1 b)) := by
+                rw [hz0]
+      _ =
+        ∑ z : Fin (ASize workReg),
+          a z •
+            qs.ket
+              (RegEncoding.writeNat
+                workReg z.1 b) := ha
+
+  let L : Fin (ASize workReg) → ℂ :=
     fun z =>
       Classical.choose
-        (eval_cphaseprod_work_diagonal
-          qs cfg.ctrl φ cfg.env.data cfg.env.work b z hdatawork)
+        (eval_cphaseprodusing_work_diagonal
+          qs
+          cfg.ctrl
+          φ
+          dataReg
+          workReg
+          ws
+          b
+          z
+          (step1Workspace_clean_write
+            qs cfg b hb z))
 
   have hL :
-      ∀ z : Fin (ASize cfg.env.work),
+      ∀ z : Fin (ASize workReg),
         qs.eval
-            (Gate.CPhaseProd
-              cfg.ctrl φ cfg.env.data cfg.env.work)
+            (Gate.CPhaseProdUsing
+              cfg.ctrl φ
+              dataReg workReg ws)
             (qs.ket
-              (RegEncoding.writeNat cfg.env.work z.1 b))
+              (RegEncoding.writeNat
+                workReg z.1 b))
           =
         L z •
           qs.ket
-            (RegEncoding.writeNat cfg.env.work z.1 b) := by
+            (RegEncoding.writeNat
+              workReg z.1 b) := by
     intro z
     exact Classical.choose_spec
-      (eval_cphaseprod_work_diagonal
-        qs cfg.ctrl φ cfg.env.data cfg.env.work b z hdatawork)
+      (eval_cphaseprodusing_work_diagonal
+        qs
+        cfg.ctrl
+        φ
+        dataReg
+        workReg
+        ws
+        b
+        z
+        (step1Workspace_clean_write
+          qs cfg b hb z))
 
   let γ :
-      Fin (ASize cfg.env.work) →
-        Fin (ASize cfg.env.work) →
-          ℂ :=
+      Fin (ASize workReg) →
+      Fin (ASize workReg) →
+      ℂ :=
     fun z =>
       Classical.choose
-        (eval_iqft_work_expansion qs cfg.env.work
-          (RegEncoding.writeNat cfg.env.work z.1 b))
+        (eval_iqft_work_expansion
+          qs
+          ws.zExt
+          (RegEncoding.writeNat
+            workReg z.1 b))
 
   have hγ :
-      ∀ z : Fin (ASize cfg.env.work),
-        qs.eval (IQFT cfg.env.work)
+      ∀ z : Fin (ASize workReg),
+        qs.eval (IQFT ws.zExt)
             (qs.ket
-              (RegEncoding.writeNat cfg.env.work z.1 b))
+              (RegEncoding.writeNat
+                workReg z.1 b))
           =
-        ∑ t : Fin (ASize cfg.env.work),
+        ∑ t : Fin (ASize workReg),
           γ z t •
             qs.ket
-              (RegEncoding.writeNat cfg.env.work t.1 b) := by
+              (RegEncoding.writeNat
+                workReg t.1 b) := by
     intro z
-    have hraw := Classical.choose_spec
-      (eval_iqft_work_expansion qs cfg.env.work
-        (RegEncoding.writeNat cfg.env.work z.1 b))
+
+    have hraw :=
+      Classical.choose_spec
+        (eval_iqft_work_expansion
+          qs
+          ws.zExt
+          (RegEncoding.writeNat
+            workReg z.1 b))
+
     calc
-      qs.eval (IQFT cfg.env.work)
+      qs.eval (IQFT ws.zExt)
           (qs.ket
-            (RegEncoding.writeNat cfg.env.work z.1 b))
-          =
-        ∑ t : Fin (ASize cfg.env.work),
-          γ z t •
-            qs.ket
-              (RegEncoding.writeNat cfg.env.work t.1
-                (RegEncoding.writeNat cfg.env.work z.1 b)) := hraw
-      _ =
-        ∑ t : Fin (ASize cfg.env.work),
-          γ z t •
-            qs.ket
-              (RegEncoding.writeNat cfg.env.work t.1 b) := by
-          apply Finset.sum_congr rfl
-          intro t ht
-          rw [hwrite_overwrite t.1 z.1]
-
-  refine ⟨fun t => ∑ z, a z * L z * γ z t, ?_⟩
-
-  have hH :
-      qs.eval (H_reg cfg.env.work) (qs.ket b)
+            (RegEncoding.writeNat
+              workReg z.1 b))
         =
-      ∑ z : Fin (ASize cfg.env.work),
-        a z •
+      ∑ t : Fin (ASize workReg),
+        γ z t •
           qs.ket
-            (RegEncoding.writeNat cfg.env.work z.1 b) := by
-    calc
-      qs.eval (H_reg cfg.env.work) (qs.ket b)
-          =
-        qs.eval (H_reg cfg.env.work)
-          (qs.ket (RegEncoding.writeNat cfg.env.work z0.1 b)) := by
-            rw [hz0]
+            (RegEncoding.writeNat
+              workReg t.1
+              (RegEncoding.writeNat
+                workReg z.1 b)) := by
+                  simpa [ws, workReg] using hraw
       _ =
-        ∑ z : Fin (ASize cfg.env.work),
-          a z •
-            qs.ket
-              (RegEncoding.writeNat cfg.env.work z.1 b) := ha
-
-  have hphase :
-      qs.eval
-          (Gate.CPhaseProd
-            cfg.ctrl φ cfg.env.data cfg.env.work)
-          (qs.eval (H_reg cfg.env.work) (qs.ket b))
-        =
-      ∑ z : Fin (ASize cfg.env.work),
-        (a z * L z) •
+      ∑ t : Fin (ASize workReg),
+        γ z t •
           qs.ket
-            (RegEncoding.writeNat cfg.env.work z.1 b) := by
-    rw [hH]
-    calc
-      qs.eval
-          (Gate.CPhaseProd
-            cfg.ctrl φ cfg.env.data cfg.env.work)
-          (∑ z : Fin (ASize cfg.env.work),
-            a z •
-              qs.ket
-                (RegEncoding.writeNat cfg.env.work z.1 b))
-          =
-        ∑ z : Fin (ASize cfg.env.work),
-          qs.eval
-            (Gate.CPhaseProd
-              cfg.ctrl φ cfg.env.data cfg.env.work)
-            (a z •
-              qs.ket
-                (RegEncoding.writeNat cfg.env.work z.1 b)) := by
-            simpa using
-              eval_finset_sum
-                qs
-                (Gate.CPhaseProd
-                  cfg.ctrl φ cfg.env.data cfg.env.work)
-                Finset.univ
-                (fun z =>
-                  a z •
-                    qs.ket
-                      (RegEncoding.writeNat cfg.env.work z.1 b))
-      _ =
-        ∑ z : Fin (ASize cfg.env.work),
-          a z •
-            qs.eval
-              (Gate.CPhaseProd
-                cfg.ctrl φ cfg.env.data cfg.env.work)
-              (qs.ket
-                (RegEncoding.writeNat cfg.env.work z.1 b)) := by
-            apply Finset.sum_congr rfl
-            intro z hz
-            rw [qs.eval_smul]
-      _ =
-        ∑ z : Fin (ASize cfg.env.work),
-          (a z * L z) •
-            qs.ket
-              (RegEncoding.writeNat cfg.env.work z.1 b) := by
-            apply Finset.sum_congr rfl
-            intro z hz
-            rw [hL z, smul_smul]
+            (RegEncoding.writeNat
+              workReg t.1 b) := by
+                apply Finset.sum_congr rfl
+                intro t _
+                rw [hwriteOverwrite t.1 z.1]
 
-  have hfubini :
-      (∑ z : Fin (ASize cfg.env.work),
-        (a z * L z) •
-          ∑ t : Fin (ASize cfg.env.work),
-            γ z t •
-              qs.ket
-                (RegEncoding.writeNat cfg.env.work t.1 b))
-      =
-      ∑ t : Fin (ASize cfg.env.work),
-        (∑ z : Fin (ASize cfg.env.work),
-          a z * L z * γ z t) •
-            qs.ket
-              (RegEncoding.writeNat cfg.env.work t.1 b) := by
-    calc
-      (∑ z : Fin (ASize cfg.env.work),
-        (a z * L z) •
-          ∑ t : Fin (ASize cfg.env.work),
-            γ z t •
-              qs.ket
-                (RegEncoding.writeNat cfg.env.work t.1 b))
-          =
-        ∑ z : Fin (ASize cfg.env.work),
-          ∑ t : Fin (ASize cfg.env.work),
-            ((a z * L z) * γ z t) •
-              qs.ket
-                (RegEncoding.writeNat cfg.env.work t.1 b) := by
-            apply Finset.sum_congr rfl
-            intro z hz
-            rw [Finset.smul_sum]
-            apply Finset.sum_congr rfl
-            intro t ht
-            rw [smul_smul]
-      _ =
-        ∑ t : Fin (ASize cfg.env.work),
-          ∑ z : Fin (ASize cfg.env.work),
-            ((a z * L z) * γ z t) •
-              qs.ket
-                (RegEncoding.writeNat cfg.env.work t.1 b) := by
-            rw [Finset.sum_comm]
-      _ =
-        ∑ t : Fin (ASize cfg.env.work),
-          (∑ z : Fin (ASize cfg.env.work),
-            a z * L z * γ z t) •
-              qs.ket
-                (RegEncoding.writeNat cfg.env.work t.1 b) := by
-            simp [Finset.sum_smul, mul_assoc]
+  refine
+    ⟨fun t =>
+      ∑ z : Fin (ASize workReg),
+        a z * L z * γ z t,
+     ?_⟩
 
-  have hmain :
-      qs.eval (IQFT cfg.env.work)
+  simp only [step1, qs.eval_seq]
+
+  change
+    qs.eval (IQFT ws.zExt)
       (qs.eval
-        (Gate.CPhaseProd
-          cfg.ctrl φ cfg.env.data cfg.env.work)
-        (qs.eval (H_reg cfg.env.work) (qs.ket b)))
+        (Gate.CPhaseProdUsing
+          cfg.ctrl φ
+          dataReg workReg ws)
+        (qs.eval (H_reg workReg) (qs.ket b)))
       =
-      ∑ t : Fin (ASize cfg.env.work),
-        (∑ z : Fin (ASize cfg.env.work),
-          a z * L z * γ z t) •
-            qs.ket
-              (RegEncoding.writeNat cfg.env.work t.1 b) := by
-    rw [hphase]
-    calc
-      qs.eval (IQFT cfg.env.work)
-        (∑ z : Fin (ASize cfg.env.work),
-          (a z * L z) •
-            qs.ket
-              (RegEncoding.writeNat cfg.env.work z.1 b))
-        =
-      ∑ z : Fin (ASize cfg.env.work),
-        qs.eval (IQFT cfg.env.work)
-          ((a z * L z) •
-            qs.ket
-              (RegEncoding.writeNat cfg.env.work z.1 b)) := by
-          simpa using
-            eval_finset_sum
-              qs
-              (IQFT cfg.env.work)
-              Finset.univ
-              (fun z =>
-                (a z * L z) •
-                  qs.ket
-                    (RegEncoding.writeNat cfg.env.work z.1 b))
-      _ =
-        ∑ z : Fin (ASize cfg.env.work),
-          (a z * L z) •
-            qs.eval (IQFT cfg.env.work)
-              (qs.ket
-                (RegEncoding.writeNat cfg.env.work z.1 b)) := by
-            apply Finset.sum_congr rfl
-            intro z hz
-            rw [qs.eval_smul]
-      _ =
-        ∑ z : Fin (ASize cfg.env.work),
-          (a z * L z) •
-            ∑ t : Fin (ASize cfg.env.work),
-              γ z t •
-                qs.ket
-                  (RegEncoding.writeNat cfg.env.work t.1 b) := by
-            apply Finset.sum_congr rfl
-            intro z hz
-            rw [hγ z]
-      _ =
-        ∑ t : Fin (ASize cfg.env.work),
-          (∑ z : Fin (ASize cfg.env.work),
-            a z * L z * γ z t) •
-              qs.ket
-                (RegEncoding.writeNat cfg.env.work t.1 b) := hfubini
+    ∑ t : Fin (ASize workReg),
+      (∑ z : Fin (ASize workReg),
+        a z * L z * γ z t) •
+          qs.ket
+            (RegEncoding.writeNat
+              workReg t.1 b)
 
-  simpa [step1, qs.eval_seq, φ] using hmain
+  rw [hH]
 
+  rw [
+    eval_finset_sum,
+    eval_finset_sum
+  ]
+
+  simp_rw [
+    qs.eval_smul,
+    hL
+  ]
+
+  simp_rw [
+    qs.eval_smul,
+    hγ,
+    Finset.smul_sum,
+    smul_smul
+  ]
+
+  rw [Finset.sum_comm]
+
+  apply Finset.sum_congr rfl
+  intro t _
+  simp [Finset.sum_smul, mul_assoc]
+
+/-- Step 1's work-label expansion has coefficients exactly `alg1PhaseCoeff`. -/
 lemma alg1_step1_ket_qpe_expansion
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -976,10 +1073,10 @@ lemma alg1_step1_ket_qpe_expansion
         (ModMulConfig.U1 (Basis := qs.Basis) cfg)
         (qs.ket b)
       =
-    ∑ t : Fin (ASize cfg.env.work),
+    ∑ t : Fin (ASize cfg.env.work.active),
       alg1PhaseCoeff qs cfg b t •
         qs.ket
-          (RegEncoding.writeNat cfg.env.work t.1 b) := by
+          (RegEncoding.writeNat cfg.env.work.active t.1 b) := by
   classical
 
   rcases alg1_step1_ket_expansion qs cfg b hb with ⟨α, hα⟩
@@ -989,38 +1086,38 @@ lemma alg1_step1_ket_qpe_expansion
           (ModMulConfig.U1 (Basis := qs.Basis) cfg)
           (qs.ket b)
         =
-      ∑ t : Fin (ASize cfg.env.work),
+      ∑ t : Fin (ASize cfg.env.work.active),
         α t •
           qs.ket
-            (RegEncoding.writeNat cfg.env.work t.1 b) := by
+            (RegEncoding.writeNat cfg.env.work.active t.1 b) := by
     simpa [ModMulConfig.U1] using hα
 
   have hlabel_inj :
-      ∀ t u : Fin (ASize cfg.env.work),
-        RegEncoding.writeNat cfg.env.work t.1 b
+      ∀ t u : Fin (ASize cfg.env.work.active),
+        RegEncoding.writeNat cfg.env.work.active t.1 b
           =
-        RegEncoding.writeNat cfg.env.work u.1 b →
+        RegEncoding.writeNat cfg.env.work.active u.1 b →
         t = u := by
     intro t u hEq
     apply Fin.ext
     calc
       t.1
           =
-        RegEncoding.toNat cfg.env.work
-          (RegEncoding.writeNat cfg.env.work t.1 b) := by
+        RegEncoding.toNat cfg.env.work.active
+          (RegEncoding.writeNat cfg.env.work.active t.1 b) := by
           symm
           exact RegEncoding.toNat_writeNat_of_lt
-            cfg.env.work t.1 b t.isLt
+            cfg.env.work.active t.1 b t.isLt
       _ =
-        RegEncoding.toNat cfg.env.work
-          (RegEncoding.writeNat cfg.env.work u.1 b) := by
+        RegEncoding.toNat cfg.env.work.active
+          (RegEncoding.writeNat cfg.env.work.active u.1 b) := by
           rw [hEq]
       _ = u.1 :=
           RegEncoding.toNat_writeNat_of_lt
-            cfg.env.work u.1 b u.isLt
+            cfg.env.work.active u.1 b u.isLt
 
   have hcoeff :
-      ∀ t : Fin (ASize cfg.env.work),
+      ∀ t : Fin (ASize cfg.env.work.active),
         alg1PhaseCoeff qs cfg b t = α t := by
     intro t
     unfold alg1PhaseCoeff
@@ -1031,9 +1128,9 @@ lemma alg1_step1_ket_qpe_expansion
       simp
     · intro u _hu hut
       have hneq :
-          RegEncoding.writeNat cfg.env.work t.1 b
+          RegEncoding.writeNat cfg.env.work.active t.1 b
             ≠
-          RegEncoding.writeNat cfg.env.work u.1 b := by
+          RegEncoding.writeNat cfg.env.work.active u.1 b := by
         intro hEq
         exact hut ((hlabel_inj t u hEq).symm)
       rw [inner_smul_right, qs.ket_inner_eq_zero_of_ne hneq]
@@ -1046,19 +1143,32 @@ lemma alg1_step1_ket_qpe_expansion
         (ModMulConfig.U1 (Basis := qs.Basis) cfg)
         (qs.ket b)
       =
-    ∑ t : Fin (ASize cfg.env.work),
+    ∑ t : Fin (ASize cfg.env.work.active),
       α t •
         qs.ket
-          (RegEncoding.writeNat cfg.env.work t.1 b) := hαU1
+          (RegEncoding.writeNat cfg.env.work.active t.1 b) := hαU1
     _ =
-    ∑ t : Fin (ASize cfg.env.work),
+    ∑ t : Fin (ASize cfg.env.work.active),
       alg1PhaseCoeff qs cfg b t •
         qs.ket
-          (RegEncoding.writeNat cfg.env.work t.1 b) := by
+          (RegEncoding.writeNat cfg.env.work.active t.1 b) := by
       apply Finset.sum_congr rfl
       intro t ht
       rw [hcoeff t]
 
+end Step1QPEExpansion
+
+/-! ---------------------------------------------------------
+    Valid-state finite expansions
+
+The trace constructor needs a finite basis expansion of an arbitrary state in
+the valid-input span. These private helpers extract such an expansion by span
+induction while preserving the good-input predicate on every support element.
+--------------------------------------------------------- -/
+
+section ValidStateFiniteExpansions
+
+/-- A finite expansion over good modular-multiplication basis inputs. -/
 private def HasGoodInputExpansion
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -1075,10 +1185,10 @@ private def HasGoodInputExpansion
         qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b
 
 
+/-- Every valid modular-multiplication state has a finite good-input expansion. -/
 private lemma good_input_expansion_of_valid
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -1235,483 +1345,50 @@ private lemma good_input_expansion_of_valid
           intro b hb
           rw [smul_smul]
 
-private lemma qftPhase_zero_left
-    (N y : ℕ) :
-    qftPhase N 0 y = 1 := by
-  simp [qftPhase, ωPow]
+end ValidStateFiniteExpansions
 
-private lemma regQubits_succ_eq_append
-    (lo n : ℕ) :
-    regQubits ({ lo := lo, size := n + 1 } : Reg)
-      =
-    regQubits ({ lo := lo, size := n } : Reg) ++ [lo + n] := by
-  simp [regQubits, List.range_succ, List.map_append]
+/-! ---------------------------------------------------------
+    Zero-target Step-1 exactness
 
-private lemma H_reg_succ_eval
-    (qs : QSemantics)
-    (lo n : ℕ)
-    (ψ : qs.State) :
-    qs.eval (H_reg ({ lo := lo, size := n + 1 } : Reg)) ψ
-      =
-    qs.eval (H_reg ({ lo := lo, size := n } : Reg))
-      (qs.eval (Gate.H (lo + n)) ψ) := by
-  simp [
-    H_reg,
-    regQubits_succ_eq_append,
-    List.foldl_append,
-    qs.eval_seq
-  ]
+If the Step-1 target residue is zero, the controlled phase load is trivial on
+the work superposition, so the following inverse QFT exactly returns the input
+basis state. This fact is used to rule out nonzero good labels in the zero-target
+case.
+--------------------------------------------------------- -/
 
-private lemma Hreg_QFT_scalar_succ
-    (n : ℕ) :
-    ((1 / Real.sqrt (2 : ℝ) : ℂ) *
-        (1 / Real.sqrt (((2 ^ n : ℕ) : ℝ)) : ℂ))
-      =
-    (1 / Real.sqrt (((2 ^ (n + 1) : ℕ) : ℝ)) : ℂ) := by
-  norm_num [Nat.pow_succ]
+section ZeroTargetStep1Exactness
 
-private lemma uniform_sum_succ_split
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (lo n : ℕ)
-    (b : qs.Basis) :
-    (∑ y : Fin (ASize ({ lo := lo, size := n + 1 } : Reg)),
-        qs.ket
-          (RegEncoding.writeNat
-            ({ lo := lo, size := n + 1 } : Reg) y.1 b))
-      =
-    (∑ y : Fin (ASize ({ lo := lo, size := n } : Reg)),
-        qs.ket
-          (RegEncoding.writeNat
-            ({ lo := lo, size := n } : Reg) y.1
-            (RegEncoding.writeNat
-              ({ lo := lo + n, size := 1 } : Reg) 0 b)))
-      +
-    (∑ y : Fin (ASize ({ lo := lo, size := n } : Reg)),
-        qs.ket
-          (RegEncoding.writeNat
-            ({ lo := lo, size := n } : Reg) y.1
-            (RegEncoding.writeNat
-              ({ lo := lo + n, size := 1 } : Reg) 1 b))) :=
-  by
-  classical
-
-  let r : Reg := { lo := lo, size := n + 1 }
-  let low : Reg := { lo := lo, size := n }
-  let high : Reg := { lo := lo + n, size := 1 }
-  let M : ℕ := ASize low
-
-  let m : SplitPoint r :=
-    ⟨n, by simp [r, regSize]⟩
-
-  have hleft : splitLeft r m = low := by
-    simp [r, low, m, splitLeft]
-
-  have hright : splitRight r m = high := by
-    simp [r, high, m, splitRight]
-
-  have hdisj : Disjoint low high := by
-    unfold Shor.Disjoint
-    left
-    simp [low, high, Reg.hi]
-
-  have hsize : ASize r = M + M := by
-    simp [r, low, M, ASize, regSize, Nat.pow_succ, Nat.mul_two]
-
-  have hhigh_zero : 0 < ASize high := by
-    norm_num [high, ASize, regSize]
-
-  have hhigh_one : 1 < ASize high := by
-    norm_num [high, ASize, regSize]
-
-  let f : ℕ → qs.State :=
-    fun y => qs.ket (RegEncoding.writeNat r y b)
-
-  let g0 : ℕ → qs.State :=
-    fun y =>
-      qs.ket
-        (RegEncoding.writeNat low y
-          (RegEncoding.writeNat high 0 b))
-
-  let g1 : ℕ → qs.State :=
-    fun y =>
-      qs.ket
-        (RegEncoding.writeNat low y
-          (RegEncoding.writeNat high 1 b))
-
-  have hlow :
-      ∀ y : ℕ, y < M → f y = g0 y := by
-    intro y hy
-
-    have hs :=
-      RegEncoding.writeNat_split
-        r m 0 y b
-        (by simpa [hleft, M] using hy)
-        (by simpa [hright] using hhigh_zero)
-
-    have hs' :
-        RegEncoding.writeNat r y b
-          =
-        RegEncoding.writeNat high 0
-          (RegEncoding.writeNat low y b) := by
-      simpa [hleft, hright, M] using hs
-
-    have hcomm :
-        RegEncoding.writeNat low y
-            (RegEncoding.writeNat high 0 b)
-          =
-        RegEncoding.writeNat high 0
-            (RegEncoding.writeNat low y b) :=
-      writeNat_comm_of_disjoint low high hdisj y 0 b
-
-    dsimp [f, g0]
-    exact congrArg qs.ket (hs'.trans hcomm.symm)
-
-  have hhigh :
-      ∀ y : ℕ, y < M → f (M + y) = g1 y := by
-    intro y hy
-
-    have hs :=
-      RegEncoding.writeNat_split
-        r m 1 y b
-        (by simpa [hleft, M] using hy)
-        (by simpa [hright] using hhigh_one)
-
-    have hs' :
-        RegEncoding.writeNat r (M + y) b
-          =
-        RegEncoding.writeNat high 1
-          (RegEncoding.writeNat low y b) := by
-      simpa [hleft, hright, M, Nat.add_comm] using hs
-
-    have hcomm :
-        RegEncoding.writeNat low y
-            (RegEncoding.writeNat high 1 b)
-          =
-        RegEncoding.writeNat high 1
-            (RegEncoding.writeNat low y b) :=
-      writeNat_comm_of_disjoint low high hdisj y 1 b
-
-    dsimp [f, g1]
-    exact congrArg qs.ket (hs'.trans hcomm.symm)
-
-  have htail :
-      (∑ y ∈ Finset.range M, f (M + y))
-        =
-      ∑ y ∈ Finset.Ico M (M + M), f y := by
-    symm
-    simpa [Nat.add_sub_cancel] using
-      (Finset.sum_Ico_eq_sum_range f M (M + M))
-
-  have hsplit :
-      (∑ y ∈ Finset.range M, f y)
-        +
-      (∑ y ∈ Finset.range M, f (M + y))
-        =
-      ∑ y ∈ Finset.range (ASize r), f y := by
-    calc
-      (∑ y ∈ Finset.range M, f y)
-          +
-        (∑ y ∈ Finset.range M, f (M + y))
-          =
-        (∑ y ∈ Finset.range M, f y)
-          +
-        (∑ y ∈ Finset.Ico M (M + M), f y) := by
-          rw [htail]
-
-      _ =
-        ∑ y ∈ Finset.range (M + M), f y := by
-          exact Finset.sum_range_add_sum_Ico f (by omega)
-
-      _ =
-        ∑ y ∈ Finset.range (ASize r), f y := by
-          rw [hsize]
-
-  have hsum0 :
-      (∑ y ∈ Finset.range M, f y)
-        =
-      ∑ y ∈ Finset.range M, g0 y := by
-    apply Finset.sum_congr rfl
-    intro y hy
-    exact hlow y (Finset.mem_range.mp hy)
-
-  have hsum1 :
-      (∑ y ∈ Finset.range M, f (M + y))
-        =
-      ∑ y ∈ Finset.range M, g1 y := by
-    apply Finset.sum_congr rfl
-    intro y hy
-    exact hhigh y (Finset.mem_range.mp hy)
-
-  have hmain :
-      (∑ y : Fin (ASize r), f y.1)
-        =
-      (∑ y : Fin M, g0 y.1)
-        +
-      (∑ y : Fin M, g1 y.1) := by
-    calc
-      (∑ y : Fin (ASize r), f y.1)
-          =
-        ∑ y ∈ Finset.range (ASize r), f y := by
-          simpa using
-            (Fin.sum_univ_eq_sum_range f (ASize r))
-
-      _ =
-        (∑ y ∈ Finset.range M, f y)
-          +
-        (∑ y ∈ Finset.range M, f (M + y)) := by
-          exact hsplit.symm
-
-      _ =
-        (∑ y ∈ Finset.range M, g0 y)
-          +
-        (∑ y ∈ Finset.range M, g1 y) := by
-          rw [hsum0, hsum1]
-
-      _ =
-        (∑ y : Fin M, g0 y.1)
-          +
-        (∑ y : Fin M, g1 y.1) := by
-          rw [Fin.sum_univ_eq_sum_range g0 M]
-          rw [Fin.sum_univ_eq_sum_range g1 M]
-
-  simpa [r, low, high, M, f, g0, g1] using hmain
-
-lemma eval_Hreg_zero_uniform_sum
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    (work : Reg)
-    (b : qs.Basis)
-    (hwork0 : RegEncoding.toNat work b = 0) :
-    qs.eval (H_reg work) (qs.ket b)
-      =
-    ((1 / Real.sqrt ((ASize work : ℕ) : ℝ) : ℂ)) •
-      ∑ y : Fin (ASize work),
-        qs.ket (RegEncoding.writeNat work y.1 b) := by
-  classical
-  rcases work with ⟨lo, n⟩
-  induction n generalizing b with
-  | zero =>
-      have hwrite :
-          RegEncoding.writeNat ({ lo := lo, size := 0 } : Reg) 0 b = b := by
-        exact
-          (congrArg
-            (fun v =>
-              RegEncoding.writeNat
-                ({ lo := lo, size := 0 } : Reg) v b)
-            hwork0.symm).trans
-            (RegEncoding.writeNat_toNat
-              (r := ({ lo := lo, size := 0 } : Reg)) (b := b))
-      simp [H_reg, regQubits, ASize, regSize, qs.eval_id, hwrite]
-  | succ n ih =>
-      let r : Reg := { lo := lo, size := n + 1 }
-      let low : Reg := { lo := lo, size := n }
-      let high : Reg := { lo := lo + n, size := 1 }
-      let q : ℕ := lo + n
-
-      have hsplit0 :
-          RegEncoding.toNat low b
-            + ASize low * RegEncoding.toNat high b = 0 := by
-        have hright_size : n + 1 - n = 1 := by
-          omega
-        have hsplit :=
-          RegEncoding.toNat_split
-            (r := r)
-            (m := ⟨n, by simp [r, regSize]⟩)
-            (b := b)
-        rw [hwork0] at hsplit
-        have hsplit' :
-            0 =
-              RegEncoding.toNat low b
-                + ASize low * RegEncoding.toNat high b := by
-          simpa only [
-            r, low, high, splitLeft, splitRight, regSize, ASize,
-            hright_size
-          ] using hsplit
-        exact hsplit'.symm
-
-      have hlow_b : RegEncoding.toNat low b = 0 := by
-        omega
-
-      have hdisj : Shor.Disjoint low high := by
-        unfold Shor.Disjoint low high Reg.hi
-        simp
-
-      have hlow0 :
-          RegEncoding.toNat low (RegEncoding.writeNat high 0 b) = 0 := by
-        rw [RegEncoding.toNat_left_write_right low high hdisj b 0]
-        exact hlow_b
-
-      have hlow1 :
-          RegEncoding.toNat low (RegEncoding.writeNat high 1 b) = 0 := by
-        rw [RegEncoding.toNat_left_write_right low high hdisj b 1]
-        exact hlow_b
-
-      have hqlo : r.lo ≤ q := by
-        simp [r, q]
-
-      have hqhi : q < r.hi := by
-        simp [r, q, Reg.hi]
-
-      have hbit : RegEncoding.bit q b = false := by
-        rw [RegEncoding.bit_eq_testBit_toNat (r := r) (b := b) (q := q) hqlo hqhi]
-        rw [hwork0]
-        simp [r, q]
-
-      have hHq :
-          qs.eval (Gate.H q) (qs.ket b)
-            =
-          ((1 / Real.sqrt (2 : ℝ) : ℂ)) •
-            (qs.ket (RegEncoding.writeNat high 0 b)
-              + qs.ket (RegEncoding.writeNat high 1 b)) := by
-        have hqh : qubitReg q = high := by
-          simp [qubitReg, high, q]
-        rw [HadamardSemantics.eval_H_ket]
-        simp [hqh, hbit, smul_add]
-
-      have ih0 :=
-        ih (RegEncoding.writeNat high 0 b) hlow0
-
-      have ih1 :=
-        ih (RegEncoding.writeNat high 1 b) hlow1
-
-      have hleft :
-          qs.eval (H_reg r) (qs.ket b)
-            =
-          ((1 / Real.sqrt (2 : ℝ) : ℂ)) •
-            ((((1 / Real.sqrt ((ASize low : ℕ) : ℝ) : ℂ)) •
-                ∑ y : Fin (ASize low),
-                  qs.ket (RegEncoding.writeNat low y.1
-                    (RegEncoding.writeNat high 0 b)))
-              +
-              (((1 / Real.sqrt ((ASize low : ℕ) : ℝ) : ℂ)) •
-                ∑ y : Fin (ASize low),
-                  qs.ket (RegEncoding.writeNat low y.1
-                    (RegEncoding.writeNat high 1 b)))) := by
-        calc
-          qs.eval (H_reg r) (qs.ket b)
-              =
-            qs.eval (H_reg low)
-              (qs.eval (Gate.H q) (qs.ket b)) := by
-                simpa [r, low, q] using
-                  H_reg_succ_eval qs lo n (qs.ket b)
-          _ =
-            qs.eval (H_reg low)
-              (((1 / Real.sqrt (2 : ℝ) : ℂ)) •
-                (qs.ket (RegEncoding.writeNat high 0 b)
-                  + qs.ket (RegEncoding.writeNat high 1 b))) := by
-                rw [hHq]
-          _ =
-            ((1 / Real.sqrt (2 : ℝ) : ℂ)) •
-              (qs.eval (H_reg low)
-                  (qs.ket (RegEncoding.writeNat high 0 b))
-                +
-                qs.eval (H_reg low)
-                  (qs.ket (RegEncoding.writeNat high 1 b))) := by
-                rw [qs.eval_smul, qs.eval_add]
-          _ =
-            ((1 / Real.sqrt (2 : ℝ) : ℂ)) •
-              ((((1 / Real.sqrt ((ASize low : ℕ) : ℝ) : ℂ)) •
-                  ∑ y : Fin (ASize low),
-                    qs.ket (RegEncoding.writeNat low y.1
-                      (RegEncoding.writeNat high 0 b)))
-                +
-                (((1 / Real.sqrt ((ASize low : ℕ) : ℝ) : ℂ)) •
-                  ∑ y : Fin (ASize low),
-                    qs.ket (RegEncoding.writeNat low y.1
-                      (RegEncoding.writeNat high 1 b)))) := by
-                rw [ih0, ih1]
-
-      have hsum :
-          (∑ y : Fin (ASize r),
-              qs.ket (RegEncoding.writeNat r y.1 b))
-            =
-          (∑ y : Fin (ASize low),
-              qs.ket
-                (RegEncoding.writeNat low y.1
-                  (RegEncoding.writeNat high 0 b)))
-            +
-          (∑ y : Fin (ASize low),
-              qs.ket
-                (RegEncoding.writeNat low y.1
-                  (RegEncoding.writeNat high 1 b))) := by
-        simpa [r, low, high] using
-          uniform_sum_succ_split qs lo n b
-
-      have hscalar :
-          ((1 / Real.sqrt (2 : ℝ) : ℂ) *
-              (1 / Real.sqrt ((ASize low : ℕ) : ℝ) : ℂ))
-            =
-          (1 / Real.sqrt ((ASize r : ℕ) : ℝ) : ℂ) := by
-        simpa [r, low, ASize, regSize] using
-          Hreg_QFT_scalar_succ n
-
-      calc
-        qs.eval (H_reg { lo := lo, size := n + 1 }) (qs.ket b)
-            =
-          ((1 / Real.sqrt (2 : ℝ) : ℂ)) •
-            ((((1 / Real.sqrt ((ASize low : ℕ) : ℝ) : ℂ)) •
-                ∑ y : Fin (ASize low),
-                  qs.ket (RegEncoding.writeNat low y.1
-                    (RegEncoding.writeNat high 0 b)))
-              +
-              (((1 / Real.sqrt ((ASize low : ℕ) : ℝ) : ℂ)) •
-                ∑ y : Fin (ASize low),
-                  qs.ket (RegEncoding.writeNat low y.1
-                    (RegEncoding.writeNat high 1 b)))) := by
-              simpa [r] using hleft
-        _ =
-          (((1 / Real.sqrt (2 : ℝ) : ℂ) *
-              (1 / Real.sqrt ((ASize low : ℕ) : ℝ) : ℂ))) •
-            ((∑ y : Fin (ASize low),
-                qs.ket
-                  (RegEncoding.writeNat low y.1
-                    (RegEncoding.writeNat high 0 b)))
-              +
-              (∑ y : Fin (ASize low),
-                qs.ket
-                  (RegEncoding.writeNat low y.1
-                    (RegEncoding.writeNat high 1 b)))) := by
-              simp [smul_add, smul_smul]
-        _ =
-          ((1 / Real.sqrt ((ASize r : ℕ) : ℝ) : ℂ)) •
-            ∑ y : Fin (ASize r),
-              qs.ket (RegEncoding.writeNat r y.1 b) := by
-              rw [hscalar, hsum]
-
+/-- Register Hadamards on a zero active register coincide with QFT on that register. -/
 lemma eval_Hreg_zero_eq_QFT
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    (work : Reg)
+    (work : ExtReg)
     (b : qs.Basis)
-    (hwork0 : RegEncoding.toNat work b = 0) :
-    qs.eval (H_reg work) (qs.ket b)
+    (hwork0 : ExtReg.toNat work b = 0) :
+    qs.eval (H_reg work.active) (qs.ket b)
       =
     qs.eval (Gate.QFT work) (qs.ket b) := by
-  rw [eval_Hreg_zero_uniform_sum qs work b hwork0]
-  rw [QFTSemantics.eval_QFT_ket]
-  simp [ASize, qftPhase_zero_left, hwork0]
+  simpa [H_reg, regQubits] using
+    GateSemanticsFacts.eval_Hreg_zero_eq_QFT work b hwork0
 
+/-- Inverse QFT cancels the register-Hadamard preparation of a zero register. -/
 lemma eval_IQFT_Hreg_zero
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    (work : Reg)
+    (work : ExtReg)
     (b : qs.Basis)
-    (hwork0 : RegEncoding.toNat work b = 0) :
+    (hwork0 : ExtReg.toNat work b = 0) :
     qs.eval (IQFT work)
-      (qs.eval (H_reg work) (qs.ket b))
+      (qs.eval (H_reg work.active) (qs.ket b))
       =
     qs.ket b := by
   rw [eval_Hreg_zero_eq_QFT qs work b hwork0]
   simpa [IQFT] using
     qs.eval_adj_apply (Gate.QFT work) (qs.ket b)
 
+/-- Modularly equal phase numerators give the same complex exponential. -/
 private lemma alg1_exp_phase_eq_of_modEq'
     (N u v z : ℕ)
     (hN : 0 < N)
@@ -1793,131 +1470,175 @@ private lemma alg1_exp_phase_eq_of_modEq'
       (hphase v z).symm
 
 
+/-- When the target residue is zero, the Step-1 controlled PhaseProduct fixes every work-label term. -/
 lemma eval_CPhaseProd_fixes_work_of_target_zero
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : qs.Basis)
+    (hb : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
     (hz : alg1TargetResidue cfg b = 0) :
     qs.eval
-        (Gate.CPhaseProd
+        (Gate.CPhaseProdUsing
           cfg.ctrl
           ((2 * Real.pi *
               (((cfg.c + cfg.env.N - 1) % cfg.env.N : ℕ) : ℝ))
             / (cfg.env.N : ℝ))
-          cfg.env.data
-          cfg.env.work)
-        (qs.eval (H_reg cfg.env.work) (qs.ket b))
+          cfg.env.data.active
+          cfg.env.work.active
+          cfg.env.circuit_workspace.step1Workspace)
+        (qs.eval (H_reg cfg.env.work.active) (qs.ket b))
       =
-    qs.eval (H_reg cfg.env.work) (qs.ket b) := by
+    qs.eval (H_reg cfg.env.work.active) (qs.ket b) := by
   classical
 
   let a : ℕ :=
     (cfg.c + cfg.env.N - 1) % cfg.env.N
 
   let φ : ℝ :=
-    (2 * Real.pi * (a : ℝ)) / (cfg.env.N : ℝ)
+    (2 * Real.pi * (a : ℝ)) /
+      (cfg.env.N : ℝ)
+
+  let workReg : Reg := cfg.env.work.active
+  let dataReg : Reg := cfg.env.data.active
+  let ws :=
+    cfg.env.circuit_workspace.step1Workspace
 
   have hNpos : 0 < cfg.env.N :=
-    Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one
+    Nat.lt_trans Nat.zero_lt_one
+      cfg.env.modulus_gt_one
 
-  have hdatawork : Disjoint cfg.env.data cfg.env.work := by
-    rcases cfg.layout.1 with h | h
-    · left
-      change cfg.env.data.lo + cfg.env.data.size ≤ cfg.env.work.lo
-      have h' :
-          cfg.env.data.lo + (cfg.env.data.size + 1)
-            ≤ cfg.env.work.lo := by
-        simpa [extendHi, Reg.hi] using h
-      omega
-    · exact Or.inr h
+  have hdataWork :
+      Disjoint dataReg workReg := by
+    rw [Shor.Disjoint, List.disjoint_left]
+    intro q hqData hqWork
+
+    have howned := cfg.layout.1
+    rw [
+      ExtReg.OwnedDisjoint,
+      List.disjoint_left
+    ] at howned
+
+    exact howned
+      (List.mem_append_left _ hqData)
+      (List.mem_append_left _ hqWork)
+
+  have hctrlWork :
+      cfg.ctrl ∉ workReg.qubits := by
+    intro hctrl
+    exact cfg.layout.2.2.2.2.1
+      (List.mem_append_left _ hctrl)
 
   have hterm :
-      ∀ t : Fin (ASize cfg.env.work),
+      ∀ t : Fin (ASize workReg),
         qs.eval
-            (Gate.CPhaseProd
-              cfg.ctrl
-              φ
-              cfg.env.data cfg.env.work)
+            (Gate.CPhaseProdUsing
+              cfg.ctrl φ
+              dataReg workReg ws)
             (qs.ket
-              (RegEncoding.writeNat cfg.env.work t.1 b))
+              (RegEncoding.writeNat
+                workReg t.1 b))
           =
         qs.ket
-          (RegEncoding.writeNat cfg.env.work t.1 b) := by
+          (RegEncoding.writeNat
+            workReg t.1 b) := by
     intro t
+
     rw [
-      GateSemanticsFacts.eval_CPhaseProd_ket
-        qs cfg.ctrl
+      GateSemanticsFacts.eval_CPhaseProdUsing_ket
+        qs
+        cfg.ctrl
         φ
-        cfg.env.data cfg.env.work
-        (RegEncoding.writeNat cfg.env.work t.1 b)
-        hdatawork
+        dataReg
+        workReg
+        ws
+        (RegEncoding.writeNat workReg t.1 b)
+        (step1Workspace_clean_write
+          qs cfg b hb t)
     ]
-    have hctrl_write :
+
+    have hctrlWrite :
         RegEncoding.bit cfg.ctrl
-            (RegEncoding.writeNat cfg.env.work t.1 b)
+            (RegEncoding.writeNat
+              workReg t.1 b)
           =
         RegEncoding.bit cfg.ctrl b :=
       RegEncoding.bit_writeNat_out
-        (r := cfg.env.work)
-        (v := t.1)
-        (b := b)
-        (q := cfg.ctrl)
-        cfg.layout.2.2.2.2.1
+        workReg t.1 b cfg.ctrl hctrlWork
 
     have hdata :
-        RegEncoding.toNat cfg.env.data
-            (RegEncoding.writeNat cfg.env.work t.1 b)
+        RegEncoding.toNat dataReg
+            (RegEncoding.writeNat
+              workReg t.1 b)
           =
-        RegEncoding.toNat cfg.env.data b :=
+        RegEncoding.toNat dataReg b :=
       RegEncoding.toNat_left_write_right
-        cfg.env.data
-        cfg.env.work
-        hdatawork
-        b
-        t.1
+        dataReg workReg hdataWork b t.1
 
     have hwork :
-        RegEncoding.toNat cfg.env.work
-            (RegEncoding.writeNat cfg.env.work t.1 b)
+        RegEncoding.toNat workReg
+            (RegEncoding.writeNat
+              workReg t.1 b)
           =
         t.1 :=
-      RegEncoding.toNat_writeNat_of_lt cfg.env.work t.1 b t.isLt
+      RegEncoding.toNat_writeNat_of_lt
+        workReg t.1 b t.isLt
 
-    rw [hctrl_write, hdata, hwork]
-    by_cases hctrl : RegEncoding.bit cfg.ctrl b
-    · let x : ℕ := RegEncoding.toNat cfg.env.data b
+    rw [hctrlWrite, hdata, hwork]
+
+    by_cases hctrl :
+        RegEncoding.bit cfg.ctrl b
+
+    · let x : ℕ :=
+        RegEncoding.toNat dataReg b
+
       have hzmod :
           Nat.ModEq cfg.env.N (a * x) 0 := by
-        change (a * x) % cfg.env.N = 0 % cfg.env.N
-        have hz' : (a * x) % cfg.env.N = 0 := by
-          simpa [alg1TargetResidue, a, x, hctrl] using hz
-        rw [hz', Nat.zero_mod cfg.env.N]
+        change
+          (a * x) % cfg.env.N =
+            0 % cfg.env.N
+
+        have hz' :
+            (a * x) % cfg.env.N = 0 := by
+          simpa [
+            alg1TargetResidue,
+            a,
+            x,
+            hctrl
+          ] using hz
+
+        rw [hz', Nat.zero_mod]
+
       have hexp :
           Complex.exp
-              (φ * Complex.I * ((x : ℂ) * (t.1 : ℂ)))
+              (φ * Complex.I *
+                ((x : ℂ) * (t.1 : ℂ)))
             =
           1 := by
         calc
           Complex.exp
-              (φ * Complex.I * ((x : ℂ) * (t.1 : ℂ)))
+              (φ * Complex.I *
+                ((x : ℂ) * (t.1 : ℂ)))
             =
           Complex.exp
-            (((2 * Real.pi) / (cfg.env.N : ℝ)) *
-              Complex.I *
-              (((a * x : ℕ) : ℂ) * (t.1 : ℂ))) := by
-              congr 1
-              dsimp [φ, a]
-              push_cast
-              ring
+              (((2 * Real.pi) /
+                  (cfg.env.N : ℝ)) *
+                Complex.I *
+                (((a * x : ℕ) : ℂ) *
+                  (t.1 : ℂ))) := by
+                    congr 1
+                    dsimp [φ]
+                    push_cast
+                    ring
           _ =
           Complex.exp
-            (((2 * Real.pi) / (cfg.env.N : ℝ)) *
-              Complex.I *
-              (((0 : ℕ) : ℂ) * (t.1 : ℂ))) :=
+              (((2 * Real.pi) /
+                  (cfg.env.N : ℝ)) *
+                Complex.I *
+                (((0 : ℕ) : ℂ) *
+                  (t.1 : ℂ))) :=
             alg1_exp_phase_eq_of_modEq'
               cfg.env.N
               (a * x)
@@ -1925,123 +1646,70 @@ lemma eval_CPhaseProd_fixes_work_of_target_zero
               t.1
               hNpos
               hzmod
-          _ =
-          Complex.exp
-            (((2 * Real.pi) / (cfg.env.N : ℝ)) *
-              Complex.I *
-              ((0 : ℂ) * (t.1 : ℂ))) := by
-            simp
-          _ = 1 := by
-            simp
+          _ = 1 := by simp
+
       simp [hctrl, x, hexp]
+
     · simp [hctrl]
 
-  let z0 : Fin (ASize cfg.env.work) :=
-    ⟨RegEncoding.toNat cfg.env.work b,
-      RegEncoding.toNat_lt_ASize cfg.env.work b⟩
+  let z0 : Fin (ASize workReg) :=
+    ⟨RegEncoding.toNat workReg b,
+      RegEncoding.toNat_lt_ASize
+        workReg b⟩
 
   have hz0 :
-      RegEncoding.writeNat cfg.env.work z0.1 b = b := by
+      RegEncoding.writeNat
+        workReg z0.1 b = b := by
     simpa [z0] using
-      (RegEncoding.writeNat_toNat cfg.env.work b)
+      RegEncoding.writeNat_toNat
+        workReg b
 
-  rcases eval_Hreg_work_expansion qs cfg.env.work b z0 with
-    ⟨β, hβ⟩
+  obtain ⟨β, hβ⟩ :=
+    eval_Hreg_work_expansion
+      qs workReg b z0
 
   have hH :
-      qs.eval (H_reg cfg.env.work) (qs.ket b)
+      qs.eval (H_reg workReg) (qs.ket b)
         =
-      ∑ t : Fin (ASize cfg.env.work),
+      ∑ t : Fin (ASize workReg),
         β t •
           qs.ket
-            (RegEncoding.writeNat cfg.env.work t.1 b) := by
+            (RegEncoding.writeNat
+              workReg t.1 b) := by
     calc
-      qs.eval (H_reg cfg.env.work) (qs.ket b)
+      qs.eval (H_reg workReg) (qs.ket b)
           =
-        qs.eval (H_reg cfg.env.work)
+        qs.eval (H_reg workReg)
           (qs.ket
-            (RegEncoding.writeNat cfg.env.work z0.1 b)) := by
-              rw [hz0]
+            (RegEncoding.writeNat
+              workReg z0.1 b)) := by
+                rw [hz0]
       _ =
-        ∑ t : Fin (ASize cfg.env.work),
+        ∑ t : Fin (ASize workReg),
           β t •
             qs.ket
-              (RegEncoding.writeNat cfg.env.work t.1 b) := hβ
+              (RegEncoding.writeNat
+                workReg t.1 b) := hβ
 
-  calc
+  change
     qs.eval
-        (Gate.CPhaseProd
-          cfg.ctrl
-          φ
-          cfg.env.data
-          cfg.env.work)
-        (qs.eval (H_reg cfg.env.work) (qs.ket b))
+        (Gate.CPhaseProdUsing
+          cfg.ctrl φ
+          dataReg workReg ws)
+        (qs.eval (H_reg workReg) (qs.ket b))
       =
-    qs.eval
-        (Gate.CPhaseProd
-          cfg.ctrl
-          φ
-          cfg.env.data cfg.env.work)
-        (∑ t : Fin (ASize cfg.env.work),
-          β t •
-            qs.ket
-              (RegEncoding.writeNat cfg.env.work t.1 b)) := by
-          rw [hH]
+    qs.eval (H_reg workReg) (qs.ket b)
 
-    _ =
-    ∑ t : Fin (ASize cfg.env.work),
-      qs.eval
-        (Gate.CPhaseProd
-          cfg.ctrl
-          φ
-          cfg.env.data cfg.env.work)
-        (β t •
-          qs.ket
-            (RegEncoding.writeNat cfg.env.work t.1 b)) := by
-          simpa using
-            eval_finset_sum
-              qs
-              (Gate.CPhaseProd
-                cfg.ctrl
-                φ
-                cfg.env.data cfg.env.work)
-              Finset.univ
-              (fun t =>
-                β t •
-                  qs.ket
-                    (RegEncoding.writeNat cfg.env.work t.1 b))
+  rw [hH, eval_finset_sum]
 
-    _ =
-    ∑ t : Fin (ASize cfg.env.work),
-      β t •
-        qs.eval
-          (Gate.CPhaseProd
-            cfg.ctrl
-            φ
-            cfg.env.data cfg.env.work)
-          (qs.ket
-            (RegEncoding.writeNat cfg.env.work t.1 b)) := by
-          apply Finset.sum_congr rfl
-          intro t ht
-          rw [qs.eval_smul]
+  apply Finset.sum_congr rfl
+  intro t _
+  rw [qs.eval_smul, hterm t]
 
-    _ =
-    ∑ t : Fin (ASize cfg.env.work),
-      β t •
-        qs.ket
-          (RegEncoding.writeNat cfg.env.work t.1 b) := by
-          apply Finset.sum_congr rfl
-          intro t ht
-          rw [hterm t]
-
-    _ =
-    qs.eval (H_reg cfg.env.work) (qs.ket b) :=
-      hH.symm
-
+/-- If the target residue is zero, the whole Step-1 circuit returns the original basis state. -/
 lemma alg1_step1_zero_target_exact
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -2053,50 +1721,96 @@ lemma alg1_step1_zero_target_exact
     qs.eval
         (step1
           (Basis := qs.Basis)
-          cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work)
+          cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
         (qs.ket b)
       =
     qs.ket b := by
   let φ : ℝ :=
     (2 * Real.pi *
-        (((cfg.c + cfg.env.N - 1) % cfg.env.N : ℕ) : ℝ))
+        (((cfg.c + cfg.env.N - 1) %
+          cfg.env.N : ℕ) : ℝ))
       / (cfg.env.N : ℝ)
+
+  let ws :=
+    cfg.env.circuit_workspace.step1Workspace
 
   have hphase :
       qs.eval
-          (Gate.CPhaseProd
-            cfg.ctrl φ cfg.env.data cfg.env.work)
-          (qs.eval (H_reg cfg.env.work) (qs.ket b))
+          (Gate.CPhaseProdUsing
+            cfg.ctrl
+            φ
+            cfg.env.data.active
+            cfg.env.work.active
+            ws)
+          (qs.eval
+            (H_reg cfg.env.work.active)
+            (qs.ket b))
         =
-      qs.eval (H_reg cfg.env.work) (qs.ket b) := by
-    simpa [φ] using
-      eval_CPhaseProd_fixes_work_of_target_zero qs cfg b hz
+      qs.eval
+        (H_reg cfg.env.work.active)
+        (qs.ket b) := by
+    simpa [φ, ws] using
+      eval_CPhaseProd_fixes_work_of_target_zero
+        qs cfg b hb hz
+
+  have hworkZero :
+      ExtReg.toNat ws.zExt b = 0 := by
+    simpa [
+      ws,
+      ModMulCircuitWorkspaceOK.step1Workspace,
+      Gate.PhaseProdWorkspace.zExt,
+      ExtReg.toNat
+    ] using hb.2.2.1
 
   calc
     qs.eval
         (step1
           (Basis := qs.Basis)
-          cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work)
+          cfg.c
+          cfg.env.N
+          cfg.ctrl
+          cfg.env.data
+          cfg.env.work
+          cfg.env.circuit_workspace)
         (qs.ket b)
       =
-    qs.eval (IQFT cfg.env.work)
+    qs.eval (IQFT ws.zExt)
       (qs.eval
-        (Gate.CPhaseProd cfg.ctrl φ cfg.env.data cfg.env.work)
-        (qs.eval (H_reg cfg.env.work) (qs.ket b))) := by
-          simp [step1, qs.eval_seq, φ]
-
+        (Gate.CPhaseProdUsing
+          cfg.ctrl
+          φ
+          cfg.env.data.active
+          cfg.env.work.active
+          ws)
+        (qs.eval
+          (H_reg cfg.env.work.active)
+          (qs.ket b))) := by
+            simp [step1, qs.eval_seq, φ, ws]
 
     _ =
-    qs.eval (IQFT cfg.env.work)
-      (qs.eval (H_reg cfg.env.work) (qs.ket b)) := by
-        rw [hphase]
+    qs.eval (IQFT ws.zExt)
+      (qs.eval
+        (H_reg cfg.env.work.active)
+        (qs.ket b)) := by
+          rw [hphase]
 
     _ = qs.ket b :=
       eval_IQFT_Hreg_zero
-        (qs := qs)
-        cfg.env.work
-        b
-        hb.2.2.1
+        qs ws.zExt b hworkZero
+
+end ZeroTargetStep1Exactness
+
+/-! ---------------------------------------------------------
+    Step-3/4 overflow arithmetic
+
+These arithmetic lemmas relate the good-label fractional approximation to the
+comparator cross condition used by Step 4. The endpoint is the equivalence
+between the Step-4 cross condition and overflow of the Step-2 sum.
+--------------------------------------------------------- -/
+
+section Step34OverflowArithmetic
+
+/-- Rewrites the final controlled multiplication residue through the Step-1 target residue. -/
 lemma alg1_output_mod
     (c N x : ℕ)
     (hN : 0 < N) :
@@ -2113,7 +1827,8 @@ lemma alg1_output_mod
   have hsucc :
       a + 1 ≡ c [MOD N] := by
     have h := Nat.ModEq.add_right 1 ha
-    have hsum : (c + N - 1) + 1 = c + N := by
+    have hsum :
+        (c + N - 1) + 1 = c + N := by
       omega
     rw [hsum] at h
     calc
@@ -2128,55 +1843,74 @@ lemma alg1_output_mod
   have hax :
       (a + 1) * x = x + a * x := by
     calc
-      (a + 1) * x = a * x + 1 * x := Nat.add_mul a 1 x
+      (a + 1) * x
+          = a * x + 1 * x :=
+        Nat.add_mul a 1 x
       _ = a * x + x := by simp
       _ = x + a * x := Nat.add_comm _ _
 
   have hxr :
-      x + ((a * x) % N) ≡ x + a * x [MOD N] :=
-    Nat.ModEq.add_left x (Nat.mod_modEq (a * x) N)
+      x + ((a * x) % N) ≡
+        x + a * x [MOD N] :=
+    Nat.ModEq.add_left x
+      (Nat.mod_modEq (a * x) N)
 
   have hmod :
-      c * x ≡ x + ((a * x) % N) [MOD N] := by
+      c * x ≡
+        x + ((a * x) % N) [MOD N] := by
     calc
       c * x ≡ (a + 1) * x [MOD N] := hcx
-      _ ≡ x + a * x [MOD N] := by rw [hax]
-      _ ≡ x + ((a * x) % N) [MOD N] := hxr.symm
+      _ ≡ x + a * x [MOD N] := by
+        rw [hax]
+      _ ≡ x + ((a * x) % N) [MOD N] :=
+        hxr.symm
 
   simpa [Nat.ModEq, a] using hmod
 
 
+/-- Cross-multiplication criterion for comparing two positive natural fractions. -/
 private lemma nat_fraction_lt_iff_cross
     (a n t m : ℕ)
     (hn : 0 < n)
     (hm : 0 < m) :
-    (a : ℝ) / (n : ℝ) < (t : ℝ) / (m : ℝ)
+    (a : ℝ) / (n : ℝ) <
+        (t : ℝ) / (m : ℝ)
       ↔
     a * m < t * n := by
   have hnR : (0 : ℝ) < (n : ℝ) := by
     exact_mod_cast hn
+
   have hmR : (0 : ℝ) < (m : ℝ) := by
     exact_mod_cast hm
 
   constructor
+
   · intro h
     have h' :=
       (div_lt_div_iff₀ hnR hmR).mp h
     exact_mod_cast h'
+
   · intro h
     apply (div_lt_div_iff₀ hnR hmR).mpr
     exact_mod_cast h
 
+
+/-- For good labels, the Step-4 comparator condition is exactly Step-2 overflow. -/
 lemma alg1_step4_cross_iff_overflow_of_good
-    [QSemantics] [RegEncoding QSemantics.Basis]
+    [QSemantics]
+    [RegEncoding QSemantics.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : QSemantics.Basis)
-    (t : Fin (ASize cfg.env.work))
+    (t : Fin (ASize cfg.env.work.active))
     (hb :
       GoodModMulBasisInput
         (inferInstance : QSemantics)
-        cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
+        cfg.env.N
+        cfg.env.data
+        cfg.env.work
+        cfg.flag
+        b)
     (ht : t ∈ alg1GoodLabels cfg b)
     (hzero :
       alg1TargetResidue cfg b = 0 →
@@ -2187,16 +1921,19 @@ lemma alg1_step4_cross_iff_overflow_of_good
   classical
 
   let N : ℕ := cfg.env.N
-  let A : ℕ := ASize cfg.env.data
-  let M : ℕ := ASize cfg.env.work
-  let x : ℕ := RegEncoding.toNat cfg.env.data b
+  let A : ℕ := ASize cfg.env.data.active
+  let M : ℕ := ASize cfg.env.work.active
+  let x : ℕ :=
+    RegEncoding.toNat cfg.env.data.active b
   let r : ℕ := alg1TargetResidue cfg b
   let y : ℕ := alg1OutputValue cfg b
   let s : ℕ := x + r
 
   have hNpos : 0 < N := by
     dsimp [N]
-    exact Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one
+    exact Nat.lt_trans
+      Nat.zero_lt_one
+      cfg.env.modulus_gt_one
 
   have hApos : 0 < A := by
     dsimp [A, ASize]
@@ -2210,22 +1947,27 @@ lemma alg1_step4_cross_iff_overflow_of_good
     simpa [x, N] using hb.1
 
   have hrlt : r < N := by
-    simpa [r, N] using alg1TargetResidue_lt_N cfg b
+    simpa [r, N] using
+      alg1TargetResidue_lt_N cfg b
 
   have hslt : s < 2 * N := by
     dsimp [s]
     omega
 
-  have hNposR : (0 : ℝ) < (N : ℝ) := by
+  have hNposR :
+      (0 : ℝ) < (N : ℝ) := by
     exact_mod_cast hNpos
 
-  have hAposR : (0 : ℝ) < (A : ℝ) := by
+  have hAposR :
+      (0 : ℝ) < (A : ℝ) := by
     exact_mod_cast hApos
 
-  have hMposR : (0 : ℝ) < (M : ℝ) := by
+  have hMposR :
+      (0 : ℝ) < (M : ℝ) := by
     exact_mod_cast hMpos
 
-  have hNleA : (N : ℝ) ≤ (A : ℝ) := by
+  have hNleA :
+      (N : ℝ) ≤ (A : ℝ) := by
     dsimp [N, A]
     exact_mod_cast cfg.env.data_capacity
 
@@ -2234,23 +1976,30 @@ lemma alg1_step4_cross_iff_overflow_of_good
     cfg.env.precision.2.1
 
   have hetaN :
-      η * (N : ℝ) < (1 / 2 : ℝ) * (N : ℝ) :=
+      η * (N : ℝ) <
+        (1 / 2 : ℝ) * (N : ℝ) :=
     mul_lt_mul_of_pos_right heta hNposR
 
   have hhalfNleA :
-      (1 / 2 : ℝ) * (N : ℝ) ≤ (A : ℝ) := by
+      (1 / 2 : ℝ) * (N : ℝ) ≤
+        (A : ℝ) := by
     nlinarith
 
   have hdelta :
-      η / (A : ℝ) < 1 / (N : ℝ) := by
-    apply (div_lt_div_iff₀ hAposR hNposR).mpr
+      η / (A : ℝ) <
+        1 / (N : ℝ) := by
+    apply
+      (div_lt_div_iff₀ hAposR hNposR).mpr
     nlinarith
 
   have hgood :
-      |(r : ℝ) / (N : ℝ) - (t.1 : ℝ) / (M : ℝ)|
+      |(r : ℝ) / (N : ℝ) -
+          (t.1 : ℝ) / (M : ℝ)|
         <
       η / (A : ℝ) := by
-    have hraw := (Finset.mem_filter.mp ht).2
+    have hraw :=
+      (Finset.mem_filter.mp ht).2
+
     simpa [
       alg1GoodLabels,
       alg1TargetFraction,
@@ -2258,10 +2007,12 @@ lemma alg1_step4_cross_iff_overflow_of_good
       r, N, M, A
     ] using hraw
 
-  rcases abs_lt.mp hgood with ⟨hgood_left, hgood_right⟩
+  rcases abs_lt.mp hgood with
+    ⟨hgood_left, hgood_right⟩
 
   have hbelow :
-      (r : ℝ) / (N : ℝ) - η / (A : ℝ)
+      (r : ℝ) / (N : ℝ) -
+          η / (A : ℝ)
         <
       (t.1 : ℝ) / (M : ℝ) := by
     linarith
@@ -2269,44 +2020,54 @@ lemma alg1_step4_cross_iff_overflow_of_good
   have habove :
       (t.1 : ℝ) / (M : ℝ)
         <
-      (r : ℝ) / (N : ℝ) + η / (A : ℝ) := by
+      (r : ℝ) / (N : ℝ) +
+          η / (A : ℝ) := by
     linarith
 
   have hy_mod :
       y = s % N := by
     dsimp [y, s, r, x, N]
-    by_cases hctrl : RegEncoding.bit cfg.ctrl b
-    ·
-      simp only [
+
+    by_cases hctrl :
+        RegEncoding.bit cfg.ctrl b
+
+    · simp only [
         alg1OutputValue,
         alg1TargetResidue,
         hctrl,
         if_true
       ]
+
       exact
         alg1_output_mod
           cfg.c
           cfg.env.N
-          (RegEncoding.toNat cfg.env.data b)
-          (Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one)
-    ·
-      simp [
+          (RegEncoding.toNat
+            cfg.env.data.active b)
+          (Nat.lt_trans
+            Nat.zero_lt_one
+            cfg.env.modulus_gt_one)
+
+    · simp [
         alg1OutputValue,
         alg1TargetResidue,
         hctrl,
         Nat.mod_eq_of_lt hb.1
       ]
 
-  change y * M < N * t.1 ↔ N ≤ s
+  change
+    y * M < N * t.1 ↔ N ≤ s
 
   by_cases hover : N ≤ s
-  ·
-    have hy_over :
+
+  · have hy_over :
         y = s - N := by
       calc
         y = s % N := hy_mod
-        _ = (s - N) % N := Nat.mod_eq_sub_mod hover
-        _ = s - N := Nat.mod_eq_of_lt (by omega)
+        _ = (s - N) % N :=
+          Nat.mod_eq_sub_mod hover
+        _ = s - N :=
+          Nat.mod_eq_of_lt (by omega)
 
     have hylt :
         y < r := by
@@ -2326,7 +2087,9 @@ lemma alg1_step4_cross_iff_overflow_of_good
         ((y : ℝ) + 1) * (N : ℝ)
           ≤
         (r : ℝ) * (N : ℝ) :=
-      mul_le_mul_of_nonneg_right hgapR (le_of_lt hNposR)
+      mul_le_mul_of_nonneg_right
+        hgapR
+        (le_of_lt hNposR)
 
     have hdiv :
         ((y : ℝ) + 1) / (N : ℝ)
@@ -2338,7 +2101,8 @@ lemma alg1_step4_cross_iff_overflow_of_good
     have hsplit :
         ((y : ℝ) + 1) / (N : ℝ)
           =
-        (y : ℝ) / (N : ℝ) + 1 / (N : ℝ) := by
+        (y : ℝ) / (N : ℝ) +
+          1 / (N : ℝ) := by
       ring
 
     rw [hsplit] at hdiv
@@ -2346,7 +2110,8 @@ lemma alg1_step4_cross_iff_overflow_of_good
     have hyfrac :
         (y : ℝ) / (N : ℝ)
           <
-        (r : ℝ) / (N : ℝ) - η / (A : ℝ) := by
+        (r : ℝ) / (N : ℝ) -
+          η / (A : ℝ) := by
       linarith
 
     have hcrossfrac :
@@ -2358,32 +2123,51 @@ lemma alg1_step4_cross_iff_overflow_of_good
     have hcross :
         y * M < N * t.1 := by
       have hraw :=
-        (nat_fraction_lt_iff_cross y N t.1 M hNpos hMpos).mp
+        (nat_fraction_lt_iff_cross
+          y N t.1 M hNpos hMpos).mp
           hcrossfrac
+
       simpa [Nat.mul_comm] using hraw
 
     constructor
+
     · intro _
       exact hover
+
     · intro _
       exact hcross
 
-  ·
-    have hy_no :
+  · have hy_no :
         y = s := by
       calc
         y = s % N := hy_mod
-        _ = s := Nat.mod_eq_of_lt (lt_of_not_ge hover)
+        _ = s :=
+          Nat.mod_eq_of_lt
+            (lt_of_not_ge hover)
 
     by_cases hxzero : x = 0
-    ·
-      have hrzero :
+
+    · have hrzero :
           r = 0 := by
         dsimp [r]
         unfold alg1TargetResidue
-        by_cases hctrl : RegEncoding.bit cfg.ctrl b
-        · simp [hctrl]; simp_all only [Nat.cast_pos, Nat.cast_le, one_div, mul_lt_mul_iff_left₀,
-          neg_lt_sub_iff_lt_add, not_le, mul_zero, Nat.zero_mod, N, A, M, x, r, s, y]
+
+        by_cases hctrl :
+            RegEncoding.bit cfg.ctrl b
+
+        · simp [hctrl]
+          simp_all only [
+            Nat.cast_pos,
+            Nat.cast_le,
+            one_div,
+            mul_lt_mul_iff_left₀,
+            neg_lt_sub_iff_lt_add,
+            not_le,
+            mul_zero,
+            Nat.zero_mod,
+            N, A, M, x, r, s, y
+          ]
+
         · simp [hctrl]
 
       have hyzero :
@@ -2402,13 +2186,14 @@ lemma alg1_step4_cross_iff_overflow_of_good
         simp [hyzero, htzero]
 
       constructor
+
       · intro h
         exact False.elim (hnotcross h)
+
       · intro h
         exact False.elim (hover h)
 
-    ·
-      have hxpos : 0 < x :=
+    · have hxpos : 0 < x :=
         Nat.pos_of_ne_zero hxzero
 
       have hgapNat :
@@ -2425,7 +2210,9 @@ lemma alg1_step4_cross_iff_overflow_of_good
           ((r : ℝ) + 1) * (N : ℝ)
             ≤
           (y : ℝ) * (N : ℝ) :=
-        mul_le_mul_of_nonneg_right hgapR (le_of_lt hNposR)
+        mul_le_mul_of_nonneg_right
+          hgapR
+          (le_of_lt hNposR)
 
       have hdiv :
           ((r : ℝ) + 1) / (N : ℝ)
@@ -2437,13 +2224,15 @@ lemma alg1_step4_cross_iff_overflow_of_good
       have hsplit :
           ((r : ℝ) + 1) / (N : ℝ)
             =
-          (r : ℝ) / (N : ℝ) + 1 / (N : ℝ) := by
+          (r : ℝ) / (N : ℝ) +
+            1 / (N : ℝ) := by
         ring
 
       rw [hsplit] at hdiv
 
       have hyr :
-          (r : ℝ) / (N : ℝ) + η / (A : ℝ)
+          (r : ℝ) / (N : ℝ) +
+              η / (A : ℝ)
             <
           (y : ℝ) / (N : ℝ) := by
         linarith
@@ -2457,8 +2246,10 @@ lemma alg1_step4_cross_iff_overflow_of_good
       have hreverse :
           N * t.1 < y * M := by
         have hraw :=
-          (nat_fraction_lt_iff_cross t.1 M y N hMpos hNpos).mp
+          (nat_fraction_lt_iff_cross
+            t.1 M y N hMpos hNpos).mp
             hfrac
+
         simpa [Nat.mul_comm] using hraw
 
       have hnotcross :
@@ -2467,15 +2258,29 @@ lemma alg1_step4_cross_iff_overflow_of_good
         omega
 
       constructor
+
       · intro h
         exact False.elim (hnotcross h)
+
       · intro h
         exact False.elim (hover h)
 
+end Step34OverflowArithmetic
+
+/-! ---------------------------------------------------------
+    Final trace construction
+
+The final lemma assembles the valid-state expansion, Step-1 coefficient
+identification, zero-target support fact, and Step-3/4 overflow arithmetic into
+the `Alg1Trace` record consumed by the later quantitative bounds.
+--------------------------------------------------------- -/
+
+section FinalTraceConstruction
+
+/-- Every valid input state admits the finite Algorithm-1 trace used by the bound proofs. -/
 lemma alg1_trace_of_valid
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -2487,12 +2292,12 @@ lemma alg1_trace_of_valid
   rcases good_input_expansion_of_valid qs cfg ψ hψ with
     ⟨support, inputCoeff, hinput, hgood⟩
 
-  let zeroWork : Fin (ASize cfg.env.work) :=
+  let zeroWork : Fin (ASize cfg.env.work.active) :=
     ⟨0, by simp[ASize]⟩
 
   let phaseCoeff :
       qs.Basis →
-        Fin (ASize cfg.env.work) →
+        Fin (ASize cfg.env.work.active) →
         ℂ :=
     fun b t => alg1PhaseCoeff qs cfg b t
 
@@ -2517,21 +2322,21 @@ lemma alg1_trace_of_valid
         alg1_step1_zero_target_exact qs cfg b hb hz
 
     have hlabel_ne :
-        RegEncoding.writeNat cfg.env.work t.1 b ≠ b := by
+        RegEncoding.writeNat cfg.env.work.active t.1 b ≠ b := by
       intro hEq
       have ht_read :
           t.1 =
-            RegEncoding.toNat cfg.env.work
-              (RegEncoding.writeNat cfg.env.work t.1 b) := by
+            RegEncoding.toNat cfg.env.work.active
+              (RegEncoding.writeNat cfg.env.work.active t.1 b) := by
         symm
         exact RegEncoding.toNat_writeNat_of_lt
-          cfg.env.work t.1 b t.isLt
+          cfg.env.work.active t.1 b t.isLt
       have : t.1 = 0 := by
         calc
           t.1 =
-              RegEncoding.toNat cfg.env.work
-                (RegEncoding.writeNat cfg.env.work t.1 b) := ht_read
-          _ = RegEncoding.toNat cfg.env.work b := by rw [hEq]
+              RegEncoding.toNat cfg.env.work.active
+                (RegEncoding.writeNat cfg.env.work.active t.1 b) := ht_read
+          _ = RegEncoding.toNat cfg.env.work.active b := by rw [hEq]
           _ = 0 := hb.2.2.1
       exact ht0 this
 
@@ -2548,13 +2353,13 @@ lemma alg1_trace_of_valid
         qs.eval
             (step1
               (Basis := qs.Basis)
-              cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work)
+              cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
             (qs.ket b)
           =
-        ∑ t : Fin (ASize cfg.env.work),
+        ∑ t : Fin (ASize cfg.env.work.active),
           phaseCoeff b t •
             qs.ket
-              (RegEncoding.writeNat cfg.env.work t.1 b) := by
+              (RegEncoding.writeNat cfg.env.work.active t.1 b) := by
     intro b hb
     simpa [phaseCoeff, ModMulConfig.U1] using
       alg1_step1_ket_qpe_expansion qs cfg b hb
@@ -2568,9 +2373,16 @@ lemma alg1_trace_of_valid
 
     step34_support := by
       intro b hbmem t ht hcoeff
+
       apply alg1_step4_cross_iff_overflow_of_good
-        cfg b t (hgood b hbmem) ht
+        cfg
+        b
+        t
+        (hgood b hbmem)
+        ht
+
       intro hz
+
       exact
         hzero_support
           b
@@ -2586,13 +2398,13 @@ lemma alg1_trace_of_valid
     qs.eval
         (step1
           (Basis := qs.Basis)
-          cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work)
+          cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
         ψ
       =
     qs.eval
         (step1
           (Basis := qs.Basis)
-          cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work)
+          cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
         (∑ b ∈ support,
           inputCoeff b • qs.ket b) := by
         rw [hinput]
@@ -2602,14 +2414,14 @@ lemma alg1_trace_of_valid
       qs.eval
         (step1
           (Basis := qs.Basis)
-          cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work)
+          cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
         (inputCoeff b • qs.ket b) := by
         simpa using
           eval_finset_sum
             qs
             (step1
               (Basis := qs.Basis)
-              cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work)
+              cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
             support
             (fun b => inputCoeff b • qs.ket b)
 
@@ -2619,7 +2431,7 @@ lemma alg1_trace_of_valid
         qs.eval
           (step1
             (Basis := qs.Basis)
-            cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work)
+            cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
           (qs.ket b) := by
         apply Finset.sum_congr rfl
         intro b hb
@@ -2627,17 +2439,19 @@ lemma alg1_trace_of_valid
           qs.eval_smul
             (step1
               (Basis := qs.Basis)
-              cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work)
+              cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
             (inputCoeff b)
             (qs.ket b)
 
     _ =
     ∑ b ∈ support,
       inputCoeff b •
-        ∑ t : Fin (ASize cfg.env.work),
+        ∑ t : Fin (ASize cfg.env.work.active),
           phaseCoeff b t •
             qs.ket
-              (RegEncoding.writeNat cfg.env.work t.1 b) := by
+              (RegEncoding.writeNat cfg.env.work.active t.1 b) := by
         apply Finset.sum_congr rfl
         intro b hb
         rw [hphase b (hgood b hb)]
+
+end FinalTraceConstruction

@@ -3,7 +3,7 @@ const graphData = {
     title: "ShorVerification",
     subtitle: "Top-level correctness architecture",
     description:
-      "The repository splits Shor verification into a shared semantic core, classical/source-program mathematics, high-level circuit correctness, low-level lowering, approximation bounds, and the final order-finding/factoring statements.",
+      "The repository splits Shor verification into a shared semantic core, classical/source-program mathematics, high-level circuit correctness, low-level lowering, modular-exponentiation approximation bounds, resource estimation, and the final order-finding/factoring statements.",
     nodes: [
       {
         id: "basic",
@@ -63,13 +63,24 @@ const graphData = {
       {
         id: "machine",
         label: "Abstract machine",
-        subtitle: "Gate to LowGate lowering",
+        subtitle: "planned Gate to LowGate lowering",
         kind: "machine",
         view: "machine",
         file: "FastMultiplication/ShorVerification/AbstractMachine",
-        declarations: ["LowGate", "eval_lowerQFT", "lowerGate_correctness"],
+        declarations: ["LowGate", "PhaseLoweringPlan", "QFTLoweringPlan", "lowerGate_correctness"],
         summary:
-          "Defines the target low-level gate language and proves recursive lowering correctness for QFT, phase products, and whole programs."
+          "Defines the target low-level gate language, plans recursive phase-product and QFT lowerings with explicit workspace, and proves whole-program lowering correctness."
+      },
+      {
+        id: "gatecount",
+        label: "Gate counts",
+        subtitle: "imports ShorCorrectness",
+        kind: "resource",
+        view: "gatecount",
+        file: "FastMultiplication/ShorVerification/GateCount",
+        declarations: ["LowGateCostModel", "PhaseProductGateCountBound", "QFTGateCountBound", "exists_shorGateCountBound"],
+        summary:
+          "Depends on ShorCorrectness for the order-finding circuit definitions, then counts the lowered circuits under a concrete LowGate cost model."
       },
       {
         id: "modexp",
@@ -96,13 +107,13 @@ const graphData = {
       {
         id: "shor",
         label: "Shor correctness",
-        subtitle: "end-to-end theorem",
+        subtitle: "no GateCount import",
         kind: "final",
         view: "shor",
         file: "FastMultiplication/ShorVerification/ShorCorrectness.lean",
         declarations: ["MeasureClass", "probability_of_success", "Shor_correct", "Shor_correct_approx_uniform", "Shor_end_to_end_factoring"],
         summary:
-          "Combines ideal/approximate order-finding circuits, generalized measurement probabilities, valid-input approximation control, and classical reduction into the top-level statements."
+          "Combines ideal/approximate order-finding circuits, generalized measurement probabilities, valid-input approximation control, and classical reduction. This correctness layer does not import GateCount."
       }
     ],
     links: [
@@ -113,8 +124,12 @@ const graphData = {
       { source: "phase", target: "qft", label: "phase product identity" },
       { source: "phase", target: "machine", label: "lower phase products" },
       { source: "qft", target: "machine", label: "lower QFT" },
+      { source: "machine", target: "gatecount", label: "count lowered gates" },
+      { source: "phase", target: "gatecount", label: "phase recurrence" },
+      { source: "qft", target: "gatecount", label: "QFT recurrence" },
       { source: "machine", target: "shor", label: "exact lowering" },
       { source: "modexp", target: "shor", label: "approx bounds" },
+      { source: "shor", target: "gatecount", label: "Shor circuit defs" },
       { source: "classical", target: "shor", label: "factor recovery" },
       { source: "basic", target: "modexp", label: "norm facts" }
     ]
@@ -235,22 +250,61 @@ const graphData = {
 
   machine: {
     title: "Abstract machine",
-    subtitle: "Lowering high-level gates",
+    subtitle: "Lowering high-level gates with explicit plans and workspace",
     description:
-      "The lowering branch defines a low-level gate language and proves that lowering preserves the high-level semantics under geometry side conditions.",
+      "The lowering branch now factors phase-product and QFT lowering into definition, plan, workspace, readiness, and correctness modules, then packages the result as whole-program lowering.",
     parent: "overview",
     nodes: [
       { id: "lowgate", label: "LowGate", subtitle: "target language", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/LowGate.lean", declarations: ["LowGate"], summary: "Defines the low-level target gate syntax." },
-      { id: "phase-lower", label: "Phase lowering", subtitle: "phase products", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/PhaseProductLoweringCorrectness.lean", declarations: ["eval_lowerPhaseProd"], summary: "Correctness theorem for lowered phase-product operations." },
-      { id: "qft-lower", label: "QFT lowering", subtitle: "recursive QFT", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/QFTLoweringCorrectness.lean", declarations: ["lowerQFTAux", "eval_lowerQFT", "evalL_lowerPhaseProd"], summary: "Uses the high-level QFT split identity and the phase-product lowering theorem for the middle phase-product in the recursive QFT decomposition." },
-      { id: "whole", label: "Whole program", subtitle: "lowerGate_correctness", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/WholeProgramCorrectness.lean", declarations: ["GateGeomOK", "lowerGate_correctness"], summary: "Proves lowering correctness for full high-level Gate programs." }
+      { id: "phase-defs", label: "Phase definitions", subtitle: "compiled signed phase gates", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/PhaseProductLoweringCorrectness/Definitions.lean", declarations: ["LowerGateClass", "compiledSignedPhaseGate", "SignedRecursiveWorkspaceOK"], summary: "Introduces the low-level evaluator interface, compiled signed/controlled phase gates, recursive workspace requirements, and clean-state predicates." },
+      { id: "phase-plan", label: "Phase plans", subtitle: "recursive lowering plan", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/PhaseProductLoweringCorrectness/Plan.lean", declarations: ["PhaseLoweringPlan", "lowerGateRec", "standardSignedPhaseLoweringPlan"], summary: "Builds the recursive plans used to lower signed and controlled signed phase products through the compiled phase-product circuit." },
+      { id: "phase-work", label: "Phase workspace", subtitle: "clean reserve propagation", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/PhaseProductLoweringCorrectness/Workspace.lean", declarations: ["compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis", "eval_compileSignedAllocations_ket_fits_and_child_clean"], summary: "Connects recursive reserve assumptions to the compiler workspace invariants and proves allocation preserves the clean child workspace state." },
+      { id: "phase-ready", label: "Phase readiness", subtitle: "plans are executable", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/PhaseProductLoweringCorrectness/PlanReadiness.lean", declarations: ["standardSignedPhaseLoweringPlan_ready_and_clean", "standardSignedPhaseLoweringPlan_ready", "standardCSignedPhaseLoweringPlan_ready"], summary: "Proves the standard signed and controlled phase-product plans are ready under the workspace hypotheses." },
+      { id: "phase-correct", label: "Phase correctness", subtitle: "evalL_lowerSignedPhaseProd", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/PhaseProductLoweringCorrectness/Correctness.lean", declarations: ["evalL_lowerSignedPhaseProd", "evalL_lowerCSignedPhaseProd"], summary: "Turns readiness and compiler correctness into semantic preservation theorems for lowered signed and controlled phase products." },
+      { id: "qft-plan", label: "QFT plan semantics", subtitle: "recursive QFT plan", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/QFTLoweringCorrectness/PlanSemantics.lean", declarations: ["QFTLoweringPlan", "lowerQFTPlan", "QFTLoweringReady", "evalL_lowerQFTPlan"], summary: "Defines the recursive QFT lowering plan and proves its semantic correctness assuming plan readiness." },
+      { id: "qft-work", label: "QFT workspace", subtitle: "reserve construction", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/QFTLoweringCorrectness/Workspace.lean", declarations: ["qftWorkspaceNeed", "QFTReserveOK", "QFTWorkspaceOK", "standardQFTLoweringPlan", "lowerQFT"], summary: "Carves QFT reserve registers into x/z workspace pools and builds the canonical recursive QFT lowering plan." },
+      { id: "qft-ready", label: "QFT readiness", subtitle: "clean state and correctness", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/QFTLoweringCorrectness/Readiness.lean", declarations: ["standardPhaseProdUsingPlan_ready_and_clean", "standardQFTLoweringPlan_ready_and_clean", "reserveQFTLoweringPlan_ready_ket", "evalL_lowerQFT"], summary: "Proves the selected QFT workspace is clean enough for the recursive plan, preserves cleanliness, and evaluates like the high-level QFT." },
+      { id: "whole", label: "Whole program", subtitle: "lowerGate_correctness", kind: "machine", file: "FastMultiplication/ShorVerification/AbstractMachine/WholeProgramCorrectness.lean", declarations: ["GateWorkspaceOK", "lowerGate", "lowerGate_correctness"], summary: "Proves lowering correctness for full high-level Gate programs using the specialized QFT and phase-product lowering theorems." }
     ],
     links: [
-      { source: "lowgate", target: "phase-lower", label: "target semantics" },
-      { source: "lowgate", target: "qft-lower", label: "target semantics" },
-      { source: "phase-lower", target: "qft-lower", label: "lowers split phase product" },
-      { source: "phase-lower", target: "whole", label: "recursive case" },
-      { source: "qft-lower", target: "whole", label: "recursive case" }
+      { source: "lowgate", target: "phase-defs", label: "target semantics" },
+      { source: "phase-defs", target: "phase-plan", label: "plan definitions" },
+      { source: "phase-defs", target: "phase-work", label: "workspace invariants" },
+      { source: "phase-plan", target: "phase-ready", label: "readiness proof" },
+      { source: "phase-work", target: "phase-ready", label: "clean workspace" },
+      { source: "phase-ready", target: "phase-correct", label: "phase lowering theorem" },
+      { source: "phase-correct", target: "qft-plan", label: "lowers split phase product" },
+      { source: "qft-plan", target: "qft-work", label: "workspace construction" },
+      { source: "qft-work", target: "qft-ready", label: "QFT readiness" },
+      { source: "phase-correct", target: "qft-ready", label: "middle phase product" },
+      { source: "qft-ready", target: "whole", label: "recursive case" },
+      { source: "phase-correct", target: "whole", label: "recursive case" }
+    ]
+  },
+
+  gatecount: {
+    title: "Gate counts",
+    subtitle: "Resource estimation for the lowered implementation",
+    description:
+      "The gate-count branch assigns concrete costs to LowGate programs, solves the phase-product and QFT recurrences, and lifts those component bounds to the full approximate order-finding circuit.",
+    parent: "overview",
+    nodes: [
+      { id: "defs", label: "Cost definitions", subtitle: "LowGateCostModel", kind: "resource", file: "FastMultiplication/ShorVerification/GateCount/Definitions.lean", declarations: ["LowGateCostModel", "gateCount", "shorGateCostModel", "phaseProductSafeRate", "shorGateRate"], summary: "Defines the counting fold over LowGate syntax, primitive costs, direct phase-product costs, asymptotic rates, and component bound predicates." },
+      { id: "lowgate-lemmas", label: "LowGate lemmas", subtitle: "structural count equations", kind: "resource", file: "FastMultiplication/ShorVerification/GateCount/Lemmas/LowGateCount.lean", declarations: ["gateCount_seq_eq", "gateCount_adj_eq", "gateCount_H_eq", "gateCount_X_eq"], summary: "Records the basic count equations for sequence, adjoint, H, and X gates used when expanding larger circuits." },
+      { id: "phase-lemmas", label: "Phase-product lemmas", subtitle: "width growth and recurrence", kind: "resource", file: "FastMultiplication/ShorVerification/GateCount/PhaseProduct/Lemmas.lean", declarations: ["phaseProgramOverhead_linear", "genOpsWithProduct_nextSignedWidth_le_input_add_const", "balanced_phaseProduct_recurrence_solution", "phaseProductGateCountBound_of_balanced_signed_bound"], summary: "Proves generated-program well-formedness, controls width growth, bounds one-level lowering cost, and solves the balanced phase-product recurrence." },
+      { id: "phase-main", label: "Phase-product bounds", subtitle: "component theorem", kind: "resource", file: "FastMultiplication/ShorVerification/GateCount/PhaseProduct/Main.lean", declarations: ["phaseProductGateCountBound_of_programOK", "cPhaseProductGateCountBound_of_programOK"], summary: "Packages the phase-product lemmas into signed and controlled phase-product gate-count bounds for valid generated programs." },
+      { id: "qft-count", label: "QFT bounds", subtitle: "binary recurrence", kind: "resource", file: "FastMultiplication/ShorVerification/GateCount/QFT_GateCount.lean", declarations: ["explicitQFTGateCount", "lowerQFT_gateCount_eq_explicit", "qftGateCountBound_of_phaseProduct", "qftGateCountBound_of_programOK"], summary: "Relates lowered QFT counts to an explicit recurrence and proves the QFT bound from the phase-product component bound." },
+      { id: "shor-count", label: "Shor bound", subtitle: "O(n^(2+epsilon))", kind: "resource", file: "FastMultiplication/ShorVerification/GateCount/Shor_GateCount.lean", declarations: ["ShorGateCountBound", "shorGateCountBound_of_components", "exists_phaseProductProgramOK", "exists_shorGateCountBound"], summary: "Combines modular-exponentiation, QFT, and phase-product counts, then chooses k so the full lowered order-finding circuit is bounded by n^(2+epsilon)." }
+    ],
+    links: [
+      { source: "defs", target: "lowgate-lemmas", label: "count equations" },
+      { source: "defs", target: "phase-lemmas", label: "cost model" },
+      { source: "lowgate-lemmas", target: "phase-lemmas", label: "gate count lemmas" },
+      { source: "phase-lemmas", target: "phase-main", label: "phase recurrence" },
+      { source: "phase-main", target: "qft-count", label: "QFT recurrence" },
+      { source: "qft-count", target: "shor-count", label: "component bounds" },
+      { source: "phase-main", target: "shor-count", label: "controlled phase bound" },
+      { source: "defs", target: "shor-count", label: "shor rate" }
     ]
   },
 
@@ -336,6 +390,7 @@ const nodeClasses = {
     qft: ["QFTSemantics", "RadixReverseSemantics", "PhaseSemantics"],
     phase: ["ExtRegSplitSemantics"],
     machine: ["LowerGateClass"],
+    gatecount: ["LowGateCostModel", "PhaseProductProgramOK", "PhaseProductGateCountBound", "QFTGateCountBound", "ShorGateCountBound"],
     modexp: ["Spec", "IdealCtrlModMulExactSemantics", "ModMulPrimitiveSemantics"],
     shor: ["ContinuedFractionPost", "MeasureClass"]
   },
@@ -352,7 +407,16 @@ const nodeClasses = {
     "qft-sem": ["QFTSemantics", "RadixReverseSemantics", "PhaseSemantics"]
   },
   machine: {
-    "phase-lower": ["LowerGateClass"]
+    "phase-defs": ["LowerGateClass"],
+    "phase-ready": ["PhaseLoweringReady"],
+    "qft-plan": ["QFTLoweringReady"],
+    "qft-work": ["QFTReserveOK", "QFTWorkspaceOK"],
+    "qft-ready": ["QFTWorkspaceCleanState", "QFTWorkspaceStateOK"]
+  },
+  gatecount: {
+    defs: ["LowGateCostModel", "PhaseProductGateCountBound", "CPhaseProductGateCountBound", "QFTGateCountBound"],
+    "phase-main": ["PhaseProductProgramOK"],
+    "shor-count": ["ShorGateCountBound"]
   },
   modexp: {
     core: ["Spec", "IdealCtrlModMulExactSemantics", "ModMulPrimitiveSemantics"]
@@ -404,6 +468,7 @@ const kindLabels = {
   math: "Math backbone",
   algorithm: "Algorithm proof",
   machine: "Lowering",
+  resource: "Resource estimate",
   final: "Final assembly"
 };
 const kindColors = {
@@ -411,6 +476,7 @@ const kindColors = {
   math: "#218263",
   algorithm: "#b46519",
   machine: "#6d55b8",
+  resource: "#7d6a13",
   final: "#be3f50"
 };
 
@@ -441,14 +507,34 @@ const edgeCatalog = {
     proof: "The theorem rewrites QFT over a register into right-QFT, phase product, left-QFT, and radix reversal."
   },
   "lower phase products": {
-    theorem: "evalL_lowerPhaseProd",
-    description: "Proves that the low-level lowering of a high-level phase product preserves the high-level semantics.",
-    proof: "The proof invokes the phase-product compiler correctness theorem and the recursive low-level lowering semantics."
+    theorem: "evalL_lowerSignedPhaseProd / evalL_lowerCSignedPhaseProd",
+    description: "Proves that low-level signed and controlled signed phase-product lowerings preserve the high-level semantics.",
+    proof: "The proof invokes the phase-product compiler correctness theorem through the planned lowering and workspace-readiness layers."
   },
   "lower QFT": {
-    theorem: "eval_lowerQFT",
+    theorem: "evalL_lowerQFT",
     description: "Proves that the recursive low-level QFT lowering has the same semantics as high-level Gate.QFT.",
-    proof: "The proof uses eval_QFT_split and, for the middle split phase product, calls evalL_lowerPhaseProd."
+    proof: "The proof uses eval_QFT_split through the QFT plan semantics and, for the middle split phase product, calls the signed phase-product lowering theorem."
+  },
+  "count lowered gates": {
+    theorem: "gateCount",
+    description: "Moves from semantic lowering theorems to concrete LowGate programs whose elementary operations can be counted.",
+    proof: "The resource branch counts the exact lowered programs produced by the abstract-machine lowering pipeline under shorGateCostModel."
+  },
+  "phase recurrence": {
+    theorem: "phaseProductGateCountBound_of_programOK",
+    description: "Solves the recursive phase-product counting problem for generated programs.",
+    proof: "The proof combines source-program well-formedness, width-growth bounds, one-level cost bounds, and the balanced recurrence solution."
+  },
+  "QFT recurrence": {
+    theorem: "qftGateCountBound_of_programOK",
+    description: "Bounds recursive lowered QFT by using the phase-product bound for the cross-term and solving the binary QFT recurrence.",
+    proof: "The QFT counting proof relates lowerQFT to an explicit recurrence, then applies phase-product bounds and contraction estimates for the two recursive halves."
+  },
+  "Shor circuit defs": {
+    theorem: "exists_shorGateCountBound",
+    description: "GateCount imports ShorCorrectness to reuse the order-finding circuit and setup definitions; correctness itself does not depend on resource bounds.",
+    proof: "The final resource theorem counts the lowered orderFindingApprox circuit after ShorCorrectness has already defined it."
   },
   "exact lowering": {
     theorem: "lowerGate_correctness",
@@ -605,10 +691,50 @@ const edgeCatalog = {
     description: "Provides the semantic interface for evaluating LowGate programs.",
     proof: "The low-level correctness theorems are stated by comparing evalL of lowered LowGate programs with high-level Gate evaluation."
   },
+  "plan definitions": {
+    theorem: "PhaseLoweringPlan",
+    description: "Defines the recursive phase-product lowering plans that the readiness and correctness proofs consume.",
+    proof: "The plan layer lowers the compiled allocation, body, deallocation, signed phase, and controlled signed phase gates into LowGate programs."
+  },
+  "workspace invariants": {
+    theorem: "SignedRecursiveWorkspaceOK",
+    description: "Captures the reserve and clean-state conditions required by recursive phase-product lowering.",
+    proof: "The workspace layer derives compiler workspace facts and child-clean-state facts from the recursive reserve assumptions."
+  },
+  "readiness proof": {
+    theorem: "standardSignedPhaseLoweringPlan_ready",
+    description: "Shows the standard phase-product lowering plans can actually be evaluated on the states considered by the proof.",
+    proof: "Readiness follows by composing readiness lemmas for allocation, annotated operation bodies, deallocation, and controlled phase leaves."
+  },
+  "clean workspace": {
+    theorem: "standardSignedPhaseLoweringPlan_ready_and_clean",
+    description: "Strengthens phase-product plan readiness with preservation of the clean recursive workspace state.",
+    proof: "The proof threads reserve-clean hypotheses through compiler allocations and recursive child plans."
+  },
+  "phase lowering theorem": {
+    theorem: "evalL_lowerSignedPhaseProd",
+    description: "Converts the ready phase-product plan into semantic correctness for the exported lowering function.",
+    proof: "The correctness module applies plan semantics, readiness, and compiler correctness, then exposes lowered signed and controlled phase-product theorems."
+  },
   "lowers split phase product": {
-    theorem: "evalL_lowerPhaseProd",
+    theorem: "evalL_lowerSignedPhaseProd",
     description: "Supplies the phase-product lowering theorem used inside recursive QFT lowering.",
-    proof: "In eval_lowerQFTAux_strong, the proof rewrites the lowered middle phase product using evalL_lowerPhaseProd."
+    proof: "The QFT plan semantics delegates the middle split phase product to the signed phase-product lowering theorem."
+  },
+  "workspace construction": {
+    theorem: "standardQFTLoweringPlan",
+    description: "Chooses concrete x/z reserve pools and builds the standard recursive QFT lowering plan.",
+    proof: "The workspace file computes qftWorkspaceNeed, slices the input reserve into qftXWork and qftZWork, and constructs the QFT plan without proving dynamic readiness yet."
+  },
+  "QFT readiness": {
+    theorem: "standardQFTLoweringPlan_ready_and_clean",
+    description: "Proves the constructed recursive QFT plan is ready and preserves the selected workspace-clean invariant.",
+    proof: "The readiness file combines right and left recursive QFT readiness with a workspace-backed phase-product readiness proof for the split cross term."
+  },
+  "middle phase product": {
+    theorem: "standardPhaseProdUsingPlan_ready_and_clean",
+    description: "Feeds the signed phase-product lowering machinery into the QFT lowering workspace proof.",
+    proof: "The QFT workspace module constructs the phase-product plan needed between the two recursive QFT calls and proves it ready."
   },
   "recursive case": {
     theorem: "lowerGate_correctness",
@@ -649,6 +775,36 @@ const edgeCatalog = {
     theorem: "modExpApprox_valid_dist_uniform",
     description: "Lifts the uniform single-multiply bound over the modular-exponentiation loop.",
     proof: "The proof iterates across exponent bits, preserves valid states with the ideal semantics, and accumulates the `stepErr` contribution."
+  },
+  "count equations": {
+    theorem: "gateCount_seq_eq",
+    description: "Expands the LowGate counting fold over basic syntax constructors.",
+    proof: "The structural lemmas make larger gate-count proofs compositional by exposing exact count equations for sequencing, adjoints, and primitive gates."
+  },
+  "cost model": {
+    theorem: "shorGateCostModel",
+    description: "Supplies the concrete primitive-operation costs used by every resource bound.",
+    proof: "Component counting theorems instantiate the shared LowGateCostModel with the Shor primitive costs."
+  },
+  "gate count lemmas": {
+    theorem: "gateCount_standardSignedPhaseLoweringPlan",
+    description: "Connects recursive lowering plans to arithmetic bounds on their generated LowGate programs.",
+    proof: "The phase-product counting lemmas repeatedly unfold LowGate count equations while treating compiler bookkeeping gates as zero-cost in the selected model."
+  },
+  "component bounds": {
+    theorem: "shorGateCountBound_of_components",
+    description: "Combines phase-product, controlled phase-product, and QFT component bounds for the full order-finding circuit.",
+    proof: "The Shor resource proof decomposes order finding into preparation, modular exponentiation, QFT, and lowering overhead, then applies each component theorem."
+  },
+  "controlled phase bound": {
+    theorem: "cPhaseProductGateCountBound_of_programOK",
+    description: "Provides the controlled phase-product count used by modular multiplication and Shor resource estimates.",
+    proof: "The controlled bound is reduced to the signed phase-product bound with a constant-factor overhead."
+  },
+  "shor rate": {
+    theorem: "shorGateRate",
+    description: "Defines the final comparison rate n^(2+epsilon) used by ShorGateCountBound.",
+    proof: "The final existence theorem chooses k so the phase-product exponent is below 2+epsilon and absorbs fixed overheads into a constant."
   },
   "finite sets": {
     theorem: "valid_choices_card_general",
@@ -1385,7 +1541,8 @@ function renderGraph() {
     const route = edgeRoute(view, link, source, target);
     const path = make("path", {
       class: `edge${isSelectedEdge ? " selected" : ""}${isNeighbor ? " neighbor" : ""}${dim ? " dimmed" : ""}`,
-      d: route.d
+      d: route.d,
+      "marker-end": "url(#arrow)"
     }, edgesLayer);
     const hitPath = make("path", {
       class: "edge-hit",

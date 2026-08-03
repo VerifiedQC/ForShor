@@ -31,7 +31,7 @@ noncomputable def ord (a N : ℕ) (hgcd : Nat.gcd a N = 1) : ℕ :=
 /-- Classical size and coprimality conditions used in the correctness proof. -/
 def BasicSetting (a r N m n : ℕ) : Prop :=
   0 < a ∧ a < N ∧
-  Order a r N ∧
+  Order a N r ∧
   N^2 < 2^m ∧ 2^m ≤ 2 * N^2 ∧
   N < 2^n ∧ 2^n ≤ 2 * N
 
@@ -41,33 +41,193 @@ def BasicSetting (a r N m n : ℕ) : Prop :=
     This section isolates the rational-approximation condition that a measured
     outcome must satisfy and the abstract continued-fraction recovery interface.
 ========================================================= -/
-
-noncomputable def GoodOutcome (j m N r : ℕ) : Prop :=
-  ∃ k, Nat.Coprime k r ∧
-    |((j:ℝ)/(2^m:ℝ)) - ((k:ℝ)/(r:ℝ))| < (1 / (2*(N:ℝ)^2))
-
 structure CFOut where
   num : ℕ
   den : ℕ
 deriving DecidableEq
 
-def approxRat (o Q k r : ℕ) (δ : ℝ) : Prop :=
-  (Q > 0) ∧
-  abs ((o : ℝ)/(Q : ℝ) - (k : ℝ)/(r : ℝ)) ≤ δ
+def approxRat
+    (o Q k r : ℕ)
+    (δ : ℝ) : Prop :=
+  0 < Q ∧ 0 < r ∧
+  abs ((o : ℝ) / (Q : ℝ) - (k : ℝ) / (r : ℝ)) ≤ δ
 
-/-- Abstract continued-fraction / rational-approximation postprocessing. -/
+noncomputable def GoodOutcome
+    (o Q r : ℕ) : Prop :=
+  ∃ k : ℕ, k < r ∧
+    Nat.Coprime k r ∧
+    r ^ 2 ≤ Q ∧
+    approxRat o Q k r (1 / (2 * (Q : ℝ)))
+
+/-- Abstract continued-fraction/rational-approximation postprocessing.
+
+`searchBound Q` is a uniform number of convergent candidates sufficient for
+inputs with denominator bounded by `Q`. The correctness field states that a
+sufficiently accurate reduced fraction is found within that bound.
+-/
 class ContinuedFractionPost where
   step : ℕ → ℕ → ℕ → CFOut
   denom : ℕ → ℕ → ℕ → ℕ := fun t o Q => (step t o Q).den
+  searchBound : ℕ → ℕ
+  recovers_denominator :
+    ∀ {o Q k r : ℕ},
+      k < r → r ^ 2 ≤ Q →
+      approxRat o Q k r (1 / (2 * (Q : ℝ))) →
+      Nat.Coprime k r →
+        ∃ t : ℕ, t < searchBound Q ∧ denom t o Q = r
+  -- recovers_denominator :
+  --   ∀ {o Q k r : ℕ},
+  --     0 < r → k < r →  r ^ 2 ≤ Q →
+  --     approxRat o Q k r (1 / (2 * (Q : ℝ))) →
+  --     Nat.Coprime k r →
+  --     ∃ t : ℕ, t < searchBound Q ∧ denom t o Q = r
 
-lemma CF_recovers_denominator [ContinuedFractionPost]
-  (T : ℕ → ℕ)
-  {o Q k r : ℕ}
-  (happrox : approxRat o Q k r (1 / (2 * (Q : ℝ))))
-  (hgcd : Nat.gcd k r = 1) :
-  ∃ t, t < T Q ∧ ContinuedFractionPost.denom t o Q = r := by
-  sorry
+def ContinuedFractionSearchComplete
+    [ContinuedFractionPost]
+    (T : ℕ → ℕ) : Prop :=
+  ∀ Q : ℕ,
+    ContinuedFractionPost.searchBound Q ≤ T Q
 
+lemma CF_recovers_denominator
+    [ContinuedFractionPost]
+    (T : ℕ → ℕ)
+    (hT : ContinuedFractionSearchComplete T)
+    {o Q k r : ℕ}
+    (hkr : k < r)
+    (hrQ : r ^ 2 ≤ Q)
+    (happrox :
+      approxRat o Q k r
+        (1 / (2 * (Q : ℝ))))
+    (hgcd : Nat.Coprime k r) :
+    ∃ t : ℕ,
+      t < T Q ∧
+      ContinuedFractionPost.denom t o Q = r := by
+  rcases
+      ContinuedFractionPost.recovers_denominator
+        hkr hrQ happrox hgcd with
+    ⟨t, ht, hdenom⟩
+
+  exact
+    ⟨t,
+      lt_of_lt_of_le ht (hT Q),
+      hdenom⟩
+
+lemma GoodOutcome.exists_denominator_candidate
+    [ContinuedFractionPost]
+    (T : ℕ → ℕ)
+    (hT : ContinuedFractionSearchComplete T)
+    {o Q r : ℕ}
+    (hgood : GoodOutcome o Q r) :
+    ∃ t : ℕ,
+      t < T Q ∧
+      ContinuedFractionPost.denom t o Q = r := by
+  rcases hgood with
+    ⟨k, hkr, hgcd, hrQ, happrox⟩
+
+  exact CF_recovers_denominator
+    T hT hkr hrQ happrox hgcd
+
+abbrev OrderVerifier := ℕ → Bool
+
+variable [ContinuedFractionPost]
+
+noncomputable def orderCandidates
+    (T : ℕ → ℕ)
+    (o Q : ℕ) : Finset ℕ :=
+  (Finset.range (T Q)).image
+    (fun t =>
+      ContinuedFractionPost.denom t o Q)
+
+noncomputable def verifiedOrderCandidates
+    (T : ℕ → ℕ)
+    (verify : OrderVerifier)
+    (o Q : ℕ) : Finset ℕ :=
+  (orderCandidates T o Q).filter
+    (fun d => 0 < d ∧ verify d = true)
+
+noncomputable def OF_post
+    (T : ℕ → ℕ)
+    (verify : OrderVerifier)
+    (o Q : ℕ) : ℕ :=
+  let candidates :=
+    verifiedOrderCandidates T verify o Q
+
+  if h : candidates.Nonempty then
+    candidates.min' h
+  else
+    0
+
+lemma denominator_mem_orderCandidates
+    (T : ℕ → ℕ)
+    {o Q r : ℕ}
+    (h :
+      ∃ t : ℕ,
+        t < T Q ∧
+        ContinuedFractionPost.denom t o Q = r) :
+    r ∈ orderCandidates T o Q := by
+  rcases h with ⟨t, ht, hdenom⟩
+  rw [orderCandidates, Finset.mem_image]
+  exact ⟨t, Finset.mem_range.mpr ht, hdenom⟩
+
+lemma GoodOutcome.order_mem_candidates
+    (T : ℕ → ℕ)
+    (hT : ContinuedFractionSearchComplete T)
+    {o Q r : ℕ}
+    (hgood : GoodOutcome o Q r) :
+    r ∈ orderCandidates T o Q := by
+  apply denominator_mem_orderCandidates
+  exact hgood.exists_denominator_candidate T hT
+
+lemma mem_verifiedOrderCandidates
+    (T : ℕ → ℕ)
+    (verify : OrderVerifier)
+    {o Q d : ℕ}
+    (hcandidate : d ∈ orderCandidates T o Q)
+    (hdpos : 0 < d)
+    (hverify : verify d = true) :
+    d ∈ verifiedOrderCandidates T verify o Q := by
+  simp [
+    verifiedOrderCandidates,
+    hcandidate,
+    hdpos,
+    hverify
+  ]
+
+lemma OF_post_eq_of_mem_of_least
+    (T : ℕ → ℕ)
+    (verify : OrderVerifier)
+    {o Q r : ℕ}
+    (hr :
+      r ∈ verifiedOrderCandidates T verify o Q)
+    (hleast :
+      ∀ d ∈ verifiedOrderCandidates T verify o Q,
+        r ≤ d) :
+    OF_post T verify o Q = r := by
+  classical
+
+  let candidates :=
+    verifiedOrderCandidates T verify o Q
+
+  have hr' : r ∈ candidates := by
+    simpa [candidates] using hr
+
+  have hnonempty : candidates.Nonempty :=
+    ⟨r, hr'⟩
+
+  unfold OF_post
+  dsimp only
+
+  rw [dif_pos hnonempty]
+
+  apply Nat.le_antisymm
+
+  · exact Finset.min'_le candidates r hr'
+
+  · exact hleast
+      (candidates.min' hnonempty)
+      (by
+        simpa [candidates] using
+          Finset.min'_mem candidates hnonempty)
 /-! =========================================================
     Section 3: Classical postprocessing success indicator
 
@@ -75,24 +235,9 @@ lemma CF_recovers_denominator [ContinuedFractionPost]
     definitions express the classical scan over continued-fraction candidates.
 ========================================================= -/
 
-abbrev OrderVerifier := ℕ → Bool
-
-variable [ContinuedFractionPost]
-
-noncomputable def OF_post
-  (T : ℕ → ℕ) (verify : OrderVerifier) (o Q : ℕ) : ℕ :=
-  let Tmax := T Q
-  let rec go : ℕ → ℕ
-    | 0      => 0
-    | t + 1  =>
-        let d := ContinuedFractionPost.denom t o Q
-        if verify d then d else go t
-  go Tmax
 
 noncomputable def r_found (T : ℕ → ℕ) (verify : OrderVerifier) (o Q r : ℕ) : ℝ :=
   if OF_post (T := T) verify o Q = r then (1 : ℝ) else 0
 
 /-- The asymptotic success-probability constant appearing in the final bound. -/
 noncomputable def κ : ℝ := (4 * Real.exp (-2)) / (Real.pi ^ 2)
-
-end Shor

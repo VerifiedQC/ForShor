@@ -12,6 +12,7 @@
   --math: #218263;
   --algorithm: #b46519;
   --machine: #6d55b8;
+  --resource: #7d6a13;
   --final: #be3f50;
   --shadow: 0 18px 42px rgba(26, 37, 56, 0.13);
   --small-shadow: 0 8px 20px rgba(26, 37, 56, 0.1);
@@ -606,6 +607,10 @@ h1 {
   --node-color: var(--machine);
 }
 
+.node[data-kind="resource"] {
+  --node-color: var(--resource);
+}
+
 .node[data-kind="final"] {
   --node-color: var(--final);
 }
@@ -624,6 +629,10 @@ h1 {
 
 .node[data-kind="machine"] rect.node-card {
   stroke: color-mix(in srgb, var(--machine) 74%, white);
+}
+
+.node[data-kind="resource"] rect.node-card {
+  stroke: color-mix(in srgb, var(--resource) 74%, white);
 }
 
 .node[data-kind="final"] rect.node-card {

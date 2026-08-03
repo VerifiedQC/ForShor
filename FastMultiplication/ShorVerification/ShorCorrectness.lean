@@ -27,47 +27,50 @@ lives in `MathBackbone/ShorAlgorithm.lean`.
 ========================================================= -/
 
 def initY1 (y : Reg) : Gate :=
-  Gate.X y.lo
+  match y.qubits with
+  | [] => Gate.id
+  | q :: _ => Gate.X q
 
 /-- Approximate order finding using the proved valid-input ModExp circuit. -/
 noncomputable def orderFindingApprox
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     (a N : ℕ)
-    (x y work : Reg)
-    (flag : ℕ) : Gate :=
-  (H_reg x) ;;
-  (initY1 y) ;;
-  (modExpApproxValid
-    (Basis := qs.Basis)
-    a N x y work flag) ;;
-  (Gate.QFT x)
+    (x y work : ExtReg)
+    (flag : ℕ)
+    (hworkspace : ModMulCircuitWorkspaceOK y work) : Gate :=
+  (H_reg x.active) ;;
+  (initY1 y.active) ;;
+  (modExpApproxValid (Basis := qs.Basis) a N x.active y work flag hworkspace) ;;
+  (IQFT x)
+
 
 /-- The lowered implementation of approximate order finding. -/
 noncomputable def orderFindingApproxLow
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
-    [ExtRegSplitSemantics qs.Basis]
     (k : ℕ) (hk : 1 < k)
     (ops : Prog k)
     (a N : ℕ)
-    (x y work : Reg)
-    (flag : ℕ) :=
-  lowerGate
-    (Basis := qs.Basis)
-    k hk ops
-    (orderFindingApprox (qs := qs) a N x y work flag)
+    (x y work : ExtReg)
+    (flag : ℕ)
+    (hmodWorkspace : ModMulCircuitWorkspaceOK y work)
+    (hLowerWorkspace :
+      GateWorkspaceOK ops (orderFindingApprox qs a N x y work flag hmodWorkspace)) :=
+  lowerGate (Basis := qs.Basis) k hk ops
+    (orderFindingApprox qs a N x y work flag hmodWorkspace) hLowerWorkspace
 
 /-- Ideal order-finding circuit using exact modular exponentiation. -/
 noncomputable def orderFindingIdeal
-  (qs : QSemantics) [RegEncoding qs.Basis] [Spec]
-  (a N : ℕ) (x y : Reg) : Gate :=
-  (H_reg x) ;;
-  (initY1 y) ;;
-  (modExpIdeal' (qs := qs) a N x y) ;;
-  (Gate.QFT x)
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [Spec]
+    (a N : ℕ)
+    (x y : ExtReg) : Gate :=
+  (H_reg x.active) ;;
+  (initY1 y.active) ;;
+  (modExpIdeal' qs a N x.active y.active) ;;
+  (IQFT x)
 
 
 variable {qs : QSemantics}
@@ -129,7 +132,6 @@ class MeasureClass (qs : QSemantics) [RegEncoding qs.Basis] where
   measProj_complete :
     ∀ r ψ,
       (∑ o : Fin (2 ^ regSize r), measProj r o.1 ψ) = ψ
-
 
 /--
 Run an arbitrary circuit-like object `C` using `evalC`, then measure `r`.
@@ -733,8 +735,6 @@ lemma successProbAfterFinset_inter_range_eq [MeasureClass qs]
       (qs := qs) r o (qs.eval G ψ) hoGe
 
 variable [ContinuedFractionPost] [Spec]
-variable [ExtRegEncoding qs.Basis]
-
 /--
 Success probability after an arbitrary circuit-like object `C`.
 
@@ -811,7 +811,7 @@ lemma dist_eval_common_suffix_le
                 (qs.eval I ψ))
     _ ≤ ε := h
 
-omit [MeasureClass qs] [Spec] [ExtRegEncoding QSemantics.Basis] in
+omit [MeasureClass qs] [Spec] in
 /-- Convert a state-distance bound between two complete circuits into a lower
 bound on the approximate circuit's postprocessed success probability. -/
 lemma probability_of_success_eval_dist [MeasureClass qs]
@@ -912,20 +912,20 @@ structure ShorOrderFindingInstance where
   /-- The modulus to factor. -/
   N : ℕ
   /-- The exponent/control register. -/
-  x : Reg
+  x : ExtReg
   /-- The modular-exponentiation data register. -/
-  y : Reg
+  y : ExtReg
   /-- The sampled base is in the valid range. -/
   range : 0 < a ∧ a < N
   /-- The sampled base is coprime to the modulus. -/
   coprime : Nat.gcd a N = 1
   /-- The exponent register has the standard Shor width. -/
-  x_width : regSize x = Nat.log2 (2 * N^2)
+  x_width : regSize x.active = Nat.log2 (2 * N^2)
   /-- The data register has enough room for residues modulo `N`. -/
-  y_width : regSize y = Nat.log2 (2 * N)
+  y_width : regSize y.active = Nat.log2 (2 * N)
   /-- The continued-fraction/postprocessing assumptions for this instance. -/
   order_setting :
-    BasicSetting a (ord a N coprime) N (regSize x) (regSize y)
+    BasicSetting a (ord a N coprime) N (regSize x.active) (regSize y.active)
 
 /-- Low-level lowering assumptions shared by lowered Shor statements. -/
 structure ShorLoweringSetup where
@@ -937,10 +937,7 @@ structure ShorLoweringSetup where
   ops : Prog k
   /-- The point-consuming program is safe. -/
   consumes :
-    ProgConsumesPtsSafe
-      (k := k) (by omega)
-      State.start_state ops
-      (genInterpolationPoints k)
+    ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k)
   /-- The point-consuming program uncomputes back to the start state. -/
   returns : run? ops State.start_state = some State.start_state
 
@@ -959,13 +956,15 @@ structure ShorFactoringInstance where
 def ShorCleanInput
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    (x y work : Reg) (flag : ℕ)
+    (x y work : ExtReg)
+    (flag : ℕ)
     (b0 : qs.Basis) : Prop :=
-  RegEncoding.toNat x b0 = 0 ∧
-  RegEncoding.toNat y b0 = 0 ∧
-  RegEncoding.bit y.hi b0 = false ∧
-  RegEncoding.toNat work b0 = 0 ∧
-  RegEncoding.bit flag b0 = false
+  RegEncoding.toNat x.active b0 = 0 ∧
+  RegEncoding.toNat y.active b0 = 0 ∧
+  y.FreshFor 2 b0 ∧
+  RegEncoding.toNat work.active b0 = 0 ∧
+  work.FreshFor 1 b0 ∧
+  RegEncoding.toNat (qubitReg flag) b0 = 0
 
 /--
 Public assumptions for the approximate implementation of Shor.
@@ -974,22 +973,52 @@ structure ShorApproxSetup
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     (η : ℝ)
-    (a N : ℕ)
-    (x y work : Reg)
+    (x y work : ExtReg)
     (flag : ℕ)
     (b0 : qs.Basis) : Prop where
   /-- The exponent, data, work, carry, and flag qubits do not overlap. -/
   register_layout :
-    ModExpLayout x y work flag
+    ModExpLayout x.active y work flag
+
+  circuit_workspace :
+    ModMulCircuitWorkspaceOK y work
+
+  exponent_data_disjoint :
+    ExtReg.OwnedDisjoint x y
 
   /-- The work register has enough extra bits for precision `η`. -/
   work_precision :
-    Algorithm1Precision η y work
+    Algorithm1Precision η y.active work.active
 
   /-- Shor begins in `|0⋯0⟩` on all registers it uses. -/
   clean_input :
     ShorCleanInput qs x y work flag b0
 
+def IdealOrderFindingInput
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    (x y : ExtReg)
+    (b0 : qs.Basis) : Prop :=
+  RegEncoding.toNat x.active b0 = 0 ∧
+  RegEncoding.toNat y.active b0 = 0 ∧
+  ExtReg.OwnedDisjoint x y
+
+omit [ContinuedFractionPost] [Spec] in
+lemma ShorApproxSetup.toIdealOrderFindingInput
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    {η : ℝ}
+    {x y work : ExtReg}
+    {flag : ℕ}
+    {b0 : qs.Basis}
+    (hsetup : ShorApproxSetup qs η  x y work flag b0) :
+    IdealOrderFindingInput qs x y b0 := by
+  rcases hsetup.clean_input with
+    ⟨hx0, hy0, _hyFresh, _hwork0,
+      _hworkFresh, _hflag0⟩
+
+  exact
+    ⟨hx0, hy0, hsetup.exponent_data_disjoint⟩
 /-! =========================================================
     Section 4: Final correctness statements
 
@@ -1001,130 +1030,82 @@ structure ShorApproxSetup
 
 /-- Ideal order-finding success probability for Shor's algorithm.
 
-This is the top-level quantum lower bound: starting from a unit input state,
-the ideal order-finding circuit recovers the order with at least the standard
-inverse-polylogarithmic probability. -/
+This is the top-level quantum lower bound: starting from a clean
+computational-basis input, the ideal order-finding circuit recovers the order
+with at least the standard inverse-polylogarithmic probability. -/
 theorem Shor_correct
-  (T : ℕ → ℕ)
-  (inst : ShorOrderFindingInstance)
-  (ψ0 : qs.State)
-  (hψ0 : ‖ψ0‖ = 1) :
-  probability_of_success (qs := qs) (T := T)
-    (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-    (x := inst.x) (r := ord inst.a inst.N inst.coprime)
-    (Q := 2^(regSize inst.x))
-    (evalC := qs.eval)
-    (C := orderFindingIdeal (qs := qs) inst.a inst.N inst.x inst.y)
-    (ψ := ψ0)
-  ≥ κ / (Nat.log2 inst.N : ℝ)^4 := by
+    [GateSemanticsFacts qs]
+    [IdealCtrlModMulExactSemantics qs]
+    (T : ℕ → ℕ)
+    (hT : ContinuedFractionSearchComplete T)
+    (inst : ShorOrderFindingInstance)
+    (b0 : qs.Basis)
+    (hinput :
+      IdealOrderFindingInput qs inst.x inst.y b0) :
+    probability_of_success
+        (qs := qs)
+        (T := T)
+        (verify :=
+          fun d => decide ((inst.a ^ d) % inst.N = 1))
+        (x := inst.x.active)
+        (r := ord inst.a inst.N inst.coprime)
+        (Q := ASize inst.x.active)
+        (evalC := qs.eval)
+        (C :=
+          orderFindingIdeal
+            (qs := qs)
+            inst.a inst.N inst.x inst.y)
+        (ψ := qs.ket b0)
+      ≥
+    κ / (Nat.log2 inst.N : ℝ) ^ 4 := by
   sorry
 
-omit [MeasureClass qs] [ContinuedFractionPost] [Spec] [ExtRegEncoding qs.Basis] in
-lemma qubit_toNat_eq_zero_of_bit_false
-    {q : ℕ} {b : qs.Basis}
-    (hbit : RegEncoding.bit q b = false) :
-    RegEncoding.toNat (qubitReg q) b = 0 := by
-  have hlt :
-      RegEncoding.toNat (qubitReg q) b < 2 := by
-    simpa [ASize, regSize, qubitReg] using
-      RegEncoding.toNat_lt_ASize (qubitReg q) b
-  have hbit_toNat :
-      false = Nat.testBit (RegEncoding.toNat (qubitReg q) b) 0 := by
-    calc
-      false = RegEncoding.bit q b := hbit.symm
-      _ = Nat.testBit (RegEncoding.toNat (qubitReg q) b) (q - (qubitReg q).lo) := by
-        exact RegEncoding.bit_eq_testBit_toNat
-          (r := qubitReg q) (b := b) (q := q)
-          (by simp [qubitReg])
-          (by simp [qubitReg, Reg.hi])
-      _ = Nat.testBit (RegEncoding.toNat (qubitReg q) b) 0 := by
-        simp [qubitReg]
-  have hcases :
-      RegEncoding.toNat (qubitReg q) b = 0 ∨
-        RegEncoding.toNat (qubitReg q) b = 1 := by
-    omega
-  rcases hcases with hzero | hone
-  · exact hzero
-  · exfalso
-    simp [hone] at hbit_toNat
-
-omit [MeasureClass qs] [ContinuedFractionPost] [Spec] [ExtRegEncoding qs.Basis] in
-lemma disjoint_of_forall_qubits_outside
-    (x r : Reg)
-    (hx : 0 < regSize x)
-    (hr : 0 < regSize r)
-    (hout :
-      ∀ q : ℕ, x.lo ≤ q → q < x.hi → QubitOutside q r) :
-    Disjoint x r := by
-  by_contra hdisj
-  simp [Disjoint] at hdisj
-  by_cases hxr : x.lo ≤ r.lo
-  · have hrlo_xhi : r.lo < x.hi := by
-      simpa [Reg.hi] using hdisj.1
-    have hrlo_rhi : r.lo < r.hi := by
-      simp [Reg.hi, regSize] at hr ⊢
-      omega
-    rcases hout r.lo hxr hrlo_xhi with hleft | hright
-    · exact (Nat.lt_irrefl r.lo hleft).elim
-    · omega
-  · have hrx : r.lo ≤ x.lo := by omega
-    have hxlo_xhi : x.lo < x.hi := by
-      simp [Reg.hi, regSize] at hx ⊢
-      omega
-    have hxlo_rhi : x.lo < r.hi := by
-      simpa [Reg.hi] using hdisj.2
-    rcases hout x.lo (le_rfl) hxlo_xhi with hleft | hright
-    · omega
-    · omega
-
-omit [MeasureClass qs] [ContinuedFractionPost] [Spec] [ExtRegEncoding qs.Basis] in
-lemma disjoint_of_forall_qubits_ne
-    (x : Reg) (q₀ : ℕ)
-    (hx : 0 < regSize x)
-    (hne :
-      ∀ q : ℕ, x.lo ≤ q → q < x.hi → q ≠ q₀) :
-    Disjoint x (qubitReg q₀) := by
-  apply disjoint_of_forall_qubits_outside
-  · exact hx
-  · simp [qubitReg, regSize]
-  · intro q hqlo hqhi
-    unfold QubitOutside
-    have hne' := hne q hqlo hqhi
-    simp [qubitReg, Reg.hi]
-    omega
+omit [ContinuedFractionPost] [Spec] in
+lemma initY1_eq_X_lowQubit
+    (r : Reg)
+    (hr : 0 < regSize r) :
+    initY1 r = Gate.X (r.lowQubit hr) := by
+  cases r with
+  | mk qubits nodup =>
+      cases qubits with
+      | nil =>
+          simp [regSize, Reg.width] at hr
+      | cons q qubits =>
+          simp [initY1, Reg.lowQubit]
 
 omit [ContinuedFractionPost] [Spec] in
 /--
-After Shor's Hadamards on `x` and initialization of `y` to `1`,
+After Shor's Hadamards on `x.active` and initialization of `y.active` to `1`,
 the state is a valid input for modular exponentiation.
 
-This must be proved from `hsetup.clean_input`, `hsetup.register_layout`,
-the `H_reg` expansion/locality theorem, and the semantics of `Gate.X`.
+This uses only the clean computational-basis input, the list-based modular-
+exponentiation layout, the `H_reg` expansion/locality theorem, and the
+semantics of `Gate.X`.
 -/
 lemma ShorApproxSetup.prepared_state_valid
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     {η : ℝ}
     {a N : ℕ}
-    {x y work : Reg}
+    {x y work : ExtReg}
     {flag : ℕ}
     {b0 : qs.Basis}
     (ha : 0 < a ∧ a < N)
-    (hxpos : 0 < regSize x)
-    (hn : regSize y = Nat.log2 (2 * N))
-    (hsetup : ShorApproxSetup qs η a N x y work flag b0) :
-    qs.eval (initY1 y) (qs.eval (H_reg x) (qs.ket b0))
+    (hxpos : 0 < regSize x.active)
+    (hn : regSize y.active = Nat.log2 (2 * N))
+    (hsetup : ShorApproxSetup qs η x y work flag b0) :
+    qs.eval (initY1 y.active)
+        (qs.eval (H_reg x.active) (qs.ket b0))
       ∈ ValidModMulState qs N y work flag := by
   classical
   rcases hsetup.clean_input with
-    ⟨hx0, hy0, hcarry_bit, hwork0, hflag_bit⟩
+    ⟨hx0, hy0, hyFresh, hwork0, hworkFresh, hflag0⟩
 
   have hN : 1 < N := by
     omega
 
-  have hypos : 0 < regSize y := by
+  have hypos : 0 < regSize y.active := by
     have harg_ne : 2 * N ≠ 0 := by omega
     have hle_log : 1 ≤ Nat.log2 (2 * N) := by
       rw [Nat.le_log2 harg_ne]
@@ -1133,128 +1114,86 @@ lemma ShorApproxSetup.prepared_state_valid
     rw [hn]
     omega
 
-  have hy_one_lt : 1 < ASize y := by
-    have : regSize y ≠ 0 := Nat.ne_of_gt hypos
+  have hy_one_lt : 1 < ASize y.active := by
+    have : regSize y.active ≠ 0 := Nat.ne_of_gt hypos
     simpa [ASize] using this
 
-  have hy_one_lt_cap : 1 < ASize y := hy_one_lt
-
-  have hLayoutTail :
-      ModExpTailLayout x y work flag x.lo (tbits x) := by
-    simpa [ModExpLayout] using hsetup.register_layout
-  rcases hLayoutTail with ⟨_hxlo, _hxhi, hcontrols⟩
-
-  have hcore0 : ModMulCoreLayout y work flag x.lo := by
-    simpa [tbits] using hcontrols 0 (by simpa [tbits] using hxpos)
+  have hcore0 : ModMulCoreLayout y work flag (x.active.get ⟨0, hxpos⟩) :=
+    hsetup.register_layout ⟨0, hxpos⟩
 
   rcases hcore0 with
-    ⟨hext_work, hflag_ext, _hflag_work, _hctrl_ext0, _hctrl_work0, _hctrl_ne0⟩
+    ⟨hy_work_owned, hflag_y_owned, _hflag_work_owned,
+      _hctrl_y0, _hctrl_work0, _hctrl_flag0⟩
 
-  have hwork_y : Disjoint work y := by
-    rcases hext_work with h | h
-    · right
-      exact le_trans
-        (show y.hi ≤ (extendHi y).hi by simp [extendHi, Reg.hi])
-        h
-    · left
-      simpa [extendHi] using h
+  have hy_x : Disjoint y.active x.active :=
+    Disjoint.symm
+      (ExtReg.activeDisjoint_of_ownedDisjoint hsetup.exponent_data_disjoint)
 
-  have hcarry_y : Disjoint (qubitReg y.hi) y := by
-    right
-    simp [qubitReg]
+  have hyNew_x : Disjoint (y.newBits 2) x.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqNew hqx
+    exact hsetup.exponent_data_disjoint
+      (List.mem_append_left _ hqx)
+      (List.mem_append_right _ (List.mem_of_mem_take hqNew))
 
-  have hflag_y : Disjoint (qubitReg flag) y := by
-    unfold QubitOutside at hflag_ext
-    rcases hflag_ext with h | h
-    · left
-      change flag + 1 ≤ y.lo
-      exact Nat.succ_le_of_lt h
-    · right
-      exact le_trans
-        (show y.hi ≤ (extendHi y).hi by simp [extendHi, Reg.hi])
-        h
+  have hworkOwned_x : work.ownedQubits.Disjoint x.active.qubits := by
+    rw [List.disjoint_left]
+    intro q hqw hqx
+    rcases List.get_of_mem hqx with ⟨j, hj⟩
+    let i : Fin (regSize x.active) :=
+      ⟨j.1, by simp [regSize, Reg.width]⟩
+    have hget : x.active.get i = q := by
+      dsimp [i, Reg.get]
+      simpa [Reg.width] using hj
+    have hcore := hsetup.register_layout i
+    rcases hcore with ⟨_, _, _, _, hctrl_work, _⟩
+    exact hctrl_work (by simpa [hget] using hqw)
 
-  have hx_ext : Disjoint x (extendHi y) := by
-    apply disjoint_of_forall_qubits_outside
-    · exact hxpos
-    · simp [extendHi, regSize]
-    · intro q hqlo hqhi
-      let j : ℕ := q - x.lo
-      have hj : j < tbits x := by
-        have hqhi' : q < x.lo + regSize x := by
-          simpa [Reg.hi, regSize] using hqhi
-        dsimp [j, tbits]
-        omega
-      have hq_eq : x.lo + j = q := by
-        dsimp [j]
-        omega
-      have hcore := hcontrols j hj
-      rcases hcore with ⟨_, _, _, hctrl_ext, _, _⟩
-      simpa [hq_eq] using hctrl_ext
+  have hwork_x : Disjoint work.active x.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqw hqx
+    exact hworkOwned_x (List.mem_append_left _ hqw) hqx
 
-  have hy_x : Disjoint y x := by
-    rcases hx_ext with h | h
-    · right
-      simpa [extendHi] using h
-    · left
-      exact le_trans
-        (show y.hi ≤ (extendHi y).hi by simp [extendHi, Reg.hi])
-        h
+  have hworkNew_x : Disjoint (work.newBits 1) x.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqNew hqx
+    exact hworkOwned_x
+      (List.mem_append_right _ (List.mem_of_mem_take hqNew))
+      hqx
 
-  have hcarry_x : Disjoint (qubitReg y.hi) x := by
-    rcases hx_ext with h | h
-    · right
-      exact le_trans h (by simp [extendHi, qubitReg])
-    · left
-      simpa [extendHi, qubitReg, Reg.hi] using h
+  have hflag_x : Disjoint (qubitReg flag) x.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqFlag hqx
+    have hq : q = flag := by
+      simpa [qubitReg, Reg.singleton] using hqFlag
+    subst q
+    rcases List.get_of_mem hqx with ⟨j, hj⟩
+    let i : Fin (regSize x.active) :=
+      ⟨j.1, by simp [regSize, Reg.width]⟩
+    have hget : x.active.get i = flag := by
+      dsimp [i, Reg.get]
+      simpa [Reg.width] using hj
+    have hcore := hsetup.register_layout i
+    rcases hcore with ⟨_, _, _, _, _, hctrl_flag⟩
+    exact hctrl_flag hget
 
-  have hwork_x_of_pos : 0 < regSize work → Disjoint work x := by
-    intro hwork_pos
-    have hx_work : Disjoint x work := by
-      apply disjoint_of_forall_qubits_outside
-      · exact hxpos
-      · exact hwork_pos
-      · intro q hqlo hqhi
-        let j : ℕ := q - x.lo
-        have hj : j < tbits x := by
-          have hqhi' : q < x.lo + regSize x := by
-            simpa [Reg.hi, regSize] using hqhi
-          dsimp [j, tbits]
-          omega
-        have hq_eq : x.lo + j = q := by
-          dsimp [j]
-          omega
-        have hcore := hcontrols j hj
-        rcases hcore with ⟨_, _, _, _, hctrl_work, _⟩
-        simpa [hq_eq] using hctrl_work
-    rcases hx_work with h | h
-    · right
-      exact h
-    · left
-      exact h
+  have hwork_y : Disjoint work.active y.active :=
+    Disjoint.symm (ExtReg.activeDisjoint_of_ownedDisjoint hy_work_owned)
 
-  have hflag_x : Disjoint (qubitReg flag) x := by
-    have hx_flag : Disjoint x (qubitReg flag) := by
-      apply disjoint_of_forall_qubits_ne
-      · exact hxpos
-      · intro q hqlo hqhi
-        let j : ℕ := q - x.lo
-        have hj : j < tbits x := by
-          have hqhi' : q < x.lo + regSize x := by
-            simpa [Reg.hi, regSize] using hqhi
-          dsimp [j, tbits]
-          omega
-        have hq_eq : x.lo + j = q := by
-          dsimp [j]
-          omega
-        have hcore := hcontrols j hj
-        rcases hcore with ⟨_, _, _, _, _, hctrl_ne⟩
-        simpa [hq_eq] using hctrl_ne
-    rcases hx_flag with h | h
-    · right
-      exact h
-    · left
-      exact h
+  have hworkNew_y : Disjoint (work.newBits 1) y.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqNew hqy
+    exact hy_work_owned
+      (List.mem_append_left _ hqy)
+      (List.mem_append_right _ (List.mem_of_mem_take hqNew))
+
+  have hflag_y : Disjoint (qubitReg flag) y.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqFlag hqy
+    have hq : q = flag := by
+      simpa [qubitReg, Reg.singleton] using hqFlag
+    subst q
+    exact hflag_y_owned (List.mem_append_left _ hqy)
 
   let validSet : Set qs.State :=
     { ψ : qs.State |
@@ -1263,38 +1202,39 @@ lemma ShorApproxSetup.prepared_state_valid
         ψ = qs.ket b }
 
   have hH_expansion :
-      ∃ β : Fin (ASize x) → ℂ,
-        qs.eval (H_reg x) (qs.ket b0)
+      ∃ β : Fin (ASize x.active) → ℂ,
+        qs.eval (H_reg x.active) (qs.ket b0)
           =
-        ∑ t : Fin (ASize x),
-          β t • qs.ket (RegEncoding.writeNat x t.1 b0) := by
+        ∑ t : Fin (ASize x.active),
+          β t • qs.ket (RegEncoding.writeNat x.active t.1 b0) := by
     rcases RegisterHadamardSemantics.eval_Hreg_ket
-        (qs := qs) x b0 with ⟨β, hβ⟩
+        (qs := qs) x.active b0 with ⟨β, hβ⟩
     refine ⟨β, ?_⟩
     simpa [H_reg] using hβ
 
   rcases hH_expansion with ⟨β, hβ⟩
 
   change
-    qs.eval (initY1 y) (qs.eval (H_reg x) (qs.ket b0))
+    qs.eval (initY1 y.active)
+        (qs.eval (H_reg x.active) (qs.ket b0))
       ∈ Submodule.span ℂ validSet
 
   rw [hβ]
   have hsum_eval :
-      qs.eval (initY1 y)
-          (∑ t : Fin (ASize x),
-            β t • qs.ket (RegEncoding.writeNat x t.1 b0))
+      qs.eval (initY1 y.active)
+          (∑ t : Fin (ASize x.active),
+            β t • qs.ket (RegEncoding.writeNat x.active t.1 b0))
         =
-      ∑ t : Fin (ASize x),
-        qs.eval (initY1 y)
-          (β t • qs.ket (RegEncoding.writeNat x t.1 b0)) := by
+      ∑ t : Fin (ASize x.active),
+        qs.eval (initY1 y.active)
+          (β t • qs.ket (RegEncoding.writeNat x.active t.1 b0)) := by
     simpa using
       eval_finset_sum
         qs
-        (initY1 y)
+        (initY1 y.active)
         Finset.univ
-        (fun t : Fin (ASize x) =>
-          β t • qs.ket (RegEncoding.writeNat x t.1 b0))
+        (fun t : Fin (ASize x.active) =>
+          β t • qs.ket (RegEncoding.writeNat x.active t.1 b0))
   rw [hsum_eval]
 
   apply Submodule.sum_mem
@@ -1302,39 +1242,44 @@ lemma ShorApproxSetup.prepared_state_valid
   rw [qs.eval_smul]
   apply (Submodule.span ℂ validSet).smul_mem
 
-  let b : qs.Basis := RegEncoding.writeNat x t.1 b0
+  let b : qs.Basis := RegEncoding.writeNat x.active t.1 b0
 
-  have hy_b : RegEncoding.toNat y b = 0 := by
+  have hy_b : RegEncoding.toNat y.active b = 0 := by
     calc
-      RegEncoding.toNat y b
-          = RegEncoding.toNat y b0 := by
+      RegEncoding.toNat y.active b
+          = RegEncoding.toNat y.active b0 := by
             simpa [b] using
-              RegEncoding.toNat_left_write_right y x hy_x b0 t.1
+              RegEncoding.toNat_left_write_right y.active x.active hy_x b0 t.1
       _ = 0 := hy0
 
-  have hwork_b : RegEncoding.toNat work b = 0 := by
-    by_cases hwork_zero : regSize work = 0
-    · have hlt := RegEncoding.toNat_lt_ASize work b
-      simp [ASize, hwork_zero] at hlt
-      omega
-    · have hwork_pos : 0 < regSize work := Nat.pos_of_ne_zero hwork_zero
-      calc
-        RegEncoding.toNat work b
-            = RegEncoding.toNat work b0 := by
-              simpa [b] using
-                RegEncoding.toNat_left_write_right
-                  work x (hwork_x_of_pos hwork_pos) b0 t.1
-        _ = 0 := hwork0
-
-  have hcarry_b :
-      RegEncoding.toNat (qubitReg y.hi) b = 0 := by
+  have hyFresh_b : y.FreshFor 2 b := by
+    unfold ExtReg.FreshFor FreshZero at hyFresh ⊢
     calc
-      RegEncoding.toNat (qubitReg y.hi) b
-          = RegEncoding.toNat (qubitReg y.hi) b0 := by
+      RegEncoding.toNat (y.newBits 2) b
+          = RegEncoding.toNat (y.newBits 2) b0 := by
             simpa [b] using
               RegEncoding.toNat_left_write_right
-                (qubitReg y.hi) x hcarry_x b0 t.1
-      _ = 0 := qubit_toNat_eq_zero_of_bit_false (qs := qs) hcarry_bit
+                (y.newBits 2) x.active hyNew_x b0 t.1
+      _ = 0 := hyFresh
+
+  have hwork_b : RegEncoding.toNat work.active b = 0 := by
+    calc
+      RegEncoding.toNat work.active b
+          = RegEncoding.toNat work.active b0 := by
+            simpa [b] using
+              RegEncoding.toNat_left_write_right
+                work.active x.active hwork_x b0 t.1
+      _ = 0 := hwork0
+
+  have hworkFresh_b : work.FreshFor 1 b := by
+    unfold ExtReg.FreshFor FreshZero at hworkFresh ⊢
+    calc
+      RegEncoding.toNat (work.newBits 1) b
+          = RegEncoding.toNat (work.newBits 1) b0 := by
+            simpa [b] using
+              RegEncoding.toNat_left_write_right
+                (work.newBits 1) x.active hworkNew_x b0 t.1
+      _ = 0 := hworkFresh
 
   have hflag_b :
       RegEncoding.toNat (qubitReg flag) b = 0 := by
@@ -1343,61 +1288,70 @@ lemma ShorApproxSetup.prepared_state_valid
           = RegEncoding.toNat (qubitReg flag) b0 := by
             simpa [b] using
               RegEncoding.toNat_left_write_right
-                (qubitReg flag) x hflag_x b0 t.1
-      _ = 0 := qubit_toNat_eq_zero_of_bit_false (qs := qs) hflag_bit
+                (qubitReg flag) x.active hflag_x b0 t.1
+      _ = 0 := hflag0
 
   have hinit :
-      qs.eval (initY1 y) (qs.ket b)
+      qs.eval (initY1 y.active) (qs.ket b)
         =
-      qs.ket (RegEncoding.writeNat y 1 b) := by
-    simpa [initY1] using
+      qs.ket (RegEncoding.writeNat y.active 1 b) := by
+    rw [initY1_eq_X_lowQubit y.active hypos]
+    exact
       PauliXSemantics.eval_X_low_zero_reg_ket
-        (qs := qs) y b hypos hy_b
+        (qs := qs) y.active b hypos hy_b
 
   rw [hinit]
   apply Submodule.subset_span
-  refine ⟨RegEncoding.writeNat y 1 b, ?_, rfl⟩
+  refine ⟨RegEncoding.writeNat y.active 1 b, ?_, rfl⟩
 
-  have hdata_out :
-      RegEncoding.toNat y (RegEncoding.writeNat y 1 b) = 1 := by
-    exact RegEncoding.toNat_writeNat_of_lt y 1 b hy_one_lt_cap
-
-  have hcarry_out :
-      RegEncoding.toNat (qubitReg y.hi)
-          (RegEncoding.writeNat y 1 b) = 0 := by
+  have hdata_lt :
+      RegEncoding.toNat y.active
+          (RegEncoding.writeNat y.active 1 b) < N := by
     calc
-      RegEncoding.toNat (qubitReg y.hi)
-          (RegEncoding.writeNat y 1 b)
-          = RegEncoding.toNat (qubitReg y.hi) b := by
-            exact
-              RegEncoding.toNat_left_write_right
-                (qubitReg y.hi) y hcarry_y b 1
-      _ = 0 := hcarry_b
+      RegEncoding.toNat y.active
+          (RegEncoding.writeNat y.active 1 b) = 1 :=
+            RegEncoding.toNat_writeNat_of_lt y.active 1 b hy_one_lt
+      _ < N := hN
 
-  have hwork_out :
-      RegEncoding.toNat work (RegEncoding.writeNat y 1 b) = 0 := by
+  have hyFreshOut :
+      y.FreshFor 2 (RegEncoding.writeNat y.active 1 b) :=
+    ExtReg.freshFor_write_active y 2 1 b hyFresh_b
+
+  have hworkZeroOut :
+      RegEncoding.toNat work.active
+          (RegEncoding.writeNat y.active 1 b) = 0 := by
     calc
-      RegEncoding.toNat work (RegEncoding.writeNat y 1 b)
-          = RegEncoding.toNat work b := by
-            exact RegEncoding.toNat_left_write_right work y hwork_y b 1
+      RegEncoding.toNat work.active
+          (RegEncoding.writeNat y.active 1 b)
+          = RegEncoding.toNat work.active b := by
+            exact RegEncoding.toNat_left_write_right
+              work.active y.active hwork_y b 1
       _ = 0 := hwork_b
 
-  have hflag_out :
+  have hworkFreshOut :
+      work.FreshFor 1 (RegEncoding.writeNat y.active 1 b) := by
+    unfold ExtReg.FreshFor FreshZero at hworkFresh_b ⊢
+    calc
+      RegEncoding.toNat (work.newBits 1)
+          (RegEncoding.writeNat y.active 1 b)
+          = RegEncoding.toNat (work.newBits 1) b := by
+            exact RegEncoding.toNat_left_write_right
+              (work.newBits 1) y.active hworkNew_y b 1
+      _ = 0 := hworkFresh_b
+
+  have hflagZeroOut :
       RegEncoding.toNat (qubitReg flag)
-          (RegEncoding.writeNat y 1 b) = 0 := by
+          (RegEncoding.writeNat y.active 1 b) = 0 := by
     calc
       RegEncoding.toNat (qubitReg flag)
-          (RegEncoding.writeNat y 1 b)
+          (RegEncoding.writeNat y.active 1 b)
           = RegEncoding.toNat (qubitReg flag) b := by
-            exact
-              RegEncoding.toNat_left_write_right
-                (qubitReg flag) y hflag_y b 1
+            exact RegEncoding.toNat_left_write_right
+              (qubitReg flag) y.active hflag_y b 1
       _ = 0 := hflag_b
 
-  refine ⟨?_, hcarry_out, hwork_out, hflag_out⟩
-  calc
-    RegEncoding.toNat y (RegEncoding.writeNat y 1 b) = 1 := hdata_out
-    _ < N := hN
+  exact
+    ⟨hdata_lt, hyFreshOut, hworkZeroOut, hworkFreshOut, hflagZeroOut⟩
 
 omit [ContinuedFractionPost] [Spec] in
 lemma shor_data_capacity_from_log2
@@ -1419,19 +1373,19 @@ def ShorApproxSetup.toModExpConfig
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     {a N : ℕ}
-    {y : Reg}
+    {y : ExtReg}
     {η : ℝ}
-    {x work : Reg}
+    {x work : ExtReg}
     {flag : ℕ}
     {b0 : qs.Basis}
     (ha : 0 < a ∧ a < N)
     (hgcd : Nat.gcd a N = 1)
-    (hn : regSize y = Nat.log2 (2 * N))
-    (hsetup : ShorApproxSetup qs η a N x y work flag b0) :
+    (hn : regSize y.active = Nat.log2 (2 * N))
+    (hsetup : ShorApproxSetup qs η x y work flag b0) :
     ModExpConfig η := by
   have hN : 1 < N := by
     omega
-  have hcapacity : N ≤ ASize y := by
+  have hcapacity : N ≤ ASize y.active := by
     simpa [ASize, hn] using shor_data_capacity_from_log2 N
   have hcoprime : Nat.Coprime a N := by
     rw [Nat.coprime_iff_gcd_eq_one]
@@ -1443,15 +1397,16 @@ def ShorApproxSetup.toModExpConfig
           work := work
           modulus_gt_one := hN
           data_capacity := hcapacity
-          precision := hsetup.work_precision }
+          precision := hsetup.work_precision
+          circuit_workspace := hsetup.circuit_workspace
+           }
       a := a
-      x := x
+      x := x.active
       flag := flag
       layout := hsetup.register_layout
       arithmetic := ?_ }
-  intro j hj
-  dsimp
-  exact modExp_tail_coprime a N x x.lo (tbits x) hcoprime j hj
+  intro i
+  exact modExp_multiplier_coprime a N i.1 hcoprime
 
 /--
 Uniform approximate Shor order-finding bound.
@@ -1461,28 +1416,22 @@ It may depend on the fixed instance data `qs`, `T`, `a`, `N`, `x`, `y`,
 `w`, `flag`, `b0`, and the fixed size/arithmetic hypotheses.
 -/
 theorem Shor_correct_approx_uniform
-    [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
-    [ModMulPrimitiveSemantics qs]
-    (T : ℕ → ℕ)
+    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs] [ModMulPrimitiveSemantics qs]
+    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)
     (inst : ShorOrderFindingInstance)
-    (w : Reg)
-    (flag : ℕ)
+    (w : ExtReg) (flag : ℕ)
     (b0 : qs.Basis) :
-    ∃ K : ℝ, 0 ≤ K ∧
-      ∀ (η : ℝ)
-        (_hS: ShorApproxSetup qs η inst.a inst.N inst.x inst.y w flag b0),
-        probability_of_success (qs := qs) (T := T)
-          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := inst.x)
-          (r := ord inst.a inst.N inst.coprime)
-          (Q := 2 ^ regSize inst.x)
-          (evalC := qs.eval)
-          (C := orderFindingApprox (qs := qs) inst.a inst.N inst.x inst.y w flag)
-          (ψ := qs.ket b0)
-        ≥
-          κ / (Nat.log2 inst.N : ℝ)^4
-            - 2 * (tbits inst.x : ℝ) * Real.sqrt (2 * (K * η)) := by
+  ∃ K : ℝ, 0 ≤ K ∧
+    ∀ (η : ℝ)
+      (hsetup : ShorApproxSetup qs η inst.x inst.y w flag b0),
+      probability_of_success (qs := qs) (T := T) (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+        (x := inst.x.active) (r := ord inst.a inst.N inst.coprime) (Q := ASize inst.x.active)
+        (evalC := qs.eval)
+        (C := orderFindingApprox (qs := qs) inst.a inst.N inst.x inst.y w flag hsetup.circuit_workspace)
+        (ψ := qs.ket b0)
+      ≥
+        κ / (Nat.log2 inst.N : ℝ)^4
+        - 2 * (tbits inst.x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
   classical
   let a := inst.a
   let N := inst.N
@@ -1490,8 +1439,8 @@ theorem Shor_correct_approx_uniform
   let y := inst.y
   have ha : 0 < a ∧ a < N := inst.range
   have hgcd : Nat.gcd a N = 1 := inst.coprime
-  have hm : regSize x = Nat.log2 (2 * N^2) := inst.x_width
-  have hn : regSize y = Nat.log2 (2 * N) := inst.y_width
+  have hm : regSize x.active = Nat.log2 (2 * N^2) := inst.x_width
+  have hn : regSize y.active = Nat.log2 (2 * N) := inst.y_width
 
   rcases modExpApprox_valid_dist_uniform (qs := qs) with
     ⟨K, hK_nonneg, hmodExp⟩
@@ -1499,13 +1448,12 @@ theorem Shor_correct_approx_uniform
   refine ⟨K, hK_nonneg, ?_⟩
   intro η hsetup
 
-  let cfg : ModExpConfig η :=
-    ShorApproxSetup.toModExpConfig ha hgcd hn hsetup
+  let cfg : ModExpConfig η := ShorApproxSetup.toModExpConfig ha hgcd hn hsetup
 
   let ψpre : qs.State :=
-    qs.eval (initY1 y) (qs.eval (H_reg x) (qs.ket b0))
+    qs.eval (initY1 y.active) (qs.eval (H_reg x.active) (qs.ket b0))
 
-  have hxpos : 0 < regSize x := by
+  have hxpos : 0 < regSize x.active := by
     have harg_ne : 2 * N ^ 2 ≠ 0 := by
       have hNpos : 0 < N := by
         omega
@@ -1535,16 +1483,16 @@ theorem Shor_correct_approx_uniform
   have hpreUnit : ‖ψpre‖ = 1 := by
     dsimp [ψpre]
     calc
-      ‖qs.eval (initY1 y) (qs.eval (H_reg x) (qs.ket b0))‖
+      ‖qs.eval (initY1 y.active) (qs.eval (H_reg x.active) (qs.ket b0))‖
           =
-          ‖qs.eval (H_reg x) (qs.ket b0)‖ := by
+          ‖qs.eval (H_reg x.active) (qs.ket b0)‖ := by
             simpa using
               (eval_norm_preserved qs
-                (initY1 y)
-                (qs.eval (H_reg x) (qs.ket b0)))
+                (initY1 y.active)
+                (qs.eval (H_reg x.active) (qs.ket b0)))
       _ = ‖qs.ket b0‖ := by
             simpa using
-              (eval_norm_preserved qs (H_reg x) (qs.ket b0))
+              (eval_norm_preserved qs (H_reg x.active) (qs.ket b0))
       _ = 1 := ket_norm_one qs b0
 
   have hpre :
@@ -1556,16 +1504,16 @@ theorem Shor_correct_approx_uniform
     ] using
       (And.intro hpreValid hpreUnit)
 
-  let ε : ℝ := (tbits x : ℝ) * stepErr K η
+  let ε : ℝ := (tbits x.active : ℝ) * stepErr K η
 
   have hmid :
       ‖qs.eval
           (modExpApproxValid
             (Basis := qs.Basis)
-            a N x y w flag)
+            a N x.active y w flag hsetup.circuit_workspace)
           ψpre
         -
-        qs.eval (modExpIdeal' (qs := qs) a N x y) ψpre‖
+        qs.eval (modExpIdeal' (qs := qs) a N x.active y.active) ψpre‖
       ≤ ε := by
     simpa [
       ε,
@@ -1577,29 +1525,30 @@ theorem Shor_correct_approx_uniform
       (hmodExp η cfg ψpre hpre)
 
   have hpost :
-      ‖qs.eval (Gate.QFT x)
+      ‖qs.eval (IQFT x)
           (qs.eval
             (modExpApproxValid
               (Basis := qs.Basis)
-              a N x y w flag)
+              a N x.active y w flag hsetup.circuit_workspace)
             ψpre)
         -
-        qs.eval (Gate.QFT x)
-          (qs.eval (modExpIdeal' (qs := qs) a N x y) ψpre)‖
+        qs.eval (IQFT x)
+          (qs.eval (modExpIdeal' (qs := qs) a N x.active y.active) ψpre)‖
       ≤ ε := by
     exact dist_eval_common_suffix_le
       (qs := qs)
-      (Gate.QFT x)
+      (IQFT x)
       (modExpApproxValid
         (Basis := qs.Basis)
-        a N x y w flag)
-      (modExpIdeal' (qs := qs) a N x y)
+        a N x.active y w flag hsetup.circuit_workspace)
+      (modExpIdeal' (qs := qs) a N x.active y.active)
       ψpre
       hmid
 
   have hdist_full :
       ‖qs.eval
-          (orderFindingApprox (qs := qs) a N x y w flag)
+          (orderFindingApprox
+            (qs := qs) a N x y w flag hsetup.circuit_workspace)
           (qs.ket b0)
         -
         qs.eval
@@ -1617,19 +1566,19 @@ theorem Shor_correct_approx_uniform
     fun d => decide ((a ^ d) % N = 1)
 
   let r : ℕ := ord a N hgcd
-  let Q : ℕ := 2 ^ regSize x
+  let Q : ℕ := ASize x.active
 
   have htransfer :
       probability_of_success (qs := qs) (T := T)
         (verify := verify)
-        (x := x) (r := r) (Q := Q)
+        (x := x.active) (r := r) (Q := Q)
         (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) a N x y w flag)
+        (C := orderFindingApprox (qs := qs) a N x y w flag hsetup.circuit_workspace)
         (ψ := qs.ket b0)
       ≥
       probability_of_success (qs := qs) (T := T)
         (verify := verify)
-        (x := x) (r := r) (Q := Q)
+        (x := x.active) (r := r) (Q := Q)
         (evalC := qs.eval)
         (C := orderFindingIdeal (qs := qs) a N x y)
         (ψ := qs.ket b0)
@@ -1638,45 +1587,50 @@ theorem Shor_correct_approx_uniform
       (qs := qs)
       T
       verify
-      x
+      x.active
       r
       Q
-      (orderFindingApprox (qs := qs) a N x y w flag)
+      (orderFindingApprox (qs := qs) a N x y w flag hsetup.circuit_workspace)
       (orderFindingIdeal (qs := qs) a N x y)
       (qs.ket b0)
       ε
       (ket_norm_one qs b0)
       hdist_full
 
+  have hIdealInput :
+      IdealOrderFindingInput qs x y b0 :=
+    hsetup.toIdealOrderFindingInput
+
   have hideal :
       probability_of_success (qs := qs) (T := T)
         (verify := verify)
-        (x := x) (r := r) (Q := Q)
+        (x := x.active) (r := r) (Q := Q)
         (evalC := qs.eval)
         (C := orderFindingIdeal (qs := qs) a N x y)
         (ψ := qs.ket b0)
       ≥ κ / (Nat.log2 N : ℝ)^4 := by
-    simpa [verify, r, Q] using
+    simpa [verify, r, Q, a, N, x, y] using
       (Shor_correct
         (qs := qs)
         T
+        hT
         inst
-        (qs.ket b0)
-        (ket_norm_one qs b0))
+        b0
+        hIdealInput)
 
   calc
     probability_of_success (qs := qs) (T := T)
         (verify := fun d => decide ((a ^ d) % N = 1))
-        (x := x)
+        (x := x.active)
         (r := ord a N hgcd)
-        (Q := 2 ^ regSize x)
+        (Q := ASize x.active)
         (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) a N x y w flag)
+        (C := orderFindingApprox (qs := qs) a N x y w flag hsetup.circuit_workspace)
         (ψ := qs.ket b0)
       ≥
         probability_of_success (qs := qs) (T := T)
           (verify := verify)
-          (x := x)
+          (x := x.active)
           (r := r)
           (Q := Q)
           (evalC := qs.eval)
@@ -1689,16 +1643,17 @@ theorem Shor_correct_approx_uniform
           exact sub_le_sub_right hideal (2 * ε)
     _ =
         κ / (Nat.log2 N : ℝ)^4
-          - 2 * (tbits x : ℝ) *
+          - 2 * (tbits x.active : ℝ) *
               Real.sqrt (2 * (K * η)) := by
           simp [ε, stepErr, mul_assoc]
 
-omit [Spec] in
-/--
-Lowering preserves the order-finding success probability exactly.
+/-
+Lowering preserves the success probability exactly when the current
+whole-program lowering workspace and dynamic cleanliness hypotheses are
+available.
 -/
+omit [Spec] in
 lemma probability_of_success_lowerGate_eq
-    [ExtRegSplitSemantics qs.Basis]
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
     (k : ℕ) (hk : 1 < k)
@@ -1713,130 +1668,109 @@ lemma probability_of_success_lowerGate_eq
     (x : Reg)
     (r Q : ℕ)
     (G : Gate)
-    (hGeom : GateGeomOK G)
-    (ψ : qs.State) :
-    probability_of_success
-        (qs := qs)
-        (evalC := LowerGateClass.evalL (qs := qs))
-        (T := T)
-        (verify := verify)
-        (x := x) (r := r) (Q := Q)
-        (C := lowerGate (Basis := qs.Basis) k hk ops G)
-        (ψ := ψ)
+    (hworkspace : GateWorkspaceOK ops G)
+    (ψ : qs.State)
+    (hclean : GateWorkspaceCleanState qs k hk ops G hworkspace ψ) :
+    probability_of_success (qs := qs) (evalC := LowerGateClass.evalL (qs := qs))
+        (T := T) (verify := verify) (x := x) (r := r) (Q := Q)
+        (C := lowerGate (Basis := qs.Basis) k hk ops G hworkspace) (ψ := ψ)
       =
-    probability_of_success
-        (qs := qs)
-        (evalC := qs.eval)
-        (T := T)
-        (verify := verify)
-        (x := x) (r := r) (Q := Q)
-        (C := G)
-        (ψ := ψ) := by
+    probability_of_success (qs := qs) (evalC := qs.eval)
+        (T := T) (verify := verify) (x := x) (r := r) (Q := Q)
+        (C := G) (ψ := ψ) := by
   have hEval :
       LowerGateClass.evalL
           (qs := qs)
-          (lowerGate (Basis := qs.Basis) k hk ops G)
+          (lowerGate (Basis := qs.Basis) k hk ops G hworkspace)
           ψ
         =
       qs.eval G ψ :=
     lowerGate_correctness
-      (k := k)
-      (hk := hk)
-      G
-      hGeom
       qs
-      (inferInstance : RegEncoding qs.Basis)
+      k
+      hk
       ops
       hC
       hRun
+      G
+      hworkspace
       ψ
+      hclean
 
   unfold probability_of_success measProbAfter
   apply Finset.sum_congr rfl
   intro o ho
   rw [hEval]
 
-theorem Shor_correct_approx_uniform_low
-    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs] [ModMulPrimitiveSemantics qs]
-    [ExtRegSplitSemantics qs.Basis] [LowerGateClass qs]
-    (low : ShorLoweringSetup)
+omit [Spec] in
+/--
+Whole-program lowering introduces no additional success-probability error.
+
+This compares the low-level lowering of `orderFindingApprox` with the same
+high-level approximate circuit. It does not compare the approximate circuit
+with `orderFindingIdeal`.
+-/
+theorem orderFindingApproxLow_probability_eq
+    [LowerGateClass qs]
+    [GateSemanticsFacts qs]
+    (lowering : ShorLoweringSetup)
     (T : ℕ → ℕ)
-    (inst : ShorOrderFindingInstance)
-    (w : Reg)
+    (verify : OrderVerifier)
+    (a N : ℕ)
+    (x y work : ExtReg)
     (flag : ℕ)
-    (b0 : qs.Basis)
-    (hGeom : GateGeomOK (orderFindingApprox (qs := qs) inst.a inst.N inst.x inst.y w flag)) :
-    ∃ K : ℝ, 0 ≤ K ∧
-      ∀ (η : ℝ),
-        (hsetup : ShorApproxSetup qs η inst.a inst.N inst.x inst.y w flag b0) →
-        probability_of_success
-            (evalC := LowerGateClass.evalL (qs := qs)) (T := T)
-            (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-            (x := inst.x) (r := ord inst.a inst.N inst.coprime) (Q := 2 ^ regSize inst.x)
-            (C := orderFindingApproxLow qs low.k low.hk low.ops inst.a inst.N inst.x inst.y w flag) (ψ := qs.ket b0)
-          ≥
-        κ / (Nat.log2 inst.N : ℝ)^4 - 2 * (tbits inst.x : ℝ) * Real.sqrt (2 * (K * η)) := by
-  let a := inst.a
-  let N := inst.N
-  let x := inst.x
-  let y := inst.y
-  have hgcd : Nat.gcd a N = 1 := inst.coprime
-  rcases Shor_correct_approx_uniform
-      (qs := qs)
-      T inst w flag b0 with
-    ⟨K, hK, hHigh⟩
-
-  refine ⟨K, hK, ?_⟩
-  intro η hsetup
-
-  calc
+    (hmodWorkspace : ModMulCircuitWorkspaceOK y work)
+    (hLowerWorkspace : GateWorkspaceOK lowering.ops (orderFindingApprox qs a N x y work flag hmodWorkspace))
+    (ψ : qs.State)
+    (hclean : GateWorkspaceCleanState qs lowering.k lowering.hk lowering.ops
+        (orderFindingApprox qs a N x y work flag hmodWorkspace) hLowerWorkspace ψ)
+    (r Q : ℕ) :
     probability_of_success
-        (qs := qs)
-        (evalC := LowerGateClass.evalL (qs := qs))
-        (T := T)
-        (verify := fun d => decide ((a ^ d) % N = 1))
-        (x := x)
-        (r := ord a N hgcd)
-        (Q := 2 ^ regSize x)
-        (C :=
-          orderFindingApproxLow
-            (qs := qs)
-            low.k low.hk low.ops a N x y w flag)
-        (ψ := qs.ket b0)
+        (qs := qs)  (evalC := LowerGateClass.evalL (qs := qs))
+        (T := T) (verify := verify) (x := x.active) (r := r)
+        (Q := Q)
+        (C := orderFindingApproxLow qs
+            lowering.k lowering.hk lowering.ops a N x y work flag
+            hmodWorkspace hLowerWorkspace)
+        (ψ := ψ)
       =
     probability_of_success
-        (qs := qs)
-        (evalC := qs.eval)
-        (T := T)
-        (verify := fun d => decide ((a ^ d) % N = 1))
-        (x := x)
-        (r := ord a N hgcd)
-        (Q := 2 ^ regSize x)
-        (C := orderFindingApprox (qs := qs) a N x y w flag)
-        (ψ := qs.ket b0) := by
-          simpa [orderFindingApproxLow] using
-            (probability_of_success_lowerGate_eq
-              (qs := qs)
-              low.k low.hk low.ops low.consumes low.returns
-              T
-              (fun d => decide ((a ^ d) % N = 1))
-              x
-              (ord a N hgcd)
-              (2 ^ regSize x)
-              (orderFindingApprox (qs := qs) a N x y w flag)
-              hGeom
-              (qs.ket b0))
-    _ ≥
-      κ / (Nat.log2 N : ℝ)^4
-        - 2 * (tbits x : ℝ) *
-            Real.sqrt (2 * (K * η)) :=
-      hHigh η hsetup
+        (qs := qs) (evalC := qs.eval)
+        (T := T) (verify := verify) (x := x.active) (r := r)
+        (Q := Q)
+        (C := orderFindingApprox qs a N x y work flag hmodWorkspace)
+        (ψ := ψ) := by
+  simpa only [orderFindingApproxLow] using
+    (probability_of_success_lowerGate_eq
+      (qs := qs)
+      (k := lowering.k)
+      (hk := lowering.hk)
+      (ops := lowering.ops)
+      (hC := lowering.consumes)
+      (hRun := lowering.returns)
+      (T := T)
+      (verify := verify)
+      (x := x.active)
+      (r := r)
+      (Q := Q)
+      (G :=
+        orderFindingApprox
+          qs a N x y work flag hmodWorkspace)
+      (hworkspace := hLowerWorkspace)
+      (ψ := ψ)
+      (hclean := hclean))
 
+/-
+A lowered approximate Shor theorem needs a repository bridge deriving the
+whole-program lowering workspace and dynamic cleanliness facts for
+`orderFindingApprox`.  The current lowerer exposes those hypotheses, but this
+file does not yet contain the numerical allocation bridge from the Shor setup.
+-/
 
-omit [ContinuedFractionPost] [Spec] in
-/-- At least half of the coprime classical choices are successful for the
+/- At least half of the coprime classical choices are successful for the
 classical reduction, assuming `N` is odd, composite in the required sense, and
 not a prime power. -/
+omit [ContinuedFractionPost] [Spec] in
 theorem shors_probability_bound (N : ℕ)
 (h_odd : Odd N)
 (h_gt_one : N > 1)
@@ -1885,33 +1819,40 @@ theorem shors_probability_bound (N : ℕ)
   omega
 }
 
-omit [MeasureClass qs] in
 /-- End-to-end statement combining the classical choice probability, ideal
 quantum order-finding, and the classical factor extraction theorem. -/
-theorem Shor_end_to_end_factoring [MeasureClass qs]
-(T : ℕ → ℕ)
-(fact : ShorFactoringInstance)
-(x y : Reg)
-(ψ0 : qs.State)
-(hψ0 : ‖ψ0‖ = 1)
-(hm : regSize x = Nat.log2 (2 * fact.N^2))
-(hn : regSize y = Nat.log2 (2 * fact.N))
-(hset : ∀ a, a ∈ valid_choices fact.N →
-  ∃ hgcd, BasicSetting a (ord a fact.N hgcd) fact.N (regSize x) (regSize y)) :
+theorem Shor_end_to_end_factoring
+    [GateSemanticsFacts qs]
+    [IdealCtrlModMulExactSemantics qs]
+    (T : ℕ → ℕ)
+    (hT : ContinuedFractionSearchComplete T)
+    (fact : ShorFactoringInstance)
+    (x y : ExtReg)
+    (b0 : qs.Basis)
+    (hinput : IdealOrderFindingInput qs x y b0)
+    (hm : regSize x.active = Nat.log2 (2 * fact.N^2))
+    (hn : regSize y.active = Nat.log2 (2 * fact.N))
+    (hset : ∀ a, a ∈ valid_choices fact.N →
+      ∃ hgcd, BasicSetting a (ord a fact.N hgcd) fact.N (regSize x.active) (regSize y.active)) :
   (2 * (successful_choices fact.N).card ≥ (valid_choices fact.N).card)
   ∧
-  (∀ a ∈ successful_choices fact.N,
-    ∃ (hgcd : Nat.gcd a fact.N = 1),
+  (∀ a ∈ successful_choices fact.N, ∃ (hgcd : Nat.gcd a fact.N = 1),
     (probability_of_success (qs := qs) (T := T)
       (verify := fun d => decide ((a ^ d) % fact.N = 1))
-      (x := x) (r := ord a fact.N hgcd) (Q := 2^(regSize x))
+      (x := x.active)
+      (r := ord a fact.N hgcd)
+      (Q := ASize x.active)
       (evalC := qs.eval)
       (C := orderFindingIdeal (qs := qs) a fact.N x y)
-      (ψ := ψ0)
+      (ψ := qs.ket b0)
     ≥ κ / (Nat.log2 fact.N : ℝ)^4)
     ∧
-    (is_nontrivial_factor (Nat.gcd ((a ^ (ord a fact.N hgcd / 2)) - 1) fact.N) fact.N ∨
-     is_nontrivial_factor (Nat.gcd ((a ^ (ord a fact.N hgcd / 2)) + 1) fact.N) fact.N)) := by {
+    (is_nontrivial_factor
+        (Nat.gcd ((a ^ (ord a fact.N hgcd / 2)) - 1) fact.N)
+        fact.N ∨
+     is_nontrivial_factor
+        (Nat.gcd ((a ^ (ord a fact.N hgcd / 2)) + 1) fact.N)
+        fact.N)) := by {
   let N := fact.N
   have h_odd : Odd N := fact.odd
   have h_N : N > 2 := fact.gt_two
@@ -1953,13 +1894,788 @@ theorem Shor_end_to_end_factoring [MeasureClass qs]
         y := y
         range := ⟨by omega, ha2⟩
         coprime := hgcd
-        x_width := hm
-        y_width := hn
+        x_width := by simpa [N] using hm
+        y_width := by simpa [N] using hn
         order_setting := by
-          simpa using hset_a }
+          simpa [N] using hset_a }
     exact ⟨
-      Shor_correct T inst ψ0 hψ0,
-      shors_classical_reduction a (ord a N hgcd) N h_N ⟨ha1, ha2⟩ hgcd (is_period_ord a N hgcd) h_succ
+      by
+        simpa [N, inst] using
+          (Shor_correct
+            (qs := qs)
+            T
+            hT
+            inst
+            b0
+            hinput),
+      shors_classical_reduction
+        a
+        (ord a N hgcd)
+        N
+        h_N
+        ⟨ha1, ha2⟩
+        hgcd
+        (is_period_ord a N hgcd)
+        h_succ
     ⟩
   }
 }
+
+/-- Workspace required on each register by lowered Shor order finding. -/
+structure ShorWorkspaceNeed where
+  exponent : ℕ
+  data : ℕ
+  auxiliary : ℕ
+
+/-- Total reserve required for lowering a QFT of width `n`. -/
+def qftReserveNeed
+    {k : ℕ}
+    (ops : Prog k)
+    (n : ℕ) : ℕ :=
+  (qftWorkspaceNeed ops n).1 +
+  (qftWorkspaceNeed ops n).2
+
+/--
+Compute the reserve required from the exponent, data, and auxiliary registers
+when lowering the approximate Shor order-finding circuit.
+-/
+def shorWorkspaceNeed
+    {k : ℕ}
+    (ops : Prog k)
+    (x data work : ExtReg) :
+    ShorWorkspaceNeed :=
+
+  let step1Need :=
+    RecursivePhaseWorkspace.reserveNeed ops (data.width + 1) (work.width + 1)
+
+  let step2Need :=
+    RecursivePhaseWorkspace.reserveNeed ops (work.width + 1) (data.width + 2)
+
+  let step5Need :=
+    RecursivePhaseWorkspace.reserveNeed ops (data.width + 2) (work.width + 1)
+
+  {
+    exponent := qftReserveNeed ops x.width
+
+    data :=
+      (max (1 + step1Need.1)
+        (max (1 + qftReserveNeed ops (data.width + 1))
+          (max (2 + step2Need.2) (2 + step5Need.1))))
+
+    auxiliary :=
+      (max (qftReserveNeed ops work.width)
+        (max (1 + step1Need.2) (max (1 + step2Need.1) (1 + step5Need.2))))
+  }
+
+
+/--
+The exponent, data, and auxiliary registers contain enough inactive reserve
+for lowering the complete approximate Shor order-finding circuit.
+-/
+structure ShorWorkspaceLargeEnough
+    {k : ℕ}
+    (ops : Prog k)
+    (x data work : ExtReg) :
+    Prop where
+
+  exponent_large_enough :
+    (shorWorkspaceNeed ops x data work).exponent
+      ≤ x.capacity
+
+  data_large_enough :
+    (shorWorkspaceNeed ops x data work).data
+      ≤ data.capacity
+
+  auxiliary_large_enough :
+    (shorWorkspaceNeed ops x data work).auxiliary
+      ≤ work.capacity
+
+/--
+Minimal public precondition for lowered approximate Shor order finding.
+-/
+structure LoweredShorSetup
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    (lowering : ShorLoweringSetup)
+    (η : ℝ)
+    (a N : ℕ)
+    (x data work : ExtReg)
+    (flag : ℕ)
+    (b0 : qs.Basis) :
+    Prop where
+
+  approx :
+    ShorApproxSetup
+      qs η x data work flag b0
+
+  workspace_large_enough :
+    ShorWorkspaceLargeEnough
+      lowering.ops x data work
+
+omit [ContinuedFractionPost] [Spec] in
+private lemma reserve_le_capacity_sub_one_of_succ_le
+    {need capacity : ℕ}
+    (h : 1 + need ≤ capacity) :
+    need ≤ capacity - 1 := by
+  omega
+
+omit [ContinuedFractionPost] [Spec] in
+private lemma reserve_le_capacity_sub_two_of_two_add_le
+    {need capacity : ℕ}
+    (h : 2 + need ≤ capacity) :
+    need ≤ capacity - 2 := by
+  omega
+
+omit [ContinuedFractionPost] [Spec] in
+private theorem gateWorkspaceOK_H_reg
+    {k : ℕ}
+    (ops : Prog k)
+    (r : Reg) :
+    GateWorkspaceOK ops (H_reg r) := by
+  unfold H_reg
+  have hfold :
+      ∀ (l : List ℕ) (U : Gate),
+        GateWorkspaceOK ops U →
+        GateWorkspaceOK ops
+          (l.foldl (fun acc q => Gate.H q ;; acc) U) := by
+    intro l
+    induction l with
+    | nil =>
+        intro U hU
+        simpa
+    | cons q l ih =>
+        intro U hU
+        simp only [List.foldl_cons]
+        exact ih (Gate.H q ;; U) ⟨trivial, hU⟩
+  exact hfold (regQubits r) Gate.id trivial
+
+
+omit [ContinuedFractionPost] [Spec] in
+theorem gateWorkspaceOK_orderFindingApprox
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    {k : ℕ}
+    (ops : Prog k)
+    (η : ℝ)
+    (a N : ℕ)
+    (x data work : ExtReg)
+    (flag : ℕ)
+    (b0 : qs.Basis)
+    (hsetup :
+      ShorApproxSetup
+        qs η x data work flag b0)
+    (hlarge :
+      ShorWorkspaceLargeEnough
+        ops x data work) :
+    GateWorkspaceOK ops
+      (orderFindingApprox
+        qs a N x data work flag
+        hsetup.circuit_workspace) := by
+  let hmod : ModMulCircuitWorkspaceOK data work :=
+    hsetup.circuit_workspace
+
+  have hDataGrow : data.CanGrow 1 :=
+    hmod.data_canGrow_one
+  have hDataCarryGrow : (data.grow 1).CanGrow 1 :=
+    hmod.dataCarry_canGrow_one
+  have hWorkGrow : work.CanGrow 1 :=
+    hmod.work_canGrow_one
+
+  have hDataBounds := hlarge.data_large_enough
+  have hWorkBounds := hlarge.auxiliary_large_enough
+  dsimp [shorWorkspaceNeed] at hDataBounds hWorkBounds
+  simp only [max_le_iff] at hDataBounds hWorkBounds
+  rcases hDataBounds with
+    ⟨hDataStep1, hDataQFT, hDataStep2, hDataStep5⟩
+  rcases hWorkBounds with
+    ⟨hWorkQFT, hWorkStep1, hWorkStep2, hWorkStep5⟩
+
+  have hQFTX : QFTReserveOK ops x := by
+    refine ⟨?_⟩
+    change qftReserveNeed ops x.width ≤ x.capacity
+    exact hlarge.exponent_large_enough
+
+  have hQFTWork : QFTReserveOK ops work := by
+    refine ⟨?_⟩
+    simpa [qftReserveNeed] using hWorkQFT
+
+  have hQFTDataCarry : QFTReserveOK ops (data.grow 1) := by
+    refine ⟨?_⟩
+    rw [
+      ExtReg.width_grow data 1 hDataGrow,
+      ExtReg.capacity_grow data 1 hDataGrow
+    ]
+    have h := hDataQFT
+    simp only [qftReserveNeed] at h
+    omega
+
+  have hStep1XExt : hmod.step1Workspace.xExt = data := by
+    rfl
+  have hStep1ZExt : hmod.step1Workspace.zExt = work := by
+    rfl
+  have hStep2XExt : hmod.step2Workspace.xExt = work := by
+    rfl
+  have hStep2ZExt : hmod.step2Workspace.zExt = data.grow 1 := by
+    rfl
+  have hStep5XExt : hmod.step5Workspace.xExt = data.grow 1 := by
+    rfl
+  have hStep5ZExt : hmod.step5Workspace.zExt = work := by
+    rfl
+
+  have hHWork : GateWorkspaceOK ops (H_reg work.active) :=
+    gateWorkspaceOK_H_reg ops work.active
+
+  have hCore :
+      ∀ (c ctrl : ℕ),
+        ModMulCoreLayout data work flag ctrl →
+        GateWorkspaceOK ops
+          (CmodMulInPlaceCore
+            (Basis := qs.Basis)
+            c N ctrl data work flag hmod) := by
+    intro c ctrl hlayout
+
+    have hctrlData : ctrl ∉ data.ownedQubits :=
+      hlayout.2.2.2.1
+    have hctrlWork : ctrl ∉ work.ownedQubits :=
+      hlayout.2.2.2.2.1
+
+    have hStep1Static :
+        CSignedRecursiveWorkspaceOK
+          ops ctrl (data.grow 1) (work.grow 1) :=
+      {
+        toSignedRecursiveWorkspaceOK :=
+          {
+            owned_disjoint := by
+              simpa [
+                ExtReg.OwnedDisjoint,
+                ExtReg.ownedQubits_grow
+              ] using hmod.2.2
+
+            x_reserve_sufficient := by
+              rw [
+                ExtReg.width_grow data 1 hDataGrow,
+                ExtReg.width_grow work 1 hWorkGrow,
+                ExtReg.capacity_grow data 1 hDataGrow
+              ]
+              exact reserve_le_capacity_sub_one_of_succ_le hDataStep1
+
+            z_reserve_sufficient := by
+              rw [
+                ExtReg.width_grow data 1 hDataGrow,
+                ExtReg.width_grow work 1 hWorkGrow,
+                ExtReg.capacity_grow work 1 hWorkGrow
+              ]
+              exact reserve_le_capacity_sub_one_of_succ_le hWorkStep1
+          }
+
+        control_disjoint := by
+          simpa [
+            ExtReg.CtrlDisjoint,
+            ExtReg.ownedQubits_grow
+          ] using And.intro hctrlData hctrlWork
+      }
+
+    have hStep2Static :
+        SignedRecursiveWorkspaceOK
+          ops
+          (work.grow 1)
+          ((data.grow 1).grow 1) :=
+      {
+        owned_disjoint := by
+          simpa [
+            ExtReg.OwnedDisjoint,
+            ExtReg.ownedQubits_grow
+          ] using hmod.work_dataCarry_disjoint
+
+        x_reserve_sufficient := by
+          rw [
+            ExtReg.width_grow work 1 hWorkGrow,
+            ExtReg.width_grow (data.grow 1) 1 hDataCarryGrow,
+            ExtReg.width_grow data 1 hDataGrow,
+            ExtReg.capacity_grow work 1 hWorkGrow
+          ]
+          rw [show data.width + 1 + 1 = data.width + 2 by omega]
+          exact reserve_le_capacity_sub_one_of_succ_le hWorkStep2
+
+        z_reserve_sufficient := by
+          rw [
+            ExtReg.width_grow work 1 hWorkGrow,
+            ExtReg.width_grow (data.grow 1) 1 hDataCarryGrow,
+            ExtReg.width_grow data 1 hDataGrow,
+            ExtReg.capacity_grow (data.grow 1) 1 hDataCarryGrow,
+            ExtReg.capacity_grow data 1 hDataGrow
+          ]
+          rw [show data.width + 1 + 1 = data.width + 2 by omega]
+          exact reserve_le_capacity_sub_two_of_two_add_le hDataStep2
+      }
+
+    have hStep5Static :
+        CSignedRecursiveWorkspaceOK
+          ops ctrl
+          ((data.grow 1).grow 1)
+          (work.grow 1) :=
+      {
+        toSignedRecursiveWorkspaceOK :=
+          {
+            owned_disjoint := by
+              simpa [
+                ExtReg.OwnedDisjoint,
+                ExtReg.ownedQubits_grow
+              ] using hmod.dataCarry_work_disjoint
+
+            x_reserve_sufficient := by
+              rw [
+                ExtReg.width_grow (data.grow 1) 1 hDataCarryGrow,
+                ExtReg.width_grow data 1 hDataGrow,
+                ExtReg.width_grow work 1 hWorkGrow,
+                ExtReg.capacity_grow (data.grow 1) 1 hDataCarryGrow,
+                ExtReg.capacity_grow data 1 hDataGrow
+              ]
+              rw [show data.width + 1 + 1 = data.width + 2 by omega]
+              exact reserve_le_capacity_sub_two_of_two_add_le hDataStep5
+
+            z_reserve_sufficient := by
+              rw [
+                ExtReg.width_grow (data.grow 1) 1 hDataCarryGrow,
+                ExtReg.width_grow data 1 hDataGrow,
+                ExtReg.width_grow work 1 hWorkGrow,
+                ExtReg.capacity_grow work 1 hWorkGrow
+              ]
+              rw [show data.width + 1 + 1 = data.width + 2 by omega]
+              exact reserve_le_capacity_sub_one_of_succ_le hWorkStep5
+          }
+
+        control_disjoint := by
+          simpa [
+            ExtReg.CtrlDisjoint,
+            ExtReg.ownedQubits_grow
+          ] using And.intro hctrlData hctrlWork
+      }
+
+    have hStep1Phase :
+        CSignedRecursiveWorkspaceOK
+          ops ctrl
+          (hmod.step1Workspace.xExt.grow 1)
+          (hmod.step1Workspace.zExt.grow 1) := by
+      simpa only [hStep1XExt, hStep1ZExt] using hStep1Static
+
+    have hStep2Phase :
+        SignedRecursiveWorkspaceOK
+          ops
+          (hmod.step2Workspace.xExt.grow 1)
+          (hmod.step2Workspace.zExt.grow 1) := by
+      simpa only [hStep2XExt, hStep2ZExt] using hStep2Static
+
+    have hStep5Phase :
+        CSignedRecursiveWorkspaceOK
+          ops ctrl
+          (hmod.step5Workspace.xExt.grow 1)
+          (hmod.step5Workspace.zExt.grow 1) := by
+      simpa only [hStep5XExt, hStep5ZExt] using hStep5Static
+
+    have hStep1QFT :
+        QFTReserveOK ops hmod.step1Workspace.zExt := by
+      simpa only [hStep1ZExt] using hQFTWork
+
+    have hStep2QFT :
+        QFTReserveOK ops hmod.step2Workspace.zExt := by
+      simpa only [hStep2ZExt] using hQFTDataCarry
+
+    have hStep5QFT :
+        QFTReserveOK ops hmod.step5Workspace.zExt := by
+      simpa only [hStep5ZExt] using hQFTWork
+
+    have hStep1OK :
+        GateWorkspaceOK ops
+          (step1
+            (Basis := qs.Basis)
+            c N ctrl data work hmod) := by
+      simp [
+        step1,
+        IQFT,
+        Gate.CPhaseProdUsing,
+        GateWorkspaceOK,
+        hHWork,
+        hStep1Phase,
+        hStep1QFT
+      ]
+
+    have hStep2OK :
+        GateWorkspaceOK ops
+          (step2
+            (Basis := qs.Basis)
+            N data work hmod) := by
+      simp [
+        step2,
+        IQFT,
+        Gate.PhaseProdUsing,
+        GateWorkspaceOK,
+        hStep2Phase,
+        hStep2QFT
+      ]
+
+    have hStep5OK :
+        GateWorkspaceOK ops
+          (step5
+            (Basis := qs.Basis)
+            (step5Constant c N)
+            N ctrl data work hmod) := by
+      simp [
+        step5,
+        IQFT,
+        Gate.CPhaseProdUsing,
+        GateWorkspaceOK,
+        hHWork,
+        hStep5Phase,
+        hStep5QFT
+      ]
+
+    simp [
+      CmodMulInPlaceCore,
+      step3,
+      step4,
+      GateWorkspaceOK,
+      hStep1OK,
+      hStep2OK,
+      hStep5OK
+    ]
+
+  have hLayoutOfMem :
+      ∀ ctrl ∈ x.active.qubits,
+        ModMulCoreLayout data work flag ctrl := by
+    intro ctrl hctrl
+    rcases List.get_of_mem hctrl with ⟨j, hj⟩
+    let i : Fin (regSize x.active) :=
+      ⟨j.1, by
+        simp[regSize, Reg.width]⟩
+    have hget : x.active.get i = ctrl := by
+      dsimp [i, Reg.get]
+      simpa [Reg.width] using hj
+    have hi := hsetup.register_layout i
+    simpa only [hget] using hi
+
+  have hSteps :
+      ∀ (e : ℕ) (ctrls : List ℕ),
+        (∀ ctrl ∈ ctrls,
+          ModMulCoreLayout data work flag ctrl) →
+        GateWorkspaceOK ops
+          (modExpApproxStepsValid
+            (Basis := qs.Basis)
+            a N data work flag hmod e ctrls) := by
+    intro e ctrls
+    induction ctrls generalizing e with
+    | nil =>
+        intro _
+        simp [modExpApproxStepsValid, GateWorkspaceOK]
+
+    | cons ctrl ctrls ih =>
+        intro hLayout
+        have hHeadLayout :
+            ModMulCoreLayout data work flag ctrl :=
+          hLayout ctrl (by simp)
+        have hTailLayout :
+            ∀ q ∈ ctrls,
+              ModMulCoreLayout data work flag q := by
+          intro q hq
+          exact hLayout q (by simp [hq])
+        have hHead :=
+          hCore ((a ^ (2 ^ e)) % N) ctrl hHeadLayout
+        have hTail :=
+          ih (e := e + 1) hTailLayout
+        simpa [modExpApproxStepsValid] using
+          And.intro hHead hTail
+
+  have hHExponent :
+      GateWorkspaceOK ops (H_reg x.active) :=
+    gateWorkspaceOK_H_reg ops x.active
+
+  have hInit :
+      GateWorkspaceOK ops (initY1 data.active) := by
+    cases hq : data.active.qubits with
+    | nil =>
+        simp [initY1, hq, GateWorkspaceOK]
+    | cons q qs =>
+        simp [initY1, hq, GateWorkspaceOK]
+
+  have hModExp :
+      GateWorkspaceOK ops
+        (modExpApproxValid
+          (Basis := qs.Basis)
+          a N x.active data work flag hmod) :=
+    hSteps 0 x.active.qubits hLayoutOfMem
+
+  have hFinalQFT :
+      GateWorkspaceOK ops (IQFT x) := by
+    simpa [IQFT, GateWorkspaceOK] using hQFTX
+
+  have hAll :
+      GateWorkspaceOK ops (H_reg x.active) ∧
+      GateWorkspaceOK ops (initY1 data.active) ∧
+      GateWorkspaceOK ops
+        (modExpApproxValid
+          (Basis := qs.Basis)
+          a N x.active data work flag hmod) ∧
+      GateWorkspaceOK ops (IQFT x) :=
+    ⟨hHExponent, hInit, hModExp, hFinalQFT⟩
+
+  simpa [orderFindingApprox, GateWorkspaceOK, hmod] using hAll
+
+omit [ContinuedFractionPost] [Spec] in
+theorem LoweredShorSetup.workspace
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    {lowering : ShorLoweringSetup}
+    {η : ℝ}
+    {a N : ℕ}
+    {x y work : ExtReg}
+    {flag : ℕ}
+    {b0 : qs.Basis}
+    (h :
+      LoweredShorSetup
+        qs lowering η a N x y work flag b0) :
+    GateWorkspaceOK lowering.ops
+      (orderFindingApprox
+        qs a N x y work flag
+        h.approx.circuit_workspace) := by
+  exact
+    gateWorkspaceOK_orderFindingApprox
+      (ops := lowering.ops)
+      (η := η)
+      (a := a)
+      (N := N)
+      (x := x)
+      (data := y)
+      (work := work)
+      (flag := flag)
+      (b0 := b0)
+      h.approx
+      h.workspace_large_enough
+
+/--
+Every reserve register that may be used during Shor lowering is initially zero.
+-/
+def ShorWorkspaceCleanInput
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (x y work : ExtReg)
+    (b0 : Basis) :
+    Prop :=
+  FreshZero x.reserve b0 ∧
+  FreshZero y.reserve b0 ∧
+  FreshZero work.reserve b0
+
+
+structure LoweredShorReady
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    [GateSemanticsFacts qs]
+    (lowering : ShorLoweringSetup)
+    (η : ℝ)
+    (a N : ℕ)
+    (x y work : ExtReg)
+    (flag : ℕ)
+    (b0 : qs.Basis) :
+    Prop where
+
+  approx :
+    ShorApproxSetup qs η x y work flag b0
+
+  workspace_large_enough :
+    ShorWorkspaceLargeEnough lowering.ops x y work
+
+  clean :
+    let hworkspace :=
+      gateWorkspaceOK_orderFindingApprox (ops := lowering.ops)  (η := η) (a := a) (N := N)
+        (x := x) (data := y) (work := work) (flag := flag) (b0 := b0) approx workspace_large_enough
+
+    GateWorkspaceCleanState qs lowering.k lowering.hk lowering.ops
+      (orderFindingApprox qs a N x y work flag  approx.circuit_workspace)
+      hworkspace (qs.ket b0)
+
+omit [ContinuedFractionPost] [Spec] in
+theorem LoweredShorReady.workspace
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    [GateSemanticsFacts qs]
+    {lowering : ShorLoweringSetup}
+    {η : ℝ}
+    {a N : ℕ}
+    {x y work : ExtReg}
+    {flag : ℕ}
+    {b0 : qs.Basis}
+    (h :
+      LoweredShorReady
+        qs lowering η a N x y work flag b0) :
+    GateWorkspaceOK lowering.ops
+      (orderFindingApprox
+        qs a N x y work flag
+        h.approx.circuit_workspace) := by
+  exact
+    gateWorkspaceOK_orderFindingApprox
+      (ops := lowering.ops)
+      (η := η)
+      (a := a)
+      (N := N)
+      (x := x)
+      (data := y)
+      (work := work)
+      (flag := flag)
+      (b0 := b0)
+      h.approx
+      h.workspace_large_enough
+
+omit [ContinuedFractionPost] [Spec] in
+theorem LoweredShorReady.workspace_clean
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    [GateSemanticsFacts qs]
+    {lowering : ShorLoweringSetup}
+    {η : ℝ}
+    {a N : ℕ}
+    {x y work : ExtReg}
+    {flag : ℕ}
+    {b0 : qs.Basis}
+    (h :
+      LoweredShorReady
+        qs lowering η a N x y work flag b0) :
+    GateWorkspaceCleanState
+      qs
+      lowering.k
+      lowering.hk
+      lowering.ops
+      (orderFindingApprox
+        qs a N x y work flag
+        h.approx.circuit_workspace)
+      h.workspace
+      (qs.ket b0) := by
+  simpa only using h.clean
+
+/--
+Uniform correctness of the fully lowered approximate Shor
+order-finding circuit.
+
+The lowering introduces no additional approximation error: its success
+probability is exactly that of `orderFindingApprox`.
+-/
+theorem Shor_correct_approx_lowered_uniform
+    [LowerGateClass qs]
+    [GateSemanticsFacts qs]
+    [IdealCtrlModMulExactSemantics qs]
+    [ModMulPrimitiveSemantics qs]
+    (T : ℕ → ℕ)
+    (hT : ContinuedFractionSearchComplete T)
+    (inst : ShorOrderFindingInstance)
+    (lowering : ShorLoweringSetup)
+    (work : ExtReg)
+    (flag : ℕ)
+    (b0 : qs.Basis) :
+    ∃ K : ℝ, 0 ≤ K ∧
+      ∀ (η : ℝ)
+        (hready : LoweredShorReady qs lowering η inst.a inst.N inst.x inst.y work flag b0),
+        probability_of_success (qs := qs) (T := T)
+          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+          (x := inst.x.active) (r := ord inst.a inst.N inst.coprime)
+          (Q := ASize inst.x.active) (evalC := LowerGateClass.evalL (qs := qs))
+          (C := orderFindingApproxLow qs lowering.k lowering.hk lowering.ops
+              inst.a inst.N inst.x inst.y work flag
+              hready.approx.circuit_workspace hready.workspace)
+            (ψ := qs.ket b0)
+          ≥
+        κ / (Nat.log2 inst.N : ℝ) ^ 4
+          -
+        2 * (tbits inst.x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+  rcases
+      Shor_correct_approx_uniform
+        (qs := qs)
+        T
+        hT
+        inst
+        work
+        flag
+        b0 with
+    ⟨K, hK, happrox⟩
+
+  refine ⟨K, hK, ?_⟩
+  intro η hready
+
+  calc
+    probability_of_success
+        (qs := qs)
+        (T := T)
+        (verify :=
+          fun d =>
+            decide ((inst.a ^ d) % inst.N = 1))
+        (x := inst.x.active)
+        (r := ord inst.a inst.N inst.coprime)
+        (Q := ASize inst.x.active)
+        (evalC := LowerGateClass.evalL (qs := qs))
+        (C :=
+          orderFindingApproxLow
+            qs
+            lowering.k
+            lowering.hk
+            lowering.ops
+            inst.a
+            inst.N
+            inst.x
+            inst.y
+            work
+            flag
+            hready.approx.circuit_workspace
+            hready.workspace)
+        (ψ := qs.ket b0)
+        =
+      probability_of_success
+        (qs := qs)
+        (T := T)
+        (verify :=
+          fun d =>
+            decide ((inst.a ^ d) % inst.N = 1))
+        (x := inst.x.active)
+        (r := ord inst.a inst.N inst.coprime)
+        (Q := ASize inst.x.active)
+        (evalC := qs.eval)
+        (C :=
+          orderFindingApprox
+            qs
+            inst.a
+            inst.N
+            inst.x
+            inst.y
+            work
+            flag
+            hready.approx.circuit_workspace)
+        (ψ := qs.ket b0) := by
+          exact
+            orderFindingApproxLow_probability_eq
+              (qs := qs)
+              (lowering := lowering)
+              (T := T)
+              (verify :=
+                fun d =>
+                  decide ((inst.a ^ d) % inst.N = 1))
+              (a := inst.a)
+              (N := inst.N)
+              (x := inst.x)
+              (y := inst.y)
+              (work := work)
+              (flag := flag)
+              (hmodWorkspace :=
+                hready.approx.circuit_workspace)
+              (hLowerWorkspace :=
+                hready.workspace)
+              (ψ := qs.ket b0)
+              (hclean :=
+                hready.workspace_clean)
+              (r := ord inst.a inst.N inst.coprime)
+              (Q := ASize inst.x.active)
+
+    _ ≥
+        κ / (Nat.log2 inst.N : ℝ) ^ 4
+          -
+        2 * (tbits inst.x.active : ℝ) *
+          Real.sqrt (2 * (K * η)) := by
+          exact happrox η hready.approx

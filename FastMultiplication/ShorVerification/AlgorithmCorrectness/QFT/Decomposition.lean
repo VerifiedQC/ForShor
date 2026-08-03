@@ -1,17 +1,16 @@
-import FastMultiplication.ShorVerification.AbstractMachine.PhaseProductLoweringCorrectness
-
+import FastMultiplication.ShorVerification.Basic
 namespace Shor
 open Gate
 
-attribute [simp] LowerGateClass.evalL_id
-attribute [simp] LowerGateClass.evalL_seq
+universe u
+
 
 /-!
 # QFT Decomposition
 
 This file proves the high-level circuit identity that splits QFT into recursive
 QFTs, a phase product, and radix reversal.  Low-level lowering correctness is
-proved separately in `AbstractMachine/QFTLoweringCorrectness.lean`.
+proved separately in `AbstractMachine/QFTLoweringCorrectness/PlanSemantics.lean`.
 
 The organization :
 
@@ -99,9 +98,7 @@ noncomputable def finMulAddEquiv (A B : ℕ) :
 
 variable (qs : QSemantics)
   [RegEncoding qs.Basis]
-  [ExtRegEncoding qs.Basis]
-  [ExtRegSplitSemantics qs.Basis]
-  [LowerGateClass qs]
+
   [GateSemanticsFacts qs]
 
 def nTot (r : Reg) : ℕ := regSize r
@@ -156,22 +153,225 @@ def halfSplitPoint (r : Reg) : SplitPoint r :=
 def leftReg  (r : Reg) : Reg := splitLeft r (halfSplitPoint r)
 def rightReg (r : Reg) : Reg := splitRight r (halfSplitPoint r)
 
+lemma leftReg_mem_parent
+    (r : Reg)
+    {q : ℕ}
+    (hq : q ∈ (leftReg r).qubits) :
+    q ∈ r.qubits := by
+  simpa [
+    leftReg,
+    halfSplitPoint,
+    splitM,
+    splitLeft,
+    Reg.take
+  ] using List.mem_of_mem_take hq
+
+lemma rightReg_mem_parent
+    (r : Reg)
+    {q : ℕ}
+    (hq : q ∈ (rightReg r).qubits) :
+    q ∈ r.qubits := by
+  simpa [
+    rightReg,
+    halfSplitPoint,
+    splitM,
+    splitRight,
+    Reg.drop
+  ] using List.mem_of_mem_drop hq
+
+/--
+The left recursive QFT acts on the left half of the active register and
+temporarily owns the same reserve as its parent.
+
+The two recursive QFTs are sequential, so they may reuse this reserve.  Each
+lowered QFT is required to restore it before returning.
+-/
+def leftQFTReg (r : ExtReg) : ExtReg :=
+  {
+    active := leftReg r.active
+    reserve := r.reserve
+    active_reserve_disjoint := by
+      rw [Disjoint, List.disjoint_left]
+      intro q hqLeft hqReserve
+
+      have hqActive :
+          q ∈ r.active.qubits :=
+        leftReg_mem_parent r.active hqLeft
+
+      have hdisjoint :=
+        r.active_reserve_disjoint
+
+      rw [Disjoint, List.disjoint_left] at hdisjoint
+      exact hdisjoint hqActive hqReserve
+  }
+
+/--
+The right recursive QFT acts on the right half of the active register and
+temporarily owns the same reserve as its parent.
+-/
+def rightQFTReg (r : ExtReg) : ExtReg :=
+  {
+    active := rightReg r.active
+    reserve := r.reserve
+    active_reserve_disjoint := by
+      rw [Disjoint, List.disjoint_left]
+      intro q hqRight hqReserve
+
+      have hqActive :
+          q ∈ r.active.qubits :=
+        rightReg_mem_parent r.active hqRight
+
+      have hdisjoint :=
+        r.active_reserve_disjoint
+
+      rw [Disjoint, List.disjoint_left] at hdisjoint
+      exact hdisjoint hqActive hqReserve
+  }
+
+@[simp] lemma leftQFTReg_active
+    (r : ExtReg) :
+    (leftQFTReg r).active = leftReg r.active := by
+  rfl
+
+@[simp] lemma rightQFTReg_active
+    (r : ExtReg) :
+    (rightQFTReg r).active = rightReg r.active := by
+  rfl
+
+@[simp] lemma leftQFTReg_reserve
+    (r : ExtReg) :
+    (leftQFTReg r).reserve = r.reserve := by
+  rfl
+
+@[simp] lemma rightQFTReg_reserve
+    (r : ExtReg) :
+    (rightQFTReg r).reserve = r.reserve := by
+  rfl
+
+@[simp] lemma leftQFTReg_width
+    (r : ExtReg) :
+    (leftQFTReg r).width =
+      regSize (leftReg r.active) := by
+  rfl
+
+@[simp] lemma rightQFTReg_width
+    (r : ExtReg) :
+    (rightQFTReg r).width =
+      regSize (rightReg r.active) := by
+  rfl
+
+namespace Gate.PhaseProdWorkspace
+
+/--
+The linear subspace in which both physical workspace qubits of an unsigned
+phase-product macro are clean.
+-/
+inductive CleanState
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    {x z : Reg}
+    (ws : Gate.PhaseProdWorkspace x z) :
+    qs.State → Prop
+  | zero :
+      CleanState qs ws 0
+  | ket
+      (b : qs.Basis)
+      (hclean : ws.Clean b) :
+      CleanState qs ws (qs.ket b)
+  | add
+      {ψ φ : qs.State}
+      (hψ : CleanState qs ws ψ)
+      (hφ : CleanState qs ws φ) :
+      CleanState qs ws (ψ + φ)
+  | smul
+      (a : ℂ)
+      {ψ : qs.State}
+      (hψ : CleanState qs ws ψ) :
+      CleanState qs ws (a • ψ)
+
+omit  [GateSemanticsFacts qs] in
+/--
+Writing the right input register does not change either workspace qubit.
+-/
+lemma Clean.writeRight
+    {x z : Reg}
+    (ws : Gate.PhaseProdWorkspace x z)
+    (b : qs.Basis)
+    (value : ℕ)
+    (hclean : ws.Clean b) :
+    ws.Clean (RegEncoding.writeNat z value b) := by
+  constructor
+  · apply FreshZero.of_eq_on_bits
+      (r := ws.xExt.newBits 1)
+      (b₁ := b)
+      (b₂ := RegEncoding.writeNat z value b)
+    · intro q hq
+      rw [RegEncoding.bit_writeNat_out]
+      have hqReserve : q ∈ ws.xReserve.qubits := by
+        exact List.mem_of_mem_take hq
+      exact ws.xReserve_not_z hqReserve
+    · exact hclean.1
+  · apply FreshZero.of_eq_on_bits
+      (r := ws.zExt.newBits 1)
+      (b₁ := b)
+      (b₂ := RegEncoding.writeNat z value b)
+    · intro q hq
+      rw [RegEncoding.bit_writeNat_out]
+      have hqReserve : q ∈ ws.zReserve.qubits := by
+        exact List.mem_of_mem_take hq
+      exact (Disjoint.symm ws.z_reserve_disjoint) hqReserve
+    · exact hclean.2
+
+end Gate.PhaseProdWorkspace
+
+theorem eval_QFT_eq_of_active_eq
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    (x y : ExtReg)
+    (hactive : x.active = y.active)
+    (ψ : qs.State) :
+    qs.eval (Gate.QFT x) ψ =
+      qs.eval (Gate.QFT y) ψ := by
+  refine
+    qs.state_induction
+      (P := fun ψ =>
+        qs.eval (Gate.QFT x) ψ =
+          qs.eval (Gate.QFT y) ψ)
+      ?_ ?_ ?_ ?_ ψ
+
+  · simp [qs.eval_zero]
+
+  · intro ψ₁ ψ₂ hψ₁ hψ₂
+    simp [qs.eval_add, hψ₁, hψ₂]
+
+  · intro a ψ hψ
+    simp [qs.eval_smul, hψ]
+
+  · intro b
+    cases x with
+    | mk xActive xReserve xDisjoint =>
+      cases y with
+      | mk yActive yReserve yDisjoint =>
+        dsimp at hactive
+        cases hactive
+        simp [QFTSemantics.eval_QFT_ket, ExtReg.width, ExtReg.toNat]
+
 def j0 (r : Reg) (b : qs.Basis) : ℕ := RegEncoding.toNat (leftReg r) b
 def j1 (r : Reg) (b : qs.Basis) : ℕ := RegEncoding.toNat (rightReg r) b
 
-omit [LowerGateClass qs] in
-omit [ExtRegSplitSemantics QSemantics.Basis] in
 lemma step1_QFT_right_ket
   (r : Reg) (b : qs.Basis) :
   let right : Reg := rightReg r
   let B   : ℕ  := ASize right
-  qs.eval (Gate.QFT right) (qs.ket b)
+  qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b)
     =
   ((1 / Real.sqrt (B : ℝ) : ℂ)) •
     ∑ kH : Fin B,
       qftPhase B (RegEncoding.toNat right b) kH.1 •
         qs.ket (RegEncoding.writeNat right kH.1 b) := by
-  simpa [ASize, leftReg, rightReg] using (QFTSemantics.eval_QFT_ket (qs := qs) (r := rightReg r) (b := b))
+  simpa [ASize, leftReg, rightReg, ExtReg.ofReg, ExtReg.width, ExtReg.toNat, regSize] using
+    (QFTSemantics.eval_QFT_ket (qs := qs) (r := ExtReg.ofReg (rightReg r)) (b := b))
 
 lemma disjoint_left_right (r : Reg) :
   Disjoint (leftReg r) (rightReg r) := by
@@ -291,17 +491,20 @@ lemma toNat_left_after_write_right
     Section 5: First split-QFT steps
 ========================================================= -/
 
-omit [LowerGateClass qs] in
-omit [LowerGateClass qs] in
-omit [ExtRegSplitSemantics QSemantics.Basis] in
-lemma step2_PhaseProd_after_QFT_right
-  (r : Reg) (b : qs.Basis) :
+lemma step2_PhaseProdUsing_after_QFT_right
+  (r : Reg)
+  (ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r))
+  (b : qs.Basis)
+  (hclean : ws.Clean b) :
   let left  : Reg := leftReg r
   let right : Reg := rightReg r
   let A     : ℕ  := ASize left
   let B     : ℕ  := ASize right
-  qs.eval (Gate.PhaseProd ((2 * Real.pi) / (A*B : ℝ)) left right)
-    (qs.eval (Gate.QFT right) (qs.ket b))
+  qs.eval
+    (Gate.PhaseProdUsing
+      ((2 * Real.pi) / (A*B : ℝ))
+      left right ws)
+    (qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b))
     =
   ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
     ∑ kH : Fin B,
@@ -309,21 +512,22 @@ lemma step2_PhaseProd_after_QFT_right
         *
         (qftPhase (A*B) (RegEncoding.toNat left b) kH.1))
         • qs.ket (RegEncoding.writeNat right kH.1 b) := by
+  dsimp only
   classical
-  set left  : Reg := leftReg r
-  set right : Reg := rightReg r
-  set A : ℕ := ASize left
-  set B : ℕ := ASize right
+  let left  : Reg := leftReg r
+  let right : Reg := rightReg r
+  let A : ℕ := ASize left
+  let B : ℕ := ASize right
 
   have hQFTright :
-      qs.eval (Gate.QFT right) (qs.ket b)
+      qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b)
         =
       ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
         ∑ kH : Fin B,
           (qftPhase B (RegEncoding.toNat right b) kH.1) •
             qs.ket (RegEncoding.writeNat right kH.1 b) := by
     simpa [ASize, B, right] using
-      (QFTSemantics.eval_QFT_ket (qs := qs) (r := right) (b := b))
+      (QFTSemantics.eval_QFT_ket (qs := qs) (r := ExtReg.ofReg right) (b := b))
 
   have phase_scalar_eq (kH : Fin B) :
       Complex.exp
@@ -365,10 +569,10 @@ lemma step2_PhaseProd_after_QFT_right
     simpa [hL, hR, mul_assoc, mul_left_comm, mul_comm] using hmain
 
   calc
-    qs.eval (Gate.PhaseProd (2 * Real.pi / (↑A * ↑B)) left right)
-        (qs.eval (Gate.QFT right) (qs.ket b))
+    qs.eval (Gate.PhaseProdUsing (2 * Real.pi / (↑A * ↑B)) left right ws)
+        (qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b))
         =
-      qs.eval (Gate.PhaseProd (2 * Real.pi / (↑A * ↑B)) left right)
+      qs.eval (Gate.PhaseProdUsing (2 * Real.pi / (↑A * ↑B)) left right ws)
         (((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
           ∑ kH : Fin B,
             (qftPhase B (RegEncoding.toNat right b) kH.1) •
@@ -376,7 +580,7 @@ lemma step2_PhaseProd_after_QFT_right
         simp [hQFTright]
     _ =
       ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
-        qs.eval (Gate.PhaseProd (2 * Real.pi / (↑A * ↑B)) left right)
+        qs.eval (Gate.PhaseProdUsing (2 * Real.pi / (↑A * ↑B)) left right ws)
           (∑ kH : Fin B,
             (qftPhase B (RegEncoding.toNat right b) kH.1) •
               qs.ket (RegEncoding.writeNat right kH.1 b)) := by
@@ -384,7 +588,7 @@ lemma step2_PhaseProd_after_QFT_right
     _ =
       ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
         ∑ kH : Fin B,
-          qs.eval (Gate.PhaseProd (2 * Real.pi / (↑A * ↑B)) left right)
+          qs.eval (Gate.PhaseProdUsing (2 * Real.pi / (↑A * ↑B)) left right ws)
             ((qftPhase B (RegEncoding.toNat right b) kH.1) •
               qs.ket (RegEncoding.writeNat right kH.1 b)) := by
         simp [eval_sum_univ_qs]
@@ -392,7 +596,7 @@ lemma step2_PhaseProd_after_QFT_right
       ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
         ∑ kH : Fin B,
           (qftPhase B (RegEncoding.toNat right b) kH.1) •
-            qs.eval (Gate.PhaseProd (2 * Real.pi / (↑A * ↑B)) left right)
+            qs.eval (Gate.PhaseProdUsing (2 * Real.pi / (↑A * ↑B)) left right ws)
               (qs.ket (RegEncoding.writeNat right kH.1 b)) := by
         simp [qs.eval_smul]
     _ =
@@ -406,11 +610,18 @@ lemma step2_PhaseProd_after_QFT_right
               • qs.ket (RegEncoding.writeNat right kH.1 b) := by
         congr
         funext kH
-        have hDisj : Disjoint left right := by
-          simpa [left, right] using (disjoint_left_right (r := r))
-        rw [GateSemanticsFacts.eval_PhaseProd_ket
-          qs (2 * Real.pi / (↑A * ↑B)) left right
-          (RegEncoding.writeNat right kH.1 b) hDisj]
+        have hcleanWrite :
+            ws.Clean
+              (RegEncoding.writeNat right kH.1 b) := by
+          exact
+            Gate.PhaseProdWorkspace.Clean.writeRight
+              (qs := qs) ws b kH.1 hclean
+        rw [GateSemanticsFacts.eval_PhaseProdUsing_ket
+          qs
+          (2 * Real.pi / (↑A * ↑B))
+          left right ws
+          (RegEncoding.writeNat right kH.1 b)
+          hcleanWrite]
         simp
     _ =
       ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
@@ -436,17 +647,21 @@ lemma step2_PhaseProd_after_QFT_right
 
         simp [h']
 
-omit [LowerGateClass qs] in
-omit [ExtRegSplitSemantics QSemantics.Basis] in
 lemma step3_QFT_left_after_step2
-  (r : Reg) (b : qs.Basis) :
+  (r : Reg)
+  (ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r))
+  (b : qs.Basis)
+  (hclean : ws.Clean b) :
   let left  : Reg := leftReg r
   let right : Reg := rightReg r
   let A     : ℕ  := ASize left
   let B     : ℕ  := ASize right
-  qs.eval (Gate.QFT left)
-    (qs.eval (Gate.PhaseProd ((2 * Real.pi) / (A*B : ℝ)) left right)
-      (qs.eval (Gate.QFT right) (qs.ket b)))
+  qs.eval (Gate.QFT (ExtReg.ofReg left))
+    (qs.eval
+      (Gate.PhaseProdUsing
+        ((2 * Real.pi) / (A*B : ℝ))
+        left right ws)
+      (qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b)))
     =
   (((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) *
    ((1 / Real.sqrt ((A : ℕ) : ℝ) : ℂ))) •
@@ -460,11 +675,12 @@ lemma step3_QFT_left_after_step2
           • qs.ket
               (RegEncoding.writeNat left kL.1
                 (RegEncoding.writeNat right kH.1 b)) := by
+  dsimp only
   classical
-  set left  : Reg := leftReg r
-  set right : Reg := rightReg r
-  set A : ℕ := ASize left
-  set B : ℕ := ASize right
+  let left  : Reg := leftReg r
+  let right : Reg := rightReg r
+  let A : ℕ := ASize left
+  let B : ℕ := ASize right
 
   have eval_sum_univ_qs {α : Type} [Fintype α] (U : Gate) (f : α → qs.State) :
       qs.eval U (∑ a : α, f a) = ∑ a : α, qs.eval U (f a) := by
@@ -476,8 +692,11 @@ lemma step3_QFT_left_after_step2
         simp [Finset.sum_insert ha, qs.eval_add, hs])
 
   have hstep2 :
-      qs.eval (Gate.PhaseProd ((2 * Real.pi) / (A*B : ℝ)) left right)
-          (qs.eval (Gate.QFT right) (qs.ket b))
+      qs.eval
+        (Gate.PhaseProdUsing
+          ((2 * Real.pi) / (A*B : ℝ))
+          left right ws)
+          (qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b))
         =
       ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
         ∑ kH : Fin B,
@@ -486,14 +705,18 @@ lemma step3_QFT_left_after_step2
             (qftPhase (A*B) (RegEncoding.toNat left b) kH.1))
             • qs.ket (RegEncoding.writeNat right kH.1 b) := by
     simpa [left, right, A, B] using
-      (step2_PhaseProd_after_QFT_right (qs := qs) (r := r) (b := b))
+      (step2_PhaseProdUsing_after_QFT_right
+        (qs := qs) (r := r) (ws := ws) (b := b) hclean)
 
   calc
-    qs.eval (Gate.QFT left)
-        (qs.eval (Gate.PhaseProd ((2 * Real.pi) / (A*B : ℝ)) left right)
-          (qs.eval (Gate.QFT right) (qs.ket b)))
+    qs.eval (Gate.QFT (ExtReg.ofReg left))
+        (qs.eval
+          (Gate.PhaseProdUsing
+            ((2 * Real.pi) / (A*B : ℝ))
+            left right ws)
+          (qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b)))
         =
-      qs.eval (Gate.QFT left)
+      qs.eval (Gate.QFT (ExtReg.ofReg left))
         (((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
           ∑ kH : Fin B,
             ((qftPhase B (RegEncoding.toNat right b) kH.1)
@@ -503,7 +726,7 @@ lemma step3_QFT_left_after_step2
         simp [hstep2]
     _ =
       ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
-        qs.eval (Gate.QFT left)
+        qs.eval (Gate.QFT (ExtReg.ofReg left))
           (∑ kH : Fin B,
             ((qftPhase B (RegEncoding.toNat right b) kH.1)
               *
@@ -513,7 +736,7 @@ lemma step3_QFT_left_after_step2
     _ =
       ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
         ∑ kH : Fin B,
-          qs.eval (Gate.QFT left)
+          qs.eval (Gate.QFT (ExtReg.ofReg left))
             (((qftPhase B (RegEncoding.toNat right b) kH.1)
               *
               (qftPhase (A*B) (RegEncoding.toNat left b) kH.1))
@@ -525,7 +748,7 @@ lemma step3_QFT_left_after_step2
           ((qftPhase B (RegEncoding.toNat right b) kH.1)
             *
             (qftPhase (A*B) (RegEncoding.toNat left b) kH.1)) •
-          (qs.eval (Gate.QFT left)
+          (qs.eval (Gate.QFT (ExtReg.ofReg left))
             (qs.ket (RegEncoding.writeNat right kH.1 b))) := by
         simp [qs.eval_smul, mul_smul]
     _ =
@@ -547,7 +770,7 @@ lemma step3_QFT_left_after_step2
         funext kH
         congr 1
         simpa [ASize, A] using
-          (QFTSemantics.eval_QFT_ket (qs := qs) (r := left)
+          (QFTSemantics.eval_QFT_ket (qs := qs) (r := ExtReg.ofReg left)
             (b := RegEncoding.writeNat right kH.1 b))
     _ =
       (((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) *
@@ -742,7 +965,7 @@ lemma step4_phase_combine_lowLeft
 ========================================================= -/
 
 lemma step5_reindex_sum
-  {α : Type} [AddCommMonoid α]
+  {α : Type u} [AddCommMonoid α]
   (NR NL : ℕ)
   (f : Fin (NR * NL) → α) :
   (∑ p : Fin NR × Fin NL, f ((finMulAddEquiv NR NL) p))
@@ -752,13 +975,15 @@ lemma step5_reindex_sum
   exact (finMulAddEquiv NR NL).sum_comp f
 
 lemma Asize_eq_lr (r : Reg) (m : ℕ) (hm : m ≤ regSize r) :
-  let left  : Reg := { lo := r.lo, size := m }
-  let right : Reg := { lo := r.lo + m, size := regSize r - m }
+  let split : SplitPoint r := ⟨m, hm⟩
+  let left  : Reg := splitLeft r split
+  let right : Reg := splitRight r split
   ASize left * ASize right = ASize r := by
-  dsimp [ASize, regSize]
+  dsimp only
+  simp only [ASize, splitLeft_size, splitRight_size]
   rw [← Nat.pow_add]
   congr
-  simpa [regSize] using (Nat.add_sub_of_le hm)
+  exact Nat.add_sub_of_le hm
 
 open scoped BigOperators
 
@@ -828,22 +1053,21 @@ lemma Fin.coe_cast_typeEq
 lemma eval_QFT_split_lowLeft_digitRev_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis]
-  [ExtRegEncoding qs.Basis]
-  [ExtRegSplitSemantics qs.Basis]
-  [LowerGateClass qs]
+
   [GateSemanticsFacts qs] :
-  ∀ (r : Reg) (b : qs.Basis),
+  ∀ (r : Reg)
+    (ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r))
+    (b : qs.Basis),
+    ws.Clean b →
     regSize r ≥ 2 →
-    let nTot  : ℕ := regSize r
-    let m     : ℕ := nTot / 2
-    let left  : Reg := { lo := r.lo, size := m }
-    let right : Reg := { lo := r.lo + m, size := regSize r - m }
+    let left  : Reg := leftReg r
+    let right : Reg := rightReg r
     let A     : ℕ := ASize left
     let B     : ℕ := ASize right
     let phi   : ℝ := (2 * Real.pi) / ((A * B : ℕ) : ℝ)
-    qs.eval ((Gate.QFT right) ;;
-             (Gate.PhaseProd phi left right) ;;
-             (Gate.QFT left)) (qs.ket b)
+    qs.eval ((Gate.QFT (ExtReg.ofReg right)) ;;
+             (Gate.PhaseProdUsing phi left right ws) ;;
+             (Gate.QFT (ExtReg.ofReg left))) (qs.ket b)
       =
     (((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) *
      ((1 / Real.sqrt ((A : ℕ) : ℝ) : ℂ))) •
@@ -855,36 +1079,28 @@ lemma eval_QFT_split_lowLeft_digitRev_ket
             • qs.ket
                 (RegEncoding.writeNat left kL.1
                   (RegEncoding.writeNat right kH.1 b)) := by
-  intro r b hr
+  intro r ws b hclean hr
+  dsimp only
   classical
 
-  set nTot  : ℕ := regSize r
-  set m     : ℕ := nTot / 2
-  set left  : Reg := { lo := r.lo, size := m }
-  set right : Reg := { lo := r.lo + m, size := regSize r - m }
-  set A     : ℕ := ASize left
-  set B     : ℕ := ASize right
-  set phi   : ℝ := (2 * Real.pi) / ((A * B : ℕ) : ℝ)
-
-  have hleft : leftReg r = left := by
-    simp [leftReg, halfSplitPoint, splitLeft, left, splitM, m, nTot]
-
-  have hright : rightReg r = right := by
-    simp [rightReg, halfSplitPoint, splitRight, right, splitM, m, nTot, regSize]
+  let left  : Reg := leftReg r
+  let right : Reg := rightReg r
+  let A     : ℕ := ASize left
+  let B     : ℕ := ASize right
+  let phi   : ℝ := (2 * Real.pi) / ((A * B : ℕ) : ℝ)
 
   have hstep :=
-    step3_QFT_left_after_step2 (qs := qs) (r := r) (b := b)
-
-  rw [hleft, hright] at hstep
+    step3_QFT_left_after_step2
+      (qs := qs) (r := r) (ws := ws) (b := b) hclean
 
   calc
-    qs.eval ((Gate.QFT right) ;;
-             (Gate.PhaseProd phi left right) ;;
-             (Gate.QFT left)) (qs.ket b)
+    qs.eval ((Gate.QFT (ExtReg.ofReg right)) ;;
+             (Gate.PhaseProdUsing phi left right ws) ;;
+             (Gate.QFT (ExtReg.ofReg left))) (qs.ket b)
         =
-      qs.eval (Gate.QFT left)
-        (qs.eval (Gate.PhaseProd phi left right)
-          (qs.eval (Gate.QFT right) (qs.ket b))) := by
+      qs.eval (Gate.QFT (ExtReg.ofReg left))
+        (qs.eval (Gate.PhaseProdUsing phi left right ws)
+          (qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b))) := by
         simp [qs.eval_seq]
     _ =
       (((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) *
@@ -949,7 +1165,7 @@ lemma eval_QFT_split_lowLeft_digitRev_ket
 ========================================================= -/
 
 lemma radix_reverse_reindex_sum
-  {α : Type} [AddCommMonoid α]
+  {α : Type u} [AddCommMonoid α]
   (A B : ℕ) (hB : 0 < B)
   (F : ℕ → α) :
   (∑ kH : Fin B, ∑ kL : Fin A, F (B * kL.1 + kH.1))
@@ -1020,7 +1236,6 @@ lemma radix_reverse_reindex_sum
 lemma eval_RadixReverse_digitRev_sum
   (qs : QSemantics)
   [RegEncoding qs.Basis]
-  [ExtRegEncoding qs.Basis]
   [GateSemanticsFacts qs]
   (r : Reg) (m : ℕ) (b : qs.Basis)
   (left right : Reg)
@@ -1085,11 +1300,9 @@ lemma eval_RadixReverse_digitRev_sum
     Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc,
     Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using hsem
 
-
 lemma eval_QFT_ket_as_split_sum
   (qs : QSemantics)
   [RegEncoding qs.Basis]
-  [ExtRegEncoding qs.Basis]
   [GateSemanticsFacts qs]
   (r : Reg) (b : qs.Basis)
   (m : ℕ)
@@ -1100,7 +1313,7 @@ lemma eval_QFT_ket_as_split_sum
   (hright : right = splitRight r ⟨m, hm⟩)
   (hA : A = ASize left)
   (hB : B = ASize right) :
-  qs.eval (Gate.QFT r) (qs.ket b)
+  qs.eval (Gate.QFT (ExtReg.ofReg r)) (qs.ket b)
     =
   (((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) *
    ((1 / Real.sqrt ((A : ℕ) : ℝ) : ℂ))) •
@@ -1112,11 +1325,12 @@ lemma eval_QFT_ket_as_split_sum
   classical
 
   have hAB : A * B = ASize r := by
-    subst A
-    subst B
-    subst left
-    subst right
-    exact Asize_eq_lr (r := r) (m := m) hm
+    calc
+      A * B =
+          ASize (splitLeft r ⟨m, hm⟩) *
+            ASize (splitRight r ⟨m, hm⟩) := by
+              rw [hA, hB, hleft, hright]
+      _ = ASize r := Asize_eq_lr (r := r) (m := m) hm
 
   have hAB_pow : A * B = 2 ^ regSize r := by
     simpa [ASize] using hAB
@@ -1150,63 +1364,73 @@ lemma eval_QFT_ket_as_split_sum
     aesop
 
   rw [QFTSemantics.eval_QFT_ket]
-  rw [← hAB_pow]
+  simp [ExtReg.ofReg, ExtReg.width, ExtReg.toNat, regSize]
+  rw [show 2 ^ r.width = A * B by
+    simpa [regSize] using hAB_pow.symm]
   rw [hToNat]
-  rw [← hNorm]
-  congr
+  simp_rw [← one_div]
+  congr 1
+  · simpa [regSize] using hNorm
 
-lemma eval_QFT_split_ket
-  (qs : QSemantics)
-  [RegEncoding qs.Basis]
-  [ExtRegEncoding qs.Basis]
-  [ExtRegSplitSemantics qs.Basis]
-  [LowerGateClass qs]
-  [GateSemanticsFacts qs] :
-  ∀ (r : Reg) (b : qs.Basis),
-    regSize r ≥ 2 →
-    let nTot  : ℕ := regSize r
-    let m     : ℕ := nTot / 2
-    let left  : Reg := { lo := r.lo, size := m }
-    let right : Reg := { lo := r.lo + m, size := regSize r - m }
-    let phi : ℝ := qftPhi nTot
-    qs.eval (Gate.QFT r) (qs.ket b)
-      =
-    qs.eval
-      ((Gate.QFT right) ;;
-       (Gate.PhaseProd phi left right) ;;
-       (Gate.QFT left) ;;
-       (Gate.RadixReverse r m))
-      (qs.ket b) := by
-  intro r b hsz
+lemma eval_QFT_split_ket_ofReg
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs] :
+    ∀ (r : Reg)
+      (ws :
+        Gate.PhaseProdWorkspace
+          (leftReg r)
+          (rightReg r))
+      (b : qs.Basis),
+      ws.Clean b →
+      regSize r ≥ 2 →
+      let nTot  : ℕ := regSize r
+      let m     : ℕ := nTot / 2
+      let left  : Reg := leftReg r
+      let right : Reg := rightReg r
+      let phi : ℝ := qftPhi nTot
+      qs.eval
+          (Gate.QFT (ExtReg.ofReg r))
+          (qs.ket b)
+        =
+      qs.eval
+        ((Gate.QFT (ExtReg.ofReg right)) ;;
+         Gate.PhaseProdUsing phi left right ws ;;
+         (Gate.QFT (ExtReg.ofReg left)) ;;
+         Gate.RadixReverse r m)
+        (qs.ket b) := by
+  intro r ws b hclean hsz
+  dsimp only
   classical
 
-  set nTot : ℕ := regSize r
-  set m : ℕ := nTot / 2
-  set left : Reg := { lo := r.lo, size := m }
-  set right : Reg := { lo := r.lo + m, size := regSize r - m }
-  set A : ℕ := ASize left
-  set B : ℕ := ASize right
-  set phi : ℝ := qftPhi nTot
+  let nTot : ℕ := regSize r
+  let m : ℕ := nTot / 2
+  let left : Reg := leftReg r
+  let right : Reg := rightReg r
+  let A : ℕ := ASize left
+  let B : ℕ := ASize right
+  let phi : ℝ := qftPhi nTot
 
   have hm : m ≤ regSize r := by
     unfold m nTot
     exact Nat.div_le_self _ _
 
   have hleft_split : left = splitLeft r ⟨m, hm⟩ := by
-    simp [left, splitLeft]
+    simp [left, leftReg, halfSplitPoint, splitM, m, nTot]
 
   have hright_split : right = splitRight r ⟨m, hm⟩ := by
-    simp [right, splitRight, regSize]
+    simp [right, rightReg, halfSplitPoint, splitM, m, nTot]
 
   have hA : A = ASize left := rfl
   have hB : B = ASize right := rfl
 
   have hAB : A * B = ASize r := by
-    subst A
-    subst B
-    subst left
-    subst right
-    exact Asize_eq_lr (r := r) (m := m) hm
+    calc
+      A * B =
+          ASize (splitLeft r ⟨m, hm⟩) *
+            ASize (splitRight r ⟨m, hm⟩) := by
+              rw [hA, hB, hleft_split, hright_split]
+      _ = ASize r := Asize_eq_lr (r := r) (m := m) hm
 
   have hAB_pow : A * B = 2 ^ regSize r := by
     simpa [ASize] using hAB
@@ -1222,10 +1446,10 @@ lemma eval_QFT_split_ket
      ((1 / Real.sqrt ((A : ℕ) : ℝ) : ℂ)))
 
   have hDigit :
-      qs.eval
-        ((Gate.QFT right) ;;
-         (Gate.PhaseProd phi left right) ;;
-         (Gate.QFT left))
+    qs.eval
+        ((Gate.QFT (ExtReg.ofReg right)) ;;
+         (Gate.PhaseProdUsing phi left right ws) ;;
+         (Gate.QFT (ExtReg.ofReg left)))
         (qs.ket b)
         =
       C •
@@ -1239,15 +1463,15 @@ lemma eval_QFT_split_ket
                     (RegEncoding.writeNat right kH.1 b)) := by
     have h :=
       eval_QFT_split_lowLeft_digitRev_ket
-        (qs := qs) (r := r) (b := b) hsz
+        (qs := qs) (r := r) (ws := ws) (b := b) hclean hsz
     simpa [nTot, m, left, right, A, B, phi, hPhi, C] using h
 
   have hAfterRev :
       qs.eval (Gate.RadixReverse r m)
         (qs.eval
-          ((Gate.QFT right) ;;
-           (Gate.PhaseProd phi left right) ;;
-           (Gate.QFT left))
+          ((Gate.QFT (ExtReg.ofReg right)) ;;
+           (Gate.PhaseProdUsing phi left right ws) ;;
+           (Gate.QFT (ExtReg.ofReg left)))
           (qs.ket b))
         =
       C •
@@ -1288,18 +1512,19 @@ lemma eval_QFT_split_ket
           • qs.ket (RegEncoding.writeNat r y.1 b) := by
     exact
       radix_reverse_reindex_sum
+        (α := qs.State)
         (A := A) (B := B)
         (by
           subst B
           simp [ASize])
-        (fun y =>
+        (fun y : ℕ =>
           qftPhase (A * B)
             (RegEncoding.toNat left b + A * RegEncoding.toNat right b)
             y
             • qs.ket (RegEncoding.writeNat r y b))
 
   have hStandard :
-      qs.eval (Gate.QFT r) (qs.ket b)
+      qs.eval (Gate.QFT (ExtReg.ofReg r)) (qs.ket b)
         =
       C •
         ∑ y : Fin (A * B),
@@ -1317,7 +1542,7 @@ lemma eval_QFT_split_ket
         hm hleft_split hright_split hA hB
 
   calc
-    qs.eval (Gate.QFT r) (qs.ket b)
+    qs.eval (Gate.QFT (ExtReg.ofReg r)) (qs.ket b)
         =
       C •
         ∑ y : Fin (A * B),
@@ -1340,63 +1565,193 @@ lemma eval_QFT_split_ket
     _ =
       qs.eval (Gate.RadixReverse r m)
         (qs.eval
-          ((Gate.QFT right) ;;
-           (Gate.PhaseProd phi left right) ;;
-           (Gate.QFT left))
+          ((Gate.QFT (ExtReg.ofReg right)) ;;
+           (Gate.PhaseProdUsing phi left right ws) ;;
+           (Gate.QFT (ExtReg.ofReg left)))
           (qs.ket b)) := by
         exact hAfterRev.symm
     _ =
       qs.eval
-        ((Gate.QFT right) ;;
-         (Gate.PhaseProd phi left right) ;;
-         (Gate.QFT left) ;;
+        ((Gate.QFT (ExtReg.ofReg right)) ;;
+         (Gate.PhaseProdUsing phi left right ws) ;;
+         (Gate.QFT (ExtReg.ofReg left)) ;;
          (Gate.RadixReverse r m))
         (qs.ket b) := by
         simp [qs.eval_seq]
 
-theorem eval_QFT_split
-  (qs : QSemantics) [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [ExtRegSplitSemantics qs.Basis]
-  [LowerGateClass qs] [GateSemanticsFacts qs] :
-    ∀ (r : Reg) (ψ : qs.State),
+theorem eval_QFT_split_ofReg
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+
+  [GateSemanticsFacts qs] :
+    ∀ (r : Reg)
+      (ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r))
+      (ψ : qs.State),
+      Gate.PhaseProdWorkspace.CleanState qs ws ψ →
       regSize r ≥ 2 →
       let nTot  : ℕ := regSize r
       let m     : ℕ := nTot / 2
-      let left  : Reg := { lo := r.lo, size := m }
-      let right : Reg := { lo := r.lo + m, size := regSize r - m }
+      let left  : Reg := leftReg r
+      let right : Reg := rightReg r
+      qs.eval (Gate.QFT (ExtReg.ofReg r)) ψ
+        =
+      qs.eval
+        ((Gate.QFT (ExtReg.ofReg right)) ;;
+         (Gate.PhaseProdUsing
+            (qftPhi nTot) left right ws) ;;
+         (Gate.QFT (ExtReg.ofReg left)) ;;
+         (Gate.RadixReverse r m)) ψ := by
+  intro r ws ψ hclean hsz
+  induction hclean with
+  | zero =>
+      simp [qs.eval_zero]
+  | ket b hcleanBasis =>
+      exact
+        eval_QFT_split_ket_ofReg
+          (qs := qs)
+          (r := r)
+          (ws := ws)
+          (b := b)
+          hcleanBasis
+          hsz
+  | add hψ hφ ihψ ihφ =>
+      simp [qs.eval_add, ihψ, ihφ]
+  | smul a hψ ihψ =>
+      simp [qs.eval_smul, ihψ]
+
+/--
+Reserve-aware QFT decomposition.
+
+The mathematical transform acts only on `r.active`.  Both recursive QFTs
+reuse `r.reserve`; the phase-product workspace may also be selected from that
+reserve by the lowering layer.  Correctness relies on each component restoring
+the workspace before the following component executes.
+-/
+theorem eval_QFT_split
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs] :
+    ∀ (r : ExtReg)
+      (ws : Gate.PhaseProdWorkspace (leftReg r.active) (rightReg r.active))
+      (ψ : qs.State),
+      Gate.PhaseProdWorkspace.CleanState qs ws ψ →
+      r.width ≥ 2 →
+      let nTot  : ℕ := r.width
+      let m     : ℕ := nTot / 2
+      let left  : Reg := leftReg r.active
+      let right : Reg := rightReg r.active
       qs.eval (Gate.QFT r) ψ
         =
       qs.eval
-        ((Gate.QFT right) ;;
-         (Gate.PhaseProd (qftPhi nTot) left right) ;;
-         (Gate.QFT left) ;;
-         (Gate.RadixReverse r m)) ψ := by
-  intro r ψ hsz
+        ((Gate.QFT (rightQFTReg r)) ;;
+         (Gate.PhaseProdUsing
+            (qftPhi nTot) left right ws) ;;
+         (Gate.QFT (leftQFTReg r)) ;;
+         (Gate.RadixReverse r.active m))
+        ψ := by
+  intro r ws ψ hclean hsize
+  dsimp only
 
-  let nTot : ℕ := regSize r
-  let m    : ℕ := nTot / 2
-  let left : Reg := { lo := r.lo, size := m }
-  let right: Reg := { lo := r.lo + m, size := regSize r - m }
+  have hsizeActive :
+      regSize r.active ≥ 2 := by
+    simpa [ExtReg.width] using hsize
 
-  let P : qs.State → Prop :=
-    fun ψ =>
+  have hcore :=
+    eval_QFT_split_ofReg
+      (qs := qs)
+      (r := r.active)
+      (ws := ws)
+      (ψ := ψ)
+      hclean
+      hsizeActive
+
+  have hroot :
       qs.eval (Gate.QFT r) ψ =
+        qs.eval
+          (Gate.QFT (ExtReg.ofReg r.active))
+          ψ := by
+    exact
+      eval_QFT_eq_of_active_eq
+        (qs := qs)
+        r
+        (ExtReg.ofReg r.active)
+        rfl
+        ψ
+
+  have hright :
+      ∀ φ : qs.State,
+        qs.eval
+            (Gate.QFT
+              (ExtReg.ofReg (rightReg r.active)))
+            φ
+          =
+        qs.eval
+            (Gate.QFT (rightQFTReg r))
+            φ := by
+    intro φ
+    exact
+      eval_QFT_eq_of_active_eq
+        (qs := qs)
+        (ExtReg.ofReg (rightReg r.active))
+        (rightQFTReg r)
+        rfl
+        φ
+
+  have hleft :
+      ∀ φ : qs.State,
+        qs.eval
+            (Gate.QFT
+              (ExtReg.ofReg (leftReg r.active)))
+            φ
+          =
+        qs.eval
+            (Gate.QFT (leftQFTReg r))
+            φ := by
+    intro φ
+    exact
+      eval_QFT_eq_of_active_eq
+        (qs := qs)
+        (ExtReg.ofReg (leftReg r.active))
+        (leftQFTReg r)
+        rfl
+        φ
+
+  calc
+    qs.eval (Gate.QFT r) ψ
+        =
       qs.eval
-        ((Gate.QFT right) ;;
-         (Gate.PhaseProd (qftPhi nTot) left right) ;;
-         (Gate.QFT left) ;;
-         (Gate.RadixReverse r m)) ψ
+        (Gate.QFT (ExtReg.ofReg r.active))
+        ψ := hroot
 
-  have hP : ∀ ψ, P ψ := by
-    refine qs.state_induction (P := P) ?h0 ?hadd ?hsmul ?hket
-    · simp [P, qs.eval_zero]
-    · intro ψ φ hψ hφ
-      simp [P, qs.eval_add, hψ, hφ]
-    · intro a ψ hψ
-      simp [P, qs.eval_smul, hψ]
-    · intro b
-      have hk :=
-        eval_QFT_split_ket (qs := qs) (r := r) (b := b) hsz
-      unfold P
-      simpa [nTot, m, left, right] using hk
+    _ =
+      qs.eval
+        ((Gate.QFT
+            (ExtReg.ofReg (rightReg r.active))) ;;
+         (Gate.PhaseProdUsing
+            (qftPhi r.width)
+            (leftReg r.active)
+            (rightReg r.active)
+            ws) ;;
+         (Gate.QFT
+            (ExtReg.ofReg (leftReg r.active))) ;;
+         (Gate.RadixReverse
+            r.active
+            (r.width / 2)))
+        ψ := by
+      simpa [ExtReg.width] using hcore
 
-  exact hP ψ
+    _ =
+      qs.eval
+        ((Gate.QFT (rightQFTReg r)) ;;
+         (Gate.PhaseProdUsing
+            (qftPhi r.width)
+            (leftReg r.active)
+            (rightReg r.active)
+            ws) ;;
+         (Gate.QFT (leftQFTReg r)) ;;
+         (Gate.RadixReverse
+            r.active
+            (r.width / 2)))
+        ψ := by
+      simp only [qs.eval_seq]
+      rw [hright, hleft]

@@ -7,22 +7,46 @@ open scoped BigOperators
 
 /-!
 # Phase-Product Body Correctness
-
-This file handles the compiled annotated operation list after allocation.  It
-shows one-step encoded-state preservation, then lifts that to phase blocks and
-the final deallocation step.
+This file proves correctness of the compiled phase-product body after allocation.
+It starts with local facts for single arithmetic instructions, lifts them through
+no-phase runs, evaluates the phase-product blocks, tracks the controlled variant,
+and finally composes the body with deallocation.
 -/
 
 /-! =========================================================
-    Section 1: One-step encoded-state preservation
+    Section 1: Slot disjointness and single-step correctness
+    The body gates update one logical row at a time. These helpers turn layout
+    disjointness into active-register disjointness and prove that each compiled
+    arithmetic instruction preserves the encoded symbolic state.
 ========================================================= -/
 
-/-- These lemmas prove correctness of a single compiled annotated operation on a
-basis state, assuming the next symbolic state already fits the target layout
-widths. -/
+/-- Active disjointness is symmetric, matching the direction often needed by primitive gate locality facts. -/
+lemma activeDisjoint_symm
+    {a b : ExtReg}
+    (h : ExtReg.ActiveDisjoint a b) :
+    ExtReg.ActiveDisjoint b a := by
+  exact Disjoint.symm h
+
+/-- Convert owned slot-disjointness of a layout into active disjointness for all `x/x`, `z/z`, and `x/z` slots. -/
+lemma layoutSlotsActiveDisjoint
+    {k : ℕ}
+    {dst : LayoutState k}
+    (h : LayoutSlotsDisjoint dst) :
+    (∀ i j, i ≠ j →
+      ExtReg.ActiveDisjoint (dst.xslot i) (dst.xslot j)) ∧
+    (∀ i j, i ≠ j →
+      ExtReg.ActiveDisjoint (dst.zslot i) (dst.zslot j)) ∧
+    (∀ i j,
+      ExtReg.ActiveDisjoint (dst.xslot i) (dst.zslot j)) := by
+  rcases h with ⟨hxx, hzz, hxz⟩
+  exact ⟨fun i j hij => ExtReg.activeDisjoint_of_ownedDisjoint (hxx i j hij),
+    fun i j hij => ExtReg.activeDisjoint_of_ownedDisjoint (hzz i j hij),
+    fun i j => ExtReg.activeDisjoint_of_ownedDisjoint (hxz i j)⟩
+
+/-- Correctness of a single compiled left-shift operation on an encoded basis state. -/
 lemma encodesFrom_after_shiftL_ket
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -47,19 +71,11 @@ lemma encodesFrom_after_shiftL_ket
       =
     qs.ket b1 ∧
     EncodesStateFromFits (qs := qs) src dst σ1 bRef b1 := by
-  rcases hdisj with ⟨hxx, hzz, hxz⟩
-
-  have disjoint_symm {a b : Reg} : Disjoint a b → Disjoint b a := by
-    intro h
-    cases h with
-    | inl hab => exact Or.inr hab
-    | inr hba => exact Or.inl hba
-
+  rcases layoutSlotsActiveDisjoint hdisj with ⟨hxx, hzz, hxz⟩
   have hσ1 : σ1 = State.shiftLReg σ i m := by
     simp [applyOp?] at hstep
     simpa using hstep.symm
   subst hσ1
-
   have hrow_shift_x :
       evalRowX (qs := qs) src ((σ i).shiftL m) bRef
         =
@@ -67,26 +83,22 @@ lemma encodesFrom_after_shiftL_ket
     simpa using
       (evalRowX_shiftL_raw
         (qs := qs) (src := src) (r := σ i) (m := m) (b := bRef))
-
   have hfit_shift_x :
       FitsSignedWidth (ExtReg.width (dst.xslot i))
-        (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.xslot i) bCur) := by
+        (((2 : ℤ)^m) * extToInt (dst.xslot i) bCur) := by
     have hfit_post :
         FitsSignedWidth (ExtReg.width (dst.xslot i))
           (((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef) := by
       simpa [State.shiftLReg, hrow_shift_x] using hFit1x i
     rw [hEnc.1.1 i]
     exact hfit_post
-
   rcases ArithmeticSemantics.eval_ShiftL_ket_exact
       (qs := qs) (r := dst.xslot i) (n := m) (b := bCur) hfit_shift_x with
     ⟨bx, hbx_eval, hbx_val, hbx_keep⟩
-
   have hz_same_on_bx :
-      ExtRegEncoding.extToInt (dst.zslot i) bx
-        = ExtRegEncoding.extToInt (dst.zslot i) bCur := by
-    exact hbx_keep (dst.zslot i) (disjoint_symm (hxz i i))
-
+      extToInt (dst.zslot i) bx
+        = extToInt (dst.zslot i) bCur := by
+    exact hbx_keep (dst.zslot i) (activeDisjoint_symm (hxz i i))
   have hrow_shift_z :
       evalRowZ (qs := qs) src ((σ i).shiftL m) bRef
         =
@@ -94,21 +106,18 @@ lemma encodesFrom_after_shiftL_ket
     simpa using
       (evalRowZ_shiftL_raw
         (qs := qs) (src := src) (r := σ i) (m := m) (b := bRef))
-
   have hfit_shift_z :
       FitsSignedWidth (ExtReg.width (dst.zslot i))
-        (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bx) := by
+        (((2 : ℤ)^m) * extToInt (dst.zslot i) bx) := by
     have hfit_post :
         FitsSignedWidth (ExtReg.width (dst.zslot i))
           (((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef) := by
       simpa [State.shiftLReg, hrow_shift_z] using hFit1z i
     rw [hz_same_on_bx, hEnc.1.2 i]
     exact hfit_post
-
   rcases ArithmeticSemantics.eval_ShiftL_ket_exact
       (qs := qs) (r := dst.zslot i) (n := m) (b := bx) hfit_shift_z with
     ⟨bz, hbz_eval, hbz_val, hbz_keep⟩
-
   refine ⟨bz, ?_, ?_⟩
   · simp [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, hbx_eval, hbz_eval, qs.eval_id]
   ·
@@ -118,10 +127,10 @@ lemma encodesFrom_after_shiftL_ket
       by_cases hji : i = j
       · subst hji
         calc
-          ExtRegEncoding.extToInt (dst.xslot i) bz
-              = ExtRegEncoding.extToInt (dst.xslot i) bx := by
+          extToInt (dst.xslot i) bz
+              = extToInt (dst.xslot i) bx := by
                   exact hbz_keep (dst.xslot i) (hxz i i)
-          _   = ((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.xslot i) bCur := by
+          _   = ((2 : ℤ)^m) * extToInt (dst.xslot i) bCur := by
                   simpa using hbx_val
           _   = ((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef := by
                   rw [hEnc.1.1 i]
@@ -130,21 +139,19 @@ lemma encodesFrom_after_shiftL_ket
                   simpa [State.shiftLReg] using hrow_shift_x
       ·
         have hkeep1 :
-            ExtRegEncoding.extToInt (dst.xslot j) bx
-              = ExtRegEncoding.extToInt (dst.xslot j) bCur := by
+            extToInt (dst.xslot j) bx
+              = extToInt (dst.xslot j) bCur := by
           exact hbx_keep (dst.xslot j)
             (hxx j i (by simpa [eq_comm] using hji))
         have hkeep2 :
-            ExtRegEncoding.extToInt (dst.xslot j) bz
-              = ExtRegEncoding.extToInt (dst.xslot j) bx := by
+            extToInt (dst.xslot j) bz
+              = extToInt (dst.xslot j) bx := by
           exact hbz_keep (dst.xslot j) (hxz j i)
-        have hji' : j ≠ i := by
-          intro h
-          exact hji h.symm
+        have hji' : j ≠ i := by intro h; exact hji h.symm
         calc
-          ExtRegEncoding.extToInt (dst.xslot j) bz
-              = ExtRegEncoding.extToInt (dst.xslot j) bx := hkeep2
-          _   = ExtRegEncoding.extToInt (dst.xslot j) bCur := hkeep1
+          extToInt (dst.xslot j) bz
+              = extToInt (dst.xslot j) bx := hkeep2
+          _   = extToInt (dst.xslot j) bCur := hkeep1
           _   = evalRowX (qs := qs) src (σ j) bRef := by
                   simpa [EncodesStateFrom] using hEnc.1.1 j
           _   = evalRowX (qs := qs) src ((State.shiftLReg σ i m) j) bRef := by
@@ -153,10 +160,10 @@ lemma encodesFrom_after_shiftL_ket
       by_cases hji : i = j
       · subst hji
         calc
-          ExtRegEncoding.extToInt (dst.zslot i) bz
-              = ((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bx := by
+          extToInt (dst.zslot i) bz
+              = ((2 : ℤ)^m) * extToInt (dst.zslot i) bx := by
                     simpa using hbz_val
-          _   = ((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bCur := by
+          _   = ((2 : ℤ)^m) * extToInt (dst.zslot i) bCur := by
                     rw [hz_same_on_bx]
           _   = ((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef := by
                     rw [hEnc.1.2 i]
@@ -165,30 +172,29 @@ lemma encodesFrom_after_shiftL_ket
                     simpa [State.shiftLReg] using hrow_shift_z
       ·
         have hkeep1 :
-            ExtRegEncoding.extToInt (dst.zslot j) bx
-              = ExtRegEncoding.extToInt (dst.zslot j) bCur := by
+            extToInt (dst.zslot j) bx
+              = extToInt (dst.zslot j) bCur := by
           exact hbx_keep (dst.zslot j)
-            (disjoint_symm (hxz i j))
+            (activeDisjoint_symm (hxz i j))
         have hkeep2 :
-            ExtRegEncoding.extToInt (dst.zslot j) bz
-              = ExtRegEncoding.extToInt (dst.zslot j) bx := by
+            extToInt (dst.zslot j) bz
+              = extToInt (dst.zslot j) bx := by
           exact hbz_keep (dst.zslot j)
             (hzz j i (by simpa [eq_comm] using hji))
-        have hji' : j ≠ i := by
-          intro h
-          exact hji h.symm
+        have hji' : j ≠ i := by intro h; exact hji h.symm
         calc
-          ExtRegEncoding.extToInt (dst.zslot j) bz
-              = ExtRegEncoding.extToInt (dst.zslot j) bx := hkeep2
-          _   = ExtRegEncoding.extToInt (dst.zslot j) bCur := hkeep1
+          extToInt (dst.zslot j) bz
+              = extToInt (dst.zslot j) bx := hkeep2
+          _   = extToInt (dst.zslot j) bCur := hkeep1
           _   = evalRowZ (qs := qs) src (σ j) bRef := by
                   simpa [EncodesStateFrom] using hEnc.1.2 j
           _   = evalRowZ (qs := qs) src ((State.shiftLReg σ i m) j) bRef := by
                   simp [State.shiftLReg, State.setReg, hji']
 
+/-- Correctness of a single compiled right-shift operation on an encoded basis state. -/
 lemma encodesFrom_after_shiftR_ket
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -214,30 +220,20 @@ lemma encodesFrom_after_shiftR_ket
     qs.ket b1
     ∧
     EncodesStateFromFits (qs := qs) src dst σ1 bRef b1 := by
-  rcases hdisj with ⟨hxx, hzz, hxz⟩
-
-  have disjoint_symm {a b : Reg} : Disjoint a b → Disjoint b a := by
-    intro h
-    cases h with
-    | inl hab => exact Or.inr hab
-    | inr hba => exact Or.inl hba
-
+  rcases layoutSlotsActiveDisjoint hdisj with ⟨hxx, hzz, hxz⟩
   cases hreg : Register.shiftR? (σ i) m with
   | none =>
-      have : False := by
-        simp [applyOp?, State.shiftRReg?, hreg] at hstep
-      exact False.elim this
+      simp [applyOp?, State.shiftRReg?, hreg] at hstep
   | some r' =>
       have hσ1 : State.setReg σ i r' = σ1 := by
         simpa [applyOp?, State.shiftRReg?, hreg] using hstep
       subst hσ1
-
       have hx_pre :
-          ExtRegEncoding.extToInt (dst.xslot i) bCur
+          extToInt (dst.xslot i) bCur
             =
           ((2 : ℤ)^m) * evalRowX (qs := qs) src r' bRef := by
         calc
-          ExtRegEncoding.extToInt (dst.xslot i) bCur
+          extToInt (dst.xslot i) bCur
               = evalRowX (qs := qs) src (σ i) bRef := by
                   simpa [EncodesStateFrom] using hEnc.1.1 i
           _   = ((2 : ℤ)^m) * evalRowX (qs := qs) src r' bRef := by
@@ -245,22 +241,20 @@ lemma encodesFrom_after_shiftR_ket
                     (evalRowX_shiftR_exact
                       (qs := qs) (src := src) (r := σ i) (r' := r')
                       (m := m) (b := bRef) hreg)
-
       rcases ArithmeticSemantics.eval_ShiftR_ket_exact
           (qs := qs) (r := dst.xslot i) (n := m) (b := bCur)
           (q := evalRowX (qs := qs) src r' bRef)
           hx_pre
           (by simpa [State.setReg] using hFit1x i) with
         ⟨bx, hbx_eval, hbx_val, hbx_keep⟩
-
       have hz_pre :
-          ExtRegEncoding.extToInt (dst.zslot i) bx
+          extToInt (dst.zslot i) bx
             =
           ((2 : ℤ)^m) * evalRowZ (qs := qs) src r' bRef := by
         calc
-          ExtRegEncoding.extToInt (dst.zslot i) bx
-              = ExtRegEncoding.extToInt (dst.zslot i) bCur := by
-                  exact hbx_keep (dst.zslot i) (disjoint_symm (hxz i i))
+          extToInt (dst.zslot i) bx
+              = extToInt (dst.zslot i) bCur := by
+                  exact hbx_keep (dst.zslot i) (activeDisjoint_symm (hxz i i))
           _   = evalRowZ (qs := qs) src (σ i) bRef := by
                   simpa [EncodesStateFrom] using hEnc.1.2 i
           _   = ((2 : ℤ)^m) * evalRowZ (qs := qs) src r' bRef := by
@@ -268,17 +262,14 @@ lemma encodesFrom_after_shiftR_ket
                     (evalRowZ_shiftR_exact
                       (qs := qs) (src := src) (r := σ i) (r' := r')
                       (m := m) (b := bRef) hreg)
-
       rcases ArithmeticSemantics.eval_ShiftR_ket_exact
           (qs := qs) (r := dst.zslot i) (n := m) (b := bx)
           (q := evalRowZ (qs := qs) src r' bRef)
           hz_pre
           (by simpa [State.setReg] using hFit1z i) with
         ⟨bz, hbz_eval, hbz_val, hbz_keep⟩
-
       refine ⟨bz, ?_, ?_⟩
-      ·
-        simp [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, hbx_eval, hbz_eval, qs.eval_id]
+      · simp [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, hbx_eval, hbz_eval, qs.eval_id]
       ·
         refine ⟨?_, hFit1x, hFit1z⟩
         constructor
@@ -286,68 +277,64 @@ lemma encodesFrom_after_shiftR_ket
           by_cases hji : i = j
           · subst hji
             calc
-              ExtRegEncoding.extToInt (dst.xslot i) bz
-                  = ExtRegEncoding.extToInt (dst.xslot i) bx := by
+              extToInt (dst.xslot i) bz
+                  = extToInt (dst.xslot i) bx := by
                       exact hbz_keep (dst.xslot i) (hxz i i)
               _   = evalRowX (qs := qs) src r' bRef := hbx_val
               _   = evalRowX (qs := qs) src ((State.setReg σ i r') i) bRef := by
                       simp [State.setReg]
           ·
-            have hji' : j ≠ i := by
-              intro h
-              exact hji h.symm
+            have hji' : j ≠ i := by intro h; exact hji h.symm
             have hkeep1 :
-                ExtRegEncoding.extToInt (dst.xslot j) bx
-                  = ExtRegEncoding.extToInt (dst.xslot j) bCur := by
+                extToInt (dst.xslot j) bx
+                  = extToInt (dst.xslot j) bCur := by
               exact hbx_keep (dst.xslot j)
                 (hxx j i (by simpa [eq_comm] using hji))
             have hkeep2 :
-                ExtRegEncoding.extToInt (dst.xslot j) bz
-                  = ExtRegEncoding.extToInt (dst.xslot j) bx := by
+                extToInt (dst.xslot j) bz
+                  = extToInt (dst.xslot j) bx := by
               exact hbz_keep (dst.xslot j) (hxz j i)
             calc
-              ExtRegEncoding.extToInt (dst.xslot j) bz
-                  = ExtRegEncoding.extToInt (dst.xslot j) bx := hkeep2
-              _   = ExtRegEncoding.extToInt (dst.xslot j) bCur := hkeep1
+              extToInt (dst.xslot j) bz
+                  = extToInt (dst.xslot j) bx := hkeep2
+              _   = extToInt (dst.xslot j) bCur := hkeep1
               _   = evalRowX (qs := qs) src (σ j) bRef := by
                       simpa [EncodesStateFrom] using hEnc.1.1 j
               _   = evalRowX (qs := qs) src ((State.setReg σ i r') j) bRef := by
                       simp [State.setReg, hji']
-
         · intro j
           by_cases hji : i = j
           · subst hji
             calc
-              ExtRegEncoding.extToInt (dst.zslot i) bz
+              extToInt (dst.zslot i) bz
                   = evalRowZ (qs := qs) src r' bRef := hbz_val
               _   = evalRowZ (qs := qs) src ((State.setReg σ i r') i) bRef := by
                       simp [State.setReg]
           ·
-            have hji' : j ≠ i := by
-              intro h
-              exact hji h.symm
+            have hji' : j ≠ i := by intro h; exact hji h.symm
             have hkeep1 :
-                ExtRegEncoding.extToInt (dst.zslot j) bx
-                  = ExtRegEncoding.extToInt (dst.zslot j) bCur := by
+                extToInt (dst.zslot j) bx
+                  = extToInt (dst.zslot j) bCur := by
               exact hbx_keep (dst.zslot j)
-                (disjoint_symm (hxz i j))
+                (activeDisjoint_symm (hxz i j))
             have hkeep2 :
-                ExtRegEncoding.extToInt (dst.zslot j) bz
-                  = ExtRegEncoding.extToInt (dst.zslot j) bx := by
+                extToInt (dst.zslot j) bz
+                  = extToInt (dst.zslot j) bx := by
               exact hbz_keep (dst.zslot j)
                 (hzz j i (by simpa [eq_comm] using hji))
             calc
-              ExtRegEncoding.extToInt (dst.zslot j) bz
-                  = ExtRegEncoding.extToInt (dst.zslot j) bx := hkeep2
-              _   = ExtRegEncoding.extToInt (dst.zslot j) bCur := hkeep1
+              extToInt (dst.zslot j) bz
+                  = extToInt (dst.zslot j) bx := hkeep2
+              _   = extToInt (dst.zslot j) bCur := hkeep1
               _   = evalRowZ (qs := qs) src (σ j) bRef := by
                       simpa [EncodesStateFrom] using hEnc.1.2 j
               _   = evalRowZ (qs := qs) src ((State.setReg σ i r') j) bRef := by
                       simp [State.setReg, hji']
 
+/-- Correctness of a single compiled negation operation on an encoded basis state. -/
 lemma encodesFrom_after_negate_ket
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -373,25 +360,15 @@ lemma encodesFrom_after_negate_ket
     qs.ket b1
     ∧
     EncodesStateFromFits (qs := qs) src dst σ1 bRef b1 := by
-  rcases hdisj with ⟨hxx, hzz, hxz⟩
-
-  have disjoint_symm {a b : Reg} : Disjoint a b → Disjoint b a := by
-    intro h
-    cases h with
-    | inl hab => exact Or.inr hab
-    | inr hba => exact Or.inl hba
-
+  rcases layoutSlotsActiveDisjoint hdisj with ⟨hxx, hzz, hxz⟩
   rcases ArithmeticSemantics.eval_Negate_ket_mod
       (qs := qs) (r := dst.xslot i) (b := bCur) with
     ⟨bx, hbx_eval, hbx_val, hbx_keep⟩
-
   rcases ArithmeticSemantics.eval_Negate_ket_mod
       (qs := qs) (r := dst.zslot i) (b := bx) with
     ⟨bz, hbz_eval, hbz_val, hbz_keep⟩
-
   refine ⟨bz, ?_, ?_⟩
-  ·
-    simp [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, hbx_eval, hbz_eval, qs.eval_id]
+  · simp [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, hbx_eval, hbz_eval, qs.eval_id]
   ·
     have hσ1 : σ1 = State.negateReg σ i := by
       simp [applyOp?] at hstep
@@ -414,11 +391,11 @@ lemma encodesFrom_after_negate_ket
               (- evalRowX (qs := qs) src (σ i) bRef) := by
           simpa [State.negateReg, hrow_neg] using hFit1x i
         calc
-          ExtRegEncoding.extToInt (dst.xslot i) bz
-              = ExtRegEncoding.extToInt (dst.xslot i) bx := by
+          extToInt (dst.xslot i) bz
+              = extToInt (dst.xslot i) bx := by
                   exact hbz_keep (dst.xslot i) (hxz i i)
           _   = tcWrapInt (ExtReg.width (dst.xslot i))
-                    (- ExtRegEncoding.extToInt (dst.xslot i) bCur) := by
+                    (- extToInt (dst.xslot i) bCur) := by
                   simpa using hbx_val
           _   = tcWrapInt (ExtReg.width (dst.xslot i))
                     (- evalRowX (qs := qs) src (σ i) bRef) := by
@@ -430,34 +407,31 @@ lemma encodesFrom_after_negate_ket
                   symm
                   exact (tcWrapInt_eq_of_fits hfit_post.1 hfit_post).symm
       ·
-        have hji' : j ≠ i := by
-          intro h
-          exact hji h.symm
+        have hji' : j ≠ i := by intro h; exact hji h.symm
         have hkeep1 :
-            ExtRegEncoding.extToInt (dst.xslot j) bx
-              = ExtRegEncoding.extToInt (dst.xslot j) bCur := by
+            extToInt (dst.xslot j) bx
+              = extToInt (dst.xslot j) bCur := by
           exact hbx_keep (dst.xslot j)
             (hxx j i (by simpa [eq_comm] using hji))
         have hkeep2 :
-            ExtRegEncoding.extToInt (dst.xslot j) bz
-              = ExtRegEncoding.extToInt (dst.xslot j) bx := by
+            extToInt (dst.xslot j) bz
+              = extToInt (dst.xslot j) bx := by
           exact hbz_keep (dst.xslot j) (hxz j i)
         calc
-          ExtRegEncoding.extToInt (dst.xslot j) bz
-              = ExtRegEncoding.extToInt (dst.xslot j) bx := hkeep2
-          _   = ExtRegEncoding.extToInt (dst.xslot j) bCur := hkeep1
+          extToInt (dst.xslot j) bz
+              = extToInt (dst.xslot j) bx := hkeep2
+          _   = extToInt (dst.xslot j) bCur := hkeep1
           _   = evalRowX (qs := qs) src (σ j) bRef := by
                   simpa [EncodesStateFrom] using hEnc.1.1 j
           _   = evalRowX (qs := qs) src ((State.negateReg σ i) j) bRef := by
                   simp [State.negateReg, State.setReg, hji']
-
     · intro j
       by_cases hji : i = j
       · subst hji
         have hz_same_on_bx :
-            ExtRegEncoding.extToInt (dst.zslot i) bx
-              = ExtRegEncoding.extToInt (dst.zslot i) bCur := by
-          exact hbx_keep (dst.zslot i) (disjoint_symm (hxz i i))
+            extToInt (dst.zslot i) bx
+              = extToInt (dst.zslot i) bCur := by
+          exact hbx_keep (dst.zslot i) (activeDisjoint_symm (hxz i i))
         have hrow_neg :
             evalRowZ (qs := qs) src (Register.negate (σ i)) bRef
               =
@@ -470,12 +444,12 @@ lemma encodesFrom_after_negate_ket
               (- evalRowZ (qs := qs) src (σ i) bRef) := by
           simpa [State.negateReg, hrow_neg] using hFit1z i
         calc
-          ExtRegEncoding.extToInt (dst.zslot i) bz
+          extToInt (dst.zslot i) bz
               = tcWrapInt (ExtReg.width (dst.zslot i))
-                  (- ExtRegEncoding.extToInt (dst.zslot i) bx) := by
+                  (- extToInt (dst.zslot i) bx) := by
                     simpa using hbz_val
           _   = tcWrapInt (ExtReg.width (dst.zslot i))
-                  (- ExtRegEncoding.extToInt (dst.zslot i) bCur) := by
+                  (- extToInt (dst.zslot i) bCur) := by
                     rw [hz_same_on_bx]
           _   = tcWrapInt (ExtReg.width (dst.zslot i))
                   (- evalRowZ (qs := qs) src (σ i) bRef) := by
@@ -487,31 +461,30 @@ lemma encodesFrom_after_negate_ket
                   symm
                   exact (tcWrapInt_eq_of_fits hfit_post.1 hfit_post).symm
       ·
-        have hji' : j ≠ i := by
-          intro h
-          exact hji h.symm
+        have hji' : j ≠ i := by intro h; exact hji h.symm
         have hkeep1 :
-            ExtRegEncoding.extToInt (dst.zslot j) bx
-              = ExtRegEncoding.extToInt (dst.zslot j) bCur := by
+            extToInt (dst.zslot j) bx
+              = extToInt (dst.zslot j) bCur := by
           exact hbx_keep (dst.zslot j)
-            (disjoint_symm (hxz i j))
+            (activeDisjoint_symm (hxz i j))
         have hkeep2 :
-            ExtRegEncoding.extToInt (dst.zslot j) bz
-              = ExtRegEncoding.extToInt (dst.zslot j) bx := by
+            extToInt (dst.zslot j) bz
+              = extToInt (dst.zslot j) bx := by
           exact hbz_keep (dst.zslot j)
             (hzz j i (by simpa [eq_comm] using hji))
         calc
-          ExtRegEncoding.extToInt (dst.zslot j) bz
-              = ExtRegEncoding.extToInt (dst.zslot j) bx := hkeep2
-          _   = ExtRegEncoding.extToInt (dst.zslot j) bCur := hkeep1
+          extToInt (dst.zslot j) bz
+              = extToInt (dst.zslot j) bx := hkeep2
+          _   = extToInt (dst.zslot j) bCur := hkeep1
           _   = evalRowZ (qs := qs) src (σ j) bRef := by
                   simpa [EncodesStateFrom] using hEnc.1.2 j
           _   = evalRowZ (qs := qs) src ((State.negateReg σ i) j) bRef := by
                   simp [State.negateReg, State.setReg, hji']
 
+/-- Correctness of a single compiled scaled-addition operation on an encoded basis state. -/
 lemma encodesFrom_after_addScaled_ket
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -538,35 +511,23 @@ lemma encodesFrom_after_addScaled_ket
     qs.ket b1
     ∧
     EncodesStateFromFits (qs := qs) src dst σ1 bRef b1 := by
-  rcases hdisj with ⟨hxx, hzz, hxz⟩
-
-  have disjoint_symm {a b : Reg} : Disjoint a b → Disjoint b a := by
-    intro h
-    cases h with
-    | inl hab => exact Or.inr hab
-    | inr hba => exact Or.inl hba
-
-  have hxx_ds : Disjoint (dst.xslot dsti).base (dst.xslot srci).base := by
+  rcases layoutSlotsActiveDisjoint hdisj with ⟨hxx, hzz, hxz⟩
+  have hxx_ds : ExtReg.ActiveDisjoint (dst.xslot dsti) (dst.xslot srci) := by
     exact hxx dsti srci hds
-
-  have hzz_ds : Disjoint (dst.zslot dsti).base (dst.zslot srci).base := by
+  have hzz_ds : ExtReg.ActiveDisjoint (dst.zslot dsti) (dst.zslot srci) := by
     exact hzz dsti srci hds
-
   rcases ArithmeticSemantics.eval_AddScaled_ket_mod
       (qs := qs)
       (dst := dst.xslot dsti) (src := dst.xslot srci)
       (negSrc := negSrc) (sh := sh) (b := bCur) hxx_ds with
     ⟨bx, hbx_eval, hbx_val, hbx_src, hbx_keep⟩
-
   rcases ArithmeticSemantics.eval_AddScaled_ket_mod
       (qs := qs)
       (dst := dst.zslot dsti) (src := dst.zslot srci)
       (negSrc := negSrc) (sh := sh) (b := bx) hzz_ds with
     ⟨bz, hbz_eval, hbz_val, hbz_src, hbz_keep⟩
-
   refine ⟨bz, ?_, ?_⟩
-  ·
-    simp [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, hbx_eval, hbz_eval, qs.eval_id]
+  · simp [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, hbx_eval, hbz_eval, qs.eval_id]
   ·
     have hσ1 : σ1 = State.addScaledReg σ dsti srci negSrc sh := by
       simp [applyOp?] at hstep
@@ -602,14 +563,14 @@ lemma encodesFrom_after_addScaled_ket
                     * evalRowX (qs := qs) src (σ srci) bRef) := by
           simpa [hraw] using hfit_post
         calc
-          ExtRegEncoding.extToInt (dst.xslot dsti) bz
-              = ExtRegEncoding.extToInt (dst.xslot dsti) bx := by
+          extToInt (dst.xslot dsti) bz
+              = extToInt (dst.xslot dsti) bx := by
                   exact hbz_keep (dst.xslot dsti) (hxz dsti dsti) (hxz dsti srci)
           _   = tcWrapInt (ExtReg.width (dst.xslot dsti))
-                  (ExtRegEncoding.extToInt (dst.xslot dsti) bCur
+                  (extToInt (dst.xslot dsti) bCur
                     + (if negSrc then (-1 : ℤ) else 1)
                         * ((2 : ℤ)^sh)
-                        * ExtRegEncoding.extToInt (dst.xslot srci) bCur) := by
+                        * extToInt (dst.xslot srci) bCur) := by
                   simpa using hbx_val
           _   = tcWrapInt (ExtReg.width (dst.xslot dsti))
                   (evalRowX (qs := qs) src (σ dsti) bRef
@@ -628,53 +589,51 @@ lemma encodesFrom_after_addScaled_ket
       ·
         by_cases hjs : j = srci
         · subst j
-          have hsd : srci ≠ dsti := by
-            exact hds.symm
+          have hsd : srci ≠ dsti := hds.symm
           have hkeep2 :
-              ExtRegEncoding.extToInt (dst.xslot srci) bz
-                = ExtRegEncoding.extToInt (dst.xslot srci) bx := by
+              extToInt (dst.xslot srci) bz
+                = extToInt (dst.xslot srci) bx := by
             exact hbz_keep (dst.xslot srci) (hxz srci dsti) (hxz srci srci)
           calc
-            ExtRegEncoding.extToInt (dst.xslot srci) bz
-                = ExtRegEncoding.extToInt (dst.xslot srci) bx := hkeep2
-            _   = ExtRegEncoding.extToInt (dst.xslot srci) bCur := hbx_src
+            extToInt (dst.xslot srci) bz
+                = extToInt (dst.xslot srci) bx := hkeep2
+            _   = extToInt (dst.xslot srci) bCur := hbx_src
             _   = evalRowX (qs := qs) src (σ srci) bRef := by
                     simpa [EncodesStateFrom] using hEnc.1.1 srci
             _   = evalRowX (qs := qs) src ((State.addScaledReg σ dsti srci negSrc sh) srci) bRef := by
                     simp [State.addScaledReg, State.setReg, hsd]
         ·
           have hkeep1 :
-              ExtRegEncoding.extToInt (dst.xslot j) bx
-                = ExtRegEncoding.extToInt (dst.xslot j) bCur := by
+              extToInt (dst.xslot j) bx
+                = extToInt (dst.xslot j) bCur := by
             exact hbx_keep (dst.xslot j) (hxx j dsti hjd) (hxx j srci hjs)
           have hkeep2 :
-              ExtRegEncoding.extToInt (dst.xslot j) bz
-                = ExtRegEncoding.extToInt (dst.xslot j) bx := by
+              extToInt (dst.xslot j) bz
+                = extToInt (dst.xslot j) bx := by
             exact hbz_keep (dst.xslot j) (hxz j dsti) (hxz j srci)
           calc
-            ExtRegEncoding.extToInt (dst.xslot j) bz
-                = ExtRegEncoding.extToInt (dst.xslot j) bx := hkeep2
-            _   = ExtRegEncoding.extToInt (dst.xslot j) bCur := hkeep1
+            extToInt (dst.xslot j) bz
+                = extToInt (dst.xslot j) bx := hkeep2
+            _   = extToInt (dst.xslot j) bCur := hkeep1
             _   = evalRowX (qs := qs) src (σ j) bRef := by
                     simpa [EncodesStateFrom] using hEnc.1.1 j
             _   = evalRowX (qs := qs) src ((State.addScaledReg σ dsti srci negSrc sh) j) bRef := by
                     simp [State.addScaledReg, State.setReg, hjd]
-
     · intro j
       by_cases hjd : j = dsti
       · subst j
         have hz_dst_on_bx :
-            ExtRegEncoding.extToInt (dst.zslot dsti) bx
-              = ExtRegEncoding.extToInt (dst.zslot dsti) bCur := by
+            extToInt (dst.zslot dsti) bx
+              = extToInt (dst.zslot dsti) bCur := by
           exact hbx_keep (dst.zslot dsti)
-            (disjoint_symm (hxz dsti dsti))
-            (disjoint_symm (hxz srci dsti))
+            (activeDisjoint_symm (hxz dsti dsti))
+            (activeDisjoint_symm (hxz srci dsti))
         have hz_src_on_bx :
-            ExtRegEncoding.extToInt (dst.zslot srci) bx
-              = ExtRegEncoding.extToInt (dst.zslot srci) bCur := by
+            extToInt (dst.zslot srci) bx
+              = extToInt (dst.zslot srci) bCur := by
           exact hbx_keep (dst.zslot srci)
-            (disjoint_symm (hxz dsti srci))
-            (disjoint_symm (hxz srci srci))
+            (activeDisjoint_symm (hxz dsti srci))
+            (activeDisjoint_symm (hxz srci srci))
         have hraw :
             evalRowZ (qs := qs) src (Register.addScaled (σ dsti) (σ srci) negSrc sh) bRef
               =
@@ -700,18 +659,18 @@ lemma encodesFrom_after_addScaled_ket
                     * evalRowZ (qs := qs) src (σ srci) bRef) := by
           simpa [hraw] using hfit_post
         calc
-          ExtRegEncoding.extToInt (dst.zslot dsti) bz
+          extToInt (dst.zslot dsti) bz
               = tcWrapInt (ExtReg.width (dst.zslot dsti))
-                  (ExtRegEncoding.extToInt (dst.zslot dsti) bx
+                  (extToInt (dst.zslot dsti) bx
                     + (if negSrc then (-1 : ℤ) else 1)
                         * ((2 : ℤ)^sh)
-                        * ExtRegEncoding.extToInt (dst.zslot srci) bx) := by
+                        * extToInt (dst.zslot srci) bx) := by
                     simpa using hbz_val
           _   = tcWrapInt (ExtReg.width (dst.zslot dsti))
-                  (ExtRegEncoding.extToInt (dst.zslot dsti) bCur
+                  (extToInt (dst.zslot dsti) bCur
                     + (if negSrc then (-1 : ℤ) else 1)
                         * ((2 : ℤ)^sh)
-                        * ExtRegEncoding.extToInt (dst.zslot srci) bCur) := by
+                        * extToInt (dst.zslot srci) bCur) := by
                     rw [hz_dst_on_bx, hz_src_on_bx]
           _   = tcWrapInt (ExtReg.width (dst.zslot dsti))
                   (evalRowZ (qs := qs) src (σ dsti) bRef
@@ -730,46 +689,51 @@ lemma encodesFrom_after_addScaled_ket
       ·
         by_cases hjs : j = srci
         · subst j
-          have hsd : srci ≠ dsti := by
-            exact hds.symm
+          have hsd : srci ≠ dsti := hds.symm
           have hkeep1 :
-              ExtRegEncoding.extToInt (dst.zslot srci) bx
-                = ExtRegEncoding.extToInt (dst.zslot srci) bCur := by
+              extToInt (dst.zslot srci) bx
+                = extToInt (dst.zslot srci) bCur := by
             exact hbx_keep (dst.zslot srci)
-              (disjoint_symm (hxz dsti srci))
-              (disjoint_symm (hxz srci srci))
+              (activeDisjoint_symm (hxz dsti srci))
+              (activeDisjoint_symm (hxz srci srci))
           calc
-            ExtRegEncoding.extToInt (dst.zslot srci) bz
-                = ExtRegEncoding.extToInt (dst.zslot srci) bx := hbz_src
-            _   = ExtRegEncoding.extToInt (dst.zslot srci) bCur := hkeep1
+            extToInt (dst.zslot srci) bz
+                = extToInt (dst.zslot srci) bx := hbz_src
+            _   = extToInt (dst.zslot srci) bCur := hkeep1
             _   = evalRowZ (qs := qs) src (σ srci) bRef := by
                     simpa [EncodesStateFrom] using hEnc.1.2 srci
             _   = evalRowZ (qs := qs) src ((State.addScaledReg σ dsti srci negSrc sh) srci) bRef := by
                     simp [State.addScaledReg, State.setReg, hsd]
         ·
           have hkeep1 :
-              ExtRegEncoding.extToInt (dst.zslot j) bx
-                = ExtRegEncoding.extToInt (dst.zslot j) bCur := by
+              extToInt (dst.zslot j) bx
+                = extToInt (dst.zslot j) bCur := by
             exact hbx_keep (dst.zslot j)
-              (disjoint_symm (hxz dsti j))
-              (disjoint_symm (hxz srci j))
+              (activeDisjoint_symm (hxz dsti j))
+              (activeDisjoint_symm (hxz srci j))
           have hkeep2 :
-              ExtRegEncoding.extToInt (dst.zslot j) bz
-                = ExtRegEncoding.extToInt (dst.zslot j) bx := by
+              extToInt (dst.zslot j) bz
+                = extToInt (dst.zslot j) bx := by
             exact hbz_keep (dst.zslot j) (hzz j dsti hjd) (hzz j srci hjs)
           calc
-            ExtRegEncoding.extToInt (dst.zslot j) bz
-                = ExtRegEncoding.extToInt (dst.zslot j) bx := hkeep2
-            _   = ExtRegEncoding.extToInt (dst.zslot j) bCur := hkeep1
+            extToInt (dst.zslot j) bz
+                = extToInt (dst.zslot j) bx := hkeep2
+            _   = extToInt (dst.zslot j) bCur := hkeep1
             _   = evalRowZ (qs := qs) src (σ j) bRef := by
                     simpa [EncodesStateFrom] using hEnc.1.2 j
             _   = evalRowZ (qs := qs) src ((State.addScaledReg σ dsti srci negSrc sh) j) bRef := by
                       simp [State.addScaledReg, State.setReg, hjd]
 
+/-! =========================================================
+    Section 2: Outside-layout preservation for one arithmetic step
+    These lemmas replay the same primitive gate evaluations as the encoding
+    lemmas, but only record that registers outside the final layout are unchanged.
+========================================================= -/
 
+/-- A compiled left shift preserves every register outside the destination layout. -/
 lemma sameOutside_after_shiftL_single
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -779,10 +743,10 @@ lemma sameOutside_after_shiftL_single
   (bCur b1 : qs.Basis)
   (hFitX :
     FitsSignedWidth (ExtReg.width (dst.xslot i))
-      (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.xslot i) bCur))
+      (((2 : ℤ)^m) * extToInt (dst.xslot i) bCur))
   (hFitZ :
     FitsSignedWidth (ExtReg.width (dst.zslot i))
-      (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bCur))
+      (((2 : ℤ)^m) * extToInt (dst.zslot i) bCur))
   (heval :
     qs.eval
       (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
@@ -791,46 +755,40 @@ lemma sameOutside_after_shiftL_single
     =
     qs.ket b1) :
   SameOutsideLayout qs dst bCur b1 := by
-  rcases hdisj with ⟨hxx, hzz, hxz⟩
-  have disjoint_symm {a b : Reg} : Disjoint a b → Disjoint b a := by
-    intro h
-    cases h with
-    | inl hab => exact Or.inr hab
-    | inr hba => exact Or.inl hba
+  rcases layoutSlotsActiveDisjoint hdisj with ⟨hxx, hzz, hxz⟩
   rcases ArithmeticSemantics.eval_ShiftL_ket_exact
       (qs := qs) (r := dst.xslot i) (n := m) (b := bCur) hFitX with
     ⟨bx, hbx_eval, _hbx_val, hbx_keep⟩
   have hz_same_on_bx :
-      ExtRegEncoding.extToInt (dst.zslot i) bx
-        = ExtRegEncoding.extToInt (dst.zslot i) bCur := by
-    exact hbx_keep (dst.zslot i) (disjoint_symm (hxz i i))
+      extToInt (dst.zslot i) bx
+        = extToInt (dst.zslot i) bCur := by
+    exact hbx_keep (dst.zslot i) (activeDisjoint_symm (hxz i i))
   have hFitZ' :
       FitsSignedWidth (ExtReg.width (dst.zslot i))
-        (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bx) := by
+        (((2 : ℤ)^m) * extToInt (dst.zslot i) bx) := by
     simpa [hz_same_on_bx] using hFitZ
   rcases ArithmeticSemantics.eval_ShiftL_ket_exact
       (qs := qs) (r := dst.zslot i) (n := m) (b := bx) hFitZ' with
     ⟨bz, hbz_eval, _hbz_val, hbz_keep⟩
-
   have hbz : bz = b1 := by
     apply qs.ket_inj
     simpa [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, qs.eval_id,
       hbx_eval, hbz_eval] using heval
   subst hbz
-
   intro e he
   calc
-    ExtRegEncoding.extToInt e bCur
-        = ExtRegEncoding.extToInt e bx := by
+    extToInt e bCur
+        = extToInt e bx := by
             symm
             exact hbx_keep e (he.1 i)
-    _   = ExtRegEncoding.extToInt e bz := by
+    _   = extToInt e bz := by
             symm
             exact hbz_keep e (he.2 i)
 
+/-- A compiled right shift preserves every register outside the destination layout. -/
 lemma sameOutside_after_shiftR_single
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -855,28 +813,19 @@ lemma sameOutside_after_shiftR_single
     =
     qs.ket b1) :
   SameOutsideLayout qs dst bCur b1 := by
-  rcases hdisj with ⟨hxx, hzz, hxz⟩
-
-  have disjoint_symm {a b : Reg} : Disjoint a b → Disjoint b a := by
-    intro h
-    cases h with
-    | inl hab => exact Or.inr hab
-    | inr hba => exact Or.inl hba
-
+  rcases layoutSlotsActiveDisjoint hdisj with ⟨hxx, hzz, hxz⟩
   cases hreg : Register.shiftR? (σ i) m with
   | none =>
-      have : False := by
-        simp [applyOp?, State.shiftRReg?, hreg] at hstep
-      exact False.elim this
+      simp [applyOp?, State.shiftRReg?, hreg] at hstep
   | some r' =>
       have hσ1 : State.setReg σ i r' = σ1 := by
         simpa [applyOp?, State.shiftRReg?, hreg] using hstep
       have hx_pre :
-          ExtRegEncoding.extToInt (dst.xslot i) bCur
+          extToInt (dst.xslot i) bCur
             =
           ((2 : ℤ)^m) * evalRowX (qs := qs) src r' bRef := by
         calc
-          ExtRegEncoding.extToInt (dst.xslot i) bCur
+          extToInt (dst.xslot i) bCur
               = evalRowX (qs := qs) src (σ i) bRef := by
                   simpa [EncodesStateFrom] using hEnc.1.1 i
           _   = ((2 : ℤ)^m) * evalRowX (qs := qs) src r' bRef := by
@@ -884,7 +833,6 @@ lemma sameOutside_after_shiftR_single
                     (evalRowX_shiftR_exact
                       (qs := qs) (src := src) (r := σ i) (r' := r')
                       (m := m) (b := bRef) hreg)
-
       rcases ArithmeticSemantics.eval_ShiftR_ket_exact
           (qs := qs) (r := dst.xslot i) (n := m) (b := bCur)
           (q := evalRowX (qs := qs) src r' bRef) hx_pre
@@ -895,15 +843,14 @@ lemma sameOutside_after_shiftR_single
               simpa [← hσ1] using hFit1x i
             simpa [State.setReg] using hFitXi) with
         ⟨bx, hbx_eval, _hbx_val, hbx_keep⟩
-
       have hz_pre :
-          ExtRegEncoding.extToInt (dst.zslot i) bx
+          extToInt (dst.zslot i) bx
             =
           ((2 : ℤ)^m) * evalRowZ (qs := qs) src r' bRef := by
         calc
-          ExtRegEncoding.extToInt (dst.zslot i) bx
-              = ExtRegEncoding.extToInt (dst.zslot i) bCur := by
-                  exact hbx_keep (dst.zslot i) (disjoint_symm (hxz i i))
+          extToInt (dst.zslot i) bx
+              = extToInt (dst.zslot i) bCur := by
+                  exact hbx_keep (dst.zslot i) (activeDisjoint_symm (hxz i i))
           _   = evalRowZ (qs := qs) src (σ i) bRef := by
                   simpa [EncodesStateFrom] using hEnc.1.2 i
           _   = ((2 : ℤ)^m) * evalRowZ (qs := qs) src r' bRef := by
@@ -911,7 +858,6 @@ lemma sameOutside_after_shiftR_single
                     (evalRowZ_shiftR_exact
                       (qs := qs) (src := src) (r := σ i) (r' := r')
                       (m := m) (b := bRef) hreg)
-
       rcases ArithmeticSemantics.eval_ShiftR_ket_exact
           (qs := qs) (r := dst.zslot i) (n := m) (b := bx)
           (q := evalRowZ (qs := qs) src r' bRef) hz_pre
@@ -922,26 +868,25 @@ lemma sameOutside_after_shiftR_single
               simpa [← hσ1] using hFit1z i
             simpa [State.setReg] using hFitZi) with
         ⟨bz, hbz_eval, _hbz_val, hbz_keep⟩
-
       have hbz : bz = b1 := by
         apply qs.ket_inj
         simpa [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, qs.eval_id,
           hbx_eval, hbz_eval] using heval
       subst hbz
-
       intro e he
       calc
-        ExtRegEncoding.extToInt e bCur
-            = ExtRegEncoding.extToInt e bx := by
+        extToInt e bCur
+            = extToInt e bx := by
                 symm
                 exact hbx_keep e (he.1 i)
-        _   = ExtRegEncoding.extToInt e bz := by
+        _   = extToInt e bz := by
                 symm
                 exact hbz_keep e (he.2 i)
 
+/-- A compiled negation preserves every register outside the destination layout. -/
 lemma sameOutside_after_negate_single
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -957,33 +902,32 @@ lemma sameOutside_after_negate_single
     =
     qs.ket b1) :
   SameOutsideLayout qs dst bCur b1 := by
-  rcases hdisj with ⟨hxx, hzz, hxz⟩
+  rcases layoutSlotsActiveDisjoint hdisj with ⟨hxx, hzz, hxz⟩
   rcases ArithmeticSemantics.eval_Negate_ket_mod
       (qs := qs) (r := dst.xslot i) (b := bCur) with
     ⟨bx, hbx_eval, _hbx_val, hbx_keep⟩
   rcases ArithmeticSemantics.eval_Negate_ket_mod
       (qs := qs) (r := dst.zslot i) (b := bx) with
     ⟨bz, hbz_eval, _hbz_val, hbz_keep⟩
-
   have hbz : bz = b1 := by
     apply qs.ket_inj
     simpa [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, qs.eval_id,
       hbx_eval, hbz_eval] using heval
   subst hbz
-
   intro e he
   calc
-    ExtRegEncoding.extToInt e bCur
-        = ExtRegEncoding.extToInt e bx := by
+    extToInt e bCur
+        = extToInt e bx := by
             symm
             exact hbx_keep e (he.1 i)
-    _   = ExtRegEncoding.extToInt e bz := by
+    _   = extToInt e bz := by
             symm
             exact hbz_keep e (he.2 i)
 
+/-- A compiled scaled addition preserves every register outside the destination layout. -/
 lemma sameOutside_after_addScaled_single
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -1000,41 +944,45 @@ lemma sameOutside_after_addScaled_single
     =
     qs.ket b1) :
   SameOutsideLayout qs dst bCur b1 := by
-  rcases hdisj with ⟨hxx, hzz, hxz⟩
-  have hxx_ds : Disjoint (dst.xslot dsti).base (dst.xslot srci).base := hxx dsti srci hds
-  have hzz_ds : Disjoint (dst.zslot dsti).base (dst.zslot srci).base := hzz dsti srci hds
-
+  rcases layoutSlotsActiveDisjoint hdisj with ⟨hxx, hzz, hxz⟩
+  have hxx_ds : ExtReg.ActiveDisjoint (dst.xslot dsti) (dst.xslot srci) := hxx dsti srci hds
+  have hzz_ds : ExtReg.ActiveDisjoint (dst.zslot dsti) (dst.zslot srci) := hzz dsti srci hds
   rcases ArithmeticSemantics.eval_AddScaled_ket_mod
       (qs := qs)
       (dst := dst.xslot dsti) (src := dst.xslot srci)
       (negSrc := negSrc) (sh := sh) (b := bCur) hxx_ds with
     ⟨bx, hbx_eval, _hbx_val, _hbx_src, hbx_keep⟩
-
   rcases ArithmeticSemantics.eval_AddScaled_ket_mod
       (qs := qs)
       (dst := dst.zslot dsti) (src := dst.zslot srci)
       (negSrc := negSrc) (sh := sh) (b := bx) hzz_ds with
     ⟨bz, hbz_eval, _hbz_val, _hbz_src, hbz_keep⟩
-
   have hbz : bz = b1 := by
     apply qs.ket_inj
     simpa [compileAnnotatedOpsToSignedGateAux, qs.eval_seq, qs.eval_id,
       hbx_eval, hbz_eval] using heval
   subst hbz
-
   intro e he
   calc
-    ExtRegEncoding.extToInt e bCur
-        = ExtRegEncoding.extToInt e bx := by
+    extToInt e bCur
+        = extToInt e bx := by
             symm
             exact hbx_keep e (he.1 dsti) (he.1 srci)
-    _   = ExtRegEncoding.extToInt e bz := by
+    _   = extToInt e bz := by
             symm
             exact hbz_keep e (he.2 dsti) (he.2 srci)
 
+/-! =========================================================
+    Section 3: No-phase arithmetic runs
+    A no-phase segment is just a sequence of arithmetic row updates. The two
+    inductions below carry, respectively, outside-layout preservation and encoded
+    state preservation through such a segment.
+========================================================= -/
+
+/-- No-phase arithmetic runs preserve all registers outside the destination layout. -/
 lemma sameOutside_after_noPhase_run_ket_gen_aux
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -1070,26 +1018,19 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
     SameOutsideLayout qs dst bCur bNext := by
   induction ops generalizing σ σ' bCur n with
   | nil =>
-      have hσ : σ = σ' := by
-        simpa [run?] using hrun
+      have hσ : σ = σ' := by simpa [run?] using hrun
       subst hσ
       refine ⟨bCur, ?_, SameOutsideLayout.refl qs dst bCur⟩
       simp [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux, qs.eval_id]
-
   | cons op ops ih =>
-      have hNoTail : NoPhase ops := by
-        intro i hi
-        exact hNP i (by simp [hi])
-
+      have hNoTail : NoPhase ops := by intro i hi; exact hNP i (by simp [hi])
       cases op with
       | shiftL i m =>
           cases hstep : applyOp? σ (.shiftL i m) with
           | none =>
               simp [run?, hstep] at hrun
           | some σ1 =>
-              have hrunTail : run? ops σ1 = some σ' := by
-                simpa [run?, hstep] using hrun
-
+              have hrunTail : run? ops σ1 = some σ' := by simpa [run?, hstep] using hrun
               have hFit1 :
                   (∀ j : Fin k,
                     FitsSignedWidth (ExtReg.width (dst.xslot j))
@@ -1097,11 +1038,7 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (∀ j : Fin k,
                     FitsSignedWidth (ExtReg.width (dst.zslot j))
                       (evalRowZ (qs := qs) src (σ1 j) bRef)) := by
-                apply hFits
-                refine ⟨[.shiftL i m], ops, ?_, ?_⟩
-                · simp
-                · simp [run?, hstep]
-
+                apply hFits; refine ⟨[.shiftL i m], ops, ?_, ?_⟩ <;> simp [run?, hstep]
               rcases encodesFrom_after_shiftL_ket
                   (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
                   (src := src) (dst := dst) (hdisj := hdisj)
@@ -1110,7 +1047,6 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (bRef := bRef) (bCur := bCur)
                   hstep hEnc hFit1.1 hFit1.2 with
                 ⟨b1, hEval1, hEnc1⟩
-
               have hSO1 :
                   SameOutsideLayout qs dst bCur b1 := by
                 have hσ1 : σ1 = State.shiftLReg σ i m := by
@@ -1125,7 +1061,7 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                       (qs := qs) (src := src) (r := σ i) (m := m) (b := bRef))
                 have hFitX :
                     FitsSignedWidth (ExtReg.width (dst.xslot i))
-                      (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.xslot i) bCur) := by
+                      (((2 : ℤ)^m) * extToInt (dst.xslot i) bCur) := by
                   have hfit_post :
                       FitsSignedWidth (ExtReg.width (dst.xslot i))
                         (((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef) := by
@@ -1141,7 +1077,7 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                       (qs := qs) (src := src) (r := σ i) (m := m) (b := bRef))
                 have hFitZ :
                     FitsSignedWidth (ExtReg.width (dst.zslot i))
-                      (((2 : ℤ)^m) * ExtRegEncoding.extToInt (dst.zslot i) bCur) := by
+                      (((2 : ℤ)^m) * extToInt (dst.zslot i) bCur) := by
                   have hfit_post :
                       FitsSignedWidth (ExtReg.width (dst.zslot i))
                         (((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef) := by
@@ -1153,7 +1089,6 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (dst := dst) (hdisj := hdisj)
                   (i := i) (m := m) (bCur := bCur) (b1 := b1)
                   hFitX hFitZ hEval1
-
               have hFitsTail :
                 ∀ {τ : State k},
                   (∃ pre rest, ops = pre ++ rest ∧ run? pre σ1 = some τ) →
@@ -1169,7 +1104,6 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                 refine ⟨(.shiftL i m) :: pre, rest, ?_, ?_⟩
                 · simp [hsplit]
                 · simp [run?, hstep, hrunpre]
-
               have hSafeAddTail :
                 ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
                   ops = pre ++ (.addScaled d s negSrc sh :: rest) →
@@ -1180,11 +1114,9 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (rest := rest)
                   (d := d) (s := s) (negSrc := negSrc) (sh := sh)
                   (by simp [hadd])
-
               rcases ih (σ := σ1) (σ' := σ') (bCur := b1) (n := n)
                   hFitsTail hSafeAddTail hNoTail hrunTail hEnc1 with
                 ⟨bNext, hEvalTail, hSOTail⟩
-
               refine ⟨bNext, ?_, SameOutsideLayout.trans (qs := qs) hSO1 hSOTail⟩
               rw [show annotatePhaseTermsAux k n (.shiftL i m :: ops)
                     = [{ op := .shiftL i m, phaseTerm? := none }]
@@ -1197,15 +1129,12 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                     (ys := annotatePhaseTermsAux k n ops)
                     (ψ := qs.ket bCur)]
               simpa [hEval1] using hEvalTail
-
       | shiftR i m =>
           cases hstep : applyOp? σ (.shiftR i m) with
           | none =>
               simp [run?, hstep] at hrun
           | some σ1 =>
-              have hrunTail : run? ops σ1 = some σ' := by
-                simpa [run?, hstep] using hrun
-
+              have hrunTail : run? ops σ1 = some σ' := by simpa [run?, hstep] using hrun
               have hFit1 :
                   (∀ j : Fin k,
                     FitsSignedWidth (ExtReg.width (dst.xslot j))
@@ -1213,11 +1142,7 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (∀ j : Fin k,
                     FitsSignedWidth (ExtReg.width (dst.zslot j))
                       (evalRowZ (qs := qs) src (σ1 j) bRef)) := by
-                apply hFits
-                refine ⟨[.shiftR i m], ops, ?_, ?_⟩
-                · simp
-                · simp [run?, hstep]
-
+                apply hFits; refine ⟨[.shiftR i m], ops, ?_, ?_⟩ <;> simp [run?, hstep]
               rcases encodesFrom_after_shiftR_ket
                   (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
                   (src := src) (dst := dst) (hdisj := hdisj)
@@ -1226,7 +1151,6 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (bRef := bRef) (bCur := bCur)
                   hstep hEnc hFit1.1 hFit1.2 with
                 ⟨b1, hEval1, hEnc1⟩
-
               have hSO1 :
                   SameOutsideLayout qs dst bCur b1 := by
                 exact sameOutside_after_shiftR_single
@@ -1236,7 +1160,6 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (σ := σ) (σ1 := σ1)
                   (bRef := bRef) (bCur := bCur) (b1 := b1)
                   hstep hEnc hFit1.1 hFit1.2 hEval1
-
               have hFitsTail :
                 ∀ {τ : State k},
                   (∃ pre rest, ops = pre ++ rest ∧ run? pre σ1 = some τ) →
@@ -1252,7 +1175,6 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                 refine ⟨(.shiftR i m) :: pre, rest, ?_, ?_⟩
                 · simp [hsplit]
                 · simp [run?, hstep, hrunpre]
-
               have hSafeAddTail :
                 ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
                   ops = pre ++ (.addScaled d s negSrc sh :: rest) →
@@ -1263,11 +1185,9 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (rest := rest)
                   (d := d) (s := s) (negSrc := negSrc) (sh := sh)
                   (by simp [hadd])
-
               rcases ih (σ := σ1) (σ' := σ') (bCur := b1) (n := n)
                   hFitsTail hSafeAddTail hNoTail hrunTail hEnc1 with
                 ⟨bNext, hEvalTail, hSOTail⟩
-
               refine ⟨bNext, ?_, SameOutsideLayout.trans (qs := qs) hSO1 hSOTail⟩
               rw [show annotatePhaseTermsAux k n (.shiftR i m :: ops)
                     = [{ op := .shiftR i m, phaseTerm? := none }]
@@ -1280,15 +1200,12 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                     (ys := annotatePhaseTermsAux k n ops)
                     (ψ := qs.ket bCur)]
               simpa [hEval1] using hEvalTail
-
       | negate i =>
           cases hstep : applyOp? σ (.negate i) with
           | none =>
               simp [run?, hstep] at hrun
           | some σ1 =>
-              have hrunTail : run? ops σ1 = some σ' := by
-                simpa [run?, hstep] using hrun
-
+              have hrunTail : run? ops σ1 = some σ' := by simpa [run?, hstep] using hrun
               have hFit1 :
                   (∀ j : Fin k,
                     FitsSignedWidth (ExtReg.width (dst.xslot j))
@@ -1296,11 +1213,7 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (∀ j : Fin k,
                     FitsSignedWidth (ExtReg.width (dst.zslot j))
                       (evalRowZ (qs := qs) src (σ1 j) bRef)) := by
-                apply hFits
-                refine ⟨[.negate i], ops, ?_, ?_⟩
-                · simp
-                · simp [run?, hstep]
-
+                apply hFits; refine ⟨[.negate i], ops, ?_, ?_⟩ <;> simp [run?, hstep]
               rcases encodesFrom_after_negate_ket
                   (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
                   (src := src) (dst := dst) (hdisj := hdisj)
@@ -1309,14 +1222,12 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (bRef := bRef) (bCur := bCur)
                   hstep hEnc hFit1.1 hFit1.2 with
                 ⟨b1, hEval1, hEnc1⟩
-
               have hSO1 :
                   SameOutsideLayout qs dst bCur b1 := by
                 exact sameOutside_after_negate_single
                   (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
                   (dst := dst) (hdisj := hdisj)
                   (i := i) (bCur := bCur) (b1 := b1) hEval1
-
               have hFitsTail :
                 ∀ {τ : State k},
                   (∃ pre rest, ops = pre ++ rest ∧ run? pre σ1 = some τ) →
@@ -1332,7 +1243,6 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                 refine ⟨(.negate i) :: pre, rest, ?_, ?_⟩
                 · simp [hsplit]
                 · simp [run?, hstep, hrunpre]
-
               have hSafeAddTail :
                 ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
                   ops = pre ++ (.addScaled d s negSrc sh :: rest) →
@@ -1343,11 +1253,9 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (rest := rest)
                   (d := d) (s := s) (negSrc := negSrc) (sh := sh)
                   (by simp [hadd])
-
               rcases ih (σ := σ1) (σ' := σ') (bCur := b1) (n := n)
                   hFitsTail hSafeAddTail hNoTail hrunTail hEnc1 with
                 ⟨bNext, hEvalTail, hSOTail⟩
-
               refine ⟨bNext, ?_, SameOutsideLayout.trans (qs := qs) hSO1 hSOTail⟩
               rw [show annotatePhaseTermsAux k n (.negate i :: ops)
                     = [{ op := .negate i, phaseTerm? := none }]
@@ -1360,15 +1268,12 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                     (ys := annotatePhaseTermsAux k n ops)
                     (ψ := qs.ket bCur)]
               simpa [hEval1] using hEvalTail
-
       | addScaled d s negSrc sh =>
           cases hstep : applyOp? σ (.addScaled d s negSrc sh) with
           | none =>
               simp [run?, hstep] at hrun
           | some σ1 =>
-              have hrunTail : run? ops σ1 = some σ' := by
-                simpa [run?, hstep] using hrun
-
+              have hrunTail : run? ops σ1 = some σ' := by simpa [run?, hstep] using hrun
               have hds : d ≠ s := by
                 have:=hSafeAdd (pre := []) (rest := ops) (sh:=sh) (negSrc:=negSrc) (s:=s) (d:=d)
                 simp at this;simp[this]
@@ -1379,11 +1284,7 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (∀ j : Fin k,
                     FitsSignedWidth (ExtReg.width (dst.zslot j))
                       (evalRowZ (qs := qs) src (σ1 j) bRef)) := by
-                apply hFits
-                refine ⟨[.addScaled d s negSrc sh], ops, ?_, ?_⟩
-                · simp
-                · simp [run?, hstep]
-
+                apply hFits; refine ⟨[.addScaled d s negSrc sh], ops, ?_, ?_⟩ <;> simp [run?, hstep]
               rcases encodesFrom_after_addScaled_ket
                   (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
                   (src := src) (dst := dst) (hdisj := hdisj)
@@ -1393,7 +1294,6 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (bRef := bRef) (bCur := bCur)
                   hstep hEnc hFit1.1 hFit1.2 with
                 ⟨b1, hEval1, hEnc1⟩
-
               have hSO1 :
                   SameOutsideLayout qs dst bCur b1 := by
                 exact sameOutside_after_addScaled_single
@@ -1402,7 +1302,6 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (dsti := d) (srci := s) (negSrc := negSrc) (sh := sh)
                   hds
                   (bCur := bCur) (b1 := b1) hEval1
-
               have hFitsTail :
                 ∀ {τ : State k},
                   (∃ pre rest, ops = pre ++ rest ∧ run? pre σ1 = some τ) →
@@ -1418,7 +1317,6 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                 refine ⟨(.addScaled d s negSrc sh) :: pre, rest, ?_, ?_⟩
                 · simp [hsplit]
                 · simp [run?, hstep, hrunpre]
-
               have hSafeAddTail :
                 ∀ {pre rest : Prog k} {d' s' : Fin k} {negSrc' : Bool} {sh' : ℕ},
                   ops = pre ++ (.addScaled d' s' negSrc' sh' :: rest) →
@@ -1429,11 +1327,9 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                   (rest := rest)
                   (d := d') (s := s') (negSrc := negSrc') (sh := sh')
                   (by simp [hadd])
-
               rcases ih (σ := σ1) (σ' := σ') (bCur := b1) (n := n)
                   hFitsTail hSafeAddTail hNoTail hrunTail hEnc1 with
                 ⟨bNext, hEvalTail, hSOTail⟩
-
               refine ⟨bNext, ?_, SameOutsideLayout.trans (qs := qs) hSO1 hSOTail⟩
               rw [show annotatePhaseTermsAux k n (.addScaled d s negSrc sh :: ops)
                     = [{ op := .addScaled d s negSrc sh, phaseTerm? := none }]
@@ -1446,15 +1342,14 @@ lemma sameOutside_after_noPhase_run_ket_gen_aux
                     (ys := annotatePhaseTermsAux k n ops)
                     (ψ := qs.ket bCur)]
               simpa [hEval1] using hEvalTail
-
       | phaseProduct i =>
           exfalso
           exact hNP i (by simp)
 
-
+/-- No-phase arithmetic runs preserve the encoded symbolic state. -/
 lemma encodesFrom_after_noPhase_run_ket_gen_aux
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -1490,26 +1385,19 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
     EncodesStateFromFits (qs := qs) src dst σ' bRef bNext := by
   induction ops generalizing σ σ' bCur n with
   | nil =>
-      have hσ : σ = σ' := by
-        simpa [run?] using hrun
+      have hσ : σ = σ' := by simpa [run?] using hrun
       subst hσ
       refine ⟨bCur, ?_, hEnc⟩
       simp [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux, qs.eval_id]
-
   | cons op ops ih =>
-      have hNoTail : NoPhase ops := by
-        intro i hi
-        exact hNP i (by simp [hi])
-
+      have hNoTail : NoPhase ops := by intro i hi; exact hNP i (by simp [hi])
       cases op with
       | shiftL i m =>
           cases hstep : applyOp? σ (.shiftL i m) with
           | none =>
               simp [run?, hstep] at hrun
           | some σ1 =>
-              have hrunTail : run? ops σ1 = some σ' := by
-                simpa [run?, hstep] using hrun
-
+              have hrunTail : run? ops σ1 = some σ' := by simpa [run?, hstep] using hrun
               have hFit1 :
                   (∀ j : Fin k,
                     FitsSignedWidth (ExtReg.width (dst.xslot j))
@@ -1517,11 +1405,7 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                   (∀ j : Fin k,
                     FitsSignedWidth (ExtReg.width (dst.zslot j))
                       (evalRowZ (qs := qs) src (σ1 j) bRef)) := by
-                apply hFits
-                refine ⟨[.shiftL i m], ops, ?_, ?_⟩
-                · simp
-                · simp [run?, hstep]
-
+                apply hFits; refine ⟨[.shiftL i m], ops, ?_, ?_⟩ <;> simp [run?, hstep]
               rcases encodesFrom_after_shiftL_ket
                   (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
                   (src := src) (dst := dst)
@@ -1531,7 +1415,6 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                   (bRef := bRef) (bCur := bCur)
                   hstep hEnc hFit1.1 hFit1.2 with
                 ⟨b1, hEval1, hEnc1⟩
-
               have hFitsTail :
                 ∀ {τ : State k},
                   (∃ pre rest, ops = pre ++ rest ∧ run? pre σ1 = some τ) →
@@ -1547,7 +1430,6 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                 refine ⟨(.shiftL i m) :: pre, rest, ?_, ?_⟩
                 · simp [hsplit]
                 · simp [run?, hstep, hrunpre]
-
               have hSafeAddTail :
                   ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
                     ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s := by
@@ -1557,18 +1439,14 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                   (rest := rest)
                   (d := d) (s := s) (negSrc := negSrc) (sh := sh)
                   (by simp [hmem])
-
               rcases ih σ1 σ' b1 n hFitsTail hSafeAddTail hNoTail hrunTail hEnc1 with
                 ⟨bNext, hEvalTail, hEncTail⟩
-
               refine ⟨bNext, ?_, hEncTail⟩
-
               have hAnn :
                   annotatePhaseTermsAux k n (valid_ops.shiftL i m :: ops) =
                     [{ op := valid_ops.shiftL i m, phaseTerm? := none }] ++
                       annotatePhaseTermsAux k n ops := by
                 simp [annotatePhaseTermsAux]
-
               rw [hAnn]
               rw [eval_compileAnnotatedOpsToSignedGateAux_append
                     (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
@@ -1578,24 +1456,16 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                     (ψ := qs.ket bCur)]
               rw [hEval1]
               exact hEvalTail
-
       | shiftR i m =>
           cases hstep : applyOp? σ (.shiftR i m) with
           | none =>
               simp [run?, hstep] at hrun
-
           | some σ1 =>
-              have hrunTail : run? ops σ1 = some σ' := by
-                simpa [run?, hstep] using hrun
-
+              have hrunTail : run? ops σ1 = some σ' := by simpa [run?, hstep] using hrun
               have hFit1 :
                   (∀ (j : Fin k), FitsSignedWidth (dst.xslot j).width (evalRowX qs src (σ1 j) bRef)) ∧
                     ∀ (j : Fin k), FitsSignedWidth (dst.zslot j).width (evalRowZ qs src (σ1 j) bRef) := by
-                apply hFits
-                refine ⟨[.shiftR i m], ops, ?_, ?_⟩
-                · simp
-                · simp [run?, hstep]
-
+                apply hFits; refine ⟨[.shiftR i m], ops, ?_, ?_⟩ <;> simp [run?, hstep]
               rcases encodesFrom_after_shiftR_ket
                   (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
                   (src := src) (dst := dst)
@@ -1605,7 +1475,6 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                   (bRef := bRef) (bCur := bCur)
                   hstep hEnc hFit1.1 hFit1.2 with
                 ⟨b1, hEval1, hEnc1⟩
-
               have hFitsTail :
                 ∀ {τ : State k},
                   (∃ pre rest, ops = pre ++ rest ∧ run? pre σ1 = some τ) →
@@ -1617,7 +1486,6 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                 refine ⟨.shiftR i m :: pre, rest, ?_, ?_⟩
                 · simp [hsplit]
                 · simp [run?, hstep, hrunpre]
-
               have hSafeAddTail :
                 ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
                   ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s := by
@@ -1627,18 +1495,14 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                   (rest := rest)
                   (d := d) (s := s) (negSrc := negSrc) (sh := sh)
                   (by simp [hmem])
-
               rcases ih σ1 σ' b1 n hFitsTail hSafeAddTail hNoTail hrunTail hEnc1 with
                 ⟨bNext, hEvalTail, hEncTail⟩
-
               refine ⟨bNext, ?_, hEncTail⟩
-
               have hAnn :
                   annotatePhaseTermsAux k n (.shiftR i m :: ops) =
                     [{ op := .shiftR i m, phaseTerm? := none }] ++
                       annotatePhaseTermsAux k n ops := by
                 simp [annotatePhaseTermsAux]
-
               rw [hAnn]
               rw [eval_compileAnnotatedOpsToSignedGateAux_append
                     (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
@@ -1648,22 +1512,14 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                     (ψ := qs.ket bCur)]
               rw [hEval1]
               exact hEvalTail
-
       | negate i =>
           have hstep : applyOp? σ (.negate i) = some (State.negateReg σ i) := by
             simp [applyOp?, State.negateReg]
-
-          have hrunTail : run? ops (State.negateReg σ i) = some σ' := by
-            simpa [run?, hstep] using hrun
-
+          have hrunTail : run? ops (State.negateReg σ i) = some σ' := by simpa [run?, hstep] using hrun
           have hFit1 :
               (∀ (j : Fin k), FitsSignedWidth (dst.xslot j).width (evalRowX qs src ((State.negateReg σ i) j) bRef)) ∧
                 ∀ (j : Fin k), FitsSignedWidth (dst.zslot j).width (evalRowZ qs src ((State.negateReg σ i) j) bRef) := by
-            apply hFits
-            refine ⟨[.negate i], ops, ?_, ?_⟩
-            · simp
-            · simp [run?, hstep]
-
+            apply hFits; refine ⟨[.negate i], ops, ?_, ?_⟩ <;> simp [run?, hstep]
           rcases encodesFrom_after_negate_ket
               (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
               (src := src) (dst := dst)
@@ -1673,7 +1529,6 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
               (bRef := bRef) (bCur := bCur)
               hstep hEnc hFit1.1 hFit1.2 with
             ⟨b1, hEval1, hEnc1⟩
-
           have hFitsTail :
             ∀ {τ : State k},
               (∃ pre rest, ops = pre ++ rest ∧ run? pre (State.negateReg σ i) = some τ) →
@@ -1685,7 +1540,6 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
             refine ⟨.negate i :: pre, rest, ?_, ?_⟩
             · simp [hsplit]
             · simp [run?, hstep, hrunpre]
-
           have hSafeAddTail :
             ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
               ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s := by
@@ -1695,18 +1549,14 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
               (rest := rest)
               (d := d) (s := s) (negSrc := negSrc) (sh := sh)
               (by simp [hmem])
-
           rcases ih (State.negateReg σ i) σ' b1 n hFitsTail hSafeAddTail hNoTail hrunTail hEnc1 with
             ⟨bNext, hEvalTail, hEncTail⟩
-
           refine ⟨bNext, ?_, hEncTail⟩
-
           have hAnn :
               annotatePhaseTermsAux k n (.negate i :: ops) =
                 [{ op := .negate i, phaseTerm? := none }] ++
                   annotatePhaseTermsAux k n ops := by
             simp [annotatePhaseTermsAux]
-
           rw [hAnn]
           rw [eval_compileAnnotatedOpsToSignedGateAux_append
                 (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
@@ -1716,15 +1566,12 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                 (ψ := qs.ket bCur)]
           rw [hEval1]
           exact hEvalTail
-
       | addScaled dsti srci negSrc sh =>
           cases hstep : applyOp? σ (.addScaled dsti srci negSrc sh) with
           | none =>
               simp [run?, hstep] at hrun
           | some σ1 =>
-              have hrunTail : run? ops σ1 = some σ' := by
-                simpa [run?, hstep] using hrun
-
+              have hrunTail : run? ops σ1 = some σ' := by simpa [run?, hstep] using hrun
               have hFit1 :
                   (∀ j : Fin k,
                     FitsSignedWidth (ExtReg.width (dst.xslot j))
@@ -1732,17 +1579,13 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                   (∀ j : Fin k,
                     FitsSignedWidth (ExtReg.width (dst.zslot j))
                       (evalRowZ (qs := qs) src (σ1 j) bRef)) := by
-                apply hFits
-                refine ⟨[.addScaled dsti srci negSrc sh], ops, ?_, ?_⟩
-                · simp
-                · simp [run?, hstep]
+                apply hFits; refine ⟨[.addScaled dsti srci negSrc sh], ops, ?_, ?_⟩ <;> simp [run?, hstep]
               have hds : dsti ≠ srci := by
                 exact hSafeAdd
                   (pre := [])
                   (rest := ops)
                   (d := dsti) (s := srci) (negSrc := negSrc) (sh := sh)
                   (by simp)
-
               rcases encodesFrom_after_addScaled_ket
                   (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
                   (src := src) (dst := dst)
@@ -1753,7 +1596,6 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                   (bRef := bRef) (bCur := bCur)
                   hstep hEnc hFit1.1 hFit1.2 with
                 ⟨b1, hEval1, hEnc1⟩
-
               have hFitsTail :
                 ∀ {τ : State k},
                   (∃ pre rest, ops = pre ++ rest ∧ run? pre σ1 = some τ) →
@@ -1765,7 +1607,6 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                 refine ⟨valid_ops.addScaled dsti srci negSrc sh :: pre, rest, ?_, ?_⟩
                 · simp [hsplit]
                 · simp [run?, hstep, hrunpre]
-
               have hSafeAddTail :
                 ∀ {pre rest : Prog k} {d s : Fin k} {negSrc_1 : Bool} {sh_1 : ℕ},
                   ops = pre ++ valid_ops.addScaled d s negSrc_1 sh_1 :: rest → d ≠ s := by
@@ -1775,18 +1616,14 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                   (rest := rest)
                   (d := d) (s := s) (negSrc := negSrc_1) (sh := sh_1)
                   (by simp [hmem])
-
               rcases ih σ1 σ' b1 n hFitsTail hSafeAddTail hNoTail hrunTail hEnc1 with
                 ⟨bNext, hEvalTail, hEncTail⟩
-
               refine ⟨bNext, ?_, hEncTail⟩
-
               have hAnn :
                   annotatePhaseTermsAux k n (valid_ops.addScaled dsti srci negSrc sh :: ops) =
                     [{ op := valid_ops.addScaled dsti srci negSrc sh, phaseTerm? := none }] ++
                       annotatePhaseTermsAux k n ops := by
                 simp [annotatePhaseTermsAux]
-
               rw [hAnn]
               rw [eval_compileAnnotatedOpsToSignedGateAux_append
                     (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
@@ -1796,14 +1633,14 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
                     (ψ := qs.ket bCur)]
               rw [hEval1]
               exact hEvalTail
-
       | phaseProduct i =>
           exfalso
           exact hNP i (by simp)
 
+/-- Public wrapper for encoded-state preservation across a no-phase arithmetic run. -/
 lemma encodesFrom_after_noPhase_run_ket_gen
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -1845,12 +1682,16 @@ lemma encodesFrom_after_noPhase_run_ket_gen
     hdisj hFits hSafeAdd hNP hrun hEnc
 
 /-! =========================================================
-    Section 2: Phase-block helpers
+    Section 4: Phase gates and block induction
+    After the no-phase arithmetic prefix of a block has produced the matching
+    row, the phase gate contributes exactly the scalar prescribed by the phase
+    product. The block inductions compose those scalars across all points.
 ========================================================= -/
 
+/-- An uncontrolled phase-product gate contributes the scalar for a matched point row. -/
 lemma eval_matched_phase_ket_from
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ}
   (src dst : LayoutState k)
   (σ : State k)
@@ -1883,9 +1724,10 @@ lemma eval_matched_phase_ket_from
   rw [hEnc.1 i, hσi]
   rw [hEnc.2 i, hσi]
 
+/-- A controlled phase-product gate contributes the same scalar exactly when the control bit is set. -/
 lemma eval_matched_cphase_ket_from
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ}
   (src dst : LayoutState k)
   (σ : State k)
@@ -1926,9 +1768,16 @@ lemma eval_matched_cphase_ket_from
   · rw [PhaseSemantics.eval_CSignedPhaseProd_ket]
     rw [if_neg hctrl, if_neg hctrl]
 
+/-! =========================================================
+    Section 5: Control-phase wrappers
+    `controlPhaseLeaves` only changes phase-product leaves. These lemmas push it
+    through compiled lists and show that purely arithmetic fragments are fixed.
+========================================================= -/
+
+/-- `controlPhaseLeaves` respects append decomposition of compiled annotated operations. -/
 lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_append
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis]
+  [RegEncoding qs.Basis]
   {k : ℕ} (hk : 1 < k)
   (ctrl : ℕ)
   (phi : ℝ)
@@ -1959,6 +1808,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_append
             simp [compileAnnotatedOpsToSignedGateAux, controlPhaseLeaves,
               qs.eval_seq, ih]
 
+/-- Control-phase wrapping is the identity on compiled no-phase fragments. -/
 lemma controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_NoPhase
   {k : ℕ} (hk : 1 < k)
   (ctrl : ℕ)
@@ -1979,9 +1829,7 @@ lemma controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_NoPhase
       simp [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux,
         controlPhaseLeaves]
   | cons op ops ih =>
-      have hNoTail : NoPhase ops := by
-        intro i hi
-        exact hNo i (by simp [hi])
+      have hNoTail : NoPhase ops := by intro i hi; exact hNo i (by simp [hi])
       cases op with
       | shiftL i m =>
           simp [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux,
@@ -1999,6 +1847,7 @@ lemma controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_NoPhase
           exfalso
           exact hNo i (by simp)
 
+/-- A no-phase program has zero phase-product instructions. -/
 @[simp] lemma phaseProductCount_eq_zero_of_NoPhase
   {k : ℕ} {ops : Prog k} (hNo : NoPhase ops) :
   phaseProductCount ops = 0 := by
@@ -2006,9 +1855,7 @@ lemma controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_NoPhase
   | nil =>
       simp [phaseProductCount]
   | cons op ops ih =>
-      have hNoTail : NoPhase ops := by
-        intro i hi
-        exact hNo i (by simp [hi])
+      have hNoTail : NoPhase ops := by intro i hi; exact hNo i (by simp [hi])
       cases op with
       | shiftL i n =>
           simpa [phaseProductCount] using ih hNoTail
@@ -2025,7 +1872,7 @@ lemma controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_NoPhase
 /-- Induction-friendly existential body theorem for the phase-block proof stack. -/
 lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -2084,28 +1931,22 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
         ⟨bNext, hEval, hEncNext⟩
       refine ⟨σ', bNext, hrun, ?_, hEncNext⟩
       simpa [phaseScalarFrom] using hEval
-
   | cons B hrest ih =>
       intro n hn b0 bCur hdisj hFits hSafeAdd hEnc
       rename_i σ2 pt pts2 oprest
-
       have hlt : n < q k := by
         simp at hn;omega
-
       have hnTail : n + 1 + pts2.length = q k := by
         simp at hn; simp[← hn]; simp[add_assoc]; rw[add_comm]
-
       have hcount : phaseProductCount B.toProg = 1 := by
         rw [PhaseBlock.toProg, phaseProductCount_append]
         simp [phaseProductCount_eq_zero_of_NoPhase, B.noPhase_pre, phaseProductCount]
-
       have hAnnAll :
           annotatePhaseTermsAux k n (B.toProg ++ oprest) =
             annotatePhaseTermsAux k n B.toProg ++
             annotatePhaseTermsAux k (n + 1) oprest := by
         rw [annotatePhaseTermsAux_append]
         simp [hcount]
-
       have hAnnBlock :
           annotatePhaseTermsAux k n B.toProg =
             annotatePhaseTermsAux k n B.arith ++
@@ -2113,7 +1954,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
         rw [PhaseBlock.toProg, annotatePhaseTermsAux_append]
         simp [annotatePhaseTermsAux, hlt,
           phaseProductCount_eq_zero_of_NoPhase, B.noPhase_pre]
-
       have hFitsArith :
           ∀ {τ : State k},
             (∃ pre rest, B.arith = pre ++ rest ∧ run? pre σ2 = some τ) →
@@ -2129,7 +1969,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
         refine ⟨pre, rest ++ [.phaseProduct B.i] ++ oprest, ?_, ?_⟩
         · simp [PhaseBlock.toProg, hsplit, List.append_assoc]
         · exact hrunpre
-
       have hSafeAddArith :
           ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
             B.arith = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s := by
@@ -2141,7 +1980,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
           (by
             rw [PhaseBlock.toProg]
             simp [hmem, List.append_assoc])
-
       rcases encodesFrom_after_noPhase_run_ket_gen
           (qs := qs)
           (hk := hk)
@@ -2162,10 +2000,8 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
           B.run_pre
           hEnc with
         ⟨bMid, hArithEval, hArithEnc⟩
-
       have hRunBlock : run? B.toProg σ2 = some B.σmid := by
         simp[PhaseBlock.toProg, run?_append, B.run_pre, applyOp?]
-
       have hFitsTail :
           ∀ {τ : State k},
             (∃ pre rest, oprest = pre ++ rest ∧ run? pre B.σmid = some τ) →
@@ -2181,7 +2017,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
         refine ⟨B.toProg ++ pre, rest, ?_, ?_⟩
         · simp [PhaseBlock.toProg, hsplit, List.append_assoc]
         · rw [run?_append, hRunBlock];simp[hrunpre]
-
       have hSafeAddTail :
           ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
             oprest = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s := by
@@ -2191,13 +2026,10 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
           (rest := rest)
           (d := d) (s := s) (negSrc := negSrc) (sh := sh)
           (by simp [hmem, List.append_assoc])
-
       rcases ih (n + 1) hnTail b0 bMid hdisj hFitsTail hSafeAddTail hArithEnc with
         ⟨σf, bNext, hRunTail, hEvalTail, hEncTail⟩
-
       refine ⟨σf, bNext, ?_, ?_, hEncTail⟩
       · simpa [PhaseBlock.toProg, run?_append, B.run_pre, applyOp?] using hRunTail
-
       · rw [hAnnAll]
         rw [eval_compileAnnotatedOpsToSignedGateAux_append
               (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
@@ -2205,7 +2037,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
               (xs := annotatePhaseTermsAux k n B.toProg)
               (ys := annotatePhaseTermsAux k (n + 1) oprest)
               (ψ := qs.ket bCur)]
-
         rw [hAnnBlock]
         rw [eval_compileAnnotatedOpsToSignedGateAux_append
               (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
@@ -2213,9 +2044,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
               (xs := annotatePhaseTermsAux k n B.arith)
               (ys := [{ op := .phaseProduct B.i, phaseTerm? := some ⟨n, hlt⟩ }])
               (ψ := qs.ket bCur)]
-
         rw [hArithEval]
-
         have hPhase :
             qs.eval
                 (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
@@ -2242,15 +2071,15 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
               (phi := phi * ((coeff ⟨n, hlt⟩ : ℚ) : ℝ))
               hArithEnc.1
               B.match_pt)
-
         rw [hPhase]
         rw [qs.eval_smul]
         rw [hEvalTail]
         simp [phaseScalarFrom, mul_assoc, smul_smul]
 
+/-- Block evaluation also preserves registers outside the destination layout. -/
 lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)
@@ -2300,15 +2129,10 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
         ⟨bNext, hEval, hSO⟩
       refine ⟨bNext, ?_, hSO⟩
       simpa [phaseScalarFrom] using hEval
-
   | cons B hrest ih =>
       intro n hn b0 bCur hdisj hFits hSafeAdd hEnc
       rename_i σ2 pt pts2 oprest
-
-      have hlt : n < q k := by
-        simp at hn
-        omega
-
+      have hlt : n < q k := by simp at hn; omega
       have hFitsArith :
           ∀ {τ : State k},
             (∃ pre rest, B.arith = pre ++ rest ∧ run? pre σ2 = some τ) →
@@ -2324,7 +2148,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
         refine ⟨pre, rest ++ [.phaseProduct B.i] ++ oprest, ?_, ?_⟩
         · simp [PhaseBlock.toProg, hsplit, List.append_assoc]
         · exact hrunpre
-
       have hSafeAddArith :
           ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
             B.arith = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s := by
@@ -2336,7 +2159,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
           (by
             rw [PhaseBlock.toProg]
             simp [hadd, List.append_assoc])
-
       rcases encodesFrom_after_noPhase_run_ket_gen
           (qs := qs)
           (hk := hk)
@@ -2350,7 +2172,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
           hdisj hFitsArith hSafeAddArith
           B.noPhase_pre B.run_pre hEnc with
         ⟨bMid, hArithEval, hArithEnc⟩
-
       rcases sameOutside_after_noPhase_run_ket_gen_aux
           (qs := qs)
           (hk := hk)
@@ -2364,17 +2185,12 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
           hdisj hFitsArith hSafeAddArith
           B.noPhase_pre B.run_pre hEnc with
         ⟨bMid', hArithEval', hArithSO'⟩
-
       have hbMid' : bMid' = bMid := by
         apply qs.ket_inj
         simp [hArithEval] at hArithEval';simp[hArithEval']
-
       have hArithSO : SameOutsideLayout qs dst bCur bMid := by
         simpa [hbMid'] using hArithSO'
-
-      have hRunBlock : run? B.toProg σ2 = some B.σmid := by
-        simp [PhaseBlock.toProg, run?_append, B.run_pre, applyOp?]
-
+      have hRunBlock : run? B.toProg σ2 = some B.σmid := by simp [PhaseBlock.toProg, run?_append, B.run_pre, applyOp?]
       have hFitsTail :
           ∀ {τ : State k},
             (∃ pre rest, oprest = pre ++ rest ∧ run? pre B.σmid = some τ) →
@@ -2389,9 +2205,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
         apply hFits
         refine ⟨B.toProg ++ pre, rest, ?_, ?_⟩
         · simp [PhaseBlock.toProg, hsplit, List.append_assoc]
-        · rw [run?_append, hRunBlock]
-          simpa using hrunpre
-
+        · rw [run?_append, hRunBlock]; simpa using hrunpre
       have hSafeAddTail :
           ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
             oprest = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s := by
@@ -2401,23 +2215,16 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
           (rest := rest)
           (d := d) (s := s) (negSrc := negSrc) (sh := sh)
           (by simp [hadd, List.append_assoc])
-
-      have hnTail : n + 1 + pts2.length = q k := by
-        simp at hn
-        omega
-
+      have hnTail : n + 1 + pts2.length = q k := by simp at hn; omega
       rcases ih (n + 1) hnTail b0 bMid hdisj hFitsTail hSafeAddTail hArithEnc with
         ⟨bNext, hEvalTail, hTailSO⟩
-
       refine ⟨bNext, ?_, SameOutsideLayout.trans (qs := qs) hArithSO hTailSO⟩
-
       have hAnnAll :
           annotatePhaseTermsAux k n (B.toProg ++ oprest) =
             annotatePhaseTermsAux k n B.toProg ++
               annotatePhaseTermsAux k (n + 1) oprest := by
         have hCountBlock : phaseProductCount B.toProg = 1 := by
           simp [PhaseBlock.toProg, phaseProductCount, B.noPhase_pre]
-
         have hAnnAll :
             annotatePhaseTermsAux k n (B.toProg ++ oprest) =
               annotatePhaseTermsAux k n B.toProg ++
@@ -2425,7 +2232,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
           rw [annotatePhaseTermsAux_append]
           simp [hCountBlock]
         rw[hAnnAll]
-
       have hAnnBlock :
           annotatePhaseTermsAux k n B.toProg =
             annotatePhaseTermsAux k n B.arith ++
@@ -2434,7 +2240,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
         rw [annotatePhaseTermsAux_append]
         simp [annotatePhaseTermsAux, hlt,
           phaseProductCount_eq_zero_of_NoPhase, B.noPhase_pre]
-
       rw [hAnnAll]
       rw [eval_compileAnnotatedOpsToSignedGateAux_append
             (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
@@ -2442,7 +2247,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
             (xs := annotatePhaseTermsAux k n B.toProg)
             (ys := annotatePhaseTermsAux k (n + 1) oprest)
             (ψ := qs.ket bCur)]
-
       rw [hAnnBlock]
       rw [eval_compileAnnotatedOpsToSignedGateAux_append
             (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
@@ -2450,9 +2254,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
             (xs := annotatePhaseTermsAux k n B.arith)
             (ys := [{ op := .phaseProduct B.i, phaseTerm? := some ⟨n, hlt⟩ }])
             (ψ := qs.ket bCur)]
-
       rw [hArithEval]
-
       have hPhase :
           qs.eval
               (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
@@ -2479,15 +2281,22 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
             (phi := phi * ((coeff ⟨n, hlt⟩ : ℚ) : ℝ))
             hArithEnc.1
             B.match_pt)
-
       rw [hPhase]
       rw [qs.eval_smul]
       rw [hEvalTail]
       simp [phaseScalarFrom, mul_assoc, smul_smul]
 
+/-! =========================================================
+    Section 6: Public body theorems and controlled body theorems
+    These are the body-level statements used by the surrounding compiler proof:
+    the full annotated body evaluates to the phase scalar, and the controlled
+    version evaluates to either that scalar or identity while preserving layout.
+========================================================= -/
+
+/-- Controlled block evaluation returns the conditional phase scalar plus final encoding and locality. -/
 lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (ctrl : ℕ)
   (phi : ℝ)
@@ -2582,15 +2391,10 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
         simpa [phaseScalarFrom] using hEvalEnc
       · simp [hc]
         simpa using hEvalEnc
-
   | cons B hrest ih =>
       intro n hn b0 bCur hdisj hCtrlOutside hCtrlCur hFits hSafeAdd hEnc
       rename_i σ2 pt pts2 oprest
-
-      have hlt : n < q k := by
-        simp at hn
-        omega
-
+      have hlt : n < q k := by simp at hn; omega
       have hFitsArith :
           ∀ {τ : State k},
             (∃ pre rest, B.arith = pre ++ rest ∧ run? pre σ2 = some τ) →
@@ -2606,7 +2410,6 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
         refine ⟨pre, rest ++ [.phaseProduct B.i] ++ oprest, ?_, ?_⟩
         · simp [PhaseBlock.toProg, hsplit, List.append_assoc]
         · exact hrunpre
-
       have hSafeAddArith :
           ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
             B.arith = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s := by
@@ -2618,7 +2421,6 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
           (by
             rw [PhaseBlock.toProg]
             simp [hadd, List.append_assoc])
-
       rcases encodesFrom_after_noPhase_run_ket_gen
           (qs := qs)
           (hk := hk)
@@ -2632,7 +2434,6 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
           hdisj hFitsArith hSafeAddArith
           B.noPhase_pre B.run_pre hEnc with
         ⟨bMid, hArithEval, hArithEnc⟩
-
       rcases sameOutside_after_noPhase_run_ket_gen_aux
           (qs := qs)
           (hk := hk)
@@ -2646,15 +2447,12 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
           hdisj hFitsArith hSafeAddArith
           B.noPhase_pre B.run_pre hEnc with
         ⟨bMid', hArithEval', hArithSO'⟩
-
       have hbMid' : bMid' = bMid := by
         apply qs.ket_inj
         simp [hArithEval] at hArithEval'
         simp [hArithEval']
-
       have hArithSO : SameOutsideLayout qs dst bCur bMid := by
         simpa [hbMid'] using hArithSO'
-
       have hCtrlMid : RegEncoding.bit ctrl bMid = RegEncoding.bit ctrl b0 := by
         calc
           RegEncoding.bit ctrl bMid
@@ -2662,10 +2460,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
                 SameOutsideLayout.bit_eq_of_outside
                   (qs := qs) hArithSO ctrl hCtrlOutside
           _ = RegEncoding.bit ctrl b0 := hCtrlCur
-
-      have hRunBlock : run? B.toProg σ2 = some B.σmid := by
-        simp [PhaseBlock.toProg, run?_append, B.run_pre, applyOp?]
-
+      have hRunBlock : run? B.toProg σ2 = some B.σmid := by simp [PhaseBlock.toProg, run?_append, B.run_pre, applyOp?]
       have hFitsTail :
           ∀ {τ : State k},
             (∃ pre rest, oprest = pre ++ rest ∧ run? pre B.σmid = some τ) →
@@ -2680,9 +2475,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
         apply hFits
         refine ⟨B.toProg ++ pre, rest, ?_, ?_⟩
         · simp [PhaseBlock.toProg, hsplit, List.append_assoc]
-        · rw [run?_append, hRunBlock]
-          simpa using hrunpre
-
+        · rw [run?_append, hRunBlock]; simpa using hrunpre
       have hSafeAddTail :
           ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
             oprest = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s := by
@@ -2692,22 +2485,13 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
           (rest := rest)
           (d := d) (s := s) (negSrc := negSrc) (sh := sh)
           (by simp [hadd, List.append_assoc])
-
-      have hnTail : n + 1 + pts2.length = q k := by
-        simp at hn
-        omega
-
+      have hnTail : n + 1 + pts2.length = q k := by simp at hn; omega
       rcases ih (n + 1) hnTail b0 bMid hdisj hCtrlOutside hCtrlMid
           hFitsTail hSafeAddTail hArithEnc with
         ⟨σf, bNext, hRunTail, hEvalTail, hEncTail, hTailSO⟩
-
-      have hRunAll : run? (B.toProg ++ oprest) σ2 = some σf := by
-        rw [run?_append, hRunBlock]
-        exact hRunTail
-
+      have hRunAll : run? (B.toProg ++ oprest) σ2 = some σf := by rw [run?_append, hRunBlock]; exact hRunTail
       refine ⟨σf, bNext, hRunAll, ?_, hEncTail,
         SameOutsideLayout.trans (qs := qs) hArithSO hTailSO⟩
-
       have hAnnAll :
           annotatePhaseTermsAux k n (B.toProg ++ oprest) =
             annotatePhaseTermsAux k n B.toProg ++
@@ -2716,7 +2500,6 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
           simp [PhaseBlock.toProg, phaseProductCount, B.noPhase_pre]
         rw [annotatePhaseTermsAux_append]
         simp [hCountBlock]
-
       have hAnnBlock :
           annotatePhaseTermsAux k n B.toProg =
             annotatePhaseTermsAux k n B.arith ++
@@ -2725,7 +2508,6 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
         rw [annotatePhaseTermsAux_append]
         simp [annotatePhaseTermsAux, hlt,
           phaseProductCount_eq_zero_of_NoPhase, B.noPhase_pre]
-
       rw [hAnnAll]
       rw [eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_append
             (qs := qs) (hk := hk) (ctrl := ctrl) (phi := phi) (coeff := coeff)
@@ -2733,7 +2515,6 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
             (xs := annotatePhaseTermsAux k n B.toProg)
             (ys := annotatePhaseTermsAux k (n + 1) oprest)
             (ψ := qs.ket bCur)]
-
       rw [hAnnBlock]
       rw [eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_append
             (qs := qs) (hk := hk) (ctrl := ctrl) (phi := phi) (coeff := coeff)
@@ -2741,7 +2522,6 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
             (xs := annotatePhaseTermsAux k n B.arith)
             (ys := [{ op := .phaseProduct B.i, phaseTerm? := some ⟨n, hlt⟩ }])
             (ψ := qs.ket bCur)]
-
       have hNoCtrlArith :
           controlPhaseLeaves ctrl
               (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
@@ -2751,10 +2531,8 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
             (annotatePhaseTermsAux k n B.arith) := by
         exact controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_NoPhase
           hk ctrl phi coeff dst B.arith n B.noPhase_pre
-
       rw [hNoCtrlArith]
       rw [hArithEval]
-
       have hPhase :
           qs.eval
               (controlPhaseLeaves ctrl
@@ -2787,7 +2565,6 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
             (phi := phi * ((coeff ⟨n, hlt⟩ : ℚ) : ℝ))
             hArithEnc.1
             B.match_pt)
-
       rw [hPhase]
       by_cases hc : RegEncoding.bit ctrl b0
       · have hcMid : RegEncoding.bit ctrl bMid = true := by
@@ -2805,10 +2582,10 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
         rw [hEvalTail]
         simp [hc]
 
-
+/-- Full body evaluation from the start state returns the accumulated phase scalar. -/
 lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (phi : ℝ)
   (pts : List Point)
@@ -2859,9 +2636,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks
       hSafeAdd
       hEnc with
     ⟨σf, bNext, hRun, hBody, hEncNextFits⟩
-
   rcases hEncNextFits with ⟨hEncNext, hOutX, hOutZ⟩
-
   rcases eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
       (qs := qs)
       (k := k) (hk := hk)
@@ -2881,23 +2656,19 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks
       hSafeAdd
       hEnc with
     ⟨bSO, hBodySO, hSO⟩
-
   have hσf : σf = State.start_state := by
     have hs : some σf = some State.start_state := by
       calc
         some σf = run? ops State.start_state := by simp [hRun]
         _ = some State.start_state := run_ops_start_state
     exact Option.some.inj hs
-
   subst hσf
-
   have hscalar_ne :
       phaseScalarFrom (qs := qs) k phi coeff src b0 pts 0 (by simpa using hpts) ≠ 0 := by
     exact phaseScalarFrom_ne_zero
       (qs := qs) (k := k) (phi := phi) (coeff := coeff)
       (src := src) (b0 := b0)
       pts 0 (by simpa using hpts)
-
   have hbSO : bSO = bNext := by
     apply ket_eq_of_same_nonzero_smul
       (qs := qs)
@@ -2913,36 +2684,32 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks
       _   = phaseScalarFrom (qs := qs) k phi coeff src b0 pts 0 (by simpa using hpts) •
               qs.ket bNext := by
                 simpa using hBody
-
   have hSO' : SameOutsideLayout qs dst bMid bNext := by
     simpa [hbSO] using hSO
-
   have hXslots :
       ∀ i : Fin k,
-        ExtRegEncoding.extToInt (dst.xslot i) bNext =
-          ExtRegEncoding.extToInt (dst.xslot i) bMid := by
+        extToInt (dst.xslot i) bNext =
+          extToInt (dst.xslot i) bMid := by
     intro i
     calc
-      ExtRegEncoding.extToInt (dst.xslot i) bNext
+      extToInt (dst.xslot i) bNext
           = evalRowX (qs := qs) src (State.start_state i) b0 := by
               simpa [EncodesStateFrom] using hEncNext.1 i
-      _   = ExtRegEncoding.extToInt (dst.xslot i) bMid := by
+      _   = extToInt (dst.xslot i) bMid := by
               symm
               simpa [EncodesStateFrom] using hEnc.1.1 i
-
   have hZslots :
       ∀ i : Fin k,
-        ExtRegEncoding.extToInt (dst.zslot i) bNext =
-          ExtRegEncoding.extToInt (dst.zslot i) bMid := by
+        extToInt (dst.zslot i) bNext =
+          extToInt (dst.zslot i) bMid := by
     intro i
     calc
-      ExtRegEncoding.extToInt (dst.zslot i) bNext
+      extToInt (dst.zslot i) bNext
           = evalRowZ (qs := qs) src (State.start_state i) b0 := by
               simpa [EncodesStateFrom] using hEncNext.2 i
-      _   = ExtRegEncoding.extToInt (dst.zslot i) bMid := by
+      _   = extToInt (dst.zslot i) bMid := by
               symm
               simpa [EncodesStateFrom] using hEnc.1.2 i
-
   have hbNext_eq : bNext = bMid := by
     exact basis_eq_of_sameOutside_and_slots
       (qs := qs)
@@ -2952,17 +2719,13 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks
       hSO'
       hXslots
       hZslots
-      (qubit_in_layout_or_outside dst)
-      (fun e b1 b2 q hInt hqlo hqhi =>
-        ExtRegEncoding.hbit_of_ext (e := e) (b1 := b1) (b2 := b2) (q := q) hInt hqlo hqhi)
-
-
   subst hbNext_eq
   simpa using hBody
 
+/-- Controlled full body evaluation returns the accumulated scalar only when the control bit is set. -/
 lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (ctrl : ℕ)
   (phi : ℝ)
@@ -3023,44 +2786,38 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks
       hSafeAdd
       hEnc with
     ⟨σf, bNext, hRun, hBody, hEncNextFits, hSO⟩
-
   rcases hEncNextFits with ⟨hEncNext, hOutX, hOutZ⟩
-
   have hσf : σf = State.start_state := by
     have hs : some σf = some State.start_state := by
       calc
         some σf = run? ops State.start_state := by simp [hRun]
         _ = some State.start_state := run_ops_start_state
     exact Option.some.inj hs
-
   subst hσf
-
   have hXslots :
       ∀ i : Fin k,
-        ExtRegEncoding.extToInt (dst.xslot i) bNext =
-          ExtRegEncoding.extToInt (dst.xslot i) bMid := by
+        extToInt (dst.xslot i) bNext =
+          extToInt (dst.xslot i) bMid := by
     intro i
     calc
-      ExtRegEncoding.extToInt (dst.xslot i) bNext
+      extToInt (dst.xslot i) bNext
           = evalRowX (qs := qs) src (State.start_state i) b0 := by
               simpa [EncodesStateFrom] using hEncNext.1 i
-      _   = ExtRegEncoding.extToInt (dst.xslot i) bMid := by
+      _   = extToInt (dst.xslot i) bMid := by
               symm
               simpa [EncodesStateFrom] using hEnc.1.1 i
-
   have hZslots :
       ∀ i : Fin k,
-        ExtRegEncoding.extToInt (dst.zslot i) bNext =
-          ExtRegEncoding.extToInt (dst.zslot i) bMid := by
+        extToInt (dst.zslot i) bNext =
+          extToInt (dst.zslot i) bMid := by
     intro i
     calc
-      ExtRegEncoding.extToInt (dst.zslot i) bNext
+      extToInt (dst.zslot i) bNext
           = evalRowZ (qs := qs) src (State.start_state i) b0 := by
               simpa [EncodesStateFrom] using hEncNext.2 i
-      _   = ExtRegEncoding.extToInt (dst.zslot i) bMid := by
+      _   = extToInt (dst.zslot i) bMid := by
               symm
               simpa [EncodesStateFrom] using hEnc.1.2 i
-
   have hbNext_eq : bNext = bMid := by
     exact basis_eq_of_sameOutside_and_slots
       (qs := qs)
@@ -3070,13 +2827,18 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks
       hSO
       hXslots
       hZslots
-      (qubit_in_layout_or_outside dst)
-      (fun e b1 b2 q hInt hqlo hqhi =>
-        ExtRegEncoding.hbit_of_ext (e := e) (b1 := b1) (b2 := b2) (q := q) hInt hqlo hqhi)
-
   subst hbNext_eq
   simpa using hBody
 
+
+/-! =========================================================
+    Section 7: Control wrappers for allocation and deallocation
+
+    Allocation and deallocation contain no phase-product leaves, so control-phase
+    wrapping commutes through all of their generated gates.
+========================================================= -/
+
+/-- Control-phase wrapping leaves allocation gates unchanged. -/
 lemma controlPhaseLeaves_allocChunkGate
   {k : ℕ} (ctrl : ℕ) (i : Fin k) (src dst : ExtReg) :
   controlPhaseLeaves ctrl (allocChunkGate i src dst) = allocChunkGate i src dst := by
@@ -3085,6 +2847,7 @@ lemma controlPhaseLeaves_allocChunkGate
     by_cases hδ : extraDelta src dst = 0 <;>
     simp [htop, hδ, controlPhaseLeaves]
 
+/-- Control-phase wrapping leaves deallocation gates unchanged. -/
 lemma controlPhaseLeaves_deallocChunkGate
   {k : ℕ} (ctrl : ℕ) (i : Fin k) (src dst : ExtReg) :
   controlPhaseLeaves ctrl (deallocChunkGate i src dst) = deallocChunkGate i src dst := by
@@ -3093,6 +2856,7 @@ lemma controlPhaseLeaves_deallocChunkGate
     by_cases hδ : extraDelta src dst = 0 <;>
     simp [htop, hδ, controlPhaseLeaves]
 
+/-- Control-phase wrapping leaves allocation prefixes unchanged. -/
 lemma controlPhaseLeaves_compileSignedAllocationsAux
   {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
   ∀ (n : ℕ) (hn : n ≤ k),
@@ -3109,13 +2873,14 @@ lemma controlPhaseLeaves_compileSignedAllocationsAux
       simp [controlPhaseLeaves, ih hk',
         controlPhaseLeaves_allocChunkGate]
 
+/-- Control-phase wrapping leaves full allocation unchanged. -/
 lemma controlPhaseLeaves_compileSignedAllocations
   {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
   controlPhaseLeaves ctrl (compileSignedAllocations k src dst) =
     compileSignedAllocations k src dst := by
-  unfold compileSignedAllocations
   exact controlPhaseLeaves_compileSignedAllocationsAux ctrl src dst k le_rfl
 
+/-- Control-phase wrapping leaves deallocation prefixes unchanged. -/
 lemma controlPhaseLeaves_compileSignedDeallocationsAux
   {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
   ∀ (n : ℕ) (hn : n ≤ k),
@@ -3132,23 +2897,24 @@ lemma controlPhaseLeaves_compileSignedDeallocationsAux
       simp [controlPhaseLeaves, ih hk',
         controlPhaseLeaves_deallocChunkGate]
 
+/-- Control-phase wrapping leaves full deallocation unchanged. -/
 lemma controlPhaseLeaves_compileSignedDeallocations
   {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
   controlPhaseLeaves ctrl (compileSignedDeallocations k src dst) =
     compileSignedDeallocations k src dst := by
-  unfold compileSignedDeallocations
   exact controlPhaseLeaves_compileSignedDeallocationsAux ctrl src dst k le_rfl
 
-
 /-! =========================================================
-    Section 3: Deallocation and body/deallocation composition
+    Section 8: Deallocation and body/deallocation composition
+    Allocation followed by deallocation cancels slot-by-slot, so the proved body
+    scalar can be transported from the allocated basis state back to the original
+    input basis state.
 ========================================================= -/
 
-/- Allocation/deallocation cancellation lemmas used when closing the compiled
-body back to the original allocated basis state. -/
+/-- One chunk allocation immediately followed by its matching deallocation is identity. -/
 lemma allocChunkGate_deallocChunkGate_cancel
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (i : Fin k) (src dst : ExtReg) (ψ : qs.State) :
   qs.eval
     (allocChunkGate i src dst ;; deallocChunkGate i src dst)
@@ -3158,18 +2924,25 @@ lemma allocChunkGate_deallocChunkGate_cancel
   by_cases h0 : n = 0
   · simp [h0, qs.eval_seq, qs.eval_id]
   · by_cases htop : isTopChunk i
-    · simp [h0, htop, qs.eval_seq]
-      have:=ExtensionSemantics.eval_signExtend_signDealloc
-        (qs := qs) src n ψ
-      simp_all
-    · simp [h0, htop, qs.eval_seq]
-      have:= ExtensionSemantics.eval_zeroExtend_zeroDealloc
-        (qs := qs) src n ψ
-      simp_all
+    · simp [
+        h0,
+        htop,
+        qs.eval_seq,
+        ExtensionSemantics.eval_signDealloc_eq_adj,
+        qs.eval_adj_apply
+      ]
+    · simp [
+        h0,
+        htop,
+        qs.eval_seq,
+        ExtensionSemantics.eval_zeroExtend,
+        ExtensionSemantics.eval_zeroDealloc
+      ]
 
+/-- Allocation and deallocation prefixes cancel for any prefix length. -/
 lemma alloc_dealloc_aux_cancel
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ}
   (src dst : LayoutState k)
   (n : ℕ) (hn : n ≤ k)
@@ -3190,9 +2963,10 @@ lemma alloc_dealloc_aux_cancel
       simp at *
       simp[this,ih]
 
+/-- Full allocation followed by full deallocation evaluates to identity. -/
 lemma eval_compileSignedDeallocations_alloc_id
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ}
   (src dst : LayoutState k)
   (ψ : qs.State) :
@@ -3203,9 +2977,10 @@ lemma eval_compileSignedDeallocations_alloc_id
     simp at this
     simp[compileSignedAllocations,compileSignedDeallocations,this]
 
+/-- Deallocation sends an allocated basis ket back to the original basis ket. -/
 lemma eval_compileSignedDeallocations_ket_from_alloc
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ}
   (src dst : LayoutState k)
   (b0 bCur : qs.Basis)
@@ -3217,9 +2992,10 @@ lemma eval_compileSignedDeallocations_ket_from_alloc
     rw[← hAlloc]; simp at this
     simp[this]
 
+/-- Alias of the allocated-ket deallocation theorem with shorter argument names. -/
 lemma eval_compileSignedDeallocations_ket
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ}
   (src dst : LayoutState k)
   (b bAlloc : qs.Basis)
@@ -3228,9 +3004,10 @@ lemma eval_compileSignedDeallocations_ket
   have:=eval_compileSignedDeallocations_ket_from_alloc qs (k:=k) src dst b bAlloc hAlloc
   apply this
 
+/-- Body evaluation followed by deallocation returns the phase scalar on the original basis ket. -/
 lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_then_dealloc
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (phi : ℝ)
   (pts : List Point)
@@ -3289,7 +3066,6 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_then_dealloc
       hEnc
       hB
       run_ops_start_state
-
   have hDealloc :
       qs.eval (compileSignedDeallocations k src dst) (qs.ket bMid) = qs.ket b0 := by
     exact eval_compileSignedDeallocations_ket
@@ -3297,15 +3073,15 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_then_dealloc
       (src := src) (dst := dst)
       (b := b0) (bAlloc := bMid)
       hAlloc
-
   rw [qs.eval_seq]
   rw [hBody]
   rw [qs.eval_smul]
   rw [hDealloc]
 
+/-- Controlled body evaluation followed by deallocation returns the conditional scalar on the original ket. -/
 lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_then_dealloc
   (qs : QSemantics)
-  [RegEncoding qs.Basis] [ExtRegEncoding qs.Basis] [GateSemanticsFacts qs]
+  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (ctrl : ℕ)
   (phi : ℝ)
@@ -3378,7 +3154,6 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_then_
       hEnc
       hB
       run_ops_start_state
-
   have hDealloc :
       qs.eval (compileSignedDeallocations k src dst) (qs.ket bMid) = qs.ket b0 := by
     exact eval_compileSignedDeallocations_ket
@@ -3386,11 +3161,9 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_then_
       (src := src) (dst := dst)
       (b := b0) (bAlloc := bMid)
       hAlloc
-
   rw [qs.eval_seq]
   rw [hBody]
   rw [qs.eval_smul]
   rw [hDealloc]
-
 
 end Shor

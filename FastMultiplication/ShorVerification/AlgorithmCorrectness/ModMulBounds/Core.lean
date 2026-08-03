@@ -4,61 +4,267 @@ import Mathlib.Analysis.SpecialFunctions.Log.Base
 
 open Shor
 
-universe v
+universe u v
 
 namespace Shor
+
+/-! =========================================================
+    Modular Multiplication Bounds Core
+
+This file contains the shared definitions for the modular-multiplication and
+modular-exponentiation approximation proofs: ideal specifications, Algorithm 1
+gates, layout and validity predicates, precision side conditions, reusable
+configuration records, and the reference packets used by the Step 1/2/3/4/5
+bound files.
+========================================================= -/
+
+/-! ---------------------------------------------------------
+    Ideal specification interface
+
+The approximation proofs compare concrete Algorithm 1 circuits against abstract
+ideal modular multiplication gates. This small class names those ideal gates
+without committing to an implementation.
+--------------------------------------------------------- -/
+
+section IdealSpecification
 
 /-- Ideal modular multiplication specifications used by the correctness layer. -/
 class Spec where
   idealModMul     : (c N : ℕ) → (x : Reg) → Gate
   idealCtrlModMul : (c N : ℕ) → (x : Reg) → (ctrl : ℕ) → Gate
 
-/-! =========================================================
-    Shared modular-multiplication/exponentiation circuit definitions
-========================================================= -/
+end IdealSpecification
+
+/-! ---------------------------------------------------------
+    Shared circuit syntax and workspace
+
+This section defines the reusable high-level gates for Algorithm 1, together
+with the concrete workspace predicate that provides the phase-product reserves
+needed by Steps 1, 2, and 5.
+--------------------------------------------------------- -/
+
+section CircuitSyntaxAndWorkspace
 
 /-- Inverse QFT. -/
-def IQFT (r : Reg) : Gate :=
+def IQFT (r : ExtReg) : Gate :=
   †(Gate.QFT r)
 
 /-- Apply Hadamards across all qubits of a register. -/
 def H_reg (r : Reg) : Gate :=
   (regQubits r).foldl (fun acc q => (Gate.H q) ;; acc) Gate.id
 
+/-- Build an unsigned PhaseProduct workspace from two growable, owned-disjoint extended registers. -/
+def Gate.PhaseProdWorkspace.ofExtRegs
+    (x z : ExtReg)
+    (hx : x.CanGrow 1)
+    (hz : z.CanGrow 1)
+    (howned : ExtReg.OwnedDisjoint x z) :
+    Gate.PhaseProdWorkspace x.active z.active := by
+  have hOwned :
+      ∀ q,
+        q ∈ x.ownedQubits →
+        q ∈ z.ownedQubits →
+        False := by
+    simpa [ExtReg.OwnedDisjoint, List.disjoint_left] using howned
+
+  refine
+    {
+      xReserve := x.reserve
+      zReserve := z.reserve
+
+      x_can_grow := ?_
+      z_can_grow := ?_
+
+      xz_disjoint := ?_
+      x_reserve_disjoint := x.active_reserve_disjoint
+      z_reserve_disjoint := z.active_reserve_disjoint
+      xReserve_not_z := ?_
+      zReserve_not_x := ?_
+      reserve_disjoint := ?_
+    }
+
+  · simpa [ExtReg.CanGrow, ExtReg.capacity] using hx
+  · simpa [ExtReg.CanGrow, ExtReg.capacity] using hz
+
+  · rw [Disjoint, List.disjoint_left]
+    intro q hqx hqz
+    exact hOwned q
+      (by simp [ExtReg.ownedQubits, hqx])
+      (by simp [ExtReg.ownedQubits, hqz])
+
+  · rw [Disjoint, List.disjoint_left]
+    intro q hqx hqz
+    exact hOwned q
+      (by simp [ExtReg.ownedQubits, hqx])
+      (by simp [ExtReg.ownedQubits, hqz])
+
+  · rw [Disjoint, List.disjoint_left]
+    intro q hqz hqx
+    exact hOwned q
+      (by simp [ExtReg.ownedQubits, hqx])
+      (by simp [ExtReg.ownedQubits, hqz])
+
+  · rw [Disjoint, List.disjoint_left]
+    intro q hqx hqz
+    exact hOwned q
+      (by simp [ExtReg.ownedQubits, hqx])
+      (by simp [ExtReg.ownedQubits, hqz])
+
+/-- Static workspace condition for one controlled modular-multiplication core. -/
+def ModMulCircuitWorkspaceOK
+    (data work : ExtReg) : Prop :=
+  data.CanGrow 2 ∧
+  work.CanGrow 1 ∧
+  ExtReg.OwnedDisjoint data work
+
+lemma ModMulCircuitWorkspaceOK.data_canGrow_one
+    {data work : ExtReg}
+    (h : ModMulCircuitWorkspaceOK data work) :
+    data.CanGrow 1 := by
+  unfold ModMulCircuitWorkspaceOK at h
+  unfold ExtReg.CanGrow ExtReg.capacity at *
+  omega
+
+lemma ModMulCircuitWorkspaceOK.dataCarry_canGrow_one
+    {data work : ExtReg}
+    (h : ModMulCircuitWorkspaceOK data work) :
+    (data.grow 1).CanGrow 1 := by
+  have h1 : data.CanGrow 1 :=
+    h.data_canGrow_one
+
+  unfold ModMulCircuitWorkspaceOK at h
+  rw [ExtReg.CanGrow, ExtReg.capacity_grow data 1 h1]
+  unfold ExtReg.CanGrow ExtReg.capacity at h
+  simp[ExtReg.CanGrow, ExtReg.capacity] at *
+  omega
+
+lemma ModMulCircuitWorkspaceOK.work_canGrow_one
+    {data work : ExtReg}
+    (h : ModMulCircuitWorkspaceOK data work) :
+    work.CanGrow 1 :=
+  h.2.1
+
+lemma ModMulCircuitWorkspaceOK.dataCarry_work_disjoint
+    {data work : ExtReg}
+    (h : ModMulCircuitWorkspaceOK data work) :
+    ExtReg.OwnedDisjoint (data.grow 1) work := by
+  unfold ModMulCircuitWorkspaceOK at h
+  unfold ExtReg.OwnedDisjoint at h ⊢
+  rw [List.disjoint_left]
+  intro q hqGrow hqWork
+  simp [ExtReg.ownedQubits, ExtReg.grow, Reg.append,
+    ExtReg.newBits, ExtReg.remainingReserve, Reg.take, Reg.drop,
+    List.mem_append] at hqGrow
+  have hqData : q ∈ data.ownedQubits := by
+    rw [ExtReg.ownedQubits, List.mem_append]
+    rcases hqGrow with hqActive | hqReserve
+    · exact Or.inl hqActive
+    · rcases hqReserve with hqNew | hqRemaining
+      · exact Or.inr (List.mem_of_mem_take hqNew)
+      · exact Or.inr (List.tail_subset _ hqRemaining)
+  exact h.2.2 hqData hqWork
+
+lemma ModMulCircuitWorkspaceOK.work_dataCarry_disjoint
+    {data work : ExtReg}
+    (h : ModMulCircuitWorkspaceOK data work) :
+    ExtReg.OwnedDisjoint work (data.grow 1) := by
+  exact List.Disjoint.symm h.dataCarry_work_disjoint
+
+/-- The PhaseProduct workspace used by Step 1. -/
+def ModMulCircuitWorkspaceOK.step1Workspace
+    {data work : ExtReg}
+    (h : ModMulCircuitWorkspaceOK data work) :
+    Gate.PhaseProdWorkspace data.active work.active :=
+  Gate.PhaseProdWorkspace.ofExtRegs
+    data work
+    h.data_canGrow_one
+    h.work_canGrow_one
+    h.2.2
+
+/-- The PhaseProduct workspace used by Step 2, after growing the data register by one carry bit. -/
+def ModMulCircuitWorkspaceOK.step2Workspace
+    {data work : ExtReg}
+    (h : ModMulCircuitWorkspaceOK data work) :
+    Gate.PhaseProdWorkspace
+      work.active
+      (data.grow 1).active :=
+  Gate.PhaseProdWorkspace.ofExtRegs
+    work
+    (data.grow 1)
+    h.work_canGrow_one
+    h.dataCarry_canGrow_one
+    h.work_dataCarry_disjoint
+
+/-- The PhaseProduct workspace used by Step 5. -/
+def ModMulCircuitWorkspaceOK.step5Workspace
+    {data work : ExtReg}
+    (h : ModMulCircuitWorkspaceOK data work) :
+    Gate.PhaseProdWorkspace
+      (data.grow 1).active
+      work.active :=
+  Gate.PhaseProdWorkspace.ofExtRegs
+    (data.grow 1)
+    work
+    h.dataCarry_canGrow_one
+    h.work_canGrow_one
+    h.dataCarry_work_disjoint
+
+/-- Algorithm 1 Step 1: prepare the work Fourier packet and apply the first controlled phase load. -/
 noncomputable def step1
-    {Basis : Type v} [RegEncoding Basis] [ExtRegEncoding Basis]
-    (c N : ℕ) (ctrl : ℕ) (x_reg w_reg : Reg) : Gate :=
+    {Basis : Type v}
+    [RegEncoding Basis]
+    (c N ctrl : ℕ)
+    (data work : ExtReg)
+    (hworkspace : ModMulCircuitWorkspaceOK data work) :
+    Gate :=
   let phi : ℝ := (2 * Real.pi * (((c + N - 1) % N : ℕ) : ℝ)) / (N : ℝ)
-  (H_reg w_reg) ;;
-  (Gate.CPhaseProd ctrl phi x_reg w_reg) ;;
-  (IQFT w_reg)
 
+  H_reg work.active ;;
+  Gate.CPhaseProdUsing
+    ctrl phi
+    data.active
+    work.active
+    hworkspace.step1Workspace ;;
+  IQFT hworkspace.step1Workspace.zExt
+
+/-- Algorithm 1 Step 2: use a PhaseProduct to transfer the work-label phase into the data-carry register. -/
 noncomputable def step2
-    {Basis : Type v} [RegEncoding Basis] [ExtRegEncoding Basis]
-    (N : ℕ) (x_reg w_reg : Reg) : Reg × Gate :=
-  let x_ext : Reg := extendHi x_reg
-  let n1 : ℕ := regSize x_ext
-  let m  : ℕ := regSize w_reg
-  let phi : ℝ := (2 * Real.pi * (N : ℝ)) / ((2 : ℝ) ^ (m + n1))
-  (x_ext,
-    (Gate.QFT x_ext) ;;
-    (Gate.PhaseProd phi w_reg x_ext) ;;
-    (IQFT x_ext))
+    {Basis : Type v}
+    [RegEncoding Basis]
+    (N : ℕ)
+    (data work : ExtReg)
+    (hworkspace : ModMulCircuitWorkspaceOK data work) :
+    Gate :=
+  let dataCarry : ExtReg := data.grow 1
+  let phi : ℝ := (2 * Real.pi * (N : ℝ)) / ((2 : ℝ) ^ (regSize work.active + regSize dataCarry.active))
 
-def step3 (N : ℕ) (x_ext : Reg) (flag : ℕ) : Gate :=
-  (Gate.Prim "CMP_GE_CONST" [x_ext.lo, x_ext.hi, N, flag]) ;;
-  (Gate.Prim "CSUB_CONST"   [flag, x_ext.lo, x_ext.hi, N])
+  Gate.QFT hworkspace.step2Workspace.zExt ;;
+  Gate.PhaseProdUsing
+    phi
+    work.active
+    dataCarry.active
+    hworkspace.step2Workspace ;;
+  IQFT hworkspace.step2Workspace.zExt
 
-def step4 (N : ℕ) (x_ext w_reg : Reg) (flag : ℕ) : Gate :=
-  Gate.Prim "CMP_LT_NW" [x_ext.lo, x_ext.hi, w_reg.lo, w_reg.hi, N, flag]
+/-- Algorithm 1 Step 3: compare against `N` and conditionally subtract it from the data-carry register. -/
+def step3 (N : ℕ) (dataCarry : Reg) (flag : ℕ) : Gate :=
+  (Gate.Prim "CMP_GE_CONST" ([N, flag] ++ dataCarry.qubits)) ;;
+  (Gate.Prim "CSUB_CONST"   ([N, flag] ++ dataCarry.qubits))
 
+/-- Algorithm 1 Step 4: clear the comparator flag using the data-carry/work relation. -/
+def step4 (N : ℕ) (dataCarry work : Reg) (flag : ℕ) : Gate :=
+  Gate.Prim "CMP_LT_NW" ([N, flag] ++ dataCarry.qubits ++ work.qubits)
+
+/-- Algorithm 1 Step 5: adjoint cleanup for the forward fractional load using the inverse constant. -/
 noncomputable def step5
-    {Basis : Type v} [RegEncoding Basis] [ExtRegEncoding Basis]
-    (k5val N : ℕ) (ctrl : ℕ) (x_ext w_reg : Reg) : Gate :=
+    {Basis : Type v} [RegEncoding Basis]
+    (k5val N : ℕ) (ctrl : ℕ) (data work : ExtReg)
+    (hworkspace : ModMulCircuitWorkspaceOK data work)
+    : Gate :=
   let phi : ℝ := (2 * Real.pi * ((k5val % N : ℕ) : ℝ)) / (N : ℝ)
-  †((H_reg w_reg) ;;
-    (Gate.CPhaseProd ctrl phi x_ext w_reg) ;;
-    (IQFT w_reg))
+  †((H_reg work.active) ;;
+    (Gate.CPhaseProdUsing ctrl phi (data.grow 1).active work.active hworkspace.step5Workspace) ;;
+    (IQFT hworkspace.step5Workspace.zExt))
 
 /--
 The Step-5 cleanup constant `1 - c⁻¹ mod N`, with the inverse chosen from
@@ -70,81 +276,95 @@ noncomputable def step5Constant (c N : ℕ) : ℕ :=
   else
     0
 
+/-- The five-step controlled in-place modular-multiplication core. -/
 noncomputable def CmodMulInPlaceCore
-    {Basis : Type v} [RegEncoding Basis] [ExtRegEncoding Basis]
-    (c N : ℕ) (ctrl : ℕ) (x_reg w_reg : Reg) (flag : ℕ) : Gate :=
-  let U1 : Gate := step1 (Basis := Basis) c N ctrl x_reg w_reg
-  let pair := step2 (Basis := Basis) N x_reg w_reg
-  let x_ext : Reg := pair.1
-  let U2 : Gate := pair.2
-  let U3 : Gate := step3 N x_ext flag
-  let U4 : Gate := step4 N x_ext w_reg flag
-  let U5 : Gate := step5 (Basis := Basis) (step5Constant c N) N ctrl x_ext w_reg
+    {Basis : Type v} [RegEncoding Basis]
+    (c N : ℕ) (ctrl : ℕ) (data work : ExtReg) (flag : ℕ)
+    (hworkspace : ModMulCircuitWorkspaceOK data work): Gate :=
+  let U1 : Gate := step1 (Basis := Basis) c N ctrl data work hworkspace
+  let U2 : Gate := step2 (Basis := Basis) N data work hworkspace
+  let U3 : Gate := step3 N  (data.grow 1).active flag
+  let U4 : Gate := step4 N (data.grow 1).active work.active flag
+  let U5 : Gate := step5 (Basis := Basis) (step5Constant c N) N ctrl data work hworkspace
   U1 ;; U2 ;; U3 ;; U4 ;; U5
 
+/-- Number of exponent/control bits used by modular exponentiation. -/
 def tbits (x : Reg) : ℕ :=
   regSize x
 
+/-- Ideal modular-exponentiation recursion over a list of control qubits. -/
 def modExpIdealSteps (qs : QSemantics) [RegEncoding qs.Basis] [Spec]
-    (a N : ℕ) (x y : Reg) : ℕ → ℕ → Gate
-  | _q, 0   => Gate.id
-  | q, n+1  =>
-      let k : ℕ := q - x.lo
-      (Spec.idealCtrlModMul ((a ^ (2 ^ k)) % N) N y q) ;;
-      modExpIdealSteps qs a N x y (q+1) n
+    (a N : ℕ) (data : Reg) :
+    ℕ → List ℕ → Gate
+  | _, [] => Gate.id
 
-def modExpIdeal' (qs : QSemantics) [RegEncoding qs.Basis] [Spec]
-    (a N : ℕ) (x y : Reg) : Gate :=
-  modExpIdealSteps qs a N x y x.lo (tbits x)
+  | e, ctrl :: ctrls =>
+      Spec.idealCtrlModMul ((a ^ (2 ^ e)) % N) N data ctrl ;;
+      modExpIdealSteps qs a N data (e + 1) ctrls
 
+/-- Ideal modular exponentiation over all qubits in the exponent register. -/
+def modExpIdeal'
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [Spec]
+    (a N : ℕ)
+    (x data : Reg) :
+    Gate :=
+  modExpIdealSteps qs a N data 0 x.qubits
+
+/-- Per-core norm error scale used by the modular-exponentiation hybrid bound. -/
 noncomputable def stepErr (K η : ℝ) : ℝ :=
   Real.sqrt (2 * (K * η))
 
-end Shor
+end CircuitSyntaxAndWorkspace
 
-/-!
-# Core Modular-Multiplication Bounds Infrastructure
+/-! ---------------------------------------------------------
+    Valid inputs and ideal controlled multiplication
 
-Focus theorem: `idealCtrlModMul_preserves_valid`.
+The later approximation theorems work on a valid-input subspace. This section
+defines the layout and clean-input predicates for that subspace, specifies the
+ideal controlled modular multiplier on good basis states, and proves that the
+ideal gate preserves the whole valid subspace.
+--------------------------------------------------------- -/
 
-This file contains the shared validity predicates, semantic interfaces,
-Algorithm-1 and modular-exponentiation side conditions, core configurations,
-reference traces, and elementary arithmetic facts used by the later bounds.
--/
+section ValidInputsAndIdealSemantics
 
 /-- `q` is not a qubit of register `r`. -/
 def QubitOutside (q : ℕ) (r : Reg) : Prop :=
-  q < r.lo ∨ r.hi ≤ q
+  q ∉ r.qubits
 
 /--
 Layout assumptions for one invocation of `CmodMulInPlaceCore`.
 
-`extendHi data` is used because Algorithm 1 temporarily uses the qubit
-immediately above `data` as its carry/high bit.
+`data.grow 1` is used because Algorithm 1 temporarily activates one reserve
+bit of `data` as its carry/high bit.
 -/
 def ModMulCoreLayout
-    (data work : Reg) (flag ctrl : ℕ) : Prop :=
-  Disjoint (extendHi data) work ∧
-  QubitOutside flag (extendHi data) ∧
-  QubitOutside flag work ∧
-  QubitOutside ctrl (extendHi data) ∧
-  QubitOutside ctrl work ∧
+    (data work : ExtReg)
+    (flag ctrl : ℕ) :
+    Prop :=
+  ExtReg.OwnedDisjoint data work ∧
+  flag ∉ data.ownedQubits ∧
+  flag ∉ work.ownedQubits ∧
+  ctrl ∉ data.ownedQubits ∧
+  ctrl ∉ work.ownedQubits ∧
   ctrl ≠ flag
 
 /--
 A computational-basis input on which Algorithm 1 is allowed to be called.
 
-The data register contains a canonical residue; the carry bit added by
-`extendHi`, the fractional/work register, and the comparator flag are clean.
+The data register contains a canonical residue; the two data reserve bits,
+the fractional/work register, and the comparator flag are clean.
 All other qubits, including the control and exponent registers, are arbitrary.
 -/
 def GoodModMulBasisInput
     (qs : QSemantics) [RegEncoding qs.Basis]
-    (N : ℕ) (data work : Reg) (flag : ℕ)
+    (N : ℕ) (data work : ExtReg) (flag : ℕ)
     (b : qs.Basis) : Prop :=
-  RegEncoding.toNat data b < N ∧
-  RegEncoding.toNat (qubitReg data.hi) b = 0 ∧
-  RegEncoding.toNat work b = 0 ∧
+  RegEncoding.toNat data.active b < N ∧
+  data.FreshFor 2 b ∧
+  RegEncoding.toNat work.active b = 0 ∧
+  work.FreshFor 1 b ∧
   RegEncoding.toNat (qubitReg flag) b = 0
 
 /--
@@ -156,7 +376,7 @@ the control register, exponent register, and valid modular data values.
 -/
 def ValidModMulState
     (qs : QSemantics) [RegEncoding qs.Basis]
-    (N : ℕ) (data work : Reg) (flag : ℕ) :
+    (N : ℕ) (data work : ExtReg) (flag : ℕ) :
     Submodule ℂ qs.State :=
   Submodule.span ℂ
     ({ ψ : qs.State |
@@ -164,145 +384,242 @@ def ValidModMulState
           GoodModMulBasisInput qs N data work flag b ∧
           ψ = qs.ket b } : Set qs.State)
 
-/--
-Exact basis semantics required of the ideal controlled modular multiplier.
--/
+/-- Exact basis semantics required of the ideal controlled modular multiplier. -/
 class IdealCtrlModMulExactSemantics
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [Spec] : Prop where
 
   eval_idealCtrlModMul_good_ket_exact :
-    ∀ (c N : ℕ) (data work : Reg) (flag ctrl : ℕ) (b : qs.Basis),
+    ∀ (c N : ℕ) (data work : ExtReg) (flag ctrl : ℕ) (b : qs.Basis),
       1 < N →
-      N ≤ ASize data →
+      N ≤ ASize data.active →
       Nat.Coprime c N →
       ModMulCoreLayout data work flag ctrl →
       GoodModMulBasisInput qs N data work flag b →
-      qs.eval (Spec.idealCtrlModMul c N data ctrl) (qs.ket b)
+      qs.eval (Spec.idealCtrlModMul c N data.active ctrl) (qs.ket b)
         =
       qs.ket
-        (RegEncoding.writeNat data
+        (RegEncoding.writeNat data.active
           (if RegEncoding.bit ctrl b then
-            (c * RegEncoding.toNat data b) % N
+            (c * RegEncoding.toNat data.active b) % N
           else
-            RegEncoding.toNat data b)
+            RegEncoding.toNat data.active b)
           b)
 
+/-- Writing the active portion of an extended register preserves freshness of its reserve prefix. -/
+lemma ExtReg.freshFor_write_active
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (e : ExtReg)
+    (n value : ℕ)
+    (b : Basis)
+    (hfresh : e.FreshFor n b) :
+    e.FreshFor n
+      (RegEncoding.writeNat e.active value b) := by
+  have hnew_active :
+      Disjoint (e.newBits n) e.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqNew hqActive
+
+    have hdisj := e.active_reserve_disjoint
+    rw [Disjoint, List.disjoint_left] at hdisj
+
+    exact hdisj hqActive
+      (List.mem_of_mem_take hqNew)
+
+  unfold ExtReg.FreshFor FreshZero at hfresh ⊢
+
+  calc
+    RegEncoding.toNat (e.newBits n)
+        (RegEncoding.writeNat e.active value b)
+      =
+        RegEncoding.toNat (e.newBits n) b := by
+          exact
+            RegEncoding.toNat_left_write_right
+              (e.newBits n)
+              e.active
+              hnew_active
+              b
+              value
+    _ = 0 := hfresh
+
+/-- The ideal controlled multiplier maps good basis inputs to good basis outputs with the expected residue. -/
 theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [Spec]
     [IdealCtrlModMulExactSemantics qs]
-    (c N : ℕ) (data work : Reg) (flag ctrl : ℕ) (b : qs.Basis)
+    (c N : ℕ)
+    (data work : ExtReg)
+    (flag ctrl : ℕ)
+    (b : qs.Basis)
     (hN : 1 < N)
-    (hsize : N ≤ ASize data)
+    (hsize : N ≤ ASize data.active)
     (hcoprime : Nat.Coprime c N)
     (hlayout : ModMulCoreLayout data work flag ctrl)
     (hb : GoodModMulBasisInput qs N data work flag b) :
     ∃ b' : qs.Basis,
-      qs.eval (Spec.idealCtrlModMul c N data ctrl) (qs.ket b)
-        = qs.ket b' ∧
-      GoodModMulBasisInput qs N data work flag b' ∧
-      RegEncoding.bit ctrl b' = RegEncoding.bit ctrl b ∧
-      RegEncoding.toNat data b'
+      qs.eval
+          (Spec.idealCtrlModMul c N data.active ctrl)
+          (qs.ket b)
+        =
+      qs.ket b'
+        ∧
+      GoodModMulBasisInput qs N data work flag b'
+        ∧
+      RegEncoding.bit ctrl b' =
+        RegEncoding.bit ctrl b
+        ∧
+      RegEncoding.toNat data.active b'
         =
         if RegEncoding.bit ctrl b then
-          (c * RegEncoding.toNat data b) % N
+          (c * RegEncoding.toNat data.active b) % N
         else
-          RegEncoding.toNat data b := by
+          RegEncoding.toNat data.active b := by
   classical
 
   let out : ℕ :=
     if RegEncoding.bit ctrl b then
-      (c * RegEncoding.toNat data b) % N
+      (c * RegEncoding.toNat data.active b) % N
     else
-      RegEncoding.toNat data b
-  let b' : qs.Basis := RegEncoding.writeNat data out b
+      RegEncoding.toNat data.active b
+
+  let b' : qs.Basis :=
+    RegEncoding.writeNat data.active out b
 
   have hNpos : 0 < N :=
     Nat.lt_trans Nat.zero_lt_one hN
 
-  rcases hlayout with
-    ⟨hext_work, hflag_ext, _hflag_work, hctrl_ext, _hctrl_work, _hctrl_ne⟩
+  have howned :
+      ∀ q,
+        q ∈ data.ownedQubits →
+        q ∈ work.ownedQubits →
+        False := by
+    have h := hlayout.1
+    rw [
+      ExtReg.OwnedDisjoint,
+      List.disjoint_left
+    ] at h
+    exact h
 
-  have hdata_work : Disjoint data work := by
-    rcases hext_work with h | h
-    · left
-      exact le_trans
-        (show data.hi ≤ (extendHi data).hi by
-          simp [Reg.hi, extendHi])
-        h
-    · right
-      simpa [extendHi] using h
+  have hwork_data :
+      Disjoint work.active data.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqWork hqData
 
-  have hwork_data : Disjoint work data := by
-    rcases hdata_work with h | h
-    · exact Or.inr h
-    · exact Or.inl h
+    apply howned
 
-  have hcarry_data : Disjoint (qubitReg data.hi) data := by
-    right
-    simp [qubitReg]
+    · show q ∈ data.active.qubits ++ data.reserve.qubits
+      exact List.mem_append_left _ hqData
 
-  have hflag_data : Disjoint (qubitReg flag) data := by
-    unfold QubitOutside at hflag_ext
-    rcases hflag_ext with h | h
-    · left
-      change flag + 1 ≤ data.lo
-      exact Nat.succ_le_of_lt h
-    · right
-      exact le_trans
-        (show data.hi ≤ (extendHi data).hi by
-          simp [Reg.hi, extendHi])
-        h
+    · show q ∈ work.active.qubits ++ work.reserve.qubits
+      exact List.mem_append_left _ hqWork
 
-  have hctrl_data : ctrl < data.lo ∨ data.hi ≤ ctrl := by
-    unfold QubitOutside at hctrl_ext
-    rcases hctrl_ext with h | h
-    · exact Or.inl h
-    · exact Or.inr
-        (le_trans
-          (show data.hi ≤ (extendHi data).hi by
-            simp [Reg.hi, extendHi])
-          h)
+  have hworkNew_data :
+      Disjoint (work.newBits 1) data.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqNew hqData
+
+    have hqReserve :
+        q ∈ work.reserve.qubits :=
+      List.mem_of_mem_take hqNew
+
+    apply howned
+
+    · show q ∈ data.active.qubits ++ data.reserve.qubits
+      exact List.mem_append_left _ hqData
+
+    · show q ∈ work.active.qubits ++ work.reserve.qubits
+      exact List.mem_append_right _ hqReserve
+
+  have hflag_data :
+      Disjoint (qubitReg flag) data.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqFlag hqData
+
+    have hq : q = flag := by
+      simpa [qubitReg, Reg.singleton] using hqFlag
+    subst q
+
+    exact hlayout.2.1
+      (show flag ∈ data.ownedQubits by
+        exact List.mem_append_left _ hqData)
+
+  have hctrl_data :
+      ctrl ∉ data.active.qubits := by
+    intro hctrlActive
+
+    exact hlayout.2.2.2.1
+      (show ctrl ∈ data.ownedQubits by
+        exact List.mem_append_left _ hctrlActive)
 
   have hout_lt_N : out < N := by
     by_cases hctrl : RegEncoding.bit ctrl b
     · simpa [out, hctrl] using
-        (Nat.mod_lt (c * RegEncoding.toNat data b) hNpos)
+        Nat.mod_lt
+          (c * RegEncoding.toNat data.active b)
+          hNpos
     · simpa [out, hctrl] using hb.1
 
-  have hout_lt_cap : out < ASize data :=
+  have hout_lt_cap :
+      out < ASize data.active :=
     lt_of_lt_of_le hout_lt_N hsize
 
   have hdata_out :
-      RegEncoding.toNat data b' = out := by
+      RegEncoding.toNat data.active b' = out := by
+    dsimp [b']
     exact
       RegEncoding.toNat_writeNat_of_lt
-        data out b hout_lt_cap
+        data.active out b hout_lt_cap
 
-  have hcarry_out :
-      RegEncoding.toNat (qubitReg data.hi) b' = 0 := by
-    calc
-      RegEncoding.toNat (qubitReg data.hi) b'
-        =
-          RegEncoding.toNat (qubitReg data.hi) b := by
-            exact
-              RegEncoding.toNat_left_write_right
-                (qubitReg data.hi) data hcarry_data b out
-      _ = 0 := hb.2.1
+  have hdataFresh_out :
+      data.FreshFor 2 b' := by
+    dsimp [b']
+    exact
+      ExtReg.freshFor_write_active
+        data 2 out b hb.2.1
 
   have hwork_out :
-      RegEncoding.toNat work b' = 0 := by
+      RegEncoding.toNat work.active b' = 0 := by
     calc
-      RegEncoding.toNat work b'
+      RegEncoding.toNat work.active b'
         =
-          RegEncoding.toNat work b := by
+          RegEncoding.toNat work.active b := by
+            dsimp [b']
             exact
               RegEncoding.toNat_left_write_right
-                work data hwork_data b out
+                work.active
+                data.active
+                hwork_data
+                b
+                out
       _ = 0 := hb.2.2.1
+
+  have hworkFresh_in :
+      RegEncoding.toNat (work.newBits 1) b = 0 := by
+    simpa [ExtReg.FreshFor, FreshZero] using
+      hb.2.2.2.1
+
+  have hworkFresh_out :
+      work.FreshFor 1 b' := by
+    have hzero :
+        RegEncoding.toNat (work.newBits 1) b' = 0 := by
+      calc
+        RegEncoding.toNat (work.newBits 1) b'
+          =
+            RegEncoding.toNat (work.newBits 1) b := by
+              dsimp [b']
+              exact
+                RegEncoding.toNat_left_write_right
+                  (work.newBits 1)
+                  data.active
+                  hworkNew_data
+                  b
+                  out
+        _ = 0 := hworkFresh_in
+
+    simpa [ExtReg.FreshFor, FreshZero] using hzero
 
   have hflag_out :
       RegEncoding.toNat (qubitReg flag) b' = 0 := by
@@ -310,250 +627,223 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
       RegEncoding.toNat (qubitReg flag) b'
         =
           RegEncoding.toNat (qubitReg flag) b := by
+            dsimp [b']
             exact
               RegEncoding.toNat_left_write_right
-                (qubitReg flag) data hflag_data b out
-      _ = 0 := hb.2.2.2
+                (qubitReg flag)
+                data.active
+                hflag_data
+                b
+                out
+      _ = 0 := hb.2.2.2.2
 
   have hgood_out :
-      GoodModMulBasisInput qs N data work flag b' := by
-    refine ⟨?_, hcarry_out, hwork_out, hflag_out⟩
+      GoodModMulBasisInput
+        qs N data work flag b' := by
+    refine
+      ⟨?_,
+       hdataFresh_out,
+       hwork_out,
+       hworkFresh_out,
+       hflag_out⟩
+
     calc
-      RegEncoding.toNat data b' = out := hdata_out
+      RegEncoding.toNat data.active b' = out :=
+        hdata_out
       _ < N := hout_lt_N
 
   have hctrl_out :
-      RegEncoding.bit ctrl b' = RegEncoding.bit ctrl b := by
-    simpa [b'] using
+      RegEncoding.bit ctrl b' =
+        RegEncoding.bit ctrl b := by
+    dsimp [b']
+    exact
       RegEncoding.bit_writeNat_out
-        (r := data)
+        (r := data.active)
         (v := out)
         (b := b)
         (q := ctrl)
         hctrl_data
 
   have heval :
-      qs.eval (Spec.idealCtrlModMul c N data ctrl) (qs.ket b)
-        = qs.ket b' := by
+      qs.eval
+          (Spec.idealCtrlModMul
+            c N data.active ctrl)
+          (qs.ket b)
+        =
+      qs.ket b' := by
     simpa [b', out] using
       (IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket_exact
-        (qs := qs)
-        c N data work flag ctrl b
-        hN hsize hcoprime
-        ⟨hext_work, hflag_ext, _hflag_work, hctrl_ext, _hctrl_work, _hctrl_ne⟩
-        hb)
+          (qs := qs)
+          c N data work flag ctrl b
+          hN
+          hsize
+          hcoprime
+          hlayout
+          hb)
 
-  refine ⟨b', heval, hgood_out, hctrl_out, ?_⟩
+  refine
+    ⟨b',
+     heval,
+     hgood_out,
+     hctrl_out,
+     ?_⟩
+
   simpa [out] using hdata_out
 
 
 
-/--
-(ii) The ideal controlled multiplier maps the entire valid subspace back into
-the same valid subspace.
-
--/
+/-- The ideal controlled multiplier preserves the span of all good modular-multiplication states. -/
 theorem idealCtrlModMul_preserves_valid
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     [Spec]
     [IdealCtrlModMulExactSemantics qs]
-    (c N : ℕ) (data work : Reg) (flag ctrl : ℕ)
+    (c N : ℕ)
+    (data work : ExtReg)
+    (flag ctrl : ℕ)
     (hN : 1 < N)
-    (hsize : N ≤ ASize data)
+    (hsize : N ≤ ASize data.active)
     (hcoprime : Nat.Coprime c N)
     (hlayout : ModMulCoreLayout data work flag ctrl)
     (ψ : qs.State)
-    (hvalid : ψ ∈ ValidModMulState qs N data work flag) :
-    qs.eval (Spec.idealCtrlModMul c N data ctrl) ψ
-      ∈ ValidModMulState qs N data work flag := by
+    (hvalid :
+      ψ ∈ ValidModMulState
+        qs N data work flag) :
+    qs.eval
+        (Spec.idealCtrlModMul
+          c N data.active ctrl)
+        ψ
+      ∈
+    ValidModMulState
+      qs N data work flag := by
   classical
-
-  have hNpos : 0 < N :=
-    Nat.lt_trans Nat.zero_lt_one hN
-
-  have hlayout_exact := hlayout
-  rcases hlayout with
-    ⟨hext_work, hflag_ext, _hflag_work, _hctrl_ext, _hctrl_work, _hctrl_ne⟩
-
-  unfold QubitOutside at hflag_ext
-
-  have hdata_work : Disjoint data work := by
-    rcases hext_work with h | h
-    · left
-      exact le_trans
-        (show data.hi ≤ (extendHi data).hi by
-          simp [Reg.hi, extendHi])
-        h
-    · right
-      simpa [extendHi] using h
-
-  have hwork_data : Disjoint work data := by
-    rcases hdata_work with h | h
-    · exact Or.inr h
-    · exact Or.inl h
-
-  have hcarry_data : Disjoint (qubitReg data.hi) data := by
-    right
-    simp [qubitReg]
-
-  have hflag_data : Disjoint (qubitReg flag) data := by
-    rcases hflag_ext with h | h
-    · left
-      change flag + 1 ≤ data.lo
-      exact Nat.succ_le_of_lt h
-    · right
-      exact le_trans
-        (show data.hi ≤ (extendHi data).hi by
-          simp [Reg.hi, extendHi])
-        h
 
   let validSet : Set qs.State :=
     { ξ : qs.State |
       ∃ b : qs.Basis,
-        GoodModMulBasisInput qs N data work flag b ∧
+        GoodModMulBasisInput
+          qs N data work flag b
+          ∧
         ξ = qs.ket b }
 
-  change ψ ∈ Submodule.span ℂ validSet at hvalid
   change
-    qs.eval (Spec.idealCtrlModMul c N data ctrl) ψ
-      ∈ Submodule.span ℂ validSet
+    ψ ∈ Submodule.span ℂ validSet
+      at hvalid
+
+  change
+    qs.eval
+        (Spec.idealCtrlModMul
+          c N data.active ctrl)
+        ψ
+      ∈
+    Submodule.span ℂ validSet
 
   refine
     Submodule.span_induction
       (s := validSet)
       (p := fun ξ _ =>
-        qs.eval (Spec.idealCtrlModMul c N data ctrl) ξ
-          ∈ Submodule.span ℂ validSet)
-      ?_ ?_ ?_ ?_
+        qs.eval
+            (Spec.idealCtrlModMul
+              c N data.active ctrl)
+            ξ
+          ∈
+        Submodule.span ℂ validSet)
+      ?basis
+      ?zero
+      ?add
+      ?smul
       hvalid
-  · intro ξ hξ
+
+  case basis =>
+    intro ξ hξ
+
     change
       ∃ b : qs.Basis,
-        GoodModMulBasisInput qs N data work flag b ∧
-        ξ = qs.ket b at hξ
+        GoodModMulBasisInput
+          qs N data work flag b
+          ∧
+        ξ = qs.ket b
+      at hξ
+
     rcases hξ with ⟨b, hb, rfl⟩
 
-    let out : ℕ :=
-      if RegEncoding.bit ctrl b then
-        (c * RegEncoding.toNat data b) % N
-      else
-        RegEncoding.toNat data b
-
-    have hout_lt_N : out < N := by
-      by_cases hctrl : RegEncoding.bit ctrl b
-      · simpa [out, hctrl] using
-          (Nat.mod_lt (c * RegEncoding.toNat data b) hNpos)
-      · simpa [out, hctrl] using hb.1
-
-    have hout_lt_cap : out < ASize data :=
-      lt_of_lt_of_le hout_lt_N hsize
-
-    have hdata_out :
-        RegEncoding.toNat data
-          (RegEncoding.writeNat data out b)
-          =
-        out := by
-      exact
-        RegEncoding.toNat_writeNat_of_lt
-          data out b hout_lt_cap
-
-    have hcarry_out :
-        RegEncoding.toNat (qubitReg data.hi)
-          (RegEncoding.writeNat data out b)
-          =
-        0 := by
-      calc
-        RegEncoding.toNat (qubitReg data.hi)
-            (RegEncoding.writeNat data out b)
-          =
-            RegEncoding.toNat (qubitReg data.hi) b := by
-              exact
-                RegEncoding.toNat_left_write_right
-                  (qubitReg data.hi) data hcarry_data b out
-        _ = 0 := hb.2.1
-
-    have hwork_out :
-        RegEncoding.toNat work
-          (RegEncoding.writeNat data out b)
-          =
-        0 := by
-      calc
-        RegEncoding.toNat work
-            (RegEncoding.writeNat data out b)
-          =
-            RegEncoding.toNat work b := by
-              exact
-                RegEncoding.toNat_left_write_right
-                  work data hwork_data b out
-        _ = 0 := hb.2.2.1
-
-    have hflag_out :
-        RegEncoding.toNat (qubitReg flag)
-          (RegEncoding.writeNat data out b)
-          =
-        0 := by
-      calc
-        RegEncoding.toNat (qubitReg flag)
-            (RegEncoding.writeNat data out b)
-          =
-            RegEncoding.toNat (qubitReg flag) b := by
-              exact
-                RegEncoding.toNat_left_write_right
-                  (qubitReg flag) data hflag_data b out
-        _ = 0 := hb.2.2.2
-
-    have hgood_out :
-        GoodModMulBasisInput qs N data work flag
-          (RegEncoding.writeNat data out b) := by
-      refine ⟨?_, hcarry_out, hwork_out, hflag_out⟩
-      calc
-        RegEncoding.toNat data
-            (RegEncoding.writeNat data out b)
-          = out := hdata_out
-        _ < N := hout_lt_N
-
-    have heval :
-        qs.eval (Spec.idealCtrlModMul c N data ctrl) (qs.ket b)
-          =
-        qs.ket (RegEncoding.writeNat data out b) := by
-      simpa [out] using
-        (IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket_exact
-          (qs := qs)
-          c N data work flag ctrl b
-          hN hsize hcoprime hlayout_exact hb)
+    obtain
+      ⟨b', heval, hgood, _hctrl, _hdata⟩ :=
+        IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
+            (qs := qs)
+            c N data work flag ctrl b
+            hN
+            hsize
+            hcoprime
+            hlayout
+            hb
 
     rw [heval]
 
-    exact Submodule.subset_span
-      (show qs.ket (RegEncoding.writeNat data out b) ∈ validSet from
-        ⟨_, hgood_out, rfl⟩)
+    exact
+      Submodule.subset_span
+        (show qs.ket b' ∈ validSet from
+          ⟨b', hgood, rfl⟩)
 
-  ·
+  case zero =>
     change
-      qs.eval (Spec.idealCtrlModMul c N data ctrl) 0
-        ∈ Submodule.span ℂ validSet
+      qs.eval
+          (Spec.idealCtrlModMul
+            c N data.active ctrl)
+          0
+        ∈
+      Submodule.span ℂ validSet
+
     rw [qs.eval_zero]
-    exact (Submodule.span ℂ validSet).zero_mem
+    exact
+      (Submodule.span ℂ validSet).zero_mem
 
-  · intro ξ ζ _hξ _hζ hξ_eval hζ_eval
+  case add =>
+    intro ξ ζ _hξ _hζ hξEval hζEval
+
     change
-      qs.eval (Spec.idealCtrlModMul c N data ctrl) (ξ + ζ)
-        ∈ Submodule.span ℂ validSet
+      qs.eval
+          (Spec.idealCtrlModMul
+            c N data.active ctrl)
+          (ξ + ζ)
+        ∈
+      Submodule.span ℂ validSet
+
     rw [qs.eval_add]
-    exact (Submodule.span ℂ validSet).add_mem hξ_eval hζ_eval
 
-  · intro a ξ _hξ hξ_eval
+    exact
+      (Submodule.span ℂ validSet).add_mem
+        hξEval hζEval
+
+  case smul =>
+    intro a ξ _hξ hξEval
+
     change
-      qs.eval (Spec.idealCtrlModMul c N data ctrl) (a • ξ)
-        ∈ Submodule.span ℂ validSet
-    rw [qs.eval_smul]
-    exact (Submodule.span ℂ validSet).smul_mem a hξ_eval
-/-! =========================================================
-    Concrete Algorithm-1 side conditions
-========================================================= -/
+      qs.eval
+          (Spec.idealCtrlModMul
+            c N data.active ctrl)
+          (a • ξ)
+        ∈
+      Submodule.span ℂ validSet
 
+    rw [qs.eval_smul]
+
+    exact
+      (Submodule.span ℂ validSet).smul_mem
+        a hξEval
+
+end ValidInputsAndIdealSemantics
+
+/-! ---------------------------------------------------------
+    Algorithm 1 precision and arithmetic constants
+
+This section packages the concrete precision schedule for Algorithm 1 and the
+Step-5 inverse constant used by the cleanup phase.
+--------------------------------------------------------- -/
+
+section Algorithm1PrecisionAndConstants
+
+/-- Extra work-register bits prescribed by the Algorithm 1 precision parameter. -/
 noncomputable def algorithm1ExtraBits (η : ℝ) : ℕ :=
   ⌈2 * Real.logb 2 (2 + 1 / (2 * η))⌉₊
 
@@ -580,14 +870,6 @@ lemma eta_pos
     (h : Algorithm1Precision η data work) :
     0 < η :=
   h.1
-
-/-- The error parameter lies in the small-error regime. -/
-lemma eta_lt_half
-    {η : ℝ}
-    {data work : Reg}
-    (h : Algorithm1Precision η data work) :
-    η < (1 / 2 : ℝ) :=
-  h.2.1
 
 /-- The work register has exactly the width prescribed by Algorithm 1. -/
 lemma work_width
@@ -691,6 +973,7 @@ def Step5ConstantOK (c N k5val : ℕ) : Prop :=
     (c * cinv) % N = 1 % N ∧
     k5val % N = (1 + N - cinv) % N
 
+/-- The concrete `step5Constant` satisfies the modular inverse cleanup specification. -/
 theorem step5Constant_ok
     (c N : ℕ)
     (hN : 1 < N)
@@ -709,81 +992,98 @@ theorem step5Constant_ok
     rw [dif_pos hExists]
     simp [cinv]
 
-/--
-All controls used by the tail beginning at `q` are distinct from the
-data/work/flag locations and lie in the exponent register interval.
--/
-def ModExpTailLayout
-    (x data work : Reg) (flag q n : ℕ) : Prop :=
-  x.lo ≤ q ∧
-  q + n ≤ x.hi ∧
-  ∀ j : ℕ, j < n →
-    ModMulCoreLayout data work flag (q + j)
+end Algorithm1PrecisionAndConstants
 
-/-- For every controlled multiplication in a tail, the multiplier is invertible modulo `N`. -/
-def ModExpTailArithmeticOK
-    (a N : ℕ) (x : Reg)
-    (q n : ℕ) : Prop :=
-  ∀ j : ℕ, j < n →
-    let e : ℕ := (q + j) - x.lo
-    let c : ℕ := (a ^ (2 ^ e)) % N
-    Nat.Coprime c N
+/-! ---------------------------------------------------------
+    Modular-exponentiation layout and gates
 
+The current modular-exponentiation API recurses over a list of control qubits.
+These predicates and gates express the layout and coprimality side conditions
+for that list-based recursion.
+--------------------------------------------------------- -/
 
-/--
-The layout condition for the complete modular-exponentiation circuit.
--/
+section ModExpLayoutAndGates
+
+/-- Every exponent/control qubit has a valid modular-multiplication core layout. -/
 def ModExpLayout
-    (x data work : Reg) (flag : ℕ) : Prop :=
-  ModExpTailLayout x data work flag x.lo (tbits x)
+    (x : Reg)
+    (data work : ExtReg)
+    (flag : ℕ) :
+    Prop :=
+  ∀ i : Fin (regSize x),
+    ModMulCoreLayout
+      data work flag (x.get i)
 
-/--
-The arithmetic side condition for the complete modular-exponentiation circuit.
--/
+/-- Every multiplier used by modular exponentiation is coprime to the modulus. -/
 def ModExpArithmeticOK
-    (a N : ℕ) (x : Reg) : Prop :=
-  ModExpTailArithmeticOK a N x x.lo (tbits x)
+    (a N : ℕ)
+    (x : Reg) :
+    Prop :=
+  ∀ i : Fin (regSize x),
+    Nat.Coprime ((a ^ (2 ^ i.1)) % N) N
 
+/-- Approximate modular-exponentiation recursion over a list of controls, using valid Algorithm 1 cores. -/
 noncomputable def modExpApproxStepsValid
-    {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
-    (a N : ℕ) (x data work : Reg) (flag : ℕ) :
-    ℕ → ℕ → Gate
-  | _q, 0 =>
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (a N : ℕ)
+    (data work : ExtReg)
+    (flag : ℕ)
+    (hworkspace : ModMulCircuitWorkspaceOK data work) :
+    ℕ → List ℕ → Gate
+
+  | _, [] =>
       Gate.id
-  | q, n + 1 =>
-      let e : ℕ := q - x.lo
-      let c : ℕ := (a ^ (2 ^ e)) % N
+
+  | e, ctrl :: ctrls =>
+      let c := (a ^ (2 ^ e)) % N
+
       CmodMulInPlaceCore
-        (Basis := Basis)
-        c N q data work flag
-      ;;
+          (Basis := Basis)
+          c N ctrl data work flag hworkspace
+        ;;
       modExpApproxStepsValid
         (Basis := Basis)
-        a N x data work flag (q + 1) n
+        a N data work flag hworkspace
+        (e + 1) ctrls
 
+/-- Approximate modular exponentiation over all qubits in the exponent register. -/
 noncomputable def modExpApproxValid
-    {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
-    (a N : ℕ) (x data work : Reg) (flag : ℕ) : Gate :=
-  modExpApproxStepsValid
-    (Basis := Basis)
-    a N x data work flag x.lo (tbits x)
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (a N : ℕ)
+    (x : Reg)
+    (data work : ExtReg)
+    (flag : ℕ)
+    (hworkspace : ModMulCircuitWorkspaceOK data work) :
+    Gate :=
+  modExpApproxStepsValid (Basis := Basis) a N data work flag hworkspace 0 x.qubits
 
+end ModExpLayoutAndGates
 
-/-! =========================================================
-    Shared Algorithm-1 environment
-========================================================= -/
+/-! ---------------------------------------------------------
+    Shared configurations
 
+The bound files pass around compact records rather than repeatedly threading the
+modulus, registers, precision proof, workspace proof, layout proof, and
+coprimality hypotheses.
+--------------------------------------------------------- -/
+
+section SharedConfigurations
+
+/-- Common environment for one Algorithm 1 modular-multiplication analysis. -/
 structure Algorithm1Env (η : ℝ) where
   N : ℕ
-  data : Reg
-  work : Reg
+  data : ExtReg
+  work : ExtReg
   modulus_gt_one : 1 < N
-  data_capacity  : N ≤ ASize data
-  precision      : Algorithm1Precision η data work
+  data_capacity  : N ≤ ASize data.active
+  precision      : Algorithm1Precision η data.active work.active
+  circuit_workspace : ModMulCircuitWorkspaceOK data work
 
+/-- Configuration for approximate modular exponentiation. -/
 structure ModExpConfig (η : ℝ) where
   env : Algorithm1Env η
-
   a : ℕ
   x : Reg
   flag : ℕ
@@ -797,22 +1097,24 @@ structure ModExpConfig (η : ℝ) where
 
 namespace ModExpConfig
 
+/-- Concrete approximate modular-exponentiation gate for this configuration. -/
 noncomputable def approxGate
     {η : ℝ}
-    {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
-    (cfg : ModExpConfig η) : Gate :=
+    {Basis : Type u} [RegEncoding Basis] (cfg : ModExpConfig η) : Gate :=
   modExpApproxValid
     (Basis := Basis)
-    cfg.a cfg.env.N cfg.x cfg.env.data cfg.env.work cfg.flag
+    cfg.a cfg.env.N cfg.x cfg.env.data cfg.env.work cfg.flag cfg.env.circuit_workspace
 
+/-- Ideal modular-exponentiation gate for this configuration. -/
 def idealGate
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [Spec]
     {η : ℝ}
     (cfg : ModExpConfig η) : Gate :=
-  modExpIdeal' qs cfg.a cfg.env.N cfg.x cfg.env.data
+  modExpIdeal' qs cfg.a cfg.env.N cfg.x cfg.env.data.active
 
+/-- Valid modular-multiplication state with unit norm for modular exponentiation. -/
 def ValidUnitState
     (qs : QSemantics) [RegEncoding qs.Basis]
     {η : ℝ}
@@ -825,10 +1127,11 @@ end ModExpConfig
 
 
 
-/-! =========================================================
+/-! ---------------------------------------------------------
     One controlled modular multiplication
-========================================================= -/
+--------------------------------------------------------- -/
 
+/-- Configuration for one controlled modular-multiplication core. -/
 structure ModMulConfig (η : ℝ) where
   env : Algorithm1Env η
   c : ℕ
@@ -839,27 +1142,30 @@ structure ModMulConfig (η : ℝ) where
 
 namespace ModMulConfig
 
+/-- Concrete five-step approximate modular-multiplication gate for this configuration. -/
 noncomputable def approxGate
     {η : ℝ}
-    {Basis : Type u} [RegEncoding Basis] [ExtRegEncoding Basis]
+    {Basis : Type u} [RegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
-  CmodMulInPlaceCore
-    (Basis := Basis)
-    cfg.c cfg.env.N
+  CmodMulInPlaceCore (Basis := Basis) cfg.c cfg.env.N
     cfg.ctrl cfg.env.data cfg.env.work cfg.flag
+    cfg.env.circuit_workspace
 
+/-- Ideal controlled modular-multiplication gate for this configuration. -/
 def idealGate
     {η : ℝ}
     [Spec]
     (cfg : ModMulConfig η) : Gate :=
-  Spec.idealCtrlModMul cfg.c cfg.env.N cfg.env.data cfg.ctrl
+  Spec.idealCtrlModMul cfg.c cfg.env.N cfg.env.data.active cfg.ctrl
 
+/-- Valid-state predicate for one modular-multiplication configuration. -/
 def ValidState
     (qs : QSemantics) [RegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η) (ψ : qs.State) : Prop :=
   ψ ∈ ValidModMulState qs cfg.env.N cfg.env.data cfg.env.work cfg.flag
 
+/-- Valid modular-multiplication state with unit norm. -/
 def ValidUnitState
     (qs : QSemantics) [RegEncoding qs.Basis]
     {η : ℝ}
@@ -867,64 +1173,64 @@ def ValidUnitState
   cfg.ValidState qs ψ ∧ ‖ψ‖ = 1
 
 
-/-! =========================================================
-    Algorithm-1 staged gates
-========================================================= -/
+/-! ---------------------------------------------------------
+    Algorithm 1 staged gates
 
+These names expose the five-step core as stage-level gates used throughout the
+Step 1/2/3/4/5 correctness and error-bound files.
+--------------------------------------------------------- -/
+
+/-- Stage name for Algorithm 1 Step 1. -/
 noncomputable def U1
     {η : ℝ}
     {Basis : Type u}
     [RegEncoding Basis]
-    [ExtRegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
   step1
-    (Basis := Basis)
-    cfg.c
-    cfg.env.N
-    cfg.ctrl
-    cfg.env.data
-    cfg.env.work
+  (Basis := Basis)
+  cfg.c cfg.env.N cfg.ctrl
+  cfg.env.data cfg.env.work
+  cfg.env.circuit_workspace
 
+/-- Stage name for Algorithm 1 Step 2. -/
 noncomputable def U2
     {η : ℝ}
     {Basis : Type u}
     [RegEncoding Basis]
-    [ExtRegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
-  (step2
-    (Basis := Basis)
-    cfg.env.N
-    cfg.env.data
-    cfg.env.work).2
+  step2
+  (Basis := Basis)
+  cfg.env.N
+  cfg.env.data cfg.env.work
+  cfg.env.circuit_workspace
 
+/-- Stage name for the exact Step 3/4 comparator block. -/
 noncomputable def U34
     {η : ℝ}
     {Basis : Type u}
     [RegEncoding Basis]
-    [ExtRegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
-  step3 cfg.env.N (extendHi cfg.env.data) cfg.flag ;;
-  step4 cfg.env.N (extendHi cfg.env.data) cfg.env.work cfg.flag
+  step3 cfg.env.N (cfg.env.data.grow 1).active cfg.flag ;;
+  step4 cfg.env.N (cfg.env.data.grow 1).active cfg.env.work.active cfg.flag
 
+/-- Stage name for Algorithm 1 Step 5 cleanup. -/
 noncomputable def U5
     {η : ℝ}
     {Basis : Type u}
     [RegEncoding Basis]
-    [ExtRegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
   step5
     (Basis := Basis)
     (step5Constant cfg.c cfg.env.N)
-    cfg.env.N
-    cfg.ctrl
-    (extendHi cfg.env.data)
-    cfg.env.work
+    cfg.env.N cfg.ctrl
+    cfg.env.data cfg.env.work
+    cfg.env.circuit_workspace
 
+/-- The staged form of the full five-step modular-multiplication core. -/
 noncomputable def stagedGate
     {η : ℝ}
     {Basis : Type u}
     [RegEncoding Basis]
-    [ExtRegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
   U1 (Basis := Basis) cfg ;;
   U2 (Basis := Basis) cfg ;;
@@ -933,6 +1239,17 @@ noncomputable def stagedGate
 
 end ModMulConfig
 
+end SharedConfigurations
+
+/-! ---------------------------------------------------------
+    Primitive semantics and ideal configuration facts
+
+Steps 3 and 4 use opaque primitive gates. This section isolates their required
+basis semantics and provides the configuration-specific ideal multiplier lemma.
+--------------------------------------------------------- -/
+
+section PrimitiveAndIdealConfigFacts
+
 /--
 Narrow semantics for the raw primitive gates used by Algorithm 1 Steps 3
 and 4. These facts are intentionally separate from `GateSemanticsFacts`,
@@ -940,8 +1257,7 @@ which only describes the structured gate families.
 -/
 class ModMulPrimitiveSemantics
     (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis] : Prop where
+    [RegEncoding qs.Basis] : Prop where
 
   /-- Step 3, restricted to the clean-flag regime used by Algorithm 1. -/
   eval_step3_clean_ket :
@@ -953,15 +1269,10 @@ class ModMulPrimitiveSemantics
         =
       qs.ket
         (RegEncoding.writeNat
-          (qubitReg flag)
-          (if N ≤ RegEncoding.toNat x_ext b then 1 else 0)
-          (RegEncoding.writeNat
-            x_ext
-            (if N ≤ RegEncoding.toNat x_ext b then
-              RegEncoding.toNat x_ext b - N
-            else
-              RegEncoding.toNat x_ext b)
-            b))
+          (qubitReg flag) (if N ≤ RegEncoding.toNat x_ext b then 1 else 0)
+          (RegEncoding.writeNat x_ext
+            (if N ≤ RegEncoding.toNat x_ext b then RegEncoding.toNat x_ext b - N
+            else RegEncoding.toNat x_ext b) b))
 
   /--
   Step 4 clears a flag exactly when that flag already contains the
@@ -983,10 +1294,7 @@ class ModMulPrimitiveSemantics
       qs.ket (RegEncoding.writeNat (qubitReg flag) 0 b)
 
 
-/-! =========================================================
-    Ideal controlled multiplication on a configuration
-========================================================= -/
-
+/-- Configuration wrapper around the exact ideal controlled-multiplier basis semantics. -/
 theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_cfg
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -1000,11 +1308,11 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_cfg
     qs.eval (ModMulConfig.idealGate cfg) (qs.ket b)
       =
     qs.ket
-      (RegEncoding.writeNat cfg.env.data
+      (RegEncoding.writeNat cfg.env.data.active
         (if RegEncoding.bit cfg.ctrl b then
-          (cfg.c * RegEncoding.toNat cfg.env.data b) % cfg.env.N
+          (cfg.c * RegEncoding.toNat cfg.env.data.active b) % cfg.env.N
         else
-          RegEncoding.toNat cfg.env.data b)
+          RegEncoding.toNat cfg.env.data.active b)
         b) := by
   simpa [ModMulConfig.idealGate] using
     (IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket_exact
@@ -1022,7 +1330,18 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_cfg
       cfg.layout
       hb)
 
+end PrimitiveAndIdealConfigFacts
 
+/-! ---------------------------------------------------------
+    Algorithm 1 reference arithmetic
+
+These scalar definitions describe the intended residues, fractional work labels,
+good QPE labels, and exact Step-2 integer shift used by the error proof.
+--------------------------------------------------------- -/
+
+section Algorithm1ReferenceArithmetic
+
+/-- Target residue loaded by the Step-1 fractional phase, before final multiplication cleanup. -/
 noncomputable def alg1TargetResidue
     [QSemantics] [RegEncoding QSemantics.Basis]
     {η : ℝ}
@@ -1030,10 +1349,11 @@ noncomputable def alg1TargetResidue
     (b : QSemantics.Basis) : ℕ :=
   if RegEncoding.bit cfg.ctrl b then
     (((cfg.c + cfg.env.N - 1) % cfg.env.N)
-      * RegEncoding.toNat cfg.env.data b) % cfg.env.N
+      * RegEncoding.toNat cfg.env.data.active b) % cfg.env.N
   else
     0
 
+/-- Target residue as a normalized real fraction of the modulus. -/
 noncomputable def alg1TargetFraction
     [QSemantics] [RegEncoding QSemantics.Basis]
     {η : ℝ}
@@ -1041,37 +1361,44 @@ noncomputable def alg1TargetFraction
     (b : QSemantics.Basis) : ℝ :=
   (alg1TargetResidue cfg b : ℝ) / (cfg.env.N : ℝ)
 
+/-- Work-register label as a normalized real fraction. -/
 noncomputable def alg1WorkFraction
     {η : ℝ}
     (cfg : ModMulConfig η)
-    (t : Fin (ASize cfg.env.work)) : ℝ :=
-  (t.1 : ℝ) / (ASize cfg.env.work : ℝ)
+    (t : Fin (ASize cfg.env.work.active)) : ℝ :=
+  (t.1 : ℝ) / (ASize cfg.env.work.active : ℝ)
 
+/-- QPE labels whose work fractions are close enough to the target fraction. -/
 noncomputable def alg1GoodLabels
     [QSemantics] [RegEncoding QSemantics.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : QSemantics.Basis) :
-    Finset (Fin (ASize cfg.env.work)) :=
+    Finset (Fin (ASize cfg.env.work.active)) :=
   Finset.univ.filter fun t =>
     |alg1TargetFraction cfg b - alg1WorkFraction cfg t|
-      < η / (ASize cfg.env.data : ℝ)
+      < η / (ASize cfg.env.data.active : ℝ)
 
+/-- Exact data-carry value that Step 2 should produce for a retained good label. -/
 noncomputable def alg1Step2Value
     [QSemantics] [RegEncoding QSemantics.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : QSemantics.Basis) : ℕ :=
-  RegEncoding.toNat cfg.env.data b + alg1TargetResidue cfg b
+  RegEncoding.toNat cfg.env.data.active b + alg1TargetResidue cfg b
 
 
-/-! =========================================================
-    Step-2 Fourier coefficient definitions
-========================================================= -/
+end Algorithm1ReferenceArithmetic
 
-/-! =========================================================
-    Step-2 one-label Fourier stability
-========================================================= -/
+/-! ---------------------------------------------------------
+    Step-2 Fourier coefficient scaffolding
+
+The Step-2 proof compares the actual Fourier coefficient produced by the
+PhaseProduct with the ideal coefficient for the exact integer shift. These
+definitions name the relevant phases, index types, labels, and multipliers.
+--------------------------------------------------------- -/
+
+section Step2FourierScaffolding
 
 /--
 The Step-2 phase angle, written independently of the `let`s in `step2`.
@@ -1081,15 +1408,15 @@ noncomputable def alg1Step2Phase
     (cfg : ModMulConfig η) : ℝ :=
   (2 * Real.pi * (cfg.env.N : ℝ)) /
     ((2 : ℝ) ^
-      (regSize cfg.env.work + regSize (extendHi cfg.env.data)))
+      (regSize cfg.env.work.active + regSize (cfg.env.data.grow 1).active))
 
 /--
-The normalizing scalar in the QFT on `extendHi data`.
+The normalizing scalar in the QFT on `data.grow 1`.
 -/
 noncomputable def alg1Step2QFTScale
     {η : ℝ}
     (cfg : ModMulConfig η) : ℂ :=
-  (1 / Real.sqrt ((ASize (extendHi cfg.env.data) : ℕ) : ℝ) : ℂ)
+  (1 / Real.sqrt ((ASize (cfg.env.data.grow 1).active : ℕ) : ℝ) : ℂ)
 
 /--
 The Fourier coefficient after the first QFT and the actual Step-2
@@ -1100,12 +1427,12 @@ noncomputable def alg1Step2ActualFourierCoeff
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : QSemantics.Basis)
-    (t : Fin (ASize cfg.env.work))
-    (y : Fin (ASize (extendHi cfg.env.data))) : ℂ :=
+    (t : Fin (ASize cfg.env.work.active))
+    (y : Fin (ASize (cfg.env.data.grow 1).active)) : ℂ :=
   alg1Step2QFTScale cfg *
     qftPhase
-      (ASize (extendHi cfg.env.data))
-      (RegEncoding.toNat cfg.env.data b)
+      (ASize (cfg.env.data.grow 1).active)
+      (RegEncoding.toNat cfg.env.data.active b)
       y.1 *
     Complex.exp
       (alg1Step2Phase cfg * Complex.I *
@@ -1120,10 +1447,10 @@ noncomputable def alg1Step2IdealFourierCoeff
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : QSemantics.Basis)
-    (y : Fin (ASize (extendHi cfg.env.data))) : ℂ :=
+    (y : Fin (ASize (cfg.env.data.grow 1).active)) : ℂ :=
   alg1Step2QFTScale cfg *
     qftPhase
-      (ASize (extendHi cfg.env.data))
+      (ASize (cfg.env.data.grow 1).active)
       (alg1Step2Value cfg b)
       y.1
 
@@ -1139,30 +1466,29 @@ noncomputable def alg1Step2ShiftDiscrepancy
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : QSemantics.Basis)
-    (t : Fin (ASize cfg.env.work)) : ℝ :=
+    (t : Fin (ASize cfg.env.work.active)) : ℝ :=
   (cfg.env.N : ℝ) * alg1WorkFraction cfg t
     - (alg1TargetResidue cfg b : ℝ)
 
 
-/--
-The index set obtained by expanding every source branch after the QFT on
-`extendHi data`.
--/
+/-- Source index for Step-2 packets: an input basis branch plus a work label. -/
 abbrev Alg1Step2SourceIndex
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η) :=
-  Σ _b : qs.Basis, Fin (ASize cfg.env.work)
+  Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)
 
+/-- Fourier-expanded Step-2 index: a source index plus a data-carry Fourier label. -/
 abbrev Alg1Step2FourierIndex
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η) :=
   Σ _i : Alg1Step2SourceIndex qs cfg,
-    Fin (ASize (extendHi cfg.env.data))
+    Fin (ASize (cfg.env.data.grow 1).active)
 
+/-- Expand every retained source index over all data-carry Fourier labels. -/
 noncomputable def alg1Step2FourierIndices
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -1173,6 +1499,7 @@ noncomputable def alg1Step2FourierIndices
   classical
   exact S.sigma fun _ => Finset.univ
 
+/-- Basis label associated with one Step-2 Fourier-expanded index. -/
 noncomputable def alg1Step2FourierLabel
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -1180,10 +1507,11 @@ noncomputable def alg1Step2FourierLabel
     (cfg : ModMulConfig η)
     (p : Alg1Step2FourierIndex qs cfg) : qs.Basis :=
   RegEncoding.writeNat
-    (extendHi cfg.env.data)
+    (cfg.env.data.grow 1).active
     p.2.1
-    (RegEncoding.writeNat cfg.env.work p.1.2.1 p.1.1)
+    (RegEncoding.writeNat cfg.env.work.active p.1.2.1 p.1.1)
 
+/-- Base Fourier coefficient before applying the actual-vs-ideal multiplier discrepancy. -/
 noncomputable def alg1Step2FourierBaseCoeff
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -1194,10 +1522,11 @@ noncomputable def alg1Step2FourierBaseCoeff
   α p.1 *
     alg1Step2QFTScale cfg *
     qftPhase
-      (ASize (extendHi cfg.env.data))
-      (RegEncoding.toNat cfg.env.data p.1.1)
+      (ASize (cfg.env.data.grow 1).active)
+      (RegEncoding.toNat cfg.env.data.active p.1.1)
       p.2.1
 
+/-- Difference between the actual Step-2 phase multiplier and the ideal Fourier multiplier. -/
 noncomputable def alg1Step2FourierMultiplier
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -1210,16 +1539,16 @@ noncomputable def alg1Step2FourierMultiplier
       ((p.1.2.1 : ℂ) * (p.2.1 : ℂ)))
     -
   qftPhase
-    (ASize (extendHi cfg.env.data))
+    (ASize (cfg.env.data.grow 1).active)
     r
     p.2.1
 
 
 
 
-/-! =========================================================
+/-! ---------------------------------------------------------
     Coherent Step-2 error vector
-========================================================= -/
+--------------------------------------------------------- -/
 
 /--
 The one-label Step-2 error vector.
@@ -1227,43 +1556,52 @@ The one-label Step-2 error vector.
 noncomputable def alg1Step2Error
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : qs.Basis)
-    (t : Fin (ASize cfg.env.work)) : qs.State :=
+    (t : Fin (ASize cfg.env.work.active)) : qs.State :=
   qs.eval (ModMulConfig.U2 (Basis := qs.Basis) cfg)
-      (qs.ket (RegEncoding.writeNat cfg.env.work t.1 b))
+      (qs.ket (RegEncoding.writeNat cfg.env.work.active t.1 b))
     -
   qs.ket
     (RegEncoding.writeNat
-      (extendHi cfg.env.data)
+      (cfg.env.data.grow 1).active
       (alg1Step2Value cfg b)
-      (RegEncoding.writeNat cfg.env.work t.1 b))
+      (RegEncoding.writeNat cfg.env.work.active t.1 b))
 
+end Step2FourierScaffolding
 
-/-! =========================================================
-    Step-3/4 output labels
-========================================================= -/
+/-! ---------------------------------------------------------
+    Step-3/4 labels and trace packets
 
+This section records the exact data values after the comparator/subtractor
+stages and packages the finite trace expansions used by the Appendix-E-style
+Algorithm 1 error decomposition.
+--------------------------------------------------------- -/
+
+section Step34LabelsAndTracePackets
+
+/-- Final data value expected after exact Steps 3 and 4. -/
 def alg1OutputValue
     [QSemantics] [RegEncoding QSemantics.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : QSemantics.Basis) : ℕ :=
   if RegEncoding.bit cfg.ctrl b then
-    (cfg.c * RegEncoding.toNat cfg.env.data b) % cfg.env.N
+    (cfg.c * RegEncoding.toNat cfg.env.data.active b) % cfg.env.N
   else
-    RegEncoding.toNat cfg.env.data b
+    RegEncoding.toNat cfg.env.data.active b
 
+/-- Comparator condition used by Step 4 to decide whether the flag should clear. -/
 def alg1Step4CrossCondition
     [QSemantics] [RegEncoding QSemantics.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : QSemantics.Basis)
-    (t : Fin (ASize cfg.env.work)) : Prop :=
-  alg1OutputValue cfg b * ASize cfg.env.work < cfg.env.N * t.1
+    (t : Fin (ASize cfg.env.work.active)) : Prop :=
+  alg1OutputValue cfg b * ASize cfg.env.work.active < cfg.env.N * t.1
 
+/-- Whether the pre-reduction Step-2 value overflows the modulus. -/
 abbrev alg1Overflow
     [QSemantics] [RegEncoding QSemantics.Basis]
     {η : ℝ}
@@ -1271,11 +1609,11 @@ abbrev alg1Overflow
     (b : QSemantics.Basis) : Prop :=
   cfg.env.N ≤ alg1Step2Value cfg b
 
+/-- Finite trace data for a valid input superposition through Step 1. -/
 structure Alg1Trace
     {η : ℝ}
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     (cfg : ModMulConfig η)
     (ψ : qs.State) where
 
@@ -1286,7 +1624,7 @@ structure Alg1Trace
 
   phaseCoeff :
     qs.Basis →
-      Fin (ASize cfg.env.work) →
+      Fin (ASize cfg.env.work.active) →
         ℂ
 
   input_eq :
@@ -1301,18 +1639,16 @@ structure Alg1Trace
 
   full_step1_eq :
     qs.eval
-        (step1
-          (Basis := qs.Basis)
-          cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work)
+        (step1 (Basis := qs.Basis)
+          cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
         ψ
       =
     ∑ b ∈ support,
       inputCoeff b •
-        ∑ t : Fin (ASize cfg.env.work),
+        ∑ t : Fin (ASize cfg.env.work.active),
           phaseCoeff b t •
             qs.ket
-              (RegEncoding.writeNat
-                cfg.env.work t.1 b)
+              (RegEncoding.writeNat cfg.env.work.active t.1 b)
 
   step34_support :
     ∀ b ∈ support,
@@ -1321,6 +1657,7 @@ structure Alg1Trace
           (alg1Step4CrossCondition cfg b t ↔
             alg1Overflow cfg b)
 
+/-- The target residue is always a canonical residue modulo `N`. -/
 lemma alg1TargetResidue_lt_N
     [QSemantics] [RegEncoding QSemantics.Basis]
     {η : ℝ}
@@ -1334,7 +1671,8 @@ lemma alg1TargetResidue_lt_N
   · exact Nat.mod_lt _ hNpos
   · exact hNpos
 
-lemma alg1Step2Value_lt_extendHi_capacity
+/-- The ideal Step-2 data-carry value fits in the one-bit-grown data register. -/
+lemma alg1Step2Value_lt_dataCarry_capacity
     [QSemantics] [RegEncoding QSemantics.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -1343,9 +1681,9 @@ lemma alg1Step2Value_lt_extendHi_capacity
       GoodModMulBasisInput
         (inferInstance : QSemantics)
         cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
-    alg1Step2Value cfg b < ASize (extendHi cfg.env.data) := by
+    alg1Step2Value cfg b < ASize (cfg.env.data.grow 1).active := by
   have hdata_lt_N :
-      RegEncoding.toNat cfg.env.data b < cfg.env.N := hb.1
+      RegEncoding.toNat cfg.env.data.active b < cfg.env.N := hb.1
   have htarget_lt_N :
       alg1TargetResidue cfg b < cfg.env.N :=
     alg1TargetResidue_lt_N cfg b
@@ -1354,15 +1692,27 @@ lemma alg1Step2Value_lt_extendHi_capacity
     unfold alg1Step2Value
     omega
   have hcap :
-      2 * cfg.env.N ≤ ASize (extendHi cfg.env.data) := by
-    have hNcap : cfg.env.N ≤ ASize cfg.env.data :=
+      2 * cfg.env.N ≤ ASize (cfg.env.data.grow 1).active := by
+    have hNcap : cfg.env.N ≤ ASize cfg.env.data.active :=
       cfg.env.data_capacity
+    have hcarry :
+        cfg.env.data.CanGrow 1 :=
+      cfg.env.circuit_workspace.data_canGrow_one
+
     have hpow :
-        ASize (extendHi cfg.env.data) = 2 * ASize cfg.env.data := by
-      simp [ASize, regSize, extendHi, Nat.pow_succ, Nat.mul_comm]
+        ASize (cfg.env.data.grow 1).active =
+          2 * ASize cfg.env.data.active := by
+      have hReserveLen :
+          1 ≤ cfg.env.data.reserve.qubits.length := by
+        simpa [ExtReg.CanGrow, ExtReg.capacity, regSize, Reg.width]
+          using hcarry
+      simp [ASize, ExtReg.grow, ExtReg.newBits, Reg.append,
+        Reg.take, regSize, Reg.width, Nat.min_eq_left hReserveLen,
+        Nat.pow_succ, Nat.mul_comm]
     omega
   exact lt_of_lt_of_le hsum_lt hcap
 
+/-- The final Algorithm 1 output value fits back in the original data register. -/
 lemma alg1OutputValue_lt_data_capacity
     [QSemantics] [RegEncoding QSemantics.Basis]
     {η : ℝ}
@@ -1372,7 +1722,7 @@ lemma alg1OutputValue_lt_data_capacity
       GoodModMulBasisInput
         (inferInstance : QSemantics)
         cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
-    alg1OutputValue cfg b < ASize cfg.env.data := by
+    alg1OutputValue cfg b < ASize cfg.env.data.active := by
   have hNpos : 0 < cfg.env.N :=
     Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one
   unfold alg1OutputValue
@@ -1383,17 +1733,17 @@ lemma alg1OutputValue_lt_data_capacity
 
 
 
-/-! =========================================================
+/-! ---------------------------------------------------------
     Concrete reference states used in the Appendix-E proof
-========================================================= -/
+--------------------------------------------------------- -/
 
 namespace Alg1Trace
 
+/-- The retained good-label packet after Step 1. -/
 noncomputable def goodStep1
     {η : ℝ}
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     {cfg : ModMulConfig η}
     {ψ : qs.State}
     (tr : Alg1Trace qs cfg ψ) : qs.State :=
@@ -1402,7 +1752,7 @@ noncomputable def goodStep1
       ∑ t ∈ alg1GoodLabels cfg b,
         tr.phaseCoeff b t •
           qs.ket
-            (RegEncoding.writeNat cfg.env.work t.1 b)
+            (RegEncoding.writeNat cfg.env.work.active t.1 b)
 
 /--
 The reference state after Step 2.
@@ -1414,7 +1764,6 @@ noncomputable def afterStep2Ref
     {η : ℝ}
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     {cfg : ModMulConfig η}
     {ψ : qs.State}
     (tr : Alg1Trace qs cfg ψ) : qs.State :=
@@ -1424,9 +1773,9 @@ noncomputable def afterStep2Ref
         tr.phaseCoeff b t •
           qs.ket
             (RegEncoding.writeNat
-              (extendHi cfg.env.data)
+              (cfg.env.data.grow 1).active
               (alg1Step2Value cfg b)
-              (RegEncoding.writeNat cfg.env.work t.1 b))
+              (RegEncoding.writeNat cfg.env.work.active t.1 b))
 
 /--
 The reference state after exact Steps 3 and 4.
@@ -1438,7 +1787,6 @@ noncomputable def afterStep34Ref
     {η : ℝ}
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     {cfg : ModMulConfig η}
     {ψ : qs.State}
     (tr : Alg1Trace qs cfg ψ) : qs.State :=
@@ -1448,17 +1796,25 @@ noncomputable def afterStep34Ref
         tr.phaseCoeff b t •
           qs.ket
             (RegEncoding.writeNat
-              (extendHi cfg.env.data)
+              (cfg.env.data.grow 1).active
               (alg1OutputValue cfg b)
-              (RegEncoding.writeNat cfg.env.work t.1 b))
+              (RegEncoding.writeNat cfg.env.work.active t.1 b))
 
 
 end Alg1Trace
 
+end Step34LabelsAndTracePackets
 
-/-! =========================================================
-    Step-1 and Step-5 coefficient definitions
-========================================================= -/
+/-! ---------------------------------------------------------
+    Step-1 and Step-5 coefficient packets
+
+The Step-5 cleanup proof compares the original Step-1 fractional load with the
+forward circuit whose adjoint is Step 5. These definitions name the QPE
+bad-label mass, bad-label packets, shared phase scalars, and inverse-QFT
+coefficients for that comparison.
+--------------------------------------------------------- -/
+
+section Step1Step5CoefficientPackets
 
 /--
 Canonical Step-1 phase-estimation coefficient.
@@ -1469,20 +1825,18 @@ output.
 noncomputable def alg1PhaseCoeff
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : qs.Basis)
-    (t : Fin (ASize cfg.env.work)) : ℂ :=
+    (t : Fin (ASize cfg.env.work.active)) : ℂ :=
   inner ℂ
-    (qs.ket (RegEncoding.writeNat cfg.env.work t.1 b))
+    (qs.ket (RegEncoding.writeNat cfg.env.work.active t.1 b))
     (qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) (qs.ket b))
 
 /-- The QPE probability mass outside the retained good-label set for one basis input. -/
 noncomputable def alg1QpeBadMass
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : qs.Basis) : ℝ :=
@@ -1499,7 +1853,6 @@ discarded QPE probability.
 noncomputable def alg1TraceBadMass
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η)
     {ψ : qs.State}
@@ -1517,7 +1870,6 @@ noncomputable def badStep1
     {η : ℝ}
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     {cfg : ModMulConfig η}
     {ψ : qs.State}
     (tr : Alg1Trace qs cfg ψ) : qs.State :=
@@ -1527,7 +1879,7 @@ noncomputable def badStep1
           (fun t => t ∉ alg1GoodLabels cfg b),
         tr.phaseCoeff b t •
           qs.ket
-            (RegEncoding.writeNat cfg.env.work t.1 b)
+            (RegEncoding.writeNat cfg.env.work.active t.1 b)
 
 /--
 The formal post-Step-3/4 packet with all QPE labels retained.
@@ -1539,26 +1891,24 @@ noncomputable def afterStep34Full
     {η : ℝ}
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     {cfg : ModMulConfig η}
     {ψ : qs.State}
     (tr : Alg1Trace qs cfg ψ) : qs.State :=
   ∑ b ∈ tr.support,
     tr.inputCoeff b •
-      ∑ t : Fin (ASize cfg.env.work),
+      ∑ t : Fin (ASize cfg.env.work.active),
         tr.phaseCoeff b t •
           qs.ket
             (RegEncoding.writeNat
-              (extendHi cfg.env.data)
+              (cfg.env.data.grow 1).active
               (alg1OutputValue cfg b)
-              (RegEncoding.writeNat cfg.env.work t.1 b))
+              (RegEncoding.writeNat cfg.env.work.active t.1 b))
 
 /-- The discarded part of `afterStep34Full`. -/
 noncomputable def afterStep34Bad
     {η : ℝ}
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [ExtRegEncoding qs.Basis]
     {cfg : ModMulConfig η}
     {ψ : qs.State}
     (tr : Alg1Trace qs cfg ψ) : qs.State :=
@@ -1569,15 +1919,11 @@ noncomputable def afterStep34Bad
         tr.phaseCoeff b t •
           qs.ket
             (RegEncoding.writeNat
-              (extendHi cfg.env.data)
+              (cfg.env.data.grow 1).active
               (alg1OutputValue cfg b)
-              (RegEncoding.writeNat cfg.env.work t.1 b))
+              (RegEncoding.writeNat cfg.env.work.active t.1 b))
 
 end Alg1Trace
-
-/-! =========================================================
-    Step-5 forward fractional-load packet
-========================================================= -/
 
 /--
 The forward circuit whose adjoint is `ModMulConfig.U5`.
@@ -1588,16 +1934,13 @@ noncomputable def alg1Step5Forward
     {η : ℝ}
     {Basis : Type*}
     [RegEncoding Basis]
-    [ExtRegEncoding Basis]
   (cfg : ModMulConfig η) : Gate :=
-  (H_reg cfg.env.work) ;;
-  (Gate.CPhaseProd
+  (H_reg cfg.env.work.active) ;;
+  (Gate.CPhaseProdUsing
     cfg.ctrl
-    ((2 * Real.pi *
-        ((step5Constant cfg.c cfg.env.N % cfg.env.N : ℕ) : ℝ))
-      / (cfg.env.N : ℝ))
-    (extendHi cfg.env.data)
-    cfg.env.work) ;;
+    ((2 * Real.pi * ((step5Constant cfg.c cfg.env.N % cfg.env.N : ℕ) : ℝ)) / (cfg.env.N : ℝ))
+    (cfg.env.data.grow 1).active
+    cfg.env.work.active cfg.env.circuit_workspace.step5Workspace) ;;
   (IQFT cfg.env.work)
 
 /-- The Step-1 controlled phase angle. -/
@@ -1626,11 +1969,11 @@ noncomputable def alg1Step1PhaseScalar
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : Basis)
-    (z : Fin (ASize cfg.env.work)) : ℂ :=
+    (z : Fin (ASize cfg.env.work.active)) : ℂ :=
   if RegEncoding.bit cfg.ctrl b then
     Complex.exp
       (alg1Step1Phase cfg * Complex.I *
-        ((RegEncoding.toNat cfg.env.data b : ℂ) * (z.1 : ℂ)))
+        ((RegEncoding.toNat cfg.env.data.active b : ℂ) * (z.1 : ℂ)))
   else
     1
 
@@ -1645,7 +1988,7 @@ noncomputable def alg1TargetPhaseScalar
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : QSemantics.Basis)
-    (z : Fin (ASize cfg.env.work)) : ℂ :=
+    (z : Fin (ASize cfg.env.work.active)) : ℂ :=
   if RegEncoding.bit cfg.ctrl b then
     Complex.exp
       (((2 * Real.pi) / (cfg.env.N : ℝ)) * Complex.I *
@@ -1662,8 +2005,8 @@ noncomputable def alg1LoadPreCoeff
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : Basis)
-    (z : Fin (ASize cfg.env.work)) : ℂ :=
-  (1 / Real.sqrt ((ASize cfg.env.work : ℕ) : ℝ) : ℂ) *
+    (z : Fin (ASize cfg.env.work.active)) : ℂ :=
+  (1 / Real.sqrt ((ASize cfg.env.work.active : ℕ) : ℝ) : ℂ) *
     alg1Step1PhaseScalar cfg b z
 
 /-- The adjoint-QFT matrix entry from source work label `z` to target `t`. -/
@@ -1684,17 +2027,23 @@ noncomputable def alg1FractionalLoadCoeff
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : Basis)
-    (t : Fin (ASize cfg.env.work)) : ℂ :=
-  ∑ z : Fin (ASize cfg.env.work),
+    (t : Fin (ASize cfg.env.work.active)) : ℂ :=
+  ∑ z : Fin (ASize cfg.env.work.active),
     alg1LoadPreCoeff cfg b z *
-      alg1IQFTCoeff cfg.env.work z t
+      alg1IQFTCoeff cfg.env.work.active z t
 
+end Step1Step5CoefficientPackets
 
-
-/-! =========================================================
+/-! ---------------------------------------------------------
     Modular-exponentiation arithmetic helpers
-========================================================= -/
 
+The modular-exponentiation recursion repeatedly uses powers of the input base.
+This final helper packages the coprimality fact needed for every such multiplier.
+--------------------------------------------------------- -/
+
+section ModExpArithmeticHelpers
+
+/-- If `a` is coprime to `N`, every modular-exponentiation multiplier is also coprime to `N`. -/
 theorem modExp_multiplier_coprime
     (a N e : ℕ)
     (hcoprime : Nat.Coprime a N) :
@@ -1708,12 +2057,6 @@ theorem modExp_multiplier_coprime
           Nat.ModEq.gcd_eq (by simp [Nat.ModEq])
     _ = 1 := hpow.gcd_eq_one
 
-/-- A convenient constructor for the arithmetic condition in `ModExpTailArithmeticOK`. -/
-theorem modExp_tail_coprime
-    (a N : ℕ) (x : Reg) (q n : ℕ)
-    (hcoprime : Nat.Coprime a N) :
-    ∀ j : ℕ, j < n →
-      Nat.Coprime (a ^ (2 ^ ((q + j) - x.lo)) % N) N := by
-  intro j _hj
-  exact modExp_multiplier_coprime
-    a N ((q + j) - x.lo) hcoprime
+end ModExpArithmeticHelpers
+
+end Shor

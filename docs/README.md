@@ -1,6 +1,6 @@
 # ShorVerification Proof Graph
 
-Static prototype for visualizing the `FastMultiplication/ShorVerification` proof architecture.
+Static prototype for visualizing the `FastMultiplication/ShorVerification` proof architecture, including the split lowering proofs and the gate-count/resource-estimation stack.
 
 Open `index.html` directly in a browser, or serve this directory locally:
 
