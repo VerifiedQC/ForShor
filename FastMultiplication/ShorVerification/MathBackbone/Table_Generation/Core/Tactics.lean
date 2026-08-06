@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Basic_lemmas
+import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Core.RegisterLemmas
 
 /-!
 # Table-generation tactics

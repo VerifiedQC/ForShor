@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Synthesis_programs
+import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Builders.Fragments
 import Mathlib.Data.List.Infix
 
 /-!
