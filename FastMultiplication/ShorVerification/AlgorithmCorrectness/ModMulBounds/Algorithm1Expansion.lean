@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.AlgorithmCorrectness.ModMulBounds.Core
+import FastMultiplication.ShorVerification.Workspace.PhaseProductLowering
 
 open Shor
 
@@ -767,8 +768,21 @@ lemma step1Workspace_clean_write
     cfg.env.circuit_workspace.step1Workspace.Clean
       (RegEncoding.writeNat
         cfg.env.work.active z.1 b) := by
+  let dataNoCarry : ExtReg :=
+    ExtReg.withReserve
+      cfg.env.data.active
+      (cfg.env.data.reserve.drop 1)
+      (by
+        unfold Shor.Disjoint
+        rw [List.disjoint_left]
+        intro q hqActive hqReserve
+        have hdisj := cfg.env.data.active_reserve_disjoint
+        unfold Shor.Disjoint at hdisj
+        rw [List.disjoint_left] at hdisj
+        exact hdisj hqActive (List.mem_of_mem_drop hqReserve))
+
   change
-    cfg.env.data.FreshFor 1
+    dataNoCarry.FreshFor 1
         (RegEncoding.writeNat
           cfg.env.work.active z.1 b)
       ∧
@@ -779,18 +793,45 @@ lemma step1Workspace_clean_write
   constructor
 
   · apply ExtReg.freshFor_write_active_of_ownedDisjoint
-      cfg.env.data
+      dataNoCarry
       cfg.env.work
       1
       z.1
       b
-      cfg.env.circuit_workspace.2.2
+    · unfold ExtReg.OwnedDisjoint
+      rw [List.disjoint_left]
+      intro q hqData hqWork
+      apply cfg.env.circuit_workspace.2.2
+      · rw [ExtReg.ownedQubits, List.mem_append] at hqData ⊢
+        rcases hqData with hqActive | hqReserve
+        · exact Or.inl hqActive
+        · exact Or.inr (List.mem_of_mem_drop hqReserve)
+      · exact hqWork
 
-    exact ExtReg.freshFor_one_of_two
-      cfg.env.data
-      b
-      cfg.env.circuit_workspace.1
-      hb.2.1
+    · unfold ExtReg.FreshFor
+      apply FreshZero.of_subset
+          (dataNoCarry.newBits 1)
+          (cfg.env.data.newBits 2)
+          b
+      · intro q hq
+        dsimp [
+          dataNoCarry,
+          ExtReg.newBits,
+          ExtReg.withReserve,
+          Reg.take,
+          Reg.drop
+        ] at hq ⊢
+        cases hreserve : cfg.env.data.reserve.qubits with
+        | nil =>
+            simp [hreserve] at hq
+        | cons q₀ rest =>
+            cases hrest : rest with
+            | nil =>
+                simp [hreserve, hrest] at hq
+            | cons q₁ tail =>
+                simp [hreserve, hrest] at hq ⊢
+                exact Or.inr hq
+      · exact hb.2.1
 
   · exact
       ExtReg.freshFor_write_active

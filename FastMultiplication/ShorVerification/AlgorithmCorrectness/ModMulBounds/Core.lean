@@ -175,11 +175,38 @@ def ModMulCircuitWorkspaceOK.step1Workspace
     {data work : ExtReg}
     (h : ModMulCircuitWorkspaceOK data work) :
     Gate.PhaseProdWorkspace data.active work.active :=
+  let dataNoCarry : ExtReg :=
+    ExtReg.withReserve
+      data.active
+      (data.reserve.drop 1)
+      (by
+        rw [Disjoint, List.disjoint_left]
+        intro q hqActive hqReserve
+        have hdisj := data.active_reserve_disjoint
+        rw [Disjoint, List.disjoint_left] at hdisj
+        exact hdisj hqActive (List.mem_of_mem_drop hqReserve))
   Gate.PhaseProdWorkspace.ofExtRegs
-    data work
-    h.data_canGrow_one
+    dataNoCarry work
+    (by
+      dsimp [dataNoCarry]
+      unfold ExtReg.CanGrow ExtReg.capacity
+      change 1 ≤ regSize (data.reserve.drop 1)
+      simp [Reg.drop, regSize, Reg.width]
+      change 1 ≤ regSize data.reserve - 1
+      have hdata2 : 2 ≤ regSize data.reserve := by
+        simpa [ExtReg.CanGrow, ExtReg.capacity] using h.1
+      omega)
     h.work_canGrow_one
-    h.2.2
+    (by
+      unfold ExtReg.OwnedDisjoint
+      rw [List.disjoint_left]
+      intro q hqData hqWork
+      apply h.2.2
+      · rw [ExtReg.ownedQubits, List.mem_append] at hqData ⊢
+        rcases hqData with hqActive | hqReserve
+        · exact Or.inl hqActive
+        · exact Or.inr (List.mem_of_mem_drop hqReserve)
+      · exact hqWork)
 
 /-- The PhaseProduct workspace used by Step 2, after growing the data register by one carry bit. -/
 def ModMulCircuitWorkspaceOK.step2Workspace
@@ -1011,8 +1038,7 @@ def ModExpLayout
     (flag : ℕ) :
     Prop :=
   ∀ i : Fin (regSize x),
-    ModMulCoreLayout
-      data work flag (x.get i)
+    ModMulCoreLayout data work flag (x.get i)
 
 /-- Every multiplier used by modular exponentiation is coprime to the modulus. -/
 def ModExpArithmeticOK
@@ -1293,6 +1319,32 @@ class ModMulPrimitiveSemantics
         =
       qs.ket (RegEncoding.writeNat (qubitReg flag) 0 b)
 
+  eval_step3_local_ket :
+    ∀ (N : ℕ)  (dataCarry : Reg) (flag : ℕ) (b : qs.Basis),
+      ∃ b' : qs.Basis,
+        qs.eval
+            (step3 N dataCarry flag)
+            (qs.ket b)
+          =
+        qs.ket b'
+        ∧
+        ∀ q,
+          q ∉ dataCarry.qubits →
+          q ≠ flag →
+          RegEncoding.bit q b'
+            =
+          RegEncoding.bit q b
+
+  eval_step4_local_ket :
+    ∀ (N : ℕ)  (dataCarry work : Reg) (flag : ℕ) (b : qs.Basis),
+      ∃ b' : qs.Basis,
+        qs.eval (step4 N dataCarry work flag) (qs.ket b)
+          =
+        qs.ket b'
+        ∧
+        ∀ q,
+          q ∉ dataCarry.qubits → q ∉ work.qubits → q ≠ flag →
+          RegEncoding.bit q b' = RegEncoding.bit q b
 
 /-- Configuration wrapper around the exact ideal controlled-multiplier basis semantics. -/
 theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_cfg
