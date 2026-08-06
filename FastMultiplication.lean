@@ -3,3 +3,4 @@
 import FastMultiplication.ShorVerification.Workspace
 import FastMultiplication.ShorVerification.ShorCorrectness
 import FastMultiplication.ShorVerification.GateCount.QFT_GateCount
+import FastMultiplication.ShorVerification.GateCount.Shor_GateCount

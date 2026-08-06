@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Language
+import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Core.Language
 
 open Operations
 

@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Basic
+import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Core.Registers
 import Mathlib.Tactic
 import Mathlib.Data.ZMod.Basic
 

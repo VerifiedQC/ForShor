@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Tactics
+import FastMultiplication.ShorVerification.MathBackbone.Table_Generation.Core.Tactics
 
 /-!
 # Table-generation example theorems and state helpers
