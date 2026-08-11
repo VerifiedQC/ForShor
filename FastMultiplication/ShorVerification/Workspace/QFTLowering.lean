@@ -289,38 +289,41 @@ structure QFTReserveOK
 The linear subspace in which both portions of the inactive QFT register used
 by the concrete lowering are zero.
 -/
-inductive QFTWorkspaceCleanState
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (xWork zWork : Reg) :
-    qs.State → Prop
+abbrev QFTWorkspaceCleanState
+    (qs : QSemantics) [RegEncoding qs.Basis] (xWork zWork : Reg) :
+    qs.State → Prop :=
+  CleanClosure (fun b => FreshZero xWork b ∧ FreshZero zWork b)
 
-  | zero :
-      QFTWorkspaceCleanState qs xWork zWork 0
-
-  | ket
-      (b : qs.Basis)
-      (hx : FreshZero xWork b)
-      (hz : FreshZero zWork b) :
-      QFTWorkspaceCleanState
-        qs xWork zWork
-        (qs.ket b)
-
-  | add
-      {ψ φ : qs.State}
-      (hψ : QFTWorkspaceCleanState qs xWork zWork ψ)
-      (hφ : QFTWorkspaceCleanState qs xWork zWork φ) :
-      QFTWorkspaceCleanState
-        qs xWork zWork
-        (ψ + φ)
-
-  | smul
-      (a : ℂ)
-      {ψ : qs.State}
-      (hψ : QFTWorkspaceCleanState qs xWork zWork ψ) :
-      QFTWorkspaceCleanState
-        qs xWork zWork
-        (a • ψ)
+namespace QFTWorkspaceCleanState
+variable {qs : QSemantics} [RegEncoding qs.Basis] {xWork zWork : Reg}
+/-- Smart constructors delegating to `CleanClosure`, preserving call sites. -/
+theorem zero : QFTWorkspaceCleanState qs xWork zWork 0 := CleanClosure.zero
+theorem ket (b : qs.Basis) (hx : FreshZero xWork b) (hz : FreshZero zWork b) :
+    QFTWorkspaceCleanState qs xWork zWork (qs.ket b) := CleanClosure.ket b ⟨hx, hz⟩
+theorem add {ψ φ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ)
+    (hφ : QFTWorkspaceCleanState qs xWork zWork φ) :
+    QFTWorkspaceCleanState qs xWork zWork (ψ + φ) := CleanClosure.add hψ hφ
+theorem smul (a : ℂ) {ψ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ) :
+    QFTWorkspaceCleanState qs xWork zWork (a • ψ) := CleanClosure.smul a hψ
+/-- Custom eliminator so `induction`/`cases` keep the original 2-hypothesis
+`ket` shape (`| ket b hx hz`) despite the generic single-predicate closure. -/
+@[induction_eliminator, cases_eliminator]
+def rec' {motive : (ψ : qs.State) → QFTWorkspaceCleanState qs xWork zWork ψ → Prop}
+    (zero : motive 0 QFTWorkspaceCleanState.zero)
+    (ket : ∀ (b : qs.Basis) (hx : FreshZero xWork b) (hz : FreshZero zWork b),
+        motive (qs.ket b) (QFTWorkspaceCleanState.ket b hx hz))
+    (add : ∀ {ψ φ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ)
+        (hφ : QFTWorkspaceCleanState qs xWork zWork φ),
+        motive ψ hψ → motive φ hφ → motive (ψ + φ) (QFTWorkspaceCleanState.add hψ hφ))
+    (smul : ∀ (a : ℂ) {ψ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ),
+        motive ψ hψ → motive (a • ψ) (QFTWorkspaceCleanState.smul a hψ))
+    {ψ : qs.State} (h : QFTWorkspaceCleanState qs xWork zWork ψ) : motive ψ h := by
+  induction h with
+  | zero => exact zero
+  | ket b hconj => exact ket b hconj.1 hconj.2
+  | add hψ hφ ihψ ihφ => exact add hψ hφ ihψ ihφ
+  | smul a hψ ih => exact smul a hψ ih
+end QFTWorkspaceCleanState
 
 /--
 The public precondition for concrete QFT lowering.  It says only that the

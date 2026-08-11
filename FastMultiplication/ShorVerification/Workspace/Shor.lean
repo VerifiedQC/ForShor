@@ -136,33 +136,43 @@ structure ShorWorkspaceIsolation
 /--
 A state supported on basis states in which three specified registers are zero.
 -/
-inductive ThreeRegsCleanState
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (r₁ r₂ r₃ : Reg) :
-    qs.State → Prop
+abbrev ThreeRegsCleanState
+    (qs : QSemantics) [RegEncoding qs.Basis] (r₁ r₂ r₃ : Reg) :
+    qs.State → Prop :=
+  CleanClosure (fun b => FreshZero r₁ b ∧ FreshZero r₂ b ∧ FreshZero r₃ b)
 
-  | zero :
-      ThreeRegsCleanState qs r₁ r₂ r₃ 0
-
-  | ket
-      (b : qs.Basis)
-      (h₁ : FreshZero r₁ b)
-      (h₂ : FreshZero r₂ b)
-      (h₃ : FreshZero r₃ b) :
-      ThreeRegsCleanState qs r₁ r₂ r₃ (qs.ket b)
-
-  | add
-      {ψ φ : qs.State}
-      (hψ : ThreeRegsCleanState qs r₁ r₂ r₃ ψ)
-      (hφ : ThreeRegsCleanState qs r₁ r₂ r₃ φ) :
-      ThreeRegsCleanState qs r₁ r₂ r₃ (ψ + φ)
-
-  | smul
-      (a : ℂ)
-      {ψ : qs.State}
-      (hψ : ThreeRegsCleanState qs r₁ r₂ r₃ ψ) :
-      ThreeRegsCleanState qs r₁ r₂ r₃ (a • ψ)
+namespace ThreeRegsCleanState
+variable {qs : QSemantics} [RegEncoding qs.Basis] {r₁ r₂ r₃ : Reg}
+/-- Smart constructors delegating to `CleanClosure`, preserving call sites. -/
+theorem zero : ThreeRegsCleanState qs r₁ r₂ r₃ 0 := CleanClosure.zero
+theorem ket (b : qs.Basis) (h₁ : FreshZero r₁ b) (h₂ : FreshZero r₂ b)
+    (h₃ : FreshZero r₃ b) : ThreeRegsCleanState qs r₁ r₂ r₃ (qs.ket b) :=
+  CleanClosure.ket b ⟨h₁, h₂, h₃⟩
+theorem add {ψ φ : qs.State} (hψ : ThreeRegsCleanState qs r₁ r₂ r₃ ψ)
+    (hφ : ThreeRegsCleanState qs r₁ r₂ r₃ φ) :
+    ThreeRegsCleanState qs r₁ r₂ r₃ (ψ + φ) := CleanClosure.add hψ hφ
+theorem smul (a : ℂ) {ψ : qs.State} (hψ : ThreeRegsCleanState qs r₁ r₂ r₃ ψ) :
+    ThreeRegsCleanState qs r₁ r₂ r₃ (a • ψ) := CleanClosure.smul a hψ
+/-- Custom eliminator preserving the original 3-hypothesis `ket` shape
+(`| ket b h₁ h₂ h₃`) despite the generic single-predicate closure. -/
+@[induction_eliminator, cases_eliminator]
+def rec' {motive : (ψ : qs.State) → ThreeRegsCleanState qs r₁ r₂ r₃ ψ → Prop}
+    (zero : motive 0 ThreeRegsCleanState.zero)
+    (ket : ∀ (b : qs.Basis) (h₁ : FreshZero r₁ b) (h₂ : FreshZero r₂ b)
+        (h₃ : FreshZero r₃ b),
+        motive (qs.ket b) (ThreeRegsCleanState.ket b h₁ h₂ h₃))
+    (add : ∀ {ψ φ : qs.State} (hψ : ThreeRegsCleanState qs r₁ r₂ r₃ ψ)
+        (hφ : ThreeRegsCleanState qs r₁ r₂ r₃ φ),
+        motive ψ hψ → motive φ hφ → motive (ψ + φ) (ThreeRegsCleanState.add hψ hφ))
+    (smul : ∀ (a : ℂ) {ψ : qs.State} (hψ : ThreeRegsCleanState qs r₁ r₂ r₃ ψ),
+        motive ψ hψ → motive (a • ψ) (ThreeRegsCleanState.smul a hψ))
+    {ψ : qs.State} (h : ThreeRegsCleanState qs r₁ r₂ r₃ ψ) : motive ψ h := by
+  induction h with
+  | zero => exact zero
+  | ket b hconj => exact ket b hconj.1 hconj.2.1 hconj.2.2
+  | add hψ hφ ihψ ihφ => exact add hψ hφ ihψ ihφ
+  | smul a hψ ih => exact smul a hψ ih
+end ThreeRegsCleanState
 
 /--
 The invariant at entry to and exit from each modular-multiplication core.
@@ -177,6 +187,23 @@ abbrev FullShorWorkspaceCleanState
     x.reserve
     data.reserve
     work.reserve
+
+namespace FullShorWorkspaceCleanState
+variable {qs : QSemantics} [RegEncoding qs.Basis] {x data work : ExtReg}
+@[induction_eliminator, cases_eliminator]
+def rec' {motive : (ψ : qs.State) → FullShorWorkspaceCleanState qs x data work ψ → Prop}
+    (zero : motive 0 ThreeRegsCleanState.zero)
+    (ket : ∀ (b : qs.Basis) (h₁ : FreshZero x.reserve b) (h₂ : FreshZero data.reserve b)
+        (h₃ : FreshZero work.reserve b),
+        motive (qs.ket b) (ThreeRegsCleanState.ket b h₁ h₂ h₃))
+    (add : ∀ {ψ φ : qs.State} (hψ : FullShorWorkspaceCleanState qs x data work ψ)
+        (hφ : FullShorWorkspaceCleanState qs x data work φ),
+        motive ψ hψ → motive φ hφ → motive (ψ + φ) (ThreeRegsCleanState.add hψ hφ))
+    (smul : ∀ (a : ℂ) {ψ : qs.State} (hψ : FullShorWorkspaceCleanState qs x data work ψ),
+        motive ψ hψ → motive (a • ψ) (ThreeRegsCleanState.smul a hψ))
+    {ψ : qs.State} (h : FullShorWorkspaceCleanState qs x data work ψ) : motive ψ h :=
+  ThreeRegsCleanState.rec' zero ket add smul h
+end FullShorWorkspaceCleanState
 
 /--
 The lowering-clean invariant used throughout lowered Shor readiness.
@@ -195,6 +222,23 @@ abbrev ShorLoweringCleanState
     x.reserve
     (data.reserve.drop 1)
     work.reserve
+
+namespace ShorLoweringCleanState
+variable {qs : QSemantics} [RegEncoding qs.Basis] {x data work : ExtReg}
+@[induction_eliminator, cases_eliminator]
+def rec' {motive : (ψ : qs.State) → ShorLoweringCleanState qs x data work ψ → Prop}
+    (zero : motive 0 ThreeRegsCleanState.zero)
+    (ket : ∀ (b : qs.Basis) (h₁ : FreshZero x.reserve b)
+        (h₂ : FreshZero (data.reserve.drop 1) b) (h₃ : FreshZero work.reserve b),
+        motive (qs.ket b) (ThreeRegsCleanState.ket b h₁ h₂ h₃))
+    (add : ∀ {ψ φ : qs.State} (hψ : ShorLoweringCleanState qs x data work ψ)
+        (hφ : ShorLoweringCleanState qs x data work φ),
+        motive ψ hψ → motive φ hφ → motive (ψ + φ) (ThreeRegsCleanState.add hψ hφ))
+    (smul : ∀ (a : ℂ) {ψ : qs.State} (hψ : ShorLoweringCleanState qs x data work ψ),
+        motive ψ hψ → motive (a • ψ) (ThreeRegsCleanState.smul a hψ))
+    {ψ : qs.State} (h : ShorLoweringCleanState qs x data work ψ) : motive ψ h :=
+  ThreeRegsCleanState.rec' zero ket add smul h
+end ShorLoweringCleanState
 
 lemma fullShorWorkspaceCleanState_ket
     {qs : QSemantics}
