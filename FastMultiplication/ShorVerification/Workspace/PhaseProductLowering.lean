@@ -297,7 +297,7 @@ lemma cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis
     (hclean : RecursiveWorkspaceCleanBasis x z b) :
     CleanWorkspaceState  qs (initSignedLayoutState layout) (scanNeededWidths x z ops) (qs.ket b) := by
   exact
-    CleanWorkspaceState.ket b (compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis ops x z layout hcapacity b hclean)
+    CleanClosure.ket b (compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis ops x z layout hcapacity b hclean)
 
 /-! =========================================================
     Section 3: Main allocation theorem

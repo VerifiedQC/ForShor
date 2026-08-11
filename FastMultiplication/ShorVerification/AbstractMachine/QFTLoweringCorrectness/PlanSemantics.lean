@@ -618,7 +618,7 @@ lemma QFTLoweringReady.zero
       ]
       exact
         ⟨
-          Gate.PhaseProdWorkspace.CleanState.zero,
+          CleanClosure.zero,
           ihRight,
           PhaseLoweringReady.zero qs phasePlan,
           ihLeft
@@ -720,7 +720,7 @@ lemma QFTLoweringReady.add
       ]
       exact
         ⟨
-          Gate.PhaseProdWorkspace.CleanState.add
+          CleanClosure.add
             hcleanψ hcleanφ,
           ihRight hrightψ hrightφ,
           PhaseLoweringReady.add
@@ -800,7 +800,7 @@ lemma QFTLoweringReady.smul
       ]
       exact
         ⟨
-          Gate.PhaseProdWorkspace.CleanState.smul
+          CleanClosure.smul
             a hclean,
           ihRight hright,
           PhaseLoweringReady.smul

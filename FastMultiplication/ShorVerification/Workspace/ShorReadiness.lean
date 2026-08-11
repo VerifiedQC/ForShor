@@ -1905,7 +1905,7 @@ private theorem threeRegsCleanState_to_grownRecursiveWorkspaceCleanState
       ψ := by
   induction hclean with
   | zero =>
-      exact RecursiveWorkspaceCleanState.zero
+      exact CleanClosure.zero
 
   | ket b h₁ h₂ h₃ =>
       have hxZero :
@@ -1917,7 +1917,7 @@ private theorem threeRegsCleanState_to_grownRecursiveWorkspaceCleanState
         simpa only [hzReserve] using h₃
 
       exact
-        RecursiveWorkspaceCleanState.ket
+        CleanClosure.ket
           b
           ⟨
             freshFor_grow_capacity_of_freshZero_reserve
@@ -1928,13 +1928,13 @@ private theorem threeRegsCleanState_to_grownRecursiveWorkspaceCleanState
 
   | add hψ hφ ihψ ihφ =>
       exact
-        RecursiveWorkspaceCleanState.add
+        CleanClosure.add
           ihψ
           ihφ
 
   | smul a hψ ihψ =>
       exact
-        RecursiveWorkspaceCleanState.smul
+        CleanClosure.smul
           a
           ihψ
 
@@ -3544,7 +3544,7 @@ private theorem
       ψ := by
   induction hclean with
   | zero =>
-      exact RecursiveWorkspaceCleanState.zero
+      exact CleanClosure.zero
 
   | ket b h₁ h₂ h₃ =>
       have hxZero :
@@ -3566,7 +3566,7 @@ private theorem
           h₃
 
       exact
-        RecursiveWorkspaceCleanState.ket
+        CleanClosure.ket
           b
           ⟨
             freshFor_grow_capacity_of_freshZero_reserve
@@ -3576,10 +3576,10 @@ private theorem
           ⟩
 
   | add hψ hφ ihψ ihφ =>
-      exact RecursiveWorkspaceCleanState.add ihψ ihφ
+      exact CleanClosure.add ihψ ihφ
 
   | smul a hψ ihψ =>
-      exact RecursiveWorkspaceCleanState.smul a ihψ
+      exact CleanClosure.smul a ihψ
 
 
 private theorem
