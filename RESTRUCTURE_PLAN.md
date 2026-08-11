@@ -37,11 +37,17 @@ Framework/
                              [relocated here as a peer of the model; today it
                               is buried in PhaseProductLoweringCorrectness]
     CostModel.lean        -- LowGate -> gate count (shorGateCostModel, LowGate.gateCount)
-  Math/                   -- PROGRAM-INDEPENDENT facts only (litmus: no Gate,
-                             no LowGate program, no lowerGate):
-                             order->factor, continued fractions, QFT phase
-                             algebra, Toom-Cook interpolation, Master theorem,
-                             success-probability math
+  Math/                   -- the mathematical BACKBONE OF SHOR'S ALGORITHM,
+                             true of ANY implementation (order->factor,
+                             continued-fraction recovery, probability).
+                             LITMUS: "would a DIFFERENT correct Shor
+                             implementation still need this theorem?" If yes,
+                             framework; if it is about THIS construction
+                             (Toom-Cook interpolation, Master theorem, table
+                             synthesis) it is implementation math under
+                             Implementations/Reference. (All the math is
+                             already circuit-free, so implementation-
+                             INDEPENDENCE is the test, not "mentions a circuit".)
   Spec/
     Implementation.lean   -- structure ShorImplementation: a LowGate program
                              family + correctness obligation + gate-count
@@ -91,8 +97,12 @@ explicitly merges duplicate definitions (verified by the same two gates).
   `LowerGateClass` next to the `LowGate` syntax as a peer of
   `GateSemanticsCore` (fixes the placement asymmetry), split `Basic.lean`
   along its section banners, isolate the cost model.
-- **Phase 2 — Framework/Math.** Lift the program-independent mathematics
-  out (litmus test: no `Gate`/`LowGate`/`lowerGate`).
+- **Phase 2 — Framework/Math (DONE).** Moved the algorithm backbone
+  (`ShorDefinition`; `Factoring_Reduction/`) into `Framework/Math/`, the old
+  `MathBackbone/` paths deleted and the sole importer (`ShorCorrectness`)
+  updated — no umbrellas. Construction math (`Toom_Cook_formula`,
+  `MasterTheoremProof`, `Table_Generation`) stays and relocates to
+  Implementations/Reference in Phase 4.
 - **Phase 3 — Framework/Spec (the load-bearing generalization).** Define
   `ShorImplementation` over `LowGate`, and restate the two headline
   theorems as framework theorems quantified over it. This is where the

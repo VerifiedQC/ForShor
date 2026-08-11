@@ -1,7 +1,7 @@
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import FastMultiplication.ShorVerification.MathBackbone.Factoring_Reduction.ProbabilityBound
+import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.ProbabilityBound
 
 open Classical
 
