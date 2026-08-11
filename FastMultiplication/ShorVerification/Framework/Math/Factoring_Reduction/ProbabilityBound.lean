@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.MathBackbone.Factoring_Reduction.Defs
+import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.Defs
 
 open Classical
 

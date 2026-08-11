@@ -1,8 +1,8 @@
 import FastMultiplication.ShorVerification.AbstractMachine.WholeProgramCorrectness
 import FastMultiplication.ShorVerification.Workspace.ShorReadiness
 import FastMultiplication.ShorVerification.AlgorithmCorrectness.ModMulBounds.ModExp
-import FastMultiplication.ShorVerification.MathBackbone.ShorDefinition
-import FastMultiplication.ShorVerification.MathBackbone.Factoring_Reduction.Reduction
+import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
+import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.Reduction
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
