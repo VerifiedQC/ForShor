@@ -887,8 +887,9 @@ noncomputable def qftPhase (N x y : ℕ) : ℂ :=
 ========================================================= -/
 
 /--
-Abstract Hilbert-space semantics for gates. The semantic facts below add
-constructor-specific behavior on top of this linear/isometric interface.
+Abstract Hilbert-space semantics. This class deliberately does not mention any
+circuit language: high-level `Gate` and low-level `LowGate` evaluators are
+separate semantic interfaces built on top of the same quantum state space.
 -/
 class QSemantics where
   Basis : Type u
@@ -898,18 +899,6 @@ class QSemantics where
   [instIP     : InnerProductSpace ℂ State]
 
   ket   : Basis → State
-  eval  : Gate → State → State
-
-  eval_id  : ∀ ψ, eval Gate.id ψ = ψ
-  eval_seq : ∀ U V ψ, eval (U ;; V) ψ = eval V (eval U ψ)
-
-  inner_preserved : ∀ U ψ φ, inner ℂ (eval U ψ) (eval U φ) = inner ℂ ψ φ
-
-  eval_zero : ∀ U, eval U 0 = 0
-  eval_add  : ∀ U ψ φ, eval U (ψ + φ) = eval U ψ + eval U φ
-  eval_smul : ∀ U (a : ℂ) ψ, eval U (a • ψ) = a • eval U ψ
-
-  hsub : ∀ U ψ φ, eval U (ψ - φ) = eval U ψ - eval U φ
 
   state_induction :
     ∀ (P : State → Prop),
@@ -933,15 +922,6 @@ class QSemantics where
     ∀ {b₁ b₂ : Basis},
       b₁ ≠ b₂ →
       inner ℂ (ket b₁) (ket b₂) = 0
-
-  eval_adj_apply :
-    ∀ (U : Gate) (ψ : State),
-      eval (Gate.adj U) (eval U ψ) = ψ
-
-  eval_apply_adj :
-    ∀ (U : Gate) (ψ : State),
-      eval U (eval (Gate.adj U) ψ) = ψ
-
 
 
 open QSemantics
@@ -1003,10 +983,135 @@ lemma ket_norm_one
     Section 7: Gate-specific semantic fact classes
 ========================================================= -/
 
+/--
+Generic semantics for the internal high-level `Gate` language.
+
+This is intentionally separate from `QSemantics`: the quantum model supplies
+states and basis kets, while this class supplies the evaluator and the generic
+linear/isometric laws for the private proof IR.
+-/
+class GateSemanticsCore
+  (qs : QSemantics)
+  [RegEncoding qs.Basis] : Type where
+
+  eval  : Gate → qs.State → qs.State
+
+  eval_id  : ∀ ψ, eval Gate.id ψ = ψ
+  eval_seq : ∀ U V ψ, eval (U ;; V) ψ = eval V (eval U ψ)
+
+  inner_preserved :
+    ∀ U ψ φ, inner ℂ (eval U ψ) (eval U φ) = inner ℂ ψ φ
+
+  eval_zero : ∀ U, eval U 0 = 0
+  eval_add  : ∀ U ψ φ, eval U (ψ + φ) = eval U ψ + eval U φ
+  eval_smul : ∀ U (a : ℂ) ψ, eval U (a • ψ) = a • eval U ψ
+
+  hsub : ∀ U ψ φ, eval U (ψ - φ) = eval U ψ - eval U φ
+
+  eval_adj_apply :
+    ∀ (U : Gate) (ψ : qs.State),
+      eval (Gate.adj U) (eval U ψ) = ψ
+
+  eval_apply_adj :
+    ∀ (U : Gate) (ψ : qs.State),
+      eval U (eval (Gate.adj U) ψ) = ψ
+
+namespace QSemantics
+
+noncomputable abbrev eval
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs] :
+    Gate → qs.State → qs.State :=
+  GateSemanticsCore.eval (qs := qs)
+
+theorem eval_id
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (ψ : qs.State) :
+    qs.eval Gate.id ψ = ψ :=
+  GateSemanticsCore.eval_id (qs := qs) ψ
+
+theorem eval_seq
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U V : Gate)
+    (ψ : qs.State) :
+    qs.eval (U ;; V) ψ = qs.eval V (qs.eval U ψ) :=
+  GateSemanticsCore.eval_seq (qs := qs) U V ψ
+
+theorem inner_preserved
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (ψ φ : qs.State) :
+    inner ℂ (qs.eval U ψ) (qs.eval U φ) = inner ℂ ψ φ :=
+  GateSemanticsCore.inner_preserved (qs := qs) U ψ φ
+
+theorem eval_zero
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate) :
+    qs.eval U 0 = 0 :=
+  GateSemanticsCore.eval_zero (qs := qs) U
+
+theorem eval_add
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (ψ φ : qs.State) :
+    qs.eval U (ψ + φ) = qs.eval U ψ + qs.eval U φ :=
+  GateSemanticsCore.eval_add (qs := qs) U ψ φ
+
+theorem eval_smul
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (a : ℂ)
+    (ψ : qs.State) :
+    qs.eval U (a • ψ) = a • qs.eval U ψ :=
+  GateSemanticsCore.eval_smul (qs := qs) U a ψ
+
+theorem hsub
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (ψ φ : qs.State) :
+    qs.eval U (ψ - φ) = qs.eval U ψ - qs.eval U φ :=
+  GateSemanticsCore.hsub (qs := qs) U ψ φ
+
+theorem eval_adj_apply
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (ψ : qs.State) :
+    qs.eval (Gate.adj U) (qs.eval U ψ) = ψ :=
+  GateSemanticsCore.eval_adj_apply (qs := qs) U ψ
+
+theorem eval_apply_adj
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (ψ : qs.State) :
+    qs.eval U (qs.eval (Gate.adj U) ψ) = ψ :=
+  GateSemanticsCore.eval_apply_adj (qs := qs) U ψ
+
+end QSemantics
+
 /-- QFT-specific semantic facts. -/
 class QFTSemantics
   (qs : QSemantics)
-  [RegEncoding qs.Basis] : Type where
+  [RegEncoding qs.Basis]
+  [GateSemanticsCore qs] : Type where
 
   eval_QFT_size0 :
     ∀ (r : ExtReg) (ψ : qs.State),
@@ -1045,7 +1150,8 @@ class QFTSemantics
 
 class HadamardSemantics
     (qs : QSemantics)
-    [RegEncoding qs.Basis] : Type where
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs] : Type where
 
   eval_H_ket :
     ∀ (q : ℕ) (b : qs.Basis),
@@ -1061,7 +1167,8 @@ class HadamardSemantics
 
 class PauliXSemantics
     (qs : QSemantics)
-    [RegEncoding qs.Basis] : Type where
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs] : Type where
 
   eval_X_ket :
     ∀ (q : ℕ) (b : qs.Basis),
@@ -1084,7 +1191,8 @@ class PauliXSemantics
 
 class RegisterHadamardSemantics
     (qs : QSemantics)
-    [RegEncoding qs.Basis] : Type where
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs] : Type where
 
   eval_Hreg_ket :
     ∀ (r : Reg) (b : qs.Basis),
@@ -1100,7 +1208,8 @@ class RegisterHadamardSemantics
 
 class RadixReverseSemantics
   (qs : QSemantics)
-  [RegEncoding qs.Basis] : Type where
+  [RegEncoding qs.Basis]
+  [GateSemanticsCore qs] : Type where
 
   eval_RadixReverse_ket :
     ∀ (r : Reg) (m : ℕ) (hm : m ≤ regSize r)
@@ -1123,7 +1232,8 @@ class RadixReverseSemantics
 /-- Signed phase-product semantic facts. -/
 class PhaseSemantics
   (qs : QSemantics)
-  [RegEncoding qs.Basis] : Type where
+  [RegEncoding qs.Basis]
+  [GateSemanticsCore qs] : Type where
 
   eval_SignedPhaseProd_ket :
     ∀ (phi : ℝ) (x z : ExtReg) (b : qs.Basis),
@@ -1151,7 +1261,8 @@ class PhaseSemantics
 /-- Zero/sign extension and deallocation semantic facts. -/
 class ExtensionSemantics
   (qs : QSemantics)
-  [RegEncoding qs.Basis] : Type where
+  [RegEncoding qs.Basis]
+  [GateSemanticsCore qs] : Type where
 
   eval_zeroExtend :
     ∀ (r : ExtReg) (n : ℕ) (ψ : qs.State),
@@ -1191,6 +1302,7 @@ theorem ExtReg.toNat_grow_of_fresh
 theorem eval_zeroExtend_ket
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [ExtensionSemantics qs]
     (r : ExtReg)
     (n : ℕ)
@@ -1212,6 +1324,7 @@ theorem eval_zeroExtend_ket
 lemma zeroExtend_preserves_bit
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [ExtensionSemantics qs]
     (r : ExtReg)
     (n : ℕ)
@@ -1239,6 +1352,7 @@ lemma zeroExtend_preserves_bit
 lemma signExtend_preserves_disjoint_extToInt
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [ExtensionSemantics qs]
     (r e : ExtReg)
     (n : ℕ)
@@ -1270,7 +1384,8 @@ lemma tcDecodeWidth_succ_eq_of_lt {w n : ℕ} (h : n < 2 ^ w) :
 
 class ArithmeticSemantics
     (qs : QSemantics)
-    [RegEncoding qs.Basis] : Type where
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs] : Type where
 
   eval_ShiftL_ket_exact :
     ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
@@ -1326,6 +1441,7 @@ class GateSemanticsFacts
   (qs : QSemantics)
   [RegEncoding qs.Basis] :
   Type extends
+    GateSemanticsCore qs,
     QFTSemantics qs,
     PhaseSemantics qs,
     ExtensionSemantics qs,
@@ -1378,6 +1494,7 @@ theorem eval_RadixReverse_split_ket
 private lemma zeroExtend_preserves_bit
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [ExtensionSemantics qs]
     (r : ExtReg)
     (n : ℕ)
@@ -1392,6 +1509,7 @@ private lemma zeroExtend_preserves_bit
 lemma eval_CSignedPhaseProd_ket_as_if_SignedPhaseProd
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [PhaseSemantics qs]
     (ctrl : ℕ)
     (phi : ℝ)
@@ -1559,17 +1677,31 @@ end GateSemanticsFacts
     Section 8: General algebraic lemmas for `eval`
 ========================================================= -/
 
-lemma eval_sum {α : Type} [QSemantics] (U : Gate) (s : Finset α) (f : α → QSemantics.State) :
-    QSemantics.eval U (∑ a ∈ s, f a) = ∑ a ∈ s, QSemantics.eval U (f a) := by
+lemma eval_sum
+    {α : Type}
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (s : Finset α)
+    (f : α → qs.State) :
+    qs.eval U (∑ a ∈ s, f a) = ∑ a ∈ s, qs.eval U (f a) := by
   classical
   refine Finset.induction_on s ?h0 ?hs
   · simp [QSemantics.eval_zero]
   · intro a s ha hs
     simp [Finset.sum_insert ha, QSemantics.eval_add, hs]
 
-lemma eval_sum_univ {α : Type} [QSemantics] [Fintype α] (U : Gate) (f : α → State) :
-    eval U (∑ a : α, f a) = ∑ a : α, eval U (f a) := by
-  have := (eval_sum U (Finset.univ) f)
+lemma eval_sum_univ
+    {α : Type}
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [Fintype α]
+    (U : Gate)
+    (f : α → qs.State) :
+    qs.eval U (∑ a : α, f a) = ∑ a : α, qs.eval U (f a) := by
+  have := (eval_sum qs U Finset.univ f)
   aesop
 
 /-! =========================================================
@@ -1591,6 +1723,8 @@ lemma toNat_left_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
 /-- `eval U` is an isometry if it preserves inner products. -/
 lemma eval_isometry
   (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [GateSemanticsCore qs]
   (U : Gate)
   (hU : ∀ ψ φ : qs.State, inner ℂ (qs.eval U ψ) (qs.eval U φ) = inner ℂ ψ φ) :
   ∀ ψ φ : qs.State, ‖qs.eval U ψ - qs.eval U φ‖ = ‖ψ - φ‖ := by
@@ -1602,11 +1736,19 @@ lemma eval_isometry
   simpa [qs.hsub U ψ φ] using hnorm
 
 @[simp] lemma eval_seq_simp
-  (qs : QSemantics) (U V : Gate) (ψ : qs.State) :
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [GateSemanticsCore qs]
+  (U V : Gate) (ψ : qs.State) :
   qs.eval (U ;; V) ψ = qs.eval V (qs.eval U ψ) := by
   simpa using (qs.eval_seq U V ψ)
 
-lemma eval_norm_preserved (qs : QSemantics) (U : Gate) (ψ : qs.State) :
+lemma eval_norm_preserved
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (ψ : qs.State) :
   ‖qs.eval U ψ‖ = ‖ψ‖ := by
   have h := eval_isometry qs U (by intro ψ φ; simpa using qs.inner_preserved U ψ φ) ψ 0
   simpa [qs.eval_zero U] using h

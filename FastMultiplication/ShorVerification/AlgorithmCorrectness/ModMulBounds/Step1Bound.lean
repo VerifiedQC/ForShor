@@ -362,6 +362,7 @@ the complementary packet over bad labels.
 lemma alg1_afterStep34Full_eq_good_add_bad
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -443,6 +444,7 @@ terms from colliding when their norms are compared.
 lemma alg1_step34_label_injective
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [Spec]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
@@ -858,6 +860,7 @@ norm-preserving reindexing, so their squared norm is exactly the trace bad mass.
 lemma alg1_afterStep34Bad_norm_sq_eq_trace_bad_mass
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [Spec]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
@@ -1074,6 +1077,7 @@ whose norm is one by unitarity.
 lemma alg1_goodStep1_norm_le_one
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)

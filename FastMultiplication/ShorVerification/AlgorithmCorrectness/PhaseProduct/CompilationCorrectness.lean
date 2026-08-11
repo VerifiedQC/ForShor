@@ -574,6 +574,7 @@ lemma eval_compileOpsToCSignedGate_correct
 lemma eval_SignedPhaseProd_zero_ket
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [PhaseSemantics qs]
     (x z : ExtReg)
     (b : qs.Basis) :

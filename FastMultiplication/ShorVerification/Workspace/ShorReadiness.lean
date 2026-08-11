@@ -516,8 +516,9 @@ initial cleanliness.
 structure LoweredShorReady
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (lowering : ShorLoweringSetup)
     (η : ℝ)
     (a N : ℕ)
@@ -558,7 +559,9 @@ structure LoweredShorReady
 private def LoweredCleanResult
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (lowering : ShorLoweringSetup)
     (P : qs.State → Prop)
     (G : Gate)
@@ -590,8 +593,9 @@ private def LoweredCleanResult
 private theorem LoweredCleanResult.seq
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     {lowering : ShorLoweringSetup}
     {Pmid Pout : qs.State → Prop}
     {U V : Gate}
@@ -681,7 +685,9 @@ private inductive WorkspaceFree : Gate → Prop
 private theorem WorkspaceFree.clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     {lowering : ShorLoweringSetup}
     {G : Gate}
     (hfree : WorkspaceFree G)
@@ -1284,8 +1290,9 @@ private theorem eval_step4_preserves_lowering_clean
 private theorem lowered_step3_ready_and_clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     [ModMulPrimitiveSemantics qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
@@ -1363,8 +1370,9 @@ private theorem lowered_step3_ready_and_clean
 private theorem lowered_step4_ready_and_clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     [ModMulPrimitiveSemantics qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
@@ -1646,8 +1654,9 @@ private theorem eval_X_preserves_threeRegsCleanState
 private theorem lowered_H_reg_ready_and_full_clean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (hxData :
@@ -1813,8 +1822,9 @@ private theorem eval_initY1_preserves_fullShorWorkspaceCleanState
 private theorem lowered_initY1_ready_and_full_clean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (hxData :
@@ -1941,8 +1951,9 @@ private theorem threeRegsCleanState_to_grownRecursiveWorkspaceCleanState
 private theorem gateWorkspaceCleanState_CPhaseProdUsing_of_threeRegsClean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     {lowering : ShorLoweringSetup}
     {r₁ r₂ r₃ : Reg}
     {x z : Reg}
@@ -2492,8 +2503,9 @@ private theorem eval_QFT_preserves_threeRegsCleanState
 private theorem gateWorkspaceCleanState_PhaseProdUsing_of_threeRegsClean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     {lowering : ShorLoweringSetup}
     {r₁ r₂ r₃ : Reg}
     {x z : Reg}
@@ -2628,8 +2640,9 @@ private theorem eval_PhaseProdUsing_preserves_threeRegsCleanState
 private theorem lowered_step1_ready_and_full_clean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (c N ctrl : ℕ)
@@ -2998,8 +3011,9 @@ private theorem lowered_step1_ready_and_full_clean
 private theorem lowered_step2_ready_and_carry_clean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (N : ℕ)
@@ -3374,8 +3388,9 @@ private theorem lowered_step2_ready_and_carry_clean
 private theorem LoweredCleanResult.adj
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     {lowering : ShorLoweringSetup}
     {P : qs.State → Prop}
     {U : Gate}
@@ -3586,8 +3601,9 @@ private theorem
     gateWorkspaceCleanState_CPhaseProdUsing_of_threeRegsClean_of_subset
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     {lowering : ShorLoweringSetup}
     {r₁ r₂ r₃ : Reg}
     {x z : Reg}
@@ -3726,8 +3742,9 @@ private theorem
 private theorem lowered_step5Forward_ready_and_full_clean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (k5val N ctrl : ℕ)
@@ -4129,6 +4146,8 @@ private theorem lowered_step5Forward_ready_and_full_clean
 
 private theorem qeval_injective
     (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     (U : Gate) :
     Function.Injective (qs.eval U) := by
   intro ψ φ h
@@ -4140,6 +4159,8 @@ private theorem qeval_injective
 
 private theorem eval_adj_seq_eq
     (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     (U V : Gate)
     (ψ : qs.State) :
     qs.eval (†(U ;; V)) ψ
@@ -4169,6 +4190,8 @@ private theorem eval_adj_seq_eq
 
 private theorem eval_adj_adj_eq
     (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     (U : Gate)
     (ψ : qs.State) :
     qs.eval (†(†U)) ψ =
@@ -5382,6 +5405,8 @@ private theorem eval_adj_H_reg_work_preserves_full_clean
 
 private theorem eval_adj_step5Forward_eq
     (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     (k5val N ctrl : ℕ)
     (data work : ExtReg)
     (hmod :
@@ -5546,8 +5571,9 @@ workspace obligations, producing a `LoweredCleanResult` for the public
 theorem lowered_step5_ready_and_full_clean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (k5val N ctrl : ℕ)
@@ -5715,8 +5741,9 @@ private theorem
 private theorem lowered_IQFT_ready_and_full_clean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (hxData :
@@ -5839,8 +5866,9 @@ obligation.
 theorem lowered_CmodMulInPlaceCore_ready_and_clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     [ModMulPrimitiveSemantics qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
@@ -6127,8 +6155,9 @@ controlled modular multiplication.
 theorem lowered_modExpApproxStepsValid_ready_and_clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     [ModMulPrimitiveSemantics qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
@@ -6283,8 +6312,9 @@ recursive sub-lowering with clean workspace and preserves
 theorem lowered_orderFindingApprox_ready_and_full_clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     [ModMulPrimitiveSemantics qs]
     (lowering : ShorLoweringSetup)
     (η : ℝ)
@@ -6506,8 +6536,9 @@ gate has clean local workspace everywhere the lowering procedure needs it.
 theorem gateWorkspaceCleanState_orderFindingApprox
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     [ModMulPrimitiveSemantics qs]
     (lowering : ShorLoweringSetup)
     (η : ℝ)
@@ -6640,8 +6671,9 @@ Static workspace theorem exposed through `LoweredShorReady`.
 theorem LoweredShorReady.workspace
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     {lowering : ShorLoweringSetup}
     {η : ℝ}
     {a N : ℕ}
@@ -6679,8 +6711,9 @@ precondition needed by `lowerGate_correctness`.
 theorem LoweredShorReady.workspace_clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     [ModMulPrimitiveSemantics qs]
     {lowering : ShorLoweringSetup}
     {η : ℝ}

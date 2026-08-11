@@ -2110,6 +2110,7 @@ lemma extraDelta_xslot_pos
 lemma eval_compileAnnotatedOpsToSignedGateAux_append
   (qs : QSemantics)
   [RegEncoding qs.Basis]
+  [GateSemanticsCore qs]
   {k : ℕ} (hk : 1 < k)
   (phi : ℝ)
   (coeff : Fin (q k) → ℚ)

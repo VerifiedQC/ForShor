@@ -65,6 +65,7 @@ noncomputable def orderFindingApproxLow
 noncomputable def orderFindingIdeal
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [Spec]
     (a N : ℕ)
     (x y : ExtReg) : Gate :=

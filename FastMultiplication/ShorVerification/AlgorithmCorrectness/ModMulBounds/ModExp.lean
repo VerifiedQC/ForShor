@@ -65,6 +65,7 @@ subspace described by its configuration.
 theorem ideal_preserves_valid
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [Spec]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
@@ -90,8 +91,8 @@ theorem modExpApproxSteps_valid_dist_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [Spec]
-    [IdealCtrlModMulExactSemantics qs]
     [GateSemanticsFacts qs]
+    [IdealCtrlModMulExactSemantics qs]
     [ModMulPrimitiveSemantics qs] :
     ∃ K : ℝ, 0 ≤ K ∧
       ∀ (η : ℝ)
@@ -268,8 +269,8 @@ theorem modExpApprox_valid_dist_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [Spec]
-    [IdealCtrlModMulExactSemantics qs]
     [GateSemanticsFacts qs]
+    [IdealCtrlModMulExactSemantics qs]
     [ModMulPrimitiveSemantics qs] :
     ∃ K : ℝ, 0 ≤ K ∧
       ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),

@@ -251,8 +251,9 @@ lemma eval_PhaseProdUsing_preserves_QFTWorkspaceCleanState
 theorem standardPhaseProdUsingPlan_ready_and_clean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -502,8 +503,9 @@ lemma eval_QFT_preserves_QFTWorkspaceCleanState
 theorem standardQFTLoweringPlan_ready_and_clean_explicit
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -843,8 +845,9 @@ decreasing_by
 theorem standardQFTLoweringPlan_ready_and_clean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -895,8 +898,9 @@ theorem standardQFTLoweringPlan_ready_and_clean
 lemma reserveQFTLoweringPlan_ready_ket
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -939,8 +943,9 @@ lemma reserveQFTLoweringPlan_ready_ket
 lemma reserveQFTLoweringPlan_preserves_clean_of_ready
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -991,8 +996,9 @@ lemma reserveQFTLoweringPlan_preserves_clean_of_ready
 theorem evalL_lowerQFT
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)

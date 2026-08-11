@@ -157,6 +157,7 @@ lemma alg1_step34_reference_exact_core
     [RegEncoding qs.Basis]
 
     [Spec]
+    [GateSemanticsCore qs]
     [ModMulPrimitiveSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -670,6 +671,7 @@ lemma alg1_step34_reference_exact
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [Spec]
+    [GateSemanticsCore qs]
     [ModMulPrimitiveSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)

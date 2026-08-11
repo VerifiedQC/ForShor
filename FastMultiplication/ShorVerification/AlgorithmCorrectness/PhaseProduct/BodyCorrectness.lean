@@ -1778,6 +1778,7 @@ lemma eval_matched_cphase_ket_from
 lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_append
   (qs : QSemantics)
   [RegEncoding qs.Basis]
+  [GateSemanticsCore qs]
   {k : ℕ} (hk : 1 < k)
   (ctrl : ℕ)
   (phi : ℝ)

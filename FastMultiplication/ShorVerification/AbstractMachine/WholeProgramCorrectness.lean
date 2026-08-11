@@ -308,6 +308,7 @@ noncomputable def lowerGate
 noncomputable def GateWorkspaceCleanState
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [LowerGateClass qs]
     (k : ℕ)
     (hk : 1 < k)
@@ -360,8 +361,9 @@ at the exact state where each lowered subprogram begins.
 theorem lowerGate_correctness
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)

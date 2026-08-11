@@ -248,6 +248,7 @@ identifies the original basis input together with its work value.
 lemma alg1_step2_source_label_injective_on_good
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -476,6 +477,7 @@ distinct computational-basis kets.
 lemma alg1_step2_good_coeff_energy_eq_norm_sq
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -547,6 +549,7 @@ Step-1 packet is at most one.
 lemma alg1_step2_good_coeff_energy_le_one
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -3668,6 +3671,7 @@ lemma alg1_step2_work_fiber_sq_bound
 lemma alg1_step2_error_eq_sum_work_fibers
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (S : Finset (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)))

@@ -23,8 +23,9 @@ statements.
 lemma evalL_lowerSignedPhaseProd_of_plan
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (phi : ℝ)
@@ -106,8 +107,9 @@ are derived internally.
 theorem evalL_lowerSignedPhaseProd
   (qs : QSemantics)
   [RegEncoding qs.Basis]
-  [LowerGateClass qs]
   [GateSemanticsFacts qs]
+  [LowerGateClass qs]
+    [LowerGateGateBridge qs]
   (k : ℕ)
   (hk : 1 < k)
   (phi : ℝ)
@@ -189,8 +191,9 @@ separation, and initial reserve cleanliness.
 theorem evalL_lowerCSignedPhaseProd
   (qs : QSemantics)
   [RegEncoding qs.Basis]
-  [LowerGateClass qs]
   [GateSemanticsFacts qs]
+  [LowerGateClass qs]
+    [LowerGateGateBridge qs]
   (k : ℕ)
   (hk : 1 < k)
   (ctrl : ℕ)

@@ -410,6 +410,8 @@ lemma exp_phaseProd_eq_qftPhase_of_casts
 
 lemma eval_sum_univ_qs
   (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [GateSemanticsCore qs]
   (U : Gate)
   {α : Type} [Fintype α]
   (f : α → qs.State) :

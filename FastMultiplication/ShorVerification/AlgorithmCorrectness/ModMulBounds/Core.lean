@@ -333,6 +333,7 @@ def modExpIdealSteps (qs : QSemantics) [RegEncoding qs.Basis] [Spec]
 def modExpIdeal'
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [Spec]
     (a N : ℕ)
     (x data : Reg) :
@@ -415,6 +416,7 @@ def ValidModMulState
 class IdealCtrlModMulExactSemantics
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [Spec] : Prop where
 
   eval_idealCtrlModMul_good_ket_exact :
@@ -475,6 +477,7 @@ lemma ExtReg.freshFor_write_active
 theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [Spec]
     [IdealCtrlModMulExactSemantics qs]
     (c N : ℕ)
@@ -723,6 +726,7 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
 theorem idealCtrlModMul_preserves_valid
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [Spec]
     [IdealCtrlModMulExactSemantics qs]
     (c N : ℕ)
@@ -1135,6 +1139,7 @@ noncomputable def approxGate
 def idealGate
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [Spec]
     {η : ℝ}
     (cfg : ModExpConfig η) : Gate :=
@@ -1283,7 +1288,8 @@ which only describes the structured gate families.
 -/
 class ModMulPrimitiveSemantics
     (qs : QSemantics)
-    [RegEncoding qs.Basis] : Prop where
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs] : Prop where
 
   /-- Step 3, restricted to the clean-flag regime used by Algorithm 1. -/
   eval_step3_clean_ket :
@@ -1350,6 +1356,7 @@ class ModMulPrimitiveSemantics
 theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_cfg
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [Spec]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
@@ -1608,6 +1615,7 @@ The one-label Step-2 error vector.
 noncomputable def alg1Step2Error
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : qs.Basis)
@@ -1666,6 +1674,7 @@ structure Alg1Trace
     {η : ℝ}
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     (cfg : ModMulConfig η)
     (ψ : qs.State) where
 
@@ -1796,6 +1805,7 @@ noncomputable def goodStep1
     {η : ℝ}
     {qs : QSemantics}
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {cfg : ModMulConfig η}
     {ψ : qs.State}
     (tr : Alg1Trace qs cfg ψ) : qs.State :=
@@ -1816,6 +1826,7 @@ noncomputable def afterStep2Ref
     {η : ℝ}
     {qs : QSemantics}
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {cfg : ModMulConfig η}
     {ψ : qs.State}
     (tr : Alg1Trace qs cfg ψ) : qs.State :=
@@ -1839,6 +1850,7 @@ noncomputable def afterStep34Ref
     {η : ℝ}
     {qs : QSemantics}
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {cfg : ModMulConfig η}
     {ψ : qs.State}
     (tr : Alg1Trace qs cfg ψ) : qs.State :=
@@ -1877,6 +1889,7 @@ output.
 noncomputable def alg1PhaseCoeff
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : qs.Basis)
@@ -1889,6 +1902,7 @@ noncomputable def alg1PhaseCoeff
 noncomputable def alg1QpeBadMass
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : qs.Basis) : ℝ :=
@@ -1905,6 +1919,7 @@ discarded QPE probability.
 noncomputable def alg1TraceBadMass
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     {ψ : qs.State}
@@ -1922,6 +1937,7 @@ noncomputable def badStep1
     {η : ℝ}
     {qs : QSemantics}
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {cfg : ModMulConfig η}
     {ψ : qs.State}
     (tr : Alg1Trace qs cfg ψ) : qs.State :=
@@ -1943,6 +1959,7 @@ noncomputable def afterStep34Full
     {η : ℝ}
     {qs : QSemantics}
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {cfg : ModMulConfig η}
     {ψ : qs.State}
     (tr : Alg1Trace qs cfg ψ) : qs.State :=
@@ -1961,6 +1978,7 @@ noncomputable def afterStep34Bad
     {η : ℝ}
     {qs : QSemantics}
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {cfg : ModMulConfig η}
     {ψ : qs.State}
     (tr : Alg1Trace qs cfg ψ) : qs.State :=

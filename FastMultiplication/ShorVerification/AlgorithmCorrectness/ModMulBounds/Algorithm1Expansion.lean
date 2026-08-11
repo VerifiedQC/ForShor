@@ -29,6 +29,7 @@ namespace ModMulConfig
 lemma eval_approxGate_eq_staged
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State) :
@@ -56,6 +57,8 @@ section LinearExpansionHelpers
 /-- Gate evaluation distributes over finite sums by linearity. -/
 lemma eval_finset_sum
     (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     (U : Gate)
     {ι : Type*}
     (s : Finset ι)
@@ -75,6 +78,7 @@ lemma eval_finset_sum
 lemma eval_iqft_work_expansion
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [QFTSemantics qs]
     (work : ExtReg)
     (b : qs.Basis) :
@@ -411,6 +415,7 @@ private lemma hregWorkSpan_qubit_write
 private lemma eval_H_preserves_hregWorkSpan
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [HadamardSemantics qs]
     (work : Reg)
     (base : qs.Basis)
@@ -513,6 +518,7 @@ private lemma eval_H_preserves_hregWorkSpan
 private lemma eval_foldl_H_preserves_hregWorkSpan
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [HadamardSemantics qs]
     (work : Reg)
     (base : qs.Basis)
@@ -575,6 +581,7 @@ private lemma eval_foldl_H_preserves_hregWorkSpan
 lemma eval_Hreg_work_expansion
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [HadamardSemantics qs]
     (work : Reg)
     (b : qs.Basis)

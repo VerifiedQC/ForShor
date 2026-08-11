@@ -26,6 +26,7 @@ phase-product nodes.
 noncomputable def PhaseLoweringReady
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [LowerGateClass qs]
     {k : ℕ}
     {hk : 1 < k}
@@ -173,8 +174,9 @@ lemma eval_compiledCSignedPhaseGate_correct
 lemma evalL_lowerGateRec_correct
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}

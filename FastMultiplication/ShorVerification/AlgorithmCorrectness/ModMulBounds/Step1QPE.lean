@@ -363,6 +363,7 @@ A normalized valid trace has total input probability one.
 lemma alg1_trace_input_mass_one
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -518,6 +519,7 @@ All other terms of the double sum are orthogonal to the chosen label by
 private lemma qpe_inner_trace_work_packet
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -1026,6 +1028,7 @@ coefficients that defines `alg1TraceBadMass`.
 lemma alg1_badStep1_norm_sq_eq_trace_bad_mass
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -1499,6 +1502,7 @@ basis state holding `alg1OutputValue` in the grown data register.
 lemma alg1_ideal_ket_eq_extended_output
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [Spec]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}

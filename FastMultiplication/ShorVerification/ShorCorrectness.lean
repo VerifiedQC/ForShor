@@ -621,6 +621,7 @@ lemma probMeas_weighted_dist [MeasureClass qs] :
 
 /-- Given a finite set Good of outcomes that are “successful,” sum the measurement probability over those outcomes. -/
 noncomputable def successProbAfterFinset
+  [GateSemanticsCore qs]
   (r : Reg) (Good : Finset ℕ) (G : Gate) (ψ : qs.State) : ℝ :=
   ∑ o ∈ Good, measProbAfter (qs := qs) qs.eval r o G ψ
 
@@ -637,6 +638,7 @@ lemma probMeas_outOfRange_of_born
 omit [MeasureClass qs] in
 /-- Success probability is nonnegative. -/
 lemma successProbAfterFinset_nonneg [MeasureClass qs]
+  [GateSemanticsCore qs]
   (r : Reg) (Good : Finset ℕ) (G : Gate) (ψ : qs.State) :
   0 ≤ successProbAfterFinset (qs := qs) r Good G ψ := by
   unfold successProbAfterFinset measProbAfter
@@ -648,6 +650,7 @@ lemma successProbAfterFinset_nonneg [MeasureClass qs]
 omit [MeasureClass qs] in
 /-- If the good-outcome set is enlarged, success probability can only go up. -/
 lemma successProbAfterFinset_mono [MeasureClass qs]
+  [GateSemanticsCore qs]
   (r : Reg) {Good Good' : Finset ℕ} (hsub : Good ⊆ Good')
   (G : Gate) (ψ : qs.State) :
   successProbAfterFinset (qs := qs) r Good G ψ
@@ -663,6 +666,7 @@ omit [MeasureClass qs] in
 /-- Intersecting the good-outcome set with the register range does not change
 the success probability. -/
 lemma successProbAfterFinset_inter_range_eq [MeasureClass qs]
+  [GateSemanticsCore qs]
   (r : Reg) (Good : Finset ℕ) (G : Gate) (ψ : qs.State) :
   successProbAfterFinset (qs := qs)
       r (Good ∩ Finset.range (2 ^ regSize r)) G ψ
@@ -748,6 +752,8 @@ omit [ContinuedFractionPost] [Spec] in
 /-- Applying a common suffix gate preserves a state-distance bound. -/
 lemma dist_eval_common_suffix_le
     (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     (W A I : Gate)
     (ψ : qs.State)
     {ε : ℝ}
@@ -769,6 +775,7 @@ omit [MeasureClass qs] [Spec] in
 /-- Convert a state-distance bound between two complete circuits into a lower
 bound on the approximate circuit's postprocessed success probability. -/
 lemma probability_of_success_eval_dist [MeasureClass qs]
+  [GateSemanticsCore qs]
   (T : ℕ → ℕ)
   (verify : ℕ → Bool)
   (x : Reg)
@@ -1525,8 +1532,9 @@ available.
 -/
 omit [Spec] in
 lemma probability_of_success_lowerGate_eq
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (k : ℕ) (hk : 1 < k)
     (ops : Prog k)
     (hC : ProgConsumesPtsSafe
@@ -1582,8 +1590,9 @@ high-level approximate circuit. It does not compare the approximate circuit
 with `orderFindingIdeal`.
 -/
 theorem orderFindingApproxLow_probability_eq
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     (lowering : ShorLoweringSetup)
     (T : ℕ → ℕ)
     (verify : OrderVerifier)
@@ -1702,9 +1711,7 @@ theorem Shor_end_to_end_factoring
     (b0 : qs.Basis)
     (hinput : IdealOrderFindingInput qs x y b0)
     (hm : regSize x.active = Nat.log2 (2 * fact.N^2))
-    (hn : regSize y.active = Nat.log2 (2 * fact.N))
-    (hset : ∀ a, a ∈ valid_choices fact.N →
-      ∃ hgcd, BasicSetting a (ord a fact.N hgcd) fact.N (regSize x.active) (regSize y.active)) :
+    (hn : regSize y.active = Nat.log2 (2 * fact.N)):
   (2 * (successful_choices fact.N).card ≥ (valid_choices fact.N).card)
   ∧
   (∀ a ∈ successful_choices fact.N, ∃ (hgcd : Nat.gcd a fact.N = 1),
@@ -1738,7 +1745,6 @@ theorem Shor_end_to_end_factoring
       simp [valid_choices, ha1, ha2, hgcd]
     have hvalid_fact : a ∈ valid_choices fact.N := by
       simpa [N] using hvalid_N
-    obtain ⟨hgcd_set, hset_a⟩ := hset a hvalid_fact
 
     have h_succ : shor_success_conditions a (ord a N hgcd) N := by {
       have h_a_in_successful_N : a ∈ successful_choices N := by
@@ -1800,8 +1806,9 @@ The lowering introduces no additional approximation error: its success
 probability is exactly that of `orderFindingApprox`.
 -/
 theorem Shor_correct_approx_lowered_uniform
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     [IdealCtrlModMulExactSemantics qs]
     [ModMulPrimitiveSemantics qs]
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)

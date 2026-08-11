@@ -85,6 +85,7 @@ noncomputable def lowerQFTPlan
 noncomputable def QFTLoweringReady
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [LowerGateClass qs]
     {k : ℕ}
     {hk : 1 < k}
@@ -116,8 +117,9 @@ noncomputable def QFTLoweringReady
 theorem evalL_lowerQFTPlan
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [LowerGateGateBridge qs]
     {k : ℕ}
     (hk : 1 < k)
     (ops : Prog k)
@@ -390,38 +392,7 @@ lemma evalL_lowerQFTPlan_zero
         0
       =
     0 := by
-  induction plan with
-  | empty =>
-      simp [lowerQFTPlan, LowerGateClass.evalL_id]
-  | singleton =>
-      simp [
-        lowerQFTPlan,
-        LowerGateClass.evalL_H,
-        qs.eval_zero
-      ]
-  | split r hsize ws phaseInitSize phasePlan
-      rightPlan leftPlan ihRight ihLeft =>
-      simp only [
-        lowerQFTPlan,
-        LowerGateClass.evalL_seq
-      ]
-      rw [LowerGateClass.evalL_radixReverse]
-      change
-        qs.eval (Gate.RadixReverse r (splitM r))
-          (LowerGateClass.evalL
-            (qs := qs)
-            (lowerQFTPlan leftPlan)
-            (LowerGateClass.evalL
-              (qs := qs)
-              (lowerGateRec phasePlan)
-              (LowerGateClass.evalL
-                (qs := qs)
-                (lowerQFTPlan rightPlan)
-                0))) = 0
-      rw [ihRight]
-      rw [evalL_lowerGateRec_zero]
-      rw [ihLeft]
-      rw [qs.eval_zero]
+  exact LowerGateClass.evalL_zero (qs := qs) (lowerQFTPlan plan)
 
 
 lemma evalL_lowerQFTPlan_add
@@ -448,62 +419,7 @@ lemma evalL_lowerQFTPlan_add
         (qs := qs)
         (lowerQFTPlan plan)
         φ := by
-  induction plan generalizing ψ φ with
-  | empty =>
-      simp [lowerQFTPlan, LowerGateClass.evalL_id]
-  | singleton =>
-      simp [
-        lowerQFTPlan,
-        LowerGateClass.evalL_H,
-        qs.eval_add
-      ]
-  | split r hsize ws phaseInitSize phasePlan
-      rightPlan leftPlan ihRight ihLeft =>
-      simp only [
-        lowerQFTPlan,
-        LowerGateClass.evalL_seq
-      ]
-      repeat rw [LowerGateClass.evalL_radixReverse]
-      change
-        qs.eval (Gate.RadixReverse r (splitM r))
-          (LowerGateClass.evalL
-            (qs := qs)
-            (lowerQFTPlan leftPlan)
-            (LowerGateClass.evalL
-              (qs := qs)
-              (lowerGateRec phasePlan)
-              (LowerGateClass.evalL
-                (qs := qs)
-                (lowerQFTPlan rightPlan)
-                (ψ + φ))))
-          =
-        qs.eval (Gate.RadixReverse r (splitM r))
-          (LowerGateClass.evalL
-            (qs := qs)
-            (lowerQFTPlan leftPlan)
-            (LowerGateClass.evalL
-              (qs := qs)
-              (lowerGateRec phasePlan)
-              (LowerGateClass.evalL
-                (qs := qs)
-                (lowerQFTPlan rightPlan)
-                ψ)))
-          +
-        qs.eval (Gate.RadixReverse r (splitM r))
-          (LowerGateClass.evalL
-            (qs := qs)
-            (lowerQFTPlan leftPlan)
-            (LowerGateClass.evalL
-              (qs := qs)
-              (lowerGateRec phasePlan)
-              (LowerGateClass.evalL
-                (qs := qs)
-                (lowerQFTPlan rightPlan)
-                φ)))
-      rw [ihRight]
-      rw [evalL_lowerGateRec_add]
-      rw [ihLeft]
-      rw [qs.eval_add]
+  exact LowerGateClass.evalL_add (qs := qs) (lowerQFTPlan plan) ψ φ
 
 
 lemma evalL_lowerQFTPlan_smul
@@ -527,56 +443,13 @@ lemma evalL_lowerQFTPlan_smul
         (qs := qs)
         (lowerQFTPlan plan)
         ψ := by
-  induction plan generalizing ψ with
-  | empty =>
-      simp [lowerQFTPlan, LowerGateClass.evalL_id]
-  | singleton =>
-      simp [
-        lowerQFTPlan,
-        LowerGateClass.evalL_H,
-        qs.eval_smul
-      ]
-  | split r hsize ws phaseInitSize phasePlan
-      rightPlan leftPlan ihRight ihLeft =>
-      simp only [
-        lowerQFTPlan,
-        LowerGateClass.evalL_seq
-      ]
-      repeat rw [LowerGateClass.evalL_radixReverse]
-      change
-        qs.eval (Gate.RadixReverse r (splitM r))
-          (LowerGateClass.evalL
-            (qs := qs)
-            (lowerQFTPlan leftPlan)
-            (LowerGateClass.evalL
-              (qs := qs)
-              (lowerGateRec phasePlan)
-              (LowerGateClass.evalL
-                (qs := qs)
-                (lowerQFTPlan rightPlan)
-                (a • ψ))))
-          =
-        a •
-          qs.eval (Gate.RadixReverse r (splitM r))
-            (LowerGateClass.evalL
-              (qs := qs)
-              (lowerQFTPlan leftPlan)
-              (LowerGateClass.evalL
-                (qs := qs)
-                (lowerGateRec phasePlan)
-                (LowerGateClass.evalL
-                  (qs := qs)
-                  (lowerQFTPlan rightPlan)
-                  ψ)))
-      rw [ihRight]
-      rw [evalL_lowerGateRec_smul]
-      rw [ihLeft]
-      rw [qs.eval_smul]
+  exact LowerGateClass.evalL_smul (qs := qs) (lowerQFTPlan plan) a ψ
 
 
 lemma QFTLoweringReady.zero
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [LowerGateClass qs]
     {k : ℕ}
     {hk : 1 < k}
@@ -628,6 +501,7 @@ lemma QFTLoweringReady.zero
 lemma QFTLoweringReady.add
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [LowerGateClass qs]
     {k : ℕ}
     {hk : 1 < k}
@@ -732,6 +606,7 @@ lemma QFTLoweringReady.add
 lemma QFTLoweringReady.smul
     (qs : QSemantics)
     [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
     [LowerGateClass qs]
     {k : ℕ}
     {hk : 1 < k}
