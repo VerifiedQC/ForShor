@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.AbstractMachine.LowGate
+import FastMultiplication.ShorVerification.Framework.Semantics.LowGate
 import FastMultiplication.ShorVerification.AlgorithmCorrectness.PhaseProduct.CompilationCorrectness
 
 namespace Shor

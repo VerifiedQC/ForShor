@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Basic
+import FastMultiplication.ShorVerification.Framework.Semantics.QSemantics
 namespace Shor
 open Gate
 
