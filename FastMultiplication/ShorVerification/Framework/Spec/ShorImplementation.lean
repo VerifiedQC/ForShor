@@ -26,12 +26,17 @@ Design principles (agreed with the lead):
   machinery may appear here — it all lives on the implementation side
   (`Implementations/Reference`, Phase 4).
 
-* **Preconditions are as weak as order-finding itself.**  The only hypotheses are
-  an order-finding instance (`a`, `N`, coprime, the exponent/data registers at
-  their standard widths) and a clean, disjoint input on those two registers
-  (`IdealOrderFindingInput`).  Nothing about ancilla layout, workspace sizing, or
-  cleanliness of an implementation's *scratch* — any correct implementation
-  allocates and manages its own scratch internally.
+* **Fixed, globally-clean initial state; no implementation-specific
+  preconditions.**  Correctness is judged from `qs.ket RegEncoding.zero` — the
+  canonical all-|0⟩ ground state (`RegEncoding.zero`), the qubit analogue of an
+  empty EVM memory.  Because the whole register file starts clean, every ancilla
+  an implementation uses (active, reserve, private workspace) is zero for free,
+  so per-implementation preconditions about workspace cleanliness or size are
+  both *unnecessary* (clean-zero covers them) and *unstateable* (the obligation
+  is unconditional — there is no hypothesis slot to add them).  The only surviving
+  hypotheses are the *domain* facts carried by `ShorOrderFindingInstance` itself
+  (`a`, `N`, coprime, the standard exponent/data register widths) — the analogue
+  of a challenge's `ValidInput`.
 
 * **Arbitrary closeness, no precision knob.**  Correctness is the
   implementation-neutral `∀ ε > 0, …`: for any target closeness there is a
@@ -57,23 +62,30 @@ variable [instLGC : LowerGateClass qs]
 implementation.
 
 `prog inst m` is the user's LowGate circuit for order-finding instance `inst` at
-precision level `m`.  The obligation: for every instance, every clean input, and
-every continued-fraction search budget, the circuit family reaches *arbitrary
-closeness* to the ideal success probability — for any `ε > 0` some precision
-level `m` succeeds with probability `≥ κ / log⁴ N − ε`.  Stated purely over
-`evalL` (the LowGate semantics); it names no ancillas, no workspace, and no
-construction. -/
+precision level `m`.  The obligation is stated **unconditionally over a fixed,
+globally-clean initial state** `qs.ket RegEncoding.zero` — the qubit analogue of
+running a candidate from empty memory.  Because the whole register file starts at
+|0⟩, every ancilla an implementation uses (active, reserve, or a private
+workspace) is clean *for free*, so there are no implementation-specific
+preconditions: none are needed, and the fixed obligation gives nowhere to state
+them.  The only remaining hypotheses are the *domain* facts carried by
+`ShorOrderFindingInstance` itself (coprimality and the standard register widths).
+
+For any `ε > 0` some precision level `m` succeeds with probability
+`≥ κ / log⁴ N − ε` (arbitrary closeness; `m` is the resource knob — a finer `ε`
+is met by a larger circuit `prog inst m`, exactly as more work is met by more of
+the always-clean qubits).  Stated purely over `evalL` (the LowGate semantics);
+it names no ancillas, no workspace, and no construction. -/
 def ShorImplementsOrderFinding
     (prog : ShorOrderFindingInstance → ℕ → LowGate) : Prop :=
   ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
-  ∀ (inst : ShorOrderFindingInstance) (b0 : qs.Basis),
-    IdealOrderFindingInput qs inst.x inst.y b0 →
+  ∀ (inst : ShorOrderFindingInstance),
     ∀ ε : ℝ, 0 < ε → ∃ m : ℕ,
       probability_of_success (qs := qs) (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
           (x := inst.x.active) (r := ord inst.a inst.N inst.coprime)
           (Q := ASize inst.x.active) (evalC := LowerGateClass.evalL (qs := qs))
-          (C := prog inst m) (ψ := qs.ket b0)
+          (C := prog inst m) (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))
         ≥ κ / (Nat.log2 inst.N : ℝ) ^ 4 - ε
 
 /-- A Shor implementation over the LowGate boundary.
