@@ -158,6 +158,14 @@ class RegEncoding (Basis : Type u) where
   writeNat : Reg → ℕ → Basis → Basis
   bit      : ℕ → Basis → Bool
 
+  /-- The canonical ground basis state: every qubit is |0⟩.  This is the fixed,
+  clean initial state the Shor specification is judged against — the qubit
+  analogue of an empty EVM memory.  Any concrete register model supplies it as
+  its physical all-zeros state, so it costs no global axiom. -/
+  zero     : Basis
+  /-- Every qubit of the ground state reads `0`. -/
+  bit_zero : ∀ q, bit q zero = false
+
   toNat_writeNat_of_lt :
     ∀ r v b,
       v < ASize r →
