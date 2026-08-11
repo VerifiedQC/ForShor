@@ -1691,4 +1691,28 @@ lemma FreshZero.of_eq_on_bits
     exact
       Nat.testBit_eq_false_of_lt
         (lt_of_lt_of_le hToNat hpow)
+
+/-! =========================================================
+    Section 7: Generic basis-clean linear closure
+
+    Many workspace "clean-state" predicates are the same construction:
+    the linear subspace spanned by basis vectors satisfying some
+    per-basis cleanliness predicate `P`. `CleanClosure P` captures it
+    once; the specific clean-state families are `CleanClosure` at a
+    particular `P` (see the `abbrev`s at each use site).
+========================================================= -/
+
+/-- The set of states reachable from `P`-clean basis kets by `+` and `•`:
+    a `zero/ket/add/smul` linear closure parameterized by the per-basis
+    predicate `P`. -/
+inductive CleanClosure {qs : QSemantics} [RegEncoding qs.Basis]
+    (P : qs.Basis → Prop) : qs.State → Prop
+  | zero : CleanClosure P 0
+  | ket (b : qs.Basis) (h : P b) : CleanClosure P (qs.ket b)
+  | add {ψ φ : qs.State} (hψ : CleanClosure P ψ) (hφ : CleanClosure P φ) :
+      CleanClosure P (ψ + φ)
+  | smul (a : ℂ) {ψ : qs.State} (hψ : CleanClosure P ψ) :
+      CleanClosure P (a • ψ)
+
+
 end Shor

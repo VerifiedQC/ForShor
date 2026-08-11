@@ -99,9 +99,9 @@ lemma QFTWorkspaceCleanState.phaseCleanState
       qs ws ψ := by
   induction hclean with
   | zero =>
-      exact Gate.PhaseProdWorkspace.CleanState.zero
+      exact CleanClosure.zero
   | ket b hx hz =>
-      apply Gate.PhaseProdWorkspace.CleanState.ket
+      apply CleanClosure.ket
       constructor
       · apply freshFor_of_freshZero_reserve
         simpa [
@@ -117,11 +117,11 @@ lemma QFTWorkspaceCleanState.phaseCleanState
         ] using hz
   | add hψ hφ ihψ ihφ =>
       exact
-        Gate.PhaseProdWorkspace.CleanState.add
+        CleanClosure.add
           ihψ ihφ
   | smul a hψ ihψ =>
       exact
-        Gate.PhaseProdWorkspace.CleanState.smul
+        CleanClosure.smul
           a ihψ
 
 
@@ -143,9 +143,9 @@ lemma QFTWorkspaceCleanState.signedCleanState
       ψ := by
   induction hclean with
   | zero =>
-      exact RecursiveWorkspaceCleanState.zero
+      exact CleanClosure.zero
   | ket b hx hz =>
-      apply RecursiveWorkspaceCleanState.ket
+      apply CleanClosure.ket
       constructor
       · exact
           freshFor_grow_capacity_of_freshZero_reserve
@@ -171,11 +171,11 @@ lemma QFTWorkspaceCleanState.signedCleanState
               ] using hz)
   | add hψ hφ ihψ ihφ =>
       exact
-        RecursiveWorkspaceCleanState.add
+        CleanClosure.add
           ihψ ihφ
   | smul a hψ ihψ =>
       exact
-        RecursiveWorkspaceCleanState.smul
+        CleanClosure.smul
           a ihψ
 
 

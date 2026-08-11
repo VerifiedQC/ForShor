@@ -266,28 +266,9 @@ namespace Gate.PhaseProdWorkspace
 The linear subspace in which both physical workspace qubits of an unsigned
 phase-product macro are clean.
 -/
-inductive CleanState
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {x z : Reg}
-    (ws : Gate.PhaseProdWorkspace x z) :
-    qs.State → Prop
-  | zero :
-      CleanState qs ws 0
-  | ket
-      (b : qs.Basis)
-      (hclean : ws.Clean b) :
-      CleanState qs ws (qs.ket b)
-  | add
-      {ψ φ : qs.State}
-      (hψ : CleanState qs ws ψ)
-      (hφ : CleanState qs ws φ) :
-      CleanState qs ws (ψ + φ)
-  | smul
-      (a : ℂ)
-      {ψ : qs.State}
-      (hψ : CleanState qs ws ψ) :
-      CleanState qs ws (a • ψ)
+abbrev CleanState
+    (qs : QSemantics) [RegEncoding qs.Basis] {x z : Reg} (ws : Gate.PhaseProdWorkspace x z) : qs.State → Prop :=
+  CleanClosure (fun b => ws.Clean b)
 
 omit  [GateSemanticsFacts qs] in
 /--

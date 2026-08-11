@@ -623,24 +623,11 @@ def CompilerWorkspaceOK {Basis : Type u} [RegEncoding Basis] {k : ℕ} (src : La
   let Wwork := commonNeededWidth need
   src.CanGrowTo Wwork ∧ src.CleanForGrowth Wwork b
 
-/-- Linear closure of basis states whose relevant compiler workspace is clean. -/
-inductive CleanWorkspaceState (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ} (src : LayoutState k) (need : NeededWidths k) : qs.State → Prop
-  | ket
-      (b : qs.Basis)
-      (hworkspace : CompilerWorkspaceOK src need b) :
-      CleanWorkspaceState qs src need (qs.ket b)
-  | zero :
-      CleanWorkspaceState qs src need 0
-  | add
-      {ψ φ : qs.State}
-      (hψ : CleanWorkspaceState qs src need ψ)
-      (hφ : CleanWorkspaceState qs src need φ) :
-      CleanWorkspaceState qs src need (ψ + φ)
-  | smul
-      (a : ℂ)
-      {ψ : qs.State}
-      (hψ : CleanWorkspaceState qs src need ψ) :
-      CleanWorkspaceState qs src need (a • ψ)
+/-- Linear closure of basis states whose relevant compiler workspace is clean
+(`CleanClosure` at the compiler-workspace-clean predicate). -/
+abbrev CleanWorkspaceState (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
+    (src : LayoutState k) (need : NeededWidths k) : qs.State → Prop :=
+  CleanClosure (fun b => CompilerWorkspaceOK src need b)
 
 /-- Partition of a parent reserve into `k` child reserve sizes. -/
 structure ReserveBudget (parent : ExtReg) (k : ℕ) where

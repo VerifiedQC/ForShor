@@ -1005,25 +1005,9 @@ reserves are zero.
 The active data registers may be in an arbitrary superposition. Only the
 reserve qubits are constrained.
 -/
-inductive RecursiveWorkspaceCleanState
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (x z : ExtReg) :
-    qs.State → Prop
-  | zero : RecursiveWorkspaceCleanState qs x z 0
-  | ket (b : qs.Basis)
-      (hclean : RecursiveWorkspaceCleanBasis x z b) :
-      RecursiveWorkspaceCleanState qs x z (qs.ket b)
-  | add
-      {ψ φ : qs.State}
-      (hψ : RecursiveWorkspaceCleanState qs x z ψ)
-      (hφ : RecursiveWorkspaceCleanState qs x z φ) :
-      RecursiveWorkspaceCleanState qs x z (ψ + φ)
-  | smul
-      (a : ℂ)
-      {ψ : qs.State}
-      (hψ : RecursiveWorkspaceCleanState qs x z ψ) :
-      RecursiveWorkspaceCleanState qs x z (a • ψ)
+abbrev RecursiveWorkspaceCleanState
+    (qs : QSemantics) [RegEncoding qs.Basis] (x z : ExtReg) : qs.State → Prop :=
+  CleanClosure (fun b => RecursiveWorkspaceCleanBasis x z b)
 
 /-! =========================================================
     Section 8: Combined public workspace preconditions

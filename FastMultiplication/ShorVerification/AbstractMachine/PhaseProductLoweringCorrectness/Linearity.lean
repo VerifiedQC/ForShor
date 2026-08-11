@@ -39,25 +39,25 @@ lemma eval_SignedPhaseProd_preserves_recursiveWorkspaceClean
   induction hclean with
   | zero =>
       rw [qs.eval_zero]
-      exact RecursiveWorkspaceCleanState.zero
+      exact CleanClosure.zero
   | ket b hcleanBasis =>
       rw [PhaseSemantics.eval_SignedPhaseProd_ket]
       exact
-        RecursiveWorkspaceCleanState.smul
+        CleanClosure.smul
           _
-          (RecursiveWorkspaceCleanState.ket
+          (CleanClosure.ket
             b
             hcleanBasis)
   | add hψ hφ ihψ ihφ =>
       rw [qs.eval_add]
       exact
-        RecursiveWorkspaceCleanState.add
+        CleanClosure.add
           ihψ
           ihφ
   | smul a hψ ihψ =>
       rw [qs.eval_smul]
       exact
-        RecursiveWorkspaceCleanState.smul
+        CleanClosure.smul
           a
           ihψ
 /-- A basis state has zeroes in every reserve bit owned by a layout. -/
@@ -81,38 +81,9 @@ def LayoutReserveCleanBasis
       b)
 
 /-- State-level reserve cleanliness, generated from clean basis states and linear closure. -/
-inductive LayoutReserveCleanState
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {k : ℕ}
-    (st : LayoutState k) :
-    qs.State → Prop
-  | zero :
-      LayoutReserveCleanState qs st 0
-  | ket
-      (b : qs.Basis)
-      (hclean :
-        LayoutReserveCleanBasis st b) :
-      LayoutReserveCleanState
-        qs st
-        (qs.ket b)
-  | add
-      {ψ φ : qs.State}
-      (hψ :
-        LayoutReserveCleanState qs st ψ)
-      (hφ :
-        LayoutReserveCleanState qs st φ) :
-      LayoutReserveCleanState
-        qs st
-        (ψ + φ)
-  | smul
-      (a : ℂ)
-      {ψ : qs.State}
-      (hψ :
-        LayoutReserveCleanState qs st ψ) :
-      LayoutReserveCleanState
-        qs st
-        (a • ψ)
+abbrev LayoutReserveCleanState
+    (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ} (st : LayoutState k) : qs.State → Prop :=
+  CleanClosure (fun b => LayoutReserveCleanBasis st b)
 
 /-- A ready standard plan preserves recursive workspace cleanliness after low-level evaluation. -/
 lemma standardSignedPhaseLoweringPlan_preserves_clean_of_ready
@@ -480,7 +451,7 @@ lemma PhaseLoweringReady.zero
           ∧
         PhaseLoweringReady qs child 0
       exact
-        ⟨CleanWorkspaceState.zero, ihChild⟩
+        ⟨CleanClosure.zero, ihChild⟩
   | cSignedBase ctrl phi x z hstop =>
       trivial
   | cSignedStep
@@ -495,7 +466,7 @@ lemma PhaseLoweringReady.zero
           ∧
         PhaseLoweringReady qs child 0
       exact
-        ⟨CleanWorkspaceState.zero, ihChild⟩
+        ⟨CleanClosure.zero, ihChild⟩
 
 /-- Low-level evaluation of a recursive plan is additive. -/
 lemma evalL_lowerGateRec_add
@@ -959,7 +930,7 @@ lemma PhaseLoweringReady.add
         PhaseLoweringReady qs child (ψ + φ)
       exact
         ⟨
-          CleanWorkspaceState.add
+          CleanClosure.add
             hψClean hφClean,
           ihChild hψChild hφChild
         ⟩
@@ -998,7 +969,7 @@ lemma PhaseLoweringReady.add
         PhaseLoweringReady qs child (ψ + φ)
       exact
         ⟨
-          CleanWorkspaceState.add
+          CleanClosure.add
             hψClean hφClean,
           ihChild hψChild hφChild
         ⟩
@@ -1372,7 +1343,7 @@ lemma PhaseLoweringReady.smul
         PhaseLoweringReady qs child (a • ψ)
       exact
         ⟨
-          CleanWorkspaceState.smul a hClean,
+          CleanClosure.smul a hClean,
           ihChild hChild
         ⟩
   | cSignedBase ctrl phase x z hstop =>
@@ -1400,7 +1371,7 @@ lemma PhaseLoweringReady.smul
         PhaseLoweringReady qs child (a • ψ)
       exact
         ⟨
-          CleanWorkspaceState.smul a hClean,
+          CleanClosure.smul a hClean,
           ihChild hChild
         ⟩
 
