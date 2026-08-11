@@ -28,10 +28,28 @@ Foundations/
   Gates.lean              -- gate syntax, workspace records, gate macros
   SemanticLemmas.lean     -- reusable sum/encoding/isometry/freshness facts
 Subroutines/
-  ModExp/       { Spec, Def, Correctness }
-  QFT/          { Spec, Def, Correctness }   -- math-level + lowering,
-  PhaseProduct/ { Spec, Def, Correctness }      unified under the subroutine
+  ModExp/       { Math, Spec, Def, Correctness }
+  QFT/          { Math, Spec, Def, Correctness }
+  PhaseProduct/ { Math, Spec, Def, Correctness }
   TableGen/     (already Core/Builders/Programs from the earlier reorg)
+
+Each subroutine's mathematics is split into two layers that are handled
+separately (lead directive):
+  Math.lean         -- PROGRAM-INDEPENDENT facts: ℕ/ℤ/ℂ/matrices and
+                       abstract theorems only (Toom-Cook interpolation,
+                       Master theorem, QFT phase algebra, continued-fraction
+                       recovery, order->factor reduction, success-probability
+                       math). LITMUS TEST: this file may NOT mention `Prog`,
+                       `Gate`, `lowerGate`, or `QSemantics.eval` on a concrete
+                       circuit. If it does, that content is program-dependent
+                       and belongs in Correctness.lean.
+  Correctness.lean  -- PROGRAM-DEPENDENT: imports Math, attaches the abstract
+                       facts to the concrete def/circuit (def |= spec). This
+                       is the only place Prog/lowering appear.
+The top-level Shor correctness splits the same way: the classical/
+number-theoretic core (order-found => factor, CF recovery, probability
+bound) is program-independent; the circuit-meets-spec part is
+program-dependent.
 AbstractMachine/
   LowGate.lean            -- the machine + cost model
   Lowering.lean           -- lowering semantics (was *LoweringCorrectness)
