@@ -179,23 +179,6 @@ abbrev FullShorWorkspaceCleanState
     work.reserve
 
 /--
-The invariant immediately after Step 2.
-
-The first bit of `data.reserve` has become the active carry bit and may be
-nonzero. All remaining reserve bits are still zero.
--/
-abbrev CarryShorWorkspaceCleanState
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (x data work : ExtReg) :
-    qs.State → Prop :=
-  ThreeRegsCleanState
-    qs
-    x.reserve
-    (data.reserve.drop 1)
-    work.reserve
-
-/--
 The lowering-clean invariant used throughout lowered Shor readiness.
 
 The first bit of `data.reserve` is the algorithmic carry bit, so it is not part
@@ -238,7 +221,7 @@ lemma fullShorWorkspaceCleanState_to_carry
     (hclean :
       FullShorWorkspaceCleanState
         qs x data work ψ) :
-    CarryShorWorkspaceCleanState
+    ShorLoweringCleanState
       qs x data work ψ := by
   induction hclean with
   | zero =>
