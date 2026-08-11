@@ -1,6 +1,7 @@
 import FastMultiplication.ShorVerification.Workspace.Shor
 import FastMultiplication.ShorVerification.AbstractMachine.WholeProgramCorrectness
 import FastMultiplication.ShorVerification.AlgorithmCorrectness.ModMulBounds.ModExp
+import FastMultiplication.ShorVerification.Framework.Spec.OrderFinding
 
 namespace Shor
 open Gate
@@ -294,15 +295,6 @@ theorem ShorApproxSetupMinimal.toShorApproxSetup
         h.work_zero,
         h.work_fresh,
         h.flag_zero⟩
-def IdealOrderFindingInput
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (x y : ExtReg)
-    (b0 : qs.Basis) : Prop :=
-  RegEncoding.toNat x.active b0 = 0 ∧
-  RegEncoding.toNat y.active b0 = 0 ∧
-  ExtReg.OwnedDisjoint x y
-
 /--
 Main bridge theorem for this file.
 
