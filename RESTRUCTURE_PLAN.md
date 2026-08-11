@@ -103,10 +103,31 @@ explicitly merges duplicate definitions (verified by the same two gates).
   updated — no umbrellas. Construction math (`Toom_Cook_formula`,
   `MasterTheoremProof`, `Table_Generation`) stays and relocates to
   Implementations/Reference in Phase 4.
-- **Phase 3 — Framework/Spec (the load-bearing generalization).** Define
-  `ShorImplementation` over `LowGate`, and restate the two headline
-  theorems as framework theorems quantified over it. This is where the
-  design decisions concentrate (the obligation field set) — needs review.
+- **Phase 3 — Framework/Spec (DONE — the load-bearing generalization).**
+  `Framework/Spec/ShorImplementation.lean` defines `ShorImplementation` as a
+  **construction-free** interface: a bare LowGate circuit family
+  `prog : ShorOrderFindingInstance → ℕ → LowGate` plus two behavioural
+  obligations. Nothing about how the circuit is built appears — no
+  `ShorLoweringSetup`, no `PhaseProductProgramOK`, no Toom–Cook / table
+  synthesis, no specific Gate-level circuit — so an implementation that
+  multiplies a completely different way can still satisfy it. Fields: `prog`;
+  `correct` (`ShorImplementsOrderFinding`: for any instance, clean input, and
+  search budget, the implementation-neutral `∀ ε > 0, ∃ m,
+  prob(prog inst m) ≥ κ/log⁴N − ε` — arbitrary closeness, no `η`/precision knob
+  exposed); `gateBound : instance → ℕ → ℕ` (a declared *concrete* count
+  function); and `counted` (`gateCount shorGateCostModel (prog inst m) ≤
+  gateBound inst m`; tightening `≤` to `=` is a future step). Preconditions are
+  as weak as order-finding itself: an instance + `IdealOrderFindingInput`
+  (clean, disjoint exponent/data registers) — no ancilla/workspace assumptions.
+  `framework_order_finding_correct` / `framework_gate_count` quantify over any
+  such implementation. `ContinuedFractionPost` / `MeasureClass` are
+  framework-side assumptions, not user fields. All synthesis machinery
+  (`ShorLoweringSetup`, `PhaseProduct`, `orderFindingApprox`, `lowerGate`) is
+  pushed to the reference implementation (Phase 4), which builds a concrete
+  `prog` and discharges the obligations from the existing proofs
+  (`Shor_correct_approx_lowered_uniform`, `shorGateCountBound_of_programOK`) via
+  an ε-from-precision packaging. Build green; `#print axioms` unchanged on both
+  headline theorems; framework theorems are sorry-free.
 - **Phase 4 — Implementations/Reference.** Move `Gate`, the subroutine
   constructions, and the Gate→LowGate compilation into `Reference/`;
   organize the subroutines by-subroutine with the Math/Correctness split;
@@ -119,6 +140,8 @@ explicitly merges duplicate definitions (verified by the same two gates).
 
 ## Status
 - Phase 0: done (PRs #5, #6 merged).
-- Phases 1-5: pending, one PR at a time, lead-reviewed. Phase 3 is the one
-  that needs your sign-off on the `ShorImplementation` field set before it
+- Phases 1-2: done (PRs #8, #9, #10 merged).
+- Phase 3: done (this PR). Field set signed off by the lead.
+- Phases 4-5: pending, one PR at a time, lead-reviewed. Phase 3 was the one
+  that needed sign-off on the `ShorImplementation` field set before it
   freezes.
