@@ -1,10 +1,11 @@
-import FastMultiplication.ShorVerification.Basic.Registers
-import FastMultiplication.ShorVerification.Basic.Gates
-import FastMultiplication.ShorVerification.Basic.Semantics
+import FastMultiplication.ShorVerification.Framework.Semantics.Registers
+import FastMultiplication.ShorVerification.Framework.Semantics.Gates
+import FastMultiplication.ShorVerification.Framework.Semantics.QSemantics
 
 /-!
 # Shor verification core (umbrella)
 
-Split into `Basic.Registers`, `Basic.Gates`, `Basic.Semantics`; re-exports
-all three so existing `import …Basic` lines keep working.
+The foundations now live under `Framework/Semantics/`
+(`Registers`, `Gates`, `QSemantics`). This file re-exports them so existing
+`import …Basic` lines keep working.
 -/

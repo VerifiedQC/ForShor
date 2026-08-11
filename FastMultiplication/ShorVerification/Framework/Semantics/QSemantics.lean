@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Basic.Gates
+import FastMultiplication.ShorVerification.Framework.Semantics.Gates
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.SpecialFunctions.Sqrt
 import Mathlib.Data.Complex.Basic
