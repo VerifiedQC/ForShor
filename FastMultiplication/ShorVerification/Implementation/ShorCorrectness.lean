@@ -1199,12 +1199,12 @@ It may depend on the fixed instance data `qs`, `T`, `a`, `N`, `x`, `y`,
 -/
 theorem Shor_correct_approx_uniform
     [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs] [ModMulPrimitiveSemantics qs]
-    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)
-    (inst : ShorOrderFindingInstance)
-    (w : ExtReg) (flag : ℕ)
-    (b0 : qs.Basis) :
+    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
   ∃ K : ℝ, 0 ≤ K ∧
-    ∀ (η : ℝ)
+    ∀ (inst : ShorOrderFindingInstance)
+      (w : ExtReg) (flag : ℕ)
+      (b0 : qs.Basis)
+      (η : ℝ)
       (hsetup : ShorApproxSetup qs η inst.x inst.y w flag b0),
       probability_of_success (qs := qs) (T := T) (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
         (x := inst.x.active) (r := ord inst.a inst.N inst.coprime) (Q := ASize inst.x.active)
@@ -1215,6 +1215,15 @@ theorem Shor_correct_approx_uniform
         κ / (Nat.log2 inst.N : ℝ)^4
         - 2 * (tbits inst.x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
   classical
+  -- `K` comes from `modExpApprox_valid_dist_uniform qs` and depends only on `qs`,
+  -- so it is hoisted above `inst`/`w`/`flag`: one constant serves every instance
+  -- and precision.  This ordering is what lets a caller fix `K` before choosing
+  -- a precision level.
+  rcases modExpApprox_valid_dist_uniform (qs := qs) with
+    ⟨K, hK_nonneg, hmodExp⟩
+
+  refine ⟨K, hK_nonneg, ?_⟩
+  intro inst w flag b0 η hsetup
   let a := inst.a
   let N := inst.N
   let x := inst.x
@@ -1223,12 +1232,6 @@ theorem Shor_correct_approx_uniform
   have hgcd : Nat.gcd a N = 1 := inst.coprime
   have hm : regSize x.active = Nat.log2 (2 * N^2) := inst.x_width
   have hn : regSize y.active = Nat.log2 (2 * N) := inst.y_width
-
-  rcases modExpApprox_valid_dist_uniform (qs := qs) with
-    ⟨K, hK_nonneg, hmodExp⟩
-
-  refine ⟨K, hK_nonneg, ?_⟩
-  intro η hsetup
 
   let cfg : ModExpConfig η := ShorApproxSetup.toModExpConfig ha hgcd hn hsetup
 
@@ -1677,6 +1680,14 @@ theorem Shor_end_to_end_factoring
         coprime := hgcd
         x_width := by simpa [N] using hm
         y_width := by simpa [N] using hn
+        xy_disjoint := by
+          have hod : ExtReg.OwnedDisjoint x y := hinput.2.2
+          rw [Disjoint, List.disjoint_left]
+          intro q hqx hqy
+          rw [ExtReg.OwnedDisjoint, List.disjoint_left] at hod
+          exact hod
+            (by rw [ExtReg.ownedQubits, List.mem_append]; exact Or.inl hqx)
+            (by rw [ExtReg.ownedQubits, List.mem_append]; exact Or.inl hqy)
         }
     exact ⟨
       by
@@ -1715,13 +1726,13 @@ theorem Shor_correct_approx_lowered_uniform
     [LowerGateGateBridge qs]
     [IdealCtrlModMulExactSemantics qs]
     [ModMulPrimitiveSemantics qs]
-    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)
-    (inst : ShorOrderFindingInstance)
-    (lowering : ShorLoweringSetup)
-    (work : ExtReg) (flag : ℕ)
-    (b0 : qs.Basis) :
+    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
     ∃ K : ℝ, 0 ≤ K ∧
-      ∀ (η : ℝ)
+      ∀ (inst : ShorOrderFindingInstance)
+        (lowering : ShorLoweringSetup)
+        (work : ExtReg) (flag : ℕ)
+        (b0 : qs.Basis)
+        (η : ℝ)
         (hready : LoweredShorReady qs lowering η inst.a inst.N inst.x inst.y work flag b0),
         probability_of_success (qs := qs) (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
@@ -1735,19 +1746,13 @@ theorem Shor_correct_approx_lowered_uniform
         κ / (Nat.log2 inst.N : ℝ) ^ 4
           -
         2 * (tbits inst.x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
-  rcases
-      Shor_correct_approx_uniform
-        (qs := qs)
-        T
-        hT
-        inst
-        work
-        flag
-        b0 with
-    ⟨K, hK, happrox⟩
+  -- `K` is the single hoisted constant from the gate-level theorem; it is
+  -- independent of `inst`/`lowering`/`work`/`flag`, so one `K` serves every
+  -- instance and precision level.
+  obtain ⟨K, hK, happrox⟩ := Shor_correct_approx_uniform (qs := qs) T hT
 
   refine ⟨K, hK, ?_⟩
-  intro η hready
+  intro inst lowering work flag b0 η hready
 
   calc
     probability_of_success
@@ -1826,4 +1831,4 @@ theorem Shor_correct_approx_lowered_uniform
           -
         2 * (tbits inst.x.active : ℝ) *
           Real.sqrt (2 * (K * η)) := by
-          exact happrox η (ShorApproxSetupMinimal.toShorApproxSetup hready.approx)
+          exact happrox inst work flag b0 η (ShorApproxSetupMinimal.toShorApproxSetup hready.approx)
