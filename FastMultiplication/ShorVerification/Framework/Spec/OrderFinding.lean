@@ -106,6 +106,8 @@ structure ShorOrderFindingInstance where
   x_width : regSize x.active = Nat.log2 (2 * N^2)
   /-- The data register has enough room for residues modulo `N`. -/
   y_width : regSize y.active = Nat.log2 (2 * N)
+  /-- The public exponent and data registers occupy distinct qubits. -/
+  xy_disjoint : Disjoint x.active y.active
 
 /-- Clean ideal input expected by order-finding: zero exponent/data registers
 and disjoint ownership. -/
