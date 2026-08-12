@@ -10,3 +10,17 @@ import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Gen
 import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Programs.WithProduct
 import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Generator
 import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Examples
+
+/-!
+# Table_Generation umbrella
+
+Re-exports the whole table-generation development. Layout:
+- `Core/`     — program-agnostic: symbolic registers/state, the op language
+                and its partial semantics, coverage/block framework, tactics.
+- `Builders/` — reusable program-fragment builders (`computeLocal`,
+                `addConstFrom`, …) out of which generators are assembled.
+- `Programs/` — concrete generators and their certifications
+                (currently `WithProduct` = `genOpsWithProduct`).
+- `Generator/` — the parity-reset generator, precomputed small cases, and
+                 correctness proof.
+-/
