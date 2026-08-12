@@ -1,17 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.Registers
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.RegisterLemmas
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.Language
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.Coverage
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.Tactics
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.ListHelpers
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.RunLemmas
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Builders.Fragments
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Builders.FragmentLemmas
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Programs.WithProduct
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Generator
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Examples
-
-/-!
+/-
 # Table_Generation umbrella
 
 Re-exports the whole table-generation development. Layout:
@@ -24,3 +11,15 @@ Re-exports the whole table-generation development. Layout:
 - `Generator/` — the parity-reset generator, precomputed small cases, and
                  correctness proof.
 -/
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.Registers
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.RegisterLemmas
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.Language
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.Coverage
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.Tactics
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.ListHelpers
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.RunLemmas
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Builders.Fragments
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Builders.FragmentLemmas
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Programs.WithProduct
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Generator
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Examples
