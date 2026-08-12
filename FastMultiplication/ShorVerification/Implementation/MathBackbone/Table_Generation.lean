@@ -1,4 +1,4 @@
-/-!
+/-
 # Table_Generation umbrella
 
 Re-exports the whole table-generation development. Layout:
@@ -8,6 +8,8 @@ Re-exports the whole table-generation development. Layout:
                 `addConstFrom`, …) out of which generators are assembled.
 - `Programs/` — concrete generators and their certifications
                 (currently `WithProduct` = `genOpsWithProduct`).
+- `Generator/` — the parity-reset generator, precomputed small cases, and
+                 correctness proof.
 -/
 import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.Registers
 import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.RegisterLemmas
@@ -19,4 +21,5 @@ import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Gen
 import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Builders.Fragments
 import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Builders.FragmentLemmas
 import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Programs.WithProduct
+import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Generator
 import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Examples
