@@ -26,6 +26,415 @@ open QSemantics
 attribute [instance] QSemantics.instNormed
 attribute [instance] QSemantics.instIP
 
+namespace QSemantics
+
+theorem eval_id
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (ψ : qs.State) :
+    qs.eval Gate.id ψ = ψ :=
+  GateSemanticsCore.eval_id (qs := qs) ψ
+
+theorem eval_seq
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U V : Gate)
+    (ψ : qs.State) :
+    qs.eval (U ;; V) ψ = qs.eval V (qs.eval U ψ) :=
+  GateSemanticsCore.eval_seq (qs := qs) U V ψ
+
+theorem inner_preserved
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (ψ φ : qs.State) :
+    inner ℂ (qs.eval U ψ) (qs.eval U φ) = inner ℂ ψ φ :=
+  GateSemanticsCore.inner_preserved (qs := qs) U ψ φ
+
+theorem eval_zero
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate) :
+    qs.eval U 0 = 0 :=
+  GateSemanticsCore.eval_zero (qs := qs) U
+
+theorem eval_add
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (ψ φ : qs.State) :
+    qs.eval U (ψ + φ) = qs.eval U ψ + qs.eval U φ :=
+  GateSemanticsCore.eval_add (qs := qs) U ψ φ
+
+theorem eval_smul
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (a : ℂ)
+    (ψ : qs.State) :
+    qs.eval U (a • ψ) = a • qs.eval U ψ :=
+  GateSemanticsCore.eval_smul (qs := qs) U a ψ
+
+theorem hsub
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (ψ φ : qs.State) :
+    qs.eval U (ψ - φ) = qs.eval U ψ - qs.eval U φ :=
+  GateSemanticsCore.hsub (qs := qs) U ψ φ
+
+theorem eval_adj_apply
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (ψ : qs.State) :
+    qs.eval (Gate.adj U) (qs.eval U ψ) = ψ :=
+  GateSemanticsCore.eval_adj_apply (qs := qs) U ψ
+
+theorem eval_apply_adj
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    (U : Gate)
+    (ψ : qs.State) :
+    qs.eval U (qs.eval (Gate.adj U) ψ) = ψ :=
+  GateSemanticsCore.eval_apply_adj (qs := qs) U ψ
+
+end QSemantics
+
+private theorem bit_writeNat_qubitReg
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (q v : ℕ)
+    (b : Basis)
+    (hv : v < 2) :
+    RegEncoding.bit q
+        (RegEncoding.writeNat (qubitReg q) v b)
+      =
+    Nat.testBit v 0 := by
+  let i : Fin (regSize (qubitReg q)) := ⟨0, by simp⟩
+
+  have hbit :=
+    RegEncoding.bit_eq_testBit_toNat
+      (qubitReg q)
+      (RegEncoding.writeNat (qubitReg q) v b)
+      i
+
+  have hget : (qubitReg q).get i = q := by
+    rfl
+
+  rw [hget] at hbit
+
+  have hv' : v < ASize (qubitReg q) := by
+    simpa [ASize] using hv
+
+  rw [
+    RegEncoding.toNat_writeNat_of_lt
+      (qubitReg q)
+      v
+      b
+      hv'
+  ] at hbit
+
+  exact hbit
+
+private theorem bit_of_toNat_zero_of_mem
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : Reg)
+    (b : Basis)
+    (hzero : RegEncoding.toNat r b = 0)
+    {q : ℕ}
+    (hq : q ∈ r.qubits) :
+    RegEncoding.bit q b = false := by
+  rcases List.get_of_mem hq with ⟨j, hj⟩
+
+  let i : Fin (regSize r) :=
+    ⟨j.1, by simp [regSize, Reg.width]⟩
+
+  have hget : r.get i = q := by
+    dsimp [i, Reg.get]
+    simpa [Reg.width] using hj
+
+  have hbit :=
+    RegEncoding.bit_eq_testBit_toNat r b i
+
+  rw [hget, hzero] at hbit
+  simpa using hbit
+
+private theorem bit_writeNat_reg_one_of_mem
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : Reg)
+    (b : Basis)
+    (hpos : 0 < regSize r)
+    {q : ℕ}
+    (hq : q ∈ r.qubits) :
+    RegEncoding.bit q (RegEncoding.writeNat r 1 b)
+      =
+    if q = r.lowQubit hpos then true else false := by
+  rcases List.get_of_mem hq with ⟨j, hj⟩
+
+  let i : Fin (regSize r) :=
+    ⟨j.1, by simp [regSize, Reg.width]⟩
+
+  have hget : r.get i = q := by
+    dsimp [i, Reg.get]
+    simpa [Reg.width] using hj
+
+  have hone_lt : 1 < ASize r := by
+    simp [ASize]
+    omega
+
+  have hbit :=
+    RegEncoding.bit_eq_testBit_toNat
+      r
+      (RegEncoding.writeNat r 1 b)
+      i
+
+  rw [
+    hget,
+    RegEncoding.toNat_writeNat_of_lt r 1 b hone_lt
+  ] at hbit
+
+  by_cases hq_low : q = r.lowQubit hpos
+
+  · rw [if_pos hq_low]
+
+    have hj_eq :
+        j = ⟨0, by simpa [regSize, Reg.width] using hpos⟩ := by
+      apply (r.nodup.get_inj_iff).mp
+      change
+        r.qubits.get j =
+          r.qubits.get
+            ⟨0, by simpa [regSize, Reg.width] using hpos⟩
+      simpa [Reg.lowQubit] using hj.trans hq_low
+
+    have hi0 : i.1 = 0 := by
+      dsimp [i]
+      simpa using congrArg Fin.val hj_eq
+
+    simpa [hi0] using hbit
+
+  · rw [if_neg hq_low]
+
+    have hi_ne : i.1 ≠ 0 := by
+      intro hi0
+      apply hq_low
+      rw [← hget]
+      have ieq : i = ⟨0, hpos⟩ := Fin.ext hi0
+      rw [ieq]
+      rfl
+
+    cases hi : i.1 with
+    | zero =>
+        contradiction
+    | succ n =>
+        have htb : Nat.testBit 1 (n + 1) = false := by
+          change Nat.testBit (Nat.bit true 0) (Nat.succ n) = false
+          rw [Nat.testBit_bit_succ]
+          simp
+
+        rw [hi] at hbit
+        simpa [htb] using hbit
+
+private theorem writeNat_lowQubit_one_of_toNat_zero
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : Reg)
+    (b : Basis)
+    (hpos : 0 < regSize r)
+    (hzero : RegEncoding.toNat r b = 0) :
+    RegEncoding.writeNat (qubitReg (r.lowQubit hpos)) 1 b
+      =
+    RegEncoding.writeNat r 1 b := by
+  apply RegEncoding.basis_ext
+  intro q
+
+  by_cases hqr : q ∈ r.qubits
+
+  · rw [bit_writeNat_reg_one_of_mem r b hpos hqr]
+
+    by_cases hq_low : q = r.lowQubit hpos
+
+    · subst q
+      simp [bit_writeNat_qubitReg]
+
+    · rw [if_neg hq_low]
+
+      have hqout :
+          q ∉ (qubitReg (r.lowQubit hpos)).qubits := by
+        simpa [qubitReg, Reg.singleton] using hq_low
+
+      rw [
+        RegEncoding.bit_writeNat_out
+          (qubitReg (r.lowQubit hpos))
+          1
+          b
+          q
+          hqout
+      ]
+
+      exact bit_of_toNat_zero_of_mem r b hzero hqr
+
+  · have hqout_r : q ∉ r.qubits := hqr
+
+    have hqout_low :
+        q ∉ (qubitReg (r.lowQubit hpos)).qubits := by
+      intro hq
+
+      have hlow_mem : r.lowQubit hpos ∈ r.qubits := by
+        unfold Reg.lowQubit
+        exact List.get_mem r.qubits _
+
+      have hqeq : q = r.lowQubit hpos := by
+        simpa [qubitReg, Reg.singleton] using hq
+
+      exact hqr (by simpa [hqeq] using hlow_mem)
+
+    rw [
+      RegEncoding.bit_writeNat_out
+        (qubitReg (r.lowQubit hpos))
+        1
+        b
+        q
+        hqout_low,
+      RegEncoding.bit_writeNat_out
+        r
+        1
+        b
+        q
+        hqout_r
+    ]
+
+namespace PauliXSemantics
+
+theorem eval_X_low_zero_reg_ket
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [PauliXSemantics qs]
+    (r : Reg)
+    (b : qs.Basis)
+    (hpos : 0 < regSize r)
+    (hzero : RegEncoding.toNat r b = 0) :
+    qs.eval (Gate.X (r.lowQubit hpos)) (qs.ket b)
+      =
+    qs.ket (RegEncoding.writeNat r 1 b) := by
+  rw [PauliXSemantics.eval_X_ket]
+
+  have hbit :
+      RegEncoding.bit (r.lowQubit hpos) b = false :=
+    bit_of_toNat_zero_of_mem r b hzero (by
+      unfold Reg.lowQubit
+      exact List.get_mem r.qubits _)
+
+  rw [hbit]
+  simp [writeNat_lowQubit_one_of_toNat_zero r b hpos hzero]
+
+end PauliXSemantics
+
+theorem ExtReg.toNat_grow_of_fresh
+    (r : ExtReg)
+    (n : ℕ)
+    (b : Basis)
+    (_hcap : r.CanGrow n)
+    (hzero : r.FreshFor n b) :
+    ExtReg.toNat (r.grow n) b =
+      ExtReg.toNat r b := by
+  exact Gate.ExtReg.toNat_grow_of_fresh r n b hzero
+
+theorem eval_zeroExtend_ket
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [ExtensionSemantics qs]
+    (r : ExtReg)
+    (n : ℕ)
+    (b : qs.Basis)
+    (hcap : r.CanGrow n)
+    (hzero : ExtReg.FreshFor r n b) :
+    qs.eval
+        (Gate.zeroExtend r n)
+        (qs.ket b)
+      =
+    qs.ket b
+    ∧
+    ExtReg.toNat (r.grow n) b =
+      ExtReg.toNat r b := by
+  constructor
+  · exact ExtensionSemantics.eval_zeroExtend r n (qs.ket b)
+  · exact ExtReg.toNat_grow_of_fresh r n b hcap hzero
+
+lemma zeroExtend_preserves_bit
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [ExtensionSemantics qs]
+    (r : ExtReg)
+    (n : ℕ)
+    (b b' : qs.Basis)
+    (q : ℕ)
+    (hEval :
+      qs.eval (Gate.zeroExtend r n) (qs.ket b) =
+        qs.ket b') :
+    RegEncoding.bit q b' =
+      RegEncoding.bit q b := by
+  have hket :
+      qs.ket b = qs.ket b' := by
+    calc
+      qs.ket b
+          = qs.eval (Gate.zeroExtend r n) (qs.ket b) := by
+              symm
+              exact ExtensionSemantics.eval_zeroExtend
+                r n (qs.ket b)
+      _ = qs.ket b' := hEval
+
+  have hb : b = b' := qs.ket_inj hket
+  subst b'
+  rfl
+
+lemma signExtend_preserves_disjoint_extToInt
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [ExtensionSemantics qs]
+    (r e : ExtReg)
+    (n : ℕ)
+    (b b' : qs.Basis)
+    (hcap : r.CanGrow n)
+    (hfresh : r.FreshFor n b)
+    (hdisj :
+      ExtReg.ActiveDisjoint e (r.grow n))
+    (heval :
+      qs.eval (Gate.signExtend r n) (qs.ket b) =
+        qs.ket b') :
+    extToInt e b' = extToInt e b := by
+  rcases ExtensionSemantics.eval_signExtend_ket
+      r n b hcap hfresh with
+    ⟨bout, heval', _hr, _hwide, hloc⟩
+
+  have hbout : bout = b' := by
+    apply qs.ket_inj
+    rw [← heval, ← heval']
+
+  subst bout
+
+  unfold extToInt
+  rw [hloc e hdisj]
+
+lemma tcDecodeWidth_succ_eq_of_lt {w n : ℕ} (h : n < 2 ^ w) :
+  tcDecodeWidth (w + 1) n = (n : ℤ) := by
+  simp [tcDecodeWidth, h]
+
 namespace GateSemanticsFacts
 
 variable {qs : QSemantics}

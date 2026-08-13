@@ -218,7 +218,4 @@ class LowerGateGateBridge
     LowerGateClass.evalL (qs := qs) (LowGate.RadixReverse r m) ψ =
       qs.eval (Gate.RadixReverse r m) ψ
 
-
-
-
 end Shor

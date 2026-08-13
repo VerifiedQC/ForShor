@@ -133,13 +133,5 @@ def shorGateCostModel : LowGateCostModel := phaseProductCostModel shorPrimCost
 
 end ConcreteCostModel
 
-/-! =========================================================
-    PhaseProduct rates and public hypotheses
-
-This section records the asymptotic comparison functions and the high-level
-preconditions used by the final PhaseProduct bounds.  These definitions are
-about theorem statements rather than local recursive proof bookkeeping.
-========================================================= -/
-
 
 end Shor

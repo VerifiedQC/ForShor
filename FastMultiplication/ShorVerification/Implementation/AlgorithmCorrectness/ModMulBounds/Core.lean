@@ -1,5 +1,6 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Implementation.GateConstructions
+import FastMultiplication.ShorVerification.Implementation.GateSemanticsLemmas
 import Mathlib.Data.Int.GCD
 import Mathlib.Analysis.SpecialFunctions.Log.Base
 

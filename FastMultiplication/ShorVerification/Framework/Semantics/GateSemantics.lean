@@ -71,86 +71,6 @@ noncomputable abbrev eval
     Gate → qs.State → qs.State :=
   GateSemanticsCore.eval (qs := qs)
 
-theorem eval_id
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    (ψ : qs.State) :
-    qs.eval Gate.id ψ = ψ :=
-  GateSemanticsCore.eval_id (qs := qs) ψ
-
-theorem eval_seq
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    (U V : Gate)
-    (ψ : qs.State) :
-    qs.eval (U ;; V) ψ = qs.eval V (qs.eval U ψ) :=
-  GateSemanticsCore.eval_seq (qs := qs) U V ψ
-
-theorem inner_preserved
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    (U : Gate)
-    (ψ φ : qs.State) :
-    inner ℂ (qs.eval U ψ) (qs.eval U φ) = inner ℂ ψ φ :=
-  GateSemanticsCore.inner_preserved (qs := qs) U ψ φ
-
-theorem eval_zero
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    (U : Gate) :
-    qs.eval U 0 = 0 :=
-  GateSemanticsCore.eval_zero (qs := qs) U
-
-theorem eval_add
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    (U : Gate)
-    (ψ φ : qs.State) :
-    qs.eval U (ψ + φ) = qs.eval U ψ + qs.eval U φ :=
-  GateSemanticsCore.eval_add (qs := qs) U ψ φ
-
-theorem eval_smul
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    (U : Gate)
-    (a : ℂ)
-    (ψ : qs.State) :
-    qs.eval U (a • ψ) = a • qs.eval U ψ :=
-  GateSemanticsCore.eval_smul (qs := qs) U a ψ
-
-theorem hsub
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    (U : Gate)
-    (ψ φ : qs.State) :
-    qs.eval U (ψ - φ) = qs.eval U ψ - qs.eval U φ :=
-  GateSemanticsCore.hsub (qs := qs) U ψ φ
-
-theorem eval_adj_apply
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    (U : Gate)
-    (ψ : qs.State) :
-    qs.eval (Gate.adj U) (qs.eval U ψ) = ψ :=
-  GateSemanticsCore.eval_adj_apply (qs := qs) U ψ
-
-theorem eval_apply_adj
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    (U : Gate)
-    (ψ : qs.State) :
-    qs.eval U (qs.eval (Gate.adj U) ψ) = ψ :=
-  GateSemanticsCore.eval_apply_adj (qs := qs) U ψ
-
 end QSemantics
 
 /-- QFT-specific semantic facts. -/
@@ -221,19 +141,8 @@ class PauliXSemantics
       qs.eval (Gate.X q) (qs.ket b)
         =
       qs.ket
-        (RegEncoding.writeNat
-          (qubitReg q)
-          (if RegEncoding.bit q b then 0 else 1)
-          b)
-
-  eval_X_low_zero_reg_ket :
-    ∀ (r : Reg) (b : qs.Basis),
-      (hpos : 0 < regSize r) →
-      RegEncoding.toNat r b = 0 →
-      qs.eval (Gate.X (r.lowQubit hpos)) (qs.ket b)
-        =
-      qs.ket
-        (RegEncoding.writeNat r 1 b)
+        (RegEncoding.writeNat (qubitReg q)
+          (if RegEncoding.bit q b then 0 else 1) b)
 
 class RegisterHadamardSemantics
     (qs : QSemantics)
@@ -334,99 +243,6 @@ class ExtensionSemantics
   eval_signDealloc_eq_adj :
     ∀ r n ψ,
       qs.eval (Gate.signDealloc r n) ψ = qs.eval (Gate.adj (Gate.signExtend r n)) ψ
-
-theorem ExtReg.toNat_grow_of_fresh
-    (r : ExtReg)
-    (n : ℕ)
-    (b : Basis)
-    (_hcap : r.CanGrow n)
-    (hzero : r.FreshFor n b) :
-    ExtReg.toNat (r.grow n) b =
-      ExtReg.toNat r b := by
-  exact Gate.ExtReg.toNat_grow_of_fresh r n b hzero
-
-theorem eval_zeroExtend_ket
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [ExtensionSemantics qs]
-    (r : ExtReg)
-    (n : ℕ)
-    (b : qs.Basis)
-    (hcap : r.CanGrow n)
-    (hzero : ExtReg.FreshFor r n b) :
-    qs.eval
-        (Gate.zeroExtend r n)
-        (qs.ket b)
-      =
-    qs.ket b
-    ∧
-    ExtReg.toNat (r.grow n) b =
-      ExtReg.toNat r b := by
-  constructor
-  · exact ExtensionSemantics.eval_zeroExtend r n (qs.ket b)
-  · exact ExtReg.toNat_grow_of_fresh r n b hcap hzero
-
-lemma zeroExtend_preserves_bit
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [ExtensionSemantics qs]
-    (r : ExtReg)
-    (n : ℕ)
-    (b b' : qs.Basis)
-    (q : ℕ)
-    (hEval :
-      qs.eval (Gate.zeroExtend r n) (qs.ket b) =
-        qs.ket b') :
-    RegEncoding.bit q b' =
-      RegEncoding.bit q b := by
-  have hket :
-      qs.ket b = qs.ket b' := by
-    calc
-      qs.ket b
-          = qs.eval (Gate.zeroExtend r n) (qs.ket b) := by
-              symm
-              exact ExtensionSemantics.eval_zeroExtend
-                r n (qs.ket b)
-      _ = qs.ket b' := hEval
-
-  have hb : b = b' := qs.ket_inj hket
-  subst b'
-  rfl
-
-lemma signExtend_preserves_disjoint_extToInt
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [ExtensionSemantics qs]
-    (r e : ExtReg)
-    (n : ℕ)
-    (b b' : qs.Basis)
-    (hcap : r.CanGrow n)
-    (hfresh : r.FreshFor n b)
-    (hdisj :
-      ExtReg.ActiveDisjoint e (r.grow n))
-    (heval :
-      qs.eval (Gate.signExtend r n) (qs.ket b) =
-        qs.ket b') :
-    extToInt e b' = extToInt e b := by
-  rcases ExtensionSemantics.eval_signExtend_ket
-      r n b hcap hfresh with
-    ⟨bout, heval', _hr, _hwide, hloc⟩
-
-  have hbout : bout = b' := by
-    apply qs.ket_inj
-    rw [← heval, ← heval']
-
-  subst bout
-
-  unfold extToInt
-  rw [hloc e hdisj]
-
-lemma tcDecodeWidth_succ_eq_of_lt {w n : ℕ} (h : n < 2 ^ w) :
-  tcDecodeWidth (w + 1) n = (n : ℤ) := by
-  simp [tcDecodeWidth, h]
 
 class ArithmeticSemantics
     (qs : QSemantics)
