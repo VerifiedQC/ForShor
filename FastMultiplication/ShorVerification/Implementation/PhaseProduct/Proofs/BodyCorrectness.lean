@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.AllocationCorrectness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.AllocationCorrectness
 
 namespace Shor
 open Gate

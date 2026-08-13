@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.WidthSoundness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.WidthSoundness
 
 namespace Shor
 open Gate

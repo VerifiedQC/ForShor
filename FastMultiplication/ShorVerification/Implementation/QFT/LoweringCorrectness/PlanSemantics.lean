@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.QFT.Decomposition
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Shared.GateConstructions
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.LoweringCorrectness.Correctness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Correctness
 
 /-!
 # QFT Lowering Plan Semantics

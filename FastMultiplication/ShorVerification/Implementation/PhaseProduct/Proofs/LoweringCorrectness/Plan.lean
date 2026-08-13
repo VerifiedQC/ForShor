@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.LoweringCorrectness.Definitions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Definitions
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Shared.GateConstructions
 
 namespace Shor

@@ -1,9 +1,9 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Core
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Core
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Shared.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Toom_Cook_formula
 /-!
 # Phase-Product Compiler Support Lemmas
-This file is the reusable proof layer above `PhaseProduct.Core`. It groups the
+This file is the reusable proof layer above `PhaseProduct.Proofs.Core`. It groups the
 small but frequently used facts needed by larger correctness proofs: annotation
 bookkeeping, signed-width safety, source-row arithmetic, width-scan consequences,
 layout extensionality, and the canonical interpolation-point bridge to the pure

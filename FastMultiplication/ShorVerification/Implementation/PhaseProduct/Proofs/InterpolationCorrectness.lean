@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.SupportLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.SupportLemmas
 
 namespace Shor
 open Gate
