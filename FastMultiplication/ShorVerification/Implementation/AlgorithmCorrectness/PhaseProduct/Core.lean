@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
+import FastMultiplication.ShorVerification.Implementation.CleanClosure
 import FastMultiplication.ShorVerification.Implementation.MathBackbone.Table_Generation.Core.Coverage
 import Mathlib.Data.Finset.Basic
 
