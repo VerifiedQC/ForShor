@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.AbstractMachine.PhaseProductLoweringCorrectness.Definitions
+import FastMultiplication.ShorVerification.Implementation.GateConstructions
 
 namespace Shor
 open Gate
