@@ -39,7 +39,7 @@ variable [GateSemanticsFacts qs]
 variable [LowerGateClass qs]
 variable [LowerGateGateBridge qs]
 variable [IdealCtrlModMulExactSemantics qs]
-variable [ModMulPrimitiveSemantics qs]
+variable [ModMulPrimitiveGateSemantics qs]
 
 /-! =========================================================
     Section 1: ε-from-precision packaging

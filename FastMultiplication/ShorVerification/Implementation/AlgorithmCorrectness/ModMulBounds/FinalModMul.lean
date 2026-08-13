@@ -92,7 +92,7 @@ theorem modMul_approx_valid_dist_uniform
     [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs]
-    [ModMulPrimitiveSemantics qs] :
+    [ModMulPrimitiveGateSemantics qs] :
     ∃ K : ℝ, 0 ≤ K ∧ ∀ (η : ℝ) (cfg : ModMulConfig η) (ψ : qs.State),
       ModMulConfig.ValidUnitState qs cfg ψ →
       ‖qs.eval (ModMulConfig.approxGate (Basis := qs.Basis) cfg) ψ -

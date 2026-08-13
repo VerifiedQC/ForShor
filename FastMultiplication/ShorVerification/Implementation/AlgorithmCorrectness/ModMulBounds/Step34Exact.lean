@@ -158,7 +158,7 @@ lemma alg1_step34_reference_exact_core
 
     [Spec]
     [GateSemanticsCore qs]
-    [ModMulPrimitiveSemantics qs]
+    [ModMulPrimitiveGateSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -333,7 +333,7 @@ lemma alg1_step34_reference_exact_core
           =
         qs.ket b3 := by
       have hraw :=
-        ModMulPrimitiveSemantics.eval_step3_clean_ket
+        eval_step3_clean_ket_of_primitive
           (qs := qs)
           cfg.env.N
           xext
@@ -341,7 +341,6 @@ lemma alg1_step34_reference_exact_core
           b2
           hflagX_out
           (by simpa [flagReg] using hflag_clean_b2)
-          (by simpa [hx_b2] using hs_lt_twoN)
       simpa [
         b3, red, cmp, flagReg, hx_b2, s
       ] using hraw
@@ -477,7 +476,7 @@ lemma alg1_step34_reference_exact_core
         qs.ket
           (RegEncoding.writeNat flagReg 0 b3) := by
       have hraw :=
-        ModMulPrimitiveSemantics.eval_step4_cancels_ket
+        eval_step4_cancels_ket_of_primitive
           (qs := qs)
           cfg.env.N
           xext
@@ -672,7 +671,7 @@ lemma alg1_step34_reference_exact
     [RegEncoding qs.Basis]
     [Spec]
     [GateSemanticsCore qs]
-    [ModMulPrimitiveSemantics qs]
+    [ModMulPrimitiveGateSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)

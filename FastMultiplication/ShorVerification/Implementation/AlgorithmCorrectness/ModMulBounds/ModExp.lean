@@ -93,7 +93,7 @@ theorem modExpApproxSteps_valid_dist_uniform
     [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs]
-    [ModMulPrimitiveSemantics qs] :
+    [ModMulPrimitiveGateSemantics qs] :
     ∃ K : ℝ, 0 ≤ K ∧
       ∀ (η : ℝ)
         (a N : ℕ) (data work : ExtReg) (flag : ℕ)
@@ -271,7 +271,7 @@ theorem modExpApprox_valid_dist_uniform
     [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs]
-    [ModMulPrimitiveSemantics qs] :
+    [ModMulPrimitiveGateSemantics qs] :
     ∃ K : ℝ, 0 ≤ K ∧
       ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
         ModExpConfig.ValidUnitState qs cfg ψ →

@@ -964,7 +964,7 @@ private theorem eval_step3_preserves_lowering_clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [ModMulPrimitiveSemantics qs]
+    [ModMulPrimitiveGateSemantics qs]
     (x data work : ExtReg)
     (N flag : ℕ)
     (hxData :
@@ -1016,12 +1016,19 @@ private theorem eval_step3_preserves_lowering_clean
 
   | ket b hx hdata hwork =>
       rcases
-          ModMulPrimitiveSemantics.eval_step3_local_ket
+          eval_step3_local_ket_of_primitive
             (qs := qs)
             N
             (data.grow 1).active
             flag
-            b with
+            b
+            (by
+              intro hq
+              apply hflagData
+              have howned :
+                  flag ∈ (data.grow 1).ownedQubits :=
+                List.mem_append_left _ hq
+              simpa [Gate.ExtReg.ownedQubits_grow] using howned) with
         ⟨b', heval, hlocal⟩
 
       rw [heval]
@@ -1111,7 +1118,7 @@ private theorem eval_step4_preserves_lowering_clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [ModMulPrimitiveSemantics qs]
+    [ModMulPrimitiveGateSemantics qs]
     (x data work : ExtReg)
     (N flag : ℕ)
     (hxData :
@@ -1188,13 +1195,28 @@ private theorem eval_step4_preserves_lowering_clean
 
   | ket b hx hdata hwork =>
       rcases
-          ModMulPrimitiveSemantics.eval_step4_local_ket
+          eval_step4_local_ket_of_primitive
             (qs := qs)
             N
             (data.grow 1).active
             work.active
             flag
-            b with
+            b
+            (by
+              intro hq
+              apply hflagData
+              have howned :
+                  flag ∈ (data.grow 1).ownedQubits :=
+                List.mem_append_left _ hq
+              simpa [Gate.ExtReg.ownedQubits_grow] using howned)
+            (by
+              intro hq
+              apply hflagWork
+              rw [
+                ExtReg.ownedQubits,
+                List.mem_append
+              ]
+              exact Or.inl hq) with
         ⟨b', heval, hlocal⟩
 
       rw [heval]
@@ -1295,7 +1317,7 @@ private theorem lowered_step3_ready_and_clean
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
     [LowerGateGateBridge qs]
-    [ModMulPrimitiveSemantics qs]
+    [ModMulPrimitiveGateSemantics qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (N flag : ℕ)
@@ -1375,7 +1397,7 @@ private theorem lowered_step4_ready_and_clean
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
     [LowerGateGateBridge qs]
-    [ModMulPrimitiveSemantics qs]
+    [ModMulPrimitiveGateSemantics qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (N flag : ℕ)
@@ -5871,7 +5893,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
     [LowerGateGateBridge qs]
-    [ModMulPrimitiveSemantics qs]
+    [ModMulPrimitiveGateSemantics qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (c N ctrl flag : ℕ)
@@ -6160,7 +6182,7 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
     [LowerGateGateBridge qs]
-    [ModMulPrimitiveSemantics qs]
+    [ModMulPrimitiveGateSemantics qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (a N flag e : ℕ)
@@ -6317,7 +6339,7 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
     [LowerGateGateBridge qs]
-    [ModMulPrimitiveSemantics qs]
+    [ModMulPrimitiveGateSemantics qs]
     (lowering : ShorLoweringSetup)
     (η : ℝ)
     (a N : ℕ)
@@ -6541,7 +6563,7 @@ theorem gateWorkspaceCleanState_orderFindingApprox
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
     [LowerGateGateBridge qs]
-    [ModMulPrimitiveSemantics qs]
+    [ModMulPrimitiveGateSemantics qs]
     (lowering : ShorLoweringSetup)
     (η : ℝ)
     (a N : ℕ)
@@ -6716,7 +6738,7 @@ theorem LoweredShorReady.workspace_clean
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
     [LowerGateGateBridge qs]
-    [ModMulPrimitiveSemantics qs]
+    [ModMulPrimitiveGateSemantics qs]
     {lowering : ShorLoweringSetup}
     {η : ℝ}
     {a N : ℕ}

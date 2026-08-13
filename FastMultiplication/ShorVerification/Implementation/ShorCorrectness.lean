@@ -1198,7 +1198,7 @@ It may depend on the fixed instance data `qs`, `T`, `a`, `N`, `x`, `y`,
 `w`, `flag`, `b0`, and the fixed size/arithmetic hypotheses.
 -/
 theorem Shor_correct_approx_uniform
-    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs] [ModMulPrimitiveSemantics qs]
+    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs] [ModMulPrimitiveGateSemantics qs]
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
   ∃ K : ℝ, 0 ≤ K ∧
     ∀ (inst : ShorOrderFindingInstance)
@@ -1725,7 +1725,7 @@ theorem Shor_correct_approx_lowered_uniform
     [LowerGateClass qs]
     [LowerGateGateBridge qs]
     [IdealCtrlModMulExactSemantics qs]
-    [ModMulPrimitiveSemantics qs]
+    [ModMulPrimitiveGateSemantics qs]
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
     ∃ K : ℝ, 0 ≤ K ∧
       ∀ (inst : ShorOrderFindingInstance)
