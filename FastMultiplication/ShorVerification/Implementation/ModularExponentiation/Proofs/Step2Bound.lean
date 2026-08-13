@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Step1Bound
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Step1Bound
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateSemanticsLemmas
 import Mathlib.Analysis.Complex.Trigonometric
