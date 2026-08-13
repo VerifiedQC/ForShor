@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.AbstractMachine.QFTLoweringCorrectness.Workspace
+import FastMultiplication.ShorVerification.Implementation.QFT.LoweringCorrectness.Workspace
 import FastMultiplication.ShorVerification.Implementation.GateConstructions
 import FastMultiplication.ShorVerification.Implementation.GateSemanticsLemmas
 

@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.Workspace.QFTLowering
+import FastMultiplication.ShorVerification.Implementation.QFT.Lowering
 
 namespace Shor
 

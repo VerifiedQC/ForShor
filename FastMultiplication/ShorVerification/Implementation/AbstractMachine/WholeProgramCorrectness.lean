@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.AbstractMachine.QFTLoweringCorrectness.Readiness
+import FastMultiplication.ShorVerification.Implementation.QFT.LoweringCorrectness.Readiness
 
 namespace Shor
 

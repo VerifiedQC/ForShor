@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.AbstractMachine.QFTLoweringCorrectness.PlanSemantics
+import FastMultiplication.ShorVerification.Implementation.QFT.LoweringCorrectness.PlanSemantics
 import FastMultiplication.ShorVerification.Implementation.GateConstructions
 
 /-!
