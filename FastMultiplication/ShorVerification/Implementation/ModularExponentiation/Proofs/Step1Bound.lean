@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Step1QPE
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Step1QPE
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 
 /-!
