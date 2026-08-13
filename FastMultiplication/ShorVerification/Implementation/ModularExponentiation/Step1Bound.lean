@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Step1QPE
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 
 /-!
 # Step-1 Main Bound

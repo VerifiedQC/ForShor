@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Algorithm1Expansion
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateSemanticsLemmas
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
 import Mathlib.Algebra.BigOperators.Intervals
 import Mathlib.Algebra.Order.Floor.Semiring

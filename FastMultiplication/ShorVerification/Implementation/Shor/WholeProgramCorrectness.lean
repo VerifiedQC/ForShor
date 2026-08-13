@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.QFT.LoweringCorrectness.Readiness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Main
 
 namespace Shor
 
@@ -601,7 +602,7 @@ theorem lowerGate_correctness
         at hclean
 
       simpa only [lowerGate] using
-        (evalL_lowerSignedPhaseProd qs k hk phi x z ops ψ
+        (lowerSignedPhaseProduct_correct qs k hk phi x z ops ψ
           {
             static := hworkspace
             clean := hclean
@@ -616,7 +617,7 @@ theorem lowerGate_correctness
         at hclean
 
       simpa only [lowerGate] using
-        (evalL_lowerCSignedPhaseProd qs k hk ctrl phi x z ops ψ
+        (lowerCSignedPhaseProduct_correct qs k hk ctrl phi x z ops ψ
           {
             static := hworkspace
             clean := hclean

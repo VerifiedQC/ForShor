@@ -1,5 +1,6 @@
 import Mathlib.Data.Nat.Bitwise
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.LoweringCorrectness.Plan
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Plan
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.CompilationCorrectness
 
 namespace Shor
 open Gate

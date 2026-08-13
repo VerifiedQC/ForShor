@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateSemanticsLemmas
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.CleanClosure
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.CleanClosure
 namespace Shor
 open Gate
 

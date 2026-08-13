@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Framework.AbstractMachine.Gates
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 
 /-!
 # Phase-product gate macros (implementation)

@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.AllocationCorrectness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.AllocationCorrectness
 
 namespace Shor
 open Gate
@@ -2831,79 +2831,6 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks
   subst hbNext_eq
   simpa using hBody
 
-
-/-! =========================================================
-    Section 7: Control wrappers for allocation and deallocation
-
-    Allocation and deallocation contain no phase-product leaves, so control-phase
-    wrapping commutes through all of their generated gates.
-========================================================= -/
-
-/-- Control-phase wrapping leaves allocation gates unchanged. -/
-lemma controlPhaseLeaves_allocChunkGate
-  {k : ℕ} (ctrl : ℕ) (i : Fin k) (src dst : ExtReg) :
-  controlPhaseLeaves ctrl (allocChunkGate i src dst) = allocChunkGate i src dst := by
-  unfold allocChunkGate
-  by_cases htop : isTopChunk i <;>
-    by_cases hδ : extraDelta src dst = 0 <;>
-    simp [htop, hδ, controlPhaseLeaves]
-
-/-- Control-phase wrapping leaves deallocation gates unchanged. -/
-lemma controlPhaseLeaves_deallocChunkGate
-  {k : ℕ} (ctrl : ℕ) (i : Fin k) (src dst : ExtReg) :
-  controlPhaseLeaves ctrl (deallocChunkGate i src dst) = deallocChunkGate i src dst := by
-  unfold deallocChunkGate
-  by_cases htop : isTopChunk i <;>
-    by_cases hδ : extraDelta src dst = 0 <;>
-    simp [htop, hδ, controlPhaseLeaves]
-
-/-- Control-phase wrapping leaves allocation prefixes unchanged. -/
-lemma controlPhaseLeaves_compileSignedAllocationsAux
-  {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
-  ∀ (n : ℕ) (hn : n ≤ k),
-    controlPhaseLeaves ctrl (compileSignedAllocationsAux src dst n hn) =
-      compileSignedAllocationsAux src dst n hn := by
-  intro n hn
-  induction n with
-  | zero =>
-      simp [compileSignedAllocationsAux_zero, controlPhaseLeaves]
-  | succ n ih =>
-      rw [compileSignedAllocationsAux_succ (src := src) (dst := dst) (n := n) (hn := hn)]
-      let hk' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
-      let i : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
-      simp [controlPhaseLeaves, ih hk',
-        controlPhaseLeaves_allocChunkGate]
-
-/-- Control-phase wrapping leaves full allocation unchanged. -/
-lemma controlPhaseLeaves_compileSignedAllocations
-  {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
-  controlPhaseLeaves ctrl (compileSignedAllocations k src dst) =
-    compileSignedAllocations k src dst := by
-  exact controlPhaseLeaves_compileSignedAllocationsAux ctrl src dst k le_rfl
-
-/-- Control-phase wrapping leaves deallocation prefixes unchanged. -/
-lemma controlPhaseLeaves_compileSignedDeallocationsAux
-  {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
-  ∀ (n : ℕ) (hn : n ≤ k),
-    controlPhaseLeaves ctrl (compileSignedDeallocationsAux src dst n hn) =
-      compileSignedDeallocationsAux src dst n hn := by
-  intro n hn
-  induction n with
-  | zero =>
-      simp [compileSignedDeallocationsAux_zero, controlPhaseLeaves]
-  | succ n ih =>
-      rw [compileSignedDeallocationsAux_succ (src := src) (dst := dst) (n := n) (hn := hn)]
-      let hk' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
-      let i : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
-      simp [controlPhaseLeaves, ih hk',
-        controlPhaseLeaves_deallocChunkGate]
-
-/-- Control-phase wrapping leaves full deallocation unchanged. -/
-lemma controlPhaseLeaves_compileSignedDeallocations
-  {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
-  controlPhaseLeaves ctrl (compileSignedDeallocations k src dst) =
-    compileSignedDeallocations k src dst := by
-  exact controlPhaseLeaves_compileSignedDeallocationsAux ctrl src dst k le_rfl
 
 /-! =========================================================
     Section 8: Deallocation and body/deallocation composition
