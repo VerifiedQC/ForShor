@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Framework.Spec.OrderFinding
+import FastMultiplication.ShorVerification.Framework.Submission.OrderFinding
 import FastMultiplication.ShorVerification.Framework.Gatecount.CostModel
 
 namespace Shor

@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.Workspace.Shor
 import FastMultiplication.ShorVerification.Implementation.AbstractMachine.WholeProgramCorrectness
 import FastMultiplication.ShorVerification.Implementation.AlgorithmCorrectness.ModMulBounds.ModExp
-import FastMultiplication.ShorVerification.Framework.Spec.OrderFinding
+import FastMultiplication.ShorVerification.Framework.Submission.OrderFinding
 
 namespace Shor
 open Gate
