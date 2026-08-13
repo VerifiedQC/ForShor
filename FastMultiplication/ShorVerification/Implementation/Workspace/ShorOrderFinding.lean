@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Workspace.Shor
 import FastMultiplication.ShorVerification.Implementation.AbstractMachine.WholeProgramCorrectness
-import FastMultiplication.ShorVerification.Implementation.AlgorithmCorrectness.ModMulBounds.ModExp
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.ModExp
 import FastMultiplication.ShorVerification.Framework.Submission
 
 namespace Shor

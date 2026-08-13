@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.AlgorithmCorrectness.ModMulBounds.Step2Bound
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Step2Bound
 
 open Shor
 

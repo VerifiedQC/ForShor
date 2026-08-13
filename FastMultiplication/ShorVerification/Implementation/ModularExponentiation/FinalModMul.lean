@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.AlgorithmCorrectness.ModMulBounds.Step34Exact
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Step34Exact
 
 open Shor
 

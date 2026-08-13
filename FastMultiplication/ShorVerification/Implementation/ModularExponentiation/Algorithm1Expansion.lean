@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.AlgorithmCorrectness.ModMulBounds.Core
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Core
 import FastMultiplication.ShorVerification.Implementation.GateConstructions
 import FastMultiplication.ShorVerification.Implementation.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.Workspace.PhaseProductLowering
