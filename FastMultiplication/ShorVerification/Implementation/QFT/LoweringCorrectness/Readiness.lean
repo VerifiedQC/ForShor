@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.QFT.LoweringCorrectness.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
-import FastMultiplication.ShorVerification.Implementation.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateSemanticsLemmas
 
 /-!
 # QFT Lowering Readiness and Correctness

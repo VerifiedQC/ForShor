@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Core
-import FastMultiplication.ShorVerification.Implementation.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Toom_Cook_formula
 /-!
 # Phase-Product Compiler Support Lemmas

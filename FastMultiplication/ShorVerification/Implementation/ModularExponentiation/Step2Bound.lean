@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Step1Bound
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
-import FastMultiplication.ShorVerification.Implementation.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateSemanticsLemmas
 import Mathlib.Analysis.Complex.Trigonometric
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
 open Shor
