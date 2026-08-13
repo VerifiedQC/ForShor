@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Workspace.ShorOrderFinding
+import FastMultiplication.ShorVerification.Implementation.GateSemanticsLemmas
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
