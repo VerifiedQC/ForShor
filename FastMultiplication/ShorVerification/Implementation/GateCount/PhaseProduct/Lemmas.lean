@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.GateCount.Definitions
-import FastMultiplication.ShorVerification.Implementation.GateConstructions
-import FastMultiplication.ShorVerification.Implementation.MathBackbone.MasterTheoremProof
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.MasterTheoremProof
 
 namespace Shor
 

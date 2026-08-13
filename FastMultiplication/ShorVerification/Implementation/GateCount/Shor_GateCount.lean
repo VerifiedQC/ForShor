@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.GateCount.QFT_GateCount
-import FastMultiplication.ShorVerification.Implementation.GateConstructions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
 
 namespace Shor
 

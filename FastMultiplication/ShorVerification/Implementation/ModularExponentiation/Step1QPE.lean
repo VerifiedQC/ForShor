@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Algorithm1Expansion
-import FastMultiplication.ShorVerification.Implementation.GateConstructions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
 import FastMultiplication.ShorVerification.Implementation.GateSemanticsLemmas
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
 import Mathlib.Algebra.BigOperators.Intervals

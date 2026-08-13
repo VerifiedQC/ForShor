@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Workspace.ShorOrderFinding
-import FastMultiplication.ShorVerification.Implementation.GateConstructions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
 import FastMultiplication.ShorVerification.Implementation.GateSemanticsLemmas
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real

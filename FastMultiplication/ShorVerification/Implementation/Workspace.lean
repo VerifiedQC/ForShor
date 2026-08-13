@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.Workspace.PhaseProductLowering
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering
 import FastMultiplication.ShorVerification.Implementation.Workspace.Shor
 import FastMultiplication.ShorVerification.Implementation.Workspace.ShorOrderFinding
