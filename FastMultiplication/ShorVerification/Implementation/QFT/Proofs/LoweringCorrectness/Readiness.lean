@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.QFT.LoweringCorrectness.Workspace
+import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.LoweringCorrectness.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.PlanReadiness

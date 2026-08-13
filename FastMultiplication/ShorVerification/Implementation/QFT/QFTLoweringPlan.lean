@@ -1,34 +1,11 @@
-import FastMultiplication.ShorVerification.Implementation.QFT.LoweringCorrectness.PlanSemantics
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.QFT.DefsCore
 
 /-!
-# QFT Lowering Workspace Construction
+# QFT Lowering Plan
 
-This file chooses the concrete reserve layout used by the public QFT lowerer
-and constructs the canonical recursive QFT lowering plan.
-
-It deliberately stops at construction:
-
-* `qftWorkspaceNeed`, `qftXWork`, and `qftZWork` choose the reserve sizes and
-  physical registers;
-* `QFTWorkspaceOK` and `QFTReserveOK` record the static disjointness/capacity
-  facts;
-* `standardQFTLoweringPlan`, `reserveQFTLoweringPlan`, and `lowerQFT` build the
-  actual lowered circuit.
-
-The dynamic clean-state and semantic correctness proofs live in
-`QFTLoweringCorrectness.Readiness`.
-
-Main declarations:
-
-* `qftWorkspaceNeed`, `qftXWork`, and `qftZWork` choose the reserve budget and
-  physical workspace slices.
-* `QFTReserveOK.explicitWorkspace` turns one reserve-capacity proof into the
-  full recursive workspace object.
-* `standardQFTLoweringPlan` is the main recursive construction over ordinary
-  registers.
-* `lowerQFT` is the final public constructor for the lowered QFT using
-  workspace selected from an `ExtReg` reserve.
+The recursive lowering plan constructors (`phaseWorkspace`,
+`standard*Plan`, `reserve*Plan`).  These bake their workspace obligations in, so
+they carry the supporting lemmas they need.  Imports only `DefsCore`.
 -/
 
 namespace Shor
@@ -36,6 +13,154 @@ namespace Shor
 open Gate
 
 universe u
+
+
+
+
+/-! =========================================================
+    Section 1: Register arithmetic and split helpers
+========================================================= -/
+
+variable (qs : QSemantics)
+  [RegEncoding qs.Basis]
+
+  [GateSemanticsFacts qs]
+
+namespace Gate.PhaseProdWorkspace
+
+end Gate.PhaseProdWorkspace
+
+/-! =========================================================
+    Section 2: Encoding-only split-register lemmas
+========================================================= -/
+
+section EncodingOnly
+variable (qs : QSemantics) [RegEncoding qs.Basis]
+
+end EncodingOnly
+
+/-! =========================================================
+    Section 3: Exponential and qftPhase bridge lemmas
+========================================================= -/
+
+/-! =========================================================
+    Section 4: Sum-pushing and scalar helper lemmas
+========================================================= -/
+
+/-! =========================================================
+    Section 5: First split-QFT steps
+========================================================= -/
+
+/-! =========================================================
+    Section 6: Phase-combination lemmas
+========================================================= -/
+
+/-! =========================================================
+    Section 7: Reindexing sums and cast utilities
+========================================================= -/
+
+open scoped BigOperators
+
+
+/-! =========================================================
+    Section 8: QFT split on basis kets
+========================================================= -/
+
+/-! =========================================================
+    Section 9: Radix reversal and exact QFT split
+========================================================= -/
+
+
+
+
+
+open Gate
+
+
+/-! =========================================================
+    Section 1: Explicit QFT lowering plans
+========================================================= -/
+
+/-! =========================================================
+    Section 4: Linearity and workspace preservation
+========================================================= -/
+
+lemma evalL_lowerQFTPlan_zero
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    {k : ℕ}
+    {hk : 1 < k}
+    {ops : Prog k}
+    {r : Reg}
+    (plan : QFTLoweringPlan k hk ops r) :
+    LowerGateClass.evalL
+        (qs := qs)
+        (lowerQFTPlan plan)
+        0
+      =
+    0 := by
+  exact LowerGateClass.evalL_zero (qs := qs) (lowerQFTPlan plan)
+
+
+lemma QFTLoweringReady.zero
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [LowerGateClass qs]
+    {k : ℕ}
+    {hk : 1 < k}
+    {ops : Prog k}
+    {r : Reg}
+    (plan : QFTLoweringPlan k hk ops r) :
+    QFTLoweringReady qs plan 0 := by
+  induction plan with
+  | empty =>
+      trivial
+  | singleton =>
+      trivial
+  | split r hsize ws phaseInitSize phasePlan
+      rightPlan leftPlan ihRight ihLeft =>
+      change
+        Gate.PhaseProdWorkspace.CleanState qs ws 0
+          ∧
+        QFTLoweringReady qs rightPlan 0
+          ∧
+        PhaseLoweringReady
+          qs phasePlan
+          (LowerGateClass.evalL
+            (qs := qs)
+            (lowerQFTPlan rightPlan)
+            0)
+          ∧
+        QFTLoweringReady
+          qs leftPlan
+          (LowerGateClass.evalL
+            (qs := qs)
+            (lowerGateRec phasePlan)
+            (LowerGateClass.evalL
+              (qs := qs)
+              (lowerQFTPlan rightPlan)
+              0))
+      rw [
+        evalL_lowerQFTPlan_zero,
+        evalL_lowerGateRec_zero
+      ]
+      exact
+        ⟨
+          CleanClosure.zero,
+          ihRight,
+          PhaseLoweringReady.zero qs phasePlan,
+          ihLeft
+        ⟩
+
+
+
+
+
+
+open Gate
+
 
 /-! =========================================================
     Section 1: Canonical unsigned phase-product plans
@@ -45,18 +170,6 @@ universe u
     phase-product lowering plan by zero-extending both operands, lowering the
     resulting signed phase product, and deallocating the extensions.
 ========================================================= -/
-
-/--
-The recursive signed-phase-product input size used by
-`Gate.PhaseProdUsing`.
--/
-def phaseProdUsingInputSize
-    {x z : Reg}
-    (ws : Gate.PhaseProdWorkspace x z) :
-    ℕ :=
-  phaseInputSize
-    (ws.xExt.grow 1)
-    (ws.zExt.grow 1)
 
 /--
 Construct the canonical lowering plan for an unsigned phase product.
@@ -201,40 +314,6 @@ noncomputable def standardPhaseProdUsingPlan
   ] using completePlan
 
 
-def qftWorkspaceNeed
-    {k : ℕ}
-    (ops : Prog k) :
-    ℕ → ℕ × ℕ
-  | 0 => (0, 0)
-  | 1 => (0, 0)
-  | n + 2 =>
-      let total := n + 2
-      let leftWidth := total / 2
-      let rightWidth := total - leftWidth
-
-      let phaseNeed :=
-        RecursivePhaseWorkspace.reserveNeed
-          ops
-          (leftWidth + 1)
-          (rightWidth + 1)
-
-      let leftNeed :=
-        qftWorkspaceNeed ops leftWidth
-
-      let rightNeed :=
-        qftWorkspaceNeed ops rightWidth
-
-      (
-        max
-          (1 + phaseNeed.1)
-          (max leftNeed.1 rightNeed.1),
-
-        max
-          (1 + phaseNeed.2)
-          (max leftNeed.2 rightNeed.2)
-      )
-termination_by n => n
-
 /-! =========================================================
     Section 2: Public QFT workspace sizes and clean-state predicates
 
@@ -243,135 +322,9 @@ termination_by n => n
     this section are the static and dynamic contracts for those pools.
 ========================================================= -/
 
-/--
-The prefix of the inactive part of `r` assigned to the x-side workspace.
--/
-def qftXWork
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg) :
-    Reg :=
-  r.reserve.take
-    (qftWorkspaceNeed ops r.width).1
-
-/--
-The part of the inactive register following `qftXWork`, assigned to the
-z-side workspace.
--/
-def qftZWork
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg) :
-    Reg :=
-  let xNeed :=
-    (qftWorkspaceNeed ops r.width).1
-  let zNeed :=
-    (qftWorkspaceNeed ops r.width).2
-  (r.reserve.drop xNeed).take zNeed
-
-/--
-The inactive part of the QFT register is large enough to hold both concrete
-workspace pools used by the recursive lowering.
--/
-structure QFTReserveOK
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg) :
-    Prop where
-
-  reserve_large_enough :
-    (qftWorkspaceNeed ops r.width).1
-      +
-    (qftWorkspaceNeed ops r.width).2
-      ≤
-    r.capacity
-
-/--
-The linear subspace in which both portions of the inactive QFT register used
-by the concrete lowering are zero.
--/
-abbrev QFTWorkspaceCleanState
-    (qs : QSemantics) [RegEncoding qs.Basis] (xWork zWork : Reg) :
-    qs.State → Prop :=
-  CleanClosure (fun b => FreshZero xWork b ∧ FreshZero zWork b)
-
 namespace QFTWorkspaceCleanState
 variable {qs : QSemantics} [RegEncoding qs.Basis] {xWork zWork : Reg}
-/-- Smart constructors delegating to `CleanClosure`, preserving call sites. -/
-theorem zero : QFTWorkspaceCleanState qs xWork zWork 0 := CleanClosure.zero
-theorem ket (b : qs.Basis) (hx : FreshZero xWork b) (hz : FreshZero zWork b) :
-    QFTWorkspaceCleanState qs xWork zWork (qs.ket b) := CleanClosure.ket b ⟨hx, hz⟩
-theorem add {ψ φ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ)
-    (hφ : QFTWorkspaceCleanState qs xWork zWork φ) :
-    QFTWorkspaceCleanState qs xWork zWork (ψ + φ) := CleanClosure.add hψ hφ
-theorem smul (a : ℂ) {ψ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ) :
-    QFTWorkspaceCleanState qs xWork zWork (a • ψ) := CleanClosure.smul a hψ
-/-- Custom eliminator so `induction`/`cases` keep the original 2-hypothesis
-`ket` shape (`| ket b hx hz`) despite the generic single-predicate closure. -/
-@[induction_eliminator, cases_eliminator]
-def rec' {motive : (ψ : qs.State) → QFTWorkspaceCleanState qs xWork zWork ψ → Prop}
-    (zero : motive 0 QFTWorkspaceCleanState.zero)
-    (ket : ∀ (b : qs.Basis) (hx : FreshZero xWork b) (hz : FreshZero zWork b),
-        motive (qs.ket b) (QFTWorkspaceCleanState.ket b hx hz))
-    (add : ∀ {ψ φ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ)
-        (hφ : QFTWorkspaceCleanState qs xWork zWork φ),
-        motive ψ hψ → motive φ hφ → motive (ψ + φ) (QFTWorkspaceCleanState.add hψ hφ))
-    (smul : ∀ (a : ℂ) {ψ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ),
-        motive ψ hψ → motive (a • ψ) (QFTWorkspaceCleanState.smul a hψ))
-    {ψ : qs.State} (h : QFTWorkspaceCleanState qs xWork zWork ψ) : motive ψ h := by
-  induction h with
-  | zero => exact zero
-  | ket b hconj => exact ket b hconj.1 hconj.2
-  | add hψ hφ ihψ ihφ => exact add hψ hφ ihψ ihφ
-  | smul a hψ ih => exact smul a hψ ih
 end QFTWorkspaceCleanState
-
-/--
-The public precondition for concrete QFT lowering.  It says only that the
-inactive part of the supplied `ExtReg` is large enough and that the two slices
-selected by the lowering are initially zero.
--/
-structure QFTWorkspaceStateOK
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg)
-    (ψ : qs.State) :
-    Prop where
-
-  static : QFTReserveOK ops r
-
-  clean :
-    QFTWorkspaceCleanState qs (qftXWork ops r) (qftZWork ops r) ψ
-
-/--
-Internal static condition for an already-selected pair of workspace
-registers.  The public QFT lowering derives this condition from
-`QFTReserveOK`.
--/
-structure QFTWorkspaceOK
-    {k : ℕ}
-    (ops : Prog k)
-    (r xWork zWork : Reg) :
-    Prop where
-
-  data_x_disjoint :
-    Disjoint r xWork
-
-  data_z_disjoint :
-    Disjoint r zWork
-
-  work_disjoint :
-    Disjoint xWork zWork
-
-  x_large_enough :
-    (qftWorkspaceNeed ops (regSize r)).1 ≤
-      regSize xWork
-
-  z_large_enough :
-    (qftWorkspaceNeed ops (regSize r)).2 ≤
-      regSize zWork
 
 /-! =========================================================
     Section 3: Helper lemmas for the selected workspace slices
@@ -381,221 +334,7 @@ structure QFTWorkspaceOK
     data register and from each other.
 ========================================================= -/
 
-@[simp] lemma regSize_leftReg
-    (r : Reg) :
-    regSize (leftReg r) =
-      regSize r / 2 := by
-  simp [
-    leftReg,
-    halfSplitPoint,
-    splitM
-  ]
-
-
-@[simp] lemma regSize_rightReg
-    (r : Reg) :
-    regSize (rightReg r) =
-      regSize r - regSize r / 2 := by
-  simp [
-    rightReg,
-    halfSplitPoint,
-    splitM
-  ]
-
-
-lemma disjoint_of_left_subset
-    {small big other : Reg}
-    (hsub :
-      ∀ q : ℕ,
-        q ∈ small.qubits →
-        q ∈ big.qubits)
-    (hdisjoint : Disjoint big other) :
-    Disjoint small other := by
-  rw [Disjoint, List.disjoint_left] at hdisjoint ⊢
-  intro q hqSmall hqOther
-  exact hdisjoint (hsub q hqSmall) hqOther
-
-
-lemma disjoint_of_right_subset
-    {small big other : Reg}
-    (hsub :
-      ∀ q : ℕ,
-        q ∈ small.qubits →
-        q ∈ big.qubits)
-    (hdisjoint : Disjoint other big) :
-    Disjoint other small := by
-  apply Disjoint.symm
-  apply disjoint_of_left_subset hsub
-  exact Disjoint.symm hdisjoint
-
-lemma qftXWork_mem_reserve
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg)
-    {q : ℕ}
-    (hq : q ∈ (qftXWork ops r).qubits) :
-    q ∈ r.reserve.qubits := by
-  apply List.mem_of_mem_take
-  simpa [
-    qftXWork,
-    Reg.take
-  ] using hq
-
-
-lemma qftZWork_mem_reserve
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg)
-    {q : ℕ}
-    (hq : q ∈ (qftZWork ops r).qubits) :
-    q ∈ r.reserve.qubits := by
-  have hqDrop :
-      q ∈
-        r.reserve.qubits.drop
-          (qftWorkspaceNeed ops r.width).1 := by
-    apply List.mem_of_mem_take
-    simpa [
-      qftZWork,
-      Reg.take,
-      Reg.drop
-    ] using hq
-
-  exact List.mem_of_mem_drop hqDrop
-
-
-lemma qftXWork_qftZWork_disjoint
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg) :
-    Disjoint
-      (qftXWork ops r)
-      (qftZWork ops r) := by
-  rw [Disjoint, List.disjoint_left]
-  intro q hqx hqz
-
-  have hqxTake :
-      q ∈
-        r.reserve.qubits.take
-          (qftWorkspaceNeed ops r.width).1 := by
-    simpa [
-      qftXWork,
-      Reg.take
-    ] using hqx
-
-  have hqzDrop :
-      q ∈
-        r.reserve.qubits.drop
-          (qftWorkspaceNeed ops r.width).1 := by
-    apply List.mem_of_mem_take
-    simpa [
-      qftZWork,
-      Reg.take,
-      Reg.drop
-    ] using hqz
-
-  have hdisjoint :=
-    List.disjoint_take_drop
-      r.reserve.nodup
-      (le_refl
-        (qftWorkspaceNeed ops r.width).1)
-
-  rw [List.disjoint_left] at hdisjoint
-  exact hdisjoint hqxTake hqzDrop
-
-
-@[simp] lemma regSize_qftXWork
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg)
-    (hworkspace : QFTReserveOK ops r) :
-    regSize (qftXWork ops r) =
-      (qftWorkspaceNeed ops r.width).1 := by
-  have hxFits :
-      (qftWorkspaceNeed ops r.width).1
-        ≤
-      r.capacity := by
-    have htotal :=
-      hworkspace.reserve_large_enough
-    omega
-
-  simpa [
-    qftXWork,
-    Reg.take,
-    regSize,
-    Reg.width,
-    ExtReg.capacity,
-    Nat.min_eq_left hxFits
-  ]
-
-
-@[simp] lemma regSize_qftZWork
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg)
-    (hworkspace : QFTReserveOK ops r) :
-    regSize (qftZWork ops r) =
-      (qftWorkspaceNeed ops r.width).2 := by
-  have hzFits :
-      (qftWorkspaceNeed ops r.width).2
-        ≤
-      r.capacity -
-        (qftWorkspaceNeed ops r.width).1 := by
-    have htotal :=
-      hworkspace.reserve_large_enough
-    omega
-
-  simpa [
-    qftZWork,
-    Reg.take,
-    Reg.drop,
-    regSize,
-    Reg.width,
-    ExtReg.capacity,
-    Nat.min_eq_left hzFits
-  ]
-
-
 namespace QFTReserveOK
-
-lemma explicitWorkspace
-    {k : ℕ}
-    {ops : Prog k}
-    {r : ExtReg}
-    (hworkspace : QFTReserveOK ops r) :
-    QFTWorkspaceOK
-      ops
-      r.active
-      (qftXWork ops r)
-      (qftZWork ops r) := by
-  refine
-    {
-      data_x_disjoint := ?_
-      data_z_disjoint := ?_
-      work_disjoint :=
-        qftXWork_qftZWork_disjoint ops r
-      x_large_enough := ?_
-      z_large_enough := ?_
-    }
-
-  ·
-    apply disjoint_of_right_subset
-      (fun q hq =>
-        qftXWork_mem_reserve ops r hq)
-    exact r.active_reserve_disjoint
-
-  ·
-    apply disjoint_of_right_subset
-      (fun q hq =>
-        qftZWork_mem_reserve ops r hq)
-    exact r.active_reserve_disjoint
-
-  ·
-    rw [regSize_qftXWork ops r hworkspace]
-    simp [ExtReg.width]
-
-  ·
-    rw [regSize_qftZWork ops r hworkspace]
-    simp [ExtReg.width]
 
 end QFTReserveOK
 
@@ -607,146 +346,6 @@ end QFTReserveOK
     product and both recursive QFT calls. These monotonicity lemmas let the
     plan constructor reuse the same workspace pools for each child.
 ========================================================= -/
-
-lemma qftWorkspaceNeed_eq_of_two_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
-    qftWorkspaceNeed ops n =
-      let leftWidth := n / 2
-      let rightWidth := n - leftWidth
-
-      let phaseNeed :=
-        RecursivePhaseWorkspace.reserveNeed
-          ops
-          (leftWidth + 1)
-          (rightWidth + 1)
-
-      let leftNeed :=
-        qftWorkspaceNeed ops leftWidth
-
-      let rightNeed :=
-        qftWorkspaceNeed ops rightWidth
-
-      (
-        max
-          (1 + phaseNeed.1)
-          (max leftNeed.1 rightNeed.1),
-
-        max
-          (1 + phaseNeed.2)
-          (max leftNeed.2 rightNeed.2)
-      ) := by
-  cases n with
-  | zero =>
-      omega
-  | succ n =>
-      cases n with
-      | zero =>
-          omega
-      | succ n =>
-          conv_lhs =>
-            unfold qftWorkspaceNeed
-
-
-lemma qftWorkspaceNeed_phase_x_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
-    1 +
-        (RecursivePhaseWorkspace.reserveNeed
-          ops
-          (n / 2 + 1)
-          (n - n / 2 + 1)).1
-      ≤
-    (qftWorkspaceNeed ops n).1 := by
-  rw [qftWorkspaceNeed_eq_of_two_le ops n hn]
-  dsimp only
-  exact Nat.le_max_left _ _
-
-
-lemma qftWorkspaceNeed_phase_z_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
-    1 +
-        (RecursivePhaseWorkspace.reserveNeed
-          ops
-          (n / 2 + 1)
-          (n - n / 2 + 1)).2
-      ≤
-    (qftWorkspaceNeed ops n).2 := by
-  rw [qftWorkspaceNeed_eq_of_two_le ops n hn]
-  dsimp only
-  exact Nat.le_max_left _ _
-
-
-lemma qftWorkspaceNeed_left_x_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
-    (qftWorkspaceNeed ops (n / 2)).1
-      ≤
-    (qftWorkspaceNeed ops n).1 := by
-  rw [qftWorkspaceNeed_eq_of_two_le ops n hn]
-  dsimp only
-
-  exact le_trans
-    (Nat.le_max_left _ _)
-    (Nat.le_max_right _ _)
-
-
-lemma qftWorkspaceNeed_left_z_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
-    (qftWorkspaceNeed ops (n / 2)).2
-      ≤
-    (qftWorkspaceNeed ops n).2 := by
-  rw [qftWorkspaceNeed_eq_of_two_le ops n hn]
-  dsimp only
-
-  exact le_trans
-    (Nat.le_max_left _ _)
-    (Nat.le_max_right _ _)
-
-
-lemma qftWorkspaceNeed_right_x_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
-    (qftWorkspaceNeed ops (n - n / 2)).1
-      ≤
-    (qftWorkspaceNeed ops n).1 := by
-  rw [qftWorkspaceNeed_eq_of_two_le ops n hn]
-  dsimp only
-
-  exact le_trans
-    (Nat.le_max_right _ _)
-    (Nat.le_max_right _ _)
-
-
-lemma qftWorkspaceNeed_right_z_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
-    (qftWorkspaceNeed ops (n - n / 2)).2
-      ≤
-    (qftWorkspaceNeed ops n).2 := by
-  rw [qftWorkspaceNeed_eq_of_two_le ops n hn]
-  dsimp only
-
-  exact le_trans
-    (Nat.le_max_right _ _)
-    (Nat.le_max_right _ _)
-
 
 /-! =========================================================
     Section 5: Building child workspaces and recursive QFT plans
@@ -1313,22 +912,5 @@ noncomputable def reserveQFTLoweringPlan
     (qftZWork ops r)
     hworkspace.explicitWorkspace
 
-
-/--
-Final public constructor for this file.
-
-The canonical lowered QFT. Its workspace is selected deterministically from
-`r.reserve`; callers do not supply separate physical workspace registers.
--/
-noncomputable def lowerQFT
-    (k : ℕ)
-    (hk : 1 < k)
-    (ops : Prog k)
-    (r : ExtReg)
-    (hworkspace : QFTReserveOK ops r) :
-    LowGate :=
-  lowerQFTPlan
-    (reserveQFTLoweringPlan
-      k hk ops r hworkspace)
 
 end Shor
