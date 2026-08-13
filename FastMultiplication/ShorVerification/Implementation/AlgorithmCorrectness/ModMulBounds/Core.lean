@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Framework.Semantics.QSemantics
+import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import Mathlib.Data.Int.GCD
 import Mathlib.Analysis.SpecialFunctions.Log.Base
 

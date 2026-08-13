@@ -1,5 +1,5 @@
-import FastMultiplication.ShorVerification.Framework.Spec.OrderFinding
-import FastMultiplication.ShorVerification.Framework.Semantics.CostModel
+import FastMultiplication.ShorVerification.Framework.Submission.OrderFinding
+import FastMultiplication.ShorVerification.Framework.Gatecount.CostModel
 
 namespace Shor
 open Gate

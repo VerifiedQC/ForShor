@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Framework.Semantics.LowGate
+import FastMultiplication.ShorVerification.Framework.AbstractMachine.LowGate
 
 /-!
 # Framework — LowGate cost model

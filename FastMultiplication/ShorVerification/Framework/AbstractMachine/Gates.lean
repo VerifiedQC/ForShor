@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Framework.Semantics.Registers
+import FastMultiplication.ShorVerification.Framework.Quantum.Registers
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.SpecialFunctions.Sqrt
 import Mathlib.Data.Complex.Basic
