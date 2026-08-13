@@ -1,3 +1,4 @@
+import FastMultiplication.ShorVerification.Implementation.QFT.Defs
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateSemanticsLemmas
@@ -148,40 +149,6 @@ lemma qft_norm_split (nTot m : ℕ) (hm : m ≤ nTot) :
   simpa using this
 
 
-def splitM (r : Reg) : ℕ := (regSize r) / 2
-def halfSplitPoint (r : Reg) : SplitPoint r :=
-  ⟨splitM r, by
-    simpa [splitM] using Nat.div_le_self (regSize r) 2⟩
-
-def leftReg  (r : Reg) : Reg := splitLeft r (halfSplitPoint r)
-def rightReg (r : Reg) : Reg := splitRight r (halfSplitPoint r)
-
-lemma leftReg_mem_parent
-    (r : Reg)
-    {q : ℕ}
-    (hq : q ∈ (leftReg r).qubits) :
-    q ∈ r.qubits := by
-  simpa [
-    leftReg,
-    halfSplitPoint,
-    splitM,
-    splitLeft,
-    Reg.take
-  ] using List.mem_of_mem_take hq
-
-lemma rightReg_mem_parent
-    (r : Reg)
-    {q : ℕ}
-    (hq : q ∈ (rightReg r).qubits) :
-    q ∈ r.qubits := by
-  simpa [
-    rightReg,
-    halfSplitPoint,
-    splitM,
-    splitRight,
-    Reg.drop
-  ] using List.mem_of_mem_drop hq
-
 /--
 The left recursive QFT acts on the left half of the active register and
 temporarily owns the same reserve as its parent.
@@ -264,14 +231,6 @@ def rightQFTReg (r : ExtReg) : ExtReg :=
   rfl
 
 namespace Gate.PhaseProdWorkspace
-
-/--
-The linear subspace in which both physical workspace qubits of an unsigned
-phase-product macro are clean.
--/
-abbrev CleanState
-    (qs : QSemantics) [RegEncoding qs.Basis] {x z : Reg} (ws : Gate.PhaseProdWorkspace x z) : qs.State → Prop :=
-  CleanClosure (fun b => ws.Clean b)
 
 omit  [GateSemanticsFacts qs] in
 /--
@@ -356,12 +315,6 @@ lemma step1_QFT_right_ket
         qs.ket (RegEncoding.writeNat right kH.1 b) := by
   simpa [ASize, leftReg, rightReg, ExtReg.ofReg, ExtReg.width, ExtReg.toNat, regSize] using
     (QFTSemantics.eval_QFT_ket (qs := qs) (r := ExtReg.ofReg (rightReg r)) (b := b))
-
-lemma disjoint_left_right (r : Reg) :
-  Disjoint (leftReg r) (rightReg r) := by
-  simpa [leftReg, rightReg] using
-    (splitLeft_splitRight_disjoint (r := r) (m := halfSplitPoint r))
-
 
 /-! =========================================================
     Section 2: Encoding-only split-register lemmas
@@ -512,7 +465,7 @@ lemma step2_PhaseProdUsing_after_QFT_right
         ∑ kH : Fin B,
           (qftPhase B (RegEncoding.toNat right b) kH.1) •
             qs.ket (RegEncoding.writeNat right kH.1 b) := by
-    simpa [ASize, B, right] using
+    simpa [ASize, B, right, -regSize_rightReg, -regSize_leftReg] using
       (QFTSemantics.eval_QFT_ket (qs := qs) (r := ExtReg.ofReg right) (b := b))
 
   have phase_scalar_eq (kH : Fin B) :

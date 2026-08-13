@@ -1,4 +1,5 @@
-import FastMultiplication.ShorVerification.Implementation.QFT.Decomposition
+import FastMultiplication.ShorVerification.Implementation.QFT.Defs
+import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Decomposition
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Linearity
 
@@ -23,97 +24,6 @@ universe u
 /-! =========================================================
     Section 1: Explicit QFT lowering plans
 ========================================================= -/
-
-/--
-A complete physical lowering plan for one QFT.
-
-The phase plan is intentionally explicit.  This is the point at which a caller
-chooses either a base-case signed phase product or a recursive implementation
-with concrete reserve layouts.
--/
-inductive QFTLoweringPlan
-    (k : ℕ)
-    (hk : 1 < k)
-    (ops : Prog k) :
-    Reg → Type
-
-  | empty
-      (r : Reg)
-      (hsize : regSize r = 0) :
-      QFTLoweringPlan k hk ops r
-
-  | singleton
-      (r : Reg)
-      (hsize : regSize r = 1) :
-      QFTLoweringPlan k hk ops r
-
-  | split
-      (r : Reg)
-      (hsize : 2 ≤ regSize r)
-      (ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r))
-      (phaseInitSize : ℕ)
-      (phasePlan :
-        StandardPhaseLoweringPlan k hk ops
-          phaseInitSize (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws))
-      (rightPlan : QFTLoweringPlan k hk ops (rightReg r))
-      (leftPlan : QFTLoweringPlan k hk ops (leftReg r)) :
-      QFTLoweringPlan k hk ops r
-
-noncomputable def lowerQFTPlan
-    {k : ℕ}
-    {hk : 1 < k}
-    {ops : Prog k}
-    {r : Reg}
-    (plan : QFTLoweringPlan k hk ops r) :
-    LowGate := by
-  induction plan with
-  | empty r hsize =>
-      exact LowGate.id
-
-  | singleton r hsize =>
-      exact
-        LowGate.H
-          (r.lowQubit (by omega))
-
-  | split r hsize ws phaseInitSize phasePlan
-      rightPlan leftPlan lowerRight lowerLeft =>
-      exact
-        lowerRight ;;
-        lowerGateRec phasePlan ;;
-        lowerLeft ;;
-        LowGate.RadixReverse r (splitM r)
-
-noncomputable def QFTLoweringReady
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [LowerGateClass qs]
-    {k : ℕ}
-    {hk : 1 < k}
-    {ops : Prog k}
-    {r : Reg}
-    (plan : QFTLoweringPlan k hk ops r) :
-    qs.State → Prop := by
-  induction plan with
-  | empty r hsize =>
-      exact fun _ => True
-
-  | singleton r hsize =>
-      exact fun _ => True
-
-  | split r hsize ws phaseInitSize phasePlan
-      rightPlan leftPlan readyRight readyLeft =>
-      exact fun ψ =>
-        Gate.PhaseProdWorkspace.CleanState qs ws ψ
-        ∧
-        readyRight ψ
-        ∧
-        let ψRight := LowerGateClass.evalL (qs := qs) (lowerQFTPlan rightPlan) ψ
-        PhaseLoweringReady qs phasePlan ψRight
-        ∧
-        let ψPhase :=
-          LowerGateClass.evalL (qs := qs) (lowerGateRec phasePlan) ψRight
-        readyLeft ψPhase
 
 theorem evalL_lowerQFTPlan
     (qs : QSemantics)
@@ -378,24 +288,6 @@ theorem evalL_lowerQFTPlan
     Section 4: Linearity and workspace preservation
 ========================================================= -/
 
-lemma evalL_lowerQFTPlan_zero
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [LowerGateClass qs]
-    {k : ℕ}
-    {hk : 1 < k}
-    {ops : Prog k}
-    {r : Reg}
-    (plan : QFTLoweringPlan k hk ops r) :
-    LowerGateClass.evalL
-        (qs := qs)
-        (lowerQFTPlan plan)
-        0
-      =
-    0 := by
-  exact LowerGateClass.evalL_zero (qs := qs) (lowerQFTPlan plan)
-
-
 lemma evalL_lowerQFTPlan_add
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -445,58 +337,6 @@ lemma evalL_lowerQFTPlan_smul
         (lowerQFTPlan plan)
         ψ := by
   exact LowerGateClass.evalL_smul (qs := qs) (lowerQFTPlan plan) a ψ
-
-
-lemma QFTLoweringReady.zero
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [LowerGateClass qs]
-    {k : ℕ}
-    {hk : 1 < k}
-    {ops : Prog k}
-    {r : Reg}
-    (plan : QFTLoweringPlan k hk ops r) :
-    QFTLoweringReady qs plan 0 := by
-  induction plan with
-  | empty =>
-      trivial
-  | singleton =>
-      trivial
-  | split r hsize ws phaseInitSize phasePlan
-      rightPlan leftPlan ihRight ihLeft =>
-      change
-        Gate.PhaseProdWorkspace.CleanState qs ws 0
-          ∧
-        QFTLoweringReady qs rightPlan 0
-          ∧
-        PhaseLoweringReady
-          qs phasePlan
-          (LowerGateClass.evalL
-            (qs := qs)
-            (lowerQFTPlan rightPlan)
-            0)
-          ∧
-        QFTLoweringReady
-          qs leftPlan
-          (LowerGateClass.evalL
-            (qs := qs)
-            (lowerGateRec phasePlan)
-            (LowerGateClass.evalL
-              (qs := qs)
-              (lowerQFTPlan rightPlan)
-              0))
-      rw [
-        evalL_lowerQFTPlan_zero,
-        evalL_lowerGateRec_zero
-      ]
-      exact
-        ⟨
-          CleanClosure.zero,
-          ihRight,
-          PhaseLoweringReady.zero qs phasePlan,
-          ihLeft
-        ⟩
 
 
 lemma QFTLoweringReady.add

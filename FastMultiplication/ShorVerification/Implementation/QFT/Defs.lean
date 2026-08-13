@@ -1,41 +1,307 @@
-import FastMultiplication.ShorVerification.Implementation.QFT.LoweringCorrectness.PlanSemantics
+import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.CleanClosure
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Linearity
 
 /-!
-# QFT Lowering Workspace Construction
+# QFT Public Definitions
 
-This file chooses the concrete reserve layout used by the public QFT lowerer
-and constructs the canonical recursive QFT lowering plan.
-
-It deliberately stops at construction:
-
-* `qftWorkspaceNeed`, `qftXWork`, and `qftZWork` choose the reserve sizes and
-  physical registers;
-* `QFTWorkspaceOK` and `QFTReserveOK` record the static disjointness/capacity
-  facts;
-* `standardQFTLoweringPlan`, `reserveQFTLoweringPlan`, and `lowerQFT` build the
-  actual lowered circuit.
-
-The dynamic clean-state and semantic correctness proofs live in
-`QFTLoweringCorrectness.Readiness`.
-
-Main declarations:
-
-* `qftWorkspaceNeed`, `qftXWork`, and `qftZWork` choose the reserve budget and
-  physical workspace slices.
-* `QFTReserveOK.explicitWorkspace` turns one reserve-capacity proof into the
-  full recursive workspace object.
-* `standardQFTLoweringPlan` is the main recursive construction over ordinary
-  registers.
-* `lowerQFT` is the final public constructor for the lowered QFT using
-  workspace selected from an `ExtReg` reserve.
+Just enough definitions to state the QFT lowering-correctness assertion
+(`Assertions.lean`). All proof-only material stays under `QFT.Proofs`.
 -/
-
 namespace Shor
 
 open Gate
 
 universe u
+
+
+
+
+/-! =========================================================
+    Section 1: Register arithmetic and split helpers
+========================================================= -/
+
+variable (qs : QSemantics)
+  [RegEncoding qs.Basis]
+
+  [GateSemanticsFacts qs]
+
+def splitM (r : Reg) : ℕ := (regSize r) / 2
+def halfSplitPoint (r : Reg) : SplitPoint r :=
+  ⟨splitM r, by
+    simpa [splitM] using Nat.div_le_self (regSize r) 2⟩
+
+def leftReg  (r : Reg) : Reg := splitLeft r (halfSplitPoint r)
+def rightReg (r : Reg) : Reg := splitRight r (halfSplitPoint r)
+
+lemma leftReg_mem_parent
+    (r : Reg)
+    {q : ℕ}
+    (hq : q ∈ (leftReg r).qubits) :
+    q ∈ r.qubits := by
+  simpa [
+    leftReg,
+    halfSplitPoint,
+    splitM,
+    splitLeft,
+    Reg.take
+  ] using List.mem_of_mem_take hq
+
+lemma rightReg_mem_parent
+    (r : Reg)
+    {q : ℕ}
+    (hq : q ∈ (rightReg r).qubits) :
+    q ∈ r.qubits := by
+  simpa [
+    rightReg,
+    halfSplitPoint,
+    splitM,
+    splitRight,
+    Reg.drop
+  ] using List.mem_of_mem_drop hq
+
+namespace Gate.PhaseProdWorkspace
+
+/--
+The linear subspace in which both physical workspace qubits of an unsigned
+phase-product macro are clean.
+-/
+abbrev CleanState
+    (qs : QSemantics) [RegEncoding qs.Basis] {x z : Reg} (ws : Gate.PhaseProdWorkspace x z) : qs.State → Prop :=
+  CleanClosure (fun b => ws.Clean b)
+
+end Gate.PhaseProdWorkspace
+
+lemma disjoint_left_right (r : Reg) :
+  Disjoint (leftReg r) (rightReg r) := by
+  simpa [leftReg, rightReg] using
+    (splitLeft_splitRight_disjoint (r := r) (m := halfSplitPoint r))
+
+
+/-! =========================================================
+    Section 2: Encoding-only split-register lemmas
+========================================================= -/
+
+section EncodingOnly
+variable (qs : QSemantics) [RegEncoding qs.Basis]
+
+end EncodingOnly
+
+/-! =========================================================
+    Section 3: Exponential and qftPhase bridge lemmas
+========================================================= -/
+
+/-! =========================================================
+    Section 4: Sum-pushing and scalar helper lemmas
+========================================================= -/
+
+/-! =========================================================
+    Section 5: First split-QFT steps
+========================================================= -/
+
+/-! =========================================================
+    Section 6: Phase-combination lemmas
+========================================================= -/
+
+/-! =========================================================
+    Section 7: Reindexing sums and cast utilities
+========================================================= -/
+
+open scoped BigOperators
+
+
+/-! =========================================================
+    Section 8: QFT split on basis kets
+========================================================= -/
+
+/-! =========================================================
+    Section 9: Radix reversal and exact QFT split
+========================================================= -/
+
+
+
+
+
+open Gate
+
+
+/-! =========================================================
+    Section 1: Explicit QFT lowering plans
+========================================================= -/
+
+/--
+A complete physical lowering plan for one QFT.
+
+The phase plan is intentionally explicit.  This is the point at which a caller
+chooses either a base-case signed phase product or a recursive implementation
+with concrete reserve layouts.
+-/
+inductive QFTLoweringPlan
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k) :
+    Reg → Type
+
+  | empty
+      (r : Reg)
+      (hsize : regSize r = 0) :
+      QFTLoweringPlan k hk ops r
+
+  | singleton
+      (r : Reg)
+      (hsize : regSize r = 1) :
+      QFTLoweringPlan k hk ops r
+
+  | split
+      (r : Reg)
+      (hsize : 2 ≤ regSize r)
+      (ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r))
+      (phaseInitSize : ℕ)
+      (phasePlan :
+        StandardPhaseLoweringPlan k hk ops
+          phaseInitSize (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws))
+      (rightPlan : QFTLoweringPlan k hk ops (rightReg r))
+      (leftPlan : QFTLoweringPlan k hk ops (leftReg r)) :
+      QFTLoweringPlan k hk ops r
+
+noncomputable def lowerQFTPlan
+    {k : ℕ}
+    {hk : 1 < k}
+    {ops : Prog k}
+    {r : Reg}
+    (plan : QFTLoweringPlan k hk ops r) :
+    LowGate := by
+  induction plan with
+  | empty r hsize =>
+      exact LowGate.id
+
+  | singleton r hsize =>
+      exact
+        LowGate.H
+          (r.lowQubit (by omega))
+
+  | split r hsize ws phaseInitSize phasePlan
+      rightPlan leftPlan lowerRight lowerLeft =>
+      exact
+        lowerRight ;;
+        lowerGateRec phasePlan ;;
+        lowerLeft ;;
+        LowGate.RadixReverse r (splitM r)
+
+noncomputable def QFTLoweringReady
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [LowerGateClass qs]
+    {k : ℕ}
+    {hk : 1 < k}
+    {ops : Prog k}
+    {r : Reg}
+    (plan : QFTLoweringPlan k hk ops r) :
+    qs.State → Prop := by
+  induction plan with
+  | empty r hsize =>
+      exact fun _ => True
+
+  | singleton r hsize =>
+      exact fun _ => True
+
+  | split r hsize ws phaseInitSize phasePlan
+      rightPlan leftPlan readyRight readyLeft =>
+      exact fun ψ =>
+        Gate.PhaseProdWorkspace.CleanState qs ws ψ
+        ∧
+        readyRight ψ
+        ∧
+        let ψRight := LowerGateClass.evalL (qs := qs) (lowerQFTPlan rightPlan) ψ
+        PhaseLoweringReady qs phasePlan ψRight
+        ∧
+        let ψPhase :=
+          LowerGateClass.evalL (qs := qs) (lowerGateRec phasePlan) ψRight
+        readyLeft ψPhase
+
+/-! =========================================================
+    Section 4: Linearity and workspace preservation
+========================================================= -/
+
+lemma evalL_lowerQFTPlan_zero
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    {k : ℕ}
+    {hk : 1 < k}
+    {ops : Prog k}
+    {r : Reg}
+    (plan : QFTLoweringPlan k hk ops r) :
+    LowerGateClass.evalL
+        (qs := qs)
+        (lowerQFTPlan plan)
+        0
+      =
+    0 := by
+  exact LowerGateClass.evalL_zero (qs := qs) (lowerQFTPlan plan)
+
+
+lemma QFTLoweringReady.zero
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [LowerGateClass qs]
+    {k : ℕ}
+    {hk : 1 < k}
+    {ops : Prog k}
+    {r : Reg}
+    (plan : QFTLoweringPlan k hk ops r) :
+    QFTLoweringReady qs plan 0 := by
+  induction plan with
+  | empty =>
+      trivial
+  | singleton =>
+      trivial
+  | split r hsize ws phaseInitSize phasePlan
+      rightPlan leftPlan ihRight ihLeft =>
+      change
+        Gate.PhaseProdWorkspace.CleanState qs ws 0
+          ∧
+        QFTLoweringReady qs rightPlan 0
+          ∧
+        PhaseLoweringReady
+          qs phasePlan
+          (LowerGateClass.evalL
+            (qs := qs)
+            (lowerQFTPlan rightPlan)
+            0)
+          ∧
+        QFTLoweringReady
+          qs leftPlan
+          (LowerGateClass.evalL
+            (qs := qs)
+            (lowerGateRec phasePlan)
+            (LowerGateClass.evalL
+              (qs := qs)
+              (lowerQFTPlan rightPlan)
+              0))
+      rw [
+        evalL_lowerQFTPlan_zero,
+        evalL_lowerGateRec_zero
+      ]
+      exact
+        ⟨
+          CleanClosure.zero,
+          ihRight,
+          PhaseLoweringReady.zero qs phasePlan,
+          ihLeft
+        ⟩
+
+
+
+
+
+
+open Gate
+
 
 /-! =========================================================
     Section 1: Canonical unsigned phase-product plans
@@ -299,31 +565,6 @@ namespace QFTWorkspaceCleanState
 variable {qs : QSemantics} [RegEncoding qs.Basis] {xWork zWork : Reg}
 /-- Smart constructors delegating to `CleanClosure`, preserving call sites. -/
 theorem zero : QFTWorkspaceCleanState qs xWork zWork 0 := CleanClosure.zero
-theorem ket (b : qs.Basis) (hx : FreshZero xWork b) (hz : FreshZero zWork b) :
-    QFTWorkspaceCleanState qs xWork zWork (qs.ket b) := CleanClosure.ket b ⟨hx, hz⟩
-theorem add {ψ φ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ)
-    (hφ : QFTWorkspaceCleanState qs xWork zWork φ) :
-    QFTWorkspaceCleanState qs xWork zWork (ψ + φ) := CleanClosure.add hψ hφ
-theorem smul (a : ℂ) {ψ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ) :
-    QFTWorkspaceCleanState qs xWork zWork (a • ψ) := CleanClosure.smul a hψ
-/-- Custom eliminator so `induction`/`cases` keep the original 2-hypothesis
-`ket` shape (`| ket b hx hz`) despite the generic single-predicate closure. -/
-@[induction_eliminator, cases_eliminator]
-def rec' {motive : (ψ : qs.State) → QFTWorkspaceCleanState qs xWork zWork ψ → Prop}
-    (zero : motive 0 QFTWorkspaceCleanState.zero)
-    (ket : ∀ (b : qs.Basis) (hx : FreshZero xWork b) (hz : FreshZero zWork b),
-        motive (qs.ket b) (QFTWorkspaceCleanState.ket b hx hz))
-    (add : ∀ {ψ φ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ)
-        (hφ : QFTWorkspaceCleanState qs xWork zWork φ),
-        motive ψ hψ → motive φ hφ → motive (ψ + φ) (QFTWorkspaceCleanState.add hψ hφ))
-    (smul : ∀ (a : ℂ) {ψ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ),
-        motive ψ hψ → motive (a • ψ) (QFTWorkspaceCleanState.smul a hψ))
-    {ψ : qs.State} (h : QFTWorkspaceCleanState qs xWork zWork ψ) : motive ψ h := by
-  induction h with
-  | zero => exact zero
-  | ket b hconj => exact ket b hconj.1 hconj.2
-  | add hψ hφ ihψ ihφ => exact add hψ hφ ihψ ihφ
-  | smul a hψ ih => exact smul a hψ ih
 end QFTWorkspaceCleanState
 
 /--
@@ -1330,5 +1571,6 @@ noncomputable def lowerQFT
   lowerQFTPlan
     (reserveQFTLoweringPlan
       k hk ops r hworkspace)
+
 
 end Shor
