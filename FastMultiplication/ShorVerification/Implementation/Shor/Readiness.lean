@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.OrderFinding
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Shared.GateConstructions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Shared.GateSemanticsLemmas
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic

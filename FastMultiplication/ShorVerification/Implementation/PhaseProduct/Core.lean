@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.CleanClosure
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Shared.CleanClosure
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Core.Coverage
 import Mathlib.Data.Finset.Basic
 

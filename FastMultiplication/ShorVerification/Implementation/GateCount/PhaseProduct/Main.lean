@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.GateCount.PhaseProduct.Lemmas
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Shared.GateConstructions
 
 namespace Shor
 

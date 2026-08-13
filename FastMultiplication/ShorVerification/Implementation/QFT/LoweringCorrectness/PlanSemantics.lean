@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.QFT.Decomposition
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Shared.GateConstructions
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.LoweringCorrectness.Correctness
 
 /-!

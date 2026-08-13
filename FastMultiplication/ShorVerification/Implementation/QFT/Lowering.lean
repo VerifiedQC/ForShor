@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.QFT.LoweringCorrectness.PlanSemantics
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Shared.GateConstructions
 
 /-!
 # QFT Lowering Workspace Construction
