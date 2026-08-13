@@ -21,23 +21,6 @@ bound files.
 ========================================================= -/
 
 /-! ---------------------------------------------------------
-    Ideal specification interface
-
-The approximation proofs compare concrete Algorithm 1 circuits against abstract
-ideal modular multiplication gates. This small class names those ideal gates
-without committing to an implementation.
---------------------------------------------------------- -/
-
-section IdealSpecification
-
-/-- Ideal modular multiplication specifications used by the correctness layer. -/
-class Spec where
-  idealModMul     : (c N : ℕ) → (x : Reg) → Gate
-  idealCtrlModMul : (c N : ℕ) → (x : Reg) → (ctrl : ℕ) → Gate
-
-end IdealSpecification
-
-/-! ---------------------------------------------------------
     Shared circuit syntax and workspace
 
 This section defines the reusable high-level gates for Algorithm 1, together
@@ -359,44 +342,6 @@ ideal gate preserves the whole valid subspace.
 
 section ValidInputsAndIdealSemantics
 
-/-- `q` is not a qubit of register `r`. -/
-def QubitOutside (q : ℕ) (r : Reg) : Prop :=
-  q ∉ r.qubits
-
-/--
-Layout assumptions for one invocation of `CmodMulInPlaceCore`.
-
-`data.grow 1` is used because Algorithm 1 temporarily activates one reserve
-bit of `data` as its carry/high bit.
--/
-def ModMulCoreLayout
-    (data work : ExtReg)
-    (flag ctrl : ℕ) :
-    Prop :=
-  ExtReg.OwnedDisjoint data work ∧
-  flag ∉ data.ownedQubits ∧
-  flag ∉ work.ownedQubits ∧
-  ctrl ∉ data.ownedQubits ∧
-  ctrl ∉ work.ownedQubits ∧
-  ctrl ≠ flag
-
-/--
-A computational-basis input on which Algorithm 1 is allowed to be called.
-
-The data register contains a canonical residue; the two data reserve bits,
-the fractional/work register, and the comparator flag are clean.
-All other qubits, including the control and exponent registers, are arbitrary.
--/
-def GoodModMulBasisInput
-    (qs : QSemantics) [RegEncoding qs.Basis]
-    (N : ℕ) (data work : ExtReg) (flag : ℕ)
-    (b : qs.Basis) : Prop :=
-  RegEncoding.toNat data.active b < N ∧
-  data.FreshFor 2 b ∧
-  RegEncoding.toNat work.active b = 0 ∧
-  work.FreshFor 1 b ∧
-  RegEncoding.toNat (qubitReg flag) b = 0
-
 /--
 The full valid-input subspace.
 
@@ -413,30 +358,6 @@ def ValidModMulState
         ∃ b : qs.Basis,
           GoodModMulBasisInput qs N data work flag b ∧
           ψ = qs.ket b } : Set qs.State)
-
-/-- Exact basis semantics required of the ideal controlled modular multiplier. -/
-class IdealCtrlModMulExactSemantics
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [Spec] : Prop where
-
-  eval_idealCtrlModMul_good_ket_exact :
-    ∀ (c N : ℕ) (data work : ExtReg) (flag ctrl : ℕ) (b : qs.Basis),
-      1 < N →
-      N ≤ ASize data.active →
-      Nat.Coprime c N →
-      ModMulCoreLayout data work flag ctrl →
-      GoodModMulBasisInput qs N data work flag b →
-      qs.eval (Spec.idealCtrlModMul c N data.active ctrl) (qs.ket b)
-        =
-      qs.ket
-        (RegEncoding.writeNat data.active
-          (if RegEncoding.bit ctrl b then
-            (c * RegEncoding.toNat data.active b) % N
-          else
-            RegEncoding.toNat data.active b)
-          b)
 
 /-- Writing the active portion of an extended register preserves freshness of its reserve prefix. -/
 lemma ExtReg.freshFor_write_active
@@ -1275,94 +1196,14 @@ end ModMulConfig
 end SharedConfigurations
 
 /-! ---------------------------------------------------------
-    Primitive semantics and ideal configuration facts
+    Derived primitive semantics and ideal configuration facts
 
-Steps 3 and 4 use opaque primitive gates. This section isolates their required
-basis semantics and provides the configuration-specific ideal multiplier lemma.
+Steps 3 and 4 use opaque primitive gates whose basic semantics live in the
+framework. This section derives the implementation-specific Step 3/4 facts and
+provides the configuration-specific ideal multiplier lemma.
 --------------------------------------------------------- -/
 
 section PrimitiveAndIdealConfigFacts
-
-/--
-Semantic facts for the opaque arithmetic primitives used by the reference
-modular-multiplication implementation.
--/
-class ModMulPrimitiveGateSemantics
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs] : Type where
-
-  /--
-  `CMP_GE_CONST` reversibly XORs the comparison `N ≤ x` into `flag`.
-  -/
-  eval_cmp_ge_const_ket :
-    ∀ (N : ℕ) (data : Reg) (flag : ℕ) (b : qs.Basis),
-      flag ∉ data.qubits →
-      qs.eval
-          (Gate.Prim "CMP_GE_CONST" ([N, flag] ++ data.qubits))
-          (qs.ket b)
-        =
-      qs.ket
-        (RegEncoding.writeNat
-          (qubitReg flag)
-          (if RegEncoding.bit flag b then
-            if N ≤ RegEncoding.toNat data b then 0 else 1
-          else
-            if N ≤ RegEncoding.toNat data b then 1 else 0)
-          b)
-
-  /--
-  `CSUB_CONST` subtracts `N` modulo the width of `data` when `flag = 1`.
-  -/
-  eval_csub_const_ket :
-    ∀ (N : ℕ) (data : Reg) (flag : ℕ) (b : qs.Basis),
-      flag ∉ data.qubits →
-      qs.eval
-          (Gate.Prim "CSUB_CONST" ([N, flag] ++ data.qubits))
-          (qs.ket b)
-        =
-      qs.ket
-        (RegEncoding.writeNat data
-          (if RegEncoding.bit flag b then
-            (RegEncoding.toNat data b
-                + ASize data
-                - (N % ASize data)) % ASize data
-          else
-            RegEncoding.toNat data b)
-          b)
-
-  /--
-  `CMP_LT_NW` reversibly XORs the comparison
-
-      x * 2^|work| < N * work
-
-  into `flag`.
-  -/
-  eval_cmp_lt_nw_ket :
-    ∀ (N : ℕ) (data work : Reg) (flag : ℕ) (b : qs.Basis),
-      flag ∉ data.qubits →
-      flag ∉ work.qubits →
-      qs.eval
-          (Gate.Prim "CMP_LT_NW"
-            ([N, flag] ++ data.qubits ++ work.qubits))
-          (qs.ket b)
-        =
-      qs.ket
-        (RegEncoding.writeNat
-          (qubitReg flag)
-          (if RegEncoding.bit flag b then
-            if RegEncoding.toNat data b * ASize work
-                < N * RegEncoding.toNat work b then
-              0
-            else
-              1
-          else
-            if RegEncoding.toNat data b * ASize work
-                < N * RegEncoding.toNat work b then
-              1
-            else
-              0)
-          b)
 
 section ModMulPrimitiveDerivedSemantics
 
