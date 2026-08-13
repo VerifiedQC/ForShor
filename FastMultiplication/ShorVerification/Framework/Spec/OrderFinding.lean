@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
+import FastMultiplication.ShorVerification.Framework.Semantics.QSemantics
 
 namespace Shor
 
