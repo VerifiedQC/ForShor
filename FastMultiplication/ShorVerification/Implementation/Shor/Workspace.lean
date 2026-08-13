@@ -1,8 +1,8 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering
-import FastMultiplication.ShorVerification.Implementation.Workspace.Shor
-import FastMultiplication.ShorVerification.Implementation.Workspace.ShorOrderFinding
-import FastMultiplication.ShorVerification.Implementation.Workspace.ShorReadiness
+import FastMultiplication.ShorVerification.Implementation.Shor.Budgets
+import FastMultiplication.ShorVerification.Implementation.Shor.OrderFinding
+import FastMultiplication.ShorVerification.Implementation.Shor.Readiness
 
 /-!
 # Workspace verification index

@@ -1,5 +1,5 @@
-import FastMultiplication.ShorVerification.Implementation.AbstractMachine.WholeProgramCorrectness
-import FastMultiplication.ShorVerification.Implementation.Workspace.ShorReadiness
+import FastMultiplication.ShorVerification.Implementation.Shor.WholeProgramCorrectness
+import FastMultiplication.ShorVerification.Implementation.Shor.Readiness
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.ModExp
 import FastMultiplication.ShorVerification.Framework.Submission
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition

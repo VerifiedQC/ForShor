@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.ShorCorrectness
+import FastMultiplication.ShorVerification.Implementation.Shor.Correctness
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.GateConstructions
 import FastMultiplication.ShorVerification.Framework.Gatecount.CostModel
 
