@@ -1,6 +1,15 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateSemanticsLemmas
 
+/-!
+# Lowered-Gate Evaluation Lemmas
+
+`evalL_*` rewrite lemmas that unfold the low-level gate evaluator
+(`LowerGateClass.evalL`) for each phase-product primitive — the simp library the
+rest of the lowering-correctness proofs build on.
+-/
+
+
 namespace Shor
 open Gate
 open Operations
@@ -254,93 +263,11 @@ theorem evalL_radixReverse
       qs.eval (Gate.RadixReverse r m) ψ :=
   LowerGateGateBridge.evalL_radixReverse r m ψ
 
-theorem evalL_adj_of_equiv
-    {qs : QSemantics}
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [LowerGateClass qs]
-    (L : LowGate)
-    (U : Gate)
-    (h :
-      ∀ φ,
-        LowerGateClass.evalL (qs := qs) L φ =
-          qs.eval U φ)
-    (ψ : qs.State) :
-    LowerGateClass.evalL
-        (qs := qs)
-        (LowGate.adj L)
-        ψ
-      =
-    qs.eval (Gate.adj U) ψ := by
-
-  let φ : qs.State :=
-    qs.eval (Gate.adj U) ψ
-
-  have hforward :
-      LowerGateClass.evalL (qs := qs) L φ = ψ := by
-    calc
-      LowerGateClass.evalL (qs := qs) L φ
-          = qs.eval U φ := h φ
-      _ = ψ := by
-        exact qs.eval_apply_adj U ψ
-
-  calc
-    LowerGateClass.evalL
-        (qs := qs)
-        (LowGate.adj L)
-        ψ
-        =
-      LowerGateClass.evalL
-        (qs := qs)
-        (LowGate.adj L)
-        (LowerGateClass.evalL (qs := qs) L φ) := by
-          rw [hforward]
-
-    _ = φ := by
-      exact
-        LowerGateClass.evalL_adj_apply
-          (qs := qs)
-          L
-          φ
-
-    _ = qs.eval (Gate.adj U) ψ := rfl
-
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 variable [GateSemanticsCore qs]
 variable [PhaseSemantics qs]
 variable [LowerGateClass qs]
-
-/-- The naive low-level signed phase product has the high-level signed phase semantics. -/
-theorem evalL_naive_phaseProd
-    (phi : ℝ)
-    (x z : ExtReg)
-    (ψ : qs.State) :
-    LowerGateClass.evalL
-        (qs := qs)
-        (LowGate.Naive_SignedPhaseProd phi x z)
-        ψ
-      =
-    qs.eval
-        (Gate.SignedPhaseProd phi x z)
-        ψ := by
-  exact LowerGateClass.evalL_naive_signedPhaseProd (qs := qs) phi x z ψ
-
-/-- The naive low-level controlled phase product has the high-level controlled semantics. -/
-theorem evalL_naive_cphaseProd
-    (ctrl : ℕ)
-    (phi : ℝ)
-    (x z : ExtReg)
-    (ψ : qs.State) :
-    LowerGateClass.evalL
-        (qs := qs)
-        (LowGate.Naive_CSignedPhaseProd ctrl phi x z)
-        ψ
-      =
-    qs.eval
-        (Gate.CSignedPhaseProd ctrl phi x z)
-        ψ := by
-  exact LowerGateClass.evalL_naive_csignedPhaseProd (qs := qs) ctrl phi x z ψ
 
 end LowerGateClass
 
@@ -350,57 +277,5 @@ end LowerGateClass
     the high-level gates whose semantics can be reproduced by the low-level
     interface above.
 ========================================================= -/
-
-/-- High-level gates that the phase-product lowering pipeline knows how to lower. -/
-inductive LowerablePhaseGate : Gate → Prop where
-  | id :
-      LowerablePhaseGate Gate.id
-  | seq :
-      ∀ (U V : Gate),
-        LowerablePhaseGate U →
-        LowerablePhaseGate V →
-        LowerablePhaseGate (Gate.seq U V)
-  | H :
-      ∀ qbit,
-        LowerablePhaseGate (Gate.H qbit)
-  | X :
-      ∀ qbit,
-        LowerablePhaseGate (Gate.X qbit)
-  | Prim :
-      ∀ tag args,
-        LowerablePhaseGate (Gate.Prim tag args)
-  | ShiftL :
-      ∀ r n,
-        LowerablePhaseGate (Gate.ShiftL r n)
-  | ShiftR :
-      ∀ r n,
-        LowerablePhaseGate (Gate.ShiftR r n)
-  | Negate :
-      ∀ r,
-        LowerablePhaseGate (Gate.Negate r)
-  | AddScaled :
-      ∀ dst src negSrc shift,
-        LowerablePhaseGate (Gate.AddScaled dst src negSrc shift)
-  | SignedPhaseProd :
-      ∀ phi x z,
-        LowerablePhaseGate (Gate.SignedPhaseProd phi x z)
-  | CSignedPhaseProd :
-      ∀ ctrl phi x z,
-        LowerablePhaseGate (Gate.CSignedPhaseProd ctrl phi x z)
-  | zeroExtend :
-      ∀ r n,
-        LowerablePhaseGate (Gate.zeroExtend r n)
-  | signExtend :
-      ∀ r n,
-        LowerablePhaseGate (Gate.signExtend r n)
-  | zeroDealloc :
-      ∀ r n,
-        LowerablePhaseGate (Gate.zeroDealloc r n)
-  | signDealloc :
-      ∀ r n,
-        LowerablePhaseGate (Gate.signDealloc r n)
-  | RadixReverse :
-      ∀ r m,
-        LowerablePhaseGate (Gate.RadixReverse r m)
 
 end Shor

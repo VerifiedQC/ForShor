@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Lowering
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Workspace
 
 namespace Shor
 open Gate
