@@ -1,7 +1,8 @@
 -- This module serves as the root of the `FastMultiplication` library.
 -- Import modules here that should be built as part of the library.
-import FastMultiplication.ShorVerification.Implementation.Shor.Workspace
-import FastMultiplication.ShorVerification.Implementation.Shor.Correctness
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Workspace
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Correctness
+import FastMultiplication.ShorVerification.Implementation.Shor.Main
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Main
 import FastMultiplication.ShorVerification.Implementation.QFT.Main
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Main

@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.OrderFinding
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.OrderFinding
 
 namespace Shor
 namespace Reference

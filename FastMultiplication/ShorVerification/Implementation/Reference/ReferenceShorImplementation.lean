@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Reference.ShorProgram
-import FastMultiplication.ShorVerification.Implementation.Shor.Correctness
+import FastMultiplication.ShorVerification.Implementation.Shor.Main
 import FastMultiplication.ShorVerification.Framework.Submission
 
 namespace Shor
