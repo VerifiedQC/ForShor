@@ -12,6 +12,11 @@ The final Shor correctness guarantees, each stated once as a named proposition.
 The theorems in `Proofs/Correctness.lean` are typed directly by these Props, so
 there is exactly one copy of each statement and it is the one consumers resolve
 through.
+
+This file imports `Proofs.Readiness`: the statements plug proof-derived terms
+into `Prop`-valued hypothesis slots (e.g. `hready.workspace`), so by proof
+irrelevance the meaning of each Prop does not depend on those proof bodies —
+the trusted reading surface remains `Defs` + `Assertions`.
 -/
 
 namespace Shor
