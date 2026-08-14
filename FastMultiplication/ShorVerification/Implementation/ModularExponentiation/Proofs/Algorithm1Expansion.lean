@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateSemanticsLemmas
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Lowering
 
 open Shor
 

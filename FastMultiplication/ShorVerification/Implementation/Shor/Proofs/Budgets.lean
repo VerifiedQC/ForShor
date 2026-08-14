@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Defs
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Lowering
 
 namespace Shor
 
