@@ -1,6 +1,73 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateConstructions
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Definitions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.EvalLLemmas
+
+/-!
+# Phase-Product Lowerability
+
+The `LowerablePhaseGate` predicate and the `lowerable_*` lemmas proving that each
+gate produced by the phase-product compiler inhabits it.
+-/
+
+
+namespace Shor
+open Gate
+open Operations
+
+/-- High-level gates that the phase-product lowering pipeline knows how to lower. -/
+inductive LowerablePhaseGate : Gate → Prop where
+  | id :
+      LowerablePhaseGate Gate.id
+  | seq :
+      ∀ (U V : Gate),
+        LowerablePhaseGate U →
+        LowerablePhaseGate V →
+        LowerablePhaseGate (Gate.seq U V)
+  | H :
+      ∀ qbit,
+        LowerablePhaseGate (Gate.H qbit)
+  | X :
+      ∀ qbit,
+        LowerablePhaseGate (Gate.X qbit)
+  | Prim :
+      ∀ tag args,
+        LowerablePhaseGate (Gate.Prim tag args)
+  | ShiftL :
+      ∀ r n,
+        LowerablePhaseGate (Gate.ShiftL r n)
+  | ShiftR :
+      ∀ r n,
+        LowerablePhaseGate (Gate.ShiftR r n)
+  | Negate :
+      ∀ r,
+        LowerablePhaseGate (Gate.Negate r)
+  | AddScaled :
+      ∀ dst src negSrc shift,
+        LowerablePhaseGate (Gate.AddScaled dst src negSrc shift)
+  | SignedPhaseProd :
+      ∀ phi x z,
+        LowerablePhaseGate (Gate.SignedPhaseProd phi x z)
+  | CSignedPhaseProd :
+      ∀ ctrl phi x z,
+        LowerablePhaseGate (Gate.CSignedPhaseProd ctrl phi x z)
+  | zeroExtend :
+      ∀ r n,
+        LowerablePhaseGate (Gate.zeroExtend r n)
+  | signExtend :
+      ∀ r n,
+        LowerablePhaseGate (Gate.signExtend r n)
+  | zeroDealloc :
+      ∀ r n,
+        LowerablePhaseGate (Gate.zeroDealloc r n)
+  | signDealloc :
+      ∀ r n,
+        LowerablePhaseGate (Gate.signDealloc r n)
+  | RadixReverse :
+      ∀ r m,
+        LowerablePhaseGate (Gate.RadixReverse r m)
+
+end Shor
+
 
 namespace Shor
 open Gate
@@ -165,28 +232,6 @@ namespace LowerablePhaseGate
     (r : ExtReg) :
     ¬ LowerablePhaseGate (Gate.QFT r) := by
   intro h; cases h
-
-/--
-The concrete unsigned phase-product macro is in the lowerable fragment once
-its physical two-qubit workspace has been supplied.
--/
-theorem phaseProdUsing
-    {x z : Reg}
-    (phi : ℝ)
-    (ws : Gate.PhaseProdWorkspace x z) :
-    LowerablePhaseGate (Gate.PhaseProdUsing phi x z ws) := by
-  unfold Gate.PhaseProdUsing
-  exact LowerablePhaseGate.seq _ _ (LowerablePhaseGate.zeroExtend ws.xExt 1)
-      (LowerablePhaseGate.seq _ _
-        (LowerablePhaseGate.zeroExtend ws.zExt 1)
-        (LowerablePhaseGate.seq _ _
-          (LowerablePhaseGate.SignedPhaseProd
-            phi
-            (ws.xExt.grow 1)
-            (ws.zExt.grow 1))
-          (LowerablePhaseGate.seq _ _
-            (LowerablePhaseGate.zeroDealloc ws.zExt 1)
-            (LowerablePhaseGate.zeroDealloc ws.xExt 1))))
 
 end LowerablePhaseGate
 
@@ -379,22 +424,6 @@ lemma lowerable_compileOpsToSignedGate
         (lowerable_compileSignedDeallocations
           k stInit stFinal))
 
-/-- The packaged compiled signed phase-product replacement is lowerable. -/
-lemma lowerable_compiledSignedPhaseGate
-    (k : ℕ)
-    (hk : 1 < k)
-    (pts : List Point)
-    (hpts : pts.length = q k)
-    (ops : Prog k)
-    (phi : ℝ)
-    (x z : ExtReg)
-    (layout : Gate.PhaseProductLayout x z k) :
-    LowerablePhaseGate
-      (compiledSignedPhaseGate
-        k hk pts hpts ops phi x z layout) := by
-  unfold compiledSignedPhaseGate
-  exact lowerable_compileOpsToSignedGate k hk phi x z layout (loweringPhaseCoeff k x z pts hpts) ops
-
 /-- Control-phase wrapping preserves lowerability. -/
 lemma lowerable_controlPhaseLeaves
     (ctrl : ℕ)
@@ -457,24 +486,5 @@ lemma lowerable_compileOpsToCSignedGate
         k hk ctrl phi x z layout coeff ops) := by
   unfold compileOpsToCSignedGate
   exact lowerable_controlPhaseLeaves ctrl (lowerable_compileOpsToSignedGate k hk phi x z layout coeff ops)
-
-/-- The packaged compiled controlled phase-product replacement is lowerable. -/
-lemma lowerable_compiledCSignedPhaseGate
-    (k : ℕ)
-    (hk : 1 < k)
-    (pts : List Point)
-    (hpts : pts.length = q k)
-    (ops : Prog k)
-    (ctrl : ℕ)
-    (phi : ℝ)
-    (x z : ExtReg)
-    (layout : Gate.PhaseProductLayout x z k) :
-    LowerablePhaseGate
-      (compiledCSignedPhaseGate
-        k hk pts hpts ops
-        ctrl phi x z layout) := by
-  unfold compiledCSignedPhaseGate
-  exact lowerable_compileOpsToCSignedGate k hk ctrl phi x z layout (loweringPhaseCoeff k x z pts hpts) ops
-
 
 end Shor

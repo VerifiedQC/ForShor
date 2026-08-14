@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Lowering
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Workspace
 
 namespace Shor
 open Gate
@@ -490,7 +490,7 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
             hEnc
         with ⟨bMid, hArithEval, hArithEnc⟩
       rcases
-          sameOutside_after_noPhase_run_ket_gen_aux
+          sameOutside_after_noPhase_run_ket_gen
             (qs := qs)
             (hk := hk)
             (phi := phi)
@@ -1332,7 +1332,7 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
             hEnc
         with ⟨bMid, hArithEval, hArithEnc⟩
       rcases
-          sameOutside_after_noPhase_run_ket_gen_aux
+          sameOutside_after_noPhase_run_ket_gen
             (qs := qs)
             (hk := hk)
             (phi := phi)

@@ -264,7 +264,7 @@ lemma alg1_reset_extendHi_work_write
       RegEncoding.toNat (cfg.env.data.grow 1).active z =
         RegEncoding.toNat cfg.env.data.active z := by
     simpa [ExtReg.toNat] using
-      (ExtReg.toNat_grow_of_fresh cfg.env.data 1 z cfg.env.circuit_workspace.data_canGrow_one hfresh1)
+      (Gate.ExtReg.toNat_grow_of_fresh cfg.env.data 1 z hfresh1)
 
   have hrestore_ext :
       RegEncoding.writeNat

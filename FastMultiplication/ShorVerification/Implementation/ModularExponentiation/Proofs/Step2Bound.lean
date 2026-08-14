@@ -710,7 +710,7 @@ lemma alg1_step2_input_xext_value
       RegEncoding.toNat (cfg.env.data.grow 1).active b =
         RegEncoding.toNat cfg.env.data.active b := by
     simpa [ExtReg.toNat] using
-      (ExtReg.toNat_grow_of_fresh cfg.env.data 1 b cfg.env.circuit_workspace.data_canGrow_one hfresh1)
+      (Gate.ExtReg.toNat_grow_of_fresh cfg.env.data 1 b hfresh1)
 
   rw [hwrite, hgrown]
 

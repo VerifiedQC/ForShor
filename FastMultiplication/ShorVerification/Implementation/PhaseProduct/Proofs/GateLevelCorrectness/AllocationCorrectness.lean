@@ -110,18 +110,6 @@ lemma ExtReg.activeDisjoint_of_ownedDisjoint_right_grow {a b : ExtReg} (h : ExtR
     simpa [ExtReg.ownedQubits_grow] using this
   exact h (List.mem_append_left _ hqa) hqb
 
-/-- Growing both owned-disjoint registers preserves active-disjointness. -/
-lemma ExtReg.activeDisjoint_of_ownedDisjoint_grow_grow {a b : ExtReg} (h : ExtReg.OwnedDisjoint a b) (m n : ℕ) :
-    ExtReg.ActiveDisjoint (a.grow m) (b.grow n) := by
-  intro q hqGrowA hqGrowB
-  have hqa : q ∈ a.ownedQubits := by
-    have : q ∈ (a.grow m).ownedQubits := List.mem_append_left _ hqGrowA
-    simpa [ExtReg.ownedQubits_grow] using this
-  have hqb : q ∈ b.ownedQubits := by
-    have : q ∈ (b.grow n).ownedQubits := List.mem_append_left _ hqGrowB
-    simpa [ExtReg.ownedQubits_grow] using this
-  exact h hqa hqb
-
 /-- Fresh reserve bits of one owned-disjoint register are active-disjoint from a grown other register. -/
 lemma ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
   {a b : ExtReg}

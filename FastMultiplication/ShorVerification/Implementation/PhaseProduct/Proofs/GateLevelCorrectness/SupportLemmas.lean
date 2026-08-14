@@ -13,17 +13,6 @@ section RowSemantics
 /-- Ordinary-register modular reduction retained for legacy arithmetic gate statements. -/
 def tcMod (r : Reg) (z : ℤ) : ℕ := Int.toNat (z % (ASize r : ℤ))
 
-/-- Two's-complement negation value for an ordinary register. -/
-def tcNegVal (r : Reg) (x : ℕ) : ℕ := tcMod r (-(x : ℤ))
-
-/-- Ordinary-register value update for an add-scaled arithmetic step. -/
-def tcAddScaledVal
-    {β : Type} [RegEncoding β]
-    (dst src : Reg) (negSrc : Bool) (sh : ℕ) (b : β) : ℕ :=
-  let sgn : ℤ := if negSrc then -1 else 1
-  tcMod dst
-    ((RegEncoding.toNat dst b : ℤ) +
-      sgn * (RegEncoding.toNat src b : ℤ) * ((2 : ℤ) ^ sh))
 variable (qs : QSemantics) [RegEncoding qs.Basis]
 
 /-! =========================================================
@@ -153,35 +142,6 @@ def CompilerWorkspaceOK {Basis : Type u} [RegEncoding Basis] {k : ℕ} (src : La
 abbrev CleanWorkspaceState (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
     (src : LayoutState k) (need : NeededWidths k) : qs.State → Prop :=
   CleanClosure (fun b => CompilerWorkspaceOK src need b)
-
-/-- Drop the scan-width bookkeeping from the stronger body invariant. -/
-lemma EncodesStateFromWithWidths.toFits
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {k : ℕ}
-    {src dst : LayoutState k}
-    {cur : WidthState k}
-    {σ : State k}
-    {b0 b : qs.Basis}
-    (h :
-      EncodesStateFromWithWidths
-        (qs := qs)
-        src dst cur σ b0 b) :
-    EncodesStateFromFits
-      (qs := qs)
-      src dst σ b0 b := by
-  rcases h with
-    ⟨hEnc, ⟨hSoundX, hSoundZ⟩,
-      ⟨hDomX, hDomZ⟩⟩
-  refine ⟨hEnc, ?_, ?_⟩
-  · intro i
-    exact FitsSignedWidth_mono
-      (hDomX i)
-      (hSoundX i)
-  · intro i
-    exact FitsSignedWidth_mono
-      (hDomZ i)
-      (hSoundZ i)
 
 /-! =========================================================
     Section 4: Start-state and initial layout facts
@@ -637,9 +597,6 @@ lemma qubit_in_layout_or_outside
       exact hz ⟨i, h⟩
     simpa [ExtReg.ActiveDisjoint, ExtReg.ofReg, qubitReg, Reg.singleton, Disjoint] using hqi
 
-/-- The qubit classifier packaged as the layout coverage predicate. -/
-theorem layout_covers_bits {k : ℕ} (dst : LayoutState k) : CoversLayoutBits dst := qubit_in_layout_or_outside dst
-
 /-- Agreement on all layout slots plus outside agreement determines the whole basis state. -/
 lemma basis_eq_of_sameOutside_and_slots
     (qs : QSemantics)
@@ -709,38 +666,6 @@ lemma ket_eq_of_same_nonzero_smul
     simp_all only [ne_eq, not_false_eq_true, smul_right_inj]
   exact qs.ket_inj hket
 
-/-- Start-state encodings are unique once slot values determine the basis state. -/
-lemma encodesStateFrom_start_unique_of_ext
-  (qs : QSemantics)
-  [RegEncoding qs.Basis] [GateSemanticsFacts qs]
-  {k : ℕ}
-  (src dst : LayoutState k)
-  (b0 b1 b2 : qs.Basis)
-  (h1 : EncodesStateFrom (qs := qs) src dst State.start_state b0 b1)
-  (h2 : EncodesStateFrom (qs := qs) src dst State.start_state b0 b2)
-  (hdet :
-    (∀ i : Fin k,
-      extToInt (dst.xslot i) b1 =
-      extToInt (dst.xslot i) b2) ∧
-    (∀ i : Fin k,
-      extToInt (dst.zslot i) b1 =
-      extToInt (dst.zslot i) b2) →
-    b1 = b2) :
-  b1 = b2 := by
-  apply hdet
-  constructor
-  · intro i
-    calc
-      extToInt (dst.xslot i) b1
-          = evalRowX (qs := qs) src (State.start_state i) b0 := h1.1 i
-      _ = extToInt (dst.xslot i) b2 := (h2.1 i).symm
-  · intro i
-    calc
-      extToInt (dst.zslot i) b1
-          = evalRowZ (qs := qs) src (State.start_state i) b0 := h1.2 i
-      _ = extToInt (dst.zslot i) b2 := (h2.2 i).symm
-
-
 def WellFormedReg (r : Reg) : Prop := r.qubits.Nodup
 
 @[simp] theorem wellFormedReg (r : Reg) : WellFormedReg r := r.nodup
@@ -755,13 +680,6 @@ lemma annotatePhaseTermsAux_append (k n : ℕ) (ops₁ ops₂ : List (valid_ops 
       simp [annotatePhaseTermsAux, phaseProductCount]
   | cons op ops₁ ih =>
       cases op <;>simp [annotatePhaseTermsAux, phaseProductCount, ih, Nat.add_assoc, Nat.add_comm]
-
-/-- Append rule specialized to the usual initial phase index `0`. -/
-lemma annotatePhaseTermsAux_append_zero (k : ℕ) (ops₁ ops₂ : List (valid_ops k)) :
-  annotatePhaseTermsAux k 0 (ops₁ ++ ops₂) =
-    annotatePhaseTermsAux k 0 ops₁ ++
-      annotatePhaseTermsAux k (phaseProductCount ops₁) ops₂ := by
-  simpa using annotatePhaseTermsAux_append k 0 ops₁ ops₂
 
 /-- Constant-addition helper programs contain no phase-product leaves. -/
 @[simp] lemma phaseProductCount_addConstAux
@@ -858,14 +776,6 @@ lemma tcDecodeWidth_fits_succ
       have hlt : (n : ℤ) < (2 : ℤ) ^ (w + 1) := by
         exact_mod_cast h
       omega
-
-/-- Child registers from the same split layout inherit owned-disjointness. -/
-lemma phaseSplitChild_owned_disjoint {parent : ExtReg} {k W : ℕ} (layout : PhaseSplitLayout parent k W) {i j : Fin k} (hij : i ≠ j) :
-    ExtReg.OwnedDisjoint (layout.child i) (layout.child j) := layout.child_owned_disjoint hij
-
-/-- Cross operand children of a phase-product layout are owned-disjoint. -/
-lemma phaseProductLayout_cross_disjoint {x z : ExtReg} {k : ℕ} (layout : Gate.PhaseProductLayout x z k) (i j : Fin k) :
-    ExtReg.OwnedDisjoint (layout.xSplit.child i) (layout.zSplit.child j) := layout.cross_owned_disjoint i j
 
 /-- The signed interpretation of an `ExtReg` always fits one bit wider than its active width. -/
 lemma extToInt_fits_width_succ (e : ExtReg) (b : qs.Basis) : FitsSignedWidth (ExtReg.width e + 1) (extToInt e b) := by

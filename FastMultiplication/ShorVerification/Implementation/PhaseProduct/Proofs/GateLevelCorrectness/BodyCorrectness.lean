@@ -980,7 +980,7 @@ lemma sameOutside_after_addScaled_single
 ========================================================= -/
 
 /-- No-phase arithmetic runs preserve all registers outside the destination layout. -/
-lemma sameOutside_after_noPhase_run_ket_gen_aux
+lemma sameOutside_after_noPhase_run_ket_gen
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
@@ -2116,7 +2116,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
   induction hB with
   | nil σ σ' tail hNP hrun =>
       intro n hn b0 bCur hdisj hFits hSafeAdd hEnc
-      rcases sameOutside_after_noPhase_run_ket_gen_aux
+      rcases sameOutside_after_noPhase_run_ket_gen
           (qs := qs)
           (hk := hk)
           (phi := phi)
@@ -2173,7 +2173,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
           hdisj hFitsArith hSafeAddArith
           B.noPhase_pre B.run_pre hEnc with
         ⟨bMid, hArithEval, hArithEnc⟩
-      rcases sameOutside_after_noPhase_run_ket_gen_aux
+      rcases sameOutside_after_noPhase_run_ket_gen
           (qs := qs)
           (hk := hk)
           (phi := phi)
@@ -2354,7 +2354,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
           (n := n)
           hdisj hFits hSafeAdd hNP hrun hEnc with
         ⟨bEnc, hEvalEnc, hEncNext⟩
-      rcases sameOutside_after_noPhase_run_ket_gen_aux
+      rcases sameOutside_after_noPhase_run_ket_gen
           (qs := qs)
           (hk := hk)
           (phi := phi)
@@ -2435,7 +2435,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
           hdisj hFitsArith hSafeAddArith
           B.noPhase_pre B.run_pre hEnc with
         ⟨bMid, hArithEval, hArithEnc⟩
-      rcases sameOutside_after_noPhase_run_ket_gen_aux
+      rcases sameOutside_after_noPhase_run_ket_gen
           (qs := qs)
           (hk := hk)
           (phi := phi)
