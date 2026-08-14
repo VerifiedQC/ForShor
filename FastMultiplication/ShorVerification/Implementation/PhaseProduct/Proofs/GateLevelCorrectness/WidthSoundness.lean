@@ -1,5 +1,21 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.SupportLemmas
 
+-- Proof-only lemmas relocated from PhaseProduct/DefsCore (definition layer keeps only defs).
+
+namespace Shor
+open Gate
+open Operations
+open scoped BigOperators
+
+/-- Unfolding lemma for the public width scanner. -/
+lemma scanNeededWidths_eq_aux {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) :
+  scanNeededWidths x z ops = scanNeededWidthsAux (initWidthState x z k) (widthsOfState (initWidthState x z k)) ops := by
+  simp [scanNeededWidths]
+
+
+end Shor
+
+
 namespace Shor
 open Gate
 open Operations
