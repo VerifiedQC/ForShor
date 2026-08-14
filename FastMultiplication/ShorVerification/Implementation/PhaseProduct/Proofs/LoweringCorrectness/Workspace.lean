@@ -1,2 +1,0 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering
-
