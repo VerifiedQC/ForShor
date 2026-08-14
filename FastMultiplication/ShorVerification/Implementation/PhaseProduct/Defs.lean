@@ -34,3 +34,5 @@ noncomputable def lowerCSignedPhaseProdWithWorkspace
     LowGate :=
   lowerCSignedPhaseProd k hk ctrl phi x z ops
     (standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops hstatic)
+
+end Shor

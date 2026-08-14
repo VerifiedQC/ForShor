@@ -20,8 +20,6 @@ class LowerGateClass
 
   evalL_seq : ∀ (U V : LowGate) (ψ : qs.State), evalL (U ;; V) ψ = evalL V (evalL U ψ)
 
-  evalL_zero : ∀ (L : LowGate), evalL L 0 = 0
-
   evalL_add :
     ∀ (L : LowGate) (ψ φ : qs.State),
       evalL L (ψ + φ) = evalL L ψ + evalL L φ
@@ -170,11 +168,21 @@ class LowerGateClass
     ∀ (L : LowGate) (ψ : qs.State),
       evalL (LowGate.adj L) (evalL L ψ) = ψ
 
-/--
-Opaque primitive tags have no independent mathematical specification in the
-current framework, so their agreement with the internal `Gate.Prim` evaluator is
-kept as an explicit bridge assumption rather than part of `LowerGateClass`.
--/
+namespace LowerGateClass
+
+@[simp] theorem evalL_zero
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    (L : LowGate) :
+    LowerGateClass.evalL (qs := qs) L 0 = 0 := by
+  simpa using
+    (LowerGateClass.evalL_smul
+      (qs := qs) L (0 : ℂ) (0 : qs.State))
+
+end LowerGateClass
+
+
 class LowerGatePrimitiveBridge
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -185,12 +193,6 @@ class LowerGatePrimitiveBridge
       LowerGateClass.evalL (qs := qs) (LowGate.Prim tag args) ψ =
         qs.eval (Gate.Prim tag args) ψ
 
-/--
-For low-level constructors whose high-level `Gate` semantics is currently only
-specified operationally, this class carries the comparison to the internal proof
-IR. As the high-level semantics is made more concrete, fields should migrate
-from here to derivable bridge lemmas like `evalL_H`.
--/
 class LowerGateGateBridge
     (qs : QSemantics)
     [RegEncoding qs.Basis]

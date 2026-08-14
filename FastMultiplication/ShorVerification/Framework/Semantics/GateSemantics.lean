@@ -9,9 +9,9 @@ import Mathlib.Data.Nat.Bitwise
 /-!
 # Shor verification core — gate-evaluation semantics
 
-The classes that give semantic meaning to the `Gate` language on top of the
-quantum state space: `GateSemanticsCore`, the per-gate semantic classes, and
-`GateSemanticsFacts`, plus the generic `eval` lemmas and clean-closure.
+The classes and definitions that give semantic meaning to the `Gate` language
+on top of the quantum state space: `GateSemanticsCore`, the per-gate semantic
+classes, and the bundled `GateSemanticsFacts` interface.
 -/
 
 universe u
@@ -26,7 +26,7 @@ attribute [instance] QSemantics.instNormed
 attribute [instance] QSemantics.instIP
 
 /-! =========================================================
-    Section 7: Gate-specific semantic fact classes
+    Gate-specific semantic interfaces
 ========================================================= -/
 
 /--
@@ -48,19 +48,12 @@ class GateSemanticsCore
   inner_preserved :
     ∀ U ψ φ, inner ℂ (eval U ψ) (eval U φ) = inner ℂ ψ φ
 
-  eval_zero : ∀ U, eval U 0 = 0
   eval_add  : ∀ U ψ φ, eval U (ψ + φ) = eval U ψ + eval U φ
   eval_smul : ∀ U (a : ℂ) ψ, eval U (a • ψ) = a • eval U ψ
-
-  hsub : ∀ U ψ φ, eval U (ψ - φ) = eval U ψ - eval U φ
 
   eval_adj_apply :
     ∀ (U : Gate) (ψ : qs.State),
       eval (Gate.adj U) (eval U ψ) = ψ
-
-  eval_apply_adj :
-    ∀ (U : Gate) (ψ : qs.State),
-      eval U (eval (Gate.adj U) ψ) = ψ
 
 namespace QSemantics
 
@@ -79,19 +72,6 @@ class QFTSemantics
   [RegEncoding qs.Basis]
   [GateSemanticsCore qs] : Type where
 
-  eval_QFT_size0 :
-    ∀ (r : ExtReg) (ψ : qs.State),
-      r.width = 0 →
-      qs.eval (Gate.QFT r) ψ = qs.eval Gate.id ψ
-
-  eval_QFT_size1 :
-    ∀ (r : ExtReg) (ψ : qs.State)
-      (hsize : r.width = 1),
-      qs.eval (Gate.QFT r) ψ =
-        qs.eval (Gate.H (r.active.lowQubit (by
-          simp [ExtReg.width] at hsize
-          omega))) ψ
-
   eval_QFT_ket :
     ∀ (r : ExtReg) (b : qs.Basis),
       qs.eval (Gate.QFT r) (qs.ket b)
@@ -99,19 +79,6 @@ class QFTSemantics
       ((1 / Real.sqrt ((2^r.width : ℕ) : ℝ) : ℂ)) •
         ∑ y : Fin (2^r.width),
           (qftPhase (2^r.width) (ExtReg.toNat r b) y.1) •
-            qs.ket (RegEncoding.writeNat r.active y.1 b)
-
-  eval_adj_QFT_ket :
-    ∀ (r : ExtReg) (b : qs.Basis),
-      qs.eval (Gate.adj (Gate.QFT r)) (qs.ket b)
-        =
-      ((1 / Real.sqrt ((ASize r.active : ℕ) : ℝ) : ℂ)) •
-        ∑ y : Fin (ASize r.active),
-          star
-              (qftPhase
-                (ASize r.active)
-                (ExtReg.toNat r b)
-                y.1) •
             qs.ket (RegEncoding.writeNat r.active y.1 b)
 
 class HadamardSemantics
@@ -143,23 +110,6 @@ class PauliXSemantics
       qs.ket
         (RegEncoding.writeNat (qubitReg q)
           (if RegEncoding.bit q b then 0 else 1) b)
-
-class RegisterHadamardSemantics
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs] : Type where
-
-  eval_Hreg_ket :
-    ∀ (r : Reg) (b : qs.Basis),
-      ∃ α : Fin (ASize r) → ℂ,
-        qs.eval
-            ((regQubits r).foldl
-              (fun acc q => Gate.seq (Gate.H q) acc)
-              Gate.id)
-            (qs.ket b)
-          =
-        ∑ t : Fin (ASize r),
-          α t • qs.ket (RegEncoding.writeNat r t.1 b)
 
 class RadixReverseSemantics
   (qs : QSemantics)
@@ -310,19 +260,7 @@ class GateSemanticsFacts
     ArithmeticSemantics qs,
     RadixReverseSemantics qs,
     HadamardSemantics qs,
-    PauliXSemantics qs,
-    RegisterHadamardSemantics qs where
-
-  eval_Hreg_zero_eq_QFT :
-    ∀ (r : ExtReg) (b : qs.Basis),
-      ExtReg.toNat r b = 0 →
-      qs.eval
-          ((regQubits r.active).foldl
-            (fun acc q => Gate.seq (Gate.H q) acc)
-            Gate.id)
-          (qs.ket b)
-        =
-      qs.eval (Gate.QFT r) (qs.ket b)
+    PauliXSemantics qs
 
 /-- Ideal modular multiplication specifications used by the correctness layer. -/
 class Spec where

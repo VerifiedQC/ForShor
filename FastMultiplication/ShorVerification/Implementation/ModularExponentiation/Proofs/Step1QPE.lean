@@ -2374,6 +2374,12 @@ private lemma qpe_qftPhase_zero_left
     qftPhase N 0 y = 1 := by
   simp [qftPhase, ωPow]
 
+private lemma qpe_qftPhase_zero_right
+    (N x : ℕ) :
+    qftPhase N x 0 = 1 := by
+  simpa [qftPhase_comm] using
+    qpe_qftPhase_zero_left N x
+
 /--
 Register Hadamards on a cleared work register produce the uniform superposition
 over all work labels.
@@ -2389,7 +2395,7 @@ lemma eval_Hreg_zero_uniform_sum_ext
       (1 / Real.sqrt (ASize work.active : ℝ) : ℂ) •
         ∑ y : Fin (ASize work.active),
           qs.ket (RegEncoding.writeNat work.active y.1 b) := by
-  rw [eval_Hreg_zero_eq_QFT qs work b]
+  rw [_root_.eval_Hreg_zero_eq_QFT qs work b]
   · rw [QFTSemantics.eval_QFT_ket]
     simp [ExtReg.width, ExtReg.toNat, ASize, hzero, qpe_qftPhase_zero_left]
   · simpa [ExtReg.toNat] using hzero

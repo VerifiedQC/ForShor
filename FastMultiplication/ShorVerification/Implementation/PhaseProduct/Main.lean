@@ -26,47 +26,20 @@ theorem lowerSignedPhaseProduct_correct
   (ops : Prog k) :
     LowerSignedPhaseProductCorrect qs k hk phi x z ops := by
   intro ψ hworkspace hC hRun
-  let plan :
-      StandardPhaseLoweringPlan
-        k
-        hk
-        ops
-        (phaseInputSize x z)
-        (Gate.SignedPhaseProd phi x z) :=
+  let plan : StandardPhaseLoweringPlan
+        k hk ops
+        (phaseInputSize x z) (Gate.SignedPhaseProd phi x z) :=
     standardSignedPhaseLoweringPlan
       k hk phi x z ops
       hworkspace.static
   have hready :
       PhaseLoweringReady qs plan ψ := by
-    simpa [plan] using
-      standardSignedPhaseLoweringPlan_ready_of_workspace
-        qs
-        k
-        hk
-        phi
-        x
-        z
-        ops
-        ψ
-        hworkspace hC hRun
+    simpa [plan] using standardSignedPhaseLoweringPlan_ready_of_workspace qs k hk phi x z ops ψ hworkspace hC hRun
   have hcorrect :=
     evalL_lowerSignedPhaseProd_of_plan
-      (qs := qs)
-      (k := k)
-      (hk := hk)
-      (phi := phi)
-      (x := x)
-      (z := z)
-      (ops := ops)
-      (plan := plan)
-      (ψ := ψ)
-      (hready := hready)
-      (hC := hC)
-      (hRun := hRun)
-  simpa [
-    lowerSignedPhaseProdWithWorkspace,
-    plan
-  ] using hcorrect
+      (qs := qs) (k := k) (hk := hk) (phi := phi) (x := x) (z := z) (ops := ops) (plan := plan)
+      (ψ := ψ) (hready := hready) (hC := hC) (hRun := hRun)
+  simpa [lowerSignedPhaseProdWithWorkspace,plan] using hcorrect
 
 /-- Main controlled signed phase-product lowering theorem, packaged as the public assertion. -/
 theorem lowerCSignedPhaseProduct_correct
@@ -94,15 +67,7 @@ theorem lowerCSignedPhaseProduct_correct
   have hInterp :
       GoodToomCookPoints k (genInterpolationPoints k) (generatedInterpolationPoints_length k) := by
     simpa using genInterpolationPoints_good k
-  have hcorrect :=
-    evalL_lowerGateRec_correct
-      (qs := qs)
-      (hInterp := hInterp)
-      (hC := hC)
-      (hRun := hRun)
-      plan
-      ψ
-      hready
+  have hcorrect := evalL_lowerGateRec_correct (qs := qs) (hInterp := hInterp) (hC := hC) (hRun := hRun) plan ψ hready
   simpa [lowerCSignedPhaseProdWithWorkspace, lowerCSignedPhaseProd, plan] using hcorrect
 
 end Shor

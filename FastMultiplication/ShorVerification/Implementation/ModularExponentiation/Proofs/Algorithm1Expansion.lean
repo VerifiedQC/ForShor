@@ -71,7 +71,7 @@ lemma eval_finset_sum
   classical
   induction s using Finset.induction_on with
   | empty =>
-      simpa using qs.eval_zero U
+      simp
   | insert a s ha ih =>
       simp [Finset.sum_insert, ha, qs.eval_add, ih]
 
@@ -1434,7 +1434,7 @@ lemma eval_IQFT_Hreg_zero
       (qs.eval (H_reg work.active) (qs.ket b))
       =
     qs.ket b := by
-  rw [eval_Hreg_zero_eq_QFT qs work b hwork0]
+  rw [_root_.eval_Hreg_zero_eq_QFT qs work b hwork0]
   simpa [IQFT] using
     qs.eval_adj_apply (Gate.QFT work) (qs.ket b)
 

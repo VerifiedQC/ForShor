@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
+import FastMultiplication.ShorVerification.Implementation.Proofs.GateSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateConstructions
 import Mathlib.Analysis.InnerProductSpace.Basic
@@ -662,7 +662,7 @@ lemma eval_sum
     qs.eval U (∑ a ∈ s, f a) = ∑ a ∈ s, qs.eval U (f a) := by
   classical
   refine Finset.induction_on s ?h0 ?hs
-  · simp [QSemantics.eval_zero]
+  · simp
   · intro a s ha hs
     simp [Finset.sum_insert ha, QSemantics.eval_add, hs]
 

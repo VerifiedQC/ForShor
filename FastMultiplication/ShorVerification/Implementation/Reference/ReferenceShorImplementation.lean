@@ -45,11 +45,12 @@ variable [ModMulPrimitiveGateSemantics qs]
     Section 1: ε-from-precision packaging
 ========================================================= -/
 
+omit [Spec] [ContinuedFractionPost] in
 /-- The reference error term `2·t·√(2·K·referencePrecision m)` can be driven
 below any positive `ε` by choosing a large enough precision level `m`, because
 `referencePrecision m = 1/(m+3) → 0`. -/
 theorem exists_precision_error_le
-    (t : ℕ) (K : ℝ) (hK : 0 ≤ K) {ε : ℝ} (hε : 0 < ε) :
+    (t : ℕ) (K : ℝ) (_hK : 0 ≤ K) {ε : ℝ} (hε : 0 < ε) :
     ∃ m : ℕ,
       2 * (t : ℝ) * Real.sqrt (2 * (K * referencePrecision m)) ≤ ε := by
   have h2t1 : (0 : ℝ) < 2 * (t : ℝ) + 1 := by positivity
@@ -114,7 +115,7 @@ theorem referenceShorProg_correct
   -- (definitionally the same circuit), with the allocated instance's `a`/`N`/`x`
   -- all definitionally equal to `inst`'s.  Close by the ε-choice.
   simp only [allocatedOrderFindingInstance_a, allocatedOrderFindingInstance_N,
-    allocatedOrderFindingInstance_x_active, allocatedOrderFindingInstance_coprime] at hb
+    allocatedOrderFindingInstance_x_active] at hb
   have hgoal :
       probability_of_success (qs := qs) (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))

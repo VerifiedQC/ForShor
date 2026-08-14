@@ -182,5 +182,10 @@ noncomputable def ωPow (N k : ℕ) : ℂ :=
 noncomputable def qftPhase (N x y : ℕ) : ℂ :=
   ωPow N (x * y)
 
+theorem qftPhase_comm
+    (N x y : ℕ) :
+    qftPhase N x y =
+      qftPhase N y x := by
+  simp [qftPhase, ωPow, Nat.mul_comm]
 
 end Shor

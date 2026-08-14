@@ -6,8 +6,9 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lo
 /-!
 # QFT Public Definitions
 
-Just enough definitions to state the QFT lowering-correctness assertion
-(`Assertions.lean`). All proof-only material stays under `QFT.Proofs`.
+This file contains the public definition surface for the recursive QFT
+lowerer: register splitting conventions, lowering plans, readiness predicates,
+workspace budgets, and the final lowered circuit constructor.
 -/
 namespace Shor
 
@@ -16,10 +17,12 @@ open Gate
 universe u
 
 
-
-
 /-! =========================================================
-    Section 1: Register arithmetic and split helpers
+    Section 1: Register splitting and clean workspaces
+
+    Recursive QFT splits a register into a low/right half and a high/left
+    half. These definitions fix that convention and provide the small
+    containment facts used when reusing the same workspace pools recursively.
 ========================================================= -/
 
 variable (qs : QSemantics)
@@ -80,55 +83,14 @@ lemma disjoint_left_right (r : Reg) :
 
 
 /-! =========================================================
-    Section 2: Encoding-only split-register lemmas
-========================================================= -/
+    Section 2: Explicit QFT lowering plans
 
-section EncodingOnly
-variable (qs : QSemantics) [RegEncoding qs.Basis]
-
-end EncodingOnly
-
-/-! =========================================================
-    Section 3: Exponential and qftPhase bridge lemmas
-========================================================= -/
-
-/-! =========================================================
-    Section 4: Sum-pushing and scalar helper lemmas
-========================================================= -/
-
-/-! =========================================================
-    Section 5: First split-QFT steps
-========================================================= -/
-
-/-! =========================================================
-    Section 6: Phase-combination lemmas
-========================================================= -/
-
-/-! =========================================================
-    Section 7: Reindexing sums and cast utilities
+    `QFTLoweringPlan` is the finite certificate carried by the public lowerer.
+    It exposes the empty and singleton base cases and the recursive split case,
+    including the phase-product plan needed between the two halves.
 ========================================================= -/
 
 open scoped BigOperators
-
-
-/-! =========================================================
-    Section 8: QFT split on basis kets
-========================================================= -/
-
-/-! =========================================================
-    Section 9: Radix reversal and exact QFT split
-========================================================= -/
-
-
-
-
-
-open Gate
-
-
-/-! =========================================================
-    Section 1: Explicit QFT lowering plans
-========================================================= -/
 
 /--
 A complete physical lowering plan for one QFT.
@@ -222,7 +184,11 @@ noncomputable def QFTLoweringReady
         readyLeft ψPhase
 
 /-! =========================================================
-    Section 4: Linearity and workspace preservation
+    Section 3: Readiness and zero-state facts
+
+    Readiness records the clean-workspace assumptions that must hold before a
+    planned QFT is evaluated. The zero-state lemmas provide the small closure
+    facts needed by the public lowering assertions.
 ========================================================= -/
 
 lemma evalL_lowerQFTPlan_zero
@@ -293,17 +259,8 @@ lemma QFTLoweringReady.zero
           PhaseLoweringReady.zero qs phasePlan,
           ihLeft
         ⟩
-
-
-
-
-
-
-open Gate
-
-
 /-! =========================================================
-    Section 1: Canonical unsigned phase-product plans
+    Section 4: Canonical unsigned phase-product subplans
 
     A split QFT uses an unsigned phase product between the left and right
     halves. This section packages that unsigned gate as a standard
@@ -466,6 +423,14 @@ noncomputable def standardPhaseProdUsingPlan
   ] using completePlan
 
 
+/-! =========================================================
+    Section 5: Recursive workspace budget model
+
+    The QFT lowerer uses two global reserve pools. `qftWorkspaceNeed` computes
+    how large those pools must be for a register of a given width, accounting
+    for the middle phase product and both recursive QFT calls.
+========================================================= -/
+
 def qftWorkspaceNeed
     {k : ℕ}
     (ops : Prog k) :
@@ -501,7 +466,7 @@ def qftWorkspaceNeed
 termination_by n => n
 
 /-! =========================================================
-    Section 2: Public QFT workspace sizes and clean-state predicates
+    Section 6: Public QFT workspace sizes and clean-state predicates
 
     The public QFT lowerer takes one `ExtReg`. Its inactive reserve is split
     deterministically into an x-side pool and a z-side pool. The predicates in
@@ -614,7 +579,7 @@ structure QFTWorkspaceOK
       regSize zWork
 
 /-! =========================================================
-    Section 3: Helper lemmas for the selected workspace slices
+    Section 7: Helper lemmas for the selected workspace slices
 
     These lemmas prove that the selected workspace registers have the requested
     sizes, remain inside the inactive reserve, and are disjoint from the active
@@ -841,7 +806,7 @@ end QFTReserveOK
 
 
 /-! =========================================================
-    Section 4: Unfolding and bounds for `qftWorkspaceNeed`
+    Section 8: Unfolding and bounds for `qftWorkspaceNeed`
 
     A nontrivial QFT split must reserve enough space for the middle phase
     product and both recursive QFT calls. These monotonicity lemmas let the
@@ -989,7 +954,7 @@ lemma qftWorkspaceNeed_right_z_le
 
 
 /-! =========================================================
-    Section 5: Building child workspaces and recursive QFT plans
+    Section 9: Building child workspaces and recursive QFT plans
 
     The functions and lemmas below carve the two workspace pools into the
     pieces needed by the middle phase product and by the left/right recursive
@@ -1385,6 +1350,18 @@ lemma right
 
 end QFTWorkspaceOK
 
+/-! =========================================================
+    Section 10: Canonical plans and public lowerers
+
+    The canonical recursive plan is built from the two selected workspace
+    pools. The final public constructors derive those pools from an `ExtReg`
+    reserve and erase the plan to a `LowGate`.
+========================================================= -/
+
+/--
+Build the standard recursive QFT plan from explicit x-side and z-side
+workspace pools satisfying `QFTWorkspaceOK`.
+-/
 noncomputable def standardQFTLoweringPlan
     (k : ℕ)
     (hk : 1 < k)
@@ -1531,7 +1508,7 @@ decreasing_by
     ] using hleft
 
 /--
-Main reserve-plan theorem for this file.
+Canonical reserve-backed QFT plan.
 
 The canonical plan obtained by splitting the inactive portion of `r`. This is
 the bridge from the public reserve predicate `QFTReserveOK` to the recursive

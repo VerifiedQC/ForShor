@@ -45,11 +45,6 @@ class QSemantics where
       (∀ b : Basis, P (ket b)) →
       ∀ ψ, P ψ
 
-  ket_ne_zero (b : Basis) :
-    ket b ≠ 0
-
-  ket_inj : Function.Injective ket
-
   ket_inner_eq_of_eq :
     ∀ {b₁ b₂ : Basis},
       b₁ = b₂ →
@@ -66,6 +61,50 @@ open QSemantics
 
 attribute [instance] QSemantics.instNormed
 attribute [instance] QSemantics.instIP
+
+namespace QSemantics
+
+/-- Computational basis kets are nonzero.
+Derived from normalization of basis kets. -/
+theorem ket_ne_zero
+    (qs : QSemantics)
+    (b : qs.Basis) :
+    qs.ket b ≠ 0 := by
+  intro hzero
+  have hinner :
+      inner ℂ (qs.ket b) (qs.ket b) = (1 : ℂ) :=
+    qs.ket_inner_eq_of_eq rfl
+  have hcontra : (0 : ℂ) = 1 := by
+    simp [hzero] at hinner
+  exact (zero_ne_one : (0 : ℂ) ≠ 1) hcontra
+
+/-- Distinct computational basis states give distinct basis kets.
+Derived from orthogonality and normalization. -/
+theorem ket_inj
+    (qs : QSemantics) :
+    Function.Injective qs.ket := by
+  intro b₁ b₂ hket
+  by_contra hne
+
+  have horth :
+      inner ℂ (qs.ket b₁) (qs.ket b₂) = 0 :=
+    qs.ket_inner_eq_zero_of_ne hne
+
+  have hzero :
+      inner ℂ (qs.ket b₂) (qs.ket b₂) = 0 := by
+    simpa only [hket] using horth
+
+  have hone :
+      inner ℂ (qs.ket b₂) (qs.ket b₂) = (1 : ℂ) :=
+    qs.ket_inner_eq_of_eq rfl
+
+  have hcontra : (1 : ℂ) = 0 :=
+    hone.symm.trans hzero
+
+  exact (one_ne_zero : (1 : ℂ) ≠ 0) hcontra
+
+end QSemantics
+
 
 lemma ket_inner_self
     (qs : QSemantics)

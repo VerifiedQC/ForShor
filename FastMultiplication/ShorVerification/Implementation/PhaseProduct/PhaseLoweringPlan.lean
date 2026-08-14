@@ -6,14 +6,15 @@ open Operations
 
 /-!
 # Phase-Product Lowering Definitions
-Core definitions and workspace predicates used by phase-product lowering. The file
-connects abstract signed phase-product gates to compiled recursive workspaces:
-first by naming the compiled gates, then by specifying the low-level semantic
-interface, and finally by constructing static recursive reserve budgets.
+
+This first block names the compiled gates that recursive lowering steps point
+to. The actual lowering plan type appears below; these names must come first
+because the recursive plan constructors refer to them.
 -/
 
 /-! =========================================================
-    Section 1: Compiled gate abbreviations
+    Section 1: Compiled gate packages
+
     These definitions package the phase coefficients and compiled signed gates
     that the lowering proof treats as the replacement for primitive phase-product
     gates.
@@ -59,12 +60,20 @@ open Operations
 
 /-!
 # Phase-Product Lowering Plans
-Finite lowering plans, their interpreter, syntactic plan lemmas, lowerability
-facts, and canonical recursive plan construction for signed phase products.
+
+This file now reads in the same order as the lowering pipeline:
+
+1. the plan language;
+2. the interpreter that erases a plan to a `LowGate`;
+3. the standard interpolation-point wrapper used by public lowerers;
+4. plan builders for allocation, deallocation, and annotated program bodies;
+5. one-level compiled phase-product plans;
+6. canonical recursive signed and controlled signed phase-product plans.
 -/
 
 /-! =========================================================
-    Section 1: Lowering plans
+    Section 2: The lowering-plan language
+
     A `PhaseLoweringPlan` is a finite certificate explaining how to replace a
     high-level gate with low-level gates. Primitive arithmetic gates lower
     directly, while signed phase products either stop at a naive base gate or
@@ -213,7 +222,8 @@ inductive PhaseLoweringPlan
       PhaseLoweringPlan k hk pts hpts ops initSize (Gate.CSignedPhaseProd ctrl phi x z)
 
 /-! =========================================================
-    Section 2: Plan-directed recursive lowering
+    Section 3: Plan-directed recursive lowering
+
     Interpreting a plan erases the proof data and returns the low-level gate
     chosen by the plan.
 ========================================================= -/
@@ -255,7 +265,8 @@ noncomputable def lowerGateRec
   | cSignedStep ctrl phi x z layout hrec hcapacity hctrl child ihChild => exact ihChild
 
 /-! =========================================================
-    Section 3: Standard interpolation-point plans
+    Section 4: Standard interpolation-point public interface
+
     Public helpers specialize the plan machinery to the canonical interpolation
     points used by the phase-product compiler.
 ========================================================= -/
@@ -328,10 +339,11 @@ noncomputable def lowerCSignedPhaseProd
   lowerGateRec plan
 
 /-! =========================================================
-    Section 7: Plans for compiled allocation and body gates
-    The definitions below mirror the compiler constructors, replacing each gate
-    with the corresponding plan node and threading recursive phase-product plans
-    through phase-product leaves.
+    Section 5: Allocation and deallocation plan builders
+
+    These definitions mirror the compiler constructors for moving values into
+    and out of a recursive phase-product layout. Each allocation or deallocation
+    gate is replaced by the corresponding primitive plan node.
 ========================================================= -/
 
 /-- Plan for the allocation gate generated for one chunk. -/
@@ -462,6 +474,14 @@ noncomputable def planCompileSignedDeallocations
   unfold compileSignedDeallocations
   exact planCompileSignedDeallocationsAux initSize src dst k le_rfl
 
+/-! =========================================================
+    Section 6: Annotated body plan builders
+
+    The annotated body compiler contains ordinary arithmetic operations plus
+    phase-product leaves. The caller supplies the recursive plan used at each
+    leaf; these builders thread that callback through the generated body.
+========================================================= -/
+
 /-- Plan for the annotated body circuit, using `recurse` at phase-product leaves. -/
 noncomputable def planCompileAnnotatedOpsToSignedGateAux
     {k : ℕ}
@@ -565,7 +585,11 @@ noncomputable def planCompileAnnotatedOpsToCSignedGateAux
               tail
 
 /-! =========================================================
-    Section 8: Public recursive signed phase-product plans
+    Section 7: One-level compiled phase-product plans
+
+    A recursive step consists of allocation, the annotated body, and
+    deallocation. These builders assemble those three pieces into plans for the
+    compiled signed and controlled signed replacement gates.
 ========================================================= -/
 
 /-- Plan for the compiled signed phase-product replacement at one recursive level. -/
@@ -723,6 +747,14 @@ noncomputable def planCompiledCSignedPhaseGate
     controlPhaseLeaves_compileSignedDeallocations, src, dst, need, coeff, annotatedOps]
     using completePlan
 
+/-! =========================================================
+    Section 8: Canonical recursive phase-product plans
+
+    The public canonical planners choose between the base case and one recursive
+    compiled step using the static workspace invariant. Recursive children are
+    produced from the child workspaces supplied by `CanonicalSignedStep`.
+========================================================= -/
+
 /-- Canonical recursive plan for a signed phase product from static recursive workspace data. -/
 noncomputable def standardSignedPhaseLoweringPlan
     (k : ℕ)
@@ -735,73 +767,40 @@ noncomputable def standardSignedPhaseLoweringPlan
   by_cases hrec :
       nextSignedWidth x z ops <
         phaseInputSize x z
-  · let step :
-        CanonicalSignedStep ops x z :=
-      canonicalSignedStep
-        hk ops x z hrec hworkspace
+  · let step : CanonicalSignedStep ops x z :=
+      canonicalSignedStep hk ops x z hrec hworkspace
     let src : LayoutState k :=
       initSignedLayoutState step.layout
     let dst : LayoutState k :=
       targetSignedLayoutState
-        src
-        (scanNeededWidths x z ops)
+        src (scanNeededWidths x z ops)
     have recurse :
         ∀ (i : Fin k) (theta : ℝ),
-          PhaseLoweringPlan
-            k
-            hk
-            (genInterpolationPoints k)
-            (generatedInterpolationPoints_length k)
-            ops
+          PhaseLoweringPlan k hk (genInterpolationPoints k)
+            (generatedInterpolationPoints_length k) ops
             (nextSignedWidth x z ops)
-            (Gate.SignedPhaseProd
-              theta
-              (dst.xslot i)
-              (dst.zslot i)) := by
+            (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)) := by
       intro i theta
       have hchild :
-          SignedRecursiveWorkspaceOK
-            ops
-            (dst.xslot i)
-            (dst.zslot i) := by
+          SignedRecursiveWorkspaceOK ops (dst.xslot i) (dst.zslot i) := by
         simpa [src, dst] using
           step.childWorkspace i
       have childPlan :=
         standardSignedPhaseLoweringPlan
-          k
-          hk
-          theta
-          (dst.xslot i)
-          (dst.zslot i)
-          ops
-          hchild
+          k hk theta (dst.xslot i) (dst.zslot i) ops hchild
       have hsize :
-          phaseInputSize
-              (dst.xslot i)
-              (dst.zslot i)
+          phaseInputSize (dst.xslot i) (dst.zslot i)
             =
           nextSignedWidth x z ops := by
         simpa [src, dst] using
           step.childInputSize i
       simpa [hsize] using childPlan
     let child :
-        PhaseLoweringPlan
-          k
-          hk
-          (genInterpolationPoints k)
-          (generatedInterpolationPoints_length k)
-          ops
-          (nextSignedWidth x z ops)
-          (compiledSignedPhaseGate
-            k
-            hk
-            (genInterpolationPoints k)
-            (generatedInterpolationPoints_length k)
-            ops
-            phi
-            x
-            z
-            step.layout) :=
+        PhaseLoweringPlan k hk (genInterpolationPoints k)
+            (generatedInterpolationPoints_length k) ops
+            (nextSignedWidth x z ops)
+          (compiledSignedPhaseGate k hk (genInterpolationPoints k)
+            (generatedInterpolationPoints_length k) ops phi x z step.layout) :=
       planCompiledSignedPhaseGate
         hk
         (genInterpolationPoints k)
