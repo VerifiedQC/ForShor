@@ -7,6 +7,116 @@ import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 
 namespace Shor
+
+section GateSemanticsDissolvedShor
+universe u
+variable {Basis : Type u} [RegEncoding Basis]
+open QSemantics
+
+namespace RegisterHadamardSemantics
+
+/-- The original `RegisterHadamardSemantics` result, derived solely from
+ordinary one-qubit Hadamard semantics and the generic evaluator laws. -/
+theorem eval_Hreg_ket
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [HadamardSemantics qs]
+    (r : Reg)
+    (b : qs.Basis) :
+    ∃ α : Fin (ASize r) → ℂ,
+      qs.eval
+          ((regQubits r).foldl
+            (fun acc q => Gate.seq (Gate.H q) acc)
+            Gate.id)
+          (qs.ket b)
+        =
+      ∑ t : Fin (ASize r),
+        α t •
+          qs.ket
+            (RegEncoding.writeNat r t.1 b) := by
+  classical
+
+  let S := ketSpan qs r b
+
+  -- The initial ket is already one of the generators:
+  -- choose the value currently stored in r.
+  let t₀ : Fin (ASize r) :=
+    ⟨RegEncoding.toNat r b,
+      RegEncoding.toNat_lt_ASize r b⟩
+
+  have hstart :
+      qs.ket b ∈ S := by
+    have hmem :
+        qs.ket (RegEncoding.writeNat r t₀.1 b)
+          ∈ S := by
+      change
+        qs.ket (RegEncoding.writeNat r t₀.1 b)
+          ∈ Submodule.span ℂ
+              (Set.range fun t : Fin (ASize r) =>
+                qs.ket
+                  (RegEncoding.writeNat r t.1 b))
+
+      apply Submodule.subset_span
+      exact Set.mem_range.mpr ⟨t₀, rfl⟩
+
+    simpa [t₀, RegEncoding.writeNat_toNat] using hmem
+
+  -- Every H in the fold acts on a qubit of r, hence the entire folded
+  -- circuit stays inside S.
+  have hout :
+      qs.eval
+          ((regQubits r).foldl
+            (fun acc q => Gate.seq (Gate.H q) acc)
+            Gate.id)
+          (qs.ket b)
+        ∈ S := by
+
+    apply
+      eval_foldl_H_mem
+        qs r b
+        (regQubits r)
+
+    · intro q hq
+      exact hq
+
+    · intro ψ hψ
+      simp [GateSemanticsCore.eval_id]
+      exact hψ
+
+    · exact hstart
+
+  -- Membership in the span of a finite family is exactly existence of
+  -- finite coefficients indexed by that family.
+  have hout' :
+      qs.eval
+          ((regQubits r).foldl
+            (fun acc q => Gate.seq (Gate.H q) acc)
+            Gate.id)
+          (qs.ket b)
+        ∈
+      Submodule.span ℂ
+        (Set.range fun t : Fin (ASize r) =>
+          qs.ket
+            (RegEncoding.writeNat r t.1 b)) := by
+    exact hout
+
+  rcases
+      (Submodule.mem_span_range_iff_exists_fun ℂ).mp hout'
+    with ⟨α, hα⟩
+
+  refine ⟨α, ?_⟩
+
+  exact hα.symm
+
+
+end RegisterHadamardSemantics
+
+end GateSemanticsDissolvedShor
+end Shor
+
+
+namespace Shor
 open Gate
 open Classical
 

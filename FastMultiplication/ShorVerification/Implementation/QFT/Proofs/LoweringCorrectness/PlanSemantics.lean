@@ -2,6 +2,246 @@ import FastMultiplication.ShorVerification.Implementation.QFT.Defs
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Decomposition
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Linearity
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateSemanticsLemmas
+
+namespace Shor
+
+section GateSemanticsDissolvedQFT
+universe u
+variable {Basis : Type u} [RegEncoding Basis]
+open QSemantics
+
+namespace QFTSemantics
+
+theorem eval_QFT_size0_ket
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [QFTSemantics qs]
+    (r : ExtReg)
+    (b : qs.Basis)
+    (hsize : r.width = 0) :
+    qs.eval (Gate.QFT r) (qs.ket b) = qs.ket b := by
+
+  have hactive : regSize r.active = 0 := by
+    simpa [ExtReg.width] using hsize
+
+  have hread : RegEncoding.toNat r.active b = 0 := by
+    have hlt := RegEncoding.toNat_lt_ASize r.active b
+    simp [ASize, hactive] at hlt
+    omega
+
+  have hwrite :
+      RegEncoding.writeNat r.active 0 b = b := by
+    rw [← hread]
+    exact RegEncoding.writeNat_toNat r.active b
+
+  rw [QFTSemantics.eval_QFT_ket]
+  rw [hsize]
+
+  simp [qftPhase, ωPow, hwrite]
+
+theorem eval_QFT_size0
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [QFTSemantics qs]
+    (r : ExtReg)
+    (ψ : qs.State)
+    (hsize : r.width = 0) :
+    qs.eval (Gate.QFT r) ψ = qs.eval Gate.id ψ := by
+
+  have h :
+      ∀ φ : qs.State,
+        qs.eval (Gate.QFT r) φ = φ := by
+    intro φ
+
+    apply qs.state_induction
+      (P := fun φ => qs.eval (Gate.QFT r) φ = φ)
+
+    · simp [GateSemanticsCore.eval_zero]
+
+    · intro φ χ hφ hχ
+      unfold eval at *
+      rw [GateSemanticsCore.eval_add]
+      rw [hφ, hχ]
+
+    · intro a φ hφ
+      unfold eval at *
+      rw [GateSemanticsCore.eval_smul]
+      rw [hφ]
+
+    · intro b
+      exact eval_QFT_size0_ket (qs := qs) r b hsize
+
+  rw [h ψ]
+  symm
+  exact GateSemanticsCore.eval_id ψ
+
+theorem eval_QFT_size1_ket
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [QFTSemantics qs]
+    [HadamardSemantics qs]
+    (r : ExtReg)
+    (b : qs.Basis)
+    (hsize : r.width = 1) :
+    qs.eval (Gate.QFT r) (qs.ket b) =
+      qs.eval
+        (Gate.H
+          (r.active.lowQubit (by
+            simp [ExtReg.width] at hsize
+            omega)))
+        (qs.ket b) := by
+
+  have hactive_size : regSize r.active = 1 := by
+    simpa [ExtReg.width] using hsize
+
+  let hpos : 0 < regSize r.active := by
+    omega
+
+  let q : ℕ := r.active.lowQubit hpos
+
+  change qs.eval (Gate.QFT r) (qs.ket b) = qs.eval (Gate.H q) (qs.ket b)
+
+  have hactive :
+      r.active = qubitReg q := by
+    simpa [q] using
+      Reg.eq_qubitReg_lowQubit r.active hactive_size
+
+  -- The value stored in the one-bit register is either 0 or 1.
+  have hxlt :
+      ExtReg.toNat r b < 2 := by
+    have h := ExtReg.toNat_lt r b
+    simpa [hsize] using h
+
+  -- Logical bit 0 of the active register is precisely physical qubit q.
+  have hbit :
+      RegEncoding.bit q b =
+        Nat.testBit (ExtReg.toNat r b) 0 := by
+    have h :=
+      RegEncoding.bit_eq_testBit_toNat
+        (qubitReg q)
+        b
+        (⟨0, by simp⟩ : Fin (regSize (qubitReg q)))
+
+    simpa [
+      ExtReg.toNat,
+      hactive,
+      qubitReg,
+      Reg.singleton,
+      Reg.get,
+      regSize,
+      Reg.width
+    ] using h
+
+  -- Hence the numeric value of this one-bit register is exactly its bit.
+  have hx :
+      ExtReg.toNat r b =
+        if RegEncoding.bit q b then 1 else 0 := by
+    have hx_cases :
+        ExtReg.toNat r b = 0 ∨
+          ExtReg.toNat r b = 1 := by
+      omega
+
+    rcases hx_cases with hx0 | hx1
+    · have hb :
+          RegEncoding.bit q b = false := by
+        simpa [hx0] using hbit
+      simp [hx0, hb]
+
+    · have hb :
+          RegEncoding.bit q b = true := by
+        simpa [hx1] using hbit
+      simp [hx1, hb]
+
+  -- y = 0 contributes phase 1.
+  have hphase0 :
+      qftPhase 2 (ExtReg.toNat r b) 0 = 1 := by
+    simp [qftPhase, ωPow]
+
+  -- y = 1 contributes +1 or -1 according to the input bit.
+  have hphase1 :
+      qftPhase 2 (ExtReg.toNat r b) 1 =
+        if RegEncoding.bit q b then (-1 : ℂ) else 1 := by
+    rw [hx]
+    cases hb : RegEncoding.bit q b <;> simp [qftPhase, ωPow, omega_two]
+  rw [QFTSemantics.eval_QFT_ket, HadamardSemantics.eval_H_ket]
+  rw [hsize]
+  simp [pow_one]
+  simp at *
+  rw [hactive, hphase0, hphase1]
+  simp
+
+theorem eval_QFT_size1
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [QFTSemantics qs]
+    [HadamardSemantics qs]
+    (r : ExtReg)
+    (ψ : qs.State)
+    (hsize : r.width = 1) :
+    qs.eval (Gate.QFT r) ψ =
+      qs.eval
+        (Gate.H
+          (r.active.lowQubit (by
+            simp [ExtReg.width] at hsize
+            omega)))
+        ψ := by
+
+  have h :
+      ∀ φ : qs.State,
+        qs.eval (Gate.QFT r) φ =
+          qs.eval
+            (Gate.H
+              (r.active.lowQubit (by
+                simp [ExtReg.width] at hsize
+                omega)))
+            φ := by
+    intro φ
+
+    apply qs.state_induction
+      (P := fun φ =>
+        qs.eval (Gate.QFT r) φ =
+          qs.eval
+            (Gate.H
+              (r.active.lowQubit (by
+                simp [ExtReg.width] at hsize
+                omega)))
+            φ)
+
+    · simp [GateSemanticsCore.eval_zero]
+
+    · intro φ χ hφ hχ
+      unfold QSemantics.eval at *
+      rw [
+        GateSemanticsCore.eval_add,
+        GateSemanticsCore.eval_add,
+        hφ,
+        hχ
+      ]
+
+    · intro a φ hφ
+      unfold QSemantics.eval at *
+      rw [
+        GateSemanticsCore.eval_smul,
+        GateSemanticsCore.eval_smul,
+        hφ
+      ]
+
+    · intro b
+      exact eval_QFT_size1_ket (qs := qs) r b hsize
+
+  exact h ψ
+
+
+end QFTSemantics
+
+end GateSemanticsDissolvedQFT
+end Shor
+
 
 /-!
 # QFT Lowering Plan Semantics
