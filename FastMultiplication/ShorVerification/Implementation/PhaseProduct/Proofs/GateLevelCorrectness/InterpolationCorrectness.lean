@@ -1,5 +1,665 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.SupportLemmas
 
+-- Proof-only lemmas relocated from PhaseProduct/DefsCore (definition layer keeps only defs).
+
+namespace Shor
+open Gate
+open Operations
+open scoped BigOperators
+
+lemma splitChunk_toNat_lt
+    {Basis : Type u}
+    [RegEncoding Basis]
+    {parent : ExtReg}
+    {k W : ℕ}
+    (layout : PhaseSplitLayout parent k W)
+    (i : Fin k)
+    (b : Basis) :
+    ExtReg.toNat (layout.child i) b
+      <
+    2 ^
+      (if isTopChunk i then
+        parent.width - i.1 * W
+      else
+        W) := by
+  have h :=
+    ExtReg.toNat_lt (layout.child i) b
+  rw [layout.child_width i] at h
+  simpa [phaseSplitLogicalWidth] using h
+
+
+/-- A sequence of `n` base-`2^W` digits represents a number below
+    `2^(n*W)`. -/
+lemma fin_sum_digits_lt_pow
+    (W : ℕ) :
+    ∀ {n : ℕ}
+      (digits : Fin n → ℕ),
+      (∀ i, digits i < 2 ^ W) →
+      (∑ i : Fin n,
+          digits i * 2 ^ (i.1 * W))
+        <
+      2 ^ (n * W)
+  | 0, digits, hdigits => by
+      simp
+  | n + 1, digits, hdigits => by
+      have hlow :
+          (∑ i : Fin n,
+              digits i.castSucc *
+                2 ^ (i.1 * W))
+            <
+          2 ^ (n * W) := by
+        apply fin_sum_digits_lt_pow W
+        intro i
+        exact hdigits i.castSucc
+      have hlast :
+          digits (Fin.last n) < 2 ^ W :=
+        hdigits (Fin.last n)
+      rw [Fin.sum_univ_castSucc]
+      simp only [Fin.val_castSucc, Fin.val_last]
+      calc
+        (∑ i : Fin n,
+            digits i.castSucc *
+              2 ^ (i.1 * W))
+            +
+          digits (Fin.last n) *
+            2 ^ (n * W)
+            <
+          2 ^ (n * W) +
+            digits (Fin.last n) *
+              2 ^ (n * W) :=
+          Nat.add_lt_add_right hlow _
+        _ =
+          (digits (Fin.last n) + 1) *
+            2 ^ (n * W) := by
+          ring
+        _ ≤
+          2 ^ W * 2 ^ (n * W) := by
+          exact Nat.mul_le_mul_right
+            (2 ^ (n * W))
+            (Nat.succ_le_of_lt hlast)
+        _ =
+          2 ^ ((n + 1) * W) := by
+          rw [Nat.add_mul, pow_add]
+          simp [Nat.mul_comm]
+
+
+/-- Concatenating an unsigned low block with a signed high block and then
+    decoding gives the low block plus the shifted signed high block. -/
+lemma tcDecodeWidth_concat
+    {lowWidth highWidth low high : ℕ}
+    (hHighWidth : 0 < highWidth)
+    (hLow : low < 2 ^ lowWidth)
+    (hHigh : high < 2 ^ highWidth) :
+    tcDecodeWidth
+        (lowWidth + highWidth)
+        (low + high * 2 ^ lowWidth)
+      =
+    (low : ℤ) +
+      tcDecodeWidth highWidth high *
+        (2 : ℤ) ^ lowWidth := by
+  obtain ⟨h, rfl⟩ :=
+    Nat.exists_eq_succ_of_ne_zero
+      (Nat.ne_of_gt hHighWidth)
+  by_cases hsign : high < 2 ^ h
+  · have hcombined :
+        low + high * 2 ^ lowWidth
+          <
+        2 ^ (lowWidth + h) := by
+      calc
+        low + high * 2 ^ lowWidth
+            <
+        2 ^ lowWidth +
+          high * 2 ^ lowWidth :=
+          Nat.add_lt_add_right hLow _
+        _ =
+        (high + 1) * 2 ^ lowWidth := by
+          ring
+        _ ≤
+        2 ^ h * 2 ^ lowWidth := by
+          exact Nat.mul_le_mul_right
+            (2 ^ lowWidth)
+            (Nat.succ_le_of_lt hsign)
+        _ =
+        2 ^ (lowWidth + h) := by
+          rw [pow_add]
+          ring
+    rw [show lowWidth + (h + 1) = (lowWidth + h) + 1 by omega]
+    simp only [tcDecodeWidth]
+    simp [hcombined, hsign]
+  · have hhighLower : 2 ^ h ≤ high :=
+      Nat.le_of_not_gt hsign
+    have hcombined :
+        ¬ low + high * 2 ^ lowWidth
+            <
+          2 ^ (lowWidth + h) := by
+      apply Nat.not_lt_of_ge
+      calc
+        2 ^ (lowWidth + h)
+            =
+        2 ^ h * 2 ^ lowWidth := by
+          rw [pow_add]
+          ring
+        _ ≤
+        high * 2 ^ lowWidth :=
+          Nat.mul_le_mul_right
+            (2 ^ lowWidth)
+            hhighLower
+        _ ≤
+        low + high * 2 ^ lowWidth :=
+          Nat.le_add_left _ _
+    rw [show lowWidth + (h + 1) = (lowWidth + h) + 1 by omega]
+    simp only [tcDecodeWidth]
+    simp [hsign, pow_add]
+    rw[pow_add] at hcombined
+    simp[hcombined]
+    ring
+
+
+/-- Binary positional decomposition for the concrete `take`/`drop` split. -/
+lemma toNat_take_drop
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : Reg)
+    (m : ℕ)
+    (hm : m ≤ regSize r)
+    (b : Basis) :
+    RegEncoding.toNat r b
+      =
+    RegEncoding.toNat (r.take m) b
+      +
+    2 ^ m * RegEncoding.toNat (r.drop m) b := by
+  let sp : SplitPoint r := ⟨m, hm⟩
+  have h :=
+    RegEncoding.toNat_split
+      (r := r)
+      (m := sp)
+      (b := b)
+  unfold SplitPoint at *
+  have hmin :
+      min m r.qubits.length = m := by
+    rw [Nat.min_eq_left]
+    simpa [regSize, Reg.width] using hm
+  simpa [sp, splitLeft, splitRight, ASize, regSize, Reg.width, Reg.take, hmin] using h
+
+
+/-- Taking a block after first restricting to a prefix gives the same block,
+    provided the complete block lies inside that prefix. -/
+lemma take_drop_take_eq
+    (r : Reg)
+    (pre start width : ℕ)
+    (hfit : start + width ≤ pre) :
+    ((r.take pre).drop start).take width
+      =
+    (r.drop start).take width := by
+  cases r with
+  | mk qubits nodup =>
+      have hw :
+          width ≤ pre - start :=
+        by omega
+      simp [Reg.take, Reg.drop, List.drop_take, List.take_take, Nat.min_eq_left hw]
+
+
+/-- Reconstruction of an `n·W`-bit register from `n` consecutive
+    width-`W` blocks. -/
+lemma toNat_uniform_chunks
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (W : ℕ) :
+    ∀ (n : ℕ)
+      (r : Reg)
+      (b : Basis),
+      regSize r = n * W →
+      RegEncoding.toNat r b
+        =
+      ∑ i : Fin n,
+        RegEncoding.toNat
+          ((r.drop (i.1 * W)).take W)
+          b *
+        2 ^ (i.1 * W)
+  | 0, r, b, hwidth => by
+      have hlt :
+          RegEncoding.toNat r b < ASize r :=
+        RegEncoding.toNat_lt_ASize r b
+      have hr0 : regSize r = 0 := by
+        simpa using hwidth
+      have hnat : RegEncoding.toNat r b = 0 := by
+        unfold ASize at hlt
+        rw [hr0] at hlt
+        simp at hlt
+        omega
+      simp [hnat]
+  | n + 1, r, b, hwidth => by
+      have hWle : W ≤ regSize r := by
+        rw [hwidth, Nat.add_mul]
+        simp
+      have hsplit :
+          RegEncoding.toNat r b
+            =
+          RegEncoding.toNat (r.take W) b
+            +
+          2 ^ W *
+            RegEncoding.toNat (r.drop W) b :=
+        toNat_take_drop r W hWle b
+      have htailWidth :
+          regSize (r.drop W) = n * W := by
+        have hwidth' :
+            r.qubits.length = (n + 1) * W := by
+          simpa [regSize, Reg.width] using hwidth
+        have hdrop :
+            r.qubits.length - W = n * W := by
+          rw [hwidth']
+          rw [Nat.succ_mul]
+          simp [Nat.add_comm]
+        simpa [regSize, Reg.width, Reg.drop] using hdrop
+      have htail :
+          RegEncoding.toNat (r.drop W) b
+            =
+          ∑ i : Fin n,
+            RegEncoding.toNat
+              (((r.drop W).drop (i.1 * W)).take W)
+              b *
+            2 ^ (i.1 * W) :=
+        toNat_uniform_chunks W n (r.drop W) b htailWidth
+      have hzero :
+          (r.drop (0 * W)).take W = r.take W := by
+        cases r
+        simp [Reg.drop, Reg.take]
+      have hsucc :
+          ∀ i : Fin n,
+            (r.drop ((i.succ : Fin (n + 1)).1 * W)).take W
+              =
+            ((r.drop W).drop (i.1 * W)).take W := by
+        intro i
+        cases r
+        simp [Reg.drop, Reg.take, List.drop_drop, Nat.add_mul, Nat.add_comm]
+      rw [hsplit, htail]
+      rw [Fin.sum_univ_succ]
+      simp only [Fin.val_zero, zero_mul, pow_zero, Nat.mul_one]
+      rw [show (r.drop 0).take W = r.take W by simpa using hzero]
+      congr 1
+      rw [Finset.mul_sum]
+      apply Finset.sum_congr rfl
+      intro i hi
+      rw [hsucc i]
+      have hexp :
+          ((i.succ : Fin (n + 1)).1 * W)
+            =
+          W + i.1 * W := by
+        simp [Nat.add_mul, Nat.add_comm]
+      rw [hexp, pow_add]
+      ring
+
+
+/-- A non-top phase chunk is the corresponding width-`W` block of the
+    `(k-1)·W`-bit lower prefix. -/
+lemma phaseChunkActive_castSucc
+    (parent : ExtReg)
+    (n W : ℕ)
+    (i : Fin n)
+    (_hcut : n * W ≤ parent.width) :
+    phaseChunkActive
+        parent (n + 1) W
+        (i.castSucc : Fin (n + 1))
+      =
+    (((parent.active.take (n * W)).drop
+        (i.1 * W)).take W) := by
+  have hnotTop :
+      ¬ isTopChunk
+        (i.castSucc : Fin (n + 1)) := by
+    unfold isTopChunk
+    simp only [Fin.val_castSucc]
+    omega
+  have hi : i.1 + 1 ≤ n :=
+    Nat.succ_le_of_lt i.2
+  have hfit :
+      i.1 * W + W ≤ n * W := by
+    calc
+      i.1 * W + W = (i.1 + 1) * W := by
+        rw [Nat.add_mul]
+        simp
+      _ ≤ n * W :=
+        Nat.mul_le_mul_right W hi
+  unfold phaseChunkActive phaseChunkStart
+  rw [phaseSplitLogicalWidth]
+  simp only [hnotTop, if_false]
+  exact
+    (take_drop_take_eq
+      parent.active
+      (n * W)
+      (i.1 * W)
+      W
+      hfit).symm
+
+
+/-- The final phase chunk is exactly the suffix following the lower
+    `(k-1)` width-`W` blocks. -/
+lemma phaseChunkActive_last
+    (parent : ExtReg)
+    (n W : ℕ)
+    (hcut : n * W ≤ parent.width) :
+    phaseChunkActive
+        parent (n + 1) W
+        (Fin.last n)
+      =
+    parent.active.drop (n * W) := by
+  have htop :
+      isTopChunk
+        (Fin.last n : Fin (n + 1)) := by
+    unfold isTopChunk
+    simp
+  cases parent with
+  | mk active reserve hdisj =>
+      cases active with
+      | mk qubits nodup =>
+          simp [phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, htop, ExtReg.width, regSize, Reg.width, Reg.take, Reg.drop]
+
+
+/-- Reconstruct the unsigned parent value from all child chunk values. -/
+theorem phaseChunks_reconstruct_nat
+    {Basis : Type u}
+    [RegEncoding Basis]
+    {parent : ExtReg}
+    {k W : ℕ}
+    (layout : PhaseSplitLayout parent k W)
+    (b : Basis) :
+    ExtReg.toNat parent b
+      =
+    ∑ i : Fin k,
+      ExtReg.toNat (layout.child i) b *
+        2 ^ (i.1 * W) := by
+  obtain ⟨hk, hbound, htopValid⟩ :=
+    layout.valid
+  cases k with
+  | zero =>
+      omega
+  | succ n =>
+      simp only [Nat.succ_sub_one] at hbound
+      let cut : ℕ := n * W
+      let lower : Reg := parent.active.take cut
+      let upper : Reg := parent.active.drop cut
+      have hcut :
+          cut ≤ parent.width := by
+        simpa [cut] using hbound
+      have hlowerWidth :
+          regSize lower = n * W := by
+        dsimp [lower, cut]
+        simp [regSize, Reg.width, Reg.take]
+        unfold cut ExtReg.width regSize Reg.width at *
+        apply hcut
+      have hsplit :
+          ExtReg.toNat parent b
+            =
+          RegEncoding.toNat lower b
+            +
+          2 ^ cut *
+            RegEncoding.toNat upper b := by
+        unfold ExtReg.toNat
+        simpa [lower, upper, cut] using
+          toNat_take_drop
+            parent.active
+            cut
+            hcut
+            b
+      have hlower :
+          RegEncoding.toNat lower b
+            =
+          ∑ i : Fin n,
+            RegEncoding.toNat
+              ((lower.drop (i.1 * W)).take W)
+              b *
+            2 ^ (i.1 * W) :=
+        toNat_uniform_chunks
+          W n lower b hlowerWidth
+      have hlowerChild :
+          ∀ i : Fin n,
+            ExtReg.toNat
+                (layout.child
+                  (i.castSucc : Fin (n + 1)))
+                b
+              =
+            RegEncoding.toNat
+              ((lower.drop (i.1 * W)).take W)
+              b := by
+        intro i
+        unfold ExtReg.toNat
+        change
+          RegEncoding.toNat
+              (phaseChunkActive
+                parent (n + 1) W
+                (i.castSucc : Fin (n + 1))) b
+            =
+          RegEncoding.toNat ((lower.drop (i.1 * W)).take W) b
+        rw [ phaseChunkActive_castSucc parent n W i hcut ]
+      have hupperChild :
+          ExtReg.toNat
+              (layout.child
+                (Fin.last n : Fin (n + 1)))
+              b
+            =
+          RegEncoding.toNat upper b := by
+        unfold ExtReg.toNat
+        change
+          RegEncoding.toNat
+              (phaseChunkActive
+                parent (n + 1) W
+                (Fin.last n))
+              b
+            =
+          RegEncoding.toNat upper b
+        rw [phaseChunkActive_last parent n W hcut]
+      rw [Fin.sum_univ_castSucc]
+      simp only [Fin.val_castSucc, Fin.val_last]
+      rw [hsplit, hlower]
+      have hlowerSum :
+          (∑ i : Fin n,
+              RegEncoding.toNat
+                ((lower.drop (i.1 * W)).take W)
+                b *
+              2 ^ (i.1 * W))
+            =
+          ∑ i : Fin n,
+              ExtReg.toNat
+                (layout.child
+                  (i.castSucc : Fin (n + 1)))
+                b *
+              2 ^ (i.1 * W) := by
+        apply Finset.sum_congr rfl
+        intro i hi
+        rw [hlowerChild i]
+      rw [hlowerSum, hupperChild]
+      dsimp [cut]
+      ring
+
+
+/-- Decode a chunk sum where the final chunk is interpreted as signed two's-complement. -/
+theorem tcDecode_chunks_signed_top
+    {k W total raw : ℕ}
+    (hk : 0 < k)
+    (hbound : (k - 1) * W ≤ total)
+    (htop : total = 0 ∨ (k - 1) * W < total)
+    (hraw : raw < 2 ^ total)
+    (chunks : Fin k → ℕ)
+    (hchunks :
+      ∀ i : Fin k,
+        chunks i <
+          2 ^
+            (if isTopChunk i then
+              total - i.1 * W
+            else
+              W))
+    (hchunk :
+      raw =
+        ∑ i : Fin k,
+          chunks i * 2 ^ (i.1 * W)) :
+    tcDecodeWidth total raw
+      =
+    ∑ i : Fin k,
+      (if isTopChunk i then
+          tcDecodeWidth
+            (total - i.1 * W)
+            (chunks i)
+        else
+          (chunks i : ℤ)) *
+        (2 : ℤ) ^ (i.1 * W) := by
+  cases k with
+  | zero =>
+      omega
+  | succ n =>
+      simp only [Nat.succ_sub_one] at hbound htop
+      by_cases htotal : total = 0
+      · subst total
+        have hrawZero : raw = 0 := by
+          simpa using hraw
+        have hchunksZero :
+            ∀ i : Fin (n + 1), chunks i = 0 := by
+          intro i
+          have htermLe :
+              chunks i * 2 ^ (i.1 * W)
+                ≤
+              ∑ j : Fin (n + 1),
+                chunks j * 2 ^ (j.1 * W) := by
+            aesop
+          rw [← hchunk, hrawZero] at htermLe
+          have hpowPos :
+              0 < 2 ^ (i.1 * W) := by
+            positivity
+          aesop
+        subst raw
+        simp [tcDecodeWidth, hchunksZero]
+      · have htotalPos : 0 < total :=
+          Nat.pos_of_ne_zero htotal
+        have htopStrict : n * W < total :=
+          htop.resolve_left htotal
+        let lowWidth : ℕ := n * W
+        let highWidth : ℕ := total - lowWidth
+        let low : ℕ :=
+          ∑ i : Fin n,
+            chunks i.castSucc *
+              2 ^ (i.1 * W)
+        let high : ℕ :=
+          chunks (Fin.last n)
+        have hwidthEq :
+            lowWidth + highWidth = total := by
+          dsimp [lowWidth, highWidth]
+          exact Nat.add_sub_of_le hbound
+        have hHighWidthPos :
+            0 < highWidth := by
+          dsimp [highWidth, lowWidth]
+          exact Nat.sub_pos_of_lt htopStrict
+        have hnotTop :
+            ∀ i : Fin n,
+              ¬ isTopChunk
+                (i.castSucc : Fin (n + 1)) := by
+          intro i
+          unfold isTopChunk
+          simp only [Fin.val_castSucc]
+          omega
+        have htopLast :
+            isTopChunk
+              (Fin.last n : Fin (n + 1)) := by
+          unfold isTopChunk
+          simp
+        have hlowerDigit :
+            ∀ i : Fin n,
+              chunks i.castSucc < 2 ^ W := by
+          intro i
+          have hi := hchunks i.castSucc
+          simpa [hnotTop i] using hi
+        have hLow :
+            low < 2 ^ lowWidth := by
+          dsimp [low, lowWidth]
+          exact fin_sum_digits_lt_pow
+            W
+            (fun i : Fin n =>
+              chunks i.castSucc)
+            hlowerDigit
+        have hHigh :
+            high < 2 ^ highWidth := by
+          have hi := hchunks
+            (Fin.last n : Fin (n + 1))
+          simpa [high, highWidth, lowWidth, htopLast] using hi
+        have hdecomp :
+            raw =
+              low +
+                high * 2 ^ lowWidth := by
+          rw [hchunk, Fin.sum_univ_castSucc]
+          simp only [Fin.val_castSucc, Fin.val_last]
+          rfl
+        have hdecode :
+            tcDecodeWidth total raw
+              =
+            (low : ℤ) +
+              tcDecodeWidth highWidth high *
+                (2 : ℤ) ^ lowWidth := by
+          calc
+            tcDecodeWidth total raw
+                =
+            tcDecodeWidth
+              (lowWidth + highWidth)
+              (low + high * 2 ^ lowWidth) := by
+                rw [hwidthEq, hdecomp]
+            _ =
+            (low : ℤ) +
+              tcDecodeWidth highWidth high *
+                (2 : ℤ) ^ lowWidth :=
+              tcDecodeWidth_concat
+                hHighWidthPos hLow hHigh
+        have hLowCast :
+            (low : ℤ)
+              =
+            ∑ i : Fin n,
+              (chunks i.castSucc : ℤ) *
+                (2 : ℤ) ^ (i.1 * W) := by
+          dsimp [low]
+          push_cast
+          rfl
+        rw [hdecode, Fin.sum_univ_castSucc]
+        simp only [Fin.val_castSucc, Fin.val_last]
+        simp_rw [if_neg (hnotTop _)]
+        rw [if_pos htopLast]
+        rw [← hLowCast]
+
+
+theorem splitChunkInt_reconstruct
+    {Basis : Type u}
+    [RegEncoding Basis]
+    {parent : ExtReg}
+    {k W : ℕ}
+    (layout : PhaseSplitLayout parent k W)
+    (b : Basis) :
+    extToInt parent b
+      =
+    ∑ i : Fin k,
+      splitChunkInt layout i b *
+        ((2 : ℤ) ^ (i.1 * W)) := by
+  obtain ⟨hk, hbound, htop⟩ := layout.valid
+  have hraw :
+      ExtReg.toNat parent b < 2 ^ parent.width :=
+    ExtReg.toNat_lt parent b
+  have hreconstruct :
+      ExtReg.toNat parent b
+        =
+      ∑ i : Fin k,
+        ExtReg.toNat (layout.child i) b *
+          2 ^ (i.1 * W) :=
+    phaseChunks_reconstruct_nat layout b
+  unfold extToInt
+  simpa [splitChunkInt] using
+    tcDecode_chunks_signed_top
+    (k := k)
+    (W := W)
+    (total := parent.width)
+    (raw := ExtReg.toNat parent b)
+    (chunks := fun i =>
+      ExtReg.toNat (layout.child i) b)
+    hk hbound htop hraw
+    (fun i => splitChunk_toNat_lt layout i b)
+    hreconstruct
+
+
+end Shor
+
+
 namespace Shor
 open Gate
 open Operations

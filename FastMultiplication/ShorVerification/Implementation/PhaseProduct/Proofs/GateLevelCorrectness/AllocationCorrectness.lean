@@ -1,5 +1,75 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.WidthSoundness
 
+-- Proof-only lemmas relocated from PhaseProduct/DefsCore (definition layer keeps only defs).
+
+namespace Shor
+open Gate
+open Operations
+open scoped BigOperators
+
+/-- Final `x` slots are exactly the initial slots grown to the common target width. -/
+lemma stFinal_xslot_eq_grow
+    {x z : ExtReg}
+    {k : ℕ}
+    (layout : Gate.PhaseProductLayout x z k)
+    (need : NeededWidths k)
+    (i : Fin k) :
+    let stInit := initSignedLayoutState layout
+    let Wwork := commonNeededWidth need
+    (targetSignedLayoutState stInit need).xslot i
+      =
+    (stInit.xslot i).grow
+      (Wwork - (stInit.xslot i).width) := by
+  simp [targetSignedLayoutState, growExtRegTo]
+
+
+/-- Final `z` slots are exactly the initial slots grown to the common target width. -/
+lemma stFinal_zslot_eq_grow
+    {x z : ExtReg}
+    {k : ℕ}
+    (layout : Gate.PhaseProductLayout x z k)
+    (need : NeededWidths k)
+    (i : Fin k) :
+    let stInit := initSignedLayoutState layout
+    let Wwork := commonNeededWidth need
+    (targetSignedLayoutState stInit need).zslot i
+      =
+    (stInit.zslot i).grow
+      (Wwork - (stInit.zslot i).width) := by
+  simp [targetSignedLayoutState, growExtRegTo]
+
+
+/-- The scanned target `x` slot strictly grows beyond its initial width. -/
+lemma extraDelta_xslot_pos
+    {x z : ExtReg}
+    {k : ℕ}
+    (layout : Gate.PhaseProductLayout x z k)
+    (ops : Prog k)
+    (i : Fin k)
+    (hcap :
+      (initSignedLayoutState layout).CanGrowToNeeds
+        (scanNeededWidths x z ops)) :
+    let stInit := initSignedLayoutState layout
+    let stFinal :=
+      targetSignedLayoutState stInit
+        (scanNeededWidths x z ops)
+    0 < extraDelta
+      (stInit.xslot i)
+      (stFinal.xslot i) := by
+  dsimp
+  unfold extraDelta
+  rw [targetSignedLayoutState_xslot_width_scan layout ops i hcap, stInit_xslot_width layout i]
+  have hscan :=
+    scanNeededWidths_x_ge_init x z ops i
+  have hneed :=
+    commonNeededWidth_ge_xneed
+      (scanNeededWidths x z ops) i
+  omega
+
+
+end Shor
+
+
 namespace Shor
 open Gate
 open Operations
