@@ -1,3 +1,4 @@
+import FastMultiplication.ShorVerification.Implementation.Shor.Defs
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering
 
@@ -25,106 +26,9 @@ Main declarations:
     Section 1: Static reserve budgets
 ========================================================= -/
 
-/-- Workspace required on each register by lowered Shor order finding. -/
-structure ShorWorkspaceNeed where
-  exponent : ℕ
-  data : ℕ
-  auxiliary : ℕ
-
-/-- Total reserve required for lowering a QFT of width `n`. -/
-def qftReserveNeed
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ) : ℕ :=
-  (qftWorkspaceNeed ops n).1 +
-  (qftWorkspaceNeed ops n).2
-
-/--
-Compute the reserve required from the exponent, data, and auxiliary registers
-when lowering the approximate Shor order-finding circuit.
--/
-def shorWorkspaceNeed
-    {k : ℕ}
-    (ops : Prog k)
-    (x data work : ExtReg) :
-    ShorWorkspaceNeed :=
-
-  let step1Need :=
-    RecursivePhaseWorkspace.reserveNeed ops (data.width + 1) (work.width + 1)
-
-  let step2Need :=
-    RecursivePhaseWorkspace.reserveNeed ops (work.width + 1) (data.width + 2)
-
-  let step5Need :=
-    RecursivePhaseWorkspace.reserveNeed ops (data.width + 2) (work.width + 1)
-
-  {
-    exponent := qftReserveNeed ops x.width
-
-    data :=
-      (max (2 + step1Need.1)
-        (max (1 + qftReserveNeed ops (data.width + 1))
-          (max (2 + step2Need.2) (2 + step5Need.1))))
-
-    auxiliary :=
-      (max (qftReserveNeed ops work.width)
-        (max (1 + step1Need.2) (max (1 + step2Need.1) (1 + step5Need.2))))
-  }
-
-
-/--
-The exponent, data, and auxiliary registers contain enough inactive reserve
-for lowering the complete approximate Shor order-finding circuit.
--/
-structure ShorWorkspaceLargeEnough
-    {k : ℕ}
-    (ops : Prog k)
-    (x data work : ExtReg) :
-    Prop where
-
-  exponent_large_enough :
-    (shorWorkspaceNeed ops x data work).exponent
-      ≤ x.capacity
-
-  data_large_enough :
-    (shorWorkspaceNeed ops x data work).data
-      ≤ data.capacity
-
-  auxiliary_large_enough :
-    (shorWorkspaceNeed ops x data work).auxiliary
-      ≤ work.capacity
-
 /-! =========================================================
     Section 2: Public workspace preconditions
 ========================================================= -/
-
-/--
-Every reserve register that may be used during Shor lowering is initially zero.
--/
-def ShorWorkspaceCleanInput
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (x y work : ExtReg)
-    (b0 : Basis) :
-    Prop :=
-  FreshZero x.reserve b0 ∧
-  FreshZero y.reserve b0 ∧
-  FreshZero work.reserve b0
-
-/--
-The reserve belonging to the exponent register is not reused by the
-auxiliary register or comparator flag.
--/
-structure ShorWorkspaceIsolation
-    (x work : ExtReg)
-    (flag : ℕ) :
-    Prop where
-
-  exponent_work_disjoint :
-    ExtReg.OwnedDisjoint x work
-
-  flag_outside_exponent :
-    flag ∉ x.ownedQubits
 
 /-! =========================================================
     Section 3: Dynamic clean-state invariants
@@ -133,14 +37,6 @@ structure ShorWorkspaceIsolation
     The older full/carry predicates are kept as small bridge names because
     several imported correctness statements still expose them.
 ========================================================= -/
-
-/--
-A state supported on basis states in which three specified registers are zero.
--/
-abbrev ThreeRegsCleanState
-    (qs : QSemantics) [RegEncoding qs.Basis] (r₁ r₂ r₃ : Reg) :
-    qs.State → Prop :=
-  CleanClosure (fun b => FreshZero r₁ b ∧ FreshZero r₂ b ∧ FreshZero r₃ b)
 
 namespace ThreeRegsCleanState
 variable {qs : QSemantics} [RegEncoding qs.Basis] {r₁ r₂ r₃ : Reg}

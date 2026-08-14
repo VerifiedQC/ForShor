@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Reference.ReferenceLayout
-import FastMultiplication.ShorVerification.Implementation.Shor.Readiness
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness
 
 namespace Shor
 namespace Reference

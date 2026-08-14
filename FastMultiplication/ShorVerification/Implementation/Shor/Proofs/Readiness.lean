@@ -1,4 +1,5 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.OrderFinding
+import FastMultiplication.ShorVerification.Implementation.Shor.Defs
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.OrderFinding
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateSemanticsLemmas
 import Mathlib.Data.Real.Basic
@@ -511,43 +512,6 @@ theorem gateWorkspaceOK_orderFindingApprox
 
   simpa [orderFindingApprox, GateWorkspaceOK, hmod] using hAll
 
-/--
-Public readiness package for both static workspace availability and dynamic
-initial cleanliness.
--/
-structure LoweredShorReady
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    [LowerGateClass qs]
-    [LowerGateGateBridge qs]
-    (lowering : ShorLoweringSetup)
-    (η : ℝ)
-    (a N : ℕ)
-    (x y work : ExtReg)
-    (flag : ℕ)
-    (b0 : qs.Basis) :
-    Prop where
-
-  approx :
-    ShorApproxSetupMinimal qs η x y work flag b0
-
-  workspace_large_enough :
-    ShorWorkspaceLargeEnough lowering.ops x y work
-
-  workspace_isolated :
-    ShorWorkspaceIsolation x work flag
-
-  workspace_initially_zero :
-    ShorWorkspaceCleanInput x y work b0
-  -- clean :
-  --   let hworkspace :=
-  --     gateWorkspaceOK_orderFindingApprox (ops := lowering.ops)  (η := η) (a := a) (N := N)
-  --       (x := x) (data := y) (work := work) (flag := flag) (b0 := b0) approx workspace_large_enough
-
-  --   GateWorkspaceCleanState qs lowering.k lowering.hk lowering.ops
-  --     (orderFindingApprox qs a N x y work flag  approx.circuit_workspace)
-  --     hworkspace (qs.ket b0)
 /-! =========================================================
     Section 2: Clean-result sequencing infrastructure
 ========================================================= -/

@@ -1,5 +1,7 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.WholeProgramCorrectness
-import FastMultiplication.ShorVerification.Implementation.Shor.Readiness
+import FastMultiplication.ShorVerification.Implementation.Shor.Assertions
+import FastMultiplication.ShorVerification.Implementation.Shor.Defs
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.WholeProgramCorrectness
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
 import FastMultiplication.ShorVerification.Framework.Submission
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
@@ -790,17 +792,6 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
 
   exact lower_bound_of_abs_sub_le hprob
 
-/-- Classical assumptions on a modulus for the final factoring theorem. -/
-structure ShorFactoringInstance where
-  /-- The modulus to factor. -/
-  N : ℕ
-  /-- Shor's classical reduction is stated for odd composite moduli. -/
-  odd : Odd N
-  /-- The modulus is nontrivial. -/
-  gt_two : N > 2
-  /-- The modulus is not a prime power. -/
-  not_prime_power : ∀ (p k : ℕ), Nat.Prime p → N ≠ p ^ k
-
 /-! =========================================================
     Section 4: Final correctness statements
 
@@ -824,22 +815,7 @@ theorem Shor_correct
     (b0 : qs.Basis)
     (hinput :
       IdealOrderFindingInput qs inst.x inst.y b0) :
-    probability_of_success
-        (qs := qs)
-        (T := T)
-        (verify :=
-          fun d => decide ((inst.a ^ d) % inst.N = 1))
-        (x := inst.x.active)
-        (r := ord inst.a inst.N inst.coprime)
-        (Q := ASize inst.x.active)
-        (evalC := qs.eval)
-        (C :=
-          orderFindingIdeal
-            (qs := qs)
-            inst.a inst.N inst.x inst.y)
-        (ψ := qs.ket b0)
-      ≥
-    κ / (Nat.log2 inst.N : ℝ) ^ 4 := by
+    ShorCorrect T hT inst b0 hinput := by
   sorry
 
 omit [ContinuedFractionPost] [Spec] in
@@ -1618,26 +1594,8 @@ theorem Shor_end_to_end_factoring
     (b0 : qs.Basis)
     (hinput : IdealOrderFindingInput qs x y b0)
     (hm : regSize x.active = Nat.log2 (2 * fact.N^2))
-    (hn : regSize y.active = Nat.log2 (2 * fact.N)):
-  (2 * (successful_choices fact.N).card ≥ (valid_choices fact.N).card)
-  ∧
-  (∀ a ∈ successful_choices fact.N, ∃ (hgcd : Nat.gcd a fact.N = 1),
-    (probability_of_success (qs := qs) (T := T)
-      (verify := fun d => decide ((a ^ d) % fact.N = 1))
-      (x := x.active)
-      (r := ord a fact.N hgcd)
-      (Q := ASize x.active)
-      (evalC := qs.eval)
-      (C := orderFindingIdeal (qs := qs) a fact.N x y)
-      (ψ := qs.ket b0)
-    ≥ κ / (Nat.log2 fact.N : ℝ)^4)
-    ∧
-    (is_nontrivial_factor
-        (Nat.gcd ((a ^ (ord a fact.N hgcd / 2)) - 1) fact.N)
-        fact.N ∨
-     is_nontrivial_factor
-        (Nat.gcd ((a ^ (ord a fact.N hgcd / 2)) + 1) fact.N)
-        fact.N)) := by {
+    (hn : regSize y.active = Nat.log2 (2 * fact.N)) :
+    ShorEndToEndFactoring T hT fact x y b0 hinput hm hn := by {
   let N := fact.N
   have h_odd : Odd N := fact.odd
   have h_N : N > 2 := fact.gt_two
@@ -1727,25 +1685,7 @@ theorem Shor_correct_approx_lowered_uniform
     [IdealCtrlModMulExactSemantics qs]
     [ModMulPrimitiveGateSemantics qs]
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
-    ∃ K : ℝ, 0 ≤ K ∧
-      ∀ (inst : ShorOrderFindingInstance)
-        (lowering : ShorLoweringSetup)
-        (work : ExtReg) (flag : ℕ)
-        (b0 : qs.Basis)
-        (η : ℝ)
-        (hready : LoweredShorReady qs lowering η inst.a inst.N inst.x inst.y work flag b0),
-        probability_of_success (qs := qs) (T := T)
-          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := inst.x.active) (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize inst.x.active) (evalC := LowerGateClass.evalL (qs := qs))
-          (C := orderFindingApproxLow qs lowering.k lowering.hk lowering.ops
-              inst.a inst.N inst.x inst.y work flag
-              (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace hready.workspace)
-            (ψ := qs.ket b0)
-          ≥
-        κ / (Nat.log2 inst.N : ℝ) ^ 4
-          -
-        2 * (tbits inst.x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+    ShorCorrectApproxLoweredUniform T hT := by
   -- `K` is the single hoisted constant from the gate-level theorem; it is
   -- independent of `inst`/`lowering`/`work`/`flag`, so one `K` serves every
   -- instance and precision level.
