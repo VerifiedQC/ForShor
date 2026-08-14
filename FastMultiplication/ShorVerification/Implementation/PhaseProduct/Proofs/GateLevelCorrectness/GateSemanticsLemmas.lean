@@ -1244,37 +1244,6 @@ theorem eval_X_low_zero_reg_ket
 
 end PauliXSemantics
 
-theorem ExtReg.toNat_grow_of_fresh
-    (r : ExtReg)
-    (n : ℕ)
-    (b : Basis)
-    (_hcap : r.CanGrow n)
-    (hzero : r.FreshFor n b) :
-    ExtReg.toNat (r.grow n) b =
-      ExtReg.toNat r b := by
-  exact Gate.ExtReg.toNat_grow_of_fresh r n b hzero
-
-theorem eval_zeroExtend_ket
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [ExtensionSemantics qs]
-    (r : ExtReg)
-    (n : ℕ)
-    (b : qs.Basis)
-    (hcap : r.CanGrow n)
-    (hzero : ExtReg.FreshFor r n b) :
-    qs.eval
-        (Gate.zeroExtend r n)
-        (qs.ket b)
-      =
-    qs.ket b
-    ∧
-    ExtReg.toNat (r.grow n) b =
-      ExtReg.toNat r b := by
-  constructor
-  · exact ExtensionSemantics.eval_zeroExtend r n (qs.ket b)
-  · exact ExtReg.toNat_grow_of_fresh r n b hcap hzero
 
 lemma zeroExtend_preserves_bit
     (qs : QSemantics)
@@ -1304,67 +1273,11 @@ lemma zeroExtend_preserves_bit
   subst b'
   rfl
 
-lemma signExtend_preserves_disjoint_extToInt
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [ExtensionSemantics qs]
-    (r e : ExtReg)
-    (n : ℕ)
-    (b b' : qs.Basis)
-    (hcap : r.CanGrow n)
-    (hfresh : r.FreshFor n b)
-    (hdisj :
-      ExtReg.ActiveDisjoint e (r.grow n))
-    (heval :
-      qs.eval (Gate.signExtend r n) (qs.ket b) =
-        qs.ket b') :
-    extToInt e b' = extToInt e b := by
-  rcases ExtensionSemantics.eval_signExtend_ket
-      r n b hcap hfresh with
-    ⟨bout, heval', _hr, _hwide, hloc⟩
-
-  have hbout : bout = b' := by
-    apply qs.ket_inj
-    rw [← heval, ← heval']
-
-  subst bout
-
-  unfold extToInt
-  rw [hloc e hdisj]
-
-lemma tcDecodeWidth_succ_eq_of_lt {w n : ℕ} (h : n < 2 ^ w) :
-  tcDecodeWidth (w + 1) n = (n : ℤ) := by
-  simp [tcDecodeWidth, h]
-
 namespace GateSemanticsFacts
 
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 variable [GateSemanticsFacts qs]
-
-theorem eval_RadixReverse_split_ket
-  (r : Reg) (m : ℕ) (hm : m ≤ regSize r) (b : qs.Basis)
-  (kL kH : ℕ)
-  (hkL : kL < ASize (splitLeft r ⟨m, hm⟩))
-  (hkH : kH < ASize (splitRight r ⟨m, hm⟩)) :
-  qs.eval (Gate.RadixReverse r m)
-    (qs.ket
-      (RegEncoding.writeNat (splitLeft r ⟨m, hm⟩) kL
-        (RegEncoding.writeNat (splitRight r ⟨m, hm⟩) kH b)))
-  =
-  qs.ket
-    (RegEncoding.writeNat r
-      (radixReverseIndex r m hm kL kH)
-      b) := by
-  simpa [radixReverseIndex] using
-    (RadixReverseSemantics.eval_RadixReverse_ket
-      (qs := qs)
-      (r := r) (m := m) (hm := hm) (b := b)
-      (kL := kL) (kH := kH)
-      hkL
-      hkH)
-
 
 private lemma zeroExtend_preserves_bit
     (qs : QSemantics)
@@ -1380,32 +1293,6 @@ private lemma zeroExtend_preserves_bit
     RegEncoding.bit q b' = RegEncoding.bit q b := by
   classical
   exact Shor.zeroExtend_preserves_bit qs r n b b' q hEval
-
-lemma eval_CSignedPhaseProd_ket_as_if_SignedPhaseProd
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [PhaseSemantics qs]
-    (ctrl : ℕ)
-    (phi : ℝ)
-    (x z : ExtReg)
-    (b : qs.Basis) :
-    qs.eval (Gate.CSignedPhaseProd ctrl phi x z) (qs.ket b)
-      =
-    if RegEncoding.bit ctrl b then
-      qs.eval (Gate.SignedPhaseProd phi x z) (qs.ket b)
-    else
-      qs.ket b := by
-  by_cases hctrl : RegEncoding.bit ctrl b
-  ·
-    rw [PhaseSemantics.eval_CSignedPhaseProd_ket]
-    rw [if_pos hctrl, if_pos hctrl]
-    exact
-      (PhaseSemantics.eval_SignedPhaseProd_ket
-        (qs := qs) phi x z b).symm
-  ·
-    rw [PhaseSemantics.eval_CSignedPhaseProd_ket]
-    rw [if_neg hctrl, if_neg hctrl]
 
 open Gate
 /--
@@ -1566,18 +1453,6 @@ lemma eval_sum
   · simp
   · intro a s ha hs
     simp [Finset.sum_insert ha, QSemantics.eval_add, hs]
-
-lemma eval_sum_univ
-    {α : Type}
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [Fintype α]
-    (U : Gate)
-    (f : α → qs.State) :
-    qs.eval U (∑ a : α, f a) = ∑ a : α, qs.eval U (f a) := by
-  have := (eval_sum qs U Finset.univ f)
-  aesop
 
 /-! =========================================================
     Section 9: Encoding transport lemmas

@@ -37,15 +37,6 @@ def tcPointTerm
       evalRowZ (qs := qs) st
         (expectedRow (k := k) ((ToomCookMath.listToFin pts hpts) i)) b : ℤ) : ℚ)
 
-/-- The final target product, as a rational number. -/
-def tcTarget
-  (qs : QSemantics)
-  [RegEncoding qs.Basis]
-  (x z : ExtReg)
-  (b : qs.Basis) : ℚ :=
-  (((extToInt x b) *
-    (extToInt z b) : ℤ) : ℚ)
-
 /-- Coefficients of the product polynomial, grouped by total chunk degree. -/
 def tcProductCoeff
   (qs : QSemantics)
