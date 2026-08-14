@@ -3,6 +3,496 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Lowering
 
+namespace Shor
+
+section GateSemanticsDissolvedModExp
+universe u
+variable {Basis : Type u} [RegEncoding Basis]
+open QSemantics
+
+theorem eval_Hreg_zero_eq_QFT
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [QFTSemantics qs]
+    [HadamardSemantics qs]
+    (r : ExtReg)
+    (b : qs.Basis)
+    (hzero : ExtReg.toNat r b = 0) :
+    qs.eval
+        ((regQubits r.active).foldl
+          (fun acc q => Gate.seq (Gate.H q) acc)
+          Gate.id)
+        (qs.ket b)
+      =
+    qs.eval (Gate.QFT r) (qs.ket b) := by
+
+  rw [
+    eval_Hreg_zero_uniform
+      qs r.active b
+      (by simpa [ExtReg.toNat] using hzero)
+  ]
+
+  rw [QFTSemantics.eval_QFT_ket]
+
+  have hN :
+      2 ^ r.width = ASize r.active := by
+    rfl
+
+  rw [hN]
+
+  have hx :
+      ExtReg.toNat r b = 0 := hzero
+
+  rw [hx]
+
+  simp [qftPhase, ωPow]
+
+
+namespace GateSemanticsFacts
+
+/-- Bundled-interface spelling of `eval_Hreg_zero_eq_QFT`. -/
+theorem eval_Hreg_zero_eq_QFT
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    (r : ExtReg)
+    (b : qs.Basis)
+    (hzero : ExtReg.toNat r b = 0) :
+    qs.eval
+        ((regQubits r.active).foldl
+          (fun acc q => Gate.seq (Gate.H q) acc)
+          Gate.id)
+        (qs.ket b)
+      =
+    qs.eval (Gate.QFT r) (qs.ket b) := by
+  exact Shor.eval_Hreg_zero_eq_QFT qs r b hzero
+
+
+end GateSemanticsFacts
+
+namespace QFTSemantics
+
+theorem eval_adj_QFT_ket
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [QFTSemantics qs]
+    (r : ExtReg)
+    (b : qs.Basis) :
+    qs.eval (Gate.adj (Gate.QFT r)) (qs.ket b)
+      =
+    ((1 / Real.sqrt ((ASize r.active : ℕ) : ℝ) : ℂ)) •
+      ∑ y : Fin (ASize r.active),
+        star
+            (qftPhase
+              (ASize r.active)
+              (ExtReg.toNat r b)
+              y.1) •
+          qs.ket
+            (RegEncoding.writeNat
+              r.active y.1 b) := by
+  classical
+
+  let N : ℕ := ASize r.active
+  let c : ℂ := (1 / Real.sqrt (N : ℝ) : ℂ)
+  let x : ℕ := ExtReg.toNat r b
+
+  have hxlt : x < N := by
+    simpa [x, N, ExtReg.toNat] using
+      (RegEncoding.toNat_lt_ASize r.active b)
+
+  let ix : Fin N := ⟨x, hxlt⟩
+
+  apply GateSemanticsCore.state_eq_of_inner_ket_eq qs
+  intro d
+
+  let t : ℕ := ExtReg.toNat r d
+
+  have htlt : t < N := by
+    simpa [t, N, ExtReg.toNat] using
+      (RegEncoding.toNat_lt_ASize r.active d)
+
+  let it : Fin N := ⟨t, htlt⟩
+
+  have hN :
+      2 ^ r.width = N := by
+    simp [N, ASize, ExtReg.width]
+
+  rw [GateSemanticsCore.inner_eval_adj (qs := qs)]
+  rw [QFTSemantics.eval_QFT_ket]
+  rw [hN]
+
+  change
+    inner ℂ
+        (qs.ket b)
+        (c •
+          ∑ z : Fin N,
+            qftPhase N t z.1 •
+              qs.ket
+                (RegEncoding.writeNat r.active z.1 d))
+      =
+    inner ℂ
+        (c •
+          ∑ y : Fin N,
+            star (qftPhase N x y.1) •
+              qs.ket
+                (RegEncoding.writeNat r.active y.1 b))
+        (qs.ket d)
+
+  have hc :
+      (starRingEnd ℂ) c = c := by
+    simp [c]
+
+  by_cases hdb :
+      RegEncoding.writeNat r.active t b = d
+
+  · ----------------------------------------------------------------
+    -- GOOD CASE:
+    -- d differs from b only on the active register.
+    ----------------------------------------------------------------
+
+    have hxb :
+        RegEncoding.writeNat r.active x d = b := by
+      calc
+        RegEncoding.writeNat r.active x d
+            =
+          RegEncoding.writeNat r.active x
+            (RegEncoding.writeNat r.active t b) := by
+              rw [hdb]
+
+        _ =
+          RegEncoding.writeNat r.active x b := by
+            exact
+              RegEncoding.writeNat_overwrite
+                r.active x t b
+
+        _ = b := by
+          simpa [x, ExtReg.toNat] using
+            (RegEncoding.writeNat_toNat r.active b)
+
+    ------------------------------------------------------------
+    -- Collapse the forward-QFT inner-product sum at z = x.
+    ------------------------------------------------------------
+
+    have hforward :
+        (∑ z : Fin N,
+          inner ℂ
+            (qs.ket b)
+            (qftPhase N t z.1 •
+              qs.ket
+                (RegEncoding.writeNat
+                  r.active z.1 d)))
+          =
+        qftPhase N t x := by
+
+      calc
+        (∑ z : Fin N,
+          inner ℂ
+            (qs.ket b)
+            (qftPhase N t z.1 •
+              qs.ket
+                (RegEncoding.writeNat
+                  r.active z.1 d)))
+            =
+          inner ℂ
+            (qs.ket b)
+            (qftPhase N t ix.1 •
+              qs.ket
+                (RegEncoding.writeNat
+                  r.active ix.1 d)) := by
+
+            apply Fintype.sum_eq_single ix
+            intro z hz
+
+            have hwrite_ne :
+                RegEncoding.writeNat r.active z.1 d ≠ b := by
+              intro hwrite
+
+              have hread :=
+                congrArg
+                  (RegEncoding.toNat r.active)
+                  hwrite
+
+              have hzlt :
+                  z.1 < ASize r.active := by
+                simp[N]
+
+              rw [
+                RegEncoding.toNat_writeNat_of_lt
+                  r.active z.1 d hzlt
+              ] at hread
+
+              apply hz
+              apply Fin.ext
+
+              simpa [ix, x, ExtReg.toNat] using hread
+
+            rw [inner_smul_right]
+
+            have horth :
+                inner ℂ
+                    (qs.ket b)
+                    (qs.ket
+                      (RegEncoding.writeNat
+                        r.active z.1 d))
+                  =
+                0 := by
+              exact
+                qs.ket_inner_eq_zero_of_ne
+                  (Ne.symm hwrite_ne)
+
+            rw [horth]
+            simp
+
+        _ = qftPhase N t x := by
+          rw [inner_smul_right]
+
+          have hket :
+              inner ℂ
+                  (qs.ket b)
+                  (qs.ket
+                    (RegEncoding.writeNat
+                      r.active ix.1 d))
+                =
+              1 := by
+            apply qs.ket_inner_eq_of_eq
+            simpa [ix] using hxb.symm
+
+          rw [hket]
+          simp [ix]
+
+    ------------------------------------------------------------
+    -- Collapse the proposed inverse-QFT sum at y = t.
+    ------------------------------------------------------------
+
+    have hinverse :
+        (∑ y : Fin N,
+          inner ℂ
+            (star (qftPhase N x y.1) •
+              qs.ket
+                (RegEncoding.writeNat
+                  r.active y.1 b))
+            (qs.ket d))
+          =
+        qftPhase N x t := by
+
+      calc
+        (∑ y : Fin N,
+          inner ℂ
+            (star (qftPhase N x y.1) •
+              qs.ket
+                (RegEncoding.writeNat
+                  r.active y.1 b))
+            (qs.ket d))
+            =
+          inner ℂ
+            (star (qftPhase N x it.1) •
+              qs.ket
+                (RegEncoding.writeNat
+                  r.active it.1 b))
+            (qs.ket d) := by
+
+            apply Fintype.sum_eq_single it
+            intro y hy
+
+            have hwrite_ne :
+                RegEncoding.writeNat r.active y.1 b ≠ d := by
+              intro hwrite
+
+              have hread :=
+                congrArg
+                  (RegEncoding.toNat r.active)
+                  hwrite
+
+              have hylt :
+                  y.1 < ASize r.active := by
+                simp[N]
+
+              rw [
+                RegEncoding.toNat_writeNat_of_lt
+                  r.active y.1 b hylt
+              ] at hread
+
+              apply hy
+              apply Fin.ext
+
+              simpa [it, t, ExtReg.toNat] using hread
+
+            rw [inner_smul_left]
+
+            have horth :
+                inner ℂ
+                    (qs.ket
+                      (RegEncoding.writeNat
+                        r.active y.1 b))
+                    (qs.ket d)
+                  =
+                0 := by
+              exact
+                qs.ket_inner_eq_zero_of_ne
+                  hwrite_ne
+
+            rw [horth]
+            simp
+
+        _ = qftPhase N x t := by
+          rw [inner_smul_left]
+
+          have hket :
+              inner ℂ
+                  (qs.ket
+                    (RegEncoding.writeNat
+                      r.active it.1 b))
+                  (qs.ket d)
+                =
+              1 := by
+            apply qs.ket_inner_eq_of_eq
+            simpa [it] using hdb
+
+          rw [hket]
+          simp [it]
+
+    ------------------------------------------------------------
+    -- Both sides now have the same single Fourier coefficient.
+    ------------------------------------------------------------
+
+    rw [inner_smul_right, inner_smul_left]
+    rw [inner_sum, sum_inner]
+    rw [hforward, hinverse]
+    rw [hc]
+    rw [qftPhase_comm N t x]
+
+  · ----------------------------------------------------------------
+    -- BAD CASE:
+    -- d does not agree with b outside the active register.
+    -- No basis term on either side can survive.
+    ----------------------------------------------------------------
+
+    have hforward :
+        (∑ z : Fin N,
+          inner ℂ
+            (qs.ket b)
+            (qftPhase N t z.1 •
+              qs.ket
+                (RegEncoding.writeNat
+                  r.active z.1 d)))
+          =
+        0 := by
+
+      apply Fintype.sum_eq_zero
+      intro z
+
+      have hwrite_ne :
+          RegEncoding.writeNat r.active z.1 d ≠ b := by
+        intro hwrite
+
+        have hcontr :
+            RegEncoding.writeNat r.active t b = d := by
+          calc
+            RegEncoding.writeNat r.active t b
+                =
+              RegEncoding.writeNat r.active t
+                (RegEncoding.writeNat
+                  r.active z.1 d) := by
+                    rw [hwrite]
+
+            _ =
+              RegEncoding.writeNat r.active t d := by
+                exact
+                  RegEncoding.writeNat_overwrite
+                    r.active t z.1 d
+
+            _ = d := by
+              simpa [t, ExtReg.toNat] using
+                (RegEncoding.writeNat_toNat
+                  r.active d)
+
+        exact hdb hcontr
+
+      rw [inner_smul_right]
+
+      have horth :
+          inner ℂ
+              (qs.ket b)
+              (qs.ket
+                (RegEncoding.writeNat
+                  r.active z.1 d))
+            =
+          0 := by
+        exact
+          qs.ket_inner_eq_zero_of_ne
+            (Ne.symm hwrite_ne)
+
+      rw [horth]
+      simp
+
+    have hinverse :
+        (∑ y : Fin N,
+          inner ℂ
+            (star (qftPhase N x y.1) •
+              qs.ket
+                (RegEncoding.writeNat
+                  r.active y.1 b))
+            (qs.ket d))
+          =
+        0 := by
+
+      apply Fintype.sum_eq_zero
+      intro y
+
+      have hwrite_ne :
+          RegEncoding.writeNat r.active y.1 b ≠ d := by
+        intro hwrite
+
+        have hread :=
+          congrArg
+            (RegEncoding.toNat r.active)
+            hwrite
+
+        have hylt :
+            y.1 < ASize r.active := by
+          simp[N]
+        rw [
+          RegEncoding.toNat_writeNat_of_lt
+            r.active y.1 b hylt
+        ] at hread
+
+        have hy_t : y.1 = t := by
+          simpa [t, ExtReg.toNat] using hread
+
+        apply hdb
+        simpa [hy_t] using hwrite
+
+      rw [inner_smul_left]
+
+      have horth :
+          inner ℂ
+              (qs.ket
+                (RegEncoding.writeNat
+                  r.active y.1 b))
+              (qs.ket d)
+            =
+          0 := by
+        exact
+          qs.ket_inner_eq_zero_of_ne
+            hwrite_ne
+
+      rw [horth]
+      simp
+
+    rw [inner_smul_right, inner_smul_left]
+    rw [inner_sum, sum_inner]
+    rw [hforward, hinverse]
+    simp
+
+
+end QFTSemantics
+
+end GateSemanticsDissolvedModExp
+end Shor
+
+
 open Shor
 
 universe v
