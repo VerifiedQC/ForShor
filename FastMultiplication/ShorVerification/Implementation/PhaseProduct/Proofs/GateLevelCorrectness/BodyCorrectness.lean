@@ -14,7 +14,7 @@ and finally composes the body with deallocation.
 -/
 
 /-! =========================================================
-    Section 1: Slot disjointness and single-step correctness
+    Slot Disjointness And Single-Step Correctness
     The body gates update one logical row at a time. These helpers turn layout
     disjointness into active-register disjointness and prove that each compiled
     arithmetic instruction preserves the encoded symbolic state.
@@ -725,7 +725,7 @@ lemma encodesFrom_after_addScaled_ket
                       simp [State.addScaledReg, State.setReg, hjd]
 
 /-! =========================================================
-    Section 2: Outside-layout preservation for one arithmetic step
+    Outside-Layout Preservation For One Arithmetic Step
     These lemmas replay the same primitive gate evaluations as the encoding
     lemmas, but only record that registers outside the final layout are unchanged.
 ========================================================= -/
@@ -973,7 +973,7 @@ lemma sameOutside_after_addScaled_single
             exact hbz_keep e (he.2 dsti) (he.2 srci)
 
 /-! =========================================================
-    Section 3: No-phase arithmetic runs
+    No-Phase Arithmetic Runs
     A no-phase segment is just a sequence of arithmetic row updates. The two
     inductions below carry, respectively, outside-layout preservation and encoded
     state preservation through such a segment.
@@ -1682,7 +1682,7 @@ lemma encodesFrom_after_noPhase_run_ket_gen
     hdisj hFits hSafeAdd hNP hrun hEnc
 
 /-! =========================================================
-    Section 4: Phase gates and block induction
+    Phase Gates And Block Induction
     After the no-phase arithmetic prefix of a block has produced the matching
     row, the phase gate contributes exactly the scalar prescribed by the phase
     product. The block inductions compose those scalars across all points.
@@ -1769,7 +1769,7 @@ lemma eval_matched_cphase_ket_from
     rw [if_neg hctrl, if_neg hctrl]
 
 /-! =========================================================
-    Section 5: Control-phase wrappers
+    Control-Phase Wrappers
     `controlPhaseLeaves` only changes phase-product leaves. These lemmas push it
     through compiled lists and show that purely arithmetic fragments are fixed.
 ========================================================= -/
@@ -2288,7 +2288,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
       simp [phaseScalarFrom, mul_assoc, smul_smul]
 
 /-! =========================================================
-    Section 6: Public body theorems and controlled body theorems
+    Public Body Theorems And Controlled Variants
     These are the body-level statements used by the surrounding compiler proof:
     the full annotated body evaluates to the phase scalar, and the controlled
     version evaluates to either that scalar or identity while preserving layout.
@@ -2833,7 +2833,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks
 
 
 /-! =========================================================
-    Section 8: Deallocation and body/deallocation composition
+    Deallocation And Body/Deallocation Composition
     Allocation followed by deallocation cancels slot-by-slot, so the proved body
     scalar can be transported from the allocated basis state back to the original
     input basis state.

@@ -1,13 +1,22 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateSemanticsLemmas
 
+/-!
+# Phase-Product Gate-Level Support Lemmas
+
+Shared definitions and small lemmas used by the gate-level correctness proof.
+This file sets up the symbolic row semantics, encoding invariants, layout
+locality predicates, signed-width arithmetic, and Toom-Cook point vocabulary
+that later files consume.
+-/
+
 namespace Shor
 open Gate
 open Operations
 
 section RowSemantics
 /-! =========================================================
-    Section 9: Legacy ordinary-register modular helpers
+    Legacy Ordinary-Register Helpers
 ========================================================= -/
 
 /-- Ordinary-register modular reduction retained for legacy arithmetic gate statements. -/
@@ -16,7 +25,7 @@ def tcMod (r : Reg) (z : ℤ) : ℕ := Int.toNat (z % (ASize r : ℤ))
 variable (qs : QSemantics) [RegEncoding qs.Basis]
 
 /-! =========================================================
-    Section 10: Source-row semantics
+    Source-Row Semantics
 ========================================================= -/
 
 /-- How the original source basis should be read when forming chunk rows:
@@ -52,7 +61,7 @@ def evalRowZ
   ∑ j : Fin k, r j * sourceChunkZInt (qs := qs) st j b
 
 /-! =========================================================
-    Section 10: Encoding invariants
+    Encoding Invariants
 ========================================================= -/
 
 /-- Two-layout version: the current widened machine state is read signed on `dst`,
@@ -102,7 +111,7 @@ def EncodesStateFromWithWidths
   WidthStateDominatedByLayout cur dst
 
 /-! =========================================================
-    Section 11: Phase scalar
+    Phase Scalar
 ========================================================= -/
 
 /-- The accumulated scalar now uses the same mixed source-row semantics as
@@ -144,7 +153,7 @@ abbrev CleanWorkspaceState (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
   CleanClosure (fun b => CompilerWorkspaceOK src need b)
 
 /-! =========================================================
-    Section 4: Start-state and initial layout facts
+    Start-State And Initial Layout Facts
 ========================================================= -/
 
 /-- Start-state row evaluation picks out the requested x-slot. -/
@@ -156,7 +165,7 @@ lemma evalRowZ_start_state (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ} (s
   evalRowZ (qs := qs) st (State.start_state i) b = sourceChunkZInt (qs := qs) st i b := by unfold evalRowZ State.start_state; simp
 
 /-! =========================================================
-    Section 5: Source-row arithmetic
+    Source-Row Arithmetic
     These facts mirror the algebra of `Register` operations at the integer row
     evaluation level for both `x` and `z`.
 ========================================================= -/
@@ -418,7 +427,7 @@ lemma evalRowZ_addScaled_raw
           rw [Finset.mul_sum]
 
 /-! =========================================================
-    Section 7: Layout locality and basis extensionality
+    Layout Locality And Basis Extensionality
     The compiler often proves that a gate changes only layout slots and leaves
     everything outside unchanged. These predicates and extensionality lemmas turn
     those slot/outside facts back into equality of basis states.
@@ -670,6 +679,14 @@ def WellFormedReg (r : Reg) : Prop := r.qubits.Nodup
 
 @[simp] theorem wellFormedReg (r : Reg) : WellFormedReg r := r.nodup
 
+/-! =========================================================
+    Program Annotation And Phase-Leaf Counts
+
+    The compiler annotates each phase-product leaf with its interpolation index.
+    These list lemmas keep the annotation index synchronized across appends and
+    arithmetic helper programs that contain no phase leaves.
+========================================================= -/
+
 /-- Annotating phase leaves commutes with appending programs, after shifting the second index. -/
 lemma annotatePhaseTermsAux_append (k n : ℕ) (ops₁ ops₂ : List (valid_ops k)) :
   annotatePhaseTermsAux k n (ops₁ ++ ops₂) =
@@ -717,6 +734,14 @@ lemma annotatePhaseTermsAux_append (k n : ℕ) (ops₁ ops₂ : List (valid_ops 
 
 @[simp] lemma phaseProductCount_computeLocal2 {k : ℕ} (hk : 0 < k) (z : Int) :
   phaseProductCount (computeLocal2 (k := k) hk z) = 0 := by simp [computeLocal2, phaseProductCount_computeLocalAux]
+
+/-! =========================================================
+    Signed-Width Arithmetic
+
+    These numerical lemmas justify the widened slot sizes chosen by the symbolic
+    width scanner for shifts, negation, and scaled addition.
+========================================================= -/
+
 lemma FitsSignedWidth_of_nonneg_lt_pow
   {w : ℕ} {n : ℕ}
   (h : n < 2 ^ w) :
@@ -950,11 +975,10 @@ lemma FitsSignedWidth_addScaled_widen
   · constructor <;> omega
 
 /-! =========================================================
-    Section 3: Concrete split layouts and budgeted construction
+    Toom-Cook Points And Interpolation Inputs
 
-    These arithmetic and list-slicing facts turn the abstract top-heavy layout
-    definitions from `Core` into concrete child registers. They live here because
-    they are proof/construction support rather than compiler data definitions.
+    These declarations connect compiler interpolation points with the pure math
+    Toom-Cook matrix used by the final interpolation proof.
 ========================================================= -/
 
 def GoodToomCookPoints
@@ -1047,6 +1071,10 @@ lemma genInterpolationPoints_good
 
 
 end RowSemantics
+
+/-! =========================================================
+    Compiler Append Semantics
+========================================================= -/
 
 /-- Evaluation of compiled annotated programs respects append as sequential composition. -/
 lemma eval_compileAnnotatedOpsToSignedGateAux_append

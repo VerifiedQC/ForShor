@@ -223,7 +223,7 @@ construction-free shape required by `ShorImplementation`:
 
     ShorOrderFindingInstance → ℕ → LowGate.
 -/
-noncomputable def referenceShorProg
+noncomputable def referenceShorCircuit
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     (lowering : ShorLoweringSetup)
@@ -232,56 +232,43 @@ noncomputable def referenceShorProg
   let η := referencePrecision m
   let layout := allocateReferenceLayout lowering.ops inst η
 
-  have hsetup :
-      ShorApproxSetup
-        qs
-        η
-        layout.x
-        layout.data
-        layout.work
-        layout.flag
+  have hsetup : ShorApproxSetup  qs η layout.x layout.data layout.work layout.flag
         (RegEncoding.zero (Basis := qs.Basis)) := by
-    simpa [η, layout] using
-      referenceApproxSetup
-        (qs := qs)
-        lowering
-        inst
-        m
+    simpa [η, layout] using referenceApproxSetup (qs := qs) lowering inst m
 
   have hworkspace :
-      GateWorkspaceOK
-        lowering.ops
-        (orderFindingApprox
-          qs
-          inst.a
-          inst.N
-          layout.x
-          layout.data
-          layout.work
-          layout.flag
+      GateWorkspaceOK lowering.ops
+        (orderFindingApprox qs inst.a inst.N layout.x layout.data layout.work layout.flag
           hsetup.circuit_workspace) := by
     simpa [η, layout, hsetup] using
-      referenceLowerWorkspace
-        (qs := qs)
-        lowering
-        inst
-        m
+      referenceLowerWorkspace (qs := qs) lowering inst m
 
-  exact
-    orderFindingApproxLow
-      qs
-      lowering.k
-      lowering.hk
-      lowering.ops
-      inst.a
-      inst.N
-      layout.x
-      layout.data
-      layout.work
-      layout.flag
-      hsetup.circuit_workspace
-      hworkspace
+  exact orderFindingApproxLow qs lowering.k lowering.hk lowering.ops
+      inst.a inst.N layout.x layout.data layout.work layout.flag
+      hsetup.circuit_workspace hworkspace
 
+/-! =========================================================
+    Section 4: Framework-facing Shor program
+========================================================= -/
+
+/--
+The framework-facing reference Shor implementation.
+
+The reference implementation chooses both the circuit and the register whose
+measurement contains the order-finding result.
+-/
+noncomputable def referenceShorProg
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    (lowering : ShorLoweringSetup)
+    (inst : ShorOrderFindingInstance)
+    (m : ℕ) : ShorOrderFindingProgram :=
+  {
+    circuit := referenceShorCircuit (qs := qs) lowering inst m
+
+    output :=
+      (allocateReferenceLayout lowering.ops inst (referencePrecision m)).x.active
+  }
 end
 end Reference
 end Shor

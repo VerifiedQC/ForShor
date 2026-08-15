@@ -727,6 +727,7 @@ lemma qftXWork_qftZWork_disjoint
     qftXWork,
     Reg.take,
     Reg.width,
+    Reg.width,
     ExtReg.capacity,
     Nat.min_eq_left hxFits
   ]
@@ -752,6 +753,7 @@ lemma qftXWork_qftZWork_disjoint
     qftZWork,
     Reg.take,
     Reg.drop,
+    Reg.width,
     Reg.width,
     ExtReg.capacity,
     Nat.min_eq_left hzFits
@@ -1365,8 +1367,7 @@ noncomputable def standardQFTLoweringPlan
     (hk : 1 < k)
     (ops : Prog k)
     (r xWork zWork : Reg)
-    (hworkspace :
-      QFTWorkspaceOK ops r xWork zWork) :
+    (hworkspace : QFTWorkspaceOK ops r xWork zWork) :
     QFTLoweringPlan k hk ops r := by
   by_cases hzero : Reg.width r = 0
 
@@ -1375,96 +1376,43 @@ noncomputable def standardQFTLoweringPlan
 
   · by_cases hone : Reg.width r = 1
 
-    · exact
-        QFTLoweringPlan.singleton r hone
+    · exact QFTLoweringPlan.singleton r hone
 
     · have hlarge : 2 ≤ Reg.width r := by
         omega
 
-      let ws :
-          Gate.PhaseProdWorkspace
-            (leftReg r)
-            (rightReg r) :=
+      let ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r) :=
         hworkspace.phaseWorkspace hlarge
 
       have hphaseWorkspace :
-          SignedRecursiveWorkspaceOK
-            ops
-            (ws.xExt.grow 1)
-            (ws.zExt.grow 1) := by
-        simpa [ws] using
-          hworkspace.signedWorkspaceOK hlarge
+          SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1) := by
+        simpa [ws] using hworkspace.signedWorkspaceOK hlarge
 
       have hrightWorkspace :
-          QFTWorkspaceOK
-            ops
-            (rightReg r)
-            xWork
-            zWork :=
+          QFTWorkspaceOK ops (rightReg r) xWork zWork :=
         hworkspace.right hlarge
 
       have hleftWorkspace :
-          QFTWorkspaceOK
-            ops
-            (leftReg r)
-            xWork
-            zWork :=
+          QFTWorkspaceOK ops (leftReg r) xWork zWork :=
         hworkspace.left hlarge
 
       let phasePlan :
-          StandardPhaseLoweringPlan
-            k
-            hk
-            ops
-            (phaseProdUsingInputSize ws)
-            (Gate.PhaseProdUsing
-              (qftPhi (Reg.width r))
-              (leftReg r)
-              (rightReg r)
-              ws) :=
-        standardPhaseProdUsingPlan
-          k
-          hk
-          ops
-          (qftPhi (Reg.width r))
-          ws
-          hphaseWorkspace
+          StandardPhaseLoweringPlan k hk ops (phaseProdUsingInputSize ws)
+            (Gate.PhaseProdUsing (qftPhi (Reg.width r)) (leftReg r) (rightReg r) ws) :=
+        standardPhaseProdUsingPlan k hk ops (qftPhi (Reg.width r)) ws hphaseWorkspace
 
       let rightPlan :
-          QFTLoweringPlan
-            k hk ops
-            (rightReg r) :=
-        standardQFTLoweringPlan
-          k
-          hk
-          ops
-          (rightReg r)
-          xWork
-          zWork
-          hrightWorkspace
+          QFTLoweringPlan k hk ops (rightReg r) :=
+        standardQFTLoweringPlan k hk ops (rightReg r) xWork zWork hrightWorkspace
 
       let leftPlan :
-          QFTLoweringPlan
-            k hk ops
+          QFTLoweringPlan k hk ops
             (leftReg r) :=
-        standardQFTLoweringPlan
-          k
-          hk
-          ops
-          (leftReg r)
-          xWork
-          zWork
-          hleftWorkspace
+        standardQFTLoweringPlan k hk ops (leftReg r)
+          xWork zWork hleftWorkspace
 
-      exact
-        QFTLoweringPlan.split
-          r
-          hlarge
-          ws
-          (phaseProdUsingInputSize ws)
-          phasePlan
-          rightPlan
-          leftPlan
+      exact QFTLoweringPlan.split r hlarge ws (phaseProdUsingInputSize ws)
+          phasePlan rightPlan leftPlan
 
 termination_by Reg.width r
 decreasing_by
@@ -1519,13 +1467,7 @@ noncomputable def reserveQFTLoweringPlan
     (r : ExtReg)
     (hworkspace : QFTReserveOK ops r) :
     QFTLoweringPlan k hk ops r.active :=
-  standardQFTLoweringPlan
-    k
-    hk
-    ops
-    r.active
-    (qftXWork ops r)
-    (qftZWork ops r)
+  standardQFTLoweringPlan k hk ops r.active (qftXWork ops r) (qftZWork ops r)
     hworkspace.explicitWorkspace
 
 
@@ -1542,9 +1484,7 @@ noncomputable def lowerQFT
     (r : ExtReg)
     (hworkspace : QFTReserveOK ops r) :
     LowGate :=
-  lowerQFTPlan
-    (reserveQFTLoweringPlan
-      k hk ops r hworkspace)
+  lowerQFTPlan (reserveQFTLoweringPlan k hk ops r hworkspace)
 
 
 end Shor

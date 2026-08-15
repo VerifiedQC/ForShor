@@ -78,17 +78,19 @@ def ShorGateCountBound
   ∃ C : ℝ, 0 < C ∧
   ∃ n₀ : ℕ, 1 ≤ n₀ ∧
     ∀ (inst : ShorOrderFindingInstance)
-      (work : ExtReg) (flag : ℕ) (b0 : qs.Basis)
+      (x y work : ExtReg) (flag : ℕ) (b0 : qs.Basis)
+      (_hm : Reg.width x.active = Nat.log2 (2 * inst.N^2))
+      (_hn : Reg.width y.active = Nat.log2 (2 * inst.N))
       (hsetup :
-        ShorApproxSetup qs (shorEta δ inst.y.width) inst.x inst.y work flag b0),
-      let n := inst.y.width
+        ShorApproxSetup qs (shorEta δ y.width) x y work flag b0),
+      let n := y.width
       n₀ ≤ n →
       ∀ hLowerWorkspace :
         GateWorkspaceOK ops
           (orderFindingApprox qs inst.a inst.N
-            inst.x inst.y work flag hsetup.circuit_workspace),
+            x y work flag hsetup.circuit_workspace),
       (shorOrderFindingGateCount qs k hk ops inst.a inst.N
-          inst.x inst.y work flag hsetup.circuit_workspace
+          x y work flag hsetup.circuit_workspace
           hLowerWorkspace : ℝ)
         ≤ C * shorGateRate ε n
 
@@ -1344,31 +1346,34 @@ lemma ShorApproxSetup.toShorGateCountLayout
     (cWork : ℕ)
     (hcWork : 1 ≤ cWork)
     (inst : ShorOrderFindingInstance)
+    (x y : ExtReg)
     (work : ExtReg)
     (flag : ℕ)
     (b0 : qs.Basis)
-    (hsetup : ShorApproxSetup qs η inst.x inst.y work flag b0)
+    (hm : Reg.width x.active = Nat.log2 (2 * inst.N^2))
+    (hn : Reg.width y.active = Nat.log2 (2 * inst.N))
+    (hsetup : ShorApproxSetup qs η x y work flag b0)
     (hExtra :
       algorithm1ExtraBits η
-        ≤ (cWork - 1) * Reg.width inst.y.active) :
-    ShorGateCountLayout cWork (Reg.width inst.y.active)
-      inst.x inst.y work flag := by
+        ≤ (cWork - 1) * Reg.width y.active) :
+    ShorGateCountLayout cWork (Reg.width y.active)
+      x y work flag := by
   have hN : 1 < inst.N := by
     rcases inst.range with ⟨ha0, haN⟩
     omega
   have hxLower :
-      Reg.width inst.y.active ≤ Reg.width inst.x.active :=
+      Reg.width y.active ≤ Reg.width x.active :=
     shor_y_width_le_x_width
-      inst.N inst.x inst.y hN inst.x_width inst.y_width
+      inst.N x y hN hm hn
   have hxUpper :
-      Reg.width inst.x.active ≤ 2 * Reg.width inst.y.active :=
+      Reg.width x.active ≤ 2 * Reg.width y.active :=
     shor_x_width_le_two_y_width
-      inst.N inst.x inst.y hN inst.x_width inst.y_width
+      inst.N x y hN hm hn
   have hworkLower :
-      Reg.width inst.y.active ≤ Reg.width work.active :=
+      Reg.width y.active ≤ Reg.width work.active :=
     data_width_le_work_width hsetup.work_precision
   have hworkUpper :
-      Reg.width work.active ≤ cWork * Reg.width inst.y.active :=
+      Reg.width work.active ≤ cWork * Reg.width y.active :=
     Algorithm1Precision.work_width_le_mul
       hcWork hsetup.work_precision hExtra
   exact
@@ -1423,41 +1428,41 @@ theorem shorGateCountBound_of_components
     dsimp [nFinal]
     omega
   refine ⟨C, hC, nFinal, hnFinal, ?_⟩
-  intro inst work flag b0 hsetup
+  intro inst x y work flag b0 hm hn hsetup
   dsimp
-  intro hn hLowerWorkspace
-  let n : ℕ := inst.y.width
+  intro hnBound hLowerWorkspace
+  let n : ℕ := y.width
   have hnOrder' : nOrder ≤ n := by
-    dsimp [nFinal, n] at hn
+    dsimp [nFinal, n] at hnBound
     omega
   have hnExtra' : nExtra ≤ n := by
-    dsimp [nFinal, n] at hn
+    dsimp [nFinal, n] at hnBound
     omega
   have hnOne : 1 ≤ n :=
     hnOrder.trans hnOrder'
   have hExtra :
       algorithm1ExtraBits
-          (shorEta δ inst.y.width)
-        ≤ (cWork - 1) * Reg.width inst.y.active := by
+          (shorEta δ y.width)
+        ≤ (cWork - 1) * Reg.width y.active := by
     have :=
-      hExtraFits inst.y.width (by simpa [n] using hnExtra')
+      hExtraFits y.width (by simpa [n] using hnExtra')
     simpa [ExtReg.width] using this
   have hLayout :
       ShorGateCountLayout cWork n
-        inst.x inst.y work flag := by
+        x y work flag := by
     dsimp [n]
     simpa [ExtReg.width] using
       ShorApproxSetup.toShorGateCountLayout
-        cWork hcWork inst work flag b0 hsetup hExtra
+        cWork hcWork inst x y work flag b0 hm hn hsetup hExtra
   have hPreliminary :
       (shorOrderFindingGateCount qs k hk ops
-          inst.a inst.N inst.x inst.y work flag
+          inst.a inst.N x y work flag
           hsetup.circuit_workspace hLowerWorkspace : ℝ)
         ≤ C *
           Real.rpow (n : ℝ)
             (1 + phaseProductExponent k) :=
     hOrderFinding n inst.a inst.N
-      inst.x inst.y work flag hsetup.circuit_workspace
+      x y work flag hsetup.circuit_workspace
       hLowerWorkspace hnOrder' hLayout
   have hRate :
       Real.rpow (n : ℝ) (1 + phaseProductExponent k)

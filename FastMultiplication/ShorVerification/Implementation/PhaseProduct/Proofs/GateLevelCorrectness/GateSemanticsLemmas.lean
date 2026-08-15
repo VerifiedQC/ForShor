@@ -6,12 +6,29 @@ import Mathlib.Data.Complex.Basic
 import Mathlib.Tactic
 import Mathlib.Data.Nat.Bitwise
 
+/-!
+# Phase-Product Gate Semantics Lemmas
+
+Proof-support facts about evaluating gates on quantum states. The first block
+contains shared register/Hadamard/evaluator facts used throughout the
+implementation proofs; the second block exposes convenient `QSemantics` rewrite
+lemmas and the phase-product macro semantics needed by gate-level correctness.
+-/
+
 namespace Shor
 
-section GateSemanticsDissolvedShared
+section SharedRegisterAndEvalFacts
 universe u
 variable {Basis : Type u} [RegEncoding Basis]
 open QSemantics
+
+/-! =========================================================
+    Register And Hadamard Support
+
+    These generic facts describe one-qubit registers, zero-valued splits,
+    Hadamard uniform superpositions, and the normalization constants that appear
+    in register-Hadamard proofs.
+========================================================= -/
 
 /-- A one-qubit register is the singleton register at its low qubit. -/
 theorem Reg.eq_qubitReg_lowQubit
@@ -532,6 +549,14 @@ theorem eval_Hreg_zero_uniform
       r b
       rfl hzero
 
+/-! =========================================================
+    Derived Core Evaluator Laws
+
+    `GateSemanticsCore` assumes the primitive linear/isometric interface.  These
+    theorems derive the zero, subtraction, inverse-adjoint, and inner-product
+    forms used for rewriting in proof files.
+========================================================= -/
+
 namespace GateSemanticsCore
 
 @[simp] theorem eval_zero
@@ -677,6 +702,13 @@ theorem state_eq_of_inner_ket_eq
   exact sub_eq_zero.mp this
 
 end GateSemanticsCore
+
+/-! =========================================================
+    Register-Hadamard Span Closure
+
+    Applying Hadamards over qubits of a register stays in the finite span of
+    basis states obtained by writing values into that register.
+========================================================= -/
 
 namespace RegisterHadamardSemantics
 
@@ -904,12 +936,12 @@ theorem eval_foldl_H_mem
 
 end RegisterHadamardSemantics
 
-end GateSemanticsDissolvedShared
+end SharedRegisterAndEvalFacts
 end Shor
 
 
 /-!
-# GateSemantics eval lemmas (implementation proof-support)
+## Evaluator Projection Wrappers And Phase-Product Macros
 
 The generic `eval` / algebra / encoding / norm lemmas built on the
 `GateSemantics` classes.  These are used only in the lowering and correctness
@@ -927,6 +959,13 @@ open QSemantics
 
 attribute [instance] QSemantics.instNormed
 attribute [instance] QSemantics.instIP
+
+/-! =========================================================
+    QSemantics Projection Wrappers
+
+    These wrappers expose the class laws as ordinary theorem names so the later
+    proof files can rewrite with a uniform `QSemantics.*` vocabulary.
+========================================================= -/
 
 namespace QSemantics
 
@@ -1011,6 +1050,13 @@ theorem eval_apply_adj
   GateSemanticsCore.eval_apply_adj (qs := qs) U ψ
 
 end QSemantics
+
+/-! =========================================================
+    Bit And Basis Transport Helpers
+
+    Local facts for comparing low-qubit writes with whole-register writes. They
+    feed the Pauli-X and unsigned phase-product macro semantics below.
+========================================================= -/
 
 private theorem bit_writeNat_qubitReg
     {Basis : Type u}
@@ -1217,6 +1263,13 @@ private theorem writeNat_lowQubit_one_of_toNat_zero
         hqout_r
     ]
 
+/-! =========================================================
+    Pauli-X And Extension Locality
+
+    These bridge primitive register actions back to basis-state extensionality:
+    one Pauli-X write on a zero register, and zero-extension preserving bits.
+========================================================= -/
+
 namespace PauliXSemantics
 
 theorem eval_X_low_zero_reg_ket
@@ -1272,6 +1325,13 @@ lemma zeroExtend_preserves_bit
   have hb : b = b' := qs.ket_inj hket
   subst b'
   rfl
+
+/-! =========================================================
+    Unsigned Phase-Product Macro Semantics
+
+    The unsigned macros are implemented by extending the operands, invoking the
+    signed phase-product gate, and deallocating the temporary sign bits.
+========================================================= -/
 
 namespace GateSemanticsFacts
 
@@ -1436,7 +1496,7 @@ theorem eval_CPhaseProdUsing_ket
 end GateSemanticsFacts
 
 /-! =========================================================
-    Section 8: General algebraic lemmas for `eval`
+    Evaluation Sums
 ========================================================= -/
 
 lemma eval_sum
@@ -1455,7 +1515,7 @@ lemma eval_sum
     simp [Finset.sum_insert ha, QSemantics.eval_add, hs]
 
 /-! =========================================================
-    Section 9: Encoding transport lemmas
+    Encoding Transport
 ========================================================= -/
 
 lemma toNat_left_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
@@ -1467,7 +1527,7 @@ lemma toNat_left_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
       (left := left) (right := right) (Basis:=QSemantics.Basis) (b := b) (yR := yR) h)
 
 /-! =========================================================
-    Section 10: Norm, isometry, and overlap inequalities
+    Norms, Isometry, And Freshness Transport
 ========================================================= -/
 
 /-- `eval U` is an isometry if it preserves inner products. -/

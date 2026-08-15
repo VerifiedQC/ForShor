@@ -4,15 +4,19 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Ga
 # Gate-Level Correctness — Final Theorems
 
 The apex results of the gate-level phase-product correctness proofs: the compiled
-signed / controlled-signed phase-product gates evaluate as specified.  These are the folder's public
-surface, consumed by `LoweringCorrectness`.  Supporting lemmas live in the other
-`GateLevelCorrectness` files.
+signed / controlled-signed phase-product gates evaluate as specified. These are
+the folder's public surface, consumed by `LoweringCorrectness`. Supporting
+lemmas live in the other `GateLevelCorrectness` files.
 -/
 
 namespace Shor
 open Gate
 open Operations
 open scoped BigOperators
+
+/-! =========================================================
+    Gate-Level Final Theorems
+========================================================= -/
 
 /-- State-level correctness of the signed compiled circuit on clean workspace states. -/
 lemma eval_compileOpsToSignedGate_correct

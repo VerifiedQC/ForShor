@@ -1,11 +1,25 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.SupportLemmas
 
--- Proof-only lemmas relocated from PhaseProduct/DefsCore (definition layer keeps only defs).
+/-!
+# Phase-Product Interpolation Correctness
+
+This file proves the algebraic identity behind phase-product compilation. The
+first block reconstructs signed extended registers from their split chunks; the
+second block turns the accumulated Toom-Cook point phases into the final signed
+product phase on the original operands.
+-/
 
 namespace Shor
 open Gate
 open Operations
 open scoped BigOperators
+
+/-! =========================================================
+    Chunk Reconstruction For Split Extended Registers
+
+    These lemmas justify reading the physical split layout as base-`2^W` chunks,
+    including the signed interpretation of the top chunk.
+========================================================= -/
 
 lemma splitChunk_toNat_lt
     {Basis : Type u}
@@ -657,25 +671,9 @@ theorem splitChunkInt_reconstruct
     (fun i => splitChunk_toNat_lt layout i b)
     hreconstruct
 
-
-end Shor
-
-
-namespace Shor
-open Gate
-open Operations
-open scoped BigOperators
-
-/-!
-# Phase-Product Interpolation Correctness
-This file proves the algebraic identity behind phase-product compilation. The
-accumulated phase over the Toom-Cook interpolation points is converted into a
-polynomial interpolation sum, evaluated at the limb radix, and shown to equal the
-signed product phase on the original extended registers.
--/
-
 /-! =========================================================
-    Section 1: Rational point terms and product coefficients
+    Rational Point Terms And Product Coefficients
+
     These definitions translate source-row values into the rational data used by
     Toom-Cook interpolation: point terms, the final product target, and grouped
     product-polynomial coefficients.
@@ -731,7 +729,8 @@ lemma phaseCoeffFromPtsWidth_eq_interpCoeff
   simp
 
 /-! =========================================================
-    Section 2: Phase scalar and point-evaluation bridge
+    Phase Scalar And Point-Evaluation Bridge
+
     The lemmas here connect the compiler's phase accumulator to the generic
     Toom-Cook point-evaluation.
 ========================================================= -/
@@ -935,7 +934,8 @@ lemma sum_degree_group
           simpa [d] using hsingle
 
 /-! =========================================================
-    Section 3: Polynomial reconstruction
+    Polynomial Reconstruction At The Limb Radix
+
     This block proves that evaluating the grouped product polynomial at the limb
     radix reconstructs the product of the original extended-register values.
 ========================================================= -/
@@ -1317,7 +1317,8 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
         norm_num
 
 /-! =========================================================
-    Section 4: Final Toom-Cook phase identity
+    Final Toom-Cook Phase Identity
+
     The final theorem combines point interpolation, radix reconstruction, and
     the compiler phase scalar to produce the signed phase-product scalar.
 ========================================================= -/

@@ -412,9 +412,7 @@ class ModMulPrimitiveGateSemantics
     ∀ (N : ℕ) (data work : Reg) (flag : ℕ) (b : qs.Basis),
       flag ∉ data.qubits →
       flag ∉ work.qubits →
-      qs.eval
-          (Gate.Prim "CMP_LT_NW"
-            ([N, flag] ++ data.qubits ++ work.qubits))
+      qs.eval (Gate.Prim "CMP_LT_NW" ([N, flag] ++ data.qubits ++ work.qubits))
           (qs.ket b)
         =
       qs.ket
@@ -422,15 +420,8 @@ class ModMulPrimitiveGateSemantics
           (qubitReg flag)
           (if RegEncoding.bit flag b then
             if RegEncoding.toNat data b * ASize work
-                < N * RegEncoding.toNat work b then
-              0
-            else
-              1
-          else
-            if RegEncoding.toNat data b * ASize work
-                < N * RegEncoding.toNat work b then
-              1
-            else
-              0)
+                < N * RegEncoding.toNat work b then 0 else 1
+          else if RegEncoding.toNat data b * ASize work
+                < N * RegEncoding.toNat work b then 1 else 0)
           b)
 end Shor

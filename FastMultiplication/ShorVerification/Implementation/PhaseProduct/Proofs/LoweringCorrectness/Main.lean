@@ -14,7 +14,7 @@ readiness invariants; `Main` packages the final reader-facing statements.
 -/
 
 /-! =========================================================
-    Section 1: Plan-level correctness
+    Plan-Level Correctness
     The bridge theorem states that a supplied standard signed phase-product plan
     lowers to a low-level circuit with the same semantics as the high-level
     signed phase-product gate.

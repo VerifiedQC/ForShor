@@ -19,19 +19,13 @@ The interface deliberately mentions only framework concepts. A submission
 provides a `LowGate` circuit family together with correctness and gate-count
 proofs; allocation, lowering, synthesis, and workspace details remain on the
 implementation side.
-
-The surrounding environment supplies the semantic interfaces used to judge a
-submission: `QSemantics`, `RegEncoding`, `MeasureClass`,
-`ContinuedFractionPost`, and `LowerGateClass`. These are ambient typeclass
-assumptions, not fields that each `ShorImplementation` repeats.
 -/
 
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 
-/-- Evaluate a circuit-like object with evaluator `evalC`, then return the
-probability of measuring outcome `o` on register `r`. The generic circuit type
-allows the same probability definition to be reused at different syntax levels. -/
+/-- Evaluate a circuit-like object with `evalC`, then measure register `r`
+with outcome `o`. -/
 noncomputable def measProbAfter
     [MeasureClass qs]
     {Circuit : Type}
@@ -42,11 +36,8 @@ noncomputable def measProbAfter
     (ψ : qs.State) : ℝ :=
   MeasureClass.probMeas (qs := qs) r o (evalC C ψ)
 
-/-- Total probability that the measured exponent-register outcome recovers the
-target order after continued-fraction postprocessing.
-
-The finite sum ranges over outcomes `0, ..., Q - 1`. The indicator `r_found`
-keeps exactly those outcomes whose least verified candidate equals `r`. -/
+/-- Total probability that the measured exponent-register outcome passes the
+continued-fraction post-processing check. -/
 noncomputable def probability_of_success
     [MeasureClass qs]
     [ContinuedFractionPost]
@@ -60,8 +51,7 @@ noncomputable def probability_of_success
     (ψ : qs.State) : ℝ :=
   ∑ o : Fin Q,
     (r_found (T := T) verify o.1 Q r) *
-      measProbAfter
-        (qs := qs) evalC x o.1 C ψ
+      measProbAfter (qs := qs) evalC x o.1 C ψ
 
 /-- Public data and domain assumptions for one order-finding run. -/
 structure ShorOrderFindingInstance where
@@ -69,27 +59,17 @@ structure ShorOrderFindingInstance where
   a : ℕ
   /-- The modulus to factor. -/
   N : ℕ
-  /-- The exponent/control register. -/
-  x : ExtReg
-  /-- The modular-exponentiation data register. -/
-  y : ExtReg
   /-- The sampled base is in the valid range. -/
   range : 0 < a ∧ a < N
   /-- The sampled base is coprime to the modulus. -/
   coprime : Nat.gcd a N = 1
-  /-- The exponent register has the standard Shor width. -/
-  x_width : Reg.width x.active = Nat.log2 (2 * N^2)
-  /-- The data register has enough room for residues modulo `N`. -/
-  y_width : Reg.width y.active = Nat.log2 (2 * N)
-  /-- The public exponent and data registers occupy distinct qubits. -/
-  xy_disjoint : Disjoint x.active y.active
 
-/-- Auxiliary clean-input predicate used by implementation correctness proofs:
-both public registers start at zero and own disjoint qubits.
+structure ShorOrderFindingProgram where
+  circuit : LowGate
+  output : Reg
 
-The public `ShorImplementsOrderFinding` contract below currently starts from the
-global all-zero basis configuration directly rather than quantifying over this
-predicate. -/
+/-- Ideal clean input predicate used by correctness proofs: both public
+registers start at zero and own disjoint qubits. -/
 def IdealOrderFindingInput
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -110,35 +90,32 @@ For every complete continued-fraction search bound and every valid instance,
 the implementation can choose a precision level `m` whose circuit succeeds from
 the global all-zero basis state with probability at least
 `κ / log₂(N)^4 - ε`. The precision index is the only exposed resource knob; all
-implementation-specific choices stay outside the framework interface.
-
-Here `Q = 2^(width x)`, the verifier accepts `d` when `a^d mod N = 1`, and
-success means recovering the exact multiplicative order selected by `ord`. -/
+implementation-specific choices stay outside the framework interface. -/
 def ShorImplementsOrderFinding
-    (prog : ShorOrderFindingInstance → ℕ → LowGate) : Prop :=
+    (prog : ShorOrderFindingInstance → ℕ → ShorOrderFindingProgram) : Prop :=
   ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
   ∀ (inst : ShorOrderFindingInstance),
     ∀ ε : ℝ, 0 < ε → ∃ m : ℕ,
+      let p:=prog inst m
       probability_of_success (qs := qs) (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := inst.x.active) (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize inst.x.active) (evalC := LowerGateClass.evalL (qs := qs))
-          (C := prog inst m) (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))
+          (x := p.output) (r := ord inst.a inst.N inst.coprime)
+          (Q := ASize p.output) (evalC := LowerGateClass.evalL (qs := qs))
+          (C := p.circuit) (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))
         ≥ κ / (Nat.log2 inst.N : ℝ) ^ 4 - ε
 
 /-- Bundle supplied by a Shor implementation at the `LowGate` boundary. -/
 structure ShorImplementation : Type where
   /-- Circuit family indexed by the order-finding instance and precision level. -/
-  prog : ShorOrderFindingInstance → ℕ → LowGate
+  prog : ShorOrderFindingInstance → ℕ → ShorOrderFindingProgram
   /-- Proof that the circuit family satisfies the framework success criterion. -/
   correct : ShorImplementsOrderFinding (qs := qs) prog
-  /-- Declared concrete gate-count bound for the circuit family. This field
-  reports an upper bound; the structure does not impose an asymptotic class. -/
+  /-- Declared concrete gate-count bound for the circuit family. -/
   gateBound : ShorOrderFindingInstance → ℕ → ℕ
   /-- Proof that each circuit meets its declared bound under the shared cost
   model. -/
   counted : ∀ (inst : ShorOrderFindingInstance) (m : ℕ),
-    LowGate.gateCount shorGateCostModel (prog inst m) ≤ gateBound inst m
+    LowGate.gateCount shorGateCostModel (prog inst m).circuit ≤ gateBound inst m
 
 namespace ShorImplementation
 
@@ -152,7 +129,7 @@ theorem framework_order_finding_correct (impl : ShorImplementation (qs := qs)) :
 gate-count bound. -/
 theorem framework_gate_count (impl : ShorImplementation (qs := qs)) :
     ∀ (inst : ShorOrderFindingInstance) (m : ℕ),
-      LowGate.gateCount shorGateCostModel (impl.prog inst m) ≤ impl.gateBound inst m :=
+      LowGate.gateCount shorGateCostModel (impl.prog inst m).circuit ≤ impl.gateBound inst m :=
   impl.counted
 
 end ShorImplementation
