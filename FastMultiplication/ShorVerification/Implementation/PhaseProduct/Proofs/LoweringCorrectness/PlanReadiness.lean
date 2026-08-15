@@ -13,7 +13,7 @@ recursive plan from clean basis states to clean quantum states.
 -/
 
 /-! =========================================================
-    Section 1: Readiness of compiled bodies
+    Readiness Of Compiled Bodies
     The body compiler alternates arithmetic prefixes with phase-product leaves.
     No-phase prefixes simply thread readiness forward; block decompositions then
     identify the basis state reached before each recursive phase leaf.
@@ -1705,7 +1705,7 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
 
 
 /-! =========================================================
-    Section 2: Allocation and deallocation readiness
+    Allocation And Deallocation Readiness
     Allocation and deallocation chunks compile to primitive low gates, so their
     readiness proofs mostly transport across definitional equalities exposed by
     the plan constructors.
@@ -2032,7 +2032,7 @@ lemma planCompileSignedDeallocations_ready
       qs initSize src dst k le_rfl ψ
 
 /-! =========================================================
-    Section 3: Recursive signed phase-product readiness
+    Recursive Signed Phase-Product Readiness
     These lemmas assemble allocation, body readiness, recursive child readiness,
     and deallocation into readiness for the canonical signed phase-product
     lowering plan. The basis-ket proof is extended to arbitrary clean states by

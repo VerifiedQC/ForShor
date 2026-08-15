@@ -51,8 +51,7 @@ noncomputable def probability_of_success
     (ψ : qs.State) : ℝ :=
   ∑ o : Fin Q,
     (r_found (T := T) verify o.1 Q r) *
-      measProbAfter
-        (qs := qs) evalC x o.1 C ψ
+      measProbAfter (qs := qs) evalC x o.1 C ψ
 
 /-- Public data and domain assumptions for one order-finding run. -/
 structure ShorOrderFindingInstance where
@@ -60,20 +59,14 @@ structure ShorOrderFindingInstance where
   a : ℕ
   /-- The modulus to factor. -/
   N : ℕ
-  /-- The exponent/control register. -/
-  x : ExtReg
-  /-- The modular-exponentiation data register. -/
-  y : ExtReg
   /-- The sampled base is in the valid range. -/
   range : 0 < a ∧ a < N
   /-- The sampled base is coprime to the modulus. -/
   coprime : Nat.gcd a N = 1
-  /-- The exponent register has the standard Shor width. -/
-  x_width : regSize x.active = Nat.log2 (2 * N^2)
-  /-- The data register has enough room for residues modulo `N`. -/
-  y_width : regSize y.active = Nat.log2 (2 * N)
-  /-- The public exponent and data registers occupy distinct qubits. -/
-  xy_disjoint : Disjoint x.active y.active
+
+structure ShorOrderFindingProgram where
+  circuit : LowGate
+  output : Reg
 
 /-- Ideal clean input predicate used by correctness proofs: both public
 registers start at zero and own disjoint qubits. -/
@@ -99,21 +92,22 @@ the global all-zero basis state with probability at least
 `κ / log₂(N)^4 - ε`. The precision index is the only exposed resource knob; all
 implementation-specific choices stay outside the framework interface. -/
 def ShorImplementsOrderFinding
-    (prog : ShorOrderFindingInstance → ℕ → LowGate) : Prop :=
+    (prog : ShorOrderFindingInstance → ℕ → ShorOrderFindingProgram) : Prop :=
   ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
   ∀ (inst : ShorOrderFindingInstance),
     ∀ ε : ℝ, 0 < ε → ∃ m : ℕ,
+      let p:=prog inst m
       probability_of_success (qs := qs) (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := inst.x.active) (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize inst.x.active) (evalC := LowerGateClass.evalL (qs := qs))
-          (C := prog inst m) (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))
+          (x := p.output) (r := ord inst.a inst.N inst.coprime)
+          (Q := ASize p.output) (evalC := LowerGateClass.evalL (qs := qs))
+          (C := p.circuit) (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))
         ≥ κ / (Nat.log2 inst.N : ℝ) ^ 4 - ε
 
 /-- Bundle supplied by a Shor implementation at the `LowGate` boundary. -/
 structure ShorImplementation : Type where
   /-- Circuit family indexed by the order-finding instance and precision level. -/
-  prog : ShorOrderFindingInstance → ℕ → LowGate
+  prog : ShorOrderFindingInstance → ℕ → ShorOrderFindingProgram
   /-- Proof that the circuit family satisfies the framework success criterion. -/
   correct : ShorImplementsOrderFinding (qs := qs) prog
   /-- Declared concrete gate-count bound for the circuit family. -/
@@ -121,7 +115,7 @@ structure ShorImplementation : Type where
   /-- Proof that each circuit meets its declared bound under the shared cost
   model. -/
   counted : ∀ (inst : ShorOrderFindingInstance) (m : ℕ),
-    LowGate.gateCount shorGateCostModel (prog inst m) ≤ gateBound inst m
+    LowGate.gateCount shorGateCostModel (prog inst m).circuit ≤ gateBound inst m
 
 namespace ShorImplementation
 
@@ -135,7 +129,7 @@ theorem framework_order_finding_correct (impl : ShorImplementation (qs := qs)) :
 gate-count bound. -/
 theorem framework_gate_count (impl : ShorImplementation (qs := qs)) :
     ∀ (inst : ShorOrderFindingInstance) (m : ℕ),
-      LowGate.gateCount shorGateCostModel (impl.prog inst m) ≤ impl.gateBound inst m :=
+      LowGate.gateCount shorGateCostModel (impl.prog inst m).circuit ≤ impl.gateBound inst m :=
   impl.counted
 
 end ShorImplementation

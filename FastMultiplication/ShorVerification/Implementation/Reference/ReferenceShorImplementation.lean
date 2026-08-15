@@ -95,38 +95,38 @@ theorem referenceShorProg_correct
     Shor_correct_approx_lowered_uniform (qs := qs) T hT
   -- pick the precision level that meets the ε target
   obtain ⟨m, hm⟩ :=
-    exists_precision_error_le (tbits inst.x.active) K hK hε
+    exists_precision_error_le (tbits (referenceXActive inst)) K hK hε
   refine ⟨m, ?_⟩
   set η : ℝ := referencePrecision m with hη
+  let layout := allocateReferenceLayout lowering.ops inst η
   have hη_pos := referencePrecision_pos m
   have hη_half := referencePrecision_lt_half m
-  have hready :=
-    referenceLayout_ready (qs := qs) lowering inst η hη_pos hη_half
-  have hb :=
-    hbound
-      (allocatedOrderFindingInstance lowering.ops inst η)
-      lowering
-      (allocateReferenceLayout lowering.ops inst η).work
-      (allocateReferenceLayout lowering.ops inst η).flag
-      (RegEncoding.zero (Basis := qs.Basis))
-      η
-      hready
-  -- `hb` bounds the probability for exactly `referenceShorProg lowering inst m`
-  -- (definitionally the same circuit), with the allocated instance's `a`/`N`/`x`
-  -- all definitionally equal to `inst`'s.  Close by the ε-choice.
-  simp only [allocatedOrderFindingInstance_a, allocatedOrderFindingInstance_N,
-    allocatedOrderFindingInstance_x_active] at hb
-  have hgoal :
-      probability_of_success (qs := qs) (T := T)
-          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := inst.x.active) (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize inst.x.active) (evalC := LowerGateClass.evalL (qs := qs))
-          (C := referenceShorProg (qs := qs) lowering inst m)
+  have hready := referenceLayout_ready (qs := qs) lowering inst η hη_pos hη_half
+  have hxwidth : regSize layout.x.active = Nat.log2 (2 * inst.N^2) := by
+    simpa [layout] using allocateReferenceLayout_x_width lowering.ops inst η
+
+  have hywidth : regSize layout.data.active = Nat.log2 (2 * inst.N) := by simp [layout]
+
+  have hb := hbound inst lowering layout.x layout.data layout.work layout.flag
+      (RegEncoding.zero (Basis := qs.Basis)) hxwidth
+      hywidth η hready
+
+  have hm' : 2 * (tbits layout.x.active : ℝ) * Real.sqrt (2 * (K * η)) ≤ ε := by
+    simpa [layout, η] using hm
+
+  have hprog : probability_of_success (qs := qs) (T := T) (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+          (x := (referenceShorProg (qs := qs) lowering inst m).output)
+          (r := ord inst.a inst.N inst.coprime)
+          (Q := ASize (referenceShorProg (qs := qs) lowering inst m).output)
+          (evalC := LowerGateClass.evalL (qs := qs))
+          (C := (referenceShorProg (qs := qs) lowering inst m).circuit)
           (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))
-        ≥ κ / (Nat.log2 inst.N : ℝ) ^ 4
-          - 2 * (tbits inst.x.active : ℝ) * Real.sqrt (2 * (K * η)) := hb
-  have := hgoal
-  linarith [hm, hgoal]
+        ≥
+      κ / (Nat.log2 inst.N : ℝ) ^ 4
+        -
+      2 * (tbits layout.x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+    simpa [ referenceShorProg, referenceShorCircuit, layout, η] using hb
+  linarith
 
 /-! =========================================================
     Section 3: The concrete `ShorImplementation`

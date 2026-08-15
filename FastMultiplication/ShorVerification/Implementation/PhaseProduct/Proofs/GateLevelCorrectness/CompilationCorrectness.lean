@@ -14,7 +14,7 @@ compiled signed and controlled phase-product circuits.
 -/
 
 /-! =========================================================
-    Section 1: Block-based signed compilation theorem
+    Block-Based Signed Compilation Theorem
     The core theorem starts from an explicit block decomposition. It allocates
     widened chunks, runs the compiled body plus deallocation, then uses the
     interpolation theorem to identify the resulting scalar with `SignedPhaseProd`.
@@ -185,7 +185,7 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
               (b := b))
 
 /-! =========================================================
-    Section 2: Public signed correctness wrappers
+    Public Signed Correctness Wrappers
     These wrappers recover the block decomposition from `ProgConsumesPtsSafe` and
     lift the basis-ket theorem to arbitrary clean workspace states by linearity.
 ========================================================= -/
@@ -224,7 +224,7 @@ lemma eval_compileOpsToSignedGate_correct_ket
       (hSafeAdd := hC.2))
 
 /-! =========================================================
-    Section 3: Controlled signed correctness wrappers
+    Controlled Signed Correctness Wrappers
     The controlled proof additionally shows that allocation preserves the control
     bit because the control qubit is outside the grown layout, then delegates the
     body to the controlled body/deallocation theorem.
@@ -470,7 +470,7 @@ lemma eval_compileOpsToCSignedGate_correct_ket
           · rw [PhaseSemantics.eval_CSignedPhaseProd_ket]; simp [hc]
 
 /-! =========================================================
-    Section 4: Controlled circuit branch theorem
+    Controlled Circuit Branch Theorem
     The final comparison theorem states that the controlled compiled circuit acts
     like the signed compiled circuit at phase `phi` when the control bit is set,
     and like the signed compiled circuit at phase `0` otherwise.

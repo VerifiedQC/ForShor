@@ -1,11 +1,25 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.SupportLemmas
 
--- Proof-only lemmas relocated from PhaseProduct/DefsCore (definition layer keeps only defs).
+/-!
+# Phase-Product Width Soundness
+
+This file proves that the width scan computed from a symbolic phase-product
+program is large enough for every symbolic row value reached during execution.
+The proof proceeds from one-step preservation, through scan domination for
+prefixes, to the final allocation-facing soundness theorem.
+-/
 
 namespace Shor
 open Gate
 open Operations
 open scoped BigOperators
+
+/-! =========================================================
+    Scanner Unfolding
+
+    The public scanner is a wrapper around the auxiliary fold; this local
+    equation keeps later width proofs pointed at the fold form.
+========================================================= -/
 
 /-- Unfolding lemma for the public width scanner. -/
 lemma scanNeededWidths_eq_aux {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) :
@@ -13,25 +27,8 @@ lemma scanNeededWidths_eq_aux {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)
   simp [scanNeededWidths]
 
 
-end Shor
-
-
-namespace Shor
-open Gate
-open Operations
-open scoped BigOperators
-
-/-!
-# Phase-Product Width Soundness
-
-This file proves that the width scan computed from a symbolic phase-product
-program is large enough for every symbolic row value reached during execution.
-The proof has three layers: one-step preservation for each source operation,
-prefix/scan domination facts, and the final allocation-facing soundness theorem.
--/
-
 /-! =========================================================
-    Section 1: One-step symbolic width preservation
+    One-Step Symbolic Width Preservation
 
     `WidthStateSoundPlus` tracks a proof-only signed-fit invariant for the
     symbolic row values of every register. This section proves that each
@@ -350,7 +347,7 @@ lemma widthStateSoundPlus_run
               hfit1
 
 /-! =========================================================
-    Section 2: Prefix widths are dominated by the full scan
+    Prefix Widths Are Dominated By The Full Scan
 
     These lemmas compare an arbitrary executed prefix against the complete
     `scanNeededWidths` result. They are the bridge from local step preservation
@@ -546,7 +543,7 @@ lemma widthStateSoundPlus_start_state
     simpa [st] using hfit
 
 /-! =========================================================
-    Section 3: Allocation-facing width soundness
+    Allocation-Facing Width Soundness
 
     The final theorem packages the scan result into the exact form used by
     allocation and body correctness: every state reachable by a prefix has row

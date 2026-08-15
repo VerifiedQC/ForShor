@@ -812,10 +812,12 @@ theorem Shor_correct
     (T : ℕ → ℕ)
     (hT : ContinuedFractionSearchComplete T)
     (inst : ShorOrderFindingInstance)
+    (x y : ExtReg)
     (b0 : qs.Basis)
-    (hinput :
-      IdealOrderFindingInput qs inst.x inst.y b0) :
-    ShorCorrect T hT inst b0 hinput := by
+    (hm : regSize x.active = Nat.log2 (2 * inst.N^2))
+    (hn : regSize y.active = Nat.log2 (2 * inst.N))
+    (hinput : IdealOrderFindingInput qs x y b0) :
+    ShorCorrect T hT inst x y b0 hm hn hinput := by
   sorry
 
 omit [ContinuedFractionPost] [Spec] in
@@ -1178,18 +1180,20 @@ theorem Shor_correct_approx_uniform
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
   ∃ K : ℝ, 0 ≤ K ∧
     ∀ (inst : ShorOrderFindingInstance)
-      (w : ExtReg) (flag : ℕ)
+      (x y w : ExtReg) (flag : ℕ)
       (b0 : qs.Basis)
+      (_hm: regSize x.active = Nat.log2 (2 * inst.N^2))
+      (_hn : regSize y.active = Nat.log2 (2 * inst.N))
       (η : ℝ)
-      (hsetup : ShorApproxSetup qs η inst.x inst.y w flag b0),
+      (hsetup : ShorApproxSetup qs η x y w flag b0),
       probability_of_success (qs := qs) (T := T) (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-        (x := inst.x.active) (r := ord inst.a inst.N inst.coprime) (Q := ASize inst.x.active)
+        (x := x.active) (r := ord inst.a inst.N inst.coprime) (Q := ASize x.active)
         (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) inst.a inst.N inst.x inst.y w flag hsetup.circuit_workspace)
+        (C := orderFindingApprox (qs := qs) inst.a inst.N x y w flag hsetup.circuit_workspace)
         (ψ := qs.ket b0)
       ≥
         κ / (Nat.log2 inst.N : ℝ)^4
-        - 2 * (tbits inst.x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+        - 2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
   classical
   -- `K` comes from `modExpApprox_valid_dist_uniform qs` and depends only on `qs`,
   -- so it is hoisted above `inst`/`w`/`flag`: one constant serves every instance
@@ -1199,16 +1203,11 @@ theorem Shor_correct_approx_uniform
     ⟨K, hK_nonneg, hmodExp⟩
 
   refine ⟨K, hK_nonneg, ?_⟩
-  intro inst w flag b0 η hsetup
+  intro inst x y w flag b0 hm hn η hsetup
   let a := inst.a
   let N := inst.N
-  let x := inst.x
-  let y := inst.y
   have ha : 0 < a ∧ a < N := inst.range
   have hgcd : Nat.gcd a N = 1 := inst.coprime
-  have hm : regSize x.active = Nat.log2 (2 * N^2) := inst.x_width
-  have hn : regSize y.active = Nat.log2 (2 * N) := inst.y_width
-
   let cfg : ModExpConfig η := ShorApproxSetup.toModExpConfig ha hgcd hn hsetup
 
   let ψpre : qs.State :=
@@ -1228,7 +1227,7 @@ theorem Shor_correct_approx_uniform
         positivity
       exact Nat.mul_le_mul_left 2 hNsq_pos
 
-    rw [hm]
+    rw [hm]; unfold N at *
     omega
 
   have hpreValid :
@@ -1370,14 +1369,8 @@ theorem Shor_correct_approx_uniform
         (C := orderFindingIdeal (qs := qs) a N x y)
         (ψ := qs.ket b0)
       ≥ κ / (Nat.log2 N : ℝ)^4 := by
-    simpa [verify, r, Q, a, N, x, y] using
-      (Shor_correct
-        (qs := qs)
-        T
-        hT
-        inst
-        b0
-        hIdealInput)
+    simpa [verify, r, Q, a, N] using
+      (Shor_correct (qs := qs) T hT inst x y b0 hm hn hIdealInput)
 
   calc
     probability_of_success (qs := qs) (T := T)
@@ -1581,4 +1574,3 @@ theorem shors_probability_bound (N : ℕ)
   rw [hvc, h_succ_eq]
   omega
 }
-

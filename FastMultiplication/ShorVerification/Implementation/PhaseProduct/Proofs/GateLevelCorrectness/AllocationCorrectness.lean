@@ -1,11 +1,27 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.WidthSoundness
 
--- Proof-only lemmas relocated from PhaseProduct/DefsCore (definition layer keeps only defs).
+/-!
+# Phase-Product Allocation Correctness
+
+This file proves that the allocation prefix of the compiled phase-product
+circuit copies each symbolic source chunk into the widened target layout.  The
+proof is organized from static layout arithmetic, through local
+freshness/disjointness helpers, to single-chunk allocation, and finally to the
+full allocation induction.
+-/
 
 namespace Shor
 open Gate
 open Operations
 open scoped BigOperators
+
+/-! =========================================================
+    Target Layout Growth
+
+    These small layout facts describe the final widened `x` and `z` slots
+    produced by the scanner. Later allocation proofs use them to identify the
+    exact reserve growth requested for each chunk.
+========================================================= -/
 
 /-- Final `x` slots are exactly the initial slots grown to the common target width. -/
 lemma stFinal_xslot_eq_grow
@@ -66,27 +82,8 @@ lemma extraDelta_xslot_pos
       (scanNeededWidths x z ops) i
   omega
 
-
-end Shor
-
-
-namespace Shor
-open Gate
-open Operations
-open scoped BigOperators
-
-/-!
-# Phase-Product Allocation Correctness
-
-This file proves that the allocation half of the compiled phase-product circuit
-copies each symbolic source chunk into the widened target layout while preserving
-the values, outside-layout locality, and clean reserves needed by the remaining
-allocation steps. The proof builds from local disjointness/freshness facts, to
-single-chunk allocation, to the full allocation prefix induction.
--/
-
 /-! =========================================================
-    Section 1: Disjointness, freshness, and source-read helpers
+    Disjointness, Freshness, And Source Reads
 
     Allocation relies on one operation touching only the chunk currently being
     grown. These lemmas move between owned-disjointness, active-disjointness,
@@ -228,7 +225,7 @@ lemma extraDelta_zslot_pos
   omega
 
 /-! =========================================================
-    Section 2: Single-chunk allocation correctness
+    Single-Chunk Allocation Correctness
 
     A single chunk allocation either sign-extends the top chunk or zero-extends
     a lower chunk. In both cases it produces a basis state whose widened slot
@@ -452,7 +449,7 @@ lemma eval_allocChunkGate_z_ket
       rfl
 
 /-! =========================================================
-    Section 3: Prefix allocation induction
+    Allocation Prefix Induction
 
     The auxiliary allocation program allocates chunks in increasing order. The
     induction maintains values for allocated slots, source-read stability for
@@ -843,7 +840,7 @@ lemma eval_compileSignedAllocationsAux_sameOutside
           (SameOutsideLayout.trans (qs := qs) hMidSO hXSO) hZSO
 
 /-! =========================================================
-    Section 4: Public allocation theorems
+    Public Allocation Theorems
 ========================================================= -/
 
 /-- The full allocation program establishes the start-state encoding in the final layout. -/

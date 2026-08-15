@@ -16,13 +16,23 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 # Shor Definitions
 
 The definitional vocabulary the top-level Shor correctness statements need to
-elaborate.  All supporting lemmas live under `Shor.Proofs`.
+elaborate.  This file intentionally contains only public data, predicates, and
+circuits; proofs and bridge lemmas live under `Implementation/Shor/Proofs`.
+
+The declarations are grouped by the role they play in the final statement:
+
+* generic whole-gate lowering predicates;
+* Shor-specific workspace budgets and clean-state assumptions;
+* order-finding circuits;
+* user-facing setup/readiness records;
+* the final classical factoring instance.
 -/
 namespace Shor
 
+universe u
 
 /-!
-# Whole-Program Lowering
+## Generic Whole-Gate Lowering
 
 The public whole-program lowerer does not ask its caller to construct QFT or
 phase-product lowering plans.  Instead, the caller proves one recursive static
@@ -35,10 +45,8 @@ on the input state, not a condition on the syntax or physical register layout.
 It belongs in the later semantic-correctness theorem.
 -/
 
-universe u
-
 /-! =========================================================
-    Section 1: Static workspace precondition
+    Static Workspace Precondition
 ========================================================= -/
 
 /--
@@ -82,7 +90,7 @@ namespace GateWorkspaceOK
 end GateWorkspaceOK
 
 /-! =========================================================
-    Section 2: Whole-program lowering
+    Whole-Program Lowering
 ========================================================= -/
 
 /--
@@ -133,7 +141,7 @@ noncomputable def lowerGate
       lowerSignedPhaseProdWithWorkspace k hk phi x z ops hworkspace
 
   | Gate.CSignedPhaseProd ctrl phi x z, hworkspace =>
-    lowerCSignedPhaseProdWithWorkspace k hk ctrl phi x z ops hworkspace
+      lowerCSignedPhaseProdWithWorkspace k hk ctrl phi x z ops hworkspace
 
   | Gate.Prim tag args, _ =>
       LowGate.Prim tag args
@@ -167,9 +175,17 @@ noncomputable def lowerGate
       LowGate.RadixReverse r m
 
 /-! =========================================================
-    Section 3: Definitional equations
+    Dynamic Clean-State Precondition
 ========================================================= -/
 
+/--
+Runtime cleanliness required before evaluating each recursively lowered node.
+
+For a sequence, cleanliness is threaded through the first lowered component
+before checking the second.  For adjoints, the condition is phrased on the state
+that would appear before the forward circuit.  Primitive and direct low-level
+constructors carry no recursive workspace-cleanliness obligation here.
+-/
 noncomputable def GateWorkspaceCleanState
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -191,10 +207,10 @@ noncomputable def GateWorkspaceCleanState
         ∧
       GateWorkspaceCleanState qs k hk ops V hworkspace.2
           (LowerGateClass.evalL (qs := qs)
-            (lowerGate (Basis := qs.Basis)  k hk ops U hworkspace.1) ψ)
+            (lowerGate (Basis := qs.Basis) k hk ops U hworkspace.1) ψ)
 
-    | Gate.adj U, hworkspace, ψ =>
-      GateWorkspaceCleanState  qs k hk ops U hworkspace (qs.eval (Gate.adj U) ψ)
+  | Gate.adj U, hworkspace, ψ =>
+      GateWorkspaceCleanState qs k hk ops U hworkspace (qs.eval (Gate.adj U) ψ)
 
   | Gate.H _, _, _ =>
       True
@@ -214,34 +230,24 @@ noncomputable def GateWorkspaceCleanState
   | _, _, _ =>
       True
 
-
-
 /-!
-# Shor workspace budgets and clean-state predicates
+## Shor Workspace Budgets And Clean Inputs
 
-This file is the layer for the workspace directory. It names the static reserve
-budgets and the dynamic clean-state invariants used by
-`Workspace.ShorReadiness`.
-
-Main declarations:
-
-* `shorWorkspaceNeed` computes the reserve budget for exponent, data, and
-  auxiliary registers.
-* `ShorWorkspaceLargeEnough` is the public static capacity assumption.
-* `ShorLoweringCleanState` is the clean-state invariant preserved by lowered
-  Shor stages after the data carry bit is allowed to be live.
-* `shorLoweringCleanState_ket` is the entry lemma that turns an initially clean
-  basis state into the lowered clean invariant.
+These declarations name the static reserve budgets and initial clean-workspace
+conditions used by the readiness proofs.
 -/
 
 /-! =========================================================
-    Section 1: Static reserve budgets
+    Static Reserve Budgets
 ========================================================= -/
 
-/-- Workspace required on each register by lowered Shor order finding. -/
+/-- Workspace required on each register family by lowered Shor order finding. -/
 structure ShorWorkspaceNeed where
+  /-- Reserve needed on the exponent register, mainly for QFT lowering. -/
   exponent : ℕ
+  /-- Reserve needed on the modular data register across all ModExp stages. -/
   data : ℕ
+  /-- Reserve needed on the auxiliary/work register across all ModExp stages. -/
   auxiliary : ℕ
 
 /-- Total reserve required for lowering a QFT of width `n`. -/
@@ -295,20 +301,23 @@ structure ShorWorkspaceLargeEnough
     (x data work : ExtReg) :
     Prop where
 
+  /-- The exponent reserve meets the computed QFT-lowering budget. -/
   exponent_large_enough :
     (shorWorkspaceNeed ops x data work).exponent
       ≤ x.capacity
 
+  /-- The data reserve covers carry bits, QFT workspace, and phase-product use. -/
   data_large_enough :
     (shorWorkspaceNeed ops x data work).data
       ≤ data.capacity
 
+  /-- The auxiliary reserve covers QFT and all phase-product workspaces. -/
   auxiliary_large_enough :
     (shorWorkspaceNeed ops x data work).auxiliary
       ≤ work.capacity
 
 /-! =========================================================
-    Section 2: Public workspace preconditions
+    Clean Workspace Inputs And Isolation
 ========================================================= -/
 
 /--
@@ -333,18 +342,20 @@ structure ShorWorkspaceIsolation
     (flag : ℕ) :
     Prop where
 
+  /-- The exponent-owned qubits are separate from the auxiliary workspace. -/
   exponent_work_disjoint :
     ExtReg.OwnedDisjoint x work
 
+  /-- The comparator flag is not part of the exponent register ownership. -/
   flag_outside_exponent :
     flag ∉ x.ownedQubits
 
 /-! =========================================================
-    Section 3: Dynamic clean-state invariants
+    Dynamic Clean-State Names
 
-    The main invariant for lowered readiness is `ShorLoweringCleanState`.
-    The older full/carry predicates are kept as small bridge names because
-    several imported correctness statements still expose them.
+    Proof files extend these namespaces with induction and preservation lemmas.
+    The names are kept here so users can read the public invariant vocabulary
+    without opening the proof development.
 ========================================================= -/
 
 /--
@@ -368,30 +379,20 @@ variable {qs : QSemantics} [RegEncoding qs.Basis] {x data work : ExtReg}
 end ShorLoweringCleanState
 
 
-open Gate
-open Classical
-
 /-!
-# Order-finding circuits and lowered Shor setup data
+## Order-Finding Circuits And Setup Data
 
-This module contains the circuit/setup declarations used by Shor workspace
-readiness and by the final Shor correctness statements.
-
-Main declarations:
-
-* `orderFindingApprox` is the high-level circuit whose lowering workspace is
-  proved ready in `Workspace.ShorReadiness`.
-* `orderFindingApproxLow` applies the public lowerer once readiness is known.
-* `ShorApproxSetup` collects the user-facing layout, workspace, precision, and
-  clean-input assumptions for approximate Shor.
-* `ShorApproxSetup.toIdealOrderFindingInput` is the final bridge from the
-  approximate setup to the ideal order-finding input predicate.
+The approximate circuit uses the verified modular-exponentiation implementation;
+the ideal circuit swaps in the abstract exact modular exponentiation gate.  The
+setup records below collect the layout, precision, and clean-input assumptions
+consumed by the correctness theorems in `Shor.Main`.
 -/
 
 /-! =========================================================
-    Section 1: Order-finding circuit definitions
+    Order-Finding Circuit Definitions
 ========================================================= -/
 
+/-- Initialize the data register to the computational basis value `1`. -/
 def initY1 (y : Reg) : Gate :=
   match y.qubits with
   | [] => Gate.id
@@ -440,7 +441,7 @@ noncomputable def orderFindingIdeal
   (IQFT x)
 
 /-! =========================================================
-    Section 2: Lowering setup
+    Lowering Program Setup
 ========================================================= -/
 
 /-- Low-level lowering assumptions shared by lowered Shor statements. -/
@@ -458,7 +459,7 @@ structure ShorLoweringSetup where
   returns : run? ops State.start_state = some State.start_state
 
 /-! =========================================================
-    Section 3: Approximate and ideal input predicates
+    Approximate And Ideal Input Predicates
 ========================================================= -/
 
 /-- The input basis state is clean on every register used by Shor. -/
@@ -475,9 +476,7 @@ def ShorCleanInput
   work.FreshFor 1 b0 ∧
   RegEncoding.toNat (qubitReg flag) b0 = 0
 
-/--
-Public assumptions for the approximate implementation of Shor.
--/
+/-- Public assumptions for the approximate implementation of Shor. -/
 structure ShorApproxSetup
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -489,9 +488,11 @@ structure ShorApproxSetup
   register_layout :
     ModExpLayout x.active y work flag
 
+  /-- The modular-exponentiation subcircuit has enough local workspace. -/
   circuit_workspace :
     ModMulCircuitWorkspaceOK y work
 
+  /-- The exponent register is owned separately from the modular data register. -/
   exponent_data_disjoint :
     ExtReg.OwnedDisjoint x y
 
@@ -503,6 +504,10 @@ structure ShorApproxSetup
   clean_input :
     ShorCleanInput qs x y work flag b0
 
+/--
+Lower-level assumptions from which the public approximate setup is reconstructed
+in `Shor.Proofs.OrderFinding`.
+-/
 structure ShorApproxSetupMinimal
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -512,39 +517,40 @@ structure ShorApproxSetupMinimal
     (b0 : qs.Basis) :
     Prop where
 
-  /- The data register has two available reserve qubits. -/
+  /-- The data register has two available reserve qubits. -/
   data_can_grow_two :
     data.CanGrow 2
 
-  /- The work register has one available reserve qubit. -/
+  /-- The work register has one available reserve qubit. -/
   work_can_grow_one :
     work.CanGrow 1
 
-  /- The exponent and data registers have no common owned qubits. -/
+  /-- The exponent and data registers have no common owned qubits. -/
   exponent_data_disjoint :
     ExtReg.OwnedDisjoint x data
 
-  /- The data and work registers have no common owned qubits. -/
+  /-- The data and work registers have no common owned qubits. -/
   data_work_disjoint :
     ExtReg.OwnedDisjoint data work
 
-  /- The flag is not owned by the data register. -/
+  /-- The flag is not owned by the data register. -/
   flag_outside_data :
     flag ∉ data.ownedQubits
 
-  /- The flag is not owned by the work register. -/
+  /-- The flag is not owned by the work register. -/
   flag_outside_work :
     flag ∉ work.ownedQubits
 
-  /- No active exponent/control qubit is owned by the work register. -/
+  /-- No active exponent/control qubit is owned by the work register. -/
   controls_outside_work :
     ∀ q ∈ x.active.qubits,
       q ∉ work.ownedQubits
 
-  /- The flag is not an active exponent/control qubit. -/
+  /-- The flag is not an active exponent/control qubit. -/
   flag_outside_controls :
     flag ∉ x.active.qubits
-  /-
+
+  /--
   The error parameter and active work-register width satisfy
   Algorithm 1's precision requirement.
   -/
@@ -552,23 +558,23 @@ structure ShorApproxSetupMinimal
     Algorithm1Precision
       η data.active work.active
 
-  /- The exponent register starts at zero. -/
+  /-- The exponent register starts at zero. -/
   exponent_zero :
     RegEncoding.toNat x.active b0 = 0
 
-  /- The modular data register starts at zero. -/
+  /-- The modular data register starts at zero. -/
   data_zero :
     RegEncoding.toNat data.active b0 = 0
 
-  /- The two temporary data-extension qubits start at zero. -/
+  /-- The two temporary data-extension qubits start at zero. -/
   data_fresh :
     data.FreshFor 2 b0
 
-  /- The active work register starts at zero. -/
+  /-- The active work register starts at zero. -/
   work_zero :
     RegEncoding.toNat work.active b0 = 0
 
-  /- The temporary work-extension qubit starts at zero. -/
+  /-- The temporary work-extension qubit starts at zero. -/
   work_fresh :
     work.FreshFor 1 b0
 
@@ -576,41 +582,19 @@ structure ShorApproxSetupMinimal
   flag_zero :
     RegEncoding.toNat (qubitReg flag) b0 = 0
 
-
-open Gate
-open Classical
-
 /-!
-# Shor workspace readiness and clean-state preservation
+## Lowered Readiness Package
 
-This module contains the lowered workspace readiness and dynamic clean-state
-preservation results for the approximate Shor order-finding circuit.
-
-Organization:
-
-* Static readiness: `gateWorkspaceOK_orderFindingApprox` and
-  `LoweredShorReady.workspace`.
-* Dynamic infrastructure: `LoweredCleanResult`, workspace-free gates,
-  disjointness/locality helpers, and clean-state preservation for primitive
-  steps.
-* Stage readiness: lowered readiness for initialization, Step 1, Step 2,
-  Step 5, IQFT, one modular-multiplication core, modular exponentiation, and
-  the full order-finding circuit.
-* Public final result: `LoweredShorReady.workspace_clean`.
+`LoweredShorReady` is the compact assumption bundle used by public lowered Shor
+statements.  The actual construction of its `workspace` and `workspace_clean`
+consequences lives in `Shor.Proofs.Readiness`.
 -/
 
 /-! =========================================================
-    Section 1: Public static readiness theorem
+    Public Lowered Readiness Record
 ========================================================= -/
 
-/-! ---------------------------------------------------------
-    Static reserve arithmetic helpers
---------------------------------------------------------- -/
-
-/--
-Public readiness package for both static workspace availability and dynamic
-initial cleanliness.
--/
+/-- Public readiness package for static workspace and initial cleanliness. -/
 structure LoweredShorReady
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -625,195 +609,34 @@ structure LoweredShorReady
     (b0 : qs.Basis) :
     Prop where
 
+  /-- Layout, precision, and clean active-register assumptions. -/
   approx :
     ShorApproxSetupMinimal qs η x y work flag b0
 
+  /-- Static reserve capacity is sufficient for all recursive lowerers. -/
   workspace_large_enough :
     ShorWorkspaceLargeEnough lowering.ops x y work
 
+  /-- Shared temporary resources do not overlap unsafe regions. -/
   workspace_isolated :
     ShorWorkspaceIsolation x work flag
 
+  /-- All reserve registers that may be allocated begin at zero. -/
   workspace_initially_zero :
     ShorWorkspaceCleanInput x y work b0
-  -- clean :
-  --   let hworkspace :=
-  --     gateWorkspaceOK_orderFindingApprox (ops := lowering.ops)  (η := η) (a := a) (N := N)
-  --       (x := x) (data := y) (work := work) (flag := flag) (b0 := b0) approx workspace_large_enough
-
-  --   GateWorkspaceCleanState qs lowering.k lowering.hk lowering.ops
-  --     (orderFindingApprox qs a N x y work flag  approx.circuit_workspace)
-  --     hworkspace (qs.ket b0)
-/-! =========================================================
-    Section 2: Clean-result sequencing infrastructure
-========================================================= -/
 
 /-!
-`LoweredCleanResult P G hworkspace ψ` says:
+## Final Factoring Input
 
-1. every recursively lowered gate in `G` starts with clean local workspace;
-2. after executing the lowered `G`, the state satisfies `P`.
--/
-/-! =========================================================
-    Section 3: Workspace-free gates
-
-    These gates have no recursive lowerer workspace obligations. The final
-    helper of this section, `WorkspaceFree.clean`, turns that syntactic fact
-    into `GateWorkspaceCleanState`.
-========================================================= -/
-
-/-! =========================================================
-    Section 4: Primitive locality and Step 3/4 readiness
-
-    The disjointness helpers feed the primitive semantic locality assumptions
-    for Steps 3 and 4. The final theorems in this section are
-    `lowered_step3_ready_and_clean` and `lowered_step4_ready_and_clean`.
-========================================================= -/
-
-/-! =========================================================
-    Section 5: Workspace-free initialization gates
-
-    These helpers cover `H_reg x.active` and `initY1 data.active`, which do not
-    allocate recursive lowering workspace but must still preserve the global
-    lowered clean invariant.
-========================================================= -/
-
-/-! =========================================================
-    Section 6: Step 1 readiness
-
-    Step 1 uses the data reserve after dropping the carry bit and the full work
-    reserve. The final theorem in this section is
-    `lowered_step1_ready_and_full_clean`.
-========================================================= -/
-
-/-! =========================================================
-    Section 7: Step 2 readiness
-
-    Step 2 makes the carry bit active, swaps the phase-product operand order,
-    and preserves `ShorLoweringCleanState`.
-========================================================= -/
-
-/-! =========================================================
-    Section 8: Step 5 readiness via adjoint decomposition
-
-    Step 5 is proved by proving the forward Step-5 body clean, then using the
-    generic adjoint lemma `LoweredCleanResult.adj`.
-========================================================= -/
-
-/-! =========================================================
-    Semantic decomposition of adjoint circuits
-========================================================= -/
-
-/-! =========================================================
-    Step-5 QFT locality
-========================================================= -/
-
-/-! =========================================================
-    Step-5 workspace subset facts
-========================================================= -/
-/-! =========================================================
-    Adjoint controlled phase-product locality
-========================================================= -/
-/-! =========================================================
-    Elementary Hadamard inverse facts
-========================================================= -/
-/-! =========================================================
-    Locality of a single adjoint Hadamard
-========================================================= -/
-
-/-! =========================================================
-    Adjoint register-Hadamard locality
-========================================================= -/
-
-/-! =========================================================
-    Semantic decomposition of the Step-5 adjoint
-========================================================= -/
-
-/-! =========================================================
-    Main Step-5 adjoint preservation theorem
-========================================================= -/
-
-/-! =========================================================
-    Section 9: Final inverse QFT readiness
-========================================================= -/
-
-/-! =========================================================
-    Section 10: One modular-multiplication core
-========================================================= -/
-
-/-! =========================================================
-    Section 11: Modular exponentiation loop
-========================================================= -/
-
-/-! =========================================================
-    Section 12: Full order-finding dynamic readiness
-========================================================= -/
-
-/-! =========================================================
-    Section 13: Public final wrappers
-========================================================= -/
-
-
-open Gate
-open Classical
-
-/-!
-# Shor/order-finding circuit statement
-
-This file keeps the quantum-facing part of the Shor statement: the ideal and
-approximate order-finding circuits, the measurement interface, and the final
-success-probability theorem.  Classical order and continued-fraction material
-lives in `MathBackbone/ShorAlgorithm.lean`.
+The executable circuit definitions above are quantum-facing.  The final Shor
+factoring statement also needs a small classical record describing the modulus
+to which the order-finding theorem is applied.
 -/
 
 /-! =========================================================
-    Section 1: Order-finding circuits
-
-    These definitions assemble the high-level gates used by the ideal and
-    approximate order-finding algorithms.
+    Classical Factoring Instance
 ========================================================= -/
 
-variable {qs : QSemantics}
-variable [RegEncoding qs.Basis]
-
-/-! =========================================================
-    Section 2: Measurement and success probabilities
-
-    `MeasureClass` packages the Born-rule projectors used to talk about
-    measuring a register.  The lemmas in this section turn those projector
-    axioms into the probability estimates needed later:
-
-    * orthogonal projector sums have the expected norm square;
-    * measurement mass outside a register range is zero;
-    * measurement distributions are Lipschitz in state distance.
-========================================================= -/
-
-variable {qs : QSemantics}
-variable [RegEncoding qs.Basis]
-variable [MeasureClass qs]
-
-/-! ## Projector Hilbert-space estimates -/
-
-/-! ## Measurement distribution distance bounds -/
-
-/-! ## Success probabilities and range facts -/
-
--- /-- Run the circuit G on input state ψ, then measure register r, and ask for probability of outcome o -/
--- noncomputable def measProbAfter (r : Reg) (o : ℕ) (G : Gate) (ψ : qs.State) : ℝ :=
---   MeasureClass.probMeas (qs := qs) r o (qs.eval G ψ)
-
-
-variable [ContinuedFractionPost] [Spec]
-
-
-/-! =========================================================
-    Section 3: Probability-transfer lemmas
-
-    These lemmas are the bridge from state-vector approximation to
-    success-probability approximation.  The first group is pure real/probability
-    bookkeeping; the second group uses gate isometry to move distance bounds
-    through common circuit context.
-========================================================= -/
 /-- Classical assumptions on a modulus for the final factoring theorem. -/
 structure ShorFactoringInstance where
   /-- The modulus to factor. -/
@@ -824,15 +647,5 @@ structure ShorFactoringInstance where
   gt_two : N > 2
   /-- The modulus is not a prime power. -/
   not_prime_power : ∀ (p k : ℕ), Nat.Prime p → N ≠ p ^ k
-
-/-! =========================================================
-    Section 4: Final correctness statements
-
-    The ideal theorem is the quantum order-finding lower bound used by the
-    rest of the file.  The approximation theorem transfers that ideal bound
-    across the modular-exponentiation implementation error, and the final
-    factoring statement combines it with the classical reduction.
-========================================================= -/
-
 
 end Shor

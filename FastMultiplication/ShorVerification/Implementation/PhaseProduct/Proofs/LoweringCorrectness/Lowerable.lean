@@ -14,6 +14,13 @@ namespace Shor
 open Gate
 open Operations
 
+/-! =========================================================
+    Lowerable Gate Predicate
+
+    This syntax-directed predicate records exactly the high-level gates that the
+    phase-product lowering interpreter knows how to translate.
+========================================================= -/
+
 /-- High-level gates that the phase-product lowering pipeline knows how to lower. -/
 inductive LowerablePhaseGate : Gate → Prop where
   | id :
@@ -74,7 +81,7 @@ open Gate
 open Operations
 
 /-! =========================================================
-    Section 4: Interpreter simp rules
+    Interpreter Simp Rules
 ========================================================= -/
 
 namespace PhaseLoweringPlan
@@ -218,7 +225,7 @@ variable
 end PhaseLoweringPlan
 
 /-! =========================================================
-    Section 5: Lowerable-gate facts
+    Lowerable-Gate Facts
 ========================================================= -/
 
 namespace LowerablePhaseGate
@@ -236,7 +243,7 @@ namespace LowerablePhaseGate
 end LowerablePhaseGate
 
 /-! =========================================================
-    Section 6: Lowerability of compiled signed op lists
+    Lowerability Of Compiled Signed Operation Lists
     These lemmas show that the circuits produced by the phase-product compiler
     are in the syntactic fragment supported by low-level lowering.
 ========================================================= -/

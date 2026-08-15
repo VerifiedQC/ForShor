@@ -13,7 +13,7 @@ evaluation and readiness respect zero, addition, and scalar multiplication.
 -/
 
 /-! =========================================================
-    Section 1: Cleanliness preservation and linear closure
+    Cleanliness Preservation And Linear Closure
     Phase products act by phases on basis states, so they preserve recursive
     workspace-clean predicates. The rest of this file shows that low-level
     evaluation and readiness are closed under the vector-space operations used

@@ -26,7 +26,7 @@ Main declarations:
 -/
 
 /-! =========================================================
-    Section 1: Moving reserve-cleanliness facts between layouts
+    Moving Reserve-Cleanliness Facts Between Layouts
     Allocation creates child layouts inside the parent's reserve. These lemmas
     move fresh-zero facts across subsets and turn the static layout/capacity
     proofs into the concrete cleanliness hypotheses required by recursive calls.
@@ -163,7 +163,7 @@ lemma PhaseSplitLayout.child_newBits_subset_parent_reserve
   exact hqFlatten
 
 /-! =========================================================
-    Section 2: Root reserve cleanliness to compiler workspace cleanliness
+    Root Reserve Cleanliness To Compiler Workspace Cleanliness
 
     These lemmas translate from compact recursive cleanliness on the input
     operands to the detailed compiler invariant expected by allocation
@@ -301,7 +301,7 @@ lemma cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis
     CleanClosure.ket b (compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis ops x z layout hcapacity b hclean)
 
 /-! =========================================================
-    Section 3: Main allocation theorem
+    Main Allocation Theorem
 ========================================================= -/
 
 /--

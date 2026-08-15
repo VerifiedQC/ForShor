@@ -271,11 +271,4 @@ variable [LowerGateClass qs]
 
 end LowerGateClass
 
-/-! =========================================================
-    Section 3: Gates supported by phase-product lowering
-    The lowering pass is intentionally syntactic. This inductive predicate marks
-    the high-level gates whose semantics can be reproduced by the low-level
-    interface above.
-========================================================= -/
-
 end Shor

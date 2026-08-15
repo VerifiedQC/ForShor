@@ -68,31 +68,13 @@ theorem Shor_end_to_end_factoring
     let inst : ShorOrderFindingInstance :=
       { a := a
         N := N
-        x := x
-        y := y
         range := ⟨by omega, ha2⟩
         coprime := hgcd
-        x_width := by simpa [N] using hm
-        y_width := by simpa [N] using hn
-        xy_disjoint := by
-          have hod : ExtReg.OwnedDisjoint x y := hinput.2.2
-          rw [Disjoint, List.disjoint_left]
-          intro q hqx hqy
-          rw [ExtReg.OwnedDisjoint, List.disjoint_left] at hod
-          exact hod
-            (by rw [ExtReg.ownedQubits, List.mem_append]; exact Or.inl hqx)
-            (by rw [ExtReg.ownedQubits, List.mem_append]; exact Or.inl hqy)
         }
     exact ⟨
       by
         simpa [N, inst] using
-          (Shor_correct
-            (qs := qs)
-            T
-            hT
-            inst
-            b0
-            hinput),
+          (Shor_correct (qs := qs) T hT inst x y b0 hm hn hinput),
       shors_classical_reduction
         a
         (ord a N hgcd)
@@ -127,7 +109,7 @@ theorem Shor_correct_approx_lowered_uniform
   obtain ⟨K, hK, happrox⟩ := Shor_correct_approx_uniform (qs := qs) T hT
 
   refine ⟨K, hK, ?_⟩
-  intro inst lowering work flag b0 η hready
+  intro inst lowering x y work flag b0 hm hn η hready
 
   calc
     probability_of_success
@@ -136,22 +118,13 @@ theorem Shor_correct_approx_lowered_uniform
         (verify :=
           fun d =>
             decide ((inst.a ^ d) % inst.N = 1))
-        (x := inst.x.active)
+        (x := x.active)
         (r := ord inst.a inst.N inst.coprime)
-        (Q := ASize inst.x.active)
+        (Q := ASize x.active)
         (evalC := LowerGateClass.evalL (qs := qs))
         (C :=
           orderFindingApproxLow
-            qs
-            lowering.k
-            lowering.hk
-            lowering.ops
-            inst.a
-            inst.N
-            inst.x
-            inst.y
-            work
-            flag
+            qs lowering.k lowering.hk lowering.ops inst.a inst.N x y work flag
             (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
             hready.workspace)
         (ψ := qs.ket b0)
@@ -162,20 +135,11 @@ theorem Shor_correct_approx_lowered_uniform
         (verify :=
           fun d =>
             decide ((inst.a ^ d) % inst.N = 1))
-        (x := inst.x.active)
+        (x := x.active)
         (r := ord inst.a inst.N inst.coprime)
-        (Q := ASize inst.x.active)
+        (Q := ASize x.active)
         (evalC := qs.eval)
-        (C :=
-          orderFindingApprox
-            qs
-            inst.a
-            inst.N
-            inst.x
-            inst.y
-            work
-            flag
-            (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace)
+        (C := orderFindingApprox qs inst.a inst.N x y work flag (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace)
         (ψ := qs.ket b0) := by
           exact
             orderFindingApproxLow_probability_eq
@@ -185,27 +149,20 @@ theorem Shor_correct_approx_lowered_uniform
               (verify :=
                 fun d =>
                   decide ((inst.a ^ d) % inst.N = 1))
-              (a := inst.a)
-              (N := inst.N)
-              (x := inst.x)
-              (y := inst.y)
-              (work := work)
-              (flag := flag)
-              (hmodWorkspace :=
-                (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace)
-              (hLowerWorkspace :=
-                hready.workspace)
+              (a := inst.a) (N := inst.N) (x := x) (y := y)
+              (work := work) (flag := flag)
+              (hmodWorkspace := (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace)
+              (hLowerWorkspace := hready.workspace)
               (ψ := qs.ket b0)
-              (hclean :=
-                hready.workspace_clean)
+              (hclean := hready.workspace_clean)
               (r := ord inst.a inst.N inst.coprime)
-              (Q := ASize inst.x.active)
+              (Q := ASize x.active)
 
     _ ≥
         κ / (Nat.log2 inst.N : ℝ) ^ 4
           -
-        2 * (tbits inst.x.active : ℝ) *
+        2 * (tbits x.active : ℝ) *
           Real.sqrt (2 * (K * η)) := by
-          exact happrox inst work flag b0 η (ShorApproxSetupMinimal.toShorApproxSetup hready.approx)
+          exact happrox inst x y work flag b0 hm hn η (ShorApproxSetupMinimal.toShorApproxSetup hready.approx)
 
 end Shor

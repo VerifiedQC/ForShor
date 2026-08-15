@@ -46,44 +46,6 @@ only deterministic placement and the static layout/workspace facts.
     Section 1: Physical-qubit ceiling and interval helpers
 ========================================================= -/
 
-/-- Strict upper bound for every qubit appearing in a list. -/
-private def qubitCeilingList : List ℕ → ℕ
-  | [] => 0
-  | q :: qs => max (q + 1) (qubitCeilingList qs)
-
-private lemma lt_qubitCeilingList_of_mem
-    {q : ℕ} {qs : List ℕ}
-    (hq : q ∈ qs) :
-    q < qubitCeilingList qs := by
-  induction qs with
-  | nil => simp at hq
-  | cons a qs ih =>
-      simp only [List.mem_cons] at hq
-      simp only [qubitCeilingList]
-      rcases hq with rfl | hq
-      · omega
-      · have hlt := ih hq
-        omega
-
-/--
-First qubit index that is strictly above every qubit currently owned by the
-public order-finding registers.
--/
-def publicQubitCeiling (inst : ShorOrderFindingInstance) : ℕ :=
-  qubitCeilingList (inst.x.ownedQubits ++ inst.y.ownedQubits)
-
-private lemma x_active_lt_publicQubitCeiling
-    (inst : ShorOrderFindingInstance)
-    {q : ℕ}
-    (hq : q ∈ inst.x.active.qubits) :
-    q < publicQubitCeiling inst := by
-  have howned : q ∈ inst.x.ownedQubits := by
-    rw [ExtReg.ownedQubits, List.mem_append]
-    exact Or.inl hq
-  have hall : q ∈ inst.x.ownedQubits ++ inst.y.ownedQubits :=
-    List.mem_append_left _ howned
-  simpa [publicQubitCeiling] using
-    (lt_qubitCeilingList_of_mem hall)
 
 private lemma mem_interval_bounds
     {lo size q : ℕ}
@@ -124,9 +86,13 @@ private lemma reg_disjoint_interval_of_below
     Section 2: Widths and reserve budgets
 ========================================================= -/
 
-/-- Active width of the private modular-data register. -/
+/-- Active width of the phase-estimation/output register. -/
+def referenceXWidth (inst : ShorOrderFindingInstance) : ℕ :=
+  Nat.log2 (2 * inst.N^2)
+
+/-- Active width of the modular-data register. -/
 def referenceDataWidth (inst : ShorOrderFindingInstance) : ℕ :=
-  regSize inst.y.active
+  Nat.log2 (2 * inst.N)
 
 /-- Active width prescribed for Algorithm 1's work register. -/
 noncomputable def referenceWorkWidth
@@ -153,7 +119,7 @@ noncomputable def referenceWorkspaceNeed
     (inst : ShorOrderFindingInstance)
     (η : ℝ) : ShorWorkspaceNeed :=
   shorWorkspaceNeed ops
-    (widthShell (regSize inst.x.active))
+    (widthShell (referenceXWidth inst))
     (widthShell (referenceDataWidth inst))
     (widthShell (referenceWorkWidth inst η))
 
@@ -191,36 +157,43 @@ private theorem shorWorkspaceNeed_ext
     Section 3: Deterministic fresh-region placement
 ========================================================= -/
 
-/-- Start of all private reference-implementation storage. -/
-def referencePrivateStart (inst : ShorOrderFindingInstance) : ℕ :=
-  publicQubitCeiling inst
+/-- The reference implementation starts its exponent register at qubit 0. -/
+def referenceXActive (inst : ShorOrderFindingInstance) : Reg :=
+  Reg.interval 0 (referenceXWidth inst)
 
-noncomputable def referenceXReserveStart
+def referenceXReserveStart
     (inst : ShorOrderFindingInstance) : ℕ :=
-  referencePrivateStart inst
+  referenceXWidth inst
+
+noncomputable def referenceDataStart
+    {k : ℕ} (ops : Prog k)
+    (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
+  referenceXReserveStart inst +
+    referenceXReserveSize ops inst η
 
 noncomputable def referenceDataReserveStart
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  referenceXReserveStart inst + referenceXReserveSize ops inst η
+  referenceDataStart ops inst η +
+    referenceDataWidth inst
 
 noncomputable def referenceWorkStart
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  referenceDataReserveStart ops inst η
-    + referenceDataReserveSize ops inst η
+  referenceDataReserveStart ops inst η +
+    referenceDataReserveSize ops inst η
 
 noncomputable def referenceWorkReserveStart
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  referenceWorkStart ops inst η
-    + referenceWorkWidth inst η
+  referenceWorkStart ops inst η +
+    referenceWorkWidth inst η
 
 noncomputable def referenceFlag
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  referenceWorkReserveStart ops inst η
-    + referenceWorkReserveSize ops inst η
+  referenceWorkReserveStart ops inst η +
+    referenceWorkReserveSize ops inst η
 
 noncomputable def referenceXReserve
     {k : ℕ} (ops : Prog k)
@@ -229,6 +202,12 @@ noncomputable def referenceXReserve
     (referenceXReserveStart inst)
     (referenceXReserveSize ops inst η)
 
+noncomputable def referenceDataActive
+    {k : ℕ} (ops : Prog k)
+    (inst : ShorOrderFindingInstance) (η : ℝ) : Reg :=
+  Reg.interval
+    (referenceDataStart ops inst η)
+    (referenceDataWidth inst)
 
 noncomputable def referenceDataReserve
     {k : ℕ} (ops : Prog k)
@@ -259,41 +238,19 @@ noncomputable def referenceX
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) : ExtReg :=
   ExtReg.withReserve
-    inst.x.active
+    (referenceXActive inst)
     (referenceXReserve ops inst η)
-    (reg_disjoint_interval_of_below inst.x.active (by
-      intro q hq
-      have hlt := x_active_lt_publicQubitCeiling inst hq
-      simpa [referenceXReserve, referenceXReserveStart, referencePrivateStart] using hlt))
-
-private lemma y_active_lt_publicQubitCeiling
-    (inst : ShorOrderFindingInstance)
-    {q : ℕ}
-    (hq : q ∈ inst.y.active.qubits) :
-    q < publicQubitCeiling inst := by
-  have howned : q ∈ inst.y.ownedQubits := by
-    rw [ExtReg.ownedQubits, List.mem_append]
-    exact Or.inl hq
-
-  have hall :
-      q ∈ inst.x.ownedQubits ++ inst.y.ownedQubits :=
-    List.mem_append_right _ howned
-
-  simpa [publicQubitCeiling] using
-    (lt_qubitCeilingList_of_mem hall)
+    (interval_disjoint_of_end_le (by simp [referenceXReserveStart]))
 
 noncomputable def referenceData
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) : ExtReg :=
   ExtReg.withReserve
-    inst.y.active
+    (referenceDataActive ops inst η)
     (referenceDataReserve ops inst η)
-    (reg_disjoint_interval_of_below inst.y.active (by
-      intro q hq
-      have hlt := y_active_lt_publicQubitCeiling inst hq
-      unfold referenceDataReserveStart
-        referenceXReserveStart referencePrivateStart
-      omega))
+    (interval_disjoint_of_end_le (by
+      simp [referenceDataReserveStart]))
+
 noncomputable def referenceWork
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) : ExtReg :=
@@ -344,23 +301,33 @@ noncomputable def allocateReferenceLayout
 @[simp] theorem allocateReferenceLayout_x_active
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (allocateReferenceLayout ops inst η).x.active = inst.x.active := by
+    (allocateReferenceLayout ops inst η).x.active =
+      referenceXActive inst := by
   rfl
+
+@[simp] theorem allocateReferenceLayout_x_width
+    {k : ℕ} (ops : Prog k)
+    (inst : ShorOrderFindingInstance) (η : ℝ) :
+    regSize (allocateReferenceLayout ops inst η).x.active =
+      Nat.log2 (2 * inst.N^2) := by
+  simp [allocateReferenceLayout, referenceX,
+    referenceXActive, referenceXWidth]
 
 @[simp] theorem allocateReferenceLayout_data_width
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) :
     regSize (allocateReferenceLayout ops inst η).data.active =
-      regSize inst.y.active := by
-  simp [allocateReferenceLayout, referenceData]
+      Nat.log2 (2 * inst.N) := by
+  simp [allocateReferenceLayout, referenceData,
+    referenceDataActive, referenceDataWidth]
 
 @[simp] theorem allocateReferenceLayout_work_width
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) :
     regSize (allocateReferenceLayout ops inst η).work.active =
-      regSize inst.y.active + algorithm1ExtraBits η := by
-  simp [allocateReferenceLayout, referenceWork, referenceWorkActive,
-    referenceWorkWidth, referenceDataWidth]
+      referenceDataWidth inst + algorithm1ExtraBits η := by
+  simp [allocateReferenceLayout, referenceWork,
+    referenceWorkActive, referenceWorkWidth]
 
 @[simp] theorem allocateReferenceLayout_x_capacity
     {k : ℕ} (ops : Prog k)
@@ -390,12 +357,12 @@ noncomputable def allocateReferenceLayout
     Section 6: Ordered-region bounds
 ========================================================= -/
 
-private lemma referenceX_owned_lt_workStart
+private lemma referenceX_owned_lt_dataStart
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ)
     {q : ℕ}
     (hq : q ∈ (referenceX ops inst η).ownedQubits) :
-    q < referenceWorkStart ops inst η := by
+    q < referenceDataStart ops inst η := by
   simp only [
     referenceX,
     ExtReg.ownedQubits,
@@ -404,24 +371,19 @@ private lemma referenceX_owned_lt_workStart
   ] at hq
 
   rcases hq with hactive | hreserve
-  · have hlt :=
-      x_active_lt_publicQubitCeiling inst hactive
-    unfold referenceWorkStart referenceDataReserveStart
-      referenceXReserveStart referencePrivateStart
+  · have hlt := (mem_interval_bounds hactive).2
+    unfold referenceXActive referenceDataStart referenceXReserveStart at *
     omega
-
   · have hlt := (mem_interval_bounds hreserve).2
-    unfold referenceXReserve referenceWorkStart
-      referenceDataReserveStart referenceXReserveStart
-      referencePrivateStart at *
+    unfold referenceXReserve referenceDataStart referenceXReserveStart at *
     omega
 
-private lemma referenceData_owned_lt_workStart
+private lemma referenceData_owned_ge_dataStart
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ)
     {q : ℕ}
     (hq : q ∈ (referenceData ops inst η).ownedQubits) :
-    q < referenceWorkStart ops inst η := by
+    referenceDataStart ops inst η ≤ q := by
   simp only [
     referenceData,
     ExtReg.ownedQubits,
@@ -430,17 +392,10 @@ private lemma referenceData_owned_lt_workStart
   ] at hq
 
   rcases hq with hactive | hreserve
-  · have hlt :=
-      y_active_lt_publicQubitCeiling inst hactive
-    unfold referenceWorkStart referenceDataReserveStart
-      referenceXReserveStart referencePrivateStart
+  · exact (mem_interval_bounds hactive).1
+  · have hge := (mem_interval_bounds hreserve).1
+    unfold referenceDataReserveStart at hge
     omega
-
-  · have hlt := (mem_interval_bounds hreserve).2
-    simpa [
-      referenceDataReserve,
-      referenceWorkStart
-    ] using hlt
 
 private lemma referenceWork_owned_ge_workStart
     {k : ℕ} (ops : Prog k)
@@ -484,48 +439,40 @@ theorem reference_exponent_data_disjoint
       (referenceData ops inst η) := by
   rw [ExtReg.OwnedDisjoint, List.disjoint_left]
   intro q hx hy
+  have hlt := referenceX_owned_lt_dataStart ops inst η hx
+  have hge := referenceData_owned_ge_dataStart ops inst η hy
+  omega
 
+private lemma referenceX_owned_lt_workStart
+    {k : ℕ} (ops : Prog k)
+    (inst : ShorOrderFindingInstance) (η : ℝ)
+    {q : ℕ}
+    (hq : q ∈ (referenceX ops inst η).ownedQubits) :
+    q < referenceWorkStart ops inst η := by
+  have hlt :=
+    referenceX_owned_lt_dataStart ops inst η hq
+  unfold referenceWorkStart referenceDataReserveStart
+  omega
+
+private lemma referenceData_owned_lt_workStart
+    {k : ℕ} (ops : Prog k)
+    (inst : ShorOrderFindingInstance) (η : ℝ)
+    {q : ℕ}
+    (hq : q ∈ (referenceData ops inst η).ownedQubits) :
+    q < referenceWorkStart ops inst η := by
   simp only [
-    referenceX,
     referenceData,
     ExtReg.ownedQubits,
     ExtReg.withReserve,
     List.mem_append
-  ] at hx hy
+  ] at hq
 
-  rcases hx with hxActive | hxReserve
-  · rcases hy with hyActive | hyReserve
-    · have hxy := inst.xy_disjoint
-      rw [Disjoint, List.disjoint_left] at hxy
-      exact hxy hxActive hyActive
-
-    · have hxlt :=
-        x_active_lt_publicQubitCeiling inst hxActive
-      have hyge :=
-        (mem_interval_bounds hyReserve).1
-
-      unfold referenceDataReserve referenceDataReserveStart
-        referenceXReserveStart referencePrivateStart at hyge
-      omega
-
-  · rcases hy with hyActive | hyReserve
-    · have hylt :=
-        y_active_lt_publicQubitCeiling inst hyActive
-      have hxge :=
-        (mem_interval_bounds hxReserve).1
-
-      unfold referenceXReserve referenceXReserveStart
-        referencePrivateStart at hxge
-      omega
-
-    · have hxlt :=
-        (mem_interval_bounds hxReserve).2
-      have hyge :=
-        (mem_interval_bounds hyReserve).1
-
-      unfold referenceXReserve referenceDataReserveStart referenceXReserveStart
-        referencePrivateStart at *
-      omega
+  rcases hq with hactive | hreserve
+  · have hlt := (mem_interval_bounds hactive).2
+    unfold referenceDataActive referenceWorkStart referenceDataReserveStart at *
+    omega
+  · have hlt := (mem_interval_bounds hreserve).2
+    simpa [referenceDataReserve, referenceWorkStart] using hlt
 
 /-- The allocated data and work storage are completely ownership-disjoint. -/
 theorem reference_data_work_disjoint
@@ -588,7 +535,7 @@ theorem reference_flag_outside_work
 theorem reference_controls_outside_work
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) :
-    ∀ q ∈ inst.x.active.qubits,
+    ∀ q ∈ (referenceX ops inst η).active.qubits,
       q ∉ (referenceWork ops inst η).ownedQubits := by
   intro q hq hwork
   have hxOwned : q ∈ (referenceX ops inst η).ownedQubits := by
@@ -600,7 +547,8 @@ theorem reference_controls_outside_work
 theorem reference_flag_outside_controls
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) :
-    referenceFlag ops inst η ∉ inst.x.active.qubits := by
+    referenceFlag ops inst η ∉
+      (referenceX ops inst η).active.qubits := by
   intro hctrl
   apply reference_flag_outside_exponent ops inst η
   rw [ExtReg.ownedQubits, List.mem_append]
@@ -627,9 +575,12 @@ theorem reference_workspaceNeed_eq
       referenceWorkspaceNeed,
       widthShell,
       referenceX,
+      referenceXActive,
       referenceData,
+      referenceDataActive,
       referenceWork,
       referenceWorkActive,
+      referenceXWidth,
       referenceDataWidth,
       referenceWorkWidth,
       ExtReg.width,
@@ -709,78 +660,9 @@ theorem reference_algorithm1Precision
   refine ⟨hηpos, hηhalf, ?_⟩
   simp [
     referenceData,
+    referenceDataActive,
     referenceWork,
     referenceWorkActive,
     referenceDataWidth,
     referenceWorkWidth
   ]
-
-/-! =========================================================
-    Section 9: Instance used by the concrete correctness theorem
-========================================================= -/
-
-/--
-The existing lowered-correctness theorem expects its `ShorOrderFindingInstance`
-to contain the exact data register used by the circuit.  This instance preserves
-the public measured exponent register but swaps in the freshly allocated data
-register.
--/
-noncomputable def allocatedOrderFindingInstance
-    {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    ShorOrderFindingInstance :=
-  {
-    a := inst.a
-    N := inst.N
-
-    x := referenceX ops inst η
-    y := referenceData ops inst η
-
-    xy_disjoint := by
-      simpa [referenceX, referenceData] using
-        inst.xy_disjoint
-
-    range := inst.range
-    coprime := inst.coprime
-
-    x_width := by
-      simpa [referenceX] using inst.x_width
-
-    y_width := by
-      simpa [referenceData] using inst.y_width
-  }
-
-@[simp] theorem allocatedOrderFindingInstance_y_active
-    {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (allocatedOrderFindingInstance ops inst η).y.active =
-      inst.y.active := by
-  rfl
-
-@[simp] theorem allocatedOrderFindingInstance_x_active
-    {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (allocatedOrderFindingInstance ops inst η).x.active = inst.x.active := by
-  rfl
-
-@[simp] theorem allocatedOrderFindingInstance_a
-    {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (allocatedOrderFindingInstance ops inst η).a = inst.a := by
-  rfl
-
-@[simp] theorem allocatedOrderFindingInstance_N
-    {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (allocatedOrderFindingInstance ops inst η).N = inst.N := by
-  rfl
-
-@[simp] theorem allocatedOrderFindingInstance_coprime
-    {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (allocatedOrderFindingInstance ops inst η).coprime = inst.coprime := by
-  rfl
-
-end
-end Reference
-end Shor

@@ -12,6 +12,13 @@ they build on stay in Framework/AbstractMachine/Gates.
 namespace Shor
 namespace Gate
 
+/-! =========================================================
+    Unsigned Phase-Product Workspace
+
+    The unsigned macros reserve one clean bit next to each operand so they can
+    reuse the signed phase-product semantics without changing the public gate.
+========================================================= -/
+
 /--
 Workspace needed to implement an unsigned phase product via the signed phase-product gate.
 The one-bit reserves hold the sign-extension bit for each operand, and the disjointness
@@ -33,6 +40,10 @@ structure PhaseProdWorkspace (x z : Reg) where
   reserve_disjoint : Disjoint xReserve zReserve
 
 namespace PhaseProdWorkspace
+
+/-! =========================================================
+    Workspace Views And Cleanliness
+========================================================= -/
 
 def xExt {x z : Reg} (ws : PhaseProdWorkspace x z) : ExtReg :=
   ExtReg.withReserve x ws.xReserve ws.x_reserve_disjoint
@@ -102,6 +113,13 @@ def ControlDisjoint
   ctrl ∉ ws.xReserve.qubits ∧
   ctrl ∉ ws.zReserve.qubits
 end PhaseProdWorkspace
+
+/-! =========================================================
+    Macro Gate Definitions
+
+    These are implementation-only circuit macros; the public lowering theorems
+    later prove that they realize the asserted phase-product behavior.
+========================================================= -/
 
 /--
 Unsigned phase product macro: allocate one clean high bit on each operand, run the signed

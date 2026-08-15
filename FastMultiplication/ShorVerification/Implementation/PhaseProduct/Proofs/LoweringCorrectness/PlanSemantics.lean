@@ -17,7 +17,7 @@ phase-product nodes.
 -/
 
 /-! =========================================================
-    Section 1: Readiness predicates
+    Readiness Predicates
     Lowering plans contain primitive low gates and recursive phase-product calls.
     Primitive gates need no semantic precondition; recursive nodes require a
     clean recursive workspace before the child plan runs and then readiness for
@@ -72,7 +72,7 @@ noncomputable def PhaseLoweringReady
         readyChild ψ
 
 /-! =========================================================
-    Section 2: Correctness of one compiled recursive step
+    Correctness Of One Compiled Recursive Step
     These lemmas identify the low-level interpreter for a single compiled signed
     or controlled signed phase-product plan with the corresponding high-level
     gate.
@@ -165,7 +165,7 @@ lemma eval_compiledCSignedPhaseGate_correct
   exact hclean
 
 /-! =========================================================
-    Section 3: Plan-directed interpreter correctness
+    Plan-Directed Interpreter Correctness
     The main induction follows the structure of a lowering plan. Each
     constructor is interpreted by the low-level evaluator and compared with the
     high-level gate it implements; recursive nodes use readiness to discharge
