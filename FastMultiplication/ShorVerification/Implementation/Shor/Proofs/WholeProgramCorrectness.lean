@@ -7,7 +7,7 @@ namespace Shor
 /-!
 # Whole-Program Lowering
 
-The public whole-program lowerer does not ask its caller to construct QFT or
+The implementation's whole-program lowerer does not ask its caller to construct QFT or
 phase-product lowering plans.  Instead, the caller proves one recursive static
 workspace condition on the source gate.  At each QFT or signed-phase-product
 node, that proof supplies the reserve-capacity facts needed by the already

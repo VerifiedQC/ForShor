@@ -61,8 +61,11 @@ order.
    postprocessing, and the classical order-recovery result.
 
 8. `Submission.lean`
-   Read this last. `ShorImplementation` ties together a program, its correctness
-   proof, its reported gate bound, and proof that the bound is respected.
+   Read this last. `ShorOrderFindingInstance` contains the arithmetic input and
+   its assumptions. An implementation allocates registers internally and
+   returns a `ShorOrderFindingProgram`, which pairs a circuit with its measured
+   output register. `ShorImplementation` ties that program to correctness and
+   gate-count proofs.
 
 On a first pass, focus on definitions, class fields, and theorem statements.
 Most proof bodies and collections of derived lemmas can be skipped until a
@@ -77,10 +80,11 @@ classical postprocessing.
 
 To understand the reference circuit construction, read
 `AbstractMachine/Gates.lean` and `Semantics/GateSemantics.lean`, then continue
-into `FastMultiplication/ShorVerification/Implementation/`. The repository is
-moving toward the boundary described in the root `RESTRUCTURE_PLAN.md`, where
-this richer construction language belongs on the implementation side. These
-files are conceptually optional for understanding the public interface.
+with `FastMultiplication/ShorVerification/Implementation/Reference/ShorProgram.lean`.
+Its layout and readiness dependencies show how the reference implementation
+allocates registers and discharges the framework contract. The richer
+construction language is optional for understanding the public interface; its
+intended boundary is described in the root `RESTRUCTURE_PLAN.md`.
 
 To study the factoring reduction, read `Math/Factoring_Reduction/Defs.lean`,
 starting with `shor_success_conditions`, then read `general_unsuccessful_bound`

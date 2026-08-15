@@ -8,38 +8,23 @@ noncomputable section
 /-!
 # Reference Shor layout allocator
 
-This file is the implementation-side allocator used to turn the construction-free
-`ShorImplementation` input into the concrete register layout required by the
-reference LowGate implementation.
-
-The framework measures `inst.x.active`, so that active register is preserved.
-Everything else used by the reference implementation is allocated in a fresh
-contiguous region strictly above every qubit already owned by the public `x` and
-`y` registers:
+This file allocates the concrete register layout required by the reference
+`LowGate` implementation. All registers are selected internally from the
+arithmetic instance and approximation parameter:
 
 ```
-public x/y qubits
-       |
-       v
- privateStart
-       |
-       |-- x reserve
-       |-- fresh data active
-       |-- data reserve
-       |-- work active
-       |-- work reserve
-       `-- flag
+x active | x reserve | data active | data reserve |
+work active | work reserve | flag
 ```
 
-The data register is deliberately allocated fresh rather than reusing
-`inst.y.active`: `ShorOrderFindingInstance` currently fixes the data width but
-does not require the public `x` and `y` registers to be physically disjoint.
-The allocated data register has exactly the same active width as `inst.y`.
+The exponent/output register begins at qubit `0`, and every remaining region
+follows the preceding region. Active widths are derived from `inst.N`, while
+reserve widths are derived from the lowering workspace requirements.
 
 Because `ShorImplementation.correct` runs from `RegEncoding.zero`, all qubits
 selected by this allocator are clean in the framework's canonical initial state.
-The cleanliness bridge belongs in the later discharge file; this module handles
-only deterministic placement and the static layout/workspace facts.
+This module proves deterministic placement and static layout/workspace facts;
+`ReferenceReadiness` supplies the cleanliness bridge.
 -/
 
 /-! =========================================================
@@ -278,10 +263,8 @@ structure ReferenceShorLayout where
   work : ExtReg
   flag : ℕ
 
-/--
-Allocate all reference-implementation storage deterministically above the public
-register file.
--/
+/-- Allocate all reference-implementation storage in one deterministic,
+contiguous register file beginning at qubit `0`. -/
 noncomputable def allocateReferenceLayout
     {k : ℕ}
     (ops : Prog k)

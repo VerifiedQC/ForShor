@@ -16,7 +16,7 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 # Shor Definitions
 
 The definitional vocabulary the top-level Shor correctness statements need to
-elaborate.  This file intentionally contains only public data, predicates, and
+elaborate. This file contains implementation-level data, predicates, and
 circuits; proofs and bridge lemmas live under `Implementation/Shor/Proofs`.
 
 The declarations are grouped by the role they play in the final statement:
@@ -24,7 +24,7 @@ The declarations are grouped by the role they play in the final statement:
 * generic whole-gate lowering predicates;
 * Shor-specific workspace budgets and clean-state assumptions;
 * order-finding circuits;
-* user-facing setup/readiness records;
+* implementation setup/readiness records;
 * the final classical factoring instance.
 -/
 namespace Shor
@@ -34,7 +34,7 @@ universe u
 /-!
 ## Generic Whole-Gate Lowering
 
-The public whole-program lowerer does not ask its caller to construct QFT or
+The implementation's whole-program lowerer does not ask its caller to construct QFT or
 phase-product lowering plans.  Instead, the caller proves one recursive static
 workspace condition on the source gate.  At each QFT or signed-phase-product
 node, that proof supplies the reserve-capacity facts needed by the already
@@ -476,7 +476,7 @@ def ShorCleanInput
   work.FreshFor 1 b0 ∧
   RegEncoding.toNat (qubitReg flag) b0 = 0
 
-/-- Public assumptions for the approximate implementation of Shor. -/
+/-- Assumptions for the approximate implementation of Shor. -/
 structure ShorApproxSetup
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -505,7 +505,7 @@ structure ShorApproxSetup
     ShorCleanInput qs x y work flag b0
 
 /--
-Lower-level assumptions from which the public approximate setup is reconstructed
+Lower-level assumptions from which the full approximate setup is reconstructed
 in `Shor.Proofs.OrderFinding`.
 -/
 structure ShorApproxSetupMinimal
@@ -585,16 +585,16 @@ structure ShorApproxSetupMinimal
 /-!
 ## Lowered Readiness Package
 
-`LoweredShorReady` is the compact assumption bundle used by public lowered Shor
+`LoweredShorReady` is the compact assumption bundle used by lowered Shor
 statements.  The actual construction of its `workspace` and `workspace_clean`
 consequences lives in `Shor.Proofs.Readiness`.
 -/
 
 /-! =========================================================
-    Public Lowered Readiness Record
+    Lowered Readiness Record
 ========================================================= -/
 
-/-- Public readiness package for static workspace and initial cleanliness. -/
+/-- Readiness package for static workspace and initial cleanliness. -/
 structure LoweredShorReady
     (qs : QSemantics)
     [RegEncoding qs.Basis]

@@ -15,26 +15,19 @@ open Gate
 open Classical
 
 /-!
-# Shor/order-finding circuit statement
+# Shor/order-finding correctness proofs
 
-This file keeps the quantum-facing part of the Shor statement: the ideal and
-approximate order-finding circuits, the measurement interface, and the final
-success-probability theorem.  Classical order and continued-fraction material
-lives in `MathBackbone/ShorAlgorithm.lean`.
+This file proves the measurement estimates and ideal/approximate
+success-probability results. Circuit and setup definitions live in `Shor.Defs`,
+named assertions in `Shor.Assertions`, and classical order and postprocessing
+definitions in `Framework/Math/ShorDefinition.lean`.
 -/
-
-/-! =========================================================
-    Section 1: Order-finding circuits
-
-    These definitions assemble the high-level gates used by the ideal and
-    approximate order-finding algorithms.
-========================================================= -/
 
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 
 /-! =========================================================
-    Section 2: Measurement and success probabilities
+    Section 1: Measurement and success probabilities
 
     `MeasureClass` packages the Born-rule projectors used to talk about
     measuring a register.  The lemmas in this section turn those projector
@@ -641,7 +634,7 @@ variable [ContinuedFractionPost] [Spec]
 
 
 /-! =========================================================
-    Section 3: Probability-transfer lemmas
+    Section 2: Probability-transfer lemmas
 
     These lemmas are the bridge from state-vector approximation to
     success-probability approximation.  The first group is pure real/probability
@@ -793,12 +786,11 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
   exact lower_bound_of_abs_sub_le hprob
 
 /-! =========================================================
-    Section 4: Final correctness statements
+    Section 3: Final correctness statements
 
-    The ideal theorem is the quantum order-finding lower bound used by the
-    rest of the file.  The approximation theorem transfers that ideal bound
-    across the modular-exponentiation implementation error, and the final
-    factoring statement combines it with the classical reduction.
+    The ideal theorem supplies the quantum order-finding lower bound. The
+    approximation theorem transfers that bound across the
+    modular-exponentiation implementation error.
 ========================================================= -/
 
 /-- Ideal order-finding success probability for Shor's algorithm.
@@ -1171,9 +1163,8 @@ def ShorApproxSetup.toModExpConfig
 /--
 Uniform approximate Shor order-finding bound.
 
-`K` is chosen before `η`, so it is independent of the precision parameter.
-It may depend on the fixed instance data `qs`, `T`, `a`, `N`, `x`, `y`,
-`w`, `flag`, `b0`, and the fixed size/arithmetic hypotheses.
+`K` is chosen before the instance, circuit registers, width hypotheses, and
+precision parameter, so one constant serves every valid implementation setup.
 -/
 theorem Shor_correct_approx_uniform
     [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs] [ModMulPrimitiveGateSemantics qs]
@@ -1515,13 +1506,6 @@ theorem orderFindingApproxLow_probability_eq
       (hworkspace := hLowerWorkspace)
       (ψ := ψ)
       (hclean := hclean))
-
-/-
-A lowered approximate Shor theorem needs a repository bridge deriving the
-whole-program lowering workspace and dynamic cleanliness facts for
-`orderFindingApprox`.  The current lowerer exposes those hypotheses, but this
-file does not yet contain the numerical allocation bridge from the Shor setup.
--/
 
 /- At least half of the coprime classical choices are successful for the
 classical reduction, assuming `N` is odd, composite in the required sense, and

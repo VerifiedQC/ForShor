@@ -4,10 +4,10 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Correctnes
 /-!
 # Shor Main Theorems
 
-The three final Shor correctness theorems, each typed by its named proposition
-from `Assertions.lean` and proven here.  These are the public results the
-Reference implementation consumes; all supporting lemmas live under
-`Shor.Proofs`.
+This module exposes the end-to-end factoring theorem and uniform correctness of
+the lowered approximate circuit. Their named propositions live in
+`Assertions.lean`; supporting results, including ideal `Shor_correct`, live
+under `Shor.Proofs`.
 -/
 
 namespace Shor

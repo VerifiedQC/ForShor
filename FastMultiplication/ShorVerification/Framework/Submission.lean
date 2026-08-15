@@ -64,12 +64,16 @@ structure ShorOrderFindingInstance where
   /-- The sampled base is coprime to the modulus. -/
   coprime : Nat.gcd a N = 1
 
+/-- A submitted low-level circuit together with the register to measure for its
+order-finding result. -/
 structure ShorOrderFindingProgram where
+  /-- The submitted low-level circuit. -/
   circuit : LowGate
+  /-- The circuit register measured by the framework success criterion. -/
   output : Reg
 
-/-- Ideal clean input predicate used by correctness proofs: both public
-registers start at zero and own disjoint qubits. -/
+/-- Ideal clean input predicate used by internal correctness proofs: the
+exponent and data registers start at zero and own disjoint qubits. -/
 def IdealOrderFindingInput
     (qs : QSemantics)
     [RegEncoding qs.Basis]

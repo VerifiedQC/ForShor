@@ -16,7 +16,7 @@ exists for every positive `ε`.
 ========================================================= -/
 
 /-! ---------------------------------------------------------
-    Public counting interface
+    Counting interface
 
 These definitions fix the Shor precision schedule, record the register-layout
 conditions used by the asymptotic proof, and expose the final lowered circuit
@@ -31,8 +31,8 @@ noncomputable def shorEta (δ : ℝ) (n : ℕ) : ℝ :=
 
 /--
 Width and register-layout assumptions used internally by the counting proof.
-All public registers are extended registers; only their active widths enter
-the asymptotic estimate.
+Only active register widths enter the asymptotic estimate; the remaining fields
+record the physical layout required by the implementation.
 -/
 def ShorGateCountLayout
     (cWork n : ℕ)
@@ -890,7 +890,7 @@ lemmas below add those costs to the modular-exponentiation estimate.
 
 section OrderFindingBound
 
-/-- Initializing the output register to `1` costs at most one primitive gate. -/
+/-- Initializing the modular-data register to `1` costs at most one primitive gate. -/
 lemma lowered_initY1_gateCount_le
     {Basis : Type u}
     [RegEncoding Basis]
@@ -1330,7 +1330,7 @@ lemma algorithm1ExtraBits_shorEta_eventually_linear
 end ExponentAndWidthConversions
 
 /-! ---------------------------------------------------------
-    Public setup to counting layout
+    Correctness setup to counting layout
 
 This section extracts the compact counting layout from the richer correctness
 setup used by the approximate Shor circuit.

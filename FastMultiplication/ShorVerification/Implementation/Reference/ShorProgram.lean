@@ -9,7 +9,7 @@ noncomputable section
 # Reference LowGate Shor program
 
 This file turns the deterministic reference register allocator into the concrete
-LowGate circuit family required by `ShorImplementation`.
+program family required by `ShorImplementation`.
 
 The framework exposes only a natural-number precision level `m`.  The reference
 implementation translates `m` into its private approximation parameter `η`,
@@ -17,9 +17,9 @@ allocates all implementation-specific storage, proves the resulting layout
 satisfies the static circuit requirements, and lowers the resulting approximate
 order-finding circuit.
 
-After fixing `lowering`, the public shape is exactly
+After fixing `lowering`, the framework-facing shape is exactly
 
-    ShorOrderFindingInstance → ℕ → LowGate.
+    ShorOrderFindingInstance → ℕ → ShorOrderFindingProgram.
 -/
 
 /-! =========================================================
@@ -218,10 +218,11 @@ All implementation-specific choices are internal:
 * `referenceLowerWorkspace` proves the recursive lowering workspace; and
 * `orderFindingApproxLow` produces the final `LowGate`.
 
-After `lowering` is fixed, the exposed circuit family has exactly the
-construction-free shape required by `ShorImplementation`:
+After `lowering` is fixed, this private circuit helper has shape
 
     ShorOrderFindingInstance → ℕ → LowGate.
+
+`referenceShorProg` below pairs this circuit with its measured output register.
 -/
 noncomputable def referenceShorCircuit
     {qs : QSemantics}

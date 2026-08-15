@@ -23,11 +23,8 @@ initial state.  We:
 * pick a precision level `m` with `2·tbits·√(2·K·referencePrecision m) ≤ ε`,
   which is possible because `referencePrecision m = 1/(m+3) → 0`;
 * apply the lowered-correctness theorem at the reference layout for level `m`,
-  whose readiness is `referenceLayout_ready`, and whose circuit is definitionally
-  `referenceShorProg lowering inst m`.
-
-The gate-count field is left as `sorry` for now (per plan); everything else is
-proven.
+  whose readiness is `referenceLayout_ready`, then identify its circuit and
+  measured register with the fields of `referenceShorProg lowering inst m`.
 -/
 
 variable {qs : QSemantics}
@@ -132,11 +129,7 @@ theorem referenceShorProg_correct
     Section 3: The concrete `ShorImplementation`
 ========================================================= -/
 
-/-- The reference implementation packaged as a framework `ShorImplementation`.
-
-`prog` and `correct` are the fully-proven reference program and its correctness;
-the gate-count `gateBound`/`counted` pair is a placeholder pending the concrete
-gate-count function (`counted` is the single outstanding `sorry`). -/
+/-- The reference program at the framework's `ShorImplementation` boundary. -/
 noncomputable def referenceShorImplementation
     (lowering : ShorLoweringSetup) :
     ShorImplementation (qs := qs) where

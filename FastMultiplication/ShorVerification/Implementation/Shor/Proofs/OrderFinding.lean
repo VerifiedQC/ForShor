@@ -9,33 +9,12 @@ open Gate
 open Classical
 
 /-!
-# Order-finding circuits and lowered Shor setup data
+# Order-finding setup bridges
 
-This module contains the circuit/setup declarations used by Shor workspace
-readiness and by the final Shor correctness statements.
-
-Main declarations:
-
-* `orderFindingApprox` is the high-level circuit whose lowering workspace is
-  proved ready in `Workspace.ShorReadiness`.
-* `orderFindingApproxLow` applies the public lowerer once readiness is known.
-* `ShorApproxSetup` collects the user-facing layout, workspace, precision, and
-  clean-input assumptions for approximate Shor.
-* `ShorApproxSetup.toIdealOrderFindingInput` is the final bridge from the
-  approximate setup to the ideal order-finding input predicate.
+This module reconstructs `ShorApproxSetup` from allocator-oriented minimal
+facts and then forgets implementation-only assumptions to obtain
+`IdealOrderFindingInput`. Circuit and setup declarations live in `Shor.Defs`.
 -/
-
-/-! =========================================================
-    Section 1: Order-finding circuit definitions
-========================================================= -/
-
-/-! =========================================================
-    Section 2: Lowering setup
-========================================================= -/
-
-/-! =========================================================
-    Section 3: Approximate and ideal input predicates
-========================================================= -/
 
 private lemma active_get_mem_ownedQubits
     (x : ExtReg)
