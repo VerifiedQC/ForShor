@@ -161,7 +161,7 @@ lemma toNat_take_drop
     [RegEncoding Basis]
     (r : Reg)
     (m : ℕ)
-    (hm : m ≤ regSize r)
+    (hm : m ≤ Reg.width r)
     (b : Basis) :
     RegEncoding.toNat r b
       =
@@ -178,8 +178,8 @@ lemma toNat_take_drop
   have hmin :
       min m r.qubits.length = m := by
     rw [Nat.min_eq_left]
-    simpa [regSize, Reg.width] using hm
-  simpa [sp, splitLeft, splitRight, ASize, regSize, Reg.width, Reg.take, hmin] using h
+    simpa [Reg.width] using hm
+  simpa [sp, splitLeft, splitRight, ASize, Reg.width, Reg.take, hmin] using h
 
 
 /-- Taking a block after first restricting to a prefix gives the same block,
@@ -208,7 +208,7 @@ lemma toNat_uniform_chunks
     ∀ (n : ℕ)
       (r : Reg)
       (b : Basis),
-      regSize r = n * W →
+      Reg.width r = n * W →
       RegEncoding.toNat r b
         =
       ∑ i : Fin n,
@@ -220,7 +220,7 @@ lemma toNat_uniform_chunks
       have hlt :
           RegEncoding.toNat r b < ASize r :=
         RegEncoding.toNat_lt_ASize r b
-      have hr0 : regSize r = 0 := by
+      have hr0 : Reg.width r = 0 := by
         simpa using hwidth
       have hnat : RegEncoding.toNat r b = 0 := by
         unfold ASize at hlt
@@ -229,7 +229,7 @@ lemma toNat_uniform_chunks
         omega
       simp [hnat]
   | n + 1, r, b, hwidth => by
-      have hWle : W ≤ regSize r := by
+      have hWle : W ≤ Reg.width r := by
         rw [hwidth, Nat.add_mul]
         simp
       have hsplit :
@@ -241,16 +241,16 @@ lemma toNat_uniform_chunks
             RegEncoding.toNat (r.drop W) b :=
         toNat_take_drop r W hWle b
       have htailWidth :
-          regSize (r.drop W) = n * W := by
+          Reg.width (r.drop W) = n * W := by
         have hwidth' :
             r.qubits.length = (n + 1) * W := by
-          simpa [regSize, Reg.width] using hwidth
+          simpa [Reg.width] using hwidth
         have hdrop :
             r.qubits.length - W = n * W := by
           rw [hwidth']
           rw [Nat.succ_mul]
           simp [Nat.add_comm]
-        simpa [regSize, Reg.width, Reg.drop] using hdrop
+        simpa [Reg.width, Reg.drop] using hdrop
       have htail :
           RegEncoding.toNat (r.drop W) b
             =
@@ -351,7 +351,8 @@ lemma phaseChunkActive_last
   | mk active reserve hdisj =>
       cases active with
       | mk qubits nodup =>
-          simp [phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, htop, ExtReg.width, regSize, Reg.width, Reg.take, Reg.drop]
+          simp [phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, htop,
+            ExtReg.width, Reg.width, Reg.take, Reg.drop] at hcut ⊢
 
 
 /-- Reconstruct the unsigned parent value from all child chunk values. -/
@@ -381,10 +382,10 @@ theorem phaseChunks_reconstruct_nat
           cut ≤ parent.width := by
         simpa [cut] using hbound
       have hlowerWidth :
-          regSize lower = n * W := by
+          Reg.width lower = n * W := by
         dsimp [lower, cut]
-        simp [regSize, Reg.width, Reg.take]
-        unfold cut ExtReg.width regSize Reg.width at *
+        simp [Reg.width, Reg.take]
+        unfold cut ExtReg.width Reg.width at *
         apply hcut
       have hsplit :
           ExtReg.toNat parent b

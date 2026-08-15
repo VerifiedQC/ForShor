@@ -117,7 +117,7 @@ class RadixReverseSemantics
   [GateSemanticsCore qs] : Type where
 
   eval_RadixReverse_ket :
-    ∀ (r : Reg) (m : ℕ) (hm : m ≤ regSize r)
+    ∀ (r : Reg) (m : ℕ) (hm : m ≤ Reg.width r)
       (b : qs.Basis) (kL kH : ℕ),
       let sp : SplitPoint r := ⟨m, hm⟩
       let left  : Reg := splitLeft r sp

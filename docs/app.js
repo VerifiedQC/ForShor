@@ -142,7 +142,7 @@ const graphData = {
       "This layer defines the abstract objects later proofs manipulate: registers, extended registers, gates, semantic interfaces, and reusable evaluation lemmas.",
     parent: "overview",
     nodes: [
-      { id: "reg", label: "Reg", subtitle: "ordinary intervals", kind: "core", file: "FastMultiplication/ShorVerification/Basic.lean", declarations: ["Reg", "regSize", "ASize", "splitLeft", "splitRight"], summary: "Ordinary finite registers and interval/splitting facts." },
+      { id: "reg", label: "Reg", subtitle: "ordinary intervals", kind: "core", file: "FastMultiplication/ShorVerification/Basic.lean", declarations: ["Reg", "Reg.width", "ASize", "splitLeft", "splitRight"], summary: "Ordinary finite registers and interval/splitting facts." },
       { id: "regenc", label: "RegEncoding", subtitle: "basis read/write", kind: "core", file: "FastMultiplication/ShorVerification/Basic.lean", declarations: ["RegEncoding", "writeNat_comm_of_disjoint"], summary: "Basis-level interface for reading, writing, and proving register locality." },
       { id: "extreg", label: "ExtReg", subtitle: "signed widths", kind: "core", file: "FastMultiplication/ShorVerification/Basic.lean", declarations: ["ExtReg", "ExtRegEncoding", "tcDecodeWidth", "FitsSignedWidth"], summary: "Extended-register interpretation and two's-complement support." },
       { id: "gate", label: "Gate", subtitle: "high-level syntax", kind: "core", file: "FastMultiplication/ShorVerification/Basic.lean", declarations: ["Gate", "PhaseProd", "CPhaseProd"], summary: "High-level gate syntax and derived gate macros." },

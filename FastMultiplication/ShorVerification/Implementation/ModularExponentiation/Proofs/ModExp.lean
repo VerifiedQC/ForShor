@@ -289,20 +289,20 @@ theorem modExpApprox_valid_dist_uniform
   have hTailLayout :
       ModExpTailLayout cfg.env.data cfg.env.work cfg.flag cfg.x.qubits := by
     intro i
-    let j : Fin (regSize cfg.x) :=
-      ⟨i.1, by simp [regSize, Reg.width]⟩
-    simpa [ModExpTailLayout, ModExpLayout, Reg.get, regSize, Reg.width, j]
+    let j : Fin (Reg.width cfg.x) :=
+      ⟨i.1, by simp [Reg.width]⟩
+    simpa [ModExpTailLayout, ModExpLayout, Reg.get, Reg.width, j]
       using cfg.layout j
 
   -- Reindex the public arithmetic hypothesis in the same way.
   have hTailArithmetic :
       ModExpTailArithmeticOK cfg.a cfg.env.N 0 cfg.x.qubits := by
     intro i
-    let j : Fin (regSize cfg.x) :=
-      ⟨i.1, by simp [regSize, Reg.width]⟩
+    let j : Fin (Reg.width cfg.x) :=
+      ⟨i.1, by simp [Reg.width]⟩
     have h0 : 0 + i.1 = j.1 := by
       simp [j]
-    simpa [ModExpTailArithmeticOK, ModExpArithmeticOK, regSize, Reg.width, j, h0]
+    simpa [ModExpTailArithmeticOK, ModExpArithmeticOK, Reg.width, j, h0]
       using cfg.arithmetic j
 
   have h := hSteps η cfg.a cfg.env.N cfg.env.data cfg.env.work cfg.flag
@@ -311,4 +311,4 @@ theorem modExpApprox_valid_dist_uniform
     hValid hNorm
 
   simpa [ModExpConfig.approxGate, ModExpConfig.idealGate, modExpApproxValid,
-    modExpIdeal', tbits, regSize, Reg.width] using h
+    modExpIdeal', tbits, Reg.width] using h

@@ -327,11 +327,10 @@ theorem gateWorkspaceOK_orderFindingApprox
                 show hmod.step1Workspace.xExt.width = data.width by rfl,
                 show hmod.step1Workspace.zExt.width = work.width by rfl,
                 show hmod.step1Workspace.xExt.capacity = data.capacity - 1 by
-                  change regSize (data.reserve.drop 1) = data.capacity - 1
+                  change Reg.width (data.reserve.drop 1) = data.capacity - 1
                   simp [
                     ExtReg.capacity,
                     Reg.drop,
-                    regSize,
                     Reg.width
                   ]
               ]
@@ -547,9 +546,9 @@ theorem gateWorkspaceOK_orderFindingApprox
         ModMulCoreLayout data work flag ctrl := by
     intro ctrl hctrl
     rcases List.get_of_mem hctrl with ⟨j, hj⟩
-    let i : Fin (regSize x.active) :=
+    let i : Fin (Reg.width x.active) :=
       ⟨j.1, by
-        simp[regSize, Reg.width]⟩
+        simp[Reg.width]⟩
     have hget : x.active.get i = ctrl := by
       dsimp [i, Reg.get]
       simpa [Reg.width] using hj
@@ -3153,7 +3152,7 @@ private theorem lowered_step2_ready_and_carry_clean
   let φ : ℝ :=
     (2 * Real.pi * (N : ℝ)) /
       ((2 : ℝ) ^
-        (regSize work.active + regSize dc.active))
+        (Reg.width work.active + Reg.width dc.active))
 
   let U1 : Gate := Gate.QFT ws.zExt
 
@@ -4752,7 +4751,7 @@ private theorem bit_writeNat_qubitReg
           b)
       =
     Nat.testBit v 0 := by
-  let i : Fin (regSize (qubitReg q)) :=
+  let i : Fin (Reg.width (qubitReg q)) :=
     ⟨0, by simp⟩
 
   have hbit :=
@@ -4794,7 +4793,7 @@ theorem bit_eq_testBit_toNat_qubitReg
     Nat.testBit
       (RegEncoding.toNat (qubitReg q) b)
       0 := by
-  let i : Fin (regSize (qubitReg q)) :=
+  let i : Fin (Reg.width (qubitReg q)) :=
     ⟨0, by simp⟩
 
   have hbit :=
@@ -6702,14 +6701,14 @@ theorem gateWorkspaceCleanState_orderFindingApprox
     rcases List.get_of_mem hctrl with
       ⟨j, hj⟩
 
-    let i : Fin (regSize x.active) :=
+    let i : Fin (Reg.width x.active) :=
       ⟨j.1, by
-        simp [regSize, Reg.width]⟩
+        simp [Reg.width]⟩
 
     have hget :
         x.active.get i = ctrl := by
       dsimp [i, Reg.get]
-      simpa [regSize, Reg.width] using hj
+      simpa [Reg.width] using hj
 
     have hi :=
       hsetup.register_layout i

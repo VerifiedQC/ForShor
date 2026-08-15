@@ -88,13 +88,10 @@ def drop (r : Reg) (n : ℕ) : Reg :=
 
 end Reg
 
-/-! ### Compatibility aliases and register combinators -/
-
-/-- Alias used by older Shor files for the logical width of a register. -/
-def regSize (r : Reg) : ℕ := r.width
+/-! ### Register combinators -/
 
 /-- Cardinality of the computational basis supported by a register. -/
-def ASize (r : Reg) : ℕ := 2 ^ regSize r
+def ASize (r : Reg) : ℕ := 2 ^ Reg.width r
 
 /-- Ordered physical qubits of a register. -/
 def regQubits (r : Reg) : List ℕ := r.qubits
@@ -126,7 +123,7 @@ def append
 end Reg
 
 /-- A legal split point for a register. -/
-abbrev SplitPoint (r : Reg) := { n : ℕ // n ≤ regSize r }
+abbrev SplitPoint (r : Reg) := { n : ℕ // n ≤ Reg.width r }
 
 /-- Prefix side of a logical split. -/
 def splitLeft (r : Reg) (m : SplitPoint r) : Reg := r.take m.1
@@ -134,25 +131,25 @@ def splitLeft (r : Reg) (m : SplitPoint r) : Reg := r.take m.1
 /-- Suffix side of a logical split. -/
 def splitRight (r : Reg) (m : SplitPoint r) : Reg := r.drop m.1
 
-@[simp] theorem regSize_empty :
-    regSize Reg.empty = 0 := by
+@[simp] theorem width_empty :
+    Reg.width Reg.empty = 0 := by
   rfl
 
-@[simp] theorem regSize_singleton (q : ℕ) :
-    regSize (qubitReg q) = 1 := by
+@[simp] theorem width_singleton (q : ℕ) :
+    Reg.width (qubitReg q) = 1 := by
   rfl
 
 @[simp] theorem splitLeft_size
     (r : Reg) (m : SplitPoint r) :
-    regSize (splitLeft r m) = m.1 := by
+    Reg.width (splitLeft r m) = m.1 := by
   have hm:=m.2
-  simp [splitLeft, Reg.take, regSize, Reg.width, regSize] at *
+  simp [splitLeft, Reg.take, Reg.width] at *
   simp[hm]
 
 @[simp] theorem splitRight_size
     (r : Reg) (m : SplitPoint r) :
-    regSize (splitRight r m) = regSize r - m.1 := by
-  simp [splitRight, Reg.drop, regSize, Reg.width]
+    Reg.width (splitRight r m) = Reg.width r - m.1 := by
+  simp [splitRight, Reg.drop, Reg.width]
 
 theorem splitLeft_splitRight_disjoint
     (r : Reg) (m : SplitPoint r) :
@@ -161,8 +158,8 @@ theorem splitLeft_splitRight_disjoint
     List.disjoint_take_drop r.nodup (le_refl m.1)
 
 /-- The least-significant physical qubit of a nonempty ordered register. -/
-def Reg.lowQubit (r : Reg) (h : 0 < regSize r) : ℕ :=
-  r.qubits.get ⟨0, by simpa [regSize, Reg.width] using h⟩
+def Reg.lowQubit (r : Reg) (h : 0 < Reg.width r) : ℕ :=
+  r.qubits.get ⟨0, by simpa [Reg.width] using h⟩
 
 /-! =========================================================
     Section 2: Basis encodings for registers
@@ -215,7 +212,7 @@ class RegEncoding (Basis : Type u) where
       bit q (writeNat r v b) = bit q b
 
   bit_eq_testBit_toNat :
-    ∀ (r : Reg) (b : Basis) (i : Fin (regSize r)),
+    ∀ (r : Reg) (b : Basis) (i : Fin (Reg.width r)),
       bit (r.get i) b =
         Nat.testBit (toNat r b) i.1
 
@@ -254,7 +251,7 @@ theorem bit_writeNat_of_lt
     {Basis : Type u} [RegEncoding Basis]
     (r : Reg) (v : ℕ) (b : Basis)
     (hv : v < ASize r)
-    (i : Fin (regSize r)) :
+    (i : Fin (Reg.width r)) :
     RegEncoding.bit (r.get i)
         (RegEncoding.writeNat r v b) =
       Nat.testBit v i.1 := by
@@ -263,7 +260,7 @@ theorem bit_writeNat_of_lt
 
 theorem splitLeft_get
     (r : Reg) (m : SplitPoint r)
-    (i : Fin (regSize (splitLeft r m))) :
+    (i : Fin (Reg.width (splitLeft r m))) :
     (splitLeft r m).get i =
       r.get ⟨i.1, by
         have hi := i.2
@@ -273,26 +270,24 @@ theorem splitLeft_get
     splitLeft,
     Reg.take,
     Reg.get,
-    regSize,
     Reg.width
   ]
 
 theorem splitRight_get
     (r : Reg) (m : SplitPoint r)
-    (i : Fin (regSize (splitRight r m))) :
+    (i : Fin (Reg.width (splitRight r m))) :
     (splitRight r m).get i =
       r.get ⟨m.1 + i.1, by
         have hi := i.2
-        have hi' : i.1 < regSize r - m.1 := by
+        have hi' : i.1 < Reg.width r - m.1 := by
           simpa [splitRight_size] using hi
-        have hbound : m.1 + i.1 < regSize r := by
+        have hbound : m.1 + i.1 < Reg.width r := by
           omega
-        simpa [regSize, Reg.width] using hbound⟩ := by
+        simpa [Reg.width] using hbound⟩ := by
   simp [
     splitRight,
     Reg.drop,
     Reg.get,
-    regSize,
     Reg.width
   ]
 
@@ -329,13 +324,13 @@ theorem writeNat_split
     exact splitLeft_splitRight_disjoint r m
 
   have hmwidth :
-      regSize left = m.1 := by
+      Reg.width left = m.1 := by
     simp [left]
 
   have hjoined :
       low + ASize left * high < ASize r := by
     have hsizes :
-        regSize left + regSize right = regSize r := by
+        Reg.width left + Reg.width right = Reg.width r := by
       simp [left, right]
       omega
 
@@ -366,14 +361,14 @@ theorem writeNat_split
 
     obtain ⟨i, hi⟩ := List.get_of_mem hqL
 
-    let iL : Fin (regSize left) :=
+    let iL : Fin (Reg.width left) :=
       ⟨i.1, by
-        simp [left, regSize, Reg.width]⟩
+        simp [left, Reg.width]⟩
 
     have hgetL : left.get iL = q := by
-      simpa [iL, Reg.get, regSize, Reg.width] using hi
+      simpa [iL, Reg.get, Reg.width] using hi
 
-    let iWhole : Fin (regSize r) :=
+    let iWhole : Fin (Reg.width r) :=
       ⟨iL.1, by
         have hi' : iL.1 < m.1 := by
           simpa [left] using iL.2
@@ -396,7 +391,7 @@ theorem writeNat_split
               r _ b hjoined iWhole
 
       _ = Nat.testBit low iL.1 := by
-            have hi : iL.1 < regSize left := iL.2
+            have hi : iL.1 < Reg.width left := iL.2
             rw [ASize]
             have h :=
               Nat.testBit_two_pow_mul_add
@@ -428,14 +423,14 @@ theorem writeNat_split
   · by_cases hqR : q ∈ right.qubits
     · obtain ⟨j, hj⟩ := List.get_of_mem hqR
 
-      let jR : Fin (regSize right) :=
+      let jR : Fin (Reg.width right) :=
         ⟨j.1, by
-          simp[right, regSize, Reg.width]⟩
+          simp[right, Reg.width]⟩
 
       have hgetR : right.get jR = q := by
-        simpa [jR, Reg.get, regSize, Reg.width] using hj
+        simpa [jR, Reg.get, Reg.width] using hj
 
-      let jWhole : Fin (regSize r) :=
+      let jWhole : Fin (Reg.width r) :=
         ⟨m.1 + jR.1, by
           have hj' := jR.2
           simp [right] at hj'
@@ -633,12 +628,12 @@ theorem writeNat_toNat
 
     obtain ⟨i, hi⟩ := hex
 
-    let j : Fin (regSize r) :=
+    let j : Fin (Reg.width r) :=
       ⟨i.1, by
-        simp [regSize, Reg.width]⟩
+        simp [Reg.width]⟩
 
     have hj : r.get j = q := by
-      simpa [Reg.get, j, regSize, Reg.width] using hi
+      simpa [Reg.get, j, Reg.width] using hi
 
     have hread :
         RegEncoding.toNat r
@@ -741,8 +736,8 @@ theorem toNat_right_write_left
     (hdisj : Disjoint left right) :
   splitLeft
       (Reg.append left right hdisj)
-      ⟨regSize left, by
-        simp [regSize, Reg.width, Reg.append]⟩ =
+      ⟨Reg.width left, by
+        simp [Reg.width, Reg.append]⟩ =
     left := by
   cases left with
   | mk leftQubits leftNodup =>
@@ -752,7 +747,6 @@ theorem toNat_right_write_left
             splitLeft,
             Reg.take,
             Reg.append,
-            regSize,
             Reg.width
           ]
 
@@ -761,8 +755,8 @@ theorem toNat_right_write_left
     (hdisj : Disjoint left right) :
   splitRight
       (Reg.append left right hdisj)
-      ⟨regSize left, by
-        simp [regSize, Reg.width, Reg.append]⟩ =
+      ⟨Reg.width left, by
+        simp [Reg.width, Reg.append]⟩ =
     right := by
   cases left with
   | mk leftQubits leftNodup =>
@@ -772,7 +766,6 @@ theorem toNat_right_write_left
             splitRight,
             Reg.drop,
             Reg.append,
-            regSize,
             Reg.width
           ]
 
@@ -788,8 +781,8 @@ theorem toNat_append
   let r := Reg.append left right hdisj
 
   let m : SplitPoint r :=
-    ⟨regSize left, by
-      simp [r, regSize, Reg.width, Reg.append]⟩
+    ⟨Reg.width left, by
+      simp [r, Reg.width, Reg.append]⟩
 
   have hleft :
       splitLeft r m = left := by
@@ -811,7 +804,7 @@ theorem toNat_append
 
   have hsize :
       ASize r = ASize left * ASize right := by
-    simp [r, ASize, regSize, Reg.width, Reg.append, pow_add]
+    simp [r, ASize, Reg.width, Reg.append, pow_add]
 
   have hcombined :
       RegEncoding.toNat left b +
@@ -977,10 +970,10 @@ def ofReg (r : Reg) : ExtReg := { active := r, reserve := Reg.empty, active_rese
 def withReserve (active reserve : Reg) (h : Disjoint active reserve) : ExtReg := ⟨active, reserve, h⟩
 
 /-- Width of the currently active part. -/
-def width (e : ExtReg) : ℕ := regSize e.active
+def width (e : ExtReg) : ℕ := Reg.width e.active
 
 /-- Number of reserve bits still available for future growth. -/
-def capacity (e : ExtReg) : ℕ := regSize e.reserve
+def capacity (e : ExtReg) : ℕ := Reg.width e.reserve
 
 /-- The reserve has at least `n` bits available. -/
 def CanGrow (e : ExtReg) (n : ℕ) : Prop := n ≤ e.capacity
@@ -1030,7 +1023,7 @@ def grow (e : ExtReg) (n : ℕ) : ExtReg :=
     (e : ExtReg) (n : ℕ)
     (hcap : e.CanGrow n) :
     width (e.grow n) = width e + n := by
-  simp [width, grow, Reg.append, newBits, Reg.take, regSize, Reg.width,
+  simp [width, grow, Reg.append, newBits, Reg.take, Reg.width,
     CanGrow, capacity] at hcap ⊢
   omega
 
@@ -1038,7 +1031,7 @@ def grow (e : ExtReg) (n : ℕ) : ExtReg :=
     (e : ExtReg) (n : ℕ)
     (_hcap : e.CanGrow n) :
     capacity (e.grow n) = capacity e - n := by
-  simp [capacity, grow, remainingReserve, Reg.drop, regSize, Reg.width]
+  simp [capacity, grow, remainingReserve, Reg.drop, Reg.width]
 
 /-- All physical qubits owned by an extendable register, active first and reserve second. -/
 def ownedQubits (e : ExtReg) : List ℕ := e.active.qubits ++ e.reserve.qubits

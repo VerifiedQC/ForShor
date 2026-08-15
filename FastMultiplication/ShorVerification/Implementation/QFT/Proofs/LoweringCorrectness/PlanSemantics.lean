@@ -23,7 +23,7 @@ theorem eval_QFT_size0_ket
     (hsize : r.width = 0) :
     qs.eval (Gate.QFT r) (qs.ket b) = qs.ket b := by
 
-  have hactive : regSize r.active = 0 := by
+  have hactive : Reg.width r.active = 0 := by
     simpa [ExtReg.width] using hsize
 
   have hread : RegEncoding.toNat r.active b = 0 := by
@@ -95,10 +95,10 @@ theorem eval_QFT_size1_ket
             omega)))
         (qs.ket b) := by
 
-  have hactive_size : regSize r.active = 1 := by
+  have hactive_size : Reg.width r.active = 1 := by
     simpa [ExtReg.width] using hsize
 
-  let hpos : 0 < regSize r.active := by
+  let hpos : 0 < Reg.width r.active := by
     omega
 
   let q : ℕ := r.active.lowQubit hpos
@@ -124,7 +124,7 @@ theorem eval_QFT_size1_ket
       RegEncoding.bit_eq_testBit_toNat
         (qubitReg q)
         b
-        (⟨0, by simp⟩ : Fin (regSize (qubitReg q)))
+        (⟨0, by simp⟩ : Fin (Reg.width (qubitReg q)))
 
     simpa [
       ExtReg.toNat,
@@ -132,7 +132,6 @@ theorem eval_QFT_size1_ket
       qubitReg,
       Reg.singleton,
       Reg.get,
-      regSize,
       Reg.width
     ] using h
 
@@ -418,7 +417,7 @@ theorem evalL_lowerQFTPlan
             =
           qs.eval
               (Gate.PhaseProdUsing
-                (qftPhi (regSize r))
+                (qftPhi (Reg.width r))
                 (leftReg r)
                 (rightReg r)
                 ws)
@@ -473,7 +472,7 @@ theorem evalL_lowerQFTPlan
               Gate.QFT
                 (ExtReg.ofReg (rightReg r)) ;;
               Gate.PhaseProdUsing
-                (qftPhi (regSize r))
+                (qftPhi (Reg.width r))
                 (leftReg r)
                 (rightReg r)
                 ws ;;

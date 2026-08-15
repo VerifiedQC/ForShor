@@ -1405,8 +1405,8 @@ lemma alg1_write_data_eq_extendHi_output
         (alg1OutputValue cfg b)
         b := by
   let m : SplitPoint ((cfg.env.data.grow 1).active) :=
-    ⟨regSize cfg.env.data.active, by
-      simp [ExtReg.grow, Reg.append, regSize, Reg.width]⟩
+    ⟨Reg.width cfg.env.data.active, by
+      simp [ExtReg.grow, Reg.append, Reg.width]⟩
 
   have hout_data :
       alg1OutputValue cfg b < ASize cfg.env.data.active :=
@@ -1416,13 +1416,12 @@ lemma alg1_write_data_eq_extendHi_output
       alg1OutputValue cfg b
         <
       ASize (splitLeft ((cfg.env.data.grow 1).active) m) := by
-    simpa [m, splitLeft, ExtReg.grow, Reg.append, Reg.take, regSize,
-      Reg.width, ASize] using hout_data
+    simpa [m, splitLeft, ExtReg.grow, Reg.append, Reg.take, Reg.width, ASize] using hout_data
 
   have hzero_right :
       0 < ASize (splitRight ((cfg.env.data.grow 1).active) m) := by
     simp [m, splitRight, ExtReg.grow, Reg.append, Reg.drop, ExtReg.newBits,
-      regSize, Reg.width, ASize]
+      Reg.width, ASize]
 
   have hsplit_raw :=
     RegEncoding.writeNat_split
@@ -1448,8 +1447,7 @@ lemma alg1_write_data_eq_extendHi_output
             (alg1OutputValue cfg b)
             b) := by
     simpa [m, splitLeft, splitRight, ExtReg.grow, ExtReg.newBits,
-      ExtReg.remainingReserve, Reg.append, Reg.take, Reg.drop, regSize,
-      Reg.width, ASize] using hsplit_raw
+      ExtReg.remainingReserve, Reg.append, Reg.take, Reg.drop, Reg.width, ASize] using hsplit_raw
 
   have hfresh1 : cfg.env.data.FreshFor 1 b :=
     ExtReg.freshFor_one_of_two
@@ -1898,8 +1896,8 @@ private lemma alg1_grow_one_freshFor_one_of_two
   unfold ExtReg.FreshFor FreshZero at hfresh ⊢
 
   let r2 : Reg := e.newBits 2
-  have hr2 : regSize r2 = 2 := by
-    simp [r2, ExtReg.newBits, Reg.take, regSize, Reg.width,
+  have hr2 : Reg.width r2 = 2 := by
+    simp [r2, ExtReg.newBits, Reg.take, Reg.width,
       ExtReg.CanGrow, ExtReg.capacity] at hcap ⊢
     omega
 
@@ -2071,7 +2069,7 @@ lemma alg1_step5_cphase_on_output_work_label
       alg1OutputValue_lt_data_capacity cfg b hb
     have hle :
         ASize cfg.env.data.active ≤ ASize ((cfg.env.data.grow 1).active) := by
-      simpa [ASize, ExtReg.grow, Reg.append, regSize, Reg.width] using
+      simpa [ASize, ExtReg.grow, Reg.append, Reg.width] using
         (Nat.pow_le_pow_right
           (by norm_num : 0 < 2)
           (Nat.le_add_right
@@ -2902,9 +2900,9 @@ to the data-register capacity.
 
 The nontrivial arithmetic fact is
 
-`ASize work / ASize data = 2^(regSize work - regSize data)`,
+`ASize work / ASize data = 2^(Reg.width work - Reg.width data)`,
 
-where the precision hypothesis itself forces `regSize data ≤ regSize work`.
+where the precision hypothesis itself forces `Reg.width data ≤ Reg.width work`.
 -/
 lemma alg1_precision_grid_ratio
     {η : ℝ}
@@ -2921,8 +2919,8 @@ lemma alg1_precision_grid_ratio
 
   have hprec:= pow_bound cfg.env.precision
 
-  let n : ℕ := regSize cfg.env.data.active
-  let m : ℕ := regSize cfg.env.work.active
+  let n : ℕ := Reg.width cfg.env.data.active
+  let m : ℕ := Reg.width cfg.env.work.active
 
   have hdata_nat : 0 < ASize cfg.env.data.active := by
     unfold ASize

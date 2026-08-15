@@ -47,8 +47,8 @@ lemma FreshZero.of_subset
   unfold FreshZero at hzero ⊢
   apply Nat.zero_of_testBit_eq_false
   intro j
-  by_cases hj : j < regSize small
-  · let iSmall : Fin (regSize small) :=
+  by_cases hj : j < Reg.width small
+  · let iSmall : Fin (Reg.width small) :=
       ⟨j, hj⟩
     let q : ℕ :=
       small.get iSmall
@@ -66,13 +66,12 @@ lemma FreshZero.of_subset
       exact
         List.idxOf_lt_length_of_mem
           hqBig
-    let iBig : Fin (regSize big) :=
+    let iBig : Fin (Reg.width big) :=
       ⟨
         jBig,
         by
           simpa [
             jBig,
-            regSize,
             Reg.width
           ] using hjBig
       ⟩
@@ -108,18 +107,18 @@ lemma FreshZero.of_subset
         rw [hzero]
         simp
   · have hwidth :
-        regSize small ≤ j :=
+        Reg.width small ≤ j :=
       Nat.le_of_not_gt hj
     have hToNat :
         RegEncoding.toNat small b
           <
-        2 ^ regSize small := by
+        2 ^ Reg.width small := by
       simpa [ASize] using
         RegEncoding.toNat_lt_ASize
           (r := small)
           (b := b)
     have hpow :
-        2 ^ regSize small ≤ 2 ^ j := by
+        2 ^ Reg.width small ≤ 2 ^ j := by
       exact
         Nat.pow_le_pow_right
           (by omega)
@@ -189,7 +188,6 @@ lemma freshZero_reserve_of_freshFor_capacity
           ExtReg.newBits,
           ExtReg.capacity,
           Reg.take,
-          regSize,
           Reg.width
         ]
   simpa [
@@ -548,7 +546,6 @@ lemma eval_compileSignedAllocations_ket_fits_and_child_clean
         ExtReg.newBits,
         ExtReg.capacity,
         Reg.take,
-        regSize,
         Reg.width
       ] using hqChildReserve
     apply
@@ -616,7 +613,6 @@ lemma eval_compileSignedAllocations_ket_fits_and_child_clean
         ExtReg.newBits,
         ExtReg.capacity,
         Reg.take,
-        regSize,
         Reg.width
       ] using hqChildReserve
     apply

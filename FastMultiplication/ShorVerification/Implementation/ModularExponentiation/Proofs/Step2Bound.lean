@@ -142,9 +142,9 @@ private lemma alg1_step2_dataCarry_freshFor_one_of_two
   unfold ExtReg.FreshFor FreshZero at hfresh ⊢
 
   let r2 : Reg := cfg.env.data.newBits 2
-  have hr2 : regSize r2 = 2 := by
+  have hr2 : Reg.width r2 = 2 := by
     have hcap := cfg.env.circuit_workspace.1
-    simp [r2, ExtReg.newBits, Reg.take, regSize, Reg.width, ExtReg.CanGrow, ExtReg.capacity] at hcap ⊢
+    simp [r2, ExtReg.newBits, Reg.take, Reg.width, ExtReg.CanGrow, ExtReg.capacity] at hcap ⊢
     omega
 
   let m : SplitPoint r2 := ⟨1, by omega⟩
@@ -746,7 +746,7 @@ lemma alg1_step2_phase_normalization
 
   have hpow :
       (2 : ℝ) ^
-          (regSize cfg.env.work.active + regSize ((cfg.env.data.grow 1).active)) = (ASize cfg.env.work.active : ℝ) *
+          (Reg.width cfg.env.work.active + Reg.width ((cfg.env.data.grow 1).active)) = (ASize cfg.env.work.active : ℝ) *
         (ASize ((cfg.env.data.grow 1).active) : ℝ) := by
     simp [ASize, pow_add]
 

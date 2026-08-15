@@ -29,8 +29,8 @@ theorem Shor_end_to_end_factoring
     (x y : ExtReg)
     (b0 : qs.Basis)
     (hinput : IdealOrderFindingInput qs x y b0)
-    (hm : regSize x.active = Nat.log2 (2 * fact.N^2))
-    (hn : regSize y.active = Nat.log2 (2 * fact.N)) :
+    (hm : Reg.width x.active = Nat.log2 (2 * fact.N^2))
+    (hn : Reg.width y.active = Nat.log2 (2 * fact.N)) :
     ShorEndToEndFactoring T hT fact x y b0 hinput hm hn := by {
   let N := fact.N
   have h_odd : Odd N := fact.odd

@@ -77,9 +77,9 @@ private lemma step1Bound_data_ASize_le_dataCarry
       ≤
     ASize (cfg.env.data.grow 1).active := by
   have hwidth :
-      regSize (cfg.env.data.grow 1).active
+      Reg.width (cfg.env.data.grow 1).active
         =
-      regSize cfg.env.data.active + 1 := by
+      Reg.width cfg.env.data.active + 1 := by
     simpa [ExtReg.width] using
       ExtReg.width_grow
         cfg.env.data

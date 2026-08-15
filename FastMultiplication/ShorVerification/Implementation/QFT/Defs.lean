@@ -30,10 +30,10 @@ variable (qs : QSemantics)
 
   [GateSemanticsFacts qs]
 
-def splitM (r : Reg) : ℕ := (regSize r) / 2
+def splitM (r : Reg) : ℕ := (Reg.width r) / 2
 def halfSplitPoint (r : Reg) : SplitPoint r :=
   ⟨splitM r, by
-    simpa [splitM] using Nat.div_le_self (regSize r) 2⟩
+    simpa [splitM] using Nat.div_le_self (Reg.width r) 2⟩
 
 def leftReg  (r : Reg) : Reg := splitLeft r (halfSplitPoint r)
 def rightReg (r : Reg) : Reg := splitRight r (halfSplitPoint r)
@@ -107,22 +107,22 @@ inductive QFTLoweringPlan
 
   | empty
       (r : Reg)
-      (hsize : regSize r = 0) :
+      (hsize : Reg.width r = 0) :
       QFTLoweringPlan k hk ops r
 
   | singleton
       (r : Reg)
-      (hsize : regSize r = 1) :
+      (hsize : Reg.width r = 1) :
       QFTLoweringPlan k hk ops r
 
   | split
       (r : Reg)
-      (hsize : 2 ≤ regSize r)
+      (hsize : 2 ≤ Reg.width r)
       (ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r))
       (phaseInitSize : ℕ)
       (phasePlan :
         StandardPhaseLoweringPlan k hk ops
-          phaseInitSize (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws))
+          phaseInitSize (Gate.PhaseProdUsing (qftPhi (Reg.width r)) (leftReg r) (rightReg r) ws))
       (rightPlan : QFTLoweringPlan k hk ops (rightReg r))
       (leftPlan : QFTLoweringPlan k hk ops (leftReg r)) :
       QFTLoweringPlan k hk ops r
@@ -571,12 +571,12 @@ structure QFTWorkspaceOK
     Disjoint xWork zWork
 
   x_large_enough :
-    (qftWorkspaceNeed ops (regSize r)).1 ≤
-      regSize xWork
+    (qftWorkspaceNeed ops (Reg.width r)).1 ≤
+      Reg.width xWork
 
   z_large_enough :
-    (qftWorkspaceNeed ops (regSize r)).2 ≤
-      regSize zWork
+    (qftWorkspaceNeed ops (Reg.width r)).2 ≤
+      Reg.width zWork
 
 /-! =========================================================
     Section 7: Helper lemmas for the selected workspace slices
@@ -588,8 +588,8 @@ structure QFTWorkspaceOK
 
 @[simp] lemma regSize_leftReg
     (r : Reg) :
-    regSize (leftReg r) =
-      regSize r / 2 := by
+    Reg.width (leftReg r) =
+      Reg.width r / 2 := by
   simp [
     leftReg,
     halfSplitPoint,
@@ -599,8 +599,8 @@ structure QFTWorkspaceOK
 
 @[simp] lemma regSize_rightReg
     (r : Reg) :
-    regSize (rightReg r) =
-      regSize r - regSize r / 2 := by
+    Reg.width (rightReg r) =
+      Reg.width r - Reg.width r / 2 := by
   simp [
     rightReg,
     halfSplitPoint,
@@ -713,7 +713,7 @@ lemma qftXWork_qftZWork_disjoint
     (ops : Prog k)
     (r : ExtReg)
     (hworkspace : QFTReserveOK ops r) :
-    regSize (qftXWork ops r) =
+    Reg.width (qftXWork ops r) =
       (qftWorkspaceNeed ops r.width).1 := by
   have hxFits :
       (qftWorkspaceNeed ops r.width).1
@@ -726,7 +726,6 @@ lemma qftXWork_qftZWork_disjoint
   simpa [
     qftXWork,
     Reg.take,
-    regSize,
     Reg.width,
     ExtReg.capacity,
     Nat.min_eq_left hxFits
@@ -738,7 +737,7 @@ lemma qftXWork_qftZWork_disjoint
     (ops : Prog k)
     (r : ExtReg)
     (hworkspace : QFTReserveOK ops r) :
-    regSize (qftZWork ops r) =
+    Reg.width (qftZWork ops r) =
       (qftWorkspaceNeed ops r.width).2 := by
   have hzFits :
       (qftWorkspaceNeed ops r.width).2
@@ -753,7 +752,6 @@ lemma qftXWork_qftZWork_disjoint
     qftZWork,
     Reg.take,
     Reg.drop,
-    regSize,
     Reg.width,
     ExtReg.capacity,
     Nat.min_eq_left hzFits
@@ -1013,7 +1011,7 @@ node from the two root workspace registers.
 noncomputable def phaseWorkspace
     (hworkspace :
       QFTWorkspaceOK ops r xWork zWork)
-    (hsize : 2 ≤ regSize r) :
+    (hsize : 2 ≤ Reg.width r) :
     Gate.PhaseProdWorkspace
       (leftReg r)
       (rightReg r) := by
@@ -1045,11 +1043,11 @@ noncomputable def phaseWorkspace
       1 ≤
         (qftWorkspaceNeed
           ops
-          (regSize r)).1 := by
+          (Reg.width r)).1 := by
     have hphase :=
       qftWorkspaceNeed_phase_x_le
         ops
-        (regSize r)
+        (Reg.width r)
         hsize
     omega
 
@@ -1057,11 +1055,11 @@ noncomputable def phaseWorkspace
       1 ≤
         (qftWorkspaceNeed
           ops
-          (regSize r)).2 := by
+          (Reg.width r)).2 := by
     have hphase :=
       qftWorkspaceNeed_phase_z_le
         ops
-        (regSize r)
+        (Reg.width r)
         hsize
     omega
 
@@ -1107,7 +1105,7 @@ the current QFT node.
 lemma signedWorkspaceOK
     (hworkspace :
       QFTWorkspaceOK ops r xWork zWork)
-    (hsize : 2 ≤ regSize r) :
+    (hsize : 2 ≤ Reg.width r) :
     let ws :=
       hworkspace.phaseWorkspace hsize
 
@@ -1122,7 +1120,7 @@ lemma signedWorkspaceOK
 
   have hxWidth :
       (ws.xExt.grow 1).width =
-        regSize (leftReg r) + 1 := by
+        Reg.width (leftReg r) + 1 := by
     calc
       (ws.xExt.grow 1).width
           =
@@ -1134,12 +1132,12 @@ lemma signedWorkspaceOK
               ws.xExt_canGrow
 
       _ =
-        regSize (leftReg r) + 1 := by
+        Reg.width (leftReg r) + 1 := by
           rfl
 
   have hzWidth :
       (ws.zExt.grow 1).width =
-        regSize (rightReg r) + 1 := by
+        Reg.width (rightReg r) + 1 := by
     calc
       (ws.zExt.grow 1).width
           =
@@ -1151,12 +1149,12 @@ lemma signedWorkspaceOK
               ws.zExt_canGrow
 
       _ =
-        regSize (rightReg r) + 1 := by
+        Reg.width (rightReg r) + 1 := by
           rfl
 
   have hxCapacity :
       (ws.xExt.grow 1).capacity =
-        regSize xWork - 1 := by
+        Reg.width xWork - 1 := by
     calc
       (ws.xExt.grow 1).capacity
           =
@@ -1168,12 +1166,12 @@ lemma signedWorkspaceOK
               ws.xExt_canGrow
 
       _ =
-        regSize xWork - 1 := by
+        Reg.width xWork - 1 := by
           rfl
 
   have hzCapacity :
       (ws.zExt.grow 1).capacity =
-        regSize zWork - 1 := by
+        Reg.width zWork - 1 := by
     calc
       (ws.zExt.grow 1).capacity
           =
@@ -1185,23 +1183,23 @@ lemma signedWorkspaceOK
               ws.zExt_canGrow
 
       _ =
-        regSize zWork - 1 := by
+        Reg.width zWork - 1 := by
           rfl
 
   have hxPhaseBound :
       1 +
           (RecursivePhaseWorkspace.reserveNeed
             ops
-            (regSize (leftReg r) + 1)
-            (regSize (rightReg r) + 1)).1
+            (Reg.width (leftReg r) + 1)
+            (Reg.width (rightReg r) + 1)).1
         ≤
-      regSize xWork := by
+      Reg.width xWork := by
     rw [regSize_leftReg, regSize_rightReg]
     exact
       le_trans
         (qftWorkspaceNeed_phase_x_le
           ops
-          (regSize r)
+          (Reg.width r)
           hsize)
         hworkspace.x_large_enough
 
@@ -1209,16 +1207,16 @@ lemma signedWorkspaceOK
       1 +
           (RecursivePhaseWorkspace.reserveNeed
             ops
-            (regSize (leftReg r) + 1)
-            (regSize (rightReg r) + 1)).2
+            (Reg.width (leftReg r) + 1)
+            (Reg.width (rightReg r) + 1)).2
         ≤
-      regSize zWork := by
+      Reg.width zWork := by
     rw [regSize_leftReg, regSize_rightReg]
     exact
       le_trans
         (qftWorkspaceNeed_phase_z_le
           ops
-          (regSize r)
+          (Reg.width r)
           hsize)
         hworkspace.z_large_enough
 
@@ -1254,7 +1252,7 @@ The root workspace condition remains valid for the left recursive QFT.
 lemma left
     (hworkspace :
       QFTWorkspaceOK ops r xWork zWork)
-    (hsize : 2 ≤ regSize r) :
+    (hsize : 2 ≤ Reg.width r) :
     QFTWorkspaceOK
       ops
       (leftReg r)
@@ -1285,7 +1283,7 @@ lemma left
       (le_trans
         (qftWorkspaceNeed_left_x_le
           ops
-          (regSize r)
+          (Reg.width r)
           hsize)
         hworkspace.x_large_enough)
 
@@ -1294,7 +1292,7 @@ lemma left
       (le_trans
         (qftWorkspaceNeed_left_z_le
           ops
-          (regSize r)
+          (Reg.width r)
           hsize)
         hworkspace.z_large_enough)
 
@@ -1304,7 +1302,7 @@ The root workspace condition remains valid for the right recursive QFT.
 lemma right
     (hworkspace :
       QFTWorkspaceOK ops r xWork zWork)
-    (hsize : 2 ≤ regSize r) :
+    (hsize : 2 ≤ Reg.width r) :
     QFTWorkspaceOK
       ops
       (rightReg r)
@@ -1335,7 +1333,7 @@ lemma right
       (le_trans
         (qftWorkspaceNeed_right_x_le
           ops
-          (regSize r)
+          (Reg.width r)
           hsize)
         hworkspace.x_large_enough)
 
@@ -1344,7 +1342,7 @@ lemma right
       (le_trans
         (qftWorkspaceNeed_right_z_le
           ops
-          (regSize r)
+          (Reg.width r)
           hsize)
         hworkspace.z_large_enough)
 
@@ -1370,17 +1368,17 @@ noncomputable def standardQFTLoweringPlan
     (hworkspace :
       QFTWorkspaceOK ops r xWork zWork) :
     QFTLoweringPlan k hk ops r := by
-  by_cases hzero : regSize r = 0
+  by_cases hzero : Reg.width r = 0
 
   · exact
       QFTLoweringPlan.empty r hzero
 
-  · by_cases hone : regSize r = 1
+  · by_cases hone : Reg.width r = 1
 
     · exact
         QFTLoweringPlan.singleton r hone
 
-    · have hlarge : 2 ≤ regSize r := by
+    · have hlarge : 2 ≤ Reg.width r := by
         omega
 
       let ws :
@@ -1420,7 +1418,7 @@ noncomputable def standardQFTLoweringPlan
             ops
             (phaseProdUsingInputSize ws)
             (Gate.PhaseProdUsing
-              (qftPhi (regSize r))
+              (qftPhi (Reg.width r))
               (leftReg r)
               (rightReg r)
               ws) :=
@@ -1428,7 +1426,7 @@ noncomputable def standardQFTLoweringPlan
           k
           hk
           ops
-          (qftPhi (regSize r))
+          (qftPhi (Reg.width r))
           ws
           hphaseWorkspace
 
@@ -1468,19 +1466,19 @@ noncomputable def standardQFTLoweringPlan
           rightPlan
           leftPlan
 
-termination_by regSize r
+termination_by Reg.width r
 decreasing_by
   ·
     have hhalfPos :
-        0 < regSize r / 2 := by
+        0 < Reg.width r / 2 := by
       exact
         Nat.div_pos
           (by omega)
           (by decide)
 
     have hright :
-        regSize r - regSize r / 2 <
-          regSize r := by
+        Reg.width r - Reg.width r / 2 <
+          Reg.width r := by
       exact
         Nat.sub_lt
           (by omega)
@@ -1494,8 +1492,8 @@ decreasing_by
 
   ·
     have hleft :
-        regSize r / 2 <
-          regSize r := by
+        Reg.width r / 2 <
+          Reg.width r := by
       exact
         Nat.div_lt_self
           (by omega)

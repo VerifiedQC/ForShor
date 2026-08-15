@@ -39,7 +39,7 @@ Main declarations:
 
 private lemma active_get_mem_ownedQubits
     (x : ExtReg)
-    (i : Fin (regSize x.active)) :
+    (i : Fin (Reg.width x.active)) :
     x.active.get i ∈ x.ownedQubits := by
   rw [ExtReg.ownedQubits, List.mem_append]
   left

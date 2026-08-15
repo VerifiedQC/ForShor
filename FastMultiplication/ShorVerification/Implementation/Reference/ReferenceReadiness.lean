@@ -46,8 +46,8 @@ zero/freshness predicates.
   apply Nat.zero_of_testBit_eq_false
   intro i
 
-  by_cases hi : i < regSize r
-  · let j : Fin (regSize r) := ⟨i, hi⟩
+  by_cases hi : i < Reg.width r
+  · let j : Fin (Reg.width r) := ⟨i, hi⟩
 
     have hbit :=
       RegEncoding.bit_eq_testBit_toNat
@@ -67,20 +67,20 @@ zero/freshness predicates.
               simpa [j] using hbit.symm
       _ = false := RegEncoding.bit_zero _
 
-  · have hwidth : regSize r ≤ i :=
+  · have hwidth : Reg.width r ≤ i :=
       Nat.le_of_not_gt hi
 
     have hlt :
         RegEncoding.toNat r
             (RegEncoding.zero (Basis := Basis))
-          < 2 ^ regSize r := by
+          < 2 ^ Reg.width r := by
       simpa [ASize] using
         (RegEncoding.toNat_lt_ASize
           (r := r)
           (b := RegEncoding.zero (Basis := Basis)))
 
     have hpow :
-        2 ^ regSize r ≤ 2 ^ i :=
+        2 ^ Reg.width r ≤ 2 ^ i :=
       Nat.pow_le_pow_right (by norm_num) hwidth
 
     exact

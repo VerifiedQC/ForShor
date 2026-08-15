@@ -183,10 +183,10 @@ def ModMulCircuitWorkspaceOK.step1Workspace
     (by
       dsimp [dataNoCarry]
       unfold ExtReg.CanGrow ExtReg.capacity
-      change 1 ≤ regSize (data.reserve.drop 1)
-      simp [Reg.drop, regSize, Reg.width]
-      change 1 ≤ regSize data.reserve - 1
-      have hdata2 : 2 ≤ regSize data.reserve := by
+      change 1 ≤ Reg.width (data.reserve.drop 1)
+      simp [Reg.drop, Reg.width]
+      change 1 ≤ Reg.width data.reserve - 1
+      have hdata2 : 2 ≤ Reg.width data.reserve := by
         simpa [ExtReg.CanGrow, ExtReg.capacity] using h.1
       omega)
     h.work_canGrow_one
@@ -256,7 +256,7 @@ noncomputable def step2
     (hworkspace : ModMulCircuitWorkspaceOK data work) :
     Gate :=
   let dataCarry : ExtReg := data.grow 1
-  let phi : ℝ := (2 * Real.pi * (N : ℝ)) / ((2 : ℝ) ^ (regSize work.active + regSize dataCarry.active))
+  let phi : ℝ := (2 * Real.pi * (N : ℝ)) / ((2 : ℝ) ^ (Reg.width work.active + Reg.width dataCarry.active))
 
   Gate.QFT hworkspace.step2Workspace.zExt ;;
   Gate.PhaseProdUsing
@@ -310,7 +310,7 @@ noncomputable def CmodMulInPlaceCore
 
 /-- Number of exponent/control bits used by modular exponentiation. -/
 def tbits (x : Reg) : ℕ :=
-  regSize x
+  Reg.width x
 
 /-- Ideal modular-exponentiation recursion over a list of control qubits. -/
 def modExpIdealSteps (qs : QSemantics) [RegEncoding qs.Basis] [Spec]
@@ -385,7 +385,7 @@ noncomputable def algorithm1ExtraBits (η : ℝ) : ℕ :=
 /--
 A sufficient precision condition for the work register.
 
-If `n = regSize data` and `m = regSize work`, this says
+If `n = Reg.width data` and `m = Reg.width work`, this says
 
   2^(m - n) ≥ (2 + 1 / (2η))^2,
 
@@ -396,8 +396,8 @@ def Algorithm1Precision
     (η : ℝ) (data work : Reg) : Prop :=
   0 < η ∧
   η < (1 / 2 : ℝ) ∧
-  regSize work =
-    regSize data + algorithm1ExtraBits η
+  Reg.width work =
+    Reg.width data + algorithm1ExtraBits η
 end Algorithm1PrecisionAndConstants
 
 /-! ---------------------------------------------------------
@@ -416,7 +416,7 @@ def ModExpLayout
     (data work : ExtReg)
     (flag : ℕ) :
     Prop :=
-  ∀ i : Fin (regSize x),
+  ∀ i : Fin (Reg.width x),
     ModMulCoreLayout data work flag (x.get i)
 
 /-- Every multiplier used by modular exponentiation is coprime to the modulus. -/
@@ -424,7 +424,7 @@ def ModExpArithmeticOK
     (a N : ℕ)
     (x : Reg) :
     Prop :=
-  ∀ i : Fin (regSize x),
+  ∀ i : Fin (Reg.width x),
     Nat.Coprime ((a ^ (2 ^ i.1)) % N) N
 
 /-- Approximate modular-exponentiation recursion over a list of controls, using valid Algorithm 1 cores. -/

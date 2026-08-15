@@ -172,18 +172,18 @@ theorem cPhaseProductGateCountBound_of_programOK
         ≤
       C *
         Real.rpow
-          (max (regSize x : ℝ) (regSize z : ℝ))
+          (max (Reg.width x : ℝ) (Reg.width z : ℝ))
           (phaseProductExponent k) := by
     simpa only [Nat.cast_max] using hb
   have hn1 :
-      1 ≤ max (regSize x) (regSize z) :=
+      1 ≤ max (Reg.width x) (Reg.width z) :=
     le_trans hn₀ hn
   have hsafe :
       phaseProductSafeRate
-          k (max (regSize x) (regSize z))
+          k (max (Reg.width x) (Reg.width z))
         =
       Real.rpow
-        (max (regSize x) (regSize z) : ℝ)
+        (max (Reg.width x) (Reg.width z) : ℝ)
         (phaseProductExponent k) := by
     simp [phaseProductSafeRate, max_eq_right hn1]
   rw [hsafe]
@@ -202,7 +202,7 @@ theorem cPhaseProductGateCountBound_of_programOK
       5 *
         (C *
           Real.rpow
-            (max (regSize x) (regSize z) : ℝ)
+            (max (Reg.width x) (Reg.width z) : ℝ)
             (phaseProductExponent k)) := by
     exact
       mul_le_mul_of_nonneg_left
@@ -212,7 +212,7 @@ theorem cPhaseProductGateCountBound_of_programOK
   _ =
       5 * C *
         Real.rpow
-          (max (regSize x) (regSize z) : ℝ)
+          (max (Reg.width x) (Reg.width z) : ℝ)
           (phaseProductExponent k) := by
     ring
 

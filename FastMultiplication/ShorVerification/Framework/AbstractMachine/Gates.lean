@@ -44,7 +44,7 @@ inductive Gate : Type
   | zeroDealloc : (r : ExtReg) → (n : ℕ) → Gate
   | signDealloc : (r : ExtReg) → (n : ℕ) → Gate
 
-def radixReverseIndex (r : Reg) (m : ℕ) (hm : m ≤ regSize r) (kL kH : ℕ) : ℕ :=
+def radixReverseIndex (r : Reg) (m : ℕ) (hm : m ≤ Reg.width r) (kL kH : ℕ) : ℕ :=
   let sp : SplitPoint r := ⟨m, hm⟩
   let right := splitRight r sp
   (ASize right) * kL + kH
@@ -64,9 +64,9 @@ theorem ExtReg.newBits_size
     (e : ExtReg)
     (n : ℕ)
     (hcap : e.CanGrow n) :
-    regSize (e.newBits n) = n := by
+    Reg.width (e.newBits n) = n := by
   simp [ExtReg.newBits, ExtReg.CanGrow,
-    ExtReg.capacity, regSize, Reg.width] at *
+    ExtReg.capacity, Reg.width] at *
   simp[Reg.take]
   omega
 

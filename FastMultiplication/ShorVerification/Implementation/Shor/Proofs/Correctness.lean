@@ -209,15 +209,15 @@ lemma norm_sq_sum_eq_sum_norm_sq_of_orthogonal
 /-- The measurement projectors decompose the state norm over all valid outcomes. -/
 lemma measProj_full_norm_sq_sum
     (r : Reg) (ψ : qs.State) :
-    (∑ o : Fin (2 ^ regSize r),
+    (∑ o : Fin (2 ^ Reg.width r),
       ‖MeasureClass.measProj (qs := qs) r o.1 ψ‖ ^ 2)
       =
     ‖ψ‖ ^ 2 := by
   classical
 
   have horth :
-      ∀ i ∈ (Finset.univ : Finset (Fin (2 ^ regSize r))),
-      ∀ j ∈ (Finset.univ : Finset (Fin (2 ^ regSize r))),
+      ∀ i ∈ (Finset.univ : Finset (Fin (2 ^ Reg.width r))),
+      ∀ j ∈ (Finset.univ : Finset (Fin (2 ^ Reg.width r))),
       i ≠ j →
       inner ℂ
         (MeasureClass.measProj (qs := qs) r i.1 ψ)
@@ -234,16 +234,16 @@ lemma measProj_full_norm_sq_sum
   have hsum :=
     norm_sq_sum_eq_sum_norm_sq_of_orthogonal
       (qs := qs)
-      (s := (Finset.univ : Finset (Fin (2 ^ regSize r))))
+      (s := (Finset.univ : Finset (Fin (2 ^ Reg.width r))))
       (f := fun o =>
         MeasureClass.measProj (qs := qs) r o.1 ψ)
       horth
 
   calc
-    (∑ o : Fin (2 ^ regSize r),
+    (∑ o : Fin (2 ^ Reg.width r),
       ‖MeasureClass.measProj (qs := qs) r o.1 ψ‖ ^ 2)
         =
-      ‖∑ o : Fin (2 ^ regSize r),
+      ‖∑ o : Fin (2 ^ Reg.width r),
         MeasureClass.measProj (qs := qs) r o.1 ψ‖ ^ 2 := by
           simpa using hsum.symm
     _ = ‖ψ‖ ^ 2 := by
@@ -258,7 +258,7 @@ lemma measProj_norm_sq_sum_le
       ≤ ‖ψ‖ ^ 2 := by
   classical
 
-  let n : ℕ := 2 ^ regSize r
+  let n : ℕ := 2 ^ Reg.width r
 
   have hcut :
       (∑ o ∈ s ∩ Finset.range n,
@@ -574,7 +574,7 @@ noncomputable def successProbAfterFinset
 lemma probMeas_outOfRange_of_born
     {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
     (r : Reg) (o : ℕ) (ψ : qs.State)
-    (ho : 2 ^ regSize r ≤ o) :
+    (ho : 2 ^ Reg.width r ≤ o) :
     MeasureClass.probMeas (qs := qs) r o ψ = 0 := by
   rw [MeasureClass.probMeas_born (qs := qs) r o ψ]
   rw [MeasureClass.measProj_zero_outOfRange (qs := qs) r o ψ ho]
@@ -614,7 +614,7 @@ lemma successProbAfterFinset_inter_range_eq [MeasureClass qs]
   [GateSemanticsCore qs]
   (r : Reg) (Good : Finset ℕ) (G : Gate) (ψ : qs.State) :
   successProbAfterFinset (qs := qs)
-      r (Good ∩ Finset.range (2 ^ regSize r)) G ψ
+      r (Good ∩ Finset.range (2 ^ Reg.width r)) G ψ
     =
   successProbAfterFinset (qs := qs) r Good G ψ := by
   classical
@@ -625,11 +625,11 @@ lemma successProbAfterFinset_inter_range_eq [MeasureClass qs]
     exact (Finset.mem_inter.mp ho).1
 
   · intro o hoGood hoNotInter
-    have hoNotRange : o ∉ Finset.range (2 ^ regSize r) := by
+    have hoNotRange : o ∉ Finset.range (2 ^ Reg.width r) := by
       intro hoRange
       exact hoNotInter (Finset.mem_inter.mpr ⟨hoGood, hoRange⟩)
 
-    have hoGe : 2 ^ regSize r ≤ o := by
+    have hoGe : 2 ^ Reg.width r ≤ o := by
       apply Nat.le_of_not_gt
       intro hoLt
       exact hoNotRange (Finset.mem_range.mpr hoLt)
@@ -821,13 +821,13 @@ theorem Shor_correct
 omit [ContinuedFractionPost] [Spec] in
 lemma initY1_eq_X_lowQubit
     (r : Reg)
-    (hr : 0 < regSize r) :
+    (hr : 0 < Reg.width r) :
     initY1 r = Gate.X (r.lowQubit hr) := by
   cases r with
   | mk qubits nodup =>
       cases qubits with
       | nil =>
-          simp [regSize, Reg.width] at hr
+          simp [Reg.width] at hr
       | cons q qubits =>
           simp [initY1, Reg.lowQubit]
 
@@ -850,8 +850,8 @@ lemma ShorApproxSetup.prepared_state_valid
     {flag : ℕ}
     {b0 : qs.Basis}
     (ha : 0 < a ∧ a < N)
-    (hxpos : 0 < regSize x.active)
-    (hn : regSize y.active = Nat.log2 (2 * N))
+    (hxpos : 0 < Reg.width x.active)
+    (hn : Reg.width y.active = Nat.log2 (2 * N))
     (hsetup : ShorApproxSetup qs η x y work flag b0) :
     qs.eval (initY1 y.active)
         (qs.eval (H_reg x.active) (qs.ket b0))
@@ -863,7 +863,7 @@ lemma ShorApproxSetup.prepared_state_valid
   have hN : 1 < N := by
     omega
 
-  have hypos : 0 < regSize y.active := by
+  have hypos : 0 < Reg.width y.active := by
     have harg_ne : 2 * N ≠ 0 := by omega
     have hle_log : 1 ≤ Nat.log2 (2 * N) := by
       rw [Nat.le_log2 harg_ne]
@@ -873,7 +873,7 @@ lemma ShorApproxSetup.prepared_state_valid
     omega
 
   have hy_one_lt : 1 < ASize y.active := by
-    have : regSize y.active ≠ 0 := Nat.ne_of_gt hypos
+    have : Reg.width y.active ≠ 0 := Nat.ne_of_gt hypos
     simpa [ASize] using this
 
   have hcore0 : ModMulCoreLayout y work flag (x.active.get ⟨0, hxpos⟩) :=
@@ -898,8 +898,8 @@ lemma ShorApproxSetup.prepared_state_valid
     rw [List.disjoint_left]
     intro q hqw hqx
     rcases List.get_of_mem hqx with ⟨j, hj⟩
-    let i : Fin (regSize x.active) :=
-      ⟨j.1, by simp [regSize, Reg.width]⟩
+    let i : Fin (Reg.width x.active) :=
+      ⟨j.1, by simp [Reg.width]⟩
     have hget : x.active.get i = q := by
       dsimp [i, Reg.get]
       simpa [Reg.width] using hj
@@ -926,8 +926,8 @@ lemma ShorApproxSetup.prepared_state_valid
       simpa [qubitReg, Reg.singleton] using hqFlag
     subst q
     rcases List.get_of_mem hqx with ⟨j, hj⟩
-    let i : Fin (regSize x.active) :=
-      ⟨j.1, by simp [regSize, Reg.width]⟩
+    let i : Fin (Reg.width x.active) :=
+      ⟨j.1, by simp [Reg.width]⟩
     have hget : x.active.get i = flag := by
       dsimp [i, Reg.get]
       simpa [Reg.width] using hj
@@ -1138,7 +1138,7 @@ def ShorApproxSetup.toModExpConfig
     {b0 : qs.Basis}
     (ha : 0 < a ∧ a < N)
     (hgcd : Nat.gcd a N = 1)
-    (hn : regSize y.active = Nat.log2 (2 * N))
+    (hn : Reg.width y.active = Nat.log2 (2 * N))
     (hsetup : ShorApproxSetup qs η x y work flag b0) :
     ModExpConfig η := by
   have hN : 1 < N := by
@@ -1206,15 +1206,15 @@ theorem Shor_correct_approx_uniform
   let y := inst.y
   have ha : 0 < a ∧ a < N := inst.range
   have hgcd : Nat.gcd a N = 1 := inst.coprime
-  have hm : regSize x.active = Nat.log2 (2 * N^2) := inst.x_width
-  have hn : regSize y.active = Nat.log2 (2 * N) := inst.y_width
+  have hm : Reg.width x.active = Nat.log2 (2 * N^2) := inst.x_width
+  have hn : Reg.width y.active = Nat.log2 (2 * N) := inst.y_width
 
   let cfg : ModExpConfig η := ShorApproxSetup.toModExpConfig ha hgcd hn hsetup
 
   let ψpre : qs.State :=
     qs.eval (initY1 y.active) (qs.eval (H_reg x.active) (qs.ket b0))
 
-  have hxpos : 0 < regSize x.active := by
+  have hxpos : 0 < Reg.width x.active := by
     have harg_ne : 2 * N ^ 2 ≠ 0 := by
       have hNpos : 0 < N := by
         omega

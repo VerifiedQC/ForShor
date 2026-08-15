@@ -279,7 +279,7 @@ def ptsToFin (k : ℕ) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) 
   fun i => pts.get ⟨i.val, by have hi : i.val < q k := i.is_lt; simp [hpts]⟩
 
 /-- Radix used for chunked phase decomposition. -/
-def phaseRadix (x : Reg) (k : ℕ) : ℚ := (2 : ℚ) ^ (regSize x / k)
+def phaseRadix (x : Reg) (k : ℕ) : ℚ := (2 : ℚ) ^ (Reg.width x / k)
 
 /-- Radix determined directly by an operand width. -/
 def phaseRadixWidth (w k : ℕ) : ℚ := (2 : ℚ) ^ (w / k)
@@ -752,12 +752,12 @@ lemma phaseLimbWidth_valid_right
 lemma regSize_drop_take_of_add_le
     (r : Reg)
     (start len : ℕ)
-    (h : start + len ≤ regSize r) :
-    regSize ((r.drop start).take len) = len := by
+    (h : start + len ≤ Reg.width r) :
+    Reg.width ((r.drop start).take len) = len := by
   change ((r.qubits.drop start).take len).length = len
   rw [List.length_take, List.length_drop]
   apply Nat.min_eq_left
-  unfold regSize Reg.width at h
+  unfold Reg.width at h
   omega
 
 lemma phaseChunkActive_width
@@ -765,7 +765,7 @@ lemma phaseChunkActive_width
     (k W : ℕ)
     (i : Fin k)
     (hvalid : ValidPhaseSplit e k W) :
-    regSize (phaseChunkActive e k W i) =
+    Reg.width (phaseChunkActive e k W i) =
       phaseSplitLogicalWidth e.width W k i := by
   obtain ⟨_hk, hbound, _htopNonempty⟩ := hvalid
   unfold phaseChunkActive
@@ -781,7 +781,7 @@ lemma phaseChunkActive_width
       calc
         i.1 * W + (e.width - i.1 * W) = e.width :=
           Nat.add_sub_of_le hstart
-        _ = regSize e.active := rfl
+        _ = Reg.width e.active := rfl
   · have hi : i.1 + 1 ≤ k - 1 := by
       unfold isTopChunk at htop
       have hle : i.1 + 1 ≤ k :=
@@ -994,7 +994,7 @@ theorem ReserveBudget.flatten_childReserve
   simp only [ReserveBudget.childReserve, ReserveBudget.offset, Reg.take, Reg.drop]
   rw [flatten_consecutive_slices]
   rw [budget.total]
-  simp [ExtReg.capacity, regSize, Reg.width]
+  simp [ExtReg.capacity, Reg.width]
 
 private theorem phaseChunkActive_sublist
     (parent : ExtReg)
@@ -1731,7 +1731,7 @@ theorem required_le_childReserve_size
         ≤ parent.capacity)
     (i : Fin k) :
     required i ≤
-      regSize ((ofRequirements hk required hfit).childReserve i) := by
+      Reg.width ((ofRequirements hk required hfit).childReserve i) := by
   set budget := ofRequirements hk required hfit with hbudget
   -- `budget.size i` is exactly the slack-filled requirement, ≥ `required i`.
   have h1 : required i ≤ budget.size i := by
@@ -1749,9 +1749,9 @@ theorem required_le_childReserve_size
     have htot : (List.ofFn budget.size).sum = parent.capacity := budget.total
     omega
   -- Hence the physical `take` does not truncate: the slice has size `size i`.
-  have h2 : regSize (budget.childReserve i) = budget.size i := by
+  have h2 : Reg.width (budget.childReserve i) = budget.size i := by
     have hcap : parent.reserve.qubits.length = parent.capacity := rfl
-    simp only [regSize, Reg.width, ReserveBudget.childReserve, Reg.take,
+    simp only [Reg.width, ReserveBudget.childReserve, Reg.take,
       Reg.drop, List.length_take, List.length_drop]
     omega
   rw [h2]; exact h1
@@ -1815,11 +1815,11 @@ noncomputable def canonicalSignedStep
   have hwmX :
       (RecursivePhaseWorkspace.widthModelX x.width).width = x.width := by
     simp [RecursivePhaseWorkspace.widthModelX, ExtReg.width, ExtReg.ofReg,
-      regSize, Reg.width, Reg.interval]
+      Reg.width, Reg.interval]
   have hwmZ :
       (RecursivePhaseWorkspace.widthModelZ x.width z.width).width = z.width := by
     simp [RecursivePhaseWorkspace.widthModelZ, ExtReg.width, ExtReg.ofReg,
-      regSize, Reg.width, Reg.interval]
+      Reg.width, Reg.interval]
   -- Consequently every width-only quantity matches the concrete operands.
   have hlimb :
       phaseLimbWidth

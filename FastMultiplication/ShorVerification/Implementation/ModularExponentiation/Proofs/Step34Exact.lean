@@ -267,8 +267,8 @@ lemma alg1_step34_reference_exact_core
           alg1OutputValue_lt_data_capacity cfg b hb_good
 
       have hwidth :
-          regSize xext =
-            regSize cfg.env.data.active + 1 := by
+          Reg.width xext =
+            Reg.width cfg.env.data.active + 1 := by
         dsimp [xext]
         simpa [ExtReg.width] using
           ExtReg.width_grow
@@ -422,7 +422,7 @@ lemma alg1_step34_reference_exact_core
         cmp,
         flagReg,
         ASize,
-        regSize,
+        Reg.width,
         qubitReg,
         Reg.singleton,
         Reg.width

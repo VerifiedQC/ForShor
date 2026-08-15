@@ -26,7 +26,7 @@ class MeasureClass (qs : QSemantics) [RegEncoding qs.Basis] where
   /-- No outcomes beyond the register's computational-basis range. -/
   measProj_zero_outOfRange :
     ∀ r o ψ,
-      2 ^ regSize r ≤ o →
+      2 ^ Reg.width r ≤ o →
       measProj r o ψ = 0
 
   /-- Each measurement effect is a self-adjoint projector. -/
@@ -44,7 +44,7 @@ class MeasureClass (qs : QSemantics) [RegEncoding qs.Basis] where
   /-- The projectors sum to identity over valid outcomes. -/
   measProj_complete :
     ∀ r ψ,
-      (∑ o : Fin (2 ^ regSize r), measProj r o.1 ψ) = ψ
+      (∑ o : Fin (2 ^ Reg.width r), measProj r o.1 ψ) = ψ
 
 
 namespace MeasureClass
@@ -68,11 +68,11 @@ theorem measProj_idempotent
         (MeasureClass.measProj r o ψ) =
       MeasureClass.measProj r o ψ := by
   classical
-  by_cases ho : o < 2 ^ regSize r
-  · let i : Fin (2 ^ regSize r) := ⟨o, ho⟩
+  by_cases ho : o < 2 ^ Reg.width r
+  · let i : Fin (2 ^ Reg.width r) := ⟨o, ho⟩
 
     have hsum :
-        (∑ j : Fin (2 ^ regSize r),
+        (∑ j : Fin (2 ^ Reg.width r),
           MeasureClass.measProj r j.1
             (MeasureClass.measProj r o ψ)) =
         MeasureClass.measProj r i.1
@@ -92,7 +92,7 @@ theorem measProj_idempotent
 
     simpa [i] using hsum.symm.trans hcomplete
 
-  · have ho' : 2 ^ regSize r ≤ o :=
+  · have ho' : 2 ^ Reg.width r ≤ o :=
       Nat.le_of_not_gt ho
 
     calc

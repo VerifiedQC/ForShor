@@ -544,7 +544,7 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
         ψ) := by
   dsimp only
 
-  by_cases hzero : regSize data = 0
+  by_cases hzero : Reg.width data = 0
   ·
     have hready :
         QFTLoweringReady
@@ -577,7 +577,7 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
           hstatic.data_z_disjoint
           hclean
 
-  · by_cases hone : regSize data = 1
+  · by_cases hone : Reg.width data = 1
     ·
       have hready :
           QFTLoweringReady
@@ -615,7 +615,7 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
             hclean
 
     ·
-      have hlarge : 2 ≤ regSize data := by
+      have hlarge : 2 ≤ Reg.width data := by
         omega
 
       let ws :
@@ -653,7 +653,7 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
           k
           hk
           ops
-          (qftPhi (regSize data))
+          (qftPhi (Reg.width data))
           ws
           rfl
           rfl
@@ -688,7 +688,7 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
                 k
                 hk
                 ops
-                (qftPhi (regSize data))
+                (qftPhi (Reg.width data))
                 ws
                 hphaseStatic))
             (LowerGateClass.evalL
@@ -738,7 +738,7 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
             qs
             (standardPhaseProdUsingPlan
               k hk ops
-              (qftPhi (regSize data))
+              (qftPhi (Reg.width data))
               ws
               hphaseStatic)
             (LowerGateClass.evalL
@@ -765,7 +765,7 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
               (lowerGateRec
                 (standardPhaseProdUsingPlan
                   k hk ops
-                  (qftPhi (regSize data))
+                  (qftPhi (Reg.width data))
                   ws
                   hphaseStatic))
               (LowerGateClass.evalL
@@ -810,15 +810,15 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
             hstatic.data_z_disjoint
             hclean
 
-termination_by regSize data
+termination_by Reg.width data
 decreasing_by
   ·
     have hhalfPos :
-        0 < regSize data / 2 := by
+        0 < Reg.width data / 2 := by
       exact Nat.div_pos (by omega) (by decide)
     have hright :
-        regSize data - regSize data / 2 <
-          regSize data :=
+        Reg.width data - Reg.width data / 2 <
+          Reg.width data :=
       Nat.sub_lt (by omega) hhalfPos
     simpa [
       rightReg,
@@ -827,8 +827,8 @@ decreasing_by
     ] using hright
   ·
     have hleft :
-        regSize data / 2 <
-          regSize data :=
+        Reg.width data / 2 <
+          Reg.width data :=
       Nat.div_lt_self (by omega) (by decide)
     simpa [
       leftReg,

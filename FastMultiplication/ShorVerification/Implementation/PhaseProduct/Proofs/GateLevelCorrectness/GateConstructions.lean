@@ -21,8 +21,8 @@ structure PhaseProdWorkspace (x z : Reg) where
   xReserve : Reg
   zReserve : Reg
 
-  x_can_grow : 1 ≤ regSize xReserve
-  z_can_grow : 1 ≤ regSize zReserve
+  x_can_grow : 1 ≤ Reg.width xReserve
+  z_can_grow : 1 ≤ Reg.width zReserve
 
   xz_disjoint : Disjoint x z
   x_reserve_disjoint : Disjoint x xReserve

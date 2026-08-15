@@ -2357,7 +2357,7 @@ lemma lowerGate_PhaseProdUsing_gateCount_eq_signed
 lemma width_phaseProdUsing_x
     {x z : Reg}
     (ws : Gate.PhaseProdWorkspace x z) :
-    ExtReg.width (ws.xExt.grow 1) = regSize x + 1 := by
+    ExtReg.width (ws.xExt.grow 1) = Reg.width x + 1 := by
   simpa [Gate.PhaseProdWorkspace.xExt, ExtReg.width] using
     ExtReg.width_grow ws.xExt 1 ws.xExt_canGrow
 
@@ -2366,7 +2366,7 @@ lemma width_phaseProdUsing_x
 lemma width_phaseProdUsing_z
     {x z : Reg}
     (ws : Gate.PhaseProdWorkspace x z) :
-    ExtReg.width (ws.zExt.grow 1) = regSize z + 1 := by
+    ExtReg.width (ws.zExt.grow 1) = Reg.width z + 1 := by
   simpa [Gate.PhaseProdWorkspace.zExt, ExtReg.width] using
     ExtReg.width_grow ws.zExt 1 ws.zExt_canGrow
 
@@ -2378,18 +2378,18 @@ lemma phaseInputSize_phaseProdUsing
     (ws : Gate.PhaseProdWorkspace x z) :
     phaseInputSize (ws.xExt.grow 1) (ws.zExt.grow 1)
       =
-    max (regSize x) (regSize z) + 1 := by
+    max (Reg.width x) (Reg.width z) + 1 := by
   simp only [
     phaseInputSize,
     width_phaseProdUsing_x,
     width_phaseProdUsing_z
   ]
-  by_cases h : regSize x ≤ regSize z
+  by_cases h : Reg.width x ≤ Reg.width z
   · rw [
       max_eq_right h,
       max_eq_right (Nat.add_le_add_right h 1)
     ]
-  · have h' : regSize z ≤ regSize x :=
+  · have h' : Reg.width z ≤ Reg.width x :=
       Nat.le_of_lt (Nat.lt_of_not_ge h)
     rw [
       max_eq_left h',
@@ -2551,7 +2551,7 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
           SignedRecursiveWorkspaceOK ops
             (ws.xExt.grow 1)
             (ws.zExt.grow 1)),
-        let n := max (regSize x) (regSize z)
+        let n := max (Reg.width x) (Reg.width z)
         nextSignedWidth (ws.xExt.grow 1) (ws.zExt.grow 1) ops
           < phaseInputSize (ws.xExt.grow 1) (ws.zExt.grow 1) →
         nᵣ ≤ n →
@@ -2598,7 +2598,7 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
 
   let ux : ExtReg := ws.xExt.grow 1
   let uz : ExtReg := ws.zExt.grow 1
-  let n : ℕ := max (regSize x) (regSize z)
+  let n : ℕ := max (Reg.width x) (Reg.width z)
   let W : ℕ := nextSignedWidth ux uz ops
 
   have hn' : 1 ≤ n := by
@@ -2812,7 +2812,7 @@ lemma signedPhaseProductGateCount_unsignedView_no_recurse_case_bound
           SignedRecursiveWorkspaceOK ops
             (ws.xExt.grow 1)
             (ws.zExt.grow 1)),
-        let n := max (regSize x) (regSize z)
+        let n := max (Reg.width x) (Reg.width z)
         ¬ nextSignedWidth (ws.xExt.grow 1) (ws.zExt.grow 1) ops
           < phaseInputSize (ws.xExt.grow 1) (ws.zExt.grow 1) →
         nₙ ≤ n →
@@ -2830,7 +2830,7 @@ lemma signedPhaseProductGateCount_unsignedView_no_recurse_case_bound
 
   let ux : ExtReg := ws.xExt.grow 1
   let uz : ExtReg := ws.zExt.grow 1
-  let n : ℕ := max (regSize x) (regSize z)
+  let n : ℕ := max (Reg.width x) (Reg.width z)
 
   have hn' : 1 ≤ n := by
     simpa [n] using hn
@@ -2840,75 +2840,75 @@ lemma signedPhaseProductGateCount_unsignedView_no_recurse_case_bound
     simpa [ux, uz] using hno
 
   have hsmall :
-      min (regSize x + 1) (regSize z + 1) ≤ d := by
+      min (Reg.width x + 1) (Reg.width z + 1) ≤ d := by
     simpa [ux, uz] using hd ux uz hno'
 
   have hprod :
-      (regSize x + 1) * (regSize z + 1)
+      (Reg.width x + 1) * (Reg.width z + 1)
         ≤
       2 * d * n := by
-    by_cases hxz : regSize x ≤ regSize z
-    · have hnEq : n = regSize z := by
+    by_cases hxz : Reg.width x ≤ Reg.width z
+    · have hnEq : n = Reg.width z := by
         simp [n, max_eq_right hxz]
 
       have hxz' :
-          regSize x + 1 ≤ regSize z + 1 :=
+          Reg.width x + 1 ≤ Reg.width z + 1 :=
         Nat.add_le_add_right hxz 1
 
       have hxsmall :
-          regSize x + 1 ≤ d := by
+          Reg.width x + 1 ≤ d := by
         simpa [min_eq_left hxz'] using hsmall
 
-      have hzpos : 1 ≤ regSize z := by
+      have hzpos : 1 ≤ Reg.width z := by
         simpa [hnEq] using hn'
 
       have hzdouble :
-          regSize z + 1 ≤ 2 * regSize z := by
+          Reg.width z + 1 ≤ 2 * Reg.width z := by
         omega
 
       calc
-        (regSize x + 1) * (regSize z + 1)
+        (Reg.width x + 1) * (Reg.width z + 1)
             ≤
-          d * (regSize z + 1) :=
+          d * (Reg.width z + 1) :=
           Nat.mul_le_mul hxsmall (le_refl _)
         _ ≤
-          d * (2 * regSize z) :=
+          d * (2 * Reg.width z) :=
           Nat.mul_le_mul_left d hzdouble
         _ = 2 * d * n := by
           rw [hnEq]
           ring
 
-    · have hzx : regSize z ≤ regSize x :=
+    · have hzx : Reg.width z ≤ Reg.width x :=
         Nat.le_of_lt (Nat.lt_of_not_ge hxz)
 
-      have hnEq : n = regSize x := by
+      have hnEq : n = Reg.width x := by
         simp [n, max_eq_left hzx]
 
       have hzx' :
-          regSize z + 1 ≤ regSize x + 1 :=
+          Reg.width z + 1 ≤ Reg.width x + 1 :=
         Nat.add_le_add_right hzx 1
 
       have hzsmall :
-          regSize z + 1 ≤ d := by
+          Reg.width z + 1 ≤ d := by
         simpa [min_eq_right hzx'] using hsmall
 
-      have hxpos : 1 ≤ regSize x := by
+      have hxpos : 1 ≤ Reg.width x := by
         simpa [hnEq] using hn'
 
       have hxdouble :
-          regSize x + 1 ≤ 2 * regSize x := by
+          Reg.width x + 1 ≤ 2 * Reg.width x := by
         omega
 
       calc
-        (regSize x + 1) * (regSize z + 1)
+        (Reg.width x + 1) * (Reg.width z + 1)
             =
-          (regSize z + 1) * (regSize x + 1) := by
+          (Reg.width z + 1) * (Reg.width x + 1) := by
           ac_rfl
         _ ≤
-          d * (regSize x + 1) :=
+          d * (Reg.width x + 1) :=
           Nat.mul_le_mul hzsmall (le_refl _)
         _ ≤
-          d * (2 * regSize x) :=
+          d * (2 * Reg.width x) :=
           Nat.mul_le_mul_left d hxdouble
         _ = 2 * d * n := by
           rw [hnEq]
@@ -2918,7 +2918,7 @@ lemma signedPhaseProductGateCount_unsignedView_no_recurse_case_bound
       signedPhaseProductGateCount
           (Basis := Basis) k hk ops φ ux uz hworkspace
         =
-      (regSize x + 1) * (regSize z + 1) := by
+      (Reg.width x + 1) * (Reg.width z + 1) := by
     calc
       signedPhaseProductGateCount
           (Basis := Basis) k hk ops φ ux uz hworkspace
@@ -2928,7 +2928,7 @@ lemma signedPhaseProductGateCount_unsignedView_no_recurse_case_bound
           (Basis := Basis)
           k hk ops φ ux uz hworkspace hno'
       _ =
-        (regSize x + 1) * (regSize z + 1) := by
+        (Reg.width x + 1) * (Reg.width z + 1) := by
         simp only [ux, uz, width_phaseProdUsing_x, width_phaseProdUsing_z]
 
   have hlinear :
@@ -3039,7 +3039,7 @@ lemma phaseProductGateCountBound_of_balanced_signed_bound
           (ws.zExt.grow 1) :=
       phaseProdUsing_signedWorkspace
         ops φ x z ws hworkspace
-    let n := max (regSize x) (regSize z)
+    let n := max (Reg.width x) (Reg.width z)
     have hnᵣ_le : nᵣ ≤ n := by
       exact le_trans (Nat.le_max_left nᵣ nₙ) hnLarge
     have hnₙ_le : nₙ ≤ n := by

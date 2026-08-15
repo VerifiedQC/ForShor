@@ -31,8 +31,8 @@ Important register definitions:
 
 - `Reg.qubits` stores the physical qubit list.
 - `Reg.nodup` proves the list has no duplicate qubits.
-- `Reg.width` and `regSize` are the logical width of a register.
-- `ASize r` is `2 ^ regSize r`, the number of basis values representable by `r`.
+- `Reg.width` is the logical width of a register.
+- `ASize r` is `2 ^ r.width`, the number of basis values representable by `r`.
 - `Reg.get r i` returns the physical qubit used for logical bit `i`.
 - `Reg.singleton`, `Reg.empty`, and `Reg.interval` build common registers.
 - `Reg.take` and `Reg.drop` split a register by logical position.

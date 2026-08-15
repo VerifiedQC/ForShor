@@ -18,7 +18,7 @@ noncomputable def phaseProductSafeRate (k n : ℕ) : ℝ := Real.rpow (((max 1 n
 
 /-- The public unsigned PhaseProduct input size: the larger of the two source
 register widths. -/
-def phaseProductInputSize (x z : Reg) : ℕ := max (regSize x) (regSize z)
+def phaseProductInputSize (x z : Reg) : ℕ := max (Reg.width x) (Reg.width z)
 
 /-- Final unsigned PhaseProduct asymptotic statement for a fixed `k` and source
 program `ops`: above some threshold, the lowered gate count is bounded by
@@ -27,7 +27,7 @@ def PhaseProductGateCountBound {Basis : Type u} [RegEncoding Basis] (k : ℕ) (h
   ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
     ∀ (φ : ℝ) (x z : Reg) (ws : Gate.PhaseProdWorkspace x z)
       (hworkspace : GateWorkspaceOK ops (Gate.PhaseProdUsing φ x z ws)),
-      let n := max (regSize x) (regSize z)
+      let n := max (Reg.width x) (Reg.width z)
       n₀ ≤ n →
       (LowGate.gateCount shorGateCostModel
           (lowerGate (Basis := Basis) k hk ops (Gate.PhaseProdUsing φ x z ws) hworkspace) : ℝ)
@@ -161,7 +161,7 @@ def CPhaseProductGateCountBound {Basis : Type u} [RegEncoding Basis] (k : ℕ) (
   ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
     ∀ (ctrl : ℕ) (φ : ℝ) (x z : Reg) (ws : Gate.PhaseProdWorkspace x z)
       (hworkspace : GateWorkspaceOK ops (Gate.CPhaseProdUsing ctrl φ x z ws)),
-      let n := max (regSize x) (regSize z)
+      let n := max (Reg.width x) (Reg.width z)
       n₀ ≤ n →
       (LowGate.gateCount shorGateCostModel
           (lowerGate (Basis := Basis) k hk ops (Gate.CPhaseProdUsing ctrl φ x z ws) hworkspace) : ℝ)
@@ -210,10 +210,10 @@ noncomputable def qftSplitPhaseGateCount
     {Basis : Type u} [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : Reg)
     (ws : Gate.PhaseProdWorkspace (qftLeftReg r) (qftRightReg r))
-    (hworkspace : GateWorkspaceOK ops (Gate.PhaseProdUsing (qftPhi (regSize r)) (qftLeftReg r) (qftRightReg r) ws)) : ℕ :=
+    (hworkspace : GateWorkspaceOK ops (Gate.PhaseProdUsing (qftPhi (Reg.width r)) (qftLeftReg r) (qftRightReg r) ws)) : ℕ :=
   LowGate.gateCount shorGateCostModel
     (lowerGate (Basis := Basis) k hk ops
-      (Gate.PhaseProdUsing (qftPhi (regSize r)) (qftLeftReg r) (qftRightReg r) ws) hworkspace)
+      (Gate.PhaseProdUsing (qftPhi (Reg.width r)) (qftLeftReg r) (qftRightReg r) ws) hworkspace)
 
 /-- Gate count of the final radix reversal at one exact-QFT recursion node. -/
 def qftSplitRadixGateCount (r : Reg) : ℕ :=

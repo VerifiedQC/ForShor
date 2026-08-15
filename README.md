@@ -33,9 +33,9 @@ def ShorGateCountBound (qs : QSemantics) (ε δ : ℝ) (k : ℕ) (hk : 1 < k) (o
   ∃ C : ℝ, 0 < C ∧
   ∃ n₀ : ℕ, 1 ≤ n₀ ∧
     ∀ (inst : ShorOrderFindingInstance) (work : Reg) (flag : ℕ) (b0 : qs.Basis),
-      let n := regSize inst.y
+      let n := Reg.width inst.y
       n₀ ≤ n →
-      ShorApproxSetup qs (shorEta δ (regSize inst.y)) inst.a inst.N inst.x inst.y work flag b0 →
+      ShorApproxSetup qs (shorEta δ (Reg.width inst.y)) inst.a inst.N inst.x inst.y work flag b0 →
       (shorOrderFindingGateCount qs k hk ops inst.a inst.N inst.x inst.y work flag : ℝ)
         ≤ C * shorGateRate ε n
 ```

@@ -64,8 +64,8 @@ def ShorEndToEndFactoring
     (x y : ExtReg)
     (b0 : qs.Basis)
     (hinput : IdealOrderFindingInput qs x y b0)
-    (hm : regSize x.active = Nat.log2 (2 * fact.N^2))
-    (hn : regSize y.active = Nat.log2 (2 * fact.N)) : Prop :=
+    (hm : Reg.width x.active = Nat.log2 (2 * fact.N^2))
+    (hn : Reg.width y.active = Nat.log2 (2 * fact.N)) : Prop :=
   (2 * (successful_choices fact.N).card ≥ (valid_choices fact.N).card)
   ∧
   (∀ a ∈ successful_choices fact.N, ∃ (hgcd : Nat.gcd a fact.N = 1),

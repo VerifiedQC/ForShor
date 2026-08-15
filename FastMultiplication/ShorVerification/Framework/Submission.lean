@@ -69,9 +69,9 @@ structure ShorOrderFindingInstance where
   /-- The sampled base is coprime to the modulus. -/
   coprime : Nat.gcd a N = 1
   /-- The exponent register has the standard Shor width. -/
-  x_width : regSize x.active = Nat.log2 (2 * N^2)
+  x_width : Reg.width x.active = Nat.log2 (2 * N^2)
   /-- The data register has enough room for residues modulo `N`. -/
-  y_width : regSize y.active = Nat.log2 (2 * N)
+  y_width : Reg.width y.active = Nat.log2 (2 * N)
   /-- The public exponent and data registers occupy distinct qubits. -/
   xy_disjoint : Disjoint x.active y.active
 

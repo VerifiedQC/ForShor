@@ -16,12 +16,12 @@ open QSemantics
 /-- A one-qubit register is the singleton register at its low qubit. -/
 theorem Reg.eq_qubitReg_lowQubit
     (r : Reg)
-    (hsize : regSize r = 1) :
+    (hsize : Reg.width r = 1) :
     r = qubitReg (r.lowQubit (by omega)) := by
   cases r with
   | mk qubits nodup =>
       have hlen : qubits.length = 1 := by
-        simpa [regSize, Reg.width] using hsize
+        simpa [Reg.width] using hsize
       cases qubits with
       | nil =>
           simp at hlen
@@ -80,11 +80,11 @@ theorem bit_lowQubit_eq_false_of_toNat_zero
     {Basis : Type u} [RegEncoding Basis]
     (r : Reg)
     (b : Basis)
-    (hpos : 0 < regSize r)
+    (hpos : 0 < Reg.width r)
     (hzero : RegEncoding.toNat r b = 0) :
     RegEncoding.bit (r.lowQubit hpos) b = false := by
 
-  let i : Fin (regSize r) := ⟨0, hpos⟩
+  let i : Fin (Reg.width r) := ⟨0, hpos⟩
 
   have h :=
     RegEncoding.bit_eq_testBit_toNat r b i
@@ -149,7 +149,7 @@ theorem eval_Hreg_zero_uniform
 
   have hP :
       ∀ n (r : Reg) (b : qs.Basis),
-        regSize r = n →
+        Reg.width r = n →
         RegEncoding.toNat r b = 0 →
         qs.eval
             ((regQubits r).foldl
@@ -170,7 +170,7 @@ theorem eval_Hreg_zero_uniform
         have hqubits : regQubits r = [] := by
           change r.qubits = []
           have hlen : r.qubits.length = 0 := by
-            simpa [regSize, Reg.width] using hn
+            simpa [Reg.width] using hn
           simpa using hlen
 
         have hA : ASize r = 1 := by
@@ -204,11 +204,11 @@ theorem eval_Hreg_zero_uniform
           splitRight r sp
 
         have hleftSize :
-            regSize left = n := by
+            Reg.width left = n := by
           simp [left, sp]
 
         have hrightSize :
-            regSize right = 1 := by
+            Reg.width right = 1 := by
           simp [right, sp, hn]
 
         have hdisj :
@@ -231,7 +231,7 @@ theorem eval_Hreg_zero_uniform
         ------------------------------------------------------------
 
         have hrightPos :
-            0 < regSize right := by
+            0 < Reg.width right := by
           omega
 
         let q : ℕ :=
@@ -528,7 +528,7 @@ theorem eval_Hreg_zero_uniform
 
   exact
     hP
-      (regSize r)
+      (Reg.width r)
       r b
       rfl hzero
 
@@ -1022,7 +1022,7 @@ private theorem bit_writeNat_qubitReg
         (RegEncoding.writeNat (qubitReg q) v b)
       =
     Nat.testBit v 0 := by
-  let i : Fin (regSize (qubitReg q)) := ⟨0, by simp⟩
+  let i : Fin (Reg.width (qubitReg q)) := ⟨0, by simp⟩
 
   have hbit :=
     RegEncoding.bit_eq_testBit_toNat
@@ -1059,8 +1059,8 @@ private theorem bit_of_toNat_zero_of_mem
     RegEncoding.bit q b = false := by
   rcases List.get_of_mem hq with ⟨j, hj⟩
 
-  let i : Fin (regSize r) :=
-    ⟨j.1, by simp [regSize, Reg.width]⟩
+  let i : Fin (Reg.width r) :=
+    ⟨j.1, by simp [Reg.width]⟩
 
   have hget : r.get i = q := by
     dsimp [i, Reg.get]
@@ -1077,7 +1077,7 @@ private theorem bit_writeNat_reg_one_of_mem
     [RegEncoding Basis]
     (r : Reg)
     (b : Basis)
-    (hpos : 0 < regSize r)
+    (hpos : 0 < Reg.width r)
     {q : ℕ}
     (hq : q ∈ r.qubits) :
     RegEncoding.bit q (RegEncoding.writeNat r 1 b)
@@ -1085,8 +1085,8 @@ private theorem bit_writeNat_reg_one_of_mem
     if q = r.lowQubit hpos then true else false := by
   rcases List.get_of_mem hq with ⟨j, hj⟩
 
-  let i : Fin (regSize r) :=
-    ⟨j.1, by simp [regSize, Reg.width]⟩
+  let i : Fin (Reg.width r) :=
+    ⟨j.1, by simp [Reg.width]⟩
 
   have hget : r.get i = q := by
     dsimp [i, Reg.get]
@@ -1112,12 +1112,12 @@ private theorem bit_writeNat_reg_one_of_mem
   · rw [if_pos hq_low]
 
     have hj_eq :
-        j = ⟨0, by simpa [regSize, Reg.width] using hpos⟩ := by
+        j = ⟨0, by simpa [Reg.width] using hpos⟩ := by
       apply (r.nodup.get_inj_iff).mp
       change
         r.qubits.get j =
           r.qubits.get
-            ⟨0, by simpa [regSize, Reg.width] using hpos⟩
+            ⟨0, by simpa [Reg.width] using hpos⟩
       simpa [Reg.lowQubit] using hj.trans hq_low
 
     have hi0 : i.1 = 0 := by
@@ -1153,7 +1153,7 @@ private theorem writeNat_lowQubit_one_of_toNat_zero
     [RegEncoding Basis]
     (r : Reg)
     (b : Basis)
-    (hpos : 0 < regSize r)
+    (hpos : 0 < Reg.width r)
     (hzero : RegEncoding.toNat r b = 0) :
     RegEncoding.writeNat (qubitReg (r.lowQubit hpos)) 1 b
       =
@@ -1226,7 +1226,7 @@ theorem eval_X_low_zero_reg_ket
     [PauliXSemantics qs]
     (r : Reg)
     (b : qs.Basis)
-    (hpos : 0 < regSize r)
+    (hpos : 0 < Reg.width r)
     (hzero : RegEncoding.toNat r b = 0) :
     qs.eval (Gate.X (r.lowQubit hpos)) (qs.ket b)
       =
@@ -1520,9 +1520,9 @@ lemma FreshZero.of_eq_on_bits
   apply Nat.zero_of_testBit_eq_false
   intro j
 
-  by_cases hj : j < regSize r
+  by_cases hj : j < Reg.width r
 
-  · let i : Fin (regSize r) :=
+  · let i : Fin (Reg.width r) :=
       ⟨j, hj⟩
 
     let q : ℕ :=
@@ -1561,20 +1561,20 @@ lemma FreshZero.of_eq_on_bits
         simp
 
   · have hwidth :
-        regSize r ≤ j :=
+        Reg.width r ≤ j :=
       Nat.le_of_not_gt hj
 
     have hToNat :
         RegEncoding.toNat r b₂
           <
-        2 ^ regSize r := by
+        2 ^ Reg.width r := by
       simpa [ASize] using
         RegEncoding.toNat_lt_ASize
           (r := r)
           (b := b₂)
 
     have hpow :
-        2 ^ regSize r ≤ 2 ^ j := by
+        2 ^ Reg.width r ≤ 2 ^ j := by
       exact
         Nat.pow_le_pow_right
           (by omega)

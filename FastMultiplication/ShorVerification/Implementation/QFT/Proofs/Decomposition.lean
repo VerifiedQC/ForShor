@@ -104,7 +104,7 @@ variable (qs : QSemantics)
 
   [GateSemanticsFacts qs]
 
-def nTot (r : Reg) : ℕ := regSize r
+def nTot (r : Reg) : ℕ := Reg.width r
 def mHalf (r : Reg) : ℕ := (nTot r) / 2
 
 lemma qft_norm_split (nTot m : ℕ) (hm : m ≤ nTot) :
@@ -220,13 +220,13 @@ def rightQFTReg (r : ExtReg) : ExtReg :=
 @[simp] lemma leftQFTReg_width
     (r : ExtReg) :
     (leftQFTReg r).width =
-      regSize (leftReg r.active) := by
+      Reg.width (leftReg r.active) := by
   rfl
 
 @[simp] lemma rightQFTReg_width
     (r : ExtReg) :
     (rightQFTReg r).width =
-      regSize (rightReg r.active) := by
+      Reg.width (rightReg r.active) := by
   rfl
 
 namespace Gate.PhaseProdWorkspace
@@ -312,7 +312,7 @@ lemma step1_QFT_right_ket
     ∑ kH : Fin B,
       qftPhase B (RegEncoding.toNat right b) kH.1 •
         qs.ket (RegEncoding.writeNat right kH.1 b) := by
-  simpa [ASize, leftReg, rightReg, ExtReg.ofReg, ExtReg.width, ExtReg.toNat, regSize] using
+  simpa [ASize, leftReg, rightReg, ExtReg.ofReg, ExtReg.width, ExtReg.toNat, Reg.width] using
     (QFTSemantics.eval_QFT_ket (qs := qs) (r := ExtReg.ofReg (rightReg r)) (b := b))
 
 /-! =========================================================
@@ -912,7 +912,7 @@ lemma step5_reindex_sum
   classical
   exact (finMulAddEquiv NR NL).sum_comp f
 
-lemma Asize_eq_lr (r : Reg) (m : ℕ) (hm : m ≤ regSize r) :
+lemma Asize_eq_lr (r : Reg) (m : ℕ) (hm : m ≤ Reg.width r) :
   let split : SplitPoint r := ⟨m, hm⟩
   let left  : Reg := splitLeft r split
   let right : Reg := splitRight r split
@@ -997,7 +997,7 @@ lemma eval_QFT_split_lowLeft_digitRev_ket
     (ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r))
     (b : qs.Basis),
     ws.Clean b →
-    regSize r ≥ 2 →
+    Reg.width r ≥ 2 →
     let left  : Reg := leftReg r
     let right : Reg := rightReg r
     let A     : ℕ := ASize left
@@ -1179,7 +1179,7 @@ lemma eval_RadixReverse_digitRev_sum
   (left right : Reg)
   (A B : ℕ)
   (C : ℂ)
-  (hm : m ≤ regSize r)
+  (hm : m ≤ Reg.width r)
   (hleft : left = splitLeft r ⟨m, hm⟩)
   (hright : right = splitRight r ⟨m, hm⟩)
   (hA : A = ASize left)
@@ -1246,7 +1246,7 @@ lemma eval_QFT_ket_as_split_sum
   (m : ℕ)
   (left right : Reg)
   (A B : ℕ)
-  (hm : m ≤ regSize r)
+  (hm : m ≤ Reg.width r)
   (hleft : left = splitLeft r ⟨m, hm⟩)
   (hright : right = splitRight r ⟨m, hm⟩)
   (hA : A = ASize left)
@@ -1270,7 +1270,7 @@ lemma eval_QFT_ket_as_split_sum
               rw [hA, hB, hleft, hright]
       _ = ASize r := Asize_eq_lr (r := r) (m := m) hm
 
-  have hAB_pow : A * B = 2 ^ regSize r := by
+  have hAB_pow : A * B = 2 ^ Reg.width r := by
     simpa [ASize] using hAB
 
   have hToNat :
@@ -1283,13 +1283,13 @@ lemma eval_QFT_ket_as_split_sum
     simpa [ASize] using h
 
   have hNorm :
-      ((1 / Real.sqrt ((2 ^ regSize r : ℕ) : ℝ) : ℂ))
+      ((1 / Real.sqrt ((2 ^ Reg.width r : ℕ) : ℝ) : ℂ))
         =
       (((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) *
        ((1 / Real.sqrt ((A : ℕ) : ℝ) : ℂ))) := by
     have hsplit :=
       qft_norm_split
-        (nTot := regSize r)
+        (nTot := Reg.width r)
         (m := m)
         hm
     subst A
@@ -1302,13 +1302,13 @@ lemma eval_QFT_ket_as_split_sum
     aesop
 
   rw [QFTSemantics.eval_QFT_ket]
-  simp [ExtReg.ofReg, ExtReg.width, ExtReg.toNat, regSize]
+  simp [ExtReg.ofReg, ExtReg.width, ExtReg.toNat]
   rw [show 2 ^ r.width = A * B by
-    simpa [regSize] using hAB_pow.symm]
+    exact hAB_pow.symm]
   rw [hToNat]
   simp_rw [← one_div]
   congr 1
-  · simpa [regSize] using hNorm
+  · simpa using hNorm
 
 lemma eval_QFT_split_ket_ofReg
     (qs : QSemantics)
@@ -1321,8 +1321,8 @@ lemma eval_QFT_split_ket_ofReg
           (rightReg r))
       (b : qs.Basis),
       ws.Clean b →
-      regSize r ≥ 2 →
-      let nTot  : ℕ := regSize r
+      Reg.width r ≥ 2 →
+      let nTot  : ℕ := Reg.width r
       let m     : ℕ := nTot / 2
       let left  : Reg := leftReg r
       let right : Reg := rightReg r
@@ -1341,7 +1341,7 @@ lemma eval_QFT_split_ket_ofReg
   dsimp only
   classical
 
-  let nTot : ℕ := regSize r
+  let nTot : ℕ := Reg.width r
   let m : ℕ := nTot / 2
   let left : Reg := leftReg r
   let right : Reg := rightReg r
@@ -1349,7 +1349,7 @@ lemma eval_QFT_split_ket_ofReg
   let B : ℕ := ASize right
   let phi : ℝ := qftPhi nTot
 
-  have hm : m ≤ regSize r := by
+  have hm : m ≤ Reg.width r := by
     unfold m nTot
     exact Nat.div_le_self _ _
 
@@ -1370,7 +1370,7 @@ lemma eval_QFT_split_ket_ofReg
               rw [hA, hB, hleft_split, hright_split]
       _ = ASize r := Asize_eq_lr (r := r) (m := m) hm
 
-  have hAB_pow : A * B = 2 ^ regSize r := by
+  have hAB_pow : A * B = 2 ^ Reg.width r := by
     simpa [ASize] using hAB
 
   have hPhi :
@@ -1526,8 +1526,8 @@ theorem eval_QFT_split_ofReg
       (ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r))
       (ψ : qs.State),
       Gate.PhaseProdWorkspace.CleanState qs ws ψ →
-      regSize r ≥ 2 →
-      let nTot  : ℕ := regSize r
+      Reg.width r ≥ 2 →
+      let nTot  : ℕ := Reg.width r
       let m     : ℕ := nTot / 2
       let left  : Reg := leftReg r
       let right : Reg := rightReg r
@@ -1591,7 +1591,7 @@ theorem eval_QFT_split
   dsimp only
 
   have hsizeActive :
-      regSize r.active ≥ 2 := by
+      Reg.width r.active ≥ 2 := by
     simpa [ExtReg.width] using hsize
 
   have hcore :=

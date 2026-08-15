@@ -495,8 +495,8 @@ lemma work_width
     {η : ℝ}
     {data work : Reg}
     (h : Algorithm1Precision η data work) :
-    regSize work =
-      regSize data + algorithm1ExtraBits η :=
+    Reg.width work =
+      Reg.width data + algorithm1ExtraBits η :=
   h.2.2
 
 /-- Algorithm 1's work register is at least as wide as the data register. -/
@@ -504,7 +504,7 @@ lemma data_width_le_work_width
     {η : ℝ}
     {data work : Reg}
     (h : Algorithm1Precision η data work) :
-    regSize data ≤ regSize work := by
+    Reg.width data ≤ Reg.width work := by
   rw [work_width h]
   simp
 
@@ -516,7 +516,7 @@ lemma work_width_sub_data_width
     {η : ℝ}
     {data work : Reg}
     (h : Algorithm1Precision η data work) :
-    regSize work - regSize data =
+    Reg.width work - Reg.width data =
       algorithm1ExtraBits η := by
   rw [work_width h]
   omega
@@ -531,7 +531,7 @@ lemma pow_bound
     {η : ℝ}
     {data work : Reg}
     (h : Algorithm1Precision η data work) :
-    (2 : ℝ) ^ (regSize work - regSize data)
+    (2 : ℝ) ^ (Reg.width work - Reg.width data)
       ≥
     (2 + 1 / (2 * η)) ^ 2 := by
   let a : ℝ := 2 + 1 / (2 * η)
@@ -542,7 +542,7 @@ lemma pow_bound
     positivity
 
   have hdiff :
-      regSize work - regSize data =
+      Reg.width work - Reg.width data =
         algorithm1ExtraBits η :=
     work_width_sub_data_width h
 
@@ -716,11 +716,11 @@ lemma bit_qubitReg_eq_testBit_zero
     (q : ℕ) (b : qs.Basis) :
     RegEncoding.bit q b =
       Nat.testBit (RegEncoding.toNat (qubitReg q) b) 0 := by
-  simpa [qubitReg, Reg.singleton, Reg.get, regSize, Reg.width] using
+  simpa [qubitReg, Reg.singleton, Reg.get, Reg.width] using
     (RegEncoding.bit_eq_testBit_toNat
       (r := qubitReg q)
       (b := b)
-      (i := (⟨0, by simp⟩ : Fin (regSize (qubitReg q)))))
+      (i := (⟨0, by simp⟩ : Fin (Reg.width (qubitReg q)))))
 
 omit [GateSemanticsCore qs] [ModMulPrimitiveGateSemantics qs] in
 lemma bit_false_of_qubitReg_toNat_zero
@@ -1235,7 +1235,7 @@ noncomputable def alg1Step2Phase
     (cfg : ModMulConfig η) : ℝ :=
   (2 * Real.pi * (cfg.env.N : ℝ)) /
     ((2 : ℝ) ^
-      (regSize cfg.env.work.active + regSize (cfg.env.data.grow 1).active))
+      (Reg.width cfg.env.work.active + Reg.width (cfg.env.data.grow 1).active))
 
 /--
 The normalizing scalar in the QFT on `data.grow 1`.
@@ -1533,10 +1533,10 @@ lemma alg1Step2Value_lt_dataCarry_capacity
           2 * ASize cfg.env.data.active := by
       have hReserveLen :
           1 ≤ cfg.env.data.reserve.qubits.length := by
-        simpa [ExtReg.CanGrow, ExtReg.capacity, regSize, Reg.width]
+        simpa [ExtReg.CanGrow, ExtReg.capacity, Reg.width]
           using hcarry
       simp [ASize, ExtReg.grow, ExtReg.newBits, Reg.append,
-        Reg.take, regSize, Reg.width, Nat.min_eq_left hReserveLen,
+        Reg.take, Reg.width, Nat.min_eq_left hReserveLen,
         Nat.pow_succ, Nat.mul_comm]
     omega
   exact lt_of_lt_of_le hsum_lt hcap

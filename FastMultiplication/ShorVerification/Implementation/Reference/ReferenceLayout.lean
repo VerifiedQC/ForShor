@@ -117,8 +117,8 @@ private lemma reg_disjoint_interval_of_below
   omega
 
 @[simp] lemma regSize_interval (lo size : ℕ) :
-    regSize (Reg.interval lo size) = size := by
-  simp [regSize, Reg.width, Reg.interval]
+    Reg.width (Reg.interval lo size) = size := by
+  simp [Reg.width, Reg.interval]
 
 /-! =========================================================
     Section 2: Widths and reserve budgets
@@ -126,7 +126,7 @@ private lemma reg_disjoint_interval_of_below
 
 /-- Active width of the private modular-data register. -/
 def referenceDataWidth (inst : ShorOrderFindingInstance) : ℕ :=
-  regSize inst.y.active
+  Reg.width inst.y.active
 
 /-- Active width prescribed for Algorithm 1's work register. -/
 noncomputable def referenceWorkWidth
@@ -153,7 +153,7 @@ noncomputable def referenceWorkspaceNeed
     (inst : ShorOrderFindingInstance)
     (η : ℝ) : ShorWorkspaceNeed :=
   shorWorkspaceNeed ops
-    (widthShell (regSize inst.x.active))
+    (widthShell (Reg.width inst.x.active))
     (widthShell (referenceDataWidth inst))
     (widthShell (referenceWorkWidth inst η))
 
@@ -350,15 +350,15 @@ noncomputable def allocateReferenceLayout
 @[simp] theorem allocateReferenceLayout_data_width
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) :
-    regSize (allocateReferenceLayout ops inst η).data.active =
-      regSize inst.y.active := by
+    Reg.width (allocateReferenceLayout ops inst η).data.active =
+      Reg.width inst.y.active := by
   simp [allocateReferenceLayout, referenceData]
 
 @[simp] theorem allocateReferenceLayout_work_width
     {k : ℕ} (ops : Prog k)
     (inst : ShorOrderFindingInstance) (η : ℝ) :
-    regSize (allocateReferenceLayout ops inst η).work.active =
-      regSize inst.y.active + algorithm1ExtraBits η := by
+    Reg.width (allocateReferenceLayout ops inst η).work.active =
+      Reg.width inst.y.active + algorithm1ExtraBits η := by
   simp [allocateReferenceLayout, referenceWork, referenceWorkActive,
     referenceWorkWidth, referenceDataWidth]
 

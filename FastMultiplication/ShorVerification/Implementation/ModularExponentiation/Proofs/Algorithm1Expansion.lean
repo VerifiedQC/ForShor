@@ -1151,12 +1151,11 @@ lemma ExtReg.freshFor_one_of_two
 
   let r2 : Reg := e.newBits 2
 
-  have hr2 : regSize r2 = 2 := by
+  have hr2 : Reg.width r2 = 2 := by
     simp [
       r2,
       ExtReg.newBits,
       Reg.take,
-      regSize,
       Reg.width,
       ExtReg.CanGrow,
       ExtReg.capacity

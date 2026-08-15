@@ -147,7 +147,7 @@ class LowerGateClass
         evalL (LowGate.adj (LowGate.signExtend r n)) ψ
 
   evalL_radixReverse_ket :
-    ∀ (r : Reg) (m : ℕ) (hm : m ≤ regSize r)
+    ∀ (r : Reg) (m : ℕ) (hm : m ≤ Reg.width r)
       (b : qs.Basis) (kL kH : ℕ),
       let sp : SplitPoint r := ⟨m, hm⟩
       let left  : Reg := splitLeft r sp

@@ -38,11 +38,11 @@ def ShorGateCountLayout
     (cWork n : ℕ)
     (x y work : ExtReg)
     (flag : ℕ) : Prop :=
-  regSize y.active = n ∧
-  n ≤ regSize x.active ∧
-  regSize x.active ≤ 2 * n ∧
-  n ≤ regSize work.active ∧
-  regSize work.active ≤ cWork * n ∧
+  Reg.width y.active = n ∧
+  n ≤ Reg.width x.active ∧
+  Reg.width x.active ≤ 2 * n ∧
+  n ≤ Reg.width work.active ∧
+  Reg.width work.active ≤ cWork * n ∧
   ModExpLayout x.active y work flag
 
 /-- Gate count of a fully lowered approximate order-finding circuit. -/
@@ -145,7 +145,7 @@ lemma lowered_H_reg_gateCount
     (r : Reg)
     (hworkspace : GateWorkspaceOK ops (H_reg r)) :
     loweredGateCount (Basis := Basis) k hk ops (H_reg r) hworkspace =
-      regSize r := by
+      Reg.width r := by
   have hfold :
       ∀ (l : List ℕ) (U : Gate)
         (hU : GateWorkspaceOK ops U)
@@ -165,7 +165,7 @@ lemma lowered_H_reg_gateCount
         rw [ih (Gate.H q ;; U) (by exact ⟨trivial, hU⟩)]
         simp [loweredGateCount, lowerGate, LowGate.gateCount]
         omega
-  simpa [H_reg, regQubits, regSize] using
+  simpa [H_reg, regQubits, Reg.width] using
     hfold (regQubits r) Gate.id trivial hworkspace
 
 /-- Expands controlled modular multiplication into the five Algorithm 1 core steps. -/
@@ -247,7 +247,7 @@ lemma step2_gateCount_decompose
     loweredGateCount (Basis := Basis) k hk ops
         (Gate.PhaseProdUsing
           ((2 * Real.pi * (N : ℝ)) /
-            ((2 : ℝ) ^ (regSize work.active + regSize (data.grow 1).active)))
+            ((2 : ℝ) ^ (Reg.width work.active + Reg.width (data.grow 1).active)))
           work.active (data.grow 1).active hmod.step2Workspace)
         hworkspace.2.1
       +
@@ -291,10 +291,10 @@ lemma step3_gateCount_le
     (hworkspace : GateWorkspaceOK ops (step3 N dataCarry flag)) :
     loweredGateCount (Basis := Basis) k hk ops
         (step3 N dataCarry flag) hworkspace
-      ≤ 40 * regSize dataCarry + 20 := by
+      ≤ 40 * Reg.width dataCarry + 20 := by
   simp [step3, loweredGateCount, lowerGate, LowGate.gateCount,
     shorGateCostModel, phaseProductCostModel, shorPrimCost,
-    linearPrimitiveGateBound, regSize, Reg.width]
+    linearPrimitiveGateBound, Reg.width]
   omega
 
 /-- Step 4 is a primitive arithmetic block with linear cost in data-carry plus work widths. -/
@@ -306,10 +306,10 @@ lemma step4_gateCount_le
     (hworkspace : GateWorkspaceOK ops (step4 N dataCarry work flag)) :
     loweredGateCount (Basis := Basis) k hk ops
         (step4 N dataCarry work flag) hworkspace
-      ≤ 20 * (regSize dataCarry + regSize work) + 10 := by
+      ≤ 20 * (Reg.width dataCarry + Reg.width work) + 10 := by
   simp [step4, loweredGateCount, lowerGate, LowGate.gateCount,
     shorGateCostModel, phaseProductCostModel, shorPrimCost,
-    linearPrimitiveGateBound, regSize, Reg.width]
+    linearPrimitiveGateBound, Reg.width]
 
 /-- Step 1's PhaseProduct target workspace has the same width as the work register. -/
 @[simp] lemma width_step1Workspace_zExt
@@ -443,13 +443,13 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     have : 1 ≤ cMax := by omega
     nlinarith
   have hmaxDataWork :
-      max (regSize data.active) (regSize work.active) ≤ cMax * n := by
+      max (Reg.width data.active) (Reg.width work.active) ≤ cMax * n := by
     simpa [ExtReg.width] using max_le hdataMax hworkMax
   have hmaxCarryWork :
-      max (regSize (data.grow 1).active) (regSize work.active) ≤ cMax * n := by
+      max (Reg.width (data.grow 1).active) (Reg.width work.active) ≤ cMax * n := by
     simpa [ExtReg.width] using max_le hcarryMax hworkMax
   have hmaxWorkCarry :
-      max (regSize work.active) (regSize (data.grow 1).active) ≤ cMax * n := by
+      max (Reg.width work.active) (Reg.width (data.grow 1).active) ≤ cMax * n := by
     simpa [ExtReg.width] using max_le hworkMax hcarryMax
   let hws1 := hworkspace.1
   let hws2 := hworkspace.2.1
@@ -460,7 +460,7 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     ((2 * Real.pi * (((c + N - 1) % N : ℕ) : ℝ)) / (N : ℝ))
     data.active work.active hmod.step1Workspace hws1.2.1
   have hC1' := hC1 (by
-    have : n ≤ max (regSize data.active) (regSize work.active) := by
+    have : n ≤ max (Reg.width data.active) (Reg.width work.active) := by
       rw [← hdata]
       simp[ExtReg.width]
     exact hnc'.trans this)
@@ -468,24 +468,24 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     ((2 * Real.pi * (((step5Constant c N) % N : ℕ) : ℝ)) / (N : ℝ))
     (data.grow 1).active work.active hmod.step5Workspace hws5.2.1
   have hC5' := hC5 (by
-    have : n ≤ max (regSize (data.grow 1).active) (regSize work.active) := by
+    have : n ≤ max (Reg.width (data.grow 1).active) (Reg.width work.active) := by
       have : n ≤ (data.grow 1).width := by rw [hcarry]; omega
       have hle :
           (data.grow 1).width ≤
-            max (regSize (data.grow 1).active) (regSize work.active) := by
+            max (Reg.width (data.grow 1).active) (Reg.width work.active) := by
         simp [ExtReg.width]
       exact this.trans hle
     exact hnc'.trans this)
   have hP2 := hPhase
     ((2 * Real.pi * (N : ℝ)) /
-      ((2 : ℝ) ^ (regSize work.active + regSize (data.grow 1).active)))
+      ((2 : ℝ) ^ (Reg.width work.active + Reg.width (data.grow 1).active)))
     work.active (data.grow 1).active hmod.step2Workspace hws2.2.1
   have hP2' := hP2 (by
-    have : n ≤ max (regSize work.active) (regSize (data.grow 1).active) := by
+    have : n ≤ max (Reg.width work.active) (Reg.width (data.grow 1).active) := by
       have : n ≤ (data.grow 1).width := by rw [hcarry]; omega
       have hle :
           (data.grow 1).width ≤
-            max (regSize work.active) (regSize (data.grow 1).active) := by
+            max (Reg.width work.active) (Reg.width (data.grow 1).active) := by
         simp [ExtReg.width]
       exact this.trans hle
     exact hnp'.trans this)
@@ -501,13 +501,13 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     simpa using hnq'.trans hworkLower)
   have hscaleDataWork :=
     rpow_le_constPow_mul_rpow k cMax
-      (max (regSize data.active) (regSize work.active)) n hk hmaxDataWork
+      (max (Reg.width data.active) (Reg.width work.active)) n hk hmaxDataWork
   have hscaleCarryWork :=
     rpow_le_constPow_mul_rpow k cMax
-      (max (regSize (data.grow 1).active) (regSize work.active)) n hk hmaxCarryWork
+      (max (Reg.width (data.grow 1).active) (Reg.width work.active)) n hk hmaxCarryWork
   have hscaleWorkCarry :=
     rpow_le_constPow_mul_rpow k cMax
-      (max (regSize work.active) (regSize (data.grow 1).active)) n hk hmaxWorkCarry
+      (max (Reg.width work.active) (Reg.width (data.grow 1).active)) n hk hmaxWorkCarry
   have hscaleWork :=
     rpow_le_constPow_mul_rpow k cMax work.width n hk hworkMax
   have hscaleCarry :=
@@ -519,17 +519,17 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
           data.active work.active hmod.step1Workspace) hws1.2.1 : ℝ)
         ≤ Cc * S * Real.rpow (n : ℝ) α := by
     have hmaxPos :
-        1 ≤ max (regSize data.active) (regSize work.active) := by
+        1 ≤ max (Reg.width data.active) (Reg.width work.active) := by
       have hnMax :
-          n ≤ max (regSize data.active) (regSize work.active) := by
+          n ≤ max (Reg.width data.active) (Reg.width work.active) := by
         rw [← hdata]
         simp [ExtReg.width]
       exact hn1.trans hnMax
     have hsafe :
         phaseProductSafeRate k
-            (max (regSize data.active) (regSize work.active)) =
+            (max (Reg.width data.active) (Reg.width work.active)) =
           Real.rpow
-            ((max (regSize data.active) (regSize work.active) : ℕ) : ℝ)
+            ((max (Reg.width data.active) (Reg.width work.active) : ℕ) : ℝ)
             (phaseProductExponent k) := by
       simp [phaseProductSafeRate, max_eq_right hmaxPos]
     rw [hsafe] at hC1'
@@ -545,21 +545,21 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
         ≤ Cc * S * Real.rpow (n : ℝ) α := by
     have hmaxPos :
         1 ≤
-          max (regSize (data.grow 1).active) (regSize work.active) := by
+          max (Reg.width (data.grow 1).active) (Reg.width work.active) := by
       have hnCarry' : n ≤ (data.grow 1).width := by
         rw [hcarry]
         omega
       have hcarryMax' :
           (data.grow 1).width ≤
-            max (regSize (data.grow 1).active) (regSize work.active) := by
+            max (Reg.width (data.grow 1).active) (Reg.width work.active) := by
         simp [ExtReg.width]
       exact hn1.trans (hnCarry'.trans hcarryMax')
     have hsafe :
         phaseProductSafeRate k
-            (max (regSize (data.grow 1).active) (regSize work.active)) =
+            (max (Reg.width (data.grow 1).active) (Reg.width work.active)) =
           Real.rpow
-            ((max (regSize (data.grow 1).active)
-              (regSize work.active) : ℕ) : ℝ)
+            ((max (Reg.width (data.grow 1).active)
+              (Reg.width work.active) : ℕ) : ℝ)
             (phaseProductExponent k) := by
       simp [phaseProductSafeRate, max_eq_right hmaxPos]
     rw [hsafe] at hC5'
@@ -571,7 +571,7 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
       (loweredGateCount (Basis := Basis) k hk ops
         (Gate.PhaseProdUsing
           ((2 * Real.pi * (N : ℝ)) /
-            ((2 : ℝ) ^ (regSize work.active + regSize (data.grow 1).active)))
+            ((2 : ℝ) ^ (Reg.width work.active + Reg.width (data.grow 1).active)))
           work.active (data.grow 1).active hmod.step2Workspace) hws2.2.1 : ℝ)
         ≤ Cp * S * Real.rpow (n : ℝ) α := by
     have hb :=
@@ -651,10 +651,10 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     have hS3R :
         (loweredGateCount (Basis := Basis) k hk ops
           (step3 N (data.grow 1).active flag) hws3 : ℝ)
-          ≤ (40 * regSize (data.grow 1).active + 20 : ℕ) := by
+          ≤ (40 * Reg.width (data.grow 1).active + 20 : ℕ) := by
       exact_mod_cast hS3Nat
     have hcarryReg :
-        regSize (data.grow 1).active = n + 1 := by
+        Reg.width (data.grow 1).active = n + 1 := by
       simpa [ExtReg.width] using hcarry
     rw [hcarryReg] at hS3R
     push_cast at hS3R
@@ -667,14 +667,14 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     have hS4R :
         (loweredGateCount (Basis := Basis) k hk ops
           (step4 N (data.grow 1).active work.active flag) hws4 : ℝ)
-          ≤ (20 * (regSize (data.grow 1).active + regSize work.active) + 10 : ℕ) := by
+          ≤ (20 * (Reg.width (data.grow 1).active + Reg.width work.active) + 10 : ℕ) := by
       exact_mod_cast hS4Nat
     have hnR : (1 : ℝ) ≤ n := by exact_mod_cast hn1
     have hwR : (work.width : ℝ) ≤ cWork * n := by exact_mod_cast hworkUpper
     have hcarryReg :
-        regSize (data.grow 1).active = n + 1 := by
+        Reg.width (data.grow 1).active = n + 1 := by
       simpa [ExtReg.width] using hcarry
-    have hworkReg : regSize work.active = work.width := by
+    have hworkReg : Reg.width work.active = work.width := by
       rfl
     rw [hcarryReg, hworkReg] at hS4R
     push_cast at hS4R ⊢
@@ -859,7 +859,7 @@ lemma modExpApproxValid_gateCount_phase_bound_of_core
   have hAllSteps :=
     hSteps 0 x.active.qubits hworkspace
   have hxUpper' : x.active.qubits.length ≤ 2 * n := by
-    simpa [regSize, Reg.width] using hxUpper
+    simpa [Reg.width] using hxUpper
   have hxUpperR : (x.active.qubits.length : ℝ) ≤ 2 * (n : ℝ) := by
     exact_mod_cast hxUpper'
   calc
@@ -1141,9 +1141,9 @@ lemma shor_y_width_le_x_width
     (N : ℕ)
     (x y : ExtReg)
     (hN : 1 < N)
-    (hx : regSize x.active = Nat.log2 (2 * N^2))
-    (hy : regSize y.active = Nat.log2 (2 * N)) :
-    regSize y.active ≤ regSize x.active := by
+    (hx : Reg.width x.active = Nat.log2 (2 * N^2))
+    (hy : Reg.width y.active = Nat.log2 (2 * N)) :
+    Reg.width y.active ≤ Reg.width x.active := by
   rw [hx, hy]
   have harg : 2 * N ≤ 2 * N^2 := by
     nlinarith
@@ -1155,9 +1155,9 @@ lemma shor_x_width_le_two_y_width
     (N : ℕ)
     (x y : ExtReg)
     (hN : 1 < N)
-    (hx : regSize x.active = Nat.log2 (2 * N^2))
-    (hy : regSize y.active = Nat.log2 (2 * N)) :
-    regSize x.active ≤ 2 * regSize y.active := by
+    (hx : Reg.width x.active = Nat.log2 (2 * N^2))
+    (hy : Reg.width y.active = Nat.log2 (2 * N)) :
+    Reg.width x.active ≤ 2 * Reg.width y.active := by
   have hNne : N ≠ 0 := by omega
   have hNsqne : N ^ 2 ≠ 0 := by positivity
   have hN_lt_pow :
@@ -1194,19 +1194,19 @@ lemma Algorithm1Precision.work_width_le_mul
     (h : Algorithm1Precision η data work)
     (hExtra :
       algorithm1ExtraBits η ≤
-        (cWork - 1) * regSize data) :
-    regSize work ≤ cWork * regSize data := by
+        (cWork - 1) * Reg.width data) :
+    Reg.width work ≤ cWork * Reg.width data := by
   rw [work_width h]
   calc
-    regSize data + algorithm1ExtraBits η
-        ≤ regSize data + (cWork - 1) * regSize data :=
+    Reg.width data + algorithm1ExtraBits η
+        ≤ Reg.width data + (cWork - 1) * Reg.width data :=
       Nat.add_le_add_left hExtra _
-    _ = cWork * regSize data := by
+    _ = cWork * Reg.width data := by
       calc
-        regSize data + (cWork - 1) * regSize data =
-            (1 + (cWork - 1)) * regSize data := by
+        Reg.width data + (cWork - 1) * Reg.width data =
+            (1 + (cWork - 1)) * Reg.width data := by
           rw [Nat.add_mul, one_mul]
-        _ = cWork * regSize data := by
+        _ = cWork * Reg.width data := by
           rw [Nat.add_comm, Nat.sub_add_cancel hcWork]
 
 /-- Rewrites the inverse precision scale for the Shor precision schedule. -/
@@ -1350,25 +1350,25 @@ lemma ShorApproxSetup.toShorGateCountLayout
     (hsetup : ShorApproxSetup qs η inst.x inst.y work flag b0)
     (hExtra :
       algorithm1ExtraBits η
-        ≤ (cWork - 1) * regSize inst.y.active) :
-    ShorGateCountLayout cWork (regSize inst.y.active)
+        ≤ (cWork - 1) * Reg.width inst.y.active) :
+    ShorGateCountLayout cWork (Reg.width inst.y.active)
       inst.x inst.y work flag := by
   have hN : 1 < inst.N := by
     rcases inst.range with ⟨ha0, haN⟩
     omega
   have hxLower :
-      regSize inst.y.active ≤ regSize inst.x.active :=
+      Reg.width inst.y.active ≤ Reg.width inst.x.active :=
     shor_y_width_le_x_width
       inst.N inst.x inst.y hN inst.x_width inst.y_width
   have hxUpper :
-      regSize inst.x.active ≤ 2 * regSize inst.y.active :=
+      Reg.width inst.x.active ≤ 2 * Reg.width inst.y.active :=
     shor_x_width_le_two_y_width
       inst.N inst.x inst.y hN inst.x_width inst.y_width
   have hworkLower :
-      regSize inst.y.active ≤ regSize work.active :=
+      Reg.width inst.y.active ≤ Reg.width work.active :=
     data_width_le_work_width hsetup.work_precision
   have hworkUpper :
-      regSize work.active ≤ cWork * regSize inst.y.active :=
+      Reg.width work.active ≤ cWork * Reg.width inst.y.active :=
     Algorithm1Precision.work_width_le_mul
       hcWork hsetup.work_precision hExtra
   exact
@@ -1438,7 +1438,7 @@ theorem shorGateCountBound_of_components
   have hExtra :
       algorithm1ExtraBits
           (shorEta δ inst.y.width)
-        ≤ (cWork - 1) * regSize inst.y.active := by
+        ≤ (cWork - 1) * Reg.width inst.y.active := by
     have :=
       hExtraFits inst.y.width (by simpa [n] using hnExtra')
     simpa [ExtReg.width] using this
