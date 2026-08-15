@@ -8,7 +8,7 @@ import Mathlib.Data.Nat.Bitwise
 /-!
 # Shor verification core — abstract quantum state space
 
-The `QSemantics` class (Hilbert-space states, basis kets, measurement-free
+The `QSemantics` class (inner-product states, basis kets, measurement-free
 quantum structure) and its basic ket lemmas.  The gate-evaluation semantics
 built on top of it live in `Framework/Semantics`.
 -/
@@ -22,9 +22,10 @@ namespace Shor
 ========================================================= -/
 
 /--
-Abstract Hilbert-space semantics. This class deliberately does not mention any
-circuit language: high-level `Gate` and low-level `LowGate` evaluators are
-separate semantic interfaces built on top of the same quantum state space.
+Abstract inner-product-space semantics. This class deliberately does not
+mention any circuit language: high-level `Gate` and low-level `LowGate`
+evaluators are separate semantic interfaces built on top of the same quantum
+state space.
 -/
 class QSemantics where
   /-- Classical configurations that label the computational basis. -/

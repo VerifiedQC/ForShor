@@ -50,14 +50,15 @@ order.
 5. `Semantics/LowerGate.lean`
    States the laws that give `LowGate` programs their meaning. Treat the class
    fields as obligations for an evaluator rather than implementations of the
-   gates.
+   gates. The bridge classes after `LowerGateClass` belong to the reference
+   lowering path and can be skipped on a first pass.
 
 6. `Gatecount/CostModel.lean`
    Explains how a `LowGate` program is assigned a concrete gate cost.
 
 7. `Math/ShorDefinition.lean`
    Defines order, valid measurement outcomes, continued-fraction
-   postprocessing, and the final order-finding result.
+   postprocessing, and the classical order-recovery result.
 
 8. `Submission.lean`
    Read this last. `ShorImplementation` ties together a program, its correctness
@@ -67,18 +68,25 @@ On a first pass, focus on definitions, class fields, and theorem statements.
 Most proof bodies and collections of derived lemmas can be skipped until a
 specific fact is needed.
 
+An implementation author may instead start with `Submission.lean` to see the
+final contract, then follow its references backward through registers, quantum
+and measurement semantics, `LowGate`, `LowerGateClass`, the cost model, and
+classical postprocessing.
+
 ## Optional Paths
 
 To understand the reference circuit construction, read
 `AbstractMachine/Gates.lean` and `Semantics/GateSemantics.lean`, then continue
 into `FastMultiplication/ShorVerification/Implementation/`. The repository is
-moving toward the boundary described in `RESTRUCTURE_PLAN.md`, where this richer
-construction language belongs on the implementation side.
+moving toward the boundary described in the root `RESTRUCTURE_PLAN.md`, where
+this richer construction language belongs on the implementation side. These
+files are conceptually optional for understanding the public interface.
 
-To study the factoring reduction, read `Math/Factoring_Reduction/Defs.lean`, the
-public theorem statements in `ProbabilityBound.lean`, and then
-`Reduction.lean`. The internal counting proofs are not required to understand
-or use the order-finding interface.
+To study the factoring reduction, read `Math/Factoring_Reduction/Defs.lean`,
+starting with `shor_success_conditions`, then read `general_unsuccessful_bound`
+in `ProbabilityBound.lean` and `shors_classical_reduction` in `Reduction.lean`.
+The internal counting proofs are not required to understand or use the
+order-finding interface.
 
 ## Reading Approach
 

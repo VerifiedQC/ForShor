@@ -8,9 +8,9 @@ namespace Shor
 # Classical Shor Algorithm Math
 
 This file collects the classical number-theoretic and postprocessing material
-needed by the top-level Shor correctness statement.  It deliberately stays
-away from circuit semantics, so `ShorDefinition` can focus on the quantum
-circuit and measurement interfaces.
+needed by the top-level Shor correctness statement. It deliberately stays away
+from circuit semantics so that downstream specification modules can combine
+this classical recovery procedure with measurement and circuit evaluation.
 -/
 
 /-! =========================================================

@@ -120,8 +120,8 @@ primitive acting on `w` qubits. -/
 def linearPrimitiveGateBound (w : ℕ) : ℕ := 20 * w + 10
 
 /-- Concrete costs for the opaque arithmetic primitives used by the Shor circuit.
-Recognized payloads use their register widths; malformed or unknown payloads are
-assigned cost one as a defensive fallback. -/
+Recognized tags use `args.length - 2` as their width parameter; unknown tags are
+assigned cost one. -/
 def shorPrimCost (tag : String) (args : List ℕ) : ℕ :=
   if tag = "CMP_GE_CONST" ∨
       tag = "CSUB_CONST" ∨
