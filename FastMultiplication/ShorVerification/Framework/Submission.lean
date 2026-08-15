@@ -19,13 +19,19 @@ The interface deliberately mentions only framework concepts. A submission
 provides a `LowGate` circuit family together with correctness and gate-count
 proofs; allocation, lowering, synthesis, and workspace details remain on the
 implementation side.
+
+The surrounding environment supplies the semantic interfaces used to judge a
+submission: `QSemantics`, `RegEncoding`, `MeasureClass`,
+`ContinuedFractionPost`, and `LowerGateClass`. These are ambient typeclass
+assumptions, not fields that each `ShorImplementation` repeats.
 -/
 
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 
-/-- Evaluate a circuit-like object with `evalC`, then measure register `r`
-with outcome `o`. -/
+/-- Evaluate a circuit-like object with evaluator `evalC`, then return the
+probability of measuring outcome `o` on register `r`. The generic circuit type
+allows the same probability definition to be reused at different syntax levels. -/
 noncomputable def measProbAfter
     [MeasureClass qs]
     {Circuit : Type}
@@ -36,8 +42,11 @@ noncomputable def measProbAfter
     (ψ : qs.State) : ℝ :=
   MeasureClass.probMeas (qs := qs) r o (evalC C ψ)
 
-/-- Total probability that the measured exponent-register outcome passes the
-continued-fraction post-processing check. -/
+/-- Total probability that the measured exponent-register outcome recovers the
+target order after continued-fraction postprocessing.
+
+The finite sum ranges over outcomes `0, ..., Q - 1`. The indicator `r_found`
+keeps exactly those outcomes whose least verified candidate equals `r`. -/
 noncomputable def probability_of_success
     [MeasureClass qs]
     [ContinuedFractionPost]
@@ -75,8 +84,12 @@ structure ShorOrderFindingInstance where
   /-- The public exponent and data registers occupy distinct qubits. -/
   xy_disjoint : Disjoint x.active y.active
 
-/-- Ideal clean input predicate used by correctness proofs: both public
-registers start at zero and own disjoint qubits. -/
+/-- Auxiliary clean-input predicate used by implementation correctness proofs:
+both public registers start at zero and own disjoint qubits.
+
+The public `ShorImplementsOrderFinding` contract below currently starts from the
+global all-zero basis configuration directly rather than quantifying over this
+predicate. -/
 def IdealOrderFindingInput
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -97,7 +110,10 @@ For every complete continued-fraction search bound and every valid instance,
 the implementation can choose a precision level `m` whose circuit succeeds from
 the global all-zero basis state with probability at least
 `κ / log₂(N)^4 - ε`. The precision index is the only exposed resource knob; all
-implementation-specific choices stay outside the framework interface. -/
+implementation-specific choices stay outside the framework interface.
+
+Here `Q = 2^(width x)`, the verifier accepts `d` when `a^d mod N = 1`, and
+success means recovering the exact multiplicative order selected by `ord`. -/
 def ShorImplementsOrderFinding
     (prog : ShorOrderFindingInstance → ℕ → LowGate) : Prop :=
   ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
@@ -116,7 +132,8 @@ structure ShorImplementation : Type where
   prog : ShorOrderFindingInstance → ℕ → LowGate
   /-- Proof that the circuit family satisfies the framework success criterion. -/
   correct : ShorImplementsOrderFinding (qs := qs) prog
-  /-- Declared concrete gate-count bound for the circuit family. -/
+  /-- Declared concrete gate-count bound for the circuit family. This field
+  reports an upper bound; the structure does not impose an asymptotic class. -/
   gateBound : ShorOrderFindingInstance → ℕ → ℕ
   /-- Proof that each circuit meets its declared bound under the shared cost
   model. -/

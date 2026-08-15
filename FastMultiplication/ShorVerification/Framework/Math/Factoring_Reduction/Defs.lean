@@ -22,7 +22,7 @@ the finite choice sets used for probability statements.
 -/
 
 /-! =========================================================
-    Section 1: Periods and multiplicative order
+    Periods and multiplicative order
 ========================================================= -/
 
 def is_period (a r N : ℕ) : Prop :=
@@ -32,7 +32,7 @@ noncomputable def ord (a N : ℕ) (hgcd : Nat.gcd a N = 1) : ℕ :=
   orderOf (ZMod.unitOfCoprime a ((Nat.coprime_iff_gcd_eq_one).2 hgcd))
 
 /-! =========================================================
-    Section 2: Success conditions and factors
+    Success conditions and factors
 ========================================================= -/
 
 -- Two conditions:
@@ -46,7 +46,7 @@ def is_nontrivial_factor (d N : ℕ) : Prop :=
   1 < d ∧ d < N ∧ d ∣ N
 
 /-! =========================================================
-    Section 3: Choice sets for success probabilities
+    Choice sets for success probabilities
 ========================================================= -/
 
 -- a is a successful choice if there exists a period r that satisfies the success conditions

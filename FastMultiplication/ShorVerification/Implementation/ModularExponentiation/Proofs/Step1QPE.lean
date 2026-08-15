@@ -308,7 +308,7 @@ lemma alg1_reset_extendHi_work_write
             cfg.env.work.active
             0
             (RegEncoding.writeNat cfg.env.work.active w z))) := by
-        rw [← writeNat_comm_of_disjoint
+        rw [← RegEncoding.writeNat_comm_of_disjoint
           ((cfg.env.data.grow 1).active)
           cfg.env.work.active
           hdata_work
@@ -330,7 +330,7 @@ lemma alg1_reset_extendHi_work_write
           ((cfg.env.data.grow 1).active)
           (RegEncoding.toNat cfg.env.data.active z)
           z) :=
-        writeNat_comm_of_disjoint
+        RegEncoding.writeNat_comm_of_disjoint
           ((cfg.env.data.grow 1).active)
           cfg.env.work.active
           hdata_work

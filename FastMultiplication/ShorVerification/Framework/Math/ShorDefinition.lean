@@ -14,7 +14,7 @@ circuit and measurement interfaces.
 -/
 
 /-! =========================================================
-    Section 1: Order-finding parameters
+    Order-finding parameters
 
     These definitions describe the multiplicative order being recovered and
     the standard size assumptions on the control and work registers.
@@ -24,6 +24,9 @@ circuit and measurement interfaces.
 def Order (a N r : ℕ) : Prop :=
   ∃ h : Nat.Coprime a N, r = orderOf (ZMod.unitOfCoprime a h)
 
+/-- The selected multiplicative-order value for coprime `a` and `N`.
+Unlike `Order`, which is a proposition about a candidate `r`, this definition
+returns the order used by the success criterion. -/
 noncomputable def ord (a N : ℕ) (hgcd : Nat.gcd a N = 1) : ℕ :=
   orderOf (ZMod.unitOfCoprime a ((Nat.coprime_iff_gcd_eq_one).2 hgcd))
 
@@ -35,22 +38,28 @@ def BasicSetting (a r N m n : ℕ) : Prop :=
   N < 2^n ∧ 2^n ≤ 2 * N
 
 /-! =========================================================
-    Section 2: Good outcomes and continued fractions
+    Good outcomes and continued fractions
 
     This section isolates the rational-approximation condition that a measured
     outcome must satisfy and the abstract continued-fraction recovery interface.
 ========================================================= -/
+/-- Numerator and denominator returned by one continued-fraction candidate step. -/
 structure CFOut where
+  /-- Candidate numerator. The framework currently consumes only the denominator. -/
   num : ℕ
+  /-- Candidate denominator used as a possible multiplicative order. -/
   den : ℕ
 deriving DecidableEq
 
+/-- `o / Q` approximates `k / r` to additive error at most `δ`. -/
 def approxRat
     (o Q k r : ℕ)
     (δ : ℝ) : Prop :=
   0 < Q ∧ 0 < r ∧
   abs ((o : ℝ) / (Q : ℝ) - (k : ℝ) / (r : ℝ)) ≤ δ
 
+/-- A measurement outcome accurate enough for continued fractions to recover
+the reduced denominator `r`, assuming `r² ≤ Q`. -/
 noncomputable def GoodOutcome
     (o Q r : ℕ) : Prop :=
   ∃ k : ℕ, k < r ∧
@@ -65,22 +74,22 @@ inputs with denominator bounded by `Q`. The correctness field states that a
 sufficiently accurate reduced fraction is found within that bound.
 -/
 class ContinuedFractionPost where
+  /-- Candidate rational approximation at search step `t` for measured ratio `o / Q`. -/
   step : ℕ → ℕ → ℕ → CFOut
+  /-- Denominator returned by `step`. -/
   denom : ℕ → ℕ → ℕ → ℕ := fun t o Q => (step t o Q).den
+  /-- Number of candidate steps sufficient for measurement range `Q`. -/
   searchBound : ℕ → ℕ
+  /-- A sufficiently accurate reduced fraction exposes its true denominator
+  before `searchBound Q`. -/
   recovers_denominator :
     ∀ {o Q k r : ℕ},
       k < r → r ^ 2 ≤ Q →
       approxRat o Q k r (1 / (2 * (Q : ℝ))) →
       Nat.Coprime k r →
         ∃ t : ℕ, t < searchBound Q ∧ denom t o Q = r
-  -- recovers_denominator :
-  --   ∀ {o Q k r : ℕ},
-  --     0 < r → k < r →  r ^ 2 ≤ Q →
-  --     approxRat o Q k r (1 / (2 * (Q : ℝ))) →
-  --     Nat.Coprime k r →
-  --     ∃ t : ℕ, t < searchBound Q ∧ denom t o Q = r
 
+/-- The caller-provided search budget `T Q` covers every required candidate step. -/
 def ContinuedFractionSearchComplete
     [ContinuedFractionPost]
     (T : ℕ → ℕ) : Prop :=
@@ -126,10 +135,12 @@ lemma GoodOutcome.exists_denominator_candidate
   exact CF_recovers_denominator
     T hT hkr hrQ happrox hgcd
 
+/-- Decidable check that a candidate denominator is an acceptable order. -/
 abbrev OrderVerifier := ℕ → Bool
 
 variable [ContinuedFractionPost]
 
+/-- Denominators produced by the first `T Q` continued-fraction candidate steps. -/
 noncomputable def orderCandidates
     (T : ℕ → ℕ)
     (o Q : ℕ) : Finset ℕ :=
@@ -137,6 +148,7 @@ noncomputable def orderCandidates
     (fun t =>
       ContinuedFractionPost.denom t o Q)
 
+/-- Positive candidate denominators accepted by `verify`. -/
 noncomputable def verifiedOrderCandidates
     (T : ℕ → ℕ)
     (verify : OrderVerifier)
@@ -144,6 +156,8 @@ noncomputable def verifiedOrderCandidates
   (orderCandidates T o Q).filter
     (fun d => 0 < d ∧ verify d = true)
 
+/-- Classical order-finding postprocessing: return the least verified candidate,
+or zero when no candidate is accepted. -/
 noncomputable def OF_post
     (T : ℕ → ℕ)
     (verify : OrderVerifier)
@@ -228,13 +242,16 @@ lemma OF_post_eq_of_mem_of_least
         simpa [candidates] using
           Finset.min'_mem candidates hnonempty)
 /-! =========================================================
-    Section 3: Classical postprocessing success indicator
+    Classical postprocessing success indicator
 
     The quantum proof produces a distribution on measurement outcomes; these
     definitions express the classical scan over continued-fraction candidates.
 ========================================================= -/
 
 
+/-- Real-valued indicator that postprocessing outcome `o` recovers exactly `r`.
+It is `1` on success and `0` otherwise, so it can weight measurement
+probabilities in a finite sum. -/
 noncomputable def r_found (T : ℕ → ℕ) (verify : OrderVerifier) (o Q r : ℕ) : ℝ :=
   if OF_post (T := T) verify o Q = r then (1 : ℝ) else 0
 

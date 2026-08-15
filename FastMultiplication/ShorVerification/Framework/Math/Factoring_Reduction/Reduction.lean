@@ -14,7 +14,7 @@ a nontrivial factor.
 -/
 
 /-! =========================================================
-    Section 1: Algebraic helper lemmas
+    Algebraic helper lemmas
 ========================================================= -/
 
 /-- Show equivalence between two period definitions -/
@@ -73,7 +73,7 @@ lemma gcd_nontrivial_from_product (x N : ℕ)
 }
 
 /-! =========================================================
-    Section 2: Reduction from factoring to order finding
+    Reduction from factoring to order finding
 ========================================================= -/
 
 /-- If we find the period r, and it meets the success conditions,

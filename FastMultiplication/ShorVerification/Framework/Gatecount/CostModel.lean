@@ -93,9 +93,11 @@ def directCSignedPhaseProductGateCount (x z : ExtReg) : ℕ := 5 * ExtReg.width 
 /-- Cost assigned to the final radix-reversal swaps for a register split. -/
 def radixReverseGateCount (_r : Reg) (m : ℕ) : ℕ := 3 * (m / 2)
 
-/-- Build a PhaseProduct-oriented cost model from a primitive-cost table.  Shifts
-and allocation bookkeeping default to zero cost, arithmetic operations are
-linear, and direct signed PhaseProduct gates are quadratic base cases. -/
+/-- Build a PhaseProduct-oriented cost model from a primitive-cost table. Shifts
+and register-view bookkeeping default to zero under this model, arithmetic
+operations are linear, and direct signed PhaseProduct gates are quadratic base
+cases. A zero model cost records the chosen accounting convention; it is not a
+claim that the corresponding physical operation is universally free. -/
 def phaseProductCostModel
     (primCost : String → List ℕ → ℕ)
     (shiftLCost : ExtReg → ℕ → ℕ := fun _ _ => 0)

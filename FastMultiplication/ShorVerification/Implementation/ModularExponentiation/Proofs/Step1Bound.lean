@@ -240,7 +240,7 @@ lemma alg1_step5_forward_packet_on_basis
 
   exact
     congrArg qs.ket
-      (writeNat_comm_of_disjoint
+      (RegEncoding.writeNat_comm_of_disjoint
         cfg.env.work.active
         (cfg.env.data.grow 1).active
         hwork_ext

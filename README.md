@@ -69,7 +69,10 @@ All components are proved: phase-product compilation, QFT decomposition, lowerin
 | `FastMultiplication/ShorVerification/ShorCorrectness.lean` | Order-finding circuits, the measurement interface, and the top-level theorem `Shor_correct`. |
 | `docs/` | An interactive visualization of the proof architecture. |
 
-For a detailed file-by-file guide, see [ARCHITECTURE.md](ARCHITECTURE.md).
+For a current, user-oriented path through the framework, see
+[Framework Reading Guide](FastMultiplication/ShorVerification/Framework/README.md).
+`ARCHITECTURE.md` and the interactive visualization still describe the
+pre-restructure layout and are retained as historical proof-organization notes.
 
 ## Proof architecture
 

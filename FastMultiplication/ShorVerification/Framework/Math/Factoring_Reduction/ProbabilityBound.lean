@@ -12,7 +12,7 @@ bound to composite moduli with two distinct prime factors.
 -/
 
 /-! =========================================================
-    Section 1: Basic residue and choice-counting lemmas
+    Basic residue and choice-counting lemmas
 ========================================================= -/
 
 lemma zmod_eq_zero_iff_dvd {N : ℕ} (x : ℕ) :
@@ -98,7 +98,7 @@ lemma coprime_count {p q : ℕ} (hp : Nat.Prime p) (hq : Nat.Prime q)
       Nat.totient_prime hp, Nat.totient_prime hq]
 
 /-! =========================================================
-    Section 2: CRT and order criteria for bad choices
+    CRT and order criteria for bad choices
 ========================================================= -/
 
 /-- CRT sends natural number casts to the pair of casts. -/
@@ -413,7 +413,7 @@ lemma bad_nat_iff_pair_factorization_eq {p q a : ℕ} (hp : Nat.Prime p) (hq : N
     · exact (not_successful_iff a (p * q)).2 (Or.inl (by simpa [hN] using hle))
 
 /-! =========================================================
-    Section 3: Prime-product unsuccessful-choice bounds
+    Prime-product unsuccessful-choice bounds
 ========================================================= -/
 
 /-- Multiplying by a generator of `(ZMod p)ˣ` changes the 2-adic valuation of the order. -/
@@ -608,7 +608,7 @@ lemma crt_counting_bound {p q : ℕ} (hp : Nat.Prime p) (hq : Nat.Prime q)
   omega
 
 /-! =========================================================
-    Section 4: General composite-modulus bounds
+    General composite-modulus bounds
 ========================================================= -/
 
 /-- For distinct odd primes p, q dividing N, if a is coprime to N and unsuccessful,
@@ -950,7 +950,7 @@ lemma general_unsuccessful_bound {N p q : ℕ}
       _ = Nat.totient N := hUcard
 
 /-! =========================================================
-    Section 5: Public success-condition API
+    Public success-condition API
 ========================================================= -/
 
 /-- Lemma for defining the conditions for 'a', given that a is a successful choice -/

@@ -20,7 +20,9 @@ framework assumes the usual finite family of orthogonal self-adjoint projectors
 and the Born rule for probabilities. -/
 class MeasureClass (qs : QSemantics) [RegEncoding qs.Basis] where
 
-  /-- Outcome projector for measuring register `r`. -/
+  /-- Continuous complex-linear projector onto outcome `o` for register `r`.
+  Operationally, `measProj r o ψ` retains the component of `ψ` in which `r`
+  encodes `o` and removes components belonging to other outcomes. -/
   measProj : Reg → ℕ → qs.State →L[ℂ] qs.State
 
   /-- No outcomes beyond the register's computational-basis range. -/
@@ -48,17 +50,21 @@ class MeasureClass (qs : QSemantics) [RegEncoding qs.Basis] where
 
 
 namespace MeasureClass
+/-- Squared norm of the component of `ψ` associated with outcome `o` on `r`.
+For a normalized state, this is the probability of observing `o`. -/
 def probMeas
     [MeasureClass qs]
     (r : Reg) (o : ℕ) (ψ : qs.State) : ℝ :=
   ‖measProj r o ψ‖ ^ 2
 
-/-- Born rule. -/
+/-- The defining squared-norm formula for `probMeas`. -/
 lemma probMeas_born [MeasureClass qs]:
     ∀ r o ψ,
       probMeas r o ψ = ‖MeasureClass.measProj r o ψ‖ ^ 2:=by simp[probMeas]
 
 
+/-- Projecting onto the same outcome twice has the same effect as projecting
+once. This follows from completeness and pairwise orthogonality. -/
 theorem measProj_idempotent
     (qs : QSemantics)
     [RegEncoding qs.Basis]

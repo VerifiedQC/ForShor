@@ -4,22 +4,30 @@ import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 namespace Shor
 
 /-! =========================================================
-    Section 2: Low-level semantic interface
+    Low-level semantic interface
     `LowerGateClass` is the semantic interface for lowered gates. It is stated
     directly over the low-level evaluator and basis-ket behavior; comparison
     with the internal high-level `Gate` evaluator is kept in bridge lemmas below.
 ========================================================= -/
 
-/-- Semantic interface for interpreting low-level gates in a quantum semantics. -/
+/-- Semantic interface for interpreting low-level gates in a quantum state space.
+
+The arithmetic basis-state laws follow a common pattern: evaluation produces a
+new basis configuration, the target register has the specified arithmetic
+value, and disjoint registers retain their previous values. Fields ending in
+`_exact` require representability or exact divisibility; fields ending in `_mod`
+wrap the result to the active register width. -/
 class LowerGateClass
     (qs : QSemantics)
     [RegEncoding qs.Basis] : Type where
   evalL : LowGate → qs.State → qs.State
 
+  -- Structural evaluation laws. In `U ;; V`, `U` runs before `V`.
   evalL_id : ∀ ψ, evalL LowGate.id ψ = ψ
 
   evalL_seq : ∀ (U V : LowGate) (ψ : qs.State), evalL (U ;; V) ψ = evalL V (evalL U ψ)
 
+  -- Every low gate acts linearly on state vectors.
   evalL_add :
     ∀ (L : LowGate) (ψ φ : qs.State),
       evalL L (ψ + φ) = evalL L ψ + evalL L φ
@@ -28,6 +36,7 @@ class LowerGateClass
     ∀ (L : LowGate) (a : ℂ) (ψ : qs.State),
       evalL L (a • ψ) = a • evalL L ψ
 
+  -- Elementary one-qubit behavior on computational-basis kets.
   evalL_H_ket :
     ∀ (q : ℕ) (b : qs.Basis),
       evalL (LowGate.H q) (qs.ket b)
@@ -50,6 +59,7 @@ class LowerGateClass
           (if RegEncoding.bit q b then 0 else 1)
           b)
 
+  -- Exact signed shifts preserve all disjoint active registers.
   evalL_shiftL_ket_exact :
     ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
     FitsSignedWidth r.width ((2 : ℤ) ^ n * extToInt r b) →
@@ -73,6 +83,7 @@ class LowerGateClass
       (∀ e : ExtReg, ExtReg.ActiveDisjoint e r →
            extToInt e b' = extToInt e b)
 
+  -- Modular arithmetic wraps to the destination width and preserves unrelated registers.
   evalL_negate_ket_mod :
     ∀ (r : ExtReg) (b : qs.Basis),
     ∃ b' : qs.Basis,
@@ -101,6 +112,7 @@ class LowerGateClass
           ExtReg.ActiveDisjoint e src →
            extToInt e b' = extToInt e b)
 
+  -- Direct phase-product base cases apply a phase without changing the basis label.
   evalL_naive_signedPhaseProd_ket :
     ∀ (phi : ℝ) (x z : ExtReg) (b : qs.Basis),
       evalL (LowGate.Naive_SignedPhaseProd phi x z) (qs.ket b)
@@ -124,8 +136,11 @@ class LowerGateClass
       else
         qs.ket b
 
+  -- Zero extension/deallocation only changes the logical register view, so the
+  -- underlying state vector is unchanged.
   evalL_zeroExtend_id : ∀ r n ψ, evalL (LowGate.zeroExtend r n) ψ = ψ
 
+  -- Sign extension writes the newly active bits so the signed value is preserved.
   evalL_signExtend_ket :
     ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
     r.CanGrow n → ExtReg.FreshFor r n b →
@@ -146,6 +161,7 @@ class LowerGateClass
       evalL (LowGate.signDealloc r n) ψ =
         evalL (LowGate.adj (LowGate.signExtend r n)) ψ
 
+  -- Radix reversal recombines the two logical blocks in the opposite order.
   evalL_radixReverse_ket :
     ∀ (r : Reg) (m : ℕ) (hm : m ≤ Reg.width r)
       (b : qs.Basis) (kL kH : ℕ),
@@ -164,6 +180,7 @@ class LowerGateClass
           (radixReverseIndex r m hm kL kH)
           b)
 
+  -- Evaluating a gate followed by its adjoint returns the original state.
   evalL_adj_apply :
     ∀ (L : LowGate) (ψ : qs.State),
       evalL (LowGate.adj L) (evalL L ψ) = ψ
@@ -183,6 +200,7 @@ namespace LowerGateClass
 end LowerGateClass
 
 
+/-- Agreement between opaque high- and low-level primitives with the same tag and payload. -/
 class LowerGatePrimitiveBridge
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -193,6 +211,9 @@ class LowerGatePrimitiveBridge
       LowerGateClass.evalL (qs := qs) (LowGate.Prim tag args) ψ =
         qs.eval (Gate.Prim tag args) ψ
 
+/-- Agreement between corresponding structured constructors in `LowGate` and `Gate`.
+The reference lowering proofs use this bridge; it is not part of the public
+`ShorImplementation` structure. -/
 class LowerGateGateBridge
     (qs : QSemantics)
     [RegEncoding qs.Basis]

@@ -1,5 +1,9 @@
 # Architecture: a file-by-file guide
 
+> **Note:** This document describes the pre-restructure file layout. For the
+> current framework API and a recommended reading order, use the
+> [Framework Reading Guide](FastMultiplication/ShorVerification/Framework/README.md).
+
 This document walks through the Lean development in detail. For an overview and build instructions, see the [README](README.md).
 
 # FastMultiplication Shor Verification

@@ -22,7 +22,7 @@ universe u
 namespace Shor
 
 /-! =========================================================
-    Section 1: Ordered physical registers
+    Ordered physical registers
 
     A `Reg` is an ordered, duplicate-free list of physical qubits. The order is
     the logical bit order used by `toNat`, `writeNat`, and all later arithmetic
@@ -59,7 +59,7 @@ def get (r : Reg) (i : Fin r.width) : ℕ := r.qubits.get ⟨i.1, by simp [width
 /-- A single-qubit register. -/
 def singleton (q : ℕ) : Reg := ⟨[q], by simp⟩
 
-/-- Construct the old contiguous interval `[lo, lo + size)`. -/
+/-- Construct the register of physical qubits `[lo, lo + size)`. -/
 def interval (lo size : ℕ) : Reg :=
   {
     qubits := (List.range size).map (fun i => lo + i)
@@ -162,7 +162,7 @@ def Reg.lowQubit (r : Reg) (h : 0 < Reg.width r) : ℕ :=
   r.qubits.get ⟨0, by simpa [Reg.width] using h⟩
 
 /-! =========================================================
-    Section 2: Basis encodings for registers
+    Basis encodings for registers
 
     `RegEncoding` is intentionally small. It provides primitive read/write
     behavior, bit observations, and enough bit-level agreement to derive the
@@ -170,54 +170,65 @@ def Reg.lowQubit (r : Reg) (h : 0 < Reg.width r) : ℕ :=
 ========================================================= -/
 
 /--
-`RegEncoding` is the basis-level interface for ordinary finite registers.
-It specifies reads, writes, bit observations, register extensionality, and
-split/register-locality laws used throughout later semantic proofs.
+`RegEncoding` is the basis-level interface for ordinary finite registers. It
+specifies reads, writes, bit observations, register extensionality, and the
+locality laws used throughout later semantic proofs.
+
+Register order is little-endian. For example, if `r.qubits = [3, 8]`, physical
+qubit `3` is logical bit `0` and physical qubit `8` is logical bit `1`. If those
+bits are respectively `true` and `false`, then `toNat r b = 1`.
 -/
 class RegEncoding (Basis : Type u) where
+  /-- Read the little-endian natural number encoded by `r` in basis configuration `b`. -/
   toNat    : Reg → Basis → ℕ
+  /-- Replace the bits of `r` with the encoding of `v`, leaving outside qubits unchanged. -/
   writeNat : Reg → ℕ → Basis → Basis
+  /-- Read the Boolean value of physical qubit `q` in basis configuration `b`. -/
   bit      : ℕ → Basis → Bool
 
-  /-- The canonical ground basis state: every qubit is |0⟩.  This is the fixed,
-  clean initial state the Shor specification is judged against — the qubit
-  analogue of an empty EVM memory.  Any concrete register model supplies it as
-  its physical all-zeros state, so it costs no global axiom. -/
+  /-- The canonical all-zero computational-basis configuration. This is the
+  clean initial configuration used by the Shor specification. -/
   zero     : Basis
   /-- Every qubit of the ground state reads `0`. -/
   bit_zero : ∀ q, bit q zero = false
 
+  /-- Reading a representable value immediately after writing it returns that value. -/
   toNat_writeNat_of_lt :
     ∀ r v b,
       v < ASize r →
       toNat r (writeNat r v b) = v
 
+  /-- Every register read lies in the range representable by its width. -/
   toNat_lt_ASize :
     ∀ r b,
       toNat r b < ASize r
 
+  /-- Two basis configurations are equal when every physical qubit agrees. -/
   basis_ext :
     ∀ b1 b2 : Basis,
       (∀ q, bit q b1 = bit q b2) → b1 = b2
 
+  /-- Bits written inside `r` depend only on `r` and `v`, not on their previous values. -/
   bit_writeNat_in :
     ∀ r v b₁ b₂ q,
       q ∈ r.qubits →
       bit q (writeNat r v b₁) =
         bit q (writeNat r v b₂)
 
+  /-- Writing `r` leaves every physical qubit outside `r` unchanged. -/
   bit_writeNat_out :
     ∀ r v b q,
       q ∉ r.qubits →
       bit q (writeNat r v b) = bit q b
 
+  /-- Logical bit `i` agrees with bit `i` of the natural-number encoding. -/
   bit_eq_testBit_toNat :
     ∀ (r : Reg) (b : Basis) (i : Fin (Reg.width r)),
       bit (r.get i) b =
         Nat.testBit (toNat r b) i.1
 
 /-! =========================================================
-    Section 3: Derived register encoding laws
+    Derived register encoding laws
 
     The following facts used to be tempting class fields. They are derived once
     here from the smaller bit-level interface: split writes, disjoint-write
@@ -940,7 +951,7 @@ theorem writeNat_overwrite
 end RegEncoding
 
 /-! =========================================================
-    Section 4: Extendable physical registers
+    Extendable physical registers
 
     `ExtReg` packages an active register with an ordered reserve. Growth moves
     a prefix of the reserve into the active part while preserving physical
@@ -951,6 +962,10 @@ end RegEncoding
 An active register together with exclusively owned inactive workspace.
 
 `reserve` is ordered from the next high bit onward.
+
+For example, growing an extended register with active qubits `[0, 1]` and
+reserve qubits `[2, 3]` by one produces active qubits `[0, 1, 2]` and reserve
+qubits `[3]`.
 -/
 structure ExtReg where
   active  : Reg
@@ -1047,25 +1062,18 @@ def CtrlDisjoint (ctrl : ℕ) (x z : ExtReg) : Prop := ctrl ∉ x.ownedQubits �
 
 end ExtReg
 
-/-- Namespace-free compatibility wrapper for commuting writes to disjoint registers. -/
-lemma writeNat_comm_of_disjoint
-  {Basis : Type u} [RegEncoding Basis]
-  (left right : Reg) (hdisj : Disjoint left right)
-  (yL yR : ℕ) (b : Basis) :
-  RegEncoding.writeNat left yL (RegEncoding.writeNat right yR b)
-    =
-  RegEncoding.writeNat right yR (RegEncoding.writeNat left yL b) := by
-  exact RegEncoding.writeNat_comm_of_disjoint left right hdisj yL yR b
-
 /-! =========================================================
-    Section 5: Register values and freshness predicates
+    Register values and freshness predicates
 
     These definitions interpret active register bits as unsigned or
     two's-complement integers and name the clean-reserve predicates used by
     allocation/growth semantics.
 ========================================================= -/
 
-/-- Width-based two's-complement decoding. -/
+/-- Decode the low `w` bits of `n` as a two's-complement integer.
+
+For example, `tcDecodeWidth 3 3 = 3` (bit pattern `011`) and
+`tcDecodeWidth 3 7 = -1` (bit pattern `111`). -/
 def tcDecodeWidth : ℕ → ℕ → ℤ
   | 0, _ => 0
   | w + 1, n =>
@@ -1074,6 +1082,7 @@ def tcDecodeWidth : ℕ → ℕ → ℤ
       else
         (n : ℤ) - ((2^(w + 1) : ℕ) : ℤ)
 
+/-- Read the active portion of `e` as an unsigned natural number. -/
 def ExtReg.toNat
     {Basis : Type u}
     [RegEncoding Basis]
@@ -1097,12 +1106,14 @@ theorem ExtReg.toNat_lt
     RegEncoding.toNat_lt_ASize (r := e.active) (b := b)
 
 
+/-- Read the active portion of `e` as a signed two's-complement integer. -/
 def extToInt
     {Basis : Type u}
     [RegEncoding Basis]
     (e : ExtReg) (b : Basis) : ℤ :=
   tcDecodeWidth e.width (e.toNat b)
 
+/-- The register `r` is clean: all of its encoded bits are zero in `b`. -/
 def FreshZero
     {Basis : Type u}
     [RegEncoding Basis]
@@ -1111,6 +1122,7 @@ def FreshZero
 
 namespace ExtReg
 
+/-- The next `n` reserve bits of `e` are clean and available for activation. -/
 def FreshFor
     {Basis : Type u}
     [RegEncoding Basis]
@@ -1170,7 +1182,7 @@ lemma tcDecodeWidth_inj_of_lt
 
 
 /-! =========================================================
-    Section 6: Signed two's-complement arithmetic
+    Signed two's-complement arithmetic
 ========================================================= -/
 
 /-!
@@ -1184,12 +1196,6 @@ def tcModWidth (w : ℕ) (z : ℤ) : ℕ := Int.toNat (z % ((2^w : ℕ) : ℤ))
 
 /-- Wrap an integer to `w` bits and decode the result as two's-complement. -/
 def tcWrapInt (w : ℕ) (z : ℤ) : ℤ := tcDecodeWidth w (tcModWidth w z)
-
-/-- Inclusive lower endpoint of the signed `w`-bit range. -/
-def signedLo (w : ℕ) : ℤ := -(((2^(w-1) : ℕ) : ℤ))
-
-/-- Exclusive upper endpoint of the signed `w`-bit range. -/
-def signedHi (w : ℕ) : ℤ := (((2^(w-1) : ℕ) : ℤ))
 
 /-- Modulo reduction using the active width of an extendable register. -/
 def tcModExt (e : ExtReg) (z : ℤ) : ℕ := tcModWidth (ExtReg.width e) z

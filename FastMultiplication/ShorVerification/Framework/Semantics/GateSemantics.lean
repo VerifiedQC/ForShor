@@ -40,17 +40,21 @@ class GateSemanticsCore
   (qs : QSemantics)
   [RegEncoding qs.Basis] : Type where
 
+  /-- Evaluate a structured gate on a quantum state. -/
   eval  : Gate → qs.State → qs.State
 
+  -- Structural laws. In `U ;; V`, `U` runs before `V`.
   eval_id  : ∀ ψ, eval Gate.id ψ = ψ
   eval_seq : ∀ U V ψ, eval (U ;; V) ψ = eval V (eval U ψ)
 
+  -- Gate evaluation is isometric and complex-linear.
   inner_preserved :
     ∀ U ψ φ, inner ℂ (eval U ψ) (eval U φ) = inner ℂ ψ φ
 
   eval_add  : ∀ U ψ φ, eval U (ψ + φ) = eval U ψ + eval U φ
   eval_smul : ∀ U (a : ℂ) ψ, eval U (a • ψ) = a • eval U ψ
 
+  -- A gate followed by its adjoint returns the original state.
   eval_adj_apply :
     ∀ (U : Gate) (ψ : qs.State),
       eval (Gate.adj U) (eval U ψ) = ψ
@@ -81,6 +85,7 @@ class QFTSemantics
           (qftPhase (2^r.width) (ExtReg.toNat r b) y.1) •
             qs.ket (RegEncoding.writeNat r.active y.1 b)
 
+/-- Hadamard-gate behavior on computational-basis kets. -/
 class HadamardSemantics
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -98,6 +103,7 @@ class HadamardSemantics
             qs.ket (RegEncoding.writeNat (qubitReg q) 1 b)
         )
 
+/-- Pauli-X behavior on computational-basis kets. -/
 class PauliXSemantics
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -111,6 +117,7 @@ class PauliXSemantics
         (RegEncoding.writeNat (qubitReg q)
           (if RegEncoding.bit q b then 0 else 1) b)
 
+/-- Semantics of recombining two logical register blocks in the opposite order. -/
 class RadixReverseSemantics
   (qs : QSemantics)
   [RegEncoding qs.Basis]
@@ -163,7 +170,11 @@ class PhaseSemantics
       else
         qs.ket b
 
-/-- Zero/sign extension and deallocation semantic facts. -/
+/-- Zero/sign extension and deallocation semantic facts.
+
+Zero extension and deallocation change only the logical register view and hence
+act as identity on the state. Sign extension writes the activated reserve bits
+so that the decoded signed value is preserved. -/
 class ExtensionSemantics
   (qs : QSemantics)
   [RegEncoding qs.Basis]
@@ -194,6 +205,11 @@ class ExtensionSemantics
     ∀ r n ψ,
       qs.eval (Gate.signDealloc r n) ψ = qs.eval (Gate.adj (Gate.signExtend r n)) ψ
 
+/-- Signed arithmetic behavior on computational-basis kets.
+
+The `_exact` shifts require representability or exact divisibility. The `_mod`
+operations wrap to the destination width. Each law also records that disjoint
+registers retain their previous values. -/
 class ArithmeticSemantics
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -262,6 +278,13 @@ class GateSemanticsFacts
     HadamardSemantics qs,
     PauliXSemantics qs
 
+/-! ### Reference modular-multiplication semantics
+
+The remaining declarations describe the ideal gates, layouts, and opaque
+primitive tags used by the repository's reference modular-multiplication
+construction. They are not required to understand the generic gate evaluator.
+-/
+
 /-- Ideal modular multiplication specifications used by the correctness layer. -/
 class Spec where
   idealModMul     : (c N : ℕ) → (x : Reg) → Gate
@@ -272,10 +295,11 @@ def QubitOutside (q : ℕ) (r : Reg) : Prop :=
   q ∉ r.qubits
 
 /--
-Layout assumptions for one invocation of `CmodMulInPlaceCore`.
+Layout assumptions for one invocation of the reference in-place controlled
+modular-multiplication core.
 
-`data.grow 1` is used because Algorithm 1 temporarily activates one reserve
-bit of `data` as its carry/high bit.
+`data.grow 1` is used because the construction temporarily activates one
+reserve bit of `data` as its carry/high bit.
 -/
 def ModMulCoreLayout
     (data work : ExtReg)
@@ -289,7 +313,7 @@ def ModMulCoreLayout
   ctrl ≠ flag
 
 /--
-A computational-basis input on which Algorithm 1 is allowed to be called.
+A computational-basis input accepted by the reference modular-multiplication core.
 
 The data register contains a canonical residue; the two data reserve bits,
 the fractional/work register, and the comparator flag are clean.

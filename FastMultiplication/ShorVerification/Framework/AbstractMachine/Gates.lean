@@ -6,7 +6,12 @@ import Mathlib.Tactic
 import Mathlib.Data.Nat.Bitwise
 
 /-!
-# Shor verification core — the high-level Gate language
+# Shor verification core — the high-level `Gate` language
+
+`Gate` is the structured proof language used by the reference implementation.
+Its operations are given semantics directly and are later lowered to the
+framework's `LowGate` target. Framework users interested only in the submission
+boundary can treat this file as implementation-side proof infrastructure.
 -/
 
 universe u
@@ -16,7 +21,7 @@ namespace Shor
 variable {Basis : Type u} [RegEncoding Basis]
 
 /-! =========================================================
-    Section 4: Gate language and derived gate macros
+    Gate language and derived gate macros
 ========================================================= -/
 
 /--
@@ -25,16 +30,20 @@ as `Prim` coexist with structured arithmetic, QFT, phase-product, extension,
 and deallocation gates.
 -/
 inductive Gate : Type
+  -- Structural circuit operations.
   | id : Gate
   | seq : Gate → Gate → Gate
   | adj : Gate → Gate
+  -- Elementary and structured quantum operations.
   | H : ℕ → Gate
   | X : ℕ → Gate
   | QFT : ExtReg → Gate
   | RadixReverse : (r : Reg) → (m : ℕ) → Gate
   | SignedPhaseProd  : (phi : Real) → (x z : ExtReg) → Gate
   | CSignedPhaseProd : (ctrl : ℕ) → (phi : Real) → (x z : ExtReg) → Gate
+  -- Opaque reversible primitive identified by a tag and numeric payload.
   | Prim : String → List ℕ → Gate
+  -- Signed arithmetic and register-view operations.
   | ShiftL    : (r : ExtReg) → (n : ℕ) → Gate
   | ShiftR    : (r : ExtReg) → (n : ℕ) → Gate
   | Negate    : (r : ExtReg) → Gate
@@ -51,15 +60,19 @@ def radixReverseIndex (r : Reg) (m : ℕ) (hm : m ≤ Reg.width r) (kL kH : ℕ)
 
 namespace Gate
 
+/-- Sequential composition: `U ;; V` runs `U` first, then `V`. -/
 infixr:80 " ;; " => Gate.seq
+/-- Adjoint circuit notation. -/
 prefix:90 "†" => Gate.adj
 
+/-- Taking and dropping at the same logical index partitions a register's qubits. -/
 theorem Reg.take_append_drop
     (r : Reg) (n : ℕ) :
     (r.take n).qubits ++ (r.drop n).qubits =
       r.qubits := by
   simp [Reg.take, Reg.drop]
 
+/-- Growing within capacity activates exactly `n` reserve bits. -/
 theorem ExtReg.newBits_size
     (e : ExtReg)
     (n : ℕ)
@@ -70,6 +83,7 @@ theorem ExtReg.newBits_size
   simp[Reg.take]
   omega
 
+/-- Growth changes the active/reserve split but preserves the set and order of owned qubits. -/
 theorem ExtReg.ownedQubits_grow
     (e : ExtReg)
     (n : ℕ) :
@@ -77,18 +91,7 @@ theorem ExtReg.ownedQubits_grow
   simp [ExtReg.ownedQubits, ExtReg.grow, Reg.append, ExtReg.newBits,
     ExtReg.remainingReserve, Reg.take, Reg.drop, List.append_assoc]
 
-theorem RegEncoding.toNat_append_eq
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (left right : Reg)
-    (hdisj : Disjoint left right)
-    (b : Basis) :
-    RegEncoding.toNat (Reg.append left right hdisj) b
-      =
-    RegEncoding.toNat left b +
-      ASize left * RegEncoding.toNat right b := by
-  exact RegEncoding.toNat_append left right hdisj b
-
+/-- The active qubits after growth are the previous active qubits followed by the new bits. -/
 theorem ExtReg.active_grow_qubits
     (e : ExtReg)
     (n : ℕ) :
@@ -96,6 +99,7 @@ theorem ExtReg.active_grow_qubits
       e.active.qubits ++ (e.newBits n).qubits := by
   rfl
 
+/-- Reading a grown register appends the newly active bits above the previous value. -/
 theorem ExtReg.toNat_grow
     {Basis : Type u}
     [RegEncoding Basis]
@@ -110,6 +114,7 @@ theorem ExtReg.toNat_grow
   simpa [ExtReg.toNat, ExtReg.grow, ExtReg.width, ASize] using
     RegEncoding.toNat_append e.active (e.newBits n) _ b
 
+/-- Activating clean zero reserve bits preserves the unsigned value. -/
 theorem ExtReg.toNat_grow_of_fresh
     {Basis : Type u}
     [RegEncoding Basis]
@@ -123,6 +128,7 @@ theorem ExtReg.toNat_grow_of_fresh
   simp [ExtReg.FreshFor, FreshZero] at hzero
   simp [hzero]
 
+/-- Adding one or more leading zero bits preserves the decoded nonnegative value. -/
 lemma tcDecodeWidth_add_eq_of_lt
     {w n value : ℕ}
     (hn : 0 < n)
@@ -142,6 +148,7 @@ lemma tcDecodeWidth_add_eq_of_lt
 
   simp [tcDecodeWidth, hlt]
 
+/-- Growing by clean zero bits turns the previous unsigned value into the same signed value. -/
 theorem ExtReg.extToInt_grow_of_fresh
     {Basis : Type u}
     [RegEncoding Basis]
@@ -164,7 +171,7 @@ end Gate
 
 
 /-! =========================================================
-    Section 5: QFT phase helpers
+    QFT phase helpers
 ========================================================= -/
 
 /-- Standard QFT phase schedule. -/

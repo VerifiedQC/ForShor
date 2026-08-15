@@ -17,10 +17,8 @@ universe u
 
 namespace Shor
 
-variable {Basis : Type u} [RegEncoding Basis]
-
 /-! =========================================================
-    Section 6: Abstract quantum semantics
+    Abstract quantum semantics
 ========================================================= -/
 
 /--
@@ -29,14 +27,21 @@ circuit language: high-level `Gate` and low-level `LowGate` evaluators are
 separate semantic interfaces built on top of the same quantum state space.
 -/
 class QSemantics where
+  /-- Classical configurations that label the computational basis. -/
   Basis : Type u
+  /-- Quantum state vectors over the complex numbers. -/
   State : Type u
 
+  /-- Additive and norm structure on quantum states. -/
   [instNormed : NormedAddCommGroup State]
+  /-- Complex inner-product structure on quantum states. -/
   [instIP     : InnerProductSpace ℂ State]
 
+  /-- Embed a computational-basis configuration `b` as the state vector `|b⟩`. -/
   ket   : Basis → State
 
+  /-- To prove a property of every represented state, prove it for zero, sums,
+  complex scalar multiples, and every computational-basis ket. -/
   state_induction :
     ∀ (P : State → Prop),
       P 0 →
@@ -45,11 +50,14 @@ class QSemantics where
       (∀ b : Basis, P (ket b)) →
       ∀ ψ, P ψ
 
+  /-- Equal basis labels have inner product one. Together with the next field,
+  this states that computational-basis kets are orthonormal. -/
   ket_inner_eq_of_eq :
     ∀ {b₁ b₂ : Basis},
       b₁ = b₂ →
       inner ℂ (ket b₁) (ket b₂) = (1 : ℂ)
 
+  /-- Distinct basis labels have inner product zero. -/
   ket_inner_eq_zero_of_ne :
     ∀ {b₁ b₂ : Basis},
       b₁ ≠ b₂ →

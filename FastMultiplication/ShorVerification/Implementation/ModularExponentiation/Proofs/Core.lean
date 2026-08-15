@@ -862,7 +862,7 @@ theorem eval_step3_clean_ket_of_primitive
     apply congrArg qs.ket
 
     exact
-      (writeNat_comm_of_disjoint
+      (RegEncoding.writeNat_comm_of_disjoint
         (qubitReg flag)
         x_ext
         hflag_x
