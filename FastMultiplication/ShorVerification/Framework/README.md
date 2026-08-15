@@ -83,8 +83,7 @@ To understand the reference circuit construction, read
 with `FastMultiplication/ShorVerification/Implementation/Reference/ShorProgram.lean`.
 Its layout and readiness dependencies show how the reference implementation
 allocates registers and discharges the framework contract. The richer
-construction language is optional for understanding the public interface; its
-intended boundary is described in the root `RESTRUCTURE_PLAN.md`.
+construction language is optional for understanding the public interface.
 
 To study the factoring reduction, read `Math/Factoring_Reduction/Defs.lean`,
 starting with `shor_success_conditions`, then read `general_unsuccessful_bound`
