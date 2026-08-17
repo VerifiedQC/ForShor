@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use ForShor in your research, please cite it as below."
+title: "ForShor: Formal Verification of Shor's Algorithm in Lean 4 with Verified Resource Estimation"
+abstract: >-
+  A formal verification of Shor's algorithm in Lean 4, including verified
+  resource estimation: an implementation of order finding built on fast
+  (Toom-Cook) multiplication is verified from a high-level gate language down to
+  a low-level abstract machine, with a machine-checked O(n^(2+epsilon)) gate-count
+  bound for the compiled circuit.
+type: software
+authors:
+  - family-names: Suresh
+    given-names: Anirudh
+  - family-names: Patel
+    given-names: Jai
+  - family-names: Cao
+    given-names: Yudong
+  - family-names: Tao
+    given-names: Runzhou
+repository-code: "https://github.com/VerifiedQC/ForShor"
+license: Apache-2.0
+year: 2026
+keywords:
+  - Shor's algorithm
+  - formal verification
+  - Lean 4
+  - resource estimation
+  - quantum computing

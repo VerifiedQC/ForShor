@@ -94,3 +94,20 @@ lake build
 ## License
 
 Released under the Apache License 2.0. See [LICENSE](LICENSE).
+
+## Citation
+
+If you use ForShor in your research, please cite it. A machine-readable
+[`CITATION.cff`](CITATION.cff) is provided (GitHub renders a "Cite this
+repository" button); a BibTeX entry:
+
+```bibtex
+@misc{suresh2026forshor,
+  author       = {Anirudh Suresh and Jai Patel and Yudong Cao and Runzhou Tao},
+  title        = {{ForShor}: Formal Verification of {Shor}'s Algorithm in {Lean~4}
+                  with Verified Resource Estimation},
+  year         = {2026},
+  howpublished = {\url{https://github.com/VerifiedQC/ForShor}},
+  note         = {Apache-2.0 licensed Lean~4 development}
+}
+```
