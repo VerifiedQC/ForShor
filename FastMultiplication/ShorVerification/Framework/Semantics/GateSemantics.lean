@@ -312,23 +312,60 @@ class IdealCtrlModMulExactSemantics
     [GateSemanticsCore qs]
     [Spec] : Prop where
 
-  eval_idealCtrlModMul_good_ket_exact :
-    ∀ (c N : ℕ) (data work : ExtReg) (flag ctrl : ℕ) (b : qs.Basis),
+  eval_idealCtrlModMul_ket_exact :
+    ∀ (c N : ℕ) (data : Reg) (ctrl : ℕ) (b : qs.Basis),
       1 < N →
-      N ≤ ASize data.active →
+      N ≤ ASize data →
       Nat.Coprime c N →
-      ModMulCoreLayout data work flag ctrl →
-      GoodModMulBasisInput qs N data work flag b →
-      qs.eval (Spec.idealCtrlModMul c N data.active ctrl) (qs.ket b)
+      ctrl ∉ data.qubits →
+      RegEncoding.toNat data b < N →
+      qs.eval (Spec.idealCtrlModMul c N data ctrl) (qs.ket b)
         =
       qs.ket
-        (RegEncoding.writeNat data.active
+        (RegEncoding.writeNat data
           (if RegEncoding.bit ctrl b then
-            (c * RegEncoding.toNat data.active b) % N
+            (c * RegEncoding.toNat data b) % N
           else
-            RegEncoding.toNat data.active b)
+            RegEncoding.toNat data b)
           b)
 
+namespace IdealCtrlModMulExactSemantics
+
+theorem eval_idealCtrlModMul_good_ket_exact
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [Spec]
+    [IdealCtrlModMulExactSemantics qs]
+    (c N : ℕ)
+    (data work : ExtReg)
+    (flag ctrl : ℕ)
+    (b : qs.Basis)
+    (hN : 1 < N)
+    (hsize : N ≤ ASize data.active)
+    (hcoprime : Nat.Coprime c N)
+    (hlayout : ModMulCoreLayout data work flag ctrl)
+    (hb : GoodModMulBasisInput qs N data work flag b) :
+    qs.eval (Spec.idealCtrlModMul c N data.active ctrl) (qs.ket b)
+      =
+    qs.ket
+      (RegEncoding.writeNat data.active
+        (if RegEncoding.bit ctrl b then
+          (c * RegEncoding.toNat data.active b) % N
+        else
+          RegEncoding.toNat data.active b)
+        b) := by
+  apply IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_ket_exact
+  · exact hN
+  · exact hsize
+  · exact hcoprime
+  · simp[ModMulCoreLayout] at hlayout
+    intro hctrlActive
+    exact hlayout.2.2.2.1 (by
+      simp [ExtReg.ownedQubits, hctrlActive])
+  · exact hb.1
+
+end IdealCtrlModMulExactSemantics
 /--
 Semantic facts for the opaque arithmetic primitives used by the reference
 modular-multiplication implementation.

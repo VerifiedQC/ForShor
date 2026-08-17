@@ -23,6 +23,11 @@ class MeasureClass (qs : QSemantics) [RegEncoding qs.Basis] where
   /-- Outcome projector for measuring register `r`. -/
   measProj : Reg → ℕ → qs.State →L[ℂ] qs.State
 
+  measProj_ket :
+    ∀ (r : Reg) (o : ℕ) (b : qs.Basis),
+      measProj r o (qs.ket b)
+        = if RegEncoding.toNat r b = o then qs.ket b else 0
+
   /-- No outcomes beyond the register's computational-basis range. -/
   measProj_zero_outOfRange :
     ∀ r o ψ,
