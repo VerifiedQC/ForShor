@@ -266,8 +266,7 @@ noncomputable def referenceShorProg
   {
     circuit := referenceShorCircuit (qs := qs) lowering inst m
 
-    output :=
-      (allocateReferenceLayout lowering.ops inst (referencePrecision m)).x.active
+    output := (allocateReferenceLayout lowering.ops inst (referencePrecision m)).x.active
   }
 end
 end Reference

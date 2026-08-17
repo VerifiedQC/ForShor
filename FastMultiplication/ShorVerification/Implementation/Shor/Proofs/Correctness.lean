@@ -1,5 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Assertions
 import FastMultiplication.ShorVerification.Implementation.Shor.Defs
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Main
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.WholeProgramCorrectness
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
@@ -795,30 +796,10 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
 /-! =========================================================
     Section 4: Final correctness statements
 
-    The ideal theorem is the quantum order-finding lower bound used by the
-    rest of the file.  The approximation theorem transfers that ideal bound
-    across the modular-exponentiation implementation error, and the final
-    factoring statement combines it with the classical reduction.
+    The ideal theorem lives in `Proofs.NaiveShor.Main`.  This file imports that
+    bound and transfers it across the modular-exponentiation implementation
+    error to obtain the approximate order-finding statement.
 ========================================================= -/
-
-/-- Ideal order-finding success probability for Shor's algorithm.
-
-This is the top-level quantum lower bound: starting from a clean
-computational-basis input, the ideal order-finding circuit recovers the order
-with at least the standard inverse-polylogarithmic probability. -/
-theorem Shor_correct
-    [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
-    (T : ℕ → ℕ)
-    (hT : ContinuedFractionSearchComplete T)
-    (inst : ShorOrderFindingInstance)
-    (x y : ExtReg)
-    (b0 : qs.Basis)
-    (hm : regSize x.active = Nat.log2 (2 * inst.N^2))
-    (hn : regSize y.active = Nat.log2 (2 * inst.N))
-    (hinput : IdealOrderFindingInput qs x y b0) :
-    ShorCorrect T hT inst x y b0 hm hn hinput := by
-  sorry
 
 omit [ContinuedFractionPost] [Spec] in
 lemma initY1_eq_X_lowQubit

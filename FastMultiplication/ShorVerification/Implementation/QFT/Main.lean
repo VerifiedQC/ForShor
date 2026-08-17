@@ -26,8 +26,7 @@ theorem lowerQFT_correct
     (r : ExtReg) :
     LowerQFTCorrect qs k hk ops r := by
   intro ψ hworkspace hC hRun
-  exact
-    evalL_lowerQFT
+  exact evalL_lowerQFT
       (qs := qs)
       (k := k)
       (hk := hk)

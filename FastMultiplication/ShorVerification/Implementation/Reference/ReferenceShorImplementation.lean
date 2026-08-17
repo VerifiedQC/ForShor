@@ -142,9 +142,8 @@ noncomputable def referenceShorImplementation
     ShorImplementation (qs := qs) where
   prog := referenceShorProg (qs := qs) lowering
   correct := referenceShorProg_correct (qs := qs) lowering
-  gateBound := fun _ _ => 0
+  gateBound := sorry
   counted := by
-    intro inst m
     sorry
 
 end

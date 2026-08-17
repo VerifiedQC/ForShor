@@ -78,17 +78,19 @@ def ShorGateCountBound
   ∃ C : ℝ, 0 < C ∧
   ∃ n₀ : ℕ, 1 ≤ n₀ ∧
     ∀ (inst : ShorOrderFindingInstance)
-      (work : ExtReg) (flag : ℕ) (b0 : qs.Basis)
-      (hsetup :
-        ShorApproxSetup qs (shorEta δ inst.y.width) inst.x inst.y work flag b0),
-      let n := inst.y.width
+      (x y work : ExtReg)
+      (_hxWidth : regSize x.active = Nat.log2 (2 * inst.N^2))
+      (_hyWidth : regSize y.active = Nat.log2 (2 * inst.N))
+      (flag : ℕ) (b0 : qs.Basis)
+      (hsetup : ShorApproxSetup qs (shorEta δ y.width) x y work flag b0),
+      let n := y.width
       n₀ ≤ n →
       ∀ hLowerWorkspace :
         GateWorkspaceOK ops
           (orderFindingApprox qs inst.a inst.N
-            inst.x inst.y work flag hsetup.circuit_workspace),
+            x y work flag hsetup.circuit_workspace),
       (shorOrderFindingGateCount qs k hk ops inst.a inst.N
-          inst.x inst.y work flag hsetup.circuit_workspace
+        x y work flag hsetup.circuit_workspace
           hLowerWorkspace : ℝ)
         ≤ C * shorGateRate ε n
 
@@ -1343,34 +1345,40 @@ lemma ShorApproxSetup.toShorGateCountLayout
     {η : ℝ}
     (cWork : ℕ)
     (hcWork : 1 ≤ cWork)
-    (inst : ShorOrderFindingInstance)
-    (work : ExtReg)
+    (N : ℕ)
+    (x y work : ExtReg)
     (flag : ℕ)
     (b0 : qs.Basis)
-    (hsetup : ShorApproxSetup qs η inst.x inst.y work flag b0)
+    (hN : 1 < N)
+    (hxWidth :
+      regSize x.active = Nat.log2 (2 * N^2))
+    (hyWidth :
+      regSize y.active = Nat.log2 (2 * N))
+    (hsetup : ShorApproxSetup qs η x y work flag b0)
     (hExtra :
       algorithm1ExtraBits η
-        ≤ (cWork - 1) * regSize inst.y.active) :
-    ShorGateCountLayout cWork (regSize inst.y.active)
-      inst.x inst.y work flag := by
-  have hN : 1 < inst.N := by
-    rcases inst.range with ⟨ha0, haN⟩
-    omega
+        ≤ (cWork - 1) * regSize y.active) :
+    ShorGateCountLayout cWork (regSize y.active)
+      x y work flag := by
   have hxLower :
-      regSize inst.y.active ≤ regSize inst.x.active :=
+      regSize y.active ≤ regSize x.active :=
     shor_y_width_le_x_width
-      inst.N inst.x inst.y hN inst.x_width inst.y_width
+      N x y hN hxWidth hyWidth
+
   have hxUpper :
-      regSize inst.x.active ≤ 2 * regSize inst.y.active :=
+      regSize x.active ≤ 2 * regSize y.active :=
     shor_x_width_le_two_y_width
-      inst.N inst.x inst.y hN inst.x_width inst.y_width
+      N x y hN hxWidth hyWidth
+
   have hworkLower :
-      regSize inst.y.active ≤ regSize work.active :=
+      regSize y.active ≤ regSize work.active :=
     data_width_le_work_width hsetup.work_precision
+
   have hworkUpper :
-      regSize work.active ≤ cWork * regSize inst.y.active :=
+      regSize work.active ≤ cWork * regSize y.active :=
     Algorithm1Precision.work_width_le_mul
       hcWork hsetup.work_precision hExtra
+
   exact
     ⟨rfl, hxLower, hxUpper,
       hworkLower, hworkUpper, hsetup.register_layout⟩
@@ -1423,50 +1431,61 @@ theorem shorGateCountBound_of_components
     dsimp [nFinal]
     omega
   refine ⟨C, hC, nFinal, hnFinal, ?_⟩
-  intro inst work flag b0 hsetup
+  intro inst x y work hxWidth hyWidth flag b0 hsetup
   dsimp
   intro hn hLowerWorkspace
-  let n : ℕ := inst.y.width
+
+  let n : ℕ := y.width
+
   have hnOrder' : nOrder ≤ n := by
     dsimp [nFinal, n] at hn
     omega
+
   have hnExtra' : nExtra ≤ n := by
     dsimp [nFinal, n] at hn
     omega
+
   have hnOne : 1 ≤ n :=
     hnOrder.trans hnOrder'
+
   have hExtra :
       algorithm1ExtraBits
-          (shorEta δ inst.y.width)
-        ≤ (cWork - 1) * regSize inst.y.active := by
-    have :=
-      hExtraFits inst.y.width (by simpa [n] using hnExtra')
-    simpa [ExtReg.width] using this
-  have hLayout :
-      ShorGateCountLayout cWork n
-        inst.x inst.y work flag := by
+          (shorEta δ y.width)
+        ≤ (cWork - 1) * regSize y.active := by
+    have h :=
+      hExtraFits y.width (by simpa [n] using hnExtra')
+    simpa [ExtReg.width] using h
+
+  have hN : 1 < inst.N := by
+    rcases inst.range with ⟨ha0, haN⟩
+    omega
+
+  have hLayout : ShorGateCountLayout cWork n
+        x y work flag := by
     dsimp [n]
     simpa [ExtReg.width] using
       ShorApproxSetup.toShorGateCountLayout
-        cWork hcWork inst work flag b0 hsetup hExtra
+        cWork hcWork inst.N x y work flag b0
+        hN hxWidth hyWidth hsetup hExtra
+
   have hPreliminary :
       (shorOrderFindingGateCount qs k hk ops
-          inst.a inst.N inst.x inst.y work flag
+          inst.a inst.N x y work flag
           hsetup.circuit_workspace hLowerWorkspace : ℝ)
         ≤ C *
           Real.rpow (n : ℝ)
             (1 + phaseProductExponent k) :=
     hOrderFinding n inst.a inst.N
-      inst.x inst.y work flag hsetup.circuit_workspace
+      x y work flag hsetup.circuit_workspace
       hLowerWorkspace hnOrder' hLayout
+
   have hRate :
       Real.rpow (n : ℝ) (1 + phaseProductExponent k)
         ≤ shorGateRate ε n :=
     phaseProduct_succ_rate_le_shorGateRate
       ε k n hnOne hExponent
-  exact
-    hPreliminary.trans
-      (mul_le_mul_of_nonneg_left hRate (le_of_lt hC))
+
+  exact hPreliminary.trans (mul_le_mul_of_nonneg_left hRate (le_of_lt hC))
 
 /-- Complete Shor gate-count bound for any PhaseProduct program satisfying the generated-program contract. -/
 theorem shorGateCountBound_of_programOK
