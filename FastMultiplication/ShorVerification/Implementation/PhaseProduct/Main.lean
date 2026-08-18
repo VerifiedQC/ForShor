@@ -18,7 +18,7 @@ theorem lowerSignedPhaseProduct_correct
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (phi : ℝ)
@@ -47,7 +47,7 @@ theorem lowerCSignedPhaseProduct_correct
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)

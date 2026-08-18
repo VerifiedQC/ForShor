@@ -111,29 +111,34 @@ class PauliXSemantics
         (RegEncoding.writeNat (qubitReg q)
           (if RegEncoding.bit q b then 0 else 1) b)
 
+def radixReverseBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : Reg)
+    (m : ℕ)
+    (b : Basis) : Basis :=
+  if hm : m ≤ regSize r then
+    let sp : SplitPoint r := ⟨m, hm⟩
+    let left := splitLeft r sp
+    let right := splitRight r sp
+    RegEncoding.writeNat r
+      (radixReverseIndex r m hm
+        (RegEncoding.toNat left b)
+        (RegEncoding.toNat right b))
+      b
+  else
+    b
+
 class RadixReverseSemantics
   (qs : QSemantics)
   [RegEncoding qs.Basis]
   [GateSemanticsCore qs] : Type where
 
-  eval_RadixReverse_ket :
-    ∀ (r : Reg) (m : ℕ) (hm : m ≤ regSize r)
-      (b : qs.Basis) (kL kH : ℕ),
-      let sp : SplitPoint r := ⟨m, hm⟩
-      let left  : Reg := splitLeft r sp
-      let right : Reg := splitRight r sp
-      kL < ASize left →
-      kH < ASize right →
-      qs.eval (Gate.RadixReverse r m)
-        (qs.ket
-          (RegEncoding.writeNat left kL
-            (RegEncoding.writeNat right kH b)))
-      =
-      qs.ket
-        (RegEncoding.writeNat r
-          (radixReverseIndex r m hm kL kH)
-          b)
-
+  eval_RadixReverse_ket_total :
+    ∀ (r : Reg) (m : ℕ) (b : qs.Basis),
+      qs.eval (Gate.RadixReverse r m) (qs.ket b)
+        =
+      qs.ket (radixReverseBasis r m b)
 /-- Signed phase-product semantic facts. -/
 class PhaseSemantics
   (qs : QSemantics)
@@ -163,6 +168,58 @@ class PhaseSemantics
       else
         qs.ket b
 
+/-! =========================================================
+    Canonical total basis action for sign extension
+========================================================= -/
+
+/--
+The value written to the newly activated bits by sign extension.
+
+If the active value is negative, complement all newly activated bits.
+Otherwise leave them unchanged.
+
+This is total and reversible.  On fresh-zero reserve it produces exactly
+the usual two's-complement sign-extension bits.
+-/
+def signExtendNewValue
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : ExtReg)
+    (n : ℕ)
+    (b : Basis) : ℕ :=
+  let hi := RegEncoding.toNat (r.newBits n) b
+  if extToInt r b < 0 then
+    ASize (r.newBits n) - 1 - hi
+  else
+    hi
+
+
+def signExtendBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : ExtReg)
+    (n : ℕ)
+    (b : Basis) : Basis :=
+  RegEncoding.writeNat
+    (r.newBits n)
+    (signExtendNewValue r n b)
+    b
+
+
+/--
+Sign deallocation is the inverse of sign extension.
+
+The canonical sign-extension basis map is an involution, so the same basis
+map represents its inverse.
+-/
+def signDeallocBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : ExtReg)
+    (n : ℕ)
+    (b : Basis) : Basis :=
+  signExtendBasis r n b
+
 /-- Zero/sign extension and deallocation semantic facts. -/
 class ExtensionSemantics
   (qs : QSemantics)
@@ -177,75 +234,174 @@ class ExtensionSemantics
     ∀ (r : ExtReg) (n : ℕ) (ψ : qs.State),
       qs.eval (Gate.zeroDealloc r n) ψ = ψ
 
-  eval_signExtend_ket :
+  eval_signExtend_ket_total :
     ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
-    r.CanGrow n → ExtReg.FreshFor r n b →
-      ∃ b' : qs.Basis,
-        qs.eval (Gate.signExtend r n) (qs.ket b) = qs.ket b'
-        ∧
-        ExtReg.toNat r b' = ExtReg.toNat r b
-        ∧
-        extToInt (r.grow n) b' = extToInt r b
-        ∧
-        (∀ e : ExtReg, ExtReg.ActiveDisjoint e (r.grow n) →
-          ExtReg.toNat e b' = ExtReg.toNat e b)
+      qs.eval (Gate.signExtend r n) (qs.ket b)
+        =
+      qs.ket (signExtendBasis r n b)
 
-  eval_signDealloc_eq_adj :
-    ∀ r n ψ,
-      qs.eval (Gate.signDealloc r n) ψ = qs.eval (Gate.adj (Gate.signExtend r n)) ψ
+  eval_signDealloc_ket_total :
+    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
+      qs.eval (Gate.signDealloc r n) (qs.ket b)
+        =
+      qs.ket (signDeallocBasis r n b)
+/--
+A reversible total completion of signed left shift.
+
+For `n < w`, the upper `n` input bits are not discarded.  Instead their
+difference from the sign-extension pattern is stored in the low `n` output
+bits.  On inputs for which signed left shift does not overflow, those low
+bits are all zero, so this agrees with ordinary signed left shift.
+
+For `n ≥ w` we use the identity on the `w`-bit word.
+-/
+def signedShiftLWord (w n u : ℕ) : ℕ :=
+  if _h : n < w then
+    let k := w - n
+    let kept := u % (2 ^ k)
+    let dropped := u / (2 ^ k)
+    let sign := Nat.testBit u (k - 1)
+    let mask := if sign then 2 ^ n - 1 else 0
+    Nat.xor dropped mask + 2 ^ n * kept
+  else
+    u % (2 ^ w)
+
+/--
+Inverse reversible completion of `signedShiftLWord`.
+-/
+def signedShiftRWord (w n u : ℕ) : ℕ :=
+  if _h : n < w then
+    let k := w - n
+    let kept := u / (2 ^ n)
+    let syndrome := u % (2 ^ n)
+    let sign := Nat.testBit u (w - 1)
+    let mask := if sign then 2 ^ n - 1 else 0
+    kept + 2 ^ k * Nat.xor syndrome mask
+  else
+    u % (2 ^ w)
+
+def shiftLBasisRaw
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : ExtReg)
+    (n : ℕ)
+    (b : Basis) : Basis :=
+  RegEncoding.writeNat
+    r.active
+    (signedShiftLWord r.width n (ExtReg.toNat r b))
+    b
+
+
+def shiftRBasisRaw
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : ExtReg)
+    (n : ℕ)
+    (b : Basis) : Basis :=
+  RegEncoding.writeNat
+    r.active
+    (signedShiftRWord r.width n (ExtReg.toNat r b))
+    b
+
+noncomputable def shiftLBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : ExtReg)
+    (n : ℕ)
+    (b : Basis) : Basis := by
+  classical
+  let z : ℤ := (2 : ℤ) ^ n * extToInt r b
+  exact
+    if h : FitsSignedWidth r.width z then
+      RegEncoding.writeNat
+        r.active
+        (tcModWidth r.width z)
+        b
+    else
+      shiftLBasisRaw r n b
+
+noncomputable def shiftRBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : ExtReg)
+    (n : ℕ)
+    (b : Basis) : Basis := by
+  classical
+  exact
+    if h :
+        ∃ q : ℤ,
+          extToInt r b = (2 : ℤ) ^ n * q ∧
+          FitsSignedWidth r.width q
+    then
+      RegEncoding.writeNat
+        r.active
+        (tcModWidth r.width (Classical.choose h))
+        b
+    else
+      shiftRBasisRaw r n b
+
+def negateBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : ExtReg)
+    (b : Basis) : Basis :=
+  RegEncoding.writeNat r.active (tcModWidth r.width (- extToInt r b)) b
+
+
+noncomputable def addScaledBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (dst src : ExtReg)
+    (negSrc : Bool)
+    (sh : ℕ)
+    (b : Basis) : Basis := by
+  classical
+  exact
+    if _h : ExtReg.ActiveDisjoint dst src then
+      RegEncoding.writeNat
+        dst.active
+        (tcModWidth dst.width
+          (extToInt dst b
+            + (if negSrc then (-1 : ℤ) else 1)
+                * (2 : ℤ) ^ sh
+                * extToInt src b)) b
+    else
+      b
 
 class ArithmeticSemantics
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs] : Type where
 
-  eval_ShiftL_ket_exact :
+  eval_ShiftL_ket_total :
     ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
-    FitsSignedWidth r.width ((2 : ℤ) ^ n * extToInt r b) →
-      ∃ b' : qs.Basis,
-        qs.eval (Gate.ShiftL r n) (qs.ket b) = qs.ket b'
-        ∧
-        extToInt r b' = (2 : ℤ) ^ n * extToInt r b
-        ∧
-        (∀ e : ExtReg, ExtReg.ActiveDisjoint e r →
-           extToInt e b' = extToInt e b)
+      qs.eval (Gate.ShiftL r n) (qs.ket b)
+        =
+      qs.ket (shiftLBasis r n b)
 
-  eval_ShiftR_ket_exact :
-    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis) (q : ℤ),
-    extToInt r b = (2 : ℤ) ^ n * q →
-    FitsSignedWidth r.width q →
-    ∃ b' : qs.Basis,
-      qs.eval (Gate.ShiftR r n) (qs.ket b) = qs.ket b'
-        ∧
-      extToInt r b' = q
-        ∧
-      (∀ e : ExtReg,  ExtReg.ActiveDisjoint e r →
-           extToInt e b' = extToInt e b)
+  eval_ShiftR_ket_total :
+    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
+      qs.eval (Gate.ShiftR r n) (qs.ket b)
+        =
+      qs.ket (shiftRBasis r n b)
 
-  eval_Negate_ket_mod :
+  eval_Negate_ket_total :
     ∀ (r : ExtReg) (b : qs.Basis),
-    ∃ b' : qs.Basis,
-      qs.eval (Gate.Negate r) (qs.ket b) = qs.ket b'
-        ∧
-      extToInt r b' = tcWrapInt r.width (- extToInt r b)
-        ∧
-      (∀ e : ExtReg,  ExtReg.ActiveDisjoint e r →
-         extToInt e b' = extToInt e b)
+      qs.eval (Gate.Negate r) (qs.ket b)
+        =
+      qs.ket (negateBasis r b)
 
-  eval_AddScaled_ket_mod :
-    ∀ (dst src : ExtReg) (negSrc : Bool) (sh : ℕ) (b : qs.Basis),
-    ExtReg.ActiveDisjoint dst src →
-    ∃ b' : qs.Basis,
-      qs.eval (Gate.AddScaled dst src negSrc sh) (qs.ket b) = qs.ket b'
-        ∧
-      extToInt dst b' = tcWrapInt dst.width (extToInt dst b + (if negSrc then (-1 : ℤ) else 1) * (2 : ℤ) ^ sh * extToInt src b)
-        ∧
-      extToInt src b' = extToInt src b
-        ∧
-      (∀ e : ExtReg,
-          ExtReg.ActiveDisjoint e dst →
-          ExtReg.ActiveDisjoint e src →
-           extToInt e b' = extToInt e b)
+  eval_AddScaled_ket_total :
+    ∀ (dst src : ExtReg)
+      (negSrc : Bool)
+      (sh : ℕ)
+      (b : qs.Basis),
+      qs.eval
+          (Gate.AddScaled dst src negSrc sh)
+          (qs.ket b)
+        =
+      qs.ket
+        (addScaledBasis dst src negSrc sh b)
 
 
 /-- Bundled semantic interface for all gate families used in this file. -/
@@ -328,44 +484,6 @@ class IdealCtrlModMulExactSemantics
           else
             RegEncoding.toNat data b)
           b)
-
-namespace IdealCtrlModMulExactSemantics
-
-theorem eval_idealCtrlModMul_good_ket_exact
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [Spec]
-    [IdealCtrlModMulExactSemantics qs]
-    (c N : ℕ)
-    (data work : ExtReg)
-    (flag ctrl : ℕ)
-    (b : qs.Basis)
-    (hN : 1 < N)
-    (hsize : N ≤ ASize data.active)
-    (hcoprime : Nat.Coprime c N)
-    (hlayout : ModMulCoreLayout data work flag ctrl)
-    (hb : GoodModMulBasisInput qs N data work flag b) :
-    qs.eval (Spec.idealCtrlModMul c N data.active ctrl) (qs.ket b)
-      =
-    qs.ket
-      (RegEncoding.writeNat data.active
-        (if RegEncoding.bit ctrl b then
-          (c * RegEncoding.toNat data.active b) % N
-        else
-          RegEncoding.toNat data.active b)
-        b) := by
-  apply IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_ket_exact
-  · exact hN
-  · exact hsize
-  · exact hcoprime
-  · simp[ModMulCoreLayout] at hlayout
-    intro hctrlActive
-    exact hlayout.2.2.2.1 (by
-      simp [ExtReg.ownedQubits, hctrlActive])
-  · exact hb.1
-
-end IdealCtrlModMulExactSemantics
 /--
 Semantic facts for the opaque arithmetic primitives used by the reference
 modular-multiplication implementation.

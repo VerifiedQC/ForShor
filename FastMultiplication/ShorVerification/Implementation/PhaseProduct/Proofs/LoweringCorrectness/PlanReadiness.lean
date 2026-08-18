@@ -23,9 +23,8 @@ recursive plan from clean basis states to clean quantum states.
 lemma planCompileAnnotatedOps_ready_append_of_noPhase
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     {k : ℕ}
     (hk : 1 < k)
     (pts : List Point)
@@ -313,7 +312,7 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     {k : ℕ}
     (hk : 1 < k)
     (planPts : List Point)
@@ -862,9 +861,8 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
 lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     {k : ℕ}
     (hk : 1 < k)
     (pts : List Point)
@@ -1153,7 +1151,7 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     {k : ℕ}
     (hk : 1 < k)
     (planPts : List Point)
@@ -1715,9 +1713,8 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
 lemma PhaseLoweringReady.cast_gate_mpr
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -1747,9 +1744,8 @@ lemma PhaseLoweringReady.cast_gate_mpr
 lemma planAllocChunkGate_ready
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -1826,9 +1822,8 @@ lemma planAllocChunkGate_ready
 lemma planCompileSignedAllocationsAux_ready
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -1862,9 +1857,8 @@ lemma planCompileSignedAllocationsAux_ready
 lemma planCompileSignedAllocations_ready
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     {k : ℕ}
     (hk : 1 < k)
     (pts : List Point)
@@ -1890,9 +1884,8 @@ lemma planCompileSignedAllocations_ready
 lemma planDeallocChunkGate_ready
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -1971,9 +1964,8 @@ lemma planDeallocChunkGate_ready
 lemma planCompileSignedDeallocationsAux_ready
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -2007,9 +1999,8 @@ lemma planCompileSignedDeallocationsAux_ready
 lemma planCompileSignedDeallocations_ready
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     {k : ℕ}
     (hk : 1 < k)
     (pts : List Point)
@@ -2045,7 +2036,7 @@ lemma planCompiledSignedPhaseGate_ready_ket
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     {k : ℕ}
     (hk : 1 < k)
     (pts : List Point)
@@ -2248,7 +2239,7 @@ lemma standardSignedPhaseLoweringPlan_ready_ket
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (phi : ℝ)
@@ -2387,7 +2378,7 @@ theorem standardSignedPhaseLoweringPlan_ready_and_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (phi : ℝ)
@@ -2477,7 +2468,7 @@ theorem standardSignedPhaseLoweringPlan_ready
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (phi : ℝ)
@@ -2502,7 +2493,7 @@ lemma standardSignedPhaseLoweringPlan_ready_of_workspace
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (phi : ℝ)
@@ -2524,7 +2515,7 @@ lemma planCompiledCSignedPhaseGate_ready_ket
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     {k : ℕ}
     (hk : 1 < k)
     (pts : List Point)
@@ -2637,7 +2628,7 @@ lemma standardCSignedPhaseLoweringPlan_ready_ket
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
@@ -2726,7 +2717,7 @@ theorem standardCSignedPhaseLoweringPlan_ready
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
@@ -2752,7 +2743,7 @@ lemma standardCSignedPhaseLoweringPlan_ready_of_workspace
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)

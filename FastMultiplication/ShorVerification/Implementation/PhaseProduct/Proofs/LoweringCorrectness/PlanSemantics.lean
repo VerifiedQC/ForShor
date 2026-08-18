@@ -178,7 +178,7 @@ lemma evalL_lowerGateRec_correct
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}

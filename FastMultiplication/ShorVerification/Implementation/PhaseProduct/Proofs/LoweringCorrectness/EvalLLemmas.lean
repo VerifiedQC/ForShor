@@ -102,54 +102,50 @@ theorem evalL_Prim
 theorem evalL_shiftL
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     (r : ExtReg)
     (n : ℕ)
     (ψ : qs.State) :
     LowerGateClass.evalL (qs := qs) (LowGate.ShiftL r n) ψ =
       qs.eval (Gate.ShiftL r n) ψ :=
-  LowerGateGateBridge.evalL_shiftL r n ψ
+  LowerGateGateBridge.evalL_shiftL qs r n ψ
 
 theorem evalL_shiftR
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     (r : ExtReg)
     (n : ℕ)
     (ψ : qs.State) :
     LowerGateClass.evalL (qs := qs) (LowGate.ShiftR r n) ψ =
       qs.eval (Gate.ShiftR r n) ψ :=
-  LowerGateGateBridge.evalL_shiftR r n ψ
+  LowerGateGateBridge.evalL_shiftR qs r n ψ
 
 theorem evalL_negate
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     (r : ExtReg)
     (ψ : qs.State) :
     LowerGateClass.evalL (qs := qs) (LowGate.Negate r) ψ =
       qs.eval (Gate.Negate r) ψ :=
-  LowerGateGateBridge.evalL_negate r ψ
+  LowerGateGateBridge.evalL_negate qs r ψ
 
 theorem evalL_addScaled
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     (dst src : ExtReg)
     (negSrc : Bool)
     (shift : ℕ)
     (ψ : qs.State) :
     LowerGateClass.evalL (qs := qs) (LowGate.AddScaled dst src negSrc shift) ψ =
       qs.eval (Gate.AddScaled dst src negSrc shift) ψ :=
-  LowerGateGateBridge.evalL_addScaled dst src negSrc shift ψ
+  LowerGateGateBridge.evalL_addScaled qs dst src negSrc shift ψ
 
 theorem evalL_naive_signedPhaseProd
     {qs : QSemantics}
@@ -214,15 +210,14 @@ theorem evalL_zeroExtend
 theorem evalL_signExtend
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     (r : ExtReg)
     (n : ℕ)
     (ψ : qs.State) :
     LowerGateClass.evalL (qs := qs) (LowGate.signExtend r n) ψ =
       qs.eval (Gate.signExtend r n) ψ :=
-  LowerGateGateBridge.evalL_signExtend r n ψ
+  LowerGateGateBridge.evalL_signExtend qs r n ψ
 
 theorem evalL_zeroDealloc
     {qs : QSemantics}
@@ -240,28 +235,26 @@ theorem evalL_zeroDealloc
 theorem evalL_signDealloc
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     (r : ExtReg)
     (n : ℕ)
     (ψ : qs.State) :
     LowerGateClass.evalL (qs := qs) (LowGate.signDealloc r n) ψ =
       qs.eval (Gate.signDealloc r n) ψ :=
-  LowerGateGateBridge.evalL_signDealloc r n ψ
+  LowerGateGateBridge.evalL_signDealloc qs r n ψ
 
 theorem evalL_radixReverse
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     (r : Reg)
     (m : ℕ)
     (ψ : qs.State) :
     LowerGateClass.evalL (qs := qs) (LowGate.RadixReverse r m) ψ =
       qs.eval (Gate.RadixReverse r m) ψ :=
-  LowerGateGateBridge.evalL_radixReverse r m ψ
+  LowerGateGateBridge.evalL_radixReverse qs r m ψ
 
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]

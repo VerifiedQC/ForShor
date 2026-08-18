@@ -50,56 +50,29 @@ class LowerGateClass
           (if RegEncoding.bit q b then 0 else 1)
           b)
 
-  evalL_shiftL_ket_exact :
+  evalL_shiftL_ket_total :
     ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
-    FitsSignedWidth r.width ((2 : ℤ) ^ n * extToInt r b) →
-      ∃ b' : qs.Basis,
-        evalL (LowGate.ShiftL r n) (qs.ket b) = qs.ket b'
-        ∧
-        extToInt r b' = (2 : ℤ) ^ n * extToInt r b
-        ∧
-        (∀ e : ExtReg, ExtReg.ActiveDisjoint e r →
-           extToInt e b' = extToInt e b)
+      evalL (LowGate.ShiftL r n) (qs.ket b) =
+        qs.ket (shiftLBasis r n b)
 
-  evalL_shiftR_ket_exact :
-    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis) (q : ℤ),
-    extToInt r b = (2 : ℤ) ^ n * q →
-    FitsSignedWidth r.width q →
-    ∃ b' : qs.Basis,
-      evalL (LowGate.ShiftR r n) (qs.ket b) = qs.ket b'
-        ∧
-      extToInt r b' = q
-        ∧
-      (∀ e : ExtReg, ExtReg.ActiveDisjoint e r →
-           extToInt e b' = extToInt e b)
+  evalL_shiftR_ket_total :
+    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
+      evalL (LowGate.ShiftR r n) (qs.ket b) =
+        qs.ket (shiftRBasis r n b)
 
-  evalL_negate_ket_mod :
+  evalL_negate_ket_total :
     ∀ (r : ExtReg) (b : qs.Basis),
-    ∃ b' : qs.Basis,
-      evalL (LowGate.Negate r) (qs.ket b) = qs.ket b'
-        ∧
-      extToInt r b' = tcWrapInt r.width (- extToInt r b)
-        ∧
-      (∀ e : ExtReg, ExtReg.ActiveDisjoint e r →
-         extToInt e b' = extToInt e b)
+      evalL (LowGate.Negate r) (qs.ket b) =
+        qs.ket (negateBasis r b)
 
-  evalL_addScaled_ket_mod :
-    ∀ (dst src : ExtReg) (negSrc : Bool) (sh : ℕ) (b : qs.Basis),
-    ExtReg.ActiveDisjoint dst src →
-    ∃ b' : qs.Basis,
-      evalL (LowGate.AddScaled dst src negSrc sh) (qs.ket b) = qs.ket b'
-        ∧
-      extToInt dst b' =
-        tcWrapInt dst.width
-          (extToInt dst b
-            + (if negSrc then (-1 : ℤ) else 1) * (2 : ℤ) ^ sh * extToInt src b)
-        ∧
-      extToInt src b' = extToInt src b
-        ∧
-      (∀ e : ExtReg,
-          ExtReg.ActiveDisjoint e dst →
-          ExtReg.ActiveDisjoint e src →
-           extToInt e b' = extToInt e b)
+  evalL_addScaled_ket_total :
+    ∀ (dst src : ExtReg)
+      (negSrc : Bool) (sh : ℕ) (b : qs.Basis),
+      evalL
+          (LowGate.AddScaled dst src negSrc sh)
+          (qs.ket b)
+        =
+      qs.ket (addScaledBasis dst src negSrc sh b)
 
   evalL_naive_signedPhaseProd_ket :
     ∀ (phi : ℝ) (x z : ExtReg) (b : qs.Basis),
@@ -124,45 +97,28 @@ class LowerGateClass
       else
         qs.ket b
 
-  evalL_zeroExtend_id : ∀ r n ψ, evalL (LowGate.zeroExtend r n) ψ = ψ
-
-  evalL_signExtend_ket :
-    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
-    r.CanGrow n → ExtReg.FreshFor r n b →
-      ∃ b' : qs.Basis,
-        evalL (LowGate.signExtend r n) (qs.ket b) = qs.ket b'
-        ∧
-        ExtReg.toNat r b' = ExtReg.toNat r b
-        ∧
-        extToInt (r.grow n) b' = extToInt r b
-        ∧
-        (∀ e : ExtReg, ExtReg.ActiveDisjoint e (r.grow n) →
-          ExtReg.toNat e b' = ExtReg.toNat e b)
-
-  evalL_zeroDealloc_id : ∀ r n ψ, evalL (LowGate.zeroDealloc r n) ψ = ψ
-
-  evalL_signDealloc_eq_adj :
+  evalL_zeroExtend_id :
     ∀ r n ψ,
-      evalL (LowGate.signDealloc r n) ψ =
-        evalL (LowGate.adj (LowGate.signExtend r n)) ψ
+      evalL (LowGate.zeroExtend r n) ψ = ψ
 
-  evalL_radixReverse_ket :
-    ∀ (r : Reg) (m : ℕ) (hm : m ≤ regSize r)
-      (b : qs.Basis) (kL kH : ℕ),
-      let sp : SplitPoint r := ⟨m, hm⟩
-      let left  : Reg := splitLeft r sp
-      let right : Reg := splitRight r sp
-      kL < ASize left →
-      kH < ASize right →
-      evalL (LowGate.RadixReverse r m)
-        (qs.ket
-          (RegEncoding.writeNat left kL
-            (RegEncoding.writeNat right kH b)))
-      =
-      qs.ket
-        (RegEncoding.writeNat r
-          (radixReverseIndex r m hm kL kH)
-          b)
+  evalL_signExtend_ket_total :
+    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
+      evalL (LowGate.signExtend r n) (qs.ket b) =
+        qs.ket (signExtendBasis r n b)
+
+  evalL_zeroDealloc_id :
+    ∀ r n ψ,
+      evalL (LowGate.zeroDealloc r n) ψ = ψ
+
+  evalL_signDealloc_ket_total :
+    ∀ (r : ExtReg) (n : ℕ) (b : qs.Basis),
+      evalL (LowGate.signDealloc r n) (qs.ket b) =
+        qs.ket (signDeallocBasis r n b)
+
+  evalL_radixReverse_ket_total :
+    ∀ (r : Reg) (m : ℕ) (b : qs.Basis),
+      evalL (LowGate.RadixReverse r m) (qs.ket b) =
+        qs.ket (radixReverseBasis r m b)
 
   evalL_adj_apply :
     ∀ (L : LowGate) (ψ : qs.State),
@@ -182,7 +138,6 @@ namespace LowerGateClass
 
 end LowerGateClass
 
-
 class LowerGatePrimitiveBridge
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -192,32 +147,5 @@ class LowerGatePrimitiveBridge
     ∀ (tag : String) (args : List ℕ) (ψ : qs.State),
       LowerGateClass.evalL (qs := qs) (LowGate.Prim tag args) ψ =
         qs.eval (Gate.Prim tag args) ψ
-
-class LowerGateGateBridge
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [LowerGateClass qs] : Prop extends LowerGatePrimitiveBridge qs where
-  evalL_shiftL : ∀ r n ψ,
-    LowerGateClass.evalL (qs := qs) (LowGate.ShiftL r n) ψ =
-      qs.eval (Gate.ShiftL r n) ψ
-  evalL_shiftR : ∀ r n ψ,
-    LowerGateClass.evalL (qs := qs) (LowGate.ShiftR r n) ψ =
-      qs.eval (Gate.ShiftR r n) ψ
-  evalL_negate : ∀ r ψ,
-    LowerGateClass.evalL (qs := qs) (LowGate.Negate r) ψ =
-      qs.eval (Gate.Negate r) ψ
-  evalL_addScaled : ∀ dst src negSrc shift ψ,
-    LowerGateClass.evalL (qs := qs) (LowGate.AddScaled dst src negSrc shift) ψ =
-      qs.eval (Gate.AddScaled dst src negSrc shift) ψ
-  evalL_signExtend : ∀ r n ψ,
-    LowerGateClass.evalL (qs := qs) (LowGate.signExtend r n) ψ =
-      qs.eval (Gate.signExtend r n) ψ
-  evalL_signDealloc : ∀ r n ψ,
-    LowerGateClass.evalL (qs := qs) (LowGate.signDealloc r n) ψ =
-      qs.eval (Gate.signDealloc r n) ψ
-  evalL_radixReverse : ∀ r m ψ,
-    LowerGateClass.evalL (qs := qs) (LowGate.RadixReverse r m) ψ =
-      qs.eval (Gate.RadixReverse r m) ψ
 
 end Shor

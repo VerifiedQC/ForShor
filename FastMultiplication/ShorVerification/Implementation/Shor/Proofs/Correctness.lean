@@ -1391,7 +1391,7 @@ omit [Spec] in
 lemma probability_of_success_lowerGate_eq
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ) (hk : 1 < k)
     (ops : Prog k)
     (hC : ProgConsumesPtsSafe
@@ -1449,7 +1449,7 @@ with `orderFindingIdeal`.
 theorem orderFindingApproxLow_probability_eq
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (lowering : ShorLoweringSetup)
     (T : ℕ → ℕ)
     (verify : OrderVerifier)

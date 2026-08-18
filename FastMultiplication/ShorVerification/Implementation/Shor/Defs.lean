@@ -600,7 +600,7 @@ structure LoweredShorReady
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     (lowering : ShorLoweringSetup)
     (η : ℝ)
     (a N : ℕ)

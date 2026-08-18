@@ -87,7 +87,7 @@ def ShorEndToEndFactoring
 def ShorCorrectApproxLoweredUniform
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     [IdealCtrlModMulExactSemantics qs]
     [ModMulPrimitiveGateSemantics qs]
     (T : ℕ → ℕ) (_hT : ContinuedFractionSearchComplete T) : Prop :=
