@@ -13,6 +13,10 @@ open QSemantics
 
 namespace QFTSemantics
 
+/-! =========================================================
+    Section 1: Base cases — QFT on size-0 and size-1 registers
+========================================================= -/
+
 theorem eval_QFT_size0_ket
     {qs : QSemantics}
     [RegEncoding qs.Basis]
@@ -236,12 +240,10 @@ theorem eval_QFT_size1
 
   exact h ψ
 
-
 end QFTSemantics
 
 end GateSemanticsDissolvedQFT
 end Shor
-
 
 /-!
 # QFT Lowering Plan Semantics
@@ -262,7 +264,7 @@ open Gate
 universe u
 
 /-! =========================================================
-    Section 1: Explicit QFT lowering plans
+    Section 2: Plan evaluation and its linearity
 ========================================================= -/
 
 theorem evalL_lowerQFTPlan
@@ -524,10 +526,6 @@ theorem evalL_lowerQFTPlan
 
       simpa [qs.eval_seq] using hSplit.symm
 
-/-! =========================================================
-    Section 4: Linearity and workspace preservation
-========================================================= -/
-
 lemma evalL_lowerQFTPlan_add
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -554,7 +552,6 @@ lemma evalL_lowerQFTPlan_add
         φ := by
   exact LowerGateClass.evalL_add (qs := qs) (lowerQFTPlan plan) ψ φ
 
-
 lemma evalL_lowerQFTPlan_smul
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -578,6 +575,9 @@ lemma evalL_lowerQFTPlan_smul
         ψ := by
   exact LowerGateClass.evalL_smul (qs := qs) (lowerQFTPlan plan) a ψ
 
+/-! =========================================================
+    Section 3: Readiness linearity
+========================================================= -/
 
 lemma QFTLoweringReady.add
     (qs : QSemantics)
@@ -682,7 +682,6 @@ lemma QFTLoweringReady.add
             qs phasePlan hphaseψ hphaseφ,
           ihLeft hleftψ hleftφ
         ⟩
-
 
 lemma QFTLoweringReady.smul
     (qs : QSemantics)
