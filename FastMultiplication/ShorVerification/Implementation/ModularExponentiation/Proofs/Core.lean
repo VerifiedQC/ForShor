@@ -663,6 +663,43 @@ noncomputable def U34
   step3 cfg.env.N (cfg.env.data.grow 1).active cfg.flag ;;
   step4 cfg.env.N (cfg.env.data.grow 1).active cfg.env.work.active cfg.flag
 
+/-- Stage name for Algorithm 1 Step 1. -/
+noncomputable def U1
+    {η : ℝ}
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (cfg : ModMulConfig η) : Gate :=
+  step1
+  (Basis := Basis)
+  cfg.c cfg.env.N cfg.ctrl
+  cfg.env.data cfg.env.work
+  cfg.env.circuit_workspace
+
+/-- Stage name for Algorithm 1 Step 2. -/
+noncomputable def U2
+    {η : ℝ}
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (cfg : ModMulConfig η) : Gate :=
+  step2
+  (Basis := Basis)
+  cfg.env.N
+  cfg.env.data cfg.env.work
+  cfg.env.circuit_workspace
+
+/-- Stage name for Algorithm 1 Step 5 cleanup. -/
+noncomputable def U5
+    {η : ℝ}
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (cfg : ModMulConfig η) : Gate :=
+  step5
+    (Basis := Basis)
+    (step5Constant cfg.c cfg.env.N)
+    cfg.env.N cfg.ctrl
+    cfg.env.data cfg.env.work
+    cfg.env.circuit_workspace
+
 /-- The staged form of the full five-step modular-multiplication core. -/
 noncomputable def stagedGate
     {η : ℝ}
