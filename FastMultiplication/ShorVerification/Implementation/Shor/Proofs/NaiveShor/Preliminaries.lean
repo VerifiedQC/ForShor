@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Assertions
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Math
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Lemmas
 
 /-!
 # Naive Shor Correctness

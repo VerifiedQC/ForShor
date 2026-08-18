@@ -81,6 +81,66 @@ lemma shor_order_parameter_bounds
   simpa [u] using
     (And.intro hrpos (And.intro hrN hrsq))
 
+/--
+A deliberately weak consequence of the standard lower bounds for
+Euler's totient ratio.
+
+For an order `r < N`,
+
+    φ(r) / r ≥ exp(-2) / log₂(N)^4.
+
+This is much weaker than the classical asymptotic bound used by Shor,
+but is convenient because it gives exactly the public theorem's
+inverse-polylogarithmic form.
+-/
+lemma shor_totient_ratio_log4_lower_bound
+    {a r N m n : ℕ}
+    (hsetting : BasicSetting a r N m n) :
+    Real.exp (-2) / (Nat.log2 N : ℝ) ^ 4
+      ≤
+    (Nat.totient r : ℝ) / (r : ℝ) := by
+
+  have hparams :=
+    shor_order_parameter_bounds hsetting
+
+  have hr : 0 < r :=
+    hparams.1
+
+  have hrN : r < N :=
+    hparams.2.1
+
+  /-
+  BasicSetting has 0 < a < N, hence N ≥ 2.
+  -/
+  have hN2 : 2 ≤ N := by
+    rcases hsetting with
+      ⟨ha0, haN, _horder,
+       _hmlo, _hmhi, _hnlo, _hnhi⟩
+    omega
+
+  have hlog :
+      1 ≤ Nat.log2 N := by
+    rw [Nat.log2_def, if_pos hN2]
+    omega
+
+  have hanalytic :
+      Real.exp (-2) /
+          (Nat.log2 N : ℝ) ^ 4
+        ≤
+      1 /
+          (((Nat.log2 N + 1 : ℕ) : ℝ)) :=
+    exp_neg_two_div_pow4_le_inv_succ
+      (Nat.log2 N) hlog
+
+  have htotient :
+      1 /
+          (((Nat.log2 N + 1 : ℕ) : ℝ))
+        ≤
+      (Nat.totient r : ℝ) / (r : ℝ) :=
+    totient_ratio_ge_inv_log2_succ
+      hr hrN
+
+  exact le_trans hanalytic htotient
 
 /-! ---------------------------------------------------------
     Step 2: Shor equation (5.2)
