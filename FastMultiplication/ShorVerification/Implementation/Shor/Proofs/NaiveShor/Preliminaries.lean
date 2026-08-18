@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Assertions
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Math
 
 /-!
 # Naive Shor Correctness
@@ -12,112 +13,14 @@ variable [MeasureClass qs]
 variable [ContinuedFractionPost]
 variable [Spec]
 
-noncomputable def goodOutcomeIndicator (o Q r : ℕ) : ℝ := by
-  classical
-  exact if GoodOutcome o Q r then 1 else 0
 
 /-! =========================================================
     Small arithmetic facts about `ord`
 ========================================================= -/
 
-omit [ContinuedFractionPost] [Spec] in
-private lemma ord_pos_of_gcd
-    (a N : ℕ)
-    (hgcd : Nat.gcd a N = 1) :
-    0 < ord a N hgcd := by
-  unfold ord
-  exact orderOf_pos
-    (ZMod.unitOfCoprime a
-      ((Nat.coprime_iff_gcd_eq_one).2 hgcd))
 
-omit [ContinuedFractionPost] [Spec] in
-private lemma pow_ord_mod_eq_one
-    (a N : ℕ)
-    (hgcd : Nat.gcd a N = 1)
-    (hN : 1 < N) :
-    (a ^ ord a N hgcd) % N = 1 := by
-  let u : (ZMod N)ˣ :=
-    ZMod.unitOfCoprime a
-      ((Nat.coprime_iff_gcd_eq_one).2 hgcd)
 
-  have hu : u ^ orderOf u = 1 :=
-    pow_orderOf_eq_one u
 
-  have hz :
-      ((a ^ ord a N hgcd : ℕ) : ZMod N) =
-        ((1 : ℕ) : ZMod N) := by
-    have hcoe :=
-      congrArg (fun z : (ZMod N)ˣ => (z : ZMod N)) hu
-    have hunit :
-        ((u : ZMod N) ^ orderOf u) = 1 :=
-      hcoe
-    have hcast :
-        ((a : ZMod N) ^ ord a N hgcd) = 1 := by
-      simpa [u, ord, ZMod.coe_unitOfCoprime] using hunit
-    simpa [Nat.cast_pow] using hcast
-
-  have hmod :
-      (a ^ ord a N hgcd) % N = 1 % N :=
-    (ZMod.natCast_eq_natCast_iff'
-      (a ^ ord a N hgcd) 1 N).1 hz
-
-  have hone_lt : 1 < N := hN
-  simpa [Nat.mod_eq_of_lt hone_lt] using hmod
-
-omit [ContinuedFractionPost] [Spec] in
-private lemma ord_le_of_pow_mod_eq_one
-    (a N d : ℕ)
-    (hgcd : Nat.gcd a N = 1)
-    (hd : 0 < d)
-    (hpow : (a ^ d) % N = 1) :
-    ord a N hgcd ≤ d := by
-  let u : (ZMod N)ˣ :=
-    ZMod.unitOfCoprime a
-      ((Nat.coprime_iff_gcd_eq_one).2 hgcd)
-
-  have hz : ((a ^ d : ℕ) : ZMod N) = 1 := by
-    calc
-      ((a ^ d : ℕ) : ZMod N)
-          = (((a ^ d) % N : ℕ) : ZMod N) := by
-              symm
-              exact ZMod.natCast_mod (a ^ d) N
-      _ = 1 := by simp [hpow]
-
-  have hu : u ^ d = 1 := by
-    apply Units.ext
-    simpa [u, ZMod.coe_unitOfCoprime] using hz
-
-  have hle : orderOf u ≤ d :=
-    orderOf_le_of_pow_eq_one hd hu
-
-  simpa [u, ord] using hle
-
-omit [ContinuedFractionPost] [Spec] in
-lemma pow_log2_two_mul_bounds
-    (n : ℕ) (hn : 0 < n) :
-    n < 2 ^ Nat.log2 (2 * n) ∧
-    2 ^ Nat.log2 (2 * n) ≤ 2 * n := by
-  have hn0 : n ≠ 0 := Nat.ne_of_gt hn
-  have h2n0 : 2 * n ≠ 0 := Nat.mul_ne_zero (by norm_num) hn0
-
-  rw [Nat.log2_eq_log_two]
-  constructor
-
-  · have hlog :
-        Nat.log 2 (2 * n) = Nat.log 2 n + 1 := by
-      calc
-        Nat.log 2 (2 * n)
-            = Nat.log 2 (n * 2) := by rw [Nat.mul_comm]
-        _ = Nat.log 2 n + 1 :=
-          Nat.log_mul_base (by norm_num) hn0
-
-    rw [hlog]
-
-    simpa [Nat.succ_eq_add_one] using
-      (Nat.lt_pow_succ_log_self
-        (b := 2) (by norm_num) n)
-
-  · exact Nat.pow_log_le_self 2 h2n0
 
 omit [ContinuedFractionPost] [Spec] in
 lemma basicSetting_of_shor_instance
@@ -331,81 +234,6 @@ private lemma toNat_cons_reg
               (List.nodup_cons.mp hnd).2⟩ : Reg) b := by
       simp [toNat_qubitReg, ASize, tail]
 
-omit [ContinuedFractionPost] [Spec] in
-private lemma modexp_step_arith
-    (a N e y0 t : ℕ)
-    (bit : Bool) :
-    ((if bit then
-        ((((a ^ (2 ^ e)) % N) * y0) % N)
-      else
-        y0) *
-        a ^ (2 ^ (e + 1) * t)) % N
-      =
-    (y0 *
-      a ^ (2 ^ e *
-        ((if bit then 1 else 0) + 2 * t))) % N := by
-  cases bit with
-  | false =>
-      change
-        (y0 * a ^ (2 ^ (e + 1) * t)) % N =
-          (y0 * a ^ (2 ^ e * (0 + 2 * t))) % N
-
-      have hexp :
-          2 ^ (e + 1) * t =
-            2 ^ e * (2 * t) := by
-        rw [pow_succ]
-        ring
-
-      simpa using
-        congrArg
-          (fun k => (y0 * a ^ k) % N)
-          hexp
-
-  | true =>
-      change
-        (((((a ^ (2 ^ e)) % N) * y0) % N) *
-            a ^ (2 ^ (e + 1) * t)) % N
-          =
-        (y0 *
-          a ^ (2 ^ e * (1 + 2 * t))) % N
-
-      have hexp :
-          2 ^ e * (1 + 2 * t) =
-            2 ^ e + 2 ^ (e + 1) * t := by
-        rw [pow_succ]
-        ring
-
-      rw [hexp]
-      conv_rhs => rw [pow_add]
-
-      let A : ℕ :=
-        a ^ (2 ^ e)
-
-      let B : ℕ :=
-        a ^ (2 ^ (e + 1) * t)
-
-      have hA :
-          A % N ≡ A [MOD N] :=
-        Nat.mod_modEq A N
-
-      have hAy :
-          (A % N) * y0 ≡ A * y0 [MOD N] :=
-        hA.mul_right y0
-
-      have hAyMod :
-          ((A % N) * y0) % N ≡ A * y0 [MOD N] :=
-        (Nat.mod_modEq ((A % N) * y0) N).trans hAy
-
-      have hmain :
-          ((A % N) * y0) % N * B ≡
-            y0 * (A * B) [MOD N] := by
-        exact
-          (hAyMod.mul_right B).trans
-            (by
-              rw [Nat.ModEq]
-              simp [Nat.mul_assoc, Nat.mul_comm])
-
-      exact hmain
 
 omit [MeasureClass qs] [ContinuedFractionPost] in
 private theorem eval_modExpIdealSteps_ket
