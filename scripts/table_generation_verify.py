@@ -27,6 +27,7 @@ GENERATOR_DIR = Path(
 DEFS_FILE = GENERATOR_DIR / "Defs.lean"
 CORRECTNESS_FILE = GENERATOR_DIR / "Correctness.lean"
 SPEC_FILE = GENERATOR_DIR / "Spec.lean"
+METRICS_FILE = GENERATOR_DIR / "Metrics.lean"
 WELLFORMED_FILE = GENERATOR_DIR / "WellFormed.lean"
 GENERATOR_IMPORT_FILE = Path(
     "FastMultiplication/ShorVerification/Implementation/PhaseProduct/Math/"
@@ -36,6 +37,7 @@ GENERATOR_IMPORT_FILE = Path(
 SUBMISSION_FILES = {str(DEFS_FILE), str(CORRECTNESS_FILE)}
 PROTECTED_FILES = {
     str(SPEC_FILE),
+    str(METRICS_FILE),
     str(WELLFORMED_FILE),
     str(GENERATOR_IMPORT_FILE),
 }
@@ -365,6 +367,7 @@ def collect_metrics(repo: Path, out_dir: Path) -> tuple[dict[str, Any], dict[str
     source = "\n".join(
         [
             f"import {TARGET_MODULE}.Defs",
+            f"import {TARGET_MODULE}.Metrics",
             "import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Builders.Fragments",
             "",
             "open Operations",
@@ -372,31 +375,6 @@ def collect_metrics(repo: Path, out_dir: Path) -> tuple[dict[str, Any], dict[str
             "",
             "def targetProgram : Prog 4 := generate .PhaseTripleProduct 4 (by decide)",
             "def targetPoints : List Point := generatePointsInOrder .PhaseTripleProduct 4 (by decide)",
-            "",
-            "def arithmeticOperationCount {k : ℕ} : Prog k → ℕ",
-            "  | [] => 0",
-            "  | op :: ops =>",
-            "      match op with",
-            "      | .phaseProduct _ => arithmeticOperationCount ops",
-            "      | _ => arithmeticOperationCount ops + 1",
-            "",
-            "def phaseProductCount {k : ℕ} : Prog k → ℕ",
-            "  | [] => 0",
-            "  | op :: ops =>",
-            "      match op with",
-            "      | .phaseProduct _ => phaseProductCount ops + 1",
-            "      | _ => phaseProductCount ops",
-            "",
-            "def parallelPhaseProductLayerCountAux {k : ℕ} : Bool → Prog k → ℕ",
-            "  | _, [] => 0",
-            "  | inLayer, op :: ops =>",
-            "      match op with",
-            "      | .phaseProduct _ =>",
-            "          (if inLayer then 0 else 1) + parallelPhaseProductLayerCountAux true ops",
-            "      | _ => parallelPhaseProductLayerCountAux false ops",
-            "",
-            "def parallelPhaseProductLayerCount {k : ℕ} (ops : Prog k) : ℕ :=",
-            "  parallelPhaseProductLayerCountAux false ops",
             "",
             '#eval IO.println "TABLE_GENERATION_METRICS_BEGIN"',
             '#eval IO.println ("mode=PhaseTripleProduct")',
