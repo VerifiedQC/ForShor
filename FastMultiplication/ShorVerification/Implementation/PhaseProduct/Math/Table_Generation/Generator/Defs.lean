@@ -1,5 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Generator.Spec
 
+open Operations
+
 namespace Table_Generation
 
 def generatedPoints (mode : ProductMode) (k : ℕ) : List Point :=
