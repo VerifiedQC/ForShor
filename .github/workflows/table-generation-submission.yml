@@ -1,0 +1,106 @@
+name: Table generation submission
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    branches:
+      - submission/table-generation/template
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  verify:
+    name: Verify table-generation submission
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout submission
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          path: submission
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Checkout verifier
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.base.repo.full_name || github.repository }}
+          path: verifier
+          fetch-depth: 1
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+
+      - name: Install Lean
+        working-directory: submission
+        run: |
+          set -euo pipefail
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain "$(cat lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Restore mathlib cache
+        working-directory: submission
+        run: |
+          lake exe cache get || true
+
+      - name: Verify submission
+        working-directory: submission
+        env:
+          TABLE_GEN_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          TABLE_GEN_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          TABLE_GEN_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TABLE_GEN_BASE_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name || github.repository }}
+        run: |
+          python3 ../verifier/scripts/table_generation_verify.py --repo . --out-dir artifacts
+
+      - name: Upload verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: table-generation-submission-${{ github.run_id }}
+          path: submission/artifacts/
+          if-no-files-found: warn
+
+      - name: Comment on PR
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'submission/artifacts/table-generation-summary.md';
+            const marker = '<!-- table-generation-submission-result -->';
+            const fallback = `${marker}\n### Table generation submission\n\nStatus: **FAILURE**\n\nThe verifier did not produce a summary artifact. Check the workflow logs.`;
+            const body = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : fallback;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.data.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
