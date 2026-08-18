@@ -21,10 +21,6 @@ configuration records, and the reference packets used by the Step 1/2/3/4/5
 bound files.
 ========================================================= -/
 
-section CircuitSyntaxAndWorkspace
-
-end CircuitSyntaxAndWorkspace
-
 /-! =========================================================
     Section 1: Valid inputs and ideal controlled multiplication
 

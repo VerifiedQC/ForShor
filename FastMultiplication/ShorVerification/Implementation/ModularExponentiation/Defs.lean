@@ -573,12 +573,6 @@ def ValidUnitState
     (cfg : ModMulConfig η) (ψ : qs.State) : Prop :=
   cfg.ValidState qs ψ ∧ ‖ψ‖ = 1
 
-/-! ---------------------------------------------------------
-    Algorithm 1 staged gates
-
-These names expose the five-step core as stage-level gates used throughout the
-Step 1/2/3/4/5 correctness and error-bound files.
---------------------------------------------------------- -/
 
 end ModMulConfig
 

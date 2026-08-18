@@ -232,7 +232,7 @@ omit  [GateSemanticsFacts qs] in
 /-! =========================================================
     Section 2: Write/read bookkeeping and split-register indices
 ========================================================= -/
-
+omit [GateSemanticsFacts qs] in
 /--
 Writing the right input register does not change either workspace qubit.
 -/
