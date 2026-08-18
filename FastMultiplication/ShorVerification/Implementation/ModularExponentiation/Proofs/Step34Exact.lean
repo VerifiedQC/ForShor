@@ -20,7 +20,12 @@ The proof is organized into four layers:
 * the public reference-state exactness theorem.
 -/
 
-/-! ## Step-3 Arithmetic Reduction -/
+/-! =========================================================
+    Section 1: Step-3 arithmetic reduction
+
+    Reduce the Step-3 comparator/subtractor stage to a plain modular
+    multiplication on the relevant basis labels.
+========================================================= -/
 
 /--
 Conditional subtraction of `N` from the Step-2 value produces exactly the
@@ -139,7 +144,12 @@ private lemma disjoint_of_qubitReg_outside
   Shor.Disjoint.symm
     (disjoint_qubitReg_of_outside (q := q) (r := r) h)
 
-/-! ## Exact Basis-State Semantics of Steps 3 and 4 -/
+/-! =========================================================
+    Section 2: Exact basis-state semantics of steps 3 and 4
+
+    Register-disjointness helpers and the core computation giving the exact
+    post-Step-3/4 basis state on a clean input.
+========================================================= -/
 
 /--
 Steps 3 and 4 are exact on the Step-2 reference state.
@@ -660,7 +670,12 @@ lemma alg1_step34_reference_exact_core
     tr.afterStep34Ref := by
       simp [Alg1Trace.afterStep34Ref, xext]
 
-/-! ## Public Step-3/4 Exactness Theorem -/
+/-! =========================================================
+    Section 3: Public Step-3/4 exactness theorem
+
+    The public statement: Steps 3 and 4 together act exactly as specified on the
+    valid-input subspace.
+========================================================= -/
 
 /--
 Steps 3 and 4 map the complete Step-2 reference state exactly to the
