@@ -5,6 +5,26 @@ open Operations
 
 namespace Table_Generation
 
+lemma streamPoint_allowed (n : ℕ) : AllowedPoint (streamPoint n) := by
+  rcases n with _ | _ | _ | _ | n
+  · simp [streamPoint, AllowedPoint]
+  · simp [streamPoint, AllowedPoint]
+  · simp [streamPoint, AllowedPoint]
+    exact ⟨0, by simp⟩
+  · simp [streamPoint, AllowedPoint]
+    exact ⟨0, by simp⟩
+  · by_cases h0 : n % 4 = 0
+    · simp [streamPoint, h0, AllowedPoint]
+      exact ⟨1 + n / 4, by simp⟩
+    · by_cases h1 : n % 4 = 1
+      · simp [streamPoint, h1, AllowedPoint]
+        exact ⟨1 + n / 4, by simp⟩
+      · by_cases h2 : n % 4 = 2
+        · simp [streamPoint, h2, AllowedPoint]
+          exact ⟨1 + n / 4, by simp⟩
+        · simp [streamPoint, AllowedPoint]
+          exact ⟨1 + n / 4, by simp⟩
+
 def carrierTerm {k : ℕ} (type : PointPairType) (e : ℕ)
     (dst : Fin k) (parity : ℕ) (j : Fin k) (σ : State k) (u : Fin k) : ℤ :=
   if parityDegree type k j % 2 = parity then
@@ -1468,13 +1488,16 @@ lemma generateParityTripleProduct_ProgConsumesPtsSafe (k : ℕ) (hk : k ≥ 4) :
     simpa [generateParityTripleProduct] using
       generateParityForMode_WellFormed .PhaseTripleProduct k hk
 
-/-
-  The main theorem that shows that the generated operations can be split into blocks.
-  k=2 and k=3 for PhaseProduct and PhaseTripleProduct are precomputed, and k≥4 is handled by the generator.
+/- The generated point list has the expected length and allowed point shapes. -/
+theorem generatedPoints_valid (mode : ProductMode) (k : ℕ) (_ : k ≥ 2) :
+    ValidPointList mode k (generatedPoints mode k) := by
+  constructor
+  · simp [generatedPoints]
+  · intro p hp
+    rcases List.mem_map.mp hp with ⟨n, _hn, rfl⟩
+    exact streamPoint_allowed n
 
-  Proves that every phaseProduct consumes the next expected point, in order, and that every
-  operation is valid (src ≠ dst).
--/
+/- The generated program safely consumes the expected points in order. -/
 theorem generate_ProgConsumesPtsSafe (mode : ProductMode) (k : ℕ) (hk : k ≥ 2) :
     ProgConsumesPtsSafe (by omega) State.start_state
       (generate mode k hk) (generatePointsInOrder mode k hk) := by
