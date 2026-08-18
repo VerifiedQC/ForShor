@@ -373,11 +373,38 @@ def collect_metrics(repo: Path, out_dir: Path) -> tuple[dict[str, Any], dict[str
             "def targetProgram : Prog 4 := generate .PhaseTripleProduct 4 (by decide)",
             "def targetPoints : List Point := generatePointsInOrder .PhaseTripleProduct 4 (by decide)",
             "",
+            "def arithmeticOperationCount {k : ℕ} : Prog k → ℕ",
+            "  | [] => 0",
+            "  | op :: ops =>",
+            "      match op with",
+            "      | .phaseProduct _ => arithmeticOperationCount ops",
+            "      | _ => arithmeticOperationCount ops + 1",
+            "",
+            "def phaseProductCount {k : ℕ} : Prog k → ℕ",
+            "  | [] => 0",
+            "  | op :: ops =>",
+            "      match op with",
+            "      | .phaseProduct _ => phaseProductCount ops + 1",
+            "      | _ => phaseProductCount ops",
+            "",
+            "def parallelPhaseProductLayerCountAux {k : ℕ} : Bool → Prog k → ℕ",
+            "  | _, [] => 0",
+            "  | inLayer, op :: ops =>",
+            "      match op with",
+            "      | .phaseProduct _ =>",
+            "          (if inLayer then 0 else 1) + parallelPhaseProductLayerCountAux true ops",
+            "      | _ => parallelPhaseProductLayerCountAux false ops",
+            "",
+            "def parallelPhaseProductLayerCount {k : ℕ} (ops : Prog k) : ℕ :=",
+            "  parallelPhaseProductLayerCountAux false ops",
+            "",
             '#eval IO.println "TABLE_GENERATION_METRICS_BEGIN"',
             '#eval IO.println ("mode=PhaseTripleProduct")',
             '#eval IO.println ("k=4")',
-            '#eval IO.println ("score=" ++ toString targetProgram.length)',
-            '#eval IO.println ("operation_count=" ++ toString targetProgram.length)',
+            '#eval IO.println ("total_operation_count=" ++ toString targetProgram.length)',
+            '#eval IO.println ("arithmetic_operation_count=" ++ toString (arithmeticOperationCount targetProgram))',
+            '#eval IO.println ("phase_product_count=" ++ toString (phaseProductCount targetProgram))',
+            '#eval IO.println ("parallel_phase_product_layer_count=" ++ toString (parallelPhaseProductLayerCount targetProgram))',
             '#eval IO.println ("point_count=" ++ toString targetPoints.length)',
             '#eval IO.println ("points=" ++ joinComma (targetPoints.map pointToString))',
             '#eval IO.println ("program=" ++ progToString targetProgram)',
@@ -400,7 +427,17 @@ def collect_metrics(repo: Path, out_dir: Path) -> tuple[dict[str, Any], dict[str
         )
 
     raw = parse_metric_output(result["output"])
-    required = {"mode", "k", "score", "operation_count", "point_count", "points", "program"}
+    required = {
+        "mode",
+        "k",
+        "total_operation_count",
+        "arithmetic_operation_count",
+        "phase_product_count",
+        "parallel_phase_product_layer_count",
+        "point_count",
+        "points",
+        "program",
+    }
     missing = sorted(required - set(raw))
     if missing:
         return raw, check_result(
@@ -410,7 +447,15 @@ def collect_metrics(repo: Path, out_dir: Path) -> tuple[dict[str, Any], dict[str
         )
 
     metrics: dict[str, Any] = dict(raw)
-    for key in ("k", "score", "operation_count", "point_count"):
+    int_keys = (
+        "k",
+        "total_operation_count",
+        "arithmetic_operation_count",
+        "phase_product_count",
+        "parallel_phase_product_layer_count",
+        "point_count",
+    )
+    for key in int_keys:
         try:
             metrics[key] = int(str(metrics[key]))
         except ValueError:
@@ -424,13 +469,41 @@ def collect_metrics(repo: Path, out_dir: Path) -> tuple[dict[str, Any], dict[str
             False,
             f"Expected 10 points for k=4 triple product, got {metrics['point_count']}.",
         )
-    if metrics["score"] != metrics["operation_count"]:
-        return metrics, check_result("target metrics", False, "Score must equal operation count.")
+    if metrics["phase_product_count"] != metrics["point_count"]:
+        return metrics, check_result(
+            "target metrics",
+            False,
+            "Phase-product operation count must equal generated point count.",
+        )
+    expected_total = metrics["arithmetic_operation_count"] + metrics["phase_product_count"]
+    if metrics["total_operation_count"] != expected_total:
+        return metrics, check_result(
+            "target metrics",
+            False,
+            "Total operation count must equal arithmetic operations plus phase-product operations.",
+        )
+    if metrics["phase_product_count"] == 0:
+        expected_has_layers = metrics["parallel_phase_product_layer_count"] == 0
+    else:
+        expected_has_layers = 1 <= metrics["parallel_phase_product_layer_count"] <= metrics["phase_product_count"]
+    if not expected_has_layers:
+        return metrics, check_result(
+            "target metrics",
+            False,
+            "Parallel phase-product layer count is inconsistent with phase-product count.",
+        )
+
+    metrics["score"] = {
+        "arithmetic_operation_count": metrics["arithmetic_operation_count"],
+        "parallel_phase_product_layer_count": metrics["parallel_phase_product_layer_count"],
+    }
 
     return metrics, check_result(
         "target metrics",
         True,
-        f"k=4 PhaseTripleProduct score is {metrics['score']} operations.",
+        "k=4 PhaseTripleProduct score is "
+        f"{metrics['arithmetic_operation_count']} arithmetic ops and "
+        f"{metrics['parallel_phase_product_layer_count']} parallel phase-product layers.",
     )
 
 
@@ -454,7 +527,10 @@ def build_summary(result: dict[str, Any]) -> str:
         lines.extend(
             [
                 "",
-                f"Score: `{metrics.get('score')}` operations for `k=4`, `PhaseTripleProduct`.",
+                "Score: "
+                f"`{metrics.get('arithmetic_operation_count')}` arithmetic ops, "
+                f"`{metrics.get('parallel_phase_product_layer_count')}` parallel phase-product layers "
+                "for `k=4`, `PhaseTripleProduct`.",
                 "",
                 "The full JSON result, build log, axiom log, and metric log are attached as workflow artifacts.",
             ]
@@ -511,7 +587,14 @@ def verify(repo: Path, out_dir: Path) -> dict[str, Any]:
         "schema_version": 1,
         "challenge": CHALLENGE,
         "status": "success" if success else "failure",
-        "target": {"mode": "PhaseTripleProduct", "k": 4, "score": "operation_count"},
+        "target": {
+            "mode": "PhaseTripleProduct",
+            "k": 4,
+            "score": [
+                "arithmetic_operation_count",
+                "parallel_phase_product_layer_count",
+            ],
+        },
         "metadata": collect_metadata(),
         "checks": checks,
         "metrics": metrics,
@@ -543,7 +626,14 @@ def main() -> int:
             "schema_version": 1,
             "challenge": CHALLENGE,
             "status": "failure",
-            "target": {"mode": "PhaseTripleProduct", "k": 4, "score": "operation_count"},
+            "target": {
+                "mode": "PhaseTripleProduct",
+                "k": 4,
+                "score": [
+                    "arithmetic_operation_count",
+                    "parallel_phase_product_layer_count",
+                ],
+            },
             "metadata": collect_metadata(),
             "checks": [
                 check_result("verifier exception", False, f"{type(exc).__name__}: {exc}")
