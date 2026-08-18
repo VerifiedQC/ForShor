@@ -293,6 +293,170 @@ private lemma eval_initY1_after_Hreg_zero
       x.active y.active b0
       hxy hy0 hypos t
 
+/-- Binary decomposition: a natural below `2^w` is the weighted sum of its
+low `w` bits. Used to bridge the per-qubit exponent accumulation to
+`toNat x b`. -/
+private lemma sum_two_pow_toNat_testBit :
+    ∀ (w n : ℕ), n < 2 ^ w →
+      ∑ i ∈ Finset.range w, 2 ^ i * (n.testBit i).toNat = n := by
+  intro w
+  induction w with
+  | zero =>
+      intro n h
+      simp only [pow_zero, Nat.lt_one_iff] at h
+      subst h
+      simp
+  | succ w ih =>
+      intro n h
+      rw [Finset.sum_range_succ']
+      have hshift :
+          (∑ i ∈ Finset.range w, 2 ^ (i + 1) * (n.testBit (i + 1)).toNat)
+            = 2 * ∑ i ∈ Finset.range w, 2 ^ i * ((n / 2).testBit i).toNat := by
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro i _
+        rw [Nat.testBit_succ]
+        ring
+      have hlow : (2 : ℕ) ^ 0 * (n.testBit 0).toNat = n % 2 := by
+        rw [Nat.testBit_zero]
+        rcases Nat.mod_two_eq_zero_or_one n with h0 | h1
+        · simp [h0]
+        · simp [h1]
+      have hdiv : n / 2 < 2 ^ w := by
+        rw [pow_succ] at h
+        omega
+      rw [hshift, hlow, ih (n / 2) hdiv]
+      omega
+
+/-- Exponent accumulated by processing a list of control qubits, the head at
+bit weight `2^e`. Matches the recursion of `modExpIdealSteps`. -/
+private def ctrlExp (e : ℕ) (ctrls : List ℕ) (b : qs.Basis) : ℕ :=
+  match ctrls with
+  | [] => 0
+  | ctrl :: rest =>
+      2 ^ e * (if RegEncoding.bit ctrl b then 1 else 0) + ctrlExp (e + 1) rest b
+
+private lemma ctrlExp_eq_sum (e : ℕ) (ctrls : List ℕ) (b : qs.Basis) :
+    ctrlExp e ctrls b
+      = ∑ i ∈ Finset.range ctrls.length,
+          2 ^ (e + i) * (if RegEncoding.bit (ctrls.getD i 0) b then 1 else 0) := by
+  induction ctrls generalizing e with
+  | nil => simp [ctrlExp]
+  | cons c cs ih =>
+      rw [ctrlExp, ih (e + 1), List.length_cons, Finset.sum_range_succ']
+      simp only [List.getD_cons_zero, List.getD_cons_succ, Nat.add_zero]
+      conv_rhs => rw [add_comm]
+      congr 1
+      apply Finset.sum_congr rfl
+      intro i _
+      congr 2
+      omega
+
+/-- Bridge: processing all of `x`'s qubits accumulates exactly `toNat x b`. -/
+private lemma ctrlExp_zero_qubits_eq_toNat (x : Reg) (b : qs.Basis) :
+    ctrlExp 0 x.qubits b = RegEncoding.toNat x b := by
+  rw [ctrlExp_eq_sum]
+  have hlt : RegEncoding.toNat x b < 2 ^ x.qubits.length := by
+    have := RegEncoding.toNat_lt_ASize x b
+    simpa [ASize, regSize, Reg.width] using this
+  rw [← sum_two_pow_toNat_testBit x.qubits.length (RegEncoding.toNat x b) hlt]
+  apply Finset.sum_congr rfl
+  intro i hi
+  rw [Finset.mem_range] at hi
+  have hget : x.qubits.getD i 0 = x.get ⟨i, by simpa [Reg.width] using hi⟩ := by
+    rw [Reg.get]
+    rw [List.getD_eq_getElem _ _ (by simpa [Reg.width] using hi)]
+    rfl
+  rw [hget]
+  have hbit :
+      RegEncoding.bit (x.get ⟨i, by simpa [Reg.width] using hi⟩) b
+        = Nat.testBit (RegEncoding.toNat x b) i := by
+    have := RegEncoding.bit_eq_testBit_toNat x b ⟨i, by simpa [regSize, Reg.width] using hi⟩
+    simpa using this
+  simp only [Nat.zero_add]
+  rw [hbit]
+  cases Nat.testBit (RegEncoding.toNat x b) i <;> simp
+
+/-- Control bits of qubits disjoint from `y` are unaffected by writes to `y`,
+so the accumulated exponent is unchanged. -/
+private lemma ctrlExp_writeNat_out (y : Reg) (v : ℕ) :
+    ∀ (e : ℕ) (ctrls : List ℕ) (b : qs.Basis),
+      (∀ ctrl ∈ ctrls, ctrl ∉ y.qubits) →
+      ctrlExp e ctrls (RegEncoding.writeNat y v b) = ctrlExp e ctrls b := by
+  intro e ctrls
+  induction ctrls generalizing e with
+  | nil => intro b _; rfl
+  | cons c cs ih =>
+      intro b hmem
+      rw [ctrlExp, ctrlExp,
+          RegEncoding.bit_writeNat_out y v b c (hmem c (List.mem_cons_self)),
+          ih (e + 1) b (fun c' hc' => hmem c' (List.mem_cons_of_mem _ hc'))]
+
+/-- Generalized recursion: the ideal modexp step-list multiplies `y` in place by
+`a ^ (accumulated exponent of the processed control bits)` mod `N`. -/
+private lemma eval_modExpIdealSteps_ket
+    [GateSemanticsCore qs] [Spec] [IdealCtrlModMulExactSemantics qs]
+    (a N : ℕ) (y : Reg) (hN : 1 < N) (ha : Nat.Coprime a N) (hsize : N ≤ ASize y) :
+    ∀ (e : ℕ) (ctrls : List ℕ) (b : qs.Basis),
+      (∀ ctrl ∈ ctrls, ctrl ∉ y.qubits) →
+      RegEncoding.toNat y b < N →
+      qs.eval (modExpIdealSteps qs a N y e ctrls) (qs.ket b)
+        = qs.ket (RegEncoding.writeNat y
+            ((RegEncoding.toNat y b * a ^ ctrlExp e ctrls b) % N) b) := by
+  intro e ctrls
+  induction ctrls generalizing e with
+  | nil =>
+      intro b _ hb
+      simp only [modExpIdealSteps, ctrlExp, pow_zero, mul_one, qs.eval_id]
+      rw [Nat.mod_eq_of_lt hb, RegEncoding.writeNat_toNat]
+  | cons ctrl ctrls ih =>
+      intro b hmem hb
+      have hpeel : modExpIdealSteps qs a N y e (ctrl :: ctrls)
+          = Spec.idealCtrlModMul ((a ^ 2 ^ e) % N) N y ctrl ;;
+            modExpIdealSteps qs a N y (e + 1) ctrls := by
+        simp [modExpIdealSteps]
+      rw [hpeel, qs.eval_seq]
+      have hc : Nat.Coprime ((a ^ 2 ^ e) % N) N := by
+        have hp : Nat.Coprime (a ^ 2 ^ e) N := ha.pow_left _
+        have hg : Nat.gcd ((a ^ 2 ^ e) % N) N = Nat.gcd (a ^ 2 ^ e) N := by
+          rw [Nat.gcd_comm (a ^ 2 ^ e) N, ← Nat.gcd_rec]
+        unfold Nat.Coprime
+        rw [hg]; exact hp
+      have hctrl : ctrl ∉ y.qubits := hmem ctrl (List.mem_cons_self)
+      rw [IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_ket_exact
+            ((a ^ 2 ^ e) % N) N y ctrl b hN hsize hc hctrl hb]
+      set v0 := if RegEncoding.bit ctrl b then ((a ^ 2 ^ e) % N * RegEncoding.toNat y b) % N
+                else RegEncoding.toNat y b with hv0def
+      have hv0lt : v0 < N := by
+        rw [hv0def]; split
+        · exact Nat.mod_lt _ (by omega)
+        · exact hb
+      have hv0size : v0 < ASize y := lt_of_lt_of_le hv0lt hsize
+      have hb'lt : RegEncoding.toNat y (RegEncoding.writeNat y v0 b) < N := by
+        rw [RegEncoding.toNat_writeNat_of_lt y v0 b hv0size]; exact hv0lt
+      have hmem' : ∀ c' ∈ ctrls, c' ∉ y.qubits :=
+        fun c' hc' => hmem c' (List.mem_cons_of_mem _ hc')
+      rw [ih (e + 1) (RegEncoding.writeNat y v0 b) hmem' hb'lt]
+      rw [RegEncoding.writeNat_overwrite,
+          RegEncoding.toNat_writeNat_of_lt y v0 b hv0size,
+          ctrlExp_writeNat_out y v0 (e + 1) ctrls b hmem']
+      congr 2
+      rw [ctrlExp, hv0def]
+      by_cases hbit : RegEncoding.bit ctrl b
+      · simp only [hbit, if_true, mul_one]
+        rw [pow_add]
+        have hmod :
+            ((a ^ 2 ^ e) % N * RegEncoding.toNat y b) % N * a ^ ctrlExp (e + 1) ctrls b
+              ≡ RegEncoding.toNat y b * (a ^ 2 ^ e * a ^ ctrlExp (e + 1) ctrls b) [MOD N] :=
+          calc ((a ^ 2 ^ e) % N * RegEncoding.toNat y b) % N * a ^ ctrlExp (e + 1) ctrls b
+              ≡ ((a ^ 2 ^ e) % N * RegEncoding.toNat y b) * a ^ ctrlExp (e + 1) ctrls b [MOD N] :=
+                (Nat.mod_modEq _ _).mul_right _
+            _ ≡ (a ^ 2 ^ e * RegEncoding.toNat y b) * a ^ ctrlExp (e + 1) ctrls b [MOD N] :=
+                ((Nat.mod_modEq _ _).mul_right _).mul_right _
+            _ = RegEncoding.toNat y b * (a ^ 2 ^ e * a ^ ctrlExp (e + 1) ctrls b) := by ring
+        exact hmod
+      · simp [hbit]
+
 theorem eval_modExpIdeal_ket
     [GateSemanticsCore qs]
     [Spec]
@@ -312,7 +476,12 @@ theorem eval_modExpIdeal_ket
         ((RegEncoding.toNat y b *
             a ^ RegEncoding.toNat x b) % N)
         b) := by
-  sorry
+  have hmem : ∀ ctrl ∈ x.qubits, ctrl ∉ y.qubits := by
+    rw [Disjoint, List.disjoint_left] at hxy
+    exact fun ctrl hctrl => hxy hctrl
+  have h := eval_modExpIdealSteps_ket (qs := qs) a N y hN ha hsize 0 x.qubits b hmem hy
+  rw [show modExpIdeal' qs a N x y = modExpIdealSteps qs a N y 0 x.qubits from rfl]
+  rw [h, ctrlExp_zero_qubits_eq_toNat]
 
 /--
 Exact modular exponentiation on one initialized Shor basis label:
