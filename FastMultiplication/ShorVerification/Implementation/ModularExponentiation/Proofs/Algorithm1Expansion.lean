@@ -507,12 +507,12 @@ state as an `Alg1Trace` with Step-1 coefficients and the Step-3/4 support
 condition needed later.
 ========================================================= -/
 
-/-! ---------------------------------------------------------
-    Staged-gate equivalence
+/-! =========================================================
+    Section 1: Staged-gate equivalence
 
 The public approximate modular-multiplication gate is definitionally the same
 as the staged `U1 ; U2 ; U34 ; U5` presentation used by the error proof.
---------------------------------------------------------- -/
+========================================================= -/
 
 section StagedGateEquivalence
 
@@ -536,13 +536,13 @@ end ModMulConfig
 
 end StagedGateEquivalence
 
-/-! ---------------------------------------------------------
-    Linear expansion helpers
+/-! =========================================================
+    Section 2: Linear expansion helpers
 
 These lemmas push gate evaluation through finite sums and expose the two basic
 Step-1 pieces: inverse QFT on the work register and the controlled PhaseProduct
 as a diagonal operation on each work label.
---------------------------------------------------------- -/
+========================================================= -/
 
 section LinearExpansionHelpers
 
@@ -635,14 +635,14 @@ lemma eval_cphaseprodusing_work_diagonal
 
 end LinearExpansionHelpers
 
-/-! ---------------------------------------------------------
-    Work-register support spans
+/-! =========================================================
+    Section 3: Work-register support spans
 
 The Step-1 expansion needs to show that applying Hadamards to the work register
 keeps the state supported on basis states obtained by writing only that register.
 The private `HRegWorkSpan` predicate and helper lemmas provide this local
 closure argument.
---------------------------------------------------------- -/
+========================================================= -/
 
 section WorkRegisterSupportSpans
 
@@ -1128,13 +1128,13 @@ lemma eval_Hreg_work_expansion
 
 end WorkRegisterSupportSpans
 
-/-! ---------------------------------------------------------
-    Step-1 clean workspace and QPE expansion
+/-! =========================================================
+    Section 4: Step-1 clean workspace and QPE expansion
 
 This section combines reserve-freshness lemmas with the work-span expansion to
 obtain the concrete Step-1 QPE packet and identify its coefficients by inner
 products.
---------------------------------------------------------- -/
+========================================================= -/
 
 section Step1QPEExpansion
 
@@ -1698,13 +1698,13 @@ lemma alg1_step1_ket_qpe_expansion
 
 end Step1QPEExpansion
 
-/-! ---------------------------------------------------------
-    Valid-state finite expansions
+/-! =========================================================
+    Section 5: Valid-state finite expansions
 
 The trace constructor needs a finite basis expansion of an arbitrary state in
 the valid-input span. These private helpers extract such an expansion by span
 induction while preserving the good-input predicate on every support element.
---------------------------------------------------------- -/
+========================================================= -/
 
 section ValidStateFiniteExpansions
 
@@ -1887,14 +1887,14 @@ private lemma good_input_expansion_of_valid
 
 end ValidStateFiniteExpansions
 
-/-! ---------------------------------------------------------
-    Zero-target Step-1 exactness
+/-! =========================================================
+    Section 6: Zero-target Step-1 exactness
 
 If the Step-1 target residue is zero, the controlled phase load is trivial on
 the work superposition, so the following inverse QFT exactly returns the input
 basis state. This fact is used to rule out nonzero good labels in the zero-target
 case.
---------------------------------------------------------- -/
+========================================================= -/
 
 section ZeroTargetStep1Exactness
 
@@ -2340,13 +2340,13 @@ lemma alg1_step1_zero_target_exact
 
 end ZeroTargetStep1Exactness
 
-/-! ---------------------------------------------------------
-    Step-3/4 overflow arithmetic
+/-! =========================================================
+    Section 7: Step-3/4 overflow arithmetic
 
 These arithmetic lemmas relate the good-label fractional approximation to the
 comparator cross condition used by Step 4. The endpoint is the equivalence
 between the Step-4 cross condition and overflow of the Step-2 sum.
---------------------------------------------------------- -/
+========================================================= -/
 
 section Step34OverflowArithmetic
 
@@ -2807,13 +2807,13 @@ lemma alg1_step4_cross_iff_overflow_of_good
 
 end Step34OverflowArithmetic
 
-/-! ---------------------------------------------------------
-    Final trace construction
+/-! =========================================================
+    Section 8: Final trace construction
 
 The final lemma assembles the valid-state expansion, Step-1 coefficient
 identification, zero-target support fact, and Step-3/4 overflow arithmetic into
 the `Alg1Trace` record consumed by the later quantitative bounds.
---------------------------------------------------------- -/
+========================================================= -/
 
 section FinalTraceConstruction
 

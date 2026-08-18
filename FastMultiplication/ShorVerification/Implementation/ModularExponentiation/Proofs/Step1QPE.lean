@@ -34,8 +34,8 @@ open Shor
 
 universe u v
 
-/-! ---------------------------------------------------------
-    Shared linear-algebra and register helpers
+/-! =========================================================
+    Section 1: Shared linear-algebra and register helpers
 
 Generic facts reused throughout the file: splitting a finite sum along a
 decidable predicate, Pythagoras for a finite orthogonal family, idempotence of
@@ -43,7 +43,7 @@ repeated writes to one register, and invariance of the norm of a ket expansion
 under any injective reindexing of its basis labels. The section closes with the
 register-level statement that undoing the Step-5 cleanup writes restores a good
 input basis state exactly.
---------------------------------------------------------- -/
+========================================================= -/
 
 section SharedHelpers
 
@@ -345,8 +345,8 @@ lemma alg1_reset_extendHi_work_write
 
 end SharedHelpers
 
-/-! ---------------------------------------------------------
-    Trace coefficients and their identification
+/-! =========================================================
+    Section 2: Trace coefficients and their identification
 
 An `Alg1Trace` carries abstract Step-1 coefficients; nothing in the record
 forces them to be the canonical ones. This section pins them down. A normalized
@@ -355,7 +355,7 @@ distinct work labels give distinct basis states, and projecting a trace-shaped
 packet onto a single label reads off exactly one product of coefficients. The
 endpoint `alg1_trace_phaseCoeff_eq_alg1PhaseCoeff` uses these to identify
 `tr.phaseCoeff` with `alg1PhaseCoeff` on every branch of nonzero weight.
---------------------------------------------------------- -/
+========================================================= -/
 
 section TraceCoefficientIdentification
 
@@ -738,8 +738,8 @@ lemma alg1_trace_phaseCoeff_eq_alg1PhaseCoeff
 
 end TraceCoefficientIdentification
 
-/-! ---------------------------------------------------------
-    Trace bad mass and the Step-1 error
+/-! =========================================================
+    Section 3: Trace bad mass and the Step-1 error
 
 Step 1 is only approximate because the inverse QFT spreads amplitude onto
 labels outside the precision window. This section isolates that amplitude. The
@@ -748,7 +748,7 @@ exactly the discarded packet `tr.badStep1`, whose squared norm is
 `alg1TraceBadMass`. Since the trace bad mass is a convex combination of the
 per-basis-input masses, a uniform tail estimate on basis inputs lifts to the
 whole trace.
---------------------------------------------------------- -/
+========================================================= -/
 
 section TraceBadMassAndStep1Error
 
@@ -1222,14 +1222,14 @@ lemma alg1_step1_error_sq_eq_trace_bad_mass
 
 end TraceBadMassAndStep1Error
 
-/-! ---------------------------------------------------------
-    Step-5 cleanup residue
+/-! =========================================================
+    Section 4: Step-5 cleanup residue
 
 Step 5 uncomputes the Step-1 load by loading the constant `step5Constant c N`
 against the already-multiplied data register. These two lemmas check that the
 composite residue is exactly `alg1TargetResidue`, so the cleanup phase is the
 inverse of the load phase modulo `N`.
---------------------------------------------------------- -/
+========================================================= -/
 
 section Step5CleanupResidue
 
@@ -1365,8 +1365,8 @@ lemma alg1_step5_cleanup_residue_eq_target
 
 end Step5CleanupResidue
 
-/-! ---------------------------------------------------------
-    Atomic encoding and phase lemmas
+/-! =========================================================
+    Section 5: Atomic encoding and phase lemmas
 
 The smallest rewrites used by every packet computation below, split into a
 register half and a scalar half. On the register side, writing the output value
@@ -1374,7 +1374,7 @@ into `data` agrees with writing it into the grown register, and the ideal gate
 produces precisely that basis state. On the scalar side, the Step-1 and Step-5
 phase scalars both collapse to the common `alg1TargetPhaseScalar`, which is the
 statement that Step 5 undoes Step 1 at the level of phases.
---------------------------------------------------------- -/
+========================================================= -/
 
 section AtomicEncodingAndPhase
 
@@ -1817,8 +1817,8 @@ lemma alg1_step5_phase_scalar_eq_step1
 
 end AtomicEncodingAndPhase
 
-/-! ---------------------------------------------------------
-    Local diagonal semantics
+/-! =========================================================
+    Section 6: Local diagonal semantics
 
 The controlled phase product is diagonal in the work label, but only once the
 relevant registers are known to be disjoint and its workspace is known to be
@@ -1826,7 +1826,7 @@ clean. The private lemmas here discharge those layout side conditions from the
 `ModMulConfig` workspace data; the two public lemmas then evaluate the Step-1
 and forward Step-5 phase gates on a single work basis label, in both cases
 producing the scalar `alg1Step1PhaseScalar`.
---------------------------------------------------------- -/
+========================================================= -/
 
 section LocalDiagonalSemantics
 
@@ -2237,8 +2237,8 @@ lemma alg1_step5_cphase_on_output_work_label
 
 end LocalDiagonalSemantics
 
-/-! ---------------------------------------------------------
-    Exact packet algebra
+/-! =========================================================
+    Section 7: Exact packet algebra
 
 Everything needed to run Step 1 forward on a basis state with no estimates. The
 register Hadamards produce the uniform work superposition, the controlled phase
@@ -2247,7 +2247,7 @@ the labels with the explicit coefficient `alg1IQFTCoeff`. Composing the three
 identifies the canonical `alg1PhaseCoeff` with the closed-form Fourier
 coefficient `alg1FractionalLoadCoeff`, which is the last step before the
 analysis becomes purely numerical.
---------------------------------------------------------- -/
+========================================================= -/
 
 section ExactPacketAlgebra
 
@@ -2374,16 +2374,6 @@ private lemma qpe_qftPhase_zero_left
     qftPhase N 0 y = 1 := by
   simp [qftPhase, ωPow]
 
-private lemma qpe_qftPhase_zero_right
-    (N x : ℕ) :
-    qftPhase N x 0 = 1 := by
-  simpa [qftPhase_comm] using
-    qpe_qftPhase_zero_left N x
-
-/--
-Register Hadamards on a cleared work register produce the uniform superposition
-over all work labels.
--/
 lemma eval_Hreg_zero_uniform_sum_ext
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -2644,8 +2634,8 @@ lemma alg1PhaseCoeff_eq_fractionalLoadCoeff
 
 end ExactPacketAlgebra
 
-/-! ---------------------------------------------------------
-    From Algorithm 1 to the standard QPE kernel
+/-! =========================================================
+    Section 8: From Algorithm 1 to the standard QPE kernel
 
 This section introduces `qpeKernel`, the textbook finite QPE amplitude for a
 phase `θ` sampled on an `M`-point grid, and translates the Algorithm-1 data
@@ -2654,7 +2644,7 @@ conjugated QFT entries become the negative grid phase, the two normalizers
 multiply to `1 / M`, and the set of discarded labels becomes the numerical
 window predicate. It also converts the `Algorithm1Precision` hypothesis into
 the grid-to-capacity ratio that the analytic bound consumes.
---------------------------------------------------------- -/
+========================================================= -/
 
 section AnalyticQpeSetup
 
@@ -3082,8 +3072,8 @@ lemma qpe_precision_tail_scale
 
 end AnalyticQpeSetup
 
-/-! ---------------------------------------------------------
-    Circular distance and the zero-phase kernel
+/-! =========================================================
+    Section 9: Circular distance and the zero-phase kernel
 
 The tail estimate is stated in terms of the distance from `θ` to a grid point
 measured on the unit circle, since a label just below `1` is close to a phase
@@ -3091,7 +3081,7 @@ just above `0`. This section fixes that notion and the associated tail set,
 then disposes of the degenerate case `θ = 0`: there the kernel is a geometric
 sum over a nontrivial root of unity, so it vanishes at every nonzero label and
 the bad mass is zero outright rather than merely small.
---------------------------------------------------------- -/
+========================================================= -/
 
 section CircularDistanceAndZeroPhase
 
@@ -3370,8 +3360,8 @@ lemma qpeKernel_zero_phase_bad_mass_zero
 
 end CircularDistanceAndZeroPhase
 
-/-! ---------------------------------------------------------
-    Chord bound on the kernel
+/-! =========================================================
+    Section 10: Chord bound on the kernel
 
 The pointwise estimate that drives everything numerical. Writing the kernel as
 a geometric sum in the root `qpeRoot` gives
@@ -3379,7 +3369,7 @@ a geometric sum in the root `qpeRoot` gives
 most `2`, while the chord `‖root - 1‖` is bounded below by `4` times the
 circular distance, using `2 * min u (1 - u) ≤ |sin (π u)|`. Rearranging yields
 the majorant `‖kernel‖ ^ 2 ≤ 1 / (4 * (M * dist) ^ 2)`.
---------------------------------------------------------- -/
+========================================================= -/
 
 section KernelChordBound
 
@@ -3839,14 +3829,14 @@ lemma qpeKernel_norm_sq_le_circular_majorant
 
 end KernelChordBound
 
-/-! ---------------------------------------------------------
-    Reciprocal-square tail sums
+/-! =========================================================
+    Section 11: Reciprocal-square tail sums
 
 Two elementary real estimates, independent of any quantum content. Summing
 `1 / n ^ 2` over `Icc L M` telescopes against `1 / (n - 1) - 1 / n`, and
 starting the sum at `⌊a⌋₊` for `4 ≤ a` gives the constant `128 / a` used as the
 final tail bound.
---------------------------------------------------------- -/
+========================================================= -/
 
 section ReciprocalSquareTails
 
@@ -4038,8 +4028,8 @@ private lemma reciprocal_square_floor_tail_le
 
 end ReciprocalSquareTails
 
-/-! ---------------------------------------------------------
-    Floor-shell geometry of the tail
+/-! =========================================================
+    Section 12: Floor-shell geometry of the tail
 
 Summing the pointwise majorant over the tail requires knowing how many labels
 can share a given value of `⌊M * dist⌋₊`. This section answers that. The
@@ -4050,7 +4040,7 @@ Labels in a common shell have distances within `1 / M` of each other, and grid
 points that close together must coincide, so shell index together with tag
 determines the label uniquely — which caps each shell at four tags times two
 sides.
---------------------------------------------------------- -/
+========================================================= -/
 
 section FloorShellGeometry
 
@@ -4643,15 +4633,15 @@ private lemma qpe_same_floor_shell_same_tag
         _ < 1 / (M : ℝ) := hclose
 end FloorShellGeometry
 
-/-! ---------------------------------------------------------
-    Summing the majorant over the tail
+/-! =========================================================
+    Section 13: Summing the majorant over the tail
 
 With the geometry settled the estimate assembles. The tail is reindexed by
 floor shells, each shell holds at most eight labels and contributes at most
 `2 / n ^ 2`, and the reciprocal-square tail sum turns the total into
 `128 / (M * δ)`. Feeding the pointwise chord bound through this chain gives
 `qpeKernel_circular_tail_le`, the analytic heart of the file.
---------------------------------------------------------- -/
+========================================================= -/
 
 section TailMajorantSummation
 
@@ -5150,8 +5140,8 @@ lemma qpeKernel_circular_tail_le
 
 end TailMajorantSummation
 
-/-! ---------------------------------------------------------
-    The tail bound for an ordinary fraction
+/-! =========================================================
+    Section 14: The tail bound for an ordinary fraction
 
 The bound is now specialized to the phases Algorithm 1 actually produces,
 `θ = r / N` with `0 < r < N`. The window used by the algorithm is stated with
@@ -5159,7 +5149,7 @@ the ordinary absolute value rather than the circular distance, so the first
 lemma checks that every label the algorithm discards does lie in the circular
 tail. Combining this with the precision hypothesis, which supplies both
 `4 ≤ M * δ` and `δ < 1 / 2`, gives the bound `128 * D / (M * η)`.
---------------------------------------------------------- -/
+========================================================= -/
 
 section OrdinaryFractionTailBound
 
@@ -5606,8 +5596,8 @@ lemma qpeKernel_bad_mass_le_grid_ratio
 
 end OrdinaryFractionTailBound
 
-/-! ---------------------------------------------------------
-    The uniform Step-1 tail bound
+/-! =========================================================
+    Section 15: The uniform Step-1 tail bound
 
 The final assembly. The explicit Fourier coefficient computed in the packet
 algebra is literally the standard QPE kernel at the phase
@@ -5616,7 +5606,7 @@ endpoint `alg1_qpe_tail_basis_uniform` produces a single constant, `512`,
 bounding `alg1QpeBadMass` by `512 * η` for every configuration and every good
 basis input; `alg1_trace_bad_mass_le_of_basis_tail` then lifts it to arbitrary
 valid states.
---------------------------------------------------------- -/
+========================================================= -/
 
 section UniformStep1TailBound
 
