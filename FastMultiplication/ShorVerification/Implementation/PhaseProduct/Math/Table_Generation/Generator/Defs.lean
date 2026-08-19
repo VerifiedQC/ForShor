@@ -5,17 +5,13 @@ open Operations
 namespace Table_Generation
 
 def generatedPoints (mode : ProductMode) (k : ℕ) : List Point :=
-  match mode, k with
-  | .PhaseProduct, _ => []
-  | .PhaseTripleProduct, _ => []
+  List.replicate (ProductMode.pointCount mode k) (.int 0)
 
-def generatePointsInOrder (mode : ProductMode) (k : ℕ) (hk : k ≥ 2) : List Point :=
-  match hk with
-  | _ => generatedPoints mode k
+def generatePointsInOrder (mode : ProductMode) (k : ℕ) (_hk : k ≥ 2) : List Point :=
+  generatedPoints mode k
 
 def generate (mode : ProductMode) (k : ℕ) (hk : k ≥ 2) : Prog k :=
-  match mode, hk with
-  | .PhaseProduct, _ => []
-  | .PhaseTripleProduct, _ => []
+  List.replicate (ProductMode.pointCount mode k)
+    (valid_ops.phaseProduct (finZero (by omega)))
 
 end Table_Generation
