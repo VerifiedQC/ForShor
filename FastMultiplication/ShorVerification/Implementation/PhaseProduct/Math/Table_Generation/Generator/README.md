@@ -34,6 +34,9 @@ is:
 - arithmetic operation count
 - parallel phase-product layer count
 
+The current reference result to beat is `46` arithmetic operations with `4`
+parallel phase-product layers.
+
 ## Pull Request Submission
 
 Create your submission branch from:
