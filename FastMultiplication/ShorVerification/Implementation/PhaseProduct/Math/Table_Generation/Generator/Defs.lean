@@ -5,17 +5,12 @@ open Operations
 namespace Table_Generation
 
 def generatedPoints (mode : ProductMode) (k : ℕ) : List Point :=
-  match mode, k with
-  | .PhaseProduct, _ => []
-  | .PhaseTripleProduct, _ => []
+  canonicalPoints mode k
 
-def generatePointsInOrder (mode : ProductMode) (k : ℕ) (hk : k ≥ 2) : List Point :=
-  match hk with
-  | _ => generatedPoints mode k
+def generatePointsInOrder (mode : ProductMode) (k : ℕ) (_hk : k ≥ 2) : List Point :=
+  generatedPoints mode k
 
 def generate (mode : ProductMode) (k : ℕ) (hk : k ≥ 2) : Prog k :=
-  match mode, hk with
-  | .PhaseProduct, _ => []
-  | .PhaseTripleProduct, _ => []
+  genOpsWithProduct (k := k) (by omega) (generatePointsInOrder mode k hk)
 
 end Table_Generation
