@@ -5,6 +5,8 @@ open Operations
 
 namespace Table_Generation
 
+-- Failure-case PR for checking submission CI behavior.
+
 /- The generated point list has the expected length and allowed point shapes. -/
 theorem generatedPoints_valid (mode : ProductMode) (k : ℕ) (_ : k ≥ 2) :
     ValidPointList mode k (generatedPoints mode k) := by
