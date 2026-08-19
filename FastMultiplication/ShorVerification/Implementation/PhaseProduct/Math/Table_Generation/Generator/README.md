@@ -15,6 +15,10 @@ Edit only:
 - `generatePointsInOrder`
 - `generate`
 
+`generatedPoints` must be the protected canonical point list from `Spec.lean`.
+`generatePointsInOrder` may choose a different consumption order, but it must be
+a permutation of that canonical list.
+
 `Correctness.lean` should prove:
 
 - `generatedPoints_valid`

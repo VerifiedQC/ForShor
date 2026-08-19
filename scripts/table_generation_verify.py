@@ -45,6 +45,7 @@ ALLOWED_CHANGED_FILES = SUBMISSION_FILES
 
 NAT = "\u2115"
 GE = "\u2265"
+AND = "\u2227"
 EXPECTED_THEOREMS = {
     "generatedPoints_valid": (
         f"theorem generatedPoints_valid (mode : ProductMode) (k : {NAT}) "
@@ -53,7 +54,8 @@ EXPECTED_THEOREMS = {
     ),
     "generate_ProgConsumesPtsSafe": (
         f"theorem generate_ProgConsumesPtsSafe (mode : ProductMode) "
-        f"(k : {NAT}) (hk : k {GE} 2) : ProgConsumesPtsSafe "
+        f"(k : {NAT}) (hk : k {GE} 2) : ValidPointOrder mode k "
+        f"(generatePointsInOrder mode k hk) {AND} ProgConsumesPtsSafe "
         "(by omega) State.start_state (generate mode k hk) "
         "(generatePointsInOrder mode k hk) := by"
     ),
@@ -374,7 +376,7 @@ def collect_metrics(repo: Path, out_dir: Path) -> tuple[dict[str, Any], dict[str
             "open Table_Generation",
             "",
             "def targetProgram : Prog 4 := generate .PhaseTripleProduct 4 (by decide)",
-            "def targetPoints : List Point := generatePointsInOrder .PhaseTripleProduct 4 (by decide)",
+            "def targetPoints : List Point := canonicalPoints .PhaseTripleProduct 4",
             "",
             '#eval IO.println "TABLE_GENERATION_METRICS_BEGIN"',
             '#eval IO.println ("mode=PhaseTripleProduct")',
