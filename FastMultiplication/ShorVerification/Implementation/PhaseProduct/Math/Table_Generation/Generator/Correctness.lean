@@ -10,6 +10,94 @@ theorem generatedPoints_valid (mode : ProductMode) (k : ℕ) (_ : k ≥ 2) :
     ValidPointList mode k (generatedPoints mode k) := by
   rfl
 
+lemma orderedConsumptionCheck_sound
+    {k : ℕ} (hk : k > 0) (σ : State k) (ops : Prog k) (pts : List Point)
+    (hcheck : orderedConsumptionCheck hk σ ops pts = true) :
+    ProgConsumesPts hk σ ops pts := by
+  induction ops generalizing σ pts with
+  | nil =>
+      simpa [orderedConsumptionCheck, ProgConsumesPts] using hcheck
+  | cons op ops ih =>
+      cases op with
+      | shiftL i n =>
+          simp [orderedConsumptionCheck, ProgConsumesPts, applyOp?] at hcheck ⊢
+          exact ih _ _ hcheck
+      | shiftR i n =>
+          cases hstep : applyOp? σ (valid_ops.shiftR i n) with
+          | none => simp [orderedConsumptionCheck, hstep] at hcheck
+          | some τ =>
+              simp [orderedConsumptionCheck, ProgConsumesPts, hstep] at hcheck ⊢
+              exact ih _ _ hcheck
+      | negate i =>
+          simp [orderedConsumptionCheck, ProgConsumesPts, applyOp?] at hcheck ⊢
+          exact ih _ _ hcheck
+      | addScaled dst src negSrc sh =>
+          simp [orderedConsumptionCheck, ProgConsumesPts, applyOp?] at hcheck ⊢
+          exact ih _ _ hcheck
+      | phaseProduct i =>
+          cases pts with
+          | nil => simp [orderedConsumptionCheck] at hcheck
+          | cons pt ptsTail =>
+              simp [orderedConsumptionCheck, ProgConsumesPts] at hcheck ⊢
+              exact ⟨hcheck.1, ih _ _ hcheck.2⟩
+
+lemma programSafe_sound {k : ℕ} (ops : Prog k)
+    (hcheck : programSafe ops = true) : SafeProg ops := by
+  intro pre rest dst src negSrc sh hops
+  have hmem : valid_ops.addScaled dst src negSrc sh ∈ ops := by
+    rw [hops]
+    simp
+  have hall := List.all_eq_true.mp hcheck
+  simpa [programSafe, operationSafe] using hall _ hmem
+
+lemma statesEqual_sound {k : ℕ} {left right : State k}
+    (hcheck : statesEqual left right = true) : left = right := by
+  funext i j
+  have hi := List.all_eq_true.mp hcheck i (List.mem_finRange i)
+  have hj := List.all_eq_true.mp hi j (List.mem_finRange j)
+  exact of_decide_eq_true hj
+
+lemma returnsToStartCheck_sound {k : ℕ} {program : Prog k}
+    (hcheck : returnsToStartCheck program = true) :
+    run? program State.start_state = some (State.start_state (k := k)) := by
+  unfold returnsToStartCheck at hcheck
+  cases hrun : run? program State.start_state with
+  | none => simp [hrun] at hcheck
+  | some σ =>
+      simp [hrun] at hcheck
+      have hstate : σ = State.start_state := statesEqual_sound hcheck
+      simpa [hstate] using hrun
+
+lemma segmentConsumptionCheck_sound
+    {k : ℕ} (hk : k > 0) (segments : List (GenerationSegment k))
+    (hcheck : segmentConsumptionCheck hk segments = true) :
+    ProgConsumesPts hk State.start_state
+      (segmentPrograms segments) (segmentPoints segments) := by
+  induction segments with
+  | nil => simp [segmentPrograms, segmentPoints, ProgConsumesPts]
+  | cons head tail ih =>
+      rcases head with ⟨program, pts⟩
+      cases tail with
+      | nil =>
+          have hprogram :
+              orderedConsumptionCheck hk State.start_state program pts = true := by
+            simpa [segmentConsumptionCheck] using hcheck
+          simpa [segmentPrograms, segmentPoints] using
+            orderedConsumptionCheck_sound hk _ _ _ hprogram
+      | cons next rest =>
+          simp only [segmentConsumptionCheck, Bool.and_eq_true] at hcheck
+          have hfirst : ProgConsumesPts hk State.start_state program pts :=
+            orderedConsumptionCheck_sound hk _ _ _ hcheck.1.1
+          have hreturn :
+              run? program State.start_state = some (State.start_state (k := k)) :=
+            returnsToStartCheck_sound hcheck.1.2
+          have hrest :
+              ProgConsumesPts hk State.start_state
+                (segmentPrograms (next :: rest)) (segmentPoints (next :: rest)) :=
+            ih hcheck.2
+          simpa [segmentPrograms, segmentPoints] using
+            progConsumesPts_append (k := k) hk hfirst hreturn hrest
+
 private def targetState (middle₁ middle₂ : Point) : State 4 :=
   fun i =>
     if i = 0 then expectedRow (.int 0)
@@ -300,6 +388,33 @@ lemma genOpsWithProduct_wellFormed
       rw [genOpsWithProduct]
       exact WellFormed_append (opsForPointWithProduct_wellFormed hk pt) ih
 
+lemma checkedStrongGenerate_correct
+    (mode : ProductMode) (k : ℕ) (hk : k ≥ 2) :
+    ProgConsumesPtsSafe (by omega) (State.start_state (k := k))
+      (checkedStrongGenerate mode k hk) (generatePointsInOrder mode k hk) := by
+  unfold checkedStrongGenerate
+  dsimp
+  split
+  · rename_i hvalid
+    unfold strongCandidateValid at hvalid
+    dsimp at hvalid
+    simp only [Bool.and_eq_true, decide_eq_true_eq] at hvalid
+    have hconsumes :=
+      segmentConsumptionCheck_sound (by omega)
+        (strongSegments mode k hk) hvalid.1.2
+    rw [hvalid.1.1] at hconsumes
+    exact
+      { consumes := by simpa [strongCandidate] using hconsumes
+        safe_add := by
+          change SafeProg (segmentPrograms (strongSegments mode k hk))
+          exact programSafe_sound _ hvalid.2 }
+  · refine
+      { consumes := genOpsWithProduct_ProgConsumesPts (by omega)
+          (generatePointsInOrder mode k hk)
+        safe_add := ?_ }
+    exact SafeProg_of_WellFormed
+      (genOpsWithProduct_wellFormed (by omega) (generatePointsInOrder mode k hk))
+
 /- The generated program safely consumes a permutation of the canonical points. -/
 theorem generate_ProgConsumesPtsSafe (mode : ProductMode) (k : ℕ) (hk : k ≥ 2) :
     ValidPointOrder mode k (generatePointsInOrder mode k hk) ∧
@@ -311,12 +426,7 @@ theorem generate_ProgConsumesPtsSafe (mode : ProductMode) (k : ℕ) (hk : k ≥ 
   have hkpos : 0 < k := by omega
   cases mode with
   | PhaseProduct =>
-      refine ⟨?_, ?_⟩
-      · simpa [generate] using
-          genOpsWithProduct_ProgConsumesPts hkpos (generatePointsInOrder .PhaseProduct k hk)
-      · apply SafeProg_of_WellFormed
-        simpa [generate] using
-          genOpsWithProduct_wellFormed hkpos (generatePointsInOrder .PhaseProduct k hk)
+      simpa [generate] using checkedStrongGenerate_correct .PhaseProduct k hk
   | PhaseTripleProduct =>
       by_cases hk4 : k = 4
       · subst k
@@ -325,13 +435,7 @@ theorem generate_ProgConsumesPtsSafe (mode : ProductMode) (k : ℕ) (hk : k ≥ 
             targetGenerate_consumes
         · change SafeProg (k := 4) targetGenerate
           exact targetGenerate_safe
-      · refine ⟨?_, ?_⟩
-        · simpa [generate, hk4] using
-            genOpsWithProduct_ProgConsumesPts hkpos
-              (generatePointsInOrder .PhaseTripleProduct k hk)
-        · apply SafeProg_of_WellFormed
-          simpa [generate, hk4] using
-            genOpsWithProduct_wellFormed hkpos
-              (generatePointsInOrder .PhaseTripleProduct k hk)
+      · simpa [generate, hk4] using
+          checkedStrongGenerate_correct .PhaseTripleProduct k hk
 
 end Table_Generation
