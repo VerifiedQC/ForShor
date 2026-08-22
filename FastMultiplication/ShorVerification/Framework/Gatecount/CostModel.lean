@@ -648,12 +648,6 @@ The middle controlled phase is decomposed as above into
 Thus every bit pair contributes:
     2 Toffoli + 2 CNOT + 3 Rz.
 
-The PhaseProduct / PhaseTripleProduct controlled-phase base cases are
-described in:
-  https://arxiv.org/abs/2403.18006
-
-Controlled-unitary decomposition:
-  https://arxiv.org/abs/quant-ph/9503016
 --------------------------------------------------------- -/
 
 def directCSignedPhaseProductResources
@@ -670,78 +664,11 @@ def directCSignedPhaseProductResources
 
 
 /-! ---------------------------------------------------------
-    Zero/sign extension
-
-`zeroExtend` activates reserve qubits already known to be |0⟩.
-No unitary is required, so its gate count is zero.  The reserve
-qubits are part of the program's register allocation and are therefore
-not counted again as `cleanAnc`.
-
-For sign extension, each newly activated clean bit receives the sign
-bit using one CNOT.  Deallocation applies the inverse CNOTs.
-
-CNOT as the elementary reversible copy/XOR operation is part of the
-standard elementary-gate framework:
-  Adriano Barenco et al.,
-  "Elementary gates for quantum computation"
-  https://arxiv.org/abs/quant-ph/9503016
-
-Separating qubit/ancilla count from abstract circuit gate count is also
-the accounting convention used by:
-  https://arxiv.org/abs/2403.18006
---------------------------------------------------------- -/
-
-def zeroExtendResources (_r : ExtReg) (_n : ℕ) : GateResources :=
-  {}
-
-def signExtendResources (_r : ExtReg) (n : ℕ) : GateResources :=
-  {
-    cnot := n
-  }
-
-def zeroDeallocResources (_r : ExtReg) (_n : ℕ) : GateResources :=
-  {}
-
-def signDeallocResources (_r : ExtReg) (n : ℕ) : GateResources :=
-  {
-    cnot := n
-  }
-
-
-/-! ---------------------------------------------------------
-    ShiftL / ShiftR
-
-The Kahanamoku-Meyer--Yao construction deliberately chooses
-powers-of-two Toom-Cook coefficients so that scaling can be performed
-by a *logical bit shift*:
-  https://arxiv.org/abs/2403.18006
-
-Accordingly, the abstract logical-gate resource model charges zero
-unitary gates here.
-
-This is a routing convention, not a claim that a physical nearest-
-neighbor implementation has zero cost.
-
-For a model that charges physical shifts/swaps, see:
-  Jae-weon Lee et al., "Quantum Shift Register"
-  https://arxiv.org/abs/quant-ph/0112107
---------------------------------------------------------- -/
-
-def logicalShiftResources (_r : ExtReg) (_n : ℕ) : GateResources :=
-  {}
-
-
-/-! ---------------------------------------------------------
     Radix reversal
 
 We retain the existing implementation as `floor(m/2)` pairwise SWAPs.
 
-Lee et al. explicitly note that one SWAP is three CNOT gates:
-  https://arxiv.org/abs/quant-ph/0112107
-
-Hence:
-    floor(m/2) SWAP
-      = 3 * floor(m/2) CNOT.
+ floor(m/2) SWAP = 3 * floor(m/2) CNOT.
 --------------------------------------------------------- -/
 
 def radixReverseResources (_r : Reg) (m : ℕ) : GateResources :=
@@ -760,104 +687,113 @@ Each field is backed either by an explicit published circuit or by the
 logical-wiring convention of the multiplication construction.
 -/
 def shorGateResourceModel : LowGateResourceModel where
-
-  /-
-  Comparator / subtractor:
-    https://arxiv.org/abs/quant-ph/0410184
-
-  Optimized/explicit comparator discussion:
-    https://arxiv.org/abs/2401.17921
-
-  CMP_LT_NW schoolbook fallback:
-    https://arxiv.org/abs/2410.00899
-  -/
   prim := shorPrimResources
 
-  /-
-  Powers of two are handled as logical bit shifts in the fast
-  multiplication construction:
-    https://arxiv.org/abs/2403.18006
-  -/
-  shiftL := logicalShiftResources
+  shiftL := fun _ _ => {}
 
-  /-
-  Same logical-bit-shift convention:
-    https://arxiv.org/abs/2403.18006
-  -/
-  shiftR := logicalShiftResources
+  shiftR := fun _ _ => {}
 
-  /-
-  Two's-complement NOT + increment, with the increment instantiated
-  using the Cuccaro modulo adder:
-    https://arxiv.org/abs/quant-ph/0410184
-
-  Independent linear incrementer construction:
-    https://arxiv.org/abs/2407.17966
-  -/
   negate := negateResources
 
-  /-
-  Linear combinations are constructed from in-place shifted
-  additions/subtractions:
-    https://arxiv.org/abs/2403.18006
-
-  Concrete ripple adder:
-    https://arxiv.org/abs/quant-ph/0410184
-  -/
   addScaled := addScaledResources
 
-  /-
-  One controlled phase per input-bit pair in the schoolbook
-  PhaseProduct base case:
-    https://arxiv.org/abs/2403.18006
-
-  Controlled-unitary decomposition:
-    https://arxiv.org/abs/quant-ph/9503016
-  -/
   naiveSignedPhaseProd :=
     fun _phi x z => directSignedPhaseProductResources x z
 
-  /-
-  Doubly-controlled phase base case:
-    https://arxiv.org/abs/2403.18006
-
-  Controlled-unitary decomposition:
-    https://arxiv.org/abs/quant-ph/9503016
-  -/
   naiveCSignedPhaseProd :=
     fun _ctrl _phi x z => directCSignedPhaseProductResources x z
 
-  /-
-  Activating an already-clean reserve wire is allocation bookkeeping,
-  not a unitary operation.  Gate and qubit counts are kept separate:
-    https://arxiv.org/abs/2403.18006
-  -/
-  zeroExtend := zeroExtendResources
+  zeroExtend := fun _ _ => {}
 
-  /-
-  Sign copying is one CNOT per newly activated bit:
-    https://arxiv.org/abs/quant-ph/9503016
-  -/
-  signExtend := signExtendResources
+  signExtend := fun _ n => {
+    cnot := n
+  }
 
-  /-
-  Inverse of zero extension; no unitary is needed:
-    https://arxiv.org/abs/2403.18006
-  -/
-  zeroDealloc := zeroDeallocResources
+  zeroDealloc := fun _ _ => {}
 
-  /-
-  Inverse of sign extension: same CNOT count.
-    https://arxiv.org/abs/quant-ph/9503016
-  -/
-  signDealloc := signDeallocResources
+  signDealloc := fun _ n => {
+    cnot := n
+  }
 
-  /-
-  floor(m/2) SWAPs, three CNOTs per SWAP:
-    https://arxiv.org/abs/quant-ph/0112107
-  -/
   radixReverse := radixReverseResources
 
 end ConcreteResourceModel
+
+/-! =========================================================
+    Qubit count
+========================================================= -/
+
+/-- Physical qubits owned by an ordinary register. -/
+def regQubitSet (r : Reg) : Finset ℕ :=
+  r.qubits.toFinset
+
+def extRegActiveQubits (r : ExtReg) : Finset ℕ :=
+  r.active.qubits.toFinset
+
+def extRegGrowQubits (r : ExtReg) (n : ℕ) : Finset ℕ :=
+  (r.grow n).active.qubits.toFinset
+
+def LowGate.usedQubits
+    (primQubits : String → List ℕ → Finset ℕ) :
+    LowGate → Finset ℕ
+  | .id => ∅
+  | .seq U V =>
+      usedQubits primQubits U ∪ usedQubits primQubits V
+  | .adj U =>
+      usedQubits primQubits U
+
+  | .H q => {q}
+  | .X q => {q}
+
+  | .Prim tag qs =>
+      primQubits tag qs
+
+  | .ShiftL r _ =>
+      extRegActiveQubits r
+
+  | .ShiftR r _ =>
+      extRegActiveQubits r
+
+  | .Negate r =>
+      extRegActiveQubits r
+
+  | .AddScaled dst src _ _ =>
+      extRegActiveQubits dst ∪ extRegActiveQubits src
+
+  | .Naive_SignedPhaseProd _ x z =>
+      extRegActiveQubits x ∪ extRegActiveQubits z
+
+  | .Naive_CSignedPhaseProd ctrl _ x z =>
+      {ctrl} ∪
+      extRegActiveQubits x ∪
+      extRegActiveQubits z
+
+  | .zeroExtend r n =>
+      extRegGrowQubits r n
+
+  | .signExtend r n =>
+      extRegGrowQubits r n
+
+  | .zeroDealloc _ _ =>
+      ∅
+
+  | .signDealloc r _ =>
+      r.active.qubits.toFinset
+
+  | .RadixReverse r _ =>
+      r.qubits.toFinset
+
+/--
+Total physical qubit requirement of a lowered circuit:
+
+* all distinct qubits explicitly owned/referenced by the circuit;
+* peak additional clean scratch ancillas required by its implementation.
+-/
+def LowGate.qubitCount
+    (M : LowGateResourceModel)
+    (primQubits : String → List ℕ → Finset ℕ)
+    (g : LowGate) : ℕ :=
+  (usedQubits primQubits g).card + (resources M g).cleanAnc
+
 
 end Shor

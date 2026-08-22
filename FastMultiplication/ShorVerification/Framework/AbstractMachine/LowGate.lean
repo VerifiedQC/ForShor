@@ -12,7 +12,7 @@ owns only the low-level syntax and the recursive translation machinery.
 -/
 
 /-! =========================================================
-    Section 1: Low-level target syntax
+    Low-level target syntax
 
     `LowGate` mirrors primitive high-level gates and includes explicit nodes
     for allocation, deallocation, phase-product fallbacks, and radix reversal.
