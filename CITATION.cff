@@ -19,7 +19,6 @@ authors:
     given-names: Runzhou
 repository-code: "https://github.com/VerifiedQC/ForShor"
 license: Apache-2.0
-year: 2026
 keywords:
   - Shor's algorithm
   - formal verification
