@@ -21,26 +21,14 @@ configuration records, and the reference packets used by the Step 1/2/3/4/5
 bound files.
 ========================================================= -/
 
-/-! ---------------------------------------------------------
-    Shared circuit syntax and workspace
-
-This section defines the reusable high-level gates for Algorithm 1, together
-with the concrete workspace predicate that provides the phase-product reserves
-needed by Steps 1, 2, and 5.
---------------------------------------------------------- -/
-
-section CircuitSyntaxAndWorkspace
-
-end CircuitSyntaxAndWorkspace
-
-/-! ---------------------------------------------------------
-    Valid inputs and ideal controlled multiplication
+/-! =========================================================
+    Section 1: Valid inputs and ideal controlled multiplication
 
 The later approximation theorems work on a valid-input subspace. This section
 defines the layout and clean-input predicates for that subspace, specifies the
 ideal controlled modular multiplier on good basis states, and proves that the
 ideal gate preserves the whole valid subspace.
---------------------------------------------------------- -/
+========================================================= -/
 
 section ValidInputsAndIdealSemantics
 
@@ -328,8 +316,6 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
 
   simpa [out] using hdata_out
 
-
-
 /-- The ideal controlled multiplier preserves the span of all good modular-multiplication states. -/
 theorem idealCtrlModMul_preserves_valid
     (qs : QSemantics)
@@ -473,12 +459,12 @@ theorem idealCtrlModMul_preserves_valid
 
 end ValidInputsAndIdealSemantics
 
-/-! ---------------------------------------------------------
-    Algorithm 1 precision and arithmetic constants
+/-! =========================================================
+    Section 2: Algorithm 1 precision and arithmetic constants
 
 This section packages the concrete precision schedule for Algorithm 1 and the
 Step-5 inverse constant used by the cleanup phase.
---------------------------------------------------------- -/
+========================================================= -/
 
 section Algorithm1PrecisionAndConstants
 
@@ -555,7 +541,6 @@ lemma pow_bound
     dsimp [algorithm1ExtraBits]
     exact Nat.le_ceil _
 
-
   have hlog :
       Real.logb 2 (a ^ 2)
         ≤
@@ -613,25 +598,9 @@ theorem step5Constant_ok
 
 end Algorithm1PrecisionAndConstants
 
-/-! ---------------------------------------------------------
-    Modular-exponentiation layout and gates
-
-The current modular-exponentiation API recurses over a list of control qubits.
-These predicates and gates express the layout and coprimality side conditions
-for that list-based recursion.
---------------------------------------------------------- -/
-
 section ModExpLayoutAndGates
 
 end ModExpLayoutAndGates
-
-/-! ---------------------------------------------------------
-    Shared configurations
-
-The bound files pass around compact records rather than repeatedly threading the
-modulus, registers, precision proof, workspace proof, layout proof, and
-coprimality hypotheses.
---------------------------------------------------------- -/
 
 section SharedConfigurations
 
@@ -639,20 +608,14 @@ namespace ModExpConfig
 
 end ModExpConfig
 
-
-
-/-! ---------------------------------------------------------
-    One controlled modular multiplication
---------------------------------------------------------- -/
-
 namespace ModMulConfig
 
-/-! ---------------------------------------------------------
-    Algorithm 1 staged gates
+/-! =========================================================
+    Section 3: Algorithm 1 staged gates
 
 These names expose the five-step core as stage-level gates used throughout the
 Step 1/2/3/4/5 correctness and error-bound files.
---------------------------------------------------------- -/
+========================================================= -/
 
 /-- Stage name for the exact Step 3/4 comparator block. -/
 noncomputable def U34
@@ -662,6 +625,43 @@ noncomputable def U34
     (cfg : ModMulConfig η) : Gate :=
   step3 cfg.env.N (cfg.env.data.grow 1).active cfg.flag ;;
   step4 cfg.env.N (cfg.env.data.grow 1).active cfg.env.work.active cfg.flag
+
+/-- Stage name for Algorithm 1 Step 1. -/
+noncomputable def U1
+    {η : ℝ}
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (cfg : ModMulConfig η) : Gate :=
+  step1
+  (Basis := Basis)
+  cfg.c cfg.env.N cfg.ctrl
+  cfg.env.data cfg.env.work
+  cfg.env.circuit_workspace
+
+/-- Stage name for Algorithm 1 Step 2. -/
+noncomputable def U2
+    {η : ℝ}
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (cfg : ModMulConfig η) : Gate :=
+  step2
+  (Basis := Basis)
+  cfg.env.N
+  cfg.env.data cfg.env.work
+  cfg.env.circuit_workspace
+
+/-- Stage name for Algorithm 1 Step 5 cleanup. -/
+noncomputable def U5
+    {η : ℝ}
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (cfg : ModMulConfig η) : Gate :=
+  step5
+    (Basis := Basis)
+    (step5Constant cfg.c cfg.env.N)
+    cfg.env.N cfg.ctrl
+    cfg.env.data cfg.env.work
+    cfg.env.circuit_workspace
 
 /-- The staged form of the full five-step modular-multiplication core. -/
 noncomputable def stagedGate
@@ -678,14 +678,6 @@ end ModMulConfig
 
 end SharedConfigurations
 
-/-! ---------------------------------------------------------
-    Derived primitive semantics and ideal configuration facts
-
-Steps 3 and 4 use opaque primitive gates whose basic semantics live in the
-framework. This section derives the implementation-specific Step 3/4 facts and
-provides the configuration-specific ideal multiplier lemma.
---------------------------------------------------------- -/
-
 section PrimitiveAndIdealConfigFacts
 
 section ModMulPrimitiveDerivedSemantics
@@ -696,9 +688,9 @@ variable
     [GateSemanticsCore qs]
     [ModMulPrimitiveGateSemantics qs]
 
-/-! ---------------------------------------------------------
-    Small register/flag helpers
---------------------------------------------------------- -/
+/-! =========================================================
+    Section 4: Small register/flag helpers
+========================================================= -/
 
 private lemma disjoint_qubitReg_of_outside
     {q : ℕ} {r : Reg}
@@ -1159,12 +1151,12 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_cfg
 
 end PrimitiveAndIdealConfigFacts
 
-/-! ---------------------------------------------------------
-    Algorithm 1 reference arithmetic
+/-! =========================================================
+    Section 5: Algorithm 1 reference arithmetic
 
 These scalar definitions describe the intended residues, fractional work labels,
 good QPE labels, and exact Step-2 integer shift used by the error proof.
---------------------------------------------------------- -/
+========================================================= -/
 
 section Algorithm1ReferenceArithmetic
 
@@ -1214,16 +1206,15 @@ noncomputable def alg1Step2Value
     (b : QSemantics.Basis) : ℕ :=
   RegEncoding.toNat cfg.env.data.active b + alg1TargetResidue cfg b
 
-
 end Algorithm1ReferenceArithmetic
 
-/-! ---------------------------------------------------------
-    Step-2 Fourier coefficient scaffolding
+/-! =========================================================
+    Section 6: Step-2 Fourier coefficient scaffolding
 
 The Step-2 proof compares the actual Fourier coefficient produced by the
 PhaseProduct with the ideal coefficient for the exact integer shift. These
 definitions name the relevant phases, index types, labels, and multipliers.
---------------------------------------------------------- -/
+========================================================= -/
 
 section Step2FourierScaffolding
 
@@ -1297,7 +1288,6 @@ noncomputable def alg1Step2ShiftDiscrepancy
   (cfg.env.N : ℝ) * alg1WorkFraction cfg t
     - (alg1TargetResidue cfg b : ℝ)
 
-
 /-- Source index for Step-2 packets: an input basis branch plus a work label. -/
 abbrev Alg1Step2SourceIndex
     (qs : QSemantics)
@@ -1370,13 +1360,6 @@ noncomputable def alg1Step2FourierMultiplier
     r
     p.2.1
 
-
-
-
-/-! ---------------------------------------------------------
-    Coherent Step-2 error vector
---------------------------------------------------------- -/
-
 /--
 The one-label Step-2 error vector.
 -/
@@ -1399,13 +1382,13 @@ noncomputable def alg1Step2Error
 
 end Step2FourierScaffolding
 
-/-! ---------------------------------------------------------
-    Step-3/4 labels and trace packets
+/-! =========================================================
+    Section 7: Step-3/4 labels and trace packets
 
 This section records the exact data values after the comparator/subtractor
 stages and packages the finite trace expansions used by the Appendix-E-style
 Algorithm 1 error decomposition.
---------------------------------------------------------- -/
+========================================================= -/
 
 section Step34LabelsAndTracePackets
 
@@ -1559,12 +1542,9 @@ lemma alg1OutputValue_lt_data_capacity
   · exact lt_of_lt_of_le (Nat.mod_lt _ hNpos) cfg.env.data_capacity
   · exact lt_of_lt_of_le hb.1 cfg.env.data_capacity
 
-
-
-
-/-! ---------------------------------------------------------
-    Concrete reference states used in the Appendix-E proof
---------------------------------------------------------- -/
+/-! =========================================================
+    Section 8: Concrete reference states used in the Appendix-E proof
+========================================================= -/
 
 namespace Alg1Trace
 
@@ -1632,19 +1612,18 @@ noncomputable def afterStep34Ref
               (alg1OutputValue cfg b)
               (RegEncoding.writeNat cfg.env.work.active t.1 b))
 
-
 end Alg1Trace
 
 end Step34LabelsAndTracePackets
 
-/-! ---------------------------------------------------------
-    Step-1 and Step-5 coefficient packets
+/-! =========================================================
+    Section 9: Step-1 and Step-5 coefficient packets
 
 The Step-5 cleanup proof compares the original Step-1 fractional load with the
 forward circuit whose adjoint is Step 5. These definitions name the QPE
 bad-label mass, bad-label packets, shared phase scalars, and inverse-QFT
 coefficients for that comparison.
---------------------------------------------------------- -/
+========================================================= -/
 
 section Step1Step5CoefficientPackets
 
@@ -1872,12 +1851,12 @@ noncomputable def alg1FractionalLoadCoeff
 
 end Step1Step5CoefficientPackets
 
-/-! ---------------------------------------------------------
-    Modular-exponentiation arithmetic helpers
+/-! =========================================================
+    Section 10: Modular-exponentiation arithmetic helpers
 
 The modular-exponentiation recursion repeatedly uses powers of the input base.
 This final helper packages the coprimality fact needed for every such multiplier.
---------------------------------------------------------- -/
+========================================================= -/
 
 section ModExpArithmeticHelpers
 

@@ -98,7 +98,7 @@ probability is exactly that of `orderFindingApprox`.
 theorem Shor_correct_approx_lowered_uniform
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     [IdealCtrlModMulExactSemantics qs]
     [ModMulPrimitiveGateSemantics qs]
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :

@@ -335,7 +335,7 @@ theorem referenceLayout_ready
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (lowering : ShorLoweringSetup)
     (inst : ShorOrderFindingInstance)
     (η : ℝ)

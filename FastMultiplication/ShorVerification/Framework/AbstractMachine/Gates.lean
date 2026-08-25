@@ -159,9 +159,7 @@ theorem ExtReg.extToInt_grow_of_fresh
   apply tcDecodeWidth_add_eq_of_lt hn
   exact ExtReg.toNat_lt e b
 
-
 end Gate
-
 
 /-! =========================================================
     Section 5: QFT phase helpers

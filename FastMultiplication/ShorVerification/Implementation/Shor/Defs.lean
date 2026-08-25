@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.LoweringCorrectness.Readiness
-import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering
+import FastMultiplication.ShorVerification.Implementation.QFT.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Main
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Workspace
@@ -600,7 +600,7 @@ structure LoweredShorReady
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     (lowering : ShorLoweringSetup)
     (η : ℝ)
     (a N : ℕ)

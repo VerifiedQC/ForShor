@@ -7,7 +7,6 @@ open Gate
 
 universe u
 
-
 /-!
 # QFT Decomposition
 
@@ -24,9 +23,8 @@ The organization :
 5. Exact QFT split on basis states and arbitrary states.
 -/
 
-
 /-! =========================================================
-    Section 1: Register arithmetic and split helpers
+    Section 1: Register arithmetic and split-register vocabulary
 ========================================================= -/
 
 /-- Equivalence between `Fin A × Fin B` and `Fin (A * B)`. -/
@@ -147,7 +145,6 @@ lemma qft_norm_split (nTot m : ℕ) (hm : m ≤ nTot) :
     simp[mul_comm]
   simpa using this
 
-
 /--
 The left recursive QFT acts on the left half of the active register and
 temporarily owns the same reserve as its parent.
@@ -232,6 +229,10 @@ def rightQFTReg (r : ExtReg) : ExtReg :=
 namespace Gate.PhaseProdWorkspace
 
 omit  [GateSemanticsFacts qs] in
+/-! =========================================================
+    Section 2: Write/read bookkeeping and split-register indices
+========================================================= -/
+omit [GateSemanticsFacts qs] in
 /--
 Writing the right input register does not change either workspace qubit.
 -/
@@ -315,10 +316,6 @@ lemma step1_QFT_right_ket
   simpa [ASize, leftReg, rightReg, ExtReg.ofReg, ExtReg.width, ExtReg.toNat, regSize] using
     (QFTSemantics.eval_QFT_ket (qs := qs) (r := ExtReg.ofReg (rightReg r)) (b := b))
 
-/-! =========================================================
-    Section 2: Encoding-only split-register lemmas
-========================================================= -/
-
 section EncodingOnly
 variable (qs : QSemantics) [RegEncoding qs.Basis]
 
@@ -336,7 +333,7 @@ lemma toNat_right_after_write_left
 end EncodingOnly
 
 /-! =========================================================
-    Section 3: Exponential and qftPhase bridge lemmas
+    Section 3: Exponential and `qftPhase` bridge lemmas
 ========================================================= -/
 
 lemma exp_phaseProd_eq_qftPhase (N x y : ℕ) :
@@ -358,10 +355,6 @@ lemma exp_phaseProd_eq_qftPhase_of_casts
     qftPhase (A * B) k1 jR := by
   simpa [Nat.cast_mul, mul_assoc, mul_left_comm, mul_comm] using
     (exp_phaseProd_eq_qftPhase (N := A * B) (x := k1) (y := jR))
-
-/-! =========================================================
-    Section 4: Sum-pushing and scalar helper lemmas
-========================================================= -/
 
 lemma eval_sum_univ_qs
   (qs : QSemantics)
@@ -409,7 +402,6 @@ lemma toNat_mul_after_write_left_eq
 
   simp [hL, hR, mul_comm]
 
-
 lemma toNat_left_after_write_right
   (qs : QSemantics) [RegEncoding qs.Basis]
   (r : Reg) (b : qs.Basis) (yR : ℕ) :
@@ -426,7 +418,7 @@ lemma toNat_left_after_write_right
       (b := b) (yR := yR))
 
 /-! =========================================================
-    Section 5: First split-QFT steps
+    Section 4: The split-QFT pipeline (steps 2–5)
 ========================================================= -/
 
 lemma step2_PhaseProdUsing_after_QFT_right
@@ -728,10 +720,6 @@ lemma step3_QFT_left_after_step2
               left, right, A, B,
               smul_smul, mul_assoc, mul_left_comm, mul_comm]
 
-/-! =========================================================
-    Section 6: Phase-combination lemmas
-========================================================= -/
-
 lemma exp_helper_lemma(A B : ℕ) (hA : 0 < A) (hB : 0 < B) :
     Complex.exp ((A : ℂ) * ((B : ℂ) * (Complex.I * ((Real.pi : ℂ) * 2) / ((A : ℂ) * (B : ℂ))))) = 1 := by
   have hA0 : (A : ℂ) ≠ 0 := by exact_mod_cast (Nat.ne_of_gt hA)
@@ -898,10 +886,6 @@ lemma step4_phase_combine_lowLeft
     Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc,
     Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using h
 
-/-! =========================================================
-    Section 7: Reindexing sums and cast utilities
-========================================================= -/
-
 lemma step5_reindex_sum
   {α : Type u} [AddCommMonoid α]
   (NR NL : ℕ)
@@ -911,6 +895,10 @@ lemma step5_reindex_sum
   ∑ k : Fin (NR * NL), f k := by
   classical
   exact (finMulAddEquiv NR NL).sum_comp f
+
+/-! =========================================================
+    Section 5: Reindexing sums and cast utilities
+========================================================= -/
 
 lemma Asize_eq_lr (r : Reg) (m : ℕ) (hm : m ≤ regSize r) :
   let split : SplitPoint r := ⟨m, hm⟩
@@ -924,7 +912,6 @@ lemma Asize_eq_lr (r : Reg) (m : ℕ) (hm : m ≤ regSize r) :
   exact Nat.add_sub_of_le hm
 
 open scoped BigOperators
-
 
 lemma cast_arrow_apply
   {α β : Sort _} {γ : Sort _}
@@ -985,7 +972,7 @@ lemma Fin.coe_cast_typeEq
   rfl
 
 /-! =========================================================
-    Section 8: QFT split on basis kets
+    Section 6: QFT split on basis kets and radix reversal
 ========================================================= -/
 
 lemma eval_QFT_split_lowLeft_digitRev_ket
@@ -1097,10 +1084,6 @@ lemma eval_QFT_split_lowLeft_digitRev_ket
                 subst B
                 simp [ASize])
         simp [hphase]
-
-/-! =========================================================
-    Section 9: Radix reversal and exact QFT split
-========================================================= -/
 
 lemma radix_reverse_reindex_sum
   {α : Type u} [AddCommMonoid α]
@@ -1237,6 +1220,10 @@ lemma eval_RadixReverse_digitRev_sum
     radixReverseIndex, ← hB,
     Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc,
     Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using hsem
+
+/-! =========================================================
+    Section 7: The final split theorems
+========================================================= -/
 
 lemma eval_QFT_ket_as_split_sum
   (qs : QSemantics)

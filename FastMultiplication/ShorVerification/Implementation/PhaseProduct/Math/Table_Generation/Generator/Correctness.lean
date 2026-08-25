@@ -5,6 +5,40 @@ open Operations
 
 namespace Table_Generation
 
+lemma streamPoint_allowed (n : ℕ) : AllowedPoint (streamPoint n) := by
+  rcases n with _ | _ | _ | _ | n
+  · simp [streamPoint, AllowedPoint]
+  · simp [streamPoint, AllowedPoint]
+  · simp [streamPoint, AllowedPoint]
+    exact ⟨0, by simp⟩
+  · simp [streamPoint, AllowedPoint]
+    exact ⟨0, by simp⟩
+  · by_cases h0 : n % 4 = 0
+    · simp [streamPoint, h0, AllowedPoint]
+      exact ⟨1 + n / 4, by simp⟩
+    · by_cases h1 : n % 4 = 1
+      · simp [streamPoint, h1, AllowedPoint]
+        exact ⟨1 + n / 4, by simp⟩
+      · by_cases h2 : n % 4 = 2
+        · simp [streamPoint, h2, AllowedPoint]
+          exact ⟨1 + n / 4, by simp⟩
+        · simp [streamPoint, AllowedPoint]
+          exact ⟨1 + n / 4, by simp⟩
+
+lemma streamPoint_eq_canonicalPoint (n : ℕ) : streamPoint n = canonicalPoint n := by
+  rcases n with _ | _ | _ | _ | n
+  · simp [streamPoint, canonicalPoint]
+  · simp [streamPoint, canonicalPoint]
+  · simp [streamPoint, canonicalPoint]
+  · simp [streamPoint, canonicalPoint]
+  · by_cases h0 : n % 4 = 0
+    · simp [streamPoint, canonicalPoint, h0]
+    · by_cases h1 : n % 4 = 1
+      · simp [streamPoint, canonicalPoint, h0, h1]
+      · by_cases h2 : n % 4 = 2
+        · simp [streamPoint, canonicalPoint, h0, h1, h2]
+        · simp [streamPoint, canonicalPoint, h0, h1, h2]
+
 def carrierTerm {k : ℕ} (type : PointPairType) (e : ℕ)
     (dst : Fin k) (parity : ℕ) (j : Fin k) (σ : State k) (u : Fin k) : ℤ :=
   if parityDegree type k j % 2 = parity then
@@ -1468,16 +1502,65 @@ lemma generateParityTripleProduct_ProgConsumesPtsSafe (k : ℕ) (hk : k ≥ 4) :
     simpa [generateParityTripleProduct] using
       generateParityForMode_WellFormed .PhaseTripleProduct k hk
 
-/-
-  The main theorem that shows that the generated operations can be split into blocks.
-  k=2 and k=3 for PhaseProduct and PhaseTripleProduct are precomputed, and k≥4 is handled by the generator.
+/- The generated point list is the protected canonical point list. -/
+theorem generatedPoints_valid (mode : ProductMode) (k : ℕ) (_ : k ≥ 2) :
+    ValidPointList mode k (generatedPoints mode k) := by
+  unfold ValidPointList generatedPoints canonicalPoints
+  apply List.map_congr_left
+  intro n _hn
+  exact streamPoint_eq_canonicalPoint n
 
-  Proves that every phaseProduct consumes the next expected point, in order, and that every
-  operation is valid (src ≠ dst).
--/
+lemma generatePointsInOrder_valid (mode : ProductMode) (k : ℕ) (hk : k ≥ 2) :
+    ValidPointOrder mode k (generatePointsInOrder mode k hk) := by
+  cases mode with
+  | PhaseProduct =>
+      by_cases h2 : k = 2
+      · subst k
+        simp [ValidPointOrder, generatePointsInOrder, generatedPoints,
+          canonicalPoints, streamPoint]
+        decide
+      · by_cases h3 : k = 3
+        · subst k
+          simp [ValidPointOrder, generatePointsInOrder, generatedPoints,
+            canonicalPoints, streamPoint]
+          decide
+        ·
+          simp [ValidPointOrder, generatePointsInOrder, generatedPoints,
+            canonicalPoints, h2, h3]
+          rw [show
+            List.map streamPoint (List.range (ProductMode.PhaseProduct.pointCount k)) =
+              List.map canonicalPoint (List.range (ProductMode.PhaseProduct.pointCount k)) by
+              apply List.map_congr_left
+              intro n _hn
+              exact streamPoint_eq_canonicalPoint n]
+  | PhaseTripleProduct =>
+      by_cases h2 : k = 2
+      · subst k
+        simp [ValidPointOrder, generatePointsInOrder, generatedPoints,
+          canonicalPoints, streamPoint]
+        decide
+      · by_cases h3 : k = 3
+        · subst k
+          simp [ValidPointOrder, generatePointsInOrder, generatedPoints,
+            canonicalPoints, streamPoint]
+          decide
+        ·
+          simp [ValidPointOrder, generatePointsInOrder, generatedPoints,
+            canonicalPoints, h2, h3]
+          rw [show
+            List.map streamPoint (List.range (ProductMode.PhaseTripleProduct.pointCount k)) =
+              List.map canonicalPoint (List.range (ProductMode.PhaseTripleProduct.pointCount k)) by
+              apply List.map_congr_left
+              intro n _hn
+              exact streamPoint_eq_canonicalPoint n]
+
+/- The generated program safely consumes a permutation of the canonical points. -/
 theorem generate_ProgConsumesPtsSafe (mode : ProductMode) (k : ℕ) (hk : k ≥ 2) :
-    ProgConsumesPtsSafe (by omega) State.start_state
-      (generate mode k hk) (generatePointsInOrder mode k hk) := by
+    ValidPointOrder mode k (generatePointsInOrder mode k hk) ∧
+      ProgConsumesPtsSafe (by omega) State.start_state
+        (generate mode k hk) (generatePointsInOrder mode k hk) := by
+  constructor
+  · exact generatePointsInOrder_valid mode k hk
   cases mode with
   | PhaseProduct =>
       by_cases h2 : k = 2

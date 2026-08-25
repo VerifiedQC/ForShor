@@ -37,7 +37,7 @@ variable [ContinuedFractionPost]
 variable [MeasureClass qs]
 variable [GateSemanticsFacts qs]
 variable [LowerGateClass qs]
-variable [LowerGateGateBridge qs]
+variable [LowerGatePrimitiveBridge qs]
 variable [IdealCtrlModMulExactSemantics qs]
 variable [ModMulPrimitiveGateSemantics qs]
 

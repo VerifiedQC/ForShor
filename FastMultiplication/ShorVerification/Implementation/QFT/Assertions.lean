@@ -20,7 +20,7 @@ def LowerQFTCorrect
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [GateSemanticsFacts qs]
     (k : ℕ) (hk : 1 < k)
     (ops : Prog k)
     (r : ExtReg) : Prop :=

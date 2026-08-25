@@ -1,18 +1,9 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Builders.Fragments
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Generator.Spec
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Generator.Precomputed
 
 open Operations
 
 namespace Table_Generation
-
-inductive ProductMode where
-  | PhaseProduct
-  | PhaseTripleProduct
-
-/- Number of points required for a given product mode and number of registers -/
-def ProductMode.pointCount : ProductMode → ℕ → ℕ
-  | .PhaseProduct, k => 2*k-1
-  | .PhaseTripleProduct, k => 3*k-2
 
 /-
   Function for generating nth point in the stream (deterministic)

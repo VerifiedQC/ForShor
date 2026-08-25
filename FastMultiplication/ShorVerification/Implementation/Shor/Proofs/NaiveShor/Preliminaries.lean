@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Assertions
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Math
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Lemmas
 
 /-!
 # Naive Shor Correctness
@@ -517,8 +517,7 @@ lemma goodOutcome_mass_le_probability_of_success
 
 
 /-! ---------------------------------------------------------
-    Shared order-finding prerequisites (relocated from GoodOutcomeMassLowerBound
-    so the phase-estimation proof can sit upstream of it).
+    Shared order-finding parameter bound
 --------------------------------------------------------- -/
 
 omit [MeasureClass qs] [ContinuedFractionPost] [Spec] in
@@ -577,166 +576,5 @@ lemma shor_order_parameter_bounds
 
   simpa [u] using
     (And.intro hrpos (And.intro hrN hrsq))
-
-omit [MeasureClass qs] [ContinuedFractionPost] [Spec] in
-lemma active_disjoint_of_ownedDisjoint
-    {x y : ExtReg}
-    (h : ExtReg.OwnedDisjoint x y) :
-    Disjoint x.active y.active := by
-  intro q hx hy
-  exact
-    h
-      (List.mem_append_left x.reserve.qubits hx)
-      (List.mem_append_left y.reserve.qubits hy)
-
-omit [MeasureClass qs] [ContinuedFractionPost] [Spec] in
-lemma eval_finset_sum_local
-    [GateSemanticsCore qs]
-    (U : Gate)
-    {ι : Type*}
-    (s : Finset ι)
-    (f : ι → qs.State) :
-    qs.eval U (∑ i ∈ s, f i)
-      =
-    ∑ i ∈ s, qs.eval U (f i) := by
-  classical
-  induction s using Finset.induction_on with
-  | empty =>
-      simp [qs.eval_zero]
-  | @insert a s ha ih =>
-      simp [Finset.sum_insert, ha, qs.eval_add, ih]
-
-omit [MeasureClass qs] [ContinuedFractionPost] [Spec] in
-lemma eval_fintype_sum_local
-    [GateSemanticsCore qs]
-    (U : Gate)
-    {ι : Type*}
-    [Fintype ι]
-    (f : ι → qs.State) :
-    qs.eval U (∑ i, f i)
-      =
-    ∑ i, qs.eval U (f i) := by
-  classical
-  simpa using
-    (eval_finset_sum_local
-      (qs := qs) U
-      (Finset.univ : Finset ι) f)
-
-omit [MeasureClass qs] [ContinuedFractionPost] [Spec] in
-lemma shor_inv_sqrt_sq
-    (Q : ℕ)
-    (hQ : 0 < Q) :
-    ((1 / Real.sqrt (Q : ℝ) : ℂ) *
-      (1 / Real.sqrt (Q : ℝ) : ℂ))
-      =
-    1 / (Q : ℂ) := by
-  have hQr : 0 < (Q : ℝ) := by
-    exact_mod_cast hQ
-
-  have hs0 :
-      (Real.sqrt (Q : ℝ) : ℂ) ≠ 0 := by
-    exact_mod_cast
-      (ne_of_gt (Real.sqrt_pos.2 hQr))
-
-  have hQ0 :
-      (Q : ℂ) ≠ 0 := by
-    exact_mod_cast (Nat.ne_of_gt hQ)
-
-  field_simp [hs0, hQ0]
-  norm_cast
-  simp
-
-omit [MeasureClass qs] [ContinuedFractionPost] [Spec] in
-/--
-Powers of `a` modulo `N` are periodic with period
-`ord a N gcd`.
--/
-lemma shor_pow_mod_periodic
-    (inst : ShorOrderFindingInstance)
-    (t : ℕ) :
-    inst.a ^ t % inst.N
-      =
-    inst.a ^
-        (t % ord inst.a inst.N inst.coprime) %
-      inst.N := by
-  let u : (ZMod inst.N)ˣ :=
-    ZMod.unitOfCoprime
-      inst.a
-      ((Nat.coprime_iff_gcd_eq_one).2 inst.coprime)
-
-  have hu :
-      u ^ (t % orderOf u) = u ^ t :=
-    pow_mod_orderOf u t
-
-  have hz :
-      ((inst.a ^
-          (t % ord inst.a inst.N inst.coprime) : ℕ) :
-          ZMod inst.N)
-        =
-      ((inst.a ^ t : ℕ) : ZMod inst.N) := by
-    have hcoe :
-        ((u : ZMod inst.N) ^ (t % orderOf u))
-          =
-        ((u : ZMod inst.N) ^ t) :=
-      congrArg
-        (fun z : (ZMod inst.N)ˣ =>
-          (z : ZMod inst.N))
-        hu
-
-    simpa [
-      u,
-      ord,
-      ZMod.coe_unitOfCoprime,
-      Nat.cast_pow
-    ] using hcoe
-
-  have hmod :=
-    (ZMod.natCast_eq_natCast_iff'
-      (inst.a ^
-        (t % ord inst.a inst.N inst.coprime))
-      (inst.a ^ t)
-      inst.N).1 hz
-
-  exact hmod.symm
-
-omit [MeasureClass qs] [ContinuedFractionPost] [Spec] in
-/--
-Before one full order has elapsed, distinct exponents give distinct
-powers modulo `N`.
--/
-lemma shor_pow_mod_injective_below_order
-    (inst : ShorOrderFindingInstance)
-    {s t : ℕ}
-    (hs :  s < ord inst.a inst.N inst.coprime)
-    (ht : t < ord inst.a inst.N inst.coprime)
-    (h : inst.a ^ s % inst.N = inst.a ^ t % inst.N) :
-    s = t := by
-  let u : (ZMod inst.N)ˣ :=
-    ZMod.unitOfCoprime
-      inst.a
-      ((Nat.coprime_iff_gcd_eq_one).2 inst.coprime)
-
-  have hz :
-      ((inst.a ^ s : ℕ) : ZMod inst.N)
-        =
-      ((inst.a ^ t : ℕ) : ZMod inst.N) :=
-    (ZMod.natCast_eq_natCast_iff'
-      (inst.a ^ s)
-      (inst.a ^ t)
-      inst.N).2 h
-
-  have hu :
-      u ^ s = u ^ t := by
-    apply Units.ext
-    simpa [
-      u,
-      ZMod.coe_unitOfCoprime
-    ] using hz
-
-  exact
-    (pow_injOn_Iio_orderOf (x := u))
-      (by simpa [u, ord] using hs)
-      (by simpa [u, ord] using ht)
-      hu
 
 end Shor

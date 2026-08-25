@@ -12,8 +12,6 @@ correctness assertion (`Assertions.lean`): the gate constructions, configs, and
 validity predicates.  All proofs live under `ModularExponentiation.Proofs`.
 -/
 
-open Shor
-
 universe u v
 
 namespace Shor
@@ -499,7 +497,6 @@ structure ModExpConfig (η : ℝ) where
   arithmetic :
     ModExpArithmeticOK a env.N x
 
-
 namespace ModExpConfig
 
 /-- Concrete approximate modular-exponentiation gate for this configuration. -/
@@ -530,8 +527,6 @@ def ValidUnitState
     ∧ ‖ψ‖ = 1
 
 end ModExpConfig
-
-
 
 /-! ---------------------------------------------------------
     One controlled modular multiplication
@@ -579,153 +574,8 @@ def ValidUnitState
   cfg.ValidState qs ψ ∧ ‖ψ‖ = 1
 
 
-/-! ---------------------------------------------------------
-    Algorithm 1 staged gates
-
-These names expose the five-step core as stage-level gates used throughout the
-Step 1/2/3/4/5 correctness and error-bound files.
---------------------------------------------------------- -/
-
-/-- Stage name for Algorithm 1 Step 1. -/
-noncomputable def U1
-    {η : ℝ}
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (cfg : ModMulConfig η) : Gate :=
-  step1
-  (Basis := Basis)
-  cfg.c cfg.env.N cfg.ctrl
-  cfg.env.data cfg.env.work
-  cfg.env.circuit_workspace
-
-/-- Stage name for Algorithm 1 Step 2. -/
-noncomputable def U2
-    {η : ℝ}
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (cfg : ModMulConfig η) : Gate :=
-  step2
-  (Basis := Basis)
-  cfg.env.N
-  cfg.env.data cfg.env.work
-  cfg.env.circuit_workspace
-
-/-- Stage name for Algorithm 1 Step 5 cleanup. -/
-noncomputable def U5
-    {η : ℝ}
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (cfg : ModMulConfig η) : Gate :=
-  step5
-    (Basis := Basis)
-    (step5Constant cfg.c cfg.env.N)
-    cfg.env.N cfg.ctrl
-    cfg.env.data cfg.env.work
-    cfg.env.circuit_workspace
-
 end ModMulConfig
 
 end SharedConfigurations
-
-/-! ---------------------------------------------------------
-    Derived primitive semantics and ideal configuration facts
-
-Steps 3 and 4 use opaque primitive gates whose basic semantics live in the
-framework. This section derives the implementation-specific Step 3/4 facts and
-provides the configuration-specific ideal multiplier lemma.
---------------------------------------------------------- -/
-
-section PrimitiveAndIdealConfigFacts
-
-section ModMulPrimitiveDerivedSemantics
-
-variable
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [ModMulPrimitiveGateSemantics qs]
-
-/-! ---------------------------------------------------------
-    Small register/flag helpers
---------------------------------------------------------- -/
-
-end ModMulPrimitiveDerivedSemantics
-
-end PrimitiveAndIdealConfigFacts
-
-/-! ---------------------------------------------------------
-    Algorithm 1 reference arithmetic
-
-These scalar definitions describe the intended residues, fractional work labels,
-good QPE labels, and exact Step-2 integer shift used by the error proof.
---------------------------------------------------------- -/
-
-section Algorithm1ReferenceArithmetic
-
-end Algorithm1ReferenceArithmetic
-
-/-! ---------------------------------------------------------
-    Step-2 Fourier coefficient scaffolding
-
-The Step-2 proof compares the actual Fourier coefficient produced by the
-PhaseProduct with the ideal coefficient for the exact integer shift. These
-definitions name the relevant phases, index types, labels, and multipliers.
---------------------------------------------------------- -/
-
-section Step2FourierScaffolding
-
-/-! ---------------------------------------------------------
-    Coherent Step-2 error vector
---------------------------------------------------------- -/
-
-end Step2FourierScaffolding
-
-/-! ---------------------------------------------------------
-    Step-3/4 labels and trace packets
-
-This section records the exact data values after the comparator/subtractor
-stages and packages the finite trace expansions used by the Appendix-E-style
-Algorithm 1 error decomposition.
---------------------------------------------------------- -/
-
-section Step34LabelsAndTracePackets
-
-/-! ---------------------------------------------------------
-    Concrete reference states used in the Appendix-E proof
---------------------------------------------------------- -/
-
-namespace Alg1Trace
-
-end Alg1Trace
-
-end Step34LabelsAndTracePackets
-
-/-! ---------------------------------------------------------
-    Step-1 and Step-5 coefficient packets
-
-The Step-5 cleanup proof compares the original Step-1 fractional load with the
-forward circuit whose adjoint is Step 5. These definitions name the QPE
-bad-label mass, bad-label packets, shared phase scalars, and inverse-QFT
-coefficients for that comparison.
---------------------------------------------------------- -/
-
-section Step1Step5CoefficientPackets
-
-namespace Alg1Trace
-
-end Alg1Trace
-
-end Step1Step5CoefficientPackets
-
-/-! ---------------------------------------------------------
-    Modular-exponentiation arithmetic helpers
-
-The modular-exponentiation recursion repeatedly uses powers of the input base.
-This final helper packages the coprimality fact needed for every such multiplier.
---------------------------------------------------------- -/
-
-section ModExpArithmeticHelpers
-
-end ModExpArithmeticHelpers
 
 end Shor

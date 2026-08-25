@@ -14,7 +14,12 @@ the final Algorithm-1 modular-multiplication distance bound. Steps 3 and 4 are
 exact, so they contribute no additional approximation error.
 -/
 
-/-! ## Error-budget and norm inequalities -/
+/-! =========================================================
+    Section 1: Error-budget and norm inequalities
+
+    Scalar `stepErr` budget arithmetic and the three-term triangle inequality
+    used to bound the composed modular-multiplication error.
+========================================================= -/
 
 /--
 Combines three square-root error budgets into one `stepErr` budget.
@@ -73,7 +78,12 @@ lemma norm_chain_three {E : Type*} [NormedAddCommGroup E] (x₀ x₁ x₂ x₃ :
       exact norm_add_le _ _
     _ = ‖x₀ - x₁‖ + ‖x₁ - x₂‖ + ‖x₂ - x₃‖ := by ring
 
-/-! ## Uniform modular-multiplication approximation bound -/
+/-! =========================================================
+    Section 2: Uniform modular-multiplication approximation bound
+
+    The public per-core bound: the approximate controlled modular multiplier is
+    uniformly close to its ideal on valid unit states.
+========================================================= -/
 
 /--
 Uniform quantitative modular-multiplication approximation bound.

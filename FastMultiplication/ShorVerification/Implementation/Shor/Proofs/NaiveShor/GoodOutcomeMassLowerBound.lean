@@ -22,16 +22,66 @@ This follows the structure of Shor, Section 5:
 ========================================================= -/
 
 
-/-! ---------------------------------------------------------
-    Step 1: elementary order/size consequences
---------------------------------------------------------- -/
+/--
+A deliberately weak consequence of the standard lower bounds for
+Euler's totient ratio.
 
+For an order `r < N`,
 
+    φ(r) / r ≥ exp(-2) / log₂(N)^4.
 
-/-! ---------------------------------------------------------
-    Step 2: Shor equation (5.2)
---------------------------------------------------------- -/
+This is much weaker than the classical asymptotic bound used by Shor,
+but is convenient because it gives exactly the public theorem's
+inverse-polylogarithmic form.
+-/
+lemma shor_totient_ratio_log4_lower_bound
+    {a r N m n : ℕ}
+    (hsetting : BasicSetting a r N m n) :
+    Real.exp (-2) / (Nat.log2 N : ℝ) ^ 4
+      ≤
+    (Nat.totient r : ℝ) / (r : ℝ) := by
 
+  have hparams :=
+    shor_order_parameter_bounds hsetting
+
+  have hr : 0 < r :=
+    hparams.1
+
+  have hrN : r < N :=
+    hparams.2.1
+
+  /-
+  BasicSetting has 0 < a < N, hence N ≥ 2.
+  -/
+  have hN2 : 2 ≤ N := by
+    rcases hsetting with
+      ⟨ha0, haN, _horder,
+       _hmlo, _hmhi, _hnlo, _hnhi⟩
+    omega
+
+  have hlog :
+      1 ≤ Nat.log2 N := by
+    rw [Nat.log2_def, if_pos hN2]
+    omega
+
+  have hanalytic :
+      Real.exp (-2) /
+          (Nat.log2 N : ℝ) ^ 4
+        ≤
+      1 /
+          (((Nat.log2 N + 1 : ℕ) : ℝ)) :=
+    exp_neg_two_div_pow4_le_inv_succ
+      (Nat.log2 N) hlog
+
+  have htotient :
+      1 /
+          (((Nat.log2 N + 1 : ℕ) : ℝ))
+        ≤
+      (Nat.totient r : ℝ) / (r : ℝ) :=
+    totient_ratio_ge_inv_log2_succ
+      hr hrN
+
+  exact le_trans hanalytic htotient
 
 /-! ---------------------------------------------------------
     Exact preparation of the ideal Shor state
@@ -632,84 +682,6 @@ lemma eval_orderFindingIdeal_prefix
       ha
       hxy
       hsize)
-
-/-! ---------------------------------------------------------
-    Step 3: Shor equations (5.4)--(5.7)
---------------------------------------------------------- -/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/-! ---------------------------------------------------------
-    Step 4: Shor equations (5.11)--(5.13)
---------------------------------------------------------- -/
-/-! =========================================================
-    Fourier peak bound for ideal Shor
-========================================================= -/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/-! ---------------------------------------------------------
-    Step 5: count the good Fourier outputs
---------------------------------------------------------- -/
-
-
-
-
-
-
-
-/-! ---------------------------------------------------------
-    Step 6: sum the pointwise probabilities
---------------------------------------------------------- -/
-
-/-! ---------------------------------------------------------
-    Step 7: the loose number-theoretic bound used by this repo
---------------------------------------------------------- -/
-
-
 
 /-! =========================================================
     Final quantum good-outcome mass theorem

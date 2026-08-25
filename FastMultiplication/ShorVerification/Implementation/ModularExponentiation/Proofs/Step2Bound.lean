@@ -8,7 +8,6 @@ open Gate
 
 universe v
 
-
 /-!
 # Step-2 Quantitative Fourier Stability
 
@@ -25,9 +24,14 @@ The proof has four main layers:
 * reassemble orthogonal work fibers into the final uniform Step-2 estimate.
 -/
 
-
 /-! ## Orthogonality and Workspace Infrastructure -/
 
+/-! =========================================================
+    Section 1: Workspace and freshness bookkeeping
+
+    An orthogonal-sum norm identity plus the register-disjointness and
+    fresh-zero facts that keep the Step-2 workspace clean across the writes.
+========================================================= -/
 /--
 Pythagoras' identity for a finite family of pairwise orthogonal state vectors.
 This local form is used repeatedly to convert packet norms into coefficient
@@ -243,6 +247,12 @@ private lemma alg1_step2_workspace_clean_after_dataCarry_work_write
 
 /-! ## Retained-Packet Expansion and Coefficient Energy -/
 
+/-! =========================================================
+    Section 2: Good-label combinatorics and trace-error decomposition
+
+    Injectivity of the source label on good inputs, and the decomposition of the
+    Step-2 trace error into a sum over good branches with its energy bounds.
+========================================================= -/
 /--
 Within the retained good packet, the written work-register label uniquely
 identifies the original basis input together with its work value.
@@ -574,7 +584,6 @@ lemma alg1_step2_good_coeff_energy_le_one
 
   nlinarith
 
-
 /-! ## One-Label Arithmetic and Fourier Packets -/
 
 /--
@@ -678,7 +687,12 @@ lemma alg1_step2_good_label_shift_discrepancy_lt
 
   simpa [alg1Step2ShiftDiscrepancy, alg1WorkFraction, N, M, r] using hfinal
 
+/-! =========================================================
+    Section 3: Pre-IQFT packets and phase normalization
 
+    The extended-input value and phase normalization, and the actual vs ideal
+    pre-IQFT packets whose norms the bound compares.
+========================================================= -/
 /--
 Writing a work label does not change the natural value stored in the grown
 data-carry register of a good input.
@@ -713,7 +727,6 @@ lemma alg1_step2_input_xext_value
       (Gate.ExtReg.toNat_grow_of_fresh cfg.env.data 1 b hfresh1)
 
   rw [hwrite, hgrown]
-
 
 /-- Rewrite the Step-2 phase exponent into the normalized work-fraction form. -/
 lemma alg1_step2_phase_normalization
@@ -754,7 +767,6 @@ lemma alg1_step2_phase_normalization
   rw [hpow]
   push_cast
   field_simp [hMne, hLne, hMneC, hLneC]
-
 
 /--
 Explicit Fourier-basis expansion of the actual Step-2 packet immediately before
@@ -1083,6 +1095,12 @@ lemma alg1_step2_branch_norm_eq_preIQFT_norm
 
 /-! ## Elementary Fourier-Phase Stability -/
 
+/-! =========================================================
+    Section 4: Single-label Fourier bounds
+
+    `qftPhase` as a complex exponential and the elementary exp/phase inequalities,
+    assembled into the single-label Fourier stability bound.
+========================================================= -/
 /-- Express `qftPhase` as a complex exponential with an explicit real angle. -/
 private lemma qftPhase_eq_exp_I
     (L x y : ℕ)
@@ -1621,9 +1639,14 @@ lemma alg1_step2_single_label_fourier_stability
     simpa using
       (alg1_step2_normalized_fourier_packet_bound qs cfg b t hb ht)
 
-
 /-! ## Work-Sector Separation -/
 
+/-! =========================================================
+    Section 5: Work-sector orthogonality
+
+    Good labels sharing a work residue, and the orthogonality of the actual and
+    reference work packets across distinct work sectors.
+========================================================= -/
 /--
 If the same work label is good for two basis inputs, both inputs have the same
 target residue. This makes the phase multiplier constant within a work fiber.
@@ -1958,7 +1981,6 @@ private lemma alg1_qft_xext_work_packet
   intro z hz
   rw [smul_smul]
   simp [base, ASize, ExtReg.toNat, ExtReg.width, writeNat_overwrite_same_reg]
-
 
 /--
 An actual branch and an ideal reference branch with different work labels have
@@ -2311,11 +2333,12 @@ lemma alg1_step2_error_work_orthogonal
   rw [inner_sub_left, inner_sub_right]
   simp [hactual_actual, hactual_ref_data, href_actual_data, href_ref_data, inner_sub_right]
 
-
 /-! =========================================================
-    Fixed-work coherent Step-2 bound
-========================================================= -/
+    Section 6: Fixed-work Fourier contraction
 
+    Fixing the work register: the multiplier is constant on labels, the packet
+    factors through an IQFT multiplier, and the fixed-work Fourier contraction holds.
+========================================================= -/
 /--
 The source labels `writeNat work t b` are injective on a finite family of
 clean-work basis inputs.
@@ -2456,10 +2479,6 @@ lemma alg1_step2_fixed_work_source_energy
       intro i hi
       simp [norm_smul, ket_norm_one qs]
 
-/-! =========================================================
-    Fixed-work coherent Fourier contraction
-========================================================= -/
-
 /-- Additivity of the left QFT argument becomes multiplication of phases. -/
 private lemma alg1_qftPhase_add_left
     (L x r y : ℕ) :
@@ -2468,11 +2487,6 @@ private lemma alg1_qftPhase_add_left
   rw [← pow_add]
   congr 1
   ring
-
-
-/-! =========================================================
-    Step-2 fixed-work Fourier packet contraction
-========================================================= -/
 
 /--
 Multiplying coefficients by a bounded factor that is constant on equal ket
@@ -2804,65 +2818,6 @@ private lemma alg1_step2_fourier_multiplier_constant_on_labels
 
   simp [alg1Step2FourierMultiplier, hy, hpwork]
 
-/-- Complex-exponential form of `qftPhase` used in the coherent packet proof. -/
-private lemma alg1_qftPhase_eq_exp_I
-    (L x y : ℕ)
-    (hL : 0 < L) :
-    qftPhase L x y =
-      Complex.exp
-        (Complex.I *
-          (((2 * Real.pi / (L : ℝ)) *
-              (x : ℝ) *
-              (y : ℝ) : ℝ) : ℂ)) := by
-  have hL0 : (L : ℂ) ≠ 0 := by
-    exact_mod_cast Nat.ne_of_gt hL
-
-  rw [qftPhase, ωPow, ω, ← Complex.exp_nat_mul]
-  congr 1
-  push_cast
-  field_simp [hL0]
-
-/-- Lipschitz bound for the difference of two unit complex exponentials. -/
-private lemma alg1_norm_exp_I_sub_exp_I_le
-    (a b : ℝ) :
-    ‖Complex.exp (Complex.I * (a : ℂ))
-        - Complex.exp (Complex.I * (b : ℂ))‖ ≤ |a - b| := by
-  have hfactor :
-      Complex.exp (Complex.I * (a : ℂ))
-          - Complex.exp (Complex.I * (b : ℂ)) = Complex.exp (Complex.I * (b : ℂ)) *
-        (Complex.exp (Complex.I * ((a - b : ℝ) : ℂ)) - 1) := by
-    calc
-      Complex.exp (Complex.I * (a : ℂ))
-          - Complex.exp (Complex.I * (b : ℂ)) = Complex.exp (Complex.I * (b : ℂ)) *
-          Complex.exp (Complex.I * ((a - b : ℝ) : ℂ)) - Complex.exp (Complex.I * (b : ℂ)) := by
-            rw [← Complex.exp_add]
-            congr 1
-            push_cast
-            ring_nf
-      _ =
-      Complex.exp (Complex.I * (b : ℂ)) *
-        (Complex.exp (Complex.I * ((a - b : ℝ) : ℂ)) - 1) := by
-          ring
-
-  rw [hfactor, norm_mul, Complex.norm_exp_I_mul_ofReal, one_mul, Complex.norm_exp_I_mul_ofReal_sub_one]
-
-  change |2 * Real.sin ((a - b) / 2)| ≤ |a - b|
-
-  calc
-    |2 * Real.sin ((a - b) / 2)| = 2 * |Real.sin ((a - b) / 2)| := by
-        rw [abs_mul, abs_of_nonneg]
-        norm_num
-    _ ≤
-      2 * |(a - b) / 2| :=
-      mul_le_mul_of_nonneg_left
-        Real.abs_sin_le_abs
-        (by norm_num)
-    _ = |a - b| := by
-      rw [abs_div]
-      have htwo_abs : |(2 : ℝ)| = 2 := by norm_num
-      rw [htwo_abs]
-      ring_nf
-
 /--
 Every Fourier error multiplier in a fixed good work fiber has norm at most
 `2 * π * η`.
@@ -2973,7 +2928,7 @@ private lemma alg1_step2_fixed_work_multiplier_bound
       qftPhase L r p.2.1 =
         Complex.exp (Complex.I * (θr : ℂ)) := by
     simpa [θr] using
-      (alg1_qftPhase_eq_exp_I L r p.2.1 hLposN)
+      (qftPhase_eq_exp_I L r p.2.1 hLposN)
 
   change
     ‖Complex.exp
@@ -2988,7 +2943,7 @@ private lemma alg1_step2_fixed_work_multiplier_bound
     ‖Complex.exp (Complex.I * (θa : ℂ))
         - Complex.exp (Complex.I * (θr : ℂ))‖
       ≤ |θa - θr| :=
-        alg1_norm_exp_I_sub_exp_I_le θa θr
+        norm_exp_I_sub_exp_I_le θa θr
     _ ≤ 2 * Real.pi * η :=
       htheta_bound
 
@@ -3225,7 +3180,6 @@ private lemma alg1_step2_branch_error_eq_iqft_packet
                 (RegEncoding.writeNat cfg.env.work.active t.1 b))) := by
           rfl
 
-
 /-- Factor each fixed-work Fourier coefficient error into base and multiplier. -/
 private lemma alg1_step2_fixed_work_coeff_factor
     (qs : QSemantics)
@@ -3405,7 +3359,6 @@ lemma alg1_step2_fixed_work_error_eq_iqft_multiplier_packet
             qs.ket (alg1Step2FourierLabel qs cfg p)) := by
           rfl
 
-
 /--
 The squared error of a fixed-work coherent packet contracts to at most
 `(2 * π * η)²` times the squared norm of its source packet.
@@ -3522,6 +3475,12 @@ lemma alg1_step2_fixed_work_fourier_contraction
               (RegEncoding.writeNat cfg.env.work.active i.2.1 i.1)‖ ^ 2 := by
           rw [eval_norm_preserved]
 
+/-! =========================================================
+    Section 7: Work-fiber energy decomposition and the final bound
+
+    Decompose the error energy into orthogonal work fibers and assemble the
+    uniform Step-2 good-label branch bound.
+========================================================= -/
 /--
 Convert the fixed-work contraction estimate into a linear-in-`η` coefficient
 energy bound using the configured precision range.
@@ -3775,7 +3734,6 @@ lemma alg1_step2_energy_eq_sum_work_fibers
         apply Finset.sum_congr rfl
         intro i hi
         simp
-
 
 /--
 There is a uniform constant controlling the squared Step-2 error of every good

@@ -24,9 +24,7 @@ variable {Basis : Type u} [RegEncoding Basis]
 ========================================================= -/
 
 /--
-Abstract Hilbert-space semantics. This class deliberately does not mention any
-circuit language: high-level `Gate` and low-level `LowGate` evaluators are
-separate semantic interfaces built on top of the same quantum state space.
+Abstract Hilbert-space semantics.
 -/
 class QSemantics where
   Basis : Type u

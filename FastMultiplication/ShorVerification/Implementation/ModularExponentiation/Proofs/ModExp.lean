@@ -15,7 +15,12 @@ exponentiation. Each recursive step contributes one `stepErr K η` term, so the
 total error is proportional to the number of exponent-control bits.
 -/
 
-/-! ## Tail Side Conditions and Reindexing -/
+/-! =========================================================
+    Section 1: Tail side conditions and reindexing
+
+    Layout and arithmetic well-formedness for a control-qubit tail, and the
+    lemmas that peel the head control off both conditions.
+========================================================= -/
 
 /--
 Layout condition required by every controlled modular-multiplication step in a
@@ -56,7 +61,12 @@ lemma modExpTailArithmeticOK_tail
     omega
   simpa [ModExpTailArithmeticOK, j, hexp] using h'
 
-/-! ## Preservation by Ideal Modular Multiplication -/
+/-! =========================================================
+    Section 2: Preservation by ideal modular multiplication
+
+    The ideal controlled multiplier keeps a valid state valid — the invariant the
+    recursive hybrid argument threads through each step.
+========================================================= -/
 
 /--
 The ideal controlled multiplication preserves the valid modular-input
@@ -78,7 +88,12 @@ theorem ideal_preserves_valid
       cfg.flag cfg.ctrl cfg.env.modulus_gt_one cfg.env.data_capacity cfg.coprime
       cfg.layout ψ hψ)
 
-/-! ## Uniform Recursive-Tail Hybrid Bound -/
+/-! =========================================================
+    Section 3: Uniform recursive-tail hybrid bound
+
+    Induction over the control list: the approximate step-list stays within
+    `ctrls.length · stepErr` of the ideal step-list, uniformly.
+========================================================= -/
 
 /--
 Uniform hybrid bound for a tail of modular exponentiation.
@@ -257,7 +272,12 @@ theorem modExpApproxSteps_valid_dist_uniform
 
       simpa [hApprox, hIdeal, ψA0, ψI0, qs.eval_seq] using hMain
 
-/-! ## Full Modular-Exponentiation Bound -/
+/-! =========================================================
+    Section 4: Full modular-exponentiation bound
+
+    The public end-to-end bound for the whole modular-exponentiation circuit,
+    obtained by instantiating the recursive tail bound at the full register.
+========================================================= -/
 
 /--
 Uniform approximation theorem for complete modular exponentiation.

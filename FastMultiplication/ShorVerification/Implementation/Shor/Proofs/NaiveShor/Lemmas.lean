@@ -325,7 +325,7 @@ lemma sum_range_group_by_mod
 The Fourier coefficient of the period-class amplitude vector
 in character `k`.
 -/
-private noncomputable def shorSpectralAmplitude
+noncomputable def shorSpectralAmplitude
     (Q r k o : ℕ) : ℂ :=
   (1 / (Q : ℂ)) *
     ∑ t ∈ Finset.range Q,
@@ -335,7 +335,7 @@ private noncomputable def shorSpectralAmplitude
 The ordinary normalized QPE geometric sum corresponding to
 the rational-frequency difference `k/r - o/Q`.
 -/
-private noncomputable def shorQPEAmplitude
+noncomputable def shorQPEAmplitude
     (Q r k o : ℕ) : ℂ :=
   let δ : ℝ :=
     (k : ℝ) / (r : ℝ) -
@@ -347,7 +347,7 @@ private noncomputable def shorQPEAmplitude
   (1 / (Q : ℂ)) *
     ∑ t ∈ Finset.range Q, ζ ^ t
 
-private lemma qftPhase_eq_exp_grid_shor
+lemma qftPhase_eq_exp_grid_shor
     (M z t : ℕ) :
     qftPhase M z t
       =
@@ -368,7 +368,7 @@ private lemma qftPhase_eq_exp_grid_shor
   push_cast
   ring
 
-private lemma star_qftPhase_eq_negative_grid_phase_shor
+lemma star_qftPhase_eq_negative_grid_phase_shor
     (M z t : ℕ) :
     star (qftPhase M z t)
       =
@@ -383,7 +383,7 @@ private lemma star_qftPhase_eq_negative_grid_phase_shor
   simp [starRingEnd]
   ring
 
-private lemma omega_pow_self_shor
+lemma omega_pow_self_shor
     (r : ℕ)
     (hr : 0 < r) :
     (ω r) ^ r = 1 := by
@@ -404,7 +404,7 @@ private lemma omega_pow_self_shor
 
   rw [harg, Complex.exp_two_pi_mul_I]
 
-private lemma qftPhase_mod_left_shor
+lemma qftPhase_mod_left_shor
     (r t k : ℕ)
     (hr : 0 < r) :
     qftPhase r t k =
@@ -434,13 +434,13 @@ private lemma qftPhase_mod_left_shor
 
   rw [hp, mul_one]
 
-private lemma norm_qftPhase_one_shor
+lemma norm_qftPhase_one_shor
     (M x y : ℕ) :
     ‖qftPhase M x y‖ = 1 := by
   rw [qftPhase_eq_exp_grid_shor, Complex.norm_exp]
   simp
 
-private lemma shorSpectralAmplitude_eq_period_classes
+lemma shorSpectralAmplitude_eq_period_classes
     {Q r k o : ℕ}
     (hr : 0 < r) :
     shorSpectralAmplitude Q r k o
@@ -500,7 +500,7 @@ private lemma shorSpectralAmplitude_eq_period_classes
       rw [← Finset.mul_sum]
       ring
 
-private lemma sq_sum_le_card_mul_sum_sq_shor
+lemma sq_sum_le_card_mul_sum_sq_shor
     {ι : Type*}
     (S : Finset ι)
     (f : ι → ℝ) :
@@ -567,7 +567,7 @@ private lemma sq_sum_le_card_mul_sum_sq_shor
 
         nlinarith [hih, hcross]
 
-private lemma norm_sum_le_sum_norm_shor
+lemma norm_sum_le_sum_norm_shor
     {ι : Type*}
     (S : Finset ι)
     (f : ι → ℂ) :
@@ -589,7 +589,7 @@ private lemma norm_sum_le_sum_norm_shor
           (norm_add_le (f a) (∑ i ∈ S, f i))
           (add_le_add (le_refl ‖f a‖) ih)
 
-private lemma shorSpectralAmplitude_sq_le_paper
+lemma shorSpectralAmplitude_sq_le_paper
     {Q r k o : ℕ}
     (hr : 0 < r) :
     ‖shorSpectralAmplitude Q r k o‖ ^ 2
@@ -705,7 +705,7 @@ private lemma shorSpectralAmplitude_sq_le_paper
         shorPaperOutcomeProb
       ]
 
-private lemma shorSpectralAmplitude_eq_qpe
+lemma shorSpectralAmplitude_eq_qpe
     (Q r k o : ℕ) :
     shorSpectralAmplitude Q r k o
       =
@@ -739,12 +739,12 @@ private lemma shorSpectralAmplitude_eq_qpe
   simp [div_eq_mul_inv]
   ring
 
-private lemma norm_natCast_complex_shor
+lemma norm_natCast_complex_shor
     (n : ℕ) :
     ‖(n : ℂ)‖ = (n : ℝ) := by
   simp
 
-private lemma shor_normalized_geometric_peak
+lemma shor_normalized_geometric_peak
     (Q : ℕ)
     (δ : ℝ)
     (hQ : 0 < Q)
@@ -1280,11 +1280,11 @@ lemma mem_goodOutcomeFinset
   classical
   simp [goodOutcomeFinset]
 
-private noncomputable def shorNearestOutput
+noncomputable def shorNearestOutput
     (Q r k : ℕ) : ℕ :=
   ⌊((Q : ℝ) * (k : ℝ) / (r : ℝ) + (1 : ℝ) / 2)⌋₊
 
-private lemma shorNearestOutput_spec
+lemma shorNearestOutput_spec
     {Q r k : ℕ}
     (hr : 0 < r)
     (hrQ : r ^ 2 ≤ Q)
@@ -1492,7 +1492,7 @@ private lemma shorNearestOutput_spec
 
   simpa [abs_sub_comm] using happ
 
-private lemma shorNearestOutput_injective_below
+lemma shorNearestOutput_injective_below
     {Q r k₁ k₂ : ℕ}
     (hr : 0 < r)
     (hrQ : r ^ 2 ≤ Q)
@@ -1869,23 +1869,500 @@ lemma goodOutcome_mass_lower_bound_from_card_and_pointwise
         ]
 
 /--
-A deliberately weak consequence of the standard lower bounds for
-Euler's totient ratio.
-
-For an order `r < N`,
-
-    φ(r) / r ≥ exp(-2) / log₂(N)^4.
-
-This is much weaker than the classical asymptotic bound used by Shor,
-but is convenient because it gives exactly the public theorem's
-inverse-polylogarithmic form.
+If `2^c ≤ N` and `N > 0`, then `c ≤ log₂ N`.
 -/
-lemma shor_totient_ratio_log4_lower_bound
-    {a r N m n : ℕ}
-    (hsetting : BasicSetting a r N m n) :
-    Real.exp (-2) / (Nat.log2 N : ℝ) ^ 4
+lemma le_log2_of_two_pow_le
+    {c N : ℕ}
+    (hN : 0 < N)
+    (hpow : 2 ^ c ≤ N) :
+    c ≤ Nat.log2 N := by
+  induction c generalizing N with
+  | zero =>
+      omega
+
+  | succ c ih =>
+      have hpow2 :
+          2 ≤ 2 ^ (c + 1) := by
+        rw [pow_succ]
+        have hp : 0 < 2 ^ c := by positivity
+        omega
+
+      have hN2 : 2 ≤ N :=
+        le_trans hpow2 hpow
+
+      rw [Nat.log2_def, if_pos hN2]
+
+      apply Nat.succ_le_succ
+
+      have hNdiv :
+          0 < N / 2 := by
+        have h :
+            1 ≤ N / 2 := by
+          apply
+            (Nat.le_div_iff_mul_le
+              (by omega : 0 < 2)).2
+          simpa using hN2
+        omega
+
+      have hpow' :
+          2 ^ c ≤ N / 2 := by
+        apply
+          (Nat.le_div_iff_mul_le
+            (by omega : 0 < 2)).2
+        simpa [pow_succ] using hpow
+
+      exact ih hNdiv hpow'
+
+lemma two_pow_card_le_prod
+    (S : Finset ℕ) :
+    (∀ p ∈ S, 2 ≤ p) →
+      2 ^ S.card ≤ ∏ p ∈ S, p := by
+  classical
+
+  induction S using Finset.induction_on with
+  | empty =>
+      intro _
+      simp
+
+  | @insert p S hp ih =>
+      intro h2
+
+      have hp2 : 2 ≤ p :=
+        h2 p (by simp)
+
+      have h2S :
+          ∀ q ∈ S, 2 ≤ q := by
+        intro q hq
+        exact h2 q (by simp [hq])
+
+      have ih' :=
+        ih h2S
+
+      rw [
+        Finset.card_insert_of_notMem hp,
+        Finset.prod_insert hp,
+        pow_succ
+      ]
+
+      have h :=
+        Nat.mul_le_mul ih' hp2
+
+      simpa [Nat.mul_comm] using h
+
+lemma primeFactors_card_le_log2
+    {r N : ℕ}
+    (hr : 0 < r)
+    (hrN : r < N) :
+    r.primeFactors.card ≤ Nat.log2 N := by
+
+  have hprime2 :
+      ∀ p ∈ r.primeFactors, 2 ≤ p := by
+    intro p hp
+    exact
+      (Nat.prime_of_mem_primeFactors hp).two_le
+
+  have hpow_prod :
+      2 ^ r.primeFactors.card
+        ≤
+      ∏ p ∈ r.primeFactors, p :=
+    two_pow_card_le_prod
+      r.primeFactors hprime2
+
+  have hprod_r :
+      (∏ p ∈ r.primeFactors, p) ≤ r := by
+    exact
+      Nat.le_of_dvd
+        hr
+        (Nat.prod_primeFactors_dvd r)
+
+  have hpowN :
+      2 ^ r.primeFactors.card ≤ N := by
+    exact
+      le_trans
+        (le_trans hpow_prod hprod_r)
+        (Nat.le_of_lt hrN)
+
+  have hN : 0 < N := by
+    omega
+
+  exact
+    le_log2_of_two_pow_le
+      hN hpowN
+
+lemma prod_one_sub_inv_ge_inv_card_succ
+    (S : Finset ℕ) :
+    (∀ p ∈ S, 2 ≤ p) →
+      1 / (((S.card + 1 : ℕ) : ℝ))
+        ≤
+      ∏ p ∈ S,
+        (1 - ((p : ℝ)⁻¹)) := by
+  classical
+
+  induction S using Finset.induction_on_max with
+  | h0 =>
+      intro _
+      norm_num
+
+  | step p S hmax ih =>
+      intro h2
+
+      have hpS : p ∉ S := by
+        intro hp
+        have h := hmax p hp
+        omega
+
+      have hp2 : 2 ≤ p :=
+        h2 p (by simp)
+
+      have h2S :
+          ∀ q ∈ S, 2 ≤ q := by
+        intro q hq
+        exact h2 q (by simp [hq])
+
+      have ih' :=
+        ih h2S
+
+      /-
+      Since every q ∈ S satisfies 2 ≤ q < p,
+      S is contained in [2,p).
+      -/
+      have hsub :
+          S ⊆ Finset.Ico 2 p := by
+        intro q hq
+        simp only [Finset.mem_Ico]
+        exact ⟨h2S q hq, hmax q hq⟩
+
+      have hcard0 :
+          S.card ≤
+            (Finset.Ico 2 p).card :=
+        Finset.card_le_card hsub
+
+      have hcard :
+          S.card ≤ p - 2 := by
+        simpa using hcard0
+
+      have hcardp :
+          S.card + 2 ≤ p := by
+        omega
+
+      have hcardpR :
+          (((S.card + 2 : ℕ) : ℝ))
+            ≤
+          (p : ℝ) := by
+        exact_mod_cast hcardp
+
+      have hpR :
+          0 < (p : ℝ) := by
+        positivity
+
+      have hc2R :
+          0 <
+            (((S.card + 2 : ℕ) : ℝ)) := by
+        positivity
+
+      /-
+      1/p ≤ 1/(card S + 2).
+      -/
+      have hinv :
+          (1 : ℝ) / (p : ℝ)
+            ≤
+          1 /
+            (((S.card + 2 : ℕ) : ℝ)) := by
+        apply
+          (div_le_div_iff₀ hpR hc2R).2
+        simpa using hcardpR
+
+      /-
+      (card+1)/(card+2)
+          = 1 - 1/(card+2)
+          ≤ 1 - 1/p.
+      -/
+      have hfactor :
+          (((S.card + 1 : ℕ) : ℝ) /
+              ((S.card + 2 : ℕ) : ℝ))
+            ≤
+          1 - ((p : ℝ)⁻¹) := by
+
+        have hid :
+            (((S.card + 1 : ℕ) : ℝ) /
+                ((S.card + 2 : ℕ) : ℝ))
+              =
+            1 -
+              1 /
+                (((S.card + 2 : ℕ) : ℝ)) := by
+          field_simp
+          simp
+          ring_nf
+
+        rw [hid, inv_eq_one_div]
+        linarith
+
+      have hfactor_nonneg :
+          0 ≤ 1 - ((p : ℝ)⁻¹) := by
+        have hfrac_nonneg :
+            0 ≤
+              (((S.card + 1 : ℕ) : ℝ) /
+                ((S.card + 2 : ℕ) : ℝ)) := by
+          positivity
+        exact le_trans hfrac_nonneg hfactor
+
+      have hmul :
+          (((S.card + 1 : ℕ) : ℝ) /
+              ((S.card + 2 : ℕ) : ℝ))
+            *
+          (1 /
+            (((S.card + 1 : ℕ) : ℝ)))
+            ≤
+          (1 - ((p : ℝ)⁻¹)) *
+            ∏ q ∈ S,
+              (1 - ((q : ℝ)⁻¹)) := by
+        exact
+          mul_le_mul
+            hfactor
+            ih'
+            (by positivity)
+            hfactor_nonneg
+
+      rw [
+        Finset.card_insert_of_notMem hpS,
+        Finset.prod_insert hpS
+      ]
+
+      calc
+        1 /
+            (((S.card + 1 + 1 : ℕ) : ℝ))
+            =
+          (((S.card + 1 : ℕ) : ℝ) /
+              ((S.card + 2 : ℕ) : ℝ))
+            *
+          (1 /
+            (((S.card + 1 : ℕ) : ℝ))) := by
+              push_cast
+              field_simp
+              ring
+
+        _ ≤
+          (1 - ((p : ℝ)⁻¹)) *
+            ∏ q ∈ S,
+              (1 - ((q : ℝ)⁻¹)) :=
+          hmul
+
+lemma totient_ratio_ge_inv_primeFactors_card_succ
+    {r : ℕ}
+    (hr : 0 < r) :
+    1 /
+        (((r.primeFactors.card + 1 : ℕ) : ℝ))
       ≤
     (Nat.totient r : ℝ) / (r : ℝ) := by
-  sorry
+
+  have h2 :
+      ∀ p ∈ r.primeFactors, 2 ≤ p := by
+    intro p hp
+    exact
+      (Nat.prime_of_mem_primeFactors hp).two_le
+
+  have hprod :=
+    prod_one_sub_inv_ge_inv_card_succ
+      r.primeFactors h2
+
+  have hrR :
+      (r : ℝ) ≠ 0 := by
+    exact_mod_cast Nat.ne_of_gt hr
+
+  have hφQ :=
+    Nat.totient_eq_mul_prod_factors r
+
+  have hφR :
+      (Nat.totient r : ℝ)
+        =
+      (r : ℝ) *
+        ∏ p ∈ r.primeFactors,
+          (1 - ((p : ℝ)⁻¹)) := by
+    have h :=
+      congrArg
+        (fun z : ℚ => (z : ℝ))
+        hφQ
+    simpa using h
+
+  have hratio :
+      (Nat.totient r : ℝ) / (r : ℝ)
+        =
+      ∏ p ∈ r.primeFactors,
+        (1 - ((p : ℝ)⁻¹)) := by
+    rw [hφR]
+    field_simp [hrR]
+
+  rw [hratio]
+  exact hprod
+
+lemma totient_ratio_ge_inv_log2_succ
+    {r N : ℕ}
+    (hr : 0 < r)
+    (hrN : r < N) :
+    1 /
+        (((Nat.log2 N + 1 : ℕ) : ℝ))
+      ≤
+    (Nat.totient r : ℝ) / (r : ℝ) := by
+
+  have hcard :
+      r.primeFactors.card ≤ Nat.log2 N :=
+    primeFactors_card_le_log2 hr hrN
+
+  have hratio :=
+    totient_ratio_ge_inv_primeFactors_card_succ
+      hr
+
+  have hden :
+      (((r.primeFactors.card + 1 : ℕ) : ℝ))
+        ≤
+      (((Nat.log2 N + 1 : ℕ) : ℝ)) := by
+    exact_mod_cast Nat.add_le_add_right hcard 1
+
+  have hleft :
+      1 /
+          (((Nat.log2 N + 1 : ℕ) : ℝ))
+        ≤
+      1 /
+          (((r.primeFactors.card + 1 : ℕ) : ℝ)) := by
+
+    have hL :
+        0 <
+          (((Nat.log2 N + 1 : ℕ) : ℝ)) := by
+      positivity
+
+    have hR :
+        0 <
+          (((r.primeFactors.card + 1 : ℕ) : ℝ)) := by
+      positivity
+
+    apply
+      (div_le_div_iff₀ hL hR).2
+
+    simpa using hden
+
+  exact le_trans hleft hratio
+
+lemma exp_neg_two_div_pow4_le_inv_succ
+    (L : ℕ)
+    (hL : 1 ≤ L) :
+    Real.exp (-2) / (L : ℝ) ^ 4
+      ≤
+    1 / (((L + 1 : ℕ) : ℝ)) := by
+
+  by_cases hL1 : L = 1
+
+  · subst L
+
+    have hexp2 :
+        (5 : ℝ) ≤ Real.exp 2 := by
+      have h :=
+        Real.quadratic_le_exp_of_nonneg
+          (x := (2 : ℝ))
+          (by norm_num)
+      norm_num at h ⊢
+      exact h
+
+    have hneg :
+        0 ≤ Real.exp (-2) := by
+      exact le_of_lt (Real.exp_pos _)
+
+    have hmul :
+        5 * Real.exp (-2) ≤ 1 := by
+      calc
+        5 * Real.exp (-2)
+            ≤
+          Real.exp 2 * Real.exp (-2) :=
+            mul_le_mul_of_nonneg_right
+              hexp2 hneg
+
+        _ = 1 := by
+          rw [← Real.exp_add]
+          norm_num
+
+    norm_num
+    nlinarith
+
+  ·
+    have hL2 : 2 ≤ L := by
+      omega
+
+    have hLR :
+        (2 : ℝ) ≤ (L : ℝ) := by
+      exact_mod_cast hL2
+
+    have hLpos :
+        0 < (L : ℝ) := by
+      positivity
+
+    have hexp :
+        Real.exp (-2) ≤ 1 := by
+      exact
+        (Real.exp_le_one_iff).2
+          (by norm_num)
+
+    have hsq :
+        (L : ℝ) + 1 ≤ (L : ℝ) ^ 2 := by
+      nlinarith
+
+    have hone_sq :
+        (1 : ℝ) ≤ (L : ℝ) ^ 2 := by
+      nlinarith
+
+    have hsq_pow :
+        (L : ℝ) ^ 2 ≤ (L : ℝ) ^ 4 := by
+      calc
+        (L : ℝ) ^ 2
+            =
+          (L : ℝ) ^ 2 * 1 := by
+            ring
+
+        _ ≤
+          (L : ℝ) ^ 2 *
+            (L : ℝ) ^ 2 :=
+          mul_le_mul_of_nonneg_left
+            hone_sq
+            (sq_nonneg _)
+
+        _ =
+          (L : ℝ) ^ 4 := by
+            ring
+
+    have hpoly :
+        (L : ℝ) + 1 ≤ (L : ℝ) ^ 4 :=
+      le_trans hsq hsq_pow
+
+    have hsucc :
+        0 <
+          (((L + 1 : ℕ) : ℝ)) := by
+      positivity
+
+    have hone :
+        (1 : ℝ)
+          ≤
+        (L : ℝ) ^ 4 /
+          (((L + 1 : ℕ) : ℝ)) := by
+      apply (le_div_iff₀ hsucc).2
+      push_cast
+      simpa using hpoly
+
+    have hL4 :
+        0 < (L : ℝ) ^ 4 := by
+      positivity
+
+    apply (div_le_iff₀ hL4).2
+
+    calc
+      Real.exp (-2)
+          ≤ 1 :=
+        hexp
+
+      _ ≤
+        1 /
+            (((L + 1 : ℕ) : ℝ)) *
+          (L : ℝ) ^ 4 := by
+        simpa [
+          div_eq_mul_inv,
+          mul_comm
+        ] using hone
 
 end Shor

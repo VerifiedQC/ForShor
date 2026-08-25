@@ -1,4 +1,5 @@
-import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering
+import FastMultiplication.ShorVerification.Implementation.QFT.Defs
+import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.LoweringCorrectness.PlanSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.PlanReadiness
@@ -25,12 +26,41 @@ open Gate
 
 universe u
 
+namespace QFTWorkspaceCleanState
+variable {qs : QSemantics} [RegEncoding qs.Basis] {xWork zWork : Reg}
 /-! =========================================================
-    Section 1: Fresh reserve facts for QFT workspaces
+    Section 1: Clean-state closure and custom eliminator
+========================================================= -/
 
-    These lemmas turn the public clean-state predicate for the two QFT
-    workspace pools into the `FreshFor` facts required by the phase-product
-    lowerer that appears in the middle of a QFT split.
+theorem ket (b : qs.Basis) (hx : FreshZero xWork b) (hz : FreshZero zWork b) :
+    QFTWorkspaceCleanState qs xWork zWork (qs.ket b) := CleanClosure.ket b ⟨hx, hz⟩
+theorem add {ψ φ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ)
+    (hφ : QFTWorkspaceCleanState qs xWork zWork φ) :
+    QFTWorkspaceCleanState qs xWork zWork (ψ + φ) := CleanClosure.add hψ hφ
+theorem smul (a : ℂ) {ψ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ) :
+    QFTWorkspaceCleanState qs xWork zWork (a • ψ) := CleanClosure.smul a hψ
+/-- Custom eliminator so `induction`/`cases` keep the original 2-hypothesis
+`ket` shape (`| ket b hx hz`) despite the generic single-predicate closure. -/
+@[induction_eliminator, cases_eliminator]
+def rec' {motive : (ψ : qs.State) → QFTWorkspaceCleanState qs xWork zWork ψ → Prop}
+    (zero : motive 0 QFTWorkspaceCleanState.zero)
+    (ket : ∀ (b : qs.Basis) (hx : FreshZero xWork b) (hz : FreshZero zWork b),
+        motive (qs.ket b) (QFTWorkspaceCleanState.ket b hx hz))
+    (add : ∀ {ψ φ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ)
+        (hφ : QFTWorkspaceCleanState qs xWork zWork φ),
+        motive ψ hψ → motive φ hφ → motive (ψ + φ) (QFTWorkspaceCleanState.add hψ hφ))
+    (smul : ∀ (a : ℂ) {ψ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zWork ψ),
+        motive ψ hψ → motive (a • ψ) (QFTWorkspaceCleanState.smul a hψ))
+    {ψ : qs.State} (h : QFTWorkspaceCleanState qs xWork zWork ψ) : motive ψ h := by
+  induction h with
+  | zero => exact zero
+  | ket b hconj => exact ket b hconj.1 hconj.2
+  | add hψ hφ ihψ ihφ => exact add hψ hφ ihψ ihφ
+  | smul a hψ ih => exact smul a hψ ih
+end QFTWorkspaceCleanState
+
+/-! =========================================================
+    Section 2: Fresh reserve facts for QFT workspaces
 ========================================================= -/
 
 lemma freshFor_of_freshZero_reserve
@@ -50,7 +80,6 @@ lemma freshFor_of_freshZero_reserve
     hzero
   intro q hq
   exact List.mem_of_mem_take hq
-
 
 lemma freshFor_grow_capacity_of_freshZero_reserve
     {Basis : Type u}
@@ -78,13 +107,8 @@ lemma freshFor_grow_capacity_of_freshZero_reserve
     Reg.drop
   ] using hqReserve
 
-
 /-! =========================================================
-    Section 2: Converting QFT cleanliness to phase-product cleanliness
-
-    A split QFT invokes an unsigned phase product. These lemmas reinterpret
-    the two QFT workspace pools as the clean workspace required by that
-    phase-product subplan.
+    Section 3: Converting QFT cleanliness to phase-product cleanliness
 ========================================================= -/
 
 lemma QFTWorkspaceCleanState.phaseCleanState
@@ -126,7 +150,6 @@ lemma QFTWorkspaceCleanState.phaseCleanState
       exact
         CleanClosure.smul
           a ihψ
-
 
 lemma QFTWorkspaceCleanState.signedCleanState
     (qs : QSemantics)
@@ -181,13 +204,8 @@ lemma QFTWorkspaceCleanState.signedCleanState
         CleanClosure.smul
           a ihψ
 
-
 /-! =========================================================
-    Section 3: Preservation by the middle phase-product subplan
-
-    The QFT split uses a phase product between the right and left recursive
-    QFT calls. These lemmas prove that executing that phase product keeps the
-    same QFT workspace pools clean.
+    Section 4: Preservation by the middle phase-product subplan
 ========================================================= -/
 
 lemma eval_PhaseProdUsing_preserves_QFTWorkspaceCleanState
@@ -242,13 +260,8 @@ lemma eval_PhaseProdUsing_preserves_QFTWorkspaceCleanState
       rw [qs.eval_smul]
       exact QFTWorkspaceCleanState.smul a ihψ
 
-
 /-! =========================================================
-    Section 4: Readiness for the unsigned phase-product bridge
-
-    `standardPhaseProdUsingPlan` is the QFT-facing wrapper around signed
-    phase-product lowering. This section proves that the wrapper is ready and
-    preserves the QFT workspace clean-state invariant.
+    Section 5: Readiness for the unsigned phase-product bridge
 ========================================================= -/
 
 theorem standardPhaseProdUsingPlan_ready_and_clean
@@ -256,7 +269,7 @@ theorem standardPhaseProdUsingPlan_ready_and_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -395,13 +408,8 @@ theorem standardPhaseProdUsingPlan_ready_and_clean
       eval_PhaseProdUsing_preserves_QFTWorkspaceCleanState
         qs phi ws hxReserve hzReserve hclean
 
-
 /-! =========================================================
-    Section 5: Preservation by recursive QFT calls
-
-    A QFT only writes its active data register. If the selected workspace pools
-    are disjoint from that data register, QFT evaluation preserves their
-    fresh-zero invariant.
+    Section 6: Preservation by recursive QFT calls
 ========================================================= -/
 
 lemma eval_QFT_preserves_QFTWorkspaceCleanState
@@ -494,13 +502,8 @@ lemma eval_QFT_preserves_QFTWorkspaceCleanState
       rw [qs.eval_smul]
       exact QFTWorkspaceCleanState.smul a ihψ
 
-
 /-! =========================================================
-    Section 6: Readiness derived from explicit work registers
-
-    This is the main recursive readiness proof. It assumes the caller has
-    already selected concrete `xWork` and `zWork` registers satisfying
-    `QFTWorkspaceOK`, then proves the standard plan is ready and remains clean.
+    Section 7: Readiness derived from explicit work registers
 ========================================================= -/
 
 theorem standardQFTLoweringPlan_ready_and_clean_explicit
@@ -508,7 +511,7 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -836,21 +839,12 @@ decreasing_by
       splitM
     ] using hleft
 
-
-/-! =========================================================
-    Section 7: Public readiness and correctness for `lowerQFT`
-
-    The public API hides the concrete workspace registers. It derives them
-    from `r.reserve`, packages readiness helpers, and exposes the final
-    semantic correctness theorem used by whole-program lowering.
-========================================================= -/
-
 theorem standardQFTLoweringPlan_ready_and_clean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -897,13 +891,16 @@ theorem standardQFTLoweringPlan_ready_and_clean
       hC
       hRun
 
+/-! =========================================================
+    Section 8: Reserve plan and the public `evalL_lowerQFT`
+========================================================= -/
 
 lemma reserveQFTLoweringPlan_ready_ket
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -942,13 +939,12 @@ lemma reserveQFTLoweringPlan_ready_ket
       qs k hk ops r (qs.ket b)
       hworkspace hC hRun).1
 
-
 lemma reserveQFTLoweringPlan_preserves_clean_of_ready
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -995,13 +991,12 @@ lemma reserveQFTLoweringPlan_preserves_clean_of_ready
       qs k hk ops r ψ
       hworkspace hC hRun).2
 
-
 theorem evalL_lowerQFT
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)

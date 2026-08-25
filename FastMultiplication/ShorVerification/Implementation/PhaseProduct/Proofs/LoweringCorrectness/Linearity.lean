@@ -91,7 +91,7 @@ lemma standardSignedPhaseLoweringPlan_preserves_clean_of_ready
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGateGateBridge qs]
+    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (phi : ℝ)
