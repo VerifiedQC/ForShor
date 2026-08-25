@@ -515,4 +515,66 @@ lemma goodOutcome_mass_le_probability_of_success
         (ord inst.a inst.N inst.coprime))
       (measProbAfter_nonneg evalC x o.1 C ψ)
 
+
+/-! ---------------------------------------------------------
+    Shared order-finding parameter bound
+--------------------------------------------------------- -/
+
+omit [MeasureClass qs] [ContinuedFractionPost] [Spec] in
+/--
+For Shor's order `r`, the standard setting gives
+
+    0 < r < N
+    r² ≤ 2^m.
+
+The last inequality is the continued-fraction precision requirement:
+`r < N` and `N² < 2^m`.
+-/
+lemma shor_order_parameter_bounds
+    {a r N m n : ℕ}
+    (hsetting : BasicSetting a r N m n) :
+    0 < r ∧ r < N ∧ r ^ 2 ≤ 2 ^ m := by
+  rcases hsetting with
+    ⟨ha0, haN, hOrder, hN2, _hm_hi, _hNn, _hn_hi⟩
+
+  rcases hOrder with ⟨hcop, hr⟩
+  subst r
+
+  have hNgt1 : 1 < N := by
+    omega
+
+  haveI : NeZero N := ⟨by omega⟩
+
+  let u : (ZMod N)ˣ :=
+    ZMod.unitOfCoprime a hcop
+
+  have hrpos : 0 < orderOf u := by
+    exact orderOf_pos u
+
+  have hr_le_phi :
+      orderOf u ≤ Nat.totient N := by
+    calc
+      orderOf u
+          ≤ Fintype.card (ZMod N)ˣ :=
+        orderOf_le_card_univ
+      _ = Nat.totient N :=
+        ZMod.card_units_eq_totient N
+
+  have hrN : orderOf u < N := by
+    exact lt_of_le_of_lt
+      hr_le_phi
+      (Nat.totient_lt N hNgt1)
+
+  have hrsq_lt :
+      orderOf u ^ 2 < N ^ 2 := by
+    nlinarith
+
+  have hrsq :
+      orderOf u ^ 2 ≤ 2 ^ m := by
+    exact Nat.le_of_lt
+      (lt_trans hrsq_lt hN2)
+
+  simpa [u] using
+    (And.intro hrpos (And.intro hrN hrsq))
+
 end Shor
