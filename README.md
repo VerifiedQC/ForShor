@@ -52,10 +52,9 @@ noncomputable def shorGateRate (ε : ℝ) (n : ℕ) : ℝ :=
 
 ### Status
 
-All components are proved: phase-product compilation, QFT decomposition, lowering correctness, modular-exponentiation error bounds, and the full resource-estimation stack. Two statements are still `sorry`:
+All components are proved: phase-product compilation, QFT decomposition, continued-fraction recovery, lowering correctness, modular-exponentiation error bounds, and the full resource-estimation stack. The reference implementation's gate-bound packaging is still `sorry`:
 
-- `Shor_correct` — the final assembly of the top-level success-probability bound.
-- `CF_recovers_denominator` — the classical continued-fraction postprocessing fact.
+- `referenceShorImplementation` — its concrete `gateBound` and `counted` fields.
 
 ## Repository layout
 

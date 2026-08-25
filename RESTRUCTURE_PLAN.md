@@ -120,8 +120,9 @@ explicitly merges duplicate definitions (verified by the same two gates).
   as weak as order-finding itself: an instance + `IdealOrderFindingInput`
   (clean, disjoint exponent/data registers) — no ancilla/workspace assumptions.
   `framework_order_finding_correct` / `framework_gate_count` quantify over any
-  such implementation. `ContinuedFractionPost` / `MeasureClass` are
-  framework-side assumptions, not user fields. All synthesis machinery
+  such implementation. Continued-fraction recovery is implemented in the
+  framework, while `MeasureClass` remains a framework-side assumption rather
+  than a user field. All synthesis machinery
   (`ShorLoweringSetup`, `PhaseProduct`, `orderFindingApprox`, `lowerGate`) is
   pushed to the reference implementation (Phase 4), which builds a concrete
   `prog` and discharges the obligations from the existing proofs

@@ -15,7 +15,6 @@ namespace Shor
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 variable [MeasureClass qs]
-variable [ContinuedFractionPost]
 variable [Spec]
 
 /-- End-to-end statement combining the classical choice probability, ideal

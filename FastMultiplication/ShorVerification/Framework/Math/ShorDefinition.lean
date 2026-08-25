@@ -1,6 +1,8 @@
 import Mathlib.Data.ZMod.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import Mathlib.NumberTheory.DiophantineApproximation.ContinuedFractions
+import Mathlib.Algebra.ContinuedFractions.Computation.TerminatesIffRat
 
 namespace Shor
 
@@ -38,13 +40,8 @@ def BasicSetting (a r N m n : ℕ) : Prop :=
     Section 2: Good outcomes and continued fractions
 
     This section isolates the rational-approximation condition that a measured
-    outcome must satisfy and the abstract continued-fraction recovery interface.
+    outcome must satisfy and the continued-fraction recovery algorithm.
 ========================================================= -/
-structure CFOut where
-  num : ℕ
-  den : ℕ
-deriving DecidableEq
-
 def approxRat
     (o Q k r : ℕ)
     (δ : ℝ) : Prop :=
@@ -53,89 +50,147 @@ def approxRat
 
 noncomputable def GoodOutcome
     (o Q r : ℕ) : Prop :=
+  o < Q ∧
   ∃ k : ℕ, k < r ∧
     Nat.Coprime k r ∧
-    r ^ 2 ≤ Q ∧
+    r ^ 2 < Q ∧
     approxRat o Q k r (1 / (2 * (Q : ℝ)))
 
-/-- Abstract continued-fraction/rational-approximation postprocessing.
-
-`searchBound Q` is a uniform number of convergent candidates sufficient for
-inputs with denominator bounded by `Q`. The correctness field states that a
-sufficiently accurate reduced fraction is found within that bound.
+/--
+The `t`th regular continued-fraction convergent of the measured ratio `o / Q`,
+computed by Mathlib's recursive convergent algorithm.
 -/
-class ContinuedFractionPost where
-  step : ℕ → ℕ → ℕ → CFOut
-  denom : ℕ → ℕ → ℕ → ℕ := fun t o Q => (step t o Q).den
-  searchBound : ℕ → ℕ
-  recovers_denominator :
-    ∀ {o Q k r : ℕ},
-      k < r → r ^ 2 ≤ Q →
-      approxRat o Q k r (1 / (2 * (Q : ℝ))) →
-      Nat.Coprime k r →
-        ∃ t : ℕ, t < searchBound Q ∧ denom t o Q = r
-  -- recovers_denominator :
-  --   ∀ {o Q k r : ℕ},
-  --     0 < r → k < r →  r ^ 2 ≤ Q →
-  --     approxRat o Q k r (1 / (2 * (Q : ℝ))) →
-  --     Nat.Coprime k r →
-  --     ∃ t : ℕ, t < searchBound Q ∧ denom t o Q = r
+noncomputable def continuedFractionConvergent
+    (t o Q : ℕ) : ℚ :=
+  Real.convergent ((o : ℝ) / (Q : ℝ)) t
+
+/-- The denominator tested by classical postprocessing at step `t`. -/
+noncomputable def continuedFractionDenom
+    (t o Q : ℕ) : ℕ :=
+  (continuedFractionConvergent t o Q).den
+
+private lemma continuedFraction_terminates (o Q : ℕ) :
+    (GenContFract.of ((o : ℝ) / (Q : ℝ))).Terminates := by
+  rw [GenContFract.terminates_iff_rat]
+  exact ⟨(o : ℚ) / (Q : ℚ), by simp⟩
+
+/-- The first index after the finite continued fraction for `o / Q` terminates. -/
+noncomputable def continuedFractionTerminationIndex
+    (o Q : ℕ) : ℕ :=
+  Nat.find (continuedFraction_terminates o Q)
+
+private lemma continuedFraction_terminatedAt (o Q : ℕ) :
+    (GenContFract.of ((o : ℝ) / (Q : ℝ))).TerminatedAt
+      (continuedFractionTerminationIndex o Q) :=
+  Nat.find_spec (continuedFraction_terminates o Q)
+
+/--
+A proof-oriented uniform number of convergents sufficient for every outcome
+`o < Q`. Callers may scan any larger bound.
+-/
+noncomputable def continuedFractionSearchBound (Q : ℕ) : ℕ :=
+  (Finset.range Q).sup (fun o => continuedFractionTerminationIndex o Q) + 1
+
+private lemma continuedFractionTerminationIndex_lt_searchBound
+    {o Q : ℕ}
+    (ho : o < Q) :
+    continuedFractionTerminationIndex o Q < continuedFractionSearchBound Q := by
+  apply Nat.lt_succ_of_le
+  exact Finset.le_sup
+    (f := fun o => continuedFractionTerminationIndex o Q)
+    (Finset.mem_range.mpr ho)
+
+private lemma reducedFraction_denominator
+    {k r : ℕ}
+    (hr : 0 < r)
+    (hcop : Nat.Coprime k r) :
+    (((k : ℤ) : ℚ) / ((r : ℤ) : ℚ)).den = r := by
+  have h := Rat.den_div_eq_of_coprime
+    (a := (k : ℤ)) (b := (r : ℤ))
+    (by exact_mod_cast hr) (by simpa using hcop)
+  exact_mod_cast h
 
 def ContinuedFractionSearchComplete
-    [ContinuedFractionPost]
     (T : ℕ → ℕ) : Prop :=
   ∀ Q : ℕ,
-    ContinuedFractionPost.searchBound Q ≤ T Q
+    continuedFractionSearchBound Q ≤ T Q
 
 lemma CF_recovers_denominator
-    [ContinuedFractionPost]
     (T : ℕ → ℕ)
     (hT : ContinuedFractionSearchComplete T)
     {o Q k r : ℕ}
-    (hkr : k < r)
-    (hrQ : r ^ 2 ≤ Q)
+    (ho : o < Q)
+    (hrQ : r ^ 2 < Q)
     (happrox :
       approxRat o Q k r
         (1 / (2 * (Q : ℝ))))
     (hgcd : Nat.Coprime k r) :
     ∃ t : ℕ,
       t < T Q ∧
-      ContinuedFractionPost.denom t o Q = r := by
-  rcases
-      ContinuedFractionPost.recovers_denominator
-        hkr hrQ happrox hgcd with
-    ⟨t, ht, hdenom⟩
+      continuedFractionDenom t o Q = r := by
+  let q : ℚ := ((k : ℤ) : ℚ) / ((r : ℤ) : ℚ)
 
-  exact
-    ⟨t,
-      lt_of_lt_of_le ht (hT Q),
-      hdenom⟩
+  have hqden : q.den = r := by
+    simpa [q] using reducedFraction_denominator happrox.2.1 hgcd
+
+  have hstrict :
+      |(o : ℝ) / (Q : ℝ) - (q : ℝ)| <
+        1 / (2 * (q.den : ℝ) ^ 2) := by
+    rw [hqden]
+    have hrQ' : (r : ℝ) ^ 2 < (Q : ℝ) := by
+      exact_mod_cast hrQ
+    have hr' : 0 < (r : ℝ) := by
+      exact_mod_cast happrox.2.1
+    have hbound :
+        1 / (2 * (Q : ℝ)) < 1 / (2 * (r : ℝ) ^ 2) := by
+      exact one_div_lt_one_div_of_lt (by positivity) (by nlinarith)
+    exact lt_of_le_of_lt (by simpa [q] using happrox.2.2) hbound
+
+  obtain ⟨n, hn⟩ := Real.exists_rat_eq_convergent hstrict
+  let u := continuedFractionTerminationIndex o Q
+
+  by_cases hnu : n ≤ u
+  · refine ⟨n, lt_of_le_of_lt hnu ?_, ?_⟩
+    · exact lt_of_lt_of_le
+        (continuedFractionTerminationIndex_lt_searchBound ho) (hT Q)
+    · rw [continuedFractionDenom, continuedFractionConvergent, ← hqden, hn]
+
+  · have hun : u ≤ n := Nat.le_of_lt (Nat.lt_of_not_ge hnu)
+    have hconv :
+        Real.convergent ((o : ℝ) / (Q : ℝ)) u =
+          Real.convergent ((o : ℝ) / (Q : ℝ)) n := by
+      apply (Rat.cast_injective : Function.Injective (Rat.cast : ℚ → ℝ))
+      rw [← Real.convs_eq_convergent, ← Real.convs_eq_convergent]
+      exact (GenContFract.convs_stable_of_terminated hun
+        (continuedFraction_terminatedAt o Q)).symm
+
+    refine ⟨u, lt_of_lt_of_le ?_ (hT Q), ?_⟩
+    · exact continuedFractionTerminationIndex_lt_searchBound ho
+    · rw [continuedFractionDenom, continuedFractionConvergent,
+        ← hqden, hn, ← hconv]
 
 lemma GoodOutcome.exists_denominator_candidate
-    [ContinuedFractionPost]
     (T : ℕ → ℕ)
     (hT : ContinuedFractionSearchComplete T)
     {o Q r : ℕ}
     (hgood : GoodOutcome o Q r) :
     ∃ t : ℕ,
       t < T Q ∧
-      ContinuedFractionPost.denom t o Q = r := by
+      continuedFractionDenom t o Q = r := by
   rcases hgood with
-    ⟨k, hkr, hgcd, hrQ, happrox⟩
+    ⟨ho, k, _hkr, hgcd, hrQ, happrox⟩
 
   exact CF_recovers_denominator
-    T hT hkr hrQ happrox hgcd
+    T hT ho hrQ happrox hgcd
 
 abbrev OrderVerifier := ℕ → Bool
-
-variable [ContinuedFractionPost]
 
 noncomputable def orderCandidates
     (T : ℕ → ℕ)
     (o Q : ℕ) : Finset ℕ :=
   (Finset.range (T Q)).image
     (fun t =>
-      ContinuedFractionPost.denom t o Q)
+      continuedFractionDenom t o Q)
 
 noncomputable def verifiedOrderCandidates
     (T : ℕ → ℕ)
@@ -162,7 +217,7 @@ lemma denominator_mem_orderCandidates
     (h :
       ∃ t : ℕ,
         t < T Q ∧
-        ContinuedFractionPost.denom t o Q = r) :
+        continuedFractionDenom t o Q = r) :
     r ∈ orderCandidates T o Q := by
   rcases h with ⟨t, ht, hdenom⟩
   rw [orderCandidates, Finset.mem_image]

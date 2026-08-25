@@ -24,7 +24,6 @@ namespace Shor
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 variable [MeasureClass qs]
-variable [ContinuedFractionPost]
 variable [Spec]
 
 /-- Public assertion for `Shor_correct`. -/

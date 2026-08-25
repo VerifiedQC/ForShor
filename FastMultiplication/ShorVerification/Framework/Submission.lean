@@ -40,7 +40,6 @@ noncomputable def measProbAfter
 continued-fraction post-processing check. -/
 noncomputable def probability_of_success
     [MeasureClass qs]
-    [ContinuedFractionPost]
     {Circuit : Type}
     (evalC : Circuit → qs.State → qs.State)
     (T : ℕ → ℕ)
@@ -79,7 +78,6 @@ def IdealOrderFindingInput
   RegEncoding.toNat y.active b0 = 0 ∧
   ExtReg.OwnedDisjoint x y
 
-variable [instCFP : ContinuedFractionPost]
 variable [instMeas : MeasureClass qs]
 variable [instLGC : LowerGateClass qs]
 

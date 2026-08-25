@@ -1257,7 +1257,7 @@ lemma shor_paper_goodOutcome_lower_bound
       ≤
     shorPaperOutcomeProb Q r o := by
   rcases hgood with
-    ⟨k, hk, _hcoprime, hrQ, happrox⟩
+    ⟨_ho, k, hk, _hcoprime, _hrQ, happrox⟩
 
   exact shor_paper_peak_lower_bound happrox
 
@@ -1681,7 +1681,7 @@ For every `k < r` coprime to `r`, choose the integer `o` nearest to
 
     Q*k/r.
 
-Because `r² ≤ Q`, that output satisfies
+Because `r² < Q`, that output satisfies
 
     |o/Q - k/r| ≤ 1/(2Q),
 
@@ -1692,7 +1692,7 @@ Hence there are at least `φ(r)` good outputs.
 lemma goodOutcome_card_ge_totient
     {Q r : ℕ}
     (hr : 0 < r)
-    (hrQ : r ^ 2 ≤ Q) :
+    (hrQ : r ^ 2 < Q) :
     Nat.totient r ≤
       (goodOutcomeFinset Q r).card := by
   classical
@@ -1729,7 +1729,7 @@ lemma goodOutcome_card_ge_totient
           (Q := Q)
           (r := r)
           (k := k.1)
-          hr hrQ hk
+          hr hrQ.le hk
 
       exact
         ⟨
@@ -1739,7 +1739,7 @@ lemma goodOutcome_card_ge_totient
             rw [mem_goodOutcomeFinset]
 
             refine
-              ⟨k.1, hk, ?_, hrQ, hspec.2⟩
+              ⟨hspec.1, k.1, hk, ?_, hrQ, hspec.2⟩
 
             exact hkdata.2.symm
         ⟩
@@ -1778,7 +1778,7 @@ lemma goodOutcome_card_ge_totient
 
     exact
       shorNearestOutput_injective_below
-        hr hrQ hk₁ hk₂ hout
+        hr hrQ.le hk₁ hk₂ hout
 
   calc
     Nat.totient r
