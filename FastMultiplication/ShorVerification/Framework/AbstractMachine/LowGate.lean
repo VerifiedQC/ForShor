@@ -23,15 +23,18 @@ inductive LowGate : Type
   | id : LowGate
   | seq : LowGate → LowGate → LowGate
   | adj : LowGate → LowGate
+
   | H : ℕ → LowGate
   | X : ℕ → LowGate
+  | Phase : ℕ → ℝ → LowGate
+  | CNOT : ℕ → ℕ → LowGate
+  | Toffoli : ℕ → ℕ → ℕ → LowGate
+
   | Prim : String → List ℕ → LowGate
   | ShiftL    : (r : ExtReg) → (n : ℕ) → LowGate
   | ShiftR    : (r : ExtReg) → (n : ℕ) → LowGate
   | Negate    : (r : ExtReg) → LowGate
   | AddScaled : (dst src : ExtReg) → (negSrc : Bool) → (shift : ℕ) → LowGate
-  | Naive_SignedPhaseProd : (phi : Real) → (x z : ExtReg) → LowGate
-  | Naive_CSignedPhaseProd : (ctrl : ℕ) → (phi : Real) → (x z : ExtReg) → LowGate
   | zeroExtend : (r : ExtReg) → (n : ℕ) → LowGate
   | signExtend : (r : ExtReg) → (n : ℕ) → LowGate
   | zeroDealloc : (r : ExtReg) → (n : ℕ) → LowGate

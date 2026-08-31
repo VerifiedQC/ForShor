@@ -31,8 +31,6 @@ structure LowGateCostModel where
   shiftR : ExtReg → ℕ → ℕ
   negate : ExtReg → ℕ
   addScaled : ExtReg → ExtReg → Bool → ℕ → ℕ
-  naiveSignedPhaseProd : ℝ → ExtReg → ExtReg → ℕ
-  naiveCSignedPhaseProd : ℕ → ℝ → ExtReg → ExtReg → ℕ
   zeroExtend : ExtReg → ℕ → ℕ
   signExtend : ExtReg → ℕ → ℕ
   zeroDealloc : ExtReg → ℕ → ℕ
@@ -55,8 +53,9 @@ def gateCount (M : LowGateCostModel) : LowGate → ℕ
   | .ShiftR r n => M.shiftR r n
   | .Negate r => M.negate r
   | .AddScaled dst src negSrc shift => M.addScaled dst src negSrc shift
-  | .Naive_SignedPhaseProd phi x z => M.naiveSignedPhaseProd phi x z
-  | .Naive_CSignedPhaseProd ctrl phi x z => M.naiveCSignedPhaseProd ctrl phi x z
+  | .Phase _ _ => 1
+  | .CNOT _ _ => 1
+  | .Toffoli _ _ _ => 1
   | .zeroExtend r n => M.zeroExtend r n
   | .signExtend r n => M.signExtend r n
   | .zeroDealloc r n => M.zeroDealloc r n
@@ -105,8 +104,6 @@ def phaseProductCostModel
   shiftR := shiftRCost
   negate := negateGateBound
   addScaled := fun dst _src _negSrc _shift => rippleAdderGateBound (ExtReg.width dst)
-  naiveSignedPhaseProd := fun _phi x z => directSignedPhaseProductGateCount x z
-  naiveCSignedPhaseProd := fun _ctrl _phi x z => directCSignedPhaseProductGateCount x z
   zeroExtend := fun _r _n => 0
   signExtend := fun _r _n => 0
   zeroDealloc := fun _r _n => 0
@@ -175,8 +172,6 @@ structure LowGateResourceModel where
   shiftR : ExtReg → ℕ → GateResources
   negate : ExtReg → GateResources
   addScaled : ExtReg → ExtReg → Bool → ℕ → GateResources
-  naiveSignedPhaseProd : ℝ → ExtReg → ExtReg → GateResources
-  naiveCSignedPhaseProd : ℕ → ℝ → ExtReg → ExtReg → GateResources
   zeroExtend : ExtReg → ℕ → GateResources
   signExtend : ExtReg → ℕ → GateResources
   zeroDealloc : ExtReg → ℕ → GateResources
@@ -197,10 +192,9 @@ def resources (M : LowGateResourceModel) : LowGate → GateResources
   | .Negate r => M.negate r
   | .AddScaled dst src negSrc shift =>
       M.addScaled dst src negSrc shift
-  | .Naive_SignedPhaseProd phi x z =>
-      M.naiveSignedPhaseProd phi x z
-  | .Naive_CSignedPhaseProd ctrl phi x z =>
-      M.naiveCSignedPhaseProd ctrl phi x z
+  | .Phase _ _ => { rz := 1 }
+  | .CNOT _ _ => { cnot := 1 }
+  | .Toffoli _ _ _ => { toffoli := 1 }
   | .zeroExtend r n => M.zeroExtend r n
   | .signExtend r n => M.signExtend r n
   | .zeroDealloc r n => M.zeroDealloc r n
@@ -226,12 +220,6 @@ def toCostModel (M : LowGateResourceModel) : LowGateCostModel where
 
   addScaled := fun dst src negSrc shift =>
     (M.addScaled dst src negSrc shift).totalGates
-
-  naiveSignedPhaseProd := fun phi x z =>
-    (M.naiveSignedPhaseProd phi x z).totalGates
-
-  naiveCSignedPhaseProd := fun ctrl phi x z =>
-    (M.naiveCSignedPhaseProd ctrl phi x z).totalGates
 
   zeroExtend := fun r n =>
     (M.zeroExtend r n).totalGates
@@ -620,12 +608,8 @@ def directSignedPhaseProductResources
     (x z : ExtReg) : GateResources :=
   let pairs := ExtReg.width x * ExtReg.width z
   {
-    h := 0
-    x := 0
     cnot := 2 * pairs
-    toffoli := 0
     rz := 3 * pairs
-    cleanAnc := 0
   }
 
 
@@ -658,10 +642,9 @@ def directCSignedPhaseProductResources
     x := 0
     cnot := 2 * pairs
     toffoli := 2 * pairs
-    rz := 3 * pairs
-    cleanAnc := 1
+    rz := 5 * pairs
+    cleanAnc := 0
   }
-
 
 /-! ---------------------------------------------------------
     Radix reversal
@@ -696,12 +679,6 @@ def shorGateResourceModel : LowGateResourceModel where
   negate := negateResources
 
   addScaled := addScaledResources
-
-  naiveSignedPhaseProd :=
-    fun _phi x z => directSignedPhaseProductResources x z
-
-  naiveCSignedPhaseProd :=
-    fun _ctrl _phi x z => directCSignedPhaseProductResources x z
 
   zeroExtend := fun _ _ => {}
 
@@ -760,13 +737,13 @@ def LowGate.usedQubits
   | .AddScaled dst src _ _ =>
       extRegActiveQubits dst ∪ extRegActiveQubits src
 
-  | .Naive_SignedPhaseProd _ x z =>
-      extRegActiveQubits x ∪ extRegActiveQubits z
+  | .Phase q _ => {q}
 
-  | .Naive_CSignedPhaseProd ctrl _ x z =>
-      {ctrl} ∪
-      extRegActiveQubits x ∪
-      extRegActiveQubits z
+  | .CNOT ctrl target =>
+      {ctrl, target}
+
+  | .Toffoli c₁ c₂ target =>
+      {c₁, c₂, target}
 
   | .zeroExtend r n =>
       extRegGrowQubits r n

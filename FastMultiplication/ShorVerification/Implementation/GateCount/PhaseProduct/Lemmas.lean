@@ -1183,7 +1183,6 @@ lemma gateCount_standardSignedPhaseLoweringPlan
       k hk ops φ x z hworkspace := by
   rfl
 
-/-- In the nonrecursive branch, the standard signed lowering has exactly direct base-case cost. -/
 lemma gateCount_standardSignedPhaseLoweringPlan_of_not_recurse
     {Basis : Type u}
     [RegEncoding Basis]
@@ -1199,10 +1198,15 @@ lemma gateCount_standardSignedPhaseLoweringPlan_of_not_recurse
           (standardSignedPhaseLoweringPlan
             k hk φ x z ops hworkspace))
       =
-    ExtReg.width x * ExtReg.width z := by
+    directSignedPhaseProductGateCount x z := by
   unfold standardSignedPhaseLoweringPlan
-  simp only [hno, ↓reduceDIte, PhaseLoweringPlan.lowerGateRec_signedBase]
-  rfl
+  simp only [
+    hno,
+    ↓reduceDIte,
+    PhaseLoweringPlan.lowerGateRec_signedBase
+  ]
+  exact LowerGateClass.gateCount_Naive_SignedPhaseProd
+    shorGateCostModel φ x z hworkspace.owned_disjoint
 
 /-- The body overhead of a cons program splits into the head operation cost plus tail overhead. -/
 lemma phaseProgramOverhead_cons (W : ℕ) (op : valid_ops k) (rest : List (valid_ops k)) :
@@ -1823,27 +1827,20 @@ lemma signedPhaseProductGateCount_bounded_on_bounded_inputs
           (Basis := Basis) k hk ops φ x z hworkspace
         ≤ D := by
   classical
-
   induction N with
   | zero =>
       refine ⟨0, ?_⟩
       intro φ x z hworkspace hsize
-
       have hsize0 : phaseInputSize x z = 0 :=
         Nat.eq_zero_of_le_zero hsize
-
       have hx : ExtReg.width x = 0 := by
-        have hxle :
-            ExtReg.width x ≤ phaseInputSize x z := by
+        have hxle : ExtReg.width x ≤ phaseInputSize x z := by
           simp [phaseInputSize]
         omega
-
       have hz : ExtReg.width z = 0 := by
-        have hzle :
-            ExtReg.width z ≤ phaseInputSize x z := by
+        have hzle : ExtReg.width z ≤ phaseInputSize x z := by
           simp [phaseInputSize]
         omega
-
       have hno :
           ¬ nextSignedWidth x z ops < phaseInputSize x z := by
         omega
@@ -1854,32 +1851,29 @@ lemma signedPhaseProductGateCount_bounded_on_bounded_inputs
       rw [
         gateCount_standardSignedPhaseLoweringPlan_of_not_recurse
           (Basis := Basis) k hk ops φ x z hworkspace hno,
+        directSignedPhaseProductGateCount,
         hx,
         hz
       ]
 
   | succ N ih =>
       rcases ih with ⟨D, hD⟩
-
       refine
         ⟨max
-            (N.succ * N.succ)
-            (phaseProgramOverhead N ops
-              + phaseProductCount ops * D),
+            (5 * N.succ * N.succ)
+            (phaseProgramOverhead N ops +
+              phaseProductCount ops * D),
           ?_⟩
-
       intro φ x z hworkspace hsize
-
       by_cases hrec :
           nextSignedWidth x z ops < phaseInputSize x z
 
-      · -- Recursive case.
-        have hW :
+      · have hW :
             nextSignedWidth x z ops ≤ N := by
           omega
-
         have hchildren :
-            ∀ (ψ : ℝ) (a b : ExtReg) (hw : SignedRecursiveWorkspaceOK ops a b),
+            ∀ (ψ : ℝ) (a b : ExtReg)
+              (hw : SignedRecursiveWorkspaceOK ops a b),
               ExtReg.width a = nextSignedWidth x z ops →
               ExtReg.width b = nextSignedWidth x z ops →
               signedPhaseProductGateCount
@@ -1887,87 +1881,84 @@ lemma signedPhaseProductGateCount_bounded_on_bounded_inputs
                 ≤ D := by
           intro ψ a b hw ha hb
           apply hD ψ a b hw
-
-          have :
+          have hsizeab :
               phaseInputSize a b =
                 nextSignedWidth x z ops := by
             simp [phaseInputSize, ha, hb]
-
-          rw [this]
+          rw [hsizeab]
           exact hW
-
         have hnode :
             signedPhaseProductGateCount
                 (Basis := Basis) k hk ops φ x z hworkspace
               ≤
             phaseProgramOverhead
-                (nextSignedWidth x z ops) ops
-              +
-            phaseProductCount ops * D :=
+                (nextSignedWidth x z ops) ops +
+              phaseProductCount ops * D :=
           lowerSignedPhaseProd_one_level_cost_le_nat
             (Basis := Basis)
-            k hk ops φ x z
-            hworkspace
-            hrec
-            D
-            hchildren
-
+            k hk ops φ x z hworkspace hrec D hchildren
         have hoverhead :
             phaseProgramOverhead
                 (nextSignedWidth x z ops) ops
               ≤
             phaseProgramOverhead N ops :=
           phaseProgramOverhead_mono ops hW
-
         have hnode' :
             signedPhaseProductGateCount
                 (Basis := Basis) k hk ops φ x z hworkspace
               ≤
-            phaseProgramOverhead N ops
-              + phaseProductCount ops * D :=
+            phaseProgramOverhead N ops +
+              phaseProductCount ops * D :=
           hnode.trans
             (Nat.add_le_add_right
               hoverhead
               (phaseProductCount ops * D))
-
         exact hnode'.trans (Nat.le_max_right _ _)
 
-      · -- Direct/base-case branch.
-        have hbase :
+      · have hbase :
             signedPhaseProductGateCount
                 (Basis := Basis) k hk ops φ x z hworkspace
               =
-            ExtReg.width x * ExtReg.width z := by
+            directSignedPhaseProductGateCount x z := by
           unfold
             signedPhaseProductGateCount
             lowerSignedPhaseProdWithWorkspace
             lowerSignedPhaseProd
           exact
             gateCount_standardSignedPhaseLoweringPlan_of_not_recurse
-              (Basis := Basis) k hk ops φ x z hworkspace hrec
-
+              (Basis := Basis)
+              k hk ops φ x z hworkspace hrec
         have hxmax :
             ExtReg.width x ≤ phaseInputSize x z := by
           simp [phaseInputSize]
-
         have hzmax :
             ExtReg.width z ≤ phaseInputSize x z := by
-          simp[phaseInputSize]
-
+          simp [phaseInputSize]
         have hx : ExtReg.width x ≤ N.succ :=
           hxmax.trans hsize
-
         have hz : ExtReg.width z ≤ N.succ :=
           hzmax.trans hsize
-
         have hprod :
+            5 * ExtReg.width x * ExtReg.width z
+              ≤
+            5 * N.succ * N.succ := by
+          exact Nat.mul_le_mul
+            (Nat.mul_le_mul_left 5 hx) hz
+        have hprodDirect :
             ExtReg.width x * ExtReg.width z
-              ≤ N.succ * N.succ :=
-          Nat.mul_le_mul hx hz
-
+              ≤
+            5 * N.succ * N.succ :=
+          have hprodAssoc :
+              5 * (ExtReg.width x * ExtReg.width z)
+                ≤
+              5 * N.succ * N.succ := by
+            simpa [Nat.mul_assoc] using hprod
+          (Nat.le_mul_of_pos_left
+            (ExtReg.width x * ExtReg.width z)
+            (by norm_num : 0 < 5)).trans hprodAssoc
         rw [hbase]
-        exact hprod.trans (Nat.le_max_left _ _)
-
+        unfold directSignedPhaseProductGateCount
+        exact hprodDirect.trans (Nat.le_max_left _ _)
 
 
 end SignedRecurrence
@@ -3699,14 +3690,22 @@ lemma cSignedPhaseProductGateCount_le_five_signed
     simp only [
       hrec,
       ↓reduceDIte,
-      lowerGateRec,
-      LowGate.gateCount,
-      shorGateCostModel,
-      phaseProductCostModel,
-      directCSignedPhaseProductGateCount,
-      directSignedPhaseProductGateCount
+      lowerGateRec
     ]
-    simp [Nat.mul_assoc]
+    rw [
+      LowGate.gateCount_Naive_CSignedPhaseProd
+        shorGateCostModel ctrl φ x z
+        hworkspace.toSignedRecursiveWorkspaceOK.owned_disjoint
+        hworkspace.control_disjoint.1
+        hworkspace.control_disjoint.2,
+      LowerGateClass.gateCount_Naive_SignedPhaseProd
+        shorGateCostModel φ x z
+        hworkspace.toSignedRecursiveWorkspaceOK.owned_disjoint
+    ]
+    unfold
+      directCSignedPhaseProductGateCount
+      directSignedPhaseProductGateCount
+    nlinarith
 termination_by phaseInputSize x z
 decreasing_by
   calc

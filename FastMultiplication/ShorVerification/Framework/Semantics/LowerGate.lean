@@ -10,6 +10,28 @@ namespace Shor
     with the internal high-level `Gate` evaluator is kept in bridge lemmas below.
 ========================================================= -/
 
+def cnotBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (ctrl target : ℕ)
+    (b : Basis) : Basis :=
+  if ctrl = target then b
+  else if RegEncoding.bit ctrl b then
+    RegEncoding.writeNat (qubitReg target)
+      (if RegEncoding.bit target b then 0 else 1) b
+  else b
+
+def toffoliBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (c₁ c₂ target : ℕ)
+    (b : Basis) : Basis :=
+  if c₁ = c₂ ∨ c₁ = target ∨ c₂ = target then b
+  else if RegEncoding.bit c₁ b ∧ RegEncoding.bit c₂ b then
+    RegEncoding.writeNat (qubitReg target)
+      (if RegEncoding.bit target b then 0 else 1) b
+  else b
+
 /-- Semantic interface for interpreting low-level gates in a quantum semantics. -/
 class LowerGateClass
     (qs : QSemantics)
@@ -74,28 +96,23 @@ class LowerGateClass
         =
       qs.ket (addScaledBasis dst src negSrc sh b)
 
-  evalL_naive_signedPhaseProd_ket :
-    ∀ (phi : ℝ) (x z : ExtReg) (b : qs.Basis),
-      evalL (LowGate.Naive_SignedPhaseProd phi x z) (qs.ket b)
-        =
-      (Complex.exp
-        (phi * Complex.I *
-          (((extToInt x b : ℤ) : ℂ) *
-           (((extToInt z b : ℤ) : ℂ))))) •
-        qs.ket b
+  evalL_Phase_ket :
+    ∀ q θ b,
+      evalL (LowGate.Phase q θ) (qs.ket b) =
+        (if RegEncoding.bit q b then
+          Complex.exp (θ * Complex.I) • qs.ket b
+        else
+          qs.ket b)
 
-  evalL_naive_csignedPhaseProd_ket :
-    ∀ (ctrl : ℕ) (phi : ℝ) (x z : ExtReg) (b : qs.Basis),
-      evalL (LowGate.Naive_CSignedPhaseProd ctrl phi x z) (qs.ket b)
-        =
-      if RegEncoding.bit ctrl b then
-        (Complex.exp
-          (phi * Complex.I *
-            (((extToInt x b : ℤ) : ℂ) *
-             (((extToInt z b : ℤ) : ℂ))))) •
-          qs.ket b
-      else
-        qs.ket b
+  evalL_CNOT_ket :
+    ∀ ctrl target b,
+      evalL (LowGate.CNOT ctrl target) (qs.ket b) =
+        qs.ket (cnotBasis ctrl target b)
+
+  evalL_Toffoli_ket :
+    ∀ c₁ c₂ target b,
+      evalL (LowGate.Toffoli c₁ c₂ target) (qs.ket b) =
+        qs.ket (toffoliBasis c₁ c₂ target b)
 
   evalL_zeroExtend_id :
     ∀ r n ψ,
