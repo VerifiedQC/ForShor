@@ -727,11 +727,11 @@ lemma ideal_orderFinding_goodOutcome_mass_lower_bound
   let Q : ℕ :=
     ASize x.active
 
-  /- Step 1: `0 < r`, `r < N`, and `r² ≤ Q`. -/
+  /- Step 1: `0 < r`, `r < N`, and `r² < Q`. -/
   have hparams :
       0 < r ∧
       r < inst.N ∧
-      r ^ 2 ≤ Q := by
+      r ^ 2 < Q := by
     have h :=
       shor_order_parameter_bounds hsetting
 
@@ -740,7 +740,7 @@ lemma ideal_orderFinding_goodOutcome_mass_lower_bound
   have hr : 0 < r :=
     hparams.1
 
-  have hrQ : r ^ 2 ≤ Q :=
+  have hrQ : r ^ 2 < Q :=
     hparams.2.2
 
   /- Step 2: equation (5.2). -/

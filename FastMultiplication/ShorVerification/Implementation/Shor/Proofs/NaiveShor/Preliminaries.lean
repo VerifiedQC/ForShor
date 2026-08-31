@@ -10,7 +10,6 @@ namespace Shor
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 variable [MeasureClass qs]
-variable [ContinuedFractionPost]
 variable [Spec]
 
 
@@ -22,7 +21,7 @@ variable [Spec]
 
 
 
-omit [ContinuedFractionPost] [Spec] in
+omit [Spec] in
 lemma basicSetting_of_shor_instance
     (inst : ShorOrderFindingInstance)
     (m n : ℕ)
@@ -145,7 +144,7 @@ lemma goodOutcome_r_found_one
 
   rw [if_pos hpost]
 
-omit [MeasureClass qs] [ContinuedFractionPost] [Spec] in
+omit [MeasureClass qs] [Spec] in
 private lemma toNat_qubitReg
     (q : ℕ)
     (b : qs.Basis) :
@@ -183,7 +182,7 @@ private lemma toNat_qubitReg
     simp [hv, hb]
 
 
-omit [MeasureClass qs] [ContinuedFractionPost] [Spec] in
+omit [MeasureClass qs] [Spec] in
 private lemma toNat_cons_reg
     (ctrl : ℕ)
     (ctrls : List ℕ)
@@ -235,7 +234,7 @@ private lemma toNat_cons_reg
       simp [toNat_qubitReg, ASize, tail]
 
 
-omit [MeasureClass qs] [ContinuedFractionPost] in
+omit [MeasureClass qs] in
 private theorem eval_modExpIdealSteps_ket
     [GateSemanticsCore qs]
     [IdealCtrlModMulExactSemantics qs]
@@ -435,7 +434,7 @@ private theorem eval_modExpIdealSteps_ket
 /-! =========================================================
     Small probability lemmas
 ========================================================= -/
-omit [ContinuedFractionPost] [Spec] in
+omit [Spec] in
 /-- Every measurement probability is nonnegative. -/
 lemma measProbAfter_nonneg
     {Circuit : Type}
@@ -520,12 +519,12 @@ lemma goodOutcome_mass_le_probability_of_success
     Shared order-finding parameter bound
 --------------------------------------------------------- -/
 
-omit [MeasureClass qs] [ContinuedFractionPost] [Spec] in
+omit [MeasureClass qs] [Spec] in
 /--
 For Shor's order `r`, the standard setting gives
 
     0 < r < N
-    r² ≤ 2^m.
+    r² < 2^m.
 
 The last inequality is the continued-fraction precision requirement:
 `r < N` and `N² < 2^m`.
@@ -533,7 +532,7 @@ The last inequality is the continued-fraction precision requirement:
 lemma shor_order_parameter_bounds
     {a r N m n : ℕ}
     (hsetting : BasicSetting a r N m n) :
-    0 < r ∧ r < N ∧ r ^ 2 ≤ 2 ^ m := by
+    0 < r ∧ r < N ∧ r ^ 2 < 2 ^ m := by
   rcases hsetting with
     ⟨ha0, haN, hOrder, hN2, _hm_hi, _hNn, _hn_hi⟩
 
@@ -570,9 +569,8 @@ lemma shor_order_parameter_bounds
     nlinarith
 
   have hrsq :
-      orderOf u ^ 2 ≤ 2 ^ m := by
-    exact Nat.le_of_lt
-      (lt_trans hrsq_lt hN2)
+      orderOf u ^ 2 < 2 ^ m :=
+    lt_trans hrsq_lt hN2
 
   simpa [u] using
     (And.intro hrpos (And.intro hrN hrsq))

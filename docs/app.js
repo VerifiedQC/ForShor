@@ -361,7 +361,7 @@ const graphData = {
       "`ShorCorrectness.lean` defines ideal, approximate, and lowered order-finding circuits; a generalized measurement/probability interface; and the ideal, approximate, and end-to-end factoring theorems.",
     parent: "overview",
     nodes: [
-      { id: "post", label: "Postprocessing API", subtitle: "continued fractions", kind: "math", file: "FastMultiplication/ShorVerification/MathBackbone/ShorDefinition.lean", declarations: ["ContinuedFractionPost", "OF_post", "r_found", "κ"], summary: "Defines order-recovery postprocessing, the verifier-driven success indicator, and the asymptotic success constant." },
+      { id: "post", label: "Postprocessing API", subtitle: "continued fractions", kind: "math", file: "FastMultiplication/ShorVerification/Framework/Math/ShorDefinition.lean", declarations: ["continuedFractionConvergent", "continuedFractionDenom", "OF_post", "r_found", "κ"], summary: "Defines order-recovery postprocessing, the verifier-driven success indicator, and the asymptotic success constant." },
       { id: "circuits", label: "Order-finding circuits", subtitle: "ideal, approximate, lowered", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["initY1", "orderFindingApprox", "orderFindingApproxLow", "orderFindingIdeal"], summary: "Assembles H, initialization, valid modular exponentiation, QFT, and the lowered approximate implementation." },
       { id: "measure", label: "Measurement model", subtitle: "polymorphic success probability", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["MeasureClass", "measProbAfter", "successProbAfterFinset", "probability_of_success"], summary: "Abstracts measurement projectors and packages success probabilities for any circuit-like object via an explicit evaluator." },
       { id: "transfer", label: "Probability transfer", subtitle: "state distance to success", kind: "final", file: "FastMultiplication/ShorVerification/ShorCorrectness.lean", declarations: ["probMeas_weighted_dist", "probability_of_success_eval_dist", "transfer_lower_bound_from_abs_prob"], summary: "Turns norm-distance control between evaluated circuits into a lower bound on postprocessed success probability." },
@@ -392,7 +392,7 @@ const nodeClasses = {
     machine: ["LowerGateClass"],
     gatecount: ["LowGateCostModel", "PhaseProductProgramOK", "PhaseProductGateCountBound", "QFTGateCountBound", "ShorGateCountBound"],
     modexp: ["Spec", "IdealCtrlModMulExactSemantics", "ModMulPrimitiveSemantics"],
-    shor: ["ContinuedFractionPost", "MeasureClass"]
+    shor: ["continuedFractionConvergent", "MeasureClass"]
   },
   basic: {
     regenc: ["RegEncoding"],
@@ -422,7 +422,7 @@ const nodeClasses = {
     core: ["Spec", "IdealCtrlModMulExactSemantics", "ModMulPrimitiveSemantics"]
   },
   shor: {
-    post: ["ContinuedFractionPost"],
+    post: ["continuedFractionConvergent"],
     measure: ["MeasureClass"]
   }
 };
