@@ -30,14 +30,17 @@ inductive Gate : Type
   | adj : Gate → Gate
   | H : ℕ → Gate
   | X : ℕ → Gate
+  | CNOT : ℕ → ℕ → Gate
+  | Toffoli : ℕ → ℕ → ℕ → Gate
   | QFT : ExtReg → Gate
   | RadixReverse : (r : Reg) → (m : ℕ) → Gate
-  | SignedPhaseProd  : (phi : Real) → (x z : ExtReg) → Gate
+  | SignedPhaseProd : (phi : Real) → (x z : ExtReg) → Gate
   | CSignedPhaseProd : (ctrl : ℕ) → (phi : Real) → (x z : ExtReg) → Gate
-  | Prim : String → List ℕ → Gate
-  | ShiftL    : (r : ExtReg) → (n : ℕ) → Gate
-  | ShiftR    : (r : ExtReg) → (n : ℕ) → Gate
-  | Negate    : (r : ExtReg) → Gate
+  | CmpGeConst : (N : ℕ) → (data : Reg) → (flag : ℕ) → Gate
+  | CSubConst : (N : ℕ) → (data : Reg) → (flag : ℕ) → Gate
+  | ShiftL : (r : ExtReg) → (n : ℕ) → Gate
+  | ShiftR : (r : ExtReg) → (n : ℕ) → Gate
+  | Negate : (r : ExtReg) → Gate
   | AddScaled : (dst src : ExtReg) → (negSrc : Bool) → (shift : ℕ) → Gate
   | zeroExtend : (r : ExtReg) → (n : ℕ) → Gate
   | signExtend : (r : ExtReg) → (n : ℕ) → Gate

@@ -10,28 +10,6 @@ namespace Shor
     with the internal high-level `Gate` evaluator is kept in bridge lemmas below.
 ========================================================= -/
 
-def cnotBasis
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (ctrl target : ℕ)
-    (b : Basis) : Basis :=
-  if ctrl = target then b
-  else if RegEncoding.bit ctrl b then
-    RegEncoding.writeNat (qubitReg target)
-      (if RegEncoding.bit target b then 0 else 1) b
-  else b
-
-def toffoliBasis
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (c₁ c₂ target : ℕ)
-    (b : Basis) : Basis :=
-  if c₁ = c₂ ∨ c₁ = target ∨ c₂ = target then b
-  else if RegEncoding.bit c₁ b ∧ RegEncoding.bit c₂ b then
-    RegEncoding.writeNat (qubitReg target)
-      (if RegEncoding.bit target b then 0 else 1) b
-  else b
-
 /-- Semantic interface for interpreting low-level gates in a quantum semantics. -/
 class LowerGateClass
     (qs : QSemantics)
@@ -154,15 +132,5 @@ namespace LowerGateClass
       (qs := qs) L (0 : ℂ) (0 : qs.State))
 
 end LowerGateClass
-
-class LowerGatePrimitiveBridge
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [LowerGateClass qs] : Prop where
-  evalL_Prim :
-    ∀ (tag : String) (args : List ℕ) (ψ : qs.State),
-      LowerGateClass.evalL (qs := qs) (LowGate.Prim tag args) ψ =
-        qs.eval (Gate.Prim tag args) ψ
 
 end Shor

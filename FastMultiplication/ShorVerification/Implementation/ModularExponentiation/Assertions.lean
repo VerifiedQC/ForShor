@@ -21,8 +21,7 @@ def ModExpApproxValidDistUniform
     [RegEncoding qs.Basis]
     [Spec]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
-    [ModMulPrimitiveGateSemantics qs] : Prop :=
+    [IdealCtrlModMulExactSemantics qs]: Prop :=
   ∃ K : ℝ, 0 ≤ K ∧
     ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
       ModExpConfig.ValidUnitState qs cfg ψ →

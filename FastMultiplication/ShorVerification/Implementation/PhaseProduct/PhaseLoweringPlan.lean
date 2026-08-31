@@ -108,12 +108,6 @@ inductive PhaseLoweringPlan
       (qbit : ℕ) :
       PhaseLoweringPlan k hk pts hpts ops initSize (Gate.X qbit)
 
-  | Prim
-      (initSize : ℕ)
-      (tag : String)
-      (args : List ℕ) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.Prim tag args)
-
   | ShiftL
       (initSize : ℕ)
       (r : ExtReg)
@@ -250,7 +244,6 @@ noncomputable def lowerGateRec
   | seq left right ihLeft ihRight => exact LowGate.seq ihLeft ihRight
   | H initSize qbit => exact LowGate.H qbit
   | X initSize qbit => exact LowGate.X qbit
-  | Prim initSize tag args => exact LowGate.Prim tag args
   | ShiftL initSize r n => exact LowGate.ShiftL r n
   | ShiftR initSize r n => exact LowGate.ShiftR r n
   | Negate initSize r => exact LowGate.Negate r

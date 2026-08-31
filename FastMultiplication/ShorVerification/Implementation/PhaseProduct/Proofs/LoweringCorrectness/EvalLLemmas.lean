@@ -86,18 +86,6 @@ theorem evalL_X
       rw [LowerGateClass.evalL_X_ket, PauliXSemantics.eval_X_ket])
     ψ
 
-theorem evalL_Prim
-    {qs : QSemantics}
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
-    (tag : String)
-    (args : List ℕ)
-    (ψ : qs.State) :
-    LowerGateClass.evalL (qs := qs) (LowGate.Prim tag args) ψ =
-      qs.eval (Gate.Prim tag args) ψ :=
-  LowerGatePrimitiveBridge.evalL_Prim tag args ψ
 
 theorem evalL_shiftL
     {qs : QSemantics}

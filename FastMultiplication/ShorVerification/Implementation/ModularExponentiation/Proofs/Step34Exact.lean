@@ -165,10 +165,8 @@ are used.
 lemma alg1_step34_reference_exact_core
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-
     [Spec]
-    [GateSemanticsCore qs]
-    [ModMulPrimitiveGateSemantics qs]
+    [GateSemanticsFacts qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -685,8 +683,7 @@ lemma alg1_step34_reference_exact
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [Spec]
-    [GateSemanticsCore qs]
-    [ModMulPrimitiveGateSemantics qs]
+    [GateSemanticsFacts qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)

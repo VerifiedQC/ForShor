@@ -46,7 +46,6 @@ noncomputable def PhaseLoweringReady
         readyRight (LowerGateClass.evalL (qs := qs) (lowerGateRec left) ψ)
   | H initSize qbit => exact fun _ => True
   | X initSize qbit => exact fun _ => True
-  | Prim initSize tag args => exact fun _ => True
   | ShiftL initSize r n => exact fun _ => True
   | ShiftR initSize r n => exact fun _ => True
   | Negate initSize r => exact fun _ => True
@@ -178,7 +177,6 @@ lemma evalL_lowerGateRec_correct
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -269,21 +267,6 @@ lemma evalL_lowerGateRec_correct
         LowerGateClass.evalL_X
           (qs := qs)
           qbit
-          ψ
-  | Prim initSize tag args =>
-      intro ψ _
-      change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.Prim tag args)
-            ψ
-          =
-        qs.eval (Gate.Prim tag args) ψ
-      exact
-        LowerGateClass.evalL_Prim
-          (qs := qs)
-          tag
-          args
           ψ
   | ShiftL initSize r n =>
       intro ψ _

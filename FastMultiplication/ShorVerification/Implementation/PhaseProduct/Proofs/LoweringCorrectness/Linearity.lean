@@ -91,7 +91,6 @@ lemma standardSignedPhaseLoweringPlan_preserves_clean_of_ready
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (phi : ℝ)
@@ -220,8 +219,6 @@ lemma PhaseLoweringReady.zero
   | H initSize qbit =>
       trivial
   | X initSize qbit =>
-      trivial
-  | Prim initSize tag args =>
       trivial
   | ShiftL initSize r n =>
       trivial
@@ -365,8 +362,6 @@ lemma PhaseLoweringReady.add
   | H initSize qbit =>
       trivial
   | X initSize qbit =>
-      trivial
-  | Prim initSize tag args =>
       trivial
   | ShiftL initSize r n =>
       trivial
@@ -544,8 +539,6 @@ lemma PhaseLoweringReady.smul
   | H initSize qbit =>
       trivial
   | X initSize qbit =>
-      trivial
-  | Prim initSize tag args =>
       trivial
   | ShiftL initSize r n =>
       trivial
