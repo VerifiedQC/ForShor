@@ -83,11 +83,11 @@ def rippleAdderGateBound (w : ℕ) : ℕ := 9 * w + 2
 def negateGateBound (r : ExtReg) : ℕ := ExtReg.width r + rippleAdderGateBound (ExtReg.width r)
 
 /-- Direct signed PhaseProduct base-case cost, quadratic in the operand widths. -/
-def directSignedPhaseProductGateCount (x z : ExtReg) : ℕ := ExtReg.width x * ExtReg.width z
+def directSignedPhaseProductGateCount (x z : ExtReg) : ℕ := 5 * ExtReg.width x * ExtReg.width z
 
 /-- Direct controlled signed PhaseProduct base-case cost, with a constant-factor
 controlled overhead over the signed direct implementation. -/
-def directCSignedPhaseProductGateCount (x z : ExtReg) : ℕ := 5 * ExtReg.width x * ExtReg.width z
+def directCSignedPhaseProductGateCount (x z : ExtReg) : ℕ := 9 * ExtReg.width x * ExtReg.width z
 
 /-- Cost assigned to the final radix-reversal swaps for a register split. -/
 def radixReverseGateCount (_r : Reg) (m : ℕ) : ℕ := 3 * (m / 2)

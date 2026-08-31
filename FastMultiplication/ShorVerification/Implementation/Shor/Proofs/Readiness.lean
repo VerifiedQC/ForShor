@@ -4923,17 +4923,13 @@ private theorem eval_H_involutive_ket
       RegEncoding.bit q b0 = false := by
     dsimp only [b0, r]
 
-    simpa using
-      bit_writeNat_qubitReg
-        q 0 b (by omega)
+    simp
 
   have hb1 :
       RegEncoding.bit q b1 = true := by
     dsimp only [b1, r]
 
-    simpa using
-      bit_writeNat_qubitReg
-        q 1 b (by omega)
+    simp
 
   have h00 :
       RegEncoding.writeNat r 0 b0 = b0 := by

@@ -1958,7 +1958,7 @@ lemma signedPhaseProductGateCount_bounded_on_bounded_inputs
             (by norm_num : 0 < 5)).trans hprodAssoc
         rw [hbase]
         unfold directSignedPhaseProductGateCount
-        exact hprodDirect.trans (Nat.le_max_left _ _)
+        exact hprod.trans (Nat.le_max_left _ _)
 
 
 end SignedRecurrence
@@ -2487,7 +2487,7 @@ lemma natCast_le_phaseProduct_rpow
 
 /--
 In the nonrecursive branch, lowering is exactly the direct signed
-PhaseProduct, whose cost is the product of the operand widths.
+PhaseProduct expansion, whose primitive cost is five gates per operand pair.
 -/
 lemma signedPhaseProductGateCount_eq_direct_of_not_recurse
     {Basis : Type u}
@@ -2504,14 +2504,17 @@ lemma signedPhaseProductGateCount_eq_direct_of_not_recurse
     signedPhaseProductGateCount
         (Basis := Basis) k hk ops φ x z hworkspace
       =
-    ExtReg.width x * ExtReg.width z := by
+    5 * ExtReg.width x * ExtReg.width z := by
   unfold
     signedPhaseProductGateCount
     lowerSignedPhaseProdWithWorkspace
     lowerSignedPhaseProd
-  exact
+  rw [
     gateCount_standardSignedPhaseLoweringPlan_of_not_recurse
       (Basis := Basis) k hk ops φ x z hworkspace hno
+  ]
+  unfold directSignedPhaseProductGateCount
+  ring
 
 /-- Bounds the public unsigned theorem's recursive branch by applying the
 balanced signed bound to the equal-width recursive children. -/
@@ -2813,7 +2816,7 @@ lemma signedPhaseProductGateCount_unsignedView_no_recurse_case_bound
           ≤ Cₙ * Real.rpow n (phaseProductExponent k) := by
   rcases hnarrow with ⟨d, hd⟩
 
-  refine ⟨2 * (d : ℝ) + 1, by positivity, 1, by omega, ?_⟩
+  refine ⟨10 * (d : ℝ) + 1, by positivity, 1, by omega, ?_⟩
 
   intro φ x z ws hworkspace
   dsimp only
@@ -2909,26 +2912,42 @@ lemma signedPhaseProductGateCount_unsignedView_no_recurse_case_bound
       signedPhaseProductGateCount
           (Basis := Basis) k hk ops φ ux uz hworkspace
         =
-      (regSize x + 1) * (regSize z + 1) := by
+      5 * (regSize x + 1) * (regSize z + 1) := by
     calc
       signedPhaseProductGateCount
           (Basis := Basis) k hk ops φ ux uz hworkspace
           =
-        ExtReg.width ux * ExtReg.width uz :=
+        5 * ExtReg.width ux * ExtReg.width uz :=
         signedPhaseProductGateCount_eq_direct_of_not_recurse
           (Basis := Basis)
           k hk ops φ ux uz hworkspace hno'
       _ =
-        (regSize x + 1) * (regSize z + 1) := by
+        5 * (regSize x + 1) * (regSize z + 1) := by
         simp only [ux, uz, width_phaseProdUsing_x, width_phaseProdUsing_z]
+
+  have hprod5 :
+      5 * (regSize x + 1) * (regSize z + 1)
+        ≤
+      10 * d * n := by
+    calc
+      5 * (regSize x + 1) * (regSize z + 1)
+          =
+        5 * ((regSize x + 1) * (regSize z + 1)) := by
+        ring
+      _ ≤
+        5 * (2 * d * n) :=
+        Nat.mul_le_mul_left 5 hprod
+      _ =
+        10 * d * n := by
+        ring
 
   have hlinear :
       (signedPhaseProductGateCount
           (Basis := Basis) k hk ops φ ux uz hworkspace : ℝ)
         ≤
-      (2 * (d : ℝ)) * (n : ℝ) := by
+      (10 * (d : ℝ)) * (n : ℝ) := by
     rw [hdirect]
-    exact_mod_cast hprod
+    exact_mod_cast hprod5
 
   have hnPow :
       (n : ℝ)
@@ -2937,9 +2956,9 @@ lemma signedPhaseProductGateCount_unsignedView_no_recurse_case_bound
     natCast_le_phaseProduct_rpow k hk hn'
 
   have hlinearPow :
-      (2 * (d : ℝ)) * (n : ℝ)
+      (10 * (d : ℝ)) * (n : ℝ)
         ≤
-      (2 * (d : ℝ)) *
+      (10 * (d : ℝ)) *
         Real.rpow (n : ℝ) (phaseProductExponent k) :=
     mul_le_mul_of_nonneg_left hnPow (by positivity)
 
@@ -2951,21 +2970,21 @@ lemma signedPhaseProductGateCount_unsignedView_no_recurse_case_bound
     (signedPhaseProductGateCount
       (Basis := Basis) k hk ops φ ux uz hworkspace : ℝ)
       ≤
-    (2 * (d : ℝ) + 1) *
+    (10 * (d : ℝ) + 1) *
       Real.rpow (n : ℝ) (phaseProductExponent k)
 
   calc
     (signedPhaseProductGateCount
         (Basis := Basis) k hk ops φ ux uz hworkspace : ℝ)
         ≤
-      (2 * (d : ℝ)) * (n : ℝ) :=
+      (10 * (d : ℝ)) * (n : ℝ) :=
       hlinear
     _ ≤
-      (2 * (d : ℝ)) *
+      (10 * (d : ℝ)) *
         Real.rpow (n : ℝ) (phaseProductExponent k) :=
       hlinearPow
     _ ≤
-      (2 * (d : ℝ) + 1) *
+      (10 * (d : ℝ) + 1) *
         Real.rpow (n : ℝ) (phaseProductExponent k) := by
       apply mul_le_mul_of_nonneg_right _ hpowNonneg
       linarith
