@@ -9,28 +9,36 @@ namespace Shor
 
 open LowGate
 
-private noncomputable def addBitPowersBasis
+private noncomputable def copyBitPowersBasis
     {Basis : Type u} [RegEncoding Basis]
-    (dst src : ExtReg) : List ℕ → Basis → Basis
+    (dst : ExtReg) (ctrl : ℕ) : List ℕ → Basis → Basis
   | [], b => b
   | i :: bits, b =>
-      addBitPowersBasis dst src bits
-        (addScaledBasis dst src false i b)
+      if hi : i < dst.width then
+        copyBitPowersBasis dst ctrl bits
+          (cnotBasis ctrl
+            (dst.active.get
+              ⟨i, by simpa [ExtReg.width] using hi⟩) b)
+      else
+        copyBitPowersBasis dst ctrl bits b
 
-private lemma evalL_lowerAddBitPowers_ket
+private lemma evalL_lowerCopyBitPowers_ket
     {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass qs]
-    (dst src : ExtReg) (bits : List ℕ) (b : qs.Basis) :
+    (dst : ExtReg) (ctrl : ℕ) (bits : List ℕ) (b : qs.Basis) :
     LowerGateClass.evalL (qs := qs)
-        (lowerAddBitPowers dst src bits) (qs.ket b) =
-      qs.ket (addBitPowersBasis dst src bits b) := by
+        (lowerCopyBitPowers dst ctrl bits) (qs.ket b) =
+      qs.ket (copyBitPowersBasis dst ctrl bits b) := by
   induction bits generalizing b with
   | nil =>
-      simp [lowerAddBitPowers, addBitPowersBasis,
+      simp [lowerCopyBitPowers, copyBitPowersBasis,
         LowerGateClass.evalL_id]
   | cons i bits ih =>
-      simp only [lowerAddBitPowers, LowerGateClass.evalL_seq,
-        LowerGateClass.evalL_addScaled_ket_total]
-      exact ih (addScaledBasis dst src false i b)
+      simp only [lowerCopyBitPowers, copyBitPowersBasis]
+      split
+      · simp only [LowerGateClass.evalL_seq,
+          LowerGateClass.evalL_CNOT_ket]
+        exact ih _
+      · exact ih _
 
 private lemma activeDisjoint_of_ownedDisjoint
     {x z : ExtReg} (h : x.OwnedDisjoint z) : x.ActiveDisjoint z := by
@@ -133,99 +141,6 @@ private lemma cnotBasis_writeNat_of_outside
         (qubitReg target) r hdisj _ value b
     · simp [hbit]
 
-private lemma addScaledBasis_writeNat_of_disjoint
-    {Basis : Type u} [RegEncoding Basis]
-    (dst src : ExtReg) (sh : ℕ) (r : Reg) (value : ℕ) (b : Basis)
-    (hds : dst.ActiveDisjoint src)
-    (hdr : Disjoint dst.active r)
-    (hsr : Disjoint src.active r) :
-    addScaledBasis dst src false sh (RegEncoding.writeNat r value b) =
-      RegEncoding.writeNat r value
-        (addScaledBasis dst src false sh b) := by
-  rw [addScaledBasis_eq dst src false sh _ hds,
-    addScaledBasis_eq dst src false sh b hds]
-  have hdst :
-      extToInt dst (RegEncoding.writeNat r value b) = extToInt dst b := by
-    unfold extToInt ExtReg.toNat
-    rw [RegEncoding.toNat_left_write_right dst.active r hdr b value]
-  have hsrc :
-      extToInt src (RegEncoding.writeNat r value b) = extToInt src b := by
-    unfold extToInt ExtReg.toNat
-    rw [RegEncoding.toNat_left_write_right src.active r hsr b value]
-  rw [show addScaledValue dst src false sh
-        (RegEncoding.writeNat r value b) =
-      addScaledValue dst src false sh b by
-        simp [addScaledValue, hdst, hsrc]]
-  exact RegEncoding.writeNat_comm_of_disjoint
-    dst.active r hdr _ value b
-
-private lemma addBitPowersBasis_writeNat_of_disjoint
-    {Basis : Type u} [RegEncoding Basis]
-    (dst src : ExtReg) (bits : List ℕ)
-    (r : Reg) (value : ℕ) (b : Basis)
-    (hds : dst.ActiveDisjoint src)
-    (hdr : Disjoint dst.active r)
-    (hsr : Disjoint src.active r) :
-    addBitPowersBasis dst src bits (RegEncoding.writeNat r value b) =
-      RegEncoding.writeNat r value
-        (addBitPowersBasis dst src bits b) := by
-  induction bits generalizing b with
-  | nil => rfl
-  | cons i bits ih =>
-      simp only [addBitPowersBasis]
-      rw [addScaledBasis_writeNat_of_disjoint
-        dst src i r value b hds hdr hsr]
-      exact ih (addScaledBasis dst src false i b)
-
-private lemma addBitPowersBasis_write_qubit
-    {Basis : Type u} [RegEncoding Basis]
-    (dst src : ExtReg) (bits : List ℕ) (q value : ℕ) (b : Basis)
-    (hds : dst.ActiveDisjoint src)
-    (hqdst : q ∉ dst.ownedQubits)
-    (hqsrc : q ∉ src.ownedQubits) :
-    addBitPowersBasis dst src bits
-        (RegEncoding.writeNat (qubitReg q) value b) =
-      RegEncoding.writeNat (qubitReg q) value
-        (addBitPowersBasis dst src bits b) := by
-  induction bits generalizing b with
-  | nil => rfl
-  | cons i bits ih =>
-      simp only [addBitPowersBasis]
-      rw [addScaledBasis_write_qubit dst src i q value b
-        hds hqdst hqsrc]
-      exact ih (addScaledBasis dst src false i b)
-
-private lemma addBitPowersBasis_bit_out
-    {Basis : Type u} [RegEncoding Basis]
-    (dst src : ExtReg) (bits : List ℕ) (q : ℕ) (b : Basis)
-    (hds : dst.ActiveDisjoint src)
-    (hqdst : q ∉ dst.ownedQubits) :
-    RegEncoding.bit q (addBitPowersBasis dst src bits b) =
-      RegEncoding.bit q b := by
-  induction bits generalizing b with
-  | nil => rfl
-  | cons i bits ih =>
-      simp only [addBitPowersBasis]
-      rw [ih]
-      rw [addScaledBasis_eq dst src false i b hds]
-      exact RegEncoding.bit_writeNat_out dst.active _ b q
-        (fun hmem => hqdst (List.mem_append_left _ hmem))
-
-private lemma addBitPowersBasis_bit_out_active
-    {Basis : Type u} [RegEncoding Basis]
-    (dst src : ExtReg) (bits : List ℕ) (q : ℕ) (b : Basis)
-    (hds : dst.ActiveDisjoint src)
-    (hqdst : q ∉ dst.active.qubits) :
-    RegEncoding.bit q (addBitPowersBasis dst src bits b) =
-      RegEncoding.bit q b := by
-  induction bits generalizing b with
-  | nil => rfl
-  | cons i bits ih =>
-      simp only [addBitPowersBasis]
-      rw [ih]
-      rw [addScaledBasis_eq dst src false i b hds]
-      exact RegEncoding.bit_writeNat_out dst.active _ b q hqdst
-
 private lemma writeNat_override
     {Basis : Type u} [RegEncoding Basis]
     (r : Reg) (outer inner : ℕ) (b : Basis) :
@@ -239,18 +154,6 @@ private lemma writeNat_override
       RegEncoding.bit_writeNat_out r inner b q hq,
       RegEncoding.bit_writeNat_out r outer b q hq]
 
-private lemma bit_write_qubit_zero
-    {Basis : Type u} [RegEncoding Basis]
-    (q : ℕ) (b : Basis) :
-    RegEncoding.bit q (RegEncoding.writeNat (qubitReg q) 0 b) = false := by
-  have hread := RegEncoding.toNat_writeNat_of_lt
-    (qubitReg q) 0 b (by simp [ASize])
-  have hbit := RegEncoding.bit_eq_testBit_toNat
-    (qubitReg q) (RegEncoding.writeNat (qubitReg q) 0 b)
-    (⟨0, by simp⟩ : Fin (regSize (qubitReg q)))
-  rw [hread] at hbit
-  simpa [qubitReg, Reg.singleton, Reg.get, regSize, Reg.width] using hbit
-
 private lemma bit_write_qubit_one
     {Basis : Type u} [RegEncoding Basis]
     (q : ℕ) (b : Basis) :
@@ -262,6 +165,318 @@ private lemma bit_write_qubit_one
     (⟨0, by simp⟩ : Fin (regSize (qubitReg q)))
   rw [hread] at hbit
   simpa [qubitReg, Reg.singleton, Reg.get, regSize, Reg.width] using hbit
+
+private lemma bit_cnotBasis_of_ne_target
+    {Basis : Type u} [RegEncoding Basis]
+    (ctrl target q : ℕ) (b : Basis)
+    (hq : q ≠ target) :
+    RegEncoding.bit q (cnotBasis ctrl target b) =
+      RegEncoding.bit q b := by
+  unfold cnotBasis
+  by_cases hct : ctrl = target
+  · simp [hct]
+  · simp only [hct, if_false]
+    by_cases hc : RegEncoding.bit ctrl b
+    · simp only [hc, if_true]
+      rw [RegEncoding.bit_writeNat_out]
+      simpa [qubitReg, Reg.singleton] using hq
+    · simp [hc]
+
+private lemma bit_cnotBasis_target_of_true_false
+    {Basis : Type u} [RegEncoding Basis]
+    (ctrl target : ℕ) (b : Basis)
+    (hne : ctrl ≠ target)
+    (hctrl : RegEncoding.bit ctrl b = true)
+    (htarget : RegEncoding.bit target b = false) :
+    RegEncoding.bit target (cnotBasis ctrl target b) = true := by
+  simp [cnotBasis, hne, hctrl, htarget]
+
+private lemma copyBitPowersBasis_bit_out
+    {Basis : Type u} [RegEncoding Basis]
+    (dst : ExtReg) (ctrl : ℕ) (bits : List ℕ)
+    (q : ℕ) (b : Basis)
+    (hq : q ∉ dst.active.qubits) :
+    RegEncoding.bit q (copyBitPowersBasis dst ctrl bits b) =
+      RegEncoding.bit q b := by
+  induction bits generalizing b with
+  | nil => rfl
+  | cons i bits ih =>
+      simp only [copyBitPowersBasis]
+      split
+      · rw [ih]
+        apply bit_cnotBasis_of_ne_target
+        intro heq
+        apply hq
+        rw [heq]
+        exact List.get_mem _ _
+      · exact ih _
+
+private lemma copyBitPowersBasis_bit_get_of_zero
+    {Basis : Type u} [RegEncoding Basis]
+    (dst : ExtReg) (ctrl : ℕ) (bits : List ℕ)
+    (b : Basis)
+    (hvalid : ∀ i ∈ bits, i < dst.width)
+    (hnodup : bits.Nodup)
+    (hctrlOut : ctrl ∉ dst.active.qubits)
+    (hctrl : RegEncoding.bit ctrl b = true)
+    (hzero : ∀ i (hi : i ∈ bits),
+      RegEncoding.bit
+        (dst.active.get
+          ⟨i, by simpa [ExtReg.width] using hvalid i hi⟩) b = false)
+    (j : Fin (regSize dst.active)) :
+    RegEncoding.bit (dst.active.get j)
+        (copyBitPowersBasis dst ctrl bits b) =
+      if j.1 ∈ bits then true else RegEncoding.bit (dst.active.get j) b := by
+  induction bits generalizing b with
+  | nil => simp [copyBitPowersBasis]
+  | cons i bits ih =>
+      have hi : i < dst.width := hvalid i (by simp)
+      have htailValid : ∀ t ∈ bits, t < dst.width := by
+        intro t ht
+        exact hvalid t (by simp [ht])
+      have htailNodup : bits.Nodup := by
+        exact (List.nodup_cons.mp hnodup).2
+      have hiTail : i ∉ bits := (List.nodup_cons.mp hnodup).1
+      let idx : Fin (regSize dst.active) :=
+        ⟨i, by simpa [ExtReg.width] using hi⟩
+      let target := dst.active.get idx
+      have hctrlTarget : ctrl ≠ target := by
+        intro heq
+        apply hctrlOut
+        rw [heq]
+        exact List.get_mem _ _
+      let b₁ := cnotBasis ctrl target b
+      have hctrl₁ : RegEncoding.bit ctrl b₁ = true := by
+        dsimp [b₁]
+        rw [bit_cnotBasis_of_ne_target ctrl target ctrl b hctrlTarget]
+        exact hctrl
+      have htailZero : ∀ t (ht : t ∈ bits),
+          RegEncoding.bit
+            (dst.active.get
+              ⟨t, by simpa [ExtReg.width] using htailValid t ht⟩) b₁ = false := by
+        intro t ht
+        have hti : t ≠ i := by
+          intro heq
+          apply hiTail
+          simpa [heq] using ht
+        have htargetNe :
+            dst.active.get
+                ⟨t, by simpa [ExtReg.width] using htailValid t ht⟩ ≠
+              target := by
+          intro heq
+          have hfin := dst.active.nodup.get_inj_iff.mp heq
+          exact hti (by simpa [idx] using hfin)
+        dsimp [b₁]
+        rw [bit_cnotBasis_of_ne_target ctrl target _ b htargetNe]
+        exact hzero t (by simp [ht])
+      have hrec := ih b₁ htailValid htailNodup hctrl₁ htailZero
+      simp only [copyBitPowersBasis, dif_pos hi]
+      rw [hrec]
+      by_cases hji : j.1 = i
+      · have hjidx : j = idx := Fin.ext hji
+        simp only [List.mem_cons, hji, true_or, if_true]
+        rw [if_neg hiTail]
+        rw [hjidx]
+        exact bit_cnotBasis_target_of_true_false
+          ctrl target b hctrlTarget hctrl
+          (by simpa [idx, target] using hzero i (by simp))
+      · have htargetNe : dst.active.get j ≠ target := by
+          intro heq
+          have hfin := dst.active.nodup.get_inj_iff.mp heq
+          apply hji
+          exact congrArg Fin.val hfin
+        rw [bit_cnotBasis_of_ne_target ctrl target _ b htargetNe]
+        simp [hji]
+
+private lemma mem_bitIndices_iff_testBit
+    (n i : ℕ) :
+    i ∈ n.bitIndices ↔ n.testBit i = true := by
+  induction n using Nat.binaryRec generalizing i with
+  | zero => simp
+  | bit bit n ih =>
+      cases bit
+      · cases i with
+        | zero => simp
+        | succ i =>
+          simp only [Nat.bitIndices_bit_false, List.mem_map,
+            Nat.add_left_inj, exists_eq_right, Nat.testBit_succ]
+          rw [Nat.bit_false, show (2 * n) / 2 = n by omega]
+          exact ih i
+      · cases i with
+        | zero => simp
+        | succ i =>
+          simp only [Nat.bitIndices_bit_true, List.mem_cons,
+            Nat.succ_ne_zero, false_or, List.mem_map, Nat.add_left_inj,
+            exists_eq_right, Nat.testBit_succ]
+          rw [Nat.bit_true, show (2 * n + 1) / 2 = n by omega]
+          exact ih i
+
+private lemma copyBitPowersBasis_eq_writeNat
+    {Basis : Type u} [RegEncoding Basis]
+    (N : ℕ) (dst : ExtReg) (ctrl : ℕ) (b : Basis)
+    (hN : N < ASize dst.active)
+    (hctrlOut : ctrl ∉ dst.active.qubits)
+    (hctrl : RegEncoding.bit ctrl b = true)
+    (hzero : RegEncoding.toNat dst.active b = 0) :
+    copyBitPowersBasis dst ctrl N.bitIndices b =
+      RegEncoding.writeNat dst.active N b := by
+  have hvalid : ∀ i ∈ N.bitIndices, i < dst.width := by
+    intro i hi
+    have hpow : 2 ^ i ≤ N := Nat.two_pow_le_of_mem_bitIndices hi
+    by_contra hnot
+    have hwidth : dst.width ≤ i := Nat.le_of_not_gt hnot
+    have hmono : 2 ^ dst.width ≤ 2 ^ i :=
+      Nat.pow_le_pow_right (by omega) hwidth
+    have hN' : N < 2 ^ dst.width := by
+      simpa [ASize, ExtReg.width] using hN
+    omega
+  have hzeroBits : ∀ i (hi : i ∈ N.bitIndices),
+      RegEncoding.bit
+        (dst.active.get
+          ⟨i, by simpa [ExtReg.width] using hvalid i hi⟩) b = false := by
+    intro i hi
+    have hbit := RegEncoding.bit_eq_testBit_toNat
+      dst.active b
+      ⟨i, by simpa [ExtReg.width] using hvalid i hi⟩
+    rw [hzero] at hbit
+    simpa using hbit
+  apply RegEncoding.basis_ext
+  intro q
+  by_cases hq : q ∈ dst.active.qubits
+  · obtain ⟨j, hj⟩ := List.get_of_mem hq
+    let idx : Fin (regSize dst.active) :=
+      ⟨j.1, by
+        change j.1 < dst.active.qubits.length
+        exact j.2⟩
+    have hget : dst.active.get idx = q := by
+      simpa [idx, Reg.get, regSize, Reg.width] using hj
+    have hout := copyBitPowersBasis_bit_get_of_zero
+      dst ctrl N.bitIndices b hvalid Nat.bitIndices_nodup
+      hctrlOut hctrl hzeroBits idx
+    rw [hget] at hout
+    rw [hout]
+    rw [← hget]
+    rw [RegEncoding.bit_writeNat_of_lt dst.active N b hN idx]
+    have hbase : RegEncoding.bit q b = false := by
+      have hbit := RegEncoding.bit_eq_testBit_toNat dst.active b idx
+      rw [hget, hzero] at hbit
+      simpa using hbit
+    have hbaseIdx : RegEncoding.bit (dst.active.get idx) b = false := by
+      simpa [hget] using hbase
+    rw [hbaseIdx]
+    by_cases hmem : idx.1 ∈ N.bitIndices
+    · simp [hmem, (mem_bitIndices_iff_testBit N idx.1).mp hmem]
+    · have htest : N.testBit idx.1 = false := by
+        exact Bool.eq_false_iff.mpr
+          (fun htrue => hmem ((mem_bitIndices_iff_testBit N idx.1).mpr htrue))
+      simp [hmem, htest]
+  · rw [copyBitPowersBasis_bit_out dst ctrl N.bitIndices q b hq]
+    exact (RegEncoding.bit_writeNat_out dst.active N b q hq).symm
+
+private lemma copyBitPowersBasis_writeNat_of_disjoint
+    {Basis : Type u} [RegEncoding Basis]
+    (dst : ExtReg) (ctrl : ℕ) (bits : List ℕ)
+    (r : Reg) (value : ℕ) (b : Basis)
+    (hdr : Disjoint dst.active r)
+    (hctrl : ctrl ∉ r.qubits) :
+    copyBitPowersBasis dst ctrl bits
+        (RegEncoding.writeNat r value b) =
+      RegEncoding.writeNat r value
+        (copyBitPowersBasis dst ctrl bits b) := by
+  induction bits generalizing b with
+  | nil => rfl
+  | cons i bits ih =>
+      simp only [copyBitPowersBasis]
+      split
+      · rw [cnotBasis_writeNat_of_outside ctrl
+          (dst.active.get
+            ⟨i, by simpa [ExtReg.width] using ‹i < dst.width›⟩)
+          r value b hctrl]
+        · exact ih _
+        · rw [Disjoint, List.disjoint_left] at hdr
+          exact fun hmem => hdr (List.get_mem _ _) hmem
+      · exact ih _
+
+private lemma extToInt_cnotBasis_of_target_out
+    {Basis : Type u} [RegEncoding Basis]
+    (observed : ExtReg) (ctrl target : ℕ) (b : Basis)
+    (htarget : target ∉ observed.active.qubits) :
+    extToInt observed (cnotBasis ctrl target b) =
+      extToInt observed b := by
+  unfold cnotBasis
+  by_cases hsame : ctrl = target
+  · simp [hsame]
+  · simp only [hsame, if_false]
+    by_cases hctrl : RegEncoding.bit ctrl b
+    · simp only [hctrl, if_true]
+      unfold extToInt ExtReg.toNat
+      rw [RegEncoding.toNat_left_write_right]
+      rw [Disjoint, List.disjoint_left]
+      intro q hqObserved hqTarget
+      have hq : q = target := by
+        simpa [qubitReg, Reg.singleton] using hqTarget
+      exact htarget (hq ▸ hqObserved)
+    · simp [hctrl]
+
+private lemma copyBitPowersBasis_observed
+    {Basis : Type u} [RegEncoding Basis]
+    (dst observed : ExtReg) (ctrl : ℕ) (bits : List ℕ) (b : Basis)
+    (hod : observed.ActiveDisjoint dst) :
+    extToInt observed (copyBitPowersBasis dst ctrl bits b) =
+      extToInt observed b := by
+  induction bits generalizing b with
+  | nil => rfl
+  | cons i bits ih =>
+      simp only [copyBitPowersBasis]
+      split
+      · rw [ih]
+        apply extToInt_cnotBasis_of_target_out observed ctrl _ b
+        rw [ExtReg.ActiveDisjoint, Disjoint, List.disjoint_left] at hod
+        exact fun hmem => hod hmem (List.get_mem _ _)
+      · exact ih _
+
+private lemma copyBitPowersBasis_of_ctrl_false
+    {Basis : Type u} [RegEncoding Basis]
+    (dst : ExtReg) (ctrl : ℕ) (bits : List ℕ) (b : Basis)
+    (hctrl : RegEncoding.bit ctrl b = false) :
+    copyBitPowersBasis dst ctrl bits b = b := by
+  induction bits generalizing b with
+  | nil => rfl
+  | cons i bits ih =>
+      simp only [copyBitPowersBasis]
+      split
+      · have hcnot : cnotBasis ctrl
+            (dst.active.get
+              ⟨i, by simpa [ExtReg.width] using ‹i < dst.width›⟩) b = b := by
+          simp [cnotBasis, hctrl]
+        rw [hcnot]
+        exact ih b hctrl
+      · exact ih b hctrl
+
+private lemma negateBasis_writeNat_of_disjoint
+    {Basis : Type u} [RegEncoding Basis]
+    (r : ExtReg) (observed : Reg) (value : ℕ) (b : Basis)
+    (hdisj : Disjoint r.active observed) :
+    negateBasis r (RegEncoding.writeNat observed value b) =
+      RegEncoding.writeNat observed value (negateBasis r b) := by
+  unfold negateBasis
+  have hint :
+      extToInt r (RegEncoding.writeNat observed value b) =
+        extToInt r b := by
+    unfold extToInt ExtReg.toNat
+    rw [RegEncoding.toNat_left_write_right
+      r.active observed hdisj b value]
+  rw [hint]
+  exact RegEncoding.writeNat_comm_of_disjoint
+    r.active observed hdisj _ value b
+
+private lemma negateBasis_bit_out
+    {Basis : Type u} [RegEncoding Basis]
+    (r : ExtReg) (q : ℕ) (b : Basis)
+    (hq : q ∉ r.active.qubits) :
+    RegEncoding.bit q (negateBasis r b) = RegEncoding.bit q b := by
+  unfold negateBasis
+  exact RegEncoding.bit_writeNat_out r.active _ b q hq
 
 private lemma xBasis_write_qubit
     {Basis : Type u} [RegEncoding Basis]
@@ -314,34 +529,6 @@ private lemma unit_extToInt_after_X
   · norm_num [tcDecodeWidth]
   · simp [ASize]
 
-private theorem toNat_qubitReg_eq_bit_local
-    {Basis : Type*} [RegEncoding Basis]
-    (q : ℕ) (b : Basis) :
-    RegEncoding.toNat (qubitReg q) b =
-      (RegEncoding.bit q b).toNat := by
-  let n := RegEncoding.toNat (qubitReg q) b
-  have hn : n < 2 := by
-    simpa [n, ASize] using
-      RegEncoding.toNat_lt_ASize (r := qubitReg q) (b := b)
-  have hbit : RegEncoding.bit q b = Nat.testBit n 0 := by
-    simpa [n, qubitReg, Reg.singleton, Reg.get, regSize, Reg.width] using
-      RegEncoding.bit_eq_testBit_toNat
-        (qubitReg q) b (⟨0, by simp⟩ : Fin (regSize (qubitReg q)))
-  change n = (RegEncoding.bit q b).toNat
-  rw [hbit]
-  interval_cases n <;> simp
-
-private lemma unit_extToInt_zero_of_fresh
-    {Basis : Type u} [RegEncoding Basis]
-    (scratch : ExtReg) (h : scratch.CanGrow 1) (b : Basis)
-    (hfresh : scratch.FreshFor 1 b) :
-    extToInt (constArithmeticUnit scratch h) b = 0 := by
-  have hbit : RegEncoding.bit (constArithmeticUnitQubit scratch h) b = false :=
-    unit_bit_false_of_fresh scratch h b hfresh
-  unfold extToInt ExtReg.toNat constArithmeticUnit ExtReg.ofReg ExtReg.width
-  rw [toNat_qubitReg_eq_bit_local, hbit]
-  norm_num [tcDecodeWidth]
-
 private lemma freshFor_write_qubit_of_not_owned
     {Basis : Type u} [RegEncoding Basis]
     (e : ExtReg) (n q value : ℕ) (b : Basis)
@@ -358,33 +545,6 @@ private lemma freshFor_write_qubit_of_not_owned
     simpa [qubitReg, Reg.singleton] using hpq
   subst p
   exact hq (List.mem_append_right _ (List.mem_of_mem_take hp))
-
-private lemma addBitPowersBasis_src
-    {Basis : Type u} [RegEncoding Basis]
-    (dst src : ExtReg) (bits : List ℕ) (b : Basis)
-    (hdisj : dst.ActiveDisjoint src) :
-    extToInt src (addBitPowersBasis dst src bits b) = extToInt src b := by
-  induction bits generalizing b with
-  | nil => rfl
-  | cons i bits ih =>
-      simp only [addBitPowersBasis]
-      rw [ih]
-      exact extToInt_addScaledBasis_src dst src false i b hdisj
-
-private lemma addBitPowersBasis_observed
-    {Basis : Type u} [RegEncoding Basis]
-    (dst src observed : ExtReg) (bits : List ℕ) (b : Basis)
-    (hds : dst.ActiveDisjoint src)
-    (hod : observed.ActiveDisjoint dst) :
-    extToInt observed (addBitPowersBasis dst src bits b) =
-      extToInt observed b := by
-  induction bits generalizing b with
-  | nil => rfl
-  | cons i bits ih =>
-      simp only [addBitPowersBasis]
-      rw [ih]
-      exact extToInt_addScaledBasis_of_activeDisjoint
-        dst src observed false i b hds hod
 
 private lemma fits_neg_nat_of_lt_half
     {w n : ℕ} (hw : 0 < w) (hn : n < 2 ^ (w - 1)) :
@@ -472,132 +632,6 @@ private lemma addScaledBasis_eq_writeNat_mod_sub
   rw [tcModWidth_tcDecodeWidth_sub (dst.toNat_lt b)]
   rfl
 
-private lemma addBitPowersBasis_neg_sum
-    {Basis : Type u} [RegEncoding Basis]
-    (dst src : ExtReg) (bits : List ℕ) (b : Basis)
-    (hdisj : dst.ActiveDisjoint src)
-    (hw : 0 < dst.width)
-    (acc : ℕ)
-    (hdst : extToInt dst b = -(acc : ℤ))
-    (hsrc : extToInt src b = -1)
-    (hbound :
-      acc + (bits.map (fun i => 2 ^ i)).sum < 2 ^ (dst.width - 1)) :
-    extToInt dst (addBitPowersBasis dst src bits b) =
-      -((acc + (bits.map (fun i => 2 ^ i)).sum : ℕ) : ℤ) := by
-  induction bits generalizing b acc with
-  | nil =>
-      simpa using hdst
-  | cons i bits ih =>
-      let b₁ := addScaledBasis dst src false i b
-      have hstepBound : acc + 2 ^ i < 2 ^ (dst.width - 1) := by
-        have hbound' :
-            acc + 2 ^ i + (bits.map (fun j => 2 ^ j)).sum <
-              2 ^ (dst.width - 1) := by
-          simpa [Nat.add_assoc] using hbound
-        omega
-      have hstepFit : FitsSignedWidth dst.width
-          (-((acc + 2 ^ i : ℕ) : ℤ)) :=
-        fits_neg_nat_of_lt_half hw hstepBound
-      have hb₁ : extToInt dst b₁ = -((acc + 2 ^ i : ℕ) : ℤ) := by
-        dsimp [b₁]
-        rw [extToInt_addScaledBasis_dst dst src false i b hdisj]
-        simp [addScaledValue, hdst, hsrc]
-        have harg :
-            -(acc : ℤ) + -(2 : ℤ) ^ i =
-              -((acc + 2 ^ i : ℕ) : ℤ) := by
-          push_cast
-          ring
-        rw [harg]
-        rw [tcWrapInt_eq_of_fits hstepFit.1 hstepFit]
-        push_cast
-        ring
-      have hsrc₁ : extToInt src b₁ = -1 := by
-        dsimp [b₁]
-        rw [extToInt_addScaledBasis_src dst src false i b hdisj, hsrc]
-      have htailBound :
-          (acc + 2 ^ i) + (bits.map (fun j => 2 ^ j)).sum <
-            2 ^ (dst.width - 1) := by
-        simpa [Nat.add_assoc] using hbound
-      simpa [addBitPowersBasis, Nat.add_assoc] using
-        ih b₁ (acc + 2 ^ i) hb₁ hsrc₁ htailBound
-
-private lemma addBitPowersBasis_nat_sub_sum
-    {Basis : Type u} [RegEncoding Basis]
-    (dst src : ExtReg) (bits : List ℕ) (b : Basis)
-    (hdisj : dst.ActiveDisjoint src)
-    (hw : 0 < dst.width)
-    (value acc : ℕ)
-    (hdst : extToInt dst b = (value - acc : ℕ))
-    (hsrc : extToInt src b = -1)
-    (hbound : acc + (bits.map (fun i => 2 ^ i)).sum ≤ value)
-    (hvalue : value < 2 ^ (dst.width - 1)) :
-    extToInt dst (addBitPowersBasis dst src bits b) =
-      (value - (acc + (bits.map (fun i => 2 ^ i)).sum) : ℕ) := by
-  induction bits generalizing b acc with
-  | nil =>
-      simpa using hdst
-  | cons i bits ih =>
-      let b₁ := addScaledBasis dst src false i b
-      have hstepLe : acc + 2 ^ i ≤ value := by
-        have hbound' :
-            acc + 2 ^ i + (bits.map (fun j => 2 ^ j)).sum ≤ value := by
-          simpa [Nat.add_assoc] using hbound
-        omega
-      have hstepLt : value - (acc + 2 ^ i) < 2 ^ (dst.width - 1) := by
-        exact lt_of_le_of_lt (Nat.sub_le value _) hvalue
-      have hstepFit : FitsSignedWidth dst.width
-          ((value - (acc + 2 ^ i) : ℕ) : ℤ) :=
-        fits_nat_of_lt_half hw hstepLt
-      have hb₁ :
-          extToInt dst b₁ = (value - (acc + 2 ^ i) : ℕ) := by
-        dsimp [b₁]
-        rw [extToInt_addScaledBasis_dst dst src false i b hdisj]
-        simp only [addScaledValue, Bool.false_eq_true, if_false, one_mul,
-          hdst, hsrc]
-        have harg :
-            ((value - acc : ℕ) : ℤ) + (2 : ℤ) ^ i * -1 =
-              ((value - (acc + 2 ^ i) : ℕ) : ℤ) := by
-          have haccLe : acc ≤ value := by omega
-          rw [Nat.cast_sub haccLe, Nat.cast_sub hstepLe]
-          push_cast
-          ring
-        rw [harg]
-        exact tcWrapInt_eq_of_fits hstepFit.1 hstepFit
-      have hsrc₁ : extToInt src b₁ = -1 := by
-        dsimp [b₁]
-        rw [extToInt_addScaledBasis_src dst src false i b hdisj, hsrc]
-      have htailBound :
-          (acc + 2 ^ i) + (bits.map (fun j => 2 ^ j)).sum ≤ value := by
-        simpa [Nat.add_assoc] using hbound
-      simpa [addBitPowersBasis, Nat.add_assoc] using
-        ih b₁ (acc + 2 ^ i) hb₁ hsrc₁ htailBound
-
-private lemma addBitPowersBasis_zero_source
-    {Basis : Type u} [RegEncoding Basis]
-    (dst src : ExtReg) (bits : List ℕ) (b : Basis)
-    (hdisj : dst.ActiveDisjoint src)
-    (hw : 0 < dst.width)
-    (value : ℕ)
-    (hdst : extToInt dst b = (value : ℤ))
-    (hsrc : extToInt src b = 0)
-    (hvalue : value < 2 ^ (dst.width - 1)) :
-    extToInt dst (addBitPowersBasis dst src bits b) = (value : ℤ) := by
-  induction bits generalizing b with
-  | nil => exact hdst
-  | cons i bits ih =>
-      let b₁ := addScaledBasis dst src false i b
-      have hfit : FitsSignedWidth dst.width (value : ℤ) :=
-        fits_nat_of_lt_half hw hvalue
-      have hb₁ : extToInt dst b₁ = (value : ℤ) := by
-        dsimp [b₁]
-        rw [extToInt_addScaledBasis_dst dst src false i b hdisj]
-        simp [addScaledValue, hdst, hsrc,
-          tcWrapInt_eq_of_fits hfit.1 hfit]
-      have hsrc₁ : extToInt src b₁ = 0 := by
-        dsimp [b₁]
-        rw [extToInt_addScaledBasis_src dst src false i b hdisj, hsrc]
-      simpa [addBitPowersBasis] using ih b₁ hb₁ hsrc₁
-
 private lemma extToInt_writeNat_of_lt_signed
     {Basis : Type u} [RegEncoding Basis]
     (e : ExtReg) (value : ℕ) (b : Basis)
@@ -623,96 +657,6 @@ private lemma toNat_eq_of_extToInt_eq_local
     (ExtReg.toNat_lt e b₁) (ExtReg.toNat_lt e b₂)
   simpa [extToInt] using h
 
-private lemma bit_eq_of_toNat_eq_on_reg_local
-    {Basis : Type u} [RegEncoding Basis]
-    {r : Reg} {b₁ b₂ : Basis} {q : ℕ}
-    (hNat : RegEncoding.toNat r b₁ = RegEncoding.toNat r b₂)
-    (hq : q ∈ r.qubits) :
-    RegEncoding.bit q b₁ = RegEncoding.bit q b₂ := by
-  calc
-    RegEncoding.bit q b₁ =
-        RegEncoding.bit q
-          (RegEncoding.writeNat r (RegEncoding.toNat r b₁) b₁) := by
-      rw [RegEncoding.writeNat_toNat]
-    _ = RegEncoding.bit q
-          (RegEncoding.writeNat r (RegEncoding.toNat r b₂) b₂) := by
-      simpa [hNat] using
-        (RegEncoding.bit_writeNat_in
-          (r := r) (v := RegEncoding.toNat r b₁)
-          (b₁ := b₁) (b₂ := b₂) (q := q) hq)
-    _ = RegEncoding.bit q b₂ := by
-      rw [RegEncoding.writeNat_toNat]
-
-private lemma addBitPowersBasis_eq_writeNat_of_value
-    {Basis : Type u} [RegEncoding Basis]
-    (dst src : ExtReg) (bits : List ℕ) (b : Basis)
-    (hdisj : dst.ActiveDisjoint src)
-    (value : ℕ)
-    (hout : extToInt dst (addBitPowersBasis dst src bits b) = (value : ℤ))
-    (hvalue : value < 2 ^ (dst.width - 1))
-    (hpos : 0 < dst.width) :
-    addBitPowersBasis dst src bits b =
-      RegEncoding.writeNat dst.active value b := by
-  let bout := addBitPowersBasis dst src bits b
-  let btarget := RegEncoding.writeNat dst.active value b
-  have htarget : extToInt dst btarget = (value : ℤ) := by
-    simpa [btarget] using extToInt_writeNat_of_lt_signed
-      dst value b hvalue hpos
-  have hNat : ExtReg.toNat dst bout = ExtReg.toNat dst btarget := by
-    apply toNat_eq_of_extToInt_eq_local
-    simp [bout, btarget, hout, htarget]
-  apply RegEncoding.basis_ext
-  intro q
-  by_cases hq : q ∈ dst.active.qubits
-  · exact bit_eq_of_toNat_eq_on_reg_local hNat hq
-  · dsimp [bout, btarget]
-    rw [addBitPowersBasis_bit_out_active dst src bits q b hdisj hq]
-    exact (RegEncoding.bit_writeNat_out dst.active value b q hq).symm
-
-private lemma writeNat_grow_one_eq_writeNat_of_fresh
-    {Basis : Type u} [RegEncoding Basis]
-    (e : ExtReg) (value : ℕ) (b : Basis)
-    (hfresh : e.FreshFor 1 b)
-    (hvalue : value < ASize e.active) :
-    RegEncoding.writeNat (e.grow 1).active value b =
-      RegEncoding.writeNat e.active value b := by
-  let hdisj : Disjoint e.active (e.newBits 1) := by
-    have h := e.active_reserve_disjoint
-    rw [Disjoint, List.disjoint_left] at h ⊢
-    intro q hqActive hqNew
-    exact h hqActive (List.mem_of_mem_take hqNew)
-  let grownActive := Reg.append e.active (e.newBits 1) hdisj
-  have hgrow : (e.grow 1).active = grownActive := by rfl
-  rw [hgrow]
-  let m : SplitPoint grownActive :=
-    ⟨regSize e.active, by
-      simp [grownActive, regSize, Reg.width, Reg.append]⟩
-  have hleft : splitLeft grownActive m = e.active := by
-    simp [grownActive, m]
-  have hright : splitRight grownActive m = e.newBits 1 := by
-    simp [grownActive, m]
-  have hhigh : 0 < ASize (splitRight grownActive m) := by
-    rw [hright]
-    exact Nat.two_pow_pos _
-  have hsplit := RegEncoding.writeNat_split
-    grownActive m 0 value b
-    (by simpa [hleft] using hvalue) hhigh
-  rw [hleft, hright] at hsplit
-  simp only [Nat.mul_zero, Nat.add_zero] at hsplit
-  have hnewZero :
-      RegEncoding.toNat (e.newBits 1)
-          (RegEncoding.writeNat e.active value b) = 0 := by
-    have hread := RegEncoding.toNat_left_write_right
-      (e.newBits 1) e.active (Disjoint.symm hdisj) b value
-    simpa [ExtReg.FreshFor, FreshZero] using hread.trans hfresh
-  have hzeroWrite :
-      RegEncoding.writeNat (e.newBits 1) 0
-          (RegEncoding.writeNat e.active value b) =
-        RegEncoding.writeNat e.active value b := by
-    rw [← hnewZero]
-    exact RegEncoding.writeNat_toNat _ _
-  exact hsplit.trans hzeroWrite
-
 private lemma evalL_lowerPrepareNegConst_ket
     {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass qs]
     (N : ℕ) (scratch : ExtReg) (hcap : scratch.CanGrow 1)
@@ -724,7 +668,8 @@ private lemma evalL_lowerPrepareNegConst_ket
     let q := constArithmeticUnitQubit scratch hcap
     let unit := constArithmeticUnit scratch hcap
     let bX := RegEncoding.writeNat (qubitReg q) 1 b
-    let bout := addBitPowersBasis scratch unit N.bitIndices bX
+    let bcopy := copyBitPowersBasis scratch q N.bitIndices bX
+    let bout := negateBasis scratch bcopy
     LowerGateClass.evalL (qs := qs)
         (lowerPrepareNegConst N scratch hcap) (qs.ket b) = qs.ket bout ∧
       extToInt scratch bout = -(N : ℤ) ∧
@@ -733,7 +678,8 @@ private lemma evalL_lowerPrepareNegConst_ket
   let q := constArithmeticUnitQubit scratch hcap
   let unit := constArithmeticUnit scratch hcap
   let bX := RegEncoding.writeNat (qubitReg q) 1 b
-  let bout := addBitPowersBasis scratch unit N.bitIndices bX
+  let bcopy := copyBitPowersBasis scratch q N.bitIndices bX
+  let bout := negateBasis scratch bcopy
   have hbit : RegEncoding.bit q b = false := by
     exact unit_bit_false_of_fresh scratch hcap b hfresh
   have hdisj : scratch.ActiveDisjoint unit := by
@@ -744,25 +690,60 @@ private lemma evalL_lowerPrepareNegConst_ket
     simpa [bX, unit, constArithmeticUnit, ExtReg.ofReg, hscratch] using hx
   have hunitX : extToInt unit bX = -1 := by
     exact unit_extToInt_after_X scratch hcap b
-  have hbound :
-      0 + (N.bitIndices.map (fun i => 2 ^ i)).sum <
-        2 ^ (scratch.width - 1) := by
-    simpa using hN
+  have hqOut : q ∉ scratch.active.qubits := by
+    intro hq
+    rw [ExtReg.ActiveDisjoint, Disjoint, List.disjoint_left] at hdisj
+    apply hdisj hq
+    simp [unit, q, constArithmeticUnit, ExtReg.ofReg,
+      qubitReg, Reg.singleton]
+  have hNFull : N < ASize scratch.active := by
+    have hpow : 2 ^ (scratch.width - 1) ≤ 2 ^ scratch.width :=
+      Nat.pow_le_pow_right (by omega) (Nat.sub_le _ _)
+    exact lt_of_lt_of_le hN
+      (by simpa [ASize, ExtReg.width] using hpow)
+  let bzero := RegEncoding.writeNat scratch.active 0 b
+  have hbzeroInt : extToInt scratch bzero = 0 := by
+    simpa [bzero] using
+      extToInt_writeNat_of_lt_signed scratch 0 b (by positivity) hpos
+  have hscratchNatX : RegEncoding.toNat scratch.active bX = 0 := by
+    have hnat := toNat_eq_of_extToInt_eq_local
+      (e := scratch) (b₁ := bX) (b₂ := bzero)
+      (hscratchX.trans hbzeroInt.symm)
+    rw [show ExtReg.toNat scratch bzero = 0 by
+      dsimp [ExtReg.toNat, bzero]
+      exact RegEncoding.toNat_writeNat_of_lt
+        scratch.active 0 b
+          (by simp [ASize])] at hnat
+    exact hnat
+  have hcopyEq :
+      bcopy = RegEncoding.writeNat scratch.active N bX := by
+    dsimp [bcopy]
+    exact copyBitPowersBasis_eq_writeNat
+      N scratch q bX hNFull hqOut
+        (bit_write_qubit_one q b) hscratchNatX
+  have hcopyInt : extToInt scratch bcopy = (N : ℤ) := by
+    rw [hcopyEq]
+    exact extToInt_writeNat_of_lt_signed scratch N bX hN hpos
   have hout : extToInt scratch bout = -(N : ℤ) := by
     dsimp [bout]
-    have := addBitPowersBasis_neg_sum
-      scratch unit N.bitIndices bX hdisj hpos 0 hscratchX hunitX hbound
-    simpa using this
+    rw [extToInt_negateBasis, hcopyInt]
+    exact tcWrapInt_eq_of_fits hpos
+      (fits_neg_nat_of_lt_half hpos hN)
   have hunitOut : extToInt unit bout = -1 := by
     dsimp [bout]
-    rw [addBitPowersBasis_src scratch unit N.bitIndices bX hdisj,
-      hunitX]
+    rw [extToInt_negateBasis_of_activeDisjoint
+      scratch unit bcopy (Disjoint.symm hdisj)]
+    dsimp [bcopy]
+    rw [copyBitPowersBasis_observed
+      scratch unit q N.bitIndices bX (Disjoint.symm hdisj), hunitX]
   refine ⟨?_, hout, hunitOut⟩
   simp only [lowerPrepareNegConst, LowerGateClass.evalL_seq,
     LowerGateClass.evalL_X_ket]
   rw [hbit]
-  simpa [lowerAddConstFromUnit, bX] using
-    evalL_lowerAddBitPowers_ket scratch unit N.bitIndices bX
+  simp only [lowerCopyConstFromUnit]
+  rw [evalL_lowerCopyBitPowers_ket]
+  rw [LowerGateClass.evalL_negate_ket_total]
+  rfl
 
 private lemma constUnit_ne_of_not_owned
     (scratch : ExtReg) (hcap : scratch.CanGrow 1)
@@ -797,37 +778,35 @@ private lemma evalL_lowerPrepareNegConst_write_qubit
     (target value : ℕ) (b : qs.Basis)
     (htarget : target ∉ scratch.ownedQubits) :
     let q := constArithmeticUnitQubit scratch hcap
-    let unit := constArithmeticUnit scratch hcap
     let bX := RegEncoding.writeNat (qubitReg q)
       (if RegEncoding.bit q b then 0 else 1) b
-    let bout := addBitPowersBasis scratch unit N.bitIndices bX
+    let bcopy := copyBitPowersBasis scratch q N.bitIndices bX
+    let bout := negateBasis scratch bcopy
     LowerGateClass.evalL (qs := qs)
         (lowerPrepareNegConst N scratch hcap)
         (qs.ket (RegEncoding.writeNat (qubitReg target) value b)) =
       qs.ket (RegEncoding.writeNat (qubitReg target) value bout) := by
   dsimp
   let q := constArithmeticUnitQubit scratch hcap
-  let unit := constArithmeticUnit scratch hcap
   let bX := RegEncoding.writeNat (qubitReg q)
     (if RegEncoding.bit q b then 0 else 1) b
-  let bout := addBitPowersBasis scratch unit N.bitIndices bX
+  let bcopy := copyBitPowersBasis scratch q N.bitIndices bX
+  let bout := negateBasis scratch bcopy
   have hne : q ≠ target := constUnit_ne_of_not_owned scratch hcap target htarget
-  have hqScratch : target ∉ scratch.ownedQubits := htarget
-  have hqUnit : target ∉ unit.ownedQubits := by
-    intro hmem
-    have heq : target = q := by
-      simpa [unit, constArithmeticUnit, ExtReg.ofReg,
-        ExtReg.ownedQubits, qubitReg, Reg.singleton, Reg.empty] using hmem
-    exact hne heq.symm
-  have hdisj : scratch.ActiveDisjoint unit :=
-    scratch_unit_activeDisjoint scratch hcap
+  have hdisj : Disjoint scratch.active (qubitReg target) :=
+    active_qubit_disjoint_of_not_owned scratch target htarget
+  have hctrlOut : q ∉ (qubitReg target).qubits := by
+    simpa [qubitReg, Reg.singleton] using hne
   simp only [lowerPrepareNegConst, LowerGateClass.evalL_seq,
     LowerGateClass.evalL_X_ket]
   rw [xBasis_write_qubit q target value b hne]
-  simp only [lowerAddConstFromUnit]
-  rw [evalL_lowerAddBitPowers_ket]
-  rw [addBitPowersBasis_write_qubit scratch unit N.bitIndices
-    target value bX hdisj hqScratch hqUnit]
+  simp only [lowerCopyConstFromUnit]
+  rw [evalL_lowerCopyBitPowers_ket]
+  rw [copyBitPowersBasis_writeNat_of_disjoint
+    scratch q N.bitIndices (qubitReg target) value bX hdisj hctrlOut]
+  rw [LowerGateClass.evalL_negate_ket_total]
+  rw [negateBasis_writeNat_of_disjoint
+    scratch (qubitReg target) value bcopy hdisj]
 
 private lemma testBit_top_eq_decide_ge
     {w value : ℕ} (hvalue : value < 2 ^ (w + 1)) :
@@ -957,7 +936,8 @@ theorem evalL_lowerCmpGeConst_ket
     LowGate.zeroDealloc data 1
   let middle := LowGate.X flag ;; LowGate.CNOT sign flag
   let bX := RegEncoding.writeNat (qubitReg q) 1 b
-  let bprep := addBitPowersBasis scratch unit N.bitIndices bX
+  let bcopy := copyBitPowersBasis scratch q N.bitIndices bX
+  let bprep := negateBasis scratch bcopy
   let bdiff := addScaledBasis scratch (data.grow 1) false 0 bprep
   let dataValue := RegEncoding.toNat data.active b
   let flagValue :=
@@ -991,9 +971,9 @@ theorem evalL_lowerCmpGeConst_ket
     hclean.2.1 hclean.2.2 h.scratch_positive h.constant_fits
   have hprepEval :
       LowerGateClass.evalL (qs := qs) prep (qs.ket b) = qs.ket bprep := by
-    simpa [prep, bprep, bX, q, unit] using hprep.1
+    simpa [prep, bprep, bcopy, bX, q, unit] using hprep.1
   have hprepScratch : extToInt scratch bprep = -(N : ℤ) := by
-    simpa [bprep, bX, q, unit] using hprep.2.1
+    simpa [bprep, bcopy, bX, q, unit] using hprep.2.1
 
   have hdataAtB : extToInt (data.grow 1) b = (dataValue : ℤ) := by
     simpa [dataValue, ExtReg.toNat] using
@@ -1005,10 +985,13 @@ theorem evalL_lowerCmpGeConst_ket
     simpa [bX, unit, constArithmeticUnit, ExtReg.ofReg, q, hdataAtB] using hx
   have hdataAtPrep :
       extToInt (data.grow 1) bprep = (dataValue : ℤ) := by
-    have hx := addBitPowersBasis_observed
-      scratch unit (data.grow 1) N.bitIndices bX
-      hscratchUnit hdataScratchGrow
-    simpa [bprep, hdataAtBX] using hx
+    dsimp [bprep]
+    rw [extToInt_negateBasis_of_activeDisjoint
+      scratch (data.grow 1) bcopy hdataScratchGrow]
+    dsimp [bcopy]
+    rw [copyBitPowersBasis_observed
+      scratch (data.grow 1) q N.bitIndices bX hdataScratchGrow,
+      hdataAtBX]
 
   have hdataBound : dataValue < 2 ^ data.width := by
     simpa [dataValue, ExtReg.width, ASize] using
@@ -1067,8 +1050,11 @@ theorem evalL_lowerCmpGeConst_ket
     simpa [qubitReg, Reg.singleton] using hflagUnitNe.symm
   have hflagPrep : RegEncoding.bit flag bprep = RegEncoding.bit flag b := by
     dsimp [bprep]
-    rw [addBitPowersBasis_bit_out scratch unit N.bitIndices flag bX
-      hscratchUnit h.flag_not_scratch]
+    rw [negateBasis_bit_out scratch flag bcopy
+      (fun hmem => h.flag_not_scratch (List.mem_append_left _ hmem))]
+    dsimp [bcopy]
+    rw [copyBitPowersBasis_bit_out scratch q N.bitIndices flag bX
+      (fun hmem => h.flag_not_scratch (List.mem_append_left _ hmem))]
     exact hflagBX
   have hflagDiff : RegEncoding.bit flag bdiff = RegEncoding.bit flag b := by
     dsimp [bdiff]
@@ -1107,11 +1093,11 @@ theorem evalL_lowerCmpGeConst_ket
     have hprepBout' :
         LowerGateClass.evalL (qs := qs) prep (qs.ket bout) =
           qs.ket (RegEncoding.writeNat (qubitReg flag) flagValue bprep) := by
-      simpa [prep, bout, bprep, bX, unit, q, hunitBit] using hprepBout
+      simpa [prep, bout, bprep, bcopy, bX, unit, q, hunitBit] using hprepBout
     rw [hprepBout']
     rw [hdiffEval]
     apply congrArg qs.ket
-    simpa [bdiff, bprep, bX, unit, q] using
+    simpa [bdiff, bprep, bcopy, bX, unit, q] using
       (addScaledBasis_write_qubit
         scratch (data.grow 1) 0 flag flagValue bprep
         hscratchDataGrow h.flag_not_scratch
@@ -1190,9 +1176,11 @@ theorem evalL_lowerCSubConst_ket
   let unit := constArithmeticUnit scratch h.scratch_can_grow
   let prep :=
     LowGate.CNOT flag q ;;
-    lowerAddConstFromUnit N scratch unit
+    lowerCopyConstFromUnit N scratch q ;;
+    LowGate.Negate scratch
   let bctrl := cnotBasis flag q b
-  let bprep := addBitPowersBasis scratch unit N.bitIndices bctrl
+  let bcopy := copyBitPowersBasis scratch q N.bitIndices bctrl
+  let bprep := negateBasis scratch bcopy
   let dataValue := data.toNat b
   let result :=
     if RegEncoding.bit flag b then
@@ -1233,13 +1221,25 @@ theorem evalL_lowerCSubConst_ket
   have hflagOutside : flag ∉ data.active.qubits := by
     intro hmem
     exact h.flag_not_data (List.mem_append_left _ hmem)
+  have hqOutsideScratch : q ∉ scratch.active.qubits := by
+    intro hmem
+    rw [ExtReg.ActiveDisjoint, Disjoint, List.disjoint_left] at hscratchUnit
+    apply hscratchUnit hmem
+    simp [unit, q, constArithmeticUnit, ExtReg.ofReg,
+      qubitReg, Reg.singleton]
+  have hNFull : N < ASize scratch.active := by
+    have hpow : 2 ^ (scratch.width - 1) ≤ 2 ^ scratch.width :=
+      Nat.pow_le_pow_right (by omega) (Nat.sub_le _ _)
+    exact lt_of_lt_of_le h.constant_fits
+      (by simpa [ASize, ExtReg.width] using hpow)
 
   have hprepEval :
       LowerGateClass.evalL (qs := qs) prep (qs.ket b) =
         qs.ket bprep := by
     simp only [prep, LowerGateClass.evalL_seq,
-      LowerGateClass.evalL_CNOT_ket, lowerAddConstFromUnit]
-    rw [evalL_lowerAddBitPowers_ket]
+      LowerGateClass.evalL_CNOT_ket, lowerCopyConstFromUnit]
+    rw [evalL_lowerCopyBitPowers_ket]
+    rw [LowerGateClass.evalL_negate_ket_total]
 
   have hscratchPrep :
       extToInt scratch bprep =
@@ -1254,30 +1254,52 @@ theorem evalL_lowerCSubConst_ket
           unit scratch 1 b hscratchUnit
         simpa [unit, q, constArithmeticUnit, ExtReg.ofReg,
           hclean.2.1] using hx
-      have hunitCtrl : extToInt unit bctrl = -1 := by
-        simpa [hctrl, unit, q] using
-          unit_extToInt_after_X scratch h.scratch_can_grow b
-      have hbound :
-          0 + (N.bitIndices.map (fun i => 2 ^ i)).sum <
-            2 ^ (scratch.width - 1) := by
-        simpa using h.constant_fits
-      have hneg := addBitPowersBasis_neg_sum
-        scratch unit N.bitIndices bctrl hscratchUnit
-        h.scratch_positive 0 hscratchCtrl hunitCtrl hbound
-      simpa [bprep, hflag] using hneg
+      let bzero := RegEncoding.writeNat scratch.active 0 bctrl
+      have hbzeroInt : extToInt scratch bzero = 0 := by
+        simpa [bzero] using extToInt_writeNat_of_lt_signed
+          scratch 0 bctrl (by positivity) h.scratch_positive
+      have hscratchNatCtrl :
+          RegEncoding.toNat scratch.active bctrl = 0 := by
+        have hnat := toNat_eq_of_extToInt_eq_local
+          (e := scratch) (b₁ := bctrl) (b₂ := bzero)
+          (hscratchCtrl.trans hbzeroInt.symm)
+        rw [show ExtReg.toNat scratch bzero = 0 by
+          dsimp [ExtReg.toNat, bzero]
+          exact RegEncoding.toNat_writeNat_of_lt
+            scratch.active 0 bctrl
+              (by simp [ASize])] at hnat
+        exact hnat
+      have hcopyEq :
+          bcopy = RegEncoding.writeNat scratch.active N bctrl := by
+        dsimp [bcopy]
+        exact copyBitPowersBasis_eq_writeNat
+          N scratch q bctrl hNFull hqOutsideScratch
+            (by rw [hctrl]; exact bit_write_qubit_one q b)
+            hscratchNatCtrl
+      have hcopyInt : extToInt scratch bcopy = (N : ℤ) := by
+        rw [hcopyEq]
+        exact extToInt_writeNat_of_lt_signed scratch N bctrl
+          h.constant_fits h.scratch_positive
+      dsimp [bprep]
+      rw [extToInt_negateBasis, hcopyInt]
+      simpa [hflag] using tcWrapInt_eq_of_fits h.scratch_positive
+        (fits_neg_nat_of_lt_half h.scratch_positive h.constant_fits)
     · have hflagFalse : RegEncoding.bit flag b = false :=
         Bool.eq_false_iff.mpr hflag
       have hctrl : bctrl = b := by
         simp [bctrl, cnotBasis, hflagNeQ, hflagFalse]
-      have hunitZero : extToInt unit bctrl = 0 := by
-        rw [hctrl]
-        exact unit_extToInt_zero_of_fresh
-          scratch h.scratch_can_grow b hclean.2.2
-      have hzero := addBitPowersBasis_zero_source
-        scratch unit N.bitIndices bctrl hscratchUnit
-        h.scratch_positive 0 (by simpa [hctrl] using hclean.2.1)
-        hunitZero (by positivity)
-      simpa [bprep, hflagFalse] using hzero
+      have hqCtrl : RegEncoding.bit q bctrl = false := by
+        simpa [hctrl] using hunitBit
+      have hcopyEq : bcopy = bctrl := by
+        dsimp [bcopy]
+        exact copyBitPowersBasis_of_ctrl_false
+          scratch q N.bitIndices bctrl hqCtrl
+      have hfit : FitsSignedWidth scratch.width (0 : ℤ) :=
+        fits_nat_of_lt_half h.scratch_positive (n := 0) (by positivity)
+      dsimp [bprep]
+      rw [extToInt_negateBasis, hcopyEq, hctrl, hclean.2.1]
+      simpa [hflagFalse] using
+        tcWrapInt_eq_of_fits h.scratch_positive hfit
 
   have hdataCtrl : extToInt data bctrl = extToInt data b := by
     by_cases hflag : RegEncoding.bit flag b = true
@@ -1294,10 +1316,12 @@ theorem evalL_lowerCSubConst_ket
 
   have hdataPrepInt : extToInt data bprep = extToInt data b := by
     calc
-      extToInt data bprep = extToInt data bctrl := by
-        exact addBitPowersBasis_observed
-          scratch unit data N.bitIndices bctrl
-          hscratchUnit hdataScratch
+      extToInt data bprep = extToInt data bcopy := by
+        exact extToInt_negateBasis_of_activeDisjoint
+          scratch data bcopy hdataScratch
+      _ = extToInt data bctrl := by
+        exact copyBitPowersBasis_observed
+          scratch data q N.bitIndices bctrl hdataScratch
       _ = extToInt data b := hdataCtrl
 
   have hdataPrepNat : data.toNat bprep = dataValue := by
@@ -1319,10 +1343,15 @@ theorem evalL_lowerCSubConst_ket
   have hflagPrep :
       RegEncoding.bit flag bprep = RegEncoding.bit flag b := by
     calc
-      RegEncoding.bit flag bprep = RegEncoding.bit flag bctrl := by
-        exact addBitPowersBasis_bit_out
-          scratch unit N.bitIndices flag bctrl
-          hscratchUnit h.flag_not_scratch
+      RegEncoding.bit flag bprep = RegEncoding.bit flag bcopy := by
+        exact negateBasis_bit_out scratch flag bcopy
+          (fun hmem => h.flag_not_scratch
+            (List.mem_append_left _ hmem))
+      _ = RegEncoding.bit flag bctrl := by
+        exact copyBitPowersBasis_bit_out
+          scratch q N.bitIndices flag bctrl
+          (fun hmem => h.flag_not_scratch
+            (List.mem_append_left _ hmem))
       _ = RegEncoding.bit flag b := hflagCtrl
 
   have hmiddle :
@@ -1361,13 +1390,16 @@ theorem evalL_lowerCSubConst_ket
           (qs.ket (RegEncoding.writeNat data.active value b)) =
         qs.ket (RegEncoding.writeNat data.active value bprep) := by
     simp only [prep, LowerGateClass.evalL_seq,
-      LowerGateClass.evalL_CNOT_ket, lowerAddConstFromUnit]
+      LowerGateClass.evalL_CNOT_ket, lowerCopyConstFromUnit]
     rw [cnotBasis_writeNat_of_outside
       flag q data.active value b hflagOutside hqOutside]
-    rw [evalL_lowerAddBitPowers_ket]
-    rw [addBitPowersBasis_writeNat_of_disjoint
-      scratch unit N.bitIndices data.active value bctrl
-      hscratchUnit hscratchData hunitData]
+    rw [evalL_lowerCopyBitPowers_ket]
+    rw [copyBitPowersBasis_writeNat_of_disjoint
+      scratch q N.bitIndices data.active value bctrl
+      hscratchData hqOutside]
+    rw [LowerGateClass.evalL_negate_ket_total]
+    rw [negateBasis_writeNat_of_disjoint
+      scratch data.active value bcopy hscratchData]
 
   have hprepBout :
       LowerGateClass.evalL (qs := qs) prep (qs.ket bout) =

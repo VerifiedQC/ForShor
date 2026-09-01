@@ -11,7 +11,7 @@ open Filter
 This file assembles the component bounds for PhaseProduct, controlled
 PhaseProduct, QFT, controlled modular multiplication, modular exponentiation,
 and the full order-finding circuit. The final theorems package the asymptotic
-`O(n^(3+ε))` gate-count bound and show that a suitable interpolation program
+`O(n^(2+ε))` gate-count bound and show that a suitable interpolation program
 exists for every positive `ε`.
 ========================================================= -/
 
@@ -68,7 +68,7 @@ noncomputable def shorOrderFindingGateCount
 
 /--
 The complete lowered Shor order-finding circuit has gate count
-`O(n^(3+ε))`.  The static lowering-workspace proof is explicit because it is
+`O(n^(2+ε))`.  The static lowering-workspace proof is explicit because it is
 the precondition required by `lowerGate`; the count is proof-independent.
 -/
 def ShorGateCountBound
@@ -292,22 +292,41 @@ lemma step5_gateCount_decompose
   simp [step5, IQFT]
   omega
 
-/-- Exact cost of the bit-indexed constant loader used by concrete Step 3. -/
-@[simp] lemma gateCount_lowerAddBitPowers
-    (dst src : ExtReg) (bits : List ℕ) :
+/-- The controlled bitwise constant loader uses exactly one CNOT per valid
+listed bit. -/
+lemma gateCount_lowerCopyBitPowers_of_valid
+    (dst : ExtReg) (ctrl : ℕ) (bits : List ℕ)
+    (hvalid : ∀ i ∈ bits, i < dst.width) :
     LowGate.gateCount shorGateCostModel
-        (lowerAddBitPowers dst src bits) =
-      bits.length * rippleAdderGateBound dst.width := by
+        (lowerCopyBitPowers dst ctrl bits) = bits.length := by
   induction bits with
-  | nil => simp [lowerAddBitPowers]
+  | nil => simp [lowerCopyBitPowers]
   | cons i bits ih =>
-      change
-        rippleAdderGateBound dst.width +
-            LowGate.gateCount shorGateCostModel
-              (lowerAddBitPowers dst src bits) =
-          (bits.length + 1) * rippleAdderGateBound dst.width
-      rw [ih]
-      simp [Nat.add_mul, Nat.add_comm]
+      have hi : i < dst.width := hvalid i (by simp)
+      have htail : ∀ j ∈ bits, j < dst.width := by
+        intro j hj
+        exact hvalid j (by simp [hj])
+      simp [lowerCopyBitPowers, hi, ih htail, LowGate.gateCount,
+        Nat.add_comm]
+
+@[simp] lemma gateCount_shor_CNOT (ctrl target : ℕ) :
+    LowGate.gateCount shorGateCostModel (LowGate.CNOT ctrl target) = 1 := rfl
+
+@[simp] lemma gateCount_shor_negate (r : ExtReg) :
+    LowGate.gateCount shorGateCostModel (LowGate.Negate r) =
+      negateGateBound r := rfl
+
+@[simp] lemma gateCount_shor_addScaled
+    (dst src : ExtReg) (negSrc : Bool) (shift : ℕ) :
+    LowGate.gateCount shorGateCostModel
+        (LowGate.AddScaled dst src negSrc shift) =
+      rippleAdderGateBound dst.width := rfl
+
+@[simp] lemma gateCount_shor_zeroExtend (r : ExtReg) (n : ℕ) :
+    LowGate.gateCount shorGateCostModel (LowGate.zeroExtend r n) = 0 := rfl
+
+@[simp] lemma gateCount_shor_zeroDealloc (r : ExtReg) (n : ℕ) :
+    LowGate.gateCount shorGateCostModel (LowGate.zeroDealloc r n) = 0 := rfl
 
 /-- A number below `2^w` has at most `w` nonzero binary digits. -/
 lemma bitIndices_length_le_of_lt_two_pow
@@ -330,7 +349,9 @@ lemma bitIndices_length_le_of_lt_two_pow
       omega
     _ = w := Finset.card_range w
 
-/-- Concrete Step 3 has quadratic cost in its real comparator-scratch width. -/
+/-- Concrete Step 3 has linear cost in its real comparator-scratch width.
+Constant preparation writes at most one bit per scratch position and then uses
+one linear-cost negation. -/
 lemma step3_gateCount_le
     {Basis : Type u}
     [RegEncoding Basis]
@@ -339,7 +360,7 @@ lemma step3_gateCount_le
     (hworkspace : GateWorkspaceOK ops (step3 N dataCarry scratch flag)) :
     loweredGateCount (Basis := Basis) k hk ops
         (step3 N dataCarry scratch flag) hworkspace
-      ≤ 60 * (scratch.width + 1) ^ 2 := by
+      ≤ 100 * (scratch.width + 1) := by
   have hbits0 :=
     bitIndices_length_le_of_lt_two_pow
       hworkspace.1.constant_fits
@@ -347,12 +368,29 @@ lemma step3_gateCount_le
     omega
   have hdata : dataCarry.width ≤ scratch.width := by
     exact hworkspace.1.data_width_fits.trans (Nat.sub_le _ _)
+  have hvalid : ∀ i ∈ N.bitIndices, i < scratch.width := by
+    intro i hi
+    have hpow : 2 ^ i ≤ N := Nat.two_pow_le_of_mem_bitIndices hi
+    by_contra hnot
+    have hwidth : scratch.width ≤ i := Nat.le_of_not_gt hnot
+    have hmono : 2 ^ scratch.width ≤ 2 ^ i :=
+      Nat.pow_le_pow_right (by omega) hwidth
+    have hNFull : N < 2 ^ scratch.width := by
+      exact hworkspace.1.constant_fits.trans_le
+        (Nat.pow_le_pow_right (by omega) (Nat.sub_le _ _))
+    omega
+  have hcopy := gateCount_lowerCopyBitPowers_of_valid
+    scratch (constArithmeticUnitQubit scratch
+      hworkspace.1.scratch_can_grow) N.bitIndices hvalid
   simp only [step3, loweredGateCount, lowerGate, lowerCmpGeConst,
-    lowerCSubConst, lowerPrepareNegConst, lowerAddConstFromUnit,
-    LowGate.gateCount]
-  simp_rw [gateCount_lowerAddBitPowers]
-  simp [shorGateCostModel, phaseProductCostModel, rippleAdderGateBound]
-  nlinarith
+    lowerCSubConst, lowerPrepareNegConst, lowerCopyConstFromUnit,
+    LowGate.gateCount_seq_eq, LowGate.gateCount_adj_eq,
+    LowGate.gateCount_X_eq, gateCount_shor_CNOT,
+    gateCount_shor_negate, gateCount_shor_addScaled,
+    gateCount_shor_zeroExtend, gateCount_shor_zeroDealloc,
+    hcopy]
+  simp [negateGateBound, rippleAdderGateBound]
+  omega
 
 /-- Decompose the Fourier multiplication used by concrete Step 4. -/
 lemma fastConstMulInto_gateCount_decompose
@@ -413,7 +451,7 @@ lemma step4_gateCount_decompose
         hworkspace.2.1 + 1 := by
   simp only [step4, cmpLtNW, loweredGateCount_seq]
   rw [loweredGateCount_adj, loweredGateCount_adj]
-  simp [loweredGateCount, lowerGate, LowGate.gateCount]
+  simp [loweredGateCount, lowerGate]
   omega
 
 /-- Step 1's PhaseProduct target workspace has the same width as the work register. -/
@@ -475,9 +513,9 @@ single controlled modular-multiplication core.
 section ModMulCoreBound
 
 set_option maxHeartbeats 2500000 in
-/-- A full controlled modular-multiplication core costs one extra factor of the
-data width over the PhaseProduct rate.  The extra factor honestly absorbs the
-quadratic concrete constant-comparison/subtraction lowering in Step 3. -/
+/-- A full controlled modular-multiplication core costs one PhaseProduct-rate
+term at the data width.  The concrete constant preparation in Step 3 is
+linear, so it is absorbed without an extra width factor. -/
 lemma cmodMulInPlaceCore_gateCount_phase_bound
     {Basis : Type u}
     [RegEncoding Basis]
@@ -508,14 +546,14 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
         (loweredGateCount (Basis := Basis) k hk ops
           (CmodMulInPlaceCore (Basis := Basis)
             c N ctrl data work scratch flag hmod hstep4) hworkspace : ℝ)
-          ≤ A * Real.rpow (n : ℝ) (1 + phaseProductExponent k) := by
+          ≤ A * Real.rpow (n : ℝ) (phaseProductExponent k) := by
   rcases hPhase with ⟨Cp, hCp, np, hnp, hPhase⟩
   rcases hCPhase with ⟨Cc, hCc, nc, hnc, hCPhase⟩
   rcases hQFT with ⟨Cq, hCq, nq, hnq, hQFT⟩
   let cMax : ℕ := max 2 (cWork + 5)
   let α : ℝ := phaseProductExponent k
   let S : ℝ := Real.rpow (cMax : ℝ) α
-  let L : ℝ := 60 * (cMax : ℝ) ^ 2 + 42 * cMax + 20
+  let L : ℝ := 150 * cMax + 20
   let A : ℝ := (3 * Cp + 2 * Cc + 8 * Cq) * S + L + 1
   have hS : 0 < S := by
     dsimp [S, cMax]
@@ -845,37 +883,8 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     have hnR : (1 : ℝ) ≤ n := by exact_mod_cast hn1
     simpa using Real.one_rpow α ▸
       Real.rpow_le_rpow (by norm_num) hnR hα
-  have hBigRate :
-      Real.rpow (n : ℝ) (1 + α) =
-        (n : ℝ) * Real.rpow (n : ℝ) α := by
-    calc
-      Real.rpow (n : ℝ) (1 + α) =
-          Real.rpow (n : ℝ) 1 * Real.rpow (n : ℝ) α :=
-        Real.rpow_add (by positivity) 1 α
-      _ = (n : ℝ) * Real.rpow (n : ℝ) α := by
-        congr 1
-        exact Real.rpow_one (n : ℝ)
-  have hbase_le_big :
-      Real.rpow (n : ℝ) α ≤
-        Real.rpow (n : ℝ) (1 + α) := by
-    rw [hBigRate]
-    have hnR : (1 : ℝ) ≤ n := by exact_mod_cast hn1
-    nlinarith
-  have hn_le_big :
-      (n : ℝ) ≤ Real.rpow (n : ℝ) (1 + α) := by
-    rw [hBigRate]
-    nlinarith
-  have hone_le_big :
-      (1 : ℝ) ≤ Real.rpow (n : ℝ) (1 + α) := by
-    exact (by exact_mod_cast hn1 : (1 : ℝ) ≤ n).trans hn_le_big
-  have hquad_le_big :
-      (n : ℝ) ^ 2 ≤ Real.rpow (n : ℝ) (1 + α) := by
-    have hnR : (1 : ℝ) ≤ n := by exact_mod_cast hn1
-    have hExp : (2 : ℝ) ≤ 1 + α := by
-      dsimp [α]
-      linarith [one_lt_phaseProductExponent k hk]
-    simpa [Real.rpow_two] using
-      Real.rpow_le_rpow_of_exponent_le hnR hExp
+  have hnRate : (n : ℝ) ≤ Real.rpow (n : ℝ) α := by
+    simpa [α] using natCast_le_phaseProduct_rpow k hk hn1
   have hscratchSucc : scratch.width + 1 ≤ cMax * n := by
     have hcMaxSucc : cWork + 5 ≤ cMax := Nat.le_max_right _ _
     calc
@@ -892,26 +901,24 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
   have hS3Nat' :
       loweredGateCount (Basis := Basis) k hk ops
           (step3 N (data.grow 1) scratch flag) hws3 ≤
-        60 * (cMax * n) ^ 2 := by
+        100 * (cMax * n) := by
     exact hS3Nat.trans
-      (Nat.mul_le_mul_left 60 (pow_le_pow_left' hscratchSucc 2))
+      (Nat.mul_le_mul_left 100 hscratchSucc)
   have hS3 :
       (loweredGateCount (Basis := Basis) k hk ops
         (step3 N (data.grow 1) scratch flag) hws3 : ℝ)
-        ≤ 60 * (cMax : ℝ) ^ 2 *
-          Real.rpow (n : ℝ) (1 + α) := by
+        ≤ 100 * (cMax : ℝ) * Real.rpow (n : ℝ) α := by
     have hS3R :
         (loweredGateCount (Basis := Basis) k hk ops
           (step3 N (data.grow 1) scratch flag) hws3 : ℝ) ≤
-        (60 * (cMax * n) ^ 2 : ℕ) := by
+        (100 * (cMax * n) : ℕ) := by
       exact_mod_cast hS3Nat'
     push_cast at hS3R
     calc
-      _ ≤ 60 * ((cMax : ℝ) * n) ^ 2 := hS3R
-      _ = 60 * (cMax : ℝ) ^ 2 * (n : ℝ) ^ 2 := by ring
-      _ ≤ 60 * (cMax : ℝ) ^ 2 *
-          Real.rpow (n : ℝ) (1 + α) := by
-        gcongr
+      _ ≤ 100 * ((cMax : ℝ) * n) := hS3R
+      _ = (100 * (cMax : ℝ)) * n := by ring
+      _ ≤ (100 * (cMax : ℝ)) * Real.rpow (n : ℝ) α :=
+        mul_le_mul_of_nonneg_left hnRate (by positivity)
   have hDiffNat := cmpLtNWDifference_gateCount_le (Basis := Basis)
     k hk ops (data.grow 1) work scratch hstep4.data_can_grow hws4.2.1
   have hDiff :
@@ -964,7 +971,7 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
         (step4 N (data.grow 1) work scratch flag hstep4) hws4 : ℝ)
         ≤ (2 * Cp + 4 * Cq) * S * Real.rpow (n : ℝ) α +
           (40 * (cMax : ℝ) + 9) *
-            Real.rpow (n : ℝ) (1 + α) := by
+            Real.rpow (n : ℝ) α := by
     rw [step4_gateCount_decompose]
     push_cast
     calc
@@ -975,18 +982,18 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
           (40 * (cMax : ℝ) + 8) * n + 1 := by ring
       _ ≤ (2 * Cp + 4 * Cq) * S * Real.rpow (n : ℝ) α +
           (40 * (cMax : ℝ) + 9) *
-            Real.rpow (n : ℝ) (1 + α) := by
+            Real.rpow (n : ℝ) α := by
         have hcNonneg : 0 ≤ (40 * (cMax : ℝ) + 8) := by positivity
-        have hlin := mul_le_mul_of_nonneg_left hn_le_big hcNonneg
+        have hlin := mul_le_mul_of_nonneg_left hnRate hcNonneg
         have htail :
             (40 * (cMax : ℝ) + 8) * n + 1 ≤
               (40 * (cMax : ℝ) + 9) *
-                Real.rpow (n : ℝ) (1 + α) := by
+                Real.rpow (n : ℝ) α := by
           calc
             _ ≤ (40 * (cMax : ℝ) + 8) *
-                  Real.rpow (n : ℝ) (1 + α) +
-                Real.rpow (n : ℝ) (1 + α) :=
-              add_le_add hlin hone_le_big
+                  Real.rpow (n : ℝ) α +
+                Real.rpow (n : ℝ) α :=
+              add_le_add hlin hbaseOne
             _ = _ := by ring
         simpa [add_comm, add_left_comm, add_assoc] using
           add_le_add_left htail
@@ -997,7 +1004,7 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
   push_cast
   dsimp [A, L, α] at hC1b hC5b hP2b hP4b
   dsimp [A, L, α] at hQ1b hQ2ab hQ2bb hQ5b hQ4ab hQ4bb
-  dsimp [A, L, α] at hS3 hS4 hbase_le_big hbaseNonneg ⊢
+  dsimp [A, L, α] at hS3 hS4 hnRate hbaseNonneg ⊢
   calc
     _ ≤
         ((cWork : ℝ) * n +
@@ -1006,12 +1013,12 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
           (Cq * S * Real.rpow (n : ℝ) (phaseProductExponent k) +
             Cp * S * Real.rpow (n : ℝ) (phaseProductExponent k) +
             Cq * S * Real.rpow (n : ℝ) (phaseProductExponent k)) +
-          60 * (cMax : ℝ) ^ 2 *
-            Real.rpow (n : ℝ) (1 + phaseProductExponent k) +
+          100 * (cMax : ℝ) *
+            Real.rpow (n : ℝ) (phaseProductExponent k) +
           ((2 * Cp + 4 * Cq) * S *
               Real.rpow (n : ℝ) (phaseProductExponent k) +
             (40 * (cMax : ℝ) + 9) *
-              Real.rpow (n : ℝ) (1 + phaseProductExponent k)) +
+              Real.rpow (n : ℝ) (phaseProductExponent k)) +
           ((cWork : ℝ) * n +
             Cc * S * Real.rpow (n : ℝ) (phaseProductExponent k) +
             Cq * S * Real.rpow (n : ℝ) (phaseProductExponent k)) := by
@@ -1019,71 +1026,41 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     _ =
         (3 * Cp + 2 * Cc + 8 * Cq) * S *
             Real.rpow (n : ℝ) (phaseProductExponent k) +
-          (60 * (cMax : ℝ) ^ 2 + 40 * cMax + 9) *
-            Real.rpow (n : ℝ) (1 + phaseProductExponent k) +
+          (140 * (cMax : ℝ) + 9) *
+            Real.rpow (n : ℝ) (phaseProductExponent k) +
           2 * cWork * n := by
       ring
     _ ≤
         (3 * Cp + 2 * Cc + 8 * Cq) * S *
-            Real.rpow (n : ℝ) (1 + phaseProductExponent k) +
-          (60 * (cMax : ℝ) ^ 2 + 42 * cMax + 20) *
-            Real.rpow (n : ℝ) (1 + phaseProductExponent k) := by
-      have hphaseCoeff :
-          0 ≤ (3 * Cp + 2 * Cc + 8 * Cq) * S := by positivity
-      have hPhaseRate :=
-        mul_le_mul_of_nonneg_left hbase_le_big hphaseCoeff
+            Real.rpow (n : ℝ) (phaseProductExponent k) +
+          (142 * (cMax : ℝ) + 9) *
+            Real.rpow (n : ℝ) (phaseProductExponent k) := by
       have hcWorkR : (cWork : ℝ) ≤ cMax := by exact_mod_cast hcMaxWork
-      have hnNonneg : (0 : ℝ) ≤ n := by positivity
-      have hBigNonneg :
-          0 ≤ Real.rpow (n : ℝ) (1 + phaseProductExponent k) :=
-        Real.rpow_nonneg (by positivity) _
       have hlin : (2 : ℝ) * cWork * n ≤
           (2 : ℝ) * cMax *
-            Real.rpow (n : ℝ) (1 + phaseProductExponent k) := by
+            Real.rpow (n : ℝ) (phaseProductExponent k) := by
         calc
           (2 : ℝ) * cWork * n ≤ 2 * cMax * n := by
             gcongr
           _ ≤ 2 * cMax *
-              Real.rpow (n : ℝ) (1 + phaseProductExponent k) := by
-            exact mul_le_mul_of_nonneg_left hn_le_big (by positivity)
-      have hlinearCombined :
-          (60 * (cMax : ℝ) ^ 2 + 40 * cMax + 9) *
-                Real.rpow (n : ℝ) (1 + phaseProductExponent k) +
-              2 * cWork * n ≤
-            (60 * (cMax : ℝ) ^ 2 + 42 * cMax + 20) *
-              Real.rpow (n : ℝ) (1 + phaseProductExponent k) := by
-        calc
-          _ ≤ (60 * (cMax : ℝ) ^ 2 + 40 * cMax + 9) *
-                  Real.rpow (n : ℝ) (1 + phaseProductExponent k) +
-                2 * cMax *
-                  Real.rpow (n : ℝ) (1 + phaseProductExponent k) :=
-            by
-              exact add_le_add (le_refl _) hlin
-          _ = (60 * (cMax : ℝ) ^ 2 + 42 * cMax + 9) *
-              Real.rpow (n : ℝ) (1 + phaseProductExponent k) := by ring
-          _ ≤ (60 * (cMax : ℝ) ^ 2 + 42 * cMax + 20) *
-              Real.rpow (n : ℝ) (1 + phaseProductExponent k) := by
-            apply mul_le_mul_of_nonneg_right _ hBigNonneg
-            norm_num
-      calc
-        _ = (3 * Cp + 2 * Cc + 8 * Cq) * S *
-                Real.rpow (n : ℝ) (phaseProductExponent k) +
-              ((60 * (cMax : ℝ) ^ 2 + 40 * cMax + 9) *
-                  Real.rpow (n : ℝ) (1 + phaseProductExponent k) +
-                2 * cWork * n) := by ring
-        _ ≤ _ := add_le_add hPhaseRate hlinearCombined
+              Real.rpow (n : ℝ) (phaseProductExponent k) := by
+            exact mul_le_mul_of_nonneg_left hnRate (by positivity)
+      nlinarith
     _ =
         ((3 * Cp + 2 * Cc + 8 * Cq) * S +
-            (60 * (cMax : ℝ) ^ 2 + 42 * cMax + 20)) *
-          Real.rpow (n : ℝ) (1 + phaseProductExponent k) := by
+            (142 * (cMax : ℝ) + 9)) *
+          Real.rpow (n : ℝ) (phaseProductExponent k) := by
       ring
     _ ≤
         ((3 * Cp + 2 * Cc + 8 * Cq) * S +
-            (60 * (cMax : ℝ) ^ 2 + 42 * cMax + 20) + 1) *
-          Real.rpow (n : ℝ) (1 + phaseProductExponent k) := by
-      have hBigNonneg :
-          0 ≤ Real.rpow (n : ℝ) (1 + phaseProductExponent k) :=
-        Real.rpow_nonneg (by positivity) _
+            (150 * (cMax : ℝ) + 20)) *
+          Real.rpow (n : ℝ) (phaseProductExponent k) := by
+      apply mul_le_mul_of_nonneg_right _ hbaseNonneg
+      nlinarith
+    _ ≤
+        ((3 * Cp + 2 * Cc + 8 * Cq) * S +
+            (150 * (cMax : ℝ) + 20) + 1) *
+          Real.rpow (n : ℝ) (phaseProductExponent k) := by
       nlinarith
 
 end ModMulCoreBound
@@ -1101,8 +1078,8 @@ section ModExpBound
 set_option maxHeartbeats 800000 in
 /--
 If one controlled modular multiplication costs at most
-`A * n^(1 + phaseProductExponent k)`, the loop over at most `2*n` controls
-costs at most `2*A*n*n^(1 + phaseProductExponent k)`.
+`A * n^(phaseProductExponent k)`, the loop over at most `2*n` controls costs
+at most `2*A*n*n^(phaseProductExponent k)`.
 -/
 lemma modExpApproxValid_gateCount_phase_bound_of_core
     {Basis : Type u}
@@ -1134,7 +1111,7 @@ lemma modExpApproxValid_gateCount_phase_bound_of_core
         (loweredGateCount (Basis := Basis) k hk ops
           (CmodMulInPlaceCore (Basis := Basis)
             c N ctrl data work scratch flag hmod hstep4) hworkspace : ℝ)
-          ≤ A * Real.rpow (n : ℝ) (1 + phaseProductExponent k)) :
+          ≤ A * Real.rpow (n : ℝ) (phaseProductExponent k)) :
     ∃ B : ℝ, 0 < B ∧
     ∃ n₀ : ℕ, 1 ≤ n₀ ∧
       ∀ (n a N : ℕ)
@@ -1153,14 +1130,14 @@ lemma modExpApproxValid_gateCount_phase_bound_of_core
           (modExpApproxValid (Basis := Basis)
             a N x.active data work scratch flag hmod hstep4) hworkspace : ℝ)
           ≤ B * (n : ℝ) *
-            Real.rpow (n : ℝ) (1 + phaseProductExponent k) := by
+            Real.rpow (n : ℝ) (phaseProductExponent k) := by
   refine ⟨2 * A, by positivity, nCore, hnCore, ?_⟩
   intro n a N x data work scratch flag hmod hstep4 hworkspace hn hLayout
   rcases hLayout with
     ⟨hDataSize, _hxLower, hxUpper,
       hworkLower, hworkUpper, hscratchUpper, _hRegisterLayout⟩
   let R : ℝ :=
-    Real.rpow (n : ℝ) (1 + phaseProductExponent k)
+    Real.rpow (n : ℝ) (phaseProductExponent k)
   have hRNonneg : 0 ≤ R := by
     exact Real.rpow_nonneg (by positivity) _
   have hARNonneg : 0 ≤ A * R :=
@@ -1221,7 +1198,7 @@ lemma modExpApproxValid_gateCount_phase_bound_of_core
       mul_le_mul_of_nonneg_right hxUpperR hARNonneg
     _ =
         (2 * A) * (n : ℝ) *
-          Real.rpow (n : ℝ) (1 + phaseProductExponent k) := by
+          Real.rpow (n : ℝ) (phaseProductExponent k) := by
       dsimp [R]
       ring
 
@@ -1316,7 +1293,7 @@ lemma orderFindingApproxLow_gateCount_phase_bound
           (modExpApproxValid (Basis := qs.Basis)
             a N x.active y work scratch flag hmod hstep4) hworkspace : ℝ)
           ≤ B * (n : ℝ) *
-            Real.rpow (n : ℝ) (1 + phaseProductExponent k)) :
+            Real.rpow (n : ℝ) (phaseProductExponent k)) :
     ∃ C : ℝ, 0 < C ∧
     ∃ n₀ : ℕ, 1 ≤ n₀ ∧
       ∀ (n a N : ℕ)
@@ -1333,7 +1310,7 @@ lemma orderFindingApproxLow_gateCount_phase_bound
           a N x y work scratch flag hmod hstep4 hworkspace : ℝ)
           ≤ C *
             Real.rpow (n : ℝ)
-              (2 + phaseProductExponent k) := by
+              (1 + phaseProductExponent k) := by
   rcases hQFT with ⟨Cq, hCq, nq, hnq, hQFT⟩
   let α : ℝ := phaseProductExponent k
   let S : ℝ := Real.rpow (2 : ℝ) α
@@ -1396,82 +1373,66 @@ lemma orderFindingApproxLow_gateCount_phase_bound
       0 ≤ Real.rpow (n : ℝ) α :=
     Real.rpow_nonneg (by positivity) _
   have hrateOne :
-      1 ≤ Real.rpow (n : ℝ) (1 + α) := by
+      1 ≤ Real.rpow (n : ℝ) α := by
     have hα : 0 ≤ α := by
       dsimp [α]
       linarith [one_lt_phaseProductExponent k hk]
     have hnR : (1 : ℝ) ≤ n := by exact_mod_cast hn1
-    have h := Real.rpow_le_rpow
-      (by norm_num : (0 : ℝ) ≤ 1) hnR (by positivity : 0 ≤ 1 + α)
-    simpa using h
-  have hsplitRate :
-      Real.rpow (n : ℝ) (1 + α) =
-        (n : ℝ) * Real.rpow (n : ℝ) α := by
-    calc
-      Real.rpow (n : ℝ) (1 + α) =
-          Real.rpow (n : ℝ) 1 * Real.rpow (n : ℝ) α :=
-        Real.rpow_add (by positivity) 1 α
-      _ = (n : ℝ) * Real.rpow (n : ℝ) α := by
-        congr 1
-        exact Real.rpow_one (n : ℝ)
+    simpa using Real.one_rpow α ▸
+      Real.rpow_le_rpow (by norm_num) hnR hα
   have hBigRate :
-      (n : ℝ) ^ (2 + α) =
-        (n : ℝ) * ((n : ℝ) ^ (1 + α)) := by
+      (n : ℝ) ^ (1 + α) =
+        (n : ℝ) * ((n : ℝ) ^ α) := by
     calc
-      (n : ℝ) ^ (2 + α) =
-          (n : ℝ) ^ (1 : ℝ) * (n : ℝ) ^ (1 + α) := by
-        rw [show (2 : ℝ) + α = 1 + (1 + α) by ring]
-        exact Real.rpow_add (by positivity) 1 (1 + α)
-      _ = (n : ℝ) * ((n : ℝ) ^ (1 + α)) := by
+      (n : ℝ) ^ (1 + α) =
+          (n : ℝ) ^ (1 : ℝ) * (n : ℝ) ^ α :=
+        Real.rpow_add (by positivity) 1 α
+      _ = (n : ℝ) * ((n : ℝ) ^ α) := by
         congr 1
         exact Real.rpow_one (n : ℝ)
   change
     (loweredGateCount (Basis := qs.Basis) k hk ops
       (orderFindingApprox qs a N x y work scratch flag hmod hstep4) hworkspace : ℝ)
-      ≤ C * Real.rpow (n : ℝ) (2 + phaseProductExponent k)
+      ≤ C * Real.rpow (n : ℝ) (1 + phaseProductExponent k)
   rw [orderFindingApprox_gateCount_decompose]
   push_cast
   dsimp [C]
   change
-    _ ≤ (B + Cq * S + 4) * ((n : ℝ) ^ (2 + α))
+    _ ≤ (B + Cq * S + 4) * ((n : ℝ) ^ (1 + α))
   rw [hBigRate]
   have hnR : (1 : ℝ) ≤ n := by exact_mod_cast hn1
-  have hH' :
-      (2 : ℝ) * n ≤ 2 * (n * Real.rpow (n : ℝ) (1 + α)) := by
+  have hH' : (2 : ℝ) * n ≤
+      2 * (n * Real.rpow (n : ℝ) α) := by
     nlinarith
-  have hInit' :
-      (1 : ℝ) ≤ n * Real.rpow (n : ℝ) (1 + α) := by
-    nlinarith
-  have hQRate :
-      Real.rpow (n : ℝ) α ≤
-        (n : ℝ) * Real.rpow (n : ℝ) (1 + α) := by
-    rw [hsplitRate]
+  have hInit' : (1 : ℝ) ≤ n * Real.rpow (n : ℝ) α := by
     nlinarith
   calc
     _ ≤
         2 * n + 1 +
-          B * n * Real.rpow (n : ℝ) (1 + α) +
+          B * n * Real.rpow (n : ℝ) α +
           Cq * S * Real.rpow (n : ℝ) α := by
       gcongr
     _ ≤
-        2 * (n * Real.rpow (n : ℝ) (1 + α)) +
-          n * Real.rpow (n : ℝ) (1 + α) +
-          B * n * Real.rpow (n : ℝ) (1 + α) +
-          Cq * S * (n * Real.rpow (n : ℝ) (1 + α)) := by
+        2 * (n * Real.rpow (n : ℝ) α) +
+          n * Real.rpow (n : ℝ) α +
+          B * n * Real.rpow (n : ℝ) α +
+          Cq * S * (n * Real.rpow (n : ℝ) α) := by
       gcongr
       · exact mul_nonneg (le_of_lt hCq) (by
           dsimp [S]
           positivity)
+      · simpa using
+          (mul_le_mul_of_nonneg_right hnR hrateNonneg)
     _ =
         (B + Cq * S + 3) *
-          (n * Real.rpow (n : ℝ) (1 + α)) := by
+          (n * Real.rpow (n : ℝ) α) := by
       ring
     _ ≤
         (B + Cq * S + 4) *
-          (n * Real.rpow (n : ℝ) (1 + α)) := by
+          (n * Real.rpow (n : ℝ) α) := by
       have hbigNonneg :
-          0 ≤ (n : ℝ) * Real.rpow (n : ℝ) (1 + α) :=
-        mul_nonneg (by positivity) (Real.rpow_nonneg (by positivity) _)
+          0 ≤ (n : ℝ) * Real.rpow (n : ℝ) α :=
+        mul_nonneg (by positivity) hrateNonneg
       gcongr
       norm_num
 
@@ -1489,17 +1450,17 @@ linear.
 section ExponentAndWidthConversions
 
 /-- Converts the PhaseProduct exponent bound into the final Shor comparison rate. -/
-lemma phaseProduct_two_add_rate_le_shorGateRate
+lemma phaseProduct_succ_rate_le_shorGateRate
     (ε : ℝ)
     (k n : ℕ)
     (hn : 1 ≤ n)
     (hExponent : phaseProductExponent k ≤ 1 + ε) :
-    Real.rpow (n : ℝ) (2 + phaseProductExponent k)
+    Real.rpow (n : ℝ) (1 + phaseProductExponent k)
       ≤ shorGateRate ε n := by
   have hnR : (1 : ℝ) ≤ (n : ℝ) := by
     exact_mod_cast hn
   have hExp :
-      2 + phaseProductExponent k ≤ 3 + ε := by
+      1 + phaseProductExponent k ≤ 2 + ε := by
     linarith
   have hpow :=
     Real.rpow_le_rpow_of_exponent_le hnR hExp
@@ -1797,7 +1758,7 @@ end SetupLayout
 
 The final assembly theorem threads the modular-multiplication, modular
 exponentiation, order-finding, QFT, and PhaseProduct component bounds together
-and converts the resulting exponent to `3 + ε`.
+and converts the resulting exponent to `2 + ε`.
 --------------------------------------------------------- -/
 
 section ComponentAssembly
@@ -1881,15 +1842,15 @@ theorem shorGateCountBound_of_components
           hsetup.circuit_workspace hsetup.step4_workspace hLowerWorkspace : ℝ)
         ≤ C *
           Real.rpow (n : ℝ)
-            (2 + phaseProductExponent k) :=
+            (1 + phaseProductExponent k) :=
     hOrderFinding n inst.a inst.N
       x y work scratch flag hsetup.circuit_workspace hsetup.step4_workspace
       hLowerWorkspace hnOrder' hLayout
 
   have hRate :
-      Real.rpow (n : ℝ) (2 + phaseProductExponent k)
+      Real.rpow (n : ℝ) (1 + phaseProductExponent k)
         ≤ shorGateRate ε n :=
-    phaseProduct_two_add_rate_le_shorGateRate
+    phaseProduct_succ_rate_le_shorGateRate
       ε k n hnOne hExponent
 
   exact hPreliminary.trans (mul_le_mul_of_nonneg_left hRate (le_of_lt hC))

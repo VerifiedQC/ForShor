@@ -72,27 +72,35 @@ def constArithmeticUnit
     (scratch : ExtReg) (h : scratch.CanGrow 1) : ExtReg :=
   ExtReg.ofReg (qubitReg (constArithmeticUnitQubit scratch h))
 
-/-- Add the signed source shifted by every set-bit position in `bits`. -/
-def lowerAddBitPowers
-    (dst src : ExtReg) : List ℕ → LowGate
+/-- Copy a classical bit pattern into `dst`, controlled by one physical qubit.
+Out-of-range indices are ignored; the workspace proof later shows that every
+bit of the chosen constant is in range. -/
+def lowerCopyBitPowers
+    (dst : ExtReg) (ctrl : ℕ) : List ℕ → LowGate
   | [] => LowGate.id
   | i :: bits =>
-      LowGate.AddScaled dst src false i ;;
-      lowerAddBitPowers dst src bits
+      if hi : i < dst.width then
+        LowGate.CNOT ctrl
+          (dst.active.get
+            ⟨i, by simpa [ExtReg.width] using hi⟩) ;;
+        lowerCopyBitPowers dst ctrl bits
+      else
+        lowerCopyBitPowers dst ctrl bits
 
-/-- Add `N` copies of a signed one-bit source, using the binary expansion of
-`N`. -/
-def lowerAddConstFromUnit
-    (N : ℕ) (dst unit : ExtReg) : LowGate :=
-  lowerAddBitPowers dst unit N.bitIndices
+/-- Controlled-write the binary expansion of `N` into a clean register. -/
+def lowerCopyConstFromUnit
+    (N : ℕ) (dst : ExtReg) (ctrl : ℕ) : LowGate :=
+  lowerCopyBitPowers dst ctrl N.bitIndices
 
-/-- Prepare `scratch = -N` from clean active scratch and one clean reserve bit. -/
+/-- Prepare `scratch = -N` from clean active scratch and one clean reserve bit.
+The constant write is at most one CNOT per active bit; the final negation is
+one linear-cost target operation. -/
 def lowerPrepareNegConst
     (N : ℕ) (scratch : ExtReg) (h : scratch.CanGrow 1) : LowGate :=
   let q := constArithmeticUnitQubit scratch h
-  let unit := constArithmeticUnit scratch h
   LowGate.X q ;;
-  lowerAddConstFromUnit N scratch unit
+  lowerCopyConstFromUnit N scratch q ;;
+  LowGate.Negate scratch
 
 /-- Compare the unsigned active value of `data` against `N` and toggle `flag`
 iff `N ≤ data`.  The extra data bit makes the source unsigned; `scratch` is
@@ -124,10 +132,10 @@ def lowerCSubConst
     (N : ℕ) (data scratch : ExtReg) (flag : ℕ)
     (h : ConstArithmeticWorkspace N data scratch flag) : LowGate :=
   let q := constArithmeticUnitQubit scratch h.scratch_can_grow
-  let unit := constArithmeticUnit scratch h.scratch_can_grow
   let prep :=
     LowGate.CNOT flag q ;;
-    lowerAddConstFromUnit N scratch unit
+    lowerCopyConstFromUnit N scratch q ;;
+    LowGate.Negate scratch
   prep ;;
   LowGate.AddScaled data scratch false 0 ;;
   †prep
