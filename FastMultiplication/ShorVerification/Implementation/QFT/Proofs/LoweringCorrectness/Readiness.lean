@@ -269,7 +269,6 @@ theorem standardPhaseProdUsingPlan_ready_and_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -511,7 +510,6 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -844,7 +842,6 @@ theorem standardQFTLoweringPlan_ready_and_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -900,7 +897,6 @@ lemma reserveQFTLoweringPlan_ready_ket
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -944,7 +940,6 @@ lemma reserveQFTLoweringPlan_preserves_clean_of_ready
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -996,7 +991,6 @@ theorem evalL_lowerQFT
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)

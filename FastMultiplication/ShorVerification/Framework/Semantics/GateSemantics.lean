@@ -540,6 +540,7 @@ def GoodModMulBasisInput
   work.FreshFor 1 b ∧
   RegEncoding.toNat (qubitReg flag) b = 0
 
+
 /-- Exact basis semantics required of the ideal controlled modular multiplier. -/
 class IdealCtrlModMulExactSemantics
     (qs : QSemantics)

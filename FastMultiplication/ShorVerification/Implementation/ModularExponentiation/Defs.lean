@@ -372,6 +372,29 @@ def ValidModMulState
           GoodModMulBasisInput qs N data work flag b ∧
           ψ = qs.ket b } : Set qs.State)
 
+def GoodAlgorithm1BasisInput
+    (qs : QSemantics) [RegEncoding qs.Basis]
+    (N : ℕ)
+    (data work scratch : ExtReg)
+    (flag : ℕ)
+    (b : qs.Basis) : Prop :=
+  GoodModMulBasisInput qs N data work flag b ∧
+  RegEncoding.toNat scratch.active b = 0 ∧
+  scratch.FreshFor 1 b
+
+def ValidAlgorithm1State
+    (qs : QSemantics) [RegEncoding qs.Basis]
+    (N : ℕ)
+    (data work scratch : ExtReg)
+    (flag : ℕ) :
+    Submodule ℂ qs.State :=
+  Submodule.span ℂ
+    ({ ψ : qs.State |
+        ∃ b : qs.Basis,
+          GoodAlgorithm1BasisInput
+            qs N data work scratch flag b ∧
+          ψ = qs.ket b } : Set qs.State)
+
 end ValidInputsAndIdealSemantics
 
 /-! ---------------------------------------------------------
@@ -523,8 +546,9 @@ def ValidUnitState
     (qs : QSemantics) [RegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModExpConfig η) (ψ : qs.State) : Prop :=
-  ψ ∈ ValidModMulState
-      qs cfg.env.N cfg.env.data cfg.env.work cfg.flag
+  ψ ∈ ValidAlgorithm1State
+      qs cfg.env.N cfg.env.data cfg.env.work
+        cfg.env.scratch cfg.flag
     ∧ ‖ψ‖ = 1
 
 end ModExpConfig
@@ -566,7 +590,8 @@ def ValidState
     (qs : QSemantics) [RegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η) (ψ : qs.State) : Prop :=
-  ψ ∈ ValidModMulState qs cfg.env.N cfg.env.data cfg.env.work cfg.flag
+  ψ ∈ ValidAlgorithm1State
+    qs cfg.env.N cfg.env.data cfg.env.work cfg.env.scratch cfg.flag
 
 /-- Valid modular-multiplication state with unit norm. -/
 def ValidUnitState

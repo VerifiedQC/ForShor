@@ -1721,8 +1721,8 @@ private def HasGoodInputExpansion
         α b • qs.ket b
     ∧
     ∀ b ∈ s,
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b
+      GoodAlgorithm1BasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.env.scratch cfg.flag b
 
 
 /-- Every valid modular-multiplication state has a finite good-input expansion. -/
@@ -1738,7 +1738,7 @@ private lemma good_input_expansion_of_valid
 
   dsimp [
     ModMulConfig.ValidState,
-    ValidModMulState
+    ValidAlgorithm1State
   ] at hψ
 
   let P : qs.State → Prop :=
@@ -1748,9 +1748,10 @@ private lemma good_input_expansion_of_valid
 
   refine Submodule.span_induction
     (s := ({ φ : qs.State |
-        ∃ b : qs.Basis,
-          GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b ∧
-          φ = qs.ket b } : Set qs.State))
+      ∃ b : qs.Basis,
+        GoodAlgorithm1BasisInput
+          qs cfg.env.N cfg.env.data cfg.env.work cfg.env.scratch cfg.flag b ∧
+        φ = qs.ket b } : Set qs.State))
     (p := fun φ _ => P φ)
     ?_ ?_ ?_ ?_ hψ
 
@@ -2830,7 +2831,26 @@ lemma alg1_trace_of_valid
   classical
 
   rcases good_input_expansion_of_valid qs cfg ψ hψ with
-    ⟨support, inputCoeff, hinput, hgood⟩
+    ⟨support, inputCoeff, hinput, hvalid⟩
+
+  have hgood :
+      ∀ b ∈ support,
+        GoodModMulBasisInput
+          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b := by
+    intro b hb
+    exact (hvalid b hb).1
+
+  have hscratchZero :
+      ∀ b ∈ support,
+        RegEncoding.toNat cfg.env.scratch.active b = 0 := by
+    intro b hb
+    exact (hvalid b hb).2.1
+
+  have hscratchFresh :
+      ∀ b ∈ support,
+        cfg.env.scratch.FreshFor 1 b := by
+    intro b hb
+    exact (hvalid b hb).2.2
 
   let zeroWork : Fin (ASize cfg.env.work.active) :=
     ⟨0, by simp[ASize]⟩
@@ -2910,6 +2930,8 @@ lemma alg1_trace_of_valid
     phaseCoeff := phaseCoeff
     input_eq := hinput
     input_good := hgood
+    scratch_zero := hscratchZero
+    scratch_fresh := hscratchFresh
 
     step34_support := by
       intro b hbmem t ht hcoeff

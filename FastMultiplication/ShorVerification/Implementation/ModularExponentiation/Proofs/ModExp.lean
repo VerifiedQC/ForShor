@@ -68,6 +68,273 @@ lemma modExpTailArithmeticOK_tail
     recursive hybrid argument threads through each step.
 ========================================================= -/
 
+private theorem ideal_preserves_algorithm1_good_ket
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [Spec]
+    [IdealCtrlModMulExactSemantics qs]
+    {η : ℝ}
+    (cfg : ModMulConfig η)
+    (b : qs.Basis)
+    (hb :
+      GoodAlgorithm1BasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work
+          cfg.env.scratch cfg.flag b) :
+    ∃ b' : qs.Basis,
+      qs.eval (ModMulConfig.idealGate cfg) (qs.ket b) = qs.ket b' ∧
+      GoodAlgorithm1BasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work
+          cfg.env.scratch cfg.flag b' := by
+  classical
+
+  have hbmod :
+      GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b :=
+    hb.1
+
+  have hscratch_zero :
+      RegEncoding.toNat cfg.env.scratch.active b = 0 :=
+    hb.2.1
+
+  have hscratch_fresh :
+      cfg.env.scratch.FreshFor 1 b :=
+    hb.2.2
+
+  let out : ℕ :=
+    if RegEncoding.bit cfg.ctrl b then
+      (cfg.c * RegEncoding.toNat cfg.env.data.active b) % cfg.env.N
+    else
+      RegEncoding.toNat cfg.env.data.active b
+
+  let b' : qs.Basis :=
+    RegEncoding.writeNat cfg.env.data.active out b
+
+  have hNpos : 0 < cfg.env.N :=
+    Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one
+
+  have hctrl_data :
+      cfg.ctrl ∉ cfg.env.data.active.qubits := by
+    intro hctrl
+    exact cfg.layout.2.2.2.1
+      (List.mem_append_left _ hctrl)
+
+  have hout_lt_N : out < cfg.env.N := by
+    by_cases hctrl : RegEncoding.bit cfg.ctrl b
+    · simpa [out, hctrl] using
+        Nat.mod_lt
+          (cfg.c * RegEncoding.toNat cfg.env.data.active b)
+          hNpos
+    · simpa [out, hctrl] using hbmod.1
+
+  have hout_lt_cap :
+      out < ASize cfg.env.data.active :=
+    lt_of_lt_of_le hout_lt_N cfg.env.data_capacity
+
+  have hdata_out :
+      RegEncoding.toNat cfg.env.data.active b' = out := by
+    dsimp [b']
+    exact
+      RegEncoding.toNat_writeNat_of_lt
+        cfg.env.data.active out b hout_lt_cap
+
+  have hdataFresh_out :
+      cfg.env.data.FreshFor 2 b' := by
+    dsimp [b']
+    exact
+      ExtReg.freshFor_write_active
+        cfg.env.data 2 out b hbmod.2.1
+
+  have howned :
+      ∀ q,
+        q ∈ cfg.env.data.ownedQubits →
+        q ∈ cfg.env.work.ownedQubits →
+        False := by
+    have h := cfg.layout.1
+    rw [ExtReg.OwnedDisjoint, List.disjoint_left] at h
+    exact h
+
+  have hwork_data :
+      Disjoint cfg.env.work.active cfg.env.data.active := by
+    rw [Shor.Disjoint, List.disjoint_left]
+    intro q hqWork hqData
+    exact howned q
+      (List.mem_append_left _ hqData)
+      (List.mem_append_left _ hqWork)
+
+  have hworkNew_data :
+      Disjoint (cfg.env.work.newBits 1) cfg.env.data.active := by
+    rw [Shor.Disjoint, List.disjoint_left]
+    intro q hqNew hqData
+    exact howned q
+      (List.mem_append_left _ hqData)
+      (List.mem_append_right _
+        (List.mem_of_mem_take hqNew))
+
+  have hflag_data :
+      Disjoint (qubitReg cfg.flag) cfg.env.data.active := by
+    rw [Shor.Disjoint, List.disjoint_left]
+    intro q hqFlag hqData
+    have hq : q = cfg.flag := by
+      simpa [qubitReg, Reg.singleton] using hqFlag
+    subst q
+    exact cfg.layout.2.1
+      (List.mem_append_left _ hqData)
+
+  have hwork_out :
+      RegEncoding.toNat cfg.env.work.active b' = 0 := by
+    calc
+      RegEncoding.toNat cfg.env.work.active b'
+          =
+        RegEncoding.toNat cfg.env.work.active b := by
+          dsimp [b']
+          exact
+            RegEncoding.toNat_left_write_right
+              cfg.env.work.active
+              cfg.env.data.active
+              hwork_data
+              b
+              out
+      _ = 0 := hbmod.2.2.1
+
+  have hworkFresh_out :
+      cfg.env.work.FreshFor 1 b' := by
+    calc
+      RegEncoding.toNat (cfg.env.work.newBits 1) b'
+          =
+      RegEncoding.toNat (cfg.env.work.newBits 1) b := by
+        dsimp [b']
+        exact
+          RegEncoding.toNat_left_write_right
+            (cfg.env.work.newBits 1)
+            cfg.env.data.active
+            hworkNew_data
+            b
+            out
+      _ = 0 := by
+        simpa [ExtReg.FreshFor, FreshZero] using hbmod.2.2.2.1
+
+  have hflag_out :
+      RegEncoding.toNat (qubitReg cfg.flag) b' = 0 := by
+    calc
+      RegEncoding.toNat (qubitReg cfg.flag) b'
+          =
+        RegEncoding.toNat (qubitReg cfg.flag) b := by
+          dsimp [b']
+          exact
+            RegEncoding.toNat_left_write_right
+              (qubitReg cfg.flag)
+              cfg.env.data.active
+              hflag_data
+              b
+              out
+      _ = 0 := hbmod.2.2.2.2
+
+  have hdataScratch :
+      ExtReg.OwnedDisjoint
+        cfg.env.data cfg.env.scratch := by
+    have h :=
+      cfg.step4_workspace.data_scratch_disjoint
+    rw [ExtReg.OwnedDisjoint, List.disjoint_left] at h ⊢
+    intro q hqData hqScratch
+    exact h
+      (by
+        simpa [Gate.ExtReg.ownedQubits_grow] using hqData)
+      hqScratch
+
+  have hscratch_data :
+      Disjoint cfg.env.scratch.active cfg.env.data.active := by
+    have h := hdataScratch
+    rw [ExtReg.OwnedDisjoint, List.disjoint_left] at h
+    rw [Shor.Disjoint, List.disjoint_left]
+    intro q hqScratch hqData
+    exact h
+      (List.mem_append_left _ hqData)
+      (List.mem_append_left _ hqScratch)
+
+  have hscratchNew_data :
+      Disjoint
+        (cfg.env.scratch.newBits 1)
+        cfg.env.data.active := by
+    have h := hdataScratch
+    rw [ExtReg.OwnedDisjoint, List.disjoint_left] at h
+    rw [Shor.Disjoint, List.disjoint_left]
+    intro q hqNew hqData
+    exact h
+      (List.mem_append_left _ hqData)
+      (List.mem_append_right _
+        (List.mem_of_mem_take hqNew))
+
+  have hscratch_zero_out :
+      RegEncoding.toNat cfg.env.scratch.active b' = 0 := by
+    calc
+      RegEncoding.toNat cfg.env.scratch.active b'
+          =
+        RegEncoding.toNat cfg.env.scratch.active b := by
+          dsimp [b']
+          exact
+            RegEncoding.toNat_left_write_right
+              cfg.env.scratch.active
+              cfg.env.data.active
+              hscratch_data
+              b
+              out
+      _ = 0 := hscratch_zero
+
+  have hscratch_fresh_out :
+      cfg.env.scratch.FreshFor 1 b' := by
+    unfold ExtReg.FreshFor FreshZero at hscratch_fresh ⊢
+    calc
+      RegEncoding.toNat (cfg.env.scratch.newBits 1) b'
+          =
+        RegEncoding.toNat (cfg.env.scratch.newBits 1) b := by
+          dsimp [b']
+          exact
+            RegEncoding.toNat_left_write_right
+              (cfg.env.scratch.newBits 1)
+              cfg.env.data.active
+              hscratchNew_data
+              b
+              out
+      _ = 0 := hscratch_fresh
+
+  have hgood_out :
+      GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b' := by
+    refine
+      ⟨?_,
+       hdataFresh_out,
+       hwork_out,
+       hworkFresh_out,
+       hflag_out⟩
+    rw [hdata_out]
+    exact hout_lt_N
+
+  have heval :
+      qs.eval (ModMulConfig.idealGate cfg) (qs.ket b)
+        =
+      qs.ket b' := by
+    simpa [ModMulConfig.idealGate, b', out] using
+      (IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_ket_exact
+        (qs := qs)
+        cfg.c
+        cfg.env.N
+        cfg.env.data.active
+        cfg.ctrl
+        b
+        cfg.env.modulus_gt_one
+        cfg.env.data_capacity
+        cfg.coprime
+        hctrl_data
+        hbmod.1)
+
+  exact
+    ⟨b',
+     heval,
+     hgood_out,
+     hscratch_zero_out,
+     hscratch_fresh_out⟩
+
 /--
 The ideal controlled multiplication preserves the valid modular-input
 subspace described by its configuration.
@@ -82,11 +349,67 @@ theorem ideal_preserves_valid
     (cfg : ModMulConfig η)
     (ψ : qs.State)
     (hψ : cfg.ValidState qs ψ) :
-    cfg.ValidState qs (qs.eval (ModMulConfig.idealGate cfg) ψ) := by
-  simpa [ModMulConfig.ValidState, ModMulConfig.idealGate] using
-    (idealCtrlModMul_preserves_valid qs cfg.c cfg.env.N cfg.env.data cfg.env.work
-      cfg.flag cfg.ctrl cfg.env.modulus_gt_one cfg.env.data_capacity cfg.coprime
-      cfg.layout ψ hψ)
+    cfg.ValidState qs
+      (qs.eval (ModMulConfig.idealGate cfg) ψ) := by
+  classical
+
+  let validSet : Set qs.State :=
+    { ξ : qs.State |
+      ∃ b : qs.Basis,
+        GoodAlgorithm1BasisInput
+          qs cfg.env.N cfg.env.data cfg.env.work
+            cfg.env.scratch cfg.flag b ∧
+        ξ = qs.ket b }
+
+  change ψ ∈ Submodule.span ℂ validSet at hψ
+
+  change
+    qs.eval (ModMulConfig.idealGate cfg) ψ
+      ∈ Submodule.span ℂ validSet
+
+  refine
+    Submodule.span_induction
+      (s := validSet)
+      (p := fun ξ _ =>
+        qs.eval (ModMulConfig.idealGate cfg) ξ
+          ∈ Submodule.span ℂ validSet)
+      ?basis
+      ?zero
+      ?add
+      ?smul
+      hψ
+
+  case basis =>
+    intro ξ hξ
+    change
+      ∃ b : qs.Basis,
+        GoodAlgorithm1BasisInput
+          qs cfg.env.N cfg.env.data cfg.env.work
+            cfg.env.scratch cfg.flag b ∧
+        ξ = qs.ket b
+      at hξ
+    rcases hξ with ⟨b, hb, rfl⟩
+    obtain ⟨b', heval, hgood⟩ :=
+      ideal_preserves_algorithm1_good_ket
+        qs cfg b hb
+    rw [heval]
+    exact
+      Submodule.subset_span
+        (show qs.ket b' ∈ validSet from
+          ⟨b', hgood, rfl⟩)
+
+  case zero =>
+    simp [qs.eval_zero]
+
+  case add =>
+    intro ξ ζ _ _ hξ hζ
+    rw [qs.eval_add]
+    exact (Submodule.span ℂ validSet).add_mem hξ hζ
+
+  case smul =>
+    intro a ξ _ hξ
+    rw [qs.eval_smul]
+    exact (Submodule.span ℂ validSet).smul_mem a hξ
 
 /-! =========================================================
     Section 3: Uniform recursive-tail hybrid bound
@@ -107,31 +430,35 @@ theorem modExpApproxSteps_valid_dist_uniform
     [RegEncoding qs.Basis]
     [Spec]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
-    [ModMulPrimitiveGateSemantics qs] :
+    [IdealCtrlModMulExactSemantics qs] :
     ∃ K : ℝ, 0 ≤ K ∧
       ∀ (η : ℝ)
-        (a N : ℕ) (data work : ExtReg) (flag : ℕ)
+        (a N : ℕ) (data work scratch : ExtReg) (flag : ℕ)
         (hworkspace : ModMulCircuitWorkspaceOK data work)
+        (hstep4 :
+          CmpLtNWWorkspace N (data.grow 1) work scratch flag)
         (e : ℕ) (ctrls : List ℕ) (ψ : qs.State),
         1 < N →
         N ≤ ASize data.active →
         Algorithm1Precision η data.active work.active →
         ModExpTailLayout data work flag ctrls →
         ModExpTailArithmeticOK a N e ctrls →
-        ψ ∈ ValidModMulState qs N data work flag →
+        ψ ∈ ValidAlgorithm1State qs N data work scratch flag →
         ‖ψ‖ = 1 →
         ‖qs.eval
-            (modExpApproxStepsValid (Basis := qs.Basis)
-              a N data work flag hworkspace e ctrls) ψ -
-          qs.eval (modExpIdealSteps qs a N data.active e ctrls) ψ‖
+            (modExpApproxStepsValid
+              (Basis := qs.Basis)
+              a N data work scratch flag
+              hworkspace hstep4 e ctrls) ψ -
+          qs.eval
+            (modExpIdealSteps qs a N data.active e ctrls) ψ‖
           ≤ (ctrls.length : ℝ) * stepErr K η := by
   -- Reuse one uniform constant for every controlled multiplication.
   rcases modMul_approx_valid_dist_uniform (qs := qs) with
     ⟨K, hK_nonneg, hmodMul⟩
 
   refine ⟨K, hK_nonneg, ?_⟩
-  intro η a N data work flag hworkspace e ctrls ψ
+  intro η a N data work scratch flag hworkspace hstep4 e ctrls ψ
     hN hsize hprecision hLayout hArithmetic hValid hNorm
 
   revert e ψ hLayout hArithmetic hValid hNorm
@@ -168,6 +495,7 @@ theorem modExpApproxSteps_valid_dist_uniform
         { N := N
           data := data
           work := work
+          scratch := scratch
           modulus_gt_one := hN
           data_capacity := hsize
           precision := hprecision
@@ -179,19 +507,24 @@ theorem modExpApproxSteps_valid_dist_uniform
           flag := flag
           ctrl := ctrl
           coprime := hHeadArithmetic
-          layout := hHeadLayout }
+          layout := hHeadLayout
+          step4_workspace := hstep4 }
 
       -- Approximate/ideal head gates and approximate/ideal recursive tails.
       let A : Gate := CmodMulInPlaceCore (Basis := qs.Basis)
-        c N ctrl data work flag hworkspace
+          c N ctrl data work scratch flag hworkspace hstep4
       let I : Gate := Spec.idealCtrlModMul c N data.active ctrl
       let RA : Gate := modExpApproxStepsValid (Basis := qs.Basis)
-        a N data work flag hworkspace (e + 1) ctrls
+          a N data work scratch flag hworkspace hstep4 (e + 1) ctrls
       let RI : Gate := modExpIdealSteps qs a N data.active (e + 1) ctrls
 
       have hApprox :
-          modExpApproxStepsValid (Basis := qs.Basis)
-            a N data work flag hworkspace e (ctrl :: ctrls) = A ;; RA := by
+          modExpApproxStepsValid
+            (Basis := qs.Basis)
+            a N data work scratch flag
+            hworkspace hstep4 e (ctrl :: ctrls)
+            =
+          A ;; RA := by
         simp [modExpApproxStepsValid, A, RA, c]
 
       have hIdeal :
@@ -203,7 +536,6 @@ theorem modExpApproxSteps_valid_dist_uniform
 
       have hHeadValid : ModMulConfig.ValidState qs headCfg ψ := by
         simpa [ModMulConfig.ValidState, headCfg, headEnv] using hValid
-
       have hHeadUnit : ModMulConfig.ValidUnitState qs headCfg ψ :=
         ⟨hHeadValid, hNorm⟩
 
@@ -223,15 +555,22 @@ theorem modExpApproxSteps_valid_dist_uniform
         simpa [ψI0, I, ModMulConfig.idealGate, headCfg, headEnv] using
           (ideal_preserves_valid qs headCfg ψ hHeadValid)
 
-      have hψI0Valid : ψI0 ∈ ValidModMulState qs N data work flag := by
+      have hψI0Valid :
+          ψI0 ∈ ValidAlgorithm1State qs N data work scratch flag := by
         simpa [ModMulConfig.ValidState, headCfg, headEnv] using hψI0ValidCfg
 
       -- Apply the induction hypothesis to the ideal head output.
       have hTail :
           ‖qs.eval RA ψI0 - qs.eval RI ψI0‖
             ≤ (ctrls.length : ℝ) * stepErr K η := by
-        have h := ih (e := e + 1) (ψ := ψI0) hTailLayout hTailArithmetic
-          hψI0Valid hψI0Norm
+        have h :=
+          ih
+            (e := e + 1)
+            (ψ := ψI0)
+            hTailLayout
+            hTailArithmetic
+            hψI0Valid
+            hψI0Norm
         simpa [RA, RI] using h
 
       have hIso :
@@ -290,8 +629,7 @@ theorem modExpApprox_valid_dist_uniform
     [RegEncoding qs.Basis]
     [Spec]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
-    [ModMulPrimitiveGateSemantics qs] :
+    [IdealCtrlModMulExactSemantics qs]:
     ∃ K : ℝ, 0 ≤ K ∧
       ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
         ModExpConfig.ValidUnitState qs cfg ψ →
@@ -325,8 +663,8 @@ theorem modExpApprox_valid_dist_uniform
     simpa [ModExpTailArithmeticOK, ModExpArithmeticOK, regSize, Reg.width, j, h0]
       using cfg.arithmetic j
 
-  have h := hSteps η cfg.a cfg.env.N cfg.env.data cfg.env.work cfg.flag
-    cfg.env.circuit_workspace 0 cfg.x.qubits ψ cfg.env.modulus_gt_one
+  have h := hSteps η cfg.a cfg.env.N cfg.env.data cfg.env.work cfg.env.scratch cfg.flag
+    cfg.env.circuit_workspace cfg.step4_workspace 0 cfg.x.qubits ψ cfg.env.modulus_gt_one
     cfg.env.data_capacity cfg.env.precision hTailLayout hTailArithmetic
     hValid hNorm
 

@@ -136,6 +136,135 @@ private lemma disjoint_qubitReg_of_outside
   subst p
   exact h hr
 
+private lemma freshFor_writeNat_of_disjoint
+    {Basis : Type u} [RegEncoding Basis]
+    (e : ExtReg) (n : ℕ)
+    (r : Reg) (v : ℕ) (b : Basis)
+    (hdisj : Shor.Disjoint (e.newBits n) r)
+    (hfresh : e.FreshFor n b) :
+    e.FreshFor n (RegEncoding.writeNat r v b) := by
+  unfold ExtReg.FreshFor FreshZero at hfresh ⊢
+  calc
+    RegEncoding.toNat (e.newBits n)
+        (RegEncoding.writeNat r v b)
+      =
+    RegEncoding.toNat (e.newBits n) b :=
+      RegEncoding.toNat_left_write_right
+        (e.newBits n) r hdisj b v
+    _ = 0 := hfresh
+
+private lemma toNat_zero_writeNat_of_disjoint
+    {Basis : Type u} [RegEncoding Basis]
+    (left right : Reg)
+    (v : ℕ) (b : Basis)
+    (hdisj : Shor.Disjoint left right)
+    (hzero : RegEncoding.toNat left b = 0) :
+    RegEncoding.toNat left
+        (RegEncoding.writeNat right v b) = 0 := by
+  calc
+    RegEncoding.toNat left
+        (RegEncoding.writeNat right v b)
+      =
+    RegEncoding.toNat left b :=
+      RegEncoding.toNat_left_write_right
+        left right hdisj b v
+    _ = 0 := hzero
+
+private lemma disjoint_newBits_active_self
+    (e : ExtReg) (n : ℕ) :
+    Shor.Disjoint (e.newBits n) e.active := by
+  rw [Shor.Disjoint, List.disjoint_left]
+  intro q hqNew hqActive
+  have h := e.active_reserve_disjoint
+  rw [Shor.Disjoint, List.disjoint_left] at h
+  exact h hqActive (List.mem_of_mem_take hqNew)
+
+private lemma disjoint_newBits_active_of_owned
+    (x z : ExtReg) (n : ℕ)
+    (h : ExtReg.OwnedDisjoint x z) :
+    Shor.Disjoint (x.newBits n) z.active := by
+    rw [Shor.Disjoint, List.disjoint_left]
+    intro q hqx hqz
+    rw [ExtReg.OwnedDisjoint, List.disjoint_left] at h
+    exact
+      h
+        (by
+          rw [ExtReg.ownedQubits, List.mem_append]
+          exact Or.inr (List.mem_of_mem_take hqx))
+        (by
+          rw [ExtReg.ownedQubits, List.mem_append]
+          exact Or.inl hqz)
+
+private lemma disjoint_active_active_of_owned
+    (x z : ExtReg)
+    (h : ExtReg.OwnedDisjoint x z) :
+    Shor.Disjoint x.active z.active := by
+  rw [Shor.Disjoint, List.disjoint_left]
+  intro q hqx hqz
+  rw [ExtReg.OwnedDisjoint, List.disjoint_left] at h
+  exact h
+    (by
+      rw [ExtReg.ownedQubits, List.mem_append]
+      exact Or.inl hqx)
+    (by
+        rw [ExtReg.ownedQubits, List.mem_append]
+        exact Or.inl hqz)
+
+/-- Taking two list elements and dropping the first equals taking one from the tail. -/
+private lemma take_two_tail_eq_tail_take_one
+    {α : Type*} (xs : List α) :
+    (xs.take 2).tail = xs.tail.take 1 := by
+  cases xs with
+  | nil =>
+      simp
+  | cons _ xs =>
+      cases xs <;> simp
+
+private lemma freshFor_grow_one_of_freshFor_two
+    {Basis : Type u} [RegEncoding Basis]
+    (e : ExtReg) (b : Basis)
+    (hcap : e.CanGrow 2)
+    (hfresh : e.FreshFor 2 b) :
+    (e.grow 1).FreshFor 1 b := by
+  unfold ExtReg.FreshFor FreshZero at hfresh ⊢
+  let r2 : Reg := e.newBits 2
+  have hr2 : regSize r2 = 2 := by
+    simpa [r2] using Gate.ExtReg.newBits_size e 2 hcap
+  let m : SplitPoint r2 := ⟨1, by omega⟩
+  have hsplit :=
+    RegEncoding.toNat_split
+      (r := r2)
+      (m := m)
+      (b := b)
+  have hright :
+      splitRight r2 m = (e.grow 1).newBits 1 := by
+    simp [
+      r2,
+      m,
+      splitRight,
+      ExtReg.grow,
+      ExtReg.newBits,
+      ExtReg.remainingReserve,
+      Reg.drop,
+      Reg.take,
+      take_two_tail_eq_tail_take_one
+    ]
+  have hr2zero : RegEncoding.toNat r2 b = 0 := by
+    simpa [r2] using hfresh
+  dsimp at hsplit
+  rw [hr2zero] at hsplit
+  have hzero : RegEncoding.toNat (splitRight r2 m) b = 0 := by
+    have hmul :
+        ASize (splitLeft r2 m) *
+            RegEncoding.toNat (splitRight r2 m) b = 0 := by
+      omega
+    rcases Nat.mul_eq_zero.mp hmul with hleft | hrightZero
+    · have hpos : 0 < ASize (splitLeft r2 m) := by
+        simp [ASize]
+      omega
+    · exact hrightZero
+  simpa [hright] using hzero
+
 /-- Symmetric form of singleton-qubit/register disjointness. -/
 private lemma disjoint_of_qubitReg_outside
     {q : ℕ} {r : Reg}
@@ -341,7 +470,7 @@ lemma alg1_step34_reference_exact_core
           =
         qs.ket b3 := by
       have hraw :=
-        eval_step3_clean_ket_of_primitive
+        eval_step3_clean_ket
           (qs := qs)
           cfg.env.N
           xext
@@ -472,30 +601,328 @@ lemma alg1_step34_reference_exact_core
           exact hover (hcross.mp h)
         simp [hover, hcross_false]
 
+    have hDataWorkOwned :
+        ExtReg.OwnedDisjoint
+          (cfg.env.data.grow 1) cfg.env.work :=
+      cfg.step4_workspace.data_work_disjoint
+
+    have hWorkDataOwned :
+        ExtReg.OwnedDisjoint
+          cfg.env.work (cfg.env.data.grow 1) := by
+      exact List.Disjoint.symm hDataWorkOwned
+
+    have hDataScratchOwned :
+        ExtReg.OwnedDisjoint
+          (cfg.env.data.grow 1) cfg.env.scratch :=
+      cfg.step4_workspace.data_scratch_disjoint
+
+    have hScratchDataOwned :
+        ExtReg.OwnedDisjoint
+          cfg.env.scratch (cfg.env.data.grow 1) := by
+      exact List.Disjoint.symm hDataScratchOwned
+
+    have hWorkScratchOwned :
+        ExtReg.OwnedDisjoint
+          cfg.env.work cfg.env.scratch :=
+      cfg.step4_workspace.work_scratch_disjoint
+
+    have hScratchWorkOwned :
+        ExtReg.OwnedDisjoint
+          cfg.env.scratch cfg.env.work := by
+      exact List.Disjoint.symm hWorkScratchOwned
+
+    have hDataNewW :
+        Shor.Disjoint
+          ((cfg.env.data.grow 1).newBits 1)
+          cfg.env.work.active :=
+      disjoint_newBits_active_of_owned
+        (cfg.env.data.grow 1) cfg.env.work 1
+        hDataWorkOwned
+
+    have hDataNewX :
+        Shor.Disjoint
+          ((cfg.env.data.grow 1).newBits 1)
+          xext := by
+      simpa [xext] using
+        disjoint_newBits_active_self
+          (cfg.env.data.grow 1) 1
+
+    have hflagDataNew_out :
+        QubitOutside cfg.flag
+          ((cfg.env.data.grow 1).newBits 1) := by
+      intro hq
+      exact cfg.step4_workspace.flag_not_data
+        (by
+          rw [ExtReg.ownedQubits, List.mem_append]
+          exact Or.inr (List.mem_of_mem_take hq))
+
+    have hDataNewFlag :
+        Shor.Disjoint
+          ((cfg.env.data.grow 1).newBits 1)
+          flagReg :=
+      disjoint_of_qubitReg_outside hflagDataNew_out
+
+    have hWorkNewX :
+        Shor.Disjoint
+          (cfg.env.work.newBits 1) xext := by
+      simpa [xext] using
+        disjoint_newBits_active_of_owned
+          cfg.env.work
+          (cfg.env.data.grow 1)
+          1
+          hWorkDataOwned
+
+    have hflagWorkNew_out :
+        QubitOutside cfg.flag
+          (cfg.env.work.newBits 1) := by
+      intro hq
+      exact cfg.step4_workspace.flag_not_work
+        (by
+          rw [ExtReg.ownedQubits, List.mem_append]
+          exact Or.inr (List.mem_of_mem_take hq))
+
+    have hWorkNewFlag :
+        Shor.Disjoint
+          (cfg.env.work.newBits 1)
+          flagReg :=
+      disjoint_of_qubitReg_outside hflagWorkNew_out
+
+    have hScratchNewW :
+        Shor.Disjoint
+          (cfg.env.scratch.newBits 1)
+          cfg.env.work.active :=
+      disjoint_newBits_active_of_owned
+        cfg.env.scratch cfg.env.work 1
+        hScratchWorkOwned
+
+    have hScratchNewX :
+        Shor.Disjoint
+          (cfg.env.scratch.newBits 1)
+          xext := by
+      simpa [xext] using
+        disjoint_newBits_active_of_owned
+          cfg.env.scratch
+          (cfg.env.data.grow 1)
+          1
+          hScratchDataOwned
+
+    have hflagScratchNew_out :
+        QubitOutside cfg.flag
+          (cfg.env.scratch.newBits 1) := by
+      intro hq
+      exact cfg.step4_workspace.flag_not_scratch
+        (by
+          rw [ExtReg.ownedQubits, List.mem_append]
+          exact Or.inr (List.mem_of_mem_take hq))
+
+    have hScratchNewFlag :
+        Shor.Disjoint
+          (cfg.env.scratch.newBits 1)
+          flagReg :=
+      disjoint_of_qubitReg_outside hflagScratchNew_out
+
+    have hScratchW :
+        Shor.Disjoint
+          cfg.env.scratch.active
+          cfg.env.work.active :=
+      disjoint_active_active_of_owned
+        cfg.env.scratch cfg.env.work hScratchWorkOwned
+
+    have hScratchX :
+        Shor.Disjoint
+          cfg.env.scratch.active xext := by
+      simpa [xext] using
+        disjoint_active_active_of_owned
+          cfg.env.scratch
+          (cfg.env.data.grow 1)
+          hScratchDataOwned
+
+    have hflagScratch_out :
+        QubitOutside cfg.flag cfg.env.scratch.active := by
+      intro hq
+      exact cfg.step4_workspace.flag_not_scratch
+        (by
+          rw [ExtReg.ownedQubits, List.mem_append]
+          exact Or.inl hq)
+
+    have hScratchFlag :
+        Shor.Disjoint cfg.env.scratch.active flagReg :=
+      disjoint_of_qubitReg_outside hflagScratch_out
+
+    have hdataFresh0 :
+        (cfg.env.data.grow 1).FreshFor 1 b :=
+      freshFor_grow_one_of_freshFor_two
+        cfg.env.data b
+        cfg.env.circuit_workspace.1
+        hb_good.2.1
+
+    have hdataFresh_w0 :
+        (cfg.env.data.grow 1).FreshFor 1 w0 := by
+      dsimp [w0]
+      exact freshFor_writeNat_of_disjoint
+        (cfg.env.data.grow 1) 1
+        cfg.env.work.active t.1 b
+        hDataNewW hdataFresh0
+
+    have hdataFresh_b2 :
+        (cfg.env.data.grow 1).FreshFor 1 b2 := by
+      dsimp [b2]
+      exact freshFor_writeNat_of_disjoint
+        (cfg.env.data.grow 1) 1
+        xext s w0
+        hDataNewX hdataFresh_w0
+
+    have hdataFresh_red :
+        (cfg.env.data.grow 1).FreshFor 1
+          (RegEncoding.writeNat xext red b2) :=
+      freshFor_writeNat_of_disjoint
+        (cfg.env.data.grow 1) 1
+        xext red b2
+        hDataNewX hdataFresh_b2
+
+    have hdataFresh_b3 :
+        (cfg.env.data.grow 1).FreshFor 1 b3 := by
+      dsimp [b3]
+      exact freshFor_writeNat_of_disjoint
+        (cfg.env.data.grow 1) 1
+        flagReg cmp
+        (RegEncoding.writeNat xext red b2)
+        hDataNewFlag hdataFresh_red
+
+    have hworkFresh_w0 :
+        cfg.env.work.FreshFor 1 w0 := by
+      dsimp [w0]
+      exact ExtReg.freshFor_write_active
+        cfg.env.work 1 t.1 b
+        hb_good.2.2.2.1
+
+    have hworkFresh_b2 :
+        cfg.env.work.FreshFor 1 b2 := by
+      dsimp [b2]
+      exact freshFor_writeNat_of_disjoint
+        cfg.env.work 1
+        xext s w0
+        hWorkNewX hworkFresh_w0
+
+    have hworkFresh_red :
+        cfg.env.work.FreshFor 1
+          (RegEncoding.writeNat xext red b2) :=
+      freshFor_writeNat_of_disjoint
+        cfg.env.work 1
+        xext red b2
+        hWorkNewX hworkFresh_b2
+
+    have hworkFresh_b3 :
+        cfg.env.work.FreshFor 1 b3 := by
+      dsimp [b3]
+      exact freshFor_writeNat_of_disjoint
+        cfg.env.work 1
+        flagReg cmp
+        (RegEncoding.writeNat xext red b2)
+        hWorkNewFlag hworkFresh_red
+
+    have hscratchFresh_w0 :
+        cfg.env.scratch.FreshFor 1 w0 := by
+      dsimp [w0]
+      exact freshFor_writeNat_of_disjoint
+        cfg.env.scratch 1
+        cfg.env.work.active t.1 b
+        hScratchNewW
+        (tr.scratch_fresh b hb)
+
+    have hscratchFresh_b2 :
+        cfg.env.scratch.FreshFor 1 b2 := by
+      dsimp [b2]
+      exact freshFor_writeNat_of_disjoint
+        cfg.env.scratch 1
+        xext s w0
+        hScratchNewX hscratchFresh_w0
+
+    have hscratchFresh_red :
+        cfg.env.scratch.FreshFor 1
+          (RegEncoding.writeNat xext red b2) :=
+      freshFor_writeNat_of_disjoint
+        cfg.env.scratch 1
+        xext red b2
+        hScratchNewX hscratchFresh_b2
+
+    have hscratchFresh_b3 :
+        cfg.env.scratch.FreshFor 1 b3 := by
+      dsimp [b3]
+      exact freshFor_writeNat_of_disjoint
+        cfg.env.scratch 1
+        flagReg cmp
+        (RegEncoding.writeNat xext red b2)
+        hScratchNewFlag hscratchFresh_red
+
+    have hscratchZero_w0 :
+        RegEncoding.toNat cfg.env.scratch.active w0 = 0 := by
+      dsimp [w0]
+      exact toNat_zero_writeNat_of_disjoint
+        cfg.env.scratch.active
+        cfg.env.work.active
+        t.1 b
+        hScratchW
+        (tr.scratch_zero b hb)
+
+    have hscratchZero_b2 :
+        RegEncoding.toNat cfg.env.scratch.active b2 = 0 := by
+      dsimp [b2]
+      exact toNat_zero_writeNat_of_disjoint
+        cfg.env.scratch.active
+        xext
+        s w0
+        hScratchX hscratchZero_w0
+
+    have hscratchZero_red :
+        RegEncoding.toNat cfg.env.scratch.active
+          (RegEncoding.writeNat xext red b2) = 0 :=
+      toNat_zero_writeNat_of_disjoint
+        cfg.env.scratch.active
+        xext
+        red b2
+        hScratchX hscratchZero_b2
+
+    have hscratchZero_b3 :
+        RegEncoding.toNat cfg.env.scratch.active b3 = 0 := by
+      dsimp [b3]
+      exact toNat_zero_writeNat_of_disjoint
+        cfg.env.scratch.active
+        flagReg
+        cmp
+        (RegEncoding.writeNat xext red b2)
+        hScratchFlag hscratchZero_red
+
     have hstep4 :
         qs.eval
             (step4
               cfg.env.N
-              xext
-              cfg.env.work.active
-              cfg.flag)
+              (cfg.env.data.grow 1)
+              cfg.env.work
+              cfg.env.scratch
+              cfg.flag
+              cfg.step4_workspace)
             (qs.ket b3)
           =
         qs.ket
           (RegEncoding.writeNat flagReg 0 b3) := by
       have hraw :=
-        eval_step4_cancels_ket_of_primitive
+        eval_step4_cancels_ket
           (qs := qs)
           cfg.env.N
-          xext
-          cfg.env.work.active
+          (cfg.env.data.grow 1)
+          cfg.env.work
+          cfg.env.scratch
           cfg.flag
+          cfg.step4_workspace
           b3
-          hflagX_out
-          hflagW_out
+          hdataFresh_b3
+          hworkFresh_b3
+          hscratchZero_b3
+          hscratchFresh_b3
           (by
             rw [hflag_b3]
-            exact hcmp_eq_cross)
+            simpa [xext] using hcmp_eq_cross)
       simpa [flagReg] using hraw
 
     have hfinal_clean :
@@ -552,15 +979,32 @@ lemma alg1_step34_reference_exact_core
       qs.eval (ModMulConfig.U34 (Basis := qs.Basis) cfg)
           (qs.ket b2)
         =
-      qs.eval (step4 cfg.env.N xext cfg.env.work.active cfg.flag)
-          (qs.eval (step3 cfg.env.N xext cfg.flag) (qs.ket b2)) := by
+      qs.eval
+          (step4
+            cfg.env.N
+            (cfg.env.data.grow 1)
+            cfg.env.work
+            cfg.env.scratch
+            cfg.flag
+            cfg.step4_workspace)
+          (qs.eval
+            (step3 cfg.env.N xext cfg.flag)
+            (qs.ket b2)) := by
         simp [ModMulConfig.U34, xext, qs.eval_seq]
       _ =
-      qs.eval (step4 cfg.env.N xext cfg.env.work.active cfg.flag)
+      qs.eval
+          (step4
+            cfg.env.N
+            (cfg.env.data.grow 1)
+            cfg.env.work
+            cfg.env.scratch
+            cfg.flag
+            cfg.step4_workspace)
           (qs.ket b3) := by
         rw [hstep3]
       _ =
-      qs.ket (RegEncoding.writeNat flagReg 0 b3) := hstep4
+      qs.ket (RegEncoding.writeNat flagReg 0 b3) :=
+        hstep4
       _ =
       qs.ket (RegEncoding.writeNat xext y w0) := by
         rw [hclear]
