@@ -13,8 +13,6 @@ universe u
 
 namespace Shor
 
-variable {Basis : Type u} [RegEncoding Basis]
-
 /-! =========================================================
     Section 4: Gate language and derived gate macros
 ========================================================= -/
@@ -57,110 +55,6 @@ namespace Gate
 infixr:80 " ;; " => Gate.seq
 prefix:90 "†" => Gate.adj
 
-theorem Reg.take_append_drop
-    (r : Reg) (n : ℕ) :
-    (r.take n).qubits ++ (r.drop n).qubits =
-      r.qubits := by
-  simp [Reg.take, Reg.drop]
-
-theorem ExtReg.newBits_size
-    (e : ExtReg)
-    (n : ℕ)
-    (hcap : e.CanGrow n) :
-    regSize (e.newBits n) = n := by
-  simp [ExtReg.newBits, ExtReg.CanGrow,
-    ExtReg.capacity, regSize, Reg.width] at *
-  simp[Reg.take]
-  omega
-
-theorem ExtReg.ownedQubits_grow
-    (e : ExtReg)
-    (n : ℕ) :
-    (e.grow n).ownedQubits = e.ownedQubits := by
-  simp [ExtReg.ownedQubits, ExtReg.grow, Reg.append, ExtReg.newBits,
-    ExtReg.remainingReserve, Reg.take, Reg.drop, List.append_assoc]
-
-theorem RegEncoding.toNat_append_eq
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (left right : Reg)
-    (hdisj : Disjoint left right)
-    (b : Basis) :
-    RegEncoding.toNat (Reg.append left right hdisj) b
-      =
-    RegEncoding.toNat left b +
-      ASize left * RegEncoding.toNat right b := by
-  exact RegEncoding.toNat_append left right hdisj b
-
-theorem ExtReg.active_grow_qubits
-    (e : ExtReg)
-    (n : ℕ) :
-    (e.grow n).active.qubits =
-      e.active.qubits ++ (e.newBits n).qubits := by
-  rfl
-
-theorem ExtReg.toNat_grow
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (e : ExtReg)
-    (n : ℕ)
-    (b : Basis) :
-    ExtReg.toNat (e.grow n) b
-      =
-    ExtReg.toNat e b +
-      2 ^ e.width *
-        RegEncoding.toNat (e.newBits n) b := by
-  simpa [ExtReg.toNat, ExtReg.grow, ExtReg.width, ASize] using
-    RegEncoding.toNat_append e.active (e.newBits n) _ b
-
-theorem ExtReg.toNat_grow_of_fresh
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (e : ExtReg)
-    (n : ℕ)
-    (b : Basis)
-    (hzero : ExtReg.FreshFor e n b) :
-    ExtReg.toNat (e.grow n) b =
-      ExtReg.toNat e b := by
-  rw [ExtReg.toNat_grow]
-  simp [ExtReg.FreshFor, FreshZero] at hzero
-  simp [hzero]
-
-lemma tcDecodeWidth_add_eq_of_lt
-    {w n value : ℕ}
-    (hn : 0 < n)
-    (hvalue : value < 2 ^ w) :
-    tcDecodeWidth (w + n) value = (value : ℤ) := by
-  obtain ⟨m, rfl⟩ := Nat.exists_eq_succ_of_ne_zero
-    (Nat.ne_of_gt hn)
-
-  have hle :
-      2 ^ w ≤ 2 ^ (w + m) :=
-    Nat.pow_le_pow_right (by omega)
-      (Nat.le_add_right w m)
-
-  have hlt :
-      value < 2 ^ (w + m) :=
-    lt_of_lt_of_le hvalue hle
-
-  simp [tcDecodeWidth, hlt]
-
-theorem ExtReg.extToInt_grow_of_fresh
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (e : ExtReg)
-    (n : ℕ)
-    (b : Basis)
-    (hcap : e.CanGrow n)
-    (hzero : e.FreshFor n b)
-    (hn : 0 < n) :
-    extToInt (e.grow n) b =
-      (ExtReg.toNat e b : ℤ) := by
-  unfold extToInt
-  rw [ExtReg.toNat_grow_of_fresh e n b hzero]
-  rw [ExtReg.width_grow e n hcap]
-  apply tcDecodeWidth_add_eq_of_lt hn
-  exact ExtReg.toNat_lt e b
 
 end Gate
 
