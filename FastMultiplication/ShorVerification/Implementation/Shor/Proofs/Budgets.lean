@@ -137,13 +137,118 @@ def rec' {motive : (ψ : qs.State) → ShorLoweringCleanState qs x data work ψ 
   ThreeRegsCleanState.rec' zero ket add smul h
 end ShorLoweringCleanState
 
+/-- The complete physical ownership of an extendable register, viewed as one
+ordinary register for zero-workspace invariants. -/
+def ExtReg.ownedReg (e : ExtReg) : Reg :=
+  Reg.append e.active e.reserve e.active_reserve_disjoint
+
+/-- The exponent reserve together with all Step-3/4 scratch storage.  Keeping
+the ordinary auxiliary reserve as the third clean register lets the existing
+phase-product readiness lemmas retain their exact workspace boundary. -/
+def exponentScratchCleanReg
+    (x scratch : ExtReg)
+    (hdisjoint : x.OwnedDisjoint scratch) : Reg :=
+  Reg.append x.reserve scratch.ownedReg (by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqExponent hqScratch
+    rw [ExtReg.OwnedDisjoint, List.disjoint_left] at hdisjoint
+    apply hdisjoint
+    · rw [ExtReg.ownedQubits, List.mem_append]
+      exact Or.inr hqExponent
+    · simpa only [
+        ExtReg.ownedReg,
+        Reg.append,
+        ExtReg.ownedQubits
+      ] using hqScratch)
+
+/-- The compiler-clean invariant strengthened with the complete comparator
+scratch register.  It remains a single basis-span predicate, so Step 3 can
+soundly combine data-carry freshness with scratch cleanliness. -/
+abbrev ShorConcreteCleanState
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    (x data work scratch : ExtReg)
+    (hdisjoint : x.OwnedDisjoint scratch) :
+    qs.State → Prop :=
+  ThreeRegsCleanState
+    qs
+    (exponentScratchCleanReg x scratch hdisjoint)
+    (data.reserve.drop 1)
+    work.reserve
+
+private lemma freshZero_append
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (left right : Reg)
+    (hdisjoint : Disjoint left right)
+    (b : Basis)
+    (hleft : FreshZero left b)
+    (hright : FreshZero right b) :
+    FreshZero (Reg.append left right hdisjoint) b := by
+  unfold FreshZero at hleft hright ⊢
+  rw [RegEncoding.toNat_append]
+  simp [hleft, hright]
+
+lemma shorConcreteCleanState_ket
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    {x data work scratch : ExtReg}
+    {hdisjoint : x.OwnedDisjoint scratch}
+    {b : qs.Basis}
+    (hzero :
+      ShorWorkspaceCleanInput x data work scratch b)
+    (hscratchActive : FreshZero scratch.active b) :
+    ShorConcreteCleanState
+      qs x data work scratch hdisjoint (qs.ket b) := by
+  apply ThreeRegsCleanState.ket
+  · unfold exponentScratchCleanReg
+    apply freshZero_append
+    · exact hzero.1
+    · unfold ExtReg.ownedReg
+      apply freshZero_append
+      · exact hscratchActive
+      · exact hzero.2.2.2
+  · apply FreshZero.of_subset
+      (data.reserve.drop 1) data.reserve b
+    · intro q hq
+      exact List.mem_of_mem_drop hq
+    · exact hzero.2.1
+  · exact hzero.2.2.1
+
+lemma ShorConcreteCleanState.to_lowering
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    {x data work scratch : ExtReg}
+    {hdisjoint : x.OwnedDisjoint scratch}
+    {ψ : qs.State}
+    (hclean :
+      ShorConcreteCleanState
+        qs x data work scratch hdisjoint ψ) :
+    ShorLoweringCleanState qs x data work ψ := by
+  induction hclean with
+  | zero => exact ThreeRegsCleanState.zero
+  | ket b hbasis =>
+      rcases hbasis with ⟨hx, hdata, haux⟩
+      apply ThreeRegsCleanState.ket b ?_ hdata haux
+      apply FreshZero.of_subset
+          x.reserve
+          (exponentScratchCleanReg x scratch hdisjoint)
+          b
+      · intro q hq
+        simp [exponentScratchCleanReg, Reg.append, hq]
+      · exact hx
+  | add hψ hφ ihψ ihφ =>
+      exact ThreeRegsCleanState.add ihψ ihφ
+  | smul a hψ ihψ =>
+      exact ThreeRegsCleanState.smul a ihψ
+
 lemma fullShorWorkspaceCleanState_ket
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    {x data work : ExtReg}
+    {x data work scratch : ExtReg}
     {b : qs.Basis}
     (hzero :
-      ShorWorkspaceCleanInput x data work b) :
+      ShorWorkspaceCleanInput x data work scratch b) :
     FullShorWorkspaceCleanState
       qs x data work
       (qs.ket b) := by
@@ -152,7 +257,7 @@ lemma fullShorWorkspaceCleanState_ket
       b
       hzero.1
       hzero.2.1
-      hzero.2.2
+      hzero.2.2.1
 
 lemma fullShorWorkspaceCleanState_to_carry
     {qs : QSemantics}
@@ -196,11 +301,11 @@ workspace.
 lemma shorLoweringCleanState_ket
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    {x data work : ExtReg}
+    {x data work scratch : ExtReg}
     {b : qs.Basis}
     (hzero :
       ShorWorkspaceCleanInput
-        x data work b) :
+        x data work scratch b) :
     ShorLoweringCleanState
       qs x data work
       (qs.ket b) := by

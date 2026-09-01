@@ -37,13 +37,13 @@ def ConstArithmeticCleanBasis
   extToInt scratch b = 0 ∧
   scratch.FreshFor 1 b
 
-/-- Clean basis inputs on which controlled subtraction cannot underflow. -/
+/-- Basis-level cleanliness consumed by controlled subtraction.  The concrete
+lowerer performs fixed-width modular subtraction, so it is total on every
+control/data value and needs no hidden no-underflow premise. -/
 def CSubConstCleanBasis
     {Basis : Type u} [RegEncoding Basis]
-    (N : ℕ) (data scratch : ExtReg) (flag : ℕ) (b : Basis) : Prop :=
-  ConstArithmeticCleanBasis data scratch b ∧
-  (RegEncoding.bit flag b = true →
-    N ≤ RegEncoding.toNat data.active b)
+    (_N : ℕ) (data scratch : ExtReg) (_flag : ℕ) (b : Basis) : Prop :=
+  ConstArithmeticCleanBasis data scratch b
 
 /-- Linear closure of clean comparison inputs. -/
 abbrev CmpGeConstCleanState
@@ -51,8 +51,7 @@ abbrev CmpGeConstCleanState
     (data scratch : ExtReg) : qs.State → Prop :=
   CleanClosure (ConstArithmeticCleanBasis data scratch)
 
-/-- Linear closure of controlled-subtraction inputs satisfying its no-underflow
-condition whenever the control is set. -/
+/-- Linear closure of clean controlled-subtraction inputs. -/
 abbrev CSubConstCleanState
     (qs : QSemantics) [RegEncoding qs.Basis]
     (N : ℕ) (data scratch : ExtReg) (flag : ℕ) : qs.State → Prop :=
@@ -118,17 +117,19 @@ def lowerCmpGeConst
   †diff ;;
   †prep
 
-/-- Conditionally subtract `N` from `data`, using one borrowed signed unit bit
-and restoring it after the binary constant-addition schedule. -/
+/-- Conditionally subtract `N` modulo the active width of `data`.  The control
+prepares `scratch` as either `0` or `-N`; one fixed-width `AddScaled` performs
+the modular subtraction, and the preparation is then uncomputed. -/
 def lowerCSubConst
     (N : ℕ) (data scratch : ExtReg) (flag : ℕ)
     (h : ConstArithmeticWorkspace N data scratch flag) : LowGate :=
   let q := constArithmeticUnitQubit scratch h.scratch_can_grow
   let unit := constArithmeticUnit scratch h.scratch_can_grow
-  LowGate.CNOT flag q ;;
-  LowGate.zeroExtend data 1 ;;
-  lowerAddConstFromUnit N (data.grow 1) unit ;;
-  LowGate.zeroDealloc data 1 ;;
-  †(LowGate.CNOT flag q)
+  let prep :=
+    LowGate.CNOT flag q ;;
+    lowerAddConstFromUnit N scratch unit
+  prep ;;
+  LowGate.AddScaled data scratch false 0 ;;
+  †prep
 
 end Shor

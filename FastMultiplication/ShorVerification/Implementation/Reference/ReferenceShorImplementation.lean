@@ -36,9 +36,7 @@ variable [Spec]
 variable [MeasureClass qs]
 variable [GateSemanticsFacts qs]
 variable [LowerGateClass qs]
-variable [LowerGatePrimitiveBridge qs]
 variable [IdealCtrlModMulExactSemantics qs]
-variable [ModMulPrimitiveGateSemantics qs]
 
 /-! =========================================================
     Section 1: ε-from-precision packaging
@@ -100,13 +98,13 @@ theorem referenceShorProg_correct
   let layout := allocateReferenceLayout lowering.ops inst η
   have hη_pos := referencePrecision_pos m
   have hη_half := referencePrecision_lt_half m
-  have hready := referenceLayout_ready (qs := qs) lowering inst η hη_pos hη_half
+  let hready := referenceLayout_ready (qs := qs) lowering inst η hη_pos hη_half
   have hxwidth : regSize layout.x.active = Nat.log2 (2 * inst.N^2) := by
     simpa [layout] using allocateReferenceLayout_x_width lowering.ops inst η
 
   have hywidth : regSize layout.data.active = Nat.log2 (2 * inst.N) := by simp [layout]
 
-  have hb := hbound inst lowering layout.x layout.data layout.work layout.flag
+  have hb := hbound inst lowering layout.x layout.data layout.work layout.scratch layout.flag
       (RegEncoding.zero (Basis := qs.Basis)) hxwidth
       hywidth η hready
 
@@ -124,7 +122,9 @@ theorem referenceShorProg_correct
       κ / (Nat.log2 inst.N : ℝ) ^ 4
         -
       2 * (tbits layout.x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
-    simpa [ referenceShorProg, referenceShorCircuit, layout, η] using hb
+    simpa [referenceShorProg, referenceShorCircuit, layout, η, hready,
+      referenceLowerWorkspace, referenceApproxSetup, referenceMinimalSetup,
+      referenceLayout_ready] using hb
   linarith
 
 /-! =========================================================

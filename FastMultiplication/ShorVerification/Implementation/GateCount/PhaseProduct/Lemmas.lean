@@ -1026,8 +1026,6 @@ lemma gateCount_lowerGateRec_eq_zero_of_bookkeeping
       simp [BookkeepingGate]
   | X initSize qbit =>
       simp [BookkeepingGate]
-  | Prim initSize tag args =>
-      simp [BookkeepingGate]
   | ShiftL initSize r n =>
       simp [BookkeepingGate]
   | ShiftR initSize r n =>

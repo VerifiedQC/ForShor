@@ -97,9 +97,7 @@ probability is exactly that of `orderFindingApprox`.
 theorem Shor_correct_approx_lowered_uniform
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     [IdealCtrlModMulExactSemantics qs]
-    [ModMulPrimitiveGateSemantics qs]
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
     ShorCorrectApproxLoweredUniform T hT := by
   -- `K` is the single hoisted constant from the gate-level theorem; it is
@@ -108,7 +106,7 @@ theorem Shor_correct_approx_lowered_uniform
   obtain ⟨K, hK, happrox⟩ := Shor_correct_approx_uniform (qs := qs) T hT
 
   refine ⟨K, hK, ?_⟩
-  intro inst lowering x y work flag b0 hm hn η hready
+  intro inst lowering x y work scratch flag b0 hm hn η hready
 
   calc
     probability_of_success
@@ -123,8 +121,10 @@ theorem Shor_correct_approx_lowered_uniform
         (evalC := LowerGateClass.evalL (qs := qs))
         (C :=
           orderFindingApproxLow
-            qs lowering.k lowering.hk lowering.ops inst.a inst.N x y work flag
+            qs lowering.k lowering.hk lowering.ops inst.a inst.N x y work
+            scratch flag
             (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
+            (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
             hready.workspace)
         (ψ := qs.ket b0)
         =
@@ -138,7 +138,9 @@ theorem Shor_correct_approx_lowered_uniform
         (r := ord inst.a inst.N inst.coprime)
         (Q := ASize x.active)
         (evalC := qs.eval)
-        (C := orderFindingApprox qs inst.a inst.N x y work flag (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace)
+        (C := orderFindingApprox qs inst.a inst.N x y work scratch flag
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace)
         (ψ := qs.ket b0) := by
           exact
             orderFindingApproxLow_probability_eq
@@ -149,8 +151,9 @@ theorem Shor_correct_approx_lowered_uniform
                 fun d =>
                   decide ((inst.a ^ d) % inst.N = 1))
               (a := inst.a) (N := inst.N) (x := x) (y := y)
-              (work := work) (flag := flag)
+              (work := work) (scratch := scratch) (flag := flag)
               (hmodWorkspace := (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace)
+              (hstep4 := (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace)
               (hLowerWorkspace := hready.workspace)
               (ψ := qs.ket b0)
               (hclean := hready.workspace_clean)
@@ -162,6 +165,7 @@ theorem Shor_correct_approx_lowered_uniform
           -
         2 * (tbits x.active : ℝ) *
           Real.sqrt (2 * (K * η)) := by
-          exact happrox inst x y work flag b0 hm hn η (ShorApproxSetupMinimal.toShorApproxSetup hready.approx)
+          exact happrox inst x y work scratch flag b0 hm hn η
+            (ShorApproxSetupMinimal.toShorApproxSetup hready.approx)
 
 end Shor

@@ -46,24 +46,28 @@ private lemma active_get_mem_ownedQubits
   dsimp [Reg.get]
   exact List.get_mem x.active.qubits _
 
-theorem ShorApproxSetupMinimal.toShorApproxSetup
+def ShorApproxSetupMinimal.toShorApproxSetup
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     {η : ℝ}
-    {x data work : ExtReg}
+    {N : ℕ}
+    {x data work scratch : ExtReg}
     {flag : ℕ}
     {b0 : qs.Basis}
     (h :
       ShorApproxSetupMinimal
-        qs η x data work flag b0) :
+        qs η N x data work scratch flag b0) :
     ShorApproxSetup
-      qs η x data work flag b0 := by
+      qs η N x data work scratch flag b0 := by
   refine
     {
       register_layout := ?_
       circuit_workspace := ?_
+      step4_workspace := h.step4_workspace
       exponent_data_disjoint :=
         h.exponent_data_disjoint
+      exponent_scratch_disjoint :=
+        h.exponent_scratch_disjoint
       work_precision :=
         h.algorithm1_precision
       clean_input := ?_
@@ -119,6 +123,8 @@ theorem ShorApproxSetupMinimal.toShorApproxSetup
         h.data_fresh,
         h.work_zero,
         h.work_fresh,
+        h.scratch_zero,
+        h.scratch_fresh,
         h.flag_zero⟩
 /--
 Main bridge theorem for this file.
@@ -131,14 +137,15 @@ lemma ShorApproxSetup.toIdealOrderFindingInput
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     {η : ℝ}
-    {x y work : ExtReg}
+    {N : ℕ}
+    {x y work scratch : ExtReg}
     {flag : ℕ}
     {b0 : qs.Basis}
-    (hsetup : ShorApproxSetup qs η  x y work flag b0) :
+    (hsetup : ShorApproxSetup qs η N x y work scratch flag b0) :
     IdealOrderFindingInput qs x y b0 := by
   rcases hsetup.clean_input with
     ⟨hx0, hy0, _hyFresh, _hwork0,
-      _hworkFresh, _hflag0⟩
+      _hworkFresh, _hscratch0, _hscratchFresh, _hflag0⟩
 
   exact
     ⟨hx0, hy0, hsetup.exponent_data_disjoint⟩

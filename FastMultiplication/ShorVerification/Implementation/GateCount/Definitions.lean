@@ -145,15 +145,16 @@ end WidthBookkeeping
     Controlled PhaseProduct and Shor-level rates
 
 Controlled PhaseProduct bounds share the signed recurrence but measure public
-controlled gates.  The separate Shor rate is the coarser `n^(2+ε)` comparison
+controlled gates.  The separate Shor rate is the coarser `n^(3+ε)` comparison
 used when PhaseProduct is embedded in the full Shor circuit.
 ========================================================= -/
 
 section ControlledAndShorBounds
 
-/-- Coarser Shor-level comparison rate `n^(2 + ε)`, again clamped to nonzero
+/-- Coarser Shor-level comparison rate `n^(3 + ε)`, again clamped to nonzero
 input width through `max 1 n`. -/
-noncomputable def shorGateRate (ε : ℝ) (n : ℕ) : ℝ := Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)
+noncomputable def shorGateRate (ε : ℝ) (n : ℕ) : ℝ :=
+  Real.rpow (((max 1 n : ℕ) : ℝ)) (3 + ε)
 
 /-- Public controlled PhaseProduct asymptotic statement, using the same
 PhaseProduct safe rate but quantifying over the control qubit. -/

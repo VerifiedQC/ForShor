@@ -86,26 +86,27 @@ def ShorEndToEndFactoring
 def ShorCorrectApproxLoweredUniform
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     [IdealCtrlModMulExactSemantics qs]
-    [ModMulPrimitiveGateSemantics qs]
     (T : ℕ → ℕ) (_hT : ContinuedFractionSearchComplete T) : Prop :=
   ∃ K : ℝ, 0 ≤ K ∧
       ∀ (inst : ShorOrderFindingInstance)
         (lowering : ShorLoweringSetup)
-        (x y work : ExtReg) (flag : ℕ)
+        (x y work scratch : ExtReg) (flag : ℕ)
         (b0 : qs.Basis)
         (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))
         (_hn : regSize y.active = Nat.log2 (2 * inst.N))
         (η : ℝ)
-        (hready : LoweredShorReady qs lowering η inst.a inst.N x y work flag b0),
+        (hready : LoweredShorReady
+          qs lowering η inst.a inst.N x y work scratch flag b0),
         probability_of_success (qs := qs) (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
           (x := x.active) (r := ord inst.a inst.N inst.coprime)
           (Q := ASize x.active) (evalC := LowerGateClass.evalL (qs := qs))
           (C := orderFindingApproxLow qs lowering.k lowering.hk lowering.ops
-              inst.a inst.N x y work flag
-              (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace hready.workspace)
+              inst.a inst.N x y work scratch flag
+              (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
+              (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
+              hready.workspace)
             (ψ := qs.ket b0)
           ≥
         κ / (Nat.log2 inst.N : ℝ) ^ 4
