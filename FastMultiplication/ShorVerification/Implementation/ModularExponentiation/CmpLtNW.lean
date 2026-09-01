@@ -117,46 +117,4 @@ noncomputable def cmpLtNW
   †diff ;;
   †mul
 
-theorem eval_cmp_lt_nw_ket
-    {qs : QSemantics}
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    (N : ℕ)
-    (data work scratch : ExtReg)
-    (flag : ℕ)
-    (hworkspace :
-      CmpLtNWWorkspace N data work scratch flag)
-    (b : qs.Basis)
-    (hdataFresh :
-      data.FreshFor 1 b)
-    (hworkFresh :
-      work.FreshFor 1 b)
-    (hscratchZero :
-      RegEncoding.toNat scratch.active b = 0)
-    (hscratchFresh :
-      scratch.FreshFor 1 b) :
-    qs.eval
-        (cmpLtNW N data work scratch flag hworkspace)
-        (qs.ket b)
-      =
-    qs.ket
-      (RegEncoding.writeNat
-        (qubitReg flag)
-        (if RegEncoding.bit flag b then
-          if RegEncoding.toNat data.active b *
-                ASize work.active
-              <
-              N * RegEncoding.toNat work.active b
-          then 0
-          else 1
-        else
-          if RegEncoding.toNat data.active b *
-                ASize work.active
-              <
-              N * RegEncoding.toNat work.active b
-          then 1
-          else 0)
-        b) := by
-  sorry
-
 end Shor
