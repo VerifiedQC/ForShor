@@ -403,12 +403,18 @@ noncomputable def orderFindingApprox
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     (a N : ℕ)
-    (x y work : ExtReg)
+    (x y work scratch : ExtReg)
     (flag : ℕ)
-    (hworkspace : ModMulCircuitWorkspaceOK y work) : Gate :=
+    (hworkspace : ModMulCircuitWorkspaceOK y work)
+    (hstep4 :
+      CmpLtNWWorkspace N (y.grow 1) work scratch flag) :
+    Gate :=
   (H_reg x.active) ;;
   (initY1 y.active) ;;
-  (modExpApproxValid (Basis := qs.Basis) a N x.active y work flag hworkspace) ;;
+  (modExpApproxValid
+    (Basis := qs.Basis)
+    a N x.active y work scratch flag
+    hworkspace hstep4) ;;
   (IQFT x)
 
 
@@ -419,13 +425,14 @@ noncomputable def orderFindingApproxLow
     (k : ℕ) (hk : 1 < k)
     (ops : Prog k)
     (a N : ℕ)
-    (x y work : ExtReg)
+    (x y work scratch : ExtReg)
     (flag : ℕ)
     (hmodWorkspace : ModMulCircuitWorkspaceOK y work)
-    (hLowerWorkspace :
-      GateWorkspaceOK ops (orderFindingApprox qs a N x y work flag hmodWorkspace)) :=
-  lowerGate (Basis := qs.Basis) k hk ops
-    (orderFindingApprox qs a N x y work flag hmodWorkspace) hLowerWorkspace
+    (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
+    (hLowerWorkspace : GateWorkspaceOK ops (orderFindingApprox qs a N x y work scratch flag
+          hmodWorkspace hstep4)) :=
+  lowerGate (Basis := qs.Basis) k hk ops (orderFindingApprox qs a N x y work scratch flag hmodWorkspace hstep4)
+    hLowerWorkspace
 
 /-- Ideal order-finding circuit using exact modular exponentiation. -/
 noncomputable def orderFindingIdeal
@@ -466,7 +473,7 @@ structure ShorLoweringSetup where
 def ShorCleanInput
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    (x y work : ExtReg)
+    (x y work scratch : ExtReg)
     (flag : ℕ)
     (b0 : qs.Basis) : Prop :=
   RegEncoding.toNat x.active b0 = 0 ∧
@@ -474,6 +481,8 @@ def ShorCleanInput
   y.FreshFor 2 b0 ∧
   RegEncoding.toNat work.active b0 = 0 ∧
   work.FreshFor 1 b0 ∧
+  RegEncoding.toNat scratch.active b0 = 0 ∧
+  scratch.FreshFor 1 b0 ∧
   RegEncoding.toNat (qubitReg flag) b0 = 0
 
 /-- Public assumptions for the approximate implementation of Shor. -/
@@ -481,7 +490,8 @@ structure ShorApproxSetup
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     (η : ℝ)
-    (x y work : ExtReg)
+    (N : ℕ)
+    (x y work scratch : ExtReg)
     (flag : ℕ)
     (b0 : qs.Basis) : Prop where
   /-- The exponent, data, work, carry, and flag qubits do not overlap. -/
@@ -502,7 +512,7 @@ structure ShorApproxSetup
 
   /-- Shor begins in `|0⋯0⟩` on all registers it uses. -/
   clean_input :
-    ShorCleanInput qs x y work flag b0
+    ShorCleanInput qs x y work scratch flag b0
 
 /--
 Lower-level assumptions from which the public approximate setup is reconstructed
