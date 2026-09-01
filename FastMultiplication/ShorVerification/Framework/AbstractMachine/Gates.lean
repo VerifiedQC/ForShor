@@ -36,8 +36,8 @@ inductive Gate : Type
   | RadixReverse : (r : Reg) → (m : ℕ) → Gate
   | SignedPhaseProd : (phi : Real) → (x z : ExtReg) → Gate
   | CSignedPhaseProd : (ctrl : ℕ) → (phi : Real) → (x z : ExtReg) → Gate
-  | CmpGeConst : (N : ℕ) → (data : Reg) → (flag : ℕ) → Gate
-  | CSubConst : (N : ℕ) → (data : Reg) → (flag : ℕ) → Gate
+  | CmpGeConst : (N : ℕ) → (data scratch : ExtReg) → (flag : ℕ) → Gate
+  | CSubConst : (N : ℕ) → (data scratch : ExtReg) → (flag : ℕ) → Gate
   | ShiftL : (r : ExtReg) → (n : ℕ) → Gate
   | ShiftR : (r : ExtReg) → (n : ℕ) → Gate
   | Negate : (r : ExtReg) → Gate

@@ -472,14 +472,14 @@ class ModularArithmeticSemantics
     [GateSemanticsCore qs] : Type where
 
   eval_CmpGeConst_ket :
-    ∀ (N : ℕ) (data : Reg) (flag : ℕ) (b : qs.Basis),
-      qs.eval (Gate.CmpGeConst N data flag) (qs.ket b) =
-        qs.ket (cmpGeConstBasis N data flag b)
+    ∀ (N : ℕ) (data scratch : ExtReg) (flag : ℕ) (b : qs.Basis),
+      qs.eval (Gate.CmpGeConst N data scratch flag) (qs.ket b) =
+        qs.ket (cmpGeConstBasis N data.active flag b)
 
   eval_CSubConst_ket :
-    ∀ (N : ℕ) (data : Reg) (flag : ℕ) (b : qs.Basis),
-      qs.eval (Gate.CSubConst N data flag) (qs.ket b) =
-        qs.ket (csubConstBasis N data flag b)
+    ∀ (N : ℕ) (data scratch : ExtReg) (flag : ℕ) (b : qs.Basis),
+      qs.eval (Gate.CSubConst N data scratch flag) (qs.ket b) =
+        qs.ket (csubConstBasis N data.active flag b)
 
 /-- Bundled semantic interface for all gate families used in this file. -/
 class GateSemanticsFacts

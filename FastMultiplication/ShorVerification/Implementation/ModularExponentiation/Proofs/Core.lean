@@ -624,7 +624,7 @@ noncomputable def U34
     {Basis : Type u}
     [RegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
-  step3 cfg.env.N (cfg.env.data.grow 1).active cfg.flag ;;
+  step3 cfg.env.N (cfg.env.data.grow 1) cfg.env.scratch cfg.flag ;;
   step4 cfg.env.N (cfg.env.data.grow 1) cfg.env.work
     cfg.env.scratch cfg.flag cfg.step4_workspace
 
@@ -750,18 +750,18 @@ lemma bit_write_qubitReg_one
 lemma eval_cmpGeConst_ket_of_outside
     [ModularArithmeticSemantics qs]
     (N : ℕ)
-    (data : Reg)
+    (data scratch : ExtReg)
     (flag : ℕ)
     (b : qs.Basis)
-    (hout : flag ∉ data.qubits) :
-    qs.eval (Gate.CmpGeConst N data flag) (qs.ket b) =
+    (hout : flag ∉ data.active.qubits) :
+    qs.eval (Gate.CmpGeConst N data scratch flag) (qs.ket b) =
       qs.ket
         (RegEncoding.writeNat
           (qubitReg flag)
           (if RegEncoding.bit flag b then
-            if N ≤ RegEncoding.toNat data b then 0 else 1
+            if N ≤ RegEncoding.toNat data.active b then 0 else 1
           else
-            if N ≤ RegEncoding.toNat data b then 1 else 0)
+            if N ≤ RegEncoding.toNat data.active b then 1 else 0)
           b) := by
   rw [ModularArithmeticSemantics.eval_CmpGeConst_ket]
   simp [cmpGeConstBasis, hout]
@@ -769,20 +769,20 @@ lemma eval_cmpGeConst_ket_of_outside
 lemma eval_csubConst_ket_of_outside
     [ModularArithmeticSemantics qs]
     (N : ℕ)
-    (data : Reg)
+    (data scratch : ExtReg)
     (flag : ℕ)
     (b : qs.Basis)
-    (hout : flag ∉ data.qubits) :
-    qs.eval (Gate.CSubConst N data flag) (qs.ket b) =
+    (hout : flag ∉ data.active.qubits) :
+    qs.eval (Gate.CSubConst N data scratch flag) (qs.ket b) =
       qs.ket
-        (RegEncoding.writeNat data
+        (RegEncoding.writeNat data.active
           (if RegEncoding.bit flag b then
-            (RegEncoding.toNat data b +
-                ASize data -
-                (N % ASize data)) %
-              ASize data
+            (RegEncoding.toNat data.active b +
+                ASize data.active -
+                (N % ASize data.active)) %
+              ASize data.active
           else
-            RegEncoding.toNat data b)
+            RegEncoding.toNat data.active b)
           b) := by
   rw [ModularArithmeticSemantics.eval_CSubConst_ket]
   simp [csubConstBasis, hout]
@@ -790,33 +790,33 @@ lemma eval_csubConst_ket_of_outside
 theorem eval_step3_clean_ket
     [ModularArithmeticSemantics qs]
     (N : ℕ)
-    (x_ext : Reg)
+    (x_ext scratch : ExtReg)
     (flag : ℕ)
     (b : qs.Basis)
-    (hout : QubitOutside flag x_ext)
+    (hout : QubitOutside flag x_ext.active)
     (hflag :
       RegEncoding.toNat (qubitReg flag) b = 0):
-    qs.eval (step3 N x_ext flag) (qs.ket b)
+    qs.eval (step3 N x_ext scratch flag) (qs.ket b)
       =
     qs.ket
       (RegEncoding.writeNat
         (qubitReg flag)
-        (if N ≤ RegEncoding.toNat x_ext b then 1 else 0)
-        (RegEncoding.writeNat x_ext
-          (if N ≤ RegEncoding.toNat x_ext b then
-            RegEncoding.toNat x_ext b - N
+        (if N ≤ RegEncoding.toNat x_ext.active b then 1 else 0)
+        (RegEncoding.writeNat x_ext.active
+          (if N ≤ RegEncoding.toNat x_ext.active b then
+            RegEncoding.toNat x_ext.active b - N
           else
-            RegEncoding.toNat x_ext b)
+            RegEncoding.toNat x_ext.active b)
           b)) := by
-  have hout' : flag ∉ x_ext.qubits := by
+  have hout' : flag ∉ x_ext.active.qubits := by
     simpa [QubitOutside] using hout
 
   have hflag_x :
-      Disjoint (qubitReg flag) x_ext :=
+      Disjoint (qubitReg flag) x_ext.active :=
     disjoint_qubitReg_of_outside hout'
 
   have hx_flag :
-      Disjoint x_ext (qubitReg flag) :=
+      Disjoint x_ext.active (qubitReg flag) :=
     Disjoint.symm hflag_x
 
   have hbit0 :
@@ -825,17 +825,17 @@ theorem eval_step3_clean_ket
       (qs := qs) flag b hflag
 
   have hxcap :
-      RegEncoding.toNat x_ext b < ASize x_ext :=
-    RegEncoding.toNat_lt_ASize x_ext b
+      RegEncoding.toNat x_ext.active b < ASize x_ext.active :=
+    RegEncoding.toNat_lt_ASize x_ext.active b
 
   rw [step3, qs.eval_seq]
 
   rw [
     eval_cmpGeConst_ket_of_outside
-      (qs := qs) N x_ext flag b hout'
+      (qs := qs) N x_ext scratch flag b hout'
   ]
 
-  by_cases hge : N ≤ RegEncoding.toNat x_ext b
+  by_cases hge : N ≤ RegEncoding.toNat x_ext.active b
 
   · -- The comparison sets flag = 1, then CSUB subtracts N.
     simp only [hbit0, Bool.false_eq_true, if_false, hge, if_pos]
@@ -844,11 +844,11 @@ theorem eval_step3_clean_ket
       RegEncoding.writeNat (qubitReg flag) 1 b
 
     have hx₁ :
-        RegEncoding.toNat x_ext b₁ =
-          RegEncoding.toNat x_ext b := by
+        RegEncoding.toNat x_ext.active b₁ =
+          RegEncoding.toNat x_ext.active b := by
       exact
         RegEncoding.toNat_left_write_right
-          x_ext
+          x_ext.active
           (qubitReg flag)
           hx_flag
           b
@@ -860,27 +860,27 @@ theorem eval_step3_clean_ket
         (qs := qs) flag b
 
     have hNcap :
-        N < ASize x_ext := by
+        N < ASize x_ext.active := by
       exact lt_of_le_of_lt hge hxcap
 
     have hsubcap :
-        RegEncoding.toNat x_ext b - N < ASize x_ext := by
+        RegEncoding.toNat x_ext.active b - N < ASize x_ext.active := by
       omega
 
     have hwrapped :
-        (RegEncoding.toNat x_ext b
-              + ASize x_ext
-              - (N % ASize x_ext))
-            % ASize x_ext
+        (RegEncoding.toNat x_ext.active b
+              + ASize x_ext.active
+              - (N % ASize x_ext.active))
+            % ASize x_ext.active
           =
-        RegEncoding.toNat x_ext b - N := by
+        RegEncoding.toNat x_ext.active b - N := by
       rw [Nat.mod_eq_of_lt hNcap]
 
       have hrewrite :
-          RegEncoding.toNat x_ext b + ASize x_ext - N
+          RegEncoding.toNat x_ext.active b + ASize x_ext.active - N
             =
-          ASize x_ext
-            + (RegEncoding.toNat x_ext b - N) := by
+          ASize x_ext.active
+            + (RegEncoding.toNat x_ext.active b - N) := by
         omega
 
       rw [hrewrite]
@@ -888,7 +888,7 @@ theorem eval_step3_clean_ket
 
     rw [
       eval_csubConst_ket_of_outside
-        (qs := qs) N x_ext flag b₁ hout'
+        (qs := qs) N x_ext scratch flag b₁ hout'
     ]
 
     simp only [hbit₁, if_true, hx₁, hwrapped]
@@ -898,10 +898,10 @@ theorem eval_step3_clean_ket
     exact
       (writeNat_comm_of_disjoint
         (qubitReg flag)
-        x_ext
+        x_ext.active
         hflag_x
         1
-        (RegEncoding.toNat x_ext b - N)
+        (RegEncoding.toNat x_ext.active b - N)
         b).symm
 
   · -- The comparison leaves flag = 0, so CSUB is inactive.
@@ -911,11 +911,11 @@ theorem eval_step3_clean_ket
       RegEncoding.writeNat (qubitReg flag) 0 b
 
     have hx₀ :
-        RegEncoding.toNat x_ext b₀ =
-          RegEncoding.toNat x_ext b := by
+        RegEncoding.toNat x_ext.active b₀ =
+          RegEncoding.toNat x_ext.active b := by
       exact
         RegEncoding.toNat_left_write_right
-          x_ext
+          x_ext.active
           (qubitReg flag)
           hx_flag
           b
@@ -928,18 +928,18 @@ theorem eval_step3_clean_ket
 
     rw [
       eval_csubConst_ket_of_outside
-        (qs := qs) N x_ext flag b₀ hout'
+        (qs := qs) N x_ext scratch flag b₀ hout'
     ]
 
     simp only [hbit₀, Bool.false_eq_true, if_false]
 
     have hwrite₀ :
-        RegEncoding.writeNat x_ext
-            (RegEncoding.toNat x_ext b) b₀
+        RegEncoding.writeNat x_ext.active
+            (RegEncoding.toNat x_ext.active b) b₀
           =
         b₀ := by
       rw [← hx₀]
-      exact RegEncoding.writeNat_toNat x_ext b₀
+      exact RegEncoding.writeNat_toNat x_ext.active b₀
 
     rw [hx₀]
     apply congrArg qs.ket
@@ -1011,31 +1011,31 @@ theorem eval_step3_local_ket
     [GateSemanticsCore qs]
     [ModularArithmeticSemantics qs]
     (N : ℕ)
-    (dataCarry : Reg)
+    (dataCarry scratch : ExtReg)
     (flag : ℕ)
     (b : qs.Basis)
-    (hout : QubitOutside flag dataCarry) :
+    (hout : QubitOutside flag dataCarry.active) :
     ∃ b' : qs.Basis,
-      qs.eval (step3 N dataCarry flag) (qs.ket b)
+      qs.eval (step3 N dataCarry scratch flag) (qs.ket b)
         =
       qs.ket b'
       ∧
       ∀ q,
-        q ∉ dataCarry.qubits →
+        q ∉ dataCarry.active.qubits →
         q ≠ flag →
         RegEncoding.bit q b' =
           RegEncoding.bit q b := by
 
   classical
 
-  have hout' : flag ∉ dataCarry.qubits := by
+  have hout' : flag ∉ dataCarry.active.qubits := by
     simpa [QubitOutside] using hout
 
   let cmpValue : ℕ :=
     if RegEncoding.bit flag b then
-      if N ≤ RegEncoding.toNat dataCarry b then 0 else 1
+      if N ≤ RegEncoding.toNat dataCarry.active b then 0 else 1
     else
-      if N ≤ RegEncoding.toNat dataCarry b then 1 else 0
+      if N ≤ RegEncoding.toNat dataCarry.active b then 1 else 0
 
   let b₁ : qs.Basis :=
     RegEncoding.writeNat
@@ -1043,15 +1043,15 @@ theorem eval_step3_local_ket
 
   let subValue : ℕ :=
     if RegEncoding.bit flag b₁ then
-      (RegEncoding.toNat dataCarry b₁
-          + ASize dataCarry
-          - (N % ASize dataCarry))
-        % ASize dataCarry
+      (RegEncoding.toNat dataCarry.active b₁
+          + ASize dataCarry.active
+          - (N % ASize dataCarry.active))
+        % ASize dataCarry.active
     else
-      RegEncoding.toNat dataCarry b₁
+      RegEncoding.toNat dataCarry.active b₁
 
   let b' : qs.Basis :=
-    RegEncoding.writeNat dataCarry subValue b₁
+    RegEncoding.writeNat dataCarry.active subValue b₁
 
   refine ⟨b', ?_, ?_⟩
 
@@ -1059,19 +1059,19 @@ theorem eval_step3_local_ket
 
     rw [
       eval_cmpGeConst_ket_of_outside
-        (qs := qs) N dataCarry flag b hout'
+        (qs := qs) N dataCarry scratch flag b hout'
     ]
 
     change
       qs.eval
-          (Gate.CSubConst N dataCarry flag)
+          (Gate.CSubConst N dataCarry scratch flag)
           (qs.ket b₁)
         =
       qs.ket b'
 
     rw [
       eval_csubConst_ket_of_outside
-        (qs := qs) N dataCarry flag b₁ hout'
+        (qs := qs) N dataCarry scratch flag b₁ hout'
     ]
   · intro q hqData hqFlag
 
@@ -1083,7 +1083,7 @@ theorem eval_step3_local_ket
 
     rw [
       RegEncoding.bit_writeNat_out
-        dataCarry subValue b₁ q hqData
+        dataCarry.active subValue b₁ q hqData
     ]
 
     exact

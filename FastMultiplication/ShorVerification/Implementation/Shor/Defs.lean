@@ -5,6 +5,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.ConstArithmeticLowering
 import FastMultiplication.ShorVerification.Framework.Submission
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
 import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.Reduction
@@ -82,6 +83,12 @@ def GateWorkspaceOK
   | Gate.CSignedPhaseProd ctrl _ x z =>
       CSignedRecursiveWorkspaceOK ops ctrl x z
 
+  | Gate.CmpGeConst N data scratch flag =>
+      ConstArithmeticWorkspace N data scratch flag
+
+  | Gate.CSubConst N data scratch flag =>
+      ConstArithmeticWorkspace N data scratch flag
+
   | _ =>
       True
 
@@ -133,6 +140,12 @@ noncomputable def lowerGate
   | Gate.X qbit, _ =>
       LowGate.X qbit
 
+  | Gate.CNOT ctrl target, _ =>
+      LowGate.CNOT ctrl target
+
+  | Gate.Toffoli c₁ c₂ target, _ =>
+      LowGate.Toffoli c₁ c₂ target
+
   | Gate.QFT r, hworkspace =>
       lowerQFT
         k hk ops r hworkspace
@@ -143,8 +156,11 @@ noncomputable def lowerGate
   | Gate.CSignedPhaseProd ctrl phi x z, hworkspace =>
       lowerCSignedPhaseProdWithWorkspace k hk ctrl phi x z ops hworkspace
 
-  | Gate.Prim tag args, _ =>
-      LowGate.Prim tag args
+  | Gate.CmpGeConst N data scratch flag, hworkspace =>
+      lowerCmpGeConst N data scratch flag hworkspace
+
+  | Gate.CSubConst N data scratch flag, hworkspace =>
+      lowerCSubConst N data scratch flag hworkspace
 
   | Gate.ShiftL r n, _ =>
       LowGate.ShiftL r n
@@ -226,6 +242,12 @@ noncomputable def GateWorkspaceCleanState
 
   | Gate.CSignedPhaseProd _ _ x z, _, ψ =>
       RecursiveWorkspaceCleanState qs x z ψ
+
+  | Gate.CmpGeConst _ data scratch _, _, ψ =>
+      CmpGeConstCleanState qs data scratch ψ
+
+  | Gate.CSubConst N data scratch flag, _, ψ =>
+      CSubConstCleanState qs N data scratch flag ψ
 
   | _, _, _ =>
       True

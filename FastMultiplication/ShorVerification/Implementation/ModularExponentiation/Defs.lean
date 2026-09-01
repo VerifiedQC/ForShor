@@ -266,9 +266,9 @@ noncomputable def step2
   IQFT hworkspace.step2Workspace.zExt
 
 /-- Algorithm 1 Step 3: compare against `N` and conditionally subtract it from the data-carry register. -/
-def step3 (N : ℕ) (dataCarry : Reg) (flag : ℕ) : Gate :=
-  Gate.CmpGeConst N dataCarry flag ;;
-  Gate.CSubConst N dataCarry flag
+def step3 (N : ℕ) (dataCarry scratch : ExtReg) (flag : ℕ) : Gate :=
+  Gate.CmpGeConst N dataCarry scratch flag ;;
+  Gate.CSubConst N dataCarry scratch flag
 
 /-- Algorithm 1 Step 4: clear the comparator flag using the data-carry/work relation. -/
 noncomputable def step4
@@ -307,7 +307,7 @@ noncomputable def CmodMulInPlaceCore
     (hstep4 : CmpLtNWWorkspace N (data.grow 1) work scratch flag) : Gate :=
   let U1 : Gate := step1 (Basis := Basis) c N ctrl data work hworkspace
   let U2 : Gate := step2 (Basis := Basis) N data work hworkspace
-  let U3 : Gate := step3 N (data.grow 1).active flag
+  let U3 : Gate := step3 N (data.grow 1) scratch flag
   let U4 : Gate := step4 N (data.grow 1) work scratch flag hstep4
   let U5 : Gate := step5 (Basis := Basis)
       (step5Constant c N) N ctrl data work hworkspace

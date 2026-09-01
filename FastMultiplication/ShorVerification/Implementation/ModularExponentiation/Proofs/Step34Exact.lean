@@ -466,20 +466,24 @@ lemma alg1_step34_reference_exact_core
           xext s w0 hs_cap
 
     have hstep3 :
-        qs.eval (step3 cfg.env.N xext cfg.flag) (qs.ket b2)
+        qs.eval
+            (step3 cfg.env.N (cfg.env.data.grow 1)
+              cfg.env.scratch cfg.flag)
+            (qs.ket b2)
           =
         qs.ket b3 := by
       have hraw :=
         eval_step3_clean_ket
           (qs := qs)
           cfg.env.N
-          xext
+          (cfg.env.data.grow 1)
+          cfg.env.scratch
           cfg.flag
           b2
           hflagX_out
           (by simpa [flagReg] using hflag_clean_b2)
       simpa [
-        b3, red, cmp, flagReg, hx_b2, s
+        b3, red, cmp, flagReg, xext, hx_b2, s
       ] using hraw
 
     have hx_after_x :
@@ -988,9 +992,10 @@ lemma alg1_step34_reference_exact_core
             cfg.flag
             cfg.step4_workspace)
           (qs.eval
-            (step3 cfg.env.N xext cfg.flag)
+            (step3 cfg.env.N (cfg.env.data.grow 1)
+              cfg.env.scratch cfg.flag)
             (qs.ket b2)) := by
-        simp [ModMulConfig.U34, xext, qs.eval_seq]
+        simp [ModMulConfig.U34, qs.eval_seq]
       _ =
       qs.eval
           (step4

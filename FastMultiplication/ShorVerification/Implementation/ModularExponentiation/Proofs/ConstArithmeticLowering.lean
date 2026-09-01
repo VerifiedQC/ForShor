@@ -1186,4 +1186,56 @@ theorem evalL_lowerCSubConst_ket
   exact LowerGateClass.evalL_adj_apply
     (qs := qs) (LowGate.CNOT flag q) (qs.ket bout)
 
+/-- Linear extension of concrete comparison correctness to every state in the
+clean-workspace span. -/
+theorem evalL_lowerCmpGeConst
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [ModularArithmeticSemantics qs]
+    [LowerGateClass qs]
+    (N : ℕ) (data scratch : ExtReg) (flag : ℕ)
+    (h : ConstArithmeticWorkspace N data scratch flag)
+    (ψ : qs.State)
+    (hclean : CmpGeConstCleanState qs data scratch ψ) :
+    LowerGateClass.evalL (qs := qs)
+        (lowerCmpGeConst N data scratch flag h) ψ =
+      qs.eval (Gate.CmpGeConst N data scratch flag) ψ := by
+  induction hclean with
+  | zero =>
+      rw [LowerGateClass.evalL_zero, QSemantics.eval_zero]
+  | ket b hcleanBasis =>
+      rw [evalL_lowerCmpGeConst_ket N data scratch flag h b hcleanBasis,
+        ModularArithmeticSemantics.eval_CmpGeConst_ket]
+  | add hψ hφ ihψ ihφ =>
+      rw [LowerGateClass.evalL_add, QSemantics.eval_add, ihψ, ihφ]
+  | smul a hψ ihψ =>
+      rw [LowerGateClass.evalL_smul, QSemantics.eval_smul, ihψ]
+
+/-- Linear extension of concrete controlled-subtraction correctness to every
+state in the clean no-underflow span. -/
+theorem evalL_lowerCSubConst
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [ModularArithmeticSemantics qs]
+    [LowerGateClass qs]
+    (N : ℕ) (data scratch : ExtReg) (flag : ℕ)
+    (h : ConstArithmeticWorkspace N data scratch flag)
+    (ψ : qs.State)
+    (hclean : CSubConstCleanState qs N data scratch flag ψ) :
+    LowerGateClass.evalL (qs := qs)
+        (lowerCSubConst N data scratch flag h) ψ =
+      qs.eval (Gate.CSubConst N data scratch flag) ψ := by
+  induction hclean with
+  | zero =>
+      rw [LowerGateClass.evalL_zero, QSemantics.eval_zero]
+  | ket b hcleanBasis =>
+      rw [evalL_lowerCSubConst_ket N data scratch flag h b hcleanBasis,
+        ModularArithmeticSemantics.eval_CSubConst_ket]
+  | add hψ hφ ihψ ihφ =>
+      rw [LowerGateClass.evalL_add, QSemantics.eval_add, ihψ, ihφ]
+  | smul a hψ ihψ =>
+      rw [LowerGateClass.evalL_smul, QSemantics.eval_smul, ihψ]
+
 end Shor
