@@ -20,9 +20,9 @@ variable {Basis : Type u} [RegEncoding Basis]
 ========================================================= -/
 
 /--
-Abstract gate language used by the verification layer. Low-level gates such
-as `Prim` coexist with structured arithmetic, QFT, phase-product, extension,
-and deallocation gates.
+Abstract gate language used by the verification layer. Elementary gates
+coexist with typed structured arithmetic, QFT, phase-product, extension, and
+deallocation gates.
 -/
 inductive Gate : Type
   | id : Gate

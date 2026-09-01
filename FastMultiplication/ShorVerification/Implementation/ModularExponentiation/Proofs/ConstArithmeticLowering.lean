@@ -1443,7 +1443,7 @@ theorem evalL_lowerCmpGeConst
       rw [LowerGateClass.evalL_smul, QSemantics.eval_smul, ihψ]
 
 /-- Linear extension of concrete controlled-subtraction correctness to every
-state in the clean no-underflow span. -/
+state in the clean span. -/
 theorem evalL_lowerCSubConst
     (qs : QSemantics)
     [RegEncoding qs.Basis]
