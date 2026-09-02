@@ -181,7 +181,6 @@ the disjoint work and data writes.
 lemma alg1_step5_forward_packet_on_basis
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
@@ -263,7 +262,6 @@ input exactly recovers the corresponding ideal modular-multiplication output.
 lemma alg1_step5_full_packet_on_basis
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
@@ -296,7 +294,6 @@ input state.
 lemma alg1_step5_full_packet_eq_ideal
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
@@ -460,7 +457,6 @@ lemma alg1_step34_label_injective
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -876,7 +872,6 @@ lemma alg1_afterStep34Bad_norm_sq_eq_trace_bad_mass
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -1022,7 +1017,6 @@ This is algebra only; no quantitative estimate is used here.
 lemma alg1_step5_cleanup_error_eq_neg_bad_packet
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
@@ -1051,7 +1045,6 @@ bad packet norm through Steps 3 and 4.
 lemma alg1_step5_cleanup_sq_eq_trace_bad_mass
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
@@ -1397,7 +1390,6 @@ state-level errors with `alg1TraceBadMass`.
 lemma alg1_qpe_tail_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs] :
     ∃ Cpe : ℝ, 0 ≤ Cpe ∧

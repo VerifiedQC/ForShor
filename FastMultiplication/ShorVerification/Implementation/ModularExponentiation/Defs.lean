@@ -318,13 +318,13 @@ def tbits (x : Reg) : ℕ :=
   regSize x
 
 /-- Ideal modular-exponentiation recursion over a list of control qubits. -/
-def modExpIdealSteps (qs : QSemantics) [RegEncoding qs.Basis] [Spec]
+def modExpIdealSteps (qs : QSemantics) [RegEncoding qs.Basis]
     (a N : ℕ) (data : Reg) :
     ℕ → List ℕ → Gate
   | _, [] => Gate.id
 
   | e, ctrl :: ctrls =>
-      Spec.idealCtrlModMul ((a ^ (2 ^ e)) % N) N data ctrl ;;
+      Gate.idealCtrlModMul ((a ^ (2 ^ e)) % N) N data ctrl ;;
       modExpIdealSteps qs a N data (e + 1) ctrls
 
 /-- Ideal modular exponentiation over all qubits in the exponent register. -/
@@ -332,7 +332,6 @@ def modExpIdeal'
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
-    [Spec]
     (a N : ℕ)
     (x data : Reg) :
     Gate :=
@@ -536,7 +535,6 @@ def idealGate
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
-    [Spec]
     {η : ℝ}
     (cfg : ModExpConfig η) : Gate :=
   modExpIdeal' qs cfg.a cfg.env.N cfg.x cfg.env.data.active
@@ -581,9 +579,8 @@ noncomputable def approxGate
 /-- Ideal controlled modular-multiplication gate for this configuration. -/
 def idealGate
     {η : ℝ}
-    [Spec]
     (cfg : ModMulConfig η) : Gate :=
-  Spec.idealCtrlModMul cfg.c cfg.env.N cfg.env.data.active cfg.ctrl
+  Gate.idealCtrlModMul cfg.c cfg.env.N cfg.env.data.active cfg.ctrl
 
 /-- Valid-state predicate for one modular-multiplication configuration. -/
 def ValidState

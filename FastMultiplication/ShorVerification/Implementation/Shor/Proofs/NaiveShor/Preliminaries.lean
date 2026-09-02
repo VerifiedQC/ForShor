@@ -10,18 +10,11 @@ namespace Shor
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 variable [MeasureClass qs]
-variable [Spec]
-
 
 /-! =========================================================
     Small arithmetic facts about `ord`
 ========================================================= -/
 
-
-
-
-
-omit [Spec] in
 lemma basicSetting_of_shor_instance
     (inst : ShorOrderFindingInstance)
     (m n : ℕ)
@@ -52,7 +45,6 @@ lemma basicSetting_of_shor_instance
 
   rfl
 
-omit [Spec] in
 lemma goodOutcome_r_found_one
     (T : ℕ → ℕ)
     (hT : ContinuedFractionSearchComplete T)
@@ -144,7 +136,7 @@ lemma goodOutcome_r_found_one
 
   rw [if_pos hpost]
 
-omit [MeasureClass qs] [Spec] in
+omit [MeasureClass qs] in
 private lemma toNat_qubitReg
     (q : ℕ)
     (b : qs.Basis) :
@@ -182,7 +174,7 @@ private lemma toNat_qubitReg
     simp [hv, hb]
 
 
-omit [MeasureClass qs] [Spec] in
+omit [MeasureClass qs] in
 private lemma toNat_cons_reg
     (ctrl : ℕ)
     (ctrls : List ℕ)
@@ -338,7 +330,7 @@ private theorem eval_modExpIdealSteps_ket
 
       have hhead :
           qs.eval
-              (Spec.idealCtrlModMul c N y ctrl)
+              (Gate.idealCtrlModMul c N y ctrl)
               (qs.ket b)
             =
           qs.ket b1 := by
@@ -434,7 +426,6 @@ private theorem eval_modExpIdealSteps_ket
 /-! =========================================================
     Small probability lemmas
 ========================================================= -/
-omit [Spec] in
 /-- Every measurement probability is nonnegative. -/
 lemma measProbAfter_nonneg
     {Circuit : Type}
@@ -447,7 +438,6 @@ lemma measProbAfter_nonneg
   unfold measProbAfter MeasureClass.probMeas
   positivity
 
-omit [Spec] in
 /-- The classical success indicator is always nonnegative. -/
 lemma r_found_nonneg
     (T : ℕ → ℕ)
@@ -457,7 +447,6 @@ lemma r_found_nonneg
   unfold r_found
   split <;> norm_num
 
-omit [Spec] in
 lemma goodOutcome_mass_le_probability_of_success
     (T : ℕ → ℕ)
     (hT : ContinuedFractionSearchComplete T)
@@ -518,8 +507,6 @@ lemma goodOutcome_mass_le_probability_of_success
 /-! ---------------------------------------------------------
     Shared order-finding parameter bound
 --------------------------------------------------------- -/
-
-omit [MeasureClass qs] [Spec] in
 /--
 For Shor's order `r`, the standard setting gives
 

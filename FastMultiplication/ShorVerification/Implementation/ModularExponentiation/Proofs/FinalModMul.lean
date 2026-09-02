@@ -99,7 +99,6 @@ errors with `three_stepErr_le`.
 theorem modMul_approx_valid_dist_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs] :
     ∃ K : ℝ, 0 ≤ K ∧ ∀ (η : ℝ) (cfg : ModMulConfig η) (ψ : qs.State),

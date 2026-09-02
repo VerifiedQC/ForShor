@@ -1159,7 +1159,6 @@ This proof consists of:
 -/
 lemma measProbAfter_orderFindingIdeal_eq_paper_formula
     [GateSemanticsFacts qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     [MeasureClass qs]
     (inst : ShorOrderFindingInstance)

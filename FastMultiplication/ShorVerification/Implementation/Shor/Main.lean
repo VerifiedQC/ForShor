@@ -15,7 +15,6 @@ namespace Shor
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 variable [MeasureClass qs]
-variable [Spec]
 
 /-- End-to-end statement combining the classical choice probability, ideal
 quantum order-finding, and the classical factor extraction theorem. -/

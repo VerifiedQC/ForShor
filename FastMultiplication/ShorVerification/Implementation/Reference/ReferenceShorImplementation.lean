@@ -32,7 +32,6 @@ proven.
 
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
-variable [Spec]
 variable [MeasureClass qs]
 variable [GateSemanticsFacts qs]
 variable [LowerGateClass qs]
@@ -42,7 +41,6 @@ variable [IdealCtrlModMulExactSemantics qs]
     Section 1: ε-from-precision packaging
 ========================================================= -/
 
-omit [Spec] in
 /-- The reference error term `2·t·√(2·K·referencePrecision m)` can be driven
 below any positive `ε` by choosing a large enough precision level `m`, because
 `referencePrecision m = 1/(m+3) → 0`. -/

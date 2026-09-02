@@ -2322,7 +2322,6 @@ theorem eval_idealCtrlModMul_good_ket_exact
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     (c N : ℕ)
     (data work : ExtReg)
@@ -2333,7 +2332,7 @@ theorem eval_idealCtrlModMul_good_ket_exact
     (hcoprime : Nat.Coprime c N)
     (hlayout : ModMulCoreLayout data work flag ctrl)
     (hb : GoodModMulBasisInput qs N data work flag b) :
-    qs.eval (Spec.idealCtrlModMul c N data.active ctrl) (qs.ket b)
+    qs.eval (Gate.idealCtrlModMul c N data.active ctrl) (qs.ket b)
       =
     qs.ket
       (RegEncoding.writeNat data.active

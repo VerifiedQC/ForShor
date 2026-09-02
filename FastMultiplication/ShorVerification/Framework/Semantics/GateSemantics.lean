@@ -481,6 +481,23 @@ class ModularArithmeticSemantics
       qs.eval (Gate.CSubConst N data scratch flag) (qs.ket b) =
         qs.ket (csubConstBasis N data.active flag b)
 
+/-- Exact basis semantics required of the ideal controlled modular multiplier. -/
+class IdealCtrlModMulExactSemantics
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]: Prop where
+
+  eval_idealCtrlModMul_ket_exact :
+    ∀ (c N : ℕ) (data : Reg) (ctrl : ℕ) (b : qs.Basis),
+      1 < N → N ≤ ASize data → Nat.Coprime c N → ctrl ∉ data.qubits →
+      RegEncoding.toNat data b < N →
+      qs.eval (Gate.idealCtrlModMul c N data ctrl) (qs.ket b)
+        =
+      qs.ket (RegEncoding.writeNat data
+          (if RegEncoding.bit ctrl b then (c * RegEncoding.toNat data b) % N
+          else RegEncoding.toNat data b) b)
+
+
 /-- Bundled semantic interface for all gate families used in this file. -/
 class GateSemanticsFacts
     (qs : QSemantics)
@@ -495,12 +512,8 @@ class GateSemanticsFacts
       RadixReverseSemantics qs,
       HadamardSemantics qs,
       PauliXSemantics qs,
-      ClassicalReversibleSemantics qs
-
-/-- Ideal modular multiplication specifications used by the correctness layer. -/
-class Spec where
-  idealModMul     : (c N : ℕ) → (x : Reg) → Gate
-  idealCtrlModMul : (c N : ℕ) → (x : Reg) → (ctrl : ℕ) → Gate
+      ClassicalReversibleSemantics qs,
+      IdealCtrlModMulExactSemantics qs
 
 /-- `q` is not a qubit of register `r`. -/
 def QubitOutside (q : ℕ) (r : Reg) : Prop :=
@@ -540,29 +553,5 @@ def GoodModMulBasisInput
   work.FreshFor 1 b ∧
   RegEncoding.toNat (qubitReg flag) b = 0
 
-
-/-- Exact basis semantics required of the ideal controlled modular multiplier. -/
-class IdealCtrlModMulExactSemantics
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [Spec] : Prop where
-
-  eval_idealCtrlModMul_ket_exact :
-    ∀ (c N : ℕ) (data : Reg) (ctrl : ℕ) (b : qs.Basis),
-      1 < N →
-      N ≤ ASize data →
-      Nat.Coprime c N →
-      ctrl ∉ data.qubits →
-      RegEncoding.toNat data b < N →
-      qs.eval (Spec.idealCtrlModMul c N data ctrl) (qs.ket b)
-        =
-      qs.ket
-        (RegEncoding.writeNat data
-          (if RegEncoding.bit ctrl b then
-            (c * RegEncoding.toNat data b) % N
-          else
-            RegEncoding.toNat data b)
-          b)
 
 end Shor

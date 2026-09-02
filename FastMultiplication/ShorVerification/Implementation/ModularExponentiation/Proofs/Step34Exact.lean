@@ -294,7 +294,6 @@ are used.
 lemma alg1_step34_reference_exact_core
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -1131,7 +1130,6 @@ post-Step-3/4 reference state.
 lemma alg1_step34_reference_exact
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
