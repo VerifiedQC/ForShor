@@ -312,7 +312,6 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     {k : ℕ}
     (hk : 1 < k)
     (planPts : List Point)
@@ -1151,7 +1150,6 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     {k : ℕ}
     (hk : 1 < k)
     (planPts : List Point)
@@ -2036,7 +2034,6 @@ lemma planCompiledSignedPhaseGate_ready_ket
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     {k : ℕ}
     (hk : 1 < k)
     (pts : List Point)
@@ -2239,7 +2236,6 @@ lemma standardSignedPhaseLoweringPlan_ready_ket
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (phi : ℝ)
@@ -2378,7 +2374,6 @@ theorem standardSignedPhaseLoweringPlan_ready_and_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (phi : ℝ)
@@ -2468,7 +2463,6 @@ theorem standardSignedPhaseLoweringPlan_ready
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (phi : ℝ)
@@ -2493,7 +2487,6 @@ lemma standardSignedPhaseLoweringPlan_ready_of_workspace
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (phi : ℝ)
@@ -2515,7 +2508,6 @@ lemma planCompiledCSignedPhaseGate_ready_ket
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     {k : ℕ}
     (hk : 1 < k)
     (pts : List Point)
@@ -2628,7 +2620,6 @@ lemma standardCSignedPhaseLoweringPlan_ready_ket
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
@@ -2717,7 +2708,6 @@ theorem standardCSignedPhaseLoweringPlan_ready
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
@@ -2743,7 +2733,6 @@ lemma standardCSignedPhaseLoweringPlan_ready_of_workspace
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)

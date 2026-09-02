@@ -19,7 +19,6 @@ theorem lowerQFT_correct
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)

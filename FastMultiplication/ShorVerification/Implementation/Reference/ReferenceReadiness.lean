@@ -124,7 +124,7 @@ The reference allocator automatically satisfies all fields of
 The only hypotheses are the implementation's admissible precision conditions
 `0 < η < 1/2`.
 -/
-theorem referenceApproxSetupMinimal
+noncomputable def referenceApproxSetupMinimal
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     {k : ℕ}
@@ -136,9 +136,11 @@ theorem referenceApproxSetupMinimal
     ShorApproxSetupMinimal
       qs
       η
+      inst.N
       (referenceX ops inst η)
       (referenceData ops inst η)
       (referenceWork ops inst η)
+      (referenceScratch ops inst η)
       (referenceFlag ops inst η)
       (RegEncoding.zero (Basis := qs.Basis)) := by
   refine
@@ -149,8 +151,14 @@ theorem referenceApproxSetupMinimal
       work_can_grow_one :=
         reference_work_canGrow_one ops inst η
 
+      step4_workspace :=
+        reference_step4Workspace ops inst η
+
       exponent_data_disjoint :=
         reference_exponent_data_disjoint ops inst η
+
+      exponent_scratch_disjoint :=
+        reference_exponent_scratch_disjoint ops inst η
 
       data_work_disjoint :=
         reference_data_work_disjoint ops inst η
@@ -193,6 +201,15 @@ theorem referenceApproxSetupMinimal
           (referenceWork ops inst η)
           1
 
+      scratch_zero :=
+        toNat_ground_zero
+          (referenceScratch ops inst η).active
+
+      scratch_fresh :=
+        freshFor_ground_zero
+          (referenceScratch ops inst η)
+          1
+
       flag_zero :=
         toNat_ground_zero
           (qubitReg (referenceFlag ops inst η))
@@ -202,7 +219,7 @@ theorem referenceApproxSetupMinimal
 `referenceApproxSetupMinimal` stated directly through the packaged
 `ReferenceShorLayout`.
 -/
-theorem allocatedReferenceApproxSetupMinimal
+noncomputable def allocatedReferenceApproxSetupMinimal
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     {k : ℕ}
@@ -214,9 +231,11 @@ theorem allocatedReferenceApproxSetupMinimal
     ShorApproxSetupMinimal
       qs
       η
+      inst.N
       (allocateReferenceLayout ops inst η).x
       (allocateReferenceLayout ops inst η).data
       (allocateReferenceLayout ops inst η).work
+      (allocateReferenceLayout ops inst η).scratch
       (allocateReferenceLayout ops inst η).flag
       (RegEncoding.zero (Basis := qs.Basis)) := by
   simpa [allocateReferenceLayout] using
@@ -243,12 +262,14 @@ theorem referenceWorkspaceCleanInput
       (referenceX ops inst η)
       (referenceData ops inst η)
       (referenceWork ops inst η)
+      (referenceScratch ops inst η)
       (RegEncoding.zero (Basis := qs.Basis)) := by
   unfold ShorWorkspaceCleanInput
   exact
     ⟨freshZero_ground_zero (referenceX ops inst η).reserve,
       freshZero_ground_zero (referenceData ops inst η).reserve,
-      freshZero_ground_zero (referenceWork ops inst η).reserve⟩
+      freshZero_ground_zero (referenceWork ops inst η).reserve,
+      freshZero_ground_zero (referenceScratch ops inst η).reserve⟩
 
 /--
 The same clean-workspace fact stated through the packaged allocator result.
@@ -264,6 +285,7 @@ theorem allocatedReferenceWorkspaceCleanInput
       (allocateReferenceLayout ops inst η).x
       (allocateReferenceLayout ops inst η).data
       (allocateReferenceLayout ops inst η).work
+      (allocateReferenceLayout ops inst η).scratch
       (RegEncoding.zero (Basis := qs.Basis)) := by
   simpa [allocateReferenceLayout] using
     referenceWorkspaceCleanInput
@@ -287,7 +309,8 @@ theorem allocatedReferenceWorkspaceLargeEnough
       ops
       (allocateReferenceLayout ops inst η).x
       (allocateReferenceLayout ops inst η).data
-      (allocateReferenceLayout ops inst η).work := by
+      (allocateReferenceLayout ops inst η).work
+      (allocateReferenceLayout ops inst η).scratch := by
   simpa [allocateReferenceLayout] using
     reference_shorWorkspaceLargeEnough
       ops inst η
@@ -304,6 +327,7 @@ theorem allocatedReferenceWorkspaceIsolation
     ShorWorkspaceIsolation
       (allocateReferenceLayout ops inst η).x
       (allocateReferenceLayout ops inst η).work
+      (allocateReferenceLayout ops inst η).scratch
       (allocateReferenceLayout ops inst η).flag := by
   simpa [allocateReferenceLayout] using
     reference_shorWorkspaceIsolation
@@ -330,12 +354,11 @@ In particular, no caller supplies:
 All of those are discharged by the allocator together with the framework's
 canonical `RegEncoding.zero` initial state.
 -/
-theorem referenceLayout_ready
+noncomputable def referenceLayout_ready
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (lowering : ShorLoweringSetup)
     (inst : ShorOrderFindingInstance)
     (η : ℝ)
@@ -350,6 +373,7 @@ theorem referenceLayout_ready
       (allocateReferenceLayout lowering.ops inst η).x
       (allocateReferenceLayout lowering.ops inst η).data
       (allocateReferenceLayout lowering.ops inst η).work
+      (allocateReferenceLayout lowering.ops inst η).scratch
       (allocateReferenceLayout lowering.ops inst η).flag
       (RegEncoding.zero (Basis := qs.Basis)) := by
   refine

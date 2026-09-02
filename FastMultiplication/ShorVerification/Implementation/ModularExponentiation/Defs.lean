@@ -1,6 +1,7 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.CmpLtNW
 import Mathlib.Data.Int.GCD
 import Mathlib.Analysis.SpecialFunctions.Log.Base
 
@@ -265,13 +266,17 @@ noncomputable def step2
   IQFT hworkspace.step2Workspace.zExt
 
 /-- Algorithm 1 Step 3: compare against `N` and conditionally subtract it from the data-carry register. -/
-def step3 (N : ℕ) (dataCarry : Reg) (flag : ℕ) : Gate :=
-  (Gate.Prim "CMP_GE_CONST" ([N, flag] ++ dataCarry.qubits)) ;;
-  (Gate.Prim "CSUB_CONST"   ([N, flag] ++ dataCarry.qubits))
+def step3 (N : ℕ) (dataCarry scratch : ExtReg) (flag : ℕ) : Gate :=
+  Gate.CmpGeConst N dataCarry scratch flag ;;
+  Gate.CSubConst N dataCarry scratch flag
 
 /-- Algorithm 1 Step 4: clear the comparator flag using the data-carry/work relation. -/
-def step4 (N : ℕ) (dataCarry work : Reg) (flag : ℕ) : Gate :=
-  Gate.Prim "CMP_LT_NW" ([N, flag] ++ dataCarry.qubits ++ work.qubits)
+noncomputable def step4
+    (N : ℕ) (dataCarry work scratch : ExtReg)
+    (flag : ℕ)
+    (hworkspace : CmpLtNWWorkspace N dataCarry work scratch flag) :
+    Gate :=
+  cmpLtNW N dataCarry work scratch flag hworkspace
 
 /-- Algorithm 1 Step 5: adjoint cleanup for the forward fractional load using the inverse constant. -/
 noncomputable def step5
@@ -297,13 +302,15 @@ noncomputable def step5Constant (c N : ℕ) : ℕ :=
 /-- The five-step controlled in-place modular-multiplication core. -/
 noncomputable def CmodMulInPlaceCore
     {Basis : Type v} [RegEncoding Basis]
-    (c N : ℕ) (ctrl : ℕ) (data work : ExtReg) (flag : ℕ)
-    (hworkspace : ModMulCircuitWorkspaceOK data work): Gate :=
+    (c N : ℕ) (ctrl : ℕ) (data work scratch : ExtReg) (flag : ℕ)
+    (hworkspace : ModMulCircuitWorkspaceOK data work)
+    (hstep4 : CmpLtNWWorkspace N (data.grow 1) work scratch flag) : Gate :=
   let U1 : Gate := step1 (Basis := Basis) c N ctrl data work hworkspace
   let U2 : Gate := step2 (Basis := Basis) N data work hworkspace
-  let U3 : Gate := step3 N  (data.grow 1).active flag
-  let U4 : Gate := step4 N (data.grow 1).active work.active flag
-  let U5 : Gate := step5 (Basis := Basis) (step5Constant c N) N ctrl data work hworkspace
+  let U3 : Gate := step3 N (data.grow 1) scratch flag
+  let U4 : Gate := step4 N (data.grow 1) work scratch flag hstep4
+  let U5 : Gate := step5 (Basis := Basis)
+      (step5Constant c N) N ctrl data work hworkspace
   U1 ;; U2 ;; U3 ;; U4 ;; U5
 
 /-- Number of exponent/control bits used by modular exponentiation. -/
@@ -363,6 +370,29 @@ def ValidModMulState
     ({ ψ : qs.State |
         ∃ b : qs.Basis,
           GoodModMulBasisInput qs N data work flag b ∧
+          ψ = qs.ket b } : Set qs.State)
+
+def GoodAlgorithm1BasisInput
+    (qs : QSemantics) [RegEncoding qs.Basis]
+    (N : ℕ)
+    (data work scratch : ExtReg)
+    (flag : ℕ)
+    (b : qs.Basis) : Prop :=
+  GoodModMulBasisInput qs N data work flag b ∧
+  RegEncoding.toNat scratch.active b = 0 ∧
+  scratch.FreshFor 1 b
+
+def ValidAlgorithm1State
+    (qs : QSemantics) [RegEncoding qs.Basis]
+    (N : ℕ)
+    (data work scratch : ExtReg)
+    (flag : ℕ) :
+    Submodule ℂ qs.State :=
+  Submodule.span ℂ
+    ({ ψ : qs.State |
+        ∃ b : qs.Basis,
+          GoodAlgorithm1BasisInput
+            qs N data work scratch flag b ∧
           ψ = qs.ket b } : Set qs.State)
 
 end ValidInputsAndIdealSemantics
@@ -430,25 +460,18 @@ noncomputable def modExpApproxStepsValid
     {Basis : Type u}
     [RegEncoding Basis]
     (a N : ℕ)
-    (data work : ExtReg)
+    (data work scratch : ExtReg)
     (flag : ℕ)
-    (hworkspace : ModMulCircuitWorkspaceOK data work) :
+    (hworkspace : ModMulCircuitWorkspaceOK data work)
+    (hstep4 : CmpLtNWWorkspace N (data.grow 1) work scratch flag) :
     ℕ → List ℕ → Gate
-
   | _, [] =>
       Gate.id
-
   | e, ctrl :: ctrls =>
       let c := (a ^ (2 ^ e)) % N
-
-      CmodMulInPlaceCore
-          (Basis := Basis)
-          c N ctrl data work flag hworkspace
-        ;;
-      modExpApproxStepsValid
-        (Basis := Basis)
-        a N data work flag hworkspace
-        (e + 1) ctrls
+      CmodMulInPlaceCore (Basis := Basis) c N ctrl data work scratch flag hworkspace hstep4
+      ;;
+      modExpApproxStepsValid (Basis := Basis) a N data work scratch flag hworkspace hstep4 (e + 1) ctrls
 
 /-- Approximate modular exponentiation over all qubits in the exponent register. -/
 noncomputable def modExpApproxValid
@@ -456,12 +479,12 @@ noncomputable def modExpApproxValid
     [RegEncoding Basis]
     (a N : ℕ)
     (x : Reg)
-    (data work : ExtReg)
+    (data work scratch : ExtReg)
     (flag : ℕ)
-    (hworkspace : ModMulCircuitWorkspaceOK data work) :
+    (hworkspace : ModMulCircuitWorkspaceOK data work)
+    (hstep4 : CmpLtNWWorkspace N (data.grow 1) work scratch flag) :
     Gate :=
-  modExpApproxStepsValid (Basis := Basis) a N data work flag hworkspace 0 x.qubits
-
+  modExpApproxStepsValid (Basis := Basis) a N data work scratch flag hworkspace hstep4 0 x.qubits
 end ModExpLayoutAndGates
 
 /-! ---------------------------------------------------------
@@ -479,6 +502,7 @@ structure Algorithm1Env (η : ℝ) where
   N : ℕ
   data : ExtReg
   work : ExtReg
+  scratch : ExtReg
   modulus_gt_one : 1 < N
   data_capacity  : N ≤ ASize data.active
   precision      : Algorithm1Precision η data.active work.active
@@ -491,11 +515,11 @@ structure ModExpConfig (η : ℝ) where
   x : Reg
   flag : ℕ
 
-  layout :
-    ModExpLayout x env.data env.work flag
+  layout : ModExpLayout x env.data env.work flag
 
-  arithmetic :
-    ModExpArithmeticOK a env.N x
+  arithmetic : ModExpArithmeticOK a env.N x
+
+  step4_workspace : CmpLtNWWorkspace env.N (env.data.grow 1) env.work env.scratch flag
 
 namespace ModExpConfig
 
@@ -505,7 +529,7 @@ noncomputable def approxGate
     {Basis : Type u} [RegEncoding Basis] (cfg : ModExpConfig η) : Gate :=
   modExpApproxValid
     (Basis := Basis)
-    cfg.a cfg.env.N cfg.x cfg.env.data cfg.env.work cfg.flag cfg.env.circuit_workspace
+    cfg.a cfg.env.N cfg.x cfg.env.data cfg.env.work cfg.env.scratch cfg.flag cfg.env.circuit_workspace cfg.step4_workspace
 
 /-- Ideal modular-exponentiation gate for this configuration. -/
 def idealGate
@@ -522,8 +546,9 @@ def ValidUnitState
     (qs : QSemantics) [RegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModExpConfig η) (ψ : qs.State) : Prop :=
-  ψ ∈ ValidModMulState
-      qs cfg.env.N cfg.env.data cfg.env.work cfg.flag
+  ψ ∈ ValidAlgorithm1State
+      qs cfg.env.N cfg.env.data cfg.env.work
+        cfg.env.scratch cfg.flag
     ∧ ‖ψ‖ = 1
 
 end ModExpConfig
@@ -540,6 +565,7 @@ structure ModMulConfig (η : ℝ) where
   ctrl : ℕ
   coprime  : Nat.Coprime c env.N
   layout   : ModMulCoreLayout env.data env.work flag ctrl
+  step4_workspace : CmpLtNWWorkspace env.N (env.data.grow 1) env.work env.scratch flag
 
 namespace ModMulConfig
 
@@ -549,8 +575,8 @@ noncomputable def approxGate
     {Basis : Type u} [RegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
   CmodMulInPlaceCore (Basis := Basis) cfg.c cfg.env.N
-    cfg.ctrl cfg.env.data cfg.env.work cfg.flag
-    cfg.env.circuit_workspace
+    cfg.ctrl cfg.env.data cfg.env.work cfg.env.scratch cfg.flag
+    cfg.env.circuit_workspace cfg.step4_workspace
 
 /-- Ideal controlled modular-multiplication gate for this configuration. -/
 def idealGate
@@ -564,7 +590,8 @@ def ValidState
     (qs : QSemantics) [RegEncoding qs.Basis]
     {η : ℝ}
     (cfg : ModMulConfig η) (ψ : qs.State) : Prop :=
-  ψ ∈ ValidModMulState qs cfg.env.N cfg.env.data cfg.env.work cfg.flag
+  ψ ∈ ValidAlgorithm1State
+    qs cfg.env.N cfg.env.data cfg.env.work cfg.env.scratch cfg.flag
 
 /-- Valid modular-multiplication state with unit norm. -/
 def ValidUnitState
@@ -572,7 +599,6 @@ def ValidUnitState
     {η : ℝ}
     (cfg : ModMulConfig η) (ψ : qs.State) : Prop :=
   cfg.ValidState qs ψ ∧ ‖ψ‖ = 1
-
 
 end ModMulConfig
 

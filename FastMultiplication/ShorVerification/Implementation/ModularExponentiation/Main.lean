@@ -18,8 +18,7 @@ theorem modExpApprox_correct
     [RegEncoding qs.Basis]
     [Spec]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
-    [ModMulPrimitiveGateSemantics qs] :
+    [IdealCtrlModMulExactSemantics qs] :
     ModExpApproxValidDistUniform qs :=
   modExpApprox_valid_dist_uniform qs
 

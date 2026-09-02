@@ -81,9 +81,11 @@ noncomputable def referenceMinimalSetup
     ShorApproxSetupMinimal
       qs
       η
+      inst.N
       layout.x
       layout.data
       layout.work
+      layout.scratch
       layout.flag
       (RegEncoding.zero (Basis := qs.Basis)) := by
   dsimp
@@ -112,9 +114,11 @@ noncomputable def referenceApproxSetup
     ShorApproxSetup
       qs
       η
+      inst.N
       layout.x
       layout.data
       layout.work
+      layout.scratch
       layout.flag
       (RegEncoding.zero (Basis := qs.Basis)) := by
   dsimp
@@ -154,54 +158,26 @@ noncomputable def referenceLowerWorkspace
         layout.x
         layout.data
         layout.work
+        layout.scratch
         layout.flag
-        hsetup.circuit_workspace) := by
+        hsetup.circuit_workspace
+        hsetup.step4_workspace) := by
   dsimp
-
-  let η := referencePrecision m
-  let layout := allocateReferenceLayout lowering.ops inst η
-
-  have hsetup :
-      ShorApproxSetup
-        qs
-        η
-        layout.x
-        layout.data
-        layout.work
-        layout.flag
-        (RegEncoding.zero (Basis := qs.Basis)) := by
-    simpa [η, layout] using
-      referenceApproxSetup
-        (qs := qs)
-        lowering
-        inst
-        m
-
-  have hlarge :
-      ShorWorkspaceLargeEnough
-        lowering.ops
-        layout.x
-        layout.data
-        layout.work := by
-    simpa [layout] using
-      allocatedReferenceWorkspaceLargeEnough
-        lowering.ops
-        inst
-        η
-
   exact
     gateWorkspaceOK_orderFindingApprox
       (ops := lowering.ops)
-      (η := η)
+      (η := referencePrecision m)
       (a := inst.a)
       (N := inst.N)
-      (x := layout.x)
-      (data := layout.data)
-      (work := layout.work)
-      (flag := layout.flag)
+      (x := (allocateReferenceLayout lowering.ops inst (referencePrecision m)).x)
+      (data := (allocateReferenceLayout lowering.ops inst (referencePrecision m)).data)
+      (work := (allocateReferenceLayout lowering.ops inst (referencePrecision m)).work)
+      (scratch := (allocateReferenceLayout lowering.ops inst (referencePrecision m)).scratch)
+      (flag := (allocateReferenceLayout lowering.ops inst (referencePrecision m)).flag)
       (b0 := RegEncoding.zero (Basis := qs.Basis))
-      hsetup
-      hlarge
+      (referenceApproxSetup (qs := qs) lowering inst m)
+      (allocatedReferenceWorkspaceLargeEnough
+        lowering.ops inst (referencePrecision m))
 
 /-! =========================================================
     Section 3: Concrete LowGate program
@@ -231,21 +207,12 @@ noncomputable def referenceShorCircuit
     (m : ℕ) : LowGate := by
   let η := referencePrecision m
   let layout := allocateReferenceLayout lowering.ops inst η
-
-  have hsetup : ShorApproxSetup  qs η layout.x layout.data layout.work layout.flag
-        (RegEncoding.zero (Basis := qs.Basis)) := by
-    simpa [η, layout] using referenceApproxSetup (qs := qs) lowering inst m
-
-  have hworkspace :
-      GateWorkspaceOK lowering.ops
-        (orderFindingApprox qs inst.a inst.N layout.x layout.data layout.work layout.flag
-          hsetup.circuit_workspace) := by
-    simpa [η, layout, hsetup] using
-      referenceLowerWorkspace (qs := qs) lowering inst m
+  let hsetup := referenceApproxSetup (qs := qs) lowering inst m
+  let hworkspace := referenceLowerWorkspace (qs := qs) lowering inst m
 
   exact orderFindingApproxLow qs lowering.k lowering.hk lowering.ops
-      inst.a inst.N layout.x layout.data layout.work layout.flag
-      hsetup.circuit_workspace hworkspace
+      inst.a inst.N layout.x layout.data layout.work layout.scratch layout.flag
+      hsetup.circuit_workspace hsetup.step4_workspace hworkspace
 
 /-! =========================================================
     Section 4: Framework-facing Shor program

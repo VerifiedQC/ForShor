@@ -829,19 +829,20 @@ lemma ShorApproxSetup.prepared_state_valid
     [GateSemanticsFacts qs]
     {η : ℝ}
     {a N : ℕ}
-    {x y work : ExtReg}
+    {x y work scratch : ExtReg}
     {flag : ℕ}
     {b0 : qs.Basis}
     (ha : 0 < a ∧ a < N)
     (hxpos : 0 < regSize x.active)
     (hn : regSize y.active = Nat.log2 (2 * N))
-    (hsetup : ShorApproxSetup qs η x y work flag b0) :
+    (hsetup : ShorApproxSetup qs η N x y work scratch flag b0) :
     qs.eval (initY1 y.active)
         (qs.eval (H_reg x.active) (qs.ket b0))
-      ∈ ValidModMulState qs N y work flag := by
+      ∈ ValidAlgorithm1State qs N y work scratch flag := by
   classical
   rcases hsetup.clean_input with
-    ⟨hx0, hy0, hyFresh, hwork0, hworkFresh, hflag0⟩
+    ⟨hx0, hy0, hyFresh, hwork0, hworkFresh,
+      hscratch0, hscratchFresh, hflag0⟩
 
   have hN : 1 < N := by
     omega
@@ -902,6 +903,25 @@ lemma ShorApproxSetup.prepared_state_valid
       (List.mem_append_right _ (List.mem_of_mem_take hqNew))
       hqx
 
+  have hscratchOwned_x : scratch.ownedQubits.Disjoint x.active.qubits := by
+    rw [List.disjoint_left]
+    intro q hqs hqx
+    exact hsetup.exponent_scratch_disjoint
+      (List.mem_append_left _ hqx)
+      hqs
+
+  have hscratch_x : Disjoint scratch.active x.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqs hqx
+    exact hscratchOwned_x (List.mem_append_left _ hqs) hqx
+
+  have hscratchNew_x : Disjoint (scratch.newBits 1) x.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqNew hqx
+    exact hscratchOwned_x
+      (List.mem_append_right _ (List.mem_of_mem_take hqNew))
+      hqx
+
   have hflag_x : Disjoint (qubitReg flag) x.active := by
     rw [Disjoint, List.disjoint_left]
     intro q hqFlag hqx
@@ -936,10 +956,25 @@ lemma ShorApproxSetup.prepared_state_valid
     subst q
     exact hflag_y_owned (List.mem_append_left _ hqy)
 
+  have hyScratchOwned : ExtReg.OwnedDisjoint y scratch := by
+    simpa [ExtReg.OwnedDisjoint, Gate.ExtReg.ownedQubits_grow] using
+      hsetup.step4_workspace.data_scratch_disjoint
+
+  have hscratch_y : Disjoint scratch.active y.active :=
+    Disjoint.symm
+      (ExtReg.activeDisjoint_of_ownedDisjoint hyScratchOwned)
+
+  have hscratchNew_y : Disjoint (scratch.newBits 1) y.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqNew hqy
+    exact hyScratchOwned
+      (List.mem_append_left _ hqy)
+      (List.mem_append_right _ (List.mem_of_mem_take hqNew))
+
   let validSet : Set qs.State :=
     { ψ : qs.State |
       ∃ b : qs.Basis,
-        GoodModMulBasisInput qs N y work flag b ∧
+        GoodAlgorithm1BasisInput qs N y work scratch flag b ∧
         ψ = qs.ket b }
 
   have hH_expansion :
@@ -1022,6 +1057,25 @@ lemma ShorApproxSetup.prepared_state_valid
                 (work.newBits 1) x.active hworkNew_x b0 t.1
       _ = 0 := hworkFresh
 
+  have hscratch_b : RegEncoding.toNat scratch.active b = 0 := by
+    calc
+      RegEncoding.toNat scratch.active b
+          = RegEncoding.toNat scratch.active b0 := by
+            simpa [b] using
+              RegEncoding.toNat_left_write_right
+                scratch.active x.active hscratch_x b0 t.1
+      _ = 0 := hscratch0
+
+  have hscratchFresh_b : scratch.FreshFor 1 b := by
+    unfold ExtReg.FreshFor FreshZero at hscratchFresh ⊢
+    calc
+      RegEncoding.toNat (scratch.newBits 1) b
+          = RegEncoding.toNat (scratch.newBits 1) b0 := by
+            simpa [b] using
+              RegEncoding.toNat_left_write_right
+                (scratch.newBits 1) x.active hscratchNew_x b0 t.1
+      _ = 0 := hscratchFresh
+
   have hflag_b :
       RegEncoding.toNat (qubitReg flag) b = 0 := by
     calc
@@ -1091,8 +1145,31 @@ lemma ShorApproxSetup.prepared_state_valid
               (qubitReg flag) y.active hflag_y b 1
       _ = 0 := hflag_b
 
+  have hscratchZeroOut :
+      RegEncoding.toNat scratch.active
+          (RegEncoding.writeNat y.active 1 b) = 0 := by
+    calc
+      RegEncoding.toNat scratch.active
+          (RegEncoding.writeNat y.active 1 b)
+          = RegEncoding.toNat scratch.active b := by
+            exact RegEncoding.toNat_left_write_right
+              scratch.active y.active hscratch_y b 1
+      _ = 0 := hscratch_b
+
+  have hscratchFreshOut :
+      scratch.FreshFor 1 (RegEncoding.writeNat y.active 1 b) := by
+    unfold ExtReg.FreshFor FreshZero at hscratchFresh_b ⊢
+    calc
+      RegEncoding.toNat (scratch.newBits 1)
+          (RegEncoding.writeNat y.active 1 b)
+          = RegEncoding.toNat (scratch.newBits 1) b := by
+            exact RegEncoding.toNat_left_write_right
+              (scratch.newBits 1) y.active hscratchNew_y b 1
+      _ = 0 := hscratchFresh_b
+
   exact
-    ⟨hdata_lt, hyFreshOut, hworkZeroOut, hworkFreshOut, hflagZeroOut⟩
+    ⟨⟨hdata_lt, hyFreshOut, hworkZeroOut, hworkFreshOut, hflagZeroOut⟩,
+      hscratchZeroOut, hscratchFreshOut⟩
 
 omit [Spec] in
 lemma shor_data_capacity_from_log2
@@ -1116,13 +1193,13 @@ def ShorApproxSetup.toModExpConfig
     {a N : ℕ}
     {y : ExtReg}
     {η : ℝ}
-    {x work : ExtReg}
+    {x work scratch : ExtReg}
     {flag : ℕ}
     {b0 : qs.Basis}
     (ha : 0 < a ∧ a < N)
     (hgcd : Nat.gcd a N = 1)
     (hn : regSize y.active = Nat.log2 (2 * N))
-    (hsetup : ShorApproxSetup qs η x y work flag b0) :
+    (hsetup : ShorApproxSetup qs η N x y work scratch flag b0) :
     ModExpConfig η := by
   have hN : 1 < N := by
     omega
@@ -1136,6 +1213,7 @@ def ShorApproxSetup.toModExpConfig
         { N := N
           data := y
           work := work
+          scratch := scratch
           modulus_gt_one := hN
           data_capacity := hcapacity
           precision := hsetup.work_precision
@@ -1145,7 +1223,8 @@ def ShorApproxSetup.toModExpConfig
       x := x.active
       flag := flag
       layout := hsetup.register_layout
-      arithmetic := ?_ }
+      arithmetic := ?_
+      step4_workspace := hsetup.step4_workspace }
   intro i
   exact modExp_multiplier_coprime a N i.1 hcoprime
 
@@ -1157,20 +1236,21 @@ It may depend on the fixed instance data `qs`, `T`, `a`, `N`, `x`, `y`,
 `w`, `flag`, `b0`, and the fixed size/arithmetic hypotheses.
 -/
 theorem Shor_correct_approx_uniform
-    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs] [ModMulPrimitiveGateSemantics qs]
+    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs]
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
   ∃ K : ℝ, 0 ≤ K ∧
     ∀ (inst : ShorOrderFindingInstance)
-      (x y w : ExtReg) (flag : ℕ)
+      (x y w scratch : ExtReg) (flag : ℕ)
       (b0 : qs.Basis)
       (_hm: regSize x.active = Nat.log2 (2 * inst.N^2))
       (_hn : regSize y.active = Nat.log2 (2 * inst.N))
       (η : ℝ)
-      (hsetup : ShorApproxSetup qs η x y w flag b0),
+      (hsetup : ShorApproxSetup qs η inst.N x y w scratch flag b0),
       probability_of_success (qs := qs) (T := T) (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
         (x := x.active) (r := ord inst.a inst.N inst.coprime) (Q := ASize x.active)
         (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) inst.a inst.N x y w flag hsetup.circuit_workspace)
+        (C := orderFindingApprox (qs := qs) inst.a inst.N x y w scratch flag
+          hsetup.circuit_workspace hsetup.step4_workspace)
         (ψ := qs.ket b0)
       ≥
         κ / (Nat.log2 inst.N : ℝ)^4
@@ -1184,7 +1264,7 @@ theorem Shor_correct_approx_uniform
     ⟨K, hK_nonneg, hmodExp⟩
 
   refine ⟨K, hK_nonneg, ?_⟩
-  intro inst x y w flag b0 hm hn η hsetup
+  intro inst x y w scratch flag b0 hm hn η hsetup
   let a := inst.a
   let N := inst.N
   have ha : 0 < a ∧ a < N := inst.range
@@ -1212,7 +1292,7 @@ theorem Shor_correct_approx_uniform
     omega
 
   have hpreValid :
-      ψpre ∈ ValidModMulState qs N y w flag := by
+      ψpre ∈ ValidAlgorithm1State qs N y w scratch flag := by
     simpa [ψpre] using
       (ShorApproxSetup.prepared_state_valid
         (qs := qs)
@@ -1251,7 +1331,8 @@ theorem Shor_correct_approx_uniform
       ‖qs.eval
           (modExpApproxValid
             (Basis := qs.Basis)
-            a N x.active y w flag hsetup.circuit_workspace)
+            a N x.active y w scratch flag
+            hsetup.circuit_workspace hsetup.step4_workspace)
           ψpre
         -
         qs.eval (modExpIdeal' (qs := qs) a N x.active y.active) ψpre‖
@@ -1270,7 +1351,8 @@ theorem Shor_correct_approx_uniform
           (qs.eval
             (modExpApproxValid
               (Basis := qs.Basis)
-              a N x.active y w flag hsetup.circuit_workspace)
+              a N x.active y w scratch flag
+              hsetup.circuit_workspace hsetup.step4_workspace)
             ψpre)
         -
         qs.eval (IQFT x)
@@ -1281,7 +1363,8 @@ theorem Shor_correct_approx_uniform
       (IQFT x)
       (modExpApproxValid
         (Basis := qs.Basis)
-        a N x.active y w flag hsetup.circuit_workspace)
+        a N x.active y w scratch flag
+        hsetup.circuit_workspace hsetup.step4_workspace)
       (modExpIdeal' (qs := qs) a N x.active y.active)
       ψpre
       hmid
@@ -1289,7 +1372,8 @@ theorem Shor_correct_approx_uniform
   have hdist_full :
       ‖qs.eval
           (orderFindingApprox
-            (qs := qs) a N x y w flag hsetup.circuit_workspace)
+            (qs := qs) a N x y w scratch flag
+            hsetup.circuit_workspace hsetup.step4_workspace)
           (qs.ket b0)
         -
         qs.eval
@@ -1314,7 +1398,8 @@ theorem Shor_correct_approx_uniform
         (verify := verify)
         (x := x.active) (r := r) (Q := Q)
         (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) a N x y w flag hsetup.circuit_workspace)
+        (C := orderFindingApprox (qs := qs) a N x y w scratch flag
+          hsetup.circuit_workspace hsetup.step4_workspace)
         (ψ := qs.ket b0)
       ≥
       probability_of_success (qs := qs) (T := T)
@@ -1331,7 +1416,8 @@ theorem Shor_correct_approx_uniform
       x.active
       r
       Q
-      (orderFindingApprox (qs := qs) a N x y w flag hsetup.circuit_workspace)
+      (orderFindingApprox (qs := qs) a N x y w scratch flag
+        hsetup.circuit_workspace hsetup.step4_workspace)
       (orderFindingIdeal (qs := qs) a N x y)
       (qs.ket b0)
       ε
@@ -1360,7 +1446,8 @@ theorem Shor_correct_approx_uniform
         (r := ord a N hgcd)
         (Q := ASize x.active)
         (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) a N x y w flag hsetup.circuit_workspace)
+        (C := orderFindingApprox (qs := qs) a N x y w scratch flag
+          hsetup.circuit_workspace hsetup.step4_workspace)
         (ψ := qs.ket b0)
       ≥
         probability_of_success (qs := qs) (T := T)
@@ -1391,7 +1478,6 @@ omit [Spec] in
 lemma probability_of_success_lowerGate_eq
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ) (hk : 1 < k)
     (ops : Prog k)
     (hC : ProgConsumesPtsSafe
@@ -1449,33 +1535,36 @@ with `orderFindingIdeal`.
 theorem orderFindingApproxLow_probability_eq
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (lowering : ShorLoweringSetup)
     (T : ℕ → ℕ)
     (verify : OrderVerifier)
     (a N : ℕ)
-    (x y work : ExtReg)
+    (x y work scratch : ExtReg)
     (flag : ℕ)
     (hmodWorkspace : ModMulCircuitWorkspaceOK y work)
-    (hLowerWorkspace : GateWorkspaceOK lowering.ops (orderFindingApprox qs a N x y work flag hmodWorkspace))
+    (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
+    (hLowerWorkspace : GateWorkspaceOK lowering.ops
+      (orderFindingApprox qs a N x y work scratch flag hmodWorkspace hstep4))
     (ψ : qs.State)
     (hclean : GateWorkspaceCleanState qs lowering.k lowering.hk lowering.ops
-        (orderFindingApprox qs a N x y work flag hmodWorkspace) hLowerWorkspace ψ)
+        (orderFindingApprox qs a N x y work scratch flag hmodWorkspace hstep4)
+        hLowerWorkspace ψ)
     (r Q : ℕ) :
     probability_of_success
         (qs := qs)  (evalC := LowerGateClass.evalL (qs := qs))
         (T := T) (verify := verify) (x := x.active) (r := r)
         (Q := Q)
         (C := orderFindingApproxLow qs
-            lowering.k lowering.hk lowering.ops a N x y work flag
-            hmodWorkspace hLowerWorkspace)
+            lowering.k lowering.hk lowering.ops a N x y work scratch flag
+            hmodWorkspace hstep4 hLowerWorkspace)
         (ψ := ψ)
       =
     probability_of_success
         (qs := qs) (evalC := qs.eval)
         (T := T) (verify := verify) (x := x.active) (r := r)
         (Q := Q)
-        (C := orderFindingApprox qs a N x y work flag hmodWorkspace)
+        (C := orderFindingApprox qs a N x y work scratch flag
+          hmodWorkspace hstep4)
         (ψ := ψ) := by
   simpa only [orderFindingApproxLow] using
     (probability_of_success_lowerGate_eq
@@ -1492,7 +1581,7 @@ theorem orderFindingApproxLow_probability_eq
       (Q := Q)
       (G :=
         orderFindingApprox
-          qs a N x y work flag hmodWorkspace)
+          qs a N x y work scratch flag hmodWorkspace hstep4)
       (hworkspace := hLowerWorkspace)
       (ψ := ψ)
       (hclean := hclean))

@@ -36,9 +36,6 @@ inductive LowerablePhaseGate : Gate → Prop where
   | X :
       ∀ qbit,
         LowerablePhaseGate (Gate.X qbit)
-  | Prim :
-      ∀ tag args,
-        LowerablePhaseGate (Gate.Prim tag args)
   | ShiftL :
       ∀ r n,
         LowerablePhaseGate (Gate.ShiftL r n)
@@ -447,8 +444,6 @@ lemma lowerable_controlPhaseLeaves
       exact LowerablePhaseGate.H qbit
   | X qbit =>
       exact LowerablePhaseGate.X qbit
-  | Prim tag args =>
-      exact LowerablePhaseGate.Prim tag args
   | ShiftL r n =>
       exact LowerablePhaseGate.ShiftL r n
   | ShiftR r n =>

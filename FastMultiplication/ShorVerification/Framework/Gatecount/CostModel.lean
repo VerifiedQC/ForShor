@@ -26,7 +26,6 @@ adjoint, and elementary one-qubit gates are handled uniformly by `gateCount`; th
 fields here are exactly the operations whose costs depend on registers, payloads,
 or the concrete arithmetic model. -/
 structure LowGateCostModel where
-  prim : String → List ℕ → ℕ
   shiftL : ExtReg → ℕ → ℕ
   shiftR : ExtReg → ℕ → ℕ
   negate : ExtReg → ℕ
@@ -48,7 +47,6 @@ def gateCount (M : LowGateCostModel) : LowGate → ℕ
   | .adj U => gateCount M U
   | .H _ => 1
   | .X _ => 1
-  | .Prim tag qs => M.prim tag qs
   | .ShiftL r n => M.shiftL r n
   | .ShiftR r n => M.shiftR r n
   | .Negate r => M.negate r
@@ -96,10 +94,8 @@ def radixReverseGateCount (_r : Reg) (m : ℕ) : ℕ := 3 * (m / 2)
 and allocation bookkeeping default to zero cost, arithmetic operations are
 linear, and direct signed PhaseProduct gates are quadratic base cases. -/
 def phaseProductCostModel
-    (primCost : String → List ℕ → ℕ)
     (shiftLCost : ExtReg → ℕ → ℕ := fun _ _ => 0)
     (shiftRCost : ExtReg → ℕ → ℕ := fun _ _ => 0) : LowGateCostModel where
-  prim := primCost
   shiftL := shiftLCost
   shiftR := shiftRCost
   negate := negateGateBound
@@ -110,23 +106,8 @@ def phaseProductCostModel
   signDealloc := fun _r _n => 0
   radixReverse := radixReverseGateCount
 
-/-- Conservative linear elementary-gate bound for an opaque reversible arithmetic
-primitive acting on `w` qubits. -/
-def linearPrimitiveGateBound (w : ℕ) : ℕ := 20 * w + 10
-
-/-- Concrete costs for the opaque arithmetic primitives used by the Shor circuit.
-Recognized payloads use their register widths; malformed or unknown payloads are
-assigned cost one as a defensive fallback. -/
-def shorPrimCost (tag : String) (args : List ℕ) : ℕ :=
-  if tag = "CMP_GE_CONST" ∨
-      tag = "CSUB_CONST" ∨
-      tag = "CMP_LT_NW" then
-    linearPrimitiveGateBound (args.length - 2)
-  else
-    1
-
 /-- Concrete gate-cost model used by all Shor gate-count developments. -/
-def shorGateCostModel : LowGateCostModel := phaseProductCostModel shorPrimCost
+def shorGateCostModel : LowGateCostModel := phaseProductCostModel
 
 end ConcreteCostModel
 
@@ -167,7 +148,6 @@ end GateResources
 Unlike `LowGateCostModel`, this records the decomposition into logical
 elementary resources instead of immediately collapsing everything to a Nat. -/
 structure LowGateResourceModel where
-  prim : String → List ℕ → GateResources
   shiftL : ExtReg → ℕ → GateResources
   shiftR : ExtReg → ℕ → GateResources
   negate : ExtReg → GateResources
@@ -186,7 +166,6 @@ def resources (M : LowGateResourceModel) : LowGate → GateResources
   | .adj U => resources M U
   | .H _ => { h := 1 }
   | .X _ => { x := 1 }
-  | .Prim tag qs => M.prim tag qs
   | .ShiftL r n => M.shiftL r n
   | .ShiftR r n => M.shiftR r n
   | .Negate r => M.negate r
@@ -206,8 +185,6 @@ end LowGate
 namespace LowGateResourceModel
 
 def toCostModel (M : LowGateResourceModel) : LowGateCostModel where
-  prim := fun tag qs =>
-    (M.prim tag qs).totalGates
 
   shiftL := fun r n =>
     (M.shiftL r n).totalGates
@@ -410,109 +387,6 @@ def csubConstResources (w : ℕ) : GateResources :=
     cleanAnc := w + a.cleanAnc
   }
 
-
-/-! ---------------------------------------------------------
-    CMP_LT_NW
-
-The current `Prim` encoding erases the boundary between the `data`
-and `work` registers:
-
-    [N, flag] ++ data.qubits ++ work.qubits
-
-so this function only knows their combined width `w`.
-
-Until `Prim` is made typed, use a conservative explicit schoolbook
-upper bound:
-
-  * allocate a `w`-bit product accumulator;
-  * for at most `w` work bits, controlled-add a shifted N;
-  * compare against the shifted data value;
-  * uncompute the product.
-
-Each controlled constant add is implemented by controlled-loading a
-temporary constant followed by a Cuccaro modulo adder.
-
-Adder/comparator source:
-  https://arxiv.org/abs/quant-ph/0410184
-
-The standard schoolbook multiply-as-controlled-additions construction
-is also discussed in:
-  Daniel Litinski,
-  "Quantum schoolbook multiplication with fewer Toffoli gates"
-  https://arxiv.org/abs/2410.00899
-
-This is deliberately conservative and quadratic.  It should eventually
-be replaced by a typed primitive carrying separate `data` and `work`
-register widths.
---------------------------------------------------------- -/
-
-def cmpLtNWResources (w : ℕ) : GateResources :=
-  {
-    h := 0
-
-    /-
-    Compute + uncompute at most `w` controlled additions:
-      ≤ 2w * (2w X)
-    plus one `w`-bit comparator:
-      ≤ 2w X.
-    -/
-    x := 4 * w * w + 2 * w
-
-    /-
-    Controlled addition:
-      ≤ 2w CNOT to materialize/unmaterialize the constant
-      + 5w CNOT for Cuccaro
-      = 7w.
-
-    Compute + uncompute:
-      ≤ 14w².
-
-    Materialize/unmaterialize shifted data + comparator:
-      ≤ 2w + 4w = 6w.
-    -/
-    cnot := 14 * w * w + 6 * w
-
-    /-
-    Compute + uncompute:
-      ≤ 2w * (2w Toffoli) = 4w²
-    comparator:
-      ≤ 2w.
-    -/
-    toffoli := 4 * w * w + 2 * w
-
-    rz := 0
-
-    /-
-    Product accumulator + reusable temporary operand + ripple carry.
-    -/
-    cleanAnc := 2 * w + 1
-  }
-
-
-/-! ---------------------------------------------------------
-    Primitive resources
---------------------------------------------------------- -/
-
-def shorPrimResources (tag : String) (args : List ℕ) : GateResources :=
-  let w := args.length - 2
-  if tag = "CMP_GE_CONST" then
-    cmpGeConstResources w
-  else if tag = "CSUB_CONST" then
-    csubConstResources w
-  else if tag = "CMP_LT_NW" then
-    cmpLtNWResources w
-  else
-    /-
-    This is a sentinel, NOT a claimed resource upper bound for an
-    arbitrary unknown primitive.
-
-    The Shor development should separately prove that every reachable
-    `Prim` tag is one of the three cases above.  Long term, `Prim`
-    should be replaced by a typed inductive datatype.
-    -/
-    { toffoli := 1 }
-
-
 /-! ---------------------------------------------------------
     Negation
 
@@ -670,8 +544,6 @@ Each field is backed either by an explicit published circuit or by the
 logical-wiring convention of the multiplication construction.
 -/
 def shorGateResourceModel : LowGateResourceModel where
-  prim := shorPrimResources
-
   shiftL := fun _ _ => {}
 
   shiftR := fun _ _ => {}
@@ -710,53 +582,35 @@ def extRegActiveQubits (r : ExtReg) : Finset ℕ :=
 def extRegGrowQubits (r : ExtReg) (n : ℕ) : Finset ℕ :=
   (r.grow n).active.qubits.toFinset
 
-def LowGate.usedQubits
-    (primQubits : String → List ℕ → Finset ℕ) :
-    LowGate → Finset ℕ
+def LowGate.usedQubits : LowGate → Finset ℕ
   | .id => ∅
   | .seq U V =>
-      usedQubits primQubits U ∪ usedQubits primQubits V
+      usedQubits U ∪ usedQubits V
   | .adj U =>
-      usedQubits primQubits U
-
+      usedQubits U
   | .H q => {q}
   | .X q => {q}
-
-  | .Prim tag qs =>
-      primQubits tag qs
-
   | .ShiftL r _ =>
       extRegActiveQubits r
-
   | .ShiftR r _ =>
       extRegActiveQubits r
-
   | .Negate r =>
       extRegActiveQubits r
-
   | .AddScaled dst src _ _ =>
       extRegActiveQubits dst ∪ extRegActiveQubits src
-
   | .Phase q _ => {q}
-
   | .CNOT ctrl target =>
       {ctrl, target}
-
   | .Toffoli c₁ c₂ target =>
       {c₁, c₂, target}
-
   | .zeroExtend r n =>
       extRegGrowQubits r n
-
   | .signExtend r n =>
       extRegGrowQubits r n
-
   | .zeroDealloc _ _ =>
       ∅
-
   | .signDealloc r _ =>
       r.active.qubits.toFinset
-
   | .RadixReverse r _ =>
       r.qubits.toFinset
 
@@ -768,9 +622,8 @@ Total physical qubit requirement of a lowered circuit:
 -/
 def LowGate.qubitCount
     (M : LowGateResourceModel)
-    (primQubits : String → List ℕ → Finset ℕ)
     (g : LowGate) : ℕ :=
-  (usedQubits primQubits g).card + (resources M g).cleanAnc
+  (usedQubits g).card + (resources M g).cleanAnc
 
 
 end Shor

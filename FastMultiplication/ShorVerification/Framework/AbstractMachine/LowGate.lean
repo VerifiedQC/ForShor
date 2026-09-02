@@ -30,7 +30,6 @@ inductive LowGate : Type
   | CNOT : ℕ → ℕ → LowGate
   | Toffoli : ℕ → ℕ → ℕ → LowGate
 
-  | Prim : String → List ℕ → LowGate
   | ShiftL    : (r : ExtReg) → (n : ℕ) → LowGate
   | ShiftR    : (r : ExtReg) → (n : ℕ) → LowGate
   | Negate    : (r : ExtReg) → LowGate

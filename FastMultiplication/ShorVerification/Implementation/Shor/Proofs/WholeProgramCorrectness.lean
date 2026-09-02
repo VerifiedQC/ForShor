@@ -1,6 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Defs
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.LoweringCorrectness.Readiness
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Main
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ConstArithmeticLowering
 
 namespace Shor
 
@@ -204,7 +205,6 @@ theorem lowerGate_correctness
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -416,6 +416,23 @@ theorem lowerGate_correctness
           qbit
           ψ)
 
+  | CNOT ctrl target =>
+      simpa only [lowerGate] using
+        (LowerGateClass.evalL_CNOT
+          (qs := qs)
+          ctrl
+          target
+          ψ)
+
+  | Toffoli c₁ c₂ target =>
+      simpa only [lowerGate] using
+        (LowerGateClass.evalL_Toffoli
+          (qs := qs)
+          c₁
+          c₂
+          target
+          ψ)
+
   | QFT r =>
       change
         QFTWorkspaceCleanState
@@ -465,13 +482,17 @@ theorem lowerGate_correctness
           hC
           hRun)
 
-  | Prim tag args =>
+  | CmpGeConst N data scratch flag =>
+      change CmpGeConstCleanState qs data scratch ψ at hclean
       simpa only [lowerGate] using
-        (LowerGateClass.evalL_Prim
-          (qs := qs)
-          tag
-          args
-          ψ)
+        (evalL_lowerCmpGeConst qs N data scratch flag
+          hworkspace ψ hclean)
+
+  | CSubConst N data scratch flag =>
+      change CSubConstCleanState qs N data scratch flag ψ at hclean
+      simpa only [lowerGate] using
+        (evalL_lowerCSubConst qs N data scratch flag
+          hworkspace ψ hclean)
 
   | ShiftL r n =>
       simpa only [lowerGate] using

@@ -86,18 +86,46 @@ theorem evalL_X
       rw [LowerGateClass.evalL_X_ket, PauliXSemantics.eval_X_ket])
     ψ
 
-theorem evalL_Prim
+theorem evalL_CNOT
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
+    [ClassicalReversibleSemantics qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
-    (tag : String)
-    (args : List ℕ)
+    (ctrl target : ℕ)
     (ψ : qs.State) :
-    LowerGateClass.evalL (qs := qs) (LowGate.Prim tag args) ψ =
-      qs.eval (Gate.Prim tag args) ψ :=
-  LowerGatePrimitiveBridge.evalL_Prim tag args ψ
+    LowerGateClass.evalL (qs := qs) (LowGate.CNOT ctrl target) ψ =
+      qs.eval (Gate.CNOT ctrl target) ψ := by
+  exact evalL_eq_eval_of_ket
+    (qs := qs)
+    (LowGate.CNOT ctrl target)
+    (Gate.CNOT ctrl target)
+    (by
+      intro b
+      rw [LowerGateClass.evalL_CNOT_ket,
+        ClassicalReversibleSemantics.eval_CNOT_ket])
+    ψ
+
+theorem evalL_Toffoli
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [ClassicalReversibleSemantics qs]
+    [LowerGateClass qs]
+    (c₁ c₂ target : ℕ)
+    (ψ : qs.State) :
+    LowerGateClass.evalL (qs := qs) (LowGate.Toffoli c₁ c₂ target) ψ =
+      qs.eval (Gate.Toffoli c₁ c₂ target) ψ := by
+  exact evalL_eq_eval_of_ket
+    (qs := qs)
+    (LowGate.Toffoli c₁ c₂ target)
+    (Gate.Toffoli c₁ c₂ target)
+    (by
+      intro b
+      rw [LowerGateClass.evalL_Toffoli_ket,
+        ClassicalReversibleSemantics.eval_Toffoli_ket])
+    ψ
+
 
 theorem evalL_shiftL
     {qs : QSemantics}

@@ -2,6 +2,7 @@ import FastMultiplication.ShorVerification.Framework.AbstractMachine.Gates
 import FastMultiplication.ShorVerification.Framework.AbstractMachine.LowGate
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Framework.Semantics.LowerGate
+import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Toom_Cook_formula
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Core.Coverage
 import Mathlib.Tactic
@@ -2192,5 +2193,4 @@ structure CSignedRecursiveWorkspaceStateOK
       qs x z ψ
 
 end Shor
-
 

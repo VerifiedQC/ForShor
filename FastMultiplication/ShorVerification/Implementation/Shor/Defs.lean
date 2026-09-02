@@ -5,6 +5,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.ConstArithmeticLowering
 import FastMultiplication.ShorVerification.Framework.Submission
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
 import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.Reduction
@@ -82,6 +83,12 @@ def GateWorkspaceOK
   | Gate.CSignedPhaseProd ctrl _ x z =>
       CSignedRecursiveWorkspaceOK ops ctrl x z
 
+  | Gate.CmpGeConst N data scratch flag =>
+      ConstArithmeticWorkspace N data scratch flag
+
+  | Gate.CSubConst N data scratch flag =>
+      ConstArithmeticWorkspace N data scratch flag
+
   | _ =>
       True
 
@@ -133,6 +140,12 @@ noncomputable def lowerGate
   | Gate.X qbit, _ =>
       LowGate.X qbit
 
+  | Gate.CNOT ctrl target, _ =>
+      LowGate.CNOT ctrl target
+
+  | Gate.Toffoli c₁ c₂ target, _ =>
+      LowGate.Toffoli c₁ c₂ target
+
   | Gate.QFT r, hworkspace =>
       lowerQFT
         k hk ops r hworkspace
@@ -143,8 +156,11 @@ noncomputable def lowerGate
   | Gate.CSignedPhaseProd ctrl phi x z, hworkspace =>
       lowerCSignedPhaseProdWithWorkspace k hk ctrl phi x z ops hworkspace
 
-  | Gate.Prim tag args, _ =>
-      LowGate.Prim tag args
+  | Gate.CmpGeConst N data scratch flag, hworkspace =>
+      lowerCmpGeConst N data scratch flag hworkspace
+
+  | Gate.CSubConst N data scratch flag, hworkspace =>
+      lowerCSubConst N data scratch flag hworkspace
 
   | Gate.ShiftL r n, _ =>
       LowGate.ShiftL r n
@@ -227,6 +243,12 @@ noncomputable def GateWorkspaceCleanState
   | Gate.CSignedPhaseProd _ _ x z, _, ψ =>
       RecursiveWorkspaceCleanState qs x z ψ
 
+  | Gate.CmpGeConst _ data scratch _, _, ψ =>
+      CmpGeConstCleanState qs data scratch ψ
+
+  | Gate.CSubConst N data scratch flag, _, ψ =>
+      CSubConstCleanState qs N data scratch flag ψ
+
   | _, _, _ =>
       True
 
@@ -249,6 +271,8 @@ structure ShorWorkspaceNeed where
   data : ℕ
   /-- Reserve needed on the auxiliary/work register across all ModExp stages. -/
   auxiliary : ℕ
+  /-- Reserve needed by the concrete Step-3/4 scratch register. -/
+  scratch : ℕ
 
 /-- Total reserve required for lowering a QFT of width `n`. -/
 def qftReserveNeed
@@ -259,13 +283,14 @@ def qftReserveNeed
   (qftWorkspaceNeed ops n).2
 
 /--
-Compute the reserve required from the exponent, data, and auxiliary registers
+Compute the reserve required from the exponent, data, auxiliary, and comparator
+scratch registers
 when lowering the approximate Shor order-finding circuit.
 -/
 def shorWorkspaceNeed
     {k : ℕ}
     (ops : Prog k)
-    (x data work : ExtReg) :
+    (x data work scratch : ExtReg) :
     ShorWorkspaceNeed :=
 
   let step1Need :=
@@ -277,6 +302,9 @@ def shorWorkspaceNeed
   let step5Need :=
     RecursivePhaseWorkspace.reserveNeed ops (data.width + 2) (work.width + 1)
 
+  let step4Need :=
+    RecursivePhaseWorkspace.reserveNeed ops (work.width + 1) (scratch.width + 1)
+
   {
     exponent := qftReserveNeed ops x.width
 
@@ -287,34 +315,44 @@ def shorWorkspaceNeed
 
     auxiliary :=
       (max (qftReserveNeed ops work.width)
-        (max (1 + step1Need.2) (max (1 + step2Need.1) (1 + step5Need.2))))
+        (max (1 + step1Need.2)
+          (max (1 + step2Need.1)
+            (max (1 + step4Need.1) (1 + step5Need.2)))))
+
+    scratch :=
+      max (qftReserveNeed ops scratch.width) (1 + step4Need.2)
   }
 
 
 /--
-The exponent, data, and auxiliary registers contain enough inactive reserve
+The exponent, data, auxiliary, and comparator scratch registers contain enough inactive reserve
 for lowering the complete approximate Shor order-finding circuit.
 -/
 structure ShorWorkspaceLargeEnough
     {k : ℕ}
     (ops : Prog k)
-    (x data work : ExtReg) :
+    (x data work scratch : ExtReg) :
     Prop where
 
   /-- The exponent reserve meets the computed QFT-lowering budget. -/
   exponent_large_enough :
-    (shorWorkspaceNeed ops x data work).exponent
+    (shorWorkspaceNeed ops x data work scratch).exponent
       ≤ x.capacity
 
   /-- The data reserve covers carry bits, QFT workspace, and phase-product use. -/
   data_large_enough :
-    (shorWorkspaceNeed ops x data work).data
+    (shorWorkspaceNeed ops x data work scratch).data
       ≤ data.capacity
 
   /-- The auxiliary reserve covers QFT and all phase-product workspaces. -/
   auxiliary_large_enough :
-    (shorWorkspaceNeed ops x data work).auxiliary
+    (shorWorkspaceNeed ops x data work scratch).auxiliary
       ≤ work.capacity
+
+  /-- Scratch reserve covers its QFT, phase-product sign bit, and Step-3 unit bit. -/
+  scratch_large_enough :
+    (shorWorkspaceNeed ops x data work scratch).scratch
+      ≤ scratch.capacity
 
 /-! =========================================================
     Clean Workspace Inputs And Isolation
@@ -326,25 +364,30 @@ Every reserve register that may be used during Shor lowering is initially zero.
 def ShorWorkspaceCleanInput
     {Basis : Type u}
     [RegEncoding Basis]
-    (x y work : ExtReg)
+    (x y work scratch : ExtReg)
     (b0 : Basis) :
     Prop :=
   FreshZero x.reserve b0 ∧
   FreshZero y.reserve b0 ∧
-  FreshZero work.reserve b0
+  FreshZero work.reserve b0 ∧
+  FreshZero scratch.reserve b0
 
 /--
 The reserve belonging to the exponent register is not reused by the
 auxiliary register or comparator flag.
 -/
 structure ShorWorkspaceIsolation
-    (x work : ExtReg)
+    (x work scratch : ExtReg)
     (flag : ℕ) :
     Prop where
 
   /-- The exponent-owned qubits are separate from the auxiliary workspace. -/
   exponent_work_disjoint :
     ExtReg.OwnedDisjoint x work
+
+  /-- The exponent-owned qubits are separate from comparator scratch. -/
+  exponent_scratch_disjoint :
+    ExtReg.OwnedDisjoint x scratch
 
   /-- The comparator flag is not part of the exponent register ownership. -/
   flag_outside_exponent :
@@ -403,12 +446,18 @@ noncomputable def orderFindingApprox
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     (a N : ℕ)
-    (x y work : ExtReg)
+    (x y work scratch : ExtReg)
     (flag : ℕ)
-    (hworkspace : ModMulCircuitWorkspaceOK y work) : Gate :=
+    (hworkspace : ModMulCircuitWorkspaceOK y work)
+    (hstep4 :
+      CmpLtNWWorkspace N (y.grow 1) work scratch flag) :
+    Gate :=
   (H_reg x.active) ;;
   (initY1 y.active) ;;
-  (modExpApproxValid (Basis := qs.Basis) a N x.active y work flag hworkspace) ;;
+  (modExpApproxValid
+    (Basis := qs.Basis)
+    a N x.active y work scratch flag
+    hworkspace hstep4) ;;
   (IQFT x)
 
 
@@ -419,13 +468,14 @@ noncomputable def orderFindingApproxLow
     (k : ℕ) (hk : 1 < k)
     (ops : Prog k)
     (a N : ℕ)
-    (x y work : ExtReg)
+    (x y work scratch : ExtReg)
     (flag : ℕ)
     (hmodWorkspace : ModMulCircuitWorkspaceOK y work)
-    (hLowerWorkspace :
-      GateWorkspaceOK ops (orderFindingApprox qs a N x y work flag hmodWorkspace)) :=
-  lowerGate (Basis := qs.Basis) k hk ops
-    (orderFindingApprox qs a N x y work flag hmodWorkspace) hLowerWorkspace
+    (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
+    (hLowerWorkspace : GateWorkspaceOK ops (orderFindingApprox qs a N x y work scratch flag
+          hmodWorkspace hstep4)) :=
+  lowerGate (Basis := qs.Basis) k hk ops (orderFindingApprox qs a N x y work scratch flag hmodWorkspace hstep4)
+    hLowerWorkspace
 
 /-- Ideal order-finding circuit using exact modular exponentiation. -/
 noncomputable def orderFindingIdeal
@@ -466,7 +516,7 @@ structure ShorLoweringSetup where
 def ShorCleanInput
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    (x y work : ExtReg)
+    (x y work scratch : ExtReg)
     (flag : ℕ)
     (b0 : qs.Basis) : Prop :=
   RegEncoding.toNat x.active b0 = 0 ∧
@@ -474,6 +524,8 @@ def ShorCleanInput
   y.FreshFor 2 b0 ∧
   RegEncoding.toNat work.active b0 = 0 ∧
   work.FreshFor 1 b0 ∧
+  RegEncoding.toNat scratch.active b0 = 0 ∧
+  scratch.FreshFor 1 b0 ∧
   RegEncoding.toNat (qubitReg flag) b0 = 0
 
 /-- Public assumptions for the approximate implementation of Shor. -/
@@ -481,9 +533,10 @@ structure ShorApproxSetup
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     (η : ℝ)
-    (x y work : ExtReg)
+    (N : ℕ)
+    (x y work scratch : ExtReg)
     (flag : ℕ)
-    (b0 : qs.Basis) : Prop where
+    (b0 : qs.Basis) : Type where
   /-- The exponent, data, work, carry, and flag qubits do not overlap. -/
   register_layout :
     ModExpLayout x.active y work flag
@@ -492,9 +545,17 @@ structure ShorApproxSetup
   circuit_workspace :
     ModMulCircuitWorkspaceOK y work
 
+  /-- The concrete Step-4 comparator and its Step-3 scratch are well laid out. -/
+  step4_workspace :
+    CmpLtNWWorkspace N (y.grow 1) work scratch flag
+
   /-- The exponent register is owned separately from the modular data register. -/
   exponent_data_disjoint :
     ExtReg.OwnedDisjoint x y
+
+  /-- The exponent register is owned separately from comparator scratch. -/
+  exponent_scratch_disjoint :
+    ExtReg.OwnedDisjoint x scratch
 
   /-- The work register has enough extra bits for precision `η`. -/
   work_precision :
@@ -502,7 +563,7 @@ structure ShorApproxSetup
 
   /-- Shor begins in `|0⋯0⟩` on all registers it uses. -/
   clean_input :
-    ShorCleanInput qs x y work flag b0
+    ShorCleanInput qs x y work scratch flag b0
 
 /--
 Lower-level assumptions from which the public approximate setup is reconstructed
@@ -512,10 +573,11 @@ structure ShorApproxSetupMinimal
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     (η : ℝ)
-    (x data work : ExtReg)
+    (N : ℕ)
+    (x data work scratch : ExtReg)
     (flag : ℕ)
     (b0 : qs.Basis) :
-    Prop where
+    Type where
 
   /-- The data register has two available reserve qubits. -/
   data_can_grow_two :
@@ -525,9 +587,17 @@ structure ShorApproxSetupMinimal
   work_can_grow_one :
     work.CanGrow 1
 
+  /-- The comparator scratch layout is the same one used by Steps 3 and 4. -/
+  step4_workspace :
+    CmpLtNWWorkspace N (data.grow 1) work scratch flag
+
   /-- The exponent and data registers have no common owned qubits. -/
   exponent_data_disjoint :
     ExtReg.OwnedDisjoint x data
+
+  /-- The exponent register is owned separately from comparator scratch. -/
+  exponent_scratch_disjoint :
+    ExtReg.OwnedDisjoint x scratch
 
   /-- The data and work registers have no common owned qubits. -/
   data_work_disjoint :
@@ -578,6 +648,14 @@ structure ShorApproxSetupMinimal
   work_fresh :
     work.FreshFor 1 b0
 
+  /-- The active comparator scratch register starts at zero. -/
+  scratch_zero :
+    RegEncoding.toNat scratch.active b0 = 0
+
+  /-- The borrowed comparator reserve bit starts at zero. -/
+  scratch_fresh :
+    scratch.FreshFor 1 b0
+
   /-- The comparison flag starts at zero. -/
   flag_zero :
     RegEncoding.toNat (qubitReg flag) b0 = 0
@@ -600,30 +678,29 @@ structure LoweredShorReady
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [GateSemanticsFacts qs]
     (lowering : ShorLoweringSetup)
     (η : ℝ)
     (a N : ℕ)
-    (x y work : ExtReg)
+    (x y work scratch : ExtReg)
     (flag : ℕ)
     (b0 : qs.Basis) :
-    Prop where
+    Type where
 
   /-- Layout, precision, and clean active-register assumptions. -/
   approx :
-    ShorApproxSetupMinimal qs η x y work flag b0
+    ShorApproxSetupMinimal qs η N x y work scratch flag b0
 
   /-- Static reserve capacity is sufficient for all recursive lowerers. -/
   workspace_large_enough :
-    ShorWorkspaceLargeEnough lowering.ops x y work
+    ShorWorkspaceLargeEnough lowering.ops x y work scratch
 
   /-- Shared temporary resources do not overlap unsafe regions. -/
   workspace_isolated :
-    ShorWorkspaceIsolation x work flag
+    ShorWorkspaceIsolation x work scratch flag
 
   /-- All reserve registers that may be allocated begin at zero. -/
   workspace_initially_zero :
-    ShorWorkspaceCleanInput x y work b0
+    ShorWorkspaceCleanInput x y work scratch b0
 
 /-!
 ## Final Factoring Input

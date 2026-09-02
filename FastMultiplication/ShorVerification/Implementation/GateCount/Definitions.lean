@@ -153,7 +153,8 @@ section ControlledAndShorBounds
 
 /-- Coarser Shor-level comparison rate `n^(2 + ε)`, again clamped to nonzero
 input width through `max 1 n`. -/
-noncomputable def shorGateRate (ε : ℝ) (n : ℕ) : ℝ := Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)
+noncomputable def shorGateRate (ε : ℝ) (n : ℕ) : ℝ :=
+  Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)
 
 /-- Public controlled PhaseProduct asymptotic statement, using the same
 PhaseProduct safe rate but quantifying over the control qubit. -/

@@ -403,20 +403,99 @@ class ArithmeticSemantics
       qs.ket
         (addScaledBasis dst src negSrc sh b)
 
+def cnotBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (ctrl target : ℕ)
+    (b : Basis) : Basis :=
+  if ctrl = target then b
+  else if RegEncoding.bit ctrl b then
+    RegEncoding.writeNat (qubitReg target)
+      (if RegEncoding.bit target b then 0 else 1) b
+  else b
+
+def toffoliBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (c₁ c₂ target : ℕ)
+    (b : Basis) : Basis :=
+  if c₁ = c₂ ∨ c₁ = target ∨ c₂ = target then b
+  else if RegEncoding.bit c₁ b ∧ RegEncoding.bit c₂ b then
+    RegEncoding.writeNat (qubitReg target)
+      (if RegEncoding.bit target b then 0 else 1) b
+  else b
+
+class ClassicalReversibleSemantics
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs] : Type where
+
+  eval_CNOT_ket :
+    ∀ (ctrl target : ℕ) (b : qs.Basis),
+      qs.eval (Gate.CNOT ctrl target) (qs.ket b) =
+        qs.ket (cnotBasis ctrl target b)
+
+  eval_Toffoli_ket :
+    ∀ (c₁ c₂ target : ℕ) (b : qs.Basis),
+      qs.eval (Gate.Toffoli c₁ c₂ target) (qs.ket b) =
+        qs.ket (toffoliBasis c₁ c₂ target b)
+
+def cmpGeConstBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (N : ℕ)
+    (data : Reg)
+    (flag : ℕ)
+    (b : Basis) : Basis :=
+  if flag ∈ data.qubits then b
+  else RegEncoding.writeNat (qubitReg flag)
+      (if RegEncoding.bit flag b then
+        if N ≤ RegEncoding.toNat data b then 0 else 1
+      else if N ≤ RegEncoding.toNat data b then 1 else 0) b
+
+def csubConstBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (N : ℕ)
+    (data : Reg)
+    (flag : ℕ)
+    (b : Basis) : Basis :=
+  if flag ∈ data.qubits then b
+  else RegEncoding.writeNat data
+      (if RegEncoding.bit flag b then
+        (RegEncoding.toNat data b + ASize data - (N % ASize data)) % ASize data
+      else RegEncoding.toNat data b) b
+
+class ModularArithmeticSemantics
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs] : Type where
+
+  eval_CmpGeConst_ket :
+    ∀ (N : ℕ) (data scratch : ExtReg) (flag : ℕ) (b : qs.Basis),
+      qs.eval (Gate.CmpGeConst N data scratch flag) (qs.ket b) =
+        qs.ket (cmpGeConstBasis N data.active flag b)
+
+  eval_CSubConst_ket :
+    ∀ (N : ℕ) (data scratch : ExtReg) (flag : ℕ) (b : qs.Basis),
+      qs.eval (Gate.CSubConst N data scratch flag) (qs.ket b) =
+        qs.ket (csubConstBasis N data.active flag b)
 
 /-- Bundled semantic interface for all gate families used in this file. -/
 class GateSemanticsFacts
-  (qs : QSemantics)
-  [RegEncoding qs.Basis] :
-  Type extends
-    GateSemanticsCore qs,
-    QFTSemantics qs,
-    PhaseSemantics qs,
-    ExtensionSemantics qs,
-    ArithmeticSemantics qs,
-    RadixReverseSemantics qs,
-    HadamardSemantics qs,
-    PauliXSemantics qs
+    (qs : QSemantics)
+    [RegEncoding qs.Basis] :
+    Type extends
+      GateSemanticsCore qs,
+      QFTSemantics qs,
+      PhaseSemantics qs,
+      ExtensionSemantics qs,
+      ArithmeticSemantics qs,
+      ModularArithmeticSemantics qs,
+      RadixReverseSemantics qs,
+      HadamardSemantics qs,
+      PauliXSemantics qs,
+      ClassicalReversibleSemantics qs
 
 /-- Ideal modular multiplication specifications used by the correctness layer. -/
 class Spec where
@@ -461,6 +540,7 @@ def GoodModMulBasisInput
   work.FreshFor 1 b ∧
   RegEncoding.toNat (qubitReg flag) b = 0
 
+
 /-- Exact basis semantics required of the ideal controlled modular multiplier. -/
 class IdealCtrlModMulExactSemantics
     (qs : QSemantics)
@@ -484,75 +564,5 @@ class IdealCtrlModMulExactSemantics
           else
             RegEncoding.toNat data b)
           b)
-/--
-Semantic facts for the opaque arithmetic primitives used by the reference
-modular-multiplication implementation.
--/
-class ModMulPrimitiveGateSemantics
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs] : Type where
 
-  /--
-  `CMP_GE_CONST` reversibly XORs the comparison `N ≤ x` into `flag`.
-  -/
-  eval_cmp_ge_const_ket :
-    ∀ (N : ℕ) (data : Reg) (flag : ℕ) (b : qs.Basis),
-      flag ∉ data.qubits →
-      qs.eval
-          (Gate.Prim "CMP_GE_CONST" ([N, flag] ++ data.qubits))
-          (qs.ket b)
-        =
-      qs.ket
-        (RegEncoding.writeNat
-          (qubitReg flag)
-          (if RegEncoding.bit flag b then
-            if N ≤ RegEncoding.toNat data b then 0 else 1
-          else
-            if N ≤ RegEncoding.toNat data b then 1 else 0)
-          b)
-
-  /--
-  `CSUB_CONST` subtracts `N` modulo the width of `data` when `flag = 1`.
-  -/
-  eval_csub_const_ket :
-    ∀ (N : ℕ) (data : Reg) (flag : ℕ) (b : qs.Basis),
-      flag ∉ data.qubits →
-      qs.eval
-          (Gate.Prim "CSUB_CONST" ([N, flag] ++ data.qubits))
-          (qs.ket b)
-        =
-      qs.ket
-        (RegEncoding.writeNat data
-          (if RegEncoding.bit flag b then
-            (RegEncoding.toNat data b
-                + ASize data
-                - (N % ASize data)) % ASize data
-          else
-            RegEncoding.toNat data b)
-          b)
-
-  /--
-  `CMP_LT_NW` reversibly XORs the comparison
-
-      x * 2^|work| < N * work
-
-  into `flag`.
-  -/
-  eval_cmp_lt_nw_ket :
-    ∀ (N : ℕ) (data work : Reg) (flag : ℕ) (b : qs.Basis),
-      flag ∉ data.qubits →
-      flag ∉ work.qubits →
-      qs.eval (Gate.Prim "CMP_LT_NW" ([N, flag] ++ data.qubits ++ work.qubits))
-          (qs.ket b)
-        =
-      qs.ket
-        (RegEncoding.writeNat
-          (qubitReg flag)
-          (if RegEncoding.bit flag b then
-            if RegEncoding.toNat data b * ASize work
-                < N * RegEncoding.toNat work b then 0 else 1
-          else if RegEncoding.toNat data b * ASize work
-                < N * RegEncoding.toNat work b then 1 else 0)
-          b)
 end Shor

@@ -182,6 +182,65 @@ private theorem gateWorkspaceOK_H_reg
   exact hfold (regQubits r) Gate.id trivial
 
 
+private theorem constArithmeticWorkspace_of_cmpLtNWWorkspace
+    (N : ℕ)
+    (dataCarry work scratch : ExtReg)
+    (flag : ℕ)
+    (hstep4 :
+      CmpLtNWWorkspace N dataCarry work scratch flag) :
+    ConstArithmeticWorkspace N dataCarry scratch flag := by
+  have hscratchWidth :
+      scratch.width = cmpLtNWWidth N dataCarry.active work.active := by
+    simpa [ExtReg.width] using hstep4.scratch_width
+  have hscratchPositive : 0 < scratch.width := by
+    rw [hscratchWidth]
+    unfold cmpLtNWWidth
+    omega
+  have hmaxLeft :
+      regSize dataCarry.active + regSize work.active ≤
+        max
+          (regSize dataCarry.active + regSize work.active)
+          (Nat.log2 (N + 1) + 1 + regSize work.active) :=
+    Nat.le_max_left _ _
+  have hmaxRight :
+      Nat.log2 (N + 1) + 1 + regSize work.active ≤
+        max
+          (regSize dataCarry.active + regSize work.active)
+          (Nat.log2 (N + 1) + 1 + regSize work.active) :=
+    Nat.le_max_right _ _
+  refine
+    {
+      data_can_grow := hstep4.data_can_grow
+      scratch_can_grow := ?_
+      data_scratch_disjoint := hstep4.data_scratch_disjoint
+      flag_not_data := hstep4.flag_not_data
+      flag_not_scratch := hstep4.flag_not_scratch
+      scratch_positive := hscratchPositive
+      constant_fits := ?_
+      data_width_fits := ?_
+    }
+  · change 1 ≤ regSize scratch.reserve
+    rw [← hstep4.mul_zReserve_eq]
+    exact hstep4.mulWorkspace.z_can_grow
+  · have hlogWidth :
+        Nat.log2 (N + 1) + 1 ≤ scratch.width - 1 := by
+      rw [hscratchWidth]
+      unfold cmpLtNWWidth
+      omega
+    have hN : N < 2 ^ (Nat.log2 (N + 1) + 1) := by
+      exact lt_trans (Nat.lt_succ_self N) (Nat.lt_log2_self)
+    exact
+      lt_of_lt_of_le hN
+        (Nat.pow_le_pow_right (by omega) hlogWidth)
+  · rw [hscratchWidth]
+    unfold cmpLtNWWidth
+    simpa [ExtReg.width] using (show
+      regSize dataCarry.active ≤
+        2 + max
+          (regSize dataCarry.active + regSize work.active)
+          (Nat.log2 (N + 1) + 1 + regSize work.active) - 1 by
+      omega)
+
 /--
 Main static theorem for this module.
 
@@ -196,21 +255,27 @@ theorem gateWorkspaceOK_orderFindingApprox
     (ops : Prog k)
     (η : ℝ)
     (a N : ℕ)
-    (x data work : ExtReg)
+    (x data work scratch : ExtReg)
     (flag : ℕ)
     (b0 : qs.Basis)
     (hsetup :
       ShorApproxSetup
-        qs η x data work flag b0)
+        qs η N x data work scratch flag b0)
     (hlarge :
       ShorWorkspaceLargeEnough
-        ops x data work) :
+        ops x data work scratch) :
     GateWorkspaceOK ops
       (orderFindingApprox
-        qs a N x data work flag
-        hsetup.circuit_workspace) := by
+        qs a N x data work scratch flag
+        hsetup.circuit_workspace hsetup.step4_workspace) := by
   let hmod : ModMulCircuitWorkspaceOK data work :=
     hsetup.circuit_workspace
+  let hstep4 : CmpLtNWWorkspace N (data.grow 1) work scratch flag :=
+    hsetup.step4_workspace
+  have hConst :
+      ConstArithmeticWorkspace N (data.grow 1) scratch flag :=
+    constArithmeticWorkspace_of_cmpLtNWWorkspace
+      N (data.grow 1) work scratch flag hstep4
 
   have hDataGrow : data.CanGrow 1 :=
     hmod.data_canGrow_one
@@ -221,12 +286,15 @@ theorem gateWorkspaceOK_orderFindingApprox
 
   have hDataBounds := hlarge.data_large_enough
   have hWorkBounds := hlarge.auxiliary_large_enough
-  dsimp [shorWorkspaceNeed] at hDataBounds hWorkBounds
-  simp only [max_le_iff] at hDataBounds hWorkBounds
+  have hScratchBounds := hlarge.scratch_large_enough
+  dsimp [shorWorkspaceNeed] at hDataBounds hWorkBounds hScratchBounds
+  simp only [max_le_iff] at hDataBounds hWorkBounds hScratchBounds
   rcases hDataBounds with
     ⟨hDataStep1, hDataQFT, hDataStep2, hDataStep5⟩
   rcases hWorkBounds with
-    ⟨hWorkQFT, hWorkStep1, hWorkStep2, hWorkStep5⟩
+    ⟨hWorkQFT, hWorkStep1, hWorkStep2, hWorkStep4, hWorkStep5⟩
+  rcases hScratchBounds with
+    ⟨hScratchQFT, hScratchStep4⟩
 
   have hQFTX : QFTReserveOK ops x := by
     refine ⟨?_⟩
@@ -257,6 +325,74 @@ theorem gateWorkspaceOK_orderFindingApprox
     rfl
   have hStep5ZExt : hmod.step5Workspace.zExt = work := by
     rfl
+  have hStep4XExt : hstep4.mulWorkspace.xExt = work := by
+    rw [
+      Gate.PhaseProdWorkspace.xExt,
+      ExtReg.withReserve,
+      ExtReg.mk.injEq
+    ]
+    exact ⟨rfl, hstep4.mul_xReserve_eq⟩
+  have hStep4ZExt : hstep4.mulWorkspace.zExt = scratch := by
+    rw [
+      Gate.PhaseProdWorkspace.zExt,
+      ExtReg.withReserve,
+      ExtReg.mk.injEq
+    ]
+    exact ⟨rfl, hstep4.mul_zReserve_eq⟩
+
+  have hQFTScratch : QFTReserveOK ops scratch := by
+    refine ⟨?_⟩
+    simpa [qftReserveNeed] using hScratchQFT
+
+  have hStep4Phase :
+      SignedRecursiveWorkspaceOK
+        ops
+        (hstep4.mulWorkspace.xExt.grow 1)
+        (hstep4.mulWorkspace.zExt.grow 1) := by
+    rw [hStep4XExt, hStep4ZExt]
+    refine
+      {
+        owned_disjoint := ?_
+        x_reserve_sufficient := ?_
+        z_reserve_sufficient := ?_
+      }
+    · simpa [
+          ExtReg.OwnedDisjoint,
+          ExtReg.ownedQubits_grow
+        ] using hstep4.work_scratch_disjoint
+    · rw [
+          ExtReg.width_grow work 1 hWorkGrow,
+          ExtReg.width_grow scratch 1
+            (constArithmeticWorkspace_of_cmpLtNWWorkspace
+              N (data.grow 1) work scratch flag hstep4).scratch_can_grow,
+          ExtReg.capacity_grow work 1 hWorkGrow
+        ]
+      exact reserve_le_capacity_sub_one_of_succ_le hWorkStep4
+    · rw [
+          ExtReg.width_grow work 1 hWorkGrow,
+          ExtReg.width_grow scratch 1
+            (constArithmeticWorkspace_of_cmpLtNWWorkspace
+              N (data.grow 1) work scratch flag hstep4).scratch_can_grow,
+          ExtReg.capacity_grow scratch 1
+            (constArithmeticWorkspace_of_cmpLtNWWorkspace
+              N (data.grow 1) work scratch flag hstep4).scratch_can_grow
+        ]
+      exact reserve_le_capacity_sub_one_of_succ_le hScratchStep4
+
+  have hStep4QFT :
+      QFTReserveOK ops hstep4.mulWorkspace.zExt := by
+    simpa only [hStep4ZExt] using hQFTScratch
+
+  have hStep4OK :
+      GateWorkspaceOK ops
+        (step4 N (data.grow 1) work scratch flag hstep4) := by
+    unfold step4 cmpLtNW fastConstMulInto cmpLtNWDifference
+    simp [
+      Gate.PhaseProdUsing,
+      GateWorkspaceOK,
+      hStep4Phase,
+      hStep4QFT
+    ]
 
   have hHWork : GateWorkspaceOK ops (H_reg work.active) :=
     gateWorkspaceOK_H_reg ops work.active
@@ -267,7 +403,7 @@ theorem gateWorkspaceOK_orderFindingApprox
         GateWorkspaceOK ops
           (CmodMulInPlaceCore
             (Basis := qs.Basis)
-            c N ctrl data work flag hmod) := by
+            c N ctrl data work scratch flag hmod hstep4) := by
     intro c ctrl hlayout
 
     have hctrlData : ctrl ∉ data.ownedQubits :=
@@ -535,8 +671,9 @@ theorem gateWorkspaceOK_orderFindingApprox
     simp [
       CmodMulInPlaceCore,
       step3,
-      step4,
       GateWorkspaceOK,
+      hConst,
+      hStep4OK,
       hStep1OK,
       hStep2OK,
       hStep5OK
@@ -563,7 +700,7 @@ theorem gateWorkspaceOK_orderFindingApprox
         GateWorkspaceOK ops
           (modExpApproxStepsValid
             (Basis := qs.Basis)
-            a N data work flag hmod e ctrls) := by
+            a N data work scratch flag hmod hstep4 e ctrls) := by
     intro e ctrls
     induction ctrls generalizing e with
     | nil =>
@@ -603,7 +740,7 @@ theorem gateWorkspaceOK_orderFindingApprox
       GateWorkspaceOK ops
         (modExpApproxValid
           (Basis := qs.Basis)
-          a N x.active data work flag hmod) :=
+          a N x.active data work scratch flag hmod hstep4) :=
     hSteps 0 x.active.qubits hLayoutOfMem
 
   have hFinalQFT :
@@ -616,11 +753,11 @@ theorem gateWorkspaceOK_orderFindingApprox
       GateWorkspaceOK ops
         (modExpApproxValid
           (Basis := qs.Basis)
-          a N x.active data work flag hmod) ∧
+          a N x.active data work scratch flag hmod hstep4) ∧
       GateWorkspaceOK ops (IQFT x) :=
     ⟨hHExponent, hInit, hModExp, hFinalQFT⟩
 
-  simpa [orderFindingApprox, GateWorkspaceOK, hmod] using hAll
+  simpa [orderFindingApprox, GateWorkspaceOK, hmod, hstep4] using hAll
 
 /-! =========================================================
     Section 2: Clean-result sequencing infrastructure
@@ -671,7 +808,6 @@ private theorem LoweredCleanResult.seq
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     {lowering : ShorLoweringSetup}
     {Pmid Pout : qs.State → Prop}
     {U V : Gate}
@@ -1038,67 +1174,101 @@ private theorem eval_step3_preserves_lowering_clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [ModMulPrimitiveGateSemantics qs]
-    (x data work : ExtReg)
+    (x data work scratch : ExtReg)
     (N flag : ℕ)
     (hxData :
       ExtReg.OwnedDisjoint x data)
+    (hxScratch :
+      ExtReg.OwnedDisjoint x scratch)
     (hmod :
       ModMulCircuitWorkspaceOK data work)
     (hflagX :
       flag ∉ x.ownedQubits)
-    (hflagData :
-      flag ∉ data.ownedQubits)
-    (hflagWork :
-      flag ∉ work.ownedQubits)
+    (hstep4 :
+      CmpLtNWWorkspace N (data.grow 1) work scratch flag)
     {ψ : qs.State}
     (hclean :
-      ShorLoweringCleanState
-        qs x data work ψ) :
-    ShorLoweringCleanState
-      qs x data work
+      ShorConcreteCleanState
+        qs x data work scratch hxScratch ψ) :
+    ShorConcreteCleanState
+      qs x data work scratch hxScratch
       (qs.eval
         (step3
           N
-          (data.grow 1).active
+          (data.grow 1)
+          scratch
           flag)
         ψ) := by
   have hxCarry :
-      Disjoint
-        x.reserve
-        (data.grow 1).active :=
-    reserve_grow_active_disjoint_of_ownedDisjoint
-      hxData 1
+      Disjoint x.reserve (data.grow 1).active :=
+    reserve_grow_active_disjoint_of_ownedDisjoint hxData 1
 
   have hdataCarry :
-      Disjoint
-        (data.reserve.drop 1)
-        (data.grow 1).active :=
+      Disjoint (data.reserve.drop 1) (data.grow 1).active :=
     reserve_drop_grow_active_disjoint_self data 1
 
   have hworkCarry :
-      Disjoint
-        work.reserve
-        (data.grow 1).active :=
+      Disjoint work.reserve (data.grow 1).active :=
     reserve_active_disjoint_of_ownedDisjoint
       hmod.work_dataCarry_disjoint
+
+  have hcombinedCarry :
+      Disjoint
+        (exponentScratchCleanReg x scratch hxScratch)
+        (data.grow 1).active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqCombined hqCarry
+    simp only [
+      exponentScratchCleanReg,
+      Reg.append,
+      ExtReg.ownedReg,
+      List.mem_append
+    ] at hqCombined
+    rcases hqCombined with hqExponent | hqScratch
+    · exact
+        (not_mem_right_of_mem_left_of_disjoint
+          hxCarry hqExponent) hqCarry
+    · have hscratchCarry := hstep4.data_scratch_disjoint
+      rw [ExtReg.OwnedDisjoint, List.disjoint_left] at hscratchCarry
+      exact hscratchCarry
+        (List.mem_append_left _ hqCarry)
+        (by simpa [ExtReg.ownedQubits] using hqScratch)
+
+  have hflagCombined :
+      flag ∉
+        (exponentScratchCleanReg x scratch hxScratch).qubits := by
+    intro hqCombined
+    simp only [
+      exponentScratchCleanReg,
+      Reg.append,
+      ExtReg.ownedReg,
+      List.mem_append
+    ] at hqCombined
+    rcases hqCombined with hqExponent | hqScratch
+    · apply hflagX
+      rw [ExtReg.ownedQubits, List.mem_append]
+      exact Or.inr hqExponent
+    · exact hstep4.flag_not_scratch
+        (by simpa [ExtReg.ownedQubits] using hqScratch)
 
   induction hclean with
   | zero =>
       rw [qs.eval_zero]
       exact ThreeRegsCleanState.zero
 
-  | ket b hx hdata hwork =>
+  | ket b hbasis =>
+      rcases hbasis with ⟨hcombined, hdata, hwork⟩
       rcases
-          eval_step3_local_ket_of_primitive
+          eval_step3_local_ket
             (qs := qs)
             N
-            (data.grow 1).active
+            (data.grow 1)
+            scratch
             flag
             b
             (by
               intro hq
-              apply hflagData
+              apply hstep4.flag_not_data
               have howned :
                   flag ∈ (data.grow 1).ownedQubits :=
                 List.mem_append_left _ hq
@@ -1110,25 +1280,19 @@ private theorem eval_step3_preserves_lowering_clean
 
       · exact
           FreshZero.of_eq_on_bits
-            x.reserve
+            (exponentScratchCleanReg x scratch hxScratch)
             b
             b'
             (by
               intro q hq
-
               apply hlocal q
               · exact
                   not_mem_right_of_mem_left_of_disjoint
-                    hxCarry hq
+                    hcombinedCarry hq
               · intro hqFlag
                 subst q
-                apply hflagX
-                rw [
-                  ExtReg.ownedQubits,
-                  List.mem_append
-                ]
-                exact Or.inr hq)
-            hx
+                exact hflagCombined hq)
+            hcombined
 
       · exact
           FreshZero.of_eq_on_bits
@@ -1137,21 +1301,15 @@ private theorem eval_step3_preserves_lowering_clean
             b'
             (by
               intro q hq
-
               apply hlocal q
               · exact
                   not_mem_right_of_mem_left_of_disjoint
                     hdataCarry hq
               · intro hqFlag
                 subst q
-                apply hflagData
-                rw [
-                  ExtReg.ownedQubits,
-                  List.mem_append
-                ]
-                exact
-                  Or.inr
-                    (List.mem_of_mem_drop hq))
+                apply hstep4.flag_not_data
+                rw [ExtReg.ownedQubits, List.mem_append]
+                exact Or.inr hq)
             hdata
 
       · exact
@@ -1161,136 +1319,210 @@ private theorem eval_step3_preserves_lowering_clean
             b'
             (by
               intro q hq
-
               apply hlocal q
               · exact
                   not_mem_right_of_mem_left_of_disjoint
                     hworkCarry hq
               · intro hqFlag
                 subst q
-                apply hflagWork
-                rw [
-                  ExtReg.ownedQubits,
-                  List.mem_append
-                ]
+                apply hstep4.flag_not_work
+                rw [ExtReg.ownedQubits, List.mem_append]
                 exact Or.inr hq)
             hwork
 
   | add hψ hφ ihψ ihφ =>
       rw [qs.eval_add]
-      exact
-        ThreeRegsCleanState.add
-          ihψ ihφ
+      exact ThreeRegsCleanState.add ihψ ihφ
 
   | smul a hψ ihψ =>
       rw [qs.eval_smul]
-      exact
-        ThreeRegsCleanState.smul
-          a ihψ
-
+      exact ThreeRegsCleanState.smul a ihψ
 private theorem eval_step4_preserves_lowering_clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [ModMulPrimitiveGateSemantics qs]
-    (x data work : ExtReg)
+    (x data work scratch : ExtReg)
     (N flag : ℕ)
     (hxData :
       ExtReg.OwnedDisjoint x data)
     (hxWork :
       ExtReg.OwnedDisjoint x work)
+    (hxScratch :
+      ExtReg.OwnedDisjoint x scratch)
     (hmod :
       ModMulCircuitWorkspaceOK data work)
     (hflagX :
       flag ∉ x.ownedQubits)
-    (hflagData :
-      flag ∉ data.ownedQubits)
-    (hflagWork :
-      flag ∉ work.ownedQubits)
+    (hstep4 :
+      CmpLtNWWorkspace N (data.grow 1) work scratch flag)
     {ψ : qs.State}
     (hclean :
-      ShorLoweringCleanState
-        qs x data work ψ) :
-    ShorLoweringCleanState
-      qs x data work
+      ShorConcreteCleanState
+        qs x data work scratch hxScratch ψ) :
+    ShorConcreteCleanState
+      qs x data work scratch hxScratch
       (qs.eval
         (step4
           N
-          (data.grow 1).active
-          work.active
-          flag)
+          (data.grow 1)
+          work
+          scratch
+          flag
+          hstep4)
         ψ) := by
   have hxCarry :
-      Disjoint
-        x.reserve
-        (data.grow 1).active :=
-    reserve_grow_active_disjoint_of_ownedDisjoint
-      hxData 1
+      Disjoint x.reserve (data.grow 1).active :=
+    reserve_grow_active_disjoint_of_ownedDisjoint hxData 1
 
   have hxWorkActive :
-      Disjoint
-        x.reserve
-        work.active :=
-    reserve_active_disjoint_of_ownedDisjoint
-      hxWork
+      Disjoint x.reserve work.active :=
+    reserve_active_disjoint_of_ownedDisjoint hxWork
 
   have hdataCarry :
-      Disjoint
-        (data.reserve.drop 1)
-        (data.grow 1).active :=
+      Disjoint (data.reserve.drop 1) (data.grow 1).active :=
     reserve_drop_grow_active_disjoint_self data 1
 
   have hdataWorkActive :
-      Disjoint
-        (data.reserve.drop 1)
-        work.active :=
-    reserve_drop_active_disjoint_of_ownedDisjoint
-      hmod.2.2
-      1
+      Disjoint (data.reserve.drop 1) work.active :=
+    reserve_drop_active_disjoint_of_ownedDisjoint hmod.2.2 1
 
   have hworkCarry :
-      Disjoint
-        work.reserve
-        (data.grow 1).active :=
+      Disjoint work.reserve (data.grow 1).active :=
     reserve_active_disjoint_of_ownedDisjoint
       hmod.work_dataCarry_disjoint
 
   have hworkWorkActive :
+      Disjoint work.reserve work.active :=
+    Disjoint.symm work.active_reserve_disjoint
+
+  have hcombinedCarry :
       Disjoint
-        work.reserve
-        work.active :=
-    Disjoint.symm
-      work.active_reserve_disjoint
+        (exponentScratchCleanReg x scratch hxScratch)
+        (data.grow 1).active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqCombined hqCarry
+    simp only [
+      exponentScratchCleanReg,
+      Reg.append,
+      ExtReg.ownedReg,
+      List.mem_append
+    ] at hqCombined
+    rcases hqCombined with hqExponent | hqScratch
+    · exact
+        (not_mem_right_of_mem_left_of_disjoint
+          hxCarry hqExponent) hqCarry
+    · have hscratchCarry := hstep4.data_scratch_disjoint
+      rw [ExtReg.OwnedDisjoint, List.disjoint_left] at hscratchCarry
+      exact hscratchCarry
+        (List.mem_append_left _ hqCarry)
+        (by simpa [ExtReg.ownedQubits] using hqScratch)
+
+  have hcombinedWork :
+      Disjoint
+        (exponentScratchCleanReg x scratch hxScratch)
+        work.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqCombined hqWork
+    simp only [
+      exponentScratchCleanReg,
+      Reg.append,
+      ExtReg.ownedReg,
+      List.mem_append
+    ] at hqCombined
+    rcases hqCombined with hqExponent | hqScratch
+    · exact
+        (not_mem_right_of_mem_left_of_disjoint
+          hxWorkActive hqExponent) hqWork
+    · have hworkScratch := hstep4.work_scratch_disjoint
+      rw [ExtReg.OwnedDisjoint, List.disjoint_left] at hworkScratch
+      exact hworkScratch
+        (List.mem_append_left _ hqWork)
+        (by simpa [ExtReg.ownedQubits] using hqScratch)
+
+  have hflagCombined :
+      flag ∉
+        (exponentScratchCleanReg x scratch hxScratch).qubits := by
+    intro hqCombined
+    simp only [
+      exponentScratchCleanReg,
+      Reg.append,
+      ExtReg.ownedReg,
+      List.mem_append
+    ] at hqCombined
+    rcases hqCombined with hqExponent | hqScratch
+    · apply hflagX
+      rw [ExtReg.ownedQubits, List.mem_append]
+      exact Or.inr hqExponent
+    · exact hstep4.flag_not_scratch
+        (by simpa [ExtReg.ownedQubits] using hqScratch)
 
   induction hclean with
   | zero =>
       rw [qs.eval_zero]
       exact ThreeRegsCleanState.zero
 
-  | ket b hx hdata hwork =>
+  | ket b hbasis =>
+      rcases hbasis with ⟨hcombined, hdata, hwork⟩
+      have hdataFresh : (data.grow 1).FreshFor 1 b := by
+        unfold ExtReg.FreshFor
+        apply FreshZero.of_subset
+            ((data.grow 1).newBits 1)
+            (data.reserve.drop 1)
+            b
+        · intro q hq
+          simpa [ExtReg.grow, ExtReg.newBits, ExtReg.remainingReserve,
+            Reg.take, Reg.drop] using List.mem_of_mem_take hq
+        · exact hdata
+      have hworkFresh : work.FreshFor 1 b := by
+        unfold ExtReg.FreshFor
+        apply FreshZero.of_subset (work.newBits 1) work.reserve b
+        · intro q hq
+          exact List.mem_of_mem_take hq
+        · exact hwork
+      have hscratchZero :
+          RegEncoding.toNat scratch.active b = 0 := by
+        apply FreshZero.of_subset
+            scratch.active
+            (exponentScratchCleanReg x scratch hxScratch)
+            b
+        · intro q hq
+          simp only [
+            exponentScratchCleanReg,
+            Reg.append,
+            ExtReg.ownedReg,
+            List.mem_append
+          ]
+          exact Or.inr (Or.inl hq)
+        · exact hcombined
+      have hscratchFresh : scratch.FreshFor 1 b := by
+        unfold ExtReg.FreshFor
+        apply FreshZero.of_subset
+            (scratch.newBits 1)
+            (exponentScratchCleanReg x scratch hxScratch)
+            b
+        · intro q hq
+          simp only [
+            exponentScratchCleanReg,
+            Reg.append,
+            ExtReg.ownedReg,
+            List.mem_append
+          ]
+          exact Or.inr (Or.inr (List.mem_of_mem_take hq))
+        · exact hcombined
       rcases
-          eval_step4_local_ket_of_primitive
+          eval_step4_local_ket
             (qs := qs)
             N
-            (data.grow 1).active
-            work.active
+            (data.grow 1)
+            work
+            scratch
             flag
+            hstep4
             b
-            (by
-              intro hq
-              apply hflagData
-              have howned :
-                  flag ∈ (data.grow 1).ownedQubits :=
-                List.mem_append_left _ hq
-              simpa [Gate.ExtReg.ownedQubits_grow] using howned)
-            (by
-              intro hq
-              apply hflagWork
-              rw [
-                ExtReg.ownedQubits,
-                List.mem_append
-              ]
-              exact Or.inl hq) with
+            hdataFresh
+            hworkFresh
+            hscratchZero
+            hscratchFresh with
         ⟨b', heval, hlocal⟩
 
       rw [heval]
@@ -1298,28 +1530,22 @@ private theorem eval_step4_preserves_lowering_clean
 
       · exact
           FreshZero.of_eq_on_bits
-            x.reserve
+            (exponentScratchCleanReg x scratch hxScratch)
             b
             b'
             (by
               intro q hq
-
               apply hlocal q
               · exact
                   not_mem_right_of_mem_left_of_disjoint
-                    hxCarry hq
+                    hcombinedCarry hq
               · exact
                   not_mem_right_of_mem_left_of_disjoint
-                    hxWorkActive hq
+                    hcombinedWork hq
               · intro hqFlag
                 subst q
-                apply hflagX
-                rw [
-                  ExtReg.ownedQubits,
-                  List.mem_append
-                ]
-                exact Or.inr hq)
-            hx
+                exact hflagCombined hq)
+            hcombined
 
       · exact
           FreshZero.of_eq_on_bits
@@ -1328,7 +1554,6 @@ private theorem eval_step4_preserves_lowering_clean
             b'
             (by
               intro q hq
-
               apply hlocal q
               · exact
                   not_mem_right_of_mem_left_of_disjoint
@@ -1338,14 +1563,9 @@ private theorem eval_step4_preserves_lowering_clean
                     hdataWorkActive hq
               · intro hqFlag
                 subst q
-                apply hflagData
-                rw [
-                  ExtReg.ownedQubits,
-                  List.mem_append
-                ]
-                exact
-                  Or.inr
-                    (List.mem_of_mem_drop hq))
+                apply hstep4.flag_not_data
+                rw [ExtReg.ownedQubits, List.mem_append]
+                exact Or.inr hq)
             hdata
 
       · exact
@@ -1355,7 +1575,6 @@ private theorem eval_step4_preserves_lowering_clean
             b'
             (by
               intro q hq
-
               apply hlocal q
               · exact
                   not_mem_right_of_mem_left_of_disjoint
@@ -1365,78 +1584,139 @@ private theorem eval_step4_preserves_lowering_clean
                     hworkWorkActive hq
               · intro hqFlag
                 subst q
-                apply hflagWork
-                rw [
-                  ExtReg.ownedQubits,
-                  List.mem_append
-                ]
+                apply hstep4.flag_not_work
+                rw [ExtReg.ownedQubits, List.mem_append]
                 exact Or.inr hq)
             hwork
 
   | add hψ hφ ihψ ihφ =>
       rw [qs.eval_add]
-      exact
-        ThreeRegsCleanState.add
-          ihψ ihφ
+      exact ThreeRegsCleanState.add ihψ ihφ
 
   | smul a hψ ihψ =>
       rw [qs.eval_smul]
-      exact
-        ThreeRegsCleanState.smul
-          a ihψ
+      exact ThreeRegsCleanState.smul a ihψ
+
+private theorem shorConcreteCleanState_to_constArithmeticCleanState
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    (x data work scratch : ExtReg)
+    (hxScratch : x.OwnedDisjoint scratch)
+    {ψ : qs.State}
+    (hclean :
+      ShorConcreteCleanState
+        qs x data work scratch hxScratch ψ) :
+    CmpGeConstCleanState qs (data.grow 1) scratch ψ := by
+  induction hclean with
+  | zero => exact CleanClosure.zero
+  | ket b hbasis =>
+      rcases hbasis with ⟨hcombined, hdata, hwork⟩
+      apply CleanClosure.ket
+      refine ⟨?_, ?_, ?_⟩
+      · unfold ExtReg.FreshFor
+        apply FreshZero.of_subset
+            ((data.grow 1).newBits 1)
+            (data.reserve.drop 1)
+            b
+        · intro q hq
+          simpa [ExtReg.grow, ExtReg.newBits, ExtReg.remainingReserve,
+            Reg.take, Reg.drop] using List.mem_of_mem_take hq
+        · exact hdata
+      · have hscratchZero :
+            RegEncoding.toNat scratch.active b = 0 := by
+          apply FreshZero.of_subset
+              scratch.active
+              (exponentScratchCleanReg x scratch hxScratch)
+              b
+          · intro q hq
+            simp only [
+              exponentScratchCleanReg,
+              Reg.append,
+              ExtReg.ownedReg,
+              List.mem_append
+            ]
+            exact Or.inr (Or.inl hq)
+          · exact hcombined
+        rw [extToInt, ExtReg.toNat, hscratchZero]
+        cases scratch.width <;> simp [tcDecodeWidth]
+      · unfold ExtReg.FreshFor
+        apply FreshZero.of_subset
+            (scratch.newBits 1)
+            (exponentScratchCleanReg x scratch hxScratch)
+            b
+        · intro q hq
+          simp only [
+            exponentScratchCleanReg,
+            Reg.append,
+            ExtReg.ownedReg,
+            List.mem_append
+          ]
+          exact Or.inr (Or.inr (List.mem_of_mem_take hq))
+        · exact hcombined
+  | add hψ hφ ihψ ihφ => exact CleanClosure.add ihψ ihφ
+  | smul a hψ ihψ => exact CleanClosure.smul a ihψ
 
 private theorem lowered_step3_ready_and_clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
-    [ModMulPrimitiveGateSemantics qs]
     (lowering : ShorLoweringSetup)
-    (x data work : ExtReg)
+    (x data work scratch : ExtReg)
     (N flag : ℕ)
     (hxData :
       ExtReg.OwnedDisjoint x data)
-    (_hxWork :
-      ExtReg.OwnedDisjoint x work)
+    (hxScratch :
+      ExtReg.OwnedDisjoint x scratch)
     (hmod :
       ModMulCircuitWorkspaceOK data work)
     (hflagX :
       flag ∉ x.ownedQubits)
-    (hflagData :
-      flag ∉ data.ownedQubits)
-    (hflagWork :
-      flag ∉ work.ownedQubits)
+    (hstep4 :
+      CmpLtNWWorkspace N (data.grow 1) work scratch flag)
     (hworkspace :
       GateWorkspaceOK
         lowering.ops
-        (step3 N (data.grow 1).active flag))
+        (step3 N (data.grow 1) scratch flag))
     (ψ : qs.State)
     (hclean :
-      ShorLoweringCleanState
-        qs x data work ψ) :
+      ShorConcreteCleanState
+        qs x data work scratch hxScratch ψ) :
     LoweredCleanResult
       qs
       lowering
-      (ShorLoweringCleanState
-        qs x data work)
-      (step3 N (data.grow 1).active flag)
+      (ShorConcreteCleanState
+        qs x data work scratch hxScratch)
+      (step3 N (data.grow 1) scratch flag)
       hworkspace
       ψ := by
+  have hcmpClean :
+      CmpGeConstCleanState
+        qs (data.grow 1) scratch ψ :=
+    shorConcreteCleanState_to_constArithmeticCleanState
+      x data work scratch hxScratch hclean
+
   have hgateClean :
       GateWorkspaceCleanState
         qs
         lowering.k
         lowering.hk
         lowering.ops
-        (step3 N (data.grow 1).active flag)
+        (step3 N (data.grow 1) scratch flag)
         hworkspace
         ψ := by
-    simp [step3, GateWorkspaceCleanState]
+    change
+      CmpGeConstCleanState qs (data.grow 1) scratch ψ ∧
+      CSubConstCleanState qs N (data.grow 1) scratch flag
+        (LowerGateClass.evalL (qs := qs)
+          (lowerCmpGeConst N (data.grow 1) scratch flag hworkspace.1) ψ)
+    refine ⟨hcmpClean, ?_⟩
+    simpa [CSubConstCleanState, CSubConstCleanBasis] using
+      evalL_lowerCmpGeConst_preserves_clean
+        N (data.grow 1) scratch flag hworkspace.1 ψ hcmpClean
 
   constructor
   · exact hgateClean
-
   · rw [
       lowerGate_correctness
         qs
@@ -1445,123 +1725,15 @@ private theorem lowered_step3_ready_and_clean
         lowering.ops
         lowering.consumes
         lowering.returns
-        (step3 N (data.grow 1).active flag)
+        (step3 N (data.grow 1) scratch flag)
         hworkspace
         ψ
         hgateClean
     ]
-
     exact
       eval_step3_preserves_lowering_clean
-        x
-        data
-        work
-        N
-        flag
-        hxData
-        hmod
-        hflagX
-        hflagData
-        hflagWork
-        hclean
-
-private theorem lowered_step4_ready_and_clean
-    {qs : QSemantics}
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
-    [ModMulPrimitiveGateSemantics qs]
-    (lowering : ShorLoweringSetup)
-    (x data work : ExtReg)
-    (N flag : ℕ)
-    (hxData :
-      ExtReg.OwnedDisjoint x data)
-    (hxWork :
-      ExtReg.OwnedDisjoint x work)
-    (hmod :
-      ModMulCircuitWorkspaceOK data work)
-    (hflagX :
-      flag ∉ x.ownedQubits)
-    (hflagData :
-      flag ∉ data.ownedQubits)
-    (hflagWork :
-      flag ∉ work.ownedQubits)
-    (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
-        (step4
-          N
-          (data.grow 1).active
-          work.active
-          flag))
-    (ψ : qs.State)
-    (hclean :
-      ShorLoweringCleanState
-        qs x data work ψ) :
-    LoweredCleanResult
-      qs
-      lowering
-      (ShorLoweringCleanState
-        qs x data work)
-      (step4
-        N
-        (data.grow 1).active
-        work.active
-        flag)
-      hworkspace
-      ψ := by
-  have hgateClean :
-      GateWorkspaceCleanState
-        qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        (step4
-          N
-          (data.grow 1).active
-          work.active
-          flag)
-        hworkspace
-        ψ := by
-    simp [step4, GateWorkspaceCleanState]
-
-  constructor
-  · exact hgateClean
-
-  · rw [
-      lowerGate_correctness
-        qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.consumes
-        lowering.returns
-        (step4
-          N
-          (data.grow 1).active
-          work.active
-          flag)
-        hworkspace
-        ψ
-        hgateClean
-    ]
-
-    exact
-      eval_step4_preserves_lowering_clean
-        x
-        data
-        work
-        N
-        flag
-        hxData
-        hxWork
-        hmod
-        hflagX
-        hflagData
-        hflagWork
-        hclean
-
+        x data work scratch N flag
+        hxData hxScratch hmod hflagX hstep4 hclean
 /-! =========================================================
     Section 5: Workspace-free initialization gates
 
@@ -1754,7 +1926,6 @@ private theorem lowered_H_reg_ready_and_full_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (hxData :
@@ -1922,7 +2093,6 @@ private theorem lowered_initY1_ready_and_full_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (hxData :
@@ -2051,7 +2221,6 @@ private theorem gateWorkspaceCleanState_CPhaseProdUsing_of_threeRegsClean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     {lowering : ShorLoweringSetup}
     {r₁ r₂ r₃ : Reg}
     {x z : Reg}
@@ -2603,7 +2772,6 @@ private theorem gateWorkspaceCleanState_PhaseProdUsing_of_threeRegsClean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     {lowering : ShorLoweringSetup}
     {r₁ r₂ r₃ : Reg}
     {x z : Reg}
@@ -2735,12 +2903,554 @@ private theorem eval_PhaseProdUsing_preserves_threeRegsCleanState
           a
           ihψ
 
+/-- Step 4 temporarily uses `scratch.active`, but its three lowering-workspace
+reserves are already zero in the public concrete Shor invariant. -/
+private theorem shorConcreteCleanState_to_step4ReserveClean
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    (x data work scratch : ExtReg)
+    (hxScratch : x.OwnedDisjoint scratch)
+    {ψ : qs.State}
+    (hclean :
+      ShorConcreteCleanState
+        qs x data work scratch hxScratch ψ) :
+    ThreeRegsCleanState
+      qs
+      (data.reserve.drop 1)
+      work.reserve
+      scratch.reserve
+      ψ := by
+  induction hclean with
+  | zero =>
+      exact ThreeRegsCleanState.zero
+  | ket b hbasis =>
+      rcases hbasis with ⟨hcombined, hdata, hwork⟩
+      apply ThreeRegsCleanState.ket b hdata hwork
+      apply FreshZero.of_subset
+          scratch.reserve
+          (exponentScratchCleanReg x scratch hxScratch)
+          b
+      · intro q hq
+        simp only [
+          exponentScratchCleanReg,
+          Reg.append,
+          ExtReg.ownedReg,
+          List.mem_append
+        ]
+        exact Or.inr (Or.inr hq)
+      · exact hcombined
+  | add hψ hφ ihψ ihφ =>
+      exact ThreeRegsCleanState.add ihψ ihφ
+  | smul a hψ ihψ =>
+      exact ThreeRegsCleanState.smul a ihψ
+
+/-- Dynamic readiness for the QFT--phase-product--inverse-QFT block used to
+compute `N * work` into the Step-4 scratch register. -/
+private theorem lowered_fastConstMulInto_ready_and_clean
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    (lowering : ShorLoweringSetup)
+    (r₁ : Reg)
+    (N : ℕ)
+    (work scratch : ExtReg)
+    (ws : Gate.PhaseProdWorkspace work.active scratch.active)
+    (hxReserve : ws.xExt.reserve = work.reserve)
+    (hzReserve : ws.zExt.reserve = scratch.reserve)
+    (h₁Scratch : Disjoint r₁ scratch.active)
+    (hworkScratch : Disjoint work.reserve scratch.active)
+    (hscratchScratch : Disjoint scratch.reserve scratch.active)
+    (hworkspace :
+      GateWorkspaceOK
+        lowering.ops
+        (fastConstMulInto N work scratch ws))
+    (ψ : qs.State)
+    (hclean :
+      ThreeRegsCleanState
+        qs r₁ work.reserve scratch.reserve ψ) :
+    LoweredCleanResult
+      qs
+      lowering
+      (ThreeRegsCleanState
+        qs r₁ work.reserve scratch.reserve)
+      (fastConstMulInto N work scratch ws)
+      hworkspace
+      ψ := by
+  let φ : ℝ :=
+    (2 * Real.pi * (N : ℝ)) /
+      (ASize ws.zExt.active : ℝ)
+  let U1 : Gate := Gate.QFT ws.zExt
+  let U2 : Gate :=
+    Gate.PhaseProdUsing φ work.active scratch.active ws
+  let U3 : Gate := IQFT ws.zExt
+
+  change
+    GateWorkspaceOK lowering.ops U1 ∧
+      GateWorkspaceOK lowering.ops U2 ∧
+      GateWorkspaceOK lowering.ops U3
+    at hworkspace
+
+  have hzActive : ws.zExt.active = scratch.active := by
+    rfl
+  have h₁Z : Disjoint r₁ ws.zExt.active := by
+    simpa only [hzActive] using h₁Scratch
+  have hworkZ : Disjoint work.reserve ws.zExt.active := by
+    simpa only [hzActive] using hworkScratch
+  have hscratchZ : Disjoint scratch.reserve ws.zExt.active := by
+    simpa only [hzActive] using hscratchScratch
+
+  have hU1Clean :
+      GateWorkspaceCleanState
+        qs lowering.k lowering.hk lowering.ops
+        U1 hworkspace.1 ψ := by
+    exact
+      threeRegsCleanState_to_QFTWorkspaceCleanState
+        lowering.ops ws.zExt hzReserve hclean
+
+  let ψ1 : qs.State :=
+    LowerGateClass.evalL
+      (qs := qs)
+      (lowerGate
+        (Basis := qs.Basis)
+        lowering.k lowering.hk lowering.ops
+        U1 hworkspace.1)
+      ψ
+
+  have hψ1 :
+      ThreeRegsCleanState
+        qs r₁ work.reserve scratch.reserve ψ1 := by
+    dsimp only [ψ1]
+    rw [
+      lowerGate_correctness
+        qs lowering.k lowering.hk lowering.ops
+        lowering.consumes lowering.returns
+        U1 hworkspace.1 ψ hU1Clean
+    ]
+    exact
+      eval_QFT_preserves_threeRegsCleanState
+        ws.zExt r₁ work.reserve scratch.reserve
+        h₁Z hworkZ hscratchZ hclean
+
+  have hU1 :
+      LoweredCleanResult
+        qs lowering
+        (ThreeRegsCleanState
+          qs r₁ work.reserve scratch.reserve)
+        U1 hworkspace.1 ψ :=
+    ⟨hU1Clean, hψ1⟩
+
+  have hU2Clean :
+      GateWorkspaceCleanState
+        qs lowering.k lowering.hk lowering.ops
+        U2 hworkspace.2.1 ψ1 := by
+    exact
+      gateWorkspaceCleanState_PhaseProdUsing_of_threeRegsClean
+        φ ws hxReserve hzReserve hworkspace.2.1 ψ1 hψ1
+
+  let ψ2 : qs.State :=
+    LowerGateClass.evalL
+      (qs := qs)
+      (lowerGate
+        (Basis := qs.Basis)
+        lowering.k lowering.hk lowering.ops
+        U2 hworkspace.2.1)
+      ψ1
+
+  have hψ2 :
+      ThreeRegsCleanState
+        qs r₁ work.reserve scratch.reserve ψ2 := by
+    dsimp only [ψ2]
+    rw [
+      lowerGate_correctness
+        qs lowering.k lowering.hk lowering.ops
+        lowering.consumes lowering.returns
+        U2 hworkspace.2.1 ψ1 hU2Clean
+    ]
+    simpa only [U2] using
+      eval_PhaseProdUsing_preserves_threeRegsCleanState
+        φ ws hxReserve hzReserve hψ1
+
+  have hU2 :
+      LoweredCleanResult
+        qs lowering
+        (ThreeRegsCleanState
+          qs r₁ work.reserve scratch.reserve)
+        U2 hworkspace.2.1 ψ1 :=
+    ⟨hU2Clean, hψ2⟩
+
+  have hHighU3 :
+      ThreeRegsCleanState
+        qs r₁ work.reserve scratch.reserve
+        (qs.eval U3 ψ2) := by
+    simpa only [U3] using
+      eval_IQFT_preserves_threeRegsCleanState
+        ws.zExt r₁ work.reserve scratch.reserve
+        h₁Z hworkZ hscratchZ hψ2
+
+  have hQFTLocal :
+      QFTWorkspaceCleanState
+        qs
+        (qftXWork lowering.ops ws.zExt)
+        (qftZWork lowering.ops ws.zExt)
+        (qs.eval U3 ψ2) :=
+    threeRegsCleanState_to_QFTWorkspaceCleanState
+      lowering.ops ws.zExt hzReserve hHighU3
+
+  have hU3Clean :
+      GateWorkspaceCleanState
+        qs lowering.k lowering.hk lowering.ops
+        U3 hworkspace.2.2 ψ2 := by
+    simpa [U3, IQFT, GateWorkspaceCleanState] using hQFTLocal
+
+  have hU3 :
+      LoweredCleanResult
+        qs lowering
+        (ThreeRegsCleanState
+          qs r₁ work.reserve scratch.reserve)
+        U3 hworkspace.2.2 ψ2 := by
+    constructor
+    · exact hU3Clean
+    · rw [
+        lowerGate_correctness
+          qs lowering.k lowering.hk lowering.ops
+          lowering.consumes lowering.returns
+          U3 hworkspace.2.2 ψ2 hU3Clean
+      ]
+      exact hHighU3
+
+  have hU23 :
+      LoweredCleanResult
+        qs lowering
+        (ThreeRegsCleanState
+          qs r₁ work.reserve scratch.reserve)
+        (U2 ;; U3) hworkspace.2 ψ1 :=
+    LoweredCleanResult.seq hworkspace.2 ψ1 hU2
+      (by simpa only [ψ2] using hU3)
+
+  have hU123 :
+      LoweredCleanResult
+        qs lowering
+        (ThreeRegsCleanState
+          qs r₁ work.reserve scratch.reserve)
+        (U1 ;; U2 ;; U3) hworkspace ψ :=
+    LoweredCleanResult.seq hworkspace ψ hU1
+      (U := U1)
+      (V := U2 ;; U3)
+      (by simpa only [ψ1] using hU23)
+
+  simpa [
+    U1,
+    U2,
+    U3,
+    φ,
+    fastConstMulInto
+  ] using hU123
+
+/-- Step 4 has real recursive workspace inside both multiplication blocks.
+The forward block is discharged from the reserve-only invariant; the adjoint
+block is discharged at the fully uncomputed high-level output. -/
+private theorem lowered_step4_ready_and_clean
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    (lowering : ShorLoweringSetup)
+    (x data work scratch : ExtReg)
+    (N flag : ℕ)
+    (hxData : x.OwnedDisjoint data)
+    (hxWork : x.OwnedDisjoint work)
+    (hxScratch : x.OwnedDisjoint scratch)
+    (hmod : ModMulCircuitWorkspaceOK data work)
+    (hflagX : flag ∉ x.ownedQubits)
+    (hstep4 :
+      CmpLtNWWorkspace N (data.grow 1) work scratch flag)
+    (hworkspace :
+      GateWorkspaceOK
+        lowering.ops
+        (step4 N (data.grow 1) work scratch flag hstep4))
+    (ψ : qs.State)
+    (hclean :
+      ShorConcreteCleanState
+        qs x data work scratch hxScratch ψ) :
+    LoweredCleanResult
+      qs
+      lowering
+      (ShorConcreteCleanState
+        qs x data work scratch hxScratch)
+      (step4 N (data.grow 1) work scratch flag hstep4)
+      hworkspace
+      ψ := by
+  let U1 :=
+    fastConstMulInto N work scratch hstep4.mulWorkspace
+  let U2 :=
+    cmpLtNWDifference
+      (data.grow 1) work scratch hstep4.data_can_grow
+  have hscratchPos : 0 < regSize scratch.active := by
+    rw [hstep4.scratch_width]
+    unfold cmpLtNWWidth
+    omega
+  let sign := cmpLtNWSignQubit scratch hscratchPos
+  let U3 := Gate.CNOT sign flag
+  let U4 := †U2
+  let U5 := †U1
+
+  change
+    GateWorkspaceOK lowering.ops U1 ∧
+      GateWorkspaceOK lowering.ops U2 ∧
+      GateWorkspaceOK lowering.ops U3 ∧
+      GateWorkspaceOK lowering.ops U4 ∧
+      GateWorkspaceOK lowering.ops U5
+    at hworkspace
+
+  have hlocal :
+      ThreeRegsCleanState
+        qs
+        (data.reserve.drop 1)
+        work.reserve
+        scratch.reserve
+        ψ :=
+    shorConcreteCleanState_to_step4ReserveClean
+      x data work scratch hxScratch hclean
+
+  have hdataScratch :
+      Disjoint (data.reserve.drop 1) scratch.active :=
+    by
+      simpa [ExtReg.grow, ExtReg.remainingReserve, Reg.drop] using
+        (reserve_active_disjoint_of_ownedDisjoint
+          hstep4.data_scratch_disjoint)
+  have hworkScratch :
+      Disjoint work.reserve scratch.active :=
+    reserve_active_disjoint_of_ownedDisjoint
+      hstep4.work_scratch_disjoint
+  have hscratchScratch :
+      Disjoint scratch.reserve scratch.active :=
+    Disjoint.symm scratch.active_reserve_disjoint
+
+  have hU1 :
+      LoweredCleanResult
+        qs lowering
+        (ThreeRegsCleanState
+          qs
+          (data.reserve.drop 1)
+          work.reserve
+          scratch.reserve)
+        U1 hworkspace.1 ψ := by
+    simpa only [U1] using
+      lowered_fastConstMulInto_ready_and_clean
+        lowering
+        (data.reserve.drop 1)
+        N work scratch hstep4.mulWorkspace
+        hstep4.mul_xReserve_eq
+        hstep4.mul_zReserve_eq
+        hdataScratch
+        hworkScratch
+        hscratchScratch
+        hworkspace.1
+        ψ
+        hlocal
+
+  let ψ1 :=
+    LowerGateClass.evalL
+      (qs := qs)
+      (lowerGate
+        (Basis := qs.Basis)
+        lowering.k lowering.hk lowering.ops
+        U1 hworkspace.1)
+      ψ
+
+  have hψ1 : ψ1 = qs.eval U1 ψ := by
+    dsimp only [ψ1]
+    rw [
+      lowerGate_correctness
+        qs lowering.k lowering.hk lowering.ops
+        lowering.consumes lowering.returns
+        U1 hworkspace.1 ψ hU1.1
+    ]
+
+  have hU2Clean :
+      GateWorkspaceCleanState
+        qs lowering.k lowering.hk lowering.ops
+        U2 hworkspace.2.1 ψ1 := by
+    simp [U2, cmpLtNWDifference, GateWorkspaceCleanState]
+
+  let ψ2 :=
+    LowerGateClass.evalL
+      (qs := qs)
+      (lowerGate
+        (Basis := qs.Basis)
+        lowering.k lowering.hk lowering.ops
+        U2 hworkspace.2.1)
+      ψ1
+
+  have hψ2 : ψ2 = qs.eval U2 (qs.eval U1 ψ) := by
+    dsimp only [ψ2]
+    rw [
+      lowerGate_correctness
+        qs lowering.k lowering.hk lowering.ops
+        lowering.consumes lowering.returns
+        U2 hworkspace.2.1 ψ1 hU2Clean,
+      hψ1
+    ]
+
+  have hU3Clean :
+      GateWorkspaceCleanState
+        qs lowering.k lowering.hk lowering.ops
+        U3 hworkspace.2.2.1 ψ2 := by
+    simp [U3, GateWorkspaceCleanState]
+
+  let ψ3 :=
+    LowerGateClass.evalL
+      (qs := qs)
+      (lowerGate
+        (Basis := qs.Basis)
+        lowering.k lowering.hk lowering.ops
+        U3 hworkspace.2.2.1)
+      ψ2
+
+  have hψ3 :
+      ψ3 = qs.eval U3 (qs.eval U2 (qs.eval U1 ψ)) := by
+    dsimp only [ψ3]
+    rw [
+      lowerGate_correctness
+        qs lowering.k lowering.hk lowering.ops
+        lowering.consumes lowering.returns
+        U3 hworkspace.2.2.1 ψ2 hU3Clean,
+      hψ2
+    ]
+
+  have hU4Clean :
+      GateWorkspaceCleanState
+        qs lowering.k lowering.hk lowering.ops
+        U4 hworkspace.2.2.2.1 ψ3 := by
+    simp [U4, U2, cmpLtNWDifference, GateWorkspaceCleanState]
+
+  let ψ4 :=
+    LowerGateClass.evalL
+      (qs := qs)
+      (lowerGate
+        (Basis := qs.Basis)
+        lowering.k lowering.hk lowering.ops
+        U4 hworkspace.2.2.2.1)
+      ψ3
+
+  have hψ4 :
+      ψ4 =
+        qs.eval U4
+          (qs.eval U3 (qs.eval U2 (qs.eval U1 ψ))) := by
+    dsimp only [ψ4]
+    rw [
+      lowerGate_correctness
+        qs lowering.k lowering.hk lowering.ops
+        lowering.consumes lowering.returns
+        U4 hworkspace.2.2.2.1 ψ3 hU4Clean,
+      hψ3
+    ]
+
+  have hHighFull :
+      ShorConcreteCleanState
+        qs x data work scratch hxScratch
+        (qs.eval
+          (step4 N (data.grow 1) work scratch flag hstep4)
+          ψ) :=
+    eval_step4_preserves_lowering_clean
+      x data work scratch N flag
+      hxData hxWork hxScratch hmod hflagX hstep4 hclean
+
+  have hLocalFull :
+      ThreeRegsCleanState
+        qs
+        (data.reserve.drop 1)
+        work.reserve
+        scratch.reserve
+        (qs.eval
+          (step4 N (data.grow 1) work scratch flag hstep4)
+          ψ) :=
+    shorConcreteCleanState_to_step4ReserveClean
+      x data work scratch hxScratch hHighFull
+
+  have hU5Input :
+      qs.eval U5 ψ4 =
+        qs.eval
+          (step4 N (data.grow 1) work scratch flag hstep4)
+          ψ := by
+    rw [hψ4]
+    simp only [
+      step4,
+      cmpLtNW,
+      U1,
+      U2,
+      U3,
+      U4,
+      U5,
+      sign,
+      qs.eval_seq
+    ]
+
+  have hU5Clean :
+      GateWorkspaceCleanState
+        qs lowering.k lowering.hk lowering.ops
+        U5 hworkspace.2.2.2.2 ψ4 := by
+    change
+      GateWorkspaceCleanState
+        qs lowering.k lowering.hk lowering.ops
+        U1 hworkspace.2.2.2.2 (qs.eval U5 ψ4)
+    rw [hU5Input]
+    exact
+      (lowered_fastConstMulInto_ready_and_clean
+        lowering
+        (data.reserve.drop 1)
+        N work scratch hstep4.mulWorkspace
+        hstep4.mul_xReserve_eq
+        hstep4.mul_zReserve_eq
+        hdataScratch
+        hworkScratch
+        hscratchScratch
+        hworkspace.2.2.2.2
+        (qs.eval
+          (step4 N (data.grow 1) work scratch flag hstep4)
+          ψ)
+        hLocalFull).1
+
+  have hgateClean :
+      GateWorkspaceCleanState
+        qs lowering.k lowering.hk lowering.ops
+        (step4 N (data.grow 1) work scratch flag hstep4)
+        hworkspace ψ := by
+    change
+      GateWorkspaceCleanState
+          qs lowering.k lowering.hk lowering.ops
+          U1 hworkspace.1 ψ ∧
+        GateWorkspaceCleanState
+          qs lowering.k lowering.hk lowering.ops
+          U2 hworkspace.2.1 ψ1 ∧
+        GateWorkspaceCleanState
+          qs lowering.k lowering.hk lowering.ops
+          U3 hworkspace.2.2.1 ψ2 ∧
+        GateWorkspaceCleanState
+          qs lowering.k lowering.hk lowering.ops
+          U4 hworkspace.2.2.2.1 ψ3 ∧
+        GateWorkspaceCleanState
+          qs lowering.k lowering.hk lowering.ops
+          U5 hworkspace.2.2.2.2 ψ4
+    exact ⟨hU1.1, hU2Clean, hU3Clean, hU4Clean, hU5Clean⟩
+
+  constructor
+  · exact hgateClean
+  · rw [
+      lowerGate_correctness
+        qs lowering.k lowering.hk lowering.ops
+        lowering.consumes lowering.returns
+        (step4 N (data.grow 1) work scratch flag hstep4)
+        hworkspace ψ hgateClean
+    ]
+    exact hHighFull
+
 private theorem lowered_step1_ready_and_full_clean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (c N ctrl : ℕ)
@@ -3111,7 +3821,6 @@ private theorem lowered_step2_ready_and_carry_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (N : ℕ)
@@ -3488,7 +4197,6 @@ private theorem LoweredCleanResult.adj
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     {lowering : ShorLoweringSetup}
     {P : qs.State → Prop}
     {U : Gate}
@@ -3701,7 +4409,6 @@ private theorem
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     {lowering : ShorLoweringSetup}
     {r₁ r₂ r₃ : Reg}
     {x z : Reg}
@@ -3842,7 +4549,6 @@ private theorem lowered_step5Forward_ready_and_full_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (k5val N ctrl : ℕ)
@@ -5667,7 +6373,6 @@ theorem lowered_step5_ready_and_full_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (k5val N ctrl : ℕ)
@@ -5837,7 +6542,6 @@ private theorem lowered_IQFT_ready_and_full_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     (lowering : ShorLoweringSetup)
     (x data work : ExtReg)
     (hxData :
@@ -5946,9 +6650,184 @@ private theorem lowered_IQFT_ready_and_full_clean
 
     exact hHighClean
 
+/-- The final inverse QFT uses only the real exponent reserve for lowering,
+while preserving the strengthened exponent-plus-scratch clean register. -/
+private theorem lowered_IQFT_ready_and_concrete_clean
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    (lowering : ShorLoweringSetup)
+    (x data work scratch : ExtReg)
+    (hxData : x.OwnedDisjoint data)
+    (hxWork : x.OwnedDisjoint work)
+    (hxScratch : x.OwnedDisjoint scratch)
+    (hworkspace :
+      GateWorkspaceOK lowering.ops (IQFT x))
+    (ψ : qs.State)
+    (hclean :
+      ShorConcreteCleanState
+        qs x data work scratch hxScratch ψ) :
+    LoweredCleanResult
+      qs lowering
+      (ShorConcreteCleanState
+        qs x data work scratch hxScratch)
+      (IQFT x) hworkspace ψ := by
+  have hcombinedActive :
+      Disjoint
+        (exponentScratchCleanReg x scratch hxScratch)
+        x.active := by
+    rw [Disjoint, List.disjoint_left]
+    intro q hqCombined hqActive
+    simp only [
+      exponentScratchCleanReg,
+      Reg.append,
+      ExtReg.ownedReg,
+      List.mem_append
+    ] at hqCombined
+    rcases hqCombined with hqReserve | hqScratch
+    · exact
+        (not_mem_right_of_mem_left_of_disjoint
+          (Disjoint.symm x.active_reserve_disjoint) hqReserve)
+          hqActive
+    · rw [ExtReg.OwnedDisjoint, List.disjoint_left] at hxScratch
+      exact hxScratch
+        (by
+          rw [ExtReg.ownedQubits, List.mem_append]
+          exact Or.inl hqActive)
+        (by
+          rw [ExtReg.ownedQubits, List.mem_append]
+          simpa only [
+            ExtReg.ownedReg,
+            Reg.append,
+            List.mem_append
+          ] using hqScratch)
+
+  have hdataActive :
+      Disjoint (data.reserve.drop 1) x.active :=
+    reserve_drop_active_disjoint_of_ownedDisjoint
+      (ownedDisjoint_symm hxData) 1
+  have hworkActive :
+      Disjoint work.reserve x.active :=
+    reserve_active_disjoint_of_ownedDisjoint
+      (ownedDisjoint_symm hxWork)
+
+  have hHighClean :
+      ShorConcreteCleanState
+        qs x data work scratch hxScratch
+        (qs.eval (IQFT x) ψ) :=
+    eval_IQFT_preserves_threeRegsCleanState
+      x
+      (exponentScratchCleanReg x scratch hxScratch)
+      (data.reserve.drop 1)
+      work.reserve
+      hcombinedActive hdataActive hworkActive hclean
+
+  have hLoweringClean :
+      ShorLoweringCleanState
+        qs x data work (qs.eval (IQFT x) ψ) :=
+    ShorConcreteCleanState.to_lowering hHighClean
+
+  have hQFTWorkspaceClean :
+      QFTWorkspaceCleanState
+        qs
+        (qftXWork lowering.ops x)
+        (qftZWork lowering.ops x)
+        (qs.eval (IQFT x) ψ) :=
+    threeRegsCleanState_to_QFTWorkspaceCleanState_first
+      lowering.ops x rfl hLoweringClean
+
+  have hgateClean :
+      GateWorkspaceCleanState
+        qs lowering.k lowering.hk lowering.ops
+        (IQFT x) hworkspace ψ := by
+    simpa [IQFT, GateWorkspaceCleanState] using hQFTWorkspaceClean
+
+  constructor
+  · exact hgateClean
+  · rw [
+      lowerGate_correctness
+        qs lowering.k lowering.hk lowering.ops
+        lowering.consumes lowering.returns
+        (IQFT x) hworkspace ψ hgateClean
+    ]
+    exact hHighClean
+
 /-! =========================================================
     Section 10: One modular-multiplication core
 ========================================================= -/
+
+/-- A proof-only exponent view whose reserve is exactly the strengthened first
+register of `ShorConcreteCleanState`.  Its active part is the real exponent,
+so the existing Hadamard proof and the Step-1/2/5 proofs can be reused without
+forgetting scratch cleanliness. -/
+private def shorConcreteCarrier
+    (x scratch : ExtReg)
+    (hxScratch : x.OwnedDisjoint scratch) : ExtReg :=
+  ExtReg.withReserve
+    x.active
+    (exponentScratchCleanReg x scratch hxScratch)
+    (by
+      rw [Disjoint, List.disjoint_left]
+      intro q hqActive hqCombined
+      simp only [
+        exponentScratchCleanReg,
+        Reg.append,
+        ExtReg.ownedReg,
+        List.mem_append
+      ] at hqCombined
+      rcases hqCombined with hqReserve | hqScratch
+      · exact
+          (not_mem_right_of_mem_left_of_disjoint
+            x.active_reserve_disjoint hqActive) hqReserve
+      · rw [ExtReg.OwnedDisjoint, List.disjoint_left] at hxScratch
+        exact hxScratch
+          (by
+            rw [ExtReg.ownedQubits, List.mem_append]
+            exact Or.inl hqActive)
+          (by
+            rw [ExtReg.ownedQubits, List.mem_append]
+            exact hqScratch))
+
+@[simp] private theorem shorConcreteCarrier_ownedQubits
+    (x scratch : ExtReg)
+    (hxScratch : x.OwnedDisjoint scratch) :
+    (shorConcreteCarrier x scratch hxScratch).ownedQubits =
+      x.ownedQubits ++ scratch.ownedQubits := by
+  simp [
+    shorConcreteCarrier,
+    ExtReg.withReserve,
+    ExtReg.ownedQubits,
+    exponentScratchCleanReg,
+    ExtReg.ownedReg,
+    Reg.append,
+    List.append_assoc
+  ]
+
+private theorem shorConcreteCarrier_ownedDisjoint_right
+    (x scratch y : ExtReg)
+    (hxScratch : x.OwnedDisjoint scratch)
+    (hxY : x.OwnedDisjoint y)
+    (hscratchY : scratch.OwnedDisjoint y) :
+    (shorConcreteCarrier x scratch hxScratch).OwnedDisjoint y := by
+  rw [ExtReg.OwnedDisjoint, List.disjoint_left] at hxY hscratchY ⊢
+  intro q hqCarrier hqY
+  rw [shorConcreteCarrier_ownedQubits, List.mem_append] at hqCarrier
+  rcases hqCarrier with hqExponent | hqScratch
+  · exact hxY hqExponent hqY
+  · exact hscratchY hqScratch hqY
+
+private theorem flag_not_shorConcreteCarrier
+    (x scratch : ExtReg)
+    (hxScratch : x.OwnedDisjoint scratch)
+    (flag : ℕ)
+    (hflagX : flag ∉ x.ownedQubits)
+    (hflagScratch : flag ∉ scratch.ownedQubits) :
+    flag ∉ (shorConcreteCarrier x scratch hxScratch).ownedQubits := by
+  rw [shorConcreteCarrier_ownedQubits, List.mem_append]
+  rintro (hflagExponent | hflagScratch')
+  · exact hflagX hflagExponent
+  · exact hflagScratch hflagScratch'
 
 /--
 Main theorem for one controlled modular-multiplication core.
@@ -5962,41 +6841,62 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
-    [ModMulPrimitiveGateSemantics qs]
     (lowering : ShorLoweringSetup)
-    (x data work : ExtReg)
+    (x data work scratch : ExtReg)
     (c N ctrl flag : ℕ)
     (hxData :
       ExtReg.OwnedDisjoint x data)
     (hxWork :
       ExtReg.OwnedDisjoint x work)
+    (hxScratch :
+      ExtReg.OwnedDisjoint x scratch)
     (hmod :
       ModMulCircuitWorkspaceOK data work)
     (hflagX :
       flag ∉ x.ownedQubits)
-    (hlayout :
+    (_hlayout :
       ModMulCoreLayout data work flag ctrl)
+    (hstep4 :
+      CmpLtNWWorkspace N (data.grow 1) work scratch flag)
     (hworkspace :
       GateWorkspaceOK
         lowering.ops
         (CmodMulInPlaceCore
           (Basis := qs.Basis)
-          c N ctrl data work flag hmod))
+          c N ctrl data work scratch flag hmod hstep4))
     (ψ : qs.State)
     (hclean :
-      ShorLoweringCleanState
-        qs x data work ψ) :
+      ShorConcreteCleanState
+        qs x data work scratch hxScratch ψ) :
     LoweredCleanResult
       qs
       lowering
-      (ShorLoweringCleanState
-        qs x data work)
+      (ShorConcreteCleanState
+        qs x data work scratch hxScratch)
       (CmodMulInPlaceCore
         (Basis := qs.Basis)
-        c N ctrl data work flag hmod)
+        c N ctrl data work scratch flag hmod hstep4)
       hworkspace
       ψ := by
+  let carrier := shorConcreteCarrier x scratch hxScratch
+
+  have hdataScratch : data.OwnedDisjoint scratch := by
+    simpa [ExtReg.OwnedDisjoint, Gate.ExtReg.ownedQubits_grow] using
+      hstep4.data_scratch_disjoint
+  have hcarrierData : carrier.OwnedDisjoint data := by
+    exact
+      shorConcreteCarrier_ownedDisjoint_right
+        x scratch data hxScratch hxData
+        (ownedDisjoint_symm hdataScratch)
+  have hcarrierWork : carrier.OwnedDisjoint work := by
+    exact
+      shorConcreteCarrier_ownedDisjoint_right
+        x scratch work hxScratch hxWork
+        (ownedDisjoint_symm hstep4.work_scratch_disjoint)
+  have hcleanCarrier :
+      ShorLoweringCleanState qs carrier data work ψ := by
+    simpa [carrier, shorConcreteCarrier] using hclean
+
   let U1 :=
     step1
       (Basis := qs.Basis)
@@ -6008,14 +6908,16 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
       N data work hmod
 
   let U3 :=
-    step3 N (data.grow 1).active flag
+    step3 N (data.grow 1) scratch flag
 
   let U4 :=
     step4
       N
-      (data.grow 1).active
-      work.active
+      (data.grow 1)
+      work
+      scratch
       flag
+      hstep4
 
   let U5 :=
     step5
@@ -6063,15 +6965,17 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
   have h1 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch hxScratch)
         U1 hworkspace.1 ψ :=
-    lowered_step1_ready_and_full_clean
-      qs lowering x data work
-      c N ctrl
-      hxWork
-      hmod
-      hworkspace.1 ψ hclean
+    by
+      simpa [carrier, shorConcreteCarrier] using
+        (lowered_step1_ready_and_full_clean
+          qs lowering carrier data work
+          c N ctrl
+          hcarrierWork
+          hmod
+          hworkspace.1 ψ hcleanCarrier)
 
   let ψ2 :=
     LowerGateClass.evalL
@@ -6085,17 +6989,20 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
   have h2 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch hxScratch)
         U2 hworkspace.2.1 ψ1 :=
-    lowered_step2_ready_and_carry_clean
-      qs lowering x data work
-      N
-      hxData
-      hmod
-      hworkspace.2.1
-      ψ1
-      h1.2
+    by
+      simpa [carrier, shorConcreteCarrier] using
+        (lowered_step2_ready_and_carry_clean
+          qs lowering carrier data work
+          N
+          hcarrierData
+          hmod
+          hworkspace.2.1
+          ψ1
+          (by
+            simpa [carrier, shorConcreteCarrier] using h1.2))
 
   let ψ3 :=
     LowerGateClass.evalL
@@ -6109,17 +7016,12 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
   have h3 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch hxScratch)
         U3 hworkspace.2.2.1 ψ2 :=
     lowered_step3_ready_and_clean
-      lowering x data work N flag
-      hxData
-      hxWork
-      hmod
-      hflagX
-      hlayout.2.1
-      hlayout.2.2.1
+      lowering x data work scratch N flag
+      hxData hxScratch hmod hflagX hstep4
       hworkspace.2.2.1
       ψ2
       h2.2
@@ -6136,19 +7038,14 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
   have h4 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch hxScratch)
         U4 hworkspace.2.2.2.1 ψ3 :=
     lowered_step4_ready_and_clean
       lowering
-      x data work
+      x data work scratch
       N flag
-      hxData
-      hxWork
-      hmod
-      hflagX
-      hlayout.2.1
-      hlayout.2.2.1
+      hxData hxWork hxScratch hmod hflagX hstep4
       hworkspace.2.2.2.1
       ψ3
       h3.2
@@ -6156,25 +7053,28 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
   have h5 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch hxScratch)
         U5 hworkspace.2.2.2.2 ψ4 :=
-    lowered_step5_ready_and_full_clean
-      qs lowering x data work
-      (step5Constant c N)
-      N ctrl
-      hxData
-      hxWork
-      hmod
-      hworkspace.2.2.2.2
-      ψ4
-      h4.2
+    by
+      simpa [carrier, shorConcreteCarrier] using
+        (lowered_step5_ready_and_full_clean
+          qs lowering carrier data work
+          (step5Constant c N)
+          N ctrl
+          hcarrierData
+          hcarrierWork
+          hmod
+          hworkspace.2.2.2.2
+          ψ4
+          (by
+            simpa [carrier, shorConcreteCarrier] using h4.2))
 
   have h45 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch hxScratch)
         (U4 ;; U5)
         hworkspace45
         ψ3 :=
@@ -6187,8 +7087,8 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
   have h345 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch hxScratch)
         (U3 ;; U4 ;; U5)
         hworkspace345
         ψ2 :=
@@ -6201,8 +7101,8 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
   have h2345 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch hxScratch)
         (U2 ;; U3 ;; U4 ;; U5)
         hworkspace2345
         ψ1 :=
@@ -6215,8 +7115,8 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
   have h12345 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch hxScratch)
         (U1 ;; U2 ;; U3 ;; U4 ;; U5)
         hworkspace12345
         ψ :=
@@ -6251,10 +7151,8 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
-    [ModMulPrimitiveGateSemantics qs]
     (lowering : ShorLoweringSetup)
-    (x data work : ExtReg)
+    (x data work scratch : ExtReg)
     (a N flag e : ℕ)
     (ctrls : List ℕ)
     (hmod :
@@ -6263,8 +7161,12 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
       ExtReg.OwnedDisjoint x data)
     (hxWork :
       ExtReg.OwnedDisjoint x work)
+    (hxScratch :
+      ExtReg.OwnedDisjoint x scratch)
     (hflagX :
       flag ∉ x.ownedQubits)
+    (hstep4 :
+      CmpLtNWWorkspace N (data.grow 1) work scratch flag)
     (hLayout :
       ∀ ctrl ∈ ctrls,
         ModMulCoreLayout data work flag ctrl)
@@ -6273,19 +7175,19 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
         lowering.ops
         (modExpApproxStepsValid
           (Basis := qs.Basis)
-          a N data work flag hmod e ctrls))
+          a N data work scratch flag hmod hstep4 e ctrls))
     (ψ : qs.State)
     (hclean :
-      ShorLoweringCleanState
-        qs x data work ψ) :
+      ShorConcreteCleanState
+        qs x data work scratch hxScratch ψ) :
     LoweredCleanResult
       qs
       lowering
-      (ShorLoweringCleanState
-        qs x data work)
+      (ShorConcreteCleanState
+        qs x data work scratch hxScratch)
       (modExpApproxStepsValid
         (Basis := qs.Basis)
-        a N data work flag hmod e ctrls)
+        a N data work scratch flag hmod hstep4 e ctrls)
       hworkspace
       ψ := by
   induction ctrls generalizing e ψ with
@@ -6307,12 +7209,12 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
       let U :=
         CmodMulInPlaceCore
           (Basis := qs.Basis)
-          c N ctrl data work flag hmod
+          c N ctrl data work scratch flag hmod hstep4
 
       let V :=
         modExpApproxStepsValid
           (Basis := qs.Basis)
-          a N data work flag hmod
+          a N data work scratch flag hmod hstep4
           (e + 1) ctrls
 
       change
@@ -6336,18 +7238,20 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
       have hU :
           LoweredCleanResult
             qs lowering
-            (ShorLoweringCleanState
-              qs x data work)
+            (ShorConcreteCleanState
+              qs x data work scratch hxScratch)
             U hworkspace.1 ψ :=
         lowered_CmodMulInPlaceCore_ready_and_clean
           lowering
-          x data work
+          x data work scratch
           c N ctrl flag
           hxData
           hxWork
+          hxScratch
           hmod
           hflagX
           hHeadLayout
+          hstep4
           hworkspace.1
           ψ
           hclean
@@ -6367,8 +7271,8 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
       have hV :
           LoweredCleanResult
             qs lowering
-            (ShorLoweringCleanState
-              qs x data work)
+            (ShorConcreteCleanState
+              qs x data work scratch hxScratch)
             V hworkspace.2 ψ' :=
         ih
           (e := e + 1)
@@ -6408,43 +7312,43 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
-    [ModMulPrimitiveGateSemantics qs]
     (lowering : ShorLoweringSetup)
     (η : ℝ)
     (a N : ℕ)
-    (x data work : ExtReg)
+    (x data work scratch : ExtReg)
     (flag : ℕ)
     (b0 : qs.Basis)
     (hsetup :
       ShorApproxSetup
-        qs η x data work flag b0)
+        qs η N x data work scratch flag b0)
     (_hlarge :
       ShorWorkspaceLargeEnough
-        lowering.ops x data work)
+        lowering.ops x data work scratch)
     (hisolated :
-      ShorWorkspaceIsolation x work flag)
+      ShorWorkspaceIsolation x work scratch flag)
     (hworkspace :
       GateWorkspaceOK
         lowering.ops
         (orderFindingApprox
-          qs a N x data work flag
-          hsetup.circuit_workspace))
+          qs a N x data work scratch flag
+          hsetup.circuit_workspace hsetup.step4_workspace))
     {ψ : qs.State}
     (hclean :
-      ShorLoweringCleanState
-        qs x data work ψ)
+      ShorConcreteCleanState
+        qs x data work scratch
+        hisolated.exponent_scratch_disjoint ψ)
     (hLayout :
       ∀ ctrl ∈ x.active.qubits,
         ModMulCoreLayout data work flag ctrl) :
     LoweredCleanResult
       qs
       lowering
-      (ShorLoweringCleanState
-        qs x data work)
+      (ShorConcreteCleanState
+        qs x data work scratch
+        hisolated.exponent_scratch_disjoint)
       (orderFindingApprox
-        qs a N x data work flag
-        hsetup.circuit_workspace)
+        qs a N x data work scratch flag
+        hsetup.circuit_workspace hsetup.step4_workspace)
       hworkspace
       ψ := by
   let U1 := H_reg x.active
@@ -6454,8 +7358,8 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
   let U3 :=
     modExpApproxValid
       (Basis := qs.Basis)
-      a N x.active data work flag
-      hsetup.circuit_workspace
+      a N x.active data work scratch flag
+      hsetup.circuit_workspace hsetup.step4_workspace
 
   let U4 := IQFT x
 
@@ -6493,16 +7397,35 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
   have h1 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch
+          hisolated.exponent_scratch_disjoint)
         U1 hworkspace.1 ψ :=
-    lowered_H_reg_ready_and_full_clean
-      qs lowering x data work
-      hsetup.exponent_data_disjoint
-      hisolated.exponent_work_disjoint
-      hworkspace.1
-      ψ
-      hclean
+    by
+      let carrier :=
+        shorConcreteCarrier
+          x scratch hisolated.exponent_scratch_disjoint
+      have hdataScratch : data.OwnedDisjoint scratch := by
+        simpa [ExtReg.OwnedDisjoint, Gate.ExtReg.ownedQubits_grow] using
+          hsetup.step4_workspace.data_scratch_disjoint
+      have hcarrierData : carrier.OwnedDisjoint data :=
+        shorConcreteCarrier_ownedDisjoint_right
+          x scratch data hisolated.exponent_scratch_disjoint
+          hsetup.exponent_data_disjoint
+          (ownedDisjoint_symm hdataScratch)
+      have hcarrierWork : carrier.OwnedDisjoint work :=
+        shorConcreteCarrier_ownedDisjoint_right
+          x scratch work hisolated.exponent_scratch_disjoint
+          hisolated.exponent_work_disjoint
+          (ownedDisjoint_symm
+            hsetup.step4_workspace.work_scratch_disjoint)
+      simpa [carrier, shorConcreteCarrier] using
+        (lowered_H_reg_ready_and_full_clean
+          qs lowering carrier data work
+          hcarrierData hcarrierWork
+          hworkspace.1 ψ
+          (by
+            simpa [carrier, shorConcreteCarrier] using hclean))
 
   let ψ2 :=
     LowerGateClass.evalL
@@ -6516,16 +7439,29 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
   have h2 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch
+          hisolated.exponent_scratch_disjoint)
         U2 hworkspace.2.1 ψ1 :=
-    lowered_initY1_ready_and_full_clean
-      qs lowering x data work
-      hsetup.exponent_data_disjoint
-      hsetup.circuit_workspace
-      hworkspace.2.1
-      ψ1
-      h1.2
+    by
+      let carrier :=
+        shorConcreteCarrier
+          x scratch hisolated.exponent_scratch_disjoint
+      have hdataScratch : data.OwnedDisjoint scratch := by
+        simpa [ExtReg.OwnedDisjoint, Gate.ExtReg.ownedQubits_grow] using
+          hsetup.step4_workspace.data_scratch_disjoint
+      have hcarrierData : carrier.OwnedDisjoint data :=
+        shorConcreteCarrier_ownedDisjoint_right
+          x scratch data hisolated.exponent_scratch_disjoint
+          hsetup.exponent_data_disjoint
+          (ownedDisjoint_symm hdataScratch)
+      simpa [carrier, shorConcreteCarrier] using
+        (lowered_initY1_ready_and_full_clean
+          qs lowering carrier data work
+          hcarrierData hsetup.circuit_workspace
+          hworkspace.2.1 ψ1
+          (by
+            simpa [carrier, shorConcreteCarrier] using h1.2))
 
   let ψ3 :=
     LowerGateClass.evalL
@@ -6539,18 +7475,21 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
   have h3 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch
+          hisolated.exponent_scratch_disjoint)
         U3 hworkspace.2.2.1 ψ2 :=
     lowered_modExpApproxStepsValid_ready_and_clean
       lowering
-      x data work
+      x data work scratch
       a N flag 0
       x.active.qubits
       hsetup.circuit_workspace
       hsetup.exponent_data_disjoint
       hisolated.exponent_work_disjoint
+      hisolated.exponent_scratch_disjoint
       hisolated.flag_outside_exponent
+      hsetup.step4_workspace
       hLayout
       hworkspace.2.2.1
       ψ2
@@ -6559,13 +7498,15 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
   have h4 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch
+          hisolated.exponent_scratch_disjoint)
         U4 hworkspace.2.2.2 ψ3 :=
-    lowered_IQFT_ready_and_full_clean
-      qs lowering x data work
+    lowered_IQFT_ready_and_concrete_clean
+      lowering x data work scratch
       hsetup.exponent_data_disjoint
       hisolated.exponent_work_disjoint
+      hisolated.exponent_scratch_disjoint
       hworkspace.2.2.2
       ψ3
       h3.2
@@ -6573,8 +7514,9 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
   have h34 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch
+          hisolated.exponent_scratch_disjoint)
         (U3 ;; U4)
         hworkspace34
         ψ2 :=
@@ -6587,8 +7529,9 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
   have h234 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch
+          hisolated.exponent_scratch_disjoint)
         (U2 ;; U3 ;; U4)
         hworkspace234
         ψ1 :=
@@ -6601,8 +7544,9 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
   have h1234 :
       LoweredCleanResult
         qs lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch
+          hisolated.exponent_scratch_disjoint)
         (U1 ;; U2 ;; U3 ;; U4)
         hworkspace1234
         ψ :=
@@ -6632,25 +7576,23 @@ theorem gateWorkspaceCleanState_orderFindingApprox
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
-    [ModMulPrimitiveGateSemantics qs]
     (lowering : ShorLoweringSetup)
     (η : ℝ)
     (a N : ℕ)
-    (x data work : ExtReg)
+    (x data work scratch : ExtReg)
     (flag : ℕ)
     (b0 : qs.Basis)
     (hsetup :
       ShorApproxSetup
-        qs η x data work flag b0)
+        qs η N x data work scratch flag b0)
     (hlarge :
       ShorWorkspaceLargeEnough
-        lowering.ops x data work)
+        lowering.ops x data work scratch)
     (hisolated :
-      ShorWorkspaceIsolation x work flag)
+      ShorWorkspaceIsolation x work scratch flag)
     (hzero :
       ShorWorkspaceCleanInput
-        x data work b0) :
+        x data work scratch b0) :
     let hworkspace :=
       gateWorkspaceOK_orderFindingApprox
         (ops := lowering.ops)
@@ -6660,6 +7602,7 @@ theorem gateWorkspaceCleanState_orderFindingApprox
         (x := x)
         (data := data)
         (work := work)
+        (scratch := scratch)
         (flag := flag)
         (b0 := b0)
         hsetup
@@ -6671,8 +7614,8 @@ theorem gateWorkspaceCleanState_orderFindingApprox
       lowering.hk
       lowering.ops
       (orderFindingApprox
-        qs a N x data work flag
-        hsetup.circuit_workspace)
+        qs a N x data work scratch flag
+        hsetup.circuit_workspace hsetup.step4_workspace)
       hworkspace
       (qs.ket b0) := by
   let hworkspace :=
@@ -6684,6 +7627,7 @@ theorem gateWorkspaceCleanState_orderFindingApprox
       (x := x)
       (data := data)
       (work := work)
+      (scratch := scratch)
       (flag := flag)
       (b0 := b0)
       hsetup
@@ -6713,20 +7657,23 @@ theorem gateWorkspaceCleanState_orderFindingApprox
     simpa only [hget] using hi
 
   have hInitial :
-      ShorLoweringCleanState
-        qs x data work
+      ShorConcreteCleanState
+        qs x data work scratch
+        hisolated.exponent_scratch_disjoint
         (qs.ket b0) :=
-    shorLoweringCleanState_ket hzero
+    shorConcreteCleanState_ket
+      hzero hsetup.clean_input.2.2.2.2.2.1
 
   have hResult :
       LoweredCleanResult
         qs
         lowering
-        (ShorLoweringCleanState
-          qs x data work)
+        (ShorConcreteCleanState
+          qs x data work scratch
+          hisolated.exponent_scratch_disjoint)
         (orderFindingApprox
-          qs a N x data work flag
-          hsetup.circuit_workspace)
+          qs a N x data work scratch flag
+          hsetup.circuit_workspace hsetup.step4_workspace)
         hworkspace
         (qs.ket b0) := by
     -- Compose:
@@ -6743,7 +7690,7 @@ theorem gateWorkspaceCleanState_orderFindingApprox
         lowering
         η
         a N
-        x data work
+        x data work scratch
         flag b0
         hsetup
         hlarge
@@ -6767,20 +7714,20 @@ theorem LoweredShorReady.workspace
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
     {lowering : ShorLoweringSetup}
     {η : ℝ}
     {a N : ℕ}
-    {x y work : ExtReg}
+    {x y work scratch : ExtReg}
     {flag : ℕ}
     {b0 : qs.Basis}
     (h :
       LoweredShorReady
-        qs lowering η a N x y work flag b0) :
+        qs lowering η a N x y work scratch flag b0) :
     GateWorkspaceOK lowering.ops
       (orderFindingApprox
-        qs a N x y work flag
-        (ShorApproxSetupMinimal.toShorApproxSetup h.approx).circuit_workspace) := by
+        qs a N x y work scratch flag
+        (ShorApproxSetupMinimal.toShorApproxSetup h.approx).circuit_workspace
+        (ShorApproxSetupMinimal.toShorApproxSetup h.approx).step4_workspace) := by
   exact
     gateWorkspaceOK_orderFindingApprox
       (ops := lowering.ops)
@@ -6790,6 +7737,7 @@ theorem LoweredShorReady.workspace
       (x := x)
       (data := y)
       (work := work)
+      (scratch := scratch)
       (flag := flag)
       (b0 := b0)
       (ShorApproxSetupMinimal.toShorApproxSetup h.approx)
@@ -6807,25 +7755,24 @@ theorem LoweredShorReady.workspace_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [LowerGatePrimitiveBridge qs]
-    [ModMulPrimitiveGateSemantics qs]
     {lowering : ShorLoweringSetup}
     {η : ℝ}
     {a N : ℕ}
-    {x y work : ExtReg}
+    {x y work scratch : ExtReg}
     {flag : ℕ}
     {b0 : qs.Basis}
     (h :
       LoweredShorReady
-        qs lowering η a N x y work flag b0) :
+        qs lowering η a N x y work scratch flag b0) :
     GateWorkspaceCleanState
       qs
       lowering.k
       lowering.hk
       lowering.ops
       (orderFindingApprox
-        qs a N x y work flag
-        (ShorApproxSetupMinimal.toShorApproxSetup h.approx).circuit_workspace)
+        qs a N x y work scratch flag
+        (ShorApproxSetupMinimal.toShorApproxSetup h.approx).circuit_workspace
+        (ShorApproxSetupMinimal.toShorApproxSetup h.approx).step4_workspace)
       h.workspace
       (qs.ket b0) := by
   exact
@@ -6837,6 +7784,7 @@ theorem LoweredShorReady.workspace_clean
       x
       y
       work
+      scratch
       flag
       b0
       (ShorApproxSetupMinimal.toShorApproxSetup h.approx)
