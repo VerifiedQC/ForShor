@@ -72,7 +72,6 @@ private theorem ideal_preserves_algorithm1_good_ket
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -343,7 +342,6 @@ theorem ideal_preserves_valid
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -428,7 +426,6 @@ controls and uses ideal-state preservation to apply the induction hypothesis.
 theorem modExpApproxSteps_valid_dist_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs] :
     ∃ K : ℝ, 0 ≤ K ∧
@@ -513,7 +510,7 @@ theorem modExpApproxSteps_valid_dist_uniform
       -- Approximate/ideal head gates and approximate/ideal recursive tails.
       let A : Gate := CmodMulInPlaceCore (Basis := qs.Basis)
           c N ctrl data work scratch flag hworkspace hstep4
-      let I : Gate := Spec.idealCtrlModMul c N data.active ctrl
+      let I : Gate := Gate.idealCtrlModMul c N data.active ctrl
       let RA : Gate := modExpApproxStepsValid (Basis := qs.Basis)
           a N data work scratch flag hworkspace hstep4 (e + 1) ctrls
       let RI : Gate := modExpIdealSteps qs a N data.active (e + 1) ctrls
@@ -627,7 +624,6 @@ register, producing the final factor `tbits cfg.x`.
 theorem modExpApprox_valid_dist_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs]:
     ∃ K : ℝ, 0 ≤ K ∧

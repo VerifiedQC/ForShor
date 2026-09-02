@@ -567,4 +567,9 @@ theorem lowerGate_correctness
           m
           ψ)
 
+  | idealCtrlModMul c N data ctrl =>
+      have hfalse : False := by
+        simpa[GateWorkspaceOK]
+      exact hfalse.elim
+
 end Shor

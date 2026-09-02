@@ -44,6 +44,7 @@ inductive Gate : Type
   | signExtend : (r : ExtReg) → (n : ℕ) → Gate
   | zeroDealloc : (r : ExtReg) → (n : ℕ) → Gate
   | signDealloc : (r : ExtReg) → (n : ℕ) → Gate
+  | idealCtrlModMul : (c N : ℕ) → (data : Reg) → (ctrl : ℕ) → Gate
 
 def radixReverseIndex (r : Reg) (m : ℕ) (hm : m ≤ regSize r) (kL kH : ℕ) : ℕ :=
   let sp : SplitPoint r := ⟨m, hm⟩

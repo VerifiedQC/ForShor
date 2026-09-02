@@ -16,7 +16,6 @@ assertion. -/
 theorem modExpApprox_correct
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs] :
     ModExpApproxValidDistUniform qs :=

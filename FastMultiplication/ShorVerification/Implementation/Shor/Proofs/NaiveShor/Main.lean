@@ -9,7 +9,6 @@ namespace Shor
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 variable [MeasureClass qs]
-variable [Spec]
 
 /-! =========================================================
     Ideal Order-Finding Correctness

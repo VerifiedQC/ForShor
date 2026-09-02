@@ -1613,7 +1613,6 @@ Single retained-label fractional-shift stability.
 lemma alg1_step2_single_label_fourier_stability
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs] :
     ∃ Cbranch : ℝ, 0 ≤ Cbranch ∧
       ∀ (η : ℝ) (cfg : ModMulConfig η)
@@ -3222,7 +3221,6 @@ packet obtained by multiplying its base coefficients by bounded phase errors.
 lemma alg1_step2_fixed_work_error_eq_iqft_multiplier_packet
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -3366,7 +3364,6 @@ The squared error of a fixed-work coherent packet contracts to at most
 lemma alg1_step2_fixed_work_fourier_contraction
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs] :
     ∀ (η : ℝ) (cfg : ModMulConfig η)
       (S : Finset (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)))
@@ -3488,7 +3485,6 @@ energy bound using the configured precision range.
 lemma alg1_step2_fixed_work_packet_sq_bound
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs] :
     ∀ (η : ℝ) (cfg : ModMulConfig η)
       (S : Finset (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)))
@@ -3579,7 +3575,6 @@ packet, using residue agreement within that fiber.
 lemma alg1_step2_work_fiber_sq_bound
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -3743,7 +3738,6 @@ fibers allows the fixed-fiber estimates to add without cross terms.
 lemma alg1_step2_good_packet_operator_sq_bound
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs] :
     ∃ Ccoh : ℝ, 0 ≤ Ccoh ∧
       ∀ (η : ℝ) (cfg : ModMulConfig η)
@@ -3860,7 +3854,6 @@ This is the main theorem of the file.
 lemma alg1_step2_good_label_branch_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs] :
     ∃ Cstep2 : ℝ, 0 ≤ Cstep2 ∧
       (∀ (η : ℝ) (cfg : ModMulConfig η)

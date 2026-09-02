@@ -336,7 +336,7 @@ private lemma ctrlExp_writeNat_out (y : Reg) (v : ℕ) :
 /-- Generalized recursion: the ideal modexp step-list multiplies `y` in place by
 `a ^ (accumulated exponent of the processed control bits)` mod `N`. -/
 private lemma eval_modExpIdealSteps_ket
-    [GateSemanticsCore qs] [Spec] [IdealCtrlModMulExactSemantics qs]
+    [GateSemanticsCore qs] [IdealCtrlModMulExactSemantics qs]
     (a N : ℕ) (y : Reg) (hN : 1 < N) (ha : Nat.Coprime a N) (hsize : N ≤ ASize y) :
     ∀ (e : ℕ) (ctrls : List ℕ) (b : qs.Basis),
       (∀ ctrl ∈ ctrls, ctrl ∉ y.qubits) →
@@ -353,7 +353,7 @@ private lemma eval_modExpIdealSteps_ket
   | cons ctrl ctrls ih =>
       intro b hmem hb
       have hpeel : modExpIdealSteps qs a N y e (ctrl :: ctrls)
-          = Spec.idealCtrlModMul ((a ^ 2 ^ e) % N) N y ctrl ;;
+          = Gate.idealCtrlModMul ((a ^ 2 ^ e) % N) N y ctrl ;;
             modExpIdealSteps qs a N y (e + 1) ctrls := by
         simp [modExpIdealSteps]
       rw [hpeel, qs.eval_seq]
@@ -400,7 +400,6 @@ private lemma eval_modExpIdealSteps_ket
 
 theorem eval_modExpIdeal_ket
     [GateSemanticsCore qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     (a N : ℕ)
     (x y : Reg)
@@ -431,7 +430,6 @@ Exact modular exponentiation on one initialized Shor basis label:
 -/
 private lemma eval_modExpIdeal_on_initialized_label
     [GateSemanticsFacts qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     (a N : ℕ)
     (x y : Reg)
@@ -552,7 +550,6 @@ to
 -/
 private lemma eval_modExpIdeal_on_initialized_superposition
     [GateSemanticsFacts qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     (a N : ℕ)
     (x y : Reg)
@@ -605,7 +602,6 @@ This is where `eval_modExpIdeal_ket` is used.
 -/
 lemma eval_orderFindingIdeal_prefix
     [GateSemanticsFacts qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     (inst : ShorOrderFindingInstance)
     (x y : ExtReg)
@@ -689,7 +685,6 @@ lemma eval_orderFindingIdeal_prefix
 
 lemma ideal_orderFinding_goodOutcome_mass_lower_bound
     [GateSemanticsFacts qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     [MeasureClass qs]
     (inst : ShorOrderFindingInstance)

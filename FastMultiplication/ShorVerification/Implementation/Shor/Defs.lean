@@ -67,28 +67,22 @@ def GateWorkspaceOK
     {k : ℕ}
     (ops : Prog k) :
     Gate → Prop
-
   | Gate.seq U V =>
       GateWorkspaceOK ops U ∧ GateWorkspaceOK ops V
-
   | Gate.adj U =>
       GateWorkspaceOK ops U
-
   | Gate.QFT r =>
       QFTReserveOK ops r
-
   | Gate.SignedPhaseProd _ x z =>
       SignedRecursiveWorkspaceOK ops x z
-
   | Gate.CSignedPhaseProd ctrl _ x z =>
       CSignedRecursiveWorkspaceOK ops ctrl x z
-
   | Gate.CmpGeConst N data scratch flag =>
       ConstArithmeticWorkspace N data scratch flag
-
   | Gate.CSubConst N data scratch flag =>
       ConstArithmeticWorkspace N data scratch flag
-
+  | Gate.idealCtrlModMul _ _ _ _ =>
+      False
   | _ =>
       True
 
@@ -189,6 +183,7 @@ noncomputable def lowerGate
 
   | Gate.RadixReverse r m, _ =>
       LowGate.RadixReverse r m
+
 
 /-! =========================================================
     Dynamic Clean-State Precondition
@@ -482,7 +477,6 @@ noncomputable def orderFindingIdeal
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
-    [Spec]
     (a N : ℕ)
     (x y : ExtReg) : Gate :=
   (H_reg x.active) ;;

@@ -19,7 +19,6 @@ modular-exponentiation gate differs from the ideal gate by at most
 def ModExpApproxValidDistUniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs]: Prop :=
   ∃ K : ℝ, 0 ≤ K ∧

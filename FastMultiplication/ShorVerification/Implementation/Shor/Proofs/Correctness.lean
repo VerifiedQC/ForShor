@@ -638,9 +638,6 @@ lemma successProbAfterFinset_inter_range_eq [MeasureClass qs]
     exact probMeas_outOfRange_of_born
       (qs := qs) r o (qs.eval G ψ) hoGe
 
-variable [Spec]
-
-
 /-! =========================================================
     Section 3: Probability-transfer lemmas
 
@@ -649,7 +646,7 @@ variable [Spec]
     bookkeeping; the second group uses gate isometry to move distance bounds
     through common circuit context.
 ========================================================= -/
-omit [Spec] in
+
 /-- If two probabilities differ by at most `ε`, then the first is at least
     the second minus `ε`.
 
@@ -663,7 +660,6 @@ lemma lower_bound_of_abs_sub_le {A B ε : ℝ}
   have hleft : -ε ≤ A - B := (abs_le.mp h).1
   linarith
 
-omit [Spec] in
 /-- If the approximate and ideal success probabilities differ by at most `ε`,
     and the ideal success probability is at least `L`, then the approximate
     success probability is at least `L - ε`. -/
@@ -676,7 +672,6 @@ lemma transfer_lower_bound_from_abs_prob
     lower_bound_of_abs_sub_le hprob
   linarith
 
-omit [Spec] in
 /-- Applying a common suffix gate preserves a state-distance bound. -/
 lemma dist_eval_common_suffix_le
     (qs : QSemantics)
@@ -699,7 +694,7 @@ lemma dist_eval_common_suffix_le
                 (qs.eval I ψ))
     _ ≤ ε := h
 
-omit [MeasureClass qs] [Spec] in
+omit [MeasureClass qs] in
 /-- Convert a state-distance bound between two complete circuits into a lower
 bound on the approximate circuit's postprocessed success probability. -/
 lemma probability_of_success_eval_dist [MeasureClass qs]
@@ -801,7 +796,6 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
     error to obtain the approximate order-finding statement.
 ========================================================= -/
 
-omit [Spec] in
 lemma initY1_eq_X_lowQubit
     (r : Reg)
     (hr : 0 < regSize r) :
@@ -814,7 +808,6 @@ lemma initY1_eq_X_lowQubit
       | cons q qubits =>
           simp [initY1, Reg.lowQubit]
 
-omit [Spec] in
 /--
 After Shor's Hadamards on `x.active` and initialization of `y.active` to `1`,
 the state is a valid input for modular exponentiation.
@@ -1171,7 +1164,6 @@ lemma ShorApproxSetup.prepared_state_valid
     ⟨⟨hdata_lt, hyFreshOut, hworkZeroOut, hworkFreshOut, hflagZeroOut⟩,
       hscratchZeroOut, hscratchFreshOut⟩
 
-omit [Spec] in
 lemma shor_data_capacity_from_log2
     (N : ℕ) :
     N ≤ 2 ^ Nat.log2 (2 * N) := by
@@ -1474,7 +1466,6 @@ Lowering preserves the success probability exactly when the current
 whole-program lowering workspace and dynamic cleanliness hypotheses are
 available.
 -/
-omit [Spec] in
 lemma probability_of_success_lowerGate_eq
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
@@ -1524,7 +1515,6 @@ lemma probability_of_success_lowerGate_eq
   intro o ho
   rw [hEval]
 
-omit [Spec] in
 /--
 Whole-program lowering introduces no additional success-probability error.
 
@@ -1596,7 +1586,6 @@ file does not yet contain the numerical allocation bridge from the Shor setup.
 /- At least half of the coprime classical choices are successful for the
 classical reduction, assuming `N` is odd, composite in the required sense, and
 not a prime power. -/
-omit [Spec] in
 theorem shors_probability_bound (N : ℕ)
 (h_odd : Odd N)
 (h_gt_one : N > 1)

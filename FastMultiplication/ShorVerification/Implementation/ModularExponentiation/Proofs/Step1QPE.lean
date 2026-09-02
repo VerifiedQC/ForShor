@@ -1505,7 +1505,6 @@ lemma alg1_ideal_ket_eq_extended_output
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
@@ -5646,7 +5645,6 @@ converting the grid ratio into the linear factor `4 * η`.
 lemma alg1_qpe_tail_basis_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [Spec]
     [GateSemanticsFacts qs] :
     ∃ Ctail : ℝ, 0 ≤ Ctail ∧
       ∀ (η : ℝ) (cfg : ModMulConfig η) (b : qs.Basis),

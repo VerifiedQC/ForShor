@@ -75,7 +75,6 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     (c N : ℕ)
     (data work : ExtReg)
@@ -88,7 +87,7 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
     (hb : GoodModMulBasisInput qs N data work flag b) :
     ∃ b' : qs.Basis,
       qs.eval
-          (Spec.idealCtrlModMul c N data.active ctrl)
+          (Gate.idealCtrlModMul c N data.active ctrl)
           (qs.ket b)
         =
       qs.ket b'
@@ -293,7 +292,7 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
 
   have heval :
       qs.eval
-          (Spec.idealCtrlModMul
+          (Gate.idealCtrlModMul
             c N data.active ctrl)
           (qs.ket b)
         =
@@ -322,7 +321,6 @@ theorem idealCtrlModMul_preserves_valid
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     (c N : ℕ)
     (data work : ExtReg)
@@ -336,7 +334,7 @@ theorem idealCtrlModMul_preserves_valid
       ψ ∈ ValidModMulState
         qs N data work flag) :
     qs.eval
-        (Spec.idealCtrlModMul
+        (Gate.idealCtrlModMul
           c N data.active ctrl)
         ψ
       ∈
@@ -358,7 +356,7 @@ theorem idealCtrlModMul_preserves_valid
 
   change
     qs.eval
-        (Spec.idealCtrlModMul
+        (Gate.idealCtrlModMul
           c N data.active ctrl)
         ψ
       ∈
@@ -369,7 +367,7 @@ theorem idealCtrlModMul_preserves_valid
       (s := validSet)
       (p := fun ξ _ =>
         qs.eval
-            (Spec.idealCtrlModMul
+            (Gate.idealCtrlModMul
               c N data.active ctrl)
             ξ
           ∈
@@ -414,7 +412,7 @@ theorem idealCtrlModMul_preserves_valid
   case zero =>
     change
       qs.eval
-          (Spec.idealCtrlModMul
+          (Gate.idealCtrlModMul
             c N data.active ctrl)
           0
         ∈
@@ -429,7 +427,7 @@ theorem idealCtrlModMul_preserves_valid
 
     change
       qs.eval
-          (Spec.idealCtrlModMul
+          (Gate.idealCtrlModMul
             c N data.active ctrl)
           (ξ + ζ)
         ∈
@@ -446,7 +444,7 @@ theorem idealCtrlModMul_preserves_valid
 
     change
       qs.eval
-          (Spec.idealCtrlModMul
+          (Gate.idealCtrlModMul
             c N data.active ctrl)
           (a • ξ)
         ∈
@@ -1155,7 +1153,6 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_cfg
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
-    [Spec]
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η) (b : qs.Basis)
