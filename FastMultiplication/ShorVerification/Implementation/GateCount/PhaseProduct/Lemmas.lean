@@ -191,6 +191,134 @@ lemma phaseProgramOverhead_linear
 
 end ArithmeticOverhead
 
+@[simp] theorem shorGateCostModel_shiftL
+    (r : ExtReg) (n : ℕ) :
+    shorGateCostModel.shiftL r n = 0 := by
+  simp [
+    shorGateCostModel,
+    LowGateResourceModel.toCostModel,
+    shorGateResourceModel,
+    GateResources.totalGates
+  ]
+
+@[simp] theorem shorGateCostModel_shiftR
+    (r : ExtReg) (n : ℕ) :
+    shorGateCostModel.shiftR r n = 0 := by
+  simp [
+    shorGateCostModel,
+    LowGateResourceModel.toCostModel,
+    shorGateResourceModel,
+    GateResources.totalGates
+  ]
+
+@[simp] theorem shorGateCostModel_zeroExtend
+    (r : ExtReg) (n : ℕ) :
+    shorGateCostModel.zeroExtend r n = 0 := by
+  simp [
+    shorGateCostModel,
+    LowGateResourceModel.toCostModel,
+    shorGateResourceModel,
+    GateResources.totalGates
+  ]
+
+@[simp] theorem shorGateCostModel_signExtend
+    (r : ExtReg) (n : ℕ) :
+    shorGateCostModel.signExtend r n = n := by
+  simp [
+    shorGateCostModel,
+    LowGateResourceModel.toCostModel,
+    shorGateResourceModel,
+    GateResources.totalGates
+  ]
+
+@[simp] theorem shorGateCostModel_zeroDealloc
+    (r : ExtReg) (n : ℕ) :
+    shorGateCostModel.zeroDealloc r n = 0 := by
+  simp [
+    shorGateCostModel,
+    LowGateResourceModel.toCostModel,
+    shorGateResourceModel,
+    GateResources.totalGates
+  ]
+
+@[simp] theorem shorGateCostModel_signDealloc
+    (r : ExtReg) (n : ℕ) :
+    shorGateCostModel.signDealloc r n = n := by
+  simp [
+    shorGateCostModel,
+    LowGateResourceModel.toCostModel,
+    shorGateResourceModel,
+    GateResources.totalGates
+  ]
+
+theorem shorGateCostModel_negate_eq
+    (r : ExtReg) :
+    shorGateCostModel.negate r =
+      (negateResources r).totalGates := by
+  rfl
+
+theorem shorGateCostModel_addScaled_eq
+    (dst src : ExtReg)
+    (negSrc : Bool)
+    (shift : ℕ) :
+    shorGateCostModel.addScaled dst src negSrc shift =
+      (addScaledResources dst src negSrc shift).totalGates := by
+  rfl
+
+@[simp] theorem shorGateCostModel_radixReverse
+    (r : Reg) (m : ℕ) :
+    shorGateCostModel.radixReverse r m =
+      radixReverseGateCount r m := by
+  simp [
+    shorGateCostModel,
+    LowGateResourceModel.toCostModel,
+    shorGateResourceModel,
+    radixReverseResources,
+    radixReverseGateCount,
+    GateResources.totalGates
+  ]
+
+theorem cuccaroModAddResources_totalGates_le_rippleAdderGateBound
+    (w : ℕ) :
+    (cuccaroModAddResources w).totalGates
+      ≤ rippleAdderGateBound w := by
+  simp [
+    cuccaroModAddResources,
+    GateResources.totalGates,
+    rippleAdderGateBound
+  ]
+  omega
+
+theorem negateResources_totalGates_le_negateGateBound
+    (r : ExtReg) :
+    (negateResources r).totalGates
+      ≤ negateGateBound r := by
+  simp [
+    negateResources,
+    cuccaroModAddResources,
+    GateResources.totalGates,
+    negateGateBound,
+    rippleAdderGateBound
+  ]
+  omega
+
+theorem shorGateCostModel_negate_le
+    (r : ExtReg) :
+    shorGateCostModel.negate r
+      ≤ negateGateBound r := by
+  rw [shorGateCostModel_negate_eq]
+  exact negateResources_totalGates_le_negateGateBound r
+
+theorem shorGateCostModel_addScaled_le
+    (dst src : ExtReg)
+    (negSrc : Bool)
+    (shift : ℕ) :
+    shorGateCostModel.addScaled dst src negSrc shift
+      ≤ rippleAdderGateBound (ExtReg.width dst) := by
+  rw [shorGateCostModel_addScaled_eq]
+  simpa [addScaledResources] using
+    cuccaroModAddResources_totalGates_le_rippleAdderGateBound
+      (ExtReg.width dst)
 /-! ---------------------------------------------------------
     Width-growth bounds for recursive children
 
@@ -895,18 +1023,52 @@ lemma lowerGateRec_mpr_gate_of_eq
           (PhaseLoweringPlan.Negate
             (k := k) (hk := hk) (pts := pts) (hpts := hpts)
             (ops := ops) initSize r))
-      = negateGateBound r := by
+      =
+    (negateResources r).totalGates := by
   rfl
 
+lemma lgc_negate_le
+    (initSize : ℕ) (r : ExtReg) :
+    LowGate.gateCount shorGateCostModel
+        (lowerGateRec
+          (PhaseLoweringPlan.Negate
+            (k := k) (hk := hk) (pts := pts) (hpts := hpts)
+            (ops := ops) initSize r))
+      ≤
+    negateGateBound r := by
+  rw [lgc_negate]
+  exact negateResources_totalGates_le_negateGateBound r
+
 @[simp] lemma lgc_addScaled
-    (initSize : ℕ) (dst src : ExtReg) (b : Bool) (sh : ℕ) :
+    (initSize : ℕ)
+    (dst src : ExtReg)
+    (b : Bool)
+    (sh : ℕ) :
     LowGate.gateCount shorGateCostModel
         (lowerGateRec
           (PhaseLoweringPlan.AddScaled
             (k := k) (hk := hk) (pts := pts) (hpts := hpts)
             (ops := ops) initSize dst src b sh))
-      = rippleAdderGateBound (ExtReg.width dst) := by
+      =
+    (addScaledResources dst src b sh).totalGates := by
   rfl
+
+lemma lgc_addScaled_le
+    (initSize : ℕ)
+    (dst src : ExtReg)
+    (b : Bool)
+    (sh : ℕ) :
+    LowGate.gateCount shorGateCostModel
+        (lowerGateRec
+          (PhaseLoweringPlan.AddScaled
+            (k := k) (hk := hk) (pts := pts) (hpts := hpts)
+            (ops := ops) initSize dst src b sh))
+      ≤
+    rippleAdderGateBound (ExtReg.width dst) := by
+  rw [lgc_addScaled]
+  simpa [addScaledResources] using
+    cuccaroModAddResources_totalGates_le_rippleAdderGateBound
+      (ExtReg.width dst)
 
 @[simp] lemma lgc_zeroExtend
     (initSize : ℕ) (r : ExtReg) (n : ℕ) :
@@ -916,7 +1078,7 @@ lemma lowerGateRec_mpr_gate_of_eq
             (k := k) (hk := hk) (pts := pts) (hpts := hpts)
             (ops := ops) initSize r n))
       = 0 := by
-  rfl
+  simp [lowerGateRec, LowGate.gateCount]
 
 @[simp] lemma lgc_signExtend
     (initSize : ℕ) (r : ExtReg) (n : ℕ) :
@@ -925,8 +1087,8 @@ lemma lowerGateRec_mpr_gate_of_eq
           (PhaseLoweringPlan.signExtend
             (k := k) (hk := hk) (pts := pts) (hpts := hpts)
             (ops := ops) initSize r n))
-      = 0 := by
-  rfl
+      = n := by
+  simp [lowerGateRec, LowGate.gateCount]
 
 @[simp] lemma lgc_zeroDealloc
     (initSize : ℕ) (r : ExtReg) (n : ℕ) :
@@ -936,7 +1098,7 @@ lemma lowerGateRec_mpr_gate_of_eq
             (k := k) (hk := hk) (pts := pts) (hpts := hpts)
             (ops := ops) initSize r n))
       = 0 := by
-  rfl
+  simp [lowerGateRec, LowGate.gateCount]
 
 @[simp] lemma lgc_signDealloc
     (initSize : ℕ) (r : ExtReg) (n : ℕ) :
@@ -945,8 +1107,8 @@ lemma lowerGateRec_mpr_gate_of_eq
           (PhaseLoweringPlan.signDealloc
             (k := k) (hk := hk) (pts := pts) (hpts := hpts)
             (ops := ops) initSize r n))
-      = 0 := by
-  rfl
+      = n := by
+  simp [lowerGateRec, LowGate.gateCount]
 
 @[simp] lemma lgc_radixReverse
     (initSize : ℕ) (r : Reg) (m : ℕ) :
@@ -955,9 +1117,9 @@ lemma lowerGateRec_mpr_gate_of_eq
           (PhaseLoweringPlan.RadixReverse
             (k := k) (hk := hk) (pts := pts) (hpts := hpts)
             (ops := ops) initSize r m))
-      = radixReverseGateCount r m := by
-  unfold lowerGateRec LowGate.gateCount shorGateCostModel phaseProductCostModel
-  rfl
+      =
+    radixReverseGateCount r m := by
+  simp [lowerGateRec, LowGate.gateCount]
 
 /-
 The direct plan-unfolding proof below is intentionally disabled.  The
@@ -990,8 +1152,24 @@ def BookkeepingGate : Gate → Prop
   | _ =>
       False
 
+def bookkeepingGateCost : Gate → ℕ
+  | Gate.id =>
+      0
+  | Gate.seq U V =>
+      bookkeepingGateCost U + bookkeepingGateCost V
+  | Gate.zeroExtend _ _ =>
+      0
+  | Gate.signExtend _ n =>
+      n
+  | Gate.zeroDealloc _ _ =>
+      0
+  | Gate.signDealloc _ n =>
+      n
+  | _ =>
+      0
+
 /-- Any lowering plan whose gate index is bookkeeping has zero low-gate cost. -/
-lemma gateCount_lowerGateRec_eq_zero_of_bookkeeping
+lemma gateCount_lowerGateRec_eq_bookkeepingCost
     {initSize : ℕ}
     {U : Gate}
     (plan :
@@ -999,49 +1177,98 @@ lemma gateCount_lowerGateRec_eq_zero_of_bookkeeping
         k hk pts hpts ops initSize U)
     (hbook : BookkeepingGate U) :
     LowGate.gateCount shorGateCostModel
-      (lowerGateRec plan) = 0 := by
+      (lowerGateRec plan)
+      =
+    bookkeepingGateCost U := by
   revert hbook
+
   induction plan with
+
   | id initSize =>
       intro _
       rfl
+
   | seq left right ihLeft ihRight =>
       intro hbook
       rcases hbook with ⟨hleft, hright⟩
-      simp only [lowerGateRec, LowGate.gateCount]
-      simpa only [lowerGateRec] using congrArg₂ Nat.add (ihLeft hleft) (ihRight hright)
+
+      change
+        LowGate.gateCount shorGateCostModel
+            (lowerGateRec left)
+          +
+        LowGate.gateCount shorGateCostModel
+            (lowerGateRec right)
+        =
+        bookkeepingGateCost _ +
+          bookkeepingGateCost _
+
+      rw [
+        ihLeft hleft,
+        ihRight hright
+      ]
+
   | zeroExtend initSize r n =>
       intro _
-      rfl
+      simp [
+        lowerGateRec,
+        LowGate.gateCount,
+        bookkeepingGateCost
+      ]
+
   | signExtend initSize r n =>
       intro _
-      rfl
+      simp [
+        lowerGateRec,
+        LowGate.gateCount,
+        bookkeepingGateCost
+      ]
+
   | zeroDealloc initSize r n =>
       intro _
-      rfl
+      simp [
+        lowerGateRec,
+        LowGate.gateCount,
+        bookkeepingGateCost
+      ]
+
   | signDealloc initSize r n =>
       intro _
-      rfl
+      simp [
+        lowerGateRec,
+        LowGate.gateCount,
+        bookkeepingGateCost
+      ]
+
   | H initSize qbit =>
       simp [BookkeepingGate]
+
   | X initSize qbit =>
       simp [BookkeepingGate]
+
   | ShiftL initSize r n =>
       simp [BookkeepingGate]
+
   | ShiftR initSize r n =>
       simp [BookkeepingGate]
+
   | Negate initSize r =>
       simp [BookkeepingGate]
+
   | AddScaled initSize dst src negSrc shift =>
       simp [BookkeepingGate]
+
   | RadixReverse initSize r m =>
       simp [BookkeepingGate]
+
   | signedBase phi x z hstop =>
       simp [BookkeepingGate]
+
   | signedStep phi x z layout hrec hcapacity child ihChild =>
       simp [BookkeepingGate]
+
   | cSignedBase ctrl phi x z hstop =>
       simp [BookkeepingGate]
+
   | cSignedStep ctrl phi x z layout hrec hcapacity hctrl child ihChild =>
       simp [BookkeepingGate]
 
@@ -1143,11 +1370,12 @@ lemma lgc_allocs
           (planCompileSignedAllocations
             (k := k) (hk := hk) (pts := pts) (hpts := hpts)
             (ops := ops) initSize src dst))
-      = 0 := by
-  apply gateCount_lowerGateRec_eq_zero_of_bookkeeping
+      =
+    bookkeepingGateCost
+      (compileSignedAllocations k src dst) := by
+  apply gateCount_lowerGateRec_eq_bookkeepingCost
   exact compileSignedAllocations_bookkeeping (k := k) src dst
 
-/-- Signed deallocation plans contribute zero to the low-gate count. -/
 lemma lgc_deallocs
     (initSize : ℕ) (src dst : LayoutState k) :
     LowGate.gateCount shorGateCostModel
@@ -1155,8 +1383,10 @@ lemma lgc_deallocs
           (planCompileSignedDeallocations
             (k := k) (hk := hk) (pts := pts) (hpts := hpts)
             (ops := ops) initSize src dst))
-      = 0 := by
-  apply gateCount_lowerGateRec_eq_zero_of_bookkeeping
+      =
+    bookkeepingGateCost
+      (compileSignedDeallocations k src dst) := by
+  apply gateCount_lowerGateRec_eq_bookkeepingCost
   exact compileSignedDeallocations_bookkeeping (k := k) src dst
 
 /-- Unfolds the definition of the signed PhaseProduct gate count to the standard lowering plan. -/
@@ -1211,6 +1441,270 @@ lemma phaseProgramOverhead_cons (W : ℕ) (op : valid_ops k) (rest : List (valid
     phaseProgramOverhead W (op :: rest)
       = phaseArithmeticOpCost W op + phaseProgramOverhead W rest := rfl
 
+lemma bookkeepingGateCost_allocChunkGate_le_width
+    (i : Fin k)
+    (src dst : ExtReg) :
+    bookkeepingGateCost (allocChunkGate i src dst)
+      ≤ ExtReg.width dst := by
+  by_cases h0 : extraDelta src dst = 0
+  · simp [allocChunkGate, h0, bookkeepingGateCost]
+  · by_cases htop : isTopChunk i
+    · unfold bookkeepingGateCost
+      simp [
+        allocChunkGate,
+        htop,
+        extraDelta
+      ] at *
+      simp[h0]
+    · simp [
+        allocChunkGate,
+        h0,
+        htop,
+        bookkeepingGateCost
+      ]
+
+lemma bookkeepingGateCost_deallocChunkGate_le_width
+    (i : Fin k)
+    (src dst : ExtReg) :
+    bookkeepingGateCost (deallocChunkGate i src dst)
+      ≤ ExtReg.width dst := by
+  by_cases h0 : extraDelta src dst = 0
+  · simp [deallocChunkGate, h0, bookkeepingGateCost]
+  · by_cases htop : isTopChunk i
+    · unfold bookkeepingGateCost
+      simp [
+        deallocChunkGate,
+        htop,
+        extraDelta
+      ] at *
+      simp[h0]
+    · simp [
+        deallocChunkGate,
+        h0,
+        htop,
+        bookkeepingGateCost
+      ]
+
+lemma bookkeepingGateCost_compileSignedAllocationsAux_le
+    (src dst : LayoutState k)
+    (W : ℕ)
+    (hxw : ∀ i : Fin k, ExtReg.width (dst.xslot i) ≤ W)
+    (hzw : ∀ i : Fin k, ExtReg.width (dst.zslot i) ≤ W) :
+    ∀ (n : ℕ) (hn : n ≤ k),
+      bookkeepingGateCost
+          (compileSignedAllocationsAux src dst n hn)
+        ≤ 2 * n * W := by
+  intro n
+  induction n with
+  | zero =>
+      intro hn
+      simp [compileSignedAllocationsAux, bookkeepingGateCost]
+
+  | succ m ih =>
+      intro hn
+
+      let i : Fin k :=
+        ⟨m, Nat.lt_of_succ_le hn⟩
+
+      have hm : m ≤ k := by
+        omega
+
+      have hprev :
+          bookkeepingGateCost
+              (compileSignedAllocationsAux src dst m hm)
+            ≤ 2 * m * W :=
+        ih hm
+
+      have hx :
+          bookkeepingGateCost
+              (allocChunkGate
+                i
+                (src.xslot i)
+                (dst.xslot i))
+            ≤ W := by
+        exact
+          (bookkeepingGateCost_allocChunkGate_le_width
+            (k := k)
+            i
+            (src.xslot i)
+            (dst.xslot i)).trans
+            (hxw i)
+
+      have hz :
+          bookkeepingGateCost
+              (allocChunkGate
+                i
+                (src.zslot i)
+                (dst.zslot i))
+            ≤ W := by
+        exact
+          (bookkeepingGateCost_allocChunkGate_le_width
+            (k := k)
+            i
+            (src.zslot i)
+            (dst.zslot i)).trans
+            (hzw i)
+
+      calc
+        bookkeepingGateCost
+            (compileSignedAllocationsAux src dst (m + 1) hn)
+            =
+          bookkeepingGateCost
+              (compileSignedAllocationsAux src dst m hm)
+            +
+          (bookkeepingGateCost
+              (allocChunkGate
+                i
+                (src.xslot i)
+                (dst.xslot i))
+            +
+           bookkeepingGateCost
+              (allocChunkGate
+                i
+                (src.zslot i)
+                (dst.zslot i))) := by
+              simp [
+                compileSignedAllocationsAux,
+                bookkeepingGateCost,
+                i
+              ]
+
+        _ ≤ 2 * m * W + (W + W) :=
+          Nat.add_le_add hprev
+            (Nat.add_le_add hx hz)
+
+        _ = 2 * (m + 1) * W := by
+          ring
+
+lemma bookkeepingGateCost_compileSignedDeallocationsAux_le
+    (src dst : LayoutState k)
+    (W : ℕ)
+    (hxw : ∀ i : Fin k, ExtReg.width (dst.xslot i) ≤ W)
+    (hzw : ∀ i : Fin k, ExtReg.width (dst.zslot i) ≤ W) :
+    ∀ (n : ℕ) (hn : n ≤ k),
+      bookkeepingGateCost
+          (compileSignedDeallocationsAux src dst n hn)
+        ≤ 2 * n * W := by
+  intro n
+  induction n with
+  | zero =>
+      intro hn
+      simp [compileSignedDeallocationsAux, bookkeepingGateCost]
+
+  | succ m ih =>
+      intro hn
+
+      let i : Fin k :=
+        ⟨m, Nat.lt_of_succ_le hn⟩
+
+      have hm : m ≤ k := by
+        omega
+
+      have hprev :
+          bookkeepingGateCost
+              (compileSignedDeallocationsAux src dst m hm)
+            ≤ 2 * m * W :=
+        ih hm
+
+      have hx :
+          bookkeepingGateCost
+              (deallocChunkGate
+                i
+                (src.xslot i)
+                (dst.xslot i))
+            ≤ W := by
+        exact
+          (bookkeepingGateCost_deallocChunkGate_le_width
+            (k := k)
+            i
+            (src.xslot i)
+            (dst.xslot i)).trans
+            (hxw i)
+
+      have hz :
+          bookkeepingGateCost
+              (deallocChunkGate
+                i
+                (src.zslot i)
+                (dst.zslot i))
+            ≤ W := by
+        exact
+          (bookkeepingGateCost_deallocChunkGate_le_width
+            (k := k)
+            i
+            (src.zslot i)
+            (dst.zslot i)).trans
+            (hzw i)
+
+      calc
+        bookkeepingGateCost
+            (compileSignedDeallocationsAux src dst (m + 1) hn)
+            =
+          bookkeepingGateCost
+              (deallocChunkGate
+                i
+                (src.zslot i)
+                (dst.zslot i))
+            +
+          (bookkeepingGateCost
+              (deallocChunkGate
+                i
+                (src.xslot i)
+                (dst.xslot i))
+            +
+           bookkeepingGateCost
+              (compileSignedDeallocationsAux src dst m hm)) := by
+              simp [
+                compileSignedDeallocationsAux,
+                bookkeepingGateCost,
+                i
+              ]
+
+        _ ≤ W + (W + 2 * m * W) :=
+          Nat.add_le_add hz
+            (Nat.add_le_add hx hprev)
+
+        _ = 2 * (m + 1) * W := by
+          ring
+
+lemma lgc_allocs_le
+    (initSize : ℕ)
+    (src dst : LayoutState k)
+    (W : ℕ)
+    (hxw : ∀ i : Fin k, ExtReg.width (dst.xslot i) ≤ W)
+    (hzw : ∀ i : Fin k, ExtReg.width (dst.zslot i) ≤ W) :
+    LowGate.gateCount shorGateCostModel
+        (lowerGateRec
+          (planCompileSignedAllocations
+            (k := k) (hk := hk) (pts := pts) (hpts := hpts)
+            (ops := ops) initSize src dst))
+      ≤
+    2 * k * W := by
+  rw [lgc_allocs]
+  unfold compileSignedAllocations
+  exact
+    bookkeepingGateCost_compileSignedAllocationsAux_le
+      (k := k) src dst W hxw hzw k le_rfl
+
+lemma lgc_deallocs_le
+    (initSize : ℕ)
+    (src dst : LayoutState k)
+    (W : ℕ)
+    (hxw : ∀ i : Fin k, ExtReg.width (dst.xslot i) ≤ W)
+    (hzw : ∀ i : Fin k, ExtReg.width (dst.zslot i) ≤ W) :
+    LowGate.gateCount shorGateCostModel
+        (lowerGateRec
+          (planCompileSignedDeallocations
+            (k := k) (hk := hk) (pts := pts) (hpts := hpts)
+            (ops := ops) initSize src dst))
+      ≤
+    2 * k * W := by
+  rw [lgc_deallocs]
+  unfold compileSignedDeallocations
+  exact
+    bookkeepingGateCost_compileSignedDeallocationsAux_le
+      (k := k) src dst W hxw hzw k le_rfl
+
 /-- Bounds the lowered cost of a compiled signed body by node overhead plus recursive leaf costs. -/
 lemma lgc_body_le
     (W : ℕ)
@@ -1255,18 +1749,222 @@ lemma lgc_body_le
             phaseProductCount, phaseArithmeticOpCost] using ih n
       | negate i =>
           have ht := ih n
-          simp [annotatePhaseTermsAux, planCompileAnnotatedOpsToSignedGateAux,
-            lowerGateRec, LowGate.gateCount, shorGateCostModel, phaseProductCostModel,
-            phaseProgramOverhead_cons, phaseProductCount, phaseArithmeticOpCost,
-            negateGateBound, hxw i, hzw i] at ht ⊢
-          linarith
-      | addScaled dst src negsrc sh =>
+
+          have hxNat :=
+            lgc_negate_le
+              (k := k) (hk := hk)
+              (pts := pts) (hpts := hpts)
+              (ops := ops)
+              W
+              (st.xslot i)
+
+          have hzNat :=
+            lgc_negate_le
+              (k := k) (hk := hk)
+              (pts := pts) (hpts := hpts)
+              (ops := ops)
+              W
+              (st.zslot i)
+
+          have hx :
+              (LowGate.gateCount shorGateCostModel
+                  (lowerGateRec
+                    (PhaseLoweringPlan.Negate
+                      (k := k) (hk := hk)
+                      (pts := pts) (hpts := hpts)
+                      (ops := ops)
+                      W
+                      (st.xslot i))) : ℝ)
+                ≤
+              ((W + rippleAdderGateBound W : ℕ) : ℝ) := by
+            exact_mod_cast
+              (show
+                LowGate.gateCount shorGateCostModel
+                    (lowerGateRec
+                      (PhaseLoweringPlan.Negate
+                        (k := k) (hk := hk)
+                        (pts := pts) (hpts := hpts)
+                        (ops := ops)
+                        W
+                        (st.xslot i)))
+                  ≤ W + rippleAdderGateBound W
+                from by
+                  simpa [negateGateBound, hxw i] using hxNat)
+
+          have hz :
+              (LowGate.gateCount shorGateCostModel
+                  (lowerGateRec
+                    (PhaseLoweringPlan.Negate
+                      (k := k) (hk := hk)
+                      (pts := pts) (hpts := hpts)
+                      (ops := ops)
+                      W
+                      (st.zslot i))) : ℝ)
+                ≤
+              ((W + rippleAdderGateBound W : ℕ) : ℝ) := by
+            exact_mod_cast
+              (show
+                LowGate.gateCount shorGateCostModel
+                    (lowerGateRec
+                      (PhaseLoweringPlan.Negate
+                        (k := k) (hk := hk)
+                        (pts := pts) (hpts := hpts)
+                        (ops := ops)
+                        W
+                        (st.zslot i)))
+                  ≤ W + rippleAdderGateBound W
+                from by
+                  simpa [negateGateBound, hzw i] using hzNat)
+
+          simp only [
+            annotatePhaseTermsAux,
+            planCompileAnnotatedOpsToSignedGateAux,
+            lgc_seq,
+            phaseProgramOverhead_cons,
+            phaseProductCount,
+            phaseArithmeticOpCost,
+            Nat.cast_add,
+            Nat.cast_mul
+          ]
+          simp_all
+          have htail := ih n
+          calc
+            (negateResources (st.xslot i)).totalGates
+                  + ((negateResources (st.zslot i)).totalGates
+                    + (COST
+                        planCompileAnnotatedOpsToSignedGateAux
+                          W φ coeff st recurse
+                          (annotatePhaseTermsAux k n rest) : ℝ))
+                ≤
+              (W + rippleAdderGateBound W : ℝ)
+                +
+              ((W + rippleAdderGateBound W : ℝ)
+                +
+              ((phaseProgramOverhead W rest : ℝ)
+                + (phaseProductCount rest : ℝ) * R)) := by
+                  exact add_le_add hx (add_le_add hz htail)
+
+            _ =
+              2 * ((W : ℝ) + (rippleAdderGateBound W : ℝ))
+                + (phaseProgramOverhead W rest : ℝ)
+                + (phaseProductCount rest : ℝ) * R := by
+                  ring
+      | addScaled dst src negSrc sh =>
           have ht := ih n
-          simp [annotatePhaseTermsAux, planCompileAnnotatedOpsToSignedGateAux,
-            lowerGateRec, LowGate.gateCount, shorGateCostModel, phaseProductCostModel,
-            phaseProgramOverhead_cons, phaseProductCount, phaseArithmeticOpCost,
-            hxw dst, hzw dst] at ht ⊢
-          linarith
+
+          have hxNat :=
+            lgc_addScaled_le
+              (k := k) (hk := hk)
+              (pts := pts) (hpts := hpts)
+              (ops := ops)
+              W
+              (st.xslot dst)
+              (st.xslot src)
+              negSrc sh
+
+          have hzNat :=
+            lgc_addScaled_le
+              (k := k) (hk := hk)
+              (pts := pts) (hpts := hpts)
+              (ops := ops)
+              W
+              (st.zslot dst)
+              (st.zslot src)
+              negSrc sh
+
+          have hx :
+              (LowGate.gateCount shorGateCostModel
+                  (lowerGateRec
+                    (PhaseLoweringPlan.AddScaled
+                      (k := k) (hk := hk)
+                      (pts := pts) (hpts := hpts)
+                      (ops := ops)
+                      W
+                      (st.xslot dst)
+                      (st.xslot src)
+                      negSrc sh)) : ℝ)
+                ≤
+              (rippleAdderGateBound W : ℝ) := by
+            exact_mod_cast
+              (show
+                LowGate.gateCount shorGateCostModel
+                    (lowerGateRec
+                      (PhaseLoweringPlan.AddScaled
+                        (k := k) (hk := hk)
+                        (pts := pts) (hpts := hpts)
+                        (ops := ops)
+                        W
+                        (st.xslot dst)
+                        (st.xslot src)
+                        negSrc sh))
+                  ≤ rippleAdderGateBound W
+                from by
+                  simpa [hxw dst] using hxNat)
+
+          have hz :
+              (LowGate.gateCount shorGateCostModel
+                  (lowerGateRec
+                    (PhaseLoweringPlan.AddScaled
+                      (k := k) (hk := hk)
+                      (pts := pts) (hpts := hpts)
+                      (ops := ops)
+                      W
+                      (st.zslot dst)
+                      (st.zslot src)
+                      negSrc sh)) : ℝ)
+                ≤
+              (rippleAdderGateBound W : ℝ) := by
+            exact_mod_cast
+              (show
+                LowGate.gateCount shorGateCostModel
+                    (lowerGateRec
+                      (PhaseLoweringPlan.AddScaled
+                        (k := k) (hk := hk)
+                        (pts := pts) (hpts := hpts)
+                        (ops := ops)
+                        W
+                        (st.zslot dst)
+                        (st.zslot src)
+                        negSrc sh))
+                  ≤ rippleAdderGateBound W
+                from by
+                  simpa [hzw dst] using hzNat)
+
+          simp only [
+            annotatePhaseTermsAux,
+            planCompileAnnotatedOpsToSignedGateAux,
+            lgc_seq,
+            phaseProgramOverhead_cons,
+            phaseProductCount,
+            phaseArithmeticOpCost,
+            Nat.cast_add,
+            Nat.cast_mul
+          ]
+          calc
+            (COST PhaseLoweringPlan.AddScaled
+                W (st.xslot dst) (st.xslot src) negSrc sh : ℝ)
+                +
+              ((COST PhaseLoweringPlan.AddScaled
+                  W (st.zslot dst) (st.zslot src) negSrc sh : ℝ)
+                +
+                (COST
+                  planCompileAnnotatedOpsToSignedGateAux
+                    W φ coeff st recurse
+                    (annotatePhaseTermsAux k n rest) : ℝ))
+              ≤
+              (rippleAdderGateBound W : ℝ)
+                +
+              ((rippleAdderGateBound W : ℝ)
+                +
+                ((phaseProgramOverhead W rest : ℝ)
+                  + (phaseProductCount rest : ℝ) * R)) := by
+              exact add_le_add hx (add_le_add hz ht)
+
+            _ =
+              (2 : ℝ) * (rippleAdderGateBound W : ℝ)
+                + (phaseProgramOverhead W rest : ℝ)
+                + (phaseProductCount rest : ℝ) * R := by
+              ring
       | phaseProduct i =>
               classical
 
@@ -1504,6 +2202,8 @@ lemma lowerSignedPhaseProd_one_level_cost_le
         (Basis := Basis)
         k hk ops φ x z hworkspace : ℝ)
       ≤
+    ((4 * k * nextSignedWidth x z ops : ℕ) : ℝ)
+      +
     (phaseProgramOverhead
         (nextSignedWidth x z ops) ops : ℝ)
       +
@@ -1660,26 +2360,76 @@ lemma lowerSignedPhaseProd_one_level_cost_le
         (hxw i)
         (hzw i)
 
-  unfold
-    signedPhaseProductGateCount
-    lowerSignedPhaseProdWithWorkspace
-    lowerSignedPhaseProd
+  have halloc :
+      LowGate.gateCount shorGateCostModel
+          (lowerGateRec
+            (planCompileSignedAllocations
+              (k := k)
+              (hk := hk)
+              (pts := genInterpolationPoints k)
+              (hpts := hpts)
+              (ops := ops)
+              (nextSignedWidth x z ops)
+              src dst))
+        ≤
+      2 * k * nextSignedWidth x z ops := by
+    apply lgc_allocs_le
+      (k := k)
+      (hk := hk)
+      (pts := genInterpolationPoints k)
+      (hpts := hpts)
+      (ops := ops)
+      (W := nextSignedWidth x z ops)
+    · intro i
+      exact le_of_eq (hxw i)
+    · intro i
+      exact le_of_eq (hzw i)
 
-  unfold standardSignedPhaseLoweringPlan
+  have hdealloc :
+      LowGate.gateCount shorGateCostModel
+          (lowerGateRec
+            (planCompileSignedDeallocations
+              (k := k)
+              (hk := hk)
+              (pts := genInterpolationPoints k)
+              (hpts := hpts)
+              (ops := ops)
+              (nextSignedWidth x z ops)
+              src dst))
+        ≤
+      2 * k * nextSignedWidth x z ops := by
+    apply lgc_deallocs_le
+      (k := k)
+      (hk := hk)
+      (pts := genInterpolationPoints k)
+      (hpts := hpts)
+      (ops := ops)
+      (W := nextSignedWidth x z ops)
+    · intro i
+      exact le_of_eq (hxw i)
+    · intro i
+      exact le_of_eq (hzw i)
 
-  simp only [hrec, ↓reduceDIte]
+  -- unfold
+  --   signedPhaseProductGateCount
+  --   lowerSignedPhaseProdWithWorkspace
+  --   lowerSignedPhaseProd
 
-  simp only [ PhaseLoweringPlan.lowerGateRec_signedStep ]
-  unfold planCompiledSignedPhaseGate
+  -- unfold standardSignedPhaseLoweringPlan
 
-  simp only [
-    id_eq,
-    lgc_seq,
-    lgc_allocs,
-    lgc_deallocs,
-    Nat.zero_add,
-    Nat.add_zero
-  ]
+  -- simp only [hrec, ↓reduceDIte]
+
+  -- simp only [ PhaseLoweringPlan.lowerGateRec_signedStep ]
+  -- unfold planCompiledSignedPhaseGate
+
+  -- simp only [
+  --   id_eq,
+  --   lgc_seq,
+  --   lgc_allocs,
+  --   lgc_deallocs,
+  --   Nat.zero_add,
+  --   Nat.add_zero
+  -- ]
 
   have hbody :=
     lgc_body_le
@@ -1703,13 +2453,124 @@ lemma lowerSignedPhaseProd_one_level_cost_le
       (n := 0)
       (l := ops)
 
-  simpa [
-    step,
-    src,
-    dst,
-    recurse,
-    lowerGateRec_transport_initSize_eq
-  ] using hbody
+  have hallocR :
+      ((LowGate.gateCount shorGateCostModel
+          (lowerGateRec
+            (planCompileSignedAllocations
+              (k := k)
+              (hk := hk)
+              (pts := genInterpolationPoints k)
+              (hpts := hpts)
+              (ops := ops)
+              (nextSignedWidth x z ops)
+              src dst)) : ℕ) : ℝ)
+        ≤
+      ((2 * k * nextSignedWidth x z ops : ℕ) : ℝ) := by
+    exact_mod_cast halloc
+
+  have hdeallocR :
+      ((LowGate.gateCount shorGateCostModel
+          (lowerGateRec
+            (planCompileSignedDeallocations
+              (k := k)
+              (hk := hk)
+              (pts := genInterpolationPoints k)
+              (hpts := hpts)
+              (ops := ops)
+              (nextSignedWidth x z ops)
+              src dst)) : ℕ) : ℝ)
+        ≤
+      ((2 * k * nextSignedWidth x z ops : ℕ) : ℝ) := by
+    exact_mod_cast hdealloc
+
+  have hbody' :
+      ((LowGate.gateCount shorGateCostModel
+          (lowerGateRec
+            (planCompileAnnotatedOpsToSignedGateAux
+              (k := k)
+              (hk := hk)
+              (pts := genInterpolationPoints k)
+              (hpts := hpts)
+              (ops := ops)
+              (nextSignedWidth x z ops)
+              φ
+              (loweringPhaseCoeff
+                k x z
+                (genInterpolationPoints k)
+                hpts)
+              dst
+              recurse
+              (annotatePhaseTermsAux k 0 ops)))) : ℝ)
+        ≤
+      (phaseProgramOverhead
+          (nextSignedWidth x z ops) ops : ℝ)
+        +
+      (phaseProductCount ops : ℝ) * R := by
+    simpa [
+      step,
+      src,
+      dst,
+      recurse,
+      lowerGateRec_transport_initSize_eq
+    ] using hbody
+
+  unfold
+    signedPhaseProductGateCount
+    lowerSignedPhaseProdWithWorkspace
+    lowerSignedPhaseProd
+
+  unfold standardSignedPhaseLoweringPlan
+
+  simp only [hrec, ↓reduceDIte]
+  simp only [PhaseLoweringPlan.lowerGateRec_signedStep]
+
+  unfold planCompiledSignedPhaseGate
+
+  simp only [
+    id_eq,
+    lgc_seq
+  ]
+
+  change
+    ((LowGate.gateCount shorGateCostModel
+        (lowerGateRec
+          (planCompileSignedAllocations
+            (nextSignedWidth x z ops) src dst))
+      +
+      (LowGate.gateCount shorGateCostModel
+          (lowerGateRec
+            (planCompileAnnotatedOpsToSignedGateAux
+              (nextSignedWidth x z ops)
+              φ
+              (loweringPhaseCoeff
+                k x z (genInterpolationPoints k) hpts)
+              dst
+              recurse
+              (annotatePhaseTermsAux k 0 ops)))
+        +
+        LowGate.gateCount shorGateCostModel
+          (lowerGateRec
+            (planCompileSignedDeallocations
+              (nextSignedWidth x z ops) src dst))) : ℕ) : ℝ)
+      ≤
+    ((4 * k * nextSignedWidth x z ops : ℕ) : ℝ)
+      +
+    (phaseProgramOverhead
+        (nextSignedWidth x z ops) ops : ℝ)
+      +
+    (phaseProductCount ops : ℝ) * R
+
+  push_cast
+
+  have hfour :
+      ((4 * k * nextSignedWidth x z ops : ℕ) : ℝ)
+        =
+      2 * ((2 * k * nextSignedWidth x z ops : ℕ) : ℝ) := by
+    push_cast
+    ring
+
+  push_cast at hallocR hdeallocR ⊢
+  nlinarith [hallocR, hbody', hdeallocR]
 
 /-- The per-operation overhead is monotone in the common working width. -/
 lemma phaseArithmeticOpCost_mono
@@ -1760,7 +2621,8 @@ lemma lowerSignedPhaseProd_one_level_cost_le_nat
       nextSignedWidth x z ops < phaseInputSize x z)
     (D : ℕ)
     (hchildren :
-      ∀ (ψ : ℝ) (a b : ExtReg) (hw : SignedRecursiveWorkspaceOK ops a b),
+      ∀ (ψ : ℝ) (a b : ExtReg)
+        (hw : SignedRecursiveWorkspaceOK ops a b),
         ExtReg.width a = nextSignedWidth x z ops →
         ExtReg.width b = nextSignedWidth x z ops →
         signedPhaseProductGateCount
@@ -1769,21 +2631,23 @@ lemma lowerSignedPhaseProd_one_level_cost_le_nat
     signedPhaseProductGateCount
         (Basis := Basis) k hk ops φ x z hworkspace
       ≤
+    4 * k * nextSignedWidth x z ops
+      +
     phaseProgramOverhead
         (nextSignedWidth x z ops) ops
       +
     phaseProductCount ops * D := by
 
   have hchildrenR :
-      ∀ (ψ : ℝ) (a b : ExtReg) (hw : SignedRecursiveWorkspaceOK ops a b),
+      ∀ (ψ : ℝ) (a b : ExtReg)
+        (hw : SignedRecursiveWorkspaceOK ops a b),
         ExtReg.width a = nextSignedWidth x z ops →
         ExtReg.width b = nextSignedWidth x z ops →
         (signedPhaseProductGateCount
             (Basis := Basis) k hk ops ψ a b hw : ℝ)
           ≤ (D : ℝ) := by
     intro ψ a b hw ha hb
-    have h := hchildren ψ a b hw ha hb
-    exact_mod_cast h
+    exact_mod_cast hchildren ψ a b hw ha hb
 
   have hreal :=
     lowerSignedPhaseProd_one_level_cost_le
@@ -1798,10 +2662,15 @@ lemma lowerSignedPhaseProd_one_level_cost_le_nat
       (signedPhaseProductGateCount
           (Basis := Basis) k hk ops φ x z hworkspace : ℝ)
         ≤
-      ((phaseProgramOverhead
+      ((4 * k * nextSignedWidth x z ops
+          +
+        phaseProgramOverhead
           (nextSignedWidth x z ops) ops
-          + phaseProductCount ops * D : ℕ) : ℝ) := by
-    simpa only [Nat.cast_add, Nat.cast_mul] using hreal
+          +
+        phaseProductCount ops * D : ℕ) : ℝ) := by
+    push_cast
+    push_cast at hreal
+    exact hreal
 
   exact_mod_cast hcast
 
@@ -1858,9 +2727,10 @@ lemma signedPhaseProductGateCount_bounded_on_bounded_inputs
       rcases ih with ⟨D, hD⟩
       refine
         ⟨max
-            (5 * N.succ * N.succ)
-            (phaseProgramOverhead N ops +
-              phaseProductCount ops * D),
+          (5 * N.succ * N.succ)
+          (4 * k * N
+            + phaseProgramOverhead N ops
+            + phaseProductCount ops * D),
           ?_⟩
       intro φ x z hworkspace hsize
       by_cases hrec :
@@ -1889,9 +2759,12 @@ lemma signedPhaseProductGateCount_bounded_on_bounded_inputs
             signedPhaseProductGateCount
                 (Basis := Basis) k hk ops φ x z hworkspace
               ≤
+            4 * k * nextSignedWidth x z ops
+              +
             phaseProgramOverhead
-                (nextSignedWidth x z ops) ops +
-              phaseProductCount ops * D :=
+                (nextSignedWidth x z ops) ops
+              +
+            phaseProductCount ops * D :=
           lowerSignedPhaseProd_one_level_cost_le_nat
             (Basis := Basis)
             k hk ops φ x z hworkspace hrec D hchildren
@@ -1901,16 +2774,22 @@ lemma signedPhaseProductGateCount_bounded_on_bounded_inputs
               ≤
             phaseProgramOverhead N ops :=
           phaseProgramOverhead_mono ops hW
+        have hbook :
+            4 * k * nextSignedWidth x z ops
+              ≤ 4 * k * N := by
+          exact Nat.mul_le_mul_left (4 * k) hW
+
         have hnode' :
             signedPhaseProductGateCount
                 (Basis := Basis) k hk ops φ x z hworkspace
               ≤
-            phaseProgramOverhead N ops +
-              phaseProductCount ops * D :=
-          hnode.trans
-            (Nat.add_le_add_right
-              hoverhead
-              (phaseProductCount ops * D))
+            4 * k * N
+              + phaseProgramOverhead N ops
+              + phaseProductCount ops * D := by
+          exact hnode.trans <|
+            Nat.add_le_add
+              (Nat.add_le_add hbook hoverhead)
+              le_rfl
         exact hnode'.trans (Nat.le_max_right _ _)
 
       · have hbase :
@@ -2080,7 +2959,6 @@ prepares the bridge from balanced signed instances to the public unsigned gate.
 
 section BalancedSignedSolution
 
-/-- Solves the balanced signed PhaseProduct recurrence using the master theorem. -/
 lemma balanced_phaseProduct_recurrence_solution
     {Basis : Type u}
     [RegEncoding Basis]
@@ -2088,7 +2966,7 @@ lemma balanced_phaseProduct_recurrence_solution
     (hk : 1 < k)
     (ops : Prog k)
     (hcount :
-      phaseProductCount ops = q k )
+      phaseProductCount ops = q k)
     (hwidth :
       ∃ c : ℕ, ∀ x z : ExtReg,
         ExtReg.width x = ExtReg.width z →
@@ -2115,15 +2993,10 @@ lemma balanced_phaseProduct_recurrence_solution
     fun i =>
       signedPhaseProductGateCount
         (Basis := Basis)
-        k hk ops i.φ i.x i.z i.hworkspace
+        k hk ops
+        i.φ i.x i.z
+        i.hworkspace
 
-  /-
-  The generated recursive width is at most
-
-      ceil(n / k) + c
-
-  on every balanced instance.
-  -/
   have hnext :
       ∀ i : BalancedPhaseProductInstance ops,
         next i ≤
@@ -2133,15 +3006,12 @@ lemma balanced_phaseProduct_recurrence_solution
     simpa [next, size] using
       hwidth i.x i.z i.hwidth
 
-  /-
-  All instances whose widths lie below a fixed cutoff have a uniform
-  gate-count bound.
-  -/
   have hbounded :
       ∀ N : ℕ,
-        ∃ D : ℕ, ∀ i : BalancedPhaseProductInstance ops,
-          size i ≤ N →
-          cost i ≤ D := by
+        ∃ D : ℕ,
+          ∀ i : BalancedPhaseProductInstance ops,
+            size i ≤ N →
+            cost i ≤ D := by
     intro N
 
     obtain ⟨D, hD⟩ :=
@@ -2152,7 +3022,11 @@ lemma balanced_phaseProduct_recurrence_solution
     refine ⟨D, ?_⟩
     intro i hi
 
-    apply hD i.φ i.x i.z i.hworkspace
+    apply hD
+      i.φ
+      i.x
+      i.z
+      i.hworkspace
 
     have hsize :
         phaseInputSize i.x i.z = size i := by
@@ -2161,14 +3035,6 @@ lemma balanced_phaseProduct_recurrence_solution
     rw [hsize]
     exact hi
 
-  /-
-  This is the compiler-specific one-level recurrence.
-
-  If all balanced instances of the recursive width have cost at most `D`,
-  then this instance has cost at most
-
-      A * next + B + q(k) * D.
-  -/
   have hstep :
       ∀ i : BalancedPhaseProductInstance ops,
         next i < size i →
@@ -2177,16 +3043,21 @@ lemma balanced_phaseProduct_recurrence_solution
             size j = next i →
             cost j ≤ D) →
           cost i ≤
-            A * next i + B + q k  * D := by
+            (A + 4 * k) * next i
+              + B
+              + q k * D := by
     intro i hrec D hchildrenBound
 
     have hrec' :
         nextSignedWidth i.x i.z ops
           < phaseInputSize i.x i.z := by
-      simpa [next, size, phaseInputSize, i.hwidth] using hrec
+      simpa [next, size, phaseInputSize, i.hwidth]
+        using hrec
 
     have hchildren :
-        ∀ (ψ : ℝ) (a b : ExtReg) (hw : SignedRecursiveWorkspaceOK ops a b),
+        ∀ (ψ : ℝ)
+          (a b : ExtReg)
+          (hw : SignedRecursiveWorkspaceOK ops a b),
           ExtReg.width a =
               nextSignedWidth i.x i.z ops →
           ExtReg.width b =
@@ -2210,13 +3081,19 @@ lemma balanced_phaseProduct_recurrence_solution
           size j = next i := by
         simp [j, size, next, ha]
 
-      exact hchildrenBound j hjsize
+      exact
+        hchildrenBound j hjsize
 
     have honeLevel :
         signedPhaseProductGateCount
             (Basis := Basis)
-            k hk ops i.φ i.x i.z i.hworkspace
+            k hk ops
+            i.φ i.x i.z
+            i.hworkspace
           ≤
+        4 * k *
+            nextSignedWidth i.x i.z ops
+          +
         phaseProgramOverhead
             (nextSignedWidth i.x i.z ops)
             ops
@@ -2239,31 +3116,46 @@ lemma balanced_phaseProduct_recurrence_solution
     calc
       cost i
           ≤
+        4 * k * next i
+          +
         phaseProgramOverhead (next i) ops
-          + phaseProductCount ops * D := by
-            simpa [cost, next] using honeLevel
+          +
+        phaseProductCount ops * D := by
+            simpa [cost, next]
+              using honeLevel
+
       _ ≤
+        4 * k * next i
+          +
         (A * next i + B)
-          + phaseProductCount ops * D :=
-        Nat.add_le_add_right
-          hoverhead'
-          (phaseProductCount ops * D)
+          +
+        phaseProductCount ops * D := by
+            exact
+              Nat.add_le_add
+                (Nat.add_le_add_left
+                  hoverhead'
+                  (4 * k * next i))
+                le_rfl
+
       _ =
-        A * next i + B + q k  * D := by
-          rw [hcount]
+        (A + 4 * k) * next i
+          + B
+          + q k * D := by
+            rw [hcount]
+            ring
 
   obtain ⟨C, hC, hmaster⟩ :=
     shifted_master_theorem_exact_family
       (ι := BalancedPhaseProductInstance ops)
       (k := k)
-      (q := q k )
+      (q := q k)
       (c := c)
-      (A := A)
+      (A := A + 4 * k)
       (B := B)
       (α := phaseProductExponent k)
       hk
       (one_lt_phaseProductExponent k hk)
-      (rpow_phaseProductExponent_eq_q k  hk)
+      (rpow_phaseProductExponent_eq_q k hk)
       size
       next
       cost
@@ -2323,14 +3215,19 @@ lemma lowerGate_PhaseProdUsing_gateCount_eq_signed
       GateWorkspaceOK ops
         (Gate.PhaseProdUsing φ x z ws)) :
     LowGate.gateCount shorGateCostModel
-      (lowerGate (Basis := Basis) k hk ops
-        (Gate.PhaseProdUsing φ x z ws) hworkspace)
+      (lowerGate
+        (Basis := Basis)
+        k hk ops
+        (Gate.PhaseProdUsing φ x z ws)
+        hworkspace)
       =
     signedPhaseProductGateCount
-      (Basis := Basis) k hk ops φ
+      (Basis := Basis)
+      k hk ops φ
       (ws.xExt.grow 1)
       (ws.zExt.grow 1)
-      (phaseProdUsing_signedWorkspace ops φ x z ws hworkspace) := by
+      (phaseProdUsing_signedWorkspace
+        ops φ x z ws hworkspace) := by
   simp [
     lowerGate,
     Gate.PhaseProdUsing,
@@ -2338,7 +3235,9 @@ lemma lowerGate_PhaseProdUsing_gateCount_eq_signed
     lowerSignedPhaseProdWithWorkspace,
     LowGate.gateCount,
     shorGateCostModel,
-    phaseProductCostModel
+    LowGateResourceModel.toCostModel,
+    shorGateResourceModel,
+    GateResources.totalGates
   ]
 
 /-- The unsigned bridge adds exactly one active high bit to the x operand. -/
@@ -2514,8 +3413,6 @@ lemma signedPhaseProductGateCount_eq_direct_of_not_recurse
   unfold directSignedPhaseProductGateCount
   ring
 
-/-- Bounds the public unsigned theorem's recursive branch by applying the
-balanced signed bound to the equal-width recursive children. -/
 lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
     {Basis : Type u}
     [RegEncoding Basis]
@@ -2523,13 +3420,14 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
     (hk : 1 < k)
     (ops : Prog k)
     (hcount :
-      phaseProductCount ops = q k )
+      phaseProductCount ops = q k)
     (hoverhead :
       ∃ A B : ℕ, ∀ W : ℕ,
         phaseProgramOverhead W ops ≤ A * W + B)
     (hgrowth :
       ∃ c : ℕ, ∀ x z : ExtReg,
-        nextSignedWidth x z ops ≤ phaseInputSize x z + c)
+        nextSignedWidth x z ops
+          ≤ phaseInputSize x z + c)
     (C : ℝ)
     (hC : 0 < C)
     (hbalanced :
@@ -2544,27 +3442,43 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
             (ws.xExt.grow 1)
             (ws.zExt.grow 1)),
         let n := max (regSize x) (regSize z)
-        nextSignedWidth (ws.xExt.grow 1) (ws.zExt.grow 1) ops
-          < phaseInputSize (ws.xExt.grow 1) (ws.zExt.grow 1) →
+        nextSignedWidth
+            (ws.xExt.grow 1)
+            (ws.zExt.grow 1)
+            ops
+          <
+        phaseInputSize
+            (ws.xExt.grow 1)
+            (ws.zExt.grow 1) →
         nᵣ ≤ n →
         (signedPhaseProductGateCount
-          (Basis := Basis) k hk ops φ
-          (ws.xExt.grow 1) (ws.zExt.grow 1) hworkspace : ℝ)
-          ≤ Cᵣ * Real.rpow n (phaseProductExponent k) := by
+          (Basis := Basis)
+          k hk ops φ
+          (ws.xExt.grow 1)
+          (ws.zExt.grow 1)
+          hworkspace : ℝ)
+          ≤
+        Cᵣ *
+          Real.rpow n
+            (phaseProductExponent k) := by
   rcases hoverhead with ⟨A, B, hAB⟩
   rcases hgrowth with ⟨c, hc⟩
 
   let s : ℕ := c + 1
 
   let K : ℝ :=
-    Real.rpow ((s + 1 : ℕ) : ℝ)
+    Real.rpow
+      ((s + 1 : ℕ) : ℝ)
       (phaseProductExponent k)
 
   let L : ℝ :=
-    (A : ℝ) * ((s + 1 : ℕ) : ℝ) + (B : ℝ)
+    ((A + 4 * k : ℕ) : ℝ) *
+        ((s + 1 : ℕ) : ℝ)
+      +
+    (B : ℝ)
 
   let Cᵣ : ℝ :=
-    1 + L + (q k  : ℝ) * C * K
+    1 + L + (q k : ℝ) * C * K
 
   have hKpos : 0 < K := by
     dsimp [K]
@@ -2576,10 +3490,11 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
 
   have hCᵣ : 0 < Cᵣ := by
     dsimp [Cᵣ]
-    have hq : 0 ≤ (q k  : ℝ) := by positivity
+
     have hterm :
-        0 ≤ (q k  : ℝ) * C * K := by
+        0 ≤ (q k : ℝ) * C * K := by
       positivity
+
     linarith
 
   refine ⟨Cᵣ, hCᵣ, 1, by omega, ?_⟩
@@ -2588,10 +3503,17 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
   dsimp only
   intro hrec hn
 
-  let ux : ExtReg := ws.xExt.grow 1
-  let uz : ExtReg := ws.zExt.grow 1
-  let n : ℕ := max (regSize x) (regSize z)
-  let W : ℕ := nextSignedWidth ux uz ops
+  let ux : ExtReg :=
+    ws.xExt.grow 1
+
+  let uz : ExtReg :=
+    ws.zExt.grow 1
+
+  let n : ℕ :=
+    max (regSize x) (regSize z)
+
+  let W : ℕ :=
+    nextSignedWidth ux uz ops
 
   have hn' : 1 ≤ n := by
     simpa [n] using hn
@@ -2614,13 +3536,19 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
   have hnPow :
       (n : ℝ)
         ≤
-      Real.rpow (n : ℝ) (phaseProductExponent k) :=
-    natCast_le_phaseProduct_rpow k hk hn'
+      Real.rpow
+        (n : ℝ)
+        (phaseProductExponent k) :=
+    natCast_le_phaseProduct_rpow
+      k hk hn'
 
   have hsafe :
       phaseProductSafeRate k W
         ≤
-      K * Real.rpow (n : ℝ) (phaseProductExponent k) := by
+      K *
+        Real.rpow
+          (n : ℝ)
+          (phaseProductExponent k) := by
     simpa [K] using
       phaseProductSafeRate_le_scaled_rpow
         k hk hn' hW
@@ -2630,9 +3558,12 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
     exact hW.trans (by
       have hs_mul :
           s ≤ s * n := by
-        simpa using Nat.mul_le_mul_left s hn'
+        simpa using
+          Nat.mul_le_mul_left s hn'
+
       calc
-        n + s ≤ n + s * n :=
+        n + s
+            ≤ n + s * n :=
           Nat.add_le_add_left hs_mul n
         _ = (s + 1) * n := by
           simp [Nat.add_mul, Nat.add_comm])
@@ -2640,19 +3571,36 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
   have hWscale :
       (W : ℝ)
         ≤
-      ((s + 1 : ℕ) : ℝ) * (n : ℝ) := by
+      ((s + 1 : ℕ) : ℝ) *
+        (n : ℝ) := by
     exact_mod_cast hWscaleNat
 
   have hoverheadR :
       (phaseProgramOverhead W ops : ℝ)
         ≤
-      (A : ℝ) * (W : ℝ) + (B : ℝ) := by
+      (A : ℝ) * (W : ℝ) +
+        (B : ℝ) := by
     exact_mod_cast hAB W
 
-  have hAW :
-      (A : ℝ) * (W : ℝ)
+  have hcombinedR :
+      ((4 * k * W : ℕ) : ℝ)
+          +
+        (phaseProgramOverhead W ops : ℝ)
         ≤
-      (A : ℝ) * (((s + 1 : ℕ) : ℝ) * (n : ℝ)) :=
+      ((A + 4 * k : ℕ) : ℝ) *
+          (W : ℝ)
+        +
+      (B : ℝ) := by
+    push_cast
+    nlinarith [hoverheadR]
+
+  have hCoeffW :
+      ((A + 4 * k : ℕ) : ℝ) *
+          (W : ℝ)
+        ≤
+      ((A + 4 * k : ℕ) : ℝ) *
+        (((s + 1 : ℕ) : ℝ) *
+          (n : ℝ)) :=
     mul_le_mul_of_nonneg_left
       hWscale
       (by positivity)
@@ -2662,54 +3610,84 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
     exact_mod_cast hn'
 
   have hB :
-      (B : ℝ) ≤ (B : ℝ) * (n : ℝ) := by
-    have :=
+      (B : ℝ)
+        ≤
+      (B : ℝ) * (n : ℝ) := by
+    have h :=
       mul_le_mul_of_nonneg_left
         hnR
         (show 0 ≤ (B : ℝ) by positivity)
-    simpa using this
+
+    simpa using h
 
   have hoverheadLinear :
-      (phaseProgramOverhead W ops : ℝ)
+      ((4 * k * W : ℕ) : ℝ)
+          +
+        (phaseProgramOverhead W ops : ℝ)
         ≤
       L * (n : ℝ) := by
     calc
-      (phaseProgramOverhead W ops : ℝ)
+      ((4 * k * W : ℕ) : ℝ)
+          +
+        (phaseProgramOverhead W ops : ℝ)
           ≤
-        (A : ℝ) * (W : ℝ) + (B : ℝ) :=
-        hoverheadR
+        ((A + 4 * k : ℕ) : ℝ) *
+            (W : ℝ)
+          +
+        (B : ℝ) :=
+        hcombinedR
+
       _ ≤
-        (A : ℝ) *
-            (((s + 1 : ℕ) : ℝ) * (n : ℝ)) +
-          (B : ℝ) :=
-        by nlinarith [hAW]
+        ((A + 4 * k : ℕ) : ℝ) *
+            (((s + 1 : ℕ) : ℝ) *
+              (n : ℝ))
+          +
+        (B : ℝ) := by
+          aesop
+
       _ ≤
-        (A : ℝ) *
-            (((s + 1 : ℕ) : ℝ) * (n : ℝ)) +
-          (B : ℝ) * (n : ℝ) :=
-        by nlinarith [hB]
+        ((A + 4 * k : ℕ) : ℝ) *
+            (((s + 1 : ℕ) : ℝ) *
+              (n : ℝ))
+          +
+        (B : ℝ) * (n : ℝ) := by
+          aesop
+
       _ = L * (n : ℝ) := by
-        dsimp [L]
-        ring
+          dsimp [L]
+          ring
 
   have hoverheadPow :
-      (phaseProgramOverhead W ops : ℝ)
+      ((4 * k * W : ℕ) : ℝ)
+          +
+        (phaseProgramOverhead W ops : ℝ)
         ≤
-      L * Real.rpow (n : ℝ) (phaseProductExponent k) :=
+      L *
+        Real.rpow
+          (n : ℝ)
+          (phaseProductExponent k) :=
     hoverheadLinear.trans
-      (mul_le_mul_of_nonneg_left hnPow hLnonneg)
+      (mul_le_mul_of_nonneg_left
+        hnPow
+        hLnonneg)
 
   have hchildren :
-      ∀ (ψ : ℝ) (a b : ExtReg)
+      ∀ (ψ : ℝ)
+        (a b : ExtReg)
         (hw : SignedRecursiveWorkspaceOK ops a b),
         ExtReg.width a = W →
         ExtReg.width b = W →
         (signedPhaseProductGateCount
-            (Basis := Basis) k hk ops ψ a b hw : ℝ)
+            (Basis := Basis)
+            k hk ops ψ a b hw : ℝ)
           ≤
         C * phaseProductSafeRate k W := by
     intro ψ a b hw ha hb
-    have hbnd := hbalanced ψ a b hw (ha.trans hb.symm)
+
+    have hbnd :=
+      hbalanced ψ a b hw
+        (ha.trans hb.symm)
+
     simpa [ha] using hbnd
 
   have hone :=
@@ -2723,64 +3701,115 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
 
   have hone' :
       (signedPhaseProductGateCount
-          (Basis := Basis) k hk ops φ ux uz hworkspace : ℝ)
+          (Basis := Basis)
+          k hk ops φ ux uz hworkspace : ℝ)
         ≤
-      (phaseProgramOverhead W ops : ℝ) +
-        (q k  : ℝ) * (C * phaseProductSafeRate k W) := by
+      ((4 * k * W : ℕ) : ℝ)
+        +
+      (phaseProgramOverhead W ops : ℝ)
+        +
+      (q k : ℝ) *
+        (C * phaseProductSafeRate k W) := by
     simpa [W, hcount] using hone
 
   have hqC :
-      0 ≤ (q k  : ℝ) * C := by
+      0 ≤ (q k : ℝ) * C := by
     positivity
 
   have hrecursiveTerm :
-      (q k  : ℝ) * (C * phaseProductSafeRate k W)
+      (q k : ℝ) *
+          (C * phaseProductSafeRate k W)
         ≤
-      ((q k  : ℝ) * C * K) *
-        Real.rpow (n : ℝ) (phaseProductExponent k) := by
+      ((q k : ℝ) * C * K) *
+        Real.rpow
+          (n : ℝ)
+          (phaseProductExponent k) := by
     calc
-      (q k  : ℝ) * (C * phaseProductSafeRate k W)
+      (q k : ℝ) *
+          (C * phaseProductSafeRate k W)
           =
-        ((q k  : ℝ) * C) * phaseProductSafeRate k W := by
-        ring
+        ((q k : ℝ) * C) *
+          phaseProductSafeRate k W := by
+            ring
+
       _ ≤
-        ((q k  : ℝ) * C) *
-          (K * Real.rpow (n : ℝ) (phaseProductExponent k)) :=
-        mul_le_mul_of_nonneg_left hsafe hqC
+        ((q k : ℝ) * C) *
+          (K *
+            Real.rpow
+              (n : ℝ)
+              (phaseProductExponent k)) :=
+        mul_le_mul_of_nonneg_left
+          hsafe
+          hqC
+
       _ =
-        ((q k  : ℝ) * C * K) *
-          Real.rpow (n : ℝ) (phaseProductExponent k) := by
-        ring
+        ((q k : ℝ) * C * K) *
+          Real.rpow
+            (n : ℝ)
+            (phaseProductExponent k) := by
+              ring
 
   have hpowNonneg :
-      0 ≤ Real.rpow (n : ℝ) (phaseProductExponent k) :=
-    Real.rpow_nonneg (by positivity) _
+      0 ≤
+        Real.rpow
+          (n : ℝ)
+          (phaseProductExponent k) :=
+    Real.rpow_nonneg
+      (by positivity) _
 
   change
     (signedPhaseProductGateCount
-      (Basis := Basis) k hk ops φ ux uz hworkspace : ℝ)
+      (Basis := Basis)
+      k hk ops φ ux uz hworkspace : ℝ)
       ≤
-    Cᵣ * Real.rpow (n : ℝ) (phaseProductExponent k)
+    Cᵣ *
+      Real.rpow
+        (n : ℝ)
+        (phaseProductExponent k)
 
   calc
     (signedPhaseProductGateCount
-        (Basis := Basis) k hk ops φ ux uz hworkspace : ℝ)
+        (Basis := Basis)
+        k hk ops φ ux uz hworkspace : ℝ)
         ≤
-      (phaseProgramOverhead W ops : ℝ) +
-        (q k  : ℝ) * (C * phaseProductSafeRate k W) :=
+      ((4 * k * W : ℕ) : ℝ)
+        +
+      (phaseProgramOverhead W ops : ℝ)
+        +
+      (q k : ℝ) *
+        (C * phaseProductSafeRate k W) :=
       hone'
+
     _ ≤
-      L * Real.rpow (n : ℝ) (phaseProductExponent k) +
-        ((q k  : ℝ) * C * K) *
-          Real.rpow (n : ℝ) (phaseProductExponent k) :=
-      add_le_add hoverheadPow hrecursiveTerm
+      L *
+          Real.rpow
+            (n : ℝ)
+            (phaseProductExponent k)
+        +
+      ((q k : ℝ) * C * K) *
+          Real.rpow
+            (n : ℝ)
+            (phaseProductExponent k) :=
+      add_le_add
+        hoverheadPow
+        hrecursiveTerm
+
     _ =
-      (L + (q k  : ℝ) * C * K) *
-        Real.rpow (n : ℝ) (phaseProductExponent k) := by
+      (L + (q k : ℝ) * C * K) *
+        Real.rpow
+          (n : ℝ)
+          (phaseProductExponent k) := by
       ring
+
     _ ≤
-      Cᵣ * Real.rpow (n : ℝ) (phaseProductExponent k) := by
-      apply mul_le_mul_of_nonneg_right _ hpowNonneg
+      Cᵣ *
+        Real.rpow
+          (n : ℝ)
+          (phaseProductExponent k) := by
+      apply
+        mul_le_mul_of_nonneg_right
+          _ hpowNonneg
+
       dsimp [Cᵣ]
       linarith
 
@@ -3287,7 +4316,6 @@ signed PhaseProduct lowering.  The main controlled asymptotic theorem is kept in
 
 namespace CPhaseProductReduction
 
-/-- The controlled compiled body costs at most five times the corresponding uncontrolled signed body. -/
 lemma lgc_cbody_le_five
     {k : ℕ}
     {hk : 1 < k}
@@ -3301,14 +4329,20 @@ lemma lgc_cbody_le_five
     (φ : ℝ)
     (recurseC :
       ∀ (i : Fin k) (theta : ℝ),
-        PhaseLoweringPlan k hk pts hpts ops W
+        PhaseLoweringPlan
+          k hk pts hpts ops W
           (Gate.CSignedPhaseProd
-            ctrl theta (st.xslot i) (st.zslot i)))
+            ctrl theta
+            (st.xslot i)
+            (st.zslot i)))
     (recurseS :
       ∀ (i : Fin k) (theta : ℝ),
-        PhaseLoweringPlan k hk pts hpts ops W
+        PhaseLoweringPlan
+          k hk pts hpts ops W
           (Gate.SignedPhaseProd
-            theta (st.xslot i) (st.zslot i)))
+            theta
+            (st.xslot i)
+            (st.zslot i)))
     (hchild :
       ∀ (i : Fin k) (theta : ℝ),
         LowGate.gateCount shorGateCostModel
@@ -3322,7 +4356,10 @@ lemma lgc_cbody_le_five
     LowGate.gateCount shorGateCostModel
         (lowerGateRec
           (planCompileAnnotatedOpsToCSignedGateAux
-            (k := k) (hk := hk) (pts := pts) (hpts := hpts)
+            (k := k)
+            (hk := hk)
+            (pts := pts)
+            (hpts := hpts)
             (ops := ops)
             W ctrl φ coeff st recurseC
             (annotatePhaseTermsAux k n l)))
@@ -3331,7 +4368,10 @@ lemma lgc_cbody_le_five
       LowGate.gateCount shorGateCostModel
         (lowerGateRec
           (planCompileAnnotatedOpsToSignedGateAux
-            (k := k) (hk := hk) (pts := pts) (hpts := hpts)
+            (k := k)
+            (hk := hk)
+            (pts := pts)
+            (hpts := hpts)
             (ops := ops)
             W φ coeff st recurseS
             (annotatePhaseTermsAux k n l))) := by
@@ -3344,32 +4384,35 @@ lemma lgc_cbody_le_five
         lowerGateRec,
         LowGate.gateCount
       ]
+
   | cons op rest ih =>
       cases op with
+
       | shiftL i m =>
           have ht := ih n
+
           simpa [
             annotatePhaseTermsAux,
             planCompileAnnotatedOpsToCSignedGateAux,
             planCompileAnnotatedOpsToSignedGateAux,
             lowerGateRec,
-            LowGate.gateCount,
-            shorGateCostModel,
-            phaseProductCostModel
+            LowGate.gateCount
           ] using ht
+
       | shiftR i m =>
           have ht := ih n
+
           simpa [
             annotatePhaseTermsAux,
             planCompileAnnotatedOpsToCSignedGateAux,
             planCompileAnnotatedOpsToSignedGateAux,
             lowerGateRec,
-            LowGate.gateCount,
-            shorGateCostModel,
-            phaseProductCostModel
+            LowGate.gateCount
           ] using ht
+
       | negate i =>
           have ht := ih n
+
           simp [
             annotatePhaseTermsAux,
             planCompileAnnotatedOpsToCSignedGateAux,
@@ -3377,9 +4420,12 @@ lemma lgc_cbody_le_five
             lowerGateRec,
             LowGate.gateCount
           ] at ht ⊢
+
           omega
+
       | addScaled dst src negSrc shift =>
           have ht := ih n
+
           simp [
             annotatePhaseTermsAux,
             planCompileAnnotatedOpsToCSignedGateAux,
@@ -3387,72 +4433,98 @@ lemma lgc_cbody_le_five
             lowerGateRec,
             LowGate.gateCount
           ] at ht ⊢
+
           omega
+
       | phaseProduct i =>
           classical
+
           by_cases hn : n < q k
+
           · have hc :=
               hchild i
-                (φ * (((coeff ⟨n, hn⟩ : ℚ) : ℝ)))
-            have ht := ih (n + 1)
+                (φ *
+                  (((coeff ⟨n, hn⟩ : ℚ) : ℝ)))
+
+            have ht :=
+              ih (n + 1)
+
             have hann :
                 annotatePhaseTermsAux
-                    k n (valid_ops.phaseProduct i :: rest)
+                    k n
+                    (valid_ops.phaseProduct i :: rest)
                   =
-                ⟨valid_ops.phaseProduct i, some ⟨n, hn⟩⟩
+                ⟨valid_ops.phaseProduct i,
+                  some ⟨n, hn⟩⟩
                   ::
-                annotatePhaseTermsAux k (n + 1) rest := by
+                annotatePhaseTermsAux
+                  k (n + 1) rest := by
               simp [annotatePhaseTermsAux, hn]
+
             rw [hann]
+
             change
               LowGate.gateCount shorGateCostModel
                     (lowerGateRec
                       (recurseC i
-                        (φ * (((coeff ⟨n, hn⟩ : ℚ) : ℝ))))
-                    )
+                        (φ *
+                          (((coeff ⟨n, hn⟩ : ℚ) : ℝ)))))
                 +
-                LowGate.gateCount shorGateCostModel
+              LowGate.gateCount shorGateCostModel
                     (lowerGateRec
                       (planCompileAnnotatedOpsToCSignedGateAux
                         W ctrl φ coeff st recurseC
-                        (annotatePhaseTermsAux k (n + 1) rest)))
+                        (annotatePhaseTermsAux
+                          k (n + 1) rest)))
               ≤
               5 *
                 (LowGate.gateCount shorGateCostModel
                       (lowerGateRec
                         (recurseS i
-                          (φ * (((coeff ⟨n, hn⟩ : ℚ) : ℝ))))
-                      )
+                          (φ *
+                            (((coeff ⟨n, hn⟩ : ℚ) : ℝ)))))
                   +
-                  LowGate.gateCount shorGateCostModel
+                LowGate.gateCount shorGateCostModel
                       (lowerGateRec
                         (planCompileAnnotatedOpsToSignedGateAux
                           W φ coeff st recurseS
-                          (annotatePhaseTermsAux k (n + 1) rest))))
+                          (annotatePhaseTermsAux
+                            k (n + 1) rest))))
+
             omega
-          · have ht := ih (n + 1)
+
+          · have ht :=
+              ih (n + 1)
+
             have hann :
                 annotatePhaseTermsAux
-                    k n (valid_ops.phaseProduct i :: rest)
+                    k n
+                    (valid_ops.phaseProduct i :: rest)
                   =
                 ⟨valid_ops.phaseProduct i, none⟩
                   ::
-                annotatePhaseTermsAux k (n + 1) rest := by
+                annotatePhaseTermsAux
+                  k (n + 1) rest := by
               simp [annotatePhaseTermsAux, hn]
+
             rw [hann]
+
             change
               LowGate.gateCount shorGateCostModel
                   (lowerGateRec
                     (planCompileAnnotatedOpsToCSignedGateAux
                       W ctrl φ coeff st recurseC
-                      (annotatePhaseTermsAux k (n + 1) rest)))
+                      (annotatePhaseTermsAux
+                        k (n + 1) rest)))
                 ≤
               5 *
                 LowGate.gateCount shorGateCostModel
                   (lowerGateRec
                     (planCompileAnnotatedOpsToSignedGateAux
                       W φ coeff st recurseS
-                      (annotatePhaseTermsAux k (n + 1) rest)))
+                      (annotatePhaseTermsAux
+                        k (n + 1) rest)))
+
             exact ht
 
 /-- Controlled signed PhaseProduct lowering costs at most five times signed PhaseProduct lowering. -/
@@ -3476,52 +4548,76 @@ lemma cSignedPhaseProductGateCount_le_five_signed
         (Basis := Basis)
         k hk ops φ x z
         hworkspace.toSignedRecursiveWorkspaceOK := by
+
   by_cases hrec :
       nextSignedWidth x z ops <
         phaseInputSize x z
+
   · let step : CanonicalSignedStep ops x z :=
       canonicalSignedStep
         hk ops x z hrec
         hworkspace.toSignedRecursiveWorkspaceOK
+
     let src : LayoutState k :=
       initSignedLayoutState step.layout
+
     let dst : LayoutState k :=
       targetSignedLayoutState
         src
         (scanNeededWidths x z ops)
+
     have hctrlLayout :
         step.layout.ControlDisjoint ctrl :=
       step.layout.controlDisjoint_of_ctrlDisjoint
         hworkspace.control_disjoint
+
     have hctrlDst :
-        (∀ i, ctrl ∉ (dst.xslot i).ownedQubits) ∧
-        (∀ i, ctrl ∉ (dst.zslot i).ownedQubits) := by
+        (∀ i,
+          ctrl ∉ (dst.xslot i).ownedQubits) ∧
+        (∀ i,
+          ctrl ∉ (dst.zslot i).ownedQubits) := by
       simpa [src, dst] using
         controlDisjoint_target
-          step.layout ctrl
+          step.layout
+          ctrl
           (scanNeededWidths x z ops)
           hctrlLayout
+
     let signedChildWorkspace :
         ∀ i : Fin k,
           SignedRecursiveWorkspaceOK
-            ops (dst.xslot i) (dst.zslot i) :=
+            ops
+            (dst.xslot i)
+            (dst.zslot i) :=
       fun i => by
-        simpa [src, dst] using step.childWorkspace i
+        simpa [src, dst] using
+          step.childWorkspace i
+
     let controlledChildWorkspace :
         ∀ i : Fin k,
           CSignedRecursiveWorkspaceOK
-            ops ctrl (dst.xslot i) (dst.zslot i) :=
+            ops ctrl
+            (dst.xslot i)
+            (dst.zslot i) :=
       fun i =>
         {
           toSignedRecursiveWorkspaceOK :=
             signedChildWorkspace i
+
           control_disjoint :=
-            ⟨hctrlDst.1 i, hctrlDst.2 i⟩
+            ⟨hctrlDst.1 i,
+              hctrlDst.2 i⟩
         }
+
     have childSize (i : Fin k) :
-        phaseInputSize (dst.xslot i) (dst.zslot i) =
-          nextSignedWidth x z ops := by
-      simpa [src, dst] using step.childInputSize i
+        phaseInputSize
+            (dst.xslot i)
+            (dst.zslot i)
+          =
+        nextSignedWidth x z ops := by
+      simpa [src, dst] using
+        step.childInputSize i
+
     let recurseC :
         ∀ (i : Fin k) (theta : ℝ),
           PhaseLoweringPlan
@@ -3531,14 +4627,20 @@ lemma cSignedPhaseProductGateCount_le_five_signed
             ops
             (nextSignedWidth x z ops)
             (Gate.CSignedPhaseProd
-              ctrl theta (dst.xslot i) (dst.zslot i)) :=
+              ctrl theta
+              (dst.xslot i)
+              (dst.zslot i)) :=
       fun i theta => by
         have hsize := childSize i
+
         simpa [hsize] using
           standardCSignedPhaseLoweringPlan
             k hk ctrl theta
-            (dst.xslot i) (dst.zslot i)
-            ops (controlledChildWorkspace i)
+            (dst.xslot i)
+            (dst.zslot i)
+            ops
+            (controlledChildWorkspace i)
+
     let recurseS :
         ∀ (i : Fin k) (theta : ℝ),
           PhaseLoweringPlan
@@ -3548,64 +4650,90 @@ lemma cSignedPhaseProductGateCount_le_five_signed
             ops
             (nextSignedWidth x z ops)
             (Gate.SignedPhaseProd
-              theta (dst.xslot i) (dst.zslot i)) :=
+              theta
+              (dst.xslot i)
+              (dst.zslot i)) :=
       fun i theta => by
         have hsize := childSize i
+
         simpa [hsize] using
           standardSignedPhaseLoweringPlan
             k hk theta
-            (dst.xslot i) (dst.zslot i)
-            ops (signedChildWorkspace i)
+            (dst.xslot i)
+            (dst.zslot i)
+            ops
+            (signedChildWorkspace i)
+
     have hchild :
         ∀ (i : Fin k) (theta : ℝ),
           LowGate.gateCount shorGateCostModel
-              (lowerGateRec (recurseC i theta))
+              (lowerGateRec
+                (recurseC i theta))
             ≤
           5 *
             LowGate.gateCount shorGateCostModel
-              (lowerGateRec (recurseS i theta)) := by
+              (lowerGateRec
+                (recurseS i theta)) := by
       intro i theta
+
       have htransportC :
-          lowerGateRec (recurseC i theta) =
-            lowerGateRec
-              (standardCSignedPhaseLoweringPlan
-                k hk ctrl theta
-                (dst.xslot i) (dst.zslot i)
-                ops (controlledChildWorkspace i)) := by
+          lowerGateRec (recurseC i theta)
+            =
+          lowerGateRec
+            (standardCSignedPhaseLoweringPlan
+              k hk ctrl theta
+              (dst.xslot i)
+              (dst.zslot i)
+              ops
+              (controlledChildWorkspace i)) := by
         dsimp [recurseC]
+
         exact
           lowerGateRec_cast_initSize_of_eq
             (k := k)
             (hk := hk)
             (pts := genInterpolationPoints k)
-            (hpts := generatedInterpolationPoints_length k)
+            (hpts :=
+              generatedInterpolationPoints_length k)
             (ops := ops)
             (childSize i)
             (standardCSignedPhaseLoweringPlan
               k hk ctrl theta
-              (dst.xslot i) (dst.zslot i)
-              ops (controlledChildWorkspace i))
+              (dst.xslot i)
+              (dst.zslot i)
+              ops
+              (controlledChildWorkspace i))
+
       have htransportS :
-          lowerGateRec (recurseS i theta) =
-            lowerGateRec
-              (standardSignedPhaseLoweringPlan
-                k hk theta
-                (dst.xslot i) (dst.zslot i)
-                ops (signedChildWorkspace i)) := by
+          lowerGateRec (recurseS i theta)
+            =
+          lowerGateRec
+            (standardSignedPhaseLoweringPlan
+              k hk theta
+              (dst.xslot i)
+              (dst.zslot i)
+              ops
+              (signedChildWorkspace i)) := by
         dsimp [recurseS]
+
         exact
           lowerGateRec_cast_initSize_of_eq
             (k := k)
             (hk := hk)
             (pts := genInterpolationPoints k)
-            (hpts := generatedInterpolationPoints_length k)
+            (hpts :=
+              generatedInterpolationPoints_length k)
             (ops := ops)
             (childSize i)
             (standardSignedPhaseLoweringPlan
               k hk theta
-              (dst.xslot i) (dst.zslot i)
-              ops (signedChildWorkspace i))
+              (dst.xslot i)
+              (dst.zslot i)
+              ops
+              (signedChildWorkspace i))
+
       rw [htransportC, htransportS]
+
       simpa [
         cSignedPhaseProductGateCount,
         signedPhaseProductGateCount,
@@ -3617,43 +4745,69 @@ lemma cSignedPhaseProductGateCount_le_five_signed
         cSignedPhaseProductGateCount_le_five_signed
           (Basis := Basis)
           k hk ops ctrl theta
-          (dst.xslot i) (dst.zslot i)
+          (dst.xslot i)
+          (dst.zslot i)
           (controlledChildWorkspace i)
+
     have hpts :
-        (genInterpolationPoints k).length = q k :=
+        (genInterpolationPoints k).length =
+          q k :=
       generatedInterpolationPoints_length k
-    unfold cSignedPhaseProductGateCount signedPhaseProductGateCount
+
+    unfold
+      cSignedPhaseProductGateCount
+      signedPhaseProductGateCount
       lowerCSignedPhaseProdWithWorkspace
       lowerSignedPhaseProdWithWorkspace
       lowerCSignedPhaseProd
       lowerSignedPhaseProd
+
     unfold
       standardCSignedPhaseLoweringPlan
       standardSignedPhaseLoweringPlan
-    simp only [hrec, ↓reduceDIte]
+
+    simp only [
+      hrec,
+      ↓reduceDIte
+    ]
+
     simp only [
       PhaseLoweringPlan.lowerGateRec_cSignedStep,
       PhaseLoweringPlan.lowerGateRec_signedStep
     ]
+
     change
       LowGate.gateCount shorGateCostModel
           (lowerGateRec
             (planCompiledCSignedPhaseGate
-              hk (genInterpolationPoints k) hpts
-              ops ctrl φ x z step.layout
-              (by simpa [src, dst] using recurseC)))
+              hk
+              (genInterpolationPoints k)
+              hpts
+              ops ctrl φ x z
+              step.layout
+              (by
+                simpa [src, dst] using
+                  recurseC)))
         ≤
       5 *
         LowGate.gateCount shorGateCostModel
           (lowerGateRec
             (planCompiledSignedPhaseGate
-              hk (genInterpolationPoints k) hpts
-              ops φ x z step.layout
-              (by simpa [src, dst] using recurseS)))
+              hk
+              (genInterpolationPoints k)
+              hpts
+              ops φ x z
+              step.layout
+              (by
+                simpa [src, dst] using
+                  recurseS)))
+
     unfold
       planCompiledCSignedPhaseGate
       planCompiledSignedPhaseGate
+
     dsimp only
+
     rw [
       lowerGateRec_mpr_gate_of_eq
         (k := k)
@@ -3671,15 +4825,13 @@ lemma cSignedPhaseProductGateCount_le_five_signed
             controlPhaseLeaves_compileSignedDeallocations
           ])
     ]
+
     simp only [
       id_eq,
-      lgc_seq,
-      lgc_allocs,
-      lgc_deallocs,
-      Nat.zero_add,
-      Nat.add_zero
+      lgc_seq
     ]
-    exact
+
+    have hbody :=
       lgc_cbody_le_five
         (nextSignedWidth x z ops)
         ctrl
@@ -3694,6 +4846,49 @@ lemma cSignedPhaseProductGateCount_le_five_signed
         hchild
         0
         ops
+
+    change
+      LowGate.gateCount shorGateCostModel
+          (lowerGateRec
+            (planCompileSignedAllocations
+              (nextSignedWidth x z ops) src dst))
+        +
+      (LowGate.gateCount shorGateCostModel
+          (lowerGateRec
+            (planCompileAnnotatedOpsToCSignedGateAux
+              (nextSignedWidth x z ops) ctrl φ
+              (loweringPhaseCoeff
+                k x z (genInterpolationPoints k) hpts)
+              dst recurseC
+              (annotatePhaseTermsAux k 0 ops)))
+        +
+        LowGate.gateCount shorGateCostModel
+          (lowerGateRec
+            (planCompileSignedDeallocations
+              (nextSignedWidth x z ops) src dst)))
+        ≤
+      5 *
+        (LowGate.gateCount shorGateCostModel
+            (lowerGateRec
+              (planCompileSignedAllocations
+                (nextSignedWidth x z ops) src dst))
+          +
+          (LowGate.gateCount shorGateCostModel
+              (lowerGateRec
+                (planCompileAnnotatedOpsToSignedGateAux
+                  (nextSignedWidth x z ops) φ
+                  (loweringPhaseCoeff
+                    k x z (genInterpolationPoints k) hpts)
+                  dst recurseS
+                  (annotatePhaseTermsAux k 0 ops)))
+            +
+            LowGate.gateCount shorGateCostModel
+              (lowerGateRec
+                (planCompileSignedDeallocations
+                  (nextSignedWidth x z ops) src dst))))
+
+    omega
+
   · unfold
       cSignedPhaseProductGateCount
       signedPhaseProductGateCount
@@ -3701,36 +4896,51 @@ lemma cSignedPhaseProductGateCount_le_five_signed
       lowerSignedPhaseProdWithWorkspace
       lowerCSignedPhaseProd
       lowerSignedPhaseProd
+
     unfold
       standardCSignedPhaseLoweringPlan
       standardSignedPhaseLoweringPlan
+
     simp only [
       hrec,
       ↓reduceDIte,
       lowerGateRec
     ]
+
     rw [
       LowGate.gateCount_Naive_CSignedPhaseProd
-        shorGateCostModel ctrl φ x z
+        shorGateCostModel
+        ctrl φ x z
         hworkspace.toSignedRecursiveWorkspaceOK.owned_disjoint
         hworkspace.control_disjoint.1
         hworkspace.control_disjoint.2,
+
       LowerGateClass.gateCount_Naive_SignedPhaseProd
-        shorGateCostModel φ x z
+        shorGateCostModel
+        φ x z
         hworkspace.toSignedRecursiveWorkspaceOK.owned_disjoint
     ]
+
     unfold
       directCSignedPhaseProductGateCount
       directSignedPhaseProductGateCount
+
     nlinarith
-termination_by phaseInputSize x z
+termination_by
+  phaseInputSize x z
+
 decreasing_by
   calc
-    phaseInputSize (dst.xslot i) (dst.zslot i)
+    phaseInputSize
+        (dst.xslot i)
+        (dst.zslot i)
         =
       nextSignedWidth x z ops := by
-        simpa [src, dst] using step.childInputSize i
-    _ < phaseInputSize x z := hrec
+        simpa [src, dst] using
+          step.childInputSize i
+
+    _ < phaseInputSize x z :=
+      hrec
 
 /-- The controlled namespace reuses the unsigned workspace extraction for its public bridge theorem. -/
 lemma phaseProdUsing_signedWorkspace
@@ -3774,12 +4984,14 @@ lemma lowerGate_CPhaseProdUsing_gateCount_eq_cSigned
     (ws : Gate.PhaseProdWorkspace x z)
     (hworkspace :
       GateWorkspaceOK ops
-        (Gate.CPhaseProdUsing ctrl φ x z ws)) :
+        (Gate.CPhaseProdUsing
+          ctrl φ x z ws)) :
     LowGate.gateCount shorGateCostModel
         (lowerGate
           (Basis := Basis)
           k hk ops
-          (Gate.CPhaseProdUsing ctrl φ x z ws)
+          (Gate.CPhaseProdUsing
+            ctrl φ x z ws)
           hworkspace)
       =
     cSignedPhaseProductGateCount
@@ -3796,9 +5008,10 @@ lemma lowerGate_CPhaseProdUsing_gateCount_eq_cSigned
     lowerCSignedPhaseProdWithWorkspace,
     LowGate.gateCount,
     shorGateCostModel,
-    phaseProductCostModel
+    LowGateResourceModel.toCostModel,
+    shorGateResourceModel,
+    GateResources.totalGates
   ]
-
 
 end CPhaseProductReduction
 

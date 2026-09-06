@@ -90,24 +90,24 @@ def directCSignedPhaseProductGateCount (x z : ExtReg) : ℕ := 9 * ExtReg.width 
 /-- Cost assigned to the final radix-reversal swaps for a register split. -/
 def radixReverseGateCount (_r : Reg) (m : ℕ) : ℕ := 3 * (m / 2)
 
-/-- Build a PhaseProduct-oriented cost model from a primitive-cost table.  Shifts
-and allocation bookkeeping default to zero cost, arithmetic operations are
-linear, and direct signed PhaseProduct gates are quadratic base cases. -/
-def phaseProductCostModel
-    (shiftLCost : ExtReg → ℕ → ℕ := fun _ _ => 0)
-    (shiftRCost : ExtReg → ℕ → ℕ := fun _ _ => 0) : LowGateCostModel where
-  shiftL := shiftLCost
-  shiftR := shiftRCost
-  negate := negateGateBound
-  addScaled := fun dst _src _negSrc _shift => rippleAdderGateBound (ExtReg.width dst)
-  zeroExtend := fun _r _n => 0
-  signExtend := fun _r _n => 0
-  zeroDealloc := fun _r _n => 0
-  signDealloc := fun _r _n => 0
-  radixReverse := radixReverseGateCount
+-- /-- Build a PhaseProduct-oriented cost model from a primitive-cost table.  Shifts
+-- and allocation bookkeeping default to zero cost, arithmetic operations are
+-- linear, and direct signed PhaseProduct gates are quadratic base cases. -/
+-- def phaseProductCostModel
+--     (shiftLCost : ExtReg → ℕ → ℕ := fun _ _ => 0)
+--     (shiftRCost : ExtReg → ℕ → ℕ := fun _ _ => 0) : LowGateCostModel where
+--   shiftL := shiftLCost
+--   shiftR := shiftRCost
+--   negate := negateGateBound
+--   addScaled := fun dst _src _negSrc _shift => rippleAdderGateBound (ExtReg.width dst)
+--   zeroExtend := fun _r _n => 0
+--   signExtend := fun _r _n => 0
+--   zeroDealloc := fun _r _n => 0
+--   signDealloc := fun _r _n => 0
+--   radixReverse := radixReverseGateCount
 
-/-- Concrete gate-cost model used by all Shor gate-count developments. -/
-def shorGateCostModel : LowGateCostModel := phaseProductCostModel
+-- /-- Concrete gate-cost model used by all Shor gate-count developments. -/
+-- def shorGateCostModel : LowGateCostModel := phaseProductCostModel
 
 end ConcreteCostModel
 
@@ -272,121 +272,6 @@ def cuccaroModAddResources (w : ℕ) : GateResources where
   rz := 0
   cleanAnc := 1
 
-
-/-! ---------------------------------------------------------
-    Ordinary comparator
-
-Sources:
-
-Cuccaro et al.:
-  https://arxiv.org/abs/quant-ph/0410184
-
-Table 1 gives for the high-bit/comparator construction:
-  Toffoli = 2n - 1
-  CNOT    = 4n - 3
-
-Cuccaro explicitly notes that negations are omitted from the table's
-size metric.
-
-Remaud gives the comparator circuit with an X layer on every bit of
-one operand before the comparison and the inverse X layer afterwards:
-  Maxime Remaud,
-  "Optimizing T and CNOT Gates in Quantum Ripple-Carry
-   Adders and Comparators"
-  https://arxiv.org/abs/2401.17921
-
-Thus we count:
-  X       = 2n
-  CNOT    = 4n - 3
-  Toffoli = 2n - 1
---------------------------------------------------------- -/
-
-/-- Cuccaro ripple-carry comparison of two `w`-bit quantum integers. -/
-def comparatorResources (w : ℕ) : GateResources :=
-  if 3 ≤ w then
-    {
-      h := 0
-      x := 2 * w
-      cnot := 4 * w - 3
-      toffoli := 2 * w - 1
-      rz := 0
-      cleanAnc := 1
-    }
-  else
-    {
-      h := 0
-      x := 2 * w
-      cnot := 4 * w
-      toffoli := 2 * w
-      rz := 0
-      cleanAnc := 1
-    }
-
-
-/-! ---------------------------------------------------------
-    Comparison against a classical constant
-
-Concrete construction used here:
-
-  1. Allocate a clean `w`-qubit register.
-  2. Write the classical constant into it with X gates.
-  3. Run `comparatorResources`.
-  4. Erase the classical constant.
-
-At most `w` X gates are needed to write the constant, and at most
-`w` to erase it.
-
-The comparator itself is the Cuccaro construction:
-  https://arxiv.org/abs/quant-ph/0410184
-
-A lower-ancilla alternative is given by Khattar--Gidney, who obtain
-a linear 3n-Toffoli quantum/classical comparator:
-  https://arxiv.org/abs/2407.17966
-
-We use the Cuccaro-derived version because it gives explicit counts in
-our X/CNOT/Toffoli basis instead of only a Toffoli metric.
---------------------------------------------------------- -/
-
-def cmpGeConstResources (w : ℕ) : GateResources :=
-  let c := comparatorResources w
-  {
-    h := c.h
-    x := c.x + 2 * w
-    cnot := c.cnot
-    toffoli := c.toffoli
-    rz := c.rz
-    cleanAnc := w + c.cleanAnc
-  }
-
-
-/-! ---------------------------------------------------------
-    Controlled subtraction of a classical constant
-
-Concrete construction:
-
-  1. Allocate a clean `w`-bit temporary register.
-  2. Controlled on `flag`, write the classical constant N into it.
-     This needs at most `w` CNOTs.
-  3. Run the inverse Cuccaro modulo adder.
-  4. Erase the temporary constant using at most `w` CNOTs.
-
-The inverse of a reversible adder has exactly the same resource count.
-
-Adder source:
-  https://arxiv.org/abs/quant-ph/0410184
---------------------------------------------------------- -/
-
-def csubConstResources (w : ℕ) : GateResources :=
-  let a := cuccaroModAddResources w
-  {
-    h := a.h
-    x := a.x
-    cnot := a.cnot + 2 * w
-    toffoli := a.toffoli
-    rz := a.rz
-    cleanAnc := w + a.cleanAnc
-  }
-
 /-! ---------------------------------------------------------
     Negation
 
@@ -452,74 +337,6 @@ def addScaledResources
     GateResources :=
   cuccaroModAddResources (ExtReg.width dst)
 
-
-/-! ---------------------------------------------------------
-    Direct signed PhaseProduct
-
-Kahanamoku-Meyer--Yao use the schoolbook base case with one singly
-controlled phase rotation for each input-bit pair:
-  https://arxiv.org/abs/2403.18006
-
-Therefore, for operand widths a,b there are a*b controlled phases.
-
-A controlled one-qubit unitary can be decomposed using two CNOTs and
-single-qubit gates; see Barenco et al.:
-  https://arxiv.org/abs/quant-ph/9503016
-
-Specializing to a diagonal controlled phase gives, up to global phase:
-
-    CP(θ) =
-      Rz(...) -- CNOT -- Rz(...) -- CNOT -- Rz(...)
-
-so we count each bit pair as:
-    2 CNOT + 3 Rz.
-
-Signed two's-complement coefficients only change rotation angles,
-not the number of gates.
---------------------------------------------------------- -/
-
-def directSignedPhaseProductResources
-    (x z : ExtReg) : GateResources :=
-  let pairs := ExtReg.width x * ExtReg.width z
-  {
-    cnot := 2 * pairs
-    rz := 3 * pairs
-  }
-
-
-/-! ---------------------------------------------------------
-    Direct controlled signed PhaseProduct
-
-For each bit pair we need a phase conditioned on
-
-    ctrl ∧ xᵢ ∧ zⱼ.
-
-Use one reusable clean ancilla:
-
-    Toffoli(xᵢ,zⱼ -> anc)
-    ControlledPhase(ctrl,anc,θ)
-    Toffoli(xᵢ,zⱼ -> anc)
-
-The middle controlled phase is decomposed as above into
-2 CNOT + 3 Rz.
-
-Thus every bit pair contributes:
-    2 Toffoli + 2 CNOT + 3 Rz.
-
---------------------------------------------------------- -/
-
-def directCSignedPhaseProductResources
-    (x z : ExtReg) : GateResources :=
-  let pairs := ExtReg.width x * ExtReg.width z
-  {
-    h := 0
-    x := 0
-    cnot := 2 * pairs
-    toffoli := 2 * pairs
-    rz := 5 * pairs
-    cleanAnc := 0
-  }
-
 /-! ---------------------------------------------------------
     Radix reversal
 
@@ -565,6 +382,11 @@ def shorGateResourceModel : LowGateResourceModel where
   }
 
   radixReverse := radixReverseResources
+
+/-- Concrete scalar gate-count model obtained by forgetting the
+    resource decomposition of `shorGateResourceModel`. -/
+def shorGateCostModel : LowGateCostModel :=
+  shorGateResourceModel.toCostModel
 
 end ConcreteResourceModel
 

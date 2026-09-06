@@ -14,6 +14,10 @@ universe u
 
 namespace Shor
 
+/-- `q` is not a qubit of register `r`. -/
+def QubitOutside (q : ℕ) (r : Reg) : Prop :=
+  q ∉ r.qubits
+
 theorem Disjoint.symm {a b : Reg} :
     Disjoint a b → Disjoint b a := by
   intro h

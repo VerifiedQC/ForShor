@@ -314,13 +314,40 @@ lemma gateCount_lowerCopyBitPowers_of_valid
 
 @[simp] lemma gateCount_shor_negate (r : ExtReg) :
     LowGate.gateCount shorGateCostModel (LowGate.Negate r) =
-      negateGateBound r := rfl
+      (negateResources r).totalGates := by
+  rfl
+
+lemma gateCount_shor_negate_le (r : ExtReg) :
+    LowGate.gateCount shorGateCostModel (LowGate.Negate r) ≤
+      negateGateBound r := by
+  change
+    (negateResources r).totalGates ≤
+      negateGateBound r
+  exact negateResources_totalGates_le_negateGateBound r
+
 
 @[simp] lemma gateCount_shor_addScaled
-    (dst src : ExtReg) (negSrc : Bool) (shift : ℕ) :
+    (dst src : ExtReg)
+    (negSrc : Bool)
+    (shift : ℕ) :
     LowGate.gateCount shorGateCostModel
         (LowGate.AddScaled dst src negSrc shift) =
-      rippleAdderGateBound dst.width := rfl
+      (addScaledResources dst src negSrc shift).totalGates := by
+  rfl
+
+lemma gateCount_shor_addScaled_le
+    (dst src : ExtReg)
+    (negSrc : Bool)
+    (shift : ℕ) :
+    LowGate.gateCount shorGateCostModel
+        (LowGate.AddScaled dst src negSrc shift) ≤
+      rippleAdderGateBound dst.width := by
+  change
+    (addScaledResources dst src negSrc shift).totalGates ≤
+      rippleAdderGateBound dst.width
+  simpa [addScaledResources] using
+    cuccaroModAddResources_totalGates_le_rippleAdderGateBound
+      dst.width
 
 @[simp] lemma gateCount_shor_zeroExtend (r : ExtReg) (n : ℕ) :
     LowGate.gateCount shorGateCostModel (LowGate.zeroExtend r n) = 0 := rfl
@@ -355,41 +382,103 @@ one linear-cost negation. -/
 lemma step3_gateCount_le
     {Basis : Type u}
     [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k)
-    (N : ℕ) (dataCarry scratch : ExtReg) (flag : ℕ)
-    (hworkspace : GateWorkspaceOK ops (step3 N dataCarry scratch flag)) :
-    loweredGateCount (Basis := Basis) k hk ops
-        (step3 N dataCarry scratch flag) hworkspace
-      ≤ 100 * (scratch.width + 1) := by
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k)
+    (N : ℕ)
+    (dataCarry scratch : ExtReg)
+    (flag : ℕ)
+    (hworkspace :
+      GateWorkspaceOK ops
+        (step3 N dataCarry scratch flag)) :
+    loweredGateCount
+        (Basis := Basis)
+        k hk ops
+        (step3 N dataCarry scratch flag)
+        hworkspace
+      ≤
+    100 * (scratch.width + 1) := by
+
   have hbits0 :=
     bitIndices_length_le_of_lt_two_pow
       hworkspace.1.constant_fits
-  have hbits : N.bitIndices.length ≤ scratch.width := by
+
+  have hbits :
+      N.bitIndices.length ≤ scratch.width := by
     omega
-  have hdata : dataCarry.width ≤ scratch.width := by
-    exact hworkspace.1.data_width_fits.trans (Nat.sub_le _ _)
-  have hvalid : ∀ i ∈ N.bitIndices, i < scratch.width := by
+
+  have hdata :
+      dataCarry.width ≤ scratch.width := by
+    exact
+      hworkspace.1.data_width_fits.trans
+        (Nat.sub_le _ _)
+
+  have hvalid :
+      ∀ i ∈ N.bitIndices,
+        i < scratch.width := by
     intro i hi
-    have hpow : 2 ^ i ≤ N := Nat.two_pow_le_of_mem_bitIndices hi
+
+    have hpow :
+        2 ^ i ≤ N :=
+      Nat.two_pow_le_of_mem_bitIndices hi
+
     by_contra hnot
-    have hwidth : scratch.width ≤ i := Nat.le_of_not_gt hnot
-    have hmono : 2 ^ scratch.width ≤ 2 ^ i :=
-      Nat.pow_le_pow_right (by omega) hwidth
-    have hNFull : N < 2 ^ scratch.width := by
-      exact hworkspace.1.constant_fits.trans_le
-        (Nat.pow_le_pow_right (by omega) (Nat.sub_le _ _))
+
+    have hwidth :
+        scratch.width ≤ i :=
+      Nat.le_of_not_gt hnot
+
+    have hmono :
+        2 ^ scratch.width ≤ 2 ^ i :=
+      Nat.pow_le_pow_right
+        (by omega)
+        hwidth
+
+    have hNFull :
+        N < 2 ^ scratch.width := by
+      exact
+        hworkspace.1.constant_fits.trans_le
+          (Nat.pow_le_pow_right
+            (by omega)
+            (Nat.sub_le _ _))
+
     omega
-  have hcopy := gateCount_lowerCopyBitPowers_of_valid
-    scratch (constArithmeticUnitQubit scratch
-      hworkspace.1.scratch_can_grow) N.bitIndices hvalid
-  simp only [step3, loweredGateCount, lowerGate, lowerCmpGeConst,
-    lowerCSubConst, lowerPrepareNegConst, lowerCopyConstFromUnit,
-    LowGate.gateCount_seq_eq, LowGate.gateCount_adj_eq,
-    LowGate.gateCount_X_eq, gateCount_shor_CNOT,
-    gateCount_shor_negate, gateCount_shor_addScaled,
-    gateCount_shor_zeroExtend, gateCount_shor_zeroDealloc,
-    hcopy]
-  simp [negateGateBound, rippleAdderGateBound]
+
+  have hcopy :=
+    gateCount_lowerCopyBitPowers_of_valid
+      scratch
+      (constArithmeticUnitQubit
+        scratch
+        hworkspace.1.scratch_can_grow)
+      N.bitIndices
+      hvalid
+
+  simp only [
+    step3,
+    loweredGateCount,
+    lowerGate,
+    lowerCmpGeConst,
+    lowerCSubConst,
+    lowerPrepareNegConst,
+    lowerCopyConstFromUnit,
+    LowGate.gateCount_seq_eq,
+    LowGate.gateCount_adj_eq,
+    LowGate.gateCount_X_eq,
+    gateCount_shor_CNOT,
+    gateCount_shor_negate,
+    gateCount_shor_addScaled,
+    gateCount_shor_zeroExtend,
+    gateCount_shor_zeroDealloc,
+    hcopy
+  ]
+
+  simp [
+    negateResources,
+    addScaledResources,
+    cuccaroModAddResources,
+    GateResources.totalGates
+  ]
+
   omega
 
 /-- Decompose the Fourier multiplication used by concrete Step 4. -/
@@ -419,19 +508,39 @@ lemma fastConstMulInto_gateCount_decompose
 lemma cmpLtNWDifference_gateCount_le
     {Basis : Type u}
     [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k)
     (dataCarry work scratch : ExtReg)
     (hdata : dataCarry.CanGrow 1)
-    (hworkspace : GateWorkspaceOK ops
-      (cmpLtNWDifference dataCarry work scratch hdata)) :
-    loweredGateCount (Basis := Basis) k hk ops
-        (cmpLtNWDifference dataCarry work scratch hdata) hworkspace
-      ≤ 20 * scratch.width + 4 := by
-  simp [cmpLtNWDifference, loweredGateCount, lowerGate,
-    LowGate.gateCount, shorGateCostModel, phaseProductCostModel,
-    negateGateBound, rippleAdderGateBound]
-  omega
+    (hworkspace :
+      GateWorkspaceOK ops
+        (cmpLtNWDifference
+          dataCarry work scratch hdata)) :
+    loweredGateCount
+        (Basis := Basis)
+        k hk ops
+        (cmpLtNWDifference
+          dataCarry work scratch hdata)
+        hworkspace
+      ≤
+    20 * scratch.width + 4 := by
 
+  simp [
+    cmpLtNWDifference,
+    loweredGateCount,
+    lowerGate,
+    LowGate.gateCount,
+    shorGateCostModel,
+    LowGateResourceModel.toCostModel,
+    shorGateResourceModel,
+    negateResources,
+    addScaledResources,
+    cuccaroModAddResources,
+    GateResources.totalGates
+  ]
+
+  omega
 /-- Step 4 is compute, copy one sign bit, then uncompute. -/
 lemma step4_gateCount_decompose
     {Basis : Type u}

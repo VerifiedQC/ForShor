@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.NaivePhaseProduct
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.NaivePhaseProduct
 
 namespace Shor
 

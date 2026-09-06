@@ -227,18 +227,30 @@ lemma explicitQFTGateCount_zero
 lemma explicitQFTGateCount_one
     {Basis : Type u}
     [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k)
     (r xWork zWork : Reg)
     (hworkspace : QFTWorkspaceOK ops r xWork zWork)
     (hone : regSize r = 1) :
-    explicitQFTGateCount (Basis := Basis) k hk ops r xWork zWork hworkspace = 1 := by
+    explicitQFTGateCount
+        (Basis := Basis)
+        k hk ops r xWork zWork hworkspace
+      = 1 := by
+
   have hplan :
-      standardQFTLoweringPlan k hk ops r xWork zWork hworkspace =
-        QFTLoweringPlan.singleton r hone := by
+      standardQFTLoweringPlan
+          k hk ops r xWork zWork hworkspace
+        =
+      QFTLoweringPlan.singleton r hone := by
     rw [standardQFTLoweringPlan]
     simp [hone]
-  simp [explicitQFTGateCount, hplan, lowerQFTPlan,
-    shorGateCostModel, phaseProductCostModel]
+
+  simp [
+    explicitQFTGateCount,
+    hplan,
+    lowerQFTPlan
+  ]
 
 end ExplicitCosts
 
@@ -322,13 +334,23 @@ lemma explicitQFTPhaseGateCount_eventually_le
 /-- The fixed radix-reversal and split bookkeeping cost is linear in the QFT width. -/
 lemma qftSplitRadixGateCount_le
     (r : Reg) :
-    qftSplitRadixGateCount r ≤ 3 * regSize r := by
+    qftSplitRadixGateCount r ≤
+      3 * regSize r := by
+
   unfold qftSplitRadixGateCount qftHalfWidth
-  simp [LowGate.gateCount, shorGateCostModel, phaseProductCostModel,
-    radixReverseGateCount]
-  have hdiv : regSize r / 2 / 2 ≤ regSize r :=
-    (Nat.div_le_self _ _).trans (Nat.div_le_self _ _)
-  exact hdiv
+
+  simp only [
+    LowGate.gateCount,
+    shorGateCostModel_radixReverse,
+    radixReverseGateCount
+  ]
+
+  have hdiv :
+      regSize r / 2 / 2 ≤ regSize r :=
+    (Nat.div_le_self _ _).trans
+      (Nat.div_le_self _ _)
+
+  simp[splitM,hdiv]
 
 /-- The linear split/radix overhead is eventually absorbed by the PhaseProduct comparison rate. -/
 lemma qftSplitRadixGateCount_eventually_le

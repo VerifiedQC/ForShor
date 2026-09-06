@@ -12,6 +12,43 @@ universe u v
 
 namespace Shor
 
+namespace IdealCtrlModMulExactSemantics
+
+theorem eval_idealCtrlModMul_good_ket_exact
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [IdealCtrlModMulExactSemantics qs]
+    (c N : ℕ)
+    (data work : ExtReg)
+    (flag ctrl : ℕ)
+    (b : qs.Basis)
+    (hN : 1 < N)
+    (hsize : N ≤ ASize data.active)
+    (hcoprime : Nat.Coprime c N)
+    (hlayout : ModMulCoreLayout data work flag ctrl)
+    (hb : GoodModMulBasisInput qs N data work flag b) :
+    qs.eval (Gate.idealCtrlModMul c N data.active ctrl) (qs.ket b)
+      =
+    qs.ket
+      (RegEncoding.writeNat data.active
+        (if RegEncoding.bit ctrl b then
+          (c * RegEncoding.toNat data.active b) % N
+        else
+          RegEncoding.toNat data.active b)
+        b) := by
+  apply IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_ket_exact
+  · exact hN
+  · exact hsize
+  · exact hcoprime
+  · simp [ModMulCoreLayout] at hlayout
+    intro hctrlActive
+    exact hlayout.2.2.2.1 (by
+      simp [ExtReg.ownedQubits, hctrlActive])
+  · exact hb.1
+
+end IdealCtrlModMulExactSemantics
+
 /-! =========================================================
     Modular Multiplication Bounds Core
 

@@ -119,18 +119,5 @@ class LowerGateClass
     ∀ (L : LowGate) (ψ : qs.State),
       evalL (LowGate.adj L) (evalL L ψ) = ψ
 
-namespace LowerGateClass
-
-@[simp] theorem evalL_zero
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [LowerGateClass qs]
-    (L : LowGate) :
-    LowerGateClass.evalL (qs := qs) L 0 = 0 := by
-  simpa using
-    (LowerGateClass.evalL_smul
-      (qs := qs) L (0 : ℂ) (0 : qs.State))
-
-end LowerGateClass
 
 end Shor

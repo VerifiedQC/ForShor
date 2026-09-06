@@ -355,6 +355,40 @@ ideal gate preserves the whole valid subspace.
 section ValidInputsAndIdealSemantics
 
 /--
+Layout assumptions for one invocation of `CmodMulInPlaceCore`.
+
+`data.grow 1` is used because Algorithm 1 temporarily activates one reserve
+bit of `data` as its carry/high bit.
+-/
+def ModMulCoreLayout
+    (data work : ExtReg)
+    (flag ctrl : ℕ) :
+    Prop :=
+  ExtReg.OwnedDisjoint data work ∧
+  flag ∉ data.ownedQubits ∧
+  flag ∉ work.ownedQubits ∧
+  ctrl ∉ data.ownedQubits ∧
+  ctrl ∉ work.ownedQubits ∧
+  ctrl ≠ flag
+
+/--
+A computational-basis input on which Algorithm 1 is allowed to be called.
+
+The data register contains a canonical residue; the two data reserve bits,
+the fractional/work register, and the comparator flag are clean.
+All other qubits, including the control and exponent registers, are arbitrary.
+-/
+def GoodModMulBasisInput
+    (qs : QSemantics) [RegEncoding qs.Basis]
+    (N : ℕ) (data work : ExtReg) (flag : ℕ)
+    (b : qs.Basis) : Prop :=
+  RegEncoding.toNat data.active b < N ∧
+  data.FreshFor 2 b ∧
+  RegEncoding.toNat work.active b = 0 ∧
+  work.FreshFor 1 b ∧
+  RegEncoding.toNat (qubitReg flag) b = 0
+
+/--
 The full valid-input subspace.
 
 This is the span of *all* computational-basis states satisfying
