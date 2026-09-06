@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Correctness
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
-import FastMultiplication.ShorVerification.Framework.Gatecount.CostModel
+import FastMultiplication.ShorVerification.Framework.Gatecount.ResourceModel
 
 namespace Shor
 

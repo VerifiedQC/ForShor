@@ -532,7 +532,7 @@ theorem gateCount_Naive_CSignedPhaseProd
     LowGate.gateCount M
         (LowGate.Naive_CSignedPhaseProd ctrl phi x z)
       =
-    directCSignedPhaseProductGateCount x z := by
+    9 * ExtReg.width x * ExtReg.width z := by
   have hgate :
       ∀ g ∈ LowGate.naiveCSignedPhaseGates ctrl phi x z,
         LowGate.gateCount M g = 9 := by
@@ -585,7 +585,6 @@ theorem gateCount_Naive_CSignedPhaseProd
       hgate
   ]
   rw [LowGate.naiveCSignedPhaseGates_length]
-  unfold directCSignedPhaseProductGateCount
   simp [Nat.mul_assoc]
 
 end LowGate

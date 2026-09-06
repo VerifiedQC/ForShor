@@ -4921,10 +4921,6 @@ lemma cSignedPhaseProductGateCount_le_five_signed
         hworkspace.toSignedRecursiveWorkspaceOK.owned_disjoint
     ]
 
-    unfold
-      directCSignedPhaseProductGateCount
-      directSignedPhaseProductGateCount
-
     nlinarith
 termination_by
   phaseInputSize x z

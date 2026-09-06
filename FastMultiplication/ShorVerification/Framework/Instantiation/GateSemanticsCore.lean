@@ -4665,6 +4665,110 @@ private lemma atomEval_atomAdjEval_ket_of_glue
   rw [atomAdjEvalLinear_ket, hUadj, atomEvalLinear_ket, hU,
       inverseBasisMap_right (atomBasisMap U) hex]
 
+private lemma bit_writeNat_qubitReg_zero
+    (q : ℕ) (b : Basis) :
+    RegEncoding.bit q (RegEncoding.writeNat (qubitReg q) 0 b) = false := by
+  have hidx :
+      (qubitReg q).get ⟨0, by simp [Reg.width, qubitReg, Reg.singleton]⟩ = q := by
+    simp [qubitReg, Reg.singleton, Reg.get]
+  have hval :
+      RegEncoding.toNat (qubitReg q) (RegEncoding.writeNat (qubitReg q) 0 b) = 0 :=
+    RegEncoding.toNat_writeNat_of_lt (qubitReg q) 0 b
+      (by simp [ASize, regSize, Reg.width, qubitReg, Reg.singleton])
+  have h :=
+    RegEncoding.bit_eq_testBit_toNat (qubitReg q)
+      (RegEncoding.writeNat (qubitReg q) 0 b)
+      ⟨0, by simp [regSize, Reg.width, qubitReg, Reg.singleton]⟩
+  rw [hidx, hval, show Nat.testBit 0 0 = false from by decide] at h
+  exact h
+
+private lemma bit_writeNat_qubitReg_one
+    (q : ℕ) (b : Basis) :
+    RegEncoding.bit q (RegEncoding.writeNat (qubitReg q) 1 b) = true := by
+  have hidx :
+      (qubitReg q).get ⟨0, by simp [Reg.width, qubitReg, Reg.singleton]⟩ = q := by
+    simp [qubitReg, Reg.singleton, Reg.get]
+  have hval :
+      RegEncoding.toNat (qubitReg q) (RegEncoding.writeNat (qubitReg q) 1 b) = 1 :=
+    RegEncoding.toNat_writeNat_of_lt (qubitReg q) 1 b
+      (by simp [ASize, regSize, Reg.width, qubitReg, Reg.singleton])
+  have h :=
+    RegEncoding.bit_eq_testBit_toNat (qubitReg q)
+      (RegEncoding.writeNat (qubitReg q) 1 b)
+      ⟨0, by simp [regSize, Reg.width, qubitReg, Reg.singleton]⟩
+  rw [hidx, hval, show Nat.testBit 1 0 = true from by decide] at h
+  exact h
+
+private lemma writeNat_qubitReg_self_of_bit_false
+    (q : ℕ) (b : Basis) (h : RegEncoding.bit q b = false) :
+    RegEncoding.writeNat (qubitReg q) 0 b = b := by
+  have hidx :
+      (qubitReg q).get ⟨0, by simp [Reg.width, qubitReg, Reg.singleton]⟩ = q := by
+    simp [qubitReg, Reg.singleton, Reg.get]
+  have hbiteq :
+      RegEncoding.bit q b =
+        Nat.testBit (RegEncoding.toNat (qubitReg q) b) 0 := by
+    have h' :=
+      RegEncoding.bit_eq_testBit_toNat (qubitReg q) b
+        ⟨0, by simp [regSize, Reg.width, qubitReg, Reg.singleton]⟩
+    rwa [hidx] at h'
+  have hlt : RegEncoding.toNat (qubitReg q) b < 2 := by
+    have := RegEncoding.toNat_lt_ASize (qubitReg q) b
+    simpa [ASize, regSize, Reg.width, qubitReg, Reg.singleton] using this
+  have hcases :
+      RegEncoding.toNat (qubitReg q) b = 0 ∨
+        RegEncoding.toNat (qubitReg q) b = 1 := by omega
+  have hzero : RegEncoding.toNat (qubitReg q) b = 0 := by
+    rcases hcases with h0 | h1
+    · exact h0
+    · exfalso
+      rw [h1, h] at hbiteq
+      simp at hbiteq
+  have hself := writeNat_toNat_concrete (qubitReg q) b
+  rwa [hzero] at hself
+
+private lemma writeNat_qubitReg_self_of_bit_true
+    (q : ℕ) (b : Basis) (h : RegEncoding.bit q b = true) :
+    RegEncoding.writeNat (qubitReg q) 1 b = b := by
+  have hidx :
+      (qubitReg q).get ⟨0, by simp [Reg.width, qubitReg, Reg.singleton]⟩ = q := by
+    simp [qubitReg, Reg.singleton, Reg.get]
+  have hbiteq :
+      RegEncoding.bit q b =
+        Nat.testBit (RegEncoding.toNat (qubitReg q) b) 0 := by
+    have h' :=
+      RegEncoding.bit_eq_testBit_toNat (qubitReg q) b
+        ⟨0, by simp [regSize, Reg.width, qubitReg, Reg.singleton]⟩
+    rwa [hidx] at h'
+  have hlt : RegEncoding.toNat (qubitReg q) b < 2 := by
+    have := RegEncoding.toNat_lt_ASize (qubitReg q) b
+    simpa [ASize, regSize, Reg.width, qubitReg, Reg.singleton] using this
+  have hcases :
+      RegEncoding.toNat (qubitReg q) b = 0 ∨
+        RegEncoding.toNat (qubitReg q) b = 1 := by omega
+  have hone : RegEncoding.toNat (qubitReg q) b = 1 := by
+    rcases hcases with h0 | h1
+    · exfalso
+      rw [h0, h] at hbiteq
+      simp at hbiteq
+    · exact h1
+  have hself := writeNat_toNat_concrete (qubitReg q) b
+  rwa [hone] at hself
+
+private lemma hadamard_smul_add_sub_left
+    (a : ℂ) (ha : a * a * 2 = 1) (u v : State) :
+    a • (a • (u + v) + a • (u - v)) = u := by
+  calc
+    a • (a • (u + v) + a • (u - v)) = (a * a * 2) • u := by module
+    _ = u := by rw [ha]; simp
+
+private lemma hadamard_smul_add_sub_right
+    (a : ℂ) (ha : a * a * 2 = 1) (u v : State) :
+    a • (a • (u + v) - a • (u - v)) = v := by
+  calc
+    a • (a • (u + v) - a • (u - v)) = (a * a * 2) • v := by module
+    _ = v := by rw [ha]; simp
+
 /--
 The concrete atomic adjoint is a left inverse of the atomic evaluator.
 
@@ -4693,7 +4797,35 @@ theorem atomAdjEval_atomEval
     | adj p =>
         exact atomAdjEval_atomEval_ket_of_glue _ (fun _ => rfl) (fun _ => rfl) b
     | H q =>
-        sorry
+        change
+          atomAdjEvalLinear (Gate.H q)
+              (atomEvalLinear (Gate.H q) (ket b)) =
+            ket b
+        have hscale : (1 / Real.sqrt (2 : ℝ) : ℂ) * (1 / Real.sqrt (2 : ℝ) : ℂ) * 2 = 1 := by
+          rw [hadamard_scale_mul]
+          norm_num
+        by_cases hbit : RegEncoding.bit q b
+        · simp only [atomEvalLinear_ket, atomKet, atomAdjEvalLinear_ket, atomAdjKet,
+            hadamardKet, map_smul,map_sub,
+            bit_writeNat_qubitReg_zero, bit_writeNat_qubitReg_one, if_true,
+            writeNat_writeNat_same, hbit, neg_one_smul, ← sub_eq_add_neg]
+          rw [if_neg (by decide : ¬ (false = true))]
+          simp only [one_smul]
+          rw [hadamard_smul_add_sub_right (1 / Real.sqrt (2 : ℝ) : ℂ) hscale
+                (ket (RegEncoding.writeNat (qubitReg q) 0 b))
+                (ket (RegEncoding.writeNat (qubitReg q) 1 b)),
+              writeNat_qubitReg_self_of_bit_true q b hbit]
+        · have hbit_false : RegEncoding.bit q b = false := Bool.eq_false_iff.mpr hbit
+          simp only [atomEvalLinear_ket, atomKet, atomAdjEvalLinear_ket, atomAdjKet,
+            hadamardKet, map_smul, map_add,
+            bit_writeNat_qubitReg_zero, bit_writeNat_qubitReg_one, if_true,
+            writeNat_writeNat_same,hbit_false, neg_one_smul, ← sub_eq_add_neg]
+          rw [if_neg (by decide : ¬ (false = true))]
+          simp only [one_smul]
+          rw [hadamard_smul_add_sub_left (1 / Real.sqrt (2 : ℝ) : ℂ) hscale
+                (ket (RegEncoding.writeNat (qubitReg q) 0 b))
+                (ket (RegEncoding.writeNat (qubitReg q) 1 b)),
+              writeNat_qubitReg_self_of_bit_false q b hbit_false]
     | X q =>
         exact atomAdjEval_atomEval_ket_of_glue _ (fun _ => rfl) (fun _ => rfl) b
     | CNOT ctrl target =>
@@ -4701,13 +4833,181 @@ theorem atomAdjEval_atomEval
     | Toffoli c₁ c₂ target =>
         exact atomAdjEval_atomEval_ket_of_glue _ (fun _ => rfl) (fun _ => rfl) b
     | QFT r =>
-        sorry
+        classical
+        have hN : 0 < 2 ^ r.width := by positivity
+        letI : NeZero (2 ^ r.width) := ⟨Nat.ne_of_gt hN⟩
+        have hb : ExtReg.toNat r b < 2 ^ r.width := by
+          simpa [ExtReg.toNat, ASize, ExtReg.width] using
+            RegEncoding.toNat_lt_ASize r.active b
+        have htoNatWrite :
+            ∀ y : Fin (2 ^ r.width),
+              ExtReg.toNat r (RegEncoding.writeNat r.active y.1 b) = y.1 := by
+          intro y
+          simpa [ExtReg.toNat, ASize, ExtReg.width] using
+            RegEncoding.toNat_writeNat_of_lt r.active y.1 b
+              (by simp [ASize, ExtReg.width])
+        have hscaleM :
+            (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) =
+              ((2 ^ r.width : ℕ) : ℂ)⁻¹ := by
+          have hs : Real.sqrt ((2 ^ r.width : ℕ) : ℝ) ≠ 0 := by positivity
+          have hr :
+              (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ)) *
+                  (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ))
+                = ((2 ^ r.width : ℕ) : ℝ)⁻¹ := by
+            field_simp [hs]
+            nlinarith [Real.sq_sqrt
+              (show 0 ≤ ((2 ^ r.width : ℕ) : ℝ) by positivity)]
+          have hcast :
+              (((1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ)) *
+                  (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ)) : ℝ) : ℂ)
+                = ((2 ^ r.width : ℕ) : ℂ)⁻¹ := by
+            rw [hr]; norm_num
+          simpa [Complex.ofReal_mul] using hcast
+        change
+          atomAdjEvalLinear (Gate.QFT r)
+              (atomEvalLinear (Gate.QFT r) (ket b)) =
+            ket b
+        simp only [atomEvalLinear_ket, atomKet, qftKet, map_smul, map_sum,
+          atomAdjEvalLinear_ket, atomAdjKet, iqftKet, htoNatWrite, writeNat_writeNat_same]
+        rw [Finset.smul_sum]
+        have hstep :
+            ∀ y : Fin (2 ^ r.width),
+              (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) •
+                  (qftPhase (2 ^ r.width) (ExtReg.toNat r b) y.1 •
+                    ((1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) •
+                      ∑ z : Fin (2 ^ r.width),
+                        (starRingEnd ℂ) (qftPhase (2 ^ r.width) y.1 z.1) •
+                          ket (RegEncoding.writeNat r.active z.1 b)))
+                =
+              ∑ z : Fin (2 ^ r.width),
+                ((1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                    (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                    (qftPhase (2 ^ r.width) (ExtReg.toNat r b) y.1 *
+                      (starRingEnd ℂ) (qftPhase (2 ^ r.width) y.1 z.1))) •
+                  ket (RegEncoding.writeNat r.active z.1 b) := by
+          intro y
+          rw [Finset.smul_sum, Finset.smul_sum, Finset.smul_sum]
+          apply Finset.sum_congr rfl
+          intro z _
+          rw [smul_smul, smul_smul, smul_smul]
+          congr 1
+          ring
+        rw [Finset.sum_congr rfl (fun y _ => hstep y)]
+        rw [Finset.sum_comm]
+        have hcoeff :
+            ∀ z : Fin (2 ^ r.width),
+              (∑ y : Fin (2 ^ r.width),
+                  ((1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                      (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                      (qftPhase (2 ^ r.width) (ExtReg.toNat r b) y.1 *
+                        (starRingEnd ℂ) (qftPhase (2 ^ r.width) y.1 z.1))) •
+                    ket (RegEncoding.writeNat r.active z.1 b))
+                =
+              (if z.1 = ExtReg.toNat r b then (1 : ℂ) else 0) •
+                ket (RegEncoding.writeNat r.active z.1 b) := by
+          intro z
+          rw [← Finset.sum_smul]
+          have hsum_eq :
+              (∑ y : Fin (2 ^ r.width),
+                  (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                      (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                      (qftPhase (2 ^ r.width) (ExtReg.toNat r b) y.1 *
+                        (starRingEnd ℂ) (qftPhase (2 ^ r.width) y.1 z.1)))
+                =
+              if z.1 = ExtReg.toNat r b then (1 : ℂ) else 0 := by
+            have hswap :
+                (∑ y : Fin (2 ^ r.width),
+                    (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                        (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                        (qftPhase (2 ^ r.width) (ExtReg.toNat r b) y.1 *
+                          (starRingEnd ℂ) (qftPhase (2 ^ r.width) y.1 z.1)))
+                  =
+                ((1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                    (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ)) *
+                  (∑ y : Fin (2 ^ r.width),
+                    (starRingEnd ℂ) (qftPhase (2 ^ r.width) z.1 y.1) *
+                      qftPhase (2 ^ r.width) (ExtReg.toNat r b) y.1) := by
+              rw [Finset.mul_sum]
+              apply Finset.sum_congr rfl
+              intro y _
+              rw [qftPhase_comm (2 ^ r.width) y.1 z.1]
+              ring
+            rw [hswap, hscaleM]
+            simpa using
+              qftPhase_orthogonality (2 ^ r.width) z.1 (ExtReg.toNat r b) z.2 hb
+          rw [hsum_eq]
+        rw [Finset.sum_congr rfl (fun z _ => hcoeff z)]
+        have h0 :
+            ∀ z ∈ (Finset.univ : Finset (Fin (2 ^ r.width))),
+              z ≠ (⟨ExtReg.toNat r b, hb⟩ : Fin (2 ^ r.width)) →
+              (if z.1 = ExtReg.toNat r b then (1 : ℂ) else 0) •
+                  ket (RegEncoding.writeNat r.active z.1 b) = 0 := by
+          intro z _ hz
+          rw [if_neg (fun heq => hz (Fin.ext heq))]
+          simp
+        have h1 :
+            (⟨ExtReg.toNat r b, hb⟩ : Fin (2 ^ r.width)) ∉
+                (Finset.univ : Finset (Fin (2 ^ r.width))) →
+              (if (⟨ExtReg.toNat r b, hb⟩ : Fin (2 ^ r.width)).1 = ExtReg.toNat r b then
+                  (1 : ℂ)
+                else 0) •
+                  ket
+                    (RegEncoding.writeNat r.active
+                      (⟨ExtReg.toNat r b, hb⟩ : Fin (2 ^ r.width)).1 b) = 0 := by
+          intro hcontra
+          exact absurd (Finset.mem_univ _) hcontra
+        rw [Finset.sum_eq_single (⟨ExtReg.toNat r b, hb⟩ : Fin (2 ^ r.width)) h0 h1,
+            if_pos (rfl : (⟨ExtReg.toNat r b, hb⟩ : Fin (2 ^ r.width)).1 = ExtReg.toNat r b),
+            one_smul]
+        show ket (RegEncoding.writeNat r.active (RegEncoding.toNat r.active b) b) = ket b
+        rw [writeNat_toNat_concrete r.active b]
     | RadixReverse r m =>
         exact atomAdjEval_atomEval_ket_of_glue _ (fun _ => rfl) (fun _ => rfl) b
     | SignedPhaseProd phi x z =>
-        sorry
+        change
+          atomAdjEvalLinear (Gate.SignedPhaseProd phi x z)
+              (atomEvalLinear (Gate.SignedPhaseProd phi x z) (ket b)) =
+            ket b
+        simp only [atomEvalLinear_ket, atomKet, atomAdjEvalLinear_ket, atomAdjKet,
+          signedPhaseKet, map_smul, smul_smul]
+        rw [← Complex.exp_add]
+        have hz :
+            phi * Complex.I *
+                (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
+              + (-phi : ℝ) * Complex.I *
+                (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
+              = 0 := by push_cast; ring
+        rw [hz, Complex.exp_zero, one_smul]
     | CSignedPhaseProd ctrl phi x z =>
-        sorry
+        by_cases hbit : RegEncoding.bit ctrl b
+        · change
+            atomAdjEvalLinear (Gate.CSignedPhaseProd ctrl phi x z)
+                (atomEvalLinear (Gate.CSignedPhaseProd ctrl phi x z) (ket b)) =
+              ket b
+          rw [atomEvalLinear_ket]
+          simp only [atomKet, cSignedPhaseKet, hbit, if_true, signedPhaseKet]
+          rw [map_smul, atomAdjEvalLinear_ket]
+          simp only [atomAdjKet, cSignedPhaseKet, hbit, if_true, signedPhaseKet,
+            smul_smul]
+          rw [← Complex.exp_add]
+          have hz :
+              phi * Complex.I *
+                  (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
+                + (-phi : ℝ) * Complex.I *
+                  (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
+                = 0 := by push_cast; ring
+          rw [hz, Complex.exp_zero, one_smul]
+        · change
+            atomAdjEvalLinear (Gate.CSignedPhaseProd ctrl phi x z)
+                (atomEvalLinear (Gate.CSignedPhaseProd ctrl phi x z) (ket b)) =
+              ket b
+          rw [atomEvalLinear_ket]
+          simp only [atomKet, cSignedPhaseKet, hbit]
+          rw [if_neg (by decide : ¬ (false = true))]
+          rw [atomAdjEvalLinear_ket]
+          simp only [atomAdjKet, cSignedPhaseKet, hbit]
+          rw [if_neg (by decide : ¬ (false = true))]
     | CmpGeConst N data scratch flag =>
         exact atomAdjEval_atomEval_ket_of_glue _ (fun _ => rfl) (fun _ => rfl) b
     | CSubConst N data scratch flag =>
@@ -4763,7 +5063,35 @@ theorem atomEval_atomAdjEval
         exact atomEval_atomAdjEval_ket_of_glue _ (fun _ => rfl) (fun _ => rfl)
           b ⟨b, rfl⟩
     | H q =>
-        sorry
+        change
+          atomEvalLinear (Gate.H q)
+              (atomAdjEvalLinear (Gate.H q) (ket b)) =
+            ket b
+        have hscale : (1 / Real.sqrt (2 : ℝ) : ℂ) * (1 / Real.sqrt (2 : ℝ) : ℂ) * 2 = 1 := by
+          rw [hadamard_scale_mul]
+          norm_num
+        by_cases hbit : RegEncoding.bit q b
+        · simp only [atomAdjEvalLinear_ket, atomAdjKet, atomEvalLinear_ket, atomKet,
+            hadamardKet, map_smul,map_sub,
+            bit_writeNat_qubitReg_zero, bit_writeNat_qubitReg_one, if_true,
+            writeNat_writeNat_same, hbit, neg_one_smul, ← sub_eq_add_neg]
+          rw [if_neg (by decide : ¬ (false = true))]
+          simp only [one_smul]
+          rw [hadamard_smul_add_sub_right (1 / Real.sqrt (2 : ℝ) : ℂ) hscale
+                (ket (RegEncoding.writeNat (qubitReg q) 0 b))
+                (ket (RegEncoding.writeNat (qubitReg q) 1 b)),
+              writeNat_qubitReg_self_of_bit_true q b hbit]
+        · have hbit_false : RegEncoding.bit q b = false := Bool.eq_false_iff.mpr hbit
+          simp only [atomAdjEvalLinear_ket, atomAdjKet, atomEvalLinear_ket, atomKet,
+            hadamardKet, map_smul, map_add,
+            bit_writeNat_qubitReg_zero, bit_writeNat_qubitReg_one, if_true,
+            writeNat_writeNat_same,hbit_false, neg_one_smul, ← sub_eq_add_neg]
+          rw [if_neg (by decide : ¬ (false = true))]
+          simp only [one_smul]
+          rw [hadamard_smul_add_sub_left (1 / Real.sqrt (2 : ℝ) : ℂ) hscale
+                (ket (RegEncoding.writeNat (qubitReg q) 0 b))
+                (ket (RegEncoding.writeNat (qubitReg q) 1 b)),
+              writeNat_qubitReg_self_of_bit_false q b hbit_false]
     | X q =>
         exact atomEval_atomAdjEval_ket_of_glue _ (fun _ => rfl) (fun _ => rfl)
           b (exists_preimage_of_injective_of_sameOutside
@@ -4783,7 +5111,136 @@ theorem atomEval_atomAdjEval
             (atomBasisMap_injective (Gate.Toffoli c₁ c₂ target))
             (fun x => by simpa [atomBasisMap] using toffoliBasis_sameOutside c₁ c₂ target x) b)
     | QFT r =>
-        sorry
+        classical
+        have hN : 0 < 2 ^ r.width := by positivity
+        letI : NeZero (2 ^ r.width) := ⟨Nat.ne_of_gt hN⟩
+        have hb : ExtReg.toNat r b < 2 ^ r.width := by
+          simpa [ExtReg.toNat, ASize, ExtReg.width] using
+            RegEncoding.toNat_lt_ASize r.active b
+        have htoNatWrite :
+            ∀ y : Fin (2 ^ r.width),
+              ExtReg.toNat r (RegEncoding.writeNat r.active y.1 b) = y.1 := by
+          intro y
+          simpa [ExtReg.toNat, ASize, ExtReg.width] using
+            RegEncoding.toNat_writeNat_of_lt r.active y.1 b
+              (by simp[ASize, ExtReg.width])
+        have hscaleM :
+            (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) =
+              ((2 ^ r.width : ℕ) : ℂ)⁻¹ := by
+          have hs : Real.sqrt ((2 ^ r.width : ℕ) : ℝ) ≠ 0 := by positivity
+          have hr :
+              (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ)) *
+                  (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ))
+                = ((2 ^ r.width : ℕ) : ℝ)⁻¹ := by
+            field_simp [hs]
+            nlinarith [Real.sq_sqrt
+              (show 0 ≤ ((2 ^ r.width : ℕ) : ℝ) by positivity)]
+          have hcast :
+              (((1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ)) *
+                  (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ)) : ℝ) : ℂ)
+                = ((2 ^ r.width : ℕ) : ℂ)⁻¹ := by
+            rw [hr]; norm_num
+          simpa [Complex.ofReal_mul] using hcast
+        change
+          atomEvalLinear (Gate.QFT r)
+              (atomAdjEvalLinear (Gate.QFT r) (ket b)) =
+            ket b
+        simp only [atomAdjEvalLinear_ket, atomAdjKet, iqftKet, map_smul, map_sum,
+          atomEvalLinear_ket, atomKet, qftKet, htoNatWrite, writeNat_writeNat_same]
+        rw [Finset.smul_sum]
+        have hstep :
+            ∀ y : Fin (2 ^ r.width),
+              (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) •
+                  ((starRingEnd ℂ) (qftPhase (2 ^ r.width) (ExtReg.toNat r b) y.1) •
+                    ((1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) •
+                      ∑ z : Fin (2 ^ r.width),
+                        qftPhase (2 ^ r.width) y.1 z.1 •
+                          ket (RegEncoding.writeNat r.active z.1 b)))
+                =
+              ∑ z : Fin (2 ^ r.width),
+                ((1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                    (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                    ((starRingEnd ℂ) (qftPhase (2 ^ r.width) (ExtReg.toNat r b) y.1) *
+                      qftPhase (2 ^ r.width) y.1 z.1)) •
+                  ket (RegEncoding.writeNat r.active z.1 b) := by
+          intro y
+          rw [Finset.smul_sum, Finset.smul_sum, Finset.smul_sum]
+          apply Finset.sum_congr rfl
+          intro z _
+          rw [smul_smul, smul_smul, smul_smul]
+          congr 1
+          ring
+        rw [Finset.sum_congr rfl (fun y _ => hstep y)]
+        rw [Finset.sum_comm]
+        have hcoeff :
+            ∀ z : Fin (2 ^ r.width),
+              (∑ y : Fin (2 ^ r.width),
+                  ((1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                      (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                      ((starRingEnd ℂ) (qftPhase (2 ^ r.width) (ExtReg.toNat r b) y.1) *
+                        qftPhase (2 ^ r.width) y.1 z.1)) •
+                    ket (RegEncoding.writeNat r.active z.1 b))
+                =
+              (if ExtReg.toNat r b = z.1 then (1 : ℂ) else 0) •
+                ket (RegEncoding.writeNat r.active z.1 b) := by
+          intro z
+          rw [← Finset.sum_smul]
+          have hsum_eq :
+              (∑ y : Fin (2 ^ r.width),
+                  (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                      (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                      ((starRingEnd ℂ) (qftPhase (2 ^ r.width) (ExtReg.toNat r b) y.1) *
+                        qftPhase (2 ^ r.width) y.1 z.1))
+                =
+              if ExtReg.toNat r b = z.1 then (1 : ℂ) else 0 := by
+            have hswap :
+                (∑ y : Fin (2 ^ r.width),
+                    (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                        (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                        ((starRingEnd ℂ) (qftPhase (2 ^ r.width) (ExtReg.toNat r b) y.1) *
+                          qftPhase (2 ^ r.width) y.1 z.1))
+                  =
+                ((1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ) *
+                    (1 / Real.sqrt ((2 ^ r.width : ℕ) : ℝ) : ℂ)) *
+                  (∑ y : Fin (2 ^ r.width),
+                    (starRingEnd ℂ) (qftPhase (2 ^ r.width) (ExtReg.toNat r b) y.1) *
+                      qftPhase (2 ^ r.width) z.1 y.1) := by
+              rw [Finset.mul_sum]
+              apply Finset.sum_congr rfl
+              intro y _
+              rw [qftPhase_comm (2 ^ r.width) y.1 z.1]
+            rw [hswap, hscaleM]
+            simpa using
+              qftPhase_orthogonality (2 ^ r.width) (ExtReg.toNat r b) z.1 hb z.2
+          rw [hsum_eq]
+        rw [Finset.sum_congr rfl (fun z _ => hcoeff z)]
+        have h0 :
+            ∀ z ∈ (Finset.univ : Finset (Fin (2 ^ r.width))),
+              z ≠ (⟨ExtReg.toNat r b, hb⟩ : Fin (2 ^ r.width)) →
+              (if ExtReg.toNat r b = z.1 then (1 : ℂ) else 0) •
+                  ket (RegEncoding.writeNat r.active z.1 b) = 0 := by
+          intro z _ hz
+          rw [if_neg (fun heq => hz (Fin.ext heq.symm))]
+          simp
+        have h1 :
+            (⟨ExtReg.toNat r b, hb⟩ : Fin (2 ^ r.width)) ∉
+                (Finset.univ : Finset (Fin (2 ^ r.width))) →
+              (if ExtReg.toNat r b =
+                    (⟨ExtReg.toNat r b, hb⟩ : Fin (2 ^ r.width)).1 then
+                  (1 : ℂ)
+                else 0) •
+                  ket
+                    (RegEncoding.writeNat r.active
+                      (⟨ExtReg.toNat r b, hb⟩ : Fin (2 ^ r.width)).1 b) = 0 := by
+          intro hcontra
+          exact absurd (Finset.mem_univ _) hcontra
+        rw [Finset.sum_eq_single (⟨ExtReg.toNat r b, hb⟩ : Fin (2 ^ r.width)) h0 h1,
+            if_pos (rfl : ExtReg.toNat r b =
+              (⟨ExtReg.toNat r b, hb⟩ : Fin (2 ^ r.width)).1),
+            one_smul]
+        show ket (RegEncoding.writeNat r.active (RegEncoding.toNat r.active b) b) = ket b
+        rw [writeNat_toNat_concrete r.active b]
     | RadixReverse r m =>
         exact atomEval_atomAdjEval_ket_of_glue _ (fun _ => rfl) (fun _ => rfl)
           b (exists_preimage_of_injective_of_sameOutside
@@ -4791,9 +5248,49 @@ theorem atomEval_atomAdjEval
             (atomBasisMap_injective (Gate.RadixReverse r m))
             (fun x => by simpa [atomBasisMap] using radixReverseBasis_sameOutside r m x) b)
     | SignedPhaseProd phi x z =>
-        sorry
+        change
+          atomEvalLinear (Gate.SignedPhaseProd phi x z)
+              (atomAdjEvalLinear (Gate.SignedPhaseProd phi x z) (ket b)) =
+            ket b
+        simp only [atomAdjEvalLinear_ket, atomAdjKet, atomEvalLinear_ket, atomKet,
+          signedPhaseKet, map_smul, smul_smul]
+        rw [← Complex.exp_add]
+        have hz :
+            (-phi : ℝ) * Complex.I *
+                (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
+              + phi * Complex.I *
+                (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
+              = 0 := by push_cast; ring
+        rw [hz, Complex.exp_zero, one_smul]
     | CSignedPhaseProd ctrl phi x z =>
-        sorry
+        by_cases hbit : RegEncoding.bit ctrl b
+        · change
+            atomEvalLinear (Gate.CSignedPhaseProd ctrl phi x z)
+                (atomAdjEvalLinear (Gate.CSignedPhaseProd ctrl phi x z) (ket b)) =
+              ket b
+          rw [atomAdjEvalLinear_ket]
+          simp only [atomAdjKet, cSignedPhaseKet, hbit, if_true, signedPhaseKet]
+          rw [map_smul, atomEvalLinear_ket]
+          simp only [atomKet, cSignedPhaseKet, hbit, if_true, signedPhaseKet,
+            smul_smul]
+          rw [← Complex.exp_add]
+          have hz :
+              (-phi : ℝ) * Complex.I *
+                  (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
+                + phi * Complex.I *
+                  (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
+                = 0 := by push_cast; ring
+          rw [hz, Complex.exp_zero, one_smul]
+        · change
+            atomEvalLinear (Gate.CSignedPhaseProd ctrl phi x z)
+                (atomAdjEvalLinear (Gate.CSignedPhaseProd ctrl phi x z) (ket b)) =
+              ket b
+          rw [atomAdjEvalLinear_ket]
+          simp only [atomAdjKet, cSignedPhaseKet, hbit]
+          rw [if_neg (by decide : ¬ (false = true))]
+          rw [atomEvalLinear_ket]
+          simp only [atomKet, cSignedPhaseKet, hbit]
+          rw [if_neg (by decide : ¬ (false = true))]
     | CmpGeConst N data scratch flag =>
         exact atomEval_atomAdjEval_ket_of_glue _ (fun _ => rfl) (fun _ => rfl)
           b (exists_preimage_of_injective_of_sameOutside
