@@ -434,8 +434,8 @@ lemma measProbAfter_nonneg
     (o : ℕ)
     (C : Circuit)
     (ψ : qs.State) :
-    0 ≤ measProbAfter (qs := qs) evalC r o C ψ := by
-  unfold measProbAfter MeasureClass.probMeas
+    0 ≤ MeasureClass.probMeas (qs := qs) r o (evalC C ψ) := by
+  unfold MeasureClass.probMeas
   positivity
 
 /-- The classical success indicator is always nonnegative. -/
@@ -461,7 +461,7 @@ lemma goodOutcome_mass_le_probability_of_success
         goodOutcomeIndicator
           o.1 Q
           (ord inst.a inst.N inst.coprime) *
-        measProbAfter (qs := qs) evalC x o.1 C ψ)
+        MeasureClass.probMeas (qs := qs) x o.1 (evalC C ψ))
       ≤
     probability_of_success
       (qs := qs)

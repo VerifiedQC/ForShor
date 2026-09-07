@@ -569,7 +569,7 @@ lemma probMeas_weighted_dist [MeasureClass qs] :
 noncomputable def successProbAfterFinset
   [GateSemanticsCore qs]
   (r : Reg) (Good : Finset ℕ) (G : Gate) (ψ : qs.State) : ℝ :=
-  ∑ o ∈ Good, measProbAfter (qs := qs) qs.eval r o G ψ
+  ∑ o ∈ Good, MeasureClass.probMeas (qs := qs) r o (qs.eval G ψ)
 
 /-- The Born-rule probability of an out-of-range outcome is zero. -/
 lemma probMeas_outOfRange_of_born
@@ -587,10 +587,9 @@ lemma successProbAfterFinset_nonneg [MeasureClass qs]
   [GateSemanticsCore qs]
   (r : Reg) (Good : Finset ℕ) (G : Gate) (ψ : qs.State) :
   0 ≤ successProbAfterFinset (qs := qs) r Good G ψ := by
-  unfold successProbAfterFinset measProbAfter
+  unfold successProbAfterFinset MeasureClass.probMeas
   refine Finset.sum_nonneg ?_
   intro o ho
-  rw [MeasureClass.probMeas_born (qs := qs) r o (qs.eval G ψ)]
   exact sq_nonneg _
 
 omit [MeasureClass qs] in
@@ -602,10 +601,9 @@ lemma successProbAfterFinset_mono [MeasureClass qs]
   successProbAfterFinset (qs := qs) r Good G ψ
     ≤
   successProbAfterFinset (qs := qs) r Good' G ψ := by
-  unfold successProbAfterFinset measProbAfter
+  unfold successProbAfterFinset MeasureClass.probMeas
   refine Finset.sum_le_sum_of_subset_of_nonneg hsub ?_
   intro o ho hnot
-  rw [MeasureClass.probMeas_born (qs := qs) r o (qs.eval G ψ)]
   exact sq_nonneg _
 
 omit [MeasureClass qs] in
@@ -619,7 +617,7 @@ lemma successProbAfterFinset_inter_range_eq [MeasureClass qs]
     =
   successProbAfterFinset (qs := qs) r Good G ψ := by
   classical
-  unfold successProbAfterFinset measProbAfter
+  unfold successProbAfterFinset MeasureClass.probMeas
 
   refine Finset.sum_subset ?_ ?_
   · intro o ho
@@ -766,7 +764,7 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
         (qs := qs)
         x Q w ψA ψI hw hψA hψI
 
-    simpa [probability_of_success, measProbAfter, ψA, ψI, w] using hmain
+    simpa [probability_of_success, MeasureClass.probMeas, ψA, ψI, w] using hmain
 
   have hprob :
       |probability_of_success (qs := qs) (T := T)
@@ -1220,42 +1218,38 @@ def ShorApproxSetup.toModExpConfig
   intro i
   exact modExp_multiplier_coprime a N i.1 hcoprime
 
-/--
-Uniform approximate Shor order-finding bound.
-
-`K` is chosen before `η`, so it is independent of the precision parameter.
-It may depend on the fixed instance data `qs`, `T`, `a`, `N`, `x`, `y`,
-`w`, `flag`, `b0`, and the fixed size/arithmetic hypotheses.
--/
-theorem Shor_correct_approx_uniform
-    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs]
-    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
-  ∃ K : ℝ, 0 ≤ K ∧
+theorem Shor_correct_approx_uniform_of_modExp_bound
+    [GateSemanticsFacts qs]
+    [IdealCtrlModMulExactSemantics qs]
+    (K : ℝ)
+    (hmodExp :
+      ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
+        ModExpConfig.ValidUnitState qs cfg ψ →
+        ‖qs.eval (ModExpConfig.approxGate (Basis := qs.Basis) cfg) ψ -
+            qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
+          ≤ (tbits cfg.x : ℝ) * stepErr K η)
+    (T : ℕ → ℕ)
+    (hT : ContinuedFractionSearchComplete T) :
     ∀ (inst : ShorOrderFindingInstance)
       (x y w scratch : ExtReg) (flag : ℕ)
       (b0 : qs.Basis)
-      (_hm: regSize x.active = Nat.log2 (2 * inst.N^2))
+      (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))
       (_hn : regSize y.active = Nat.log2 (2 * inst.N))
       (η : ℝ)
       (hsetup : ShorApproxSetup qs η inst.N x y w scratch flag b0),
-      probability_of_success (qs := qs) (T := T) (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-        (x := x.active) (r := ord inst.a inst.N inst.coprime) (Q := ASize x.active)
-        (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) inst.a inst.N x y w scratch flag
-          hsetup.circuit_workspace hsetup.step4_workspace)
-        (ψ := qs.ket b0)
-      ≥
-        κ / (Nat.log2 inst.N : ℝ)^4
-        - 2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
-  classical
-  -- `K` comes from `modExpApprox_valid_dist_uniform qs` and depends only on `qs`,
-  -- so it is hoisted above `inst`/`w`/`flag`: one constant serves every instance
-  -- and precision.  This ordering is what lets a caller fix `K` before choosing
-  -- a precision level.
-  rcases modExpApprox_valid_dist_uniform (qs := qs) with
-    ⟨K, hK_nonneg, hmodExp⟩
-
-  refine ⟨K, hK_nonneg, ?_⟩
+      probability_of_success
+          (qs := qs) (T := T)
+          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+          (x := x.active)
+          (r := ord inst.a inst.N inst.coprime)
+          (Q := ASize x.active)
+          (evalC := qs.eval)
+          (C := orderFindingApprox (qs := qs) inst.a inst.N x y w scratch flag
+            hsetup.circuit_workspace hsetup.step4_workspace)
+          (ψ := qs.ket b0)
+        ≥
+      κ / (Nat.log2 inst.N : ℝ)^4 -
+        2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
   intro inst x y w scratch flag b0 hm hn η hsetup
   let a := inst.a
   let N := inst.N
@@ -1460,6 +1454,37 @@ theorem Shor_correct_approx_uniform
           - 2 * (tbits x.active : ℝ) *
               Real.sqrt (2 * (K * η)) := by
           simp [ε, stepErr, mul_assoc]
+/--
+Uniform approximate Shor order-finding bound.
+
+`K` is chosen before `η`, so it is independent of the precision parameter.
+It may depend on the fixed instance data `qs`, `T`, `a`, `N`, `x`, `y`,
+`w`, `flag`, `b0`, and the fixed size/arithmetic hypotheses.
+-/
+theorem Shor_correct_approx_uniform
+    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs]
+    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
+  ∃ K : ℝ, 0 ≤ K ∧
+    ∀ (inst : ShorOrderFindingInstance)
+      (x y w scratch : ExtReg) (flag : ℕ)
+      (b0 : qs.Basis)
+      (_hm: regSize x.active = Nat.log2 (2 * inst.N^2))
+      (_hn : regSize y.active = Nat.log2 (2 * inst.N))
+      (η : ℝ)
+      (hsetup : ShorApproxSetup qs η inst.N x y w scratch flag b0),
+      probability_of_success (qs := qs) (T := T) (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+        (x := x.active) (r := ord inst.a inst.N inst.coprime) (Q := ASize x.active)
+        (evalC := qs.eval)
+        (C := orderFindingApprox (qs := qs) inst.a inst.N x y w scratch flag
+          hsetup.circuit_workspace hsetup.step4_workspace)
+        (ψ := qs.ket b0)
+      ≥
+        κ / (Nat.log2 inst.N : ℝ)^4
+        - 2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+  obtain ⟨K, hK, hmodExp⟩ := modExpApprox_valid_dist_uniform (qs := qs)
+  refine ⟨K, hK, ?_⟩
+  exact Shor_correct_approx_uniform_of_modExp_bound
+    (qs := qs) K hmodExp T hT
 
 /-
 Lowering preserves the success probability exactly when the current
@@ -1510,7 +1535,7 @@ lemma probability_of_success_lowerGate_eq
       ψ
       hclean
 
-  unfold probability_of_success measProbAfter
+  unfold probability_of_success MeasureClass.probMeas
   apply Finset.sum_congr rfl
   intro o ho
   rw [hEval]
@@ -1576,6 +1601,94 @@ theorem orderFindingApproxLow_probability_eq
       (ψ := ψ)
       (hclean := hclean))
 
+theorem Shor_correct_approx_lowered_of_modExp_bound
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [IdealCtrlModMulExactSemantics qs]
+    (K : ℝ)
+    (hmodExp :
+      ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
+        ModExpConfig.ValidUnitState qs cfg ψ →
+        ‖qs.eval (ModExpConfig.approxGate (Basis := qs.Basis) cfg) ψ -
+            qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
+          ≤ (tbits cfg.x : ℝ) * stepErr K η)
+    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)
+    (inst : ShorOrderFindingInstance)
+    (lowering : ShorLoweringSetup)
+    (x y work scratch : ExtReg) (flag : ℕ)
+    (b0 : qs.Basis)
+    (hm : regSize x.active = Nat.log2 (2 * inst.N^2))
+    (hn : regSize y.active = Nat.log2 (2 * inst.N))
+    (η : ℝ)
+    (hready : LoweredShorReady
+      qs lowering η inst.a inst.N x y work scratch flag b0) :
+    probability_of_success
+        (qs := qs) (T := T)
+        (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+        (x := x.active)
+        (r := ord inst.a inst.N inst.coprime)
+        (Q := ASize x.active)
+        (evalC := LowerGateClass.evalL (qs := qs))
+        (C := orderFindingApproxLow
+          qs lowering.k lowering.hk lowering.ops
+          inst.a inst.N x y work scratch flag
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
+          hready.workspace)
+        (ψ := qs.ket b0)
+      ≥
+    κ / (Nat.log2 inst.N : ℝ)^4 -
+      2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+  calc
+    probability_of_success
+        (qs := qs) (T := T)
+        (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+        (x := x.active)
+        (r := ord inst.a inst.N inst.coprime)
+        (Q := ASize x.active)
+        (evalC := LowerGateClass.evalL (qs := qs))
+        (C := orderFindingApproxLow
+          qs lowering.k lowering.hk lowering.ops
+          inst.a inst.N x y work scratch flag
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
+          hready.workspace)
+        (ψ := qs.ket b0)
+      =
+    probability_of_success
+        (qs := qs) (T := T)
+        (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+        (x := x.active)
+        (r := ord inst.a inst.N inst.coprime)
+        (Q := ASize x.active)
+        (evalC := qs.eval)
+        (C := orderFindingApprox qs inst.a inst.N x y work scratch flag
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace)
+        (ψ := qs.ket b0) := by
+      exact orderFindingApproxLow_probability_eq
+        (qs := qs)
+        (lowering := lowering)
+        (T := T)
+        (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+        (a := inst.a) (N := inst.N)
+        (x := x) (y := y) (work := work) (scratch := scratch) (flag := flag)
+        (hmodWorkspace :=
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace)
+        (hstep4 :=
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace)
+        (hLowerWorkspace := hready.workspace)
+        (ψ := qs.ket b0)
+        (hclean := hready.workspace_clean)
+        (r := ord inst.a inst.N inst.coprime)
+        (Q := ASize x.active)
+
+    _ ≥ κ / (Nat.log2 inst.N : ℝ)^4 -
+        2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+      exact Shor_correct_approx_uniform_of_modExp_bound
+        (qs := qs) K hmodExp T hT
+        inst x y work scratch flag b0 hm hn η
+        (ShorApproxSetupMinimal.toShorApproxSetup hready.approx)
 /-
 A lowered approximate Shor theorem needs a repository bridge deriving the
 whole-program lowering workspace and dynamic cleanliness facts for

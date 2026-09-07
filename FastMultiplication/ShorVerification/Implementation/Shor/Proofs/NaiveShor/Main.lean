@@ -52,14 +52,14 @@ theorem Shor_correct
           o.1
           (ASize x.active)
           (ord inst.a inst.N inst.coprime) *
-        measProbAfter
+        MeasureClass.probMeas
           (qs := qs)
-          qs.eval
           x.active
           o.1
+          (qs.eval
           (orderFindingIdeal
             (qs := qs) inst.a inst.N x y)
-          (qs.ket b0) :=
+          (qs.ket b0)) :=
       ideal_orderFinding_goodOutcome_mass_lower_bound
         inst x y b0 hsetting hinput
 

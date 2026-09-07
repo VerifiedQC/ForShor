@@ -46,6 +46,17 @@ private lemma active_get_mem_ownedQubits
   dsimp [Reg.get]
   exact List.get_mem x.active.qubits _
 
+/-- Ideal clean input predicate used by correctness proofs: both public
+registers start at zero and own disjoint qubits. -/
+def IdealOrderFindingInput
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    (x y : ExtReg)
+    (b0 : qs.Basis) : Prop :=
+  RegEncoding.toNat x.active b0 = 0 ∧
+  RegEncoding.toNat y.active b0 = 0 ∧
+  ExtReg.OwnedDisjoint x y
+
 def ShorApproxSetupMinimal.toShorApproxSetup
     {qs : QSemantics}
     [RegEncoding qs.Basis]

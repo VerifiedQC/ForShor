@@ -706,14 +706,14 @@ lemma ideal_orderFinding_goodOutcome_mass_lower_bound
         (ASize x.active)
         (ord inst.a inst.N inst.coprime)
         *
-      measProbAfter
+      MeasureClass.probMeas
         (qs := qs)
-        qs.eval
         x.active
         o.1
+        (qs.eval
         (orderFindingIdeal
           (qs := qs) inst.a inst.N x y)
-        (qs.ket b0) := by
+        (qs.ket b0)) := by
   classical
 
   let r : ℕ :=
@@ -756,15 +756,15 @@ lemma ideal_orderFinding_goodOutcome_mass_lower_bound
   /- Step 3: equations (5.4)--(5.7). -/
   have hformula :
       ∀ o : Fin Q,
-        measProbAfter
+        MeasureClass.probMeas
             (qs := qs)
-            qs.eval
             x.active
             o.1
+            (qs.eval
             (orderFindingIdeal
               (qs := qs)
               inst.a inst.N x y)
-            (qs.ket b0)
+            (qs.ket b0))
           =
         shorPaperOutcomeProb Q r o.1 := by
     intro o
@@ -783,15 +783,15 @@ lemma ideal_orderFinding_goodOutcome_mass_lower_bound
           (4 / Real.pi ^ 2) *
               (1 / (r : ℝ))
             ≤
-          measProbAfter
+          MeasureClass.probMeas
             (qs := qs)
-            qs.eval
             x.active
             o.1
+            (qs.eval
             (orderFindingIdeal
               (qs := qs)
               inst.a inst.N x y)
-            (qs.ket b0) := by
+            (qs.ket b0)) := by
     intro o hgood
 
     rw [hformula o]
@@ -815,27 +815,27 @@ lemma ideal_orderFinding_goodOutcome_mass_lower_bound
       ∑ o : Fin Q,
         goodOutcomeIndicator
           o.1 Q r *
-        measProbAfter
+        MeasureClass.probMeas
           (qs := qs)
-          qs.eval
           x.active
-          o.1
+            o.1
+          (qs.eval
           (orderFindingIdeal
             (qs := qs)
             inst.a inst.N x y)
-          (qs.ket b0) :=
+          (qs.ket b0)) :=
     goodOutcome_mass_lower_bound_from_card_and_pointwise
       Q r
       (fun o =>
-        measProbAfter
+        MeasureClass.probMeas
           (qs := qs)
-          qs.eval
           x.active
           o.1
+          (qs.eval
           (orderFindingIdeal
             (qs := qs)
             inst.a inst.N x y)
-          (qs.ket b0))
+          (qs.ket b0)))
       hr
       hcard
       hpoint
@@ -881,15 +881,15 @@ lemma ideal_orderFinding_goodOutcome_mass_lower_bound
     _ ≤
       ∑ o : Fin Q,
         goodOutcomeIndicator o.1 Q r *
-          measProbAfter
+          MeasureClass.probMeas
             (qs := qs)
-            qs.eval
             x.active
             o.1
+            (qs.eval
             (orderFindingIdeal
               (qs := qs)
               inst.a inst.N x y)
-            (qs.ket b0) :=
+            (qs.ket b0)) :=
       hmass
 
     _ =
@@ -898,15 +898,15 @@ lemma ideal_orderFinding_goodOutcome_mass_lower_bound
           o.1
           (ASize x.active)
           (ord inst.a inst.N inst.coprime) *
-        measProbAfter
+        MeasureClass.probMeas
           (qs := qs)
-          qs.eval
           x.active
           o.1
+          (qs.eval
           (orderFindingIdeal
             (qs := qs)
             inst.a inst.N x y)
-          (qs.ket b0) := by
+          (qs.ket b0)) := by
       simp [Q, r]
 
 

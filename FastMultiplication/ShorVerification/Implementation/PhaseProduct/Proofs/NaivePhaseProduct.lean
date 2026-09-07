@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Framework.Semantics.LowerGate
+import FastMultiplication.ShorVerification.Framework.Semantics.LowGateSemantics
 import FastMultiplication.ShorVerification.Framework.Gatecount.CostModel
 import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
 
