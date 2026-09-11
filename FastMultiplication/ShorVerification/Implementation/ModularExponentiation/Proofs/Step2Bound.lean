@@ -1614,7 +1614,7 @@ lemma alg1_step2_single_label_fourier_stability
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs] :
-    ∃ Cbranch : ℝ, 0 ≤ Cbranch ∧
+    ∃ Cbranch : ℝ, 0 ≤ Cbranch ∧ Cbranch ≤ 2 * Real.pi ∧
       ∀ (η : ℝ) (cfg : ModMulConfig η)
         (b : qs.Basis)
         (t : Fin (ASize cfg.env.work.active)),
@@ -1629,7 +1629,7 @@ lemma alg1_step2_single_label_fourier_stability
                 (alg1Step2Value cfg b)
                 (RegEncoding.writeNat cfg.env.work.active t.1 b))‖
           ≤ Cbranch * η := by
-  refine ⟨2 * Real.pi, ?_, ?_⟩
+  refine ⟨2 * Real.pi, ?_, le_refl _, ?_⟩
   · exact mul_nonneg (by norm_num) (le_of_lt Real.pi_pos)
 
   · intro η cfg b t hb ht
@@ -3739,7 +3739,7 @@ lemma alg1_step2_good_packet_operator_sq_bound
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs] :
-    ∃ Ccoh : ℝ, 0 ≤ Ccoh ∧
+    ∃ Ccoh : ℝ, 0 ≤ Ccoh ∧ Ccoh ≤ 2 * Real.pi ^ 2 ∧
       ∀ (η : ℝ) (cfg : ModMulConfig η)
         (S : Finset (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)))
         (α : (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)) → ℂ),
@@ -3758,7 +3758,7 @@ lemma alg1_step2_good_packet_operator_sq_bound
                   (RegEncoding.writeNat cfg.env.work.active i.2.1 i.1)))‖ ^ 2 ≤ (Ccoh * η) *
           ∑ i ∈ S, ‖α i‖ ^ 2 := by
   classical
-  refine ⟨2 * Real.pi ^ 2, ?_, ?_⟩
+  refine ⟨2 * Real.pi ^ 2, ?_, le_refl _, ?_⟩
   · positivity
 
   intro η cfg S α hgood
@@ -3855,7 +3855,7 @@ lemma alg1_step2_good_label_branch_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs] :
-    ∃ Cstep2 : ℝ, 0 ≤ Cstep2 ∧
+    ∃ Cstep2 : ℝ, 0 ≤ Cstep2 ∧ Cstep2 ≤ 2 * Real.pi + 2 * Real.pi ^ 2 ∧
       (∀ (η : ℝ) (cfg : ModMulConfig η)
           (b : qs.Basis)
           (t : Fin (ASize cfg.env.work.active)),
@@ -3881,10 +3881,10 @@ lemma alg1_step2_good_label_branch_uniform
   classical
 
   rcases alg1_step2_single_label_fourier_stability qs with
-    ⟨Cbranch, hCbranch, hbranch⟩
+    ⟨Cbranch, hCbranch, hCbranch_le, hbranch⟩
 
   rcases alg1_step2_good_packet_operator_sq_bound qs with
-    ⟨Ccoh, hCcoh, hcoh⟩
+    ⟨Ccoh, hCcoh, hCcoh_le, hcoh⟩
 
   let Cstep2 : ℝ := Cbranch + Ccoh
 
@@ -3892,7 +3892,11 @@ lemma alg1_step2_good_label_branch_uniform
     dsimp [Cstep2]
     linarith
 
-  refine ⟨Cstep2, hCstep2, ?_, ?_⟩
+  have hCstep2_le : Cstep2 ≤ 2 * Real.pi + 2 * Real.pi ^ 2 := by
+    dsimp [Cstep2]
+    linarith
+
+  refine ⟨Cstep2, hCstep2, hCstep2_le, ?_, ?_⟩
 
   · intro η cfg b t hb ht
     have hη : 0 ≤ η :=

@@ -5646,13 +5646,13 @@ lemma alg1_qpe_tail_basis_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs] :
-    ∃ Ctail : ℝ, 0 ≤ Ctail ∧
+    ∃ Ctail : ℝ, 0 ≤ Ctail ∧ Ctail ≤ 512 ∧
       ∀ (η : ℝ) (cfg : ModMulConfig η) (b : qs.Basis),
         GoodModMulBasisInput
           qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b →
         alg1QpeBadMass qs cfg b ≤ Ctail * η := by
   classical
-  refine ⟨512, by norm_num, ?_⟩
+  refine ⟨512, by norm_num, by norm_num, ?_⟩
   intro η cfg b hb
 
   rcases alg1_precision_grid_ratio cfg with

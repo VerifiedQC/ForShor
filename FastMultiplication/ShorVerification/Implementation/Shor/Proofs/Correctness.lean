@@ -1481,7 +1481,7 @@ theorem Shor_correct_approx_uniform
       ≥
         κ / (Nat.log2 inst.N : ℝ)^4
         - 2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
-  obtain ⟨K, hK, hmodExp⟩ := modExpApprox_valid_dist_uniform (qs := qs)
+  obtain ⟨K, hK, _hK_le, hmodExp⟩ := modExpApprox_valid_dist_uniform (qs := qs)
   refine ⟨K, hK, ?_⟩
   exact Shor_correct_approx_uniform_of_modExp_bound
     (qs := qs) K hmodExp T hT

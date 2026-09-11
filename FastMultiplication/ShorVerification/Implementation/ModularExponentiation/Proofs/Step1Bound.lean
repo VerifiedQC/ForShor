@@ -1392,7 +1392,7 @@ lemma alg1_qpe_tail_uniform
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs] :
-    ∃ Cpe : ℝ, 0 ≤ Cpe ∧
+    ∃ Cpe : ℝ, 0 ≤ Cpe ∧ Cpe ≤ 512 ∧
       (∀ (η : ℝ) (cfg : ModMulConfig η)
           (b : qs.Basis),
           GoodModMulBasisInput
@@ -1430,9 +1430,9 @@ lemma alg1_qpe_tail_uniform
               ≤
             Cpe * η) := by
   rcases alg1_qpe_tail_basis_uniform qs with
-    ⟨Cpe, hCpe_nonneg, hTail⟩
+    ⟨Cpe, hCpe_nonneg, hCpe_le, hTail⟩
 
-  refine ⟨Cpe, hCpe_nonneg, ?_, ?_, ?_⟩
+  refine ⟨Cpe, hCpe_nonneg, hCpe_le, ?_, ?_, ?_⟩
 
   -- Basis-input bad mass.
   · intro η cfg b hb

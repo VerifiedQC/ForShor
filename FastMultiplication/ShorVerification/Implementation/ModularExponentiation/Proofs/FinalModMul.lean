@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Step34Exact
+import Mathlib.Analysis.Real.Pi.Bounds
 
 open Shor
 
@@ -101,16 +102,16 @@ theorem modMul_approx_valid_dist_uniform
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs] :
-    ∃ K : ℝ, 0 ≤ K ∧ ∀ (η : ℝ) (cfg : ModMulConfig η) (ψ : qs.State),
+    ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧ ∀ (η : ℝ) (cfg : ModMulConfig η) (ψ : qs.State),
       ModMulConfig.ValidUnitState qs cfg ψ →
       ‖qs.eval (ModMulConfig.approxGate (Basis := qs.Basis) cfg) ψ -
         qs.eval (ModMulConfig.idealGate cfg) ψ‖ ≤ stepErr K η := by
   classical
 
   -- Obtain the uniform squared-error constants for Steps 1, 2, and 5.
-  rcases alg1_qpe_tail_uniform qs with ⟨Cpe, hCpe, _hTail, hStep1Sq, hStep5Sq⟩
+  rcases alg1_qpe_tail_uniform qs with ⟨Cpe, hCpe, hCpe_le, _hTail, hStep1Sq, hStep5Sq⟩
   rcases alg1_step2_good_label_branch_uniform qs with
-    ⟨Cstep2, hCstep2, _hBranch, hStep2Sq⟩
+    ⟨Cstep2, hCstep2, hCstep2_le, _hBranch, hStep2Sq⟩
 
   -- Division by two converts `C * η` into the radicand used by `stepErr`.
   let K₁ : ℝ := Cpe / 2
@@ -127,8 +128,13 @@ theorem modMul_approx_valid_dist_uniform
     dsimp [K₅]
     exact div_nonneg hCpe (by norm_num)
 
-  refine ⟨3 * (K₁ + K₂ + K₅), ?_, ?_⟩
+  refine ⟨3 * (K₁ + K₂ + K₅), ?_, ?_, ?_⟩
   · nlinarith [hK₁, hK₂, hK₅]
+  · -- `3*(Cpe/2 + Cstep2/2 + Cpe/2) = 3*Cpe + 1.5*Cstep2
+    --    ≤ 3*512 + 1.5*(2π+2π²) ≈ 1575.03 ≤ 2048`, using `π < 3.15`.
+    have hpi : Real.pi < 3.15 := Real.pi_lt_d2
+    dsimp [K₁, K₂, K₅]
+    nlinarith [hCpe_le, hCstep2_le, hpi, Real.pi_pos]
 
   intro η cfg ψ hψ
   rcases hψ with ⟨hValid, hNorm⟩

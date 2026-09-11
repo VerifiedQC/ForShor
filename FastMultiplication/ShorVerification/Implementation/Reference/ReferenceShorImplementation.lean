@@ -32,16 +32,19 @@ variable [IdealCtrlModMulExactSemantics qs]
     Section 1: Uniform approximation constant
 ========================================================= -/
 
-/-- Uniform constant controlling the modular-exponentiation approximation error. -/
-noncomputable def referenceK : ℝ :=
-  Classical.choose (modExpApprox_valid_dist_uniform (qs := qs))
+/--
+Uniform constant controlling the modular-exponentiation approximation error.
+
+Unlike an arbitrary `Classical.choose` witness, this is a concrete numeral:
+`modExpApprox_valid_dist_uniform` proves a uniform constant `K ≤ 2048` works
+(traced from `Cpe = 512` and `Cstep2 = 2π + 2π²` in the Algorithm-1 error
+bounds), so `2048` itself is a valid, and clean, choice of constant. -/
+noncomputable def referenceK : ℝ := 2048
 
 omit [MeasureClass qs] [LowerGateClass qs] in
 theorem referenceK_nonneg :
-    0 ≤ referenceK (qs := qs) := by
-  simpa [referenceK] using
-    (Classical.choose_spec
-      (modExpApprox_valid_dist_uniform (qs := qs))).1
+    0 ≤ referenceK := by
+  norm_num [referenceK]
 
 omit [MeasureClass qs] [LowerGateClass qs] in
 theorem referenceK_modExp_bound :
@@ -49,10 +52,21 @@ theorem referenceK_modExp_bound :
       ModExpConfig.ValidUnitState qs cfg ψ →
       ‖qs.eval (ModExpConfig.approxGate (Basis := qs.Basis) cfg) ψ -
           qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
-        ≤ (tbits cfg.x : ℝ) * stepErr (referenceK (qs := qs)) η := by
-  simpa [referenceK] using
-    (Classical.choose_spec
-      (modExpApprox_valid_dist_uniform (qs := qs))).2
+        ≤ (tbits cfg.x : ℝ) * stepErr (referenceK) η := by
+  obtain ⟨K, hK_nonneg, hK_le, hbound⟩ :=
+    modExpApprox_valid_dist_uniform (qs := qs)
+  intro η cfg ψ hψ
+  have hη : 0 ≤ η := le_of_lt cfg.env.precision.1
+  have hstep_mono : stepErr K η ≤ stepErr (referenceK) η := by
+    unfold stepErr referenceK
+    apply Real.sqrt_le_sqrt
+    nlinarith [hK_le, hη]
+  calc
+    ‖qs.eval (ModExpConfig.approxGate (Basis := qs.Basis) cfg) ψ -
+        qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
+      ≤ (tbits cfg.x : ℝ) * stepErr K η := hbound η cfg ψ hψ
+    _ ≤ (tbits cfg.x : ℝ) * stepErr (referenceK) η :=
+      mul_le_mul_of_nonneg_left hstep_mono (by positivity)
 
 
 /-! =========================================================
@@ -69,21 +83,21 @@ noncomputable def referenceProgramAt
 noncomputable def referenceApproximationErrorAt (m N : ℕ) : ℝ :=
   2 *
     (tbits (Reg.interval 0 (Nat.log2 (2 * N ^ 2))) : ℝ) *
-    Real.sqrt (2 * (referenceK (qs := qs) * referencePrecision m))
+    Real.sqrt (2 * (referenceK * referencePrecision m))
 
 /-- Raw analytical single-run success lower bound at approximation level `m`. -/
 noncomputable def referenceRawSuccessProbabilityAt (m N : ℕ) : ℝ :=
   κ / (Nat.log2 N : ℝ) ^ 4 -
-    referenceApproximationErrorAt (qs := qs) m N
+    referenceApproximationErrorAt m N
 
 /-- Declared probability bound at `m`, clamped to `[0,1]`. -/
 noncomputable def referenceSuccessProbabilityAt (m N : ℕ) : ℝ :=
-  max 0 (min 1 (referenceRawSuccessProbabilityAt (qs := qs) m N))
+  max 0 (min 1 (referenceRawSuccessProbabilityAt m N))
 
 omit [MeasureClass qs] [LowerGateClass qs] in
 theorem referenceSuccessProbabilityAt_bounds (m N : ℕ) :
-    0 ≤ referenceSuccessProbabilityAt (qs := qs) m N ∧
-      referenceSuccessProbabilityAt (qs := qs) m N ≤ 1 := by
+    0 ≤ referenceSuccessProbabilityAt m N ∧
+      referenceSuccessProbabilityAt m N ≤ 1 := by
   simp [referenceSuccessProbabilityAt]
 
 /-- Every fixed-`m` reference program achieves its declared success bound. -/
@@ -91,7 +105,7 @@ theorem referenceProgramAt_success
     (lowering : ShorLoweringSetup) (m : ℕ) :
     ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
     ∀ inst : ShorOrderFindingInstance,
-      referenceSuccessProbabilityAt (qs := qs) m inst.N ≤
+      referenceSuccessProbabilityAt m inst.N ≤
         probability_of_success
           (qs := qs)
           (evalC := LowerGateClass.evalL (qs := qs))
@@ -128,7 +142,7 @@ theorem referenceProgramAt_success
   have hb :=
     Shor_correct_approx_lowered_of_modExp_bound
       (qs := qs)
-      (referenceK (qs := qs))
+      (referenceK)
       (referenceK_modExp_bound (qs := qs))
       T hT
       inst lowering
@@ -137,7 +151,7 @@ theorem referenceProgramAt_success
       hxwidth hywidth η hready
 
   have hraw :
-      referenceRawSuccessProbabilityAt (qs := qs) m inst.N ≤
+      referenceRawSuccessProbabilityAt m inst.N ≤
         probability_of_success
           (qs := qs)
           (evalC := LowerGateClass.evalL (qs := qs))
@@ -266,7 +280,7 @@ omit [MeasureClass qs] [LowerGateClass qs] in
 /-- Some approximation level has strictly positive certified success. -/
 theorem exists_reference_positive_precision
     (N : ℕ) (hN : 2 ≤ N) :
-    ∃ m : ℕ, 0 < referenceSuccessProbabilityAt (qs := qs) m N := by
+    ∃ m : ℕ, 0 < referenceSuccessProbabilityAt m N := by
   have hlogNat : 0 < Nat.log2 N := by
     rw [Nat.log2_eq_log_two]
     exact Nat.log_pos Nat.one_lt_two hN
@@ -284,25 +298,25 @@ theorem exists_reference_positive_precision
   obtain ⟨m, hm⟩ :=
     exists_precision_error_le
       (tbits (Reg.interval 0 (Nat.log2 (2 * N ^ 2))))
-      (referenceK (qs := qs))
-      (referenceK_nonneg (qs := qs))
+      (referenceK)
+      referenceK_nonneg
       (ε := κ / (Nat.log2 N : ℝ) ^ 4 / 2)
       (by positivity)
 
   refine ⟨m, ?_⟩
 
   have herr :
-      referenceApproximationErrorAt (qs := qs) m N ≤
+      referenceApproximationErrorAt m N ≤
         κ / (Nat.log2 N : ℝ) ^ 4 / 2 := by
     simpa [referenceApproximationErrorAt] using hm
 
   have hraw :
-      0 < referenceRawSuccessProbabilityAt (qs := qs) m N := by
+      0 < referenceRawSuccessProbabilityAt m N := by
     rw [referenceRawSuccessProbabilityAt]
     linarith
 
   have hmin :
-      0 < min 1 (referenceRawSuccessProbabilityAt (qs := qs) m N) := by
+      0 < min 1 (referenceRawSuccessProbabilityAt m N) := by
     exact lt_min (by norm_num) hraw
 
   rw [referenceSuccessProbabilityAt, max_eq_right hmin.le]
@@ -310,7 +324,7 @@ theorem exists_reference_positive_precision
 /-- Approximation level chosen internally by the reference submission. -/
 noncomputable def referenceChosenPrecision (N : ℕ) : ℕ :=
   if hN : 2 ≤ N then
-    Nat.find (exists_reference_positive_precision (qs := qs) N hN)
+    Nat.find (exists_reference_positive_precision N hN)
   else
     0
 
@@ -319,10 +333,10 @@ theorem referenceChosenPrecision_positive
     (N : ℕ) (hN : 2 ≤ N) :
     0 <
       referenceSuccessProbabilityAt
-        (qs := qs) (referenceChosenPrecision (qs := qs) N) N := by
+        (referenceChosenPrecision N) N := by
   rw [referenceChosenPrecision, dif_pos hN]
   exact Nat.find_spec
-    (exists_reference_positive_precision (qs := qs) N hN)
+    (exists_reference_positive_precision N hN)
 
 
 /-! =========================================================
@@ -334,34 +348,33 @@ noncomputable def referenceSubmittedProgram
     (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) :
     ShorOrderFindingProgram :=
   referenceProgramAt (qs := qs) lowering
-    (referenceChosenPrecision (qs := qs) inst.N) inst
+    (referenceChosenPrecision inst.N) inst
 
 /-- Final single-run success probability declared by the reference submission. -/
 noncomputable def referenceSuccessProbability (N : ℕ) : ℝ :=
   if 2 ≤ N then
     referenceSuccessProbabilityAt
-      (qs := qs) (referenceChosenPrecision (qs := qs) N) N
+      (referenceChosenPrecision N) N
   else
     1
 
 omit [MeasureClass qs] [LowerGateClass qs] in
 theorem referenceSuccessProbability_bounds (N : ℕ) :
-    0 ≤ referenceSuccessProbability (qs := qs) N ∧
-      referenceSuccessProbability (qs := qs) N ≤ 1 := by
+    0 ≤ referenceSuccessProbability N ∧
+      referenceSuccessProbability N ≤ 1 := by
   by_cases hN : 2 ≤ N
   · simpa [referenceSuccessProbability, hN] using
       referenceSuccessProbabilityAt_bounds
-        (qs := qs)
-        (referenceChosenPrecision (qs := qs) N)
+        (referenceChosenPrecision N)
         N
   · simp [referenceSuccessProbability, hN]
 
 omit [MeasureClass qs] [LowerGateClass qs] in
 theorem referenceSuccessProbability_pos (N : ℕ) :
-    0 < referenceSuccessProbability (qs := qs) N := by
+    0 < referenceSuccessProbability N := by
   by_cases hN : 2 ≤ N
   · simpa [referenceSuccessProbability, hN] using
-      referenceChosenPrecision_positive (qs := qs) N hN
+      referenceChosenPrecision_positive N hN
   · simp [referenceSuccessProbability, hN]
 
 /-- The final submitted program satisfies its declared single-run success bound. -/
@@ -369,9 +382,9 @@ theorem referenceSubmittedProgram_correct
     (lowering : ShorLoweringSetup) :
     ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
     ∀ inst : ShorOrderFindingInstance,
-      0 ≤ referenceSuccessProbability (qs := qs) inst.N ∧
-      referenceSuccessProbability (qs := qs) inst.N ≤ 1 ∧
-      referenceSuccessProbability (qs := qs) inst.N ≤
+      0 ≤ referenceSuccessProbability inst.N ∧
+      referenceSuccessProbability inst.N ≤ 1 ∧
+      referenceSuccessProbability inst.N ≤
         probability_of_success
           (qs := qs)
           (evalC := LowerGateClass.evalL (qs := qs))
@@ -389,7 +402,7 @@ theorem referenceSubmittedProgram_correct
     omega
 
   have hbounds :=
-    referenceSuccessProbability_bounds (qs := qs) inst.N
+    referenceSuccessProbability_bounds inst.N
 
   refine ⟨hbounds.1, hbounds.2, ?_⟩
 
@@ -397,7 +410,7 @@ theorem referenceSubmittedProgram_correct
     (referenceProgramAt_success
       (qs := qs)
       lowering
-      (referenceChosenPrecision (qs := qs) inst.N)
+      (referenceChosenPrecision inst.N)
       T hT inst)
 
 
@@ -409,11 +422,11 @@ omit [MeasureClass qs] [LowerGateClass qs] in
 theorem exists_reference_trialCount (N : ℕ) :
     ∃ k : ℕ,
       (99 / 100 : ℝ) ≤
-        1 - (1 - referenceSuccessProbability (qs := qs) N) ^ k := by
-  let p := referenceSuccessProbability (qs := qs) N
+        1 - (1 - referenceSuccessProbability N) ^ k := by
+  let p := referenceSuccessProbability N
 
   have hp : 0 < p := by
-    simpa [p] using referenceSuccessProbability_pos (qs := qs) N
+    simpa [p] using referenceSuccessProbability_pos N
 
   have hlt : 1 - p < (1 : ℝ) := by
     linarith
@@ -432,33 +445,58 @@ theorem exists_reference_trialCount (N : ℕ) :
 
 /-- Number of independent trials declared by the reference submission. -/
 noncomputable def referenceTrialCount (N : ℕ) : ℕ :=
-  Nat.find (exists_reference_trialCount (qs := qs) N)
+  Nat.find (exists_reference_trialCount N)
 
 omit [MeasureClass qs] [LowerGateClass qs] in
 theorem referenceTrialCount_correct (N : ℕ) :
     (99 / 100 : ℝ) ≤
       1 -
-        (1 - referenceSuccessProbability (qs := qs) N) ^
-          referenceTrialCount (qs := qs) N := by
+        (1 - referenceSuccessProbability N) ^
+          referenceTrialCount N := by
   simpa [referenceTrialCount] using
-    Nat.find_spec (exists_reference_trialCount (qs := qs) N)
+    Nat.find_spec (exists_reference_trialCount N)
 
 
 /-! =========================================================
     Section 6: Concrete `ShorImplementation`
 ========================================================= -/
 
+/--
+Declared logical gate count of the submitted single-run circuit.
+
+The codebase's gate-count layer (`Shor_GateCount.lean`) currently only proves
+*asymptotic* bounds on `LowGate.gateCount shorGateCostModel (...)` with
+unnamed existential constants (`ShorGateCountBound` and friends) — there is no
+closed-form formula for this quantity in terms of `η`/register widths/`k`
+anywhere in the codebase. The framework's `gateCount_correct` obligation only
+asks that the *declared* value equal the *actual* count of the *submitted*
+circuit, so the honest and provable choice is to declare exactly that count.
+-/
+noncomputable def referenceGateCount
+    (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) : ℕ :=
+  LowGate.gateCount shorGateCostModel
+    (referenceSubmittedProgram (qs := qs) lowering inst).circuit
+
+omit [MeasureClass qs] [GateSemanticsFacts qs] [LowerGateClass qs]
+  [IdealCtrlModMulExactSemantics qs] in
+theorem referenceGateCount_correct
+    (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) :
+    LowGate.gateCount shorGateCostModel
+        (referenceSubmittedProgram (qs := qs) lowering inst).circuit =
+      referenceGateCount (qs := qs) lowering inst :=
+  rfl
+
 /-- Reference implementation packaged into the public submission interface. -/
 noncomputable def referenceShorImplementation
     (lowering : ShorLoweringSetup) :
     ShorImplementation (qs := qs) where
   program := referenceSubmittedProgram (qs := qs) lowering
-  successProbability := referenceSuccessProbability (qs := qs)
+  successProbability := referenceSuccessProbability
   correct := referenceSubmittedProgram_correct (qs := qs) lowering
-  gateCount := sorry
-  gateCount_correct := sorry
-  trialCount := referenceTrialCount (qs := qs)
-  trialCount_correct := referenceTrialCount_correct (qs := qs)
+  trialCount := referenceTrialCount
+  trialCount_correct := by
+    intro N h
+    apply referenceTrialCount_correct
 
 end
 

@@ -428,7 +428,7 @@ theorem modExpApproxSteps_valid_dist_uniform
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs] :
-    ∃ K : ℝ, 0 ≤ K ∧
+    ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧
       ∀ (η : ℝ)
         (a N : ℕ) (data work scratch : ExtReg) (flag : ℕ)
         (hworkspace : ModMulCircuitWorkspaceOK data work)
@@ -452,9 +452,9 @@ theorem modExpApproxSteps_valid_dist_uniform
           ≤ (ctrls.length : ℝ) * stepErr K η := by
   -- Reuse one uniform constant for every controlled multiplication.
   rcases modMul_approx_valid_dist_uniform (qs := qs) with
-    ⟨K, hK_nonneg, hmodMul⟩
+    ⟨K, hK_nonneg, hK_le, hmodMul⟩
 
-  refine ⟨K, hK_nonneg, ?_⟩
+  refine ⟨K, hK_nonneg, hK_le, ?_⟩
   intro η a N data work scratch flag hworkspace hstep4 e ctrls ψ
     hN hsize hprecision hLayout hArithmetic hValid hNorm
 
@@ -626,16 +626,16 @@ theorem modExpApprox_valid_dist_uniform
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs]:
-    ∃ K : ℝ, 0 ≤ K ∧
+    ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧
       ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
         ModExpConfig.ValidUnitState qs cfg ψ →
         ‖qs.eval (ModExpConfig.approxGate (Basis := qs.Basis) cfg) ψ -
           qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
           ≤ (tbits cfg.x : ℝ) * stepErr K η := by
   rcases modExpApproxSteps_valid_dist_uniform (qs := qs) with
-    ⟨K, hK_nonneg, hSteps⟩
+    ⟨K, hK_nonneg, hK_le, hSteps⟩
 
-  refine ⟨K, hK_nonneg, ?_⟩
+  refine ⟨K, hK_nonneg, hK_le, ?_⟩
   intro η cfg ψ hψ
   rcases hψ with ⟨hValid, hNorm⟩
 
