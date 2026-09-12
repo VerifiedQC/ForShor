@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
 
 /-!
 # Phase-Product Public Assertions
