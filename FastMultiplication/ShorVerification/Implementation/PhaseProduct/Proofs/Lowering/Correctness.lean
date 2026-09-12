@@ -3,7 +3,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanSemantics
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanReadiness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanReadiness.RecursiveReadiness
 
 namespace Shor
 open Gate

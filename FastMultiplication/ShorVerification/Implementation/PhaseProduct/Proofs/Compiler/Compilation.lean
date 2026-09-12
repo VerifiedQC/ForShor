@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Body
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Body.Dealloc
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Interpolation
 
 namespace Shor
