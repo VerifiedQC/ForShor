@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Linearity
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 
 namespace Shor
 open Gate

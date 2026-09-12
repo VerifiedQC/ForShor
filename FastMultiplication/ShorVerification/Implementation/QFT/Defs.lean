@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Linearity
 
 /-!

@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 
 /-!
 # Lowered-Gate Evaluation Lemmas
