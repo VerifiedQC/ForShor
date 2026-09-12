@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.DefsCore
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.PhaseLoweringPlan
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
 
