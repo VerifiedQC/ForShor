@@ -1225,7 +1225,7 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
     (hmodExp :
       ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
         ModExpConfig.ValidUnitState qs cfg ψ →
-        ‖qs.eval (ModExpConfig.approxGate (Basis := qs.Basis) cfg) ψ -
+        ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
             qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
           ≤ (tbits cfg.x : ℝ) * stepErr K η)
     (T : ℕ → ℕ)
@@ -1244,7 +1244,7 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
           (r := ord inst.a inst.N inst.coprime)
           (Q := ASize x.active)
           (evalC := qs.eval)
-          (C := orderFindingApprox (qs := qs) inst.a inst.N x y w scratch flag
+          (C := orderFindingApprox inst.a inst.N x y w scratch flag
             hsetup.circuit_workspace hsetup.step4_workspace)
           (ψ := qs.ket b0)
         ≥
@@ -1316,7 +1316,6 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
   have hmid :
       ‖qs.eval
           (modExpApproxValid
-            (Basis := qs.Basis)
             a N x.active y w scratch flag
             hsetup.circuit_workspace hsetup.step4_workspace)
           ψpre
@@ -1336,7 +1335,6 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
       ‖qs.eval (IQFT x)
           (qs.eval
             (modExpApproxValid
-              (Basis := qs.Basis)
               a N x.active y w scratch flag
               hsetup.circuit_workspace hsetup.step4_workspace)
             ψpre)
@@ -1348,7 +1346,6 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
       (qs := qs)
       (IQFT x)
       (modExpApproxValid
-        (Basis := qs.Basis)
         a N x.active y w scratch flag
         hsetup.circuit_workspace hsetup.step4_workspace)
       (modExpIdeal' (qs := qs) a N x.active y.active)
@@ -1357,8 +1354,7 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
 
   have hdist_full :
       ‖qs.eval
-          (orderFindingApprox
-            (qs := qs) a N x y w scratch flag
+          (orderFindingApprox a N x y w scratch flag
             hsetup.circuit_workspace hsetup.step4_workspace)
           (qs.ket b0)
         -
@@ -1384,7 +1380,7 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
         (verify := verify)
         (x := x.active) (r := r) (Q := Q)
         (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) a N x y w scratch flag
+        (C := orderFindingApprox a N x y w scratch flag
           hsetup.circuit_workspace hsetup.step4_workspace)
         (ψ := qs.ket b0)
       ≥
@@ -1402,7 +1398,7 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
       x.active
       r
       Q
-      (orderFindingApprox (qs := qs) a N x y w scratch flag
+      (orderFindingApprox a N x y w scratch flag
         hsetup.circuit_workspace hsetup.step4_workspace)
       (orderFindingIdeal (qs := qs) a N x y)
       (qs.ket b0)
@@ -1432,7 +1428,7 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
         (r := ord a N hgcd)
         (Q := ASize x.active)
         (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) a N x y w scratch flag
+        (C := orderFindingApprox a N x y w scratch flag
           hsetup.circuit_workspace hsetup.step4_workspace)
         (ψ := qs.ket b0)
       ≥
@@ -1475,7 +1471,7 @@ theorem Shor_correct_approx_uniform
       probability_of_success (qs := qs) (T := T) (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
         (x := x.active) (r := ord inst.a inst.N inst.coprime) (Q := ASize x.active)
         (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) inst.a inst.N x y w scratch flag
+        (C := orderFindingApprox inst.a inst.N x y w scratch flag
           hsetup.circuit_workspace hsetup.step4_workspace)
         (ψ := qs.ket b0)
       ≥
@@ -1511,7 +1507,7 @@ lemma probability_of_success_lowerGate_eq
     (hclean : GateWorkspaceCleanState qs k hk ops G hworkspace ψ) :
     probability_of_success (qs := qs) (evalC := LowerGateClass.evalL (qs := qs))
         (T := T) (verify := verify) (x := x) (r := r) (Q := Q)
-        (C := lowerGate (Basis := qs.Basis) k hk ops G hworkspace) (ψ := ψ)
+        (C := lowerGate k hk ops G hworkspace) (ψ := ψ)
       =
     probability_of_success (qs := qs) (evalC := qs.eval)
         (T := T) (verify := verify) (x := x) (r := r) (Q := Q)
@@ -1519,7 +1515,7 @@ lemma probability_of_success_lowerGate_eq
   have hEval :
       LowerGateClass.evalL
           (qs := qs)
-          (lowerGate (Basis := qs.Basis) k hk ops G hworkspace)
+          (lowerGate k hk ops G hworkspace)
           ψ
         =
       qs.eval G ψ :=
@@ -1559,17 +1555,17 @@ theorem orderFindingApproxLow_probability_eq
     (hmodWorkspace : ModMulCircuitWorkspaceOK y work)
     (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
     (hLowerWorkspace : GateWorkspaceOK lowering.ops
-      (orderFindingApprox qs a N x y work scratch flag hmodWorkspace hstep4))
+      (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4))
     (ψ : qs.State)
     (hclean : GateWorkspaceCleanState qs lowering.k lowering.hk lowering.ops
-        (orderFindingApprox qs a N x y work scratch flag hmodWorkspace hstep4)
+        (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
         hLowerWorkspace ψ)
     (r Q : ℕ) :
     probability_of_success
         (qs := qs)  (evalC := LowerGateClass.evalL (qs := qs))
         (T := T) (verify := verify) (x := x.active) (r := r)
         (Q := Q)
-        (C := orderFindingApproxLow qs
+        (C := orderFindingApproxLow
             lowering.k lowering.hk lowering.ops a N x y work scratch flag
             hmodWorkspace hstep4 hLowerWorkspace)
         (ψ := ψ)
@@ -1578,7 +1574,7 @@ theorem orderFindingApproxLow_probability_eq
         (qs := qs) (evalC := qs.eval)
         (T := T) (verify := verify) (x := x.active) (r := r)
         (Q := Q)
-        (C := orderFindingApprox qs a N x y work scratch flag
+        (C := orderFindingApprox a N x y work scratch flag
           hmodWorkspace hstep4)
         (ψ := ψ) := by
   simpa only [orderFindingApproxLow] using
@@ -1595,8 +1591,7 @@ theorem orderFindingApproxLow_probability_eq
       (r := r)
       (Q := Q)
       (G :=
-        orderFindingApprox
-          qs a N x y work scratch flag hmodWorkspace hstep4)
+        orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
       (hworkspace := hLowerWorkspace)
       (ψ := ψ)
       (hclean := hclean))
@@ -1609,7 +1604,7 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
     (hmodExp :
       ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
         ModExpConfig.ValidUnitState qs cfg ψ →
-        ‖qs.eval (ModExpConfig.approxGate (Basis := qs.Basis) cfg) ψ -
+        ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
             qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
           ≤ (tbits cfg.x : ℝ) * stepErr K η)
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)
@@ -1629,8 +1624,7 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (r := ord inst.a inst.N inst.coprime)
         (Q := ASize x.active)
         (evalC := LowerGateClass.evalL (qs := qs))
-        (C := orderFindingApproxLow
-          qs lowering.k lowering.hk lowering.ops
+        (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
           inst.a inst.N x y work scratch flag
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
@@ -1647,8 +1641,7 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (r := ord inst.a inst.N inst.coprime)
         (Q := ASize x.active)
         (evalC := LowerGateClass.evalL (qs := qs))
-        (C := orderFindingApproxLow
-          qs lowering.k lowering.hk lowering.ops
+        (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
           inst.a inst.N x y work scratch flag
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
@@ -1662,7 +1655,7 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (r := ord inst.a inst.N inst.coprime)
         (Q := ASize x.active)
         (evalC := qs.eval)
-        (C := orderFindingApprox qs inst.a inst.N x y work scratch flag
+        (C := orderFindingApprox inst.a inst.N x y work scratch flag
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace)
         (ψ := qs.ket b0) := by

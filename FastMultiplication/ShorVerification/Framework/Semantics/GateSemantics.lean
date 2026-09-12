@@ -146,22 +146,22 @@ class PhaseSemantics
   [GateSemanticsCore qs] : Type where
 
   eval_SignedPhaseProd_ket :
-    ∀ (phi : ℝ) (x z : ExtReg) (b : qs.Basis),
+    ∀ (phi : Angle) (x z : ExtReg) (b : qs.Basis),
       qs.eval (Gate.SignedPhaseProd phi x z) (qs.ket b)
         =
       (Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((extToInt x b : ℤ) : ℂ) *
            (((extToInt z b : ℤ) : ℂ))))) •
         qs.ket b
 
   eval_CSignedPhaseProd_ket :
-    ∀ (ctrl : ℕ) (phi : ℝ) (x z : ExtReg) (b : qs.Basis),
+    ∀ (ctrl : ℕ) (phi : Angle) (x z : ExtReg) (b : qs.Basis),
       qs.eval (Gate.CSignedPhaseProd ctrl phi x z) (qs.ket b)
         =
       if RegEncoding.bit ctrl b then
         (Complex.exp
-          (phi * Complex.I *
+          (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
             (((extToInt x b : ℤ) : ℂ) *
              (((extToInt z b : ℤ) : ℂ))))) •
           qs.ket b

@@ -212,7 +212,7 @@ lemma eval_PhaseProdUsing_preserves_QFTWorkspaceCleanState
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    (phi : ℝ)
+    (phi : Angle)
     {x z xWork zWork : Reg}
     (ws : Gate.PhaseProdWorkspace x z)
     (hxReserve : ws.xReserve = xWork)
@@ -272,7 +272,7 @@ theorem standardPhaseProdUsingPlan_ready_and_clean
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (phi : ℝ)
+    (phi : Angle)
     {x z xWork zWork : Reg}
     (ws : Gate.PhaseProdWorkspace x z)
     (hxReserve : ws.xReserve = xWork)

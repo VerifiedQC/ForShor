@@ -48,7 +48,7 @@ lemma encodesFrom_after_shiftL_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (src dst : LayoutState k)
   (hdisj : LayoutSlotsDisjoint dst)
@@ -196,7 +196,7 @@ lemma encodesFrom_after_shiftR_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (src dst : LayoutState k)
   (hdisj : LayoutSlotsDisjoint dst)
@@ -336,7 +336,7 @@ lemma encodesFrom_after_negate_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (src dst : LayoutState k)
   (hdisj : LayoutSlotsDisjoint dst)
@@ -486,7 +486,7 @@ lemma encodesFrom_after_addScaled_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (src dst : LayoutState k)
   (hdisj : LayoutSlotsDisjoint dst)
@@ -735,7 +735,7 @@ lemma sameOutside_after_shiftL_single
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (dst : LayoutState k)
   (hdisj : LayoutSlotsDisjoint dst)
@@ -790,7 +790,7 @@ lemma sameOutside_after_shiftR_single
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (src dst : LayoutState k)
   (hdisj : LayoutSlotsDisjoint dst)
@@ -888,7 +888,7 @@ lemma sameOutside_after_negate_single
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (dst : LayoutState k)
   (hdisj : LayoutSlotsDisjoint dst)
@@ -929,7 +929,7 @@ lemma sameOutside_after_addScaled_single
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (dst : LayoutState k)
   (hdisj : LayoutSlotsDisjoint dst)
@@ -984,7 +984,7 @@ lemma sameOutside_after_noPhase_run_ket_gen
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (src dst : LayoutState k)
   (ops : Prog k)
@@ -1351,7 +1351,7 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (src dst : LayoutState k)
   (ops : Prog k)
@@ -1642,7 +1642,7 @@ lemma encodesFrom_after_noPhase_run_ket_gen
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ} (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (src dst : LayoutState k)
   (ops : Prog k)
@@ -1699,7 +1699,7 @@ lemma eval_matched_phase_ket_from
   (hk0 : 0 < k)
   (i : Fin k)
   (pt : Point)
-  (phi : ℝ)
+  (phi : Angle)
   (hEnc : EncodesStateFrom (qs := qs) src dst σ b0 b1)
   (hmatch : matchesAt_pointRow_state (k := k) hk0 σ i pt = true) :
   qs.eval
@@ -1707,7 +1707,7 @@ lemma eval_matched_phase_ket_from
       (qs.ket b1)
     =
   (Complex.exp
-      (phi * Complex.I *
+      (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
         (((evalRowX (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ) *
          (((evalRowZ (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ))))) •
     qs.ket b1 := by
@@ -1736,7 +1736,7 @@ lemma eval_matched_cphase_ket_from
   (ctrl : ℕ)
   (i : Fin k)
   (pt : Point)
-  (phi : ℝ)
+  (phi : Angle)
   (hEnc : EncodesStateFrom (qs := qs) src dst σ b0 b1)
   (hmatch : matchesAt_pointRow_state (k := k) hk0 σ i pt) :
   qs.eval
@@ -1745,7 +1745,7 @@ lemma eval_matched_cphase_ket_from
     =
   if RegEncoding.bit ctrl b1 then
     (Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((evalRowX (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ) *
            (((evalRowZ (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ))))) •
       qs.ket b1
@@ -1781,7 +1781,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_append
   [GateSemanticsCore qs]
   {k : ℕ} (hk : 1 < k)
   (ctrl : ℕ)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (st : LayoutState k)
   (xs ys : List (AnnotatedOp k))
@@ -1813,7 +1813,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_append
 lemma controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_NoPhase
   {k : ℕ} (hk : 1 < k)
   (ctrl : ℕ)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (st : LayoutState k)
   (ops : Prog k)
@@ -1875,7 +1875,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (src dst : LayoutState k) :
   ∀ {σ : State k} {ops : Prog k} {pts : List Point},
@@ -2053,7 +2053,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
                 (qs.ket bMid)
               =
             (Complex.exp
-              ((phi * ((coeff ⟨n, hlt⟩ : ℚ) : ℝ)) * Complex.I *
+              (((Angle.toReal (phi * coeff ⟨n, hlt⟩) : ℝ) : ℂ) * Complex.I *
                 (((evalRowX (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ) *
                  (((evalRowZ (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ))))) •
               qs.ket bMid := by
@@ -2069,7 +2069,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
               (hk0 := by omega)
               (i := B.i)
               (pt := pt)
-              (phi := phi * ((coeff ⟨n, hlt⟩ : ℚ) : ℝ))
+              (phi := phi * coeff ⟨n, hlt⟩)
               hArithEnc.1
               B.match_pt)
         rw [hPhase]
@@ -2082,7 +2082,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (src dst : LayoutState k) :
   ∀ {σ : State k} {ops : Prog k} {pts : List Point},
@@ -2263,7 +2263,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
               (qs.ket bMid)
             =
           (Complex.exp
-            ((phi * ((coeff ⟨n, hlt⟩ : ℚ) : ℝ)) * Complex.I *
+            (((Angle.toReal (phi * coeff ⟨n, hlt⟩) : ℝ) : ℂ) * Complex.I *
               (((evalRowX (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ) *
                (((evalRowZ (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ))))) •
             qs.ket bMid := by
@@ -2279,7 +2279,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
             (hk0 := by omega)
             (i := B.i)
             (pt := pt)
-            (phi := phi * ((coeff ⟨n, hlt⟩ : ℚ) : ℝ))
+            (phi := phi * coeff ⟨n, hlt⟩)
             hArithEnc.1
             B.match_pt)
       rw [hPhase]
@@ -2300,7 +2300,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (ctrl : ℕ)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (src dst : LayoutState k) :
   ∀ {σ : State k} {ops : Prog k} {pts : List Point},
@@ -2543,7 +2543,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
             =
           if RegEncoding.bit ctrl bMid then
             (Complex.exp
-              ((phi * ((coeff ⟨n, hlt⟩ : ℚ) : ℝ)) * Complex.I *
+              (((Angle.toReal (phi * coeff ⟨n, hlt⟩) : ℝ) : ℂ) * Complex.I *
                 (((evalRowX (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ) *
                  (((evalRowZ (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ))))) •
               qs.ket bMid
@@ -2563,7 +2563,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
             (ctrl := ctrl)
             (i := B.i)
             (pt := pt)
-            (phi := phi * ((coeff ⟨n, hlt⟩ : ℚ) : ℝ))
+            (phi := phi * coeff ⟨n, hlt⟩)
             hArithEnc.1
             B.match_pt)
       rw [hPhase]
@@ -2588,7 +2588,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (pts : List Point)
   (hpts : pts.length = q k)
   (coeff : Fin (q k) → ℚ)
@@ -2729,7 +2729,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (ctrl : ℕ)
-  (phi : ℝ)
+  (phi : Angle)
   (pts : List Point)
   (hpts : pts.length = q k)
   (coeff : Fin (q k) → ℚ)
@@ -2937,7 +2937,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_then_dealloc
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (pts : List Point)
   (hpts : pts.length = q k)
   (coeff : Fin (q k) → ℚ)
@@ -3012,7 +3012,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_then_
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
   (ctrl : ℕ)
-  (phi : ℝ)
+  (phi : Angle)
   (pts : List Point)
   (hpts : pts.length = q k)
   (coeff : Fin (q k) → ℚ)

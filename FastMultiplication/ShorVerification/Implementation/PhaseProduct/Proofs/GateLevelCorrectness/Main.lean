@@ -24,7 +24,7 @@ lemma eval_compileOpsToSignedGate_correct
   [RegEncoding qs.Basis]
   [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (x z : ExtReg)
   (layout : Gate.PhaseProductLayout x z k)
   (pts : List Point)
@@ -71,7 +71,7 @@ lemma eval_compileOpsToCSignedGate_correct
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (hctrl : layout.ControlDisjoint ctrl)

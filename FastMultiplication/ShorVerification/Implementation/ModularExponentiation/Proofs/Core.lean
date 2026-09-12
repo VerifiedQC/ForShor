@@ -670,7 +670,6 @@ noncomputable def U1
     [RegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
   step1
-  (Basis := Basis)
   cfg.c cfg.env.N cfg.ctrl
   cfg.env.data cfg.env.work
   cfg.env.circuit_workspace
@@ -682,7 +681,6 @@ noncomputable def U2
     [RegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
   step2
-  (Basis := Basis)
   cfg.env.N
   cfg.env.data cfg.env.work
   cfg.env.circuit_workspace
@@ -694,7 +692,6 @@ noncomputable def U5
     [RegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
   step5
-    (Basis := Basis)
     (step5Constant cfg.c cfg.env.N)
     cfg.env.N cfg.ctrl
     cfg.env.data cfg.env.work
@@ -1293,12 +1290,12 @@ section Step2FourierScaffolding
 /--
 The Step-2 phase angle, written independently of the `let`s in `step2`.
 -/
-noncomputable def alg1Step2Phase
+def alg1Step2Phase
     {η : ℝ}
-    (cfg : ModMulConfig η) : ℝ :=
-  (2 * Real.pi * (cfg.env.N : ℝ)) /
-    ((2 : ℝ) ^
-      (regSize cfg.env.work.active + regSize (cfg.env.data.grow 1).active))
+    (cfg : ModMulConfig η) : Angle :=
+  (2 * (cfg.env.N : ℚ)) /
+    (2 : ℚ) ^
+      (regSize cfg.env.work.active + regSize (cfg.env.data.grow 1).active)
 
 /--
 The normalizing scalar in the QFT on `data.grow 1`.
@@ -1325,7 +1322,7 @@ noncomputable def alg1Step2ActualFourierCoeff
       (RegEncoding.toNat cfg.env.data.active b)
       y.1 *
     Complex.exp
-      (alg1Step2Phase cfg * Complex.I *
+      (((Angle.toReal (alg1Step2Phase cfg) : ℝ) : ℂ) * Complex.I *
         ((t.1 : ℂ) * (y.1 : ℂ)))
 
 /--
@@ -1424,7 +1421,7 @@ noncomputable def alg1Step2FourierMultiplier
     (r : ℕ)
     (p : Alg1Step2FourierIndex qs cfg) : ℂ :=
   Complex.exp
-    (alg1Step2Phase cfg * Complex.I *
+    (((Angle.toReal (alg1Step2Phase cfg) : ℝ) : ℂ) * Complex.I *
       ((p.1.2.1 : ℂ) * (p.2.1 : ℂ)))
     -
   qftPhase
@@ -1531,7 +1528,7 @@ structure Alg1Trace
 
   full_step1_eq :
     qs.eval
-        (step1 (Basis := qs.Basis)
+        (step1
           cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
         ψ
       =
@@ -1822,6 +1819,22 @@ noncomputable def afterStep34Bad
 
 end Alg1Trace
 
+/-- The Step-1 controlled phase angle. -/
+def alg1Step1Phase
+  {η : ℝ}
+  (cfg : ModMulConfig η) : Angle :=
+  (2 *
+      (((cfg.c + cfg.env.N - 1) % cfg.env.N : ℕ) : ℚ))
+    / (cfg.env.N : ℚ)
+
+/-- The forward Step-5 controlled phase angle. -/
+def alg1Step5Phase
+  {η : ℝ}
+  (cfg : ModMulConfig η) : Angle :=
+  (2 *
+      ((step5Constant cfg.c cfg.env.N % cfg.env.N : ℕ) : ℚ))
+    / (cfg.env.N : ℚ)
+
 /--
 The forward circuit whose adjoint is `ModMulConfig.U5`.
 
@@ -1835,26 +1848,10 @@ noncomputable def alg1Step5Forward
   (H_reg cfg.env.work.active) ;;
   (Gate.CPhaseProdUsing
     cfg.ctrl
-    ((2 * Real.pi * ((step5Constant cfg.c cfg.env.N % cfg.env.N : ℕ) : ℝ)) / (cfg.env.N : ℝ))
+    (alg1Step5Phase cfg)
     (cfg.env.data.grow 1).active
     cfg.env.work.active cfg.env.circuit_workspace.step5Workspace) ;;
   (IQFT cfg.env.work)
-
-/-- The Step-1 controlled phase angle. -/
-noncomputable def alg1Step1Phase
-  {η : ℝ}
-  (cfg : ModMulConfig η) : ℝ :=
-  (2 * Real.pi *
-      (((cfg.c + cfg.env.N - 1) % cfg.env.N : ℕ) : ℝ))
-    / (cfg.env.N : ℝ)
-
-/-- The forward Step-5 controlled phase angle. -/
-noncomputable def alg1Step5Phase
-  {η : ℝ}
-  (cfg : ModMulConfig η) : ℝ :=
-  (2 * Real.pi *
-      ((step5Constant cfg.c cfg.env.N % cfg.env.N : ℕ) : ℝ))
-    / (cfg.env.N : ℝ)
 
 /--
 The diagonal phase acquired by work label `z` during the original Step-1
@@ -1869,7 +1866,7 @@ noncomputable def alg1Step1PhaseScalar
     (z : Fin (ASize cfg.env.work.active)) : ℂ :=
   if RegEncoding.bit cfg.ctrl b then
     Complex.exp
-      (alg1Step1Phase cfg * Complex.I *
+      (((Angle.toReal (alg1Step1Phase cfg) : ℝ) : ℂ) * Complex.I *
         ((RegEncoding.toNat cfg.env.data.active b : ℂ) * (z.1 : ℂ)))
   else
     1

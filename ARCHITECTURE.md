@@ -2,18 +2,33 @@
 
 This document walks through the Lean development in detail. For an overview and build instructions, see the [README](README.md).
 
+> **Note on paths below.** This file predates a repository restructure: the
+> tree is now split into `FastMultiplication/ShorVerification/Framework/`
+> (the shared vocabulary — registers, the `Gate`/`LowGate` languages,
+> `QSemantics` and the other semantic classes, the cost model, and general
+> classical math) and `FastMultiplication/ShorVerification/Implementation/`
+> (the phase-product compiler, QFT, modular exponentiation, the Shor
+> assembly and gate-count proofs, and the concrete `Reference/`
+> implementation). See the README's "Repository layout" table for the
+> current top-level directories. Every file/definition named below still
+> exists somewhere in the tree (`grep -rn "def NAME" FastMultiplication` or
+> `grep -rln "theorem NAME" FastMultiplication` finds it), but the specific
+> paths quoted here are the *pre-restructure* ones and no longer resolve
+> directly.
+
 # FastMultiplication Shor Verification
 
 This repository is a Lean 4 verification project for a fast-multiplication-based implementation of the phase-product, QFT, modular multiplication, modular exponentiation, and order-finding pieces used in Shor's algorithm.
 
-The development has six main pieces:
+The development has six main pieces (original names; see the note above for
+where each now lives):
 
-1. `FastMultiplication/ShorVerification/Basic.lean` defines the shared register, gate, and quantum-semantics vocabulary.
-2. `MathBackbone/` proves the classical algebra and number theory used by the circuits.
-3. `AlgorithmCorrectness/` proves high-level circuit identities and approximation bounds.
-4. `AbstractMachine/` proves that the high-level gates lower correctly to the low-level abstract machine.
-5. `GateCount/` proves asymptotic gate-count bounds for the lowered circuits.
-6. `ShorCorrectness.lean` assembles the algorithmic correctness story for Shor/order finding.
+1. `Basic.lean` (now split across `Framework/Quantum/`, `Framework/AbstractMachine/`, `Framework/Semantics/`, `Framework/Instantiation/`) defines the shared register, gate, and quantum-semantics vocabulary.
+2. `MathBackbone/` (now `Implementation/PhaseProduct/Math/` and `Framework/Math/`) proves the classical algebra and number theory used by the circuits.
+3. `AlgorithmCorrectness/` (now `Implementation/{PhaseProduct,QFT,ModularExponentiation}/Proofs/`) proves high-level circuit identities and approximation bounds.
+4. `AbstractMachine/` (now `Implementation/{PhaseProduct,QFT,Shor}/Proofs/LoweringCorrectness/` and `Implementation/Shor/Proofs/WholeProgramCorrectness.lean`; the *language* itself, `LowGate`, lives at `Framework/AbstractMachine/LowGate.lean`) proves that the high-level gates lower correctly to the low-level abstract machine.
+5. `GateCount/` (now `Implementation/GateCount/`) proves asymptotic gate-count bounds for the lowered circuits.
+6. `ShorCorrectness.lean` (now `Implementation/Shor/` plus `Implementation/Reference/` for the concrete submission and `FastMultiplication/Emit/` for the JSON emitter) assembles the algorithmic correctness story for Shor/order finding.
 
 `MathBackbone` supplies the mathematics, `AlgorithmCorrectness` proves the high-level circuit equations, `AbstractMachine` proves the lowering from those high-level gates to low-level gates, and `GateCount` proves that the lowered circuits have the intended asymptotic size.
 
@@ -21,7 +36,7 @@ The development has six main pieces:
 
 ## Core Definitions in `Basic.lean`
 
-`FastMultiplication/ShorVerification/Basic.lean` is the common language of the whole verification. It deliberately avoids committing to one concrete Hilbert-space implementation. Instead, it defines registers, gate syntax, and abstract semantic interfaces that later files can instantiate or reason against.
+`Basic.lean` (see the path note above) is the common language of the whole verification. It deliberately avoids committing to one concrete Hilbert-space implementation. Instead, it defines registers, gate syntax, and abstract semantic interfaces that later files can instantiate or reason against.
 
 ### Registers
 
@@ -321,7 +336,7 @@ Important results include:
 - `shors_probability_bound`, which states the postprocessing success probability bound.
 - `Shor_end_to_end_factoring`, which combines order finding with the classical factoring reduction.
 
-This file is where the exact-lowering branch, approximation branch, and classical postprocessing branch meet. In the current repository state, Lean reports that `Shor_correct` itself still uses `sorry`; the surrounding approximate and gate-count developments are organized as separate supporting branches.
+This file is where the exact-lowering branch, approximation branch, and classical postprocessing branch meet. `Shor_correct` and every other theorem in the development are fully proved — no `sorry` remains anywhere in the codebase (`grep -rn sorry FastMultiplication` is empty; `#print axioms` on the headline theorems reports only `propext`, `Classical.choice`, and `Quot.sound`). The exact-lowering, approximate, and gate-count developments are organized as separate supporting branches that this file assembles.
 
 ## Big Picture
 

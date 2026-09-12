@@ -1,9 +1,8 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.OrderFinding
+import FastMultiplication.ShorVerification.Implementation.Reference.ReferencePrecision
 
 namespace Shor
 namespace Reference
-
-noncomputable section
 
 /-!
 # Reference Shor layout allocator
@@ -97,18 +96,18 @@ def referenceDataWidth (inst : ShorOrderFindingInstance) : ℕ :=
   Nat.log2 (2 * inst.N)
 
 /-- Active width prescribed for Algorithm 1's work register. -/
-noncomputable def referenceWorkWidth
+def referenceWorkWidth
     (inst : ShorOrderFindingInstance)
-    (η : ℝ) : ℕ :=
-  referenceDataWidth inst + algorithm1ExtraBits η
+    (m : ℕ) : ℕ :=
+  referenceDataWidth inst + algorithm1ExtraBitsNat m
 
 /-- Active width required by the concrete Step-3/4 comparator scratch. -/
-noncomputable def referenceScratchWidth
+def referenceScratchWidth
     (inst : ShorOrderFindingInstance)
-    (η : ℝ) : ℕ :=
+    (m : ℕ) : ℕ :=
   2 + max
-    ((referenceDataWidth inst + 1) + referenceWorkWidth inst η)
-    (Nat.log2 (inst.N + 1) + 1 + referenceWorkWidth inst η)
+    ((referenceDataWidth inst + 1) + referenceWorkWidth inst m)
+    (Nat.log2 (inst.N + 1) + 1 + referenceWorkWidth inst m)
 
 /-- Width-only stand-in used to evaluate `shorWorkspaceNeed`. -/
 private def widthShell (n : ℕ) : ExtReg :=
@@ -123,39 +122,39 @@ Reserve budget required by the current reference lowerer at these active widths.
 The locations of the shell registers are irrelevant because
 `shorWorkspaceNeed` depends only on active widths.
 -/
-noncomputable def referenceWorkspaceNeed
+def referenceWorkspaceNeed
     {k : ℕ}
     (ops : Prog k)
     (inst : ShorOrderFindingInstance)
-    (η : ℝ) : ShorWorkspaceNeed :=
+    (m : ℕ) : ShorWorkspaceNeed :=
   shorWorkspaceNeed ops
     (widthShell (referenceXWidth inst))
     (widthShell (referenceDataWidth inst))
-    (widthShell (referenceWorkWidth inst η))
-    (widthShell (referenceScratchWidth inst η))
+    (widthShell (referenceWorkWidth inst m))
+    (widthShell (referenceScratchWidth inst m))
 
-noncomputable def referenceXReserveSize
+def referenceXReserveSize
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  (referenceWorkspaceNeed ops inst η).exponent
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ℕ :=
+  (referenceWorkspaceNeed ops inst m).exponent
 
 /-- Two bits are additionally guaranteed for Algorithm 1's data growth. -/
-noncomputable def referenceDataReserveSize
+def referenceDataReserveSize
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  max 2 (referenceWorkspaceNeed ops inst η).data
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ℕ :=
+  max 2 (referenceWorkspaceNeed ops inst m).data
 
 /-- One bit is additionally guaranteed for Algorithm 1's work growth. -/
-noncomputable def referenceWorkReserveSize
+def referenceWorkReserveSize
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  max 1 (referenceWorkspaceNeed ops inst η).auxiliary
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ℕ :=
+  max 1 (referenceWorkspaceNeed ops inst m).auxiliary
 
 /-- One reserve bit is guaranteed for the concrete Step-3 subtraction unit. -/
-noncomputable def referenceScratchReserveSize
+def referenceScratchReserveSize
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  max 1 (referenceWorkspaceNeed ops inst η).scratch
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ℕ :=
+  max 1 (referenceWorkspaceNeed ops inst m).scratch
 
 private theorem shorWorkspaceNeed_ext
     {a b : ShorWorkspaceNeed}
@@ -183,133 +182,133 @@ def referenceXReserveStart
     (inst : ShorOrderFindingInstance) : ℕ :=
   referenceXWidth inst
 
-noncomputable def referenceDataStart
+def referenceDataStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ℕ :=
   referenceXReserveStart inst +
-    referenceXReserveSize ops inst η
+    referenceXReserveSize ops inst m
 
-noncomputable def referenceDataReserveStart
+def referenceDataReserveStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  referenceDataStart ops inst η +
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ℕ :=
+  referenceDataStart ops inst m +
     referenceDataWidth inst
 
-noncomputable def referenceWorkStart
+def referenceWorkStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  referenceDataReserveStart ops inst η +
-    referenceDataReserveSize ops inst η
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ℕ :=
+  referenceDataReserveStart ops inst m +
+    referenceDataReserveSize ops inst m
 
-noncomputable def referenceWorkReserveStart
+def referenceWorkReserveStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  referenceWorkStart ops inst η +
-    referenceWorkWidth inst η
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ℕ :=
+  referenceWorkStart ops inst m +
+    referenceWorkWidth inst m
 
-noncomputable def referenceScratchStart
+def referenceScratchStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  referenceWorkReserveStart ops inst η +
-    referenceWorkReserveSize ops inst η
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ℕ :=
+  referenceWorkReserveStart ops inst m +
+    referenceWorkReserveSize ops inst m
 
-noncomputable def referenceScratchReserveStart
+def referenceScratchReserveStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  referenceScratchStart ops inst η +
-    referenceScratchWidth inst η
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ℕ :=
+  referenceScratchStart ops inst m +
+    referenceScratchWidth inst m
 
-noncomputable def referenceFlag
+def referenceFlag
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ℕ :=
-  referenceScratchReserveStart ops inst η +
-    referenceScratchReserveSize ops inst η
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ℕ :=
+  referenceScratchReserveStart ops inst m +
+    referenceScratchReserveSize ops inst m
 
-noncomputable def referenceXReserve
+def referenceXReserve
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : Reg :=
+    (inst : ShorOrderFindingInstance) (m : ℕ) : Reg :=
   Reg.interval
     (referenceXReserveStart inst)
-    (referenceXReserveSize ops inst η)
+    (referenceXReserveSize ops inst m)
 
-noncomputable def referenceDataActive
+def referenceDataActive
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : Reg :=
+    (inst : ShorOrderFindingInstance) (m : ℕ) : Reg :=
   Reg.interval
-    (referenceDataStart ops inst η)
+    (referenceDataStart ops inst m)
     (referenceDataWidth inst)
 
-noncomputable def referenceDataReserve
+def referenceDataReserve
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : Reg :=
+    (inst : ShorOrderFindingInstance) (m : ℕ) : Reg :=
   Reg.interval
-    (referenceDataReserveStart ops inst η)
-    (referenceDataReserveSize ops inst η)
+    (referenceDataReserveStart ops inst m)
+    (referenceDataReserveSize ops inst m)
 
-noncomputable def referenceWorkActive
+def referenceWorkActive
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : Reg :=
+    (inst : ShorOrderFindingInstance) (m : ℕ) : Reg :=
   Reg.interval
-    (referenceWorkStart ops inst η)
-    (referenceWorkWidth inst η)
+    (referenceWorkStart ops inst m)
+    (referenceWorkWidth inst m)
 
-noncomputable def referenceWorkReserve
+def referenceWorkReserve
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : Reg :=
+    (inst : ShorOrderFindingInstance) (m : ℕ) : Reg :=
   Reg.interval
-    (referenceWorkReserveStart ops inst η)
-    (referenceWorkReserveSize ops inst η)
+    (referenceWorkReserveStart ops inst m)
+    (referenceWorkReserveSize ops inst m)
 
-noncomputable def referenceScratchActive
+def referenceScratchActive
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : Reg :=
+    (inst : ShorOrderFindingInstance) (m : ℕ) : Reg :=
   Reg.interval
-    (referenceScratchStart ops inst η)
-    (referenceScratchWidth inst η)
+    (referenceScratchStart ops inst m)
+    (referenceScratchWidth inst m)
 
-noncomputable def referenceScratchReserve
+def referenceScratchReserve
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : Reg :=
+    (inst : ShorOrderFindingInstance) (m : ℕ) : Reg :=
   Reg.interval
-    (referenceScratchReserveStart ops inst η)
-    (referenceScratchReserveSize ops inst η)
+    (referenceScratchReserveStart ops inst m)
+    (referenceScratchReserveSize ops inst m)
 
 /-! =========================================================
     Section 4: Extended-register construction
 ========================================================= -/
 
-noncomputable def referenceX
+def referenceX
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ExtReg :=
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ExtReg :=
   ExtReg.withReserve
     (referenceXActive inst)
-    (referenceXReserve ops inst η)
+    (referenceXReserve ops inst m)
     (interval_disjoint_of_end_le (by simp [referenceXReserveStart]))
 
-noncomputable def referenceData
+def referenceData
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ExtReg :=
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ExtReg :=
   ExtReg.withReserve
-    (referenceDataActive ops inst η)
-    (referenceDataReserve ops inst η)
+    (referenceDataActive ops inst m)
+    (referenceDataReserve ops inst m)
     (interval_disjoint_of_end_le (by
       simp [referenceDataReserveStart]))
 
-noncomputable def referenceWork
+def referenceWork
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ExtReg :=
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ExtReg :=
   ExtReg.withReserve
-    (referenceWorkActive ops inst η)
-    (referenceWorkReserve ops inst η)
+    (referenceWorkActive ops inst m)
+    (referenceWorkReserve ops inst m)
     (interval_disjoint_of_end_le (by
       simp [referenceWorkReserveStart]))
 
-noncomputable def referenceScratch
+def referenceScratch
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) : ExtReg :=
+    (inst : ShorOrderFindingInstance) (m : ℕ) : ExtReg :=
   ExtReg.withReserve
-    (referenceScratchActive ops inst η)
-    (referenceScratchReserve ops inst η)
+    (referenceScratchActive ops inst m)
+    (referenceScratchReserve ops inst m)
     (interval_disjoint_of_end_le (by
       simp [referenceScratchReserveStart]))
 
@@ -336,17 +335,17 @@ structure ReferenceShorLayout where
 Allocate all reference-implementation storage deterministically above the public
 register file.
 -/
-noncomputable def allocateReferenceLayout
+def allocateReferenceLayout
     {k : ℕ}
     (ops : Prog k)
     (inst : ShorOrderFindingInstance)
-    (η : ℝ) : ReferenceShorLayout :=
+    (m : ℕ) : ReferenceShorLayout :=
   {
-    x := referenceX ops inst η
-    data := referenceData ops inst η
-    work := referenceWork ops inst η
-    scratch := referenceScratch ops inst η
-    flag := referenceFlag ops inst η
+    x := referenceX ops inst m
+    data := referenceData ops inst m
+    work := referenceWork ops inst m
+    scratch := referenceScratch ops inst m
+    flag := referenceFlag ops inst m
   }
 
 /-! =========================================================
@@ -355,72 +354,72 @@ noncomputable def allocateReferenceLayout
 
 @[simp] theorem allocateReferenceLayout_x_active
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (allocateReferenceLayout ops inst η).x.active =
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    (allocateReferenceLayout ops inst m).x.active =
       referenceXActive inst := by
   rfl
 
 @[simp] theorem allocateReferenceLayout_x_width
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    regSize (allocateReferenceLayout ops inst η).x.active =
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    regSize (allocateReferenceLayout ops inst m).x.active =
       Nat.log2 (2 * inst.N^2) := by
   simp [allocateReferenceLayout, referenceX,
     referenceXActive, referenceXWidth]
 
 @[simp] theorem allocateReferenceLayout_data_width
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    regSize (allocateReferenceLayout ops inst η).data.active =
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    regSize (allocateReferenceLayout ops inst m).data.active =
       Nat.log2 (2 * inst.N) := by
   simp [allocateReferenceLayout, referenceData,
     referenceDataActive, referenceDataWidth]
 
 @[simp] theorem allocateReferenceLayout_work_width
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    regSize (allocateReferenceLayout ops inst η).work.active =
-      referenceDataWidth inst + algorithm1ExtraBits η := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    regSize (allocateReferenceLayout ops inst m).work.active =
+      referenceDataWidth inst + algorithm1ExtraBitsNat m := by
   simp [allocateReferenceLayout, referenceWork,
     referenceWorkActive, referenceWorkWidth]
 
 @[simp] theorem allocateReferenceLayout_scratch_width
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    regSize (allocateReferenceLayout ops inst η).scratch.active =
-      referenceScratchWidth inst η := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    regSize (allocateReferenceLayout ops inst m).scratch.active =
+      referenceScratchWidth inst m := by
   simp [allocateReferenceLayout, referenceScratch,
     referenceScratchActive]
 
 @[simp] theorem allocateReferenceLayout_x_capacity
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (allocateReferenceLayout ops inst η).x.capacity =
-      referenceXReserveSize ops inst η := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    (allocateReferenceLayout ops inst m).x.capacity =
+      referenceXReserveSize ops inst m := by
   simp [allocateReferenceLayout, referenceX, referenceXReserve,
     ExtReg.capacity]
 
 @[simp] theorem allocateReferenceLayout_data_capacity
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (allocateReferenceLayout ops inst η).data.capacity =
-      referenceDataReserveSize ops inst η := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    (allocateReferenceLayout ops inst m).data.capacity =
+      referenceDataReserveSize ops inst m := by
   simp [allocateReferenceLayout, referenceData, referenceDataReserve,
     ExtReg.capacity]
 
 @[simp] theorem allocateReferenceLayout_work_capacity
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (allocateReferenceLayout ops inst η).work.capacity =
-      referenceWorkReserveSize ops inst η := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    (allocateReferenceLayout ops inst m).work.capacity =
+      referenceWorkReserveSize ops inst m := by
   simp [allocateReferenceLayout, referenceWork, referenceWorkReserve,
     ExtReg.capacity]
 
 @[simp] theorem allocateReferenceLayout_scratch_capacity
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (allocateReferenceLayout ops inst η).scratch.capacity =
-      referenceScratchReserveSize ops inst η := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    (allocateReferenceLayout ops inst m).scratch.capacity =
+      referenceScratchReserveSize ops inst m := by
   simp [allocateReferenceLayout, referenceScratch, referenceScratchReserve,
     ExtReg.capacity]
 
@@ -430,10 +429,10 @@ noncomputable def allocateReferenceLayout
 
 private lemma referenceX_owned_lt_dataStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ)
+    (inst : ShorOrderFindingInstance) (m : ℕ)
     {q : ℕ}
-    (hq : q ∈ (referenceX ops inst η).ownedQubits) :
-    q < referenceDataStart ops inst η := by
+    (hq : q ∈ (referenceX ops inst m).ownedQubits) :
+    q < referenceDataStart ops inst m := by
   simp only [
     referenceX,
     ExtReg.ownedQubits,
@@ -451,10 +450,10 @@ private lemma referenceX_owned_lt_dataStart
 
 private lemma referenceData_owned_ge_dataStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ)
+    (inst : ShorOrderFindingInstance) (m : ℕ)
     {q : ℕ}
-    (hq : q ∈ (referenceData ops inst η).ownedQubits) :
-    referenceDataStart ops inst η ≤ q := by
+    (hq : q ∈ (referenceData ops inst m).ownedQubits) :
+    referenceDataStart ops inst m ≤ q := by
   simp only [
     referenceData,
     ExtReg.ownedQubits,
@@ -470,10 +469,10 @@ private lemma referenceData_owned_ge_dataStart
 
 private lemma referenceWork_owned_ge_workStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ)
+    (inst : ShorOrderFindingInstance) (m : ℕ)
     {q : ℕ}
-    (hq : q ∈ (referenceWork ops inst η).ownedQubits) :
-    referenceWorkStart ops inst η ≤ q := by
+    (hq : q ∈ (referenceWork ops inst m).ownedQubits) :
+    referenceWorkStart ops inst m ≤ q := by
   simp only [referenceWork, ExtReg.ownedQubits, ExtReg.withReserve,
     List.mem_append] at hq
   rcases hq with hactive | hreserve
@@ -484,10 +483,10 @@ private lemma referenceWork_owned_ge_workStart
 
 private lemma referenceWork_owned_lt_scratchStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ)
+    (inst : ShorOrderFindingInstance) (m : ℕ)
     {q : ℕ}
-    (hq : q ∈ (referenceWork ops inst η).ownedQubits) :
-    q < referenceScratchStart ops inst η := by
+    (hq : q ∈ (referenceWork ops inst m).ownedQubits) :
+    q < referenceScratchStart ops inst m := by
   simp only [referenceWork, ExtReg.ownedQubits, ExtReg.withReserve,
     List.mem_append] at hq
   rcases hq with hactive | hreserve
@@ -499,10 +498,10 @@ private lemma referenceWork_owned_lt_scratchStart
 
 private lemma referenceScratch_owned_ge_scratchStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ)
+    (inst : ShorOrderFindingInstance) (m : ℕ)
     {q : ℕ}
-    (hq : q ∈ (referenceScratch ops inst η).ownedQubits) :
-    referenceScratchStart ops inst η ≤ q := by
+    (hq : q ∈ (referenceScratch ops inst m).ownedQubits) :
+    referenceScratchStart ops inst m ≤ q := by
   simp only [referenceScratch, ExtReg.ownedQubits, ExtReg.withReserve,
     List.mem_append] at hq
   rcases hq with hactive | hreserve
@@ -513,10 +512,10 @@ private lemma referenceScratch_owned_ge_scratchStart
 
 private lemma referenceScratch_owned_lt_flag
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ)
+    (inst : ShorOrderFindingInstance) (m : ℕ)
     {q : ℕ}
-    (hq : q ∈ (referenceScratch ops inst η).ownedQubits) :
-    q < referenceFlag ops inst η := by
+    (hq : q ∈ (referenceScratch ops inst m).ownedQubits) :
+    q < referenceFlag ops inst m := by
   simp only [referenceScratch, ExtReg.ownedQubits, ExtReg.withReserve,
     List.mem_append] at hq
   rcases hq with hactive | hreserve
@@ -533,33 +532,33 @@ private lemma referenceScratch_owned_lt_flag
 /-- The allocated exponent and data storage are completely ownership-disjoint. -/
 theorem reference_exponent_data_disjoint
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
     ExtReg.OwnedDisjoint
-      (referenceX ops inst η)
-      (referenceData ops inst η) := by
+      (referenceX ops inst m)
+      (referenceData ops inst m) := by
   rw [ExtReg.OwnedDisjoint, List.disjoint_left]
   intro q hx hy
-  have hlt := referenceX_owned_lt_dataStart ops inst η hx
-  have hge := referenceData_owned_ge_dataStart ops inst η hy
+  have hlt := referenceX_owned_lt_dataStart ops inst m hx
+  have hge := referenceData_owned_ge_dataStart ops inst m hy
   omega
 
 private lemma referenceX_owned_lt_workStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ)
+    (inst : ShorOrderFindingInstance) (m : ℕ)
     {q : ℕ}
-    (hq : q ∈ (referenceX ops inst η).ownedQubits) :
-    q < referenceWorkStart ops inst η := by
+    (hq : q ∈ (referenceX ops inst m).ownedQubits) :
+    q < referenceWorkStart ops inst m := by
   have hlt :=
-    referenceX_owned_lt_dataStart ops inst η hq
+    referenceX_owned_lt_dataStart ops inst m hq
   unfold referenceWorkStart referenceDataReserveStart
   omega
 
 private lemma referenceData_owned_lt_workStart
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ)
+    (inst : ShorOrderFindingInstance) (m : ℕ)
     {q : ℕ}
-    (hq : q ∈ (referenceData ops inst η).ownedQubits) :
-    q < referenceWorkStart ops inst η := by
+    (hq : q ∈ (referenceData ops inst m).ownedQubits) :
+    q < referenceWorkStart ops inst m := by
   simp only [
     referenceData,
     ExtReg.ownedQubits,
@@ -577,83 +576,83 @@ private lemma referenceData_owned_lt_workStart
 /-- The allocated data and work storage are completely ownership-disjoint. -/
 theorem reference_data_work_disjoint
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
     ExtReg.OwnedDisjoint
-      (referenceData ops inst η)
-      (referenceWork ops inst η) := by
+      (referenceData ops inst m)
+      (referenceWork ops inst m) := by
   rw [ExtReg.OwnedDisjoint, List.disjoint_left]
   intro q hdata hwork
-  have hlt := referenceData_owned_lt_workStart ops inst η hdata
-  have hge := referenceWork_owned_ge_workStart ops inst η hwork
+  have hlt := referenceData_owned_lt_workStart ops inst m hdata
+  have hge := referenceWork_owned_ge_workStart ops inst m hwork
   omega
 
 /-- The exponent register and all work storage are ownership-disjoint. -/
 theorem reference_exponent_work_disjoint
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
     ExtReg.OwnedDisjoint
-      (referenceX ops inst η)
-      (referenceWork ops inst η) := by
+      (referenceX ops inst m)
+      (referenceWork ops inst m) := by
   rw [ExtReg.OwnedDisjoint, List.disjoint_left]
   intro q hx hwork
   have hxlt :=
-    referenceX_owned_lt_workStart ops inst η hx
+    referenceX_owned_lt_workStart ops inst m hx
   have hworkge :=
-    referenceWork_owned_ge_workStart ops inst η hwork
+    referenceWork_owned_ge_workStart ops inst m hwork
   omega
 
 /-- The exponent register and comparator scratch are ownership-disjoint. -/
 theorem reference_exponent_scratch_disjoint
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
     ExtReg.OwnedDisjoint
-      (referenceX ops inst η)
-      (referenceScratch ops inst η) := by
+      (referenceX ops inst m)
+      (referenceScratch ops inst m) := by
   rw [ExtReg.OwnedDisjoint, List.disjoint_left]
   intro q hx hscratch
-  have hxlt := referenceX_owned_lt_workStart ops inst η hx
+  have hxlt := referenceX_owned_lt_workStart ops inst m hx
   have hscratchge :=
-    referenceScratch_owned_ge_scratchStart ops inst η hscratch
+    referenceScratch_owned_ge_scratchStart ops inst m hscratch
   unfold referenceScratchStart referenceWorkReserveStart at hscratchge
   omega
 
 /-- The data register and comparator scratch are ownership-disjoint. -/
 theorem reference_data_scratch_disjoint
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
     ExtReg.OwnedDisjoint
-      (referenceData ops inst η)
-      (referenceScratch ops inst η) := by
+      (referenceData ops inst m)
+      (referenceScratch ops inst m) := by
   rw [ExtReg.OwnedDisjoint, List.disjoint_left]
   intro q hdata hscratch
-  have hdlt := referenceData_owned_lt_workStart ops inst η hdata
+  have hdlt := referenceData_owned_lt_workStart ops inst m hdata
   have hscratchge :=
-    referenceScratch_owned_ge_scratchStart ops inst η hscratch
+    referenceScratch_owned_ge_scratchStart ops inst m hscratch
   unfold referenceScratchStart referenceWorkReserveStart at hscratchge
   omega
 
 /-- The work register and comparator scratch are ownership-disjoint. -/
 theorem reference_work_scratch_disjoint
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
     ExtReg.OwnedDisjoint
-      (referenceWork ops inst η)
-      (referenceScratch ops inst η) := by
+      (referenceWork ops inst m)
+      (referenceScratch ops inst m) := by
   rw [ExtReg.OwnedDisjoint, List.disjoint_left]
   intro q hwork hscratch
-  have hlt := referenceWork_owned_lt_scratchStart ops inst η hwork
-  have hge := referenceScratch_owned_ge_scratchStart ops inst η hscratch
+  have hlt := referenceWork_owned_lt_scratchStart ops inst m hwork
+  have hge := referenceScratch_owned_ge_scratchStart ops inst m hscratch
   omega
 
 /-- The flag is outside all exponent-owned qubits. -/
 theorem reference_flag_outside_exponent
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    referenceFlag ops inst η ∉ (referenceX ops inst η).ownedQubits := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    referenceFlag ops inst m ∉ (referenceX ops inst m).ownedQubits := by
   intro hflag
-  have hlt := referenceX_owned_lt_workStart ops inst η hflag
+  have hlt := referenceX_owned_lt_workStart ops inst m hflag
   have hge :
-      referenceWorkStart ops inst η ≤ referenceFlag ops inst η := by
+      referenceWorkStart ops inst m ≤ referenceFlag ops inst m := by
     unfold referenceFlag referenceScratchReserveStart referenceScratchStart
       referenceWorkReserveStart
     omega
@@ -662,12 +661,12 @@ theorem reference_flag_outside_exponent
 /-- The flag is outside all data-owned qubits. -/
 theorem reference_flag_outside_data
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    referenceFlag ops inst η ∉ (referenceData ops inst η).ownedQubits := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    referenceFlag ops inst m ∉ (referenceData ops inst m).ownedQubits := by
   intro hflag
-  have hlt := referenceData_owned_lt_workStart ops inst η hflag
+  have hlt := referenceData_owned_lt_workStart ops inst m hflag
   have hge :
-      referenceWorkStart ops inst η ≤ referenceFlag ops inst η := by
+      referenceWorkStart ops inst m ≤ referenceFlag ops inst m := by
     unfold referenceFlag referenceScratchReserveStart referenceScratchStart
       referenceWorkReserveStart
     omega
@@ -676,43 +675,43 @@ theorem reference_flag_outside_data
 /-- The flag is outside all work-owned qubits. -/
 theorem reference_flag_outside_work
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    referenceFlag ops inst η ∉ (referenceWork ops inst η).ownedQubits := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    referenceFlag ops inst m ∉ (referenceWork ops inst m).ownedQubits := by
   intro hflag
-  have hlt := referenceWork_owned_lt_scratchStart ops inst η hflag
+  have hlt := referenceWork_owned_lt_scratchStart ops inst m hflag
   unfold referenceFlag referenceScratchReserveStart at *
   omega
 
 /-- The flag is outside all comparator-scratch-owned qubits. -/
 theorem reference_flag_outside_scratch
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    referenceFlag ops inst η ∉
-      (referenceScratch ops inst η).ownedQubits := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    referenceFlag ops inst m ∉
+      (referenceScratch ops inst m).ownedQubits := by
   intro hflag
-  have hlt := referenceScratch_owned_lt_flag ops inst η hflag
+  have hlt := referenceScratch_owned_lt_flag ops inst m hflag
   omega
 
 /-- Every active exponent/control qubit is outside the work register. -/
 theorem reference_controls_outside_work
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    ∀ q ∈ (referenceX ops inst η).active.qubits,
-      q ∉ (referenceWork ops inst η).ownedQubits := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    ∀ q ∈ (referenceX ops inst m).active.qubits,
+      q ∉ (referenceWork ops inst m).ownedQubits := by
   intro q hq hwork
-  have hxOwned : q ∈ (referenceX ops inst η).ownedQubits := by
+  have hxOwned : q ∈ (referenceX ops inst m).ownedQubits := by
     rw [ExtReg.ownedQubits, List.mem_append]
     exact Or.inl hq
-  exact reference_exponent_work_disjoint ops inst η hxOwned hwork
+  exact reference_exponent_work_disjoint ops inst m hxOwned hwork
 
 /-- The comparison flag is not an active exponent/control qubit. -/
 theorem reference_flag_outside_controls
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    referenceFlag ops inst η ∉
-      (referenceX ops inst η).active.qubits := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    referenceFlag ops inst m ∉
+      (referenceX ops inst m).active.qubits := by
   intro hctrl
-  apply reference_flag_outside_exponent ops inst η
+  apply reference_flag_outside_exponent ops inst m
   rw [ExtReg.ownedQubits, List.mem_append]
   exact Or.inl hctrl
 
@@ -724,14 +723,14 @@ theorem reference_flag_outside_controls
 as the shells used to size them. -/
 theorem reference_workspaceNeed_eq
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
     shorWorkspaceNeed ops
-      (referenceX ops inst η)
-      (referenceData ops inst η)
-      (referenceWork ops inst η)
-      (referenceScratch ops inst η)
+      (referenceX ops inst m)
+      (referenceData ops inst m)
+      (referenceWork ops inst m)
+      (referenceScratch ops inst m)
       =
-    referenceWorkspaceNeed ops inst η := by
+    referenceWorkspaceNeed ops inst m := by
   apply shorWorkspaceNeed_ext <;>
     simp only [
       shorWorkspaceNeed,
@@ -757,58 +756,58 @@ theorem reference_workspaceNeed_eq
 /-- The data reserve always supports the two temporary Algorithm 1 growth bits. -/
 theorem reference_data_canGrow_two
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (referenceData ops inst η).CanGrow 2 := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    (referenceData ops inst m).CanGrow 2 := by
   simp [ExtReg.CanGrow, referenceData, referenceDataReserve,
     ExtReg.capacity, referenceDataReserveSize]
 
 /-- The work reserve always supports Algorithm 1's temporary growth bit. -/
 theorem reference_work_canGrow_one
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (referenceWork ops inst η).CanGrow 1 := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    (referenceWork ops inst m).CanGrow 1 := by
   simp [ExtReg.CanGrow, referenceWork, referenceWorkReserve,
     ExtReg.capacity, referenceWorkReserveSize]
 
 /-- The scratch reserve supports the unit bit borrowed by concrete Step 3. -/
 theorem reference_scratch_canGrow_one
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
-    (referenceScratch ops inst η).CanGrow 1 := by
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    (referenceScratch ops inst m).CanGrow 1 := by
   simp [ExtReg.CanGrow, referenceScratch, referenceScratchReserve,
     ExtReg.capacity, referenceScratchReserveSize]
 
 /-- Static modular-multiplication workspace is guaranteed by construction. -/
 theorem reference_modMulCircuitWorkspaceOK
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
     ModMulCircuitWorkspaceOK
-      (referenceData ops inst η)
-      (referenceWork ops inst η) := by
-  exact ⟨reference_data_canGrow_two ops inst η,
-    reference_work_canGrow_one ops inst η,
-    reference_data_work_disjoint ops inst η⟩
+      (referenceData ops inst m)
+      (referenceWork ops inst m) := by
+  exact ⟨reference_data_canGrow_two ops inst m,
+    reference_work_canGrow_one ops inst m,
+    reference_data_work_disjoint ops inst m⟩
 
 /-- The concrete comparator workspace is guaranteed by the fresh interval layout. -/
-noncomputable def reference_step4Workspace
+def reference_step4Workspace
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
     CmpLtNWWorkspace
       inst.N
-      ((referenceData ops inst η).grow 1)
-      (referenceWork ops inst η)
-      (referenceScratch ops inst η)
-      (referenceFlag ops inst η) := by
-  have hmod := reference_modMulCircuitWorkspaceOK ops inst η
-  have hscratchGrow := reference_scratch_canGrow_one ops inst η
-  have hworkScratch := reference_work_scratch_disjoint ops inst η
+      ((referenceData ops inst m).grow 1)
+      (referenceWork ops inst m)
+      (referenceScratch ops inst m)
+      (referenceFlag ops inst m) := by
+  have hmod := reference_modMulCircuitWorkspaceOK ops inst m
+  have hscratchGrow := reference_scratch_canGrow_one ops inst m
+  have hworkScratch := reference_work_scratch_disjoint ops inst m
   refine
     {
       data_can_grow := hmod.dataCarry_canGrow_one
       mulWorkspace :=
         Gate.PhaseProdWorkspace.ofExtRegs
-          (referenceWork ops inst η)
-          (referenceScratch ops inst η)
+          (referenceWork ops inst m)
+          (referenceScratch ops inst m)
           hmod.work_canGrow_one
           hscratchGrow
           hworkScratch
@@ -818,48 +817,48 @@ noncomputable def reference_step4Workspace
       data_scratch_disjoint := ?_
       work_scratch_disjoint := hworkScratch
       flag_not_data := ?_
-      flag_not_work := reference_flag_outside_work ops inst η
-      flag_not_scratch := reference_flag_outside_scratch ops inst η
+      flag_not_work := reference_flag_outside_work ops inst m
+      flag_not_scratch := reference_flag_outside_scratch ops inst m
       scratch_width := ?_
     }
   · simpa [ExtReg.OwnedDisjoint, Gate.ExtReg.ownedQubits_grow] using
-      reference_data_scratch_disjoint ops inst η
+      reference_data_scratch_disjoint ops inst m
   · simpa [Gate.ExtReg.ownedQubits_grow] using
-      reference_flag_outside_data ops inst η
+      reference_flag_outside_data ops inst m
   · have hdataGrowWidth :
-        ((referenceData ops inst η).grow 1).width =
+        ((referenceData ops inst m).grow 1).width =
           referenceDataWidth inst + 1 := by
       rw [ExtReg.width_grow _ 1 hmod.data_canGrow_one]
       simp [referenceData, referenceDataActive, ExtReg.width]
     have hworkWidth :
-        (referenceWork ops inst η).width =
-          referenceWorkWidth inst η := by
+        (referenceWork ops inst m).width =
+          referenceWorkWidth inst m := by
       simp [referenceWork, referenceWorkActive, ExtReg.width]
     rw [show
-      regSize (referenceScratch ops inst η).active =
-        referenceScratchWidth inst η by
+      regSize (referenceScratch ops inst m).active =
+        referenceScratchWidth inst m by
       simp [referenceScratch, referenceScratchActive]]
     unfold cmpLtNWWidth
-    change referenceScratchWidth inst η =
+    change referenceScratchWidth inst m =
       2 + max
-        (((referenceData ops inst η).grow 1).width +
-          (referenceWork ops inst η).width)
+        (((referenceData ops inst m).grow 1).width +
+          (referenceWork ops inst m).width)
         (Nat.log2 (inst.N + 1) + 1 +
-          (referenceWork ops inst η).width)
+          (referenceWork ops inst m).width)
     rw [hdataGrowWidth, hworkWidth]
     rfl
 
 /-- The full lowering reserve budget is guaranteed by construction. -/
 theorem reference_shorWorkspaceLargeEnough
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
     ShorWorkspaceLargeEnough ops
-      (referenceX ops inst η)
-      (referenceData ops inst η)
-      (referenceWork ops inst η)
-      (referenceScratch ops inst η) := by
-  let need := referenceWorkspaceNeed ops inst η
-  have hneed := reference_workspaceNeed_eq ops inst η
+      (referenceX ops inst m)
+      (referenceData ops inst m)
+      (referenceWork ops inst m)
+      (referenceScratch ops inst m) := by
+  let need := referenceWorkspaceNeed ops inst m
+  have hneed := reference_workspaceNeed_eq ops inst m
   refine ⟨?_, ?_, ?_, ?_⟩
   · rw [hneed]
     simp [referenceX, referenceXReserve, ExtReg.capacity,
@@ -877,32 +876,31 @@ theorem reference_shorWorkspaceLargeEnough
 /-- The implementation-specific isolation condition is guaranteed by placement. -/
 theorem reference_shorWorkspaceIsolation
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ) :
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
     ShorWorkspaceIsolation
-      (referenceX ops inst η)
-      (referenceWork ops inst η)
-      (referenceScratch ops inst η)
-      (referenceFlag ops inst η) :=
-  ⟨reference_exponent_work_disjoint ops inst η,
-    reference_exponent_scratch_disjoint ops inst η,
-    reference_flag_outside_exponent ops inst η⟩
+      (referenceX ops inst m)
+      (referenceWork ops inst m)
+      (referenceScratch ops inst m)
+      (referenceFlag ops inst m) :=
+  ⟨reference_exponent_work_disjoint ops inst m,
+    reference_exponent_scratch_disjoint ops inst m,
+    reference_flag_outside_exponent ops inst m⟩
 
-/-- The chosen work width satisfies Algorithm 1's precision equation whenever
-`η` is in the admissible interval. -/
+/-- The chosen work width satisfies Algorithm 1's precision equation at every
+reference precision level `m`. -/
 theorem reference_algorithm1Precision
     {k : ℕ} (ops : Prog k)
-    (inst : ShorOrderFindingInstance) (η : ℝ)
-    (hηpos : 0 < η)
-    (hηhalf : η < (1 / 2 : ℝ)) :
-    Algorithm1Precision η
-      (referenceData ops inst η).active
-      (referenceWork ops inst η).active := by
-  refine ⟨hηpos, hηhalf, ?_⟩
+    (inst : ShorOrderFindingInstance) (m : ℕ) :
+    Algorithm1Precision (referencePrecision m)
+      (referenceData ops inst m).active
+      (referenceWork ops inst m).active := by
+  refine ⟨referencePrecision_pos m, referencePrecision_lt_half m, ?_⟩
   simp [
     referenceData,
     referenceDataActive,
     referenceWork,
     referenceWorkActive,
     referenceDataWidth,
-    referenceWorkWidth
+    referenceWorkWidth,
+    algorithm1ExtraBits_referencePrecision
   ]

@@ -126,7 +126,7 @@ Unsigned phase product macro: allocate one clean high bit on each operand, run t
 phase product on the grown registers, and then deallocate the temporary bits.
 -/
 def PhaseProdUsing
-    (phi : ℝ)
+    (phi : Angle)
     (x z : Reg)
     (ws : PhaseProdWorkspace x z) : Gate :=
   let xext := ws.xExt
@@ -142,7 +142,7 @@ def PhaseProdUsing
 
 /-- Controlled unsigned phase-product macro with the same workspace discipline as `PhaseProdUsing`. -/
 def CPhaseProdUsing
-    (ctrl : ℕ) (phi : ℝ)
+    (ctrl : ℕ) (phi : Angle)
     (x z : Reg)
     (ws : PhaseProdWorkspace x z) :
     Gate :=

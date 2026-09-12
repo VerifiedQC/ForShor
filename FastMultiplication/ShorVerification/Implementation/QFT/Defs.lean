@@ -127,29 +127,27 @@ inductive QFTLoweringPlan
       (leftPlan : QFTLoweringPlan k hk ops (leftReg r)) :
       QFTLoweringPlan k hk ops r
 
-noncomputable def lowerQFTPlan
+def lowerQFTPlan
     {k : ℕ}
     {hk : 1 < k}
     {ops : Prog k}
     {r : Reg}
     (plan : QFTLoweringPlan k hk ops r) :
-    LowGate := by
-  induction plan with
-  | empty r hsize =>
-      exact LowGate.id
+    LowGate :=
+  match plan with
+  | .empty r hsize =>
+      LowGate.id
 
-  | singleton r hsize =>
-      exact
-        LowGate.H
-          (r.lowQubit (by omega))
+  | .singleton r hsize =>
+      LowGate.H
+        (r.lowQubit (by omega))
 
-  | split r hsize ws phaseInitSize phasePlan
-      rightPlan leftPlan lowerRight lowerLeft =>
-      exact
-        lowerRight ;;
-        lowerGateRec phasePlan ;;
-        lowerLeft ;;
-        LowGate.RadixReverse r (splitM r)
+  | .split r hsize ws phaseInitSize phasePlan
+      rightPlan leftPlan =>
+      lowerQFTPlan rightPlan ;;
+      lowerGateRec phasePlan ;;
+      lowerQFTPlan leftPlan ;;
+      LowGate.RadixReverse r (splitM r)
 
 noncomputable def QFTLoweringReady
     (qs : QSemantics)
@@ -291,11 +289,11 @@ The plan follows the definition of `Gate.PhaseProdUsing`:
 4. deallocate the `z` extension;
 5. deallocate the `x` extension.
 -/
-noncomputable def standardPhaseProdUsingPlan
+def standardPhaseProdUsingPlan
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (phi : ℝ)
+    (phi : Angle)
     {x z : Reg}
     (ws : Gate.PhaseProdWorkspace x z)
     (hworkspace :
@@ -1010,7 +1008,7 @@ variable
 Construct the concrete unsigned phase-product workspace at the current QFT
 node from the two root workspace registers.
 -/
-noncomputable def phaseWorkspace
+def phaseWorkspace
     (hworkspace :
       QFTWorkspaceOK ops r xWork zWork)
     (hsize : 2 ≤ regSize r) :
@@ -1362,7 +1360,7 @@ end QFTWorkspaceOK
 Build the standard recursive QFT plan from explicit x-side and z-side
 workspace pools satisfying `QFTWorkspaceOK`.
 -/
-noncomputable def standardQFTLoweringPlan
+def standardQFTLoweringPlan
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -1460,7 +1458,7 @@ The canonical plan obtained by splitting the inactive portion of `r`. This is
 the bridge from the public reserve predicate `QFTReserveOK` to the recursive
 QFT plan used by the low-level lowerer.
 -/
-noncomputable def reserveQFTLoweringPlan
+def reserveQFTLoweringPlan
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -1477,7 +1475,7 @@ Final public constructor for this file.
 The canonical lowered QFT. Its workspace is selected deterministically from
 `r.reserve`; callers do not supply separate physical workspace registers.
 -/
-noncomputable def lowerQFT
+def lowerQFT
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)

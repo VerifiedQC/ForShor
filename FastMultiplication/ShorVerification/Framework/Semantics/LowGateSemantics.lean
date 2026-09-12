@@ -78,7 +78,7 @@ class LowerGateClass
     ∀ q θ b,
       evalL (LowGate.Phase q θ) (qs.ket b) =
         (if RegEncoding.bit q b then
-          Complex.exp (θ * Complex.I) • qs.ket b
+          Complex.exp (((Angle.toReal θ : ℝ) : ℂ) * Complex.I) • qs.ket b
         else
           qs.ket b)
 

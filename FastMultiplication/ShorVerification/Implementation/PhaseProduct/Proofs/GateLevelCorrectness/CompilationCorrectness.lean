@@ -26,7 +26,7 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
   [RegEncoding qs.Basis]
   [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (x z : ExtReg)
   (layout : Gate.PhaseProductLayout x z k)
   (pts : List Point)
@@ -126,7 +126,7 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
           (by simpa using hpts)
         =
       Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((extToInt x b : ℤ) : ℂ) *
            (((extToInt z b : ℤ) : ℂ)))) := by
     simpa [
@@ -166,7 +166,7 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
         qs.ket b := hBodyDealloc
     _ =
       Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((extToInt x b : ℤ) : ℂ) *
            (((extToInt z b : ℤ) : ℂ)))) •
         qs.ket b := by
@@ -196,7 +196,7 @@ lemma eval_compileOpsToSignedGate_correct_ket
   [RegEncoding qs.Basis]
   [GateSemanticsFacts qs]
   (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (x z : ExtReg)
   (layout : Gate.PhaseProductLayout x z k)
   (pts : List Point)
@@ -238,7 +238,7 @@ lemma eval_compileOpsToCSignedGate_correct_ket
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (hctrl : layout.ControlDisjoint ctrl)
@@ -415,7 +415,7 @@ lemma eval_compileOpsToCSignedGate_correct_ket
           (by simpa using hpts)
         =
       Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((extToInt x b : ℤ) : ℂ) *
            (((extToInt z b : ℤ) : ℂ)))) := by
     simpa [

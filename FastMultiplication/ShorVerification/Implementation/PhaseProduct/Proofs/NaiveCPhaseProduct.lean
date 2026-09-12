@@ -4,9 +4,9 @@ namespace Shor
 
 namespace LowGate
 
-noncomputable def CCPhase
+def CCPhase
     (a b c : ℕ)
-    (theta : ℝ) : LowGate :=
+    (theta : Angle) : LowGate :=
   if a = b then
     LowGate.CPhase a c theta
   else if a = c then
@@ -20,9 +20,9 @@ noncomputable def CCPhase
     LowGate.Phase c (-theta / 2) ;;
     LowGate.Toffoli a b c
 
-noncomputable def naiveCSignedPhaseGates
+def naiveCSignedPhaseGates
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg) : List LowGate :=
   (signedTerms x).flatMap fun xTerm =>
     (signedTerms z).map fun zTerm =>
@@ -32,9 +32,9 @@ noncomputable def naiveCSignedPhaseGates
         zTerm.1
         (signedPairAngle phi xTerm zTerm)
 
-noncomputable def Naive_CSignedPhaseProd
+def Naive_CSignedPhaseProd
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg) : LowGate :=
   LowGate.sequence
     (naiveCSignedPhaseGates ctrl phi x z)
@@ -178,7 +178,7 @@ noncomputable def cSignedPairExponent
     {Basis : Type*}
     [RegEncoding Basis]
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (b : Basis)
     (xTerm zTerm : ℕ × ℤ) : ℂ :=
   if RegEncoding.bit ctrl b then
@@ -190,7 +190,7 @@ noncomputable def naiveCSignedPhaseExponents
     {Basis : Type*}
     [RegEncoding Basis]
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : Basis) : List ℂ :=
   (signedTerms x).flatMap fun xTerm =>
@@ -202,7 +202,7 @@ theorem evalL_CCPhase_ket
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     (a c d : ℕ)
-    (theta : ℝ)
+    (theta : Angle)
     (b : qs.Basis) :
     LowerGateClass.evalL
         (qs := qs)
@@ -210,7 +210,7 @@ theorem evalL_CCPhase_ket
         (qs.ket b)
       =
     Complex.exp
-      ((theta : ℂ) * Complex.I *
+      (((Angle.toReal theta : ℝ) : ℂ) * Complex.I *
         (((basisBitInt a b : ℤ) : ℂ) *
           (((basisBitInt c b : ℤ) : ℂ) *
            (((basisBitInt d b : ℤ) : ℂ))))) •
@@ -274,18 +274,20 @@ theorem evalL_CCPhase_ket
             first
             | rw [
                 show
-                  Complex.exp (↑theta / 2 * Complex.I) *
-                      Complex.exp (-↑theta / 2 * Complex.I) =
+                  Complex.exp ((Angle.toReal (theta / 2) : ℝ) * Complex.I) *
+                      Complex.exp ((Angle.toReal (-theta / 2) : ℝ) * Complex.I) =
                     1 by
-                  simpa using complex_exp_half_cancel theta
+                  rw [Angle.toReal_div, Angle.toReal_div, Angle.toReal_neg]
+                  simpa using complex_exp_half_cancel (Angle.toReal theta)
               ]
               simp
             | rw [
                 show
-                  Complex.exp (↑theta / 2 * Complex.I) *
-                      Complex.exp (↑theta / 2 * Complex.I) =
-                    Complex.exp (↑theta * Complex.I) by
-                  simpa using complex_exp_half_square theta
+                  Complex.exp ((Angle.toReal (theta / 2) : ℝ) * Complex.I) *
+                      Complex.exp ((Angle.toReal (theta / 2) : ℝ) * Complex.I) =
+                    Complex.exp ((Angle.toReal theta : ℝ) * Complex.I) by
+                  rw [Angle.toReal_div]
+                  simpa using complex_exp_half_square (Angle.toReal theta)
               ]
 
 theorem evalL_cSignedPairPhase_ket
@@ -293,7 +295,7 @@ theorem evalL_cSignedPairPhase_ket
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (xTerm zTerm : ℕ × ℤ)
     (b : qs.Basis) :
     LowerGateClass.evalL
@@ -311,14 +313,17 @@ theorem evalL_cSignedPairPhase_ket
       qs.ket b := by
   rw [evalL_CCPhase_ket]
   by_cases hc : RegEncoding.bit ctrl b
-  · simp [
+  · simp only [
       cSignedPairExponent,
       hc,
+      if_true,
       signedPairExponent,
       signedPairAngle,
       signedTermValue,
-      basisBitInt
+      basisBitInt,
+      Angle.toReal
     ]
+    push_cast
     ring_nf
   · simp [
       cSignedPairExponent,
@@ -332,7 +337,7 @@ theorem naiveCSignedPhaseGates_diagonal
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : qs.Basis) :
     List.Forall₂
@@ -376,7 +381,7 @@ theorem evalL_naiveCSignedPhaseGates_ket
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : qs.Basis) :
     LowerGateClass.evalL
@@ -426,14 +431,14 @@ theorem naiveCSignedPhaseExponents_sum
     {Basis : Type*}
     [RegEncoding Basis]
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : Basis) :
     (naiveCSignedPhaseExponents
         ctrl phi x z b).sum
       =
     if RegEncoding.bit ctrl b then
-      (phi : ℂ) * Complex.I *
+      ((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
         (((extToInt x b : ℤ) : ℂ) *
          (((extToInt z b : ℤ) : ℂ)))
     else
@@ -464,7 +469,7 @@ theorem evalL_naive_csignedPhaseProd_ket
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : qs.Basis) :
     LowerGateClass.evalL
@@ -474,7 +479,7 @@ theorem evalL_naive_csignedPhaseProd_ket
       =
     if RegEncoding.bit ctrl b then
       (Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((extToInt x b : ℤ) : ℂ) *
            (((extToInt z b : ℤ) : ℂ))))) •
         qs.ket b
@@ -496,7 +501,7 @@ namespace LowGate
 lemma gateCount_CCPhase_of_distinct
     (M : LowGateCostModel)
     (a b c : ℕ)
-    (theta : ℝ)
+    (theta : Angle)
     (hab : a ≠ b)
     (hac : a ≠ c)
     (hbc : b ≠ c) :
@@ -513,7 +518,7 @@ lemma gateCount_CCPhase_of_distinct
 
 lemma naiveCSignedPhaseGates_length
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg) :
     (LowGate.naiveCSignedPhaseGates ctrl phi x z).length =
       x.width * z.width := by
@@ -524,7 +529,7 @@ lemma naiveCSignedPhaseGates_length
 theorem gateCount_Naive_CSignedPhaseProd
     (M : LowGateCostModel)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (hdisjoint : ExtReg.OwnedDisjoint x z)
     (hctrlX : ctrl ∉ x.ownedQubits)

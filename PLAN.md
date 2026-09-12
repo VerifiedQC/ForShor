@@ -121,6 +121,32 @@ Stage 5 last.
 
 ## Stage 1 — Angles become `ℚ` (in units of π)
 
+**Status: DONE** (branch `ir-emitter`). `lake build` is green across all 3259
+jobs; `#print axioms Shor.Shor_correct` / `#print axioms
+Shor.exists_shorGateCountBound` are unchanged (`propext, Classical.choice,
+Quot.sound`, no `sorryAx`). Notes for whoever picks up Stage 2:
+- The phantom `{Basis}`/`[RegEncoding Basis]` arguments on `step1`, `step2`,
+  `step4`, `CmodMulInPlaceCore`, `modExpApproxStepsValid`, `modExpApproxValid`,
+  `fastConstMulInto`, `cmpLtNW`, and the local `step5Forward` in
+  `Shor/Proofs/Readiness.lean` did **not** block computability once their angle
+  arguments became `Angle` — dropping `noncomputable` from all of them
+  succeeded immediately, ahead of schedule. `step5` itself is `def` already too
+  (§1.4 only listed the others). §2.3's "remove unused type-class/qs arguments"
+  work may already be partly done as a side effect; re-check before repeating it.
+- The reference/comparison-only angle definitions `alg1Step1Phase`,
+  `alg1Step2Phase`, `alg1Step5Phase` (`ModularExponentiation/Proofs/Core.lean`)
+  turned out to double as literal `Gate.CPhaseProdUsing`/`PhaseProdUsing`
+  arguments elsewhere (`Step1QPE.lean`, `Step2Bound.lean`,
+  `Shor/Proofs/Readiness.lean`), so they were converted to `Angle` rather than
+  left as `ℝ` — each call site that needs the real value now goes through
+  `Angle.toReal` explicitly.
+- The bridge pattern from §1.5 (`have hφ : Angle.toReal phi = ...; rw [hφ]`)
+  was needed throughout `QFT/Proofs/Decomposition.lean`,
+  `ModularExponentiation/Proofs/{Step1QPE,Step2Bound,Core,CmpLtNW}.lean`,
+  `Shor/Proofs/Readiness.lean`, and `GateCount/Shor_GateCount.lean` — same
+  shape every time: unfold the local `phi`/`φ` and `Angle.toReal`, `push_cast`,
+  `ring` (or `field_simp` for the Step-2 power identity).
+
 ### Why
 Every angle in the whole development is a rational multiple of π:
 `qftPhi m = 2π/2^m`, step 1 `2π((c+N−1)%N)/N`, step 2 `2πN/2^(w+d)`, step 5
@@ -225,6 +251,60 @@ Untouched: `Framework/Math/**`, `Shor/Proofs/NaiveShor/**`, `Reference2048Headli
 
 ## Stage 2 — Layout over `m : ℕ`; remove phantom parameters
 
+**Status: DONE** (branch `ir-emitter`). `lake build` is green across all 3260
+jobs; `#print axioms Shor.Shor_correct` / `#print axioms
+Shor.exists_shorGateCountBound` are still `propext, Classical.choice,
+Quot.sound` (no `sorryAx`). `referenceShorCircuit`/`referenceShorProg`
+(`Reference/ShorProgram.lean`) now take no `qs`/`RegEncoding` argument at all;
+removing their `noncomputable` produces exactly one blocker — `depends on
+'orderFindingApproxLow', which is 'noncomputable'` — which bottoms out at
+`lowerQFT`/`lowerGate` (Stage 3's recursor-based plan builders), matching the
+checkpoint. Notes for whoever picks up Stage 3:
+- **Gotcha, check this first:** a file-wide `noncomputable section` silently
+  overrides any `def`/`noncomputable def` spelling inside it — `lake build`
+  succeeding is *not* evidence a def is actually computable if it sits inside
+  one of these blocks. `Reference/ShorProgram.lean` still had one from before
+  Stage 2 and it silently absorbed my first attempt at making
+  `referenceShorCircuit` computable (the build "succeeded" but the def was
+  still noncomputable via the section). Removed it there and marked only
+  `referenceShorCircuit`/`referenceShorProg` explicitly `noncomputable`;
+  `referenceMinimalSetup`/`referenceApproxSetup`/`referenceLowerWorkspace`
+  turned out to need *no* `noncomputable` at all once `m`-indexed (they're
+  generic in `qs`, and `GateWorkspaceOK`/`ShorApproxSetupMinimal`'s only
+  non-`Prop` field, `step4_workspace`, is qs-independent data). **The
+  `noncomputable section` in `Reference/ReferenceReadiness.lean` (§3.2's own
+  todo) is still there and still blanket-hides that file's real
+  computability status** — don't trust that file's current build-green state
+  as a computability signal; re-derive it properly when §3.2 removes the
+  section, the same way this stage's ground rule 3 test (delete the keyword,
+  build, read the actual blocker) was used everywhere else.
+- `referenceShorCircuit` no longer builds its `GateWorkspaceOK`/workspace
+  witnesses from the `qs`-indexed `referenceApproxSetup`/`referenceLowerWorkspace`
+  at all (per §2.4's easier route): it calls `reference_modMulCircuitWorkspaceOK`
+  and `reference_step4Workspace` (both qs-free, already existed on
+  `ReferenceLayout.lean`) directly, and a new private lemma
+  `reference_gateWorkspaceOK_orderFindingApprox` in `ShorProgram.lean`
+  instantiates `gateWorkspaceOK_orderFindingApprox` at
+  `ConcreteQSemantics.concreteQSemantics` internally — its conclusion type is
+  qs-free once `orderFindingApprox` is, so the internal witness choice never
+  leaks. `referenceMinimalSetup`/`referenceApproxSetup`/`referenceLowerWorkspace`
+  themselves are untouched/still qs-indexed, kept only for other
+  correctness-proof call sites (none of which are on the circuit's data path
+  anymore).
+- Removing the phantom `{Basis}`/`(qs : QSemantics)` parameters from
+  `step1`/`step2`/`step5`/`CmodMulInPlaceCore`/`modExpApproxStepsValid`/
+  `modExpApproxValid`/`ModExpConfig.approxGate`/`ModMulConfig.approxGate`/
+  `lowerGate`/`orderFindingApprox`/`orderFindingApproxLow` had a long tail of
+  call-site fixups (~130 `(Basis := ...)`/`(qs := ...)` named-arg deletions and
+  ~27 positional-`qs`-argument deletions across `Shor/Proofs/Readiness.lean`,
+  `WholeProgramCorrectness.lean`, `Correctness.lean`, several
+  `ModularExponentiation/Proofs/*.lean`, and all of `GateCount/**`) — all
+  mechanical once the signatures changed; a handful of `@[simp] lemma
+  lowerGate_*` restatements in `WholeProgramCorrectness.lean` also carried a
+  now-phantom `{Basis : Type u}` binder that had to be dropped too (simp
+  couldn't apply them otherwise — Lean can't infer an unconstrained `Type u`
+  metavariable that doesn't appear in the lemma's conclusion).
+
 ### 2.1 Computable work-width
 Currently `algorithm1ExtraBits (η : ℝ) : ℕ := ⌈2 * Real.logb 2 (2 + 1 / (2 * η))⌉₊`
 and `η = referencePrecision m = 1 / (m + 3)`. Substituting:
@@ -295,6 +375,70 @@ are the plan/lowering functions of Stage 3 and `loweringPhaseCoeff` of Stage 4.
 
 ## Stage 3 — Recursors and tactic-built data
 
+**Status: DONE** (branch `ir-emitter`). `lake build` is green across all 3260
+jobs, no `sorry`/`sorryAx` introduced (`#print axioms Shor.Shor_correct` /
+`Shor.exists_shorGateCountBound` still show only
+`[propext, Classical.choice, Quot.sound]`).
+
+Handoff notes:
+- §3.1: `lowerGateRec` (`PhaseLoweringPlan.lean:232`) and `lowerQFTPlan`
+  (`QFT/Defs.lean:130`) are now `match`-based term-mode definitions (no more
+  `induction`/`.rec`). Both remain `noncomputable def`: `lowerGateRec`'s
+  `signedStep`/`cSignedStep` arms call `compiledSignedPhaseGate`/
+  `compiledCSignedPhaseGate`, which are noncomputable via `loweringPhaseCoeff`
+  (Stage 4's `Matrix.inv` target) — eliminating the recursor was the §3.1 goal,
+  not full computability, which only becomes reachable after Stage 4.
+- §3.2: went through the whole table by stripping `noncomputable` and
+  rebuilding (per ground rule 3). Results split cleanly into two groups:
+  - **Genuinely made computable** (no tactic rewrite needed — `unfold/dsimp/
+    split/by_cases/refine/simpa`-style tactic bodies already compiled to code
+    once the keyword was removed): `planAllocChunkGate`, `planDeallocChunkGate`,
+    `planCompileSignedAllocations(Aux)`, `planCompileSignedDeallocations(Aux)`,
+    `planCompileAnnotatedOpsToSignedGateAux`, `planCompileAnnotatedOpsToCSignedGateAux`
+    (all `PhaseLoweringPlan.lean`), `canonicalSignedStep` (`DefsCore.lean:1800`,
+    the `CanGrowToNeeds`/`SignedRecursiveWorkspaceOK` fields are `Prop`-valued so
+    only the `layout` field's construction mattered, and it has none), and
+    `QFTWorkspaceOK.phaseWorkspace` (`QFT/Defs.lean:1011`). None of these needed
+    a term-mode rewrite — the plan's contingency (`if h : cond then ... else ...`,
+    `castInit`) was not needed anywhere in this stage.
+  - **Correctly stay `noncomputable`**, all tracing to the same Stage-4 root
+    (`loweringPhaseCoeff`): `planCompiledSignedPhaseGate`/`planCompiledCSignedPhaseGate`
+    (direct callers of `loweringPhaseCoeff`), `standardSignedPhaseLoweringPlan`/
+    `standardCSignedPhaseLoweringPlan` (blocked via the above once
+    `canonicalSignedStep` itself was fixed), `standardPhaseProdUsingPlan`,
+    `standardQFTLoweringPlan`, `reserveQFTLoweringPlan`, `lowerQFT`,
+    `lowerSignedPhaseProdWithWorkspace`, `lowerCSignedPhaseProdWithWorkspace`,
+    `lowerGate`, `orderFindingApproxLow`, `referenceShorCircuit`,
+    `referenceShorProg`, `referenceProgramAt`. `orderFindingApprox` was already
+    a plain `def` (no change needed).
+  - `ShorProgram.lean` already had no `noncomputable section` (fixed in Stage 2).
+    `ReferenceReadiness.lean`'s `noncomputable section` was removed; all three
+    defs inside (`referenceApproxSetupMinimal`, `allocatedReferenceApproxSetupMinimal`,
+    `referenceLayout_ready`) turned out to be genuinely computable with no
+    keyword at all — they build proof-shaped (`ShorApproxSetupMinimal`/readiness)
+    structures with no non-`Prop` data fields, so the section was pure dead weight.
+    `ReferenceShorImplementation.lean`'s `noncomputable section` was removed and
+    every def there kept its already-correct explicit `noncomputable` keyword
+    unchanged (all ten listed in the plan, `referenceProgramAt` included).
+  - **Correction to the plan's own phrasing**: §3.2 said "`referenceProgramAt`
+    must be computable", but Checkpoint 3 (correctly) expects the opposite —
+    stripping `noncomputable` from it should still fail. Read literally,
+    Checkpoint 3 is the authoritative criterion: `referenceProgramAt` stays
+    `noncomputable` for now (verified: stripping the keyword fails with "depends
+    on 'referenceShorProg', which is 'noncomputable'", i.e. the same
+    `loweringPhaseCoeff` root cause one level down); it can only become
+    computable once Stage 4 lands.
+- One cosmetic fallout from the `lowerGateRec` rewrite: a `simp [..., lowerGateRec, ...]`
+  call in `GateCount/PhaseProduct/Lemmas.lean` (~line 4383) started warning
+  "unused simp arg" (the old induction-generated equation lemmas for `lowerGateRec`
+  no longer exist under the same name now that it's `match`-based) — removed the
+  unused arg, no proof restructuring needed.
+- **Checkpoint 3 passed**: stripping `noncomputable` from `referenceProgramAt`
+  yields exactly one compile error, naming `referenceShorProg` (which itself
+  bottoms out at `loweringPhaseCoeff`/`Matrix.inv` — Stage 4's target).
+
+---
+
 ### 3.1 Rewrite recursor-based definitions with `match`
 - `PhaseLoweringPlan.lean:232` `lowerGateRec`: replace `by induction plan with ...`
   by a `match plan with | .id _ => LowGate.id | .seq l r => LowGate.seq (lowerGateRec l) (lowerGateRec r) | ...`
@@ -343,6 +487,88 @@ kind of compile error, naming `loweringPhaseCoeff` / `phaseCoeffFromPts` / `Matr
 ---
 
 ## Stage 4 — Computable interpolation coefficients
+
+**Status: DONE** (branch `ir-emitter`). `lake build` is green across all 3260
+jobs, no `sorry`/`sorryAx` introduced (`#print axioms` on
+`Shor.Shor_correct`, `Shor.exists_shorGateCountBound`, and
+`Shor.Reference.referenceProgramAt` all show only
+`[propext, Classical.choice, Quot.sound]`). **Checkpoint 4 passed structurally**:
+`referenceProgramAt` is now a genuine `def` (no `noncomputable`), and so is
+every def in its call chain — see below. The literal `#eval`
+smoke test in this section's Checkpoint 4 still needs Stage 5.1's
+`standardLoweringSetup` to construct a concrete `ShorLoweringSetup`; deferred
+to Stage 5, since nothing here currently builds one.
+
+**Design deviation from this section's original plan — read before reusing
+the snippets below.** The `§4.1`/`§4.2` plan (Lagrange weights via
+`pointNode`/`lagrangeCoeff`, proved equal to `phaseCoeffFromPtsWidth` via
+`GoodToomCookPoints`) has a soundness gap: `interpEntry` uses a *different*
+row formula for `.frac` points (`c ^ (q k - 1 - j)`, the "point at infinity"
+trick) than for `.int` points (`t ^ j`), so a plain Vandermonde/Lagrange
+argument over `pointNode`-projected coordinates is only valid when every
+point in `pts` is `.int` — true in practice (`pts` is always
+`genInterpolationPoints k`) but **not** implied by `GoodToomCookPoints k pts
+hpts` alone (that hypothesis is just `det ≠ 0`; a mixed int/frac point list
+can have a nonzero determinant too, and `lagrangeCoeff` would then silently
+use the wrong node values). Since `GoodToomCookPoints` is exactly the
+hypothesis already threaded generically through
+`eval_compiledSignedPhaseGate_correct`/`eval_compiledCSignedPhaseGate_correct`
+(`PlanSemantics.lean`) — the only two places that actually `unfold
+loweringPhaseCoeff` — patching those with an extra "all-int" hypothesis
+would cascade into `evalL_lowerGateRec_correct`'s 8+ call sites across the
+codebase.
+
+**What was built instead**: `Matrix.cramer`/`Matrix.det` are fully
+computable in this Mathlib (`#eval`-verified directly — only `Matrix.inv`
+needs the noncomputable `Ring.inverse`/`IsUnit` case split). `DefsCore.lean`
+gained `cramerCoeffFromPts`/`cramerCoeffFromPtsWidth`, a Cramer's-rule
+reformulation of `phaseCoeffFromPts`/`phaseCoeffFromPtsWidth`:
+```
+def cramerCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) : Fin (q k) → ℚ :=
+  let M : Matrix (Fin (q k)) (Fin (q k)) ℚ := interpMatrix k pts
+  let radixVec : Fin (q k) → ℚ := fun j => b ^ (j : ℕ)
+  fun i => Matrix.cramer M.transpose radixVec i / M.det
+```
+`InterpolationCorrectness.lean` proves `cramerCoeffFromPts_eq_phaseCoeffFromPts`
+(pure linear algebra: from `M *ᵥ cramer M v = M.det • v`
+(`Matrix.mulVec_cramer`), left-multiply by `M⁻¹` and divide by the nonzero
+determinant) and the width-level wrapper
+`cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth` (given `hInterp :
+GoodToomCookPoints k pts hpts`) — **for fully general `pts`**, mixed
+int/frac included, since Cramer's rule needs no Vandermonde/injectivity
+argument at all. `loweringPhaseCoeff` (`PhaseLoweringPlan.lean:25`) now reads
+`cramerCoeffFromPtsWidth k (phaseLimbWidth x z k) pts hpts` and is a plain
+`def`. The two `unfold loweringPhaseCoeff` sites in `PlanSemantics.lean`
+(`eval_compiledSignedPhaseGate_correct`/`eval_compiledCSignedPhaseGate_correct`)
+each got one inserted line,
+`rw [cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth pts hpts hInterp]`,
+right after the `unfold` — no other file needed changes (grepped for every
+`unfold loweringPhaseCoeff`/`loweringPhaseCoeff]` site codebase-wide; these
+two were the only ones that inspect its *formula* rather than just its name).
+
+**Cascade**: once `loweringPhaseCoeff` stopped being the root blocker, a full
+re-sweep (strip `noncomputable`, build, read the blocker) turned every
+remaining def in the Stage-3 table computable with **zero further tactic
+rewrites**: `compileOpsToSignedGate`/`compileOpsToCSignedGate`
+(`DefsCore.lean`), `compiledSignedPhaseGate`/`compiledCSignedPhaseGate`,
+`lowerGateRec`, `lowerPhasePlan`, `lowerSignedPhaseProd`,
+`lowerCSignedPhaseProd`, `planCompiledSignedPhaseGate`/
+`planCompiledCSignedPhaseGate`, `standardSignedPhaseLoweringPlan`/
+`standardCSignedPhaseLoweringPlan` (all `PhaseLoweringPlan.lean`),
+`lowerQFTPlan`, `standardPhaseProdUsingPlan`, `standardQFTLoweringPlan`,
+`reserveQFTLoweringPlan`, `lowerQFT` (`QFT/Defs.lean`),
+`lowerSignedPhaseProdWithWorkspace`/`lowerCSignedPhaseProdWithWorkspace`
+(`PhaseProduct/Defs.lean`), `lowerGate`/`orderFindingApproxLow`
+(`Shor/Defs.lean`), `referenceShorCircuit`/`referenceShorProg`
+(`Reference/ShorProgram.lean`), and finally `referenceProgramAt`
+(`ReferenceShorImplementation.lean`). One exception found along the way:
+`referenceApproxSetup` (`ShorProgram.lean`) genuinely needs `noncomputable`
+(binds `referencePrecision m : ℝ` into its own return type/body) — reverted
+after a bulk-strip attempt; it is not on `referenceProgramAt`'s call path so
+this doesn't matter for Checkpoint 4. `referenceMinimalSetup` and
+`referenceLowerWorkspace` (also not on that path, `Prop`-shaped proof
+objects) turned out to need no keyword at all, matching the Stage 2 note
+that was never acted on.
 
 ### Facts you can rely on
 - `loweringPhaseCoeff k x z pts hpts = phaseCoeffFromPtsWidth k (phaseLimbWidth x z k) pts hpts`
@@ -398,6 +624,57 @@ prints a number (`standardLoweringSetup` is defined in Stage 5.1 — define it f
 ---
 
 ## Stage 5 — Emitter
+
+**Status: DONE** (branch `ir-emitter`). `lake build` is green (3260 jobs,
+including the new `Emit/` files and the `forshor_emit` executable target),
+axioms unchanged (`Shor.Shor_correct`/`Shor.exists_shorGateCountBound` still
+show only `[propext, Classical.choice, Quot.sound]`) — `Emit/` isn't imported
+by either, confirming the emitter is genuinely isolated from the verified
+core. All of §5.1–§5.4 below matched the plan almost exactly; only small
+mechanical fixes were needed.
+
+**Real smoke test**: `lake exe forshor_emit 2 2 15 0` (the plan's own
+Checkpoint 4/5.4 instance) exits 0 and prints 3.1 MB of valid JSON:
+`schema: "forshor.lowgate/v2"`, `gate_count: 69084`, `qubit_count: 44`,
+`output_register: [0..7]`, a `circuit` whose top-level `seq` body has 20626
+flattened leaves. Confirmed with an external JSON parser (Python), not just
+"didn't crash".
+
+Gotchas found along the way:
+- `genOpsWithProduct_ProgConsumesPtsSafe` returns the *whole*
+  `ProgConsumesPtsSafe` structure already, not something needing a
+  `.consumes` projection — the plan's §5.1 snippet's
+  `(genOpsWithProduct_ProgConsumesPtsSafe ...).consumes` would have been a
+  type error; used the theorem directly for `ShorLoweringSetup.consumes`.
+- `meta` is a reserved token in this Lean toolchain (v4.28.0) — can't be used
+  as a parameter/binder name. Renamed to `metaJson` in `emitProgram`'s
+  signature (the plan's §5.2 field name, the JSON key `"meta"`, is unaffected).
+- `#guard` (as a standalone command asserting a `Bool`/`Decidable` value) does
+  not exist in this toolchain — only `guard_expr`/`guard_hyp` *tactics* and
+  `#guard_msgs` exist. Replaced every planned `#guard` in `Emit/Tests.lean`
+  with `example : ... := by native_decide` (fast, compiled evaluation, same
+  spirit as `#eval`; introduces the isolated `native_decide` axiom only in
+  `Emit/Tests.lean`, never imported by the verified core).
+- `Reference.referenceSubmittedProgram`/`referenceChosenPrecision` do *not*
+  actually take a `qs : QSemantics` parameter (despite living under a file-level
+  `variable {qs : QSemantics} [...]` block) — Lean's `variable` auto-inclusion
+  only pulls in variables a declaration's own signature mentions, and neither
+  of these two defs' types mention `qs` (confirming, yet again, the Stage
+  2/3 finding that the whole `referenceProgramAt` chain is `qs`-free). §5.4's
+  acceptance test 3 dropped the planned `(qs := qs)` naming entirely rather
+  than fighting it.
+- §5.4's acceptance test 1 ("`gate_count` equals folding the emitted
+  circuit") is implemented as a genuine round-trip: the JSON's `gate_count`
+  field, extracted back out via `Json.getObjVal?`/`Json.getNat?`, is checked
+  against `LowGate.gateCount shorGateCostModel` computed directly on the
+  *original* circuit value — this catches real serialization bugs (wrong
+  field, wrong order) without re-deriving `shorGateResourceModel`'s
+  register-width-dependent cost formulas a second time from raw JSON, which
+  would have been substantial duplicated effort for a test file.
+- Tests use `k = 2/3, N = 3` (not the plan's `N = 15`) to keep `lake build`
+  fast — `Emit/Tests.lean` compiles in ~10s. The `N = 15` instance from the
+  plan's Checkpoint 4/5.4-item-1 was still exercised, just via the compiled
+  `forshor_emit` binary above rather than embedded at Lean compile time.
 
 ### 5.1 A concrete `ShorLoweringSetup` (emitter is parameterised by it)
 `ShorLoweringSetup` (`Shor/Defs.lean:492`) is data `k, hk, ops` plus two `Prop`s.
@@ -458,15 +735,60 @@ instances; `#eval` in the editor runs interpreted and can hit stack limits on de
 ---
 
 ## 6. Cleanups to do at the end (documentation only)
-- `README.md` "Status": no `sorry` remains; remove the `gateBound`/`counted` sentence; describe the emitter.
-- `Framework/Submission.lean` docstring mentions a `gateCountBound` field that does not exist.
-- `Framework/Instantiation/GateSemanticsCore.lean` doc-comments at ~4777 and ~5040 claim cases are "left as `sorry`s" — they are proved; delete the sentences.
-- `ARCHITECTURE.md` paths (`Basic.lean`, `MathBackbone/`, `AlgorithmCorrectness/`) do not match the `Framework/` / `Implementation/` tree.
+
+**Status: DONE.** All four items fixed; no `.lean` semantics changed (docstrings
+only), confirmed by rebuilding both edited `.lean` files and a final full
+`lake build`.
+
+- `README.md` "Status": rewritten — states no `sorry` remains anywhere
+  (verified: `grep -rn sorry FastMultiplication` is empty) and axioms are
+  just the standard three; the old `gateBound`/`counted` sentence (those
+  fields don't exist on `referenceShorImplementation`) is gone; added a
+  paragraph describing the reference implementation's computability and the
+  `Emit/`/`forshor_emit` JSON emitter, plus a "Building" usage line. Also
+  fixed the two `Shor_correct`/`Shor_GateCount.lean` path references (they
+  pointed at pre-restructure locations) and rewrote the repository-layout
+  table and "Proof architecture" paragraph for the actual `Framework/` /
+  `Implementation/` split (the old table still named `Basic.lean`,
+  `MathBackbone/`, `AlgorithmCorrectness/`, `AbstractMachine/`, `GateCount/`,
+  `ShorCorrectness.lean` as top-level items).
+- `Framework/Submission.lean`: rewrote the module docstring and the
+  `ShorImplementation` docstring — both described a `gateCountBound` field
+  that was never part of the structure (the actual fields are `program`,
+  `successProbability`, `correct`, `trialCount`, `trialCount_correct`); gate
+  count is a framework-computed quantity (`ShorOrderFindingProgram.frameworkGateCount`),
+  not a submitted bound. Rewrote both docstrings to describe that instead.
+- `Framework/Instantiation/GateSemanticsCore.lean`: the two doc-comments
+  (`atomAdjEval_atomEval`, `atomEval_atomAdjEval`) claiming the `H`/`QFT`/
+  `SignedPhaseProd`/`CSignedPhaseProd` cases are "left as explicit `sorry`s
+  for a follow-up pass" were false — read the actual proof bodies, confirmed
+  all four cases are fully proved (the `QFT` case alone is ~80 lines of real
+  algebra). Reworded to describe what actually happens (those four cases
+  need dedicated calculations; the rest follow uniformly from
+  `atomAdjEval_atomEval_ket_of_glue`) instead of claiming outstanding work.
+- `ARCHITECTURE.md`: this file is far more extensively stale than just paths
+  (it describes the pre-restructure single-`Basic.lean`/`MathBackbone/`/
+  `AlgorithmCorrectness/`/`AbstractMachine/`/`GateCount/`/`ShorCorrectness.lean`
+  layout throughout its ~330 lines, and its final section falsely claimed
+  `Shor_correct` "still uses `sorry`"). A full per-line path audit of the
+  whole file was out of scope for a documentation cleanup pass, so: added a
+  note at the top mapping the old six top-level pieces to where they live
+  now (`Framework/` vs `Implementation/{PhaseProduct,QFT,ModularExponentiation,
+  Shor,GateCount,Reference}/`), pointing the reader to README.md's now-accurate
+  layout table, and telling them every named definition/theorem still exists
+  somewhere findable by `grep`; corrected the top "six main pieces" list with
+  the new locations; and fixed the false `sorry` claim in the
+  `ShorCorrectness.lean` section. The detailed per-definition prose in the
+  body (registers, `RegEncoding`, `QSemantics`, the folder-guide sections)
+  was left as-is — it describes concepts/definitions that still exist, just
+  under different file paths than literally written; re-verifying every one
+  of those paths individually would be a much larger undertaking than this
+  cleanup pass.
 
 ## 7. Summary checklist
-- [ ] Stage 1: `Angle` file; 3 constructors; 4 plan constructors; semantic axioms ×5; angle defs ×5; proof repairs; build green; axioms unchanged.
-- [ ] Stage 2: `algorithm1ExtraBitsNat` + bridge lemma; `ReferenceLayout` over `m`; phantom `{Basis}`/`qs` removed; `referenceShorCircuit` has no `qs`; `reference_step4Workspace` term-mode.
-- [ ] Stage 3: `lowerGateRec`/`lowerQFTPlan` via `match`; plan builders term-mode; `noncomputable section` removed from data-path files; only `loweringPhaseCoeff` blocks.
-- [ ] Stage 4: `lagrangeCoeff`; `lagrangeCoeff_solves`; equality under `GoodToomCookPoints`; consumers patched; `referenceProgramAt` compiles.
-- [ ] Stage 5: `standardLoweringSetup`; `LowGateJson`; `lean_exe forshor_emit`; acceptance tests pass.
-- [ ] §6 doc cleanups.
+- [x] Stage 1: `Angle` file; 3 constructors; 4 plan constructors; semantic axioms ×5; angle defs ×5; proof repairs; build green; axioms unchanged.
+- [x] Stage 2: `algorithm1ExtraBitsNat` + bridge lemma; `ReferenceLayout` over `m`; phantom `{Basis}`/`qs` removed; `referenceShorCircuit` has no `qs`; `reference_step4Workspace` term-mode (already compiled tactic-mode, no rewrite forced — ground rule 7 only requires it when the compiler complains).
+- [x] Stage 3: `lowerGateRec`/`lowerQFTPlan` via `match`; plan builders and `canonicalSignedStep`/`phaseWorkspace` made computable without a tactic rewrite; `noncomputable section` removed from `ReferenceReadiness.lean`/`ReferenceShorImplementation.lean`; Checkpoint 3 confirms only `loweringPhaseCoeff` blocks `referenceProgramAt`.
+- [x] Stage 4: `cramerCoeffFromPts(Width)` (Cramer's-rule, not Lagrange weights — see status note); equality under `GoodToomCookPoints` for fully general `pts`; `PlanSemantics.lean`'s 2 consumers patched; `referenceProgramAt` compiles.
+- [x] Stage 5: `standardLoweringSetup`; `LowGateJson`; `lean_exe forshor_emit`; acceptance tests pass; real smoke test (`k=2,a=2,N=15,m=0`) produces valid JSON, gate_count 69084.
+- [x] §6 doc cleanups: `README.md`, `Framework/Submission.lean`, `Framework/Instantiation/GateSemanticsCore.lean`, `ARCHITECTURE.md`.

@@ -22,31 +22,31 @@ because the recursive plan constructors refer to them.
 ========================================================= -/
 
 /-- Interpolation coefficients used by the lowered phase-product implementation. -/
-noncomputable def loweringPhaseCoeff (k : ℕ) (x z : ExtReg) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → ℚ :=
-  phaseCoeffFromPtsWidth k (phaseLimbWidth x z k) pts hpts
+def loweringPhaseCoeff (k : ℕ) (x z : ExtReg) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → ℚ :=
+  cramerCoeffFromPtsWidth k (phaseLimbWidth x z k) pts hpts
 
 /-- Compiled replacement for an uncontrolled signed phase-product gate. -/
-noncomputable def compiledSignedPhaseGate
+def compiledSignedPhaseGate
     (k : ℕ)
     (hk : 1 < k)
     (pts : List Point)
     (hpts : pts.length = q k)
     (ops : Prog k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k) :
     Gate :=
   compileOpsToSignedGate k hk phi x z layout (loweringPhaseCoeff k x z pts hpts) ops
 
 /-- Compiled replacement for a controlled signed phase-product gate. -/
-noncomputable def compiledCSignedPhaseGate
+def compiledCSignedPhaseGate
     (k : ℕ)
     (hk : 1 < k)
     (pts : List Point)
     (hpts : pts.length = q k)
     (ops : Prog k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k) :
     Gate :=
@@ -169,7 +169,7 @@ inductive PhaseLoweringPlan
   -/
   | signedBase
       {initSize : ℕ}
-      (phi : ℝ) (x z : ExtReg)
+      (phi : Angle) (x z : ExtReg)
       (hstop : ¬ nextSignedWidth x z ops < initSize) :
       PhaseLoweringPlan k hk pts hpts ops initSize (Gate.SignedPhaseProd phi x z)
   /--
@@ -180,7 +180,7 @@ inductive PhaseLoweringPlan
   -/
   | signedStep
       {initSize : ℕ}
-      (phi : ℝ)
+      (phi : Angle)
       (x z : ExtReg)
       (layout : Gate.PhaseProductLayout x z k)
       (hrec : nextSignedWidth x z ops < initSize)
@@ -194,7 +194,7 @@ inductive PhaseLoweringPlan
   | cSignedBase
       {initSize : ℕ}
       (ctrl : ℕ)
-      (phi : ℝ)
+      (phi : Angle)
       (x z : ExtReg)
       (hstop :  ¬ nextSignedWidth x z ops < initSize) :
       PhaseLoweringPlan k hk pts hpts ops initSize (Gate.CSignedPhaseProd ctrl phi x z)
@@ -206,7 +206,7 @@ inductive PhaseLoweringPlan
   | cSignedStep
       {initSize : ℕ}
       (ctrl : ℕ)
-      (phi : ℝ)
+      (phi : Angle)
       (x z : ExtReg)
       (layout : Gate.PhaseProductLayout x z k)
       (hrec : nextSignedWidth x z ops < initSize)
@@ -229,7 +229,7 @@ Termination is structural on `plan`. In a recursive phase-product case, the
 child plan already contains the concrete layout and capacity proof required
 for the next recursive call.
 -/
-noncomputable def lowerGateRec
+def lowerGateRec
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -238,25 +238,25 @@ noncomputable def lowerGateRec
     {initSize : ℕ}
     {U : Gate}
     (plan : PhaseLoweringPlan k hk pts hpts ops initSize U) :
-    LowGate := by
-  induction plan with
-  | id initSize => exact LowGate.id
-  | seq left right ihLeft ihRight => exact LowGate.seq ihLeft ihRight
-  | H initSize qbit => exact LowGate.H qbit
-  | X initSize qbit => exact LowGate.X qbit
-  | ShiftL initSize r n => exact LowGate.ShiftL r n
-  | ShiftR initSize r n => exact LowGate.ShiftR r n
-  | Negate initSize r => exact LowGate.Negate r
-  | AddScaled initSize dst src negSrc shift => exact LowGate.AddScaled dst src negSrc shift
-  | zeroExtend initSize r n => exact LowGate.zeroExtend r n
-  | signExtend initSize r n => exact LowGate.signExtend r n
-  | zeroDealloc initSize r n => exact LowGate.zeroDealloc r n
-  | signDealloc initSize r n => exact LowGate.signDealloc r n
-  | RadixReverse initSize r m => exact LowGate.RadixReverse r m
-  | signedBase phi x z hstop => exact LowGate.Naive_SignedPhaseProd phi x z
-  | signedStep phi x z layout hrec hcapacity child ihChild => exact ihChild
-  | cSignedBase ctrl phi x z hstop => exact LowGate.Naive_CSignedPhaseProd ctrl phi x z
-  | cSignedStep ctrl phi x z layout hrec hcapacity hctrl child ihChild => exact ihChild
+    LowGate :=
+  match plan with
+  | .id _ => LowGate.id
+  | .seq left right => LowGate.seq (lowerGateRec left) (lowerGateRec right)
+  | .H _ qbit => LowGate.H qbit
+  | .X _ qbit => LowGate.X qbit
+  | .ShiftL _ r n => LowGate.ShiftL r n
+  | .ShiftR _ r n => LowGate.ShiftR r n
+  | .Negate _ r => LowGate.Negate r
+  | .AddScaled _ dst src negSrc shift => LowGate.AddScaled dst src negSrc shift
+  | .zeroExtend _ r n => LowGate.zeroExtend r n
+  | .signExtend _ r n => LowGate.signExtend r n
+  | .zeroDealloc _ r n => LowGate.zeroDealloc r n
+  | .signDealloc _ r n => LowGate.signDealloc r n
+  | .RadixReverse _ r m => LowGate.RadixReverse r m
+  | .signedBase phi x z _ => LowGate.Naive_SignedPhaseProd phi x z
+  | .signedStep phi x z _layout _hrec _hcapacity child => lowerGateRec child
+  | .cSignedBase ctrl phi x z _ => LowGate.Naive_CSignedPhaseProd ctrl phi x z
+  | .cSignedStep ctrl phi x z _layout _hrec _hcapacity _hctrl child => lowerGateRec child
 
 /-! =========================================================
     Section 4: Standard interpolation-point public interface
@@ -287,7 +287,7 @@ abbrev StandardPhaseLoweringPlan
     ops initSize  U
 
 /-- Interpret a standard lowering plan for any gate in the supported fragment. -/
-noncomputable def lowerPhasePlan
+def lowerPhasePlan
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -304,10 +304,10 @@ The plan is the precondition saying that every recursive call has:
 * sufficient reserve capacity;
 * a strictly smaller recursive width.
 -/
-noncomputable def lowerSignedPhaseProd
+def lowerSignedPhaseProd
     (k : ℕ)
     (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (plan : StandardPhaseLoweringPlan k hk ops (phaseInputSize x z)
@@ -320,11 +320,11 @@ Lower a controlled signed phase product using a complete recursive workspace
 plan. Controlled recursive steps additionally contain a
 `layout.ControlDisjoint ctrl` proof.
 -/
-noncomputable def lowerCSignedPhaseProd
+def lowerCSignedPhaseProd
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (plan : StandardPhaseLoweringPlan k hk ops (phaseInputSize x z)
@@ -341,7 +341,7 @@ noncomputable def lowerCSignedPhaseProd
 ========================================================= -/
 
 /-- Plan for the allocation gate generated for one chunk. -/
-noncomputable def planAllocChunkGate
+def planAllocChunkGate
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -362,7 +362,7 @@ noncomputable def planAllocChunkGate
         PhaseLoweringPlan.zeroExtend initSize src (extraDelta src dst)
 
 /-- Plan for the deallocation gate generated for one chunk. -/
-noncomputable def planDeallocChunkGate
+def planDeallocChunkGate
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -386,7 +386,7 @@ noncomputable def planDeallocChunkGate
         PhaseLoweringPlan.zeroDealloc initSize src (extraDelta src dst)
 
 /-- Plan for an allocation prefix. -/
-noncomputable def planCompileSignedAllocationsAux
+def planCompileSignedAllocationsAux
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -414,7 +414,7 @@ noncomputable def planCompileSignedAllocationsAux
       PhaseLoweringPlan.seq previous (PhaseLoweringPlan.seq planX planZ)
 
 /-- Plan for the full signed allocation circuit. -/
-noncomputable def planCompileSignedAllocations
+def planCompileSignedAllocations
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -428,7 +428,7 @@ noncomputable def planCompileSignedAllocations
   exact planCompileSignedAllocationsAux initSize src dst k le_rfl
 
 /-- Plan for a deallocation prefix. -/
-noncomputable def planCompileSignedDeallocationsAux
+def planCompileSignedDeallocationsAux
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -455,7 +455,7 @@ noncomputable def planCompileSignedDeallocationsAux
       PhaseLoweringPlan.seq planZ (PhaseLoweringPlan.seq planX previous)
 
 /-- Plan for the full signed deallocation circuit. -/
-noncomputable def planCompileSignedDeallocations
+def planCompileSignedDeallocations
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -477,18 +477,18 @@ noncomputable def planCompileSignedDeallocations
 ========================================================= -/
 
 /-- Plan for the annotated body circuit, using `recurse` at phase-product leaves. -/
-noncomputable def planCompileAnnotatedOpsToSignedGateAux
+def planCompileAnnotatedOpsToSignedGateAux
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
     {hpts : pts.length = q k}
     {ops : Prog k}
     (initSize : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (phaseCoeff : Fin (q k) → ℚ)
     (st : LayoutState k)
     (recurse :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan k hk pts hpts ops initSize
           (Gate.SignedPhaseProd theta (st.xslot i) (st.zslot i))) :
     ∀ annotatedOps : List (AnnotatedOp k),
@@ -526,12 +526,12 @@ noncomputable def planCompileAnnotatedOpsToSignedGateAux
       | .phaseProduct i =>
           match phaseTerm? with
           | some l =>
-              PhaseLoweringPlan.seq (recurse i (phi * (((phaseCoeff l : ℚ) : ℝ)))) tail
+              PhaseLoweringPlan.seq (recurse i (phi * phaseCoeff l)) tail
           | none =>
               tail
 
 /-- Plan for the controlled annotated body circuit, using `recurse` at controlled phase-product leaves. -/
-noncomputable def planCompileAnnotatedOpsToCSignedGateAux
+def planCompileAnnotatedOpsToCSignedGateAux
     {k : ℕ}
     {hk : 1 < k}
     {pts : List Point}
@@ -539,11 +539,11 @@ noncomputable def planCompileAnnotatedOpsToCSignedGateAux
     {ops : Prog k}
     (initSize : ℕ)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (phaseCoeff : Fin (q k) → ℚ)
     (st : LayoutState k)
     (recurse :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan k hk pts hpts ops initSize
           (Gate.CSignedPhaseProd ctrl theta (st.xslot i) (st.zslot i))) :
     ∀ annotatedOps : List (AnnotatedOp k),
@@ -574,7 +574,7 @@ noncomputable def planCompileAnnotatedOpsToCSignedGateAux
       | .phaseProduct i =>
           match phaseTerm? with
           | some l =>
-              PhaseLoweringPlan.seq (recurse i (phi * (((phaseCoeff l : ℚ) : ℝ)))) tail
+              PhaseLoweringPlan.seq (recurse i (phi * phaseCoeff l)) tail
           | none =>
               tail
 
@@ -587,13 +587,13 @@ noncomputable def planCompileAnnotatedOpsToCSignedGateAux
 ========================================================= -/
 
 /-- Plan for the compiled signed phase-product replacement at one recursive level. -/
-noncomputable def planCompiledSignedPhaseGate
+def planCompiledSignedPhaseGate
     {k : ℕ}
     (hk : 1 < k)
     (pts : List Point)
     (hpts : pts.length = q k)
     (ops : Prog k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (recurse :
@@ -603,7 +603,7 @@ noncomputable def planCompiledSignedPhaseGate
         targetSignedLayoutState
           src
           (scanNeededWidths x z ops)
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan
           k hk pts hpts ops
           (nextSignedWidth x z ops)
@@ -629,7 +629,7 @@ noncomputable def planCompiledSignedPhaseGate
   let annotatedOps : List (AnnotatedOp k) :=
     annotatePhaseTermsAux k 0 ops
   have recurse' :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan
           k hk pts hpts ops
           (nextSignedWidth x z ops)
@@ -687,20 +687,20 @@ noncomputable def planCompiledSignedPhaseGate
   ] using completePlan
 
 /-- Plan for the compiled controlled signed phase-product replacement at one recursive level. -/
-noncomputable def planCompiledCSignedPhaseGate
+def planCompiledCSignedPhaseGate
     {k : ℕ}
     (hk : 1 < k)
     (pts : List Point)
     (hpts : pts.length = q k)
     (ops : Prog k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (recurse :
       let src := initSignedLayoutState layout
       let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
           (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i))) :
     PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
@@ -711,7 +711,7 @@ noncomputable def planCompiledCSignedPhaseGate
   let coeff : Fin (q k) → ℚ := loweringPhaseCoeff k x z pts hpts
   let annotatedOps : List (AnnotatedOp k) := annotatePhaseTermsAux k 0 ops
   have recurse' :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
           (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i)) := by
     simpa [src, dst, need] using recurse
@@ -750,10 +750,10 @@ noncomputable def planCompiledCSignedPhaseGate
 ========================================================= -/
 
 /-- Canonical recursive plan for a signed phase product from static recursive workspace data. -/
-noncomputable def standardSignedPhaseLoweringPlan
+def standardSignedPhaseLoweringPlan
     (k : ℕ)
     (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (hworkspace : SignedRecursiveWorkspaceOK ops x z) :
@@ -769,7 +769,7 @@ noncomputable def standardSignedPhaseLoweringPlan
       targetSignedLayoutState
         src (scanNeededWidths x z ops)
     have recurse :
-        ∀ (i : Fin k) (theta : ℝ),
+        ∀ (i : Fin k) (theta : Angle),
           PhaseLoweringPlan k hk (genInterpolationPoints k)
             (generatedInterpolationPoints_length k) ops
             (nextSignedWidth x z ops)
@@ -846,11 +846,11 @@ decreasing_by
   exact hrec
 
 /-- Canonical recursive plan for a controlled signed phase product from static recursive workspace data. -/
-noncomputable def standardCSignedPhaseLoweringPlan
+def standardCSignedPhaseLoweringPlan
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (hworkspace : CSignedRecursiveWorkspaceOK ops ctrl x z) :
@@ -861,7 +861,7 @@ noncomputable def standardCSignedPhaseLoweringPlan
     let src : LayoutState k := initSignedLayoutState step.layout
     let dst : LayoutState k := targetSignedLayoutState src (scanNeededWidths x z ops)
     have recurse :
-        ∀ (i : Fin k) (theta : ℝ),
+        ∀ (i : Fin k) (theta : Angle),
           PhaseLoweringPlan k hk (genInterpolationPoints k) (generatedInterpolationPoints_length k)
             ops (nextSignedWidth x z ops)
             (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i)) := by

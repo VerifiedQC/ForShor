@@ -10,9 +10,9 @@ def sequence : List LowGate → LowGate
   | [] => LowGate.id
   | g :: gs => g ;; sequence gs
 
-noncomputable def CPhase
+def CPhase
     (ctrl target : ℕ)
-    (theta : ℝ) : LowGate :=
+    (theta : Angle) : LowGate :=
   if ctrl = target then
     LowGate.Phase ctrl theta
   else
@@ -40,15 +40,15 @@ def signedTermsAux :
 def signedTerms (r : ExtReg) : List (ℕ × ℤ) :=
   signedTermsAux r.width 0 r.active.qubits
 
-noncomputable def signedPairAngle
-    (phi : ℝ)
-    (xTerm zTerm : ℕ × ℤ) : ℝ :=
-  phi * (xTerm.2 : ℝ) * (zTerm.2 : ℝ)
+def signedPairAngle
+    (phi : Angle)
+    (xTerm zTerm : ℕ × ℤ) : Angle :=
+  phi * (xTerm.2 : ℚ) * (zTerm.2 : ℚ)
 
 namespace LowGate
 
-noncomputable def naiveSignedPhaseGates
-    (phi : ℝ)
+def naiveSignedPhaseGates
+    (phi : Angle)
     (x z : ExtReg) : List LowGate :=
   (signedTerms x).flatMap fun xTerm =>
     (signedTerms z).map fun zTerm =>
@@ -57,8 +57,8 @@ noncomputable def naiveSignedPhaseGates
         zTerm.1
         (signedPairAngle phi xTerm zTerm)
 
-noncomputable def Naive_SignedPhaseProd
-    (phi : ℝ)
+def Naive_SignedPhaseProd
+    (phi : Angle)
     (x z : ExtReg) : LowGate :=
   LowGate.sequence (naiveSignedPhaseGates phi x z)
 
@@ -83,17 +83,17 @@ def signedTermValue
 noncomputable def signedPairExponent
     {Basis : Type*}
     [RegEncoding Basis]
-    (phi : ℝ)
+    (phi : Angle)
     (b : Basis)
     (xTerm zTerm : ℕ × ℤ) : ℂ :=
-  (phi : ℂ) * Complex.I *
+  ((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
     (((signedTermValue b xTerm : ℤ) : ℂ) *
      (((signedTermValue b zTerm : ℤ) : ℂ)))
 
 noncomputable def naiveSignedPhaseExponents
     {Basis : Type*}
     [RegEncoding Basis]
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : Basis) : List ℂ :=
   (signedTerms x).flatMap fun xTerm =>
@@ -258,7 +258,7 @@ theorem evalL_CPhase_ket
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     (ctrl target : ℕ)
-    (theta : ℝ)
+    (theta : Angle)
     (b : qs.Basis) :
     LowerGateClass.evalL
         (qs := qs)
@@ -266,7 +266,7 @@ theorem evalL_CPhase_ket
         (qs.ket b)
       =
     Complex.exp
-      ((theta : ℂ) * Complex.I *
+      (((Angle.toReal theta : ℝ) : ℂ) * Complex.I *
         ((((basisBitInt ctrl b : ℤ) : ℂ) *
           (((basisBitInt target b : ℤ) : ℂ))))) •
       qs.ket b := by
@@ -305,10 +305,11 @@ theorem evalL_CPhase_ket
         cnotBasis
       ]
       have hcancel :
-          Complex.exp (↑theta / 2 * Complex.I) *
-              Complex.exp (-↑theta / 2 * Complex.I) =
+          Complex.exp ((Angle.toReal (theta / 2) : ℝ) * Complex.I) *
+              Complex.exp ((Angle.toReal (-theta / 2) : ℝ) * Complex.I) =
             1 := by
-        simpa using complex_exp_half_cancel theta
+        rw [Angle.toReal_div, Angle.toReal_div, Angle.toReal_neg]
+        simpa using complex_exp_half_cancel (Angle.toReal theta)
       rw [smul_smul]
       rw [hcancel]
       simp
@@ -327,10 +328,11 @@ theorem evalL_CPhase_ket
         smul_smul
       ]
       have hcancel :
-          Complex.exp (↑theta / 2 * Complex.I) *
-              Complex.exp (-↑theta / 2 * Complex.I) =
+          Complex.exp ((Angle.toReal (theta / 2) : ℝ) * Complex.I) *
+              Complex.exp ((Angle.toReal (-theta / 2) : ℝ) * Complex.I) =
             1 := by
-        simpa using complex_exp_half_cancel theta
+        rw [Angle.toReal_div, Angle.toReal_div, Angle.toReal_neg]
+        simpa using complex_exp_half_cancel (Angle.toReal theta)
       rw [hcancel]
       simp
     · simp [
@@ -348,17 +350,18 @@ theorem evalL_CPhase_ket
         smul_smul
       ]
       have hsquare :
-          Complex.exp (↑theta / 2 * Complex.I) *
-              Complex.exp (↑theta / 2 * Complex.I) =
-            Complex.exp (↑theta * Complex.I) := by
-        simpa using complex_exp_half_square theta
+          Complex.exp ((Angle.toReal (theta / 2) : ℝ) * Complex.I) *
+              Complex.exp ((Angle.toReal (theta / 2) : ℝ) * Complex.I) =
+            Complex.exp ((Angle.toReal theta : ℝ) * Complex.I) := by
+        rw [Angle.toReal_div]
+        simpa using complex_exp_half_square (Angle.toReal theta)
       rw [hsquare]
 
 theorem evalL_signedPairPhase_ket
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
-    (phi : ℝ)
+    (phi : Angle)
     (xTerm zTerm : ℕ × ℤ)
     (b : qs.Basis) :
     LowerGateClass.evalL
@@ -373,11 +376,13 @@ theorem evalL_signedPairPhase_ket
       qs.ket b := by
   rw [evalL_CPhase_ket]
   congr 2
-  simp [
+  simp only [
     signedPairExponent,
     signedPairAngle,
-    signedTermValue
+    signedTermValue,
+    Angle.toReal
   ]
+  push_cast
   ring
 
 theorem evalL_sequence_of_diagonal
@@ -433,7 +438,7 @@ theorem naiveSignedPhaseGates_diagonal
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : qs.Basis) :
     List.Forall₂
@@ -474,7 +479,7 @@ theorem evalL_naiveSignedPhaseGates_ket
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : qs.Basis) :
     LowerGateClass.evalL
@@ -748,14 +753,14 @@ theorem extToInt_eq_signedTerms_sum
 private theorem sum_signedPairExponent_fixed
     {Basis : Type*}
     [RegEncoding Basis]
-    (phi : ℝ)
+    (phi : Angle)
     (b : Basis)
     (xTerm : ℕ × ℤ)
     (zs : List (ℕ × ℤ)) :
     (zs.map fun zTerm =>
       signedPairExponent phi b xTerm zTerm).sum
       =
-    (phi : ℂ) * Complex.I *
+    ((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
       (((signedTermValue b xTerm : ℤ) : ℂ) *
         ((((zs.map (signedTermValue b)).sum : ℤ) : ℂ))) := by
   induction zs with
@@ -769,14 +774,14 @@ private theorem sum_signedPairExponent_fixed
 theorem sum_signedPairExponent
     {Basis : Type*}
     [RegEncoding Basis]
-    (phi : ℝ)
+    (phi : Angle)
     (b : Basis)
     (xs zs : List (ℕ × ℤ)) :
     (xs.flatMap fun xTerm =>
       zs.map fun zTerm =>
         signedPairExponent phi b xTerm zTerm).sum
       =
-    (phi : ℂ) * Complex.I *
+    ((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
       (((((xs.map (signedTermValue b)).sum : ℤ) : ℂ) *
         ((((zs.map (signedTermValue b)).sum : ℤ) : ℂ)))) := by
   induction xs with
@@ -789,12 +794,12 @@ theorem sum_signedPairExponent
 theorem naiveSignedPhaseExponents_sum
     {Basis : Type*}
     [RegEncoding Basis]
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : Basis) :
     (naiveSignedPhaseExponents phi x z b).sum
       =
-    (phi : ℂ) * Complex.I *
+    ((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
       (((extToInt x b : ℤ) : ℂ) *
        (((extToInt z b : ℤ) : ℂ))) := by
   unfold naiveSignedPhaseExponents
@@ -808,7 +813,7 @@ theorem evalL_naive_signedPhaseProd_ket
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : qs.Basis) :
     LowerGateClass.evalL
@@ -817,7 +822,7 @@ theorem evalL_naive_signedPhaseProd_ket
         (qs.ket b)
       =
     (Complex.exp
-      (phi * Complex.I *
+      (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
         (((extToInt x b : ℤ) : ℂ) *
          (((extToInt z b : ℤ) : ℂ))))) •
       qs.ket b := by
@@ -870,7 +875,7 @@ namespace LowGate
 lemma gateCount_CPhase_of_ne
     (M : LowGateCostModel)
     (ctrl target : ℕ)
-    (theta : ℝ)
+    (theta : Angle)
     (hne : ctrl ≠ target) :
     LowGate.gateCount M
         (LowGate.CPhase ctrl target theta) = 5 := by
@@ -921,7 +926,7 @@ lemma flatMap_map_length
       simp [ih, Nat.succ_mul, Nat.add_comm]
 
 lemma naiveSignedPhaseGates_length
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg) :
     (LowGate.naiveSignedPhaseGates phi x z).length =
       x.width * z.width := by
@@ -955,7 +960,7 @@ lemma signedTerms_ne_of_ownedDisjoint
 
 theorem gateCount_Naive_SignedPhaseProd
     (M : LowGateCostModel)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (hdisjoint : ExtReg.OwnedDisjoint x z) :
     LowGate.gateCount M

@@ -7,10 +7,10 @@ namespace Shor
 The canonical lowered circuit constructed from the root physical-workspace
 assumption.
 -/
-noncomputable def lowerSignedPhaseProdWithWorkspace
+def lowerSignedPhaseProdWithWorkspace
     (k : ℕ)
     (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (hstatic : SignedRecursiveWorkspaceOK ops x z) :
@@ -23,11 +23,11 @@ noncomputable def lowerSignedPhaseProdWithWorkspace
 The canonical lowered controlled circuit constructed from the root
 physical-workspace assumption.
 -/
-noncomputable def lowerCSignedPhaseProdWithWorkspace
+def lowerCSignedPhaseProdWithWorkspace
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (hstatic : CSignedRecursiveWorkspaceOK ops ctrl x z) :

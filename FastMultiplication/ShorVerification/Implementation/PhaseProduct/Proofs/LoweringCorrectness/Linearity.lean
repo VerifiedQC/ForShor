@@ -25,7 +25,7 @@ lemma eval_SignedPhaseProd_preserves_recursiveWorkspaceClean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     {ψ : qs.State}
     (hclean :
@@ -93,7 +93,7 @@ lemma standardSignedPhaseLoweringPlan_preserves_clean_of_ready
     [LowerGateClass qs]
     (k : ℕ)
     (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (ψ : qs.State)

@@ -734,7 +734,7 @@ lemma alg1_step2_phase_normalization
     (cfg : ModMulConfig η)
     (t : Fin (ASize cfg.env.work.active))
     (y : Fin (ASize ((cfg.env.data.grow 1).active))) :
-    alg1Step2Phase cfg * Complex.I *
+    ((Angle.toReal (alg1Step2Phase cfg) : ℝ) : ℂ) * Complex.I *
         ((t.1 : ℂ) * (y.1 : ℂ)) = (((2 * Real.pi) /
         (ASize ((cfg.env.data.grow 1).active) : ℝ)) * Complex.I) *
       (((cfg.env.N : ℝ) * alg1WorkFraction cfg t : ℝ) : ℂ) *
@@ -757,14 +757,13 @@ lemma alg1_step2_phase_normalization
   have hLneC : ((ASize ((cfg.env.data.grow 1).active) : ℝ) : ℂ) ≠ 0 := by
     exact_mod_cast hLne
 
-  have hpow :
-      (2 : ℝ) ^
-          (regSize cfg.env.work.active + regSize ((cfg.env.data.grow 1).active)) = (ASize cfg.env.work.active : ℝ) *
-        (ASize ((cfg.env.data.grow 1).active) : ℝ) := by
+  have hpowQ :
+      (2 : ℚ) ^
+          (regSize cfg.env.work.active + regSize ((cfg.env.data.grow 1).active)) = (ASize cfg.env.work.active : ℚ) *
+        (ASize ((cfg.env.data.grow 1).active) : ℚ) := by
     simp [ASize, pow_add]
 
-  simp only [alg1Step2Phase, alg1WorkFraction]
-  rw [hpow]
+  simp only [alg1Step2Phase, Angle.toReal, alg1WorkFraction, hpowQ]
   push_cast
   field_simp [hMne, hLne, hMneC, hLneC]
 
@@ -1275,7 +1274,7 @@ lemma alg1_step2_fourier_coeff_error_bound
       _ ≤ 2 * Real.pi * η := hθbound
 
   have hactual :
-      alg1Step2Phase cfg * Complex.I *
+      ((Angle.toReal (alg1Step2Phase cfg) : ℝ) : ℂ) * Complex.I *
           ((t.1 : ℂ) * (y.1 : ℂ)) = Complex.I * (θa : ℂ) := by
     rw [alg1_step2_phase_normalization cfg t y]
     dsimp [θa, a, L]
@@ -1305,7 +1304,7 @@ lemma alg1_step2_fourier_coeff_error_bound
     ‖alg1Step2QFTScale cfg *
         qftPhase L x y.1 *
         Complex.exp
-          (alg1Step2Phase cfg * Complex.I *
+          (((Angle.toReal (alg1Step2Phase cfg) : ℝ) : ℂ) * Complex.I *
             ((t.1 : ℂ) * (y.1 : ℂ))) - alg1Step2QFTScale cfg *
           qftPhase L (x + r) y.1‖ ≤ (2 * Real.pi * η) / Real.sqrt (L : ℝ)
 
@@ -1853,7 +1852,7 @@ private lemma alg1_step2_preIQFT_work_packet
           (RegEncoding.toNat xext.active base)
           y.1 *
         Complex.exp
-          (alg1Step2Phase cfg * Complex.I *
+          (((Angle.toReal (alg1Step2Phase cfg) : ℝ) : ℂ) * Complex.I *
             ((t.1 : ℂ) * (y.1 : ℂ)))),
     ?_
   ⟩
@@ -1868,7 +1867,7 @@ private lemma alg1_step2_preIQFT_work_packet
               cfg.env.circuit_workspace.step2Workspace)
             (qs.ket
               (RegEncoding.writeNat xext.active y.1 base)) = Complex.exp
-          (alg1Step2Phase cfg * Complex.I *
+          (((Angle.toReal (alg1Step2Phase cfg) : ℝ) : ℂ) * Complex.I *
             ((t.1 : ℂ) * (y.1 : ℂ))) •
           qs.ket
             (RegEncoding.writeNat xext.active y.1 base) := by
@@ -2916,7 +2915,7 @@ private lemma alg1_step2_fixed_work_multiplier_bound
     exact mul_le_mul_of_nonneg_left hprod htwopi_nonneg
 
   have hactual :
-      alg1Step2Phase cfg * Complex.I *
+      ((Angle.toReal (alg1Step2Phase cfg) : ℝ) : ℂ) * Complex.I *
           ((p.1.2.1 : ℂ) * (p.2.1 : ℂ)) = Complex.I * (θa : ℂ) := by
     rw [alg1_step2_phase_normalization cfg p.1.2 p.2]
     dsimp [θa, a, L, alg1WorkFraction]
@@ -2931,7 +2930,7 @@ private lemma alg1_step2_fixed_work_multiplier_bound
 
   change
     ‖Complex.exp
-        (alg1Step2Phase cfg * Complex.I *
+        (((Angle.toReal (alg1Step2Phase cfg) : ℝ) : ℂ) * Complex.I *
           ((p.1.2.1 : ℂ) * (p.2.1 : ℂ)))
       - qftPhase L r p.2.1‖
       ≤ 2 * Real.pi * η

@@ -181,7 +181,7 @@ theorem evalL_naive_signedPhaseProd
     [GateSemanticsCore qs]
     [PhaseSemantics qs]
     [LowerGateClass qs]
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ψ : qs.State) :
     LowerGateClass.evalL (qs := qs) (LowGate.Naive_SignedPhaseProd phi x z) ψ =
@@ -205,7 +205,7 @@ theorem evalL_naive_csignedPhaseProd
     [PhaseSemantics qs]
     [LowerGateClass qs]
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ψ : qs.State) :
     LowerGateClass.evalL (qs := qs) (LowGate.Naive_CSignedPhaseProd ctrl phi x z) ψ =

@@ -859,7 +859,6 @@ lemma alg1_step1_error_eq_bad_packet
   change
     qs.eval
         (step1
-          (Basis := qs.Basis)
           cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
         ψ
       -
@@ -1643,10 +1642,12 @@ lemma alg1_step1_phase_scalar_eq_target
       exact (Nat.mod_modEq (a * x) N).symm
 
     have hphase :
-        alg1Step1Phase cfg
+        Angle.toReal (alg1Step1Phase cfg)
           =
         (2 * Real.pi * (a : ℝ)) / (N : ℝ) := by
-      dsimp [alg1Step1Phase, a, N]
+      simp only [alg1Step1Phase, Angle.toReal, a, N]
+      push_cast
+      ring
 
     simp only [
       alg1Step1PhaseScalar,
@@ -1657,7 +1658,7 @@ lemma alg1_step1_phase_scalar_eq_target
 
     calc
       Complex.exp
-          (alg1Step1Phase cfg * Complex.I *
+          (((Angle.toReal (alg1Step1Phase cfg) : ℝ) : ℂ) * Complex.I *
             ((RegEncoding.toNat cfg.env.data.active b : ℂ) * (z.1 : ℂ)))
         =
       Complex.exp
@@ -1697,7 +1698,7 @@ lemma alg1_step5_phase_scalar_eq_target
     (z : Fin (ASize cfg.env.work.active)) :
     (if RegEncoding.bit cfg.ctrl b then
       Complex.exp
-        (alg1Step5Phase cfg * Complex.I *
+        (((Angle.toReal (alg1Step5Phase cfg) : ℝ) : ℂ) * Complex.I *
           ((alg1OutputValue cfg b : ℂ) * (z.1 : ℂ)))
     else
       1)
@@ -1742,10 +1743,12 @@ lemma alg1_step5_phase_scalar_eq_target
       hmod_left.trans hraw
 
     have hphase :
-        alg1Step5Phase cfg
+        Angle.toReal (alg1Step5Phase cfg)
           =
         (2 * Real.pi * ((k % N : ℕ) : ℝ)) / (N : ℝ) := by
-      dsimp [alg1Step5Phase, k, N]
+      simp only [alg1Step5Phase, Angle.toReal, k, N]
+      push_cast
+      ring
 
     simp only [
       alg1TargetPhaseScalar,
@@ -1755,7 +1758,7 @@ lemma alg1_step5_phase_scalar_eq_target
 
     calc
       Complex.exp
-          (alg1Step5Phase cfg * Complex.I *
+          (((Angle.toReal (alg1Step5Phase cfg) : ℝ) : ℂ) * Complex.I *
             ((alg1OutputValue cfg b : ℂ) * (z.1 : ℂ)))
         =
       Complex.exp
@@ -1800,7 +1803,7 @@ lemma alg1_step5_phase_scalar_eq_step1
     (z : Fin (ASize cfg.env.work.active)) :
     (if RegEncoding.bit cfg.ctrl b then
       Complex.exp
-        (alg1Step5Phase cfg * Complex.I *
+        (((Angle.toReal (alg1Step5Phase cfg) : ℝ) : ℂ) * Complex.I *
           ((alg1OutputValue cfg b : ℂ) * (z.1 : ℂ)))
     else
       1)
@@ -2220,7 +2223,7 @@ lemma alg1_step5_cphase_on_output_work_label
       (if RegEncoding.bit cfg.ctrl
           (RegEncoding.writeNat cfg.env.work.active z.1 bData) then
         Complex.exp
-          (alg1Step5Phase cfg * Complex.I *
+          (((Angle.toReal (alg1Step5Phase cfg) : ℝ) : ℂ) * Complex.I *
             ((RegEncoding.toNat ((cfg.env.data.grow 1).active)
                 (RegEncoding.writeNat cfg.env.work.active z.1 bData) : ℂ) *
              (RegEncoding.toNat cfg.env.work.active

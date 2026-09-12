@@ -405,9 +405,12 @@ private theorem eval_fastConstMulInto_ket
   have ha : a < M := Nat.mod_lt _ hM
   have hzactive : ws.zExt.active = scratch.active := rfl
   have hzwidth : ws.zExt.width = regSize scratch.active := rfl
+  let phi : Angle := (2 * (N : ℚ)) / (ASize ws.zExt.active : ℚ)
+  have hAngle : Angle.toReal phi = (2 * Real.pi * (N : ℝ)) / (ASize ws.zExt.active : ℝ) := by
+    simp only [phi, Angle.toReal]; push_cast; ring
   have hphase (y : Fin M) :
       qs.eval (Gate.PhaseProdUsing
-          ((2 * Real.pi * (N : ℝ)) / (ASize ws.zExt.active : ℝ))
+          phi
           work.active scratch.active ws)
           (qs.ket (RegEncoding.writeNat scratch.active y.1 b)) =
         qftPhase M (N * RegEncoding.toNat work.active b) y.1 •
@@ -415,9 +418,10 @@ private theorem eval_fastConstMulInto_ket
     have hcleanY : ws.Clean (RegEncoding.writeNat scratch.active y.1 b) :=
       Gate.PhaseProdWorkspace.Clean.writeRight qs ws b y.1 hclean
     rw [GateSemanticsFacts.eval_PhaseProdUsing_ket qs
-      ((2 * Real.pi * (N : ℝ)) / (ASize ws.zExt.active : ℝ))
+      phi
       work.active scratch.active ws
-      (RegEncoding.writeNat scratch.active y.1 b) hcleanY]
+      (RegEncoding.writeNat scratch.active y.1 b) hcleanY,
+      hAngle]
     have hwork := RegEncoding.toNat_left_write_right
       work.active scratch.active ws.xz_disjoint b y.1
     have hscratch := RegEncoding.toNat_writeNat_of_lt
@@ -433,7 +437,7 @@ private theorem eval_fastConstMulInto_ket
           mul_assoc, mul_left_comm, mul_comm] using hmain]
   have hmiddle :
       qs.eval (Gate.PhaseProdUsing
-          ((2 * Real.pi * (N : ℝ)) / (ASize ws.zExt.active : ℝ))
+          phi
           work.active scratch.active ws)
           (qs.eval (Gate.QFT ws.zExt) (qs.ket b)) =
         qs.eval (Gate.QFT ws.zExt) (qs.ket target) := by

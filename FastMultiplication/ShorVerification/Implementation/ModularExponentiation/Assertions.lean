@@ -24,7 +24,7 @@ def ModExpApproxValidDistUniform
   ∃ K : ℝ, 0 ≤ K ∧
     ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
       ModExpConfig.ValidUnitState qs cfg ψ →
-      ‖qs.eval (ModExpConfig.approxGate (Basis := qs.Basis) cfg) ψ -
+      ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
         qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
         ≤ (tbits cfg.x : ℝ) * stepErr K η
 

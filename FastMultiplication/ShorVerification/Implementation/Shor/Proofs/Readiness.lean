@@ -265,8 +265,7 @@ theorem gateWorkspaceOK_orderFindingApprox
       ShorWorkspaceLargeEnough
         ops x data work scratch) :
     GateWorkspaceOK ops
-      (orderFindingApprox
-        qs a N x data work scratch flag
+      (orderFindingApprox a N x data work scratch flag
         hsetup.circuit_workspace hsetup.step4_workspace) := by
   let hmod : ModMulCircuitWorkspaceOK data work :=
     hsetup.circuit_workspace
@@ -402,7 +401,6 @@ theorem gateWorkspaceOK_orderFindingApprox
         ModMulCoreLayout data work flag ctrl →
         GateWorkspaceOK ops
           (CmodMulInPlaceCore
-            (Basis := qs.Basis)
             c N ctrl data work scratch flag hmod hstep4) := by
     intro c ctrl hlayout
 
@@ -626,7 +624,6 @@ theorem gateWorkspaceOK_orderFindingApprox
     have hStep1OK :
         GateWorkspaceOK ops
           (step1
-            (Basis := qs.Basis)
             c N ctrl data work hmod) := by
       simp [
         step1,
@@ -641,7 +638,6 @@ theorem gateWorkspaceOK_orderFindingApprox
     have hStep2OK :
         GateWorkspaceOK ops
           (step2
-            (Basis := qs.Basis)
             N data work hmod) := by
       simp [
         step2,
@@ -655,7 +651,6 @@ theorem gateWorkspaceOK_orderFindingApprox
     have hStep5OK :
         GateWorkspaceOK ops
           (step5
-            (Basis := qs.Basis)
             (step5Constant c N)
             N ctrl data work hmod) := by
       simp [
@@ -699,7 +694,6 @@ theorem gateWorkspaceOK_orderFindingApprox
           ModMulCoreLayout data work flag ctrl) →
         GateWorkspaceOK ops
           (modExpApproxStepsValid
-            (Basis := qs.Basis)
             a N data work scratch flag hmod hstep4 e ctrls) := by
     intro e ctrls
     induction ctrls generalizing e with
@@ -739,7 +733,6 @@ theorem gateWorkspaceOK_orderFindingApprox
   have hModExp :
       GateWorkspaceOK ops
         (modExpApproxValid
-          (Basis := qs.Basis)
           a N x.active data work scratch flag hmod hstep4) :=
     hSteps 0 x.active.qubits hLayoutOfMem
 
@@ -752,7 +745,6 @@ theorem gateWorkspaceOK_orderFindingApprox
       GateWorkspaceOK ops (initY1 data.active) ∧
       GateWorkspaceOK ops
         (modExpApproxValid
-          (Basis := qs.Basis)
           a N x.active data work scratch flag hmod hstep4) ∧
       GateWorkspaceOK ops (IQFT x) :=
     ⟨hHExponent, hInit, hModExp, hFinalQFT⟩
@@ -795,7 +787,6 @@ private def LoweredCleanResult
     (LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k
         lowering.hk
         lowering.ops
@@ -826,7 +817,6 @@ private theorem LoweredCleanResult.seq
         (LowerGateClass.evalL
           (qs := qs)
           (lowerGate
-            (Basis := qs.Basis)
             lowering.k
             lowering.hk
             lowering.ops
@@ -846,14 +836,12 @@ private theorem LoweredCleanResult.seq
           (qs := qs)
           (LowGate.seq
             (lowerGate
-              (Basis := qs.Basis)
               lowering.k
               lowering.hk
               lowering.ops
               U
               hworkspace.1)
             (lowerGate
-              (Basis := qs.Basis)
               lowering.k
               lowering.hk
               lowering.ops
@@ -945,7 +933,6 @@ private theorem WorkspaceFree.clean
             (LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                (Basis := qs.Basis)
                 lowering.k
                 lowering.hk
                 lowering.ops
@@ -959,7 +946,6 @@ private theorem WorkspaceFree.clean
             (LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                (Basis := qs.Basis)
                 lowering.k
                 lowering.hk
                 lowering.ops
@@ -2225,7 +2211,7 @@ private theorem gateWorkspaceCleanState_CPhaseProdUsing_of_threeRegsClean
     {r₁ r₂ r₃ : Reg}
     {x z : Reg}
     (ctrl : ℕ)
-    (φ : ℝ)
+    (φ : Angle)
     (ws : Gate.PhaseProdWorkspace x z)
     (hxReserve :
       ws.xExt.reserve = r₂)
@@ -2276,7 +2262,7 @@ private theorem eval_CPhaseProdUsing_preserves_threeRegsCleanState
     [GateSemanticsFacts qs]
     {r₁ r₂ r₃ : Reg}
     (ctrl : ℕ)
-    (φ : ℝ)
+    (φ : Angle)
     {x z : Reg}
     (ws : Gate.PhaseProdWorkspace x z)
     (hxReserve :
@@ -2775,7 +2761,7 @@ private theorem gateWorkspaceCleanState_PhaseProdUsing_of_threeRegsClean
     {lowering : ShorLoweringSetup}
     {r₁ r₂ r₃ : Reg}
     {x z : Reg}
-    (φ : ℝ)
+    (φ : Angle)
     (ws : Gate.PhaseProdWorkspace x z)
     (hxReserve :
       ws.xExt.reserve = r₂)
@@ -2824,7 +2810,7 @@ private theorem eval_PhaseProdUsing_preserves_threeRegsCleanState
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     {r₁ r₂ r₃ : Reg}
-    (φ : ℝ)
+    (φ : Angle)
     {x z : Reg}
     (ws : Gate.PhaseProdWorkspace x z)
     (hxReserve :
@@ -2977,9 +2963,9 @@ private theorem lowered_fastConstMulInto_ready_and_clean
       (fastConstMulInto N work scratch ws)
       hworkspace
       ψ := by
-  let φ : ℝ :=
-    (2 * Real.pi * (N : ℝ)) /
-      (ASize ws.zExt.active : ℝ)
+  let φ : Angle :=
+    (2 * (N : ℚ)) /
+      (ASize ws.zExt.active : ℚ)
   let U1 : Gate := Gate.QFT ws.zExt
   let U2 : Gate :=
     Gate.PhaseProdUsing φ work.active scratch.active ws
@@ -3012,7 +2998,6 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U1 hworkspace.1)
       ψ
@@ -3052,7 +3037,6 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U2 hworkspace.2.1)
       ψ1
@@ -3254,7 +3238,6 @@ private theorem lowered_step4_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U1 hworkspace.1)
       ψ
@@ -3278,7 +3261,6 @@ private theorem lowered_step4_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U2 hworkspace.2.1)
       ψ1
@@ -3303,7 +3285,6 @@ private theorem lowered_step4_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U3 hworkspace.2.2.1)
       ψ2
@@ -3329,7 +3310,6 @@ private theorem lowered_step4_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U4 hworkspace.2.2.2.1)
       ψ3
@@ -3462,7 +3442,6 @@ private theorem lowered_step1_ready_and_full_clean
       GateWorkspaceOK
         lowering.ops
         (step1
-          (Basis := qs.Basis)
           c N ctrl data work hmod))
     (ψ : qs.State)
     (hclean :
@@ -3474,15 +3453,14 @@ private theorem lowered_step1_ready_and_full_clean
       (ShorLoweringCleanState
         qs x data work)
       (step1
-        (Basis := qs.Basis)
         c N ctrl data work hmod)
       hworkspace
       ψ := by
-  let φ : ℝ :=
-    (2 * Real.pi *
-      (((c + N - 1) % N : ℕ) : ℝ))
+  let φ : Angle :=
+    (2 *
+      (((c + N - 1) % N : ℕ) : ℚ))
       /
-    (N : ℝ)
+    (N : ℚ)
 
   let U1 : Gate :=
     H_reg work.active
@@ -3552,7 +3530,6 @@ private theorem lowered_step1_ready_and_full_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k
         lowering.hk
         lowering.ops
@@ -3637,7 +3614,6 @@ private theorem lowered_step1_ready_and_full_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k
         lowering.hk
         lowering.ops
@@ -3832,7 +3808,6 @@ private theorem lowered_step2_ready_and_carry_clean
       GateWorkspaceOK
         lowering.ops
         (step2
-          (Basis := qs.Basis)
           N data work hmod))
     (ψ : qs.State)
     (hclean :
@@ -3844,7 +3819,6 @@ private theorem lowered_step2_ready_and_carry_clean
       (ShorLoweringCleanState
         qs x data work)
       (step2
-        (Basis := qs.Basis)
         N data work hmod)
       hworkspace
       ψ := by
@@ -3859,10 +3833,10 @@ private theorem lowered_step2_ready_and_carry_clean
         work.active dc.active :=
     hmod.step2Workspace
 
-  let φ : ℝ :=
-    (2 * Real.pi * (N : ℝ)) /
-      ((2 : ℝ) ^
-        (regSize work.active + regSize dc.active))
+  let φ : Angle :=
+    (2 * (N : ℚ)) /
+      (2 : ℚ) ^
+        (regSize work.active + regSize dc.active)
 
   let U1 : Gate := Gate.QFT ws.zExt
 
@@ -3947,7 +3921,6 @@ private theorem lowered_step2_ready_and_carry_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k
         lowering.hk
         lowering.ops
@@ -4028,7 +4001,6 @@ private theorem lowered_step2_ready_and_carry_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k
         lowering.hk
         lowering.ops
@@ -4260,16 +4232,16 @@ private theorem LoweredCleanResult.adj
 
     exact hpost
 
-private noncomputable def step5Forward
+private def step5Forward
     (k5val N ctrl : ℕ)
     (data work : ExtReg)
     (hmod :
       ModMulCircuitWorkspaceOK data work) :
     Gate :=
-  let φ : ℝ :=
-    (2 * Real.pi *
-      ((k5val % N : ℕ) : ℝ)) /
-    (N : ℝ)
+  let φ : Angle :=
+    (2 *
+      ((k5val % N : ℕ) : ℚ)) /
+    (N : ℚ)
 
   H_reg work.active ;;
   Gate.CPhaseProdUsing
@@ -4288,7 +4260,6 @@ private theorem step5_eq_adj_step5Forward
     (hmod :
       ModMulCircuitWorkspaceOK data work) :
     step5
-        (Basis := Basis)
         k5val N ctrl data work hmod
       =
     †(step5Forward
@@ -4413,7 +4384,7 @@ private theorem
     {r₁ r₂ r₃ : Reg}
     {x z : Reg}
     (ctrl : ℕ)
-    (φ : ℝ)
+    (φ : Angle)
     (ws : Gate.PhaseProdWorkspace x z)
     (hxReserve :
       ∀ q,
@@ -4469,7 +4440,7 @@ private theorem
     [GateSemanticsFacts qs]
     {r₁ r₂ r₃ : Reg}
     (ctrl : ℕ)
-    (φ : ℝ)
+    (φ : Angle)
     {x z : Reg}
     (ws : Gate.PhaseProdWorkspace x z)
     (hxReserve :
@@ -4576,10 +4547,10 @@ private theorem lowered_step5Forward_ready_and_full_clean
         k5val N ctrl data work hmod)
       hworkspace
       ψ := by
-  let φ : ℝ :=
-    (2 * Real.pi *
-      ((k5val % N : ℕ) : ℝ)) /
-    (N : ℝ)
+  let φ : Angle :=
+    (2 *
+      ((k5val % N : ℕ) : ℚ)) /
+    (N : ℚ)
 
   let U1 : Gate :=
     H_reg work.active
@@ -4687,7 +4658,6 @@ private theorem lowered_step5Forward_ready_and_full_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k
         lowering.hk
         lowering.ops
@@ -4762,7 +4732,6 @@ private theorem lowered_step5Forward_ready_and_full_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k
         lowering.hk
         lowering.ops
@@ -5250,7 +5219,7 @@ theorem
     [GateSemanticsFacts qs]
     (x data work : ExtReg)
     (ctrl : ℕ)
-    (φ : ℝ)
+    (φ : Angle)
     (hmod :
       ModMulCircuitWorkspaceOK data work)
     (ψ : qs.State)
@@ -5325,7 +5294,7 @@ theorem
       let c : ℂ :=
         if RegEncoding.bit ctrl b then
           Complex.exp
-            (φ * Complex.I *
+            (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *
               ((RegEncoding.toNat
                   (data.grow 1).active
                   b : ℂ) *
@@ -6222,9 +6191,9 @@ private theorem eval_adj_step5Forward_eq
       (qs.eval
         (†(Gate.CPhaseProdUsing
           ctrl
-          ((2 * Real.pi *
-              ((k5val % N : ℕ) : ℝ)) /
-            (N : ℝ))
+          ((2 *
+              ((k5val % N : ℕ) : ℚ)) /
+            (N : ℚ))
           (data.grow 1).active
           work.active
           hmod.step5Workspace))
@@ -6276,10 +6245,10 @@ theorem eval_adj_step5Forward_preserves_full_clean
         (†(step5Forward
           k5val N ctrl data work hmod))
         ψ) := by
-  let φ : ℝ :=
-    (2 * Real.pi *
-      ((k5val % N : ℕ) : ℝ)) /
-    (N : ℝ)
+  let φ : Angle :=
+    (2 *
+      ((k5val % N : ℕ) : ℚ)) /
+    (N : ℚ)
 
   let ψQFT : qs.State :=
     qs.eval
@@ -6386,7 +6355,6 @@ theorem lowered_step5_ready_and_full_clean
       GateWorkspaceOK
         lowering.ops
         (step5
-          (Basis := qs.Basis)
           k5val N ctrl data work hmod))
     (ψ : qs.State)
     (hclean :
@@ -6398,7 +6366,6 @@ theorem lowered_step5_ready_and_full_clean
       (ShorLoweringCleanState
         qs x data work)
       (step5
-        (Basis := qs.Basis)
         k5val N ctrl data work hmod)
       hworkspace
       ψ := by
@@ -6408,7 +6375,6 @@ theorem lowered_step5_ready_and_full_clean
 
   have hstep5 :
       step5
-          (Basis := qs.Basis)
           k5val N ctrl data work hmod
         =
       †U := by
@@ -6862,7 +6828,6 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
       GateWorkspaceOK
         lowering.ops
         (CmodMulInPlaceCore
-          (Basis := qs.Basis)
           c N ctrl data work scratch flag hmod hstep4))
     (ψ : qs.State)
     (hclean :
@@ -6874,7 +6839,6 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
       (ShorConcreteCleanState
         qs x data work scratch hxScratch)
       (CmodMulInPlaceCore
-        (Basis := qs.Basis)
         c N ctrl data work scratch flag hmod hstep4)
       hworkspace
       ψ := by
@@ -6899,12 +6863,10 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
 
   let U1 :=
     step1
-      (Basis := qs.Basis)
       c N ctrl data work hmod
 
   let U2 :=
     step2
-      (Basis := qs.Basis)
       N data work hmod
 
   let U3 :=
@@ -6921,7 +6883,6 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
 
   let U5 :=
     step5
-      (Basis := qs.Basis)
       (step5Constant c N)
       N ctrl data work hmod
 
@@ -6957,7 +6918,6 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U1 hworkspace.1)
       ψ
@@ -6981,7 +6941,6 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U2 hworkspace.2.1)
       ψ1
@@ -7008,7 +6967,6 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U3 hworkspace.2.2.1)
       ψ2
@@ -7030,7 +6988,6 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U4 hworkspace.2.2.2.1)
       ψ3
@@ -7174,7 +7131,6 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
       GateWorkspaceOK
         lowering.ops
         (modExpApproxStepsValid
-          (Basis := qs.Basis)
           a N data work scratch flag hmod hstep4 e ctrls))
     (ψ : qs.State)
     (hclean :
@@ -7186,7 +7142,6 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
       (ShorConcreteCleanState
         qs x data work scratch hxScratch)
       (modExpApproxStepsValid
-        (Basis := qs.Basis)
         a N data work scratch flag hmod hstep4 e ctrls)
       hworkspace
       ψ := by
@@ -7208,12 +7163,10 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
 
       let U :=
         CmodMulInPlaceCore
-          (Basis := qs.Basis)
           c N ctrl data work scratch flag hmod hstep4
 
       let V :=
         modExpApproxStepsValid
-          (Basis := qs.Basis)
           a N data work scratch flag hmod hstep4
           (e + 1) ctrls
 
@@ -7260,7 +7213,6 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
         LowerGateClass.evalL
           (qs := qs)
           (lowerGate
-            (Basis := qs.Basis)
             lowering.k
             lowering.hk
             lowering.ops
@@ -7329,8 +7281,7 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
     (hworkspace :
       GateWorkspaceOK
         lowering.ops
-        (orderFindingApprox
-          qs a N x data work scratch flag
+        (orderFindingApprox a N x data work scratch flag
           hsetup.circuit_workspace hsetup.step4_workspace))
     {ψ : qs.State}
     (hclean :
@@ -7346,8 +7297,7 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
       (ShorConcreteCleanState
         qs x data work scratch
         hisolated.exponent_scratch_disjoint)
-      (orderFindingApprox
-        qs a N x data work scratch flag
+      (orderFindingApprox a N x data work scratch flag
         hsetup.circuit_workspace hsetup.step4_workspace)
       hworkspace
       ψ := by
@@ -7357,7 +7307,6 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
 
   let U3 :=
     modExpApproxValid
-      (Basis := qs.Basis)
       a N x.active data work scratch flag
       hsetup.circuit_workspace hsetup.step4_workspace
 
@@ -7389,7 +7338,6 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U1 hworkspace.1)
       ψ
@@ -7431,7 +7379,6 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U2 hworkspace.2.1)
       ψ1
@@ -7467,7 +7414,6 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        (Basis := qs.Basis)
         lowering.k lowering.hk lowering.ops
         U3 hworkspace.2.2.1)
       ψ2
@@ -7613,8 +7559,7 @@ theorem gateWorkspaceCleanState_orderFindingApprox
       lowering.k
       lowering.hk
       lowering.ops
-      (orderFindingApprox
-        qs a N x data work scratch flag
+      (orderFindingApprox a N x data work scratch flag
         hsetup.circuit_workspace hsetup.step4_workspace)
       hworkspace
       (qs.ket b0) := by
@@ -7671,8 +7616,7 @@ theorem gateWorkspaceCleanState_orderFindingApprox
         (ShorConcreteCleanState
           qs x data work scratch
           hisolated.exponent_scratch_disjoint)
-        (orderFindingApprox
-          qs a N x data work scratch flag
+        (orderFindingApprox a N x data work scratch flag
           hsetup.circuit_workspace hsetup.step4_workspace)
         hworkspace
         (qs.ket b0) := by
@@ -7724,8 +7668,7 @@ theorem LoweredShorReady.workspace
       LoweredShorReady
         qs lowering η a N x y work scratch flag b0) :
     GateWorkspaceOK lowering.ops
-      (orderFindingApprox
-        qs a N x y work scratch flag
+      (orderFindingApprox a N x y work scratch flag
         (ShorApproxSetupMinimal.toShorApproxSetup h.approx).circuit_workspace
         (ShorApproxSetupMinimal.toShorApproxSetup h.approx).step4_workspace) := by
   exact
@@ -7769,8 +7712,7 @@ theorem LoweredShorReady.workspace_clean
       lowering.k
       lowering.hk
       lowering.ops
-      (orderFindingApprox
-        qs a N x y work scratch flag
+      (orderFindingApprox a N x y work scratch flag
         (ShorApproxSetupMinimal.toShorApproxSetup h.approx).circuit_workspace
         (ShorApproxSetupMinimal.toShorApproxSetup h.approx).step4_workspace)
       h.workspace

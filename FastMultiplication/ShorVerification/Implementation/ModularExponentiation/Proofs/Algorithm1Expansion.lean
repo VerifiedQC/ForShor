@@ -525,7 +525,7 @@ lemma eval_approxGate_eq_staged
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State) :
-    qs.eval (ModMulConfig.approxGate (Basis := qs.Basis) cfg) ψ
+    qs.eval (ModMulConfig.approxGate cfg) ψ
       =
     qs.eval (ModMulConfig.stagedGate (Basis := qs.Basis) cfg) ψ := by
   simp [ModMulConfig.approxGate,CmodMulInPlaceCore,
@@ -605,7 +605,7 @@ lemma eval_cphaseprodusing_work_diagonal
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     (ctrl : ℕ)
-    (φ : ℝ)
+    (φ : Angle)
     (data work : Reg)
     (ws : Gate.PhaseProdWorkspace data work)
     (b : qs.Basis)
@@ -621,7 +621,7 @@ lemma eval_cphaseprodusing_work_diagonal
   refine ⟨
     if RegEncoding.bit ctrl b' then
       Complex.exp
-        (φ * Complex.I *
+        (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *
           ((RegEncoding.toNat data b' : ℂ) *
            (RegEncoding.toNat work b' : ℂ)))
     else
@@ -1353,7 +1353,6 @@ lemma alg1_step1_ket_expansion
     ∃ α : Fin (ASize cfg.env.work.active) → ℂ,
       qs.eval
           (step1
-            (Basis := qs.Basis)
             cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
           (qs.ket b)
         =
@@ -1368,11 +1367,11 @@ lemma alg1_step1_ket_expansion
   let ws :=
     cfg.env.circuit_workspace.step1Workspace
 
-  let φ : ℝ :=
-    (2 * Real.pi *
+  let φ : Angle :=
+    (2 *
         (((cfg.c + cfg.env.N - 1) %
-          cfg.env.N : ℕ) : ℝ))
-      / (cfg.env.N : ℝ)
+          cfg.env.N : ℕ) : ℚ))
+      / (cfg.env.N : ℚ)
 
   have hworkZero :
       RegEncoding.toNat workReg b = 0 := by
@@ -2024,9 +2023,8 @@ lemma eval_CPhaseProd_fixes_work_of_target_zero
     qs.eval
         (Gate.CPhaseProdUsing
           cfg.ctrl
-          ((2 * Real.pi *
-              (((cfg.c + cfg.env.N - 1) % cfg.env.N : ℕ) : ℝ))
-            / (cfg.env.N : ℝ))
+          ((2 * (((cfg.c + cfg.env.N - 1) % cfg.env.N : ℕ) : ℚ))
+            / (cfg.env.N : ℚ))
           cfg.env.data.active
           cfg.env.work.active
           cfg.env.circuit_workspace.step1Workspace)
@@ -2038,9 +2036,9 @@ lemma eval_CPhaseProd_fixes_work_of_target_zero
   let a : ℕ :=
     (cfg.c + cfg.env.N - 1) % cfg.env.N
 
-  let φ : ℝ :=
-    (2 * Real.pi * (a : ℝ)) /
-      (cfg.env.N : ℝ)
+  let φ : Angle :=
+    (2 * (a : ℚ)) /
+      (cfg.env.N : ℚ)
 
   let workReg : Reg := cfg.env.work.active
   let dataReg : Reg := cfg.env.data.active
@@ -2154,13 +2152,13 @@ lemma eval_CPhaseProd_fixes_work_of_target_zero
 
       have hexp :
           Complex.exp
-              (φ * Complex.I *
+              (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *
                 ((x : ℂ) * (t.1 : ℂ)))
             =
           1 := by
         calc
           Complex.exp
-              (φ * Complex.I *
+              (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *
                 ((x : ℂ) * (t.1 : ℂ)))
             =
           Complex.exp
@@ -2170,7 +2168,7 @@ lemma eval_CPhaseProd_fixes_work_of_target_zero
                 (((a * x : ℕ) : ℂ) *
                   (t.1 : ℂ))) := by
                     congr 1
-                    dsimp [φ]
+                    dsimp [φ, Angle.toReal]
                     push_cast
                     ring
           _ =
@@ -2261,16 +2259,15 @@ lemma alg1_step1_zero_target_exact
     (hz : alg1TargetResidue cfg b = 0):
     qs.eval
         (step1
-          (Basis := qs.Basis)
           cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
         (qs.ket b)
       =
     qs.ket b := by
-  let φ : ℝ :=
-    (2 * Real.pi *
+  let φ : Angle :=
+    (2 *
         (((cfg.c + cfg.env.N - 1) %
-          cfg.env.N : ℕ) : ℝ))
-      / (cfg.env.N : ℝ)
+          cfg.env.N : ℕ) : ℚ))
+      / (cfg.env.N : ℚ)
 
   let ws :=
     cfg.env.circuit_workspace.step1Workspace
@@ -2306,7 +2303,6 @@ lemma alg1_step1_zero_target_exact
   calc
     qs.eval
         (step1
-          (Basis := qs.Basis)
           cfg.c
           cfg.env.N
           cfg.ctrl
@@ -2912,7 +2908,6 @@ lemma alg1_trace_of_valid
           qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b →
         qs.eval
             (step1
-              (Basis := qs.Basis)
               cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
             (qs.ket b)
           =
@@ -2959,13 +2954,11 @@ lemma alg1_trace_of_valid
   calc
     qs.eval
         (step1
-          (Basis := qs.Basis)
           cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
         ψ
       =
     qs.eval
         (step1
-          (Basis := qs.Basis)
           cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
         (∑ b ∈ support,
           inputCoeff b • qs.ket b) := by
@@ -2975,14 +2968,12 @@ lemma alg1_trace_of_valid
     ∑ b ∈ support,
       qs.eval
         (step1
-          (Basis := qs.Basis)
           cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
         (inputCoeff b • qs.ket b) := by
         simpa using
           eval_finset_sum
             qs
             (step1
-              (Basis := qs.Basis)
               cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
             support
             (fun b => inputCoeff b • qs.ket b)
@@ -2992,7 +2983,6 @@ lemma alg1_trace_of_valid
       inputCoeff b •
         qs.eval
           (step1
-            (Basis := qs.Basis)
             cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
           (qs.ket b) := by
         apply Finset.sum_congr rfl
@@ -3000,7 +2990,6 @@ lemma alg1_trace_of_valid
         simpa using
           qs.eval_smul
             (step1
-              (Basis := qs.Basis)
               cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
             (inputCoeff b)
             (qs.ket b)

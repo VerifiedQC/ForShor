@@ -292,6 +292,23 @@ def chunkRadix (W : ℕ) : ℚ := (2 : ℚ) ^ W
 noncomputable def phaseCoeffFromPtsWidth (k W : ℕ) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → ℚ :=
   phaseCoeffFromPts k (ptsToFin k pts hpts) ((2 : ℚ) ^ W)
 
+/--
+Cramer's-rule reformulation of `phaseCoeffFromPts`.
+
+`phaseCoeffFromPts` goes through `Matrix.inv`, which is noncomputable in
+general (it case-splits on invertibility via `Ring.inverse`). `Matrix.cramer`
+and `Matrix.det` need no such split — both reduce to a finite sum over
+`Equiv.Perm (Fin (q k))` — so this definition is executable.
+-/
+def cramerCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) : Fin (q k) → ℚ :=
+  let M : Matrix (Fin (q k)) (Fin (q k)) ℚ := interpMatrix k pts
+  let radixVec : Fin (q k) → ℚ := fun j => b ^ (j : ℕ)
+  fun i => Matrix.cramer M.transpose radixVec i / M.det
+
+/-- `cramerCoeffFromPts` specialised to a fixed chunk width. -/
+def cramerCoeffFromPtsWidth (k W : ℕ) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → ℚ :=
+  cramerCoeffFromPts k (ptsToFin k pts hpts) ((2 : ℚ) ^ W)
+
 /-- Phase coefficients selected from the common limb width of two operands. -/
 noncomputable def phaseCoeffFromPtsForRegs (k : ℕ) (x z : ExtReg) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → ℚ :=
   phaseCoeffFromPtsWidth k (phaseLimbWidth x z k) pts hpts
@@ -449,7 +466,7 @@ def compileSignedDeallocations (k : ℕ) (src dst : LayoutState k) : Gate :=
 
 def compileAnnotatedOpsToSignedGateAux
   (k : ℕ) (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (phaseCoeff : Fin (q k) → ℚ)
   (st : LayoutState k)
   (ops : List (AnnotatedOp k)) : Gate :=
@@ -474,15 +491,15 @@ def compileAnnotatedOpsToSignedGateAux
           match term? with
           | some l =>
               Gate.SignedPhaseProd
-                (phi * ((phaseCoeff l : ℚ) : ℝ))
+                (phi * phaseCoeff l)
                 (st.xslot i)
                 (st.zslot i) ;; tail
           | none =>
               tail
 
 /-- Full signed phase-product lowering: allocate widths, compile the annotated body, then deallocate. -/
-noncomputable def compileOpsToSignedGate
-  (k : ℕ) (hk : 1 < k) (phi : ℝ) (x z : ExtReg) (layout : Gate.PhaseProductLayout x z k)
+def compileOpsToSignedGate
+  (k : ℕ) (hk : 1 < k) (phi : Angle) (x z : ExtReg) (layout : Gate.PhaseProductLayout x z k)
   (phaseCoeff : Fin (q k) → ℚ) (ops : List (valid_ops k)) : Gate :=
   let annOps : List (AnnotatedOp k) :=
     annotatePhaseTermsAux k 0 ops
@@ -516,8 +533,8 @@ def controlPhaseLeaves (ctrl : ℕ) : Gate → Gate
   | U => U
 
 /-- Controlled signed lowering obtained by compiling first and controlling phase leaves. -/
-noncomputable def compileOpsToCSignedGate
-    (k : ℕ) (hk : 1 < k) (ctrl : ℕ) (phi : ℝ) (x z : ExtReg)
+def compileOpsToCSignedGate
+    (k : ℕ) (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k) (coeff : Fin (q k) → ℚ) (ops : Prog k) : Gate :=
   controlPhaseLeaves ctrl (compileOpsToSignedGate k hk phi x z layout coeff ops)
 
@@ -1797,7 +1814,7 @@ structure CanonicalSignedStep
       nextSignedWidth x z ops
 
 /-- Canonical deterministic construction of one recursive signed phase-product step. -/
-noncomputable def canonicalSignedStep
+def canonicalSignedStep
     {k : ℕ}
     (hk : 1 < k)
     (ops : Prog k)

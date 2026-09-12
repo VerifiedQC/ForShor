@@ -28,7 +28,7 @@ lemma evalL_lowerSignedPhaseProd_of_plan
     [LowerGateClass qs]
     (k : ℕ)
     (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (plan :

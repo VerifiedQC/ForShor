@@ -1363,7 +1363,7 @@ theorem eval_PhaseProdUsing_ket
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    (phi : ℝ)
+    (phi : Angle)
     (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (b : qs.Basis)
@@ -1373,7 +1373,7 @@ theorem eval_PhaseProdUsing_ket
         (qs.ket b)
       =
     Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           ((RegEncoding.toNat x b : ℂ) *
            (RegEncoding.toNat z b : ℂ))) •
       qs.ket b := by
@@ -1431,7 +1431,7 @@ theorem eval_CPhaseProdUsing_ket
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (b : qs.Basis)
@@ -1442,7 +1442,7 @@ theorem eval_CPhaseProdUsing_ket
       =
     (if RegEncoding.bit ctrl b then
         Complex.exp
-          (phi * Complex.I *
+          (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
             ((RegEncoding.toNat x b : ℂ) *
              (RegEncoding.toNat z b : ℂ)))
       else

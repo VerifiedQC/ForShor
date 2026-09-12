@@ -20,7 +20,7 @@ theorem lowerSignedPhaseProduct_correct
     [LowerGateClass qs]
     (k : ℕ)
     (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
   (ops : Prog k) :
     LowerSignedPhaseProductCorrect qs k hk phi x z ops := by
@@ -49,7 +49,7 @@ theorem lowerCSignedPhaseProduct_correct
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
   (ops : Prog k) :
     LowerCSignedPhaseProductCorrect qs k hk ctrl phi x z ops := by

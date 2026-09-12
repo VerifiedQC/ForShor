@@ -62,7 +62,7 @@ theorem qft
 theorem signedPhaseProd
     {k : ℕ}
     {ops : Prog k}
-    {phi : ℝ}
+    {phi : Angle}
     {x z : ExtReg}
     (h :
       GateWorkspaceOK
@@ -75,7 +75,7 @@ theorem cSignedPhaseProd
     {k : ℕ}
     {ops : Prog k}
     {ctrl : ℕ}
-    {phi : ℝ}
+    {phi : Angle}
     {x z : ExtReg}
     (h :
       GateWorkspaceOK
@@ -95,20 +95,17 @@ end GateWorkspaceOK
 ========================================================= -/
 
 @[simp] theorem lowerGate_id
-    {Basis : Type u}
     {k : ℕ}
     (hk : 1 < k)
     (ops : Prog k)
     (hworkspace : GateWorkspaceOK ops Gate.id) :
     lowerGate
-        (Basis := Basis)
         k hk ops Gate.id hworkspace
       =
     LowGate.id := by
   rfl
 
 @[simp] theorem lowerGate_seq
-    {Basis : Type u}
     {k : ℕ}
     (hk : 1 < k)
     (ops : Prog k)
@@ -116,22 +113,18 @@ end GateWorkspaceOK
     (hworkspace :
       GateWorkspaceOK ops (Gate.seq U V)) :
     lowerGate
-        (Basis := Basis)
         k hk ops
         (Gate.seq U V)
         hworkspace
       =
     LowGate.seq
       (lowerGate
-        (Basis := Basis)
         k hk ops U hworkspace.1)
       (lowerGate
-        (Basis := Basis)
         k hk ops V hworkspace.2) := by
   rfl
 
 @[simp] theorem lowerGate_QFT
-    {Basis : Type u}
     {k : ℕ}
     (hk : 1 < k)
     (ops : Prog k)
@@ -139,7 +132,6 @@ end GateWorkspaceOK
     (hworkspace :
       GateWorkspaceOK ops (Gate.QFT r)) :
     lowerGate
-        (Basis := Basis)
         k hk ops
         (Gate.QFT r)
         hworkspace
@@ -148,18 +140,16 @@ end GateWorkspaceOK
   rfl
 
 @[simp] theorem lowerGate_SignedPhaseProd
-    {Basis : Type u}
     {k : ℕ}
     (hk : 1 < k)
     (ops : Prog k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (hworkspace :
       GateWorkspaceOK
         ops
         (Gate.SignedPhaseProd phi x z)) :
     lowerGate
-        (Basis := Basis)
         k hk ops
         (Gate.SignedPhaseProd phi x z)
         hworkspace
@@ -169,19 +159,17 @@ end GateWorkspaceOK
   rfl
 
 @[simp] theorem lowerGate_CSignedPhaseProd
-    {Basis : Type u}
     {k : ℕ}
     (hk : 1 < k)
     (ops : Prog k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (hworkspace :
       GateWorkspaceOK
         ops
         (Gate.CSignedPhaseProd ctrl phi x z)) :
     lowerGate
-        (Basis := Basis)
         k hk ops
         (Gate.CSignedPhaseProd ctrl phi x z)
         hworkspace
@@ -214,7 +202,7 @@ theorem lowerGate_correctness
     (hworkspace : GateWorkspaceOK ops G)
     (ψ : qs.State)
     (hclean : GateWorkspaceCleanState qs k hk ops G hworkspace ψ) :
-    LowerGateClass.evalL (qs := qs) (lowerGate (Basis := qs.Basis) k hk ops G hworkspace) ψ
+    LowerGateClass.evalL (qs := qs) (lowerGate k hk ops G hworkspace) ψ
       =
     qs.eval G ψ := by
   induction G generalizing ψ with
@@ -238,7 +226,6 @@ theorem lowerGate_correctness
             (LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                (Basis := qs.Basis)
                 k hk ops
                 U
                 hworkspace.1)
@@ -252,7 +239,6 @@ theorem lowerGate_correctness
           LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                (Basis := qs.Basis)
                 k hk ops
                 U
                 hworkspace.1)
@@ -277,7 +263,6 @@ theorem lowerGate_correctness
         LowerGateClass.evalL
             (qs := qs)
             (lowerGate
-              (Basis := qs.Basis)
               k hk ops
               (Gate.seq U V)
               hworkspace)
@@ -286,14 +271,12 @@ theorem lowerGate_correctness
           LowerGateClass.evalL
             (qs := qs)
             (lowerGate
-              (Basis := qs.Basis)
               k hk ops
               V
               hworkspace.2)
             (LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                (Basis := qs.Basis)
                 k hk ops
                 U
                 hworkspace.1)
@@ -301,12 +284,10 @@ theorem lowerGate_correctness
                 exact
                   LowerGateClass.evalL_seq
                     (lowerGate
-                      (Basis := qs.Basis)
                       k hk ops
                       U
                       hworkspace.1)
                     (lowerGate
-                      (Basis := qs.Basis)
                       k hk ops
                       V
                       hworkspace.2)
@@ -316,7 +297,6 @@ theorem lowerGate_correctness
           LowerGateClass.evalL
             (qs := qs)
             (lowerGate
-              (Basis := qs.Basis)
               k hk ops
               V
               hworkspace.2)
@@ -350,7 +330,6 @@ theorem lowerGate_correctness
           LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                (Basis := qs.Basis)
                 k hk ops U hworkspace)
               φ
             =
@@ -359,7 +338,6 @@ theorem lowerGate_correctness
           LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                (Basis := qs.Basis)
                 k hk ops U hworkspace)
               φ
               =
@@ -373,7 +351,6 @@ theorem lowerGate_correctness
             (qs := qs)
             (LowGate.adj
               (lowerGate
-                (Basis := qs.Basis)
                 k hk ops U hworkspace))
             ψ
             =
@@ -381,12 +358,10 @@ theorem lowerGate_correctness
             (qs := qs)
             (LowGate.adj
               (lowerGate
-                (Basis := qs.Basis)
                 k hk ops U hworkspace))
             (LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                (Basis := qs.Basis)
                 k hk ops U hworkspace)
               φ) := by
                 rw [hforward]
@@ -396,7 +371,6 @@ theorem lowerGate_correctness
             LowerGateClass.evalL_adj_apply
               (qs := qs)
               (lowerGate
-                (Basis := qs.Basis)
                 k hk ops U hworkspace)
               φ
 

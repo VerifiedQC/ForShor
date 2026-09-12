@@ -6,8 +6,6 @@ namespace Shor
 
 namespace Reference
 
-noncomputable section
-
 /-!
 # Reference `ShorImplementation`
 
@@ -50,7 +48,7 @@ omit [MeasureClass qs] [LowerGateClass qs] in
 theorem referenceK_modExp_bound :
     ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
       ModExpConfig.ValidUnitState qs cfg ψ →
-      ‖qs.eval (ModExpConfig.approxGate (Basis := qs.Basis) cfg) ψ -
+      ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
           qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
         ≤ (tbits cfg.x : ℝ) * stepErr (referenceK) η := by
   obtain ⟨K, hK_nonneg, hK_le, hbound⟩ :=
@@ -62,7 +60,7 @@ theorem referenceK_modExp_bound :
     apply Real.sqrt_le_sqrt
     nlinarith [hK_le, hη]
   calc
-    ‖qs.eval (ModExpConfig.approxGate (Basis := qs.Basis) cfg) ψ -
+    ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
         qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
       ≤ (tbits cfg.x : ℝ) * stepErr K η := hbound η cfg ψ hψ
     _ ≤ (tbits cfg.x : ℝ) * stepErr (referenceK) η :=
@@ -74,10 +72,10 @@ theorem referenceK_modExp_bound :
 ========================================================= -/
 
 /-- Reference order-finding program at approximation level `m`. -/
-noncomputable def referenceProgramAt
+def referenceProgramAt
     (lowering : ShorLoweringSetup) (m : ℕ) (inst : ShorOrderFindingInstance) :
     ShorOrderFindingProgram :=
-  referenceShorProg (qs := qs) lowering inst m
+  referenceShorProg lowering inst m
 
 /-- Approximation error appearing in the reference correctness bound. -/
 noncomputable def referenceApproximationErrorAt (m N : ℕ) : ℝ :=
@@ -111,29 +109,23 @@ theorem referenceProgramAt_success
           (evalC := LowerGateClass.evalL (qs := qs))
           (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := (referenceProgramAt (qs := qs) lowering m inst).output)
+          (x := (referenceProgramAt lowering m inst).output)
           (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize (referenceProgramAt (qs := qs) lowering m inst).output)
-          (C := (referenceProgramAt (qs := qs) lowering m inst).circuit)
+          (Q := ASize (referenceProgramAt lowering m inst).output)
+          (C := (referenceProgramAt lowering m inst).circuit)
           (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) := by
   intro T hT inst
 
   let η : ℝ := referencePrecision m
-  let layout := allocateReferenceLayout lowering.ops inst η
-
-  have hηpos : 0 < η := by
-    simpa [η] using referencePrecision_pos m
-
-  have hηhalf : η < (1 / 2 : ℝ) := by
-    simpa [η] using referencePrecision_lt_half m
+  let layout := allocateReferenceLayout lowering.ops inst m
 
   let hready :=
-    referenceLayout_ready (qs := qs) lowering inst η hηpos hηhalf
+    referenceLayout_ready (qs := qs) lowering inst m
 
   have hxwidth :
       regSize layout.x.active = Nat.log2 (2 * inst.N^2) := by
     simpa [layout] using
-      allocateReferenceLayout_x_width lowering.ops inst η
+      allocateReferenceLayout_x_width lowering.ops inst m
 
   have hywidth :
       regSize layout.data.active = Nat.log2 (2 * inst.N) := by
@@ -157,10 +149,10 @@ theorem referenceProgramAt_success
           (evalC := LowerGateClass.evalL (qs := qs))
           (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := (referenceProgramAt (qs := qs) lowering m inst).output)
+          (x := (referenceProgramAt lowering m inst).output)
           (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize (referenceProgramAt (qs := qs) lowering m inst).output)
-          (C := (referenceProgramAt (qs := qs) lowering m inst).circuit)
+          (Q := ASize (referenceProgramAt lowering m inst).output)
+          (C := (referenceProgramAt lowering m inst).circuit)
           (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) := by
     simpa [
       referenceProgramAt,
@@ -186,10 +178,10 @@ theorem referenceProgramAt_success
           (evalC := LowerGateClass.evalL (qs := qs))
           (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := (referenceProgramAt (qs := qs) lowering m inst).output)
+          (x := (referenceProgramAt lowering m inst).output)
           (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize (referenceProgramAt (qs := qs) lowering m inst).output)
-          (C := (referenceProgramAt (qs := qs) lowering m inst).circuit)
+          (Q := ASize (referenceProgramAt lowering m inst).output)
+          (C := (referenceProgramAt lowering m inst).circuit)
           (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) := by
     unfold probability_of_success
     apply Finset.sum_nonneg
@@ -199,7 +191,7 @@ theorem referenceProgramAt_success
             (T := T)
             (fun d => decide ((inst.a ^ d) % inst.N = 1))
             o.1
-            (ASize (referenceProgramAt (qs := qs) lowering m inst).output)
+            (ASize (referenceProgramAt lowering m inst).output)
           =
         ord inst.a inst.N inst.coprime
     · simp [r_found, h, MeasureClass.probMeas]
@@ -347,7 +339,7 @@ theorem referenceChosenPrecision_positive
 noncomputable def referenceSubmittedProgram
     (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) :
     ShorOrderFindingProgram :=
-  referenceProgramAt (qs := qs) lowering
+  referenceProgramAt lowering
     (referenceChosenPrecision inst.N) inst
 
 /-- Final single-run success probability declared by the reference submission. -/
@@ -390,10 +382,10 @@ theorem referenceSubmittedProgram_correct
           (evalC := LowerGateClass.evalL (qs := qs))
           (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := (referenceSubmittedProgram (qs := qs) lowering inst).output)
+          (x := (referenceSubmittedProgram lowering inst).output)
           (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize (referenceSubmittedProgram (qs := qs) lowering inst).output)
-          (C := (referenceSubmittedProgram (qs := qs) lowering inst).circuit)
+          (Q := ASize (referenceSubmittedProgram lowering inst).output)
+          (C := (referenceSubmittedProgram lowering inst).circuit)
           (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) := by
   intro T hT inst
 
@@ -475,30 +467,28 @@ circuit, so the honest and provable choice is to declare exactly that count.
 noncomputable def referenceGateCount
     (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) : ℕ :=
   LowGate.gateCount shorGateCostModel
-    (referenceSubmittedProgram (qs := qs) lowering inst).circuit
+    (referenceSubmittedProgram lowering inst).circuit
 
 omit [MeasureClass qs] [GateSemanticsFacts qs] [LowerGateClass qs]
   [IdealCtrlModMulExactSemantics qs] in
 theorem referenceGateCount_correct
     (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) :
     LowGate.gateCount shorGateCostModel
-        (referenceSubmittedProgram (qs := qs) lowering inst).circuit =
-      referenceGateCount (qs := qs) lowering inst :=
+        (referenceSubmittedProgram lowering inst).circuit =
+      referenceGateCount lowering inst :=
   rfl
 
 /-- Reference implementation packaged into the public submission interface. -/
 noncomputable def referenceShorImplementation
     (lowering : ShorLoweringSetup) :
     ShorImplementation (qs := qs) where
-  program := referenceSubmittedProgram (qs := qs) lowering
+  program := referenceSubmittedProgram lowering
   successProbability := referenceSuccessProbability
   correct := referenceSubmittedProgram_correct (qs := qs) lowering
   trialCount := referenceTrialCount
   trialCount_correct := by
     intro N h
     apply referenceTrialCount_correct
-
-end
 
 end Reference
 

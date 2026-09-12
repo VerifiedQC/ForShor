@@ -171,19 +171,19 @@ noncomputable def iqftKet
 ========================================================= -/
 
 noncomputable def signedPhaseKet
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : Basis) :
     State :=
   Complex.exp
-      (phi * Complex.I *
+      (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
         (((extToInt x b : ℤ) : ℂ) *
          (((extToInt z b : ℤ) : ℂ)))) •
     ket b
 
 noncomputable def cSignedPhaseKet
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : Basis) :
     State :=
@@ -426,24 +426,24 @@ private theorem inner_ket_ne_concrete
   exact concreteQSemantics.ket_inner_eq_zero_of_ne h
 
 private lemma signedPhaseScalar_star_mul_self
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b : Basis) :
     (starRingEnd ℂ)
         ((Complex.exp
-          (phi * Complex.I *
+          (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
             (((extToInt x b : ℤ) : ℂ) *
              (((extToInt z b : ℤ) : ℂ)))))) *
       Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((extToInt x b : ℤ) : ℂ) *
            (((extToInt z b : ℤ) : ℂ)))) =
       1 := by
   let t : ℝ :=
-    phi * (extToInt x b : ℝ) * (extToInt z b : ℝ)
+    Angle.toReal phi * (extToInt x b : ℝ) * (extToInt z b : ℝ)
 
   have harg :
-      phi * Complex.I *
+      ((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((extToInt x b : ℤ) : ℂ) *
            (((extToInt z b : ℤ) : ℂ)))
         =
@@ -459,7 +459,7 @@ private lemma signedPhaseScalar_star_mul_self
   norm_num
 
 theorem signedPhaseKet_inner_preserved
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b c : Basis) :
     inner ℂ
@@ -4340,7 +4340,7 @@ theorem qftKet_inner_preserved
 
 theorem cSignedPhaseKet_inner_preserved
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (b c : Basis) :
     inner ℂ
@@ -4772,9 +4772,9 @@ private lemma hadamard_smul_add_sub_right
 /--
 The concrete atomic adjoint is a left inverse of the atomic evaluator.
 
-This holds unconditionally for every gate except `H`, `QFT`,
-`SignedPhaseProd`, and `CSignedPhaseProd` (the state-level superposition
-gates), which are left as explicit `sorry`s for a follow-up pass.
+`H`, `QFT`, `SignedPhaseProd`, and `CSignedPhaseProd` (the state-level
+superposition gates) need their own dedicated calculations; every other gate
+follows uniformly from `atomAdjEval_atomEval_ket_of_glue`.
 -/
 theorem atomAdjEval_atomEval
     (U : Gate)
@@ -4973,11 +4973,11 @@ theorem atomAdjEval_atomEval
           signedPhaseKet, map_smul, smul_smul]
         rw [← Complex.exp_add]
         have hz :
-            phi * Complex.I *
+            ((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
                 (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
-              + (-phi : ℝ) * Complex.I *
+              + ((Angle.toReal (-phi) : ℝ) : ℂ) * Complex.I *
                 (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
-              = 0 := by push_cast; ring
+              = 0 := by rw [Angle.toReal_neg]; push_cast; ring
         rw [hz, Complex.exp_zero, one_smul]
     | CSignedPhaseProd ctrl phi x z =>
         by_cases hbit : RegEncoding.bit ctrl b
@@ -4992,11 +4992,11 @@ theorem atomAdjEval_atomEval
             smul_smul]
           rw [← Complex.exp_add]
           have hz :
-              phi * Complex.I *
+              ((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
                   (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
-                + (-phi : ℝ) * Complex.I *
+                + ((Angle.toReal (-phi) : ℝ) : ℂ) * Complex.I *
                   (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
-                = 0 := by push_cast; ring
+                = 0 := by rw [Angle.toReal_neg]; push_cast; ring
           rw [hz, Complex.exp_zero, one_smul]
         · change
             atomAdjEvalLinear (Gate.CSignedPhaseProd ctrl phi x z)
@@ -5035,9 +5035,9 @@ theorem atomAdjEval_atomEval
 The concrete atomic adjoint is also a right inverse of the atomic
 evaluator.
 
-As with `atomAdjEval_atomEval`, this holds unconditionally for every gate
-except `H`, `QFT`, `SignedPhaseProd`, and `CSignedPhaseProd`, which are
-left as explicit `sorry`s for a follow-up pass.
+As with `atomAdjEval_atomEval`, `H`, `QFT`, `SignedPhaseProd`, and
+`CSignedPhaseProd` each need their own dedicated calculation; every other
+gate follows uniformly from `atomAdjEval_atomEval_ket_of_glue`.
 -/
 theorem atomEval_atomAdjEval
     (U : Gate)
@@ -5256,11 +5256,11 @@ theorem atomEval_atomAdjEval
           signedPhaseKet, map_smul, smul_smul]
         rw [← Complex.exp_add]
         have hz :
-            (-phi : ℝ) * Complex.I *
+            ((Angle.toReal (-phi) : ℝ) : ℂ) * Complex.I *
                 (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
-              + phi * Complex.I *
+              + ((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
                 (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
-              = 0 := by push_cast; ring
+              = 0 := by rw [Angle.toReal_neg]; push_cast; ring
         rw [hz, Complex.exp_zero, one_smul]
     | CSignedPhaseProd ctrl phi x z =>
         by_cases hbit : RegEncoding.bit ctrl b
@@ -5275,11 +5275,11 @@ theorem atomEval_atomAdjEval
             smul_smul]
           rw [← Complex.exp_add]
           have hz :
-              (-phi : ℝ) * Complex.I *
+              ((Angle.toReal (-phi) : ℝ) : ℂ) * Complex.I *
                   (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
-                + phi * Complex.I *
+                + ((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
                   (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))
-                = 0 := by push_cast; ring
+                = 0 := by rw [Angle.toReal_neg]; push_cast; ring
           rw [hz, Complex.exp_zero, one_smul]
         · change
             atomEvalLinear (Gate.CSignedPhaseProd ctrl phi x z)

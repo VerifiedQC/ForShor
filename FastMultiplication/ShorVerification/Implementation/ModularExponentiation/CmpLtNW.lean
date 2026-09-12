@@ -58,13 +58,13 @@ def cmpLtNWSignQubit
         omega
       simpa [regSize] using hlt⟩
 
-noncomputable def fastConstMulInto
+def fastConstMulInto
     (N : ℕ)
     (work scratch : ExtReg)
     (hworkspace : Gate.PhaseProdWorkspace work.active scratch.active) :
     Gate :=
-  let phi : ℝ :=
-    (2 * Real.pi * (N : ℝ)) / (ASize hworkspace.zExt.active : ℝ)
+  let phi : Angle :=
+    (2 * (N : ℚ)) / (ASize hworkspace.zExt.active : ℚ)
 
   Gate.QFT hworkspace.zExt ;;
   Gate.PhaseProdUsing
@@ -87,7 +87,7 @@ def cmpLtNWDifference
     (regSize work.active) ;;
   Gate.zeroDealloc data 1
 
-noncomputable def cmpLtNW
+def cmpLtNW
     (N : ℕ)
     (data work scratch : ExtReg)
     (flag : ℕ)

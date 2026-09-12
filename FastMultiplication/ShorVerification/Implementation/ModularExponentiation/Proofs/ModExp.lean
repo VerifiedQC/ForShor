@@ -444,7 +444,6 @@ theorem modExpApproxSteps_valid_dist_uniform
         ‖ψ‖ = 1 →
         ‖qs.eval
             (modExpApproxStepsValid
-              (Basis := qs.Basis)
               a N data work scratch flag
               hworkspace hstep4 e ctrls) ψ -
           qs.eval
@@ -508,16 +507,15 @@ theorem modExpApproxSteps_valid_dist_uniform
           step4_workspace := hstep4 }
 
       -- Approximate/ideal head gates and approximate/ideal recursive tails.
-      let A : Gate := CmodMulInPlaceCore (Basis := qs.Basis)
+      let A : Gate := CmodMulInPlaceCore
           c N ctrl data work scratch flag hworkspace hstep4
       let I : Gate := Gate.idealCtrlModMul c N data.active ctrl
-      let RA : Gate := modExpApproxStepsValid (Basis := qs.Basis)
+      let RA : Gate := modExpApproxStepsValid
           a N data work scratch flag hworkspace hstep4 (e + 1) ctrls
       let RI : Gate := modExpIdealSteps qs a N data.active (e + 1) ctrls
 
       have hApprox :
           modExpApproxStepsValid
-            (Basis := qs.Basis)
             a N data work scratch flag
             hworkspace hstep4 e (ctrl :: ctrls)
             =
@@ -629,7 +627,7 @@ theorem modExpApprox_valid_dist_uniform
     ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧
       ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
         ModExpConfig.ValidUnitState qs cfg ψ →
-        ‖qs.eval (ModExpConfig.approxGate (Basis := qs.Basis) cfg) ψ -
+        ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
           qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
           ≤ (tbits cfg.x : ℝ) * stepErr K η := by
   rcases modExpApproxSteps_valid_dist_uniform (qs := qs) with

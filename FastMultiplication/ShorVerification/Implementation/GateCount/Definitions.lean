@@ -25,12 +25,12 @@ program `ops`: above some threshold, the lowered gate count is bounded by
 `C * n^(log_k (2k - 1))`. -/
 def PhaseProductGateCountBound {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k) : Prop :=
   ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
-    ∀ (φ : ℝ) (x z : Reg) (ws : Gate.PhaseProdWorkspace x z)
+    ∀ (φ : Angle) (x z : Reg) (ws : Gate.PhaseProdWorkspace x z)
       (hworkspace : GateWorkspaceOK ops (Gate.PhaseProdUsing φ x z ws)),
       let n := max (regSize x) (regSize z)
       n₀ ≤ n →
       (LowGate.gateCount shorGateCostModel
-          (lowerGate (Basis := Basis) k hk ops (Gate.PhaseProdUsing φ x z ws) hworkspace) : ℝ)
+          (lowerGate k hk ops (Gate.PhaseProdUsing φ x z ws) hworkspace) : ℝ)
         ≤ C * Real.rpow n (phaseProductExponent k)
 
 /-- Static correctness assumptions on the fixed PhaseProduct program: the
@@ -61,14 +61,14 @@ open Operations
 /-- Gate count of the recursively lowered signed PhaseProduct. -/
 noncomputable def signedPhaseProductGateCount
     {Basis : Type u} [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (φ : ℝ) (x z : ExtReg)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (φ : Angle) (x z : ExtReg)
     (hworkspace : SignedRecursiveWorkspaceOK ops x z) : ℕ :=
   LowGate.gateCount shorGateCostModel (lowerSignedPhaseProdWithWorkspace k hk φ x z ops hworkspace)
 
 /-- Gate count of the recursively lowered controlled signed PhaseProduct. -/
 noncomputable def cSignedPhaseProductGateCount
     {Basis : Type u} [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (ctrl : ℕ) (φ : ℝ) (x z : ExtReg)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (ctrl : ℕ) (φ : Angle) (x z : ExtReg)
     (hworkspace : CSignedRecursiveWorkspaceOK ops ctrl x z) : ℕ :=
   LowGate.gateCount shorGateCostModel (lowerCSignedPhaseProdWithWorkspace k hk ctrl φ x z ops hworkspace)
 
@@ -76,7 +76,7 @@ noncomputable def cSignedPhaseProductGateCount
 bounded by a constant times the safe PhaseProduct comparison rate. -/
 noncomputable def BalancedSignedPhaseProductBound
     {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k) (C : ℝ) : Prop :=
-  ∀ (φ : ℝ) (x z : ExtReg) (hworkspace : SignedRecursiveWorkspaceOK ops x z),
+  ∀ (φ : Angle) (x z : ExtReg) (hworkspace : SignedRecursiveWorkspaceOK ops x z),
     ExtReg.width x = ExtReg.width z →
     (signedPhaseProductGateCount (Basis := Basis) k hk ops φ x z hworkspace : ℝ)
       ≤ C * phaseProductSafeRate k (ExtReg.width x)
@@ -113,7 +113,7 @@ def phaseProgramWidthGrowth {k : ℕ} : List (valid_ops k) → ℕ
 /-- A concrete balanced signed PhaseProduct instance bundled with its phase,
 registers, equal-width proof, and recursive workspace proof. -/
 structure BalancedPhaseProductInstance {k : ℕ} (ops : Prog k) where
-  φ : ℝ
+  φ : Angle
   x : ExtReg
   z : ExtReg
   hwidth : ExtReg.width x = ExtReg.width z
@@ -160,12 +160,12 @@ noncomputable def shorGateRate (ε : ℝ) (n : ℕ) : ℝ :=
 PhaseProduct safe rate but quantifying over the control qubit. -/
 def CPhaseProductGateCountBound {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k) : Prop :=
   ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
-    ∀ (ctrl : ℕ) (φ : ℝ) (x z : Reg) (ws : Gate.PhaseProdWorkspace x z)
+    ∀ (ctrl : ℕ) (φ : Angle) (x z : Reg) (ws : Gate.PhaseProdWorkspace x z)
       (hworkspace : GateWorkspaceOK ops (Gate.CPhaseProdUsing ctrl φ x z ws)),
       let n := max (regSize x) (regSize z)
       n₀ ≤ n →
       (LowGate.gateCount shorGateCostModel
-          (lowerGate (Basis := Basis) k hk ops (Gate.CPhaseProdUsing ctrl φ x z ws) hworkspace) : ℝ)
+          (lowerGate k hk ops (Gate.CPhaseProdUsing ctrl φ x z ws) hworkspace) : ℝ)
         ≤ C * phaseProductSafeRate k n
 
 end ControlledAndShorBounds
@@ -213,7 +213,7 @@ noncomputable def qftSplitPhaseGateCount
     (ws : Gate.PhaseProdWorkspace (qftLeftReg r) (qftRightReg r))
     (hworkspace : GateWorkspaceOK ops (Gate.PhaseProdUsing (qftPhi (regSize r)) (qftLeftReg r) (qftRightReg r) ws)) : ℕ :=
   LowGate.gateCount shorGateCostModel
-    (lowerGate (Basis := Basis) k hk ops
+    (lowerGate k hk ops
       (Gate.PhaseProdUsing (qftPhi (regSize r)) (qftLeftReg r) (qftRightReg r) ws) hworkspace)
 
 /-- Gate count of the final radix reversal at one exact-QFT recursion node. -/

@@ -23,7 +23,7 @@ def LowerSignedPhaseProductCorrect
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
     (k : ℕ) (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k) : Prop :=
   ∀ (ψ : qs.State)
@@ -48,7 +48,7 @@ def LowerCSignedPhaseProductCorrect
     [GateSemanticsFacts qs]
     (k : ℕ) (hk : 1 < k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k) : Prop :=
   ∀ (ψ : qs.State)

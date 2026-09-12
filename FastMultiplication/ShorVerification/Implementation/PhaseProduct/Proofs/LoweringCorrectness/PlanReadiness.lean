@@ -31,11 +31,11 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
     (hpts : pts.length = q k)
     (allOps : Prog k)
     (initSize : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (coeff : Fin (q k) → ℚ)
     (dst : LayoutState k)
     (recurse :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan k hk pts hpts allOps initSize
           (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)))
     (pre : Prog k)
@@ -321,15 +321,15 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
     (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state allOps planPts)
     (hRun : run? allOps State.start_state = some State.start_state)
     (initSize : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (coeff : Fin (q k) → ℚ)
     (src dst : LayoutState k)
     (recurse :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan k hk planPts hPlanPts allOps initSize
           (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)))
     (hleaf :
-      ∀ (i : Fin k) (theta : ℝ) (b' : qs.Basis),
+      ∀ (i : Fin k) (theta : Angle) (b' : qs.Basis),
         RecursiveWorkspaceCleanBasis (dst.xslot i) (dst.zslot i) b' →
         PhaseLoweringReady qs (recurse i theta) (qs.ket b')) :
     ∀ {σ : State k}
@@ -405,8 +405,8 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
         simp at hn
         omega
       let l : Fin (q k) := ⟨n, hlt⟩
-      let theta : ℝ :=
-        phi * (((coeff l : ℚ) : ℝ))
+      let theta : Angle :=
+        phi * coeff l
       have hnTail :
           n + 1 + pts₂.length = q k := by
         simp at hn
@@ -869,11 +869,11 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
     (allOps : Prog k)
     (initSize : ℕ)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (coeff : Fin (q k) → ℚ)
     (dst : LayoutState k)
     (recurse :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan k hk pts hpts allOps initSize
           (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i)))
     (pre : Prog k)
@@ -1160,15 +1160,15 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
     (hRun : run? allOps State.start_state = some State.start_state)
     (initSize : ℕ)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (coeff : Fin (q k) → ℚ)
     (src dst : LayoutState k)
     (recurse :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan k hk planPts hPlanPts allOps initSize
           (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i)))
     (hleaf :
-      ∀ (i : Fin k) (theta : ℝ) (b' : qs.Basis),
+      ∀ (i : Fin k) (theta : Angle) (b' : qs.Basis),
         RecursiveWorkspaceCleanBasis (dst.xslot i) (dst.zslot i) b' →
         PhaseLoweringReady qs (recurse i theta) (qs.ket b')) :
     ∀ {σ : State k}
@@ -1245,8 +1245,8 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
         simp at hn
         omega
       let l : Fin (q k) := ⟨n, hlt⟩
-      let theta : ℝ :=
-        phi * (((coeff l : ℚ) : ℝ))
+      let theta : Angle :=
+        phi * coeff l
       have hnTail :
           n + 1 + pts₂.length = q k := by
         simp at hn
@@ -2050,7 +2050,7 @@ lemma planCompiledSignedPhaseGate_ready_ket
     (hRun :
       run? ops State.start_state =
         some State.start_state)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (hcapacity :
@@ -2238,7 +2238,7 @@ lemma standardSignedPhaseLoweringPlan_ready_ket
     [LowerGateClass qs]
     (k : ℕ)
     (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (b : qs.Basis)
@@ -2376,7 +2376,7 @@ theorem standardSignedPhaseLoweringPlan_ready_and_clean
     [LowerGateClass qs]
     (k : ℕ)
     (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (ψ : qs.State)
@@ -2465,7 +2465,7 @@ theorem standardSignedPhaseLoweringPlan_ready
     [LowerGateClass qs]
     (k : ℕ)
     (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (ψ : qs.State)
@@ -2489,7 +2489,7 @@ lemma standardSignedPhaseLoweringPlan_ready_of_workspace
     [LowerGateClass qs]
     (k : ℕ)
     (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (ψ : qs.State)
@@ -2517,7 +2517,7 @@ lemma planCompiledCSignedPhaseGate_ready_ket
     (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
@@ -2623,7 +2623,7 @@ lemma standardCSignedPhaseLoweringPlan_ready_ket
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (b : qs.Basis)
@@ -2711,7 +2711,7 @@ theorem standardCSignedPhaseLoweringPlan_ready
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (ψ : qs.State)
@@ -2736,7 +2736,7 @@ lemma standardCSignedPhaseLoweringPlan_ready_of_workspace
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
     (ψ : qs.State)

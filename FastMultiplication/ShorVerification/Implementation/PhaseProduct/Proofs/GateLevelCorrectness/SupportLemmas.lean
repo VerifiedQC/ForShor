@@ -117,7 +117,7 @@ def EncodesStateFromWithWidths
 /-- The accumulated scalar now uses the same mixed source-row semantics as
     `EncodesStateFrom`, so the body lemma stays aligned with the invariant. -/
 noncomputable def phaseScalarFrom
-  (k : ℕ) (phi : ℝ) (coeff : Fin (q k) → ℚ)
+  (k : ℕ) (phi : Angle) (coeff : Fin (q k) → ℚ)
   (st : LayoutState k) (b0 : qs.Basis) :
   (pts : List Point) → (n : ℕ) → (hn : n + pts.length = q k) → ℂ
 | [], n, hn => 1
@@ -131,7 +131,7 @@ noncomputable def phaseScalarFrom
       simp at hn
       omega
     Complex.exp
-      ((phi * ((coeff l : ℚ) : ℝ)) * Complex.I *
+      (((Angle.toReal (phi * coeff l) : ℝ) : ℂ) * Complex.I *
         (((evalRowX (qs := qs) st (expectedRow (k := k) pt) b0 : ℤ) : ℂ) *
          (((evalRowZ (qs := qs) st (expectedRow (k := k) pt) b0 : ℤ) : ℂ))))
     * phaseScalarFrom k phi coeff st b0 pts (n + 1) hn'
@@ -640,7 +640,7 @@ lemma basis_eq_of_sameOutside_and_slots
 lemma phaseScalarFrom_ne_zero
   (qs : QSemantics)
   [RegEncoding qs.Basis]
-  (k : ℕ) (phi : ℝ) (coeff : Fin (q k) → ℚ)
+  (k : ℕ) (phi : Angle) (coeff : Fin (q k) → ℚ)
   (src : LayoutState k) (b0 : qs.Basis) :
   ∀ (pts : List Point) (n : ℕ) (hn : n + pts.length = q k),
     phaseScalarFrom (qs := qs) k phi coeff src b0 pts n hn ≠ 0 := by
@@ -1082,7 +1082,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_append
   [RegEncoding qs.Basis]
   [GateSemanticsCore qs]
   {k : ℕ} (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (st : LayoutState k)
   (xs ys : List (AnnotatedOp k))

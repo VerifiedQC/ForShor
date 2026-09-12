@@ -14,3 +14,6 @@ require mathlib from git
 @[default_target]
 lean_lib «FastMultiplication» where
   -- add any library configuration options here
+
+lean_exe forshor_emit where
+  root := `FastMultiplication.Emit.Main

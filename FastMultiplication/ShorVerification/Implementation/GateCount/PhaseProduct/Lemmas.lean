@@ -1396,7 +1396,7 @@ lemma gateCount_standardSignedPhaseLoweringPlan
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (φ : ℝ)
+    (φ : Angle)
     (x z : ExtReg)
     (hworkspace :
       SignedRecursiveWorkspaceOK ops x z) :
@@ -1417,7 +1417,7 @@ lemma gateCount_standardSignedPhaseLoweringPlan_of_not_recurse
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (φ : ℝ)
+    (φ : Angle)
     (x z : ExtReg)
     (hworkspace : SignedRecursiveWorkspaceOK ops x z)
     (hno : ¬ nextSignedWidth x z ops < phaseInputSize x z) :
@@ -1710,19 +1710,19 @@ lemma lgc_body_le
     (W : ℕ)
     (st : LayoutState k)
     (coeff : Fin (q k) → ℚ)
-    (φ : ℝ) (R : ℝ)
+    (φ : Angle) (R : ℝ)
     (hR : 0 ≤ R)
     (hxw : ∀ i : Fin k, ExtReg.width (st.xslot i) = W)
     (hzw : ∀ i : Fin k, ExtReg.width (st.zslot i) = W)
     (recurse :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan
           k hk pts hpts ops W
           (Gate.SignedPhaseProd
             theta
             (st.xslot i)
             (st.zslot i)))
-    (hchild : ∀ (ψ : ℝ) (i : Fin k),
+    (hchild : ∀ (ψ : Angle) (i : Fin k),
       ((LowGate.gateCount shorGateCostModel
         (lowerGateRec (recurse i ψ))) : ℝ) ≤ R)
     (n : ℕ) (l : List (valid_ops k)) :
@@ -1992,7 +1992,7 @@ lemma lgc_body_le
       LowGate.gateCount shorGateCostModel
         (lowerGateRec
           (recurse i
-            (φ * ((coeff ⟨n, hn⟩ : ℚ) : ℝ))))
+            (φ * coeff ⟨n, hn⟩)))
 
     have hann :
         annotatePhaseTermsAux
@@ -2020,7 +2020,7 @@ lemma lgc_body_le
       dsimp [childCost]
       exact
         hchild
-          (φ * ((coeff ⟨n, hn⟩ : ℚ) : ℝ))
+          (φ * coeff ⟨n, hn⟩)
           i
 
     have ht :
@@ -2179,7 +2179,7 @@ lemma lowerSignedPhaseProd_one_level_cost_le
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (φ : ℝ)
+    (φ : Angle)
     (x z : ExtReg)
     (hworkspace : SignedRecursiveWorkspaceOK ops x z)
     (hrec :
@@ -2187,7 +2187,7 @@ lemma lowerSignedPhaseProd_one_level_cost_le
         phaseInputSize x z)
     (R : ℝ)
     (hchildren :
-      ∀ (ψ : ℝ)
+      ∀ (ψ : Angle)
         (a b : ExtReg)
         (hw : SignedRecursiveWorkspaceOK ops a b),
         ExtReg.width a =
@@ -2281,7 +2281,7 @@ lemma lowerSignedPhaseProd_one_level_cost_le
         hbound
 
   let recurse :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan
           k hk
           (genInterpolationPoints k)
@@ -2311,7 +2311,7 @@ lemma lowerSignedPhaseProd_one_level_cost_le
     simpa [hsize] using childPlan
 
   have hchild :
-      ∀ (ψ : ℝ) (i : Fin k),
+      ∀ (ψ : Angle) (i : Fin k),
         (LowGate.gateCount
             shorGateCostModel
             (lowerGateRec
@@ -2614,14 +2614,14 @@ lemma lowerSignedPhaseProd_one_level_cost_le_nat
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (φ : ℝ)
+    (φ : Angle)
     (x z : ExtReg)
     (hworkspace : SignedRecursiveWorkspaceOK ops x z)
     (hrec :
       nextSignedWidth x z ops < phaseInputSize x z)
     (D : ℕ)
     (hchildren :
-      ∀ (ψ : ℝ) (a b : ExtReg)
+      ∀ (ψ : Angle) (a b : ExtReg)
         (hw : SignedRecursiveWorkspaceOK ops a b),
         ExtReg.width a = nextSignedWidth x z ops →
         ExtReg.width b = nextSignedWidth x z ops →
@@ -2639,7 +2639,7 @@ lemma lowerSignedPhaseProd_one_level_cost_le_nat
     phaseProductCount ops * D := by
 
   have hchildrenR :
-      ∀ (ψ : ℝ) (a b : ExtReg)
+      ∀ (ψ : Angle) (a b : ExtReg)
         (hw : SignedRecursiveWorkspaceOK ops a b),
         ExtReg.width a = nextSignedWidth x z ops →
         ExtReg.width b = nextSignedWidth x z ops →
@@ -2687,7 +2687,7 @@ lemma signedPhaseProductGateCount_bounded_on_bounded_inputs
     (hk : 1 < k)
     (ops : Prog k)
     (N : ℕ) :
-    ∃ D : ℕ, ∀ (φ : ℝ) (x z : ExtReg)
+    ∃ D : ℕ, ∀ (φ : Angle) (x z : ExtReg)
       (hworkspace : SignedRecursiveWorkspaceOK ops x z),
       phaseInputSize x z ≤ N →
       signedPhaseProductGateCount
@@ -2740,7 +2740,7 @@ lemma signedPhaseProductGateCount_bounded_on_bounded_inputs
             nextSignedWidth x z ops ≤ N := by
           omega
         have hchildren :
-            ∀ (ψ : ℝ) (a b : ExtReg)
+            ∀ (ψ : Angle) (a b : ExtReg)
               (hw : SignedRecursiveWorkspaceOK ops a b),
               ExtReg.width a = nextSignedWidth x z ops →
               ExtReg.width b = nextSignedWidth x z ops →
@@ -3055,7 +3055,7 @@ lemma balanced_phaseProduct_recurrence_solution
         using hrec
 
     have hchildren :
-        ∀ (ψ : ℝ)
+        ∀ (ψ : Angle)
           (a b : ExtReg)
           (hw : SignedRecursiveWorkspaceOK ops a b),
           ExtReg.width a =
@@ -3189,7 +3189,7 @@ lemma balanced_phaseProduct_recurrence_solution
 recursive workspace proof needed by its central signed phase-product node. -/
 lemma phaseProdUsing_signedWorkspace
     (ops : Prog k)
-    (φ : ℝ)
+    (φ : Angle)
     (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (hworkspace :
@@ -3208,7 +3208,7 @@ lemma lowerGate_PhaseProdUsing_gateCount_eq_signed
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (φ : ℝ)
+    (φ : Angle)
     (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (hworkspace :
@@ -3216,7 +3216,6 @@ lemma lowerGate_PhaseProdUsing_gateCount_eq_signed
         (Gate.PhaseProdUsing φ x z ws)) :
     LowGate.gateCount shorGateCostModel
       (lowerGate
-        (Basis := Basis)
         k hk ops
         (Gate.PhaseProdUsing φ x z ws)
         hworkspace)
@@ -3392,7 +3391,7 @@ lemma signedPhaseProductGateCount_eq_direct_of_not_recurse
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (φ : ℝ)
+    (φ : Angle)
     (x z : ExtReg)
     (hworkspace :
       SignedRecursiveWorkspaceOK ops x z)
@@ -3435,7 +3434,7 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
         (Basis := Basis) k hk ops C) :
     ∃ Cᵣ : ℝ, 0 < Cᵣ ∧
     ∃ nᵣ : ℕ, 1 ≤ nᵣ ∧
-      ∀ (φ : ℝ) (x z : Reg)
+      ∀ (φ : Angle) (x z : Reg)
         (ws : Gate.PhaseProdWorkspace x z)
         (hworkspace :
           SignedRecursiveWorkspaceOK ops
@@ -3672,7 +3671,7 @@ lemma signedPhaseProductGateCount_unsignedView_recurse_case_bound
         hLnonneg)
 
   have hchildren :
-      ∀ (ψ : ℝ)
+      ∀ (ψ : Angle)
         (a b : ExtReg)
         (hw : SignedRecursiveWorkspaceOK ops a b),
         ExtReg.width a = W →
@@ -3827,7 +3826,7 @@ lemma signedPhaseProductGateCount_unsignedView_no_recurse_case_bound
         min (ExtReg.width x) (ExtReg.width z) ≤ d) :
     ∃ Cₙ : ℝ, 0 < Cₙ ∧
     ∃ nₙ : ℕ, 1 ≤ nₙ ∧
-      ∀ (φ : ℝ) (x z : Reg)
+      ∀ (φ : Angle) (x z : Reg)
         (ws : Gate.PhaseProdWorkspace x z)
         (hworkspace :
           SignedRecursiveWorkspaceOK ops
@@ -4326,9 +4325,9 @@ lemma lgc_cbody_le_five
     (ctrl : ℕ)
     (st : LayoutState k)
     (coeff : Fin (q k) → ℚ)
-    (φ : ℝ)
+    (φ : Angle)
     (recurseC :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan
           k hk pts hpts ops W
           (Gate.CSignedPhaseProd
@@ -4336,7 +4335,7 @@ lemma lgc_cbody_le_five
             (st.xslot i)
             (st.zslot i)))
     (recurseS :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan
           k hk pts hpts ops W
           (Gate.SignedPhaseProd
@@ -4344,7 +4343,7 @@ lemma lgc_cbody_le_five
             (st.xslot i)
             (st.zslot i)))
     (hchild :
-      ∀ (i : Fin k) (theta : ℝ),
+      ∀ (i : Fin k) (theta : Angle),
         LowGate.gateCount shorGateCostModel
             (lowerGateRec (recurseC i theta))
           ≤
@@ -4381,7 +4380,6 @@ lemma lgc_cbody_le_five
         annotatePhaseTermsAux,
         planCompileAnnotatedOpsToCSignedGateAux,
         planCompileAnnotatedOpsToSignedGateAux,
-        lowerGateRec,
         LowGate.gateCount
       ]
 
@@ -4444,7 +4442,7 @@ lemma lgc_cbody_le_five
           · have hc :=
               hchild i
                 (φ *
-                  (((coeff ⟨n, hn⟩ : ℚ) : ℝ)))
+                  coeff ⟨n, hn⟩)
 
             have ht :=
               ih (n + 1)
@@ -4468,7 +4466,7 @@ lemma lgc_cbody_le_five
                     (lowerGateRec
                       (recurseC i
                         (φ *
-                          (((coeff ⟨n, hn⟩ : ℚ) : ℝ)))))
+                          coeff ⟨n, hn⟩)))
                 +
               LowGate.gateCount shorGateCostModel
                     (lowerGateRec
@@ -4482,7 +4480,7 @@ lemma lgc_cbody_le_five
                       (lowerGateRec
                         (recurseS i
                           (φ *
-                            (((coeff ⟨n, hn⟩ : ℚ) : ℝ)))))
+                            coeff ⟨n, hn⟩)))
                   +
                 LowGate.gateCount shorGateCostModel
                       (lowerGateRec
@@ -4535,7 +4533,7 @@ lemma cSignedPhaseProductGateCount_le_five_signed
     (hk : 1 < k)
     (ops : Prog k)
     (ctrl : ℕ)
-    (φ : ℝ)
+    (φ : Angle)
     (x z : ExtReg)
     (hworkspace :
       CSignedRecursiveWorkspaceOK ops ctrl x z) :
@@ -4619,7 +4617,7 @@ lemma cSignedPhaseProductGateCount_le_five_signed
         step.childInputSize i
 
     let recurseC :
-        ∀ (i : Fin k) (theta : ℝ),
+        ∀ (i : Fin k) (theta : Angle),
           PhaseLoweringPlan
             k hk
             (genInterpolationPoints k)
@@ -4642,7 +4640,7 @@ lemma cSignedPhaseProductGateCount_le_five_signed
             (controlledChildWorkspace i)
 
     let recurseS :
-        ∀ (i : Fin k) (theta : ℝ),
+        ∀ (i : Fin k) (theta : Angle),
           PhaseLoweringPlan
             k hk
             (genInterpolationPoints k)
@@ -4665,7 +4663,7 @@ lemma cSignedPhaseProductGateCount_le_five_signed
             (signedChildWorkspace i)
 
     have hchild :
-        ∀ (i : Fin k) (theta : ℝ),
+        ∀ (i : Fin k) (theta : Angle),
           LowGate.gateCount shorGateCostModel
               (lowerGateRec
                 (recurseC i theta))
@@ -4941,7 +4939,7 @@ decreasing_by
 /-- The controlled namespace reuses the unsigned workspace extraction for its public bridge theorem. -/
 lemma phaseProdUsing_signedWorkspace
     (ops : Prog k)
-    (φ : ℝ)
+    (φ : Angle)
     (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (hworkspace :
@@ -4956,7 +4954,7 @@ lemma phaseProdUsing_signedWorkspace
 lemma cPhaseProdUsing_controlledWorkspace
     (ops : Prog k)
     (ctrl : ℕ)
-    (φ : ℝ)
+    (φ : Angle)
     (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (hworkspace :
@@ -4975,7 +4973,7 @@ lemma lowerGate_CPhaseProdUsing_gateCount_eq_cSigned
     (hk : 1 < k)
     (ops : Prog k)
     (ctrl : ℕ)
-    (φ : ℝ)
+    (φ : Angle)
     (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (hworkspace :
@@ -4984,7 +4982,6 @@ lemma lowerGate_CPhaseProdUsing_gateCount_eq_cSigned
           ctrl φ x z ws)) :
     LowGate.gateCount shorGateCostModel
         (lowerGate
-          (Basis := Basis)
           k hk ops
           (Gate.CPhaseProdUsing
             ctrl φ x z ws)

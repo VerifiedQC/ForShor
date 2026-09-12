@@ -107,8 +107,7 @@ does not yet have the analogue of `standardSignedPhaseLoweringPlan` which
 constructs that plan solely from `CSignedRecursiveWorkspaceOK`.  Once that
 constructor is added, only this branch needs to change.
 -/
-noncomputable def lowerGate
-    {Basis : Type u}
+def lowerGate
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k) :
@@ -121,12 +120,12 @@ noncomputable def lowerGate
 
   | Gate.seq U V, hworkspace =>
       LowGate.seq
-        (lowerGate (Basis := Basis) k hk ops U hworkspace.1)
-        (lowerGate (Basis := Basis) k hk ops V hworkspace.2)
+        (lowerGate k hk ops U hworkspace.1)
+        (lowerGate k hk ops V hworkspace.2)
 
   | Gate.adj U, hworkspace =>
       LowGate.adj
-        (lowerGate (Basis := Basis) k hk ops U hworkspace)
+        (lowerGate k hk ops U hworkspace)
 
   | Gate.H qbit, _ =>
       LowGate.H qbit
@@ -218,7 +217,7 @@ noncomputable def GateWorkspaceCleanState
         ∧
       GateWorkspaceCleanState qs k hk ops V hworkspace.2
           (LowerGateClass.evalL (qs := qs)
-            (lowerGate (Basis := qs.Basis) k hk ops U hworkspace.1) ψ)
+            (lowerGate k hk ops U hworkspace.1) ψ)
 
   | Gate.adj U, hworkspace, ψ =>
       GateWorkspaceCleanState qs k hk ops U hworkspace (qs.eval (Gate.adj U) ψ)
@@ -437,9 +436,7 @@ def initY1 (y : Reg) : Gate :=
   | q :: _ => Gate.X q
 
 /-- Approximate order finding using the proved valid-input ModExp circuit. -/
-noncomputable def orderFindingApprox
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
+def orderFindingApprox
     (a N : ℕ)
     (x y work scratch : ExtReg)
     (flag : ℕ)
@@ -450,16 +447,13 @@ noncomputable def orderFindingApprox
   (H_reg x.active) ;;
   (initY1 y.active) ;;
   (modExpApproxValid
-    (Basis := qs.Basis)
     a N x.active y work scratch flag
     hworkspace hstep4) ;;
   (IQFT x)
 
 
 /-- The lowered implementation of approximate order finding. -/
-noncomputable def orderFindingApproxLow
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
+def orderFindingApproxLow
     (k : ℕ) (hk : 1 < k)
     (ops : Prog k)
     (a N : ℕ)
@@ -467,9 +461,9 @@ noncomputable def orderFindingApproxLow
     (flag : ℕ)
     (hmodWorkspace : ModMulCircuitWorkspaceOK y work)
     (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
-    (hLowerWorkspace : GateWorkspaceOK ops (orderFindingApprox qs a N x y work scratch flag
+    (hLowerWorkspace : GateWorkspaceOK ops (orderFindingApprox a N x y work scratch flag
           hmodWorkspace hstep4)) :=
-  lowerGate (Basis := qs.Basis) k hk ops (orderFindingApprox qs a N x y work scratch flag hmodWorkspace hstep4)
+  lowerGate k hk ops (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
     hLowerWorkspace
 
 /-- Ideal order-finding circuit using exact modular exponentiation. -/

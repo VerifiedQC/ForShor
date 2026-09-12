@@ -90,7 +90,7 @@ lemma eval_compiledSignedPhaseGate_correct
     (ops : Prog k)
     (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (ψ : qs.State)
@@ -100,6 +100,7 @@ lemma eval_compiledSignedPhaseGate_correct
     qs.eval (Gate.SignedPhaseProd phi x z) ψ := by
   unfold compiledSignedPhaseGate
   unfold loweringPhaseCoeff
+  rw [cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth pts hpts hInterp]
   apply
     eval_compileOpsToSignedGate_correct
       (qs := qs)
@@ -132,7 +133,7 @@ lemma eval_compiledCSignedPhaseGate_correct
     (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (hctrl : layout.ControlDisjoint ctrl)
@@ -143,6 +144,7 @@ lemma eval_compiledCSignedPhaseGate_correct
     qs.eval (Gate.CSignedPhaseProd ctrl phi x z) ψ := by
   unfold compiledCSignedPhaseGate
   unfold loweringPhaseCoeff
+  rw [cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth pts hpts hInterp]
   apply
     eval_compileOpsToCSignedGate_correct
       (qs := qs)

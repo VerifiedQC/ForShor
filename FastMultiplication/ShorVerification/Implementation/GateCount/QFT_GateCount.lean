@@ -107,14 +107,14 @@ lemma explicitQFTPhaseGateCount_eq_lowerGate
     {Basis : Type u}
     [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k)
-    (φ : ℝ) (x z : Reg)
+    (φ : Angle) (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (hsigned : SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1)) :
     LowGate.gateCount shorGateCostModel
         (lowerGateRec (standardPhaseProdUsingPlan k hk ops φ ws hsigned))
       =
     LowGate.gateCount shorGateCostModel
-        (lowerGate (Basis := Basis) k hk ops
+        (lowerGate k hk ops
           (Gate.PhaseProdUsing φ x z ws)
           (by simpa [GateWorkspaceOK, Gate.PhaseProdUsing] using hsigned)) := by
   simp [standardPhaseProdUsingPlan, Gate.PhaseProdUsing, lowerGate,
@@ -146,7 +146,7 @@ lemma explicitQFTPhaseGateCount_eq_signed
     explicitQFTPhaseGateCount (Basis := Basis) k hk ops r xWork zWork hworkspace hsize
         =
       LowGate.gateCount shorGateCostModel
-        (lowerGate (Basis := Basis) k hk ops
+        (lowerGate k hk ops
           (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws)
           hgate) := by
             simpa [explicitQFTPhaseGateCount, ws, hsigned, hgate] using
@@ -321,7 +321,7 @@ lemma explicitQFTPhaseGateCount_eventually_le
           k hk ops r xWork zWork hworkspace hsize
         =
       LowGate.gateCount shorGateCostModel
-        (lowerGate (Basis := Basis) k hk ops
+        (lowerGate k hk ops
           (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws)
           hgate) := by
     simpa [explicitQFTPhaseGateCount, ws, hsigned, hgate] using

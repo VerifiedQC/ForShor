@@ -20,17 +20,17 @@ Correctness is completely general: a submitted implementation must satisfy
 the framework's order-finding specification for every valid input instance.
 
 Resource comparison is benchmark-specific.  The competition benchmark is
-the family of 2048-bit moduli.  A submission provides:
-
-* one concrete upper bound on the logical gate count of a single run for
-  every valid 2048-bit instance;
-* one concrete number of independent trials sufficient to amplify the
-  declared single-run success probability to at least 99% for every
-  2048-bit modulus.
+the family of 2048-bit moduli.  A submission provides one concrete number of
+independent trials sufficient to amplify the declared single-run success
+probability to at least 99% for every 2048-bit modulus (`trialCount`); the
+logical gate count of a single run is not declared by the submission but
+computed by the framework itself, via `ShorOrderFindingProgram.frameworkGateCount`,
+from the concrete circuit the submission's `program` produces for a given
+instance.
 
 The leaderboard score is the product
 
-`trialCount * gateCountBound`.
+`trialCount N * (program inst).frameworkGateCount` for a 2048-bit modulus `N`.
 
 Construction, lowering, synthesis, precision selection, workspace layout,
 and all other implementation details remain entirely on the implementation
@@ -119,17 +119,18 @@ for every valid `ShorOrderFindingInstance`.
 
 Resource competition is specialized to 2048-bit moduli.
 
-`gateCountBound` is one concrete natural number that upper-bounds the
-framework-computed gate count of every submitted circuit whose modulus has
-2048 bits.
-
 `trialCount` is one concrete natural number of independent trials that is
 sufficient to amplify the declared success lower bound to at least 99% for
 every 2048-bit modulus.
 
+There is no separately declared gate-count bound: the logical gate count of a
+submitted circuit is computed by the framework itself
+(`ShorOrderFindingProgram.frameworkGateCount`), directly from `program`.
+
 The leaderboard score is
 
-`trialCount * gateCountBound`.
+`trialCount N * (program inst).frameworkGateCount` for a 2048-bit instance
+`inst` with modulus `N`.
 -/
 structure ShorImplementation : Type where
 

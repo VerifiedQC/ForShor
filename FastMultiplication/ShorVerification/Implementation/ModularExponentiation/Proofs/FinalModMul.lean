@@ -104,7 +104,7 @@ theorem modMul_approx_valid_dist_uniform
     [IdealCtrlModMulExactSemantics qs] :
     ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧ ∀ (η : ℝ) (cfg : ModMulConfig η) (ψ : qs.State),
       ModMulConfig.ValidUnitState qs cfg ψ →
-      ‖qs.eval (ModMulConfig.approxGate (Basis := qs.Basis) cfg) ψ -
+      ‖qs.eval (ModMulConfig.approxGate cfg) ψ -
         qs.eval (ModMulConfig.idealGate cfg) ψ‖ ≤ stepErr K η := by
   classical
 
@@ -243,12 +243,12 @@ theorem modMul_approx_valid_dist_uniform
 
   -- Identify the staged evaluation with the public approximation gate.
   have hCore :
-      qs.eval (ModMulConfig.approxGate (Basis := qs.Basis) cfg) ψ = ψ0 := by
+      qs.eval (ModMulConfig.approxGate cfg) ψ = ψ0 := by
     rw [ModMulConfig.eval_approxGate_eq_staged qs cfg ψ]
     simp [ModMulConfig.stagedGate, ψ0, post1, U1, U2, U34, U5, qs.eval_seq]
 
   calc
-    ‖qs.eval (ModMulConfig.approxGate (Basis := qs.Basis) cfg) ψ -
+    ‖qs.eval (ModMulConfig.approxGate cfg) ψ -
       qs.eval (ModMulConfig.idealGate cfg) ψ‖ = ‖ψ0 - ψI‖ := by rw [hCore]
     _ ≤ stepErr K₁ η + stepErr K₂ η + stepErr K₅ η := hChain
     _ ≤ stepErr (3 * (K₁ + K₂ + K₅)) η := hBudget

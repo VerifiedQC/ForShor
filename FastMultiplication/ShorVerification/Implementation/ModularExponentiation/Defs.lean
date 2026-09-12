@@ -229,14 +229,12 @@ def ModMulCircuitWorkspaceOK.step5Workspace
     h.dataCarry_work_disjoint
 
 /-- Algorithm 1 Step 1: prepare the work Fourier packet and apply the first controlled phase load. -/
-noncomputable def step1
-    {Basis : Type v}
-    [RegEncoding Basis]
+def step1
     (c N ctrl : ℕ)
     (data work : ExtReg)
     (hworkspace : ModMulCircuitWorkspaceOK data work) :
     Gate :=
-  let phi : ℝ := (2 * Real.pi * (((c + N - 1) % N : ℕ) : ℝ)) / (N : ℝ)
+  let phi : Angle := (2 * (((c + N - 1) % N : ℕ) : ℚ)) / (N : ℚ)
 
   H_reg work.active ;;
   Gate.CPhaseProdUsing
@@ -247,15 +245,13 @@ noncomputable def step1
   IQFT hworkspace.step1Workspace.zExt
 
 /-- Algorithm 1 Step 2: use a PhaseProduct to transfer the work-label phase into the data-carry register. -/
-noncomputable def step2
-    {Basis : Type v}
-    [RegEncoding Basis]
+def step2
     (N : ℕ)
     (data work : ExtReg)
     (hworkspace : ModMulCircuitWorkspaceOK data work) :
     Gate :=
   let dataCarry : ExtReg := data.grow 1
-  let phi : ℝ := (2 * Real.pi * (N : ℝ)) / ((2 : ℝ) ^ (regSize work.active + regSize dataCarry.active))
+  let phi : Angle := (2 * (N : ℚ)) / (2 : ℚ) ^ (regSize work.active + regSize dataCarry.active)
 
   Gate.QFT hworkspace.step2Workspace.zExt ;;
   Gate.PhaseProdUsing
@@ -271,7 +267,7 @@ def step3 (N : ℕ) (dataCarry scratch : ExtReg) (flag : ℕ) : Gate :=
   Gate.CSubConst N dataCarry scratch flag
 
 /-- Algorithm 1 Step 4: clear the comparator flag using the data-carry/work relation. -/
-noncomputable def step4
+def step4
     (N : ℕ) (dataCarry work scratch : ExtReg)
     (flag : ℕ)
     (hworkspace : CmpLtNWWorkspace N dataCarry work scratch flag) :
@@ -279,12 +275,11 @@ noncomputable def step4
   cmpLtNW N dataCarry work scratch flag hworkspace
 
 /-- Algorithm 1 Step 5: adjoint cleanup for the forward fractional load using the inverse constant. -/
-noncomputable def step5
-    {Basis : Type v} [RegEncoding Basis]
+def step5
     (k5val N : ℕ) (ctrl : ℕ) (data work : ExtReg)
     (hworkspace : ModMulCircuitWorkspaceOK data work)
     : Gate :=
-  let phi : ℝ := (2 * Real.pi * ((k5val % N : ℕ) : ℝ)) / (N : ℝ)
+  let phi : Angle := (2 * ((k5val % N : ℕ) : ℚ)) / (N : ℚ)
   †((H_reg work.active) ;;
     (Gate.CPhaseProdUsing ctrl phi (data.grow 1).active work.active hworkspace.step5Workspace) ;;
     (IQFT hworkspace.step5Workspace.zExt))
@@ -293,23 +288,22 @@ noncomputable def step5
 The Step-5 cleanup constant `1 - c⁻¹ mod N`, with the inverse chosen from
 the finite modular-inverse existence theorem when it applies.
 -/
-noncomputable def step5Constant (c N : ℕ) : ℕ :=
+def step5Constant (c N : ℕ) : ℕ :=
   if h : ∃ cinv : ℕ, cinv < N ∧ (c * cinv) % N = 1 then
     (1 + N - Nat.find h) % N
   else
     0
 
 /-- The five-step controlled in-place modular-multiplication core. -/
-noncomputable def CmodMulInPlaceCore
-    {Basis : Type v} [RegEncoding Basis]
+def CmodMulInPlaceCore
     (c N : ℕ) (ctrl : ℕ) (data work scratch : ExtReg) (flag : ℕ)
     (hworkspace : ModMulCircuitWorkspaceOK data work)
     (hstep4 : CmpLtNWWorkspace N (data.grow 1) work scratch flag) : Gate :=
-  let U1 : Gate := step1 (Basis := Basis) c N ctrl data work hworkspace
-  let U2 : Gate := step2 (Basis := Basis) N data work hworkspace
+  let U1 : Gate := step1 c N ctrl data work hworkspace
+  let U2 : Gate := step2 N data work hworkspace
   let U3 : Gate := step3 N (data.grow 1) scratch flag
   let U4 : Gate := step4 N (data.grow 1) work scratch flag hstep4
-  let U5 : Gate := step5 (Basis := Basis)
+  let U5 : Gate := step5
       (step5Constant c N) N ctrl data work hworkspace
   U1 ;; U2 ;; U3 ;; U4 ;; U5
 
@@ -489,9 +483,7 @@ def ModExpArithmeticOK
     Nat.Coprime ((a ^ (2 ^ i.1)) % N) N
 
 /-- Approximate modular-exponentiation recursion over a list of controls, using valid Algorithm 1 cores. -/
-noncomputable def modExpApproxStepsValid
-    {Basis : Type u}
-    [RegEncoding Basis]
+def modExpApproxStepsValid
     (a N : ℕ)
     (data work scratch : ExtReg)
     (flag : ℕ)
@@ -502,14 +494,12 @@ noncomputable def modExpApproxStepsValid
       Gate.id
   | e, ctrl :: ctrls =>
       let c := (a ^ (2 ^ e)) % N
-      CmodMulInPlaceCore (Basis := Basis) c N ctrl data work scratch flag hworkspace hstep4
+      CmodMulInPlaceCore c N ctrl data work scratch flag hworkspace hstep4
       ;;
-      modExpApproxStepsValid (Basis := Basis) a N data work scratch flag hworkspace hstep4 (e + 1) ctrls
+      modExpApproxStepsValid a N data work scratch flag hworkspace hstep4 (e + 1) ctrls
 
 /-- Approximate modular exponentiation over all qubits in the exponent register. -/
-noncomputable def modExpApproxValid
-    {Basis : Type u}
-    [RegEncoding Basis]
+def modExpApproxValid
     (a N : ℕ)
     (x : Reg)
     (data work scratch : ExtReg)
@@ -517,7 +507,7 @@ noncomputable def modExpApproxValid
     (hworkspace : ModMulCircuitWorkspaceOK data work)
     (hstep4 : CmpLtNWWorkspace N (data.grow 1) work scratch flag) :
     Gate :=
-  modExpApproxStepsValid (Basis := Basis) a N data work scratch flag hworkspace hstep4 0 x.qubits
+  modExpApproxStepsValid a N data work scratch flag hworkspace hstep4 0 x.qubits
 end ModExpLayoutAndGates
 
 /-! ---------------------------------------------------------
@@ -557,11 +547,10 @@ structure ModExpConfig (η : ℝ) where
 namespace ModExpConfig
 
 /-- Concrete approximate modular-exponentiation gate for this configuration. -/
-noncomputable def approxGate
+def approxGate
     {η : ℝ}
-    {Basis : Type u} [RegEncoding Basis] (cfg : ModExpConfig η) : Gate :=
+    (cfg : ModExpConfig η) : Gate :=
   modExpApproxValid
-    (Basis := Basis)
     cfg.a cfg.env.N cfg.x cfg.env.data cfg.env.work cfg.env.scratch cfg.flag cfg.env.circuit_workspace cfg.step4_workspace
 
 /-- Ideal modular-exponentiation gate for this configuration. -/
@@ -602,11 +591,10 @@ structure ModMulConfig (η : ℝ) where
 namespace ModMulConfig
 
 /-- Concrete five-step approximate modular-multiplication gate for this configuration. -/
-noncomputable def approxGate
+def approxGate
     {η : ℝ}
-    {Basis : Type u} [RegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
-  CmodMulInPlaceCore (Basis := Basis) cfg.c cfg.env.N
+  CmodMulInPlaceCore cfg.c cfg.env.N
     cfg.ctrl cfg.env.data cfg.env.work cfg.env.scratch cfg.flag
     cfg.env.circuit_workspace cfg.step4_workspace
 

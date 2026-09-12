@@ -13,6 +13,7 @@ namespace Shor
 open Gate
 open Operations
 open scoped BigOperators
+open scoped Matrix
 
 /-! =========================================================
     Chunk Reconstruction For Split Extended Registers
@@ -711,6 +712,67 @@ def tcProductCoeff
       else
         0
 
+/--
+`Matrix.cramer`-based coefficients agree with the `Matrix.inv`-based ones
+whenever the interpolation matrix is invertible.
+
+The argument is pure linear algebra and does not need the points to be
+distinct integers (unlike a closed-form Lagrange-weight product, which would
+only be valid for plain monomial rows): from `M *ᵥ cramer M v = M.det • v`
+(`Matrix.mulVec_cramer`), left-multiplying by `M⁻¹` gives
+`cramer M v = M.det • (M⁻¹ *ᵥ v)`, and dividing by the (nonzero) determinant
+recovers `M⁻¹ *ᵥ v` from `cramer M v`.
+-/
+lemma cramerCoeffFromPts_eq_phaseCoeffFromPts
+    {k : ℕ}
+    (pts : Fin (q k) → Point)
+    (b : ℚ)
+    (hgood : (interpMatrix k pts).det ≠ 0) :
+    cramerCoeffFromPts k pts b = phaseCoeffFromPts k pts b := by
+  funext i
+  set M : Matrix (Fin (q k)) (Fin (q k)) ℚ := interpMatrix k pts with hM
+  set radixVec : Fin (q k) → ℚ := fun j => b ^ (j : ℕ) with hradixVec
+  have hUnitT : IsUnit M.transpose.det := by
+    rw [Matrix.det_transpose]
+    exact isUnit_iff_ne_zero.mpr hgood
+  have hleft :
+      M.transpose⁻¹ *ᵥ (M.transpose *ᵥ Matrix.cramer M.transpose radixVec)
+        =
+      Matrix.cramer M.transpose radixVec := by
+    rw [Matrix.mulVec_mulVec, Matrix.nonsing_inv_mul M.transpose hUnitT, Matrix.one_mulVec]
+  have hkey :
+      Matrix.cramer M.transpose radixVec
+        =
+      M.transpose.det • (M.transpose⁻¹ *ᵥ radixVec) := by
+    calc Matrix.cramer M.transpose radixVec
+        = M.transpose⁻¹ *ᵥ (M.transpose *ᵥ Matrix.cramer M.transpose radixVec) := hleft.symm
+      _ = M.transpose⁻¹ *ᵥ (M.transpose.det • radixVec) := by
+          rw [Matrix.mulVec_cramer]
+      _ = M.transpose.det • (M.transpose⁻¹ *ᵥ radixVec) := Matrix.mulVec_smul _ _ _
+  have hcomp :
+      Matrix.cramer M.transpose radixVec i
+        =
+      M.transpose.det * (M.transpose⁻¹ *ᵥ radixVec) i := by
+    have h := congrFun hkey i
+    simpa [Pi.smul_apply, smul_eq_mul] using h
+  have hdet_ne : M.transpose.det ≠ 0 := by
+    rw [Matrix.det_transpose]; exact hgood
+  have hinv_component :
+      (M.transpose⁻¹ *ᵥ radixVec) i
+        =
+      Matrix.cramer M.transpose radixVec i / M.transpose.det := by
+    rw [eq_div_iff hdet_ne, mul_comm]
+    exact hcomp.symm
+  have hphase :
+      phaseCoeffFromPts k pts b i = (M.transpose⁻¹ *ᵥ radixVec) i := by
+    have hstep1 :
+        phaseCoeffFromPts k pts b i = (radixVec ᵥ* M⁻¹) i := by
+      show (radixRow k b * M⁻¹) 0 i = (radixVec ᵥ* M⁻¹) i
+      simp [Matrix.mul_apply, Matrix.vecMul, dotProduct, radixRow, radixVec]
+    rw [hstep1, ← Matrix.mulVec_transpose, Matrix.transpose_nonsing_inv]
+  rw [hphase, hinv_component, cramerCoeffFromPts, hM, hradixVec]
+  simp [Matrix.det_transpose]
+
 /-- The compiler's phase coefficients are exactly the generic interpolation coefficients. -/
 lemma phaseCoeffFromPtsWidth_eq_interpCoeff
   {k W : ℕ}
@@ -727,6 +789,26 @@ lemma phaseCoeffFromPtsWidth_eq_interpCoeff
   unfold ToomCookMath.interpMatrix ToomCookMath.radixRow interpMatrix radixRow ptsToFin ToomCookMath.listToFin
   simp
 
+/--
+The computable `Matrix.cramer`-based coefficients agree with the compiler's
+`phaseCoeffFromPtsWidth` whenever the interpolation points are good in the
+Toom-Cook sense (`GoodToomCookPoints`, i.e. the interpolation matrix is
+invertible). This is the bridge Stage 4 needs: `loweringPhaseCoeff` is
+redefined via `cramerCoeffFromPtsWidth` (computable), and every place that
+still expects `phaseCoeffFromPtsWidth` rewrites through this lemma.
+-/
+theorem cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth
+    {k W : ℕ}
+    (pts : List Point)
+    (hpts : pts.length = q k)
+    (hInterp : GoodToomCookPoints k pts hpts) :
+    cramerCoeffFromPtsWidth k W pts hpts = phaseCoeffFromPtsWidth k W pts hpts := by
+  unfold cramerCoeffFromPtsWidth phaseCoeffFromPtsWidth
+  apply cramerCoeffFromPts_eq_phaseCoeffFromPts
+  unfold GoodToomCookPoints ToomCookMath.GoodInterpolationPoints at hInterp
+  unfold interpMatrix ToomCookMath.interpMatrix ptsToFin ToomCookMath.listToFin at *
+  simpa using hInterp
+
 /-! =========================================================
     Phase Scalar And Point-Evaluation Bridge
 
@@ -739,7 +821,7 @@ lemma phaseScalarFrom_eq_phaseScalarFromList_aux
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ}
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (st : LayoutState k)
   (b : qs.Basis)
@@ -751,7 +833,7 @@ lemma phaseScalarFrom_eq_phaseScalarFromList_aux
     phaseScalarFrom (qs := qs) k phi coeff st b rest n hn
       =
     ToomCookMath.phaseScalarFromList
-      phi coeff (tcPointTerm qs st b full hfull) rest n hn := by
+      (Angle.toReal phi) coeff (tcPointTerm qs st b full hfull) rest n hn := by
   intro rest
   induction rest with
   | nil =>
@@ -792,21 +874,21 @@ lemma phaseScalarFrom_eq_phaseScalarFromList_aux
       rw [hterm]
       have htail :
           phaseScalarFrom (qs := qs) k phi coeff st b rest (n + 1) (by simp at hn; omega) =
-          ToomCookMath.phaseScalarFromList phi coeff (tcPointTerm qs st b full hfull) rest (n + 1) (by simp at hn; omega) := by
+          ToomCookMath.phaseScalarFromList (Angle.toReal phi) coeff (tcPointTerm qs st b full hfull) rest (n + 1) (by simp at hn; omega) := by
         exact ih (n + 1) (by simp at hn; omega) htail_drop
       rw [htail]
       unfold ToomCookMath.phaseFactor
       have hprodC : (((evalRowX (qs := qs) st (expectedRow (k := k) pt) b * evalRowZ (qs := qs) st (expectedRow (k := k) pt) b : ℤ) : ℚ) : ℂ) =
           ((evalRowX (qs := qs) st (expectedRow (k := k) pt) b : ℂ) * (evalRowZ (qs := qs) st (expectedRow (k := k) pt) b : ℂ)) := by norm_num
       rw [hprodC]
-      simp[mul_comm]
+      simp [Angle.toReal_mul_rat, mul_comm]
 
 /-- The full compiler scalar agrees with the generic list scalar over the same point list. -/
 lemma phaseScalarFrom_eq_phaseScalarFromList
   (qs : QSemantics)
   [RegEncoding qs.Basis] [GateSemanticsFacts qs]
   {k : ℕ}
-  (phi : ℝ)
+  (phi : Angle)
   (coeff : Fin (q k) → ℚ)
   (st : LayoutState k)
   (b : qs.Basis)
@@ -814,7 +896,7 @@ lemma phaseScalarFrom_eq_phaseScalarFromList
   (hpts : pts.length = q k) :
   phaseScalarFrom (qs := qs) k phi coeff st b pts 0 (by simpa using hpts)
     =
-  ToomCookMath.phaseScalarFromList phi coeff (tcPointTerm qs st b pts hpts) pts 0
+  ToomCookMath.phaseScalarFromList (Angle.toReal phi) coeff (tcPointTerm qs st b pts hpts) pts 0
     (by simpa using hpts) := by
   simpa using
     phaseScalarFrom_eq_phaseScalarFromList_aux
@@ -1329,7 +1411,7 @@ lemma toom_cook_interpolation
   [GateSemanticsFacts qs]
   {k : ℕ}
   (hk : 1 < k)
-  (phi : ℝ)
+  (phi : Angle)
   (x z : ExtReg)
   (layout : Gate.PhaseProductLayout x z k)
   (pts : List Point)
@@ -1340,7 +1422,7 @@ lemma toom_cook_interpolation
   let coeff : Fin (q k) → ℚ := phaseCoeffFromPtsForRegs k x z pts hpts
   phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
     =
-  Complex.exp (phi * Complex.I * (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))) := by
+  Complex.exp (((Angle.toReal phi : ℝ) : ℂ) * Complex.I * (((extToInt x b : ℤ) : ℂ) * (((extToInt z b : ℤ) : ℂ)))) := by
   dsimp
   set stInit : LayoutState k :=
     initSignedLayoutState layout
@@ -1404,7 +1486,7 @@ lemma toom_cook_interpolation
       phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
         =
       Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((∑ i : Fin (q k),
               coeff i *
                 ToomCookMath.evalAtPoint
@@ -1416,7 +1498,7 @@ lemma toom_cook_interpolation
           phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
             =
           ToomCookMath.phaseScalarFromList
-            phi coeff (tcPointTerm qs stInit b pts hpts) pts 0
+            (Angle.toReal phi) coeff (tcPointTerm qs stInit b pts hpts) pts 0
             (by simpa using hpts) := by
         simpa using
           phaseScalarFrom_eq_phaseScalarFromList
@@ -1435,7 +1517,7 @@ lemma toom_cook_interpolation
       exact
         ToomCookMath.phaseScalarFromList_eq_exp_sum
           (k := k)
-          (phi := phi)
+          (phi := Angle.toReal phi)
           (coeff := coeff)
           (terms := fun i : Fin (q k) =>
             ToomCookMath.evalAtPoint
@@ -1449,7 +1531,7 @@ lemma toom_cook_interpolation
     phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
         =
       Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((∑ i : Fin (q k),
               coeff i *
                 ToomCookMath.evalAtPoint
@@ -1459,18 +1541,18 @@ lemma toom_cook_interpolation
                   ((ptsToFin k pts hpts) i) : ℚ) : ℂ))) := hScalar
     _ =
       Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((ToomCookMath.evalAtRadix (q k) polyCoeff B : ℚ) : ℂ))) := by
         rw [hInterpSum]
     _ =
       Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((((extToInt x b *
                extToInt z b : ℤ) : ℚ)) : ℂ))) := by
         rw [hRadix]
     _ =
       Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((extToInt x b : ℤ) : ℂ) *
            (((extToInt z b : ℤ) : ℂ)))) := by
         congr 2

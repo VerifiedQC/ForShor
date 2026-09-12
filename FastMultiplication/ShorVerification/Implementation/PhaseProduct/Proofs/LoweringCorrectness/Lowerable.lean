@@ -123,7 +123,7 @@ variable
 
 @[simp] lemma lowerGateRec_signedBase
     {initSize : ℕ}
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (hstop :
       ¬ nextSignedWidth x z ops < initSize) :
@@ -141,7 +141,7 @@ variable
 
 @[simp] lemma lowerGateRec_signedStep
     {initSize : ℕ}
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (hrec :
@@ -170,7 +170,7 @@ variable
 @[simp] lemma lowerGateRec_cSignedBase
     {initSize : ℕ}
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (hstop :
       ¬ nextSignedWidth x z ops < initSize) :
@@ -189,7 +189,7 @@ variable
 @[simp] lemma lowerGateRec_cSignedStep
     {initSize : ℕ}
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (hrec :
@@ -370,7 +370,7 @@ lemma lowerable_compileSignedDeallocations
 lemma lowerable_compileAnnotatedOpsToSignedGateAux
     (k : ℕ)
     (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (phaseCoeff : Fin (q k) → ℚ)
     (st : LayoutState k)
     (ops : List (AnnotatedOp k)) :
@@ -399,7 +399,7 @@ lemma lowerable_compileAnnotatedOpsToSignedGateAux
 lemma lowerable_compileOpsToSignedGate
     (k : ℕ)
     (hk : 1 < k)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (coeff : Fin (q k) → ℚ)
@@ -478,7 +478,7 @@ lemma lowerable_compileOpsToCSignedGate
     (k : ℕ)
     (hk : 1 < k)
     (ctrl : ℕ)
-    (phi : ℝ)
+    (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (coeff : Fin (q k) → ℚ)

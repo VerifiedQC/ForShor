@@ -101,7 +101,7 @@ def ShorCorrectApproxLoweredUniform
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
           (x := x.active) (r := ord inst.a inst.N inst.coprime)
           (Q := ASize x.active) (evalC := LowerGateClass.evalL (qs := qs))
-          (C := orderFindingApproxLow qs lowering.k lowering.hk lowering.ops
+          (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
               inst.a inst.N x y work scratch flag
               (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
               (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace

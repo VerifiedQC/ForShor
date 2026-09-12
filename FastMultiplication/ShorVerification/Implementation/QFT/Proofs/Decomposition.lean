@@ -430,9 +430,10 @@ lemma step2_PhaseProdUsing_after_QFT_right
   let right : Reg := rightReg r
   let A     : ℕ  := ASize left
   let B     : ℕ  := ASize right
+  let phi   : Angle := 2 / ((A * B : ℕ) : ℚ)
   qs.eval
     (Gate.PhaseProdUsing
-      ((2 * Real.pi) / (A*B : ℝ))
+      phi
       left right ws)
     (qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b))
     =
@@ -448,6 +449,9 @@ lemma step2_PhaseProdUsing_after_QFT_right
   let right : Reg := rightReg r
   let A : ℕ := ASize left
   let B : ℕ := ASize right
+  let phi   : Angle := 2 / ((A * B : ℕ) : ℚ)
+  have hAngle : Angle.toReal phi = (2 * Real.pi) / ((A * B : ℕ) : ℝ) := by
+    simp only [phi, Angle.toReal]; push_cast; ring
 
   have hQFTright :
       qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b)
@@ -499,10 +503,10 @@ lemma step2_PhaseProdUsing_after_QFT_right
     simpa [hL, hR, mul_assoc, mul_left_comm, mul_comm] using hmain
 
   calc
-    qs.eval (Gate.PhaseProdUsing (2 * Real.pi / (↑A * ↑B)) left right ws)
+    qs.eval (Gate.PhaseProdUsing phi left right ws)
         (qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b))
         =
-      qs.eval (Gate.PhaseProdUsing (2 * Real.pi / (↑A * ↑B)) left right ws)
+      qs.eval (Gate.PhaseProdUsing phi left right ws)
         (((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
           ∑ kH : Fin B,
             (qftPhase B (RegEncoding.toNat right b) kH.1) •
@@ -510,7 +514,7 @@ lemma step2_PhaseProdUsing_after_QFT_right
         simp [hQFTright]
     _ =
       ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
-        qs.eval (Gate.PhaseProdUsing (2 * Real.pi / (↑A * ↑B)) left right ws)
+        qs.eval (Gate.PhaseProdUsing phi left right ws)
           (∑ kH : Fin B,
             (qftPhase B (RegEncoding.toNat right b) kH.1) •
               qs.ket (RegEncoding.writeNat right kH.1 b)) := by
@@ -518,7 +522,7 @@ lemma step2_PhaseProdUsing_after_QFT_right
     _ =
       ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
         ∑ kH : Fin B,
-          qs.eval (Gate.PhaseProdUsing (2 * Real.pi / (↑A * ↑B)) left right ws)
+          qs.eval (Gate.PhaseProdUsing phi left right ws)
             ((qftPhase B (RegEncoding.toNat right b) kH.1) •
               qs.ket (RegEncoding.writeNat right kH.1 b)) := by
         simp [eval_sum_univ_qs]
@@ -526,7 +530,7 @@ lemma step2_PhaseProdUsing_after_QFT_right
       ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
         ∑ kH : Fin B,
           (qftPhase B (RegEncoding.toNat right b) kH.1) •
-            qs.eval (Gate.PhaseProdUsing (2 * Real.pi / (↑A * ↑B)) left right ws)
+            qs.eval (Gate.PhaseProdUsing phi left right ws)
               (qs.ket (RegEncoding.writeNat right kH.1 b)) := by
         simp [qs.eval_smul]
     _ =
@@ -548,10 +552,11 @@ lemma step2_PhaseProdUsing_after_QFT_right
               (qs := qs) ws b kH.1 hclean
         rw [GateSemanticsFacts.eval_PhaseProdUsing_ket
           qs
-          (2 * Real.pi / (↑A * ↑B))
+          phi
           left right ws
           (RegEncoding.writeNat right kH.1 b)
-          hcleanWrite]
+          hcleanWrite,
+          hAngle]
         simp
     _ =
       ((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) •
@@ -586,10 +591,11 @@ lemma step3_QFT_left_after_step2
   let right : Reg := rightReg r
   let A     : ℕ  := ASize left
   let B     : ℕ  := ASize right
+  let phi   : Angle := 2 / ((A * B : ℕ) : ℚ)
   qs.eval (Gate.QFT (ExtReg.ofReg left))
     (qs.eval
       (Gate.PhaseProdUsing
-        ((2 * Real.pi) / (A*B : ℝ))
+        phi
         left right ws)
       (qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b)))
     =
@@ -611,6 +617,7 @@ lemma step3_QFT_left_after_step2
   let right : Reg := rightReg r
   let A : ℕ := ASize left
   let B : ℕ := ASize right
+  let phi   : Angle := 2 / ((A * B : ℕ) : ℚ)
 
   have eval_sum_univ_qs {α : Type} [Fintype α] (U : Gate) (f : α → qs.State) :
       qs.eval U (∑ a : α, f a) = ∑ a : α, qs.eval U (f a) := by
@@ -624,7 +631,7 @@ lemma step3_QFT_left_after_step2
   have hstep2 :
       qs.eval
         (Gate.PhaseProdUsing
-          ((2 * Real.pi) / (A*B : ℝ))
+          phi
           left right ws)
           (qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b))
         =
@@ -634,7 +641,7 @@ lemma step3_QFT_left_after_step2
             *
             (qftPhase (A*B) (RegEncoding.toNat left b) kH.1))
             • qs.ket (RegEncoding.writeNat right kH.1 b) := by
-    simpa [left, right, A, B] using
+    simpa [left, right, A, B, phi] using
       (step2_PhaseProdUsing_after_QFT_right
         (qs := qs) (r := r) (ws := ws) (b := b) hclean)
 
@@ -642,7 +649,7 @@ lemma step3_QFT_left_after_step2
     qs.eval (Gate.QFT (ExtReg.ofReg left))
         (qs.eval
           (Gate.PhaseProdUsing
-            ((2 * Real.pi) / (A*B : ℝ))
+            phi
             left right ws)
           (qs.eval (Gate.QFT (ExtReg.ofReg right)) (qs.ket b)))
         =
@@ -989,7 +996,7 @@ lemma eval_QFT_split_lowLeft_digitRev_ket
     let right : Reg := rightReg r
     let A     : ℕ := ASize left
     let B     : ℕ := ASize right
-    let phi   : ℝ := (2 * Real.pi) / ((A * B : ℕ) : ℝ)
+    let phi   : Angle := 2 / ((A * B : ℕ) : ℚ)
     qs.eval ((Gate.QFT (ExtReg.ofReg right)) ;;
              (Gate.PhaseProdUsing phi left right ws) ;;
              (Gate.QFT (ExtReg.ofReg left))) (qs.ket b)
@@ -1012,7 +1019,7 @@ lemma eval_QFT_split_lowLeft_digitRev_ket
   let right : Reg := rightReg r
   let A     : ℕ := ASize left
   let B     : ℕ := ASize right
-  let phi   : ℝ := (2 * Real.pi) / ((A * B : ℕ) : ℝ)
+  let phi   : Angle := 2 / ((A * B : ℕ) : ℚ)
 
   have hstep :=
     step3_QFT_left_after_step2
@@ -1313,7 +1320,7 @@ lemma eval_QFT_split_ket_ofReg
       let m     : ℕ := nTot / 2
       let left  : Reg := leftReg r
       let right : Reg := rightReg r
-      let phi : ℝ := qftPhi nTot
+      let phi : Angle := qftPhi nTot
       qs.eval
           (Gate.QFT (ExtReg.ofReg r))
           (qs.ket b)
@@ -1334,7 +1341,7 @@ lemma eval_QFT_split_ket_ofReg
   let right : Reg := rightReg r
   let A : ℕ := ASize left
   let B : ℕ := ASize right
-  let phi : ℝ := qftPhi nTot
+  let phi : Angle := qftPhi nTot
 
   have hm : m ≤ regSize r := by
     unfold m nTot
@@ -1361,10 +1368,11 @@ lemma eval_QFT_split_ket_ofReg
     simpa [ASize] using hAB
 
   have hPhi :
-      phi = (2 * Real.pi) / ((A * B : ℕ) : ℝ) := by
+      phi = (2 : ℚ) / ((A * B : ℕ) : ℚ) := by
     unfold phi qftPhi
-    simp_all
-    rfl
+    rw [hAB_pow]
+    push_cast
+    ring
 
   let C : ℂ :=
     (((1 / Real.sqrt ((B : ℕ) : ℝ) : ℂ)) *

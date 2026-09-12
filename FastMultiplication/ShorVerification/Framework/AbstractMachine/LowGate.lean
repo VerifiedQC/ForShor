@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Framework.Quantum.Registers
+import FastMultiplication.ShorVerification.Framework.AbstractMachine.Angle
 import Mathlib.Data.Complex.Basic
 
 namespace Shor
@@ -26,7 +27,7 @@ inductive LowGate : Type
 
   | H : ℕ → LowGate
   | X : ℕ → LowGate
-  | Phase : ℕ → ℝ → LowGate
+  | Phase : ℕ → Angle → LowGate
   | CNOT : ℕ → ℕ → LowGate
   | Toffoli : ℕ → ℕ → ℕ → LowGate
 
