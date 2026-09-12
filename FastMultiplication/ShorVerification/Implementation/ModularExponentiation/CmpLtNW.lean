@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.GateConstructions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 
 namespace Shor
 

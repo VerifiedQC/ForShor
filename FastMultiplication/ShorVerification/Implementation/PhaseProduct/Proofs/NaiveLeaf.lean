@@ -1,104 +1,19 @@
-import FastMultiplication.ShorVerification.Framework.Semantics.LowGateSemantics
-import FastMultiplication.ShorVerification.Framework.Gatecount.CostModel
-import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.NaiveLeaf
+
+/-!
+# Naive phase-product leaf: correctness
+
+Correctness lemmas for the naive (reference) signed/controlled phase-product
+circuits defined in `Gates/NaiveLeaf.lean`. The apex theorems
+(`evalL_naive_signedPhaseProd_ket`, `gateCount_Naive_SignedPhaseProd`,
+`evalL_naive_csignedPhaseProd_ket`, `gateCount_Naive_CSignedPhaseProd`) stay
+here rather than in `Main.lean`: they are consumed by
+`Proofs/Lowering/EvalL.lean` and `GateCount/PhaseProduct/Lemmas.lean`.
+-/
 
 namespace Shor
 
-namespace LowGate
-
-def sequence : List LowGate → LowGate
-  | [] => LowGate.id
-  | g :: gs => g ;; sequence gs
-
-def CPhase
-    (ctrl target : ℕ)
-    (theta : Angle) : LowGate :=
-  if ctrl = target then
-    LowGate.Phase ctrl theta
-  else
-    LowGate.Phase ctrl (theta / 2) ;;
-    LowGate.Phase target (theta / 2) ;;
-    LowGate.CNOT ctrl target ;;
-    LowGate.Phase target (-theta / 2) ;;
-    LowGate.CNOT ctrl target
-
-end LowGate
-
-def signedBitWeight (width i : ℕ) : ℤ :=
-  if i + 1 = width then
-    -((2 : ℤ) ^ i)
-  else
-    (2 : ℤ) ^ i
-
-def signedTermsAux :
-    ℕ → ℕ → List ℕ → List (ℕ × ℤ)
-  | _, _, [] => []
-  | width, i, q :: qs =>
-      (q, signedBitWeight width i) ::
-        signedTermsAux width (i + 1) qs
-
-def signedTerms (r : ExtReg) : List (ℕ × ℤ) :=
-  signedTermsAux r.width 0 r.active.qubits
-
-def signedPairAngle
-    (phi : Angle)
-    (xTerm zTerm : ℕ × ℤ) : Angle :=
-  phi * (xTerm.2 : ℚ) * (zTerm.2 : ℚ)
-
-namespace LowGate
-
-def naiveSignedPhaseGates
-    (phi : Angle)
-    (x z : ExtReg) : List LowGate :=
-  (signedTerms x).flatMap fun xTerm =>
-    (signedTerms z).map fun zTerm =>
-      LowGate.CPhase
-        xTerm.1
-        zTerm.1
-        (signedPairAngle phi xTerm zTerm)
-
-def Naive_SignedPhaseProd
-    (phi : Angle)
-    (x z : ExtReg) : LowGate :=
-  LowGate.sequence (naiveSignedPhaseGates phi x z)
-
-end LowGate
-
 namespace LowerGateClass
-
-def basisBitInt
-    {Basis : Type*}
-    [RegEncoding Basis]
-    (q : ℕ)
-    (b : Basis) : ℤ :=
-  if RegEncoding.bit q b then 1 else 0
-
-def signedTermValue
-    {Basis : Type*}
-    [RegEncoding Basis]
-    (b : Basis)
-    (t : ℕ × ℤ) : ℤ :=
-  t.2 * basisBitInt t.1 b
-
-noncomputable def signedPairExponent
-    {Basis : Type*}
-    [RegEncoding Basis]
-    (phi : Angle)
-    (b : Basis)
-    (xTerm zTerm : ℕ × ℤ) : ℂ :=
-  ((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
-    (((signedTermValue b xTerm : ℤ) : ℂ) *
-     (((signedTermValue b zTerm : ℤ) : ℂ)))
-
-noncomputable def naiveSignedPhaseExponents
-    {Basis : Type*}
-    [RegEncoding Basis]
-    (phi : Angle)
-    (x z : ExtReg)
-    (b : Basis) : List ℂ :=
-  (signedTerms x).flatMap fun xTerm =>
-    (signedTerms z).map fun zTerm =>
-      signedPairExponent phi b xTerm zTerm
 
 @[simp] theorem bit_writeNat_qubitReg_zero
     {Basis : Type u}
@@ -995,3 +910,534 @@ theorem gateCount_Naive_SignedPhaseProd
   simp [Nat.mul_assoc]
 
 end LowerGateClass
+
+namespace LowerGateClass
+
+theorem bit_toffoliBasis_of_ne_target
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (c₁ c₂ target q : ℕ)
+    (b : Basis)
+    (hq : q ≠ target) :
+    RegEncoding.bit q (toffoliBasis c₁ c₂ target b) =
+      RegEncoding.bit q b := by
+  by_cases hbad : c₁ = c₂ ∨ c₁ = target ∨ c₂ = target
+  · simp [toffoliBasis, hbad]
+  · by_cases hctrl :
+        RegEncoding.bit c₁ b ∧ RegEncoding.bit c₂ b
+    · calc
+        RegEncoding.bit q (toffoliBasis c₁ c₂ target b)
+            =
+          RegEncoding.bit q
+            (RegEncoding.writeNat
+              (qubitReg target)
+              (if RegEncoding.bit target b then 0 else 1)
+              b) := by
+                simp [toffoliBasis, hbad, hctrl]
+        _ = RegEncoding.bit q b := by
+          apply RegEncoding.bit_writeNat_out
+          simpa [qubitReg, Reg.singleton] using hq
+    · simp [toffoliBasis, hbad, hctrl]
+
+theorem bit_toffoliBasis_target_of_distinct
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (c₁ c₂ target : ℕ)
+    (b : Basis)
+    (h12 : c₁ ≠ c₂)
+    (h1t : c₁ ≠ target)
+    (h2t : c₂ ≠ target) :
+    RegEncoding.bit target (toffoliBasis c₁ c₂ target b) =
+      if RegEncoding.bit c₁ b ∧ RegEncoding.bit c₂ b then
+        !RegEncoding.bit target b
+      else
+        RegEncoding.bit target b := by
+  have hbad : ¬ (c₁ = c₂ ∨ c₁ = target ∨ c₂ = target) := by
+    intro h
+    rcases h with h | h | h
+    · exact h12 h
+    · exact h1t h
+    · exact h2t h
+  by_cases hctrl :
+      RegEncoding.bit c₁ b ∧ RegEncoding.bit c₂ b
+  · cases ht : RegEncoding.bit target b <;>
+      simp [toffoliBasis, hbad, hctrl, ht]
+  · simp [toffoliBasis, hbad, hctrl]
+
+@[simp] theorem bit_toffoliBasis_ctrl_left
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (c₁ c₂ target : ℕ)
+    (b : Basis)
+    (h1t : c₁ ≠ target) :
+    RegEncoding.bit c₁ (toffoliBasis c₁ c₂ target b) =
+      RegEncoding.bit c₁ b :=
+  bit_toffoliBasis_of_ne_target c₁ c₂ target c₁ b h1t
+
+@[simp] theorem bit_toffoliBasis_ctrl_right
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (c₁ c₂ target : ℕ)
+    (b : Basis)
+    (h2t : c₂ ≠ target) :
+    RegEncoding.bit c₂ (toffoliBasis c₁ c₂ target b) =
+      RegEncoding.bit c₂ b :=
+  bit_toffoliBasis_of_ne_target c₁ c₂ target c₂ b h2t
+
+@[simp] theorem toffoliBasis_involutive
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (c₁ c₂ target : ℕ)
+    (b : Basis) :
+    toffoliBasis c₁ c₂ target
+      (toffoliBasis c₁ c₂ target b) = b := by
+  by_cases hbad : c₁ = c₂ ∨ c₁ = target ∨ c₂ = target
+  · simp [toffoliBasis, hbad]
+  · have h12 : c₁ ≠ c₂ := by
+      intro h
+      exact hbad (Or.inl h)
+    have h1t : c₁ ≠ target := by
+      intro h
+      exact hbad (Or.inr (Or.inl h))
+    have h2t : c₂ ≠ target := by
+      intro h
+      exact hbad (Or.inr (Or.inr h))
+    apply RegEncoding.basis_ext
+    intro q
+    by_cases hqt : q = target
+    · subst q
+      rw [
+        bit_toffoliBasis_target_of_distinct
+          c₁ c₂ target
+          (toffoliBasis c₁ c₂ target b)
+          h12 h1t h2t,
+        bit_toffoliBasis_ctrl_left c₁ c₂ target b h1t,
+        bit_toffoliBasis_ctrl_right c₁ c₂ target b h2t,
+        bit_toffoliBasis_target_of_distinct
+          c₁ c₂ target b h12 h1t h2t
+      ]
+      cases RegEncoding.bit c₁ b <;>
+        cases RegEncoding.bit c₂ b <;>
+        cases RegEncoding.bit target b <;>
+        rfl
+    · rw [
+        bit_toffoliBasis_of_ne_target
+          c₁ c₂ target q
+          (toffoliBasis c₁ c₂ target b)
+          hqt,
+        bit_toffoliBasis_of_ne_target
+          c₁ c₂ target q b hqt
+      ]
+
+private theorem forall₂_append_cSignedPhase
+    {α β : Type*}
+    {R : α → β → Prop}
+    {xs us : List α}
+    {ys vs : List β}
+    (hxs : List.Forall₂ R xs ys)
+    (hus : List.Forall₂ R us vs) :
+    List.Forall₂ R (xs ++ us) (ys ++ vs) := by
+  induction hxs with
+  | nil =>
+      simpa using hus
+  | cons hxy _ ih =>
+      simp
+      exact ⟨hxy, ih⟩
+
+theorem evalL_CCPhase_ket
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    (a c d : ℕ)
+    (theta : Angle)
+    (b : qs.Basis) :
+    LowerGateClass.evalL
+        (qs := qs)
+        (LowGate.CCPhase a c d theta)
+        (qs.ket b)
+      =
+    Complex.exp
+      (((Angle.toReal theta : ℝ) : ℂ) * Complex.I *
+        (((basisBitInt a b : ℤ) : ℂ) *
+          (((basisBitInt c b : ℤ) : ℂ) *
+           (((basisBitInt d b : ℤ) : ℂ))))) •
+        qs.ket b := by
+    by_cases hac : a = c
+    · subst c
+      cases ha : RegEncoding.bit a b <;>
+        cases hd : RegEncoding.bit d b <;>
+        simp [
+          LowGate.CCPhase,
+          evalL_CPhase_ket,
+          basisBitInt,
+          ha,
+          hd
+        ]
+    · by_cases had : a = d
+      · subst d
+        cases ha : RegEncoding.bit a b <;>
+          cases hc : RegEncoding.bit c b <;>
+          simp [
+            LowGate.CCPhase,
+            hac,
+            evalL_CPhase_ket,
+            basisBitInt,
+            ha,
+            hc
+          ]
+      · by_cases hcd : c = d
+        · subst d
+          cases ha : RegEncoding.bit a b <;>
+            cases hc : RegEncoding.bit c b <;>
+            simp [
+              LowGate.CCPhase,
+              hac,
+              evalL_CPhase_ket,
+              basisBitInt,
+              ha,
+              hc
+            ]
+        · cases ha : RegEncoding.bit a b <;>
+            cases hc : RegEncoding.bit c b <;>
+            cases hd : RegEncoding.bit d b <;>
+            simp [
+              LowGate.CCPhase,
+              hac,
+              had,
+              hcd,
+              evalL_CPhase_ket,
+              LowerGateClass.evalL_seq,
+              LowerGateClass.evalL_Phase_ket,
+              LowerGateClass.evalL_Toffoli_ket,
+              LowerGateClass.evalL_smul,
+              basisBitInt,
+              bit_toffoliBasis_target_of_distinct,
+              toffoliBasis_involutive,
+              ha,
+              hc,
+              hd,
+              smul_smul
+            ] <;>
+            first
+            | rw [
+                show
+                  Complex.exp ((Angle.toReal (theta / 2) : ℝ) * Complex.I) *
+                      Complex.exp ((Angle.toReal (-theta / 2) : ℝ) * Complex.I) =
+                    1 by
+                  rw [Angle.toReal_div, Angle.toReal_div, Angle.toReal_neg]
+                  simpa using complex_exp_half_cancel (Angle.toReal theta)
+              ]
+              simp
+            | rw [
+                show
+                  Complex.exp ((Angle.toReal (theta / 2) : ℝ) * Complex.I) *
+                      Complex.exp ((Angle.toReal (theta / 2) : ℝ) * Complex.I) =
+                    Complex.exp ((Angle.toReal theta : ℝ) * Complex.I) by
+                  rw [Angle.toReal_div]
+                  simpa using complex_exp_half_square (Angle.toReal theta)
+              ]
+
+theorem evalL_cSignedPairPhase_ket
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    (ctrl : ℕ)
+    (phi : Angle)
+    (xTerm zTerm : ℕ × ℤ)
+    (b : qs.Basis) :
+    LowerGateClass.evalL
+        (qs := qs)
+        (LowGate.CCPhase
+          ctrl
+          xTerm.1
+          zTerm.1
+          (signedPairAngle phi xTerm zTerm))
+        (qs.ket b)
+      =
+    Complex.exp
+        (cSignedPairExponent
+          ctrl phi b xTerm zTerm) •
+      qs.ket b := by
+  rw [evalL_CCPhase_ket]
+  by_cases hc : RegEncoding.bit ctrl b
+  · simp only [
+      cSignedPairExponent,
+      hc,
+      if_true,
+      signedPairExponent,
+      signedPairAngle,
+      signedTermValue,
+      basisBitInt,
+      Angle.toReal
+    ]
+    push_cast
+    ring_nf
+  · simp [
+      cSignedPairExponent,
+      hc,
+      signedPairAngle,
+      basisBitInt
+    ]
+
+theorem naiveCSignedPhaseGates_diagonal
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    (ctrl : ℕ)
+    (phi : Angle)
+    (x z : ExtReg)
+    (b : qs.Basis) :
+    List.Forall₂
+      (fun g e =>
+        LowerGateClass.evalL
+            (qs := qs) g (qs.ket b)
+          =
+        Complex.exp e • qs.ket b)
+        (LowGate.naiveCSignedPhaseGates ctrl phi x z)
+        (naiveCSignedPhaseExponents ctrl phi x z b) := by
+    unfold LowGate.naiveCSignedPhaseGates naiveCSignedPhaseExponents
+    induction signedTerms x with
+    | nil =>
+        simp
+    | cons xTerm xs ih =>
+        have hhead :
+            List.Forall₂
+              (fun g e =>
+                LowerGateClass.evalL
+                    (qs := qs) g (qs.ket b)
+                  =
+                Complex.exp e • qs.ket b)
+              ((signedTerms z).map fun zTerm =>
+                LowGate.CCPhase
+                  ctrl
+                  xTerm.1
+                  zTerm.1
+                  (signedPairAngle phi xTerm zTerm))
+              ((signedTerms z).map fun zTerm =>
+                cSignedPairExponent
+                  ctrl phi b xTerm zTerm) := by
+          induction signedTerms z with
+          | nil =>
+              simp
+          | cons zTerm zs ihz =>
+              simp [evalL_cSignedPairPhase_ket, ihz]
+        exact forall₂_append_cSignedPhase hhead ih
+
+theorem evalL_naiveCSignedPhaseGates_ket
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    (ctrl : ℕ)
+    (phi : Angle)
+    (x z : ExtReg)
+    (b : qs.Basis) :
+    LowerGateClass.evalL
+        (qs := qs)
+        (LowGate.sequence
+          (LowGate.naiveCSignedPhaseGates
+            ctrl phi x z))
+        (qs.ket b)
+      =
+    Complex.exp
+        (naiveCSignedPhaseExponents
+          ctrl phi x z b).sum •
+        qs.ket b := by
+    exact
+      evalL_sequence_of_diagonal
+        b
+        (LowGate.naiveCSignedPhaseGates ctrl phi x z)
+        (naiveCSignedPhaseExponents ctrl phi x z b)
+        (naiveCSignedPhaseGates_diagonal ctrl phi x z b)
+
+private lemma sum_map_zero
+    {α : Type*}
+    (xs : List α) :
+    (xs.map fun _ => (0 : ℂ)).sum = 0 := by
+  induction xs with
+  | nil =>
+      rfl
+  | cons _ xs ih =>
+      simp
+
+private lemma sum_flatMap_map_zero
+    {α β : Type*}
+    (xs : List α)
+    (ys : List β) :
+    (xs.flatMap fun _ => ys.map fun _ => (0 : ℂ)).sum = 0 := by
+  induction xs with
+  | nil =>
+      rfl
+  | cons _ xs ih =>
+      change
+        ((ys.map fun _ => (0 : ℂ)) ++
+          (xs.flatMap fun _ => ys.map fun _ => (0 : ℂ))).sum = 0
+      rw [List.sum_append, sum_map_zero ys, ih]
+      simp
+
+theorem naiveCSignedPhaseExponents_sum
+    {Basis : Type*}
+    [RegEncoding Basis]
+    (ctrl : ℕ)
+    (phi : Angle)
+    (x z : ExtReg)
+    (b : Basis) :
+    (naiveCSignedPhaseExponents
+        ctrl phi x z b).sum
+      =
+    if RegEncoding.bit ctrl b then
+      ((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
+        (((extToInt x b : ℤ) : ℂ) *
+         (((extToInt z b : ℤ) : ℂ)))
+    else
+      0 := by
+  by_cases hc : RegEncoding.bit ctrl b
+  · have h :
+        naiveCSignedPhaseExponents ctrl phi x z b =
+          naiveSignedPhaseExponents phi x z b := by
+      simp [
+        naiveCSignedPhaseExponents,
+        naiveSignedPhaseExponents,
+        cSignedPairExponent,
+        hc
+      ]
+    rw [h, naiveSignedPhaseExponents_sum]
+    simp [hc]
+  · have h :
+        (naiveCSignedPhaseExponents
+          ctrl phi x z b).sum = 0 := by
+      unfold naiveCSignedPhaseExponents
+      simpa [cSignedPairExponent, hc] using
+        sum_flatMap_map_zero (signedTerms x) (signedTerms z)
+    rw [h]
+    simp [hc]
+
+theorem evalL_naive_csignedPhaseProd_ket
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    (ctrl : ℕ)
+    (phi : Angle)
+    (x z : ExtReg)
+    (b : qs.Basis) :
+    LowerGateClass.evalL
+        (qs := qs)
+        (LowGate.Naive_CSignedPhaseProd ctrl phi x z)
+        (qs.ket b)
+      =
+    if RegEncoding.bit ctrl b then
+      (Complex.exp
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
+          (((extToInt x b : ℤ) : ℂ) *
+           (((extToInt z b : ℤ) : ℂ))))) •
+        qs.ket b
+    else
+      qs.ket b := by
+  unfold LowGate.Naive_CSignedPhaseProd
+  rw [
+    evalL_naiveCSignedPhaseGates_ket,
+    naiveCSignedPhaseExponents_sum
+  ]
+  by_cases hc : RegEncoding.bit ctrl b
+  · simp [hc]
+  · simp [hc]
+
+end LowerGateClass
+
+namespace LowGate
+
+lemma gateCount_CCPhase_of_distinct
+    (M : LowGateCostModel)
+    (a b c : ℕ)
+    (theta : Angle)
+    (hab : a ≠ b)
+    (hac : a ≠ c)
+    (hbc : b ≠ c) :
+    LowGate.gateCount M
+        (LowGate.CCPhase a b c theta) = 9 := by
+  simp [
+    LowGate.CCPhase,
+    LowGate.CPhase,
+    LowGate.gateCount,
+    hab,
+    hac,
+    hbc
+  ]
+
+lemma naiveCSignedPhaseGates_length
+    (ctrl : ℕ)
+    (phi : Angle)
+    (x z : ExtReg) :
+    (LowGate.naiveCSignedPhaseGates ctrl phi x z).length =
+      x.width * z.width := by
+  unfold LowGate.naiveCSignedPhaseGates
+  rw [LowerGateClass.flatMap_map_length]
+  simp
+
+theorem gateCount_Naive_CSignedPhaseProd
+    (M : LowGateCostModel)
+    (ctrl : ℕ)
+    (phi : Angle)
+    (x z : ExtReg)
+    (hdisjoint : ExtReg.OwnedDisjoint x z)
+    (hctrlX : ctrl ∉ x.ownedQubits)
+    (hctrlZ : ctrl ∉ z.ownedQubits) :
+    LowGate.gateCount M
+        (LowGate.Naive_CSignedPhaseProd ctrl phi x z)
+      =
+    9 * ExtReg.width x * ExtReg.width z := by
+  have hgate :
+      ∀ g ∈ LowGate.naiveCSignedPhaseGates ctrl phi x z,
+        LowGate.gateCount M g = 9 := by
+    intro g hg
+    simp only [
+      LowGate.naiveCSignedPhaseGates,
+      List.mem_flatMap,
+      List.mem_map
+    ] at hg
+    rcases hg with ⟨xTerm, hxTerm, zTerm, hzTerm, rfl⟩
+    have hxactive :
+        xTerm.1 ∈ x.active.qubits :=
+      LowerGateClass.signedTerms_fst_mem hxTerm
+    have hzactive :
+        zTerm.1 ∈ z.active.qubits :=
+      LowerGateClass.signedTerms_fst_mem hzTerm
+    have hxowned :
+        xTerm.1 ∈ x.ownedQubits := by
+      simp [ExtReg.ownedQubits, hxactive]
+    have hzowned :
+        zTerm.1 ∈ z.ownedQubits := by
+      simp [ExtReg.ownedQubits, hzactive]
+    have hctrlXTerm : ctrl ≠ xTerm.1 := by
+      intro h
+      rw [← h] at hxowned
+      exact hctrlX hxowned
+    have hctrlZTerm : ctrl ≠ zTerm.1 := by
+      intro h
+      rw [← h] at hzowned
+      exact hctrlZ hzowned
+    have hxz :
+        xTerm.1 ≠ zTerm.1 :=
+      LowerGateClass.signedTerms_ne_of_ownedDisjoint
+        x z hdisjoint hxTerm hzTerm
+    exact
+      LowGate.gateCount_CCPhase_of_distinct
+        M ctrl xTerm.1 zTerm.1
+        (signedPairAngle phi xTerm zTerm)
+        hctrlXTerm
+        hctrlZTerm
+        hxz
+
+  unfold LowGate.Naive_CSignedPhaseProd
+  rw [LowerGateClass.LowGate.gateCount_sequence]
+  rw [
+    LowerGateClass.list_sum_map_eq_mul_length_of_constant
+      (LowGate.gateCount M)
+      9
+      (LowGate.naiveCSignedPhaseGates ctrl phi x z)
+      hgate
+  ]
+  rw [LowGate.naiveCSignedPhaseGates_length]
+  simp [Nat.mul_assoc]
+
+end LowGate
+end Shor

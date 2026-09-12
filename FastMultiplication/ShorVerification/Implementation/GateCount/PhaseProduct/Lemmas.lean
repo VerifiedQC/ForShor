@@ -1,6 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.GateCount.Definitions
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.MasterTheoremProof
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.NaiveLeaf
 
 namespace Shor
 

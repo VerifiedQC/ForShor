@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Assertions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Assertions
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Main
 
 /-!

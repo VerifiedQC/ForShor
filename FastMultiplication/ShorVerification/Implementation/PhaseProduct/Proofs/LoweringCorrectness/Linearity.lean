@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.PlanSemantics
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
 
 namespace Shor
 open Gate
@@ -60,31 +61,6 @@ lemma eval_SignedPhaseProd_preserves_recursiveWorkspaceClean
         CleanClosure.smul
           a
           ihψ
-/-- A basis state has zeroes in every reserve bit owned by a layout. -/
-def LayoutReserveCleanBasis
-    {Basis : Type u}
-    [RegEncoding Basis]
-    {k : ℕ}
-    (st : LayoutState k)
-    (b : Basis) :
-    Prop :=
-  (∀ i : Fin k,
-    ExtReg.FreshFor
-      (st.xslot i)
-      (st.xslot i).capacity
-      b)
-  ∧
-  (∀ i : Fin k,
-    ExtReg.FreshFor
-      (st.zslot i)
-      (st.zslot i).capacity
-      b)
-
-/-- State-level reserve cleanliness, generated from clean basis states and linear closure. -/
-abbrev LayoutReserveCleanState
-    (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ} (st : LayoutState k) : qs.State → Prop :=
-  CleanClosure (fun b => LayoutReserveCleanBasis st b)
-
 /-- A ready standard plan preserves recursive workspace cleanliness after low-level evaluation. -/
 lemma standardSignedPhaseLoweringPlan_preserves_clean_of_ready
     (qs : QSemantics)

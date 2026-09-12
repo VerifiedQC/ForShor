@@ -1,5 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
 
 /-!
 # Phase-Product Gate-Level Support Lemmas
@@ -135,22 +136,6 @@ noncomputable def phaseScalarFrom
         (((evalRowX (qs := qs) st (expectedRow (k := k) pt) b0 : ℤ) : ℂ) *
          (((evalRowZ (qs := qs) st (expectedRow (k := k) pt) b0 : ℤ) : ℂ))))
     * phaseScalarFrom k phi coeff st b0 pts (n + 1) hn'
-
-/-- All reserve bits that would be activated when growing to `W` are zero in basis `b`. -/
-def LayoutState.CleanForGrowth {Basis : Type u} [RegEncoding Basis] {k : ℕ} (src : LayoutState k) (W : ℕ) (b : Basis) : Prop :=
-  (∀ i, ExtReg.FreshFor (src.xslot i) (W - (src.xslot i).width) b) ∧
-  (∀ i, ExtReg.FreshFor (src.zslot i) (W - (src.zslot i).width) b)
-
-/-- Concrete workspace hypothesis for running allocation gates from `src` to the scanned width. -/
-def CompilerWorkspaceOK {Basis : Type u} [RegEncoding Basis] {k : ℕ} (src : LayoutState k) (need : NeededWidths k) (b : Basis) : Prop :=
-  let Wwork := commonNeededWidth need
-  src.CanGrowTo Wwork ∧ src.CleanForGrowth Wwork b
-
-/-- Linear closure of basis states whose relevant compiler workspace is clean
-(`CleanClosure` at the compiler-workspace-clean predicate). -/
-abbrev CleanWorkspaceState (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
-    (src : LayoutState k) (need : NeededWidths k) : qs.State → Prop :=
-  CleanClosure (fun b => CompilerWorkspaceOK src need b)
 
 /-! =========================================================
     Start-State And Initial Layout Facts

@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.DefsCore
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.NaiveCPhaseProduct
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.NaiveLeaf
 
 namespace Shor
 open Gate
