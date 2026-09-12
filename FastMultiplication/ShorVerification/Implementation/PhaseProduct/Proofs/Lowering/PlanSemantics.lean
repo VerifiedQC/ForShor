@@ -1,7 +1,7 @@
 import Mathlib.Data.Nat.Bitwise
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.Main
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Lowerable
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.CompilationCorrectness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Correctness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Lowerable
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Compilation
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
 
 namespace Shor

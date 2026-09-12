@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Linearity
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Linearity
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 
 namespace Shor

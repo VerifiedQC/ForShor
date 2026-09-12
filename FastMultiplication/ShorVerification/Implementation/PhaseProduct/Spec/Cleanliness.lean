@@ -10,8 +10,8 @@ compiler-workspace cleanliness during a recursive compile step
 layout (`LayoutReserveCleanBasis`, `LayoutReserveCleanState`), and cleanliness
 of the complete reserves (`RecursiveWorkspaceCleanState`,
 `SignedRecursiveWorkspaceStateOK`, `CSignedRecursiveWorkspaceStateOK`). Split
-out of `DefsCore.lean`, `Proofs/GateLevelCorrectness/SupportLemmas.lean`, and
-`Proofs/LoweringCorrectness/Linearity.lean` because these are definitions, not
+out of `DefsCore.lean`, `Proofs/Compiler/Support.lean`, and
+`Proofs/Lowering/Linearity.lean` because these are definitions, not
 proofs, and `PhaseLoweringReady`/`Assertions.lean` need them.
 -/
 

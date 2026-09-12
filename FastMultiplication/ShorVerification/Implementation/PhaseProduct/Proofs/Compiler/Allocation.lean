@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.WidthSoundness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.WidthSoundness
 
 /-!
 # Phase-Product Allocation Correctness

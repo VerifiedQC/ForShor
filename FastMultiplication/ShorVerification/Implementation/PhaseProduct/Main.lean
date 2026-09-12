@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Assertions
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Main
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Correctness
 
 /-!
 # Phase-Product Main Theorems

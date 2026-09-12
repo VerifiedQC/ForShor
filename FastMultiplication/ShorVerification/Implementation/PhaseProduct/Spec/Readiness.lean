@@ -9,7 +9,7 @@ phase-product lowering plan on a state. Lowering plans contain primitive low
 gates and recursive phase-product calls; primitive gates need no semantic
 precondition, while recursive nodes require a clean recursive workspace
 before the child plan runs and then readiness for that child plan. Split out
-of `Proofs/LoweringCorrectness/PlanSemantics.lean` because `QFT/Defs.lean`
+of `Proofs/Lowering/PlanSemantics.lean` because `QFT/Defs.lean`
 needs this definition to *define* `QFTLoweringReady`, and definitions must
 not live in `Proofs/`.
 -/

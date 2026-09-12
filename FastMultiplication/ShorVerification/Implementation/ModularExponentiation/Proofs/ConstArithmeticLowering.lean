@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.ConstArithmeticLowering
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.EvalLLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.EvalL
 
 /-!
 # Correctness of concrete Step-3 constant arithmetic lowering

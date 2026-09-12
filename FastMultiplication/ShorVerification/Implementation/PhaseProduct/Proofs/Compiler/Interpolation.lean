@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.SupportLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Support
 
 /-!
 # Phase-Product Interpolation Correctness

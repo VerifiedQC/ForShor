@@ -1,5 +1,5 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.BodyCorrectness
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.GateLevelCorrectness.InterpolationCorrectness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Body
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Interpolation
 
 namespace Shor
 open Gate

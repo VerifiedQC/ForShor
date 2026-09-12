@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.PlanSemantics
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
 
 namespace Shor
