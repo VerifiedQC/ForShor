@@ -1,6 +1,8 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Defs
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.OrderFinding
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
 import Mathlib.Data.Real.Basic

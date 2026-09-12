@@ -1,5 +1,10 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Widths
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.PlanBuilders
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Linearity
 

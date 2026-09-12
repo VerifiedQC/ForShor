@@ -110,52 +110,77 @@ Implementation/PhaseProduct/
     Lowering/Workspace.lean        ← LoweringCorrectness/Workspace.lean
     Lowering/PlanReadiness.lean    ← LoweringCorrectness/PlanReadiness.lean
     Lowering/Correctness.lean      ← LoweringCorrectness/Main.lean
-  Defs.lean             umbrella: imports every file under Compiler/, Gates/, Lowering/, Spec/, plus `Math.ToomCook`, `Math.MasterTheorem`, `Math.Table_Generation` (the existing umbrella) and `Implementation.Semantics.CleanClosure`
+  (no Defs.lean)        DELETED in step 6 — there are no umbrella files; consumers import the file that defines what they use (§3)
   Main.lean             UNCHANGED content; imports `Spec.Assertions` and `Proofs.Lowering.Correctness` (+ `Proofs.Compiler.Correctness` if the `simpa` set needs it — it currently does via the old import chain)
 ```
 
-Deleted after the move: `DefsCore.lean`, `PhaseLoweringPlan.lean` (contents split),
+Deleted after the move: `DefsCore.lean`, `PhaseLoweringPlan.lean` (contents split), `Defs.lean`
+(was a one-line re-export of `Lowering.Lower` after step 4 — an umbrella),
 `Proofs/GateLevelCorrectness/`, `Proofs/LoweringCorrectness/`, `Proofs/Naive*PhaseProduct.lean`.
 
 ## 3. External consumers — import rewrites
 
-Outside `PhaseProduct/`, only these targets are allowed:
-`Implementation.PhaseProduct.Defs` (definitions), `Implementation.PhaseProduct.Main`
-(theorems), `Implementation.PhaseProduct.Math.*` (including the unchanged
-`Math.Table_Generation.*` paths), `Implementation.Semantics.*`, and — for proof files that
-genuinely reuse phase-product *proofs* — `Implementation.PhaseProduct.Proofs.Lowering.*`
-(documented exceptions below).
+**No umbrella imports.** There is no `Defs.lean`. The rule for every `import` line, inside or
+outside `PhaseProduct/`, is the *justified-import rule*: an import of module `M` is allowed only
+if the importing file uses **directly** (by name, in its own text) at least one declaration
+that `M` itself defines. Relying on `M`'s transitive imports to bring in a name you use is
+not allowed — import the defining file too. (Lean does not warn about unused imports, so this
+is enforced by reading, not by the compiler.) The only exception is `Math.Table_Generation*`,
+which is out of scope and keeps whatever imports it has today.
 
-| File | Old import (suffix after `Implementation.PhaseProduct.`) | New import |
-|---|---|---|
-| `GateCount/Definitions.lean`, `GateCount/PhaseProduct/{Lemmas,Main}.lean`, `GateCount/QFT_GateCount.lean`, `GateCount/Shor_GateCount.lean` | `Defs` | `Defs` (unchanged) |
-| `GateCount/PhaseProduct/Lemmas.lean` | `Math.MasterTheoremProof` | `Math.MasterTheorem` |
-| `ModularExponentiation/Defs.lean`, `CmpLtNW.lean`, `ConstArithmeticLowering.lean`, `Proofs/{Core,Step1QPE,Step2Bound,Algorithm1Expansion}.lean` | `Proofs.GateLevelCorrectness.GateSemanticsLemmas` | `Implementation.Semantics.GateSemanticsLemmas` (+ `PhaseProduct.Defs` where not already present) |
-| `ModularExponentiation/Proofs/Algorithm1Expansion.lean`, `Shor/Defs.lean`, `Shor/Proofs/Budgets.lean` | `Proofs.LoweringCorrectness.Workspace` | `Shor/Defs.lean`: drop (it uses nothing from it; `Defs` suffices). `Budgets.lean`, `Algorithm1Expansion.lean`: `Proofs.Lowering.Workspace` (exception: they use `FreshZero.of_subset`) |
-| `ModularExponentiation/Proofs/ConstArithmeticLowering.lean` | `Proofs.LoweringCorrectness.EvalLLemmas` | `Proofs.Lowering.EvalL` (exception) |
-| `QFT/Defs.lean` | `Proofs.GateLevelCorrectness.GateSemanticsLemmas`, `Proofs.LoweringCorrectness.Linearity` | `Implementation.Semantics.GateSemanticsLemmas`, `Defs` (for `PhaseLoweringReady` via `Spec/Readiness`), and `Proofs.Lowering.Linearity` (exception: `QFTLoweringReady.zero` uses `PhaseLoweringReady.zero`, `evalL_lowerGateRec_zero`) |
-| `QFT/Proofs/Decomposition.lean`, `QFT/Proofs/LoweringCorrectness/PlanSemantics.lean` | `…GateSemanticsLemmas`, `…LoweringCorrectness.Linearity` | `Implementation.Semantics.GateSemanticsLemmas`, `Proofs.Lowering.Linearity` |
-| `QFT/Proofs/LoweringCorrectness/Readiness.lean` | `…GateSemanticsLemmas`, `…LoweringCorrectness.PlanReadiness` | `Implementation.Semantics.GateSemanticsLemmas`, `Proofs.Lowering.PlanReadiness` |
-| `Reference/StandardLoweringSetup.lean` | `Math.Table_Generation.Programs.WithProduct` | unchanged |
-| `Shor/Defs.lean`, `Shor/Proofs/WholeProgramCorrectness.lean` | `Main` | `Main` (unchanged) |
-| every file using `CleanClosure` (`QFT/Defs`, `QFT/Proofs/LoweringCorrectness/{PlanSemantics,Readiness}`, `Shor/Defs`, `Shor/Proofs/{Budgets,Readiness}`, `ModularExponentiation/{ConstArithmeticLowering,Proofs/ConstArithmeticLowering}`) | (transitively via `Defs`) | add `Implementation.Semantics.CleanClosure` only if the build asks for it; `Defs` re-exports it |
+After step 6 the file `Defs.lean` no longer exists, so every `import …PhaseProduct.Defs` line
+must be replaced. The table below was produced by scanning each consumer for identifiers
+defined in the new definition files; it is a **starting point**, not the final answer, because
+the scan misses namespace-qualified uses (e.g. `Gate.PhaseProdWorkspace.ofExtRegs`). Procedure
+per consumer: (1) replace `Defs` with the imports listed; (2) build; (3) add the defining file
+for any name the compiler reports unknown; (4) finally `grep` the file for one declaration from
+each imported module and delete any import that has none.
+
+| Consumer | Replace `Defs` (and old proof imports) with |
+|---|---|
+| `GateCount/Definitions.lean` | `Compiler.Coefficients` (`GoodToomCookPoints`, `genInterpolationPoints`), `Compiler.Compile` (`phaseProductCount`), `Compiler.Layout` (`NeededWidths`, `WidthState`), `Compiler.Workspace` (`(C)SignedRecursiveWorkspaceOK`), `Lowering.Lower` |
+| `GateCount/PhaseProduct/Lemmas.lean` | `Compiler.{Coefficients,Compile,Layout,Widths,Workspace}`, `Gates.Macros`, `Lowering.{Lower,Plan,PlanBuilders}`, `Math.MasterTheorem`, `Math.ToomCook`, `Proofs.NaiveLeaf` (already present) |
+| `GateCount/PhaseProduct/Main.lean` | `Compiler.Compile`, `Compiler.Widths`, `Compiler.Workspace` |
+| `GateCount/QFT_GateCount.lean` | `Compiler.Layout` (`PhaseSplitLayout.child`), `Compiler.Workspace`, `Lowering.Lower`, `Lowering.Plan` (`lowerGateRec`) |
+| `GateCount/Shor_GateCount.lean` | `Compiler.Coefficients` (`genInterpolationPoints_good`) + whatever the compiler asks for |
+| `ModularExponentiation/Defs.lean`, `ModularExponentiation/CmpLtNW.lean` | `Gates.Macros` (`Gate.PhaseProdWorkspace`, `PhaseProdUsing`, `CPhaseProdUsing`) — `CmpLtNW.lean` already has it; drop `Defs` |
+| `ModularExponentiation/Proofs/{Core,Step1Bound,Step1QPE,Step2Bound,Algorithm1Expansion}.lean` | `Gates.Macros`; `Step1QPE` also `Compiler.Layout` (`ReserveBudget.offset`); keep existing `Proofs.Compiler.MacroSemantics` / `Proofs.Lowering.Workspace` (proof-to-proof, justified by `eval_PhaseProdUsing_ket` / `FreshZero.of_subset`) |
+| `ModularExponentiation/Proofs/ConstArithmeticLowering.lean` | keep `Proofs.Lowering.EvalL` (justified); add `Gates.Macros` only if the compiler asks |
+| `QFT/Defs.lean` | `Compiler.Layout`, `Compiler.Widths` (`phaseInputSize`), `Compiler.Workspace`, `Gates.Macros` (`xExt`, `zExt`, `Clean`), `Lowering.Plan`, `Lowering.PlanBuilders` (`standardSignedPhaseLoweringPlan`), `Spec.Readiness` (`PhaseLoweringReady`); keep `Proofs.Lowering.Linearity` (justified: `PhaseLoweringReady.zero`, `evalL_lowerGateRec_zero`) |
+| `QFT/Proofs/Decomposition.lean` | `Gates.Macros`; keep `Proofs.Compiler.MacroSemantics` |
+| `QFT/Proofs/LoweringCorrectness/PlanSemantics.lean` | `Compiler.Coefficients`, `Lowering.Plan`, `Spec.Readiness`; keep `Proofs.Lowering.Linearity` |
+| `QFT/Proofs/LoweringCorrectness/Readiness.lean` | `Compiler.Coefficients`, `Compiler.Workspace`, `Gates.Macros`, `Lowering.Plan`, `Lowering.PlanBuilders`, `Spec.Cleanliness`, `Spec.Readiness`; keep `Proofs.Compiler.MacroSemantics`, `Proofs.Lowering.PlanReadiness` |
+| `Reference/StandardLoweringSetup.lean` | `Compiler.Coefficients` (`genInterpolationPoints`) in addition to the unchanged `Math.Table_Generation.Programs.WithProduct` |
+| `Shor/Defs.lean` | `Compiler.Coefficients`, `Compiler.Workspace`, `Gates.NaiveLeaf` (`LowGate.sequence`), `Lowering.Lower`, `Lowering.PlanBuilders`, `Spec.Cleanliness`; keep `Main`; **drop** `Proofs.Lowering.Workspace` (uses nothing from it) |
+| `Shor/Proofs/Budgets.lean` | keep `Proofs.Lowering.Workspace` (`FreshZero.of_subset`); add `Compiler.Workspace`/`Spec.Cleanliness` only if the compiler asks |
+| `Shor/Proofs/Readiness.lean` | `Compiler.Workspace`, `Gates.Macros`, `Spec.Cleanliness`; keep `Proofs.Compiler.MacroSemantics` |
+| `Shor/Proofs/WholeProgramCorrectness.lean` | `Compiler.Coefficients`, `Compiler.Workspace`, `Lowering.Lower`, `Spec.Cleanliness`; keep `Main` |
+| any file using `CleanClosure` directly | `Implementation.Semantics.CleanClosure` |
 
 Find any consumer this table missed with
-`grep -rn "Implementation.PhaseProduct" FastMultiplication --include="*.lean" | grep -v "Implementation/PhaseProduct/"`.
+`grep -rn "Implementation.PhaseProduct" FastMultiplication --include="*.lean" | grep -v "Implementation/PhaseProduct/"`,
+and confirm no `Defs` import survives with
+`grep -rn "Implementation.PhaseProduct.Defs$" FastMultiplication --include="*.lean"`.
+
+The same justified-import rule applies **inside** `PhaseProduct/`: after step 6, audit every
+file's imports the same way (steps 3–4 left several files importing `Compiler.Workspace` or
+`Lowering.Lower` "for now" as the top of the chain — replace those with the defining files).
 
 ## 4. Allowed-import matrix and check script
 
 Folder order (a file may import from its own folder or any folder to its **left**):
 
 ```
-Semantics(shared)  <  Math  <  Compiler  <  Gates  <  Lowering  <  Spec  <  Proofs  <  Main/Defs
+Semantics(shared)  <  Math  <  Compiler  <  Gates  <  Lowering  <  Spec  <  Proofs  <  Main
 ```
 
 Additional constraints:
 - `Math/*` imports nothing from this subroutine outside `Math/` (Mathlib and `Framework/` only).
 - `Math/Table_Generation/**` is a frozen subtree: the script treats all of it as layer `Math`
   and does **not** inspect imports between its own files.
-- `Defs.lean` is the only umbrella file created by this reorg.
+- **No umbrella files.** A file whose content is only `import` lines (no declarations) is an
+  umbrella and is forbidden; the script flags it. Every import must satisfy the justified-import
+  rule of §3.
 - Inside `Proofs/`: `NaiveLeaf < Compiler/* < Lowering/*`; and within each, the order in §2.
 
 Add `scripts/check_phaseproduct_layers.sh` (run from repo root; exit 1 on violation):
@@ -169,11 +194,15 @@ root=FastMultiplication/ShorVerification/Implementation/PhaseProduct
 prefix=FastMultiplication.ShorVerification.Implementation.PhaseProduct.
 layer() { case "$1" in
   Math*) echo 1;; Compiler*) echo 2;; Gates*) echo 3;;
-  Lowering*) echo 4;; Spec*) echo 5;; Proofs*) echo 6;; Defs|Main) echo 7;; *) echo 9;; esac; }
+  Lowering*) echo 4;; Spec*) echo 5;; Proofs*) echo 6;; Main) echo 7;; *) echo 9;; esac; }
 status=0
 while IFS= read -r f; do
   mod=${f#$root/}; mod=${mod%.lean}; mod=${mod//\//.}
   case "$mod" in Math.Table_Generation*) continue;; esac   # frozen subtree, not inspected
+  # umbrella detector: a file with imports but no declarations of its own
+  if grep -qE '^import ' "$f" && ! grep -qE '^(noncomputable def|def|abbrev|structure|inductive|class|instance|theorem|lemma|@\[|macro|elab|syntax)' "$f"; then
+    echo "UMBRELLA FILE: $mod"; status=1
+  fi
   me=$(layer "$mod")
   while IFS= read -r imp; do
     dep=${imp#$prefix}; dl=$(layer "$dep")
@@ -222,12 +251,13 @@ Build.
 `Layout → Widths → Coefficients → Compile → Workspace`. Move `GoodToomCookPoints`/`toMathPoint`
 from SupportLemmas into `Compiler/Coefficients.lean` in the same step (they are used by
 `Main.lean` and `GateCount/Definitions.lean`). Every former importer of `DefsCore` imports
-`Compiler.Workspace` (the top of the chain) for now; step 6 replaces that with `Defs`. Delete
-`DefsCore.lean`. Build.
+`Compiler.Workspace` (the top of the chain) for now; step 6 replaces that with justified
+imports of the defining files. Delete `DefsCore.lean`. Build.
 
 **Step 4 — split `PhaseLoweringPlan.lean` and `Defs.lean`.** §1–§4 → `Lowering/Plan.lean`;
 §5–§8 → `Lowering/PlanBuilders.lean`; `Defs.lean` body → `Lowering/Lower.lean`. `Defs.lean`
-becomes an empty umbrella for now (imports `Lowering.Lower`). Build.
+is temporarily a one-line re-export of `Lowering.Lower` so external consumers keep building;
+step 6 deletes it. Build.
 
 **Step 5 — renames and folder moves** (all `git mv`, then fix imports):
 - `Math/Toom_Cook_formula.lean → Math/ToomCook.lean`; `Math/MasterTheoremProof.lean → Math/MasterTheorem.lean`.
@@ -238,12 +268,17 @@ becomes an empty umbrella for now (imports `Lowering.Lower`). Build.
 - `Proofs/LoweringCorrectness/ → Proofs/Lowering/` (`EvalLLemmas → EvalL`, `Main → Correctness`).
 Build.
 
-**Step 6 — umbrella, external imports, check script.**
-- Write `Defs.lean`: imports all of `Compiler/*`, `Gates/*`, `Lowering/*`, `Spec/*`,
-  `Math.ToomCook`, `Math.MasterTheorem`, `Math.Table_Generation`, `Implementation.Semantics.CleanClosure`.
-- Rewrite every external import per §3; run the `grep` in §3 to confirm none are left.
-- Add `scripts/check_phaseproduct_layers.sh`; it must exit 0.
+**Step 6 — remove the umbrella, justify every import, add the check script.**
+- Rewrite every external `import …PhaseProduct.Defs` per the §3 table and procedure
+  (replace, build, add what the compiler asks for, then delete imports that define nothing the
+  file uses). Do the same for the old proof imports listed there.
+- `git rm Implementation/PhaseProduct/Defs.lean`. Build; run both `grep`s in §3 — no `Defs`
+  import may survive anywhere.
+- Audit imports **inside** `PhaseProduct/` by the same justified-import rule, in particular the
+  "top of the chain" imports left by steps 3–4 (`Compiler.Workspace`, `Lowering.Lower`).
 - Fix internal imports so that nothing outside `Proofs/`/`Main.lean` imports `Proofs/`.
+- Add `scripts/check_phaseproduct_layers.sh` (§4); it must exit 0 — this includes the
+  umbrella detector.
 Build. Run the axiom gate. Commit.
 
 **Step 7 (optional, separate PR).** Split `Proofs/Compiler/Body.lean` (3097 lines) and
@@ -253,6 +288,13 @@ PlanReadiness: body readiness / alloc-dealloc readiness / lift to states). Same 
 
 ## 6. Decisions recorded
 
+- **No umbrella files, no umbrella imports.** `Defs.lean` is deleted rather than turned into
+  a re-export hub; every import names the file that defines something the importer uses
+  (§3 justified-import rule). Reason: an umbrella hides the real dependency graph — a consumer
+  that imports "everything" can never be told what it actually depends on, and the layer check
+  becomes meaningless. The cost is a few more import lines per consumer, which is the point:
+  they document the dependency. (`Math/Table_Generation.lean` and `…/Generator.lean` are
+  pre-existing umbrellas inside the frozen subtree and are left alone.)
 - **`Math/Table_Generation/` is out of scope.** Its files, umbrellas, and internal imports are
   left exactly as they are; it is imported from outside by its existing paths.
 - **The naive-leaf correctness theorems stay in `Proofs/NaiveLeaf.lean`**, not `Main.lean`:
@@ -276,7 +318,7 @@ PlanReadiness: body readiness / alloc-dealloc readiness / lift to states). Same 
 - [x] Step 3: `Compiler/{Layout,Widths,Coefficients,Compile,Workspace}.lean`; `DefsCore.lean` deleted.
 - [x] Step 4: `Lowering/{Plan,PlanBuilders,Lower}.lean`; `PhaseLoweringPlan.lean` deleted.
 - [x] Step 5: `Math/ToomCook`, `Math/MasterTheorem`, `Proofs/Compiler/`, `Proofs/Lowering/`.
-- [ ] Step 6: `Defs.lean` umbrella; external imports per §3; `scripts/check_phaseproduct_layers.sh` exits 0; nothing outside `Proofs/` imports `Proofs/`.
+- [x] Step 6: `Defs.lean` deleted; every external and internal import justified per §3; no `…PhaseProduct.Defs` import anywhere; `scripts/check_phaseproduct_layers.sh` exits 0 (layers + umbrella detector); nothing outside `Proofs/` imports `Proofs/`.
 - [ ] After every step: `lake build` green; `#print axioms` on both headline theorems unchanged.
 - [ ] `Main.lean` content byte-identical except its two `import` lines.
 - [ ] `git diff --stat -- FastMultiplication/ShorVerification/Implementation/PhaseProduct/Math/Table_Generation*` is empty.

@@ -1,6 +1,8 @@
 import FastMultiplication.ShorVerification.Implementation.QFT.Defs
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Decomposition
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Linearity
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 

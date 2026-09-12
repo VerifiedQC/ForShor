@@ -1,4 +1,3 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.NaiveLeaf
 
@@ -13,7 +12,6 @@ rest of the lowering-correctness proofs build on.
 
 namespace Shor
 open Gate
-open Operations
 
 namespace LowerGateClass
 

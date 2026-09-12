@@ -1,5 +1,5 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.EvalL
 
 /-!

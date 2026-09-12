@@ -1,5 +1,9 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Correctness
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Layout
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
 import FastMultiplication.ShorVerification.Framework.Gatecount.ResourceModel
 
 namespace Shor

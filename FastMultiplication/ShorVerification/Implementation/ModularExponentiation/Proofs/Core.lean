@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Defs
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.CmpLtNW
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 import Mathlib.Data.Int.GCD
 import Mathlib.Analysis.SpecialFunctions.Log.Base

@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
 
 /-!

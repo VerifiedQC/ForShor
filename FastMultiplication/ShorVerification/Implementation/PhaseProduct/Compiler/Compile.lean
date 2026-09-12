@@ -1,4 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Layout
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Widths
 
 /-!
 # Phase-Product Compiler: Compilation

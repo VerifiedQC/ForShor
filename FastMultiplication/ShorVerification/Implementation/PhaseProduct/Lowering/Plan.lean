@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.NaiveLeaf
 
 namespace Shor

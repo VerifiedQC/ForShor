@@ -1,5 +1,9 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Defs
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.LoweringCorrectness.Readiness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Main
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ConstArithmeticLowering
 

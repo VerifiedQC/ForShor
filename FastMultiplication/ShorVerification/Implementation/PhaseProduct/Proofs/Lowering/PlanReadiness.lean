@@ -1,4 +1,12 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.PlanBuilders
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.EvalL
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanSemantics
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Linearity
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Body
 
 namespace Shor
 open Gate

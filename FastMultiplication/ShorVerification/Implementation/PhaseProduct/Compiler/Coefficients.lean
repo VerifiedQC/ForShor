@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Widths
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Layout
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.ToomCook
 
 /-!

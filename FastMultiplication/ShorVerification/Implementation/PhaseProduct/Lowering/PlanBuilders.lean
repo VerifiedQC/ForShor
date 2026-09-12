@@ -1,3 +1,4 @@
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
 
 namespace Shor
