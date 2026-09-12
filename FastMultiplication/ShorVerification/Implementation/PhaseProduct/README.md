@@ -44,9 +44,9 @@ dependency order (lowest layer first) to match that traversal.
 | `Table_Generation/Core/RunLemmas.lean` | Program-agnostic coverage/execution lemmas: coverage bookkeeping, composition under concatenation, the `NoPhase` framework. |
 | `Table_Generation/Core/Coverage.lean` | Turns ordered point-consumption proofs into explicit phase-block decompositions and back into unordered `PhaseProductCoverage` proofs. |
 | `Table_Generation/Core/Tactics.lean` | Tactic elaborators automating phase-product coverage / return-to-original-state checks, plus small example programs. |
-| `Table_Generation/Builders/Fragments.lean` | Concrete program-fragment generators (`computeLocal*`, `addConst*`, …) and bridges between fold-based and recursive generators. |
+| `Table_Generation/Builders/Fragments.lean` | Concrete program-fragment builders (`computeLocal*`, `addConst*`, …) and the per-point/whole-list generators built from them (`opsForPointWithProduct`, `genOpsWithProduct`). |
 | `Table_Generation/Builders/FragmentLemmas.lean` | Correctness of those fragments. |
-| `Table_Generation/Programs/WithProduct.lean` | `genOpsWithProduct` and its two headline certification theorems (`_returns_to_original`, `_PhaseProductCoverage`). |
+| `Table_Generation/Programs/WithProduct.lean` | Certifies `genOpsWithProduct` (defined in `Builders/Fragments.lean`) end to end: its two headline theorems (`genOpsWithProduct_returns_to_original`, `genOpsWithProduct_PhaseProductCoverage`). |
 | `Table_Generation/Generator.lean` | Umbrella for the parity-reset generator (imports `Metrics` + `Correctness`). |
 | `Table_Generation/Generator/Spec.lean` | `ProductMode` (phase product vs. triple product) and its point-count spec. |
 | `Table_Generation/Generator/Defs.lean` | `streamPoint` (deterministic interpolation-point stream `0,∞,1,-1,2,-2,…`) and the generator built from it. |
