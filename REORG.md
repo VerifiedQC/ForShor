@@ -272,7 +272,7 @@ PlanReadiness: body readiness / alloc-dealloc readiness / lift to states). Same 
 ## 7. Checklist
 
 - [x] Step 1: `Implementation/Semantics/{CleanClosure,GateSemanticsLemmas}.lean`; `MacroSemantics.lean`; 12 external imports rewritten.
-- [ ] Step 2: `Gates/Macros`, `Gates/NaiveLeaf`, `Spec/{Readiness,Cleanliness,Assertions}`; `PhaseLoweringPlan` imports no proof file.
+- [x] Step 2: `Gates/Macros`, `Gates/NaiveLeaf`, `Spec/{Readiness,Cleanliness,Assertions}`; `PhaseLoweringPlan` imports no proof file.
 - [ ] Step 3: `Compiler/{Layout,Widths,Coefficients,Compile,Workspace}.lean`; `DefsCore.lean` deleted.
 - [ ] Step 4: `Lowering/{Plan,PlanBuilders,Lower}.lean`; `PhaseLoweringPlan.lean` deleted.
 - [ ] Step 5: `Math/ToomCook`, `Math/MasterTheorem`, `Proofs/Compiler/`, `Proofs/Lowering/`.
