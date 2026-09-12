@@ -6,13 +6,12 @@ recursive, chunked circuit that computes `exp(i·φ·x·z)` on two registers `x`
 interpolation-based Toom-Cook decomposition, and the lowering machinery that
 turns it into primitive `LowGate`s.
 
-It was reorganized (see `../../../../REORG.md` at the repo root for the full
-history) from a handful of large, concatenated files into the layered
-structure below. **Every import must be "justified":** a file may only import
-another file if it directly uses a declaration that file defines — never a
-declaration it merely re-exports transitively. `scripts/check_phaseproduct_layers.sh`
-(repo root) enforces both the layer order and the absence of umbrella files
-(a file that only imports and declares nothing of its own).
+The folder is organized in layers (below). **Every import is "justified":** a
+file may only import another file if it directly uses a declaration that file
+defines — never a declaration it merely re-exports transitively.
+`scripts/check_phaseproduct_layers.sh` (repo root) enforces both the layer
+order and the absence of umbrella files (a file that only imports and
+declares nothing of its own).
 
 ## Layer order
 
@@ -21,8 +20,8 @@ Math  <  Compiler  <  Gates  <  Lowering  <  Spec  <  Proofs  <  Main
 ```
 
 A file may import its own folder or any folder to its left. `Math/Table_Generation/`
-is a frozen, self-contained subtree (see below) and is exempt from this rule —
-treat it as a black box.
+is a self-contained subtree with its own internal layering (see below) and is
+exempt from this rule — treat it as a black box.
 
 Reading order for newcomers: start at `Main.lean`, then follow imports
 *backwards* — `Spec/Assertions.lean` for what is claimed, `Proofs/Lowering/Correctness.lean`
@@ -37,16 +36,16 @@ dependency order (lowest layer first) to match that traversal.
 | `ToomCook.lean` | Pure interpolation algebra: interpolation points, Vandermonde-style invertibility, radix reconstruction, and the exponential phase scalars from weighted point sums. |
 | `MasterTheorem.lean` | The shifted scalar-recurrence envelope (master-theorem-style bound) used to derive the `O(n^(2+ε))` asymptotic gate-count result. |
 | `Table_Generation.lean` | Umbrella re-exporting the whole table-generation development (see below). |
-| `Table_Generation/` | **Frozen subtree, out of scope for the reorg** — its internal layering is deliberately left as-is; nothing outside it should import anything but its existing public paths (`Math.Table_Generation`, `Math.Table_Generation.Generator`, `Math.Table_Generation.Programs.WithProduct`). It synthesizes and certifies the concrete interpolation-point programs used by the compiler. Internal layout: |
+| `Table_Generation/` | **Self-contained subtree** with its own internal layering; nothing outside it should import anything but its existing public paths (`Math.Table_Generation`, `Math.Table_Generation.Generator`, `Math.Table_Generation.Programs.WithProduct`). It synthesizes and certifies the concrete interpolation-point programs used by the compiler. Internal layout: |
 | `Table_Generation/Core/Registers.lean` | Symbolic register/state model: shifts, negation, scaled addition, right-shift success. |
 | `Table_Generation/Core/RegisterLemmas.lean` | First proof layer over that model: inverse-program facts, `run?` simp lemmas, state algebra, well-formed undo. |
 | `Table_Generation/Core/Language.lean` | The table-generation program language: symbolic ops, partial execution semantics, point-row matchers, coverage predicates, notation. |
-| `Table_Generation/Core/ListHelpers.lean` | Generic list lemmas (quarried from the legacy combined file; no statements changed). |
+| `Table_Generation/Core/ListHelpers.lean` | Generic list lemmas used across the table-generation proofs. |
 | `Table_Generation/Core/RunLemmas.lean` | Program-agnostic coverage/execution lemmas: coverage bookkeeping, composition under concatenation, the `NoPhase` framework. |
 | `Table_Generation/Core/Coverage.lean` | Turns ordered point-consumption proofs into explicit phase-block decompositions and back into unordered `PhaseProductCoverage` proofs. |
 | `Table_Generation/Core/Tactics.lean` | Tactic elaborators automating phase-product coverage / return-to-original-state checks, plus small example programs. |
 | `Table_Generation/Builders/Fragments.lean` | Concrete program-fragment generators (`computeLocal*`, `addConst*`, …) and bridges between fold-based and recursive generators. |
-| `Table_Generation/Builders/FragmentLemmas.lean` | Correctness of those fragments (quarried verbatim; no statements changed). |
+| `Table_Generation/Builders/FragmentLemmas.lean` | Correctness of those fragments. |
 | `Table_Generation/Programs/WithProduct.lean` | `genOpsWithProduct` and its two headline certification theorems (`_returns_to_original`, `_PhaseProductCoverage`). |
 | `Table_Generation/Generator.lean` | Umbrella for the parity-reset generator (imports `Metrics` + `Correctness`). |
 | `Table_Generation/Generator/Spec.lean` | `ProductMode` (phase product vs. triple product) and its point-count spec. |
@@ -60,8 +59,8 @@ dependency order (lowest layer first) to match that traversal.
 
 ## `Compiler/` — the recursive phase-product compiler's definitions
 
-Split out of the former `DefsCore.lean`. Internal order: `Layout → Widths →
-Coefficients → Compile → Workspace` (each may import the ones before it).
+Internal order: `Layout → Widths → Coefficients → Compile → Workspace` (each
+may import the ones before it).
 
 | File | Purpose |
 |---|---|
@@ -119,7 +118,7 @@ stands slightly apart (see below).
 | `Interpolation.lean` | The algebraic identity behind compilation: reconstructing signed extended registers from split chunks, then turning accumulated Toom-Cook point phases into the final signed product phase. |
 | `Compilation.lean` | Assembles allocation + body/deallocation + the Toom-Cook identity into the public correctness theorems for compiled signed/controlled circuits. |
 | `Correctness.lean` | The apex gate-level results: compiled signed/controlled-signed gates evaluate as specified. This folder's public surface, consumed by `Proofs/Lowering/`. |
-| `MacroSemantics.lean` | The `PhaseProdUsing`/`CPhaseProdUsing` semantic bridge (on a clean workspace, the macros contribute exactly the expected phase). Split out of the shared `Implementation.Semantics.GateSemanticsLemmas` because these two theorems are phase-product-specific. |
+| `MacroSemantics.lean` | The `PhaseProdUsing`/`CPhaseProdUsing` semantic bridge: on a clean workspace, the macros contribute exactly the expected phase. |
 
 ### `Proofs/Lowering/` — correctness of the plan/lowering machinery (`Lowering/`, `Spec/`)
 
@@ -144,11 +143,3 @@ Proves the two public headline theorems referenced throughout the rest of the
 codebase (`#print axioms` gate target). Imports only `Spec.Assertions` and
 `Proofs.Lowering.Correctness` — every other dependency is transitive through
 those two.
-
-## A note on history
-
-This layout is the result of a mechanical, behavior-preserving reorganization: every
-step was a pure move (`git mv`, file splits at existing section banners, import-line
-edits) with no statement or proof changes, verified by a green `lake build` and an
-unchanged `#print axioms` on `Shor.Shor_correct` / `Shor.exists_shorGateCountBound`
-after every step. See `REORG.md` at the repo root for the full step-by-step record.
