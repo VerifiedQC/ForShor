@@ -10,6 +10,9 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.PlanBuilders
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.MasterTheorem
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.NaiveLeaf
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Lowerable
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Support
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Body.Controlled
 
 namespace Shor
 

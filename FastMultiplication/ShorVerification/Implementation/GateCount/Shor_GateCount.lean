@@ -1,5 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.GateCount.QFT_GateCount
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
+import FastMultiplication.ShorVerification.Implementation.Compilation.Correctness
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
 
 namespace Shor
 

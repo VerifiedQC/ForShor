@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Correctness
+import FastMultiplication.ShorVerification.Implementation.Shor.Defs
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Layout
