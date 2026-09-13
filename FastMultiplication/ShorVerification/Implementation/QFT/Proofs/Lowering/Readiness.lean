@@ -3,7 +3,7 @@ import FastMultiplication.ShorVerification.Implementation.QFT.Workspace
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.Plan
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.PlanBuilders
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.Lower
-import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.LoweringCorrectness.PlanSemantics
+import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering.PlanSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros

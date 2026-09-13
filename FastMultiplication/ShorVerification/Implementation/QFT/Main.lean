@@ -1,12 +1,12 @@
 import FastMultiplication.ShorVerification.Implementation.QFT.Spec.Assertions
-import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.LoweringCorrectness.Readiness
+import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 
 /-!
 # QFT Main Theorem
 
 This module proves the public assertion for the QFT implementation.  All
 supporting lemmas are kept under `QFT` proof files (`Decomposition`,
-`LoweringCorrectness/*`).
+`Lowering/*`).
 -/
 
 namespace Shor

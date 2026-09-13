@@ -8,6 +8,18 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Read
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Linearity
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 
+/-!
+# QFT Lowering Plan Semantics
+
+This file defines the explicit recursive plan used to lower a QFT and proves
+that interpreting such a plan agrees with the abstract QFT gate whenever the
+plan is ready at the input state.
+
+The file is deliberately workspace-agnostic: it knows that a split node carries
+an unsigned phase-product lowering plan, but it does not choose concrete reserve
+registers.  `QFTLoweringCorrectness.Workspace` supplies that canonical choice.
+-/
+
 namespace Shor
 
 section GateSemanticsDissolvedQFT
@@ -248,18 +260,6 @@ end QFTSemantics
 
 end GateSemanticsDissolvedQFT
 end Shor
-
-/-!
-# QFT Lowering Plan Semantics
-
-This file defines the explicit recursive plan used to lower a QFT and proves
-that interpreting such a plan agrees with the abstract QFT gate whenever the
-plan is ready at the input state.
-
-The file is deliberately workspace-agnostic: it knows that a split node carries
-an unsigned phase-product lowering plan, but it does not choose concrete reserve
-registers.  `QFTLoweringCorrectness.Workspace` supplies that canonical choice.
--/
 
 namespace Shor
 
