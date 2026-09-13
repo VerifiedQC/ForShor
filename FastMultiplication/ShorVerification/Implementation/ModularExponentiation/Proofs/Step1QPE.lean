@@ -37,7 +37,7 @@ open Shor
 universe u v
 
 /-! =========================================================
-    Section 1: Shared linear-algebra and register helpers
+    Shared linear-algebra and register helpers
 
 Generic facts reused throughout the file: splitting a finite sum along a
 decidable predicate, Pythagoras for a finite orthogonal family, idempotence of
@@ -136,8 +136,6 @@ lemma norm_sq_sum_eq_sum_norm_sq_of_orthogonal_qpe
           ∑ i ∈ insert a s, ‖f i‖ ^ 2 := by
             rw [Finset.sum_insert ha]
 
-
-
 /-- Writing the same register twice keeps only the last value. -/
 lemma writeNat_overwrite_same_reg
     {Basis : Type u} [RegEncoding Basis]
@@ -223,7 +221,6 @@ lemma norm_sum_reindex_ket_eq
   have hn1 : 0 ≤ ‖∑ i ∈ s, α i • qs.ket (f i)‖ := norm_nonneg _
   have hn2 : 0 ≤ ‖∑ i ∈ s, α i • qs.ket (g i)‖ := norm_nonneg _
   nlinarith
-
 
 /--
 Clearing the work register and restoring the data register returns a good input
@@ -348,7 +345,7 @@ lemma alg1_reset_extendHi_work_write
 end SharedHelpers
 
 /-! =========================================================
-    Section 2: Trace coefficients and their identification
+    Trace coefficients and their identification
 
 An `Alg1Trace` carries abstract Step-1 coefficients; nothing in the record
 forces them to be the canonical ones. This section pins them down. A normalized
@@ -417,7 +414,6 @@ lemma alg1_trace_input_mass_one
     _ = 1 := by
       rw [hunit.2]
       norm_num
-
 
 /-- Section-local restatement of `writeNat_overwrite_same_reg`. -/
 private lemma qpe_writeNat_overwrite_same_reg
@@ -737,11 +733,10 @@ lemma alg1_trace_phaseCoeff_eq_alg1PhaseCoeff
 
   exact mul_left_cancel₀ hcoeff hmul
 
-
 end TraceCoefficientIdentification
 
 /-! =========================================================
-    Section 3: Trace bad mass and the Step-1 error
+    Trace bad mass and the Step-1 error
 
 Step 1 is only approximate because the inverse QFT spreads amplitude onto
 labels outside the precision window. This section isolates that amplitude. The
@@ -1224,7 +1219,7 @@ lemma alg1_step1_error_sq_eq_trace_bad_mass
 end TraceBadMassAndStep1Error
 
 /-! =========================================================
-    Section 4: Step-5 cleanup residue
+    Step-5 cleanup residue
 
 Step 5 uncomputes the Step-1 load by loading the constant `step5Constant c N`
 against the already-multiplied data register. These two lemmas check that the
@@ -1332,7 +1327,6 @@ private lemma step5Constant_mul_output_mod_eq_target
   change Nat.ModEq N (k * ((c * x) % N)) (d * x)
   exact hfinal
 
-
 /--
 The controlled Step-5 cleanup residue equals `alg1TargetResidue`.
 
@@ -1367,7 +1361,7 @@ lemma alg1_step5_cleanup_residue_eq_target
 end Step5CleanupResidue
 
 /-! =========================================================
-    Section 5: Atomic encoding and phase lemmas
+    Atomic encoding and phase lemmas
 
 The smallest rewrites used by every packet computation below, split into a
 register half and a scalar half. On the register side, writing the output value
@@ -1378,7 +1372,6 @@ statement that Step 5 undoes Step 1 at the level of phases.
 ========================================================= -/
 
 section AtomicEncodingAndPhase
-
 
 /--
 On good inputs, writing the output value into `data` agrees with writing it into
@@ -1496,8 +1489,6 @@ lemma alg1_write_data_eq_extendHi_output
 
   rw [hsplit, hclear]
 
-
-
 /--
 The ideal controlled modular multiplication sends a good basis state to the
 basis state holding `alg1OutputValue` in the grown data register.
@@ -1610,7 +1601,6 @@ lemma alg1_exp_phase_eq_of_modEq
           ((v : ℂ) * (z : ℂ))) :=
       (hphase v z).symm
 
-
 /-- The Step-1 phase scalar is the target phase scalar. -/
 lemma alg1_step1_phase_scalar_eq_target
     (qs : QSemantics)
@@ -1685,7 +1675,6 @@ lemma alg1_step1_phase_scalar_eq_target
       alg1TargetPhaseScalar,
       hctrl
     ]
-
 
 /-- The forward Step-5 phase scalar is also the target phase scalar. -/
 lemma alg1_step5_phase_scalar_eq_target
@@ -1785,7 +1774,6 @@ lemma alg1_step5_phase_scalar_eq_target
       hctrl
     ]
 
-
 /--
 Step 5 reproduces the Step-1 phase scalar exactly.
 
@@ -1816,13 +1804,10 @@ lemma alg1_step5_phase_scalar_eq_step1
     alg1_step1_phase_scalar_eq_target qs cfg b z
   ]
 
-
-
-
 end AtomicEncodingAndPhase
 
 /-! =========================================================
-    Section 6: Local diagonal semantics
+    Local diagonal semantics
 
 The controlled phase product is diagonal in the work label, but only once the
 relevant registers are known to be disjoint and its workspace is known to be
@@ -1874,8 +1859,6 @@ private lemma alg1_ctrl_notin_dataCarry_active
   have howned : cfg.ctrl ∈ (cfg.env.data.grow 1).ownedQubits :=
     List.mem_append_left _ hq
   simpa [Gate.ExtReg.ownedQubits_grow] using howned
-
-
 
 /-- List identity relating the two ways of naming the second fresh bit. -/
 private lemma qpe_take_two_tail_eq_tail_take_one
@@ -2242,7 +2225,7 @@ lemma alg1_step5_cphase_on_output_work_label
 end LocalDiagonalSemantics
 
 /-! =========================================================
-    Section 7: Exact packet algebra
+    Exact packet algebra
 
 Everything needed to run Step 1 forward on a basis state with no estimates. The
 register Hadamards produce the uniform work superposition, the controlled phase
@@ -2371,7 +2354,6 @@ lemma eval_IQFT_work_packet
               intro t ht
               rw [← Finset.sum_smul]
 
-
 /-- The QFT phase with zero left input is trivial. -/
 private lemma qpe_qftPhase_zero_left
     (N y : ℕ) :
@@ -2433,7 +2415,6 @@ lemma alg1_step1_preIQFT_packet
   rw [alg1_step1_cphase_on_work_label qs cfg b hb z]
   rw [smul_smul]
   rfl
-
 
 /--
 The pre-IQFT forward Step-5 packet, still expressed relative to the ideal
@@ -2516,7 +2497,6 @@ lemma alg1_step5_forward_preIQFT_packet
   rw [alg1_step5_cphase_on_output_work_label qs cfg b hb z]
   rw [smul_smul]
   rfl
-
 
 /--
 The original canonical QPE coefficient is the explicit Fourier coefficient.
@@ -2639,7 +2619,7 @@ lemma alg1PhaseCoeff_eq_fractionalLoadCoeff
 end ExactPacketAlgebra
 
 /-! =========================================================
-    Section 8: From Algorithm 1 to the standard QPE kernel
+    From Algorithm 1 to the standard QPE kernel
 
 This section introduces `qpeKernel`, the textbook finite QPE amplitude for a
 phase `θ` sampled on an `M`-point grid, and translates the Algorithm-1 data
@@ -3061,7 +3041,7 @@ lemma qpe_precision_tail_scale
 end AnalyticQpeSetup
 
 /-! =========================================================
-    Section 15: The uniform Step-1 tail bound
+    The uniform Step-1 tail bound
 
 The final assembly. The explicit Fourier coefficient computed in the packet
 algebra is literally the standard QPE kernel at the phase

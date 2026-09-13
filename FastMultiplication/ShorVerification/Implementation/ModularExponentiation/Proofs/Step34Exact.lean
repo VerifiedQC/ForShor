@@ -27,7 +27,7 @@ The proof is organized into four layers:
 -/
 
 /-! =========================================================
-    Section 1: Step-3 arithmetic reduction
+    Step-3 arithmetic reduction
 
     Reduce the Step-3 comparator/subtractor stage to a plain modular
     multiplication on the relevant basis labels.
@@ -280,7 +280,7 @@ private lemma disjoint_of_qubitReg_outside
     (disjoint_qubitReg_of_outside (q := q) (r := r) h)
 
 /-! =========================================================
-    Section 2: Exact basis-state semantics of steps 3 and 4
+    Exact basis-state semantics of steps 3 and 4
 
     Register-disjointness helpers and the core computation giving the exact
     post-Step-3/4 basis state on a clean input.
@@ -1123,7 +1123,7 @@ lemma alg1_step34_reference_exact_core
       simp [Alg1Trace.afterStep34Ref, xext]
 
 /-! =========================================================
-    Section 3: Public Step-3/4 exactness theorem
+    Public Step-3/4 exactness theorem
 
     The public statement: Steps 3 and 4 together act exactly as specified on the
     valid-input subspace.

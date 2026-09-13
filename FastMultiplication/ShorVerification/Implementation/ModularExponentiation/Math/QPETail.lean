@@ -37,7 +37,7 @@ noncomputable def qpeKernel
           (((θ : ℂ) - ((t.1 : ℂ) / (M : ℂ))) * (z.1 : ℂ)))
 
 /-! =========================================================
-    Section 9: Circular distance and the zero-phase kernel
+    Circular distance and the zero-phase kernel
 
 The tail estimate is stated in terms of the distance from `θ` to a grid point
 measured on the unit circle, since a label just below `1` is close to a phase
@@ -63,7 +63,6 @@ noncomputable def qpeCircularDistance
   min
     |θ - ((t.1 : ℝ) / (M : ℝ))|
     |1 - (|θ - ((t.1 : ℝ) / (M : ℝ))|)|
-
 
 /-- The labels whose circular distance to `θ` is at least `δ`, i.e. the tail. -/
 noncomputable def qpeCircularTail
@@ -325,7 +324,7 @@ lemma qpeKernel_zero_phase_bad_mass_zero
 end CircularDistanceAndZeroPhase
 
 /-! =========================================================
-    Section 10: Chord bound on the kernel
+    Chord bound on the kernel
 
 The pointwise estimate that drives everything numerical. Writing the kernel as
 a geometric sum in the root `qpeRoot` gives
@@ -794,7 +793,7 @@ lemma qpeKernel_norm_sq_le_circular_majorant
 end KernelChordBound
 
 /-! =========================================================
-    Section 11: Reciprocal-square tail sums
+    Reciprocal-square tail sums
 
 Two elementary real estimates, independent of any quantum content. Summing
 `1 / n ^ 2` over `Icc L M` telescopes against `1 / (n - 1) - 1 / n`, and
@@ -859,7 +858,6 @@ private lemma reciprocal_square_Icc_le
           hden).2 (by
         ring_nf
         linarith)
-
 
     have hsum :
         ∑ n ∈ Finset.Icc L M,
@@ -993,7 +991,7 @@ private lemma reciprocal_square_floor_tail_le
 end ReciprocalSquareTails
 
 /-! =========================================================
-    Section 12: Floor-shell geometry of the tail
+    Floor-shell geometry of the tail
 
 Summing the pointwise majorant over the tail requires knowing how many labels
 can share a given value of `⌊M * dist⌋₊`. This section answers that. The
@@ -1065,7 +1063,6 @@ private lemma qpeGridPoint_bounds
     unfold qpeGridPoint
     apply (div_lt_one hM).2
     exact_mod_cast t.isLt
-
 
 /-- Unwrapped case, grid point left of `θ`: the circular distance is `θ - t / M`. -/
 private lemma qpeCircularDistance_direct_left
@@ -1598,7 +1595,7 @@ private lemma qpe_same_floor_shell_same_tag
 end FloorShellGeometry
 
 /-! =========================================================
-    Section 13: Summing the majorant over the tail
+    Summing the majorant over the tail
 
 With the geometry settled the estimate assembles. The tail is reindexed by
 floor shells, each shell holds at most eight labels and contributes at most
@@ -2105,7 +2102,7 @@ lemma qpeKernel_circular_tail_le
 end TailMajorantSummation
 
 /-! =========================================================
-    Section 14: The tail bound for an ordinary fraction
+    The tail bound for an ordinary fraction
 
 The bound is now specialized to the phases Algorithm 1 actually produces,
 `θ = r / N` with `0 < r < N`. The window used by the algorithm is stated with
@@ -2235,7 +2232,6 @@ private lemma qpe_ordinary_bad_mem_circularTail
             (div_le_div_iff_of_pos_right hN).2 hrle
           _ = 1 - 1 / (N : ℝ) := by
             field_simp [ne_of_gt hN]
-
 
       have houter_nonneg :
           0 ≤ 1 - (θ - y) := by

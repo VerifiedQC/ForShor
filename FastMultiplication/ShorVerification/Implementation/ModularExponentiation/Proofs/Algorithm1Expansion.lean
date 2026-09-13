@@ -27,7 +27,6 @@ theorem eval_Hreg_zero_eq_QFT
         (qs.ket b)
       =
     qs.eval (Gate.QFT r) (qs.ket b) := by
-
   rw [
     eval_Hreg_zero_uniform
       qs r.active b
@@ -49,7 +48,6 @@ theorem eval_Hreg_zero_eq_QFT
 
   simp [qftPhase, ωPow]
 
-
 namespace GateSemanticsFacts
 
 /-- Bundled-interface spelling of `eval_Hreg_zero_eq_QFT`. -/
@@ -68,7 +66,6 @@ theorem eval_Hreg_zero_eq_QFT
       =
     qs.eval (Gate.QFT r) (qs.ket b) := by
   exact Shor.eval_Hreg_zero_eq_QFT qs r b hzero
-
 
 end GateSemanticsFacts
 
@@ -186,7 +183,6 @@ theorem eval_adj_QFT_ket
                   r.active z.1 d)))
           =
         qftPhase N t x := by
-
       calc
         (∑ z : Fin N,
           inner ℂ
@@ -202,7 +198,6 @@ theorem eval_adj_QFT_ket
               qs.ket
                 (RegEncoding.writeNat
                   r.active ix.1 d)) := by
-
             apply Fintype.sum_eq_single ix
             intro z hz
 
@@ -277,7 +272,6 @@ theorem eval_adj_QFT_ket
             (qs.ket d))
           =
         qftPhase N x t := by
-
       calc
         (∑ y : Fin N,
           inner ℂ
@@ -293,7 +287,6 @@ theorem eval_adj_QFT_ket
                 (RegEncoding.writeNat
                   r.active it.1 b))
             (qs.ket d) := by
-
             apply Fintype.sum_eq_single it
             intro y hy
 
@@ -380,7 +373,6 @@ theorem eval_adj_QFT_ket
                   r.active z.1 d)))
           =
         0 := by
-
       apply Fintype.sum_eq_zero
       intro z
 
@@ -438,7 +430,6 @@ theorem eval_adj_QFT_ket
             (qs.ket d))
           =
         0 := by
-
       apply Fintype.sum_eq_zero
       intro y
 
@@ -487,12 +478,10 @@ theorem eval_adj_QFT_ket
     rw [hforward, hinverse]
     simp
 
-
 end QFTSemantics
 
 end GateSemanticsDissolvedModExp
 end Shor
-
 
 open Shor
 
@@ -509,7 +498,7 @@ condition needed later.
 ========================================================= -/
 
 /-! =========================================================
-    Section 1: Staged-gate equivalence
+    Staged-gate equivalence
 
 The public approximate modular-multiplication gate is definitionally the same
 as the staged `U1 ; U2 ; U34 ; U5` presentation used by the error proof.
@@ -538,7 +527,7 @@ end ModMulConfig
 end StagedGateEquivalence
 
 /-! =========================================================
-    Section 2: Linear expansion helpers
+    Linear expansion helpers
 
 These lemmas push gate evaluation through finite sums and expose the two basic
 Step-1 pieces: inverse QFT on the work register and the controlled PhaseProduct
@@ -565,7 +554,6 @@ lemma eval_finset_sum
       simp
   | insert a s ha ih =>
       simp [Finset.sum_insert, ha, qs.eval_add, ih]
-
 
 /-- Expands inverse QFT on an extended work register as a finite basis sum over its active labels. -/
 lemma eval_iqft_work_expansion
@@ -633,11 +621,10 @@ lemma eval_cphaseprodusing_work_diagonal
   simpa [b'] using
     GateSemanticsFacts.eval_CPhaseProdUsing_ket qs ctrl φ data work ws b' hclean
 
-
 end LinearExpansionHelpers
 
 /-! =========================================================
-    Section 3: Work-register support spans
+    Work-register support spans
 
 The Step-1 expansion needs to show that applying Hadamards to the work register
 keeps the state supported on basis states obtained by writing only that register.
@@ -662,7 +649,6 @@ private def HRegWorkSpan
         α t •
           qs.ket (RegEncoding.writeNat work t.1 base)
 
-
 /-- The zero state is trivially supported on the work-register span. -/
 private lemma hregWorkSpan_zero
     (qs : QSemantics)
@@ -672,7 +658,6 @@ private lemma hregWorkSpan_zero
     HRegWorkSpan qs work base (0 : qs.State) := by
   refine ⟨fun _ => 0, ?_⟩
   simp
-
 
 /-- Work-register support is closed under addition. -/
 private lemma hregWorkSpan_add
@@ -692,7 +677,6 @@ private lemma hregWorkSpan_add
   intro t ht
   simp [add_smul]
 
-
 /-- Work-register support is closed under scalar multiplication. -/
 private lemma hregWorkSpan_smul
     (qs : QSemantics)
@@ -710,7 +694,6 @@ private lemma hregWorkSpan_smul
   apply Finset.sum_congr rfl
   intro t ht
   rw [smul_smul]
-
 
 /-- A finite sum of work-supported states is work-supported. -/
 private lemma hregWorkSpan_sum
@@ -736,7 +719,6 @@ private lemma hregWorkSpan_sum
         intro i hi
         exact hf i (by simp [hi])
 
-
 /-- A single basis state obtained by writing `work` is in the work-register span. -/
 private lemma hregWorkSpan_ket_write
     (qs : QSemantics)
@@ -749,7 +731,6 @@ private lemma hregWorkSpan_ket_write
   classical
   refine ⟨fun t => if t = z then 1 else 0, ?_⟩
   simp
-
 
 /--
 Writing qubit `q` inside `work` can be represented as one whole-register
@@ -878,7 +859,6 @@ private lemma qubit_write_eq_work_write
             symm
             exact hout_work_t
 
-
 /-- A one-qubit write inside `work` still lands in the whole-work-register span. -/
 private lemma hregWorkSpan_qubit_write
     (qs : QSemantics)
@@ -902,7 +882,6 @@ private lemma hregWorkSpan_qubit_write
 
   rw [ht]
   exact hregWorkSpan_ket_write qs work base t
-
 
 /-- A Hadamard on a qubit inside `work` preserves work-register support. -/
 private lemma eval_H_preserves_hregWorkSpan
@@ -1006,7 +985,6 @@ private lemma eval_H_preserves_hregWorkSpan
   rw [heval]
   exact hsum
 
-
 /-- A fold of Hadamards over qubits contained in `work` preserves work-register support. -/
 private lemma eval_foldl_H_preserves_hregWorkSpan
     (qs : QSemantics)
@@ -1069,7 +1047,6 @@ private lemma eval_foldl_H_preserves_hregWorkSpan
           ξ
           hξ
 
-
 /-- Applying register Hadamards to a work-written basis state expands over work labels only. -/
 lemma eval_Hreg_work_expansion
     (qs : QSemantics)
@@ -1130,7 +1107,7 @@ lemma eval_Hreg_work_expansion
 end WorkRegisterSupportSpans
 
 /-! =========================================================
-    Section 4: Step-1 clean workspace and QPE expansion
+    Step-1 clean workspace and QPE expansion
 
 This section combines reserve-freshness lemmas with the work-span expansion to
 obtain the concrete Step-1 QPE packet and identify its coefficients by inner
@@ -1699,7 +1676,7 @@ lemma alg1_step1_ket_qpe_expansion
 end Step1QPEExpansion
 
 /-! =========================================================
-    Section 5: Valid-state finite expansions
+    Valid-state finite expansions
 
 The trace constructor needs a finite basis expansion of an arbitrary state in
 the valid-input span. These private helpers extract such an expansion by span
@@ -1723,7 +1700,6 @@ private def HasGoodInputExpansion
     ∀ b ∈ s,
       GoodAlgorithm1BasisInput
         qs cfg.env.N cfg.env.data cfg.env.work cfg.env.scratch cfg.flag b
-
 
 /-- Every valid modular-multiplication state has a finite good-input expansion. -/
 private lemma good_input_expansion_of_valid
@@ -1889,7 +1865,7 @@ private lemma good_input_expansion_of_valid
 end ValidStateFiniteExpansions
 
 /-! =========================================================
-    Section 6: Zero-target Step-1 exactness
+    Zero-target Step-1 exactness
 
 If the Step-1 target residue is zero, the controlled phase load is trivial on
 the work superposition, so the following inverse QFT exactly returns the input
@@ -2009,7 +1985,6 @@ private lemma alg1_exp_phase_eq_of_modEq'
         (((2 * Real.pi) / (N : ℝ)) * Complex.I *
           ((v : ℂ) * (z : ℂ))) :=
       (hphase v z).symm
-
 
 /-- When the target residue is zero, the Step-1 controlled PhaseProduct fixes every work-label term. -/
 lemma eval_CPhaseProd_fixes_work_of_target_zero
@@ -2339,7 +2314,7 @@ lemma alg1_step1_zero_target_exact
 end ZeroTargetStep1Exactness
 
 /-! =========================================================
-    Section 7: Step-3/4 overflow arithmetic
+    Step-3/4 overflow arithmetic
 
 These arithmetic lemmas relate the good-label fractional approximation to the
 comparator cross condition used by Step 4. The endpoint is the equivalence
@@ -2405,7 +2380,6 @@ lemma alg1_output_mod
 
   simpa [Nat.ModEq, a] using hmod
 
-
 /-- Cross-multiplication criterion for comparing two positive natural fractions. -/
 private lemma nat_fraction_lt_iff_cross
     (a n t m : ℕ)
@@ -2431,7 +2405,6 @@ private lemma nat_fraction_lt_iff_cross
   · intro h
     apply (div_lt_div_iff₀ hnR hmR).mpr
     exact_mod_cast h
-
 
 /-- For good labels, the Step-4 comparator condition is exactly Step-2 overflow. -/
 lemma alg1_step4_cross_iff_overflow_of_good
@@ -2806,7 +2779,7 @@ lemma alg1_step4_cross_iff_overflow_of_good
 end Step34OverflowArithmetic
 
 /-! =========================================================
-    Section 8: Final trace construction
+    Final trace construction
 
 The final lemma assembles the valid-state expansion, Step-1 coefficient
 identification, zero-target support fact, and Step-3/4 overflow arithmetic into

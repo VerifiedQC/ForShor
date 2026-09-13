@@ -20,7 +20,7 @@ exact, so they contribute no additional approximation error.
 -/
 
 /-! =========================================================
-    Section 1: Error-budget and norm inequalities
+    Error-budget and norm inequalities
 
     Scalar `stepErr` budget arithmetic and the three-term triangle inequality
     used to bound the composed modular-multiplication error.
@@ -84,7 +84,7 @@ lemma norm_chain_three {E : Type*} [NormedAddCommGroup E] (x₀ x₁ x₂ x₃ :
     _ = ‖x₀ - x₁‖ + ‖x₁ - x₂‖ + ‖x₂ - x₃‖ := by ring
 
 /-! =========================================================
-    Section 2: Uniform modular-multiplication approximation bound
+    Uniform modular-multiplication approximation bound
 
     The public per-core bound: the approximate controlled modular multiplier is
     uniformly close to its ideal on valid unit states.

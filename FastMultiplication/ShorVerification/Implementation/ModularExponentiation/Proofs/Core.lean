@@ -63,7 +63,7 @@ bound files.
 ========================================================= -/
 
 /-! =========================================================
-    Section 1: Valid inputs and ideal controlled multiplication
+    Valid inputs and ideal controlled multiplication
 
 The later approximation theorems work on a valid-input subspace. This section
 defines the layout and clean-input predicates for that subspace, specifies the
@@ -499,7 +499,7 @@ theorem idealCtrlModMul_preserves_valid
 end ValidInputsAndIdealSemantics
 
 /-! =========================================================
-    Section 2: Algorithm 1 precision and arithmetic constants
+    Algorithm 1 precision and arithmetic constants
 
 This section packages the concrete precision schedule for Algorithm 1 and the
 Step-5 inverse constant used by the cleanup phase.
@@ -640,7 +640,7 @@ variable
     [GateSemanticsCore qs]
 
 /-! =========================================================
-    Section 4: Small register/flag helpers
+    Small register/flag helpers
 ========================================================= -/
 
 private lemma disjoint_qubitReg_of_outside
@@ -975,7 +975,6 @@ theorem eval_step3_local_ket
         q ≠ flag →
         RegEncoding.bit q b' =
           RegEncoding.bit q b := by
-
   classical
 
   have hout' : flag ∉ dataCarry.active.qubits := by
@@ -1139,7 +1138,7 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_cfg
 end PrimitiveAndIdealConfigFacts
 
 /-! =========================================================
-    Section 7: Step-3/4 labels and trace packets
+    Step-3/4 labels and trace packets
 
 This section records the exact data values after the comparator/subtractor
 stages and packages the finite trace expansions used by the Appendix-E-style
@@ -1224,7 +1223,7 @@ lemma alg1OutputValue_lt_data_capacity
 end Step34LabelsAndTracePackets
 
 /-! =========================================================
-    Section 10: Modular-exponentiation arithmetic helpers
+    Modular-exponentiation arithmetic helpers
 
 The modular-exponentiation recursion repeatedly uses powers of the input base.
 This final helper packages the coprimality fact needed for every such multiplier.

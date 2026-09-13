@@ -28,7 +28,7 @@ The proof has four main layers:
 /-! ## Orthogonality and Workspace Infrastructure -/
 
 /-! =========================================================
-    Section 1: Workspace and freshness bookkeeping
+    Workspace and freshness bookkeeping
 
     An orthogonal-sum norm identity plus the register-disjointness and
     fresh-zero facts that keep the Step-2 workspace clean across the writes.
@@ -249,7 +249,7 @@ private lemma alg1_step2_workspace_clean_after_dataCarry_work_write
 /-! ## Retained-Packet Expansion and Coefficient Energy -/
 
 /-! =========================================================
-    Section 2: Good-label combinatorics and trace-error decomposition
+    Good-label combinatorics and trace-error decomposition
 
     Injectivity of the source label on good inputs, and the decomposition of the
     Step-2 trace error into a sum over good branches with its energy bounds.
@@ -689,7 +689,7 @@ lemma alg1_step2_good_label_shift_discrepancy_lt
   simpa [alg1Step2ShiftDiscrepancy, alg1WorkFraction, N, M, r] using hfinal
 
 /-! =========================================================
-    Section 3: Pre-IQFT packets and phase normalization
+    Pre-IQFT packets and phase normalization
 
     The extended-input value and phase normalization, and the actual vs ideal
     pre-IQFT packets whose norms the bound compares.
@@ -1096,7 +1096,7 @@ lemma alg1_step2_branch_norm_eq_preIQFT_norm
 /-! ## Elementary Fourier-Phase Stability -/
 
 /-! =========================================================
-    Section 4: Single-label Fourier bounds
+    Single-label Fourier bounds
 
     `qftPhase` as a complex exponential and the elementary exp/phase inequalities,
     assembled into the single-label Fourier stability bound.
@@ -1641,7 +1641,7 @@ lemma alg1_step2_single_label_fourier_stability
 /-! ## Work-Sector Separation -/
 
 /-! =========================================================
-    Section 5: Work-sector orthogonality
+    Work-sector orthogonality
 
     Good labels sharing a work residue, and the orthogonality of the actual and
     reference work packets across distinct work sectors.
@@ -2333,7 +2333,7 @@ lemma alg1_step2_error_work_orthogonal
   simp [hactual_actual, hactual_ref_data, href_actual_data, href_ref_data, inner_sub_right]
 
 /-! =========================================================
-    Section 6: Fixed-work Fourier contraction
+    Fixed-work Fourier contraction
 
     Fixing the work register: the multiplier is constant on labels, the packet
     factors through an IQFT multiplier, and the fixed-work Fourier contraction holds.
@@ -3473,7 +3473,7 @@ lemma alg1_step2_fixed_work_fourier_contraction
           rw [eval_norm_preserved]
 
 /-! =========================================================
-    Section 7: Work-fiber energy decomposition and the final bound
+    Work-fiber energy decomposition and the final bound
 
     Decompose the error energy into orthogonal work fibers and assemble the
     uniform Step-2 good-label branch bound.

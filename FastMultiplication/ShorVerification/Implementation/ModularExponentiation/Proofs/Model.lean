@@ -14,7 +14,7 @@ universe u
 namespace Shor
 
 /-! =========================================================
-    Section 2: Algorithm 1 precision and arithmetic constants
+    Algorithm 1 precision and arithmetic constants
 
 This section packages the concrete precision schedule for Algorithm 1 and the
 Step-5 inverse constant used by the cleanup phase.
@@ -45,7 +45,7 @@ end ModExpConfig
 namespace ModMulConfig
 
 /-! =========================================================
-    Section 3: Algorithm 1 staged gates
+    Algorithm 1 staged gates
 
 These names expose the five-step core as stage-level gates used throughout the
 Step 1/2/3/4/5 correctness and error-bound files.
@@ -111,7 +111,7 @@ end ModMulConfig
 end SharedConfigurations
 
 /-! =========================================================
-    Section 5: Algorithm 1 reference arithmetic
+    Algorithm 1 reference arithmetic
 
 These scalar definitions describe the intended residues, fractional work labels,
 good QPE labels, and exact Step-2 integer shift used by the error proof.
@@ -168,7 +168,7 @@ noncomputable def alg1Step2Value
 end Algorithm1ReferenceArithmetic
 
 /-! =========================================================
-    Section 6: Step-2 Fourier coefficient scaffolding
+    Step-2 Fourier coefficient scaffolding
 
 The Step-2 proof compares the actual Fourier coefficient produced by the
 PhaseProduct with the ideal coefficient for the exact integer shift. These
@@ -342,7 +342,7 @@ noncomputable def alg1Step2Error
 end Step2FourierScaffolding
 
 /-! =========================================================
-    Section 7: Step-3/4 labels and trace packets
+    Step-3/4 labels and trace packets
 
 This section records the exact data values after the comparator/subtractor
 stages and packages the finite trace expansions used by the Appendix-E-style
@@ -437,7 +437,7 @@ structure Alg1Trace
             alg1Overflow cfg b)
 
 /-! =========================================================
-    Section 8: Concrete reference states used in the Appendix-E proof
+    Concrete reference states used in the Appendix-E proof
 ========================================================= -/
 
 namespace Alg1Trace
@@ -511,7 +511,7 @@ end Alg1Trace
 end Step34LabelsAndTracePackets
 
 /-! =========================================================
-    Section 9: Step-1 and Step-5 coefficient packets
+    Step-1 and Step-5 coefficient packets
 
 The Step-5 cleanup proof compares the original Step-1 fractional load with the
 forward circuit whose adjoint is Step 5. These definitions name the QPE

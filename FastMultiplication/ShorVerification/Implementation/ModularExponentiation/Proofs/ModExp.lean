@@ -16,7 +16,7 @@ total error is proportional to the number of exponent-control bits.
 -/
 
 /-! =========================================================
-    Section 1: Tail side conditions and reindexing
+    Tail side conditions and reindexing
 
     Layout and arithmetic well-formedness for a control-qubit tail, and the
     lemmas that peel the head control off both conditions.
@@ -62,7 +62,7 @@ lemma modExpTailArithmeticOK_tail
   simpa [ModExpTailArithmeticOK, j, hexp] using h'
 
 /-! =========================================================
-    Section 2: Preservation by ideal modular multiplication
+    Preservation by ideal modular multiplication
 
     The ideal controlled multiplier keeps a valid state valid — the invariant the
     recursive hybrid argument threads through each step.
@@ -410,7 +410,7 @@ theorem ideal_preserves_valid
     exact (Submodule.span ℂ validSet).smul_mem a hξ
 
 /-! =========================================================
-    Section 3: Uniform recursive-tail hybrid bound
+    Uniform recursive-tail hybrid bound
 
     Induction over the control list: the approximate step-list stays within
     `ctrls.length · stepErr` of the ideal step-list, uniformly.
@@ -607,7 +607,7 @@ theorem modExpApproxSteps_valid_dist_uniform
       simpa [hApprox, hIdeal, ψA0, ψI0, qs.eval_seq] using hMain
 
 /-! =========================================================
-    Section 4: Full modular-exponentiation bound
+    Full modular-exponentiation bound
 
     The public end-to-end bound for the whole modular-exponentiation circuit,
     obtained by instantiating the recursive tail bound at the full register.

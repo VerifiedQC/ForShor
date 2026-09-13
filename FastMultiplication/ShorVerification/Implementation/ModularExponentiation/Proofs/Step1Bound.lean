@@ -22,7 +22,7 @@ The proof is organized as follows:
 open Shor
 
 /-! =========================================================
-    Section 1: Register-layout facts
+    Register-layout facts
 
     Disjointness and capacity facts among the data, work, dataCarry, and control
     registers used throughout the Step-1/Step-5 argument.
@@ -96,12 +96,11 @@ private lemma step1Bound_data_ASize_le_dataCarry
   omega
 
 /-! =========================================================
-    Section 2: Step-5 packet reconstruction
+    Step-5 packet reconstruction
 
     The forward Step-5 packet on the extended ideal output and on basis states,
     and its exact cleanup identity (folding in the forward/basis sub-derivations).
 ========================================================= -/
-
 
 /--
 Forward Step-5 fractional-load evaluation from the extended ideal-output
@@ -170,7 +169,6 @@ lemma alg1_step5_forward_packet_on_extended_output
         (alg1OutputValue cfg b)
         b)
       (alg1LoadPreCoeff cfg b))
-
 
 /--
 The forward circuit associated with Step 5 reproduces the complete Step-1 QPE
@@ -360,7 +358,7 @@ lemma alg1_step5_full_packet_eq_ideal
             tr.input_eq).symm
 
 /-! =========================================================
-    Section 3: Good/bad packet decomposition and the QPE tail bound
+    Good/bad packet decomposition and the QPE tail bound
 
     Split the post-Step-3/4 state into good and bad packets, prove the label
     injectivities and bad-mass/trace identities, and assemble the uniform QPE
