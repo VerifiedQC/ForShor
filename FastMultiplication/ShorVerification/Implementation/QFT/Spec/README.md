@@ -8,8 +8,7 @@ mean, and the final named claim proved in `Main.lean`.
 
 - **`Gate.PhaseProdWorkspace.CleanState`** — the linear subspace (`CleanClosure`)
   in which both physical workspace qubits of the unsigned phase-product macro
-  used at a split node are clean. Lives here (rather than in `PhaseProduct/`)
-  because every user of it is a QFT file.
+  used at a split node are clean.
 - **`QFTWorkspaceCleanState`** — the linear subspace in which both portions
   (`xWork`, `zWork`) of the inactive QFT register selected by the concrete
   lowering are zero.
