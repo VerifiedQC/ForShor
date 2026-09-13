@@ -68,17 +68,6 @@ lemma rightReg_mem_parent
     Reg.drop
   ] using List.mem_of_mem_drop hq
 
-namespace Gate.PhaseProdWorkspace
-
-/--
-The linear subspace in which both physical workspace qubits of an unsigned
-phase-product macro are clean.
--/
-abbrev CleanState
-    (qs : QSemantics) [RegEncoding qs.Basis] {x z : Reg} (ws : Gate.PhaseProdWorkspace x z) : qs.State → Prop :=
-  CleanClosure (fun b => ws.Clean b)
-
-end Gate.PhaseProdWorkspace
 
 lemma disjoint_left_right (r : Reg) :
   Disjoint (leftReg r) (rightReg r) := by
@@ -153,37 +142,6 @@ def lowerQFTPlan
       lowerQFTPlan leftPlan ;;
       LowGate.RadixReverse r (splitM r)
 
-noncomputable def QFTLoweringReady
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [LowerGateClass qs]
-    {k : ℕ}
-    {hk : 1 < k}
-    {ops : Prog k}
-    {r : Reg}
-    (plan : QFTLoweringPlan k hk ops r) :
-    qs.State → Prop := by
-  induction plan with
-  | empty r hsize =>
-      exact fun _ => True
-
-  | singleton r hsize =>
-      exact fun _ => True
-
-  | split r hsize ws phaseInitSize phasePlan
-      rightPlan leftPlan readyRight readyLeft =>
-      exact fun ψ =>
-        Gate.PhaseProdWorkspace.CleanState qs ws ψ
-        ∧
-        readyRight ψ
-        ∧
-        let ψRight := LowerGateClass.evalL (qs := qs) (lowerQFTPlan rightPlan) ψ
-        PhaseLoweringReady qs phasePlan ψRight
-        ∧
-        let ψPhase :=
-          LowerGateClass.evalL (qs := qs) (lowerGateRec phasePlan) ψRight
-        readyLeft ψPhase
 
 /-! =========================================================
     Section 4: Canonical unsigned phase-product subplans
@@ -442,39 +400,6 @@ structure QFTReserveOK
       ≤
     r.capacity
 
-/--
-The linear subspace in which both portions of the inactive QFT register used
-by the concrete lowering are zero.
--/
-abbrev QFTWorkspaceCleanState
-    (qs : QSemantics) [RegEncoding qs.Basis] (xWork zWork : Reg) :
-    qs.State → Prop :=
-  CleanClosure (fun b => FreshZero xWork b ∧ FreshZero zWork b)
-
-namespace QFTWorkspaceCleanState
-variable {qs : QSemantics} [RegEncoding qs.Basis] {xWork zWork : Reg}
-/-- Smart constructors delegating to `CleanClosure`, preserving call sites. -/
-theorem zero : QFTWorkspaceCleanState qs xWork zWork 0 := CleanClosure.zero
-end QFTWorkspaceCleanState
-
-/--
-The public precondition for concrete QFT lowering.  It says only that the
-inactive part of the supplied `ExtReg` is large enough and that the two slices
-selected by the lowering are initially zero.
--/
-structure QFTWorkspaceStateOK
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg)
-    (ψ : qs.State) :
-    Prop where
-
-  static : QFTReserveOK ops r
-
-  clean :
-    QFTWorkspaceCleanState qs (qftXWork ops r) (qftZWork ops r) ψ
 
 /--
 Internal static condition for an already-selected pair of workspace

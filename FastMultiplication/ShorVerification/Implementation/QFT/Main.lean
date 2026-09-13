@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.QFT.Assertions
+import FastMultiplication.ShorVerification.Implementation.QFT.Spec.Assertions
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.LoweringCorrectness.Readiness
 
 /-!
