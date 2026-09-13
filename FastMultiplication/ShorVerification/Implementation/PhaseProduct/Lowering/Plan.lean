@@ -14,7 +14,7 @@ because the recursive plan constructors refer to them.
 -/
 
 /-! =========================================================
-    Section 1: Compiled gate packages
+    Compiled gate packages
 
     These definitions package the phase coefficients and compiled signed gates
     that the lowering proof treats as the replacement for primitive phase-product
@@ -73,7 +73,7 @@ This file now reads in the same order as the lowering pipeline:
 -/
 
 /-! =========================================================
-    Section 2: The lowering-plan language
+    The lowering-plan language
 
     A `PhaseLoweringPlan` is a finite certificate explaining how to replace a
     high-level gate with low-level gates. Primitive arithmetic gates lower
@@ -217,7 +217,7 @@ inductive PhaseLoweringPlan
       PhaseLoweringPlan k hk pts hpts ops initSize (Gate.CSignedPhaseProd ctrl phi x z)
 
 /-! =========================================================
-    Section 3: Plan-directed recursive lowering
+    Plan-directed recursive lowering
 
     Interpreting a plan erases the proof data and returns the low-level gate
     chosen by the plan.
@@ -259,7 +259,7 @@ def lowerGateRec
   | .cSignedStep ctrl phi x z _layout _hrec _hcapacity _hctrl child => lowerGateRec child
 
 /-! =========================================================
-    Section 4: Standard interpolation-point public interface
+    Standard interpolation-point public interface
 
     Public helpers specialize the plan machinery to the canonical interpolation
     points used by the phase-product compiler.

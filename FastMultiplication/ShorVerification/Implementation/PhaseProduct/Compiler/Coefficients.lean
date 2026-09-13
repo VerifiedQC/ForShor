@@ -83,7 +83,7 @@ noncomputable def phaseCoeffFromPtsForRegs (k : ℕ) (x z : ExtReg) (pts : List 
   phaseCoeffFromPtsWidth k (phaseLimbWidth x z k) pts hpts
 
 /-! =========================================================
-    Section 8: Canonical interpolation points
+    Canonical interpolation points
     The compiler uses its own `Point` type, while the algebraic Toom-Cook proof
     lives in `Toom_Cook_formula`. This section bridges the two representations.
 ========================================================= -/

@@ -282,7 +282,7 @@ def PhaseSplitLayout.ofBudget
   }
 
 /-! =========================================================
-    Section 4: Recursive workspace size model
+    Recursive workspace size model
     The recursive compiler needs reserve space for current-level chunk growth and
     for each descendant phase-product call. These width-only definitions compute
     conservative reserve requirements from logical operand widths.
@@ -434,7 +434,7 @@ decreasing_by
 end RecursivePhaseWorkspace
 
 /-! =========================================================
-    Section 5: Static workspace-sufficiency predicates
+    Static workspace-sufficiency predicates
 ========================================================= -/
 
 /--
@@ -458,7 +458,7 @@ structure SignedRecursiveWorkspaceOK
     (RecursivePhaseWorkspace.reserveNeed ops x.width z.width).2 ≤ z.capacity
 
 /-! =========================================================
-    Section 6: Canonical recursive step construction
+    Canonical recursive step construction
     The canonical step builds a phase-product layout whose child chunks have
     exactly the next recursive width and enough reserve for all descendant calls.
 ========================================================= -/

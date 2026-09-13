@@ -6,7 +6,7 @@ open Gate
 open Operations
 
 /-! =========================================================
-    Section 5: Allocation and deallocation plan builders
+    Allocation and deallocation plan builders
 
     These definitions mirror the compiler constructors for moving values into
     and out of a recursive phase-product layout. Each allocation or deallocation
@@ -142,7 +142,7 @@ def planCompileSignedDeallocations
   exact planCompileSignedDeallocationsAux initSize src dst k le_rfl
 
 /-! =========================================================
-    Section 6: Annotated body plan builders
+    Annotated body plan builders
 
     The annotated body compiler contains ordinary arithmetic operations plus
     phase-product leaves. The caller supplies the recursive plan used at each
@@ -252,7 +252,7 @@ def planCompileAnnotatedOpsToCSignedGateAux
               tail
 
 /-! =========================================================
-    Section 7: One-level compiled phase-product plans
+    One-level compiled phase-product plans
 
     A recursive step consists of allocation, the annotated body, and
     deallocation. These builders assemble those three pieces into plans for the
@@ -415,7 +415,7 @@ def planCompiledCSignedPhaseGate
     using completePlan
 
 /-! =========================================================
-    Section 8: Canonical recursive phase-product plans
+    Canonical recursive phase-product plans
 
     The public canonical planners choose between the base case and one recursive
     compiled step using the static workspace invariant. Recursive children are

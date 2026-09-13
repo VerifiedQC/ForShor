@@ -23,7 +23,7 @@ sums.
 -/
 
 /-! =========================================================
-    Section 1: Points, rows, and interpolation matrices
+    Points, rows, and interpolation matrices
 ========================================================= -/
 inductive Point where
   | int  : ℤ → Point
@@ -67,7 +67,7 @@ def GoodInterpolationPoints {Point : Type u} {m : ℕ}
   Matrix.det (interpMatrix row pts) ≠ 0
 
 /-! =========================================================
-    Section 2: Invertibility and interpolation correctness
+    Invertibility and interpolation correctness
 ========================================================= -/
 
 /--
@@ -217,7 +217,7 @@ theorem interpCoeff_correct {Point : Type u} {m : ℕ}
       evalAtRadix m polyCoeff B := hRight.symm
 
 /-! =========================================================
-    Section 3: Phase scalar products
+    Phase scalar products
 ========================================================= -/
 
 /-- Weighted sum appearing in the exponent. -/
@@ -251,7 +251,7 @@ noncomputable def phaseScalarFromList {Point : Type u} {m : ℕ}
         phaseScalarFromList phi coeff pointTerm rest (n + 1) hn'
 
 /-! =========================================================
-    Section 4: Canonical finite interpolation points
+    Canonical finite interpolation points
 ========================================================= -/
 
 /-- Integer coordinate used by the canonical alternating point sequence. -/
@@ -425,7 +425,7 @@ lemma genFiniteInterpolationPoints_good
   · exact hCoordGood
 
 /-! =========================================================
-    Section 5: Tail-weighted sums and phase scalar identities
+    Tail-weighted sums and phase scalar identities
 ========================================================= -/
 
 def tailWeightedPointSum {m : ℕ}

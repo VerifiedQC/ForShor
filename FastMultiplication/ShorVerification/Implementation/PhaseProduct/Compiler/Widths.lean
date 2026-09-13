@@ -152,7 +152,7 @@ lemma commonNeededWidth_ge_zneed {k : ℕ} (need : NeededWidths k) (i : Fin k) :
   omega
 
 /-! =========================================================
-    Section 6: Scan consequences for target layouts
+    Scan consequences for target layouts
 ========================================================= -/
 
 /-- The initial `x` width is included in the full width scan. -/

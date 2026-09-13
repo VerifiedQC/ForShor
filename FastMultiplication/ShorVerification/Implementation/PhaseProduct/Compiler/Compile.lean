@@ -18,7 +18,7 @@ open Operations
 open scoped BigOperators
 
 /-! =========================================================
-    Section 6: Annotated operations and phase-product counting
+    Annotated operations and phase-product counting
 ========================================================= -/
 
 /-- A source operation plus the interpolation term assigned to a phase-product leaf, if any. -/
@@ -100,7 +100,7 @@ def compileSignedDeallocations (k : ℕ) (src dst : LayoutState k) : Gate :=
   compileSignedDeallocationsAux src dst k (le_rfl)
 
 /-! =========================================================
-    Section 8: Compilation from `valid_ops` to `Gate`
+    Compilation from `valid_ops` to `Gate`
 ========================================================= -/
 
 /-- Signed compiler for annotated ops.  The layout state already contains
@@ -186,7 +186,7 @@ def Gate.PhaseProductLayout.ControlDisjoint {x z : ExtReg} {k : ℕ} (layout : G
   (∀ i, ctrl ∉ (layout.xSplit.child i).ownedQubits) ∧ (∀ i, ctrl ∉ (layout.zSplit.child i).ownedQubits)
 
 /-! =========================================================
-    Section 1: Annotation and phase-product counting
+    Annotation and phase-product counting
     These lemmas are pure program-bookkeeping facts. They keep phase-product
     term indices stable under append and prove that local arithmetic helper
     programs do not introduce recursive phase-product leaves.

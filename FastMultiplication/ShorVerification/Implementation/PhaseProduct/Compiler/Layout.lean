@@ -24,7 +24,7 @@ open Operations
 open scoped BigOperators
 
 /-! =========================================================
-    Section 1: Layout states and width bookkeeping
+    Layout states and width bookkeeping
 ========================================================= -/
 
 /-- Current chunk-to-register assignment for the paired `x` and `z` work arrays. -/
@@ -100,7 +100,7 @@ def phaseLimbWidth (x z : ExtReg) (k : ℕ) : ℕ :=
   min (phaseLimbWidthOfWidth x.width k) (phaseLimbWidthOfWidth z.width k)
 
 /-! =========================================================
-    Section 2: Top-heavy phase splitting parameters
+    Top-heavy phase splitting parameters
 ========================================================= -/
 
 /-- The most significant chunk is the last chunk. -/
@@ -120,7 +120,7 @@ def phaseChunkActive (e : ExtReg) (k W : ℕ) (i : Fin k) : Reg :=
   (e.active.drop (phaseChunkStart W i)).take (phaseSplitLogicalWidth e.width W k i)
 
 /-! =========================================================
-    Section 3: Abstract `ExtReg` split interface
+    Abstract `ExtReg` split interface
 ========================================================= -/
 
 /-- Validity conditions for the top-heavy split of `parent` into `k` chunks of lower width `W`. -/

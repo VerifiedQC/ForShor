@@ -59,7 +59,7 @@ abbrev LayoutReserveCleanState
   CleanClosure (fun b => LayoutReserveCleanBasis st b)
 
 /-! =========================================================
-    Section 7: Cleanliness of the complete reserves
+    Cleanliness of the complete reserves
 ========================================================= -/
 
 /--
@@ -86,7 +86,7 @@ abbrev RecursiveWorkspaceCleanState
   CleanClosure (fun b => RecursiveWorkspaceCleanBasis x z b)
 
 /-! =========================================================
-    Section 8: Combined public workspace preconditions
+    Combined public workspace preconditions
 ========================================================= -/
 
 /--
