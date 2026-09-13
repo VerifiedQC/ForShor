@@ -3,7 +3,7 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
 import FastMultiplication.ShorVerification.Framework.Submission
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
-import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.Reduction
+import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.Defs
 
 /-!
 # Shor Public Assertions

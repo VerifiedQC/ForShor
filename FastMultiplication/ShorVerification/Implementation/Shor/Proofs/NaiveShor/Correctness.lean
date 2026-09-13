@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.GoodOutcomeMassLowerBound
+import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Assertions
 
 /-!
 # Naive Shor Correctness

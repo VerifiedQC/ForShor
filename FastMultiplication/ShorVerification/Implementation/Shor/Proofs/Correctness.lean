@@ -1,4 +1,3 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Assertions
 import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFinding
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Correctness
 import FastMultiplication.ShorVerification.Implementation.Compilation.Correctness
@@ -15,7 +14,6 @@ import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Precision
 import FastMultiplication.ShorVerification.Framework.Submission
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
-import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.Reduction
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic

@@ -1,6 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Assertions
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Correctness
 import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.ProbabilityBound
+import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.Reduction
 
 /-!
 # Shor Main Theorems

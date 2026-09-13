@@ -1,18 +1,8 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.Workspace
-import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFinding
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Budgets
 import FastMultiplication.ShorVerification.Implementation.Compilation.Correctness
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ConstArithmetic
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.CmpLtNW
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Lowering.ConstArithmetic
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
@@ -26,7 +16,6 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Primitives
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Init
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Step1
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Step2
 
 /-!
 # Step 5 Readiness via Adjoint Decomposition

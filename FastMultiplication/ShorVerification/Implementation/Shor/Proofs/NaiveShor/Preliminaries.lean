@@ -1,5 +1,8 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Assertions
 import FastMultiplication.ShorVerification.Implementation.Shor.Math.OrderFindingAnalysis
+import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
+import FastMultiplication.ShorVerification.Framework.Quantum.Measurement
+import FastMultiplication.ShorVerification.Framework.Submission
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
 
 /-!
 # Naive Shor Correctness
