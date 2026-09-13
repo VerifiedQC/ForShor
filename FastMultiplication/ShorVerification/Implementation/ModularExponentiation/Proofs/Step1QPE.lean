@@ -50,17 +50,8 @@ input basis state exactly.
 section SharedHelpers
 
 /-- Splitting a finite sum along a decidable predicate recovers the whole sum. -/
-lemma sum_filter_add_sum_filter_not
-    {α β : Type*}
-    [AddCommMonoid β]
-    (s : Finset α)
-    (p : α → Prop)
-    [DecidablePred p]
-    (f : α → β) :
-    (∑ x ∈ s.filter p, f x)
-      +
-    ∑ x ∈ s.filter (fun x => ¬ p x), f x
-      =
+lemma sum_filter_add_sum_filter_not {α β : Type*} [AddCommMonoid β] (s : Finset α) (p : α → Prop) [DecidablePred p]
+    (f : α → β) : (∑ x ∈ s.filter p, f x) + ∑ x ∈ s.filter (fun x => ¬ p x), f x =
     ∑ x ∈ s, f x := by
   classical
   rw [Finset.sum_filter, Finset.sum_filter, ← Finset.sum_add_distrib]
@@ -69,16 +60,8 @@ lemma sum_filter_add_sum_filter_not
   by_cases hp : p x <;> simp [hp]
 
 /-- Pythagoras: the squared norm of a pairwise-orthogonal finite family adds. -/
-lemma norm_sq_sum_eq_sum_norm_sq_of_orthogonal_qpe
-    {qs : QSemantics}
-    {ι : Type v}
-    (s : Finset ι)
-    (f : ι → qs.State)
-    (horth :
-      ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
-        inner ℂ (f i) (f j) = 0) :
-    ‖∑ i ∈ s, f i‖ ^ 2
-      =
+lemma norm_sq_sum_eq_sum_norm_sq_of_orthogonal_qpe {qs : QSemantics} {ι : Type v} (s : Finset ι) (f : ι → qs.State)
+    (horth : ∀ i ∈ s, ∀ j ∈ s, i ≠ j → inner ℂ (f i) (f j) = 0) : ‖∑ i ∈ s, f i‖ ^ 2 =
     ∑ i ∈ s, ‖f i‖ ^ 2 := by
   classical
   revert horth
@@ -89,8 +72,7 @@ lemma norm_sq_sum_eq_sum_norm_sq_of_orthogonal_qpe
   | insert a s ha ih =>
       intro horth
 
-      have horth_s :
-          ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
+      have horth_s : ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
             inner ℂ (f i) (f j) = 0 := by
         intro i hi j hj hij
         exact horth i
@@ -99,9 +81,7 @@ lemma norm_sq_sum_eq_sum_norm_sq_of_orthogonal_qpe
           (Finset.mem_insert_of_mem hj)
           hij
 
-      have hih :
-          ‖∑ i ∈ s, f i‖ ^ 2
-            =
+      have hih : ‖∑ i ∈ s, f i‖ ^ 2 =
           ∑ i ∈ s, ‖f i‖ ^ 2 :=
         ih horth_s
 
@@ -137,11 +117,8 @@ lemma norm_sq_sum_eq_sum_norm_sq_of_orthogonal_qpe
             rw [Finset.sum_insert ha]
 
 /-- Writing the same register twice keeps only the last value. -/
-lemma writeNat_overwrite_same_reg
-    {Basis : Type u} [RegEncoding Basis]
-    (r : Reg) (v w : ℕ) (b : Basis) :
-    RegEncoding.writeNat r v (RegEncoding.writeNat r w b)
-      =
+lemma writeNat_overwrite_same_reg {Basis : Type u} [RegEncoding Basis] (r : Reg) (v w : ℕ) (b : Basis) :
+    RegEncoding.writeNat r v (RegEncoding.writeNat r w b) =
     RegEncoding.writeNat r v b := by
   apply RegEncoding.basis_ext
   intro q
@@ -172,29 +149,18 @@ The norm of a ket expansion depends only on its coefficients.
 Any two injective labellings of the support give orthonormal families, so both
 sums have the same termwise squared norms.
 -/
-lemma norm_sum_reindex_ket_eq
-    (qs : QSemantics)
-    {ι : Type v}
-    (s : Finset ι)
-    (α : ι → ℂ)
-    (f g : ι → qs.Basis)
-    (hf :
-      ∀ i ∈ s, ∀ j ∈ s, i ≠ j → f i ≠ f j)
-    (hg :
-      ∀ i ∈ s, ∀ j ∈ s, i ≠ j → g i ≠ g j) :
-    ‖∑ i ∈ s, α i • qs.ket (f i)‖
-      =
+lemma norm_sum_reindex_ket_eq (qs : QSemantics) {ι : Type v} (s : Finset ι) (α : ι → ℂ) (f g : ι → qs.Basis) (hf :
+      ∀ i ∈ s, ∀ j ∈ s, i ≠ j → f i ≠ f j) (hg : ∀ i ∈ s, ∀ j ∈ s, i ≠ j → g i ≠ g j) :
+    ‖∑ i ∈ s, α i • qs.ket (f i)‖ =
     ‖∑ i ∈ s, α i • qs.ket (g i)‖ := by
   classical
-  have horth_f :
-      ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
+  have horth_f : ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
         inner ℂ (α i • qs.ket (f i)) (α j • qs.ket (f j)) = 0 := by
     intro i hi j hj hij
     rw [inner_smul_left, inner_smul_right,
       qs.ket_inner_eq_zero_of_ne (hf i hi j hj hij)]
     simp
-  have horth_g :
-      ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
+  have horth_g : ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
         inner ℂ (α i • qs.ket (g i)) (α j • qs.ket (g j)) = 0 := by
     intro i hi j hj hij
     rw [inner_smul_left, inner_smul_right,
@@ -206,16 +172,12 @@ lemma norm_sum_reindex_ket_eq
   have hsq_g :=
     norm_sq_sum_eq_sum_norm_sq_of_orthogonal_qpe
       (qs := qs) s (fun i => α i • qs.ket (g i)) horth_g
-  have hterms :
-      (∑ i ∈ s, ‖α i • qs.ket (f i)‖ ^ 2)
-        =
+  have hterms : (∑ i ∈ s, ‖α i • qs.ket (f i)‖ ^ 2) =
       ∑ i ∈ s, ‖α i • qs.ket (g i)‖ ^ 2 := by
     apply Finset.sum_congr rfl
     intro i hi
     simp [norm_smul, ket_norm_one qs]
-  have hsquares :
-      ‖∑ i ∈ s, α i • qs.ket (f i)‖ ^ 2
-        =
+  have hsquares : ‖∑ i ∈ s, α i • qs.ket (f i)‖ ^ 2 =
       ‖∑ i ∈ s, α i • qs.ket (g i)‖ ^ 2 := by
     rw [hsq_f, hsq_g, hterms]
   have hn1 : 0 ≤ ‖∑ i ∈ s, α i • qs.ket (f i)‖ := norm_nonneg _
@@ -230,27 +192,11 @@ The two registers are disjoint, so the intermediate writes commute and collapse;
 freshness of the grown data bit is what lets the grown write be undone by the
 original data value.
 -/
-lemma alg1_reset_extendHi_work_write
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (z : qs.Basis)
-    (w y : ℕ)
-    (hz :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag z) :
-    RegEncoding.writeNat
-      ((cfg.env.data.grow 1).active)
-      (RegEncoding.toNat cfg.env.data.active z)
-      (RegEncoding.writeNat
-        cfg.env.work.active
-        0
-        (RegEncoding.writeNat
-          ((cfg.env.data.grow 1).active)
-          y
-          (RegEncoding.writeNat cfg.env.work.active w z)))
-      =
+lemma alg1_reset_extendHi_work_write (qs : QSemantics) [RegEncoding qs.Basis] {η : ℝ} (cfg : ModMulConfig η)
+    (z : qs.Basis) (w y : ℕ) (hz : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag z) :
+    RegEncoding.writeNat ((cfg.env.data.grow 1).active) (RegEncoding.toNat cfg.env.data.active z)
+      (RegEncoding.writeNat cfg.env.work.active 0 (RegEncoding.writeNat ((cfg.env.data.grow 1).active) y
+          (RegEncoding.writeNat cfg.env.work.active w z))) =
     z := by
   have hfresh1 : cfg.env.data.FreshFor 1 z :=
     ExtReg.freshFor_one_of_two
@@ -259,18 +205,13 @@ lemma alg1_reset_extendHi_work_write
       cfg.env.circuit_workspace.1
       hz.2.1
 
-  have hgrown_toNat :
-      RegEncoding.toNat (cfg.env.data.grow 1).active z =
+  have hgrown_toNat : RegEncoding.toNat (cfg.env.data.grow 1).active z =
         RegEncoding.toNat cfg.env.data.active z := by
     simpa [ExtReg.toNat] using
       (Gate.ExtReg.toNat_grow_of_fresh cfg.env.data 1 z hfresh1)
 
-  have hrestore_ext :
-      RegEncoding.writeNat
-        ((cfg.env.data.grow 1).active)
-        (RegEncoding.toNat cfg.env.data.active z)
-        z
-        =
+  have hrestore_ext : RegEncoding.writeNat ((cfg.env.data.grow 1).active) (RegEncoding.toNat cfg.env.data.active z)
+        z =
       z := by
     rw [← hgrown_toNat]
     exact RegEncoding.writeNat_toNat (cfg.env.data.grow 1).active z
@@ -361,25 +302,14 @@ section TraceCoefficientIdentification
 /--
 A normalized valid trace has total input probability one.
 -/
-lemma alg1_trace_input_mass_one
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (ψ : qs.State)
-    (tr : Alg1Trace qs cfg ψ) :
-    cfg.ValidUnitState qs ψ →
+lemma alg1_trace_input_mass_one (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs] {η : ℝ}
+    (cfg : ModMulConfig η) (ψ : qs.State) (tr : Alg1Trace qs cfg ψ) : cfg.ValidUnitState qs ψ →
       ∑ b ∈ tr.support, ‖tr.inputCoeff b‖ ^ 2 = 1 := by
   classical
   intro hunit
 
-  have horth :
-      ∀ b ∈ tr.support, ∀ b' ∈ tr.support, b ≠ b' →
-        inner ℂ
-          (tr.inputCoeff b • qs.ket b)
-          (tr.inputCoeff b' • qs.ket b')
-          =
+  have horth : ∀ b ∈ tr.support, ∀ b' ∈ tr.support, b ≠ b' → inner ℂ (tr.inputCoeff b • qs.ket b)
+          (tr.inputCoeff b' • qs.ket b') =
         0 := by
     intro b hb b' hb' hne
     rw [
@@ -389,9 +319,7 @@ lemma alg1_trace_input_mass_one
     ]
     simp
 
-  have hsq :
-      ‖∑ b ∈ tr.support, tr.inputCoeff b • qs.ket b‖ ^ 2
-        =
+  have hsq : ‖∑ b ∈ tr.support, tr.inputCoeff b • qs.ket b‖ ^ 2 =
       ∑ b ∈ tr.support, ‖tr.inputCoeff b • qs.ket b‖ ^ 2 :=
     norm_sq_sum_eq_sum_norm_sq_of_orthogonal_qpe
       (qs := qs)
@@ -416,11 +344,8 @@ lemma alg1_trace_input_mass_one
       norm_num
 
 /-- Section-local restatement of `writeNat_overwrite_same_reg`. -/
-private lemma qpe_writeNat_overwrite_same_reg
-    {Basis : Type u} [RegEncoding Basis]
-    (r : Reg) (v w : ℕ) (b : Basis) :
-    RegEncoding.writeNat r v (RegEncoding.writeNat r w b)
-      =
+private lemma qpe_writeNat_overwrite_same_reg {Basis : Type u} [RegEncoding Basis] (r : Reg) (v w : ℕ) (b : Basis) :
+    RegEncoding.writeNat r v (RegEncoding.writeNat r w b) =
     RegEncoding.writeNat r v b :=
   writeNat_overwrite_same_reg r v w b
 
@@ -430,23 +355,11 @@ Writing work labels over good inputs is injective in both arguments.
 Good inputs have a zero work register, so the written label can be read back;
 that recovers `t = u`, and clearing the work register again recovers `b = b'`.
 -/
-private lemma qpe_work_write_injective_of_good
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b b' : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
-    (hb' :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b')
-    (t u : Fin (ASize cfg.env.work.active))
-    (hEq :
-      RegEncoding.writeNat cfg.env.work.active t.1 b
-        =
-      RegEncoding.writeNat cfg.env.work.active u.1 b') :
+private lemma qpe_work_write_injective_of_good (qs : QSemantics) [RegEncoding qs.Basis] {η : ℝ}
+    (cfg : ModMulConfig η) (b b' : qs.Basis) (hb : GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) (hb' : GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b') (t u : Fin (ASize cfg.env.work.active)) (hEq :
+      RegEncoding.writeNat cfg.env.work.active t.1 b = RegEncoding.writeNat cfg.env.work.active u.1 b') :
     b = b' ∧ t = u := by
   have htu_val : t.1 = u.1 := by
     calc
@@ -516,27 +429,12 @@ coefficient `inputCoeff b * coeff b t`.
 All other terms of the double sum are orthogonal to the chosen label by
 `qpe_work_write_injective_of_good`.
 -/
-private lemma qpe_inner_trace_work_packet
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (ψ : qs.State)
-    (tr : Alg1Trace qs cfg ψ)
-    (coeff : qs.Basis → Fin (ASize cfg.env.work.active) → ℂ)
-    (b : qs.Basis)
-    (hb : b ∈ tr.support)
-    (t : Fin (ASize cfg.env.work.active)) :
-    inner ℂ
-      (qs.ket (RegEncoding.writeNat cfg.env.work.active t.1 b))
-      (∑ b' ∈ tr.support,
-        tr.inputCoeff b' •
-          ∑ u : Fin (ASize cfg.env.work.active),
-            coeff b' u •
-              qs.ket
-                (RegEncoding.writeNat cfg.env.work.active u.1 b'))
-      =
+private lemma qpe_inner_trace_work_packet (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs] {η : ℝ}
+    (cfg : ModMulConfig η) (ψ : qs.State) (tr : Alg1Trace qs cfg ψ)
+    (coeff : qs.Basis → Fin (ASize cfg.env.work.active) → ℂ) (b : qs.Basis) (hb : b ∈ tr.support)
+    (t : Fin (ASize cfg.env.work.active)) : inner ℂ (qs.ket (RegEncoding.writeNat cfg.env.work.active t.1 b))
+      (∑ b' ∈ tr.support, tr.inputCoeff b' • ∑ u : Fin (ASize cfg.env.work.active), coeff b' u • qs.ket
+                (RegEncoding.writeNat cfg.env.work.active u.1 b')) =
     tr.inputCoeff b * coeff b t := by
   classical
 
@@ -550,9 +448,7 @@ private lemma qpe_inner_trace_work_packet
       simp
     ·
       intro u _hu hut
-      have hneq :
-          RegEncoding.writeNat cfg.env.work.active t.1 b
-            ≠
+      have hneq : RegEncoding.writeNat cfg.env.work.active t.1 b ≠
           RegEncoding.writeNat cfg.env.work.active u.1 b := by
         intro hEq
         rcases
@@ -571,19 +467,13 @@ private lemma qpe_inner_trace_work_packet
   ·
     intro b' hb' hne
     rw [inner_smul_right, inner_sum]
-    have hsum :
-        ∑ i : Fin (ASize cfg.env.work.active),
-          inner ℂ
-            (qs.ket (RegEncoding.writeNat cfg.env.work.active t.1 b))
-            (coeff b' i •
-              qs.ket (RegEncoding.writeNat cfg.env.work.active i.1 b'))
-          =
+    have hsum : ∑ i : Fin (ASize cfg.env.work.active), inner ℂ
+            (qs.ket (RegEncoding.writeNat cfg.env.work.active t.1 b)) (coeff b' i •
+              qs.ket (RegEncoding.writeNat cfg.env.work.active i.1 b')) =
         0 := by
       apply Finset.sum_eq_zero
       intro u hu
-      have hneq :
-          RegEncoding.writeNat cfg.env.work.active t.1 b
-            ≠
+      have hneq : RegEncoding.writeNat cfg.env.work.active t.1 b ≠
           RegEncoding.writeNat cfg.env.work.active u.1 b' := by
         intro hEq
         rcases
@@ -610,18 +500,9 @@ projecting that packet onto `ket (writeNat work t b)` computes each of them as
 input coefficient identifies the two. This is what licenses replacing an
 arbitrary trace by the canonical QPE data in every later estimate.
 -/
-lemma alg1_trace_phaseCoeff_eq_alg1PhaseCoeff
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (ψ : qs.State)
-    (tr : Alg1Trace qs cfg ψ)
-    (b : qs.Basis)
-    (hb : b ∈ tr.support)
-    (hcoeff : tr.inputCoeff b ≠ 0)
-    (t : Fin (ASize cfg.env.work.active)) :
+lemma alg1_trace_phaseCoeff_eq_alg1PhaseCoeff (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+    {η : ℝ} (cfg : ModMulConfig η) (ψ : qs.State) (tr : Alg1Trace qs cfg ψ) (b : qs.Basis) (hb : b ∈ tr.support)
+    (hcoeff : tr.inputCoeff b ≠ 0) (t : Fin (ASize cfg.env.work.active)) :
     tr.phaseCoeff b t = alg1PhaseCoeff qs cfg b t := by
   classical
 
@@ -671,19 +552,9 @@ lemma alg1_trace_phaseCoeff_eq_alg1PhaseCoeff
               qs cfg b' (tr.input_good b' hb')
           ]
 
-  have hpackets :
-      (∑ b' ∈ tr.support,
-        tr.inputCoeff b' •
-          ∑ u : Fin (ASize cfg.env.work.active),
-            tr.phaseCoeff b' u •
-              qs.ket
-                (RegEncoding.writeNat cfg.env.work.active u.1 b'))
-        =
-      ∑ b' ∈ tr.support,
-        tr.inputCoeff b' •
-          ∑ u : Fin (ASize cfg.env.work.active),
-            alg1PhaseCoeff qs cfg b' u •
-              qs.ket
+  have hpackets : (∑ b' ∈ tr.support, tr.inputCoeff b' • ∑ u : Fin (ASize cfg.env.work.active), tr.phaseCoeff b' u •
+              qs.ket (RegEncoding.writeNat cfg.env.work.active u.1 b')) = ∑ b' ∈ tr.support, tr.inputCoeff b' •
+          ∑ u : Fin (ASize cfg.env.work.active), alg1PhaseCoeff qs cfg b' u • qs.ket
                 (RegEncoding.writeNat cfg.env.work.active u.1 b') :=
     htrace.symm.trans hcanonical
 
@@ -695,9 +566,7 @@ lemma alg1_trace_phaseCoeff_eq_alg1PhaseCoeff
           ξ)
       hpackets
 
-  have hmul :
-      tr.inputCoeff b * tr.phaseCoeff b t
-        =
+  have hmul : tr.inputCoeff b * tr.phaseCoeff b t =
       tr.inputCoeff b * alg1PhaseCoeff qs cfg b t := by
     calc
       tr.inputCoeff b * tr.phaseCoeff b t
@@ -755,16 +624,8 @@ Rewrite the trace bad mass using canonical QPE coefficients.
 Branches with zero input coefficient contribute zero, so canonicality is only
 needed on nonzero branches.
 -/
-lemma alg1_trace_bad_mass_eq_weighted_qpe_bad_mass
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (ψ : qs.State)
-    (tr : Alg1Trace qs cfg ψ) :
-    alg1TraceBadMass qs cfg tr
-      =
+lemma alg1_trace_bad_mass_eq_weighted_qpe_bad_mass (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+    {η : ℝ} (cfg : ModMulConfig η) (ψ : qs.State) (tr : Alg1Trace qs cfg ψ) : alg1TraceBadMass qs cfg tr =
     ∑ b ∈ tr.support,
       ‖tr.inputCoeff b‖ ^ 2 * alg1QpeBadMass qs cfg b := by
   classical
@@ -787,21 +648,10 @@ Lift the basis tail estimate coherently across a normalized valid trace.
 This is just finite weighted averaging: all weights are nonnegative and sum
 to one by `alg1_trace_input_mass_one`.
 -/
-lemma alg1_trace_bad_mass_le_of_basis_tail
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    {Ctail : ℝ}
-    (hTail :
-      ∀ (η : ℝ) (cfg : ModMulConfig η) (b : qs.Basis),
-        GoodModMulBasisInput
-          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b →
-        alg1QpeBadMass qs cfg b ≤ Ctail * η)
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (ψ : qs.State)
-    (tr : Alg1Trace qs cfg ψ) :
-    cfg.ValidUnitState qs ψ →
+lemma alg1_trace_bad_mass_le_of_basis_tail (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+    {Ctail : ℝ} (hTail : ∀ (η : ℝ) (cfg : ModMulConfig η) (b : qs.Basis), GoodModMulBasisInput
+          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b → alg1QpeBadMass qs cfg b ≤ Ctail * η) {η : ℝ}
+    (cfg : ModMulConfig η) (ψ : qs.State) (tr : Alg1Trace qs cfg ψ) : cfg.ValidUnitState qs ψ →
       alg1TraceBadMass qs cfg tr ≤ Ctail * η := by
   intro hunit
   rw [alg1_trace_bad_mass_eq_weighted_qpe_bad_mass qs cfg ψ tr]
@@ -810,10 +660,7 @@ lemma alg1_trace_bad_mass_le_of_basis_tail
       ∑ b ∈ tr.support, ‖tr.inputCoeff b‖ ^ 2 = 1 :=
     alg1_trace_input_mass_one qs cfg ψ tr hunit
 
-  have hpoint :
-      ∀ b ∈ tr.support,
-        ‖tr.inputCoeff b‖ ^ 2 * alg1QpeBadMass qs cfg b
-          ≤
+  have hpoint : ∀ b ∈ tr.support, ‖tr.inputCoeff b‖ ^ 2 * alg1QpeBadMass qs cfg b ≤
         ‖tr.inputCoeff b‖ ^ 2 * (Ctail * η) := by
     intro b hb
     exact
@@ -839,14 +686,8 @@ The Step-1 difference is exactly the discarded QPE packet.
 Proof: expand `tr.full_step1_eq`, partition `Finset.univ` into good and bad
 labels, and subtract the definition of `tr.goodStep1`.
 -/
-lemma alg1_step1_error_eq_bad_packet
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (ψ : qs.State)
-    (tr : Alg1Trace qs cfg ψ) :
+lemma alg1_step1_error_eq_bad_packet (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] {η : ℝ}
+    (cfg : ModMulConfig η) (ψ : qs.State) (tr : Alg1Trace qs cfg ψ) :
     qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
       - tr.goodStep1
       =
@@ -866,19 +707,10 @@ lemma alg1_step1_error_eq_bad_packet
   rw [tr.full_step1_eq]
   simp only [Alg1Trace.goodStep1, Alg1Trace.badStep1]
 
-  have hsplit :
-      ∀ b : qs.Basis,
-        (∑ t : Fin (ASize cfg.env.work.active),
-          tr.phaseCoeff b t •
-            qs.ket (RegEncoding.writeNat cfg.env.work.active t.1 b))
-          =
-        (∑ t ∈ alg1GoodLabels cfg b,
-          tr.phaseCoeff b t •
-            qs.ket (RegEncoding.writeNat cfg.env.work.active t.1 b))
-          +
-        ∑ t ∈ Finset.univ.filter
-            (fun t => t ∉ alg1GoodLabels cfg b),
-          tr.phaseCoeff b t •
+  have hsplit : ∀ b : qs.Basis, (∑ t : Fin (ASize cfg.env.work.active), tr.phaseCoeff b t •
+            qs.ket (RegEncoding.writeNat cfg.env.work.active t.1 b)) = (∑ t ∈ alg1GoodLabels cfg b,
+          tr.phaseCoeff b t • qs.ket (RegEncoding.writeNat cfg.env.work.active t.1 b)) + ∑ t ∈ Finset.univ.filter
+            (fun t => t ∉ alg1GoodLabels cfg b), tr.phaseCoeff b t •
             qs.ket (RegEncoding.writeNat cfg.env.work.active t.1 b) := by
     intro b
 
@@ -914,24 +746,10 @@ Each branch is the ideal output value written into the grown data register on
 top of the corresponding Step-1 work label, weighted by the canonical phase
 coefficient.
 -/
-lemma alg1_trace_afterStep34Full_eq_canonical
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (ψ : qs.State)
-    (tr : Alg1Trace qs cfg ψ) :
-    tr.afterStep34Full
-      =
-    ∑ b ∈ tr.support,
-      tr.inputCoeff b •
-        ∑ t : Fin (ASize cfg.env.work.active),
-          alg1PhaseCoeff qs cfg b t •
-            qs.ket
-              (RegEncoding.writeNat
-                ((cfg.env.data.grow 1).active)
-                (alg1OutputValue cfg b)
+lemma alg1_trace_afterStep34Full_eq_canonical (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+    {η : ℝ} (cfg : ModMulConfig η) (ψ : qs.State) (tr : Alg1Trace qs cfg ψ) : tr.afterStep34Full = ∑ b ∈ tr.support,
+      tr.inputCoeff b • ∑ t : Fin (ASize cfg.env.work.active), alg1PhaseCoeff qs cfg b t • qs.ket
+              (RegEncoding.writeNat ((cfg.env.data.grow 1).active) (alg1OutputValue cfg b)
                 (RegEncoding.writeNat cfg.env.work.active t.1 b)) := by
   classical
   simp only [Alg1Trace.afterStep34Full]
@@ -948,16 +766,8 @@ lemma alg1_trace_afterStep34Full_eq_canonical
       qs cfg ψ tr b hb hzero t]
 
 /-- Section-local restatement of the orthogonal Pythagoras lemma. -/
-private lemma qpe_norm_sq_sum_eq_sum_norm_sq_of_orthogonal
-    {qs : QSemantics}
-    {ι : Type v}
-    (s : Finset ι)
-    (f : ι → qs.State)
-    (horth :
-      ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
-        inner ℂ (f i) (f j) = 0) :
-    ‖∑ i ∈ s, f i‖ ^ 2
-      =
+private lemma qpe_norm_sq_sum_eq_sum_norm_sq_of_orthogonal {qs : QSemantics} {ι : Type v} (s : Finset ι)
+    (f : ι → qs.State) (horth : ∀ i ∈ s, ∀ j ∈ s, i ≠ j → inner ℂ (f i) (f j) = 0) : ‖∑ i ∈ s, f i‖ ^ 2 =
     ∑ i ∈ s, ‖f i‖ ^ 2 := by
   classical
   revert horth
@@ -968,8 +778,7 @@ private lemma qpe_norm_sq_sum_eq_sum_norm_sq_of_orthogonal
   | insert a s ha ih =>
       intro horth
 
-      have horth_s :
-          ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
+      have horth_s : ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
             inner ℂ (f i) (f j) = 0 := by
         intro i hi j hj hij
         exact horth i
@@ -978,9 +787,7 @@ private lemma qpe_norm_sq_sum_eq_sum_norm_sq_of_orthogonal
           (Finset.mem_insert_of_mem hj)
           hij
 
-      have hih :
-          ‖∑ i ∈ s, f i‖ ^ 2
-            =
+      have hih : ‖∑ i ∈ s, f i‖ ^ 2 =
           ∑ i ∈ s, ‖f i‖ ^ 2 :=
         ih horth_s
 
@@ -1023,14 +830,8 @@ work writes makes all of these basis states pairwise distinct, hence
 orthogonal, so Pythagoras turns the norm into the weighted sum of squared
 coefficients that defines `alg1TraceBadMass`.
 -/
-lemma alg1_badStep1_norm_sq_eq_trace_bad_mass
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (ψ : qs.State)
-    (tr : Alg1Trace qs cfg ψ) :
+lemma alg1_badStep1_norm_sq_eq_trace_bad_mass (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs]
+    {η : ℝ} (cfg : ModMulConfig η) (ψ : qs.State) (tr : Alg1Trace qs cfg ψ) :
     ‖tr.badStep1‖ ^ 2 = alg1TraceBadMass qs cfg tr := by
   classical
 
@@ -1045,9 +846,7 @@ lemma alg1_badStep1_norm_sq_eq_trace_bad_mass
     fun i =>
       RegEncoding.writeNat cfg.env.work.active i.2.1 i.1
 
-  have hflat :
-      tr.badStep1
-        =
+  have hflat : tr.badStep1 =
       ∑ i ∈ Sbad, α i • qs.ket (label i) := by
     simp [
       Sbad, α, label,
@@ -1057,8 +856,7 @@ lemma alg1_badStep1_norm_sq_eq_trace_bad_mass
       smul_smul
     ]
 
-  have hwrite_inj :
-      ∀ i ∈ Sbad, ∀ j ∈ Sbad,
+  have hwrite_inj : ∀ i ∈ Sbad, ∀ j ∈ Sbad,
         label i = label j → i = j := by
     intro i hi j hj hEq
 
@@ -1135,18 +933,12 @@ lemma alg1_badStep1_norm_sq_eq_trace_bad_mass
     simp at hb ht ⊢
     exact ⟨hb, ht⟩
 
-  have hlabel_inj :
-      ∀ i ∈ Sbad, ∀ j ∈ Sbad, i ≠ j →
+  have hlabel_inj : ∀ i ∈ Sbad, ∀ j ∈ Sbad, i ≠ j →
         label i ≠ label j := by
     intro i hi j hj hij hEq
     exact hij (hwrite_inj i hi j hj hEq)
 
-  have horth :
-      ∀ i ∈ Sbad, ∀ j ∈ Sbad, i ≠ j →
-        inner ℂ
-          (α i • qs.ket (label i))
-          (α j • qs.ket (label j))
-          =
+  have horth : ∀ i ∈ Sbad, ∀ j ∈ Sbad, i ≠ j → inner ℂ (α i • qs.ket (label i)) (α j • qs.ket (label j)) =
         0 := by
     intro i hi j hj hij
     rw [
@@ -1156,9 +948,7 @@ lemma alg1_badStep1_norm_sq_eq_trace_bad_mass
     ]
     simp
 
-  have hsq :
-      ‖∑ i ∈ Sbad, α i • qs.ket (label i)‖ ^ 2
-        =
+  have hsq : ‖∑ i ∈ Sbad, α i • qs.ket (label i)‖ ^ 2 =
       ∑ i ∈ Sbad, ‖α i • qs.ket (label i)‖ ^ 2 :=
     qpe_norm_sq_sum_eq_sum_norm_sq_of_orthogonal
       (qs := qs)
@@ -1199,14 +989,8 @@ Combining `alg1_step1_error_eq_bad_packet` with
 "how far is Step 1 from its idealization" to the purely numerical question
 bounded in the rest of the file.
 -/
-lemma alg1_step1_error_sq_eq_trace_bad_mass
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (ψ : qs.State)
-    (tr : Alg1Trace qs cfg ψ) :
+lemma alg1_step1_error_sq_eq_trace_bad_mass (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] {η : ℝ}
+    (cfg : ModMulConfig η) (ψ : qs.State) (tr : Alg1Trace qs cfg ψ) :
     ‖qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
         - tr.goodStep1‖ ^ 2
       =
@@ -1236,12 +1020,8 @@ target residue modulo `N`.
 Coprimality of `c` with `N` is what makes `step5Constant c N` act as the
 required inverse factor.
 -/
-private lemma step5Constant_mul_output_mod_eq_target
-    (c N x : ℕ)
-    (hN : 1 < N)
-    (hcoprime : Nat.Coprime c N) :
-    (step5Constant c N * ((c * x) % N)) % N
-      =
+private lemma step5Constant_mul_output_mod_eq_target (c N x : ℕ) (hN : 1 < N) (hcoprime : Nat.Coprime c N) :
+    (step5Constant c N * ((c * x) % N)) % N =
     (((c + N - 1) % N) * x) % N := by
   classical
 
@@ -1333,17 +1113,9 @@ The controlled Step-5 cleanup residue equals `alg1TargetResidue`.
 Uncontrolled branches contribute residue zero, which is also the value of
 `alg1TargetResidue` there.
 -/
-lemma alg1_step5_cleanup_residue_eq_target
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis):
-    (if RegEncoding.bit cfg.ctrl b then
-        (step5Constant cfg.c cfg.env.N * alg1OutputValue cfg b) % cfg.env.N
-      else
-        0)
-      =
+lemma alg1_step5_cleanup_residue_eq_target (qs : QSemantics) [RegEncoding qs.Basis] {η : ℝ} (cfg : ModMulConfig η)
+    (b : qs.Basis): (if RegEncoding.bit cfg.ctrl b then
+        (step5Constant cfg.c cfg.env.N * alg1OutputValue cfg b) % cfg.env.N else 0) =
     alg1TargetResidue cfg b := by
   classical
   by_cases hctrl : RegEncoding.bit cfg.ctrl b
@@ -1380,23 +1152,10 @@ the grown data register.
 The extra high bit is fresh and the output value is below `N`, so it never
 reaches that bit.
 -/
-lemma alg1_write_data_eq_extendHi_output
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
-    RegEncoding.writeNat
-        cfg.env.data.active
-        (alg1OutputValue cfg b)
-        b
-      =
-    RegEncoding.writeNat
-        ((cfg.env.data.grow 1).active)
-        (alg1OutputValue cfg b)
+lemma alg1_write_data_eq_extendHi_output (qs : QSemantics) [RegEncoding qs.Basis] {η : ℝ} (cfg : ModMulConfig η)
+    (b : qs.Basis) (hb : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
+    RegEncoding.writeNat cfg.env.data.active (alg1OutputValue cfg b) b = RegEncoding.writeNat
+        ((cfg.env.data.grow 1).active) (alg1OutputValue cfg b)
         b := by
   let m : SplitPoint ((cfg.env.data.grow 1).active) :=
     ⟨regSize cfg.env.data.active, by
@@ -1406,9 +1165,7 @@ lemma alg1_write_data_eq_extendHi_output
       alg1OutputValue cfg b < ASize cfg.env.data.active :=
     alg1OutputValue_lt_data_capacity cfg b hb
 
-  have hout_left :
-      alg1OutputValue cfg b
-        <
+  have hout_left : alg1OutputValue cfg b <
       ASize (splitLeft ((cfg.env.data.grow 1).active) m) := by
     simpa [m, splitLeft, ExtReg.grow, Reg.append, Reg.take, regSize,
       Reg.width, ASize] using hout_data
@@ -1428,18 +1185,8 @@ lemma alg1_write_data_eq_extendHi_output
       hout_left
       hzero_right
 
-  have hsplit :
-      RegEncoding.writeNat
-          ((cfg.env.data.grow 1).active)
-          (alg1OutputValue cfg b)
-          b
-        =
-      RegEncoding.writeNat
-          (cfg.env.data.newBits 1)
-          0
-          (RegEncoding.writeNat
-            cfg.env.data.active
-            (alg1OutputValue cfg b)
+  have hsplit : RegEncoding.writeNat ((cfg.env.data.grow 1).active) (alg1OutputValue cfg b) b = RegEncoding.writeNat
+          (cfg.env.data.newBits 1) 0 (RegEncoding.writeNat cfg.env.data.active (alg1OutputValue cfg b)
             b) := by
     simpa [m, splitLeft, splitRight, ExtReg.grow, ExtReg.newBits,
       ExtReg.remainingReserve, Reg.append, Reg.take, Reg.drop, regSize,
@@ -1452,11 +1199,7 @@ lemma alg1_write_data_eq_extendHi_output
       cfg.env.circuit_workspace.1
       hb.2.1
 
-  have hfresh_after :
-      cfg.env.data.FreshFor 1
-        (RegEncoding.writeNat
-          cfg.env.data.active
-          (alg1OutputValue cfg b)
+  have hfresh_after : cfg.env.data.FreshFor 1 (RegEncoding.writeNat cfg.env.data.active (alg1OutputValue cfg b)
           b) :=
     ExtReg.freshFor_write_active
       cfg.env.data
@@ -1465,18 +1208,8 @@ lemma alg1_write_data_eq_extendHi_output
       b
       hfresh1
 
-  have hclear :
-      RegEncoding.writeNat
-          (cfg.env.data.newBits 1)
-          0
-          (RegEncoding.writeNat
-            cfg.env.data.active
-            (alg1OutputValue cfg b)
-            b)
-        =
-      RegEncoding.writeNat
-        cfg.env.data.active
-        (alg1OutputValue cfg b)
+  have hclear : RegEncoding.writeNat (cfg.env.data.newBits 1) 0 (RegEncoding.writeNat cfg.env.data.active
+            (alg1OutputValue cfg b) b) = RegEncoding.writeNat cfg.env.data.active (alg1OutputValue cfg b)
         b := by
     rw [← hfresh_after]
     exact
@@ -1493,23 +1226,10 @@ lemma alg1_write_data_eq_extendHi_output
 The ideal controlled modular multiplication sends a good basis state to the
 basis state holding `alg1OutputValue` in the grown data register.
 -/
-lemma alg1_ideal_ket_eq_extended_output
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [IdealCtrlModMulExactSemantics qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
-    qs.eval (ModMulConfig.idealGate cfg) (qs.ket b)
-      =
-    qs.ket
-      (RegEncoding.writeNat
-        ((cfg.env.data.grow 1).active)
-        (alg1OutputValue cfg b)
+lemma alg1_ideal_ket_eq_extended_output (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs]
+    [IdealCtrlModMulExactSemantics qs] {η : ℝ} (cfg : ModMulConfig η) (b : qs.Basis) (hb : GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) : qs.eval (ModMulConfig.idealGate cfg) (qs.ket b) =
+    qs.ket (RegEncoding.writeNat ((cfg.env.data.grow 1).active) (alg1OutputValue cfg b)
         b) := by
   rw [IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_cfg qs cfg b hb]
   congr 1
@@ -1521,22 +1241,11 @@ The modular load phase only depends on the loaded value modulo `N`.
 Congruent values differ by a multiple of `N`, which contributes a full turn of
 `2 * π` per unit of the work label.
 -/
-lemma alg1_exp_phase_eq_of_modEq
-    (N u v z : ℕ)
-    (hN : 0 < N)
-    (huv : Nat.ModEq N u v) :
-    Complex.exp
-      (((2 * Real.pi) / (N : ℝ)) * Complex.I *
-        ((u : ℂ) * (z : ℂ)))
-      =
-    Complex.exp
+lemma alg1_exp_phase_eq_of_modEq (N u v z : ℕ) (hN : 0 < N) (huv : Nat.ModEq N u v) : Complex.exp
+      (((2 * Real.pi) / (N : ℝ)) * Complex.I * ((u : ℂ) * (z : ℂ))) = Complex.exp
       (((2 * Real.pi) / (N : ℝ)) * Complex.I *
         ((v : ℂ) * (z : ℂ))) := by
-  have hphase (x y : ℕ) :
-      Complex.exp
-        (((2 * Real.pi) / (N : ℝ)) * Complex.I *
-          ((x : ℂ) * (y : ℂ)))
-        =
+  have hphase (x y : ℕ) : Complex.exp (((2 * Real.pi) / (N : ℝ)) * Complex.I * ((x : ℂ) * (y : ℂ))) =
       qftPhase N x y := by
     simp [qftPhase, ωPow, ω, div_eq_mul_inv, mul_assoc, mul_left_comm, mul_comm]
     rw [← Complex.exp_nat_mul]
@@ -1549,9 +1258,7 @@ lemma alg1_exp_phase_eq_of_modEq
       exact_mod_cast Nat.ne_of_gt hN
     unfold ω
     rw [← Complex.exp_nat_mul]
-    have harg :
-        (N : ℂ) * (2 * (Real.pi : ℂ) * Complex.I / (N : ℂ))
-          =
+    have harg : (N : ℂ) * (2 * (Real.pi : ℂ) * Complex.I / (N : ℂ)) =
         Complex.I * ((Real.pi : ℂ) * 2) := by
       field_simp [hN0, mul_assoc, mul_left_comm, mul_comm]
     rw [harg]
@@ -1602,15 +1309,8 @@ lemma alg1_exp_phase_eq_of_modEq
       (hphase v z).symm
 
 /-- The Step-1 phase scalar is the target phase scalar. -/
-lemma alg1_step1_phase_scalar_eq_target
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (z : Fin (ASize cfg.env.work.active)) :
-    alg1Step1PhaseScalar cfg b z
-      =
+lemma alg1_step1_phase_scalar_eq_target (qs : QSemantics) [RegEncoding qs.Basis] {η : ℝ} (cfg : ModMulConfig η)
+    (b : qs.Basis) (z : Fin (ASize cfg.env.work.active)) : alg1Step1PhaseScalar cfg b z =
     alg1TargetPhaseScalar cfg b z := by
   classical
   by_cases hctrl : RegEncoding.bit cfg.ctrl b
@@ -1633,9 +1333,7 @@ lemma alg1_step1_phase_scalar_eq_target
       rw [hr]
       exact (Nat.mod_modEq (a * x) N).symm
 
-    have hphase :
-        Angle.toReal (alg1Step1Phase cfg)
-          =
+    have hphase : Angle.toReal (alg1Step1Phase cfg) =
         (2 * Real.pi * (a : ℝ)) / (N : ℝ) := by
       simp only [alg1Step1Phase, Angle.toReal, a, N]
       push_cast
@@ -1677,23 +1375,11 @@ lemma alg1_step1_phase_scalar_eq_target
     ]
 
 /-- The forward Step-5 phase scalar is also the target phase scalar. -/
-lemma alg1_step5_phase_scalar_eq_target
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (_hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
-    (z : Fin (ASize cfg.env.work.active)) :
-    (if RegEncoding.bit cfg.ctrl b then
-      Complex.exp
-        (((Angle.toReal (alg1Step5Phase cfg) : ℝ) : ℂ) * Complex.I *
-          ((alg1OutputValue cfg b : ℂ) * (z.1 : ℂ)))
-    else
-      1)
-      =
+lemma alg1_step5_phase_scalar_eq_target (qs : QSemantics) [RegEncoding qs.Basis] {η : ℝ} (cfg : ModMulConfig η)
+    (b : qs.Basis) (_hb : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
+    (z : Fin (ASize cfg.env.work.active)) : (if RegEncoding.bit cfg.ctrl b then Complex.exp
+        (((Angle.toReal (alg1Step5Phase cfg) : ℝ) : ℂ) * Complex.I * ((alg1OutputValue cfg b : ℂ) * (z.1 : ℂ))) else
+      1) =
     alg1TargetPhaseScalar cfg b z := by
   classical
   by_cases hctrl : RegEncoding.bit cfg.ctrl b
@@ -1733,9 +1419,7 @@ lemma alg1_step5_phase_scalar_eq_target
         Nat.ModEq N ((k % N) * x) r :=
       hmod_left.trans hraw
 
-    have hphase :
-        Angle.toReal (alg1Step5Phase cfg)
-          =
+    have hphase : Angle.toReal (alg1Step5Phase cfg) =
         (2 * Real.pi * ((k % N : ℕ) : ℝ)) / (N : ℝ) := by
       simp only [alg1Step5Phase, Angle.toReal, k, N]
       push_cast
@@ -1781,23 +1465,11 @@ Immediate from the previous two lemmas, both sides being
 `alg1TargetPhaseScalar`. This is the phase-level form of "Step 5 uncomputes
 Step 1".
 -/
-lemma alg1_step5_phase_scalar_eq_step1
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
-    (z : Fin (ASize cfg.env.work.active)) :
-    (if RegEncoding.bit cfg.ctrl b then
-      Complex.exp
-        (((Angle.toReal (alg1Step5Phase cfg) : ℝ) : ℂ) * Complex.I *
-          ((alg1OutputValue cfg b : ℂ) * (z.1 : ℂ)))
-    else
-      1)
-      =
+lemma alg1_step5_phase_scalar_eq_step1 (qs : QSemantics) [RegEncoding qs.Basis] {η : ℝ} (cfg : ModMulConfig η)
+    (b : qs.Basis) (hb : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
+    (z : Fin (ASize cfg.env.work.active)) : (if RegEncoding.bit cfg.ctrl b then Complex.exp
+        (((Angle.toReal (alg1Step5Phase cfg) : ℝ) : ℂ) * Complex.I * ((alg1OutputValue cfg b : ℂ) * (z.1 : ℂ))) else
+      1) =
     alg1Step1PhaseScalar cfg b z := by
   rw [
     alg1_step5_phase_scalar_eq_target qs cfg b hb z,
@@ -1820,8 +1492,7 @@ producing the scalar `alg1Step1PhaseScalar`.
 section LocalDiagonalSemantics
 
 /-- The data and work registers are disjoint. -/
-private lemma alg1_data_work_active_disjoint
-    {η : ℝ} (cfg : ModMulConfig η) :
+private lemma alg1_data_work_active_disjoint {η : ℝ} (cfg : ModMulConfig η) :
     Shor.Disjoint cfg.env.data.active cfg.env.work.active := by
   rw [Shor.Disjoint, List.disjoint_left]
   intro q hqData hqWork
@@ -1832,8 +1503,7 @@ private lemma alg1_data_work_active_disjoint
     (List.mem_append_left _ hqWork)
 
 /-- The grown data register is still disjoint from the work register. -/
-private lemma alg1_dataCarry_work_active_disjoint
-    {η : ℝ} (cfg : ModMulConfig η) :
+private lemma alg1_dataCarry_work_active_disjoint {η : ℝ} (cfg : ModMulConfig η) :
     Shor.Disjoint (cfg.env.data.grow 1).active cfg.env.work.active := by
   rw [Shor.Disjoint, List.disjoint_left]
   intro q hqData hqWork
@@ -1844,15 +1514,13 @@ private lemma alg1_dataCarry_work_active_disjoint
     (List.mem_append_left _ hqWork)
 
 /-- The control qubit lies outside the work register. -/
-private lemma alg1_ctrl_notin_work_active
-    {η : ℝ} (cfg : ModMulConfig η) :
+private lemma alg1_ctrl_notin_work_active {η : ℝ} (cfg : ModMulConfig η) :
     cfg.ctrl ∉ cfg.env.work.active.qubits := by
   intro hq
   exact cfg.layout.2.2.2.2.1 (List.mem_append_left _ hq)
 
 /-- The control qubit lies outside the grown data register. -/
-private lemma alg1_ctrl_notin_dataCarry_active
-    {η : ℝ} (cfg : ModMulConfig η) :
+private lemma alg1_ctrl_notin_dataCarry_active {η : ℝ} (cfg : ModMulConfig η) :
     cfg.ctrl ∉ (cfg.env.data.grow 1).active.qubits := by
   intro hq
   apply cfg.layout.2.2.2.1
@@ -1861,8 +1529,7 @@ private lemma alg1_ctrl_notin_dataCarry_active
   simpa [Gate.ExtReg.ownedQubits_grow] using howned
 
 /-- List identity relating the two ways of naming the second fresh bit. -/
-private lemma qpe_take_two_tail_eq_tail_take_one
-    {α : Type*} (xs : List α) :
+private lemma qpe_take_two_tail_eq_tail_take_one {α : Type*} (xs : List α) :
     (xs.take 2).tail = xs.tail.take 1 := by
   cases xs with
   | nil => simp
@@ -1875,12 +1542,8 @@ Two fresh bits minus one consumed bit leaves one fresh bit.
 Step 5 runs on the register already grown by the Step-1 carry, so it needs the
 freshness hypothesis transported across that growth.
 -/
-private lemma alg1_grow_one_freshFor_one_of_two
-    {Basis : Type u} [RegEncoding Basis]
-    (e : ExtReg)
-    (b : Basis)
-    (hcap : e.CanGrow 2)
-    (hfresh : e.FreshFor 2 b) :
+private lemma alg1_grow_one_freshFor_one_of_two {Basis : Type u} [RegEncoding Basis] (e : ExtReg) (b : Basis)
+    (hcap : e.CanGrow 2) (hfresh : e.FreshFor 2 b) :
     (e.grow 1).FreshFor 1 b := by
   unfold ExtReg.FreshFor FreshZero at hfresh ⊢
 
@@ -1931,36 +1594,16 @@ Proof: apply `GateSemanticsFacts.eval_CPhaseProd_ket`, then use:
 * `ctrl` outside `work`;
 * `toNat work (write work z b) = z`.
 -/
-lemma alg1_step1_cphase_on_work_label
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
-    (z : Fin (ASize cfg.env.work.active)) :
-    qs.eval
-        (Gate.CPhaseProdUsing
-          cfg.ctrl
-          (alg1Step1Phase cfg)
-          cfg.env.data.active
-          cfg.env.work.active
-          cfg.env.circuit_workspace.step1Workspace)
-        (qs.ket
-          (RegEncoding.writeNat cfg.env.work.active z.1 b))
-      =
-    alg1Step1PhaseScalar cfg b z •
-      qs.ket
+lemma alg1_step1_cphase_on_work_label (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] {η : ℝ}
+    (cfg : ModMulConfig η) (b : qs.Basis) (hb : GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) (z : Fin (ASize cfg.env.work.active)) : qs.eval
+        (Gate.CPhaseProdUsing cfg.ctrl (alg1Step1Phase cfg) cfg.env.data.active cfg.env.work.active
+          cfg.env.circuit_workspace.step1Workspace) (qs.ket (RegEncoding.writeNat cfg.env.work.active z.1 b)) =
+    alg1Step1PhaseScalar cfg b z • qs.ket
         (RegEncoding.writeNat cfg.env.work.active z.1 b) := by
   have hdatawork := alg1_data_work_active_disjoint cfg
 
-  have hctrl :
-      RegEncoding.bit cfg.ctrl
-          (RegEncoding.writeNat cfg.env.work.active z.1 b)
-        =
+  have hctrl : RegEncoding.bit cfg.ctrl (RegEncoding.writeNat cfg.env.work.active z.1 b) =
       RegEncoding.bit cfg.ctrl b :=
     RegEncoding.bit_writeNat_out
       (r := cfg.env.work.active)
@@ -1969,10 +1612,7 @@ lemma alg1_step1_cphase_on_work_label
       (q := cfg.ctrl)
       (alg1_ctrl_notin_work_active cfg)
 
-  have hdata :
-      RegEncoding.toNat cfg.env.data.active
-          (RegEncoding.writeNat cfg.env.work.active z.1 b)
-        =
+  have hdata : RegEncoding.toNat cfg.env.data.active (RegEncoding.writeNat cfg.env.work.active z.1 b) =
       RegEncoding.toNat cfg.env.data.active b :=
     RegEncoding.toNat_left_write_right
       cfg.env.data.active
@@ -1981,10 +1621,7 @@ lemma alg1_step1_cphase_on_work_label
       b
       z.1
 
-  have hwork :
-      RegEncoding.toNat cfg.env.work.active
-          (RegEncoding.writeNat cfg.env.work.active z.1 b)
-        =
+  have hwork : RegEncoding.toNat cfg.env.work.active (RegEncoding.writeNat cfg.env.work.active z.1 b) =
       z.1 :=
     RegEncoding.toNat_writeNat_of_lt
       cfg.env.work.active
@@ -2009,39 +1646,15 @@ lemma alg1_step1_cphase_on_work_label
 The forward Step-5 CPhaseProd action on one work label.
 
 The output basis has the desired modular result in the grown data register; this
-lemma identifies its diagonal scalar with the original Step-1 scalar.
--/
-lemma alg1_step5_cphase_on_output_work_label
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
-    (z : Fin (ASize cfg.env.work.active)) :
-    qs.eval
-        (Gate.CPhaseProdUsing
-          cfg.ctrl
-          (alg1Step5Phase cfg)
-          ((cfg.env.data.grow 1).active)
-          cfg.env.work.active
-          cfg.env.circuit_workspace.step5Workspace)
-        (qs.ket
-          (RegEncoding.writeNat cfg.env.work.active z.1
-            (RegEncoding.writeNat
-              ((cfg.env.data.grow 1).active)
-              (alg1OutputValue cfg b)
-              b)))
-      =
-    alg1Step1PhaseScalar cfg b z •
-      qs.ket
-        (RegEncoding.writeNat cfg.env.work.active z.1
-          (RegEncoding.writeNat
-            ((cfg.env.data.grow 1).active)
-            (alg1OutputValue cfg b)
+lemma identifies its diagonal scalar with the original Step-1 scalar. -/
+lemma alg1_step5_cphase_on_output_work_label (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+    {η : ℝ} (cfg : ModMulConfig η) (b : qs.Basis) (hb : GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) (z : Fin (ASize cfg.env.work.active)) : qs.eval
+        (Gate.CPhaseProdUsing cfg.ctrl (alg1Step5Phase cfg) ((cfg.env.data.grow 1).active) cfg.env.work.active
+          cfg.env.circuit_workspace.step5Workspace) (qs.ket (RegEncoding.writeNat cfg.env.work.active z.1
+            (RegEncoding.writeNat ((cfg.env.data.grow 1).active) (alg1OutputValue cfg b) b))) =
+    alg1Step1PhaseScalar cfg b z • qs.ket (RegEncoding.writeNat cfg.env.work.active z.1 (RegEncoding.writeNat
+            ((cfg.env.data.grow 1).active) (alg1OutputValue cfg b)
             b)) := by
   let bData : qs.Basis :=
     RegEncoding.writeNat
@@ -2077,10 +1690,7 @@ lemma alg1_step5_cphase_on_output_work_label
         (q := cfg.ctrl)
         (alg1_ctrl_notin_dataCarry_active cfg)
 
-  have hctrl :
-      RegEncoding.bit cfg.ctrl
-          (RegEncoding.writeNat cfg.env.work.active z.1 bData)
-        =
+  have hctrl : RegEncoding.bit cfg.ctrl (RegEncoding.writeNat cfg.env.work.active z.1 bData) =
       RegEncoding.bit cfg.ctrl b := by
     calc
       RegEncoding.bit cfg.ctrl
@@ -2094,9 +1704,7 @@ lemma alg1_step5_cphase_on_output_work_label
               (alg1_ctrl_notin_work_active cfg)
       _ = RegEncoding.bit cfg.ctrl b := hctrl_ext
 
-  have hdata :
-      RegEncoding.toNat ((cfg.env.data.grow 1).active)
-          (RegEncoding.writeNat cfg.env.work.active z.1 bData)
+  have hdata : RegEncoding.toNat ((cfg.env.data.grow 1).active) (RegEncoding.writeNat cfg.env.work.active z.1 bData)
         =
       alg1OutputValue cfg b := by
     calc
@@ -2119,10 +1727,7 @@ lemma alg1_step5_cphase_on_output_work_label
                 b
                 hout_lt
 
-  have hwork :
-      RegEncoding.toNat cfg.env.work.active
-          (RegEncoding.writeNat cfg.env.work.active z.1 bData)
-        =
+  have hwork : RegEncoding.toNat cfg.env.work.active (RegEncoding.writeNat cfg.env.work.active z.1 bData) =
       z.1 :=
     RegEncoding.toNat_writeNat_of_lt
       cfg.env.work.active
@@ -2147,8 +1752,7 @@ lemma alg1_step5_cphase_on_output_work_label
         b
         hdataFresh0
 
-  have hdataFresh2 :
-      (cfg.env.data.grow 1).FreshFor 1
+  have hdataFresh2 : (cfg.env.data.grow 1).FreshFor 1
         (RegEncoding.writeNat cfg.env.work.active z.1 bData) :=
     ExtReg.freshFor_write_active_of_ownedDisjoint
       (cfg.env.data.grow 1)
@@ -2171,8 +1775,7 @@ lemma alg1_step5_cphase_on_output_work_label
         cfg.env.circuit_workspace.work_dataCarry_disjoint
         hb.2.2.2.1
 
-  have hworkFresh2 :
-      cfg.env.work.FreshFor 1
+  have hworkFresh2 : cfg.env.work.FreshFor 1
         (RegEncoding.writeNat cfg.env.work.active z.1 bData) :=
     ExtReg.freshFor_write_active
       cfg.env.work
@@ -2181,8 +1784,7 @@ lemma alg1_step5_cphase_on_output_work_label
       bData
       hworkFresh1
 
-  have hclean :
-      cfg.env.circuit_workspace.step5Workspace.Clean
+  have hclean : cfg.env.circuit_workspace.step5Workspace.Clean
         (RegEncoding.writeNat cfg.env.work.active z.1 bData) := by
     change
       (cfg.env.data.grow 1).FreshFor 1
@@ -2204,18 +1806,11 @@ lemma alg1_step5_cphase_on_output_work_label
       hclean
   ]
 
-  have hphase :
-      (if RegEncoding.bit cfg.ctrl
-          (RegEncoding.writeNat cfg.env.work.active z.1 bData) then
-        Complex.exp
+  have hphase : (if RegEncoding.bit cfg.ctrl (RegEncoding.writeNat cfg.env.work.active z.1 bData) then Complex.exp
           (((Angle.toReal (alg1Step5Phase cfg) : ℝ) : ℂ) * Complex.I *
             ((RegEncoding.toNat ((cfg.env.data.grow 1).active)
-                (RegEncoding.writeNat cfg.env.work.active z.1 bData) : ℂ) *
-             (RegEncoding.toNat cfg.env.work.active
-                (RegEncoding.writeNat cfg.env.work.active z.1 bData) : ℂ)))
-      else
-        1)
-        =
+                (RegEncoding.writeNat cfg.env.work.active z.1 bData) : ℂ) * (RegEncoding.toNat cfg.env.work.active
+                (RegEncoding.writeNat cfg.env.work.active z.1 bData) : ℂ))) else 1) =
       alg1Step1PhaseScalar cfg b z := by
     rw [hctrl, hdata, hwork]
     exact alg1_step5_phase_scalar_eq_step1 qs cfg b hb z
@@ -2239,11 +1834,8 @@ analysis becomes purely numerical.
 section ExactPacketAlgebra
 
 /-- Section-local restatement of `writeNat_overwrite_same_reg`. -/
-private lemma writeNat_overwrite_same_reg_step5
-    {Basis : Type*} [RegEncoding Basis]
-    (r : Reg) (v w : ℕ) (b : Basis) :
-    RegEncoding.writeNat r v (RegEncoding.writeNat r w b)
-      =
+private lemma writeNat_overwrite_same_reg_step5 {Basis : Type*} [RegEncoding Basis]
+    (r : Reg) (v w : ℕ) (b : Basis) : RegEncoding.writeNat r v (RegEncoding.writeNat r w b) =
     RegEncoding.writeNat r v b :=
   writeNat_overwrite_same_reg r v w b
 
@@ -2252,29 +1844,15 @@ Explicit inverse-QFT evaluation on an arbitrary finite work packet.
 
 Unlike `eval_iqft_work_expansion`, this specifies the coefficient exactly.
 -/
-lemma eval_IQFT_work_packet
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    (work : ExtReg)
-    (base : qs.Basis)
-    (β : Fin (ASize work.active) → ℂ) :
-    qs.eval (IQFT work)
-      (∑ z : Fin (ASize work.active),
-        β z • qs.ket (RegEncoding.writeNat work.active z.1 base))
-      =
-    ∑ t : Fin (ASize work.active),
-      (∑ z : Fin (ASize work.active),
-        β z * alg1IQFTCoeff work.active z t) •
+lemma eval_IQFT_work_packet (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] (work : ExtReg)
+    (base : qs.Basis) (β : Fin (ASize work.active) → ℂ) : qs.eval (IQFT work) (∑ z : Fin (ASize work.active),
+        β z • qs.ket (RegEncoding.writeNat work.active z.1 base)) = ∑ t : Fin (ASize work.active),
+      (∑ z : Fin (ASize work.active), β z * alg1IQFTCoeff work.active z t) •
         qs.ket (RegEncoding.writeNat work.active t.1 base) := by
   classical
 
-  have hsingle :
-      ∀ z : Fin (ASize work.active),
-        qs.eval (IQFT work)
-          (qs.ket (RegEncoding.writeNat work.active z.1 base))
-        =
-        ∑ t : Fin (ASize work.active),
+  have hsingle : ∀ z : Fin (ASize work.active), qs.eval (IQFT work)
+          (qs.ket (RegEncoding.writeNat work.active z.1 base)) = ∑ t : Fin (ASize work.active),
           alg1IQFTCoeff work.active z t •
             qs.ket (RegEncoding.writeNat work.active t.1 base) := by
     intro z
@@ -2283,9 +1861,7 @@ lemma eval_IQFT_work_packet
     apply Finset.sum_congr rfl
     intro t ht
     rw [smul_smul]
-    have hz_toNat :
-        RegEncoding.toNat work.active
-            (RegEncoding.writeNat work.active z.1 base)
+    have hz_toNat : RegEncoding.toNat work.active (RegEncoding.writeNat work.active z.1 base)
           = z.1 :=
       RegEncoding.toNat_writeNat_of_lt work.active z.1 base z.isLt
     simp [
@@ -2355,20 +1931,13 @@ lemma eval_IQFT_work_packet
               rw [← Finset.sum_smul]
 
 /-- The QFT phase with zero left input is trivial. -/
-private lemma qpe_qftPhase_zero_left
-    (N y : ℕ) :
+private lemma qpe_qftPhase_zero_left (N y : ℕ) :
     qftPhase N 0 y = 1 := by
   simp [qftPhase, ωPow]
 
-lemma eval_Hreg_zero_uniform_sum_ext
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    (work : ExtReg)
-    (b : qs.Basis)
-    (hzero : RegEncoding.toNat work.active b = 0) :
-    qs.eval (H_reg work.active) (qs.ket b) =
-      (1 / Real.sqrt (ASize work.active : ℝ) : ℂ) •
+lemma eval_Hreg_zero_uniform_sum_ext (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
+    (work : ExtReg) (b : qs.Basis) (hzero : RegEncoding.toNat work.active b = 0) :
+    qs.eval (H_reg work.active) (qs.ket b) = (1 / Real.sqrt (ASize work.active : ℝ) : ℂ) •
         ∑ y : Fin (ASize work.active),
           qs.ket (RegEncoding.writeNat work.active y.1 b) := by
   rw [_root_.eval_Hreg_zero_eq_QFT qs work b]
@@ -2382,27 +1951,11 @@ The pre-IQFT Step-1 packet.
 This is proved entirely from `eval_Hreg_zero_uniform_sum`, diagonal CPhaseProd
 semantics, and linearity.
 -/
-lemma alg1_step1_preIQFT_packet
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
-    qs.eval
-        ((H_reg cfg.env.work.active) ;;
-          (Gate.CPhaseProdUsing
-            cfg.ctrl
-            (alg1Step1Phase cfg)
-            cfg.env.data.active
-            cfg.env.work.active
-            cfg.env.circuit_workspace.step1Workspace))
-        (qs.ket b)
-      =
-    ∑ z : Fin (ASize cfg.env.work.active),
+lemma alg1_step1_preIQFT_packet (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] {η : ℝ}
+    (cfg : ModMulConfig η) (b : qs.Basis) (hb : GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) : qs.eval ((H_reg cfg.env.work.active) ;;
+          (Gate.CPhaseProdUsing cfg.ctrl (alg1Step1Phase cfg) cfg.env.data.active cfg.env.work.active
+            cfg.env.circuit_workspace.step1Workspace)) (qs.ket b) = ∑ z : Fin (ASize cfg.env.work.active),
       alg1LoadPreCoeff cfg b z •
         qs.ket (RegEncoding.writeNat cfg.env.work.active z.1 b) := by
   classical
@@ -2420,47 +1973,19 @@ lemma alg1_step1_preIQFT_packet
 The pre-IQFT forward Step-5 packet, still expressed relative to the ideal
 output basis state.
 -/
-lemma alg1_step5_forward_preIQFT_packet
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
-    qs.eval
-        ((H_reg cfg.env.work.active) ;;
-          (Gate.CPhaseProdUsing
-            cfg.ctrl
-            (alg1Step5Phase cfg)
-            ((cfg.env.data.grow 1).active)
-            cfg.env.work.active
-            cfg.env.circuit_workspace.step5Workspace))
-        (qs.ket
-          (RegEncoding.writeNat
-            ((cfg.env.data.grow 1).active)
-            (alg1OutputValue cfg b)
-            b))
-      =
-    ∑ z : Fin (ASize cfg.env.work.active),
-      alg1LoadPreCoeff cfg b z •
-        qs.ket
-          (RegEncoding.writeNat cfg.env.work.active z.1
-            (RegEncoding.writeNat
-              ((cfg.env.data.grow 1).active)
+lemma alg1_step5_forward_preIQFT_packet (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] {η : ℝ}
+    (cfg : ModMulConfig η) (b : qs.Basis) (hb : GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) : qs.eval ((H_reg cfg.env.work.active) ;;
+          (Gate.CPhaseProdUsing cfg.ctrl (alg1Step5Phase cfg) ((cfg.env.data.grow 1).active) cfg.env.work.active
+            cfg.env.circuit_workspace.step5Workspace)) (qs.ket (RegEncoding.writeNat ((cfg.env.data.grow 1).active)
+            (alg1OutputValue cfg b) b)) = ∑ z : Fin (ASize cfg.env.work.active), alg1LoadPreCoeff cfg b z • qs.ket
+          (RegEncoding.writeNat cfg.env.work.active z.1 (RegEncoding.writeNat ((cfg.env.data.grow 1).active)
               (alg1OutputValue cfg b)
               b)) := by
   classical
 
-  have hwork0 :
-      RegEncoding.toNat cfg.env.work.active
-        (RegEncoding.writeNat
-          ((cfg.env.data.grow 1).active)
-          (alg1OutputValue cfg b)
-          b)
-        =
+  have hwork0 : RegEncoding.toNat cfg.env.work.active (RegEncoding.writeNat ((cfg.env.data.grow 1).active)
+          (alg1OutputValue cfg b) b) =
       0 := by
     calc
       RegEncoding.toNat cfg.env.work.active
@@ -2504,26 +2029,14 @@ The original canonical QPE coefficient is the explicit Fourier coefficient.
 Proof: combine `alg1_step1_preIQFT_packet` with `eval_IQFT_work_packet`, then
 project both sides onto `ket (writeNat work t b)`.
 -/
-lemma alg1PhaseCoeff_eq_fractionalLoadCoeff
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
-    (t : Fin (ASize cfg.env.work.active)) :
-    alg1PhaseCoeff qs cfg b t
-      =
+lemma alg1PhaseCoeff_eq_fractionalLoadCoeff (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] {η : ℝ}
+    (cfg : ModMulConfig η) (b : qs.Basis) (hb : GoodModMulBasisInput
+        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) (t : Fin (ASize cfg.env.work.active)) :
+    alg1PhaseCoeff qs cfg b t =
     alg1FractionalLoadCoeff cfg b t := by
   classical
 
-  have hlabel_inj :
-      ∀ s u : Fin (ASize cfg.env.work.active),
-        RegEncoding.writeNat cfg.env.work.active s.1 b
-          =
+  have hlabel_inj : ∀ s u : Fin (ASize cfg.env.work.active), RegEncoding.writeNat cfg.env.work.active s.1 b =
         RegEncoding.writeNat cfg.env.work.active u.1 b →
         s = u := by
     intro s u hEq
@@ -2545,8 +2058,7 @@ lemma alg1PhaseCoeff_eq_fractionalLoadCoeff
         RegEncoding.toNat_writeNat_of_lt
           cfg.env.work.active u.1 b u.isLt
 
-  have hU1 :
-      qs.eval
+  have hU1 : qs.eval
           (ModMulConfig.U1 (Basis := qs.Basis) cfg)
           (qs.ket b)
         =
@@ -2601,9 +2113,7 @@ lemma alg1PhaseCoeff_eq_fractionalLoadCoeff
   · rw [inner_smul_right, ket_inner_self]
     simp
   · intro u _hu htu
-    have hneq :
-        RegEncoding.writeNat cfg.env.work.active t.1 b
-          ≠
+    have hneq : RegEncoding.writeNat cfg.env.work.active t.1 b ≠
         RegEncoding.writeNat cfg.env.work.active u.1 b := by
       intro hEq
       exact htu ((hlabel_inj t u hEq).symm)
@@ -2636,17 +2146,9 @@ section AnalyticQpeSetup
 Rewrite the Step-1 phase as the continuous QPE source phase centred at
 `alg1TargetFraction cfg b`.
 -/
-private lemma alg1Step1PhaseScalar_eq_qpe_source_phase
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (z : Fin (ASize cfg.env.work.active)) :
-    alg1Step1PhaseScalar cfg b z
-      =
-    Complex.exp
-      (((2 * Real.pi : ℝ) : ℂ) * Complex.I *
+private lemma alg1Step1PhaseScalar_eq_qpe_source_phase (qs : QSemantics) [RegEncoding qs.Basis] {η : ℝ}
+    (cfg : ModMulConfig η) (b : qs.Basis) (z : Fin (ASize cfg.env.work.active)) : alg1Step1PhaseScalar cfg b z =
+    Complex.exp (((2 * Real.pi : ℝ) : ℂ) * Complex.I *
         ((alg1TargetFraction cfg b : ℂ) * (z.1 : ℂ))) := by
   rw [alg1_step1_phase_scalar_eq_target qs cfg b z]
   classical
@@ -2677,11 +2179,7 @@ Write the QFT matrix entry as an ordinary complex exponential.
 This is the same `qftPhase` expansion already used inside
 `alg1_exp_phase_eq_of_modEq`.
 -/
-private lemma qftPhase_eq_exp_grid
-    (M z t : ℕ) :
-    qftPhase M z t
-      =
-    Complex.exp
+private lemma qftPhase_eq_exp_grid (M z t : ℕ) : qftPhase M z t = Complex.exp
       (((2 * Real.pi) / (M : ℝ)) * Complex.I *
         ((z : ℂ) * (t : ℂ))) := by
   simp [
@@ -2701,11 +2199,7 @@ private lemma qftPhase_eq_exp_grid
 /--
 The conjugated inverse-QFT phase is the negative grid phase.
 -/
-private lemma star_qftPhase_eq_negative_grid_phase
-    (M z t : ℕ) :
-    star (qftPhase M z t)
-      =
-    Complex.exp
+private lemma star_qftPhase_eq_negative_grid_phase (M z t : ℕ) : star (qftPhase M z t) = Complex.exp
       (-(((2 * Real.pi : ℝ) : ℂ) * Complex.I *
         (((z : ℂ) * (t : ℂ)) / (M : ℂ)))) := by
   rw [qftPhase_eq_exp_grid]
@@ -2721,12 +2215,7 @@ The two QFT/H normalizers multiply to the usual `1 / M` QPE normalizer.
 
 This is only square-root algebra; it is independent of Algorithm 1.
 -/
-private lemma qpe_normalizer_sq
-    (M : ℕ)
-    (hM : 0 < M) :
-    (1 / Real.sqrt (M : ℝ) : ℂ) *
-      (1 / Real.sqrt (M : ℝ) : ℂ)
-      =
+private lemma qpe_normalizer_sq (M : ℕ) (hM : 0 < M) : (1 / Real.sqrt (M : ℝ) : ℂ) * (1 / Real.sqrt (M : ℝ) : ℂ) =
     1 / (M : ℂ) := by
   have hMr : 0 < (M : ℝ) := by
     exact_mod_cast hM
@@ -2745,30 +2234,18 @@ standard finite QPE kernel.
 
 This is the key algebraic bridge. It contains no state semantics.
 -/
-private lemma alg1FractionalLoadCoeff_summand_eq_qpeKernel_summand
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (z t : Fin (ASize cfg.env.work.active)) :
-    alg1LoadPreCoeff cfg b z *
-        alg1IQFTCoeff cfg.env.work.active z t
-      =
-    (1 / (ASize cfg.env.work.active : ℂ)) *
-      Complex.exp
-        (((2 * Real.pi : ℝ) : ℂ) * Complex.I *
-          (((alg1TargetFraction cfg b : ℂ) -
+private lemma alg1FractionalLoadCoeff_summand_eq_qpeKernel_summand (qs : QSemantics) [RegEncoding qs.Basis] {η : ℝ}
+    (cfg : ModMulConfig η) (b : qs.Basis) (z t : Fin (ASize cfg.env.work.active)) : alg1LoadPreCoeff cfg b z *
+        alg1IQFTCoeff cfg.env.work.active z t = (1 / (ASize cfg.env.work.active : ℂ)) * Complex.exp
+        (((2 * Real.pi : ℝ) : ℂ) * Complex.I * (((alg1TargetFraction cfg b : ℂ) -
               ((t.1 : ℂ) / (ASize cfg.env.work.active : ℂ))) *
             (z.1 : ℂ))) := by
   have hM : 0 < ASize cfg.env.work.active := by
     unfold ASize
     positivity
 
-  have hnorm :
-      (1 / Real.sqrt (ASize cfg.env.work.active : ℝ) : ℂ) *
-        (1 / Real.sqrt (ASize cfg.env.work.active : ℝ) : ℂ)
-        =
+  have hnorm : (1 / Real.sqrt (ASize cfg.env.work.active : ℝ) : ℂ) *
+        (1 / Real.sqrt (ASize cfg.env.work.active : ℝ) : ℂ) =
       1 / (ASize cfg.env.work.active : ℂ) :=
     qpe_normalizer_sq (ASize cfg.env.work.active) hM
 
@@ -2833,22 +2310,10 @@ Rewrite the set of discarded labels into the numerical QPE-window predicate.
 
 This is just unfolding `alg1GoodLabels`; no Fourier estimate occurs here.
 -/
-lemma alg1_bad_label_set_eq_qpe_bad_set
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis) :
-    Finset.univ.filter
-      (fun t : Fin (ASize cfg.env.work.active) =>
-        t ∉ alg1GoodLabels cfg b)
-      =
-    Finset.univ.filter
-      (fun t : Fin (ASize cfg.env.work.active) =>
-        ¬
-          |alg1TargetFraction cfg b -
-              ((t.1 : ℝ) / (ASize cfg.env.work.active : ℝ))|
-            <
+lemma alg1_bad_label_set_eq_qpe_bad_set (qs : QSemantics) [RegEncoding qs.Basis] {η : ℝ} (cfg : ModMulConfig η)
+    (b : qs.Basis) : Finset.univ.filter (fun t : Fin (ASize cfg.env.work.active) => t ∉ alg1GoodLabels cfg b) =
+    Finset.univ.filter (fun t : Fin (ASize cfg.env.work.active) => ¬ |alg1TargetFraction cfg b -
+              ((t.1 : ℝ) / (ASize cfg.env.work.active : ℝ))| <
           η / (ASize cfg.env.data.active : ℝ)) := by
   classical
   ext t
@@ -2864,15 +2329,8 @@ The nontrivial arithmetic fact is
 
 where the precision hypothesis itself forces `regSize data ≤ regSize work`.
 -/
-lemma alg1_precision_grid_ratio
-    {η : ℝ}
-    (cfg : ModMulConfig η) :
-    0 < η ∧
-    η < (1 / 2 : ℝ) ∧
-    0 < (ASize cfg.env.data.active : ℝ) ∧
-    0 < (ASize cfg.env.work.active : ℝ) ∧
-    (2 + 1 / (2 * η)) ^ 2
-      ≤
+lemma alg1_precision_grid_ratio {η : ℝ} (cfg : ModMulConfig η) : 0 < η ∧ η < (1 / 2 : ℝ) ∧
+    0 < (ASize cfg.env.data.active : ℝ) ∧ 0 < (ASize cfg.env.work.active : ℝ) ∧ (2 + 1 / (2 * η)) ^ 2 ≤
     (ASize cfg.env.work.active : ℝ) /
       (ASize cfg.env.data.active : ℝ) := by
   rcases cfg.env.precision with ⟨hη, hηhalf, hprec⟩
@@ -2918,18 +2376,13 @@ lemma alg1_precision_grid_ratio
     norm_num at hprec
     simp_all [n, m]
 
-  have hpow :
-      (2 : ℝ) ^ m
-        =
+  have hpow : (2 : ℝ) ^ m =
       (2 : ℝ) ^ n * (2 : ℝ) ^ (m - n) := by
     rw [← pow_add]
     congr
     omega
 
-  have hratio :
-      (ASize cfg.env.work.active : ℝ) /
-          (ASize cfg.env.data.active : ℝ)
-        =
+  have hratio : (ASize cfg.env.work.active : ℝ) / (ASize cfg.env.data.active : ℝ) =
       (2 : ℝ) ^ (m - n) := by
     calc
       (ASize cfg.env.work.active : ℝ) /
@@ -2963,12 +2416,7 @@ Given `(2 + 1 / (2 * η)) ^ 2 ≤ M / D`, the ratio `D / (M * η)` is at most
 `4 * η`; this is what turns the `128 / (M * δ)` kernel bound into a bound
 proportional to `η`.
 -/
-lemma qpe_precision_tail_scale
-    {η D M : ℝ}
-    (hη : 0 < η)
-    (hD : 0 < D)
-    (hM : 0 < M)
-    (hgrid :
+lemma qpe_precision_tail_scale {η D M : ℝ} (hη : 0 < η) (hD : 0 < D) (hM : 0 < M) (hgrid :
       (2 + 1 / (2 * η)) ^ 2 ≤ M / D) :
     D / (M * η) ≤ 4 * η := by
   have h2η : 0 < 2 * η := by positivity
@@ -2976,22 +2424,16 @@ lemma qpe_precision_tail_scale
   have hinv : 0 < 1 / (2 * η) := by
     exact one_div_pos.mpr h2η
 
-  have hsmall :
-      (1 / (2 * η)) ^ 2
-        ≤
+  have hsmall : (1 / (2 * η)) ^ 2 ≤
       (2 + 1 / (2 * η)) ^ 2 := by
     nlinarith [sq_nonneg (1 / (2 * η))]
 
-  have hrearrange :
-      1 / (4 * η ^ 2)
-        =
+  have hrearrange : 1 / (4 * η ^ 2) =
       (1 / (2 * η)) ^ 2 := by
     field_simp [ne_of_gt hη]
     ring
 
-  have hquad :
-      1 / (4 * η ^ 2)
-        ≤
+  have hquad : 1 / (4 * η ^ 2) ≤
       (2 + 1 / (2 * η)) ^ 2 := by
     rw [hrearrange]
     exact hsmall
@@ -3007,17 +2449,11 @@ lemma qpe_precision_tail_scale
   have hscale_pos : 0 < 4 * η ^ 2 := by
     positivity
 
-  have hmul :
-      (4 * η ^ 2) *
-          ((1 / (4 * η ^ 2)) * D)
-        ≤
+  have hmul : (4 * η ^ 2) * ((1 / (4 * η ^ 2)) * D) ≤
       (4 * η ^ 2) * M :=
     mul_le_mul_of_nonneg_left hprod (le_of_lt hscale_pos)
 
-  have hcancel :
-      (4 * η ^ 2) *
-          ((1 / (4 * η ^ 2)) * D)
-        =
+  have hcancel : (4 * η ^ 2) * ((1 / (4 * η ^ 2)) * D) =
       D := by
     field_simp [ne_of_gt hscale_pos]
 
@@ -3055,18 +2491,9 @@ valid states.
 section UniformStep1TailBound
 
 /-- The Algorithm-1 Fourier coefficient is the standard finite QPE kernel. -/
-lemma alg1FractionalLoadCoeff_eq_qpeKernel
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {η : ℝ}
-    (cfg : ModMulConfig η)
-    (b : qs.Basis)
-    (t : Fin (ASize cfg.env.work.active)) :
-    alg1FractionalLoadCoeff cfg b t
-      =
-    qpeKernel
-      (ASize cfg.env.work.active)
-      (alg1TargetFraction cfg b)
+lemma alg1FractionalLoadCoeff_eq_qpeKernel (qs : QSemantics) [RegEncoding qs.Basis] {η : ℝ} (cfg : ModMulConfig η)
+    (b : qs.Basis) (t : Fin (ASize cfg.env.work.active)) : alg1FractionalLoadCoeff cfg b t = qpeKernel
+      (ASize cfg.env.work.active) (alg1TargetFraction cfg b)
       t := by
   classical
   unfold alg1FractionalLoadCoeff qpeKernel
@@ -3087,13 +2514,8 @@ target fraction is an ordinary fraction `r / N` with `0 < r < N` and
 `qpeKernel_bad_mass_le_grid_ratio` applies, with `qpe_precision_tail_scale`
 converting the grid ratio into the linear factor `4 * η`.
 -/
-lemma alg1_qpe_tail_basis_uniform
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs] :
-    ∃ Ctail : ℝ, 0 ≤ Ctail ∧ Ctail ≤ 512 ∧
-      ∀ (η : ℝ) (cfg : ModMulConfig η) (b : qs.Basis),
-        GoodModMulBasisInput
+lemma alg1_qpe_tail_basis_uniform (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] :
+    ∃ Ctail : ℝ, 0 ≤ Ctail ∧ Ctail ≤ 512 ∧ ∀ (η : ℝ) (cfg : ModMulConfig η) (b : qs.Basis), GoodModMulBasisInput
           qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b →
         alg1QpeBadMass qs cfg b ≤ Ctail * η := by
   classical
@@ -3112,21 +2534,10 @@ lemma alg1_qpe_tail_basis_uniform
   have hr : alg1TargetResidue cfg b < cfg.env.N :=
     alg1TargetResidue_lt_N cfg b
 
-  have hkernel :
-      ∑ t ∈ Finset.univ.filter
-          (fun t : Fin (ASize cfg.env.work.active) =>
-            ¬
-              |((alg1TargetResidue cfg b : ℝ) / (cfg.env.N : ℝ)) -
-                  ((t.1 : ℝ) / (ASize cfg.env.work.active : ℝ))|
-                <
-              η / (ASize cfg.env.data.active : ℝ)),
-        ‖qpeKernel
-            (ASize cfg.env.work.active)
-            ((alg1TargetResidue cfg b : ℝ) / (cfg.env.N : ℝ))
-            t‖ ^ 2
-        ≤
-      128 *
-        ((ASize cfg.env.data.active : ℝ) /
+  have hkernel : ∑ t ∈ Finset.univ.filter (fun t : Fin (ASize cfg.env.work.active) => ¬
+              |((alg1TargetResidue cfg b : ℝ) / (cfg.env.N : ℝ)) - ((t.1 : ℝ) / (ASize cfg.env.work.active : ℝ))| <
+              η / (ASize cfg.env.data.active : ℝ)), ‖qpeKernel (ASize cfg.env.work.active)
+            ((alg1TargetResidue cfg b : ℝ) / (cfg.env.N : ℝ)) t‖ ^ 2 ≤ 128 * ((ASize cfg.env.data.active : ℝ) /
           ((ASize cfg.env.work.active : ℝ) * η)) := by
     exact
       qpeKernel_bad_mass_le_grid_ratio
@@ -3144,10 +2555,7 @@ lemma alg1_qpe_tail_basis_uniform
         hr
         hgrid
 
-  have hscale :
-      (ASize cfg.env.data.active : ℝ) /
-          ((ASize cfg.env.work.active : ℝ) * η)
-        ≤
+  have hscale : (ASize cfg.env.data.active : ℝ) / ((ASize cfg.env.work.active : ℝ) * η) ≤
       4 * η :=
     qpe_precision_tail_scale hη hD hM hgrid
 

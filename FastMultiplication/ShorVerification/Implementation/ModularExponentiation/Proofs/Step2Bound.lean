@@ -56,9 +56,7 @@ private lemma alg1_step2_norm_sq_sum_eq_sum_norm_sq_of_orthogonal
   | insert a s ha ih =>
       intro horth
 
-      have horth_s :
-          ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
-            inner ℂ (f i) (f j) = 0 := by
+      have horth_s : ∀ i ∈ s, ∀ j ∈ s, i ≠ j → inner ℂ (f i) (f j) = 0 := by
         intro i hi j hj hij
         exact horth i
           (Finset.mem_insert_of_mem hi)
@@ -66,12 +64,10 @@ private lemma alg1_step2_norm_sq_sum_eq_sum_norm_sq_of_orthogonal
           (Finset.mem_insert_of_mem hj)
           hij
 
-      have hih :
-          ‖∑ i ∈ s, f i‖ ^ 2 = ∑ i ∈ s, ‖f i‖ ^ 2 :=
+      have hih : ‖∑ i ∈ s, f i‖ ^ 2 = ∑ i ∈ s, ‖f i‖ ^ 2 :=
         ih horth_s
 
-      have hcross :
-          inner ℂ (f a) (∑ i ∈ s, f i) = 0 := by
+      have hcross : inner ℂ (f a) (∑ i ∈ s, f i) = 0 := by
         rw [inner_sum]
         refine Finset.sum_eq_zero ?_
         intro i hi
@@ -84,8 +80,7 @@ private lemma alg1_step2_norm_sq_sum_eq_sum_norm_sq_of_orthogonal
         ‖∑ i ∈ insert a s, f i‖ ^ 2 = ‖f a + ∑ i ∈ s, f i‖ ^ 2 := by
             rw [Finset.sum_insert ha]
         _ =
-          ‖f a‖ ^ 2
-            + 2 * Complex.re (inner ℂ (f a) (∑ i ∈ s, f i))
+          ‖f a‖ ^ 2 + 2 * Complex.re (inner ℂ (f a) (∑ i ∈ s, f i))
             + ‖∑ i ∈ s, f i‖ ^ 2 := by
               exact norm_add_sq (𝕜 := ℂ) _ _
         _ =
@@ -160,8 +155,7 @@ private lemma alg1_step2_dataCarry_freshFor_one_of_two
       (m := m)
       (b := b)
 
-  have hright :
-      splitRight r2 m = (cfg.env.data.grow 1).newBits 1 := by
+  have hright : splitRight r2 m = (cfg.env.data.grow 1).newBits 1 := by
     simp [r2, m, splitRight, ExtReg.grow, ExtReg.newBits, ExtReg.remainingReserve, Reg.drop, Reg.take, alg1_step2_take_two_tail_eq_tail_take_one]
 
   have hr2zero : RegEncoding.toNat r2 b = 0 := by
@@ -171,8 +165,7 @@ private lemma alg1_step2_dataCarry_freshFor_one_of_two
   rw [hr2zero] at hsplit
 
   have hzero : RegEncoding.toNat (splitRight r2 m) b = 0 := by
-    have hmul :
-        ASize (splitLeft r2 m) * RegEncoding.toNat (splitRight r2 m) b = 0 := by
+    have hmul : ASize (splitLeft r2 m) * RegEncoding.toNat (splitRight r2 m) b = 0 := by
       omega
     rcases Nat.mul_eq_zero.mp hmul with hleft | hrightZero
     · have hpos : 0 < ASize (splitLeft r2 m) := by
@@ -268,8 +261,7 @@ lemma alg1_step2_source_label_injective_on_good
     (tr : Alg1Trace qs cfg ψ) :
     let Sgood : Finset (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)) :=
       tr.support.sigma fun b => alg1GoodLabels cfg b
-    let labelGood :
-        (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)) → qs.Basis :=
+    let labelGood : (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)) → qs.Basis :=
       fun i =>
         RegEncoding.writeNat cfg.env.work.active i.2.1 i.1
     ∀ i ∈ Sgood, ∀ j ∈ Sgood, i ≠ j →
@@ -284,14 +276,10 @@ lemma alg1_step2_source_label_injective_on_good
   rcases Finset.mem_sigma.mp hi with ⟨hbmem, _⟩
   rcases Finset.mem_sigma.mp hj with ⟨hbmem', _⟩
 
-  have hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b :=
+  have hb : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b :=
     tr.input_good b hbmem
 
-  have hb' :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b' :=
+  have hb' : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b' :=
     tr.input_good b' hbmem'
 
   have htu_val : t.1 = u.1 := by
@@ -319,13 +307,11 @@ lemma alg1_step2_source_label_injective_on_good
   have hb'_work : RegEncoding.toNat cfg.env.work.active b' = 0 :=
     hb'.2.2.1
 
-  have hb_zero :
-      RegEncoding.writeNat cfg.env.work.active 0 b = b := by
+  have hb_zero : RegEncoding.writeNat cfg.env.work.active 0 b = b := by
     simpa [hb_work] using
       (RegEncoding.writeNat_toNat cfg.env.work.active b)
 
-  have hb'_zero :
-      RegEncoding.writeNat cfg.env.work.active 0 b' = b' := by
+  have hb'_zero : RegEncoding.writeNat cfg.env.work.active 0 b' = b' := by
     simpa [hb'_work] using
       (RegEncoding.writeNat_toNat cfg.env.work.active b')
 
@@ -404,10 +390,7 @@ lemma alg1_step2_trace_error_eq_good_branch_sum
               (RegEncoding.writeNat cfg.env.work.active i.2.1 i.1)))
 
   have hgood_flat :
-      tr.goodStep1 =
-      ∑ i ∈ Sgood,
-        α i •
-          qs.ket (RegEncoding.writeNat cfg.env.work.active i.2.1 i.1) := by
+      tr.goodStep1 = ∑ i ∈ Sgood, α i • qs.ket (RegEncoding.writeNat cfg.env.work.active i.2.1 i.1) := by
     simp [Sgood, α, Alg1Trace.goodStep1, Finset.sum_sigma, Finset.smul_sum, smul_smul]
 
   have href_flat :
@@ -509,35 +492,26 @@ lemma alg1_step2_good_coeff_energy_eq_norm_sq
   let α : (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)) → ℂ :=
     fun i => tr.inputCoeff i.1 * tr.phaseCoeff i.1 i.2
 
-  let labelGood :
-      (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)) → qs.Basis :=
+  let labelGood : (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)) → qs.Basis :=
     fun i => RegEncoding.writeNat cfg.env.work.active i.2.1 i.1
 
   change
     (∑ i ∈ Sgood, ‖α i‖ ^ 2) = ‖tr.goodStep1‖ ^ 2
 
-  have hflat :
-      tr.goodStep1 =
-      ∑ i ∈ Sgood, α i • qs.ket (labelGood i) := by
+  have hflat : tr.goodStep1 = ∑ i ∈ Sgood, α i • qs.ket (labelGood i) := by
     simp [Sgood, α, labelGood, Alg1Trace.goodStep1, Finset.sum_sigma, Finset.smul_sum, smul_smul]
 
-  have hinj :
-      ∀ i ∈ Sgood, ∀ j ∈ Sgood, i ≠ j →
-        labelGood i ≠ labelGood j := by
+  have hinj : ∀ i ∈ Sgood, ∀ j ∈ Sgood, i ≠ j → labelGood i ≠ labelGood j := by
     simpa [Sgood, labelGood] using
       alg1_step2_source_label_injective_on_good qs cfg ψ tr
 
   have horth :
-      ∀ i ∈ Sgood, ∀ j ∈ Sgood, i ≠ j →
-        inner ℂ
-          (α i • qs.ket (labelGood i))
-          (α j • qs.ket (labelGood j)) = 0 := by
+      ∀ i ∈ Sgood, ∀ j ∈ Sgood, i ≠ j → inner ℂ (α i • qs.ket (labelGood i)) (α j • qs.ket (labelGood j)) = 0 := by
     intro i hi j hj hij
     rw [inner_smul_left, inner_smul_right, qs.ket_inner_eq_zero_of_ne (hinj i hi j hj hij)]
     simp
 
-  have hsq :
-      ‖∑ i ∈ Sgood, α i • qs.ket (labelGood i)‖ ^ 2 = ∑ i ∈ Sgood, ‖α i • qs.ket (labelGood i)‖ ^ 2 :=
+  have hsq : ‖∑ i ∈ Sgood, α i • qs.ket (labelGood i)‖ ^ 2 = ∑ i ∈ Sgood, ‖α i • qs.ket (labelGood i)‖ ^ 2 :=
     alg1_step2_norm_sq_sum_eq_sum_norm_sq_of_orthogonal
       (qs := qs)
       Sgood
@@ -650,21 +624,16 @@ lemma alg1_step2_good_label_shift_discrepancy_lt
   have hgood_raw :=
     (Finset.mem_filter.mp hmem).2
 
-  have hgood :
-      |(r : ℝ) / (N : ℝ) - (t.1 : ℝ) / (M : ℝ)| < η / (A : ℝ) := by
+  have hgood : |(r : ℝ) / (N : ℝ) - (t.1 : ℝ) / (M : ℝ)| < η / (A : ℝ) := by
     simpa [alg1TargetFraction, alg1WorkFraction, N, A, M, r] using hgood_raw
 
-  have hmul :
-      (N : ℝ) *
-          |(r : ℝ) / (N : ℝ) - (t.1 : ℝ) / (M : ℝ)| < (N : ℝ) * (η / (A : ℝ)) :=
+  have hmul : (N : ℝ) * |(r : ℝ) / (N : ℝ) - (t.1 : ℝ) / (M : ℝ)| < (N : ℝ) * (η / (A : ℝ)) :=
     mul_lt_mul_of_pos_left hgood hNposR
 
-  have hratio :
-      (N : ℝ) / (A : ℝ) ≤ 1 :=
+  have hratio : (N : ℝ) / (A : ℝ) ≤ 1 :=
     (div_le_one₀ hAposR).mpr hNA
 
-  have hbound :
-      (N : ℝ) * (η / (A : ℝ)) ≤ η := by
+  have hbound : (N : ℝ) * (η / (A : ℝ)) ≤ η := by
     calc
       (N : ℝ) * (η / (A : ℝ))
           = ((N : ℝ) / (A : ℝ)) * η := by
@@ -674,13 +643,11 @@ lemma alg1_step2_good_label_shift_discrepancy_lt
       _ = η := one_mul _
 
   have hident :
-      (N : ℝ) * ((t.1 : ℝ) / (M : ℝ)) - (r : ℝ) = -((N : ℝ) *
-        ((r : ℝ) / (N : ℝ) - (t.1 : ℝ) / (M : ℝ))) := by
+      (N : ℝ) * ((t.1 : ℝ) / (M : ℝ)) - (r : ℝ) = -((N : ℝ) * ((r : ℝ) / (N : ℝ) - (t.1 : ℝ) / (M : ℝ))) := by
     field_simp [hNneR, hMneR]
     ring
 
-  have hfinal :
-      |(N : ℝ) * ((t.1 : ℝ) / (M : ℝ) - 0) - (r : ℝ)| < η := by
+  have hfinal : |(N : ℝ) * ((t.1 : ℝ) / (M : ℝ) - 0) - (r : ℝ)| < η := by
     rw [show
       (N : ℝ) * ((t.1 : ℝ) / (M : ℝ) - 0) - (r : ℝ) = (N : ℝ) * ((t.1 : ℝ) / (M : ℝ)) - (r : ℝ) by ring]
     rw [hident, abs_neg, abs_mul, abs_of_pos hNposR]
@@ -721,9 +688,7 @@ lemma alg1_step2_input_xext_value
   have hfresh1 : cfg.env.data.FreshFor 1 b :=
     alg1_step2_data_freshFor_one_of_two cfg b hb.2.1
 
-  have hgrown :
-      RegEncoding.toNat (cfg.env.data.grow 1).active b =
-        RegEncoding.toNat cfg.env.data.active b := by
+  have hgrown : RegEncoding.toNat (cfg.env.data.grow 1).active b = RegEncoding.toNat cfg.env.data.active b := by
     simpa [ExtReg.toNat] using
       (Gate.ExtReg.toNat_grow_of_fresh cfg.env.data 1 b hfresh1)
 
@@ -798,8 +763,7 @@ lemma alg1_step2_actual_preIQFT_packet
             (RegEncoding.writeNat cfg.env.work.active t.1 b)) := by
   classical
 
-  have hdisj :
-      Shor.Disjoint cfg.env.work.active (cfg.env.data.grow 1).active :=
+  have hdisj : Shor.Disjoint cfg.env.work.active (cfg.env.data.grow 1).active :=
     alg1_step2_work_dataCarry_disjoint cfg
 
   have hxbase :
@@ -815,8 +779,7 @@ lemma alg1_step2_actual_preIQFT_packet
 
   let xext : ExtReg := cfg.env.circuit_workspace.step2Workspace.zExt
 
-  have hdisjZ :
-      Shor.Disjoint cfg.env.work.active xext.active := by
+  have hdisjZ : Shor.Disjoint cfg.env.work.active xext.active := by
     simpa [xext, ModMulCircuitWorkspaceOK.step2Workspace, PhaseProdWorkspace.zExt, ExtReg.withReserve] using
       hdisj
 
@@ -932,8 +895,7 @@ lemma alg1_step2_ideal_preIQFT_packet
             (RegEncoding.writeNat cfg.env.work.active t.1 b)) := by
   classical
 
-  have hslt :
-      alg1Step2Value cfg b < ASize ((cfg.env.data.grow 1).active) :=
+  have hslt : alg1Step2Value cfg b < ASize ((cfg.env.data.grow 1).active) :=
     alg1Step2Value_lt_dataCarry_capacity cfg b hb
 
   rw [QFTSemantics.eval_QFT_ket]
@@ -1221,8 +1183,7 @@ lemma alg1_step2_fourier_coeff_error_bound
   have hη : 0 < η :=
     cfg.env.precision.1
 
-  have hdelta :
-      |a - (r : ℝ)| < η := by
+  have hdelta : |a - (r : ℝ)| < η := by
     simpa [a, r, alg1Step2ShiftDiscrepancy] using
       (alg1_step2_good_label_shift_discrepancy_lt cfg b t ht)
 
@@ -1230,17 +1191,14 @@ lemma alg1_step2_fourier_coeff_error_bound
     dsimp [L]
     exact_mod_cast y.isLt
 
-  have hydiv_nonneg :
-      0 ≤ (y.1 : ℝ) / (L : ℝ) :=
+  have hydiv_nonneg : 0 ≤ (y.1 : ℝ) / (L : ℝ) :=
     div_nonneg (by positivity) hLR.le
 
-  have hydiv_le_one :
-      (y.1 : ℝ) / (L : ℝ) ≤ 1 := by
+  have hydiv_le_one : (y.1 : ℝ) / (L : ℝ) ≤ 1 := by
     apply (div_le_iff₀ hLR).2
     nlinarith [hylt.le]
 
-  have hprod :
-      ((y.1 : ℝ) / (L : ℝ)) * |a - (r : ℝ)| ≤ η := by
+  have hprod : ((y.1 : ℝ) / (L : ℝ)) * |a - (r : ℝ)| ≤ η := by
     calc
       ((y.1 : ℝ) / (L : ℝ)) * |a - (r : ℝ)| ≤ ((y.1 : ℝ) / (L : ℝ)) * η :=
         mul_le_mul_of_nonneg_left hdelta.le hydiv_nonneg
@@ -1248,29 +1206,22 @@ lemma alg1_step2_fourier_coeff_error_bound
         mul_le_mul_of_nonneg_right hydiv_le_one hη.le
       _ = η := one_mul _
 
-  have hθsub :
-      θa - θr =
-        (2 * Real.pi) *
-          (((y.1 : ℝ) / (L : ℝ)) *
-            (a - (r : ℝ))) := by
+  have hθsub : θa - θr = (2 * Real.pi) * (((y.1 : ℝ) / (L : ℝ)) * (a - (r : ℝ))) := by
     dsimp [θa, θr]
     field_simp [hLne]
 
   have htwopi_nonneg : 0 ≤ 2 * Real.pi := by
     positivity
 
-  have hθbound :
-      |θa - θr| ≤ 2 * Real.pi * η := by
+  have hθbound : |θa - θr| ≤ 2 * Real.pi * η := by
     rw [hθsub, abs_mul, abs_of_nonneg htwopi_nonneg, abs_mul, abs_of_nonneg hydiv_nonneg]
     exact mul_le_mul_of_nonneg_left hprod htwopi_nonneg
 
   have hphasebound :
-      ‖Complex.exp (Complex.I * (θa : ℂ))
-          - Complex.exp (Complex.I * (θr : ℂ))‖ ≤ 2 * Real.pi * η := by
+      ‖Complex.exp (Complex.I * (θa : ℂ)) - Complex.exp (Complex.I * (θr : ℂ))‖ ≤ 2 * Real.pi * η := by
     calc
       ‖Complex.exp (Complex.I * (θa : ℂ))
-          - Complex.exp (Complex.I * (θr : ℂ))‖
-        ≤ |θa - θr| :=
+          - Complex.exp (Complex.I * (θr : ℂ))‖ ≤ |θa - θr| :=
           norm_exp_I_sub_exp_I_le θa θr
       _ ≤ 2 * Real.pi * η := hθbound
 
@@ -1282,21 +1233,15 @@ lemma alg1_step2_fourier_coeff_error_bound
     push_cast
     ring
 
-  have hshift :
-      qftPhase L (x + r) y.1 =
-        qftPhase L x y.1 *
-          Complex.exp (Complex.I * (θr : ℂ)) := by
+  have hshift : qftPhase L (x + r) y.1 = qftPhase L x y.1 * Complex.exp (Complex.I * (θr : ℂ)) := by
     simpa [θr] using
       (qftPhase_add_left_eq L x r y.1 hL)
 
-  have hqft_norm :
-      ‖qftPhase L x y.1‖ = 1 := by
+  have hqft_norm : ‖qftPhase L x y.1‖ = 1 := by
     rw [qftPhase_eq_exp_I L x y.1 hL]
     exact Complex.norm_exp_I_mul_ofReal _
 
-  have hscale_norm :
-      ‖alg1Step2QFTScale cfg‖ =
-        1 / Real.sqrt (L : ℝ) := by
+  have hscale_norm : ‖alg1Step2QFTScale cfg‖ = 1 / Real.sqrt (L : ℝ) := by
     dsimp [alg1Step2QFTScale, L]
     rw [Complex.norm_div, norm_one, Complex.norm_real, Real.norm_eq_abs]
     rw [abs_of_pos hsqrtpos]
@@ -1477,8 +1422,7 @@ lemma alg1_step2_normalized_fourier_packet_bound
   have hsqrtpos : 0 < Real.sqrt (L : ℝ) :=
     Real.sqrt_pos.2 hLpos
 
-  have hsqrt_sq :
-      (Real.sqrt (L : ℝ)) ^ 2 = (L : ℝ) :=
+  have hsqrt_sq : (Real.sqrt (L : ℝ)) ^ 2 = (L : ℝ) :=
     Real.sq_sqrt hLpos.le
 
   have hη : 0 < η :=
@@ -1492,8 +1436,7 @@ lemma alg1_step2_normalized_fourier_packet_bound
     dsimp [ε]
     exact div_nonneg hCpos.le hsqrtpos.le
 
-  have hlabel_ne :
-      ∀ y z : Fin L, y ≠ z → label y ≠ label z := by
+  have hlabel_ne : ∀ y z : Fin L, y ≠ z → label y ≠ label z := by
     intro y z hyz hEq
     apply hyz
     apply alg1_step2_xext_fourier_label_injective qs cfg b t y z
@@ -1510,8 +1453,7 @@ lemma alg1_step2_normalized_fourier_packet_bound
     rw [inner_smul_left, inner_smul_right, qs.ket_inner_eq_zero_of_ne (hlabel_ne y z hyz)]
     simp
 
-  have hsq :
-      ‖P‖ ^ 2 = ∑ y : Fin L, ‖δ y • qs.ket (label y)‖ ^ 2 := by
+  have hsq : ‖P‖ ^ 2 = ∑ y : Fin L, ‖δ y • qs.ket (label y)‖ ^ 2 := by
     dsimp [P]
     exact
       alg1_step2_norm_sq_sum_eq_sum_norm_sq_of_orthogonal
@@ -1520,15 +1462,12 @@ lemma alg1_step2_normalized_fourier_packet_bound
         (fun y => δ y • qs.ket (label y))
         horth
 
-  have hcoeff :
-      ∀ y : Fin L, ‖δ y‖ ≤ ε := by
+  have hcoeff : ∀ y : Fin L, ‖δ y‖ ≤ ε := by
     intro y
     simpa [δ, ε, C, L] using
       (alg1_step2_fourier_coeff_error_bound qs cfg b t hb ht y)
 
-  have hterm_bound :
-      ∀ y : Fin L,
-        ‖δ y • qs.ket (label y)‖ ^ 2 ≤ ε ^ 2 := by
+  have hterm_bound : ∀ y : Fin L, ‖δ y • qs.ket (label y)‖ ^ 2 ≤ ε ^ 2 := by
     intro y
 
     have hδnonneg : 0 ≤ ‖δ y‖ :=
@@ -1548,16 +1487,14 @@ lemma alg1_step2_normalized_fourier_packet_bound
           simp [norm_smul, ket_norm_one qs]
       _ ≤ ε ^ 2 := hsq_le
 
-  have hsum_bound :
-      ∑ y : Fin L, ‖δ y • qs.ket (label y)‖ ^ 2 ≤ (L : ℝ) * ε ^ 2 := by
+  have hsum_bound : ∑ y : Fin L, ‖δ y • qs.ket (label y)‖ ^ 2 ≤ (L : ℝ) * ε ^ 2 := by
     calc
       ∑ y : Fin L, ‖δ y • qs.ket (label y)‖ ^ 2 ≤ ∑ y : Fin L, ε ^ 2 := by
           exact Finset.sum_le_sum fun y hy => hterm_bound y
       _ = (L : ℝ) * ε ^ 2 := by
           simp
 
-  have hscale :
-      (L : ℝ) * ε ^ 2 = C ^ 2 := by
+  have hscale : (L : ℝ) * ε ^ 2 = C ^ 2 := by
     dsimp [ε]
     rw [div_pow, hsqrt_sq]
     field_simp [hLne]
@@ -1577,8 +1514,7 @@ lemma alg1_step2_normalized_fourier_packet_bound
     have hPpos : 0 < ‖P‖ :=
       lt_of_le_of_lt hCpos.le hlt
 
-    have hprod :
-        0 < (‖P‖ - C) * (‖P‖ + C) := by
+    have hprod : 0 < (‖P‖ - C) * (‖P‖ + C) := by
       exact
         mul_pos
           (sub_pos.mpr hlt)
@@ -1663,23 +1599,19 @@ lemma alg1_good_labels_same_work_residue
   let r' : ℕ := alg1TargetResidue cfg b'
   let d : ℝ := (cfg.env.N : ℝ) * alg1WorkFraction cfg t
 
-  have hδ :
-      |d - (r : ℝ)| < η := by
+  have hδ : |d - (r : ℝ)| < η := by
     simpa [d, r, alg1Step2ShiftDiscrepancy] using
       (alg1_step2_good_label_shift_discrepancy_lt cfg b t ht)
 
-  have hδ' :
-      |d - (r' : ℝ)| < η := by
+  have hδ' : |d - (r' : ℝ)| < η := by
     simpa [d, r', alg1Step2ShiftDiscrepancy] using
       (alg1_step2_good_label_shift_discrepancy_lt cfg b' t ht')
 
-  have hδr :
-      |(r : ℝ) - d| < η := by
+  have hδr : |(r : ℝ) - d| < η := by
     rw [show (r : ℝ) - d = -(d - (r : ℝ)) by ring, abs_neg]
     exact hδ
 
-  have hdist :
-      |(r : ℝ) - (r' : ℝ)| < 1 := by
+  have hdist : |(r : ℝ) - (r' : ℝ)| < 1 := by
     calc
       |(r : ℝ) - (r' : ℝ)| = |((r : ℝ) - d) + (d - (r' : ℝ))| := by
           congr 1
@@ -1874,9 +1806,7 @@ private lemma alg1_step2_preIQFT_work_packet
             (RegEncoding.writeNat xext.active y.1 base) := by
     intro y
 
-    have hwork :
-        RegEncoding.toNat cfg.env.work.active
-          (RegEncoding.writeNat xext.active y.1 base) = t.1 := by
+    have hwork : RegEncoding.toNat cfg.env.work.active (RegEncoding.writeNat xext.active y.1 base) = t.1 := by
       calc
         RegEncoding.toNat cfg.env.work.active
             (RegEncoding.writeNat xext.active y.1 base) = RegEncoding.toNat cfg.env.work.active base :=
@@ -1886,15 +1816,11 @@ private lemma alg1_step2_preIQFT_work_packet
           RegEncoding.toNat_writeNat_of_lt
             cfg.env.work.active t.1 b t.isLt
 
-    have hxext :
-        RegEncoding.toNat xext.active
-          (RegEncoding.writeNat xext.active y.1 base) = y.1 :=
+    have hxext : RegEncoding.toNat xext.active (RegEncoding.writeNat xext.active y.1 base) = y.1 :=
       RegEncoding.toNat_writeNat_of_lt
         xext.active y.1 base y.isLt
 
-    have hclean :
-        cfg.env.circuit_workspace.step2Workspace.Clean
-          (RegEncoding.writeNat xext.active y.1 base) := by
+    have hclean : cfg.env.circuit_workspace.step2Workspace.Clean (RegEncoding.writeNat xext.active y.1 base) := by
       simpa [xext, base, ModMulCircuitWorkspaceOK.step2Workspace, PhaseProdWorkspace.zExt, ExtReg.withReserve] using
         (alg1_step2_workspace_clean_after_dataCarry_work_write qs cfg b hb t y)
 
@@ -2136,9 +2062,7 @@ lemma alg1_step2_error_work_orthogonal
     exact Shor.Disjoint.symm hXW
 
   have hsource_ne :
-      RegEncoding.writeNat cfg.env.work.active t.1 b
-        ≠
-      RegEncoding.writeNat cfg.env.work.active u.1 b' := by
+      RegEncoding.writeNat cfg.env.work.active t.1 b ≠ RegEncoding.writeNat cfg.env.work.active u.1 b' := by
     intro hEq
     apply htu
     apply Fin.ext
@@ -2379,13 +2303,11 @@ lemma alg1_step2_source_label_injective_of_good
   have ht : i.2 = j.2 :=
     Fin.ext ht_val
 
-  have hi_zero :
-      RegEncoding.writeNat cfg.env.work.active 0 i.1 = i.1 := by
+  have hi_zero : RegEncoding.writeNat cfg.env.work.active 0 i.1 = i.1 := by
     simpa [hi_good.2.2.1] using
       (RegEncoding.writeNat_toNat cfg.env.work.active i.1)
 
-  have hj_zero :
-      RegEncoding.writeNat cfg.env.work.active 0 j.1 = j.1 := by
+  have hj_zero : RegEncoding.writeNat cfg.env.work.active 0 j.1 = j.1 := by
     simpa [hj_good.2.2.1] using
       (RegEncoding.writeNat_toNat cfg.env.work.active j.1)
 
@@ -2521,24 +2443,21 @@ private lemma norm_sq_sum_ket_mul_le_of_label_constant
     let μ : qs.Basis → ℂ :=
       fun b => L (repr b)
 
-    have hrepr_mem :
-        ∀ b ∈ B, repr b ∈ s := by
+    have hrepr_mem : ∀ b ∈ B, repr b ∈ s := by
       intro b hb
       dsimp [repr]
       rw [dif_pos hb]
       exact
         (Finset.mem_image.mp (by simpa [B] using hb)).choose_spec.1
 
-    have hrepr_label :
-        ∀ b ∈ B, label (repr b) = b := by
+    have hrepr_label : ∀ b ∈ B, label (repr b) = b := by
       intro b hb
       dsimp [repr]
       rw [dif_pos hb]
       exact
         (Finset.mem_image.mp (by simpa [B] using hb)).choose_spec.2
 
-    have hμ :
-        ∀ i ∈ s, μ (label i) = L i := by
+    have hμ : ∀ i ∈ s, μ (label i) = L i := by
       intro i hi
       dsimp [μ]
       apply hconstant
@@ -2548,14 +2467,12 @@ private lemma norm_sq_sum_ket_mul_le_of_label_constant
       · exact hrepr_label (label i)
           (Finset.mem_image.mpr ⟨i, hi, rfl⟩)
 
-    have hμ_bound :
-        ∀ b ∈ B, ‖μ b‖ ≤ C := by
+    have hμ_bound : ∀ b ∈ B, ‖μ b‖ ≤ C := by
       intro b hb
       dsimp [μ]
       exact hbound (repr b) (hrepr_mem b hb)
 
-    have hplain_group :
-        ∑ i ∈ s, a i • qs.ket (label i) = ∑ b ∈ B, A b • qs.ket b := by
+    have hplain_group : ∑ i ∈ s, a i • qs.ket (label i) = ∑ b ∈ B, A b • qs.ket b := by
       symm
       calc
         ∑ b ∈ B, A b • qs.ket b = ∑ b ∈ B,
@@ -2587,8 +2504,7 @@ private lemma norm_sq_sum_ket_mul_le_of_label_constant
                     Finset.mem_image.mpr ⟨i, hi, rfl⟩)
                   (fun i => a i • qs.ket (label i))
 
-    have hmult_group :
-        ∑ i ∈ s, (a i * L i) • qs.ket (label i) = ∑ b ∈ B, (A b * μ b) • qs.ket b := by
+    have hmult_group : ∑ i ∈ s, (a i * L i) • qs.ket (label i) = ∑ b ∈ B, (A b * μ b) • qs.ket b := by
       symm
       calc
         ∑ b ∈ B, (A b * μ b) • qs.ket b = ∑ b ∈ B,
@@ -2629,56 +2545,42 @@ private lemma norm_sq_sum_ket_mul_le_of_label_constant
                     Finset.mem_image.mpr ⟨i, hi, rfl⟩)
                   (fun i => (a i * L i) • qs.ket (label i))
 
-    have horth_plain :
-        ∀ b ∈ B, ∀ c ∈ B, b ≠ c →
-          inner ℂ
-            (A b • qs.ket b)
-            (A c • qs.ket c) = 0 := by
+    have horth_plain : ∀ b ∈ B, ∀ c ∈ B, b ≠ c → inner ℂ (A b • qs.ket b) (A c • qs.ket c) = 0 := by
       intro b hb c hc hbc
       rw [inner_smul_left, inner_smul_right, qs.ket_inner_eq_zero_of_ne hbc]
       simp
 
-    have horth_mult :
-        ∀ b ∈ B, ∀ c ∈ B, b ≠ c →
-          inner ℂ
-            ((A b * μ b) • qs.ket b)
-            ((A c * μ c) • qs.ket c) = 0 := by
+    have horth_mult : ∀ b ∈ B, ∀ c ∈ B, b ≠ c → inner ℂ ((A b * μ b) • qs.ket b) ((A c * μ c) • qs.ket c) = 0 := by
       intro b hb c hc hbc
       rw [inner_smul_left, inner_smul_right, qs.ket_inner_eq_zero_of_ne hbc]
       simp
 
-    have hplain_sq :
-        ‖∑ b ∈ B, A b • qs.ket b‖ ^ 2 = ∑ b ∈ B, ‖A b • qs.ket b‖ ^ 2 :=
+    have hplain_sq : ‖∑ b ∈ B, A b • qs.ket b‖ ^ 2 = ∑ b ∈ B, ‖A b • qs.ket b‖ ^ 2 :=
       alg1_step2_norm_sq_sum_eq_sum_norm_sq_of_orthogonal
         (qs := qs)
         B
         (fun b => A b • qs.ket b)
         horth_plain
 
-    have hmult_sq :
-        ‖∑ b ∈ B, (A b * μ b) • qs.ket b‖ ^ 2 = ∑ b ∈ B, ‖(A b * μ b) • qs.ket b‖ ^ 2 :=
+    have hmult_sq : ‖∑ b ∈ B, (A b * μ b) • qs.ket b‖ ^ 2 = ∑ b ∈ B, ‖(A b * μ b) • qs.ket b‖ ^ 2 :=
       alg1_step2_norm_sq_sum_eq_sum_norm_sq_of_orthogonal
         (qs := qs)
         B
         (fun b => (A b * μ b) • qs.ket b)
         horth_mult
 
-    have hterm :
-        ∀ b ∈ B,
-          ‖(A b * μ b) • qs.ket b‖ ^ 2 ≤ C ^ 2 * ‖A b • qs.ket b‖ ^ 2 := by
+    have hterm : ∀ b ∈ B, ‖(A b * μ b) • qs.ket b‖ ^ 2 ≤ C ^ 2 * ‖A b • qs.ket b‖ ^ 2 := by
       intro b hb
 
       have hμ_nonneg : 0 ≤ ‖μ b‖ :=
         norm_nonneg _
 
-      have hμ_sq :
-          ‖μ b‖ ^ 2 ≤ C ^ 2 := by
+      have hμ_sq : ‖μ b‖ ^ 2 ≤ C ^ 2 := by
         have hdiff : 0 ≤ C - ‖μ b‖ :=
           sub_nonneg.mpr (hμ_bound b hb)
         have hsum : 0 ≤ C + ‖μ b‖ :=
           add_nonneg hC hμ_nonneg
-        have hprod :
-            0 ≤ (C - ‖μ b‖) * (C + ‖μ b‖) :=
+        have hprod : 0 ≤ (C - ‖μ b‖) * (C + ‖μ b‖) :=
           mul_nonneg hdiff hsum
         nlinarith
 
@@ -2697,8 +2599,7 @@ private lemma norm_sq_sum_ket_mul_le_of_label_constant
             simp [norm_smul, ket_norm_one qs]
             ring
 
-    have hsum_bound :
-        ∑ b ∈ B, ‖(A b * μ b) • qs.ket b‖ ^ 2 ≤ C ^ 2 * ∑ b ∈ B, ‖A b • qs.ket b‖ ^ 2 := by
+    have hsum_bound : ∑ b ∈ B, ‖(A b * μ b) • qs.ket b‖ ^ 2 ≤ C ^ 2 * ∑ b ∈ B, ‖A b • qs.ket b‖ ^ 2 := by
       calc
         ∑ b ∈ B, ‖(A b * μ b) • qs.ket b‖ ^ 2 ≤ ∑ b ∈ B, C ^ 2 * ‖A b • qs.ket b‖ ^ 2 := by
             exact Finset.sum_le_sum fun b hb => hterm b hb
@@ -2873,8 +2774,7 @@ private lemma alg1_step2_fixed_work_multiplier_bound
   have hη : 0 < η :=
     cfg.env.precision.1
 
-  have hdelta :
-      |a - (r : ℝ)| < η := by
+  have hdelta : |a - (r : ℝ)| < η := by
     simpa [a, alg1Step2ShiftDiscrepancy, hp_residue] using
       (alg1_step2_good_label_shift_discrepancy_lt cfg p.1.1 p.1.2 hp_label)
 
@@ -2882,17 +2782,14 @@ private lemma alg1_step2_fixed_work_multiplier_bound
     dsimp [L]
     exact_mod_cast p.2.isLt
 
-  have hydiv_nonneg :
-      0 ≤ (p.2.1 : ℝ) / (L : ℝ) :=
+  have hydiv_nonneg : 0 ≤ (p.2.1 : ℝ) / (L : ℝ) :=
     div_nonneg (by positivity) hLpos.le
 
-  have hydiv_le_one :
-      (p.2.1 : ℝ) / (L : ℝ) ≤ 1 := by
+  have hydiv_le_one : (p.2.1 : ℝ) / (L : ℝ) ≤ 1 := by
     apply (div_le_iff₀ hLpos).2
     linarith
 
-  have hprod :
-      ((p.2.1 : ℝ) / (L : ℝ)) * |a - (r : ℝ)| ≤ η := by
+  have hprod : ((p.2.1 : ℝ) / (L : ℝ)) * |a - (r : ℝ)| ≤ η := by
     calc
       ((p.2.1 : ℝ) / (L : ℝ)) * |a - (r : ℝ)| ≤ ((p.2.1 : ℝ) / (L : ℝ)) * η :=
         mul_le_mul_of_nonneg_left hdelta.le hydiv_nonneg
@@ -2900,18 +2797,14 @@ private lemma alg1_step2_fixed_work_multiplier_bound
         mul_le_mul_of_nonneg_right hydiv_le_one hη.le
       _ = η := one_mul _
 
-  have htheta :
-      θa - θr =
-        (2 * Real.pi) *
-          (((p.2.1 : ℝ) / (L : ℝ)) * (a - (r : ℝ))) := by
+  have htheta : θa - θr = (2 * Real.pi) * (((p.2.1 : ℝ) / (L : ℝ)) * (a - (r : ℝ))) := by
     dsimp [θa, θr]
     field_simp [hLne]
 
   have htwopi_nonneg : 0 ≤ 2 * Real.pi := by
     positivity
 
-  have htheta_bound :
-      |θa - θr| ≤ 2 * Real.pi * η := by
+  have htheta_bound : |θa - θr| ≤ 2 * Real.pi * η := by
     rw [htheta, abs_mul, abs_of_nonneg htwopi_nonneg, abs_mul, abs_of_nonneg hydiv_nonneg]
     exact mul_le_mul_of_nonneg_left hprod htwopi_nonneg
 
@@ -2923,9 +2816,7 @@ private lemma alg1_step2_fixed_work_multiplier_bound
     push_cast
     ring
 
-  have hideal :
-      qftPhase L r p.2.1 =
-        Complex.exp (Complex.I * (θr : ℂ)) := by
+  have hideal : qftPhase L r p.2.1 = Complex.exp (Complex.I * (θr : ℂ)) := by
     simpa [θr] using
       (qftPhase_eq_exp_I L r p.2.1 hLposN)
 
@@ -2933,15 +2824,13 @@ private lemma alg1_step2_fixed_work_multiplier_bound
     ‖Complex.exp
         (((Angle.toReal (alg1Step2Phase cfg) : ℝ) : ℂ) * Complex.I *
           ((p.1.2.1 : ℂ) * (p.2.1 : ℂ)))
-      - qftPhase L r p.2.1‖
-      ≤ 2 * Real.pi * η
+      - qftPhase L r p.2.1‖ ≤ 2 * Real.pi * η
 
   rw [hactual, hideal]
 
   calc
     ‖Complex.exp (Complex.I * (θa : ℂ))
-        - Complex.exp (Complex.I * (θr : ℂ))‖
-      ≤ |θa - θr| :=
+        - Complex.exp (Complex.I * (θr : ℂ))‖ ≤ |θa - θr| :=
         norm_exp_I_sub_exp_I_le θa θr
     _ ≤ 2 * Real.pi * η :=
       htheta_bound
@@ -3111,12 +3000,10 @@ private lemma alg1_step2_branch_error_eq_iqft_packet
   let idealPre : qs.State :=
     qs.eval (Gate.QFT xext) (qs.ket target)
 
-  have hU2 :
-      qs.eval (ModMulConfig.U2 (Basis := qs.Basis) cfg) (qs.ket source) = qs.eval (IQFT xext) actualPre := by
+  have hU2 : qs.eval (ModMulConfig.U2 (Basis := qs.Basis) cfg) (qs.ket source) = qs.eval (IQFT xext) actualPre := by
     simp [ModMulConfig.U2, step2, alg1Step2Phase, xext, source, actualPre, qs.eval_seq]
 
-  have htarget :
-      qs.eval (IQFT xext) idealPre = qs.ket target := by
+  have htarget : qs.eval (IQFT xext) idealPre = qs.ket target := by
     simpa [IQFT, idealPre] using
       qs.eval_adj_apply (Gate.QFT xext) (qs.ket target)
 
@@ -3205,8 +3092,7 @@ private lemma alg1_step2_fixed_work_coeff_factor
   have hr : alg1TargetResidue cfg i.1 = r :=
     (hfixed i hi).2.2.2
 
-  have hstep2 :
-      alg1Step2Value cfg i.1 = RegEncoding.toNat cfg.env.data.active i.1 + r := by
+  have hstep2 : alg1Step2Value cfg i.1 = RegEncoding.toNat cfg.env.data.active i.1 + r := by
     simp [alg1Step2Value, hr]
 
   simp only [alg1Step2ActualFourierCoeff, alg1Step2IdealFourierCoeff, alg1Step2FourierBaseCoeff, alg1Step2FourierMultiplier]
@@ -3253,13 +3139,9 @@ lemma alg1_step2_fixed_work_error_eq_iqft_multiplier_packet
               y.1
               (RegEncoding.writeNat cfg.env.work.active i.2.1 i.1))
 
-  have hbranch :
-      ∀ i ∈ S,
-        alg1Step2Error qs cfg i.1 i.2 = qs.eval (IQFT xext) (packet i) := by
+  have hbranch : ∀ i ∈ S, alg1Step2Error qs cfg i.1 i.2 = qs.eval (IQFT xext) (packet i) := by
     intro i hi
-    have hgood :
-        GoodModMulBasisInput
-          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag i.1 :=
+    have hgood : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag i.1 :=
       (hfixed i hi).2.1
 
     simpa [packet, xext] using
@@ -3384,15 +3266,11 @@ lemma alg1_step2_fixed_work_fourier_contraction
   intro η cfg S α t r hfixed
   classical
 
-  have hgood :
-      ∀ i ∈ S,
-        GoodModMulBasisInput
-          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag i.1 := by
+  have hgood : ∀ i ∈ S, GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag i.1 := by
     intro i hi
     exact (hfixed i hi).2.1
 
-  have hC :
-      0 ≤ 2 * Real.pi * η := by
+  have hC : 0 ≤ 2 * Real.pi * η := by
     have hη : 0 ≤ η :=
       le_of_lt cfg.env.precision.1
     positivity
@@ -3402,8 +3280,7 @@ lemma alg1_step2_fixed_work_fourier_contraction
       qs cfg S α t r hfixed
 
   have hmult :
-      ∀ p ∈ alg1Step2FourierIndices qs cfg S,
-        ‖alg1Step2FourierMultiplier qs cfg r p‖ ≤ 2 * Real.pi * η := by
+      ∀ p ∈ alg1Step2FourierIndices qs cfg S, ‖alg1Step2FourierMultiplier qs cfg r p‖ ≤ 2 * Real.pi * η := by
     intro p hp
     exact
       alg1_step2_fixed_work_multiplier_bound
@@ -3501,10 +3378,7 @@ lemma alg1_step2_fixed_work_packet_sq_bound
         ∑ i ∈ S, ‖α i‖ ^ 2 := by
   intro η cfg S α t r hfixed
 
-  have hgood :
-      ∀ i ∈ S,
-        GoodModMulBasisInput
-          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag i.1 := by
+  have hgood : ∀ i ∈ S, GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag i.1 := by
     intro i hi
     exact (hfixed i hi).2.1
 
@@ -3518,10 +3392,7 @@ lemma alg1_step2_fixed_work_packet_sq_bound
       qs η cfg S α t r hfixed
 
   have hsource :
-      ‖∑ i ∈ S,
-          α i •
-            qs.ket
-              (RegEncoding.writeNat cfg.env.work.active i.2.1 i.1)‖ ^ 2 = ∑ i ∈ S, ‖α i‖ ^ 2 :=
+      ‖∑ i ∈ S, α i • qs.ket (RegEncoding.writeNat cfg.env.work.active i.2.1 i.1)‖ ^ 2 = ∑ i ∈ S, ‖α i‖ ^ 2 :=
     alg1_step2_fixed_work_source_energy
       qs cfg S α hgood
 
@@ -3536,8 +3407,7 @@ lemma alg1_step2_fixed_work_packet_sq_bound
   have hscale_nonneg : 0 ≤ 2 * Real.pi ^ 2 * η := by
     positivity
 
-  have hscale :
-      (2 * Real.pi * η) ^ 2 ≤ 2 * Real.pi ^ 2 * η := by
+  have hscale : (2 * Real.pi * η) ^ 2 ≤ 2 * Real.pi ^ 2 * η := by
     calc
       (2 * Real.pi * η) ^ 2 = (2 * Real.pi ^ 2 * η) * (2 * η) := by
           ring
@@ -3546,8 +3416,7 @@ lemma alg1_step2_fixed_work_packet_sq_bound
           mul_le_mul_of_nonneg_left hη_half hscale_nonneg
       _ = 2 * Real.pi ^ 2 * η := by ring
 
-  have henergy_nonneg :
-      0 ≤ ∑ i ∈ S, ‖α i‖ ^ 2 := by
+  have henergy_nonneg : 0 ≤ ∑ i ∈ S, ‖α i‖ ^ 2 := by
     exact Finset.sum_nonneg fun i hi => sq_nonneg _
 
   calc
@@ -3745,8 +3614,7 @@ lemma alg1_step2_good_packet_operator_sq_bound
         (α : (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)) → ℂ),
         (∀ i ∈ S,
           GoodModMulBasisInput
-            qs cfg.env.N cfg.env.data cfg.env.work cfg.flag i.1
-            ∧ i.2 ∈ alg1GoodLabels cfg i.1) →
+            qs cfg.env.N cfg.env.data cfg.env.work cfg.flag i.1 ∧ i.2 ∈ alg1GoodLabels cfg i.1) →
         ‖∑ i ∈ S,
           α i •
             (qs.eval (ModMulConfig.U2 (Basis := qs.Basis) cfg)
@@ -3868,8 +3736,7 @@ lemma alg1_step2_good_label_branch_uniform
               (RegEncoding.writeNat
                 ((cfg.env.data.grow 1).active)
                 (alg1Step2Value cfg b)
-                (RegEncoding.writeNat cfg.env.work.active t.1 b))‖
-          ≤ Cstep2 * η) ∧
+                (RegEncoding.writeNat cfg.env.work.active t.1 b))‖ ≤ Cstep2 * η) ∧
       (∀ (η : ℝ) (cfg : ModMulConfig η)
           (ψ : qs.State)
           (tr : Alg1Trace qs cfg ψ),
@@ -3909,8 +3776,7 @@ lemma alg1_step2_good_label_branch_uniform
               (RegEncoding.writeNat
                 ((cfg.env.data.grow 1).active)
                 (alg1Step2Value cfg b)
-                (RegEncoding.writeNat cfg.env.work.active t.1 b))‖
-          ≤ Cbranch * η :=
+                (RegEncoding.writeNat cfg.env.work.active t.1 b))‖ ≤ Cbranch * η :=
       hbranch η cfg b t hb ht
 
     calc
@@ -3920,8 +3786,7 @@ lemma alg1_step2_good_label_branch_uniform
             (RegEncoding.writeNat
               ((cfg.env.data.grow 1).active)
               (alg1Step2Value cfg b)
-              (RegEncoding.writeNat cfg.env.work.active t.1 b))‖
-        ≤ Cbranch * η := hbase
+              (RegEncoding.writeNat cfg.env.work.active t.1 b))‖ ≤ Cbranch * η := hbase
       _ ≤ (Cbranch + Ccoh) * η := by
         nlinarith [mul_nonneg hCcoh hη]
       _ = Cstep2 * η := by rfl
@@ -3946,8 +3811,7 @@ lemma alg1_step2_good_label_branch_uniform
       rcases Finset.mem_sigma.mp hi with ⟨hbmem, ht⟩
       exact ⟨tr.input_good i.1 hbmem, ht⟩
 
-    have henergy :
-        ∑ i ∈ Sgood, ‖α i‖ ^ 2 ≤ 1 := by
+    have henergy : ∑ i ∈ Sgood, ‖α i‖ ^ 2 ≤ 1 := by
       simpa [Sgood, α] using
         (alg1_step2_good_coeff_energy_le_one qs cfg ψ tr hunit)
 
