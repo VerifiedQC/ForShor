@@ -39,7 +39,7 @@ universe u
 namespace QFTWorkspaceCleanState
 variable {qs : QSemantics} [RegEncoding qs.Basis] {xWork zWork : Reg}
 /-! =========================================================
-    Section 1: Clean-state closure and custom eliminator
+    Clean-state closure and custom eliminator
 ========================================================= -/
 
 theorem ket (b : qs.Basis) (hx : FreshZero xWork b) (hz : FreshZero zWork b) :
@@ -70,7 +70,7 @@ def rec' {motive : (ψ : qs.State) → QFTWorkspaceCleanState qs xWork zWork ψ 
 end QFTWorkspaceCleanState
 
 /-! =========================================================
-    Section 2: Fresh reserve facts for QFT workspaces
+    Fresh reserve facts for QFT workspaces
 ========================================================= -/
 
 lemma freshFor_of_freshZero_reserve
@@ -118,7 +118,7 @@ lemma freshFor_grow_capacity_of_freshZero_reserve
   ] using hqReserve
 
 /-! =========================================================
-    Section 3: Converting QFT cleanliness to phase-product cleanliness
+    Converting QFT cleanliness to phase-product cleanliness
 ========================================================= -/
 
 lemma QFTWorkspaceCleanState.phaseCleanState
@@ -215,7 +215,7 @@ lemma QFTWorkspaceCleanState.signedCleanState
           a ihψ
 
 /-! =========================================================
-    Section 4: Preservation by the middle phase-product subplan
+    Preservation by the middle phase-product subplan
 ========================================================= -/
 
 lemma eval_PhaseProdUsing_preserves_QFTWorkspaceCleanState
@@ -271,7 +271,7 @@ lemma eval_PhaseProdUsing_preserves_QFTWorkspaceCleanState
       exact QFTWorkspaceCleanState.smul a ihψ
 
 /-! =========================================================
-    Section 5: Readiness for the unsigned phase-product bridge
+    Readiness for the unsigned phase-product bridge
 ========================================================= -/
 
 theorem standardPhaseProdUsingPlan_ready_and_clean
@@ -418,7 +418,7 @@ theorem standardPhaseProdUsingPlan_ready_and_clean
         qs phi ws hxReserve hzReserve hclean
 
 /-! =========================================================
-    Section 6: Preservation by recursive QFT calls
+    Preservation by recursive QFT calls
 ========================================================= -/
 
 lemma eval_QFT_preserves_QFTWorkspaceCleanState
@@ -512,7 +512,7 @@ lemma eval_QFT_preserves_QFTWorkspaceCleanState
       exact QFTWorkspaceCleanState.smul a ihψ
 
 /-! =========================================================
-    Section 7: Readiness derived from explicit work registers
+    Readiness derived from explicit work registers
 ========================================================= -/
 
 theorem standardQFTLoweringPlan_ready_and_clean_explicit
@@ -899,7 +899,7 @@ theorem standardQFTLoweringPlan_ready_and_clean
       hRun
 
 /-! =========================================================
-    Section 8: Reserve plan and the public `evalL_lowerQFT`
+    Reserve plan and the public `evalL_lowerQFT`
 ========================================================= -/
 
 lemma reserveQFTLoweringPlan_ready_ket

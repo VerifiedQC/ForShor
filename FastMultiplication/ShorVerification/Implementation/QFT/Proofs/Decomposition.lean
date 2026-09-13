@@ -26,7 +26,7 @@ The organization :
 -/
 
 /-! =========================================================
-    Section 1: Register arithmetic and split-register vocabulary
+    Register arithmetic and split-register vocabulary
 ========================================================= -/
 
 /-- Equivalence between `Fin A × Fin B` and `Fin (A * B)`. -/
@@ -232,7 +232,7 @@ namespace Gate.PhaseProdWorkspace
 
 omit  [GateSemanticsFacts qs] in
 /-! =========================================================
-    Section 2: Write/read bookkeeping and split-register indices
+    Write/read bookkeeping and split-register indices
 ========================================================= -/
 omit [GateSemanticsFacts qs] in
 /--
@@ -335,7 +335,7 @@ lemma toNat_right_after_write_left
 end EncodingOnly
 
 /-! =========================================================
-    Section 3: Exponential and `qftPhase` bridge lemmas
+    Exponential and `qftPhase` bridge lemmas
 ========================================================= -/
 
 lemma exp_phaseProd_eq_qftPhase (N x y : ℕ) :
@@ -420,7 +420,7 @@ lemma toNat_left_after_write_right
       (b := b) (yR := yR))
 
 /-! =========================================================
-    Section 4: The split-QFT pipeline (steps 2–5)
+    The split-QFT pipeline (steps 2–5)
 ========================================================= -/
 
 lemma step2_PhaseProdUsing_after_QFT_right
@@ -906,7 +906,7 @@ lemma step5_reindex_sum
   exact (finMulAddEquiv NR NL).sum_comp f
 
 /-! =========================================================
-    Section 5: Reindexing sums and cast utilities
+    Reindexing sums and cast utilities
 ========================================================= -/
 
 lemma Asize_eq_lr (r : Reg) (m : ℕ) (hm : m ≤ regSize r) :
@@ -981,7 +981,7 @@ lemma Fin.coe_cast_typeEq
   rfl
 
 /-! =========================================================
-    Section 6: QFT split on basis kets and radix reversal
+    QFT split on basis kets and radix reversal
 ========================================================= -/
 
 lemma eval_QFT_split_lowLeft_digitRev_ket
@@ -1231,7 +1231,7 @@ lemma eval_RadixReverse_digitRev_sum
     Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using hsem
 
 /-! =========================================================
-    Section 7: The final split theorems
+    The final split theorems
 ========================================================= -/
 
 lemma eval_QFT_ket_as_split_sum

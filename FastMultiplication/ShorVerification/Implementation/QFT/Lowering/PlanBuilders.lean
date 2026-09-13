@@ -19,7 +19,7 @@ open Gate
 open scoped BigOperators
 
 /-! =========================================================
-    Section 4: Canonical unsigned phase-product subplans
+    Canonical unsigned phase-product subplans
 
     A split QFT uses an unsigned phase product between the left and right
     halves. This section packages that unsigned gate as a standard
@@ -184,7 +184,7 @@ def standardPhaseProdUsingPlan
 
 
 /-! =========================================================
-    Section 10: Canonical plans and public lowerers
+    Canonical plans and public lowerers
 
     The canonical recursive plan is built from the two selected workspace
     pools. The final public constructors derive those pools from an `ExtReg`

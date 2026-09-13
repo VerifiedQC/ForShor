@@ -18,7 +18,7 @@ open Gate
 open scoped BigOperators
 
 /-! =========================================================
-    Section 2: Explicit QFT lowering plans
+    Explicit QFT lowering plans
 
     `QFTLoweringPlan` is the finite certificate carried by the public lowerer.
     It exposes the empty and singleton base cases and the recursive split case,

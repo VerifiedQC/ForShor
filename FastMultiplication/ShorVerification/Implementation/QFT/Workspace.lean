@@ -18,7 +18,7 @@ open Gate
 open scoped BigOperators
 
 /-! =========================================================
-    Section 5: Recursive workspace budget model
+    Recursive workspace budget model
 
     The QFT lowerer uses two global reserve pools. `qftWorkspaceNeed` computes
     how large those pools must be for a register of a given width, accounting
@@ -60,7 +60,7 @@ def qftWorkspaceNeed
 termination_by n => n
 
 /-! =========================================================
-    Section 6: Public QFT workspace sizes and clean-state predicates
+    Public QFT workspace sizes and clean-state predicates
 
     The public QFT lowerer takes one `ExtReg`. Its inactive reserve is split
     deterministically into an x-side pool and a z-side pool. The predicates in
@@ -140,7 +140,7 @@ structure QFTWorkspaceOK
       regSize zWork
 
 /-! =========================================================
-    Section 7: Helper lemmas for the selected workspace slices
+    Helper lemmas for the selected workspace slices
 
     These lemmas prove that the selected workspace registers have the requested
     sizes, remain inside the inactive reserve, and are disjoint from the active
@@ -367,7 +367,7 @@ end QFTReserveOK
 
 
 /-! =========================================================
-    Section 8: Unfolding and bounds for `qftWorkspaceNeed`
+    Unfolding and bounds for `qftWorkspaceNeed`
 
     A nontrivial QFT split must reserve enough space for the middle phase
     product and both recursive QFT calls. These monotonicity lemmas let the
@@ -515,7 +515,7 @@ lemma qftWorkspaceNeed_right_z_le
 
 
 /-! =========================================================
-    Section 9: Building child workspaces and recursive QFT plans
+    Building child workspaces and recursive QFT plans
 
     The functions and lemmas below carve the two workspace pools into the
     pieces needed by the middle phase product and by the left/right recursive

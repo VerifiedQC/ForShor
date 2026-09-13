@@ -14,7 +14,7 @@ namespace Shor
 open Gate
 
 /-! =========================================================
-    Section 1: Register splitting and clean workspaces
+    Register splitting and clean workspaces
 
     Recursive QFT splits a register into a low/right half and a high/left
     half. These definitions fix that convention and provide the small

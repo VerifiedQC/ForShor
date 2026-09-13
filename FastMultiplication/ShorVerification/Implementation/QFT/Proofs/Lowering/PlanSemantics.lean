@@ -30,7 +30,7 @@ open QSemantics
 namespace QFTSemantics
 
 /-! =========================================================
-    Section 1: Base cases — QFT on size-0 and size-1 registers
+    Base cases — QFT on size-0 and size-1 registers
 ========================================================= -/
 
 theorem eval_QFT_size0_ket
@@ -268,7 +268,7 @@ open Gate
 universe u
 
 /-! =========================================================
-    Section 2: Plan evaluation and its linearity
+    Plan evaluation and its linearity
 ========================================================= -/
 
 theorem evalL_lowerQFTPlan
@@ -579,7 +579,7 @@ lemma evalL_lowerQFTPlan_smul
   exact LowerGateClass.evalL_smul (qs := qs) (lowerQFTPlan plan) a ψ
 
 /-! =========================================================
-    Section 3: Readiness linearity
+    Readiness linearity
 ========================================================= -/
 
 lemma QFTLoweringReady.add
@@ -767,7 +767,7 @@ lemma QFTLoweringReady.smul
         ⟩
 
 /-! =========================================================
-    Section 3: Readiness and zero-state facts
+    Readiness and zero-state facts
 
     Readiness records the clean-workspace assumptions that must hold before a
     planned QFT is evaluated. The zero-state lemmas provide the small closure
