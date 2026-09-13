@@ -1,16 +1,15 @@
 import FastMultiplication.ShorVerification.Implementation.Semantics.CleanClosure
 import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
 
-namespace Shor
-
-universe u
-
 /-!
 # Shor Clean-State Predicates
 
 The static clean-input predicates and dynamic clean-state invariants used by
 Shor's workspace readiness proofs and the final correctness statements.
 -/
+namespace Shor
+
+universe u
 
 /-! =========================================================
     Static Clean Workspace Inputs

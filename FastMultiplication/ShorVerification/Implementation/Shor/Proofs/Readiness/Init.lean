@@ -27,7 +27,7 @@ open Gate
 open Classical
 
 /-! =========================================================
-    Section 5: Workspace-free initialization gates
+    Workspace-free initialization gates
 
     These helpers cover `H_reg x.active` and `initY1 data.active`, which do not
     allocate recursive lowering workspace but must still preserve the global

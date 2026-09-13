@@ -1,14 +1,13 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Cleanliness
 
-namespace Shor
-
 /-!
 # Bridge from the approximate setup to the ideal order-finding input
 
 `ShorApproxSetup.toIdealOrderFindingInput` is the final bridge from the
 approximate setup to the ideal order-finding input predicate.
 -/
+namespace Shor
 
 /--
 The approximate Shor setup contains extra implementation assumptions, but the

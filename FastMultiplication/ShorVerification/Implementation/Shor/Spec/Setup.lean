@@ -4,8 +4,6 @@ import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Precision
 
-namespace Shor
-
 /-!
 # Shor Setup Records
 
@@ -13,6 +11,7 @@ The user-facing setup/readiness records consumed by the final Shor
 correctness statements, and the bridge from the lower-level implementation
 setup to the public one.
 -/
+namespace Shor
 
 /-! =========================================================
     Lowering Program Setup

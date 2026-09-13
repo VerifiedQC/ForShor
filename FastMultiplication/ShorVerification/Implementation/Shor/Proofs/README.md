@@ -52,7 +52,7 @@ Keeps the ideal and approximate order-finding circuits, the measurement
 interface, and the final success-probability theorem. Classical
 order/continued-fraction material lives in `NaiveShor/`.
 
-### Section 3 — probability-transfer lemmas
+### Probability-transfer lemmas
 
 The bridge from state-vector approximation to success-probability
 approximation: pure real/probability bookkeeping, then gate isometry moving
@@ -69,7 +69,7 @@ distance bounds through common circuit context.
   circuit's postprocessed success probability, via `probMeas_weighted_dist`
   from `Semantics/Measurement.lean`.
 
-### Section 4 — final correctness statements
+### Final correctness statements
 
 The ideal theorem lives in `Proofs.NaiveShor.Correctness`; this section
 imports that bound and transfers it across the modular-exponentiation

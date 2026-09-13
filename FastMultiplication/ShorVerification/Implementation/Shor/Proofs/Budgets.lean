@@ -2,8 +2,6 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Cleanliness
 import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
 
-namespace Shor
-
 /-!
 # Shor workspace budgets and clean-state predicates
 
@@ -19,6 +17,7 @@ Main declarations:
 * `shorLoweringCleanState_ket` is the entry lemma that turns an initially
   clean basis state into the lowered clean invariant.
 -/
+namespace Shor
 
 private lemma freshZero_append
     {Basis : Type u}

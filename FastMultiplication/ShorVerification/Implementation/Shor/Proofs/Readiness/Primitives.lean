@@ -32,7 +32,7 @@ open Gate
 open Classical
 
 /-! =========================================================
-    Section 3: Workspace-free gates
+    Workspace-free gates
 
     These gates have no recursive lowerer workspace obligations. The final
     helper of this section, `WorkspaceFree.clean`, turns that syntactic fact
@@ -181,7 +181,7 @@ lemma workspaceFree_initY1
         WorkspaceFree.X q
 
 /-! =========================================================
-    Section 4: Primitive locality and Step 3/4 readiness
+    Primitive locality and Step 3/4 readiness
 
     The disjointness helpers feed the primitive semantic locality assumptions
     for Steps 3 and 4. The final theorems in this section are

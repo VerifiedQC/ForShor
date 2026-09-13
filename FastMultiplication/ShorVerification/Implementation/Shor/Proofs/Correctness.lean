@@ -18,10 +18,6 @@ import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 
-namespace Shor
-open Gate
-open Classical
-
 /-!
 # Shor/order-finding circuit statement
 
@@ -30,13 +26,16 @@ approximate order-finding circuits, the measurement interface, and the final
 success-probability theorem.  Classical order and continued-fraction material
 lives in `MathBackbone/ShorAlgorithm.lean`.
 -/
+namespace Shor
+open Gate
+open Classical
 
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 variable [MeasureClass qs]
 
 /-! =========================================================
-    Section 3: Probability-transfer lemmas
+    Probability-transfer lemmas
 
     These lemmas are the bridge from state-vector approximation to
     success-probability approximation.  The first group is pure real/probability
@@ -186,7 +185,7 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
   exact lower_bound_of_abs_sub_le hprob
 
 /-! =========================================================
-    Section 4: Final correctness statements
+    Final correctness statements
 
     The ideal theorem lives in `Proofs.NaiveShor.Correctness`.  This file imports that
     bound and transfers it across the modular-exponentiation implementation

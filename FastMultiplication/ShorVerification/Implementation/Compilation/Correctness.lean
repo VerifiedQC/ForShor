@@ -7,8 +7,6 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Clea
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Main
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ConstArithmetic
 
-namespace Shor
-
 /-!
 # Whole-Program Lowering
 
@@ -22,11 +20,12 @@ Cleanliness is deliberately absent from `GateWorkspaceOK`: it is a condition
 on the input state, not a condition on the syntax or physical register layout.
 It belongs in the later semantic-correctness theorem.
 -/
+namespace Shor
 
 universe u
 
 /-! =========================================================
-    Section 1: Static workspace precondition
+    Static workspace precondition
 ========================================================= -/
 
 namespace GateWorkspaceOK
@@ -91,11 +90,11 @@ theorem cSignedPhaseProd
 end GateWorkspaceOK
 
 /-! =========================================================
-    Section 2: Whole-program lowering
+    Whole-program lowering
 ========================================================= -/
 
 /-! =========================================================
-    Section 3: Definitional equations
+    Definitional equations
 ========================================================= -/
 
 @[simp] theorem lowerGate_id
