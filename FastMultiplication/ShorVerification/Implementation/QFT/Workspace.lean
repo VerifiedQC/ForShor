@@ -1,5 +1,4 @@
 import FastMultiplication.ShorVerification.Implementation.QFT.Split
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Widths
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 
