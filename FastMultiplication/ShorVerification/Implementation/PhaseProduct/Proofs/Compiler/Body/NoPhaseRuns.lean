@@ -43,11 +43,9 @@ lemma sameOutside_after_noPhase_run_ket_gen
   (hEnc : EncodesStateFromFits (qs := qs) src dst σ bRef bCur) :
   ∃ bNext : qs.Basis,
     qs.eval
-        (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
-          (annotatePhaseTermsAux k n ops))
+        (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst (annotatePhaseTermsAux k n ops))
         (qs.ket bCur)
-      =
-    qs.ket bNext ∧
+      = qs.ket bNext ∧
     SameOutsideLayout qs dst bCur bNext := by
   induction ops generalizing σ σ' bCur n with
   | nil =>
@@ -87,8 +85,7 @@ lemma sameOutside_after_noPhase_run_ket_gen
                   simpa using hstep.symm
                 have hrow_shift_x :
                     evalRowX (qs := qs) src ((σ i).shiftL m) bRef
-                      =
-                    ((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef := by
+                    = ((2 : ℤ)^m) * evalRowX (qs := qs) src (σ i) bRef := by
                   simpa using
                     (evalRowX_shiftL_raw
                       (qs := qs) (src := src) (r := σ i) (m := m) (b := bRef))
@@ -103,8 +100,7 @@ lemma sameOutside_after_noPhase_run_ket_gen
                   exact hfit_post
                 have hrow_shift_z :
                     evalRowZ (qs := qs) src ((σ i).shiftL m) bRef
-                      =
-                    ((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef := by
+                    = ((2 : ℤ)^m) * evalRowZ (qs := qs) src (σ i) bRef := by
                   simpa using
                     (evalRowZ_shiftL_raw
                       (qs := qs) (src := src) (r := σ i) (m := m) (b := bRef))
@@ -410,11 +406,9 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
   (hEnc : EncodesStateFromFits (qs := qs) src dst σ bRef bCur) :
   ∃ bNext : qs.Basis,
     qs.eval
-        (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
-          (annotatePhaseTermsAux k n ops))
+        (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst (annotatePhaseTermsAux k n ops))
         (qs.ket bCur)
-      =
-    qs.ket bNext ∧
+      = qs.ket bNext ∧
     EncodesStateFromFits (qs := qs) src dst σ' bRef bNext := by
   induction ops generalizing σ σ' bCur n with
   | nil =>
@@ -478,8 +472,7 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
               have hAnn :
                   annotatePhaseTermsAux k n (valid_ops.shiftL i m :: ops) =
                     [{ op := valid_ops.shiftL i m, phaseTerm? := none }] ++
-                      annotatePhaseTermsAux k n ops := by
-                simp [annotatePhaseTermsAux]
+                      annotatePhaseTermsAux k n ops := by simp [annotatePhaseTermsAux]
               rw [hAnn]
               rw [eval_compileAnnotatedOpsToSignedGateAux_append
                     (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
@@ -534,8 +527,7 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
               have hAnn :
                   annotatePhaseTermsAux k n (.shiftR i m :: ops) =
                     [{ op := .shiftR i m, phaseTerm? := none }] ++
-                      annotatePhaseTermsAux k n ops := by
-                simp [annotatePhaseTermsAux]
+                      annotatePhaseTermsAux k n ops := by simp [annotatePhaseTermsAux]
               rw [hAnn]
               rw [eval_compileAnnotatedOpsToSignedGateAux_append
                     (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
@@ -546,8 +538,7 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
               rw [hEval1]
               exact hEvalTail
       | negate i =>
-          have hstep : applyOp? σ (.negate i) = some (State.negateReg σ i) := by
-            simp [applyOp?, State.negateReg]
+          have hstep : applyOp? σ (.negate i) = some (State.negateReg σ i) := by simp [applyOp?, State.negateReg]
           have hrunTail : run? ops (State.negateReg σ i) = some σ' := by simpa [run?, hstep] using hrun
           have hFit1 :
               (∀ (j : Fin k), FitsSignedWidth (dst.xslot j).width (evalRowX qs src ((State.negateReg σ i) j) bRef)) ∧
@@ -588,8 +579,7 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
           have hAnn :
               annotatePhaseTermsAux k n (.negate i :: ops) =
                 [{ op := .negate i, phaseTerm? := none }] ++
-                  annotatePhaseTermsAux k n ops := by
-            simp [annotatePhaseTermsAux]
+                  annotatePhaseTermsAux k n ops := by simp [annotatePhaseTermsAux]
           rw [hAnn]
           rw [eval_compileAnnotatedOpsToSignedGateAux_append
                 (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
@@ -655,8 +645,7 @@ lemma encodesFrom_after_noPhase_run_ket_gen_aux
               have hAnn :
                   annotatePhaseTermsAux k n (valid_ops.addScaled dsti srci negSrc sh :: ops) =
                     [{ op := valid_ops.addScaled dsti srci negSrc sh, phaseTerm? := none }] ++
-                      annotatePhaseTermsAux k n ops := by
-                simp [annotatePhaseTermsAux]
+                      annotatePhaseTermsAux k n ops := by simp [annotatePhaseTermsAux]
               rw [hAnn]
               rw [eval_compileAnnotatedOpsToSignedGateAux_append
                     (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)
@@ -701,12 +690,9 @@ lemma encodesFrom_after_noPhase_run_ket_gen
   (hEnc : EncodesStateFromFits (qs := qs) src dst σ bRef bCur) :
   ∃ bNext : qs.Basis,
     qs.eval
-        (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst
-          (annotatePhaseTermsAux k n ops))
+        (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst (annotatePhaseTermsAux k n ops))
         (qs.ket bCur)
-      =
-    qs.ket bNext
-    ∧
+      = qs.ket bNext ∧
     EncodesStateFromFits (qs := qs) src dst σ' bRef bNext := by
   exact encodesFrom_after_noPhase_run_ket_gen_aux
     (qs := qs) (hk := hk) (phi := phi) (coeff := coeff)

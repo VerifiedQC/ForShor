@@ -517,8 +517,7 @@ lemma addConstAux_WellFormed
           | zero =>
               simp [addConstAux] at hop
           | succ n' =>
-              have hlt : (n' + 1) / 2 < n'.succ := by
-                exact Nat.div_lt_self (Nat.succ_pos _) (by decide)
+              have hlt : (n' + 1) / 2 < n'.succ := by exact Nat.div_lt_self (Nat.succ_pos _) (by decide)
 
               have wf_tail :
                   (addConstAux (k := k) dst src neg' ((n' + 1) / 2) (sh + 1)).WellFormed :=
@@ -691,8 +690,7 @@ lemma computeLocalAux_zero_nil_of_nonzero
     -- 0^(m+1) = (0^m) * 0 = 0
     simp [hm, pow_succ]  -- uses *_*0 = 0
   -- tail still has only nonzero indices
-  have htail : ∀ u ∈ ts, u ≠ finZero (k := k) hk := by
-    intro u hu; exact hnon u (by simp [hu])
+  have htail : ∀ u ∈ ts, u ≠ finZero (k := k) hk := by intro u hu; exact hnon u (by simp [hu])
   -- unfold once: head ++ tail, but head = []
   simp [computeLocalAux, addConstFrom, hpow, computeLocalAux_zero_nil_of_nonzero hk ts htail]
 

@@ -72,13 +72,8 @@ theorem targetSignedLayoutState_owned_disjoint
 private theorem flatten_consecutive_slices
     (L : List ℕ) :
     ∀ (k : ℕ) (size : Fin k → ℕ),
-      (List.ofFn fun i =>
-        List.take (size i)
-          (List.drop
-            (((List.ofFn size).take i.1).sum)
-            L)).flatten
-        =
-      List.take ((List.ofFn size).sum) L := by
+      (List.ofFn fun i => List.take (size i) (List.drop (((List.ofFn size).take i.1).sum) L)).flatten
+        = List.take ((List.ofFn size).sum) L := by
   intro k
   induction k with
   | zero =>
@@ -88,23 +83,13 @@ private theorem flatten_consecutive_slices
       intro size
       let size' : Fin k → ℕ :=
         fun i => size i.castSucc
-      have htake (i : Fin k) :
-          (List.ofFn size).take i.1
-            =
-              (List.ofFn size').take i.1 := by
+      have htake (i : Fin k) : (List.ofFn size).take i.1 = (List.ofFn size').take i.1 := by
         rw [List.ofFn_succ', List.concat_eq_append]
         simp [size', List.take_append_of_le_length]
-      have htakeLast :
-          (List.ofFn size).take k
-            =
-          List.ofFn size' := by
+      have htakeLast : (List.ofFn size).take k = List.ofFn size' := by
         rw [List.ofFn_succ', List.concat_eq_append]
         simp [size']
-      have hsum :
-          (List.ofFn size).sum
-            =
-          (List.ofFn size').sum
-            + size (Fin.last k) := by
+      have hsum : (List.ofFn size).sum = (List.ofFn size').sum + size (Fin.last k) := by
         rw [List.ofFn_succ']
         simp [size']
       rw [List.ofFn_succ', List.concat_eq_append, List.flatten_append]
@@ -114,27 +99,14 @@ private theorem flatten_consecutive_slices
       simp_rw [htake]
       change
         (List.ofFn fun i : Fin k =>
-          List.take (size' i)
-            (List.drop
-              (((List.ofFn size').take i.1).sum)
-              L)).flatten
-          ++
-        List.take (size (Fin.last k))
-          (List.drop
-            (((List.ofFn size).take k).sum)
-            L)
-          =
-        List.take ((List.ofFn size).sum) L
+          List.take (size' i) (List.drop (((List.ofFn size').take i.1).sum) L)).flatten
+          ++ List.take (size (Fin.last k)) (List.drop (((List.ofFn size).take k).sum) L)
+          = List.take ((List.ofFn size).sum) L
       rw [ih size', htakeLast, hsum, List.take_add]
 
 theorem ReserveBudget.flatten_childReserve
-    {parent : ExtReg}
-    {k : ℕ}
-    (budget : ReserveBudget parent k) :
-    (List.ofFn fun i =>
-      (budget.childReserve i).qubits).flatten
-      =
-    parent.reserve.qubits := by
+    {parent : ExtReg} {k : ℕ} (budget : ReserveBudget parent k) :
+    (List.ofFn fun i => (budget.childReserve i).qubits).flatten = parent.reserve.qubits := by
   simp only [ReserveBudget.childReserve, ReserveBudget.offset, Reg.take, Reg.drop]
   rw [flatten_consecutive_slices]
   rw [budget.total]
@@ -173,11 +145,8 @@ private theorem phaseChunkActive_childReserve_disjoint
     phaseChunkActive_sublist parent k W i
   have hreserve :=
     budget.childReserve_sublist j
-  have hparent :
-      parent.active.qubits.Disjoint
-        parent.reserve.qubits := by
-    simpa [Disjoint] using
-      parent.active_reserve_disjoint
+  have hparent : parent.active.qubits.Disjoint parent.reserve.qubits := by
+    simpa [Disjoint] using parent.active_reserve_disjoint
   exact
     List.disjoint_of_subset_left hactive.subset
       (List.disjoint_of_subset_right
@@ -231,45 +200,23 @@ def PhaseSplitLayout.ofBudget
     child_owned_pairwise := by
       intro i j hij
       have hAA :
-          List.Disjoint
-            (phaseChunkActive parent k W i).qubits
+          List.Disjoint (phaseChunkActive parent k W i).qubits
             (phaseChunkActive parent k W j).qubits := by
-        simpa [Disjoint] using
-          phaseChunkActive_pairwise_disjoint
-            parent k W hvalid hij
-      have hAR :
-          List.Disjoint
-            (phaseChunkActive parent k W i).qubits
-            (budget.childReserve j).qubits :=
-        phaseChunkActive_childReserve_disjoint
-          (W := W)
-          budget i j
-      have hRA :
-          List.Disjoint
-            (budget.childReserve i).qubits
-            (phaseChunkActive parent k W j).qubits :=
-        (phaseChunkActive_childReserve_disjoint
-          (W := W)
-          budget j i).symm
+        simpa [Disjoint] using phaseChunkActive_pairwise_disjoint parent k W hvalid hij
+      have hAR : List.Disjoint (phaseChunkActive parent k W i).qubits (budget.childReserve j).qubits :=
+        phaseChunkActive_childReserve_disjoint (W := W) budget i j
+      have hRA : List.Disjoint (budget.childReserve i).qubits (phaseChunkActive parent k W j).qubits :=
+        (phaseChunkActive_childReserve_disjoint (W := W) budget j i).symm
       have hflatNodup :
-          ((List.ofFn fun t : Fin k =>
-            (budget.childReserve t).qubits).flatten).Nodup := by
+          ((List.ofFn fun t : Fin k => (budget.childReserve t).qubits).flatten).Nodup := by
         rw [budget.flatten_childReserve]
         exact parent.reserve.nodup
       have hreservePairwise :
-          (List.ofFn fun t : Fin k =>
-            (budget.childReserve t).qubits).Pairwise
-              List.Disjoint :=
+          (List.ofFn fun t : Fin k => (budget.childReserve t).qubits).Pairwise List.Disjoint :=
         (List.nodup_flatten.mp hflatNodup).2
-      have hRR :
-          List.Disjoint
-            (budget.childReserve i).qubits
-            (budget.childReserve j).qubits :=
-        pairwise_disjoint_ofFn
-          (f := fun t : Fin k =>
-            (budget.childReserve t).qubits)
-          hreservePairwise
-          hij
+      have hRR : List.Disjoint (budget.childReserve i).qubits (budget.childReserve j).qubits :=
+        pairwise_disjoint_ofFn (f := fun t : Fin k => (budget.childReserve t).qubits)
+          hreservePairwise hij
       intro q hqLeft hqRight
       rcases List.mem_append.mp hqLeft with hqAi | hqRi
       · rcases List.mem_append.mp hqRight with hqAj | hqRj
@@ -450,11 +397,9 @@ structure SignedRecursiveWorkspaceOK
   /-- The complete owned regions of `x` and `z` do not overlap. -/
   owned_disjoint : ExtReg.OwnedDisjoint x z
   /-- `x.reserve` is large enough for the complete recursive compilation. -/
-  x_reserve_sufficient :
-    (RecursivePhaseWorkspace.reserveNeed ops x.width z.width).1 ≤ x.capacity
+  x_reserve_sufficient : (RecursivePhaseWorkspace.reserveNeed ops x.width z.width).1 ≤ x.capacity
   /-- `z.reserve` is large enough for the complete recursive compilation. -/
-  z_reserve_sufficient :
-    (RecursivePhaseWorkspace.reserveNeed ops x.width z.width).2 ≤ z.capacity
+  z_reserve_sufficient : (RecursivePhaseWorkspace.reserveNeed ops x.width z.width).2 ≤ z.capacity
 
 /-! =========================================================
     Canonical recursive step construction
@@ -556,10 +501,7 @@ lemma fillSlack_sum
     (required : Fin k → ℕ)
     (hfit :
       (List.ofFn required).sum ≤ capacity) :
-    (List.ofFn
-      (fillSlack hk capacity required)).sum
-      =
-    capacity := by
+    (List.ofFn (fillSlack hk capacity required)).sum = capacity := by
   have hused : (List.ofFn required).sum = ∑ x : Fin k, required x := List.sum_ofFn
   simp only [fillSlack, List.sum_ofFn]
   rw [Finset.sum_update_of_mem (Finset.mem_univ (topIndex hk)),
@@ -649,27 +591,17 @@ structure CanonicalSignedStep
   workspace for the complete descendant recursion.
   -/
   childWorkspace :
-    let src :=
-      initSignedLayoutState layout
-    let dst :=
-      targetSignedLayoutState src (scanNeededWidths x z ops)
-    ∀ i : Fin k,
-      SignedRecursiveWorkspaceOK ops (dst.xslot i) (dst.zslot i)
+    let src := initSignedLayoutState layout
+    let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
+    ∀ i : Fin k, SignedRecursiveWorkspaceOK ops (dst.xslot i) (dst.zslot i)
   /--
   Every phase-product leaf emitted by this level has the recursive width
   `nextSignedWidth x z ops`.
   -/
   childInputSize :
-    let src :=
-      initSignedLayoutState layout
-    let dst :=
-      targetSignedLayoutState src (scanNeededWidths x z ops)
-    ∀ i : Fin k,
-      phaseInputSize
-        (dst.xslot i)
-        (dst.zslot i)
-        =
-      nextSignedWidth x z ops
+    let src := initSignedLayoutState layout
+    let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
+    ∀ i : Fin k, phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z ops
 
 /-- Canonical deterministic construction of one recursive signed phase-product step. -/
 def canonicalSignedStep
@@ -688,51 +620,37 @@ def canonicalSignedStep
       ops x.width z.width
   have hkpos : 0 < k := by omega
   -- The width-model registers reproduce the operands' active widths.
-  have hwmX :
-      (RecursivePhaseWorkspace.widthModelX x.width).width = x.width := by
+  have hwmX : (RecursivePhaseWorkspace.widthModelX x.width).width = x.width := by
     simp [RecursivePhaseWorkspace.widthModelX, ExtReg.width, ExtReg.ofReg,
       regSize, Reg.width, Reg.interval]
-  have hwmZ :
-      (RecursivePhaseWorkspace.widthModelZ x.width z.width).width = z.width := by
+  have hwmZ : (RecursivePhaseWorkspace.widthModelZ x.width z.width).width = z.width := by
     simp [RecursivePhaseWorkspace.widthModelZ, ExtReg.width, ExtReg.ofReg,
       regSize, Reg.width, Reg.interval]
   -- Consequently every width-only quantity matches the concrete operands.
   have hlimb :
-      phaseLimbWidth
-        (RecursivePhaseWorkspace.widthModelX x.width)
-        (RecursivePhaseWorkspace.widthModelZ x.width z.width) k
-        = phaseLimbWidth x z k := by
+      phaseLimbWidth (RecursivePhaseWorkspace.widthModelX x.width)
+        (RecursivePhaseWorkspace.widthModelZ x.width z.width) k = phaseLimbWidth x z k := by
     simp only [phaseLimbWidth, hwmX, hwmZ]
   have hinit :
-      initWidthState
-        (RecursivePhaseWorkspace.widthModelX x.width)
-        (RecursivePhaseWorkspace.widthModelZ x.width z.width) k
-        = initWidthState x z k := by
+      initWidthState (RecursivePhaseWorkspace.widthModelX x.width)
+        (RecursivePhaseWorkspace.widthModelZ x.width z.width) k = initWidthState x z k := by
     simp only [initWidthState, hwmX, hwmZ, hlimb]
-  have hnext :
-      RecursivePhaseWorkspace.nextWidth ops x.width z.width
-        = nextSignedWidth x z ops := by
+  have hnext : RecursivePhaseWorkspace.nextWidth ops x.width z.width = nextSignedWidth x z ops := by
     simp only [RecursivePhaseWorkspace.nextWidth, nextSignedWidth,
       scanNeededWidths, hinit]
   -- The recursion guard `hrec` transfers to the width-model formulation.
-  have hrec' :
-      RecursivePhaseWorkspace.nextWidth ops x.width z.width
-        < max x.width z.width := by
+  have hrec' : RecursivePhaseWorkspace.nextWidth ops x.width z.width < max x.width z.width := by
     rw [hnext]; exact hrec
-  have hxfit :
-      (List.ofFn reqX).sum ≤ x.capacity := by
-    show (List.ofFn
-      (RecursivePhaseWorkspace.requiredXChildReserve
-        ops x.width z.width)).sum ≤ x.capacity
+  have hxfit : (List.ofFn reqX).sum ≤ x.capacity := by
+    show (List.ofFn (RecursivePhaseWorkspace.requiredXChildReserve ops x.width z.width)).sum
+      ≤ x.capacity
     rw [RecursivePhaseWorkspace.requiredXChildReserve_sum]
     have hres := hworkspace.x_reserve_sufficient
     rw [RecursivePhaseWorkspace.reserveNeed_fst, dif_pos hrec'] at hres
     exact hres
-  have hzfit :
-      (List.ofFn reqZ).sum ≤ z.capacity := by
-    show (List.ofFn
-      (RecursivePhaseWorkspace.requiredZChildReserve
-        ops x.width z.width)).sum ≤ z.capacity
+  have hzfit : (List.ofFn reqZ).sum ≤ z.capacity := by
+    show (List.ofFn (RecursivePhaseWorkspace.requiredZChildReserve ops x.width z.width)).sum
+      ≤ z.capacity
     rw [RecursivePhaseWorkspace.requiredZChildReserve_sum]
     have hres := hworkspace.z_reserve_sufficient
     rw [RecursivePhaseWorkspace.reserveNeed_snd, dif_pos hrec'] at hres
@@ -748,8 +666,7 @@ def canonicalSignedStep
       ∀ {parent : ExtReg} {W : ℕ} (split : PhaseSplitLayout parent k W) (i : Fin k),
         (split.child i).ownedQubits ⊆ parent.ownedQubits := by
     intro parent W split i qbit hq
-    change
-      qbit ∈ (phaseChunkActive parent k W i).qubits ++ (split.reserve i).qubits at hq
+    change qbit ∈ (phaseChunkActive parent k W i).qubits ++ (split.reserve i).qubits at hq
     change qbit ∈ parent.active.qubits ++ parent.reserve.qubits
     rw [List.mem_append] at hq ⊢
     rcases hq with hqActive | hqReserve
@@ -757,17 +674,13 @@ def canonicalSignedStep
       simp only [phaseChunkActive, Reg.take, Reg.drop] at hqActive
       exact List.mem_of_mem_drop (List.mem_of_mem_take hqActive)
     · right
-      have hqFlatten :
-          qbit ∈
-            (List.ofFn fun j : Fin k =>
-              (split.reserve j).qubits).flatten := by
+      have hqFlatten : qbit ∈ (List.ofFn fun j : Fin k => (split.reserve j).qubits).flatten := by
         rw [List.mem_flatten]
         refine ⟨(split.reserve i).qubits, ?_, hqReserve⟩
         simp
       rw [split.reserve_partition] at hqFlatten
       exact hqFlatten
-  let layout :
-      Gate.PhaseProductLayout x z k :=
+  let layout : Gate.PhaseProductLayout x z k :=
     {
       xSplit := xSplit
       zSplit := zSplit
@@ -780,51 +693,31 @@ def canonicalSignedStep
       (i : Fin k) :
       reqX i = (nextSignedWidth x z ops - (xSplit.child i).width) +
         (RecursivePhaseWorkspace.reserveNeed ops (nextSignedWidth x z ops) (nextSignedWidth x z ops)).1 := by
-    dsimp [
-      reqX,
-      RecursivePhaseWorkspace.requiredXChildReserve,
-      RecursivePhaseWorkspace.requiredChildReserve,
-      RecursivePhaseWorkspace.PhaseSide.width,
-      RecursivePhaseWorkspace.PhaseSide.reserveComponent
-    ]
+    dsimp [reqX, RecursivePhaseWorkspace.requiredXChildReserve,
+      RecursivePhaseWorkspace.requiredChildReserve, RecursivePhaseWorkspace.PhaseSide.width,
+      RecursivePhaseWorkspace.PhaseSide.reserveComponent]
     rw [hlimb', hnext, xSplit.child_width]
   have hreqZ_formula
       (i : Fin k) :
       reqZ i = (nextSignedWidth x z ops - (zSplit.child i).width) +
         (RecursivePhaseWorkspace.reserveNeed ops (nextSignedWidth x z ops) (nextSignedWidth x z ops)).2 := by
-    dsimp [
-      reqZ,
-      RecursivePhaseWorkspace.requiredZChildReserve,
-      RecursivePhaseWorkspace.requiredChildReserve,
-      RecursivePhaseWorkspace.PhaseSide.width,
-      RecursivePhaseWorkspace.PhaseSide.reserveComponent
-    ]
+    dsimp [reqZ, RecursivePhaseWorkspace.requiredZChildReserve,
+      RecursivePhaseWorkspace.requiredChildReserve, RecursivePhaseWorkspace.PhaseSide.width,
+      RecursivePhaseWorkspace.PhaseSide.reserveComponent]
     rw [hlimb', hnext, zSplit.child_width]
   have hxChildCapacity
       (i : Fin k) :
       reqX i ≤ (xSplit.child i).capacity := by
     have h := ReserveBudget.required_le_childReserve_size (parent := x) hkpos reqX hxfit i
-    simpa [
-      xSplit,
-      PhaseSplitLayout.ofBudget,
-      PhaseSplitLayout.child,
-      ExtReg.withReserve,
-      ExtReg.capacity
-    ] using h
+    simpa [xSplit, PhaseSplitLayout.ofBudget, PhaseSplitLayout.child,
+      ExtReg.withReserve, ExtReg.capacity] using h
   have hzChildCapacity
       (i : Fin k) :
       reqZ i ≤ (zSplit.child i).capacity := by
     have h := ReserveBudget.required_le_childReserve_size (parent := z) hkpos reqZ hzfit i
-    simpa [
-      zSplit,
-      PhaseSplitLayout.ofBudget,
-      PhaseSplitLayout.child,
-      ExtReg.withReserve,
-      ExtReg.capacity
-    ] using h
-  have hcapacity :
-      (initSignedLayoutState layout).CanGrowToNeeds
-        (scanNeededWidths x z ops) := by
+    simpa [zSplit, PhaseSplitLayout.ofBudget, PhaseSplitLayout.child,
+      ExtReg.withReserve, ExtReg.capacity] using h
+  have hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops) := by
     change
       LayoutState.CanGrowTo
         (initSignedLayoutState layout)
@@ -851,73 +744,36 @@ def canonicalSignedStep
     intro i
     let src : LayoutState k := initSignedLayoutState layout
     let dst : LayoutState k := targetSignedLayoutState src (scanNeededWidths x z ops)
-    have howned :
-        ExtReg.OwnedDisjoint
-          (dst.xslot i)
-          (dst.zslot i) := by
+    have howned : ExtReg.OwnedDisjoint (dst.xslot i) (dst.zslot i) := by
       have hpair := targetSignedLayoutState_owned_disjoint layout (scanNeededWidths x z ops)
       simpa [src, dst] using hpair.2.2 i i
-    have hxgrow :
-        (xSplit.child i).CanGrow
-          (nextSignedWidth x z ops -
-            (xSplit.child i).width) := by
+    have hxgrow : (xSplit.child i).CanGrow (nextSignedWidth x z ops - (xSplit.child i).width) := by
       have h := hcapacity.1 i
       change (xSplit.child i).CanGrow (nextSignedWidth x z ops - (xSplit.child i).width) at h
       exact h
-    have hzgrow :
-        (zSplit.child i).CanGrow
-          (nextSignedWidth x z ops -
-            (zSplit.child i).width) := by
+    have hzgrow : (zSplit.child i).CanGrow (nextSignedWidth x z ops - (zSplit.child i).width) := by
       have h := hcapacity.2 i
       change (zSplit.child i).CanGrow (nextSignedWidth x z ops - (zSplit.child i).width) at h
       exact h
     have hxcapacity :
         (dst.xslot i).capacity
-          =
-        (xSplit.child i).capacity -
-          (nextSignedWidth x z ops -
-            (xSplit.child i).width) := by
+          = (xSplit.child i).capacity - (nextSignedWidth x z ops - (xSplit.child i).width) := by
       change
-        ((xSplit.child i).grow
-          (nextSignedWidth x z ops -
-            (xSplit.child i).width)).capacity
-          =
-        (xSplit.child i).capacity -
-          (nextSignedWidth x z ops -
-            (xSplit.child i).width)
-      exact
-        ExtReg.capacity_grow
-          (xSplit.child i)
-          (nextSignedWidth x z ops -
-            (xSplit.child i).width)
-          hxgrow
+        ((xSplit.child i).grow (nextSignedWidth x z ops - (xSplit.child i).width)).capacity
+          = (xSplit.child i).capacity - (nextSignedWidth x z ops - (xSplit.child i).width)
+      exact ExtReg.capacity_grow (xSplit.child i)
+        (nextSignedWidth x z ops - (xSplit.child i).width) hxgrow
     have hzcapacity :
         (dst.zslot i).capacity
-          =
-        (zSplit.child i).capacity -
-          (nextSignedWidth x z ops -
-            (zSplit.child i).width) := by
+          = (zSplit.child i).capacity - (nextSignedWidth x z ops - (zSplit.child i).width) := by
       change
-        ((zSplit.child i).grow
-          (nextSignedWidth x z ops -
-            (zSplit.child i).width)).capacity
-          =
-        (zSplit.child i).capacity -
-          (nextSignedWidth x z ops -
-            (zSplit.child i).width)
-      exact
-        ExtReg.capacity_grow
-          (zSplit.child i)
-          (nextSignedWidth x z ops -
-            (zSplit.child i).width)
-          hzgrow
-    have hxwidth :
-        (dst.xslot i).width =
-          nextSignedWidth x z ops := by
+        ((zSplit.child i).grow (nextSignedWidth x z ops - (zSplit.child i).width)).capacity
+          = (zSplit.child i).capacity - (nextSignedWidth x z ops - (zSplit.child i).width)
+      exact ExtReg.capacity_grow (zSplit.child i)
+        (nextSignedWidth x z ops - (zSplit.child i).width) hzgrow
+    have hxwidth : (dst.xslot i).width = nextSignedWidth x z ops := by
       simpa [src, dst, nextSignedWidth] using targetSignedLayoutState_xslot_width_scan layout ops i hcapacity
-    have hzwidth :
-        (dst.zslot i).width =
-          nextSignedWidth x z ops := by
+    have hzwidth : (dst.zslot i).width = nextSignedWidth x z ops := by
       simpa [src, dst, nextSignedWidth] using targetSignedLayoutState_zslot_width_scan layout ops i hcapacity
     refine
       {
@@ -937,13 +793,9 @@ def canonicalSignedStep
     intro i
     let src : LayoutState k := initSignedLayoutState layout
     let dst : LayoutState k := targetSignedLayoutState src (scanNeededWidths x z ops)
-    have hxwidth :
-        (dst.xslot i).width =
-          nextSignedWidth x z ops := by
+    have hxwidth : (dst.xslot i).width = nextSignedWidth x z ops := by
       simpa [src, dst, nextSignedWidth] using targetSignedLayoutState_xslot_width_scan layout ops i hcapacity
-    have hzwidth :
-        (dst.zslot i).width =
-          nextSignedWidth x z ops := by
+    have hzwidth : (dst.zslot i).width = nextSignedWidth x z ops := by
       simpa [src, dst, nextSignedWidth] using targetSignedLayoutState_zslot_width_scan layout ops i hcapacity
     unfold phaseInputSize
     rw [hxwidth, hzwidth, max_self]

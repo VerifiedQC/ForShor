@@ -32,12 +32,7 @@ abbrev CleanWorkspaceState (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
 
 /-- A basis state has zeroes in every reserve bit owned by a layout. -/
 def LayoutReserveCleanBasis
-    {Basis : Type u}
-    [RegEncoding Basis]
-    {k : ℕ}
-    (st : LayoutState k)
-    (b : Basis) :
-    Prop :=
+    {Basis : Type u} [RegEncoding Basis] {k : ℕ} (st : LayoutState k) (b : Basis) : Prop :=
   (∀ i : Fin k, ExtReg.FreshFor (st.xslot i) (st.xslot i).capacity b) ∧
   (∀ i : Fin k, ExtReg.FreshFor (st.zslot i) (st.zslot i).capacity b)
 
@@ -56,11 +51,7 @@ Using `x.capacity` and `z.capacity` means that `FreshFor` covers all of each
 reserve, rather than only the bits needed by the first compilation level.
 -/
 def RecursiveWorkspaceCleanBasis
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (x z : ExtReg)
-    (b : Basis) :
-    Prop :=
+    {Basis : Type u} [RegEncoding Basis] (x z : ExtReg) (b : Basis) : Prop :=
   ExtReg.FreshFor x x.capacity b ∧ ExtReg.FreshFor z z.capacity b
 
 /--
@@ -82,13 +73,8 @@ The complete public workspace precondition for an uncontrolled signed phase
 product.
 -/
 structure SignedRecursiveWorkspaceStateOK
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {k : ℕ}
-    (ops : Prog k)
-    (x z : ExtReg)
-    (ψ : qs.State) :
-    Prop where
+    (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
+    (ops : Prog k) (x z : ExtReg) (ψ : qs.State) : Prop where
   static : SignedRecursiveWorkspaceOK ops x z
   clean : RecursiveWorkspaceCleanState qs x z ψ
 
@@ -97,14 +83,8 @@ The complete public workspace precondition for a controlled signed phase
 product.
 -/
 structure CSignedRecursiveWorkspaceStateOK
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {k : ℕ}
-    (ops : Prog k)
-    (ctrl : ℕ)
-    (x z : ExtReg)
-    (ψ : qs.State) :
-    Prop where
+    (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
+    (ops : Prog k) (ctrl : ℕ) (x z : ExtReg) (ψ : qs.State) : Prop where
   static : CSignedRecursiveWorkspaceOK ops ctrl x z
   clean : RecursiveWorkspaceCleanState qs x z ψ
 

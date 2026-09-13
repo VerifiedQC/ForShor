@@ -24,62 +24,34 @@ lemma planCompiledSignedPhaseGate_ready_ket
     (hpts : pts.length = q k)
     (hInterp : GoodToomCookPoints k pts hpts)
     (ops : Prog k)
-    (hC :
-      ProgConsumesPtsSafe
-        (k := k)
-        (by omega)
-        State.start_state
-        ops
-        pts)
-    (hRun :
-      run? ops State.start_state =
-        some State.start_state)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
+    (hRun : run? ops State.start_state = some State.start_state)
     (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
-    (hcapacity :
-      (initSignedLayoutState layout).CanGrowToNeeds
-        (scanNeededWidths x z ops))
+    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
     (recurse :
       let src := initSignedLayoutState layout
-      let dst :=
-        targetSignedLayoutState src
-          (scanNeededWidths x z ops)
+      let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
       ∀ i theta,
-        PhaseLoweringPlan
-          k hk pts hpts ops
-          (nextSignedWidth x z ops)
-          (Gate.SignedPhaseProd
-            theta
-            (dst.xslot i)
-            (dst.zslot i)))
+        PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
+          (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)))
     (hleaf :
       let src := initSignedLayoutState layout
-      let dst :=
-        targetSignedLayoutState src
-          (scanNeededWidths x z ops)
+      let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
       ∀ i theta b',
-        RecursiveWorkspaceCleanBasis
-            (dst.xslot i) (dst.zslot i) b' →
-        PhaseLoweringReady
-          qs (recurse i theta) (qs.ket b'))
+        RecursiveWorkspaceCleanBasis (dst.xslot i) (dst.zslot i) b' →
+        PhaseLoweringReady qs (recurse i theta) (qs.ket b'))
     (b : qs.Basis)
     (hclean : RecursiveWorkspaceCleanBasis x z b) :
-    PhaseLoweringReady
-      qs
-      (planCompiledSignedPhaseGate
-        hk pts hpts ops phi x z layout recurse)
+    PhaseLoweringReady qs
+      (planCompiledSignedPhaseGate hk pts hpts ops phi x z layout recurse)
       (qs.ket b) := by
-  let need : NeededWidths k :=
-    scanNeededWidths x z ops
-  let src : LayoutState k :=
-    initSignedLayoutState layout
-  let dst : LayoutState k :=
-    targetSignedLayoutState src need
-  let coeff : Fin (q k) → ℚ :=
-    loweringPhaseCoeff k x z pts hpts
-  let annOps :=
-    annotatePhaseTermsAux k 0 ops
+  let need : NeededWidths k := scanNeededWidths x z ops
+  let src : LayoutState k := initSignedLayoutState layout
+  let dst : LayoutState k := targetSignedLayoutState src need
+  let coeff : Fin (q k) → ℚ := loweringPhaseCoeff k x z pts hpts
+  let annOps := annotatePhaseTermsAux k 0 ops
   let allocPlan :=
     planCompileSignedAllocations
       (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
@@ -87,127 +59,52 @@ lemma planCompiledSignedPhaseGate_ready_ket
   let bodyPlan :=
     planCompileAnnotatedOpsToSignedGateAux
       (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
-      (nextSignedWidth x z ops)
-      phi coeff dst recurse annOps
+      (nextSignedWidth x z ops) phi coeff dst recurse annOps
   let deallocPlan :=
     planCompileSignedDeallocations
       (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
       (nextSignedWidth x z ops) src dst
-  have hworkspace :
-      CompilerWorkspaceOK src need b := by
+  have hworkspace : CompilerWorkspaceOK src need b := by
     simpa [src, need] using
       compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis ops x z layout hcapacity b hclean
-  rcases
-      eval_compileSignedAllocations_ket_fits_and_child_clean
-        qs ops x z layout b hworkspace hclean
-    with ⟨bAlloc, hAllocEval, hEncAlloc, hAllocClean⟩
+  rcases eval_compileSignedAllocations_ket_fits_and_child_clean
+        qs ops x z layout b hworkspace hclean with
+    ⟨bAlloc, hAllocEval, hEncAlloc, hAllocClean⟩
   have hFits :
       ∀ {τ : State k},
-        (∃ pre rest,
-          ops = pre ++ rest ∧
-          run? pre State.start_state = some τ) →
-        (∀ j : Fin k,
-          FitsSignedWidth
-            (ExtReg.width (dst.xslot j))
-            (evalRowX
-              (qs := qs) src (τ j) b))
-        ∧
-        (∀ j : Fin k,
-          FitsSignedWidth
-            (ExtReg.width (dst.zslot j))
-            (evalRowZ
-              (qs := qs) src (τ j) b)) := by
+        (∃ pre rest, ops = pre ++ rest ∧ run? pre State.start_state = some τ) →
+        (∀ j : Fin k, FitsSignedWidth (ExtReg.width (dst.xslot j))
+          (evalRowX (qs := qs) src (τ j) b)) ∧
+        (∀ j : Fin k, FitsSignedWidth (ExtReg.width (dst.zslot j))
+          (evalRowZ (qs := qs) src (τ j) b)) := by
     intro τ hτ
     simpa [src, dst, need] using
-      allocated_widths_sound
-        (qs := qs)
-        layout
-        ops
-        hcapacity
-        b
-        (σ := τ)
-        hτ
+      allocated_widths_sound (qs := qs) layout ops hcapacity b (σ := τ) hτ
   have hdisjoint : LayoutSlotsDisjoint dst := by
-    simpa [src, dst, need] using
-      targetSignedLayoutState_owned_disjoint layout need
-  have hblocks :
-      BlockDecomposition
-        (k := k)
-        (by omega)
-        State.start_state
-        ops
-        pts :=
-    progConsumesPts_has_blockDecomposition
-      (k := k)
-      (by omega)
-      ops
-      State.start_state
-      pts
-      hC.1
-  have hBodyReady :
-      PhaseLoweringReady qs bodyPlan (qs.ket bAlloc) := by
+    simpa [src, dst, need] using targetSignedLayoutState_owned_disjoint layout need
+  have hblocks : BlockDecomposition (k := k) (by omega) State.start_state ops pts :=
+    progConsumesPts_has_blockDecomposition (k := k) (by omega) ops State.start_state pts hC.1
+  have hBodyReady : PhaseLoweringReady qs bodyPlan (qs.ket bAlloc) := by
     apply
       planCompileAnnotatedOps_ready_ket_of_blocks_from
-        qs hk pts hpts hInterp
-        ops hC hRun
-        (nextSignedWidth x z ops)
-        phi coeff src dst recurse hleaf
-        hblocks
-        0
-        (by simpa using hpts)
-        b
-        bAlloc
-        hdisjoint
-        hFits
-        hC.2
-        hEncAlloc
+        qs hk pts hpts hInterp ops hC hRun
+        (nextSignedWidth x z ops) phi coeff src dst recurse hleaf
+        hblocks 0 (by simpa using hpts) b bAlloc hdisjoint hFits hC.2 hEncAlloc
     exact hAllocClean
-  have hAllocReady :
-      PhaseLoweringReady qs allocPlan (qs.ket b) :=
-    planCompileSignedAllocations_ready
-      qs hk pts hpts ops
-      (nextSignedWidth x z ops)
-      src dst
-      (qs.ket b)
+  have hAllocReady : PhaseLoweringReady qs allocPlan (qs.ket b) :=
+    planCompileSignedAllocations_ready qs hk pts hpts ops (nextSignedWidth x z ops) src dst (qs.ket b)
   have hLowAlloc :
-      LowerGateClass.evalL
-          (qs := qs)
-          (lowerGateRec allocPlan)
-          (qs.ket b)
-        =
-      qs.ket bAlloc := by
+      LowerGateClass.evalL (qs := qs) (lowerGateRec allocPlan) (qs.ket b) = qs.ket bAlloc := by
     calc
-      LowerGateClass.evalL
-          (qs := qs)
-          (lowerGateRec allocPlan)
-          (qs.ket b)
-          =
-        qs.eval
-          (compileSignedAllocations k src dst)
-          (qs.ket b) := by
-            exact
-              evalL_lowerGateRec_correct
-                (qs := qs)
-                (hInterp := hInterp)
-                (hC := hC)
-                (hRun := hRun)
-                allocPlan
-                (qs.ket b)
-                hAllocReady
+      LowerGateClass.evalL (qs := qs) (lowerGateRec allocPlan) (qs.ket b)
+          = qs.eval (compileSignedAllocations k src dst) (qs.ket b) := by
+            exact evalL_lowerGateRec_correct (qs := qs) (hInterp := hInterp)
+              (hC := hC) (hRun := hRun) allocPlan (qs.ket b) hAllocReady
       _ = qs.ket bAlloc := hAllocEval
   have hDeallocReady :
-      PhaseLoweringReady
-        qs
-        deallocPlan
-        (LowerGateClass.evalL
-          (qs := qs)
-          (lowerGateRec bodyPlan)
-          (qs.ket bAlloc)) :=
-    planCompileSignedDeallocations_ready
-      qs hk pts hpts ops
-      (nextSignedWidth x z ops)
-      src dst
-      _
+      PhaseLoweringReady qs deallocPlan
+        (LowerGateClass.evalL (qs := qs) (lowerGateRec bodyPlan) (qs.ket bAlloc)) :=
+    planCompileSignedDeallocations_ready qs hk pts hpts ops (nextSignedWidth x z ops) src dst _
   unfold planCompiledSignedPhaseGate
   dsimp only
   refine ⟨hAllocReady, ?_⟩
@@ -226,52 +123,21 @@ lemma standardSignedPhaseLoweringPlan_ready_ket
     (x z : ExtReg)
     (ops : Prog k)
     (b : qs.Basis)
-    (hstatic :
-      SignedRecursiveWorkspaceOK ops x z)
-    (hclean :
-      RecursiveWorkspaceCleanBasis x z b)
-    (hC :
-      ProgConsumesPtsSafe
-        (k := k)
-        (by omega)
-        State.start_state
-        ops
-        (genInterpolationPoints k))
-    (hRun :
-      run? ops State.start_state =
-        some State.start_state) :
-    PhaseLoweringReady
-      qs
-      (standardSignedPhaseLoweringPlan
-        k hk phi x z ops hstatic)
-      (qs.ket b) := by
+    (hstatic : SignedRecursiveWorkspaceOK ops x z)
+    (hclean : RecursiveWorkspaceCleanBasis x z b)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hRun : run? ops State.start_state = some State.start_state) :
+    PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops hstatic) (qs.ket b) := by
   rw [standardSignedPhaseLoweringPlan]
   split
   next hrec =>
-    let step : CanonicalSignedStep ops x z :=
-      canonicalSignedStep
-        hk ops x z hrec hstatic
-    let src : LayoutState k :=
-      initSignedLayoutState step.layout
-    let dst : LayoutState k :=
-      targetSignedLayoutState
-        src
-        (scanNeededWidths x z ops)
+    let step : CanonicalSignedStep ops x z := canonicalSignedStep hk ops x z hrec hstatic
+    let src : LayoutState k := initSignedLayoutState step.layout
+    let dst : LayoutState k := targetSignedLayoutState src (scanNeededWidths x z ops)
     have hcurrent :
-        CleanWorkspaceState
-          qs
-          (initSignedLayoutState step.layout)
-          (scanNeededWidths x z ops)
-          (qs.ket b) :=
-      cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis
-        qs
-        ops
-        x
-        z
-        step.layout
-        step.capacity
-        b
-        hclean
+        CleanWorkspaceState qs (initSignedLayoutState step.layout)
+          (scanNeededWidths x z ops) (qs.ket b) :=
+      cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis qs ops x z step.layout step.capacity b hclean
     dsimp only
     refine And.intro hcurrent ?_
     apply
@@ -279,10 +145,8 @@ lemma standardSignedPhaseLoweringPlan_ready_ket
         (qs := qs)
         (hk := hk)
         (pts := genInterpolationPoints k)
-        (hpts :=
-          generatedInterpolationPoints_length k)
-        (hInterp := by
-          simpa using genInterpolationPoints_good k)
+        (hpts := generatedInterpolationPoints_length k)
+        (hInterp := by simpa using genInterpolationPoints_good k)
         (ops := ops)
         (hC := hC)
         (hRun := hRun)
@@ -295,47 +159,17 @@ lemma standardSignedPhaseLoweringPlan_ready_ket
         (hclean := hclean)
     dsimp only
     intro i theta b' hclean'
-    have hchild :
-        SignedRecursiveWorkspaceOK
-          ops
-          (dst.xslot i)
-          (dst.zslot i) := by
-      simpa [src, dst] using
-        step.childWorkspace i
-    have hsize :
-        phaseInputSize
-            (dst.xslot i)
-            (dst.zslot i)
-          =
-        nextSignedWidth x z ops := by
-      simpa [src, dst] using
-        step.childInputSize i
+    have hchild : SignedRecursiveWorkspaceOK ops (dst.xslot i) (dst.zslot i) := by
+      simpa [src, dst] using step.childWorkspace i
+    have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z ops := by
+      simpa [src, dst] using step.childInputSize i
     have hchildReady :
-        PhaseLoweringReady
-          qs
-          (standardSignedPhaseLoweringPlan
-            k
-            hk
-            theta
-            (dst.xslot i)
-            (dst.zslot i)
-            ops
-            hchild)
+        PhaseLoweringReady qs
+          (standardSignedPhaseLoweringPlan k hk theta (dst.xslot i) (dst.zslot i) ops hchild)
           (qs.ket b') := by
-      exact
-        standardSignedPhaseLoweringPlan_ready_ket
-          (qs := qs)
-          (k := k)
-          (hk := hk)
-          (phi := theta)
-          (x := dst.xslot i)
-          (z := dst.zslot i)
-          (ops := ops)
-          (b := b')
-          (hstatic := hchild)
-          (hclean := hclean')
-          (hC := hC)
-          (hRun := hRun)
+      exact standardSignedPhaseLoweringPlan_ready_ket (qs := qs) (k := k) (hk := hk)
+        (phi := theta) (x := dst.xslot i) (z := dst.zslot i)
+        (ops := ops) (b := b') (hstatic := hchild) (hclean := hclean') (hC := hC) (hRun := hRun)
     dsimp only [id_eq]
     convert hchildReady using 2
     all_goals
@@ -346,8 +180,7 @@ lemma standardSignedPhaseLoweringPlan_ready_ket
     exact True.intro
 termination_by phaseInputSize x z
 decreasing_by
-  have hsize :
-      phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z ops := by
+  have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z ops := by
     simpa [src, dst] using step.childInputSize i
   rw [hsize]
   assumption
@@ -364,82 +197,27 @@ theorem standardSignedPhaseLoweringPlan_ready_and_clean
     (x z : ExtReg)
     (ops : Prog k)
     (ψ : qs.State)
-    (hstatic :
-      SignedRecursiveWorkspaceOK ops x z)
-    (hclean :
-      RecursiveWorkspaceCleanState qs x z ψ)
-    (hC :
-      ProgConsumesPtsSafe
-        (k := k)
-        (by omega)
-        State.start_state
-        ops
-        (genInterpolationPoints k))
-    (hRun :
-      run? ops State.start_state =
-        some State.start_state) :
-    let plan :=
-      standardSignedPhaseLoweringPlan
-        k hk phi x z ops hstatic
-    PhaseLoweringReady qs plan ψ
-      ∧
-    RecursiveWorkspaceCleanState
-      qs x z
-      (LowerGateClass.evalL
-        (qs := qs)
-        (lowerGateRec plan)
-        ψ) := by
+    (hstatic : SignedRecursiveWorkspaceOK ops x z)
+    (hclean : RecursiveWorkspaceCleanState qs x z ψ)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hRun : run? ops State.start_state = some State.start_state) :
+    let plan := standardSignedPhaseLoweringPlan k hk phi x z ops hstatic
+    PhaseLoweringReady qs plan ψ ∧
+    RecursiveWorkspaceCleanState qs x z (LowerGateClass.evalL (qs := qs) (lowerGateRec plan) ψ) := by
   dsimp only
-  let plan :=
-    standardSignedPhaseLoweringPlan
-      k hk phi x z ops hstatic
-  have hready :
-      PhaseLoweringReady qs plan ψ := by
+  let plan := standardSignedPhaseLoweringPlan k hk phi x z ops hstatic
+  have hready : PhaseLoweringReady qs plan ψ := by
     induction hclean with
-    | zero =>
-        exact
-          PhaseLoweringReady.zero
-            qs plan
+    | zero => exact PhaseLoweringReady.zero qs plan
     | ket b hcleanBasis =>
-        exact
-          standardSignedPhaseLoweringPlan_ready_ket
-            qs
-            k
-            hk
-            phi
-            x
-            z
-            ops
-            b
-            hstatic
-            hcleanBasis
-            hC
-            hRun
-    | add hψ hφ ihψ ihφ =>
-        exact
-          PhaseLoweringReady.add
-            qs plan ihψ ihφ
-    | smul a hψ ihψ =>
-        exact
-          PhaseLoweringReady.smul
-            qs plan a ihψ
+        exact standardSignedPhaseLoweringPlan_ready_ket qs k hk phi x z ops b hstatic hcleanBasis hC hRun
+    | add hψ hφ ihψ ihφ => exact PhaseLoweringReady.add qs plan ihψ ihφ
+    | smul a hψ ihψ => exact PhaseLoweringReady.smul qs plan a ihψ
   constructor
   · exact hready
   · exact
-      standardSignedPhaseLoweringPlan_preserves_clean_of_ready
-        qs
-        k
-        hk
-        phi
-        x
-        z
-        ops
-        ψ
-        hstatic
-        hclean
-        hready
-        hC
-        hRun
+      standardSignedPhaseLoweringPlan_preserves_clean_of_ready qs k hk phi x z ops ψ
+        hstatic hclean hready hC hRun
 
 /-- Readiness projection from the ready-and-clean theorem. -/
 theorem standardSignedPhaseLoweringPlan_ready
@@ -458,12 +236,7 @@ theorem standardSignedPhaseLoweringPlan_ready
     (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
     (hRun : run? ops State.start_state = some State.start_state) :
     PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops hstatic) ψ := by
-  exact
-    (standardSignedPhaseLoweringPlan_ready_and_clean qs k hk phi x z ops ψ
-      hstatic
-      hclean
-      hC
-      hRun).1
+  exact (standardSignedPhaseLoweringPlan_ready_and_clean qs k hk phi x z ops ψ hstatic hclean hC hRun).1
 
 /-- Public workspace-state invariant implies readiness for the canonical standard plan. -/
 lemma standardSignedPhaseLoweringPlan_ready_of_workspace
@@ -481,9 +254,7 @@ lemma standardSignedPhaseLoweringPlan_ready_of_workspace
     (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
     (hRun : run? ops State.start_state = some State.start_state):
     PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops hworkspace.static) ψ := by
-  exact
-    standardSignedPhaseLoweringPlan_ready qs k hk phi x z ops ψ
-      hworkspace.static hworkspace.clean hC hRun
+  exact standardSignedPhaseLoweringPlan_ready qs k hk phi x z ops ψ hworkspace.static hworkspace.clean hC hRun
 
 /-- Readiness of the compiled controlled signed phase-product plan on a clean basis ket. -/
 lemma planCompiledCSignedPhaseGate_ready_ket

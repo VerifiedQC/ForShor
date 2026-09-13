@@ -31,8 +31,7 @@ lemma splitChunk_toNat_lt
     (i : Fin k)
     (b : Basis) :
     ExtReg.toNat (layout.child i) b
-      <
-    2 ^
+      < 2 ^
       (if isTopChunk i then
         parent.width - i.1 * W
       else
@@ -51,8 +50,7 @@ lemma fin_sum_digits_lt_pow
       (∀ i, digits i < 2 ^ W) →
       (∑ i : Fin n,
           digits i * 2 ^ (i.1 * W))
-        <
-      2 ^ (n * W)
+        < 2 ^ (n * W)
   | 0, digits, hdigits => by
       simp
   | n + 1, digits, hdigits => by
@@ -60,8 +58,7 @@ lemma fin_sum_digits_lt_pow
           (∑ i : Fin n,
               digits i.castSucc *
                 2 ^ (i.1 * W))
-            <
-          2 ^ (n * W) := by
+            < 2 ^ (n * W) := by
         apply fin_sum_digits_lt_pow W
         intro i
         exact hdigits i.castSucc
@@ -77,15 +74,13 @@ lemma fin_sum_digits_lt_pow
             +
           digits (Fin.last n) *
             2 ^ (n * W)
-            <
-          2 ^ (n * W) +
+            < 2 ^ (n * W) +
             digits (Fin.last n) *
               2 ^ (n * W) :=
           Nat.add_lt_add_right hlow _
         _ =
           (digits (Fin.last n) + 1) *
-            2 ^ (n * W) := by
-          ring
+            2 ^ (n * W) := by ring
         _ ≤
           2 ^ W * 2 ^ (n * W) := by
           exact Nat.mul_le_mul_right
@@ -106,8 +101,7 @@ lemma tcDecodeWidth_concat
     tcDecodeWidth
         (lowWidth + highWidth)
         (low + high * 2 ^ lowWidth)
-      =
-    (low : ℤ) +
+      = (low : ℤ) +
       tcDecodeWidth highWidth high *
         (2 : ℤ) ^ lowWidth := by
   obtain ⟨h, rfl⟩ :=
@@ -116,17 +110,14 @@ lemma tcDecodeWidth_concat
   by_cases hsign : high < 2 ^ h
   · have hcombined :
         low + high * 2 ^ lowWidth
-          <
-        2 ^ (lowWidth + h) := by
+          < 2 ^ (lowWidth + h) := by
       calc
         low + high * 2 ^ lowWidth
-            <
-        2 ^ lowWidth +
+            < 2 ^ lowWidth +
           high * 2 ^ lowWidth :=
           Nat.add_lt_add_right hLow _
         _ =
-        (high + 1) * 2 ^ lowWidth := by
-          ring
+        (high + 1) * 2 ^ lowWidth := by ring
         _ ≤
         2 ^ h * 2 ^ lowWidth := by
           exact Nat.mul_le_mul_right
@@ -143,13 +134,11 @@ lemma tcDecodeWidth_concat
       Nat.le_of_not_gt hsign
     have hcombined :
         ¬ low + high * 2 ^ lowWidth
-            <
-          2 ^ (lowWidth + h) := by
+            < 2 ^ (lowWidth + h) := by
       apply Nat.not_lt_of_ge
       calc
         2 ^ (lowWidth + h)
-            =
-        2 ^ h * 2 ^ lowWidth := by
+            = 2 ^ h * 2 ^ lowWidth := by
           rw [pow_add]
           ring
         _ ≤
@@ -176,8 +165,7 @@ lemma toNat_take_drop
     (hm : m ≤ regSize r)
     (b : Basis) :
     RegEncoding.toNat r b
-      =
-    RegEncoding.toNat (r.take m) b
+      = RegEncoding.toNat (r.take m) b
       +
     2 ^ m * RegEncoding.toNat (r.drop m) b := by
   let sp : SplitPoint r := ⟨m, hm⟩
@@ -200,8 +188,7 @@ lemma take_drop_take_eq
     (pre start width : ℕ)
     (hfit : start + width ≤ pre) :
     ((r.take pre).drop start).take width
-      =
-    (r.drop start).take width := by
+      = (r.drop start).take width := by
   cases r with
   | mk qubits nodup =>
       have hw :
@@ -220,8 +207,7 @@ lemma toNat_uniform_chunks
       (b : Basis),
       regSize r = n * W →
       RegEncoding.toNat r b
-        =
-      ∑ i : Fin n,
+        = ∑ i : Fin n,
         RegEncoding.toNat
           ((r.drop (i.1 * W)).take W)
           b *
@@ -230,8 +216,7 @@ lemma toNat_uniform_chunks
       have hlt :
           RegEncoding.toNat r b < ASize r :=
         RegEncoding.toNat_lt_ASize r b
-      have hr0 : regSize r = 0 := by
-        simpa using hwidth
+      have hr0 : regSize r = 0 := by simpa using hwidth
       have hnat : RegEncoding.toNat r b = 0 := by
         unfold ASize at hlt
         rw [hr0] at hlt
@@ -244,8 +229,7 @@ lemma toNat_uniform_chunks
         simp
       have hsplit :
           RegEncoding.toNat r b
-            =
-          RegEncoding.toNat (r.take W) b
+            = RegEncoding.toNat (r.take W) b
             +
           2 ^ W *
             RegEncoding.toNat (r.drop W) b :=
@@ -253,8 +237,7 @@ lemma toNat_uniform_chunks
       have htailWidth :
           regSize (r.drop W) = n * W := by
         have hwidth' :
-            r.qubits.length = (n + 1) * W := by
-          simpa [regSize, Reg.width] using hwidth
+            r.qubits.length = (n + 1) * W := by simpa [regSize, Reg.width] using hwidth
         have hdrop :
             r.qubits.length - W = n * W := by
           rw [hwidth']
@@ -263,8 +246,7 @@ lemma toNat_uniform_chunks
         simpa [regSize, Reg.width, Reg.drop] using hdrop
       have htail :
           RegEncoding.toNat (r.drop W) b
-            =
-          ∑ i : Fin n,
+            = ∑ i : Fin n,
             RegEncoding.toNat
               (((r.drop W).drop (i.1 * W)).take W)
               b *
@@ -277,8 +259,7 @@ lemma toNat_uniform_chunks
       have hsucc :
           ∀ i : Fin n,
             (r.drop ((i.succ : Fin (n + 1)).1 * W)).take W
-              =
-            ((r.drop W).drop (i.1 * W)).take W := by
+              = ((r.drop W).drop (i.1 * W)).take W := by
         intro i
         cases r
         simp [Reg.drop, Reg.take, List.drop_drop, Nat.add_mul, Nat.add_comm]
@@ -293,9 +274,7 @@ lemma toNat_uniform_chunks
       rw [hsucc i]
       have hexp :
           ((i.succ : Fin (n + 1)).1 * W)
-            =
-          W + i.1 * W := by
-        simp [Nat.add_mul, Nat.add_comm]
+            = W + i.1 * W := by simp [Nat.add_mul, Nat.add_comm]
       rw [hexp, pow_add]
       ring
 
@@ -309,8 +288,7 @@ lemma phaseChunkActive_castSucc
     phaseChunkActive
         parent (n + 1) W
         (i.castSucc : Fin (n + 1))
-      =
-    (((parent.active.take (n * W)).drop
+      = (((parent.active.take (n * W)).drop
         (i.1 * W)).take W) := by
   have hnotTop :
       ¬ isTopChunk
@@ -348,8 +326,7 @@ lemma phaseChunkActive_last
     phaseChunkActive
         parent (n + 1) W
         (Fin.last n)
-      =
-    parent.active.drop (n * W) := by
+      = parent.active.drop (n * W) := by
   have htop :
       isTopChunk
         (Fin.last n : Fin (n + 1)) := by
@@ -370,8 +347,7 @@ theorem phaseChunks_reconstruct_nat
     (layout : PhaseSplitLayout parent k W)
     (b : Basis) :
     ExtReg.toNat parent b
-      =
-    ∑ i : Fin k,
+      = ∑ i : Fin k,
       ExtReg.toNat (layout.child i) b *
         2 ^ (i.1 * W) := by
   obtain ⟨hk, hbound, htopValid⟩ :=
@@ -385,8 +361,7 @@ theorem phaseChunks_reconstruct_nat
       let lower : Reg := parent.active.take cut
       let upper : Reg := parent.active.drop cut
       have hcut :
-          cut ≤ parent.width := by
-        simpa [cut] using hbound
+          cut ≤ parent.width := by simpa [cut] using hbound
       have hlowerWidth :
           regSize lower = n * W := by
         dsimp [lower, cut]
@@ -395,8 +370,7 @@ theorem phaseChunks_reconstruct_nat
         apply hcut
       have hsplit :
           ExtReg.toNat parent b
-            =
-          RegEncoding.toNat lower b
+            = RegEncoding.toNat lower b
             +
           2 ^ cut *
             RegEncoding.toNat upper b := by
@@ -409,8 +383,7 @@ theorem phaseChunks_reconstruct_nat
             b
       have hlower :
           RegEncoding.toNat lower b
-            =
-          ∑ i : Fin n,
+            = ∑ i : Fin n,
             RegEncoding.toNat
               ((lower.drop (i.1 * W)).take W)
               b *
@@ -423,8 +396,7 @@ theorem phaseChunks_reconstruct_nat
                 (layout.child
                   (i.castSucc : Fin (n + 1)))
                 b
-              =
-            RegEncoding.toNat
+              = RegEncoding.toNat
               ((lower.drop (i.1 * W)).take W)
               b := by
         intro i
@@ -434,16 +406,14 @@ theorem phaseChunks_reconstruct_nat
               (phaseChunkActive
                 parent (n + 1) W
                 (i.castSucc : Fin (n + 1))) b
-            =
-          RegEncoding.toNat ((lower.drop (i.1 * W)).take W) b
+            = RegEncoding.toNat ((lower.drop (i.1 * W)).take W) b
         rw [ phaseChunkActive_castSucc parent n W i hcut ]
       have hupperChild :
           ExtReg.toNat
               (layout.child
                 (Fin.last n : Fin (n + 1)))
               b
-            =
-          RegEncoding.toNat upper b := by
+            = RegEncoding.toNat upper b := by
         unfold ExtReg.toNat
         change
           RegEncoding.toNat
@@ -451,8 +421,7 @@ theorem phaseChunks_reconstruct_nat
                 parent (n + 1) W
                 (Fin.last n))
               b
-            =
-          RegEncoding.toNat upper b
+            = RegEncoding.toNat upper b
         rw [phaseChunkActive_last parent n W hcut]
       rw [Fin.sum_univ_castSucc]
       simp only [Fin.val_castSucc, Fin.val_last]
@@ -463,8 +432,7 @@ theorem phaseChunks_reconstruct_nat
                 ((lower.drop (i.1 * W)).take W)
                 b *
               2 ^ (i.1 * W))
-            =
-          ∑ i : Fin n,
+            = ∑ i : Fin n,
               ExtReg.toNat
                 (layout.child
                   (i.castSucc : Fin (n + 1)))
@@ -498,8 +466,7 @@ theorem tcDecode_chunks_signed_top
         ∑ i : Fin k,
           chunks i * 2 ^ (i.1 * W)) :
     tcDecodeWidth total raw
-      =
-    ∑ i : Fin k,
+      = ∑ i : Fin k,
       (if isTopChunk i then
           tcDecodeWidth
             (total - i.1 * W)
@@ -514,21 +481,17 @@ theorem tcDecode_chunks_signed_top
       simp only [Nat.succ_sub_one] at hbound htop
       by_cases htotal : total = 0
       · subst total
-        have hrawZero : raw = 0 := by
-          simpa using hraw
+        have hrawZero : raw = 0 := by simpa using hraw
         have hchunksZero :
             ∀ i : Fin (n + 1), chunks i = 0 := by
           intro i
           have htermLe :
               chunks i * 2 ^ (i.1 * W)
-                ≤
-              ∑ j : Fin (n + 1),
-                chunks j * 2 ^ (j.1 * W) := by
-            aesop
+                ≤ ∑ j : Fin (n + 1),
+                chunks j * 2 ^ (j.1 * W) := by aesop
           rw [← hchunk, hrawZero] at htermLe
           have hpowPos :
-              0 < 2 ^ (i.1 * W) := by
-            positivity
+              0 < 2 ^ (i.1 * W) := by positivity
           aesop
         subst raw
         simp [tcDecodeWidth, hchunksZero]
@@ -593,17 +556,14 @@ theorem tcDecode_chunks_signed_top
           rfl
         have hdecode :
             tcDecodeWidth total raw
-              =
-            (low : ℤ) +
+              = (low : ℤ) +
               tcDecodeWidth highWidth high *
                 (2 : ℤ) ^ lowWidth := by
           calc
             tcDecodeWidth total raw
-                =
-            tcDecodeWidth
+                = tcDecodeWidth
               (lowWidth + highWidth)
-              (low + high * 2 ^ lowWidth) := by
-                rw [hwidthEq, hdecomp]
+              (low + high * 2 ^ lowWidth) := by rw [hwidthEq, hdecomp]
             _ =
             (low : ℤ) +
               tcDecodeWidth highWidth high *
@@ -612,8 +572,7 @@ theorem tcDecode_chunks_signed_top
                 hHighWidthPos hLow hHigh
         have hLowCast :
             (low : ℤ)
-              =
-            ∑ i : Fin n,
+              = ∑ i : Fin n,
               (chunks i.castSucc : ℤ) *
                 (2 : ℤ) ^ (i.1 * W) := by
           dsimp [low]
@@ -633,8 +592,7 @@ theorem splitChunkInt_reconstruct
     (layout : PhaseSplitLayout parent k W)
     (b : Basis) :
     extToInt parent b
-      =
-    ∑ i : Fin k,
+      = ∑ i : Fin k,
       splitChunkInt layout i b *
         ((2 : ℤ) ^ (i.1 * W)) := by
   obtain ⟨hk, hbound, htop⟩ := layout.valid
@@ -643,8 +601,7 @@ theorem splitChunkInt_reconstruct
     ExtReg.toNat_lt parent b
   have hreconstruct :
       ExtReg.toNat parent b
-        =
-      ∑ i : Fin k,
+        = ∑ i : Fin k,
         ExtReg.toNat (layout.child i) b *
           2 ^ (i.1 * W) :=
     phaseChunks_reconstruct_nat layout b
@@ -727,30 +684,24 @@ lemma cramerCoeffFromPts_eq_phaseCoeffFromPts
     exact isUnit_iff_ne_zero.mpr hgood
   have hleft :
       M.transpose⁻¹ *ᵥ (M.transpose *ᵥ Matrix.cramer M.transpose radixVec)
-        =
-      Matrix.cramer M.transpose radixVec := by
+        = Matrix.cramer M.transpose radixVec := by
     rw [Matrix.mulVec_mulVec, Matrix.nonsing_inv_mul M.transpose hUnitT, Matrix.one_mulVec]
   have hkey :
       Matrix.cramer M.transpose radixVec
-        =
-      M.transpose.det • (M.transpose⁻¹ *ᵥ radixVec) := by
+        = M.transpose.det • (M.transpose⁻¹ *ᵥ radixVec) := by
     calc Matrix.cramer M.transpose radixVec
         = M.transpose⁻¹ *ᵥ (M.transpose *ᵥ Matrix.cramer M.transpose radixVec) := hleft.symm
-      _ = M.transpose⁻¹ *ᵥ (M.transpose.det • radixVec) := by
-          rw [Matrix.mulVec_cramer]
+      _ = M.transpose⁻¹ *ᵥ (M.transpose.det • radixVec) := by rw [Matrix.mulVec_cramer]
       _ = M.transpose.det • (M.transpose⁻¹ *ᵥ radixVec) := Matrix.mulVec_smul _ _ _
   have hcomp :
       Matrix.cramer M.transpose radixVec i
-        =
-      M.transpose.det * (M.transpose⁻¹ *ᵥ radixVec) i := by
+        = M.transpose.det * (M.transpose⁻¹ *ᵥ radixVec) i := by
     have h := congrFun hkey i
     simpa [Pi.smul_apply, smul_eq_mul] using h
-  have hdet_ne : M.transpose.det ≠ 0 := by
-    rw [Matrix.det_transpose]; exact hgood
+  have hdet_ne : M.transpose.det ≠ 0 := by rw [Matrix.det_transpose]; exact hgood
   have hinv_component :
       (M.transpose⁻¹ *ᵥ radixVec) i
-        =
-      Matrix.cramer M.transpose radixVec i / M.transpose.det := by
+        = Matrix.cramer M.transpose radixVec i / M.transpose.det := by
     rw [eq_div_iff hdet_ne, mul_comm]
     exact hcomp.symm
   have hphase :
@@ -769,8 +720,7 @@ lemma phaseCoeffFromPtsWidth_eq_interpCoeff
   (pts : List Point)
   (hpts : pts.length = q k) :
   phaseCoeffFromPtsWidth k W pts hpts
-    =
-  ToomCookMath.interpCoeff
+    = ToomCookMath.interpCoeff
     (row := interpEntry k)
     (pts := ToomCookMath.listToFin pts hpts)
     ((2 : ℚ) ^ W) := by
@@ -821,8 +771,7 @@ lemma phaseScalarFrom_eq_phaseScalarFromList_aux
     (hn : n + rest.length = q k),
     full.drop n = rest →
     phaseScalarFrom (qs := qs) k phi coeff st b rest n hn
-      =
-    ToomCookMath.phaseScalarFromList
+      = ToomCookMath.phaseScalarFromList
       (Angle.toReal phi) coeff (tcPointTerm qs st b full hfull) rest n hn := by
   intro rest
   induction rest with
@@ -840,8 +789,7 @@ lemma phaseScalarFrom_eq_phaseScalarFromList_aux
         have hget? : full[n]? = some pt := by
           have h0 := congrArg (fun xs : List Point => xs[0]?) hdrop
           simpa [List.getElem?_drop, Nat.zero_add] using h0
-        have hget?₂ : some full[n] = some pt := by
-          simpa [List.getElem?_eq_getElem hnlt] using hget?
+        have hget?₂ : some full[n] = some pt := by simpa [List.getElem?_eq_getElem hnlt] using hget?
         exact Option.some.inj hget?₂
       have htail_drop :
           full.drop (n + 1) = rest := by
@@ -856,8 +804,7 @@ lemma phaseScalarFrom_eq_phaseScalarFromList_aux
               rw [← hn]
               simp
             ⟩
-          =
-          ((evalRowX (qs := qs) st (expectedRow (k := k) pt) b *
+          = ((evalRowX (qs := qs) st (expectedRow (k := k) pt) b *
             evalRowZ (qs := qs) st (expectedRow (k := k) pt) b : ℤ) : ℚ) := by
         unfold tcPointTerm
         simp [hget]
@@ -885,8 +832,7 @@ lemma phaseScalarFrom_eq_phaseScalarFromList
   (pts : List Point)
   (hpts : pts.length = q k) :
   phaseScalarFrom (qs := qs) k phi coeff st b pts 0 (by simpa using hpts)
-    =
-  ToomCookMath.phaseScalarFromList (Angle.toReal phi) coeff (tcPointTerm qs st b pts hpts) pts 0
+    = ToomCookMath.phaseScalarFromList (Angle.toReal phi) coeff (tcPointTerm qs st b pts hpts) pts 0
     (by simpa using hpts) := by
   simpa using
     phaseScalarFrom_eq_phaseScalarFromList_aux
@@ -909,8 +855,7 @@ lemma expectedRow_mul_expectedRow_eq_interpEntry
   (i j : Fin k) :
   (((expectedRow (k := k) pt i) *
     (expectedRow (k := k) pt j) : ℤ) : ℚ)
-    =
-  interpEntry k pt
+    = interpEntry k pt
     ⟨i.1 + j.1, by
       simp [q]
       omega
@@ -923,8 +868,7 @@ lemma expectedRow_mul_expectedRow_eq_interpEntry
   | frac c =>
       change
         (((c ^ (k - 1 - i.1) * c ^ (k - 1 - j.1) : ℤ) : ℚ)
-          =
-        (c : ℚ) ^ (q k - 1 - (i.1 + j.1)))
+          = (c : ℚ) ^ (q k - 1 - (i.1 + j.1)))
       norm_cast
       rw [← pow_add]
       congr 1
@@ -943,8 +887,7 @@ lemma sum_degree_group
           A ij
         else
           0) * row l)
-    =
-  ∑ ij : Fin k × Fin k,
+    = ∑ ij : Fin k × Fin k,
     A ij * row
       ⟨ij.1.1 + ij.2.1, by simp [q]; omega⟩ := by
   classical
@@ -955,22 +898,19 @@ lemma sum_degree_group
             A ij
           else
             0) * row l)
-        =
-      ∑ l : Fin (q k),
+        = ∑ l : Fin (q k),
         ∑ ij : Fin k × Fin k,
           (if _h : ij.1.1 + ij.2.1 = l.1 then
             A ij
           else
-            0) * row l := by
-          simp [Finset.sum_mul]
+            0) * row l := by simp [Finset.sum_mul]
     _ =
       ∑ ij : Fin k × Fin k,
         ∑ l : Fin (q k),
           (if _h : ij.1.1 + ij.2.1 = l.1 then
             A ij
           else
-            0) * row l := by
-          rw [Finset.sum_comm]
+            0) * row l := by rw [Finset.sum_comm]
     _ =
       ∑ ij : Fin k × Fin k,
         A ij * row
@@ -987,8 +927,7 @@ lemma sum_degree_group
                   A ij
                 else
                   0) * row l)
-              =
-              A ij * row d := by
+              = A ij * row d := by
             trans
               ((if _h : ij.1.1 + ij.2.1 = d.1 then A ij else 0) * row d)
             · refine Finset.sum_eq_single d ?_ ?_
@@ -1034,16 +973,14 @@ lemma tcPointTerm_eq_evalAtPoint_tcProductCoeff
   let X : Fin k → ℤ := fun a => sourceChunkXInt (qs := qs) st a b
   let Z : Fin k → ℤ := fun a => sourceChunkZInt (qs := qs) st a b
   have hlist :
-      (ToomCookMath.listToFin pts hpts) i = ptsToFin k pts hpts i := by
-    rfl
+      (ToomCookMath.listToFin pts hpts) i = ptsToFin k pts hpts i := by rfl
   unfold tcPointTerm tcProductCoeff evalRowX evalRowZ
   change
     (((∑ a : Fin k,
           expectedRow (k := k) pt a * X a) *
        (∑ b : Fin k,
           expectedRow (k := k) pt b * Z b) : ℤ) : ℚ)
-      =
-    ∑ l : Fin (q k),
+      = ∑ l : Fin (q k),
       (∑ ij : Fin k × Fin k,
         if _h : ij.1.1 + ij.2.1 = l.1 then
           ((X ij.1 * Z ij.2 : ℤ) : ℚ)
@@ -1055,19 +992,16 @@ lemma tcPointTerm_eq_evalAtPoint_tcProductCoeff
           expectedRow (k := k) pt a * X a) *
        (∑ b : Fin k,
           expectedRow (k := k) pt b * Z b) : ℤ) : ℚ)
-        =
-      ∑ ij : Fin k × Fin k,
+        = ∑ ij : Fin k × Fin k,
         (((expectedRow (k := k) pt ij.1 * X ij.1) *
           (expectedRow (k := k) pt ij.2 * Z ij.2) : ℤ) : ℚ) := by
           norm_cast
           calc
             (∑ a : Fin k, expectedRow pt a * X a) *
                 (∑ b : Fin k, expectedRow pt b * Z b)
-                =
-              ∑ a : Fin k,
+                = ∑ a : Fin k,
                 (expectedRow pt a * X a) *
-                  (∑ b : Fin k, expectedRow pt b * Z b) := by
-                rw [Finset.sum_mul]
+                  (∑ b : Fin k, expectedRow pt b * Z b) := by rw [Finset.sum_mul]
             _ =
               ∑ a : Fin k,
                 ∑ b : Fin k,
@@ -1110,8 +1044,7 @@ lemma tcPointTerm_eq_evalAtPoint_tcProductCoeff
           calc
             (((expectedRow (k := k) pt ij.1 * X ij.1) *
               (expectedRow (k := k) pt ij.2 * Z ij.2) : ℤ) : ℚ)
-                =
-              (((expectedRow (k := k) pt ij.1 *
+                = (((expectedRow (k := k) pt ij.1 *
                  expectedRow (k := k) pt ij.2) *
                 (X ij.1 * Z ij.2) : ℤ) : ℚ) := by
                   norm_num
@@ -1119,8 +1052,7 @@ lemma tcPointTerm_eq_evalAtPoint_tcProductCoeff
             _ =
               (((expectedRow (k := k) pt ij.1 *
                  expectedRow (k := k) pt ij.2 : ℤ) : ℚ) *
-                ((X ij.1 * Z ij.2 : ℤ) : ℚ)) := by
-                  norm_num
+                ((X ij.1 * Z ij.2 : ℤ) : ℚ)) := by norm_num
             _ =
               ((X ij.1 * Z ij.2 : ℤ) : ℚ) *
                 interpEntry k pt
@@ -1153,8 +1085,7 @@ lemma GoodToomCookPoints.to_GoodInterpolationPoints
   (hInterp : GoodToomCookPoints k pts hpts) :
   ToomCookMath.GoodInterpolationPoints
     (interpEntry k)
-    (ptsToFin k pts hpts) := by
-  simpa [GoodToomCookPoints, ptsToFin]
+    (ptsToFin k pts hpts) := by simpa [GoodToomCookPoints, ptsToFin]
 
 /-- Radix evaluation of the product coefficients factors into the two chunk-value polynomials. -/
 lemma evalAtRadix_tcProductCoeff_eq_chunk_product
@@ -1169,8 +1100,7 @@ lemma evalAtRadix_tcProductCoeff_eq_chunk_product
       (q k)
       (tcProductCoeff qs st b)
       B
-    =
-  (∑ i : Fin k,
+    = (∑ i : Fin k,
       ((sourceChunkXInt (qs := qs) st i b : ℤ) : ℚ) * B ^ (i : ℕ))
     *
   (∑ j : Fin k,
@@ -1190,8 +1120,7 @@ lemma evalAtRadix_tcProductCoeff_eq_chunk_product
           else
             0) *
           B ^ (l : ℕ))
-        =
-      ∑ ij : Fin k × Fin k,
+        = ∑ ij : Fin k × Fin k,
         (X ij.1 * Z ij.2) *
           B ^ (ij.1.1 + ij.2.1) := by
         simpa [X, Z] using
@@ -1215,11 +1144,9 @@ lemma evalAtRadix_tcProductCoeff_eq_chunk_product
         calc
           (∑ i : Fin k, X i * B ^ (i : ℕ)) *
           (∑ j : Fin k, Z j * B ^ (j : ℕ))
-              =
-            ∑ i : Fin k,
+              = ∑ i : Fin k,
               (X i * B ^ (i : ℕ)) *
-              (∑ j : Fin k, Z j * B ^ (j : ℕ)) := by
-              rw [Finset.sum_mul]
+              (∑ j : Fin k, Z j * B ^ (j : ℕ)) := by rw [Finset.sum_mul]
           _ =
             ∑ i : Fin k,
               ∑ j : Fin k,
@@ -1243,8 +1170,7 @@ lemma evalAtRadix_tcProductCoeff_eq_chunk_product
           ((sourceChunkXInt (qs := qs) st i b : ℤ) : ℚ) * B ^ (i : ℕ))
         *
       (∑ j : Fin k,
-          ((sourceChunkZInt (qs := qs) st j b : ℤ) : ℚ) * B ^ (j : ℕ)) := by
-        simp [X, Z]
+          ((sourceChunkZInt (qs := qs) st j b : ℤ) : ℚ) * B ^ (j : ℕ)) := by simp [X, Z]
 
 /-- The source `x` chunks reconstruct the signed value of the original `x` register at the limb radix. -/
 lemma sourceChunks_reconstruct_x
@@ -1259,8 +1185,7 @@ lemma sourceChunks_reconstruct_x
   let W : ℕ := phaseLimbWidth x z k
   let B : ℚ := (2 : ℚ) ^ W
   ((extToInt x b : ℤ) : ℚ)
-    =
-  ∑ i : Fin k,
+    = ∑ i : Fin k,
     ((sourceChunkXInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
   dsimp
   have hchunk :
@@ -1296,8 +1221,7 @@ lemma sourceChunks_reconstruct_z
   let W : ℕ := phaseLimbWidth x z k
   let B : ℚ := (2 : ℚ) ^ W
   ((extToInt z b : ℤ) : ℚ)
-    =
-  ∑ i : Fin k,
+    = ∑ i : Fin k,
     ((sourceChunkZInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
   dsimp
   have hchunk :
@@ -1334,8 +1258,7 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
   let W : ℕ := phaseLimbWidth x z k
   let B : ℚ := (2 : ℚ) ^ W
   ToomCookMath.evalAtRadix (q k) (tcProductCoeff qs stInit b) B
-    =
-  (((extToInt x b * extToInt z b : ℤ) : ℚ)) := by
+    = (((extToInt x b * extToInt z b : ℤ) : ℚ)) := by
   dsimp
   set stInit : LayoutState k :=
     initSignedLayoutState layout
@@ -1346,8 +1269,7 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
           (q k)
           (tcProductCoeff qs stInit b)
           B
-        =
-      (∑ i : Fin k,
+        = (∑ i : Fin k,
           ((sourceChunkXInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ))
         *
       (∑ j : Fin k,
@@ -1355,15 +1277,13 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
     exact evalAtRadix_tcProductCoeff_eq_chunk_product (qs := qs) (hk := hk) (st := stInit) (b := b) (B := B)
   have hx :
       ((extToInt x b : ℤ) : ℚ)
-        =
-      ∑ i : Fin k,
+        = ∑ i : Fin k,
         ((sourceChunkXInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
     simpa [stInit, W, B] using
       sourceChunks_reconstruct_x (qs := qs) (layout := layout) (b := b)
   have hz :
       ((extToInt z b : ℤ) : ℚ)
-        =
-      ∑ i : Fin k,
+        = ∑ i : Fin k,
         ((sourceChunkZInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
     simpa [stInit, W, B] using
       sourceChunks_reconstruct_z (qs := qs) (layout := layout) (b := b)
@@ -1372,20 +1292,17 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
         (q k)
         (tcProductCoeff qs stInit b)
         B
-        =
-      (∑ i : Fin k,
+        = (∑ i : Fin k,
           ((sourceChunkXInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ))
         *
       (∑ j : Fin k,
           ((sourceChunkZInt (qs := qs) stInit j b : ℤ) : ℚ) * B ^ (j : ℕ)) := hChunk
     _ =
       ((extToInt x b : ℤ) : ℚ) *
-      ((extToInt z b : ℤ) : ℚ) := by
-        rw [← hx, ← hz]
+      ((extToInt z b : ℤ) : ℚ) := by rw [← hx, ← hz]
     _ =
       (((extToInt x b *
-         extToInt z b : ℤ) : ℚ)) := by
-        norm_num
+         extToInt z b : ℤ) : ℚ)) := by norm_num
 
 /-! =========================================================
     Final Toom-Cook Phase Identity
@@ -1448,8 +1365,7 @@ lemma toom_cook_interpolation
               (interpEntry k)
               polyCoeff
               ((ptsToFin k pts hpts) i))
-        =
-      ToomCookMath.evalAtRadix
+        = ToomCookMath.evalAtRadix
         (q k)
         polyCoeff
         B := by
@@ -1466,16 +1382,14 @@ lemma toom_cook_interpolation
           (q k)
           polyCoeff
           B
-        =
-      (((extToInt x b *
+        = (((extToInt x b *
          extToInt z b : ℤ) : ℚ)) := by
     simpa [polyCoeff, stInit, W, B] using
       evalAtRadix_tcProductCoeff_eq_ext_product
         (qs := qs) (hk := hk) (x := x) (z := z) (layout := layout) (b := b)
   have hScalar :
       phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
-        =
-      Complex.exp
+        = Complex.exp
         (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((∑ i : Fin (q k),
               coeff i *
@@ -1486,8 +1400,7 @@ lemma toom_cook_interpolation
                   ((ptsToFin k pts hpts) i) : ℚ) : ℂ))) := by
       have hScalarList :
           phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
-            =
-          ToomCookMath.phaseScalarFromList
+            = ToomCookMath.phaseScalarFromList
             (Angle.toReal phi) coeff (tcPointTerm qs stInit b pts hpts) pts 0
             (by simpa using hpts) := by
         simpa using
@@ -1496,8 +1409,7 @@ lemma toom_cook_interpolation
       rw [hScalarList]
       have hTerms :
           (tcPointTerm qs stInit b pts hpts)
-            =
-          fun i : Fin (q k) =>
+            = fun i : Fin (q k) =>
             ToomCookMath.evalAtPoint
               (q k)
               (interpEntry k)
@@ -1519,8 +1431,7 @@ lemma toom_cook_interpolation
           (hpts := hpts)
   calc
     phaseScalarFrom (qs := qs) k phi coeff stInit b pts 0 (by simpa using hpts)
-        =
-      Complex.exp
+        = Complex.exp
         (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((∑ i : Fin (q k),
               coeff i *
@@ -1532,14 +1443,12 @@ lemma toom_cook_interpolation
     _ =
       Complex.exp
         (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
-          (((ToomCookMath.evalAtRadix (q k) polyCoeff B : ℚ) : ℂ))) := by
-        rw [hInterpSum]
+          (((ToomCookMath.evalAtRadix (q k) polyCoeff B : ℚ) : ℂ))) := by rw [hInterpSum]
     _ =
       Complex.exp
         (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((((extToInt x b *
-               extToInt z b : ℤ) : ℚ)) : ℂ))) := by
-        rw [hRadix]
+               extToInt z b : ℤ) : ℚ)) : ℂ))) := by rw [hRadix]
     _ =
       Complex.exp
         (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *

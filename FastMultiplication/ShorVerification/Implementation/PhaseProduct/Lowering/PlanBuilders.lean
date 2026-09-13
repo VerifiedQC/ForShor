@@ -29,10 +29,8 @@ def planAllocChunkGate
   split
   · exact PhaseLoweringPlan.id initSize
   · split
-    · exact
-        PhaseLoweringPlan.signExtend initSize src (extraDelta src dst)
-    · exact
-        PhaseLoweringPlan.zeroExtend initSize src (extraDelta src dst)
+    · exact PhaseLoweringPlan.signExtend initSize src (extraDelta src dst)
+    · exact PhaseLoweringPlan.zeroExtend initSize src (extraDelta src dst)
 
 /-- Plan for the deallocation gate generated for one chunk. -/
 def planDeallocChunkGate
@@ -44,19 +42,14 @@ def planDeallocChunkGate
     (initSize : ℕ)
     (i : Fin k)
     (src dst : ExtReg) :
-    PhaseLoweringPlan
-      k hk pts hpts ops
-      initSize
-      (deallocChunkGate i src dst) := by
+    PhaseLoweringPlan k hk pts hpts ops initSize (deallocChunkGate i src dst) := by
   unfold deallocChunkGate
   dsimp
   split
   · exact PhaseLoweringPlan.id initSize
   · split
-    · exact
-        PhaseLoweringPlan.signDealloc initSize src (extraDelta src dst)
-    · exact
-        PhaseLoweringPlan.zeroDealloc initSize src (extraDelta src dst)
+    · exact PhaseLoweringPlan.signDealloc initSize src (extraDelta src dst)
+    · exact PhaseLoweringPlan.zeroDealloc initSize src (extraDelta src dst)
 
 /-- Plan for an allocation prefix. -/
 def planCompileSignedAllocationsAux
@@ -72,18 +65,11 @@ def planCompileSignedAllocationsAux
   | 0, _ =>
       PhaseLoweringPlan.id initSize
   | n + 1, hn =>
-      let hn' : n ≤ k :=  Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
-
+      let hn' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
       let i : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
-
       let previous := planCompileSignedAllocationsAux initSize src dst n hn'
-
-      let planX :=
-        planAllocChunkGate (initSize := initSize) i (src.xslot i) (dst.xslot i)
-
-      let planZ :=
-        planAllocChunkGate (initSize := initSize) i (src.zslot i) (dst.zslot i)
-
+      let planX := planAllocChunkGate (initSize := initSize) i (src.xslot i) (dst.xslot i)
+      let planZ := planAllocChunkGate (initSize := initSize) i (src.zslot i) (dst.zslot i)
       PhaseLoweringPlan.seq previous (PhaseLoweringPlan.seq planX planZ)
 
 /-- Plan for the full signed allocation circuit. -/
@@ -115,16 +101,11 @@ def planCompileSignedDeallocationsAux
   | 0, _ =>
       PhaseLoweringPlan.id initSize
   | n + 1, hn =>
-      let hn' : n ≤ k :=  Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
-
+      let hn' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
       let i : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
-
       let planZ := planDeallocChunkGate (initSize := initSize) i (src.zslot i) (dst.zslot i)
-
-      let planX :=  planDeallocChunkGate (initSize := initSize) i (src.xslot i)  (dst.xslot i)
-
+      let planX := planDeallocChunkGate (initSize := initSize) i (src.xslot i) (dst.xslot i)
       let previous := planCompileSignedDeallocationsAux initSize src dst n hn'
-
       PhaseLoweringPlan.seq planZ (PhaseLoweringPlan.seq planX previous)
 
 /-- Plan for the full signed deallocation circuit. -/
@@ -136,7 +117,7 @@ def planCompileSignedDeallocations
     {ops : Prog k}
     (initSize : ℕ)
     (src dst : LayoutState k) :
-    PhaseLoweringPlan  k hk pts hpts ops initSize
+    PhaseLoweringPlan k hk pts hpts ops initSize
       (compileSignedDeallocations k src dst) := by
   unfold compileSignedDeallocations
   exact planCompileSignedDeallocationsAux initSize src dst k le_rfl
@@ -270,57 +251,27 @@ def planCompiledSignedPhaseGate
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
     (recurse :
-      let src :=
-        initSignedLayoutState layout
-      let dst :=
-        targetSignedLayoutState
-          src
-          (scanNeededWidths x z ops)
+      let src := initSignedLayoutState layout
+      let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
       ∀ (i : Fin k) (theta : Angle),
-        PhaseLoweringPlan
-          k hk pts hpts ops
-          (nextSignedWidth x z ops)
-          (Gate.SignedPhaseProd
-            theta
-            (dst.xslot i)
-            (dst.zslot i))) :
-    PhaseLoweringPlan
-      k hk pts hpts ops
-      (nextSignedWidth x z ops)
-      (compiledSignedPhaseGate
-        k hk pts hpts ops
-        phi x z layout) := by
-  let need : NeededWidths k :=
-    scanNeededWidths x z ops
-  let src : LayoutState k :=
-    initSignedLayoutState layout
-  let dst : LayoutState k :=
-    targetSignedLayoutState src need
-  let coeff : Fin (q k) → ℚ :=
-    loweringPhaseCoeff
-      k x z pts hpts
-  let annotatedOps : List (AnnotatedOp k) :=
-    annotatePhaseTermsAux k 0 ops
+        PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
+          (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i))) :
+    PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
+      (compiledSignedPhaseGate k hk pts hpts ops phi x z layout) := by
+  let need : NeededWidths k := scanNeededWidths x z ops
+  let src : LayoutState k := initSignedLayoutState layout
+  let dst : LayoutState k := targetSignedLayoutState src need
+  let coeff : Fin (q k) → ℚ := loweringPhaseCoeff k x z pts hpts
+  let annotatedOps : List (AnnotatedOp k) := annotatePhaseTermsAux k 0 ops
   have recurse' :
       ∀ (i : Fin k) (theta : Angle),
-        PhaseLoweringPlan
-          k hk pts hpts ops
-          (nextSignedWidth x z ops)
-          (Gate.SignedPhaseProd
-            theta
-            (dst.xslot i)
-            (dst.zslot i)) := by
+        PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
+          (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)) := by
     simpa [src, dst, need] using recurse
   let allocationPlan :
-      PhaseLoweringPlan
-        k hk pts hpts ops
-        (nextSignedWidth x z ops)
-        (compileSignedAllocations
-          k src dst) :=
-    planCompileSignedAllocations
-      (nextSignedWidth x z ops)
-      src
-      dst
+      PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
+        (compileSignedAllocations k src dst) :=
+    planCompileSignedAllocations (nextSignedWidth x z ops) src dst
   let bodyPlan :
       PhaseLoweringPlan k hk pts hpts ops
         (nextSignedWidth x z ops)
@@ -333,31 +284,13 @@ def planCompiledSignedPhaseGate
         (compileSignedDeallocations k src dst) :=
     planCompileSignedDeallocations (nextSignedWidth x z ops) src dst
   have completePlan :
-      PhaseLoweringPlan
-        k hk pts hpts ops
-        (nextSignedWidth x z ops)
-        (
-          compileSignedAllocations k src dst
-          ;;
-          compileAnnotatedOpsToSignedGateAux
-            k hk phi coeff dst annotatedOps
-          ;;
-          compileSignedDeallocations k src dst
-        ) :=
-    PhaseLoweringPlan.seq
-      allocationPlan
-      (PhaseLoweringPlan.seq
-        bodyPlan
-        deallocationPlan)
-  simpa [
-    compiledSignedPhaseGate,
-    compileOpsToSignedGate,
-    src,
-    dst,
-    need,
-    coeff,
-    annotatedOps
-  ] using completePlan
+      PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
+        (compileSignedAllocations k src dst ;;
+          compileAnnotatedOpsToSignedGateAux k hk phi coeff dst annotatedOps ;;
+          compileSignedDeallocations k src dst) :=
+    PhaseLoweringPlan.seq allocationPlan (PhaseLoweringPlan.seq bodyPlan deallocationPlan)
+  simpa [compiledSignedPhaseGate, compileOpsToSignedGate, src, dst, need, coeff, annotatedOps]
+    using completePlan
 
 /-- Plan for the compiled controlled signed phase-product replacement at one recursive level. -/
 def planCompiledCSignedPhaseGate
@@ -431,90 +364,52 @@ def standardSignedPhaseLoweringPlan
     (ops : Prog k)
     (hworkspace : SignedRecursiveWorkspaceOK ops x z) :
     StandardPhaseLoweringPlan k hk ops (phaseInputSize x z) (Gate.SignedPhaseProd phi x z) := by
-  by_cases hrec :
-      nextSignedWidth x z ops <
-        phaseInputSize x z
-  · let step : CanonicalSignedStep ops x z :=
-      canonicalSignedStep hk ops x z hrec hworkspace
-    let src : LayoutState k :=
-      initSignedLayoutState step.layout
-    let dst : LayoutState k :=
-      targetSignedLayoutState
-        src (scanNeededWidths x z ops)
+  by_cases hrec : nextSignedWidth x z ops < phaseInputSize x z
+  · let step : CanonicalSignedStep ops x z := canonicalSignedStep hk ops x z hrec hworkspace
+    let src : LayoutState k := initSignedLayoutState step.layout
+    let dst : LayoutState k := targetSignedLayoutState src (scanNeededWidths x z ops)
     have recurse :
         ∀ (i : Fin k) (theta : Angle),
-          PhaseLoweringPlan k hk (genInterpolationPoints k)
-            (generatedInterpolationPoints_length k) ops
-            (nextSignedWidth x z ops)
+          PhaseLoweringPlan k hk (genInterpolationPoints k) (generatedInterpolationPoints_length k)
+            ops (nextSignedWidth x z ops)
             (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)) := by
       intro i theta
       have hchild :
           SignedRecursiveWorkspaceOK ops (dst.xslot i) (dst.zslot i) := by
-        simpa [src, dst] using
-          step.childWorkspace i
+        simpa [src, dst] using step.childWorkspace i
       have childPlan :=
-        standardSignedPhaseLoweringPlan
-          k hk theta (dst.xslot i) (dst.zslot i) ops hchild
-      have hsize :
-          phaseInputSize (dst.xslot i) (dst.zslot i)
-            =
-          nextSignedWidth x z ops := by
-        simpa [src, dst] using
-          step.childInputSize i
+        standardSignedPhaseLoweringPlan k hk theta (dst.xslot i) (dst.zslot i) ops hchild
+      have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z ops := by
+        simpa [src, dst] using step.childInputSize i
       simpa [hsize] using childPlan
     let child :
-        PhaseLoweringPlan k hk (genInterpolationPoints k)
-            (generatedInterpolationPoints_length k) ops
-            (nextSignedWidth x z ops)
+        PhaseLoweringPlan k hk (genInterpolationPoints k) (generatedInterpolationPoints_length k)
+          ops (nextSignedWidth x z ops)
           (compiledSignedPhaseGate k hk (genInterpolationPoints k)
             (generatedInterpolationPoints_length k) ops phi x z step.layout) :=
-      planCompiledSignedPhaseGate
-        hk
-        (genInterpolationPoints k)
-        (generatedInterpolationPoints_length k)
-        ops
-        phi
-        x
-        z
-        step.layout
+      planCompiledSignedPhaseGate hk (genInterpolationPoints k)
+        (generatedInterpolationPoints_length k) ops phi x z step.layout
         (by simpa [src, dst] using recurse)
     exact
       PhaseLoweringPlan.signedStep
         (k := k)
         (hk := hk)
         (pts := genInterpolationPoints k)
-        (hpts :=
-          generatedInterpolationPoints_length k)
+        (hpts := generatedInterpolationPoints_length k)
         (ops := ops)
-        phi
-        x
-        z
-        step.layout
-        hrec
-        step.capacity
-        child
+        phi x z step.layout hrec step.capacity child
   · exact
       PhaseLoweringPlan.signedBase
         (k := k)
         (hk := hk)
         (pts := genInterpolationPoints k)
-        (hpts :=
-          generatedInterpolationPoints_length k)
+        (hpts := generatedInterpolationPoints_length k)
         (ops := ops)
-        phi
-        x
-        z
-        hrec
+        phi x z hrec
 termination_by phaseInputSize x z
 decreasing_by
-  have hsize :
-      phaseInputSize
-          (dst.xslot i)
-          (dst.zslot i)
-        =
-      nextSignedWidth x z ops := by
-    simpa [src, dst] using
-      step.childInputSize i
+  have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z ops := by
+    simpa [src, dst] using step.childInputSize i
   rw [hsize]
   exact hrec
 

@@ -87,9 +87,7 @@ lemma encodesFrom_after_shiftL_ket
   rcases ArithmeticSemantics.eval_ShiftL_ket_exact
       (qs := qs) (r := dst.xslot i) (n := m) (b := bCur) hfit_shift_x with
     ⟨bx, hbx_eval, hbx_val, hbx_keep⟩
-  have hz_same_on_bx :
-      extToInt (dst.zslot i) bx
-        = extToInt (dst.zslot i) bCur := by
+  have hz_same_on_bx : extToInt (dst.zslot i) bx = extToInt (dst.zslot i) bCur := by
     exact hbx_keep (dst.zslot i) (activeDisjoint_symm (hxz i i))
   have hrow_shift_z :
       evalRowZ (qs := qs) src ((σ i).shiftL m) bRef
@@ -130,14 +128,10 @@ lemma encodesFrom_after_shiftL_ket
                   symm
                   simpa [State.shiftLReg] using hrow_shift_x
       ·
-        have hkeep1 :
-            extToInt (dst.xslot j) bx
-              = extToInt (dst.xslot j) bCur := by
+        have hkeep1 : extToInt (dst.xslot j) bx = extToInt (dst.xslot j) bCur := by
           exact hbx_keep (dst.xslot j)
             (hxx j i (by simpa [eq_comm] using hji))
-        have hkeep2 :
-            extToInt (dst.xslot j) bz
-              = extToInt (dst.xslot j) bx := by
+        have hkeep2 : extToInt (dst.xslot j) bz = extToInt (dst.xslot j) bx := by
           exact hbz_keep (dst.xslot j) (hxz j i)
         have hji' : j ≠ i := by intro h; exact hji h.symm
         calc
@@ -163,14 +157,10 @@ lemma encodesFrom_after_shiftL_ket
                     symm
                     simpa [State.shiftLReg] using hrow_shift_z
       ·
-        have hkeep1 :
-            extToInt (dst.zslot j) bx
-              = extToInt (dst.zslot j) bCur := by
+        have hkeep1 : extToInt (dst.zslot j) bx = extToInt (dst.zslot j) bCur := by
           exact hbx_keep (dst.zslot j)
             (activeDisjoint_symm (hxz i j))
-        have hkeep2 :
-            extToInt (dst.zslot j) bz
-              = extToInt (dst.zslot j) bx := by
+        have hkeep2 : extToInt (dst.zslot j) bz = extToInt (dst.zslot j) bx := by
           exact hbz_keep (dst.zslot j)
             (hzz j i (by simpa [eq_comm] using hji))
         have hji' : j ≠ i := by intro h; exact hji h.symm
@@ -277,14 +267,10 @@ lemma encodesFrom_after_shiftR_ket
                       simp [State.setReg]
           ·
             have hji' : j ≠ i := by intro h; exact hji h.symm
-            have hkeep1 :
-                extToInt (dst.xslot j) bx
-                  = extToInt (dst.xslot j) bCur := by
+            have hkeep1 : extToInt (dst.xslot j) bx = extToInt (dst.xslot j) bCur := by
               exact hbx_keep (dst.xslot j)
                 (hxx j i (by simpa [eq_comm] using hji))
-            have hkeep2 :
-                extToInt (dst.xslot j) bz
-                  = extToInt (dst.xslot j) bx := by
+            have hkeep2 : extToInt (dst.xslot j) bz = extToInt (dst.xslot j) bx := by
               exact hbz_keep (dst.xslot j) (hxz j i)
             calc
               extToInt (dst.xslot j) bz
@@ -304,14 +290,10 @@ lemma encodesFrom_after_shiftR_ket
                       simp [State.setReg]
           ·
             have hji' : j ≠ i := by intro h; exact hji h.symm
-            have hkeep1 :
-                extToInt (dst.zslot j) bx
-                  = extToInt (dst.zslot j) bCur := by
+            have hkeep1 : extToInt (dst.zslot j) bx = extToInt (dst.zslot j) bCur := by
               exact hbx_keep (dst.zslot j)
                 (activeDisjoint_symm (hxz i j))
-            have hkeep2 :
-                extToInt (dst.zslot j) bz
-                  = extToInt (dst.zslot j) bx := by
+            have hkeep2 : extToInt (dst.zslot j) bz = extToInt (dst.zslot j) bx := by
               exact hbz_keep (dst.zslot j)
                 (hzz j i (by simpa [eq_comm] using hji))
             calc
@@ -364,7 +346,7 @@ lemma encodesFrom_after_negate_ket
   ·
     have hσ1 : σ1 = State.negateReg σ i := by
       simp [applyOp?] at hstep
-      simp[hstep]
+      simp [hstep]
     subst hσ1
     refine ⟨?_, hFit1x, hFit1z⟩
     constructor
@@ -400,14 +382,10 @@ lemma encodesFrom_after_negate_ket
                   exact (tcWrapInt_eq_of_fits hfit_post.1 hfit_post).symm
       ·
         have hji' : j ≠ i := by intro h; exact hji h.symm
-        have hkeep1 :
-            extToInt (dst.xslot j) bx
-              = extToInt (dst.xslot j) bCur := by
+        have hkeep1 : extToInt (dst.xslot j) bx = extToInt (dst.xslot j) bCur := by
           exact hbx_keep (dst.xslot j)
             (hxx j i (by simpa [eq_comm] using hji))
-        have hkeep2 :
-            extToInt (dst.xslot j) bz
-              = extToInt (dst.xslot j) bx := by
+        have hkeep2 : extToInt (dst.xslot j) bz = extToInt (dst.xslot j) bx := by
           exact hbz_keep (dst.xslot j) (hxz j i)
         calc
           extToInt (dst.xslot j) bz
@@ -420,9 +398,7 @@ lemma encodesFrom_after_negate_ket
     · intro j
       by_cases hji : i = j
       · subst hji
-        have hz_same_on_bx :
-            extToInt (dst.zslot i) bx
-              = extToInt (dst.zslot i) bCur := by
+        have hz_same_on_bx : extToInt (dst.zslot i) bx = extToInt (dst.zslot i) bCur := by
           exact hbx_keep (dst.zslot i) (activeDisjoint_symm (hxz i i))
         have hrow_neg :
             evalRowZ (qs := qs) src (Register.negate (σ i)) bRef
@@ -454,14 +430,10 @@ lemma encodesFrom_after_negate_ket
                   exact (tcWrapInt_eq_of_fits hfit_post.1 hfit_post).symm
       ·
         have hji' : j ≠ i := by intro h; exact hji h.symm
-        have hkeep1 :
-            extToInt (dst.zslot j) bx
-              = extToInt (dst.zslot j) bCur := by
+        have hkeep1 : extToInt (dst.zslot j) bx = extToInt (dst.zslot j) bCur := by
           exact hbx_keep (dst.zslot j)
             (activeDisjoint_symm (hxz i j))
-        have hkeep2 :
-            extToInt (dst.zslot j) bz
-              = extToInt (dst.zslot j) bx := by
+        have hkeep2 : extToInt (dst.zslot j) bz = extToInt (dst.zslot j) bx := by
           exact hbz_keep (dst.zslot j)
             (hzz j i (by simpa [eq_comm] using hji))
         calc
@@ -504,10 +476,8 @@ lemma encodesFrom_after_addScaled_ket
     ∧
     EncodesStateFromFits (qs := qs) src dst σ1 bRef b1 := by
   rcases layoutSlotsActiveDisjoint hdisj with ⟨hxx, hzz, hxz⟩
-  have hxx_ds : ExtReg.ActiveDisjoint (dst.xslot dsti) (dst.xslot srci) := by
-    exact hxx dsti srci hds
-  have hzz_ds : ExtReg.ActiveDisjoint (dst.zslot dsti) (dst.zslot srci) := by
-    exact hzz dsti srci hds
+  have hxx_ds : ExtReg.ActiveDisjoint (dst.xslot dsti) (dst.xslot srci) := by exact hxx dsti srci hds
+  have hzz_ds : ExtReg.ActiveDisjoint (dst.zslot dsti) (dst.zslot srci) := by exact hzz dsti srci hds
   rcases ArithmeticSemantics.eval_AddScaled_ket_mod
       (qs := qs)
       (dst := dst.xslot dsti) (src := dst.xslot srci)
@@ -582,9 +552,7 @@ lemma encodesFrom_after_addScaled_ket
         by_cases hjs : j = srci
         · subst j
           have hsd : srci ≠ dsti := hds.symm
-          have hkeep2 :
-              extToInt (dst.xslot srci) bz
-                = extToInt (dst.xslot srci) bx := by
+          have hkeep2 : extToInt (dst.xslot srci) bz = extToInt (dst.xslot srci) bx := by
             exact hbz_keep (dst.xslot srci) (hxz srci dsti) (hxz srci srci)
           calc
             extToInt (dst.xslot srci) bz
@@ -595,13 +563,9 @@ lemma encodesFrom_after_addScaled_ket
             _   = evalRowX (qs := qs) src ((State.addScaledReg σ dsti srci negSrc sh) srci) bRef := by
                     simp [State.addScaledReg, State.setReg, hsd]
         ·
-          have hkeep1 :
-              extToInt (dst.xslot j) bx
-                = extToInt (dst.xslot j) bCur := by
+          have hkeep1 : extToInt (dst.xslot j) bx = extToInt (dst.xslot j) bCur := by
             exact hbx_keep (dst.xslot j) (hxx j dsti hjd) (hxx j srci hjs)
-          have hkeep2 :
-              extToInt (dst.xslot j) bz
-                = extToInt (dst.xslot j) bx := by
+          have hkeep2 : extToInt (dst.xslot j) bz = extToInt (dst.xslot j) bx := by
             exact hbz_keep (dst.xslot j) (hxz j dsti) (hxz j srci)
           calc
             extToInt (dst.xslot j) bz
@@ -614,15 +578,11 @@ lemma encodesFrom_after_addScaled_ket
     · intro j
       by_cases hjd : j = dsti
       · subst j
-        have hz_dst_on_bx :
-            extToInt (dst.zslot dsti) bx
-              = extToInt (dst.zslot dsti) bCur := by
+        have hz_dst_on_bx : extToInt (dst.zslot dsti) bx = extToInt (dst.zslot dsti) bCur := by
           exact hbx_keep (dst.zslot dsti)
             (activeDisjoint_symm (hxz dsti dsti))
             (activeDisjoint_symm (hxz srci dsti))
-        have hz_src_on_bx :
-            extToInt (dst.zslot srci) bx
-              = extToInt (dst.zslot srci) bCur := by
+        have hz_src_on_bx : extToInt (dst.zslot srci) bx = extToInt (dst.zslot srci) bCur := by
           exact hbx_keep (dst.zslot srci)
             (activeDisjoint_symm (hxz dsti srci))
             (activeDisjoint_symm (hxz srci srci))
@@ -682,9 +642,7 @@ lemma encodesFrom_after_addScaled_ket
         by_cases hjs : j = srci
         · subst j
           have hsd : srci ≠ dsti := hds.symm
-          have hkeep1 :
-              extToInt (dst.zslot srci) bx
-                = extToInt (dst.zslot srci) bCur := by
+          have hkeep1 : extToInt (dst.zslot srci) bx = extToInt (dst.zslot srci) bCur := by
             exact hbx_keep (dst.zslot srci)
               (activeDisjoint_symm (hxz dsti srci))
               (activeDisjoint_symm (hxz srci srci))
@@ -697,15 +655,11 @@ lemma encodesFrom_after_addScaled_ket
             _   = evalRowZ (qs := qs) src ((State.addScaledReg σ dsti srci negSrc sh) srci) bRef := by
                     simp [State.addScaledReg, State.setReg, hsd]
         ·
-          have hkeep1 :
-              extToInt (dst.zslot j) bx
-                = extToInt (dst.zslot j) bCur := by
+          have hkeep1 : extToInt (dst.zslot j) bx = extToInt (dst.zslot j) bCur := by
             exact hbx_keep (dst.zslot j)
               (activeDisjoint_symm (hxz dsti j))
               (activeDisjoint_symm (hxz srci j))
-          have hkeep2 :
-              extToInt (dst.zslot j) bz
-                = extToInt (dst.zslot j) bx := by
+          have hkeep2 : extToInt (dst.zslot j) bz = extToInt (dst.zslot j) bx := by
             exact hbz_keep (dst.zslot j) (hzz j dsti hjd) (hzz j srci hjs)
           calc
             extToInt (dst.zslot j) bz
@@ -751,9 +705,7 @@ lemma sameOutside_after_shiftL_single
   rcases ArithmeticSemantics.eval_ShiftL_ket_exact
       (qs := qs) (r := dst.xslot i) (n := m) (b := bCur) hFitX with
     ⟨bx, hbx_eval, _hbx_val, hbx_keep⟩
-  have hz_same_on_bx :
-      extToInt (dst.zslot i) bx
-        = extToInt (dst.zslot i) bCur := by
+  have hz_same_on_bx : extToInt (dst.zslot i) bx = extToInt (dst.zslot i) bCur := by
     exact hbx_keep (dst.zslot i) (activeDisjoint_symm (hxz i i))
   have hFitZ' :
       FitsSignedWidth (ExtReg.width (dst.zslot i))

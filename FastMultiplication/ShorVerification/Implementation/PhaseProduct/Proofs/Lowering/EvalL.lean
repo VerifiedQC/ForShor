@@ -164,9 +164,7 @@ theorem evalL_naive_csignedPhaseProd
     (LowGate.Naive_CSignedPhaseProd ctrl phi x z) (Gate.CSignedPhaseProd ctrl phi x z)
     (by
       intro b
-      rw [
-        LowerGateClass.evalL_naive_csignedPhaseProd_ket, PhaseSemantics.eval_CSignedPhaseProd_ket
-      ])
+      rw [LowerGateClass.evalL_naive_csignedPhaseProd_ket, PhaseSemantics.eval_CSignedPhaseProd_ket])
     ψ
 
 theorem evalL_zeroExtend

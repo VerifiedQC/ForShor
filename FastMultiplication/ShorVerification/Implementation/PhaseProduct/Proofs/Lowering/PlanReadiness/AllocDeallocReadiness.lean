@@ -59,8 +59,7 @@ lemma planAllocChunkGate_ready
     simp only [hdecZero]
     dsimp only [_root_.id]
     apply PhaseLoweringReady.cast_gate_mpr
-    all_goals
-      simp [allocChunkGate, hzero, PhaseLoweringReady]
+    all_goals simp [allocChunkGate, hzero, PhaseLoweringReady]
   · by_cases htop : isTopChunk i
     · have hdecZero : instDecidableEqNat (extraDelta src dst) 0 = Decidable.isFalse hzero :=
         Subsingleton.elim _ _
@@ -73,8 +72,7 @@ lemma planAllocChunkGate_ready
         first
         | apply PhaseLoweringReady.cast_gate_mpr
         | simp [allocChunkGate, hzero, htop]
-      all_goals
-        simp [htop, PhaseLoweringReady]
+      all_goals simp [htop, PhaseLoweringReady]
     · have hdecZero : instDecidableEqNat (extraDelta src dst) 0 = Decidable.isFalse hzero :=
         Subsingleton.elim _ _
       have hdecTop : instDecidableIsTopChunk i = Decidable.isFalse htop := Subsingleton.elim _ _
@@ -86,8 +84,7 @@ lemma planAllocChunkGate_ready
         first
         | apply PhaseLoweringReady.cast_gate_mpr
         | simp [allocChunkGate, hzero, htop]
-      all_goals
-        simp [htop, PhaseLoweringReady]
+      all_goals simp [htop, PhaseLoweringReady]
 
 /-- Auxiliary allocation plans are ready for every starting state. -/
 lemma planCompileSignedAllocationsAux_ready
@@ -166,8 +163,7 @@ lemma planDeallocChunkGate_ready
     simp only [hdecZero]
     dsimp only [_root_.id]
     apply PhaseLoweringReady.cast_gate_mpr
-    all_goals
-      simp [deallocChunkGate, hzero, PhaseLoweringReady]
+    all_goals simp [deallocChunkGate, hzero, PhaseLoweringReady]
   · by_cases htop : isTopChunk i
     · have hdecZero : instDecidableEqNat (extraDelta src dst) 0 = Decidable.isFalse hzero :=
         Subsingleton.elim _ _
@@ -180,8 +176,7 @@ lemma planDeallocChunkGate_ready
         first
         | apply PhaseLoweringReady.cast_gate_mpr
         | simp [deallocChunkGate, hzero, htop]
-      all_goals
-        simp [htop, PhaseLoweringReady]
+      all_goals simp [htop, PhaseLoweringReady]
     · have hdecZero : instDecidableEqNat (extraDelta src dst) 0 = Decidable.isFalse hzero :=
         Subsingleton.elim _ _
       have hdecTop : instDecidableIsTopChunk i = Decidable.isFalse htop := Subsingleton.elim _ _
@@ -193,8 +188,7 @@ lemma planDeallocChunkGate_ready
         first
         | apply PhaseLoweringReady.cast_gate_mpr
         | simp [deallocChunkGate, hzero, htop]
-      all_goals
-        simp [htop, PhaseLoweringReady]
+      all_goals simp [htop, PhaseLoweringReady]
 
 /-- Auxiliary deallocation plans are ready for every starting state. -/
 lemma planCompileSignedDeallocationsAux_ready

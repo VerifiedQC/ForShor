@@ -122,14 +122,12 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_then_dealloc
         (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst (annotatePhaseTermsAux k 0 ops) ;;
          compileSignedDeallocations k src dst)
         (qs.ket bMid)
-      =
-    phaseScalarFrom (qs := qs) k phi coeff src b0 pts 0 (by simpa using hpts) • qs.ket b0 := by
+      = phaseScalarFrom (qs := qs) k phi coeff src b0 pts 0 (by simpa using hpts) • qs.ket b0 := by
   have hBody :
       qs.eval
           (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst (annotatePhaseTermsAux k 0 ops))
           (qs.ket bMid)
-        =
-      phaseScalarFrom (qs := qs) k phi coeff src b0 pts 0 (by simpa using hpts) • qs.ket bMid := by
+      = phaseScalarFrom (qs := qs) k phi coeff src b0 pts 0 (by simpa using hpts) • qs.ket bMid := by
     exact eval_compileAnnotatedOpsToSignedGateAux_of_blocks
       (qs := qs) (k := k) (hk := hk) (phi := phi) (pts := pts) (hpts := hpts) (coeff := coeff)
       (src := src) (dst := dst) (b0 := b0) (bMid := bMid) (ops := ops)
@@ -179,8 +177,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_then_
           (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst (annotatePhaseTermsAux k 0 ops)) ;;
          compileSignedDeallocations k src dst)
         (qs.ket bMid)
-      =
-    (if RegEncoding.bit ctrl b0 then
+      = (if RegEncoding.bit ctrl b0 then
       phaseScalarFrom (qs := qs) k phi coeff src b0 pts 0 (by simpa using hpts)
     else
       1) • qs.ket b0 := by
@@ -189,8 +186,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_then_
           (controlPhaseLeaves ctrl
             (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst (annotatePhaseTermsAux k 0 ops)))
           (qs.ket bMid)
-        =
-      (if RegEncoding.bit ctrl b0 then
+      = (if RegEncoding.bit ctrl b0 then
         phaseScalarFrom (qs := qs) k phi coeff src b0 pts 0 (by simpa using hpts)
       else
         1) • qs.ket bMid := by

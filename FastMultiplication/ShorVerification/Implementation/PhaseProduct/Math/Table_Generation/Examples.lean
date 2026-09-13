@@ -112,9 +112,7 @@ lemma setReg_negateReg_pipeline_eq_addScaled
   {k : ℕ} (σ : State k) (dst src : Fin k) (sh : ℕ) (hds : dst ≠ src) :
   let σA : State k :=
     ((σ.negateReg src).shiftLReg src sh).addScaledReg dst src false 0
-  (σA.setReg src ((σ.negateReg src) src)).negateReg src
-    =
-  σ.addScaledReg dst src true sh := by
+  (σA.setReg src ((σ.negateReg src) src)).negateReg src = σ.addScaledReg dst src true sh := by
   classical
   intro σA
   -- extensionality over registers and coefficients

@@ -51,46 +51,31 @@ lemma widthStateSoundPlus_step
   rcases hfit with ⟨hx, hz⟩
   cases op with
   | shiftL i n =>
-      have hσ1 : σ1 = State.shiftLReg σ i n := by
-        simp [applyOp?] at hstep; simp [hstep]
+      have hσ1 : σ1 = State.shiftLReg σ i n := by simp [applyOp?] at hstep; simp [hstep]
       subst hσ1
       constructor
       · intro j
         by_cases hji : i = j
         · subst hji
-          have hrow :
-              evalRowX (qs := qs) src ((σ i).shiftL n) b
-                =
-              ((2 : ℤ)^n) * evalRowX (qs := qs) src (σ i) b := by
-            simpa using
-              (evalRowX_shiftL_raw
-                (qs := qs) (src := src) (r := σ i) (m := n) (b := b))
-          have hnew :
-              FitsSignedWidth (cur.xw i + n + 1)
-                (((2 : ℤ)^n) * evalRowX (qs := qs) src (σ i) b) := by
-            exact FitsSignedWidth_shiftL_raw
-              (w := cur.xw i) (n := n) (hfit := hx i)
-          simpa [updateWidthState, State.shiftLReg, State.setReg, hrow]
-            using hnew
+          have hrow : evalRowX (qs := qs) src ((σ i).shiftL n) b
+              = ((2 : ℤ)^n) * evalRowX (qs := qs) src (σ i) b := by
+            simpa using (evalRowX_shiftL_raw (qs := qs) (src := src) (r := σ i) (m := n) (b := b))
+          have hnew : FitsSignedWidth (cur.xw i + n + 1)
+              (((2 : ℤ)^n) * evalRowX (qs := qs) src (σ i) b) := by
+            exact FitsSignedWidth_shiftL_raw (w := cur.xw i) (n := n) (hfit := hx i)
+          simpa [updateWidthState, State.shiftLReg, State.setReg, hrow] using hnew
         · have hji' : j ≠ i := by omega
           simpa [updateWidthState, State.shiftLReg, State.setReg, hji', Function.update] using hx j
       · intro j
         by_cases hji : i = j
         · subst hji
-          have hrow :
-              evalRowZ (qs := qs) src ((σ i).shiftL n) b
-                =
-              ((2 : ℤ)^n) * evalRowZ (qs := qs) src (σ i) b := by
-            simpa using
-              (evalRowZ_shiftL_raw
-                (qs := qs) (src := src) (r := σ i) (m := n) (b := b))
-          have hnew :
-              FitsSignedWidth (cur.zw i + n + 1)
-                (((2 : ℤ)^n) * evalRowZ (qs := qs) src (σ i) b) := by
-            exact FitsSignedWidth_shiftL_raw
-              (w := cur.zw i) (n := n) (hfit := hz i)
-          simpa [updateWidthState, State.shiftLReg, State.setReg, hrow]
-            using hnew
+          have hrow : evalRowZ (qs := qs) src ((σ i).shiftL n) b
+              = ((2 : ℤ)^n) * evalRowZ (qs := qs) src (σ i) b := by
+            simpa using (evalRowZ_shiftL_raw (qs := qs) (src := src) (r := σ i) (m := n) (b := b))
+          have hnew : FitsSignedWidth (cur.zw i + n + 1)
+              (((2 : ℤ)^n) * evalRowZ (qs := qs) src (σ i) b) := by
+            exact FitsSignedWidth_shiftL_raw (w := cur.zw i) (n := n) (hfit := hz i)
+          simpa [updateWidthState, State.shiftLReg, State.setReg, hrow] using hnew
         · have hji' : j ≠ i := by omega
           simpa [updateWidthState, State.shiftLReg, State.setReg, hji', Function.update] using hz j
 
@@ -100,8 +85,7 @@ lemma widthStateSoundPlus_step
           simp [applyOp?, State.shiftRReg?, hreg] at hstep
       | some r' =>
           have hσ1 : σ1 = State.setReg σ i r' := by
-            have h :
-                σ.setReg i r' = σ1 := by
+            have h : σ.setReg i r' = σ1 := by
               simpa [applyOp?, State.shiftRReg?, hreg] using hstep
             rw [h]
           subst hσ1
@@ -109,18 +93,15 @@ lemma widthStateSoundPlus_step
           · intro j
             by_cases hji : i = j
             · subst hji
-              have hrow :
-                  evalRowX (qs := qs) src (σ i) b
-                    =
-                  ((2 : ℤ)^n) * evalRowX (qs := qs) src r' b := by
+              have hrow : evalRowX (qs := qs) src (σ i) b
+                  = ((2 : ℤ)^n) * evalRowX (qs := qs) src r' b := by
                 simpa using
                   (evalRowX_shiftR_exact
                     (qs := qs) (src := src)
                     (r := σ i) (r' := r')
                     (m := n) (b := b) hreg)
-              have hnew :
-                  FitsSignedWidth (cur.xw i - n + 1)
-                    (evalRowX (qs := qs) src r' b) := by
+              have hnew : FitsSignedWidth (cur.xw i - n + 1)
+                  (evalRowX (qs := qs) src r' b) := by
                 exact FitsSignedWidth_shiftR_of_mul
                   (w := cur.xw i)
                   (n := n)
@@ -128,25 +109,21 @@ lemma widthStateSoundPlus_step
                   (q := evalRowX (qs := qs) src r' b)
                   (hfit := hx i)
                   hrow
-              simpa [updateWidthState, State.setReg, Function.update]
-                using hnew
+              simpa [updateWidthState, State.setReg, Function.update] using hnew
             · have hji' : j ≠ i := by omega
               simpa [updateWidthState, State.setReg, hji', Function.update] using hx j
           · intro j
             by_cases hji : i = j
             · subst hji
-              have hrow :
-                  evalRowZ (qs := qs) src (σ i) b
-                    =
-                  ((2 : ℤ)^n) * evalRowZ (qs := qs) src r' b := by
+              have hrow : evalRowZ (qs := qs) src (σ i) b
+                  = ((2 : ℤ)^n) * evalRowZ (qs := qs) src r' b := by
                 simpa using
                   (evalRowZ_shiftR_exact
                     (qs := qs) (src := src)
                     (r := σ i) (r' := r')
                     (m := n) (b := b) hreg)
-              have hnew :
-                  FitsSignedWidth (cur.zw i - n + 1)
-                    (evalRowZ (qs := qs) src r' b) := by
+              have hnew : FitsSignedWidth (cur.zw i - n + 1)
+                  (evalRowZ (qs := qs) src r' b) := by
                 exact FitsSignedWidth_shiftR_of_mul
                   (w := cur.zw i)
                   (n := n)
@@ -154,49 +131,35 @@ lemma widthStateSoundPlus_step
                   (q := evalRowZ (qs := qs) src r' b)
                   (hfit := hz i)
                   hrow
-              simpa [updateWidthState, State.setReg, Function.update]
-                using hnew
+              simpa [updateWidthState, State.setReg, Function.update] using hnew
             · have hji' : j ≠ i := by omega
               simpa [updateWidthState, State.setReg, hji', Function.update] using hz j
 
   | negate i =>
-      have hσ1 : σ1 = State.negateReg σ i := by
-        simp [applyOp?] at hstep; simp [hstep]
+      have hσ1 : σ1 = State.negateReg σ i := by simp [applyOp?] at hstep; simp [hstep]
       subst hσ1
       constructor
       · intro j
         by_cases hji : i = j
         · subst hji
-          have hrow :
-              evalRowX (qs := qs) src (Register.negate (σ i)) b
-                =
-              -evalRowX (qs := qs) src (σ i) b := by
-            simpa using
-              (evalRowX_negate_raw
-                (qs := qs) (src := src) (r := σ i) (b := b))
-          have hnew :
-              FitsSignedWidth (cur.xw i + 2)
-                (-evalRowX (qs := qs) src (σ i) b) := by
-            exact FitsSignedWidth_neg_widen
-              (w := cur.xw i) (hfit := hx i)
+          have hrow : evalRowX (qs := qs) src (Register.negate (σ i)) b
+              = -evalRowX (qs := qs) src (σ i) b := by
+            simpa using (evalRowX_negate_raw (qs := qs) (src := src) (r := σ i) (b := b))
+          have hnew : FitsSignedWidth (cur.xw i + 2)
+              (-evalRowX (qs := qs) src (σ i) b) := by
+            exact FitsSignedWidth_neg_widen (w := cur.xw i) (hfit := hx i)
           simpa [updateWidthState, State.negateReg, State.setReg, Function.update, hrow] using hnew
         · have hji' : j ≠ i := by omega
           simpa [updateWidthState, State.negateReg, State.setReg, hji', Function.update] using hx j
       · intro j
         by_cases hji : i = j
         · subst hji
-          have hrow :
-              evalRowZ (qs := qs) src (Register.negate (σ i)) b
-                =
-              -evalRowZ (qs := qs) src (σ i) b := by
-            simpa using
-              (evalRowZ_negate_raw
-                (qs := qs) (src := src) (r := σ i) (b := b))
-          have hnew :
-              FitsSignedWidth (cur.zw i + 2)
-                (-evalRowZ (qs := qs) src (σ i) b) := by
-            exact FitsSignedWidth_neg_widen
-              (w := cur.zw i) (hfit := hz i)
+          have hrow : evalRowZ (qs := qs) src (Register.negate (σ i)) b
+              = -evalRowZ (qs := qs) src (σ i) b := by
+            simpa using (evalRowZ_negate_raw (qs := qs) (src := src) (r := σ i) (b := b))
+          have hnew : FitsSignedWidth (cur.zw i + 2)
+              (-evalRowZ (qs := qs) src (σ i) b) := by
+            exact FitsSignedWidth_neg_widen (w := cur.zw i) (hfit := hz i)
           simpa [updateWidthState, State.negateReg, State.setReg, Function.update, hrow] using hnew
         · have hji' : j ≠ i := by omega
           simpa [updateWidthState, State.negateReg, State.setReg, hji', Function.update] using hz j
@@ -288,8 +251,7 @@ lemma widthStateSoundPlus_step
           simpa [updateWidthState, State.addScaledReg, State.setReg, hjd', Function.update] using hz j
 
   | phaseProduct i =>
-      have hσ1 : σ1 = σ := by
-        simp [applyOp?] at hstep; simp [hstep]
+      have hσ1 : σ1 = σ := by simp [applyOp?] at hstep; simp [hstep]
       subst hσ1
       simp [updateWidthState, WidthStateSoundPlus] at *
       simp_all
@@ -306,9 +268,7 @@ lemma widthStateSoundPlus_run
   (b : qs.Basis)
   (hrun : run? ops σ = some σf)
   (hfit : WidthStateSoundPlus (qs := qs) src cur σ b) :
-  WidthStateSoundPlus
-    (qs := qs) src (ops.foldl updateWidthState cur) σf
-    b := by
+  WidthStateSoundPlus (qs := qs) src (ops.foldl updateWidthState cur) σf b := by
   induction ops generalizing cur σ σf with
   | nil =>
       simp; simp at hrun; aesop
@@ -317,16 +277,9 @@ lemma widthStateSoundPlus_run
       | none =>
           simp [run?, hstep] at hrun
       | some σ1 =>
-          have hrunTail :
-              run? ops σ1 = some σf := by
+          have hrunTail : run? ops σ1 = some σf := by
             simpa [run?, hstep] using hrun
-          have hfit1 :
-              WidthStateSoundPlus
-                (qs := qs)
-                src
-                (updateWidthState cur op)
-                σ1
-                b := by
+          have hfit1 : WidthStateSoundPlus (qs := qs) src (updateWidthState cur op) σ1 b := by
             exact widthStateSoundPlus_step
               (qs := qs)
               (src := src)
@@ -361,18 +314,13 @@ lemma prefix_foldl_updateWidthState_x_le_scanAux
     (cur : WidthState k)
     (mx : NeededWidths k),
     cur.xw i ≤ mx.xneed i →
-    (pre.foldl updateWidthState cur).xw i
-      ≤
-    (scanNeededWidthsAux cur mx (pre ++ rest)).xneed i
+    (pre.foldl updateWidthState cur).xw i ≤ (scanNeededWidthsAux cur mx (pre ++ rest)).xneed i
   | [], rest, cur, mx, hcur => by
-      exact le_trans hcur
-        (scanNeededWidthsAux_x_ge
-          (i := i) rest cur mx)
+      exact le_trans hcur (scanNeededWidthsAux_x_ge (i := i) rest cur mx)
   | op :: pre, rest, cur, mx, hcur => by
       let cur' := updateWidthState cur op
       let mx' := mergeNeededWidths mx (widthsOfState cur')
-      have hcur' :
-          cur'.xw i ≤ mx'.xneed i := by
+      have hcur' : cur'.xw i ≤ mx'.xneed i := by
         simp [cur', mx', mergeNeededWidths, widthsOfState]
       simpa [scanNeededWidthsAux, cur', mx'] using
         prefix_foldl_updateWidthState_x_le_scanAux
@@ -391,18 +339,13 @@ lemma prefix_foldl_updateWidthState_z_le_scanAux
     (cur : WidthState k)
     (mx : NeededWidths k),
     cur.zw i ≤ mx.zneed i →
-    (pre.foldl updateWidthState cur).zw i
-      ≤
-    (scanNeededWidthsAux cur mx (pre ++ rest)).zneed i
+    (pre.foldl updateWidthState cur).zw i ≤ (scanNeededWidthsAux cur mx (pre ++ rest)).zneed i
   | [], rest, cur, mx, hcur => by
-      exact le_trans hcur
-        (scanNeededWidthsAux_z_ge
-          (i := i) rest cur mx)
+      exact le_trans hcur (scanNeededWidthsAux_z_ge (i := i) rest cur mx)
   | op :: pre, rest, cur, mx, hcur => by
       let cur' := updateWidthState cur op
       let mx' := mergeNeededWidths mx (widthsOfState cur')
-      have hcur' :
-          cur'.zw i ≤ mx'.zneed i := by
+      have hcur' : cur'.zw i ≤ mx'.zneed i := by
         simp [cur', mx', mergeNeededWidths, widthsOfState]
       simpa [scanNeededWidthsAux, cur', mx'] using
         prefix_foldl_updateWidthState_z_le_scanAux
@@ -420,9 +363,7 @@ lemma prefix_foldl_updateWidthState_x_le_scanNeeded
   (ops pre rest : Prog k)
   (i : Fin k)
   (hops : ops = pre ++ rest) :
-  (pre.foldl updateWidthState (initWidthState x z k)).xw i
-    ≤
-  (scanNeededWidths x z ops).xneed i := by
+  (pre.foldl updateWidthState (initWidthState x z k)).xw i ≤ (scanNeededWidths x z ops).xneed i := by
   rw [hops, scanNeededWidths_eq_aux]
   exact prefix_foldl_updateWidthState_x_le_scanAux
     (i := i)
@@ -439,9 +380,7 @@ lemma prefix_foldl_updateWidthState_z_le_scanNeeded
   (ops pre rest : Prog k)
   (i : Fin k)
   (hops : ops = pre ++ rest) :
-  (pre.foldl updateWidthState (initWidthState x z k)).zw i
-    ≤
-  (scanNeededWidths x z ops).zneed i := by
+  (pre.foldl updateWidthState (initWidthState x z k)).zw i ≤ (scanNeededWidths x z ops).zneed i := by
   rw [hops, scanNeededWidths_eq_aux]
   exact prefix_foldl_updateWidthState_z_le_scanAux
     (i := i)
@@ -462,80 +401,42 @@ lemma widthStateSoundPlus_start_state
   WidthStateSoundPlus (qs := qs) (initSignedLayoutState layout) (initWidthState x z k) State.start_state b := by
   constructor
   · intro i
-    let st : LayoutState k :=
-      initSignedLayoutState layout
+    let st : LayoutState k := initSignedLayoutState layout
 
-    have hfit :
-        FitsSignedWidth
-          (ExtReg.width (st.xslot i) + 1)
-          (sourceChunkXInt (qs := qs) st i b) := by
+    have hfit : FitsSignedWidth (ExtReg.width (st.xslot i) + 1) (sourceChunkXInt (qs := qs) st i b) := by
       unfold sourceChunkXInt
       by_cases htop : isTopChunk i
       · simp [htop]
-        exact extToInt_fits_width_succ
-          qs (st.xslot i) b
+        exact extToInt_fits_width_succ qs (st.xslot i) b
       · simp [htop]
-        exact FitsSignedWidth_of_nonneg_lt_pow
-          (ExtReg.toNat_lt (st.xslot i) b)
+        exact FitsSignedWidth_of_nonneg_lt_pow (ExtReg.toNat_lt (st.xslot i) b)
 
-    have hwidth :
-        ExtReg.width (st.xslot i)
-          =
-        (initWidthState x z k).xw i := by
-      simpa [st] using
-        stInit_xslot_width layout i
+    have hwidth : ExtReg.width (st.xslot i) = (initWidthState x z k).xw i := by
+      simpa [st] using stInit_xslot_width layout i
 
-    have hrow :
-        evalRowX
-          (qs := qs)
-          st
-          (State.start_state i)
-          b
-          =
-        sourceChunkXInt (qs := qs) st i b := by
-      simpa using
-        evalRowX_start_state
-          (qs := qs) st i b
+    have hrow : evalRowX (qs := qs) st (State.start_state i) b = sourceChunkXInt (qs := qs) st i b := by
+      simpa using evalRowX_start_state (qs := qs) st i b
 
     rw [hwidth] at hfit
     rw [← hrow] at hfit
     simpa [st] using hfit
 
   · intro i
-    let st : LayoutState k :=
-      initSignedLayoutState layout
+    let st : LayoutState k := initSignedLayoutState layout
 
-    have hfit :
-        FitsSignedWidth
-          (ExtReg.width (st.zslot i) + 1)
-          (sourceChunkZInt (qs := qs) st i b) := by
+    have hfit : FitsSignedWidth (ExtReg.width (st.zslot i) + 1) (sourceChunkZInt (qs := qs) st i b) := by
       unfold sourceChunkZInt
       by_cases htop : isTopChunk i
       · simp [htop]
-        exact extToInt_fits_width_succ
-          qs (st.zslot i) b
+        exact extToInt_fits_width_succ qs (st.zslot i) b
       · simp [htop]
-        exact FitsSignedWidth_of_nonneg_lt_pow
-          (ExtReg.toNat_lt (st.zslot i) b)
+        exact FitsSignedWidth_of_nonneg_lt_pow (ExtReg.toNat_lt (st.zslot i) b)
 
-    have hwidth :
-        ExtReg.width (st.zslot i)
-          =
-        (initWidthState x z k).zw i := by
-      simpa [st] using
-        stInit_zslot_width layout i
+    have hwidth : ExtReg.width (st.zslot i) = (initWidthState x z k).zw i := by
+      simpa [st] using stInit_zslot_width layout i
 
-    have hrow :
-        evalRowZ
-          (qs := qs)
-          st
-          (State.start_state i)
-          b
-          =
-        sourceChunkZInt (qs := qs) st i b := by
-      simpa using
-        evalRowZ_start_state
-          (qs := qs) st i b
+    have hrow : evalRowZ (qs := qs) st (State.start_state i) b = sourceChunkZInt (qs := qs) st i b := by
+      simpa using evalRowZ_start_state (qs := qs) st i b
 
     rw [hwidth] at hfit
     rw [← hrow] at hfit
@@ -569,43 +470,20 @@ lemma allocated_widths_sound
         (evalRowZ (qs := qs) src (σ i) b)) := by
   dsimp
   intro σ hprefix
-  rcases hprefix with
-    ⟨pre, rest, hops, hrun⟩
+  rcases hprefix with ⟨pre, rest, hops, hrun⟩
 
-  let src : LayoutState k :=
-    initSignedLayoutState layout
+  let src : LayoutState k := initSignedLayoutState layout
 
-  let dst : LayoutState k :=
-    targetSignedLayoutState
-      src
-      (scanNeededWidths x z ops)
+  let dst : LayoutState k := targetSignedLayoutState src (scanNeededWidths x z ops)
 
-  let cur0 : WidthState k :=
-    initWidthState x z k
+  let cur0 : WidthState k := initWidthState x z k
 
-  let curPre : WidthState k :=
-    pre.foldl updateWidthState cur0
+  let curPre : WidthState k := pre.foldl updateWidthState cur0
 
-  have hstart :
-      WidthStateSoundPlus
-        (qs := qs)
-        src
-        cur0
-        State.start_state
-        b := by
-    simpa [src, cur0] using
-      widthStateSoundPlus_start_state
-        (qs := qs)
-        layout
-        b
+  have hstart : WidthStateSoundPlus (qs := qs) src cur0 State.start_state b := by
+    simpa [src, cur0] using widthStateSoundPlus_start_state (qs := qs) layout b
 
-  have hpre :
-      WidthStateSoundPlus
-        (qs := qs)
-        src
-        curPre
-        σ
-        b := by
+  have hpre : WidthStateSoundPlus (qs := qs) src curPre σ b := by
     simpa [src, cur0, curPre] using
       widthStateSoundPlus_run
         (qs := qs)
@@ -622,15 +500,8 @@ lemma allocated_widths_sound
 
   constructor
   · intro i
-    have hcur :
-        curPre.xw i + 1
-          ≤
-        commonNeededWidth
-          (scanNeededWidths x z ops) := by
-      have hprefix_le :
-          curPre.xw i
-            ≤
-          (scanNeededWidths x z ops).xneed i := by
+    have hcur : curPre.xw i + 1 ≤ commonNeededWidth (scanNeededWidths x z ops) := by
+      have hprefix_le : curPre.xw i ≤ (scanNeededWidths x z ops).xneed i := by
         simpa [curPre, cur0] using
           prefix_foldl_updateWidthState_x_le_scanNeeded
             (x := x)
@@ -641,28 +512,13 @@ lemma allocated_widths_sound
             (i := i)
             hops
 
-      have hW :
-          (scanNeededWidths x z ops).xneed i + 1
-            ≤
-          commonNeededWidth
-            (scanNeededWidths x z ops) :=
-        commonNeededWidth_ge_xneed
-          (scanNeededWidths x z ops)
-          i
+      have hW : (scanNeededWidths x z ops).xneed i + 1 ≤ commonNeededWidth (scanNeededWidths x z ops) :=
+        commonNeededWidth_ge_xneed (scanNeededWidths x z ops) i
 
       omega
 
-    have hdst :
-        ExtReg.width (dst.xslot i)
-          =
-        commonNeededWidth
-          (scanNeededWidths x z ops) := by
-      simpa [dst] using
-        targetSignedLayoutState_xslot_width_scan
-          layout
-          ops
-          i
-          hcap
+    have hdst : ExtReg.width (dst.xslot i) = commonNeededWidth (scanNeededWidths x z ops) := by
+      simpa [dst] using targetSignedLayoutState_xslot_width_scan layout ops i hcap
 
     exact FitsSignedWidth_mono
       (by
@@ -671,15 +527,8 @@ lemma allocated_widths_sound
       (hpreX i)
 
   · intro i
-    have hcur :
-        curPre.zw i + 1
-          ≤
-        commonNeededWidth
-          (scanNeededWidths x z ops) := by
-      have hprefix_le :
-          curPre.zw i
-            ≤
-          (scanNeededWidths x z ops).zneed i := by
+    have hcur : curPre.zw i + 1 ≤ commonNeededWidth (scanNeededWidths x z ops) := by
+      have hprefix_le : curPre.zw i ≤ (scanNeededWidths x z ops).zneed i := by
         simpa [curPre, cur0] using
           prefix_foldl_updateWidthState_z_le_scanNeeded
             (x := x)
@@ -690,28 +539,13 @@ lemma allocated_widths_sound
             (i := i)
             hops
 
-      have hW :
-          (scanNeededWidths x z ops).zneed i + 1
-            ≤
-          commonNeededWidth
-            (scanNeededWidths x z ops) :=
-        commonNeededWidth_ge_zneed
-          (scanNeededWidths x z ops)
-          i
+      have hW : (scanNeededWidths x z ops).zneed i + 1 ≤ commonNeededWidth (scanNeededWidths x z ops) :=
+        commonNeededWidth_ge_zneed (scanNeededWidths x z ops) i
 
       omega
 
-    have hdst :
-        ExtReg.width (dst.zslot i)
-          =
-        commonNeededWidth
-          (scanNeededWidths x z ops) := by
-      simpa [dst] using
-        targetSignedLayoutState_zslot_width_scan
-          layout
-          ops
-          i
-          hcap
+    have hdst : ExtReg.width (dst.zslot i) = commonNeededWidth (scanNeededWidths x z ops) := by
+      simpa [dst] using targetSignedLayoutState_zslot_width_scan layout ops i hcap
 
     exact FitsSignedWidth_mono
       (by

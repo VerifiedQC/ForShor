@@ -33,9 +33,7 @@ lemma stFinal_xslot_eq_grow
     let stInit := initSignedLayoutState layout
     let Wwork := commonNeededWidth need
     (targetSignedLayoutState stInit need).xslot i
-      =
-    (stInit.xslot i).grow
-      (Wwork - (stInit.xslot i).width) := by
+      = (stInit.xslot i).grow (Wwork - (stInit.xslot i).width) := by
   simp [targetSignedLayoutState, growExtRegTo]
 
 /-- Final `z` slots are exactly the initial slots grown to the common target width. -/
@@ -48,9 +46,7 @@ lemma stFinal_zslot_eq_grow
     let stInit := initSignedLayoutState layout
     let Wwork := commonNeededWidth need
     (targetSignedLayoutState stInit need).zslot i
-      =
-    (stInit.zslot i).grow
-      (Wwork - (stInit.zslot i).width) := by
+      = (stInit.zslot i).grow (Wwork - (stInit.zslot i).width) := by
   simp [targetSignedLayoutState, growExtRegTo]
 
 /-- The scanned target `x` slot strictly grows beyond its initial width. -/
@@ -60,24 +56,15 @@ lemma extraDelta_xslot_pos
     (layout : Gate.PhaseProductLayout x z k)
     (ops : Prog k)
     (i : Fin k)
-    (hcap :
-      (initSignedLayoutState layout).CanGrowToNeeds
-        (scanNeededWidths x z ops)) :
+    (hcap : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops)) :
     let stInit := initSignedLayoutState layout
-    let stFinal :=
-      targetSignedLayoutState stInit
-        (scanNeededWidths x z ops)
-    0 < extraDelta
-      (stInit.xslot i)
-      (stFinal.xslot i) := by
+    let stFinal := targetSignedLayoutState stInit (scanNeededWidths x z ops)
+    0 < extraDelta (stInit.xslot i) (stFinal.xslot i) := by
   dsimp
   unfold extraDelta
   rw [targetSignedLayoutState_xslot_width_scan layout ops i hcap, stInit_xslot_width layout i]
-  have hscan :=
-    scanNeededWidths_x_ge_init x z ops i
-  have hneed :=
-    commonNeededWidth_ge_xneed
-      (scanNeededWidths x z ops) i
+  have hscan := scanNeededWidths_x_ge_init x z ops i
+  have hneed := commonNeededWidth_ge_xneed (scanNeededWidths x z ops) i
   omega
 
 /-! =========================================================
@@ -107,9 +94,7 @@ lemma ExtReg.activeDisjoint_of_ownedDisjoint_right_grow {a b : ExtReg} (h : ExtR
 
 /-- Fresh reserve bits of one owned-disjoint register are active-disjoint from a grown other register. -/
 lemma ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
-  {a b : ExtReg}
-  (h : ExtReg.OwnedDisjoint a b)
-  (m n : ℕ) :
+    {a b : ExtReg} (h : ExtReg.OwnedDisjoint a b) (m n : ℕ) :
     ExtReg.ActiveDisjoint (ExtReg.ofReg (a.newBits m)) (b.grow n) := by
   intro q hqNew hqGrow
   have hqa : q ∈ a.ownedQubits := List.mem_append_right _ (List.mem_of_mem_take hqNew)
@@ -120,18 +105,18 @@ lemma ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
 
 /-- Reserve freshness still required for chunks whose index is at least `n`. -/
 def RemainingClean
-  {Basis : Type u} [RegEncoding Basis]
-  {k : ℕ} (src : LayoutState k) (need : NeededWidths k)
-  (n : ℕ) (b : Basis) : Prop :=
+    {Basis : Type u} [RegEncoding Basis]
+    {k : ℕ} (src : LayoutState k) (need : NeededWidths k)
+    (n : ℕ) (b : Basis) : Prop :=
   let Wwork := commonNeededWidth need
   (∀ i : Fin k, n ≤ i.1 → ExtReg.FreshFor (src.xslot i) (Wwork - (src.xslot i).width) b) ∧
   (∀ i : Fin k, n ≤ i.1 → ExtReg.FreshFor (src.zslot i) (Wwork - (src.zslot i).width) b)
 
 /-- At allocation index zero, the workspace hypothesis gives freshness for every chunk. -/
 lemma remainingClean_zero_of_workspaceOK
-  {Basis : Type u} [RegEncoding Basis]
-  {k : ℕ} {src : LayoutState k}
-  {need : NeededWidths k} {b : Basis}
+    {Basis : Type u} [RegEncoding Basis]
+    {k : ℕ} {src : LayoutState k}
+    {need : NeededWidths k} {b : Basis}
     (hwork : CompilerWorkspaceOK src need b) : RemainingClean src need 0 b := by
   dsimp [CompilerWorkspaceOK, LayoutState.CleanForGrowth] at hwork
   rcases hwork with ⟨_hcap, hx, hz⟩
@@ -151,10 +136,8 @@ lemma freshFor_of_local_toNat
     r.FreshFor m b' := by
   unfold ExtReg.FreshFor FreshZero at *
   calc
-    RegEncoding.toNat (r.newBits m) b'
-        = ExtReg.toNat (ExtReg.ofReg (r.newBits m)) b' := rfl
-    _ = ExtReg.toNat (ExtReg.ofReg (r.newBits m)) b :=
-        hloc (ExtReg.ofReg (r.newBits m)) hdisj
+    RegEncoding.toNat (r.newBits m) b' = ExtReg.toNat (ExtReg.ofReg (r.newBits m)) b' := rfl
+    _ = ExtReg.toNat (ExtReg.ofReg (r.newBits m)) b := hloc (ExtReg.ofReg (r.newBits m)) hdisj
     _ = RegEncoding.toNat (r.newBits m) b := rfl
     _ = 0 := hfresh
 
@@ -171,13 +154,10 @@ lemma sourceChunkXInt_eq_of_toNat_eq
     {src : LayoutState k}
     {i : Fin k}
     {b₁ b₂ : qs.Basis}
-    (h : ExtReg.toNat (src.xslot i) b₁ =
-      ExtReg.toNat (src.xslot i) b₂) :
-    sourceChunkXInt (qs := qs) src i b₁ =
-      sourceChunkXInt (qs := qs) src i b₂ := by
+    (h : ExtReg.toNat (src.xslot i) b₁ = ExtReg.toNat (src.xslot i) b₂) :
+    sourceChunkXInt (qs := qs) src i b₁ = sourceChunkXInt (qs := qs) src i b₂ := by
   unfold sourceChunkXInt
-  by_cases htop : isTopChunk i <;>
-    simp [htop, extToInt, h]
+  by_cases htop : isTopChunk i <;> simp [htop, extToInt, h]
 
 /-- Equal raw `z` slot values preserve the mixed signed/unsigned source read. -/
 lemma sourceChunkZInt_eq_of_toNat_eq
@@ -187,13 +167,10 @@ lemma sourceChunkZInt_eq_of_toNat_eq
     {src : LayoutState k}
     {i : Fin k}
     {b₁ b₂ : qs.Basis}
-    (h : ExtReg.toNat (src.zslot i) b₁ =
-      ExtReg.toNat (src.zslot i) b₂) :
-    sourceChunkZInt (qs := qs) src i b₁ =
-      sourceChunkZInt (qs := qs) src i b₂ := by
+    (h : ExtReg.toNat (src.zslot i) b₁ = ExtReg.toNat (src.zslot i) b₂) :
+    sourceChunkZInt (qs := qs) src i b₁ = sourceChunkZInt (qs := qs) src i b₂ := by
   unfold sourceChunkZInt
-  by_cases htop : isTopChunk i <;>
-    simp [htop, extToInt, h]
+  by_cases htop : isTopChunk i <;> simp [htop, extToInt, h]
 
 /-- The scanned target `z` slot strictly grows beyond its initial width. -/
 lemma extraDelta_zslot_pos
@@ -202,24 +179,15 @@ lemma extraDelta_zslot_pos
     (layout : Gate.PhaseProductLayout x z k)
     (ops : Prog k)
     (i : Fin k)
-    (hcap :
-      (initSignedLayoutState layout).CanGrowToNeeds
-        (scanNeededWidths x z ops)) :
+    (hcap : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops)) :
     let stInit := initSignedLayoutState layout
-    let stFinal :=
-      targetSignedLayoutState stInit
-        (scanNeededWidths x z ops)
-    0 < extraDelta
-      (stInit.zslot i)
-      (stFinal.zslot i) := by
+    let stFinal := targetSignedLayoutState stInit (scanNeededWidths x z ops)
+    0 < extraDelta (stInit.zslot i) (stFinal.zslot i) := by
   dsimp
   unfold extraDelta
   rw [targetSignedLayoutState_zslot_width_scan layout ops i hcap, stInit_zslot_width layout i]
-  have hscan :=
-    scanNeededWidths_z_ge_init x z ops i
-  have hneed :=
-    commonNeededWidth_ge_zneed
-      (scanNeededWidths x z ops) i
+  have hscan := scanNeededWidths_z_ge_init x z ops i
+  have hneed := commonNeededWidth_ge_zneed (scanNeededWidths x z ops) i
   omega
 
 /-! =========================================================
@@ -251,13 +219,9 @@ lemma eval_allocChunkGate_x_ket
   let stInit : LayoutState k := initSignedLayoutState layout
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   ∃ bX : qs.Basis,
-    qs.eval (allocChunkGate i (stInit.xslot i) (stFinal.xslot i)) (qs.ket bcur)
-      =
-    qs.ket bX
-      ∧
+    qs.eval (allocChunkGate i (stInit.xslot i) (stFinal.xslot i)) (qs.ket bcur) = qs.ket bX ∧
     extToInt (stFinal.xslot i) bX = sourceChunkXInt (qs := qs) stInit i bcur ∧
-    (∀ e : ExtReg,
-      ExtReg.ActiveDisjoint e (stFinal.xslot i) →
+    (∀ e : ExtReg, ExtReg.ActiveDisjoint e (stFinal.xslot i) →
       ExtReg.toNat e bX = ExtReg.toNat e bcur) := by
   dsimp
   let need : NeededWidths k := scanNeededWidths x z ops
@@ -265,45 +229,30 @@ lemma eval_allocChunkGate_x_ket
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   let δ : ℕ := extraDelta (stInit.xslot i) (stFinal.xslot i)
   have hδpos : 0 < δ := by
-    simpa [δ, need, stInit, stFinal] using
-      extraDelta_xslot_pos layout ops i hcap
+    simpa [δ, need, stInit, stFinal] using extraDelta_xslot_pos layout ops i hcap
   have hδne : δ ≠ 0 := Nat.ne_of_gt hδpos
-  have hδeq :
-      δ = commonNeededWidth need - (stInit.xslot i).width := by
+  have hδeq : δ = commonNeededWidth need - (stInit.xslot i).width := by
     unfold δ extraDelta
     rw [targetSignedLayoutState_xslot_width_scan layout ops i hcap]
-  have hslot :
-      stFinal.xslot i = (stInit.xslot i).grow δ := by
-    simpa [stInit, stFinal, need, hδeq] using
-      stFinal_xslot_eq_grow layout need i
-  have hcapδ :
-      (stInit.xslot i).CanGrow δ := by
+  have hslot : stFinal.xslot i = (stInit.xslot i).grow δ := by
+    simpa [stInit, stFinal, need, hδeq] using stFinal_xslot_eq_grow layout need i
+  have hcapδ : (stInit.xslot i).CanGrow δ := by
     simpa [stInit, need, hδeq] using hcap.1 i
-  have hfreshδ :
-      ExtReg.FreshFor (stInit.xslot i) δ bcur := by
+  have hfreshδ : ExtReg.FreshFor (stInit.xslot i) δ bcur := by
     simpa [stInit, need, hδeq] using hfresh
   by_cases htop : isTopChunk i
   · have hgate :
-        allocChunkGate i (stInit.xslot i) (stFinal.xslot i)
-          =
-        Gate.signExtend (stInit.xslot i) δ := by
+        allocChunkGate i (stInit.xslot i) (stFinal.xslot i) = Gate.signExtend (stInit.xslot i) δ := by
       unfold allocChunkGate
       simp [δ, hδne, htop]
     rcases ExtensionSemantics.eval_signExtend_ket
-        (qs := qs)
-        (r := stInit.xslot i)
-        (n := δ)
-        (b := bcur)
-        hcapδ
-        hfreshδ with
+        (qs := qs) (r := stInit.xslot i) (n := δ) (b := bcur) hcapδ hfreshδ with
       ⟨bX, hEval0, _hToNat, hWide, hLoc⟩
     refine ⟨bX, ?_, ?_, ?_⟩
     · rw [hgate]
       exact hEval0
     · calc
-        extToInt (stFinal.xslot i) bX
-            = extToInt ((stInit.xslot i).grow δ) bX := by
-                rw [hslot]
+        extToInt (stFinal.xslot i) bX = extToInt ((stInit.xslot i).grow δ) bX := by rw [hslot]
         _ = extToInt (stInit.xslot i) bcur := hWide
         _ = sourceChunkXInt (qs := qs) stInit i bcur := by
               unfold sourceChunkXInt
@@ -311,23 +260,17 @@ lemma eval_allocChunkGate_x_ket
     · intro e he
       exact hLoc e (by simpa [stInit, stFinal, need, hslot] using he)
   · have hgate :
-        allocChunkGate i (stInit.xslot i) (stFinal.xslot i)
-          =
-        Gate.zeroExtend (stInit.xslot i) δ := by
+        allocChunkGate i (stInit.xslot i) (stFinal.xslot i) = Gate.zeroExtend (stInit.xslot i) δ := by
       unfold allocChunkGate
       simp [δ, hδne, htop]
     refine ⟨bcur, ?_, ?_, ?_⟩
     · rw [hgate]
-      exact ExtensionSemantics.eval_zeroExtend
-        (stInit.xslot i) δ (qs.ket bcur)
+      exact ExtensionSemantics.eval_zeroExtend (stInit.xslot i) δ (qs.ket bcur)
     · calc
-        extToInt (stFinal.xslot i) bcur
-            = extToInt ((stInit.xslot i).grow δ) bcur := by
-                rw [hslot]
+        extToInt (stFinal.xslot i) bcur = extToInt ((stInit.xslot i).grow δ) bcur := by rw [hslot]
         _ = (ExtReg.toNat (stInit.xslot i) bcur : ℤ) :=
               ExtReg.extToInt_grow_of_fresh
-                (e := stInit.xslot i) (n := δ) (b := bcur)
-                hcapδ hfreshδ hδpos
+                (e := stInit.xslot i) (n := δ) (b := bcur) hcapδ hfreshδ hδpos
         _ = sourceChunkXInt (qs := qs) stInit i bcur := by
               unfold sourceChunkXInt
               simp [htop]
@@ -357,15 +300,9 @@ lemma eval_allocChunkGate_z_ket
   let stInit : LayoutState k := initSignedLayoutState layout
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   ∃ bZ : qs.Basis,
-    qs.eval
-        (allocChunkGate i (stInit.zslot i) (stFinal.zslot i))
-        (qs.ket bcur)
-      =
-      qs.ket bZ ∧
-    extToInt (stFinal.zslot i) bZ =
-      sourceChunkZInt (qs := qs) stInit i bcur ∧
-    (∀ e : ExtReg,
-      ExtReg.ActiveDisjoint e (stFinal.zslot i) →
+    qs.eval (allocChunkGate i (stInit.zslot i) (stFinal.zslot i)) (qs.ket bcur) = qs.ket bZ ∧
+    extToInt (stFinal.zslot i) bZ = sourceChunkZInt (qs := qs) stInit i bcur ∧
+    (∀ e : ExtReg, ExtReg.ActiveDisjoint e (stFinal.zslot i) →
       ExtReg.toNat e bZ = ExtReg.toNat e bcur) := by
   dsimp
   let need : NeededWidths k := scanNeededWidths x z ops
@@ -373,45 +310,30 @@ lemma eval_allocChunkGate_z_ket
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   let δ : ℕ := extraDelta (stInit.zslot i) (stFinal.zslot i)
   have hδpos : 0 < δ := by
-    simpa [δ, need, stInit, stFinal] using
-      extraDelta_zslot_pos layout ops i hcap
+    simpa [δ, need, stInit, stFinal] using extraDelta_zslot_pos layout ops i hcap
   have hδne : δ ≠ 0 := Nat.ne_of_gt hδpos
-  have hδeq :
-      δ = commonNeededWidth need - (stInit.zslot i).width := by
+  have hδeq : δ = commonNeededWidth need - (stInit.zslot i).width := by
     unfold δ extraDelta
     rw [targetSignedLayoutState_zslot_width_scan layout ops i hcap]
-  have hslot :
-      stFinal.zslot i = (stInit.zslot i).grow δ := by
-    simpa [stInit, stFinal, need, hδeq] using
-      stFinal_zslot_eq_grow layout need i
-  have hcapδ :
-      (stInit.zslot i).CanGrow δ := by
+  have hslot : stFinal.zslot i = (stInit.zslot i).grow δ := by
+    simpa [stInit, stFinal, need, hδeq] using stFinal_zslot_eq_grow layout need i
+  have hcapδ : (stInit.zslot i).CanGrow δ := by
     simpa [stInit, need, hδeq] using hcap.2 i
-  have hfreshδ :
-      ExtReg.FreshFor (stInit.zslot i) δ bcur := by
+  have hfreshδ : ExtReg.FreshFor (stInit.zslot i) δ bcur := by
     simpa [stInit, need, hδeq] using hfresh
   by_cases htop : isTopChunk i
   · have hgate :
-        allocChunkGate i (stInit.zslot i) (stFinal.zslot i)
-          =
-        Gate.signExtend (stInit.zslot i) δ := by
+        allocChunkGate i (stInit.zslot i) (stFinal.zslot i) = Gate.signExtend (stInit.zslot i) δ := by
       unfold allocChunkGate
       simp [δ, hδne, htop]
     rcases ExtensionSemantics.eval_signExtend_ket
-        (qs := qs)
-        (r := stInit.zslot i)
-        (n := δ)
-        (b := bcur)
-        hcapδ
-        hfreshδ with
+        (qs := qs) (r := stInit.zslot i) (n := δ) (b := bcur) hcapδ hfreshδ with
       ⟨bZ, hEval0, _hToNat, hWide, hLoc⟩
     refine ⟨bZ, ?_, ?_, ?_⟩
     · rw [hgate]
       exact hEval0
     · calc
-        extToInt (stFinal.zslot i) bZ
-            = extToInt ((stInit.zslot i).grow δ) bZ := by
-                rw [hslot]
+        extToInt (stFinal.zslot i) bZ = extToInt ((stInit.zslot i).grow δ) bZ := by rw [hslot]
         _ = extToInt (stInit.zslot i) bcur := hWide
         _ = sourceChunkZInt (qs := qs) stInit i bcur := by
               unfold sourceChunkZInt
@@ -419,19 +341,14 @@ lemma eval_allocChunkGate_z_ket
     · intro e he
       exact hLoc e (by simpa [stInit, stFinal, need, hslot] using he)
   · have hgate :
-        allocChunkGate i (stInit.zslot i) (stFinal.zslot i)
-          =
-        Gate.zeroExtend (stInit.zslot i) δ := by
+        allocChunkGate i (stInit.zslot i) (stFinal.zslot i) = Gate.zeroExtend (stInit.zslot i) δ := by
       unfold allocChunkGate
       simp [δ, hδne, htop]
     refine ⟨bcur, ?_, ?_, ?_⟩
     · rw [hgate]
-      exact ExtensionSemantics.eval_zeroExtend
-        (stInit.zslot i) δ (qs.ket bcur)
+      exact ExtensionSemantics.eval_zeroExtend (stInit.zslot i) δ (qs.ket bcur)
     · calc
-        extToInt (stFinal.zslot i) bcur
-            = extToInt ((stInit.zslot i).grow δ) bcur := by
-                rw [hslot]
+        extToInt (stFinal.zslot i) bcur = extToInt ((stInit.zslot i).grow δ) bcur := by rw [hslot]
         _ = (ExtReg.toNat (stInit.zslot i) bcur : ℤ) :=
               ExtReg.extToInt_grow_of_fresh
                 (e := stInit.zslot i)
@@ -532,15 +449,8 @@ lemma eval_compileSignedAllocationsAux_ket
         simpa [stInit, stFinal, need, Wwork] using stFinal_xslot_eq_grow layout need idx
       have hzFreshMid : ExtReg.FreshFor (stInit.zslot idx) (Wwork - (stInit.zslot idx).width) bMid := by
         simpa [RemainingClean, Wwork] using hCleanMid.2 idx (by simp [idx])
-      have hzFreshX :
-          ExtReg.FreshFor
-            (stInit.zslot idx)
-            (Wwork - (stInit.zslot idx).width)
-            bX := by
-        have howned :
-            ExtReg.OwnedDisjoint
-              (stInit.zslot idx)
-              (stInit.xslot idx) := by
+      have hzFreshX : ExtReg.FreshFor (stInit.zslot idx) (Wwork - (stInit.zslot idx).width) bX := by
+        have howned : ExtReg.OwnedDisjoint (stInit.zslot idx) (stInit.xslot idx) := by
           exact ExtReg.ownedDisjoint_symm (hInitOwned.2.2 idx idx)
         apply freshFor_of_local_toNat (r := stInit.zslot idx) hXLoc
         · simpa [hXSlot] using
@@ -569,8 +479,7 @@ lemma eval_compileSignedAllocationsAux_ket
         by_cases hji : j = idx
         · subst hji
           calc
-            extToInt (stFinal.xslot idx) bAlloc
-                = extToInt (stFinal.xslot idx) bX := by
+            extToInt (stFinal.xslot idx) bAlloc = extToInt (stFinal.xslot idx) bX := by
                     apply extToInt_eq_of_toNat_eq
                     exact hZLoc (stFinal.xslot idx)
                       (ExtReg.activeDisjoint_of_ownedDisjoint
@@ -584,8 +493,7 @@ lemma eval_compileSignedAllocationsAux_ket
             have hjne : j.1 ≠ n := by intro hEq; exact hji (Fin.ext (by simpa [idx] using hEq))
             omega
           calc
-            extToInt (stFinal.xslot j) bAlloc
-                = extToInt (stFinal.xslot j) bX := by
+            extToInt (stFinal.xslot j) bAlloc = extToInt (stFinal.xslot j) bX := by
                     apply extToInt_eq_of_toNat_eq
                     exact hZLoc (stFinal.xslot j)
                       (ExtReg.activeDisjoint_of_ownedDisjoint
@@ -601,8 +509,7 @@ lemma eval_compileSignedAllocationsAux_ket
         by_cases hji : j = idx
         · subst hji
           calc
-            extToInt (stFinal.zslot idx) bAlloc
-                = sourceChunkZInt (qs := qs) stInit idx bX := hZVal
+            extToInt (stFinal.zslot idx) bAlloc = sourceChunkZInt (qs := qs) stInit idx bX := hZVal
             _ = sourceChunkZInt (qs := qs) stInit idx bMid := by
                   apply sourceChunkZInt_eq_of_toNat_eq (qs := qs)
                   exact hXLoc (stInit.zslot idx)
@@ -621,8 +528,7 @@ lemma eval_compileSignedAllocationsAux_ket
             have hjne : j.1 ≠ n := by intro hEq; exact hji (Fin.ext (by simpa [idx] using hEq))
             omega
           calc
-            extToInt (stFinal.zslot j) bAlloc
-                = extToInt (stFinal.zslot j) bX := by
+            extToInt (stFinal.zslot j) bAlloc = extToInt (stFinal.zslot j) bX := by
                     apply extToInt_eq_of_toNat_eq
                     exact hZLoc (stFinal.zslot j)
                       (ExtReg.activeDisjoint_of_ownedDisjoint
@@ -638,8 +544,7 @@ lemma eval_compileSignedAllocationsAux_ket
       · intro j hj
         have hjne : j ≠ idx := by intro h; subst h; simp [idx] at hj
         calc
-          sourceChunkXInt (qs := qs) stInit j bAlloc
-              = sourceChunkXInt (qs := qs) stInit j bX := by
+          sourceChunkXInt (qs := qs) stInit j bAlloc = sourceChunkXInt (qs := qs) stInit j bX := by
                   apply sourceChunkXInt_eq_of_toNat_eq (qs := qs)
                   exact hZLoc (stInit.xslot j)
                     (by
@@ -659,8 +564,7 @@ lemma eval_compileSignedAllocationsAux_ket
       · intro j hj
         have hjne : j ≠ idx := by intro h; subst h; simp [idx] at hj
         calc
-          sourceChunkZInt (qs := qs) stInit j bAlloc
-              = sourceChunkZInt (qs := qs) stInit j bX := by
+          sourceChunkZInt (qs := qs) stInit j bAlloc = sourceChunkZInt (qs := qs) stInit j bX := by
                   apply sourceChunkZInt_eq_of_toNat_eq (qs := qs)
                   exact hZLoc (stInit.zslot j)
                     (by
@@ -681,14 +585,9 @@ lemma eval_compileSignedAllocationsAux_ket
       · constructor
         · intro j hj
           have hjne : j ≠ idx := by intro h; subst h; simp [idx] at hj
-          have hf0 : ExtReg.FreshFor
-              (stInit.xslot j)
-              (Wwork - (stInit.xslot j).width)
-              bMid := hCleanMid.1 j (by omega)
-          have hfX : ExtReg.FreshFor
-              (stInit.xslot j)
-              (Wwork - (stInit.xslot j).width)
-              bX := by
+          have hf0 : ExtReg.FreshFor (stInit.xslot j) (Wwork - (stInit.xslot j).width) bMid :=
+            hCleanMid.1 j (by omega)
+          have hfX : ExtReg.FreshFor (stInit.xslot j) (Wwork - (stInit.xslot j).width) bX := by
             apply freshFor_of_local_toNat (r := stInit.xslot j) hXLoc
             · simpa [hXSlot] using
                 ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
@@ -705,14 +604,9 @@ lemma eval_compileSignedAllocationsAux_ket
           · exact hfX
         · intro j hj
           have hjne : j ≠ idx := by intro h; subst h; simp [idx] at hj
-          have hf0 : ExtReg.FreshFor
-              (stInit.zslot j)
-              (Wwork - (stInit.zslot j).width)
-              bMid := hCleanMid.2 j (by omega)
-          have hfX : ExtReg.FreshFor
-              (stInit.zslot j)
-              (Wwork - (stInit.zslot j).width)
-              bX := by
+          have hf0 : ExtReg.FreshFor (stInit.zslot j) (Wwork - (stInit.zslot j).width) bMid :=
+            hCleanMid.2 j (by omega)
+          have hfX : ExtReg.FreshFor (stInit.zslot j) (Wwork - (stInit.zslot j).width) bX := by
             apply freshFor_of_local_toNat (r := stInit.zslot j) hXLoc
             · simpa [hXSlot] using
                 ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
@@ -797,11 +691,7 @@ lemma eval_compileSignedAllocationsAux_sameOutside
         simpa [stInit, stFinal, need, Wwork] using stFinal_xslot_eq_grow layout need idx
       have hzFreshMid : ExtReg.FreshFor (stInit.zslot idx) (Wwork - (stInit.zslot idx).width) bMid := by
         simpa [RemainingClean, Wwork] using hCleanMid.2 idx (by simp [idx])
-      have hzFreshX :
-          ExtReg.FreshFor
-            (stInit.zslot idx)
-            (Wwork - (stInit.zslot idx).width)
-            bX := by
+      have hzFreshX : ExtReg.FreshFor (stInit.zslot idx) (Wwork - (stInit.zslot idx).width) bX := by
         apply freshFor_of_local_toNat (r := stInit.zslot idx) hXLoc
         · simpa [hXSlot] using
             ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
@@ -933,10 +823,7 @@ lemma eval_compileSignedAllocations_ket_fits
   rcases hAlloc with ⟨bAlloc, hEval, hEnc⟩
   have hFits :
       let src := initSignedLayoutState layout
-      let dst :=
-        targetSignedLayoutState
-          src
-          (scanNeededWidths x z ops)
+      let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
       (∀ i : Fin k,
         FitsSignedWidth (ExtReg.width (dst.xslot i))
           (evalRowX (qs := qs) src (State.start_state i) b)) ∧

@@ -27,11 +27,8 @@ lemma eval_matched_phase_ket_from
     (phi : Angle)
     (hEnc : EncodesStateFrom (qs := qs) src dst σ b0 b1)
     (hmatch : matchesAt_pointRow_state (k := k) hk0 σ i pt = true) :
-    qs.eval
-        (Gate.SignedPhaseProd phi (dst.xslot i) (dst.zslot i))
-        (qs.ket b1)
-      =
-    (Complex.exp
+    qs.eval (Gate.SignedPhaseProd phi (dst.xslot i) (dst.zslot i)) (qs.ket b1)
+      = (Complex.exp
         (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((evalRowX (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ) *
            (((evalRowZ (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ))))) •
@@ -64,11 +61,8 @@ lemma eval_matched_cphase_ket_from
     (phi : Angle)
     (hEnc : EncodesStateFrom (qs := qs) src dst σ b0 b1)
     (hmatch : matchesAt_pointRow_state (k := k) hk0 σ i pt) :
-    qs.eval
-        (Gate.CSignedPhaseProd ctrl phi (dst.xslot i) (dst.zslot i))
-        (qs.ket b1)
-      =
-    if RegEncoding.bit ctrl b1 then
+    qs.eval (Gate.CSignedPhaseProd ctrl phi (dst.xslot i) (dst.zslot i)) (qs.ket b1)
+      = if RegEncoding.bit ctrl b1 then
       (Complex.exp
           (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
             (((evalRowX (qs := qs) src (expectedRow (k := k) pt) b0 : ℤ) : ℂ) *

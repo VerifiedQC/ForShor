@@ -183,20 +183,16 @@ lemma shiftRReg?_after_neg_shiftL_addScaled_eq
   σA.shiftRReg? src sh = some σA' := by
   classical
   intro σA σA'
-  have hσA_src :
-      σA src = ((σ.negateReg src).shiftLReg src sh) src := by
+  have hσA_src : σA src = ((σ.negateReg src).shiftLReg src sh) src := by
     simpa [σA] using
       (addScaledReg_src_unchanged
         (σ := (σ.negateReg src).shiftLReg src sh)
         (dst := dst) (src := src) (negSrc := false) (sh := 0) hds)
   have hsrc_shift :
-      ((σ.negateReg src).shiftLReg src sh) src
-        =
-      Register.shiftL ((σ.negateReg src) src) sh := by
+      ((σ.negateReg src).shiftLReg src sh) src = Register.shiftL ((σ.negateReg src) src) sh := by
     unfold State.shiftLReg State.setReg
     simp
-  have hreg :
-      Register.shiftR? (σA src) sh = some ((σ.negateReg src) src) := by
+  have hreg : Register.shiftR? (σA src) sh = some ((σ.negateReg src) src) := by
     simpa [hσA_src, hsrc_shift] using (shiftR?_shiftL (r := (σ.negateReg src) src) (n := sh))
   unfold State.shiftRReg?
   simp [hreg, σA']
@@ -211,20 +207,15 @@ lemma shiftRReg?_after_shiftL_addScaled_eq
   σA.shiftRReg? src sh = some σA' := by
   classical
   intro σA σA'
-  have hσA_src :
-      σA src = (σ.shiftLReg src sh) src := by
+  have hσA_src : σA src = (σ.shiftLReg src sh) src := by
     simpa [σA] using
       (addScaledReg_src_unchanged
         (σ := σ.shiftLReg src sh)
         (dst := dst) (src := src) (negSrc := false) (sh := 0) hds)
-  have hsrc_shift :
-      (σ.shiftLReg src sh) src
-        =
-      Register.shiftL (σ src) sh := by
+  have hsrc_shift : (σ.shiftLReg src sh) src = Register.shiftL (σ src) sh := by
     unfold State.shiftLReg State.setReg
     simp
-  have hreg :
-      Register.shiftR? (σA src) sh = some (σ src) := by
+  have hreg : Register.shiftR? (σA src) sh = some (σ src) := by
     simpa [hσA_src, hsrc_shift] using (shiftR?_shiftL (r := σ src) (n := sh))
   unfold State.shiftRReg?
   simp [hreg, σA']

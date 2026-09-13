@@ -31,16 +31,14 @@ variable (qs : QSemantics) [RegEncoding qs.Basis]
 /-- How the original source basis should be read when forming chunk rows:
     lower chunks are ordinary radix digits, while the top chunk is signed. -/
 
-def sourceChunkXInt
-  (st : LayoutState k) (i : Fin k) (b : qs.Basis) : ℤ :=
+def sourceChunkXInt (st : LayoutState k) (i : Fin k) (b : qs.Basis) : ℤ :=
   if isTopChunk i then
     extToInt (st.xslot i) b
   else
     (ExtReg.toNat (st.xslot i) b : ℤ)
 
 /-- Same mixed source interpretation for the `z` slots. -/
-def sourceChunkZInt
-  (st : LayoutState k) (i : Fin k) (b : qs.Basis) : ℤ :=
+def sourceChunkZInt (st : LayoutState k) (i : Fin k) (b : qs.Basis) : ℤ :=
   if isTopChunk i then
     extToInt (st.zslot i) b
   else
@@ -49,15 +47,13 @@ def sourceChunkZInt
 /-- Row evaluation of `x` against the original basis:
     lower chunks contribute as unsigned digits, top chunk as signed. -/
 
-def evalRowX
-  (st : LayoutState k) (r : Register k) (b : qs.Basis) : ℤ :=
+def evalRowX (st : LayoutState k) (r : Register k) (b : qs.Basis) : ℤ :=
   ∑ j : Fin k, r j * sourceChunkXInt (qs := qs) st j b
 
 /-- Row evaluation of `z` against the original basis:
     lower chunks contribute as unsigned digits, top chunk as signed. -/
 
-def evalRowZ
-  (st : LayoutState k) (r : Register k) (b : qs.Basis) : ℤ :=
+def evalRowZ (st : LayoutState k) (r : Register k) (b : qs.Basis) : ℤ :=
   ∑ j : Fin k, r j * sourceChunkZInt (qs := qs) st j b
 
 /-! =========================================================
@@ -67,36 +63,24 @@ def evalRowZ
 /-- Two-layout version: the current widened machine state is read signed on `dst`,
     while the original basis is interpreted using the mixed chunk semantics on `src`. -/
 
-def EncodesStateFrom
-  (src dst : LayoutState k) (σ : State k) (b0 b : qs.Basis) : Prop :=
-  (∀ i : Fin k,
-    extToInt (dst.xslot i) b
-      = evalRowX (qs := qs) src (σ i) b0) ∧
-  (∀ i : Fin k,
-    extToInt (dst.zslot i) b
-      = evalRowZ (qs := qs) src (σ i) b0)
+def EncodesStateFrom (src dst : LayoutState k) (σ : State k) (b0 b : qs.Basis) : Prop :=
+  (∀ i : Fin k, extToInt (dst.xslot i) b = evalRowX (qs := qs) src (σ i) b0) ∧
+  (∀ i : Fin k, extToInt (dst.zslot i) b = evalRowZ (qs := qs) src (σ i) b0)
 
 /-- `EncodesStateFrom` plus signed-fit obligations for every widened destination slot. -/
 def EncodesStateFromFits
   (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
   (src dst : LayoutState k) (σ : State k) (b0 b : qs.Basis) : Prop :=
   EncodesStateFrom (qs := qs) src dst σ b0 b ∧
-  (∀ i : Fin k,
-    FitsSignedWidth (ExtReg.width (dst.xslot i))
-      (evalRowX (qs := qs) src (σ i) b0)) ∧
-  (∀ i : Fin k,
-    FitsSignedWidth (ExtReg.width (dst.zslot i))
-      (evalRowZ (qs := qs) src (σ i) b0))
+  (∀ i : Fin k, FitsSignedWidth (ExtReg.width (dst.xslot i)) (evalRowX (qs := qs) src (σ i) b0)) ∧
+  (∀ i : Fin k, FitsSignedWidth (ExtReg.width (dst.zslot i)) (evalRowZ (qs := qs) src (σ i) b0))
 
 /-- Current symbolic row values fit one sign bit beyond the scanned unsigned widths. -/
 def WidthStateSoundPlus
     (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
     (src : LayoutState k) (cur : WidthState k) (σ : State k) (b0 : qs.Basis) : Prop :=
-  (∀ i : Fin k,
-    FitsSignedWidth (cur.xw i + 1) (evalRowX (qs := qs) src (σ i) b0))
-    ∧
-  (∀ i : Fin k,
-    FitsSignedWidth (cur.zw i + 1) (evalRowZ (qs := qs) src (σ i) b0))
+  (∀ i : Fin k, FitsSignedWidth (cur.xw i + 1) (evalRowX (qs := qs) src (σ i) b0)) ∧
+  (∀ i : Fin k, FitsSignedWidth (cur.zw i + 1) (evalRowZ (qs := qs) src (σ i) b0))
 
 /-- The concrete destination layout is at least as wide as the symbolic scan says. -/
 def WidthStateDominatedByLayout {k : ℕ} (cur : WidthState k) (dst : LayoutState k) : Prop :=
@@ -117,14 +101,12 @@ def EncodesStateFromWithWidths
 /-- The accumulated scalar now uses the same mixed source-row semantics as
     `EncodesStateFrom`, so the body lemma stays aligned with the invariant. -/
 noncomputable def phaseScalarFrom
-  (k : ℕ) (phi : Angle) (coeff : Fin (q k) → ℚ)
-  (st : LayoutState k) (b0 : qs.Basis) :
+  (k : ℕ) (phi : Angle) (coeff : Fin (q k) → ℚ) (st : LayoutState k) (b0 : qs.Basis) :
   (pts : List Point) → (n : ℕ) → (hn : n + pts.length = q k) → ℂ
 | [], n, hn => 1
 | pt :: pts, n, hn =>
     let l : Fin (q k) := ⟨n, by
-      have hlt : n < n + (pt :: pts).length := by
-        simp
+      have hlt : n < n + (pt :: pts).length := by simp
       aesop
     ⟩
     let hn' : n + 1 + pts.length = q k := by
@@ -163,14 +145,11 @@ lemma evalRowX_shiftL_raw
   (r : Register k)
   (m : ℕ)
   (b : qs.Basis) :
-  evalRowX (qs := qs) src (r.shiftL m) b
-    =
-  ((2 : ℤ)^m) * evalRowX (qs := qs) src r b := by
+  evalRowX (qs := qs) src (r.shiftL m) b = ((2 : ℤ)^m) * evalRowX (qs := qs) src r b := by
   unfold evalRowX Register.shiftL
   calc
     (∑ j : Fin k, (r j * (2 : ℤ)^m) * sourceChunkXInt (qs := qs) src j b)
-      =
-    ∑ j : Fin k, ((2 : ℤ)^m) * (r j * sourceChunkXInt (qs := qs) src j b) := by
+      = ∑ j : Fin k, ((2 : ℤ)^m) * (r j * sourceChunkXInt (qs := qs) src j b) := by
         apply Finset.sum_congr rfl
         intro j hj
         ring
@@ -186,14 +165,11 @@ lemma evalRowZ_shiftL_raw
   (r : Register k)
   (m : ℕ)
   (b : qs.Basis) :
-  evalRowZ (qs := qs) src (r.shiftL m) b
-    =
-  ((2 : ℤ)^m) * evalRowZ (qs := qs) src r b := by
+  evalRowZ (qs := qs) src (r.shiftL m) b = ((2 : ℤ)^m) * evalRowZ (qs := qs) src r b := by
   unfold evalRowZ Register.shiftL
   calc
     (∑ j : Fin k, (r j * (2 : ℤ)^m) * sourceChunkZInt (qs := qs) src j b)
-      =
-    ∑ j : Fin k, ((2 : ℤ)^m) * (r j * sourceChunkZInt (qs := qs) src j b) := by
+      = ∑ j : Fin k, ((2 : ℤ)^m) * (r j * sourceChunkZInt (qs := qs) src j b) := by
         apply Finset.sum_congr rfl
         intro j hj
         ring
@@ -208,14 +184,11 @@ lemma evalRowX_negate_raw
   (src : LayoutState k)
   (r : Register k)
   (b : qs.Basis) :
-  evalRowX (qs := qs) src (Register.negate r) b
-    =
-  - evalRowX (qs := qs) src r b := by
+  evalRowX (qs := qs) src (Register.negate r) b = - evalRowX (qs := qs) src r b := by
   unfold evalRowX Register.negate
   calc
     (∑ j : Fin k, (-r j) * sourceChunkXInt (qs := qs) src j b)
-      =
-    ∑ j : Fin k, -(r j * sourceChunkXInt (qs := qs) src j b) := by
+      = ∑ j : Fin k, -(r j * sourceChunkXInt (qs := qs) src j b) := by
         apply Finset.sum_congr rfl
         intro j hj
         ring
@@ -230,14 +203,11 @@ lemma evalRowZ_negate_raw
   (src : LayoutState k)
   (r : Register k)
   (b : qs.Basis) :
-  evalRowZ (qs := qs) src (Register.negate r) b
-    =
-  - evalRowZ (qs := qs) src r b := by
+  evalRowZ (qs := qs) src (Register.negate r) b = - evalRowZ (qs := qs) src r b := by
   unfold evalRowZ Register.negate
   calc
     (∑ j : Fin k, (-r j) * sourceChunkZInt (qs := qs) src j b)
-      =
-    ∑ j : Fin k, -(r j * sourceChunkZInt (qs := qs) src j b) := by
+      = ∑ j : Fin k, -(r j * sourceChunkZInt (qs := qs) src j b) := by
         apply Finset.sum_congr rfl
         intro j hj
         ring
@@ -254,16 +224,13 @@ lemma evalRowX_shiftR_exact
   (m : ℕ)
   (b : qs.Basis)
   (hshift : Register.shiftR? r m = some r') :
-  evalRowX (qs := qs) src r b
-    =
-  ((2 : ℤ)^m) * evalRowX (qs := qs) src r' b := by
+  evalRowX (qs := qs) src r b = ((2 : ℤ)^m) * evalRowX (qs := qs) src r' b := by
   have hdiv := Register.shiftR?_some_divisible hshift
   have hval := Register.shiftR?_some_value hshift
   unfold evalRowX
   calc
     (∑ j : Fin k, r j * sourceChunkXInt (qs := qs) src j b)
-      =
-    ∑ j : Fin k, (((2 : ℤ)^m) * r' j) * sourceChunkXInt (qs := qs) src j b := by
+      = ∑ j : Fin k, (((2 : ℤ)^m) * r' j) * sourceChunkXInt (qs := qs) src j b := by
         apply Finset.sum_congr rfl
         intro j hj
         have hdvd : ((2 : ℤ)^m) ∣ r j := Int.dvd_of_emod_eq_zero (hdiv j)
@@ -275,8 +242,7 @@ lemma evalRowX_shiftR_exact
             _ = ((2 : ℤ)^m) * r' j := by
               rw [hval j]
         rw [hrj]
-    _ =
-    ∑ j : Fin k, ((2 : ℤ)^m) * (r' j * sourceChunkXInt (qs := qs) src j b) := by
+    _ = ∑ j : Fin k, ((2 : ℤ)^m) * (r' j * sourceChunkXInt (qs := qs) src j b) := by
         apply Finset.sum_congr rfl
         intro j hj
         ring
@@ -293,16 +259,13 @@ lemma evalRowZ_shiftR_exact
   (m : ℕ)
   (b : qs.Basis)
   (hshift : Register.shiftR? r m = some r') :
-  evalRowZ (qs := qs) src r b
-    =
-  ((2 : ℤ)^m) * evalRowZ (qs := qs) src r' b := by
+  evalRowZ (qs := qs) src r b = ((2 : ℤ)^m) * evalRowZ (qs := qs) src r' b := by
   have hdiv := Register.shiftR?_some_divisible hshift
   have hval := Register.shiftR?_some_value hshift
   unfold evalRowZ
   calc
     (∑ j : Fin k, r j * sourceChunkZInt (qs := qs) src j b)
-      =
-    ∑ j : Fin k, (((2 : ℤ)^m) * r' j) * sourceChunkZInt (qs := qs) src j b := by
+      = ∑ j : Fin k, (((2 : ℤ)^m) * r' j) * sourceChunkZInt (qs := qs) src j b := by
         apply Finset.sum_congr rfl
         intro j hj
         have hdvd : ((2 : ℤ)^m) ∣ r j := Int.dvd_of_emod_eq_zero (hdiv j)
@@ -314,8 +277,7 @@ lemma evalRowZ_shiftR_exact
             _ = ((2 : ℤ)^m) * r' j := by
               rw [hval j]
         rw [hrj]
-    _ =
-    ∑ j : Fin k, ((2 : ℤ)^m) * (r' j * sourceChunkZInt (qs := qs) src j b) := by
+    _ = ∑ j : Fin k, ((2 : ℤ)^m) * (r' j * sourceChunkZInt (qs := qs) src j b) := by
         apply Finset.sum_congr rfl
         intro j hj
         ring
@@ -352,17 +314,13 @@ lemma evalRowX_addScaled_raw
           apply Finset.sum_congr rfl
           intro j hj
           ring
-    _ =
-    (∑ j : Fin k, dstReg j * sourceChunkXInt (qs := qs) src j b)
-      +
-    ∑ j : Fin k,
+    _ = (∑ j : Fin k, dstReg j * sourceChunkXInt (qs := qs) src j b)
+      + ∑ j : Fin k,
       ((if negSrc then (-1 : ℤ) else 1) * ((2 : ℤ) ^ sh))
         * (srcReg j * sourceChunkXInt (qs := qs) src j b) := by
           rw [Finset.sum_add_distrib]
-    _ =
-    (∑ j : Fin k, dstReg j * sourceChunkXInt (qs := qs) src j b)
-      +
-    ((if negSrc then (-1 : ℤ) else 1) * ((2 : ℤ) ^ sh))
+    _ = (∑ j : Fin k, dstReg j * sourceChunkXInt (qs := qs) src j b)
+      + ((if negSrc then (-1 : ℤ) else 1) * ((2 : ℤ) ^ sh))
       * ∑ j : Fin k, srcReg j * sourceChunkXInt (qs := qs) src j b := by
           rw [Finset.mul_sum]
 
@@ -396,17 +354,13 @@ lemma evalRowZ_addScaled_raw
           apply Finset.sum_congr rfl
           intro j hj
           ring
-    _ =
-    (∑ j : Fin k, dstReg j * sourceChunkZInt (qs := qs) src j b)
-      +
-    ∑ j : Fin k,
+    _ = (∑ j : Fin k, dstReg j * sourceChunkZInt (qs := qs) src j b)
+      + ∑ j : Fin k,
       ((if negSrc then (-1 : ℤ) else 1) * ((2 : ℤ) ^ sh))
         * (srcReg j * sourceChunkZInt (qs := qs) src j b) := by
           rw [Finset.sum_add_distrib]
-    _ =
-    (∑ j : Fin k, dstReg j * sourceChunkZInt (qs := qs) src j b)
-      +
-    ((if negSrc then (-1 : ℤ) else 1) * ((2 : ℤ) ^ sh))
+    _ = (∑ j : Fin k, dstReg j * sourceChunkZInt (qs := qs) src j b)
+      + ((if negSrc then (-1 : ℤ) else 1) * ((2 : ℤ) ^ sh))
       * ∑ j : Fin k, srcReg j * sourceChunkZInt (qs := qs) src j b := by
           rw [Finset.mul_sum]
 
@@ -418,16 +372,11 @@ lemma evalRowZ_addScaled_raw
 ========================================================= -/
 
 /-- Short name for the layout-wide owned-disjointness invariant. -/
-abbrev LayoutSlotsDisjoint
-    {k : ℕ}
-    (st : LayoutState k) : Prop :=
+abbrev LayoutSlotsDisjoint {k : ℕ} (st : LayoutState k) : Prop :=
   st.OwnedPairwiseDisjoint
 
 /-- Register `e` is actively disjoint from every slot in a layout. -/
-def OutsideLayout
-    {k : ℕ}
-    (dst : LayoutState k)
-    (e : ExtReg) : Prop :=
+def OutsideLayout {k : ℕ} (dst : LayoutState k) (e : ExtReg) : Prop :=
   (∀ i : Fin k, ExtReg.ActiveDisjoint e (dst.xslot i)) ∧
   (∀ i : Fin k, ExtReg.ActiveDisjoint e (dst.zslot i))
 
@@ -438,9 +387,7 @@ def SameOutsideLayout
     {k : ℕ}
     (dst : LayoutState k)
     (b₁ b₂ : qs.Basis) : Prop :=
-  ∀ e : ExtReg,
-    OutsideLayout dst e →
-    extToInt e b₁ = extToInt e b₂
+  ∀ e : ExtReg, OutsideLayout dst e → extToInt e b₁ = extToInt e b₂
 
 lemma SameOutsideLayout.refl (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ} (dst : LayoutState k) (b : qs.Basis) :
   SameOutsideLayout qs dst b b := by intro e he; rfl
@@ -462,9 +409,7 @@ lemma SameOutsideLayout.trans
     _ = extToInt e b3 := h23 e he
 
 /-- Every physical qubit is either in a slot or can be read by an outside singleton register. -/
-def CoversLayoutBits
-    {k : ℕ}
-    (dst : LayoutState k) : Prop :=
+def CoversLayoutBits {k : ℕ} (dst : LayoutState k) : Prop :=
   ∀ q : ℕ,
     (∃ i : Fin k, q ∈ (dst.xslot i).active.qubits) ∨
     (∃ i : Fin k, q ∈ (dst.zslot i).active.qubits) ∨
@@ -477,23 +422,14 @@ lemma bit_eq_of_toNat_eq_on_reg
     {r : Reg}
     {b₁ b₂ : Basis}
     {q : ℕ}
-    (hNat :
-      RegEncoding.toNat r b₁ =
-        RegEncoding.toNat r b₂)
+    (hNat : RegEncoding.toNat r b₁ = RegEncoding.toNat r b₂)
     (hq : q ∈ r.qubits) :
-    RegEncoding.bit q b₁ =
-      RegEncoding.bit q b₂ := by
+    RegEncoding.bit q b₁ = RegEncoding.bit q b₂ := by
   calc
     RegEncoding.bit q b₁
-        =
-    RegEncoding.bit q
-      (RegEncoding.writeNat
-        r (RegEncoding.toNat r b₁) b₁) := by
+        = RegEncoding.bit q (RegEncoding.writeNat r (RegEncoding.toNat r b₁) b₁) := by
           rw [RegEncoding.writeNat_toNat]
-    _ =
-    RegEncoding.bit q
-      (RegEncoding.writeNat
-        r (RegEncoding.toNat r b₂) b₂) := by
+    _ = RegEncoding.bit q (RegEncoding.writeNat r (RegEncoding.toNat r b₂) b₂) := by
           simpa [hNat] using
             (RegEncoding.bit_writeNat_in
               (r := r)
@@ -511,11 +447,8 @@ lemma toNat_eq_of_extToInt_eq
     [RegEncoding Basis]
     {e : ExtReg}
     {b₁ b₂ : Basis}
-    (h :
-      extToInt e b₁ =
-        extToInt e b₂) :
-    ExtReg.toNat e b₁ =
-      ExtReg.toNat e b₂ := by
+    (h : extToInt e b₁ = extToInt e b₂) :
+    ExtReg.toNat e b₁ = ExtReg.toNat e b₂ := by
   apply tcDecodeWidth_inj_of_lt
     (ExtReg.toNat_lt e b₁)
     (ExtReg.toNat_lt e b₂)
@@ -528,14 +461,10 @@ lemma bit_eq_of_extToInt_eq_on_active
     {e : ExtReg}
     {b₁ b₂ : Basis}
     {q : ℕ}
-    (h :
-      extToInt e b₁ = extToInt e b₂)
+    (h : extToInt e b₁ = extToInt e b₂)
     (hq : q ∈ e.active.qubits) :
-    RegEncoding.bit q b₁ =
-      RegEncoding.bit q b₂ := by
-  exact bit_eq_of_toNat_eq_on_reg
-    (toNat_eq_of_extToInt_eq h)
-    hq
+    RegEncoding.bit q b₁ = RegEncoding.bit q b₂ := by
+  exact bit_eq_of_toNat_eq_on_reg (toNat_eq_of_extToInt_eq h) hq
 
 lemma SameOutsideLayout.bit_eq_of_outside
     (qs : QSemantics)
@@ -545,16 +474,10 @@ lemma SameOutsideLayout.bit_eq_of_outside
     {b₁ b₂ : qs.Basis}
     (hSO : SameOutsideLayout qs dst b₁ b₂)
     (q : ℕ)
-    (hout :
-      OutsideLayout dst
-        (ExtReg.ofReg (qubitReg q))) :
-    RegEncoding.bit q b₂ =
-      RegEncoding.bit q b₁ := by
+    (hout : OutsideLayout dst (ExtReg.ofReg (qubitReg q))) :
+    RegEncoding.bit q b₂ = RegEncoding.bit q b₁ := by
   apply bit_eq_of_extToInt_eq_on_active
-  · exact
-      (hSO
-        (ExtReg.ofReg (qubitReg q))
-        hout).symm
+  · exact (hSO (ExtReg.ofReg (qubitReg q)) hout).symm
   · simp [ExtReg.ofReg, qubitReg, Reg.singleton]
 
 /-- Classify any qubit as lying in an `x` slot, a `z` slot, or outside the layout. -/
@@ -562,30 +485,21 @@ lemma qubit_in_layout_or_outside
     {k : ℕ}
     (dst : LayoutState k)
     (q : ℕ) :
-    (∃ i : Fin k,
-      q ∈ (dst.xslot i).active.qubits) ∨
-    (∃ i : Fin k,
-      q ∈ (dst.zslot i).active.qubits) ∨
-    OutsideLayout dst
-      (ExtReg.ofReg (qubitReg q)) := by
-  by_cases hx :
-      ∃ i : Fin k,
-        q ∈ (dst.xslot i).active.qubits
+    (∃ i : Fin k, q ∈ (dst.xslot i).active.qubits) ∨
+    (∃ i : Fin k, q ∈ (dst.zslot i).active.qubits) ∨
+    OutsideLayout dst (ExtReg.ofReg (qubitReg q)) := by
+  by_cases hx : ∃ i : Fin k, q ∈ (dst.xslot i).active.qubits
   · exact Or.inl hx
-  by_cases hz :
-      ∃ i : Fin k,
-        q ∈ (dst.zslot i).active.qubits
+  by_cases hz : ∃ i : Fin k, q ∈ (dst.zslot i).active.qubits
   · exact Or.inr (Or.inl hz)
   refine Or.inr (Or.inr ⟨?_, ?_⟩)
   · intro i
-    have hqi :
-        q ∉ (dst.xslot i).active.qubits := by
+    have hqi : q ∉ (dst.xslot i).active.qubits := by
       intro h
       exact hx ⟨i, h⟩
     simpa [ExtReg.ActiveDisjoint, ExtReg.ofReg, qubitReg, Reg.singleton, Disjoint] using hqi
   · intro i
-    have hqi :
-        q ∉ (dst.zslot i).active.qubits := by
+    have hqi : q ∉ (dst.zslot i).active.qubits := by
       intro h
       exact hz ⟨i, h⟩
     simpa [ExtReg.ActiveDisjoint, ExtReg.ofReg, qubitReg, Reg.singleton, Disjoint] using hqi
@@ -597,27 +511,20 @@ lemma basis_eq_of_sameOutside_and_slots
     {k : ℕ}
     (dst : LayoutState k)
     (bMid bNext : qs.Basis)
-    (hSO :
-      SameOutsideLayout qs dst bMid bNext)
-    (hXslots :
-      ∀ i : Fin k, extToInt (dst.xslot i) bNext  = extToInt (dst.xslot i) bMid)
-    (hZslots :
-      ∀ i : Fin k, extToInt (dst.zslot i) bNext = extToInt  (dst.zslot i) bMid) :
+    (hSO : SameOutsideLayout qs dst bMid bNext)
+    (hXslots : ∀ i : Fin k, extToInt (dst.xslot i) bNext  = extToInt (dst.xslot i) bMid)
+    (hZslots : ∀ i : Fin k, extToInt (dst.zslot i) bNext = extToInt  (dst.zslot i) bMid) :
     bNext = bMid := by
   apply RegEncoding.basis_ext
   intro q
   rcases qubit_in_layout_or_outside dst q with
     hx | hz | hout
   · rcases hx with ⟨i, hq⟩
-    exact bit_eq_of_extToInt_eq_on_active
-      (hXslots i) hq
+    exact bit_eq_of_extToInt_eq_on_active (hXslots i) hq
   · rcases hz with ⟨i, hq⟩
-    exact bit_eq_of_extToInt_eq_on_active
-      (hZslots i) hq
+    exact bit_eq_of_extToInt_eq_on_active (hZslots i) hq
   · exact bit_eq_of_extToInt_eq_on_active
-      ((hSO
-        (ExtReg.ofReg (qubitReg q))
-        hout).symm)
+      ((hSO (ExtReg.ofReg (qubitReg q)) hout).symm)
       (by simp [ExtReg.ofReg, qubitReg, Reg.singleton])
 
 /-- The accumulated phase scalar is never zero. -/
@@ -700,8 +607,7 @@ lemma annotatePhaseTermsAux_append (k n : ℕ) (ops₁ ops₂ : List (valid_ops 
 /-- Phase-product leaf counts add over program append. -/
 @[simp] lemma phaseProductCount_append
   {k : ℕ} (xs ys : List (valid_ops k)) :
-  phaseProductCount (xs ++ ys) =
-    phaseProductCount xs + phaseProductCount ys := by
+  phaseProductCount (xs ++ ys) = phaseProductCount xs + phaseProductCount ys := by
   induction xs with
   | nil =>
       simp [phaseProductCount]
@@ -733,8 +639,7 @@ lemma FitsSignedWidth_of_nonneg_lt_pow
   unfold FitsSignedWidth signedMin signedMax
   constructor <;> simp
   constructor
-  have hn0 : (0 : ℤ) ≤ (n : ℤ) := by
-    exact_mod_cast Nat.zero_le n
+  have hn0 : (0 : ℤ) ≤ (n : ℤ) := by exact_mod_cast Nat.zero_le n
   have hneg : (-(2 : ℤ) ^ (w + 1)) ≤ 0 := by
     have hpow0 : (0 : ℤ) ≤ (2 : ℤ) ^ (w + 1) := by positivity
     omega
@@ -755,8 +660,7 @@ lemma tcDecodeWidth_fits_succ
         zero_le_one]
     next x x_1 w =>
       simp_all only [Nat.succ_eq_add_one, add_tsub_cancel_right, ↓reduceIte]
-      have hn0 : (0 : ℤ) ≤ (n : ℤ) := by
-        exact_mod_cast Nat.zero_le n
+      have hn0 : (0 : ℤ) ≤ (n : ℤ) := by exact_mod_cast Nat.zero_le n
       have hneg : (-(2 : ℤ) ^ (w + 1)) ≤ 0 := by
         have hpow0 : (0 : ℤ) ≤ (2 : ℤ) ^ (w + 1) := by positivity
         omega
@@ -773,8 +677,7 @@ lemma tcDecodeWidth_fits_succ
     next x x_1 w =>
       simp_all only [Nat.succ_eq_add_one, add_tsub_cancel_right, ↓reduceIte]
       have hge : 2 ^ w ≤ n := Nat.le_of_not_lt hs
-      have hn0 : (0 : ℤ) ≤ (n : ℤ) := by
-        exact_mod_cast Nat.zero_le n
+      have hn0 : (0 : ℤ) ≤ (n : ℤ) := by exact_mod_cast Nat.zero_le n
       omega
     simp
     simp_all only [Nat.succ_eq_add_one, add_tsub_cancel_right, not_lt]
@@ -782,8 +685,7 @@ lemma tcDecodeWidth_fits_succ
     next h_1 => norm_cast
     next h_1 =>
       simp_all only [not_lt]; rename_i x1 x w
-      have hlt : (n : ℤ) < (2 : ℤ) ^ (w + 1) := by
-        exact_mod_cast h
+      have hlt : (n : ℤ) < (2 : ℤ) ^ (w + 1) := by exact_mod_cast h
       omega
 
 /-- The signed interpretation of an `ExtReg` always fits one bit wider than its active width. -/
@@ -800,30 +702,18 @@ lemma FitsSignedWidth_shiftL_raw
   rcases hfit with ⟨hlo, hhi⟩
   have hp0 : (0 : ℤ) ≤ (2 : ℤ)^n := by positivity
   have hp : (0 : ℤ) < (2 : ℤ)^n := by positivity
-  have hpow :
-      ((2 : ℤ)^n) * (((2 ^ w : ℕ) : ℤ))
-        = (((2 ^ (w + n) : ℕ) : ℤ)) := by
+  have hpow : ((2 : ℤ)^n) * (((2 ^ w : ℕ) : ℤ)) = (((2 ^ (w + n) : ℕ) : ℤ)) := by
     calc
-      ((2 : ℤ)^n) * (((2 ^ w : ℕ) : ℤ))
-          = (((2 ^ n : ℕ) : ℤ)) * (((2 ^ w : ℕ) : ℤ)) := by norm_num
+      ((2 : ℤ)^n) * (((2 ^ w : ℕ) : ℤ)) = (((2 ^ n : ℕ) : ℤ)) * (((2 ^ w : ℕ) : ℤ)) := by norm_num
       _ = (((2 ^ n * 2 ^ w : ℕ) : ℤ)) := by norm_num
-      _ = (((2 ^ (n + w) : ℕ) : ℤ)) := by
-            exact_mod_cast (pow_add 2 n w).symm
+      _ = (((2 ^ (n + w) : ℕ) : ℤ)) := by exact_mod_cast (pow_add 2 n w).symm
       _ = (((2 ^ (w + n) : ℕ) : ℤ)) := by rw [Nat.add_comm]
-  have hpow_neg :
-      ((2 : ℤ)^n) * (-(((2 ^ w : ℕ) : ℤ)))
-        = -(((2 ^ (w + n) : ℕ) : ℤ)) := by
+  have hpow_neg : ((2 : ℤ)^n) * (-(((2 ^ w : ℕ) : ℤ))) = -(((2 ^ (w + n) : ℕ) : ℤ)) := by
     simp
     rw[pow_add,mul_comm]
-  have hL :
-      ((2 : ℤ)^n) * (-(((2 ^ w : ℕ) : ℤ)))
-        ≤
-      ((2 : ℤ)^n) * z := by
+  have hL : ((2 : ℤ)^n) * (-(((2 ^ w : ℕ) : ℤ))) ≤ ((2 : ℤ)^n) * z := by
     exact mul_le_mul_of_nonneg_left (by simp_all) hp0
-  have hU :
-      ((2 : ℤ)^n) * z
-        <
-      ((2 : ℤ)^n) * (((2 ^ w : ℕ) : ℤ)) := by
+  have hU : ((2 : ℤ)^n) * z < ((2 : ℤ)^n) * (((2 ^ w : ℕ) : ℤ)) := by
     exact mul_lt_mul_of_pos_left (by simp_all) hp
   constructor
   · simp
@@ -840,25 +730,15 @@ lemma FitsSignedWidth_shiftR_of_mul
   rcases hfit with ⟨hlo, hhi⟩
   by_cases hnw : n ≤ w
   · have hpos : (0 : ℤ) < (2 : ℤ)^n := by positivity
-    have hpow :
-        ((2 : ℤ)^n) * (((2 ^ (w - n) : ℕ) : ℤ))
-          = (((2 ^ w : ℕ) : ℤ)) := by
+    have hpow : ((2 : ℤ)^n) * (((2 ^ (w - n) : ℕ) : ℤ)) = (((2 ^ w : ℕ) : ℤ)) := by
       calc
-        ((2 : ℤ)^n) * (((2 ^ (w - n) : ℕ) : ℤ))
-            = (((2 ^ n : ℕ) : ℤ)) * (((2 ^ (w - n) : ℕ) : ℤ)) := by norm_num
+        ((2 : ℤ)^n) * (((2 ^ (w - n) : ℕ) : ℤ)) = (((2 ^ n : ℕ) : ℤ)) * (((2 ^ (w - n) : ℕ) : ℤ)) := by norm_num
         _ = (((2 ^ n * 2 ^ (w - n) : ℕ) : ℤ)) := by norm_num
-        _ = (((2 ^ (n + (w - n)) : ℕ) : ℤ)) := by
-              exact_mod_cast (pow_add 2 n (w - n)).symm
+        _ = (((2 ^ (n + (w - n)) : ℕ) : ℤ)) := by exact_mod_cast (pow_add 2 n (w - n)).symm
         _ = (((2 ^ w : ℕ) : ℤ)) := by rw [Nat.add_sub_of_le hnw]
-    have hupper :
-        ((2 : ℤ)^n) * q
-          <
-        ((2 : ℤ)^n) * (((2 ^ (w - n) : ℕ) : ℤ)) := by
+    have hupper : ((2 : ℤ)^n) * q < ((2 : ℤ)^n) * (((2 ^ (w - n) : ℕ) : ℤ)) := by
       simp_all
-    have hlower :
-        ((2 : ℤ)^n) * (-(((2 ^ (w - n) : ℕ) : ℤ)))
-          ≤
-        ((2 : ℤ)^n) * q := by
+    have hlower : ((2 : ℤ)^n) * (-(((2 ^ (w - n) : ℕ) : ℤ))) ≤ ((2 : ℤ)^n) * q := by
       have : -(((2 ^ w : ℕ) : ℤ)) ≤ ((2 : ℤ)^n) * q := by
         simp_all
       simp_all
@@ -875,10 +755,8 @@ lemma FitsSignedWidth_shiftR_of_mul
           rw [hpow]; exact hhi.2
         exact lt_of_mul_lt_mul_left h1 (by positivity)
   · have hwn : w < n := lt_of_not_ge hnw
-    have hpowNat : 2 ^ w < 2 ^ n := by
-      exact Nat.pow_lt_pow_right (by decide : 1 < 2) hwn
-    have hpowInt : (((2 ^ w : ℕ) : ℤ)) < ((2 : ℤ)^n) := by
-      exact_mod_cast hpowNat
+    have hpowNat : 2 ^ w < 2 ^ n := by exact Nat.pow_lt_pow_right (by decide : 1 < 2) hwn
+    have hpowInt : (((2 ^ w : ℕ) : ℤ)) < ((2 : ℤ)^n) := by exact_mod_cast hpowNat
     have hq0 : q = 0 := by
       by_cases hq : q = 0
       · exact hq
@@ -939,8 +817,7 @@ lemma FitsSignedWidth_addScaled_widen
   (hsrc : FitsSignedWidth (ws + 1) srcv) :
   FitsSignedWidth (max wd (ws + sh) + 2)
     (dstv + (if negSrc then (-1 : ℤ) else 1) * ((2 : ℤ)^sh) * srcv) := by
-  have hscaled :
-      FitsSignedWidth (ws + sh + 1) (((2 : ℤ)^sh) * srcv) := by
+  have hscaled : FitsSignedWidth (ws + sh + 1) (((2 : ℤ)^sh) * srcv) := by
     exact FitsSignedWidth_shiftL_raw (w := ws) (n := sh) (z := srcv) hsrc
   unfold FitsSignedWidth signedMin signedMax at hdst hscaled ⊢
   rcases hdst with ⟨hdlo, hdhi⟩
@@ -975,15 +852,9 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_append
   (st : LayoutState k)
   (xs ys : List (AnnotatedOp k))
   (ψ : qs.State) :
-  qs.eval
-      (compileAnnotatedOpsToSignedGateAux k hk phi coeff st (xs ++ ys))
-      ψ
-    =
-  qs.eval
-      (compileAnnotatedOpsToSignedGateAux k hk phi coeff st ys)
-      (qs.eval
-        (compileAnnotatedOpsToSignedGateAux k hk phi coeff st xs)
-        ψ) := by
+  qs.eval (compileAnnotatedOpsToSignedGateAux k hk phi coeff st (xs ++ ys)) ψ
+    = qs.eval (compileAnnotatedOpsToSignedGateAux k hk phi coeff st ys)
+        (qs.eval (compileAnnotatedOpsToSignedGateAux k hk phi coeff st xs) ψ) := by
   induction xs generalizing ψ with
   | nil =>
       simp [compileAnnotatedOpsToSignedGateAux, qs.eval_id]

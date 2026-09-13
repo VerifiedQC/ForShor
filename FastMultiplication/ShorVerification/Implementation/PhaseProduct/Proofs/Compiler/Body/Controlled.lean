@@ -172,23 +172,20 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
   | cons B hrest ih =>
       intro n hn b0 bCur hdisj hFits hSafeAdd hEnc
       rename_i σ2 pt pts2 oprest
-      have hlt : n < q k := by
-        simp at hn;omega
+      have hlt : n < q k := by simp at hn; omega
       have hnTail : n + 1 + pts2.length = q k := by
-        simp at hn; simp[← hn]; simp[add_assoc]; rw[add_comm]
+        simp at hn; simp [← hn]; simp [add_assoc]; rw [add_comm]
       have hcount : phaseProductCount B.toProg = 1 := by
         rw [PhaseBlock.toProg, phaseProductCount_append]
         simp [phaseProductCount_eq_zero_of_NoPhase, B.noPhase_pre, phaseProductCount]
       have hAnnAll :
           annotatePhaseTermsAux k n (B.toProg ++ oprest) =
-            annotatePhaseTermsAux k n B.toProg ++
-            annotatePhaseTermsAux k (n + 1) oprest := by
+            annotatePhaseTermsAux k n B.toProg ++ annotatePhaseTermsAux k (n + 1) oprest := by
         rw [annotatePhaseTermsAux_append]
         simp [hcount]
       have hAnnBlock :
           annotatePhaseTermsAux k n B.toProg =
-            annotatePhaseTermsAux k n B.arith ++
-            [{ op := .phaseProduct B.i, phaseTerm? := some ⟨n, hlt⟩ }] := by
+            annotatePhaseTermsAux k n B.arith ++ [{ op := .phaseProduct B.i, phaseTerm? := some ⟨n, hlt⟩ }] := by
         rw [PhaseBlock.toProg, annotatePhaseTermsAux_append]
         simp [annotatePhaseTermsAux, hlt,
           phaseProductCount_eq_zero_of_NoPhase, B.noPhase_pre]
@@ -238,8 +235,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
           B.run_pre
           hEnc with
         ⟨bMid, hArithEval, hArithEnc⟩
-      have hRunBlock : run? B.toProg σ2 = some B.σmid := by
-        simp[PhaseBlock.toProg, run?_append, B.run_pre, applyOp?]
+      have hRunBlock : run? B.toProg σ2 = some B.σmid := by simp [PhaseBlock.toProg, run?_append, B.run_pre, applyOp?]
       have hFitsTail :
           ∀ {τ : State k},
             (∃ pre rest, oprest = pre ++ rest ∧ run? pre B.σmid = some τ) →
@@ -254,7 +250,7 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from
         apply hFits
         refine ⟨B.toProg ++ pre, rest, ?_, ?_⟩
         · simp [PhaseBlock.toProg, hsplit, List.append_assoc]
-        · rw [run?_append, hRunBlock];simp[hrunpre]
+        · rw [run?_append, hRunBlock]; simp [hrunpre]
       have hSafeAddTail :
           ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
             oprest = pre ++ valid_ops.addScaled d s negSrc sh :: rest → d ≠ s := by
@@ -425,9 +421,8 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
         ⟨bMid', hArithEval', hArithSO'⟩
       have hbMid' : bMid' = bMid := by
         apply qs.ket_inj
-        simp [hArithEval] at hArithEval';simp[hArithEval']
-      have hArithSO : SameOutsideLayout qs dst bCur bMid := by
-        simpa [hbMid'] using hArithSO'
+        simp [hArithEval] at hArithEval'; simp [hArithEval']
+      have hArithSO : SameOutsideLayout qs dst bCur bMid := by simpa [hbMid'] using hArithSO'
       have hRunBlock : run? B.toProg σ2 = some B.σmid := by simp [PhaseBlock.toProg, run?_append, B.run_pre, applyOp?]
       have hFitsTail :
           ∀ {τ : State k},
@@ -459,21 +454,17 @@ lemma eval_compileAnnotatedOpsToSignedGateAux_of_blocks_from_sameOutside
       refine ⟨bNext, ?_, SameOutsideLayout.trans (qs := qs) hArithSO hTailSO⟩
       have hAnnAll :
           annotatePhaseTermsAux k n (B.toProg ++ oprest) =
-            annotatePhaseTermsAux k n B.toProg ++
-              annotatePhaseTermsAux k (n + 1) oprest := by
-        have hCountBlock : phaseProductCount B.toProg = 1 := by
-          simp [PhaseBlock.toProg, phaseProductCount, B.noPhase_pre]
+            annotatePhaseTermsAux k n B.toProg ++ annotatePhaseTermsAux k (n + 1) oprest := by
+        have hCountBlock : phaseProductCount B.toProg = 1 := by simp [PhaseBlock.toProg, phaseProductCount, B.noPhase_pre]
         have hAnnAll :
             annotatePhaseTermsAux k n (B.toProg ++ oprest) =
-              annotatePhaseTermsAux k n B.toProg ++
-                annotatePhaseTermsAux k (n + 1) oprest := by
+              annotatePhaseTermsAux k n B.toProg ++ annotatePhaseTermsAux k (n + 1) oprest := by
           rw [annotatePhaseTermsAux_append]
           simp [hCountBlock]
-        rw[hAnnAll]
+        rw [hAnnAll]
       have hAnnBlock :
           annotatePhaseTermsAux k n B.toProg =
-            annotatePhaseTermsAux k n B.arith ++
-              [{ op := .phaseProduct B.i, phaseTerm? := some ⟨n, hlt⟩ }] := by
+            annotatePhaseTermsAux k n B.arith ++ [{ op := .phaseProduct B.i, phaseTerm? := some ⟨n, hlt⟩ }] := by
         simp [PhaseBlock.toProg]
         rw [annotatePhaseTermsAux_append]
         simp [annotatePhaseTermsAux, hlt,
@@ -689,8 +680,7 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
         apply qs.ket_inj
         simp [hArithEval] at hArithEval'
         simp [hArithEval']
-      have hArithSO : SameOutsideLayout qs dst bCur bMid := by
-        simpa [hbMid'] using hArithSO'
+      have hArithSO : SameOutsideLayout qs dst bCur bMid := by simpa [hbMid'] using hArithSO'
       have hCtrlMid : RegEncoding.bit ctrl bMid = RegEncoding.bit ctrl b0 := by
         calc
           RegEncoding.bit ctrl bMid
@@ -732,16 +722,13 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_from_
         SameOutsideLayout.trans (qs := qs) hArithSO hTailSO⟩
       have hAnnAll :
           annotatePhaseTermsAux k n (B.toProg ++ oprest) =
-            annotatePhaseTermsAux k n B.toProg ++
-              annotatePhaseTermsAux k (n + 1) oprest := by
-        have hCountBlock : phaseProductCount B.toProg = 1 := by
-          simp [PhaseBlock.toProg, phaseProductCount, B.noPhase_pre]
+            annotatePhaseTermsAux k n B.toProg ++ annotatePhaseTermsAux k (n + 1) oprest := by
+        have hCountBlock : phaseProductCount B.toProg = 1 := by simp [PhaseBlock.toProg, phaseProductCount, B.noPhase_pre]
         rw [annotatePhaseTermsAux_append]
         simp [hCountBlock]
       have hAnnBlock :
           annotatePhaseTermsAux k n B.toProg =
-            annotatePhaseTermsAux k n B.arith ++
-              [{ op := .phaseProduct B.i, phaseTerm? := some ⟨n, hlt⟩ }] := by
+            annotatePhaseTermsAux k n B.arith ++ [{ op := .phaseProduct B.i, phaseTerm? := some ⟨n, hlt⟩ }] := by
         simp [PhaseBlock.toProg]
         rw [annotatePhaseTermsAux_append]
         simp [annotatePhaseTermsAux, hlt,

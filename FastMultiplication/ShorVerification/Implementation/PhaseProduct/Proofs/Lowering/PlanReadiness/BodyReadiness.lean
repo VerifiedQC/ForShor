@@ -61,12 +61,8 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
       ψ := by
   induction pre generalizing n ψ with
   | nil =>
-      simpa [
-        annotatePhaseTermsAux,
-        compileAnnotatedOpsToSignedGateAux,
-        planCompileAnnotatedOpsToSignedGateAux,
-        qs.eval_id
-      ] using hTail
+      simpa [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux,
+        planCompileAnnotatedOpsToSignedGateAux, qs.eval_id] using hTail
   | cons op rest ih =>
       have hNoRest : NoPhase rest := by
         intro i hi
@@ -91,11 +87,7 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                     (qs.eval
                       (Gate.ShiftL (dst.xslot i) m)
                       ψ))) := by
-            simpa [
-              annotatePhaseTermsAux,
-              compileAnnotatedOpsToSignedGateAux,
-              qs.eval_seq
-            ] using hTail
+            simpa [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux, qs.eval_seq] using hTail
           have hrest :=
             ih hNoRest n
               (qs.eval
@@ -104,26 +96,13 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                   (Gate.ShiftL (dst.xslot i) m)
                   ψ))
               hTail'
-          dsimp [
-            annotatePhaseTermsAux,
-            planCompileAnnotatedOpsToSignedGateAux
-          ]
+          dsimp [annotatePhaseTermsAux, planCompileAnnotatedOpsToSignedGateAux]
           refine ⟨trivial, trivial, ?_⟩
           change
-            PhaseLoweringReady
-              qs
-              _
-              (LowerGateClass.evalL
-                (qs := qs)
-                (LowGate.ShiftL (dst.zslot i) m)
-                (LowerGateClass.evalL
-                  (qs := qs)
-                  (LowGate.ShiftL (dst.xslot i) m)
-                  ψ))
-          rw [
-            LowerGateClass.evalL_shiftL,
-            LowerGateClass.evalL_shiftL
-          ]
+            PhaseLoweringReady qs _
+              (LowerGateClass.evalL (qs := qs) (LowGate.ShiftL (dst.zslot i) m)
+                (LowerGateClass.evalL (qs := qs) (LowGate.ShiftL (dst.xslot i) m) ψ))
+          rw [LowerGateClass.evalL_shiftL, LowerGateClass.evalL_shiftL]
           exact hrest
       | shiftR i m =>
           have hTail' :
@@ -144,11 +123,7 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                     (qs.eval
                       (Gate.ShiftR (dst.xslot i) m)
                       ψ))) := by
-            simpa [
-              annotatePhaseTermsAux,
-              compileAnnotatedOpsToSignedGateAux,
-              qs.eval_seq
-            ] using hTail
+            simpa [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux, qs.eval_seq] using hTail
           have hrest :=
             ih hNoRest n
               (qs.eval
@@ -157,26 +132,13 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                   (Gate.ShiftR (dst.xslot i) m)
                   ψ))
               hTail'
-          dsimp [
-            annotatePhaseTermsAux,
-            planCompileAnnotatedOpsToSignedGateAux
-          ]
+          dsimp [annotatePhaseTermsAux, planCompileAnnotatedOpsToSignedGateAux]
           refine ⟨trivial, trivial, ?_⟩
           change
-            PhaseLoweringReady
-              qs
-              _
-              (LowerGateClass.evalL
-                (qs := qs)
-                (LowGate.ShiftR (dst.zslot i) m)
-                (LowerGateClass.evalL
-                  (qs := qs)
-                  (LowGate.ShiftR (dst.xslot i) m)
-                  ψ))
-          rw [
-            LowerGateClass.evalL_shiftR,
-            LowerGateClass.evalL_shiftR
-          ]
+            PhaseLoweringReady qs _
+              (LowerGateClass.evalL (qs := qs) (LowGate.ShiftR (dst.zslot i) m)
+                (LowerGateClass.evalL (qs := qs) (LowGate.ShiftR (dst.xslot i) m) ψ))
+          rw [LowerGateClass.evalL_shiftR, LowerGateClass.evalL_shiftR]
           exact hrest
       | negate i =>
           have hTail' :
@@ -197,11 +159,7 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                     (qs.eval
                       (Gate.Negate (dst.xslot i))
                       ψ))) := by
-            simpa [
-              annotatePhaseTermsAux,
-              compileAnnotatedOpsToSignedGateAux,
-              qs.eval_seq
-            ] using hTail
+            simpa [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux, qs.eval_seq] using hTail
           have hrest :=
             ih hNoRest n
               (qs.eval
@@ -210,26 +168,13 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                   (Gate.Negate (dst.xslot i))
                   ψ))
               hTail'
-          dsimp [
-            annotatePhaseTermsAux,
-            planCompileAnnotatedOpsToSignedGateAux
-          ]
+          dsimp [annotatePhaseTermsAux, planCompileAnnotatedOpsToSignedGateAux]
           refine ⟨trivial, trivial, ?_⟩
           change
-            PhaseLoweringReady
-              qs
-              _
-              (LowerGateClass.evalL
-                (qs := qs)
-                (LowGate.Negate (dst.zslot i))
-                (LowerGateClass.evalL
-                  (qs := qs)
-                  (LowGate.Negate (dst.xslot i))
-                  ψ))
-          rw [
-            LowerGateClass.evalL_negate,
-            LowerGateClass.evalL_negate
-          ]
+            PhaseLoweringReady qs _
+              (LowerGateClass.evalL (qs := qs) (LowGate.Negate (dst.zslot i))
+                (LowerGateClass.evalL (qs := qs) (LowGate.Negate (dst.xslot i)) ψ))
+          rw [LowerGateClass.evalL_negate, LowerGateClass.evalL_negate]
           exact hrest
       | addScaled d s negSrc sh =>
           have hTail' :
@@ -256,11 +201,7 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                         (dst.xslot s)
                         negSrc sh)
                       ψ))) := by
-            simpa [
-              annotatePhaseTermsAux,
-              compileAnnotatedOpsToSignedGateAux,
-              qs.eval_seq
-            ] using hTail
+            simpa [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux, qs.eval_seq] using hTail
           have hrest :=
             ih hNoRest n
               (qs.eval
@@ -275,10 +216,7 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                     negSrc sh)
                   ψ))
               hTail'
-          dsimp [
-            annotatePhaseTermsAux,
-            planCompileAnnotatedOpsToSignedGateAux
-          ]
+          dsimp [annotatePhaseTermsAux, planCompileAnnotatedOpsToSignedGateAux]
           refine ⟨trivial, trivial, ?_⟩
           change
             PhaseLoweringReady
@@ -297,10 +235,7 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                     (dst.xslot s)
                     negSrc sh)
                   ψ))
-          rw [
-            LowerGateClass.evalL_addScaled,
-            LowerGateClass.evalL_addScaled
-          ]
+          rw [LowerGateClass.evalL_addScaled, LowerGateClass.evalL_addScaled]
           exact hrest
       | phaseProduct i =>
           exfalso
@@ -405,10 +340,8 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
         simp at hn
         omega
       let l : Fin (q k) := ⟨n, hlt⟩
-      let theta : Angle :=
-        phi * coeff l
-      have hnTail :
-          n + 1 + pts₂.length = q k := by
+      let theta : Angle := phi * coeff l
+      have hnTail : n + 1 + pts₂.length = q k := by
         simp at hn
         omega
       have hFitsArith :
@@ -680,10 +613,7 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
               (lowerGateRec
                 (recurse B.i theta))
               (qs.ket bMid)) := by
-        rw [
-          hLeafEval,
-          PhaseSemantics.eval_SignedPhaseProd_ket
-        ]
+        rw [hLeafEval, PhaseSemantics.eval_SignedPhaseProd_ket]
         exact
           PhaseLoweringReady.smul
             qs
@@ -800,8 +730,7 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
               k (n + 1) oprest)
             (qs.ket bCur)
             hAfterArith
-      have hCount :
-          phaseProductCount B.toProg = 1 := by
+      have hCount : phaseProductCount B.toProg = 1 := by
         rw [PhaseBlock.toProg, phaseProductCount_append]
         simp [
           phaseProductCount_eq_zero_of_NoPhase,
@@ -825,10 +754,7 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
               op := .phaseProduct B.i
               phaseTerm? := some l
             }] := by
-        rw [
-          PhaseBlock.toProg,
-          annotatePhaseTermsAux_append
-        ]
+        rw [PhaseBlock.toProg, annotatePhaseTermsAux_append]
         simp [
           annotatePhaseTermsAux,
           l,
@@ -899,12 +825,8 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
       ψ := by
   induction pre generalizing n ψ with
   | nil =>
-      simpa [
-        annotatePhaseTermsAux,
-        compileAnnotatedOpsToSignedGateAux,
-        planCompileAnnotatedOpsToCSignedGateAux,
-        qs.eval_id
-      ] using hTail
+      simpa [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux,
+        planCompileAnnotatedOpsToCSignedGateAux, qs.eval_id] using hTail
   | cons op rest ih =>
       have hNoRest : NoPhase rest := by
         intro i hi
@@ -929,11 +851,7 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                     (qs.eval
                       (Gate.ShiftL (dst.xslot i) m)
                       ψ))) := by
-            simpa [
-              annotatePhaseTermsAux,
-              compileAnnotatedOpsToSignedGateAux,
-              qs.eval_seq
-            ] using hTail
+            simpa [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux, qs.eval_seq] using hTail
           have hrest :=
             ih hNoRest n
               (qs.eval
@@ -942,26 +860,13 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                   (Gate.ShiftL (dst.xslot i) m)
                   ψ))
               hTail'
-          dsimp [
-            annotatePhaseTermsAux,
-            planCompileAnnotatedOpsToCSignedGateAux
-          ]
+          dsimp [annotatePhaseTermsAux, planCompileAnnotatedOpsToCSignedGateAux]
           refine ⟨trivial, trivial, ?_⟩
           change
-            PhaseLoweringReady
-              qs
-              _
-              (LowerGateClass.evalL
-                (qs := qs)
-                (LowGate.ShiftL (dst.zslot i) m)
-                (LowerGateClass.evalL
-                  (qs := qs)
-                  (LowGate.ShiftL (dst.xslot i) m)
-                  ψ))
-          rw [
-            LowerGateClass.evalL_shiftL,
-            LowerGateClass.evalL_shiftL
-          ]
+            PhaseLoweringReady qs _
+              (LowerGateClass.evalL (qs := qs) (LowGate.ShiftL (dst.zslot i) m)
+                (LowerGateClass.evalL (qs := qs) (LowGate.ShiftL (dst.xslot i) m) ψ))
+          rw [LowerGateClass.evalL_shiftL, LowerGateClass.evalL_shiftL]
           exact hrest
       | shiftR i m =>
           have hTail' :
@@ -982,11 +887,7 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                     (qs.eval
                       (Gate.ShiftR (dst.xslot i) m)
                       ψ))) := by
-            simpa [
-              annotatePhaseTermsAux,
-              compileAnnotatedOpsToSignedGateAux,
-              qs.eval_seq
-            ] using hTail
+            simpa [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux, qs.eval_seq] using hTail
           have hrest :=
             ih hNoRest n
               (qs.eval
@@ -995,26 +896,13 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                   (Gate.ShiftR (dst.xslot i) m)
                   ψ))
               hTail'
-          dsimp [
-            annotatePhaseTermsAux,
-            planCompileAnnotatedOpsToCSignedGateAux
-          ]
+          dsimp [annotatePhaseTermsAux, planCompileAnnotatedOpsToCSignedGateAux]
           refine ⟨trivial, trivial, ?_⟩
           change
-            PhaseLoweringReady
-              qs
-              _
-              (LowerGateClass.evalL
-                (qs := qs)
-                (LowGate.ShiftR (dst.zslot i) m)
-                (LowerGateClass.evalL
-                  (qs := qs)
-                  (LowGate.ShiftR (dst.xslot i) m)
-                  ψ))
-          rw [
-            LowerGateClass.evalL_shiftR,
-            LowerGateClass.evalL_shiftR
-          ]
+            PhaseLoweringReady qs _
+              (LowerGateClass.evalL (qs := qs) (LowGate.ShiftR (dst.zslot i) m)
+                (LowerGateClass.evalL (qs := qs) (LowGate.ShiftR (dst.xslot i) m) ψ))
+          rw [LowerGateClass.evalL_shiftR, LowerGateClass.evalL_shiftR]
           exact hrest
       | negate i =>
           have hTail' :
@@ -1035,11 +923,7 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                     (qs.eval
                       (Gate.Negate (dst.xslot i))
                       ψ))) := by
-            simpa [
-              annotatePhaseTermsAux,
-              compileAnnotatedOpsToSignedGateAux,
-              qs.eval_seq
-            ] using hTail
+            simpa [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux, qs.eval_seq] using hTail
           have hrest :=
             ih hNoRest n
               (qs.eval
@@ -1048,26 +932,13 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                   (Gate.Negate (dst.xslot i))
                   ψ))
               hTail'
-          dsimp [
-            annotatePhaseTermsAux,
-            planCompileAnnotatedOpsToCSignedGateAux
-          ]
+          dsimp [annotatePhaseTermsAux, planCompileAnnotatedOpsToCSignedGateAux]
           refine ⟨trivial, trivial, ?_⟩
           change
-            PhaseLoweringReady
-              qs
-              _
-              (LowerGateClass.evalL
-                (qs := qs)
-                (LowGate.Negate (dst.zslot i))
-                (LowerGateClass.evalL
-                  (qs := qs)
-                  (LowGate.Negate (dst.xslot i))
-                  ψ))
-          rw [
-            LowerGateClass.evalL_negate,
-            LowerGateClass.evalL_negate
-          ]
+            PhaseLoweringReady qs _
+              (LowerGateClass.evalL (qs := qs) (LowGate.Negate (dst.zslot i))
+                (LowerGateClass.evalL (qs := qs) (LowGate.Negate (dst.xslot i)) ψ))
+          rw [LowerGateClass.evalL_negate, LowerGateClass.evalL_negate]
           exact hrest
       | addScaled d s negSrc sh =>
           have hTail' :
@@ -1094,11 +965,7 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                         (dst.xslot s)
                         negSrc sh)
                       ψ))) := by
-            simpa [
-              annotatePhaseTermsAux,
-              compileAnnotatedOpsToSignedGateAux,
-              qs.eval_seq
-            ] using hTail
+            simpa [annotatePhaseTermsAux, compileAnnotatedOpsToSignedGateAux, qs.eval_seq] using hTail
           have hrest :=
             ih hNoRest n
               (qs.eval
@@ -1113,10 +980,7 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                     negSrc sh)
                   ψ))
               hTail'
-          dsimp [
-            annotatePhaseTermsAux,
-            planCompileAnnotatedOpsToCSignedGateAux
-          ]
+          dsimp [annotatePhaseTermsAux, planCompileAnnotatedOpsToCSignedGateAux]
           refine ⟨trivial, trivial, ?_⟩
           change
             PhaseLoweringReady
@@ -1135,10 +999,7 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                     (dst.xslot s)
                     negSrc sh)
                   ψ))
-          rw [
-            LowerGateClass.evalL_addScaled,
-            LowerGateClass.evalL_addScaled
-          ]
+          rw [LowerGateClass.evalL_addScaled, LowerGateClass.evalL_addScaled]
           exact hrest
       | phaseProduct i =>
           exfalso
@@ -1245,10 +1106,8 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
         simp at hn
         omega
       let l : Fin (q k) := ⟨n, hlt⟩
-      let theta : Angle :=
-        phi * coeff l
-      have hnTail :
-          n + 1 + pts₂.length = q k := by
+      let theta : Angle := phi * coeff l
+      have hnTail : n + 1 + pts₂.length = q k := by
         simp at hn
         omega
       have hFitsArith :
@@ -1643,8 +1502,7 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
               k (n + 1) oprest)
             (qs.ket bCur)
             hAfterArith
-      have hCount :
-          phaseProductCount B.toProg = 1 := by
+      have hCount : phaseProductCount B.toProg = 1 := by
         rw [PhaseBlock.toProg, phaseProductCount_append]
         simp [
           phaseProductCount_eq_zero_of_NoPhase,
@@ -1668,10 +1526,7 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
               op := .phaseProduct B.i
               phaseTerm? := some l
             }] := by
-        rw [
-          PhaseBlock.toProg,
-          annotatePhaseTermsAux_append
-        ]
+        rw [PhaseBlock.toProg, annotatePhaseTermsAux_append]
         simp [
           annotatePhaseTermsAux,
           l,
