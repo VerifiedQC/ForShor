@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Defs
+import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
 
 namespace Shor
@@ -135,11 +136,6 @@ def rec' {motive : (ψ : qs.State) → ShorLoweringCleanState qs x data work ψ 
     {ψ : qs.State} (h : ShorLoweringCleanState qs x data work ψ) : motive ψ h :=
   ThreeRegsCleanState.rec' zero ket add smul h
 end ShorLoweringCleanState
-
-/-- The complete physical ownership of an extendable register, viewed as one
-ordinary register for zero-workspace invariants. -/
-def ExtReg.ownedReg (e : ExtReg) : Reg :=
-  Reg.append e.active e.reserve e.active_reserve_disjoint
 
 /-- The exponent reserve together with all Step-3/4 scratch storage.  Keeping
 the ordinary auxiliary reserve as the third clean register lets the existing

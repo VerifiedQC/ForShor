@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
+import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
@@ -115,33 +116,6 @@ lemma norm_sq_sum_eq_sum_norm_sq_of_orthogonal_qpe {qs : QSemantics} {ι : Type 
         _ =
           ∑ i ∈ insert a s, ‖f i‖ ^ 2 := by
             rw [Finset.sum_insert ha]
-
-/-- Writing the same register twice keeps only the last value. -/
-lemma writeNat_overwrite_same_reg {Basis : Type u} [RegEncoding Basis] (r : Reg) (v w : ℕ) (b : Basis) :
-    RegEncoding.writeNat r v (RegEncoding.writeNat r w b) =
-    RegEncoding.writeNat r v b := by
-  apply RegEncoding.basis_ext
-  intro q
-  by_cases hqin : q ∈ r.qubits
-  · exact
-      RegEncoding.bit_writeNat_in
-        (r := r)
-        (v := v)
-        (b₁ := RegEncoding.writeNat r w b)
-        (b₂ := b)
-        (q := q)
-        hqin
-  · rw [
-      RegEncoding.bit_writeNat_out
-        (r := r) (v := v) (b := RegEncoding.writeNat r w b)
-        (q := q) hqin,
-      RegEncoding.bit_writeNat_out
-        (r := r) (v := v) (b := b)
-        (q := q) hqin,
-      RegEncoding.bit_writeNat_out
-        (r := r) (v := w) (b := b)
-        (q := q) hqin
-    ]
 
 /--
 The norm of a ket expansion depends only on its coefficients.

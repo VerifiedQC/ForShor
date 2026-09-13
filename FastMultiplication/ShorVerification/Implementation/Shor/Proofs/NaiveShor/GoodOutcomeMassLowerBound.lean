@@ -1,5 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Preliminaries
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.PhaseEstimation
+import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
 import Mathlib.Data.Nat.Totient
 
 

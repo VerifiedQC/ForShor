@@ -4,6 +4,7 @@ import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Model
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Step1QPE
+import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
 
 open Shor

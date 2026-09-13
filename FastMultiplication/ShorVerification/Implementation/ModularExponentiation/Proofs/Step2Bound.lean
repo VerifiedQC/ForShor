@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Step1Bound
+import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
