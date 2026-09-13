@@ -7,8 +7,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Toom
 Interpolation and phase-coefficient definitions (`interpMatrix`,
 `phaseCoeffFromPts`, `cramerCoeffFromPts`, ...), the canonical interpolation
 points (`alternatingPoint`, `genInterpolationPoints`), and the bridge to the
-pure Toom-Cook math file (`GoodToomCookPoints`, `toMathPoint`). Split out of
-`DefsCore.lean` and `Proofs/Compiler/Support.lean`.
+pure Toom-Cook math file (`GoodToomCookPoints`, `toMathPoint`).
 -/
 
 namespace Shor

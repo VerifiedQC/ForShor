@@ -6,9 +6,7 @@ import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemantic
 
 The `PhaseProdUsing` / `CPhaseProdUsing` semantic bridge theorems: on a clean
 workspace, the unsigned/controlled phase-product macros contribute exactly the
-expected phase and restore the basis state. Split out of
-`Implementation.Semantics.GateSemanticsLemmas` because these two theorems are
-the only phase-product-specific facts in that file.
+expected phase and restore the basis state.
 -/
 
 namespace Shor

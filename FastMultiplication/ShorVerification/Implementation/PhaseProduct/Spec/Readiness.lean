@@ -8,10 +8,9 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Clea
 phase-product lowering plan on a state. Lowering plans contain primitive low
 gates and recursive phase-product calls; primitive gates need no semantic
 precondition, while recursive nodes require a clean recursive workspace
-before the child plan runs and then readiness for that child plan. Split out
-of `Proofs/Lowering/PlanSemantics.lean` because `QFT/Defs.lean`
-needs this definition to *define* `QFTLoweringReady`, and definitions must
-not live in `Proofs/`.
+before the child plan runs and then readiness for that child plan.
+`QFT/Spec/Readiness.lean` needs this definition directly, to define its own
+`QFTLoweringReady`.
 -/
 
 namespace Shor

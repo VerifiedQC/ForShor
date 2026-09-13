@@ -14,8 +14,7 @@ parameters, the abstract `ExtReg` split interface (`PhaseSplitLayout`,
 `Gate.PhaseProductLayout`), and the concrete growth/reserve bookkeeping used to
 go from an initial split layout to a widened target layout
 (`initSignedLayoutState`, `targetSignedLayoutState`, `growExtRegTo`,
-`ExtReg.CanGrowTo`, `LayoutState.CanGrowToNeeds`, `ReserveBudget`). Split out
-of `DefsCore.lean`.
+`ExtReg.CanGrowTo`, `LayoutState.CanGrowToNeeds`, `ReserveBudget`).
 -/
 
 namespace Shor

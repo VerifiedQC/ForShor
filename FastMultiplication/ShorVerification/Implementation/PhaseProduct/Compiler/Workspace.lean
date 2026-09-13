@@ -8,9 +8,8 @@ friends), the static workspace-sufficiency predicates
 (`SignedRecursiveWorkspaceOK`, `CSignedRecursiveWorkspaceOK`), the concrete
 reserve-budget construction (`PhaseSplitLayout.ofBudget`,
 `ReserveBudget.ofRequirements`), and the canonical deterministic recursive
-step (`CanonicalSignedStep`, `canonicalSignedStep`). Split out of
-`DefsCore.lean`. This is the top of the `Compiler/*` chain: everything that
-used to import `DefsCore` now imports this file.
+step (`CanonicalSignedStep`, `canonicalSignedStep`). Top of the `Compiler/*`
+chain.
 -/
 
 namespace Shor

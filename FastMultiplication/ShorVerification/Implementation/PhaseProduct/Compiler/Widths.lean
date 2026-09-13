@@ -6,7 +6,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.
 Width scanning over a source operation program (`scanNeededWidths`), the
 recursion-size parameters (`phaseInputSize`, `nextSignedWidth`), and the
 lemmas connecting a scan's result back to the concrete layout it was scanned
-from. Split out of `DefsCore.lean`.
+from.
 -/
 
 namespace Shor

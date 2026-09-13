@@ -9,7 +9,7 @@ The annotated-operation compiler: annotating phase-product leaves with
 interpolation terms (`AnnotatedOp`, `annotatePhaseTermsAux`), the per-chunk
 allocation/deallocation gates, and the full signed/controlled-signed
 compilers (`compileOpsToSignedGate`, `compileOpsToCSignedGate`,
-`controlPhaseLeaves`). Split out of `DefsCore.lean`.
+`controlPhaseLeaves`).
 -/
 
 namespace Shor

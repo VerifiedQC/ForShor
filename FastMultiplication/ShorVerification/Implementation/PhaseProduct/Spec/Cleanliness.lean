@@ -9,10 +9,7 @@ compiler-workspace cleanliness during a recursive compile step
 (`CompilerWorkspaceOK`, `CleanWorkspaceState`), reserve cleanliness for a
 layout (`LayoutReserveCleanBasis`, `LayoutReserveCleanState`), and cleanliness
 of the complete reserves (`RecursiveWorkspaceCleanState`,
-`SignedRecursiveWorkspaceStateOK`, `CSignedRecursiveWorkspaceStateOK`). Split
-out of `DefsCore.lean`, `Proofs/Compiler/Support.lean`, and
-`Proofs/Lowering/Linearity.lean` because these are definitions, not
-proofs, and `PhaseLoweringReady`/`Assertions.lean` need them.
+`SignedRecursiveWorkspaceStateOK`, `CSignedRecursiveWorkspaceStateOK`).
 -/
 
 namespace Shor
