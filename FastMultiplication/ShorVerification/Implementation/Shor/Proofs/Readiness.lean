@@ -1,4 +1,5 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.Defs
+import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.Workspace
+import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFinding
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Budgets
 import FastMultiplication.ShorVerification.Implementation.Compilation.Correctness

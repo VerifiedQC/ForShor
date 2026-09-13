@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.Defs
+import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Programs.WithProduct
 import FastMultiplication.ShorVerification.Implementation.GateCount.PhaseProduct.Lemmas

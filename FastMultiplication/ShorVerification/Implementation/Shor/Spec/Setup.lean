@@ -1,5 +1,8 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.Defs
+import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.Workspace
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Cleanliness
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Precision
 
 namespace Shor
 
