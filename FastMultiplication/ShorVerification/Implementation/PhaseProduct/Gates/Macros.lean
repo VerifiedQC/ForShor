@@ -107,5 +107,38 @@ def CPhaseProdUsing (ctrl : ℕ) (phi : Angle) (x z : Reg) (ws : PhaseProdWorksp
   Gate.zeroDealloc zext 1 ;;
   Gate.zeroDealloc xext 1
 
+/-- Build an unsigned PhaseProduct workspace from two growable, owned-disjoint extended registers. -/
+def PhaseProdWorkspace.ofExtRegs
+    (x z : ExtReg) (hx : x.CanGrow 1) (hz : z.CanGrow 1) (howned : ExtReg.OwnedDisjoint x z) :
+    Gate.PhaseProdWorkspace x.active z.active := by
+  have hOwned : ∀ q, q ∈ x.ownedQubits → q ∈ z.ownedQubits → False := by
+    simpa [ExtReg.OwnedDisjoint, List.disjoint_left] using howned
+  refine {
+    xReserve := x.reserve
+    zReserve := z.reserve
+    x_can_grow := ?_
+    z_can_grow := ?_
+    xz_disjoint := ?_
+    x_reserve_disjoint := x.active_reserve_disjoint
+    z_reserve_disjoint := z.active_reserve_disjoint
+    xReserve_not_z := ?_
+    zReserve_not_x := ?_
+    reserve_disjoint := ?_
+  }
+  · simpa [ExtReg.CanGrow, ExtReg.capacity] using hx
+  · simpa [ExtReg.CanGrow, ExtReg.capacity] using hz
+  · rw [Disjoint, List.disjoint_left]
+    intro q hqx hqz
+    exact hOwned q (by simp [ExtReg.ownedQubits, hqx]) (by simp [ExtReg.ownedQubits, hqz])
+  · rw [Disjoint, List.disjoint_left]
+    intro q hqx hqz
+    exact hOwned q (by simp [ExtReg.ownedQubits, hqx]) (by simp [ExtReg.ownedQubits, hqz])
+  · rw [Disjoint, List.disjoint_left]
+    intro q hqz hqx
+    exact hOwned q (by simp [ExtReg.ownedQubits, hqx]) (by simp [ExtReg.ownedQubits, hqz])
+  · rw [Disjoint, List.disjoint_left]
+    intro q hqx hqz
+    exact hOwned q (by simp [ExtReg.ownedQubits, hqx]) (by simp [ExtReg.ownedQubits, hqz])
+
 end Gate
 end Shor

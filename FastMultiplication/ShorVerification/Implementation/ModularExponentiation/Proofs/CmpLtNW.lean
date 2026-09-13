@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.CmpLtNW
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Decomposition
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Lemmas
+import FastMultiplication.ShorVerification.Implementation.Semantics.QftPhase
 
 /-!
 # Exact correctness of the concrete `CmpLtNW` circuit
