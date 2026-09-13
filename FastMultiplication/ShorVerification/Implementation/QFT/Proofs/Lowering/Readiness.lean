@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.QFT.Split
-import FastMultiplication.ShorVerification.Implementation.QFT.Workspace
+import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.Workspace
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.Plan
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.PlanBuilders
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering.PlanSemantics

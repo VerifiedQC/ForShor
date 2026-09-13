@@ -5,8 +5,8 @@ set -euo pipefail
 root=FastMultiplication/ShorVerification/Implementation/QFT
 prefix=FastMultiplication.ShorVerification.Implementation.QFT.
 layer() { case "$1" in
-  Split) echo 1;; Workspace) echo 2;; Lowering*) echo 3;;
-  Spec*) echo 4;; Proofs*) echo 5;; Main) echo 6;; *) echo 9;; esac; }
+  Split) echo 1;; Lowering*) echo 2;;
+  Spec*) echo 3;; Proofs*) echo 4;; Main) echo 5;; *) echo 9;; esac; }
 status=0
 while IFS= read -r f; do
   mod=${f#$root/}; mod=${mod%.lean}; mod=${mod//\//.}

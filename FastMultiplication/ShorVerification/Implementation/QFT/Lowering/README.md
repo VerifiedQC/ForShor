@@ -1,8 +1,33 @@
 # `Lowering/`
 
-Turns a recursive QFT split into a finite, structurally-checked *plan* for
-lowering it to primitive `LowGate`s, and provides the public entry points
-that build such a plan automatically from a workspace assumption.
+The recursive workspace budget model, and turning a recursive QFT split into
+a finite, structurally-checked *plan* for lowering it to primitive
+`LowGate`s, with public entry points that build such a plan automatically
+from a reserve-workspace assumption. `Workspace.lean` and `Plan.lean` are
+independent siblings (both depend only on `Split.lean`); `PlanBuilders.lean`
+builds on both.
+
+## `Workspace.lean`
+
+- **`qftWorkspaceNeed`** — recursively computes how large the two global
+  reserve pools (x-side and z-side) must be for a register of a given width,
+  accounting for the middle phase product and both recursive QFT calls at
+  every level.
+- **`qftXWork`** / **`qftZWork`** — the two concrete slices of an `ExtReg`'s
+  inactive register assigned to those pools (a `take`/`drop` split).
+- **`QFTReserveOK`** — the public precondition: the inactive part of the
+  supplied register is large enough to hold both pools.
+- **`QFTWorkspaceOK`** — the internal static condition on an already-selected
+  pair of workspace registers (disjoint from the data register, disjoint from
+  each other, and each large enough), derived from `QFTReserveOK` by
+  **`QFTReserveOK.explicitWorkspace`**.
+- **`QFTWorkspaceOK.phaseWorkspace`** — constructs the concrete unsigned
+  phase-product workspace (`Gate.PhaseProdWorkspace`) needed at the current
+  split node from the two root pools; **`.signedWorkspaceOK`** shows that
+  workspace is also large enough for the *signed* phase-product lowering.
+- **`QFTWorkspaceOK.left`** / **`.right`** — the same root workspace condition
+  remains valid, unchanged, for the left/right recursive QFT calls (both
+  reuse the same two pools).
 
 ## `Plan.lean`
 

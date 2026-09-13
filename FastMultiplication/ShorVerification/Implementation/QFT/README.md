@@ -16,17 +16,19 @@ of its own).
 ## Layer order
 
 ```
-Split  <  Workspace  <  Lowering  <  Spec  <  Proofs  <  Main
+Split  <  Lowering  <  Spec  <  Proofs  <  Main
 ```
 
-A file may import its own folder or any folder to its left.
+A file may import its own folder or any folder to its left. Within
+`Lowering/`, `Workspace.lean` and `Plan.lean` are independent siblings (both
+depend only on `Split.lean`); `PlanBuilders.lean` builds on both.
 
 Reading order for newcomers: start at `Main.lean`, then follow imports
 *backwards* — `Spec/Assertions.lean` for what is claimed,
 `Proofs/Lowering/Readiness.lean` for how the claim is proved, and outward
-from there into `Proofs/Decomposition.lean`, `Lowering/`, `Workspace.lean`,
-`Split.lean` as needed. The one-line descriptions below are grouped in
-dependency order (lowest layer first) to match that traversal.
+from there into `Proofs/Decomposition.lean`, `Lowering/`, `Split.lean` as
+needed. The one-line descriptions below are grouped in dependency order
+(lowest layer first) to match that traversal.
 
 ## `Split.lean` — register-splitting convention
 
@@ -34,16 +36,11 @@ dependency order (lowest layer first) to match that traversal.
 |---|---|
 | `Split.lean` | Fixes the low/right–high/left split convention (`splitM`, `halfSplitPoint`, `leftReg`, `rightReg`) and the small containment/disjointness facts (`leftReg_mem_parent`, `rightReg_mem_parent`, `disjoint_left_right`) used whenever the recursion reuses the same workspace pools on both halves. |
 
-## `Workspace.lean` — the recursive workspace budget model
+## `Lowering/` — the workspace budget model and turning a recursive QFT plan into a circuit
 
 | File | Purpose |
 |---|---|
 | `Workspace.lean` | `qftWorkspaceNeed`: how large the two global reserve pools (x-side, z-side) must be for a register of a given width, accounting for the middle phase product and both recursive QFT calls. The public precondition on a single `ExtReg` (`QFTReserveOK`), the internal static condition on an already-selected pair of workspace registers (`QFTWorkspaceOK`), the monotonicity bounds letting a child reuse the same pools, and the constructions (`QFTWorkspaceOK.phaseWorkspace`, `.signedWorkspaceOK`, `.left`, `.right`) that carve those pools for the phase-product macro and for each recursive child. |
-
-## `Lowering/` — turning a recursive QFT plan into a circuit
-
-| File | Purpose |
-|---|---|
 | `Plan.lean` | `QFTLoweringPlan`: the finite certificate carried by the public lowerer — empty/singleton base cases and a recursive split case (carrying the phase-product workspace and subplan for the middle macro). `lowerQFTPlan`: the interpreter erasing such a plan to a `LowGate`. |
 | `PlanBuilders.lean` | Builds plans rather than just interpreting them: `standardPhaseProdUsingPlan` (the canonical unsigned phase-product subplan used at each split, built by zero-extending both operands, lowering the resulting signed phase product, then deallocating the extensions), the two public plan constructors `standardQFTLoweringPlan` (from explicit workspace registers satisfying `QFTWorkspaceOK`) and `reserveQFTLoweringPlan` (the bridge from the public reserve precondition `QFTReserveOK` to a concrete plan, deriving its workspace registers from `qftXWork`/`qftZWork`), and `lowerQFT` (the final public constructor — the canonical lowered QFT circuit, its workspace selected deterministically from the reserve precondition rather than supplied separately). |
 
