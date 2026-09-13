@@ -5,7 +5,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Main
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ConstArithmeticLowering
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ConstArithmetic
 
 namespace Shor
 
