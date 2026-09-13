@@ -31,34 +31,14 @@ def halfSplitPoint (r : Reg) : SplitPoint r :=
 def leftReg  (r : Reg) : Reg := splitLeft r (halfSplitPoint r)
 def rightReg (r : Reg) : Reg := splitRight r (halfSplitPoint r)
 
-lemma leftReg_mem_parent
-    (r : Reg)
-    {q : ℕ}
-    (hq : q ∈ (leftReg r).qubits) :
-    q ∈ r.qubits := by
-  simpa [
-    leftReg,
-    halfSplitPoint,
-    splitM,
-    splitLeft,
-    Reg.take
-  ] using List.mem_of_mem_take hq
+lemma leftReg_mem_parent (r : Reg) {q : ℕ} (hq : q ∈ (leftReg r).qubits) : q ∈ r.qubits := by
+  simpa [leftReg, halfSplitPoint, splitM, splitLeft, Reg.take] using List.mem_of_mem_take hq
 
-lemma rightReg_mem_parent
-    (r : Reg)
-    {q : ℕ}
-    (hq : q ∈ (rightReg r).qubits) :
-    q ∈ r.qubits := by
-  simpa [
-    rightReg,
-    halfSplitPoint,
-    splitM,
-    splitRight,
-    Reg.drop
-  ] using List.mem_of_mem_drop hq
+lemma rightReg_mem_parent (r : Reg) {q : ℕ} (hq : q ∈ (rightReg r).qubits) : q ∈ r.qubits := by
+  simpa [rightReg, halfSplitPoint, splitM, splitRight, Reg.drop] using List.mem_of_mem_drop hq
 
 lemma disjoint_left_right (r : Reg) :
-  Disjoint (leftReg r) (rightReg r) := by
+    Disjoint (leftReg r) (rightReg r) := by
   simpa [leftReg, rightReg] using
     (splitLeft_splitRight_disjoint (r := r) (m := halfSplitPoint r))
 

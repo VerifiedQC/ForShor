@@ -28,8 +28,7 @@ end Gate.PhaseProdWorkspace
 The linear subspace in which both portions of the inactive QFT register used
 by the concrete lowering are zero.
 -/
-abbrev QFTWorkspaceCleanState
-    (qs : QSemantics) [RegEncoding qs.Basis] (xWork zWork : Reg) :
+abbrev QFTWorkspaceCleanState (qs : QSemantics) [RegEncoding qs.Basis] (xWork zWork : Reg) :
     qs.State → Prop :=
   CleanClosure (fun b => FreshZero xWork b ∧ FreshZero zWork b)
 
@@ -45,12 +44,7 @@ inactive part of the supplied `ExtReg` is large enough and that the two slices
 selected by the lowering are initially zero.
 -/
 structure QFTWorkspaceStateOK
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg)
-    (ψ : qs.State) :
+    (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ} (ops : Prog k) (r : ExtReg) (ψ : qs.State) :
     Prop where
   static : QFTReserveOK ops r
   clean : QFTWorkspaceCleanState qs (qftXWork ops r) (qftZWork ops r) ψ

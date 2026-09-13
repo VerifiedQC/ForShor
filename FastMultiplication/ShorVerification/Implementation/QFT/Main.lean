@@ -15,23 +15,11 @@ open Operations
 
 /-- Main QFT lowering theorem, packaged as the public assertion. -/
 theorem lowerQFT_correct
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    [LowerGateClass qs]
-    (k : ℕ)
-    (hk : 1 < k)
-    (ops : Prog k)
-    (r : ExtReg) :
+    (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : ExtReg) :
     LowerQFTCorrect qs k hk ops r := by
   intro ψ hworkspace hC hRun
-  exact evalL_lowerQFT
-      (qs := qs)
-      (k := k)
-      (hk := hk)
-      (ops := ops)
-      (r := r)
-      (ψ := ψ)
-      hworkspace hC hRun
+  exact evalL_lowerQFT (qs := qs) (k := k) (hk := hk) (ops := ops) (r := r) (ψ := ψ)
+    hworkspace hC hRun
 
 end Shor

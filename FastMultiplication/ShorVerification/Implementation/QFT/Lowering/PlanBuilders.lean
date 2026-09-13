@@ -31,10 +31,7 @@ open scoped BigOperators
 The recursive signed-phase-product input size used by
 `Gate.PhaseProdUsing`.
 -/
-def phaseProdUsingInputSize
-    {x z : Reg}
-    (ws : Gate.PhaseProdWorkspace x z) :
-    ℕ :=
+def phaseProdUsingInputSize {x z : Reg} (ws : Gate.PhaseProdWorkspace x z) : ℕ :=
   phaseInputSize (ws.xExt.grow 1) (ws.zExt.grow 1)
 
 /--
@@ -49,14 +46,9 @@ The plan follows the definition of `Gate.PhaseProdUsing`:
 5. deallocate the `x` extension.
 -/
 def standardPhaseProdUsingPlan
-    (k : ℕ)
-    (hk : 1 < k)
-    (ops : Prog k)
-    (phi : Angle)
-    {x z : Reg}
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (phi : Angle) {x z : Reg}
     (ws : Gate.PhaseProdWorkspace x z)
-    (hworkspace :
-      SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1)) :
+    (hworkspace : SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1)) :
     StandardPhaseLoweringPlan k hk ops (phaseProdUsingInputSize ws)
       (Gate.PhaseProdUsing phi x z ws) := by
   let initSize : ℕ := phaseProdUsingInputSize ws
@@ -65,52 +57,38 @@ def standardPhaseProdUsingPlan
   let xSigned : ExtReg := xExt.grow 1
   let zSigned : ExtReg := zExt.grow 1
 
-  let extendXPlan :
-      StandardPhaseLoweringPlan k hk ops initSize (Gate.zeroExtend xExt 1) :=
+  let extendXPlan : StandardPhaseLoweringPlan k hk ops initSize (Gate.zeroExtend xExt 1) :=
     PhaseLoweringPlan.zeroExtend initSize xExt 1
 
-  let extendZPlan :
-      StandardPhaseLoweringPlan k hk ops initSize (Gate.zeroExtend zExt 1) :=
+  let extendZPlan : StandardPhaseLoweringPlan k hk ops initSize (Gate.zeroExtend zExt 1) :=
     PhaseLoweringPlan.zeroExtend initSize zExt 1
 
   let signedPlan :
-      StandardPhaseLoweringPlan k hk ops initSize
-        (Gate.SignedPhaseProd phi xSigned zSigned) := by
+      StandardPhaseLoweringPlan k hk ops initSize (Gate.SignedPhaseProd phi xSigned zSigned) := by
     have hsize : phaseInputSize xSigned zSigned = initSize := by rfl
     simpa [hsize] using
       standardSignedPhaseLoweringPlan k hk phi xSigned zSigned ops hworkspace
 
-  let deallocZPlan :
-      StandardPhaseLoweringPlan k hk ops initSize (Gate.zeroDealloc zExt 1) :=
+  let deallocZPlan : StandardPhaseLoweringPlan k hk ops initSize (Gate.zeroDealloc zExt 1) :=
     PhaseLoweringPlan.zeroDealloc initSize zExt 1
 
-  let deallocXPlan :
-      StandardPhaseLoweringPlan k hk ops initSize (Gate.zeroDealloc xExt 1) :=
+  let deallocXPlan : StandardPhaseLoweringPlan k hk ops initSize (Gate.zeroDealloc xExt 1) :=
     PhaseLoweringPlan.zeroDealloc initSize xExt 1
 
   let completePlan :
       StandardPhaseLoweringPlan k hk ops initSize
-        (
-          Gate.zeroExtend xExt 1 ;;
+        (Gate.zeroExtend xExt 1 ;;
           Gate.zeroExtend zExt 1 ;;
           Gate.SignedPhaseProd phi xSigned zSigned ;;
           Gate.zeroDealloc zExt 1 ;;
-          Gate.zeroDealloc xExt 1
-        ) :=
+          Gate.zeroDealloc xExt 1) :=
     PhaseLoweringPlan.seq extendXPlan
       (PhaseLoweringPlan.seq extendZPlan
         (PhaseLoweringPlan.seq signedPlan
           (PhaseLoweringPlan.seq deallocZPlan deallocXPlan)))
 
-  simpa [
-    Gate.PhaseProdUsing,
-    phaseProdUsingInputSize,
-    initSize,
-    xExt,
-    zExt,
-    xSigned,
-    zSigned
-  ] using completePlan
+  simpa [Gate.PhaseProdUsing, phaseProdUsingInputSize, initSize, xExt, zExt, xSigned, zSigned]
+    using completePlan
 
 /-! =========================================================
     Canonical plans and public lowerers
@@ -125,10 +103,7 @@ Build the standard recursive QFT plan from explicit x-side and z-side
 workspace pools satisfying `QFTWorkspaceOK`.
 -/
 def standardQFTLoweringPlan
-    (k : ℕ)
-    (hk : 1 < k)
-    (ops : Prog k)
-    (r xWork zWork : Reg)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (r xWork zWork : Reg)
     (hworkspace : QFTWorkspaceOK ops r xWork zWork) :
     QFTLoweringPlan k hk ops r := by
   by_cases hzero : regSize r = 0
@@ -150,9 +125,8 @@ def standardQFTLoweringPlan
       have hleftWorkspace : QFTWorkspaceOK ops (leftReg r) xWork zWork :=
         hworkspace.left hlarge
 
-      let phasePlan :
-          StandardPhaseLoweringPlan k hk ops (phaseProdUsingInputSize ws)
-            (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws) :=
+      let phasePlan : StandardPhaseLoweringPlan k hk ops (phaseProdUsingInputSize ws)
+          (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws) :=
         standardPhaseProdUsingPlan k hk ops (qftPhi (regSize r)) ws hphaseWorkspace
 
       let rightPlan : QFTLoweringPlan k hk ops (rightReg r) :=
@@ -180,11 +154,7 @@ the bridge from the public reserve predicate `QFTReserveOK` to the recursive
 QFT plan used by the low-level lowerer.
 -/
 def reserveQFTLoweringPlan
-    (k : ℕ)
-    (hk : 1 < k)
-    (ops : Prog k)
-    (r : ExtReg)
-    (hworkspace : QFTReserveOK ops r) :
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : ExtReg) (hworkspace : QFTReserveOK ops r) :
     QFTLoweringPlan k hk ops r.active :=
   standardQFTLoweringPlan k hk ops r.active (qftXWork ops r) (qftZWork ops r)
     hworkspace.explicitWorkspace
@@ -193,12 +163,7 @@ def reserveQFTLoweringPlan
 The canonical lowered QFT. Its workspace is selected deterministically from
 `r.reserve`; callers do not supply separate physical workspace registers.
 -/
-def lowerQFT
-    (k : ℕ)
-    (hk : 1 < k)
-    (ops : Prog k)
-    (r : ExtReg)
-    (hworkspace : QFTReserveOK ops r) :
+def lowerQFT (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : ExtReg) (hworkspace : QFTReserveOK ops r) :
     LowGate :=
   lowerQFTPlan (reserveQFTLoweringPlan k hk ops r hworkspace)
 

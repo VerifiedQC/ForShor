@@ -32,26 +32,11 @@ The phase plan is intentionally explicit.  This is the point at which a caller
 chooses either a base-case signed phase product or a recursive implementation
 with concrete reserve layouts.
 -/
-inductive QFTLoweringPlan
-    (k : ℕ)
-    (hk : 1 < k)
-    (ops : Prog k) :
-    Reg → Type
-
-  | empty
-      (r : Reg)
-      (hsize : regSize r = 0) :
-      QFTLoweringPlan k hk ops r
-
-  | singleton
-      (r : Reg)
-      (hsize : regSize r = 1) :
-      QFTLoweringPlan k hk ops r
-
+inductive QFTLoweringPlan (k : ℕ) (hk : 1 < k) (ops : Prog k) : Reg → Type
+  | empty (r : Reg) (hsize : regSize r = 0) : QFTLoweringPlan k hk ops r
+  | singleton (r : Reg) (hsize : regSize r = 1) : QFTLoweringPlan k hk ops r
   | split
-      (r : Reg)
-      (hsize : 2 ≤ regSize r)
-      (ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r))
+      (r : Reg) (hsize : 2 ≤ regSize r) (ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r))
       (phaseInitSize : ℕ)
       (phasePlan :
         StandardPhaseLoweringPlan k hk ops
@@ -60,12 +45,7 @@ inductive QFTLoweringPlan
       (leftPlan : QFTLoweringPlan k hk ops (leftReg r)) :
       QFTLoweringPlan k hk ops r
 
-def lowerQFTPlan
-    {k : ℕ}
-    {hk : 1 < k}
-    {ops : Prog k}
-    {r : Reg}
-    (plan : QFTLoweringPlan k hk ops r) :
+def lowerQFTPlan {k : ℕ} {hk : 1 < k} {ops : Prog k} {r : Reg} (plan : QFTLoweringPlan k hk ops r) :
     LowGate :=
   match plan with
   | .empty r hsize => LowGate.id

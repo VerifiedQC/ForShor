@@ -25,10 +25,7 @@ open scoped BigOperators
     for the middle phase product and both recursive QFT calls.
 ========================================================= -/
 
-def qftWorkspaceNeed
-    {k : ℕ}
-    (ops : Prog k) :
-    ℕ → ℕ × ℕ
+def qftWorkspaceNeed {k : ℕ} (ops : Prog k) : ℕ → ℕ × ℕ
   | 0 => (0, 0)
   | 1 => (0, 0)
   | n + 2 =>
@@ -38,10 +35,8 @@ def qftWorkspaceNeed
       let phaseNeed := RecursivePhaseWorkspace.reserveNeed ops (leftWidth + 1) (rightWidth + 1)
       let leftNeed := qftWorkspaceNeed ops leftWidth
       let rightNeed := qftWorkspaceNeed ops rightWidth
-      (
-        max (1 + phaseNeed.1) (max leftNeed.1 rightNeed.1),
-        max (1 + phaseNeed.2) (max leftNeed.2 rightNeed.2)
-      )
+      (max (1 + phaseNeed.1) (max leftNeed.1 rightNeed.1),
+        max (1 + phaseNeed.2) (max leftNeed.2 rightNeed.2))
 termination_by n => n
 
 /-! =========================================================
@@ -55,22 +50,14 @@ termination_by n => n
 /--
 The prefix of the inactive part of `r` assigned to the x-side workspace.
 -/
-def qftXWork
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg) :
-    Reg :=
+def qftXWork {k : ℕ} (ops : Prog k) (r : ExtReg) : Reg :=
   r.reserve.take (qftWorkspaceNeed ops r.width).1
 
 /--
 The part of the inactive register following `qftXWork`, assigned to the
 z-side workspace.
 -/
-def qftZWork
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg) :
-    Reg :=
+def qftZWork {k : ℕ} (ops : Prog k) (r : ExtReg) : Reg :=
   let xNeed := (qftWorkspaceNeed ops r.width).1
   let zNeed := (qftWorkspaceNeed ops r.width).2
   (r.reserve.drop xNeed).take zNeed
@@ -79,11 +66,7 @@ def qftZWork
 The inactive part of the QFT register is large enough to hold both concrete
 workspace pools used by the recursive lowering.
 -/
-structure QFTReserveOK
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg) :
-    Prop where
+structure QFTReserveOK {k : ℕ} (ops : Prog k) (r : ExtReg) : Prop where
   reserve_large_enough :
     (qftWorkspaceNeed ops r.width).1 + (qftWorkspaceNeed ops r.width).2 ≤ r.capacity
 
@@ -92,11 +75,7 @@ Internal static condition for an already-selected pair of workspace
 registers.  The public QFT lowering derives this condition from
 `QFTReserveOK`.
 -/
-structure QFTWorkspaceOK
-    {k : ℕ}
-    (ops : Prog k)
-    (r xWork zWork : Reg) :
-    Prop where
+structure QFTWorkspaceOK {k : ℕ} (ops : Prog k) (r xWork zWork : Reg) : Prop where
   data_x_disjoint : Disjoint r xWork
   data_z_disjoint : Disjoint r zWork
   work_disjoint : Disjoint xWork zWork
@@ -119,49 +98,34 @@ structure QFTWorkspaceOK
   simp [rightReg, halfSplitPoint, splitM]
 
 lemma disjoint_of_left_subset
-    {small big other : Reg}
-    (hsub : ∀ q : ℕ, q ∈ small.qubits → q ∈ big.qubits)
-    (hdisjoint : Disjoint big other) :
-    Disjoint small other := by
+    {small big other : Reg} (hsub : ∀ q : ℕ, q ∈ small.qubits → q ∈ big.qubits)
+    (hdisjoint : Disjoint big other) : Disjoint small other := by
   rw [Disjoint, List.disjoint_left] at hdisjoint ⊢
   intro q hqSmall hqOther
   exact hdisjoint (hsub q hqSmall) hqOther
 
 lemma disjoint_of_right_subset
-    {small big other : Reg}
-    (hsub : ∀ q : ℕ, q ∈ small.qubits → q ∈ big.qubits)
-    (hdisjoint : Disjoint other big) :
-    Disjoint other small := by
+    {small big other : Reg} (hsub : ∀ q : ℕ, q ∈ small.qubits → q ∈ big.qubits)
+    (hdisjoint : Disjoint other big) : Disjoint other small := by
   apply Disjoint.symm
   apply disjoint_of_left_subset hsub
   exact Disjoint.symm hdisjoint
 
 lemma qftXWork_mem_reserve
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg)
-    {q : ℕ}
-    (hq : q ∈ (qftXWork ops r).qubits) :
-    q ∈ r.reserve.qubits := by
+    {k : ℕ} (ops : Prog k) (r : ExtReg) {q : ℕ}
+    (hq : q ∈ (qftXWork ops r).qubits) : q ∈ r.reserve.qubits := by
   apply List.mem_of_mem_take
   simpa [qftXWork, Reg.take] using hq
 
 lemma qftZWork_mem_reserve
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg)
-    {q : ℕ}
-    (hq : q ∈ (qftZWork ops r).qubits) :
-    q ∈ r.reserve.qubits := by
+    {k : ℕ} (ops : Prog k) (r : ExtReg) {q : ℕ}
+    (hq : q ∈ (qftZWork ops r).qubits) : q ∈ r.reserve.qubits := by
   have hqDrop : q ∈ r.reserve.qubits.drop (qftWorkspaceNeed ops r.width).1 := by
     apply List.mem_of_mem_take
     simpa [qftZWork, Reg.take, Reg.drop] using hq
   exact List.mem_of_mem_drop hqDrop
 
-lemma qftXWork_qftZWork_disjoint
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg) :
+lemma qftXWork_qftZWork_disjoint {k : ℕ} (ops : Prog k) (r : ExtReg) :
     Disjoint (qftXWork ops r) (qftZWork ops r) := by
   rw [Disjoint, List.disjoint_left]
   intro q hqx hqz
@@ -176,10 +140,7 @@ lemma qftXWork_qftZWork_disjoint
   exact hdisjoint hqxTake hqzDrop
 
 @[simp] lemma regSize_qftXWork
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg)
-    (hworkspace : QFTReserveOK ops r) :
+    {k : ℕ} (ops : Prog k) (r : ExtReg) (hworkspace : QFTReserveOK ops r) :
     regSize (qftXWork ops r) = (qftWorkspaceNeed ops r.width).1 := by
   have hxFits : (qftWorkspaceNeed ops r.width).1 ≤ r.capacity := by
     have htotal := hworkspace.reserve_large_enough
@@ -187,10 +148,7 @@ lemma qftXWork_qftZWork_disjoint
   simpa [qftXWork, Reg.take, regSize, Reg.width, ExtReg.capacity, Nat.min_eq_left hxFits]
 
 @[simp] lemma regSize_qftZWork
-    {k : ℕ}
-    (ops : Prog k)
-    (r : ExtReg)
-    (hworkspace : QFTReserveOK ops r) :
+    {k : ℕ} (ops : Prog k) (r : ExtReg) (hworkspace : QFTReserveOK ops r) :
     regSize (qftZWork ops r) = (qftWorkspaceNeed ops r.width).2 := by
   have hzFits :
       (qftWorkspaceNeed ops r.width).2 ≤ r.capacity - (qftWorkspaceNeed ops r.width).1 := by
@@ -202,10 +160,7 @@ lemma qftXWork_qftZWork_disjoint
 
 namespace QFTReserveOK
 
-lemma explicitWorkspace
-    {k : ℕ}
-    {ops : Prog k}
-    {r : ExtReg}
+lemma explicitWorkspace {k : ℕ} {ops : Prog k} {r : ExtReg}
     (hworkspace : QFTReserveOK ops r) :
     QFTWorkspaceOK ops r.active (qftXWork ops r) (qftZWork ops r) := by
   refine {
@@ -234,21 +189,15 @@ end QFTReserveOK
     plan constructor reuse the same workspace pools for each child.
 ========================================================= -/
 
-lemma qftWorkspaceNeed_eq_of_two_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
+lemma qftWorkspaceNeed_eq_of_two_le {k : ℕ} (ops : Prog k) (n : ℕ) (hn : 2 ≤ n) :
     qftWorkspaceNeed ops n =
       let leftWidth := n / 2
       let rightWidth := n - leftWidth
       let phaseNeed := RecursivePhaseWorkspace.reserveNeed ops (leftWidth + 1) (rightWidth + 1)
       let leftNeed := qftWorkspaceNeed ops leftWidth
       let rightNeed := qftWorkspaceNeed ops rightWidth
-      (
-        max (1 + phaseNeed.1) (max leftNeed.1 rightNeed.1),
-        max (1 + phaseNeed.2) (max leftNeed.2 rightNeed.2)
-      ) := by
+      (max (1 + phaseNeed.1) (max leftNeed.1 rightNeed.1),
+        max (1 + phaseNeed.2) (max leftNeed.2 rightNeed.2)) := by
   cases n with
   | zero => omega
   | succ n =>
@@ -256,63 +205,39 @@ lemma qftWorkspaceNeed_eq_of_two_le
       | zero => omega
       | succ n => conv_lhs => unfold qftWorkspaceNeed
 
-lemma qftWorkspaceNeed_phase_x_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
+lemma qftWorkspaceNeed_phase_x_le {k : ℕ} (ops : Prog k) (n : ℕ) (hn : 2 ≤ n) :
     1 + (RecursivePhaseWorkspace.reserveNeed ops (n / 2 + 1) (n - n / 2 + 1)).1
       ≤ (qftWorkspaceNeed ops n).1 := by
   rw [qftWorkspaceNeed_eq_of_two_le ops n hn]
   dsimp only
   exact Nat.le_max_left _ _
 
-lemma qftWorkspaceNeed_phase_z_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
+lemma qftWorkspaceNeed_phase_z_le {k : ℕ} (ops : Prog k) (n : ℕ) (hn : 2 ≤ n) :
     1 + (RecursivePhaseWorkspace.reserveNeed ops (n / 2 + 1) (n - n / 2 + 1)).2
       ≤ (qftWorkspaceNeed ops n).2 := by
   rw [qftWorkspaceNeed_eq_of_two_le ops n hn]
   dsimp only
   exact Nat.le_max_left _ _
 
-lemma qftWorkspaceNeed_left_x_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
+lemma qftWorkspaceNeed_left_x_le {k : ℕ} (ops : Prog k) (n : ℕ) (hn : 2 ≤ n) :
     (qftWorkspaceNeed ops (n / 2)).1 ≤ (qftWorkspaceNeed ops n).1 := by
   rw [qftWorkspaceNeed_eq_of_two_le ops n hn]
   dsimp only
   exact le_trans (Nat.le_max_left _ _) (Nat.le_max_right _ _)
 
-lemma qftWorkspaceNeed_left_z_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
+lemma qftWorkspaceNeed_left_z_le {k : ℕ} (ops : Prog k) (n : ℕ) (hn : 2 ≤ n) :
     (qftWorkspaceNeed ops (n / 2)).2 ≤ (qftWorkspaceNeed ops n).2 := by
   rw [qftWorkspaceNeed_eq_of_two_le ops n hn]
   dsimp only
   exact le_trans (Nat.le_max_left _ _) (Nat.le_max_right _ _)
 
-lemma qftWorkspaceNeed_right_x_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
+lemma qftWorkspaceNeed_right_x_le {k : ℕ} (ops : Prog k) (n : ℕ) (hn : 2 ≤ n) :
     (qftWorkspaceNeed ops (n - n / 2)).1 ≤ (qftWorkspaceNeed ops n).1 := by
   rw [qftWorkspaceNeed_eq_of_two_le ops n hn]
   dsimp only
   exact le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _)
 
-lemma qftWorkspaceNeed_right_z_le
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ)
-    (hn : 2 ≤ n) :
+lemma qftWorkspaceNeed_right_z_le {k : ℕ} (ops : Prog k) (n : ℕ) (hn : 2 ≤ n) :
     (qftWorkspaceNeed ops (n - n / 2)).2 ≤ (qftWorkspaceNeed ops n).2 := by
   rw [qftWorkspaceNeed_eq_of_two_le ops n hn]
   dsimp only
@@ -326,9 +251,7 @@ lemma qftWorkspaceNeed_right_z_le
     QFT calls. They culminate in the canonical plan and public lowered circuit.
 ========================================================= -/
 
-lemma Gate.PhaseProdWorkspace.ownedDisjoint_grow
-    {x z : Reg}
-    (ws : Gate.PhaseProdWorkspace x z) :
+lemma Gate.PhaseProdWorkspace.ownedDisjoint_grow {x z : Reg} (ws : Gate.PhaseProdWorkspace x z) :
     ExtReg.OwnedDisjoint (ws.xExt.grow 1) (ws.zExt.grow 1) := by
   unfold ExtReg.OwnedDisjoint
   rw [ExtReg.ownedQubits_grow, ExtReg.ownedQubits_grow]
@@ -352,9 +275,7 @@ variable {k : ℕ} {ops : Prog k} {r xWork zWork : Reg}
 Construct the concrete unsigned phase-product workspace at the current QFT
 node from the two root workspace registers.
 -/
-def phaseWorkspace
-    (hworkspace : QFTWorkspaceOK ops r xWork zWork)
-    (hsize : 2 ≤ regSize r) :
+def phaseWorkspace (hworkspace : QFTWorkspaceOK ops r xWork zWork) (hsize : 2 ≤ regSize r) :
     Gate.PhaseProdWorkspace (leftReg r) (rightReg r) := by
   have hleftX : Disjoint (leftReg r) xWork := by
     apply disjoint_of_left_subset (fun q hq => leftReg_mem_parent r hq)
@@ -391,22 +312,18 @@ def phaseWorkspace
 The root workspace bound implies sufficient signed-phase-product workspace at
 the current QFT node.
 -/
-lemma signedWorkspaceOK
-    (hworkspace : QFTWorkspaceOK ops r xWork zWork)
-    (hsize : 2 ≤ regSize r) :
+lemma signedWorkspaceOK (hworkspace : QFTWorkspaceOK ops r xWork zWork) (hsize : 2 ≤ regSize r) :
     let ws := hworkspace.phaseWorkspace hsize
     SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1) := by
   dsimp only
   let ws := hworkspace.phaseWorkspace hsize
   have hxWidth : (ws.xExt.grow 1).width = regSize (leftReg r) + 1 := by
     calc
-      (ws.xExt.grow 1).width = ws.xExt.width + 1 :=
-        ExtReg.width_grow ws.xExt 1 ws.xExt_canGrow
+      (ws.xExt.grow 1).width = ws.xExt.width + 1 := ExtReg.width_grow ws.xExt 1 ws.xExt_canGrow
       _ = regSize (leftReg r) + 1 := rfl
   have hzWidth : (ws.zExt.grow 1).width = regSize (rightReg r) + 1 := by
     calc
-      (ws.zExt.grow 1).width = ws.zExt.width + 1 :=
-        ExtReg.width_grow ws.zExt 1 ws.zExt_canGrow
+      (ws.zExt.grow 1).width = ws.zExt.width + 1 := ExtReg.width_grow ws.zExt 1 ws.zExt_canGrow
       _ = regSize (rightReg r) + 1 := rfl
   have hxCapacity : (ws.xExt.grow 1).capacity = regSize xWork - 1 := by
     calc
@@ -420,14 +337,12 @@ lemma signedWorkspaceOK
       _ = regSize zWork - 1 := rfl
   have hxPhaseBound :
       1 + (RecursivePhaseWorkspace.reserveNeed ops
-        (regSize (leftReg r) + 1) (regSize (rightReg r) + 1)).1
-        ≤ regSize xWork := by
+        (regSize (leftReg r) + 1) (regSize (rightReg r) + 1)).1 ≤ regSize xWork := by
     rw [regSize_leftReg, regSize_rightReg]
     exact le_trans (qftWorkspaceNeed_phase_x_le ops (regSize r) hsize) hworkspace.x_large_enough
   have hzPhaseBound :
       1 + (RecursivePhaseWorkspace.reserveNeed ops
-        (regSize (leftReg r) + 1) (regSize (rightReg r) + 1)).2
-        ≤ regSize zWork := by
+        (regSize (leftReg r) + 1) (regSize (rightReg r) + 1)).2 ≤ regSize zWork := by
     rw [regSize_leftReg, regSize_rightReg]
     exact le_trans (qftWorkspaceNeed_phase_z_le ops (regSize r) hsize) hworkspace.z_large_enough
   refine {
@@ -443,9 +358,7 @@ lemma signedWorkspaceOK
 /--
 The root workspace condition remains valid for the left recursive QFT.
 -/
-lemma left
-    (hworkspace : QFTWorkspaceOK ops r xWork zWork)
-    (hsize : 2 ≤ regSize r) :
+lemma left (hworkspace : QFTWorkspaceOK ops r xWork zWork) (hsize : 2 ≤ regSize r) :
     QFTWorkspaceOK ops (leftReg r) xWork zWork := by
   refine {
     data_x_disjoint := ?_
@@ -466,9 +379,7 @@ lemma left
 /--
 The root workspace condition remains valid for the right recursive QFT.
 -/
-lemma right
-    (hworkspace : QFTWorkspaceOK ops r xWork zWork)
-    (hsize : 2 ≤ regSize r) :
+lemma right (hworkspace : QFTWorkspaceOK ops r xWork zWork) (hsize : 2 ≤ regSize r) :
     QFTWorkspaceOK ops (rightReg r) xWork zWork := by
   refine {
     data_x_disjoint := ?_
