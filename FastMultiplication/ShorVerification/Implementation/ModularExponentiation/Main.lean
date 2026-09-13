@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Assertions
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Assertions
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
 
 /-!

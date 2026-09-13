@@ -1,4 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Defs
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Config
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Precision
 
 /-!
 # Modular-Exponentiation Public Assertion
