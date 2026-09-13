@@ -25,8 +25,6 @@ open scoped BigOperators
     including the phase-product plan needed between the two halves.
 ========================================================= -/
 
-open scoped BigOperators
-
 /--
 A complete physical lowering plan for one QFT.
 
@@ -70,19 +68,12 @@ def lowerQFTPlan
     (plan : QFTLoweringPlan k hk ops r) :
     LowGate :=
   match plan with
-  | .empty r hsize =>
-      LowGate.id
-
-  | .singleton r hsize =>
-      LowGate.H
-        (r.lowQubit (by omega))
-
-  | .split r hsize ws phaseInitSize phasePlan
-      rightPlan leftPlan =>
+  | .empty r hsize => LowGate.id
+  | .singleton r hsize => LowGate.H (r.lowQubit (by omega))
+  | .split r hsize ws phaseInitSize phasePlan rightPlan leftPlan =>
       lowerQFTPlan rightPlan ;;
       lowerGateRec phasePlan ;;
       lowerQFTPlan leftPlan ;;
       LowGate.RadixReverse r (splitM r)
-
 
 end Shor

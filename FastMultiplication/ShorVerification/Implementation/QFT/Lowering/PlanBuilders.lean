@@ -35,9 +35,7 @@ def phaseProdUsingInputSize
     {x z : Reg}
     (ws : Gate.PhaseProdWorkspace x z) :
     ℕ :=
-  phaseInputSize
-    (ws.xExt.grow 1)
-    (ws.zExt.grow 1)
+  phaseInputSize (ws.xExt.grow 1) (ws.zExt.grow 1)
 
 /--
 Construct the canonical lowering plan for an unsigned phase product.
@@ -58,118 +56,51 @@ def standardPhaseProdUsingPlan
     {x z : Reg}
     (ws : Gate.PhaseProdWorkspace x z)
     (hworkspace :
-      SignedRecursiveWorkspaceOK
-        ops
-        (ws.xExt.grow 1)
-        (ws.zExt.grow 1)) :
-    StandardPhaseLoweringPlan
-      k
-      hk
-      ops
-      (phaseProdUsingInputSize ws)
+      SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1)) :
+    StandardPhaseLoweringPlan k hk ops (phaseProdUsingInputSize ws)
       (Gate.PhaseProdUsing phi x z ws) := by
-
-  let initSize : ℕ :=
-    phaseProdUsingInputSize ws
-
-  let xExt : ExtReg :=
-    ws.xExt
-
-  let zExt : ExtReg :=
-    ws.zExt
-
-  let xSigned : ExtReg :=
-    xExt.grow 1
-
-  let zSigned : ExtReg :=
-    zExt.grow 1
+  let initSize : ℕ := phaseProdUsingInputSize ws
+  let xExt : ExtReg := ws.xExt
+  let zExt : ExtReg := ws.zExt
+  let xSigned : ExtReg := xExt.grow 1
+  let zSigned : ExtReg := zExt.grow 1
 
   let extendXPlan :
-      StandardPhaseLoweringPlan
-        k hk ops
-        initSize
-        (Gate.zeroExtend xExt 1) :=
-    PhaseLoweringPlan.zeroExtend
-      initSize
-      xExt
-      1
+      StandardPhaseLoweringPlan k hk ops initSize (Gate.zeroExtend xExt 1) :=
+    PhaseLoweringPlan.zeroExtend initSize xExt 1
 
   let extendZPlan :
-      StandardPhaseLoweringPlan
-        k hk ops
-        initSize
-        (Gate.zeroExtend zExt 1) :=
-    PhaseLoweringPlan.zeroExtend
-      initSize
-      zExt
-      1
+      StandardPhaseLoweringPlan k hk ops initSize (Gate.zeroExtend zExt 1) :=
+    PhaseLoweringPlan.zeroExtend initSize zExt 1
 
   let signedPlan :
-      StandardPhaseLoweringPlan
-        k hk ops
-        initSize
-        (Gate.SignedPhaseProd
-          phi
-          xSigned
-          zSigned) := by
-    have hsize :
-        phaseInputSize xSigned zSigned =
-          initSize := by
-      rfl
-
+      StandardPhaseLoweringPlan k hk ops initSize
+        (Gate.SignedPhaseProd phi xSigned zSigned) := by
+    have hsize : phaseInputSize xSigned zSigned = initSize := by rfl
     simpa [hsize] using
-      standardSignedPhaseLoweringPlan
-        k
-        hk
-        phi
-        xSigned
-        zSigned
-        ops
-        hworkspace
+      standardSignedPhaseLoweringPlan k hk phi xSigned zSigned ops hworkspace
 
   let deallocZPlan :
-      StandardPhaseLoweringPlan
-        k hk ops
-        initSize
-        (Gate.zeroDealloc zExt 1) :=
-    PhaseLoweringPlan.zeroDealloc
-      initSize
-      zExt
-      1
+      StandardPhaseLoweringPlan k hk ops initSize (Gate.zeroDealloc zExt 1) :=
+    PhaseLoweringPlan.zeroDealloc initSize zExt 1
 
   let deallocXPlan :
-      StandardPhaseLoweringPlan
-        k hk ops
-        initSize
-        (Gate.zeroDealloc xExt 1) :=
-    PhaseLoweringPlan.zeroDealloc
-      initSize
-      xExt
-      1
+      StandardPhaseLoweringPlan k hk ops initSize (Gate.zeroDealloc xExt 1) :=
+    PhaseLoweringPlan.zeroDealloc initSize xExt 1
 
   let completePlan :
-      StandardPhaseLoweringPlan
-        k hk ops
-        initSize
+      StandardPhaseLoweringPlan k hk ops initSize
         (
           Gate.zeroExtend xExt 1 ;;
           Gate.zeroExtend zExt 1 ;;
-          Gate.SignedPhaseProd
-            phi
-            xSigned
-            zSigned ;;
+          Gate.SignedPhaseProd phi xSigned zSigned ;;
           Gate.zeroDealloc zExt 1 ;;
           Gate.zeroDealloc xExt 1
         ) :=
-    PhaseLoweringPlan.seq
-      extendXPlan
-      (PhaseLoweringPlan.seq
-        extendZPlan
-        (PhaseLoweringPlan.seq
-          signedPlan
-          (PhaseLoweringPlan.seq
-            deallocZPlan
-            deallocXPlan)))
+    PhaseLoweringPlan.seq extendXPlan
+      (PhaseLoweringPlan.seq extendZPlan
+        (PhaseLoweringPlan.seq signedPlan
+          (PhaseLoweringPlan.seq deallocZPlan deallocXPlan)))
 
   simpa [
     Gate.PhaseProdUsing,
@@ -180,8 +111,6 @@ def standardPhaseProdUsingPlan
     xSigned,
     zSigned
   ] using completePlan
-
-
 
 /-! =========================================================
     Canonical plans and public lowerers
@@ -203,16 +132,10 @@ def standardQFTLoweringPlan
     (hworkspace : QFTWorkspaceOK ops r xWork zWork) :
     QFTLoweringPlan k hk ops r := by
   by_cases hzero : regSize r = 0
-
-  · exact
-      QFTLoweringPlan.empty r hzero
-
+  · exact QFTLoweringPlan.empty r hzero
   · by_cases hone : regSize r = 1
-
     · exact QFTLoweringPlan.singleton r hone
-
-    · have hlarge : 2 ≤ regSize r := by
-        omega
+    · have hlarge : 2 ≤ regSize r := by omega
 
       let ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r) :=
         hworkspace.phaseWorkspace hlarge
@@ -221,12 +144,10 @@ def standardQFTLoweringPlan
           SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1) := by
         simpa [ws] using hworkspace.signedWorkspaceOK hlarge
 
-      have hrightWorkspace :
-          QFTWorkspaceOK ops (rightReg r) xWork zWork :=
+      have hrightWorkspace : QFTWorkspaceOK ops (rightReg r) xWork zWork :=
         hworkspace.right hlarge
 
-      have hleftWorkspace :
-          QFTWorkspaceOK ops (leftReg r) xWork zWork :=
+      have hleftWorkspace : QFTWorkspaceOK ops (leftReg r) xWork zWork :=
         hworkspace.left hlarge
 
       let phasePlan :
@@ -234,58 +155,22 @@ def standardQFTLoweringPlan
             (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws) :=
         standardPhaseProdUsingPlan k hk ops (qftPhi (regSize r)) ws hphaseWorkspace
 
-      let rightPlan :
-          QFTLoweringPlan k hk ops (rightReg r) :=
+      let rightPlan : QFTLoweringPlan k hk ops (rightReg r) :=
         standardQFTLoweringPlan k hk ops (rightReg r) xWork zWork hrightWorkspace
 
-      let leftPlan :
-          QFTLoweringPlan k hk ops
-            (leftReg r) :=
-        standardQFTLoweringPlan k hk ops (leftReg r)
-          xWork zWork hleftWorkspace
+      let leftPlan : QFTLoweringPlan k hk ops (leftReg r) :=
+        standardQFTLoweringPlan k hk ops (leftReg r) xWork zWork hleftWorkspace
 
       exact QFTLoweringPlan.split r hlarge ws (phaseProdUsingInputSize ws)
           phasePlan rightPlan leftPlan
-
-
 termination_by regSize r
 decreasing_by
-  ·
-    have hhalfPos :
-        0 < regSize r / 2 := by
-      exact
-        Nat.div_pos
-          (by omega)
-          (by decide)
-
-    have hright :
-        regSize r - regSize r / 2 <
-          regSize r := by
-      exact
-        Nat.sub_lt
-          (by omega)
-          hhalfPos
-
-    simpa [
-      rightReg,
-      halfSplitPoint,
-      splitM
-    ] using hright
-
-  ·
-    have hleft :
-        regSize r / 2 <
-          regSize r := by
-      exact
-        Nat.div_lt_self
-          (by omega)
-          (by decide)
-
-    simpa [
-      leftReg,
-      halfSplitPoint,
-      splitM
-    ] using hleft
+  · have hhalfPos : 0 < regSize r / 2 := Nat.div_pos (by omega) (by decide)
+    have hright : regSize r - regSize r / 2 < regSize r :=
+      Nat.sub_lt (by omega) hhalfPos
+    simpa [rightReg, halfSplitPoint, splitM] using hright
+  · have hleft : regSize r / 2 < regSize r := Nat.div_lt_self (by omega) (by decide)
+    simpa [leftReg, halfSplitPoint, splitM] using hleft
 
 /--
 Canonical reserve-backed QFT plan.
