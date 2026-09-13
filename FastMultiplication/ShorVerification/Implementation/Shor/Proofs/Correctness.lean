@@ -1,9 +1,10 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.Assertions
+import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Assertions
 import FastMultiplication.ShorVerification.Implementation.Shor.Defs
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Main
 import FastMultiplication.ShorVerification.Implementation.Compilation.Correctness
 import FastMultiplication.ShorVerification.Implementation.Semantics.Measurement
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Setup
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps

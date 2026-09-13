@@ -29,14 +29,14 @@ elaborate.  This file intentionally contains only public data, predicates, and
 circuits; proofs and bridge lemmas live under `Implementation/Shor/Proofs`.
 The generic `Gate → LowGate` compiler (`GateWorkspaceOK`, `lowerGate`,
 `GateWorkspaceCleanState`) lives in `Implementation/Compilation/LowerGate.lean`,
-since it mentions no Shor name.
+since it mentions no Shor name. Clean-state predicates live in `Shor.Spec.Cleanliness`;
+user-facing setup/readiness records and the classical factoring instance live
+in `Shor.Spec.Setup`.
 
 The declarations are grouped by the role they play in the final statement:
 
-* Shor-specific workspace budgets and clean-state assumptions;
-* order-finding circuits;
-* user-facing setup/readiness records;
-* the final classical factoring instance.
+* Shor-specific workspace budgets;
+* order-finding circuits.
 -/
 namespace Shor
 
@@ -149,20 +149,6 @@ structure ShorWorkspaceLargeEnough
 ========================================================= -/
 
 /--
-Every reserve register that may be used during Shor lowering is initially zero.
--/
-def ShorWorkspaceCleanInput
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (x y work scratch : ExtReg)
-    (b0 : Basis) :
-    Prop :=
-  FreshZero x.reserve b0 ∧
-  FreshZero y.reserve b0 ∧
-  FreshZero work.reserve b0 ∧
-  FreshZero scratch.reserve b0
-
-/--
 The reserve belonging to the exponent register is not reused by the
 auxiliary register or comparator flag.
 -/
@@ -182,35 +168,6 @@ structure ShorWorkspaceIsolation
   /-- The comparator flag is not part of the exponent register ownership. -/
   flag_outside_exponent :
     flag ∉ x.ownedQubits
-
-/-! =========================================================
-    Dynamic Clean-State Names
-
-    Proof files extend these namespaces with induction and preservation lemmas.
-    The names are kept here so users can read the public invariant vocabulary
-    without opening the proof development.
-========================================================= -/
-
-/--
-A state supported on basis states in which three specified registers are zero.
--/
-abbrev ThreeRegsCleanState
-    (qs : QSemantics) [RegEncoding qs.Basis] (r₁ r₂ r₃ : Reg) :
-    qs.State → Prop :=
-  CleanClosure (fun b => FreshZero r₁ b ∧ FreshZero r₂ b ∧ FreshZero r₃ b)
-
-namespace ThreeRegsCleanState
-variable {qs : QSemantics} [RegEncoding qs.Basis] {r₁ r₂ r₃ : Reg}
-end ThreeRegsCleanState
-
-namespace FullShorWorkspaceCleanState
-variable {qs : QSemantics} [RegEncoding qs.Basis] {x data work : ExtReg}
-end FullShorWorkspaceCleanState
-
-namespace ShorLoweringCleanState
-variable {qs : QSemantics} [RegEncoding qs.Basis] {x data work : ExtReg}
-end ShorLoweringCleanState
-
 
 /-!
 ## Order-Finding Circuits And Setup Data
@@ -273,240 +230,5 @@ noncomputable def orderFindingIdeal
   (initY1 y.active) ;;
   (modExpIdeal' qs a N x.active y.active) ;;
   (IQFT x)
-
-/-! =========================================================
-    Lowering Program Setup
-========================================================= -/
-
-/-- Low-level lowering assumptions shared by lowered Shor statements. -/
-structure ShorLoweringSetup where
-  /-- Number of synthesis registers used by the lowering program. -/
-  k : ℕ
-  /-- At least two synthesis registers are available. -/
-  hk : 1 < k
-  /-- Program that consumes the interpolation points used by lowering. -/
-  ops : Prog k
-  /-- The point-consuming program is safe. -/
-  consumes :
-    ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k)
-  /-- The point-consuming program uncomputes back to the start state. -/
-  returns : run? ops State.start_state = some State.start_state
-
-/-! =========================================================
-    Approximate And Ideal Input Predicates
-========================================================= -/
-
-/-- The input basis state is clean on every register used by Shor. -/
-def ShorCleanInput
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (x y work scratch : ExtReg)
-    (flag : ℕ)
-    (b0 : qs.Basis) : Prop :=
-  RegEncoding.toNat x.active b0 = 0 ∧
-  RegEncoding.toNat y.active b0 = 0 ∧
-  y.FreshFor 2 b0 ∧
-  RegEncoding.toNat work.active b0 = 0 ∧
-  work.FreshFor 1 b0 ∧
-  RegEncoding.toNat scratch.active b0 = 0 ∧
-  scratch.FreshFor 1 b0 ∧
-  RegEncoding.toNat (qubitReg flag) b0 = 0
-
-/-- Public assumptions for the approximate implementation of Shor. -/
-structure ShorApproxSetup
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (η : ℝ)
-    (N : ℕ)
-    (x y work scratch : ExtReg)
-    (flag : ℕ)
-    (b0 : qs.Basis) : Type where
-  /-- The exponent, data, work, carry, and flag qubits do not overlap. -/
-  register_layout :
-    ModExpLayout x.active y work flag
-
-  /-- The modular-exponentiation subcircuit has enough local workspace. -/
-  circuit_workspace :
-    ModMulCircuitWorkspaceOK y work
-
-  /-- The concrete Step-4 comparator and its Step-3 scratch are well laid out. -/
-  step4_workspace :
-    CmpLtNWWorkspace N (y.grow 1) work scratch flag
-
-  /-- The exponent register is owned separately from the modular data register. -/
-  exponent_data_disjoint :
-    ExtReg.OwnedDisjoint x y
-
-  /-- The exponent register is owned separately from comparator scratch. -/
-  exponent_scratch_disjoint :
-    ExtReg.OwnedDisjoint x scratch
-
-  /-- The work register has enough extra bits for precision `η`. -/
-  work_precision :
-    Algorithm1Precision η y.active work.active
-
-  /-- Shor begins in `|0⋯0⟩` on all registers it uses. -/
-  clean_input :
-    ShorCleanInput qs x y work scratch flag b0
-
-/--
-Lower-level assumptions from which the public approximate setup is reconstructed
-in `Shor.Proofs.OrderFinding`.
--/
-structure ShorApproxSetupMinimal
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (η : ℝ)
-    (N : ℕ)
-    (x data work scratch : ExtReg)
-    (flag : ℕ)
-    (b0 : qs.Basis) :
-    Type where
-
-  /-- The data register has two available reserve qubits. -/
-  data_can_grow_two :
-    data.CanGrow 2
-
-  /-- The work register has one available reserve qubit. -/
-  work_can_grow_one :
-    work.CanGrow 1
-
-  /-- The comparator scratch layout is the same one used by Steps 3 and 4. -/
-  step4_workspace :
-    CmpLtNWWorkspace N (data.grow 1) work scratch flag
-
-  /-- The exponent and data registers have no common owned qubits. -/
-  exponent_data_disjoint :
-    ExtReg.OwnedDisjoint x data
-
-  /-- The exponent register is owned separately from comparator scratch. -/
-  exponent_scratch_disjoint :
-    ExtReg.OwnedDisjoint x scratch
-
-  /-- The data and work registers have no common owned qubits. -/
-  data_work_disjoint :
-    ExtReg.OwnedDisjoint data work
-
-  /-- The flag is not owned by the data register. -/
-  flag_outside_data :
-    flag ∉ data.ownedQubits
-
-  /-- The flag is not owned by the work register. -/
-  flag_outside_work :
-    flag ∉ work.ownedQubits
-
-  /-- No active exponent/control qubit is owned by the work register. -/
-  controls_outside_work :
-    ∀ q ∈ x.active.qubits,
-      q ∉ work.ownedQubits
-
-  /-- The flag is not an active exponent/control qubit. -/
-  flag_outside_controls :
-    flag ∉ x.active.qubits
-
-  /--
-  The error parameter and active work-register width satisfy
-  Algorithm 1's precision requirement.
-  -/
-  algorithm1_precision :
-    Algorithm1Precision
-      η data.active work.active
-
-  /-- The exponent register starts at zero. -/
-  exponent_zero :
-    RegEncoding.toNat x.active b0 = 0
-
-  /-- The modular data register starts at zero. -/
-  data_zero :
-    RegEncoding.toNat data.active b0 = 0
-
-  /-- The two temporary data-extension qubits start at zero. -/
-  data_fresh :
-    data.FreshFor 2 b0
-
-  /-- The active work register starts at zero. -/
-  work_zero :
-    RegEncoding.toNat work.active b0 = 0
-
-  /-- The temporary work-extension qubit starts at zero. -/
-  work_fresh :
-    work.FreshFor 1 b0
-
-  /-- The active comparator scratch register starts at zero. -/
-  scratch_zero :
-    RegEncoding.toNat scratch.active b0 = 0
-
-  /-- The borrowed comparator reserve bit starts at zero. -/
-  scratch_fresh :
-    scratch.FreshFor 1 b0
-
-  /-- The comparison flag starts at zero. -/
-  flag_zero :
-    RegEncoding.toNat (qubitReg flag) b0 = 0
-
-/-!
-## Lowered Readiness Package
-
-`LoweredShorReady` is the compact assumption bundle used by public lowered Shor
-statements.  The actual construction of its `workspace` and `workspace_clean`
-consequences lives in `Shor.Proofs.Readiness`.
--/
-
-/-! =========================================================
-    Public Lowered Readiness Record
-========================================================= -/
-
-/-- Public readiness package for static workspace and initial cleanliness. -/
-structure LoweredShorReady
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
-    (η : ℝ)
-    (a N : ℕ)
-    (x y work scratch : ExtReg)
-    (flag : ℕ)
-    (b0 : qs.Basis) :
-    Type where
-
-  /-- Layout, precision, and clean active-register assumptions. -/
-  approx :
-    ShorApproxSetupMinimal qs η N x y work scratch flag b0
-
-  /-- Static reserve capacity is sufficient for all recursive lowerers. -/
-  workspace_large_enough :
-    ShorWorkspaceLargeEnough lowering.ops x y work scratch
-
-  /-- Shared temporary resources do not overlap unsafe regions. -/
-  workspace_isolated :
-    ShorWorkspaceIsolation x work scratch flag
-
-  /-- All reserve registers that may be allocated begin at zero. -/
-  workspace_initially_zero :
-    ShorWorkspaceCleanInput x y work scratch b0
-
-/-!
-## Final Factoring Input
-
-The executable circuit definitions above are quantum-facing.  The final Shor
-factoring statement also needs a small classical record describing the modulus
-to which the order-finding theorem is applied.
--/
-
-/-! =========================================================
-    Classical Factoring Instance
-========================================================= -/
-
-/-- Classical assumptions on a modulus for the final factoring theorem. -/
-structure ShorFactoringInstance where
-  /-- The modulus to factor. -/
-  N : ℕ
-  /-- Shor's classical reduction is stated for odd composite moduli. -/
-  odd : Odd N
-  /-- The modulus is nontrivial. -/
-  gt_two : N > 2
-  /-- The modulus is not a prime power. -/
-  not_prime_power : ∀ (p k : ℕ), Nat.Prime p → N ≠ p ^ k
 
 end Shor

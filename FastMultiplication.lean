@@ -3,7 +3,7 @@
 import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Budgets
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.OrderFinding
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Setup
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Correctness
 import FastMultiplication.ShorVerification.Implementation.Shor.Main
