@@ -1,4 +1,5 @@
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Defs
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Config
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.CmpLtNW
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics

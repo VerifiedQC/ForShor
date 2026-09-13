@@ -1,4 +1,5 @@
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.ConstArithmeticLowering
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Lowering.ConstArithmetic
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.EvalL
 

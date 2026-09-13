@@ -1,5 +1,6 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.LowGateSemantics
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import Mathlib.Data.Nat.BitIndices
 
 /-!
@@ -15,19 +16,6 @@ uncomputed around the data operation.
 namespace Shor
 
 open LowGate
-
-/-- Static physical conditions needed by the concrete constant-arithmetic
-lowerers.  Cleanliness is deliberately kept out of this record. -/
-structure ConstArithmeticWorkspace
-    (N : ℕ) (data scratch : ExtReg) (flag : ℕ) : Prop where
-  data_can_grow : data.CanGrow 1
-  scratch_can_grow : scratch.CanGrow 1
-  data_scratch_disjoint : data.OwnedDisjoint scratch
-  flag_not_data : flag ∉ data.ownedQubits
-  flag_not_scratch : flag ∉ scratch.ownedQubits
-  scratch_positive : 0 < scratch.width
-  constant_fits : N < 2 ^ (scratch.width - 1)
-  data_width_fits : data.width ≤ scratch.width - 1
 
 /-- The first genuinely allocated reserve qubit of `scratch`. -/
 def constArithmeticUnitQubit

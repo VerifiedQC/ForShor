@@ -1,4 +1,5 @@
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.CmpLtNW
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.CmpLtNW
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Decomposition
 import FastMultiplication.ShorVerification.Implementation.Semantics.QftPhase
 
