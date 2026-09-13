@@ -54,12 +54,7 @@ def LowerCSignedPhaseProductCorrect
     (ops : Prog k) : Prop :=
   ∀ (ψ : qs.State)
     (hworkspace : CSignedRecursiveWorkspaceStateOK qs ops ctrl x z ψ)
-    (hC : ProgConsumesPtsSafe
-      (k := k)
-      (by omega)
-      State.start_state
-      ops
-      (genInterpolationPoints k))
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
     (hRun : run? ops State.start_state = some State.start_state),
     LowerGateClass.evalL (qs := qs)
         (lowerCSignedPhaseProdWithWorkspace k hk ctrl phi x z ops hworkspace.static) ψ

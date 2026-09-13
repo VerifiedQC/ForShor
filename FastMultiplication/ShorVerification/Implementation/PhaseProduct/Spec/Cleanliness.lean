@@ -38,17 +38,8 @@ def LayoutReserveCleanBasis
     (st : LayoutState k)
     (b : Basis) :
     Prop :=
-  (∀ i : Fin k,
-    ExtReg.FreshFor
-      (st.xslot i)
-      (st.xslot i).capacity
-      b)
-  ∧
-  (∀ i : Fin k,
-    ExtReg.FreshFor
-      (st.zslot i)
-      (st.zslot i).capacity
-      b)
+  (∀ i : Fin k, ExtReg.FreshFor (st.xslot i) (st.xslot i).capacity b) ∧
+  (∀ i : Fin k, ExtReg.FreshFor (st.zslot i) (st.zslot i).capacity b)
 
 /-- State-level reserve cleanliness, generated from clean basis states and linear closure. -/
 abbrev LayoutReserveCleanState
@@ -114,11 +105,7 @@ structure CSignedRecursiveWorkspaceStateOK
     (x z : ExtReg)
     (ψ : qs.State) :
     Prop where
-  static :
-    CSignedRecursiveWorkspaceOK
-      ops ctrl x z
-  clean :
-    RecursiveWorkspaceCleanState
-      qs x z ψ
+  static : CSignedRecursiveWorkspaceOK ops ctrl x z
+  clean : RecursiveWorkspaceCleanState qs x z ψ
 
 end Shor

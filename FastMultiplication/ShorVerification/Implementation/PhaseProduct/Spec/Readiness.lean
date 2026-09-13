@@ -55,9 +55,7 @@ noncomputable def PhaseLoweringReady
           ∧
         readyChild ψ
   | cSignedBase ctrl phi x z hstop => exact fun _ => True
-  | cSignedStep
-      ctrl phi x z layout
-      hrec hcapacity hctrl child readyChild =>
+  | cSignedStep ctrl phi x z layout hrec hcapacity hctrl child readyChild =>
       exact fun ψ =>
         CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z ops) ψ
           ∧

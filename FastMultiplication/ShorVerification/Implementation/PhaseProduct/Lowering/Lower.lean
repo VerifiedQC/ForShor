@@ -15,8 +15,7 @@ def lowerSignedPhaseProdWithWorkspace
     (hstatic : SignedRecursiveWorkspaceOK ops x z) :
     LowGate :=
   lowerSignedPhaseProd k hk phi x z ops
-    (standardSignedPhaseLoweringPlan
-      k hk phi x z ops hstatic)
+    (standardSignedPhaseLoweringPlan k hk phi x z ops hstatic)
 
 /--
 The canonical lowered controlled circuit constructed from the root
