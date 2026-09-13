@@ -1,4 +1,10 @@
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Step2Bound
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Config
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Model
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Step1QPE
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
 
 open Shor
 

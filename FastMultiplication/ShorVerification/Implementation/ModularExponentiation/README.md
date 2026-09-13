@@ -50,6 +50,7 @@ the resulting work register as a QPE distribution around the target fraction.
 Lean files:
 
 - `Algorithm1Expansion.lean` expands `U1` on valid basis inputs.
+- `Math/QPETail.lean` proves the program-independent QPE tail majorant bound.
 - `Step1QPE.lean` proves the QPE tail estimate for the fractional load.
 - `Step1Bound.lean` lifts that basis-state estimate to arbitrary valid unit states 
 <!-- and also prepares the matching Step 5 cleanup estimate. -->

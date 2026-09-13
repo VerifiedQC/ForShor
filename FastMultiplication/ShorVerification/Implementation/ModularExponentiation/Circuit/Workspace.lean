@@ -8,13 +8,28 @@ import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemantic
 The static workspace structures consumed by the concrete Algorithm-1 circuit:
 `ModMulCircuitWorkspaceOK` (the phase-product reserves needed by Steps 1, 2,
 and 5), `CmpLtNWWorkspace` (Step 4's comparator workspace, plus the width
-formula `cmpLtNWWidth` it is defined against), and `ConstArithmeticWorkspace`
-(the concrete lowering of Step 3's constant arithmetic).
+formula `cmpLtNWWidth` it is defined against), `ConstArithmeticWorkspace`
+(the concrete lowering of Step 3's constant arithmetic), and `ModMulCoreLayout`
+(the static register/qubit-disjointness layout every core invocation needs).
 -/
 
 namespace Shor
 
 open Gate
+
+/--
+Layout assumptions for one invocation of `CmodMulInPlaceCore`.
+
+`data.grow 1` is used because Algorithm 1 temporarily activates one reserve
+bit of `data` as its carry/high bit.
+-/
+def ModMulCoreLayout (data work : ExtReg) (flag ctrl : ℕ) : Prop :=
+  ExtReg.OwnedDisjoint data work ∧
+  flag ∉ data.ownedQubits ∧
+  flag ∉ work.ownedQubits ∧
+  ctrl ∉ data.ownedQubits ∧
+  ctrl ∉ work.ownedQubits ∧
+  ctrl ≠ flag
 
 /-- Static workspace condition for one controlled modular-multiplication core. -/
 def ModMulCircuitWorkspaceOK (data work : ExtReg) : Prop :=

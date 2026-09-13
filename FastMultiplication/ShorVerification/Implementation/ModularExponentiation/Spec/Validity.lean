@@ -5,31 +5,17 @@ import FastMultiplication.ShorVerification.Implementation.Semantics.CleanClosure
 /-!
 # Modular-Exponentiation Validity
 
-The layout and clean-input predicates for the valid-input subspace the
-approximation theorems work on (`ModMulCoreLayout`, `GoodModMulBasisInput`,
-`ValidModMulState`, `GoodAlgorithm1BasisInput`, `ValidAlgorithm1State`), and the
-state-level cleanliness predicates consumed by the two concrete constant-
-arithmetic lowerers (`ConstArithmeticCleanBasis`, `CSubConstCleanBasis`,
+The clean-input predicates for the valid-input subspace the approximation
+theorems work on (`GoodModMulBasisInput`, `ValidModMulState`,
+`GoodAlgorithm1BasisInput`, `ValidAlgorithm1State`), and the state-level
+cleanliness predicates consumed by the two concrete constant-arithmetic
+lowerers (`ConstArithmeticCleanBasis`, `CSubConstCleanBasis`,
 `CmpGeConstCleanState`, `CSubConstCleanState`).
 -/
 
 universe u
 
 namespace Shor
-
-/--
-Layout assumptions for one invocation of `CmodMulInPlaceCore`.
-
-`data.grow 1` is used because Algorithm 1 temporarily activates one reserve
-bit of `data` as its carry/high bit.
--/
-def ModMulCoreLayout (data work : ExtReg) (flag ctrl : ℕ) : Prop :=
-  ExtReg.OwnedDisjoint data work ∧
-  flag ∉ data.ownedQubits ∧
-  flag ∉ work.ownedQubits ∧
-  ctrl ∉ data.ownedQubits ∧
-  ctrl ∉ work.ownedQubits ∧
-  ctrl ≠ flag
 
 /--
 A computational-basis input on which Algorithm 1 is allowed to be called.

@@ -1,5 +1,5 @@
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
 
 /-!
 # Modular-Exponentiation Circuit: Exponentiation Layer
