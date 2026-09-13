@@ -38,7 +38,6 @@ lemma stFinal_xslot_eq_grow
       (Wwork - (stInit.xslot i).width) := by
   simp [targetSignedLayoutState, growExtRegTo]
 
-
 /-- Final `z` slots are exactly the initial slots grown to the common target width. -/
 lemma stFinal_zslot_eq_grow
     {x z : ExtReg}
@@ -53,7 +52,6 @@ lemma stFinal_zslot_eq_grow
     (stInit.zslot i).grow
       (Wwork - (stInit.zslot i).width) := by
   simp [targetSignedLayoutState, growExtRegTo]
-
 
 /-- The scanned target `x` slot strictly grows beyond its initial width. -/
 lemma extraDelta_xslot_pos

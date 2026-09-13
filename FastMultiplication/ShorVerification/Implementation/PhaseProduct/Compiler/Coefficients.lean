@@ -94,7 +94,6 @@ def alternatingPoint (i : ℕ) : Point :=
 /-- Generate the canonical `2k - 1` interpolation points. -/
 def genInterpolationPoints (k : ℕ) : List Point := (List.range (2 * k - 1)).map alternatingPoint
 
-
 /-! =========================================================
     Toom-Cook Points And Interpolation Inputs
 

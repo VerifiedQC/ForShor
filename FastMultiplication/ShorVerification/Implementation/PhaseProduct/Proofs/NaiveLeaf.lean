@@ -442,7 +442,6 @@ theorem toNat_qubitReg_eq_bit
   rw [hbit]
   interval_cases n <;> simp
 
-
 lemma signedBitWeight_shift
     (width i : ℕ) :
     signedBitWeight (width + 1) (i + 1) =
@@ -454,7 +453,6 @@ lemma signedBitWeight_shift
     · have h' : i + 1 + 1 ≠ width + 1 := by
         omega
       simp [h, pow_succ, mul_comm]
-
 
 lemma signedTermsAux_shift_sum
     {Basis : Type*}
@@ -481,7 +479,6 @@ lemma signedTermsAux_shift_sum
       rw [ih (i := i + 1)]
       simp [signedTermValue]
       ring
-
 
 lemma tcDecodeWidth_bit_cons
     (w n : ℕ)
@@ -516,7 +513,6 @@ lemma tcDecodeWidth_bit_cons
           simpa [pow_succ] using hfull
         simp [tcDecodeWidth, h, hfull', pow_succ]
         ring_nf
-
 
 lemma tcDecodeWidth_toNat_eq_signedTermsAux
     {Basis : Type*}
@@ -650,7 +646,6 @@ lemma tcDecodeWidth_toNat_eq_signedTermsAux
         rw [hhead, hshift]
         cases hb : RegEncoding.bit q b <;>
           simp [signedTermValue, basisBitInt, hb]
-
 
 theorem extToInt_eq_signedTerms_sum
     {Basis : Type*}

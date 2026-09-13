@@ -3,7 +3,6 @@ import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 import Mathlib.LinearAlgebra.Vandermonde
 import Mathlib.Tactic
 
-
 noncomputable section
 
 open scoped BigOperators
@@ -237,7 +236,6 @@ def phaseFactor
       Complex.I *
       ((term : ℚ) : ℂ))
 
-
 noncomputable def phaseScalarFromList {Point : Type u} {m : ℕ}
     (phi : ℝ)
     (coeff : Fin m → ℚ)
@@ -462,7 +460,6 @@ lemma tailWeightedPointSum_eq_cons
       ((pointTerm ⟨n, hn⟩ : ℚ) : ℂ)
       +
     tailWeightedPointSum coeff pointTerm (n + 1) := by
-
   let i0 : Fin m := ⟨n, hn⟩
 
   have hset :
@@ -546,7 +543,6 @@ theorem phaseScalarFromList_eq_exp_tailWeightedPointSum
 
       rw [hidx]
       ring_nf
-
 
 theorem phaseScalarFromList_eq_exp_weightedPointSum
     {α : Type u} {m : ℕ}

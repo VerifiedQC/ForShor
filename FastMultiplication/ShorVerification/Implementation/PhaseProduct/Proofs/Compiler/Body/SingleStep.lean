@@ -964,5 +964,4 @@ lemma sameOutside_after_addScaled_single
             symm
             exact hbz_keep e (he.2 dsti) (he.2 srci)
 
-
 end Shor

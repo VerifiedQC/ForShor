@@ -714,5 +714,4 @@ lemma encodesFrom_after_noPhase_run_ket_gen
     (σ := σ) (σ' := σ') (bRef := bRef) (bCur := bCur) (n := n)
     hdisj hFits hSafeAdd hNP hrun hEnc
 
-
 end Shor

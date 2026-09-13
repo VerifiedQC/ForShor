@@ -92,5 +92,4 @@ lemma eval_matched_cphase_ket_from
   · rw [PhaseSemantics.eval_CSignedPhaseProd_ket]
     rw [if_neg hctrl, if_neg hctrl]
 
-
 end Shor

@@ -293,5 +293,4 @@ lemma controlPhaseLeaves_compileSignedDeallocations
     compileSignedDeallocations k src dst := by
   exact controlPhaseLeaves_compileSignedDeallocationsAux ctrl src dst k le_rfl
 
-
 end Shor

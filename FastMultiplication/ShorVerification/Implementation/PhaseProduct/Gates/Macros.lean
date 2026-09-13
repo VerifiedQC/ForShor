@@ -105,8 +105,6 @@ def Clean
       RegEncoding.toNat z b := by
   rfl
 
-
-
 /-- The controlled bridge may read `ctrl`; this predicate keeps it outside all touched qubits. -/
 def ControlDisjoint
     {x z : Reg}
@@ -162,7 +160,6 @@ def CPhaseProdUsing
     (zext.grow 1) ;;
   Gate.zeroDealloc zext 1 ;;
   Gate.zeroDealloc xext 1
-
 
 end Gate
 end Shor

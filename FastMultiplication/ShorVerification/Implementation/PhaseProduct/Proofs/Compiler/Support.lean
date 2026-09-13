@@ -958,8 +958,6 @@ lemma FitsSignedWidth_addScaled_widen
   · constructor <;> omega
   · constructor <;> omega
 
-
-
 end RowSemantics
 
 /-! =========================================================

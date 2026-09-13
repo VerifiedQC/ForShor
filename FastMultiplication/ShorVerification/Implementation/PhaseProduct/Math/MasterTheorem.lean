@@ -755,7 +755,6 @@ lemma shiftedMasterEnvelope_rpow_bound
       dsimp [C]
       linarith
 
-
 /-- If `k^α = q` with `k > 1` and `α > 1`, then the branching factor `q` is at
 least one.  This is needed for monotonicity of the scalar envelope. -/
 lemma one_le_q_of_rpow_eq

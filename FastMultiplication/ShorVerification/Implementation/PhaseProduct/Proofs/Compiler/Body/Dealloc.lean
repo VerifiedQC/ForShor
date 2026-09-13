@@ -267,5 +267,4 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks_then_
   rw [qs.eval_smul]
   rw [hDealloc]
 
-
 end Shor

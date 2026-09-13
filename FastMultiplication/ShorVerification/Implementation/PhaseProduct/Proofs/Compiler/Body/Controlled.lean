@@ -1068,6 +1068,4 @@ lemma eval_controlPhaseLeaves_compileAnnotatedOpsToSignedGateAux_of_blocks
   subst hbNext_eq
   simpa using hBody
 
-
-
 end Shor

@@ -177,7 +177,6 @@ noncomputable def naiveCSignedPhaseExponents
     (signedTerms z).map fun zTerm =>
       cSignedPairExponent ctrl phi b xTerm zTerm
 
-
 end LowerGateClass
 
 end Shor

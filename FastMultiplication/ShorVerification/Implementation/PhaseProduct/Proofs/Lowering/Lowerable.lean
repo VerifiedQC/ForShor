@@ -9,7 +9,6 @@ The `LowerablePhaseGate` predicate and the `lowerable_*` lemmas proving that eac
 gate produced by the phase-product compiler inhabits it.
 -/
 
-
 namespace Shor
 open Gate
 open Operations
@@ -71,7 +70,6 @@ inductive LowerablePhaseGate : Gate → Prop where
         LowerablePhaseGate (Gate.RadixReverse r m)
 
 end Shor
-
 
 namespace Shor
 open Gate

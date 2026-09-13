@@ -18,7 +18,6 @@ open scoped BigOperators
     Width scanning
 ========================================================= -/
 
-
 /-- Initial width bookkeeping now uses the uniform lower-limb phase layout. -/
 def initWidthState (x z : ExtReg) (k : ℕ) : WidthState k :=
   let W := phaseLimbWidth x z k
@@ -258,6 +257,5 @@ lemma targetSignedLayoutState_zslot_width_scan
   simpa [stInit, need, Wwork, targetSignedLayoutState] using
     width_growExtRegTo
       (stInit.zslot i) Wwork hle hgrow
-
 
 end Shor

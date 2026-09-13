@@ -485,7 +485,6 @@ lemma standardSignedPhaseLoweringPlan_ready_of_workspace
     standardSignedPhaseLoweringPlan_ready qs k hk phi x z ops ψ
       hworkspace.static hworkspace.clean hC hRun
 
-
 /-- Readiness of the compiled controlled signed phase-product plan on a clean basis ket. -/
 lemma planCompiledCSignedPhaseGate_ready_ket
     (qs : QSemantics)
@@ -730,6 +729,5 @@ lemma standardCSignedPhaseLoweringPlan_ready_of_workspace
     PhaseLoweringReady qs (standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops hworkspace.static) ψ := by
   exact standardCSignedPhaseLoweringPlan_ready qs k hk ctrl phi x z ops ψ
     hworkspace.static hworkspace.clean hC hRun
-
 
 end Shor

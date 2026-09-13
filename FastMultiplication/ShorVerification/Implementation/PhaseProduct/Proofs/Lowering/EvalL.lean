@@ -9,7 +9,6 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Na
 rest of the lowering-correctness proofs build on.
 -/
 
-
 namespace Shor
 open Gate
 
@@ -124,7 +123,6 @@ theorem evalL_Toffoli
       rw [LowerGateClass.evalL_Toffoli_ket,
         ClassicalReversibleSemantics.eval_Toffoli_ket])
     ψ
-
 
 theorem evalL_shiftL
     {qs : QSemantics}

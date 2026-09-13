@@ -948,7 +948,6 @@ def canonicalSignedStep
     unfold phaseInputSize
     rw [hxwidth, hzwidth, max_self]
 
-
 /-- Every child register selected by a phase split is physically owned by its parent. -/
 lemma PhaseSplitLayout.child_owned_subset_parent
     {parent : ExtReg}

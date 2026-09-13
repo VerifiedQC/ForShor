@@ -1699,6 +1699,4 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
       rw [hList]
       exact hReadyCombined
 
-
-
 end Shor

@@ -42,7 +42,6 @@ lemma splitChunk_toNat_lt
   rw [layout.child_width i] at h
   simpa [phaseSplitLogicalWidth] using h
 
-
 /-- A sequence of `n` base-`2^W` digits represents a number below
     `2^(n*W)`. -/
 lemma fin_sum_digits_lt_pow
@@ -96,7 +95,6 @@ lemma fin_sum_digits_lt_pow
           2 ^ ((n + 1) * W) := by
           rw [Nat.add_mul, pow_add]
           simp [Nat.mul_comm]
-
 
 /-- Concatenating an unsigned low block with a signed high block and then
     decoding gives the low block plus the shifted signed high block. -/
@@ -169,7 +167,6 @@ lemma tcDecodeWidth_concat
     simp[hcombined]
     ring
 
-
 /-- Binary positional decomposition for the concrete `take`/`drop` split. -/
 lemma toNat_take_drop
     {Basis : Type u}
@@ -196,7 +193,6 @@ lemma toNat_take_drop
     simpa [regSize, Reg.width] using hm
   simpa [sp, splitLeft, splitRight, ASize, regSize, Reg.width, Reg.take, hmin] using h
 
-
 /-- Taking a block after first restricting to a prefix gives the same block,
     provided the complete block lies inside that prefix. -/
 lemma take_drop_take_eq
@@ -212,7 +208,6 @@ lemma take_drop_take_eq
           width ≤ pre - start :=
         by omega
       simp [Reg.take, Reg.drop, List.drop_take, List.take_take, Nat.min_eq_left hw]
-
 
 /-- Reconstruction of an `n·W`-bit register from `n` consecutive
     width-`W` blocks. -/
@@ -304,7 +299,6 @@ lemma toNat_uniform_chunks
       rw [hexp, pow_add]
       ring
 
-
 /-- A non-top phase chunk is the corresponding width-`W` block of the
     `(k-1)·W`-bit lower prefix. -/
 lemma phaseChunkActive_castSucc
@@ -345,7 +339,6 @@ lemma phaseChunkActive_castSucc
       W
       hfit).symm
 
-
 /-- The final phase chunk is exactly the suffix following the lower
     `(k-1)` width-`W` blocks. -/
 lemma phaseChunkActive_last
@@ -367,7 +360,6 @@ lemma phaseChunkActive_last
       cases active with
       | mk qubits nodup =>
           simp [phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, htop, ExtReg.width, regSize, Reg.width, Reg.take, Reg.drop]
-
 
 /-- Reconstruct the unsigned parent value from all child chunk values. -/
 theorem phaseChunks_reconstruct_nat
@@ -484,7 +476,6 @@ theorem phaseChunks_reconstruct_nat
       rw [hlowerSum, hupperChild]
       dsimp [cut]
       ring
-
 
 /-- Decode a chunk sum where the final chunk is interpreted as signed two's-complement. -/
 theorem tcDecode_chunks_signed_top
@@ -633,7 +624,6 @@ theorem tcDecode_chunks_signed_top
         simp_rw [if_neg (hnotTop _)]
         rw [if_pos htopLast]
         rw [← hLowCast]
-
 
 theorem splitChunkInt_reconstruct
     {Basis : Type u}

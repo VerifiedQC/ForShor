@@ -324,5 +324,4 @@ lemma planCompileSignedDeallocations_ready
     planCompileSignedDeallocationsAux_ready
       qs initSize src dst k le_rfl ψ
 
-
 end Shor

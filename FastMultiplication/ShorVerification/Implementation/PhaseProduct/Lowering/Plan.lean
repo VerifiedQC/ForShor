@@ -332,5 +332,4 @@ def lowerCSignedPhaseProd
     LowGate :=
   lowerGateRec plan
 
-
 end Shor

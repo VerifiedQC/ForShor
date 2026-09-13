@@ -26,7 +26,6 @@ lemma scanNeededWidths_eq_aux {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)
   scanNeededWidths x z ops = scanNeededWidthsAux (initWidthState x z k) (widthsOfState (initWidthState x z k)) ops := by
   simp [scanNeededWidths]
 
-
 /-! =========================================================
     One-Step Symbolic Width Preservation
 
