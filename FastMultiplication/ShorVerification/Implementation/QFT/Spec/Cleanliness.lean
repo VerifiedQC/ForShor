@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Semantics.CleanClosure
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import FastMultiplication.ShorVerification.Implementation.QFT.Defs
+import FastMultiplication.ShorVerification.Implementation.QFT.Workspace
 
 /-!
 # QFT Cleanliness Predicates

@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.QFT.Defs
+import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.Plan
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
 import FastMultiplication.ShorVerification.Implementation.QFT.Spec.Cleanliness
 

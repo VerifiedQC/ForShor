@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Defs
-import FastMultiplication.ShorVerification.Implementation.QFT.Defs
+import FastMultiplication.ShorVerification.Implementation.QFT.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
 
 namespace Shor
