@@ -2713,7 +2713,7 @@ private lemma star_qftPhase_eq_negative_grid_phase
   rw [← Complex.exp_conj]
   congr 1
   simp [div_eq_mul_inv]
-  simp[starRingEnd]
+  simp [starRingEnd]
   ring
 
 /--

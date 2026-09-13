@@ -387,54 +387,29 @@ structure Alg1Trace
     [GateSemanticsCore qs]
     (cfg : ModMulConfig η)
     (ψ : qs.State) where
-
   support : Finset qs.Basis
-
-  inputCoeff :
-    qs.Basis → ℂ
-
-  phaseCoeff :
-    qs.Basis →
-      Fin (ASize cfg.env.work.active) →
-        ℂ
-
+  inputCoeff : qs.Basis → ℂ
+  phaseCoeff : qs.Basis → Fin (ASize cfg.env.work.active) → ℂ
   input_eq :
-    ψ =
-      ∑ b ∈ support,
-        inputCoeff b • qs.ket b
-
+    ψ = ∑ b ∈ support, inputCoeff b • qs.ket b
   input_good :
     ∀ b ∈ support,
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b
-
-  scratch_zero :
-    ∀ b ∈ support,
-      RegEncoding.toNat cfg.env.scratch.active b = 0
-
-  scratch_fresh :
-    ∀ b ∈ support,
-      cfg.env.scratch.FreshFor 1 b
-
+      GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b
+  scratch_zero : ∀ b ∈ support, RegEncoding.toNat cfg.env.scratch.active b = 0
+  scratch_fresh : ∀ b ∈ support, cfg.env.scratch.FreshFor 1 b
   full_step1_eq :
     qs.eval
-        (step1
-          cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
+        (step1 cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace)
         ψ
       =
     ∑ b ∈ support,
       inputCoeff b •
         ∑ t : Fin (ASize cfg.env.work.active),
-          phaseCoeff b t •
-            qs.ket
-              (RegEncoding.writeNat cfg.env.work.active t.1 b)
-
+          phaseCoeff b t • qs.ket (RegEncoding.writeNat cfg.env.work.active t.1 b)
   step34_support :
-    ∀ b ∈ support,
-      ∀ t ∈ alg1GoodLabels cfg b,
-        phaseCoeff b t ≠ 0 →
-          (alg1Step4CrossCondition cfg b t ↔
-            alg1Overflow cfg b)
+    ∀ b ∈ support, ∀ t ∈ alg1GoodLabels cfg b,
+      phaseCoeff b t ≠ 0 →
+        (alg1Step4CrossCondition cfg b t ↔ alg1Overflow cfg b)
 
 /-! =========================================================
     Concrete reference states used in the Appendix-E proof

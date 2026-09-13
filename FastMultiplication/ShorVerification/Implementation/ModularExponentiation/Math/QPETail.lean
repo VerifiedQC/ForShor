@@ -1701,7 +1701,7 @@ private lemma qpeCircular_tail_floor_shell_partition
           intro t ht
           symm
           simp
-          simp[hshell_mem t ht]
+          simp [hshell_mem t ht]
 
       _ =
         ∑ n ∈ I,

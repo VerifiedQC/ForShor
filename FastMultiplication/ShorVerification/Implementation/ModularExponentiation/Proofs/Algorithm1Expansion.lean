@@ -212,7 +212,7 @@ theorem eval_adj_QFT_ket
 
               have hzlt :
                   z.1 < ASize r.active := by
-                simp[N]
+                simp [N]
 
               rw [
                 RegEncoding.toNat_writeNat_of_lt
@@ -301,7 +301,7 @@ theorem eval_adj_QFT_ket
 
               have hylt :
                   y.1 < ASize r.active := by
-                simp[N]
+                simp [N]
 
               rw [
                 RegEncoding.toNat_writeNat_of_lt
@@ -444,7 +444,7 @@ theorem eval_adj_QFT_ket
 
         have hylt :
             y.1 < ASize r.active := by
-          simp[N]
+          simp [N]
         rw [
           RegEncoding.toNat_writeNat_of_lt
             r.active y.1 b hylt
@@ -2823,7 +2823,7 @@ lemma alg1_trace_of_valid
     exact (hvalid b hb).2.2
 
   let zeroWork : Fin (ASize cfg.env.work.active) :=
-    ⟨0, by simp[ASize]⟩
+    ⟨0, by simp [ASize]⟩
 
   let phaseCoeff :
       qs.Basis →

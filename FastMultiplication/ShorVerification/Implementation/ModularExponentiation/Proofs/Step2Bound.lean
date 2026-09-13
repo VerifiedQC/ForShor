@@ -741,10 +741,10 @@ lemma alg1_step2_phase_normalization
       (((cfg.env.N : ℝ) * alg1WorkFraction cfg t : ℝ) : ℂ) *
       (y.1 : ℂ) := by
   have hMpos : (0 : ℝ) < (ASize cfg.env.work.active : ℝ) := by
-    simp[ASize]
+    simp [ASize]
 
   have hLpos : (0 : ℝ) < (ASize ((cfg.env.data.grow 1).active) : ℝ) := by
-    simp[ASize]
+    simp [ASize]
 
   have hMne : (ASize cfg.env.work.active : ℝ) ≠ 0 :=
     ne_of_gt hMpos
