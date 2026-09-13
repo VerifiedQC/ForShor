@@ -1,4 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Reference.ReferenceReadiness
+import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFinding
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
 import FastMultiplication.ShorVerification.Framework.Instantiation.QSemantics
 import FastMultiplication.ShorVerification.Framework.Instantiation.RegEncoding
 

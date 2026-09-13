@@ -1,9 +1,10 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Assertions
 import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFinding
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Main
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Correctness
 import FastMultiplication.ShorVerification.Implementation.Compilation.Correctness
 import FastMultiplication.ShorVerification.Implementation.Semantics.Measurement
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Dynamic
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Setup
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
@@ -31,13 +32,6 @@ approximate order-finding circuits, the measurement interface, and the final
 success-probability theorem.  Classical order and continued-fraction material
 lives in `MathBackbone/ShorAlgorithm.lean`.
 -/
-
-/-! =========================================================
-    Section 1: Order-finding circuits
-
-    These definitions assemble the high-level gates used by the ideal and
-    approximate order-finding algorithms.
-========================================================= -/
 
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
@@ -196,7 +190,7 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
 /-! =========================================================
     Section 4: Final correctness statements
 
-    The ideal theorem lives in `Proofs.NaiveShor.Main`.  This file imports that
+    The ideal theorem lives in `Proofs.NaiveShor.Correctness`.  This file imports that
     bound and transfers it across the modular-exponentiation implementation
     error to obtain the approximate order-finding statement.
 ========================================================= -/

@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Preliminaries
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Lemmas
+import FastMultiplication.ShorVerification.Implementation.Shor.Math.OrderFindingAnalysis
 import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
 
 /-!
