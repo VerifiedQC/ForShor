@@ -763,3 +763,80 @@ lemma QFTLoweringReady.smul
             qs phasePlan a hphase,
           ihLeft hleft
         ⟩
+
+/-! =========================================================
+    Section 3: Readiness and zero-state facts
+
+    Readiness records the clean-workspace assumptions that must hold before a
+    planned QFT is evaluated. The zero-state lemmas provide the small closure
+    facts needed by the public lowering assertions.
+========================================================= -/
+
+lemma evalL_lowerQFTPlan_zero
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    {k : ℕ}
+    {hk : 1 < k}
+    {ops : Prog k}
+    {r : Reg}
+    (plan : QFTLoweringPlan k hk ops r) :
+    LowerGateClass.evalL
+        (qs := qs)
+        (lowerQFTPlan plan)
+        0
+      =
+    0 := by
+  exact LowerGateClass.evalL_zero (qs := qs) (lowerQFTPlan plan)
+
+
+lemma QFTLoweringReady.zero
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsCore qs]
+    [LowerGateClass qs]
+    {k : ℕ}
+    {hk : 1 < k}
+    {ops : Prog k}
+    {r : Reg}
+    (plan : QFTLoweringPlan k hk ops r) :
+    QFTLoweringReady qs plan 0 := by
+  induction plan with
+  | empty =>
+      trivial
+  | singleton =>
+      trivial
+  | split r hsize ws phaseInitSize phasePlan
+      rightPlan leftPlan ihRight ihLeft =>
+      change
+        Gate.PhaseProdWorkspace.CleanState qs ws 0
+          ∧
+        QFTLoweringReady qs rightPlan 0
+          ∧
+        PhaseLoweringReady
+          qs phasePlan
+          (LowerGateClass.evalL
+            (qs := qs)
+            (lowerQFTPlan rightPlan)
+            0)
+          ∧
+        QFTLoweringReady
+          qs leftPlan
+          (LowerGateClass.evalL
+            (qs := qs)
+            (lowerGateRec phasePlan)
+            (LowerGateClass.evalL
+              (qs := qs)
+              (lowerQFTPlan rightPlan)
+              0))
+      rw [
+        evalL_lowerQFTPlan_zero,
+        evalL_lowerGateRec_zero
+      ]
+      exact
+        ⟨
+          CleanClosure.zero,
+          ihRight,
+          PhaseLoweringReady.zero qs phasePlan,
+          ihLeft
+        ⟩
