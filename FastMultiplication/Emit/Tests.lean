@@ -17,7 +17,7 @@ open Lean (Json)
 /-- A tiny concrete instance: `a = 2`, `N = 3` (`gcd 2 3 = 1`, `0 < 2 < 3`). -/
 def smallLowering : ShorLoweringSetup := standardLoweringSetup 2 (by decide)
 
-def smallInst : ShorOrderFindingInstance := ⟨2, 3, by decide, by decide⟩
+def smallInst : ShorOrderFindingInstance := ⟨2, 15, by decide, by decide⟩
 
 def smallProgram : ShorOrderFindingProgram :=
   Reference.referenceProgramAt smallLowering 0 smallInst
@@ -62,4 +62,5 @@ def k3Program : ShorOrderFindingProgram :=
 
 example : 0 < LowGate.gateCount shorGateCostModel k3Program.circuit := by native_decide
 
+#eval LowGate.gateCount shorGateCostModel k3Program.circuit
 end Shor.Emit.Tests
