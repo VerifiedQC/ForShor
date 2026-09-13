@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.Defs
+import FastMultiplication.ShorVerification.Implementation.Compilation.LowerGate
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
