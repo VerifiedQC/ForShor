@@ -1,5 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Preliminaries
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Lemmas
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Step1QPE
 
 /-!
 # NaiveShor — quantum phase estimation / IQFT analysis

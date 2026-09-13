@@ -1,5 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Defs
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.OrderFinding
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
