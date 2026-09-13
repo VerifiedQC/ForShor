@@ -23,8 +23,7 @@ def constArithmeticUnitQubit
   (scratch.newBits 1).get
     ⟨0, by
       have hsize := Gate.ExtReg.newBits_size scratch 1 h
-      have hwidth : (scratch.newBits 1).width = 1 := by
-        simpa [regSize] using hsize
+      have hwidth : (scratch.newBits 1).width = 1 := by simpa [regSize] using hsize
       omega⟩
 
 /-- Regard the one-bit constant workspace as a signed extendable register. -/

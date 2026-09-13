@@ -69,18 +69,12 @@ private theorem cmpLtNW_value_bounds
   dsimp only
   let m := max (d + w) (Nat.log2 (N + 1) + 1 + w)
   have hN1 : N + 1 ≠ 0 := by omega
-  have hNsucc :
-      N + 1 < 2 ^ (Nat.log2 (N + 1) + 1) :=
-    (Nat.log2_lt hN1).mp (by omega)
+  have hNsucc : N + 1 < 2 ^ (Nat.log2 (N + 1) + 1) := (Nat.log2_lt hN1).mp (by omega)
   have hN : N < 2 ^ (Nat.log2 (N + 1) + 1) := by omega
-  have hproduct0 :
-      N * workValue <
-        2 ^ (Nat.log2 (N + 1) + 1) * 2 ^ w := by
+  have hproduct0 : N * workValue < 2 ^ (Nat.log2 (N + 1) + 1) * 2 ^ w := by
     nlinarith [show 0 < 2 ^ w by positivity,
       show 0 < 2 ^ (Nat.log2 (N + 1) + 1) by positivity]
-  have hproduct1 :
-      N * workValue <
-        2 ^ (Nat.log2 (N + 1) + 1 + w) := by
+  have hproduct1 : N * workValue < 2 ^ (Nat.log2 (N + 1) + 1 + w) := by
     simpa [pow_add] using hproduct0
   have hproduct : N * workValue < 2 ^ m := by
     exact lt_of_lt_of_le hproduct1
@@ -104,26 +98,20 @@ private theorem cmpLtNW_value_bounds
   constructor
   · have hproductZ : (N * workValue : ℕ) < 2 ^ m := hproduct
     have hscaledNonneg : (0 : ℤ) ≤ (2 : ℤ) ^ w * dataValue := by positivity
-    have hpow :
-        (((2 ^ ((2 + m) - 1) : ℕ) : ℤ)) =
-          2 * ((2 ^ m : ℕ) : ℤ) := by
+    have hpow : (((2 ^ ((2 + m) - 1) : ℕ) : ℤ)) = 2 * ((2 ^ m : ℕ) : ℤ) := by
       rw [show (2 + m) - 1 = m + 1 by omega, pow_succ]
       simp [Nat.mul_comm]
     rw [hpow]
-    have hproductCast :
-        ((N * workValue : ℕ) : ℤ) < ((2 ^ m : ℕ) : ℤ) := by
+    have hproductCast : ((N * workValue : ℕ) : ℤ) < ((2 ^ m : ℕ) : ℤ) := by
       exact_mod_cast hproduct
     nlinarith
   · have hscaledZ : (dataValue * 2 ^ w : ℕ) < 2 ^ m := hscaled
     have hproductNonneg : (0 : ℤ) ≤ (N * workValue : ℕ) := by positivity
-    have hpow :
-        (((2 ^ ((2 + m) - 1) : ℕ) : ℤ)) =
-          2 * ((2 ^ m : ℕ) : ℤ) := by
+    have hpow : (((2 ^ ((2 + m) - 1) : ℕ) : ℤ)) = 2 * ((2 ^ m : ℕ) : ℤ) := by
       rw [show (2 + m) - 1 = m + 1 by omega, pow_succ]
       simp [Nat.mul_comm]
     rw [hpow]
-    have hscaledCast :
-        ((dataValue * 2 ^ w : ℕ) : ℤ) < ((2 ^ m : ℕ) : ℤ) := by
+    have hscaledCast : ((dataValue * 2 ^ w : ℕ) : ℤ) < ((2 ^ m : ℕ) : ℤ) := by
       exact_mod_cast hscaled
     push_cast at hscaledCast
     norm_num at hscaledCast ⊢
@@ -265,9 +253,7 @@ private lemma cmpLtNW_negateBasis_write_qubit
       RegEncoding.writeNat (qubitReg q) value (negateBasis r b) := by
   have hdisj := cmpLtNW_active_qubit_disjoint_of_not_owned r q hq
   unfold negateBasis
-  have hint :
-      extToInt r (RegEncoding.writeNat (qubitReg q) value b) =
-        extToInt r b := by
+  have hint : extToInt r (RegEncoding.writeNat (qubitReg q) value b) = extToInt r b := by
     unfold extToInt ExtReg.toNat
     rw [RegEncoding.toNat_left_write_right
       r.active (qubitReg q) hdisj b value]
@@ -289,15 +275,11 @@ private lemma cmpLtNW_addScaledBasis_write_qubit
     addScaledBasis_eq dst src negSrc sh b hds]
   have hdstDisj := cmpLtNW_active_qubit_disjoint_of_not_owned dst q hqdst
   have hsrcDisj := cmpLtNW_active_qubit_disjoint_of_not_owned src q hqsrc
-  have hdst :
-      extToInt dst (RegEncoding.writeNat (qubitReg q) value b) =
-        extToInt dst b := by
+  have hdst : extToInt dst (RegEncoding.writeNat (qubitReg q) value b) = extToInt dst b := by
     unfold extToInt ExtReg.toNat
     rw [RegEncoding.toNat_left_write_right
       dst.active (qubitReg q) hdstDisj b value]
-  have hsrc :
-      extToInt src (RegEncoding.writeNat (qubitReg q) value b) =
-        extToInt src b := by
+  have hsrc : extToInt src (RegEncoding.writeNat (qubitReg q) value b) = extToInt src b := by
     unfold extToInt ExtReg.toNat
     rw [RegEncoding.toNat_left_write_right
       src.active (qubitReg q) hsrcDisj b value]
@@ -519,9 +501,7 @@ theorem eval_cmp_lt_nw_ket
       if comparison then 1 else 0
   let bOut : qs.Basis := RegEncoding.writeNat (qubitReg flag) out b
 
-  have hscratchWidth :
-      scratch.width =
-        2 + max (d + w) (Nat.log2 (N + 1) + 1 + w) := by
+  have hscratchWidth : scratch.width = 2 + max (d + w) (Nat.log2 (N + 1) + 1 + w) := by
     simpa [ExtReg.width, cmpLtNWWidth, d, w] using hworkspace.scratch_width
   have hscratchPos : 0 < scratch.width := by
     rw [hscratchWidth]
@@ -622,26 +602,22 @@ theorem eval_cmp_lt_nw_ket
     exact hflagNeg
     exact hflagNotScratchActive
 
-  have hdiffNegIff :
-      difference < 0 ↔ comparison := by
+  have hdiffNegIff : difference < 0 ↔ comparison := by
     change
       (-(q : ℤ) + (2 : ℤ) ^ w * (dataValue : ℤ) < 0) ↔
         dataValue * 2 ^ w < q
     constructor
     · intro h
-      have hcast :
-          ((dataValue * 2 ^ w : ℕ) : ℤ) < (q : ℤ) := by
+      have hcast : ((dataValue * 2 ^ w : ℕ) : ℤ) < (q : ℤ) := by
         push_cast
         nlinarith
       exact_mod_cast hcast
     · intro h
-      have hcast :
-          ((dataValue * 2 ^ w : ℕ) : ℤ) < (q : ℤ) := by
+      have hcast : ((dataValue * 2 ^ w : ℕ) : ℤ) < (q : ℤ) := by
         exact_mod_cast h
       push_cast at hcast
       nlinarith
-  have hsignBit :
-      RegEncoding.bit sign bDiff = decide comparison := by
+  have hsignBit : RegEncoding.bit sign bDiff = decide comparison := by
     dsimp [sign]
     rw [cmpLtNWSignQubit_bit, hdiffInt]
     by_cases hcmp : comparison
@@ -656,9 +632,7 @@ theorem eval_cmp_lt_nw_ket
     apply hworkspace.flag_not_scratch
     rw [← heq]
     exact List.mem_append_left _ hsignMem
-  have hcnotBasis :
-      cnotBasis sign flag bDiff =
-        RegEncoding.writeNat (qubitReg flag) out bDiff := by
+  have hcnotBasis : cnotBasis sign flag bDiff = RegEncoding.writeNat (qubitReg flag) out bDiff := by
     by_cases hcmp : comparison
     · simp [cnotBasis, hsignNeFlag, hsignBit, hcmp, hflagDiff, out]
     · rw [show cnotBasis sign flag bDiff = bDiff by
@@ -701,8 +675,7 @@ theorem eval_cmp_lt_nw_ket
     have h := eval_fastConstMulInto_ket
       N work scratch hworkspace.mulWorkspace bOut hcleanOut hscratchZeroOut
     simpa [mul, bMulOut, q, hworkOut, Nat.mod_eq_of_lt hqFull] using h
-  have hbMulOut :
-      bMulOut = RegEncoding.writeNat (qubitReg flag) out bMul := by
+  have hbMulOut : bMulOut = RegEncoding.writeNat (qubitReg flag) out bMul := by
     dsimp [bMulOut, bOut, bMul]
     exact RegEncoding.writeNat_comm_of_disjoint
       scratch.active (qubitReg flag) hscratchFlagDisjoint q out b
@@ -732,14 +705,12 @@ theorem eval_cmp_lt_nw_ket
     simpa [diff, bNegOut, bDiffOut, w] using hdiffOutFacts.1
   have hflagNotDataGrow : flag ∉ (data.grow 1).ownedQubits := by
     simpa [Gate.ExtReg.ownedQubits_grow] using hworkspace.flag_not_data
-  have hbNegOut :
-      bNegOut = RegEncoding.writeNat (qubitReg flag) out bNeg := by
+  have hbNegOut : bNegOut = RegEncoding.writeNat (qubitReg flag) out bNeg := by
     dsimp [bNegOut]
     rw [hbMulOut]
     exact cmpLtNW_negateBasis_write_qubit
       scratch flag out bMul hworkspace.flag_not_scratch
-  have hbDiffOut :
-      bDiffOut = RegEncoding.writeNat (qubitReg flag) out bDiff := by
+  have hbDiffOut : bDiffOut = RegEncoding.writeNat (qubitReg flag) out bDiff := by
     dsimp [bDiffOut]
     rw [hbNegOut]
     exact cmpLtNW_addScaledBasis_write_qubit

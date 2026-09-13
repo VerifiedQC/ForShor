@@ -35,14 +35,12 @@ theorem eval_Hreg_zero_eq_QFT
 
   rw [QFTSemantics.eval_QFT_ket]
 
-  have hN :
-      2 ^ r.width = ASize r.active := by
+  have hN : 2 ^ r.width = ASize r.active := by
     rfl
 
   rw [hN]
 
-  have hx :
-      ExtReg.toNat r b = 0 := hzero
+  have hx : ExtReg.toNat r b = 0 := hzero
 
   rw [hx]
 
@@ -113,8 +111,7 @@ theorem eval_adj_QFT_ket
 
   let it : Fin N := ⟨t, htlt⟩
 
-  have hN :
-      2 ^ r.width = N := by
+  have hN : 2 ^ r.width = N := by
     simp [N, ASize, ExtReg.width]
 
   rw [GateSemanticsCore.inner_eval_adj (qs := qs)]
@@ -138,8 +135,7 @@ theorem eval_adj_QFT_ket
                 (RegEncoding.writeNat r.active y.1 b))
         (qs.ket d)
 
-  have hc :
-      (starRingEnd ℂ) c = c := by
+  have hc : (starRingEnd ℂ) c = c := by
     simp [c]
 
   by_cases hdb :
@@ -150,8 +146,7 @@ theorem eval_adj_QFT_ket
     -- d differs from b only on the active register.
     ----------------------------------------------------------------
 
-    have hxb :
-        RegEncoding.writeNat r.active x d = b := by
+    have hxb : RegEncoding.writeNat r.active x d = b := by
       calc
         RegEncoding.writeNat r.active x d
             =
@@ -201,8 +196,7 @@ theorem eval_adj_QFT_ket
             apply Fintype.sum_eq_single ix
             intro z hz
 
-            have hwrite_ne :
-                RegEncoding.writeNat r.active z.1 d ≠ b := by
+            have hwrite_ne : RegEncoding.writeNat r.active z.1 d ≠ b := by
               intro hwrite
 
               have hread :=
@@ -210,8 +204,7 @@ theorem eval_adj_QFT_ket
                   (RegEncoding.toNat r.active)
                   hwrite
 
-              have hzlt :
-                  z.1 < ASize r.active := by
+              have hzlt : z.1 < ASize r.active := by
                 simp [N]
 
               rw [
@@ -290,8 +283,7 @@ theorem eval_adj_QFT_ket
             apply Fintype.sum_eq_single it
             intro y hy
 
-            have hwrite_ne :
-                RegEncoding.writeNat r.active y.1 b ≠ d := by
+            have hwrite_ne : RegEncoding.writeNat r.active y.1 b ≠ d := by
               intro hwrite
 
               have hread :=
@@ -299,8 +291,7 @@ theorem eval_adj_QFT_ket
                   (RegEncoding.toNat r.active)
                   hwrite
 
-              have hylt :
-                  y.1 < ASize r.active := by
+              have hylt : y.1 < ASize r.active := by
                 simp [N]
 
               rw [
@@ -376,12 +367,10 @@ theorem eval_adj_QFT_ket
       apply Fintype.sum_eq_zero
       intro z
 
-      have hwrite_ne :
-          RegEncoding.writeNat r.active z.1 d ≠ b := by
+      have hwrite_ne : RegEncoding.writeNat r.active z.1 d ≠ b := by
         intro hwrite
 
-        have hcontr :
-            RegEncoding.writeNat r.active t b = d := by
+        have hcontr : RegEncoding.writeNat r.active t b = d := by
           calc
             RegEncoding.writeNat r.active t b
                 =
@@ -433,8 +422,7 @@ theorem eval_adj_QFT_ket
       apply Fintype.sum_eq_zero
       intro y
 
-      have hwrite_ne :
-          RegEncoding.writeNat r.active y.1 b ≠ d := by
+      have hwrite_ne : RegEncoding.writeNat r.active y.1 b ≠ d := by
         intro hwrite
 
         have hread :=
@@ -442,8 +430,7 @@ theorem eval_adj_QFT_ket
             (RegEncoding.toNat r.active)
             hwrite
 
-        have hylt :
-            y.1 < ASize r.active := by
+        have hylt : y.1 < ASize r.active := by
           simp [N]
         rw [
           RegEncoding.toNat_writeNat_of_lt
@@ -773,8 +760,7 @@ private lemma qubit_write_eq_work_write
   by_cases hp : p ∈ work.qubits
 
   ·
-    have hrewrite :
-        RegEncoding.writeNat work t.1 bout = bout := by
+    have hrewrite : RegEncoding.writeNat work t.1 bout = bout := by
       simpa [t] using
         (RegEncoding.writeNat_toNat work bout)
 
@@ -1018,8 +1004,7 @@ private lemma eval_foldl_H_preserves_hregWorkSpan
       have hq : q ∈ work.qubits :=
         hmem q (by simp)
 
-      have htail :
-          ∀ r, r ∈ qsList → r ∈ work.qubits := by
+      have htail : ∀ r, r ∈ qsList → r ∈ work.qubits := by
         intro r hr
         exact hmem r (by simp [hr])
 
@@ -1030,9 +1015,7 @@ private lemma eval_foldl_H_preserves_hregWorkSpan
               (qs.eval (Gate.seq (Gate.H q) acc) ξ) := by
         intro ξ hξ
 
-        have hH :
-            HRegWorkSpan qs work base
-              (qs.eval (Gate.H q) ξ) :=
+        have hH : HRegWorkSpan qs work base (qs.eval (Gate.H q) ξ) :=
           eval_H_preserves_hregWorkSpan
             qs work base q hq ξ hξ
 
@@ -1065,20 +1048,14 @@ lemma eval_Hreg_work_expansion
           qs.ket (RegEncoding.writeNat work t.1 b) := by
   classical
 
-  have hstart :
-      HRegWorkSpan qs work b
-        (qs.ket (RegEncoding.writeNat work z.1 b)) :=
+  have hstart : HRegWorkSpan qs work b (qs.ket (RegEncoding.writeNat work z.1 b)) :=
     hregWorkSpan_ket_write qs work b z
 
-  have hbounds :
-      ∀ q, q ∈ regQubits work → q ∈ work.qubits := by
+  have hbounds : ∀ q, q ∈ regQubits work → q ∈ work.qubits := by
     intro q hq
     simpa [regQubits] using hq
 
-  have hid :
-      ∀ ξ : qs.State,
-        HRegWorkSpan qs work b ξ →
-        HRegWorkSpan qs work b (qs.eval Gate.id ξ) := by
+  have hid : ∀ ξ : qs.State, HRegWorkSpan qs work b ξ → HRegWorkSpan qs work b (qs.eval Gate.id ξ) := by
     intro ξ hξ
     simpa [qs.eval_id] using hξ
 
@@ -1150,8 +1127,7 @@ lemma ExtReg.freshFor_one_of_two
       (m := m)
       (b := b)
 
-  have hleft :
-      splitLeft r2 m = e.newBits 1 := by
+  have hleft : splitLeft r2 m = e.newBits 1 := by
     cases e
     simp [
       r2,
@@ -1162,15 +1138,13 @@ lemma ExtReg.freshFor_one_of_two
       List.take_take
     ]
 
-  have hr2zero :
-      RegEncoding.toNat r2 b = 0 := by
+  have hr2zero : RegEncoding.toNat r2 b = 0 := by
     simpa [r2] using hfresh
 
   dsimp at hsplit
   rw [hr2zero] at hsplit
 
-  have hzero :
-      RegEncoding.toNat (splitLeft r2 m) b = 0 := by
+  have hzero : RegEncoding.toNat (splitLeft r2 m) b = 0 := by
     omega
 
   simpa [hleft] using hzero
@@ -1197,20 +1171,16 @@ lemma ExtReg.freshFor_write_active_of_ownedDisjoint
 
   intro q hqNew
 
-  have hqReserve :
-      q ∈ x.reserve.qubits :=
+  have hqReserve : q ∈ x.reserve.qubits :=
     List.mem_of_mem_take hqNew
 
-  have hqOwnedX :
-      q ∈ x.ownedQubits := by
+  have hqOwnedX : q ∈ x.ownedQubits := by
     exact List.mem_append_right _ hqReserve
 
-  have hqNotActiveZ :
-      q ∉ z.active.qubits := by
+  have hqNotActiveZ : q ∉ z.active.qubits := by
     intro hqActiveZ
 
-    have hqOwnedZ :
-        q ∈ z.ownedQubits :=
+    have hqOwnedZ : q ∈ z.ownedQubits :=
       List.mem_append_left _ hqActiveZ
 
     have h := hdisj
@@ -1351,8 +1321,7 @@ lemma alg1_step1_ket_expansion
           cfg.env.N : ℕ) : ℚ))
       / (cfg.env.N : ℚ)
 
-  have hworkZero :
-      RegEncoding.toNat workReg b = 0 := by
+  have hworkZero : RegEncoding.toNat workReg b = 0 := by
     exact hb.2.2.1
 
   have hwriteOverwrite :
@@ -1394,8 +1363,7 @@ lemma alg1_step1_ket_expansion
           workReg b
       simpa [hworkZero] using hlt⟩
 
-  have hz0 :
-      RegEncoding.writeNat workReg z0.1 b = b := by
+  have hz0 : RegEncoding.writeNat workReg z0.1 b = b := by
     change RegEncoding.writeNat workReg 0 b = b
     rw [← hworkZero]
     exact RegEncoding.writeNat_toNat workReg b
@@ -1469,10 +1437,7 @@ lemma alg1_step1_ket_expansion
         (step1Workspace_clean_write
           qs cfg b hb z))
 
-  let γ :
-      Fin (ASize workReg) →
-      Fin (ASize workReg) →
-      ℂ :=
+  let γ : Fin (ASize workReg) → Fin (ASize workReg) → ℂ :=
     fun z =>
       Classical.choose
         (eval_iqft_work_expansion
@@ -1598,9 +1563,7 @@ lemma alg1_step1_ket_qpe_expansion
 
   rcases alg1_step1_ket_expansion qs cfg b hb with ⟨α, hα⟩
 
-  have hαU1 :
-      qs.eval
-          (ModMulConfig.U1 (Basis := qs.Basis) cfg)
+  have hαU1 : qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg)
           (qs.ket b)
         =
       ∑ t : Fin (ASize cfg.env.work.active),
@@ -1633,9 +1596,7 @@ lemma alg1_step1_ket_qpe_expansion
           RegEncoding.toNat_writeNat_of_lt
             cfg.env.work.active u.1 b u.isLt
 
-  have hcoeff :
-      ∀ t : Fin (ASize cfg.env.work.active),
-        alg1PhaseCoeff qs cfg b t = α t := by
+  have hcoeff : ∀ t : Fin (ASize cfg.env.work.active), alg1PhaseCoeff qs cfg b t = α t := by
     intro t
     unfold alg1PhaseCoeff
     rw [hαU1]
@@ -1645,9 +1606,7 @@ lemma alg1_step1_ket_qpe_expansion
       simp
     · intro u _hu hut
       have hneq :
-          RegEncoding.writeNat cfg.env.work.active t.1 b
-            ≠
-          RegEncoding.writeNat cfg.env.work.active u.1 b := by
+          RegEncoding.writeNat cfg.env.work.active t.1 b ≠ RegEncoding.writeNat cfg.env.work.active u.1 b := by
         intro hEq
         exact hut ((hlabel_inj t u hEq).symm)
       rw [inner_smul_right, qs.ket_inner_eq_zero_of_ne hneq]
@@ -1942,8 +1901,7 @@ private lemma alg1_exp_phase_eq_of_modEq'
     rw [harg]
     simpa [mul_assoc, mul_left_comm, mul_comm] using Complex.exp_two_pi_mul_I
 
-  have hpow_mod :
-      ∀ a b : ℕ, Nat.ModEq N a b → (ω N) ^ a = (ω N) ^ b := by
+  have hpow_mod : ∀ a b : ℕ, Nat.ModEq N a b → (ω N) ^ a = (ω N) ^ b := by
     intro a b hab
     have hrem : a % N = b % N := by
       simpa [Nat.ModEq] using hab
@@ -1967,8 +1925,7 @@ private lemma alg1_exp_phase_eq_of_modEq'
         (ω N) ^ b := by
           rw [Nat.mod_add_div b N]
 
-  have hpow :
-      (ω N) ^ (u * z) = (ω N) ^ (v * z) :=
+  have hpow : (ω N) ^ (u * z) = (ω N) ^ (v * z) :=
     hpow_mod (u * z) (v * z) (Nat.ModEq.mul_right z huv)
 
   calc
@@ -2025,8 +1982,7 @@ lemma eval_CPhaseProd_fixes_work_of_target_zero
     Nat.lt_trans Nat.zero_lt_one
       cfg.env.modulus_gt_one
 
-  have hdataWork :
-      Disjoint dataReg workReg := by
+  have hdataWork : Disjoint dataReg workReg := by
     rw [Shor.Disjoint, List.disjoint_left]
     intro q hqData hqWork
 
@@ -2040,8 +1996,7 @@ lemma eval_CPhaseProd_fixes_work_of_target_zero
       (List.mem_append_left _ hqData)
       (List.mem_append_left _ hqWork)
 
-  have hctrlWork :
-      cfg.ctrl ∉ workReg.qubits := by
+  have hctrlWork : cfg.ctrl ∉ workReg.qubits := by
     intro hctrl
     exact cfg.layout.2.2.2.2.1
       (List.mem_append_left _ hctrl)
@@ -2109,14 +2064,12 @@ lemma eval_CPhaseProd_fixes_work_of_target_zero
     · let x : ℕ :=
         RegEncoding.toNat dataReg b
 
-      have hzmod :
-          Nat.ModEq cfg.env.N (a * x) 0 := by
+      have hzmod : Nat.ModEq cfg.env.N (a * x) 0 := by
         change
           (a * x) % cfg.env.N =
             0 % cfg.env.N
 
-        have hz' :
-            (a * x) % cfg.env.N = 0 := by
+        have hz' : (a * x) % cfg.env.N = 0 := by
           simpa [
             alg1TargetResidue,
             a,
@@ -2172,9 +2125,7 @@ lemma eval_CPhaseProd_fixes_work_of_target_zero
       RegEncoding.toNat_lt_ASize
         workReg b⟩
 
-  have hz0 :
-      RegEncoding.writeNat
-        workReg z0.1 b = b := by
+  have hz0 : RegEncoding.writeNat workReg z0.1 b = b := by
     simpa [z0] using
       RegEncoding.writeNat_toNat
         workReg b
@@ -2267,8 +2218,7 @@ lemma alg1_step1_zero_target_exact
       eval_CPhaseProd_fixes_work_of_target_zero
         qs cfg b hb hz
 
-  have hworkZero :
-      ExtReg.toNat ws.zExt b = 0 := by
+  have hworkZero : ExtReg.toNat ws.zExt b = 0 := by
     simpa [
       ws,
       ModMulCircuitWorkspaceOK.step1Workspace,
@@ -2332,16 +2282,13 @@ lemma alg1_output_mod
     (x + ((((c + N - 1) % N) * x) % N)) % N := by
   let a : ℕ := (c + N - 1) % N
 
-  have ha :
-      a ≡ c + N - 1 [MOD N] := by
+  have ha : a ≡ c + N - 1 [MOD N] := by
     dsimp [a]
     exact Nat.mod_modEq (c + N - 1) N
 
-  have hsucc :
-      a + 1 ≡ c [MOD N] := by
+  have hsucc : a + 1 ≡ c [MOD N] := by
     have h := Nat.ModEq.add_right 1 ha
-    have hsum :
-        (c + N - 1) + 1 = c + N := by
+    have hsum : (c + N - 1) + 1 = c + N := by
       omega
     rw [hsum] at h
     calc
@@ -2349,12 +2296,10 @@ lemma alg1_output_mod
       _ ≡ c [MOD N] := by
         simp [Nat.ModEq]
 
-  have hcx :
-      c * x ≡ (a + 1) * x [MOD N] :=
+  have hcx : c * x ≡ (a + 1) * x [MOD N] :=
     Nat.ModEq.mul_right x hsucc.symm
 
-  have hax :
-      (a + 1) * x = x + a * x := by
+  have hax : (a + 1) * x = x + a * x := by
     calc
       (a + 1) * x
           = a * x + 1 * x :=
@@ -2362,15 +2307,11 @@ lemma alg1_output_mod
       _ = a * x + x := by simp
       _ = x + a * x := Nat.add_comm _ _
 
-  have hxr :
-      x + ((a * x) % N) ≡
-        x + a * x [MOD N] :=
+  have hxr : x + ((a * x) % N) ≡ x + a * x [MOD N] :=
     Nat.ModEq.add_left x
       (Nat.mod_modEq (a * x) N)
 
-  have hmod :
-      c * x ≡
-        x + ((a * x) % N) [MOD N] := by
+  have hmod : c * x ≡ x + ((a * x) % N) [MOD N] := by
     calc
       c * x ≡ (a + 1) * x [MOD N] := hcx
       _ ≡ x + a * x [MOD N] := by
@@ -2465,49 +2406,34 @@ lemma alg1_step4_cross_iff_overflow_of_good
     dsimp [s]
     omega
 
-  have hNposR :
-      (0 : ℝ) < (N : ℝ) := by
+  have hNposR : (0 : ℝ) < (N : ℝ) := by
     exact_mod_cast hNpos
 
-  have hAposR :
-      (0 : ℝ) < (A : ℝ) := by
+  have hAposR : (0 : ℝ) < (A : ℝ) := by
     exact_mod_cast hApos
 
-  have hMposR :
-      (0 : ℝ) < (M : ℝ) := by
+  have hMposR : (0 : ℝ) < (M : ℝ) := by
     exact_mod_cast hMpos
 
-  have hNleA :
-      (N : ℝ) ≤ (A : ℝ) := by
+  have hNleA : (N : ℝ) ≤ (A : ℝ) := by
     dsimp [N, A]
     exact_mod_cast cfg.env.data_capacity
 
-  have heta :
-      η < (1 / 2 : ℝ) :=
+  have heta : η < (1 / 2 : ℝ) :=
     cfg.env.precision.2.1
 
-  have hetaN :
-      η * (N : ℝ) <
-        (1 / 2 : ℝ) * (N : ℝ) :=
+  have hetaN : η * (N : ℝ) < (1 / 2 : ℝ) * (N : ℝ) :=
     mul_lt_mul_of_pos_right heta hNposR
 
-  have hhalfNleA :
-      (1 / 2 : ℝ) * (N : ℝ) ≤
-        (A : ℝ) := by
+  have hhalfNleA : (1 / 2 : ℝ) * (N : ℝ) ≤ (A : ℝ) := by
     nlinarith
 
-  have hdelta :
-      η / (A : ℝ) <
-        1 / (N : ℝ) := by
+  have hdelta : η / (A : ℝ) < 1 / (N : ℝ) := by
     apply
       (div_lt_div_iff₀ hAposR hNposR).mpr
     nlinarith
 
-  have hgood :
-      |(r : ℝ) / (N : ℝ) -
-          (t.1 : ℝ) / (M : ℝ)|
-        <
-      η / (A : ℝ) := by
+  have hgood : |(r : ℝ) / (N : ℝ) - (t.1 : ℝ) / (M : ℝ)| < η / (A : ℝ) := by
     have hraw :=
       (Finset.mem_filter.mp ht).2
 
@@ -2521,22 +2447,13 @@ lemma alg1_step4_cross_iff_overflow_of_good
   rcases abs_lt.mp hgood with
     ⟨hgood_left, hgood_right⟩
 
-  have hbelow :
-      (r : ℝ) / (N : ℝ) -
-          η / (A : ℝ)
-        <
-      (t.1 : ℝ) / (M : ℝ) := by
+  have hbelow : (r : ℝ) / (N : ℝ) - η / (A : ℝ) < (t.1 : ℝ) / (M : ℝ) := by
     linarith
 
-  have habove :
-      (t.1 : ℝ) / (M : ℝ)
-        <
-      (r : ℝ) / (N : ℝ) +
-          η / (A : ℝ) := by
+  have habove : (t.1 : ℝ) / (M : ℝ) < (r : ℝ) / (N : ℝ) + η / (A : ℝ) := by
     linarith
 
-  have hy_mod :
-      y = s % N := by
+  have hy_mod : y = s % N := by
     dsimp [y, s, r, x, N]
 
     by_cases hctrl :
@@ -2580,32 +2497,23 @@ lemma alg1_step4_cross_iff_overflow_of_good
         _ = s - N :=
           Nat.mod_eq_of_lt (by omega)
 
-    have hylt :
-        y < r := by
+    have hylt : y < r := by
       rw [hy_over]
       dsimp [s]
       omega
 
-    have hgapNat :
-        y + 1 ≤ r :=
+    have hgapNat : y + 1 ≤ r :=
       Nat.succ_le_iff.mpr hylt
 
-    have hgapR :
-        (y : ℝ) + 1 ≤ (r : ℝ) := by
+    have hgapR : (y : ℝ) + 1 ≤ (r : ℝ) := by
       exact_mod_cast hgapNat
 
-    have hmul :
-        ((y : ℝ) + 1) * (N : ℝ)
-          ≤
-        (r : ℝ) * (N : ℝ) :=
+    have hmul : ((y : ℝ) + 1) * (N : ℝ) ≤ (r : ℝ) * (N : ℝ) :=
       mul_le_mul_of_nonneg_right
         hgapR
         (le_of_lt hNposR)
 
-    have hdiv :
-        ((y : ℝ) + 1) / (N : ℝ)
-          ≤
-        (r : ℝ) / (N : ℝ) :=
+    have hdiv : ((y : ℝ) + 1) / (N : ℝ) ≤ (r : ℝ) / (N : ℝ) :=
       (div_le_div_iff₀ hNposR hNposR).mpr <| by
         simpa [mul_comm] using hmul
 
@@ -2618,21 +2526,13 @@ lemma alg1_step4_cross_iff_overflow_of_good
 
     rw [hsplit] at hdiv
 
-    have hyfrac :
-        (y : ℝ) / (N : ℝ)
-          <
-        (r : ℝ) / (N : ℝ) -
-          η / (A : ℝ) := by
+    have hyfrac : (y : ℝ) / (N : ℝ) < (r : ℝ) / (N : ℝ) - η / (A : ℝ) := by
       linarith
 
-    have hcrossfrac :
-        (y : ℝ) / (N : ℝ)
-          <
-        (t.1 : ℝ) / (M : ℝ) :=
+    have hcrossfrac : (y : ℝ) / (N : ℝ) < (t.1 : ℝ) / (M : ℝ) :=
       lt_trans hyfrac hbelow
 
-    have hcross :
-        y * M < N * t.1 := by
+    have hcross : y * M < N * t.1 := by
       have hraw :=
         (nat_fraction_lt_iff_cross
           y N t.1 M hNpos hMpos).mp
@@ -2681,19 +2581,16 @@ lemma alg1_step4_cross_iff_overflow_of_good
 
         · simp [hctrl]
 
-      have hyzero :
-          y = 0 := by
+      have hyzero : y = 0 := by
         rw [hy_no]
         dsimp [s]
         simp [hxzero, hrzero]
 
-      have htzero :
-          t.1 = 0 := by
+      have htzero : t.1 = 0 := by
         apply hzero
         simpa [r] using hrzero
 
-      have hnotcross :
-          ¬ y * M < N * t.1 := by
+      have hnotcross : ¬ y * M < N * t.1 := by
         simp [hyzero, htzero]
 
       constructor
@@ -2707,28 +2604,20 @@ lemma alg1_step4_cross_iff_overflow_of_good
     · have hxpos : 0 < x :=
         Nat.pos_of_ne_zero hxzero
 
-      have hgapNat :
-          r + 1 ≤ y := by
+      have hgapNat : r + 1 ≤ y := by
         rw [hy_no]
         dsimp [s]
         omega
 
-      have hgapR :
-          (r : ℝ) + 1 ≤ (y : ℝ) := by
+      have hgapR : (r : ℝ) + 1 ≤ (y : ℝ) := by
         exact_mod_cast hgapNat
 
-      have hmul :
-          ((r : ℝ) + 1) * (N : ℝ)
-            ≤
-          (y : ℝ) * (N : ℝ) :=
+      have hmul : ((r : ℝ) + 1) * (N : ℝ) ≤ (y : ℝ) * (N : ℝ) :=
         mul_le_mul_of_nonneg_right
           hgapR
           (le_of_lt hNposR)
 
-      have hdiv :
-          ((r : ℝ) + 1) / (N : ℝ)
-            ≤
-          (y : ℝ) / (N : ℝ) :=
+      have hdiv : ((r : ℝ) + 1) / (N : ℝ) ≤ (y : ℝ) / (N : ℝ) :=
         (div_le_div_iff₀ hNposR hNposR).mpr <| by
           simpa [mul_comm] using hmul
 
@@ -2741,21 +2630,13 @@ lemma alg1_step4_cross_iff_overflow_of_good
 
       rw [hsplit] at hdiv
 
-      have hyr :
-          (r : ℝ) / (N : ℝ) +
-              η / (A : ℝ)
-            <
-          (y : ℝ) / (N : ℝ) := by
+      have hyr : (r : ℝ) / (N : ℝ) + η / (A : ℝ) < (y : ℝ) / (N : ℝ) := by
         linarith
 
-      have hfrac :
-          (t.1 : ℝ) / (M : ℝ)
-            <
-          (y : ℝ) / (N : ℝ) :=
+      have hfrac : (t.1 : ℝ) / (M : ℝ) < (y : ℝ) / (N : ℝ) :=
         lt_trans habove hyr
 
-      have hreverse :
-          N * t.1 < y * M := by
+      have hreverse : N * t.1 < y * M := by
         have hraw :=
           (nat_fraction_lt_iff_cross
             t.1 M y N hMpos hNpos).mp
@@ -2763,8 +2644,7 @@ lemma alg1_step4_cross_iff_overflow_of_good
 
         simpa [Nat.mul_comm] using hraw
 
-      have hnotcross :
-          ¬ y * M < N * t.1 := by
+      have hnotcross : ¬ y * M < N * t.1 := by
         intro hcross
         omega
 
@@ -2803,32 +2683,22 @@ lemma alg1_trace_of_valid
   rcases good_input_expansion_of_valid qs cfg ψ hψ with
     ⟨support, inputCoeff, hinput, hvalid⟩
 
-  have hgood :
-      ∀ b ∈ support,
-        GoodModMulBasisInput
-          qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b := by
+  have hgood : ∀ b ∈ support, GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b := by
     intro b hb
     exact (hvalid b hb).1
 
-  have hscratchZero :
-      ∀ b ∈ support,
-        RegEncoding.toNat cfg.env.scratch.active b = 0 := by
+  have hscratchZero : ∀ b ∈ support, RegEncoding.toNat cfg.env.scratch.active b = 0 := by
     intro b hb
     exact (hvalid b hb).2.1
 
-  have hscratchFresh :
-      ∀ b ∈ support,
-        cfg.env.scratch.FreshFor 1 b := by
+  have hscratchFresh : ∀ b ∈ support, cfg.env.scratch.FreshFor 1 b := by
     intro b hb
     exact (hvalid b hb).2.2
 
   let zeroWork : Fin (ASize cfg.env.work.active) :=
     ⟨0, by simp [ASize]⟩
 
-  let phaseCoeff :
-      qs.Basis →
-        Fin (ASize cfg.env.work.active) →
-        ℂ :=
+  let phaseCoeff : qs.Basis → Fin (ASize cfg.env.work.active) → ℂ :=
     fun b t => alg1PhaseCoeff qs cfg b t
 
   have hzero_support :
@@ -2842,22 +2712,17 @@ lemma alg1_trace_of_valid
     intro b hb t hcoeff hz
     by_contra ht0
 
-    have hstep1 :
-        qs.eval
-            (ModMulConfig.U1 (Basis := qs.Basis) cfg)
+    have hstep1 : qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg)
             (qs.ket b)
           =
         qs.ket b := by
       simpa [ModMulConfig.U1] using
         alg1_step1_zero_target_exact qs cfg b hb hz
 
-    have hlabel_ne :
-        RegEncoding.writeNat cfg.env.work.active t.1 b ≠ b := by
+    have hlabel_ne : RegEncoding.writeNat cfg.env.work.active t.1 b ≠ b := by
       intro hEq
       have ht_read :
-          t.1 =
-            RegEncoding.toNat cfg.env.work.active
-              (RegEncoding.writeNat cfg.env.work.active t.1 b) := by
+          t.1 = RegEncoding.toNat cfg.env.work.active (RegEncoding.writeNat cfg.env.work.active t.1 b) := by
         symm
         exact RegEncoding.toNat_writeNat_of_lt
           cfg.env.work.active t.1 b t.isLt

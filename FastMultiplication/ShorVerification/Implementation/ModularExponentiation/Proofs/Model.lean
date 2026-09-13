@@ -67,10 +67,7 @@ noncomputable def U1
     {Basis : Type u}
     [RegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
-  step1
-  cfg.c cfg.env.N cfg.ctrl
-  cfg.env.data cfg.env.work
-  cfg.env.circuit_workspace
+  step1 cfg.c cfg.env.N cfg.ctrl cfg.env.data cfg.env.work cfg.env.circuit_workspace
 
 /-- Stage name for Algorithm 1 Step 2. -/
 noncomputable def U2
@@ -78,10 +75,7 @@ noncomputable def U2
     {Basis : Type u}
     [RegEncoding Basis]
     (cfg : ModMulConfig η) : Gate :=
-  step2
-  cfg.env.N
-  cfg.env.data cfg.env.work
-  cfg.env.circuit_workspace
+  step2 cfg.env.N cfg.env.data cfg.env.work cfg.env.circuit_workspace
 
 /-- Stage name for Algorithm 1 Step 5 cleanup. -/
 noncomputable def U5
@@ -612,20 +606,12 @@ noncomputable def afterStep34Bad
 end Alg1Trace
 
 /-- The Step-1 controlled phase angle. -/
-def alg1Step1Phase
-  {η : ℝ}
-  (cfg : ModMulConfig η) : Angle :=
-  (2 *
-      (((cfg.c + cfg.env.N - 1) % cfg.env.N : ℕ) : ℚ))
-    / (cfg.env.N : ℚ)
+def alg1Step1Phase {η : ℝ} (cfg : ModMulConfig η) : Angle :=
+  (2 * (((cfg.c + cfg.env.N - 1) % cfg.env.N : ℕ) : ℚ)) / (cfg.env.N : ℚ)
 
 /-- The forward Step-5 controlled phase angle. -/
-def alg1Step5Phase
-  {η : ℝ}
-  (cfg : ModMulConfig η) : Angle :=
-  (2 *
-      ((step5Constant cfg.c cfg.env.N % cfg.env.N : ℕ) : ℚ))
-    / (cfg.env.N : ℚ)
+def alg1Step5Phase {η : ℝ} (cfg : ModMulConfig η) : Angle :=
+  (2 * ((step5Constant cfg.c cfg.env.N % cfg.env.N : ℕ) : ℚ)) / (cfg.env.N : ℚ)
 
 /--
 The forward circuit whose adjoint is `ModMulConfig.U5`.
@@ -636,7 +622,7 @@ noncomputable def alg1Step5Forward
     {η : ℝ}
     {Basis : Type*}
     [RegEncoding Basis]
-  (cfg : ModMulConfig η) : Gate :=
+    (cfg : ModMulConfig η) : Gate :=
   (H_reg cfg.env.work.active) ;;
   (Gate.CPhaseProdUsing
     cfg.ctrl

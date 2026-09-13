@@ -35,8 +35,7 @@ The factor `3` follows from the estimate
 lemma three_stepErr_le
     {K₁ K₂ K₅ η : ℝ} (hη : 0 ≤ η) (hK₁ : 0 ≤ K₁)
     (hK₂ : 0 ≤ K₂) (hK₅ : 0 ≤ K₅) :
-    stepErr K₁ η + stepErr K₂ η + stepErr K₅ η ≤
-      stepErr (3 * (K₁ + K₂ + K₅)) η := by
+    stepErr K₁ η + stepErr K₂ η + stepErr K₅ η ≤ stepErr (3 * (K₁ + K₂ + K₅)) η := by
   unfold stepErr
   let a : ℝ := 2 * (K₁ * η)
   let b : ℝ := 2 * (K₂ * η)
@@ -53,8 +52,7 @@ lemma three_stepErr_le
   have htarget : 2 * ((3 * (K₁ + K₂ + K₅)) * η) = 3 * (a + b + c) := by
     dsimp [a, b, c]
     ring
-  change Real.sqrt a + Real.sqrt b + Real.sqrt c ≤
-    Real.sqrt (2 * ((3 * (K₁ + K₂ + K₅)) * η))
+  change Real.sqrt a + Real.sqrt b + Real.sqrt c ≤ Real.sqrt (2 * ((3 * (K₁ + K₂ + K₅)) * η))
   rw [htarget]
   apply Real.le_sqrt_of_sq_le
   have hsqa : (Real.sqrt a) ^ 2 = a := by
@@ -108,8 +106,7 @@ theorem modMul_approx_valid_dist_uniform
     [IdealCtrlModMulExactSemantics qs] :
     ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧ ∀ (η : ℝ) (cfg : ModMulConfig η) (ψ : qs.State),
       ModMulConfig.ValidUnitState qs cfg ψ →
-      ‖qs.eval (ModMulConfig.approxGate cfg) ψ -
-        qs.eval (ModMulConfig.idealGate cfg) ψ‖ ≤ stepErr K η := by
+      ‖qs.eval (ModMulConfig.approxGate cfg) ψ - qs.eval (ModMulConfig.idealGate cfg) ψ‖ ≤ stepErr K η := by
   classical
 
   -- Obtain the uniform squared-error constants for Steps 1, 2, and 5.
@@ -158,18 +155,15 @@ theorem modMul_approx_valid_dist_uniform
   rcases alg1_trace_of_valid qs cfg ψ hValid with ⟨tr, _⟩
 
   -- Individual approximation bounds for the three inexact stages.
-  have hStep1Bound :
-      ‖qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ - tr.goodStep1‖ ≤
+  have hStep1Bound : ‖qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ - tr.goodStep1‖ ≤
         stepErr K₁ η := by
     simpa [K₁] using (sq_to_stepErr hCpe (hStep1Sq η cfg ψ tr hUnit))
 
-  have hStep2Bound :
-      ‖qs.eval (ModMulConfig.U2 (Basis := qs.Basis) cfg) tr.goodStep1 -
+  have hStep2Bound : ‖qs.eval (ModMulConfig.U2 (Basis := qs.Basis) cfg) tr.goodStep1 -
         tr.afterStep2Ref‖ ≤ stepErr K₂ η := by
     simpa [K₂] using (sq_to_stepErr hCstep2 (hStep2Sq η cfg ψ tr hUnit))
 
-  have hStep5Bound :
-      ‖qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg) tr.afterStep34Ref -
+  have hStep5Bound : ‖qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg) tr.afterStep34Ref -
         qs.eval (ModMulConfig.idealGate cfg) ψ‖ ≤ stepErr K₅ η := by
     simpa [K₅] using (sq_to_stepErr hCpe (hStep5Sq η cfg ψ tr hUnit))
 
@@ -190,8 +184,7 @@ theorem modMul_approx_valid_dist_uniform
   -- Step 1 error is unchanged by the remaining unitary suffix `post1`.
   have h1 : ‖ψ0 - ψ1‖ ≤ stepErr K₁ η := by
     have hIso :
-        ‖qs.eval post1 (qs.eval U1 ψ) - qs.eval post1 tr.goodStep1‖ =
-          ‖qs.eval U1 ψ - tr.goodStep1‖ := by
+        ‖qs.eval post1 (qs.eval U1 ψ) - qs.eval post1 tr.goodStep1‖ = ‖qs.eval U1 ψ - tr.goodStep1‖ := by
       exact eval_isometry qs post1
         (by
           intro φ χ
@@ -205,8 +198,7 @@ theorem modMul_approx_valid_dist_uniform
   -- Step 2 error is unchanged by the remaining unitary suffix `post2`.
   have h2 : ‖ψ1 - ψ2‖ ≤ stepErr K₂ η := by
     have hIso :
-        ‖qs.eval post2 (qs.eval U2 tr.goodStep1) -
-          qs.eval post2 tr.afterStep2Ref‖ =
+        ‖qs.eval post2 (qs.eval U2 tr.goodStep1) - qs.eval post2 tr.afterStep2Ref‖ =
           ‖qs.eval U2 tr.goodStep1 - tr.afterStep2Ref‖ := by
       exact eval_isometry qs post2
         (by
@@ -214,8 +206,7 @@ theorem modMul_approx_valid_dist_uniform
           simpa using qs.inner_preserved post2 φ χ)
         (qs.eval U2 tr.goodStep1) tr.afterStep2Ref
     calc
-      ‖ψ1 - ψ2‖ = ‖qs.eval post2 (qs.eval U2 tr.goodStep1) -
-          qs.eval post2 tr.afterStep2Ref‖ := by
+      ‖ψ1 - ψ2‖ = ‖qs.eval post2 (qs.eval U2 tr.goodStep1) - qs.eval post2 tr.afterStep2Ref‖ := by
         simp [ψ1, ψ2, post1, post2, qs.eval_seq]
       _ = ‖qs.eval U2 tr.goodStep1 - tr.afterStep2Ref‖ := hIso
       _ ≤ stepErr K₂ η := by simpa [U2] using hStep2Bound
@@ -227,27 +218,22 @@ theorem modMul_approx_valid_dist_uniform
   -- Consequently, the final link is precisely the Step 5 approximation error.
   have h3 : ‖ψ2 - ψI‖ ≤ stepErr K₅ η := by
     calc
-      ‖ψ2 - ψI‖ = ‖qs.eval U5 tr.afterStep34Ref -
-          qs.eval (ModMulConfig.idealGate cfg) ψ‖ := by
+      ‖ψ2 - ψI‖ = ‖qs.eval U5 tr.afterStep34Ref - qs.eval (ModMulConfig.idealGate cfg) ψ‖ := by
         simp [ψ2, ψI, post2, qs.eval_seq, h34]
       _ ≤ stepErr K₅ η := by simpa [U5] using hStep5Bound
 
   -- Chain the three state distances, then combine their error budgets.
-  have hChain : ‖ψ0 - ψI‖ ≤
-      stepErr K₁ η + stepErr K₂ η + stepErr K₅ η := by
+  have hChain : ‖ψ0 - ψI‖ ≤ stepErr K₁ η + stepErr K₂ η + stepErr K₅ η := by
     calc
       ‖ψ0 - ψI‖ ≤ ‖ψ0 - ψ1‖ + ‖ψ1 - ψ2‖ + ‖ψ2 - ψI‖ :=
         norm_chain_three ψ0 ψ1 ψ2 ψI
       _ ≤ stepErr K₁ η + stepErr K₂ η + stepErr K₅ η := by gcongr
 
-  have hBudget :
-      stepErr K₁ η + stepErr K₂ η + stepErr K₅ η ≤
-        stepErr (3 * (K₁ + K₂ + K₅)) η :=
+  have hBudget : stepErr K₁ η + stepErr K₂ η + stepErr K₅ η ≤ stepErr (3 * (K₁ + K₂ + K₅)) η :=
     three_stepErr_le hη hK₁ hK₂ hK₅
 
   -- Identify the staged evaluation with the public approximation gate.
-  have hCore :
-      qs.eval (ModMulConfig.approxGate cfg) ψ = ψ0 := by
+  have hCore : qs.eval (ModMulConfig.approxGate cfg) ψ = ψ0 := by
     rw [ModMulConfig.eval_approxGate_eq_staged qs cfg ψ]
     simp [ModMulConfig.stagedGate, ψ0, post1, U1, U2, U34, U5, qs.eval_seq]
 

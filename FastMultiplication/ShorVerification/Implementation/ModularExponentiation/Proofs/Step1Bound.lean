@@ -35,18 +35,14 @@ data register grows by one carry qubit.
 private lemma step1Bound_work_dataCarry_active_disjoint
     {η : ℝ}
     (cfg : ModMulConfig η) :
-    Shor.Disjoint
-      cfg.env.work.active
-      (cfg.env.data.grow 1).active := by
+    Shor.Disjoint cfg.env.work.active (cfg.env.data.grow 1).active := by
   rw [Shor.Disjoint, List.disjoint_left]
   intro q hqWork hqData
 
   have h := cfg.env.circuit_workspace.work_dataCarry_disjoint
   rw [ExtReg.OwnedDisjoint, List.disjoint_left] at h
 
-  exact h
-    (List.mem_append_left _ hqWork)
-    (List.mem_append_left _ hqData)
+  exact h (List.mem_append_left _ hqWork) (List.mem_append_left _ hqData)
 
 /-- The control qubit lies outside the active work register. -/
 private lemma step1Bound_ctrl_notin_work_active
@@ -65,8 +61,7 @@ private lemma step1Bound_ctrl_notin_dataCarry_active
   intro hq
   apply cfg.layout.2.2.2.1
 
-  have howned :
-      cfg.ctrl ∈ (cfg.env.data.grow 1).ownedQubits :=
+  have howned : cfg.ctrl ∈ (cfg.env.data.grow 1).ownedQubits :=
     List.mem_append_left _ hq
 
   simpa [Gate.ExtReg.ownedQubits_grow] using howned
@@ -78,18 +73,10 @@ encodable natural-number values.
 private lemma step1Bound_data_ASize_le_dataCarry
     {η : ℝ}
     (cfg : ModMulConfig η) :
-    ASize cfg.env.data.active
-      ≤
-    ASize (cfg.env.data.grow 1).active := by
-  have hwidth :
-      regSize (cfg.env.data.grow 1).active
-        =
-      regSize cfg.env.data.active + 1 := by
+    ASize cfg.env.data.active ≤ ASize (cfg.env.data.grow 1).active := by
+  have hwidth : regSize (cfg.env.data.grow 1).active = regSize cfg.env.data.active + 1 := by
     simpa [ExtReg.width] using
-      ExtReg.width_grow
-        cfg.env.data
-        1
-        cfg.env.circuit_workspace.data_canGrow_one
+      ExtReg.width_grow cfg.env.data 1 cfg.env.circuit_workspace.data_canGrow_one
 
   unfold ASize
   rw [hwidth, pow_succ]
@@ -113,9 +100,7 @@ lemma alg1_step5_forward_packet_on_extended_output
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
+    (hb : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
     qs.eval
         (alg1Step5Forward (Basis := qs.Basis) cfg)
         (qs.ket
@@ -184,9 +169,7 @@ lemma alg1_step5_forward_packet_on_basis
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
+    (hb : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
     qs.eval
         ((H_reg cfg.env.work.active) ;;
           (Gate.CPhaseProdUsing
@@ -207,20 +190,11 @@ lemma alg1_step5_forward_packet_on_basis
             (RegEncoding.writeNat cfg.env.work.active t.1 b)) := by
   classical
 
-  have hideal :
-      qs.eval (ModMulConfig.idealGate cfg) (qs.ket b)
-        =
-      qs.ket
-        (RegEncoding.writeNat
-          (cfg.env.data.grow 1).active
-          (alg1OutputValue cfg b)
-          b) :=
+  have hideal : qs.eval (ModMulConfig.idealGate cfg) (qs.ket b) =
+      qs.ket (RegEncoding.writeNat (cfg.env.data.grow 1).active (alg1OutputValue cfg b) b) :=
     alg1_ideal_ket_eq_extended_output qs cfg b hb
 
-  have hwork_ext :
-      Shor.Disjoint
-        cfg.env.work.active
-        (cfg.env.data.grow 1).active :=
+  have hwork_ext : Shor.Disjoint cfg.env.work.active (cfg.env.data.grow 1).active :=
     step1Bound_work_dataCarry_active_disjoint cfg
 
   rw [hideal]
@@ -228,10 +202,7 @@ lemma alg1_step5_forward_packet_on_basis
     qs.eval
         (alg1Step5Forward (Basis := qs.Basis) cfg)
         (qs.ket
-          (RegEncoding.writeNat
-            (cfg.env.data.grow 1).active
-            (alg1OutputValue cfg b)
-            b))
+          (RegEncoding.writeNat (cfg.env.data.grow 1).active (alg1OutputValue cfg b) b))
       =
     _
 
@@ -265,9 +236,7 @@ lemma alg1_step5_full_packet_on_basis
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
+    (hb : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
     qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg)
       (∑ t : Fin (ASize cfg.env.work.active),
         alg1PhaseCoeff qs cfg b t •
@@ -298,10 +267,8 @@ lemma alg1_step5_full_packet_eq_ideal
     (cfg : ModMulConfig η)
     (ψ : qs.State)
     (tr : Alg1Trace qs cfg ψ) :
-    qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg)
-        tr.afterStep34Full
-      =
-    qs.eval (ModMulConfig.idealGate cfg) ψ := by
+    qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg) tr.afterStep34Full =
+      qs.eval (ModMulConfig.idealGate cfg) ψ := by
   classical
   rw [alg1_trace_afterStep34Full_eq_canonical qs cfg ψ tr]
 
@@ -377,15 +344,9 @@ lemma alg1_afterStep34Full_eq_good_add_bad
     (cfg : ModMulConfig η)
     (ψ : qs.State)
     (tr : Alg1Trace qs cfg ψ) :
-    tr.afterStep34Full
-      =
-    tr.afterStep34Ref + tr.afterStep34Bad := by
+    tr.afterStep34Full = tr.afterStep34Ref + tr.afterStep34Bad := by
   classical
-  simp only [
-    Alg1Trace.afterStep34Full,
-    Alg1Trace.afterStep34Ref,
-    Alg1Trace.afterStep34Bad
-  ]
+  simp only [Alg1Trace.afterStep34Full, Alg1Trace.afterStep34Ref, Alg1Trace.afterStep34Bad]
 
   -- Split each basis-input packet by membership in `alg1GoodLabels`.
   have hsplit :
@@ -416,18 +377,14 @@ lemma alg1_afterStep34Full_eq_good_add_bad
                 (RegEncoding.writeNat cfg.env.work.active t.1 b)) := by
     intro b
 
-    let p : Fin (ASize cfg.env.work.active) → Prop :=
-      fun t => t ∈ alg1GoodLabels cfg b
+    let p : Fin (ASize cfg.env.work.active) → Prop := fun t => t ∈ alg1GoodLabels cfg b
 
-    have hgood :
-        Finset.univ.filter p = alg1GoodLabels cfg b := by
+    have hgood : Finset.univ.filter p = alg1GoodLabels cfg b := by
       ext t
       simp [p]
 
     have h :=
-      sum_filter_add_sum_filter_not
-        Finset.univ
-        p
+      sum_filter_add_sum_filter_not Finset.univ p
         (fun t =>
           tr.phaseCoeff b t •
             qs.ket
@@ -459,51 +416,32 @@ lemma alg1_step34_label_injective
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b b' : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
-    (hb' :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b')
+    (hb : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
+    (hb' : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b')
     (t u : Fin (ASize cfg.env.work.active))
     (hEq :
-      RegEncoding.writeNat
-          (cfg.env.data.grow 1).active
-          (alg1OutputValue cfg b)
-          (RegEncoding.writeNat cfg.env.work.active t.1 b)
-        =
-      RegEncoding.writeNat
-          (cfg.env.data.grow 1).active
-          (alg1OutputValue cfg b')
+      RegEncoding.writeNat (cfg.env.data.grow 1).active (alg1OutputValue cfg b)
+          (RegEncoding.writeNat cfg.env.work.active t.1 b) =
+      RegEncoding.writeNat (cfg.env.data.grow 1).active (alg1OutputValue cfg b')
           (RegEncoding.writeNat cfg.env.work.active u.1 b')) :
     b = b' ∧ t = u := by
   classical
 
   -- Read the independently encoded data output and work label from `hEq`.
-  have hdisj :
-      Shor.Disjoint
+  have hdisj : Shor.Disjoint
         cfg.env.work.active
         (cfg.env.data.grow 1).active :=
     step1Bound_work_dataCarry_active_disjoint cfg
 
-  have hout_cap :
-      alg1OutputValue cfg b
-        <
-      ASize (cfg.env.data.grow 1).active := by
+  have hout_cap : alg1OutputValue cfg b < ASize (cfg.env.data.grow 1).active := by
     exact lt_of_lt_of_le
-      (alg1OutputValue_lt_data_capacity cfg b hb)
-      (step1Bound_data_ASize_le_dataCarry cfg)
+      (alg1OutputValue_lt_data_capacity cfg b hb) (step1Bound_data_ASize_le_dataCarry cfg)
 
-  have hout_cap' :
-      alg1OutputValue cfg b'
-        <
-      ASize (cfg.env.data.grow 1).active := by
+  have hout_cap' : alg1OutputValue cfg b' < ASize (cfg.env.data.grow 1).active := by
     exact lt_of_lt_of_le
-      (alg1OutputValue_lt_data_capacity cfg b' hb')
-      (step1Bound_data_ASize_le_dataCarry cfg)
+      (alg1OutputValue_lt_data_capacity cfg b' hb') (step1Bound_data_ASize_le_dataCarry cfg)
 
-  have hout :
-      alg1OutputValue cfg b = alg1OutputValue cfg b' := by
+  have hout : alg1OutputValue cfg b = alg1OutputValue cfg b' := by
     calc
       alg1OutputValue cfg b
           =
@@ -525,9 +463,7 @@ lemma alg1_step34_label_injective
             (cfg.env.data.grow 1).active
             (alg1OutputValue cfg b')
             (RegEncoding.writeNat cfg.env.work.active u.1 b')) := by
-          exact congrArg
-            (RegEncoding.toNat (cfg.env.data.grow 1).active)
-            hEq
+          exact congrArg (RegEncoding.toNat (cfg.env.data.grow 1).active) hEq
       _ =
         alg1OutputValue cfg b' :=
           RegEncoding.toNat_writeNat_of_lt
@@ -570,9 +506,7 @@ lemma alg1_step34_label_injective
             (cfg.env.data.grow 1).active
             (alg1OutputValue cfg b')
             (RegEncoding.writeNat cfg.env.work.active u.1 b')) := by
-          exact congrArg
-            (RegEncoding.toNat cfg.env.work.active)
-            hEq
+          exact congrArg (RegEncoding.toNat cfg.env.work.active) hEq
       _ = u.1 := by
           calc
             RegEncoding.toNat cfg.env.work.active
@@ -596,8 +530,7 @@ lemma alg1_step34_label_injective
   have htu : t = u := Fin.ext htu_val
 
   -- Writes to the work and grown-data registers preserve the control bit.
-  have hctrl_b :
-      RegEncoding.bit cfg.ctrl
+  have hctrl_b : RegEncoding.bit cfg.ctrl
           (RegEncoding.writeNat
             (cfg.env.data.grow 1).active
             (alg1OutputValue cfg b)
@@ -627,8 +560,7 @@ lemma alg1_step34_label_injective
           (q := cfg.ctrl)
           (step1Bound_ctrl_notin_work_active cfg)
 
-  have hctrl_b' :
-      RegEncoding.bit cfg.ctrl
+  have hctrl_b' : RegEncoding.bit cfg.ctrl
           (RegEncoding.writeNat
             (cfg.env.data.grow 1).active
             (alg1OutputValue cfg b')
@@ -681,8 +613,7 @@ lemma alg1_step34_label_injective
 
   -- Recover the original data value, cancelling multiplication by `cfg.c`
   -- modulo `cfg.env.N` in the controlled branch.
-  have hdata :
-      RegEncoding.toNat cfg.env.data.active b
+  have hdata : RegEncoding.toNat cfg.env.data.active b
         =
       RegEncoding.toNat cfg.env.data.active b' := by
     cases hbit : RegEncoding.bit cfg.ctrl b with
@@ -699,8 +630,7 @@ lemma alg1_step34_label_injective
             RegEncoding.bit cfg.ctrl b'
                 = RegEncoding.bit cfg.ctrl b := hctrl.symm
             _ = true := hbit
-        have hmod :
-            Nat.ModEq cfg.env.N
+        have hmod : Nat.ModEq cfg.env.N
               (cfg.c * RegEncoding.toNat cfg.env.data.active b)
               (cfg.c * RegEncoding.toNat cfg.env.data.active b') := by
           change
@@ -708,11 +638,9 @@ lemma alg1_step34_label_injective
               =
             (cfg.c * RegEncoding.toNat cfg.env.data.active b') % cfg.env.N
           simpa [alg1OutputValue, hbit, hbit'] using hout
-        have hcoprime :
-            cfg.env.N.gcd cfg.c = 1 := by
+        have hcoprime : cfg.env.N.gcd cfg.c = 1 := by
           simpa [Nat.gcd_comm] using cfg.coprime.gcd_eq_one
-        have hmod' :
-            Nat.ModEq cfg.env.N
+        have hmod' : Nat.ModEq cfg.env.N
               (RegEncoding.toNat cfg.env.data.active b)
               (RegEncoding.toNat cfg.env.data.active b') :=
           Nat.ModEq.cancel_left_of_coprime hcoprime hmod
@@ -786,12 +714,8 @@ lemma alg1_work_label_injective
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b b' : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
-    (hb' :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b')
+    (hb : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b)
+    (hb' : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b')
     (t u : Fin (ASize cfg.env.work.active))
     (hEq :
       RegEncoding.writeNat cfg.env.work.active t.1 b
@@ -819,21 +743,17 @@ lemma alg1_work_label_injective
   have htu : t = u :=
     Fin.ext htu_val
 
-  have hbwork :
-      RegEncoding.toNat cfg.env.work.active b = 0 :=
+  have hbwork : RegEncoding.toNat cfg.env.work.active b = 0 :=
     hb.2.2.1
 
-  have hb'work :
-      RegEncoding.toNat cfg.env.work.active b' = 0 :=
+  have hb'work : RegEncoding.toNat cfg.env.work.active b' = 0 :=
     hb'.2.2.1
 
-  have hbzero :
-      RegEncoding.writeNat cfg.env.work.active 0 b = b := by
+  have hbzero : RegEncoding.writeNat cfg.env.work.active 0 b = b := by
     simpa [hbwork] using
       (RegEncoding.writeNat_toNat cfg.env.work.active b)
 
-  have hb'zero :
-      RegEncoding.writeNat cfg.env.work.active 0 b' = b' := by
+  have hb'zero : RegEncoding.writeNat cfg.env.work.active 0 b' = b' := by
     simpa [hb'work] using
       (RegEncoding.writeNat_toNat cfg.env.work.active b')
 
@@ -906,8 +826,7 @@ lemma alg1_afterStep34Bad_norm_sq_eq_trace_bad_mass
         (alg1OutputValue cfg i.1)
         (RegEncoding.writeNat cfg.env.work.active i.2.1 i.1)
 
-  have hbadStep1_flat :
-      tr.badStep1
+  have hbadStep1_flat : tr.badStep1
         =
       ∑ i ∈ Sbad, α i • qs.ket (labelWork i) := by
     simp [
@@ -920,8 +839,7 @@ lemma alg1_afterStep34Bad_norm_sq_eq_trace_bad_mass
       smul_smul
     ]
 
-  have hbadStep34_flat :
-      tr.afterStep34Bad
+  have hbadStep34_flat : tr.afterStep34Bad
         =
       ∑ i ∈ Sbad, α i • qs.ket (labelStep34 i) := by
     simp [
@@ -984,8 +902,7 @@ lemma alg1_afterStep34Bad_norm_sq_eq_trace_bad_mass
     rfl
 
   -- Reindexing between the two injectively labelled ket families preserves norm.
-  have hnorm :
-      ‖∑ i ∈ Sbad, α i • qs.ket (labelStep34 i)‖
+  have hnorm : ‖∑ i ∈ Sbad, α i • qs.ket (labelStep34 i)‖
         =
       ‖∑ i ∈ Sbad, α i • qs.ket (labelWork i)‖ :=
     norm_sum_reindex_ket_eq
@@ -1060,15 +977,10 @@ lemma alg1_step5_cleanup_sq_eq_trace_bad_mass
     norm_neg
   ]
   calc
-    ‖qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg)
-        tr.afterStep34Bad‖ ^ 2
-      =
-    ‖tr.afterStep34Bad‖ ^ 2 := by
-      exact congrArg
-        (fun r : ℝ => r ^ 2)
-        (eval_norm_preserved
-          (qs := qs)
-          (ModMulConfig.U5 (Basis := qs.Basis) cfg)
+    ‖qs.eval (ModMulConfig.U5 (Basis := qs.Basis) cfg) tr.afterStep34Bad‖ ^ 2 =
+      ‖tr.afterStep34Bad‖ ^ 2 := by
+      exact congrArg (fun r : ℝ => r ^ 2)
+        (eval_norm_preserved (qs := qs) (ModMulConfig.U5 (Basis := qs.Basis) cfg)
           tr.afterStep34Bad)
     _ = alg1TraceBadMass qs cfg tr :=
       alg1_afterStep34Bad_norm_sq_eq_trace_bad_mass qs cfg ψ tr
@@ -1094,12 +1006,10 @@ lemma alg1_goodStep1_norm_le_one
   intro hψ
 
   -- `Sgood` is the good-label subset of the complete basis/work index set.
-  let Sfull :
-      Finset (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)) :=
+  let Sfull : Finset (Σ _b : qs.Basis, Fin (ASize cfg.env.work.active)) :=
     tr.support.sigma fun _ => Finset.univ
 
-  let Sgood :
-      Finset (Σ b : qs.Basis, Fin (ASize cfg.env.work.active)) :=
+  let Sgood : Finset (Σ b : qs.Basis, Fin (ASize cfg.env.work.active)) :=
     tr.support.sigma fun b => alg1GoodLabels cfg b
 
   -- Each flattened packet term is represented by its amplitude and basis label.
@@ -1126,8 +1036,7 @@ lemma alg1_goodStep1_norm_le_one
     rcases Finset.mem_sigma.mp hi with ⟨hi_b, _⟩
     rcases Finset.mem_sigma.mp hj with ⟨hj_b, _⟩
 
-    have hi_read :
-        RegEncoding.toNat cfg.env.work.active
+    have hi_read : RegEncoding.toNat cfg.env.work.active
             (RegEncoding.writeNat
               cfg.env.work.active
               i.2.1
@@ -1137,8 +1046,7 @@ lemma alg1_goodStep1_norm_le_one
       RegEncoding.toNat_writeNat_of_lt
         cfg.env.work.active i.2.1 i.1 i.2.isLt
 
-    have hj_read :
-        RegEncoding.toNat cfg.env.work.active
+    have hj_read : RegEncoding.toNat cfg.env.work.active
             (RegEncoding.writeNat
               cfg.env.work.active
               j.2.1
@@ -1173,12 +1081,10 @@ lemma alg1_goodStep1_norm_le_one
     have ht : i.2 = j.2 :=
       Fin.ext ht_val
 
-    have hi_work :
-        RegEncoding.toNat cfg.env.work.active i.1 = 0 :=
+    have hi_work : RegEncoding.toNat cfg.env.work.active i.1 = 0 :=
       (tr.input_good i.1 hi_b).2.2.1
 
-    have hj_work :
-        RegEncoding.toNat cfg.env.work.active j.1 = 0 :=
+    have hj_work : RegEncoding.toNat cfg.env.work.active j.1 = 0 :=
       (tr.input_good j.1 hj_b).2.2.1
 
     have hi_zero :
@@ -1258,8 +1164,7 @@ lemma alg1_goodStep1_norm_le_one
     intro i hi j hj hij
     exact horth_full i (hSsub hi) j (hSsub hj) hij
 
-  have hfull_flat :
-      qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
+  have hfull_flat : qs.eval (ModMulConfig.U1 (Basis := qs.Basis) cfg) ψ
         =
       ∑ i ∈ Sfull, α i • qs.ket (label i) := by
     simp [
@@ -1275,8 +1180,7 @@ lemma alg1_goodStep1_norm_le_one
       smul_smul
     ] using tr.full_step1_eq
 
-  have hgood_flat :
-      tr.goodStep1
+  have hgood_flat : tr.goodStep1
         =
       ∑ i ∈ Sgood, α i • qs.ket (label i) := by
     simp [
@@ -1304,8 +1208,7 @@ lemma alg1_goodStep1_norm_le_one
       _ = 1 := hψ.2
 
   -- Orthogonality turns both squared norms into sums of squared term norms.
-  have hsq_full :
-      ‖∑ i ∈ Sfull, α i • qs.ket (label i)‖ ^ 2
+  have hsq_full : ‖∑ i ∈ Sfull, α i • qs.ket (label i)‖ ^ 2
         =
       ∑ i ∈ Sfull,
         ‖α i • qs.ket (label i)‖ ^ 2 :=
@@ -1315,8 +1218,7 @@ lemma alg1_goodStep1_norm_le_one
       (fun i => α i • qs.ket (label i))
       horth_full
 
-  have hsq_good :
-      ‖∑ i ∈ Sgood, α i • qs.ket (label i)‖ ^ 2
+  have hsq_good : ‖∑ i ∈ Sgood, α i • qs.ket (label i)‖ ^ 2
         =
       ∑ i ∈ Sgood,
         ‖α i • qs.ket (label i)‖ ^ 2 :=
@@ -1340,8 +1242,7 @@ lemma alg1_goodStep1_norm_le_one
           exact sq_nonneg _)
 
   -- The good sum is a sub-sum of the unit-norm full packet.
-  have hsq_le_one :
-      ‖tr.goodStep1‖ ^ 2 ≤ 1 := by
+  have hsq_le_one : ‖tr.goodStep1‖ ^ 2 ≤ 1 := by
     calc
       ‖tr.goodStep1‖ ^ 2
           =

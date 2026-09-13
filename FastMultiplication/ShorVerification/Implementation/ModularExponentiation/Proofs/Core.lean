@@ -31,8 +31,7 @@ theorem eval_idealCtrlModMul_good_ket_exact
     (hcoprime : Nat.Coprime c N)
     (hlayout : ModMulCoreLayout data work flag ctrl)
     (hb : GoodModMulBasisInput qs N data work flag b) :
-    qs.eval (Gate.idealCtrlModMul c N data.active ctrl) (qs.ket b)
-      =
+    qs.eval (Gate.idealCtrlModMul c N data.active ctrl) (qs.ket b) =
     qs.ket
       (RegEncoding.writeNat data.active
         (if RegEncoding.bit ctrl b then
@@ -46,8 +45,7 @@ theorem eval_idealCtrlModMul_good_ket_exact
   · exact hcoprime
   · simp [ModMulCoreLayout] at hlayout
     intro hctrlActive
-    exact hlayout.2.2.2.1 (by
-      simp [ExtReg.ownedQubits, hctrlActive])
+    exact hlayout.2.2.2.1 (by simp [ExtReg.ownedQubits, hctrlActive])
   · exact hb.1
 
 end IdealCtrlModMulExactSemantics
@@ -83,31 +81,22 @@ lemma ExtReg.freshFor_write_active
     (hfresh : e.FreshFor n b) :
     e.FreshFor n
       (RegEncoding.writeNat e.active value b) := by
-  have hnew_active :
-      Disjoint (e.newBits n) e.active := by
+  have hnew_active : Disjoint (e.newBits n) e.active := by
     rw [Disjoint, List.disjoint_left]
     intro q hqNew hqActive
 
     have hdisj := e.active_reserve_disjoint
     rw [Disjoint, List.disjoint_left] at hdisj
 
-    exact hdisj hqActive
-      (List.mem_of_mem_take hqNew)
+    exact hdisj hqActive (List.mem_of_mem_take hqNew)
 
   unfold ExtReg.FreshFor FreshZero at hfresh ⊢
 
   calc
-    RegEncoding.toNat (e.newBits n)
-        (RegEncoding.writeNat e.active value b)
-      =
-        RegEncoding.toNat (e.newBits n) b := by
-          exact
-            RegEncoding.toNat_left_write_right
-              (e.newBits n)
-              e.active
-              hnew_active
-              b
-              value
+    RegEncoding.toNat (e.newBits n) (RegEncoding.writeNat e.active value b)
+      = RegEncoding.toNat (e.newBits n) b := by
+        exact
+          RegEncoding.toNat_left_write_right (e.newBits n) e.active hnew_active b value
     _ = 0 := hfresh
 
 /-- The ideal controlled multiplier maps good basis inputs to good basis outputs with the expected residue. -/
@@ -126,19 +115,10 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
     (hlayout : ModMulCoreLayout data work flag ctrl)
     (hb : GoodModMulBasisInput qs N data work flag b) :
     ∃ b' : qs.Basis,
-      qs.eval
-          (Gate.idealCtrlModMul c N data.active ctrl)
-          (qs.ket b)
-        =
-      qs.ket b'
-        ∧
-      GoodModMulBasisInput qs N data work flag b'
-        ∧
-      RegEncoding.bit ctrl b' =
-        RegEncoding.bit ctrl b
-        ∧
-      RegEncoding.toNat data.active b'
-        =
+      qs.eval (Gate.idealCtrlModMul c N data.active ctrl) (qs.ket b) = qs.ket b' ∧
+      GoodModMulBasisInput qs N data work flag b' ∧
+      RegEncoding.bit ctrl b' = RegEncoding.bit ctrl b ∧
+      RegEncoding.toNat data.active b' =
         if RegEncoding.bit ctrl b then
           (c * RegEncoding.toNat data.active b) % N
         else
@@ -151,26 +131,16 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
     else
       RegEncoding.toNat data.active b
 
-  let b' : qs.Basis :=
-    RegEncoding.writeNat data.active out b
+  let b' : qs.Basis := RegEncoding.writeNat data.active out b
 
-  have hNpos : 0 < N :=
-    Nat.lt_trans Nat.zero_lt_one hN
+  have hNpos : 0 < N := Nat.lt_trans Nat.zero_lt_one hN
 
-  have howned :
-      ∀ q,
-        q ∈ data.ownedQubits →
-        q ∈ work.ownedQubits →
-        False := by
+  have howned : ∀ q, q ∈ data.ownedQubits → q ∈ work.ownedQubits → False := by
     have h := hlayout.1
-    rw [
-      ExtReg.OwnedDisjoint,
-      List.disjoint_left
-    ] at h
+    rw [ExtReg.OwnedDisjoint, List.disjoint_left] at h
     exact h
 
-  have hwork_data :
-      Disjoint work.active data.active := by
+  have hwork_data : Disjoint work.active data.active := by
     rw [Disjoint, List.disjoint_left]
     intro q hqWork hqData
 
@@ -182,13 +152,11 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
     · show q ∈ work.active.qubits ++ work.reserve.qubits
       exact List.mem_append_left _ hqWork
 
-  have hworkNew_data :
-      Disjoint (work.newBits 1) data.active := by
+  have hworkNew_data : Disjoint (work.newBits 1) data.active := by
     rw [Disjoint, List.disjoint_left]
     intro q hqNew hqData
 
-    have hqReserve :
-        q ∈ work.reserve.qubits :=
+    have hqReserve : q ∈ work.reserve.qubits :=
       List.mem_of_mem_take hqNew
 
     apply howned
@@ -199,160 +167,83 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
     · show q ∈ work.active.qubits ++ work.reserve.qubits
       exact List.mem_append_right _ hqReserve
 
-  have hflag_data :
-      Disjoint (qubitReg flag) data.active := by
+  have hflag_data : Disjoint (qubitReg flag) data.active := by
     rw [Disjoint, List.disjoint_left]
     intro q hqFlag hqData
 
-    have hq : q = flag := by
-      simpa [qubitReg, Reg.singleton] using hqFlag
+    have hq : q = flag := by simpa [qubitReg, Reg.singleton] using hqFlag
     subst q
 
-    exact hlayout.2.1
-      (show flag ∈ data.ownedQubits by
-        exact List.mem_append_left _ hqData)
+    exact hlayout.2.1 (show flag ∈ data.ownedQubits by exact List.mem_append_left _ hqData)
 
-  have hctrl_data :
-      ctrl ∉ data.active.qubits := by
+  have hctrl_data : ctrl ∉ data.active.qubits := by
     intro hctrlActive
 
     exact hlayout.2.2.2.1
-      (show ctrl ∈ data.ownedQubits by
-        exact List.mem_append_left _ hctrlActive)
+      (show ctrl ∈ data.ownedQubits by exact List.mem_append_left _ hctrlActive)
 
   have hout_lt_N : out < N := by
     by_cases hctrl : RegEncoding.bit ctrl b
     · simpa [out, hctrl] using
-        Nat.mod_lt
-          (c * RegEncoding.toNat data.active b)
-          hNpos
+        Nat.mod_lt (c * RegEncoding.toNat data.active b) hNpos
     · simpa [out, hctrl] using hb.1
 
-  have hout_lt_cap :
-      out < ASize data.active :=
-    lt_of_lt_of_le hout_lt_N hsize
+  have hout_lt_cap : out < ASize data.active := lt_of_lt_of_le hout_lt_N hsize
 
-  have hdata_out :
-      RegEncoding.toNat data.active b' = out := by
+  have hdata_out : RegEncoding.toNat data.active b' = out := by
     dsimp [b']
-    exact
-      RegEncoding.toNat_writeNat_of_lt
-        data.active out b hout_lt_cap
+    exact RegEncoding.toNat_writeNat_of_lt data.active out b hout_lt_cap
 
-  have hdataFresh_out :
-      data.FreshFor 2 b' := by
+  have hdataFresh_out : data.FreshFor 2 b' := by
     dsimp [b']
-    exact
-      ExtReg.freshFor_write_active
-        data 2 out b hb.2.1
+    exact ExtReg.freshFor_write_active data 2 out b hb.2.1
 
-  have hwork_out :
-      RegEncoding.toNat work.active b' = 0 := by
+  have hwork_out : RegEncoding.toNat work.active b' = 0 := by
     calc
-      RegEncoding.toNat work.active b'
-        =
-          RegEncoding.toNat work.active b := by
-            dsimp [b']
-            exact
-              RegEncoding.toNat_left_write_right
-                work.active
-                data.active
-                hwork_data
-                b
-                out
+      RegEncoding.toNat work.active b' = RegEncoding.toNat work.active b := by
+        dsimp [b']
+        exact RegEncoding.toNat_left_write_right work.active data.active hwork_data b out
       _ = 0 := hb.2.2.1
 
-  have hworkFresh_in :
-      RegEncoding.toNat (work.newBits 1) b = 0 := by
-    simpa [ExtReg.FreshFor, FreshZero] using
-      hb.2.2.2.1
+  have hworkFresh_in : RegEncoding.toNat (work.newBits 1) b = 0 := by
+    simpa [ExtReg.FreshFor, FreshZero] using hb.2.2.2.1
 
-  have hworkFresh_out :
-      work.FreshFor 1 b' := by
-    have hzero :
-        RegEncoding.toNat (work.newBits 1) b' = 0 := by
+  have hworkFresh_out : work.FreshFor 1 b' := by
+    have hzero : RegEncoding.toNat (work.newBits 1) b' = 0 := by
       calc
-        RegEncoding.toNat (work.newBits 1) b'
-          =
-            RegEncoding.toNat (work.newBits 1) b := by
-              dsimp [b']
-              exact
-                RegEncoding.toNat_left_write_right
-                  (work.newBits 1)
-                  data.active
-                  hworkNew_data
-                  b
-                  out
+        RegEncoding.toNat (work.newBits 1) b' = RegEncoding.toNat (work.newBits 1) b := by
+          dsimp [b']
+          exact
+            RegEncoding.toNat_left_write_right (work.newBits 1) data.active hworkNew_data b out
         _ = 0 := hworkFresh_in
 
     simpa [ExtReg.FreshFor, FreshZero] using hzero
 
-  have hflag_out :
-      RegEncoding.toNat (qubitReg flag) b' = 0 := by
+  have hflag_out : RegEncoding.toNat (qubitReg flag) b' = 0 := by
     calc
-      RegEncoding.toNat (qubitReg flag) b'
-        =
-          RegEncoding.toNat (qubitReg flag) b := by
-            dsimp [b']
-            exact
-              RegEncoding.toNat_left_write_right
-                (qubitReg flag)
-                data.active
-                hflag_data
-                b
-                out
+      RegEncoding.toNat (qubitReg flag) b' = RegEncoding.toNat (qubitReg flag) b := by
+        dsimp [b']
+        exact RegEncoding.toNat_left_write_right (qubitReg flag) data.active hflag_data b out
       _ = 0 := hb.2.2.2.2
 
-  have hgood_out :
-      GoodModMulBasisInput
-        qs N data work flag b' := by
-    refine
-      ⟨?_,
-       hdataFresh_out,
-       hwork_out,
-       hworkFresh_out,
-       hflag_out⟩
+  have hgood_out : GoodModMulBasisInput qs N data work flag b' := by
+    refine ⟨?_, hdataFresh_out, hwork_out, hworkFresh_out, hflag_out⟩
 
     calc
-      RegEncoding.toNat data.active b' = out :=
-        hdata_out
+      RegEncoding.toNat data.active b' = out := hdata_out
       _ < N := hout_lt_N
 
-  have hctrl_out :
-      RegEncoding.bit ctrl b' =
-        RegEncoding.bit ctrl b := by
+  have hctrl_out : RegEncoding.bit ctrl b' = RegEncoding.bit ctrl b := by
     dsimp [b']
     exact
-      RegEncoding.bit_writeNat_out
-        (r := data.active)
-        (v := out)
-        (b := b)
-        (q := ctrl)
-        hctrl_data
+      RegEncoding.bit_writeNat_out (r := data.active) (v := out) (b := b) (q := ctrl) hctrl_data
 
-  have heval :
-      qs.eval
-          (Gate.idealCtrlModMul
-            c N data.active ctrl)
-          (qs.ket b)
-        =
-      qs.ket b' := by
+  have heval : qs.eval (Gate.idealCtrlModMul c N data.active ctrl) (qs.ket b) = qs.ket b' := by
     simpa [b', out] using
       (IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket_exact
-          (qs := qs)
-          c N data work flag ctrl b
-          hN
-          hsize
-          hcoprime
-          hlayout
-          hb)
+        (qs := qs) c N data work flag ctrl b hN hsize hcoprime hlayout hb)
 
-  refine
-    ⟨b',
-     heval,
-     hgood_out,
-     hctrl_out,
-     ?_⟩
+  refine ⟨b', heval, hgood_out, hctrl_out, ?_⟩
 
   simpa [out] using hdata_out
 
@@ -370,131 +261,64 @@ theorem idealCtrlModMul_preserves_valid
     (hcoprime : Nat.Coprime c N)
     (hlayout : ModMulCoreLayout data work flag ctrl)
     (ψ : qs.State)
-    (hvalid :
-      ψ ∈ ValidModMulState
-        qs N data work flag) :
-    qs.eval
-        (Gate.idealCtrlModMul
-          c N data.active ctrl)
-        ψ
-      ∈
-    ValidModMulState
-      qs N data work flag := by
+    (hvalid : ψ ∈ ValidModMulState qs N data work flag) :
+    qs.eval (Gate.idealCtrlModMul c N data.active ctrl) ψ ∈
+      ValidModMulState qs N data work flag := by
   classical
 
   let validSet : Set qs.State :=
-    { ξ : qs.State |
-      ∃ b : qs.Basis,
-        GoodModMulBasisInput
-          qs N data work flag b
-          ∧
-        ξ = qs.ket b }
+    { ξ : qs.State | ∃ b : qs.Basis, GoodModMulBasisInput qs N data work flag b ∧ ξ = qs.ket b }
 
-  change
-    ψ ∈ Submodule.span ℂ validSet
-      at hvalid
+  change ψ ∈ Submodule.span ℂ validSet at hvalid
 
-  change
-    qs.eval
-        (Gate.idealCtrlModMul
-          c N data.active ctrl)
-        ψ
-      ∈
-    Submodule.span ℂ validSet
+  change qs.eval (Gate.idealCtrlModMul c N data.active ctrl) ψ ∈ Submodule.span ℂ validSet
 
   refine
-    Submodule.span_induction
-      (s := validSet)
+    Submodule.span_induction (s := validSet)
       (p := fun ξ _ =>
-        qs.eval
-            (Gate.idealCtrlModMul
-              c N data.active ctrl)
-            ξ
-          ∈
-        Submodule.span ℂ validSet)
-      ?basis
-      ?zero
-      ?add
-      ?smul
-      hvalid
+        qs.eval (Gate.idealCtrlModMul c N data.active ctrl) ξ ∈ Submodule.span ℂ validSet)
+      ?basis ?zero ?add ?smul hvalid
 
   case basis =>
     intro ξ hξ
 
-    change
-      ∃ b : qs.Basis,
-        GoodModMulBasisInput
-          qs N data work flag b
-          ∧
-        ξ = qs.ket b
-      at hξ
+    change ∃ b : qs.Basis, GoodModMulBasisInput qs N data work flag b ∧ ξ = qs.ket b at hξ
 
     rcases hξ with ⟨b, hb, rfl⟩
 
-    obtain
-      ⟨b', heval, hgood, _hctrl, _hdata⟩ :=
-        IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
-            (qs := qs)
-            c N data work flag ctrl b
-            hN
-            hsize
-            hcoprime
-            hlayout
-            hb
+    obtain ⟨b', heval, hgood, _hctrl, _hdata⟩ :=
+      IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket
+        (qs := qs) c N data work flag ctrl b hN hsize hcoprime hlayout hb
 
     rw [heval]
 
-    exact
-      Submodule.subset_span
-        (show qs.ket b' ∈ validSet from
-          ⟨b', hgood, rfl⟩)
+    exact Submodule.subset_span (show qs.ket b' ∈ validSet from ⟨b', hgood, rfl⟩)
 
   case zero =>
-    change
-      qs.eval
-          (Gate.idealCtrlModMul
-            c N data.active ctrl)
-          0
-        ∈
-      Submodule.span ℂ validSet
+    change qs.eval (Gate.idealCtrlModMul c N data.active ctrl) 0 ∈ Submodule.span ℂ validSet
 
     rw [qs.eval_zero]
-    exact
-      (Submodule.span ℂ validSet).zero_mem
+    exact (Submodule.span ℂ validSet).zero_mem
 
   case add =>
     intro ξ ζ _hξ _hζ hξEval hζEval
 
     change
-      qs.eval
-          (Gate.idealCtrlModMul
-            c N data.active ctrl)
-          (ξ + ζ)
-        ∈
-      Submodule.span ℂ validSet
+      qs.eval (Gate.idealCtrlModMul c N data.active ctrl) (ξ + ζ) ∈ Submodule.span ℂ validSet
 
     rw [qs.eval_add]
 
-    exact
-      (Submodule.span ℂ validSet).add_mem
-        hξEval hζEval
+    exact (Submodule.span ℂ validSet).add_mem hξEval hζEval
 
   case smul =>
     intro a ξ _hξ hξEval
 
     change
-      qs.eval
-          (Gate.idealCtrlModMul
-            c N data.active ctrl)
-          (a • ξ)
-        ∈
-      Submodule.span ℂ validSet
+      qs.eval (Gate.idealCtrlModMul c N data.active ctrl) (a • ξ) ∈ Submodule.span ℂ validSet
 
     rw [qs.eval_smul]
 
-    exact
-      (Submodule.span ℂ validSet).smul_mem
-        a hξEval
+    exact (Submodule.span ℂ validSet).smul_mem a hξEval
 
 end ValidInputsAndIdealSemantics
 
@@ -520,8 +344,7 @@ lemma work_width
     {η : ℝ}
     {data work : Reg}
     (h : Algorithm1Precision η data work) :
-    regSize work =
-      regSize data + algorithm1ExtraBits η :=
+    regSize work = regSize data + algorithm1ExtraBits η :=
   h.2.2
 
 /-- Algorithm 1's work register is at least as wide as the data register. -/
@@ -541,8 +364,7 @@ lemma work_width_sub_data_width
     {η : ℝ}
     {data work : Reg}
     (h : Algorithm1Precision η data work) :
-    regSize work - regSize data =
-      algorithm1ExtraBits η := by
+    regSize work - regSize data = algorithm1ExtraBits η := by
   rw [work_width h]
   omega
 
@@ -556,9 +378,7 @@ lemma pow_bound
     {η : ℝ}
     {data work : Reg}
     (h : Algorithm1Precision η data work) :
-    (2 : ℝ) ^ (regSize work - regSize data)
-      ≥
-    (2 + 1 / (2 * η)) ^ 2 := by
+    (2 : ℝ) ^ (regSize work - regSize data) ≥ (2 + 1 / (2 * η)) ^ 2 := by
   let a : ℝ := 2 + 1 / (2 * η)
 
   have ha : 0 < a := by
@@ -566,41 +386,25 @@ lemma pow_bound
     have hη : 0 < η := eta_pos h
     positivity
 
-  have hdiff :
-      regSize work - regSize data =
-        algorithm1ExtraBits η :=
+  have hdiff : regSize work - regSize data = algorithm1ExtraBits η :=
     work_width_sub_data_width h
 
   rw [hdiff]
 
-  have hceil :
-      2 * Real.logb 2 a
-        ≤
-      (algorithm1ExtraBits η : ℝ) := by
+  have hceil : 2 * Real.logb 2 a ≤ (algorithm1ExtraBits η : ℝ) := by
     dsimp [algorithm1ExtraBits]
     exact Nat.le_ceil _
 
-  have hlog :
-      Real.logb 2 (a ^ 2)
-        ≤
-      (algorithm1ExtraBits η : ℝ) := by
+  have hlog : Real.logb 2 (a ^ 2) ≤ (algorithm1ExtraBits η : ℝ) := by
     rw [Real.logb_pow]
     simpa using hceil
 
-  have hrpow :
-      a ^ 2
-        ≤
-      (2 : ℝ) ^ (algorithm1ExtraBits η : ℝ) := by
+  have hrpow : a ^ 2 ≤ (2 : ℝ) ^ (algorithm1ExtraBits η : ℝ) := by
     exact
       (Real.logb_le_iff_le_rpow
-        (by norm_num : (1 : ℝ) < 2)
-        (by positivity : 0 < a ^ 2)).1
-        hlog
+        (by norm_num : (1 : ℝ) < 2) (by positivity : 0 < a ^ 2)).1 hlog
 
-  have hpow :
-      a ^ 2
-        ≤
-      (2 : ℝ) ^ algorithm1ExtraBits η := by
+  have hpow : a ^ 2 ≤ (2 : ℝ) ^ algorithm1ExtraBits η := by
     simpa [Real.rpow_natCast] using hrpow
 
   simpa [a] using hpow
@@ -654,48 +458,41 @@ private lemma disjoint_qubitReg_of_outside
   subst p
   exact h hr
 
-omit [GateSemanticsCore qs]  in
+omit [GateSemanticsCore qs] in
 lemma bit_qubitReg_eq_testBit_zero
     (q : ℕ) (b : qs.Basis) :
-    RegEncoding.bit q b =
-      Nat.testBit (RegEncoding.toNat (qubitReg q) b) 0 := by
+    RegEncoding.bit q b = Nat.testBit (RegEncoding.toNat (qubitReg q) b) 0 := by
   simpa [qubitReg, Reg.singleton, Reg.get, regSize, Reg.width] using
-    (RegEncoding.bit_eq_testBit_toNat
-      (r := qubitReg q)
-      (b := b)
+    (RegEncoding.bit_eq_testBit_toNat (r := qubitReg q) (b := b)
       (i := (⟨0, by simp⟩ : Fin (regSize (qubitReg q)))))
 
-omit [GateSemanticsCore qs]  in
+omit [GateSemanticsCore qs] in
 lemma bit_false_of_qubitReg_toNat_zero
     (q : ℕ) (b : qs.Basis)
     (h : RegEncoding.toNat (qubitReg q) b = 0) :
     RegEncoding.bit q b = false := by
   rw [bit_qubitReg_eq_testBit_zero (qs := qs) q b, h]
   simp
-omit [GateSemanticsCore qs]  in
+omit [GateSemanticsCore qs] in
 lemma bit_true_of_qubitReg_toNat_one
     (q : ℕ) (b : qs.Basis)
     (h : RegEncoding.toNat (qubitReg q) b = 1) :
     RegEncoding.bit q b = true := by
   rw [bit_qubitReg_eq_testBit_zero (qs := qs) q b, h]
   simp
-omit [GateSemanticsCore qs]  in
+omit [GateSemanticsCore qs] in
 lemma bit_write_qubitReg_zero
     (q : ℕ) (b : qs.Basis) :
-    RegEncoding.bit q
-        (RegEncoding.writeNat (qubitReg q) 0 b) = false := by
+    RegEncoding.bit q (RegEncoding.writeNat (qubitReg q) 0 b) = false := by
   apply bit_false_of_qubitReg_toNat_zero (qs := qs)
-  exact RegEncoding.toNat_writeNat_of_lt
-    (qubitReg q) 0 b (by simp [ASize])
+  exact RegEncoding.toNat_writeNat_of_lt (qubitReg q) 0 b (by simp [ASize])
 
-omit [GateSemanticsCore qs]  in
+omit [GateSemanticsCore qs] in
 lemma bit_write_qubitReg_one
     (q : ℕ) (b : qs.Basis) :
-    RegEncoding.bit q
-        (RegEncoding.writeNat (qubitReg q) 1 b) = true := by
+    RegEncoding.bit q (RegEncoding.writeNat (qubitReg q) 1 b) = true := by
   apply bit_true_of_qubitReg_toNat_one (qs := qs)
-  exact RegEncoding.toNat_writeNat_of_lt
-    (qubitReg q) 1 b (by simp [ASize])
+  exact RegEncoding.toNat_writeNat_of_lt (qubitReg q) 1 b (by simp [ASize])
 
 lemma eval_cmpGeConst_ket_of_outside
     [ModularArithmeticSemantics qs]
@@ -704,15 +501,13 @@ lemma eval_cmpGeConst_ket_of_outside
     (flag : ℕ)
     (b : qs.Basis)
     (hout : flag ∉ data.active.qubits) :
-    qs.eval (Gate.CmpGeConst N data scratch flag) (qs.ket b) =
-      qs.ket
-        (RegEncoding.writeNat
-          (qubitReg flag)
-          (if RegEncoding.bit flag b then
-            if N ≤ RegEncoding.toNat data.active b then 0 else 1
-          else
-            if N ≤ RegEncoding.toNat data.active b then 1 else 0)
-          b) := by
+    qs.eval (Gate.CmpGeConst N data scratch flag) (qs.ket b) = qs.ket
+      (RegEncoding.writeNat (qubitReg flag)
+        (if RegEncoding.bit flag b then
+          if N ≤ RegEncoding.toNat data.active b then 0 else 1
+        else
+          if N ≤ RegEncoding.toNat data.active b then 1 else 0)
+        b) := by
   rw [ModularArithmeticSemantics.eval_CmpGeConst_ket]
   simp [cmpGeConstBasis, hout]
 
@@ -723,17 +518,14 @@ lemma eval_csubConst_ket_of_outside
     (flag : ℕ)
     (b : qs.Basis)
     (hout : flag ∉ data.active.qubits) :
-    qs.eval (Gate.CSubConst N data scratch flag) (qs.ket b) =
-      qs.ket
-        (RegEncoding.writeNat data.active
-          (if RegEncoding.bit flag b then
-            (RegEncoding.toNat data.active b +
-                ASize data.active -
-                (N % ASize data.active)) %
-              ASize data.active
-          else
-            RegEncoding.toNat data.active b)
-          b) := by
+    qs.eval (Gate.CSubConst N data scratch flag) (qs.ket b) = qs.ket
+      (RegEncoding.writeNat data.active
+        (if RegEncoding.bit flag b then
+          (RegEncoding.toNat data.active b + ASize data.active - (N % ASize data.active)) %
+            ASize data.active
+        else
+          RegEncoding.toNat data.active b)
+        b) := by
   rw [ModularArithmeticSemantics.eval_CSubConst_ket]
   simp [csubConstBasis, hout]
 
@@ -744,13 +536,9 @@ theorem eval_step3_clean_ket
     (flag : ℕ)
     (b : qs.Basis)
     (hout : QubitOutside flag x_ext.active)
-    (hflag :
-      RegEncoding.toNat (qubitReg flag) b = 0):
-    qs.eval (step3 N x_ext scratch flag) (qs.ket b)
-      =
-    qs.ket
-      (RegEncoding.writeNat
-        (qubitReg flag)
+    (hflag : RegEncoding.toNat (qubitReg flag) b = 0) :
+    qs.eval (step3 N x_ext scratch flag) (qs.ket b) = qs.ket
+      (RegEncoding.writeNat (qubitReg flag)
         (if N ≤ RegEncoding.toNat x_ext.active b then 1 else 0)
         (RegEncoding.writeNat x_ext.active
           (if N ≤ RegEncoding.toNat x_ext.active b then
@@ -758,136 +546,80 @@ theorem eval_step3_clean_ket
           else
             RegEncoding.toNat x_ext.active b)
           b)) := by
-  have hout' : flag ∉ x_ext.active.qubits := by
-    simpa [QubitOutside] using hout
+  have hout' : flag ∉ x_ext.active.qubits := by simpa [QubitOutside] using hout
 
-  have hflag_x :
-      Disjoint (qubitReg flag) x_ext.active :=
-    disjoint_qubitReg_of_outside hout'
+  have hflag_x : Disjoint (qubitReg flag) x_ext.active := disjoint_qubitReg_of_outside hout'
 
-  have hx_flag :
-      Disjoint x_ext.active (qubitReg flag) :=
-    Disjoint.symm hflag_x
+  have hx_flag : Disjoint x_ext.active (qubitReg flag) := Disjoint.symm hflag_x
 
-  have hbit0 :
-      RegEncoding.bit flag b = false :=
-    bit_false_of_qubitReg_toNat_zero
-      (qs := qs) flag b hflag
+  have hbit0 : RegEncoding.bit flag b = false :=
+    bit_false_of_qubitReg_toNat_zero (qs := qs) flag b hflag
 
-  have hxcap :
-      RegEncoding.toNat x_ext.active b < ASize x_ext.active :=
+  have hxcap : RegEncoding.toNat x_ext.active b < ASize x_ext.active :=
     RegEncoding.toNat_lt_ASize x_ext.active b
 
   rw [step3, qs.eval_seq]
 
-  rw [
-    eval_cmpGeConst_ket_of_outside
-      (qs := qs) N x_ext scratch flag b hout'
-  ]
+  rw [eval_cmpGeConst_ket_of_outside (qs := qs) N x_ext scratch flag b hout']
 
   by_cases hge : N ≤ RegEncoding.toNat x_ext.active b
 
   · -- The comparison sets flag = 1, then CSUB subtracts N.
     simp only [hbit0, Bool.false_eq_true, if_false, hge, if_pos]
 
-    let b₁ :=
-      RegEncoding.writeNat (qubitReg flag) 1 b
+    let b₁ := RegEncoding.writeNat (qubitReg flag) 1 b
 
-    have hx₁ :
-        RegEncoding.toNat x_ext.active b₁ =
-          RegEncoding.toNat x_ext.active b := by
-      exact
-        RegEncoding.toNat_left_write_right
-          x_ext.active
-          (qubitReg flag)
-          hx_flag
-          b
-          1
+    have hx₁ : RegEncoding.toNat x_ext.active b₁ = RegEncoding.toNat x_ext.active b := by
+      exact RegEncoding.toNat_left_write_right x_ext.active (qubitReg flag) hx_flag b 1
 
-    have hbit₁ :
-        RegEncoding.bit flag b₁ = true := by
-      exact bit_write_qubitReg_one
-        (qs := qs) flag b
+    have hbit₁ : RegEncoding.bit flag b₁ = true := by
+      exact bit_write_qubitReg_one (qs := qs) flag b
 
-    have hNcap :
-        N < ASize x_ext.active := by
-      exact lt_of_le_of_lt hge hxcap
+    have hNcap : N < ASize x_ext.active := by exact lt_of_le_of_lt hge hxcap
 
-    have hsubcap :
-        RegEncoding.toNat x_ext.active b - N < ASize x_ext.active := by
-      omega
+    have hsubcap : RegEncoding.toNat x_ext.active b - N < ASize x_ext.active := by omega
 
     have hwrapped :
-        (RegEncoding.toNat x_ext.active b
-              + ASize x_ext.active
-              - (N % ASize x_ext.active))
-            % ASize x_ext.active
-          =
-        RegEncoding.toNat x_ext.active b - N := by
+        (RegEncoding.toNat x_ext.active b + ASize x_ext.active - (N % ASize x_ext.active)) %
+            ASize x_ext.active
+          = RegEncoding.toNat x_ext.active b - N := by
       rw [Nat.mod_eq_of_lt hNcap]
 
       have hrewrite :
           RegEncoding.toNat x_ext.active b + ASize x_ext.active - N
-            =
-          ASize x_ext.active
-            + (RegEncoding.toNat x_ext.active b - N) := by
+            = ASize x_ext.active + (RegEncoding.toNat x_ext.active b - N) := by
         omega
 
       rw [hrewrite]
       simp [Nat.mod_eq_of_lt hsubcap]
 
-    rw [
-      eval_csubConst_ket_of_outside
-        (qs := qs) N x_ext scratch flag b₁ hout'
-    ]
+    rw [eval_csubConst_ket_of_outside (qs := qs) N x_ext scratch flag b₁ hout']
 
     simp only [hbit₁, if_true, hx₁, hwrapped]
 
     apply congrArg qs.ket
 
     exact
-      (writeNat_comm_of_disjoint
-        (qubitReg flag)
-        x_ext.active
-        hflag_x
-        1
-        (RegEncoding.toNat x_ext.active b - N)
-        b).symm
+      (writeNat_comm_of_disjoint (qubitReg flag) x_ext.active hflag_x 1
+        (RegEncoding.toNat x_ext.active b - N) b).symm
 
   · -- The comparison leaves flag = 0, so CSUB is inactive.
     simp only [hbit0, Bool.false_eq_true, if_false, hge]
 
-    let b₀ :=
-      RegEncoding.writeNat (qubitReg flag) 0 b
+    let b₀ := RegEncoding.writeNat (qubitReg flag) 0 b
 
-    have hx₀ :
-        RegEncoding.toNat x_ext.active b₀ =
-          RegEncoding.toNat x_ext.active b := by
-      exact
-        RegEncoding.toNat_left_write_right
-          x_ext.active
-          (qubitReg flag)
-          hx_flag
-          b
-          0
+    have hx₀ : RegEncoding.toNat x_ext.active b₀ = RegEncoding.toNat x_ext.active b := by
+      exact RegEncoding.toNat_left_write_right x_ext.active (qubitReg flag) hx_flag b 0
 
-    have hbit₀ :
-        RegEncoding.bit flag b₀ = false := by
-      exact bit_write_qubitReg_zero
-        (qs := qs) flag b
+    have hbit₀ : RegEncoding.bit flag b₀ = false := by
+      exact bit_write_qubitReg_zero (qs := qs) flag b
 
-    rw [
-      eval_csubConst_ket_of_outside
-        (qs := qs) N x_ext scratch flag b₀ hout'
-    ]
+    rw [eval_csubConst_ket_of_outside (qs := qs) N x_ext scratch flag b₀ hout']
 
     simp only [hbit₀, Bool.false_eq_true, if_false]
 
     have hwrite₀ :
-        RegEncoding.writeNat x_ext.active
-            (RegEncoding.toNat x_ext.active b) b₀
-          =
-        b₀ := by
+        RegEncoding.writeNat x_ext.active (RegEncoding.toNat x_ext.active b) b₀ = b₀ := by
       rw [← hx₀]
       exact RegEncoding.writeNat_toNat x_ext.active b₀
 
@@ -910,51 +642,32 @@ theorem eval_step4_cancels_ket
     (N : ℕ)
     (dataCarry work scratch : ExtReg)
     (flag : ℕ)
-    (hworkspace :
-      CmpLtNWWorkspace N dataCarry work scratch flag)
+    (hworkspace : CmpLtNWWorkspace N dataCarry work scratch flag)
     (b : qs.Basis)
     (hdataFresh : dataCarry.FreshFor 1 b)
     (hworkFresh : work.FreshFor 1 b)
-    (hscratchZero :
-      RegEncoding.toNat scratch.active b = 0)
+    (hscratchZero : RegEncoding.toNat scratch.active b = 0)
     (hscratchFresh : scratch.FreshFor 1 b)
     (hflag :
       RegEncoding.toNat (qubitReg flag) b =
-        if RegEncoding.toNat dataCarry.active b *
-              ASize work.active <
+        if RegEncoding.toNat dataCarry.active b * ASize work.active <
             N * RegEncoding.toNat work.active b
         then 1
         else 0) :
-    qs.eval
-        (step4 N dataCarry work scratch flag hworkspace)
-        (qs.ket b) =
-      qs.ket
-        (RegEncoding.writeNat (qubitReg flag) 0 b) := by
+    qs.eval (step4 N dataCarry work scratch flag hworkspace) (qs.ket b) =
+      qs.ket (RegEncoding.writeNat (qubitReg flag) 0 b) := by
   rw [step4]
-  rw [
-    eval_cmp_lt_nw_ket
-      (qs := qs)
-      N dataCarry work scratch flag hworkspace b
-      hdataFresh hworkFresh hscratchZero hscratchFresh
-  ]
+  rw [eval_cmp_lt_nw_ket (qs := qs) N dataCarry work scratch flag hworkspace b
+    hdataFresh hworkFresh hscratchZero hscratchFresh]
   by_cases hcmp :
-      RegEncoding.toNat dataCarry.active b * ASize work.active <
-        N * RegEncoding.toNat work.active b
-  · have hflag1 :
-        RegEncoding.toNat (qubitReg flag) b = 1 := by
-      simpa [hcmp] using hflag
-    have hbit :
-        RegEncoding.bit flag b = true :=
-      bit_true_of_qubitReg_toNat_one
-        (qs := qs) flag b hflag1
+      RegEncoding.toNat dataCarry.active b * ASize work.active < N * RegEncoding.toNat work.active b
+  · have hflag1 : RegEncoding.toNat (qubitReg flag) b = 1 := by simpa [hcmp] using hflag
+    have hbit : RegEncoding.bit flag b = true :=
+      bit_true_of_qubitReg_toNat_one (qs := qs) flag b hflag1
     simp [hcmp, hbit]
-  · have hflag0 :
-        RegEncoding.toNat (qubitReg flag) b = 0 := by
-      simpa [hcmp] using hflag
-    have hbit :
-        RegEncoding.bit flag b = false :=
-      bit_false_of_qubitReg_toNat_zero
-        (qs := qs) flag b hflag0
+  · have hflag0 : RegEncoding.toNat (qubitReg flag) b = 0 := by simpa [hcmp] using hflag
+    have hbit : RegEncoding.bit flag b = false :=
+      bit_false_of_qubitReg_toNat_zero (qs := qs) flag b hflag0
     simp [hcmp, hbit]
 
 theorem eval_step3_local_ket
@@ -966,19 +679,12 @@ theorem eval_step3_local_ket
     (b : qs.Basis)
     (hout : QubitOutside flag dataCarry.active) :
     ∃ b' : qs.Basis,
-      qs.eval (step3 N dataCarry scratch flag) (qs.ket b)
-        =
-      qs.ket b'
-      ∧
-      ∀ q,
-        q ∉ dataCarry.active.qubits →
-        q ≠ flag →
-        RegEncoding.bit q b' =
-          RegEncoding.bit q b := by
+      qs.eval (step3 N dataCarry scratch flag) (qs.ket b) = qs.ket b' ∧
+      ∀ q, q ∉ dataCarry.active.qubits → q ≠ flag →
+        RegEncoding.bit q b' = RegEncoding.bit q b := by
   classical
 
-  have hout' : flag ∉ dataCarry.active.qubits := by
-    simpa [QubitOutside] using hout
+  have hout' : flag ∉ dataCarry.active.qubits := by simpa [QubitOutside] using hout
 
   let cmpValue : ℕ :=
     if RegEncoding.bit flag b then
@@ -986,116 +692,76 @@ theorem eval_step3_local_ket
     else
       if N ≤ RegEncoding.toNat dataCarry.active b then 1 else 0
 
-  let b₁ : qs.Basis :=
-    RegEncoding.writeNat
-      (qubitReg flag) cmpValue b
+  let b₁ : qs.Basis := RegEncoding.writeNat (qubitReg flag) cmpValue b
 
   let subValue : ℕ :=
     if RegEncoding.bit flag b₁ then
-      (RegEncoding.toNat dataCarry.active b₁
-          + ASize dataCarry.active
-          - (N % ASize dataCarry.active))
-        % ASize dataCarry.active
+      (RegEncoding.toNat dataCarry.active b₁ + ASize dataCarry.active -
+          (N % ASize dataCarry.active)) % ASize dataCarry.active
     else
       RegEncoding.toNat dataCarry.active b₁
 
-  let b' : qs.Basis :=
-    RegEncoding.writeNat dataCarry.active subValue b₁
+  let b' : qs.Basis := RegEncoding.writeNat dataCarry.active subValue b₁
 
   refine ⟨b', ?_, ?_⟩
 
   · rw [step3, qs.eval_seq]
 
-    rw [
-      eval_cmpGeConst_ket_of_outside
-        (qs := qs) N dataCarry scratch flag b hout'
-    ]
+    rw [eval_cmpGeConst_ket_of_outside (qs := qs) N dataCarry scratch flag b hout']
 
-    change
-      qs.eval
-          (Gate.CSubConst N dataCarry scratch flag)
-          (qs.ket b₁)
-        =
-      qs.ket b'
+    change qs.eval (Gate.CSubConst N dataCarry scratch flag) (qs.ket b₁) = qs.ket b'
 
-    rw [
-      eval_csubConst_ket_of_outside
-        (qs := qs) N dataCarry scratch flag b₁ hout'
-    ]
+    rw [eval_csubConst_ket_of_outside (qs := qs) N dataCarry scratch flag b₁ hout']
   · intro q hqData hqFlag
 
-    have hqFlagReg :
-        q ∉ (qubitReg flag).qubits := by
+    have hqFlagReg : q ∉ (qubitReg flag).qubits := by
       simpa [qubitReg, Reg.singleton] using hqFlag
 
     dsimp [b', b₁]
 
-    rw [
-      RegEncoding.bit_writeNat_out
-        dataCarry.active subValue b₁ q hqData
-    ]
+    rw [RegEncoding.bit_writeNat_out dataCarry.active subValue b₁ q hqData]
 
-    exact
-      RegEncoding.bit_writeNat_out
-        (qubitReg flag) cmpValue b q hqFlagReg
+    exact RegEncoding.bit_writeNat_out (qubitReg flag) cmpValue b q hqFlagReg
 
 theorem eval_step4_local_ket
     [GateSemanticsFacts qs]
     (N : ℕ)
     (dataCarry work scratch : ExtReg)
     (flag : ℕ)
-    (hworkspace :
-      CmpLtNWWorkspace N dataCarry work scratch flag)
+    (hworkspace : CmpLtNWWorkspace N dataCarry work scratch flag)
     (b : qs.Basis)
     (hdataFresh : dataCarry.FreshFor 1 b)
     (hworkFresh : work.FreshFor 1 b)
-    (hscratchZero :
-      RegEncoding.toNat scratch.active b = 0)
+    (hscratchZero : RegEncoding.toNat scratch.active b = 0)
     (hscratchFresh : scratch.FreshFor 1 b) :
     ∃ b' : qs.Basis,
-      qs.eval
-          (step4 N dataCarry work scratch flag hworkspace)
-          (qs.ket b) =
-        qs.ket b' ∧
-      ∀ q,
-        q ∉ dataCarry.active.qubits →
-        q ∉ work.active.qubits →
-        q ≠ flag →
-        RegEncoding.bit q b' =
-          RegEncoding.bit q b := by
+      qs.eval (step4 N dataCarry work scratch flag hworkspace) (qs.ket b) = qs.ket b' ∧
+      ∀ q, q ∉ dataCarry.active.qubits → q ∉ work.active.qubits → q ≠ flag →
+        RegEncoding.bit q b' = RegEncoding.bit q b := by
   let flagValue : ℕ :=
     if RegEncoding.bit flag b then
-      if RegEncoding.toNat dataCarry.active b *
-            ASize work.active <
+      if RegEncoding.toNat dataCarry.active b * ASize work.active <
           N * RegEncoding.toNat work.active b
       then 0
       else 1
     else
-      if RegEncoding.toNat dataCarry.active b *
-            ASize work.active <
+      if RegEncoding.toNat dataCarry.active b * ASize work.active <
           N * RegEncoding.toNat work.active b
       then 1
       else 0
 
-  let b' : qs.Basis :=
-    RegEncoding.writeNat
-      (qubitReg flag) flagValue b
+  let b' : qs.Basis := RegEncoding.writeNat (qubitReg flag) flagValue b
 
   refine ⟨b', ?_, ?_⟩
   · rw [step4]
     simpa [b', flagValue] using
-      (eval_cmp_lt_nw_ket
-        (qs := qs)
-        N dataCarry work scratch flag hworkspace b
+      (eval_cmp_lt_nw_ket (qs := qs) N dataCarry work scratch flag hworkspace b
         hdataFresh hworkFresh hscratchZero hscratchFresh)
   · intro q _ _ hqFlag
-    have hqFlagReg :
-        q ∉ (qubitReg flag).qubits := by
+    have hqFlagReg : q ∉ (qubitReg flag).qubits := by
       simpa [qubitReg, Reg.singleton] using hqFlag
     dsimp [b']
-    exact
-      RegEncoding.bit_writeNat_out
-        (qubitReg flag) flagValue b q hqFlagReg
+    exact RegEncoding.bit_writeNat_out (qubitReg flag) flagValue b q hqFlagReg
 
 end ModMulPrimitiveDerivedSemantics
 
@@ -1107,12 +773,8 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_cfg
     [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η) (b : qs.Basis)
-    (hb :
-      GoodModMulBasisInput
-        qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
-    qs.eval (ModMulConfig.idealGate cfg) (qs.ket b)
-      =
-    qs.ket
+    (hb : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
+    qs.eval (ModMulConfig.idealGate cfg) (qs.ket b) = qs.ket
       (RegEncoding.writeNat cfg.env.data.active
         (if RegEncoding.bit cfg.ctrl b then
           (cfg.c * RegEncoding.toNat cfg.env.data.active b) % cfg.env.N
@@ -1121,19 +783,8 @@ theorem IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_cfg
         b) := by
   simpa [ModMulConfig.idealGate] using
     (IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket_exact
-      (qs := qs)
-      cfg.c
-      cfg.env.N
-      cfg.env.data
-      cfg.env.work
-      cfg.flag
-      cfg.ctrl
-      b
-      cfg.env.modulus_gt_one
-      cfg.env.data_capacity
-      cfg.coprime
-      cfg.layout
-      hb)
+      (qs := qs) cfg.c cfg.env.N cfg.env.data cfg.env.work cfg.flag cfg.ctrl b
+      cfg.env.modulus_gt_one cfg.env.data_capacity cfg.coprime cfg.layout hb)
 
 end PrimitiveAndIdealConfigFacts
 
@@ -1154,8 +805,7 @@ lemma alg1TargetResidue_lt_N
     (cfg : ModMulConfig η)
     (b : QSemantics.Basis) :
     alg1TargetResidue cfg b < cfg.env.N := by
-  have hNpos : 0 < cfg.env.N :=
-    Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one
+  have hNpos : 0 < cfg.env.N := Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one
   unfold alg1TargetResidue
   split
   · exact Nat.mod_lt _ hNpos
@@ -1168,34 +818,22 @@ lemma alg1Step2Value_lt_dataCarry_capacity
     (cfg : ModMulConfig η)
     (b : QSemantics.Basis)
     (hb :
-      GoodModMulBasisInput
-        (inferInstance : QSemantics)
+      GoodModMulBasisInput (inferInstance : QSemantics)
         cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
     alg1Step2Value cfg b < ASize (cfg.env.data.grow 1).active := by
-  have hdata_lt_N :
-      RegEncoding.toNat cfg.env.data.active b < cfg.env.N := hb.1
-  have htarget_lt_N :
-      alg1TargetResidue cfg b < cfg.env.N :=
-    alg1TargetResidue_lt_N cfg b
-  have hsum_lt :
-      alg1Step2Value cfg b < 2 * cfg.env.N := by
+  have hdata_lt_N : RegEncoding.toNat cfg.env.data.active b < cfg.env.N := hb.1
+  have htarget_lt_N : alg1TargetResidue cfg b < cfg.env.N := alg1TargetResidue_lt_N cfg b
+  have hsum_lt : alg1Step2Value cfg b < 2 * cfg.env.N := by
     unfold alg1Step2Value
     omega
-  have hcap :
-      2 * cfg.env.N ≤ ASize (cfg.env.data.grow 1).active := by
-    have hNcap : cfg.env.N ≤ ASize cfg.env.data.active :=
-      cfg.env.data_capacity
-    have hcarry :
-        cfg.env.data.CanGrow 1 :=
-      cfg.env.circuit_workspace.data_canGrow_one
+  have hcap : 2 * cfg.env.N ≤ ASize (cfg.env.data.grow 1).active := by
+    have hNcap : cfg.env.N ≤ ASize cfg.env.data.active := cfg.env.data_capacity
+    have hcarry : cfg.env.data.CanGrow 1 := cfg.env.circuit_workspace.data_canGrow_one
 
     have hpow :
-        ASize (cfg.env.data.grow 1).active =
-          2 * ASize cfg.env.data.active := by
-      have hReserveLen :
-          1 ≤ cfg.env.data.reserve.qubits.length := by
-        simpa [ExtReg.CanGrow, ExtReg.capacity, regSize, Reg.width]
-          using hcarry
+        ASize (cfg.env.data.grow 1).active = 2 * ASize cfg.env.data.active := by
+      have hReserveLen : 1 ≤ cfg.env.data.reserve.qubits.length := by
+        simpa [ExtReg.CanGrow, ExtReg.capacity, regSize, Reg.width] using hcarry
       simp [ASize, ExtReg.grow, ExtReg.newBits, Reg.append,
         Reg.take, regSize, Reg.width, Nat.min_eq_left hReserveLen,
         Nat.pow_succ, Nat.mul_comm]
@@ -1209,12 +847,10 @@ lemma alg1OutputValue_lt_data_capacity
     (cfg : ModMulConfig η)
     (b : QSemantics.Basis)
     (hb :
-      GoodModMulBasisInput
-        (inferInstance : QSemantics)
+      GoodModMulBasisInput (inferInstance : QSemantics)
         cfg.env.N cfg.env.data cfg.env.work cfg.flag b) :
     alg1OutputValue cfg b < ASize cfg.env.data.active := by
-  have hNpos : 0 < cfg.env.N :=
-    Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one
+  have hNpos : 0 < cfg.env.N := Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one
   unfold alg1OutputValue
   split
   · exact lt_of_lt_of_le (Nat.mod_lt _ hNpos) cfg.env.data_capacity
@@ -1236,8 +872,7 @@ theorem modExp_multiplier_coprime
     (a N e : ℕ)
     (hcoprime : Nat.Coprime a N) :
     Nat.Coprime ((a ^ (2 ^ e)) % N) N := by
-  have hpow : Nat.Coprime (a ^ (2 ^ e)) N :=
-    hcoprime.pow_left (2 ^ e)
+  have hpow : Nat.Coprime (a ^ (2 ^ e)) N := hcoprime.pow_left (2 ^ e)
   rw [Nat.coprime_iff_gcd_eq_one]
   calc
     Nat.gcd ((a ^ (2 ^ e)) % N) N
