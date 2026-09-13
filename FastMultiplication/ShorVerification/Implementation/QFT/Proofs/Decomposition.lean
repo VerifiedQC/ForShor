@@ -4,6 +4,7 @@ import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
+
 namespace Shor
 open Gate
 
@@ -99,10 +100,7 @@ noncomputable def finMulAddEquiv (A B : ℕ) :
         simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using
           (Nat.mod_add_div (n.1) (A + 1))
 
-variable (qs : QSemantics)
-  [RegEncoding qs.Basis]
-
-  [GateSemanticsFacts qs]
+variable (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
 
 def nTot (r : Reg) : ℕ := regSize r
 def mHalf (r : Reg) : ℕ := (nTot r) / 2

@@ -42,7 +42,6 @@ theorem eval_QFT_size0_ket
     (b : qs.Basis)
     (hsize : r.width = 0) :
     qs.eval (Gate.QFT r) (qs.ket b) = qs.ket b := by
-
   have hactive : regSize r.active = 0 := by
     simpa [ExtReg.width] using hsize
 
@@ -70,7 +69,6 @@ theorem eval_QFT_size0
     (ψ : qs.State)
     (hsize : r.width = 0) :
     qs.eval (Gate.QFT r) ψ = qs.eval Gate.id ψ := by
-
   have h :
       ∀ φ : qs.State,
         qs.eval (Gate.QFT r) φ = φ := by
@@ -114,7 +112,6 @@ theorem eval_QFT_size1_ket
             simp [ExtReg.width] at hsize
             omega)))
         (qs.ket b) := by
-
   have hactive_size : regSize r.active = 1 := by
     simpa [ExtReg.width] using hsize
 
@@ -210,7 +207,6 @@ theorem eval_QFT_size1
             simp [ExtReg.width] at hsize
             omega)))
         ψ := by
-
   have h :
       ∀ φ : qs.State,
         qs.eval (Gate.QFT r) φ =
@@ -790,7 +786,6 @@ lemma evalL_lowerQFTPlan_zero
       =
     0 := by
   exact LowerGateClass.evalL_zero (qs := qs) (lowerQFTPlan plan)
-
 
 lemma QFTLoweringReady.zero
     (qs : QSemantics)

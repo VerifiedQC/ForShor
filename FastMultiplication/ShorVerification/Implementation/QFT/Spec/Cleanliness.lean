@@ -52,10 +52,7 @@ structure QFTWorkspaceStateOK
     (r : ExtReg)
     (ψ : qs.State) :
     Prop where
-
   static : QFTReserveOK ops r
-
-  clean :
-    QFTWorkspaceCleanState qs (qftXWork ops r) (qftZWork ops r) ψ
+  clean : QFTWorkspaceCleanState qs (qftXWork ops r) (qftZWork ops r) ψ
 
 end Shor

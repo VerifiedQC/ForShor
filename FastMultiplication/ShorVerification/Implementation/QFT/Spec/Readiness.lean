@@ -26,12 +26,8 @@ noncomputable def QFTLoweringReady
     (plan : QFTLoweringPlan k hk ops r) :
     qs.State → Prop := by
   induction plan with
-  | empty r hsize =>
-      exact fun _ => True
-
-  | singleton r hsize =>
-      exact fun _ => True
-
+  | empty r hsize => exact fun _ => True
+  | singleton r hsize => exact fun _ => True
   | split r hsize ws phaseInitSize phasePlan
       rightPlan leftPlan readyRight readyLeft =>
       exact fun ψ =>
