@@ -86,7 +86,6 @@ This deliberately uses floor division. The lower `k - 1` limbs have width `w / k
 and the most significant limb absorbs all remaining bits.
 For example, `w = 5`, `k = 4` gives widths `1, 1, 1, 2`.
 -/
-
 def phaseLimbWidthOfWidth (w k : ℕ) : ℕ := w / k
 
 /--
@@ -94,7 +93,6 @@ Common radix width for decomposing both operands.
 Use `min`, not `max`: the lower limbs must fit inside both operands.
 The larger operand simply gets a larger top chunk.
 -/
-
 def phaseLimbWidth (x z : ExtReg) (k : ℕ) : ℕ :=
   min (phaseLimbWidthOfWidth x.width k) (phaseLimbWidthOfWidth z.width k)
 
@@ -129,17 +127,9 @@ def ValidPhaseSplit (e : ExtReg) (k W : ℕ) : Prop :=
 /-- Abstract split of one extendable register into active chunks plus a reserve partition. -/
 structure PhaseSplitLayout (parent : ExtReg) (k W : ℕ) where
   valid : ValidPhaseSplit parent k W
-
   reserve : Fin k → Reg
-
-  active_reserve_disjoint :
-    ∀ i, Disjoint (phaseChunkActive parent k W i) (reserve i)
-
-  reserve_partition :
-    (List.ofFn fun i => (reserve i).qubits).flatten
-      =
-    parent.reserve.qubits
-
+  active_reserve_disjoint : ∀ i, Disjoint (phaseChunkActive parent k W i) (reserve i)
+  reserve_partition : (List.ofFn fun i => (reserve i).qubits).flatten = parent.reserve.qubits
   child_owned_pairwise :
     ∀ i j, i ≠ j →
       List.Disjoint
@@ -147,12 +137,9 @@ structure PhaseSplitLayout (parent : ExtReg) (k W : ℕ) where
         ((phaseChunkActive parent k W j).qubits ++ (reserve j).qubits)
 
 /-- The `i`th child extendable register induced by a split layout. -/
-def PhaseSplitLayout.child
-  {parent : ExtReg} {k W : ℕ}
-  (layout : PhaseSplitLayout parent k W)
-  (i : Fin k) : ExtReg :=
-  ExtReg.withReserve (phaseChunkActive parent k W i)
-    (layout.reserve i) (layout.active_reserve_disjoint i)
+def PhaseSplitLayout.child {parent : ExtReg} {k W : ℕ} (layout : PhaseSplitLayout parent k W)
+    (i : Fin k) : ExtReg :=
+  ExtReg.withReserve (phaseChunkActive parent k W i) (layout.reserve i) (layout.active_reserve_disjoint i)
 
 theorem PhaseSplitLayout.child_owned_disjoint
     {parent : ExtReg}
@@ -167,18 +154,12 @@ theorem PhaseSplitLayout.child_owned_disjoint
 /-- Pair of compatible split layouts for the two operands of a phase product. -/
 structure Gate.PhaseProductLayout (x z : ExtReg) (k : ℕ) where
   xSplit : PhaseSplitLayout x k (phaseLimbWidth x z k)
-
   zSplit : PhaseSplitLayout z k (phaseLimbWidth x z k)
-
-  cross_owned_disjoint :
-    ∀ i j,
-      ExtReg.OwnedDisjoint (xSplit.child i) (zSplit.child j)
+  cross_owned_disjoint : ∀ i j, ExtReg.OwnedDisjoint (xSplit.child i) (zSplit.child j)
 
 /-- Interpret a child chunk as unsigned, except for the top chunk, which is signed. -/
-def splitChunkInt
-    {Basis : Type u} [RegEncoding Basis]
-    {parent : ExtReg} {k W : ℕ}
-  (layout : PhaseSplitLayout parent k W) (i : Fin k) (b : Basis) : ℤ :=
+def splitChunkInt {Basis : Type u} [RegEncoding Basis] {parent : ExtReg} {k W : ℕ}
+    (layout : PhaseSplitLayout parent k W) (i : Fin k) (b : Basis) : ℤ :=
   if i.1 + 1 = k
     then tcDecodeWidth (parent.width - i.1 * W) ((layout.child i).toNat b)
     else (layout.child i).toNat b
@@ -196,11 +177,7 @@ def growExtRegTo (e : ExtReg) (W : ℕ) : ExtReg := e.grow (W - e.width)
 /-- The reserve has enough bits for `growExtRegTo e W`. -/
 def ExtReg.CanGrowTo (e : ExtReg) (W : ℕ) : Prop := e.CanGrow (W - e.width)
 
-theorem width_growExtRegTo
-    (e : ExtReg)
-    (W : ℕ)
-    (hle : e.width ≤ W)
-    (hcap : e.CanGrowTo W) :
+theorem width_growExtRegTo (e : ExtReg) (W : ℕ) (hle : e.width ≤ W) (hcap : e.CanGrowTo W) :
     (growExtRegTo e W).width = W := by
   unfold growExtRegTo ExtReg.CanGrowTo at *
   rw [ExtReg.width_grow e (W - e.width) hcap]
@@ -211,9 +188,7 @@ def initSignedLayoutState {x z : ExtReg} {k : ℕ} (layout : Gate.PhaseProductLa
   { xslot := fun i => layout.xSplit.child i, zslot := fun i => layout.zSplit.child i }
 
 theorem initSignedLayoutState_owned_disjoint
-    {x z : ExtReg}
-    {k : ℕ}
-    (layout : Gate.PhaseProductLayout x z k) :
+    {x z : ExtReg} {k : ℕ} (layout : Gate.PhaseProductLayout x z k) :
     (initSignedLayoutState layout).OwnedPairwiseDisjoint := by
   constructor
   · intro i j hij
@@ -228,7 +203,6 @@ theorem initSignedLayoutState_owned_disjoint
 Each final slot is obtained by widening the corresponding abstract initial
 split chunk. No concrete register splitting is used here.
 -/
-
 def targetSignedLayoutState {k : ℕ} (src : LayoutState k) (need : NeededWidths k) : LayoutState k :=
   let Wwork := commonNeededWidth need
   { xslot := fun i => growExtRegTo (src.xslot i) Wwork, zslot := fun i => growExtRegTo (src.zslot i) Wwork }
@@ -250,115 +224,63 @@ def ReserveBudget.childReserve {parent : ExtReg} {k : ℕ} (budget : ReserveBudg
   (parent.reserve.drop (budget.offset i)).take (budget.size i)
 
 /-- The top chunk of a valid top-heavy split has positive width when the parent does. -/
-lemma phaseLimbWidth_top_nonempty
-    (w other k : ℕ)
-    (hk : 0 < k) :
-    w = 0 ∨
-      (k - 1) * min (w / k) (other / k) < w := by
+lemma phaseLimbWidth_top_nonempty (w other k : ℕ) (hk : 0 < k) :
+    w = 0 ∨ (k - 1) * min (w / k) (other / k) < w := by
   by_cases hw : w = 0
   · exact Or.inl hw
   right
   have hwpos : 0 < w := Nat.pos_of_ne_zero hw
   let q := w / k
-  have hW :
-      min (w / k) (other / k) ≤ q := by
-    exact Nat.min_le_left _ _
-  have hleft :
-      (k - 1) * min (w / k) (other / k)
-        ≤
-      (k - 1) * q :=
-    Nat.mul_le_mul_left _ hW
-  have hkpred : k - 1 < k := by
-    omega
+  have hW : min (w / k) (other / k) ≤ q := Nat.min_le_left _ _
+  have hleft : (k - 1) * min (w / k) (other / k) ≤ (k - 1) * q := Nat.mul_le_mul_left _ hW
+  have hkpred : k - 1 < k := by omega
   by_cases hq : q = 0
-  · have hmin_zero :
-        min (w / k) (other / k) = 0 :=
-      Nat.eq_zero_of_le_zero (by simpa [hq] using hW)
+  · have hmin_zero : min (w / k) (other / k) = 0 := Nat.eq_zero_of_le_zero (by simpa [hq] using hW)
     simp [hmin_zero]
     exact hwpos
   · have hqpos : 0 < q := Nat.pos_of_ne_zero hq
-    have hstrict :
-        (k - 1) * q < k * q :=
-      Nat.mul_lt_mul_of_pos_right hkpred hqpos
-    have hdiv :
-        k * q ≤ w := by
+    have hstrict : (k - 1) * q < k * q := Nat.mul_lt_mul_of_pos_right hkpred hqpos
+    have hdiv : k * q ≤ w := by
       dsimp [q]
       simpa [Nat.mul_comm] using Nat.div_mul_le_self w k
-    exact lt_of_le_of_lt hleft
-      (lt_of_lt_of_le hstrict hdiv)
+    exact lt_of_le_of_lt hleft (lt_of_lt_of_le hstrict hdiv)
 
-lemma phaseLimbWidth_valid_left
-    (x z : ExtReg)
-    {k : ℕ}
-    (hk : 0 < k) :
+lemma phaseLimbWidth_valid_left (x z : ExtReg) {k : ℕ} (hk : 0 < k) :
     ValidPhaseSplit x k (phaseLimbWidth x z k) := by
   refine ⟨hk, ?_, ?_⟩
   · unfold phaseLimbWidth phaseLimbWidthOfWidth
-    have hW :
-        min (x.width / k) (z.width / k)
-          ≤ x.width / k :=
-      Nat.min_le_left _ _
-    have h₁ :
-        (k - 1) * min (x.width / k) (z.width / k)
-          ≤
-        (k - 1) * (x.width / k) :=
+    have hW : min (x.width / k) (z.width / k) ≤ x.width / k := Nat.min_le_left _ _
+    have h₁ : (k - 1) * min (x.width / k) (z.width / k) ≤ (k - 1) * (x.width / k) :=
       Nat.mul_le_mul_left _ hW
-    have h₂ :
-        (k - 1) * (x.width / k)
-          ≤
-        k * (x.width / k) := by
-      exact Nat.mul_le_mul_right _
-        (Nat.sub_le k 1)
-    have h₃ :
-        k * (x.width / k) ≤ x.width := by
-      simpa [Nat.mul_comm] using
-        Nat.div_mul_le_self x.width k
+    have h₂ : (k - 1) * (x.width / k) ≤ k * (x.width / k) :=
+      Nat.mul_le_mul_right _ (Nat.sub_le k 1)
+    have h₃ : k * (x.width / k) ≤ x.width := by
+      simpa [Nat.mul_comm] using Nat.div_mul_le_self x.width k
     exact h₁.trans (h₂.trans h₃)
   · unfold phaseLimbWidth phaseLimbWidthOfWidth
-    exact phaseLimbWidth_top_nonempty
-      x.width z.width k hk
+    exact phaseLimbWidth_top_nonempty x.width z.width k hk
 
-lemma phaseLimbWidth_valid_right
-    (x z : ExtReg)
-    {k : ℕ}
-    (hk : 0 < k) :
+lemma phaseLimbWidth_valid_right (x z : ExtReg) {k : ℕ} (hk : 0 < k) :
     ValidPhaseSplit z k (phaseLimbWidth x z k) := by
   refine ⟨hk, ?_, ?_⟩
   · unfold phaseLimbWidth phaseLimbWidthOfWidth
-    have hW :
-        min (x.width / k) (z.width / k)
-          ≤ z.width / k :=
-      Nat.min_le_right _ _
-    have h₁ :
-        (k - 1) * min (x.width / k) (z.width / k)
-          ≤
-        (k - 1) * (z.width / k) :=
+    have hW : min (x.width / k) (z.width / k) ≤ z.width / k := Nat.min_le_right _ _
+    have h₁ : (k - 1) * min (x.width / k) (z.width / k) ≤ (k - 1) * (z.width / k) :=
       Nat.mul_le_mul_left _ hW
-    have h₂ :
-        (k - 1) * (z.width / k)
-          ≤
-        k * (z.width / k) := by
-      exact Nat.mul_le_mul_right _
-        (Nat.sub_le k 1)
-    have h₃ :
-        k * (z.width / k) ≤ z.width := by
-      simpa [Nat.mul_comm] using
-        Nat.div_mul_le_self z.width k
+    have h₂ : (k - 1) * (z.width / k) ≤ k * (z.width / k) :=
+      Nat.mul_le_mul_right _ (Nat.sub_le k 1)
+    have h₃ : k * (z.width / k) ≤ z.width := by
+      simpa [Nat.mul_comm] using Nat.div_mul_le_self z.width k
     exact h₁.trans (h₂.trans h₃)
   · unfold phaseLimbWidth phaseLimbWidthOfWidth
-    simpa [Nat.min_comm] using
-      phaseLimbWidth_top_nonempty
-        z.width x.width k hk
+    simpa [Nat.min_comm] using phaseLimbWidth_top_nonempty z.width x.width k hk
 
 /-! ---------------------------------------------------------
     Chunk width, reconstruction, and disjointness proofs
 --------------------------------------------------------- -/
 
 /-- Length of a concrete `drop`/`take` slice that lies inside a register. -/
-lemma regSize_drop_take_of_add_le
-    (r : Reg)
-    (start len : ℕ)
-    (h : start + len ≤ regSize r) :
+lemma regSize_drop_take_of_add_le (r : Reg) (start len : ℕ) (h : start + len ≤ regSize r) :
     regSize ((r.drop start).take len) = len := by
   change ((r.qubits.drop start).take len).length = len
   rw [List.length_take, List.length_drop]
@@ -366,57 +288,39 @@ lemma regSize_drop_take_of_add_le
   unfold regSize Reg.width at h
   omega
 
-lemma phaseChunkActive_width
-    (e : ExtReg)
-    (k W : ℕ)
-    (i : Fin k)
-    (hvalid : ValidPhaseSplit e k W) :
-    regSize (phaseChunkActive e k W i) =
-      phaseSplitLogicalWidth e.width W k i := by
+lemma phaseChunkActive_width (e : ExtReg) (k W : ℕ) (i : Fin k) (hvalid : ValidPhaseSplit e k W) :
+    regSize (phaseChunkActive e k W i) = phaseSplitLogicalWidth e.width W k i := by
   obtain ⟨_hk, hbound, _htopNonempty⟩ := hvalid
   unfold phaseChunkActive
   by_cases htop : isTopChunk i
   · have hik : k - 1 = i.1 := by
       unfold isTopChunk at htop
       omega
-    have hstart : i.1 * W ≤ e.width := by
-      simpa [hik] using hbound
+    have hstart : i.1 * W ≤ e.width := by simpa [hik] using hbound
     apply regSize_drop_take_of_add_le
     simp only [phaseChunkStart, phaseSplitLogicalWidth, htop, if_pos]
     exact le_of_eq <| by
       calc
-        i.1 * W + (e.width - i.1 * W) = e.width :=
-          Nat.add_sub_of_le hstart
+        i.1 * W + (e.width - i.1 * W) = e.width := Nat.add_sub_of_le hstart
         _ = regSize e.active := rfl
   · have hi : i.1 + 1 ≤ k - 1 := by
       unfold isTopChunk at htop
-      have hle : i.1 + 1 ≤ k :=
-        Nat.succ_le_of_lt i.2
+      have hle : i.1 + 1 ≤ k := Nat.succ_le_of_lt i.2
       omega
-    have hmul :
-        (i.1 + 1) * W ≤ (k - 1) * W :=
-      Nat.mul_le_mul_right W hi
-    have hfit :
-        i.1 * W + W ≤ e.width := by
+    have hmul : (i.1 + 1) * W ≤ (k - 1) * W := Nat.mul_le_mul_right W hi
+    have hfit : i.1 * W + W ≤ e.width := by
       calc
-        i.1 * W + W = (i.1 + 1) * W := by
-          rw [Nat.add_mul]
-          simp
+        i.1 * W + W = (i.1 + 1) * W := by rw [Nat.add_mul]; simp
         _ ≤ (k - 1) * W := hmul
         _ ≤ e.width := hbound
     apply regSize_drop_take_of_add_le
     simpa [phaseChunkStart, phaseSplitLogicalWidth, htop] using hfit
 
-lemma PhaseSplitLayout.child_width
-    {parent : ExtReg}
-    {k W : ℕ}
-    (layout : PhaseSplitLayout parent k W)
+lemma PhaseSplitLayout.child_width {parent : ExtReg} {k W : ℕ} (layout : PhaseSplitLayout parent k W)
     (i : Fin k) :
-    (layout.child i).width =
-      phaseSplitLogicalWidth parent.width W k i := by
+    (layout.child i).width = phaseSplitLogicalWidth parent.width W k i := by
   unfold PhaseSplitLayout.child ExtReg.width
-  exact phaseChunkActive_width
-    parent k W i layout.valid
+  exact phaseChunkActive_width parent k W i layout.valid
 
 /-- Two consecutive-block slices of a `Nodup` list are disjoint whenever the
     first block ends no later than the second one starts. -/
@@ -454,9 +358,7 @@ theorem phaseChunkActive_pairwise_disjoint
     (hvalid : ValidPhaseSplit e k W)
     {i j : Fin k}
     (hij : i ≠ j) :
-    Disjoint
-      (phaseChunkActive e k W i)
-      (phaseChunkActive e k W j) := by
+    Disjoint (phaseChunkActive e k W i) (phaseChunkActive e k W j) := by
   obtain ⟨hk, hcap⟩ := hvalid
   have hL : e.active.qubits.Nodup := e.active.nodup
   have hijn : (i : ℕ) ≠ (j : ℕ) := fun h => hij (Fin.ext h)

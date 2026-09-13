@@ -10,6 +10,7 @@ open Operations
 
 /-!
 # Phase-Product Plan Semantics
+
 This file defines the semantic readiness predicate for lowering plans and proves
 the core interpreter theorem: evaluating the low-level circuit selected by a
 ready plan agrees with the high-level gate stored in that plan. It also proves
@@ -19,6 +20,7 @@ phase-product nodes.
 
 /-! =========================================================
     Correctness Of One Compiled Recursive Step
+
     These lemmas identify the low-level interpreter for a single compiled signed
     or controlled signed phase-product plan with the corresponding high-level
     gate.
@@ -43,27 +45,14 @@ lemma eval_compiledSignedPhaseGate_correct
     (ψ : qs.State)
     (hclean : CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z ops) ψ) :
     qs.eval (compiledSignedPhaseGate k hk pts hpts ops phi x z layout) ψ
-      =
-    qs.eval (Gate.SignedPhaseProd phi x z) ψ := by
+      = qs.eval (Gate.SignedPhaseProd phi x z) ψ := by
   unfold compiledSignedPhaseGate
   unfold loweringPhaseCoeff
   rw [cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth pts hpts hInterp]
-  apply
-    eval_compileOpsToSignedGate_correct
-      (qs := qs)
-      (k := k)
-      (hk := hk)
-      (phi := phi)
-      (x := x)
-      (z := z)
-      (layout := layout)
-      (pts := pts)
-      (hpts := hpts)
-      (hInterp := hInterp)
-      (ψ := ψ)
-      (ops := ops)
-      (hC := hC)
-      (run_ops_start_state := hRun)
+  apply eval_compileOpsToSignedGate_correct
+    (qs := qs) (k := k) (hk := hk) (phi := phi) (x := x) (z := z) (layout := layout)
+    (pts := pts) (hpts := hpts) (hInterp := hInterp) (ψ := ψ) (ops := ops) (hC := hC)
+    (run_ops_start_state := hRun)
   exact hclean
 
 /-- A compiled controlled signed recursive phase-product gate evaluates to its source controlled gate. -/
@@ -87,33 +76,19 @@ lemma eval_compiledCSignedPhaseGate_correct
     (ψ : qs.State)
     (hclean : CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z ops) ψ) :
     qs.eval (compiledCSignedPhaseGate k hk pts hpts ops ctrl phi x z layout) ψ
-      =
-    qs.eval (Gate.CSignedPhaseProd ctrl phi x z) ψ := by
+      = qs.eval (Gate.CSignedPhaseProd ctrl phi x z) ψ := by
   unfold compiledCSignedPhaseGate
   unfold loweringPhaseCoeff
   rw [cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth pts hpts hInterp]
-  apply
-    eval_compileOpsToCSignedGate_correct
-      (qs := qs)
-      (k := k)
-      (hk := hk)
-      (ctrl := ctrl)
-      (phi := phi)
-      (x := x)
-      (z := z)
-      (layout := layout)
-      (hctrl := hctrl)
-      (pts := pts)
-      (hpts := hpts)
-      (hInterp := hInterp)
-      (ops := ops)
-      (hC := hC)
-      (hRun := hRun)
-      (ψ := ψ)
+  apply eval_compileOpsToCSignedGate_correct
+    (qs := qs) (k := k) (hk := hk) (ctrl := ctrl) (phi := phi) (x := x) (z := z)
+    (layout := layout) (hctrl := hctrl) (pts := pts) (hpts := hpts) (hInterp := hInterp)
+    (ops := ops) (hC := hC) (hRun := hRun) (ψ := ψ)
   exact hclean
 
 /-! =========================================================
     Plan-Directed Interpreter Correctness
+
     The main induction follows the structure of a lowering plan. Each
     constructor is interpreted by the low-level evaluator and compared with the
     high-level gate it implements; recursive nodes use readiness to discharge
@@ -136,329 +111,128 @@ lemma evalL_lowerGateRec_correct
     (hRun : run? ops State.start_state = some State.start_state)
     {initSize : ℕ}
     {U : Gate}
-    (plan : PhaseLoweringPlan  k hk pts hpts ops initSize U) :
+    (plan : PhaseLoweringPlan k hk pts hpts ops initSize U) :
     ∀ ψ : qs.State,
       PhaseLoweringReady qs plan ψ →
-      LowerGateClass.evalL (qs := qs) (lowerGateRec plan) ψ
-        =
-      qs.eval U ψ := by
+      LowerGateClass.evalL (qs := qs) (lowerGateRec plan) ψ = qs.eval U ψ := by
   induction plan with
   | id initSize =>
       intro ψ _
-      change
-        LowerGateClass.evalL
-            (qs := qs)
-            LowGate.id
-            ψ
-          =
-        qs.eval Gate.id ψ
+      change LowerGateClass.evalL (qs := qs) LowGate.id ψ = qs.eval Gate.id ψ
       calc
-        LowerGateClass.evalL
-            (qs := qs)
-            LowGate.id
-            ψ
-            = ψ :=
-          LowerGateClass.evalL_id
-            (qs := qs)
-            ψ
-        _ = qs.eval Gate.id ψ :=
-          (qs.eval_id ψ).symm
+        LowerGateClass.evalL (qs := qs) LowGate.id ψ = ψ := LowerGateClass.evalL_id (qs := qs) ψ
+        _ = qs.eval Gate.id ψ := (qs.eval_id ψ).symm
   | seq left right ihLeft ihRight =>
       intro ψ hready
       change
         PhaseLoweringReady qs left ψ ∧
-        PhaseLoweringReady
-          qs
-          right
-          (LowerGateClass.evalL
-            (qs := qs)
-            (lowerGateRec left)
-            ψ)
+        PhaseLoweringReady qs right (LowerGateClass.evalL (qs := qs) (lowerGateRec left) ψ)
         at hready
       rcases hready with ⟨hleft, hright⟩
       change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.seq
-              (lowerGateRec left)
-              (lowerGateRec right))
-            ψ
-          =
-        qs.eval _ ψ
+        LowerGateClass.evalL (qs := qs) (LowGate.seq (lowerGateRec left) (lowerGateRec right)) ψ
+          = qs.eval _ ψ
       rw [LowerGateClass.evalL_seq]
       rw [ihRight _ hright]
       rw [ihLeft _ hleft]
       exact (qs.eval_seq _ _ ψ).symm
   | H initSize qbit =>
       intro ψ _
-      change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.H qbit)
-            ψ
-          =
-        qs.eval (Gate.H qbit) ψ
-      exact
-        LowerGateClass.evalL_H
-          (qs := qs)
-          qbit
-          ψ
+      change LowerGateClass.evalL (qs := qs) (LowGate.H qbit) ψ = qs.eval (Gate.H qbit) ψ
+      exact LowerGateClass.evalL_H (qs := qs) qbit ψ
   | X initSize qbit =>
       intro ψ _
-      change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.X qbit)
-            ψ
-          =
-        qs.eval (Gate.X qbit) ψ
-      exact
-        LowerGateClass.evalL_X
-          (qs := qs)
-          qbit
-          ψ
+      change LowerGateClass.evalL (qs := qs) (LowGate.X qbit) ψ = qs.eval (Gate.X qbit) ψ
+      exact LowerGateClass.evalL_X (qs := qs) qbit ψ
   | ShiftL initSize r n =>
       intro ψ _
-      change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.ShiftL r n)
-            ψ
-          =
-        qs.eval (Gate.ShiftL r n) ψ
-      exact
-        LowerGateClass.evalL_shiftL
-          (qs := qs)
-          r n ψ
+      change LowerGateClass.evalL (qs := qs) (LowGate.ShiftL r n) ψ = qs.eval (Gate.ShiftL r n) ψ
+      exact LowerGateClass.evalL_shiftL (qs := qs) r n ψ
   | ShiftR initSize r n =>
       intro ψ _
-      change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.ShiftR r n)
-            ψ
-          =
-        qs.eval (Gate.ShiftR r n) ψ
-      exact
-        LowerGateClass.evalL_shiftR
-          (qs := qs)
-          r n ψ
+      change LowerGateClass.evalL (qs := qs) (LowGate.ShiftR r n) ψ = qs.eval (Gate.ShiftR r n) ψ
+      exact LowerGateClass.evalL_shiftR (qs := qs) r n ψ
   | Negate initSize r =>
       intro ψ _
-      change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.Negate r)
-            ψ
-          =
-        qs.eval (Gate.Negate r) ψ
-      exact
-        LowerGateClass.evalL_negate
-          (qs := qs)
-          r ψ
+      change LowerGateClass.evalL (qs := qs) (LowGate.Negate r) ψ = qs.eval (Gate.Negate r) ψ
+      exact LowerGateClass.evalL_negate (qs := qs) r ψ
   | AddScaled initSize dst src negSrc shift =>
       intro ψ _
       change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.AddScaled
-              dst src negSrc shift)
-            ψ
-          =
-        qs.eval
-          (Gate.AddScaled
-            dst src negSrc shift)
-          ψ
-      exact
-        LowerGateClass.evalL_addScaled
-          (qs := qs)
-          dst src negSrc shift ψ
+        LowerGateClass.evalL (qs := qs) (LowGate.AddScaled dst src negSrc shift) ψ
+          = qs.eval (Gate.AddScaled dst src negSrc shift) ψ
+      exact LowerGateClass.evalL_addScaled (qs := qs) dst src negSrc shift ψ
   | zeroExtend initSize r n =>
       intro ψ _
       change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.zeroExtend r n)
-            ψ
-          =
-        qs.eval (Gate.zeroExtend r n) ψ
-      exact
-        LowerGateClass.evalL_zeroExtend
-          (qs := qs)
-          r n ψ
+        LowerGateClass.evalL (qs := qs) (LowGate.zeroExtend r n) ψ = qs.eval (Gate.zeroExtend r n) ψ
+      exact LowerGateClass.evalL_zeroExtend (qs := qs) r n ψ
   | signExtend initSize r n =>
       intro ψ _
       change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.signExtend r n)
-            ψ
-          =
-        qs.eval (Gate.signExtend r n) ψ
-      exact
-        LowerGateClass.evalL_signExtend
-          (qs := qs)
-          r n ψ
+        LowerGateClass.evalL (qs := qs) (LowGate.signExtend r n) ψ = qs.eval (Gate.signExtend r n) ψ
+      exact LowerGateClass.evalL_signExtend (qs := qs) r n ψ
   | zeroDealloc initSize r n =>
       intro ψ _
       change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.zeroDealloc r n)
-            ψ
-          =
-        qs.eval (Gate.zeroDealloc r n) ψ
-      exact
-        LowerGateClass.evalL_zeroDealloc
-          (qs := qs)
-          r n ψ
+        LowerGateClass.evalL (qs := qs) (LowGate.zeroDealloc r n) ψ = qs.eval (Gate.zeroDealloc r n) ψ
+      exact LowerGateClass.evalL_zeroDealloc (qs := qs) r n ψ
   | signDealloc initSize r n =>
       intro ψ _
       change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.signDealloc r n)
-            ψ
-          =
-        qs.eval (Gate.signDealloc r n) ψ
-      exact
-        LowerGateClass.evalL_signDealloc
-          (qs := qs)
-          r n ψ
+        LowerGateClass.evalL (qs := qs) (LowGate.signDealloc r n) ψ = qs.eval (Gate.signDealloc r n) ψ
+      exact LowerGateClass.evalL_signDealloc (qs := qs) r n ψ
   | RadixReverse initSize r m =>
       intro ψ _
       change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.RadixReverse r m)
-            ψ
-          =
-        qs.eval (Gate.RadixReverse r m) ψ
-      exact
-        LowerGateClass.evalL_radixReverse
-          (qs := qs)
-          r m ψ
+        LowerGateClass.evalL (qs := qs) (LowGate.RadixReverse r m) ψ
+          = qs.eval (Gate.RadixReverse r m) ψ
+      exact LowerGateClass.evalL_radixReverse (qs := qs) r m ψ
   | signedBase phi x z hstop =>
       intro ψ _
       change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.Naive_SignedPhaseProd
-              phi x z)
-            ψ
-          =
-        qs.eval
-          (Gate.SignedPhaseProd phi x z)
-          ψ
-      exact
-        LowerGateClass.evalL_naive_signedPhaseProd
-          (qs := qs)
-          phi x z ψ
-  | signedStep
-      phi x z layout
-      hrec hcapacity child ihChild =>
+        LowerGateClass.evalL (qs := qs) (LowGate.Naive_SignedPhaseProd phi x z) ψ
+          = qs.eval (Gate.SignedPhaseProd phi x z) ψ
+      exact LowerGateClass.evalL_naive_signedPhaseProd (qs := qs) phi x z ψ
+  | signedStep phi x z layout hrec hcapacity child ihChild =>
       intro ψ hready
       change
-        CleanWorkspaceState
-            qs
-            (initSignedLayoutState layout)
-            (scanNeededWidths x z ops)
-            ψ
-          ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z ops) ψ ∧
         PhaseLoweringReady qs child ψ
         at hready
       rcases hready with ⟨hclean, hchild⟩
       change
-        LowerGateClass.evalL
-            (qs := qs)
-            (lowerGateRec child)
-            ψ
-          =
-        qs.eval
-          (Gate.SignedPhaseProd phi x z)
-          ψ
+        LowerGateClass.evalL (qs := qs) (lowerGateRec child) ψ
+          = qs.eval (Gate.SignedPhaseProd phi x z) ψ
       calc
-        LowerGateClass.evalL
-            (qs := qs)
-            (lowerGateRec child)
-            ψ
-            =
-        qs.eval
-            (compiledSignedPhaseGate
-              k hk pts hpts ops
-              phi x z layout)
-            ψ :=
+        LowerGateClass.evalL (qs := qs) (lowerGateRec child) ψ
+            = qs.eval (compiledSignedPhaseGate k hk pts hpts ops phi x z layout) ψ :=
           ihChild ψ hchild
-        _ =
-        qs.eval
-            (Gate.SignedPhaseProd phi x z)
-            ψ :=
-          eval_compiledSignedPhaseGate_correct
-            qs k hk pts hpts hInterp
-            ops hC hRun
-            phi x z layout ψ hclean
+        _ = qs.eval (Gate.SignedPhaseProd phi x z) ψ :=
+          eval_compiledSignedPhaseGate_correct qs k hk pts hpts hInterp ops hC hRun phi x z layout
+            ψ hclean
   | cSignedBase ctrl phi x z hstop =>
       intro ψ _
       change
-        LowerGateClass.evalL
-            (qs := qs)
-            (LowGate.Naive_CSignedPhaseProd
-              ctrl phi x z)
-            ψ
-          =
-        qs.eval
-          (Gate.CSignedPhaseProd
-            ctrl phi x z)
-          ψ
-      exact
-        LowerGateClass.evalL_naive_csignedPhaseProd
-          (qs := qs)
-          ctrl phi x z ψ
-  | cSignedStep
-      ctrl phi x z layout
-      hrec hcapacity hctrl child ihChild =>
+        LowerGateClass.evalL (qs := qs) (LowGate.Naive_CSignedPhaseProd ctrl phi x z) ψ
+          = qs.eval (Gate.CSignedPhaseProd ctrl phi x z) ψ
+      exact LowerGateClass.evalL_naive_csignedPhaseProd (qs := qs) ctrl phi x z ψ
+  | cSignedStep ctrl phi x z layout hrec hcapacity hctrl child ihChild =>
       intro ψ hready
       change
-        CleanWorkspaceState
-            qs
-            (initSignedLayoutState layout)
-            (scanNeededWidths x z ops)
-            ψ
-          ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z ops) ψ ∧
         PhaseLoweringReady qs child ψ
         at hready
       rcases hready with ⟨hclean, hchild⟩
       change
-        LowerGateClass.evalL
-            (qs := qs)
-            (lowerGateRec child)
-            ψ
-          =
-        qs.eval
-          (Gate.CSignedPhaseProd
-            ctrl phi x z)
-          ψ
+        LowerGateClass.evalL (qs := qs) (lowerGateRec child) ψ
+          = qs.eval (Gate.CSignedPhaseProd ctrl phi x z) ψ
       calc
-        LowerGateClass.evalL
-            (qs := qs)
-            (lowerGateRec child)
-            ψ
-            =
-        qs.eval
-            (compiledCSignedPhaseGate
-              k hk pts hpts ops
-              ctrl phi x z layout)
-            ψ :=
+        LowerGateClass.evalL (qs := qs) (lowerGateRec child) ψ
+            = qs.eval (compiledCSignedPhaseGate k hk pts hpts ops ctrl phi x z layout) ψ :=
           ihChild ψ hchild
-        _ =
-        qs.eval
-            (Gate.CSignedPhaseProd
-              ctrl phi x z)
-            ψ :=
-          eval_compiledCSignedPhaseGate_correct
-            qs k hk pts hpts hInterp
-            ops hC hRun
-            ctrl phi x z layout hctrl
-            ψ hclean
+        _ = qs.eval (Gate.CSignedPhaseProd ctrl phi x z) ψ :=
+          eval_compiledCSignedPhaseGate_correct qs k hk pts hpts hInterp ops hC hRun
+            ctrl phi x z layout hctrl ψ hclean
 
 end Shor
