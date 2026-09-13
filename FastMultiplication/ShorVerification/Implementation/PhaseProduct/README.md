@@ -90,7 +90,7 @@ may import the ones before it).
 | File | Purpose |
 |---|---|
 | `Cleanliness.lean` | The cleanliness predicates needed to state readiness/assertions: compiler-workspace cleanliness (`CompilerWorkspaceOK`, `CleanWorkspaceState`), layout reserve cleanliness, and cleanliness of the complete reserves (`RecursiveWorkspaceCleanState`, `SignedRecursiveWorkspaceStateOK`, `CSignedRecursiveWorkspaceStateOK`). |
-| `Readiness.lean` | `PhaseLoweringReady`: the semantic precondition for executing a lowering plan on a state. `QFT/Defs.lean` needs this to *define* `QFTLoweringReady`, which is why it can't live in `Proofs/`. |
+| `Readiness.lean` | `PhaseLoweringReady`: the semantic precondition for executing a lowering plan on a state. `QFT/Spec/Readiness.lean` needs this to *define* `QFTLoweringReady`, which is why it can't live in `Proofs/`. |
 | `Assertions.lean` | The final named propositions the implementation claims to satisfy (proved in `Main.lean`). |
 
 ## `Proofs/` — everything below is proof-only; nothing outside `Proofs/`/`Main.lean` may import it

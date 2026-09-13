@@ -26,7 +26,7 @@ mean, and the final named claims proved in `Main.lean`.
 - **`PhaseLoweringReady`** — the semantic precondition for executing a
   `PhaseLoweringPlan` on a given state: primitive gates need nothing;
   recursive nodes require the workspace to be clean *and* the child plan to
-  be ready on the state reached after the current level runs. `QFT/Defs.lean`
+  be ready on the state reached after the current level runs. `QFT/Spec/Readiness.lean`
   needs this definition directly, to define its own `QFTLoweringReady`.
 
 ## `Assertions.lean`
