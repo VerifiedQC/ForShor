@@ -247,6 +247,7 @@ def standardQFTLoweringPlan
       exact QFTLoweringPlan.split r hlarge ws (phaseProdUsingInputSize ws)
           phasePlan rightPlan leftPlan
 
+
 termination_by regSize r
 decreasing_by
   ·
@@ -302,5 +303,18 @@ def reserveQFTLoweringPlan
     QFTLoweringPlan k hk ops r.active :=
   standardQFTLoweringPlan k hk ops r.active (qftXWork ops r) (qftZWork ops r)
     hworkspace.explicitWorkspace
+
+/--
+The canonical lowered QFT. Its workspace is selected deterministically from
+`r.reserve`; callers do not supply separate physical workspace registers.
+-/
+def lowerQFT
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k)
+    (r : ExtReg)
+    (hworkspace : QFTReserveOK ops r) :
+    LowGate :=
+  lowerQFTPlan (reserveQFTLoweringPlan k hk ops r hworkspace)
 
 end Shor

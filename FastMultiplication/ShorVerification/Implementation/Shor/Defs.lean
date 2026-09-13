@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.QFT.Workspace
 import FastMultiplication.ShorVerification.Implementation.QFT.Spec.Cleanliness
-import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.Lower
+import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.PlanBuilders
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Main
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace

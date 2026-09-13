@@ -31,9 +31,6 @@ that build such a plan automatically from a workspace assumption.
 - **`reserveQFTLoweringPlan`** — the bridge from the public reserve
   precondition `QFTReserveOK` to a concrete plan: derives the two workspace
   registers from `qftXWork`/`qftZWork` and calls `standardQFTLoweringPlan`.
-
-## `Lower.lean`
-
 - **`lowerQFT`** — the public top-level constructor: builds the canonical
   reserve-backed plan via `reserveQFTLoweringPlan` and lowers it with
   `lowerQFTPlan`. Its workspace is selected deterministically from the
