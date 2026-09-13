@@ -33,8 +33,7 @@ def annotatePhaseTermsAux (k n : ℕ) (ops : List (valid_ops k)) : List (Annotat
   | op :: rest =>
       match op with
       | .phaseProduct _i =>
-          let ann : Option (Fin (q k)) :=
-            if h : n < q k then some ⟨n, h⟩ else none
+          let ann : Option (Fin (q k)) := if h : n < q k then some ⟨n, h⟩ else none
           ⟨op, ann⟩ :: annotatePhaseTermsAux k (n+1) rest
       | _ =>
           ⟨op, none⟩ :: annotatePhaseTermsAux k n rest
@@ -49,7 +48,6 @@ def phaseProductCount {k : ℕ} : List (valid_ops k) → ℕ
 
 /-- Allocation gate for a single chunk. Lower chunks are zero-extended;
     the top chunk is sign-extended. -/
-
 def allocChunkGate {k : ℕ} (i : Fin k) (src dst : ExtReg) : Gate :=
   let n := extraDelta src dst
   if _h0 : n = 0 then
@@ -106,13 +104,12 @@ def compileSignedDeallocations (k : ℕ) (src dst : LayoutState k) : Gate :=
 /-- Signed compiler for annotated ops.  The layout state already contains
     enough extra width in each slot, so compilation only emits gates and does
     not resize the state further. -/
-
 def compileAnnotatedOpsToSignedGateAux
-  (k : ℕ) (hk : 1 < k)
-  (phi : Angle)
-  (phaseCoeff : Fin (q k) → ℚ)
-  (st : LayoutState k)
-  (ops : List (AnnotatedOp k)) : Gate :=
+    (k : ℕ) (hk : 1 < k)
+    (phi : Angle)
+    (phaseCoeff : Fin (q k) → ℚ)
+    (st : LayoutState k)
+    (ops : List (AnnotatedOp k)) : Gate :=
   match ops with
   | [] => Gate.id
   | ⟨op, term?⟩ :: rest =>
@@ -133,31 +130,21 @@ def compileAnnotatedOpsToSignedGateAux
       | .phaseProduct i =>
           match term? with
           | some l =>
-              Gate.SignedPhaseProd
-                (phi * phaseCoeff l)
-                (st.xslot i)
-                (st.zslot i) ;; tail
+              Gate.SignedPhaseProd (phi * phaseCoeff l) (st.xslot i) (st.zslot i) ;; tail
           | none =>
               tail
 
 /-- Full signed phase-product lowering: allocate widths, compile the annotated body, then deallocate. -/
 def compileOpsToSignedGate
-  (k : ℕ) (hk : 1 < k) (phi : Angle) (x z : ExtReg) (layout : Gate.PhaseProductLayout x z k)
-  (phaseCoeff : Fin (q k) → ℚ) (ops : List (valid_ops k)) : Gate :=
-  let annOps : List (AnnotatedOp k) :=
-    annotatePhaseTermsAux k 0 ops
-  let need : NeededWidths k :=
-    scanNeededWidths x z ops
-  let stInit : LayoutState k :=
-    initSignedLayoutState layout
-  let stFinal : LayoutState k :=
-    targetSignedLayoutState stInit need
-  let allocs : Gate :=
-    compileSignedAllocations k stInit stFinal
-  let body : Gate :=
-    compileAnnotatedOpsToSignedGateAux k hk phi phaseCoeff stFinal annOps
-  let deallocs : Gate :=
-    compileSignedDeallocations k stInit stFinal
+    (k : ℕ) (hk : 1 < k) (phi : Angle) (x z : ExtReg) (layout : Gate.PhaseProductLayout x z k)
+    (phaseCoeff : Fin (q k) → ℚ) (ops : List (valid_ops k)) : Gate :=
+  let annOps : List (AnnotatedOp k) := annotatePhaseTermsAux k 0 ops
+  let need : NeededWidths k := scanNeededWidths x z ops
+  let stInit : LayoutState k := initSignedLayoutState layout
+  let stFinal : LayoutState k := targetSignedLayoutState stInit need
+  let allocs : Gate := compileSignedAllocations k stInit stFinal
+  let body : Gate := compileAnnotatedOpsToSignedGateAux k hk phi phaseCoeff stFinal annOps
+  let deallocs : Gate := compileSignedDeallocations k stInit stFinal
   allocs ;; body ;; deallocs
 
 /-- Add a shared control to phase-product leaves while leaving structural and arithmetic gates unchanged. -/
@@ -186,39 +173,37 @@ def Gate.PhaseProductLayout.ControlDisjoint {x z : ExtReg} {k : ℕ} (layout : G
   (∀ i, ctrl ∉ (layout.xSplit.child i).ownedQubits) ∧ (∀ i, ctrl ∉ (layout.zSplit.child i).ownedQubits)
 
 /-! =========================================================
-    Annotation and phase-product counting
-    These lemmas are pure program-bookkeeping facts. They keep phase-product
-    term indices stable under append and prove that local arithmetic helper
-    programs do not introduce recursive phase-product leaves.
+    Allocation and deallocation step lemmas
+
+    Unfolding equations for one recursive step of the allocation/deallocation
+    prefixes defined above.
 ========================================================= -/
 
-/-- Compatibility alias for older files: every concrete `Reg` already carries `Nodup`. -/
-
 @[simp] lemma compileSignedAllocationsAux_zero {k : ℕ} (src dst : LayoutState k) (h : 0 ≤ k) :
-  compileSignedAllocationsAux src dst 0 h = Gate.id := rfl
+    compileSignedAllocationsAux src dst 0 h = Gate.id := rfl
 
-@[simp] lemma compileSignedAllocationsAux_succ {k : ℕ} (src dst : LayoutState k)
-  (n : ℕ) (hn : n + 1 ≤ k) :
-  compileSignedAllocationsAux src dst (n + 1) hn
-    =
-  let hk' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
-  let i : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
-  compileSignedAllocationsAux src dst n hk' ;;
-  allocChunkGate i (src.xslot i) (dst.xslot i) ;;
-  allocChunkGate i (src.zslot i) (dst.zslot i) := rfl
+@[simp] lemma compileSignedAllocationsAux_succ
+    {k : ℕ} (src dst : LayoutState k) (n : ℕ) (hn : n + 1 ≤ k) :
+    compileSignedAllocationsAux src dst (n + 1) hn
+      =
+    let hk' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
+    let i : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
+    compileSignedAllocationsAux src dst n hk' ;;
+    allocChunkGate i (src.xslot i) (dst.xslot i) ;;
+    allocChunkGate i (src.zslot i) (dst.zslot i) := rfl
 
 @[simp] lemma compileSignedDeallocationsAux_zero {k : ℕ} (src dst : LayoutState k) (h : 0 ≤ k) :
-  compileSignedDeallocationsAux src dst 0 h = Gate.id := rfl
+    compileSignedDeallocationsAux src dst 0 h = Gate.id := rfl
 
-@[simp] lemma compileSignedDeallocationsAux_succ {k : ℕ} (src dst : LayoutState k)
-  (n : ℕ) (hn : n + 1 ≤ k) :
-  compileSignedDeallocationsAux src dst (n + 1) hn
-    =
-  let hk' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
-  let i : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
-  deallocChunkGate i (src.zslot i) (dst.zslot i) ;;
-  deallocChunkGate i (src.xslot i) (dst.xslot i) ;;
-  compileSignedDeallocationsAux src dst n hk' := rfl
+@[simp] lemma compileSignedDeallocationsAux_succ
+    {k : ℕ} (src dst : LayoutState k) (n : ℕ) (hn : n + 1 ≤ k) :
+    compileSignedDeallocationsAux src dst (n + 1) hn
+      =
+    let hk' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
+    let i : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
+    deallocChunkGate i (src.zslot i) (dst.zslot i) ;;
+    deallocChunkGate i (src.xslot i) (dst.xslot i) ;;
+    compileSignedDeallocationsAux src dst n hk' := rfl
 
 /-! =========================================================
     Control wrappers for allocation and deallocation
@@ -228,29 +213,26 @@ def Gate.PhaseProductLayout.ControlDisjoint {x z : ExtReg} {k : ℕ} (layout : G
 ========================================================= -/
 
 /-- Control-phase wrapping leaves allocation gates unchanged. -/
-lemma controlPhaseLeaves_allocChunkGate
-  {k : ℕ} (ctrl : ℕ) (i : Fin k) (src dst : ExtReg) :
-  controlPhaseLeaves ctrl (allocChunkGate i src dst) = allocChunkGate i src dst := by
+lemma controlPhaseLeaves_allocChunkGate {k : ℕ} (ctrl : ℕ) (i : Fin k) (src dst : ExtReg) :
+    controlPhaseLeaves ctrl (allocChunkGate i src dst) = allocChunkGate i src dst := by
   unfold allocChunkGate
   by_cases htop : isTopChunk i <;>
     by_cases hδ : extraDelta src dst = 0 <;>
     simp [htop, hδ, controlPhaseLeaves]
 
 /-- Control-phase wrapping leaves deallocation gates unchanged. -/
-lemma controlPhaseLeaves_deallocChunkGate
-  {k : ℕ} (ctrl : ℕ) (i : Fin k) (src dst : ExtReg) :
-  controlPhaseLeaves ctrl (deallocChunkGate i src dst) = deallocChunkGate i src dst := by
+lemma controlPhaseLeaves_deallocChunkGate {k : ℕ} (ctrl : ℕ) (i : Fin k) (src dst : ExtReg) :
+    controlPhaseLeaves ctrl (deallocChunkGate i src dst) = deallocChunkGate i src dst := by
   unfold deallocChunkGate
   by_cases htop : isTopChunk i <;>
     by_cases hδ : extraDelta src dst = 0 <;>
     simp [htop, hδ, controlPhaseLeaves]
 
 /-- Control-phase wrapping leaves allocation prefixes unchanged. -/
-lemma controlPhaseLeaves_compileSignedAllocationsAux
-  {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
-  ∀ (n : ℕ) (hn : n ≤ k),
-    controlPhaseLeaves ctrl (compileSignedAllocationsAux src dst n hn) =
-      compileSignedAllocationsAux src dst n hn := by
+lemma controlPhaseLeaves_compileSignedAllocationsAux {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
+    ∀ (n : ℕ) (hn : n ≤ k),
+      controlPhaseLeaves ctrl (compileSignedAllocationsAux src dst n hn) =
+        compileSignedAllocationsAux src dst n hn := by
   intro n hn
   induction n with
   | zero =>
@@ -259,22 +241,20 @@ lemma controlPhaseLeaves_compileSignedAllocationsAux
       rw [compileSignedAllocationsAux_succ (src := src) (dst := dst) (n := n) (hn := hn)]
       let hk' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
       let i : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
-      simp [controlPhaseLeaves, ih hk',
-        controlPhaseLeaves_allocChunkGate]
+      simp [controlPhaseLeaves, ih hk', controlPhaseLeaves_allocChunkGate]
 
 /-- Control-phase wrapping leaves full allocation unchanged. -/
-lemma controlPhaseLeaves_compileSignedAllocations
-  {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
-  controlPhaseLeaves ctrl (compileSignedAllocations k src dst) =
-    compileSignedAllocations k src dst := by
+lemma controlPhaseLeaves_compileSignedAllocations {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
+    controlPhaseLeaves ctrl (compileSignedAllocations k src dst) =
+      compileSignedAllocations k src dst := by
   exact controlPhaseLeaves_compileSignedAllocationsAux ctrl src dst k le_rfl
 
 /-- Control-phase wrapping leaves deallocation prefixes unchanged. -/
 lemma controlPhaseLeaves_compileSignedDeallocationsAux
-  {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
-  ∀ (n : ℕ) (hn : n ≤ k),
-    controlPhaseLeaves ctrl (compileSignedDeallocationsAux src dst n hn) =
-      compileSignedDeallocationsAux src dst n hn := by
+    {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
+    ∀ (n : ℕ) (hn : n ≤ k),
+      controlPhaseLeaves ctrl (compileSignedDeallocationsAux src dst n hn) =
+        compileSignedDeallocationsAux src dst n hn := by
   intro n hn
   induction n with
   | zero =>
@@ -283,14 +263,12 @@ lemma controlPhaseLeaves_compileSignedDeallocationsAux
       rw [compileSignedDeallocationsAux_succ (src := src) (dst := dst) (n := n) (hn := hn)]
       let hk' : n ≤ k := Nat.le_trans (Nat.le_of_lt (Nat.lt_succ_self n)) hn
       let i : Fin k := ⟨n, lt_of_lt_of_le (Nat.lt_succ_self n) hn⟩
-      simp [controlPhaseLeaves, ih hk',
-        controlPhaseLeaves_deallocChunkGate]
+      simp [controlPhaseLeaves, ih hk', controlPhaseLeaves_deallocChunkGate]
 
 /-- Control-phase wrapping leaves full deallocation unchanged. -/
-lemma controlPhaseLeaves_compileSignedDeallocations
-  {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
-  controlPhaseLeaves ctrl (compileSignedDeallocations k src dst) =
-    compileSignedDeallocations k src dst := by
+lemma controlPhaseLeaves_compileSignedDeallocations {k : ℕ} (ctrl : ℕ) (src dst : LayoutState k) :
+    controlPhaseLeaves ctrl (compileSignedDeallocations k src dst) =
+      compileSignedDeallocations k src dst := by
   exact controlPhaseLeaves_compileSignedDeallocationsAux ctrl src dst k le_rfl
 
 end Shor
