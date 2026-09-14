@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Budgets
-import FastMultiplication.ShorVerification.Implementation.Compilation.Correctness
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Lowering
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real

@@ -1,7 +1,8 @@
 import FastMultiplication.ShorVerification.Framework.AbstractMachine.Gates
+import FastMultiplication.ShorVerification.Framework.Quantum.QSemantics
 
 /-!
-# Implementation-side register laws
+# Register and encoding laws
 
 The Framework register module owns only data structures, operations, and the
 minimal `RegEncoding` interface. This module contains every derived register
@@ -1113,5 +1114,232 @@ lemma writeNat_overwrite_same_reg {Basis : Type u} [RegEncoding Basis] (r : Reg)
 ordinary register for zero-workspace invariants. -/
 def ExtReg.ownedReg (e : ExtReg) : Reg :=
   Reg.append e.active e.reserve e.active_reserve_disjoint
+
+
+/-! =========================================================
+    Bit And Basis Transport Helpers
+
+    Local facts for comparing low-qubit writes with whole-register writes. They
+    feed the Pauli-X and unsigned phase-product macro semantics below.
+========================================================= -/
+
+private theorem bit_writeNat_qubitReg
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (q v : ℕ)
+    (b : Basis)
+    (hv : v < 2) :
+    RegEncoding.bit q
+        (RegEncoding.writeNat (qubitReg q) v b)
+      =
+    Nat.testBit v 0 := by
+  let i : Fin (regSize (qubitReg q)) := ⟨0, by simp⟩
+
+  have hbit :=
+    RegEncoding.bit_eq_testBit_toNat
+      (qubitReg q)
+      (RegEncoding.writeNat (qubitReg q) v b)
+      i
+
+  have hget : (qubitReg q).get i = q := by
+    rfl
+
+  rw [hget] at hbit
+
+  have hv' : v < ASize (qubitReg q) := by
+    simpa [ASize] using hv
+
+  rw [
+    RegEncoding.toNat_writeNat_of_lt
+      (qubitReg q)
+      v
+      b
+      hv'
+  ] at hbit
+
+  exact hbit
+
+theorem bit_of_toNat_zero_of_mem
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : Reg)
+    (b : Basis)
+    (hzero : RegEncoding.toNat r b = 0)
+    {q : ℕ}
+    (hq : q ∈ r.qubits) :
+    RegEncoding.bit q b = false := by
+  rcases List.get_of_mem hq with ⟨j, hj⟩
+
+  let i : Fin (regSize r) :=
+    ⟨j.1, by simp [regSize, Reg.width]⟩
+
+  have hget : r.get i = q := by
+    dsimp [i, Reg.get]
+    simpa [Reg.width] using hj
+
+  have hbit :=
+    RegEncoding.bit_eq_testBit_toNat r b i
+
+  rw [hget, hzero] at hbit
+  simpa using hbit
+
+private theorem bit_writeNat_reg_one_of_mem
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : Reg)
+    (b : Basis)
+    (hpos : 0 < regSize r)
+    {q : ℕ}
+    (hq : q ∈ r.qubits) :
+    RegEncoding.bit q (RegEncoding.writeNat r 1 b)
+      =
+    if q = r.lowQubit hpos then true else false := by
+  rcases List.get_of_mem hq with ⟨j, hj⟩
+
+  let i : Fin (regSize r) :=
+    ⟨j.1, by simp [regSize, Reg.width]⟩
+
+  have hget : r.get i = q := by
+    dsimp [i, Reg.get]
+    simpa [Reg.width] using hj
+
+  have hone_lt : 1 < ASize r := by
+    simp [ASize]
+    omega
+
+  have hbit :=
+    RegEncoding.bit_eq_testBit_toNat
+      r
+      (RegEncoding.writeNat r 1 b)
+      i
+
+  rw [
+    hget,
+    RegEncoding.toNat_writeNat_of_lt r 1 b hone_lt
+  ] at hbit
+
+  by_cases hq_low : q = r.lowQubit hpos
+
+  · rw [if_pos hq_low]
+
+    have hj_eq :
+        j = ⟨0, by simpa [regSize, Reg.width] using hpos⟩ := by
+      apply (r.nodup.get_inj_iff).mp
+      change
+        r.qubits.get j =
+          r.qubits.get
+            ⟨0, by simpa [regSize, Reg.width] using hpos⟩
+      simpa [Reg.lowQubit] using hj.trans hq_low
+
+    have hi0 : i.1 = 0 := by
+      dsimp [i]
+      simpa using congrArg Fin.val hj_eq
+
+    simpa [hi0] using hbit
+
+  · rw [if_neg hq_low]
+
+    have hi_ne : i.1 ≠ 0 := by
+      intro hi0
+      apply hq_low
+      rw [← hget]
+      have ieq : i = ⟨0, hpos⟩ := Fin.ext hi0
+      rw [ieq]
+      rfl
+
+    cases hi : i.1 with
+    | zero =>
+        contradiction
+    | succ n =>
+        have htb : Nat.testBit 1 (n + 1) = false := by
+          change Nat.testBit (Nat.bit true 0) (Nat.succ n) = false
+          rw [Nat.testBit_bit_succ]
+          simp
+
+        rw [hi] at hbit
+        simpa [htb] using hbit
+
+theorem writeNat_lowQubit_one_of_toNat_zero
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : Reg)
+    (b : Basis)
+    (hpos : 0 < regSize r)
+    (hzero : RegEncoding.toNat r b = 0) :
+    RegEncoding.writeNat (qubitReg (r.lowQubit hpos)) 1 b
+      =
+    RegEncoding.writeNat r 1 b := by
+  apply RegEncoding.basis_ext
+  intro q
+
+  by_cases hqr : q ∈ r.qubits
+
+  · rw [bit_writeNat_reg_one_of_mem r b hpos hqr]
+
+    by_cases hq_low : q = r.lowQubit hpos
+
+    · subst q
+      simp [bit_writeNat_qubitReg]
+
+    · rw [if_neg hq_low]
+
+      have hqout :
+          q ∉ (qubitReg (r.lowQubit hpos)).qubits := by
+        simpa [qubitReg, Reg.singleton] using hq_low
+
+      rw [
+        RegEncoding.bit_writeNat_out
+          (qubitReg (r.lowQubit hpos))
+          1
+          b
+          q
+          hqout
+      ]
+
+      exact bit_of_toNat_zero_of_mem r b hzero hqr
+
+  · have hqout_r : q ∉ r.qubits := hqr
+
+    have hqout_low :
+        q ∉ (qubitReg (r.lowQubit hpos)).qubits := by
+      intro hq
+
+      have hlow_mem : r.lowQubit hpos ∈ r.qubits := by
+        unfold Reg.lowQubit
+        exact List.get_mem r.qubits _
+
+      have hqeq : q = r.lowQubit hpos := by
+        simpa [qubitReg, Reg.singleton] using hq
+
+      exact hqr (by simpa [hqeq] using hlow_mem)
+
+    rw [
+      RegEncoding.bit_writeNat_out
+        (qubitReg (r.lowQubit hpos))
+        1
+        b
+        q
+        hqout_low,
+      RegEncoding.bit_writeNat_out
+        r
+        1
+        b
+        q
+        hqout_r
+    ]
+
+
+/-! =========================================================
+    Encoding Transport
+========================================================= -/
+
+lemma toNat_left_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
+  (left right : Reg) (h : Disjoint left right) (b : QSemantics.Basis) (yR : ℕ) :
+  RegEncoding.toNat left (RegEncoding.writeNat right yR b)
+    = RegEncoding.toNat left b := by
+  simpa using
+    (RegEncoding.toNat_left_write_right
+      (left := left) (right := right) (Basis:=QSemantics.Basis) (b := b) (yR := yR) h)
+
 
 end Shor

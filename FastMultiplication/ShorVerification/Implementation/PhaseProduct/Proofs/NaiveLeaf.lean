@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.NaiveLeaf
+import FastMultiplication.ShorVerification.Implementation.Shared.Registers
 
 /-!
 # Naive phase-product leaf: correctness

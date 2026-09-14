@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.Semantics.CleanClosure
+import FastMultiplication.ShorVerification.Implementation.Shared.States
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.Workspace
 

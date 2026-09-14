@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
-import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.Registers
 
 /-!
 # QFT Register Splitting

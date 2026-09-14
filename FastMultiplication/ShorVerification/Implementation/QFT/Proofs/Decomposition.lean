@@ -2,7 +2,9 @@ import FastMultiplication.ShorVerification.Implementation.QFT.Split
 import FastMultiplication.ShorVerification.Implementation.QFT.Spec.Cleanliness
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.States
+import FastMultiplication.ShorVerification.Implementation.Shared.Registers
+import FastMultiplication.ShorVerification.Implementation.Shared.GateLaws
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
 
 namespace Shor

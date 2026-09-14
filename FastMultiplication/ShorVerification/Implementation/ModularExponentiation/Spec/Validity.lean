@@ -1,6 +1,5 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
-import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
-import FastMultiplication.ShorVerification.Implementation.Semantics.CleanClosure
+import FastMultiplication.ShorVerification.Implementation.Shared.States
 
 /-!
 # Modular-Exponentiation Validity

@@ -66,6 +66,7 @@ The reference implementation (`FastMultiplication/ShorVerification/Implementatio
 | `FastMultiplication/ShorVerification/Implementation/ModularExponentiation/` | Modular-multiplication/exponentiation approximation bounds. |
 | `FastMultiplication/ShorVerification/Implementation/Shor/` | Order-finding circuits, the top-level theorem `Shor_correct`, and whole-program lowering correctness. |
 | `FastMultiplication/ShorVerification/Implementation/GateCount/` | Resource estimation: counting bounds for the phase product, the QFT, and the complete Shor circuit. |
+| `FastMultiplication/ShorVerification/Implementation/Shared/` | Lemma libraries over Framework vocabulary shared by every subroutine folder; imports nothing from them. |
 | `FastMultiplication/ShorVerification/Implementation/Reference/` | The concrete, fully computable reference implementation submitted against the framework. |
 | `FastMultiplication/Emit/` | JSON printer for the reference circuit and the `forshor_emit` executable. |
 | `docs/` | An interactive visualization of the proof architecture. |

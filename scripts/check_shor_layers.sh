@@ -2,18 +2,20 @@
 # Asserts that every file under Implementation/Shor imports only from folders at or
 # below its own layer. Pure moves must keep this green from the last step on.
 #
-# Layer order: Math < Circuit < Spec < Proofs < Main; inside Proofs, the Readiness/
-# chain is Static < Sequencing < Primitives < Init < Step1 < Step2 < Step5 < IQFT <
-# ModMul < ModExp < Dynamic, and Budgets, Setup < Readiness/* < NaiveShor/* < Correctness.
+# Layer order: Math < Lowering < Circuit < Spec < Proofs < Main; inside Proofs, the
+# Readiness/ chain is Static < Sequencing < Primitives < Init < Step1 < Step2 < Step5 <
+# IQFT < ModMul < ModExp < Dynamic, and Lowering, Budgets, Setup < Readiness/* <
+# NaiveShor/* < Correctness.
 set -euo pipefail
 root=FastMultiplication/ShorVerification/Implementation/Shor
 prefix=FastMultiplication.ShorVerification.Implementation.Shor.
 layer() { case "$1" in
   Math*) echo 10;;
+  Lowering*) echo 15;;
   Circuit*) echo 20;;
   Spec.Assertions) echo 31;;
   Spec*) echo 30;;
-  Proofs.Budgets|Proofs.Setup) echo 40;;
+  Proofs.Budgets|Proofs.Setup|Proofs.Lowering) echo 40;;
   Proofs.Readiness.Static) echo 41;;
   Proofs.Readiness.Sequencing) echo 42;;
   Proofs.Readiness.Primitives) echo 43;;
@@ -50,5 +52,8 @@ while IFS= read -r f; do
       echo "LAYER VIOLATION: $mod imports $dep"; status=1
     fi
   done < <(grep -oE "^import ${prefix}[A-Za-z0-9_.]+" "$f" | sed 's/^import //')
+  if grep -oE '^import FastMultiplication\.ShorVerification\.Implementation\.(GateCount|Reference)\.[A-Za-z0-9_.]+' "$f" >/dev/null; then
+    echo "FORBIDDEN UPWARD IMPORT: $mod imports a GateCount/Reference module"; status=1
+  fi
 done < <(find "$root" -name '*.lean')
 exit $status

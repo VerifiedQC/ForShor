@@ -6,7 +6,9 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Linearity
-import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.States
+import FastMultiplication.ShorVerification.Implementation.Shared.LowGateEval
+import FastMultiplication.ShorVerification.Implementation.Shared.Hadamard
 
 /-!
 # QFT Lowering Plan Semantics

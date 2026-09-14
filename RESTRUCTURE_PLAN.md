@@ -132,7 +132,9 @@ explicitly merges duplicate definitions (verified by the same two gates).
 - **Phase 4 — Implementations/Reference.** Move `Gate`, the subroutine
   constructions, and the Gate→LowGate compilation into `Reference/`;
   organize the subroutines by-subroutine with the Math/Correctness split;
-  the existing theorems become instances via `Discharge.lean`.
+  the existing theorems become instances via `Discharge.lean`. (The
+  Gate→LowGate compiler itself ended up at `Implementation/Shor/Lowering/`
+  instead, per `REORG_COMPILATION.md`.)
 - **Phase 5 — Framework/Checks + align with shor-challenges.** The
   `ShorImplementation` interface IS the challenge site's submission
   interface (a LowGate program + correctness + proved bound), so the two

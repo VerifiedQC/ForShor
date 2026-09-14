@@ -1,4 +1,5 @@
-import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.States
+import FastMultiplication.ShorVerification.Implementation.Shared.LowGateEval
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.NaiveLeaf
 
 /-!

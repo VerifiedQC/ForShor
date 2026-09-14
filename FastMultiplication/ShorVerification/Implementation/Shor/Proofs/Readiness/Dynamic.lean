@@ -9,7 +9,7 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.IQFT
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.ModMul
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.ModExp
-import FastMultiplication.ShorVerification.Implementation.Compilation.Correctness
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Lowering
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps

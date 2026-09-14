@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.States
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
 
 /-!

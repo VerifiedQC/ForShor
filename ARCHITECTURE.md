@@ -26,7 +26,7 @@ where each now lives):
 1. `Basic.lean` (now split across `Framework/Quantum/`, `Framework/AbstractMachine/`, `Framework/Semantics/`, `Framework/Instantiation/`) defines the shared register, gate, and quantum-semantics vocabulary.
 2. `MathBackbone/` (now `Implementation/PhaseProduct/Math/` and `Framework/Math/`) proves the classical algebra and number theory used by the circuits.
 3. `AlgorithmCorrectness/` (now `Implementation/{PhaseProduct,QFT,ModularExponentiation}/Proofs/`) proves high-level circuit identities and approximation bounds.
-4. `AbstractMachine/` (now `Implementation/{PhaseProduct,QFT,Shor}/Proofs/LoweringCorrectness/` and `Implementation/Shor/Proofs/WholeProgramCorrectness.lean`; the *language* itself, `LowGate`, lives at `Framework/AbstractMachine/LowGate.lean`) proves that the high-level gates lower correctly to the low-level abstract machine.
+4. `AbstractMachine/` (now `Implementation/{PhaseProduct,QFT,Shor}/Proofs/LoweringCorrectness/` and `Implementation/Shor/Proofs/Lowering.lean`, with the lowerer itself at `Implementation/Shor/Lowering/LowerGate.lean`; the *language* itself, `LowGate`, lives at `Framework/AbstractMachine/LowGate.lean`) proves that the high-level gates lower correctly to the low-level abstract machine.
 5. `GateCount/` (now `Implementation/GateCount/`) proves asymptotic gate-count bounds for the lowered circuits.
 6. `ShorCorrectness.lean` (now `Implementation/Shor/` plus `Implementation/Reference/` for the concrete submission and `FastMultiplication/Emit/` for the JSON emitter) assembles the algorithmic correctness story for Shor/order finding.
 

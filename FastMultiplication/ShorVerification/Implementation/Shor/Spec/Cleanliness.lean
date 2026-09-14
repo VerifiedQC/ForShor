@@ -1,5 +1,5 @@
-import FastMultiplication.ShorVerification.Implementation.Semantics.CleanClosure
-import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.States
+import FastMultiplication.ShorVerification.Implementation.Shared.Registers
 
 /-!
 # Shor Clean-State Predicates

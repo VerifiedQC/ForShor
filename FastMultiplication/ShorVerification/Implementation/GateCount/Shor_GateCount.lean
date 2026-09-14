@@ -4,7 +4,7 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFinding
 import FastMultiplication.ShorVerification.Framework.Submission
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
-import FastMultiplication.ShorVerification.Implementation.Compilation.Correctness
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Lowering
 
 namespace Shor
 

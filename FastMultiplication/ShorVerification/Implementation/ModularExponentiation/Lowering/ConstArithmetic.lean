@@ -1,5 +1,4 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.LowGateSemantics
-import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import Mathlib.Data.Nat.BitIndices
 
