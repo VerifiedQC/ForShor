@@ -74,7 +74,7 @@ distance bounds through common circuit context.
 - **`probability_of_success_eval_dist`** — converts a state-distance bound
   between two complete circuits into a lower bound on the approximate
   circuit's postprocessed success probability, via `probMeas_weighted_dist`
-  from `Semantics/Measurement.lean`.
+  from `Shared/Measurement.lean`.
 
 ### Final correctness statements
 

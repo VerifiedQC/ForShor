@@ -9,7 +9,8 @@ import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Lowering.ConstArithmetic
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
-import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.States
+import FastMultiplication.ShorVerification.Implementation.Shared.Registers
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic

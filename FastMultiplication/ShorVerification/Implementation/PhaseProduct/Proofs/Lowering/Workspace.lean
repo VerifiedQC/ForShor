@@ -4,7 +4,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Support
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Allocation
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
-import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.States
 
 namespace Shor
 open Gate

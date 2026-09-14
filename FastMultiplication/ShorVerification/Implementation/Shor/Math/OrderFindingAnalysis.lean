@@ -3,7 +3,7 @@ import Mathlib.Analysis.SpecialFunctions.Complex.Circle
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
 import FastMultiplication.ShorVerification.Framework.AbstractMachine.Gates
-import FastMultiplication.ShorVerification.Implementation.Semantics.QftPhase
+import FastMultiplication.ShorVerification.Implementation.Shared.QftPhase
 
 /-!
 # NaiveShor — purely mathematical lemmas

@@ -1,6 +1,8 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.States
+import FastMultiplication.ShorVerification.Implementation.Shared.Hadamard
+import FastMultiplication.ShorVerification.Implementation.Shared.Registers
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
 

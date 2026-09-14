@@ -1,6 +1,5 @@
 import FastMultiplication.ShorVerification.Framework.Semantics.LowGateSemantics
 import FastMultiplication.ShorVerification.Framework.Gatecount.CostModel
-import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
 
 /-!
 # Naive phase-product leaf: gate definitions

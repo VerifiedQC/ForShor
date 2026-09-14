@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Step1Bound
-import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.Registers
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.States
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
 import Mathlib.Analysis.Complex.Trigonometric
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds

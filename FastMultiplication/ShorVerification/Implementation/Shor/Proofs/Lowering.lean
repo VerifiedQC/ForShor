@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.Compilation.LowerGate
+import FastMultiplication.ShorVerification.Implementation.Shor.Lowering.LowerGate
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
@@ -8,17 +8,23 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Main
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ConstArithmetic
 
 /-!
-# Whole-Program Lowering
+# Whole-program lowering correctness
 
-The public whole-program lowerer does not ask its caller to construct QFT or
-phase-product lowering plans.  Instead, the caller proves one recursive static
-workspace condition on the source gate.  At each QFT or signed-phase-product
-node, that proof supplies the reserve-capacity facts needed by the already
-defined concrete lowerer.
+This file proves `lowerGate` (`Shor/Lowering/LowerGate.lean`) correct and
+collects the lemmas needed to work with it:
 
-Cleanliness is deliberately absent from `GateWorkspaceOK`: it is a condition
-on the input state, not a condition on the syntax or physical register layout.
-It belongs in the later semantic-correctness theorem.
+* the `GateWorkspaceOK` projection lemmas (`.left`, `.right`, `.of_adj`,
+  `.qft`, `.signedPhaseProd`, `.cSignedPhaseProd`) — how a `GateWorkspaceOK`
+  proof for a compound gate yields proofs for its parts;
+* the `@[simp]` definitional equations for `lowerGate` (`lowerGate_id`,
+  `lowerGate_seq`, `lowerGate_QFT`, `lowerGate_SignedPhaseProd`,
+  `lowerGate_CSignedPhaseProd`);
+* `lowerGate_correctness`, stating that the lowered program has the same
+  action as the source gate whenever the static precondition
+  (`GateWorkspaceOK`) and the dynamic one (`GateWorkspaceCleanState`) hold,
+  given the interpolation program's `ProgConsumesPtsSafe`/`run?` side
+  conditions (the two fields `ShorLoweringSetup.consumes`/`.returns` provide
+  them).
 -/
 namespace Shor
 

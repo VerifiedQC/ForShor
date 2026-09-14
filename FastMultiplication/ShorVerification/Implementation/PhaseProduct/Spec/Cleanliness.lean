@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
-import FastMultiplication.ShorVerification.Implementation.Semantics.CleanClosure
+import FastMultiplication.ShorVerification.Implementation.Shared.States
 
 /-!
 # Phase-Product Cleanliness Predicates

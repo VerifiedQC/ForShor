@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Cleanliness
-import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.Registers
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
 
 /-!

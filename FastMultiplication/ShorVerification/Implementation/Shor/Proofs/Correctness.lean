@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFinding
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Correctness
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Lowering
-import FastMultiplication.ShorVerification.Implementation.Semantics.Measurement
+import FastMultiplication.ShorVerification.Implementation.Shared.Measurement
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Dynamic
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Setup

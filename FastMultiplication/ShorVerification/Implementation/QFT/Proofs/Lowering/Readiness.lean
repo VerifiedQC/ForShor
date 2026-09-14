@@ -10,7 +10,8 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.PlanBuilders
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
-import FastMultiplication.ShorVerification.Implementation.Semantics.GateSemanticsLemmas
+import FastMultiplication.ShorVerification.Implementation.Shared.States
+import FastMultiplication.ShorVerification.Implementation.Shared.Registers
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanReadiness.RecursiveReadiness
 
