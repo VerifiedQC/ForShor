@@ -8,12 +8,19 @@ bound across the modular-exponentiation implementation error, and (via
 order-finding outcome to a nontrivial factor.
 
 ```
-Budgets, Setup  <  Readiness/*  <  NaiveShor/*  <  Correctness
+Lowering, Budgets, Setup  <  Readiness/*  <  NaiveShor/*  <  Correctness
 ```
 
 See `Readiness/README.md` for the workspace-readiness split (11 files, chained
 by circuit stage) and `NaiveShor/README.md` for the ideal-circuit/classical-
 reduction analysis.
+
+## `Lowering.lean` — correctness of the whole-program lowerer
+
+Correctness of the whole-program lowerer (`lowerGate_correctness`), the
+`GateWorkspaceOK` projection lemmas, and the `lowerGate` simp equations.
+Imports nothing from `Shor/`; consumed by `Readiness/*`, `Correctness.lean`,
+and `GateCount/`.
 
 ## `Budgets.lean` — dynamic clean-state preservation
 

@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Primitives
-import FastMultiplication.ShorVerification.Implementation.Compilation.LowerGate
+import FastMultiplication.ShorVerification.Implementation.Shor.Lowering.LowerGate
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps

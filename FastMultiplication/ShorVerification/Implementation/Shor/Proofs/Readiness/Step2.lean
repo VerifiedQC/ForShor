@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
-import FastMultiplication.ShorVerification.Implementation.Compilation.Correctness
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Lowering
 import FastMultiplication.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps

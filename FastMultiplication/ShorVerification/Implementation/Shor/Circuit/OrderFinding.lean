@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.Compilation.LowerGate
+import FastMultiplication.ShorVerification.Implementation.Shor.Lowering.LowerGate
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
 

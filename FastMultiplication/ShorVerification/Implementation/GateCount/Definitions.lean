@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.Compilation.LowerGate
+import FastMultiplication.ShorVerification.Implementation.Shor.Lowering.LowerGate
 import FastMultiplication.ShorVerification.Implementation.QFT.Split
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.Workspace
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.PlanBuilders

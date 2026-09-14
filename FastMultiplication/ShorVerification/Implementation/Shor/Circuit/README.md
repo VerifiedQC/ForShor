@@ -31,7 +31,8 @@ needs. `Workspace.lean` and `OrderFinding.lean` are independent siblings
   exponentiation circuit (`modExpApproxValid`), then inverse QFT on the
   exponent register.
 - **`orderFindingApproxLow`** — `orderFindingApprox` lowered to a `LowGate`
-  via `lowerGate`, given a `GateWorkspaceOK` proof for it.
+  via `lowerGate` (`Shor/Lowering/LowerGate.lean`), given a `GateWorkspaceOK`
+  proof for it.
 - **`orderFindingIdeal`** — the ideal order-finding circuit, swapping in the
   abstract exact modular-exponentiation gate (`modExpIdeal'`) in place of the
   approximate one; used by `Proofs/NaiveShor/` for the ideal-circuit analysis.

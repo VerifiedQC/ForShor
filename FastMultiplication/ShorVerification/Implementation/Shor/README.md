@@ -1,11 +1,12 @@
 # `Implementation/Shor/`
 
-This folder assembles the pieces proved in `Compilation/`, `QFT/`,
-`PhaseProduct/`, and `ModularExponentiation/` into the full approximate
-order-finding circuit and proves Shor's algorithm correct: workspace
-readiness for the whole lowered circuit, the success-probability bound, and
-the classical reduction from a good order-finding outcome to a nontrivial
-factor.
+This folder assembles the pieces proved in `QFT/`, `PhaseProduct/`, and
+`ModularExponentiation/` into the full approximate order-finding circuit and
+proves Shor's algorithm correct: workspace readiness for the whole lowered
+circuit, the success-probability bound, and the classical reduction from a
+good order-finding outcome to a nontrivial factor. The whole-program lowerer
+itself — the compiler that dispatches a source `Gate` to the three
+subroutine lowerers — lives in `Lowering/`.
 
 The folder is organized in layers (below). **Every import is "justified":** a
 file may only import another file if it directly uses a declaration that
@@ -13,20 +14,18 @@ file defines — never a declaration it merely re-exports transitively.
 `scripts/check_shor_layers.sh` (repo root) enforces the layer order, the
 `Proofs/Readiness/` chain order, and the absence of umbrella files (a file
 that only imports and declares nothing of its own); it also enforces the
-one allowlisted exception below. `scripts/check_compilation_layers.sh`
-enforces the analogous discipline for the sibling `Compilation/` folder that
-`Shor/` sits above.
+one allowlisted exception below.
 
 ## Layer order
 
 ```
-Math  <  Circuit  <  Spec  <  Proofs  <  Main
+Math  <  Lowering  <  Circuit  <  Spec  <  Proofs  <  Main
 ```
 
 A file may import its own folder or any folder to its left. Inside `Proofs/`:
 
 ```
-Budgets, Setup  <  Readiness/*  <  NaiveShor/*  <  Correctness
+Lowering, Budgets, Setup  <  Readiness/*  <  NaiveShor/*  <  Correctness
 ```
 
 and the `Readiness/` chain is itself ordered
@@ -45,14 +44,21 @@ own `hws : GateWorkspaceOK …` field or existentially quantifies over it.
 Reading order for newcomers: start at `Main.lean`, then follow imports
 *backwards* — `Spec/Assertions.lean` for what is claimed, `Proofs/Correctness.lean`
 for how the claim is proved, and outward from there into `Proofs/Readiness/`,
-`Spec/`, `Circuit/`, `Math/` as needed. The one-line descriptions below are
-grouped in dependency order (lowest layer first) to match that traversal.
+`Spec/`, `Circuit/`, `Lowering/`, `Math/` as needed. The one-line descriptions
+below are grouped in dependency order (lowest layer first) to match that
+traversal.
 
 ## `Math/` — pure math, no framework/register dependencies
 
 | File | Purpose |
 |---|---|
 | `OrderFindingAnalysis.lean` | Number-theory, Fourier/geometric-sum, and counting lemmas backing the ideal order-finding good-outcome analysis. Import closure is Mathlib plus the project's semantics-free vocabulary (`ord`, `qftPhase`, `GoodOutcome`) — no `QSemantics`, `eval`, or measurement. |
+
+## `Lowering/` — the whole-program `Gate` → `LowGate` lowerer
+
+| File | Purpose |
+|---|---|
+| `LowerGate.lean` | `GateWorkspaceOK` (static reserve precondition, recursive on `Gate`), `lowerGate` (the whole-`Gate` → `LowGate` compiler, dispatching QFT/phase-product/comparator nodes to their subroutine lowerers), and `GateWorkspaceCleanState` (the dynamic clean-state precondition). Imports from `QFT/`, `PhaseProduct/`, and `ModularExponentiation/`; imports nothing from `Shor/`. |
 
 ## `Circuit/` — the concrete order-finding circuit
 
@@ -73,6 +79,7 @@ grouped in dependency order (lowest layer first) to match that traversal.
 
 | File | Purpose |
 |---|---|
+| `Lowering.lean` | Correctness of the whole-program lowerer (`lowerGate_correctness`), the `GateWorkspaceOK` projection lemmas, and the `lowerGate` simp equations. Imports nothing from `Shor/`; consumed by `Readiness/*`, `Correctness.lean`, and `GateCount/`. |
 | `Budgets.lean` | The dynamic clean-state preservation lemmas for the clean-state invariants declared in `Spec/Cleanliness.lean`. |
 | `Setup.lean` | `ShorApproxSetup.toIdealOrderFindingInput` — the final bridge from the approximate setup to the ideal order-finding input predicate. |
 | `Readiness/` | Workspace readiness and clean-state preservation for the full lowered circuit, split by circuit stage (below); see each file's own docstring for its exact scope. |
