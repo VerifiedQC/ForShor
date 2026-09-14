@@ -561,8 +561,7 @@ lemma run_addConstAux_preserve_non_dst
           simp[hrun]
 
         -- Strong IH applies to strictly smaller index ((m+1)/2) < (m+1)
-        have hlt : ((m+1)/2) < (m+1) :=
-          Nat.div_lt_self (Nat.succ_pos _) (by decide)
+        have hlt : ((m+1)/2) < (m+1) := Nat.div_lt_self (Nat.succ_pos _) (by decide)
         have ihTail :
           ∀ t, t ≠ dst →
             τ t
@@ -585,8 +584,7 @@ lemma run_addConstAux_preserve_non_dst
             = some τ := by
           simp [addConstAux, hb] at hrun
           simp[hrun]
-        have hlt : ((m+1)/2) < (m+1) :=
-          Nat.div_lt_self (Nat.succ_pos _) (by decide)
+        have hlt : ((m+1)/2) < (m+1) := Nat.div_lt_self (Nat.succ_pos _) (by decide)
         -- Directly apply IH to the tail
         exact ih ((m+1)/2) hlt (sh+1) htail t hne
 
@@ -935,10 +933,8 @@ lemma ExecAddConstAux.of_run?
         have hm : (n + 1) / 2 < Nat.succ n :=
           Nat.div_lt_self (Nat.succ_pos _) (by decide)
 
-        have htail :
-          ExecAddConstAux dst src neg' ((n + 1) / 2) (sh + 1) σ τ :=
-          ih ((n + 1) / 2) hm (sh + 1)
-            (by simpa [hrest] using h)
+        have htail : ExecAddConstAux dst src neg' ((n + 1) / 2) (sh + 1) σ τ :=
+          ih ((n + 1) / 2) hm (sh + 1) (by simpa [hrest] using h)
 
         apply ExecAddConstAux.succ_even
         simp at hb;assumption
@@ -1212,9 +1208,7 @@ by
           abs_of_nonneg hzj
 
         -- And from the helper we know |z|^n = |z^n|
-        have h_abs_pow :
-            (|z| : ℤ) ^ (↑j : ℕ) = |z ^ (↑j : ℕ)| :=
-          by simp_all only [abs_pow]
+        have h_abs_pow : (|z| : ℤ) ^ (↑j : ℕ) = |z ^ (↑j : ℕ)| := by simp_all only [abs_pow]
 
         -- Combine to get |z|^n = z^n
         have h_eq : (|z| : ℤ) ^ (↑j : ℕ) = z ^ (↑j : ℕ) := by

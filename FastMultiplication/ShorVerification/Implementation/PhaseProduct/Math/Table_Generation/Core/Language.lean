@@ -204,9 +204,7 @@ def pointAnchor {k : ℕ} (hk : 0 < k) : Point → Fin k
 
 lemma expectedRow2_anchor_eq_expectedRow
     {k : ℕ} (hk : 0 < k) (pt : Point) :
-    expectedRow2 (k := k) (pointAnchor hk pt) pt
-      =
-    expectedRow (k := k) pt := by
+    expectedRow2 (k := k) (pointAnchor hk pt) pt = expectedRow (k := k) pt := by
   funext u
   by_cases hu : u = pointAnchor hk pt
   · subst hu

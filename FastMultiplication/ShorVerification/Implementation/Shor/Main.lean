@@ -1,5 +1,7 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.Assertions
+import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Assertions
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Correctness
+import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.ProbabilityBound
+import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.Reduction
 
 /-!
 # Shor Main Theorems
@@ -119,8 +121,7 @@ theorem Shor_correct_approx_lowered_uniform
         (Q := ASize x.active)
         (evalC := LowerGateClass.evalL (qs := qs))
         (C :=
-          orderFindingApproxLow
-            qs lowering.k lowering.hk lowering.ops inst.a inst.N x y work
+          orderFindingApproxLow lowering.k lowering.hk lowering.ops inst.a inst.N x y work
             scratch flag
             (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
             (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
@@ -137,7 +138,7 @@ theorem Shor_correct_approx_lowered_uniform
         (r := ord inst.a inst.N inst.coprime)
         (Q := ASize x.active)
         (evalC := qs.eval)
-        (C := orderFindingApprox qs inst.a inst.N x y work scratch flag
+        (C := orderFindingApprox inst.a inst.N x y work scratch flag
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace)
         (ψ := qs.ket b0) := by

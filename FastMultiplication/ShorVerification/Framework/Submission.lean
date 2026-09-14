@@ -1,43 +1,59 @@
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
-import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Framework.Quantum.Measurement
-import FastMultiplication.ShorVerification.Framework.Semantics.LowerGate
-import FastMultiplication.ShorVerification.Framework.Gatecount.CostModel
+import FastMultiplication.ShorVerification.Framework.Semantics.LowGateSemantics
+import FastMultiplication.ShorVerification.Framework.Gatecount.ResourceModel
 
 namespace Shor
-open Gate
+
 open Classical
 
 /-!
 # Submission Interface
 
 This module is the public framework boundary for Shor order-finding submissions.
-It contains the measurement-facing success criterion, the public input instance,
-and the construction-free `LowGate` implementation contract.
 
-The interface deliberately mentions only framework concepts. A submission
-provides a `LowGate` circuit family together with correctness and gate-count
-proofs; allocation, lowering, synthesis, and workspace details remain on the
-implementation side.
+A submission provides one `LowGate` circuit for each valid order-finding
+instance and proves that the resulting circuit is correct for every valid
+modulus and base.
+
+Correctness is completely general: a submitted implementation must satisfy
+the framework's order-finding specification for every valid input instance.
+
+Resource comparison is benchmark-specific.  The competition benchmark is
+the family of 2048-bit moduli.  A submission provides one concrete number of
+independent trials sufficient to amplify the declared single-run success
+probability to at least 99% for every 2048-bit modulus (`trialCount`); the
+logical gate count of a single run is not declared by the submission but
+computed by the framework itself, via `ShorOrderFindingProgram.frameworkGateCount`,
+from the concrete circuit the submission's `program` produces for a given
+instance.
+
+The leaderboard score is the product
+
+`trialCount N * (program inst).frameworkGateCount` for a 2048-bit modulus `N`.
+
+Construction, lowering, synthesis, precision selection, workspace layout,
+and all other implementation details remain entirely on the implementation
+side.
 -/
 
 variable {qs : QSemantics}
+
 variable [RegEncoding qs.Basis]
 
-/-- Evaluate a circuit-like object with `evalC`, then measure register `r`
-with outcome `o`. -/
-noncomputable def measProbAfter
-    [MeasureClass qs]
-    {Circuit : Type}
-    (evalC : Circuit → qs.State → qs.State)
-    (r : Reg)
-    (o : ℕ)
-    (C : Circuit)
-    (ψ : qs.State) : ℝ :=
-  MeasureClass.probMeas (qs := qs) r o (evalC C ψ)
+/--
+A natural number has exactly 2048 bits.
 
-/-- Total probability that the measured exponent-register outcome passes the
-continued-fraction post-processing check. -/
+Equivalently, it lies in the interval `[2^2047, 2^2048)`.
+-/
+def Is2048Bit (N : ℕ) : Prop :=
+  2 ^ 2047 ≤ N ∧ N < 2 ^ 2048
+
+/--
+Total probability that measurement of the exponent register produces
+an outcome from which continued-fraction postprocessing recovers the
+correct order.
+-/
 noncomputable def probability_of_success
     [MeasureClass qs]
     {Circuit : Type}
@@ -50,86 +66,123 @@ noncomputable def probability_of_success
     (ψ : qs.State) : ℝ :=
   ∑ o : Fin Q,
     (r_found (T := T) verify o.1 Q r) *
-      measProbAfter (qs := qs) evalC x o.1 C ψ
+      MeasureClass.probMeas (qs := qs) x o.1 (evalC C ψ)
 
-/-- Public data and domain assumptions for one order-finding run. -/
+/--
+Public data and domain assumptions for one order-finding instance.
+-/
 structure ShorOrderFindingInstance where
+
   /-- The base whose order is being found. -/
   a : ℕ
-  /-- The modulus to factor. -/
+
+  /-- The modulus. -/
   N : ℕ
-  /-- The sampled base is in the valid range. -/
+
+  /-- The sampled base lies in the valid range. -/
   range : 0 < a ∧ a < N
+
   /-- The sampled base is coprime to the modulus. -/
   coprime : Nat.gcd a N = 1
 
+/--
+The observable output of a submitted order-finding construction.
+-/
 structure ShorOrderFindingProgram where
+
+  /-- The concrete lowered circuit. -/
   circuit : LowGate
+
+  /-- The register measured for order recovery. -/
   output : Reg
 
-/-- Ideal clean input predicate used by correctness proofs: both public
-registers start at zero and own disjoint qubits. -/
-def IdealOrderFindingInput
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (x y : ExtReg)
-    (b0 : qs.Basis) : Prop :=
-  RegEncoding.toNat x.active b0 = 0 ∧
-  RegEncoding.toNat y.active b0 = 0 ∧
-  ExtReg.OwnedDisjoint x y
+/--
+The logical gate count of a submitted program under the framework's
+shared cost model.
 
-variable [instMeas : MeasureClass qs]
-variable [instLGC : LowerGateClass qs]
+This quantity is computed by the framework.  A submission does not provide
+its own gate-count function.
+-/
+def ShorOrderFindingProgram.frameworkGateCount
+    (P : ShorOrderFindingProgram) : ℕ :=
+  LowGate.gateCount shorGateCostModel P.circuit
 
-/-- Construction-free correctness obligation for a submitted `LowGate` circuit
-family.
+variable [MeasureClass qs]
 
-For every complete continued-fraction search bound and every valid instance,
-the implementation can choose a precision level `m` whose circuit succeeds from
-the global all-zero basis state with probability at least
-`κ / log₂(N)^4 - ε`. The precision index is the only exposed resource knob; all
-implementation-specific choices stay outside the framework interface. -/
-def ShorImplementsOrderFinding
-    (prog : ShorOrderFindingInstance → ℕ → ShorOrderFindingProgram) : Prop :=
-  ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
-  ∀ (inst : ShorOrderFindingInstance),
-    ∀ ε : ℝ, 0 < ε → ∃ m : ℕ,
-      let p:=prog inst m
-      probability_of_success (qs := qs) (T := T)
-          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := p.output) (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize p.output) (evalC := LowerGateClass.evalL (qs := qs))
-          (C := p.circuit) (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))
-        ≥ κ / (Nat.log2 inst.N : ℝ) ^ 4 - ε
+variable [LowerGateClass qs]
 
-/-- Bundle supplied by a Shor implementation at the `LowGate` boundary. -/
+/--
+A verified Shor order-finding submission.
+
+Correctness is universal: `program` must correctly implement order finding
+for every valid `ShorOrderFindingInstance`.
+
+Resource competition is specialized to 2048-bit moduli.
+
+`trialCount` is one concrete natural number of independent trials that is
+sufficient to amplify the declared success lower bound to at least 99% for
+every 2048-bit modulus.
+
+There is no separately declared gate-count bound: the logical gate count of a
+submitted circuit is computed by the framework itself
+(`ShorOrderFindingProgram.frameworkGateCount`), directly from `program`.
+
+The leaderboard score is
+
+`trialCount N * (program inst).frameworkGateCount` for a 2048-bit instance
+`inst` with modulus `N`.
+-/
 structure ShorImplementation : Type where
-  /-- Circuit family indexed by the order-finding instance and precision level. -/
-  prog : ShorOrderFindingInstance → ℕ → ShorOrderFindingProgram
-  /-- Proof that the circuit family satisfies the framework success criterion. -/
-  correct : ShorImplementsOrderFinding (qs := qs) prog
-  /-- Declared concrete gate-count bound for the circuit family. -/
-  gateBound : ShorOrderFindingInstance → ℕ → ℕ
-  /-- Proof that each circuit meets its declared bound under the shared cost
-  model. -/
-  counted : ∀ (inst : ShorOrderFindingInstance) (m : ℕ),
-    LowGate.gateCount shorGateCostModel (prog inst m).circuit ≤ gateBound inst m
 
-namespace ShorImplementation
+  /--
+  Concrete submitted circuit family.
 
-/-- Any submitted implementation satisfying the interface is a correct
-order-finder. -/
-theorem framework_order_finding_correct (impl : ShorImplementation (qs := qs)) :
-    ShorImplementsOrderFinding (qs := qs) impl.prog :=
-  impl.correct
+  The implementation must produce a circuit for every valid order-finding
+  instance, not merely for 2048-bit benchmark instances.
+  -/
+  program : ShorOrderFindingInstance → ShorOrderFindingProgram
 
-/-- Any submitted implementation satisfying the interface meets its declared
-gate-count bound. -/
-theorem framework_gate_count (impl : ShorImplementation (qs := qs)) :
-    ∀ (inst : ShorOrderFindingInstance) (m : ℕ),
-      LowGate.gateCount shorGateCostModel (impl.prog inst m).circuit ≤ impl.gateBound inst m :=
-  impl.counted
+  /--
+  Declared lower bound on the success probability of one run as a
+  function of the modulus.
+  -/
+  successProbability : ℕ → ℝ
 
-end ShorImplementation
+  /--
+  The submitted circuit achieves at least the declared single-run success
+  probability on every valid order-finding instance.
+  -/
+  correct :
+    ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
+    ∀ (inst : ShorOrderFindingInstance),
+      0 ≤ successProbability inst.N ∧ successProbability inst.N ≤ 1 ∧
+      successProbability inst.N ≤
+        probability_of_success
+          (qs := qs)
+          (evalC := LowerGateClass.evalL (qs := qs))
+          (T := T)
+          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+          (x := (program inst).output)
+          (r := ord inst.a inst.N inst.coprime)
+          (Q := ASize (program inst).output)
+          (C := (program inst).circuit)
+          (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))
+
+  /--
+  One concrete number of independent trials used for the 2048-bit
+  benchmark.
+  -/
+  trialCount :
+    ℕ → ℕ
+
+  /--
+  For every 2048-bit modulus, repeating a run with the submission's
+  declared success lower bound `trialCount` times gives probability at
+  least 99% of seeing at least one successful run.
+  -/
+  trialCount_correct :
+    ∀ N : ℕ,
+      Is2048Bit N →
+        (99 / 100 : ℝ) ≤ 1 - (1 - successProbability N) ^ (trialCount N)
 
 end Shor

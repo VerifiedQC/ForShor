@@ -65,8 +65,7 @@ lemma regEqExpected_after_computeFracLocal2_of_run
       run? (computeFracLocal2 (k := k) hk c)
         (State.start_state (k := k)) = some σ₁) :
     regEqExpected (k := k) (σ₁ (finLast hk)) (Point.frac c) := by
-  have hAll : AllNe (finLast (k := k) hk) (nonlastFins (k := k) hk) :=
-    nonlastFins_allNe (k := k) hk
+  have hAll : AllNe (finLast (k := k) hk) (nonlastFins (k := k) hk) := nonlastFins_allNe (k := k) hk
   have inv :=
     run_computeFracLocalAux_from_start (k := k) hk c
       (nonlastFins (k := k) hk) hAll (by
@@ -168,14 +167,12 @@ theorem genOpsWithProduct_returns_to_original
 
       -- head block returns to start_state
       have hhead :
-        run? (opsForPointWithProduct hk head) State.start_state
-          = some State.start_state :=
+        run? (opsForPointWithProduct hk head) State.start_state = some State.start_state :=
         opsForPointWithProduct_returns_to_original (k := k) hk head
 
       -- tail block (by IH) also returns to start_state when started at start_state
       have htail :
-        run? (genOpsWithProduct hk tail) State.start_state
-          = some State.start_state :=
+        run? (genOpsWithProduct hk tail) State.start_state = some State.start_state :=
         ih
 
       -- compose them with the helper lemma
@@ -291,8 +288,7 @@ lemma opsForPointWithProduct_ProgConsumesPts
         exact computeLocal_NoPhase (k := k) hk x
       have hbuildC : ProgConsumesPts hk (State.start_state (k := k)) l [] :=
         progConsumesPts_of_noPhase_run (k := k) hk hbuildNP (by simpa [l] using hrun₁)
-      have hphaseC :
-          ProgConsumesPts hk σ₁ [valid_ops.phaseProduct (finZero hk)] [Point.int x] := by
+      have hphaseC : ProgConsumesPts hk σ₁ [valid_ops.phaseProduct (finZero hk)] [Point.int x] := by
         simp [ProgConsumesPts, hmatch]
       have hprefixC :
           ProgConsumesPts hk (State.start_state (k := k))
@@ -304,11 +300,9 @@ lemma opsForPointWithProduct_ProgConsumesPts
             (a := []) (b := [Point.int x])
             hbuildC (by simpa [l] using hrun₁) hphaseC
       have hprefixRun :
-          run? (l ++ [valid_ops.phaseProduct (finZero hk)]) (State.start_state (k := k))
-            = some σ₁ := by
+          run? (l ++ [valid_ops.phaseProduct (finZero hk)]) (State.start_state (k := k)) = some σ₁ := by
         simp [run?_append, hrun₁, l, applyOp?]
-      have hcleanupRun :
-          run? (apply_Op_inverse l) σ₁ = some (State.start_state (k := k)) := by
+      have hcleanupRun : run? (apply_Op_inverse l) σ₁ = some (State.start_state (k := k)) := by
         dsimp [l]
         exact
           State.run?_inverse_undoes_WF
@@ -335,8 +329,7 @@ lemma opsForPointWithProduct_ProgConsumesPts
         simp [ProgConsumesPts]
         let i : Fin k := finLast hk
         have hmatch :
-            matchesAt_pointRow_state (k := k) hk (State.start_state (k := k)) i (Point.frac 0)
-            = true := by
+            matchesAt_pointRow_state (k := k) hk (State.start_state (k := k)) i (Point.frac 0) = true := by
           unfold matchesAt_pointRow_state
           apply List.all_eq_true.mpr
           intro j _
@@ -370,8 +363,7 @@ lemma opsForPointWithProduct_ProgConsumesPts
           exact computeFracLocal2_NoPhase (k := k) hk c
         have hbuildC : ProgConsumesPts hk (State.start_state (k := k)) l [] :=
           progConsumesPts_of_noPhase_run (k := k) hk hbuildNP (by simpa [l] using hrun₁)
-        have hphaseC :
-            ProgConsumesPts hk σ₁ [valid_ops.phaseProduct (finLast hk)] [Point.frac c] := by
+        have hphaseC : ProgConsumesPts hk σ₁ [valid_ops.phaseProduct (finLast hk)] [Point.frac c] := by
           simp [ProgConsumesPts, hmatch]
         have hprefixC :
             ProgConsumesPts hk (State.start_state (k := k))
@@ -383,11 +375,9 @@ lemma opsForPointWithProduct_ProgConsumesPts
               (a := []) (b := [Point.frac c])
               hbuildC (by simpa [l] using hrun₁) hphaseC
         have hprefixRun :
-            run? (l ++ [valid_ops.phaseProduct (finLast hk)]) (State.start_state (k := k))
-              = some σ₁ := by
+            run? (l ++ [valid_ops.phaseProduct (finLast hk)]) (State.start_state (k := k)) = some σ₁ := by
           simp [run?_append, hrun₁, l, applyOp?]
-        have hcleanupRun :
-            run? (apply_Op_inverse l) σ₁ = some (State.start_state (k := k)) := by
+        have hcleanupRun : run? (apply_Op_inverse l) σ₁ = some (State.start_state (k := k)) := by
           dsimp [l]
           exact
             State.run?_inverse_undoes_WF
@@ -452,8 +442,7 @@ theorem genOpsWithProduct_PhaseProductCoverage
 
             obtain ⟨σ₁, hrun₁, hmatch⟩ := computeLocal2_matches_row_start (k := k) hk x
 
-            have hphase :
-                PhaseProductCoverage hk ([valid_ops.phaseProduct (finZero hk)]) σ₁ [Point.int x] := by
+            have hphase : PhaseProductCoverage hk ([valid_ops.phaseProduct (finZero hk)]) σ₁ [Point.int x] := by
               refine PhaseProductCoverageM.step_phase
                 (M := matchesAt_pointRow_state hk (k := k))
                 (i := finZero hk) (ps := []) (σ := σ₁)
@@ -538,8 +527,7 @@ theorem genOpsWithProduct_PhaseProductCoverage
 
             obtain ⟨σ₁, hrun₁, hmatch⟩ := computeFracLocal2_matches_row_start (k := k) hk c
 
-            have hphase :
-                PhaseProductCoverage hk ([valid_ops.phaseProduct (finLast hk)]) σ₁ [Point.frac c] := by
+            have hphase : PhaseProductCoverage hk ([valid_ops.phaseProduct (finLast hk)]) σ₁ [Point.frac c] := by
               refine PhaseProductCoverageM.step_phase
                 (M := matchesAt_pointRow_state hk (k := k))
                 (i := finLast hk) (ps := []) (σ := σ₁)

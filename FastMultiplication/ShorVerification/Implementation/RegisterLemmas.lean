@@ -14,6 +14,10 @@ universe u
 
 namespace Shor
 
+/-- `q` is not a qubit of register `r`. -/
+def QubitOutside (q : ℕ) (r : Reg) : Prop :=
+  q ∉ r.qubits
+
 theorem Disjoint.symm {a b : Reg} :
     Disjoint a b → Disjoint b a := by
   intro h
@@ -1077,5 +1081,37 @@ theorem ExtReg.extToInt_grow_of_fresh
 
 
 end Gate
+
+/-- Writing the same register twice keeps only the last value. -/
+lemma writeNat_overwrite_same_reg {Basis : Type u} [RegEncoding Basis] (r : Reg) (v w : ℕ) (b : Basis) :
+    RegEncoding.writeNat r v (RegEncoding.writeNat r w b) =
+    RegEncoding.writeNat r v b := by
+  apply RegEncoding.basis_ext
+  intro q
+  by_cases hqin : q ∈ r.qubits
+  · exact
+      RegEncoding.bit_writeNat_in
+        (r := r)
+        (v := v)
+        (b₁ := RegEncoding.writeNat r w b)
+        (b₂ := b)
+        (q := q)
+        hqin
+  · rw [
+      RegEncoding.bit_writeNat_out
+        (r := r) (v := v) (b := RegEncoding.writeNat r w b)
+        (q := q) hqin,
+      RegEncoding.bit_writeNat_out
+        (r := r) (v := v) (b := b)
+        (q := q) hqin,
+      RegEncoding.bit_writeNat_out
+        (r := r) (v := w) (b := b)
+        (q := q) hqin
+    ]
+
+/-- The complete physical ownership of an extendable register, viewed as one
+ordinary register for zero-workspace invariants. -/
+def ExtReg.ownedReg (e : ExtReg) : Reg :=
+  Reg.append e.active e.reserve e.active_reserve_disjoint
 
 end Shor

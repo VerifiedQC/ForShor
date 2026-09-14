@@ -337,16 +337,14 @@ lemma computeLocal_NoPhase {k} (hk : 0 < k) (z : Int) :
    NoPhase (computeLocal hk z):=by {
     unfold computeLocal
     set dst := finZero hk
-    let step :
-        Prog k → Fin k → Prog k :=
+    let step : Prog k → Fin k → Prog k :=
       fun acc j =>
         let c : Int := z ^ (j : Nat)
         if c = 0 then acc
         else acc ++ (signedPow2Decomp c).map (pairToOp (k := k) dst j)
 
     -- Step preserves NoPhase.
-    have step_pres :
-        ∀ acc, NoPhase acc → ∀ j, NoPhase (step acc j) := by
+    have step_pres : ∀ acc, NoPhase acc → ∀ j, NoPhase (step acc j) := by
       intro acc hacc j
       dsimp [step]
       by_cases hc : z ^ (j : Nat) = 0
@@ -357,8 +355,7 @@ lemma computeLocal_NoPhase {k} (hk : 0 < k) (z : Int) :
         simp[hc,(NoPhase_append hacc hmap)]
     have base : NoPhase ([] : Prog k) := by intro i; simp
     have fold_pres :
-        ∀ (xs : List (Fin k)) (acc : Prog k), NoPhase acc →
-          NoPhase (xs.foldl step acc) := by
+        ∀ (xs : List (Fin k)) (acc : Prog k), NoPhase acc → NoPhase (xs.foldl step acc) := by
       intro xs; induction xs with
       | nil =>
           intro acc hacc; simpa [List.foldl] using hacc

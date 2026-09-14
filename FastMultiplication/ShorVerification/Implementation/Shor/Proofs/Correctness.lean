@@ -1,19 +1,22 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.Assertions
-import FastMultiplication.ShorVerification.Implementation.Shor.Defs
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Main
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.WholeProgramCorrectness
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness
+import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFinding
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Correctness
+import FastMultiplication.ShorVerification.Implementation.Compilation.Correctness
+import FastMultiplication.ShorVerification.Implementation.Semantics.Measurement
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Dynamic
+import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Setup
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Config
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Precision
 import FastMultiplication.ShorVerification.Framework.Submission
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
-import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.Reduction
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-
-namespace Shor
-open Gate
-open Classical
 
 /-!
 # Shor/order-finding circuit statement
@@ -23,623 +26,16 @@ approximate order-finding circuits, the measurement interface, and the final
 success-probability theorem.  Classical order and continued-fraction material
 lives in `MathBackbone/ShorAlgorithm.lean`.
 -/
-
-/-! =========================================================
-    Section 1: Order-finding circuits
-
-    These definitions assemble the high-level gates used by the ideal and
-    approximate order-finding algorithms.
-========================================================= -/
-
-variable {qs : QSemantics}
-variable [RegEncoding qs.Basis]
-
-/-! =========================================================
-    Section 2: Measurement and success probabilities
-
-    `MeasureClass` packages the Born-rule projectors used to talk about
-    measuring a register.  The lemmas in this section turn those projector
-    axioms into the probability estimates needed later:
-
-    * orthogonal projector sums have the expected norm square;
-    * measurement mass outside a register range is zero;
-    * measurement distributions are Lipschitz in state distance.
-========================================================= -/
+namespace Shor
+open Gate
+open Classical
 
 variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 variable [MeasureClass qs]
 
-/-! ## Projector Hilbert-space estimates -/
-
-omit [RegEncoding QSemantics.Basis] [MeasureClass qs] in
-/-- Difference of squared norms, expressed in a form suitable for Cauchy-Schwarz. -/
-lemma abs_norm_sq_sub_norm_sq_le
-    (u v : qs.State) :
-    |‖u‖ ^ 2 - ‖v‖ ^ 2|
-      ≤ ‖u + v‖ * ‖u - v‖ := by
-  have hre_symm :
-    Complex.re (inner ℂ u v)
-      = Complex.re (inner ℂ v u) := by
-    calc
-      Complex.re (inner ℂ u v)
-          =
-        Complex.re ((starRingEnd ℂ) (inner ℂ v u)) := by
-            exact congrArg Complex.re
-              (inner_conj_symm (𝕜 := ℂ) u v).symm
-      _ = Complex.re (inner ℂ v u) := by
-            simpa using RCLike.conj_re (inner ℂ v u)
-
-  have hident :
-      ‖u‖ ^ 2 - ‖v‖ ^ 2
-        = Complex.re (inner ℂ (u + v) (u - v)) := by
-    calc
-      ‖u‖ ^ 2 - ‖v‖ ^ 2
-          =
-        Complex.re (inner ℂ u u)
-          - Complex.re (inner ℂ v v) := by
-            simp [norm_sq_eq_re_inner (𝕜 := ℂ) u]
-            rw [norm_sq_eq_re_inner (𝕜 := ℂ) v]
-            simp
-      _ =
-        Complex.re (inner ℂ (u + v) (u - v)) := by
-            simp only [inner_add_left, inner_sub_right,
-              Complex.add_re, Complex.sub_re]
-            rw [← hre_symm]
-            ring
-
-  calc
-    |‖u‖ ^ 2 - ‖v‖ ^ 2|
-        = |Complex.re (inner ℂ (u + v) (u - v))| := by
-            rw [hident]
-    _ ≤ ‖inner ℂ (u + v) (u - v)‖ := by
-          exact Complex.abs_re_le_norm _
-    _ ≤ ‖u + v‖ * ‖u - v‖ := by
-          exact norm_inner_le_norm _ _
-
-/-- Applying the same measurement projector to two states makes their squared
-norm difference controlled by the projected sum and difference. -/
-lemma measProj_sqdiff_le
-    (r : Reg) (o : ℕ) (ψ φ : qs.State) :
-    |‖MeasureClass.measProj (qs := qs) r o ψ‖ ^ 2
-      - ‖MeasureClass.measProj (qs := qs) r o φ‖ ^ 2|
-      ≤
-    ‖MeasureClass.measProj (qs := qs) r o (ψ + φ)‖
-      * ‖MeasureClass.measProj (qs := qs) r o (ψ - φ)‖ := by
-  simpa using
-    (abs_norm_sq_sub_norm_sq_le
-      (qs := qs)
-      (MeasureClass.measProj (qs := qs) r o ψ)
-      (MeasureClass.measProj (qs := qs) r o φ))
-
-/-- Different measurement outcomes have orthogonal image vectors. -/
-lemma measProj_inner_eq_zero_of_ne
-    (r : Reg) (o o' : ℕ) (ψ : qs.State)
-    (hneq : o ≠ o') :
-    inner ℂ
-      (MeasureClass.measProj (qs := qs) r o ψ)
-      (MeasureClass.measProj (qs := qs) r o' ψ) = 0 := by
-  calc
-    inner ℂ
-        (MeasureClass.measProj (qs := qs) r o ψ)
-        (MeasureClass.measProj (qs := qs) r o' ψ)
-      =
-    inner ℂ ψ
-      (MeasureClass.measProj (qs := qs) r o
-        (MeasureClass.measProj (qs := qs) r o' ψ)) := by
-          simpa using
-            (MeasureClass.measProj_selfAdjoint
-              (qs := qs) r o ψ
-              (MeasureClass.measProj (qs := qs) r o' ψ))
-    _ = 0 := by
-          rw [MeasureClass.measProj_orthogonal
-            (qs := qs) r o o' ψ hneq]
-          simp
-
-omit [RegEncoding QSemantics.Basis] [MeasureClass qs] in
-/-- Pythagoras for a finite sum of pairwise orthogonal vectors. -/
-lemma norm_sq_sum_eq_sum_norm_sq_of_orthogonal
-    {ι : Type}
-    (s : Finset ι)
-    (f : ι → qs.State)
-    (horth :
-      ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
-        inner ℂ (f i) (f j) = 0) :
-    ‖∑ i ∈ s, f i‖ ^ 2
-      =
-    ∑ i ∈ s, ‖f i‖ ^ 2 := by
-  classical
-  revert horth
-  induction s using Finset.induction_on with
-  | empty =>
-      intro horth
-      simp
-  | insert a s ha ih =>
-      intro horth
-
-      have horth_s :
-          ∀ i ∈ s, ∀ j ∈ s, i ≠ j →
-            inner ℂ (f i) (f j) = 0 := by
-        intro i hi j hj hij
-        exact horth i
-          (Finset.mem_insert_of_mem hi)
-          j
-          (Finset.mem_insert_of_mem hj)
-          hij
-
-      have hih :
-          ‖∑ i ∈ s, f i‖ ^ 2
-            =
-          ∑ i ∈ s, ‖f i‖ ^ 2 :=
-        ih horth_s
-
-      have hcross :
-          inner ℂ (f a) (∑ b ∈ s, f b) = 0 := by
-        rw [inner_sum]
-        refine Finset.sum_eq_zero ?_
-        intro b hb
-        apply horth a (by simp) b (Finset.mem_insert_of_mem hb)
-        intro hab
-        subst b
-        exact ha hb
-
-      calc
-        ‖∑ i ∈ insert a s, f i‖ ^ 2
-            =
-          ‖f a + ∑ i ∈ s, f i‖ ^ 2 := by
-            rw [Finset.sum_insert ha]
-        _ =
-          ‖f a‖ ^ 2
-            + 2 * Complex.re (inner ℂ (f a) (∑ i ∈ s, f i))
-            + ‖∑ i ∈ s, f i‖ ^ 2 := by
-              exact norm_add_sq (𝕜 := ℂ) _ _
-        _ =
-          ‖f a‖ ^ 2 + ‖∑ i ∈ s, f i‖ ^ 2 := by
-            rw [hcross]
-            simp_all only [ne_eq, Finset.mem_insert, or_true, not_false_eq_true, implies_true,
-              forall_eq_or_imp, not_true_eq_false, inner_self_eq_norm_sq_to_K, Complex.coe_algebraMap,
-              OfNat.ofNat_ne_zero, pow_eq_zero_iff, Complex.ofReal_eq_zero, norm_eq_zero, IsEmpty.forall_iff,
-              true_and, and_true, Complex.zero_re, mul_zero, add_zero]
-        _ =
-          ‖f a‖ ^ 2 + ∑ i ∈ s, ‖f i‖ ^ 2 := by
-            rw [hih]
-        _ =
-          ∑ i ∈ insert a s, ‖f i‖ ^ 2 := by
-            rw [Finset.sum_insert ha]
-
-/-- The measurement projectors decompose the state norm over all valid outcomes. -/
-lemma measProj_full_norm_sq_sum
-    (r : Reg) (ψ : qs.State) :
-    (∑ o : Fin (2 ^ regSize r),
-      ‖MeasureClass.measProj (qs := qs) r o.1 ψ‖ ^ 2)
-      =
-    ‖ψ‖ ^ 2 := by
-  classical
-
-  have horth :
-      ∀ i ∈ (Finset.univ : Finset (Fin (2 ^ regSize r))),
-      ∀ j ∈ (Finset.univ : Finset (Fin (2 ^ regSize r))),
-      i ≠ j →
-      inner ℂ
-        (MeasureClass.measProj (qs := qs) r i.1 ψ)
-        (MeasureClass.measProj (qs := qs) r j.1 ψ) = 0 := by
-    intro i hi j hj hij
-    have hij_nat : i.1 ≠ j.1 := by
-      intro h
-      apply hij
-      exact Fin.ext h
-    simpa using
-      (measProj_inner_eq_zero_of_ne
-        (qs := qs) r i.1 j.1 ψ hij_nat)
-
-  have hsum :=
-    norm_sq_sum_eq_sum_norm_sq_of_orthogonal
-      (qs := qs)
-      (s := (Finset.univ : Finset (Fin (2 ^ regSize r))))
-      (f := fun o =>
-        MeasureClass.measProj (qs := qs) r o.1 ψ)
-      horth
-
-  calc
-    (∑ o : Fin (2 ^ regSize r),
-      ‖MeasureClass.measProj (qs := qs) r o.1 ψ‖ ^ 2)
-        =
-      ‖∑ o : Fin (2 ^ regSize r),
-        MeasureClass.measProj (qs := qs) r o.1 ψ‖ ^ 2 := by
-          simpa using hsum.symm
-    _ = ‖ψ‖ ^ 2 := by
-          rw [MeasureClass.measProj_complete (qs := qs) r ψ]
-
-/-- Any finite subset of measurement outcomes has total projected mass at most
-the full state norm.  Outcomes outside the register range contribute zero. -/
-lemma measProj_norm_sq_sum_le
-    (r : Reg) (s : Finset ℕ) (ψ : qs.State) :
-    (∑ o ∈ s,
-      ‖MeasureClass.measProj (qs := qs) r o ψ‖ ^ 2)
-      ≤ ‖ψ‖ ^ 2 := by
-  classical
-
-  let n : ℕ := 2 ^ regSize r
-
-  have hcut :
-      (∑ o ∈ s ∩ Finset.range n,
-        ‖MeasureClass.measProj (qs := qs) r o ψ‖ ^ 2)
-        =
-      ∑ o ∈ s,
-        ‖MeasureClass.measProj (qs := qs) r o ψ‖ ^ 2 := by
-    refine Finset.sum_subset ?_ ?_
-    · intro o ho
-      exact (Finset.mem_inter.mp ho).1
-    · intro o hos hnotinter
-      have hnotrange : o ∉ Finset.range n := by
-        intro horange
-        exact hnotinter (Finset.mem_inter.mpr ⟨hos, horange⟩)
-
-      have hge : n ≤ o := by
-        apply Nat.le_of_not_gt
-        intro hlt
-        exact hnotrange (Finset.mem_range.mpr hlt)
-
-      have hzero :
-          MeasureClass.measProj (qs := qs) r o ψ = 0 := by
-        exact MeasureClass.measProj_zero_outOfRange
-          (qs := qs) r o ψ (by simpa [n] using hge)
-
-      simp [hzero]
-
-  have hsub : s ∩ Finset.range n ⊆ Finset.range n := by
-    intro o ho
-    exact (Finset.mem_inter.mp ho).2
-
-  have hle :
-      (∑ o ∈ s ∩ Finset.range n,
-        ‖MeasureClass.measProj (qs := qs) r o ψ‖ ^ 2)
-        ≤
-      ∑ o ∈ Finset.range n,
-        ‖MeasureClass.measProj (qs := qs) r o ψ‖ ^ 2 := by
-    refine Finset.sum_le_sum_of_subset_of_nonneg hsub ?_
-    intro o ho hnot
-    exact sq_nonneg _
-
-  have hfull :
-      (∑ o ∈ Finset.range n,
-        ‖MeasureClass.measProj (qs := qs) r o ψ‖ ^ 2)
-        =
-      ‖ψ‖ ^ 2 := by
-    have hfull_fin := measProj_full_norm_sq_sum (qs := qs) r ψ
-    rw [← hfull_fin]
-    exact (Fin.sum_univ_eq_sum_range
-      (fun o : ℕ =>
-        ‖MeasureClass.measProj (qs := qs) r o ψ‖ ^ 2) n).symm
-
-  calc
-    (∑ o ∈ s,
-      ‖MeasureClass.measProj (qs := qs) r o ψ‖ ^ 2)
-        =
-      (∑ o ∈ s ∩ Finset.range n,
-        ‖MeasureClass.measProj (qs := qs) r o ψ‖ ^ 2) := by
-          exact hcut.symm
-    _ ≤
-      ∑ o ∈ Finset.range n,
-        ‖MeasureClass.measProj (qs := qs) r o ψ‖ ^ 2 := hle
-    _ = ‖ψ‖ ^ 2 := hfull
-
-/-- The same mass bound for a `Fin Q` prefix of outcomes. -/
-lemma measProj_norm_sq_prefix_le
-    (r : Reg) (Q : ℕ) (ψ : qs.State) :
-    (∑ o : Fin Q,
-      ‖MeasureClass.measProj (qs := qs) r o.1 ψ‖ ^ 2)
-      ≤ ‖ψ‖ ^ 2 := by
-  classical
-  rw [Fin.sum_univ_eq_sum_range
-    (fun o : ℕ =>
-      ‖MeasureClass.measProj (qs := qs) r o ψ‖ ^ 2) Q]
-  exact
-    measProj_norm_sq_sum_le
-      (qs := qs)
-      r
-      (Finset.range Q)
-      ψ
-
-/-- Cauchy-Schwarz for the sequence of projected norms over a finite prefix. -/
-lemma measProj_cauchy_prefix
-    (r : Reg) (Q : ℕ) (u v : qs.State) :
-    (∑ o : Fin Q,
-      ‖MeasureClass.measProj (qs := qs) r o.1 u‖
-        * ‖MeasureClass.measProj (qs := qs) r o.1 v‖)
-      ≤ ‖u‖ * ‖v‖ := by
-  have hA :
-      (∑ o : Fin Q,
-        ‖MeasureClass.measProj (qs := qs) r o.1 u‖ ^ 2)
-        ≤ ‖u‖ ^ 2 :=
-    measProj_norm_sq_prefix_le (qs := qs) r Q u
-
-  have hB :
-      (∑ o : Fin Q,
-        ‖MeasureClass.measProj (qs := qs) r o.1 v‖ ^ 2)
-        ≤ ‖v‖ ^ 2 :=
-    measProj_norm_sq_prefix_le (qs := qs) r Q v
-
-  have hcs :
-      (∑ o : Fin Q,
-        ‖MeasureClass.measProj (qs := qs) r o.1 u‖
-          * ‖MeasureClass.measProj (qs := qs) r o.1 v‖) ^ 2
-        ≤
-      (∑ o : Fin Q,
-        ‖MeasureClass.measProj (qs := qs) r o.1 u‖ ^ 2)
-        *
-      (∑ o : Fin Q,
-        ‖MeasureClass.measProj (qs := qs) r o.1 v‖ ^ 2) := by
-    let fu : ℕ → ℝ := fun o =>
-      ‖MeasureClass.measProj (qs := qs) r o u‖
-    let fv : ℕ → ℝ := fun o =>
-      ‖MeasureClass.measProj (qs := qs) r o v‖
-    have hrange :
-        (∑ o ∈ Finset.range Q, fu o * fv o) ^ 2
-          ≤
-        (∑ o ∈ Finset.range Q, fu o ^ 2)
-          *
-        (∑ o ∈ Finset.range Q, fv o ^ 2) :=
-      Finset.sum_mul_sq_le_sq_mul_sq (Finset.range Q) fu fv
-    rw [Fin.sum_univ_eq_sum_range
-      (fun o : ℕ =>
-        ‖MeasureClass.measProj (qs := qs) r o u‖
-          * ‖MeasureClass.measProj (qs := qs) r o v‖) Q]
-    rw [Fin.sum_univ_eq_sum_range
-      (fun o : ℕ =>
-        ‖MeasureClass.measProj (qs := qs) r o u‖ ^ 2) Q]
-    rw [Fin.sum_univ_eq_sum_range
-      (fun o : ℕ =>
-        ‖MeasureClass.measProj (qs := qs) r o v‖ ^ 2) Q]
-    simpa [fu, fv] using hrange
-
-  have hB_nonneg :
-      0 ≤
-      ∑ o : Fin Q,
-        ‖MeasureClass.measProj (qs := qs) r o.1 v‖ ^ 2 := by
-    refine Finset.sum_nonneg ?_
-    intro o ho
-    exact sq_nonneg _
-
-  have hprod :
-      (∑ o : Fin Q,
-        ‖MeasureClass.measProj (qs := qs) r o.1 u‖ ^ 2)
-        *
-      (∑ o : Fin Q,
-        ‖MeasureClass.measProj (qs := qs) r o.1 v‖ ^ 2)
-        ≤
-      ‖u‖ ^ 2 * ‖v‖ ^ 2 := by
-    exact mul_le_mul hA hB hB_nonneg (sq_nonneg _)
-
-  have hsq :
-      (∑ o : Fin Q,
-        ‖MeasureClass.measProj (qs := qs) r o.1 u‖
-          * ‖MeasureClass.measProj (qs := qs) r o.1 v‖) ^ 2
-        ≤
-      (‖u‖ * ‖v‖) ^ 2 := by
-    calc
-      (∑ o : Fin Q,
-        ‖MeasureClass.measProj (qs := qs) r o.1 u‖
-          * ‖MeasureClass.measProj (qs := qs) r o.1 v‖) ^ 2
-          ≤
-        (∑ o : Fin Q,
-          ‖MeasureClass.measProj (qs := qs) r o.1 u‖ ^ 2)
-          *
-        (∑ o : Fin Q,
-          ‖MeasureClass.measProj (qs := qs) r o.1 v‖ ^ 2) := hcs
-      _ ≤ ‖u‖ ^ 2 * ‖v‖ ^ 2 := hprod
-      _ = (‖u‖ * ‖v‖) ^ 2 := by ring
-
-  have hsum_nonneg :
-      0 ≤
-      ∑ o : Fin Q,
-        ‖MeasureClass.measProj (qs := qs) r o.1 u‖
-          * ‖MeasureClass.measProj (qs := qs) r o.1 v‖ := by
-    refine Finset.sum_nonneg ?_
-    intro o ho
-    exact mul_nonneg (norm_nonneg _) (norm_nonneg _)
-
-  have hnorm_nonneg : 0 ≤ ‖u‖ * ‖v‖ := by
-    exact mul_nonneg (norm_nonneg _) (norm_nonneg _)
-
-  nlinarith
-
-/-! ## Measurement distribution distance bounds -/
-
-/-- The total variation distance between two finite measurement distributions
-is bounded by twice the Hilbert-space distance between unit states. -/
-lemma MeasureClass.probMeas_l1_dist
-    {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
-    (r : Reg) (Q : ℕ) (ψ φ : qs.State)
-    (hψ : ‖ψ‖ = 1) (hφ : ‖φ‖ = 1) :
-    (∑ o : Fin Q,
-      |MeasureClass.probMeas (qs := qs) r o.1 ψ
-        - MeasureClass.probMeas (qs := qs) r o.1 φ|)
-      ≤ 2 * ‖ψ - φ‖ := by
-  calc
-    (∑ o : Fin Q,
-      |MeasureClass.probMeas (qs := qs) r o.1 ψ
-        - MeasureClass.probMeas (qs := qs) r o.1 φ|)
-        =
-      ∑ o : Fin Q,
-        |‖MeasureClass.measProj (qs := qs) r o.1 ψ‖ ^ 2
-          - ‖MeasureClass.measProj (qs := qs) r o.1 φ‖ ^ 2| := by
-          refine Finset.sum_congr rfl ?_
-          intro o ho
-          rw [MeasureClass.probMeas_born (qs := qs) r o.1 ψ,
-              MeasureClass.probMeas_born (qs := qs) r o.1 φ]
-    _ ≤
-      ∑ o : Fin Q,
-        ‖MeasureClass.measProj (qs := qs) r o.1 (ψ + φ)‖
-          * ‖MeasureClass.measProj (qs := qs) r o.1 (ψ - φ)‖ := by
-          refine Finset.sum_le_sum ?_
-          intro o ho
-          exact measProj_sqdiff_le (qs := qs) r o.1 ψ φ
-    _ ≤ ‖ψ + φ‖ * ‖ψ - φ‖ := by
-          exact measProj_cauchy_prefix
-            (qs := qs) r Q (ψ + φ) (ψ - φ)
-    _ ≤ (‖ψ‖ + ‖φ‖) * ‖ψ - φ‖ := by
-          exact mul_le_mul_of_nonneg_right
-            (norm_add_le ψ φ) (norm_nonneg _)
-    _ = 2 * ‖ψ - φ‖ := by
-          rw [hψ, hφ]
-          ring
-
-omit [MeasureClass qs] in
-/-- Weighted version of `MeasureClass.probMeas_l1_dist` for weights in `[0, 1]`.
-
-This is the form used for postprocessing success probabilities, where the
-weight is the indicator that continued-fraction postprocessing recovered the
-right order. -/
-lemma probMeas_weighted_dist [MeasureClass qs] :
-    ∀ (r : Reg) (Q : ℕ) (w : Fin Q → ℝ) (ψ φ : qs.State),
-      (∀ o, 0 ≤ w o ∧ w o ≤ 1) →
-      ‖ψ‖ = 1 →
-      ‖φ‖ = 1 →
-      |(∑ o : Fin Q, w o * MeasureClass.probMeas (qs := qs) r o.1 ψ)
-        -
-        (∑ o : Fin Q, w o * MeasureClass.probMeas (qs := qs) r o.1 φ)|
-      ≤ 2 * ‖ψ - φ‖ := by
-  intro r Q w ψ φ hw hψ hφ
-  have hpoint :
-      ∀ o : Fin Q,
-        |w o * MeasureClass.probMeas (qs := qs) r o.1 ψ
-          - w o * MeasureClass.probMeas (qs := qs) r o.1 φ|
-        ≤
-        |MeasureClass.probMeas (qs := qs) r o.1 ψ
-          - MeasureClass.probMeas (qs := qs) r o.1 φ| := by
-    intro o
-    have h0 : 0 ≤ w o := (hw o).1
-    have h1 : w o ≤ 1 := (hw o).2
-    calc
-      |w o * MeasureClass.probMeas (qs := qs) r o.1 ψ
-        - w o * MeasureClass.probMeas (qs := qs) r o.1 φ|
-          =
-        |w o| *
-          |MeasureClass.probMeas (qs := qs) r o.1 ψ
-            - MeasureClass.probMeas (qs := qs) r o.1 φ| := by
-              rw [← abs_mul]
-              congr 1
-              ring
-      _ = w o *
-          |MeasureClass.probMeas (qs := qs) r o.1 ψ
-            - MeasureClass.probMeas (qs := qs) r o.1 φ| := by
-              rw [abs_of_nonneg h0]
-      _ ≤ 1 *
-          |MeasureClass.probMeas (qs := qs) r o.1 ψ
-            - MeasureClass.probMeas (qs := qs) r o.1 φ| := by
-              exact mul_le_mul_of_nonneg_right h1 (abs_nonneg _)
-      _ =
-          |MeasureClass.probMeas (qs := qs) r o.1 ψ
-            - MeasureClass.probMeas (qs := qs) r o.1 φ| := by ring
-
-  calc
-    |(∑ o : Fin Q, w o * MeasureClass.probMeas (qs := qs) r o.1 ψ)
-      - (∑ o : Fin Q, w o * MeasureClass.probMeas (qs := qs) r o.1 φ)|
-        =
-      |∑ o : Fin Q,
-        (w o * MeasureClass.probMeas (qs := qs) r o.1 ψ
-          - w o * MeasureClass.probMeas (qs := qs) r o.1 φ)| := by
-          rw [← Finset.sum_sub_distrib]
-    _ ≤ ∑ o : Fin Q,
-        |w o * MeasureClass.probMeas (qs := qs) r o.1 ψ
-          - w o * MeasureClass.probMeas (qs := qs) r o.1 φ| := by
-          simpa using
-            Finset.abs_sum_le_sum_abs
-              (fun o : Fin Q =>
-                w o * MeasureClass.probMeas (qs := qs) r o.1 ψ
-                  - w o * MeasureClass.probMeas (qs := qs) r o.1 φ)
-              Finset.univ
-    _ ≤ ∑ o : Fin Q,
-        |MeasureClass.probMeas (qs := qs) r o.1 ψ
-          - MeasureClass.probMeas (qs := qs) r o.1 φ| := by
-          exact Finset.sum_le_sum (fun o ho => hpoint o)
-    _ ≤ 2 * ‖ψ - φ‖ := by
-          exact MeasureClass.probMeas_l1_dist
-            (qs := qs) r Q ψ φ hψ hφ
-
-/-! ## Success probabilities and range facts -/
-
--- /-- Run the circuit G on input state ψ, then measure register r, and ask for probability of outcome o -/
--- noncomputable def measProbAfter (r : Reg) (o : ℕ) (G : Gate) (ψ : qs.State) : ℝ :=
---   MeasureClass.probMeas (qs := qs) r o (qs.eval G ψ)
-
-
-/-- Given a finite set Good of outcomes that are “successful,” sum the measurement probability over those outcomes. -/
-noncomputable def successProbAfterFinset
-  [GateSemanticsCore qs]
-  (r : Reg) (Good : Finset ℕ) (G : Gate) (ψ : qs.State) : ℝ :=
-  ∑ o ∈ Good, measProbAfter (qs := qs) qs.eval r o G ψ
-
-/-- The Born-rule probability of an out-of-range outcome is zero. -/
-lemma probMeas_outOfRange_of_born
-    {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
-    (r : Reg) (o : ℕ) (ψ : qs.State)
-    (ho : 2 ^ regSize r ≤ o) :
-    MeasureClass.probMeas (qs := qs) r o ψ = 0 := by
-  rw [MeasureClass.probMeas_born (qs := qs) r o ψ]
-  rw [MeasureClass.measProj_zero_outOfRange (qs := qs) r o ψ ho]
-  simp
-
-omit [MeasureClass qs] in
-/-- Success probability is nonnegative. -/
-lemma successProbAfterFinset_nonneg [MeasureClass qs]
-  [GateSemanticsCore qs]
-  (r : Reg) (Good : Finset ℕ) (G : Gate) (ψ : qs.State) :
-  0 ≤ successProbAfterFinset (qs := qs) r Good G ψ := by
-  unfold successProbAfterFinset measProbAfter
-  refine Finset.sum_nonneg ?_
-  intro o ho
-  rw [MeasureClass.probMeas_born (qs := qs) r o (qs.eval G ψ)]
-  exact sq_nonneg _
-
-omit [MeasureClass qs] in
-/-- If the good-outcome set is enlarged, success probability can only go up. -/
-lemma successProbAfterFinset_mono [MeasureClass qs]
-  [GateSemanticsCore qs]
-  (r : Reg) {Good Good' : Finset ℕ} (hsub : Good ⊆ Good')
-  (G : Gate) (ψ : qs.State) :
-  successProbAfterFinset (qs := qs) r Good G ψ
-    ≤
-  successProbAfterFinset (qs := qs) r Good' G ψ := by
-  unfold successProbAfterFinset measProbAfter
-  refine Finset.sum_le_sum_of_subset_of_nonneg hsub ?_
-  intro o ho hnot
-  rw [MeasureClass.probMeas_born (qs := qs) r o (qs.eval G ψ)]
-  exact sq_nonneg _
-
-omit [MeasureClass qs] in
-/-- Intersecting the good-outcome set with the register range does not change
-the success probability. -/
-lemma successProbAfterFinset_inter_range_eq [MeasureClass qs]
-  [GateSemanticsCore qs]
-  (r : Reg) (Good : Finset ℕ) (G : Gate) (ψ : qs.State) :
-  successProbAfterFinset (qs := qs)
-      r (Good ∩ Finset.range (2 ^ regSize r)) G ψ
-    =
-  successProbAfterFinset (qs := qs) r Good G ψ := by
-  classical
-  unfold successProbAfterFinset measProbAfter
-
-  refine Finset.sum_subset ?_ ?_
-  · intro o ho
-    exact (Finset.mem_inter.mp ho).1
-
-  · intro o hoGood hoNotInter
-    have hoNotRange : o ∉ Finset.range (2 ^ regSize r) := by
-      intro hoRange
-      exact hoNotInter (Finset.mem_inter.mpr ⟨hoGood, hoRange⟩)
-
-    have hoGe : 2 ^ regSize r ≤ o := by
-      apply Nat.le_of_not_gt
-      intro hoLt
-      exact hoNotRange (Finset.mem_range.mpr hoLt)
-
-    exact probMeas_outOfRange_of_born
-      (qs := qs) r o (qs.eval G ψ) hoGe
-
 /-! =========================================================
-    Section 3: Probability-transfer lemmas
+    Probability-transfer lemmas
 
     These lemmas are the bridge from state-vector approximation to
     success-probability approximation.  The first group is pure real/probability
@@ -766,7 +162,7 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
         (qs := qs)
         x Q w ψA ψI hw hψA hψI
 
-    simpa [probability_of_success, measProbAfter, ψA, ψI, w] using hmain
+    simpa [probability_of_success, MeasureClass.probMeas, ψA, ψI, w] using hmain
 
   have hprob :
       |probability_of_success (qs := qs) (T := T)
@@ -789,9 +185,9 @@ lemma probability_of_success_eval_dist [MeasureClass qs]
   exact lower_bound_of_abs_sub_le hprob
 
 /-! =========================================================
-    Section 4: Final correctness statements
+    Final correctness statements
 
-    The ideal theorem lives in `Proofs.NaiveShor.Main`.  This file imports that
+    The ideal theorem lives in `Proofs.NaiveShor.Correctness`.  This file imports that
     bound and transfers it across the modular-exponentiation implementation
     error to obtain the approximate order-finding statement.
 ========================================================= -/
@@ -1220,42 +616,38 @@ def ShorApproxSetup.toModExpConfig
   intro i
   exact modExp_multiplier_coprime a N i.1 hcoprime
 
-/--
-Uniform approximate Shor order-finding bound.
-
-`K` is chosen before `η`, so it is independent of the precision parameter.
-It may depend on the fixed instance data `qs`, `T`, `a`, `N`, `x`, `y`,
-`w`, `flag`, `b0`, and the fixed size/arithmetic hypotheses.
--/
-theorem Shor_correct_approx_uniform
-    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs]
-    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
-  ∃ K : ℝ, 0 ≤ K ∧
+theorem Shor_correct_approx_uniform_of_modExp_bound
+    [GateSemanticsFacts qs]
+    [IdealCtrlModMulExactSemantics qs]
+    (K : ℝ)
+    (hmodExp :
+      ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
+        ModExpConfig.ValidUnitState qs cfg ψ →
+        ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
+            qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
+          ≤ (tbits cfg.x : ℝ) * stepErr K η)
+    (T : ℕ → ℕ)
+    (hT : ContinuedFractionSearchComplete T) :
     ∀ (inst : ShorOrderFindingInstance)
       (x y w scratch : ExtReg) (flag : ℕ)
       (b0 : qs.Basis)
-      (_hm: regSize x.active = Nat.log2 (2 * inst.N^2))
+      (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))
       (_hn : regSize y.active = Nat.log2 (2 * inst.N))
       (η : ℝ)
       (hsetup : ShorApproxSetup qs η inst.N x y w scratch flag b0),
-      probability_of_success (qs := qs) (T := T) (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-        (x := x.active) (r := ord inst.a inst.N inst.coprime) (Q := ASize x.active)
-        (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) inst.a inst.N x y w scratch flag
-          hsetup.circuit_workspace hsetup.step4_workspace)
-        (ψ := qs.ket b0)
-      ≥
-        κ / (Nat.log2 inst.N : ℝ)^4
-        - 2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
-  classical
-  -- `K` comes from `modExpApprox_valid_dist_uniform qs` and depends only on `qs`,
-  -- so it is hoisted above `inst`/`w`/`flag`: one constant serves every instance
-  -- and precision.  This ordering is what lets a caller fix `K` before choosing
-  -- a precision level.
-  rcases modExpApprox_valid_dist_uniform (qs := qs) with
-    ⟨K, hK_nonneg, hmodExp⟩
-
-  refine ⟨K, hK_nonneg, ?_⟩
+      probability_of_success
+          (qs := qs) (T := T)
+          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+          (x := x.active)
+          (r := ord inst.a inst.N inst.coprime)
+          (Q := ASize x.active)
+          (evalC := qs.eval)
+          (C := orderFindingApprox inst.a inst.N x y w scratch flag
+            hsetup.circuit_workspace hsetup.step4_workspace)
+          (ψ := qs.ket b0)
+        ≥
+      κ / (Nat.log2 inst.N : ℝ)^4 -
+        2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
   intro inst x y w scratch flag b0 hm hn η hsetup
   let a := inst.a
   let N := inst.N
@@ -1322,7 +714,6 @@ theorem Shor_correct_approx_uniform
   have hmid :
       ‖qs.eval
           (modExpApproxValid
-            (Basis := qs.Basis)
             a N x.active y w scratch flag
             hsetup.circuit_workspace hsetup.step4_workspace)
           ψpre
@@ -1342,7 +733,6 @@ theorem Shor_correct_approx_uniform
       ‖qs.eval (IQFT x)
           (qs.eval
             (modExpApproxValid
-              (Basis := qs.Basis)
               a N x.active y w scratch flag
               hsetup.circuit_workspace hsetup.step4_workspace)
             ψpre)
@@ -1354,7 +744,6 @@ theorem Shor_correct_approx_uniform
       (qs := qs)
       (IQFT x)
       (modExpApproxValid
-        (Basis := qs.Basis)
         a N x.active y w scratch flag
         hsetup.circuit_workspace hsetup.step4_workspace)
       (modExpIdeal' (qs := qs) a N x.active y.active)
@@ -1363,8 +752,7 @@ theorem Shor_correct_approx_uniform
 
   have hdist_full :
       ‖qs.eval
-          (orderFindingApprox
-            (qs := qs) a N x y w scratch flag
+          (orderFindingApprox a N x y w scratch flag
             hsetup.circuit_workspace hsetup.step4_workspace)
           (qs.ket b0)
         -
@@ -1390,7 +778,7 @@ theorem Shor_correct_approx_uniform
         (verify := verify)
         (x := x.active) (r := r) (Q := Q)
         (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) a N x y w scratch flag
+        (C := orderFindingApprox a N x y w scratch flag
           hsetup.circuit_workspace hsetup.step4_workspace)
         (ψ := qs.ket b0)
       ≥
@@ -1408,7 +796,7 @@ theorem Shor_correct_approx_uniform
       x.active
       r
       Q
-      (orderFindingApprox (qs := qs) a N x y w scratch flag
+      (orderFindingApprox a N x y w scratch flag
         hsetup.circuit_workspace hsetup.step4_workspace)
       (orderFindingIdeal (qs := qs) a N x y)
       (qs.ket b0)
@@ -1438,7 +826,7 @@ theorem Shor_correct_approx_uniform
         (r := ord a N hgcd)
         (Q := ASize x.active)
         (evalC := qs.eval)
-        (C := orderFindingApprox (qs := qs) a N x y w scratch flag
+        (C := orderFindingApprox a N x y w scratch flag
           hsetup.circuit_workspace hsetup.step4_workspace)
         (ψ := qs.ket b0)
       ≥
@@ -1460,6 +848,37 @@ theorem Shor_correct_approx_uniform
           - 2 * (tbits x.active : ℝ) *
               Real.sqrt (2 * (K * η)) := by
           simp [ε, stepErr, mul_assoc]
+/--
+Uniform approximate Shor order-finding bound.
+
+`K` is chosen before `η`, so it is independent of the precision parameter.
+It may depend on the fixed instance data `qs`, `T`, `a`, `N`, `x`, `y`,
+`w`, `flag`, `b0`, and the fixed size/arithmetic hypotheses.
+-/
+theorem Shor_correct_approx_uniform
+    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs]
+    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
+  ∃ K : ℝ, 0 ≤ K ∧
+    ∀ (inst : ShorOrderFindingInstance)
+      (x y w scratch : ExtReg) (flag : ℕ)
+      (b0 : qs.Basis)
+      (_hm: regSize x.active = Nat.log2 (2 * inst.N^2))
+      (_hn : regSize y.active = Nat.log2 (2 * inst.N))
+      (η : ℝ)
+      (hsetup : ShorApproxSetup qs η inst.N x y w scratch flag b0),
+      probability_of_success (qs := qs) (T := T) (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+        (x := x.active) (r := ord inst.a inst.N inst.coprime) (Q := ASize x.active)
+        (evalC := qs.eval)
+        (C := orderFindingApprox inst.a inst.N x y w scratch flag
+          hsetup.circuit_workspace hsetup.step4_workspace)
+        (ψ := qs.ket b0)
+      ≥
+        κ / (Nat.log2 inst.N : ℝ)^4
+        - 2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+  obtain ⟨K, hK, _hK_le, hmodExp⟩ := modExpApprox_valid_dist_uniform (qs := qs)
+  refine ⟨K, hK, ?_⟩
+  exact Shor_correct_approx_uniform_of_modExp_bound
+    (qs := qs) K hmodExp T hT
 
 /-
 Lowering preserves the success probability exactly when the current
@@ -1486,7 +905,7 @@ lemma probability_of_success_lowerGate_eq
     (hclean : GateWorkspaceCleanState qs k hk ops G hworkspace ψ) :
     probability_of_success (qs := qs) (evalC := LowerGateClass.evalL (qs := qs))
         (T := T) (verify := verify) (x := x) (r := r) (Q := Q)
-        (C := lowerGate (Basis := qs.Basis) k hk ops G hworkspace) (ψ := ψ)
+        (C := lowerGate k hk ops G hworkspace) (ψ := ψ)
       =
     probability_of_success (qs := qs) (evalC := qs.eval)
         (T := T) (verify := verify) (x := x) (r := r) (Q := Q)
@@ -1494,7 +913,7 @@ lemma probability_of_success_lowerGate_eq
   have hEval :
       LowerGateClass.evalL
           (qs := qs)
-          (lowerGate (Basis := qs.Basis) k hk ops G hworkspace)
+          (lowerGate k hk ops G hworkspace)
           ψ
         =
       qs.eval G ψ :=
@@ -1510,7 +929,7 @@ lemma probability_of_success_lowerGate_eq
       ψ
       hclean
 
-  unfold probability_of_success measProbAfter
+  unfold probability_of_success MeasureClass.probMeas
   apply Finset.sum_congr rfl
   intro o ho
   rw [hEval]
@@ -1534,17 +953,17 @@ theorem orderFindingApproxLow_probability_eq
     (hmodWorkspace : ModMulCircuitWorkspaceOK y work)
     (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
     (hLowerWorkspace : GateWorkspaceOK lowering.ops
-      (orderFindingApprox qs a N x y work scratch flag hmodWorkspace hstep4))
+      (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4))
     (ψ : qs.State)
     (hclean : GateWorkspaceCleanState qs lowering.k lowering.hk lowering.ops
-        (orderFindingApprox qs a N x y work scratch flag hmodWorkspace hstep4)
+        (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
         hLowerWorkspace ψ)
     (r Q : ℕ) :
     probability_of_success
         (qs := qs)  (evalC := LowerGateClass.evalL (qs := qs))
         (T := T) (verify := verify) (x := x.active) (r := r)
         (Q := Q)
-        (C := orderFindingApproxLow qs
+        (C := orderFindingApproxLow
             lowering.k lowering.hk lowering.ops a N x y work scratch flag
             hmodWorkspace hstep4 hLowerWorkspace)
         (ψ := ψ)
@@ -1553,7 +972,7 @@ theorem orderFindingApproxLow_probability_eq
         (qs := qs) (evalC := qs.eval)
         (T := T) (verify := verify) (x := x.active) (r := r)
         (Q := Q)
-        (C := orderFindingApprox qs a N x y work scratch flag
+        (C := orderFindingApprox a N x y work scratch flag
           hmodWorkspace hstep4)
         (ψ := ψ) := by
   simpa only [orderFindingApproxLow] using
@@ -1570,66 +989,100 @@ theorem orderFindingApproxLow_probability_eq
       (r := r)
       (Q := Q)
       (G :=
-        orderFindingApprox
-          qs a N x y work scratch flag hmodWorkspace hstep4)
+        orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
       (hworkspace := hLowerWorkspace)
       (ψ := ψ)
       (hclean := hclean))
 
+theorem Shor_correct_approx_lowered_of_modExp_bound
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [IdealCtrlModMulExactSemantics qs]
+    (K : ℝ)
+    (hmodExp :
+      ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
+        ModExpConfig.ValidUnitState qs cfg ψ →
+        ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
+            qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
+          ≤ (tbits cfg.x : ℝ) * stepErr K η)
+    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)
+    (inst : ShorOrderFindingInstance)
+    (lowering : ShorLoweringSetup)
+    (x y work scratch : ExtReg) (flag : ℕ)
+    (b0 : qs.Basis)
+    (hm : regSize x.active = Nat.log2 (2 * inst.N^2))
+    (hn : regSize y.active = Nat.log2 (2 * inst.N))
+    (η : ℝ)
+    (hready : LoweredShorReady
+      qs lowering η inst.a inst.N x y work scratch flag b0) :
+    probability_of_success
+        (qs := qs) (T := T)
+        (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+        (x := x.active)
+        (r := ord inst.a inst.N inst.coprime)
+        (Q := ASize x.active)
+        (evalC := LowerGateClass.evalL (qs := qs))
+        (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
+          inst.a inst.N x y work scratch flag
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
+          hready.workspace)
+        (ψ := qs.ket b0)
+      ≥
+    κ / (Nat.log2 inst.N : ℝ)^4 -
+      2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+  calc
+    probability_of_success
+        (qs := qs) (T := T)
+        (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+        (x := x.active)
+        (r := ord inst.a inst.N inst.coprime)
+        (Q := ASize x.active)
+        (evalC := LowerGateClass.evalL (qs := qs))
+        (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
+          inst.a inst.N x y work scratch flag
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
+          hready.workspace)
+        (ψ := qs.ket b0)
+      =
+    probability_of_success
+        (qs := qs) (T := T)
+        (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+        (x := x.active)
+        (r := ord inst.a inst.N inst.coprime)
+        (Q := ASize x.active)
+        (evalC := qs.eval)
+        (C := orderFindingApprox inst.a inst.N x y work scratch flag
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace)
+        (ψ := qs.ket b0) := by
+      exact orderFindingApproxLow_probability_eq
+        (qs := qs)
+        (lowering := lowering)
+        (T := T)
+        (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+        (a := inst.a) (N := inst.N)
+        (x := x) (y := y) (work := work) (scratch := scratch) (flag := flag)
+        (hmodWorkspace :=
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace)
+        (hstep4 :=
+          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace)
+        (hLowerWorkspace := hready.workspace)
+        (ψ := qs.ket b0)
+        (hclean := hready.workspace_clean)
+        (r := ord inst.a inst.N inst.coprime)
+        (Q := ASize x.active)
+
+    _ ≥ κ / (Nat.log2 inst.N : ℝ)^4 -
+        2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+      exact Shor_correct_approx_uniform_of_modExp_bound
+        (qs := qs) K hmodExp T hT
+        inst x y work scratch flag b0 hm hn η
+        (ShorApproxSetupMinimal.toShorApproxSetup hready.approx)
 /-
 A lowered approximate Shor theorem needs a repository bridge deriving the
 whole-program lowering workspace and dynamic cleanliness facts for
 `orderFindingApprox`.  The current lowerer exposes those hypotheses, but this
 file does not yet contain the numerical allocation bridge from the Shor setup.
 -/
-
-/- At least half of the coprime classical choices are successful for the
-classical reduction, assuming `N` is odd, composite in the required sense, and
-not a prime power. -/
-theorem shors_probability_bound (N : ℕ)
-(h_odd : Odd N)
-(h_gt_one : N > 1)
-(h_not_prime_power : ∀ (p k : ℕ), Nat.Prime p → N ≠ p ^ k) :
-2 * (successful_choices N).card ≥ (valid_choices N).card := by {
-  -- Extract two distinct odd prime factors, then apply the counting bound for
-  -- unsuccessful choices.
-  obtain ⟨p, q, hp, hq, hpq, hpN, hqN⟩ := exists_two_distinct_prime_factors h_gt_one h_not_prime_power
-  have hp2 : p ≠ 2 := by
-    rintro rfl; obtain ⟨k, hk⟩ := h_odd; obtain ⟨m, hm⟩ := hpN; omega
-  have hq2 : q ≠ 2 := by
-    rintro rfl; obtain ⟨k, hk⟩ := h_odd; obtain ⟨m, hm⟩ := hqN; omega
-
-  have hvc := valid_choices_card_general h_gt_one
-  set S := (Finset.range N).filter (fun a => Nat.gcd a N = 1) with hS_def
-
-  have hS_card : S.card = Nat.totient N := by
-    unfold Nat.totient; congr 1
-    apply Finset.filter_congr; intro a _
-    show Nat.gcd a N = 1 ↔ Nat.Coprime N a; rw [Nat.gcd_comm]
-
-  have h_unsucc_bound :
-      2 * (S.filter (fun a => ¬is_successful_choice a N)).card ≤ Nat.totient N := by
-    have : S.filter (fun a => ¬is_successful_choice a N) =
-        (Finset.range N).filter (fun a => Nat.gcd a N = 1 ∧ ¬is_successful_choice a N) := by
-      rw [hS_def, Finset.filter_filter]
-    rw [this]; exact general_unsuccessful_bound hp hq hpq hp2 hq2 hpN hqN
-
-  have h_partition := Finset.card_filter_add_card_filter_not
-    (fun a => is_successful_choice a N) (s := S)
-
-  have h_succ_eq : successful_choices N = S.filter (fun a => is_successful_choice a N) := by
-    unfold successful_choices valid_choices
-    rw [Finset.filter_filter, hS_def, Finset.filter_filter]
-    apply Finset.filter_congr; intro a ha
-    rw [Finset.mem_range] at ha
-    constructor
-    · rintro ⟨⟨-, hg⟩, hs⟩; exact ⟨hg, hs⟩
-    · rintro ⟨hg, hs⟩
-      refine ⟨⟨?_, hg⟩, hs⟩
-      have ha0 : a ≠ 0 := by rintro rfl; simp at hg; omega
-      have ha1 : a ≠ 1 := fun h => by subst h; exact one_not_successful_choice _ hs
-      omega
-
-  rw [hvc, h_succ_eq]
-  omega
-}

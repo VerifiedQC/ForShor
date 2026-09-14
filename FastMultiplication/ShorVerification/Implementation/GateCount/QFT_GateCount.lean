@@ -1,5 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.GateCount.PhaseProduct.Main
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
 import FastMultiplication.ShorVerification.Implementation.GateCount.Lemmas.LowGateCount
 
 open Shor
@@ -107,14 +109,14 @@ lemma explicitQFTPhaseGateCount_eq_lowerGate
     {Basis : Type u}
     [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k)
-    (φ : ℝ) (x z : Reg)
+    (φ : Angle) (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (hsigned : SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1)) :
     LowGate.gateCount shorGateCostModel
         (lowerGateRec (standardPhaseProdUsingPlan k hk ops φ ws hsigned))
       =
     LowGate.gateCount shorGateCostModel
-        (lowerGate (Basis := Basis) k hk ops
+        (lowerGate k hk ops
           (Gate.PhaseProdUsing φ x z ws)
           (by simpa [GateWorkspaceOK, Gate.PhaseProdUsing] using hsigned)) := by
   simp [standardPhaseProdUsingPlan, Gate.PhaseProdUsing, lowerGate,
@@ -146,7 +148,7 @@ lemma explicitQFTPhaseGateCount_eq_signed
     explicitQFTPhaseGateCount (Basis := Basis) k hk ops r xWork zWork hworkspace hsize
         =
       LowGate.gateCount shorGateCostModel
-        (lowerGate (Basis := Basis) k hk ops
+        (lowerGate k hk ops
           (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws)
           hgate) := by
             simpa [explicitQFTPhaseGateCount, ws, hsigned, hgate] using
@@ -227,18 +229,30 @@ lemma explicitQFTGateCount_zero
 lemma explicitQFTGateCount_one
     {Basis : Type u}
     [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k)
     (r xWork zWork : Reg)
     (hworkspace : QFTWorkspaceOK ops r xWork zWork)
     (hone : regSize r = 1) :
-    explicitQFTGateCount (Basis := Basis) k hk ops r xWork zWork hworkspace = 1 := by
+    explicitQFTGateCount
+        (Basis := Basis)
+        k hk ops r xWork zWork hworkspace
+      = 1 := by
+
   have hplan :
-      standardQFTLoweringPlan k hk ops r xWork zWork hworkspace =
-        QFTLoweringPlan.singleton r hone := by
+      standardQFTLoweringPlan
+          k hk ops r xWork zWork hworkspace
+        =
+      QFTLoweringPlan.singleton r hone := by
     rw [standardQFTLoweringPlan]
     simp [hone]
-  simp [explicitQFTGateCount, hplan, lowerQFTPlan,
-    shorGateCostModel, phaseProductCostModel]
+
+  simp [
+    explicitQFTGateCount,
+    hplan,
+    lowerQFTPlan
+  ]
 
 end ExplicitCosts
 
@@ -309,7 +323,7 @@ lemma explicitQFTPhaseGateCount_eventually_le
           k hk ops r xWork zWork hworkspace hsize
         =
       LowGate.gateCount shorGateCostModel
-        (lowerGate (Basis := Basis) k hk ops
+        (lowerGate k hk ops
           (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws)
           hgate) := by
     simpa [explicitQFTPhaseGateCount, ws, hsigned, hgate] using
@@ -322,13 +336,23 @@ lemma explicitQFTPhaseGateCount_eventually_le
 /-- The fixed radix-reversal and split bookkeeping cost is linear in the QFT width. -/
 lemma qftSplitRadixGateCount_le
     (r : Reg) :
-    qftSplitRadixGateCount r ≤ 3 * regSize r := by
+    qftSplitRadixGateCount r ≤
+      3 * regSize r := by
+
   unfold qftSplitRadixGateCount qftHalfWidth
-  simp [LowGate.gateCount, shorGateCostModel, phaseProductCostModel,
-    radixReverseGateCount]
-  have hdiv : regSize r / 2 / 2 ≤ regSize r :=
-    (Nat.div_le_self _ _).trans (Nat.div_le_self _ _)
-  exact hdiv
+
+  simp only [
+    LowGate.gateCount,
+    shorGateCostModel_radixReverse,
+    radixReverseGateCount
+  ]
+
+  have hdiv :
+      regSize r / 2 / 2 ≤ regSize r :=
+    (Nat.div_le_self _ _).trans
+      (Nat.div_le_self _ _)
+
+  simp[splitM,hdiv]
 
 /-- The linear split/radix overhead is eventually absorbed by the PhaseProduct comparison rate. -/
 lemma qftSplitRadixGateCount_eventually_le

@@ -454,8 +454,7 @@ lemma shiftL_odd_preserves_basis_sources
   intro σS j hjodd hp v
   have hjeven : j ≠ evenCarrier k hk type := by
     intro h
-    have hp0 : parityDegree type k j % 2 = 0 := by
-      simpa [h] using parityDegree_evenCarrier_mod k hk type
+    have hp0 : parityDegree type k j % 2 = 0 := by simpa [h] using parityDegree_evenCarrier_mod k hk type
     omega
   simp [σS, State.shiftLReg, hjodd]
   have hreg := hpresE j hjeven
@@ -474,8 +473,7 @@ lemma carrierAdds_odd_after_even
   let odd := oddCarrier k hk type
   let σS := State.shiftLReg σE odd e
   have hbasis :
-      ∀ j, j ≠ odd → parityDegree type k j % 2 = 1 →
-        ∀ v, σS j v = State.start_state j v := by
+      ∀ j, j ≠ odd → parityDegree type k j % 2 = 1 → ∀ v, σS j v = State.start_state j v := by
     dsimp [σS, odd]
     exact shiftL_odd_preserves_basis_sources k hk type e hpresE
   rcases carrierAdds_run_effect_basis (k := k) (by omega) type e odd 1 σS hbasis
@@ -489,16 +487,14 @@ lemma carrierAdds_odd_after_even
     · simp [hsel]
       by_cases huo : u = oddCarrier k hk type
       · subst huo
-        have hodd_ne_even :
-            oddCarrier k hk type ≠ evenCarrier k hk type :=
+        have hodd_ne_even : oddCarrier k hk type ≠ evenCarrier k hk type :=
           Ne.symm (evenCarrier_ne_oddCarrier k hk type)
         have hσEodd := hpresE (oddCarrier k hk type) hodd_ne_even
         have hcoord := congrFun hσEodd (oddCarrier k hk type)
         rw [parityDegree_oddCarrier k hk type]
         simp [State.start_state, hcoord, twoPowInt]
       ·
-        have hodd_ne_even :
-            oddCarrier k hk type ≠ evenCarrier k hk type :=
+        have hodd_ne_even : oddCarrier k hk type ≠ evenCarrier k hk type :=
           Ne.symm (evenCarrier_ne_oddCarrier k hk type)
         have hσEodd := hpresE (oddCarrier k hk type) hodd_ne_even
         have hcoord := congrFun hσEodd u
@@ -509,8 +505,7 @@ lemma carrierAdds_odd_after_even
         have h1 := parityDegree_oddCarrier_mod k hk type
         omega
       ·
-        have hodd_ne_even :
-            oddCarrier k hk type ≠ evenCarrier k hk type :=
+        have hodd_ne_even : oddCarrier k hk type ≠ evenCarrier k hk type :=
           Ne.symm (evenCarrier_ne_oddCarrier k hk type)
         have hσEodd := hpresE (oddCarrier k hk type) hodd_ne_even
         have hcoord := congrFun hσEodd u
@@ -696,14 +691,11 @@ lemma generateParityPairBlock_ProgConsumesPts
   have hbuildWF : Prog.WellFormed build := by
     dsimp [build, buildEven, buildOdd, even, odd]
     exact parityBuild_WellFormed k hk type e
-  have hbuildC :
-      ProgConsumesPts (by omega) (State.start_state (k := k)) build [] :=
+  have hbuildC : ProgConsumesPts (by omega) (State.start_state (k := k)) build [] :=
     progConsumesPts_of_noPhase_run (k := k) (by omega) hbuildNP hrunBuild'
-  have hmatchPos :
-      matchesAt_pointRow_state (k := k) (by omega) σmid odd (positivePointOfPair type e) = true :=
+  have hmatchPos : matchesAt_pointRow_state (k := k) (by omega) σmid odd (positivePointOfPair type e) = true :=
     matchesAt_of_row_eq (k := k) (by omega) hposRow
-  have hmatchNeg :
-      matchesAt_pointRow_state (k := k) (by omega) σmid even (negativePointOfPair type e) = true :=
+  have hmatchNeg : matchesAt_pointRow_state (k := k) (by omega) σmid even (negativePointOfPair type e) = true :=
     matchesAt_of_row_eq (k := k) (by omega) hnegRow
   have hphaseC :
       ProgConsumesPts (by omega) σmid
@@ -724,13 +716,11 @@ lemma generateParityPairBlock_ProgConsumesPts
       run? (build ++ [valid_ops.phaseProduct odd, valid_ops.phaseProduct even])
           (State.start_state (k := k)) = some σmid := by
     simp [run?_append, hrunBuild', applyOp?]
-  have hcleanupRun :
-      run? (apply_Op_inverse build) σmid = some (State.start_state (k := k)) :=
+  have hcleanupRun : run? (apply_Op_inverse build) σmid = some (State.start_state (k := k)) :=
     State.run?_inverse_undoes_WF build hbuildWF (State.start_state (k := k)) σmid hrunBuild'
   have hcleanupNP : NoPhase (apply_Op_inverse build) :=
     apply_Op_inverse_NoPhase hbuildNP
-  have hcleanupC :
-      ProgConsumesPts (by omega) σmid (apply_Op_inverse build) [] :=
+  have hcleanupC : ProgConsumesPts (by omega) σmid (apply_Op_inverse build) [] :=
     progConsumesPts_of_noPhase_run (k := k) (by omega) hcleanupNP hcleanupRun
   simpa [generateParityPairBlock, even, odd, buildEven, buildOdd, build, List.append_assoc] using
     progConsumesPts_append (k := k) (by omega)
@@ -756,8 +746,7 @@ lemma generateParityPairBlock_returns_to_start
   have hbuildWF : Prog.WellFormed build := by
     dsimp [build, buildEven, buildOdd, even, odd]
     exact parityBuild_WellFormed k hk type e
-  have hcleanupRun :
-      run? (apply_Op_inverse build) σmid = some (State.start_state (k := k)) :=
+  have hcleanupRun : run? (apply_Op_inverse build) σmid = some (State.start_state (k := k)) :=
     State.run?_inverse_undoes_WF build hbuildWF (State.start_state (k := k)) σmid hrunBuild'
   change run? ((build ++ [valid_ops.phaseProduct odd, valid_ops.phaseProduct even]) ++
       apply_Op_inverse build) (State.start_state (k := k)) =
@@ -779,8 +768,7 @@ lemma start_zero_row_int0
       apply Fin.ext
       simpa using h0
     have hpos : 0 < u.val := Nat.pos_of_ne_zero hval
-    have hpow : (0 : ℤ) ^ u.val = 0 := by
-      exact zero_pow (Nat.ne_of_gt hpos)
+    have hpow : (0 : ℤ) ^ u.val = 0 := by exact zero_pow (Nat.ne_of_gt hpos)
     simp [State.start_state, expectedRow, hu, hpow]
 
 lemma start_last_row_frac0
@@ -847,8 +835,7 @@ lemma initialBuild_run_effect
         norm_num at hsel
       · simp [hur2]
   have hbasisOdd :
-      ∀ j, j ≠ r1 → parityDegree .integer k j % 2 = 1 →
-        ∀ v, σE j v = State.start_state j v := by
+      ∀ j, j ≠ r1 → parityDegree .integer k j % 2 = 1 → ∀ v, σE j v = State.start_state j v := by
     intro j hj1 hp v
     have hj2 : j ≠ r2 := by
       intro h
@@ -998,8 +985,7 @@ lemma generateParityInitialBlock_ProgConsumesPts
   have hbuildWF : Prog.WellFormed build := by
     dsimp [build, buildEven, buildOdd, r1, r2]
     exact initialBuild_WellFormed k hk
-  have hbuildC :
-      ProgConsumesPts (by omega) (State.start_state (k := k)) build [] :=
+  have hbuildC : ProgConsumesPts (by omega) (State.start_state (k := k)) build [] :=
     progConsumesPts_of_noPhase_run (k := k) (by omega) hbuildNP hrunBuild'
   have hm0 := matchesAt_of_row_eq (k := k) (by omega) (σ := σmid) (i := r0) (pt := .int 0) hrow0
   have hminf := matchesAt_of_row_eq (k := k) (by omega) (σ := σmid) (i := rlast) (pt := .frac 0) hrowLast
@@ -1029,13 +1015,11 @@ lemma generateParityInitialBlock_ProgConsumesPts
           valid_ops.phaseProduct r1, valid_ops.phaseProduct r2])
         (State.start_state (k := k)) = some σmid := by
     simp [run?_append, hrunBuild', applyOp?]
-  have hcleanupRun :
-      run? (apply_Op_inverse build) σmid = some (State.start_state (k := k)) :=
+  have hcleanupRun : run? (apply_Op_inverse build) σmid = some (State.start_state (k := k)) :=
     State.run?_inverse_undoes_WF build hbuildWF (State.start_state (k := k)) σmid hrunBuild'
   have hcleanupNP : NoPhase (apply_Op_inverse build) :=
     apply_Op_inverse_NoPhase hbuildNP
-  have hcleanupC :
-      ProgConsumesPts (by omega) σmid (apply_Op_inverse build) [] :=
+  have hcleanupC : ProgConsumesPts (by omega) σmid (apply_Op_inverse build) [] :=
     progConsumesPts_of_noPhase_run (k := k) (by omega) hcleanupNP hcleanupRun
   simpa [generateParityInitialBlock, r0, r1, r2, rlast, buildEven, buildOdd, build,
     List.append_assoc] using
@@ -1065,8 +1049,7 @@ lemma generateParityInitialBlock_returns_to_start
   have hbuildWF : Prog.WellFormed build := by
     dsimp [build, buildEven, buildOdd, r1, r2]
     exact initialBuild_WellFormed k hk
-  have hcleanupRun :
-      run? (apply_Op_inverse build) σmid = some (State.start_state (k := k)) :=
+  have hcleanupRun : run? (apply_Op_inverse build) σmid = some (State.start_state (k := k)) :=
     State.run?_inverse_undoes_WF build hbuildWF (State.start_state (k := k)) σmid hrunBuild'
   change run? ((build ++ [valid_ops.phaseProduct r0, valid_ops.phaseProduct rlast,
       valid_ops.phaseProduct r1, valid_ops.phaseProduct r2]) ++
@@ -1221,8 +1204,7 @@ lemma streamTail_even (q : ℕ) :
       simp
   | succ q ih =>
       have hrange :
-          List.range (2 * (q + 1)) =
-            List.range (2 * q) ++ [2 * q, 2 * q + 1] := by
+          List.range (2 * (q + 1)) = List.range (2 * q) ++ [2 * q, 2 * q + 1] := by
         rw [show 2 * (q + 1) = (2 * q + 1).succ by omega]
         rw [List.range_succ]
         rw [show 2 * q + 1 = (2 * q).succ by omega]
@@ -1239,8 +1221,7 @@ lemma streamTail_even (q : ℕ) :
 lemma streamTail_odd (q : ℕ) :
     (List.range (2 * q + 1)).map (fun n => streamPoint (4 + n)) =
       List.flatMap pairBlockPoints (List.range q) ++ [streamPoint (4 + 2 * q)] := by
-  have hrange :
-      List.range (2 * q + 1) = List.range (2 * q) ++ [2 * q] := by
+  have hrange : List.range (2 * q + 1) = List.range (2 * q) ++ [2 * q] := by
     rw [show 2 * q + 1 = (2 * q).succ by omega]
     exact List.range_succ
   simp [hrange, List.map_append, streamTail_even q]
@@ -1300,8 +1281,7 @@ lemma generatedPoints_split
           [] := by
   have hcount : mode.pointCount k = 4 + (mode.pointCount k - 4) := by
     cases mode <;> simp [ProductMode.pointCount] <;> omega
-  have hsub : 4 + (mode.pointCount k - 4) - 4 = mode.pointCount k - 4 := by
-    omega
+  have hsub : 4 + (mode.pointCount k - 4) - 4 = mode.pointCount k - 4 := by omega
   rw [generatedPoints, hcount]
   simpa [hsub] using generatedPoints_split_by_rem (mode.pointCount k - 4)
 
@@ -1320,21 +1300,17 @@ lemma generateParityForMode_ProgConsumesPts
   let pairsPts : List Point := List.flatMap pairBlockPoints (List.range pairCount)
   let singletonPt : Point := streamPoint (4 + 2 * pairCount)
   have hinitC :
-      ProgConsumesPts (by omega) (State.start_state)
-        (generateParityInitialBlock k hk) initPts := by
+      ProgConsumesPts (by omega) (State.start_state) (generateParityInitialBlock k hk) initPts := by
     simpa [initPts] using generateParityInitialBlock_ProgConsumesPts k hk
   have hinitRun :
-      run? (generateParityInitialBlock k hk) (State.start_state) =
-        some (State.start_state) :=
+      run? (generateParityInitialBlock k hk) (State.start_state) = some (State.start_state) :=
     generateParityInitialBlock_returns_to_start k hk
   have hpairsC :
-      ProgConsumesPts (by omega) (State.start_state)
-        (generateParityPairBlocks k hk pairCount) pairsPts := by
+      ProgConsumesPts (by omega) (State.start_state) (generateParityPairBlocks k hk pairCount) pairsPts := by
     simpa [pairsPts, pairCount] using
       generateParityPairBlocks_ProgConsumesPts k hk pairCount
   have hpairsRun :
-      run? (generateParityPairBlocks k hk pairCount) (State.start_state) =
-        some (State.start_state) :=
+      run? (generateParityPairBlocks k hk pairCount) (State.start_state) = some (State.start_state) :=
     generateParityPairBlocks_returns_to_start k hk pairCount
   have hprefixC :
       ProgConsumesPts (by omega) (State.start_state)
@@ -1370,8 +1346,7 @@ lemma generateParityForMode_ProgConsumesPts
           (σ := State.start_state) (σret := State.start_state)
           (a := initPts ++ pairsPts) (b := [singletonPt])
           hprefixC hprefixRun hsingleC
-    have hpts :
-        generatedPoints mode k = (initPts ++ pairsPts) ++ [singletonPt] := by
+    have hpts : generatedPoints mode k = (initPts ++ pairsPts) ++ [singletonPt] := by
       rw [generatedPoints_split mode k hk]
       simp [initPts, pairsPts, singletonPt, rem, pairCount, hodd]
     rw [hpts]

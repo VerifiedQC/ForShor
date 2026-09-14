@@ -1,180 +1,23 @@
-import FastMultiplication.ShorVerification.Implementation.Shor.Defs
-import FastMultiplication.ShorVerification.Implementation.QFT.Defs
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.LoweringCorrectness.Workspace
-
-namespace Shor
+import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Cleanliness
+import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
 
 /-!
 # Shor workspace budgets and clean-state predicates
 
-This file is the layer for the workspace directory. It names the static reserve
-budgets and the dynamic clean-state invariants used by
-`Workspace.ShorReadiness`.
+The dynamic clean-state preservation lemmas for the clean-state invariants
+declared in `Shor.Spec.Cleanliness`.
 
 Main declarations:
 
-* `shorWorkspaceNeed` computes the reserve budget for exponent, data, and
-  auxiliary registers.
-* `ShorWorkspaceLargeEnough` is the public static capacity assumption.
-* `ShorLoweringCleanState` is the clean-state invariant preserved by lowered
-  Shor stages after the data carry bit is allowed to be live.
-* `shorLoweringCleanState_ket` is the entry lemma that turns an initially clean
-  basis state into the lowered clean invariant.
+* `shorConcreteCleanState_ket` / `ShorConcreteCleanState.to_lowering` bridge
+  the concrete compiler-clean invariant to `ShorLoweringCleanState`.
+* `fullShorWorkspaceCleanState_ket` / `fullShorWorkspaceCleanState_to_carry`
+  do the same for the full (pre-carry) invariant.
+* `shorLoweringCleanState_ket` is the entry lemma that turns an initially
+  clean basis state into the lowered clean invariant.
 -/
-
-/-! =========================================================
-    Section 1: Static reserve budgets
-========================================================= -/
-
-/-! =========================================================
-    Section 2: Public workspace preconditions
-========================================================= -/
-
-/-! =========================================================
-    Section 3: Dynamic clean-state invariants
-
-    The main invariant for lowered readiness is `ShorLoweringCleanState`.
-    The older full/carry predicates are kept as small bridge names because
-    several imported correctness statements still expose them.
-========================================================= -/
-
-namespace ThreeRegsCleanState
-variable {qs : QSemantics} [RegEncoding qs.Basis] {r₁ r₂ r₃ : Reg}
-/-- Smart constructors delegating to `CleanClosure`, preserving call sites. -/
-theorem zero : ThreeRegsCleanState qs r₁ r₂ r₃ 0 := CleanClosure.zero
-theorem ket (b : qs.Basis) (h₁ : FreshZero r₁ b) (h₂ : FreshZero r₂ b)
-    (h₃ : FreshZero r₃ b) : ThreeRegsCleanState qs r₁ r₂ r₃ (qs.ket b) :=
-  CleanClosure.ket b ⟨h₁, h₂, h₃⟩
-theorem add {ψ φ : qs.State} (hψ : ThreeRegsCleanState qs r₁ r₂ r₃ ψ)
-    (hφ : ThreeRegsCleanState qs r₁ r₂ r₃ φ) :
-    ThreeRegsCleanState qs r₁ r₂ r₃ (ψ + φ) := CleanClosure.add hψ hφ
-theorem smul (a : ℂ) {ψ : qs.State} (hψ : ThreeRegsCleanState qs r₁ r₂ r₃ ψ) :
-    ThreeRegsCleanState qs r₁ r₂ r₃ (a • ψ) := CleanClosure.smul a hψ
-/-- Custom eliminator preserving the original 3-hypothesis `ket` shape
-(`| ket b h₁ h₂ h₃`) despite the generic single-predicate closure. -/
-@[induction_eliminator, cases_eliminator]
-def rec' {motive : (ψ : qs.State) → ThreeRegsCleanState qs r₁ r₂ r₃ ψ → Prop}
-    (zero : motive 0 ThreeRegsCleanState.zero)
-    (ket : ∀ (b : qs.Basis) (h₁ : FreshZero r₁ b) (h₂ : FreshZero r₂ b)
-        (h₃ : FreshZero r₃ b),
-        motive (qs.ket b) (ThreeRegsCleanState.ket b h₁ h₂ h₃))
-    (add : ∀ {ψ φ : qs.State} (hψ : ThreeRegsCleanState qs r₁ r₂ r₃ ψ)
-        (hφ : ThreeRegsCleanState qs r₁ r₂ r₃ φ),
-        motive ψ hψ → motive φ hφ → motive (ψ + φ) (ThreeRegsCleanState.add hψ hφ))
-    (smul : ∀ (a : ℂ) {ψ : qs.State} (hψ : ThreeRegsCleanState qs r₁ r₂ r₃ ψ),
-        motive ψ hψ → motive (a • ψ) (ThreeRegsCleanState.smul a hψ))
-    {ψ : qs.State} (h : ThreeRegsCleanState qs r₁ r₂ r₃ ψ) : motive ψ h := by
-  induction h with
-  | zero => exact zero
-  | ket b hconj => exact ket b hconj.1 hconj.2.1 hconj.2.2
-  | add hψ hφ ihψ ihφ => exact add hψ hφ ihψ ihφ
-  | smul a hψ ih => exact smul a hψ ih
-end ThreeRegsCleanState
-
-/--
-The invariant at entry to and exit from each modular-multiplication core.
--/
-abbrev FullShorWorkspaceCleanState
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (x data work : ExtReg) :
-    qs.State → Prop :=
-  ThreeRegsCleanState
-    qs
-    x.reserve
-    data.reserve
-    work.reserve
-
-namespace FullShorWorkspaceCleanState
-variable {qs : QSemantics} [RegEncoding qs.Basis] {x data work : ExtReg}
-@[induction_eliminator, cases_eliminator]
-def rec' {motive : (ψ : qs.State) → FullShorWorkspaceCleanState qs x data work ψ → Prop}
-    (zero : motive 0 ThreeRegsCleanState.zero)
-    (ket : ∀ (b : qs.Basis) (h₁ : FreshZero x.reserve b) (h₂ : FreshZero data.reserve b)
-        (h₃ : FreshZero work.reserve b),
-        motive (qs.ket b) (ThreeRegsCleanState.ket b h₁ h₂ h₃))
-    (add : ∀ {ψ φ : qs.State} (hψ : FullShorWorkspaceCleanState qs x data work ψ)
-        (hφ : FullShorWorkspaceCleanState qs x data work φ),
-        motive ψ hψ → motive φ hφ → motive (ψ + φ) (ThreeRegsCleanState.add hψ hφ))
-    (smul : ∀ (a : ℂ) {ψ : qs.State} (hψ : FullShorWorkspaceCleanState qs x data work ψ),
-        motive ψ hψ → motive (a • ψ) (ThreeRegsCleanState.smul a hψ))
-    {ψ : qs.State} (h : FullShorWorkspaceCleanState qs x data work ψ) : motive ψ h :=
-  ThreeRegsCleanState.rec' zero ket add smul h
-end FullShorWorkspaceCleanState
-
-/--
-The lowering-clean invariant used throughout lowered Shor readiness.
-
-The first bit of `data.reserve` is the algorithmic carry bit, so it is not part
-of the lowering workspace that must remain clean between modular-multiplication
-stages.
--/
-abbrev ShorLoweringCleanState
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (x data work : ExtReg) :
-    qs.State → Prop :=
-  ThreeRegsCleanState
-    qs
-    x.reserve
-    (data.reserve.drop 1)
-    work.reserve
-
-namespace ShorLoweringCleanState
-variable {qs : QSemantics} [RegEncoding qs.Basis] {x data work : ExtReg}
-@[induction_eliminator, cases_eliminator]
-def rec' {motive : (ψ : qs.State) → ShorLoweringCleanState qs x data work ψ → Prop}
-    (zero : motive 0 ThreeRegsCleanState.zero)
-    (ket : ∀ (b : qs.Basis) (h₁ : FreshZero x.reserve b)
-        (h₂ : FreshZero (data.reserve.drop 1) b) (h₃ : FreshZero work.reserve b),
-        motive (qs.ket b) (ThreeRegsCleanState.ket b h₁ h₂ h₃))
-    (add : ∀ {ψ φ : qs.State} (hψ : ShorLoweringCleanState qs x data work ψ)
-        (hφ : ShorLoweringCleanState qs x data work φ),
-        motive ψ hψ → motive φ hφ → motive (ψ + φ) (ThreeRegsCleanState.add hψ hφ))
-    (smul : ∀ (a : ℂ) {ψ : qs.State} (hψ : ShorLoweringCleanState qs x data work ψ),
-        motive ψ hψ → motive (a • ψ) (ThreeRegsCleanState.smul a hψ))
-    {ψ : qs.State} (h : ShorLoweringCleanState qs x data work ψ) : motive ψ h :=
-  ThreeRegsCleanState.rec' zero ket add smul h
-end ShorLoweringCleanState
-
-/-- The complete physical ownership of an extendable register, viewed as one
-ordinary register for zero-workspace invariants. -/
-def ExtReg.ownedReg (e : ExtReg) : Reg :=
-  Reg.append e.active e.reserve e.active_reserve_disjoint
-
-/-- The exponent reserve together with all Step-3/4 scratch storage.  Keeping
-the ordinary auxiliary reserve as the third clean register lets the existing
-phase-product readiness lemmas retain their exact workspace boundary. -/
-def exponentScratchCleanReg
-    (x scratch : ExtReg)
-    (hdisjoint : x.OwnedDisjoint scratch) : Reg :=
-  Reg.append x.reserve scratch.ownedReg (by
-    rw [Disjoint, List.disjoint_left]
-    intro q hqExponent hqScratch
-    rw [ExtReg.OwnedDisjoint, List.disjoint_left] at hdisjoint
-    apply hdisjoint
-    · rw [ExtReg.ownedQubits, List.mem_append]
-      exact Or.inr hqExponent
-    · simpa only [
-        ExtReg.ownedReg,
-        Reg.append,
-        ExtReg.ownedQubits
-      ] using hqScratch)
-
-/-- The compiler-clean invariant strengthened with the complete comparator
-scratch register.  It remains a single basis-span predicate, so Step 3 can
-soundly combine data-carry freshness with scratch cleanliness. -/
-abbrev ShorConcreteCleanState
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    (x data work scratch : ExtReg)
-    (hdisjoint : x.OwnedDisjoint scratch) :
-    qs.State → Prop :=
-  ThreeRegsCleanState
-    qs
-    (exponentScratchCleanReg x scratch hdisjoint)
-    (data.reserve.drop 1)
-    work.reserve
+namespace Shor
 
 private lemma freshZero_append
     {Basis : Type u}

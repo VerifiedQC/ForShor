@@ -1,4 +1,4 @@
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Assertions
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Assertions
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
 
 /-!
@@ -18,7 +18,8 @@ theorem modExpApprox_correct
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [IdealCtrlModMulExactSemantics qs] :
-    ModExpApproxValidDistUniform qs :=
-  modExpApprox_valid_dist_uniform qs
+    ModExpApproxValidDistUniform qs := by
+  obtain ⟨K, hK, _hK_le, hbound⟩ := modExpApprox_valid_dist_uniform qs
+  exact ⟨K, hK, hbound⟩
 
 end Shor

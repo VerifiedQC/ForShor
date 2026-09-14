@@ -1,4 +1,11 @@
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Step2Bound
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Config
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Model
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Step1QPE
+import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
 
 open Shor
 
@@ -21,7 +28,7 @@ The proof is organized into four layers:
 -/
 
 /-! =========================================================
-    Section 1: Step-3 arithmetic reduction
+    Step-3 arithmetic reduction
 
     Reduce the Step-3 comparator/subtractor stage to a plain modular
     multiplication on the relevant basis labels.
@@ -70,38 +77,22 @@ lemma alg1_step3_reduces_to_modmul
     rw [hs_eq]
     omega
 
-  have hy_mod :
-      alg1OutputValue cfg b = s % N := by
+  have hy_mod : alg1OutputValue cfg b = s % N := by
     rw [hs_eq]
     dsimp [x, r, N]
     by_cases hctrl : RegEncoding.bit cfg.ctrl b
     ·
-      simp only [
-        alg1OutputValue,
-        alg1TargetResidue,
-        hctrl,
-        if_true
-      ]
-      exact
-        alg1_output_mod
-          cfg.c
-          cfg.env.N
-          (RegEncoding.toNat cfg.env.data.active b)
-          (Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one)
+      simp only [alg1OutputValue, alg1TargetResidue, hctrl, if_true]
+      exact alg1_output_mod cfg.c cfg.env.N (RegEncoding.toNat cfg.env.data.active b)
+        (Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one)
     ·
-      simp [
-        alg1OutputValue,
-        alg1TargetResidue,
-        hctrl,
-        Nat.mod_eq_of_lt hb.1
-      ]
+      simp [alg1OutputValue, alg1TargetResidue, hctrl, Nat.mod_eq_of_lt hb.1]
 
   by_cases hover : alg1Overflow cfg b
   ·
     have hover' : N ≤ s := by
       simpa [alg1Overflow, s, N] using hover
-    have hmod :
-        s % N = s - N := by
+    have hmod : s % N = s - N := by
       calc
         s % N = (s - N) % N := Nat.mod_eq_sub_mod hover'
         _ = s - N := Nat.mod_eq_of_lt (by omega)
@@ -109,8 +100,7 @@ lemma alg1_step3_reduces_to_modmul
   ·
     have hover' : ¬ N ≤ s := by
       simpa [alg1Overflow, s, N] using hover
-    have hmod :
-        s % N = s := Nat.mod_eq_of_lt (lt_of_not_ge hover')
+    have hmod : s % N = s := Nat.mod_eq_of_lt (lt_of_not_ge hover')
     simp [hover, hy_mod, hmod, s, N]
 
 /-- Writing a register twice retains only the final written value. -/
@@ -231,13 +221,8 @@ private lemma freshFor_grow_one_of_freshFor_two
   have hr2 : regSize r2 = 2 := by
     simpa [r2] using Gate.ExtReg.newBits_size e 2 hcap
   let m : SplitPoint r2 := ⟨1, by omega⟩
-  have hsplit :=
-    RegEncoding.toNat_split
-      (r := r2)
-      (m := m)
-      (b := b)
-  have hright :
-      splitRight r2 m = (e.grow 1).newBits 1 := by
+  have hsplit := RegEncoding.toNat_split (r := r2) (m := m) (b := b)
+  have hright : splitRight r2 m = (e.grow 1).newBits 1 := by
     simp [
       r2,
       m,
@@ -254,9 +239,7 @@ private lemma freshFor_grow_one_of_freshFor_two
   dsimp at hsplit
   rw [hr2zero] at hsplit
   have hzero : RegEncoding.toNat (splitRight r2 m) b = 0 := by
-    have hmul :
-        ASize (splitLeft r2 m) *
-            RegEncoding.toNat (splitRight r2 m) b = 0 := by
+    have hmul : ASize (splitLeft r2 m) * RegEncoding.toNat (splitRight r2 m) b = 0 := by
       omega
     rcases Nat.mul_eq_zero.mp hmul with hleft | hrightZero
     · have hpos : 0 < ASize (splitLeft r2 m) := by
@@ -274,7 +257,7 @@ private lemma disjoint_of_qubitReg_outside
     (disjoint_qubitReg_of_outside (q := q) (r := r) h)
 
 /-! =========================================================
-    Section 2: Exact basis-state semantics of steps 3 and 4
+    Exact basis-state semantics of steps 3 and 4
 
     Register-disjointness helpers and the core computation giving the exact
     post-Step-3/4 basis state on a clean input.
@@ -331,8 +314,7 @@ lemma alg1_step34_reference_exact_core
 
     apply cfg.layout.2.1
 
-    have howned :
-        cfg.flag ∈ (cfg.env.data.grow 1).ownedQubits :=
+    have howned : cfg.flag ∈ (cfg.env.data.grow 1).ownedQubits :=
       List.mem_append_left _ hq
 
     simpa [Gate.ExtReg.ownedQubits_grow] using howned
@@ -387,8 +369,7 @@ lemma alg1_step34_reference_exact_core
       RegEncoding.writeNat flagReg cmp
         (RegEncoding.writeNat xext red b2)
 
-    have hb_good :
-        GoodModMulBasisInput
+    have hb_good : GoodModMulBasisInput
           qs cfg.env.N cfg.env.data cfg.env.work cfg.flag b :=
       tr.input_good b hb
 
@@ -397,8 +378,7 @@ lemma alg1_step34_reference_exact_core
         alg1Step2Value_lt_dataCarry_capacity cfg b hb_good
 
     have hy_cap : y < ASize xext := by
-      have hy_data :
-          y < ASize cfg.env.data.active := by
+      have hy_data : y < ASize cfg.env.data.active := by
         simpa [y] using
           alg1OutputValue_lt_data_capacity cfg b hb_good
 
@@ -412,8 +392,7 @@ lemma alg1_step34_reference_exact_core
             1
             cfg.env.circuit_workspace.data_canGrow_one
 
-      have hle :
-          ASize cfg.env.data.active ≤ ASize xext := by
+      have hle : ASize cfg.env.data.active ≤ ASize xext := by
         unfold ASize
         rw [hwidth, pow_succ]
         omega
@@ -429,17 +408,14 @@ lemma alg1_step34_reference_exact_core
       exact hy_cap
 
     have hs_lt_twoN : s < 2 * cfg.env.N := by
-      have hx :
-          RegEncoding.toNat cfg.env.data.active b < cfg.env.N :=
+      have hx : RegEncoding.toNat cfg.env.data.active b < cfg.env.N :=
         hb_good.1
-      have hr :
-          alg1TargetResidue cfg b < cfg.env.N :=
+      have hr : alg1TargetResidue cfg b < cfg.env.N :=
         alg1TargetResidue_lt_N cfg b
       dsimp [s, alg1Step2Value]
       omega
 
-    have hflag_clean_b2 :
-        RegEncoding.toNat flagReg b2 = 0 := by
+    have hflag_clean_b2 : RegEncoding.toNat flagReg b2 = 0 := by
       calc
         RegEncoding.toNat flagReg b2
             =
@@ -457,15 +433,13 @@ lemma alg1_step34_reference_exact_core
         _ = 0 := by
             simpa [flagReg] using hb_good.2.2.2.2
 
-    have hx_b2 :
-        RegEncoding.toNat xext b2 = s := by
+    have hx_b2 : RegEncoding.toNat xext b2 = s := by
       dsimp [b2]
       exact
         RegEncoding.toNat_writeNat_of_lt
           xext s w0 hs_cap
 
-    have hstep3 :
-        qs.eval
+    have hstep3 : qs.eval
             (step3 cfg.env.N (cfg.env.data.grow 1)
               cfg.env.scratch cfg.flag)
             (qs.ket b2)
@@ -485,15 +459,13 @@ lemma alg1_step34_reference_exact_core
         b3, red, cmp, flagReg, xext, hx_b2, s
       ] using hraw
 
-    have hx_after_x :
-        RegEncoding.toNat xext
+    have hx_after_x : RegEncoding.toNat xext
             (RegEncoding.writeNat xext red b2)
           =
         red :=
       RegEncoding.toNat_writeNat_of_lt xext red b2 hred_cap
 
-    have hx_b3 :
-        RegEncoding.toNat xext b3 = y := by
+    have hx_b3 : RegEncoding.toNat xext b3 = y := by
       calc
         RegEncoding.toNat xext b3
             =
@@ -508,8 +480,7 @@ lemma alg1_step34_reference_exact_core
         _ = red := hx_after_x
         _ = y := hred_eq_y
 
-    have hwork_b2 :
-        RegEncoding.toNat cfg.env.work.active b2 = t.1 := by
+    have hwork_b2 : RegEncoding.toNat cfg.env.work.active b2 = t.1 := by
       calc
         RegEncoding.toNat cfg.env.work.active b2
             =
@@ -524,8 +495,7 @@ lemma alg1_step34_reference_exact_core
               RegEncoding.toNat_writeNat_of_lt
                 cfg.env.work.active t.1 b t.isLt
 
-    have hwork_after_x :
-        RegEncoding.toNat cfg.env.work.active
+    have hwork_after_x : RegEncoding.toNat cfg.env.work.active
             (RegEncoding.writeNat xext red b2)
           =
         t.1 := by
@@ -539,8 +509,7 @@ lemma alg1_step34_reference_exact_core
                 xext cfg.env.work.active hXW b2 red
         _ = t.1 := hwork_b2
 
-    have hwork_b3 :
-        RegEncoding.toNat cfg.env.work.active b3 = t.1 := by
+    have hwork_b3 : RegEncoding.toNat cfg.env.work.active b3 = t.1 := by
       calc
         RegEncoding.toNat cfg.env.work.active b3
             =
@@ -554,8 +523,7 @@ lemma alg1_step34_reference_exact_core
                 cmp
         _ = t.1 := hwork_after_x
 
-    have hflag_b3 :
-        RegEncoding.toNat flagReg b3 = cmp := by
+    have hflag_b3 : RegEncoding.toNat flagReg b3 = cmp := by
       dsimp [b3]
       apply RegEncoding.toNat_writeNat_of_lt
       dsimp [
@@ -576,8 +544,7 @@ lemma alg1_step34_reference_exact_core
             1
           else
             0) := by
-      have hcross :
-          (RegEncoding.toNat xext b3 * ASize cfg.env.work.active
+      have hcross : (RegEncoding.toNat xext b3 * ASize cfg.env.work.active
                 < cfg.env.N * RegEncoding.toNat cfg.env.work.active b3)
             ↔
           alg1Overflow cfg b := by
@@ -591,67 +558,56 @@ lemma alg1_step34_reference_exact_core
       dsimp [cmp]
       by_cases hover : alg1Overflow cfg b
       ·
-        have hcross_true :
-            RegEncoding.toNat xext b3 * ASize cfg.env.work.active
+        have hcross_true : RegEncoding.toNat xext b3 * ASize cfg.env.work.active
                 < cfg.env.N * RegEncoding.toNat cfg.env.work.active b3 :=
           hcross.mpr hover
         simp [hover, hcross_true]
       ·
-        have hcross_false :
-            ¬ RegEncoding.toNat xext b3 * ASize cfg.env.work.active
+        have hcross_false : ¬ RegEncoding.toNat xext b3 * ASize cfg.env.work.active
                 < cfg.env.N * RegEncoding.toNat cfg.env.work.active b3 := by
           intro h
           exact hover (hcross.mp h)
         simp [hover, hcross_false]
 
-    have hDataWorkOwned :
-        ExtReg.OwnedDisjoint
+    have hDataWorkOwned : ExtReg.OwnedDisjoint
           (cfg.env.data.grow 1) cfg.env.work :=
       cfg.step4_workspace.data_work_disjoint
 
-    have hWorkDataOwned :
-        ExtReg.OwnedDisjoint
+    have hWorkDataOwned : ExtReg.OwnedDisjoint
           cfg.env.work (cfg.env.data.grow 1) := by
       exact List.Disjoint.symm hDataWorkOwned
 
-    have hDataScratchOwned :
-        ExtReg.OwnedDisjoint
+    have hDataScratchOwned : ExtReg.OwnedDisjoint
           (cfg.env.data.grow 1) cfg.env.scratch :=
       cfg.step4_workspace.data_scratch_disjoint
 
-    have hScratchDataOwned :
-        ExtReg.OwnedDisjoint
+    have hScratchDataOwned : ExtReg.OwnedDisjoint
           cfg.env.scratch (cfg.env.data.grow 1) := by
       exact List.Disjoint.symm hDataScratchOwned
 
-    have hWorkScratchOwned :
-        ExtReg.OwnedDisjoint
+    have hWorkScratchOwned : ExtReg.OwnedDisjoint
           cfg.env.work cfg.env.scratch :=
       cfg.step4_workspace.work_scratch_disjoint
 
-    have hScratchWorkOwned :
-        ExtReg.OwnedDisjoint
+    have hScratchWorkOwned : ExtReg.OwnedDisjoint
           cfg.env.scratch cfg.env.work := by
       exact List.Disjoint.symm hWorkScratchOwned
 
-    have hDataNewW :
-        Shor.Disjoint
+    have hDataNewW : Shor.Disjoint
           ((cfg.env.data.grow 1).newBits 1)
           cfg.env.work.active :=
       disjoint_newBits_active_of_owned
         (cfg.env.data.grow 1) cfg.env.work 1
         hDataWorkOwned
 
-    have hDataNewX :
-        Shor.Disjoint
+    have hDataNewX : Shor.Disjoint
           ((cfg.env.data.grow 1).newBits 1)
           xext := by
       simpa [xext] using
         disjoint_newBits_active_self
           (cfg.env.data.grow 1) 1
 
-    have hflagDataNew_out :
-        QubitOutside cfg.flag
+    have hflagDataNew_out : QubitOutside cfg.flag
           ((cfg.env.data.grow 1).newBits 1) := by
       intro hq
       exact cfg.step4_workspace.flag_not_data
@@ -659,14 +615,12 @@ lemma alg1_step34_reference_exact_core
           rw [ExtReg.ownedQubits, List.mem_append]
           exact Or.inr (List.mem_of_mem_take hq))
 
-    have hDataNewFlag :
-        Shor.Disjoint
+    have hDataNewFlag : Shor.Disjoint
           ((cfg.env.data.grow 1).newBits 1)
           flagReg :=
       disjoint_of_qubitReg_outside hflagDataNew_out
 
-    have hWorkNewX :
-        Shor.Disjoint
+    have hWorkNewX : Shor.Disjoint
           (cfg.env.work.newBits 1) xext := by
       simpa [xext] using
         disjoint_newBits_active_of_owned
@@ -675,8 +629,7 @@ lemma alg1_step34_reference_exact_core
           1
           hWorkDataOwned
 
-    have hflagWorkNew_out :
-        QubitOutside cfg.flag
+    have hflagWorkNew_out : QubitOutside cfg.flag
           (cfg.env.work.newBits 1) := by
       intro hq
       exact cfg.step4_workspace.flag_not_work
@@ -684,22 +637,19 @@ lemma alg1_step34_reference_exact_core
           rw [ExtReg.ownedQubits, List.mem_append]
           exact Or.inr (List.mem_of_mem_take hq))
 
-    have hWorkNewFlag :
-        Shor.Disjoint
+    have hWorkNewFlag : Shor.Disjoint
           (cfg.env.work.newBits 1)
           flagReg :=
       disjoint_of_qubitReg_outside hflagWorkNew_out
 
-    have hScratchNewW :
-        Shor.Disjoint
+    have hScratchNewW : Shor.Disjoint
           (cfg.env.scratch.newBits 1)
           cfg.env.work.active :=
       disjoint_newBits_active_of_owned
         cfg.env.scratch cfg.env.work 1
         hScratchWorkOwned
 
-    have hScratchNewX :
-        Shor.Disjoint
+    have hScratchNewX : Shor.Disjoint
           (cfg.env.scratch.newBits 1)
           xext := by
       simpa [xext] using
@@ -709,8 +659,7 @@ lemma alg1_step34_reference_exact_core
           1
           hScratchDataOwned
 
-    have hflagScratchNew_out :
-        QubitOutside cfg.flag
+    have hflagScratchNew_out : QubitOutside cfg.flag
           (cfg.env.scratch.newBits 1) := by
       intro hq
       exact cfg.step4_workspace.flag_not_scratch
@@ -718,21 +667,18 @@ lemma alg1_step34_reference_exact_core
           rw [ExtReg.ownedQubits, List.mem_append]
           exact Or.inr (List.mem_of_mem_take hq))
 
-    have hScratchNewFlag :
-        Shor.Disjoint
+    have hScratchNewFlag : Shor.Disjoint
           (cfg.env.scratch.newBits 1)
           flagReg :=
       disjoint_of_qubitReg_outside hflagScratchNew_out
 
-    have hScratchW :
-        Shor.Disjoint
+    have hScratchW : Shor.Disjoint
           cfg.env.scratch.active
           cfg.env.work.active :=
       disjoint_active_active_of_owned
         cfg.env.scratch cfg.env.work hScratchWorkOwned
 
-    have hScratchX :
-        Shor.Disjoint
+    have hScratchX : Shor.Disjoint
           cfg.env.scratch.active xext := by
       simpa [xext] using
         disjoint_active_active_of_owned
@@ -740,51 +686,44 @@ lemma alg1_step34_reference_exact_core
           (cfg.env.data.grow 1)
           hScratchDataOwned
 
-    have hflagScratch_out :
-        QubitOutside cfg.flag cfg.env.scratch.active := by
+    have hflagScratch_out : QubitOutside cfg.flag cfg.env.scratch.active := by
       intro hq
       exact cfg.step4_workspace.flag_not_scratch
         (by
           rw [ExtReg.ownedQubits, List.mem_append]
           exact Or.inl hq)
 
-    have hScratchFlag :
-        Shor.Disjoint cfg.env.scratch.active flagReg :=
+    have hScratchFlag : Shor.Disjoint cfg.env.scratch.active flagReg :=
       disjoint_of_qubitReg_outside hflagScratch_out
 
-    have hdataFresh0 :
-        (cfg.env.data.grow 1).FreshFor 1 b :=
+    have hdataFresh0 : (cfg.env.data.grow 1).FreshFor 1 b :=
       freshFor_grow_one_of_freshFor_two
         cfg.env.data b
         cfg.env.circuit_workspace.1
         hb_good.2.1
 
-    have hdataFresh_w0 :
-        (cfg.env.data.grow 1).FreshFor 1 w0 := by
+    have hdataFresh_w0 : (cfg.env.data.grow 1).FreshFor 1 w0 := by
       dsimp [w0]
       exact freshFor_writeNat_of_disjoint
         (cfg.env.data.grow 1) 1
         cfg.env.work.active t.1 b
         hDataNewW hdataFresh0
 
-    have hdataFresh_b2 :
-        (cfg.env.data.grow 1).FreshFor 1 b2 := by
+    have hdataFresh_b2 : (cfg.env.data.grow 1).FreshFor 1 b2 := by
       dsimp [b2]
       exact freshFor_writeNat_of_disjoint
         (cfg.env.data.grow 1) 1
         xext s w0
         hDataNewX hdataFresh_w0
 
-    have hdataFresh_red :
-        (cfg.env.data.grow 1).FreshFor 1
+    have hdataFresh_red : (cfg.env.data.grow 1).FreshFor 1
           (RegEncoding.writeNat xext red b2) :=
       freshFor_writeNat_of_disjoint
         (cfg.env.data.grow 1) 1
         xext red b2
         hDataNewX hdataFresh_b2
 
-    have hdataFresh_b3 :
-        (cfg.env.data.grow 1).FreshFor 1 b3 := by
+    have hdataFresh_b3 : (cfg.env.data.grow 1).FreshFor 1 b3 := by
       dsimp [b3]
       exact freshFor_writeNat_of_disjoint
         (cfg.env.data.grow 1) 1
@@ -792,31 +731,27 @@ lemma alg1_step34_reference_exact_core
         (RegEncoding.writeNat xext red b2)
         hDataNewFlag hdataFresh_red
 
-    have hworkFresh_w0 :
-        cfg.env.work.FreshFor 1 w0 := by
+    have hworkFresh_w0 : cfg.env.work.FreshFor 1 w0 := by
       dsimp [w0]
       exact ExtReg.freshFor_write_active
         cfg.env.work 1 t.1 b
         hb_good.2.2.2.1
 
-    have hworkFresh_b2 :
-        cfg.env.work.FreshFor 1 b2 := by
+    have hworkFresh_b2 : cfg.env.work.FreshFor 1 b2 := by
       dsimp [b2]
       exact freshFor_writeNat_of_disjoint
         cfg.env.work 1
         xext s w0
         hWorkNewX hworkFresh_w0
 
-    have hworkFresh_red :
-        cfg.env.work.FreshFor 1
+    have hworkFresh_red : cfg.env.work.FreshFor 1
           (RegEncoding.writeNat xext red b2) :=
       freshFor_writeNat_of_disjoint
         cfg.env.work 1
         xext red b2
         hWorkNewX hworkFresh_b2
 
-    have hworkFresh_b3 :
-        cfg.env.work.FreshFor 1 b3 := by
+    have hworkFresh_b3 : cfg.env.work.FreshFor 1 b3 := by
       dsimp [b3]
       exact freshFor_writeNat_of_disjoint
         cfg.env.work 1
@@ -824,8 +759,7 @@ lemma alg1_step34_reference_exact_core
         (RegEncoding.writeNat xext red b2)
         hWorkNewFlag hworkFresh_red
 
-    have hscratchFresh_w0 :
-        cfg.env.scratch.FreshFor 1 w0 := by
+    have hscratchFresh_w0 : cfg.env.scratch.FreshFor 1 w0 := by
       dsimp [w0]
       exact freshFor_writeNat_of_disjoint
         cfg.env.scratch 1
@@ -833,24 +767,21 @@ lemma alg1_step34_reference_exact_core
         hScratchNewW
         (tr.scratch_fresh b hb)
 
-    have hscratchFresh_b2 :
-        cfg.env.scratch.FreshFor 1 b2 := by
+    have hscratchFresh_b2 : cfg.env.scratch.FreshFor 1 b2 := by
       dsimp [b2]
       exact freshFor_writeNat_of_disjoint
         cfg.env.scratch 1
         xext s w0
         hScratchNewX hscratchFresh_w0
 
-    have hscratchFresh_red :
-        cfg.env.scratch.FreshFor 1
+    have hscratchFresh_red : cfg.env.scratch.FreshFor 1
           (RegEncoding.writeNat xext red b2) :=
       freshFor_writeNat_of_disjoint
         cfg.env.scratch 1
         xext red b2
         hScratchNewX hscratchFresh_b2
 
-    have hscratchFresh_b3 :
-        cfg.env.scratch.FreshFor 1 b3 := by
+    have hscratchFresh_b3 : cfg.env.scratch.FreshFor 1 b3 := by
       dsimp [b3]
       exact freshFor_writeNat_of_disjoint
         cfg.env.scratch 1
@@ -858,8 +789,7 @@ lemma alg1_step34_reference_exact_core
         (RegEncoding.writeNat xext red b2)
         hScratchNewFlag hscratchFresh_red
 
-    have hscratchZero_w0 :
-        RegEncoding.toNat cfg.env.scratch.active w0 = 0 := by
+    have hscratchZero_w0 : RegEncoding.toNat cfg.env.scratch.active w0 = 0 := by
       dsimp [w0]
       exact toNat_zero_writeNat_of_disjoint
         cfg.env.scratch.active
@@ -868,8 +798,7 @@ lemma alg1_step34_reference_exact_core
         hScratchW
         (tr.scratch_zero b hb)
 
-    have hscratchZero_b2 :
-        RegEncoding.toNat cfg.env.scratch.active b2 = 0 := by
+    have hscratchZero_b2 : RegEncoding.toNat cfg.env.scratch.active b2 = 0 := by
       dsimp [b2]
       exact toNat_zero_writeNat_of_disjoint
         cfg.env.scratch.active
@@ -877,8 +806,7 @@ lemma alg1_step34_reference_exact_core
         s w0
         hScratchX hscratchZero_w0
 
-    have hscratchZero_red :
-        RegEncoding.toNat cfg.env.scratch.active
+    have hscratchZero_red : RegEncoding.toNat cfg.env.scratch.active
           (RegEncoding.writeNat xext red b2) = 0 :=
       toNat_zero_writeNat_of_disjoint
         cfg.env.scratch.active
@@ -886,8 +814,7 @@ lemma alg1_step34_reference_exact_core
         red b2
         hScratchX hscratchZero_b2
 
-    have hscratchZero_b3 :
-        RegEncoding.toNat cfg.env.scratch.active b3 = 0 := by
+    have hscratchZero_b3 : RegEncoding.toNat cfg.env.scratch.active b3 = 0 := by
       dsimp [b3]
       exact toNat_zero_writeNat_of_disjoint
         cfg.env.scratch.active
@@ -896,8 +823,7 @@ lemma alg1_step34_reference_exact_core
         (RegEncoding.writeNat xext red b2)
         hScratchFlag hscratchZero_red
 
-    have hstep4 :
-        qs.eval
+    have hstep4 : qs.eval
             (step4
               cfg.env.N
               (cfg.env.data.grow 1)
@@ -928,8 +854,7 @@ lemma alg1_step34_reference_exact_core
             simpa [xext] using hcmp_eq_cross)
       simpa [flagReg] using hraw
 
-    have hfinal_clean :
-        RegEncoding.toNat flagReg
+    have hfinal_clean : RegEncoding.toNat flagReg
           (RegEncoding.writeNat xext y w0) = 0 := by
       calc
         RegEncoding.toNat flagReg
@@ -948,16 +873,14 @@ lemma alg1_step34_reference_exact_core
         _ = 0 := by
             simpa [flagReg] using hb_good.2.2.2.2
 
-    have hwrite_x_simpl :
-        RegEncoding.writeNat xext red b2
+    have hwrite_x_simpl : RegEncoding.writeNat xext red b2
           =
         RegEncoding.writeNat xext y w0 := by
       dsimp [b2]
       rw [hred_eq_y]
       exact writeNat_overwrite_same xext y s w0
 
-    have hclear :
-        RegEncoding.writeNat flagReg 0 b3
+    have hclear : RegEncoding.writeNat flagReg 0 b3
           =
         RegEncoding.writeNat xext y w0 := by
       calc
@@ -1117,7 +1040,7 @@ lemma alg1_step34_reference_exact_core
       simp [Alg1Trace.afterStep34Ref, xext]
 
 /-! =========================================================
-    Section 3: Public Step-3/4 exactness theorem
+    Public Step-3/4 exactness theorem
 
     The public statement: Steps 3 and 4 together act exactly as specified on the
     valid-input subspace.

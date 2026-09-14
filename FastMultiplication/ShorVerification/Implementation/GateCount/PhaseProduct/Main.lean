@@ -1,5 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.GateCount.PhaseProduct.Lemmas
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Defs
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Widths
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 
 namespace Shor
 
@@ -152,7 +154,6 @@ theorem cPhaseProductGateCountBound_of_programOK
         =
       LowGate.gateCount shorGateCostModel
         (lowerGate
-          (Basis := Basis)
           k hk ops
           (Gate.PhaseProdUsing φ x z ws)
           hunsignedWorkspace) := by
@@ -165,7 +166,6 @@ theorem cPhaseProductGateCountBound_of_programOK
   have hb' :
       (LowGate.gateCount shorGateCostModel
           (lowerGate
-            (Basis := Basis)
             k hk ops
             (Gate.PhaseProdUsing φ x z ws)
             hunsignedWorkspace) : ℝ)
@@ -192,7 +192,6 @@ theorem cPhaseProductGateCountBound_of_programOK
       5 *
         (LowGate.gateCount shorGateCostModel
           (lowerGate
-            (Basis := Basis)
             k hk ops
             (Gate.PhaseProdUsing φ x z ws)
             hunsignedWorkspace) : ℝ) := by

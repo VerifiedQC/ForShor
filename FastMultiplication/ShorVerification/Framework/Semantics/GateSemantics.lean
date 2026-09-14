@@ -146,22 +146,22 @@ class PhaseSemantics
   [GateSemanticsCore qs] : Type where
 
   eval_SignedPhaseProd_ket :
-    ∀ (phi : ℝ) (x z : ExtReg) (b : qs.Basis),
+    ∀ (phi : Angle) (x z : ExtReg) (b : qs.Basis),
       qs.eval (Gate.SignedPhaseProd phi x z) (qs.ket b)
         =
       (Complex.exp
-        (phi * Complex.I *
+        (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
           (((extToInt x b : ℤ) : ℂ) *
            (((extToInt z b : ℤ) : ℂ))))) •
         qs.ket b
 
   eval_CSignedPhaseProd_ket :
-    ∀ (ctrl : ℕ) (phi : ℝ) (x z : ExtReg) (b : qs.Basis),
+    ∀ (ctrl : ℕ) (phi : Angle) (x z : ExtReg) (b : qs.Basis),
       qs.eval (Gate.CSignedPhaseProd ctrl phi x z) (qs.ket b)
         =
       if RegEncoding.bit ctrl b then
         (Complex.exp
-          (phi * Complex.I *
+          (((Angle.toReal phi : ℝ) : ℂ) * Complex.I *
             (((extToInt x b : ℤ) : ℂ) *
              (((extToInt z b : ℤ) : ℂ))))) •
           qs.ket b
@@ -514,44 +514,5 @@ class GateSemanticsFacts
       PauliXSemantics qs,
       ClassicalReversibleSemantics qs,
       IdealCtrlModMulExactSemantics qs
-
-/-- `q` is not a qubit of register `r`. -/
-def QubitOutside (q : ℕ) (r : Reg) : Prop :=
-  q ∉ r.qubits
-
-/--
-Layout assumptions for one invocation of `CmodMulInPlaceCore`.
-
-`data.grow 1` is used because Algorithm 1 temporarily activates one reserve
-bit of `data` as its carry/high bit.
--/
-def ModMulCoreLayout
-    (data work : ExtReg)
-    (flag ctrl : ℕ) :
-    Prop :=
-  ExtReg.OwnedDisjoint data work ∧
-  flag ∉ data.ownedQubits ∧
-  flag ∉ work.ownedQubits ∧
-  ctrl ∉ data.ownedQubits ∧
-  ctrl ∉ work.ownedQubits ∧
-  ctrl ≠ flag
-
-/--
-A computational-basis input on which Algorithm 1 is allowed to be called.
-
-The data register contains a canonical residue; the two data reserve bits,
-the fractional/work register, and the comparator flag are clean.
-All other qubits, including the control and exponent registers, are arbitrary.
--/
-def GoodModMulBasisInput
-    (qs : QSemantics) [RegEncoding qs.Basis]
-    (N : ℕ) (data work : ExtReg) (flag : ℕ)
-    (b : qs.Basis) : Prop :=
-  RegEncoding.toNat data.active b < N ∧
-  data.FreshFor 2 b ∧
-  RegEncoding.toNat work.active b = 0 ∧
-  work.FreshFor 1 b ∧
-  RegEncoding.toNat (qubitReg flag) b = 0
-
 
 end Shor

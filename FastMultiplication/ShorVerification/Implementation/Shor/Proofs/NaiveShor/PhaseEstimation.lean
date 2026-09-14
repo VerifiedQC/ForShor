@@ -1,5 +1,9 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Preliminaries
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Lemmas
+import FastMultiplication.ShorVerification.Implementation.Shor.Math.OrderFindingAnalysis
+import FastMultiplication.ShorVerification.Implementation.RegisterLemmas
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
+import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFinding
+import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Cleanliness
 
 /-!
 # NaiveShor — quantum phase estimation / IQFT analysis
@@ -1170,9 +1174,8 @@ lemma measProbAfter_orderFindingIdeal_eq_paper_formula
         =
       idealPreIQFTState qs inst.a inst.N x y b0)
     (o : Fin (ASize x.active)) :
-    measProbAfter (qs := qs) qs.eval x.active o.1
-        (orderFindingIdeal (qs := qs) inst.a inst.N x y)
-        (qs.ket b0)
+    MeasureClass.probMeas (qs := qs) x.active o.1
+    (qs.eval (orderFindingIdeal (qs := qs) inst.a inst.N x y) (qs.ket b0))
       =
     shorPaperOutcomeProb
       (ASize x.active)
@@ -1269,7 +1272,6 @@ lemma measProbAfter_orderFindingIdeal_eq_paper_formula
       inst x y b0
       hsetting hinput o
 
-  unfold measProbAfter
   rw [MeasureClass.probMeas_born]
   rw [hcircuit, hgroup, hproj]
 

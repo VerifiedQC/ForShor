@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Framework.Quantum.Registers
+import FastMultiplication.ShorVerification.Framework.AbstractMachine.Angle
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.SpecialFunctions.Sqrt
 import Mathlib.Data.Complex.Basic
@@ -32,8 +33,8 @@ inductive Gate : Type
   | Toffoli : ℕ → ℕ → ℕ → Gate
   | QFT : ExtReg → Gate
   | RadixReverse : (r : Reg) → (m : ℕ) → Gate
-  | SignedPhaseProd : (phi : Real) → (x z : ExtReg) → Gate
-  | CSignedPhaseProd : (ctrl : ℕ) → (phi : Real) → (x z : ExtReg) → Gate
+  | SignedPhaseProd : (phi : Angle) → (x z : ExtReg) → Gate
+  | CSignedPhaseProd : (ctrl : ℕ) → (phi : Angle) → (x z : ExtReg) → Gate
   | CmpGeConst : (N : ℕ) → (data scratch : ExtReg) → (flag : ℕ) → Gate
   | CSubConst : (N : ℕ) → (data scratch : ExtReg) → (flag : ℕ) → Gate
   | ShiftL : (r : ExtReg) → (n : ℕ) → Gate
@@ -64,7 +65,7 @@ end Gate
 ========================================================= -/
 
 /-- Standard QFT phase schedule. -/
-noncomputable def qftPhi (m : ℕ) : ℝ := (2 * Real.pi) / (2^m)
+def qftPhi (m : ℕ) : Angle := (2 : ℚ) / 2 ^ m
 
 /-- Primitive `N`-th root of unity `exp(2πi/N)`. -/
 noncomputable def ω (N : ℕ) : ℂ :=

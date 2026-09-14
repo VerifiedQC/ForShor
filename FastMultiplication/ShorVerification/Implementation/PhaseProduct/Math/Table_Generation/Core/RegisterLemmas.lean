@@ -404,8 +404,7 @@ theorem run?_inverse_undoes_WF {k}
           have hps : run? ps σ₁ = some τ := by simpa [hstep] using h
           have ih' : run? (apply_Op_inverse ps) τ = some σ₁ :=
             ih WFps _ _ hps
-          have hstep_inv :
-              run? [inv op] σ₁ = some σ :=
+          have hstep_inv : run? [inv op] σ₁ = some σ :=
             run?_inv_singleton_OK op WFop (σ := σ) (σ' := σ₁) hstep
           simp [ih']
           simp at hstep_inv
