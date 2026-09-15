@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ShorVerification Proof Graph</title>
-    <link rel="stylesheet" href="./styles.css?v=3">
+    <link rel="stylesheet" href="./styles.css?v=12">
   </head>
   <body>
     <main class="app-shell">
@@ -23,10 +23,7 @@
           <button id="zoomInButton" class="icon-button" type="button" title="Zoom in">+</button>
           <button id="fitButton" type="button" title="Fit graph (f)">Fit</button>
           <button id="focusToggleButton" type="button" title="Toggle focus dimming">Focus on</button>
-          <button id="spineToggleButton" type="button" title="Highlight the recommended reading order">Spine</button>
-          <button id="importsToggleButton" type="button" title="Toggle import edges" class="active">Imports</button>
-          <button id="bridgesToggleButton" type="button" title="Toggle curated bridges" class="active">Bridges</button>
-          <button id="ghostsToggleButton" type="button" title="Toggle ghost ports" class="active">Ghosts</button>
+          <button id="allImportsToggleButton" type="button" title="Overlay every import edge, not just the curated ones">All imports</button>
           <button id="topButton" type="button" title="Open top-level map">Top</button>
         </div>
       </header>
@@ -50,6 +47,8 @@
             <div id="graphStats" class="graph-stats"></div>
           </div>
           <svg id="graph" role="img" aria-label="ShorVerification proof graph"></svg>
+          <div id="usesStrip" class="boundary-strip boundary-strip-left" hidden></div>
+          <div id="usedByStrip" class="boundary-strip boundary-strip-right" hidden></div>
           <div id="emptyState" class="empty-state" hidden>No matching nodes</div>
         </section>
 
@@ -59,13 +58,13 @@
       </section>
     </main>
 
-    <script src="./data/graph.js?v=3"></script>
-    <script src="./data/annotations.js?v=3"></script>
-    <script src="./src/model.js?v=3"></script>
-    <script src="./src/layout.js?v=3"></script>
-    <script src="./src/render.js?v=3"></script>
-    <script src="./src/details.js?v=3"></script>
-    <script src="./src/router.js?v=3"></script>
-    <script src="./src/app.js?v=3"></script>
+    <script src="./data/graph.js?v=12"></script>
+    <script src="./data/annotations.js?v=12"></script>
+    <script src="./src/model.js?v=12"></script>
+    <script src="./src/layout.js?v=12"></script>
+    <script src="./src/render.js?v=12"></script>
+    <script src="./src/details.js?v=12"></script>
+    <script src="./src/router.js?v=12"></script>
+    <script src="./src/app.js?v=12"></script>
   </body>
 </html>

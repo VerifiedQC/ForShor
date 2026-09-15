@@ -560,7 +560,7 @@ def extract_json_object(text, marker):
 
 def load_annotations():
     if not os.path.isfile(ANNOTATIONS_JS_PATH):
-        return {"nodes": {}, "bridges": [], "roles": {}, "layers": {}}
+        return {"nodes": {}, "views": {}, "roles": {}, "layers": {}}
     text = read_text(ANNOTATIONS_JS_PATH)
     blob = extract_json_object(text, "window.ANNOTATIONS = ")
     return json.loads(blob)
@@ -586,30 +586,51 @@ def check_annotations(graph, annotations):
         if path not in graph["nodes"] and path != "":
             errors.append(f"annotations.nodes references unknown path {path!r}")
 
-    for bridge in annotations.get("bridges", []):
-        frm, to = bridge.get("from"), bridge.get("to")
-        for p in (frm, to):
-            if p not in graph["nodes"]:
-                errors.append(f"bridge {frm!r} -> {to!r} references unknown path {p!r}")
-        parent = "/".join(frm.split("/")[:-1]) if frm and "/" in frm else ""
-        parent_to = "/".join(to.split("/")[:-1]) if to and "/" in to else ""
-        candidates = {parent, parent_to, ""}
-        found = False
-        for view_path in candidates:
-            view = graph["views"].get(view_path)
-            if not view:
-                continue
-            if any(e["from"] == frm and e["to"] == to for e in view["edges"]):
-                found = True
-                break
-        if not found:
-            errors.append(f"bridge {frm!r} -> {to!r} has no underlying import edge in any candidate view")
+    for view_path, vdata in annotations.get("views", {}).items():
+        view = graph["views"].get(view_path)
+        if not view:
+            errors.append(f"views entry references unknown view {view_path!r}")
+            continue
+        children_set = set(view["children"])
+        edge_set = {(e["from"], e["to"]) for e in view["edges"]}
 
-        theorem = bridge.get("theorem")
-        if theorem:
-            names = re.split(r"\s*/\s*|\s+and\s+", theorem)
-            if not any(n.strip("` ") in decl_names for n in names):
-                errors.append(f"bridge theorem {theorem!r} (from {frm!r} -> {to!r}) not found among declarations")
+        columns = vdata.get("columns")
+        if columns is not None:
+            seen = []
+            for col in columns:
+                seen.extend(col)
+            if set(seen) != children_set or len(seen) != len(children_set):
+                missing = sorted(children_set - set(seen))
+                extra = sorted(set(seen) - children_set)
+                dup = sorted({x for x in seen if seen.count(x) > 1})
+                errors.append(
+                    f"view {view_path!r} columns must cover each child exactly once "
+                    f"(missing={missing}, extra={extra}, duplicated={dup})"
+                )
+
+        for edge in vdata.get("edges", []):
+            frm, to = edge.get("from"), edge.get("to")
+            if (frm, to) not in edge_set:
+                errors.append(f"view {view_path!r} curated edge {frm!r} -> {to!r} is not a real import edge in that view")
+
+            theorem = edge.get("theorem")
+            if theorem:
+                names = re.split(r"\s*/\s*|\s+and\s+", theorem)
+                if not any(n.strip("` ") in decl_names for n in names):
+                    errors.append(f"view {view_path!r} edge theorem {theorem!r} (from {frm!r} -> {to!r}) not found among declarations")
+
+            emphasis = edge.get("emphasis")
+            if emphasis not in (None, "primary", "secondary", "dim"):
+                errors.append(f"view {view_path!r} edge {frm!r} -> {to!r} has invalid emphasis {emphasis!r}")
+
+        drawn = {(e["from"], e["to"]) for e in vdata.get("edges", [])}
+        for e in view["edges"]:
+            if (e["from"], e["to"]) not in drawn and e["weight"] >= 10:
+                print(
+                    f"info: view {view_path!r} leaves a weight-{e['weight']} import undrawn: "
+                    f"{e['from']} -> {e['to']}",
+                    file=sys.stderr,
+                )
 
     return errors
 
@@ -628,7 +649,8 @@ def main():
             for e in errors:
                 print(f"CHECK FAILED: {e}", file=sys.stderr)
             sys.exit(1)
-        print(f"--check passed: {len(annotations.get('bridges', []))} bridges validated")
+        edge_count = sum(len(v.get("edges", [])) for v in annotations.get("views", {}).values())
+        print(f"--check passed: {edge_count} curated edges validated across {len(annotations.get('views', {}))} views")
 
 
 if __name__ == "__main__":

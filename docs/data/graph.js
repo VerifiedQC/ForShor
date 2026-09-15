@@ -19044,11 +19044,11 @@ window.GRAPH = {
       "weight": 4
      },
      {
-      "target": "QFT",
+      "target": "GateCount",
       "weight": 2
      },
      {
-      "target": "GateCount",
+      "target": "QFT",
       "weight": 2
      }
     ],
@@ -19101,11 +19101,11 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "Shor",
+      "target": "Framework/Gatecount",
       "weight": 1
      },
      {
-      "target": "Framework/Gatecount",
+      "target": "Shor",
       "weight": 1
      }
     ],
@@ -19382,11 +19382,11 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "Framework/Instantiation",
+      "target": "Framework/Submission.lean",
       "weight": 1
      },
      {
-      "target": "Framework/Submission.lean",
+      "target": "Framework/Instantiation",
       "weight": 1
      }
     ],
@@ -19542,11 +19542,11 @@ window.GRAPH = {
    "ghosts": {
     "consumers": [
      {
-      "target": "GateCount/QFT_GateCount.lean",
+      "target": "Reference",
       "weight": 1
      },
      {
-      "target": "Reference",
+      "target": "GateCount/QFT_GateCount.lean",
       "weight": 1
      }
     ],
@@ -20122,11 +20122,11 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "QFT",
+      "target": "ModularExponentiation/Lowering",
       "weight": 1
      },
      {
-      "target": "ModularExponentiation/Lowering",
+      "target": "QFT",
       "weight": 1
      },
      {
@@ -20438,11 +20438,11 @@ window.GRAPH = {
    "ghosts": {
     "consumers": [
      {
-      "target": "GateCount",
+      "target": "Shor",
       "weight": 27
      },
      {
-      "target": "Shor",
+      "target": "GateCount",
       "weight": 27
      },
      {
@@ -20570,11 +20570,11 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "Reference",
+      "target": "PhaseProduct/Spec",
       "weight": 1
      },
      {
-      "target": "PhaseProduct/Spec",
+      "target": "Reference",
       "weight": 1
      }
     ],
@@ -20919,11 +20919,11 @@ window.GRAPH = {
       "weight": 12
      },
      {
-      "target": "PhaseProduct/Compiler",
+      "target": "Reference",
       "weight": 1
      },
      {
-      "target": "Reference",
+      "target": "PhaseProduct/Compiler",
       "weight": 1
      }
     ],
@@ -20944,25 +20944,25 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "PhaseProduct/Math/Table_Generation/Programs",
-      "weight": 1
-     },
-     {
       "target": "PhaseProduct/Math/Table_Generation/Core",
       "weight": 1
      },
      {
       "target": "PhaseProduct/Math/Table_Generation/Generator",
       "weight": 1
+     },
+     {
+      "target": "PhaseProduct/Math/Table_Generation/Programs",
+      "weight": 1
      }
     ],
     "providers": [
      {
-      "target": "PhaseProduct/Math/Table_Generation/Core",
+      "target": "PhaseProduct/Math/Table_Generation/Examples.lean",
       "weight": 1
      },
      {
-      "target": "PhaseProduct/Math/Table_Generation/Examples.lean",
+      "target": "PhaseProduct/Math/Table_Generation/Core",
       "weight": 1
      }
     ]
@@ -21036,11 +21036,11 @@ window.GRAPH = {
       "weight": 4
      },
      {
-      "target": "PhaseProduct/Math/Table_Generation/Builders",
+      "target": "PhaseProduct/Math/Table_Generation/Examples.lean",
       "weight": 1
      },
      {
-      "target": "PhaseProduct/Math/Table_Generation/Examples.lean",
+      "target": "PhaseProduct/Math/Table_Generation/Builders",
       "weight": 1
      },
      {
@@ -21050,11 +21050,11 @@ window.GRAPH = {
     ],
     "providers": [
      {
-      "target": "PhaseProduct/Math/Table_Generation/Programs",
+      "target": "PhaseProduct/Math/Table_Generation/Builders",
       "weight": 1
      },
      {
-      "target": "PhaseProduct/Math/Table_Generation/Builders",
+      "target": "PhaseProduct/Math/Table_Generation/Programs",
       "weight": 1
      }
     ]
@@ -21263,11 +21263,11 @@ window.GRAPH = {
       "weight": 8
      },
      {
-      "target": "PhaseProduct/Compiler",
+      "target": "PhaseProduct/Spec",
       "weight": 7
      },
      {
-      "target": "PhaseProduct/Spec",
+      "target": "PhaseProduct/Compiler",
       "weight": 7
      },
      {
@@ -21401,11 +21401,11 @@ window.GRAPH = {
       "weight": 4
      },
      {
-      "target": "PhaseProduct/Spec",
+      "target": "PhaseProduct/Gates",
       "weight": 1
      },
      {
-      "target": "PhaseProduct/Gates",
+      "target": "PhaseProduct/Spec",
       "weight": 1
      }
     ]
@@ -21469,7 +21469,7 @@ window.GRAPH = {
    "ghosts": {
     "consumers": [
      {
-      "target": "PhaseProduct/Proofs/Lowering",
+      "target": "GateCount",
       "weight": 1
      },
      {
@@ -21477,7 +21477,7 @@ window.GRAPH = {
       "weight": 1
      },
      {
-      "target": "GateCount",
+      "target": "PhaseProduct/Proofs/Lowering",
       "weight": 1
      }
     ],
@@ -21612,15 +21612,15 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "Shor",
-      "weight": 1
-     },
-     {
       "target": "PhaseProduct/Main.lean",
       "weight": 1
      },
      {
       "target": "GateCount",
+      "weight": 1
+     },
+     {
+      "target": "Shor",
       "weight": 1
      }
     ],
@@ -22039,11 +22039,11 @@ window.GRAPH = {
       "weight": 7
      },
      {
-      "target": "ModularExponentiation",
+      "target": "QFT/Main.lean",
       "weight": 1
      },
      {
-      "target": "QFT/Main.lean",
+      "target": "ModularExponentiation",
       "weight": 1
      }
     ],
@@ -22873,11 +22873,11 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "Shor/Main.lean",
+      "target": "GateCount",
       "weight": 1
      },
      {
-      "target": "GateCount",
+      "target": "Shor/Main.lean",
       "weight": 1
      },
      {
@@ -22915,11 +22915,11 @@ window.GRAPH = {
       "weight": 4
      },
      {
-      "target": "Shor/Math",
+      "target": "Shor/Lowering",
       "weight": 2
      },
      {
-      "target": "Shor/Lowering",
+      "target": "Shor/Math",
       "weight": 2
      }
     ]
@@ -22992,10 +22992,6 @@ window.GRAPH = {
       "weight": 4
      },
      {
-      "target": "Framework",
-      "weight": 2
-     },
-     {
       "target": "ModularExponentiation",
       "weight": 2
      },
@@ -23005,6 +23001,10 @@ window.GRAPH = {
      },
      {
       "target": "Shor/Spec",
+      "weight": 2
+     },
+     {
+      "target": "Framework",
       "weight": 2
      },
      {
@@ -23524,11 +23524,11 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "GateCount",
+      "target": "Shor/Main.lean",
       "weight": 1
      },
      {
-      "target": "Shor/Main.lean",
+      "target": "GateCount",
       "weight": 1
      }
     ],

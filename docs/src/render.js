@@ -1,9 +1,11 @@
-// SVG drawing: nodes, ghosts, import/bridge edges, pan/zoom/drag, focus dimming.
-// Stateless with respect to app logic — GraphView owns only view-independent
-// UI mechanics (current transform, in-flight drag/pan) and calls back into
-// app.js for everything that changes application state.
+// SVG drawing: nodes, curated/reduced edges (one arrow per pair, styled by
+// emphasis), pan/zoom/drag, focus dimming. Stateless with respect to app
+// logic — GraphView owns only view-independent UI mechanics (current
+// transform, in-flight drag/pan) and calls back into app.js for everything
+// that changes application state.
 function createGraphView(svg, stage, handlers) {
   const ns = "http://www.w3.org/2000/svg";
+  const ANN = window.ANNOTATIONS || { roles: {}, layers: {} };
   let scene = null;
   let transform = { x: 0, y: 0, scale: 1 };
   let dragging = null;
@@ -40,6 +42,13 @@ function createGraphView(svg, stage, handlers) {
     applyTransform();
   }
 
+  function colorFor(path) {
+    const layer = Model.layer(path);
+    if (layer && ANN.layers[layer]) return ANN.layers[layer].color;
+    const role = Model.role(path);
+    return (ANN.roles[role] || {}).color || "#7c899c";
+  }
+
   function cubicPoint(p0, p1, p2, p3, t) {
     const mt = 1 - t;
     return {
@@ -48,66 +57,221 @@ function createGraphView(svg, stage, handlers) {
     };
   }
 
-  function edgeRoute(a, b, lane, vertical) {
-    if (vertical) {
-      const x1 = a.x + a.w / 2, y1 = a.y + a.h;
-      const x2 = b.x + b.w / 2, y2 = b.y;
-      const dy = Math.max(70, Math.abs(y2 - y1) * 0.42);
-      const p0 = { x: x1, y: y1 }, p1 = { x: x1 + lane, y: y1 + dy };
-      const p2 = { x: x2 + lane, y: y2 - dy }, p3 = { x: x2, y: y2 };
-      return { d: `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${p3.x} ${p3.y}`, label: cubicPoint(p0, p1, p2, p3, 0.5) };
+  // Evenly spread each node's outgoing edges along its right edge (sorted by
+  // target row) and incoming edges along its left edge (sorted by source
+  // row), inset 14px from top/bottom, so no two arrows share a start/end
+  // point. An edge whose endpoints share a column (e.g. two nodes a curated
+  // `columns` override stacks vertically, like Framework/Shared) instead
+  // gets a vertical port — top-to-bottom, not a left/right loop-back.
+  // Returns edgeKey -> {sx,sy,ex,ey,vertical}.
+  function assignPorts(children, positions, edges, columnOf) {
+    const sameColumn = new Set(edges.filter((e) => columnOf.get(e.from) === columnOf.get(e.to)).map((e) => Model.edgeKey(e.from, e.to)));
+    const horizontalEdges = edges.filter((e) => !sameColumn.has(Model.edgeKey(e.from, e.to)));
+
+    const outOf = new Map(), inOf = new Map();
+    horizontalEdges.forEach((e) => {
+      if (!outOf.has(e.from)) outOf.set(e.from, []);
+      outOf.get(e.from).push(e);
+      if (!inOf.has(e.to)) inOf.set(e.to, []);
+      inOf.get(e.to).push(e);
+    });
+    const ports = new Map();
+    const inset = 14;
+
+    function place(nodeId, list, isOut) {
+      const p = positions.get(nodeId);
+      if (!p || !list.length) return;
+      const sorted = [...list].sort((a, b) => {
+        const ap = positions.get(isOut ? a.to : a.from);
+        const bp = positions.get(isOut ? b.to : b.from);
+        return (ap ? ap.y : 0) - (bp ? bp.y : 0);
+      });
+      const usable = Math.max(0, p.h - inset * 2);
+      sorted.forEach((e, i) => {
+        const t = sorted.length === 1 ? 0.5 : i / (sorted.length - 1);
+        const y = p.y + inset + t * usable;
+        const x = isOut ? p.x + p.w : p.x;
+        const key = Model.edgeKey(e.from, e.to);
+        const port = ports.get(key) || {};
+        if (isOut) { port.sx = x; port.sy = y; } else { port.ex = x; port.ey = y; }
+        ports.set(key, port);
+      });
     }
-    const x1 = a.x + a.w, y1 = a.y + a.h / 2;
-    const x2 = b.x, y2 = b.y + b.h / 2;
-    const dx = Math.max(80, Math.abs(x2 - x1) * 0.46);
-    const p0 = { x: x1, y: y1 }, p1 = { x: x1 + dx, y: y1 + lane };
-    const p2 = { x: x2 - dx, y: y2 + lane }, p3 = { x: x2, y: y2 };
-    return { d: `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${p3.x} ${p3.y}`, label: cubicPoint(p0, p1, p2, p3, 0.5) };
+
+    children.forEach((id) => {
+      place(id, outOf.get(id) || [], true);
+      place(id, inOf.get(id) || [], false);
+    });
+
+    edges.forEach((e) => {
+      const key = Model.edgeKey(e.from, e.to);
+      if (!sameColumn.has(key)) return;
+      const a = positions.get(e.from), b = positions.get(e.to); // a = from, b = to
+      if (!a || !b) return;
+      const sx = a.x + a.w / 2, ex = b.x + b.w / 2;
+      const fromAbove = a.y <= b.y;
+      ports.set(key, {
+        sx, sy: fromAbove ? a.y + a.h : a.y,
+        ex, ey: fromAbove ? b.y : b.y + b.h,
+        vertical: true,
+      });
+    });
+
+    return ports;
   }
 
-  function ghostRoute(node, ghost, vertical) {
-    if (vertical) {
-      if (ghost.side === "top") {
-        const x = ghost.x + ghost.w / 2, y1 = ghost.y + ghost.h, y2 = node.y;
-        return { d: `M ${x} ${y1} L ${x} ${y2}` };
+  // A single cubic bezier with horizontal tangents at both ends for edges
+  // within one column of each other; a two-segment smooth path routed
+  // through a channel above/below the intermediate columns for longer
+  // spans, so a long arrow reads as one clean curve rather than cutting
+  // through unrelated nodes.
+  function buildRoute(port, colFrom, colTo, columns, positions, band) {
+    const { sx, sy, ex, ey } = port;
+    if (port.vertical) {
+      const gap = Math.max(20, (ey - sy) * 0.5);
+      const p0 = { x: sx, y: sy }, p1 = { x: sx, y: sy + gap };
+      const p2 = { x: ex, y: ey - gap }, p3 = { x: ex, y: ey };
+      return {
+        d: `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${p3.x} ${p3.y}`,
+        pointAt: (t) => cubicPoint(p0, p1, p2, p3, t),
+      };
+    }
+    const span = Math.abs(colTo - colFrom);
+    if (span <= 1) {
+      const gap = Math.max(40, (ex - sx) * 0.5);
+      const p0 = { x: sx, y: sy }, p1 = { x: sx + gap, y: sy };
+      const p2 = { x: ex - gap, y: ey }, p3 = { x: ex, y: ey };
+      return {
+        d: `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${p3.x} ${p3.y}`,
+        pointAt: (t) => cubicPoint(p0, p1, p2, p3, t),
+      };
+    }
+
+    const lo = Math.min(colFrom, colTo), hi = Math.max(colFrom, colTo);
+    let minY = Infinity, maxY = -Infinity, xEnter = null, xExit = null;
+    for (let c = lo + 1; c < hi; c++) {
+      (columns[c] || []).forEach((id) => {
+        const p = positions.get(id);
+        if (!p) return;
+        minY = Math.min(minY, p.y);
+        maxY = Math.max(maxY, p.y + p.h);
+        xEnter = xEnter === null ? p.x : Math.min(xEnter, p.x);
+        xExit = xExit === null ? p.x + p.w : Math.max(xExit, p.x + p.w);
+      });
+    }
+    const above = ey <= sy;
+    // Each successive edge sharing a direction (above/below) gets pushed
+    // further out from the row, so several long arrows fan into a stack of
+    // parallel arcs instead of bundling on top of each other and cutting
+    // back through the very nodes they're routed around.
+    const clearance = 44 + (band || 0) * 46;
+    const channelY = minY === Infinity
+      ? (above ? Math.min(sy, ey) - 70 - (band || 0) * 46 : Math.max(sy, ey) + 70 + (band || 0) * 46)
+      : (above ? minY - clearance : maxY + clearance);
+
+    // Rise from the source to channel height *before* reaching the first
+    // intermediate column (not partway through it — a rise proportional to
+    // the total span, as a naive midpoint curve would give, stays at row
+    // height for hundreds of pixels on a wide span and cuts straight
+    // through whatever sits in the middle), travel flat across the whole
+    // intermediate stretch, then descend into the target the same way.
+    const riseX = xEnter === null ? (sx + ex) / 2 - 40 : Math.min(xEnter - 24, (sx + ex) / 2);
+    const fallX = xExit === null ? (sx + ex) / 2 + 40 : Math.max(xExit + 24, (sx + ex) / 2);
+    const tangent = 44;
+    const p0 = { x: sx, y: sy };
+    const p1 = { x: Math.min(sx + tangent, riseX), y: sy };
+    const p2 = { x: Math.max(riseX - tangent, sx), y: channelY };
+    const a = { x: riseX, y: channelY };
+    const b = { x: fallX, y: channelY };
+    const p3 = { x: Math.min(fallX + tangent, ex), y: channelY };
+    const p4 = { x: Math.max(ex - tangent, fallX), y: ey };
+    const p5 = { x: ex, y: ey };
+    return {
+      d: `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${a.x} ${a.y} `
+        + `L ${b.x} ${b.y} `
+        + `C ${p3.x} ${p3.y}, ${p4.x} ${p4.y}, ${p5.x} ${p5.y}`,
+      pointAt: (t) => {
+        if (t < 1 / 3) return cubicPoint(p0, p1, p2, a, t * 3);
+        if (t < 2 / 3) { const lt = (t - 1 / 3) * 3; return { x: a.x + (b.x - a.x) * lt, y: a.y + (b.y - a.y) * lt }; }
+        return cubicPoint(b, p3, p4, p5, (t - 2 / 3) * 3);
+      },
+    };
+  }
+
+  function rectsOverlap(a, b, pad) {
+    return a.x < b.x + b.w + pad && a.x + a.w > b.x - pad && a.y < b.y + b.h + pad && a.y + a.h > b.y - pad;
+  }
+
+  function findLabelSpot(route, positions, placedLabels, w, h) {
+    const candidates = [0.6, 0.55, 0.65, 0.5, 0.7, 0.45, 0.75, 0.4, 0.8, 0.35, 0.85, 0.3, 0.9, 0.25, 0.95, 0.2];
+    const nodeRects = [...positions.values()];
+    const clear = (rect) => !nodeRects.some((n) => rectsOverlap(rect, n, 6)) && !placedLabels.some((n) => rectsOverlap(rect, n, 3));
+
+    for (const t of candidates) {
+      const pt = route.pointAt(t);
+      const rect = { x: pt.x - w / 2, y: pt.y - h / 2, w, h };
+      if (clear(rect)) { placedLabels.push(rect); return pt; }
+    }
+
+    // A label this wide can't avoid a neighbour by sliding along a short
+    // curve alone (e.g. a label between two adjacent columns, where the
+    // whole visible curve sits inside the ~80px gap between their edges).
+    // Nudge it perpendicular to the row instead, growing outward until
+    // it clears — same idea as the channel routing above/below.
+    const base = route.pointAt(0.5);
+    for (let dy = 16; dy <= 160; dy += 16) {
+      for (const sign of [-1, 1]) {
+        const pt = { x: base.x, y: base.y + sign * dy };
+        const rect = { x: pt.x - w / 2, y: pt.y - h / 2, w, h };
+        if (clear(rect)) { placedLabels.push(rect); return pt; }
       }
-      const x = ghost.x + ghost.w / 2, y1 = node.y + node.h, y2 = ghost.y;
-      return { d: `M ${x} ${y1} L ${x} ${y2}` };
     }
-    if (ghost.side === "left") {
-      const y = ghost.y + ghost.h / 2;
-      return { d: `M ${ghost.x + ghost.w} ${y} L ${node.x} ${node.y + node.h / 2}` };
-    }
-    const y = ghost.y + ghost.h / 2;
-    return { d: `M ${node.x + node.w} ${node.y + node.h / 2} L ${ghost.x} ${y}` };
-  }
 
-  function nearestNode(positions, ghost, vertical) {
-    // Ghosts route to the geometric center of the current view's nodes,
-    // which reads fine since ghosts summarize a whole external subtree
-    // rather than a single sibling.
-    let best = null, bestDist = Infinity;
-    for (const [id, p] of positions.entries()) {
-      const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
-      const gx = ghost.x + ghost.w / 2, gy = ghost.y + ghost.h / 2;
-      const d = vertical ? Math.abs(cx - gx) : Math.abs(cy - gy);
-      if (d < bestDist) { bestDist = d; best = { id, p }; }
-    }
-    return best;
+    const pt = route.pointAt(0.6);
+    placedLabels.push({ x: pt.x - w / 2, y: pt.y - h / 2, w, h });
+    return pt;
   }
 
   function classesFor(kind, extra) {
     return [kind, ...(extra || [])].filter(Boolean).join(" ");
   }
 
+  function makeWrappedText(makeFn, parent, text, x, y, size, className, lineLimit, maxLines) {
+    const words = String(text || "").split(/\s+/);
+    const lines = [];
+    let current = "";
+    words.forEach((word) => {
+      if (current && (current + " " + word).trim().length > lineLimit) {
+        lines.push(current.trim());
+        current = word;
+      } else {
+        current = `${current} ${word}`.trim();
+      }
+    });
+    if (current) lines.push(current);
+    lines.slice(0, maxLines).forEach((line, i) => {
+      const el = makeFn("text", { x, y: y + i * (size + 3), "font-size": size, class: className }, parent);
+      el.textContent = line + (maxLines && lines.length > maxLines && i === maxLines - 1 ? "…" : "");
+    });
+  }
+
   function render(vm) {
-    const rect = viewportRect();
     svg.innerHTML = "";
     const defs = make("defs", {}, svg);
-    const marker = make("marker", { id: "arrow", markerWidth: 10, markerHeight: 10, refX: 9, refY: 3, orient: "auto", markerUnits: "strokeWidth" }, defs);
-    make("path", { d: "M 0 0 L 9 3 L 0 6 z", fill: "#8b98aa" }, marker);
-    const bmarker = make("marker", { id: "arrow-bridge", markerWidth: 10, markerHeight: 10, refX: 9, refY: 3, orient: "auto", markerUnits: "strokeWidth" }, defs);
-    make("path", { d: "M 0 0 L 9 3 L 0 6 z", fill: "currentColor" }, bmarker);
+    ["framework", "subroutine", "assembly", "resource", "submission", "support"].forEach((role) => {
+      const color = (ANN.roles[role] || {}).color || "#7c899c";
+      const m = make("marker", { id: `arrow-${role}`, markerWidth: 9, markerHeight: 9, refX: 8, refY: 2.5, orient: "auto", markerUnits: "strokeWidth" }, defs);
+      make("path", { d: "M 0 0 L 8 2.5 L 0 5 z", fill: color }, m);
+    });
+    ["math", "definitions", "lowering", "spec", "proofs", "main"].forEach((layer) => {
+      const color = (ANN.layers[layer] || {}).color || "#7c899c";
+      const m = make("marker", { id: `arrow-layer-${layer}`, markerWidth: 9, markerHeight: 9, refX: 8, refY: 2.5, orient: "auto", markerUnits: "strokeWidth" }, defs);
+      make("path", { d: "M 0 0 L 8 2.5 L 0 5 z", fill: color }, m);
+    });
+    const secMarker = make("marker", { id: "arrow-secondary", markerWidth: 8, markerHeight: 8, refX: 7, refY: 2.2, orient: "auto", markerUnits: "strokeWidth" }, defs);
+    make("path", { d: "M 0 0 L 7 2.2 L 0 4.4 z", fill: "#9aa7bc" }, secMarker);
+    const dimMarker = make("marker", { id: "arrow-dim", markerWidth: 8, markerHeight: 8, refX: 7, refY: 2.2, orient: "auto", markerUnits: "strokeWidth" }, defs);
+    make("path", { d: "M 0 0 L 7 2.2 L 0 4.4 z", fill: "#c3cad6" }, dimMarker);
 
     scene = make("g", { class: "scene" }, svg);
     currentPositions = vm.positions;
@@ -115,8 +279,7 @@ function createGraphView(svg, stage, handlers) {
     const selType = vm.selection && vm.selection.type;
     const selId = selType === "node" ? vm.selection.id : null;
     const selEdgeKey = selType === "edge" ? vm.selection.key : null;
-    const selGhostKey = selType === "ghost" ? vm.selection.key : null;
-    const matches = vm.matches;
+    const externalHighlight = vm.highlightExternal || null;
 
     const neighborIds = new Set();
     if (selId) {
@@ -124,73 +287,71 @@ function createGraphView(svg, stage, handlers) {
       vm.edges.forEach((e) => { if (e.from === selId) neighborIds.add(e.to); if (e.to === selId) neighborIds.add(e.from); });
     }
 
-    // --- import + bridge edges ---
+    const ports = assignPorts(vm.children, vm.positions, vm.edges, vm.columnOf);
+
+    // Long (span >= 2) edges going the same direction (above/below the row)
+    // are stacked into their own band, farthest-reaching first, so they fan
+    // into parallel arcs instead of bundling on top of each other.
+    const bandOf = new Map();
+    {
+      const above = [], below = [];
+      vm.edges.forEach((e) => {
+        const cf = vm.columnOf.get(e.from) ?? 0, ct = vm.columnOf.get(e.to) ?? 0;
+        if (Math.abs(ct - cf) < 2) return;
+        const port = ports.get(Model.edgeKey(e.from, e.to));
+        if (!port || port.vertical) return;
+        (port.ey <= port.sy ? above : below).push({ key: Model.edgeKey(e.from, e.to), span: Math.abs(ct - cf) });
+      });
+      above.sort((a, b) => b.span - a.span).forEach((e, i) => bandOf.set(e.key, i));
+      below.sort((a, b) => b.span - a.span).forEach((e, i) => bandOf.set(e.key, i));
+    }
+
+    const placedLabels = [];
     const edgesLayer = make("g", { class: "edges" }, scene);
     const labelsLayer = make("g", { class: "edge-labels" }, scene);
-    vm.edges.forEach((e, idx) => {
+    vm.edges.forEach((e) => {
       const a = vm.positions.get(e.from), b = vm.positions.get(e.to);
-      if (!a || !b) return;
+      const port = ports.get(Model.edgeKey(e.from, e.to));
+      if (!a || !b || !port) return;
       const key = Model.edgeKey(e.from, e.to);
       const isSelected = selEdgeKey === key;
       const isNeighbor = selId && (e.from === selId || e.to === selId);
-      const dim = vm.focusMode && ((selEdgeKey && !isSelected) || (selId && !isNeighbor)) ||
-        (matches && !(matches.has(e.from) || matches.has(e.to)));
+      const dim = (vm.focusMode && ((selEdgeKey && !isSelected) || (selId && !isNeighbor))) ||
+        (vm.matches && !(vm.matches.has(e.from) || vm.matches.has(e.to)));
+      const emphasis = e.emphasis || "secondary";
 
-      if (vm.showImports) {
-        const lane = (idx % 5 - 2) * 26;
-        const route = edgeRoute(a, b, lane, vm.vertical);
-        const width = Math.min(6, 1.4 + Math.log2(e.weight + 1));
-        const path = make("path", { class: classesFor("edge", [isSelected && "selected", isNeighbor && !isSelected && "neighbor", dim && "dimmed"]), d: route.d, "stroke-width": width }, edgesLayer);
-        const hit = make("path", { class: "edge-hit", d: route.d }, edgesLayer);
-        [path, hit].forEach((el) => el.addEventListener("click", (ev) => { ev.stopPropagation(); handlers.onSelectEdge(e); }));
-      }
+      const colFrom = vm.columnOf.get(e.from) ?? 0;
+      const colTo = vm.columnOf.get(e.to) ?? 0;
+      const route = buildRoute(port, colFrom, colTo, vm.columns, vm.positions, bandOf.get(key) || 0);
 
-      if (vm.showBridges && e.bridges && e.bridges.length) {
-        e.bridges.forEach((bridge, bi) => {
-          const lane = 40 + bi * 34;
-          const route = edgeRoute(a, b, lane, vm.vertical);
-          const role = Model.role(e.from);
-          const path = make("path", {
-            class: classesFor("bridge-edge", [isSelected && "selected", dim && "dimmed"]),
-            d: route.d, "data-role": role, "marker-end": "url(#arrow-bridge)",
-          }, edgesLayer);
-          path.addEventListener("click", (ev) => { ev.stopPropagation(); handlers.onSelectEdge(e, bridge); });
+      const layer = Model.layer(e.from);
+      const markerId = emphasis === "primary"
+        ? (layer && ANN.layers[layer] ? `arrow-layer-${layer}` : `arrow-${Model.role(e.from)}`)
+        : `arrow-${emphasis === "secondary" ? "secondary" : "dim"}`;
+      const strokeColor = emphasis === "primary" ? colorFor(e.from) : (emphasis === "secondary" ? "#9aa7bc" : "#d5dbe4");
 
-          const text = bridge.label || bridge.theorem || "";
-          const lg = make("g", { class: classesFor("edge-label-group bridge-label", [dim && "dimmed"]), tabindex: "0", role: "button" }, labelsLayer);
-          lg.addEventListener("click", (ev) => { ev.stopPropagation(); handlers.onSelectEdge(e, bridge); });
-          const w = Math.min(180, Math.max(70, text.length * 6.2 + 18));
-          make("rect", { class: "edge-label-bg bridge-label-bg", x: route.label.x - w / 2, y: route.label.y - 13, width: w, height: 26, rx: 6 }, lg);
-          const t = make("text", { class: "edge-label bridge-label-text", x: route.label.x, y: route.label.y + 4, "text-anchor": "middle" }, lg);
-          t.textContent = text;
-        });
+      const path = make("path", {
+        class: classesFor("edge", [`edge-${emphasis}`, isSelected && "selected", isNeighbor && !isSelected && "neighbor", dim && "dimmed"]),
+        d: route.d,
+        style: `--edge-color:${strokeColor}`,
+        "marker-end": `url(#${markerId})`,
+      }, edgesLayer);
+      const hit = make("path", { class: "edge-hit", d: route.d }, edgesLayer);
+      [path, hit].forEach((el) => el.addEventListener("click", (ev) => { ev.stopPropagation(); handlers.onSelectEdge(e); }));
+
+      if (emphasis === "primary" && e.label) {
+        const text = e.label.length > 32 ? e.label.slice(0, 31) + "…" : e.label;
+        const w = Math.min(190, Math.max(64, text.length * 6.1 + 18));
+        const h = 24;
+        const pt = findLabelSpot(route, vm.positions, placedLabels, w, h);
+        const lg = make("g", { class: classesFor("edge-label-group", [dim && "dimmed"]), tabindex: "0", role: "button" }, labelsLayer);
+        lg.addEventListener("click", (ev) => { ev.stopPropagation(); handlers.onSelectEdge(e); });
+        make("rect", { class: "edge-label-bg", x: pt.x - w / 2, y: pt.y - h / 2, width: w, height: h, rx: 6, style: `--edge-color:${strokeColor}` }, lg);
+        const t = make("text", { class: "edge-label", x: pt.x, y: pt.y + 4, "text-anchor": "middle" }, lg);
+        t.textContent = text;
       }
     });
 
-    // --- ghost ports ---
-    const ghostLayer = make("g", { class: "ghosts" }, scene);
-    for (const [key, g] of vm.ghostPositions.entries()) {
-      if (!vm.showGhosts) break;
-      const near = nearestNode(vm.positions, g, vm.vertical);
-      if (near) {
-        const route = ghostRoute(near.p, g, vm.vertical);
-        make("path", { class: "ghost-edge", d: route.d }, ghostLayer);
-      }
-      const isSelected = selGhostKey === key;
-      const group = make("g", {
-        class: classesFor("ghost", [isSelected && "selected"]),
-        transform: `translate(${g.x} ${g.y})`, tabindex: "0", role: "button",
-      }, ghostLayer);
-      make("rect", { class: "ghost-card", width: g.w, height: g.h, rx: 8 }, group);
-      const label1 = make("text", { class: "ghost-label", x: 12, y: 24 }, group);
-      label1.textContent = Model.label(g.target);
-      const label2 = make("text", { class: "ghost-weight", x: 12, y: 42 }, group);
-      label2.textContent = `${g.weight} import${g.weight === 1 ? "" : "s"}`;
-      group.addEventListener("click", (ev) => { ev.stopPropagation(); handlers.onSelectGhost(g); });
-      group.addEventListener("dblclick", (ev) => { ev.stopPropagation(); handlers.onOpenGhost(g); });
-    }
-
-    // --- nodes ---
     const nodesLayer = make("g", { class: "nodes" }, scene);
     vm.children.forEach((id) => {
       const p = vm.positions.get(id);
@@ -199,24 +360,28 @@ function createGraphView(svg, stage, handlers) {
       const isFolder = n.kind === "folder";
       const role = Model.role(id);
       const layer = Model.layer(id);
-      const dim = (matches && !matches.has(id)) || (vm.focusMode && selId && selId !== id && !neighborIds.has(id)) ||
-        (vm.focusMode && selEdgeKey && !vm.edges.some((e) => Model.edgeKey(e.from, e.to) === selEdgeKey && (e.from === id || e.to === id)));
+      const isSupport = role === "support";
+      const externallyLit = externalHighlight && externalHighlight.has(id);
+      const dim = (vm.matches && !vm.matches.has(id)) ||
+        (vm.focusMode && selId && selId !== id && !neighborIds.has(id)) ||
+        (vm.focusMode && selEdgeKey && !vm.edges.some((e) => Model.edgeKey(e.from, e.to) === selEdgeKey && (e.from === id || e.to === id))) ||
+        (externalHighlight && !externallyLit);
       const group = make("g", {
-        class: classesFor("node", [isFolder && "node-folder", !isFolder && "node-file", id === selId && "selected", dim && "dimmed", role === "support" && "role-support"]),
+        class: classesFor("node", [isFolder && "node-folder", !isFolder && "node-file", id === selId && "selected", dim && "dimmed", isSupport && "role-support", externallyLit && "lit"]),
         "data-role": role, "data-layer": layer || "",
         transform: `translate(${p.x} ${p.y})`, tabindex: "0", role: "button", "aria-label": Model.label(id),
       }, nodesLayer);
-      make("rect", { class: "node-card", width: p.w, height: p.h, rx: 9 }, group);
-      make("rect", { class: "node-accent", width: 6, height: p.h, rx: 3 }, group);
-      const kicker = make("text", { class: "node-kind", x: 16, y: 18 }, group);
-      kicker.textContent = isFolder ? (layer ? (ANN.layers[layer] || {}).label || layer : "folder") : "file";
-      makeWrappedText(make, group, Model.label(id), 16, 42, 15.5, "node-title", 23, 2);
-      const sub = Model.subtitle(id) || (isFolder ? `${n.fileCount} file${n.fileCount === 1 ? "" : "s"}` : `${n.lines} lines`);
-      makeWrappedText(make, group, sub, 16, p.h - 16, 12, "node-subtitle", 30, 1);
+      make("rect", { class: "node-card", width: p.w, height: p.h, rx: 8 }, group);
+      make("rect", { class: "node-accent", width: 5, height: p.h, rx: 2.5 }, group);
       if (isFolder) {
-        const chevron = make("text", { class: "node-open-hint", x: p.w - 22, y: 22 }, group);
-        chevron.textContent = "→";
+        const badge = make("text", { class: "node-badge", x: p.w - 14, y: 20, "text-anchor": "end" }, group);
+        badge.textContent = `▸ ${n.children.length}`;
+      } else {
+        make("path", { class: "node-file-glyph", d: `M ${p.w - 26} 10 h 10 l 4 4 v 10 h -14 z M ${p.w - 16} 10 v 4 h 4` }, group);
       }
+      makeWrappedText(make, group, Model.label(id), 16, 34, 16, "node-title", 22, 2);
+      const sub = Model.subtitle(id) || (isFolder ? `${n.fileCount} file${n.fileCount === 1 ? "" : "s"}` : `${n.lines} lines`);
+      makeWrappedText(make, group, sub, 16, p.h - 14, 12.5, "node-subtitle", 30, 1);
 
       group.addEventListener("pointerdown", (ev) => {
         ev.stopPropagation();
@@ -246,35 +411,16 @@ function createGraphView(svg, stage, handlers) {
     applyTransform();
   }
 
-  function makeWrappedText(makeFn, parent, text, x, y, size, className, lineLimit, maxLines) {
-    const words = String(text || "").split(/\s+/);
-    const lines = [];
-    let current = "";
-    words.forEach((word) => {
-      if (current && (current + " " + word).trim().length > lineLimit) {
-        lines.push(current.trim());
-        current = word;
-      } else {
-        current = `${current} ${word}`.trim();
-      }
-    });
-    if (current) lines.push(current);
-    lines.slice(0, maxLines).forEach((line, i) => {
-      const el = makeFn("text", { x, y: y + i * (size + 3), "font-size": size, class: className }, parent);
-      el.textContent = line + (maxLines && lines.length > maxLines && i === maxLines - 1 ? "…" : "");
-    });
-  }
-
   function fit(vm) {
     const rect = viewportRect();
-    const all = [...vm.positions.values(), ...(vm.showGhosts ? [...vm.ghostPositions.values()] : [])];
+    const all = [...vm.positions.values()];
     if (!all.length) { transform = { x: 0, y: 0, scale: 1 }; applyTransform(); return; }
     const minX = Math.min(...all.map((p) => p.x));
     const maxX = Math.max(...all.map((p) => p.x + p.w));
     const minY = Math.min(...all.map((p) => p.y));
     const maxY = Math.max(...all.map((p) => p.y + p.h));
     const w = maxX - minX || 1, h = maxY - minY || 1;
-    const scale = Math.max(0.32, Math.min(1.05, (rect.width - 64) / w, (rect.height - 64) / h));
+    const scale = Math.max(0.32, Math.min(1.1, (rect.width - 64) / w, (rect.height - 64) / h));
     transform = {
       scale,
       x: (rect.width - w * scale) / 2 - minX * scale,
@@ -313,8 +459,6 @@ function createGraphView(svg, stage, handlers) {
     const rect = viewportRect();
     setScale(transform.scale + Math.sign(ev.deltaY) * -0.08, { x: ev.clientX - rect.left, y: ev.clientY - rect.top });
   }, { passive: false });
-
-  const ANN = window.ANNOTATIONS && window.ANNOTATIONS.layers ? window.ANNOTATIONS : { layers: {} };
 
   return {
     render,

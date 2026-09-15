@@ -1,14 +1,12 @@
 (() => {
   const state = {
     path: "",
-    selection: null, // {type:"node",id} | {type:"edge",edge,bridge} | {type:"ghost",ghost,side}
+    selection: null, // {type:"node",id} | {type:"edge",edge} | {type:"external",target,side}
     focusMode: true,
-    showImports: true,
-    showBridges: true,
-    showGhosts: true,
-    spineMode: false,
+    showAllImports: false,
     query: "",
     expandedPaths: new Set(),
+    hoverExternal: null, // {target, side} while hovering a boundary-strip chip
   };
 
   const els = {
@@ -28,11 +26,10 @@
     zoomOut: document.getElementById("zoomOutButton"),
     fitBtn: document.getElementById("fitButton"),
     focusToggle: document.getElementById("focusToggleButton"),
-    spineToggle: document.getElementById("spineToggleButton"),
-    importsToggle: document.getElementById("importsToggleButton"),
-    bridgesToggle: document.getElementById("bridgesToggleButton"),
-    ghostsToggle: document.getElementById("ghostsToggleButton"),
+    allImportsToggle: document.getElementById("allImportsToggleButton"),
     topBtn: document.getElementById("topButton"),
+    usesStrip: document.getElementById("usesStrip"),
+    usedByStrip: document.getElementById("usedByStrip"),
   };
 
   let lastLayout = null;
@@ -40,50 +37,55 @@
   const graphView = createGraphView(els.svg, els.stage, {
     onSelectNode: (id) => selectNode(id),
     onOpenNode: (id) => openPath(id),
-    onOpenGhost: (g) => openPath(Model.parentOf(g.target) || g.target),
-    onSelectEdge: (edge, bridge) => selectEdge(edge, bridge),
-    onSelectGhost: (g) => selectGhost(g),
+    onSelectEdge: (edge) => selectEdge(edge),
     onBackgroundClick: () => { state.selection = null; renderDetails(); renderGraphOnly(); },
     onRerenderNeeded: () => renderGraphOnly(),
     onTransform: () => {},
   });
 
-  function ensureView(path) {
-    return path === "" ? { path: "", children: Model.GRAPH.meta.order0, edges: Model.GRAPH.views[""].edges, ghosts: { providers: [], consumers: [] } } : Model.view(path);
+  function currentDrawn() {
+    return Model.drawnEdgesFor(state.path);
   }
 
   function buildViewModel() {
-    const view = ensureView(state.path);
-    const viewport = els.svg.getBoundingClientRect();
-    const layout = Layout.compute(view.children, view.edges, view.ghosts, { width: viewport.width || 1000, height: viewport.height || 700 });
-    lastLayout = layout;
+    const drawn = currentDrawn();
+    let edges = drawn.edges;
+    if (state.showAllImports) {
+      const raw = Model.rawView(state.path).edges;
+      const drawnKeys = new Set(edges.map((e) => Model.edgeKey(e.from, e.to)));
+      const extra = raw.filter((e) => !drawnKeys.has(Model.edgeKey(e.from, e.to))).map((e) => ({ ...e, emphasis: "secondary" }));
+      edges = edges.concat(extra);
+    }
 
-    const edges = view.edges.map((e) => ({ ...e, bridges: Model.bridgesFor(e.from, e.to) }));
+    if (!lastLayout || lastLayout.path !== state.path || lastLayout.allImports !== state.showAllImports) {
+      const viewport = els.svg.getBoundingClientRect();
+      const layout = Layout.compute(drawn.children, edges, drawn.columns, { width: viewport.width || 1000, height: viewport.height || 700 });
+      lastLayout = { path: state.path, allImports: state.showAllImports, ...layout };
+    }
 
     let matches = null;
     if (state.query.trim()) {
       const q = state.query.trim().toLowerCase();
-      matches = new Set(view.children.filter((c) => Model.label(c).toLowerCase().includes(q)));
+      matches = new Set(drawn.children.filter((c) => Model.label(c).toLowerCase().includes(q)));
     }
-    if (state.spineMode) {
-      const spine = new Set((Model.ANN.intro || {}).spine || []);
-      matches = new Set(view.children.filter((c) => spine.has(c)));
-    }
+
+    const activeExternal = state.hoverExternal || (state.selection && state.selection.type === "external" ? state.selection : null);
+    const highlightExternal = activeExternal ? Model.externalHighlightSet(state.path, activeExternal.target, activeExternal.side) : null;
 
     return {
       path: state.path,
-      children: view.children,
+      children: drawn.children,
       edges,
-      ghosts: view.ghosts,
-      positions: layout.positions,
-      ghostPositions: layout.ghostPositions,
-      vertical: layout.vertical,
+      backEdges: drawn.backEdges,
+      totalCount: drawn.totalCount,
+      positions: lastLayout.positions,
+      columnOf: lastLayout.columnOf,
+      columns: lastLayout.columns,
+      vertical: lastLayout.vertical,
       selection: state.selection,
       focusMode: state.focusMode,
-      showImports: state.showImports,
-      showBridges: state.showBridges,
-      showGhosts: state.showGhosts,
       matches,
+      highlightExternal,
     };
   }
 
@@ -100,12 +102,11 @@
     els.viewDescription.textContent = isRoot
       ? (Model.ANN.intro || {}).summary || ""
       : Model.summary(state.path) || "";
-    const view = ensureView(state.path);
-    const bridgeCount = Model.bridgesTouchingView(state.path).length;
+    const drawn = currentDrawn();
     els.graphStats.innerHTML = `
-      <div class="stat"><strong>${view.children.length}</strong><span>children</span></div>
-      <div class="stat"><strong>${view.edges.length}</strong><span>import edges</span></div>
-      <div class="stat"><strong>${bridgeCount}</strong><span>bridges</span></div>
+      <div class="stat"><strong>${drawn.children.length}</strong><span>nodes</span></div>
+      <div class="stat"><strong>${drawn.edges.length} / ${drawn.totalCount}</strong><span>imports drawn</span></div>
+      ${drawn.backEdges.length ? `<div class="stat"><strong>${drawn.backEdges.length}</strong><span>back edge${drawn.backEdges.length === 1 ? "" : "s"} hidden</span></div>` : ""}
     `;
   }
 
@@ -125,16 +126,36 @@
   }
 
   function renderLegend() {
-    const isFramework = state.path === "Framework" || state.path.startsWith("Framework/");
-    if (isFramework || state.path === "") {
-      els.legend.innerHTML = Object.entries(Model.ANN.roles || {}).map(([key, r]) => `
-        <div class="legend-item"><span class="legend-dot" style="--legend-color:${r.color}"></span><span>${escapeHtml(r.label)}</span></div>
-      `).join("");
-    } else {
-      els.legend.innerHTML = Object.entries(Model.ANN.layers || {}).map(([key, r]) => `
-        <div class="legend-item"><span class="legend-dot" style="--legend-color:${r.color}"></span><span>${escapeHtml(r.label)}</span></div>
-      `).join("");
+    const drawn = currentDrawn();
+    const isFramework = state.path === "Framework" || state.path.startsWith("Framework/") || state.path === "";
+    const table = isFramework ? (Model.ANN.roles || {}) : (Model.ANN.layers || {});
+    const present = new Set(drawn.children.map((c) => (isFramework ? Model.role(c) : Model.layer(c))));
+    const entries = Object.entries(table).filter(([key]) => present.has(key));
+    els.legend.innerHTML = (entries.length ? entries : Object.entries(table)).map(([, r]) => `
+      <div class="legend-item"><span class="legend-dot" style="--legend-color:${r.color}"></span><span>${escapeHtml(r.label)}</span></div>
+    `).join("");
+  }
+
+  function renderStrips() {
+    const isRoot = state.path === "";
+    const ghosts = isRoot ? { providers: [], consumers: [] } : (Model.view(state.path) || { ghosts: { providers: [], consumers: [] } }).ghosts;
+
+    function chip(g, side) {
+      const active = state.selection && state.selection.type === "external" && state.selection.target === g.target && state.selection.side === side;
+      return `<button class="strip-chip${active ? " active" : ""}" type="button" data-action="external" data-side="${side}" data-target="${escapeHtml(g.target)}">
+        <span class="strip-chip-label">${escapeHtml(Model.label(g.target))}</span>
+        <span class="strip-chip-weight">${g.weight}</span>
+      </button>`;
     }
+
+    els.usesStrip.innerHTML = ghosts.providers.length
+      ? `<div class="strip-title">Uses</div>${ghosts.providers.map((g) => chip(g, "providers")).join("")}`
+      : "";
+    els.usesStrip.hidden = !ghosts.providers.length;
+    els.usedByStrip.innerHTML = ghosts.consumers.length
+      ? `<div class="strip-title">Used by</div>${ghosts.consumers.map((g) => chip(g, "consumers")).join("")}`
+      : "";
+    els.usedByStrip.hidden = !ghosts.consumers.length;
   }
 
   function renderRailTree() {
@@ -173,15 +194,16 @@
     renderGraphOnly();
   }
 
-  function selectEdge(edge, bridge) {
-    state.selection = { type: "edge", edge, bridge: bridge || null };
+  function selectEdge(edge) {
+    state.selection = { type: "edge", edge };
     renderDetails();
     renderGraphOnly();
   }
 
-  function selectGhost(g) {
-    state.selection = { type: "ghost", ghost: g, side: g.side === "left" || g.side === "top" ? "providers" : "consumers" };
+  function selectExternal(target, side) {
+    state.selection = { type: "external", target, side };
     renderDetails();
+    renderStrips();
     renderGraphOnly();
   }
 
@@ -201,6 +223,7 @@
     renderMeta();
     renderLegend();
     renderRailTree();
+    renderStrips();
     renderDetails();
     renderGraphOnly();
     graphView.fit(buildViewModel());
@@ -215,7 +238,7 @@
     setView(parent === null ? "" : parent, path);
   }
 
-  // --- delegated clicks for dynamically-built HTML (rail, details, breadcrumb) ---
+  // --- delegated clicks for dynamically-built HTML (rail, details, breadcrumb, strips) ---
   document.addEventListener("click", (ev) => {
     const el = ev.target.closest("[data-action]");
     if (!el) return;
@@ -230,25 +253,34 @@
     }
     if (action === "goto") { goToNode(el.dataset.path); return; }
     if (action === "open") { setView(el.dataset.path); return; }
-    if (action === "select-bridge") {
-      const from = el.dataset.from, to = el.dataset.to;
-      const parent = Model.parentOf(from) === Model.parentOf(to) ? Model.parentOf(from) : "";
-      const view = ensureView(parent || "");
-      const edge = view.edges.find((e) => e.from === from && e.to === to) || { from, to, weight: 0, pairs: [] };
-      const bridge = (Model.ANN.bridges || []).find((b) => b.from === from && b.to === to && b.theorem === el.dataset.theorem);
-      if (state.path !== (parent || "")) setView(parent || "");
-      selectEdge(edge, bridge);
+    if (action === "external") { selectExternal(el.dataset.target, el.dataset.side); return; }
+    if (action === "open-external") {
+      const target = el.dataset.target;
+      setView(Model.parentOf(target) || target);
       return;
     }
     if (action === "select-edge-in") {
       const parent = el.dataset.path || "";
       const from = el.dataset.from, to = el.dataset.to;
       if (state.path !== parent) setView(parent);
-      const view = ensureView(parent);
+      const view = Model.rawView(parent);
       const edge = view.edges.find((e) => e.from === from && e.to === to);
       if (edge) selectEdge(edge);
       return;
     }
+  });
+
+  document.addEventListener("mouseover", (ev) => {
+    const chip = ev.target.closest(".strip-chip");
+    if (!chip) return;
+    state.hoverExternal = { target: chip.dataset.target, side: chip.dataset.side };
+    renderGraphOnly();
+  });
+  document.addEventListener("mouseout", (ev) => {
+    const chip = ev.target.closest(".strip-chip");
+    if (!chip) return;
+    state.hoverExternal = null;
+    renderGraphOnly();
   });
 
   // --- toolbar ---
@@ -262,17 +294,10 @@
     els.focusToggle.textContent = state.focusMode ? "Focus on" : "Show all";
     renderGraphOnly();
   });
-  els.spineToggle.addEventListener("click", () => {
-    state.spineMode = !state.spineMode;
-    els.spineToggle.classList.toggle("active", state.spineMode);
+  els.allImportsToggle.addEventListener("click", () => {
+    state.showAllImports = !state.showAllImports;
+    els.allImportsToggle.classList.toggle("active", state.showAllImports);
     renderGraphOnly();
-  });
-  [["showImports", els.importsToggle], ["showBridges", els.bridgesToggle], ["showGhosts", els.ghostsToggle]].forEach(([key, btn]) => {
-    btn.addEventListener("click", () => {
-      state[key] = !state[key];
-      btn.classList.toggle("active", state[key]);
-      renderGraphOnly();
-    });
   });
 
   els.searchInput.addEventListener("input", () => {
@@ -312,7 +337,7 @@
     if (ev.key === "Backspace" && state.path !== "") { ev.preventDefault(); setView(Model.parentOf(state.path) || ""); }
   });
 
-  window.addEventListener("resize", () => { renderGraphOnly(); graphView.fit(buildViewModel()); });
+  window.addEventListener("resize", () => { lastLayout = null; renderGraphOnly(); graphView.fit(buildViewModel()); });
 
   Router.onChange((r) => setView(r.path || "", r.sel, { skipRouter: true }));
 
