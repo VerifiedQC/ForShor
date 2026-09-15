@@ -1,5 +1,5 @@
 // Right-pane content: view (nothing selected), folder node, file node,
-// import edge, bridge edge, or ghost port. Pure rendering — everything here
+// edge, or boundary-strip external node. Pure rendering — everything here
 // returns an HTML string; app.js wires up data-action clicks afterwards.
 const Details = (() => {
   function esc(s) {
@@ -20,12 +20,12 @@ const Details = (() => {
     return `<div class="detail-section"><h3>${esc(title)}</h3>${html}</div>`;
   }
 
-  function bridgeChips(bridges) {
-    if (!bridges.length) return "";
-    const rows = bridges.map((b) => `
-      <button class="edge-chip" type="button" data-action="select-bridge" data-from="${esc(b.from)}" data-to="${esc(b.to)}" data-theorem="${esc(b.theorem || "")}">
-        <strong>${esc(b.label || b.theorem || `${Model.label(b.from)} → ${Model.label(b.to)}`)}</strong>
-        <span>${esc(Model.label(b.from))} → ${esc(Model.label(b.to))}</span>
+  function edgeChips(edges, viewPath) {
+    if (!edges.length) return "";
+    const rows = edges.map((e) => `
+      <button class="edge-chip" type="button" data-action="select-edge-in" data-path="${esc(viewPath)}" data-from="${esc(e.from)}" data-to="${esc(e.to)}">
+        <strong>${esc(e.label || e.theorem || `${Model.label(e.from)} → ${Model.label(e.to)}`)}</strong>
+        <span>${esc(Model.label(e.from))} → ${esc(Model.label(e.to))}</span>
       </button>`).join("");
     return `<div class="edge-list">${rows}</div>`;
   }
@@ -56,8 +56,8 @@ const Details = (() => {
 
   function viewCard(path) {
     const isRoot = path === "";
-    const view = Model.view(path);
-    const bridges = Model.bridgesTouchingView(path);
+    const drawn = Model.drawnEdgesFor(path);
+    const primary = drawn.edges.filter((e) => e.emphasis === "primary" && e.label);
     if (isRoot) {
       const intro = (Model.ANN.intro || {});
       const spine = (intro.spine || []).map((p) => navChip(p)).join(" → ");
@@ -67,8 +67,8 @@ const Details = (() => {
           <h2>${esc(intro.title || "ShorVerification")}</h2>
           <p>${esc(intro.summary || "")}</p>
           ${spine ? section("Reading spine", `<div class="spine-row">${spine}</div>`) : ""}
-          ${section("Curated bridges in this view", bridgeChips(bridges))}
-          ${Model.GRAPH.meta.implementationReadmeHtml ? section("Implementation/README.md", Model.GRAPH.meta.implementationReadmeHtml) : ""}
+          ${section("Curated arrows in this view", edgeChips(primary, path))}
+          ${Model.GRAPH.meta.implementationReadmeHtml ? `<a class="detail-action detail-action-inline" target="_blank" rel="noopener" href="${esc(Model.githubUrl("Implementation/README.md"))}">Read Implementation/README.md →</a>` : ""}
         </div>`;
     }
     const n = Model.node(path);
@@ -80,16 +80,20 @@ const Details = (() => {
         </div>
         <h2>${esc(Model.label(path))}</h2>
         <p>${esc(Model.summary(path) || "")}</p>
-        ${section("Bridges", bridgeChips(bridges))}
-        ${n.readmeHtml ? section("README", n.readmeHtml) : ""}
+        ${section("Curated arrows in this view", edgeChips(primary, path))}
+        ${n.readmeHtml ? `<a class="detail-action detail-action-inline" target="_blank" rel="noopener" href="${esc(Model.githubUrl(n.fsPath + "/README.md"))}">Read README.md →</a>` : ""}
       </div>`;
   }
 
   function folderCard(path) {
     const n = Model.node(path);
     const parent = Model.parentOf(path);
-    const inParentView = Model.view(parent === null ? "" : parent);
-    const edges = (inParentView ? inParentView.edges : []).filter((e) => e.from === path || e.to === path);
+    const parentPath = parent === null ? "" : parent;
+    const drawn = Model.drawnEdgesFor(parentPath);
+    const edges = drawn.edges.filter((e) => e.from === path || e.to === path);
+    const rawEdges = Model.rawView(parentPath).edges.filter((e) => e.from === path || e.to === path);
+    const drawnKeys = new Set(edges.map((e) => Model.edgeKey(e.from, e.to)));
+    const undrawn = rawEdges.filter((e) => !drawnKeys.has(Model.edgeKey(e.from, e.to)));
     const classes = Model.classesUnder(path);
     return `
       <div class="details-card">
@@ -99,16 +103,19 @@ const Details = (() => {
         </div>
         <h2>${esc(Model.label(path))}</h2>
         <p>${esc(Model.summary(path) || "A folder in the proof tree.")}</p>
+        ${n.readmeHtml ? `<a class="detail-action detail-action-inline" target="_blank" rel="noopener" href="${esc(Model.githubUrl(n.fsPath + "/README.md"))}">Read README.md →</a>` : ""}
         <div class="pill-list">
           ${pill(`${n.children.length} children`)}
           ${pill(`${n.fileCount} files`)}
           ${pill(`${n.declCount} declarations`)}
         </div>
         <button class="detail-action" type="button" data-action="open" data-path="${esc(path)}">Open →</button>
-        ${section("Import edges here", edges.length ? edges.map((e) => `
-          <button class="edge-chip" type="button" data-action="select-edge-in" data-path="${esc(parent)}" data-from="${esc(e.from)}" data-to="${esc(e.to)}">
-            <strong>${esc(Model.label(e.from))} → ${esc(Model.label(e.to))}</strong><span>${e.weight} file import${e.weight === 1 ? "" : "s"}</span>
-          </button>`).join("") : "")}
+        ${section("Arrows drawn here", edgeChips(edges, parentPath))}
+        ${section("Also imports / also imported by", undrawn.length ? `<div class="pill-list">${undrawn.map((e) => {
+          const other = e.from === path ? e.to : e.from;
+          const dir = e.from === path ? "→" : "←";
+          return `<button class="pill nav-pill" type="button" data-action="goto" data-path="${esc(other)}">${dir} ${esc(Model.label(other))} (${e.weight})</button>`;
+        }).join("")}</div>` : "")}
         ${section("Lean classes declared under this folder", classes.length ? `<div class="pill-list">${classes.slice(0, 60).map((c) => `<a class="pill class-pill" target="_blank" rel="noopener" href="${esc(Model.githubUrl(Model.node(c.path).fsPath, c.line))}">${esc(c.name)}</a>`).join("")}</div>${classes.length > 60 ? `<p class="muted-note">+${classes.length - 60} more</p>` : ""}` : "")}
       </div>`;
   }
@@ -130,34 +137,27 @@ const Details = (() => {
       </div>`;
   }
 
-  function edgeCard(edge, bridge, viewPath) {
-    if (bridge) {
-      return `
-        <div class="details-card">
-          <div class="detail-kicker"><span class="detail-type">Bridge</span></div>
-          <h2>${esc(bridge.theorem || bridge.label)}</h2>
-          <p>${esc(bridge.why || "")}</p>
-          <div class="pill-list">${navChip(bridge.from)}<span class="pair-arrow">→</span>${navChip(bridge.to)}</div>
-          ${section("Underlying import edge", pairsList(edge.pairs))}
-        </div>`;
-    }
+  function edgeCard(edge) {
+    const isCurated = edge.emphasis === "primary" && (edge.theorem || edge.why);
     return `
       <div class="details-card">
-        <div class="detail-kicker"><span class="detail-type">Import edge</span></div>
-        <h2>${esc(Model.label(edge.from))} → ${esc(Model.label(edge.to))}</h2>
-        <p>${edge.weight} file-level import${edge.weight === 1 ? "" : "s"} justify this arrow.</p>
+        <div class="detail-kicker"><span class="detail-type">${esc(edge.emphasis || "import")} edge</span></div>
+        <h2>${esc(edge.theorem || (edge.label ? edge.label : `${Model.label(edge.from)} → ${Model.label(edge.to)}`))}</h2>
+        ${isCurated ? `<p>${esc(edge.why || "")}</p>` : `<p>${edge.weight} file-level import${edge.weight === 1 ? "" : "s"} justify this arrow.</p>`}
+        <div class="pill-list">${navChip(edge.from)}<span class="pair-arrow">→</span>${navChip(edge.to)}</div>
         ${section("Contributing imports", pairsList(edge.pairs))}
       </div>`;
   }
 
-  function ghostCard(ghost, side, viewPath) {
-    const parent = Model.parentOf(ghost.target) || "";
+  function externalCard(target, side) {
+    const parent = Model.parentOf(target) || "";
+    const g = (side === "providers" ? "provides to" : "is used by");
     return `
       <div class="details-card">
-        <div class="detail-kicker"><span class="detail-type">${side === "providers" ? "Ghost provider" : "Ghost consumer"}</span></div>
-        <h2>${esc(Model.label(ghost.target))}</h2>
-        <p>${ghost.weight} file-level import${ghost.weight === 1 ? "" : "s"} cross this view's boundary${side === "providers" ? " into it" : " out of it"}.</p>
-        <button class="detail-action" type="button" data-action="goto" data-path="${esc(ghost.target)}">Go to ${esc(Model.label(parent) || "map")} →</button>
+        <div class="detail-kicker"><span class="detail-type">${side === "providers" ? "Uses" : "Used by"}</span></div>
+        <h2>${esc(Model.label(target))}</h2>
+        <p>This external folder ${g} the current view. Its internal counterparts are highlighted in the graph.</p>
+        <button class="detail-action" type="button" data-action="open-external" data-target="${esc(target)}">Go to ${esc(Model.label(parent) || "map")} →</button>
       </div>`;
   }
 
@@ -169,9 +169,9 @@ const Details = (() => {
     } else if (selection.type === "node") {
       html = Model.isFolder(selection.id) ? folderCard(selection.id) : fileCard(selection.id);
     } else if (selection.type === "edge") {
-      html = edgeCard(selection.edge, selection.bridge, viewPath);
-    } else if (selection.type === "ghost") {
-      html = ghostCard(selection.ghost, selection.side, viewPath);
+      html = edgeCard(selection.edge);
+    } else if (selection.type === "external") {
+      html = externalCard(selection.target, selection.side);
     } else {
       html = viewCard(viewPath);
     }

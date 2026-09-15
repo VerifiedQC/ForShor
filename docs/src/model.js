@@ -2,8 +2,9 @@
 // single queryable model. Nothing here mutates GRAPH/ANNOTATIONS.
 const Model = (() => {
   const GRAPH = window.GRAPH;
-  const ANN = window.ANNOTATIONS || { nodes: {}, bridges: [], roles: {}, layers: {}, repo: {} };
+  const ANN = window.ANNOTATIONS || { nodes: {}, views: {}, roles: {}, layers: {}, repo: {} };
   const annNodes = ANN.nodes || {};
+  const annViews = ANN.views || {};
   const repo = ANN.repo || { owner: "", repo: "", branch: "main" };
 
   function node(path) {
@@ -108,13 +109,106 @@ const Model = (() => {
     return `${fromPath}=>${toPath}`;
   }
 
-  function bridgesFor(fromPath, toPath) {
-    return (ANN.bridges || []).filter((b) => b.from === fromPath && b.to === toPath);
+  function rawView(viewPath) {
+    if (viewPath === "") {
+      return { path: "", children: GRAPH.meta.order0, edges: GRAPH.views[""].edges, ghosts: { providers: [], consumers: [] } };
+    }
+    return view(viewPath);
   }
 
-  function bridgesTouchingView(viewPath) {
-    const childSet = new Set(viewPath === null ? [] : (view(viewPath) || { children: [] }).children);
-    return (ANN.bridges || []).filter((b) => childSet.has(b.from) && childSet.has(b.to));
+  // Longest-path-from-source rank, tolerant of aggregate cycles (same
+  // approach as layout.js's computeRanks) — used only to decide which
+  // edges run "backwards" against the folder's own layer order, so the
+  // automatic fallback below can drop them before reducing.
+  function longestPathRank(children, edges) {
+    const indegree = new Map(children.map((c) => [c, 0]));
+    const adj = new Map(children.map((c) => [c, []]));
+    edges.forEach((e) => {
+      if (adj.has(e.from) && indegree.has(e.to)) {
+        adj.get(e.from).push(e.to);
+        indegree.set(e.to, indegree.get(e.to) + 1);
+      }
+    });
+    const rank = new Map(children.map((c) => [c, 0]));
+    const done = new Set();
+    const queue = children.filter((c) => indegree.get(c) === 0);
+    queue.forEach((c) => done.add(c));
+    while (done.size < children.length) {
+      if (!queue.length) {
+        let best = null, bestDeg = Infinity;
+        for (const c of children) {
+          if (!done.has(c) && indegree.get(c) < bestDeg) { bestDeg = indegree.get(c); best = c; }
+        }
+        if (best === null) break;
+        queue.push(best);
+        done.add(best);
+      }
+      const id = queue.shift();
+      for (const t of adj.get(id) || []) {
+        rank.set(t, Math.max(rank.get(t), rank.get(id) + 1));
+        indegree.set(t, indegree.get(t) - 1);
+        if (indegree.get(t) <= 0 && !done.has(t)) { done.add(t); queue.push(t); }
+      }
+    }
+    return rank;
+  }
+
+  function splitBackEdges(children, edges) {
+    const rank = longestPathRank(children, edges);
+    const forward = [], back = [];
+    edges.forEach((e) => {
+      if ((rank.get(e.to) ?? 0) > (rank.get(e.from) ?? 0)) forward.push(e);
+      else back.push(e);
+    });
+    return { forward, back };
+  }
+
+  // Drop edge (a,b) when some other path a -> ... -> b exists using the
+  // remaining edges, so only the non-redundant structure is drawn.
+  function transitiveReduction(children, edges) {
+    const adj = new Map(children.map((c) => [c, []]));
+    edges.forEach((e) => { if (adj.has(e.from)) adj.get(e.from).push(e.to); });
+    function reachableAvoiding(skipFrom, skipTo, target) {
+      const seen = new Set([skipFrom]);
+      const stack = [skipFrom];
+      while (stack.length) {
+        const u = stack.pop();
+        for (const v of adj.get(u) || []) {
+          if (u === skipFrom && v === skipTo) continue;
+          if (v === target) return true;
+          if (!seen.has(v)) { seen.add(v); stack.push(v); }
+        }
+      }
+      return false;
+    }
+    return edges.filter((e) => !reachableAvoiding(e.from, e.to, e.to));
+  }
+
+  // The edges a view actually draws: the curated list in annotations.js if
+  // present (each merged with its real weight/pairs so the details pane can
+  // still show contributing imports), else an automatic fallback — drop
+  // back edges against the folder's own layer order, then transitively
+  // reduce what remains, drawn as unlabelled primary edges.
+  function drawnEdgesFor(viewPath) {
+    const v = rawView(viewPath);
+    if (!v) return { children: [], edges: [], columns: null, totalCount: 0, backEdges: [] };
+    const curated = annViews[viewPath];
+    const realByKey = new Map(v.edges.map((e) => [edgeKey(e.from, e.to), e]));
+
+    if (curated && curated.edges && curated.edges.length) {
+      const edges = curated.edges
+        .map((ce) => {
+          const real = realByKey.get(edgeKey(ce.from, ce.to));
+          return real ? { ...real, ...ce } : null;
+        })
+        .filter(Boolean);
+      return { children: v.children, edges, columns: curated.columns || null, totalCount: v.edges.length, backEdges: [] };
+    }
+
+    const { forward, back } = splitBackEdges(v.children, v.edges);
+    const reduced = transitiveReduction(v.children, forward);
+    const edges = reduced.map((e) => ({ ...e, emphasis: "primary" }));
+    return { children: v.children, edges, columns: null, totalCount: v.edges.length, backEdges: back };
   }
 
   // Every declaration in the tree, for global search. Built lazily.
@@ -161,12 +255,38 @@ const Model = (() => {
     return out;
   }
 
+  function subtreeFiles(path) {
+    const n = node(path);
+    if (!n) return [];
+    if (n.kind === "file") return [path];
+    return n.children.flatMap(subtreeFiles);
+  }
+
+  // Which of a view's children actually import from (side="providers") or
+  // are imported by (side="consumers") the given external node's subtree —
+  // powers the boundary strips' hover/select highlight.
+  function externalHighlightSet(viewPath, target, side) {
+    const v = rawView(viewPath);
+    if (!v) return new Set();
+    const targetFiles = new Set(subtreeFiles(target));
+    const result = new Set();
+    v.children.forEach((c) => {
+      const hit = subtreeFiles(c).some((f) => {
+        const fn = node(f);
+        const list = side === "providers" ? fn.imports : fn.importedBy;
+        return list.some((other) => targetFiles.has(other));
+      });
+      if (hit) result.add(c);
+    });
+    return result;
+  }
+
   return {
     GRAPH, ANN, repo,
-    node, view, parentOf, depth0Of, isFolder,
+    node, view, rawView, parentOf, depth0Of, isFolder,
     role, layer, summary, subtitle, label,
     githubUrl, githubTreeUrl,
-    edgeKey, bridgesFor, bridgesTouchingView,
-    search, ancestors, classesUnder,
+    edgeKey, drawnEdgesFor, transitiveReduction,
+    search, ancestors, classesUnder, subtreeFiles, externalHighlightSet,
   };
 })();
