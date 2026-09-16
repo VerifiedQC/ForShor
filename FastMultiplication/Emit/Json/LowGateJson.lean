@@ -1,5 +1,4 @@
-import Lean.Data.Json
-import FastMultiplication.ShorVerification.Framework.Gatecount.ResourceModel
+import FastMultiplication.Emit.Json.Common
 import FastMultiplication.ShorVerification.Framework.Submission
 
 /-!
@@ -14,25 +13,6 @@ core.
 namespace Shor
 
 open Lean (Json)
-
-/-- Ordered physical qubit indices of a register, LSB-first. -/
-def regJson (r : Reg) : Json :=
-  Json.arr (r.qubits.map (fun q => (q : Json))).toArray
-
-/-- An extendable register as its active and reserve qubit lists. -/
-def extRegJson (r : ExtReg) : Json :=
-  Json.mkObj [
-    ("active", regJson r.active),
-    ("reserve", regJson r.reserve)
-  ]
-
-/-- An `Angle` (a rational multiple of `π`) as an exact `num/den` pair. -/
-def angleJson (a : Angle) : Json :=
-  Json.mkObj [
-    ("num", (a.num : Json)),
-    ("den", (a.den : Json)),
-    ("unit", Json.str "pi")
-  ]
 
 /-- Flatten nested `seq` nodes into an ordered list of leaves, dropping `id`s. -/
 partial def LowGate.flattenSeq : LowGate → List LowGate
@@ -97,8 +77,38 @@ def emitProgram (P : ShorOrderFindingProgram) (metaJson : Json) : Json :=
     ("angle_unit", Json.str "pi"),
     ("output_register", regJson P.output),
     ("gate_count", (LowGate.gateCount shorGateCostModel P.circuit : Json)),
-    ("qubit_count", (((LowGate.usedQubits P.circuit).sup id : ℕ) : Json)),
+    ("qubit_count", (LowGate.qubitCount shorGateResourceModel P.circuit : Json)),
+    ("max_qubit_index", (((LowGate.usedQubits P.circuit).sup id : ℕ) : Json)),
+    ("resources", gateResourcesJson (LowGate.resources shorGateResourceModel P.circuit)),
     ("circuit", lowGateJson P.circuit),
+    ("meta", metaJson)
+  ]
+
+/-- Document wrapper for a bare `LowGate` with no distinguished output
+register (`pp`/`cpp`/`qft`'s flat view — there is no single "the" instance
+program here, just the lowered circuit itself). Same schema/fields as
+`emitProgram` minus `output_register`. -/
+def emitLowGateDoc (g : LowGate) (metaJson : Json) : Json :=
+  Json.mkObj [
+    ("schema", Json.str "forshor.lowgate/v2"),
+    ("bit_order", Json.str "lsb_first"),
+    ("angle_unit", Json.str "pi"),
+    ("gate_count", (LowGate.gateCount shorGateCostModel g : Json)),
+    ("qubit_count", (LowGate.qubitCount shorGateResourceModel g : Json)),
+    ("max_qubit_index", (((LowGate.usedQubits g).sup id : ℕ) : Json)),
+    ("resources", gateResourcesJson (LowGate.resources shorGateResourceModel g)),
+    ("circuit", lowGateJson g),
+    ("meta", metaJson)
+  ]
+
+/-- Document wrapper for an annotated plan (`--annotated`): same envelope,
+`forshor.plan/v1` schema, `"plan"` instead of `"circuit"`. -/
+def emitPlanDoc (planJ : Json) (metaJson : Json) : Json :=
+  Json.mkObj [
+    ("schema", Json.str "forshor.plan/v1"),
+    ("bit_order", Json.str "lsb_first"),
+    ("angle_unit", Json.str "pi"),
+    ("plan", planJ),
     ("meta", metaJson)
   ]
 

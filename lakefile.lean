@@ -17,3 +17,6 @@ lean_lib «FastMultiplication» where
 
 lean_exe forshor_emit where
   root := `FastMultiplication.Emit.Main
+
+lean_lib «EmitTests» where
+  roots := #[`FastMultiplication.Emit.Tests]
