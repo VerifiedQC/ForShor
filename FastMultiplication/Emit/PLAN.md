@@ -358,27 +358,43 @@ phaseCoeff ops` application (`k = 2`, standard table) and watched what
   time, not a single opaque free variable of the whole structure type.
 
 - **Finding 2 — a fully generic `Expr → Node`/`Expr → WExpr` translator is
-  more machinery than this target needs, and a hybrid is both simpler and
-  still generic in `k`/table.** `pp_body`'s width/layout bookkeeping
-  (`phaseLimbWidth`, `phaseSplitLogicalWidth`, `commonNeededWidth`,
-  `extraDelta`, which chunk gets grown to which target width) depends only
-  on `k` (and the opaque `nextWidth`), never on the table's actual op
-  sequence — so the extractor can compute those *as WExpr values directly*,
-  in lockstep with building the specialised `Expr` (by construction, not by
-  reflecting a formula back out of a reduced register value), for any `k`
-  via a plain loop over `i : Fin k` — no per-`k`/per-table code, D2 still
-  holds. Only `compileAnnotatedOpsToSignedGateAux`'s walk over `annOps` —
-  the part whose *shape* genuinely depends on which table was loaded — needs
-  real reflection: `whnf`, recognise the concrete op at the head, recurse.
+  more machinery than this target needs; a hybrid is simpler, still generic
+  in `k`, and does not weaken D4.** First stated this wrong (as "width/
+  layout bookkeeping depends only on `k`, never on the table") and was
+  corrected: `RecursivePhaseWorkspace.nextWidth ops wx wz` unfolds to
+  `nextSignedWidth … ops = commonNeededWidth (scanNeededWidths x z ops)`,
+  and `scanNeededWidths` walks the *actual op list* (`shiftL i n`,
+  `addScaled dst src _ sh`, …), accumulating a max-width bookkeeping from
+  their concrete indices/shift-amounts — so the target width every chunk
+  gets grown to (`Wwork`) genuinely depends on the table; different tables
+  give different numbers. That is not in question.
+  What *is* still true, more narrowly: (a) the **allocation structure** —
+  how many alloc/dealloc gate pairs, at which chunk indices, in which order
+  — comes from `compileSignedAllocationsAux`/`compileSignedDeallocationsAux`,
+  which take no `ops` argument at all, only `k`; that structure really is
+  table-independent. (b) `Wwork` itself is exactly `RecursivePhaseWorkspace.
+  nextWidth`, which D4 *already* mandates be opaque — the extractor is not
+  permitted to inline/compute it for any table, not because its value is
+  table-independent (it is not) but because the plan says not to reflect
+  into `scanNeededWidths`'s internals at all. So the extractor recognises
+  `commonNeededWidth (scanNeededWidths x z ops)` by constant name and
+  emits `WExpr.opaque "nextWidth" [xw, zw]` without inspecting the argument
+  — the real, table-dependent number is resolved later, at `instantiate`
+  time, by calling the real function with the real `ops` (closed over in
+  `Env.opaqueW`). Only `compileAnnotatedOpsToSignedGateAux`'s walk over
+  `annOps` — whose *shape* (which ops, how many phase-product leaves) is the
+  genuinely table-dependent part the IR must actually capture — needs real
+  reflection: `whnf`, recognise the concrete op at the head, recurse.
   Register/width arguments appearing there are looked up against the
   extractor's own precomputed per-slot table (matched by `isDefEq` against
   the handful of `Expr`s it already built, e.g. `stFinal.xslot i` for each
   concrete `i`) rather than re-derived by a general-purpose reflective
-  width/register translator. `commonNeededWidth (scanNeededWidths x z ops)`
-  itself is recognised by constant name and treated as opaque outright (D4's
-  default), without inspecting its argument — R2.1's `Finset.univ.sup`
-  question (D4's optional follow-up) is accordingly untested and left
-  open, not resolved either way.
+  width/register translator. R2.1's `Finset.univ.sup` question (D4's
+  optional follow-up, i.e. whether `nextWidth` could instead be *proven*
+  reducible to a closed formula and leave the opaque set for a *specific*
+  table) is accordingly untested and left open, not resolved either way —
+  and does not change any of the above, since D4's default is to leave it
+  opaque regardless.
 
 Status: the spike is evidence the approach works and de-risks D2/D3/D7 for
 this target; it is not `Extract.lean`. Writing the real, tested,
