@@ -100,4 +100,42 @@ elab "extract_ir_doc " id:ident k:num : command => do
   else
     throwError "extract_ir_doc: k = {kVal} must be > 1"
 
+/-- Run-time entry point (`PLAN.md` §5.4): `lake exe forshor_emit`'s own
+process has `FastMultiplication.Emit.Reflect.Targets` compiled in already
+(it's an ordinary `import`), but not as a first-class `Environment` value
+`MetaM` can reflect over — that's exactly what `importModules` builds.
+`lake exe` supplies the search path (`initSearchPath`/`findSysroot` resolve
+it the same way the `lean` binary itself does), so this needs no extra
+configuration at the call site.
+
+`importModules` defaults `loadExts := false` — every environment extension
+(the instance-resolution registry among them) then keeps its *initial*
+value instead of the imported one, which broke typeclass search for
+something as basic as `LT Nat` the first time this ran. Fix, per
+`importModules`'s own doc comment: `loadExts := true`, which needs
+`enableInitializersExecution` called first — unlike the `lean` binary
+itself, a plain `lake exe` process never calls it automatically, hence
+`unsafe` here (and up through every caller): running arbitrary
+`initialize`-block code from imported modules is exactly what makes this
+operation unsafe in the type-theoretic sense (not "will crash", but "the
+kernel takes it on faith"), same as `native_decide`.
+
+Every `MetaM`/`CoreM` error (an `unrecognised construct …`, say) is caught
+and reported as `Except.error`, never an uncaught `IO` exception. -/
+unsafe def runExtract (src : Shor.TableSource) (k : Nat) : IO (Except String IR.Doc) := do
+  if h : 1 < k then
+    try
+      enableInitializersExecution
+      initSearchPath (← findSysroot)
+      let env ← importModules #[{module := `FastMultiplication.Emit.Reflect.Targets}] {}
+        (trustLevel := 0) (loadExts := true)
+      let coreCtx : Core.Context := { fileName := "<extract_ir>", fileMap := FileMap.ofString "" }
+      let coreState : Core.State := { env := env }
+      let (doc, _) ← ((buildDoc k h src).run').toIO coreCtx coreState
+      return .ok doc
+    catch e =>
+      return .error (toString e)
+  else
+    return .error s!"runExtract: k = {k} must be > 1"
+
 end Shor.Reflect

@@ -5,6 +5,8 @@ import FastMultiplication.Emit.Lower.Decide
 import FastMultiplication.Emit.Lower.PhaseProduct
 import FastMultiplication.Emit.Lower.Qft
 import FastMultiplication.Emit.Lower.Instantiate
+import FastMultiplication.Emit.Reflect.Driver
+import FastMultiplication.Emit.IR.Json
 
 /-!
 # `forshor_emit` executable
@@ -28,6 +30,7 @@ def usageText : String :=
   "       forshor_emit pp <k> <n> <phiNum/phiDen> [--flat]\n" ++
   "       forshor_emit cpp <k> <n> <phiNum/phiDen> [--flat]\n" ++
   "       forshor_emit qft <k> <w> [--flat]\n" ++
+  "       forshor_emit extract_ir <k>\n" ++
   "  k : number of PhaseProduct synthesis registers (k > 1)\n" ++
   "  a : base, with 0 < a < N and gcd a N = 1\n" ++
   "  N : modulus\n" ++
@@ -175,7 +178,28 @@ def runPP (isCtrl : Bool) (kStr nStr phiStr : String) (flat : Bool) : IO UInt32 
         if isCtrl then Shor.buildCPP k n num den annotated else Shor.buildPP k n num den annotated)
         kStr nStr flat
 
-def main (args : List String) : IO UInt32 := do
+/-- `extract_ir <k>`: run the reflection extractor (`Reflect/Driver.lean`'s
+`runExtract`, standard table only so far) at run time and print the
+resulting `Doc` as `forshor.ir/v1` JSON. Deliberately not named `template`
+(already the old hand-written `Symbolic/Template.lean` view) — the plan is
+for `template` to become this once the whole call chain is extracted
+(`Emit/PLAN.md` R2.6/R3), not before. -/
+unsafe def runExtractIR (kStr : String) : IO UInt32 := do
+  match kStr.toNat? with
+  | none => do
+      IO.eprintln "error: k must be a natural number"
+      IO.eprint usageText
+      return 2
+  | some k =>
+      match ← Shor.Reflect.runExtract .standard k with
+      | .ok doc => do
+          IO.println (Shor.IR.docJson doc).compress
+          return 0
+      | .error e => do
+          IO.eprintln s!"error: {e}"
+          return 3
+
+unsafe def main (args : List String) : IO UInt32 := do
   match args with
   | "shor" :: kStr :: aStr :: NStr :: mStr :: [] => runShorArgs kStr aStr NStr mStr
   | "bundle" :: rest =>
@@ -190,6 +214,7 @@ def main (args : List String) : IO UInt32 := do
   | "qft" :: kStr :: wStr :: rest =>
       runPPQFT Shor.buildQFT kStr wStr (rest.contains "--flat")
   | "phases" :: kStr :: mStr :: phiStr :: [] => runPhases kStr mStr phiStr
+  | "extract_ir" :: kStr :: [] => runExtractIR kStr
   | sectionName :: rest =>
       if Shor.sectionNames.contains sectionName then
         runSection sectionName rest

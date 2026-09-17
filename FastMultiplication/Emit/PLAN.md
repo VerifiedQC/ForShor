@@ -490,9 +490,30 @@ of whatever the reserve turned out to be, not a single nameable slice).
 Both are threaded through `Json.lean`/`WellFormed.lean`/`Instantiate.lean`
 too.
 
-Not yet done: `runExtract`'s *run-time* half (§5.4's `IO`/`importModules`
-entry point, and `forshor_emit template <k>`'s CLI wiring — D1's actual
-target); R2.2–R2.7.
+Since then, `runExtract`'s run-time half is also done: `Driver.lean`'s
+`runExtract (src) (k) : IO (Except String Doc)`, `importModules`-based per
+§5.4, wired up as `forshor_emit extract_ir <k>` (not `template <k>` — D1's
+literal name is already the *old* hand-written `Symbolic/Template.lean`
+view via `sectionNames`/`buildSection`, and per R4 that only gets replaced
+once the whole call chain is extracted; colliding the names now would break
+the existing `template` command for no reason). One real bug caught getting
+this to work: `importModules` defaults `loadExts := false`, which leaves
+every environment extension — including the instance-resolution registry —
+at its *initial* value, so even `LT Nat` typeclass search failed the first
+time this ran. Fix: `loadExts := true`, which per `importModules`'s own doc
+comment needs `enableInitializersExecution` (`unsafe`, propagated up
+through `runExtract`/`runExtractIR`/`main` — a plain `lake exe` process
+never calls it automatically the way the `lean` frontend does; running
+arbitrary imported `initialize`-block code is exactly what makes this
+`unsafe` in the type-theoretic sense, same category as `native_decide`).
+Confirmed working for both `k = 2` and `k = 3` via `lake exe forshor_emit
+extract_ir <k>` (no code change between them — D2's genericity, checked
+against the actual binary, not just the extraction library code), and
+`k = 1` refused cleanly (`exit 3`, `error: runExtract: k = 1 must be > 1`).
+
+Not yet done: R2.2–R2.7 (every other call-chain target — `WellFounded.fix`,
+`Nat.casesOn`, `Gate.CSignedPhaseProd`, QFT, Shor — is new machinery this
+file hasn't exercised).
 
 ## 7. R3 — bundle integration
 
