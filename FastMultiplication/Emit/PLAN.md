@@ -515,6 +515,59 @@ Not yet done: R2.2–R2.7 (every other call-chain target — `WellFounded.fix`,
 `Nat.casesOn`, `Gate.CSignedPhaseProd`, QFT, Shor — is new machinery this
 file hasn't exercised).
 
+### 6.2 R2.2 spike: the `.eq_1` lemma exists and shows exactly what D3 promised
+
+Before building R2.2 (`phase_product` = `standardSignedPhaseLoweringPlan` +
+`lowerGateRec`, producing a `LowGate` rather than `Gate`), the one load-bearing
+uncertainty was checked directly: `standardSignedPhaseLoweringPlan` is
+defined by a **tactic proof** (`:= by by_cases hrec : … · … · …`) under
+`termination_by`, not equation-compiler pattern-matching syntax — does Lean
+still generate an unfolding equation lemma for a definition shaped like
+that? `#check standardSignedPhaseLoweringPlan.eq_1` says yes, and it is
+exactly the one-step body D3/the plan's algorithm wants:
+
+```
+standardSignedPhaseLoweringPlan k hk phi x z ops hworkspace =
+  if hrec : nextSignedWidth x z ops < phaseInputSize x z then
+    let step := canonicalSignedStep hk ops x z hrec hworkspace
+    …
+    have recurse := fun i theta => … standardSignedPhaseLoweringPlan k hk theta
+      (dst.xslot i) (dst.zslot i) ops hchild …
+    have child := planCompiledSignedPhaseGate hk … (id recurse)
+    PhaseLoweringPlan.signedStep phi x z step.layout hrec ⋯ child
+  else PhaseLoweringPlan.signedBase phi x z hrec
+```
+
+So: rewriting with `.eq_1` (`simp only`/direct term rewriting at the meta
+level — never `whnf`/`unfoldDefinition?`, which would unfold the
+`WellFounded.fix` underneath into `Acc.rec` noise) exposes the recursion
+guard (`nextSignedWidth x z ops < phaseInputSize x z` — opaque `nextWidth`
+compared against `phaseLimbWidth`'s already-handled `max xw zw`, both
+already things `translateW`/`translateProp` recognise) directly as an
+`if`, and the self-call by name (`standardSignedPhaseLoweringPlan k hk theta
+(dst.xslot i) (dst.zslot i) ops hchild`) inside a `recurse` helper — this
+becomes `Node.call "phase_product" […]` once instantiated at a concrete
+`(i, theta)` pair, which happens where `planCompiledSignedPhaseGate`'s own
+recursion (parallel to `pp_body`'s `compileAnnotatedOpsToSignedGateAux`,
+but building `PhaseLoweringPlan` proof terms instead of plain `Gate`s) hits
+a `phaseProduct` leaf and calls `recurse i theta`.
+
+Two things this adds to R2.2's scope, beyond R2.1's machinery:
+1. **A new `Doc` dependency.** `lowerGateRec`'s `.signedBase phi x z _ =>
+   LowGate.Naive_SignedPhaseProd phi x z` means `phase_product`'s base case
+   is a `Node.call` to `naive_leaf` (R2.3) — `phase_product`'s `Doc` is not
+   well-formed without `naive_leaf` in it too. Building R2.3 first (no
+   recursion, "just" a new construct — `Node.loop` over a register's
+   `signedTerms`, not yet exercised either) is the more tractable order.
+2. **A new translate case**: recognising `standardSignedPhaseLoweringPlan`
+   applications specifically (rewrite with `.eq_1`, not `whnf`/
+   `unfoldDefinition?`) before falling through to the generic dispatch —
+   `Extract.lean`'s normalize loop needs a per-declaration override, not
+   just per-construct-name matching.
+
+Status: spike only, de-risking done; `Extract.lean`/`Targets.lean` do not
+yet have a `phase_product` or `naive_leaf` target.
+
 ## 7. R3 — bundle integration
 
 - `Bundle.lean`: `template` becomes the extracted `Doc` (printed by
