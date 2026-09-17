@@ -307,6 +307,89 @@ register expressions in the parameters, not fresh parameters.
   `extract_ir_doc <declName> (k := 2) (src := .standard)` producing
   `def declName : Doc := <quoted Doc>`, used only in `Tests.lean`.
 
+### 5.5 R2.1 spike: findings, before writing `Extract.lean` itself
+
+Ground rule 4 time-boxes R2.1 and says to stop and reconsider before
+building downstream of it. Before writing `Extract.lean`/`Targets.lean` for
+real, `Quote.lean` was built (below) and then spent against a throwaway,
+uncommitted `#eval`-driven `MetaM` script — never a file in this tree —
+that hand-built the specialised `compileOpsToSignedGate k hk phi x z layout
+phaseCoeff ops` application (`k = 2`, standard table) and watched what
+`whnf`/`unfoldDefinition?` actually do to it. Findings:
+
+- **The mechanism works.** `whnf` unfolds `compileOpsToSignedGate`'s
+  top-level `let`s cleanly to `allocs ;; body ;; deallocs`
+  (`compileSignedAllocations`/`compileAnnotatedOpsToSignedGateAux`/
+  `compileSignedDeallocations`, each still applied to unreduced
+  sub-arguments — expected, since `whnf` only normalises the head, not
+  argument positions; a real extractor must recurse into each argument and
+  `whnf` it again, which is exactly what `normalize`/`translate` are for).
+  Concrete `Fin k`-recursion (`compileSignedAllocationsAux` at `k = 2`)
+  iota-reduces automatically. A structure projection composed with an
+  unreduced `def` application (`(targetSignedLayoutState stInit
+  need).xslot ⟨1,_⟩`) *does* keep unfolding when `whnf`'d directly —
+  confirmed empirically, not assumed — cascading through
+  `growExtRegTo`/`ExtReg.grow` down to a literal `{active := …, reserve :=
+  …}` structure, `.active` built from real `Reg.take`/`Reg.drop` arithmetic.
+  So a proper recursive normalize loop should work; nothing here is
+  fundamentally stuck.
+
+- **Finding 1 — a bare opaque `layout` doesn't work; build it with
+  fine-grained fresh variables instead.** A `layout : Gate.PhaseProductLayout
+  x z k` introduced as *one* free variable leaves `layout.xSplit.reserve i`
+  permanently stuck at an unnamed, unstructured `Reg` for every `i` — not a
+  formula, nothing `RegExpr` (as specified) can name, since `RegExpr` only
+  has slice/qubit/`ext` shapes, not "opaque register indexed by a free
+  variable's projection". Fix, confirmed to work: construct `layout` as a
+  real structure literal (`PhaseSplitLayout.mk`/`Gate.PhaseProductLayout.mk`)
+  whose `reserve : Fin k → Reg` field is built from *k* fresh per-child `Reg`
+  free variables (selected by an `ite` chain on `i.val` — `k` is always
+  concrete at extraction time, so this is finite and mechanical for any
+  `k`), and whose `Prop`-typed fields (`valid`, `active_reserve_disjoint`,
+  `reserve_partition`, `child_owned_pairwise`, `cross_owned_disjoint`) are
+  free variables too (harmless: they're erased by translation regardless,
+  per the existing "Prop arguments become free variables" rule). Once built
+  this way, `.xSplit`/`.reserve` project off a literal `.mk` and reduce; only
+  the genuinely-opaque reserve qubits stay stuck, as a *plain named
+  variable* — which `RegExpr.var` already covers. This generalises: any
+  register-parameterised target whose real argument is a dependent
+  structure with both formula-shaped and genuinely-opaque data fields needs
+  this same "reconstruct with per-leaf freshness" treatment at Specialise
+  time, not a single opaque free variable of the whole structure type.
+
+- **Finding 2 — a fully generic `Expr → Node`/`Expr → WExpr` translator is
+  more machinery than this target needs, and a hybrid is both simpler and
+  still generic in `k`/table.** `pp_body`'s width/layout bookkeeping
+  (`phaseLimbWidth`, `phaseSplitLogicalWidth`, `commonNeededWidth`,
+  `extraDelta`, which chunk gets grown to which target width) depends only
+  on `k` (and the opaque `nextWidth`), never on the table's actual op
+  sequence — so the extractor can compute those *as WExpr values directly*,
+  in lockstep with building the specialised `Expr` (by construction, not by
+  reflecting a formula back out of a reduced register value), for any `k`
+  via a plain loop over `i : Fin k` — no per-`k`/per-table code, D2 still
+  holds. Only `compileAnnotatedOpsToSignedGateAux`'s walk over `annOps` —
+  the part whose *shape* genuinely depends on which table was loaded — needs
+  real reflection: `whnf`, recognise the concrete op at the head, recurse.
+  Register/width arguments appearing there are looked up against the
+  extractor's own precomputed per-slot table (matched by `isDefEq` against
+  the handful of `Expr`s it already built, e.g. `stFinal.xslot i` for each
+  concrete `i`) rather than re-derived by a general-purpose reflective
+  width/register translator. `commonNeededWidth (scanNeededWidths x z ops)`
+  itself is recognised by constant name and treated as opaque outright (D4's
+  default), without inspecting its argument — R2.1's `Finset.univ.sup`
+  question (D4's optional follow-up) is accordingly untested and left
+  open, not resolved either way.
+
+Status: the spike is evidence the approach works and de-risks D2/D3/D7 for
+this target; it is not `Extract.lean`. Writing the real, tested,
+`native_decide`-backed `Extract.lean`/`Targets.lean` against this hybrid
+design (reflect the op-sequence walk; compute width/layout bookkeeping
+directly) is the next work, and is substantial enough — plus the further
+open question of how `phaseCoeff` applications (`phi * phaseCoeff l`) get
+recognised syntactically and turned into `AExpr.coeff` — that it was
+reported back rather than pushed through uninterrupted in the same sitting
+as this spike.
+
 ## 6. R2 — extraction targets and exit criteria
 
 Each row is one step. "Equals" means `instantiate` (or `instantiateGate`)
