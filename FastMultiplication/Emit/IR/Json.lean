@@ -39,6 +39,9 @@ partial def AExpr.render : AExpr → String
   | .coeff phi l m => s!"({phi.render} * coeff({l}, {m.render}))"
   | .div2 a => s!"({a.render} / 2)"
   | .neg a => s!"(-{a.render})"
+  | .signedPair phi xi xw zi zw =>
+      s!"({phi.render} * signedBitWeight({xw.render}, {xi.render}) * " ++
+        s!"signedBitWeight({zw.render}, {zi.render}))"
 
 /-- Render a `RegExpr` as a slice path, e.g. `x.active[0:4]`,
 `ext(x.active[0:4], x.reserve[0:2])`, `x.active[3]`. -/

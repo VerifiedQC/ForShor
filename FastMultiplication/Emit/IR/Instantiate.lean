@@ -103,6 +103,13 @@ partial def evalA (env : Env) : AExpr → Except String Angle
       | none => .error s!"instantiate: coeff undefined at l={l} m={mv}"
   | .div2 a => return (← evalA env a) / 2
   | .neg a => return (-(← evalA env a))
+  | .signedPair phi xi xw zi zw => do
+      let phiV ← evalA env phi
+      let xiV ← evalW env xi
+      let xwV ← evalW env xw
+      let ziV ← evalW env zi
+      let zwV ← evalW env zw
+      pure (phiV * (signedBitWeight xwV xiV : ℚ) * (signedBitWeight zwV ziV : ℚ))
 
 /-- Evaluate a `Prop'` guard. -/
 def evalProp (env : Env) : Prop' → Except String Bool
@@ -153,9 +160,14 @@ partial def evalReg (env : Env) : RegExpr → Except String ExtReg
       pure (rv.grow nv)
 
 /-- Build one `LowGate` leaf from an `op` node's already-evaluated
-arguments. Op names are exactly the `LowGate` constructor names (D2); regs
-land in declaration order, nats in declaration order, dropped into whichever
-of the two lists they belong to. -/
+arguments. Op names are exactly the `LowGate` constructor names (D2), with
+one exception: `CPhase` names the derived function `LowGate.CPhase`
+directly rather than one constructor, since its `ctrl = target` branch is
+only ever decidable once `ctrl`/`target` are concrete physical qubits (D2's
+"opaque named function" treatment, same idea as `RegExpr.grow` for
+`ExtReg.grow` — do not force a symbolic guard where the real function
+already isn't one). regs land in declaration order, nats in declaration
+order, dropped into whichever of the two lists they belong to. -/
 def buildLowGate (name : String) (regs : List ExtReg) (nats : List ℕ) (angle : Option Angle)
     (flags : List Bool) : Except String LowGate :=
   let qb (r : ExtReg) : Except String ℕ :=
@@ -167,6 +179,8 @@ def buildLowGate (name : String) (regs : List ExtReg) (nats : List ℕ) (angle :
   | "H", [r], [], none, [] => return .H (← qb r)
   | "X", [r], [], none, [] => return .X (← qb r)
   | "Phase", [r], [], some a, [] => return .Phase (← qb r) a
+  | "CPhase", [ctrl, target], [], some theta, [] =>
+      return LowGate.CPhase (← qb ctrl) (← qb target) theta
   | "CNOT", [c, t], [], none, [] => return .CNOT (← qb c) (← qb t)
   | "Toffoli", [c1, c2, t], [], none, [] => return .Toffoli (← qb c1) (← qb c2) (← qb t)
   | "ShiftL", [r], [n], none, [] => .ok (.ShiftL r n)

@@ -52,7 +52,15 @@ deriving Repr, BEq
 /-- Angle-valued expressions, in units of `π`. `mul` is an angle scaled by an
 integer/width weight (a two's-complement bit weight, say); `coeff` is the
 opaque Cramer interpolation weight `phi * coeff(l, m)` (D4); `div2`/`neg` are
-`CPhase`'s `θ/2`/`−θ/2`. -/
+`CPhase`'s `θ/2`/`−θ/2`. `signedPair` names `signedPairAngle`/
+`signedBitWeight` directly (D2: the two's-complement per-bit weight is
+`if i + 1 = w then -(2^i) else 2^i`, a sign flip on the loop index `i`
+relative to the *symbolic* width `w` — not a fixed branch a `Node.cond`
+could pick once and for all, since it depends on which loop iteration this
+is; not expressible as add/sub/mul/div/max/min either, since `WExpr` has no
+signed values or exponentiation. Naming the whole formula, evaluated by the
+real functions at `instantiate` time once `i`/`w` are concrete loop values,
+is simpler than growing `WExpr`/`AExpr` two more primitives for one leaf.) -/
 inductive AExpr
   | var (name : String)
   | lit (a : Angle)
@@ -60,6 +68,7 @@ inductive AExpr
   | coeff (phi : AExpr) (l : ℕ) (m : WExpr)
   | div2 (a : AExpr)
   | neg (a : AExpr)
+  | signedPair (phi : AExpr) (xi xw zi zw : WExpr)
 deriving Repr, BEq
 
 /-- Register expressions: slice paths back to a template's register

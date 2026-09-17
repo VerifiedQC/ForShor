@@ -6,6 +6,7 @@ import FastMultiplication.Emit.Lower.PhaseProduct
 import FastMultiplication.Emit.Lower.Qft
 import FastMultiplication.Emit.Reflect.Driver
 import FastMultiplication.Emit.IR.Instantiate
+import FastMultiplication.Emit.IR.WellFormed
 
 /-!
 # Emitter acceptance tests
@@ -293,5 +294,44 @@ example :
   native_decide
 
 end R2_1
+
+-- 16. R2.3's exit criterion (`Emit/PLAN.md` §6, §6.2): `naive_leaf`
+-- (`LowGate.Naive_SignedPhaseProd`) needs no `k`/`TableSource` and so no
+-- `extract_ir_doc` pinning either — `Reflect/Targets.lean`'s
+-- `naiveLeafTemplate` is already a plain `def`, hand-specified rather than
+-- reflected (`naiveSignedPhaseGates`'s double loop is recursion over a
+-- symbolic-length list, which no equation lemma turns into a visible loop
+-- the way `.eq_1` does `WellFounded.fix`); what makes it trustworthy is
+-- this check, not the hand-transcription. `instantiate` agrees with the
+-- real term at six different `(xw, zw)` pairs covering widths 1..6 on both
+-- sides.
+section R2_3
+
+open Shor.Reflect in
+def r2_3_doc : IR.Doc :=
+  { templates := [naiveLeafTemplate], opaqueFns := [], entry := "naive_leaf" }
+
+def r2_3_check (xw zw : Nat) : Bool :=
+  let x := ExtReg.ofReg (Reg.interval 0 xw)
+  let z := ExtReg.ofReg (Reg.interval xw zw)
+  let phi : Angle := (3 : ℚ) / 7
+  let real := LowGate.Naive_SignedPhaseProd phi x z
+  let env : IR.Env :=
+    { w := fun n => if n == "xw" then some xw else if n == "zw" then some zw else none
+      a := fun n => if n == "phi" then some phi else none
+      r := fun n => if n == "x" then some x else if n == "z" then some z else none
+      opaqueW := fun _ _ => none, coeff := fun _ _ => none }
+  match IR.instantiate r2_3_doc "naive_leaf" env 10 with
+  | .ok g => lowGateJson g == lowGateJson real
+  | .error _ => false
+
+example : IR.Doc.wellFormed r2_3_doc = true := by native_decide
+
+example :
+    [r2_3_check 1 4, r2_3_check 2 3, r2_3_check 3 2, r2_3_check 4 1, r2_3_check 5 6,
+      r2_3_check 6 5] = [true, true, true, true, true, true] := by
+  native_decide
+
+end R2_3
 
 end Shor.Emit.Tests

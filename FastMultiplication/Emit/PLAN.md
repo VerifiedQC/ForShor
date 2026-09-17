@@ -566,7 +566,45 @@ Two things this adds to R2.2's scope, beyond R2.1's machinery:
    just per-construct-name matching.
 
 Status: spike only, de-risking done; `Extract.lean`/`Targets.lean` do not
-yet have a `phase_product` or `naive_leaf` target.
+yet have a `phase_product` target. `naive_leaf` (R2.3), below, is done.
+
+### 6.3 R2.3 done: `naive_leaf`, a named-construct translation, not a reflected one
+
+Attempting to reflect `naiveSignedPhaseGates`/`signedTerms` the way
+`pp_body` reflects `compileOpsToSignedGate` runs straight into what §6.2
+flagged: `(signedTerms x).flatMap fun xTerm => (signedTerms z).map fun
+zTerm => …` is recursion over `x.active.qubits`/`z.active.qubits`, lists
+whose *length* (`x.width`/`z.width`) is symbolic. There is no `.eq_1`-style
+equation lemma that turns "structural recursion over a symbolic-length
+list" into a visible loop the way one turns `WellFounded.fix` into a
+visible self-call — genuinely different shape of problem, not a harder
+version of the same one.
+
+Resolution: recognise `Naive_SignedPhaseProd` **by name** and state its
+known double-loop shape directly (`Reflect/Targets.lean`'s
+`naiveLeafTemplate`, a plain `def`, no `MetaM`/reflection at all — the
+function takes no `k`/`TableSource`, so there is nothing to specialise
+either). This is the same escape hatch D2 already licenses for one
+sub-formula at a time (`RegExpr.grow` for `ExtReg.grow`, `AExpr.coeff` for
+the interpolation weight) — D2's translation table is keyed by *construct*,
+and a whole named function is as much a construct as `Gate.seq` is; nothing
+here is per-`k`/per-table (there is no `k`/table to be per-). One more such
+addition: `AExpr.signedPair (phi : AExpr) (xi xw zi zw : WExpr)` names
+`signedPairAngle`/`signedBitWeight` directly, for the same reason —
+`signedBitWeight`'s sign flip on the *last* loop iteration relative to a
+*symbolic* width isn't a fixed branch, and isn't expressible in
+add/sub/mul/div/max/min (no negation, no exponentiation) either.
+`IR/Instantiate.lean` also grew a `"CPhase"` op case, calling
+`LowGate.CPhase` directly rather than decomposing it — its `ctrl = target`
+branch is only meaningfully decidable once both are concrete qubits, so
+(same idea as `RegExpr.grow`) let the real function decide it at
+`instantiate` time instead of forcing a symbolic guard.
+
+What makes a hand-specified (not reflected) template trustworthy is
+unchanged: D7's checked-not-assumed standard. `Emit/Tests.lean` §16
+`native_decide`-checks `instantiate` of `naiveLeafTemplate` against the
+real `LowGate.Naive_SignedPhaseProd` at six `(xw, zw)` pairs spanning widths
+1..6 on both sides, and `Doc.wellFormed`. All pass.
 
 ## 7. R3 — bundle integration
 
@@ -621,7 +659,7 @@ trust statement from D7, and the R2 exit criteria as the test list.
 
 - [x] `Emit/IR/{Syntax,Json,WellFormed,Instantiate}.lean` build.
 - [x] `Emit/Reflect/{Quote,Extract,Targets,Driver}.lean` build.
-- [ ] R2.1–R2.7 exit criteria as `native_decide` in `Tests.lean`, all green (R2.1 done; R2.2–R2.7 not started).
+- [ ] R2.1–R2.7 exit criteria as `native_decide` in `Tests.lean`, all green (R2.1, R2.3 done; R2.2, R2.4–R2.7 not started).
 - [ ] `forshor_emit template 2`, `template 3`, `template 2 --table generate` exit 0 with `instantiate_eq_real: true`.
 - [ ] `forshor_emit bundle 2` contains the extracted `template` and the trimmed tables; `--no-template` skips the load.
 - [ ] Old files and fields removed per §8; `grep -rn "Template.lean\|affineTail\|census\|template_match" Emit` is empty.

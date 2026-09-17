@@ -58,6 +58,10 @@ partial def AExpr.wellFormed (opaqueFns : List (String × ℕ)) (aScope wScope :
   | .coeff phi _ m => phi.wellFormed opaqueFns aScope wScope && m.wellFormed opaqueFns wScope
   | .div2 a => a.wellFormed opaqueFns aScope wScope
   | .neg a => a.wellFormed opaqueFns aScope wScope
+  | .signedPair phi xi xw zi zw =>
+      phi.wellFormed opaqueFns aScope wScope && xi.wellFormed opaqueFns wScope &&
+        xw.wellFormed opaqueFns wScope && zi.wellFormed opaqueFns wScope &&
+        zw.wellFormed opaqueFns wScope
 
 /-- `rScope` binds register vars, `wScope` binds the width vars a slice's
 bounds may reference. -/

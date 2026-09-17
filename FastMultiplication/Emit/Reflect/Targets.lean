@@ -160,4 +160,35 @@ def extractPPBody (k : Nat) (hk : 1 < k) (src : Shor.TableSource) : MetaM IR.Tem
         provenance := "Shor.compileOpsToSignedGate"
       }
 
+/-- `naive_leaf` (R2.3): `Shor.LowGate.Naive_SignedPhaseProd`. Unlike
+`pp_body`, this target takes no `k`/`TableSource` at all — the function
+itself doesn't either, so there is nothing to specialise or reflect over:
+`naiveSignedPhaseGates phi x z = (signedTerms x).flatMap fun xTerm =>
+(signedTerms z).map fun zTerm => CPhase xTerm.1 zTerm.1 (signedPairAngle phi
+xTerm zTerm)` is a `List.flatMap`/`List.map` walk over two registers whose
+*length* (`x.width`/`z.width`) is symbolic — there is no equation lemma or
+`whnf` step that turns "recursion over a symbolic-length list" into a loop
+the way `.eq_1` turns `WellFounded.fix` into a visible self-call (§6.2);
+generic reflection has nothing to grab onto here. So this instead
+recognises `Naive_SignedPhaseProd` by name (D2's translation table is
+*keyed* by construct, and a whole function is as much a "construct" as
+`Gate.seq` or `ExtReg.grow` are) and states its known double-loop shape
+directly, the same escape hatch already used for one sub-formula at a time
+(`RegExpr.grow`, `AExpr.signedPair`) — here for the whole leaf. What makes
+this trustworthy is the same D7 standard as everywhere else: not written
+once and assumed, but checked against the real `Naive_SignedPhaseProd` by
+`native_decide` (`Tests.lean`), at several widths. -/
+def naiveLeafTemplate : IR.Template :=
+  { name := "naive_leaf"
+    wParams := ["xw", "zw"]
+    aParams := ["phi"]
+    rParams := ["x", "z"]
+    provenance := "Shor.LowGate.Naive_SignedPhaseProd"
+    body :=
+      .loop "i" (.lit 0) (.var "xw")
+        (.loop "j" (.lit 0) (.var "zw")
+          (.op "CPhase" [.qubit (.var "x") (.var "i"), .qubit (.var "z") (.var "j")] []
+            (some (.signedPair (.var "phi") (.var "i") (.var "xw") (.var "j") (.var "zw"))) []))
+  }
+
 end Shor.Reflect
