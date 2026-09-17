@@ -28,6 +28,7 @@ partial def WExpr.render : WExpr → String
   | .mul a b => s!"({a.render} * {b.render})"
   | .div a b => s!"({a.render} div {b.render})"
   | .max a b => s!"max({a.render}, {b.render})"
+  | .min a b => s!"min({a.render}, {b.render})"
   | .opaque fn args => s!"{fn}({String.intercalate ", " (args.map WExpr.render)})"
 
 /-- Render an `AExpr`; `coeff phi l m` renders as `phi * coeff(l, m)`. -/
@@ -47,6 +48,7 @@ partial def RegExpr.render : RegExpr → String
   | .reserveSlice r lo hi => s!"{r.render}.reserve[{lo.render}:{hi.render}]"
   | .ext active reserve => s!"ext({active.render}, {reserve.render})"
   | .qubit r i => s!"{r.render}[{i.render}]"
+  | .grow r n => s!"grow({r.render}, {n.render})"
 
 /-- Render a `Prop'` guard, e.g. `(a < b)`. -/
 def Prop'.render : Prop' → String

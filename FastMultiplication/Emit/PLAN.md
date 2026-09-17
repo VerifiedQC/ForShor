@@ -429,6 +429,57 @@ question is answered during R2.1: try unfolding
 `Finset.univ.sup` over `Fin k` reduces to nested `max` under a `Fin`
 enumeration simp set, `nextWidth` becomes a `WExpr` and leaves the opaque set.
 
+### 6.1 R2.1 status: done
+
+`Emit/Reflect/Extract.lean` and `Emit/Reflect/Targets.lean` (`extractPPBody`)
+are real, working code (not the §5.5 spike): they build the specialised
+`compileOpsToSignedGate` application per Findings 1–2, `whnfR`+
+`unfoldDefinition?`-drive normalisation (never a blanket `whnf` — see
+`translateW`'s doc comment: plain `whnf` blows straight through `Min.min`,
+`dite`, and even `ite`/`dite` themselves into raw `Decidable.rec` case
+splits, destroying the very heads this file needs to recognise; a fully
+ground matcher application, e.g. `annotatePhaseTermsAux`'s `phaseTerm?`
+match, is the one place a *plain* `whnf` is used, and only as the very last
+fallback, after every structural recognizer has already had its chance),
+and translate the result into an `IR.Template` named `pp_body`.
+`Emit/Reflect/R2_1Test.lean` (a spike file, not `Tests.lean` yet — see
+below) instantiates it at `k = 2`, standard table, `x`/`z` both width 4,
+with enough reserve that `targetSignedLayoutState`'s growth to
+`commonNeededWidth (scanNeededWidths x z ops) = 7` is not truncated, and
+checks the result against `compileOpsToSignedGate` itself. Both hold:
+`Doc.wellFormed = true`, and the two `Gate`s' flattened leaf sequences
+(`Gate` has no `List Gate` field, so plain `BEq`, unlike `IR.Node`, derives
+without the R0 nested-inductive limitation — but raw `BEq` still compares
+*tree shape*, so `Gate.seq` bracketing differences between the extracted
+and real terms, harmless semantically, would read as unequal; flattening
+first, exactly `Lower/Instantiate.lean`'s `check1_annotatedEqFlat`
+convention, is what actually gets checked) are identical, all 19 leaves,
+in order.
+
+One real bug surfaced and fixed along the way: an early test build used an
+`ExtReg` with *insufficient* reserve capacity, so `ExtReg.grow` silently
+truncated (`Reg.take` past a list's end just returns what's there) instead
+of reaching the opaque `nextWidth` — not an extraction bug, a test-setup
+bug (a real caller is required to satisfy `SignedRecursiveWorkspaceOK`,
+which the test wasn't). Caught by comparing per-slot widths directly
+(`(stFinal.xslot i).width` for each `i`) once the flattened leaf counts
+disagreed (19 extracted vs 15 real) — the "false" `wellFormed`-adjacent
+signal that something was wrong, not proof the extraction was broken.
+
+Two things not yet done, both mechanical rather than open questions:
+1. `R2_1Test.lean`'s comparison is `#eval`, not `native_decide` — pinning
+   the extracted `Doc` as a `def` for `native_decide` to see needs
+   `Driver.lean`'s build-time `extract_ir_doc` command (§5.4), not written
+   yet. The check itself (flatten, compare) is what that command's
+   generated `example` will run.
+2. `IR/Syntax.lean` grew two constructors beyond §4.1's original spec,
+   discovered by what R2.1 actually needed: `WExpr.min` (`phaseLimbWidth`
+   is `min`, not just `max`) and `RegExpr.grow` (naming `ExtReg.grow`
+   directly, D2-style — a grown register's active part is an append of two
+   *different* sources, the original active slice and a prefix of whatever
+   the reserve turned out to be, not a single nameable slice). Both are
+   threaded through `Json.lean`/`WellFormed.lean`/`Instantiate.lean` too.
+
 ## 7. R3 — bundle integration
 
 - `Bundle.lean`: `template` becomes the extracted `Doc` (printed by

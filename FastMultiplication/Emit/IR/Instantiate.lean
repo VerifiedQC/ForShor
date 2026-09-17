@@ -81,6 +81,7 @@ partial def evalW (env : Env) : WExpr → Except String ℕ
   | .mul a b => return (← evalW env a) * (← evalW env b)
   | .div a b => return (← evalW env a) / (← evalW env b)
   | .max a b => return Nat.max (← evalW env a) (← evalW env b)
+  | .min a b => return Nat.min (← evalW env a) (← evalW env b)
   | .opaque fn args => do
       let vs ← args.mapM (evalW env)
       match env.opaqueW fn vs with
@@ -146,6 +147,10 @@ partial def evalReg (env : Env) : RegExpr → Except String ExtReg
         pure (ExtReg.ofReg (Reg.singleton (rv.active.get ⟨iv, h⟩)))
       else
         .error s!"instantiate: qubit index {iv} out of range"
+  | .grow r n => do
+      let rv ← evalReg env r
+      let nv ← evalW env n
+      pure (rv.grow nv)
 
 /-- Build one `LowGate` leaf from an `op` node's already-evaluated
 arguments. Op names are exactly the `LowGate` constructor names (D2); regs

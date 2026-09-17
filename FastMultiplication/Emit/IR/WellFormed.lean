@@ -43,6 +43,7 @@ partial def WExpr.wellFormed (opaqueFns : List (String × ℕ)) (scope : List St
   | .mul a b => a.wellFormed opaqueFns scope && b.wellFormed opaqueFns scope
   | .div a b => a.wellFormed opaqueFns scope && b.wellFormed opaqueFns scope
   | .max a b => a.wellFormed opaqueFns scope && b.wellFormed opaqueFns scope
+  | .min a b => a.wellFormed opaqueFns scope && b.wellFormed opaqueFns scope
   | .opaque fn args =>
       (opaqueFns.any (fun (n, ar) => n == fn && ar == args.length)) &&
       args.all (fun a => a.wellFormed opaqueFns scope)
@@ -72,6 +73,7 @@ partial def RegExpr.wellFormed (opaqueFns : List (String × ℕ)) (rScope wScope
   | .ext active reserve =>
       active.wellFormed opaqueFns rScope wScope && reserve.wellFormed opaqueFns rScope wScope
   | .qubit r i => r.wellFormed opaqueFns rScope wScope && i.wellFormed opaqueFns wScope
+  | .grow r n => r.wellFormed opaqueFns rScope wScope && n.wellFormed opaqueFns wScope
 
 def Prop'.wellFormed (opaqueFns : List (String × ℕ)) (wScope : List String) : Prop' → Bool
   | .lt a b => a.wellFormed opaqueFns wScope && b.wellFormed opaqueFns wScope

@@ -45,6 +45,7 @@ inductive WExpr
   | mul (a b : WExpr)
   | div (a b : WExpr)
   | max (a b : WExpr)
+  | min (a b : WExpr)
   | opaque (fn : String) (args : List WExpr)
 deriving Repr, BEq
 
@@ -63,13 +64,19 @@ deriving Repr, BEq
 
 /-- Register expressions: slice paths back to a template's register
 parameter, mirroring `Reg.take`/`Reg.drop`/`ExtReg.withReserve`/single-qubit
-indexing on the real registers. -/
+indexing on the real registers. `grow` names `ExtReg.grow` directly (rather
+than expanding it into slice arithmetic): the grown register's active part
+is a genuine append of *two different sources* — the original active slice
+and a prefix of whatever the reserve turned out to be — which is not a
+single slice of anything nameable, so this is D2's "name the construct, do
+not inline its semantics" applied to `ExtReg.grow` itself. -/
 inductive RegExpr
   | var (name : String)
   | activeSlice (r : RegExpr) (lo hi : WExpr)
   | reserveSlice (r : RegExpr) (lo hi : WExpr)
   | ext (active reserve : RegExpr)
   | qubit (r : RegExpr) (i : WExpr)
+  | grow (r : RegExpr) (n : WExpr)
 deriving Repr, BEq
 
 /-- Decidable guards on `WExpr`s: what a `dite`/`Nat.casesOn`/matcher on a
