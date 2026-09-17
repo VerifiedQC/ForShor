@@ -466,19 +466,33 @@ which the test wasn't). Caught by comparing per-slot widths directly
 disagreed (19 extracted vs 15 real) — the "false" `wellFormed`-adjacent
 signal that something was wrong, not proof the extraction was broken.
 
-Two things not yet done, both mechanical rather than open questions:
-1. `R2_1Test.lean`'s comparison is `#eval`, not `native_decide` — pinning
-   the extracted `Doc` as a `def` for `native_decide` to see needs
-   `Driver.lean`'s build-time `extract_ir_doc` command (§5.4), not written
-   yet. The check itself (flatten, compare) is what that command's
-   generated `example` will run.
-2. `IR/Syntax.lean` grew two constructors beyond §4.1's original spec,
-   discovered by what R2.1 actually needed: `WExpr.min` (`phaseLimbWidth`
-   is `min`, not just `max`) and `RegExpr.grow` (naming `ExtReg.grow`
-   directly, D2-style — a grown register's active part is an append of two
-   *different* sources, the original active slice and a prefix of whatever
-   the reserve turned out to be, not a single nameable slice). Both are
-   threaded through `Json.lean`/`WellFormed.lean`/`Instantiate.lean` too.
+Since then, done in full:
+1. `Driver.lean`'s `ToExpr` (manual for `WExpr`/`Node` — the two
+   self-recursive-through-`List` types, same fix shape as R0's `BEq`;
+   `deriving instance ToExpr` for everything else, which now just works once
+   those two exist) and its build-time `extract_ir_doc <declName> <k>`
+   command (§5.4; `.standard` table only so far — no surface syntax for
+   `--table generate` yet, that is R2.7's job), which runs the extractor and
+   splices the resulting `Doc` in as a real `def`.
+2. The R2.1 check itself moved into `Emit/Tests.lean` (§15 there) as an
+   actual `example … := by native_decide` against `extract_ir_doc`-pinned
+   `pp_body_doc_k2` — superseding the `#eval`-only spike
+   (`Reflect/R2_1Test.lean`, `Reflect/DriverTest.lean`, both deleted per
+   ground rule 3, one mechanism only). `lake build forshor_emit EmitTests`
+   is green with it in.
+
+`IR/Syntax.lean` grew two constructors beyond §4.1's original spec along
+the way, discovered by what R2.1 actually needed: `WExpr.min`
+(`phaseLimbWidth` is `min`, not just `max`) and `RegExpr.grow` (naming
+`ExtReg.grow` directly, D2-style — a grown register's active part is an
+append of two *different* sources, the original active slice and a prefix
+of whatever the reserve turned out to be, not a single nameable slice).
+Both are threaded through `Json.lean`/`WellFormed.lean`/`Instantiate.lean`
+too.
+
+Not yet done: `runExtract`'s *run-time* half (§5.4's `IO`/`importModules`
+entry point, and `forshor_emit template <k>`'s CLI wiring — D1's actual
+target); R2.2–R2.7.
 
 ## 7. R3 — bundle integration
 
@@ -532,8 +546,8 @@ trust statement from D7, and the R2 exit criteria as the test list.
 ## 10. Deliverable checklist
 
 - [x] `Emit/IR/{Syntax,Json,WellFormed,Instantiate}.lean` build.
-- [ ] `Emit/Reflect/{Quote,Extract,Targets,Driver}.lean` build.
-- [ ] R2.1–R2.7 exit criteria as `native_decide` in `Tests.lean`, all green.
+- [x] `Emit/Reflect/{Quote,Extract,Targets,Driver}.lean` build.
+- [ ] R2.1–R2.7 exit criteria as `native_decide` in `Tests.lean`, all green (R2.1 done; R2.2–R2.7 not started).
 - [ ] `forshor_emit template 2`, `template 3`, `template 2 --table generate` exit 0 with `instantiate_eq_real: true`.
 - [ ] `forshor_emit bundle 2` contains the extracted `template` and the trimmed tables; `--no-template` skips the load.
 - [ ] Old files and fields removed per §8; `grep -rn "Template.lean\|affineTail\|census\|template_match" Emit` is empty.

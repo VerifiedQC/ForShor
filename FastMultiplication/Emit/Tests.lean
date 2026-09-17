@@ -4,6 +4,8 @@ import FastMultiplication.Emit.Json.LowGateJson
 import FastMultiplication.Emit.Symbolic.Bundle
 import FastMultiplication.Emit.Lower.PhaseProduct
 import FastMultiplication.Emit.Lower.Qft
+import FastMultiplication.Emit.Reflect.Driver
+import FastMultiplication.Emit.IR.Instantiate
 
 /-!
 # Emitter acceptance tests
@@ -201,5 +203,95 @@ example :
 -- 14. `phases` prints exactly `q k` lines for `k = 2, 3`.
 example : (buildPhases 2 8 1 8).toOption.map List.length = some (q 2) := by native_decide
 example : (buildPhases 3 8 1 8).toOption.map List.length = some (q 3) := by native_decide
+
+-- 15. R2.1's exit criterion (`Emit/PLAN.md` §6, §6.1): `pp_body`, extracted
+-- by reflection (`extract_ir_doc`, pinning a `Doc` at build time) and
+-- `instantiateGate`'d at a concrete `k = 2`, standard table, `x`/`z` both
+-- width 4 with enough reserve that `targetSignedLayoutState`'s growth to
+-- `commonNeededWidth (scanNeededWidths x z ops) = 7` is not truncated,
+-- agrees with `compileOpsToSignedGate` itself — flattened first (raw `Gate`
+-- `BEq` compares tree shape, and `Gate.seq` bracketing differs harmlessly
+-- between the two sides; same convention as `check1_annotatedEqFlat`).
+section R2_1
+
+deriving instance BEq for Shor.Gate
+
+extract_ir_doc pp_body_doc_k2 2
+
+abbrev r2_1_k : Nat := 2
+def r2_1_hk : 1 < r2_1_k := by decide
+def r2_1_ops := (tableInstance .standard r2_1_k r2_1_hk).ops
+
+def r2_1_x : ExtReg := ExtReg.withReserve (Reg.interval 0 4) (Reg.interval 4 12) (by decide)
+def r2_1_z : ExtReg := ExtReg.withReserve (Reg.interval 16 4) (Reg.interval 20 12) (by decide)
+
+def r2_1_xBudget : ReserveBudget r2_1_x r2_1_k :=
+  ReserveBudget.ofRequirements (by decide) (fun _ => 5) (by decide)
+
+def r2_1_zBudget : ReserveBudget r2_1_z r2_1_k :=
+  ReserveBudget.ofRequirements (by decide) (fun _ => 5) (by decide)
+
+def r2_1_xSplit : PhaseSplitLayout r2_1_x r2_1_k (phaseLimbWidth r2_1_x r2_1_z r2_1_k) :=
+  PhaseSplitLayout.ofBudget r2_1_x r2_1_k (phaseLimbWidth r2_1_x r2_1_z r2_1_k)
+    (phaseLimbWidth_valid_left r2_1_x r2_1_z (by decide)) r2_1_xBudget
+
+def r2_1_zSplit : PhaseSplitLayout r2_1_z r2_1_k (phaseLimbWidth r2_1_x r2_1_z r2_1_k) :=
+  PhaseSplitLayout.ofBudget r2_1_z r2_1_k (phaseLimbWidth r2_1_x r2_1_z r2_1_k)
+    (phaseLimbWidth_valid_right r2_1_x r2_1_z (by decide)) r2_1_zBudget
+
+def r2_1_layout : Gate.PhaseProductLayout r2_1_x r2_1_z r2_1_k :=
+  { xSplit := r2_1_xSplit, zSplit := r2_1_zSplit, cross_owned_disjoint := by decide }
+
+def r2_1_m : Nat := phaseLimbWidth r2_1_x r2_1_z r2_1_k
+
+def r2_1_coeffFn : Fin (q r2_1_k) → ℚ :=
+  cramerCoeffFromPtsWidth r2_1_k r2_1_m (tableInstance .standard r2_1_k r2_1_hk).points
+    (tableInstance .standard r2_1_k r2_1_hk).hlen
+
+def r2_1_phi : Angle := (1 : ℚ) / 4
+
+def r2_1_real : Gate :=
+  compileOpsToSignedGate r2_1_k r2_1_hk r2_1_phi r2_1_x r2_1_z r2_1_layout r2_1_coeffFn r2_1_ops
+
+def r2_1_env : IR.Env :=
+  { w := fun n =>
+      if n == "xw" then some r2_1_x.width
+      else if n == "zw" then some r2_1_z.width
+      else none
+    a := fun n => if n == "phi" then some r2_1_phi else none
+    r := fun n =>
+      if n == "x" then some r2_1_x
+      else if n == "z" then some r2_1_z
+      else if n == "x0R" then some (ExtReg.ofReg (r2_1_xBudget.childReserve 0))
+      else if n == "x1R" then some (ExtReg.ofReg (r2_1_xBudget.childReserve 1))
+      else if n == "z0R" then some (ExtReg.ofReg (r2_1_zBudget.childReserve 0))
+      else if n == "z1R" then some (ExtReg.ofReg (r2_1_zBudget.childReserve 1))
+      else none
+    opaqueW := fun name args =>
+      if name == "nextWidth" then
+        match args with
+        | [xw, zw] => some (RecursivePhaseWorkspace.nextWidth r2_1_ops xw zw)
+        | _ => none
+      else none
+    coeff := fun l m =>
+      if m == r2_1_m then
+        if h : l < q r2_1_k then some (r2_1_coeffFn ⟨l, h⟩) else none
+      else none }
+
+/-- Flatten nested `Gate.seq`, dropping `Gate.id` — the `Gate` analogue of
+`LowGate.flattenSeq`. -/
+partial def r2_1_flatten : Gate → List Gate
+  | .id => []
+  | .seq a b => r2_1_flatten a ++ r2_1_flatten b
+  | g => [g]
+
+example :
+    ((match IR.instantiateGate pp_body_doc_k2 "pp_body" r2_1_env 10 with
+      | .ok g => r2_1_flatten g
+      | .error _ => [])
+      == r2_1_flatten r2_1_real) = true := by
+  native_decide
+
+end R2_1
 
 end Shor.Emit.Tests
