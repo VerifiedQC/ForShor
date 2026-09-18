@@ -885,4 +885,29 @@ theorem envCall_phase_product_eq (x z : ExtReg) (phi : Angle) (l : ℕ) (hl : l 
       · have hz' : (n == "z") = false := by simpa using hz
         simp [List.lookup_cons, hx, hz, hx', hz']
 
+/-! ## The `hrec` branch: `lowerGateRec`'s real structure
+
+The final assembly step: `lowerGateRec (standardSignedPhaseLoweringPlan ...)`,
+in the `hrec` (recursive) branch, against `r2_2_ppThen`'s 21-leaf extracted
+body. Confirmed by direct experimentation (not yet a closed theorem — see
+`Emit/PLAN.md`'s R6.2 row for the precise state and what blocks it): -/
+
+/-- `lowerGateRec` doesn't depend on a `PhaseLoweringPlan`'s `initSize` index
+(`LowGate`, the output type, has no such index at all), so casting a plan
+along a proof that its index equals some other value doesn't change what it
+lowers to — regardless of *which* proof of that equality the cast uses. This
+is the tool needed to bridge `standardSignedPhaseLoweringPlan`'s recursive
+`recurse` field (built via `simpa [hsize] using childPlan` in
+`PlanBuilders.lean`, i.e. literally a cast of the *same* recursive call an
+induction hypothesis would supply) against a cast-free statement of that
+same recursive call: `lowerGateRec (h ▸ p) = lowerGateRec p` holds by `rfl`
+once `h` is substituted away, since `▸`'s underlying `Eq.rec` reduces on a
+literal `Eq.refl`. -/
+theorem lowerGateRec_cast {k : ℕ} {hk : 1 < k} {pts : List Operations.Point}
+    {hpts : pts.length = q k} {ops : Prog k} {n1 n2 : ℕ} {U : Gate} (h : n1 = n2)
+    (p : PhaseLoweringPlan k hk pts hpts ops n1 U) :
+    lowerGateRec (h ▸ p) = lowerGateRec p := by
+  subst h
+  rfl
+
 end Shor.IR
