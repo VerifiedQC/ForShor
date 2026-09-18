@@ -976,4 +976,69 @@ theorem r2_2_annotatedOps_eq :
   rw [r2_2_ops_eq]
   simp [annotatePhaseTermsAux, q]
 
+/-! ## The `hrec` branch: the universe-cast obstacle, resolved
+
+`Emit/PLAN.md`'s R6.2 row ("Third round of research findings") documents the
+obstacle: `standardSignedPhaseLoweringPlan`'s recursive `recurse` field casts
+a genuine recursive call (`standardSignedPhaseLoweringPlan k hk theta childX
+childZ ops hchild`) along an `initSize`-index equality, built by nested
+`simpa` calls — and the *specific* cast term this produces is not
+syntactically `h ▸ p` for any `h` a hand-written lemma can predict (the
+`congrArg`-shaped guess `lowerGateRec_cast` above needed did not match:
+`simp` reported it unused against the real goal). The fix does not try to
+know the cast's exact shape at all: any two casts along *any* proof of the
+same type-level equality are `HEq` to the value being cast (`eqmp_heq`,
+general over any `Type`, not specific to `PhaseLoweringPlan` — proof
+irrelevance for the `Prop`-valued equality `α = β` makes this true
+regardless of which specific proof built the cast), and `lowerGateRec`
+respects `HEq` once the `initSize` indices are known equal
+(`lowerGateRec_heq`, using the *separately supplied* index equality rather
+than trying to extract it from the cast). Composed: `lowerGateRec_eqmp_final`
+rewrites `lowerGateRec (Eq.mp h p)` to `lowerGateRec p` for *any* `h`,
+needing only the `initSize` equality as an explicit argument (from
+`(canonicalSignedStep ...).childInputSize i`, already available, per the
+"Third round" notes) — not the cast term itself. Confirmed empirically: `simp
+only [lowerGateRec_eqmp_final hn0]` (with `hn0` instantiated once, since all
+three recursive `.phaseProduct` leaves recurse into the same chunk-0
+children) collapses all three casts and, combined with `simp only
+[planCompileAnnotatedOpsToSignedGateAux]` (not `unfold`, which only unfolds
+one list position at a time — `simp only` repeats until the whole concrete
+12-element list from `r2_2_annotatedOps_eq` is consumed), produces the full
+12-leaf body with every recursive call already in clean, cast-free
+`lowerGateRec (standardSignedPhaseLoweringPlan ...)` form. -/
+
+/-- `Eq.mp` along *any* proof of a type equality produces a value `HEq` to
+the original — true by proof irrelevance for the `Prop`-valued equality
+`α = β`, regardless of how that particular proof was built. This is the
+general tool that sidesteps ever needing to know a cast's exact syntactic
+shape. -/
+theorem eqmp_heq {α β : Type} (h : α = β) (p : α) : HEq (Eq.mp h p) p := by
+  cases h
+  rfl
+
+/-- `lowerGateRec` respects `HEq` across an `initSize` index change, given
+the index equality supplied directly (not extracted from whatever term
+proves the two `PhaseLoweringPlan` types equal). -/
+theorem lowerGateRec_heq {k : ℕ} {hk : 1 < k} {pts : List Operations.Point}
+    {hpts : pts.length = q k} {ops : Prog k} {n1 n2 : ℕ} {U : Gate} (hn : n1 = n2)
+    (p1 : PhaseLoweringPlan k hk pts hpts ops n1 U)
+    (p2 : PhaseLoweringPlan k hk pts hpts ops n2 U)
+    (h : HEq p1 p2) :
+    lowerGateRec p1 = lowerGateRec p2 := by
+  subst hn
+  rw [eq_of_heq h]
+
+/-- The composed tool: `lowerGateRec` of *any* `Eq.mp`-cast plan equals
+`lowerGateRec` of the plan being cast, given only the underlying `initSize`
+equality (not the cast's specific proof term). This is what makes each
+recursive `.phaseProduct` leaf collapse to a clean, cast-free recursive call
+matching the induction hypothesis's exact target shape. -/
+theorem lowerGateRec_eqmp_final {k : ℕ} {hk : 1 < k} {pts : List Operations.Point}
+    {hpts : pts.length = q k} {ops : Prog k} {n1 n2 : ℕ} {U : Gate} (hn : n1 = n2)
+    (h : PhaseLoweringPlan k hk pts hpts ops n1 U = PhaseLoweringPlan k hk pts hpts ops n2 U)
+    (p : PhaseLoweringPlan k hk pts hpts ops n1 U) :
+    lowerGateRec (Eq.mp h p) = lowerGateRec p := by
+  have heq1 : HEq (Eq.mp h p) p := eqmp_heq h p
+  exact (lowerGateRec_heq hn p (Eq.mp h p) heq1.symm).symm
+
 end Shor.IR
