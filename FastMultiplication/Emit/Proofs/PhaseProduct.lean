@@ -952,4 +952,28 @@ theorem r2_2_ops_eq :
     List.finRange_succ, List.finRange_zero, List.filter_cons, List.filter_nil,
     List.length_reverse, List.length_map, Operations.inv]
 
+/-- `annotatePhaseTermsAux`'s output on `r2_2_ops`, concretely: the three
+`phaseProduct` leaves get interpolation terms `l = 0, 1, 2` in source order
+(`annotatePhaseTermsAux`'s own counter), every other op gets `none`. This is
+what `planCompileAnnotatedOpsToSignedGateAux`'s `.phaseProduct` case
+actually recurses on — needed as its own lemma (via `rw`, not repeating
+`r2_2_ops_eq`'s whole reduction inside every subsequent `simp` call) because
+unfolding `planCompileAnnotatedOpsToSignedGateAux` against a still-symbolic
+`annotatePhaseTermsAux 2 0 r2_2_ops` scrutinee is expensive enough to exhaust
+`simp`'s default step budget partway through the 21-leaf goal (observed:
+`unfold` first, `rw [r2_2_ops_eq]` after, times out at 4M heartbeats; `rw
+[r2_2_ops_eq]` before reducing `annotatePhaseTermsAux` on its own, as this
+lemma does, takes 10s). -/
+theorem r2_2_annotatedOps_eq :
+    annotatePhaseTermsAux 2 0 r2_2_ops =
+      [⟨Operations.valid_ops.phaseProduct (0 : Fin 2), some ⟨0, by decide⟩⟩,
+       ⟨Operations.valid_ops.addScaled (0 : Fin 2) (1 : Fin 2) true 0, none⟩,
+       ⟨Operations.valid_ops.phaseProduct (0 : Fin 2), some ⟨1, by decide⟩⟩,
+       ⟨Operations.valid_ops.addScaled (0 : Fin 2) (1 : Fin 2) false 0, none⟩,
+       ⟨Operations.valid_ops.addScaled (0 : Fin 2) (1 : Fin 2) false 0, none⟩,
+       ⟨Operations.valid_ops.phaseProduct (0 : Fin 2), some ⟨2, by decide⟩⟩,
+       ⟨Operations.valid_ops.addScaled (0 : Fin 2) (1 : Fin 2) true 0, none⟩] := by
+  rw [r2_2_ops_eq]
+  simp [annotatePhaseTermsAux, q]
+
 end Shor.IR
