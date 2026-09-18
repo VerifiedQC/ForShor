@@ -40,7 +40,7 @@ bundle, and (d) deletes the mechanisms this makes redundant. It touches only
 | D4 | **Opaque set.** Left unevaluated and tabulated: `RecursivePhaseWorkspace.nextWidth`, `reserveNeed`, `qftWorkspaceNeed`, the interpolation weight `coeff(l, m)` (= `cramerCoeffFromPtsWidth`), `Nat.log2`, `Nat.clog`. Step R2.1 tests whether `nextWidth` unfolds to a closed expression on a fixed table; if so it leaves the set. |
 | D5 | **Concrete table required, supplied through Lean as a `ShorLoweringSetup`.** (Amended by R5, §11.) The input to the symbolic emitter is a `Shor.ShorLoweringSetup` value — `k`, `hk`, `ops`, and the two proofs `consumes`/`returns` the theorems need — defined in a Lean file by the user; `TableSource.standard` is one such value (`standardLoweringSetup k`), not the interface. No table is parsed from JSON or the command line. Symbolic: `n, m, a, N` (Shor), `W, phi, x, z` (phase product), `w, r` (QFT). |
 | D6 | **Reference instances stay.** `pp`, `cpp`, `qft`, `shor` and their annotated views remain; they are what the extracted IR is checked against. |
-| D7 | **Not a theorem.** Trusted: the translation table and Lean's normaliser. Evidence: `instantiate` unrolls the IR at concrete widths and compares byte for byte with the real term, at every depth, at emit time and in tests. The provenance says exactly this. |
+| D7 | **Not a theorem about the extractor; a theorem about each `Doc` (R6, §12).** Trusted: the translation table and Lean's normaliser. Evidence at instances: `instantiate` unrolls the IR at concrete widths and compares byte for byte with the real term (R2/§7.1). Proof for all widths, per `(k, table)`: the R6 theorems `instantiate <doc> … = .ok <verified term>`, generated with the `Doc`. The provenance says which of the two a given `Doc` carries. |
 
 ## 2. Ground rules
 
@@ -66,6 +66,12 @@ Emit/
     Json.lean              printers for the IR
     WellFormed.lean        decidable well-formedness checks on a Doc
     Instantiate.lean       interpreter: Doc → template name → Env → Except String LowGate
+  Proofs/
+    Correct.lean           R6 lemma library: evalW / evalReg / evalA / Env.call / evalNode facts
+    PhaseProduct.lean      R6 theorems for the phase-product and controlled phase-product Docs
+    Qft.lean               R6 theorem for the qft Doc
+    Shor.lean              R6 theorems for shor_gate / shor and the referenceShorCircuit corollary
+    Generated.lean         theorems emitted by extract_ir_doc! (R6.5); regenerated, not hand-edited
   Reflect/
     Quote.lean             ToExpr instances for Point, valid_ops k, Prog k
     Extract.lean           the MetaM extractor: specialise, normalise, translate
@@ -1540,3 +1546,225 @@ Emit.Tests` (3315 jobs) both succeed; `lake exe forshor_emit` re-verified
 for `template 2`, `template 2 --table generate` (exit 2),
 `bundle 2 --table generate` (exit 2), `bundle 2 --table generate
 --no-template` (exit 0, no `template` key).
+
+## 12. R6 — a correctness theorem for every extracted `Doc`
+
+**status:** in progress — prerequisite done (§12.0), R6.1 next
+
+### 12.0 Prerequisite (discovered, not in the original plan): `evalW`/`evalReg`/`evalNode`/`evalNodeGate` must not be `partial`
+
+§12.6's own "Fuel" risk says `instantiate` is "`partial`-free only because
+of" the `fuel` parameter — true *conceptually* (the fuel argument is what
+makes the recursion actually terminate), but the literal code in
+`IR/Instantiate.lean` still declared `evalW`, `evalA`, `evalReg`, `evalNode`,
+`evalNodeGate` with the `partial` keyword (left over from an earlier draft,
+predating fuel, never revisited). Checked directly, before writing a single
+R6 lemma: `simp [evalW]`, `unfold evalW`, and `rfl` all fail to make *any*
+progress on a `partial def` in this toolchain — no `.eq_1`-style lemma
+exists at all. `partial def` compiles via an opaque fixpoint outside the
+normal termination-proof/equation-lemma machinery (the same machinery that
+gives every `.eq_1` this plan's earlier R2 sections already relied on, e.g.
+`standardSignedPhaseLoweringPlan.eq_1`) — it is simply a different, harder
+kind of "not proved terminating" than ordinary well-founded recursion, and
+every one of R6.2's `simp [evalW]`/`simp [evalProp, evalW]` proof sketches
+is impossible against it. This blocks R6 entirely until fixed, is not
+mentioned anywhere in §12.1–§12.6, and had to be found and fixed before any
+of R6.1 could start.
+
+Fixed in `IR/Instantiate.lean`, confirmed by rebuilding `forshor_emit` and
+`EmitTests` (all R2.1–R2.7 `native_decide` checks, which exercise these
+functions pervasively, still pass unchanged) plus a direct CLI check
+(`template 2` still exits 0 with both checks `true`):
+
+- `evalW`: restructured as a `mutual` block with a new `evalWList`
+  (mirrors `Reflect/Driver.lean`'s own `wexprToExpr`/`wexprListToExpr`
+  shape, added for the same reason in R1) — the only reason it was
+  `partial` was the nested `List WExpr` recursion in `.opaque`'s arguments,
+  which Lean's ordinary structural-recursion compiler handles fine once
+  it's phrased as an explicit paired list-recursion instead of
+  `args.mapM (evalW env)` needing to see through `List.mapM`.
+- `evalA`, `evalReg`: just dropped `partial` — neither `AExpr` nor
+  `RegExpr` has a `List Self` field, so both were already ordinary
+  structural recursion; `partial` was unnecessary caution (`evalReg`'s own
+  old doc comment said as much: "no nested `List RegExpr` occurs, but this
+  mutually threads through `evalW`, which is" — calling a function that
+  used to be opaque does not itself require the caller to be `partial`).
+- `evalNode`/`evalNodeGate`: the one genuinely non-structural case. Every
+  constructor but `.call` recurses on a strictly smaller `Node` at the
+  *same* `fuel`; `.call` recurses on an unrelated (possibly larger) `Node`
+  (`t.body`, from `d.templates`) at strictly smaller `fuel`. Named the
+  `Node` parameter explicitly (`termination_by` needs a name to refer to)
+  and gave the lexicographic measure `termination_by (fuel, sizeOf node)`,
+  with an explicit `decreasing_by` (`Prod.Lex.left _ _ (by omega)` for the
+  `.call` case, `Prod.Lex.right _ (by omega)` for the structural cases,
+  `List.sizeOf_lt_of_mem` for `.seq`'s `body.mapM` case) — Lean's own
+  default termination heuristics do not find this measure unaided.
+
+### 12.1 What is proved, and what is not
+
+Two claims must not be confused:
+
+- *Claim A* — the extractor program (`Reflect/Extract.lean`) is correct for
+  every input. Not attempted. It is a statement about `MetaM` code over
+  `Expr` and the semantics of `whnfR`/`unfoldDefinition?`/`isDefEq`; no one
+  proves this for tactics or `simp` either. The extractor stays trusted.
+- *Claim B* — **each extracted `Doc`**, a closed Lean constant pinned by
+  `extract_ir_doc` for one `(k, table)`, denotes the verified circuit for
+  **all** widths. This is R6. Both sides of the equation are ordinary
+  computable definitions over the same `ops`; no metaprogramming appears in
+  the statement. It is the standard translation-validation pattern: verify
+  every output, not the translator. A bug in the extractor shows up as a
+  theorem that does not close, and the extraction is rejected.
+
+D7 is amended accordingly: for a `Doc` that carries its R6 theorem, the
+trust statement is "proved for all widths, per table"; the instance checks
+of R2/§7.1 remain as a fast smoke test and as the check that the *Python*
+consumer's interpreter agrees with Lean's.
+
+### 12.2 Statements
+
+With `env` binding each `wParam` to the real width/capacity (`xw ↦
+x.width`, `xCap ↦ x.capacity`, …), each `rParam` to the real register, each
+`aParam` to the real angle, and the opaque functions to the real Lean
+functions (`RecursivePhaseWorkspace.nextWidth ops`, `reserveNeed ops`,
+`qftWorkspaceNeed ops`, `cramerCoeffFromPtsWidth k _ pts hpts`, `Nat.log2`,
+`step5Constant`, …), exactly as `Reflect/Verify.lean` already builds it:
+
+```lean
+theorem <doc>_phase_product_correct
+    (x z : ExtReg) (phi : Angle) (h : SignedRecursiveWorkspaceOK ops x z)
+    (fuel : ℕ) (hfuel : phaseInputSize x z < fuel) :
+    IR.instantiate <doc> "phase_product" (ppEnv x z phi) fuel
+      = .ok (lowerGateRec (standardSignedPhaseLoweringPlan k hk phi x z ops h))
+
+theorem <doc>_cphase_product_correct   -- same, controlled
+theorem <doc>_qft_correct
+    (r : ExtReg) (h : QFTReserveOK ops r) (fuel) (hfuel : regSize r.active < fuel) :
+    IR.instantiate <doc> "qft" (qftEnv r) fuel = .ok (lowerQFT k hk ops r h)
+theorem <doc>_shor_gate_correct
+    (a N : ℕ) (x y work scratch : ExtReg) (flag : ℕ) (hws) (hstep4) (fuel) (hfuel) :
+    IR.instantiateGate <doc> "shor_gate" (shorEnv …) fuel
+      = .ok (orderFindingApprox a N x y work scratch flag hws hstep4)
+theorem <doc>_shor_correct
+    … = .ok (lowerGate k hk ops (orderFindingApprox …) hlower)
+```
+
+Composition with the verified tree: `<doc>_shor_correct` at
+`allocateReferenceLayout ops inst m`'s registers gives `instantiate … =
+.ok (referenceShorCircuit lowering inst m)`, to which `Shor.Shor_correct`
+applies at `m = referenceChosenPrecision N`.
+
+### 12.3 Proof structure (phase product; the others follow it)
+
+Well-founded induction on `phaseInputSize x z`, the plan's own measure.
+
+1. Rewrite the right side with `standardSignedPhaseLoweringPlan.eq_1`; both
+   sides are now an `if nextSignedWidth x z ops < phaseInputSize x z`.
+2. Unfold `instantiate`/`evalNode` on the concrete `Doc` body: the top node
+   is `cond guard then else`; `evalProp env guard = decide (nextWidth … <
+   max …)` by `simp [evalProp, evalW]`, matching the real guard.
+3. *Base branch*: `evalNode` of `call "naive_leaf" …` equals
+   `Naive_SignedPhaseProd phi x z`. One lemma, `evalNode_naive_leaf`:
+   the nested `loop i < xw, loop j < zw, CPhase …` fold equals
+   `LowGate.sequence (naiveSignedPhaseGates phi x z)`, i.e. the double
+   loop equals `flatMap`/`map` over `signedTerms`, with `evalA
+   (signedPair …) = signedPairAngle …` and `evalReg (qubit x i) =
+   x.active.get i`.
+4. *Recursive branch*: the body is a fixed `seq` of nodes, so the goal
+   splits node by node against `lowerGateRec` of `planCompiledSignedPhaseGate
+   … step.layout` (which itself unfolds to `compileSignedAllocations ;;
+   compileAnnotatedOps… ;; compileSignedDeallocations`). Per-node lemmas:
+   - `evalW` of each extracted width tree equals the real expression
+     (`min (xw/2) (zw/2)` for `phaseLimbWidth`, `nextWidth − slotWidth i`
+     for `extraDelta`, …): `simp [evalW]` after unfolding the real side.
+   - `evalReg` of `ext(x.active[i·m : i·m+w_i], x.reserve[off_i : off_i +
+     req_i])` equals `layout.xSplit.child i`, and `evalReg (grow … δ)` equals
+     `growExtRegTo (child i) W'`. This is the substantive part: the real
+     child registers are `PhaseSplitLayout.ofBudget`'s `Reg.take`/`Reg.drop`
+     /`Reg.append` with `ReserveBudget.offset` as the reserve offset; the
+     lemmas show `evalReg`'s slices compute the same lists and that its `if
+     h : Disjoint …` takes the `then` branch, using the layout's own
+     disjointness proofs (`PhaseSplitLayout`'s fields).
+   - `evalA (coeff phi l m) = phi * loweringPhaseCoeff k x z pts hpts l` by
+     `Env.coeff`'s definition and `phaseLimbWidth`.
+   - each `call "phase_product" …` node: `Env.call` yields exactly the
+     child's environment (`ppEnv (child i x) (child i z) (phi * c_l)`), and
+     the induction hypothesis applies because `step.childInputSize i` gives
+     `phaseInputSize (child i) (child i) = nextSignedWidth x z ops <
+     phaseInputSize x z`; `hfuel` decreases in step.
+   - the `cond ((W' − w_i) = 0) id (zeroExtend …)` allocation nodes match
+     `allocChunkGate`'s own `if extraDelta = 0 then id else …`.
+5. `seq` bracketing: `evalNode (.seq …)` right-folds with `LowGate.seq`;
+   the real term's bracketing differs, so the statement is up to
+   `LowGate.flattenSeq`, or the fold lemma is stated to match
+   `compileSignedAllocationsAux`'s nesting exactly. Decide once; the
+   existing `check1_annotatedEqFlat` convention (compare flattened) is the
+   pragmatic choice and is what `instantiate_eq_real` already does.
+
+`qft`: induction on `regSize r`, `standardQFTLoweringPlan.eq_1`, the
+`phase_product` theorem for the twiddle. `shor_gate`: no recursion; the
+`loop` over exponent bits against `modExpApproxStepsValid`'s list recursion
+(one lemma: `evalNode (.loop e 0 xW body)` equals the fold over `x.qubits`
+with `e` as position). `shor`: `shor_gate` plus the three `call` theorems
+through `translateLowerGate`'s cases of `lowerGate`.
+
+### 12.4 Generating the proof with the `Doc`
+
+The proof has the same shape for every table; only the number of body
+nodes changes. So `extract_ir_doc` grows a sibling: `extract_ir_doc! <id>
+<setup>` emits both `def <id> : Doc` **and** `theorem <id>_phase_product_correct
+…` (etc.), where the tactic script is assembled from the extracted
+structure and calls a fixed lemma library in `Emit/Proofs/Correct.lean`
+(`evalW_*`, `evalReg_slice_child`, `evalReg_grow`, `evalA_coeff`,
+`evalNode_naive_leaf`, `evalNode_loop_modExp`, `Env_call_child`). If the
+generated proof fails to elaborate, the extraction is rejected — the
+theorem is the acceptance test. A hand-written proof for the `k = 2`
+standard `Doc` comes first (§12.5 step 1), then the script generator is
+built from it.
+
+### 12.5 Staging and exit criteria
+
+**Placement (owner decision).** Every R6 proof lives under `Emit/Proofs/`,
+nothing else does, and nothing under `Emit/` outside that folder states a
+theorem: `Proofs/Correct.lean` (the lemma library), `Proofs/PhaseProduct.lean`,
+`Proofs/Qft.lean`, `Proofs/Shor.lean` (the hand-written per-template
+theorems of R6.2–R6.4, each about the pinned `Doc`s from `Tests.lean`/
+`Driver.lean`), and `Proofs/Generated.lean` (the output of `extract_ir_doc!`,
+R6.5; regenerated, never hand-edited). A `lean_lib EmitProofs` rooted at
+`FastMultiplication.Emit.Proofs.Shor` (which imports the rest) is added to
+`lakefile.lean` so `lake build EmitProofs` checks them; `Main.lean` does not
+import `Proofs/`, so the executable neither needs nor waits for them. The
+two existing small proof files stay where they are because they are not R6
+theorems but decidability instances the emitter runs
+(`Lower/Decide.lean`, `Table/Decide.lean`).
+
+
+| step | deliverable | exit criterion |
+|---|---|---|
+| R6.1 | `Proofs/Correct.lean`: lemma library for `evalW`, `evalReg` slices/`grow`/`ext`, `evalA`, `Env.call`, `evalNode` on `seq`/`cond`/`loop` | lemmas build; used in R6.2 |
+| R6.2 | hand-written `r2_2_doc_phase_product_correct` (k = 2 standard) | theorem closes; `#print axioms` shows no `sorryAx`, and no `Lean.ofReduceBool` (i.e. no `native_decide` inside the proof) |
+| R6.3 | `r2_4_doc_cphase_product_correct`, `r2_5_doc_qft_correct` | same |
+| R6.4 | `shor_gate` and `shor` theorems for the k = 2 standard `Doc` | same; plus the corollary `instantiate … = .ok (referenceShorCircuit …)` |
+| R6.5 | proof-script generator in `extract_ir_doc!`; regenerate all of the above from it | generated proofs close for k = 2 and k = 3 standard with no per-k edits |
+| R6.6 | D7/README/provenance updated: `template.provenance` says "proved for all widths (R6)" when the theorem exists for that `Doc` | text matches what is proved |
+
+### 12.6 Risks
+
+- **Register lemmas.** `Reg.append` carries `Disjoint` proofs and
+  `ReserveBudget.offset` is a prefix sum; showing `evalReg`'s slices are
+  definitionally the layout's children may need `Reg` extensionality
+  (`Reg.qubits` equality suffices, proofs are irrelevant) and a small
+  `offset` arithmetic lemma. Budget the most time here.
+- **Term size.** The concrete `Doc` body has thousands of constructors;
+  `simp` over `evalNode` on it must be driven node by node (a custom
+  `simp` set plus `rfl` for the structural steps), not by one global
+  `simp`, or elaboration time explodes.
+- **Brittleness.** Cosmetic changes in the extractor's output (e.g.
+  simplifying `0 * m`) change the `Doc` and thus the theorem's left side;
+  the generated script must be re-run, which is the intended workflow, but
+  the hand-written R6.2 proof will need updating if the extractor changes
+  before R6.5 exists.
+- **Bracketing.** If the `seq` nesting of `evalNode` and of the real term
+  differ, state the theorem up to `flattenSeq`; do not fight the fold.
+- **Fuel.** State with an explicit `fuel` and `hfuel`; do not try to remove
+  it, `instantiate` is `partial`-free only because of it.

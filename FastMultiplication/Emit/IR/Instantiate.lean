@@ -67,10 +67,18 @@ def Env.call (env : Env) (wParams : List String) (wVals : List ℕ) (aParams : L
     a := fun n => (aParams.zip aVals).lookup n
     r := fun n => (rParams.zip rVals).lookup n }
 
-/-- Evaluate a `WExpr` against `env`, threading opaque-function lookups
-through `Except`. `partial`: nested recursion through `List WExpr`
-(`opaque`'s arguments), as in `IR/WellFormed.lean`. -/
-partial def evalW (env : Env) : WExpr → Except String ℕ
+-- Evaluate a `WExpr` against `env`, threading opaque-function lookups
+-- through `Except`. Mutual with `evalWList` (`opaque`'s `List WExpr`
+-- arguments) rather than `partial`, per `Emit/PLAN.md` R6 (§12): a `partial
+-- def` compiles via an opaque fixpoint with no equation lemmas at all — `simp
+-- [evalW]`/`unfold evalW`/`rfl` all fail to make any progress on it, which
+-- would make every R6 theorem statement about `instantiate` unprovable before
+-- it even starts. Structured this way (paired with an explicit `List`-of-self
+-- helper, exactly `Reflect/Driver.lean`'s `wexprToExpr`/`wexprListToExpr`
+-- shape), Lean's ordinary structural-recursion equation compiler accepts it
+-- directly and produces real `.eq_n` lemmas.
+mutual
+def evalW (env : Env) : WExpr → Except String ℕ
   | .var name =>
       match env.w name with
       | some v => .ok v
@@ -83,13 +91,22 @@ partial def evalW (env : Env) : WExpr → Except String ℕ
   | .max a b => return Nat.max (← evalW env a) (← evalW env b)
   | .min a b => return Nat.min (← evalW env a) (← evalW env b)
   | .opaque fn args => do
-      let vs ← args.mapM (evalW env)
+      let vs ← evalWList env args
       match env.opaqueW fn vs with
       | some v => .ok v
       | none => .error s!"instantiate: opaque {fn} undefined at {vs}"
 
-/-- Evaluate an `AExpr`. -/
-partial def evalA (env : Env) : AExpr → Except String Angle
+/-- `evalW`, mapped over a `List WExpr` (`opaque`'s arguments). -/
+def evalWList (env : Env) : List WExpr → Except String (List ℕ)
+  | [] => .ok []
+  | a :: as => return (← evalW env a) :: (← evalWList env as)
+end
+
+/-- Evaluate an `AExpr`. Not `partial` (see `evalW`'s doc comment) — no
+nested `List AExpr` occurs in `AExpr` at all, so this is already ordinary
+structural recursion once `evalW` (which it calls, but does not recurse
+with) is. -/
+def evalA (env : Env) : AExpr → Except String Angle
   | .var name =>
       match env.a name with
       | some v => .ok v
@@ -126,9 +143,9 @@ treatment of an ordinary register as an extendable one with empty reserve.
 `ext`'s `Disjoint` side condition is decided against the concrete evaluated
 registers (`Emit/Lower/Decide.lean`'s `decidableRegDisjoint`) and refused,
 never assumed, if it fails — matching this file's other `if h : …` register
-constructions. `partial`: no nested `List RegExpr` occurs, but this mutually
-threads through `evalW`, which is. -/
-partial def evalReg (env : Env) : RegExpr → Except String ExtReg
+constructions. Not `partial` (see `evalW`'s doc comment) — no nested `List
+RegExpr` occurs in `RegExpr` at all. -/
+def evalReg (env : Env) : RegExpr → Except String ExtReg
   | .var name =>
       match env.r name with
       | some v => .ok v
@@ -261,12 +278,21 @@ def foldGateSeq : List Gate → Gate
   | [] => .id
   | g :: gs => g ;; foldGateSeq gs
 
-/-- Instantiate one template's body against `d`/`env`, unrolling `call`
-nodes (D3) until `fuel` runs out. `loop var lo hi body` iterates `body` with
-`var` bound to each of `lo, lo+1, …, hi-1` and right-folds the results
-(`foldLowGateSeq`), matching how the naive leaf's `signedTerms` sum and
-Shor's per-exponent-bit loop are actually laid out as one flat sequence. -/
-partial def evalNode (d : Doc) (fuel : ℕ) (env : Env) : Node → Except String LowGate
+-- Instantiate one template's body against `d`/`env`, unrolling `call`
+-- nodes (D3) until `fuel` runs out. `loop var lo hi body` iterates `body`
+-- with `var` bound to each of `lo, lo+1, …, hi-1` and right-folds the
+-- results (`foldLowGateSeq`), matching how the naive leaf's `signedTerms`
+-- sum and Shor's per-exponent-bit loop are actually laid out as one flat
+-- sequence.
+--
+-- Not `partial` (see `evalW`'s doc comment): the recursion here is
+-- genuinely well-founded, just not *structural* on `Node` alone — every
+-- case but `.call` recurses on a strictly smaller `Node` at the same
+-- `fuel`; `.call` recurses on an *unrelated* (possibly larger) `Node`
+-- (`t.body`, from `d.templates`) at strictly smaller `fuel`. The
+-- termination measure is the lexicographic pair `(fuel, sizeOf node)`.
+def evalNode (d : Doc) (fuel : ℕ) (env : Env) (node : Node) : Except String LowGate :=
+  match node with
   | .op name regs nats angle flags => do
       let regs' ← regs.mapM (evalReg env)
       let nats' ← nats.mapM (evalW env)
@@ -291,11 +317,22 @@ partial def evalNode (d : Doc) (fuel : ℕ) (env : Env) : Node → Except String
       let gs ← (List.range (hiV - loV)).mapM
         (fun i => evalNode d fuel (env.bindW var (loV + i)) body)
       pure (foldLowGateSeq gs)
+termination_by (fuel, sizeOf node)
+decreasing_by
+  all_goals simp_wf
+  · rename_i h; exact Prod.Lex.right _ (by have := List.sizeOf_lt_of_mem h; omega)
+  · exact Prod.Lex.right _ (by omega)
+  · exact Prod.Lex.right _ (by omega)
+  · exact Prod.Lex.right _ (by omega)
+  · exact Prod.Lex.left _ _ (by omega)
+  · exact Prod.Lex.right _ (by omega)
 
-/-- `evalNode`'s `Gate`-valued counterpart, for R2.6's `orderFindingApprox`
-criterion. Shares `Env`/`WExpr`/`AExpr`/`RegExpr`/`Prop'` evaluation; only
-the `op` leaf dispatcher (`buildGate`) and the fold target differ. -/
-partial def evalNodeGate (d : Doc) (fuel : ℕ) (env : Env) : Node → Except String Gate
+-- `evalNode`'s `Gate`-valued counterpart, for R2.6's `orderFindingApprox`
+-- criterion. Shares `Env`/`WExpr`/`AExpr`/`RegExpr`/`Prop'` evaluation; only
+-- the `op` leaf dispatcher (`buildGate`) and the fold target differ. Not
+-- `partial`, same reason and same termination measure as `evalNode`.
+def evalNodeGate (d : Doc) (fuel : ℕ) (env : Env) (node : Node) : Except String Gate :=
+  match node with
   | .op name regs nats angle flags => do
       let regs' ← regs.mapM (evalReg env)
       let nats' ← nats.mapM (evalW env)
@@ -322,6 +359,15 @@ partial def evalNodeGate (d : Doc) (fuel : ℕ) (env : Env) : Node → Except St
       let gs ← (List.range (hiV - loV)).mapM
         (fun i => evalNodeGate d fuel (env.bindW var (loV + i)) body)
       pure (foldGateSeq gs)
+termination_by (fuel, sizeOf node)
+decreasing_by
+  all_goals simp_wf
+  · rename_i h; exact Prod.Lex.right _ (by have := List.sizeOf_lt_of_mem h; omega)
+  · exact Prod.Lex.right _ (by omega)
+  · exact Prod.Lex.right _ (by omega)
+  · exact Prod.Lex.right _ (by omega)
+  · exact Prod.Lex.left _ _ (by omega)
+  · exact Prod.Lex.right _ (by omega)
 
 /-- Instantiate template `t` of `d` at `env`, targeting `LowGate`. `fuel`
 bounds the number of `call` unrollings (a concrete run always terminates

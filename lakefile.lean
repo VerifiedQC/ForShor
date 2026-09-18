@@ -20,3 +20,6 @@ lean_exe forshor_emit where
 
 lean_lib «EmitTests» where
   roots := #[`FastMultiplication.Emit.Tests]
+
+lean_lib «EmitProofs» where
+  roots := #[`FastMultiplication.Emit.Proofs.Shor]
