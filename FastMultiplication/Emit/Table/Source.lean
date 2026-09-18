@@ -15,6 +15,20 @@ lowering theorems (`ShorLoweringSetup.consumes`/`.returns`) are about;
 `generate` (`Table_Generation.generate`) is the older table-generation
 tooling, kept for comparison, with no such theorem. `standard` is the
 default the rest of the emitter uses.
+
+`Emit/PLAN.md` §11 (R5): `TableSource` shrinks to a convenience for the
+*value tables* only (`bundle`'s pure sections: `schedule`, `coeff_poly`,
+`width`, `qft_plan`, `shor_plan` — plain evaluations of named functions,
+with no fidelity claim to check `.generate` against anything). It is no
+longer a valid input to *extraction* (`template`, and `bundle`'s embedded
+`template` section): the extractor takes a `Shor.ShorLoweringSetup`
+directly (`Reflect/Targets.lean`, `Reflect/Driver.lean`), and `.generate`
+has no such value to offer — `StandardPhaseLoweringPlan`'s coefficients are
+fixed to `genInterpolationPoints k` regardless of `ops` (§6.9's finding),
+so a `.generate` table's own points would describe a circuit the real
+lowering does not build. `Main.lean` refuses `--table generate` for
+`template`/`bundle`'s template step with exit 2, before it ever reaches
+this file's `.generate` case.
 -/
 
 namespace Shor

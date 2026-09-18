@@ -17,8 +17,12 @@ Four checks, matching `Emit/PLAN.md` §4.3:
 2. every `call` names a template in the `Doc` and matches its arity in all
    three parameter lists;
 3. every `call` back to the enclosing template (direct recursion) occurs
-   under a `cond` whose guard is `lt`/`le` between a `wParam` and an
-   expression;
+   under a `cond` whose guard is `lt`/`le`/`eq` with a `wParam` *or* a D4
+   opaque-function application (e.g. `nextWidth(xw, zw)`, itself built from
+   the params) on one side — `phase_product`'s own guard,
+   `nextWidth(xw, zw) < max(xw, zw)`, is this second, one-step-removed form;
+   `qft`'s is a chain of `eq`s ruling out base-case widths rather than an
+   `lt`/`le` at all (`regSize r = 0`, then `regSize r = 1`);
 4. every `opaque` name is declared (`Doc.opaqueFns`) with the right arity.
 
 `Bool`, not `Decidable`/`DecidableEq`: see `IR/Syntax.lean`'s deriving note —
@@ -62,6 +66,8 @@ partial def AExpr.wellFormed (opaqueFns : List (String × ℕ)) (aScope wScope :
       phi.wellFormed opaqueFns aScope wScope && xi.wellFormed opaqueFns wScope &&
         xw.wellFormed opaqueFns wScope && zi.wellFormed opaqueFns wScope &&
         zw.wellFormed opaqueFns wScope
+  | .qftPhi m => m.wellFormed opaqueFns wScope
+  | .ratio num denom => num.wellFormed opaqueFns wScope && denom.wellFormed opaqueFns wScope
 
 /-- `rScope` binds register vars, `wScope` binds the width vars a slice's
 bounds may reference. -/
@@ -83,14 +89,37 @@ def Prop'.wellFormed (opaqueFns : List (String × ℕ)) (wScope : List String) :
   | .lt a b => a.wellFormed opaqueFns wScope && b.wellFormed opaqueFns wScope
   | .le a b => a.wellFormed opaqueFns wScope && b.wellFormed opaqueFns wScope
   | .eq a b => a.wellFormed opaqueFns wScope && b.wellFormed opaqueFns wScope
+  | .testBit n i => n.wellFormed opaqueFns wScope && i.wellFormed opaqueFns wScope
+
+/-- Is `w` itself evidence a comparison against it could license recursion:
+a bare `wParam`, or a D4 opaque-function application? `phase_product`'s own
+guard is `nextWidth(xw, zw) < max(xw, zw)` — neither side is a bare
+parameter, but the left side *is* the opaque `nextWidth`, which by D4 is
+precisely the quantity guaranteed to strictly decrease across the recursive
+call, so a comparison against it is exactly the kind of evidence rule 3
+looks for, just one level removed from a bare parameter. -/
+def wLicenses (tWParams : List String) : WExpr → Bool
+  | .var n => tWParams.contains n
+  | .opaque _ _ => true
+  | _ => false
 
 /-- Does this guard license a direct-recursive `call` under it: `lt`/`le`
-between a `wParam` (one of `tWParams`) and anything else? -/
+between a `wParam` (one of `tWParams`) — or a D4 opaque-function application
+of the parameters, `wLicenses` — and anything else? -/
+-- `qft`'s own recursion guard is a *chain* of `eq`s ruling out base-case
+-- widths (`regSize r = 0`, then `regSize r = 1`), not an `lt`/`le` at
+-- all — by the time the `else`-of-`else` branch is reached, both have been
+-- ruled out and the recursive `rightReg`/`leftReg` calls are on a strictly
+-- smaller width, exactly as much evidence of termination as `lt`/`le`
+-- against a `wParam`. Marking the `eq`'s own `then` branch (the base case,
+-- with nothing to recurse into) as "guarded" too is harmless: rule 3 only
+-- ever *permits* a recursive `call`, it never requires one.
 def guardLicensesRecursion (tWParams : List String) : Prop' → Bool
-  | .lt a b | .le a b =>
-      (match a with | .var n => tWParams.contains n | _ => false) ||
-        (match b with | .var n => tWParams.contains n | _ => false)
-  | .eq _ _ => false
+  | .lt a b | .le a b | .eq a b => wLicenses tWParams a || wLicenses tWParams b
+  -- `testBit` never guards a recursive `call` (`lowerCopyBitPowers`'s
+  -- reformulated loop body has no recursion inside its `Node.cond`), so it
+  -- carries no termination evidence either way — never licensing is safe.
+  | .testBit _ _ => false
 
 /-- Check 1 (var scoping), 2 (call arity/existence), 3 (guarded recursion)
 and 4 (opaque arity) over one template body. `selfName`/`tWParams` are the

@@ -110,12 +110,15 @@ partial def evalA (env : Env) : AExpr → Except String Angle
       let ziV ← evalW env zi
       let zwV ← evalW env zw
       pure (phiV * (signedBitWeight xwV xiV : ℚ) * (signedBitWeight zwV ziV : ℚ))
+  | .qftPhi m => return (2 : ℚ) / (2 : ℚ) ^ (← evalW env m)
+  | .ratio num denom => return ((← evalW env num : ℕ) : ℚ) / ((← evalW env denom : ℕ) : ℚ)
 
 /-- Evaluate a `Prop'` guard. -/
 def evalProp (env : Env) : Prop' → Except String Bool
   | .lt a b => return decide ((← evalW env a) < (← evalW env b))
   | .le a b => return decide ((← evalW env a) ≤ (← evalW env b))
   | .eq a b => return decide ((← evalW env a) = (← evalW env b))
+  | .testBit n i => return Nat.testBit (← evalW env n) (← evalW env i)
 
 /-- Evaluate a `RegExpr` to an `ExtReg`. A bare `Reg` (`RadixReverse`'s
 argument) is that `ExtReg`'s `active` part, matching `ExtReg.ofReg`'s
@@ -161,13 +164,19 @@ partial def evalReg (env : Env) : RegExpr → Except String ExtReg
 
 /-- Build one `LowGate` leaf from an `op` node's already-evaluated
 arguments. Op names are exactly the `LowGate` constructor names (D2), with
-one exception: `CPhase` names the derived function `LowGate.CPhase`
-directly rather than one constructor, since its `ctrl = target` branch is
-only ever decidable once `ctrl`/`target` are concrete physical qubits (D2's
-"opaque named function" treatment, same idea as `RegExpr.grow` for
-`ExtReg.grow` — do not force a symbolic guard where the real function
-already isn't one). regs land in declaration order, nats in declaration
-order, dropped into whichever of the two lists they belong to. -/
+two exceptions: `CPhase`/`CCPhase` name the derived functions
+`LowGate.CPhase`/`LowGate.CCPhase` directly rather than one constructor,
+since their qubit-equality branches (`ctrl = target`, and `CCPhase`'s three
+pairwise equalities) are only ever decidable once every qubit involved is
+concrete (D2's "opaque named function" treatment, same idea as
+`RegExpr.grow` for `ExtReg.grow` — do not force a symbolic guard where the
+real function already isn't one). `CCPhase`'s `ctrl` — like
+`CSignedPhaseProd`'s — is a bare qubit index in the real source, not sliced
+from any register, but it is still carried here as a single-qubit `regs`
+entry (`RegExpr.qubit`), not a `nats` width: every qubit-shaped operand
+goes through the same path, regardless of where it comes from. regs land in
+declaration order, nats in declaration order, dropped into whichever of the
+two lists they belong to. -/
 def buildLowGate (name : String) (regs : List ExtReg) (nats : List ℕ) (angle : Option Angle)
     (flags : List Bool) : Except String LowGate :=
   let qb (r : ExtReg) : Except String ℕ :=
@@ -181,6 +190,8 @@ def buildLowGate (name : String) (regs : List ExtReg) (nats : List ℕ) (angle :
   | "Phase", [r], [], some a, [] => return .Phase (← qb r) a
   | "CPhase", [ctrl, target], [], some theta, [] =>
       return LowGate.CPhase (← qb ctrl) (← qb target) theta
+  | "CCPhase", [a, b, c], [], some theta, [] =>
+      return LowGate.CCPhase (← qb a) (← qb b) (← qb c) theta
   | "CNOT", [c, t], [], none, [] => return .CNOT (← qb c) (← qb t)
   | "Toffoli", [c1, c2, t], [], none, [] => return .Toffoli (← qb c1) (← qb c2) (← qb t)
   | "ShiftL", [r], [n], none, [] => .ok (.ShiftL r n)

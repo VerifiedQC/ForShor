@@ -1,9 +1,23 @@
 # `Table/`
 
-The Toom-Cook table abstraction (`standard` vs. `generate`), and E1, the op
-census.
+The Toom-Cook table abstraction (`standard` vs. `generate`) — `Source.lean`
+— plus `Decide.lean`'s `Decidable` instances for packaging a custom table
+as a `Shor.ShorLoweringSetup`.
 
-Import order: `Source.lean → Census.lean`.
+`Census.lean` (the old op census / per-op-class `LowGate` resource table,
+E1) was deleted in R3/R4 (`Emit/PLAN.md`): those counts now fall out of the
+extracted `Doc` (`Reflect/`, `IR/`) plus the repository's own
+`shorGateResourceModel`, rather than a separate hand-evaluated table.
+
+**R5 (`Emit/PLAN.md` §11) narrowed what `TableSource`/`tableInstance` are
+for.** The *extractor* (`Reflect/`) no longer takes a `TableSource` at all
+— it takes a `Shor.ShorLoweringSetup` directly (D5), so `.generate` is no
+longer a legitimate extraction input (it has no such value: `.generate`'s
+own points don't match what `StandardPhaseLoweringPlan`'s fixed
+`genInterpolationPoints k` coefficients assume). `TableSource` remains
+useful for the *value tables* (`Symbolic/{CoeffPoly,Width,QftPlan,
+ShorPlan}.lean` via `bundle`'s pure sections), which make no such fidelity
+claim and are happy to evaluate on either table.
 
 ## `Source.lean`
 
@@ -51,23 +65,31 @@ tables emitted by older tooling.
   = q k`, `run? ops State.start_state = some State.start_state`, and
   `progConsumesPtsCheck`.
 
-## `Census.lean`
+## `Decide.lean`
 
-E1: op census, and the `LowGate` resources this repository assigns to the
-adder-class ops and the naive leaf, at a chosen width `W`.
+`Decidable` instances for a user's own `Shor.ShorLoweringSetup` proofs
+(`Emit/PLAN.md` §11.2 point 5): neither `ProgConsumesPts` nor `SafeProg`
+had one anywhere in the repo before this file, so proving `consumes` for a
+hand-built table meant writing an abstract proof by hand — exactly the
+friction R5's whole point (any table the theorems cover, not just the
+standard one) would otherwise run into.
 
-- `OpCensus` — counts of `phaseProduct`, `addScaled`, `negate`, `shiftL`,
-  `shiftR`; `.adderClassTotal := addScaled + negate`.
-- `opCensus {k} (ops : Prog k) : OpCensus` — census a `Prog k`.
-- `synthReg (n : ℕ) : ExtReg` — a width-only synthetic register (`Reg.interval
-  0 n`, no reserve) used to evaluate width-indexed resource functions
-  without needing a real layout. Mirrors the `private` `widthShell` pattern
-  in `Reference/ReferenceLayout.lean` — that one isn't visible outside its
-  file, so this is `Emit/`'s own copy.
-- `addScaledResourcesAt`, `negateResourcesAt`, `radixReverseResourcesAt (W :
-  ℕ) : GateResources` — the Cuccaro-adder-based resource formulas from
-  `Framework/Gatecount/ResourceModel.lean`, evaluated at `synthReg W`.
-- `naiveLeafResourcesAt (wx wz : ℕ) : GateResources` — the exact gate census
-  of `LowGate.Naive_SignedPhaseProd`, counted on the real term at operand
-  widths `(wx, wz)` (the angle is irrelevant to gate counts, so it's fixed
-  to `0`).
+- `decideProgConsumesPts`/`instance decidableProgConsumesPts` — term-mode,
+  mirroring `ProgConsumesPts`'s own recursion on `ops` constructor by
+  constructor (`phaseProduct i`'s existential witness is `pts`'s own head;
+  every other op's is whatever `applyOp?` computes) rather than via a
+  separately-proven Boolean mirror — `ProgConsumesPts` is a `def`, not an
+  `inductive`, so its own internal `match op with …` only reduces once `op`
+  is a literal constructor, which is why `decideProgConsumesPtsOther`
+  (the shared "non-`phaseProduct`" case) takes its unfolding proof as an
+  argument (`Iff.rfl`, defeq-provable only at each concrete call site)
+  rather than proving it once generically.
+- `safeProgCheck`, `safeProg_iff_check`, `instance decidableSafeProg` —
+  `SafeProg ops` (a `∀` over list decompositions: every `addScaled d s _ _`
+  anywhere in `ops` has `d ≠ s`) is equivalent to one Boolean scan over
+  `ops` (`List.mem_iff_append` in one direction, `List.mem_append_right`/
+  `List.mem_cons_self` in the other), and *that* is directly decidable.
+- `instance decidableProgConsumesPtsSafe` — the pair, since
+  `ShorLoweringSetup.consumes : ProgConsumesPtsSafe …` bundles both fields
+  and callers want to write `consumes := by native_decide` once, not
+  `⟨by native_decide, by native_decide⟩`.

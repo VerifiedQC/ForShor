@@ -42,6 +42,8 @@ partial def AExpr.render : AExpr → String
   | .signedPair phi xi xw zi zw =>
       s!"({phi.render} * signedBitWeight({xw.render}, {xi.render}) * " ++
         s!"signedBitWeight({zw.render}, {zi.render}))"
+  | .qftPhi m => s!"qftPhi({m.render})"
+  | .ratio num denom => s!"({num.render} / {denom.render})"
 
 /-- Render a `RegExpr` as a slice path, e.g. `x.active[0:4]`,
 `ext(x.active[0:4], x.reserve[0:2])`, `x.active[3]`. -/
@@ -58,6 +60,7 @@ def Prop'.render : Prop' → String
   | .lt a b => s!"({a.render} < {b.render})"
   | .le a b => s!"({a.render} <= {b.render})"
   | .eq a b => s!"({a.render} = {b.render})"
+  | .testBit n i => s!"testBit({n.render}, {i.render})"
 
 /-- Serialize a template-body `Node`. Op names are exactly the
 `LowGate`/`Gate` constructor names (D2); every width/angle/register operand

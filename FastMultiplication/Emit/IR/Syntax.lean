@@ -60,7 +60,12 @@ could pick once and for all, since it depends on which loop iteration this
 is; not expressible as add/sub/mul/div/max/min either, since `WExpr` has no
 signed values or exponentiation. Naming the whole formula, evaluated by the
 real functions at `instantiate` time once `i`/`w` are concrete loop values,
-is simpler than growing `WExpr`/`AExpr` two more primitives for one leaf.) -/
+is simpler than growing `WExpr`/`AExpr` two more primitives for one leaf.)
+`ratio` lifts a `(num : ℚ) / (denom : ℚ)` nat fraction into an angle (R2.6:
+Algorithm 1's `step1`/`step2`/`step5` each build their controlled-phase-load
+angle as `2 * (some nat, itself built from `%`/`Nat.find`/`^` via `WExpr`'s
+own `opaque`) / N` — one general lift covers all three, rather than three
+per-formula named constructs). -/
 inductive AExpr
   | var (name : String)
   | lit (a : Angle)
@@ -69,6 +74,8 @@ inductive AExpr
   | div2 (a : AExpr)
   | neg (a : AExpr)
   | signedPair (phi : AExpr) (xi xw zi zw : WExpr)
+  | qftPhi (m : WExpr)
+  | ratio (num denom : WExpr)
 deriving Repr, BEq
 
 /-- Register expressions: slice paths back to a template's register
@@ -89,11 +96,17 @@ inductive RegExpr
 deriving Repr, BEq
 
 /-- Decidable guards on `WExpr`s: what a `dite`/`Nat.casesOn`/matcher on a
-symbolic width translates to (`Node.cond`'s `guard`). -/
+symbolic width translates to (`Node.cond`'s `guard`). `testBit` names
+`Nat.testBit` directly (R2.6: `lowerCopyBitPowers`'s per-bit constant-write
+loop, reformulated from "recurse over `N.bitIndices`" — a symbolic-length
+list, D2's usual escape hatch — to "loop over every bit position and guard
+on whether it's set", the two being equal by `Nat.bitIndices`'s own
+definition; `.testBit` covers the guard just this reformulation needs). -/
 inductive Prop'
   | lt (a b : WExpr)
   | le (a b : WExpr)
   | eq (a b : WExpr)
+  | testBit (n i : WExpr)
 deriving Repr, BEq
 
 /-- One node of a template body.

@@ -4,7 +4,6 @@ import FastMultiplication.Emit.Json.PlanJson
 import FastMultiplication.Emit.Lower.Decide
 import FastMultiplication.Emit.Lower.PhaseProduct
 import FastMultiplication.Emit.Lower.Qft
-import FastMultiplication.Emit.Lower.Instantiate
 import FastMultiplication.Emit.Reflect.Driver
 import FastMultiplication.Emit.IR.Json
 
@@ -22,15 +21,14 @@ def usageText : String :=
   "usage: forshor_emit shor <k> <a> <N> <m>\n" ++
   "       forshor_emit <k> <a> <N> <m>   (alias of shor)\n" ++
   "       forshor_emit bundle <k> [--table standard|generate] [--m-max M] " ++
-  "[--w-max W] [--check-cramer]\n" ++
-  "       forshor_emit <schedule|coeff_poly|width|qft_plan|shor_plan|" ++
-  "recursion|template> <k> [--table standard|generate] [--m-max M] " ++
-  "[--w-max W] [--check-cramer]\n" ++
+  "[--w-max W] [--check-cramer] [--no-template]\n" ++
+  "       forshor_emit <schedule|coeff_poly|width|qft_plan|shor_plan> <k> " ++
+  "[--table standard|generate] [--m-max M] [--w-max W] [--check-cramer]\n" ++
+  "       forshor_emit template <k> [--table standard|generate] [--w-max W]\n" ++
   "       forshor_emit phases <k> <m> <phiNum/phiDen>\n" ++
   "       forshor_emit pp <k> <n> <phiNum/phiDen> [--flat]\n" ++
   "       forshor_emit cpp <k> <n> <phiNum/phiDen> [--flat]\n" ++
   "       forshor_emit qft <k> <w> [--flat]\n" ++
-  "       forshor_emit extract_ir <k>\n" ++
   "  k : number of PhaseProduct synthesis registers (k > 1)\n" ++
   "  a : base, with 0 < a < N and gcd a N = 1\n" ++
   "  N : modulus\n" ++
@@ -56,8 +54,12 @@ structure BundleArgs where
   k : ℕ
   src : Shor.TableSource := .standard
   mMax : ℕ := 16
-  wMax : ℕ := 32
+  -- Covers `nextWidth`/`reserveNeed`/`qftWorkspaceNeed` at every width a
+  -- consumer's recursive unrolling is likely to visit, and (`Emit/PLAN.md`
+  -- §7) at least `template`'s own checked width `4 * k` for `k` up to 16.
+  wMax : ℕ := 64
   checkCramer : Bool := false
+  noTemplate : Bool := false
 
 def parseFlags : List String → BundleArgs → Option BundleArgs
   | [], acc => some acc
@@ -72,6 +74,7 @@ def parseFlags : List String → BundleArgs → Option BundleArgs
       | some w => parseFlags rest { acc with wMax := w }
       | none => none
   | "--check-cramer" :: rest, acc => parseFlags rest { acc with checkCramer := true }
+  | "--no-template" :: rest, acc => parseFlags rest { acc with noTemplate := true }
   | _, _ => none
 
 def parseBundleArgs : List String → Option BundleArgs
@@ -81,9 +84,42 @@ def parseBundleArgs : List String → Option BundleArgs
       | none => none
       | some k => parseFlags rest { k := k }
 
-def runBundle (a : BundleArgs) : IO UInt32 := do
+/-- `.generate` cannot be extracted (`Emit/PLAN.md` §11/R5: it has no
+`ShorLoweringSetup`, so it is not a table the lowering theorems cover). This
+is a bad *request*, not a check that ran and failed — exit 2, not 3 — so it
+is caught here, before `Shor.buildBundle`/`buildTemplateDoc` (which also
+refuse it, for callers that reach them some other way, but with `.error`/
+exit 3, the "a check failed" code). -/
+def generateExtractionError : String :=
+  "`--table generate` cannot be extracted (Emit/PLAN.md §11: no `ShorLoweringSetup` covers it); " ++
+  "use the standard table"
+
+unsafe def runBundle (a : BundleArgs) : IO UInt32 := do
   if hk : 1 < a.k then
-    match Shor.buildBundle a.src a.k hk a.mMax a.wMax a.checkCramer with
+    if a.src matches .generate ∧ !a.noTemplate then
+      IO.eprintln s!"error: {generateExtractionError} (or pass --no-template)"
+      return 2
+    match ← Shor.buildBundle a.src a.k hk a.mMax a.wMax a.checkCramer a.noTemplate with
+    | .ok json =>
+        IO.println json.compress
+        return 0
+    | .error e =>
+        IO.eprintln s!"error: {e}"
+        return 3
+  else
+    IO.eprintln s!"error: need k > 1 (k = {a.k})"
+    return 2
+
+/-- `template <k>`: print the extracted `Doc` alone (`Emit/PLAN.md` §7),
+after `Doc.wellFormed` and the R2 instance checks — refuses with exit 3 on
+any failure (extraction, verification, or `--w-max` too small), or exit 2
+if `--table generate` was requested (§11/R5). -/
+unsafe def runTemplate (a : BundleArgs) : IO UInt32 := do
+  if hk : 1 < a.k then
+    if a.src matches .generate then
+      IO.eprintln s!"error: {generateExtractionError}"
+      return 2
+    match ← Shor.buildTemplateDoc a.src a.k hk a.wMax with
     | .ok json =>
         IO.println json.compress
         return 0
@@ -147,15 +183,15 @@ def runShorArgs (kStr aStr NStr mStr : String) : IO UInt32 :=
 /-- Shared driver for `pp`/`cpp`/`qft`: parse `<k> <n-or-w> [<phi>] [--flat]`,
 run the builder, print or report the `Except`. `buildFn`'s `annotated` flag
 is `!flat`. -/
-def runPPQFT (build : ℕ → ℕ → Bool → Except String Lean.Json) (kStr wStr : String)
+unsafe def runPPQFT (build : ℕ → ℕ → Bool → IO (Except String Lean.Json)) (kStr wStr : String)
     (flat : Bool) : IO UInt32 :=
   match kStr.toNat?, wStr.toNat? with
   | some k, some w =>
       if k ≤ 1 then do
         IO.eprintln s!"error: need k > 1 (k = {k})"
         return 2
-      else
-      match build k w (!flat) with
+      else do
+      match ← build k w (!flat) with
       | .ok json => do
           IO.println json.compress
           return 0
@@ -167,7 +203,7 @@ def runPPQFT (build : ℕ → ℕ → Bool → Except String Lean.Json) (kStr wS
       IO.eprint usageText
       return 2
 
-def runPP (isCtrl : Bool) (kStr nStr phiStr : String) (flat : Bool) : IO UInt32 :=
+unsafe def runPP (isCtrl : Bool) (kStr nStr phiStr : String) (flat : Bool) : IO UInt32 :=
   match parsePhi phiStr with
   | none => do
       IO.eprintln "error: phi must be an integer ratio num/den"
@@ -177,27 +213,6 @@ def runPP (isCtrl : Bool) (kStr nStr phiStr : String) (flat : Bool) : IO UInt32 
       runPPQFT (fun k n annotated =>
         if isCtrl then Shor.buildCPP k n num den annotated else Shor.buildPP k n num den annotated)
         kStr nStr flat
-
-/-- `extract_ir <k>`: run the reflection extractor (`Reflect/Driver.lean`'s
-`runExtract`, standard table only so far) at run time and print the
-resulting `Doc` as `forshor.ir/v1` JSON. Deliberately not named `template`
-(already the old hand-written `Symbolic/Template.lean` view) — the plan is
-for `template` to become this once the whole call chain is extracted
-(`Emit/PLAN.md` R2.6/R3), not before. -/
-unsafe def runExtractIR (kStr : String) : IO UInt32 := do
-  match kStr.toNat? with
-  | none => do
-      IO.eprintln "error: k must be a natural number"
-      IO.eprint usageText
-      return 2
-  | some k =>
-      match ← Shor.Reflect.runExtract .standard k with
-      | .ok doc => do
-          IO.println (Shor.IR.docJson doc).compress
-          return 0
-      | .error e => do
-          IO.eprintln s!"error: {e}"
-          return 3
 
 unsafe def main (args : List String) : IO UInt32 := do
   match args with
@@ -209,12 +224,18 @@ unsafe def main (args : List String) : IO UInt32 := do
           IO.eprintln "error: bad bundle arguments"
           IO.eprint usageText
           return 2
+  | "template" :: rest =>
+      match parseBundleArgs rest with
+      | some ba => runTemplate ba
+      | none =>
+          IO.eprintln "error: bad template arguments"
+          IO.eprint usageText
+          return 2
   | "pp" :: kStr :: nStr :: phiStr :: rest => runPP false kStr nStr phiStr (rest.contains "--flat")
   | "cpp" :: kStr :: nStr :: phiStr :: rest => runPP true kStr nStr phiStr (rest.contains "--flat")
   | "qft" :: kStr :: wStr :: rest =>
       runPPQFT Shor.buildQFT kStr wStr (rest.contains "--flat")
   | "phases" :: kStr :: mStr :: phiStr :: [] => runPhases kStr mStr phiStr
-  | "extract_ir" :: kStr :: [] => runExtractIR kStr
   | sectionName :: rest =>
       if Shor.sectionNames.contains sectionName then
         runSection sectionName rest
