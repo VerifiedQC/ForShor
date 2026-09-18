@@ -797,4 +797,92 @@ theorem width_grow0z (x z : ExtReg)
     (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).capacity
   simpa [targetSignedLayoutState, initSignedLayoutState, nextSignedWidth] using h
 
+/-- `Env.call`'s result at each recursive `.call "phase_product"` leaf's
+evaluated args (`wArgs = [nextWidth, nextWidth, reserveNeed_x, reserveNeed_z]`,
+`aArgs = [phi * coeff(l, limbW)]`, `rArgs = [grow(ext0x, growDeltaX0W),
+grow(ext0z, growDeltaZ0W)]` — the "Second round of research findings" ground
+truth, `Emit/PLAN.md`'s R6.2 row) equals `ppEnv` at the grown chunk-0
+children and the scaled angle — the induction hypothesis's exact target
+environment. `opaqueW`/`coeff` need no case analysis at all: `ppEnv`'s fields
+for those don't reference `x, z, phi` (only the fixed `r2_2_ops`/`r2_2_k`), so
+`Env.call`'s `{env with ...}` carry-over is *syntactically* the same closed
+term `ppEnv` would build fresh for any other `x, z, phi` — `rfl` after
+`congr 1` closes those two components directly, same as `envCall_naive_leaf_eq`. -/
+theorem envCall_phase_product_eq (x z : ExtReg) (phi : Angle) (l : ℕ) (hl : l < q r2_2_k)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    Env.call (ppEnv x z phi) ["xw", "zw", "xCap", "zCap"]
+      [nextSignedWidth x z r2_2_ops, nextSignedWidth x z r2_2_ops,
+        (RecursivePhaseWorkspace.reserveNeed r2_2_ops (nextSignedWidth x z r2_2_ops)
+          (nextSignedWidth x z r2_2_ops)).1,
+        (RecursivePhaseWorkspace.reserveNeed r2_2_ops (nextSignedWidth x z r2_2_ops)
+          (nextSignedWidth x z r2_2_ops)).2]
+      ["phi"]
+      [phi * loweringPhaseCoeff r2_2_k x z (genInterpolationPoints r2_2_k)
+        (generatedInterpolationPoints_length r2_2_k) ⟨l, hl⟩]
+      ["x", "z"]
+      [growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0)
+          (nextSignedWidth x z r2_2_ops),
+        growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0)
+          (nextSignedWidth x z r2_2_ops)] =
+      ppEnv
+        (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0)
+          (nextSignedWidth x z r2_2_ops))
+        (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0)
+          (nextSignedWidth x z r2_2_ops))
+        (phi * loweringPhaseCoeff r2_2_k x z (genInterpolationPoints r2_2_k)
+          (generatedInterpolationPoints_length r2_2_k) ⟨l, hl⟩) := by
+  set childX := growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0)
+    (nextSignedWidth x z r2_2_ops) with hchildX
+  set childZ := growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0)
+    (nextSignedWidth x z r2_2_ops) with hchildZ
+  have hcw := width_grow0x x z hrec hworkspace
+  have hcz := width_grow0z x z hrec hworkspace
+  have hcwCap := capacity_grow0x x z hrec hworkspace
+  have hczCap := capacity_grow0z x z hrec hworkspace
+  rw [← hchildX] at hcw hcwCap
+  rw [← hchildZ] at hcz hczCap
+  unfold Env.call ppEnv
+  congr 1
+  · funext n
+    by_cases hxw : n = "xw"
+    · subst hxw
+      simp only [List.zip_cons_cons, List.lookup_cons, List.cons.injEq, and_true, reduceCtorEq,
+        beq_self_eq_true, ↓reduceIte]
+      exact congrArg some hcw.symm
+    · have hxw' : (n == "xw") = false := by simpa using hxw
+      by_cases hzw : n = "zw"
+      · subst hzw
+        simp only [List.zip_cons_cons, List.lookup_cons, hxw', Bool.false_eq_true, ↓reduceIte,
+          beq_self_eq_true]
+        exact congrArg some hcz.symm
+      · have hzw' : (n == "zw") = false := by simpa using hzw
+        by_cases hxc : n = "xCap"
+        · subst hxc
+          simp only [List.zip_cons_cons, List.lookup_cons, hxw, hzw, hxw', hzw', Bool.false_eq_true,
+            ↓reduceIte, beq_self_eq_true]
+          exact congrArg some hcwCap.symm
+        · have hxc' : (n == "xCap") = false := by simpa using hxc
+          by_cases hzc : n = "zCap"
+          · subst hzc
+            simp only [List.zip_cons_cons, List.lookup_cons, hxw, hzw, hxc, hxw', hzw', hxc',
+              Bool.false_eq_true, ↓reduceIte, beq_self_eq_true]
+            exact congrArg some hczCap.symm
+          · have hzc' : (n == "zCap") = false := by simpa using hzc
+            simp [-RecursivePhaseWorkspace.reserveNeed_fst, -RecursivePhaseWorkspace.reserveNeed_snd,
+              List.lookup_cons, hxw, hzw, hxc, hzc, hxw', hzw', hxc', hzc']
+  · funext n
+    by_cases hphi : n = "phi"
+    · subst hphi; simp [List.lookup_cons]
+    · have hphi' : (n == "phi") = false := by simpa using hphi
+      simp [List.lookup_cons, hphi, hphi']
+  · funext n
+    by_cases hx : n = "x"
+    · subst hx; simp [List.lookup_cons]
+    · have hx' : (n == "x") = false := by simpa using hx
+      by_cases hz : n = "z"
+      · subst hz; simp [List.lookup_cons, hx']
+      · have hz' : (n == "z") = false := by simpa using hz
+        simp [List.lookup_cons, hx, hz, hx', hz']
+
 end Shor.IR
