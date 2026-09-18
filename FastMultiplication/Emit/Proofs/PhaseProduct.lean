@@ -526,4 +526,25 @@ theorem evalReg_pp_grow1z (x z : ExtReg) (phi : Angle)
     Except.instMonad, Monad.toBind, Except.bind, Except.pure]
   rfl
 
+/-! ## The `hrec` branch: the annotated-ops body's angle coefficients
+
+`compileAnnotatedOpsToSignedGateAux`'s `.phaseProduct` case scales `phi` by
+`phaseCoeff l = loweringPhaseCoeff r2_2_k x z pts hpts l`, one per
+interpolation-term index `l` assigned by `annotatePhaseTermsAux`
+(`Emit/PLAN.md` §12.3 step 4's "`evalA (coeff phi l m) = phi *
+loweringPhaseCoeff …`" lemma). The extractor represents this as
+`.coeff (.var "phi") l limbW` (`Reflect/Extract.lean`'s `Registry.coeffMExpr`
+convention: the width argument is always the limb width). -/
+theorem evalA_pp_coeff (x z : ExtReg) (phi : Angle) (l : ℕ) (hl : l < q r2_2_k) :
+    evalA (ppEnv x z phi) (.coeff (.var "phi") l limbW) =
+      .ok (phi * loweringPhaseCoeff r2_2_k x z (genInterpolationPoints r2_2_k)
+        (generatedInterpolationPoints_length r2_2_k) ⟨l, hl⟩) := by
+  have hpts : (tableInstance .standard r2_2_k r2_2_hk).points = genInterpolationPoints r2_2_k := rfl
+  have hhlen : (tableInstance .standard r2_2_k r2_2_hk).hlen =
+      hpts ▸ generatedInterpolationPoints_length r2_2_k := rfl
+  show evalA (ppEnv x z phi) (AExpr.coeff (.var "phi") l limbW) = _
+  simp only [evalA, evalA_ppEnv_phi, evalW_pp_limbW, ppEnv, hl, dite_true,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure, loweringPhaseCoeff]
+  congr 2
+
 end Shor.IR
