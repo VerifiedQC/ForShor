@@ -1597,4 +1597,19 @@ set_option maxHeartbeats 4000000 in
 theorem r2_2_ppBodyNode_eq : r2_2_ppBodyNode = r2_2_ppBodyChain := by
   rfl
 
+/-- `evalNode` of an extracted `AddScaled` leaf (`r2_2_ppAS`) equals the real
+`LowGate.AddScaled dst src negSrc 0`, given the two register arguments
+evaluate to `dst`/`src` — parametrized so it applies to all 8 `AddScaled`
+leaves in the annotated-ops body via `evalReg_pp_grow0x`/`_grow0z`/`_grow1x`/
+`_grow1z`. -/
+theorem evalNode_pp_AS (x z : ExtReg) (phi : Angle) (d : Doc) (fuel : ℕ)
+    (side0 side1 : RegExpr) (dst src : ExtReg) (negSrc : Bool)
+    (h0 : evalReg (ppEnv x z phi) side0 = .ok dst)
+    (h1 : evalReg (ppEnv x z phi) side1 = .ok src) :
+    evalNode d fuel (ppEnv x z phi) (r2_2_ppAS negSrc side0 side1) =
+      .ok (LowGate.AddScaled dst src negSrc 0) := by
+  unfold r2_2_ppAS
+  simp [evalNode, evalW, h0, h1, buildLowGate, Except.instMonad, Monad.toBind, Except.bind,
+    Except.pure, List.mapM_cons, List.mapM_nil, Option.mapM]
+
 end Shor.IR
