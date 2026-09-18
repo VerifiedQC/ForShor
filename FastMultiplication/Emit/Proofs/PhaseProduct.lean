@@ -1140,4 +1140,59 @@ theorem lowerGateRec_planDeallocChunkGate {k : ℕ} {hk : 1 < k} {pts : List Ope
         with
       | zeroDealloc _ _ _ => rfl
 
+/-! ## The `hrec` branch: the full allocation/deallocation plans, at `k = 2`
+
+`planCompileSignedAllocationsAux`/`planCompileSignedDeallocationsAux` are
+ordinary structural recursion on their `n : ℕ` argument (no `termination_by`,
+no cast obstacle — unlike the leaf-level `planAllocChunkGate`/
+`planDeallocChunkGate` above, or `compileAnnotatedOpsToSignedGateAux`'s own
+recursion), so unfolding them twice (`r2_2_k = 2`) via `simp` — reusing
+`lowerGateRec_planAllocChunkGate`/`lowerGateRec_planDeallocChunkGate` for
+each leaf — produces the full concrete 5-leaf `LowGate.seq` tree directly,
+no further cast machinery needed. -/
+
+theorem lowerGateRec_planCompileSignedAllocations_2 {hk : 1 < 2} {pts : List Operations.Point}
+    {hpts : pts.length = q 2} {ops : Prog 2} (initSize : ℕ) (src dst : LayoutState 2) :
+    lowerGateRec (planCompileSignedAllocations (k := 2) (hk := hk) (pts := pts) (hpts := hpts)
+      (ops := ops) initSize src dst) =
+      LowGate.seq
+        (LowGate.seq LowGate.id
+          (LowGate.seq
+            (lowerGateRec (planAllocChunkGate (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
+              initSize (0 : Fin 2) (src.xslot 0) (dst.xslot 0)))
+            (lowerGateRec (planAllocChunkGate (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
+              initSize (0 : Fin 2) (src.zslot 0) (dst.zslot 0)))))
+        (LowGate.seq
+          (lowerGateRec (planAllocChunkGate (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
+            initSize (1 : Fin 2) (src.xslot 1) (dst.xslot 1)))
+          (lowerGateRec (planAllocChunkGate (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
+            initSize (1 : Fin 2) (src.zslot 1) (dst.zslot 1)))) := by
+  unfold planCompileSignedAllocations
+  simp [planCompileSignedAllocationsAux, lowerGateRec]
+
+/-- Deallocation counterpart of `lowerGateRec_planCompileSignedAllocations_2`
+(note the reversed, top-first bracketing —
+`compileSignedDeallocationsAux`'s own recursion, matching the file's header
+docstring's "top-first per `compileSignedDeallocationsAux`'s decreasing
+order"). -/
+theorem lowerGateRec_planCompileSignedDeallocations_2 {hk : 1 < 2} {pts : List Operations.Point}
+    {hpts : pts.length = q 2} {ops : Prog 2} (initSize : ℕ) (src dst : LayoutState 2) :
+    lowerGateRec (planCompileSignedDeallocations (k := 2) (hk := hk) (pts := pts) (hpts := hpts)
+      (ops := ops) initSize src dst) =
+      LowGate.seq
+        (lowerGateRec (planDeallocChunkGate (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
+          initSize (1 : Fin 2) (src.zslot 1) (dst.zslot 1)))
+        (LowGate.seq
+          (lowerGateRec (planDeallocChunkGate (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
+            initSize (1 : Fin 2) (src.xslot 1) (dst.xslot 1)))
+          (LowGate.seq
+            (lowerGateRec (planDeallocChunkGate (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
+              initSize (0 : Fin 2) (src.zslot 0) (dst.zslot 0)))
+            (LowGate.seq
+              (lowerGateRec (planDeallocChunkGate (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
+                initSize (0 : Fin 2) (src.xslot 0) (dst.xslot 0)))
+              LowGate.id))) := by
+  unfold planCompileSignedDeallocations
+  simp [planCompileSignedDeallocationsAux, lowerGateRec]
+
 end Shor.IR
