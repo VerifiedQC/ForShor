@@ -1676,4 +1676,58 @@ theorem evalNode_pp_dealloc (x z : ExtReg) (phi : Angle) (fuel : ℕ)
   refine ⟨_, rfl, ?_⟩
   simp [LowGate.flattenSeq, flattenSeq_sequence, nextSignedWidth]
 
+
+/-! ## The `hrec` branch: the well-founded induction
+
+Assembling `evalNode_pp_alloc`/`evalNode_pp_dealloc` (done) with the 12-leaf
+annotated-ops body (needs the induction hypothesis at each of the 3
+recursive `.call "phase_product"` leaves) into `evalNode_phase_product_correct`
+itself — `Emit/PLAN.md` §12.2's target theorem, proved by strong induction on
+`phaseInputSize x z`. -/
+
+-- `r2_2_ppBody`'s own template record (`r2_2_ppBody`'s definition is this
+-- record's `.body` field, via the same `getD` fallback) — ground truth for
+-- `wParams`/`aParams`/`rParams`, `rfl`-checked, same method as the rest of
+-- this file.
+def r2_2_ppTemplate : Template :=
+  (r2_2_doc.templates.find? (fun t => t.name == "phase_product")).getD
+    { name := "?", wParams := [], aParams := [], rParams := [], body := .op "" [] [] none [],
+      provenance := "" }
+
+theorem r2_2_call_lookup :
+    r2_2_doc.templates.find? (fun t => t.name == "phase_product") = some r2_2_ppTemplate := by
+  rfl
+
+theorem r2_2_ppTemplate_wParams : r2_2_ppTemplate.wParams = ["xw", "zw", "xCap", "zCap"] := by rfl
+theorem r2_2_ppTemplate_aParams : r2_2_ppTemplate.aParams = ["phi"] := by rfl
+theorem r2_2_ppTemplate_rParams : r2_2_ppTemplate.rParams = ["x", "z"] := by rfl
+theorem r2_2_ppTemplate_body : r2_2_ppTemplate.body = r2_2_ppBody := by rfl
+
+
+/-- `evalNode` of a recursive `.call "phase_product"` leaf (`r2_2_ppCall l`)
+reduces to `evalNode` of `r2_2_ppBody` again, at the grown chunk-0 children
+and scaled angle, one fuel step down — the self-referential unfolding step
+the induction hypothesis discharges. -/
+theorem evalNode_pp_call (x z : ExtReg) (phi : Angle) (fuel : ℕ) (l : ℕ) (hl : l < q r2_2_k)
+    (hfuel : fuel ≠ 0)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalNode r2_2_doc fuel (ppEnv x z phi) (r2_2_ppCall l) =
+      evalNode r2_2_doc (fuel - 1)
+        (ppEnv
+          (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0)
+            (nextSignedWidth x z r2_2_ops))
+          (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0)
+            (nextSignedWidth x z r2_2_ops))
+          (phi * loweringPhaseCoeff r2_2_k x z (genInterpolationPoints r2_2_k)
+            (generatedInterpolationPoints_length r2_2_k) ⟨l, hl⟩))
+        r2_2_ppBody := by
+  unfold r2_2_ppCall
+  simp only [evalNode, evalW_pp_nextWidth, evalW_pp_reserveNeedX, evalW_pp_reserveNeedZ,
+    evalA_pp_coeff x z phi l hl, evalReg_pp_grow0x x z phi hrec hworkspace, evalReg_pp_grow0z x z phi hrec hworkspace,
+    hfuel, r2_2_call_lookup, r2_2_ppTemplate_wParams, r2_2_ppTemplate_aParams, r2_2_ppTemplate_rParams,
+    r2_2_ppTemplate_body, if_false, Bool.false_eq_true, List.mapM_cons, List.mapM_nil,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+  rw [envCall_phase_product_eq]
+
 end Shor.IR
