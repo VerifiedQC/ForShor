@@ -738,4 +738,63 @@ theorem capacity_grow0z (x z : ExtReg)
   rw [nextWidth_eq_nextSignedWidth]
   omega
 
+/-- `evalW` of `reserveNeedXW := .opaque "reserveNeed_x" [nextWidthW, nextWidthW]`
+against `ppEnv` — the width of reserve `Env.call` substitutes for the
+recursive `.call` leaves' `"xCap"` slot. -/
+theorem evalW_pp_reserveNeedX (x z : ExtReg) (phi : Angle) :
+    evalW (ppEnv x z phi) reserveNeedXW =
+      .ok (RecursivePhaseWorkspace.reserveNeed r2_2_ops (nextSignedWidth x z r2_2_ops)
+        (nextSignedWidth x z r2_2_ops)).1 := by
+  have h : evalW (ppEnv x z phi) reserveNeedXW =
+      .ok (RecursivePhaseWorkspace.reserveNeed r2_2_ops
+        (RecursivePhaseWorkspace.nextWidth r2_2_ops x.width z.width)
+        (RecursivePhaseWorkspace.nextWidth r2_2_ops x.width z.width)).1 := by
+    show evalW (ppEnv x z phi) (.opaque "reserveNeed_x"
+      [.opaque "nextWidth" [.var "xw", .var "zw"], .opaque "nextWidth" [.var "xw", .var "zw"]]) = _
+    unfold ppEnv evalW evalWList
+    rfl
+  rw [h, nextWidth_eq_nextSignedWidth]
+
+theorem evalW_pp_reserveNeedZ (x z : ExtReg) (phi : Angle) :
+    evalW (ppEnv x z phi) reserveNeedZW =
+      .ok (RecursivePhaseWorkspace.reserveNeed r2_2_ops (nextSignedWidth x z r2_2_ops)
+        (nextSignedWidth x z r2_2_ops)).2 := by
+  have h : evalW (ppEnv x z phi) reserveNeedZW =
+      .ok (RecursivePhaseWorkspace.reserveNeed r2_2_ops
+        (RecursivePhaseWorkspace.nextWidth r2_2_ops x.width z.width)
+        (RecursivePhaseWorkspace.nextWidth r2_2_ops x.width z.width)).2 := by
+    show evalW (ppEnv x z phi) (.opaque "reserveNeed_z"
+      [.opaque "nextWidth" [.var "xw", .var "zw"], .opaque "nextWidth" [.var "xw", .var "zw"]]) = _
+    unfold ppEnv evalW evalWList
+    rfl
+  rw [h, nextWidth_eq_nextSignedWidth]
+
+/-- The grown chunk-0 slot has *exactly* the recursive width, for both sides
+-- reusing `Compiler/Widths.lean`'s already-proven
+`targetSignedLayoutState_xslot_width_scan`/`_zslot_width_scan` (general, for
+any `i`) at `i = 0` and `hcap := (canonicalSignedStep ...).capacity` (the
+`CanonicalSignedStep` structure's own field, exactly the
+`CanGrowToNeeds`/`CanGrowTo` hypothesis those lemmas need) — no new
+width-dominance fact needed, it was already established for the real
+compiler's own correctness proofs. -/
+theorem width_grow0x (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0)
+      (nextSignedWidth x z r2_2_ops)).width = nextSignedWidth x z r2_2_ops := by
+  have h := targetSignedLayoutState_xslot_width_scan
+    (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout r2_2_ops 0
+    (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).capacity
+  simpa [targetSignedLayoutState, initSignedLayoutState, nextSignedWidth] using h
+
+theorem width_grow0z (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0)
+      (nextSignedWidth x z r2_2_ops)).width = nextSignedWidth x z r2_2_ops := by
+  have h := targetSignedLayoutState_zslot_width_scan
+    (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout r2_2_ops 0
+    (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).capacity
+  simpa [targetSignedLayoutState, initSignedLayoutState, nextSignedWidth] using h
+
 end Shor.IR
