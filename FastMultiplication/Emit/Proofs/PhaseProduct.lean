@@ -547,4 +547,27 @@ theorem evalA_pp_coeff (x z : ExtReg) (phi : Angle) (l : ℕ) (hl : l < q r2_2_k
     Except.instMonad, Monad.toBind, Except.bind, Except.pure, loweringPhaseCoeff]
   congr 2
 
+theorem lowerGateRec_standardSignedPhaseLoweringPlan_base
+    (x z : ExtReg) (phi : Angle) (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z)
+    (hnotrec : ¬ nextSignedWidth x z r2_2_ops < phaseInputSize x z) :
+    lowerGateRec (standardSignedPhaseLoweringPlan r2_2_k r2_2_hk phi x z r2_2_ops hworkspace) =
+      LowGate.Naive_SignedPhaseProd phi x z := by
+  rw [standardSignedPhaseLoweringPlan.eq_1, dif_neg hnotrec, PhaseLoweringPlan.lowerGateRec_signedBase]
+
+/-- `evalNode_phase_product_base`, restated against `lowerGateRec
+(standardSignedPhaseLoweringPlan ...)` directly — the shape
+`evalNode_phase_product_correct`'s base case needs, matching §12.2's stated
+RHS rather than the intermediate `Naive_SignedPhaseProd` `evalNode_naive_leaf`
+itself produces. -/
+theorem evalNode_phase_product_base' (x z : ExtReg) (phi : Angle) (fuel : ℕ) (hfuel : fuel ≠ 0)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z)
+    (hnotrec : ¬ nextSignedWidth x z r2_2_ops < phaseInputSize x z) :
+    ∃ g, evalNode r2_2_doc fuel (ppEnv x z phi) r2_2_ppBody = .ok g ∧
+      g.flattenSeq =
+        (lowerGateRec
+          (standardSignedPhaseLoweringPlan r2_2_k r2_2_hk phi x z r2_2_ops hworkspace)).flattenSeq := by
+  obtain ⟨g, hg, hflat⟩ := evalNode_phase_product_base x z phi fuel hfuel hnotrec
+  refine ⟨g, hg, ?_⟩
+  rw [hflat, lowerGateRec_standardSignedPhaseLoweringPlan_base x z phi hworkspace hnotrec]
+
 end Shor.IR
