@@ -1647,4 +1647,33 @@ theorem evalNode_pp_alloc (x z : ExtReg) (phi : Angle) (fuel : ℕ)
   refine ⟨_, rfl, ?_⟩
   simp [LowGate.flattenSeq, flattenSeq_sequence, nextSignedWidth]
 
+
+/-- Deallocation counterpart of `evalNode_pp_alloc`, mirroring its proof
+exactly (`lowerGateRec_planCompileSignedDeallocations_2` instead of the
+allocation counterpart, `r2_2_ppDealloc_eq`'s top-first bracketing instead of
+`r2_2_ppAlloc_eq`'s). -/
+theorem evalNode_pp_dealloc (x z : ExtReg) (phi : Angle) (fuel : ℕ)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    ∃ g, evalNode r2_2_doc fuel (ppEnv x z phi) r2_2_ppDealloc = .ok g ∧
+      g.flattenSeq =
+        (lowerGateRec (planCompileSignedDeallocations (k := r2_2_k) (hk := r2_2_hk)
+          (pts := genInterpolationPoints r2_2_k) (hpts := generatedInterpolationPoints_length r2_2_k)
+          (ops := r2_2_ops) (nextSignedWidth x z r2_2_ops)
+          (initSignedLayoutState (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout)
+          (targetSignedLayoutState
+            (initSignedLayoutState (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout)
+            (scanNeededWidths x z r2_2_ops)))).flattenSeq := by
+  rw [lowerGateRec_planCompileSignedDeallocations_2]
+  simp only [initSignedLayoutState, targetSignedLayoutState]
+  rw [r2_2_ppDealloc_eq]
+  have hg0x := evalNode_pp_dealloc0x x z phi r2_2_doc fuel hrec hworkspace
+  have hg0z := evalNode_pp_dealloc0z x z phi r2_2_doc fuel hrec hworkspace
+  have hg1x := evalNode_pp_dealloc1x x z phi r2_2_doc fuel hrec hworkspace
+  have hg1z := evalNode_pp_dealloc1z x z phi r2_2_doc fuel hrec hworkspace
+  simp only [evalNode, hg0x, hg0z, hg1x, hg1z, foldLowGateSeq_eq_sequence,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure, List.mapM_cons, List.mapM_nil]
+  refine ⟨_, rfl, ?_⟩
+  simp [LowGate.flattenSeq, flattenSeq_sequence, nextSignedWidth]
+
 end Shor.IR
