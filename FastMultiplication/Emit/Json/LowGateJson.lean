@@ -14,8 +14,16 @@ namespace Shor
 
 open Lean (Json)
 
-/-- Flatten nested `seq` nodes into an ordered list of leaves, dropping `id`s. -/
-partial def LowGate.flattenSeq : LowGate → List LowGate
+-- Flatten nested `seq` nodes into an ordered list of leaves, dropping `id`s.
+-- Not `partial`: `.seq a b`'s two recursive calls are on the strictly
+-- smaller subterms `a`/`b`, so Lean's ordinary structural-recursion
+-- equation compiler accepts this directly (unlike `lowGateJson` below,
+-- whose `seq` case calls back into `flattenSeq` first) — and R6
+-- (`Emit/Proofs/Correct.lean`) needs `flattenSeq`'s equation lemmas to
+-- restate `evalNode`'s output up to "same flattened gate list", the same
+-- notion of circuit equality `Tests.lean`'s R2 `native_decide` checks
+-- already use via `lowGateJson`.
+def LowGate.flattenSeq : LowGate → List LowGate
   | .id => []
   | .seq a b => flattenSeq a ++ flattenSeq b
   | g => [g]

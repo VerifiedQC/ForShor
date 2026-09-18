@@ -1549,7 +1549,9 @@ for `template 2`, `template 2 --table generate` (exit 2),
 
 ## 12. R6 — a correctness theorem for every extracted `Doc`
 
-**status:** in progress — prerequisite done (§12.0), R6.1 next
+**status:** in progress — prerequisites done (§12.0, §12.0b), R6.1's
+`Proofs/Correct.lean` has a real lemma library and one closed theorem
+(`evalNode_naive_leaf`); R6.2 (`phase_product`) next
 
 ### 12.0 Prerequisite (discovered, not in the original plan): `evalW`/`evalReg`/`evalNode`/`evalNodeGate` must not be `partial`
 
@@ -1599,6 +1601,54 @@ functions pervasively, still pass unchanged) plus a direct CLI check
   `.call` case, `Prod.Lex.right _ (by omega)` for the structural cases,
   `List.sizeOf_lt_of_mem` for `.seq`'s `body.mapM` case) — Lean's own
   default termination heuristics do not find this measure unaided.
+
+### 12.0b Prerequisite (discovered, not in the original plan): equality of `LowGate` terms must mean `flattenSeq`-equality, not raw equality
+
+R6.1's first concrete target, `evalNode_naive_leaf` (`naive_leaf` against
+`LowGate.Naive_SignedPhaseProd`, chosen — per §12.4's reasoning — as the
+easiest theorem, with no table dependence and no register-slicing), turned
+out to be **false** as a literal `Except LowGate` equality. `evalNode`'s
+`.loop`/`.loop` unrolling produces *nested* `LowGate.sequence`s (one
+`sequence` per loop level: an outer sequence of per-`i` results, each
+itself a `sequence` over `j`), while `Naive_SignedPhaseProd` unfolds to one
+*flat* `sequence` over a `flatMap`-built list. These are different
+`LowGate` ASTs (different `.seq`/`.id` nesting) — provably different by
+direct term inspection, not just hard to unify — even though they describe
+the same circuit. This was not a proof-engineering obstacle to grind
+through; it meant the theorem *as first stated* needed to be restated.
+
+The fix is not a new convention invented for R6: it is the one this project
+already uses everywhere else. `Json/README.md`'s `lowGateJson` compares
+`LowGate`s via `LowGate.flattenSeq` (flattening nested `seq` nodes into an
+ordered leaf list, dropping `id`s), and every R2 `native_decide` check in
+`Tests.lean` that compares an `instantiate` result against a real term
+does so via `lowGateJson`, never via raw `LowGate` equality (`r2_3_check`
+in particular: `lowGateJson g == lowGateJson real`). So "the extracted
+`Doc`, instantiated, equals the real circuit" has always meant "same
+flattened gate sequence," not "same tree" — R6 needed to state that
+explicitly instead of assuming raw equality would go through.
+
+Two changes, both in `Emit/Json/LowGateJson.lean` and
+`Emit/Proofs/Correct.lean`:
+
+- `LowGate.flattenSeq` was `partial` (a second instance of §12.0's issue,
+  found the same way): dropped, since `.seq a b`'s two recursive calls are
+  on the strictly smaller subterms `a`/`b` — ordinary structural recursion,
+  `partial` was unnecessary caution, exactly like `evalA`/`evalReg` in
+  §12.0. Needed non-`partial` so R6 proofs get its equation lemmas.
+- `flattenSeq_sequence : (LowGate.sequence l).flattenSeq = l.flatMap LowGate.flattenSeq`
+  (in `Correct.lean`, proved by induction on `l`) is the general bridge:
+  `flattenSeq` distributes over `sequence` exactly the way `List.flatMap`
+  distributes over itself (`List.flatMap_map`/`List.flatMap_assoc` from
+  Lean core do the rest). Every R6 theorem about a template whose extracted
+  body loops (i.e. everything except leaf templates with no loop at all)
+  will need this same lemma to reconcile nested-`sequence`-from-`.loop`
+  against whatever flat-or-different-nesting shape the real term has.
+
+Consequence for every remaining R6 theorem's *statement*: state it as
+`∃ g, evalNode ... = .ok g ∧ g.flattenSeq = (real term).flattenSeq`, not
+`evalNode ... = .ok (real term)`. `Correct.lean`'s `evalNode_naive_leaf` is
+the template for this shape.
 
 ### 12.1 What is proved, and what is not
 
@@ -1730,18 +1780,23 @@ theorem: `Proofs/Correct.lean` (the lemma library), `Proofs/PhaseProduct.lean`,
 `Proofs/Qft.lean`, `Proofs/Shor.lean` (the hand-written per-template
 theorems of R6.2–R6.4, each about the pinned `Doc`s from `Tests.lean`/
 `Driver.lean`), and `Proofs/Generated.lean` (the output of `extract_ir_doc!`,
-R6.5; regenerated, never hand-edited). A `lean_lib EmitProofs` rooted at
-`FastMultiplication.Emit.Proofs.Shor` (which imports the rest) is added to
+R6.5; regenerated, never hand-edited). A `lean_lib EmitProofs` is added to
 `lakefile.lean` so `lake build EmitProofs` checks them; `Main.lean` does not
-import `Proofs/`, so the executable neither needs nor waits for them. The
-two existing small proof files stay where they are because they are not R6
-theorems but decidability instances the emitter runs
+import `Proofs/`, so the executable neither needs nor waits for them.
+Currently rooted at `FastMultiplication.Emit.Proofs.Correct` (the only file
+R6.1 has produced so far) rather than `...Proofs.Shor` as originally
+planned — `lean_lib` roots must name files that exist, and `Shor.lean`
+doesn't yet; repoint at `...Proofs.Shor` once R6.4 adds it importing
+`PhaseProduct`/`Qft`/`Shor`'s theorems (which will in turn import
+`Correct`), the same way `Main.lean` isn't rooted at a file until it
+exists. The two existing small proof files stay where they are because
+they are not R6 theorems but decidability instances the emitter runs
 (`Lower/Decide.lean`, `Table/Decide.lean`).
 
 
 | step | deliverable | exit criterion |
 |---|---|---|
-| R6.1 | `Proofs/Correct.lean`: lemma library for `evalW`, `evalReg` slices/`grow`/`ext`, `evalA`, `Env.call`, `evalNode` on `seq`/`cond`/`loop` | lemmas build; used in R6.2 |
+| R6.1 | `Proofs/Correct.lean`: lemma library for `evalW`, `evalReg` slices/`grow`/`ext`, `evalA`, `Env.call`, `evalNode` on `seq`/`cond`/`loop` | lemmas build; used in R6.2 — **in progress**: `foldLowGateSeq_eq_sequence`, `flattenSeq_sequence`, `List.mapM_except_ok`/`_of_mem`, `signedTermsAux_eq`/`signedTerms_eq` done and proved (no `sorry`); `evalNode_naive_leaf` (the first per-template theorem, stated via `flattenSeq` per §12.0b) closes with `#print axioms` showing only `propext`/`Classical.choice`/`Quot.sound` — no `sorryAx`, no `Lean.ofReduceBool`. Still to add: `evalReg` slice/`grow`/`ext` lemmas (§12.6's register-slicing risk, needed for R6.2) |
 | R6.2 | hand-written `r2_2_doc_phase_product_correct` (k = 2 standard) | theorem closes; `#print axioms` shows no `sorryAx`, and no `Lean.ofReduceBool` (i.e. no `native_decide` inside the proof) |
 | R6.3 | `r2_4_doc_cphase_product_correct`, `r2_5_doc_qft_correct` | same |
 | R6.4 | `shor_gate` and `shor` theorems for the k = 2 standard `Doc` | same; plus the corollary `instantiate … = .ok (referenceShorCircuit …)` |
