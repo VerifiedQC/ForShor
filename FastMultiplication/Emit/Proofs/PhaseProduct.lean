@@ -472,8 +472,8 @@ theorem child_width_1 {parent : ExtReg} {W : ℕ} (layout : PhaseSplitLayout par
 
 def r2_2_growDeltaX0W : WExpr := .sub nextWidthW limbW
 def r2_2_growDeltaZ0W : WExpr := .sub nextWidthW limbW
-def r2_2_growDeltaX1W : WExpr := .sub nextWidthW (.sub (.var "xw") limbW)
-def r2_2_growDeltaZ1W : WExpr := .sub nextWidthW (.sub (.var "zw") limbW)
+def r2_2_growDeltaX1W : WExpr := .sub nextWidthW (.sub (.var "xw") (.mul (.lit 1) limbW))
+def r2_2_growDeltaZ1W : WExpr := .sub nextWidthW (.sub (.var "zw") (.mul (.lit 1) limbW))
 
 -- Ground truth (same method as above): every `.grow` occurrence in
 -- `r2_2_ppThen` pairs one of the four `extNy` register expressions with
@@ -510,7 +510,7 @@ theorem evalReg_pp_grow1x (x z : ExtReg) (phi : Angle)
         (nextSignedWidth x z r2_2_ops)) := by
   unfold r2_2_growDeltaX1W growExtRegTo
   simp only [evalReg, evalReg_pp_ext1x x z phi hrec hworkspace, evalW_pp_nextWidth,
-    evalW_pp_limbW, evalW, child_width_1,
+    evalW_pp_limbW, evalW, child_width_1, Nat.one_mul,
     Except.instMonad, Monad.toBind, Except.bind, Except.pure]
   rfl
 
@@ -522,7 +522,7 @@ theorem evalReg_pp_grow1z (x z : ExtReg) (phi : Angle)
         (nextSignedWidth x z r2_2_ops)) := by
   unfold r2_2_growDeltaZ1W growExtRegTo
   simp only [evalReg, evalReg_pp_ext1z x z phi hrec hworkspace, evalW_pp_nextWidth,
-    evalW_pp_limbW, evalW, child_width_1,
+    evalW_pp_limbW, evalW, child_width_1, Nat.one_mul,
     Except.instMonad, Monad.toBind, Except.bind, Except.pure]
   rfl
 
@@ -794,6 +794,28 @@ theorem width_grow0z (x z : ExtReg)
       (nextSignedWidth x z r2_2_ops)).width = nextSignedWidth x z r2_2_ops := by
   have h := targetSignedLayoutState_zslot_width_scan
     (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout r2_2_ops 0
+    (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).capacity
+  simpa [targetSignedLayoutState, initSignedLayoutState, nextSignedWidth] using h
+
+/-- Same as `width_grow0x`, chunk 1. -/
+theorem width_grow1x (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 1)
+      (nextSignedWidth x z r2_2_ops)).width = nextSignedWidth x z r2_2_ops := by
+  have h := targetSignedLayoutState_xslot_width_scan
+    (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout r2_2_ops 1
+    (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).capacity
+  simpa [targetSignedLayoutState, initSignedLayoutState, nextSignedWidth] using h
+
+/-- Same as `width_grow0z`, chunk 1. -/
+theorem width_grow1z (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 1)
+      (nextSignedWidth x z r2_2_ops)).width = nextSignedWidth x z r2_2_ops := by
+  have h := targetSignedLayoutState_zslot_width_scan
+    (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout r2_2_ops 1
     (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).capacity
   simpa [targetSignedLayoutState, initSignedLayoutState, nextSignedWidth] using h
 
@@ -1194,5 +1216,209 @@ theorem lowerGateRec_planCompileSignedDeallocations_2 {hk : 1 < 2} {pts : List O
               LowGate.id))) := by
   unfold planCompileSignedDeallocations
   simp [planCompileSignedDeallocationsAux, lowerGateRec]
+
+/-! ## The `hrec` branch: connecting the allocation leaves
+
+`r2_2_ppThen`'s allocation-branch subtree, against
+`lowerGateRec_planCompileSignedAllocations_2`/`lowerGateRec_planAllocChunkGate`. -/
+
+/-- `r2_2_ppThen`'s allocation-branch subtree (the first of its top-level
+`.seq [_, _]` pair, `.cond`-guarded `zeroExtend`/`signExtend` for each of the
+4 `(side, chunk)` pairs), read off directly (same method as the rest of this
+file — `rfl`-checked, never hand-transcribed). -/
+def r2_2_ppAlloc : Node := match r2_2_ppThen with | .seq [a, _] => a | n => n
+
+set_option maxHeartbeats 1000000 in
+theorem r2_2_ppAlloc_eq : r2_2_ppAlloc =
+    .seq [.seq [.op "id" [] [] none [],
+        .seq [.cond (.eq r2_2_growDeltaX0W (.lit 0)) (.op "id" [] [] none [])
+                (.op "zeroExtend" [r2_2_ext0x] [r2_2_growDeltaX0W] none []),
+              .cond (.eq r2_2_growDeltaZ0W (.lit 0)) (.op "id" [] [] none [])
+                (.op "zeroExtend" [r2_2_ext0z] [r2_2_growDeltaZ0W] none [])]],
+      .seq [.cond (.eq r2_2_growDeltaX1W (.lit 0)) (.op "id" [] [] none [])
+              (.op "signExtend" [r2_2_ext1x] [r2_2_growDeltaX1W] none []),
+            .cond (.eq r2_2_growDeltaZ1W (.lit 0)) (.op "id" [] [] none [])
+              (.op "signExtend" [r2_2_ext1z] [r2_2_growDeltaZ1W] none [])]] := by
+  rfl
+
+theorem extraDelta_grow0x (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    extraDelta ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0)
+      (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0)
+        (nextSignedWidth x z r2_2_ops)) =
+      nextSignedWidth x z r2_2_ops - phaseLimbWidth x z r2_2_k := by
+  unfold extraDelta
+  rw [width_grow0x x z hrec hworkspace, child_width_0]
+
+theorem extraDelta_grow0z (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    extraDelta ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0)
+      (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0)
+        (nextSignedWidth x z r2_2_ops)) =
+      nextSignedWidth x z r2_2_ops - phaseLimbWidth x z r2_2_k := by
+  unfold extraDelta
+  rw [width_grow0z x z hrec hworkspace, child_width_0]
+
+theorem evalW_pp_growDeltaX0 (x z : ExtReg) (phi : Angle) :
+    evalW (ppEnv x z phi) r2_2_growDeltaX0W =
+      .ok (nextSignedWidth x z r2_2_ops - phaseLimbWidth x z r2_2_k) := by
+  unfold r2_2_growDeltaX0W
+  simp only [evalW, evalW_pp_nextWidth, evalW_pp_limbW,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+
+theorem evalW_pp_growDeltaZ0 (x z : ExtReg) (phi : Angle) :
+    evalW (ppEnv x z phi) r2_2_growDeltaZ0W =
+      .ok (nextSignedWidth x z r2_2_ops - phaseLimbWidth x z r2_2_k) := by
+  unfold r2_2_growDeltaZ0W
+  simp only [evalW, evalW_pp_nextWidth, evalW_pp_limbW,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+
+/-- `evalNode` of the extracted chunk-0 `x`-side allocation `.cond` node
+equals the real `lowerGateRec (planAllocChunkGate ...)` at chunk 0's `x`
+child/grown-child — the extracted `extraDelta = 0` guard and the real
+`if extraDelta src dst = 0` branch test the *same* decidable value
+(`evalW_pp_growDeltaX0`/`extraDelta_grow0x` agree), so both sides take the
+same branch. -/
+theorem evalNode_pp_cond0x (x z : ExtReg) (phi : Angle) (d : Doc) (fuel : ℕ)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalNode d fuel (ppEnv x z phi)
+        (.cond (.eq r2_2_growDeltaX0W (.lit 0)) (.op "id" [] [] none [])
+          (.op "zeroExtend" [r2_2_ext0x] [r2_2_growDeltaX0W] none [])) =
+      .ok (lowerGateRec (planAllocChunkGate (k := r2_2_k) (hk := r2_2_hk)
+        (pts := genInterpolationPoints r2_2_k) (hpts := generatedInterpolationPoints_length r2_2_k)
+        (ops := r2_2_ops) (nextSignedWidth x z r2_2_ops) (0 : Fin 2)
+        ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0)
+        (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0)
+          (nextSignedWidth x z r2_2_ops)))) := by
+  rw [lowerGateRec_planAllocChunkGate]
+  have hdelta := extraDelta_grow0x x z hrec hworkspace
+  simp only [evalNode, evalProp, evalW_pp_growDeltaX0, hdelta, evalW, Except.instMonad, Monad.toBind,
+    Except.bind, Except.pure]
+  by_cases h0 : nextSignedWidth x z r2_2_ops - phaseLimbWidth x z r2_2_k = 0
+  · simp only [h0, decide_true, if_true, evalNode, buildLowGate, List.mapM_nil, Option.mapM,
+      Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+  · have hisTop0 : ¬ isTopChunk (0 : Fin 2) := by unfold isTopChunk; decide
+    simp only [h0, decide_false, if_false, Bool.false_eq_true, hisTop0, evalNode,
+      evalReg_pp_ext0x x z phi hrec hworkspace, evalW_pp_growDeltaX0,
+      Except.instMonad, Monad.toBind, Except.bind, Except.pure, buildLowGate, List.mapM_cons,
+      List.mapM_nil, Option.mapM]
+
+/-- Same as `evalNode_pp_cond0x`, `z`'s chunk 0. -/
+theorem evalNode_pp_cond0z (x z : ExtReg) (phi : Angle) (d : Doc) (fuel : ℕ)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalNode d fuel (ppEnv x z phi)
+        (.cond (.eq r2_2_growDeltaZ0W (.lit 0)) (.op "id" [] [] none [])
+          (.op "zeroExtend" [r2_2_ext0z] [r2_2_growDeltaZ0W] none [])) =
+      .ok (lowerGateRec (planAllocChunkGate (k := r2_2_k) (hk := r2_2_hk)
+        (pts := genInterpolationPoints r2_2_k) (hpts := generatedInterpolationPoints_length r2_2_k)
+        (ops := r2_2_ops) (nextSignedWidth x z r2_2_ops) (0 : Fin 2)
+        ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0)
+        (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0)
+          (nextSignedWidth x z r2_2_ops)))) := by
+  rw [lowerGateRec_planAllocChunkGate]
+  have hdelta := extraDelta_grow0z x z hrec hworkspace
+  simp only [evalNode, evalProp, evalW_pp_growDeltaZ0, hdelta, evalW, Except.instMonad, Monad.toBind,
+    Except.bind, Except.pure]
+  by_cases h0 : nextSignedWidth x z r2_2_ops - phaseLimbWidth x z r2_2_k = 0
+  · simp only [h0, decide_true, if_true, evalNode, buildLowGate, List.mapM_nil, Option.mapM,
+      Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+  · have hisTop0 : ¬ isTopChunk (0 : Fin 2) := by unfold isTopChunk; decide
+    simp only [h0, decide_false, if_false, Bool.false_eq_true, hisTop0, evalNode,
+      evalReg_pp_ext0z x z phi hrec hworkspace, evalW_pp_growDeltaZ0,
+      Except.instMonad, Monad.toBind, Except.bind, Except.pure, buildLowGate, List.mapM_cons,
+      List.mapM_nil, Option.mapM]
+
+theorem extraDelta_grow1x (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    extraDelta ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 1)
+      (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 1)
+        (nextSignedWidth x z r2_2_ops)) =
+      nextSignedWidth x z r2_2_ops - (x.width - phaseLimbWidth x z r2_2_k) := by
+  unfold extraDelta
+  rw [width_grow1x x z hrec hworkspace, child_width_1]
+
+theorem extraDelta_grow1z (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    extraDelta ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 1)
+      (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 1)
+        (nextSignedWidth x z r2_2_ops)) =
+      nextSignedWidth x z r2_2_ops - (z.width - phaseLimbWidth x z r2_2_k) := by
+  unfold extraDelta
+  rw [width_grow1z x z hrec hworkspace, child_width_1]
+
+theorem evalW_pp_growDeltaX1 (x z : ExtReg) (phi : Angle) :
+    evalW (ppEnv x z phi) r2_2_growDeltaX1W =
+      .ok (nextSignedWidth x z r2_2_ops - (x.width - phaseLimbWidth x z r2_2_k)) := by
+  unfold r2_2_growDeltaX1W
+  simp only [evalW, evalW_pp_nextWidth, evalW_pp_limbW, Nat.one_mul,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+  rfl
+
+theorem evalW_pp_growDeltaZ1 (x z : ExtReg) (phi : Angle) :
+    evalW (ppEnv x z phi) r2_2_growDeltaZ1W =
+      .ok (nextSignedWidth x z r2_2_ops - (z.width - phaseLimbWidth x z r2_2_k)) := by
+  unfold r2_2_growDeltaZ1W
+  simp only [evalW, evalW_pp_nextWidth, evalW_pp_limbW, Nat.one_mul,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+  rfl
+
+/-- Same as `evalNode_pp_cond0x`, `x`'s chunk 1 (`signExtend`, since chunk 1
+is the top chunk). -/
+theorem evalNode_pp_cond1x (x z : ExtReg) (phi : Angle) (d : Doc) (fuel : ℕ)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalNode d fuel (ppEnv x z phi)
+        (.cond (.eq r2_2_growDeltaX1W (.lit 0)) (.op "id" [] [] none [])
+          (.op "signExtend" [r2_2_ext1x] [r2_2_growDeltaX1W] none [])) =
+      .ok (lowerGateRec (planAllocChunkGate (k := r2_2_k) (hk := r2_2_hk)
+        (pts := genInterpolationPoints r2_2_k) (hpts := generatedInterpolationPoints_length r2_2_k)
+        (ops := r2_2_ops) (nextSignedWidth x z r2_2_ops) (1 : Fin 2)
+        ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 1)
+        (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 1)
+          (nextSignedWidth x z r2_2_ops)))) := by
+  rw [lowerGateRec_planAllocChunkGate]
+  have hdelta := extraDelta_grow1x x z hrec hworkspace
+  simp only [evalNode, evalProp, evalW_pp_growDeltaX1, hdelta, evalW, Except.instMonad, Monad.toBind,
+    Except.bind, Except.pure]
+  by_cases h0 : nextSignedWidth x z r2_2_ops - (x.width - phaseLimbWidth x z r2_2_k) = 0
+  · simp only [h0, decide_true, if_true, evalNode, buildLowGate, List.mapM_nil, Option.mapM,
+      Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+  · have hisTop1 : isTopChunk (1 : Fin 2) := by unfold isTopChunk; decide
+    simp only [h0, decide_false, if_false, Bool.false_eq_true, hisTop1, if_true, evalNode,
+      evalReg_pp_ext1x x z phi hrec hworkspace, evalW_pp_growDeltaX1,
+      Except.instMonad, Monad.toBind, Except.bind, Except.pure, buildLowGate, List.mapM_cons,
+      List.mapM_nil, Option.mapM]
+
+/-- Same as `evalNode_pp_cond1x`, `z`'s chunk 1. -/
+theorem evalNode_pp_cond1z (x z : ExtReg) (phi : Angle) (d : Doc) (fuel : ℕ)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalNode d fuel (ppEnv x z phi)
+        (.cond (.eq r2_2_growDeltaZ1W (.lit 0)) (.op "id" [] [] none [])
+          (.op "signExtend" [r2_2_ext1z] [r2_2_growDeltaZ1W] none [])) =
+      .ok (lowerGateRec (planAllocChunkGate (k := r2_2_k) (hk := r2_2_hk)
+        (pts := genInterpolationPoints r2_2_k) (hpts := generatedInterpolationPoints_length r2_2_k)
+        (ops := r2_2_ops) (nextSignedWidth x z r2_2_ops) (1 : Fin 2)
+        ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 1)
+        (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 1)
+          (nextSignedWidth x z r2_2_ops)))) := by
+  rw [lowerGateRec_planAllocChunkGate]
+  have hdelta := extraDelta_grow1z x z hrec hworkspace
+  simp only [evalNode, evalProp, evalW_pp_growDeltaZ1, hdelta, evalW, Except.instMonad, Monad.toBind,
+    Except.bind, Except.pure]
+  by_cases h0 : nextSignedWidth x z r2_2_ops - (z.width - phaseLimbWidth x z r2_2_k) = 0
+  · simp only [h0, decide_true, if_true, evalNode, buildLowGate, List.mapM_nil, Option.mapM,
+      Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+  · have hisTop1 : isTopChunk (1 : Fin 2) := by unfold isTopChunk; decide
+    simp only [h0, decide_false, if_false, Bool.false_eq_true, hisTop1, if_true, evalNode,
+      evalReg_pp_ext1z x z phi hrec hworkspace, evalW_pp_growDeltaZ1,
+      Except.instMonad, Monad.toBind, Except.bind, Except.pure, buildLowGate, List.mapM_cons,
+      List.mapM_nil, Option.mapM]
 
 end Shor.IR
