@@ -910,4 +910,46 @@ theorem lowerGateRec_cast {k : ℕ} {hk : 1 < k} {pts : List Operations.Point}
   subst h
   rfl
 
+/-! ## The `hrec` branch: `r2_2_ops` reduces (a second, independent obstacle,
+now resolved)
+
+Assembling the 21-leaf `hrec` branch needs `r2_2_ops`'s own value concrete —
+`annotatePhaseTermsAux`/`compileAnnotatedOpsToSignedGateAux` genuinely
+pattern-match on it (unlike the *extracted* side, where `r2_2_doc` is already
+a baked-in literal `IR.Node` AST computed once by the extractor — the *real*
+compiler side has no such precomputation and must reduce `r2_2_ops` itself).
+`r2_2_ops := (tableInstance .standard r2_2_k r2_2_hk).ops`, built through
+`genOpsWithProduct`/`opsForPointWithProduct`/`computeLocal2`/`addConstFrom`.
+Plain `rfl`/`unfold` gets stuck partway through — not slow, genuinely stuck —
+traced to `Table_Generation/Builders/Fragments.lean`'s `addConstAux`, which
+(unlike everything else in this chain) is declared with `termination_by`/
+`decreasing_by omega` rather than plain structural recursion. This is the
+*same* class of issue `Emit/PLAN.md` §12.0 already documents for `evalW`/
+`evalNode` (`partial def`, there): a `termination_by`-compiled definition
+produces real `.eq_n` equation lemmas, but compiles via `WellFounded.fix`,
+whose underlying `Acc.rec` does not reduce through plain `rfl`/`unfold` — it
+needs `simp [addConstAux]` (or any tactic that rewrites via the equation
+lemmas) instead. Once that's supplied, alongside the standard `List.range`/
+`List.map`/`List.filter`/`Fin.finRange` unfolding lemmas everything else in
+the chain needs, `r2_2_ops` reduces cleanly and quickly (a few seconds, not
+the "possibly minutes of kernel computation" its `Matrix.det`-adjacent
+neighbours in this file might suggest — `addConstAux` was the only genuinely
+stuck step, not a performance problem). -/
+theorem r2_2_ops_eq :
+    r2_2_ops =
+      [Operations.valid_ops.phaseProduct (0 : Fin 2),
+       Operations.valid_ops.addScaled (0 : Fin 2) (1 : Fin 2) true 0,
+       Operations.valid_ops.phaseProduct (0 : Fin 2),
+       Operations.valid_ops.addScaled (0 : Fin 2) (1 : Fin 2) false 0,
+       Operations.valid_ops.addScaled (0 : Fin 2) (1 : Fin 2) false 0,
+       Operations.valid_ops.phaseProduct (0 : Fin 2),
+       Operations.valid_ops.addScaled (0 : Fin 2) (1 : Fin 2) true 0] := by
+  simp [r2_2_ops, Shor.tableInstance, genOpsWithProduct, genInterpolationPoints,
+    opsForPointWithProduct, computeLocal2, computeLocalAux, computeFracLocal2,
+    computeFracLocalAux, addConstFrom, addConstAux, apply_Op_inverse,
+    List.range_succ, List.range_zero, List.map_cons, List.map_nil, List.length_append,
+    alternatingPoint, Shor.Emit.Tests.r2_2_k, nonzeroFins, finZero, finLast, nonlastFins,
+    List.finRange_succ, List.finRange_zero, List.filter_cons, List.filter_nil,
+    List.length_reverse, List.length_map, Operations.inv]
+
 end Shor.IR
