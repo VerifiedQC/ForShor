@@ -1041,4 +1041,103 @@ theorem lowerGateRec_eqmp_final {k : ℕ} {hk : 1 < k} {pts : List Operations.Po
   have heq1 : HEq (Eq.mp h p) p := eqmp_heq h p
   exact (lowerGateRec_heq hn p (Eq.mp h p) heq1.symm).symm
 
+/-! ## The `hrec` branch: allocation/deallocation, resolved
+
+The `Gate`-index analogue of the universe-cast obstacle above: `allocChunkGate`/
+`deallocChunkGate`'s tactic-mode `dsimp; split; ·⋯; · split; ⋯` proofs
+(`planAllocChunkGate`/`planDeallocChunkGate`, `PlanBuilders.lean`) generalize
+the *return type's* `Gate` index over the `dite`, producing `Decidable.rec`/
+`cast` terms `simp`/`split_ifs`/`split` cannot push a bare `lowerGateRec`
+application through (confirmed empirically: every combination left a stuck
+`Decidable.rec (⋯) (⋯) (instDecidableEqNat ⋯)` no rewrite touched). Same fix
+as before, extended to this index: `lowerGateRec_heq_gate` (respects `HEq`
+across a `Gate`-index change, exactly like `lowerGateRec_heq` does for
+`initSize`), combined with `eqRec_heq` (Lean core: `HEq (h ▸ a) a`, the
+`▸`-flavored counterpart of `eqmp_heq`) to cast `planAllocChunkGate`'s opaque
+value along a *proven* `Gate`-level equality (`allocChunkGate i src dst =
+Gate.id`, by `unfold allocChunkGate; simp [h0]` once `h0`/`htop` are known)
+rather than trying to reduce through the cast already baked into the term.
+Once the cast value's `Gate` index is a literal constructor application,
+`cases`/`rfl` closes it directly — no motive/index mismatch left, since
+`lowerGateRec`'s own pattern match only has one viable case for that index. -/
+
+/-- `lowerGateRec` respects `HEq` across a *`Gate`-index* change too (not just
+`initSize`, `lowerGateRec_heq`'s index) — its output doesn't depend on either
+index of `PhaseLoweringPlan`. -/
+theorem lowerGateRec_heq_gate {k : ℕ} {hk : 1 < k} {pts : List Operations.Point}
+    {hpts : pts.length = q k} {ops : Prog k} {initSize : ℕ} {U1 U2 : Gate} (hU : U1 = U2)
+    (p1 : PhaseLoweringPlan k hk pts hpts ops initSize U1)
+    (p2 : PhaseLoweringPlan k hk pts hpts ops initSize U2)
+    (h : HEq p1 p2) :
+    lowerGateRec p1 = lowerGateRec p2 := by
+  subst hU
+  rw [eq_of_heq h]
+
+theorem lowerGateRec_planAllocChunkGate {k : ℕ} {hk : 1 < k} {pts : List Operations.Point}
+    {hpts : pts.length = q k} {ops : Prog k} (initSize : ℕ) (i : Fin k) (src dst : ExtReg) :
+    lowerGateRec (planAllocChunkGate (k := k) (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
+      initSize i src dst) =
+      if extraDelta src dst = 0 then LowGate.id
+      else if isTopChunk i then LowGate.signExtend src (extraDelta src dst)
+      else LowGate.zeroExtend src (extraDelta src dst) := by
+  set p := planAllocChunkGate (k := k) (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
+    initSize i src dst with hp
+  by_cases h0 : extraDelta src dst = 0
+  · have hU : allocChunkGate i src dst = Gate.id := by unfold allocChunkGate; simp [h0]
+    have hheq : HEq p (hU ▸ p) := (eqRec_heq hU p).symm
+    rw [if_pos h0, lowerGateRec_heq_gate hU p (hU ▸ p) hheq]
+    cases (hU ▸ p : PhaseLoweringPlan k hk pts hpts ops initSize Gate.id) with
+    | id _ => rfl
+  · by_cases htop : isTopChunk i
+    · have hU : allocChunkGate i src dst = Gate.signExtend src (extraDelta src dst) := by
+        unfold allocChunkGate; simp [h0, htop]
+      have hheq : HEq p (hU ▸ p) := (eqRec_heq hU p).symm
+      rw [if_neg h0, if_pos htop, lowerGateRec_heq_gate hU p (hU ▸ p) hheq]
+      cases (hU ▸ p : PhaseLoweringPlan k hk pts hpts ops initSize (Gate.signExtend src (extraDelta src dst)))
+        with
+      | signExtend _ _ _ => rfl
+    · have hU : allocChunkGate i src dst = Gate.zeroExtend src (extraDelta src dst) := by
+        unfold allocChunkGate; simp [h0, htop]
+      have hheq : HEq p (hU ▸ p) := (eqRec_heq hU p).symm
+      rw [if_neg h0, if_neg htop, lowerGateRec_heq_gate hU p (hU ▸ p) hheq]
+      cases (hU ▸ p : PhaseLoweringPlan k hk pts hpts ops initSize (Gate.zeroExtend src (extraDelta src dst)))
+        with
+      | zeroExtend _ _ _ => rfl
+
+/-- Same as `lowerGateRec_planAllocChunkGate`, deallocation side
+(`Gate.zeroDealloc`/`Gate.signDealloc` instead of `Gate.zeroExtend`/
+`Gate.signExtend`, `planDeallocChunkGate` instead of `planAllocChunkGate` —
+otherwise an identical `dite`/`dite` shape, so the same `lowerGateRec_heq_gate`
++ concrete-index `cases` fix applies verbatim). -/
+theorem lowerGateRec_planDeallocChunkGate {k : ℕ} {hk : 1 < k} {pts : List Operations.Point}
+    {hpts : pts.length = q k} {ops : Prog k} (initSize : ℕ) (i : Fin k) (src dst : ExtReg) :
+    lowerGateRec (planDeallocChunkGate (k := k) (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
+      initSize i src dst) =
+      if extraDelta src dst = 0 then LowGate.id
+      else if isTopChunk i then LowGate.signDealloc src (extraDelta src dst)
+      else LowGate.zeroDealloc src (extraDelta src dst) := by
+  set p := planDeallocChunkGate (k := k) (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
+    initSize i src dst with hp
+  by_cases h0 : extraDelta src dst = 0
+  · have hU : deallocChunkGate i src dst = Gate.id := by unfold deallocChunkGate; simp [h0]
+    have hheq : HEq p (hU ▸ p) := (eqRec_heq hU p).symm
+    rw [if_pos h0, lowerGateRec_heq_gate hU p (hU ▸ p) hheq]
+    cases (hU ▸ p : PhaseLoweringPlan k hk pts hpts ops initSize Gate.id) with
+    | id _ => rfl
+  · by_cases htop : isTopChunk i
+    · have hU : deallocChunkGate i src dst = Gate.signDealloc src (extraDelta src dst) := by
+        unfold deallocChunkGate; simp [h0, htop]
+      have hheq : HEq p (hU ▸ p) := (eqRec_heq hU p).symm
+      rw [if_neg h0, if_pos htop, lowerGateRec_heq_gate hU p (hU ▸ p) hheq]
+      cases (hU ▸ p : PhaseLoweringPlan k hk pts hpts ops initSize (Gate.signDealloc src (extraDelta src dst)))
+        with
+      | signDealloc _ _ _ => rfl
+    · have hU : deallocChunkGate i src dst = Gate.zeroDealloc src (extraDelta src dst) := by
+        unfold deallocChunkGate; simp [h0, htop]
+      have hheq : HEq p (hU ▸ p) := (eqRec_heq hU p).symm
+      rw [if_neg h0, if_neg htop, lowerGateRec_heq_gate hU p (hU ▸ p) hheq]
+      cases (hU ▸ p : PhaseLoweringPlan k hk pts hpts ops initSize (Gate.zeroDealloc src (extraDelta src dst)))
+        with
+      | zeroDealloc _ _ _ => rfl
+
 end Shor.IR
