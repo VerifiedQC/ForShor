@@ -425,4 +425,105 @@ theorem evalReg_pp_ext1z (x z : ExtReg) (phi : Angle)
     Reg.interval, ExtReg.width, regSize, Reg.width, List.length_range, List.length_map,
     Except.instMonad, Monad.toBind, Except.bind, Except.pure, Except.map, hdisj]
 
+/-! ## The `hrec` branch: `.grow` lemmas
+
+The compiled body (`compileAnnotatedOpsToSignedGateAux`) and the recursive
+`call` leaves operate on the *grown* slots (`targetSignedLayoutState`'s
+`growExtRegTo (child i) Wwork`), not the bare split children `ext0x`
+etc. above. The extractor represents this as `.grow (extNy) (nextWidth −
+widthAt extNy)` (`precomputePhaseProductSlots`). The width target,
+`Wwork = commonNeededWidth need`, turns out to be *definitionally*
+`nextSignedWidth x z ops` (`Compiler/Widths.lean`:
+`nextSignedWidth x z ops := commonNeededWidth (scanNeededWidths x z ops)`),
+which is exactly what the extracted delta's `nextWidth` opaque call
+evaluates to (`nextWidth_eq_nextSignedWidth`) — so no new arithmetic fact
+about `commonNeededWidth`/`scanNeededWidths` is needed at all, only
+`growExtRegTo`'s own definition (`e.grow (W - e.width)`) matching
+`evalReg`'s `.grow` case verbatim once the width delta is known. -/
+
+theorem evalW_pp_nextWidth (x z : ExtReg) (phi : Angle) :
+    evalW (ppEnv x z phi) nextWidthW = .ok (nextSignedWidth x z r2_2_ops) := by
+  have h : evalW (ppEnv x z phi) nextWidthW =
+      .ok (RecursivePhaseWorkspace.nextWidth r2_2_ops x.width z.width) := by
+    show evalW (ppEnv x z phi) (.opaque "nextWidth" [.var "xw", .var "zw"]) = _
+    unfold ppEnv evalW evalWList
+    rfl
+  rw [h, nextWidth_eq_nextSignedWidth]
+
+theorem evalW_pp_limbW (x z : ExtReg) (phi : Angle) :
+    evalW (ppEnv x z phi) limbW = .ok (phaseLimbWidth x z r2_2_k) := by
+  show evalW (ppEnv x z phi) (.min (.div (.var "xw") (.lit 2)) (.div (.var "zw") (.lit 2))) = _
+  unfold ppEnv evalW
+  rfl
+
+/-- Chunk 0's width, for either side, is exactly `phaseLimbWidth x z 2`
+(the non-top case of `phaseSplitLogicalWidth`). -/
+theorem child_width_0 {parent : ExtReg} {W : ℕ} (layout : PhaseSplitLayout parent 2 W) :
+    (layout.child 0).width = W := by
+  rw [PhaseSplitLayout.child_width]
+  simp [phaseSplitLogicalWidth, isTopChunk]
+
+/-- Chunk 1's width, for either side, is `parent.width - phaseLimbWidth x z 2`
+(the top case of `phaseSplitLogicalWidth`, `k = 2` so chunk 1 is `isTopChunk`). -/
+theorem child_width_1 {parent : ExtReg} {W : ℕ} (layout : PhaseSplitLayout parent 2 W) :
+    (layout.child 1).width = parent.width - W := by
+  rw [PhaseSplitLayout.child_width]
+  simp [phaseSplitLogicalWidth, isTopChunk]
+
+def r2_2_growDeltaX0W : WExpr := .sub nextWidthW limbW
+def r2_2_growDeltaZ0W : WExpr := .sub nextWidthW limbW
+def r2_2_growDeltaX1W : WExpr := .sub nextWidthW (.sub (.var "xw") limbW)
+def r2_2_growDeltaZ1W : WExpr := .sub nextWidthW (.sub (.var "zw") limbW)
+
+-- Ground truth (same method as above): every `.grow` occurrence in
+-- `r2_2_ppThen` pairs one of the four `extNy` register expressions with
+-- exactly one of these four delta expressions (confirmed by direct
+-- inspection of `r2_2_ppThen`'s three `call` leaves and eight `AddScaled`
+-- leaves — every `.grow` there is syntactically one of `grow(ext0x,
+-- growDeltaX0W)`, `grow(ext0z, growDeltaZ0W)`, `grow(ext1x, growDeltaX1W)`,
+-- `grow(ext1z, growDeltaZ1W)`, never a fifth shape).
+theorem evalReg_pp_grow0x (x z : ExtReg) (phi : Angle)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalReg (ppEnv x z phi) (.grow r2_2_ext0x r2_2_growDeltaX0W) =
+      .ok (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0)
+        (nextSignedWidth x z r2_2_ops)) := by
+  unfold r2_2_growDeltaX0W growExtRegTo
+  simp only [evalReg, evalW, evalReg_pp_ext0x x z phi hrec hworkspace, evalW_pp_nextWidth,
+    evalW_pp_limbW, child_width_0, Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+
+theorem evalReg_pp_grow0z (x z : ExtReg) (phi : Angle)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalReg (ppEnv x z phi) (.grow r2_2_ext0z r2_2_growDeltaZ0W) =
+      .ok (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0)
+        (nextSignedWidth x z r2_2_ops)) := by
+  unfold r2_2_growDeltaZ0W growExtRegTo
+  simp only [evalReg, evalW, evalReg_pp_ext0z x z phi hrec hworkspace, evalW_pp_nextWidth,
+    evalW_pp_limbW, child_width_0, Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+
+theorem evalReg_pp_grow1x (x z : ExtReg) (phi : Angle)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalReg (ppEnv x z phi) (.grow r2_2_ext1x r2_2_growDeltaX1W) =
+      .ok (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 1)
+        (nextSignedWidth x z r2_2_ops)) := by
+  unfold r2_2_growDeltaX1W growExtRegTo
+  simp only [evalReg, evalReg_pp_ext1x x z phi hrec hworkspace, evalW_pp_nextWidth,
+    evalW_pp_limbW, evalW, child_width_1,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+  rfl
+
+theorem evalReg_pp_grow1z (x z : ExtReg) (phi : Angle)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalReg (ppEnv x z phi) (.grow r2_2_ext1z r2_2_growDeltaZ1W) =
+      .ok (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 1)
+        (nextSignedWidth x z r2_2_ops)) := by
+  unfold r2_2_growDeltaZ1W growExtRegTo
+  simp only [evalReg, evalReg_pp_ext1z x z phi hrec hworkspace, evalW_pp_nextWidth,
+    evalW_pp_limbW, evalW, child_width_1,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+  rfl
+
 end Shor.IR
