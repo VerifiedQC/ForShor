@@ -1612,4 +1612,39 @@ theorem evalNode_pp_AS (x z : ExtReg) (phi : Angle) (d : Doc) (fuel : ℕ)
   simp [evalNode, evalW, h0, h1, buildLowGate, Except.instMonad, Monad.toBind, Except.bind,
     Except.pure, List.mapM_cons, List.mapM_nil, Option.mapM]
 
+
+/-- The full allocation branch: `evalNode` of the extracted `r2_2_ppAlloc`
+subtree equals (up to `flattenSeq`, §12.0b) the real
+`lowerGateRec (planCompileSignedAllocations ...)` at the concrete
+`initSignedLayoutState`/`targetSignedLayoutState` src/dst pair induced by
+`canonicalSignedStep`'s layout — assembling the 4 leaf lemmas
+`evalNode_pp_cond0x`/`_cond0z`/`_cond1x`/`_cond1z` via `flattenSeq`'s own
+`.seq`/`.id` equations (the extracted side's `LowGate.sequence`-shaped
+nesting from `evalNode`'s list-`.seq` semantics differs from the real
+`lowerGateRec_planCompileSignedAllocations_2`'s binary nesting by an extra
+trailing `id`, which `flattenSeq`'s `.id ↦ []` erases). -/
+theorem evalNode_pp_alloc (x z : ExtReg) (phi : Angle) (fuel : ℕ)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    ∃ g, evalNode r2_2_doc fuel (ppEnv x z phi) r2_2_ppAlloc = .ok g ∧
+      g.flattenSeq =
+        (lowerGateRec (planCompileSignedAllocations (k := r2_2_k) (hk := r2_2_hk)
+          (pts := genInterpolationPoints r2_2_k) (hpts := generatedInterpolationPoints_length r2_2_k)
+          (ops := r2_2_ops) (nextSignedWidth x z r2_2_ops)
+          (initSignedLayoutState (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout)
+          (targetSignedLayoutState
+            (initSignedLayoutState (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout)
+            (scanNeededWidths x z r2_2_ops)))).flattenSeq := by
+  rw [lowerGateRec_planCompileSignedAllocations_2]
+  simp only [initSignedLayoutState, targetSignedLayoutState]
+  rw [r2_2_ppAlloc_eq]
+  have hg0x := evalNode_pp_cond0x x z phi r2_2_doc fuel hrec hworkspace
+  have hg0z := evalNode_pp_cond0z x z phi r2_2_doc fuel hrec hworkspace
+  have hg1x := evalNode_pp_cond1x x z phi r2_2_doc fuel hrec hworkspace
+  have hg1z := evalNode_pp_cond1z x z phi r2_2_doc fuel hrec hworkspace
+  simp only [evalNode, hg0x, hg0z, hg1x, hg1z, foldLowGateSeq_eq_sequence,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure, List.mapM_cons, List.mapM_nil]
+  refine ⟨_, rfl, ?_⟩
+  simp [LowGate.flattenSeq, flattenSeq_sequence, nextSignedWidth]
+
 end Shor.IR
