@@ -1549,9 +1549,13 @@ for `template 2`, `template 2 --table generate` (exit 2),
 
 ## 12. R6 — a correctness theorem for every extracted `Doc`
 
-**status:** in progress — prerequisites done (§12.0, §12.0b), R6.1's
+**status:** in progress — prerequisites done (§12.0, §12.0b); R6.1's
 `Proofs/Correct.lean` has a real lemma library and one closed theorem
-(`evalNode_naive_leaf`); R6.2 (`phase_product`) next
+(`evalNode_naive_leaf`); R6.2's `Proofs/PhaseProduct.lean` has the guard and
+base-case steps closed (`evalProp_phase_product_guard`,
+`evalNode_phase_product_base`) — the recursive/register-slicing step and
+the induction itself are next, and are the part §12.6 flags as the most
+expensive in R6
 
 ### 12.0 Prerequisite (discovered, not in the original plan): `evalW`/`evalReg`/`evalNode`/`evalNodeGate` must not be `partial`
 
@@ -1796,8 +1800,8 @@ they are not R6 theorems but decidability instances the emitter runs
 
 | step | deliverable | exit criterion |
 |---|---|---|
-| R6.1 | `Proofs/Correct.lean`: lemma library for `evalW`, `evalReg` slices/`grow`/`ext`, `evalA`, `Env.call`, `evalNode` on `seq`/`cond`/`loop` | lemmas build; used in R6.2 — **in progress**: `foldLowGateSeq_eq_sequence`, `flattenSeq_sequence`, `List.mapM_except_ok`/`_of_mem`, `signedTermsAux_eq`/`signedTerms_eq` done and proved (no `sorry`); `evalNode_naive_leaf` (the first per-template theorem, stated via `flattenSeq` per §12.0b) closes with `#print axioms` showing only `propext`/`Classical.choice`/`Quot.sound` — no `sorryAx`, no `Lean.ofReduceBool`. Still to add: `evalReg` slice/`grow`/`ext` lemmas (§12.6's register-slicing risk, needed for R6.2) |
-| R6.2 | hand-written `r2_2_doc_phase_product_correct` (k = 2 standard) | theorem closes; `#print axioms` shows no `sorryAx`, and no `Lean.ofReduceBool` (i.e. no `native_decide` inside the proof) |
+| R6.1 | `Proofs/Correct.lean`: lemma library for `evalW`, `evalReg` slices/`grow`/`ext`, `evalA`, `Env.call`, `evalNode` on `seq`/`cond`/`loop` | lemmas build; used in R6.2 — **done for the leaf case**: `foldLowGateSeq_eq_sequence`, `flattenSeq_sequence`, `List.mapM_except_ok`/`_of_mem`, `signedTermsAux_eq`/`signedTerms_eq` proved (no `sorry`); `evalNode_naive_leaf` (stated via `flattenSeq` per §12.0b) closes, `#print axioms` shows only `propext`/`Classical.choice`/`Quot.sound`. The `evalReg` slice/`grow`/`ext` lemmas `phase_product` itself needs (§12.6's register-slicing risk) are folded into R6.2 below, since they're specific to `PhaseSplitLayout`/`ReserveBudget`, not general like the rest of this file |
+| R6.2 | hand-written `r2_2_doc_phase_product_correct` (k = 2 standard) | theorem closes; `#print axioms` shows no `sorryAx`, and no `Lean.ofReduceBool` (i.e. no `native_decide` inside the proof) — **in progress**, `Proofs/PhaseProduct.lean`: ground truth for `r2_2_doc`'s `"phase_product"` template established by direct inspection (57 `Node`s; `body = .cond guard thenNode (.call "naive_leaf" …)`; `thenNode`'s 21 leaves — 5 alloc, 12 annotated-ops (3 recursive `call`s + 8 `AddScaled` + 1 `id`), 5 dealloc — read off and cross-checked against `r2_2_ops`'s 7 concrete operations and the compiler's own recursion, documented in the file's header comment). Proved: `evalProp_phase_product_guard` (the extracted guard decides exactly `nextSignedWidth x z ops < phaseInputSize x z`, via a lifted-and-generalized `nextWidth_eq_nextSignedWidth`), `evalNode_phase_product_base` (the `¬hrec` branch — `Env.call`'s result agrees with `naiveLeafEnv` on `w`/`a`/`r`, differing only in `opaqueW`/`coeff`, which `naiveLeafEnv` was generalized to take as parameters specifically so this reuse works — reduces directly to `evalNode_naive_leaf`). Not yet started: the `hrec` (recursive) branch, which needs the register-slicing lemmas connecting `.ext (.activeSlice …) (.reserveSlice …)`/`.grow` (`evalReg`) to `PhaseSplitLayout.child`/`ReserveBudget.childReserve`/`growExtRegTo` — confirmed by direct reading of `Compiler/Workspace.lean`/`Layout.lean` to be a provable, formula-matching fact (`ReserveBudget.offset`'s prefix-sum exactly matches `precomputePhaseProductSlots`'s hand-computed `sumRange`), but not yet written as Lean proofs; then the induction on `phaseInputSize x z` itself |
 | R6.3 | `r2_4_doc_cphase_product_correct`, `r2_5_doc_qft_correct` | same |
 | R6.4 | `shor_gate` and `shor` theorems for the k = 2 standard `Doc` | same; plus the corollary `instantiate … = .ok (referenceShorCircuit …)` |
 | R6.5 | proof-script generator in `extract_ir_doc!`; regenerate all of the above from it | generated proofs close for k = 2 and k = 3 standard with no per-k edits |

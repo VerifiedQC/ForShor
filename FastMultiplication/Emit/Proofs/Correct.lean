@@ -45,14 +45,25 @@ theorem List.mapM_except_ok {α β : Type*} (f : α → β) (l : List α) :
   | cons a as ih => simp only [List.mapM_cons, ih, List.map_cons]; rfl
 
 /-- The environment `naive_leaf`'s template is meant to be checked against:
-`x`/`z` and `phi` bound directly, no opaque functions or `coeff` needed
-(the naive leaf has no recursion and no table dependence at all). -/
-def naiveLeafEnv (x z : ExtReg) (phi : Angle) : Env :=
+`x`/`z` and `phi` bound directly. `opaqueW`/`coeff` are parameters (default
+`fun _ _ => none`), not hardcoded: `naive_leaf`'s body has no `.opaque` or
+`.coeff` subexpression at all, so `evalNode_naive_leaf`'s proof never
+inspects them — but a *caller* reaching `naive_leaf` via `Env.call` (as
+`phase_product`'s base case does, `Proofs/PhaseProduct.lean`) carries its
+own real `opaqueW`/`coeff` through unchanged (`Env.call`'s own doc comment),
+so the environment `evalNode` actually sees there is not literally this
+`Env`'s default. Keeping them as parameters lets `evalNode_naive_leaf`
+apply directly to *that* environment too, once its `w`/`a`/`r` fields are
+shown equal to this one's (a trivial `Env.call`/`Env.mk` unfolding, nothing
+about `opaqueW`/`coeff` needs to match). -/
+def naiveLeafEnv (x z : ExtReg) (phi : Angle)
+    (opaqueW : String → List ℕ → Option ℕ := fun _ _ => none)
+    (coeff : ℕ → ℕ → Option ℚ := fun _ _ => none) : Env :=
   { w := fun n => if n == "xw" then some x.width else if n == "zw" then some z.width else none
     a := fun n => if n == "phi" then some phi else none
     r := fun n => if n == "x" then some x else if n == "z" then some z else none
-    opaqueW := fun _ _ => none
-    coeff := fun _ _ => none }
+    opaqueW := opaqueW
+    coeff := coeff }
 
 /-- `List.mapM` over `Except`, generalized to a pointwise-`Except.ok`
 hypothesis rather than requiring the callback to be syntactically
@@ -103,10 +114,12 @@ equality because `evalNode`'s `.loop`/`.loop` unrolling produces *nested*
 this target has no table dependence and no recursion, so it needs none of
 the register-slicing machinery R6.2 flags as the hard part — a natural
 first R6 theorem. -/
-theorem evalNode_naive_leaf (x z : ExtReg) (phi : Angle) (d : Doc) (fuel : ℕ) :
-    ∃ g, evalNode d fuel (naiveLeafEnv x z phi) Reflect.naiveLeafTemplate.body = .ok g ∧
+theorem evalNode_naive_leaf (x z : ExtReg) (phi : Angle) (d : Doc) (fuel : ℕ)
+    (opaqueW : String → List ℕ → Option ℕ := fun _ _ => none)
+    (coeff : ℕ → ℕ → Option ℚ := fun _ _ => none) :
+    ∃ g, evalNode d fuel (naiveLeafEnv x z phi opaqueW coeff) Reflect.naiveLeafTemplate.body = .ok g ∧
       g.flattenSeq = (LowGate.Naive_SignedPhaseProd phi x z).flattenSeq := by
-  have hLHS : evalNode d fuel (naiveLeafEnv x z phi) Reflect.naiveLeafTemplate.body =
+  have hLHS : evalNode d fuel (naiveLeafEnv x z phi opaqueW coeff) Reflect.naiveLeafTemplate.body =
       .ok (LowGate.sequence (List.map (fun i => LowGate.sequence (List.map
         (fun j => LowGate.CPhase (x.active.qubits.getD i 0) (z.active.qubits.getD j 0)
           (signedPairAngle phi (x.active.qubits.getD i 0, signedBitWeight x.width i)
