@@ -1730,4 +1730,119 @@ theorem evalNode_pp_call (x z : ExtReg) (phi : Angle) (fuel : ℕ) (l : ℕ) (hl
     Except.instMonad, Monad.toBind, Except.bind, Except.pure]
   rw [envCall_phase_product_eq]
 
+/-- R6.2's main theorem (`Emit/PLAN.md` §12.2): `phase_product`'s extracted
+body, instantiated against the real `x, z, phi`, succeeds and produces the
+same circuit (`flattenSeq`, §12.0b) as `lowerGateRec
+(standardSignedPhaseLoweringPlan ...)`, for every `x, z, phi` with enough
+fuel. Strong induction on `phaseInputSize x z`: base case is
+`evalNode_phase_product_base'`; the recursive case unfolds
+`standardSignedPhaseLoweringPlan.eq_1`'s `hrec` branch down to
+`alloc ;; (body ;; dealloc)` (`Emit/PLAN.md`'s "Third round" recipe),
+assembles the allocation/deallocation branches via `evalNode_pp_alloc`/
+`evalNode_pp_dealloc`, the 12-leaf body via `evalNode_pp_AS` (the 8
+`AddScaled` leaves) and `evalNode_pp_call` composed with the induction
+hypothesis (the 3 recursive `.call` leaves, all at chunk 0 per the "Second
+round" finding, discharged via `lowerGateRec_eqmp_final` at
+`(canonicalSignedStep ...).childInputSize 0` for the measure decrease). -/
+theorem evalNode_phase_product_correct :
+    ∀ n (x z : ExtReg) (phi : Angle) (fuel : ℕ) (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z),
+      phaseInputSize x z = n → phaseInputSize x z < fuel →
+      ∃ g, evalNode r2_2_doc fuel (ppEnv x z phi) r2_2_ppBody = .ok g ∧
+        g.flattenSeq =
+          (lowerGateRec (standardSignedPhaseLoweringPlan r2_2_k r2_2_hk phi x z r2_2_ops hworkspace)).flattenSeq := by
+  intro n
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+    intro x z phi fuel hworkspace hn hfuel
+    by_cases hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z
+    · -- Recursive case.
+      have hfuel0 : fuel ≠ 0 := by omega
+      have hguard : evalProp (ppEnv x z phi) r2_2_ppGuard = .ok true := by
+        rw [r2_2_ppGuard_eq, evalProp_phase_product_guard]; simp [hrec]
+      set cX0 := growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0)
+        (nextSignedWidth x z r2_2_ops) with hcX0_def
+      set cX1 := growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 1)
+        (nextSignedWidth x z r2_2_ops) with hcX1_def
+      set cZ0 := growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0)
+        (nextSignedWidth x z r2_2_ops) with hcZ0_def
+      set cZ1 := growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 1)
+        (nextSignedWidth x z r2_2_ops) with hcZ1_def
+      have hn0 : phaseInputSize cX0 cZ0 = nextSignedWidth x z r2_2_ops := by
+        rw [hcX0_def, hcZ0_def]
+        simpa [targetSignedLayoutState, initSignedLayoutState]
+          using (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).childInputSize 0
+      have hcw0 : SignedRecursiveWorkspaceOK r2_2_ops cX0 cZ0 := by
+        rw [hcX0_def, hcZ0_def]
+        simpa [targetSignedLayoutState, initSignedLayoutState]
+          using (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).childWorkspace 0
+      have hfuellt : phaseInputSize cX0 cZ0 < fuel - 1 := by
+        rw [hn0]; omega
+      have hl0 : (0 : ℕ) < q r2_2_k := by decide
+      have hl1 : (1 : ℕ) < q r2_2_k := by decide
+      have hl2 : (2 : ℕ) < q r2_2_k := by decide
+      obtain ⟨g0, hg0, hflat0⟩ := ih (nextSignedWidth x z r2_2_ops) (by omega) _ _
+        (phi * loweringPhaseCoeff r2_2_k x z (genInterpolationPoints r2_2_k)
+          (generatedInterpolationPoints_length r2_2_k) ⟨0, hl0⟩)
+        (fuel - 1) hcw0 hn0 hfuellt
+      obtain ⟨g1, hg1, hflat1⟩ := ih (nextSignedWidth x z r2_2_ops) (by omega) _ _
+        (phi * loweringPhaseCoeff r2_2_k x z (genInterpolationPoints r2_2_k)
+          (generatedInterpolationPoints_length r2_2_k) ⟨1, hl1⟩)
+        (fuel - 1) hcw0 hn0 hfuellt
+      obtain ⟨g2, hg2, hflat2⟩ := ih (nextSignedWidth x z r2_2_ops) (by omega) _ _
+        (phi * loweringPhaseCoeff r2_2_k x z (genInterpolationPoints r2_2_k)
+          (generatedInterpolationPoints_length r2_2_k) ⟨2, hl2⟩)
+        (fuel - 1) hcw0 hn0 hfuellt
+      have hcall0 : evalNode r2_2_doc fuel (ppEnv x z phi) (r2_2_ppCall 0) = .ok g0 := by
+        rw [evalNode_pp_call x z phi fuel 0 hl0 hfuel0 hrec hworkspace]; exact hg0
+      have hcall1 : evalNode r2_2_doc fuel (ppEnv x z phi) (r2_2_ppCall 1) = .ok g1 := by
+        rw [evalNode_pp_call x z phi fuel 1 hl1 hfuel0 hrec hworkspace]; exact hg1
+      have hcall2 : evalNode r2_2_doc fuel (ppEnv x z phi) (r2_2_ppCall 2) = .ok g2 := by
+        rw [evalNode_pp_call x z phi fuel 2 hl2 hfuel0 hrec hworkspace]; exact hg2
+      have hASxT := evalNode_pp_AS x z phi r2_2_doc fuel
+        (.grow r2_2_ext0x r2_2_growDeltaX0W) (.grow r2_2_ext1x r2_2_growDeltaX1W) cX0 cX1
+        true (evalReg_pp_grow0x x z phi hrec hworkspace) (evalReg_pp_grow1x x z phi hrec hworkspace)
+      have hASzT := evalNode_pp_AS x z phi r2_2_doc fuel
+        (.grow r2_2_ext0z r2_2_growDeltaZ0W) (.grow r2_2_ext1z r2_2_growDeltaZ1W) cZ0 cZ1
+        true (evalReg_pp_grow0z x z phi hrec hworkspace) (evalReg_pp_grow1z x z phi hrec hworkspace)
+      have hASxF := evalNode_pp_AS x z phi r2_2_doc fuel
+        (.grow r2_2_ext0x r2_2_growDeltaX0W) (.grow r2_2_ext1x r2_2_growDeltaX1W) cX0 cX1
+        false (evalReg_pp_grow0x x z phi hrec hworkspace) (evalReg_pp_grow1x x z phi hrec hworkspace)
+      have hASzF := evalNode_pp_AS x z phi r2_2_doc fuel
+        (.grow r2_2_ext0z r2_2_growDeltaZ0W) (.grow r2_2_ext1z r2_2_growDeltaZ1W) cZ0 cZ1
+        false (evalReg_pp_grow0z x z phi hrec hworkspace) (evalReg_pp_grow1z x z phi hrec hworkspace)
+      have hLHSalloc := evalNode_pp_alloc x z phi fuel hrec hworkspace
+      have hLHSdealloc := evalNode_pp_dealloc x z phi fuel hrec hworkspace
+      obtain ⟨galloc, hgalloc, hflatalloc⟩ := hLHSalloc
+      obtain ⟨gdealloc, hgdealloc, hflatdealloc⟩ := hLHSdealloc
+      have hLHS : evalNode r2_2_doc fuel (ppEnv x z phi) r2_2_ppBody =
+          Except.ok (LowGate.sequence [galloc, LowGate.sequence [LowGate.sequence [g0,
+            LowGate.sequence [LowGate.AddScaled cX0 cX1 true 0, LowGate.AddScaled cZ0 cZ1 true 0,
+              LowGate.sequence [g1, LowGate.sequence [LowGate.AddScaled cX0 cX1 false 0,
+                LowGate.AddScaled cZ0 cZ1 false 0, LowGate.sequence [
+                  LowGate.AddScaled cX0 cX1 false 0, LowGate.AddScaled cZ0 cZ1 false 0,
+                  LowGate.sequence [g2, LowGate.sequence [LowGate.AddScaled cX0 cX1 true 0,
+                    LowGate.AddScaled cZ0 cZ1 true 0, LowGate.id]]]]]]], gdealloc]]) := by
+        rw [r2_2_ppBody_eq_cond]
+        simp only [evalNode, hguard, if_true, Except.instMonad, Monad.toBind, Except.bind,
+          Except.pure, r2_2_ppThen_eq_seq, r2_2_ppRest_eq_seq, r2_2_ppBodyNode_eq]
+        unfold r2_2_ppBodyChain
+        simp only [evalNode, hgalloc, hgdealloc, hcall0, hcall1, hcall2, hASxT, hASzT, hASxF,
+          hASzF, foldLowGateSeq_eq_sequence, buildLowGate, List.mapM_cons, List.mapM_nil,
+          Option.mapM, Except.instMonad, Monad.toBind, Except.bind, Except.pure]
+      refine ⟨_, hLHS, ?_⟩
+      rw [standardSignedPhaseLoweringPlan.eq_1, dif_pos hrec]
+      simp only [PhaseLoweringPlan.lowerGateRec_signedStep]
+      unfold planCompiledSignedPhaseGate
+      simp only [id, PhaseLoweringPlan.lowerGateRec_seq]
+      rw [show annotatePhaseTermsAux r2_2_k 0 r2_2_ops = _ from r2_2_annotatedOps_eq]
+      simp only [planCompileAnnotatedOpsToSignedGateAux, lowerGateRec_eqmp_final hn0,
+        PhaseLoweringPlan.lowerGateRec_seq, initSignedLayoutState, targetSignedLayoutState]
+      simp only [LowGate.flattenSeq, flattenSeq_sequence, hflatalloc, hflatdealloc, hflat0, hflat1,
+        hflat2, List.append_assoc, List.flatMap_cons, List.flatMap_nil, List.append_nil,
+        List.cons_append]
+      rfl
+    · -- Base case.
+      have hfuel' : fuel ≠ 0 := by omega
+      exact evalNode_phase_product_base' x z phi fuel hfuel' hworkspace hrec
+
 end Shor.IR
