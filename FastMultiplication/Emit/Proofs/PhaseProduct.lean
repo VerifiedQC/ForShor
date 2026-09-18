@@ -1555,4 +1555,46 @@ theorem evalNode_pp_dealloc1z (x z : ExtReg) (phi : Angle) (d : Doc) (fuel : ℕ
       Except.instMonad, Monad.toBind, Except.bind, Except.pure, buildLowGate, List.mapM_cons,
       List.mapM_nil, Option.mapM]
 
+/-! ## The `hrec` branch: the 12-leaf annotated-ops body
+
+`r2_2_ppBodyNode`'s 12 leaves — 3 recursive `.call "phase_product"` +
+8 `AddScaled` + 1 trailing `id` — against `planCompileAnnotatedOpsToSignedGateAux`'s
+cons-by-cons recursion over the concrete 7-op list (`r2_2_annotatedOps_eq`). -/
+
+def r2_2_ppCall (l : ℕ) : Node :=
+  .call "phase_product" [nextWidthW, nextWidthW, reserveNeedXW, reserveNeedZW]
+    [.coeff (.var "phi") l limbW]
+    [.grow r2_2_ext0x r2_2_growDeltaX0W, .grow r2_2_ext0z r2_2_growDeltaZ0W]
+
+def r2_2_ppAS (negSrc : Bool) (side0 side1 : RegExpr) : Node :=
+  .op "AddScaled" [side0, side1] [.lit 0] none [negSrc]
+
+-- Ground truth, discovered by direct probing (`Node.seqLen`/`Node.seqNth`
+-- below, retained as a record of the method): the extractor's `.seq` list
+-- for one `annotatePhaseTermsAux` op groups that op's own leaf gate(s)
+-- together with the tail as *one* flat list — `[call, tail]` (2 elements)
+-- for a `phaseProduct` op (one leaf), `[ASx, ASz, tail]` (3 elements) for
+-- an `addScaled` op (two leaves) — rather than uniformly right-nesting one
+-- leaf at a time. This is *not* what `planCompileAnnotatedOpsToSignedGateAux`'s
+-- own two-level `PhaseLoweringPlan.seq (AddScaled x) (PhaseLoweringPlan.seq
+-- (AddScaled z) tail)` shape would suggest by itself — the extractor's
+-- `translateNode` groups one level further than the plan's own nesting.
+def r2_2_ppBodyChain : Node :=
+  .seq [r2_2_ppCall 0,
+    .seq [r2_2_ppAS true (.grow r2_2_ext0x r2_2_growDeltaX0W) (.grow r2_2_ext1x r2_2_growDeltaX1W),
+          r2_2_ppAS true (.grow r2_2_ext0z r2_2_growDeltaZ0W) (.grow r2_2_ext1z r2_2_growDeltaZ1W),
+      .seq [r2_2_ppCall 1,
+        .seq [r2_2_ppAS false (.grow r2_2_ext0x r2_2_growDeltaX0W) (.grow r2_2_ext1x r2_2_growDeltaX1W),
+              r2_2_ppAS false (.grow r2_2_ext0z r2_2_growDeltaZ0W) (.grow r2_2_ext1z r2_2_growDeltaZ1W),
+          .seq [r2_2_ppAS false (.grow r2_2_ext0x r2_2_growDeltaX0W) (.grow r2_2_ext1x r2_2_growDeltaX1W),
+                r2_2_ppAS false (.grow r2_2_ext0z r2_2_growDeltaZ0W) (.grow r2_2_ext1z r2_2_growDeltaZ1W),
+            .seq [r2_2_ppCall 2,
+              .seq [r2_2_ppAS true (.grow r2_2_ext0x r2_2_growDeltaX0W) (.grow r2_2_ext1x r2_2_growDeltaX1W),
+                    r2_2_ppAS true (.grow r2_2_ext0z r2_2_growDeltaZ0W) (.grow r2_2_ext1z r2_2_growDeltaZ1W),
+                    .op "id" [] [] none []]]]]]]]
+
+set_option maxHeartbeats 4000000 in
+theorem r2_2_ppBodyNode_eq : r2_2_ppBodyNode = r2_2_ppBodyChain := by
+  rfl
+
 end Shor.IR
