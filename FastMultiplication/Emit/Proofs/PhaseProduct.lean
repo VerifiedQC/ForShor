@@ -220,4 +220,209 @@ theorem evalNode_phase_product_base (x z : ExtReg) (phi : Angle) (fuel : ℕ) (h
   rw [hcall]
   exact evalNode_naive_leaf x z phi r2_2_doc (fuel - 1) (ppEnv x z phi).opaqueW (ppEnv x z phi).coeff
 
+/-! ## The `hrec` (recursive) branch: register-slicing
+
+`Emit/PLAN.md` §12.6's own risk assessment names this the most expensive
+part of R6: showing the `k = 2` chunks the extractor sliced out of `x`/`z`
+(`.ext (.activeSlice …) (.reserveSlice …)`, `precomputePhaseProductSlots` in
+`Reflect/Targets.lean`) are the *same registers* `canonicalSignedStep`'s
+concrete layout (`Compiler/Workspace.lean`) actually builds
+(`PhaseSplitLayout.ofBudget` over a `ReserveBudget.ofRequirements`). This
+turned out to be provable by `rfl`/`simp` rather than needing the general
+`fillSlack`/prefix-sum induction lemmas `Compiler/Workspace.lean` proves for
+*symbolic* `k`: `r2_2_k = 2` is concrete, so `List.ofFn`/`Fin.cases` over it
+compute directly once `canonicalSignedStep` itself is unfolded — confirmed
+empirically (`(canonicalSignedStep …).layout.xSplit.reserve i` for a literal
+`i` closes via a bare `rfl` in ~2s, no induction needed at all). -/
+
+-- Ground truth (direct inspection, same method as the guard/base case
+-- above): `r2_2_ppThen`'s allocation/body/deallocation leaves all reference
+-- exactly four register subexpressions (`ext0x, ext1x, ext0z, ext1z`, one
+-- per `(side, chunk)` pair) and their four `grow` counterparts
+-- (`grow(extNy, nextWidth - widthAt(extNy))`, used in the recursive `call`s'
+-- `rArgs` and every `AddScaled`). `opRegsByName` extracts them by walking
+-- the tree for a named op's `regs`/first arg, so the extraction is
+-- `rfl`-checked against the real `r2_2_ppThen`, never hand-transcribed.
+mutual
+def Node.opRegsByName (name : String) : Node → List (List RegExpr)
+  | .op n regs _ _ _ => if n == name then [regs] else []
+  | .seq ns => Node.opRegsByNameList name ns
+  | .cond _ t e => Node.opRegsByName name t ++ Node.opRegsByName name e
+  | .call _ _ _ _ => []
+  | .adj n => Node.opRegsByName name n
+  | .loop _ _ _ n => Node.opRegsByName name n
+def Node.opRegsByNameList (name : String) : List Node → List (List RegExpr)
+  | [] => []
+  | n :: ns => Node.opRegsByName name n ++ Node.opRegsByNameList name ns
+end
+
+/-- The `k = 2` limb width, exactly `Reflect/Targets.lean`'s `translateW`
+output for `phaseLimbWidth x z 2`. -/
+def limbW : WExpr := .min (.div (.var "xw") (.lit 2)) (.div (.var "zw") (.lit 2))
+def nextWidthW : WExpr := .opaque "nextWidth" [.var "xw", .var "zw"]
+def reserveNeedXW : WExpr := .opaque "reserveNeed_x" [nextWidthW, nextWidthW]
+def reserveNeedZW : WExpr := .opaque "reserveNeed_z" [nextWidthW, nextWidthW]
+
+def r2_2_ext0x : RegExpr := ((Node.opRegsByName "zeroExtend" r2_2_ppThen).getD 0 []).getD 0 (.var "?")
+def r2_2_ext0z : RegExpr := ((Node.opRegsByName "zeroExtend" r2_2_ppThen).getD 1 []).getD 0 (.var "?")
+def r2_2_ext1x : RegExpr := ((Node.opRegsByName "signExtend" r2_2_ppThen).getD 0 []).getD 0 (.var "?")
+def r2_2_ext1z : RegExpr := ((Node.opRegsByName "signExtend" r2_2_ppThen).getD 1 []).getD 0 (.var "?")
+
+theorem r2_2_ext0x_eq : r2_2_ext0x =
+    .ext (.activeSlice (.var "x") (.mul (.lit 0) limbW) (.add (.mul (.lit 0) limbW) limbW))
+      (.reserveSlice (.var "x") (.lit 0) (.add (.lit 0) (.add (.sub nextWidthW limbW) reserveNeedXW))) := by
+  rfl
+
+theorem r2_2_ext0z_eq : r2_2_ext0z =
+    .ext (.activeSlice (.var "z") (.mul (.lit 0) limbW) (.add (.mul (.lit 0) limbW) limbW))
+      (.reserveSlice (.var "z") (.lit 0) (.add (.lit 0) (.add (.sub nextWidthW limbW) reserveNeedZW))) := by
+  rfl
+
+def r2_2_offsetX1W : WExpr := .add (.lit 0) (.add (.sub nextWidthW limbW) reserveNeedXW)
+def r2_2_sizeX1W : WExpr :=
+  .add (.add (.sub nextWidthW (.sub (.var "xw") (.mul (.lit 1) limbW))) reserveNeedXW)
+    (.sub (.var "xCap")
+      (.add r2_2_offsetX1W (.add (.sub nextWidthW (.sub (.var "xw") (.mul (.lit 1) limbW))) reserveNeedXW)))
+
+theorem r2_2_ext1x_eq : r2_2_ext1x =
+    .ext (.activeSlice (.var "x") (.mul (.lit 1) limbW)
+        (.add (.mul (.lit 1) limbW) (.sub (.var "xw") (.mul (.lit 1) limbW))))
+      (.reserveSlice (.var "x") r2_2_offsetX1W (.add r2_2_offsetX1W r2_2_sizeX1W)) := by
+  rfl
+
+def r2_2_offsetZ1W : WExpr := .add (.lit 0) (.add (.sub nextWidthW limbW) reserveNeedZW)
+def r2_2_sizeZ1W : WExpr :=
+  .add (.add (.sub nextWidthW (.sub (.var "zw") (.mul (.lit 1) limbW))) reserveNeedZW)
+    (.sub (.var "zCap")
+      (.add r2_2_offsetZ1W (.add (.sub nextWidthW (.sub (.var "zw") (.mul (.lit 1) limbW))) reserveNeedZW)))
+
+theorem r2_2_ext1z_eq : r2_2_ext1z =
+    .ext (.activeSlice (.var "z") (.mul (.lit 1) limbW)
+        (.add (.mul (.lit 1) limbW) (.sub (.var "zw") (.mul (.lit 1) limbW))))
+      (.reserveSlice (.var "z") r2_2_offsetZ1W (.add r2_2_offsetZ1W r2_2_sizeZ1W)) := by
+  rfl
+
+/-- The extracted `ext0x` register expression, instantiated, is exactly the
+real layout's chunk-0 `x` child — for *every* `x, z`, not just the sampled
+widths R2.2's `native_decide` check covers. The disjointness side-condition
+(`.ext`'s `if h : Disjoint … then …`) is supplied by
+`PhaseSplitLayout.active_reserve_disjoint`, `canonicalSignedStep`'s own
+layout field, normalized (via the same `simp` set used on the goal) to the
+identical concrete shape so it applies directly — no separate case split on
+whether the registers are disjoint is needed. -/
+theorem evalReg_pp_ext0x (x z : ExtReg) (phi : Angle)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalReg (ppEnv x z phi) r2_2_ext0x =
+      .ok ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0) := by
+  have hdisj := (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.active_reserve_disjoint 0
+  simp [-RecursivePhaseWorkspace.reserveNeed_fst, -RecursivePhaseWorkspace.reserveNeed_snd,
+    phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, isTopChunk, r2_2_k, phaseLimbWidth,
+    phaseLimbWidthOfWidth, canonicalSignedStep, PhaseSplitLayout.ofBudget, ReserveBudget.topIndex,
+    ReserveBudget.ofRequirements, ReserveBudget.childReserve, ReserveBudget.offset, ReserveBudget.fillSlack,
+    RecursivePhaseWorkspace.requiredXChildReserve, RecursivePhaseWorkspace.requiredChildReserve,
+    RecursivePhaseWorkspace.PhaseSide.width, RecursivePhaseWorkspace.PhaseSide.reserveComponent,
+    RecursivePhaseWorkspace.limbWidth, RecursivePhaseWorkspace.widthModelX, RecursivePhaseWorkspace.widthModelZ,
+    Reg.interval, ExtReg.width, ExtReg.ofReg, regSize, Reg.width, List.length_range, List.length_map] at hdisj
+  rw [r2_2_ext0x_eq]
+  unfold ppEnv
+  simp [-RecursivePhaseWorkspace.reserveNeed_fst, -RecursivePhaseWorkspace.reserveNeed_snd,
+    evalReg, evalW, evalWList, limbW, nextWidthW, reserveNeedXW, ExtReg.ofReg, phaseChunkActive, phaseChunkStart,
+    phaseSplitLogicalWidth, isTopChunk, PhaseSplitLayout.child, r2_2_k, phaseLimbWidth,
+    phaseLimbWidthOfWidth, canonicalSignedStep, PhaseSplitLayout.ofBudget, ReserveBudget.topIndex,
+    ReserveBudget.ofRequirements, ReserveBudget.childReserve, ReserveBudget.offset, ReserveBudget.fillSlack,
+    RecursivePhaseWorkspace.requiredXChildReserve, RecursivePhaseWorkspace.requiredChildReserve,
+    RecursivePhaseWorkspace.PhaseSide.width, RecursivePhaseWorkspace.PhaseSide.reserveComponent,
+    RecursivePhaseWorkspace.limbWidth, RecursivePhaseWorkspace.widthModelX, RecursivePhaseWorkspace.widthModelZ,
+    Reg.interval, ExtReg.width, regSize, Reg.width, List.length_range, List.length_map,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure, Except.map, hdisj]
+
+/-- Same as `evalReg_pp_ext0x`, `z`'s chunk 0. -/
+theorem evalReg_pp_ext0z (x z : ExtReg) (phi : Angle)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalReg (ppEnv x z phi) r2_2_ext0z =
+      .ok ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0) := by
+  have hdisj := (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.active_reserve_disjoint 0
+  simp [-RecursivePhaseWorkspace.reserveNeed_fst, -RecursivePhaseWorkspace.reserveNeed_snd,
+    phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, isTopChunk, r2_2_k, phaseLimbWidth,
+    phaseLimbWidthOfWidth, canonicalSignedStep, PhaseSplitLayout.ofBudget, ReserveBudget.topIndex,
+    ReserveBudget.ofRequirements, ReserveBudget.childReserve, ReserveBudget.offset, ReserveBudget.fillSlack,
+    RecursivePhaseWorkspace.requiredZChildReserve, RecursivePhaseWorkspace.requiredChildReserve,
+    RecursivePhaseWorkspace.PhaseSide.width, RecursivePhaseWorkspace.PhaseSide.reserveComponent,
+    RecursivePhaseWorkspace.limbWidth, RecursivePhaseWorkspace.widthModelX, RecursivePhaseWorkspace.widthModelZ,
+    Reg.interval, ExtReg.width, ExtReg.ofReg, regSize, Reg.width, List.length_range, List.length_map] at hdisj
+  rw [r2_2_ext0z_eq]
+  unfold ppEnv
+  simp [-RecursivePhaseWorkspace.reserveNeed_fst, -RecursivePhaseWorkspace.reserveNeed_snd,
+    evalReg, evalW, evalWList, limbW, nextWidthW, reserveNeedZW, ExtReg.ofReg, phaseChunkActive, phaseChunkStart,
+    phaseSplitLogicalWidth, isTopChunk, PhaseSplitLayout.child, r2_2_k, phaseLimbWidth,
+    phaseLimbWidthOfWidth, canonicalSignedStep, PhaseSplitLayout.ofBudget, ReserveBudget.topIndex,
+    ReserveBudget.ofRequirements, ReserveBudget.childReserve, ReserveBudget.offset, ReserveBudget.fillSlack,
+    RecursivePhaseWorkspace.requiredZChildReserve, RecursivePhaseWorkspace.requiredChildReserve,
+    RecursivePhaseWorkspace.PhaseSide.width, RecursivePhaseWorkspace.PhaseSide.reserveComponent,
+    RecursivePhaseWorkspace.limbWidth, RecursivePhaseWorkspace.widthModelX, RecursivePhaseWorkspace.widthModelZ,
+    Reg.interval, ExtReg.width, regSize, Reg.width, List.length_range, List.length_map,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure, Except.map, hdisj]
+
+/-- Same as `evalReg_pp_ext0x`, `x`'s chunk 1 — the *top* chunk (`fillSlack`'s
+`Function.update` case), which absorbs both the width remainder
+(`phaseSplitLogicalWidth`'s `isTopChunk` branch) and the reserve slack
+(`ReserveBudget.ofRequirements`'s `capacity - used`); the same `simp` set
+that handled chunk 0's plain case discharges both automatically. -/
+theorem evalReg_pp_ext1x (x z : ExtReg) (phi : Angle)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalReg (ppEnv x z phi) r2_2_ext1x =
+      .ok ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 1) := by
+  have hdisj := (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.active_reserve_disjoint 1
+  simp [-RecursivePhaseWorkspace.reserveNeed_fst, -RecursivePhaseWorkspace.reserveNeed_snd,
+    phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, isTopChunk, r2_2_k, phaseLimbWidth,
+    phaseLimbWidthOfWidth, canonicalSignedStep, PhaseSplitLayout.ofBudget, ReserveBudget.topIndex,
+    ReserveBudget.ofRequirements, ReserveBudget.childReserve, ReserveBudget.offset, ReserveBudget.fillSlack,
+    RecursivePhaseWorkspace.requiredXChildReserve, RecursivePhaseWorkspace.requiredChildReserve,
+    RecursivePhaseWorkspace.PhaseSide.width, RecursivePhaseWorkspace.PhaseSide.reserveComponent,
+    RecursivePhaseWorkspace.limbWidth, RecursivePhaseWorkspace.widthModelX, RecursivePhaseWorkspace.widthModelZ,
+    Reg.interval, ExtReg.width, ExtReg.ofReg, regSize, Reg.width, List.length_range, List.length_map] at hdisj
+  rw [r2_2_ext1x_eq]
+  unfold ppEnv
+  simp [-RecursivePhaseWorkspace.reserveNeed_fst, -RecursivePhaseWorkspace.reserveNeed_snd,
+    evalReg, evalW, evalWList, limbW, nextWidthW, reserveNeedXW, r2_2_offsetX1W, r2_2_sizeX1W, ExtReg.ofReg,
+    phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, isTopChunk, PhaseSplitLayout.child, r2_2_k,
+    phaseLimbWidth, phaseLimbWidthOfWidth, canonicalSignedStep, PhaseSplitLayout.ofBudget, ReserveBudget.topIndex,
+    ReserveBudget.ofRequirements, ReserveBudget.childReserve, ReserveBudget.offset, ReserveBudget.fillSlack,
+    RecursivePhaseWorkspace.requiredXChildReserve, RecursivePhaseWorkspace.requiredChildReserve,
+    RecursivePhaseWorkspace.PhaseSide.width, RecursivePhaseWorkspace.PhaseSide.reserveComponent,
+    RecursivePhaseWorkspace.limbWidth, RecursivePhaseWorkspace.widthModelX, RecursivePhaseWorkspace.widthModelZ,
+    Reg.interval, ExtReg.width, regSize, Reg.width, List.length_range, List.length_map,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure, Except.map, hdisj]
+
+/-- Same as `evalReg_pp_ext1x`, `z`'s chunk 1. -/
+theorem evalReg_pp_ext1z (x z : ExtReg) (phi : Angle)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    evalReg (ppEnv x z phi) r2_2_ext1z =
+      .ok ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 1) := by
+  have hdisj := (canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.active_reserve_disjoint 1
+  simp [-RecursivePhaseWorkspace.reserveNeed_fst, -RecursivePhaseWorkspace.reserveNeed_snd,
+    phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, isTopChunk, r2_2_k, phaseLimbWidth,
+    phaseLimbWidthOfWidth, canonicalSignedStep, PhaseSplitLayout.ofBudget, ReserveBudget.topIndex,
+    ReserveBudget.ofRequirements, ReserveBudget.childReserve, ReserveBudget.offset, ReserveBudget.fillSlack,
+    RecursivePhaseWorkspace.requiredZChildReserve, RecursivePhaseWorkspace.requiredChildReserve,
+    RecursivePhaseWorkspace.PhaseSide.width, RecursivePhaseWorkspace.PhaseSide.reserveComponent,
+    RecursivePhaseWorkspace.limbWidth, RecursivePhaseWorkspace.widthModelX, RecursivePhaseWorkspace.widthModelZ,
+    Reg.interval, ExtReg.width, ExtReg.ofReg, regSize, Reg.width, List.length_range, List.length_map] at hdisj
+  rw [r2_2_ext1z_eq]
+  unfold ppEnv
+  simp [-RecursivePhaseWorkspace.reserveNeed_fst, -RecursivePhaseWorkspace.reserveNeed_snd,
+    evalReg, evalW, evalWList, limbW, nextWidthW, reserveNeedZW, r2_2_offsetZ1W, r2_2_sizeZ1W, ExtReg.ofReg,
+    phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, isTopChunk, PhaseSplitLayout.child, r2_2_k,
+    phaseLimbWidth, phaseLimbWidthOfWidth, canonicalSignedStep, PhaseSplitLayout.ofBudget, ReserveBudget.topIndex,
+    ReserveBudget.ofRequirements, ReserveBudget.childReserve, ReserveBudget.offset, ReserveBudget.fillSlack,
+    RecursivePhaseWorkspace.requiredZChildReserve, RecursivePhaseWorkspace.requiredChildReserve,
+    RecursivePhaseWorkspace.PhaseSide.width, RecursivePhaseWorkspace.PhaseSide.reserveComponent,
+    RecursivePhaseWorkspace.limbWidth, RecursivePhaseWorkspace.widthModelX, RecursivePhaseWorkspace.widthModelZ,
+    Reg.interval, ExtReg.width, regSize, Reg.width, List.length_range, List.length_map,
+    Except.instMonad, Monad.toBind, Except.bind, Except.pure, Except.map, hdisj]
+
 end Shor.IR
