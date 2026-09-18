@@ -570,4 +570,172 @@ theorem evalNode_phase_product_base' (x z : ExtReg) (phi : Angle) (fuel : ℕ) (
   refine ⟨g, hg, ?_⟩
   rw [hflat, lowerGateRec_standardSignedPhaseLoweringPlan_base x z phi hworkspace hnotrec]
 
+/-! ## The `hrec` branch: the `.capacity` gap
+
+`ppEnv`'s `w` field maps `"xCap"`/`"zCap"` to `x.capacity`/`z.capacity`, and
+the recursive `.call "phase_product"` leaves' `wArgs` include
+`reserveNeedXW`/`reserveNeedZW` in those slots — so connecting `Env.call` at
+those leaves to the real child environment needs a fact about how
+`ExtReg.grow`/`growExtRegTo` changes `.capacity`, not just `.width`
+(`width_growExtRegTo` in `Compiler/Layout.lean` only covers the width side).
+-/
+
+/-- `PhaseSplitLayout.child`'s `.capacity` is exactly `regSize (layout.reserve
+i)` — `ExtReg.withReserve`'s second field is `layout.reserve i` verbatim, no
+further slicing. General, not tied to `k = 2`. -/
+theorem PhaseSplitLayout.child_capacity {parent : ExtReg} {k W : ℕ}
+    (layout : PhaseSplitLayout parent k W) (i : Fin k) :
+    (layout.child i).capacity = regSize (layout.reserve i) := by
+  rfl
+
+-- Chunk 0's concrete reserve capacity, for either side, is exactly
+-- `requiredXChildReserve`/`requiredZChildReserve` with no slack adjustment
+-- (chunk 0 is never the `fillSlack` top chunk for `r2_2_k = 2`) — the same
+-- `simp` set `evalReg_pp_ext0x`/`evalReg_pp_ext0z` already use to unfold
+-- `canonicalSignedStep`'s layout, applied to `.capacity` instead of the
+-- active slice, plus the fit bound below to avoid `List.take` truncation.
+
+/-- `canonicalSignedStep`'s own local proof that the `x`-side requirements fit
+the parent's capacity (`Compiler/Workspace.lean` `hxfit`, not exposed as a
+standalone lemma) — re-derived here from the exposed pieces
+(`requiredXChildReserve_sum`, `hworkspace.x_reserve_sufficient`,
+`reserveNeed_fst`), the same way `canonicalSignedStep` itself does it. Needed
+because `List.take`'s length only collapses to the requested size (rather
+than clamping at the parent's actual capacity) once this bound is in hand. -/
+theorem requiredXChildReserve_fits (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    (List.ofFn (RecursivePhaseWorkspace.requiredXChildReserve r2_2_ops x.width z.width)).sum ≤
+      x.capacity := by
+  have hrec' : RecursivePhaseWorkspace.nextWidth r2_2_ops x.width z.width < max x.width z.width := by
+    rw [nextWidth_eq_nextSignedWidth]; exact hrec
+  rw [RecursivePhaseWorkspace.requiredXChildReserve_sum]
+  have hres := hworkspace.x_reserve_sufficient
+  rw [RecursivePhaseWorkspace.reserveNeed_fst, dif_pos hrec'] at hres
+  exact hres
+
+theorem requiredZChildReserve_fits (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    (List.ofFn (RecursivePhaseWorkspace.requiredZChildReserve r2_2_ops x.width z.width)).sum ≤
+      z.capacity := by
+  have hrec' : RecursivePhaseWorkspace.nextWidth r2_2_ops x.width z.width < max x.width z.width := by
+    rw [nextWidth_eq_nextSignedWidth]; exact hrec
+  rw [RecursivePhaseWorkspace.requiredZChildReserve_sum]
+  have hres := hworkspace.z_reserve_sufficient
+  rw [RecursivePhaseWorkspace.reserveNeed_snd, dif_pos hrec'] at hres
+  exact hres
+
+theorem child_capacity_0x (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0).capacity =
+      RecursivePhaseWorkspace.requiredXChildReserve r2_2_ops x.width z.width 0 := by
+  rw [PhaseSplitLayout.child_capacity]
+  have hfit := requiredXChildReserve_fits x z hrec hworkspace
+  simp only [List.ofFn_succ, List.ofFn_zero, List.sum_cons, List.sum_nil, Fin.isValue,
+    Fin.succ_zero_eq_one] at hfit
+  simp [-RecursivePhaseWorkspace.reserveNeed_fst, -RecursivePhaseWorkspace.reserveNeed_snd,
+    canonicalSignedStep, PhaseSplitLayout.ofBudget, ReserveBudget.topIndex,
+    ReserveBudget.ofRequirements, ReserveBudget.childReserve, ReserveBudget.offset, ReserveBudget.fillSlack,
+    RecursivePhaseWorkspace.requiredXChildReserve, RecursivePhaseWorkspace.requiredChildReserve,
+    RecursivePhaseWorkspace.PhaseSide.width, RecursivePhaseWorkspace.PhaseSide.reserveComponent,
+    RecursivePhaseWorkspace.limbWidth, RecursivePhaseWorkspace.widthModelX, RecursivePhaseWorkspace.widthModelZ,
+    phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, isTopChunk, r2_2_k, phaseLimbWidth,
+    phaseLimbWidthOfWidth, Reg.interval, ExtReg.width, ExtReg.ofReg, ExtReg.capacity, regSize, Reg.width,
+    List.length_range, List.length_map, List.length_take, List.length_drop, List.drop_zero, Reg.take,
+    Reg.drop] at hfit ⊢
+  omega
+
+theorem child_capacity_0z (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0).capacity =
+      RecursivePhaseWorkspace.requiredZChildReserve r2_2_ops x.width z.width 0 := by
+  rw [PhaseSplitLayout.child_capacity]
+  have hfit := requiredZChildReserve_fits x z hrec hworkspace
+  simp only [List.ofFn_succ, List.ofFn_zero, List.sum_cons, List.sum_nil, Fin.isValue,
+    Fin.succ_zero_eq_one] at hfit
+  simp [-RecursivePhaseWorkspace.reserveNeed_fst, -RecursivePhaseWorkspace.reserveNeed_snd,
+    canonicalSignedStep, PhaseSplitLayout.ofBudget, ReserveBudget.topIndex,
+    ReserveBudget.ofRequirements, ReserveBudget.childReserve, ReserveBudget.offset, ReserveBudget.fillSlack,
+    RecursivePhaseWorkspace.requiredZChildReserve, RecursivePhaseWorkspace.requiredChildReserve,
+    RecursivePhaseWorkspace.PhaseSide.width, RecursivePhaseWorkspace.PhaseSide.reserveComponent,
+    RecursivePhaseWorkspace.limbWidth, RecursivePhaseWorkspace.widthModelX, RecursivePhaseWorkspace.widthModelZ,
+    phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, isTopChunk, r2_2_k, phaseLimbWidth,
+    phaseLimbWidthOfWidth, Reg.interval, ExtReg.width, ExtReg.ofReg, ExtReg.capacity, regSize, Reg.width,
+    List.length_range, List.length_map, List.length_take, List.length_drop, List.drop_zero, Reg.take,
+    Reg.drop] at hfit ⊢
+  omega
+
+/-- `ExtReg.grow`'s effect on `.capacity`: growing by `n` consumes exactly
+`n` reserve bits (`List.length_drop` is unconditional — no bound needed,
+unlike the `.width`/`.active` side which needs `CanGrowTo`). General, not
+tied to `phase_product` at all. -/
+theorem ExtReg.capacity_grow (e : ExtReg) (n : ℕ) : (e.grow n).capacity = e.capacity - n := by
+  unfold ExtReg.grow ExtReg.capacity ExtReg.remainingReserve
+  simp [Reg.drop, regSize, Reg.width]
+
+/-- The `.capacity` gap (`Emit/PLAN.md`'s R6.2 row), resolved: the extracted
+`grow(ext0x, growDeltaX0W)`'s real value's `.capacity` is exactly what
+`ppEnv`'s `"xCap"` slot is expected to carry at the recursive `.call`
+(`RecursivePhaseWorkspace.reserveNeed`'s `x`-component at the *next* width,
+twice — matching `reserveNeedXW`'s `[nextWidthW, nextWidthW]` args). Chains
+`ExtReg.capacity_grow` with `child_capacity_0x`/`child_width_0` and
+`requiredXChildReserve`'s arithmetic definition (`(Wnext - childWidth) +
+reserveComponent`, `Compiler/Workspace.lean`) — the `Wnext - childWidth`
+summand cancels exactly against `capacity_grow`'s `- n`, leaving the
+`reserveComponent` alone. -/
+theorem capacity_grow0x (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.xSplit.child 0)
+      (nextSignedWidth x z r2_2_ops)).capacity =
+      (RecursivePhaseWorkspace.reserveNeed r2_2_ops (nextSignedWidth x z r2_2_ops)
+        (nextSignedWidth x z r2_2_ops)).1 := by
+  unfold growExtRegTo
+  rw [ExtReg.capacity_grow, child_capacity_0x x z hrec hworkspace, child_width_0]
+  have hk2 : r2_2_k = 2 := rfl
+  have hwmX : (RecursivePhaseWorkspace.widthModelX x.width).width = x.width := by
+    simp [RecursivePhaseWorkspace.widthModelX, ExtReg.width, ExtReg.ofReg, regSize, Reg.width,
+      Reg.interval]
+  have hwmZ : (RecursivePhaseWorkspace.widthModelZ x.width z.width).width = z.width := by
+    simp [RecursivePhaseWorkspace.widthModelZ, ExtReg.width, ExtReg.ofReg, regSize, Reg.width,
+      Reg.interval]
+  have hlimbeq : phaseLimbWidth (RecursivePhaseWorkspace.widthModelX x.width)
+      (RecursivePhaseWorkspace.widthModelZ x.width z.width) 2 = phaseLimbWidth x z 2 := by
+    simp only [phaseLimbWidth, hwmX, hwmZ]
+  simp only [RecursivePhaseWorkspace.requiredXChildReserve, RecursivePhaseWorkspace.requiredChildReserve,
+    RecursivePhaseWorkspace.PhaseSide.width, RecursivePhaseWorkspace.PhaseSide.reserveComponent,
+    RecursivePhaseWorkspace.limbWidth, phaseSplitLogicalWidth, isTopChunk, hk2, Fin.isValue,
+    Fin.val_zero, show ¬ (0 + 1 = 2) from by decide, if_false, hlimbeq]
+  rw [nextWidth_eq_nextSignedWidth]
+  omega
+
+theorem capacity_grow0z (x z : ExtReg)
+    (hrec : nextSignedWidth x z r2_2_ops < phaseInputSize x z)
+    (hworkspace : SignedRecursiveWorkspaceOK r2_2_ops x z) :
+    (growExtRegTo ((canonicalSignedStep r2_2_hk r2_2_ops x z hrec hworkspace).layout.zSplit.child 0)
+      (nextSignedWidth x z r2_2_ops)).capacity =
+      (RecursivePhaseWorkspace.reserveNeed r2_2_ops (nextSignedWidth x z r2_2_ops)
+        (nextSignedWidth x z r2_2_ops)).2 := by
+  unfold growExtRegTo
+  rw [ExtReg.capacity_grow, child_capacity_0z x z hrec hworkspace, child_width_0]
+  have hk2 : r2_2_k = 2 := rfl
+  have hwmX : (RecursivePhaseWorkspace.widthModelX x.width).width = x.width := by
+    simp [RecursivePhaseWorkspace.widthModelX, ExtReg.width, ExtReg.ofReg, regSize, Reg.width,
+      Reg.interval]
+  have hwmZ : (RecursivePhaseWorkspace.widthModelZ x.width z.width).width = z.width := by
+    simp [RecursivePhaseWorkspace.widthModelZ, ExtReg.width, ExtReg.ofReg, regSize, Reg.width,
+      Reg.interval]
+  have hlimbeq : phaseLimbWidth (RecursivePhaseWorkspace.widthModelX x.width)
+      (RecursivePhaseWorkspace.widthModelZ x.width z.width) 2 = phaseLimbWidth x z 2 := by
+    simp only [phaseLimbWidth, hwmX, hwmZ]
+  simp only [RecursivePhaseWorkspace.requiredZChildReserve, RecursivePhaseWorkspace.requiredChildReserve,
+    RecursivePhaseWorkspace.PhaseSide.width, RecursivePhaseWorkspace.PhaseSide.reserveComponent,
+    RecursivePhaseWorkspace.limbWidth, phaseSplitLogicalWidth, isTopChunk, hk2, Fin.isValue,
+    Fin.val_zero, show ¬ (0 + 1 = 2) from by decide, if_false, hlimbeq]
+  rw [nextWidth_eq_nextSignedWidth]
+  omega
+
 end Shor.IR
