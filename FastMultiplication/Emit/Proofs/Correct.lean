@@ -158,4 +158,73 @@ theorem evalNode_naive_leaf (x z : ExtReg) (phi : Angle) (d : Doc) (fuel : ℕ)
   simp only [LowGate.Naive_SignedPhaseProd, LowGate.naiveSignedPhaseGates, signedTerms_eq,
     List.map_map, flattenSeq_sequence, List.flatMap_map, List.flatMap_assoc, Function.comp]
 
+/-- The environment `naive_cleaf`'s template is meant to be checked against:
+mirrors `naiveLeafEnv` with an added `"ctrl"` register — a single-qubit
+`ExtReg`, matching how `RegExpr.var "ctrl"` is registered at every call site
+(`Reflect/Targets.lean`'s `extractCPhaseProductBody`: `ctrl` is a bare qubit
+index `ℕ` in the real source, but is carried through the IR as a
+single-qubit `ExtReg`, the same convention `CSignedPhaseProd`'s `ctrl`
+uses). -/
+def naiveCLeafEnv (ctrl x z : ExtReg) (phi : Angle)
+    (opaqueW : String → List ℕ → Option ℕ := fun _ _ => none)
+    (coeff : ℕ → ℕ → Option ℚ := fun _ _ => none) : Env :=
+  { w := fun n => if n == "xw" then some x.width else if n == "zw" then some z.width else none
+    a := fun n => if n == "phi" then some phi else none
+    r := fun n =>
+      if n == "ctrl" then some ctrl else if n == "x" then some x else if n == "z" then some z else none
+    opaqueW := opaqueW
+    coeff := coeff }
+
+/-- `naive_cleaf`'s extracted body, instantiated against the real `ctrl, x,
+z, phi`, equals `Naive_CSignedPhaseProd` — for *every* `ctrlIdx, x, z, phi`.
+The controlled counterpart of `evalNode_naive_leaf`, same proof shape:
+`.op "CCPhase"` in place of `.op "CPhase"`, and `ctrl`'s register argument is
+`RegExpr.var "ctrl"` (not `.qubit`, since `ctrl` is already registered as a
+single-qubit `ExtReg`, not sliced from a wider one). -/
+theorem evalNode_naive_cleaf (ctrlIdx : ℕ) (x z : ExtReg) (phi : Angle) (d : Doc) (fuel : ℕ)
+    (opaqueW : String → List ℕ → Option ℕ := fun _ _ => none)
+    (coeff : ℕ → ℕ → Option ℚ := fun _ _ => none) :
+    ∃ g, evalNode d fuel (naiveCLeafEnv (ExtReg.ofReg (Reg.singleton ctrlIdx)) x z phi opaqueW coeff)
+        Reflect.naiveCLeafTemplate.body = .ok g ∧
+      g.flattenSeq = (LowGate.Naive_CSignedPhaseProd ctrlIdx phi x z).flattenSeq := by
+  have hLHS : evalNode d fuel (naiveCLeafEnv (ExtReg.ofReg (Reg.singleton ctrlIdx)) x z phi opaqueW coeff)
+      Reflect.naiveCLeafTemplate.body =
+      .ok (LowGate.sequence (List.map (fun i => LowGate.sequence (List.map
+        (fun j => LowGate.CCPhase ctrlIdx (x.active.qubits.getD i 0) (z.active.qubits.getD j 0)
+          (signedPairAngle phi (x.active.qubits.getD i 0, signedBitWeight x.width i)
+            (z.active.qubits.getD j 0, signedBitWeight z.width j)))
+        (List.range z.width))) (List.range x.width))) := by
+    simp [Reflect.naiveCLeafTemplate, evalNode, evalW, Env.bindW, naiveCLeafEnv,
+      Except.instMonad, Monad.toBind, Except.bind, Except.pure, Except.map,
+      foldLowGateSeq_eq_sequence, ExtReg.ofReg, Reg.singleton]
+    rw [List.mapM_except_ok_of_mem (l := List.range x.width) (f := fun i =>
+      LowGate.sequence (List.map
+        (fun j => LowGate.CCPhase ctrlIdx (x.active.qubits.getD i 0) (z.active.qubits.getD j 0)
+          (signedPairAngle phi (x.active.qubits.getD i 0, signedBitWeight x.width i)
+            (z.active.qubits.getD j 0, signedBitWeight z.width j)))
+        (List.range z.width)))]
+    all_goals first
+      | rfl
+      | (intro i hi
+         have hix : i < x.width := List.mem_range.mp hi
+         have hix' : i < x.active.width := hix
+         have hix'' : i < x.active.qubits.length := hix'
+         rw [List.mapM_except_ok_of_mem (l := List.range z.width) (f := fun j =>
+           LowGate.CCPhase ctrlIdx (x.active.qubits.getD i 0) (z.active.qubits.getD j 0)
+             (signedPairAngle phi (x.active.qubits.getD i 0, signedBitWeight x.width i)
+               (z.active.qubits.getD j 0, signedBitWeight z.width j)))]
+         all_goals first
+           | rfl
+           | (intro j hj
+              have hjz : j < z.width := List.mem_range.mp hj
+              have hjz' : j < z.active.width := hjz
+              have hjz'' : j < z.active.qubits.length := hjz'
+              simp [evalReg, evalA, evalW, Except.instMonad, Monad.toBind, Except.bind,
+                Except.pure, Except.map, hix', hjz', buildLowGate, signedPairAngle,
+                ExtReg.singleQubit?, ExtReg.ofReg, Reg.singleton, List.getD_eq_getElem?_getD,
+                List.getElem?_eq_getElem hix'', List.getElem?_eq_getElem hjz'', Reg.get]))
+  refine ⟨_, hLHS, ?_⟩
+  simp only [LowGate.Naive_CSignedPhaseProd, LowGate.naiveCSignedPhaseGates, signedTerms_eq,
+    List.map_map, flattenSeq_sequence, List.flatMap_map, List.flatMap_assoc, Function.comp]
+
 end Shor.IR
