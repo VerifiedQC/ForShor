@@ -1,21 +1,29 @@
 import FastMultiplication.Emit.Json.Common
-import FastMultiplication.Emit.Table.Census
 import FastMultiplication.Emit.Symbolic.CoeffPoly
 import FastMultiplication.Emit.Symbolic.Width
-import FastMultiplication.Emit.Symbolic.Recursion
 import FastMultiplication.Emit.Symbolic.QftPlan
 import FastMultiplication.Emit.Symbolic.ShorPlan
-import FastMultiplication.Emit.Symbolic.Template
+import FastMultiplication.Emit.IR.Json
+import FastMultiplication.Emit.Reflect.Verify
 
 /-!
 # The `forshor.emit/v1` bundle
 
-Assembles E1 (`Table/Census.lean`), E2 (`Symbolic/CoeffPoly.lean`), E3
-(`Symbolic/Width.lean`), E4 (`Symbolic/QftPlan.lean`), E5
-(`Symbolic/ShorPlan.lean`), E6 (`Symbolic/Recursion.lean`) into one document,
-`n`-free: every quantity depends on `k`, never on a modulus bit-length `n`
-(except `shor_plan`'s own explicit `n`-ladder, which is the whole point of
-that section). `k` enters everywhere; `n` never does outside `shor_plan`.
+Assembles E2 (`Symbolic/CoeffPoly.lean`), E3 (`Symbolic/Width.lean`), E4
+(`Symbolic/QftPlan.lean`), E5 (`Symbolic/ShorPlan.lean`) — the D4-opaque
+value tables — and E7 (the extracted `Doc`, `Reflect/Verify.lean`) into one
+document, `n`-free: every quantity depends on `k`, never on a modulus
+bit-length `n` (except `shor_plan`'s own explicit `n`-ladder, which is the
+whole point of that section). `k` enters everywhere; `n` never does outside
+`shor_plan`.
+
+R3 split this file's old single pure `buildBundle` in
+two: `buildBundleCore` (schedule/coeff_poly/width/qft_plan/shor_plan — pure,
+`native_decide`-testable, no reflection) and `buildBundle`/`buildTemplateDoc`
+(`unsafe`, `IO`, since embedding the extracted `Doc` needs
+`Reflect.runExtract`'s environment reload). `--no-template` skips the load
+entirely; `buildTemplateDoc` is also what backs the standalone `template`
+CLI command.
 -/
 
 namespace Shor
@@ -35,30 +43,14 @@ def optsJson (o : BundleOpts) : Json :=
     ("check_cramer", Json.bool o.checkCramer)
   ]
 
-def opCensusJson (c : OpCensus) : Json :=
-  Json.mkObj [
-    ("phaseProduct", (c.phaseProduct : Json)),
-    ("addScaled", (c.addScaled : Json)),
-    ("negate", (c.negate : Json)),
-    ("shiftL", (c.shiftL : Json)),
-    ("shiftR", (c.shiftR : Json)),
-    ("adderClassTotal", (c.adderClassTotal : Json))
-  ]
-
-/-- E1: the schedule (ops, points, census, and per-op-class `LowGate`
-resources at a representative width). -/
-def scheduleJson {k : ℕ} (inst : TableInstance k) (wRep : ℕ) : Json :=
+/-- E1: the schedule (`ops`, `points` only — census/per-width `LowGate`
+resource counts are not D4-opaque, so R3 dropped them: they fall out of the
+extracted `Doc` plus the repository's own `shorGateResourceModel`, not out
+of a separate table here). -/
+def scheduleJson {k : ℕ} (inst : TableInstance k) : Json :=
   Json.mkObj [
     ("ops", progJson inst.ops),
-    ("points", Json.arr (inst.points.map pointJson).toArray),
-    ("q", (q k : Json)),
-    ("census", opCensusJson (opCensus inst.ops)),
-    ("resources_at_width", Json.mkObj [
-      ("width", (wRep : Json)),
-      ("addScaled", gateResourcesJson (addScaledResourcesAt wRep)),
-      ("negate", gateResourcesJson (negateResourcesAt wRep)),
-      ("radixReverse", gateResourcesJson (radixReverseResourcesAt wRep))
-    ])
+    ("points", Json.arr (inst.points.map pointJson).toArray)
   ]
 
 /-- E2: interpolation-weight polynomials. `M⁻¹` is computed once via
@@ -114,57 +106,26 @@ def coeffPolyJson {k : ℕ} (inst : TableInstance k) (checkCramer : Bool) (mMaxC
         ("rows", Json.arr rows.toArray)
       ]
 
-/-- E3: width tables. -/
-def widthJson {k : ℕ} (ops : Prog k) (mMax wMax : ℕ) : Json :=
-  let byM := widthTableByM ops mMax
-  let byW := widthTableByW ops wMax
-  let tail := affineTail (byM.map (fun p => (p.1, p.2.1)))
+/-- E3: the width table (`nextWidth`, `reserveNeed_x/z`, D4-opaque). -/
+def widthJson {k : ℕ} (ops : Prog k) (wMax : ℕ) : Json :=
   Json.mkObj [
-    ("by_m",
-      Json.arr (byM.map (fun p =>
+    ("rows",
+      Json.arr ((widthTable ops wMax).map (fun row =>
         Json.mkObj [
-          ("m", (p.1 : Json)), ("width", (p.2.1 : Json)), ("limb_width", (p.2.2 : Json))
-        ])).toArray),
-    ("by_w",
-      Json.arr (byW.map (fun p =>
-        Json.mkObj [
-          ("w", (p.1 : Json)), ("next_width", (p.2.1 : Json)),
-          ("reserve_x", (p.2.2.1 : Json)), ("reserve_z", (p.2.2.2 : Json))
-        ])).toArray),
-    ("affine_tail",
-      match tail with
-      | some (m0, β) => Json.mkObj [("m0", (m0 : Json)), ("beta", (β : Json))]
-      | none => Json.null)
+          ("w", (row.1 : Json)), ("next_width", (row.2.1 : Json)),
+          ("reserve_x", (row.2.2.1 : Json)), ("reserve_z", (row.2.2.2 : Json))
+        ])).toArray)
   ]
 
-def recursionLevelJson (l : RecursionLevel) : Json :=
-  Json.mkObj [
-    ("depth", (l.depth : Json)),
-    ("width", (l.width : Json)),
-    ("leaf_multiplicity", (l.leafMultiplicity : Json)),
-    ("adder_cost", (l.adderCost : Json)),
-    ("base_cost", (l.baseCost : Json))
-  ]
-
-/-- E6: the recursion skeleton, starting the ladder from `w`. -/
-def recursionJson {k : ℕ} (ops : Prog k) (w : ℕ) : Json :=
-  let levels := recursionLevels ops w
-  Json.mkObj [
-    ("levels", Json.arr (levels.map recursionLevelJson).toArray),
-    ("total_cost", (recursionTotalCost levels : Json))
-  ]
-
-/-- E4: the QFT plan. -/
+/-- E4: the QFT workspace table (`qftWorkspaceNeed`, D4-opaque). -/
 def qftPlanJson {k : ℕ} (ops : Prog k) (wMax : ℕ) : Json :=
   Json.mkObj [
     ("rows",
       Json.arr ((qftPlanTable ops wMax).map (fun row =>
         Json.mkObj [
-          ("w", (row.1 : Json)), ("left", (row.2.1 : Json)), ("right", (row.2.2.1 : Json)),
-          ("qft_phi", angleJson row.2.2.2.1),
-          ("radix_reverse_cost", (row.2.2.2.2.1 : Json)),
-          ("x_workspace_need", (row.2.2.2.2.2.1 : Json)),
-          ("z_workspace_need", (row.2.2.2.2.2.2 : Json))
+          ("w", (row.1 : Json)),
+          ("x_workspace_need", (row.2.1 : Json)),
+          ("z_workspace_need", (row.2.2 : Json))
         ])).toArray)
   ]
 
@@ -180,37 +141,37 @@ def shorPlanPerMJson (r : ShorPlanPerM) : Json :=
   ]
 
 def shorPlanRowJson (row : ShorPlanRow) : Json :=
-  let workTail := affineTail (row.perM.map (fun p => (p.m, p.workWidth)))
   Json.mkObj [
     ("n", (row.n : Json)),
     ("x_width", (row.xWidth : Json)),
     ("data_width", (row.dataWidth : Json)),
-    ("per_m", Json.arr (row.perM.map shorPlanPerMJson).toArray),
-    ("work_width_affine_tail",
-      match workTail with
-      | some (m0, β) => Json.mkObj [("m0", (m0 : Json)), ("beta", (β : Json))]
-      | none => Json.null)
+    ("per_m", Json.arr (row.perM.map shorPlanPerMJson).toArray)
   ]
 
-/-- E5: the Shor register plan. -/
+/-- E5: the Shor register plan (widths and reserves only — no affine tail
+since R4). -/
 def shorPlanJson {k : ℕ} (ops : Prog k) (nMin nMax mMax : ℕ) : Json :=
   Json.mkObj [
     ("rows", Json.arr ((shorPlanTable ops nMin nMax mMax).map shorPlanRowJson).toArray)
   ]
 
+/-- The extracted-`Doc` provenance string: D7's trust statement, verbatim
+(`Emit/README.md`). -/
+def templateProvenance : String :=
+  "extracted by reflection from the named constants; trusted: translation " ++
+  "table and Lean normalisation; checked: instantiate = real term at the " ++
+  "listed widths; not a theorem."
+
 /-- Per-section provenance: which Lean declaration each section evaluates,
 and whether that declaration is a theorem (see README "What is and is not a
 theorem"). -/
-def provenanceJson (src : TableSource) : Json :=
+def provenanceJson : Json :=
   Json.mkObj [
     ("table", Json.str
-      (match src with
-        | .standard =>
-            "Shor.standardLoweringSetup: ProgConsumesPtsSafe/returns-to-start are " ++
-            "theorems (genOpsWithProduct_ProgConsumesPtsSafe, " ++
-            "genOpsWithProduct_returns_to_original)"
-        | .generate =>
-            "Table_Generation.generate: checked at run time only, no correctness theorem")),
+      ("Shor.standardLoweringSetup: length/GoodToomCookPoints/ProgConsumesPtsSafe/" ++
+      "returns-to-start are theorems (generatedInterpolationPoints_length, " ++
+      "genInterpolationPoints_good, genOpsWithProduct_ProgConsumesPtsSafe, " ++
+      "genOpsWithProduct_returns_to_original)")),
     ("coeff_poly", Json.str
       ("M⁻¹ computed exactly by Gauss-Jordan elimination over ℚ (gaussJordanInverseRows); " ++
       "agreement with cramerCoeffFromPtsWidth is a run-time check over the checked m range " ++
@@ -218,15 +179,8 @@ def provenanceJson (src : TableSource) : Json :=
       "cramerCoeffFromPtsWidth = phaseCoeffFromPtsWidth is the theorem " ++
       "cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth")),
     ("width", Json.str
-      ("RecursivePhaseWorkspace.nextWidth/limbWidth/reserveNeed evaluated directly; " ++
-      "affine tails are detected numerically and are advisory")),
-    ("recursion", Json.str
-      ("shorGateCostModel evaluated on the width ladder; the asymptotic statement is " ++
-      "Shor.phaseProductGateCountBound_of_programOK / Shor.exists_shorGateCountBound " ++
-      "(evaluated here, not proved)")),
-    ("qft_plan", Json.str
-      ("qftWorkspaceNeed/qftPhi evaluated directly, matching standardQFTLoweringPlan's own " ++
-      "recursion")),
+      "RecursivePhaseWorkspace.nextWidth/reserveNeed evaluated directly (D4: opaque)"),
+    ("qft_plan", Json.str "qftWorkspaceNeed evaluated directly (D4: opaque)"),
     ("shor_plan", Json.str
       ("referenceXWidth/referenceDataWidth/referenceWorkWidth/referenceScratchWidth/" ++
       "referenceWorkspaceNeed evaluated on synthetic instances N = 2^n - 1, a = 2. The " ++
@@ -234,91 +188,119 @@ def provenanceJson (src : TableSource) : Json :=
       "CmodMulInPlaceCore) are linear in register width with no recursion and no table " ++
       "dependence, so they are not tabulated here: their per-width counts are meant to be read " ++
       "off concrete `shor` documents at small N and fitted outside Lean")),
-    ("template", Json.str
-      ("Symbolic/Template.lean's phase-product/QFT/Shor templates, evaluated structurally " ++
-      "from the compiler's own op sequence and gate-tree shape (Compile.lean, Gates.lean, " ++
-      "OrderFinding.lean/ModExp.lean/Steps.lean) — not checked against the real lowering at " ++
-      "any concrete width (that is Phase 2's job); nextWidth is opaque, its values are the " ++
-      "width section's table"))
+    ("template", Json.str templateProvenance)
   ]
 
-/-- The `template` section's object (E7, one level — see `Symbolic/Template.lean`). -/
-def templateSectionJson {k : ℕ} (inst : TableInstance k) : Json :=
-  Json.mkObj [
-    ("phase_product", phaseProductTemplateJson inst.ops false),
-    ("controlled_phase_product", phaseProductTemplateJson inst.ops true),
-    ("qft", qftTemplateJson),
-    ("shor", shorTemplateJson)
-  ]
-
-/-- Build the `forshor.emit/v1` document, or refuse with a message if the
-table's blocking checks fail (`TableSource.generate` only). -/
-def buildBundle
-    (src : TableSource) (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ) (checkCramer : Bool) :
+/-- The pure sections of the bundle document (E2-E5): everything but
+`template`, which needs `IO` (see `buildBundle`/`buildTemplateDoc`). Kept
+separate so this stays `native_decide`-testable (`Tests.lean`). -/
+def buildBundleCore (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ) (checkCramer : Bool) :
     Except String Json :=
-  let inst := tableInstance src k hk
-  match checkTable src k hk inst with
+  let inst := standardTableInstance k hk
+  let nMin := 2
+  let nMax := min wMax 16
+  .ok (Json.mkObj [
+    ("schema", Json.str "forshor.emit/v1"),
+    ("k", (k : Json)),
+    ("table", Json.str "standard"),
+    ("n_free", Json.bool true),
+    ("opts", optsJson { mMax := mMax, wMax := wMax, checkCramer := checkCramer }),
+    ("schedule", scheduleJson inst),
+    ("coeff_poly", coeffPolyJson inst checkCramer mMax),
+    ("width", widthJson inst.ops wMax),
+    ("qft_plan", qftPlanJson inst.ops wMax),
+    ("shor_plan", shorPlanJson inst.ops nMin nMax mMax),
+    ("provenance", provenanceJson)
+  ])
+
+/-- The section names `buildSection` understands (the pure sections only —
+`template` is a dedicated command, see `Main.lean`). -/
+def sectionNames : List String := ["schedule", "coeff_poly", "width", "qft_plan", "shor_plan"]
+
+/-- Build a single named pure section of the bundle document, in the same
+envelope (`schema, k, table, n_free, opts, provenance`) but with only that
+one section's data under its own name. -/
+def buildSection (sectionName : String) (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ)
+    (checkCramer : Bool) : Except String Json :=
+  let inst := standardTableInstance k hk
+  let nMin := 2
+  let nMax := min wMax 16
+  let sectionJson? : Except String Json :=
+    match sectionName with
+    | "schedule" => .ok (scheduleJson inst)
+    | "coeff_poly" => .ok (coeffPolyJson inst checkCramer mMax)
+    | "width" => .ok (widthJson inst.ops wMax)
+    | "qft_plan" => .ok (qftPlanJson inst.ops wMax)
+    | "shor_plan" => .ok (shorPlanJson inst.ops nMin nMax mMax)
+    | other => .error s!"unknown section: {other} (expected one of {sectionNames})"
+  match sectionJson? with
   | .error e => .error e
-  | .ok () =>
-      let nMin := 2
-      let nMax := min wMax 16
+  | .ok sj =>
       .ok (Json.mkObj [
         ("schema", Json.str "forshor.emit/v1"),
         ("k", (k : Json)),
-        ("table", Json.str (match src with | .standard => "standard" | .generate => "generate")),
+        ("table", Json.str "standard"),
         ("n_free", Json.bool true),
+        ("section", Json.str sectionName),
         ("opts", optsJson { mMax := mMax, wMax := wMax, checkCramer := checkCramer }),
-        ("schedule", scheduleJson inst wMax),
-        ("coeff_poly", coeffPolyJson inst checkCramer mMax),
-        ("width", widthJson inst.ops mMax wMax),
-        ("qft_plan", qftPlanJson inst.ops wMax),
-        ("shor_plan", shorPlanJson inst.ops nMin nMax mMax),
-        ("recursion", recursionJson inst.ops wMax),
-        ("template", templateSectionJson inst),
-        ("provenance", provenanceJson src)
+        (sectionName, sj),
+        ("provenance", provenanceJson)
       ])
 
-/-- The section names `buildSection` understands, i.e. every field of
-`buildBundle`'s document except `schema`/`k`/`table`/`n_free`/`opts`/
-`provenance`. -/
-def sectionNames : List String :=
-  ["schedule", "coeff_poly", "width", "qft_plan", "shor_plan", "recursion", "template"]
+/-- The largest width `Reflect.Verify`'s canary checks exercise for a given
+`k` (`4 * k`, `phase_product`/`cphase_product`/`qft`'s own representative
+width — see `Reflect/Verify.lean`). `--w-max` must cover at least this much
+of the width table, or the value tables published alongside `template`
+would have a gap right where the check itself looked. -/
+def templateCheckWidth (k : ℕ) : ℕ := 4 * k
 
-/-- Build a single named section of the bundle document, in the same
-envelope (`schema, k, table, n_free, opts, provenance`) but with only that
-one section's data under its own name — same blocking checks as `bundle`. -/
-def buildSection
-    (sectionName : String) (src : TableSource) (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ)
-    (checkCramer : Bool) : Except String Json :=
-  let inst := tableInstance src k hk
-  match checkTable src k hk inst with
-  | .error e => .error e
-  | .ok () =>
-      let nMin := 2
-      let nMax := min wMax 16
-      let sectionJson? : Except String Json :=
-        match sectionName with
-        | "schedule" => .ok (scheduleJson inst wMax)
-        | "coeff_poly" => .ok (coeffPolyJson inst checkCramer mMax)
-        | "width" => .ok (widthJson inst.ops mMax wMax)
-        | "qft_plan" => .ok (qftPlanJson inst.ops wMax)
-        | "shor_plan" => .ok (shorPlanJson inst.ops nMin nMax mMax)
-        | "recursion" => .ok (recursionJson inst.ops wMax)
-        | "template" => .ok (templateSectionJson inst)
-        | other => .error s!"unknown section: {other} (expected one of {sectionNames})"
-      match sectionJson? with
-      | .error e => .error e
-      | .ok sj =>
-          .ok (Json.mkObj [
-            ("schema", Json.str "forshor.emit/v1"),
-            ("k", (k : Json)),
-            ("table", Json.str (match src with | .standard => "standard" | .generate => "generate")),
-            ("n_free", Json.bool true),
-            ("section", Json.str sectionName),
-            ("opts", optsJson { mMax := mMax, wMax := wMax, checkCramer := checkCramer }),
-            (sectionName, sj),
-            ("provenance", provenanceJson src)
-          ])
+/-- Build the standalone `template` document (R3, generalised by R5):
+extract the `Doc` by reflection, verify it (`Reflect.Verify.verifyDoc`), and
+print it together with the checks that passed and this section's
+provenance. Refuses (`.error`) if extraction/verification fails or if `wMax`
+doesn't cover the verifier's own checked width. `SUBMISSION_PLAN.md` S1.6
+retired `TableSource`, so the old third refusal — `src = .generate`, a table
+with no `ShorLoweringSetup` and therefore nothing the lowering theorems
+cover — has no input left to reject. -/
+unsafe def buildTemplateDoc (k : ℕ) (_hk : 1 < k) (wMax : ℕ) :
+    IO (Except String Json) := do
+  if wMax < templateCheckWidth k then
+    let msg :=
+      s!"--w-max {wMax} is below the largest width template's own instance checks use " ++
+        s!"({templateCheckWidth k}); raise --w-max"
+    return .error msg
+  match ← Reflect.runExtractAndVerify k with
+  | .error e => return .error e
+  | .ok doc =>
+      return .ok (Json.mkObj [
+        ("schema", Json.str "forshor.ir/v1"),
+        ("k", (k : Json)),
+        ("table", Json.str "standard"),
+        ("entry", Json.str doc.entry),
+        ("opaque", Json.arr (doc.opaqueFns.map (fun (name, arity) =>
+          Json.mkObj [("name", Json.str name), ("arity", (arity : Json))])).toArray),
+        ("templates", Json.arr (doc.templates.map IR.templateJson).toArray),
+        ("checks", Json.mkObj [
+          ("wellformed", Json.bool true), ("instantiate_eq_real", Json.bool true)
+        ]),
+        ("provenance", Json.str templateProvenance)
+      ])
+
+/-- Build the full `forshor.emit/v1` bundle: the pure sections
+(`buildBundleCore`) plus the extracted `template`, unless `noTemplate` is
+set (`--no-template`, which skips the environment load entirely). -/
+unsafe def buildBundle
+    (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ) (checkCramer noTemplate : Bool) :
+    IO (Except String Json) := do
+  match buildBundleCore k hk mMax wMax checkCramer with
+  | .error e => return .error e
+  | .ok coreJson =>
+      if noTemplate then
+        return .ok coreJson
+      else
+        match ← buildTemplateDoc k hk wMax with
+        | .error e => return .error e
+        | .ok templateJ => return .ok (coreJson.setObjVal! "template" templateJ)
 
 /-- `forshor_emit phases <k> <m> <phiNum/phiDen>`: exactly `q k` lines, each
 `c_l(2^m) · phi` as a reduced `num/den` (row `l`'s E2 coefficient polynomial,
@@ -326,7 +308,7 @@ evaluated at the chunk width `m` and scaled by `phi`). Always the standard
 table (the `bundle` default). -/
 def buildPhases (k m : ℕ) (phiNum phiDen : ℤ) : Except String (List String) :=
   if hk : 1 < k then
-    let inst := tableInstance .standard k hk
+    let inst := standardTableInstance k hk
     match coeffInverse k inst.points inst.hlen with
     | none => .error "singular interpolation matrix (unexpected: GoodToomCookPoints failed)"
     | some inv =>

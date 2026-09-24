@@ -253,9 +253,9 @@ Retitle it `# Whole-program lowering correctness`. Both gates.
    Shor reorg). Change it to `Implementation/Shor/Proofs/Lowering.lean` and add
    `Implementation/Shor/Lowering/LowerGate.lean` for the lowerer itself.
    `README.md`'s `Shor/` row already says "whole-program lowering correctness" — no change.
-   `RESTRUCTURE_PLAN.md` line 68 names `Compilation/` as a *planned* folder; that
-   file is a historical plan, leave it, or add one line under Phase 4 noting the
-   compiler ended up at `Shor/Lowering/`.
+   (`RESTRUCTURE_PLAN.md` named `Compilation/` as a *planned* folder; the compiler
+   ended up at `Shor/Lowering/` instead. That plan file has since been deleted —
+   `SUBMISSION_PLAN.md` superseded it — so there is nothing left to amend.)
 
 Both gates and the layer script.
 

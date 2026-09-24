@@ -323,7 +323,7 @@ The final gate-count result is that for every positive epsilon and delta, there 
 It defines:
 
 - `ShorOrderFindingInstance`, the arithmetic/register data for order finding.
-- `ShorLoweringSetup`, the assumptions needed to lower the chosen circuit.
+- `ShorLoweringSetup`, the assumptions needed to lower the chosen circuit. (It has since moved to `Framework/ToomCookTable.lean`, gained the interpolation points as a field, and become the submission record itself — see "The submission boundary" below.)
 - `ShorFactoringInstance`, the classical factoring setup.
 - `ShorCleanInput`, the clean-register predicate for initial states.
 - `ShorApproxSetup`, the complete approximate-circuit setup used by the final statements.
@@ -337,6 +337,29 @@ Important results include:
 - `Shor_end_to_end_factoring`, which combines order finding with the classical factoring reduction.
 
 This file is where the exact-lowering branch, approximation branch, and classical postprocessing branch meet. `Shor_correct` and every other theorem in the development are fully proved — no `sorry` remains anywhere in the codebase (`grep -rn sorry FastMultiplication` is empty; `#print axioms` on the headline theorems reports only `propext`, `Classical.choice`, and `Quot.sound`). The exact-lowering, approximate, and gate-count developments are organized as separate supporting branches that this file assembles.
+
+## The submission boundary
+
+The tail of the development has a second organising split, later than the
+`AlgorithmCorrectness`/`AbstractMachine` one described below and orthogonal
+to it: the line between *the rules* and *a construction satisfying them*.
+`SUBMISSION_PLAN.md` (under `ShorVerification/`) is the working record; the
+layout it produced is:
+
+| where | what |
+| --- | --- |
+| `Framework/ToomCookTable.lean` | The rules, implementation-free. The table language (`Register`, `State`, `Prog`, `run?`), the point-row vocabulary (`expectedRow`, `ProgConsumesPtsSafe`), the interpolation vocabulary (`interpMatrix`, `GoodToomCookPoints`), and the record `ShorLoweringSetup` / `ShorSubmission` that bundles them. Imports Mathlib and nothing else, so the specification can be read without the construction. |
+| `Framework/Contract.lean` | The semantic contract: `probability_of_success`, `ShorImplementation`. Formerly `Framework/Submission.lean`; renamed because it is now the framework's *internal* contract, not what a submitter writes. |
+| `Implementation/` | The Toom-Cook construction. Every file that used to define one of the moved definitions now imports `Framework/ToomCookTable.lean` instead; the lemmas about them, the point generator and the compiler all stayed. |
+| `Implementation/Reference/` | `setup ↦ referenceProgramAt`, and `referenceProgramAt_success` — generic in the setup, which is what makes the four side conditions a complete acceptance test. |
+| `Submission/` | The public surface: `Decide.lean` (the four conditions, decidable; `Framework/` + Mathlib only), `Correct.lean` (the fixed precision and the certificate), `Score.lean` (the declared bound and a computable trial count), `Template.lean` + `Main.lean` (what a submitter copies, and the printer). |
+| `Emit/` | `setup ↦ IR`: reflection over the verified construction, producing a `Doc` a resource estimator prices. |
+
+The consequence worth stating plainly: correctness is proved *once*, generic
+in the table. A submission is checked, not proved — four decidable side
+conditions through the kernel, plus IR agreement verified by evaluation at
+sampled widths. There is no per-submission correctness obligation, which is
+the whole reason the challenge was narrowed to the table.
 
 ## Big Picture
 

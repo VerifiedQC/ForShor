@@ -223,10 +223,10 @@ theorem headline_program_success
         (evalC := LowerGateClass.evalL (qs := qs))
         (T := T)
         (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-        (x := (referenceProgramAt (qs := qs) lowering m2048 inst).output)
+        (x := (referenceProgramAt lowering m2048 inst).output)
         (r := ord inst.a inst.N inst.coprime)
-        (Q := ASize (referenceProgramAt (qs := qs) lowering m2048 inst).output)
-        (C := (referenceProgramAt (qs := qs) lowering m2048 inst).circuit)
+        (Q := ASize (referenceProgramAt lowering m2048 inst).output)
+        (C := (referenceProgramAt lowering m2048 inst).circuit)
         (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) := by
   have h := referenceProgramAt_success (qs := qs) lowering m2048 T hT inst
   rw [← hinstN] at hN
@@ -271,7 +271,7 @@ constants); this is the honest declared value. -/
 def headlineGateCount
     (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) : ℕ :=
   LowGate.gateCount shorGateCostModel
-    (referenceProgramAt (qs := qs) lowering m2048 inst).circuit
+    (referenceProgramAt lowering m2048 inst).circuit
 
 /-- Total gate count across all `headlineTrialCount` independent runs: this is
 the quantity ("trials × single-run gate count") that a fast-vs-naive Shor
@@ -280,7 +280,7 @@ comparison should be made against, for a 2048-bit modulus, given that
 success. -/
 def headlineTotalGateCount
     (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) : ℕ :=
-  headlineTrialCount * headlineGateCount (qs := qs) lowering inst
+  headlineTrialCount * headlineGateCount lowering inst
 
 end
 

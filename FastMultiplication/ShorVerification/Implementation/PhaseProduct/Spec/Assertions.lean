@@ -27,12 +27,13 @@ def LowerSignedPhaseProductCorrect
     (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k) : Prop :=
-  ∀ (ψ : qs.State)
+  ∀ (ψ : qs.State) (pts : List Point) (hpts : pts.length = q k)
     (hworkspace : SignedRecursiveWorkspaceStateOK qs ops x z ψ)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hInterp : GoodToomCookPoints k pts hpts)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state),
     LowerGateClass.evalL (qs := qs)
-        (lowerSignedPhaseProdWithWorkspace k hk phi x z ops hworkspace.static) ψ
+        (lowerSignedPhaseProdWithWorkspace k hk phi x z ops pts hpts hworkspace.static) ψ
       =
     qs.eval (Gate.SignedPhaseProd phi x z) ψ
 
@@ -52,12 +53,13 @@ def LowerCSignedPhaseProductCorrect
     (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k) : Prop :=
-  ∀ (ψ : qs.State)
+  ∀ (ψ : qs.State) (pts : List Point) (hpts : pts.length = q k)
     (hworkspace : CSignedRecursiveWorkspaceStateOK qs ops ctrl x z ψ)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hInterp : GoodToomCookPoints k pts hpts)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state),
     LowerGateClass.evalL (qs := qs)
-        (lowerCSignedPhaseProdWithWorkspace k hk ctrl phi x z ops hworkspace.static) ψ
+        (lowerCSignedPhaseProdWithWorkspace k hk ctrl phi x z ops pts hpts hworkspace.static) ψ
       =
     qs.eval (Gate.CSignedPhaseProd ctrl phi x z) ψ
 

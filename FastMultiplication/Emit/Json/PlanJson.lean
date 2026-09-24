@@ -90,13 +90,49 @@ partial def planJson {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.lengt
         ("body", planJson child)
       ]
 
+/-- Check 1's deep flattener: splice `seq` nodes fully (matching
+`LowGate.flattenSeq`), substitute `SignedPhaseProd`/`CSignedPhaseProd`
+annotations with their `expansion`/`body`, drop `id`. Moved here from the
+now-deleted `Lower/Instantiate.lean` (R4) — still used by
+`pp`/`cpp`'s `annotated_eq_flat` check, which has nothing to do with the
+extracted `Doc`. -/
+partial def deepFlattenPlanJsonList (j : Json) : List Json :=
+  match (j.getObjValD "op").getStr?.toOption with
+  | some "id" => []
+  | some "seq" =>
+      match (j.getObjValD "body").getArr?.toOption with
+      | some arr => arr.toList.flatMap deepFlattenPlanJsonList
+      | none => [j]
+  | some "SignedPhaseProd" | some "CSignedPhaseProd" =>
+      deepFlattenPlanJsonList (j.getObjValD "body")
+  | some "NaiveSignedPhaseProd" | some "NaiveCSignedPhaseProd" =>
+      -- `expansion` is itself `lowGateJson`'s output for a `LowGate.seq` term
+      -- (or a single leaf) — splice it the same way, don't embed it opaquely.
+      deepFlattenPlanJsonList (j.getObjValD "expansion")
+  | _ => [j]
+
+/-- Canonicalize a flattened list the same way `lowGateJson` would present a
+top-level term: a single item as itself, `id` (an empty list) as `{"op":
+"id"}`, otherwise as one `seq` node wrapping the whole n-ary list. -/
+def wrapFlattened (items : List Json) : Json :=
+  match items with
+  | [] => Json.mkObj [("op", Json.str "id")]
+  | [single] => single
+  | _ => Json.mkObj [("op", Json.str "seq"), ("body", Json.arr items.toArray)]
+
+/-- Check 1: deep-flattening the annotated plan's JSON equals `lowGateJson`
+of the independently-computed flat term. -/
+def check1_annotatedEqFlat (planJ : Json) (flat : LowGate) : Bool :=
+  wrapFlattened (deepFlattenPlanJsonList planJ) == lowGateJson flat
+
 /-- Printer over `QFTLoweringPlan`: `split` carries the twiddle angle and the
 recursive left/right plans; the phase-product body between them is printed
 through `planJson` (it is itself a `StandardPhaseLoweringPlan`, so its
 `seq`/`zeroExtend`/`signedStep`/`zeroDealloc` shape prints exactly as any
 other plan node — no special case is needed for it). -/
-partial def qftPlanJsonOf {k : ℕ} {hk : 1 < k} {ops : Prog k} {r : Reg} :
-    QFTLoweringPlan k hk ops r → Json
+partial def qftPlanJsonOf
+    {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {ops : Prog k} {r : Reg} :
+    QFTLoweringPlan k hk pts hpts ops r → Json
   | .empty r _ => Json.mkObj [("op", Json.str "id"), ("r", regJson r)]
   | .singleton r _ => Json.mkObj [("op", Json.str "H"), ("r", regJson r)]
   | .split r _hsize _ws _phaseInitSize phasePlan rightPlan leftPlan =>

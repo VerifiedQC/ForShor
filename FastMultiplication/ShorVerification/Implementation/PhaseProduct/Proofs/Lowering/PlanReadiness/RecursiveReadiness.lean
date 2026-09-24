@@ -123,11 +123,14 @@ lemma standardSignedPhaseLoweringPlan_ready_ket
     (x z : ExtReg)
     (ops : Prog k)
     (b : qs.Basis)
+    {pts : List Point}
+    {hpts : pts.length = q k}
     (hstatic : SignedRecursiveWorkspaceOK ops x z)
     (hclean : RecursiveWorkspaceCleanBasis x z b)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hInterp : GoodToomCookPoints k pts hpts)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state) :
-    PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops hstatic) (qs.ket b) := by
+    PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hstatic) (qs.ket b) := by
   rw [standardSignedPhaseLoweringPlan]
   split
   next hrec =>
@@ -144,9 +147,9 @@ lemma standardSignedPhaseLoweringPlan_ready_ket
       planCompiledSignedPhaseGate_ready_ket
         (qs := qs)
         (hk := hk)
-        (pts := genInterpolationPoints k)
-        (hpts := generatedInterpolationPoints_length k)
-        (hInterp := by simpa using genInterpolationPoints_good k)
+        (pts := pts)
+        (hpts := hpts)
+        (hInterp := hInterp)
         (ops := ops)
         (hC := hC)
         (hRun := hRun)
@@ -165,11 +168,12 @@ lemma standardSignedPhaseLoweringPlan_ready_ket
       simpa [src, dst] using step.childInputSize i
     have hchildReady :
         PhaseLoweringReady qs
-          (standardSignedPhaseLoweringPlan k hk theta (dst.xslot i) (dst.zslot i) ops hchild)
+          (standardSignedPhaseLoweringPlan k hk theta (dst.xslot i) (dst.zslot i) ops pts hpts hchild)
           (qs.ket b') := by
       exact standardSignedPhaseLoweringPlan_ready_ket (qs := qs) (k := k) (hk := hk)
         (phi := theta) (x := dst.xslot i) (z := dst.zslot i)
-        (ops := ops) (b := b') (hstatic := hchild) (hclean := hclean') (hC := hC) (hRun := hRun)
+        (ops := ops) (pts := pts) (hpts := hpts) (hstatic := hchild) (hclean := hclean')
+        (hInterp := hInterp) (hC := hC) (hRun := hRun)
     dsimp only [id_eq]
     convert hchildReady using 2
     all_goals
@@ -197,27 +201,31 @@ theorem standardSignedPhaseLoweringPlan_ready_and_clean
     (x z : ExtReg)
     (ops : Prog k)
     (ψ : qs.State)
+    {pts : List Point}
+    {hpts : pts.length = q k}
     (hstatic : SignedRecursiveWorkspaceOK ops x z)
     (hclean : RecursiveWorkspaceCleanState qs x z ψ)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hInterp : GoodToomCookPoints k pts hpts)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state) :
-    let plan := standardSignedPhaseLoweringPlan k hk phi x z ops hstatic
+    let plan := standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hstatic
     PhaseLoweringReady qs plan ψ ∧
     RecursiveWorkspaceCleanState qs x z (LowerGateClass.evalL (qs := qs) (lowerGateRec plan) ψ) := by
   dsimp only
-  let plan := standardSignedPhaseLoweringPlan k hk phi x z ops hstatic
+  let plan := standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hstatic
   have hready : PhaseLoweringReady qs plan ψ := by
     induction hclean with
     | zero => exact PhaseLoweringReady.zero qs plan
     | ket b hcleanBasis =>
-        exact standardSignedPhaseLoweringPlan_ready_ket qs k hk phi x z ops b hstatic hcleanBasis hC hRun
+        exact standardSignedPhaseLoweringPlan_ready_ket qs k hk phi x z ops b
+          (pts := pts) (hpts := hpts) hstatic hcleanBasis hInterp hC hRun
     | add hψ hφ ihψ ihφ => exact PhaseLoweringReady.add qs plan ihψ ihφ
     | smul a hψ ihψ => exact PhaseLoweringReady.smul qs plan a ihψ
   constructor
   · exact hready
   · exact
-      standardSignedPhaseLoweringPlan_preserves_clean_of_ready qs k hk phi x z ops ψ
-        hstatic hclean hready hC hRun
+      standardSignedPhaseLoweringPlan_preserves_clean_of_ready qs k hk phi x z ops
+        (pts := pts) (hpts := hpts) ψ hstatic hclean hready hInterp hC hRun
 
 /-- Readiness projection from the ready-and-clean theorem. -/
 theorem standardSignedPhaseLoweringPlan_ready
@@ -231,12 +239,16 @@ theorem standardSignedPhaseLoweringPlan_ready
     (x z : ExtReg)
     (ops : Prog k)
     (ψ : qs.State)
+    {pts : List Point}
+    {hpts : pts.length = q k}
     (hstatic : SignedRecursiveWorkspaceOK ops x z)
     (hclean : RecursiveWorkspaceCleanState qs x z ψ)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hInterp : GoodToomCookPoints k pts hpts)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state) :
-    PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops hstatic) ψ := by
-  exact (standardSignedPhaseLoweringPlan_ready_and_clean qs k hk phi x z ops ψ hstatic hclean hC hRun).1
+    PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hstatic) ψ := by
+  exact (standardSignedPhaseLoweringPlan_ready_and_clean qs k hk phi x z ops ψ
+    (pts := pts) (hpts := hpts) hstatic hclean hInterp hC hRun).1
 
 /-- Public workspace-state invariant implies readiness for the canonical standard plan. -/
 lemma standardSignedPhaseLoweringPlan_ready_of_workspace
@@ -250,11 +262,15 @@ lemma standardSignedPhaseLoweringPlan_ready_of_workspace
     (x z : ExtReg)
     (ops : Prog k)
     (ψ : qs.State)
+    {pts : List Point}
+    {hpts : pts.length = q k}
     (hworkspace : SignedRecursiveWorkspaceStateOK qs ops x z ψ)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hInterp : GoodToomCookPoints k pts hpts)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state):
-    PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops hworkspace.static) ψ := by
-  exact standardSignedPhaseLoweringPlan_ready qs k hk phi x z ops ψ hworkspace.static hworkspace.clean hC hRun
+    PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hworkspace.static) ψ := by
+  exact standardSignedPhaseLoweringPlan_ready qs k hk phi x z ops ψ
+    (pts := pts) (hpts := hpts) hworkspace.static hworkspace.clean hInterp hC hRun
 
 /-- Readiness of the compiled controlled signed phase-product plan on a clean basis ket. -/
 lemma planCompiledCSignedPhaseGate_ready_ket
@@ -381,12 +397,15 @@ lemma standardCSignedPhaseLoweringPlan_ready_ket
     (x z : ExtReg)
     (ops : Prog k)
     (b : qs.Basis)
+    {pts : List Point}
+    {hpts : pts.length = q k}
     (hstatic : CSignedRecursiveWorkspaceOK ops ctrl x z)
     (hclean : RecursiveWorkspaceCleanBasis x z b)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hInterp : GoodToomCookPoints k pts hpts)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state) :
     PhaseLoweringReady qs
-      (standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops hstatic)
+      (standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops pts hpts hstatic)
       (qs.ket b) := by
   rw [standardCSignedPhaseLoweringPlan]
   split
@@ -405,9 +424,9 @@ lemma standardCSignedPhaseLoweringPlan_ready_ket
       planCompiledCSignedPhaseGate_ready_ket
         (qs := qs)
         (hk := hk)
-        (pts := genInterpolationPoints k)
-        (hpts := generatedInterpolationPoints_length k)
-        (hInterp := by simpa using genInterpolationPoints_good k)
+        (pts := pts)
+        (hpts := hpts)
+        (hInterp := hInterp)
         (ops := ops)
         (hC := hC)
         (hRun := hRun)
@@ -436,11 +455,12 @@ lemma standardCSignedPhaseLoweringPlan_ready_ket
       simpa [src, dst] using step.childInputSize i
     have hchildReady :
         PhaseLoweringReady qs
-          (standardCSignedPhaseLoweringPlan k hk ctrl theta (dst.xslot i) (dst.zslot i) ops hchild)
+          (standardCSignedPhaseLoweringPlan k hk ctrl theta (dst.xslot i) (dst.zslot i) ops pts hpts hchild)
           (qs.ket b') := by
       exact standardCSignedPhaseLoweringPlan_ready_ket (qs := qs) (k := k) (hk := hk)
         (ctrl := ctrl) (phi := theta) (x := dst.xslot i) (z := dst.zslot i)
-        (ops := ops) (b := b') (hstatic := hchild) (hclean := hclean') (hC := hC) (hRun := hRun)
+        (ops := ops) (pts := pts) (hpts := hpts) (hstatic := hchild) (hclean := hclean')
+        (hInterp := hInterp) (hC := hC) (hRun := hRun)
     dsimp only [id_eq]
     convert hchildReady using 2
     all_goals
@@ -469,15 +489,19 @@ theorem standardCSignedPhaseLoweringPlan_ready
     (x z : ExtReg)
     (ops : Prog k)
     (ψ : qs.State)
+    {pts : List Point}
+    {hpts : pts.length = q k}
     (hstatic : CSignedRecursiveWorkspaceOK ops ctrl x z)
     (hclean : RecursiveWorkspaceCleanState qs x z ψ)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hInterp : GoodToomCookPoints k pts hpts)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state) :
-    PhaseLoweringReady qs (standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops hstatic) ψ := by
+    PhaseLoweringReady qs (standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops pts hpts hstatic) ψ := by
   induction hclean with
   | zero => exact PhaseLoweringReady.zero qs _
   | ket b hcleanBasis =>
-      exact standardCSignedPhaseLoweringPlan_ready_ket qs k hk ctrl phi x z ops b hstatic hcleanBasis hC hRun
+      exact standardCSignedPhaseLoweringPlan_ready_ket qs k hk ctrl phi x z ops b
+        (pts := pts) (hpts := hpts) hstatic hcleanBasis hInterp hC hRun
   | add hψ hφ ihψ ihφ => exact PhaseLoweringReady.add qs _ ihψ ihφ
   | smul a hψ ihψ => exact PhaseLoweringReady.smul qs _ a ihψ
 
@@ -494,11 +518,14 @@ lemma standardCSignedPhaseLoweringPlan_ready_of_workspace
     (x z : ExtReg)
     (ops : Prog k)
     (ψ : qs.State)
+    {pts : List Point}
+    {hpts : pts.length = q k}
     (hworkspace : CSignedRecursiveWorkspaceStateOK qs ops ctrl x z ψ)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hInterp : GoodToomCookPoints k pts hpts)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state):
-    PhaseLoweringReady qs (standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops hworkspace.static) ψ := by
+    PhaseLoweringReady qs (standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops pts hpts hworkspace.static) ψ := by
   exact standardCSignedPhaseLoweringPlan_ready qs k hk ctrl phi x z ops ψ
-    hworkspace.static hworkspace.clean hC hRun
+    (pts := pts) (hpts := hpts) hworkspace.static hworkspace.clean hInterp hC hRun
 
 end Shor

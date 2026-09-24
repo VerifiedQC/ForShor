@@ -7,6 +7,7 @@ import FastMultiplication.ShorVerification.Implementation.GateCount.Lemmas.LowGa
 open Shor
 
 namespace Shor
+open Operations
 
 /-! =========================================================
     QFT Gate-Count Bound
@@ -84,23 +85,23 @@ section ExplicitCosts
 noncomputable def explicitQFTGateCount
     {Basis : Type u}
     [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r xWork zWork : Reg)
     (hworkspace : QFTWorkspaceOK ops r xWork zWork) : ℕ :=
   LowGate.gateCount shorGateCostModel
-    (lowerQFTPlan (standardQFTLoweringPlan k hk ops r xWork zWork hworkspace))
+    (lowerQFTPlan (standardQFTLoweringPlan k hk ops pts hpts r xWork zWork hworkspace))
 
 /-- Concrete low-gate count of the PhaseProduct node used at a nontrivial QFT split. -/
 noncomputable def explicitQFTPhaseGateCount
     {Basis : Type u}
     [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r xWork zWork : Reg)
     (hworkspace : QFTWorkspaceOK ops r xWork zWork)
     (hsize : 2 ≤ regSize r) : ℕ :=
   LowGate.gateCount shorGateCostModel
     (lowerGateRec
-      (standardPhaseProdUsingPlan k hk ops (qftPhi (regSize r))
+      (standardPhaseProdUsingPlan k hk ops pts hpts (qftPhi (regSize r))
         (hworkspace.phaseWorkspace hsize)
         (hworkspace.signedWorkspaceOK hsize)))
 
@@ -108,15 +109,15 @@ noncomputable def explicitQFTPhaseGateCount
 lemma explicitQFTPhaseGateCount_eq_lowerGate
     {Basis : Type u}
     [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (φ : Angle) (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (hsigned : SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1)) :
     LowGate.gateCount shorGateCostModel
-        (lowerGateRec (standardPhaseProdUsingPlan k hk ops φ ws hsigned))
+        (lowerGateRec (standardPhaseProdUsingPlan k hk ops pts hpts φ ws hsigned))
       =
     LowGate.gateCount shorGateCostModel
-        (lowerGate k hk ops
+        (lowerGate k hk ops pts hpts
           (Gate.PhaseProdUsing φ x z ws)
           (by simpa [GateWorkspaceOK, Gate.PhaseProdUsing] using hsigned)) := by
   simp [standardPhaseProdUsingPlan, Gate.PhaseProdUsing, lowerGate,
@@ -127,13 +128,13 @@ lemma explicitQFTPhaseGateCount_eq_lowerGate
 lemma explicitQFTPhaseGateCount_eq_signed
     {Basis : Type u}
     [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r xWork zWork : Reg)
     (hworkspace : QFTWorkspaceOK ops r xWork zWork)
     (hsize : 2 ≤ regSize r) :
-    explicitQFTPhaseGateCount (Basis := Basis) k hk ops r xWork zWork hworkspace hsize
+    explicitQFTPhaseGateCount (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace hsize
       =
-    signedPhaseProductGateCount (Basis := Basis) k hk ops (qftPhi (regSize r))
+    signedPhaseProductGateCount (Basis := Basis) k hk ops pts hpts (qftPhi (regSize r))
       ((hworkspace.phaseWorkspace hsize).xExt.grow 1)
       ((hworkspace.phaseWorkspace hsize).zExt.grow 1)
       (hworkspace.signedWorkspaceOK hsize) := by
@@ -145,26 +146,26 @@ lemma explicitQFTPhaseGateCount_eq_signed
         (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws) := by
     simpa [GateWorkspaceOK, Gate.PhaseProdUsing] using hsigned
   calc
-    explicitQFTPhaseGateCount (Basis := Basis) k hk ops r xWork zWork hworkspace hsize
+    explicitQFTPhaseGateCount (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace hsize
         =
       LowGate.gateCount shorGateCostModel
-        (lowerGate k hk ops
+        (lowerGate k hk ops pts hpts
           (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws)
           hgate) := by
             simpa [explicitQFTPhaseGateCount, ws, hsigned, hgate] using
               explicitQFTPhaseGateCount_eq_lowerGate
-                (Basis := Basis) k hk ops (qftPhi (regSize r))
+                (Basis := Basis) k hk ops pts hpts (qftPhi (regSize r))
                 (leftReg r) (rightReg r) ws hsigned
     _ =
-      signedPhaseProductGateCount (Basis := Basis) k hk ops (qftPhi (regSize r))
+      signedPhaseProductGateCount (Basis := Basis) k hk ops pts hpts (qftPhi (regSize r))
         (ws.xExt.grow 1) (ws.zExt.grow 1)
         (phaseProdUsing_signedWorkspace ops (qftPhi (regSize r))
           (leftReg r) (rightReg r) ws hgate) :=
       lowerGate_PhaseProdUsing_gateCount_eq_signed
-        (Basis := Basis) k hk ops (qftPhi (regSize r))
+        (Basis := Basis) k hk ops pts hpts (qftPhi (regSize r))
         (leftReg r) (rightReg r) ws hgate
     _ =
-      signedPhaseProductGateCount (Basis := Basis) k hk ops (qftPhi (regSize r))
+      signedPhaseProductGateCount (Basis := Basis) k hk ops pts hpts (qftPhi (regSize r))
         ((hworkspace.phaseWorkspace hsize).xExt.grow 1)
         ((hworkspace.phaseWorkspace hsize).zExt.grow 1)
         (hworkspace.signedWorkspaceOK hsize) := by
@@ -174,32 +175,32 @@ lemma explicitQFTPhaseGateCount_eq_signed
 lemma explicitQFTGateCount_split
     {Basis : Type u}
     [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r xWork zWork : Reg)
     (hworkspace : QFTWorkspaceOK ops r xWork zWork)
     (hsize : 2 ≤ regSize r) :
-    explicitQFTGateCount (Basis := Basis) k hk ops r xWork zWork hworkspace
+    explicitQFTGateCount (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace
       =
-    explicitQFTGateCount (Basis := Basis) k hk ops (rightReg r) xWork zWork
+    explicitQFTGateCount (Basis := Basis) k hk ops pts hpts (rightReg r) xWork zWork
         (hworkspace.right hsize)
       +
-    explicitQFTPhaseGateCount (Basis := Basis) k hk ops r xWork zWork hworkspace hsize
+    explicitQFTPhaseGateCount (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace hsize
       +
-    explicitQFTGateCount (Basis := Basis) k hk ops (leftReg r) xWork zWork
+    explicitQFTGateCount (Basis := Basis) k hk ops pts hpts (leftReg r) xWork zWork
         (hworkspace.left hsize)
       +
     qftSplitRadixGateCount r := by
   have hplan :
-      standardQFTLoweringPlan k hk ops r xWork zWork hworkspace =
+      standardQFTLoweringPlan k hk ops pts hpts r xWork zWork hworkspace =
         QFTLoweringPlan.split r hsize
           (hworkspace.phaseWorkspace hsize)
           (phaseProdUsingInputSize (hworkspace.phaseWorkspace hsize))
-          (standardPhaseProdUsingPlan k hk ops (qftPhi (regSize r))
+          (standardPhaseProdUsingPlan k hk ops pts hpts (qftPhi (regSize r))
             (hworkspace.phaseWorkspace hsize)
             (hworkspace.signedWorkspaceOK hsize))
-          (standardQFTLoweringPlan k hk ops (rightReg r) xWork zWork
+          (standardQFTLoweringPlan k hk ops pts hpts (rightReg r) xWork zWork
             (hworkspace.right hsize))
-          (standardQFTLoweringPlan k hk ops (leftReg r) xWork zWork
+          (standardQFTLoweringPlan k hk ops pts hpts (leftReg r) xWork zWork
             (hworkspace.left hsize)) := by
     rw [standardQFTLoweringPlan]
     simp [show regSize r ≠ 0 by omega, show regSize r ≠ 1 by omega]
@@ -213,13 +214,13 @@ lemma explicitQFTGateCount_split
 lemma explicitQFTGateCount_zero
     {Basis : Type u}
     [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r xWork zWork : Reg)
     (hworkspace : QFTWorkspaceOK ops r xWork zWork)
     (hzero : regSize r = 0) :
-    explicitQFTGateCount (Basis := Basis) k hk ops r xWork zWork hworkspace = 0 := by
+    explicitQFTGateCount (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace = 0 := by
   have hplan :
-      standardQFTLoweringPlan k hk ops r xWork zWork hworkspace =
+      standardQFTLoweringPlan k hk ops pts hpts r xWork zWork hworkspace =
         QFTLoweringPlan.empty r hzero := by
     rw [standardQFTLoweringPlan]
     simp [hzero]
@@ -232,17 +233,18 @@ lemma explicitQFTGateCount_one
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k)
     (r xWork zWork : Reg)
     (hworkspace : QFTWorkspaceOK ops r xWork zWork)
     (hone : regSize r = 1) :
     explicitQFTGateCount
         (Basis := Basis)
-        k hk ops r xWork zWork hworkspace
+        k hk ops pts hpts r xWork zWork hworkspace
       = 1 := by
 
   have hplan :
       standardQFTLoweringPlan
-          k hk ops r xWork zWork hworkspace
+          k hk ops pts hpts r xWork zWork hworkspace
         =
       QFTLoweringPlan.singleton r hone := by
     rw [standardQFTLoweringPlan]
@@ -285,7 +287,8 @@ lemma explicitQFTPhaseGateCount_eventually_le
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (hPhase : PhaseProductGateCountBound (Basis := Basis) k hk ops) :
+    (pts : List Point) (hpts : pts.length = q k)
+    (hPhase : PhaseProductGateCountBound (Basis := Basis) k hk ops pts hpts) :
     ∃ Cφ : ℝ, 0 < Cφ ∧
     ∃ Nφ : ℕ, 2 ≤ Nφ ∧
       ∀ (r xWork zWork : Reg)
@@ -293,7 +296,7 @@ lemma explicitQFTPhaseGateCount_eventually_le
         (hsize : 2 ≤ regSize r),
         Nφ ≤ regSize r →
         (explicitQFTPhaseGateCount (Basis := Basis)
-          k hk ops r xWork zWork hworkspace hsize : ℝ)
+          k hk ops pts hpts r xWork zWork hworkspace hsize : ℝ)
           ≤ Cφ * phaseProductGateRate k (regSize r) := by
   rcases hPhase with ⟨Cφ, hCφ, n₀, hn₀, hPhase⟩
   refine ⟨Cφ, hCφ, max 2 (2 * n₀), by omega, ?_⟩
@@ -320,15 +323,15 @@ lemma explicitQFTPhaseGateCount_eventually_le
   have hrate := phaseProductGateRate_mono k hk hsizeLe
   have hplanEq :
       explicitQFTPhaseGateCount (Basis := Basis)
-          k hk ops r xWork zWork hworkspace hsize
+          k hk ops pts hpts r xWork zWork hworkspace hsize
         =
       LowGate.gateCount shorGateCostModel
-        (lowerGate k hk ops
+        (lowerGate k hk ops pts hpts
           (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws)
           hgate) := by
     simpa [explicitQFTPhaseGateCount, ws, hsigned, hgate] using
       explicitQFTPhaseGateCount_eq_lowerGate
-        (Basis := Basis) k hk ops (qftPhi (regSize r))
+        (Basis := Basis) k hk ops pts hpts (qftPhi (regSize r))
         (leftReg r) (rightReg r) ws hsigned
   rw [hplanEq]
   exact hnode.trans (mul_le_mul_of_nonneg_left hrate (le_of_lt hCφ))
@@ -398,6 +401,7 @@ lemma explicitQFTPhaseGateCount_bounded_on_bounded_sizes
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k)
     (N : ℕ) :
     ∃ P : ℕ,
       ∀ (r xWork zWork : Reg)
@@ -405,9 +409,9 @@ lemma explicitQFTPhaseGateCount_bounded_on_bounded_sizes
         (hsize : 2 ≤ regSize r),
         regSize r ≤ N →
         explicitQFTPhaseGateCount (Basis := Basis)
-          k hk ops r xWork zWork hworkspace hsize ≤ P := by
+          k hk ops pts hpts r xWork zWork hworkspace hsize ≤ P := by
   rcases signedPhaseProductGateCount_bounded_on_bounded_inputs
-      (Basis := Basis) k hk ops (N + 1) with ⟨P, hP⟩
+      (Basis := Basis) k hk ops pts hpts (N + 1) with ⟨P, hP⟩
   refine ⟨P, ?_⟩
   intro r xWork zWork hworkspace hsize hr
   rw [explicitQFTPhaseGateCount_eq_signed]
@@ -426,23 +430,24 @@ lemma explicitQFTGateCount_bounded_on_bounded_sizes
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k)
     (N : ℕ) :
     ∃ D : ℕ,
       ∀ (r xWork zWork : Reg)
         (hworkspace : QFTWorkspaceOK ops r xWork zWork),
         regSize r ≤ N →
         explicitQFTGateCount (Basis := Basis)
-          k hk ops r xWork zWork hworkspace ≤ D := by
+          k hk ops pts hpts r xWork zWork hworkspace ≤ D := by
   induction N with
   | zero =>
       refine ⟨0, ?_⟩
       intro r xWork zWork hworkspace hsize
       rw [explicitQFTGateCount_zero
-        (Basis := Basis) k hk ops r xWork zWork hworkspace (by omega)]
+        (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace (by omega)]
   | succ N ih =>
       rcases ih with ⟨D, hD⟩
       rcases explicitQFTPhaseGateCount_bounded_on_bounded_sizes
-          (Basis := Basis) k hk ops (N + 1) with ⟨P, hP⟩
+          (Basis := Basis) k hk ops pts hpts (N + 1) with ⟨P, hP⟩
       let B : ℕ := max D (2 * D + P + 3 * (N + 1))
       refine ⟨B, ?_⟩
       intro r xWork zWork hworkspace hsize
@@ -469,21 +474,21 @@ lemma explicitQFTGateCount_bounded_on_bounded_sizes
             exact (qftSplitRadixGateCount_le r).trans
               (Nat.mul_le_mul_left 3 hsize)
           rw [explicitQFTGateCount_split
-            (Basis := Basis) k hk ops r xWork zWork hworkspace htwo]
+            (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace htwo]
           dsimp [B]
           apply le_trans (show
-              explicitQFTGateCount (Basis := Basis) k hk ops
+              explicitQFTGateCount (Basis := Basis) k hk ops pts hpts
                     (rightReg r) xWork zWork (hworkspace.right htwo)
-                + explicitQFTPhaseGateCount (Basis := Basis) k hk ops
+                + explicitQFTPhaseGateCount (Basis := Basis) k hk ops pts hpts
                     r xWork zWork hworkspace htwo
-                + explicitQFTGateCount (Basis := Basis) k hk ops
+                + explicitQFTGateCount (Basis := Basis) k hk ops pts hpts
                     (leftReg r) xWork zWork (hworkspace.left htwo)
                 + qftSplitRadixGateCount r
               ≤ 2 * D + P + 3 * (N + 1) by omega)
           exact Nat.le_max_right _ _
         · have hrOne : regSize r = 1 := by omega
           rw [explicitQFTGateCount_one
-            (Basis := Basis) k hk ops r xWork zWork hworkspace hrOne]
+            (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace hrOne]
           dsimp [B]
           apply le_trans (show 1 ≤ 2 * D + P + 3 * (N + 1) by omega)
           exact Nat.le_max_right _ _
@@ -495,7 +500,8 @@ lemma explicitQFTGateCount_one_level_recurrence
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (hPhase : PhaseProductGateCountBound (Basis := Basis) k hk ops) :
+    (pts : List Point) (hpts : pts.length = q k)
+    (hPhase : PhaseProductGateCountBound (Basis := Basis) k hk ops pts hpts) :
     ∃ A : ℝ, 0 < A ∧
     ∃ N : ℕ, 2 ≤ N ∧
       ∀ (r xWork zWork : Reg)
@@ -503,19 +509,19 @@ lemma explicitQFTGateCount_one_level_recurrence
         (hsize : 2 ≤ regSize r),
         N ≤ regSize r →
         (explicitQFTGateCount (Basis := Basis)
-          k hk ops r xWork zWork hworkspace : ℝ)
+          k hk ops pts hpts r xWork zWork hworkspace : ℝ)
           ≤
         (explicitQFTGateCount (Basis := Basis)
-          k hk ops (rightReg r) xWork zWork
+          k hk ops pts hpts (rightReg r) xWork zWork
           (hworkspace.right hsize) : ℝ)
           +
         (explicitQFTGateCount (Basis := Basis)
-          k hk ops (leftReg r) xWork zWork
+          k hk ops pts hpts (leftReg r) xWork zWork
           (hworkspace.left hsize) : ℝ)
           +
         A * phaseProductGateRate k (regSize r) := by
   rcases explicitQFTPhaseGateCount_eventually_le
-      (Basis := Basis) k hk ops hPhase with
+      (Basis := Basis) k hk ops pts hpts hPhase with
     ⟨Cφ, hCφ, Nφ, hNφ, hPhaseNode⟩
   rcases qftSplitRadixGateCount_eventually_le k hk with
     ⟨Cr, hCr, Nr, hNr, hRadixNode⟩
@@ -526,7 +532,7 @@ lemma explicitQFTGateCount_one_level_recurrence
   have hnr : Nr ≤ regSize r :=
     le_trans (Nat.le_max_right Nφ Nr) hn
   have hsplit := explicitQFTGateCount_split
-    (Basis := Basis) k hk ops r xWork zWork hworkspace htwo
+    (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace htwo
   have hphase := hPhaseNode r xWork zWork hworkspace htwo hnφ
   have hradix := hRadixNode r hnr
   rw [hsplit]
@@ -726,6 +732,7 @@ lemma explicitQFT_binary_recurrence_solution
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k)
     (hcontract :
       ∃ ρ : ℝ,
         0 ≤ ρ ∧ ρ < 1 ∧
@@ -741,7 +748,7 @@ lemma explicitQFT_binary_recurrence_solution
             (hworkspace : QFTWorkspaceOK ops r xWork zWork),
             regSize r ≤ N →
             explicitQFTGateCount (Basis := Basis)
-              k hk ops r xWork zWork hworkspace ≤ D)
+              k hk ops pts hpts r xWork zWork hworkspace ≤ D)
     (hstep :
       ∃ A : ℝ, 0 < A ∧
       ∃ N : ℕ, 2 ≤ N ∧
@@ -750,14 +757,14 @@ lemma explicitQFT_binary_recurrence_solution
           (hsize : 2 ≤ regSize r),
           N ≤ regSize r →
           (explicitQFTGateCount (Basis := Basis)
-            k hk ops r xWork zWork hworkspace : ℝ)
+            k hk ops pts hpts r xWork zWork hworkspace : ℝ)
             ≤
           (explicitQFTGateCount (Basis := Basis)
-            k hk ops (rightReg r) xWork zWork
+            k hk ops pts hpts (rightReg r) xWork zWork
             (hworkspace.right hsize) : ℝ)
             +
           (explicitQFTGateCount (Basis := Basis)
-            k hk ops (leftReg r) xWork zWork
+            k hk ops pts hpts (leftReg r) xWork zWork
             (hworkspace.left hsize) : ℝ)
             +
           A * phaseProductGateRate k (regSize r)) :
@@ -766,7 +773,7 @@ lemma explicitQFT_binary_recurrence_solution
       (hworkspace : QFTWorkspaceOK ops r xWork zWork),
       1 ≤ regSize r →
       (explicitQFTGateCount (Basis := Basis)
-        k hk ops r xWork zWork hworkspace : ℝ)
+        k hk ops pts hpts r xWork zWork hworkspace : ℝ)
         ≤ C * phaseProductGateRate k (regSize r) := by
   rcases hcontract with ⟨ρ, hρnonneg, hρlt, hcontractBound⟩
   rcases hstep with ⟨A, hA, N, hN, hstepBound⟩
@@ -800,7 +807,7 @@ lemma explicitQFT_binary_recurrence_solution
           (hworkspace : QFTWorkspaceOK ops r xWork zWork),
           regSize r = n →
           (explicitQFTGateCount (Basis := Basis)
-            k hk ops r xWork zWork hworkspace : ℝ)
+            k hk ops pts hpts r xWork zWork hworkspace : ℝ)
             ≤ C * phaseProductGateRate k n := by
     intro n
     induction n using Nat.strong_induction_on with
@@ -809,11 +816,11 @@ lemma explicitQFT_binary_recurrence_solution
         by_cases hsmall : n < N
         · have hcostNat :
               explicitQFTGateCount (Basis := Basis)
-                  k hk ops r xWork zWork hworkspace ≤ D :=
+                  k hk ops pts hpts r xWork zWork hworkspace ≤ D :=
             hD r xWork zWork hworkspace (by omega)
           have hcost :
               (explicitQFTGateCount (Basis := Basis)
-                k hk ops r xWork zWork hworkspace : ℝ) ≤ (D : ℝ) := by
+                k hk ops pts hpts r xWork zWork hworkspace : ℝ) ≤ (D : ℝ) := by
             exact_mod_cast hcostNat
           have hnR : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
           have hnRate :
@@ -824,7 +831,7 @@ lemma explicitQFT_binary_recurrence_solution
             hnR.trans hnRate
           calc
             (explicitQFTGateCount (Basis := Basis)
-                k hk ops r xWork zWork hworkspace : ℝ)
+                k hk ops pts hpts r xWork zWork hworkspace : ℝ)
                 ≤ (D : ℝ) := hcost
             _ ≤ C := hDleC
             _ ≤ C * phaseProductGateRate k n := by
@@ -852,14 +859,14 @@ lemma explicitQFT_binary_recurrence_solution
               (rightReg r) xWork zWork (hworkspace.right htwoR) rfl
           have hnode :
               (explicitQFTGateCount (Basis := Basis)
-                k hk ops r xWork zWork hworkspace : ℝ)
+                k hk ops pts hpts r xWork zWork hworkspace : ℝ)
                 ≤
               (explicitQFTGateCount (Basis := Basis)
-                k hk ops (rightReg r) xWork zWork
+                k hk ops pts hpts (rightReg r) xWork zWork
                 (hworkspace.right htwoR) : ℝ)
                 +
               (explicitQFTGateCount (Basis := Basis)
-                k hk ops (leftReg r) xWork zWork
+                k hk ops pts hpts (leftReg r) xWork zWork
                 (hworkspace.left htwoR) : ℝ)
                 +
               A * phaseProductGateRate k n := by
@@ -880,14 +887,14 @@ lemma explicitQFT_binary_recurrence_solution
             mul_le_mul_of_nonneg_left hcontractChildren (le_of_lt hC)
           calc
             (explicitQFTGateCount (Basis := Basis)
-                k hk ops r xWork zWork hworkspace : ℝ)
+                k hk ops pts hpts r xWork zWork hworkspace : ℝ)
                 ≤
               (explicitQFTGateCount (Basis := Basis)
-                k hk ops (rightReg r) xWork zWork
+                k hk ops pts hpts (rightReg r) xWork zWork
                 (hworkspace.right htwoR) : ℝ)
                 +
               (explicitQFTGateCount (Basis := Basis)
-                k hk ops (leftReg r) xWork zWork
+                k hk ops pts hpts (leftReg r) xWork zWork
                 (hworkspace.left htwoR) : ℝ)
                 +
               A * phaseProductGateRate k n := hnode
@@ -931,11 +938,12 @@ lemma lowerQFT_gateCount_eq_explicit
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k)
     (r : ExtReg)
     (hworkspace : QFTReserveOK ops r) :
-    LowGate.gateCount shorGateCostModel (lowerQFT k hk ops r hworkspace)
+    LowGate.gateCount shorGateCostModel (lowerQFT k hk ops pts hpts r hworkspace)
       =
-    explicitQFTGateCount (Basis := Basis) k hk ops r.active
+    explicitQFTGateCount (Basis := Basis) k hk ops pts hpts r.active
       (qftXWork ops r) (qftZWork ops r) hworkspace.explicitWorkspace := by
   rfl
 
@@ -946,16 +954,17 @@ theorem qftGateCountBound_of_phaseProduct
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (hPhase : PhaseProductGateCountBound (Basis := Basis) k hk ops) :
-    QFTGateCountBound (Basis := Basis) k hk ops := by
+    (pts : List Point) (hpts : pts.length = q k)
+    (hPhase : PhaseProductGateCountBound (Basis := Basis) k hk ops pts hpts) :
+    QFTGateCountBound (Basis := Basis) k hk ops pts hpts := by
   have hα : 1 < phaseProductExponent k := one_lt_phaseProductExponent k hk
   have hcontract := qft_half_rate_contraction k hk hα
   have hbase :=
-    explicitQFTGateCount_bounded_on_bounded_sizes (Basis := Basis) k hk ops
+    explicitQFTGateCount_bounded_on_bounded_sizes (Basis := Basis) k hk ops pts hpts
   have hstep :=
-    explicitQFTGateCount_one_level_recurrence (Basis := Basis) k hk ops hPhase
+    explicitQFTGateCount_one_level_recurrence (Basis := Basis) k hk ops pts hpts hPhase
   rcases explicitQFT_binary_recurrence_solution
-      (Basis := Basis) k hk ops hcontract hbase hstep with
+      (Basis := Basis) k hk ops pts hpts hcontract hbase hstep with
     ⟨C, hC, hbound⟩
   refine ⟨C, hC, 1, by omega, ?_⟩
   intro r hworkspace hn
@@ -964,7 +973,7 @@ theorem qftGateCountBound_of_phaseProduct
     hbound r.active (qftXWork ops r) (qftZWork ops r)
       hworkspace.explicitWorkspace (by simpa [hactiveSize] using hn)
   rw [lowerQFT_gateCount_eq_explicit
-    (Basis := Basis) k hk ops r hworkspace]
+    (Basis := Basis) k hk ops pts hpts r hworkspace]
   simpa [hactiveSize, phaseProductSafeRate, phaseProductGateRate,
     max_eq_right hn] using hgate
 
@@ -975,10 +984,11 @@ theorem qftGateCountBound_of_programOK
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (hops : PhaseProductProgramOK k hk ops) :
-    QFTGateCountBound (Basis := Basis) k hk ops := by
-  exact qftGateCountBound_of_phaseProduct (Basis := Basis) k hk ops
-    (phaseProductGateCountBound_of_programOK (Basis := Basis) k hk ops hops)
+    (pts : List Point) (hpts : pts.length = q k)
+    (hops : PhaseProductProgramOK k hk pts hpts ops) :
+    QFTGateCountBound (Basis := Basis) k hk ops pts hpts := by
+  exact qftGateCountBound_of_phaseProduct (Basis := Basis) k hk ops pts hpts
+    (phaseProductGateCountBound_of_programOK (Basis := Basis) k hk ops pts hpts hops)
 
 end PublicTheorems
 

@@ -1,3 +1,4 @@
+import FastMultiplication.ShorVerification.Framework.ToomCookTable
 import Mathlib.Analysis.Complex.Exponential
 import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 import Mathlib.LinearAlgebra.Vandermonde
@@ -19,6 +20,12 @@ This file develops the pure interpolation algebra used by the phase-product
 compiler: interpolation points, Vandermonde-style invertibility, reconstruction
 at a radix, and the exponential phase scalars obtained from weighted point
 sums.
+
+`SUBMISSION_PLAN.md` S2.0 moved the three definitions C2 is stated in terms
+of — `listToFin`, `interpMatrix` and `GoodInterpolationPoints`, all generic
+in the point type — into `Framework/ToomCookTable.lean`. They keep their
+fully-qualified names; `ToomCookMath.Point`, `pointRow`, `radixRow` and every
+invertibility and interpolation proof stayed here.
 -/
 
 /-! =========================================================
@@ -39,21 +46,9 @@ def pointCoordQ : Point → ℚ
   | Point.frac c =>
       if c = 0 then 0 else 1 / (c : ℚ)
 
-/-- Convert a list of length `m` into a `Fin m`-indexed function. -/
-def listToFin {α : Type u} {m : ℕ} (pts : List α) (hpts : pts.length = m) : Fin m → α :=
-  fun i => pts.get ⟨i.1, by simp [hpts]⟩
-
-def interpMatrix {Point : Type u} {m : ℕ} (row : Point → Fin m → ℚ) (pts : Fin m → Point) :
-    Matrix (Fin m) (Fin m) ℚ :=
-  fun i j => row (pts i) j
-
 /-- Row `[1, B, B^2, ...]`, used for evaluation at radix `B`. -/
 def radixRow (m : ℕ) (B : ℚ) : Matrix (Fin 1) (Fin m) ℚ :=
   fun _ j => B ^ (j : ℕ)
-
-def GoodInterpolationPoints {Point : Type u} {m : ℕ} (row : Point → Fin m → ℚ)
-    (pts : Fin m → Point) : Prop :=
-  Matrix.det (interpMatrix row pts) ≠ 0
 
 /-! =========================================================
     Invertibility and interpolation correctness

@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.Workspace
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
-import FastMultiplication.ShorVerification.Framework.Submission
+import FastMultiplication.ShorVerification.Framework.Contract
 import FastMultiplication.ShorVerification.Implementation.Reference.ReferencePrecision
 
 namespace Shor

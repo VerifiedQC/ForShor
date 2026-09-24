@@ -269,17 +269,21 @@ A lowering plan using the standard interpolation points.
 This abbreviation hides the interpolation-point bookkeeping while leaving the
 physical layout and workspace choices explicit in the plan.
 -/
-abbrev StandardPhaseLoweringPlan (k : ℕ) (hk : 1 < k) (ops : Prog k) (initSize : ℕ) (U : Gate) : Type :=
-  PhaseLoweringPlan k hk (genInterpolationPoints k) (generatedInterpolationPoints_length k) ops initSize U
+abbrev StandardPhaseLoweringPlan
+    (k : ℕ) (hk : 1 < k) (pts : List Point) (hpts : pts.length = q k)
+    (ops : Prog k) (initSize : ℕ) (U : Gate) : Type :=
+  PhaseLoweringPlan k hk pts hpts ops initSize U
 
 /-- Interpret a standard lowering plan for any gate in the supported fragment. -/
 def lowerPhasePlan
     (k : ℕ)
     (hk : 1 < k)
+    (pts : List Point)
+    (hpts : pts.length = q k)
     (ops : Prog k)
     {initSize : ℕ}
     {U : Gate}
-    (plan : StandardPhaseLoweringPlan k hk ops initSize U) :
+    (plan : StandardPhaseLoweringPlan k hk pts hpts ops initSize U) :
     LowGate :=
   lowerGateRec plan
 
@@ -296,7 +300,9 @@ def lowerSignedPhaseProd
     (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
-    (plan : StandardPhaseLoweringPlan k hk ops (phaseInputSize x z) (Gate.SignedPhaseProd phi x z)) :
+    (pts : List Point)
+    (hpts : pts.length = q k)
+    (plan : StandardPhaseLoweringPlan k hk pts hpts ops (phaseInputSize x z) (Gate.SignedPhaseProd phi x z)) :
     LowGate :=
   lowerGateRec plan
 
@@ -312,8 +318,10 @@ def lowerCSignedPhaseProd
     (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
+    (pts : List Point)
+    (hpts : pts.length = q k)
     (plan :
-      StandardPhaseLoweringPlan k hk ops (phaseInputSize x z) (Gate.CSignedPhaseProd ctrl phi x z)) :
+      StandardPhaseLoweringPlan k hk pts hpts ops (phaseInputSize x z) (Gate.CSignedPhaseProd ctrl phi x z)) :
     LowGate :=
   lowerGateRec plan
 

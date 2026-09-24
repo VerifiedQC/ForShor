@@ -1,21 +1,28 @@
 # `Implementation/`
 
-`Framework/` defines what a Shor order-finding *submission* is:
-`Framework/Submission.lean`'s `ShorImplementation` structure asks for one
-`LowGate` circuit per valid order-finding instance, a declared success
-probability, a trial count amplifying that probability to 99% on 2048-bit
-moduli, and proofs that both are honest. Everything under `Implementation/`
-exists to build one concrete value of that structure and hand it to the
-framework — this folder *is* the submission, not the specification of one.
+`Framework/` defines what correctness means: `Framework/Contract.lean`'s
+`ShorImplementation` structure asks for one `LowGate` circuit per valid
+order-finding instance, a declared success probability, a trial count
+amplifying that probability to 99% on 2048-bit moduli, and proofs that both
+are honest. Everything under `Implementation/` exists to build values of that
+structure and hand them to the framework.
+
+**This folder is the construction, not the submission.** It used to be both.
+A submission is now a Toom-Cook table — `Framework/ToomCookTable.lean`'s
+`ShorSubmission`: an arithmetic program and the interpolation points it
+evaluates at, plus four decidable side conditions — and `Reference/` is what
+turns any admissible table into a circuit family. The distinction matters
+because `referenceProgramAt_success` is *generic* in the table, so passing
+those four conditions is a complete acceptance test with no per-submission
+proof. See `ShorVerification/Submission/README.md`.
 
 The work splits into three independently-verified subroutines
 (`PhaseProduct/`, `QFT/`, `ModularExponentiation/`), a library of lemmas
 shared across them (`Shared/`), the assembly folder that composes the
 subroutines into the full order-finding circuit and proves Shor's algorithm
-correct (`Shor/`), the resource-estimation layer the leaderboard scores on
-(`GateCount/`), and the folder that makes every remaining choice concrete and
-packages the result as the actual submitted `ShorImplementation`
-(`Reference/`).
+correct (`Shor/`), the resource-estimation layer (`GateCount/`), and the
+folder that makes every remaining choice concrete and turns a table into a
+`ShorImplementation` (`Reference/`).
 
 ```
 PhaseProduct, QFT, ModularExponentiation  <  Shor  <  Reference
@@ -111,25 +118,31 @@ that the rate collapses to `2 + ε`.
 recursion arity `k` and a generated interpolation program such that the
 complete lowered Shor circuit's gate count is bounded by `n^(2+ε)`.
 
-## `Reference/` — the concrete submission
+## `Reference/` — table ↦ circuit family
 
 **Tackles:** making every choice the folders above leave abstract (which
-interpolation-point program, which physical register layout, which precision
-schedule as a function of the framework's natural-number precision level
-`m`) into one deterministic, fully computable construction, discharging the
-implementation-specific readiness obligations against it, and packaging the
-result as an actual value of the framework's `ShorImplementation` structure
-— including the 2048-bit-benchmark trial count and gate count the
-leaderboard scores on.
+physical register layout, which precision schedule as a function of the
+framework's natural-number precision level `m`) into one deterministic,
+fully computable construction, discharging the implementation-specific
+readiness obligations against it, and packaging the result as a value of the
+framework's `ShorImplementation` structure.
 
-**Final theorem/definition:** `referenceShorImplementation` — the
-`ShorImplementation` instance itself, i.e. the submission. Everything else in
-this folder (`ReferenceLayout.lean`, `ReferenceReadiness.lean`,
-`ReferencePrecision.lean`, `ShorProgram.lean`, `Reference2048Headline.lean`)
-exists to construct its fields and discharge its proof obligations.
-`Reference2048Headline.lean` additionally computes the concrete numbers
-(`headlineTrialCount`, `headlineTotalGateCount`) for the 2048-bit benchmark
-modulus family the leaderboard actually compares.
+One choice it no longer makes: the interpolation-point program. That is the
+*input* now — a `ShorLoweringSetup`, i.e. a submission — and
+`standardLoweringSetup` is merely this folder's own default, the canonical
+ladder `0, -1, 1, -2, 2, …`, not a constant baked into anything's type.
+
+**Final theorem/definition:** `referenceProgramAt_success`, which is where
+the genericity lives: it holds for *every* `ShorLoweringSetup`, so a
+submitted table needs no correctness proof of its own.
+`referenceShorImplementation lowering` packages a table into the framework's
+structure. Everything else here (`ReferenceLayout.lean`,
+`ReferenceReadiness.lean`, `ReferencePrecision.lean`, `ShorProgram.lean`,
+`Reference2048Headline.lean`) exists to construct those fields and discharge
+their obligations. `Reference2048Headline.lean` fixes the explicit precision
+`m2048` (`η = 2⁻¹⁵⁰`) and proves the single-run bound at it retains at
+least 99% of the ideal `κ / (log₂ N)⁴` baseline — which is what
+`Submission/Score.lean` turns into the trial count the score multiplies by.
 
 ## Reading order for newcomers
 

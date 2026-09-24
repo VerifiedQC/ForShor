@@ -8,29 +8,33 @@ namespace Shor
 open Classical
 
 /-!
-# Submission Interface
+# The framework's correctness contract
 
-This module is the public framework boundary for Shor order-finding submissions.
+What "a correct Shor order-finding construction" means, stated once:
+`probability_of_success`, the instance and program records, and
+`ShorImplementation`, which bundles a circuit family with a proof that it
+meets a declared single-run success bound on every valid instance and a
+trial count amplifying that bound past 99% on the 2048-bit benchmark.
 
-A submission provides one `LowGate` circuit for each valid order-finding
-instance and proves that the resulting circuit is correct for every valid
-modulus and base.
+**This is no longer what a submitter writes.** `SUBMISSION_PLAN.md` §0/P7
+narrowed the challenge: a submission is a Toom-Cook table
+(`Shor.ShorSubmission`, in `Framework/ToomCookTable.lean`) — an arithmetic
+program and the interpolation points it evaluates at — and the reference
+construction turns any admissible table into a circuit family. So
+`ShorImplementation` became the framework's *internal* contract rather than
+its public boundary: every accepted submission `s` still yields one, as
+`Reference.referenceShorImplementation s`, but nobody writes the fields by
+hand. The file was called `Framework/Submission.lean` until S3.3; the name
+now collides with both `Submission/` and `ShorSubmission`, and "contract" is
+what it always was.
 
-Correctness is completely general: a submitted implementation must satisfy
-the framework's order-finding specification for every valid input instance.
-
-Resource comparison is benchmark-specific.  The competition benchmark is
-the family of 2048-bit moduli.  A submission provides one concrete number of
-independent trials sufficient to amplify the declared single-run success
-probability to at least 99% for every 2048-bit modulus (`trialCount`); the
-logical gate count of a single run is not declared by the submission but
-computed by the framework itself, via `ShorOrderFindingProgram.frameworkGateCount`,
-from the concrete circuit the submission's `program` produces for a given
-instance.
-
-The leaderboard score is the product
-
-`trialCount N * (program inst).frameworkGateCount` for a 2048-bit modulus `N`.
+Scoring moved out too (decision P4). The leaderboard score is
+`Shor.submissionTrialCount N` (`Submission/Score.lean`, fixed for every
+submission at the organiser's chosen precision) times the gate count
+Qualtran measures on the IR `Emit/` extracts — not a quantity computed in
+Lean. `ShorOrderFindingProgram.frameworkGateCount` below is kept, and is
+still the count the asymptotic theorems (`GateCount/Shor_GateCount.lean`)
+are stated with; it is just no longer the scored number.
 
 Construction, lowering, synthesis, precision selection, workspace layout,
 and all other implementation details remain entirely on the implementation
@@ -97,11 +101,12 @@ structure ShorOrderFindingProgram where
   output : Reg
 
 /--
-The logical gate count of a submitted program under the framework's
-shared cost model.
+The logical gate count of a program under the framework's shared cost model.
 
-This quantity is computed by the framework.  A submission does not provide
-its own gate-count function.
+Computed by the framework, never declared. It is what
+`GateCount/Shor_GateCount.lean`'s asymptotic bounds are about; it is *not*
+the leaderboard score, which is measured by Qualtran on the emitted IR
+(P4).
 -/
 def ShorOrderFindingProgram.frameworkGateCount
     (P : ShorOrderFindingProgram) : ℕ :=
@@ -112,25 +117,25 @@ variable [MeasureClass qs]
 variable [LowerGateClass qs]
 
 /--
-A verified Shor order-finding submission.
+A verified Shor order-finding construction: the framework's semantic
+contract.
 
 Correctness is universal: `program` must correctly implement order finding
-for every valid `ShorOrderFindingInstance`.
+for every valid `ShorOrderFindingInstance`. Amplification is
+benchmark-specific: `trialCount` is one concrete natural number of
+independent trials sufficient to push the declared success lower bound past
+99% for every 2048-bit modulus.
 
-Resource competition is specialized to 2048-bit moduli.
+Not written by hand any more. An accepted submission is a
+`Shor.ShorSubmission` (`Framework/ToomCookTable.lean`), and
+`Reference.referenceShorImplementation` builds this record from it, filling
+`correct` from `Reference.referenceSubmittedProgram_correct` — the theorem
+that is generic in the table, which is what makes the four decidable side
+conditions on a table a *complete* acceptance test.
 
-`trialCount` is one concrete natural number of independent trials that is
-sufficient to amplify the declared success lower bound to at least 99% for
-every 2048-bit modulus.
-
-There is no separately declared gate-count bound: the logical gate count of a
-submitted circuit is computed by the framework itself
-(`ShorOrderFindingProgram.frameworkGateCount`), directly from `program`.
-
-The leaderboard score is
-
-`trialCount N * (program inst).frameworkGateCount` for a 2048-bit instance
-`inst` with modulus `N`.
+There is no declared gate-count field: the logical gate count of a circuit is
+computed by the framework (`ShorOrderFindingProgram.frameworkGateCount`), and
+the scored count is measured outside Lean altogether (P4).
 -/
 structure ShorImplementation : Type where
 

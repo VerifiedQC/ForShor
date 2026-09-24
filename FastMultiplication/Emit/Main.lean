@@ -4,7 +4,8 @@ import FastMultiplication.Emit.Json.PlanJson
 import FastMultiplication.Emit.Lower.Decide
 import FastMultiplication.Emit.Lower.PhaseProduct
 import FastMultiplication.Emit.Lower.Qft
-import FastMultiplication.Emit.Lower.Instantiate
+import FastMultiplication.Emit.Reflect.Driver
+import FastMultiplication.Emit.IR.Json
 
 /-!
 # `forshor_emit` executable
@@ -19,11 +20,11 @@ compatibility with earlier use of this executable.
 def usageText : String :=
   "usage: forshor_emit shor <k> <a> <N> <m>\n" ++
   "       forshor_emit <k> <a> <N> <m>   (alias of shor)\n" ++
-  "       forshor_emit bundle <k> [--table standard|generate] [--m-max M] " ++
-  "[--w-max W] [--check-cramer]\n" ++
-  "       forshor_emit <schedule|coeff_poly|width|qft_plan|shor_plan|" ++
-  "recursion|template> <k> [--table standard|generate] [--m-max M] " ++
-  "[--w-max W] [--check-cramer]\n" ++
+  "       forshor_emit bundle <k> [--m-max M] " ++
+  "[--w-max W] [--check-cramer] [--no-template]\n" ++
+  "       forshor_emit <schedule|coeff_poly|width|qft_plan|shor_plan> <k> " ++
+  "[--m-max M] [--w-max W] [--check-cramer]\n" ++
+  "       forshor_emit template <k> [--w-max W]\n" ++
   "       forshor_emit phases <k> <m> <phiNum/phiDen>\n" ++
   "       forshor_emit pp <k> <n> <phiNum/phiDen> [--flat]\n" ++
   "       forshor_emit cpp <k> <n> <phiNum/phiDen> [--flat]\n" ++
@@ -51,15 +52,16 @@ def parsePhi (s : String) : Option (ℤ × ℤ) :=
 
 structure BundleArgs where
   k : ℕ
-  src : Shor.TableSource := .standard
   mMax : ℕ := 16
-  wMax : ℕ := 32
+  -- Covers `nextWidth`/`reserveNeed`/`qftWorkspaceNeed` at every width a
+  -- consumer's recursive unrolling is likely to visit, and at least
+  -- `template`'s own checked width `4 * k` for `k` up to 16.
+  wMax : ℕ := 64
   checkCramer : Bool := false
+  noTemplate : Bool := false
 
 def parseFlags : List String → BundleArgs → Option BundleArgs
   | [], acc => some acc
-  | "--table" :: "standard" :: rest, acc => parseFlags rest { acc with src := .standard }
-  | "--table" :: "generate" :: rest, acc => parseFlags rest { acc with src := .generate }
   | "--m-max" :: mStr :: rest, acc =>
       match mStr.toNat? with
       | some m => parseFlags rest { acc with mMax := m }
@@ -69,6 +71,7 @@ def parseFlags : List String → BundleArgs → Option BundleArgs
       | some w => parseFlags rest { acc with wMax := w }
       | none => none
   | "--check-cramer" :: rest, acc => parseFlags rest { acc with checkCramer := true }
+  | "--no-template" :: rest, acc => parseFlags rest { acc with noTemplate := true }
   | _, _ => none
 
 def parseBundleArgs : List String → Option BundleArgs
@@ -78,9 +81,27 @@ def parseBundleArgs : List String → Option BundleArgs
       | none => none
       | some k => parseFlags rest { k := k }
 
-def runBundle (a : BundleArgs) : IO UInt32 := do
+unsafe def runBundle (a : BundleArgs) : IO UInt32 := do
   if hk : 1 < a.k then
-    match Shor.buildBundle a.src a.k hk a.mMax a.wMax a.checkCramer with
+    match ← Shor.buildBundle a.k hk a.mMax a.wMax a.checkCramer a.noTemplate with
+    | .ok json =>
+        IO.println json.compress
+        return 0
+    | .error e =>
+        IO.eprintln s!"error: {e}"
+        return 3
+  else
+    IO.eprintln s!"error: need k > 1 (k = {a.k})"
+    return 2
+
+/-- `template <k>`: print the extracted `Doc` alone,
+after `Doc.wellFormed` and the R2 instance checks — refuses with exit 3 on
+any failure (extraction, verification, or `--w-max` too small).
+`SUBMISSION_PLAN.md` S1.6 retired `--table generate`, so the exit-2 "that
+table cannot be extracted" refusal has no input left to reject. -/
+unsafe def runTemplate (a : BundleArgs) : IO UInt32 := do
+  if hk : 1 < a.k then
+    match ← Shor.buildTemplateDoc a.k hk a.wMax with
     | .ok json =>
         IO.println json.compress
         return 0
@@ -106,7 +127,7 @@ def runSection (sectionName : String) (args : List String) : IO UInt32 :=
       return 2
   | some ba =>
       if hk : 1 < ba.k then do
-        match Shor.buildSection sectionName ba.src ba.k hk ba.mMax ba.wMax ba.checkCramer with
+        match Shor.buildSection sectionName ba.k hk ba.mMax ba.wMax ba.checkCramer with
         | .ok json =>
             IO.println json.compress
             return 0
@@ -144,15 +165,15 @@ def runShorArgs (kStr aStr NStr mStr : String) : IO UInt32 :=
 /-- Shared driver for `pp`/`cpp`/`qft`: parse `<k> <n-or-w> [<phi>] [--flat]`,
 run the builder, print or report the `Except`. `buildFn`'s `annotated` flag
 is `!flat`. -/
-def runPPQFT (build : ℕ → ℕ → Bool → Except String Lean.Json) (kStr wStr : String)
+unsafe def runPPQFT (build : ℕ → ℕ → Bool → IO (Except String Lean.Json)) (kStr wStr : String)
     (flat : Bool) : IO UInt32 :=
   match kStr.toNat?, wStr.toNat? with
   | some k, some w =>
       if k ≤ 1 then do
         IO.eprintln s!"error: need k > 1 (k = {k})"
         return 2
-      else
-      match build k w (!flat) with
+      else do
+      match ← build k w (!flat) with
       | .ok json => do
           IO.println json.compress
           return 0
@@ -164,7 +185,7 @@ def runPPQFT (build : ℕ → ℕ → Bool → Except String Lean.Json) (kStr wS
       IO.eprint usageText
       return 2
 
-def runPP (isCtrl : Bool) (kStr nStr phiStr : String) (flat : Bool) : IO UInt32 :=
+unsafe def runPP (isCtrl : Bool) (kStr nStr phiStr : String) (flat : Bool) : IO UInt32 :=
   match parsePhi phiStr with
   | none => do
       IO.eprintln "error: phi must be an integer ratio num/den"
@@ -175,7 +196,7 @@ def runPP (isCtrl : Bool) (kStr nStr phiStr : String) (flat : Bool) : IO UInt32 
         if isCtrl then Shor.buildCPP k n num den annotated else Shor.buildPP k n num den annotated)
         kStr nStr flat
 
-def main (args : List String) : IO UInt32 := do
+unsafe def main (args : List String) : IO UInt32 := do
   match args with
   | "shor" :: kStr :: aStr :: NStr :: mStr :: [] => runShorArgs kStr aStr NStr mStr
   | "bundle" :: rest =>
@@ -183,6 +204,13 @@ def main (args : List String) : IO UInt32 := do
       | some ba => runBundle ba
       | none =>
           IO.eprintln "error: bad bundle arguments"
+          IO.eprint usageText
+          return 2
+  | "template" :: rest =>
+      match parseBundleArgs rest with
+      | some ba => runTemplate ba
+      | none =>
+          IO.eprintln "error: bad template arguments"
           IO.eprint usageText
           return 2
   | "pp" :: kStr :: nStr :: phiStr :: rest => runPP false kStr nStr phiStr (rest.contains "--flat")

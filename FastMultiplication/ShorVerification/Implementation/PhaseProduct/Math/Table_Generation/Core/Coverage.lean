@@ -1,3 +1,4 @@
+import FastMultiplication.ShorVerification.Framework.ToomCookTable
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Programs.WithProduct
 
 open List Operations
@@ -8,20 +9,16 @@ open List Operations
 This file packages ordered point consumption into explicit phase blocks. The
 main results turn `ProgConsumesPts` proofs into block decompositions and then
 back into unordered `PhaseProductCoverage` proofs.
+
+`SUBMISSION_PLAN.md` S2.0 moved `SafeProg` and `ProgConsumesPtsSafe` — C3's
+own statement, which a submission has to discharge — into
+`Framework/ToomCookTable.lean`. They keep their fully-qualified names; every
+lemma about them stayed here.
 -/
 
 /-! =========================================================
-    Section 1: Safety and phase-block structures
+    Section 1: Phase-block structures
 ========================================================= -/
-
-def SafeProg {k : ℕ} (ops : Prog k) : Prop :=
-  ∀ {pre rest : Prog k} {d s : Fin k} {negSrc : Bool} {sh : ℕ},
-    ops = pre ++ valid_ops.addScaled d s negSrc sh :: rest →
-      d ≠ s
-
-structure ProgConsumesPtsSafe {k : ℕ} (hk : k > 0) (σ : State k) (ops : Prog k) (pts : List Point) : Prop where
-  consumes : ProgConsumesPts hk σ ops pts
-  safe_add : SafeProg ops
 
 open Operations
 

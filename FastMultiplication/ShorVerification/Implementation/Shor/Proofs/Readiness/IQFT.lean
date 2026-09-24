@@ -112,6 +112,8 @@ private theorem lowered_IQFT_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         (IQFT x)
         hworkspace
         ψ := by
@@ -130,6 +132,7 @@ private theorem lowered_IQFT_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.good
         lowering.consumes
         lowering.returns
         (IQFT x)
@@ -229,7 +232,7 @@ theorem lowered_IQFT_ready_and_concrete_clean
 
   have hgateClean :
       GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops
+        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         (IQFT x) hworkspace ψ := by
     simpa [IQFT, GateWorkspaceCleanState] using hQFTWorkspaceClean
 
@@ -238,6 +241,7 @@ theorem lowered_IQFT_ready_and_concrete_clean
   · rw [
       lowerGate_correctness
         qs lowering.k lowering.hk lowering.ops
+        lowering.good
         lowering.consumes lowering.returns
         (IQFT x) hworkspace ψ hgateClean
     ]

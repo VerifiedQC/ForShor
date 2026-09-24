@@ -1,14 +1,15 @@
 # `Lower/`
 
 Concrete-width instances — the real, verified circuits at a width you
-choose, not the n-free `bundle` document. This is where `pp`, `cpp`, `qft`,
-and `shor` are built, and where the E7 templates get checked against the
-real compiled term.
+choose, not the n-free `bundle`/`template` document. This is where `pp`,
+`cpp`, `qft`, and `shor` are built, and where the extracted templates
+(`Reflect/`, `IR/`) get checked against the real compiled term at whatever
+width the caller actually asked for (`instantiate_eq_real`).
 
-Import order: `Decide.lean → Instantiate.lean → PhaseProduct.lean, Qft.lean`.
-`Shor.lean` is independent of the other three (it doesn't need `Decide.lean`
-or `Instantiate.lean` — it has no workspace precondition to discharge on the
-fly, and `--annotated` isn't implemented for it; see below).
+Import order: `Decide.lean, Registers.lean → Reflect/Verify.lean →
+PhaseProduct.lean, Qft.lean`. `Shor.lean` is independent of the others (it
+doesn't need `Decide.lean` — it has no workspace precondition to discharge
+on the fly, and `--annotated` isn't implemented for it; see below).
 
 ## `Decide.lean`
 
@@ -39,6 +40,26 @@ Everything downstream discharges these at a **concrete** width supplied on
 the command line — there is no abstract proof for general `n`/`w` anywhere
 in `Lower/`.
 
+## `Registers.lean`
+
+Concrete register construction, shared by `PhaseProduct.lean`/`Qft.lean`
+(the `pp`/`cpp`/`qft` CLI commands) **and** `Reflect/Verify.lean`'s
+instance-check canary — split into its own file specifically so
+`Verify.lean` can build the same registers those commands do without
+importing them back (they need `Verify.lean` for their own
+`instantiate_eq_real` check, so the dependency has to run this direction).
+
+- `ppRegisters {k} (ops) (n) : Except String (ExtReg × ExtReg × ℕ)` —
+  registers `x = [0, n)`, `z = [n, 2n)`, reserves placed immediately after
+  each, sized by `RecursivePhaseWorkspace.reserveNeed ops n n` plus one bit
+  each; a control qubit (for `cpp`) placed past both registers' full extent.
+  Active/reserve disjointness (needed just to call `ExtReg.withReserve`) is
+  discharged with `if hx : Disjoint xActive xReserve then ... else .error
+  ...` — decidable at this concrete `n`, from `Decide.lean`.
+- `qftRegister {k} (ops) (w) : Except String ExtReg` — one register of
+  width `w`, reserve sized by `qftWorkspaceNeed ops w`, active/reserve
+  disjointness discharged the same way.
+
 ## `Shor.lean`
 
 `Emit.Lower.Shor.runEmit (k a N m) : IO UInt32` — the `shor` subcommand:
@@ -59,93 +80,42 @@ and QFT leaves individually.
 ## `PhaseProduct.lean`
 
 The `pp`/`cpp` subcommands: concrete-width signed (and controlled) phase
-product via the real lowering.
+product via the real lowering. `unsafe`/`IO` since the annotated view
+extracts the template by reflection (`Reflect.runExtractAndVerify`) to run
+`instantiate_eq_real`.
 
-- `ppRegisters {k} (ops) (n) : Except String (ExtReg × ExtReg × ℕ)` —
-  registers `x = [0, n)`, `z = [n, 2n)`, reserves placed immediately after
-  each, sized by `RecursivePhaseWorkspace.reserveNeed ops n n` plus one bit
-  each; a control qubit (for `cpp`) placed past both registers' full extent.
-  Active/reserve disjointness (needed just to call `ExtReg.withReserve`) is
-  discharged with `if hx : Disjoint xActive xReserve then ... else .error
-  ...` — decidable at this concrete `n`, from `Decide.lean`.
-- `buildPP`/`buildCPP (k n) (phiNum phiDen) (annotated) : Except String
-  Json` — discharge `SignedRecursiveWorkspaceOK`/`CSignedRecursiveWorkspaceOK`
-  the same way, then either:
+- `buildPP`/`buildCPP (k n) (phiNum phiDen) (annotated) : IO (Except String
+  Json)` — discharge `SignedRecursiveWorkspaceOK`/`CSignedRecursiveWorkspaceOK`
+  (via `ppRegisters`, `Decide.lean`), then either:
   - `annotated = true` (the default): build `standardSignedPhaseLoweringPlan`/
-    `standardCSignedPhaseLoweringPlan`, run all three `Lower/Instantiate.lean`
-    checks against it, embed the results under `meta.checks`, and refuse
-    (`.error`) if any failed; otherwise print `planJson` via `emitPlanDoc`.
+    `standardCSignedPhaseLoweringPlan`, extract+verify the `Doc`
+    (`Reflect.runExtractAndVerify k` — standard table only; R5, §11), run
+    `check1_annotatedEqFlat` (`Json/PlanJson.lean`) and
+    `Reflect.phaseProductAgrees`/`cPhaseProductAgrees` (now `(hk) (ops)`,
+    not `(k) (hk) (src)` — `instantiate_eq_real`: the extracted template,
+    instantiated at *this* `n`, agreeing with the real compiled term),
+    embed both under `meta.checks`, and refuse (`.error`) if either failed;
+    otherwise print `planJson` via `emitPlanDoc`.
   - `annotated = false` (`--flat`): print `lowerSignedPhaseProdWithWorkspace`/
     `lowerCSignedPhaseProdWithWorkspace` via `emitLowGateDoc` directly, no
-    checks.
+    checks, no reflection.
+
+R3/R4 (`Emit/README.md`'s round history): this replaced the old `template_match`/`ladder`
+checks (`Symbolic/Template.lean`/`Symbolic/Recursion.lean`, both deleted)
+with a check against the *extracted* template directly.
 
 ## `Qft.lean`
 
 The `qft` subcommand, same shape as `PhaseProduct.lean`:
 
-- `qftRegister {k} (ops) (w) : Except String ExtReg` — one register of
-  width `w`, reserve sized by `qftWorkspaceNeed ops w`, active/reserve
-  disjointness discharged the same way.
-- `buildQFT (k w) (annotated) : Except String Json` — discharges
-  `QFTReserveOK`, then either builds `reserveQFTLoweringPlan`, runs check 1
-  (`annotated_eq_flat`) and check 3's QFT variant (`split`), embeds them
-  under `meta.checks`, and prints via `qftPlanJsonOf`/`emitPlanDoc`; or
-  (`--flat`) prints `lowerQFT` directly via `emitLowGateDoc`.
+- `buildQFT (k w) (annotated) : IO (Except String Json)` — discharges
+  `QFTReserveOK` (via `qftRegister`), then either builds
+  `reserveQFTLoweringPlan`, extracts+verifies the `Doc`, runs
+  `annotated_eq_flat` and `Reflect.qftAgrees` (`instantiate_eq_real`),
+  embeds them under `meta.checks`, and prints via
+  `qftPlanJsonOf`/`emitPlanDoc`; or (`--flat`) prints `lowerQFT` directly
+  via `emitLowGateDoc`.
 
-## `Instantiate.lean`
-
-The three instantiation checks tying the annotated plan, the flat
-`LowGate`, and the E7 template together at a concrete checked width.
-Re-scoped from a literal "byte for byte" / multi-level design: full fidelity
-would mean recursively unrolling the template and replaying
-`PhaseSplitLayout.ofBudget`'s exact physical-qubit assignment algorithm — a
-new sub-system, not a check.
-
-1. **Annotated = flat** (`check1_annotatedEqFlat`). `deepFlattenPlanJsonList`
-   splices `seq` nodes fully and substitutes `SignedPhaseProd`/
-   `CSignedPhaseProd` annotations with their `expansion`/`body` (recursing
-   into the `expansion` too — it's itself `lowGateJson`'s output for a
-   `LowGate.seq`, not an opaque leaf; this was a real bug the first time
-   check 1 ran, caught immediately by testing at a recursion-triggering
-   width). `wrapFlattened` then presents the result the same way
-   `lowGateJson` would (single item as itself, `id` as `{"op":"id"}`,
-   otherwise one `seq` node), and it's compared to `lowGateJson` of the
-   independently-computed flat term via `BEq Json`. Scoped to `pp`/`cpp`/`qft`
-   (their terms contain no `Gate.adj`, which this flattener doesn't
-   descend into).
-2. **Template ≈ annotated, one level** (`check2_signed`/`check2_csigned`).
-   Two halves:
-   - *Widths*: `WExpr.eval` interprets a `Symbolic/Template.lean` `WExpr` at
-     a concrete `W`, realizing `nextWidth` as
-     `RecursivePhaseWorkspace.nextWidth ops`. The template's `limb_width`
-     and each slot's width, evaluated this way, must equal the real
-     compiler's own numbers — `phaseLimbWidth` and `PhaseSplitLayout.child`'s
-     width, read directly off the annotated plan's `layout` field (obtained
-     by pattern-matching the plan on `.signedStep`/`.cSignedStep`).
-   - *Shape*: `shallowFlattenPlanJsonList` splices `seq` nodes but stops at
-     a nested `SignedPhaseProd`/`CSignedPhaseProd` (unlike check 1's deep
-     flatten — this is what makes the comparison "one level"). `opSignature`
-     projects each op down to its shape-relevant fields (the tag, plus
-     `negSrc`/`shift` for `AddScaled`); a phase-product node — `PhaseProduct`/
-     `CPhaseProduct` on the template, `SignedPhaseProd`/`CSignedPhaseProd`
-     on the real plan — normalizes to one canonical tag with no further
-     fields, since the template's `child` interpolation-point index has no
-     counterpart on the real plan's node (which carries all `q k`
-     coefficients, not one selected index) — this exact mismatch was the
-     second bug check 2 caught on first use. `check2_shapeMatch` compares
-     the two projected sequences for equality.
-   `none` if the plan is already at a base case — nothing for check 2 to
-   compare (the template's own `recursion` field already says the naive
-   primitive applies there).
-3. **Ladder** (`check3_ladder`, `check3_qftSplit`). `planDepth`/
-   `planLeafCount` walk the plan counting `.signedStep`/`.cSignedStep`
-   nesting and `.signedBase`/`.cSignedBase` leaves; compared against
-   `Symbolic/Recursion.lean`'s `widthLadder`'s length and `q k ^ depth`.
-   `qftPlanSplits`/`check3_qftSplit` do the same for `QFTLoweringPlan`,
-   comparing every `.split` node's widths to E4's `splitM`-based formula.
-
-`PhaseProduct.lean`/`Qft.lean` run all of these automatically whenever
-`--annotated` is requested (the default), embedding the results under
-`meta.checks` and refusing with exit `3` if any fails — so a failing check
-here is not just a test-suite signal, it's a live gate on what the CLI will
-print.
+(The old `split` check, tied to `Symbolic/Recursion.lean`-adjacent
+`Lower/Instantiate.lean`, was dropped along with that file in R3/R4 —
+`instantiate_eq_real`'s full-depth agreement subsumes what it was checking.)

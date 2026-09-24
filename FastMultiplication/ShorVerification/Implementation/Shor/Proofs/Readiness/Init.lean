@@ -247,6 +247,8 @@ theorem lowered_H_reg_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         (H_reg x.active)
         hworkspace
         ψ :=
@@ -279,6 +281,7 @@ theorem lowered_H_reg_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.good
         lowering.consumes
         lowering.returns
         (H_reg x.active)
@@ -414,6 +417,8 @@ theorem lowered_initY1_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         (initY1 data.active)
         hworkspace
         ψ :=
@@ -430,6 +435,7 @@ theorem lowered_initY1_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.good
         lowering.consumes
         lowering.returns
         (initY1 data.active)

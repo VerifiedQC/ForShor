@@ -1,3 +1,4 @@
+import FastMultiplication.ShorVerification.Framework.ToomCookTable
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Core.Registers
 import Mathlib.Tactic
 import Mathlib.Data.ZMod.Basic
@@ -5,40 +6,28 @@ import Mathlib.Data.ZMod.Basic
 /-!
 # Table-generation program language
 
-This file defines programs over the symbolic table-generation operations, their
-partial execution semantics, point-row matchers, phase-product coverage
-predicates, notation, and lightweight program equivalence.
+Well-formedness, point-row matchers, phase-product coverage predicates,
+notation, and lightweight program equivalence for programs over the symbolic
+table-generation operations.
+
+`SUBMISSION_PLAN.md` S2.0 moved `Prog`, `applyOp?`, `run?` (the C4
+vocabulary) and `MatchesAtState`, `expectedRow`, `regEqExpected`,
+`matchesAt_pointRow_state`, `ProgConsumesPts` (the C3 vocabulary) into
+`Framework/ToomCookTable.lean`. They keep their fully-qualified names; the
+lemmas about them, the richer matchers (`expectedRow2`, `pointAnchor`,
+`finLast`), the unordered `PhaseProductCoverage(M)`, the notation and the
+examples all stayed here.
 -/
 
 /-! =========================================================
-    Section 1: Programs and execution core
+    Section 1: Program inverse
 ========================================================= -/
 
 open Operations
 
-/-- A program is just a list of valid operations. -/
-abbrev Prog (k : ℕ) := List (valid_ops k)
-
-/-- Execute one operation. Right shift may fail if division is inexact. -/
-def applyOp? {k : ℕ} (σ : State k) : valid_ops k → Option (State k)
-| .shiftL i n           => some (State.shiftLReg σ i n)
-| .shiftR i n           => State.shiftRReg? σ i n
-| .negate i             => some (State.negateReg σ i)
-| .addScaled i j s sh   => some (State.addScaledReg σ i j s sh)
-| .phaseProduct _       => some σ
-
 /-- Reverse the program and invert each operation. -/
 def apply_Op_inverse {k : ℕ} (p : Prog k) : Prog k :=
   p.reverse.map Operations.inv
-
-/-- Execute a program left→right. Fails if any right shift is inexact. -/
-def run? {k : ℕ} : Prog k → State k → Option (State k)
-| [],       σ => some σ
-| op :: ps, σ =>
-  match applyOp? σ op with
-  | none    => none
-  | some σ' => run? ps σ'
-
 
 /-! =========================================================
     Section 2: Well-formedness and small constructors
@@ -103,32 +92,6 @@ end Prog
     interpolation polynomial at the given Point? Return `true` when it matches. -/
 abbrev MatchesAt (k : Nat) := Register k → Point → Bool
 
-/-- A richer matcher that can inspect the whole state and the destination register. -/
-abbrev MatchesAtState (k : Nat) := State k → Fin k → Point → Bool
-
-
-/--
-The integral row stored for an interpolation point.
-
-For `int z`, this is `[1, z, z², ..., z^(k-1)]`.
-
-For `frac m`, representing `1/m`, this is the rescaled row
-
-  `m^(k-1) * [1, 1/m, ..., 1/m^(k-1)]`
-
-namely `[m^(k-1), m^(k-2), ..., m, 1]`.
-
-At `m = 0`, this becomes the leading-coefficient selector.
--/
-def expectedRow {k : Nat} : Point → Register k
-| .int z  => fun j => z ^ j.val
-| .frac m => fun j => m ^ (k - 1 - j.val)
-
-
-/-- Pointwise equality check between a register and `expectedRow pt`. -/
-def regEqExpected {k : Nat} (r : Register k) (pt : Point) : Bool :=
-  (List.finRange k).all (fun j => decide (r j = expectedRow (k := k) pt j))
-
 /-- `MatchesAt` that recognizes whether a register encodes the correct
     interpolation *row* for the given `Point`. -/
 def matchesAt_pointRow {k : Nat} : MatchesAt k :=
@@ -137,10 +100,6 @@ def matchesAt_pointRow {k : Nat} : MatchesAt k :=
 /-- Adapter from a register-only matcher to a state-aware matcher. -/
 def MatchesAtState.ofRegister {k : Nat} (m : MatchesAt k) : MatchesAtState k :=
   fun σ i pt => m (σ i) pt
-
-def matchesAt_pointRow_state {k : Nat} (_:k>0): MatchesAtState k :=
-  fun σ i pt => regEqExpected (k := k) (σ i) pt
-
 
 /-- Finite index `0 : Fin k` when `k > 0`. -/
 def finZero {k : Nat} (hk : 0 < k) : Fin k := ⟨0, hk⟩
@@ -360,19 +319,3 @@ inductive PhaseProductCoverageM {k : ℕ} (M : MatchesAtState k) :
 def PhaseProductCoverage {k : ℕ} (hk:k>0):
     Prog k → State k → List Operations.Point → Prop:=
     PhaseProductCoverageM (k := k) (matchesAt_pointRow_state (k := k) hk)
-
-/-- Ordered point consumption for a program with `phaseProduct` checkpoints.
-    Unlike `PhaseProductCoverage`, this proposition consumes the supplied points
-    from left to right. -/
-def ProgConsumesPts {k : ℕ} (hk : k > 0) : State k → Prog k → List Point → Prop
-| _σ, [], pts => pts = []
-| σ, op :: ops, pts =>
-  match op with
-  | valid_ops.phaseProduct i =>
-      ∃ pt ptsTail,
-        pts = pt :: ptsTail ∧
-        matchesAt_pointRow_state (k := k) hk σ i pt = true ∧
-        ProgConsumesPts hk σ ops ptsTail
-  | _ =>
-      ∃ σ', applyOp? (k := k) σ op = some σ' ∧
-            ProgConsumesPts hk σ' ops pts

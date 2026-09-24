@@ -121,7 +121,7 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U1 hworkspace.1)
       ψ
 
@@ -162,7 +162,7 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U2 hworkspace.2.1)
       ψ1
 
@@ -197,7 +197,7 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U3 hworkspace.2.2.1)
       ψ2
 
@@ -342,6 +342,8 @@ theorem gateWorkspaceCleanState_orderFindingApprox
       lowering.k
       lowering.hk
       lowering.ops
+      lowering.pts
+      lowering.hpts
       (orderFindingApprox a N x data work scratch flag
         hsetup.circuit_workspace hsetup.step4_workspace)
       hworkspace
@@ -455,6 +457,8 @@ theorem LoweredShorReady.workspace_clean
       lowering.k
       lowering.hk
       lowering.ops
+      lowering.pts
+      lowering.hpts
       (orderFindingApprox a N x y work scratch flag
         (ShorApproxSetupMinimal.toShorApproxSetup h.approx).circuit_workspace
         (ShorApproxSetupMinimal.toShorApproxSetup h.approx).step4_workspace)

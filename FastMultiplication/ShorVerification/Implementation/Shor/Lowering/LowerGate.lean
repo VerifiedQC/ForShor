@@ -22,6 +22,7 @@ on the input state, not a condition on the syntax or physical register layout.
 It belongs in the later semantic-correctness theorem.
 -/
 namespace Shor
+open Operations
 
 /-! =========================================================
     Static Workspace Precondition
@@ -87,7 +88,9 @@ constructor is added, only this branch needs to change.
 def lowerGate
     (k : ℕ)
     (hk : 1 < k)
-    (ops : Prog k) :
+    (ops : Prog k)
+    (pts : List Point)
+    (hpts : pts.length = q k) :
     (G : Gate) →
     GateWorkspaceOK ops G →
     LowGate
@@ -97,12 +100,12 @@ def lowerGate
 
   | Gate.seq U V, hworkspace =>
       LowGate.seq
-        (lowerGate k hk ops U hworkspace.1)
-        (lowerGate k hk ops V hworkspace.2)
+        (lowerGate k hk ops pts hpts U hworkspace.1)
+        (lowerGate k hk ops pts hpts V hworkspace.2)
 
   | Gate.adj U, hworkspace =>
       LowGate.adj
-        (lowerGate k hk ops U hworkspace)
+        (lowerGate k hk ops pts hpts U hworkspace)
 
   | Gate.H qbit, _ =>
       LowGate.H qbit
@@ -118,13 +121,13 @@ def lowerGate
 
   | Gate.QFT r, hworkspace =>
       lowerQFT
-        k hk ops r hworkspace
+        k hk ops pts hpts r hworkspace
 
   | Gate.SignedPhaseProd phi x z, hworkspace =>
-      lowerSignedPhaseProdWithWorkspace k hk phi x z ops hworkspace
+      lowerSignedPhaseProdWithWorkspace k hk phi x z ops pts hpts hworkspace
 
   | Gate.CSignedPhaseProd ctrl phi x z, hworkspace =>
-      lowerCSignedPhaseProdWithWorkspace k hk ctrl phi x z ops hworkspace
+      lowerCSignedPhaseProdWithWorkspace k hk ctrl phi x z ops pts hpts hworkspace
 
   | Gate.CmpGeConst N data scratch flag, hworkspace =>
       lowerCmpGeConst N data scratch flag hworkspace
@@ -180,7 +183,9 @@ noncomputable def GateWorkspaceCleanState
     [LowerGateClass qs]
     (k : ℕ)
     (hk : 1 < k)
-    (ops : Prog k) :
+    (ops : Prog k)
+    (pts : List Point)
+    (hpts : pts.length = q k) :
     (G : Gate) →
     GateWorkspaceOK ops G →
     qs.State →
@@ -190,14 +195,14 @@ noncomputable def GateWorkspaceCleanState
       True
 
   | Gate.seq U V, hworkspace, ψ =>
-      GateWorkspaceCleanState qs k hk ops U hworkspace.1 ψ
+      GateWorkspaceCleanState qs k hk ops pts hpts U hworkspace.1 ψ
         ∧
-      GateWorkspaceCleanState qs k hk ops V hworkspace.2
+      GateWorkspaceCleanState qs k hk ops pts hpts V hworkspace.2
           (LowerGateClass.evalL (qs := qs)
-            (lowerGate k hk ops U hworkspace.1) ψ)
+            (lowerGate k hk ops pts hpts U hworkspace.1) ψ)
 
   | Gate.adj U, hworkspace, ψ =>
-      GateWorkspaceCleanState qs k hk ops U hworkspace (qs.eval (Gate.adj U) ψ)
+      GateWorkspaceCleanState qs k hk ops pts hpts U hworkspace (qs.eval (Gate.adj U) ψ)
 
   | Gate.H _, _, _ =>
       True

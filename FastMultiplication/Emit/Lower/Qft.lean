@@ -1,6 +1,7 @@
 import FastMultiplication.Emit.Json.PlanJson
 import FastMultiplication.Emit.Lower.Decide
-import FastMultiplication.Emit.Lower.Instantiate
+import FastMultiplication.Emit.Lower.Registers
+import FastMultiplication.Emit.Reflect.Verify
 import FastMultiplication.Emit.Table.Source
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.PlanBuilders
 
@@ -11,49 +12,53 @@ One register of width `w`, reserve sized by `qftWorkspaceNeed ops w`.
 `QFTReserveOK` (and the plain `Disjoint active reserve` needed to build the
 `ExtReg` at all) are `Decidable` at this concrete `w` (`Lower/Decide.lean`),
 discharged with `if h : … then … else refuse`.
--/
+
+R3/R4: the `split` check (`Symbolic/Recursion.lean`-adjacent,
+now-deleted `Lower/Instantiate.lean`) is replaced by `instantiate_eq_real` —
+the extracted `qft` template (`Reflect.Verify`), instantiated at this `w`,
+agreeing with the real compiled term directly. -/
 
 namespace Shor
 
 open Lean (Json)
 
-/-- One register of width `w` with reserve sized by `qftWorkspaceNeed`. -/
-def qftRegister {k : ℕ} (ops : Prog k) (w : ℕ) : Except String ExtReg :=
-  let need := qftWorkspaceNeed ops w
-  let active := Reg.interval 0 w
-  let reserve := Reg.interval w (need.1 + need.2)
-  if h : Disjoint active reserve then
-    .ok (ExtReg.withReserve active reserve h)
-  else
-    .error "internal: active/reserve overlap"
-
 /-- Build the `qft` document at concrete `k, w`. `annotated` selects the
 `PlanJson` view (with instantiation checks embedded, refusing on failure)
 over the flat `LowGate` view. -/
-def buildQFT (k w : ℕ) (annotated : Bool) : Except String Json :=
+unsafe def buildQFT (k w : ℕ) (annotated : Bool) : IO (Except String Json) := do
   if hk : 1 < k then
-    let ops := (tableInstance .standard k hk).ops
+    let setup := standardLoweringSetup k hk
+    let ops := setup.ops
     match qftRegister ops w with
-    | .error e => .error e
+    | .error e => return .error e
     | .ok r =>
         if hws : QFTReserveOK ops r then
           if annotated then
-            let plan := reserveQFTLoweringPlan k hk ops r hws
-            let check1 := lowGateJson (lowerQFTPlan plan) == lowGateJson (lowerQFT k hk ops r hws)
-            let check3 := check3_qftSplit plan
-            let checksJ :=
-              Json.mkObj [("annotated_eq_flat", Json.bool check1), ("split", Json.bool check3)]
-            let metaJ := Json.mkObj [("k", (k : Json)), ("w", (w : Json)), ("checks", checksJ)]
-            if check1 && check3 then
-              .ok (emitPlanDoc (qftPlanJsonOf plan) metaJ)
-            else
-              .error "instantiation check failed"
+            match ← Reflect.runExtractAndVerify k with
+            | .error e => return .error e
+            | .ok doc =>
+                let plan := reserveQFTLoweringPlan k hk ops setup.pts setup.hpts r hws
+                let check1 :=
+                  lowGateJson (lowerQFTPlan plan)
+                    == lowGateJson (lowerQFT k hk ops setup.pts setup.hpts r hws)
+                let instantiateEqReal :=
+                  Reflect.qftAgrees hk ops setup.pts setup.hpts doc r hws
+                let checksJ :=
+                  Json.mkObj [
+                    ("annotated_eq_flat", Json.bool check1),
+                    ("instantiate_eq_real", Json.bool instantiateEqReal)
+                  ]
+                let metaJ := Json.mkObj [("k", (k : Json)), ("w", (w : Json)), ("checks", checksJ)]
+                if check1 && instantiateEqReal then
+                  return .ok (emitPlanDoc (qftPlanJsonOf plan) metaJ)
+                else
+                  return .error "instantiation check failed"
           else
             let metaJ := Json.mkObj [("k", (k : Json)), ("w", (w : Json))]
-            .ok (emitLowGateDoc (lowerQFT k hk ops r hws) metaJ)
+            return .ok (emitLowGateDoc (lowerQFT k hk ops setup.pts setup.hpts r hws) metaJ)
         else
-          .error s!"insufficient workspace for w={w}"
+          return .error s!"insufficient workspace for w={w}"
   else
-    .error s!"need k > 1 (k={k})"
+    return .error s!"need k > 1 (k={k})"
 
 end Shor

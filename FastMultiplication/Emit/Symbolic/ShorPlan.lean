@@ -8,9 +8,7 @@ synthetic instances `N = 2^n − 1, a = 2` (`N` is always odd, so
 `gcd a N = 1` always holds; `a < N` holds for `n ≥ 2`): `referenceXWidth`,
 `referenceDataWidth`, `referenceWorkWidth` (through `algorithm1ExtraBitsNat
 m`), `referenceScratchWidth`, and the four reserve sizes from
-`referenceWorkspaceNeed`. Affine tails are detected per column the same way
-as E3 (`Symbolic/Width.lean`'s `affineTail`, applied by the caller to the
-extracted `(m, width)` columns below).
+`referenceWorkspaceNeed`.
 -/
 
 namespace Shor

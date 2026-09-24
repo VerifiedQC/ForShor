@@ -79,6 +79,8 @@ theorem WorkspaceFree.clean
       lowering.k
       lowering.hk
       lowering.ops
+      lowering.pts
+      lowering.hpts
       G
       hworkspace
       ψ := by
@@ -99,6 +101,8 @@ theorem WorkspaceFree.clean
             lowering.k
             lowering.hk
             lowering.ops
+            lowering.pts
+            lowering.hpts
             U
             hworkspace.1
             ψ
@@ -108,6 +112,8 @@ theorem WorkspaceFree.clean
             lowering.k
             lowering.hk
             lowering.ops
+            lowering.pts
+            lowering.hpts
             V
             hworkspace.2
             (LowerGateClass.evalL
@@ -116,6 +122,8 @@ theorem WorkspaceFree.clean
                 lowering.k
                 lowering.hk
                 lowering.ops
+                lowering.pts
+                lowering.hpts
                 U
                 hworkspace.1)
               ψ)
@@ -129,6 +137,8 @@ theorem WorkspaceFree.clean
                 lowering.k
                 lowering.hk
                 lowering.ops
+                lowering.pts
+                lowering.hpts
                 U
                 hworkspace.1)
               ψ)⟩
@@ -868,6 +878,8 @@ theorem lowered_step3_ready_and_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         (step3 N (data.grow 1) scratch flag)
         hworkspace
         ψ := by
@@ -889,6 +901,7 @@ theorem lowered_step3_ready_and_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.good
         lowering.consumes
         lowering.returns
         (step3 N (data.grow 1) scratch flag)

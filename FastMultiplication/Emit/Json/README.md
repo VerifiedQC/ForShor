@@ -35,9 +35,9 @@ it.
   the `LowGate` constructor names. A `.seq` node prints its *entire*
   subtree flattened into one `{"op": "seq", "body": [...]}` array (via
   `flattenSeq`) — nested seqs don't produce nested `"seq"` objects unless
-  there's a `.adj` in between. This convention matters: `Lower/Instantiate.lean`'s
-  check 1 has to reproduce it exactly to compare an annotated tree against
-  a flat one.
+  there's a `.adj` in between. This convention matters: `PlanJson.lean`'s
+  `check1_annotatedEqFlat` has to reproduce it exactly to compare an
+  annotated tree against a flat one.
 - `emitProgram (P : ShorOrderFindingProgram) (metaJson) : Json` — the
   `forshor.lowgate/v2` document for a full submitted program (`shor`'s
   document): `schema, bit_order, angle_unit, output_register, gate_count,
@@ -76,10 +76,29 @@ from `LowGate`.
     `zeroExtend`, `RadixReverse`, …) prints identically to `lowGateJson`.
     Unlike `lowGateJson`, a `.seq` node here is *not* flattened — it always
     prints as a plain two-element `{"op": "seq", "body": [left, right]}` —
-    which is exactly what `Lower/Instantiate.lean`'s deep-flattener has to
-    undo to compare against `lowGateJson`'s output.
+    which is exactly what `deepFlattenPlanJsonList` below has to undo to
+    compare against `lowGateJson`'s output.
 - `qftPlanJsonOf : QFTLoweringPlan k hk ops r → Json` — same idea for the
   QFT: `.split` prints the twiddle angle (`qftPhi (regSize r)`), the
   left/right sub-registers, and recurses into both children; the
   phase-product body between them prints through `planJson` directly,
   since it's itself a `StandardPhaseLoweringPlan` (no special case needed).
+
+`pp`/`cpp`'s `annotated_eq_flat` check (`Lower/PhaseProduct.lean`) —
+whether the annotated view above and the independently-computed flat
+`LowGate` term describe the same circuit — also lives here, moved in from
+the now-deleted `Lower/Instantiate.lean` (R4): it has
+nothing to do with the extracted IR (`Reflect/`, `IR/`), only with this
+file's own two views of the same real term, so it belongs next to
+`planJson`/`lowGateJson`, not in `Lower/` or `Reflect/`.
+
+- `deepFlattenPlanJsonList (j : Json) : List Json` — splices `seq` nodes
+  fully (matching `LowGate.flattenSeq`) and substitutes
+  `SignedPhaseProd`/`CSignedPhaseProd` annotations with their
+  `expansion`/`body` (recursing into `expansion` too — it's itself
+  `lowGateJson`'s output for a `LowGate.seq`, not an opaque leaf).
+- `wrapFlattened (items : List Json) : Json` — presents a flattened list
+  the same way `lowGateJson` would (`id` for `[]`, the item itself for a
+  singleton, one `seq` node otherwise).
+- `check1_annotatedEqFlat (planJ : Json) (flat : LowGate) : Bool` —
+  `wrapFlattened (deepFlattenPlanJsonList planJ) == lowGateJson flat`.

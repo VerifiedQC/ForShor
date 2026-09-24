@@ -36,16 +36,16 @@ lemma evalL_lowerSignedPhaseProd_of_plan
     (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
-    (plan : StandardPhaseLoweringPlan k hk ops (phaseInputSize x z) (Gate.SignedPhaseProd phi x z))
+    {pts : List Point}
+    {hpts : pts.length = q k}
+    (plan : StandardPhaseLoweringPlan k hk pts hpts ops (phaseInputSize x z) (Gate.SignedPhaseProd phi x z))
     (ψ : qs.State)
     (hready : PhaseLoweringReady qs plan ψ)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    (hInterp : GoodToomCookPoints k pts hpts)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state) :
-    LowerGateClass.evalL (qs := qs) (lowerSignedPhaseProd k hk phi x z ops plan) ψ
+    LowerGateClass.evalL (qs := qs) (lowerSignedPhaseProd k hk phi x z ops pts hpts plan) ψ
       = qs.eval (Gate.SignedPhaseProd phi x z) ψ := by
-  have hInterp :
-      GoodToomCookPoints k (genInterpolationPoints k) (generatedInterpolationPoints_length k) := by
-    simpa using genInterpolationPoints_good k
   exact evalL_lowerGateRec_correct (qs := qs) (hInterp := hInterp) (hC := hC) (hRun := hRun) plan ψ hready
 
 end Shor

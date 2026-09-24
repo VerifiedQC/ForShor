@@ -15,6 +15,7 @@ halves, and `lowerQFTPlan`, the interpreter erasing such a plan to a
 namespace Shor
 
 open Gate
+open Operations
 open scoped BigOperators
 
 /-! =========================================================
@@ -32,20 +33,23 @@ The phase plan is intentionally explicit.  This is the point at which a caller
 chooses either a base-case signed phase product or a recursive implementation
 with concrete reserve layouts.
 -/
-inductive QFTLoweringPlan (k : ℕ) (hk : 1 < k) (ops : Prog k) : Reg → Type
-  | empty (r : Reg) (hsize : regSize r = 0) : QFTLoweringPlan k hk ops r
-  | singleton (r : Reg) (hsize : regSize r = 1) : QFTLoweringPlan k hk ops r
+inductive QFTLoweringPlan
+    (k : ℕ) (hk : 1 < k) (pts : List Point) (hpts : pts.length = q k) (ops : Prog k) : Reg → Type
+  | empty (r : Reg) (hsize : regSize r = 0) : QFTLoweringPlan k hk pts hpts ops r
+  | singleton (r : Reg) (hsize : regSize r = 1) : QFTLoweringPlan k hk pts hpts ops r
   | split
       (r : Reg) (hsize : 2 ≤ regSize r) (ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r))
       (phaseInitSize : ℕ)
       (phasePlan :
-        StandardPhaseLoweringPlan k hk ops
+        StandardPhaseLoweringPlan k hk pts hpts ops
           phaseInitSize (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws))
-      (rightPlan : QFTLoweringPlan k hk ops (rightReg r))
-      (leftPlan : QFTLoweringPlan k hk ops (leftReg r)) :
-      QFTLoweringPlan k hk ops r
+      (rightPlan : QFTLoweringPlan k hk pts hpts ops (rightReg r))
+      (leftPlan : QFTLoweringPlan k hk pts hpts ops (leftReg r)) :
+      QFTLoweringPlan k hk pts hpts ops r
 
-def lowerQFTPlan {k : ℕ} {hk : 1 < k} {ops : Prog k} {r : Reg} (plan : QFTLoweringPlan k hk ops r) :
+def lowerQFTPlan
+    {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {ops : Prog k} {r : Reg}
+    (plan : QFTLoweringPlan k hk pts hpts ops r) :
     LowGate :=
   match plan with
   | .empty r hsize => LowGate.id

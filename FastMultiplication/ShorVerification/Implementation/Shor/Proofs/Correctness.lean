@@ -12,7 +12,7 @@ import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Config
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Precision
-import FastMultiplication.ShorVerification.Framework.Submission
+import FastMultiplication.ShorVerification.Framework.Contract
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
@@ -28,6 +28,7 @@ lives in `MathBackbone/ShorAlgorithm.lean`.
 -/
 namespace Shor
 open Gate
+open Operations
 open Classical
 
 variable {qs : QSemantics}
@@ -890,10 +891,11 @@ lemma probability_of_success_lowerGate_eq
     [LowerGateClass qs]
     (k : ℕ) (hk : 1 < k)
     (ops : Prog k)
+    {pts : List Point} {hpts : pts.length = q k}
+    (hInterp : GoodToomCookPoints k pts hpts)
     (hC : ProgConsumesPtsSafe
       (k := k) (by omega)
-      State.start_state ops
-      (genInterpolationPoints k))
+      State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state)
     (T : ℕ → ℕ)
     (verify : OrderVerifier)
@@ -902,10 +904,10 @@ lemma probability_of_success_lowerGate_eq
     (G : Gate)
     (hworkspace : GateWorkspaceOK ops G)
     (ψ : qs.State)
-    (hclean : GateWorkspaceCleanState qs k hk ops G hworkspace ψ) :
+    (hclean : GateWorkspaceCleanState qs k hk ops pts hpts G hworkspace ψ) :
     probability_of_success (qs := qs) (evalC := LowerGateClass.evalL (qs := qs))
         (T := T) (verify := verify) (x := x) (r := r) (Q := Q)
-        (C := lowerGate k hk ops G hworkspace) (ψ := ψ)
+        (C := lowerGate k hk ops pts hpts G hworkspace) (ψ := ψ)
       =
     probability_of_success (qs := qs) (evalC := qs.eval)
         (T := T) (verify := verify) (x := x) (r := r) (Q := Q)
@@ -913,7 +915,7 @@ lemma probability_of_success_lowerGate_eq
   have hEval :
       LowerGateClass.evalL
           (qs := qs)
-          (lowerGate k hk ops G hworkspace)
+          (lowerGate k hk ops pts hpts G hworkspace)
           ψ
         =
       qs.eval G ψ :=
@@ -922,6 +924,7 @@ lemma probability_of_success_lowerGate_eq
       k
       hk
       ops
+      hInterp
       hC
       hRun
       G
@@ -956,6 +959,7 @@ theorem orderFindingApproxLow_probability_eq
       (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4))
     (ψ : qs.State)
     (hclean : GateWorkspaceCleanState qs lowering.k lowering.hk lowering.ops
+        lowering.pts lowering.hpts
         (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
         hLowerWorkspace ψ)
     (r Q : ℕ) :
@@ -964,7 +968,7 @@ theorem orderFindingApproxLow_probability_eq
         (T := T) (verify := verify) (x := x.active) (r := r)
         (Q := Q)
         (C := orderFindingApproxLow
-            lowering.k lowering.hk lowering.ops a N x y work scratch flag
+            lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts a N x y work scratch flag
             hmodWorkspace hstep4 hLowerWorkspace)
         (ψ := ψ)
       =
@@ -981,6 +985,7 @@ theorem orderFindingApproxLow_probability_eq
       (k := lowering.k)
       (hk := lowering.hk)
       (ops := lowering.ops)
+      (hInterp := lowering.good)
       (hC := lowering.consumes)
       (hRun := lowering.returns)
       (T := T)
@@ -1023,6 +1028,7 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (Q := ASize x.active)
         (evalC := LowerGateClass.evalL (qs := qs))
         (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
+          lowering.pts lowering.hpts
           inst.a inst.N x y work scratch flag
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
@@ -1040,6 +1046,7 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (Q := ASize x.active)
         (evalC := LowerGateClass.evalL (qs := qs))
         (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
+          lowering.pts lowering.hpts
           inst.a inst.N x y work scratch flag
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace

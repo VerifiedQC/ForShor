@@ -1,107 +1,52 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Builders.Fragments
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Generator.Defs
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Generator.Correctness
+import FastMultiplication.ShorVerification.Implementation.Reference.StandardLoweringSetup
 
 /-!
-# Toom-Cook table sources
+# The Toom-Cook table a bundle is built from
 
-Two table sources exist in the repository and they are **not** the same
-object (see `Emit/README.md`): `standard` (`genOpsWithProduct` fed
-`genInterpolationPoints`, via `Shor.standardLoweringSetup`) is what the
-lowering theorems (`ShorLoweringSetup.consumes`/`.returns`) are about;
-`generate` (`Table_Generation.generate`) is the older table-generation
-tooling, kept for comparison, with no such theorem. `standard` is the
-default the rest of the emitter uses.
+`SUBMISSION_PLAN.md` S1.6 retired `TableSource`. Until S1 the interpolation
+points were not a parameter — the lowering chain hard-wired
+`genInterpolationPoints k` into the *types* of the plan builders, so a second
+table with points of its own (`Table_Generation.generate`, the older
+table-generation tooling) could never be more than a value-table curiosity:
+it had no `ShorLoweringSetup`, hence no `consumes`/`returns` theorem, hence
+nothing the emitter's extraction path was allowed to touch, and
+`--table generate` was refused by everything downstream of the pure value
+sections. S1 made `pts` submission data, which removes the distinction at its
+root: a table *is* a `ShorLoweringSetup` (its `ops`, its `pts`, and the four
+side conditions relating them), and anything that cannot be packaged as one
+is not a table this emitter has anything to say about. So the inductive, the
+`--table` flag, `checkTable`'s run-time re-derivation of what a
+`ShorLoweringSetup` already proves, and the `.generate` value-table path are
+all gone; `TableInstance` survives as the read-only `(ops, points, hlen)`
+projection the JSON value-table builders (`Symbolic/Bundle.lean`) consume.
 -/
 
 namespace Shor
 
 open Operations
 
-/-- Which Toom-Cook table a `TableInstance` was built from. -/
-inductive TableSource where
-  | standard
-  | generate
-deriving Repr, DecidableEq
-
-/-- A concrete `Prog k` / interpolation-point-list pair, plus provenance.
-`hlen` lets downstream interpolation code (`Symbolic/CoeffPoly.lean`) consume
-`points` without re-deriving its length. -/
+/-- A concrete `Prog k` / interpolation-point-list pair: the part of a
+`ShorLoweringSetup` the `n`-free value tables actually read. `hlen` lets
+downstream interpolation code (`Symbolic/CoeffPoly.lean`) consume `points`
+without re-deriving its length. -/
 structure TableInstance (k : ℕ) where
   ops : Prog k
   points : List Point
   hlen : points.length = q k
-  decl : String
-  srcFile : String
 
-/-- Resolve a `TableSource` at arity `k`. -/
-def tableInstance (src : TableSource) (k : ℕ) (hk : 1 < k) : TableInstance k :=
-  match src with
-  | .standard =>
-      { ops := genOpsWithProduct (k := k) (by omega) (genInterpolationPoints k)
-        points := genInterpolationPoints k
-        hlen := generatedInterpolationPoints_length k
-        decl := "Shor.standardLoweringSetup"
-        srcFile :=
-          "FastMultiplication/ShorVerification/Implementation/Reference/StandardLoweringSetup.lean" }
-  | .generate =>
-      -- `generatePointsInOrder`, not a plain `streamPoint` enumeration: for
-      -- `k = 2, 3` the precomputed tables consume the canonical points in
-      -- their own order (a permutation of `streamPoint`'s enumeration,
-      -- `ValidPointOrder`/`generatePointsInOrder_valid`), which is what the
-      -- program's `phaseProduct` checkpoints actually see.
-      { ops := Table_Generation.generate .PhaseProduct k (by omega)
-        points := Table_Generation.generatePointsInOrder .PhaseProduct k (by omega)
-        hlen := by
-          have hperm := Table_Generation.generatePointsInOrder_valid .PhaseProduct k (by omega)
-          simpa [Table_Generation.canonicalPoints, Table_Generation.ProductMode.pointCount, q]
-            using hperm.length_eq
-        decl := "Table_Generation.generate"
-        srcFile :=
-          "FastMultiplication/ShorVerification/Implementation/PhaseProduct/Math/" ++
-          "Table_Generation/Generator/Defs.lean" }
+/-- The table a `ShorLoweringSetup` carries. Total, and proof-free: S1 made
+`pts` a field of the setup, so there is nothing left to resolve or to check
+here — `setup.consumes`/`setup.returns`/`setup.good` are exactly the
+conditions that used to be re-run at run time by `checkTable`, and they hold
+by construction of the setup. -/
+def ShorLoweringSetup.tableInstance (setup : ShorLoweringSetup) : TableInstance setup.k :=
+  { ops := setup.ops, points := setup.pts, hlen := setup.hpts }
 
-/-- Computable, ordered mirror of `ProgConsumesPts`: walk `ops` left to right,
-consuming `pts` from the front at each `phaseProduct` checkpoint. Unlike the
-existing `phaseCoverageFrom?`/`List.eraseFirstMatch?` checker (which accepts a
-match anywhere in the remaining point list), this requires each
-`phaseProduct i` to match exactly the *next* point, matching
-`ProgConsumesPts`'s own `pts = pt :: ptsTail` structure. -/
-def progConsumesPtsCheck {k : ℕ} (hk : k > 0) : State k → Prog k → List Point → Bool
-  | _σ, [], pts => pts.isEmpty
-  | σ, op :: ops, pts =>
-      match op with
-      | .phaseProduct i =>
-          match pts with
-          | [] => false
-          | pt :: ptsTail =>
-              matchesAt_pointRow_state hk σ i pt && progConsumesPtsCheck hk σ ops ptsTail
-      | _ =>
-          match applyOp? σ op with
-          | none => false
-          | some σ' => progConsumesPtsCheck hk σ' ops pts
-
-/-- Blocking checks on a table instance. `standard` is backed by the
-compile-time theorems `genOpsWithProduct_ProgConsumesPtsSafe`/
-`genOpsWithProduct_returns_to_original` bundled into `ShorLoweringSetup`, so it
-always succeeds without recomputation. `generate` has no such theorem, so this
-runs the checks at run time and refuses (`Except.error`) on any mismatch. -/
-def checkTable (src : TableSource) (k : ℕ) (hk : 1 < k) (inst : TableInstance k) :
-    Except String Unit :=
-  match src with
-  | .standard => .ok ()
-  | .generate =>
-      if phaseProductCount inst.ops ≠ q k then
-        .error
-          s!"generate k={k}: phaseProduct count {phaseProductCount inst.ops} ≠ q k = {q k}"
-      else if run? inst.ops State.start_state ≠ some State.start_state then
-        .error s!"generate k={k}: program does not return to the start state"
-      else if ¬ progConsumesPtsCheck (by omega) State.start_state inst.ops inst.points then
-        .error s!"generate k={k}: ordered point-coverage check failed"
-      else
-        .ok ()
+/-- The standard table at arity `k`: `standardLoweringSetup`'s own. -/
+def standardTableInstance (k : ℕ) (hk : 1 < k) : TableInstance k :=
+  (standardLoweringSetup k hk).tableInstance
 
 end Shor

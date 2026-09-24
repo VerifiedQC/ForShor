@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFinding
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
-import FastMultiplication.ShorVerification.Framework.Submission
+import FastMultiplication.ShorVerification.Framework.Contract
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
 import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.Defs
 
@@ -102,6 +102,7 @@ def ShorCorrectApproxLoweredUniform
           (x := x.active) (r := ord inst.a inst.N inst.coprime)
           (Q := ASize x.active) (evalC := LowerGateClass.evalL (qs := qs))
           (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
+              lowering.pts lowering.hpts
               inst.a inst.N x y work scratch flag
               (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
               (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
