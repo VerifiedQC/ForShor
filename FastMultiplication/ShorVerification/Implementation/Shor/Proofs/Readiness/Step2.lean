@@ -275,6 +275,8 @@ private theorem gateWorkspaceCleanState_PhaseProdUsing_of_threeRegsClean
       lowering.k
       lowering.hk
       lowering.ops
+      lowering.pts
+      lowering.hpts
       (Gate.PhaseProdUsing
         φ x z ws)
       hworkspace
@@ -482,7 +484,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
 
   have hU1Clean :
       GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops
+        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U1 hworkspace.1 ψ := by
     exact
       threeRegsCleanState_to_QFTWorkspaceCleanState
@@ -492,7 +494,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U1 hworkspace.1)
       ψ
 
@@ -503,6 +505,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     rw [
       lowerGate_correctness
         qs lowering.k lowering.hk lowering.ops
+        lowering.good
         lowering.consumes lowering.returns
         U1 hworkspace.1 ψ hU1Clean
     ]
@@ -521,7 +524,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
 
   have hU2Clean :
       GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops
+        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U2 hworkspace.2.1 ψ1 := by
     exact
       gateWorkspaceCleanState_PhaseProdUsing_of_threeRegsClean
@@ -531,7 +534,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U2 hworkspace.2.1)
       ψ1
 
@@ -542,6 +545,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     rw [
       lowerGate_correctness
         qs lowering.k lowering.hk lowering.ops
+        lowering.good
         lowering.consumes lowering.returns
         U2 hworkspace.2.1 ψ1 hU2Clean
     ]
@@ -577,7 +581,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
 
   have hU3Clean :
       GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops
+        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U3 hworkspace.2.2 ψ2 := by
     simpa [U3, IQFT, GateWorkspaceCleanState] using hQFTLocal
 
@@ -592,6 +596,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     · rw [
         lowerGate_correctness
           qs lowering.k lowering.hk lowering.ops
+          lowering.good
           lowering.consumes lowering.returns
           U3 hworkspace.2.2 ψ2 hU3Clean
       ]
@@ -732,7 +737,7 @@ theorem lowered_step4_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U1 hworkspace.1)
       ψ
 
@@ -741,13 +746,14 @@ theorem lowered_step4_ready_and_clean
     rw [
       lowerGate_correctness
         qs lowering.k lowering.hk lowering.ops
+        lowering.good
         lowering.consumes lowering.returns
         U1 hworkspace.1 ψ hU1.1
     ]
 
   have hU2Clean :
       GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops
+        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U2 hworkspace.2.1 ψ1 := by
     simp [U2, cmpLtNWDifference, GateWorkspaceCleanState]
 
@@ -755,7 +761,7 @@ theorem lowered_step4_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U2 hworkspace.2.1)
       ψ1
 
@@ -764,6 +770,7 @@ theorem lowered_step4_ready_and_clean
     rw [
       lowerGate_correctness
         qs lowering.k lowering.hk lowering.ops
+        lowering.good
         lowering.consumes lowering.returns
         U2 hworkspace.2.1 ψ1 hU2Clean,
       hψ1
@@ -771,7 +778,7 @@ theorem lowered_step4_ready_and_clean
 
   have hU3Clean :
       GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops
+        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U3 hworkspace.2.2.1 ψ2 := by
     simp [U3, GateWorkspaceCleanState]
 
@@ -779,7 +786,7 @@ theorem lowered_step4_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U3 hworkspace.2.2.1)
       ψ2
 
@@ -789,6 +796,7 @@ theorem lowered_step4_ready_and_clean
     rw [
       lowerGate_correctness
         qs lowering.k lowering.hk lowering.ops
+        lowering.good
         lowering.consumes lowering.returns
         U3 hworkspace.2.2.1 ψ2 hU3Clean,
       hψ2
@@ -796,7 +804,7 @@ theorem lowered_step4_ready_and_clean
 
   have hU4Clean :
       GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops
+        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U4 hworkspace.2.2.2.1 ψ3 := by
     simp [U4, U2, cmpLtNWDifference, GateWorkspaceCleanState]
 
@@ -804,7 +812,7 @@ theorem lowered_step4_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U4 hworkspace.2.2.2.1)
       ψ3
 
@@ -816,6 +824,7 @@ theorem lowered_step4_ready_and_clean
     rw [
       lowerGate_correctness
         qs lowering.k lowering.hk lowering.ops
+        lowering.good
         lowering.consumes lowering.returns
         U4 hworkspace.2.2.2.1 ψ3 hU4Clean,
       hψ3
@@ -863,11 +872,11 @@ theorem lowered_step4_ready_and_clean
 
   have hU5Clean :
       GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops
+        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U5 hworkspace.2.2.2.2 ψ4 := by
     change
       GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops
+        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U1 hworkspace.2.2.2.2 (qs.eval U5 ψ4)
     rw [hU5Input]
     exact
@@ -888,24 +897,24 @@ theorem lowered_step4_ready_and_clean
 
   have hgateClean :
       GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops
+        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         (step4 N (data.grow 1) work scratch flag hstep4)
         hworkspace ψ := by
     change
       GateWorkspaceCleanState
-          qs lowering.k lowering.hk lowering.ops
+          qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
           U1 hworkspace.1 ψ ∧
         GateWorkspaceCleanState
-          qs lowering.k lowering.hk lowering.ops
+          qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
           U2 hworkspace.2.1 ψ1 ∧
         GateWorkspaceCleanState
-          qs lowering.k lowering.hk lowering.ops
+          qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
           U3 hworkspace.2.2.1 ψ2 ∧
         GateWorkspaceCleanState
-          qs lowering.k lowering.hk lowering.ops
+          qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
           U4 hworkspace.2.2.2.1 ψ3 ∧
         GateWorkspaceCleanState
-          qs lowering.k lowering.hk lowering.ops
+          qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
           U5 hworkspace.2.2.2.2 ψ4
     exact ⟨hU1.1, hU2Clean, hU3Clean, hU4Clean, hU5Clean⟩
 
@@ -914,6 +923,7 @@ theorem lowered_step4_ready_and_clean
   · rw [
       lowerGate_correctness
         qs lowering.k lowering.hk lowering.ops
+        lowering.good
         lowering.consumes lowering.returns
         (step4 N (data.grow 1) work scratch flag hstep4)
         hworkspace ψ hgateClean
@@ -1012,6 +1022,8 @@ theorem lowered_step1_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U1
         hworkspace.1
         ψ := by
@@ -1027,6 +1039,8 @@ theorem lowered_step1_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U1
         hworkspace.1)
       ψ
@@ -1042,6 +1056,7 @@ theorem lowered_step1_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.good
         lowering.consumes
         lowering.returns
         U1
@@ -1090,6 +1105,8 @@ theorem lowered_step1_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U2
         hworkspace.2.1
         ψ1 := by
@@ -1111,6 +1128,8 @@ theorem lowered_step1_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U2
         hworkspace.2.1)
       ψ1
@@ -1126,6 +1145,7 @@ theorem lowered_step1_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.good
         lowering.consumes
         lowering.returns
         U2
@@ -1220,6 +1240,8 @@ theorem lowered_step1_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U3
         hworkspace.2.2
         ψ2 := by
@@ -1247,6 +1269,7 @@ theorem lowered_step1_ready_and_full_clean
           lowering.k
           lowering.hk
           lowering.ops
+          lowering.good
           lowering.consumes
           lowering.returns
           U3
@@ -1401,6 +1424,8 @@ theorem lowered_step2_ready_and_carry_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U1
         hworkspace.1
         ψ := by
@@ -1418,6 +1443,8 @@ theorem lowered_step2_ready_and_carry_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U1
         hworkspace.1)
       ψ
@@ -1437,6 +1464,7 @@ theorem lowered_step2_ready_and_carry_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.good
         lowering.consumes
         lowering.returns
         U1
@@ -1478,6 +1506,8 @@ theorem lowered_step2_ready_and_carry_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U2
         hworkspace.2.1
         ψ1 := by
@@ -1498,6 +1528,8 @@ theorem lowered_step2_ready_and_carry_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U2
         hworkspace.2.1)
       ψ1
@@ -1517,6 +1549,7 @@ theorem lowered_step2_ready_and_carry_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.good
         lowering.consumes
         lowering.returns
         U2
@@ -1585,6 +1618,8 @@ theorem lowered_step2_ready_and_carry_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U3
         hworkspace.2.2
         ψ2 := by
@@ -1612,6 +1647,7 @@ theorem lowered_step2_ready_and_carry_clean
           lowering.k
           lowering.hk
           lowering.ops
+          lowering.good
           lowering.consumes
           lowering.returns
           U3

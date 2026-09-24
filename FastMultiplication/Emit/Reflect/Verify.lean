@@ -15,14 +15,14 @@ import FastMultiplication.ShorVerification.Implementation.Reference.ReferenceSho
 D7's trust statement ("checked: instantiate = real term at the listed
 widths") is established once, at build time, by `Tests.lean`'s R2.1-R2.7
 `native_decide` suite — but those checks are pinned to fixed small `k`
-(2, 3) and a fixed table source per section. `bundle`/`template` extract a
-`Doc` for whatever `(k, src)` the caller actually asks for at run time
+(2, 3) and to one fixed table apiece. `bundle`/`template` extract a `Doc`
+for whatever `k` the caller actually asks for at run time
 (`Reflect.runExtract`), so this file re-runs the *same kind* of check —
 `Doc.wellFormed`, then `instantiate`/`instantiateGate` agreeing with the
-real compiled/reference term — generically over `(k, hk, src)`, as the
-safety net `PLAN.md` §7 asks for: "preceded by `Doc.wellFormed` and by the
-R2 instance checks at a ladder of small widths; any failure refuses the
-whole bundle with exit 3."
+real compiled/reference term — generically over the whole
+`ShorLoweringSetup`, as the safety net `PLAN.md` §7 asks for: "preceded by
+`Doc.wellFormed` and by the R2 instance checks at a ladder of small widths;
+any failure refuses the whole bundle with exit 3."
 
 This is deliberately a representative canary, not exhaustive: one width per
 template (`4 * k`, comfortably past `k` so slot splitting/allocation is
@@ -84,34 +84,34 @@ def opaqueDispatch {k : ℕ} (ops : Prog k) : String → List ℕ → Option ℕ
     | "step5Const", [c, n] => some (step5Constant c n)
     | _, _ => none
 
-/-- The `coeff` oracle every template's `Env` needs, generalized over
-`(k, hk)` — mirrors `Tests.lean`'s own `coeff` fields.
+/-- The `coeff` oracle every template's `Env` needs, generalized over the
+points a setup actually carries — mirrors `Tests.lean`'s own `coeff` fields.
 
-**Always uses the `.standard` table's points, regardless of `src`.** This
-is not an approximation: `standardSignedPhaseLoweringPlan`/
-`standardCSignedPhaseLoweringPlan`/`standardQFTLoweringPlan`
-(`PlanBuilders.lean`) hardcode `genInterpolationPoints k` in their own
-`recurse` obligation's stated type, independent of whatever `ops : Prog k`
-they are actually handed — so the *real* term this canary compares against
-always uses the standard table's coefficients even when `ops`/`opaqueW`
-come from `.generate` (§6.9's genericity finding: a property of the
-verified implementation, not a limitation of the extractor). Matching that
-here, rather than using `src`'s own points, is what makes the `.generate`
-canary agree with the real term instead of failing on a real, pre-existing
-quirk that has nothing to do with the extraction being wrong. -/
-def coeffDispatch (k : ℕ) (hk : 1 < k) : ℕ → ℕ → Option ℚ :=
-  let inst := tableInstance .standard k hk
+`SUBMISSION_PLAN.md` S1.6: this used to read the `.standard` table's points
+unconditionally, whatever table it was handed, and the docstring explained
+at length why that was not a bug — `standardSignedPhaseLoweringPlan`/
+`standardCSignedPhaseLoweringPlan`/`standardQFTLoweringPlan` hard-wired
+`genInterpolationPoints k` into their own `recurse` obligation's stated
+type, so the *real* term this canary compares against used the canonical
+coefficients regardless of the `ops` it was given (`Emit/PLAN.md` §6.9's
+genericity finding). S1.2/S1.3 removed that hard-wiring: the plan builders
+now take `pts hpts`, the real term's coefficients follow the points it was
+built with, and so does this oracle. The quirk is gone rather than
+documented. -/
+def coeffDispatch (k : ℕ) (pts : List Operations.Point) (hpts : pts.length = q k) :
+    ℕ → ℕ → Option ℚ :=
   fun l mv =>
-    if h : l < q k then some (cramerCoeffFromPtsWidth k mv inst.points inst.hlen ⟨l, h⟩) else none
+    if h : l < q k then some (cramerCoeffFromPtsWidth k mv pts hpts ⟨l, h⟩) else none
 
 /-- The `phase_product` template, instantiated against `doc` with concrete
 `x, z, phi`, agrees with the real compiled term (`false` on any
 `instantiate` error too). Exposed (not just the canary below) so `pp`'s own
 CLI command (`Lower/PhaseProduct.lean`) can run the *same* check at
 whatever width the caller actually asked for. -/
-def phaseProductAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (doc : Doc) (x z : ExtReg)
-    (phi : Angle) (hws : SignedRecursiveWorkspaceOK ops x z) : Bool :=
-  let real := lowerGateRec (standardSignedPhaseLoweringPlan k hk phi x z ops hws)
+def phaseProductAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (pts : List Operations.Point)
+    (hpts : pts.length = q k) (doc : Doc) (x z : ExtReg) (phi : Angle)
+    (hws : SignedRecursiveWorkspaceOK ops x z) : Bool :=
+  let real := lowerGateRec (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hws)
   let env : Env :=
     { w := fun name =>
         if name == "xw" then some x.width
@@ -122,7 +122,7 @@ def phaseProductAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (doc : Doc) (x z : 
       a := fun name => if name == "phi" then some phi else none
       r := fun name => if name == "x" then some x else if name == "z" then some z else none
       opaqueW := opaqueDispatch ops
-      coeff := coeffDispatch k hk }
+      coeff := coeffDispatch k pts hpts }
   match instantiate doc "phase_product" env 200 with
   | .error _ => false
   | .ok g => flattenLowGate g == flattenLowGate real
@@ -135,16 +135,18 @@ def checkPhaseProduct (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except Stri
   | .error e => .error s!"template check (phase_product): {e}"
   | .ok (x, z, _ctrl) =>
       if hws : SignedRecursiveWorkspaceOK ops x z then
-        if phaseProductAgrees setup.hk ops doc x z ((1 : ℚ) / 4) hws then .ok ()
+        if phaseProductAgrees setup.hk ops setup.pts setup.hpts doc x z ((1 : ℚ) / 4) hws then
+          .ok ()
         else .error "template check (phase_product): instantiate disagrees with the real term"
       else .error s!"template check (phase_product): insufficient workspace at n={n}"
 
 /-- `cphase_product`, instantiated against `doc` with concrete `ctrl, x, z,
 phi`, agrees with the real compiled term. Controlled analogue of
 `phaseProductAgrees`, exposed for `cpp`'s own CLI command the same way. -/
-def cPhaseProductAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (doc : Doc) (ctrlIdx : ℕ)
-    (x z : ExtReg) (phi : Angle) (hws : CSignedRecursiveWorkspaceOK ops ctrlIdx x z) : Bool :=
-  let real := lowerGateRec (standardCSignedPhaseLoweringPlan k hk ctrlIdx phi x z ops hws)
+def cPhaseProductAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (pts : List Operations.Point)
+    (hpts : pts.length = q k) (doc : Doc) (ctrlIdx : ℕ) (x z : ExtReg) (phi : Angle)
+    (hws : CSignedRecursiveWorkspaceOK ops ctrlIdx x z) : Bool :=
+  let real := lowerGateRec (standardCSignedPhaseLoweringPlan k hk ctrlIdx phi x z ops pts hpts hws)
   let ctrl := ExtReg.ofReg (Reg.interval ctrlIdx 1)
   let env : Env :=
     { w := fun name =>
@@ -160,7 +162,7 @@ def cPhaseProductAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (doc : Doc) (ctrlI
         else if name == "z" then some z
         else none
       opaqueW := opaqueDispatch ops
-      coeff := coeffDispatch k hk }
+      coeff := coeffDispatch k pts hpts }
   match instantiate doc "cphase_product" env 200 with
   | .error _ => false
   | .ok g => flattenLowGate g == flattenLowGate real
@@ -173,18 +175,19 @@ def checkCPhaseProduct (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except Str
   | .error e => .error s!"template check (cphase_product): {e}"
   | .ok (x, z, ctrlIdx) =>
       if hws : CSignedRecursiveWorkspaceOK ops ctrlIdx x z then
-        if cPhaseProductAgrees setup.hk ops doc ctrlIdx x z ((1 : ℚ) / 4) hws then .ok ()
+        if cPhaseProductAgrees setup.hk ops setup.pts setup.hpts doc ctrlIdx x z ((1 : ℚ) / 4) hws
+        then .ok ()
         else .error "template check (cphase_product): instantiate disagrees with the real term"
       else .error s!"template check (cphase_product): insufficient workspace at n={n}"
 
 /-- `qft`, instantiated against `doc` with concrete register `r`, agrees
 with the real compiled term. Exposed for `qft`'s own CLI command the same
 way. -/
-def qftAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (doc : Doc) (r : ExtReg)
-    (hws : QFTReserveOK ops r) : Bool :=
+def qftAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (pts : List Operations.Point)
+    (hpts : pts.length = q k) (doc : Doc) (r : ExtReg) (hws : QFTReserveOK ops r) : Bool :=
   let xWork := ExtReg.ofReg (qftXWork ops r)
   let zWork := ExtReg.ofReg (qftZWork ops r)
-  let real := lowerQFT k hk ops r hws
+  let real := lowerQFT k hk ops pts hpts r hws
   let env : Env :=
     { w := fun name =>
         if name == "w" then some r.width
@@ -198,7 +201,7 @@ def qftAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (doc : Doc) (r : ExtReg)
         else if name == "zWork" then some zWork
         else none
       opaqueW := opaqueDispatch ops
-      coeff := coeffDispatch k hk }
+      coeff := coeffDispatch k pts hpts }
   match instantiate doc "qft" env 200 with
   | .error _ => false
   | .ok g => flattenLowGate g == flattenLowGate real
@@ -211,7 +214,7 @@ def checkQft (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit :
   | .error e => .error s!"template check (qft): {e}"
   | .ok r =>
       if hws : QFTReserveOK ops r then
-        if qftAgrees setup.hk ops doc r hws then .ok ()
+        if qftAgrees setup.hk ops setup.pts setup.hpts doc r hws then .ok ()
         else .error "template check (qft): instantiate disagrees with the real term"
       else .error s!"template check (qft): insufficient workspace at w={w}"
 
@@ -244,7 +247,7 @@ def shorEnv (setup : Shor.ShorLoweringSetup) (layout : Reference.ReferenceShorLa
       else if name == "flag" then some (ExtReg.ofReg (Reg.interval layout.flag 1))
       else none
     opaqueW := opaqueDispatch setup.ops
-    coeff := coeffDispatch setup.k setup.hk }
+    coeff := coeffDispatch setup.k setup.pts setup.hpts }
 
 /-- `shor_gate` canary (`orderFindingApprox`, the `Gate`-level target). -/
 def checkShorGate (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit :=
@@ -276,9 +279,9 @@ def checkShor (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit 
 §11/R5): `Doc.wellFormed`, then instance agreement for every template this
 `setup` extracted, at one representative width apiece. Every check now
 always runs — `setup : ShorLoweringSetup` is, by construction, a table the
-reference-instance machinery is proven to work over (D5), so there is no
-more `.generate`-shaped table this file needs to skip `shor_gate`/`shor`
-for. -/
+reference-instance machinery is proven to work over (D5), and since
+`SUBMISSION_PLAN.md` S1.6 retired `TableSource` there is no longer any other
+kind of table for this file to skip `shor_gate`/`shor` for. -/
 def verifyDoc (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit := do
   if doc.wellFormed then pure () else .error "extracted doc is not well-formed"
   checkPhaseProduct setup doc

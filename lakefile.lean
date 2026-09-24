@@ -20,9 +20,3 @@ lean_exe forshor_emit where
 
 lean_lib «EmitTests» where
   roots := #[`FastMultiplication.Emit.Tests]
-
--- Rooted at `PhaseProduct` (which imports `Correct`) for now; repoint at
--- `Shor` once R6.4 (`Emit/PLAN.md` §12) adds `Proofs/Shor.lean` importing
--- `PhaseProduct`/`Qft`/`Shor`'s theorems.
-lean_lib «EmitProofs» where
-  roots := #[`FastMultiplication.Emit.Proofs.PhaseProduct]

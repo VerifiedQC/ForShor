@@ -11,6 +11,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.
 import FastMultiplication.ShorVerification.Framework.Gatecount.ResourceModel
 
 namespace Shor
+open Operations
 
 section PhaseProductStatements
 
@@ -31,22 +32,23 @@ def phaseProductInputSize (x z : Reg) : ℕ := max (regSize x) (regSize z)
 /-- Final unsigned PhaseProduct asymptotic statement for a fixed `k` and source
 program `ops`: above some threshold, the lowered gate count is bounded by
 `C * n^(log_k (2k - 1))`. -/
-def PhaseProductGateCountBound {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k) : Prop :=
+def PhaseProductGateCountBound
+    {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k) : Prop :=
   ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
     ∀ (φ : Angle) (x z : Reg) (ws : Gate.PhaseProdWorkspace x z)
       (hworkspace : GateWorkspaceOK ops (Gate.PhaseProdUsing φ x z ws)),
       let n := max (regSize x) (regSize z)
       n₀ ≤ n →
       (LowGate.gateCount shorGateCostModel
-          (lowerGate k hk ops (Gate.PhaseProdUsing φ x z ws) hworkspace) : ℝ)
+          (lowerGate k hk ops pts hpts (Gate.PhaseProdUsing φ x z ws) hworkspace) : ℝ)
         ≤ C * Real.rpow n (phaseProductExponent k)
 
 /-- Static correctness assumptions on the fixed PhaseProduct program: the
 interpolation points are good, point consumption is safe, the program preserves
 the start state, and it contains exactly `q k` recursive PhaseProduct leaves. -/
-def PhaseProductProgramOK (k : ℕ) (hk : 1 < k) (ops : Prog k) : Prop :=
-  let pts := genInterpolationPoints k
-  let hpts : pts.length = q k := by simp [pts, genInterpolationPoints, q]
+def PhaseProductProgramOK
+    (k : ℕ) (hk : 1 < k) (pts : List Point) (hpts : pts.length = q k) (ops : Prog k) : Prop :=
   GoodToomCookPoints k pts hpts ∧
   ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts ∧
   run? ops State.start_state = some State.start_state ∧
@@ -69,24 +71,29 @@ open Operations
 /-- Gate count of the recursively lowered signed PhaseProduct. -/
 noncomputable def signedPhaseProductGateCount
     {Basis : Type u} [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (φ : Angle) (x z : ExtReg)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
+    (φ : Angle) (x z : ExtReg)
     (hworkspace : SignedRecursiveWorkspaceOK ops x z) : ℕ :=
-  LowGate.gateCount shorGateCostModel (lowerSignedPhaseProdWithWorkspace k hk φ x z ops hworkspace)
+  LowGate.gateCount shorGateCostModel
+    (lowerSignedPhaseProdWithWorkspace k hk φ x z ops pts hpts hworkspace)
 
 /-- Gate count of the recursively lowered controlled signed PhaseProduct. -/
 noncomputable def cSignedPhaseProductGateCount
     {Basis : Type u} [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (ctrl : ℕ) (φ : Angle) (x z : ExtReg)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
+    (ctrl : ℕ) (φ : Angle) (x z : ExtReg)
     (hworkspace : CSignedRecursiveWorkspaceOK ops ctrl x z) : ℕ :=
-  LowGate.gateCount shorGateCostModel (lowerCSignedPhaseProdWithWorkspace k hk ctrl φ x z ops hworkspace)
+  LowGate.gateCount shorGateCostModel
+    (lowerCSignedPhaseProdWithWorkspace k hk ctrl φ x z ops pts hpts hworkspace)
 
 /-- Balanced-input signed PhaseProduct bound: equal-width signed inputs are
 bounded by a constant times the safe PhaseProduct comparison rate. -/
 noncomputable def BalancedSignedPhaseProductBound
-    {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k) (C : ℝ) : Prop :=
+    {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k) (C : ℝ) : Prop :=
   ∀ (φ : Angle) (x z : ExtReg) (hworkspace : SignedRecursiveWorkspaceOK ops x z),
     ExtReg.width x = ExtReg.width z →
-    (signedPhaseProductGateCount (Basis := Basis) k hk ops φ x z hworkspace : ℝ)
+    (signedPhaseProductGateCount (Basis := Basis) k hk ops pts hpts φ x z hworkspace : ℝ)
       ≤ C * phaseProductSafeRate k (ExtReg.width x)
 
 /-- Nonrecursive arithmetic cost contributed by one annotated PhaseProduct-body
@@ -166,14 +173,16 @@ noncomputable def shorGateRate (ε : ℝ) (n : ℕ) : ℝ :=
 
 /-- Public controlled PhaseProduct asymptotic statement, using the same
 PhaseProduct safe rate but quantifying over the control qubit. -/
-def CPhaseProductGateCountBound {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k) : Prop :=
+def CPhaseProductGateCountBound
+    {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k) : Prop :=
   ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
     ∀ (ctrl : ℕ) (φ : Angle) (x z : Reg) (ws : Gate.PhaseProdWorkspace x z)
       (hworkspace : GateWorkspaceOK ops (Gate.CPhaseProdUsing ctrl φ x z ws)),
       let n := max (regSize x) (regSize z)
       n₀ ≤ n →
       (LowGate.gateCount shorGateCostModel
-          (lowerGate k hk ops (Gate.CPhaseProdUsing ctrl φ x z ws) hworkspace) : ℝ)
+          (lowerGate k hk ops pts hpts (Gate.CPhaseProdUsing ctrl φ x z ws) hworkspace) : ℝ)
         ≤ C * phaseProductSafeRate k n
 
 end ControlledAndShorBounds
@@ -190,11 +199,13 @@ section QFTGateCounts
 
 /-- Exact-QFT asymptotic statement for a fixed reserve program: sufficiently
 large registers lower with cost bounded by the PhaseProduct safe rate. -/
-def QFTGateCountBound {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k) : Prop :=
+def QFTGateCountBound
+    {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k) : Prop :=
   ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
     ∀ (r : ExtReg) (hworkspace : QFTReserveOK ops r),
       n₀ ≤ r.width →
-      (LowGate.gateCount shorGateCostModel (lowerQFT k hk ops r hworkspace) : ℝ)
+      (LowGate.gateCount shorGateCostModel (lowerQFT k hk ops pts hpts r hworkspace) : ℝ)
         ≤ C * phaseProductSafeRate k r.width
 
 /-- Width of the left half in a QFT split. -/
@@ -209,19 +220,19 @@ def qftRightReg (r : Reg) : Reg := rightReg r
 /-- Gate count of the recursively lowered exact QFT on an extended register. -/
 noncomputable def loweredQFTGateCount
     {Basis : Type u} [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : ExtReg)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) (r : ExtReg)
     (hworkspace : QFTReserveOK ops r) : ℕ :=
-  LowGate.gateCount shorGateCostModel (lowerQFT k hk ops r hworkspace)
+  LowGate.gateCount shorGateCostModel (lowerQFT k hk ops pts hpts r hworkspace)
 
 /-- Gate count of the PhaseProduct joining the two halves of one exact-QFT
 recursion node. -/
 noncomputable def qftSplitPhaseGateCount
     {Basis : Type u} [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : Reg)
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) (r : Reg)
     (ws : Gate.PhaseProdWorkspace (qftLeftReg r) (qftRightReg r))
     (hworkspace : GateWorkspaceOK ops (Gate.PhaseProdUsing (qftPhi (regSize r)) (qftLeftReg r) (qftRightReg r) ws)) : ℕ :=
   LowGate.gateCount shorGateCostModel
-    (lowerGate k hk ops
+    (lowerGate k hk ops pts hpts
       (Gate.PhaseProdUsing (qftPhi (regSize r)) (qftLeftReg r) (qftRightReg r) ws) hworkspace)
 
 /-- Gate count of the final radix reversal at one exact-QFT recursion node. -/

@@ -18,8 +18,8 @@ theorem lowerQFT_correct
     (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : ExtReg) :
     LowerQFTCorrect qs k hk ops r := by
-  intro ψ hworkspace hC hRun
+  intro ψ pts hpts hworkspace hInterp hC hRun
   exact evalL_lowerQFT (qs := qs) (k := k) (hk := hk) (ops := ops) (r := r) (ψ := ψ)
-    hworkspace hC hRun
+    (pts := pts) (hpts := hpts) hworkspace hInterp hC hRun
 
 end Shor

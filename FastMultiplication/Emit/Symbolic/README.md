@@ -119,33 +119,31 @@ CLI-facing per-section, `template`, and `phases` builders.
   census/per-width `LowGate` resource counts were dropped along with
   `Table/Census.lean` — they fall out of the extracted `Doc` plus the
   repository's own `shorGateResourceModel`).
-- `provenanceJson (src) : Json` — per-section text naming the Lean
+- `provenanceJson : Json` — per-section text naming the Lean
   declaration each section evaluates, and whether it's a theorem (`table`)
   or "evaluated, not proved" (`coeff_poly`, `width`, `qft_plan`,
   `shor_plan`); `templateProvenance` is D7's trust statement verbatim.
-- `buildBundleCore (src) (k) (hk) (mMax) (wMax) (checkCramer) : Except
+- `buildBundleCore (k) (hk) (mMax) (wMax) (checkCramer) : Except
   String Json` — the pure sections only (no `template` — that needs `IO`,
   see below). `native_decide`-testable; `Tests.lean` uses this, not
   `buildBundle`, for its compile-time bundle checks.
-- `buildTemplateDoc (src) (k) (hk) (wMax) : IO (Except String Json)` —
-  refuses immediately for `src = .generate` (D5/R5, §11: `.generate` has no
-  `ShorLoweringSetup` to extract); for `.standard`, extracts the `Doc`
-  (`Reflect.runExtractAndVerify`, which also runs `Reflect.Verify`'s
-  instance-check canary), refusing if `wMax` doesn't cover the canary's own
-  checked width (`templateCheckWidth k = 4 * k`). Backs `forshor_emit
-  template <k>`; `src` is kept as a parameter (rather than dropped) purely
-  so this refusal is a safety net for any caller, not just `Main.lean`'s
-  own (separate, exit-code-2) `--table generate` pre-check.
-- `buildBundle (src) (k) (hk) (mMax) (wMax) (checkCramer) (noTemplate) : IO
+- `buildTemplateDoc (k) (hk) (wMax) : IO (Except String Json)` — extracts
+  the `Doc` (`Reflect.runExtractAndVerify`, which also runs
+  `Reflect.Verify`'s instance-check canary), refusing if `wMax` doesn't
+  cover the canary's own checked width (`templateCheckWidth k = 4 * k`).
+  Backs `forshor_emit template <k>`. The old `src = .generate` refusal, and
+  the `src` parameter that carried it, went with `TableSource`
+  (`SUBMISSION_PLAN.md` S1.6).
+- `buildBundle (k) (hk) (mMax) (wMax) (checkCramer) (noTemplate) : IO
   (Except String Json)` — `buildBundleCore` plus `buildTemplateDoc`'s
   result under `"template"`, unless `noTemplate` (`--no-template`, which
   skips the environment load entirely).
 - `sectionNames : List String` — the five pure section names `buildSection`
   understands (`template` is a dedicated command, not a `buildSection`
   case, since it needs `IO`).
-- `buildSection (sectionName) (src) (k) (hk) (mMax) (wMax) (checkCramer) :
-  Except String Json` — one named pure section, same envelope and same
-  blocking check as `buildBundleCore`.
+- `buildSection (sectionName) (k) (hk) (mMax) (wMax) (checkCramer) :
+  Except String Json` — one named pure section, same envelope as
+  `buildBundleCore`.
 - `buildPhases (k) (m) (phiNum) (phiDen) : Except String (List String)` —
   `forshor_emit phases`: exactly `q k` lines, each row `l`'s coefficient
   polynomial evaluated at chunk width `m` and scaled by `phi`, printed as a

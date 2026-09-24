@@ -27,7 +27,8 @@ open Lean (Json)
 over the flat `LowGate` view. -/
 unsafe def buildQFT (k w : ℕ) (annotated : Bool) : IO (Except String Json) := do
   if hk : 1 < k then
-    let ops := (tableInstance .standard k hk).ops
+    let setup := standardLoweringSetup k hk
+    let ops := setup.ops
     match qftRegister ops w with
     | .error e => return .error e
     | .ok r =>
@@ -36,9 +37,12 @@ unsafe def buildQFT (k w : ℕ) (annotated : Bool) : IO (Except String Json) := 
             match ← Reflect.runExtractAndVerify k with
             | .error e => return .error e
             | .ok doc =>
-                let plan := reserveQFTLoweringPlan k hk ops r hws
-                let check1 := lowGateJson (lowerQFTPlan plan) == lowGateJson (lowerQFT k hk ops r hws)
-                let instantiateEqReal := Reflect.qftAgrees hk ops doc r hws
+                let plan := reserveQFTLoweringPlan k hk ops setup.pts setup.hpts r hws
+                let check1 :=
+                  lowGateJson (lowerQFTPlan plan)
+                    == lowGateJson (lowerQFT k hk ops setup.pts setup.hpts r hws)
+                let instantiateEqReal :=
+                  Reflect.qftAgrees hk ops setup.pts setup.hpts doc r hws
                 let checksJ :=
                   Json.mkObj [
                     ("annotated_eq_flat", Json.bool check1),
@@ -51,7 +55,7 @@ unsafe def buildQFT (k w : ℕ) (annotated : Bool) : IO (Except String Json) := 
                   return .error "instantiation check failed"
           else
             let metaJ := Json.mkObj [("k", (k : Json)), ("w", (w : Json))]
-            return .ok (emitLowGateDoc (lowerQFT k hk ops r hws) metaJ)
+            return .ok (emitLowGateDoc (lowerQFT k hk ops setup.pts setup.hpts r hws) metaJ)
         else
           return .error s!"insufficient workspace for w={w}"
   else

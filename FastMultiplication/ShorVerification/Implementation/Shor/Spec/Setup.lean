@@ -12,6 +12,7 @@ correctness statements, and the bridge from the lower-level implementation
 setup to the public one.
 -/
 namespace Shor
+open Operations
 
 /-! =========================================================
     Lowering Program Setup
@@ -23,11 +24,17 @@ structure ShorLoweringSetup where
   k : ℕ
   /-- At least two synthesis registers are available. -/
   hk : 1 < k
+  /-- Interpolation points the submission's table is built against. -/
+  pts : List Point
+  /-- One point per product coefficient. -/
+  hpts : pts.length = q k
+  /-- The chosen points interpolate a degree-`2k - 2` polynomial. -/
+  good : GoodToomCookPoints k pts hpts
   /-- Program that consumes the interpolation points used by lowering. -/
   ops : Prog k
   /-- The point-consuming program is safe. -/
   consumes :
-    ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k)
+    ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts
   /-- The point-consuming program uncomputes back to the start state. -/
   returns : run? ops State.start_state = some State.start_state
 

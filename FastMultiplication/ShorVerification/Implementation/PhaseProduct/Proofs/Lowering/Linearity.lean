@@ -56,26 +56,26 @@ lemma standardSignedPhaseLoweringPlan_preserves_clean_of_ready
     (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
+    {pts : List Point}
+    {hpts : pts.length = q k}
     (ψ : qs.State)
     (hstatic : SignedRecursiveWorkspaceOK ops x z)
     (hclean : RecursiveWorkspaceCleanState qs x z ψ)
     (hready :
-      PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops hstatic) ψ)
+      PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hstatic) ψ)
+    (hInterp : GoodToomCookPoints k pts hpts)
     (hC :
-      ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+      ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state) :
     RecursiveWorkspaceCleanState qs x z
       (LowerGateClass.evalL (qs := qs)
-        (lowerGateRec (standardSignedPhaseLoweringPlan k hk phi x z ops hstatic)) ψ) := by
-  have hInterp :
-      GoodToomCookPoints k (genInterpolationPoints k) (generatedInterpolationPoints_length k) := by
-    simpa using genInterpolationPoints_good k
+        (lowerGateRec (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hstatic)) ψ) := by
   have heval :
       LowerGateClass.evalL (qs := qs)
-        (lowerGateRec (standardSignedPhaseLoweringPlan k hk phi x z ops hstatic)) ψ
+        (lowerGateRec (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hstatic)) ψ
       = qs.eval (Gate.SignedPhaseProd phi x z) ψ := by
     exact evalL_lowerGateRec_correct (qs := qs) (hInterp := hInterp) (hC := hC) (hRun := hRun)
-      (standardSignedPhaseLoweringPlan k hk phi x z ops hstatic) ψ hready
+      (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hstatic) ψ hready
   rw [heval]
   exact eval_SignedPhaseProd_preserves_recursiveWorkspaceClean qs phi x z hclean
 

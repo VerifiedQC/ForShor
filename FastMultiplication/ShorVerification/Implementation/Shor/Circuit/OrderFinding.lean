@@ -9,6 +9,7 @@ The approximate circuit uses the verified modular-exponentiation implementation;
 the ideal circuit swaps in the abstract exact modular exponentiation gate.
 -/
 namespace Shor
+open Operations
 
 /-- Initialize the data register to the computational basis value `1`. -/
 def initY1 (y : Reg) : Gate :=
@@ -37,6 +38,7 @@ def orderFindingApprox
 def orderFindingApproxLow
     (k : ℕ) (hk : 1 < k)
     (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k)
     (a N : ℕ)
     (x y work scratch : ExtReg)
     (flag : ℕ)
@@ -44,7 +46,7 @@ def orderFindingApproxLow
     (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
     (hLowerWorkspace : GateWorkspaceOK ops (orderFindingApprox a N x y work scratch flag
           hmodWorkspace hstep4)) :=
-  lowerGate k hk ops (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
+  lowerGate k hk ops pts hpts (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
     hLowerWorkspace
 
 /-- Ideal order-finding circuit using exact modular exponentiation. -/

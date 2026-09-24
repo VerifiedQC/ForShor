@@ -4,12 +4,14 @@ import FastMultiplication.Emit.Table.Source
 /-!
 # Quoting a concrete table
 
-`Extract.lean`'s "Specialise" step needs to splice a concrete
-`(tableInstance src k hk).ops : Prog k` — computed with compiled code, at
-run time, from the command-line `k`/`TableSource` — into an `Expr`, so that
-the compiler's `match ops with …` collapses under `whnf`. `Lean.toExpr`
-(needing `ToExpr (Prog k)`, i.e. `ToExpr (List (Operations.valid_ops k))`)
-does exactly that.
+`Extract.lean`'s "Specialise" step needs to splice a `ShorLoweringSetup`'s
+concrete `ops : Prog k` — computed with compiled code, at run time — into an
+`Expr`, so that the compiler's `match ops with …` collapses under `whnf`.
+`Lean.toExpr` (needing `ToExpr (Prog k)`, i.e. `ToExpr (List
+(Operations.valid_ops k))`) does exactly that. `ToExpr Operations.Point` is
+here for the same reason on the other half of a table: `Targets.lean`'s
+`setupPtsExprs` quotes `setup.pts` as a literal (`SUBMISSION_PLAN.md`
+S1.6).
 
 Neither `Operations.Point` nor `Operations.valid_ops k` is self-recursive
 (no field of either is a `List` of itself — contrast `IR/Syntax.lean`'s

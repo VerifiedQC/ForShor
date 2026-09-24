@@ -362,15 +362,17 @@ def standardSignedPhaseLoweringPlan
     (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
+    (pts : List Point)
+    (hpts : pts.length = q k)
     (hworkspace : SignedRecursiveWorkspaceOK ops x z) :
-    StandardPhaseLoweringPlan k hk ops (phaseInputSize x z) (Gate.SignedPhaseProd phi x z) := by
+    StandardPhaseLoweringPlan k hk pts hpts ops (phaseInputSize x z) (Gate.SignedPhaseProd phi x z) := by
   by_cases hrec : nextSignedWidth x z ops < phaseInputSize x z
   · let step : CanonicalSignedStep ops x z := canonicalSignedStep hk ops x z hrec hworkspace
     let src : LayoutState k := initSignedLayoutState step.layout
     let dst : LayoutState k := targetSignedLayoutState src (scanNeededWidths x z ops)
     have recurse :
         ∀ (i : Fin k) (theta : Angle),
-          PhaseLoweringPlan k hk (genInterpolationPoints k) (generatedInterpolationPoints_length k)
+          PhaseLoweringPlan k hk pts hpts
             ops (nextSignedWidth x z ops)
             (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)) := by
       intro i theta
@@ -378,32 +380,30 @@ def standardSignedPhaseLoweringPlan
           SignedRecursiveWorkspaceOK ops (dst.xslot i) (dst.zslot i) := by
         simpa [src, dst] using step.childWorkspace i
       have childPlan :=
-        standardSignedPhaseLoweringPlan k hk theta (dst.xslot i) (dst.zslot i) ops hchild
+        standardSignedPhaseLoweringPlan k hk theta (dst.xslot i) (dst.zslot i) ops pts hpts hchild
       have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z ops := by
         simpa [src, dst] using step.childInputSize i
       simpa [hsize] using childPlan
     let child :
-        PhaseLoweringPlan k hk (genInterpolationPoints k) (generatedInterpolationPoints_length k)
+        PhaseLoweringPlan k hk pts hpts
           ops (nextSignedWidth x z ops)
-          (compiledSignedPhaseGate k hk (genInterpolationPoints k)
-            (generatedInterpolationPoints_length k) ops phi x z step.layout) :=
-      planCompiledSignedPhaseGate hk (genInterpolationPoints k)
-        (generatedInterpolationPoints_length k) ops phi x z step.layout
+          (compiledSignedPhaseGate k hk pts hpts ops phi x z step.layout) :=
+      planCompiledSignedPhaseGate hk pts hpts ops phi x z step.layout
         (by simpa [src, dst] using recurse)
     exact
       PhaseLoweringPlan.signedStep
         (k := k)
         (hk := hk)
-        (pts := genInterpolationPoints k)
-        (hpts := generatedInterpolationPoints_length k)
+        (pts := pts)
+        (hpts := hpts)
         (ops := ops)
         phi x z step.layout hrec step.capacity child
   · exact
       PhaseLoweringPlan.signedBase
         (k := k)
         (hk := hk)
-        (pts := genInterpolationPoints k)
-        (hpts := generatedInterpolationPoints_length k)
+        (pts := pts)
+        (hpts := hpts)
         (ops := ops)
         phi x z hrec
 termination_by phaseInputSize x z
@@ -421,8 +421,10 @@ def standardCSignedPhaseLoweringPlan
     (phi : Angle)
     (x z : ExtReg)
     (ops : Prog k)
+    (pts : List Point)
+    (hpts : pts.length = q k)
     (hworkspace : CSignedRecursiveWorkspaceOK ops ctrl x z) :
-    StandardPhaseLoweringPlan k hk ops (phaseInputSize x z) (Gate.CSignedPhaseProd ctrl phi x z) := by
+    StandardPhaseLoweringPlan k hk pts hpts ops (phaseInputSize x z) (Gate.CSignedPhaseProd ctrl phi x z) := by
   by_cases hrec : nextSignedWidth x z ops < phaseInputSize x z
   · let step : CanonicalSignedStep ops x z :=
       canonicalSignedStep hk ops x z hrec hworkspace.toSignedRecursiveWorkspaceOK
@@ -430,7 +432,7 @@ def standardCSignedPhaseLoweringPlan
     let dst : LayoutState k := targetSignedLayoutState src (scanNeededWidths x z ops)
     have recurse :
         ∀ (i : Fin k) (theta : Angle),
-          PhaseLoweringPlan k hk (genInterpolationPoints k) (generatedInterpolationPoints_length k)
+          PhaseLoweringPlan k hk pts hpts
             ops (nextSignedWidth x z ops)
             (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i)) := by
       intro i theta
@@ -448,24 +450,22 @@ def standardCSignedPhaseLoweringPlan
             · exact (by simpa [src, dst] using hctrlDst.1 i)
             · exact (by simpa [src, dst] using hctrlDst.2 i) }
       have childPlan :=
-        standardCSignedPhaseLoweringPlan k hk ctrl theta (dst.xslot i) (dst.zslot i) ops hchild
+        standardCSignedPhaseLoweringPlan k hk ctrl theta (dst.xslot i) (dst.zslot i) ops pts hpts hchild
       have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z ops := by
         simpa [src, dst] using step.childInputSize i
       simpa [hsize] using childPlan
     let child :
-        PhaseLoweringPlan k hk (genInterpolationPoints k) (generatedInterpolationPoints_length k)
+        PhaseLoweringPlan k hk pts hpts
           ops (nextSignedWidth x z ops)
-          (compiledCSignedPhaseGate k hk (genInterpolationPoints k)
-            (generatedInterpolationPoints_length k) ops ctrl phi x z step.layout) :=
-      planCompiledCSignedPhaseGate hk (genInterpolationPoints k)
-        (generatedInterpolationPoints_length k) ops ctrl phi x z step.layout
+          (compiledCSignedPhaseGate k hk pts hpts ops ctrl phi x z step.layout) :=
+      planCompiledCSignedPhaseGate hk pts hpts ops ctrl phi x z step.layout
         (by simpa [src, dst] using recurse)
     exact
       PhaseLoweringPlan.cSignedStep
         (k := k)
         (hk := hk)
-        (pts := genInterpolationPoints k)
-        (hpts := generatedInterpolationPoints_length k)
+        (pts := pts)
+        (hpts := hpts)
         (ops := ops)
         ctrl phi x z step.layout hrec step.capacity
         (step.layout.controlDisjoint_of_ctrlDisjoint hworkspace.control_disjoint)
@@ -474,8 +474,8 @@ def standardCSignedPhaseLoweringPlan
       PhaseLoweringPlan.cSignedBase
         (k := k)
         (hk := hk)
-        (pts := genInterpolationPoints k)
-        (hpts := generatedInterpolationPoints_length k)
+        (pts := pts)
+        (hpts := hpts)
         (ops := ops)
         ctrl phi x z hrec
 termination_by phaseInputSize x z

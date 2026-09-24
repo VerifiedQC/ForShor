@@ -88,13 +88,13 @@ for backwards compatibility with `extract_ir_doc`'s existing callers
 (`Tests.lean`'s R2.1 section); callers that want `phase_product`/
 `cphase_product`/`qft` name it explicitly to `instantiate`.
 
-`Emit/PLAN.md` R5: takes any `Shor.ShorLoweringSetup`, not a `(k, hk,
-TableSource)` triple — D5's amendment. `setup` is a table the lowering
-theorems actually cover *by construction* (`setup.consumes`/`setup.returns`
-are exactly those theorems' hypotheses), so there is no longer a
-`TableSource.generate` case to special-case or reject here: an invalid
-table simply cannot be packaged as a `ShorLoweringSetup` in the first
-place. -/
+`Emit/PLAN.md` R5: takes any `Shor.ShorLoweringSetup`, not a `(k, hk, table
+source)` triple — D5's amendment. `setup` is a table the lowering theorems
+actually cover *by construction* (its four side conditions are exactly those
+theorems' hypotheses), so there is no second kind of table to special-case
+or reject here: an invalid one simply cannot be packaged as a
+`ShorLoweringSetup` in the first place. `SUBMISSION_PLAN.md` S1.6 retired
+the `TableSource` inductive that used to be the alternative. -/
 def buildDoc (setup : Shor.ShorLoweringSetup) : MetaM IR.Doc := do
   let pp ← extractPPBody setup
   let pp2 ← extractPhaseProductBody setup
@@ -113,8 +113,8 @@ def buildDoc (setup : Shor.ShorLoweringSetup) : MetaM IR.Doc := do
 -- `setupIdent` names a `Shor.ShorLoweringSetup` declaration in scope (the
 -- *value*, not a numeral — this replaces the old `<id> <k>`/`<id> (<k>,
 -- generate)` numeric forms, both removed: with the table itself carrying its
--- own coverage proofs, there is nothing left for a `TableSource` argument to
--- select between). Resolved with `resolveGlobalConstNoOverload`, then
+-- own points and coverage proofs, there is nothing left for a table-source
+-- argument to select between). Resolved with `resolveGlobalConstNoOverload`, then
 -- *evaluated* — not reflected over — with `Lean.Meta.evalExpr`: unlike `k`,
 -- which is quoted into an `Expr` `buildDoc`'s callees reflect over,
 -- `setupIdent`'s value only needs to be read out to a plain `ShorLoweringSetup`

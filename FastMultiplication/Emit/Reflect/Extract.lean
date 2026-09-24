@@ -1207,7 +1207,7 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
   -- `lowerGate k hk ops (orderFindingApprox …) hLowerWorkspace` — routes to
   -- `translateLowerGate`'s own dedicated structural walk (`lowerGate` needs
   -- `ops`, which nothing else here threads through).
-  | (``Shor.lowerGate, #[_, _, opsE, gE, _]) => translateLowerGate reg opsE gE
+  | (``Shor.lowerGate, #[_, _, opsE, _, _, gE, _]) => translateLowerGate reg opsE gE
   -- `lowerCopyConstFromUnit N dst ctrl := lowerCopyBitPowers dst ctrl
   -- N.bitIndices` (R2.6): recursion over a symbolic-length list again (D2),
   -- reformulated as "loop over every bit position of `dst`, guarded on
@@ -1256,14 +1256,14 @@ recognisers — not a second reduction — decide what happens next. -/
 partial def translatePlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
   let plan ← whnfR plan
   match plan.getAppFnArgs with
-  | (``Shor.standardSignedPhaseLoweringPlan, #[_, _, theta, x, z, _, _]) => do
+  | (``Shor.standardSignedPhaseLoweringPlan, #[_, _, theta, x, z, _, _, _, _]) => do
       let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
       let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
       let xCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[x])
       let zCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[z])
       return .call "phase_product" [xw, zw, xCap, zCap] [← translateA reg theta]
         [← translateReg reg x, ← translateReg reg z]
-  | (``Shor.standardCSignedPhaseLoweringPlan, #[_, _, ctrl, theta, x, z, _, _]) => do
+  | (``Shor.standardCSignedPhaseLoweringPlan, #[_, _, ctrl, theta, x, z, _, _, _, _]) => do
       let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
       let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
       let xCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[x])
@@ -1443,7 +1443,7 @@ here. -/
 partial def translateQFTPlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
   let plan ← whnfR plan
   match plan.getAppFnArgs with
-  | (``Shor.standardQFTLoweringPlan, #[_, _, _, r, xWork, zWork, _]) => do
+  | (``Shor.standardQFTLoweringPlan, #[_, _, _, _, _, r, xWork, zWork, _]) => do
       let w ← translateW reg (← mkAppM ``Shor.regSize #[r])
       let xWorkW ← translateW reg (← mkAppM ``Shor.regSize #[xWork])
       let zWorkW ← translateW reg (← mkAppM ``Shor.regSize #[zWork])
@@ -1451,11 +1451,11 @@ partial def translateQFTPlan (reg : Registry) (plan : Expr) : MetaM IR.Node := d
         [← translateReg reg r, ← translateReg reg xWork, ← translateReg reg zWork]
   | (``Shor.QFTLoweringPlan.empty, _) =>
       translateNode reg (← mkAppM ``Shor.LowGate.id #[])
-  | (``Shor.QFTLoweringPlan.singleton, #[_, _, _, r, _]) => do
+  | (``Shor.QFTLoweringPlan.singleton, #[_, _, _, _, _, r, _]) => do
       let hproof ← mkSorry (← mkAppM ``LT.lt #[mkNatLit 0, ← mkAppM ``Shor.regSize #[r]]) false
       translateNode reg (← mkAppM ``Shor.LowGate.H #[← mkAppM ``Shor.Reg.lowQubit #[r, hproof]])
   | (``Shor.QFTLoweringPlan.split,
-      #[_, _, _, r, _, _ws, _phaseInitSize, phasePlan, rightPlan, leftPlan]) => do
+      #[_, _, _, _, _, r, _, _ws, _phaseInitSize, phasePlan, rightPlan, leftPlan]) => do
       let rightNode ← translateQFTPlan reg rightPlan
       let phaseNode ← translateNode reg (← mkAppM ``Shor.lowerGateRec #[phasePlan])
       let leftNode ← translateQFTPlan reg leftPlan

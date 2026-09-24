@@ -20,11 +20,11 @@ compatibility with earlier use of this executable.
 def usageText : String :=
   "usage: forshor_emit shor <k> <a> <N> <m>\n" ++
   "       forshor_emit <k> <a> <N> <m>   (alias of shor)\n" ++
-  "       forshor_emit bundle <k> [--table standard|generate] [--m-max M] " ++
+  "       forshor_emit bundle <k> [--m-max M] " ++
   "[--w-max W] [--check-cramer] [--no-template]\n" ++
   "       forshor_emit <schedule|coeff_poly|width|qft_plan|shor_plan> <k> " ++
-  "[--table standard|generate] [--m-max M] [--w-max W] [--check-cramer]\n" ++
-  "       forshor_emit template <k> [--table standard|generate] [--w-max W]\n" ++
+  "[--m-max M] [--w-max W] [--check-cramer]\n" ++
+  "       forshor_emit template <k> [--w-max W]\n" ++
   "       forshor_emit phases <k> <m> <phiNum/phiDen>\n" ++
   "       forshor_emit pp <k> <n> <phiNum/phiDen> [--flat]\n" ++
   "       forshor_emit cpp <k> <n> <phiNum/phiDen> [--flat]\n" ++
@@ -52,7 +52,6 @@ def parsePhi (s : String) : Option (ℤ × ℤ) :=
 
 structure BundleArgs where
   k : ℕ
-  src : Shor.TableSource := .standard
   mMax : ℕ := 16
   -- Covers `nextWidth`/`reserveNeed`/`qftWorkspaceNeed` at every width a
   -- consumer's recursive unrolling is likely to visit, and (`Emit/PLAN.md`
@@ -63,8 +62,6 @@ structure BundleArgs where
 
 def parseFlags : List String → BundleArgs → Option BundleArgs
   | [], acc => some acc
-  | "--table" :: "standard" :: rest, acc => parseFlags rest { acc with src := .standard }
-  | "--table" :: "generate" :: rest, acc => parseFlags rest { acc with src := .generate }
   | "--m-max" :: mStr :: rest, acc =>
       match mStr.toNat? with
       | some m => parseFlags rest { acc with mMax := m }
@@ -84,22 +81,9 @@ def parseBundleArgs : List String → Option BundleArgs
       | none => none
       | some k => parseFlags rest { k := k }
 
-/-- `.generate` cannot be extracted (`Emit/PLAN.md` §11/R5: it has no
-`ShorLoweringSetup`, so it is not a table the lowering theorems cover). This
-is a bad *request*, not a check that ran and failed — exit 2, not 3 — so it
-is caught here, before `Shor.buildBundle`/`buildTemplateDoc` (which also
-refuse it, for callers that reach them some other way, but with `.error`/
-exit 3, the "a check failed" code). -/
-def generateExtractionError : String :=
-  "`--table generate` cannot be extracted (Emit/PLAN.md §11: no `ShorLoweringSetup` covers it); " ++
-  "use the standard table"
-
 unsafe def runBundle (a : BundleArgs) : IO UInt32 := do
   if hk : 1 < a.k then
-    if a.src matches .generate ∧ !a.noTemplate then
-      IO.eprintln s!"error: {generateExtractionError} (or pass --no-template)"
-      return 2
-    match ← Shor.buildBundle a.src a.k hk a.mMax a.wMax a.checkCramer a.noTemplate with
+    match ← Shor.buildBundle a.k hk a.mMax a.wMax a.checkCramer a.noTemplate with
     | .ok json =>
         IO.println json.compress
         return 0
@@ -112,14 +96,12 @@ unsafe def runBundle (a : BundleArgs) : IO UInt32 := do
 
 /-- `template <k>`: print the extracted `Doc` alone (`Emit/PLAN.md` §7),
 after `Doc.wellFormed` and the R2 instance checks — refuses with exit 3 on
-any failure (extraction, verification, or `--w-max` too small), or exit 2
-if `--table generate` was requested (§11/R5). -/
+any failure (extraction, verification, or `--w-max` too small).
+`SUBMISSION_PLAN.md` S1.6 retired `--table generate`, so the exit-2 "that
+table cannot be extracted" refusal has no input left to reject. -/
 unsafe def runTemplate (a : BundleArgs) : IO UInt32 := do
   if hk : 1 < a.k then
-    if a.src matches .generate then
-      IO.eprintln s!"error: {generateExtractionError}"
-      return 2
-    match ← Shor.buildTemplateDoc a.src a.k hk a.wMax with
+    match ← Shor.buildTemplateDoc a.k hk a.wMax with
     | .ok json =>
         IO.println json.compress
         return 0
@@ -145,7 +127,7 @@ def runSection (sectionName : String) (args : List String) : IO UInt32 :=
       return 2
   | some ba =>
       if hk : 1 < ba.k then do
-        match Shor.buildSection sectionName ba.src ba.k hk ba.mMax ba.wMax ba.checkCramer with
+        match Shor.buildSection sectionName ba.k hk ba.mMax ba.wMax ba.checkCramer with
         | .ok json =>
             IO.println json.compress
             return 0

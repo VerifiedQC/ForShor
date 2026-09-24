@@ -165,16 +165,13 @@ def templateProvenance : String :=
 /-- Per-section provenance: which Lean declaration each section evaluates,
 and whether that declaration is a theorem (see README "What is and is not a
 theorem"). -/
-def provenanceJson (src : TableSource) : Json :=
+def provenanceJson : Json :=
   Json.mkObj [
     ("table", Json.str
-      (match src with
-        | .standard =>
-            "Shor.standardLoweringSetup: ProgConsumesPtsSafe/returns-to-start are " ++
-            "theorems (genOpsWithProduct_ProgConsumesPtsSafe, " ++
-            "genOpsWithProduct_returns_to_original)"
-        | .generate =>
-            "Table_Generation.generate: checked at run time only, no correctness theorem")),
+      ("Shor.standardLoweringSetup: length/GoodToomCookPoints/ProgConsumesPtsSafe/" ++
+      "returns-to-start are theorems (generatedInterpolationPoints_length, " ++
+      "genInterpolationPoints_good, genOpsWithProduct_ProgConsumesPtsSafe, " ++
+      "genOpsWithProduct_returns_to_original)")),
     ("coeff_poly", Json.str
       ("M⁻¹ computed exactly by Gauss-Jordan elimination over ℚ (gaussJordanInverseRows); " ++
       "agreement with cramerCoeffFromPtsWidth is a run-time check over the checked m range " ++
@@ -197,28 +194,24 @@ def provenanceJson (src : TableSource) : Json :=
 /-- The pure sections of the bundle document (E2-E5): everything but
 `template`, which needs `IO` (see `buildBundle`/`buildTemplateDoc`). Kept
 separate so this stays `native_decide`-testable (`Tests.lean`). -/
-def buildBundleCore
-    (src : TableSource) (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ) (checkCramer : Bool) :
+def buildBundleCore (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ) (checkCramer : Bool) :
     Except String Json :=
-  let inst := tableInstance src k hk
-  match checkTable src k hk inst with
-  | .error e => .error e
-  | .ok () =>
-      let nMin := 2
-      let nMax := min wMax 16
-      .ok (Json.mkObj [
-        ("schema", Json.str "forshor.emit/v1"),
-        ("k", (k : Json)),
-        ("table", Json.str (match src with | .standard => "standard" | .generate => "generate")),
-        ("n_free", Json.bool true),
-        ("opts", optsJson { mMax := mMax, wMax := wMax, checkCramer := checkCramer }),
-        ("schedule", scheduleJson inst),
-        ("coeff_poly", coeffPolyJson inst checkCramer mMax),
-        ("width", widthJson inst.ops wMax),
-        ("qft_plan", qftPlanJson inst.ops wMax),
-        ("shor_plan", shorPlanJson inst.ops nMin nMax mMax),
-        ("provenance", provenanceJson src)
-      ])
+  let inst := standardTableInstance k hk
+  let nMin := 2
+  let nMax := min wMax 16
+  .ok (Json.mkObj [
+    ("schema", Json.str "forshor.emit/v1"),
+    ("k", (k : Json)),
+    ("table", Json.str "standard"),
+    ("n_free", Json.bool true),
+    ("opts", optsJson { mMax := mMax, wMax := wMax, checkCramer := checkCramer }),
+    ("schedule", scheduleJson inst),
+    ("coeff_poly", coeffPolyJson inst checkCramer mMax),
+    ("width", widthJson inst.ops wMax),
+    ("qft_plan", qftPlanJson inst.ops wMax),
+    ("shor_plan", shorPlanJson inst.ops nMin nMax mMax),
+    ("provenance", provenanceJson)
+  ])
 
 /-- The section names `buildSection` understands (the pure sections only —
 `template` is a dedicated command, see `Main.lean`). -/
@@ -226,37 +219,33 @@ def sectionNames : List String := ["schedule", "coeff_poly", "width", "qft_plan"
 
 /-- Build a single named pure section of the bundle document, in the same
 envelope (`schema, k, table, n_free, opts, provenance`) but with only that
-one section's data under its own name — same blocking checks as `bundle`. -/
-def buildSection
-    (sectionName : String) (src : TableSource) (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ)
+one section's data under its own name. -/
+def buildSection (sectionName : String) (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ)
     (checkCramer : Bool) : Except String Json :=
-  let inst := tableInstance src k hk
-  match checkTable src k hk inst with
+  let inst := standardTableInstance k hk
+  let nMin := 2
+  let nMax := min wMax 16
+  let sectionJson? : Except String Json :=
+    match sectionName with
+    | "schedule" => .ok (scheduleJson inst)
+    | "coeff_poly" => .ok (coeffPolyJson inst checkCramer mMax)
+    | "width" => .ok (widthJson inst.ops wMax)
+    | "qft_plan" => .ok (qftPlanJson inst.ops wMax)
+    | "shor_plan" => .ok (shorPlanJson inst.ops nMin nMax mMax)
+    | other => .error s!"unknown section: {other} (expected one of {sectionNames})"
+  match sectionJson? with
   | .error e => .error e
-  | .ok () =>
-      let nMin := 2
-      let nMax := min wMax 16
-      let sectionJson? : Except String Json :=
-        match sectionName with
-        | "schedule" => .ok (scheduleJson inst)
-        | "coeff_poly" => .ok (coeffPolyJson inst checkCramer mMax)
-        | "width" => .ok (widthJson inst.ops wMax)
-        | "qft_plan" => .ok (qftPlanJson inst.ops wMax)
-        | "shor_plan" => .ok (shorPlanJson inst.ops nMin nMax mMax)
-        | other => .error s!"unknown section: {other} (expected one of {sectionNames})"
-      match sectionJson? with
-      | .error e => .error e
-      | .ok sj =>
-          .ok (Json.mkObj [
-            ("schema", Json.str "forshor.emit/v1"),
-            ("k", (k : Json)),
-            ("table", Json.str (match src with | .standard => "standard" | .generate => "generate")),
-            ("n_free", Json.bool true),
-            ("section", Json.str sectionName),
-            ("opts", optsJson { mMax := mMax, wMax := wMax, checkCramer := checkCramer }),
-            (sectionName, sj),
-            ("provenance", provenanceJson src)
-          ])
+  | .ok sj =>
+      .ok (Json.mkObj [
+        ("schema", Json.str "forshor.emit/v1"),
+        ("k", (k : Json)),
+        ("table", Json.str "standard"),
+        ("n_free", Json.bool true),
+        ("section", Json.str sectionName),
+        ("opts", optsJson { mMax := mMax, wMax := wMax, checkCramer := checkCramer }),
+        (sectionName, sj),
+        ("provenance", provenanceJson)
+      ])
 
 /-- The largest width `Reflect.Verify`'s canary checks exercise for a given
 `k` (`4 * k`, `phase_product`/`cphase_product`/`qft`'s own representative
@@ -268,19 +257,13 @@ def templateCheckWidth (k : ℕ) : ℕ := 4 * k
 /-- Build the standalone `template` document (`Emit/PLAN.md` §7, §11/R5):
 extract the `Doc` by reflection, verify it (`Reflect.Verify.verifyDoc`), and
 print it together with the checks that passed and this section's
-provenance. Refuses (`.error`) if extraction/verification fails, if `wMax`
-doesn't cover the verifier's own checked width, or if `src = .generate`
-(§11.1: `.generate` has no `ShorLoweringSetup` — it is not a table the
-lowering theorems cover, so it cannot be extracted; this is also checked in
-`Main.lean`, with exit code 2 rather than this function's `.error`/exit 3,
-since it is a bad *request*, not a failed check). -/
-unsafe def buildTemplateDoc (src : TableSource) (k : ℕ) (_hk : 1 < k) (wMax : ℕ) :
+provenance. Refuses (`.error`) if extraction/verification fails or if `wMax`
+doesn't cover the verifier's own checked width. `SUBMISSION_PLAN.md` S1.6
+retired `TableSource`, so the old third refusal — `src = .generate`, a table
+with no `ShorLoweringSetup` and therefore nothing the lowering theorems
+cover — has no input left to reject. -/
+unsafe def buildTemplateDoc (k : ℕ) (_hk : 1 < k) (wMax : ℕ) :
     IO (Except String Json) := do
-  match src with
-  | .generate =>
-      return .error
-        "`.generate` has no `ShorLoweringSetup` and cannot be extracted (Emit/PLAN.md §11)"
-  | .standard =>
   if wMax < templateCheckWidth k then
     let msg :=
       s!"--w-max {wMax} is below the largest width template's own instance checks use " ++
@@ -307,15 +290,15 @@ unsafe def buildTemplateDoc (src : TableSource) (k : ℕ) (_hk : 1 < k) (wMax : 
 (`buildBundleCore`) plus the extracted `template`, unless `noTemplate` is
 set (`--no-template`, which skips the environment load entirely). -/
 unsafe def buildBundle
-    (src : TableSource) (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ) (checkCramer noTemplate : Bool) :
+    (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ) (checkCramer noTemplate : Bool) :
     IO (Except String Json) := do
-  match buildBundleCore src k hk mMax wMax checkCramer with
+  match buildBundleCore k hk mMax wMax checkCramer with
   | .error e => return .error e
   | .ok coreJson =>
       if noTemplate then
         return .ok coreJson
       else
-        match ← buildTemplateDoc src k hk wMax with
+        match ← buildTemplateDoc k hk wMax with
         | .error e => return .error e
         | .ok templateJ => return .ok (coreJson.setObjVal! "template" templateJ)
 
@@ -325,7 +308,7 @@ evaluated at the chunk width `m` and scaled by `phi`). Always the standard
 table (the `bundle` default). -/
 def buildPhases (k m : ℕ) (phiNum phiDen : ℤ) : Except String (List String) :=
   if hk : 1 < k then
-    let inst := tableInstance .standard k hk
+    let inst := standardTableInstance k hk
     match coeffInverse k inst.points inst.hlen with
     | none => .error "singular interpolation matrix (unexpected: GoodToomCookPoints failed)"
     | some inv =>

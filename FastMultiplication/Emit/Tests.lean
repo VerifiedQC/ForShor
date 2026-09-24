@@ -79,25 +79,19 @@ example :
 
 example : (smallJson.getObjVal? "resources").toOption.isSome := by native_decide
 
--- 6. `checkTable .generate` succeeds for `k = 2, 3` (the precomputed tables),
--- using `generatePointsInOrder`'s own consumption order.
-example :
-    (match checkTable .generate 2 (by decide) (tableInstance .generate 2 (by decide)) with
-      | .ok _ => true
-      | .error _ => false) = true := by
-  native_decide
-
-example :
-    (match checkTable .generate 3 (by decide) (tableInstance .generate 3 (by decide)) with
-      | .ok _ => true
-      | .error _ => false) = true := by
-  native_decide
+-- 6 (the `checkTable .generate` run-time coverage checks for `k = 2, 3`) is
+-- gone with `TableSource` itself (`SUBMISSION_PLAN.md` S1.6): its subject was
+-- the second table source, which S1 removed rather than generalised — a table
+-- is now a `ShorLoweringSetup`, and the conditions `checkTable` re-derived at
+-- run time are that record's own fields. R2.7's `r2_7c_setup` below is what
+-- exercises a non-canonical table now, and it discharges those conditions by
+-- `native_decide` into real proof terms instead of a Boolean report.
 
 -- 7. `check1_inverseOf`/`check2_agreesWithCramer` succeed for `k = 2, 3` at a
 -- small `mMax`, on the standard table (Gauss-Jordan `M⁻¹` agrees with the
 -- compiler's own `cramerCoeffFromPtsWidth`).
-def k2StdInst : TableInstance 2 := tableInstance .standard 2 (by decide)
-def k3StdInst : TableInstance 3 := tableInstance .standard 3 (by decide)
+def k2StdInst : TableInstance 2 := standardTableInstance 2 (by decide)
+def k3StdInst : TableInstance 3 := standardTableInstance 3 (by decide)
 
 example :
     (match coeffInverse 2 k2StdInst.points k2StdInst.hlen with
@@ -122,7 +116,7 @@ example :
 -- `Emit/PLAN.md` §7/R3, and is checked at run time via the deliverable
 -- checklist's `forshor_emit bundle`/`template` invocations instead).
 example :
-    (match buildBundleCore .standard 2 (by decide) 6 10 false with
+    (match buildBundleCore 2 (by decide) 6 10 false with
       | .ok json =>
           decide (((json.getObjVal? "schema").bind Json.getStr?).toOption = some "forshor.emit/v1") &&
           decide (((json.getObjVal? "n_free").bind Json.getBool?).toOption = some true)
@@ -145,7 +139,7 @@ example :
 -- carries its own name as a top-level key, for `k = 2`.
 example :
     sectionNames.all (fun s =>
-      match buildSection s .standard 2 (by decide) 6 10 false with
+      match buildSection s 2 (by decide) 6 10 false with
       | .ok json => (json.getObjVal? s).toOption.isSome
       | .error _ => false) = true := by
   native_decide
@@ -172,7 +166,7 @@ extract_ir_doc pp_body_doc_k2 smallLowering
 
 abbrev r2_1_k : Nat := 2
 def r2_1_hk : 1 < r2_1_k := by decide
-def r2_1_ops := (tableInstance .standard r2_1_k r2_1_hk).ops
+def r2_1_ops := (standardTableInstance r2_1_k r2_1_hk).ops
 
 def r2_1_x : ExtReg := ExtReg.withReserve (Reg.interval 0 4) (Reg.interval 4 12) (by decide)
 def r2_1_z : ExtReg := ExtReg.withReserve (Reg.interval 16 4) (Reg.interval 20 12) (by decide)
@@ -197,8 +191,8 @@ def r2_1_layout : Gate.PhaseProductLayout r2_1_x r2_1_z r2_1_k :=
 def r2_1_m : Nat := phaseLimbWidth r2_1_x r2_1_z r2_1_k
 
 def r2_1_coeffFn : Fin (q r2_1_k) → ℚ :=
-  cramerCoeffFromPtsWidth r2_1_k r2_1_m (tableInstance .standard r2_1_k r2_1_hk).points
-    (tableInstance .standard r2_1_k r2_1_hk).hlen
+  cramerCoeffFromPtsWidth r2_1_k r2_1_m (standardLoweringSetup r2_1_k r2_1_hk).pts
+    (standardLoweringSetup r2_1_k r2_1_hk).hpts
 
 def r2_1_phi : Angle := (1 : ℚ) / 4
 
@@ -247,7 +241,7 @@ example :
 end R2_1
 
 -- 16. R2.3's exit criterion (`Emit/PLAN.md` §6, §6.2): `naive_leaf`
--- (`LowGate.Naive_SignedPhaseProd`) needs no `k`/`TableSource` and so no
+-- (`LowGate.Naive_SignedPhaseProd`) needs no `k`/table and so no
 -- `extract_ir_doc` pinning either — `Reflect/Targets.lean`'s
 -- `naiveLeafTemplate` is already a plain `def`, hand-specified rather than
 -- reflected (`naiveSignedPhaseGates`'s double loop is recursion over a
@@ -299,7 +293,7 @@ section R2_2
 
 abbrev r2_2_k : Nat := 2
 def r2_2_hk : 1 < r2_2_k := by decide
-def r2_2_ops := (tableInstance .standard r2_2_k r2_2_hk).ops
+def r2_2_ops := (standardTableInstance r2_2_k r2_2_hk).ops
 def r2_2_phi : Angle := (1 : ℚ) / 4
 
 set_option maxHeartbeats 1000000 in
@@ -332,8 +326,8 @@ def r2_2_env (ops : Prog r2_2_k) (x z : ExtReg) : IR.Env :=
       | _, _ => none
     coeff := fun l mv =>
       if h : l < q r2_2_k then
-        some (cramerCoeffFromPtsWidth r2_2_k mv (tableInstance .standard r2_2_k r2_2_hk).points
-          (tableInstance .standard r2_2_k r2_2_hk).hlen ⟨l, h⟩)
+        some (cramerCoeffFromPtsWidth r2_2_k mv (standardLoweringSetup r2_2_k r2_2_hk).pts
+          (standardLoweringSetup r2_2_k r2_2_hk).hpts ⟨l, h⟩)
       else none }
 
 partial def r2_2_flatten : LowGate → List LowGate
@@ -351,6 +345,7 @@ def r2_2b_hworkspace : SignedRecursiveWorkspaceOK r2_2_ops r2_2b_x r2_2b_z :=
 
 def r2_2b_real : LowGate :=
   lowerGateRec (standardSignedPhaseLoweringPlan r2_2_k r2_2_hk r2_2_phi r2_2b_x r2_2b_z r2_2_ops
+    (standardLoweringSetup r2_2_k r2_2_hk).pts (standardLoweringSetup r2_2_k r2_2_hk).hpts
     r2_2b_hworkspace)
 
 set_option maxHeartbeats 1000000 in
@@ -373,6 +368,7 @@ def r2_2r_hworkspace : SignedRecursiveWorkspaceOK r2_2_ops r2_2r_x r2_2r_z :=
 
 def r2_2r_real : LowGate :=
   lowerGateRec (standardSignedPhaseLoweringPlan r2_2_k r2_2_hk r2_2_phi r2_2r_x r2_2r_z r2_2_ops
+    (standardLoweringSetup r2_2_k r2_2_hk).pts (standardLoweringSetup r2_2_k r2_2_hk).hpts
     r2_2r_hworkspace)
 
 set_option maxHeartbeats 4000000 in
@@ -439,7 +435,7 @@ section R2_4_CPhaseProduct
 
 abbrev r2_4_k : Nat := 2
 def r2_4_hk : 1 < r2_4_k := by decide
-def r2_4_ops := (tableInstance .standard r2_4_k r2_4_hk).ops
+def r2_4_ops := (standardTableInstance r2_4_k r2_4_hk).ops
 def r2_4_phi : Angle := (1 : ℚ) / 4
 def r2_4_ctrlIdx : Nat := 1000
 
@@ -467,8 +463,8 @@ def r2_4_env (ops : Prog r2_4_k) (ctrl x z : ExtReg) : IR.Env :=
       | _, _ => none
     coeff := fun l mv =>
       if h : l < q r2_4_k then
-        some (cramerCoeffFromPtsWidth r2_4_k mv (tableInstance .standard r2_4_k r2_4_hk).points
-          (tableInstance .standard r2_4_k r2_4_hk).hlen ⟨l, h⟩)
+        some (cramerCoeffFromPtsWidth r2_4_k mv (standardLoweringSetup r2_4_k r2_4_hk).pts
+          (standardLoweringSetup r2_4_k r2_4_hk).hpts ⟨l, h⟩)
       else none }
 
 partial def r2_4_flatten : LowGate → List LowGate
@@ -491,7 +487,9 @@ def r2_4b_hworkspace : CSignedRecursiveWorkspaceOK r2_4_ops r2_4_ctrlIdx r2_4b_x
 
 def r2_4b_real : LowGate :=
   lowerGateRec (standardCSignedPhaseLoweringPlan r2_4_k r2_4_hk r2_4_ctrlIdx r2_4_phi r2_4b_x
-    r2_4b_z r2_4_ops r2_4b_hworkspace)
+    r2_4b_z r2_4_ops
+    (standardLoweringSetup r2_4_k r2_4_hk).pts (standardLoweringSetup r2_4_k r2_4_hk).hpts
+    r2_4b_hworkspace)
 
 set_option maxHeartbeats 1000000 in
 example :
@@ -517,7 +515,9 @@ def r2_4r_hworkspace : CSignedRecursiveWorkspaceOK r2_4_ops r2_4_ctrlIdx r2_4r_x
 
 def r2_4r_real : LowGate :=
   lowerGateRec (standardCSignedPhaseLoweringPlan r2_4_k r2_4_hk r2_4_ctrlIdx r2_4_phi r2_4r_x
-    r2_4r_z r2_4_ops r2_4r_hworkspace)
+    r2_4r_z r2_4_ops
+    (standardLoweringSetup r2_4_k r2_4_hk).pts (standardLoweringSetup r2_4_k r2_4_hk).hpts
+    r2_4r_hworkspace)
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
@@ -546,7 +546,7 @@ section R2_5
 
 abbrev r2_5_k : Nat := 2
 def r2_5_hk : 1 < r2_5_k := by decide
-def r2_5_ops := (tableInstance .standard r2_5_k r2_5_hk).ops
+def r2_5_ops := (standardTableInstance r2_5_k r2_5_hk).ops
 
 set_option maxHeartbeats 1000000 in
 extract_ir_doc r2_5_doc smallLowering
@@ -573,8 +573,8 @@ def r2_5_env (ops : Prog r2_5_k) (r xWork zWork : ExtReg) : IR.Env :=
       | _, _ => none
     coeff := fun l mv =>
       if h : l < q r2_5_k then
-        some (cramerCoeffFromPtsWidth r2_5_k mv (tableInstance .standard r2_5_k r2_5_hk).points
-          (tableInstance .standard r2_5_k r2_5_hk).hlen ⟨l, h⟩)
+        some (cramerCoeffFromPtsWidth r2_5_k mv (standardLoweringSetup r2_5_k r2_5_hk).pts
+          (standardLoweringSetup r2_5_k r2_5_hk).hpts ⟨l, h⟩)
       else none }
 
 partial def r2_5_flatten : LowGate → List LowGate
@@ -588,7 +588,9 @@ def r2_5w4_r : ExtReg := ExtReg.withReserve (Reg.interval 0 4) (Reg.interval 4 2
 def r2_5w4_hworkspace : QFTReserveOK r2_5_ops r2_5w4_r := ⟨by native_decide⟩
 def r2_5w4_xWork : ExtReg := ExtReg.ofReg (qftXWork r2_5_ops r2_5w4_r)
 def r2_5w4_zWork : ExtReg := ExtReg.ofReg (qftZWork r2_5_ops r2_5w4_r)
-def r2_5w4_real : LowGate := lowerQFT r2_5_k r2_5_hk r2_5_ops r2_5w4_r r2_5w4_hworkspace
+def r2_5w4_real : LowGate :=
+  lowerQFT r2_5_k r2_5_hk r2_5_ops (standardLoweringSetup r2_5_k r2_5_hk).pts
+    (standardLoweringSetup r2_5_k r2_5_hk).hpts r2_5w4_r r2_5w4_hworkspace
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
@@ -608,7 +610,9 @@ def r2_5w8_r : ExtReg := ExtReg.withReserve (Reg.interval 0 8) (Reg.interval 8 2
 def r2_5w8_hworkspace : QFTReserveOK r2_5_ops r2_5w8_r := ⟨by native_decide⟩
 def r2_5w8_xWork : ExtReg := ExtReg.ofReg (qftXWork r2_5_ops r2_5w8_r)
 def r2_5w8_zWork : ExtReg := ExtReg.ofReg (qftZWork r2_5_ops r2_5w8_r)
-def r2_5w8_real : LowGate := lowerQFT r2_5_k r2_5_hk r2_5_ops r2_5w8_r r2_5w8_hworkspace
+def r2_5w8_real : LowGate :=
+  lowerQFT r2_5_k r2_5_hk r2_5_ops (standardLoweringSetup r2_5_k r2_5_hk).pts
+    (standardLoweringSetup r2_5_k r2_5_hk).hpts r2_5w8_r r2_5w8_hworkspace
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
@@ -753,8 +757,8 @@ def r2_6_env (a N : ℕ) (x y work scratch : ExtReg) (flag : ℕ) : IR.Env :=
       | _, _ => none
     coeff := fun l mv =>
       if h : l < q 2 then
-        some (cramerCoeffFromPtsWidth 2 mv (tableInstance .standard 2 (by decide)).points
-          (tableInstance .standard 2 (by decide)).hlen ⟨l, h⟩)
+        some (cramerCoeffFromPtsWidth 2 mv (standardLoweringSetup 2 (by decide)).pts
+          (standardLoweringSetup 2 (by decide)).hpts ⟨l, h⟩)
       else none }
 
 -- Same recursive-through-`adj` discipline as `r2_6g_flatten` — `cmpLtNW`'s
@@ -798,7 +802,7 @@ section R2_7_PhaseProduct_K3Standard
 
 abbrev r2_7pp3_k : Nat := 3
 def r2_7pp3_hk : 1 < r2_7pp3_k := by decide
-def r2_7pp3_ops := (tableInstance .standard r2_7pp3_k r2_7pp3_hk).ops
+def r2_7pp3_ops := (standardTableInstance r2_7pp3_k r2_7pp3_hk).ops
 def r2_7pp3_phi : Angle := (1 : ℚ) / 4
 
 set_option maxHeartbeats 4000000 in
@@ -823,8 +827,8 @@ def r2_7pp3_env (ops : Prog r2_7pp3_k) (x z : ExtReg) : IR.Env :=
       | _, _ => none
     coeff := fun l mv =>
       if h : l < q r2_7pp3_k then
-        some (cramerCoeffFromPtsWidth r2_7pp3_k mv (tableInstance .standard r2_7pp3_k r2_7pp3_hk).points
-          (tableInstance .standard r2_7pp3_k r2_7pp3_hk).hlen ⟨l, h⟩)
+        some (cramerCoeffFromPtsWidth r2_7pp3_k mv (standardLoweringSetup r2_7pp3_k r2_7pp3_hk).pts
+          (standardLoweringSetup r2_7pp3_k r2_7pp3_hk).hpts ⟨l, h⟩)
       else none }
 
 partial def r2_7pp3_flatten : LowGate → List LowGate
@@ -840,7 +844,10 @@ def r2_7pp3_hworkspace : SignedRecursiveWorkspaceOK r2_7pp3_ops r2_7pp3_x r2_7pp
 
 def r2_7pp3_real : LowGate :=
   lowerGateRec (standardSignedPhaseLoweringPlan r2_7pp3_k r2_7pp3_hk r2_7pp3_phi r2_7pp3_x r2_7pp3_z
-    r2_7pp3_ops r2_7pp3_hworkspace)
+    r2_7pp3_ops
+    (standardLoweringSetup r2_7pp3_k r2_7pp3_hk).pts
+    (standardLoweringSetup r2_7pp3_k r2_7pp3_hk).hpts
+    r2_7pp3_hworkspace)
 
 set_option maxHeartbeats 1000000 in
 example :
@@ -854,18 +861,17 @@ example :
 end R2_7_PhaseProduct_K3Standard
 
 -- R5 (`Emit/PLAN.md` §11): D5's amendment means "any table" is now "any
--- `ShorLoweringSetup`", not "any `TableSource`" — `.generate` (no
--- `ShorLoweringSetup`, since `StandardPhaseLoweringPlan`'s coefficients are
--- fixed to `genInterpolationPoints k` regardless of `ops`, so a `.generate`
--- table's own points would be the *wrong* ones) is no longer a legitimate
--- input anywhere in the symbolic path. This section replaces the old
--- `.generate` genericity demonstration with §11.3's exit criterion: a
+-- `ShorLoweringSetup`". §11.3's exit criterion, and the only table-genericity
+-- demonstration left once `SUBMISSION_PLAN.md` S1.6 retired `TableSource`: a
 -- hand-built `ShorLoweringSetup` whose `ops` genuinely differ from
 -- `standardLoweringSetup 2`'s (a redundant, semantically-inert
--- `shiftL`/`shiftR 0` pair appended) but still consume
--- `genInterpolationPoints 2` in order and return to the start state —
--- discharged by `native_decide` using `Table/Decide.lean`'s new `Decidable`
--- instances, not assumed.
+-- `shiftL`/`shiftR 0` pair appended) but still consume its own `pts` in order
+-- and return to the start state — discharged by `native_decide` using
+-- `Table/Decide.lean`'s `Decidable` instances, not assumed. The points here
+-- are still the canonical ones; S1 made them a *field* of the setup rather
+-- than a constant baked into the plan builders' types, so this section's
+-- `coeff` oracle and real terms both read `r2_7c_setup.pts` and would follow
+-- a different choice if this setup made one.
 section R2_7_PhaseProduct_CustomTable
 
 abbrev r2_7c_k : Nat := 2
@@ -883,6 +889,9 @@ def r2_7c_ops : Prog r2_7c_k :=
 def r2_7c_setup : ShorLoweringSetup :=
   { k := r2_7c_k
     hk := r2_7c_hk
+    pts := genInterpolationPoints r2_7c_k
+    hpts := generatedInterpolationPoints_length r2_7c_k
+    good := genInterpolationPoints_good r2_7c_k
     ops := r2_7c_ops
     consumes := by native_decide
     returns := by native_decide }
@@ -911,8 +920,7 @@ def r2_7c_env (ops : Prog r2_7c_k) (x z : ExtReg) : IR.Env :=
       | _, _ => none
     coeff := fun l mv =>
       if h : l < q r2_7c_k then
-        some (cramerCoeffFromPtsWidth r2_7c_k mv (genInterpolationPoints r2_7c_k)
-          (generatedInterpolationPoints_length r2_7c_k) ⟨l, h⟩)
+        some (cramerCoeffFromPtsWidth r2_7c_k mv r2_7c_setup.pts r2_7c_setup.hpts ⟨l, h⟩)
       else none }
 
 partial def r2_7c_flatten : LowGate → List LowGate
@@ -933,6 +941,7 @@ def r2_7c_hworkspace : SignedRecursiveWorkspaceOK r2_7c_ops r2_7c_x r2_7c_z :=
 
 def r2_7c_real : LowGate :=
   lowerSignedPhaseProdWithWorkspace r2_7c_k r2_7c_hk r2_7c_phi r2_7c_x r2_7c_z r2_7c_ops
+    r2_7c_setup.pts r2_7c_setup.hpts
     r2_7c_hworkspace
 
 set_option maxHeartbeats 4000000 in
@@ -950,7 +959,7 @@ section R2_7_Qft_K3Standard
 
 abbrev r2_7q3_k : Nat := 3
 def r2_7q3_hk : 1 < r2_7q3_k := by decide
-def r2_7q3_ops := (tableInstance .standard r2_7q3_k r2_7q3_hk).ops
+def r2_7q3_ops := (standardTableInstance r2_7q3_k r2_7q3_hk).ops
 
 set_option maxHeartbeats 4000000 in
 extract_ir_doc r2_7q3_doc k3Lowering
@@ -979,8 +988,8 @@ def r2_7q3_env (ops : Prog r2_7q3_k) (r xWork zWork : ExtReg) : IR.Env :=
       | _, _ => none
     coeff := fun l mv =>
       if h : l < q r2_7q3_k then
-        some (cramerCoeffFromPtsWidth r2_7q3_k mv (tableInstance .standard r2_7q3_k r2_7q3_hk).points
-          (tableInstance .standard r2_7q3_k r2_7q3_hk).hlen ⟨l, h⟩)
+        some (cramerCoeffFromPtsWidth r2_7q3_k mv (standardLoweringSetup r2_7q3_k r2_7q3_hk).pts
+          (standardLoweringSetup r2_7q3_k r2_7q3_hk).hpts ⟨l, h⟩)
       else none }
 
 partial def r2_7q3_flatten : LowGate → List LowGate
@@ -992,7 +1001,9 @@ def r2_7q3_r : ExtReg := ExtReg.withReserve (Reg.interval 0 4) (Reg.interval 4 2
 def r2_7q3_hworkspace : QFTReserveOK r2_7q3_ops r2_7q3_r := ⟨by native_decide⟩
 def r2_7q3_xWork : ExtReg := ExtReg.ofReg (qftXWork r2_7q3_ops r2_7q3_r)
 def r2_7q3_zWork : ExtReg := ExtReg.ofReg (qftZWork r2_7q3_ops r2_7q3_r)
-def r2_7q3_real : LowGate := lowerQFT r2_7q3_k r2_7q3_hk r2_7q3_ops r2_7q3_r r2_7q3_hworkspace
+def r2_7q3_real : LowGate :=
+  lowerQFT r2_7q3_k r2_7q3_hk r2_7q3_ops (standardLoweringSetup r2_7q3_k r2_7q3_hk).pts
+    (standardLoweringSetup r2_7q3_k r2_7q3_hk).hpts r2_7q3_r r2_7q3_hworkspace
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
@@ -1034,8 +1045,7 @@ def r2_7cq_env (ops : Prog r2_7c_k) (r xWork zWork : ExtReg) : IR.Env :=
       | _, _ => none
     coeff := fun l mv =>
       if h : l < q r2_7c_k then
-        some (cramerCoeffFromPtsWidth r2_7c_k mv (genInterpolationPoints r2_7c_k)
-          (generatedInterpolationPoints_length r2_7c_k) ⟨l, h⟩)
+        some (cramerCoeffFromPtsWidth r2_7c_k mv r2_7c_setup.pts r2_7c_setup.hpts ⟨l, h⟩)
       else none }
 
 partial def r2_7cq_flatten : LowGate → List LowGate
@@ -1047,7 +1057,8 @@ def r2_7cq_r : ExtReg := ExtReg.withReserve (Reg.interval 0 4) (Reg.interval 4 2
 def r2_7cq_hworkspace : QFTReserveOK r2_7c_ops r2_7cq_r := ⟨by native_decide⟩
 def r2_7cq_xWork : ExtReg := ExtReg.ofReg (qftXWork r2_7c_ops r2_7cq_r)
 def r2_7cq_zWork : ExtReg := ExtReg.ofReg (qftZWork r2_7c_ops r2_7cq_r)
-def r2_7cq_real : LowGate := lowerQFT r2_7c_k r2_7c_hk r2_7c_ops r2_7cq_r r2_7cq_hworkspace
+def r2_7cq_real : LowGate := lowerQFT r2_7c_k r2_7c_hk r2_7c_ops
+  r2_7c_setup.pts r2_7c_setup.hpts r2_7cq_r r2_7cq_hworkspace
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in

@@ -4,6 +4,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 
 namespace Shor
+open Operations
 
 /-! =========================================================
     PhaseProduct Gate-Count Main Theorems
@@ -24,13 +25,14 @@ theorem phaseProductGateCountBound_of_programOK
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (hops : PhaseProductProgramOK k hk ops) :
-    PhaseProductGateCountBound (Basis := Basis) k hk ops := by
+    (pts : List Point)
+    (hpts : pts.length = q k)
+    (hops : PhaseProductProgramOK k hk pts hpts ops) :
+    PhaseProductGateCountBound (Basis := Basis) k hk ops pts hpts := by
 
   have hcount :
       phaseProductCount ops = q k := by
     unfold PhaseProductProgramOK at hops
-    dsimp at hops
     exact hops.2.2.2
 
   have hbalancedWidth :
@@ -46,7 +48,7 @@ theorem phaseProductGateCountBound_of_programOK
 
   obtain ⟨C, hC, hbalanced⟩ :=
     balanced_phaseProduct_recurrence_solution
-      (Basis := Basis) k hk ops hcount hbalancedWidth hoverhead
+      (Basis := Basis) k hk ops pts hpts hcount hbalancedWidth hoverhead
 
   have hgrowth :
       ∃ c : ℕ, ∀ x z : ExtReg,
@@ -60,7 +62,7 @@ theorem phaseProductGateCountBound_of_programOK
     prog_no_recurse_implies_small_operand k hk ops
 
   exact phaseProductGateCountBound_of_balanced_signed_bound
-    (Basis := Basis) k hk ops hcount hoverhead hgrowth hnarrow C hC hbalanced
+    (Basis := Basis) k hk ops pts hpts hcount hoverhead hgrowth hnarrow C hC hbalanced
 
 
 /-! ---------------------------------------------------------
@@ -75,12 +77,14 @@ theorem cPhaseProductGateCountBound_of_programOK
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (hops : PhaseProductProgramOK k hk ops) :
+    (pts : List Point)
+    (hpts : pts.length = q k)
+    (hops : PhaseProductProgramOK k hk pts hpts ops) :
     CPhaseProductGateCountBound
-      (Basis := Basis) k hk ops := by
+      (Basis := Basis) k hk ops pts hpts := by
   obtain ⟨C, hC, n₀, hn₀, hbound⟩ :=
     phaseProductGateCountBound_of_programOK
-      (Basis := Basis) k hk ops hops
+      (Basis := Basis) k hk ops pts hpts hops
   refine ⟨5 * C, by positivity, n₀, hn₀, ?_⟩
   intro ctrl φ x z ws hworkspace
   dsimp only
@@ -103,7 +107,7 @@ theorem cPhaseProductGateCountBound_of_programOK
   have hdomNat :
       cSignedPhaseProductGateCount
           (Basis := Basis)
-          k hk ops ctrl φ
+          k hk ops pts hpts ctrl φ
           (ws.xExt.grow 1)
           (ws.zExt.grow 1)
           hc
@@ -111,13 +115,13 @@ theorem cPhaseProductGateCountBound_of_programOK
       5 *
         signedPhaseProductGateCount
           (Basis := Basis)
-          k hk ops φ
+          k hk ops pts hpts φ
           (ws.xExt.grow 1)
           (ws.zExt.grow 1)
           hs :=
     cSignedPhaseProductGateCount_le_five_signed
       (Basis := Basis)
-      k hk ops ctrl φ
+      k hk ops pts hpts ctrl φ
       (ws.xExt.grow 1)
       (ws.zExt.grow 1)
       hc
@@ -126,12 +130,12 @@ theorem cPhaseProductGateCountBound_of_programOK
   rw [
     lowerGate_CPhaseProdUsing_gateCount_eq_cSigned
       (Basis := Basis)
-      k hk ops ctrl φ x z ws hworkspace
+      k hk ops pts hpts ctrl φ x z ws hworkspace
   ]
   have hdomReal :
       (cSignedPhaseProductGateCount
           (Basis := Basis)
-          k hk ops ctrl φ
+          k hk ops pts hpts ctrl φ
           (ws.xExt.grow 1)
           (ws.zExt.grow 1)
           hc : ℝ)
@@ -139,7 +143,7 @@ theorem cPhaseProductGateCountBound_of_programOK
       5 *
         (signedPhaseProductGateCount
           (Basis := Basis)
-          k hk ops φ
+          k hk ops pts hpts φ
           (ws.xExt.grow 1)
           (ws.zExt.grow 1)
           hs : ℝ) := by
@@ -147,26 +151,26 @@ theorem cPhaseProductGateCountBound_of_programOK
   have hsignedEq :
       signedPhaseProductGateCount
           (Basis := Basis)
-          k hk ops φ
+          k hk ops pts hpts φ
           (ws.xExt.grow 1)
           (ws.zExt.grow 1)
           hs
         =
       LowGate.gateCount shorGateCostModel
         (lowerGate
-          k hk ops
+          k hk ops pts hpts
           (Gate.PhaseProdUsing φ x z ws)
           hunsignedWorkspace) := by
     symm
     exact
       lowerGate_PhaseProdUsing_gateCount_eq_signed
         (Basis := Basis)
-        k hk ops φ x z ws hunsignedWorkspace
+        k hk ops pts hpts φ x z ws hunsignedWorkspace
   rw [hsignedEq] at hdomReal
   have hb' :
       (LowGate.gateCount shorGateCostModel
           (lowerGate
-            k hk ops
+            k hk ops pts hpts
             (Gate.PhaseProdUsing φ x z ws)
             hunsignedWorkspace) : ℝ)
         ≤
@@ -192,7 +196,7 @@ theorem cPhaseProductGateCountBound_of_programOK
       5 *
         (LowGate.gateCount shorGateCostModel
           (lowerGate
-            k hk ops
+            k hk ops pts hpts
             (Gate.PhaseProdUsing φ x z ws)
             hunsignedWorkspace) : ℝ) := by
     simpa only using hdomReal

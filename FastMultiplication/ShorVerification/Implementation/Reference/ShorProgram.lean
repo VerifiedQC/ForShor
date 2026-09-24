@@ -205,6 +205,7 @@ def referenceShorCircuit
     (m : ℕ) : LowGate :=
   let layout := allocateReferenceLayout lowering.ops inst m
   orderFindingApproxLow lowering.k lowering.hk lowering.ops
+      lowering.pts lowering.hpts
       inst.a inst.N layout.x layout.data layout.work layout.scratch layout.flag
       (reference_modMulCircuitWorkspaceOK lowering.ops inst m)
       (reference_step4Workspace lowering.ops inst m)

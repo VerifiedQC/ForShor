@@ -27,6 +27,7 @@ collects the lemmas needed to work with it:
   them).
 -/
 namespace Shor
+open Operations
 
 universe u
 
@@ -107,9 +108,10 @@ end GateWorkspaceOK
     {k : ℕ}
     (hk : 1 < k)
     (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k)
     (hworkspace : GateWorkspaceOK ops Gate.id) :
     lowerGate
-        k hk ops Gate.id hworkspace
+        k hk ops pts hpts Gate.id hworkspace
       =
     LowGate.id := by
   rfl
@@ -118,40 +120,43 @@ end GateWorkspaceOK
     {k : ℕ}
     (hk : 1 < k)
     (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k)
     (U V : Gate)
     (hworkspace :
       GateWorkspaceOK ops (Gate.seq U V)) :
     lowerGate
-        k hk ops
+        k hk ops pts hpts
         (Gate.seq U V)
         hworkspace
       =
     LowGate.seq
       (lowerGate
-        k hk ops U hworkspace.1)
+        k hk ops pts hpts U hworkspace.1)
       (lowerGate
-        k hk ops V hworkspace.2) := by
+        k hk ops pts hpts V hworkspace.2) := by
   rfl
 
 @[simp] theorem lowerGate_QFT
     {k : ℕ}
     (hk : 1 < k)
     (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k)
     (r : ExtReg)
     (hworkspace :
       GateWorkspaceOK ops (Gate.QFT r)) :
     lowerGate
-        k hk ops
+        k hk ops pts hpts
         (Gate.QFT r)
         hworkspace
       =
-    lowerQFT k hk ops r hworkspace := by
+    lowerQFT k hk ops pts hpts r hworkspace := by
   rfl
 
 @[simp] theorem lowerGate_SignedPhaseProd
     {k : ℕ}
     (hk : 1 < k)
     (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k)
     (phi : Angle)
     (x z : ExtReg)
     (hworkspace :
@@ -159,18 +164,19 @@ end GateWorkspaceOK
         ops
         (Gate.SignedPhaseProd phi x z)) :
     lowerGate
-        k hk ops
+        k hk ops pts hpts
         (Gate.SignedPhaseProd phi x z)
         hworkspace
       =
     lowerSignedPhaseProdWithWorkspace
-      k hk phi x z ops hworkspace := by
+      k hk phi x z ops pts hpts hworkspace := by
   rfl
 
 @[simp] theorem lowerGate_CSignedPhaseProd
     {k : ℕ}
     (hk : 1 < k)
     (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k)
     (ctrl : ℕ)
     (phi : Angle)
     (x z : ExtReg)
@@ -179,12 +185,12 @@ end GateWorkspaceOK
         ops
         (Gate.CSignedPhaseProd ctrl phi x z)) :
     lowerGate
-        k hk ops
+        k hk ops pts hpts
         (Gate.CSignedPhaseProd ctrl phi x z)
         hworkspace
       =
     lowerCSignedPhaseProdWithWorkspace
-      k hk ctrl phi x z ops hworkspace := by
+      k hk ctrl phi x z ops pts hpts hworkspace := by
   rfl
 
 
@@ -205,13 +211,15 @@ theorem lowerGate_correctness
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops (genInterpolationPoints k))
+    {pts : List Point} {hpts : pts.length = q k}
+    (hInterp : GoodToomCookPoints k pts hpts)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state)
     (G : Gate)
     (hworkspace : GateWorkspaceOK ops G)
     (ψ : qs.State)
-    (hclean : GateWorkspaceCleanState qs k hk ops G hworkspace ψ) :
-    LowerGateClass.evalL (qs := qs) (lowerGate k hk ops G hworkspace) ψ
+    (hclean : GateWorkspaceCleanState qs k hk ops pts hpts G hworkspace ψ) :
+    LowerGateClass.evalL (qs := qs) (lowerGate k hk ops pts hpts G hworkspace) ψ
       =
     qs.eval G ψ := by
   induction G generalizing ψ with
@@ -223,19 +231,19 @@ theorem lowerGate_correctness
   | seq U V ihU ihV =>
       change
         GateWorkspaceCleanState
-            qs k hk ops
+            qs k hk ops pts hpts
             U
             hworkspace.1
             ψ
           ∧
         GateWorkspaceCleanState
-            qs k hk ops
+            qs k hk ops pts hpts
             V
             hworkspace.2
             (LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                k hk ops
+                k hk ops pts hpts
                 U
                 hworkspace.1)
               ψ)
@@ -248,7 +256,7 @@ theorem lowerGate_correctness
           LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                k hk ops
+                k hk ops pts hpts
                 U
                 hworkspace.1)
               ψ
@@ -262,7 +270,7 @@ theorem lowerGate_correctness
 
       have hcleanV' :
           GateWorkspaceCleanState
-            qs k hk ops
+            qs k hk ops pts hpts
             V
             hworkspace.2
             (qs.eval U ψ) := by
@@ -272,7 +280,7 @@ theorem lowerGate_correctness
         LowerGateClass.evalL
             (qs := qs)
             (lowerGate
-              k hk ops
+              k hk ops pts hpts
               (Gate.seq U V)
               hworkspace)
             ψ
@@ -280,24 +288,24 @@ theorem lowerGate_correctness
           LowerGateClass.evalL
             (qs := qs)
             (lowerGate
-              k hk ops
+              k hk ops pts hpts
               V
               hworkspace.2)
             (LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                k hk ops
+                k hk ops pts hpts
                 U
                 hworkspace.1)
               ψ) := by
                 exact
                   LowerGateClass.evalL_seq
                     (lowerGate
-                      k hk ops
+                      k hk ops pts hpts
                       U
                       hworkspace.1)
                     (lowerGate
-                      k hk ops
+                      k hk ops pts hpts
                       V
                       hworkspace.2)
                     ψ
@@ -306,7 +314,7 @@ theorem lowerGate_correctness
           LowerGateClass.evalL
             (qs := qs)
             (lowerGate
-              k hk ops
+              k hk ops pts hpts
               V
               hworkspace.2)
             (qs.eval U ψ) := by
@@ -328,7 +336,7 @@ theorem lowerGate_correctness
     | adj U ihU =>
       change
         GateWorkspaceCleanState
-          qs k hk ops U hworkspace
+          qs k hk ops pts hpts U hworkspace
           (qs.eval (Gate.adj U) ψ)
         at hclean
 
@@ -339,7 +347,7 @@ theorem lowerGate_correctness
           LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                k hk ops U hworkspace)
+                k hk ops pts hpts U hworkspace)
               φ
             =
           ψ := by
@@ -347,7 +355,7 @@ theorem lowerGate_correctness
           LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                k hk ops U hworkspace)
+                k hk ops pts hpts U hworkspace)
               φ
               =
             qs.eval U φ := by
@@ -360,18 +368,18 @@ theorem lowerGate_correctness
             (qs := qs)
             (LowGate.adj
               (lowerGate
-                k hk ops U hworkspace))
+                k hk ops pts hpts U hworkspace))
             ψ
             =
           LowerGateClass.evalL
             (qs := qs)
             (LowGate.adj
               (lowerGate
-                k hk ops U hworkspace))
+                k hk ops pts hpts U hworkspace))
             (LowerGateClass.evalL
               (qs := qs)
               (lowerGate
-                k hk ops U hworkspace)
+                k hk ops pts hpts U hworkspace)
               φ) := by
                 rw [hforward]
 
@@ -380,7 +388,7 @@ theorem lowerGate_correctness
             LowerGateClass.evalL_adj_apply
               (qs := qs)
               (lowerGate
-                k hk ops U hworkspace)
+                k hk ops pts hpts U hworkspace)
               φ
 
         _ = qs.eval (Gate.adj U) ψ := rfl
@@ -428,10 +436,12 @@ theorem lowerGate_correctness
       simpa only [lowerGate] using
         (evalL_lowerQFT qs k hk ops r
           ψ
+          (pts := pts) (hpts := hpts)
           {
             static := hworkspace
             clean := hclean
           }
+          hInterp
           hC
           hRun)
 
@@ -442,11 +452,12 @@ theorem lowerGate_correctness
         at hclean
 
       simpa only [lowerGate] using
-        (lowerSignedPhaseProduct_correct qs k hk phi x z ops ψ
+        (lowerSignedPhaseProduct_correct qs k hk phi x z ops ψ pts hpts
           {
             static := hworkspace
             clean := hclean
           }
+          hInterp
           hC
           hRun)
 
@@ -457,11 +468,12 @@ theorem lowerGate_correctness
         at hclean
 
       simpa only [lowerGate] using
-        (lowerCSignedPhaseProduct_correct qs k hk ctrl phi x z ops ψ
+        (lowerCSignedPhaseProduct_correct qs k hk ctrl phi x z ops ψ pts hpts
           {
             static := hworkspace
             clean := hclean
           }
+          hInterp
           hC
           hRun)
 

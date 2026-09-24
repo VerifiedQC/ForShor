@@ -19,6 +19,9 @@ the `k ≥ 4` parity generator, which consume a different point stream.
 def standardLoweringSetup (k : ℕ) (hk : 1 < k) : ShorLoweringSetup where
   k := k
   hk := hk
+  pts := genInterpolationPoints k
+  hpts := generatedInterpolationPoints_length k
+  good := genInterpolationPoints_good k
   ops := genOpsWithProduct (k := k) (by omega) (genInterpolationPoints k)
   consumes := genOpsWithProduct_ProgConsumesPtsSafe (k := k) (by omega) (genInterpolationPoints k)
   returns := genOpsWithProduct_returns_to_original (k := k) (by omega) (genInterpolationPoints k)

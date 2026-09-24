@@ -130,8 +130,9 @@ recursive left/right plans; the phase-product body between them is printed
 through `planJson` (it is itself a `StandardPhaseLoweringPlan`, so its
 `seq`/`zeroExtend`/`signedStep`/`zeroDealloc` shape prints exactly as any
 other plan node — no special case is needed for it). -/
-partial def qftPlanJsonOf {k : ℕ} {hk : 1 < k} {ops : Prog k} {r : Reg} :
-    QFTLoweringPlan k hk ops r → Json
+partial def qftPlanJsonOf
+    {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {ops : Prog k} {r : Reg} :
+    QFTLoweringPlan k hk pts hpts ops r → Json
   | .empty r _ => Json.mkObj [("op", Json.str "id"), ("r", regJson r)]
   | .singleton r _ => Json.mkObj [("op", Json.str "H"), ("r", regJson r)]
   | .split r _hsize _ws _phaseInitSize phasePlan rightPlan leftPlan =>

@@ -109,6 +109,8 @@ theorem gateWorkspaceCleanState_CPhaseProdUsing_of_threeRegsClean
       lowering.k
       lowering.hk
       lowering.ops
+      lowering.pts
+      lowering.hpts
       (Gate.CPhaseProdUsing
         ctrl φ x z ws)
       hworkspace

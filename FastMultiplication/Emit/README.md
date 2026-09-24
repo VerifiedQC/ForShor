@@ -99,7 +99,7 @@ extractor and its callers are built to:
 | D2 | **Genericity boundary.** The translation table is keyed by Lean *construct* (`Gate.seq`, `dite`, `Reg.interval`, `WellFounded.fix`, …), never by `k`, table, or width. A new `k` or table needs no code change. An unknown construct is a hard error naming the constant, never a silent drop. |
 | D3 | **Recursion is not unrolled in Lean.** A recursive definition yields one template whose body is one activation; the recursive call is a `Node.call` with its argument expressions. The consumer (and the Lean-side `IR/Instantiate.lean`) unrolls at a concrete `n`. |
 | D4 | **Opaque set.** Left unevaluated and tabulated: `nextWidth`, `reserveNeed`, `qftWorkspaceNeed`, `coeff(l, m)`, `Nat.log2`, `mod`, `pow`, `step5Constant`, `modpow`. |
-| D5 | **Concrete table required, supplied through Lean as a `ShorLoweringSetup`** (amended by R5, §11 — originally `k` and `TableSource`). The input to the extractor is a `Shor.ShorLoweringSetup` value: `k`, `hk`, `ops`, and the two proofs (`consumes`/`returns`) the lowering theorems need. A table that can be packaged as one is, by definition, a table those theorems cover — `TableSource.generate` cannot be, so it is no longer accepted for extraction (it remains a convenience for the *value tables*, which make no such fidelity claim — see `Table/README.md`). Symbolic: `n, m, a, N` (Shor), `W, phi, x, z` (phase product), `w, r` (QFT). |
+| D5 | **Concrete table required, supplied through Lean as a `ShorLoweringSetup`** (amended by R5, §11 — originally `k` and `TableSource`; `TableSource` itself retired by `SUBMISSION_PLAN.md` S1.6). The input to the extractor is a `Shor.ShorLoweringSetup` value: `k`, `hk`, `ops`, its own interpolation points `pts`, and the four proofs (`hpts`/`good`/`consumes`/`returns`) the lowering theorems need. A table that can be packaged as one is, by definition, a table those theorems cover; a table that cannot be is not a table this emitter has anything to say about, which is why there is no longer a second "table source" of any kind — see `Table/README.md`. Symbolic: `n, m, a, N` (Shor), `W, phi, x, z` (phase product), `w, r` (QFT). |
 | D6 | **Reference instances stay.** `pp`, `cpp`, `qft`, `shor` and their annotated views remain; they are what the extracted IR is checked against. |
 | D7 | **Not a theorem.** Trusted: the translation table and Lean's normaliser. Checked: `instantiate`/`instantiateGate` unrolls the extracted `Doc` at concrete widths and agrees with the real term — at build time (`Tests.lean`'s R2.1–R2.7 `native_decide` suite, §6) and at run time (`Reflect/Verify.lean`'s canary, run before `template`/`bundle` ever print anything). The provenance strings say exactly this. |
 
@@ -159,7 +159,7 @@ Each is a `native_decide` example in `Tests.lean`.
 | folder | contents | see |
 |---|---|---|
 | `Json/` | JSON printers only — one spelling per value type, no proof obligations of their own (though `PlanJson.lean` walks proof-carrying plan terms). | [`Json/README.md`](Json/README.md) |
-| `Table/` | The Toom-Cook table abstraction (`standard` vs `generate`, for the value tables only — see D5), plus `Decidable` instances (`Decide.lean`) that let a user discharge a custom table's `ShorLoweringSetup` proofs with `by decide`/`by native_decide`. | [`Table/README.md`](Table/README.md) |
+| `Table/` | The `(ops, points)` view of a `ShorLoweringSetup` the value tables read, plus `Decidable` instances (`Decide.lean`) that let a user discharge a custom table's `ShorLoweringSetup` proofs with `by decide`/`by native_decide`. | [`Table/README.md`](Table/README.md) |
 | `IR/` | The extracted-IR language (`Syntax.lean`), its JSON printer, decidable well-formedness, and the interpreter (`instantiate`/`instantiateGate`). | — |
 | `Reflect/` | The `MetaM` extractor (`Extract.lean`, `Targets.lean`), the build-time/run-time drivers (`Driver.lean`), and the run-time instance-check canary (`Verify.lean`). | — |
 | `Symbolic/` | The opaque value tables (`CoeffPoly.lean`, `Width.lean`, `QftPlan.lean`, `ShorPlan.lean`) plus the assembly file `Bundle.lean`. | [`Symbolic/README.md`](Symbolic/README.md) |
@@ -181,8 +181,8 @@ from outside `Emit/`.
 
 | command | prints |
 |---|---|
-| `forshor_emit template <k> [--w-max W]` | the extracted `Doc` alone, after `Doc.wellFormed` and the R2-style instance-check canary pass (refuses with exit 3 otherwise); `--table generate` is refused with exit 2 (D5/§11 — `.generate` has no `ShorLoweringSetup` to extract) |
-| `forshor_emit bundle <k> [--table standard\|generate] [--m-max M] [--w-max W] [--check-cramer] [--no-template]` | `forshor.emit/v1`: the n-free document (`schedule, coeff_poly, width, qft_plan, shor_plan`, plus `template` unless `--no-template`); `--table generate` without `--no-template` is refused with exit 2, same reason |
+| `forshor_emit template <k> [--w-max W]` | the extracted `Doc` alone, after `Doc.wellFormed` and the R2-style instance-check canary pass (refuses with exit 3 otherwise) |
+| `forshor_emit bundle <k> [--m-max M] [--w-max W] [--check-cramer] [--no-template]` | `forshor.emit/v1`: the n-free document (`schedule, coeff_poly, width, qft_plan, shor_plan`, plus `template` unless `--no-template`) |
 | `forshor_emit <schedule\|coeff_poly\|width\|qft_plan\|shor_plan> <k> [same opts as bundle]` | one pure section of the above, in the same envelope |
 | `forshor_emit phases <k> <m> <phiNum/phiDen>` | exactly `q k` plain-text lines, `c_l(2^m)·phi` as reduced `num/den` |
 | `forshor_emit pp <k> <n> <phiNum/phiDen> [--flat]` | the signed phase product at width `n`: annotated (default, with embedded `meta.checks`) or flat `forshor.lowgate/v2` |
@@ -191,10 +191,9 @@ from outside `Emit/`.
 | `forshor_emit shor <k> <a> <N> <m>` | the reference order-finding circuit, plus a `layout` block (`allocateReferenceLayout`'s registers) |
 | `forshor_emit <k> <a> <N> <m>` | alias of `shor` |
 
-Exit codes: `0` complete; `2` refused (bad input, including `--table
-generate` on `template`/`bundle`'s template step — nothing on stdout); `3`
-internal check failed (a blocking check — `checkTable`, the extracted
-`Doc`'s well-formedness/instance-check canary, or `pp`/`cpp`/`qft`'s own
+Exit codes: `0` complete; `2` refused (bad input — nothing on stdout); `3`
+internal check failed (a blocking check — the extracted `Doc`'s
+well-formedness/instance-check canary, or `pp`/`cpp`/`qft`'s own
 `instantiate_eq_real` check — failed; nothing usable on stdout). `n` never
 appears on the `bundle`/per-section/`template` command lines (they are
 n-free by construction).
@@ -210,15 +209,19 @@ entirely.
 ## Using a custom table
 
 The run-time CLI (`template`/`bundle`) only ever extracts the standard
-table — there is deliberately no `--table file` flag, since a table's
-`consumes`/`returns` proofs need the kernel, not a parser. To extract a
-table of your own, write it as a `Shor.ShorLoweringSetup` in a Lean file
-that imports `FastMultiplication.Emit.Reflect.Driver`, and use the
-build-time `extract_ir_doc` command:
+table — there is deliberately no way to name a table on the command line,
+since a table's side-condition proofs need the kernel, not a parser. To
+extract a table of your own, write it as a `Shor.ShorLoweringSetup` in a
+Lean file that imports `FastMultiplication.Emit.Reflect.Driver`, and use
+the build-time `extract_ir_doc` command:
 
 ```lean
 def myTable : Shor.ShorLoweringSetup :=
-  { k := 3, hk := by decide, ops := myOps
+  { k := 3, hk := by decide
+    pts := Shor.genInterpolationPoints 3
+    hpts := Shor.generatedInterpolationPoints_length 3
+    good := Shor.genInterpolationPoints_good 3
+    ops := myOps
     consumes := by native_decide   -- Table/Decide.lean's instances make this work
     returns := by native_decide }
 
@@ -226,17 +229,27 @@ extract_ir_doc myDoc myTable
 #eval IO.println (Shor.IR.docJson myDoc).compress
 ```
 
-`consumes : ProgConsumesPtsSafe hk State.start_state myOps (genInterpolationPoints k)`
-and `returns : run? myOps State.start_state = some State.start_state` are
-both `Decidable` at a concrete `k`/`myOps` (`Table/Decide.lean`'s new
-instances for `ProgConsumesPts`/`SafeProg`), so `by decide`/`by
-native_decide` closes them directly — no hand-written proof needed, the
-same as the standard table's own `k`-generic proofs
+`SUBMISSION_PLAN.md` S1 made the interpolation points `pts` submission data
+rather than a constant baked into the plan builders' types, so a table is
+now the pair `(ops, pts)` plus four conditions on it: `hpts : pts.length =
+q k`, `good : GoodToomCookPoints k pts hpts` (the points interpolate a
+degree-`2k-2` polynomial), `consumes : ProgConsumesPtsSafe hk
+State.start_state myOps pts` (running `myOps` from the start state, the
+`i`-th `phaseProduct` checkpoint finds exactly `pts[i]`'s row, all points
+are consumed, and no `addScaled` has `dst = src`), and `returns : run?
+myOps State.start_state = some State.start_state`.
+
+`consumes` and `returns` are `Decidable` at a concrete `k`/`ops`/`pts`
+(`Table/Decide.lean`'s instances for `ProgConsumesPts`/`SafeProg`), so `by
+decide`/`by native_decide` closes them directly — no hand-written proof
+needed, the same as the standard table's own `k`-generic proofs
 (`genOpsWithProduct_ProgConsumesPtsSafe`/`_returns_to_original`) are for
-`standardLoweringSetup`. A table that cannot be packaged this way (its
-`ops` don't actually consume `genInterpolationPoints k` in order, or don't
-return to the start state) is, correctly, one the extractor refuses to
-accept — see D5.
+`standardLoweringSetup`. `good` does not have a `Decidable` instance yet
+(`SUBMISSION_PLAN.md` S2.1 adds one, via the interpolation matrix's
+determinant); until then, points of your own need their own invertibility
+proof, and reusing the canonical ladder as above lets you cite
+`genInterpolationPoints_good` instead. A table that cannot be packaged this
+way is, correctly, one the extractor refuses to accept — see D5.
 
 ## Build
 
@@ -267,12 +280,15 @@ not changed; the emitter builds via its own targets.
   `Matrix.det`'s generic `Equiv.Perm` construction overflows the stack almost
   immediately — a recursion-depth limit in Mathlib's machinery, confirmed
   with the OS stack limit raised, not merely slow.
-- **`Table/Source.lean`'s `generate` table uses `generatePointsInOrder`, not
-  a naive `streamPoint` enumeration.** The `k = 2, 3` precomputed tables
-  consume interpolation points in their own order; using the plain
-  `(List.range (q k)).map streamPoint` sequence instead (which is only
-  provably equal to the real order for `k ≥ 4`) made the ordered-coverage
-  blocking check fail at `k = 3`.
+- **Point *order* is part of a table, not a detail.** A table's
+  `phaseProduct` checkpoints consume its points from the front, one per
+  checkpoint, and leaf `l` receives coefficient `l` — so a permutation of
+  the same point set is a different table. (This bit the retired `generate`
+  source: its `k = 2, 3` precomputed programs consume the canonical points
+  in their own order, and pairing them with the plain `(List.range (q
+  k)).map streamPoint` enumeration made the ordered-coverage check fail at
+  `k = 3`.) `ShorLoweringSetup.consumes` is the ordered statement, and
+  `Table/Decide.lean` decides it.
 - **`Reflect/Verify.lean`'s canary is representative, not exhaustive**: one
   width per template (`4 * k`), not a scan over every base/recursive
   combination for the caller's own table. Exhaustive coverage across base

@@ -1549,13 +1549,2466 @@ for `template 2`, `template 2 --table generate` (exit 2),
 
 ## 12. R6 — a correctness theorem for every extracted `Doc`
 
-**status:** in progress — prerequisites done (§12.0, §12.0b); R6.1's
-`Proofs/Correct.lean` has a real lemma library and one closed theorem
-(`evalNode_naive_leaf`); R6.2's `Proofs/PhaseProduct.lean` has the guard and
-base-case steps closed (`evalProp_phase_product_guard`,
-`evalNode_phase_product_base`) — the recursive/register-slicing step and
-the induction itself are next, and are the part §12.6 flags as the most
-expensive in R6
+**status:** R6.3 is now fully **done** — prerequisites done (§12.0, §12.0b).
+R6.1 (`Proofs/Correct.lean`, `evalNode_naive_leaf`/`evalNode_naive_cleaf`) and
+R6.2 (`Proofs/PhaseProduct.lean`, `evalNode_phase_product_correct`) are
+**done**, no `sorry`. R6.3's `cphase_product` half (`Proofs/CPhaseProduct.lean`,
+`evalNode_cphase_product_correct`/`r2_4_doc_cphase_product_correct`, §12.7)
+and its `qft` half (`Proofs/Qft.lean`, `evalNode_qft_correct`/
+`r2_5_doc_qft_correct`, §12.8 below) are both **done**, no `sorry`,
+`#print axioms` clean on every closed theorem. R6.4's `shor_gate` half is now
+**done**: `evalNodeGate_shor_gate` (§12.9–§12.11), the full Gate-level
+correctness theorem for `orderFindingApprox`, closes with no `sorry`,
+`#print axioms` clean. R6.4's `shor` half (the `LowGate`-level theorem
+composing `qft`/`phase_product`/`cphase_product` through
+`translateLowerGate`) is **in progress — all 3 needed leaf theorems closed,
+top-level assembly not started** (§12.12–§12.16): the full 14-`Node.call`
+body is ground-truthed; `evalNode_dind` (doc-independence) and `evalNode_ind`
+(the combined doc-*and*-env/opaqueW-independence bridge letting R6.2/R6.3's
+theorems be reused as black boxes at `shor`'s `.call` sites) are both proved
+and merged, no `sorry`, `#print axioms` clean; the hybrid-env leaf-assembly
+technique they unlock is now validated end-to-end and is generic *per
+template name* (one theorem covers every call site using that name, not one
+per site — a count correction made in §12.15): `evalNode_call_cphase_product`
+(§12.14, covers both `cphase_product` sites), `evalNode_call_phase_product`
+(§12.15, covers all 3 `phase_product` sites), and `evalNode_call_qft`
+(§12.16, covers all 9 `qft` sites) are all three merged into
+`Proofs/Shor.lean`, no `sorry`, no `native_decide`, `#print axioms` clean —
+`shor`'s leaf-lemma-engineering phase is **done**. Step 3 (`CmpGeConst`/
+`CSubConst`) is now also **done** (§12.17–§12.18): `LowGate.flattenSeqAdj`
+(a required new adjoint-recursing equality notion — `LowGate.flattenSeq`'s
+own `.adj g => [g]` doesn't recurse the way `Gate.flattenSeq`'s does, a
+genuine gap discovered this round, not merely an inconvenience) and the
+bit-copy loop lemma (a new `Nat.bitIndices`-vs-loop combinatorial
+correspondence) came first (§12.17), then the full composite-circuit
+assembly — `evalNode_lowerPrepareNegConst`/`_lowerPrepFromFlag`/`_diffCmp`/
+`_lowerCmpGeConst`/`_lowerCSubConst`/`_lowerStep3` — closed on top of it
+(§12.18), generic over register/weight expressions like the three `.call`-site
+theorems. No `sorry`, no `native_decide`, `#print axioms` clean throughout.
+What remains for `shor`: the `modExpApproxValid` loop-body assembly and the
+top-level `H_reg`/`initY1`/loop/`IQFT` assembly — wiring every leaf/Step-3
+theorem's generic parameters to `r2_6_env`'s actual variable lookups at each
+concrete site, plus the `flattenSeq`/`flattenSeqAdj` bridge lemma §12.17
+flagged for combining Step 3/4/IQFT's adjoint-aware results with Steps
+1/2/5's plain-`.flattenSeq` ones — not started. R6.5 (the proof-script
+generator) is not started.
+
+### 12.7 R6.3 (`cphase_product`) status: done
+
+`Proofs/CPhaseProduct.lean` proves `evalNode_cphase_product_correct` (the
+`cphase_product` analogue of R6.2's `evalNode_phase_product_correct`) and the
+`IR.instantiate`-level wrapper `r2_4_doc_cphase_product_correct`, both closed,
+no `sorry`, `#print axioms` clean (`propext`/`Classical.choice`/`Quot.sound`
+only). `lake build EmitProofs` and `lake build forshor_emit EmitTests` are
+green.
+
+The key discovery that made this tractable, beyond what §12.2's header
+comment already anticipated (`cphase_product`'s reserve-split bookkeeping is
+identical to `phase_product`'s, since `precomputePhaseProductSlots` never
+looks at `ctrl`): **`r2_4_ops` (R2.4's table) and `r2_2_ops` (R2.2's table)
+are not just equal in value, they are *definitionally* equal** —
+`r2_4_hk`/`r2_2_hk` are both `by decide`-generated proofs of the same `1 < 2`
+proposition, and Lean 4's definitional proof irrelevance makes any two
+proofs of a `Prop` defeq, so `(tableInstance .standard 2 r2_4_hk).ops` and
+`(tableInstance .standard 2 r2_2_hk).ops` are the same term up to
+reducibility (`r2_4_ops_eq_r2_2_ops : r2_4_ops = r2_2_ops := rfl`). Confirmed
+empirically before committing to the approach: a lemma stated and proved
+entirely in terms of `r2_2_ops` (e.g. `requiredXChildReserve_fits`,
+`child_capacity_0x`) applies *directly*, via ordinary term elaboration and
+defeq, to a goal stated in terms of `r2_4_ops` — no bridging rewrite needed
+at the call site. Consequence: every lemma in `PhaseProduct.lean` that is
+about `canonicalSignedStep`'s layout/`growExtRegTo`/capacities *and does not
+mention `ppEnv`* (`nextWidth_eq_nextSignedWidth`, `child_width_0`/`_1`,
+`PhaseSplitLayout.child_capacity`, `ExtReg.capacity_grow`,
+`requiredXChildReserve_fits`/`requiredZChildReserve_fits`,
+`child_capacity_0x`/`_0z`, `capacity_grow0x`/`_0z`, `width_grow0x`/`_0z`/`_1x`/`_1z`,
+`extraDelta_grow0x`/`_0z`/`_1x`/`_1z`, the cast-erasure tools `eqmp_heq`/
+`lowerGateRec_heq`/`lowerGateRec_eqmp_final`/`lowerGateRec_heq_gate`/
+`lowerGateRec_planAllocChunkGate`/`lowerGateRec_planDeallocChunkGate`/
+`lowerGateRec_planCompileSignedAllocations_2`/`_Deallocations_2`, and even
+`r2_2_ops_eq`/`r2_2_annotatedOps_eq` themselves) is reused **directly**, with
+zero restatement, for `cphase_product`. A further ground-truth check
+(`Node.opRegsByName` applied to `r2_4_cppThen`) confirmed the extractor
+produces *byte-identical* register/allocation/deallocation subterms for
+`phase_product` and `cphase_product` (`r2_4_ext0x = r2_2_ext0x` by `rfl`,
+`r2_4_ppAlloc = r2_2_ppAlloc` by `rfl`, `r2_4_ppDealloc = r2_2_ppDealloc` by
+`rfl`) — only the 12-leaf annotated-ops body differs, and only by one extra
+`.var "ctrl"` prepended to each of the three recursive `.call
+"cphase_product"` leaves' `rArgs` (`r2_4_ppBodyNode_eq`, `rfl`).
+
+What genuinely needed new proof (not reuse): every `Env`-dependent fact,
+since `cppEnv ≠ ppEnv` as terms (the extra `"ctrl"` arm in `cppEnv`'s `r`
+field) even though they agree at every name `cppEnv`'s register-slicing
+subexpressions actually reference — `evalW_cpp_nextWidth`/`_limbW`/
+`_reserveNeedX`/`_reserveNeedZ`/`_growDeltaX0`/`_growDeltaZ0`/`_growDeltaX1`/
+`_growDeltaZ1`, `evalA_cpp_coeff`, `evalReg_cpp_ext0x`/`_0z`/`_1x`/`_1z`,
+`evalReg_cpp_grow0x`/`_0z`/`_1x`/`_1z`, `evalNode_cpp_cond0x`/`_0z`/`_1x`/`_1z`,
+`evalNode_cpp_dealloc0x`/`_0z`/`_1x`/`_1z`, `evalNode_cpp_AS`,
+`evalNode_cpp_alloc`/`_dealloc` — each a near-mechanical copy of
+`PhaseProduct.lean`'s `ppEnv`-based counterpart, `unfold cppEnv` in place of
+`unfold ppEnv`. One real pitfall hit repeatedly this way: a `have h :=
+r2_2_named_lemma x z ... hrec hworkspace` applied at `r2_4_ops`-typed
+`hrec`/`hworkspace` type-checks fine (by the defeq argument above) but the
+resulting `h`'s *displayed/stored* type still literally mentions
+`r2_2_hk`/`r2_2_ops` (Lean does not rewrite the borrowed lemma's conclusion
+to use the caller's terms) — so a later `simp only [..., h, ...]` silently
+fails to rewrite anything, since `simp`'s matcher requires syntactic (not
+merely defeq) agreement and does not unfold opaque `def`s like `r2_2_ops`/
+`r2_4_ops` by default. Fix, applied wherever this bit (`extraDelta_grow0x`
+etc. in the four `evalNode_cpp_cond*`/four `evalNode_cpp_dealloc*` proofs):
+give the `have` an explicit type ascription spelled out in terms of the
+caller's own names (`r2_4_hk`/`r2_4_ops`) rather than binding the bare
+applied term — the ascription forces the defeq check at elaboration time and
+the resulting hypothesis is then syntactically `r2_4`-shaped for later
+`simp`/`rw` calls.
+
+Two more new pieces, both in `envCall_cphase_product_eq`/`evalNode_cpp_call`:
+(1) the extra `"ctrl"` case in the `Env.call`/`cppEnv` field-equality proof
+(mirrors `envCall_naive_cleaf_eq`'s `ctrl` handling in `Correct.lean`, one
+more `by_cases` layer); (2) nothing else — `ctrl` passes through every
+recursive level *unchanged* (same physical qubit, no growth/slicing), so no
+new width/capacity fact was needed for it at all.
+
+The one genuinely new *obstacle* (not just new bookkeeping): unfolding
+`planCompiledCSignedPhaseGate` (unlike `planCompiledSignedPhaseGate`) leaves
+a real `Eq.mpr`-shaped `Gate`-index cast, because its tactic-mode body's
+final `simpa` needs the extra `controlPhaseLeaves`/
+`controlPhaseLeaves_compileSignedAllocations`/
+`controlPhaseLeaves_compileSignedDeallocations` rewrites (`Lowering/
+PlanBuilders.lean`) that `planCompiledSignedPhaseGate`'s simpler `simpa`
+never needed — confirmed empirically (`unfold planCompiledCSignedPhaseGate;
+dsimp only` exposes the cast directly, where the uncontrolled version's
+`unfold` was already clean, per R6.2's "Third round" notes). Rather than
+deriving a fresh fix, `GateCount/PhaseProduct/Lemmas.lean` turned out to
+already have solved exactly this (for gate-counting purposes):
+`lowerGateRec_mpr_gate_of_eq`, the `Eq.mpr` orientation of the same
+`Subsingleton.elim`-based cast-erasure technique as `lowerGateRec_cast`/
+`lowerGateRec_heq_gate`. Restated locally in `CPhaseProduct.lean` (same
+proof) rather than importing the whole `GateCount` hierarchy into
+`Emit/Proofs/`. With that, `rw [lowerGateRec_mpr_gate_of_eq (hUV := by simp
+[compiledCSignedPhaseGate, compileOpsToCSignedGate, compileOpsToSignedGate,
+controlPhaseLeaves, controlPhaseLeaves_compileSignedAllocations,
+controlPhaseLeaves_compileSignedDeallocations])]` collapses the cast and the
+rest of the induction's final `flattenSeq` assembly proceeds exactly like
+R6.2's (`planCompileAnnotatedOpsToCSignedGateAux` unfolds via `simp only`
+just like `planCompileAnnotatedOpsToSignedGateAux` did, `lowerGateRec_cSignedStep`/
+`lowerGateRec_cSignedBase` — already-existing `@[simp]` equation lemmas,
+symmetric to `lowerGateRec_signedStep`/`_signedBase` — replace the
+uncontrolled pair).
+
+The controlled workspace for the induction's recursive call is built the
+same way `standardCSignedPhaseLoweringPlan`'s own recursive case builds it
+(`Lowering/PlanBuilders.lean`): `Gate.PhaseProductLayout.controlDisjoint_of_ctrlDisjoint`
+turns `hworkspace.control_disjoint : ExtReg.CtrlDisjoint ctrlIdx x z` into
+`layout.ControlDisjoint ctrlIdx`, then `controlDisjoint_target` (`Compiler/
+Workspace.lean`) shows growing every chunk to the target width preserves
+that disjointness, giving `ExtReg.CtrlDisjoint ctrlIdx cX0 cZ0` for the
+chunk-0 children the recursion actually uses — combined with the (already
+generic, phase_product-derived) signed child workspace `hcw0` into a
+`CSignedRecursiveWorkspaceOK` record literal for the induction hypothesis to
+consume. No new facts about `controlDisjoint_target` itself were needed; it
+was already proved, generally, for the real compiler.
+
+`qft`'s R6 theorem (R2.5/R6.3's other half) is now also done — see §12.8.
+R6.4 (`shor_gate`/`shor`) has its shared infrastructure done — see §12.9 —
+but no leaf lemma yet. R6.5 (the proof-script generator) remains entirely
+open.
+
+### 12.8 R6.3 (`qft`) status: done
+
+`Proofs/Qft.lean` proves `evalNode_qft_correct` and the `IR.instantiate`-level
+`r2_5_doc_qft_correct` (§12.2's exact stated form, using a single `ExtReg r`
+and `QFTReserveOK`), for `r2_5_doc` (k = 2, standard table, `Emit/Tests.lean`'s
+R2.5 section). No `sorry` anywhere in the file; `#print axioms` on both
+theorems shows only `propext`/`Classical.choice`/`Quot.sound`.
+
+**Key finding, discovered before writing a single register-slicing lemma**:
+`r2_5_doc = r2_2_doc`, `r2_5_ops = r2_2_ops`, and `r2_5_k = r2_2_k` all hold
+by plain `rfl`. `extract_ir_doc <name> smallLowering` bundles *every* target
+(`pp_body`, `phase_product`, `cphase_product`, `qft`, `shor_gate`, `shor`,
+`naive_leaf`, `naive_cleaf`) into one `Doc` per `(k, table)` — R2.2's and
+R2.5's `Tests.lean` sections each independently re-run that same extraction
+for `k = 2` standard, and since extraction is a deterministic pure
+computation, the results are the *same closed term*, not merely equal ones.
+This means `qft`'s embedded `.call "phase_product"` leaf (see below) can cite
+R6.2's already-proved `evalNode_phase_product_correct` directly — no
+register-slicing, width, or angle lemma about `phase_product` needed
+restating for `qft` at all, mirroring exactly what R6.3's `cphase_product`
+half found for `r2_4_ops`/`r2_2_ops` (§12.7), except one level more useful
+here since it's the whole `Doc`, not just the table.
+
+**`qft`'s extracted shape, established once by direct inspection**
+(`extractQFTBody`, `Reflect/Targets.lean`): `body = .cond (w=0) id (.cond
+(w=1) (H (qubit r 0)) split)`, where `split = .seq [rightCall, mid, leftCall,
+radix]` — `rightCall`/`leftCall` are `.call "qft"` nodes on `r`'s
+`activeSlice` halves (`leftReg`/`rightReg`, named directly per D2, exactly
+mirroring `Reflect/Extract.lean`'s own already-documented `translateW`/
+`translateReg` cases for them), `radix` is a plain `.op "RadixReverse"`
+leaf, and `mid = .seq [zeroExtend x, .seq [zeroExtend z, .seq [.call
+"phase_product" …, .seq [zeroDealloc z, zeroDealloc x]]]]` — the embedded
+unsigned phase product, extracted as a genuine `Node.call`, not inlined,
+because `Reflect/Extract.lean`'s `translatePlan` recognises
+`standardSignedPhaseLoweringPlan` by name *inside* `standardPhaseProdUsingPlan`'s
+own `.eq_1` unfolding (documented already, `Extract.lean`'s own comments) —
+confirmed directly by `#eval`-printing `r2_5_doc`'s `"qft"` template body
+before writing any proof.
+
+**The `qftEnv`/`ppEnv` compatibility obstacle — the one genuinely new
+technical problem this half of R6.3 needed, beyond mirroring cphase_product's
+playbook.** `Emit/Tests.lean`'s own `r2_5_env` (the environment its R2.5
+`native_decide` smoke test uses) carries two extra `opaqueW` cases
+(`"qftXWork"`/`"qftZWork"`) that `qft`'s own template body never queries —
+they exist only for `shor`'s template, which calls into `qft` externally and
+needs to compute `qftXWork ops r`'s width symbolically. Naively reusing
+`r2_5_env` as the R6 environment would have made `Env.call`'s carried-through
+`opaqueW` (at the embedded `phase_product` leaf) a *different closure* from
+`Proofs/PhaseProduct.lean`'s `ppEnv` — same behaviour at every value
+`phase_product`'s body actually queries, but not the same *term*, and
+`evalNode_phase_product_correct` is stated against `ppEnv` literally, not
+generically over any behaviourally-equivalent environment (unlike
+`naiveLeafEnv`/`naiveCLeafEnv` in `Correct.lean`, which took `opaqueW`/
+`coeff` as parameters specifically so a caller's *own* environment could be
+reused directly). Two ways to fix this were available: generalize R6.2's
+`ppEnv`/`evalNode_phase_product_correct` to take `opaqueW`/`coeff` as
+parameters (matching `naiveLeafEnv`'s precedent) — invasive, since the whole
+~1850-line proof cites `ppEnv`'s hardcoded closures directly throughout, so
+this would need re-verifying most of it; or define `qft`'s *own* R6
+environment (`qftEnv`, mirroring `cppEnv`'s already-established precedent as
+a distinct-from-`Tests.lean` R6 environment) with `opaqueW`/`coeff`
+restricted to exactly `ppEnv`'s three cases (`"nextWidth"`, `"reserveNeed_x"`,
+`"reserveNeed_z"`) plus the same catch-all. The second is what `Proofs/Qft.lean`
+does, confirmed the cheap way before writing anything downstream:
+`(qftEnv x z z).opaqueW = (ppEnv x z phi).opaqueW` and `.coeff` likewise
+close by plain `rfl`, once `r2_5_ops = r2_2_ops`/`r2_5_k = r2_2_k` are
+unfolded — the two closures really are the same normal form, not merely
+extensionally equal, so `Env.call`'s carry-through at the `phase_product`
+leaf produces literally `ppEnv`'s own environment and
+`evalNode_phase_product_correct` applies with zero restatement.
+
+**The fuel bound needed a genuine "+1" strengthening beyond §12.2's literal
+suggested form.** The naive hypothesis `regSize r.active < fuel` is *not*
+sufficient: the embedded `.call "phase_product"` leaf is a direct child of
+`qft`'s own body (not behind another `.call`), so it runs with `fuel - 1`
+available, and needs `phaseInputSize (grown children) < fuel - 1` per
+R6.2's own theorem. `phaseInputSize` at that leaf works out to
+`⌈w/2⌉ + 1`, which equals `w` exactly (not less) at `w = 2` and `w = 3` — so
+at the boundary fuel value permitted by the naive hypothesis (`fuel = w + 1`),
+`fuel - 1 = w = phaseInputSize`, failing the required *strict* inequality.
+`Proofs/Qft.lean` states `evalNode_qft_correct`/`r2_5_doc_qft_correct` with
+`regSize r.active + 1 < fuel` instead (one unit more headroom) — checked to
+propagate correctly through the induction's own recursive `qft`-to-`qft`
+calls too (their own decrease is generous enough that the same "+1" survives
+unchanged at every level). A concrete instance of the "Fuel" risk (§12.6)
+already flagged in the abstract; this is the first target where the naive
+bound was actually insufficient, not just unproved.
+
+**A reproducible `open`-merging parser quirk, unrelated to the math, cost
+real time and is worth recording.** `Proofs/Qft.lean` needs both `r2_2_*`
+names (inherited from importing `Proofs/PhaseProduct.lean`, which opens
+`Shor.Emit.Tests` *restricted* to `(r2_2_k r2_2_hk r2_2_ops r2_2_doc)`) and
+`r2_5_*` names live at once — the first thing this file needs is
+`r2_5_doc = r2_2_doc` by `rfl`. Writing this file's own `open Shor.Emit.Tests
+(r2_5_k r2_5_hk r2_5_ops r2_5_doc)` (restricted to the *other* subset) made
+that `rfl` fail with a genuine "not definitionally equal" error — not a
+timeout — even though the identical statement, either fully qualified
+(`Shor.Emit.Tests.r2_5_doc = Shor.Emit.Tests.r2_2_doc`) or under one
+*unrestricted* `open Shor.Emit.Tests`, closes by `rfl` instantly. Root cause
+not fully diagnosed (some interaction between two restricted `open`s of the
+same namespace with disjoint name lists, one inherited via import, one
+written locally); the workaround — use one unrestricted `open Shor.Emit.Tests`
+instead of restricting it — is unconditionally safe and is what
+`Proofs/Qft.lean` does. Anyone writing a future R6 file that needs names from
+*two* different `Tests.lean` sections at once should expect this and open
+unrestricted from the start, rather than losing time to it.
+
+**Proof architecture, following R6.2's/R6.3's established shape**: ground-truth
+structural decomposition of `r2_5_doc`'s `"qft"` template body (all `rfl`,
+mirroring `r2_2_ppBody`'s style exactly) → guard lemmas (`evalProp_qft_guard0`/
+`_guard1`, deciding `regSize r.active = 0`/`= 1`) → the two base cases
+(`evalNode_qft_empty`/`_singleton`, the latter needing `Reg.lowQubit`'s
+`Fin`-proof-irrelevance the same way `evalNode_naive_leaf`'s `qb` does) →
+register-slicing lemmas for `leftReg`/`rightReg` (`evalReg_qft_leftSlice`/
+`_rightSlice`, genuinely simpler arithmetic than `phase_product`'s own
+`fillSlack`/prefix-sum bookkeeping, since `Reg.take`/`Reg.drop` compose
+directly — `List.take_length` after `List.length_drop` is the whole
+`rightSlice` proof) → `.ext`/`.grow` register lemmas for the phase leaf's
+arguments (`evalReg_qft_ext_left`/`_right`, `_grow_left`/`_right`, using
+`disjoint_of_left_subset`/`leftReg_mem_parent`/`rightReg_mem_parent` — already
+general lemmas in `ShorVerification/Implementation/QFT/Split.lean`/
+`Lowering/Workspace.lean`, nothing new needed — plus `ExtReg`'s proof-field
+irrelevance, exactly `evalReg_pp_ext*`'s own technique) → the angle lemma
+(`evalA_qft_phi`, trivial: `qftPhi m := 2/2^m` matches `AExpr.qftPhi`'s
+`evalA` case by definition) → `RadixReverse`'s leaf lemma → `Env.call`
+lemmas for the two self-recursive `.call "qft"` leaves (`envCall_qft_right_eq`/
+`_left_eq`, simpler than `phase_product`'s own recursive `envCall` since
+`xWork`/`zWork` pass through *unchanged* — never re-split, never grown, per
+R2.5's own already-documented extraction finding) → `standardPhaseProdUsingPlan`'s
+own cast obstacle, resolved with the *already-committed*, fully general
+`lowerGateRec_eqmp_final` from `Proofs/PhaseProduct.lean` (no new cast-erasure
+machinery needed — this tactic-mode plan builder has the identical `by let
+…; simpa […] using completePlan` shape as `planCompiledSignedPhaseGate`, so
+the exact same fix applies) → the alloc/dealloc leaf lemmas (structurally
+simpler than `phase_product`'s own, since there is no `extraDelta`/
+`isTopChunk` case split here — always a plain, unconditional `zeroExtend`/
+`zeroDealloc`) → assembling the `mid` node (alloc, phase, dealloc) into one
+`flattenSeq` statement against `lowerGateRec (standardPhaseProdUsingPlan …)`
+→ assembling the whole `split` node (right, mid, left, radix) against
+`lowerQFTPlan`'s own `.split` case, taking the two recursive calls' results
+as hypotheses → unfolding the two `.call "qft"` leaves down to a fresh
+recursive instance of `evalNode`/`qftEnv` at the child register (mirroring
+`evalNode_pp_call`'s self-referential unfolding) → the main induction itself,
+strong induction on `regSize r.active`, base cases via `standardQFTLoweringPlan.eq_1`
++ `dif_pos`, split case via `dif_neg`/`dif_neg` + the split-assembly lemma,
+feeding the two children into the induction hypothesis with the "+1"-adjusted
+fuel bound established above. The one recurring tactic pitfall (same as
+R6.2's own "Sixth round" note): `refine ⟨_, ?_, ?_⟩` on `∃ g, P g ∧ Q g` fails
+to unify the witness whenever it isn't syntactically pinned by `P`/`Q` alone
+— every existential in this file is discharged by first proving the witness
+as a fully-explicit `have`, then `refine ⟨_, hFirst, ?_⟩` — and a second,
+narrower one specific to this file: stating a `simp only` call with *both* a
+generic equation-lemma name (bare `evalReg`/`evalW`) *and* a specific
+pre-computed fact about the *same* redex in one call is unreliable — the
+generic equation sometimes wins the rewrite race, consuming the redex before
+the specific fact gets a chance, silently reported only as an "unused simp
+argument" warning rather than a failure. Fixed throughout by *either* using
+`rw` (which takes exactly the named lemma, no competition) for one redex at a
+time, *or* precomputing the entire `List.mapM` result as one atomic `have`
+(e.g. `hwAll`/`hrAll` in the `.call "qft"` unfolding lemmas) so the generic
+name never needs to appear in the same `simp only` call as the specific one.
+
+### 12.9 R6.4 (`shor_gate`/`shor`) status: in progress — shared infrastructure done, no leaf lemma yet
+
+`shor_gate`'s theorem (`Emit/PLAN.md` §12.2: `IR.instantiateGate <doc>
+"shor_gate" (shorEnv …) fuel = .ok (orderFindingApprox …)`) and `shor`'s
+(the `LowGate`-level composition through `translateLowerGate`) are R6.4,
+the last unproved R6 target besides R6.5's proof-script generator. This
+section records what a scoping pass plus initial proof-engineering found,
+before the leaf-by-leaf assembly itself — the same kind of "round of
+research findings" entry R6.2/R6.3 accumulated several of before closing,
+not a final status.
+
+**Scope, established by direct reading of the real definitions before
+writing any proof** (`ShorVerification/Implementation/Shor/Circuit/
+OrderFinding.lean`, `.../ModularExponentiation/Circuit/{Steps,ModExp,
+Workspace,CmpLtNW}.lean`): `orderFindingApprox = H_reg x.active ;; initY1
+y.active ;; modExpApproxValid a N x.active y work scratch flag hworkspace
+hstep4 ;; IQFT x`. `modExpApproxValid` loops over `x.active.qubits`
+(symbolic length, hence a `Node.loop` at extraction, exactly mirroring
+`naive_leaf`'s already-proved `signedTerms` loop — no new IR construct
+needed). Each loop iteration is `CmodMulInPlaceCore c N ctrl data work
+scratch flag hworkspace hstep4 = step1 ;; step2 ;; step3 ;; step4 ;; step5`
+(`c := (a^(2^e)) % N`, `ctrl := x`'s `e`-th qubit, `data := y`), Algorithm
+1's five steps (`step1`/`step2`/`step5` are `H_reg`/`IQFT` wrapped around a
+`Gate.CPhaseProdUsing`/`Gate.PhaseProdUsing` call; `step3` is two plain
+`Gate.CmpGeConst`/`.CSubConst` leaves; `step4 = cmpLtNW` is itself `mul ;;
+diff ;; CNOT ;; †diff ;; †mul`, `mul := fastConstMulInto` another
+QFT+`PhaseProdUsing`+adjoint-QFT sandwich, `diff := cmpLtNWDifference` four
+plain leaves). Confirmed directly by `#eval`-printing `r2_6g_doc`'s
+`"shor_gate"` template body (596 lines of `repr` output, read in full, not
+sampled) against this structure, leaf for leaf, before writing anything —
+every leaf matched exactly, no surprises against the real definitions.
+
+**Key de-risking finding: `orderFindingApprox`/`lowerGate`'s whole call
+chain is genuinely free of the universe-cast obstacle `phase_product`/`qft`
+needed `eqmp_heq`/`lowerGateRec_eqmp_final` for.** Every definition in this
+chain (`orderFindingApprox`, `H_reg`, `initY1`, `modExpApproxValid`,
+`modExpApproxStepsValid`, `CmodMulInPlaceCore`, `step1`–`step5`, `cmpLtNW`,
+`fastConstMulInto`, `cmpLtNWDifference`, `Gate.PhaseProdUsing`/
+`.CPhaseProdUsing`) is a plain structural `def` — no `WellFounded.fix`/
+`by_cases`-compiled recursion anywhere at the `Gate` level (unlike
+`standardSignedPhaseLoweringPlan`/`standardQFTLoweringPlan`, which build a
+*dependently-typed proof witness* alongside the `Gate`). The one place a
+tactic-mode `def` does appear — `ModMulCircuitWorkspaceOK.step1Workspace`/
+`.step2Workspace`/`.step5Workspace` and `Gate.PhaseProdWorkspace.ofExtRegs`,
+which *build* the workspace values `Gate.CPhaseProdUsing`/`PhaseProdUsing`
+consume — turned out to be a **non-issue**, confirmed directly: `ofExtRegs
+x z hx hz howned`'s tactic body is `refine { xReserve := x.reserve, zReserve
+:= z.reserve, x_can_grow := ?_, … }` — the *data* fields (`xReserve`/
+`zReserve`) are literal, untouched by any of the `?_`-deferred proof
+obligations, so `(ofExtRegs x z hx hz howned).xExt = ExtReg.withReserve
+x.active x.reserve _ = x` and `.zExt = z` by a **plain `unfold` + `rfl`**
+(no `dif_pos`/`eqmp_heq` needed at all — confirmed by direct proof, not
+assumed), since `x = ExtReg.withReserve x.active x.reserve x.
+active_reserve_disjoint` always (structure eta) and the third field is
+`Prop`-valued (proof-irrelevant). This makes `step2Workspace.xExt = work`/
+`.zExt = data.grow 1` and `step5Workspace.xExt = data.grow 1`/`.zExt = work`
+immediate (`ofExtRegs` applied directly, no further slicing). Only
+`step1Workspace` needs one register-slicing step beyond this (it first
+builds `dataNoCarry := ExtReg.withReserve data.active (data.reserve.drop 1)
+_` before calling `ofExtRegs`, dropping the reserve bit `step2` will later
+grow into) — and `CmpLtNWWorkspace`'s `mulWorkspace` (Step 4's workspace,
+used by `fastConstMulInto`) is not `ofExtRegs`-derived at all, but the
+*structure itself* carries `mul_xReserve_eq : mulWorkspace.xReserve =
+work.reserve`/`mul_zReserve_eq : mulWorkspace.zReserve = scratch.reserve`
+as explicit fields — evidently placed there for exactly this reuse — so
+`mulWorkspace.xExt = work`/`.zExt = scratch` follows the same
+`ExtReg.withReserve`-reconstruction argument directly from those two fields,
+no tactic-mode unfolding needed at all.
+
+**Consequence for scale**: R6.4 is "wide, not deep" — the extraction-side
+`PLAN.md` §6.8 called it "the largest target by far… needed the most new
+machinery of any R2 phase," and that holds for the *proof* too (five
+Algorithm-1 steps, each with its own `H_reg`/QFT/`PhaseProdUsing`/register
+bookkeeping, means many more leaves than `phase_product`'s 21 or `qft`'s
+handful) — but unlike `phase_product`/`qft`, `shor_gate` is **not itself a
+recursive template** (`orderFindingApprox`/`lowerGate` have no `Node.call`
+back to `shor_gate`/`shor`), so no well-founded induction is needed
+anywhere in this proof — only the one `Node.loop` (already a solved
+problem, `naive_leaf`'s pattern) and a long but non-recursive leaf-by-leaf
+assembly. Net assessment: comparable in total *volume* to `phase_product`
+plus `qft` combined, but each individual obstacle is easier (no casts, no
+induction) — "wide but shallow," not deeper than what's already been done.
+
+**Established, and independently `#print axioms`-verified clean, in
+`Proofs/Shor.lean`** (no `sorry` anywhere in the file):
+- `Gate.flattenSeq` (mirroring `LowGate.flattenSeq`, but recursing into
+  `.adj` bodies too — `Emit/Tests.lean`'s pre-existing `r2_6g_flatten`/
+  `r2_6_flatten` already established that this target's adjoints wrap
+  *multi-gate* sub-sequences, unlike every earlier target's single-leaf
+  adjoints, so comparing extracted output to the real `Gate` needs this
+  recursion; not `partial`, ordinary structural recursion on the strictly
+  smaller `.adj` body) and `flattenSeq_foldGateSeq` (the `foldGateSeq`
+  bridge, mirroring `Correct.lean`'s `flattenSeq_sequence`).
+- `evalReg_ext_full`: the extracted `.ext (.activeSlice r 0 W)
+  (.reserveSlice r 0 C)` pattern equals `X` whenever `r`/`W`/`C` evaluate to
+  `X`/`X.width`/`X.capacity` — i.e. slicing a register's *entire* range and
+  re-`ext`ing it reconstructs the register itself. This single general
+  lemma (parametrized over an arbitrary `RegExpr r`, not tied to one named
+  variable) covers every "`work`/`scratch`/`y.grow 1` used at its own full
+  width" leaf in `CmodMulInPlaceCore` — the large majority of its register
+  arguments — with no per-site restatement.
+- `evalReg_grow_bare`: the extracted `.grow r n` pattern equals `X.grow k`
+  given `r`/`n` evaluate to `X`/`k` — trivial, reusable at every `.grow`
+  site.
+- `evalNodeGate_Hreg_loop`: the extracted `H_reg`-loop pattern (`.loop "i" 0
+  W (.op "H" [.qubit r' (W-1-i)] …)`) equals `foldGateSeq (Y.active.qubits.
+  reverse.map Gate.H)`, for *any* register `Y` (used for both `H_reg x` at
+  the top level and `H_reg work` inside Step 1/Step 5) — proved via a clean
+  intermediate fact worth recording for reuse: `H_reg r = foldGateSeq
+  (r.qubits.reverse.map Gate.H)` *exactly* (not just up to `flattenSeq`),
+  from the general identity `l.foldl (fun acc q => f q ;; acc) e =
+  List.foldr (fun q acc => f q ;; acc) e l.reverse` (`List.foldr_reverse`)
+  composed with `List.foldr (fun a acc => f a ;; acc) id l = foldGateSeq
+  (l.map f)` (immediate induction) — then a reindexing lemma
+  (`range_getD_reverse`/`map_getD_H_eq_reg`) connecting the loop's ascending
+  `List.range`-indexed unrolling to this descending-`.reverse` form.
+- `Env_bindW_self`: `(env.bindW name v).w name = some v` — a small but
+  load-bearing fact, needed because of the **same recurring `simp`
+  ambiguity R6.3 already documented** (§12.8's own closing note): once
+  `evalW`'s generic `.var` equation is in a `simp only` call, it consumes a
+  `.var name` redex *before* a lemma stated about the pre-unfolded
+  `evalW (env.bindW name v) (.var name)` form gets a chance to fire — the
+  fix, as before, is a lemma stated at the *post-unfold* (raw field) level.
+  This bit R6.4's very first non-trivial lemma (`evalNodeGate_Hreg_loop`),
+  confirming it is a genuinely recurring pattern in this codebase, not a
+  one-off from R6.3, and any future R6 work should reach for a raw-field
+  lemma immediately rather than rediscovering the same failure.
+
+**Not yet started**: ground-truth extraction of `CmodMulInPlaceCore`'s own
+five-step body (the `#eval` inspection above was done by reading, not
+turned into named `rfl` lemmas yet), the `Gate.PhaseProdUsing`/
+`.CPhaseProdUsing` generic leaf-group lemma (5-node assembly: two
+`zeroExtend`s, one `SignedPhaseProd`/`CSignedPhaseProd`, two
+`zeroDealloc`s — parametrized over the two operand registers and angle, for
+reuse at all four `PhaseProdUsing`/`CPhaseProdUsing` call sites: `step1`,
+`step2`, `step5`, `fastConstMulInto`), the `modExpApproxValid` loop-body
+lemma (connecting the loop's `.var "e"`-indexed unrolling to
+`CmodMulInPlaceCore`'s own per-bit invocation, mirroring
+`evalNodeGate_Hreg_loop`'s technique but with a non-trivial loop body
+instead of one leaf), the five step-assembly lemmas themselves, and the
+final top-level `.seq` assembly (`H_reg x ;; initY1 y ;; modExpLoop ;;
+IQFT x`). Whoever continues should start from `evalReg_ext_full`/
+`evalReg_grow_bare`/`evalNodeGate_Hreg_loop` (already proved, reusable
+as-is) and the `ModMulCircuitWorkspaceOK`/`CmpLtNWWorkspace` `xExt`/`zExt`
+identities documented above (not yet stated as committed lemmas, but
+verified true and how to prove them) as the starting toolkit — the
+per-leaf mechanical pattern (ground-truth `rfl`, then `simp`/`rw` with the
+right register/width facts, `flattenSeq`-not-raw-equality throughout) is
+already fully established by `PhaseProduct.lean`/`Qft.lean` and this
+section's own findings; what remains is volume, not a new kind of
+difficulty. `shor` (the `LowGate` composition through `translateLowerGate`,
+embedding `qft`/`phase_product`/`cphase_product` as `Node.call`s) is
+untouched and explicitly out of scope for this pass.
+
+### 12.10 R6.4 progress: `CmodMulInPlaceCore` Steps 1 and 2 closed
+
+Following on from §12.9's scoping pass, this round did the ground-truth
+extraction and leaf assembly it left as "not yet started," for the first two
+of `CmodMulInPlaceCore`'s five steps. Both are now closed in
+`Proofs/Shor.lean`, no `sorry`, `#print axioms` clean; `lake build
+EmitProofs` green throughout.
+
+**Ground-truth decomposition of `r2_6g_sgBody`** (the full extracted
+"shor_gate" template body) is now done end to end, not just read — every
+node named by an `rfl`-provable `def` and every structural equation
+(`_eq`/`_eq_seq`/`_eq_adj`) proved by `rfl`: the top-level `H_reg x ;; initY1
+;; modExpLoop ;; IQFT x` split (`r2_6g_HloopX`/`_initY1`/`_modExpLoop`/
+`_iqftX`), the `modExpApproxValid` loop body split into
+`CmodMulInPlaceCore`'s five steps (`r2_6g_step1`..`r2_6g_step5`), and each
+step's own internal structure — including Step 4's nested `cmpLtNW = mul ;;
+diff ;; CNOT ;; †diff ;; †mul` (`r2_6g_step4_mul_QFT`/`_core`/`_adjQFT` plus
+`_diff`/`_cnot`/`_adjDiff`/`_adjMul`) and Step 5's `.adj`-wrapped
+`H_reg ;; PhaseProdUsing ;; †QFT` shape (`r2_6g_step5_inner`/`_Hloop`/`_core`/
+`_adjQFT`) — all matched exactly against the real definitions, no surprises.
+One correction found during this pass: an earlier assumption (recorded only
+informally, not yet committed as a lemma) that Step 5 reuses the same
+drop-1-reserve register as Step 1 (`r2_6g_yDataReg`) was wrong — direct
+inspection of the dumped extraction showed Step 5 actually uses
+`r2_6g_yGrow1Reg` (the full `y.grow 1` register), matching the real `step5`'s
+`Gate.CPhaseProdUsing ctrl phi (data.grow 1).active work.active
+hworkspace.step5Workspace` call. Caught before any proof was built on the
+wrong register, by checking the ground-truth statement against the dump
+before using it.
+
+**Generic assembly lemmas for the `PhaseProdUsing`/`CPhaseProdUsing` leaf
+group** (the 5-node `zeroExtend;;zeroExtend;;SignedPhaseProd/
+CSignedPhaseProd;;zeroDealloc;;zeroDealloc` pattern used at all four call
+sites — Step 1, Step 2, Step 5, and Step 4's `fastConstMulInto`) are now
+proved once and reused: `evalNodeGate_PhaseProdUsing`/
+`evalNodeGate_CPhaseProdUsing`, parametrized over the two operand registers
+and the angle, each returning both the `evalNodeGate` result and a
+`flattenSeq` equation to `PhaseProdUsingGate`/`CPhaseProdUsingGate` directly
+(the plain, non-tactic-mode macros) — no per-call-site restatement needed.
+
+**`evalNodeGate_step1`** (Step 1: `H_reg work ;; CPhaseProdUsingGate ctrl
+step1Workspace.xExt step1Workspace.zExt phi ;; †QFT work`, matching the real
+`step1 = H_reg work.active ;; Gate.CPhaseProdUsing ctrl phi dataNoCarry.active
+work.active hworkspace.step1Workspace ;; IQFT work.active`) is closed. Needed
+one new register-slicing fact beyond §12.9's toolkit,
+`evalReg_ext_dropReserve1`/`evalReg_yDataReg` (the extracted register for
+`dataNoCarry := ExtReg.withReserve y.active (y.reserve.drop 1) _`), plus
+`step1Workspace_xExt_eq`/`_zExt_eq` (confirming §12.9's "no cast obstacle"
+finding *by proof*, not just inspection: both are a plain `unfold + rfl`) and
+`evalA_step1_phi` (the extracted angle expression — a `2 * (((a^(2^e)) % N) +
+N - 1) % N`-shaped `AExpr.ratio`/`.mul` term — reducing to the real angle via
+plain `simp [evalA, evalW, …]`, no `qftPhi` involved here since Step 1's
+angle is stated as a raw ratio, not via `qftPhi`). The final `flattenSeq`
+equality needed `push_cast; ring_nf` to reconcile a `↑(2*x)` vs `2*↑x`
+cast-order mismatch between the extracted and real angle expressions.
+
+**`evalNodeGate_step2`** (Step 2: `QFT (y.grow 1) ;; PhaseProdUsingGate
+step2Workspace.xExt step2Workspace.zExt phi ;; †QFT (y.grow 1)`, matching the
+real `step2 = Gate.QFT data.grow 1 ;; Gate.PhaseProdUsing (qftPhi (work.width
++ (data.grow 1).width) * N) work.active (data.grow 1).active
+hworkspace.step2Workspace ;; IQFT (data.grow 1)`) is also closed. Needed
+`evalReg_yGrow1` (the extracted `.grow (.var "y") (.lit 1)` register,
+built from a new general `evalReg_ext_full`-style call plus
+`ExtReg.width_grow`/`ExtReg.capacity_grow` — the latter's real signature
+turned out to require an explicit `y.CanGrow 1` hypothesis, not the
+unconditional form glimpsed earlier in `PhaseProduct.lean`; supplied from
+`hworkspace.data_canGrow_one`) and `step2Workspace_xExt_eq`/`_zExt_eq`
+(again a plain `unfold + rfl`, confirming §12.9's finding for this second
+`ofExtRegs` call site too). One new proof-engineering point for whoever
+continues to Steps 3–5: Step 2's angle is stated via `AExpr.qftPhi`
+directly (unlike Step 1's raw ratio), and `evalA`'s own `.qftPhi` case
+unfolds to the *same* `2 / 2^m` shape as the real `qftPhi` definition — so
+the natural move is to add `qftPhi` to the `simp` set used to evaluate the
+extracted angle (closing the environment-lookup match statement) and *also*
+to the `simp only [qftPhi]; ring` step used to prove the two angle
+expressions equal (reconciling `regSize`-computed vs `width`-computed
+exponents) — but these must stay **separate goals**: doing the environment
+unfold with `simp only` instead of full `simp` leaves the string-key
+`if`-chains from `Env.w`/`Env.a` unreduced (full `simp`'s default simprocs
+are what collapse `"workW" == "e"`-style literal `Bool` decisions; `simp
+only` does not, even with every needed lemma named explicitly), while doing
+the final angle-equality step with full `simp` instead of `ring` risks
+Mathlib's `div_eq_div_iff`-style simp set introducing a spurious `∨ N = 0`
+disjunction from the division rather than just closing by commutativity —
+each needs the tactic matched to what it's actually doing (environment
+reduction vs. field arithmetic), not the same hammer for both.
+
+**Not yet started**: Steps 3 (`Gate.CmpGeConst ;; Gate.CSubConst`, two plain
+leaves — should be the simplest of the five), 4 (`cmpLtNW`'s five-leaf
+`mul;;diff;;CNOT;;†diff;;†mul` structure, reusing the `r2_6g_step4_mul_*`/
+`_diff`/`_cnot`/`_adjDiff`/`_adjMul` ground truth already established in
+§12.9's decomposition pass), 5 (an `.adj`-wrapped version of Step 1's
+pattern, using `r2_6g_yGrow1Reg` per the correction above, and a
+`step5Workspace_xExt_eq`/`_zExt_eq` pair analogous to Steps 1/2's — not yet
+written, though `CpModMulInPlaceCore`'s workspace-construction pattern from
+§12.9 says it should be equally routine), the `modExpApproxValid` loop-body
+assembly (connecting the `.loop "e" 0 xW (…)` unrolling to the five-step
+invocation, mirroring `evalNodeGate_Hreg_loop`'s technique but with a
+non-trivial 5-step loop body instead of one leaf), and the top-level
+`orderFindingApprox` assembly (`H_reg x ;; initY1 y ;; modExpLoop ;; IQFT
+x`, now that `r2_6g_HloopX`/`_initY1`/`_iqftX` ground truth is already in
+hand from this round's decomposition pass).
+
+### 12.11 R6.4 `shor_gate` half: done — Steps 3–5, the loop assembly, and the top-level theorem all closed
+
+This round finished what §12.10 left open: `CmodMulInPlaceCore`'s Steps
+3–5, the `modExpApproxValid` loop-body assembly, and the top-level
+`orderFindingApprox` theorem. **`evalNodeGate_shor_gate` — R6.4's target
+theorem for `shor_gate` — is now closed**, no `sorry` anywhere in
+`Proofs/Shor.lean`, `lake build EmitProofs` green, `#print axioms` clean on
+every new theorem. This completes the `shor_gate` half of R6.4; `shor` (the
+`LowGate`-level composition through `translateLowerGate`) remains untouched
+and out of scope for this pass, per standing instruction.
+
+**Step 3** (`CmpGeConst ;; CSubConst`, two plain leaves) was the simplest of
+the five, closing directly from the existing `r2_6g_step3_cmp_eq`/`_sub_eq`
+ground truth with no new register-slicing machinery — only two new raw-field
+facts (`evalReg_scratchVar`, `evalReg_flagVar` + `flagVar_singleQubit`,
+the latter confirming `(ExtReg.ofReg (Reg.interval flag 1)).singleQubit? =
+some flag` by `simp [ExtReg.singleQubit?, ExtReg.ofReg, Reg.interval]`, no
+`decide`/`omega` needed since `Reg.interval flag 1`'s single-qubit list
+reduces directly).
+
+**Step 4** (`cmpLtNW = mul ;; diff ;; CNOT ;; †diff ;; †mul`) was the
+largest single leaf-assembly of the five, and surfaced three genuinely new
+proof-engineering points worth recording for any future R6 work on
+`CmpLtNWWorkspace`-shaped targets:
+- `CmpLtNWWorkspace.mulWorkspace`'s `.xExt`/`.zExt` are **not** `ofExtRegs`-
+  derived (unlike every earlier `Gate.PhaseProdWorkspace` in this file), so
+  the `unfold + rfl` trick that closed `step1Workspace_xExt_eq` etc. does
+  not apply here. Instead the structure carries `mul_xReserve_eq`/
+  `mul_zReserve_eq` as *propositional* fields (`mulWorkspace.xReserve =
+  work.reserve`, not defeq), so recovering `mulWorkspace.xExt = work`
+  needs an explicit `ExtReg` extensionality lemma
+  (`ExtReg.ext' : e1.active = e2.active → e1.reserve = e2.reserve → e1 =
+  e2`, by `cases e1; cases e2; simp_all` — the third field is `Prop`-valued
+  so proof-irrelevance closes it) plus one `rw` of the propositional
+  reserve-equality field — a plain `rw [ExtReg.withReserve, ...]` chain
+  fails with "motive is not type correct" since the reserve argument
+  appears inside a later field's *type* (`x_reserve_disjoint : Disjoint
+  work.active mulWorkspace.xReserve`), the same dependent-rewrite failure
+  documented before for `let`/`have`-bound terms, here triggered by a
+  structure field instead.
+- Raw `Gate`-level equality between `cmpLtNW`'s unfolded definition and a
+  hand-written nested `;;`-chain is **not safe to state directly** once a
+  sequence has more than ~3 leaves with sub-blocks of different depth (here
+  `mul`/`diff` are themselves 3- and 4-leaf `;;`-trees substituted as single
+  elements into the outer 5-way chain): `Gate.seq`/`;;` is a raw two-argument
+  constructor, not associative as a term, so a hand-typed RHS chain
+  and the actual substituted-unfold LHS can describe the *same flattened
+  circuit* while being different terms, and trying to prove them equal
+  *before* flattening produces genuine (not just tedious) bracket-matching
+  errors. Fix: skip the intermediate raw-equality `have` entirely for
+  compound assemblies — go straight to `Gate.flattenSeq` on both sides of
+  the final goal and let `simp only [Gate.flattenSeq, flattenSeq_foldGateSeq,
+  List.flatMap_cons, List.flatMap_nil, List.append_nil, …]` normalize both
+  through list-append (associative, so bracket differences vanish for free);
+  reserve the raw-equality `have` style (used successfully for Steps 1/2/5)
+  for assemblies that stay within one flat `;;`-chain of already-atomic
+  leaves.
+- `simp only [cmpLtNW, fastConstMulInto, cmpLtNWDifference]` (zeta-reducing
+  the `let mul := …; let diff := …; have hscratch := …; let sign := …`
+  chain inside `cmpLtNW`'s tactic-adjacent body) fully inlines everything
+  down to a flat `Gate` term with no residual `let`/`have` binders — same
+  technique as §12.10's `simp only [step1, IQFT]`, confirmed to scale to a
+  4-`let`-deep body, not just the 1–2 seen before.
+- `cmpLtNWSignQubit`'s own definition (`scratch.active.get ⟨regSize
+  scratch.active - 1, _⟩`) needs `ExtReg.width`/`regSize`/`Reg.width`
+  unfolded on *both* the hypothesis (`0 < regSize scratch.active`) and the
+  goal (`scratch.width - 1 < scratch.active.qubits.length`) before `omega`
+  can see they're the same fact — unfolding one side only leaves omega
+  looking at unrelated opaque atoms (confirmed by testing: doing `unfold …
+  at h ⊢` in one call throws "failed to unfold X" when X only occurs in one
+  of the two, so unfold the goal and the hypothesis in separate calls).
+
+**Step 5** (`.adj`-wrapped `H_reg ;; CPhaseProdUsing ;; adj QFT`, using
+`r2_6g_yGrow1Reg` per §12.10's already-recorded correction) closed by
+direct reuse of Step 1's exact technique — one new workspace pair
+(`step5Workspace_xExt_eq : h.step5Workspace.xExt = data.grow 1`/
+`_zExt_eq : .zExt = work`, both plain `unfold + rfl` since `step5Workspace`
+*is* `ofExtRegs`-derived, unlike Step 4's `mulWorkspace`) and one new angle
+fact (`evalA_step5_phi`, mirroring `evalA_step1_phi`'s `step5Const`/
+`modpow`/`mod` opaque chain) were all that was needed; the `.adj`-wrapping
+itself was mechanical (`evalNodeGate`'s `.adj` case is `return .adj (←
+evalNodeGate … body)`, so once the inner `.seq` assembly closes, `rw
+[evalNodeGate, hInner]; simp only [Except.instMonad, Monad.toBind,
+Except.bind, Except.pure]` discharges the wrapper).
+
+**The `modExpApproxValid` loop-body assembly** (`evalNodeGate_modExpBody`
++ `evalNodeGate_modExpLoop_aux` + `evalNodeGate_modExpLoop`) was the one
+piece with no earlier R6 precedent (`naive_leaf`'s loop has a single-leaf
+body; `H_reg`'s loop, reused here for the top-level Hadamard fan-out, is
+the same single-leaf shape). The technique that made it tractable:
+- `evalNodeGate_modExpBody` first *combines* Steps 1–5's individual
+  theorems (each already parametrized by a free `e : ℕ` and an `e < x.width`
+  side-condition) into one theorem matching `CmodMulInPlaceCore` at a fixed
+  `e` — a direct `obtain`-five-times-and-reassemble, no new proof
+  technique, just volume.
+- `evalNodeGate_modExpLoop_aux` proves the general shape by induction on the
+  *count* of remaining iterations `n`, generalizing the start offset `e0`
+  (hypothesis `e0 + n = x.width`), rather than trying to induct on `e0`
+  directly or on the qubit list itself — this made both sides' recursion
+  match structurally: the real `modExpApproxStepsValid`'s `ctrl :: ctrls`
+  recursion peels the list `x.active.qubits.drop e0`'s head via
+  `List.drop_eq_getElem_cons` (`l.drop i = l[i] :: l.drop (i+1)` given
+  `i < l.length`), while the extracted `List.range (n+1)`'s matching peel
+  uses `List.range_succ_eq_map` (`range (n+1) = 0 :: (range n).map (·+1)`)
+  followed by `List.mapM_map` to reindex the tail from `(fun i => f
+  (e0+(i+1)))` to `(fun i => f ((e0+1)+i))` — both sides then match the
+  induction hypothesis at `e0+1` exactly. The base case (`n = 0`) needs
+  `List.drop_eq_nil_of_le` (`e0 ≥ l.length → l.drop e0 = []`) to confirm the
+  real recursion also bottoms out at `Gate.id`, matching `foldGateSeq [] =
+  Gate.id`'s `flattenSeq = []`.
+- `evalNodeGate_modExpLoop` is the corollary at `e0 = 0`, `n = x.width`,
+  connecting the extracted `.loop "e" 0 xW modExpBody` node (whose
+  `evalNodeGate` semantics is literally `foldGateSeq ((List.range (hiV-loV))
+  .mapM (evalNodeGate … (env.bindW var (loV+i))) body)`, i.e. exactly the
+  aux lemma's LHS shape at `loV=0`) to `modExpApproxValid`.
+
+**The top-level assembly** (`evalNodeGate_shor_gate`) needed two new leaf
+facts for the pieces outside the loop — `evalNodeGate_HloopX` (reusing
+`evalNodeGate_Hreg_loop` directly with `Y := x`, no new technique) and
+`evalNodeGate_initY1` (a `.cond`-guarded `id`/`X q` pair matching
+`initY1 y.active`'s `match y.qubits with | [] => id | q :: _ => X q`; the
+one new pattern here is deriving the extracted qubit index `y.active.qubits.
+getD 0 0` equals the real match's bound `q` by `cases hcase :
+y.active.qubits with | nil => … | cons q rest => …` and then closing the
+final register-index equality with `simp [hcase]` rather than a manual
+`rw`/`List.getD_eq_getElem` chain — plain `rw` hit the same dependent-motive
+failure as Step 4's `mulWorkspace` rewrite (the bound-index proof term's
+type mentions the list being rewritten), and `simp [hcase]` sidesteps it by
+handling the dependency itself) — then assembled the four top-level pieces
+(`H_reg x`, `initY1 y`, the loop, `IQFT x`) exactly as Steps 1/2/5 assembled
+their own three-piece bodies, closing the final `flattenSeq` goal with
+`simp only [Gate.flattenSeq, Hreg_eq_foldGateSeq, hLoopFlat, List.append_nil,
+IQFT]`.
+
+**Verification, this round**: `lake build EmitProofs` → `Build completed
+successfully (3321 jobs)`; `grep -c sorry Proofs/Shor.lean` → `0`;
+`#print axioms Shor.IR.evalNodeGate_shor_gate` → `[propext, Classical.choice,
+Quot.sound]` (also checked on `evalNodeGate_step3`/`_step4`/`_step5`/
+`_modExpBody`/`_modExpLoop`/`_modExpLoop_aux`, all clean).
+
+### 12.12 R6.4 `shor` half: scoping + core infrastructure (doc-independence lemma proved and merged; leaf composition not yet built)
+
+This round moved from `shor_gate` (Gate level, done — §12.11) to `shor`
+(the `LowGate`-level theorem, `Emit/PLAN.md` §12.2: `IR.instantiate <doc>
+"shor" (shorEnv …) fuel = .ok (lowerGate k hk ops (orderFindingApprox …)
+hlower)`), per the coordinator's explicit go-ahead to continue past the
+earlier checkpoint. This section records the scoping pass and one
+substantial, **fully proved and merged** piece of new infrastructure; the
+leaf-by-leaf assembly itself (mirroring `shor_gate`'s Steps 1–5) is not
+started yet — this is a "round of research findings" entry, not a closing
+one.
+
+**Scope, established by reading the real definitions and the extractor
+before writing any proof**: `shor`'s `Node.call`s reach into `qft`/
+`phase_product`/`cphase_product`'s own template bodies — `translateLowerGate`
+(`Emit/Reflect/Extract.lean`, a `MetaM` walk over `lowerGate`'s own equation
+structure, run at *extraction* time, not runtime) splices a `Node.call
+"qft"/"phase_product"/"cphase_product"` in place of a raw `.op "QFT"/
+"SignedPhaseProd"/"CSignedPhaseProd"` leaf wherever `lowerGate`'s own match
+calls `lowerQFT`/`lowerSignedPhaseProdWithWorkspace`/
+`lowerCSignedPhaseProdWithWorkspace`; every other `Gate` constructor
+(`.seq`/`.adj`/`.H`/`.CNOT`/`.zeroExtend`/…) lowers by direct 1-1
+translation, same as `shor_gate`. `Gate.CmpGeConst`/`.CSubConst` (Step 3) are
+a third case: `translateLowerGate` doesn't reconstruct a `Node.call` for
+them at all — it recurses via `translateNode` on `lowerCmpGeConst`/
+`lowerCSubConst`'s own *unfolded* body (a `mkSorry`-supplied workspace proof
+stands in, since these lowerers are plain non-tactic-mode `def`s whose
+*value* never depends on the proof argument), so Step 3 stays a direct
+`.op`-leaf translation, no new composition machinery needed there.
+`Shor.modExpApproxValid` itself is a third exception: since its loop isn't a
+literal `Gate.seq` at the object level (a `List`-driven Lean-level fold, not
+directly `whnf`-matchable), `translateLowerGate` special-cases the *name*
+`Shor.modExpApproxValid` and rebuilds the `.loop "e" 0 xW body` node fresh,
+recursing into `CmodMulInPlaceCore`'s structure via `translateLowerGate`
+again (not `translateNode`) so the QFT/phase-product leaves *inside* the
+loop body also get lowered to `Node.call`s — meaning `shor`'s extracted body
+has **the same `H_reg`/`initY1`/`.loop "e"`/`IQFT` top-level skeleton as
+`shor_gate`**, with `Node.call` leaves standing in for `shor_gate`'s raw
+`.op "QFT"/"SignedPhaseProd"/"CSignedPhaseProd"` ops.
+
+**Ground truth, confirmed by a full `#eval`-dump of `r2_6_doc`'s "shor"
+template body (1150 lines, read in full)**: exactly **14** `Node.call`
+sites — 2× `"cphase_product"` (Step 1's core, Step 5's core), 3×
+`"phase_product"` (Step 2's core, Step 4's `mul`'s core, Step 4's `†mul`'s
+own independent core — `translateLowerGate` re-walks `†mul`'s body fresh
+under the `.adj` wrapper rather than reusing `mul`'s translation, so `mul`
+and `†mul` each contribute their own QFT/phase-product triple), and 9×
+`"qft"` (one QFT/†QFT pair each for Step 1, Step 2, `mul`, `†mul`, Step 5 —
+10 expected, but Step 1/Step 5's *leading* `H_reg` isn't a QFT at all, it's
+the plain Hadamard loop already handled — the count reconciles to 2+2+2+2+1
+= 9, the `+1` being the top-level `IQFT x`) — no surprises against the
+skeleton predicted from `shor_gate`'s own already-proved structure.
+
+**Key discovery — `r2_6_doc`'s shared templates are `rfl`-*identical* to
+their solo-extracted counterparts, not just semantically equivalent**:
+checked directly, before assuming it —
+```
+theorem r2_6_pp_template_eq :
+    r2_6_doc.templates.find? (fun t => t.name == "phase_product") =
+    r2_2_doc.templates.find? (fun t => t.name == "phase_product") := by rfl
+```
+holds by **plain `rfl`** (not `native_decide`), and likewise for
+`"cphase_product"` against `r2_4_doc`, `"qft"` against `r2_5_doc`, and
+`"naive_leaf"`/`"naive_cleaf"` against their respective docs. This makes
+sense given D2's genericity discipline (R2.7, §6.9: extraction is keyed by
+Lean construct name only) but is not something the plan assumed —
+`extract_ir_doc r2_6_doc smallLowering`'s macro independently rediscovers
+"phase_product" while walking `shor`'s dependency closure, and it was worth
+checking whether that rediscovery produces byte-identical `Template`
+records (name, `wParams`/`aParams`/`rParams`, and body) or merely
+equivalent ones. It's the former — which means **R6.2's/R6.3's already-
+proved theorems can be reused as black boxes at every `.call` site inside
+`shor`, with no re-derivation of `phase_product`/`cphase_product`/`qft`'s
+own recursion**, provided the *evaluator* can be shown indifferent to which
+`Doc` it's running against once the relevant templates agree.
+
+**`evalNode_dind` (new, proved, merged into `Proofs/Shor.lean`, no
+`sorry`, `#print axioms` clean)** supplies exactly that indifference:
+given two `Doc`s `d1`/`d2` and a name set `names` closed under the call
+graph (every name in `names` has `d1`/`d2` agreeing on `.templates.find?`,
+and every template reachable *through* a name in `names` only calls further
+names still in `names`), `evalNode d1 fuel env node = evalNode d2 fuel env
+node` for any `node` whose own `.call`s land in `names`. Two proof-
+engineering notes, both already-documented `Node`/`evalNode` obstacles
+(§12.0/§12.0b) recurring in a new spot:
+- `Node.callNames` (the new helper collecting a node's *syntactic* `.call`
+  names, not unrolling recursion — that's what the "closed under the call
+  graph" hypothesis is for) had to be written using explicit `Node.callNames
+  x` calls throughout its own recursive equations, never `x.callNames` dot
+  notation — a `def Node.callNames` written under `open Shor.IR` (rather
+  than inside `namespace Shor.IR … end`) registers the constant as the
+  *root*-level `Node.callNames`, not `Shor.IR.Node.callNames`, so dot
+  notation on a `Shor.IR.Node` value can't find it. Easy to miss since
+  `#check @Node.callNames` after the `def` still reports the (root-level)
+  type correctly — only *later* dot-notation *uses* fail.
+- `evalNode_dind`'s own proof needed nested nested nested (`fuel`, then
+  `sizeOf node`) strong induction via `Nat.strong_induction_on`, *not* the
+  `induction`/`cases` tactics on `node` — confirmed directly: `induction
+  node with …` fails outright with "the induction tactic does not support
+  the type `Shor.IR.Node` because it is a nested inductive type"
+  (`Node.seq : List Node → Node`'s nested-`List`-of-`Self` shape, the same
+  documented obstacle `Emit/IR/Syntax.lean`'s own docstring gives for
+  `deriving DecidableEq`/`LawfulBEq`). A plain `match node, hle, hsub with`
+  *pattern match* (not the `induction` tactic) works fine for destructuring,
+  since the recursion is driven entirely by the two explicit
+  `Nat.strong_induction_on` calls rather than an auto-generated recursor —
+  this is the general fix for "need to case on a `Node`/`WExpr`/… value
+  inside a proof" anywhere else in R6 that hits the same wall. A first
+  attempt at threading the well-founded recursion through a `mutual … end`
+  block (mirroring `evalW`/`evalWList`'s own mutual structure) compiled the
+  *syntax* successfully but left several `decreasing_by` obligations that
+  automatic tooling couldn't discharge (the auto-generated goal for a
+  recursive call mediated through an external helper lemma, e.g.
+  `List.mapM_congr'`, doesn't carry the same auto-introduced membership
+  hypothesis a *direct* `List.mapM (evalNode d fuel env)` self-reference
+  gets) — abandoned in favor of the two-level `Nat.strong_induction_on`
+  version above, which sidesteps needing any automatic `decreasing_by` at
+  all (every recursive call is justified by an explicit `have`-derived
+  inequality passed to the strong-induction IH directly).
+
+**Register-level wiring resolved but not yet turned into a committed
+lemma, for whoever continues**: `shor`'s `"qft"` `Node.call`s pass a
+reserve-*stripped* register for `qft`'s own `"r"` parameter (the extracted
+rArg is a bare `.activeSlice (.var "work") 0 workW`, not wrapped in `.ext`
+with a reserve slice, evaluating to `ExtReg.ofReg work.active` — reserve
+empty) — yet `Qft.lean`'s `evalNode_qft_correct` is stated generally enough
+for this to be a non-issue: its workspace hypothesis is the *weaker*
+`QFTWorkspaceOK r2_5_ops r.active xWork.active zWork.active` (already
+`.active`-only), not the *stronger* `QFTReserveOK r2_5_ops r` (which needs
+`r`'s own nonempty capacity and would fail at `r := ExtReg.ofReg work.active`
+since that has no reserve at all) — so the right call site is
+`evalNode_qft_correct` directly, at `r := ExtReg.ofReg work.active`,
+`xWork/zWork := ExtReg.ofReg (qftXWork/qftZWork r2_6g_ops work)` (matching
+the extracted rArgs' evaluated values field-for-field against `qftEnv`'s
+three positional `ExtReg` parameters), with the workspace hypothesis
+supplied as `(the real QFTReserveOK r2_6g_ops work).explicitWorkspace` —
+*not* the already-established convenience corollary `r2_5_doc_qft_correct`
+(which insists on the full, reserve-carrying `r` and would need an
+extra reserve-invariance lemma to bridge). The resulting conclusion
+(`lowerQFTPlan (standardQFTLoweringPlan … r.active xWork.active zWork.active
+…)`) only ever mentions `.active` projections, so `r := ExtReg.ofReg
+work.active` gives exactly the same value as `r := work` would — confirmed
+by inspection of `evalNode_qft_correct`'s and `lowerQFT`'s own statements,
+not yet turned into a standalone committed fact.
+
+**Not yet started**: the LowGate-level analogues of `evalNodeGate_
+PhaseProdUsing`/`_CPhaseProdUsing` (composing the `zeroExtend`/`zeroDealloc`
+leaves with a bridged `Node.call "phase_product"/"cphase_product"` leaf via
+`evalNode_dind` + R6.2/R6.3's theorems — the middle leaf's value collapses
+to `lowerSignedPhaseProdWithWorkspace`/`lowerCSignedPhaseProdWithWorkspace`
+directly, since both unfold by a plain `def`-chain to `lowerGateRec
+(standardSignedPhaseLoweringPlan …)`, exactly R6.2's own theorem target —
+confirmed by reading `PhaseProduct/Lowering/Lower.lean`, not yet stated as a
+lemma), a "qft" leaf-bridging lemma using the register wiring above, Steps
+1/2/4(`mul`,`†mul`)/5 assembled from those two pieces (mirroring `shor_gate`'s
+already-proved Steps 1/2/4/5 leaf-for-leaf, one level lower), Step 3
+(`CmpGeConst`/`CSubConst` lowering — direct translation, no new leaf-bridging
+needed, should be the most mechanical of the five), the `modExpApproxValid`
+loop-body assembly (should transplant `evalNodeGate_modExpLoop_aux`'s
+induction near-verbatim, swapping `evalNodeGate`/`Gate` for `evalNode`/
+`LowGate`), and the top-level `H_reg`/`initY1`/loop/`IQFT` assembly. Net
+assessment: comparable in *volume* to the entire `shor_gate` effort (§12.9–
+§12.11), since every one of `shor_gate`'s already-proved leaves needs a
+LowGate-level counterpart — but with the two hardest new ingredients (the
+doc-independence bridge and the register-wiring resolution above) now
+already worked out, what remains is the same kind of leaf-by-leaf assembly
+`shor_gate` needed, not a new kind of difficulty.
+
+**Verification, this round**: `lake build EmitProofs` → `Build completed
+successfully (3321 jobs)`; `grep -c sorry Proofs/Shor.lean` → `0`;
+`#print axioms Shor.IR.evalNode_dind` → `[propext, Classical.choice,
+Quot.sound]`. `Proofs/Shor.lean` now imports `Proofs/PhaseProduct.lean`/
+`Proofs/CPhaseProduct.lean`/`Proofs/Qft.lean` (previously only
+`Proofs/Correct.lean`/`Emit/Tests.lean`) — this exposed one real naming
+collision, not a proof bug: `Proofs/PhaseProduct.lean` declares its own
+general `Shor.IR.ExtReg.capacity_grow (e : ExtReg) (n : ℕ) : (e.grow
+n).capacity = e.capacity - n` (unconditional), which now shadows
+`ShorVerification`'s `Shor.ExtReg.capacity_grow` (the one `CanGrow`-gated
+version §12.10's Step 2 work needed) under `Shor.lean`'s `open Shor
+Shor.IR` — fixed by fully qualifying the one call site that needed the
+`ShorVerification` version (`Shor.ExtReg.capacity_grow` instead of the bare,
+now-ambiguous name); nothing about the already-verified Step 1/2 theorems
+changed.
+
+### 12.13 R6.4 `shor` half: `evalNode_ind` (doc *and* env indifference), a second required bridge — proved and merged; leaf assembly still not started
+
+§12.12 found and closed the *first* gap between `shor`'s `.call` sites and
+R6.2/R6.3's theorems (`evalNode_dind`, doc-independence — do `d1`/`d2` agree
+on template lookup?). This round found a **second, independent gap** at the
+same `.call` sites, closed it the same way (a general, proved, merged
+lemma), and got as far as fully working out — but not yet committing — the
+two-environment technique the leaf assembly itself needs. Still a "round of
+research findings" entry, not a closing one for `shor`.
+
+**The second gap.** `evalNode_dind` alone is not enough to reuse
+`r2_4_doc_cphase_product_correct` (etc.) at a `shor`-internal `.call`
+site, because `Env.call` (`IR/Instantiate.lean`) rebuilds only `w`/`a`/`r`
+fresh from the callee template's own parameter list — `opaqueW`/`coeff` are
+carried over **unchanged** from the caller's env (`{env with w := …, a :=
+…, r := …}`, no `opaqueW`/`coeff` field touched). `shor`'s calling env,
+`Emit/Tests.lean`'s `r2_6_env`, has a strictly larger `opaqueW` match (it
+needs `"mod"`/`"pow"`/`"modpow"`/`"step5Const"`/`"log2"`/`"qftXWork"`/
+`"qftZWork"` on top of `"nextWidth"`/`"reserveNeed_x"`/`"reserveNeed_z"`,
+since it also serves `shor_gate`'s own needs) than `ppEnv`/`cppEnv`/
+`qftEnv`'s three-case `opaqueW`. Per `Proofs/Qft.lean`'s own already-recorded
+finding (`qftEnv_opaqueW_eq_ppEnv`'s docstring: "a function with more
+pattern-match arms is a different closure, even where the arms overlap"),
+this means `Env.call`'s result at a `shor`-internal `.call "cphase_product"`
+site is genuinely **not** `rfl`/`funext`-equal to `cppEnv ctrl x z phi` as a
+whole `Env` value — only its `w`/`a`/`r` projections are (confirmed
+separately, see below); `opaqueW` differs at inputs `cphase_product` never
+queries (`"mod"`, `"pow"`, …) but is otherwise the same function.
+
+**The fix, mirroring `evalNode_dind`'s own shape exactly.** Since a `Doc`'s
+evaluator only ever touches `opaqueW`/`coeff` by *applying* them at specific
+`(name, args)` pairs — never by comparing them as whole functions — the same
+"agree on what's actually queried, and the reachable call graph never
+queries outside that set" argument that justified swapping `Doc`s justifies
+swapping `opaqueW`/`coeff` too. Built and merged into `Proofs/Shor.lean`,
+each independently `#print axioms`-verified clean, no `sorry`:
+- `Node.opaqueNames`/`WExpr.opaqueNames`/`AExpr.opaqueNames`/
+  `RegExpr.opaqueNames`/`Prop'.opaqueNames`: the syntactic-occurrence
+  counterpart of `Node.callNames`, one per IR type, collecting every
+  `.opaque fn _` name literally written in the expression (not unrolling
+  `.call` — same "closure handles recursion, occurrence-collection doesn't"
+  split as `Node.callNames`/`evalNode_dind`'s `hclosed`).
+- `evalW_oind`/`evalWList_oind_aux`: `evalW`'s own opaqueW-indifference,
+  proved *first* and separately, since `WExpr.opaque`'s `List WExpr` nesting
+  needs the same `Nat.strong_induction_on (sizeOf ·)` treatment as `Node`
+  (no `induction`/`cases` tactic) — this piece has **no fuel dimension at
+  all** (unlike `evalNode`, `evalW` doesn't recurse through `.call`), so
+  it's a single-measure induction, simpler than `evalNode_dind`'s.
+  `evalWList_oind_aux` had to be factored out as its *own* recursive
+  definition (not inlined via a generic `List.mapM_congr'` call) after a
+  first attempt at inlining hit exactly the "recursive call mediated
+  through an external helper loses the auto-introduced membership
+  hypothesis `decreasing_by` needs" problem §12.12 already flagged for
+  `evalNode_dind`'s own construction — confirming that's a *general* trap
+  for this codebase's `List Self`-nested types, not a one-off.
+- `evalA_oind`/`evalReg_oind`/`evalProp_oind`: the same fact for `AExpr`/
+  `RegExpr`/`Prop'`, each by the *ordinary* `induction e with …` tactic
+  (these three types have no nested-list occurrence, confirmed directly by
+  attempting `induction`/`cases` — no obstacle, unlike `Node`/`WExpr`), using
+  `evalW_oind` as a black box wherever a `WExpr` subterm appears. One Lean
+  quirk hit and worked around: the `AExpr.neg` constructor's case tag in
+  `induction … with | neg a ih => …` fails to parse ("unexpected token
+  `neg`", though the *error message itself* still asks for exactly `neg` as
+  the expected alternative name) — `neg` collides with a reserved parser
+  token; escaping it as `` | «neg» a ih => … `` (Lean's guillemet syntax for
+  using a keyword as a plain identifier) fixes it with no other change.
+- `evalNode_ind`: the combined result, `Node`-level, by the same nested
+  `Nat.strong_induction_on (fuel)` then `Nat.strong_induction_on (sizeOf
+  node)` skeleton as `evalNode_dind`, now threading `env1 env2 : Env`
+  through the induction too (universally re-quantified at every recursive
+  step, *not* fixed parameters of the outer theorem — an early draft fixed
+  them at the top and only discovered the mistake when the `.loop`/`.call`
+  cases' recursive calls needed the theorem to hold at the `bindW`-extended/
+  `Env.call`-rebuilt envs, not the original pair). `opaqueW`/`coeff` are
+  instead carried as **named functions** (`opaqueW1 opaqueW2 : String →
+  List ℕ → Option ℕ`, `coeff1 coeff2 : ℕ → ℕ → Option ℚ`) with `env1.opaqueW
+  = opaqueW1` (etc.) as a hypothesis re-derivable in one line at every
+  `bindW`/`Env.call` step (`Env.bindW` never touches `opaqueW`/`coeff`;
+  `Env.call`'s `{env with w:=…,a:=…,r:=…}` doesn't either) — this is what
+  lets the *same* top-level `hop`/`hcoeff` proof keep working arbitrarily
+  deep into the recursion without re-proving anything.
+
+**The leaf-assembly technique this unlocks (worked out, not yet a
+committed lemma).** A `shor`-internal `.call "cphase_product" wArgs aArgs
+rArgs` node cannot be bridged to `r2_4_doc_cphase_product_correct` by a
+*single* `evalNode_ind` application with `env1 :=` (the real calling env)
+and `env2 := cppEnv ctrl x z phi` directly — tried first, and it doesn't
+typecheck: `evalNode_ind`'s own hypotheses are about `env1`/`env2`
+*themselves*, evaluated at `wArgs`/`aArgs`/`rArgs` to produce `Env.call`'s
+inputs, and if `env2 := cppEnv ctrl x z phi` from the very top, `env2.w`
+already disagrees with `env1.w` (`cppEnv`'s `w` only knows `"xw"`/`"zw"`/
+`"xCap"`/`"zCap"`, not `shor`'s `"xW"`/`"workW"`/…), breaking `hw` long
+before reaching the `.call`. The fix is a **hybrid env**: `env2 :=
+{env1 with opaqueW := (cppEnv _ _ _ _).opaqueW, coeff := (cppEnv _ _ _
+_).coeff}` — identical to the real calling env in `w`/`a`/`r` (so `hw`/`ha`/
+`hr` are `rfl`), but with `cppEnv`'s `opaqueW`/`coeff` already installed
+(so `hop`/`hcoeff` are the `hop_cpp`-style pointwise facts below, and *not*
+`rfl`-blocked by `cppEnv`'s narrower match). `cppEnv`'s `opaqueW`/`coeff`
+fields don't depend on their own `ctrl`/`x`/`z`/`phi` arguments at all, so
+`(cppEnv _ _ _ _).opaqueW` is well-defined without committing to values
+yet. `evalNode_ind` at `(env1, env2)` this way gives `evalNode r2_6_doc
+fuel env1 node = evalNode r2_4_doc fuel env2 node`; since `env2`'s `w`/`a`/
+`r` still equal `env1`'s, `env2`'s *behavior* at the `.call` node's own
+`wArgs`/`aArgs`/`rArgs` matches whatever was already established about
+`env1` (`hctrl`/`hx`/`hz`/`hphi`-style facts, same as `shor_gate`'s), and
+after `Env.call` rebuilds `env2`'s `w`/`a`/`r` fresh from the callee's
+params, `evalNode_dind`/`envcall_cpp_*_eq`'s combination identifies the
+result with `evalNode r2_4_doc fuel' (cppEnv ctrl X Z phi) r2_4_cppBody`
+exactly. Confirmed piece-by-piece, not yet assembled into one theorem
+(see below).
+
+**Established and independently verified this round** (`grep -c sorry` →
+`0`, `lake build EmitProofs` → green, `#print axioms` clean on each):
+- `envcall_cpp_w_eq`/`_a_eq`/`_r_eq`: `Env.call env ["xw","zw","xCap","zCap"]
+  [X.width,Z.width,X.capacity,Z.capacity] ["phi"] [phi] ["ctrl","x","z"]
+  [C,X,Z]`'s `w`/`a`/`r` fields equal `cppEnv C X Z phi`'s, for arbitrary
+  `env` — proved via two new general helper lemmas worth keeping,
+  `List.lookup_eq_ite1`/`_ite2`/`_ite3`/`_ite4` (an *n*-key association-list
+  lookup unfolds to the expected `if`-chain, for 1–4 keys — covers every
+  `wParams`/`aParams`/`rParams` list length these templates use), proved by
+  `cases h : n == kᵢ <;> …  <;> simp_all` (**Bool** `cases`, not `by_cases`
+  on the `Prop` form — the latter leaves the `match _==_ with` scrutinee
+  from `List.lookup`'s own equation lemma unrewritten, since `split_ifs`
+  only recognizes literal `ite`/`dite` terms, not the bare `match` shape
+  `List.lookup`'s recursion actually produces; `cases` on the `Bool`
+  expression directly sidesteps needing that conversion at all).
+- `hop_cpp`: `r2_6_env`'s `opaqueW` agrees with `cppEnv`'s at
+  `"nextWidth"`/`"reserveNeed_x"`/`"reserveNeed_z"` for every argument list
+  — by `fin_cases` on the name then `rcases`-on-the-args `rfl` (both sides'
+  formula is literally `RecursivePhaseWorkspace.nextWidth/reserveNeed
+  r2_6g_ops/r2_4_ops xw zw`, and `r2_6g_ops = r2_4_ops` is `rfl`, already
+  established in §12.12 for the `.call`-target-lookup identity — the *same*
+  `ops` identity turns out to be exactly what's needed for the opaque-value
+  identity too). `coeff` needed no restriction at all: `r2_6_env.coeff =
+  cppEnv/ppEnv/qftEnv.coeff` holds **fully**, by plain `rfl`, for every
+  target — unlike `opaqueW`, `coeff`'s formula has no extra match arms in
+  `r2_6_env` (it's the same single `if l < q 2 then … else none` in every
+  env this project defines), so there is no "different closure" problem
+  for `coeff` at all.
+- `hnames_cpp`/`hclosedC_cpp`/`hclosedO_cpp`: `r2_6_doc`'s "cphase_product"/
+  "naive_cleaf" templates agree with `r2_4_doc`'s (§12.12's `rfl` fact,
+  restated as a `fin_cases`-closed `∀ n ∈ names, …`), and `r2_4_cppBody`'s
+  own `callNames`/`opaqueNames` stay inside `{"cphase_product",
+  "naive_cleaf"}`/`{"nextWidth","reserveNeed_x","reserveNeed_z"}` — checked
+  by `native_decide` (plain `decide` times out / gets stuck on `String`
+  equality's kernel reduction at this size, confirmed directly; `#eval`
+  first, to see the actual — much smaller than it looks from the AST size —
+  deduplicated name lists, then `native_decide` to discharge the `⊆` fact
+  the induction actually needs).
+
+**Not yet started**: assembling the pieces above into one closed
+`evalNode_call_cphase_product`-style leaf lemma (the last step — combining
+`evalNode_ind` at the hybrid env with `r2_4_doc_cphase_product_correct` —
+was reached but not finished this round), then the *same* pattern for
+`"phase_product"` (3 call sites) and `"qft"` (9 call sites, plus the
+register-wiring resolution already recorded in §12.12), Step 3's direct
+`CmpGeConst`/`CSubConst` translation (no `.call`, should be the most
+mechanical of the five steps, same shape as `shor_gate`'s own Step 3 one
+level lower), the `modExpApproxValid` loop-body assembly (expected to
+transplant `evalNodeGate_modExpLoop_aux`'s induction near-verbatim,
+`evalNode`/`LowGate` in place of `evalNodeGate`/`Gate`), and the top-level
+`H_reg`/`initY1`/loop/`IQFT` assembly. Net assessment, updated from §12.12:
+the *scale* is still "comparable to the whole `shor_gate` effort," but the
+count of genuinely *new* obstacle types this pass has now found and closed
+is three (doc-independence, env/opaqueW-independence, the hybrid-env
+leaf technique) — every one now a proved, general, reusable lemma or a
+confirmed technique, not an open question. What remains is applying the
+established `evalNode_call_<name>` pattern 14 times (mechanical but not
+short) plus the four structural-assembly pieces above, none of which need
+further new machinery beyond what `shor_gate` and this round already built.
+
+### 12.14 R6.4 `shor` half: first leaf theorem closed (`evalNode_call_cphase_product`), `native_decide` removed
+
+§12.13 left the hybrid-env leaf technique fully worked out but not yet
+assembled into a closed theorem, and its `hclosedC_cpp`/`hclosedO_cpp`
+closure facts leaning on `native_decide` (flagged there as a stopgap:
+"`native_decide` … plain `decide` times out / gets stuck"). This round
+closed both gaps: `evalNode_call_cphase_product` is now a fully-assembled,
+merged, `native_decide`-free leaf theorem — the **first** of the 14
+`.call`-site leaves `shor`'s theorem needs, and the one that validates the
+whole pipeline end-to-end for the first time.
+
+**Assembly.** `evalNode_call_cphase_product` (`Proofs/Shor.lean`, appended
+after `evalNode_ind`) takes the hybrid env `env2 := {env1 with opaqueW :=
+(cppEnv C X Z phi).opaqueW, coeff := (cppEnv C X Z phi).coeff}` from §12.13,
+applies `evalNode_ind` to get `evalNode r2_6_doc fuel env1 node = evalNode
+r2_4_doc fuel env2 node` at the `.call "cphase_product" …` node, rewrites
+the RHS one fuel step through `evalNode`'s `.call` case using
+`evalW_oind`/`evalA_oind`/`evalReg_oind` to carry `hwx`/`hwz`/`hphi`/`hctrl`/
+`hx`/`hz`-style facts from `env1` to `env2` (opaqueW-independence applies
+here too — the *argument expressions* `wxR`/`phiR`/etc. are themselves
+opaque-free, `hOwx`/`hOphi`/… hypotheses), identifies the resulting
+`Env.call env2 [...] r2_4_cppBody` with `cppEnv C X Z phi`/`r2_4_cppBody` via
+`envcall_cpp_w_eq`/`_a_eq`/`_r_eq` (§12.13) plus the `opaqueW`/`coeff` fields
+(already `rfl`-equal by `env2`'s own construction) — destructured via `cases
+… with | mk … =>` on both sides to combine five separately-proved field
+equalities into one whole-`Env` equality — and closes with
+`r2_4_doc_cphase_product_correct` directly. One new wrinkle not in §12.13's
+preview: `phaseInputSize X Z < fuel` (the natural hypothesis) isn't quite
+enough once `fuel = fuel' + 1` is peeled off for the `.call` step; the
+theorem's hypothesis is stated as `phaseInputSize X Z + 1 < fuel` instead,
+with the needed bound re-derived by `omega` at the call site.
+
+**The `native_decide` fix.** `hclosedC_cpp`/`hclosedO_cpp` need `Node.callNames
+r2_4_cppBody ⊆ cpp_names` and `Node.opaqueNames r2_4_cppBody ⊆ cpp_oNames`.
+Confirmed directly (a minimal 2-leaf example) that neither `Node.callNames`
+nor `Node.opaqueNames` reduces via `rfl`/`decide` in the kernel — both
+compile via well-founded recursion over the `List Node`/`List WExpr` nesting,
+a known Lean 4 kernel-reduction limitation — so `decide` gets stuck and the
+original draft reached for `native_decide`, which was then caught by this
+project's own R6.2 exit criterion (no `Lean.ofReduceBool`/`Lean.trustCompiler`
+axioms: confirmed via `#print axioms` showing exactly those two extra axioms
+before the fix). Both closure facts are now proved without it:
+- `r2_4_cppBody_callNames_sub`: chains through `r2_4_cppBody`'s own
+  already-established ground-truth `_eq` lemmas (`r2_4_cppBody_eq_cond`,
+  `r2_4_cppThen_eq_seq`, `r2_4_cppElse_eq`, `r2_4_ppAlloc_eq`,
+  `r2_4_ppRest_eq_seq`, `r2_4_ppDealloc_eq`, `r2_2_ppDealloc_eq`,
+  `r2_4_ppBodyNode_eq`, `r2_2_ppAlloc_eq`) via `rw`/`unfold`, exposing
+  concrete `Node` constructors one layer at a time so `simp only
+  [Node.callNames, …]`'s *equation lemmas* fire (they do fire once the
+  scrutinee is a literal constructor — the kernel-reduction obstacle is only
+  for fully-automatic `whnf`/`decide`, not for `simp`'s targeted rewriting),
+  then `intro z hz; simp_all` closes the final membership goal.
+- `r2_4_cppBody_opaqueNames_sub`: same chaining technique, but
+  `Node.opaqueNames`'s dependency chain is much deeper (`nextWidthW`/
+  `limbW`/`reserveNeedXW`/`reserveNeedZW`/`r2_2_offsetX1W`/`r2_2_sizeX1W`/
+  `r2_2_offsetZ1W`/`r2_2_sizeZ1W`/`r2_2_growDeltaX0W`–`Z1W`, each nested
+  inside others, and several call sites repeat the same sub-expressions). A
+  first attempt closing the fully-unfolded goal with `intro z hz; tauto` hit
+  a **deterministic timeout at `whnf`** even with `maxRecDepth 4000` and
+  `maxHeartbeats 1000000` raised — the final disjunction has 50+ terms once
+  everything is flattened, and `tauto`'s search does not scale linearly in
+  disjunct count. Fixed by abandoning element-level case analysis for
+  list-structural subset-splitting: `simp only [List.append_subset]` turns
+  an `(l1 ++ l2) ⊆ l3` goal into a conjunction tree *without* introducing any
+  `z`/membership reasoning (pure structural rewriting, cheap regardless of
+  size), `repeat' apply And.intro` flattens the tree into independent leaf
+  goals with no need to know the exact nesting shape in advance, and
+  `all_goals (first | exact List.nil_subset _ | exact <one of eight small
+  per-subexpression ⊆-lemmas> | (intro a ha; simp_all [cpp_oNames] <;>
+  tauto))` closes each leaf — `tauto` now only ever runs on tiny (2–4
+  disjunct) per-leaf goals instead of the one global 50-term goal, and the
+  whole proof runs in seconds. The eight per-subexpression lemmas
+  (`nextWidthW_opaqueNames_eq`, `limbW_opaqueNames_eq`,
+  `reserveNeedXW_opaqueNames_eq`, `reserveNeedZW_opaqueNames_eq`,
+  `r2_2_offsetX1W_opaqueNames_sub`, `r2_2_sizeX1W_opaqueNames_sub`,
+  `r2_2_offsetZ1W_opaqueNames_sub`, `r2_2_sizeZ1W_opaqueNames_sub`) are each
+  proved the same way, small enough that plain `tauto` on their own final
+  goals is fine — the blowup was specifically a function of running `tauto`
+  once on the *fully assembled* 50-term goal, not of the individual facts.
+- The `"naive_cleaf"` branch of `hclosedC_cpp`/`hclosedO_cpp` (the other
+  name in `cpp_names`) needed the same treatment made explicit: unfolding
+  `Reflect.naiveCLeafTemplate`'s body via `simp only [Reflect.naiveCLeafTemplate,
+  Node.callNames/opaqueNames, …]` reduces the membership hypothesis to `n' ∈
+  ([] : List String)`, closed by `cases hn'` — previously folded silently
+  into the `native_decide` call and had to be split out as its own step.
+
+**Result.** `evalNode_call_cphase_product` merged into `Proofs/Shor.lean`
+(after `evalNode_ind`, before `end Shor.IR`), along with `cpp_names`/
+`cpp_oNames`, `hnames_cpp`, `r2_4_cppBody_callNames_sub`/
+`_opaqueNames_sub` and their eight helper lemmas, `hclosedC_cpp`/
+`hclosedO_cpp`, `envcall_cpp_w_eq`/`_a_eq`/`_r_eq`, `hop_cpp`, `hcoeff_cpp`.
+`lake build EmitProofs` succeeds (3321 jobs, only pre-existing-style unused-
+simp-arg lint warnings, zero errors). `grep -c sorry` on the file is 0; grep
+for `native_decide`/`Lean.ofReduceBool`/`Lean.trustCompiler` finds none in
+actual code (only in this section's own prose, describing the fix).
+`#print axioms evalNode_call_cphase_product` → `[propext, Classical.choice,
+Quot.sound]`, clean.
+
+**Net assessment.** This closes the "not yet started: assembling the pieces
+above into one closed leaf theorem" gap §12.13 left open, and confirms the
+hybrid-env + `evalNode_ind` + kernel-clean-closure technique is a *working,
+reusable template* — not just a plan. What remains unchanged in kind from
+§12.13's assessment: 13 more `.call` sites need the identical pattern
+applied (1 more `cphase_product` at Step 5, 3 `phase_product` at Steps 2/
+4mul/4†mul, 9 `qft`), each needing its own `hop_<name>`/`hcoeff_<name>`/
+`envcall_<name>_*_eq`/`hclosedC_<name>`/`hclosedO_<name>` instantiated for
+that template (mechanical, following this round's file line-for-line, but
+not short — the `callNames`/`opaqueNames` closure lemmas in particular are
+the most labor-intensive part per site since each template's dependency
+chain differs), then Step 3 (`CmpGeConst`/`CSubConst`, no `.call`/leaf
+machinery needed at all) and the `modExpApproxValid` loop/top-level assembly.
+
+### 12.15 R6.4 `shor` half: second leaf theorem closed (`evalNode_call_phase_product`) — a correction to §12.14's "13 more sites" count
+
+§12.14 framed the remaining work as "13 more `.call` sites need the
+identical pattern applied." Building the second leaf theorem this round
+surfaced that framing was **counting the wrong thing**: `evalNode_call_phase_product`
+(mirroring `evalNode_call_cphase_product` exactly, target
+`evalNode_phase_product_correct` from `Proofs/PhaseProduct.lean` instead of
+`r2_4_doc_cphase_product_correct`) is fully **generic** in its register/weight/
+angle-expression arguments (`xR zR wxR wzR wxCapR wzCapR phiR`, all
+universally quantified, plus opaqueNames-empty/eval hypotheses about them) —
+it is not tied to any one concrete call site's argument expressions. One
+theorem per **template name**, not per call site, covers every `.call
+"<name>" …` site using that name anywhere in `shor`'s body, as long as the
+site-specific hypotheses (the `evalReg`/`evalW`/`evalA` facts, workspace
+precondition, fuel bound) are separately established at each site during the
+top-level assembly. So the real remaining count of *new leaf theorems* was
+never 13 — it was **2**: one generic `evalNode_call_phase_product` (covering
+Step 2, Step 4's `mul`, and Step 4's `†mul` — all 3 `phase_product` sites at
+once) and one generic `evalNode_call_qft` (covering all 9 `qft` sites). Both
+`cphase_product` call sites (Steps 1 and 5) are already covered by
+`evalNode_call_cphase_product` from §12.14, with no second lemma needed.
+"13 more sites" remains an accurate count of how many *site-specific
+hypothesis packages* the final top-level assembly step must supply — that
+work doesn't disappear — but it is not 13 more leaf-lemma-engineering
+rounds; it is 1 more (`qft`), then assembly.
+
+**What was built.** `evalNode_call_phase_product` (`Proofs/Shor.lean`,
+appended after `evalNode_call_cphase_product`), plus its supporting
+`pp_names := ["phase_product", "naive_leaf"]`, `hnames_pp`,
+`r2_2_ppBody_callNames_sub`/`_opaqueNames_sub`, `hclosedC_pp`/`hclosedO_pp`,
+`envcall_pp_w_eq`/`_a_eq`/`_r_eq`, `hop_pp`, `hcoeff_pp` — the exact same
+eleven-lemma shape as `cphase_product`'s leaf, with `cppEnv`/`r2_4_*`
+replaced by `ppEnv`/`r2_2_*` throughout and the `ctrl`-related hypotheses
+dropped (`phase_product`'s `rParams = ["x","z"]`, no control qubit). One
+structural wrinkle, not present in `cphase_product`'s case: `phase_product`'s
+own body (`r2_2_ppBody`) is **self-recursive** — its `.cond`'s else-branch
+calls `"naive_leaf"` (the base case) but its then-branch contains 3 internal
+`.call "phase_product"` leaves (the recursive step `evalNode_phase_product_correct`
+itself inducts over) — so `pp_names` contains `"phase_product"` itself, and
+`hclosedC_pp`/`hclosedO_pp`'s `"phase_product"` branch is self-referential
+(unproblematic: the closure argument only requires the callee's own
+`callNames`/`opaqueNames` stay inside the declared set, which self-reference
+trivially satisfies once established). A second reuse discovery: `r2_2_ppBody`
+shares its allocation/deallocation subtree and every `nextWidthW`/
+`reserveNeedXW`/`reserveNeedZW`/`r2_2_offsetX1W`–`r2_2_sizeZ1W` opaque-name
+helper fact with `r2_4_cppBody` (§12.14 already found `cphase_product`
+reuses `phase_product`'s chunk-0/1 allocation machinery directly) — so
+`r2_2_ppBody_opaqueNames_sub`'s target set is `cpp_oNames` again (unchanged,
+same three names) and **all eight** `opaqueNames`-closure helper lemmas from
+§12.14 (`nextWidthW_opaqueNames_eq` through `r2_2_sizeZ1W_opaqueNames_sub`)
+were reused verbatim, zero new helper lemmas needed for this round beyond
+the top-level `r2_2_ppBody_callNames_sub`/`_opaqueNames_sub` pair itself. The
+proof assembled and closed on the **first attempt** after fixing three small
+mechanical slips (a missing `rw [r2_2_ppAlloc_eq]`/`r2_2_ppGuard_eq` step
+each, and two `rw […]` calls that needed `at hn'` and were instead — wrongly
+— rewriting the goal) — the `List.append_subset` + `repeat' apply And.intro`
++ per-leaf `all_goals first | …` technique from §12.14 scaled to this body
+with no further tuning.
+
+**Result.** `lake build EmitProofs` succeeds (3321 jobs, only unused-simp-arg
+lint warnings, zero errors). `grep -c sorry` is 0; no `native_decide`/
+`Lean.ofReduceBool`/`Lean.trustCompiler` in actual code. `#print axioms
+evalNode_call_phase_product` → `[propext, Classical.choice, Quot.sound]`,
+clean.
+
+**Net assessment.** Two of the three needed generic leaf theorems
+(`cphase_product`, `phase_product`) are done; `qft` remains as the third and
+last. Once `qft`'s leaf theorem closes, all `.call`-site leaf-lemma
+engineering for `shor` is finished, and everything remaining is Step 3
+(`CmpGeConst`/`CSubConst`, no leaf machinery) plus the top-level assembly:
+supplying each of the 14 concrete call sites' site-specific hypotheses and
+composing the pieces the same way `shor_gate`'s own Steps 1–5/loop/top-level
+assembly (§12.9–§12.11) already did one level higher (`evalNodeGate` instead
+of `evalNode`).
+
+### 12.16 R6.4 `shor` half: third and last leaf theorem closed (`evalNode_call_qft`) — all `.call`-site leaf-lemma engineering done
+
+`evalNode_call_qft` (`Proofs/Shor.lean`, appended after `evalNode_call_phase_product`)
+closes R6.4's leaf-lemma phase: the same hybrid-env + `evalNode_ind`
+technique as §12.14/§12.15, target `evalNode_qft_correct` (`Proofs/Qft.lean`,
+R6.3's closed theorem). Two structural differences from the first two
+leaves, both handled without new machinery: `qft` has no angle parameter
+(`aParams = []`), so there is no `phi`/`hphi`/`hOphi` anywhere in this
+theorem — `Env.call`'s `a` field for an empty `aParams`/`aVals` pair is
+`fun n => ([].zip []).lookup n`, definitionally `fun _ => none`, matching
+`qftEnv`'s `a` field by plain `rfl` (`envcall_qft_a_eq` is a one-line
+`funext n; rfl`, no case split needed at all, unlike `_w_eq`/`_r_eq`). And
+`qft`'s closure set needs **three** names, not two: `qft_names := ["qft",
+"phase_product", "naive_leaf"]` — `qft` is self-recursive on two of its four
+split leaves (`r2_5_qftRight`/`r2_5_qftLeft`, both `.call "qft" …`,
+`lowerQFTPlan`'s left/right recursion) and embeds one `.call "phase_product"`
+leaf (`r2_5_qftPhase`, the split's middle chunk, `Qft.lean`'s own header
+comment already flagged this: "the middle of each split is an embedded
+unsigned phase product … discharges it by citing `evalNode_phase_product_correct`
+… as a black box"), so `"phase_product"` and (transitively, through it)
+`"naive_leaf"` both had to join the closure set — `hclosedC_qft`/`hclosedO_qft`'s
+`"phase_product"` branch reuses `r2_2_ppBody_callNames_sub`/`_opaqueNames_sub`
+from §12.15 directly rather than restating them, just weakening `pp_names ⊆
+qft_names` (`{"phase_product","naive_leaf"} ⊆ {"qft","phase_product","naive_leaf"}`,
+one `tauto` call). A discovery that simplified the `opaqueNames` side
+further than either prior leaf: `r2_5_qftBody`'s own syntactic structure —
+every leaf *outside* the two `.call`s (`RadixReverse`, `zeroExtend`/
+`zeroDealloc`, the three guards) — references **no** `.opaque` name at all;
+every `w`/`r` expression in `qft`'s own body is built purely from `.var`/
+`.lit`/`.div`/`.sub`/`.add`. So `r2_5_qftBody_opaqueNames_sub` closes by
+unfolding straight down to `List.nil_subset`, no `List.append_subset`/
+`repeat' apply And.intro`/per-leaf-lemma machinery needed at all (unlike
+`r2_4_cppBody_opaqueNames_sub`/`r2_2_ppBody_opaqueNames_sub`, both of which
+needed the full technique) — `cpp_oNames` is still the right closure target
+only because of what the *embedded* `phase_product` leaf transitively
+reaches (`r2_2_ppBody_opaqueNames_sub`, reused unchanged), not because of
+anything in `qft`'s own leaves. The whole proof (all four closure lemmas,
+then the full leaf theorem) closed after fixing one small syntax slip: a
+`set env2 : Env := { env1 with …, … }` written with the two struct-update
+fields split across two lines (rather than both on the line with the
+opening `{`, `with henv2` alone on the continuation) parses but silently
+drops the second field from the elaborated term and reports an unrelated-
+looking "unexpected identifier; expected `}`" one line later — reverting to
+the exact one-line-then-`with` layout §12.14/§12.15 already used fixed it
+immediately; not a new technique, just a reminder to copy the working
+layout verbatim rather than reflowing it.
+
+**Result.** `lake build EmitProofs` succeeds (3321 jobs, only unused-simp-arg
+lint warnings, zero errors). `grep -c sorry` is 0; no `native_decide`/
+`Lean.ofReduceBool`/`Lean.trustCompiler` in actual code. `#print axioms
+evalNode_call_qft` → `[propext, Classical.choice, Quot.sound]`, clean — and
+re-checked alongside the other two, all three still clean together.
+
+**Net assessment.** All three needed generic leaf theorems
+(`evalNode_call_cphase_product`, `evalNode_call_phase_product`,
+`evalNode_call_qft`) are now closed and merged, covering all 14 of `shor`'s
+`.call` sites (2 `cphase_product` + 3 `phase_product` + 9 `qft`) between
+them. `shor`'s R6.4 leaf-lemma-engineering phase is **done**. What remains,
+unchanged in kind from every prior round's assessment: Step 3's direct
+`CmpGeConst`/`CSubConst` translation (no `.call`, no leaf machinery — the
+most mechanical of the five steps, same shape as `shor_gate`'s own Step 3
+one level lower, already closed in §12.11), the `modExpApproxValid`
+loop-body assembly (expected to transplant `evalNodeGate_modExpLoop_aux`'s
+induction near-verbatim, `evalNode`/`LowGate` in place of `evalNodeGate`/
+`Gate`), and the top-level `H_reg`/`initY1`/loop/`IQFT` assembly — supplying
+each of the 14 concrete call sites' own register/weight-expression
+arguments and site-specific hypotheses (workspace preconditions, fuel
+bounds, `evalReg`/`evalW`/`evalA` facts) to the now-generic leaf theorems
+and composing the results, exactly mirroring how `shor_gate`'s own Steps
+1–5/loop/top-level assembly (§12.9–§12.11) did the same one level higher
+(`evalNodeGate`/`Gate` instead of `evalNode`/`LowGate`).
+
+### 12.17 R6.4 `shor` half: Step 3 core infrastructure — `LowGate.flattenSeqAdj` (a required new equality notion) and the bit-copy loop lemma, both closed; the full Step 3 assembly not yet started
+
+Starting Step 3 (`CmpGeConst`/`CSubConst`) surfaced a **genuinely new
+representational obstacle**, not present anywhere in R6.1–R6.3 or in
+`shor_gate`'s own Steps 1–5 (§12.9–§12.11): `LowGate`-level adjoints don't
+compare the way `Gate`-level ones do, and the fix is a new equality notion
+(`LowGate.flattenSeqAdj`) that every future `.adj`-touching piece of `shor`'s
+LowGate theorem (Step 3, Step 4's `†diff`/`†mul`, the top-level `IQFT`) will
+need to use in place of plain `.flattenSeq`.
+
+**Ground truth first.** `translateLowerGate`'s own comment (`Reflect/Extract.lean`,
+already read in §12.12 but not fully appreciated until this round) says
+`lowerCmpGeConst`/`lowerCSubConst` are "plain (non-tactic-mode) `def`s" that
+`translateNode`'s ordinary `unfoldDefinition?` fallback inlines directly —
+**no `.call` splicing at all** for Step 3, unlike every other recursive
+target R6.4 has handled so far. Ground-truthing `r2_6_step3` (`r2_6_doc`'s
+"shor" template body, decomposed the same `.seq`/`.loop` `def`+`rfl` way as
+`r2_6g_sgBody`'s own Steps 1–5, §12.9) confirms this exactly matches
+`ConstArithmetic.lean`'s `lowerCmpGeConst`/`lowerCSubConst`/
+`lowerPrepareNegConst`/`lowerCopyBitPowers` structure, inlined verbatim —
+with one translated piece: `lowerCopyConstFromUnit N dst ctrl :=
+lowerCopyBitPowers dst ctrl N.bitIndices` (the controlled binary-constant
+write) is recognised **by name** (`translateNode`'s own case for it,
+`Extract.lean` line ~1217) and reformulated as `.loop "i" 0 dstW (.cond
+(.testBit N i) (.op "CNOT" …) (.op "id" …))` — a genuinely new IR construct
+(`Prop'.testBit`, added specifically for this) needing its own correctness
+bridge, since `Nat.bitIndices`-driven recursion (skip unset bits entirely)
+and "iterate every position, guard on `testBit`" (my loop) are *not* the
+same raw shape, only equal as circuits.
+
+**Obstacle 1 (structural, worked around): `lowerCopyBitPowers` vs the
+extracted loop, a combinatorial correspondence not needed anywhere earlier
+in R6.** `ConstArithmetic.lean`'s own `mem_bitIndices_iff_testBit` (the exact
+fact needed: `i ∈ N.bitIndices ↔ N.testBit i`) is `private`, so re-proved
+here from public Mathlib primitives (`Nat.binaryRec`, `Nat.bitIndices_bit_true`/
+`_bit_false`, `Nat.testBit_succ`) — same induction shape as the private
+original, ~20 lines. Combined with `Nat.two_pow_le_of_mem_bitIndices` (public)
+to get `i ∈ N.bitIndices → i < w` whenever `N < 2^w` (`ConstArithmeticWorkspace`'s
+own `constant_fits : N < 2^(scratch.width - 1)` guarantees this at the real
+call sites), then `(range w).filter testBit = N.bitIndices` follows from
+both being ascending-sorted lists with the same membership set
+(`List.SortedLT.eq_of_mem_iff` — note this project's Mathlib checkout has
+already migrated `List.Sorted r l` to the newer `List.SortedLT`/`SortedLE`
+API, `sorted_lt_range`/`Sorted.eq_of_mem_iff` etc. all deprecated in favor of
+`sortedLT_range`/`SortedLT.eq_of_mem_iff` — worth remembering for anyone
+reaching for the old names). `lowerCopyBitPowers_flattenSeqAdj` (a clean
+induction, since every one of `N.bitIndices`' positions is `< dst.width` by
+the bound above, so the `dif`-guarded skip branch never actually fires) then
+gives `lowerCopyBitPowers dst ctrl N.bitIndices`'s value as a flat
+`.map CNOT` list, matching the loop's own (proved separately,
+`evalNode_copyConstLoop`, ordinary `List.mapM_except_ok_of_mem` +
+per-iteration `.cond`/`testBit` case split, `List.getD`/`getElem` qubit-index
+bookkeeping mirroring `Correct.lean`'s own `evalNode_naive_leaf`/
+`evalNode_naive_cleaf` idiom throughout) once both are expressed as
+`filterMap`/`filter`-over-`range` forms tied together by the combinatorial
+fact above.
+
+**Obstacle 2 (representational, the real finding of this round): raw
+`LowGate.flattenSeq` cannot compare `.adj`-wrapped values that came from
+different derivations, even when their contents are circuit-equivalent.**
+`Json/LowGateJson.lean`'s `LowGate.flattenSeq` — the notion every R6.1–R6.3
+leaf theorem states its `g.flattenSeq = target.flattenSeq` goal in — has
+`.adj g => [g]` (an **opaque leaf**, no recursion into `g`), unlike
+`Gate.flattenSeq` (`Proofs/Shor.lean`, custom-defined specifically for
+`shor_gate`'s own Steps 1–5, which DOES recurse: `.adj g => [Gate.adj
+(foldGateSeq (flattenSeq g))]`). This never mattered for R6.1–R6.3 or for
+any of `shor`'s `.call`-site leaf theorems (`cphase_product`/`phase_product`/
+`qft`'s own bodies never emit a raw `.adj` node — confirmed by grep, zero
+hits in `CPhaseProduct.lean`/`Qft.lean`), so nobody had hit this before.
+Step 3's own `†diff`/`†prep` are the first place it bites: `evalNode`'s
+`.loop`/`.seq` unrolling of the *extracted* `†prep`/`†diff` subtree produces
+a different raw `LowGate` value than `lowerPrepareNegConst`/the `diff` local
+(extra trailing `foldLowGateSeq`-introduced `.id`s, different bracketing) —
+*flattenSeq-equal but not raw-equal* — and since plain `LowGate.flattenSeq`
+doesn't recurse into `.adj`, `(.adj extracted).flattenSeq = [extracted] ≠
+[real] = (.adj real).flattenSeq` as **lists**, blocking the whole outer
+comparison even though the circuits are identical. The actually-used
+ground-truth comparison function this whole project already relies on for
+"are two circuits the same" — `Tests.lean`'s own `r2_6_flatten`/
+`r2_6g_flatten`, what the R2.6 `native_decide` smoke test itself compares —
+**does** recurse into `.adj` (`.adj g => [LowGate.adj ((r2_6_flatten
+g).foldr LowGate.seq .id)]`), confirming this is the *right* notion, just
+missing as a non-`partial`, reusable, provable definition. Fixed by adding
+`LowGate.flattenSeqAdj` (`Proofs/Shor.lean`, next to `Gate.flattenSeq`,
+mirroring both `Gate.flattenSeq`'s own adj-recursion and `r2_6_flatten`'s
+exact re-fold-via-`foldLowGateSeq` choice, structural recursion, not
+`partial`) plus its own `.seq`-unfold bridge lemma
+(`flattenSeqAdj_foldLowGateSeq`, `(foldLowGateSeq l).flattenSeqAdj =
+l.flatMap flattenSeqAdj`, mirroring `Correct.lean`'s existing
+`flattenSeq_sequence`). **Key realization that resolves the obstacle**: the
+proof technique needed is *not* raw equality anywhere — congruence through
+`flattenSeqAdj`'s own recursive definition means proving `g.flattenSeqAdj =
+target.flattenSeqAdj` (an ordinary flattenSeqAdj-level/list-level goal,
+exactly the same proof shape every earlier R6 theorem already uses, just
+with `flattenSeqAdj` standing in for `flattenSeq`) is *sufficient* — the
+`.adj` case's own `foldLowGateSeq (flattenSeqAdj g)` re-normalization is a
+*function of* `flattenSeqAdj g`, so equal `flattenSeqAdj g`s give equal
+re-normalized results automatically, without ever needing to touch the raw,
+differently-bracketed underlying `LowGate` values directly.
+
+**Result.** `evalNode_copyConstLoop_flattenSeqAdj` — the reusable, generic
+(over destination/control register expressions and the constant/width
+expressions) bit-copy loop lemma both Step 3 occurrences of
+`lowerCopyConstFromUnit` need — is closed, merged into `Proofs/Shor.lean`,
+no `sorry`, `#print axioms` clean (`[propext, Classical.choice, Quot.sound]`
+or fewer per lemma). `lake build EmitProofs` succeeds (3321 jobs, only
+unused-simp-arg lint warnings, zero errors). `grep -c sorry` is 0; no
+`native_decide` anywhere in actual code.
+
+**Not yet started, and now clearly scoped** (all mechanical given the two
+obstacles above are resolved, but real work, comparable in size to Step 1/2's
+own assembly in §12.10): `evalNode_lowerPrepareNegConst` (`X q ;; loop ;;
+Negate`, composing the now-proved loop lemma with two single-op leaves, same
+shape as `evalNodeGate_PhaseProdUsing`'s "generic leaf-group" pattern),
+`evalNode_lowerCmpGeConst`/`evalNode_lowerCSubConst` (the two 8-element/
+5-element composite assemblies, including the `sign`/`q` qubit-index facts
+already checked semantically equivalent this round — `constArithmeticUnitQubit
+scratch h = (scratch.reserve.take 1).get ⟨0,_⟩` matches the extracted
+`.reserveSlice(scratch,0,1).qubit(0)` via `ExtReg.newBits e n := e.reserve.take
+n`, confirmed by direct definition lookup, not yet turned into a committed
+lemma), then the final `evalNode_step3` assembling both against `r2_6_env`'s
+actual var lookups, mirroring `evalNodeGate_step3`'s own proof shape
+(§12.11) exactly one level lower. **A note for whoever does the top-level
+assembly (task #5)**: Step 3's target must be stated via `flattenSeqAdj`, not
+`.flattenSeq` — and Step 4's `†diff`/`†mul` and the top-level `IQFT` will
+need the same, while Steps 1/2/5's own `qft`/`phase_product`/`cphase_product`
+`.call`-site results remain `.flattenSeq`-stated (proved that way in
+§12.14–§12.16, unaffected). Combining an adj-free `.flattenSeq` fact with a
+`flattenSeqAdj`-stated one at the top level needs a small bridge lemma (e.g.
+"if `g` has no `.adj` subterm, `g.flattenSeqAdj = g.flattenSeq`") that
+doesn't exist yet — flagged here so it isn't rediscovered from scratch.
+
+### 12.18 R6.4 `shor` half: Step 3 done — `evalNode_lowerStep3` closed, mechanical assembly on top of §12.17's infrastructure
+
+§12.17 left Step 3 with its two hard obstacles resolved (`LowGate.flattenSeqAdj`,
+the bit-copy loop lemma) but the actual `lowerCmpGeConst`/`lowerCSubConst`
+composite circuits and the top-level `evalNode_lowerStep3` theorem not yet
+built. This round closed all of it — no further new obstacles, exactly the
+"mechanical but not short" assembly §12.17 anticipated.
+
+**Qubit-index facts.** Two small lemmas ground-truth the two qubit positions
+`lowerCmpGeConst`/`lowerCSubConst`/`lowerPrepareNegConst` reference, matching
+them against the extracted `.qubit`-expressions:
+`evalReg_scratchUnitQubit` (`constArithmeticUnitQubit scratch h =
+(scratch.reserve.take 1).get ⟨0,_⟩`, matching the extracted
+`.qubit(.reserveSlice(scratchR,0,1),0)`, via `ExtReg.newBits e n :=
+e.reserve.take n`) and `evalReg_scratchSignQubit` (the comparator's `sign =
+scratch.active.get ⟨scratch.width-1,_⟩`, matching
+`.qubit(.activeSlice(scratchR,0,scratchW),scratchW-1)`) — both by unfolding
+`evalReg`'s `.reserveSlice`/`.activeSlice`/`.qubit` cases down to a bare
+`List.get`/`Reg.drop`/`Reg.take` computation and closing with
+`List.getD_eq_getElem?_getD`/`List.getElem_take`-style conversions, the same
+idiom `evalNodeGate_Hreg_loop`/`Correct.lean`'s `evalNode_naive_leaf` already
+established. One proof-engineering note: `omega` cannot bridge
+`scratch.active.width` and `scratch.width` on its own (they're definitionally
+equal — `ExtReg.width e := regSize e.active = e.active.width` — but
+*syntactically* distinct atoms to `omega`); every place this bound was
+needed, an explicit `have heq : scratch.active.width = scratch.width := rfl`
+had to be fed to `omega` alongside it, not folded into a single tactic call.
+
+**Composite circuit lemmas**, each following the exact `evalNodeGate_PhaseProdUsing`-
+style "generic leaf-group" pattern from §12.9, now one level lower and with
+`flattenSeqAdj` in place of `flattenSeq`:
+- `evalNode_lowerPrepareNegConst` (`X q ;; loop ;; Negate scratch`, using
+  §12.17's `evalNode_copyConstLoop_flattenSeqAdj` for the loop and the new
+  qubit-index fact for `q`) and `evalNode_lowerPrepFromFlag` (the
+  `lowerCSubConst`-side variant, `CNOT flag q` in place of `X q` — same
+  proof shape, different first leaf).
+- `evalNode_diffCmp` (`zeroExtend data 1 ;; AddScaled scratch (data.grow 1)
+  false 0 ;; zeroDealloc data 1`, `lowerCmpGeConst`'s `diff`, no loop
+  involved, the simplest of the four).
+- `flattenSeqAdj_adj_congr` (`g.flattenSeqAdj = t.flattenSeqAdj →
+  (LowGate.adj g).flattenSeqAdj = (LowGate.adj t).flattenSeqAdj`, one line
+  via `LowGate.flattenSeqAdj`'s own `.adj` equation) — the general form of
+  §12.17's "key realization," used at every `†diff`/`†prep`/`†prep2`
+  occurrence rather than re-deriving the congruence each time.
+- `evalNode_lowerCmpGeConst` (the 8-leaf assembly: `prep`, `diff`'s three
+  leaves inlined at the top level — confirmed by ground-truthing `r2_6_step3`
+  that the extractor keeps `diff`'s own three ops as flat top-level siblings
+  rather than nesting them, exactly as `§12.6`'s "Sixth round" finding
+  already flagged for `phase_product`'s annotated-ops body — `X flag`, `CNOT
+  sign flag`, then `†diff`/`†prep` each re-using the SAME evaluated `g1`/`g2`
+  from the forward occurrences by determinism of `evalNode`, combined via
+  `flattenSeqAdj_adj_congr`) and `evalNode_lowerCSubConst` (the simpler
+  3-leaf assembly: `prep2`, `AddScaled data scratch false 0`, `†prep2`).
+- `evalNode_lowerStep3`: `CMP ;; SUB`, combining the two composites,
+  mirroring `step3 N dataCarry scratch flag := Gate.CmpGeConst N dataCarry
+  scratch flag ;; Gate.CSubConst N dataCarry scratch flag` (`Circuit/Steps.lean`)
+  one level lower, target `(lowerCmpGeConst N data scratch flag h ;;
+  lowerCSubConst N data scratch flag h).flattenSeqAdj`. Generic over
+  register/weight expressions and a `ConstArithmeticWorkspace N data scratch
+  flag` hypothesis, matching `evalNode_call_cphase_product`/`_phase_product`/
+  `_qft`'s own convention (site-specific `r2_6_env` var-lookup wiring — the
+  `evalReg_yVar`/`evalReg_scratchVar`/`evalReg_flagVar`/`evalW_NVar` analogues
+  `evalNodeGate_step3` needed one level up — deferred to the top-level
+  assembly, same as those three leaves).
+
+**Result.** All nine theorems (`evalReg_scratchUnitQubit`,
+`evalReg_scratchSignQubit`, `evalNode_lowerPrepareNegConst`,
+`flattenSeqAdj_adj_congr`, `evalNode_diffCmp`, `evalNode_lowerPrepFromFlag`,
+`evalNode_lowerCmpGeConst`, `evalNode_lowerCSubConst`,
+`evalNode_lowerStep3`) merged into `Proofs/Shor.lean`. `lake build
+EmitProofs` succeeds (3321 jobs, only unused-simp-arg lint warnings, zero
+errors). `grep -c sorry` is 0; no `native_decide` anywhere in actual code.
+`#print axioms evalNode_lowerStep3` → `[propext, Classical.choice,
+Quot.sound]`, clean. **Step 3 (task #4) is done.**
+
+**Net assessment.** `shor`'s LowGate-level theorem now has all 5 Steps'
+worth of *leaf*-level machinery in hand: Steps 1/2/4mul/5 via the three
+generic `.call`-site theorems (§12.14–§12.16), Step 3 via
+`evalNode_lowerStep3` (this round). What remains is exactly what §12.11's
+own Gate-level precedent already did one level up, transplanted: the
+`modExpApproxValid` loop-body assembly (`evalNodeGate_modExpLoop_aux`'s
+induction, `evalNode`/`LowGate` in place of `evalNodeGate`/`Gate`) and the
+top-level `H_reg`/`initY1`/loop/`IQFT` assembly — wiring every leaf theorem's
+generic register/weight-expression parameters to `r2_6_env`'s actual
+`.var`/`.opaque` lookups at each of the 14 concrete call sites plus Step 3's
+two occurrences, and building the `flattenSeq`/`flattenSeqAdj` bridge lemma
+§12.17 already flagged for combining Step 3/4/IQFT's adjoint-aware results
+with Steps 1/2/5's plain-`.flattenSeq` ones. Task #5, not yet started.
+
+### 12.19 R6.4 `shor` half: the NoAdj-bridge — closed and merged; **correction to §12.17's framing** of which steps need it
+
+§12.17 flagged the missing bridge lemma as needed for "combining an adj-free
+`.flattenSeq` fact with a `flattenSeqAdj`-stated one at the top level" and
+suggested it was only Step 3/4/IQFT's problem, with "Steps 1/2/5's own
+`qft`/`phase_product`/`cphase_product` `.call`-site results remain
+`.flattenSeq`-stated ... unaffected." **That framing was wrong.** Re-reading
+`modExpBody`'s actual structure (`evalNodeGate_modExpBody`,
+`evalNodeGate_HloopX`/`_initY1`/`_iqftX`, `Circuit/Steps.lean`): Steps 1, 2,
+4mul, 4†mul, and 5 each embed a `qft`/`phase_product`/`cphase_product` call
+*inside* an `.adj (...)` wrapper (every step of `CmodMulInPlaceCore` is
+itself a QFT-conjugated phase-multiplication — `step1`/`step5`'s own bodies
+are `... ;; Gate.adj (...)`-shaped, per §12.9–§12.11's Gate-level precedent,
+now confirmed to hold one level down at the `Node` level too). So essentially
+*every* step, not just Step 3/4/IQFT, needs the already-proven
+`.flattenSeq`-stated leaf theorems (`evalNode_call_cphase_product`,
+`evalNode_call_phase_product`, `evalNode_call_qft` — §12.14–§12.16) lifted to
+`flattenSeqAdj`-level facts wherever they occur inside an `.adj(...)`
+wrapper, not merely at the three sites originally flagged.
+
+**The bridge, now built.** Two new syntactic `NoAdj` predicates, mirroring
+`Node.callNames`'s recursive shape exactly (same well-founded-recursion
+opacity applies — see the tactical note below):
+- `LowGate.NoAdj : LowGate → Prop` (`namespace Shor`, alongside
+  `LowGate.flattenSeqAdj`): `True` on every constructor except `.adj _ =>
+  False` and `.seq a b => NoAdj a ∧ NoAdj b`.
+- `LowGate.flattenSeqAdj_eq_flattenSeq_of_noAdj : g.NoAdj → g.flattenSeqAdj =
+  g.flattenSeq` — the actual bridge lemma §12.17 asked for, by structural
+  induction on `g` (the `.adj` case is vacuous since `NoAdj` rules it out).
+- `Node.NoAdj : Node → Prop` (`namespace Shor.IR`): the `Node`-level analogue,
+  `.adj _ => False`, `.seq body => ∀ n ∈ body, NoAdj n`, `.cond _ t f => NoAdj
+  t ∧ NoAdj f`, `.loop _ _ _ body => NoAdj body`, `True` on `.op`/`.call`
+  (calls are checked separately via closure, same as `Node.callNames`).
+- `evalNode_noAdj` — the main theorem: given a `hclosed`-style
+  transitive-call-closure hypothesis (every named template's body is `NoAdj`
+  *and* its own further calls stay inside the name set — identical shape to
+  `evalNode_dind`/`evalNode_ind`'s own `hclosed` parameters), evaluating any
+  `NoAdj` node whose call-closure stays in that name set produces a `NoAdj`
+  `LowGate`. Structurally mirrors `evalNode_dind`'s proof skeleton exactly —
+  same fuel-then-sizeOf double strong induction, same seven `Node`-constructor
+  cases. Supporting lemmas: `foldLowGateSeq_noAdj`, `buildLowGate_noAdj`
+  (`buildLowGate`'s ~15 named-gate cases, resolved the same 4-nested-`split`
+  way as earlier rounds — **note**: `LowGate.CPhase`/`CCPhase`
+  (`ShorVerification/.../NaiveLeaf.lean`) genuinely expand to `.seq` in their
+  non-trivial branches, so `buildLowGate_noAdj` needed real (non-vacuous)
+  `LowGate.CPhase_noAdj`/`CCPhase_noAdj` lemmas, not a "this case is
+  impossible" dismissal — an earlier attempt assuming `buildLowGate` never
+  produces `.seq` was wrong and had to be corrected), and `List.mapM_ok_noAdj`
+  (a small generic "`mapM` preserves an elementwise postcondition" helper).
+
+**Two tactical notes worth keeping**, both already seen earlier this
+project but re-triggered here: (1) `Node.NoAdj`/`LowGate.NoAdj`, like
+`Node.callNames`, compile via well-founded recursion and so do **not**
+reduce via defeq/type ascription — `simp only [Node.NoAdj] at hna` (or
+`[LowGate.NoAdj]`) must precede any `.1`/`.2` projection or
+function-application use. (2) A tactic-mode `cases hg with | inl hg => ... |
+inr hg => ...` splitting an `Or` hypothesis in `List.mapM_ok_noAdj`'s `cons`
+case silently compiled to a term containing a bare `sorry` in one branch —
+**with zero reported compile errors** (confirmed via `#print`, not via any
+error message) — for reasons not fully diagnosed. Fixed by replacing it with
+a direct term-mode `hg.elim (fun hg => ...) (fun hg => ...)`, which closed
+with 0 errors and clean axioms. Flagging this generally: if a `cases`/`rcases`
+split on an `Or` looks suspiciously easy relative to how it's used
+downstream, `#print` the resulting theorem and check for embedded `sorry`
+before trusting a clean compile — don't assume "no errors" means "no sorry."
+
+**Result.** All seven theorems (`LowGate.NoAdj`, `flattenSeqAdj_eq_flattenSeq_of_noAdj`,
+`LowGate.CPhase_noAdj`, `LowGate.CCPhase_noAdj`, `Node.NoAdj`,
+`foldLowGateSeq_noAdj`, `buildLowGate_noAdj`, `List.mapM_ok_noAdj`,
+`evalNode_noAdj` — nine total definitions/theorems) merged into
+`Proofs/Shor.lean` (the `LowGate`-level four inside `namespace Shor` near
+`LowGate.flattenSeqAdj`'s own definition; the `Node`-level five inside
+`namespace Shor.IR`, right before Step 3's closing theorems). `lake build
+EmitProofs` succeeds (3321 jobs, only unused-simp-arg lint warnings, zero
+errors). `grep -c sorry` is 0 in the file (the two `native_decide` string
+matches are both inside prose comments, not tactic code). `#print axioms`
+on all seven, re-checked standalone against the merged file, shows only
+`propext`/`Classical.choice`/`Quot.sound` (no `sorryAx`) throughout. **The
+NoAdj-bridge is done** — the actual gap §12.17 flagged is closed, and the
+scope is now understood correctly (essentially every `modExp` step needs it,
+not just three). Task #5 (top-level `shor` assembly) is otherwise unchanged
+in status — this round built a prerequisite for it, not the assembly itself;
+Step 1's `evalNode`-level assembly (the next concrete deliverable, blocked on
+this bridge) has not yet been started.
+
+### 12.20 R6.4 `shor` half: NoAdj-bridge completed — the real-circuit half (`lowerGateRec`/`lowerQFTPlan`) and the extracted-IR half (`Node.NoAdj` on `qft`/`phase_product`/`cphase_product`/`naive_leaf`/`naive_cleaf`'s own bodies), plus the three `.flattenSeqAdj`-lifted leaf theorems — closed and merged
+
+§12.19 built `evalNode_noAdj` (extracted `Node`/`LowGate` values only) but
+left two things needed to actually *use* it: a `LowGate.NoAdj` fact about
+the *real* lowered circuits R6.2/R6.3's leaf theorems compare against
+(`lowerCSignedPhaseProdWithWorkspace`/`lowerGateRec (standardSignedPhase-
+LoweringPlan …)`/`lowerQFTPlan (standardQFTLoweringPlan …)`), and a
+`Node.NoAdj` fact about `qft`/`phase_product`/`cphase_product`/`naive_leaf`/
+`naive_cleaf`'s own extracted bodies (needed by `evalNode_noAdj`'s `hclosed`
+hypothesis, since evaluating a `.call` node recurses into the callee's
+actual body). This round closed both, plus the three leaf theorems restated
+via `flattenSeqAdj`.
+
+**Real-circuit side.** `LowGate.sequence_noAdj` (`LowGate.sequence`, the
+`;;`-fold `Naive_SignedPhaseProd`/`Naive_CSignedPhaseProd` use, same shape
+as `IR.foldLowGateSeq` — same proof as `foldLowGateSeq_noAdj`),
+`LowGate.Naive_SignedPhaseProd_noAdj`/`_CSignedPhaseProd_noAdj` (via
+`sequence_noAdj` + `CPhase_noAdj`/`CCPhase_noAdj` on every element of
+`naiveSignedPhaseGates`/`naiveCSignedPhaseGates`). **Key discovery, found by
+reading `PhaseProduct/Lowering/Plan.lean`'s `lowerGateRec` and
+`QFT/Lowering/Plan.lean`'s `lowerQFTPlan` directly before assuming
+anything**: neither function's equation set has an `.adj` case anywhere —
+`lowerGateRec`'s 17 cases bottom out at `Naive_SignedPhaseProd`/
+`Naive_CSignedPhaseProd` (the two base cases) or recurse structurally
+(`.seq`/`.signedStep`/`.cSignedStep`), and `lowerQFTPlan`'s `.split` case
+combines two recursive `lowerQFTPlan` calls with one `lowerGateRec
+phasePlan`, all via `;;` — so `lowerGateRec_noAdj`/`lowerQFTPlan_noAdj`
+(`∀ plan, (lowerGateRec/lowerQFTPlan plan).NoAdj`) are unconditional
+structural inductions over `PhaseLoweringPlan`/`QFTLoweringPlan`, no
+side-hypothesis needed. `lowerSignedPhaseProdWithWorkspace_noAdj`/
+`lowerCSignedPhaseProdWithWorkspace_noAdj` unfold to `lowerGateRec_noAdj`
+directly (both are literally `lowerGateRec plan` under the hood, confirmed
+by reading `PhaseProduct/Lowering/Lower.lean`/`Plan.lean` — `lowerSigned-
+PhaseProd`/`lowerCSignedPhaseProd` are `lowerGateRec plan` with no further
+wrapping). **One correction against an initial guess**: `evalNode_call_
+phase_product`'s actual stated target (re-checked directly, not assumed) is
+`(lowerGateRec (standardSignedPhaseLoweringPlan …)).flattenSeq`, not
+`(lowerSignedPhaseProdWithWorkspace …).flattenSeq` — the lifted corollary
+had to be restated to match, using `lowerGateRec_noAdj` directly rather
+than the `lowerSignedPhaseProdWithWorkspace_noAdj` wrapper (the wrapper is
+still proved and kept, for whichever future call site states its target
+that way instead).
+
+**Extracted-IR side.** `naiveLeafTemplate_body_noAdj`/`naiveCLeafTemplate_
+body_noAdj` close directly (`Reflect/Targets.lean`'s hand-authored literal
+bodies — one `.loop`/`.loop`/`.op` chain each). For the three large,
+doc-lookup-opaque template bodies (`r2_2_ppBody`/`r2_4_cppBody`/
+`r2_5_qftBody`), the key move was reusing R6.2/R6.3's *already-proved*
+top-to-leaf `rfl`-decomposition lemmas (`r2_2_ppBody_eq_cond`/
+`_ppThen_eq_seq`/`_ppAlloc_eq`/`_ppDealloc_eq`/`_ppBodyNode_eq`/… and their
+`r2_4_cpp*`/`r2_5_qft*` analogues, all established while building §12.14–
+§12.16's leaf theorems) rather than re-deriving any structure: feeding the
+*entire* lemma set for one body into a single `simp [Node.NoAdj, <all the
+_eq lemmas>]` call fully unfolds and discharges it in one shot (every leaf
+these decompositions bottom out at is `.op`/`.call`, both trivially `True`
+under `Node.NoAdj`, and `.cond`/`.seq` just distribute) — no manual
+per-leaf case analysis needed, and no timeout despite each body being
+40–60 nodes (`set_option maxHeartbeats 4000000`, matching the heartbeat
+budget the original `_eq` proofs themselves already needed). `r2_4_ppAlloc_
+eq`/`_ppDealloc_eq` reduce to `r2_2_ppAlloc_eq`/`r2_2_ppDealloc_eq` (already
+known identical, §12.7's finding) so no new alloc/dealloc work was needed
+for `cphase_product`. `hclosedNA_cpp`/`_pp`/`_qft` (per-name `Node.NoAdj`
+lookup, mirroring `hclosedC_cpp`/`_pp`/`_qft`'s existing `fin_cases`
+structure exactly) combine with the already-proved `hclosedC_*` (callNames
+closure) into `hclosed_cpp`/`_pp`/`_qft`, the exact `hclosed` shape
+`evalNode_noAdj` needs.
+
+**The three lifted leaf theorems.** `evalNode_call_cphase_product_
+flattenSeqAdj`/`_phase_product_flattenSeqAdj`/`_qft_flattenSeqAdj`: each
+takes the original leaf theorem's hypotheses, calls the original theorem to
+get `g` and its `.flattenSeq` fact, derives `g.NoAdj` via `evalNode_noAdj`
+applied at the `.call` node itself (trivially `Node.NoAdj` — the `.call`
+case of `Node.NoAdj` is `True` unconditionally, `hclosed_*` supplies the
+one substantive premise), derives the real target's `NoAdj` via the
+real-circuit lemmas above, then closes with `LowGate.flattenSeqAdj_eq_
+flattenSeq_of_noAdj` on both sides bridging through the existing
+`.flattenSeq` equality — `g.flattenSeqAdj = g.flattenSeq = t.flattenSeq =
+t.flattenSeqAdj`. Mechanical once both NoAdj halves were in hand.
+
+**Result.** All twenty pieces (4 `LowGate`-level NoAdj lemmas in
+`namespace Shor`; `naiveLeafTemplate_body_noAdj`/`naiveCLeafTemplate_body_
+noAdj`/`r2_2_ppBody_noAdj`/`r2_4_cppBody_noAdj`/`r2_5_qftBody_noAdj`/
+`hclosedNA_cpp`/`_pp`/`_qft`/`hclosed_cpp`/`_pp`/`_qft`/the 3 lifted leaf
+theorems in `namespace Shor.IR`) merged into `Proofs/Shor.lean`. `lake
+build EmitProofs` succeeds (3321 jobs, only unused-simp-arg lint warnings,
+zero errors). `grep -c sorry` is 0; the two `native_decide` text matches
+remain prose-only. `#print axioms`, re-checked standalone against the
+merged file for every new theorem, shows only `propext`/`Classical.choice`/
+`Quot.sound` throughout — no `sorryAx`. **The NoAdj-bridge is now fully
+usable, both halves done.** Task #5's concrete next deliverable — Step 1's
+`evalNode`-level LowGate assembly, mirroring `evalNodeGate_step1` (lines
+~656–716) one level down, using `evalNode_call_cphase_product_
+flattenSeqAdj` for the core and `evalNode_call_qft_flattenSeqAdj` for the
+`.adj`-wrapped QFT — still needs `r2_6_modExpBody`/`r2_6_step1`/
+`_step1_Hloop`/`_step1_core`/`_step1_adjQFT`-style ground-truth
+decomposition of `r2_6_doc`'s "shor" template body at the `Node` level
+(mirroring `r2_6g_modExpBody`/`r2_6g_step1`'s existing Gate-level
+decomposition, `Proofs/Shor.lean` lines ~363–393) — not yet started; this
+is genuinely new work, since §12.12's "Ground-truth r2_6_doc's shor
+template body" task only covered a `#eval`-dump *inspection* (confirming
+14 `.call` sites, no surprises), not committing any Lean-level
+decomposition lemmas the way `r2_6g_*` already has for `shor_gate`.
+
+### 12.21 R6.4 `shor` half: `Node`-level ground truth for `r2_6_shorBody` through Step 1's `Hloop`/`core`/`adjQFT` — closed and merged, all `rfl`; Step 1's actual assembly not yet started
+
+The concrete deliverable §12.20 identified as next: the `Node`-level
+counterpart of `r2_6g_sgBody`'s decomposition, which didn't exist yet
+despite §12.12 claiming the "ground-truth" task done (that task only
+covered an inspection pass, not committed decomposition lemmas — see
+§12.20's closing note). This round built it, through Step 1.
+
+**Method: probe with `nodeJson`, don't guess blind.** `Emit/IR/Json.lean`
+has a `nodeJson : Node → Json` printer (used elsewhere for output tooling,
+not previously used as a *proof-development* tool). Writing the projector
+`def`s (`r2_6_HloopX := match r2_6_shorBody with | .seq [a, _] => a | n =>
+n`, etc.) and immediately `#eval IO.println (nodeJson r2_6_HloopX).pretty`
+against them in scratch — before committing any `_eq` theorem — let each
+guess be checked against the real extracted structure directly, rather
+than writing a guessed `_eq` statement and hoping `rfl` closes it blind.
+**First guess was wrong and caught immediately**: assumed `r2_6_shorBody`'s
+top-level `.seq` was a flat 4-element list (`[HloopX, initY1, modExpLoop,
+iqftX]`), mirroring `r2_6g_sgBody`'s own flat shape exactly — this
+compiled (the fallback `| n => n` arm silently absorbed the non-matching
+pattern) but the `nodeJson` dump for the assumed `iqftX` printed the
+*entire rest of the body*, immediately revealing the mismatch. Second
+guess — **2-element right-nested** `.seq [a, .seq [b, .seq [c, d]]]`,
+matching the convention every *other* extracted body in this file already
+turned out to use (`r2_2_ppThen`, `r2_5_qftSplit`, …), not `shor_gate`'s
+own flatter Gate-level shape — checked clean on the first try, `rfl`
+throughout. Lesson for whoever continues into Steps 2–5: don't assume
+`r2_6g_step2..5`'s flat-list shape carries over; probe each with
+`nodeJson` before writing the `_eq` lemma.
+
+**Result, confirmed exactly matching §12.12's prediction**: `r2_6_shorBody`
+shares `shor_gate`'s `H_reg`/`initY1`/`.loop "e"`/`IQFT` top-level
+skeleton, with `Node.call "qft"`/`"cphase_product"`/`"phase_product"`
+leaves standing in for `shor_gate`'s raw `.op "QFT"`/`"CSignedPhaseProd"`/
+`"SignedPhaseProd"` — no other structural surprise anywhere probed.
+`r2_6_shorBody_eq_seq`/`_rest1_eq_seq`/`_rest2_eq_seq` give the top-level
+skeleton; `r2_6_HloopX_eq`/`_initY1_eq` are byte-identical to their
+Gate-level `r2_6g_*` counterparts (unaffected by the Node.call
+substitution, since neither routes through QFT/phase-product); `r2_6_
+iqftX_eq` is the first concrete confirmation of the register-wiring §12.12
+flagged but never turned into a committed fact — `qft`'s `.call` passes a
+reserve-*stripped* `.activeSlice` for `r`, plus two `.reserveSlice`s
+derived from the new `qftXWork`/`qftZWork` opaque functions for `xWork`/
+`zWork` (`qftRArgs`, a small reusable helper capturing this exact 3-arg
+pattern, confirmed identical at both `r2_6_iqftX` and `r2_6_step1_adjQFT`).
+`r2_6_modExpBody_eq_seq`/`_restA_eq_seq`/`_restB_eq_seq`/`_restC_eq_seq`
+give the 5-step skeleton (`r2_6_step1..5`, same 2-element right-nesting).
+`r2_6_step1_eq_seq`/`_rest_eq_seq` decompose Step 1 itself into `Hloop`/
+`core`/`adjQFT`; `r2_6_step1_Hloop_eq` matches `r2_6g_step1_Hloop_eq`
+exactly; `r2_6_step1_adjQFT_eq` is `qftRArgs` at `work`/`workW`; `r2_6_
+step1_core_eq` is the full literal — `zeroExtend`/`zeroExtend`/`.call
+"cphase_product" [yW+1, workW+1, (yCap-1)-1, workCap-1] [phiExpr] [ctrl,
+grow(yData,1), grow(work,1)]`/`zeroDealloc`/`zeroDealloc`, matching
+`evalNode_call_cphase_product`'s expected argument shape exactly (`r2_6_
+step1_phiExpr` is byte-identical to `evalA_step1_phi`'s Gate-level target,
+unaffected by the substitution since it's plain `AExpr` data, not circuit
+structure). All twelve new theorems close by plain `rfl`.
+
+**Not yet done**: `evalNode_step1` itself (the actual assembly, combining
+`r2_6_step1_Hloop_eq` with a new `evalNode`-level Hadamard-loop lemma — no
+`evalNode_Hreg_loop` counterpart to `evalNodeGate_Hreg_loop` exists yet,
+needs building first — `r2_6_step1_core_eq` with `evalNode_call_
+cphase_product_flattenSeqAdj`, and `r2_6_step1_adjQFT_eq` with
+`evalNode_call_qft_flattenSeqAdj` through the `.adj` wrapper), Steps 2–5's
+own ground-truth decomposition (not yet probed at all), and everything
+downstream (`modExpApproxValid` loop assembly, top-level assembly). Also
+not yet built: `r2_6_env`-specific versions of the small `evalReg_yDataReg`/
+`_workVar`/`_ctrlQubit`/`evalA_step1_phi`-style var-lookup facts
+`evalNode_step1` will need — the existing ones are stated for `r2_6g_env`,
+and while `r2_6_env`'s `w`/`r` fields are the *same* formula (`rfl`-equal,
+checked directly), its `opaqueW`/`coeff` fields are a strict superset (adds
+`nextWidth`/`reserveNeed_x`/`_z`/`qftXWork`/`qftZWord`/`coeff`, all absent
+from `r2_6g_env`) — the "mod"/"modpow" cases `evalA_step1_phi` needs are
+handled identically in both, so its proof should transfer verbatim with
+the env swapped, but this hasn't been re-proved or bridged yet, only
+identified as low-risk.
+
+**Verification, this round**: `lake build EmitProofs` → `Build completed
+successfully (3321 jobs)`; `grep -c sorry Proofs/Shor.lean` → `0`; no
+`native_decide` outside prose comments; every new theorem closes by plain
+`rfl` (no `#print axioms` needed for `rfl`-only theorems — they carry no
+axioms beyond what `rfl` itself needs, i.e. none beyond the kernel's own).
+
+### 12.22 R6.4 `shor` half: `evalNode`-level Hadamard-loop lemma and `r2_6_env` var-lookup facts — closed and merged
+
+The concrete next deliverable §12.21 left open: `evalNode_Hreg_loop` (the
+`evalNode`/`LowGate` counterpart of `evalNodeGate_Hreg_loop`, §12.9 — same
+proof shape, `buildLowGate`/`foldLowGateSeq`/`LowGate.H` in place of
+`buildGate`/`foldGateSeq`/`Gate.H`, needing a new `map_getD_LowH_eq`/
+`_reg` mirroring `map_getD_H_eq`/`_reg`), and the dozen small `r2_6_env`
+var-lookup facts (`evalReg_yVar_ir`/`evalW_yW_ir`/`_yCap_ir`/`_workCap_ir`/
+`evalReg_yDataReg_ir`/`_workVar_ir`/`evalW_workW_ir`/`evalReg_step1_
+Hloop_active_ir`/`evalW_xW_ir`/`evalReg_xVar_ir`/`evalW_eVar_ir`/
+`evalReg_ctrlQubit_ir`/`evalW_NVar_ir`/`evalW_aVar_ir`/`evalA_step1_phi_ir`)
+`evalNode_step1` needs — proved fresh against `r2_6_env` rather than bridged
+from the existing `r2_6g_env` versions, since `r2_6_env`'s `w`/`r` fields
+are the same formula as `r2_6g_env`'s but its `opaqueW`/`coeff` fields are a
+strict superset, so bridging would need its own per-field equality lemmas
+anyway.
+
+**Tactical note, worth remembering generally**: `simp [r2_6_env]` (the exact
+idiom `r2_6g_env`'s versions use) loops — "Possibly looping simp theorem:
+`r2_6_env.eq_1`" — because `r2_6_env`'s `coeff` field is a genuine `dite`
+(`if h : l < q 2 then some (...) else none`), unlike `r2_6g_env`'s trivial
+`coeff := fun _ _ => none` — unfolding the whole record via `simp` exposes
+the `dite` even when the goal never touches `.coeff`, and simp's rewrite
+traversal loops trying to normalize it. Fixed by using bare `rfl` in place
+of every trailing `simp [r2_6_env]` (a `.w`/`.r`/`.opaqueW` projection at a
+literal key reduces by plain kernel `rfl`, which doesn't invoke simp's
+rewrite/congruence machinery at all); `evalA_step1_phi_ir` (needing the
+"mod"/"modpow" opaqueW cases too) closes by a single bare `rfl` with no
+`simp` call whatsoever — the same fix taken further. Any future `r2_6_env`
+fact should reach for `rfl` first, not `simp [r2_6_env]`.
+
+**Verification, this round**: `lake build EmitProofs` → `Build completed
+successfully (3321 jobs)`; `grep -c sorry` → `0`; no `native_decide`
+outside prose comments.
+
+### 12.23 R6.4 `shor` half: `work`'s QFT-workspace register facts closed and merged; assembling `evalNode_step1` hits a genuine, documented gap in `evalNode_call_cphase_product`'s genericity — not yet resolved
+
+This round attempted the actual `evalNode_step1` assembly §12.20–§12.22
+were building toward, and got most of the way there before finding a real
+blocker — recorded here in full since it blocks not just Step 1 but Steps
+2/4mul/4†mul/5 too (see below).
+
+**What got built and merged, independent of the blocker**: `evalReg_
+workActive_ir` (the `.activeSlice` piece of `qftRArgs`, mirroring `evalReg_
+step1_Hloop_active_ir` without the `"i"` binding), `evalW_qftXWork_ir`/
+`evalW_qftZWork_ir` (`r2_6_env`'s `"qftXWork"`/`"qftZWork"` opaqueW cases,
+`(qftWorkspaceNeed r2_5_ops work.width).1`/`.2`), `evalReg_workXWork_ir`/
+`evalReg_workZWork_ir` (the two `.reserveSlice` pieces of `qftRArgs`,
+evaluating exactly to `ExtReg.ofReg (qftXWork/qftZWork r2_5_ops work)` —
+confirmed by reading `evalReg`'s `.reserveSlice` case directly:
+`ExtReg.ofReg ((rv.reserve.drop loV).take (hiV - loV))`, matching `qftXWork`/
+`qftZWork`'s own definitions in `QFT/Lowering/Workspace.lean` field-for-
+field), and `yDataReg_canGrow_ir` (`y.CanGrow 2` ⟹ Step 1's `yDataReg`
+value `.CanGrow 1`, needed for `ExtReg.width_grow` at the core piece).
+`QFTReserveOK.explicitWorkspace`/`regSize_qftXWork`/`regSize_qftZWork`
+(`QFT/Lowering/Workspace.lean`, pre-existing) turned out to supply exactly
+the `QFTWorkspaceOK`/width facts needed, once found — no new QFT-side
+machinery had to be invented, just wired up. All `#print`-clean, no
+`sorry`, confirmed via `lake env lean` in isolation before merging.
+
+**The blocker.** `evalNode_call_cphase_product` (§12.14) requires
+`AExpr.opaqueNames phiR = []`. Step 1's actual extracted angle argument
+(`r2_6_step1_phiExpr`, §12.21) is `2·mod(modpow(a,e,N)+N-1, N)/N` — it
+genuinely contains `.opaque "mod"`/`"modpow"` subexpressions, so the
+hypothesis is **unsatisfiable**, not just hard to discharge. Traced to the
+root cause, not just observed: `evalNode_call_cphase_product`'s proof
+bridges `r2_6_doc`/`env1` to `r2_4_doc`/`cppEnv`/`env2` (`evalNode_ind`,
+§12.13) and needs `evalA env2 phiR = evalA env1 phiR`, proved via
+`evalA_oind` — which only guarantees opaqueW agreement on `cpp_oNames =
+["nextWidth", "reserveNeed_x", "reserveNeed_z"]`, the only names `cppEnv.
+opaqueW` defines at all (`| _, _ => none` otherwise, genuinely undefined,
+not just unproven-equal) — so no auxiliary fact can bridge `evalA cppEnv
+phiR` to `evalA r2_6_env phiR` for a `phiR` using `"mod"`/`"modpow"`;
+`AExpr.opaqueNames phiR = []` is the theorem's way of sidestepping the
+question, and is a real precondition of its proof *method*, not a
+conservative over-restriction that a cleverer tactic could discharge.
+
+**Scope of the gap**: specific to `cphase_product`/`phase_product`'s leaf
+theorems (whose `.call`s carry an angle argument built this way) —
+`evalNode_call_qft`/`_flattenSeqAdj` has no `aArgs` at all (`qft` takes no
+angle parameter) and is unaffected. It also bites only at the *outer*,
+`shor`-level call sites — R6.2/R6.3's own recursion theorems (`evalNode_
+phase_product_correct` etc.) are fine, since phase_product's *internal*
+recursive `.call` sites pass `phi` via `.coeff (.var "phi") l limbW`
+(opaque-free by construction). Concretely this means: Step 1's `cphase_
+product` core (found this round), Step 5's `cphase_product` core, and Step
+2/4mul/4†mul's three `phase_product` cores are **all** blocked the same
+way — this is not a Step-1-specific problem, it is the actual shape of the
+remaining task #5 work.
+
+**Likely fix, not attempted — a design decision for whoever continues, not
+just plumbing**: `evalNode_call_cphase_product`/`_phase_product`'s `hRHS`
+derivation (`Proofs/Shor.lean`, immediately after `hnode1` in each) re-
+evaluates `phiR` against `env2` via `evalA_oind` specifically to get a
+*value* to feed `Env.call`'s `aVals` argument — but the caller already has
+that value directly, as `hphi : evalA env1 phiR = .ok phi`. If `Env.call`'s
+`aVals` list can be supplied as `[phi]` (from `hphi`) rather than re-derived
+via `aArgs.mapM (evalA env2)`, the `evalA_oind` step — and hence `hOphi` —
+is avoidable entirely, a genuinely general fix rather than a Step-1-shaped
+workaround. This is a change to existing, already-verified theorems (§12.14
+–§12.15), not new plumbing: re-verify `#print axioms` on every existing use
+of `evalNode_call_cphase_product`/`_phase_product` after changing them, not
+just the new call sites, and rebuild the full project before considering it
+closed. An alternative, more conservative fix — leave `evalNode_call_
+cphase_product`/`_phase_product` untouched and instead build a *second*,
+specialized leaf theorem for angle arguments with nonempty opaqueNames —
+was not evaluated against the "modify existing theorem" approach for
+relative cost; whoever picks this up should weigh both before starting.
+
+**Verification, this round**: `lake build EmitProofs` → `Build completed
+successfully (3321 jobs)`; `grep -c sorry` → `0`; no `native_decide` outside
+prose comments; the abandoned `evalNode_step1` attempt itself was **not**
+merged (confirmed blocked, not just unfinished) — only the independently-
+useful, fully-verified pieces above were kept.
+
+### 12.24 R6.4 `shor` half: the §12.23 blocker fixed — `evalNode_call_cphase_product`/`_phase_product` restructured to drop `phiR`'s opaqueNames restriction entirely, not just for Step 1
+
+Took the "likely fix" §12.23 identified — avoid re-deriving `phi` via
+`evalA_oind` since the caller already supplies its value via `hphi` — and
+implemented it, on the coordinator's explicit go-ahead (nothing committed
+to git, safe to iterate). The actual fix needed more than the one-line
+framing suggested: it isn't enough to skip `evalA_oind` for `phi`
+specifically, because the *outer* `.call` node's own bridge step
+(`evalNode_ind`, doc **and** env swapped together) needs `Node.opaqueNames
+(.call …) ⊆ oNames` for *every* argument expression syntactically present
+on that node — `phiR` included — before it can even begin, regardless of
+which sub-step inside it would go on to use that fact. No choice of
+`oNames` can satisfy this for a `phiR` using `"mod"`/`"modpow"`, since
+`cppEnv`/`ppEnv`'s `opaqueW` has no case for those names at all (`| _, _ =>
+none`) — widening the tracked name set doesn't help, because the *target*
+env genuinely can't evaluate them, agreement is not just unproven but
+impossible.
+
+**The real fix: split the single combined bridge into two.** Proved at the
+term level (not just described) that this is possible because `evalNode_
+dind` (§12.12, the *doc-only* bridge) has no `opaqueNames` hypothesis on
+the node at all — checked its signature directly rather than assuming:
+`∀ fuel node env, Node.callNames node ⊆ names → evalNode d1 fuel env node =
+evalNode d2 fuel env node`, env held completely fixed. New proof shape,
+same for both theorems:
+1. `evalNode_dind r2_6_doc r2_4_doc/r2_2_doc cpp_names/pp_names hnames_cpp/
+   hnames_pp hclosedC_cpp/hclosedC_pp` swaps the *doc* only, `env1`
+   (`r2_6_env`-based) held fixed throughout — needs only `Node.callNames
+   (.call …) ⊆ cpp_names/pp_names`, trivially true, no mention of `phiR` at
+   all.
+2. The `.call` node is then unfolded directly under `env1` via `evalNode`'s
+   own `.call` equation (`simp only [evalNode, hfuel', …, hwx, hwz, hwxCap,
+   hwzCap, hphi, hctrl/hx, hx, hz]`) — `hphi : evalA env1 phiR = .ok phi` is
+   used exactly as given, no re-evaluation under any other env, so `phiR`'s
+   own opaqueness is irrelevant here.
+3. Only the *callee's* body (`r2_4_cppBody`/`r2_2_ppBody` — which never
+   itself contains `"mod"`/`"modpow"`, those names only ever appeared in
+   the caller's now-already-consumed argument expression) needs a bridge —
+   and that bridge is env-only (`evalNode_ind r2_4_doc r2_4_doc …`/`r2_2_doc
+   r2_2_doc …`, *same* doc on both sides, only `Env.call env1 […] [phi]
+   […]` vs `cppEnv`/`ppEnv` differ), needing agreement only on `cpp_oNames`
+   — exactly what the already-existing `hop'`/`hcoeff'` (built from `hop_
+   cpp`/`hcoeff_cpp`/`hop_pp`/`hcoeff_pp`, §12.14–§12.15, untouched) already
+   supply. `Env.call`'s `opaqueW`/`coeff` fields are inherited unchanged
+   from the calling env (`Env.call`'s own doc comment: "the oracle … carried
+   over unchanged" — confirmed by reading `IR/Instantiate.lean` directly,
+   not assumed), so `(Env.call env1 …).opaqueW = env1.opaqueW` by `rfl`,
+   letting `hop'`/`hcoeff'` apply to the *called* env with no restatement.
+   `envcall_cpp_w_eq`/`_a_eq`/`_r_eq` (already generic over any calling
+   `env`, not tied to a `cppEnv`-flavored one) supply the `w`/`a`/`r`
+   agreement directly. Two small wrapper lemmas per theorem
+   (`hclosedC_cpp4`/`hclosedO_cpp4`, `hclosedC_pp2`/`hclosedO_pp2`) restate
+   the existing `hclosedC_cpp`/`hclosedO_cpp`/`hclosedC_pp`/`hclosedO_pp`
+   (stated w.r.t. `r2_6_doc.find?`) against `r2_4_doc.find?`/`r2_2_doc.find?`
+   instead, via `hnames_cpp`/`hnames_pp`'s existing equality — one line each.
+
+**Net effect — a strict generalization, not a patch**: `hOwx`/`hOwz`/
+`hOwxCap`/`hOwzCap`/`hOphi`/`hOctrl`(`cphase_product` only)/`hOx`/`hOz` — all
+eight `opaqueNames = []` hypotheses — are gone from both theorems'
+signatures entirely, and from the two `_flattenSeqAdj` wrappers built on top
+of them (§12.20). The theorems now place **no restriction whatsoever** on
+`wxR`/`wzR`/`wxCapR`/`wzCapR`/`phiR`/`ctrlR`/`xR`/`zR`'s syntactic shape —
+any expression evaluating to the right value under `r2_6_env` now works,
+`"mod"`/`"modpow"`-based angles included. `evalNode_call_qft`/`_flattenSeqAdj`
+needed no change (already had no angle argument to restrict) — re-verified
+anyway per the coordinator's request.
+
+**One real bug caught and fixed during this round, not by design**: the
+first attempt wrote `apply evalNode_dind r2_6_doc r2_4_doc cpp_names
+hnames_cpp hclosedC_cpp fuel env1` — passing `fuel`/`env1` as further
+positional arguments after the `hclosed` proof, matching `evalNode_ind`'s
+own (different) argument order out of habit. `evalNode_dind`'s actual
+signature takes `fuel`/`node`/`env` as the *conclusion*'s bound variables,
+not extra explicit arguments to supply after `hclosed` — `apply` needs to
+unify them against the goal, not receive them positionally. Lean reported
+this immediately and precisely (`Application type mismatch: env1 has type
+Env but is expected to have type Node`) — fixed by dropping the trailing
+`fuel env1` from both `apply evalNode_dind …` calls, letting unification
+supply them from the goal. Build went from 2 errors to 0 with just that
+one-line-each fix; nothing else in the new proof shape needed correction.
+
+**Verification, this round**: `lake build EmitProofs` → `Build completed
+successfully (3321 jobs)`; `grep -c sorry` → `0`; no `native_decide` outside
+prose comments; `#print axioms` re-checked standalone on all six
+potentially-affected theorems (`evalNode_call_cphase_product`, `_phase_
+product`, both `_flattenSeqAdj` wrappers, and `evalNode_call_qft`/`_flattenSeqAdj`
+re-checked defensively at the time, believed unchanged — **turned out to be
+wrong, see §12.25**) — all show only `propext`/`Classical.choice`/
+`Quot.sound`, no `sorryAx`. **The §12.23 blocker (its `cphase_product`/
+`phase_product` half) is closed.** Task #5's status at the time: Steps
+1/2/4mul/4†mul/5's cores can now all use their real `"mod"`/`"modpow"`-based
+angle arguments — `evalNode_step1`'s assembly (the next concrete
+deliverable, abandoned mid-attempt in §12.23) believed unblocked.
+
+### 12.25 R6.4 `shor` half: resuming `evalNode_step1` immediately surfaced a *second* instance of the same bug, in `evalNode_call_qft` — fixed the same way
+
+§12.24's closing note ("`evalNode_call_qft` needed no change — already had
+no angle argument to restrict") was **wrong**, caught immediately on
+resuming the actual `evalNode_step1` assembly (not by inspection — by
+`lake env lean` reporting `⊢ False` at the QFT leaf's opaqueNames
+obligations, same failure shape as §12.23). The oversight: §12.23's finding
+was framed around `phiR`'s *angle* argument specifically, but the same
+class of bug afflicts `evalNode_call_qft`'s *register* arguments —
+`xWorkR`/`zWorkR` at every outer QFT call site (Step 1's `adjQFT`, and by
+the same reasoning every other step's) are `.reserveSlice (.var "work") …
+(.opaque "qftXWork"/"qftZWork" […])` (`qftRArgs`, §12.21) — genuinely
+non-empty `RegExpr.opaqueNames`, and `qftEnv`'s own `opaqueW` has no case
+for `"qftXWork"`/`"qftZWork"` at all, the identical shape of impossibility
+`cppEnv`/`ppEnv` had for `"mod"`/`"modpow"`. `evalNode_call_qft`'s old
+`hOxWork`/`hOzWork` hypotheses were just as unsatisfiable at every real
+adjoint-QFT call site as `hOphi` was — this was already true before §12.24,
+just not noticed until an actual call site was attempted against it.
+
+**Fix**: identical restructuring to §12.24, applied to `evalNode_call_qft`
+and `evalNode_call_qft_flattenSeqAdj` — `evalNode_dind` (doc-only, `env1`
+fixed) for the outer `.call`, direct unfolding under `env1` using `hr`/
+`hxWork`/`hzWork`/`hw`/`hxWorkW`/`hzWorkW` as given, then an env-only
+`evalNode_ind` bridge (`r2_5_doc` both sides) for just `r2_5_qftBody` (which
+per its own ground-truth decomposition, §12.21, never itself references
+`"qftXWork"`/`"qftZWork"` — those names only appear in the caller's
+register-argument expressions, already consumed). Two small wrapper lemmas
+(`hclosedC_qft4`/`hclosedO_qft4`, mirroring `hclosedC_cpp4`/`hclosedO_cpp4`)
+restate `hclosedC_qft`/`hclosedO_qft` against `r2_5_doc.find?` via
+`hnames_qft`. `hOw`/`hOxWorkW`/`hOzWorkW`/`hOr`/`hOxWork`/`hOzWork` (all six
+opaqueNames-emptiness hypotheses) are gone from both theorems.
+
+**Lesson for whoever continues past this point**: don't assume a leaf
+theorem is unaffected by this class of bug just because it has no *angle*
+parameter — check every `RegExpr`/`WExpr` argument position a call site
+will actually instantiate with a non-trivial (`.opaque`-containing)
+expression, not just the ones that happened to be the first one found. The
+general symptom, worth recognizing on sight: `lake env lean` reports
+`unsolved goals ⊢ False` (not a type error) at a `by simp [opaqueNames]`-
+style hypothesis discharge — that shape means the hypothesis is *actually
+false* for the expression being supplied, not merely hard to prove; check
+whether it's structurally satisfiable at all before trying harder tactics.
+
+**Verification, this round**: `lake build EmitProofs` → `Build completed
+successfully (3321 jobs)`; `grep -c sorry` → `0`; no `native_decide` outside
+prose comments; `#print axioms Shor.IR.evalNode_call_qft` and `_flattenSeqAdj`
+re-checked standalone, both clean (`propext`/`Classical.choice`/
+`Quot.sound`, no `sorryAx`). **All three leaf theorems (`evalNode_call_
+cphase_product`/`_phase_product`/`_qft`) now place no `opaqueNames`
+restriction whatsoever on their call-site arguments.** `evalNode_step1`'s
+assembly resumes from here, genuinely unblocked this time.
+
+### 12.26 R6.4 `shor` half: `evalNode_step1` closed — the first full `evalNode`-level Step assembly, `Node.call` leaves and all
+
+The actual payoff of §12.19–§12.25's infrastructure work: `evalNode_step1`,
+mirroring `evalNodeGate_step1` (§12.9, lines ~656–716) one level down —
+`evalNode`/`LowGate` in place of `evalNodeGate`/`Gate`, `.call
+"cphase_product"`/`.call "qft"` leaves in place of raw `.op
+"CSignedPhaseProd"`/`.op "QFT"`, `flattenSeqAdj` in place of `flattenSeq`
+throughout (needed since the adjQFT piece sits under `.adj(...)`, §12.19's
+finding). No `sorry`, `#print axioms` clean.
+
+**One correction to the theorem's own target, caught before merging, not
+after**: the initial draft stated the core piece's target as bare
+`lowerCSignedPhaseProdWithWorkspace ...`, omitting the `zeroExtend`/
+`zeroDealloc` wrapping `CPhaseProdUsingGate` (§12.9's Gate-level composite)
+actually has around its `CSignedPhaseProd` core — an oversight found by
+`lake env lean` itself (a `'show' tactic failed` mismatch, not by manual
+review), not a guess corrected preemptively. Fixed by rebuilding the full
+5-piece composite (`zeroExtend(yData,1) ;; zeroExtend(work,1) ;;
+lowerCSignedPhaseProdWithWorkspace(...) ;; zeroDealloc(work,1) ;;
+zeroDealloc(yData,1)`) explicitly at the `evalNode` level — new leaf facts
+(`hZeroExt1`/`hZeroExt2`/`hZeroDealloc1`/`hZeroDealloc2`, direct `buildLowGate`
+unfolds via `simp only [evalNode, ..., buildLowGate]`, same idiom as
+`evalNode_diffCmp`'s §12.18 zeroExtend/AddScaled/zeroDealloc triple)
+combined with `hCore` through `r2_6_step1_core_eq`'s actual 4-level
+right-nested `.seq` structure (confirmed via §12.21's ground truth, not
+assumed flat) — this is the `evalNode`-level counterpart of `evalNodeGate_
+CPhaseProdUsing` (§12.9), built inline here rather than as a separate
+generic lemma (worth factoring out if Step 5's own `cphase_product` core
+needs the identical shape, which it should).
+
+**Proof-engineering note on combining nested `flattenSeqAdj`/`foldLowGateSeq`
+facts, worth remembering**: `rw [flattenSeqAdj_foldLowGateSeq]` (leaving the
+list argument implicit) is ambiguous once the goal contains *multiple*
+nested `(foldLowGateSeq ?l).flattenSeqAdj`-shaped subterms at different
+depths (here: the outer `[Hloop, rest]` pair *and* the deeply-nested
+5-piece core composite both match) — `rw` picked an unintended occurrence
+and left the goal in a form no subsequent `show` could match. Fixed by
+supplying the list argument *explicitly* at each `rw [flattenSeqAdj_
+foldLowGateSeq [...]]` call, pinning down exactly which occurrence gets
+unfolded — the general lesson: when a rewrite lemma's LHS pattern can match
+at more than one nesting depth in the same goal, make the instantiation
+explicit rather than relying on `rw`'s occurrence-selection to guess right.
+A second, smaller gap of the same flavor: the final combination step left
+`X` (a local `set`-introduced abbreviation) unmatched against the
+`ExtReg.withReserve ...`-literal form on the target's other side — closed
+by adding `hXdef` (the `set`-generated equation) and `ExtReg.ofReg` (for a
+similar `.active`-projection defeq gap on the QFT piece) to the closing
+`simp only` call, rather than assuming `set`'s substitution reaches
+occurrences introduced by the theorem's *own stated conclusion* (written
+before the `set` call and never touched by it).
+
+**Verification, this round**: `lake build EmitProofs` → `Build completed
+successfully (3321 jobs)`; `grep -c sorry` → `0`; no `native_decide` outside
+prose comments; `#print axioms Shor.IR.evalNode_step1` (re-checked in the
+merged-file context) → `[propext, Classical.choice, Quot.sound]`, clean.
+**Step 1's full `evalNode`-level assembly is done.** Task #5's next
+deliverable: the same assembly for Step 2 (`phase_product` core, no `ctrl`)
+and Step 5 (`cphase_product` core again, different register roles), Step
+4's `mul`/`†mul` (two independent `phase_product` cores under one `.adj`
+wrapper for `†mul`), then the `modExpApproxValid` loop-body assembly and
+the top-level `H_reg`/`initY1`/loop/`IQFT` assembly — none started; Steps
+2–5's own `Node`-level ground-truth decomposition (mirroring §12.21's
+`nodeJson`-probed approach for Step 1) is also not yet built.
+
+### 12.27 R6.4 `shor` half: `evalNode_step2` closed — second full `evalNode`-level Step assembly, QFT-first shape
+
+Step 2's own `Node`-level ground-truth decomposition, probed the same way
+as Step 1 (§12.21) via a throwaway `nodeJson`-dumping projector script
+rather than assumed from the Gate-level skeleton: `r2_6_step2 = .seq
+[QFT1, rest]`, `rest = .seq [core, adjQFT]` — the **same** two-level
+right-nesting convention as Step 1, but with the QFT piece *first* and the
+`H_reg` loop absent (Step 2 doesn't re-Hadamard; it reuses `y`'s existing
+superposition, grown by 1). The register argument at both QFT call sites
+resolves to `r2_6g_yGrow1Reg`, the pre-existing Gate-level ground-truth
+register def (§12.9 era) — confirmed to match the real extraction
+byte-for-byte, not merely isomorphic, so no new register-shape lemma was
+needed, only a new `evalReg` fact for it (`evalReg_yGrow1_ir`, built from
+`evalReg_grow_bare` plus `evalW_yW_ir`/`evalW_yCap_ir` fed through
+`ExtReg.width_grow`/`Shor.ExtReg.capacity_grow`).
+
+`evalNode_step2` itself mirrors `evalNode_step1`'s method exactly:
+`evalNode_call_qft_flattenSeqAdj` for the QFT1/adjQFT pair (same call twice,
+second one under `.adj`, matching §12.19's `NoAdj`-lift pattern), `evalNode_
+call_phase_product_flattenSeqAdj` for the core (no `ctrl` argument here,
+unlike Step 1's `cphase_product`), wrapped in the same `zeroExtend`/
+`zeroExtend`/`.call`/`zeroDealloc`/`zeroDealloc` 5-piece composite pattern
+built directly at the `evalNode` level via `buildLowGate`-unfold facts. No
+`sorry`, `#print axioms` clean.
+
+**Three proof-engineering traps hit and fixed, all recognized from earlier
+sections' notes rather than re-discovered from scratch:**
+
+1. **`evalW`-fact restructuring for opaque-width arguments** (`hxWorkW`/
+   `hzWorkW`, the `qftXWork`/`qftZWork` widths at the *grown* register's
+   width): the naive one-shot `rw [...]; congr 1; show ...; rwa [...] at
+   this` chain failed because the target pattern didn't literally appear in
+   the still-do-notation-wrapped goal at that point. Fixed by splitting into
+   a clean intermediate fact at the raw `qftWorkspaceNeed`-pair level
+   (`hxWorkW0`/`hzWorkW0`, mirroring `evalW_qftXWork_ir`'s own proof shape
+   exactly) and only then bridging to the `ExtReg.ofReg (qftXWork ...)`-
+   stated form via `congr 1; exact (regSize_qftXWork ...).symm`.
+2. **`ExtReg.capacity_grow` unqualified-vs-qualified argument-count trap**
+   (recurring from earlier sections, hit twice more here, in `hY1cg` and
+   `hwzCapr`'s inner `hstep`): under `open Shor Shor.IR`, bare `ExtReg.
+   capacity_grow` resolves to the *unconditional* 2-argument `Shor.IR.
+   ExtReg.capacity_grow` (defined in `Proofs/PhaseProduct.lean`), not the
+   3-argument `CanGrow`-gated `Shor.ExtReg.capacity_grow` — passing a
+   `CanGrow` proof as a third positional argument to the unqualified name
+   is a "Function expected" error, not a type mismatch, so it's easy to
+   misdiagnose. Fixed by dropping the extra argument at the two unqualified
+   call sites (the fully-qualified 3-arg form, correctly needed, stays as
+   `Shor.ExtReg.capacity_grow y 1 hy1` inside `evalReg_yGrow1_ir`, which
+   really does need the `CanGrow`-gated version, matching the original
+   Gate-level `evalReg_yGrow1`'s proof obligation).
+3. **`r2_6_env` `simp`-looping trap, recurred a third time** (`hphi`): any
+   `simp [..., r2_6_env, ...]` call loops because `r2_6_env`'s `coeff` field
+   is a genuine `dite`, not the trivial `fun _ _ => none` that `r2_6g_env`
+   has (documented earlier this session for `evalNode_step2`'s Step-1-era
+   analogue). Fixed by never `simp`-unfolding `r2_6_env` at all: `rw
+   [ExtReg.width_grow y 1 hy1]; rfl` exposes the one needed width equality
+   and closes by pure computation, no looping risk.
+
+**Verification, this round**: developed and fully debugged in an isolated
+scratch file (`lake env lean` on the standalone copy, 0 errors, `#print
+axioms` clean, `sorry`-free) before merging, per the established workflow;
+after merging into `Shor.lean`, `lake build EmitProofs` → `Build completed
+successfully (3321 jobs)` (only pre-existing lint-level "unused simp
+argument" warnings, no errors); `grep -c sorry` on the whole file → `0`; no
+`native_decide`/`Lean.ofReduceBool`/`Lean.trustCompiler` outside prose
+comments; `#print axioms` re-checked in the merged-file context for
+`evalNode_step2` **and** re-checked on `evalNode_step1`/`evalNode_call_
+cphase_product`/`_phase_product`/`_qft` (the theorems §12.24–§12.26 touched
+or depend on) — all five show only `[propext, Classical.choice,
+Quot.sound]`, no `sorryAx`, confirming the merge didn't silently invalidate
+anything upstream. **Step 2's full `evalNode`-level assembly is done.**
+Remaining for Task #5: Steps 3 (may already be largely done — §12.17–
+§12.18's generic `evalNode_lowerCmpGeConst`/`_lowerCSubConst`/`_lowerStep3`
+lemmas exist but haven't yet been wired against Step 3's own `Node`-level
+ground-truth decomposition, which — like Steps 2–5 generally — is not yet
+probed), 4mul/4†mul (two independent `phase_product` cores, the second
+under `.adj`), and 5 (`cphase_product` again, different register roles);
+then the `modExpApproxValid` loop-body assembly and the top-level `H_reg`/
+`initY1`/loop/`IQFT` assembly — none of these started yet.
+
+### 12.28 R6.4 `shor` half: Step 3's §12.17–§12.18 leaf theorems had never been checked against `r2_6_step3`'s real `Node` extraction — two genuine structural mismatches found and fixed
+
+Resuming Step 3 (probing `r2_6_step3`'s real shape via `nodeJson`/`repr`, same
+discipline as §12.21/§12.27) surfaced that `evalNode_lowerPrepareNegConst`/
+`_lowerPrepFromFlag`/`_lowerCmpGeConst`/`_lowerCSubConst`/`_lowerStep3`
+(§12.17–§12.18, previously marked "done") were never actually cross-checked
+against Step 3's own `Node`-level extraction — only assumed correct by
+analogy with the Gate-level skeleton. Two independent mismatches surfaced:
+
+1. **The loop-body qubit lookup needs an `.activeSlice` wrapper.** The real
+   extraction indexes `scratch`'s `i`-th active qubit inside the
+   const-copy loop as `.qubit (.activeSlice scratchR 0 wExpr) (.var "i")`,
+   not the bare `.qubit scratchR (.var "i")` all five theorems stated —
+   confirmed via `#eval toString (repr ...)`, not just `nodeJson`'s
+   pretty-printer (checked both independently, since a printer bug was a
+   live hypothesis worth ruling out). Fixed by rewiring `evalNode_
+   copyConstLoop_flattenSeqAdj`'s `dstR`/`dst` arguments in the two base
+   theorems (`_lowerPrepareNegConst`/`_lowerPrepFromFlag`) to
+   `.activeSlice scratchR 0 wExpr` / `ExtReg.ofReg scratch.active`, and a
+   blanket text substitution of the literal across all five theorems'
+   *statements* (`.qubit scratchR (.var "i")` → `.qubit (.activeSlice
+   scratchR (.lit 0) wExpr) (.var "i")`, 21 occurrences, all within this
+   section) — a strict fix to what was previously simply a wrong claim, not
+   a generalization.
+2. **`CSubConst`'s `prep` sub-circuit is extracted FLATTENED into its
+   parent `.seq`, unlike `CmpGeConst`'s.** `CmpGeConst`'s `prep` (`X ;; loop
+   ;; Negate`) stays nested as one `.seq [X,loop,Negate]` element inside the
+   outer 8-element list (confirmed matching `evalNode_lowerCmpGeConst`'s
+   existing literal, once (1) was fixed) — but `CSubConst`'s `prep` (`CNOT
+   ;; loop ;; Negate`) is extracted as three SEPARATE siblings directly in
+   the parent's 5-element list (`CNOT, loop, Negate, AddScaled, .adj(.seq
+   [CNOT,loop,Negate])`), not nested as a first element the way `evalNode_
+   lowerCSubConst`'s old statement assumed. Both `def lowerCmpGeConst`/
+   `lowerCSubConst` build `prep` via an identical-looking `let prep := ...`
+   in their own Lean source (`ConstArithmeticWorkspace.lean`), so this
+   asymmetry is *not* explainable by source-level structure — it's whatever
+   `extract_ir_doc`'s reflection macro happened to produce, underscoring
+   the standing rule: never assume an extracted shape by analogy, always
+   probe it. Fixed by restating `evalNode_lowerCSubConst`'s (and `_lowerStep3`'s
+   inlined copy of it) literal as the flat 5-element list, and rebuilding
+   its proof to build `hCNOTeval`/`hloopEval`/`hNegEval` as three separate
+   `List.mapM` facts (mirroring `evalNode_lowerPrepFromFlag`'s own internal
+   fact-building, not reusing it as one opaque `.seq`-shaped black box for
+   this occurrence) while still reusing `evalNode_lowerPrepFromFlag` as-is
+   for the second (adjoint, still genuinely nested) occurrence. The two
+   shapes are `flattenSeqAdj`-equal regardless (list append is associative),
+   so this is a statement-only correction, not a change to what's proved.
+
+**A new reusable lemma, `lowerCopyBitPowers_active_eq`**: needed because
+`dst := ExtReg.ofReg scratch.active` (from fix 1) has an *empty* reserve,
+so it is never literally `scratch` itself (whose reserve is generally
+nonempty) — yet `lowerPrepareNegConst`/`lowerCopyConstFromUnit`'s own
+definitions are stated against `scratch` directly, so the final
+`flattenSeqAdj` equality needs a bridge. `lowerCopyBitPowers` only ever
+reads `.width`/`.active` (checked directly, never `.reserve`), so it agrees
+for any two `ExtReg`s sharing the same `.active` field — proved not via a
+propositional-equality congruence argument (which produced an unresolvable
+`Fin`/`HEq` obligation, since two `ExtReg`s' `.width`-derived `Fin` *types*
+genuinely differ even when the widths are propositionally equal) but by
+`obtain`-destructuring both `ExtReg`s and `subst`-ing the shared `.active`
+field so it becomes the literal *same* term on both sides — after which
+`.width` and the `.get`-index proofs unify definitionally, no casting
+needed, and a plain structural induction on the bit list closes it.
+
+**A second Lean tactical lesson, worth stating plainly for whoever
+continues:** a *single* `rfl` proving `r2_6_step3 = <full literal>` fails
+even with `set_option maxRecDepth 100000` / `maxHeartbeats 0` (reporting
+"is not definitionally equal", not a resource-exhaustion message) — yet the
+IDENTICAL content, decomposed into a list-level `_eq_seq` split (`r2_6_
+step3 = .seq [cmp, sub]`, cheap, bare `rfl`) plus one small `_eq` lemma per
+list element (only the `.loop`/`.cond`-containing elements need the
+elevated `set_option`s; the flat `.op` elements are instant even bare),
+succeeds throughout, every time. The general lesson, now confirmed a third
+time this session (after Step 1/Step 2's own `flattenSeqAdj_foldLowGateSeq`
+occurrence-ambiguity lessons): never state one large `rfl` across
+`r2_6_doc`-sourced content, no matter how deep `set_option` limits go —
+always decompose to the smallest matchable piece first, exactly as every
+other ground-truth section in this file already does.
+
+**Verification, this round**: all fixes developed and checked incrementally
+in throwaway scratch files (`lake env lean` on standalone copies) before
+merging, per the established workflow; `lake env lean` on the full merged
+`Shor.lean` → 0 errors (only pre-existing lint-level "unused simp argument"
+warnings); `lake build EmitProofs` → `Build completed successfully (3321
+jobs)`; `grep -c sorry` on the whole file → the one remaining match is this
+prose sentence itself (`No sorry, #print axioms clean. -/`), not code; no
+`native_decide`/`Lean.ofReduceBool`/`Lean.trustCompiler` outside prose
+comments; `#print axioms` re-checked on all five restructured Step-3 leaf
+theorems, the new `lowerCopyBitPowers_active_eq`/`evalReg_
+scratchActiveFull` helpers, and (as a downstream sanity check, since they
+were never touched but sit in the same file) `evalNode_step1`/`evalNode_
+step2` — all ten show only `[propext, Classical.choice, Quot.sound]`
+(`lowerCopyBitPowers_active_eq`/`evalReg_scratchActiveFull` show a strict
+subset, `[propext]`/`[propext, Quot.sound]`, since they don't need
+`Classical.choice`), no `sorryAx`.
+
+### 12.29 R6.4 `shor` half: `evalNode_step3` closed — third full `evalNode`-level Step assembly, generic leaves reused unchanged
+
+With §12.28's leaf-theorem fixes in place, `r2_6_step3`'s own ground-truth
+decomposition was built the same decomposed way (`r2_6_step3_eq_seq` down
+to sixteen `_eq`/`_eq_seq` lemmas covering both the 8-element `cmp` half and
+the (now correctly flat) 5-element `sub` half — sixteen small `rfl`s, four
+of them needing the elevated `maxRecDepth`/`maxHeartbeats` options, none of
+them a monolithic literal match). `evalNode_step3` itself is then *pure*
+`rw` — no `rfl`/`exact`-level literal unification at all — chaining all
+sixteen `_eq`/`_eq_seq` lemmas to turn the opaque `r2_6_step3` into exactly
+`evalNode_lowerStep3`'s expected literal shape, then closing with a single
+`exact`. Six small new `r2_6_env`-lookup helpers were needed (`evalReg_
+scratchVar_ir`/`_loop_ir`, `evalReg_flagVar_ir`, `evalW_scratchW_ir`/`_loop_ir`,
+`evalW_NVar_loop_ir`), all mirroring the established `Env_bindW_r_ne`/
+`_w_ne` idiom from §12.22–§12.23 exactly; `data := y.grow 1` reuses Step 2's
+`hyGrow1`-style `evalReg_grow_bare` construction directly (the *bare*-grow
+form, `.grow (.var "y") (.lit 1)`, not Step 2's `r2_6g_yGrow1Reg` full-ext
+form — a different register expression plays the "data" role here than
+played the QFT-input role in Step 2, confirmed by probing, not assumed).
+`h3 : ConstArithmeticWorkspace N (y.grow 1) scratch flag` and `hNw`'s
+derivation from `h3.constant_fits` are both taken/derived exactly as Step 1/
+Step 2 took their own workspace hypotheses directly (not decomposed from
+`ModMulCircuitWorkspaceOK`/`CmpLtNWWorkspace` — that decomposition is
+top-level-assembly work, deferred like Step 1/2's was).
+
+**Verification, this round**: `lake build EmitProofs` → `Build completed
+successfully (3321 jobs)`, `grep -c sorry` clean (prose-only), no forbidden
+tactics; `#print axioms Shor.IR.evalNode_step3` → `[propext, Classical.choice,
+Quot.sound]`, `sorryAx`-free. **Steps 1, 2, and 3's full `evalNode`-level
+assemblies are now all done.** Remaining for Task #5: Step 4mul/4†mul (two
+independent `phase_product` cores, the second under `.adj`) and Step 5
+(`cphase_product` again, different register roles) — own `Node`-level
+ground-truth decomposition not yet probed for either, and per §12.28's
+lesson, their own Gate-level-analogous leaf theorems (if any exist) must be
+independently re-verified against real extraction before reuse, not assumed
+correct by analogy; then the `modExpApproxValid` loop-body assembly and the
+top-level `H_reg`/`initY1`/loop/`IQFT` assembly wiring `ShorApproxSetup`/
+`ShorWorkspaceLargeEnough` down into each step's own workspace hypotheses
+(mirroring `gateWorkspaceOK_orderFindingApprox`'s Gate-level pattern) — none
+of this started yet.
+
+### 12.30 R6.4 `shor` half: Step 4 and Step 5's own `Node`-level ground-truth decomposition, plus `evalNode_step4`/`evalNode_step5` — closed, all five Steps' `evalNode`-level assemblies now done
+
+`r2_6_step4`/`r2_6_step5` had, per §12.21's comment, never been decomposed
+past their top `r2_6_step4`/`r2_6_step5` projections. Ground truth for both
+was probed fresh via a scratch `#eval IO.println (nodeJson r2_6_step4/5).pretty`
+(`lake env lean` on a throwaway file, deleted afterward — not assumed from
+the Gate-level `r2_6g_step4*`/`r2_6g_step5*` decomposition, per §12.28's
+lesson), confirming: both are right-nested 2-element `.seq` throughout, the
+same convention every other extracted body in this file already follows;
+Step 4's `mul`'s `QFT`/`phase_product`-core/`adjQFT` triple renders through
+`r2_6g_scratchReg`/`r2_6g_workReg` (the full-`.ext` register expressions
+already defined for the Gate-level Step 4 decomposition) character-for-
+character, confirmed not assumed; Step 4's `diff`/`cnot` carry no `.call` at
+all (plain ops, identical shape to their Gate-level counterparts) and
+`adjDiff`/`adjMul` are each a bare `.adj` of `diff`/`mul`; Step 5's own
+`Hloop`/`adjQFT` turned out to be the **literal same** `Node` value as Step
+1's (both act on `work`), and its core reuses `r2_6g_yGrow1Reg` (already
+defined for Step 2). All decomposition theorems are plain `rfl`, checked
+against the real extraction (`Proofs/Shor.lean`, new §12.30 section).
+
+`evalNode_step5` was assembled first (closely mirrors `evalNode_step1`,
+§12.26 — same `Hloop`/`adjQFT`-on-`work` machinery reused verbatim, same
+`cphase_product` ctrl pattern reused from Step 1, Step 2's `(y.grow 1).grow 1`/
+`work.grow 1` width/capacity arithmetic reused verbatim since Step 5's core
+grows the same two registers just with `cphase_product`'s `ctrl` signature
+swapping which argument position plays which role) plus one extra outer
+`.adj` (Step 5's whole body is `.adj (Hloop ;; core ;; adjQFT)`, unlike Step
+1) — handled by computing the inner `Hloop ;; core ;; adjQFT` piece's own
+`flattenSeqAdj` fact first (`hInnerFlat`, built exactly the way `evalNode_
+step1` builds its own final fact) and then lifting it through the outer
+`.adj` with `flattenSeqAdj_adj_congr` in one line, rather than duplicating
+the whole derivation under the extra wrapper.
+
+Step 4 was assembled in two theorems: `evalNode_step4_mul` (`mul` alone —
+`QFT scratch ;; phase_product-core ;; adj QFT scratch` — standalone so its
+own `flattenSeqAdj` fact can be reused for `adjMul` via `flattenSeqAdj_adj_
+congr`, exactly as Step 1/2/5 reuse one `evalNode_call_qft` result for their
+own forward/adjoint occurrences, just one level up here since the whole
+`mul` sub-circuit, not a single `.call`, is what gets reused under `.adj`)
+and `evalNode_step4` (the full five-piece assembly: `mul`, `diff`, `cnot`,
+`adjDiff`, `adjMul`). `mul`'s core arithmetic mirrors Step 1's *single-grow*
+pattern (`work`/`scratch` each grown exactly once from their own base
+register expression), not Step 2's chained double-grow — a genuine
+structural difference from Step 2 caught by probing rather than assumed by
+analogy, since Step 4's `mul` has no pre-existing `initY1`-style growth
+layer under it the way Step 2's `y.grow 1` does. `diff`/`cnot`/`adjDiff` are
+handled the same way `evalNodeGate_step4`'s own Gate-level `hDiff`/`hCNOT`
+were (§12.9-era code, one level up): no `.call` at all, so no leaf theorem
+or `flattenSeqAdj`-abstraction gap — direct literal `LowGate` values, and
+`adjDiff` reuses `hDiff`'s own computed value under one more `.adj` exactly
+as `adjMul` reuses `hMul`'s. Two hypotheses (`work.CanGrow 1`/`scratch.CanGrow
+1`) had to be added as raw theorem parameters rather than derived from
+`SignedRecursiveWorkspaceOK`, which turned out not to carry them (that
+structure is about the *already-grown* registers' reserve sufficiency, not
+about whether the ungrown registers have a free reserve slot to grow into at
+all) — the same "take exactly what's needed, let the not-yet-started
+top-level assembly derive it later" choice Step 1/5 already made for their
+own `hworkspaceCPP`/`hworkspaceQFT` hypotheses.
+
+One proof-engineering trap, worth flagging for whoever does the next
+`evalNode`-level assembly: the `set env := … with henv` abbreviation (used
+nowhere else in this file's Step assemblies, all of which spell the full
+`(r2_6_env a N x y work scratch flag).bindW "e" e` out every time) silently
+breaks reuse of `_ir` helper lemmas obtained *after* the `set` — `set`
+abstracts the pattern only in hypotheses already in context at the point it
+runs, not in facts introduced by later `have`/`obtain`, so `simp [foo_ir]`
+then fails to fire with no hint beyond a generic "unrecognised op" unsolved-
+goal dump. Fixed by dropping `set` entirely and writing the full expression
+every time, matching the rest of the file's own established (if verbose)
+convention — not a one-off; avoid `set` here again.
+
+**Verification**: `lake build EmitProofs` → `Build completed successfully
+(3321 jobs)`; `grep -c sorry Proofs/Shor.lean` → prose-only (one line reading
+"No `sorry`…" inside a comment); no `native_decide` in any new theorem (the
+file's only two hits are pre-existing prose mentions); `#print axioms` on
+`evalNode_step4_mul`, `evalNode_step4`, and `evalNode_step5` all report
+`[propext, Classical.choice, Quot.sound]`, `sorryAx`-free. **All five Steps
+(1 through 5) now have a closed, verified `evalNode`-level assembly** — the
+Task #5 work this section originally called out (Step 4mul/4†mul and Step 5)
+is done. Each Step's theorem still takes its own workspace/fuel hypotheses
+raw (not yet derived from `ShorApproxSetup`/`ShorWorkspaceLargeEnough`/
+`CmpLtNWWorkspace`/`ModMulCircuitWorkspaceOK`), by the same deliberate choice
+Steps 1–3 already made. **Still not started**: the `modExpApproxValid`
+loop-body assembly (stitching the five Steps together for one loop
+iteration) and the top-level `H_reg`/`initY1`/loop/`IQFT` assembly wiring
+the umbrella workspace hypotheses down into each Step's own raw hypotheses
+(mirroring `gateWorkspaceOK_orderFindingApprox`'s Gate-level pattern,
+§12.11) — this is R6.4 `shor`'s only remaining work.
 
 ### 12.0 Prerequisite (discovered, not in the original plan): `evalW`/`evalReg`/`evalNode`/`evalNodeGate` must not be `partial`
 
@@ -1824,8 +4277,8 @@ Not yet done: the `evalNode` ↔ `lowerGateRec` correspondence for the 12 body l
 **The `.capacity` gap, now resolved**: `ppEnv`'s `w` field maps `"xCap"`/`"zCap"` to `x.capacity`/`z.capacity`, and `Env.call`'s substitution at the `.call` leaf plugs in `reserveNeed_x`/`reserveNeed_z` (evaluated) for those slots, so `envCall_phase_product_eq` needs a fact about how `ExtReg.grow` changes `.capacity`, not just `.width` (`width_growExtRegTo` in `Compiler/Layout.lean` only covers the width side). Four new lemmas in `Proofs/PhaseProduct.lean`, no `sorry`, `#print axioms` clean: `ExtReg.capacity_grow (e n) : (e.grow n).capacity = e.capacity - n` (general — `List.length_drop` is *unconditional*, unlike the width/active side, which needs `CanGrowTo`; no bound required at all here). `child_capacity_0x`/`_0z`: `((canonicalSignedStep …).layout.xSplit/zSplit.child 0).capacity = RecursivePhaseWorkspace.requiredXChildReserve/requiredZChildReserve r2_2_ops x.width z.width 0` — needed re-deriving the one bound `canonicalSignedStep`'s own tactic-mode proof establishes locally but doesn't expose (`hxfit`/`hzfit`, `(List.ofFn reqX).sum ≤ x.capacity`): pulled out as standalone `requiredXChildReserve_fits`/`requiredZChildReserve_fits`, reusing the *already-exposed* `requiredXChildReserve_sum`/`requiredZChildReserve_sum` plus `SignedRecursiveWorkspaceOK`'s own `x_reserve_sufficient`/`z_reserve_sufficient` fields and `reserveNeed_fst`/`_snd` — without this bound `List.take`'s length clamps at the parent's *actual* capacity rather than the requested size, so `List.length_take`'s `min` doesn't collapse to the right side. Finally `capacity_grow0x`/`_0z`: `(growExtRegTo (layout.xSplit/zSplit.child 0) (nextSignedWidth x z ops)).capacity = (RecursivePhaseWorkspace.reserveNeed r2_2_ops (nextSignedWidth …) (nextSignedWidth …)).1/.2` — chains `capacity_grow` with `child_capacity_0x`/`child_width_0` and `requiredChildReserve`'s arithmetic definition (`(Wnext − childWidth) + reserveComponent`): the `Wnext − childWidth` summand cancels exactly against `capacity_grow`'s `− n`, leaving the `reserveComponent` alone — precisely `envCall_phase_product_eq`'s needed fact. `evalW_pp_reserveNeedX`/`_reserveNeedZ` round out the `wArgs`: `evalW (ppEnv x z phi) reserveNeedXW/reserveNeedZW = .ok (RecursivePhaseWorkspace.reserveNeed r2_2_ops (nextSignedWidth …) (nextSignedWidth …)).1/.2`, same `.opaque`-unfolding pattern as `evalW_pp_nextWidth`. And the last piece needed to match `Env.call`'s substituted `"xw"`/`"zw"` slots against `ppEnv (growExtRegTo …) (growExtRegTo …) theta`'s own `w` field — `width_grow0x`/`_0z`: `(growExtRegTo (layout.xSplit/zSplit.child 0) (nextSignedWidth x z ops)).width = nextSignedWidth x z ops` — turned out to already be proven, generally, in `Compiler/Widths.lean` (`targetSignedLayoutState_xslot_width_scan`/`_zslot_width_scan`, using `CanonicalSignedStep`'s own `.capacity` field as the `CanGrowToNeeds` hypothesis they need) — no new width-dominance fact had to be derived at all, just cited at `i = 0`. `envCall_phase_product_eq` is now **done**: `Env.call (ppEnv x z phi) ["xw","zw","xCap","zCap"] [nextWidth, nextWidth, reserveNeed_x, reserveNeed_z] ["phi"] [phi * coeff_l] ["x","z"] [grow0x, grow0z] = ppEnv grow0x grow0z (phi * coeff_l)`, for every `x, z, phi, l < q r2_2_k` — no `sorry`, `#print axioms` clean. Proof mirrors `envCall_naive_leaf_eq`'s `congr 1`/`funext`/`by_cases` structure (4 `w`-cases instead of 2), using `width_grow0x`/`_0z` and `capacity_grow0x`/`_0z` for the four `w`-slot facts; `opaqueW`/`coeff` need no case analysis at all, since `ppEnv`'s fields for those never reference `x, z, phi` (only the fixed `r2_2_ops`/`r2_2_k`), so `Env.call`'s `{env with …}` carry-over is *syntactically* the same closed term either way. One tactic pitfall hit and fixed along the way: plain `simp` (not `simp only`) on a goal containing `RecursivePhaseWorkspace.reserveNeed r2_2_ops (nextSignedWidth …) (nextSignedWidth …)` hits `maximum recursion depth` — `reserveNeed_fst`/`_snd` are `@[simp]`, and applying them to *symbolic* `nextSignedWidth x z r2_2_ops` arguments (never reducing to a literal base case) unfolds indefinitely; fixed the same way `evalReg_pp_ext0x` etc. already do, `-RecursivePhaseWorkspace.reserveNeed_fst -RecursivePhaseWorkspace.reserveNeed_snd` in every `simp` call that touches a `reserveNeed`-shaped term. Not yet done: the 21-leaf assembly, and the well-founded induction. |
 
 **Third round of research findings** (confirmed empirically; one general lemma proved, the full assembly still open): the top-level split of `lowerGateRec (standardSignedPhaseLoweringPlan …)`'s `hrec` branch is now `rfl`-checked exactly as predicted. `rw [standardSignedPhaseLoweringPlan.eq_1, dif_pos hrec]; simp only [PhaseLoweringPlan.lowerGateRec_signedStep]; unfold planCompiledSignedPhaseGate; simp only [id, PhaseLoweringPlan.lowerGateRec_seq]` turns `lowerGateRec (standardSignedPhaseLoweringPlan r2_2_k r2_2_hk phi x z r2_2_ops hworkspace)` into exactly `LowGate.seq (lowerGateRec allocationPlan) (LowGate.seq (lowerGateRec bodyPlan) (lowerGateRec deallocationPlan))` — the stray `id` wrapper around the whole thing (an artifact of `planCompiledSignedPhaseGate`'s `have …; have …; id recurse`-shaped tactic proof) unfolds away for free once `id` itself is in the `simp only` set. `standardSignedPhaseLoweringPlan`'s own recursive case (`PlanBuilders.lean` L371–384) confirms the induction-hypothesis shape directly: `recurse i theta`'s body is `have childPlan := standardSignedPhaseLoweringPlan k hk theta (dst.xslot i) (dst.zslot i) ops hchild; have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z ops := …; simpa [hsize] using childPlan` — literally a recursive call to the theorem being proved, cast along `hsize` (which is exactly `(canonicalSignedStep …).childInputSize i`, already available). Tried to state an *intermediate* lemma stopping at this alloc/body/dealloc split (with `bodyPlan`'s `recurse` argument left as an explicit lambda using `(canonicalSignedStep …).childInputSize i ▸ standardSignedPhaseLoweringPlan …`) and hit a real obstacle: after all the same unfolding, the goal's cast (from `simpa`'s auto-generated `Eq.mp`) and the hand-written statement's cast (`▸`) reduce to `Eq.rec.{1, 2} …` vs `Eq.rec.{1, 1} …` — a *universe-level* mismatch in the inferred motive, not just a proof-term difference, so bare `rfl` (which does respect ordinary proof irrelevance) genuinely fails here. Proved the general fix instead of chasing the specific motive: `lowerGateRec_cast {…} (h : n1 = n2) (p : PhaseLoweringPlan k hk pts hpts ops n1 U) : lowerGateRec (h ▸ p) = lowerGateRec p := by subst h; rfl` (no `sorry`, `#print axioms` clean) — `lowerGateRec`'s output (`LowGate`) doesn't depend on the `initSize` index at all, so a cast along *any* proof of `n1 = n2` is `lowerGateRec`-irrelevant, sidestepping the motive question entirely by substituting the equality away before comparing. The catch: this lemma's LHS pattern (`lowerGateRec (h ▸ p)`) can only match once `lowerGateRec` is applied *directly* to the cast term — but at the alloc/body/dealloc granularity, the cast is buried inside `bodyPlan`'s `recurse` *function argument* (passed to `planCompileAnnotatedOpsToSignedGateAux`, never itself wrapped in `lowerGateRec` at that level), so `simp only [lowerGateRec_cast]` reports the lemma unused — there's nothing to rewrite yet. The fix is not a better cast lemma; it's the right granularity: `lowerGateRec (recurse i theta)` only becomes a literal subterm once `planCompileAnnotatedOpsToSignedGateAux` is itself unfolded over the concrete `annotatePhaseTermsAux r2_2_k 0 r2_2_ops` list down to its 12 leaves (at the `.phaseProduct` case, `PhaseLoweringPlan.seq (recurse i theta) tail`'s `lowerGateRec` splits via `lowerGateRec_seq` into `LowGate.seq (lowerGateRec (recurse i theta)) (lowerGateRec tail)`, exposing `lowerGateRec (recurse i theta)` directly) — at which point `lowerGateRec_cast` applies cleanly and the recursive leaf collapses to `lowerGateRec (standardSignedPhaseLoweringPlan r2_2_k r2_2_hk theta childX childZ r2_2_ops hchild)` with no cast at all, ready to match against the induction hypothesis. Whoever continues should skip the intermediate alloc/body/dealloc-level lemma entirely and go straight for the fully-unfolded 21-leaf statement, applying `lowerGateRec_cast` (already committed, reusable) at each of the 3 phase-product leaves as they're exposed.
-| R6.3 | `r2_4_doc_cphase_product_correct`, `r2_5_doc_qft_correct` | same |
-| R6.4 | `shor_gate` and `shor` theorems for the k = 2 standard `Doc` | same; plus the corollary `instantiate … = .ok (referenceShorCircuit …)` |
+| R6.3 | `r2_4_doc_cphase_product_correct`, `r2_5_doc_qft_correct` | same — both **done**: `r2_4_doc_cphase_product_correct` (§12.7: `Proofs/CPhaseProduct.lean`) and `r2_5_doc_qft_correct` (§12.8: `Proofs/Qft.lean`), no `sorry`, `#print axioms` clean on both |
+| R6.4 | `shor_gate` and `shor` theorems for the k = 2 standard `Doc` | same; plus the corollary `instantiate … = .ok (referenceShorCircuit …)` — `shor_gate` half **done** (§12.9–§12.11): `evalNodeGate_shor_gate` (`Proofs/Shor.lean`) is the full Gate-level correctness theorem for `orderFindingApprox`, closed, no `sorry`, `#print axioms` clean; `shor` half **in progress — leaf-lemma engineering done, top-level assembly not started** (§12.12–§12.16): the 14-`Node.call` body is ground-truthed; `evalNode_dind` (doc-independence) and `evalNode_ind` (doc+env/opaqueW-independence, the second required bridge) are both proved and merged, no `sorry`, `#print axioms` clean; the hybrid-env leaf technique they unlock is generic per template name (one theorem covers every call site of that name) and all three needed leaves are now closed and merged — `evalNode_call_cphase_product` (§12.14, both `cphase_product` sites), `evalNode_call_phase_product` (§12.15, all 3 `phase_product` sites), `evalNode_call_qft` (§12.16, all 9 `qft` sites) — `native_decide` removed from every closure-verification lemma (`Node.callNames`/`Node.opaqueNames` don't kernel-reduce, worked around via chaining through ground-truth `_eq` lemmas), no `sorry`, `#print axioms` clean on all three; Step 3 (`CmpGeConst`/`CSubConst`) **done** (§12.17–§12.18): `LowGate.flattenSeqAdj` (a required new adjoint-recursing equality notion, plain `LowGate.flattenSeq`'s `.adj g => [g]` doesn't recurse and blocks comparing `.adj`-wrapped Step 3 values) and the bit-copy loop lemma (a new `Nat.bitIndices`-vs-loop combinatorial bridge) came first, then the full composite assembly (`evalNode_lowerPrepareNegConst`/`_lowerPrepFromFlag`/`_diffCmp`/`_lowerCmpGeConst`/`_lowerCSubConst`/`_lowerStep3`), generic over register/weight expressions; no `sorry`, no `native_decide`, `#print axioms` clean throughout; the NoAdj-bridge (`LowGate.NoAdj`/`Node.NoAdj`/`evalNode_noAdj`, §12.19–§12.20) is also **fully done, both halves** — corrects §12.17's framing (essentially every step 1/2/4mul/4†mul/5, not just Step 3/4/IQFT, embeds a QFT+adjQFT pair and needs `.flattenSeq`-stated leaf facts lifted to `flattenSeqAdj` inside the `.adj(...)` wrapper via `flattenSeqAdj_eq_flattenSeq_of_noAdj`); §12.20 closed the two pieces §12.19 left open — `LowGate.NoAdj` facts about the real lowered circuits (`lowerGateRec_noAdj`/`lowerQFTPlan_noAdj`, unconditional since neither function's equations ever emit `.adj`) and `Node.NoAdj` facts about `qft`/`phase_product`/`cphase_product`/`naive_leaf`/`naive_cleaf`'s own extracted bodies (via R6.2/R6.3's existing `_eq` decomposition lemmas fed into one `simp [Node.NoAdj, ...]` call each) — plus the three lifted leaf theorems `evalNode_call_cphase_product_flattenSeqAdj`/`_phase_product_flattenSeqAdj`/`_qft_flattenSeqAdj`, no `sorry`, `#print axioms` clean; the `Node`-level ground-truth decomposition of `r2_6_doc`'s "shor" body through Step 1's `Hloop`/`core`/`adjQFT` is now also **done** (§12.21, `r2_6_shorBody_eq_seq` through `r2_6_step1_core_eq`, twelve theorems, all plain `rfl`, probed against real `nodeJson` dumps rather than guessed blind — confirms §12.12's predicted skeleton exactly, register-wiring at QFT call sites now a committed fact via `qftRArgs`); the `evalNode`-level Hadamard-loop lemma, all `r2_6_env` var-lookup facts, and `work`'s QFT-workspace register facts are now **also done** (§12.22–§12.23, all merged, no `sorry`); the §12.23 blocker (`evalNode_call_cphase_product`/`_phase_product` required `AExpr.opaqueNames phiR = []`, unsatisfiable for Step 1/2/4mul/4†mul/5's real `a^(2^e) mod N`-shaped angles) is now **fixed** (§12.24): both theorems restructured to split the doc-swap (`evalNode_dind`, env fixed, no opaqueNames condition) from the env-swap (`evalNode_ind`, applied only to the *callee's* body, which never itself uses `"mod"`/`"modpow"`) — all eight `opaqueNames = []` hypotheses (on both theorems and their `_flattenSeqAdj` wrappers) are gone entirely, a strict generalization; resuming the actual assembly immediately surfaced a **second instance of the identical bug** in `evalNode_call_qft` (§12.25 — `xWorkR`/`zWorkR`'s `.opaque "qftXWork"`/`"qftZWork"` reserve-split expressions, not an angle argument this time, hit the exact same unsatisfiable-opaqueNames shape) — fixed the same way, all six of `evalNode_call_qft`'s opaqueNames hypotheses also gone; `lake build EmitProofs` green, `#print axioms` re-verified clean on all eight now-restructured theorems (both leaf pairs plus their `_flattenSeqAdj` wrappers, plus `evalNode_call_qft`/`_flattenSeqAdj`); `evalNode_step1` is now **done** (§12.26) — the first complete `evalNode`-level Step assembly, `H_reg` loop + the `zeroExtend`/`zeroExtend`/`.call "cphase_product"`/`zeroDealloc`/`zeroDealloc` core composite + the `.adj (.call "qft" …)` piece, all combined via `flattenSeqAdj`, no `sorry`, `#print axioms` clean; `evalNode_step2` is now **also done** (§12.27) — same method, QFT-first shape (no `H_reg` loop, `.call "qft"` piece before the `phase_product` core rather than after), reusing the pre-existing `r2_6g_yGrow1Reg` ground-truth register def, no `sorry`, `#print axioms` clean; resuming Step 3 found that §12.17–§12.18's `evalNode_lowerPrepareNegConst`/`_lowerPrepFromFlag`/`_lowerCmpGeConst`/`_lowerCSubConst`/`_lowerStep3` had never actually been checked against `r2_6_step3`'s real extraction — two genuine structural mismatches (a missing `.activeSlice` wrapper on the loop-body qubit lookup, and `CSubConst`'s `prep` sub-circuit being extracted flattened into its parent `.seq` rather than nested the way `CmpGeConst`'s is) — both **fixed** (§12.28, statement-only corrections, `flattenSeqAdj`-equal either way, plus a new reusable `lowerCopyBitPowers_active_eq` helper and a confirmed-a-third-time lesson that `r2_6_doc`-sourced `rfl`s must always be decomposed to the smallest matchable piece, never attempted as one large literal even with elevated `set_option maxRecDepth`/`maxHeartbeats`); `evalNode_step3` is now **also done** (§12.29) — Step 3's own sixteen-lemma ground-truth decomposition plus a pure-`rw` assembly (no literal-matching `rfl`/`exact` needed at all once the leaves were fixed), no `sorry`, `#print axioms` clean. Step 4 and Step 5's own `Node`-level ground-truth decompositions (probed fresh via `nodeJson`, not assumed from the Gate-level decomposition) and their `evalNode`-level assemblies (`evalNode_step4_mul`/`evalNode_step4`/`evalNode_step5`) are now **also done** (§12.30) — Step 5 mirrors Step 1 closely (literally the same `Hloop`/`adjQFT` `Node` values, on `work`), Step 4 is assembled as `evalNode_step4_mul` standalone (so `adjMul` can reuse its `flattenSeqAdj` fact via `flattenSeqAdj_adj_congr`, one level up from how Step 1/2/5 reuse a single `.call "qft"` result) plus `evalNode_step4` combining `mul`/`diff`/`cnot`/`adjDiff`/`adjMul` (`diff`/`cnot` are plain ops with no `.call`, handled the same way Gate-level `evalNodeGate_step4`'s own `hDiff`/`hCNOT` were); no `sorry`, no `native_decide`, `#print axioms` clean on all three. **All five Steps (1 through 5) now have a closed, verified `evalNode`-level assembly.** Remaining: the `modExpApproxValid` loop-body assembly, and the top-level assembly wiring all 14 concrete `.call` sites plus Step 3's two occurrences to `r2_6_env`'s actual var lookups and `ShorApproxSetup`/`ShorWorkspaceLargeEnough` down into each step's own workspace hypothesis — not yet started |
 | R6.5 | proof-script generator in `extract_ir_doc!`; regenerate all of the above from it | generated proofs close for k = 2 and k = 3 standard with no per-k edits |
 | R6.6 | D7/README/provenance updated: `template.provenance` says "proved for all widths (R6)" when the theorem exists for that `Doc` | text matches what is proved |
 

@@ -222,7 +222,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U1 hworkspace.1)
       ψ
 
@@ -245,7 +245,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U2 hworkspace.2.1)
       ψ1
 
@@ -271,7 +271,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U3 hworkspace.2.2.1)
       ψ2
 
@@ -292,7 +292,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
     LowerGateClass.evalL
       (qs := qs)
       (lowerGate
-        lowering.k lowering.hk lowering.ops
+        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
         U4 hworkspace.2.2.2.1)
       ψ3
 

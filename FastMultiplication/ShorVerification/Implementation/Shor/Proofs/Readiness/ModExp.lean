@@ -143,6 +143,8 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
             lowering.k
             lowering.hk
             lowering.ops
+            lowering.pts
+            lowering.hpts
             U
             hworkspace.1)
           ψ

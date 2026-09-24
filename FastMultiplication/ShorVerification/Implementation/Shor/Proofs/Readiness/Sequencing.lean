@@ -47,6 +47,8 @@ def LoweredCleanResult
       lowering.k
       lowering.hk
       lowering.ops
+      lowering.pts
+      lowering.hpts
       G
       hworkspace
       ψ
@@ -58,6 +60,8 @@ def LoweredCleanResult
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         G
         hworkspace)
       ψ)
@@ -88,6 +92,8 @@ theorem LoweredCleanResult.seq
             lowering.k
             lowering.hk
             lowering.ops
+            lowering.pts
+            lowering.hpts
             U
             hworkspace.1)
           ψ)) :
@@ -107,12 +113,16 @@ theorem LoweredCleanResult.seq
               lowering.k
               lowering.hk
               lowering.ops
+              lowering.pts
+              lowering.hpts
               U
               hworkspace.1)
             (lowerGate
               lowering.k
               lowering.hk
               lowering.ops
+              lowering.pts
+              lowering.hpts
               V
               hworkspace.2))
           ψ)

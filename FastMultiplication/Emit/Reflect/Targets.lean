@@ -6,8 +6,8 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 # The extraction targets
 
 `extractPPBody`: R2.1's target, `Shor.compileOpsToSignedGate` (the `pp_body`
-row of `PLAN.md` §5.3's table). Fixed: `k`, `hk`, `ops` (from the given
-`TableSource`). Symbolic: `phi` (angle), `x`/`z` (the two operand
+row of `PLAN.md` §5.3's table). Fixed: `k`, `hk`, `ops`, `pts` (from the
+given `ShorLoweringSetup`). Symbolic: `phi` (angle), `x`/`z` (the two operand
 registers), and — per the R2.1 spike's Finding 1 — the `layout` argument is
 *not* one opaque free variable; it is built from `k` fresh per-child `Reg`
 reserve variables plus opaque `Prop`-typed witnesses (`Extract.lean`'s
@@ -151,9 +151,9 @@ def precomputePhaseProductSlots (opsE xE zE layoutE : Expr) (childFieldName : Na
   return { initRegs, initWidths, finalRegs, finalWidths }
 
 /-- Extract the `pp_body` template: `compileOpsToSignedGate` specialised at
-the given table (`Emit/PLAN.md` R5: any `ShorLoweringSetup`, not a `(k,
-TableSource)` pair — `setup.consumes`/`setup.returns` are exactly what makes
-`setup.ops` a table the lowering theorems cover), symbolic in `phi, x, z`
+the given table (`Emit/PLAN.md` R5: any `ShorLoweringSetup` — its four side
+conditions are exactly what makes its `(ops, pts)` pair a table the lowering
+theorems cover), symbolic in `phi, x, z`
 (and, internally, the layout's per-child reserves). -/
 def extractPPBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template := do
   let k := setup.k
@@ -224,7 +224,7 @@ def extractPPBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template := do
       }
 
 /-- `naive_leaf` (R2.3): `Shor.LowGate.Naive_SignedPhaseProd`. Unlike
-`pp_body`, this target takes no `k`/`TableSource` at all — the function
+`pp_body`, this target takes no `k`/table at all — the function
 itself doesn't either, so there is nothing to specialise or reflect over:
 `naiveSignedPhaseGates phi x z = (signedTerms x).flatMap fun xTerm =>
 (signedTerms z).map fun zTerm => CPhase xTerm.1 zTerm.1 (signedPairAngle phi
@@ -277,6 +277,29 @@ def naiveCLeafTemplate : IR.Template :=
             (some (.signedPair (.var "phi") (.var "i") (.var "xw") (.var "j") (.var "zw"))) []))
   }
 
+/-- The setup's own interpolation points and their length proof, as `Expr`s
+to feed `standardSignedPhaseLoweringPlan`/`standardCSignedPhaseLoweringPlan`/
+`standardQFTLoweringPlan`'s `.eq_1` lemmas.
+
+`SUBMISSION_PLAN.md` S1.6: these used to be `genInterpolationPoints k` and
+`generatedInterpolationPoints_length k` at every call site, whatever setup
+the extractor was handed. That was invisible rather than wrong — the
+extracted `Doc` does not depend on the point *values*, since a leaf's angle
+translates to the D4-opaque `AExpr.coeff l m` and `tryCramerCoeffApp`
+(`Extract.lean`) discards the `pts`/`hpts` arguments it matches on — but it
+meant reflecting over a term describing a different table from the one the
+caller asked about, which stops being a harmless accident as soon as a
+submitter's setup chooses points of its own. The points are quoted as a
+literal (`ToExpr Operations.Point`, `Reflect/Quote.lean`) the same way
+`setup.ops` already is, and the length obligation is discharged by `decide`
+rather than by naming a lemma about one particular list. -/
+def setupPtsExprs (setup : Shor.ShorLoweringSetup) (kE : Expr) : MetaM (Expr × Expr) := do
+  let ptsE : Expr := Lean.toExpr setup.pts
+  let lenE ← mkAppM ``List.length #[ptsE]
+  let qkE ← mkAppM ``Shor.q #[kE]
+  let hptsE ← mkDecideProof (← mkAppM ``Eq #[lenE, qkE])
+  return (ptsE, hptsE)
+
 /-- `phase_product` (R2.2): `standardSignedPhaseLoweringPlan` + `lowerGateRec`
 (`PLAN.md` §5.3/§6.2). Symbolic: `phi, x, z`; `xCap`/`zCap` (`x`/`z`'s
 *reserve* capacity — new width parameters `pp_body` never needed, since
@@ -303,8 +326,9 @@ def extractPhaseProductBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template
   withLocalDecl `z .default extRegTy fun z => do
     let hworkTy ← mkAppM ``Shor.SignedRecursiveWorkspaceOK #[opsE, x, z]
     withLocalDecl `hworkspace .default hworkTy fun hworkspace => do
+      let (ptsE, hptsE) ← setupPtsExprs setup kE
       let eq1App := mkAppN (mkConst ``Shor.standardSignedPhaseLoweringPlan.eq_1)
-        #[kE, hkE, phi, x, z, opsE, hworkspace]
+        #[kE, hkE, phi, x, z, opsE, ptsE, hptsE, hworkspace]
       let rhsPlan := (← inferType eq1App).getAppArgs[2]!
       match rhsPlan.getAppFnArgs with
       | (``dite, #[_, condE, _instE, thenFnE, elseFnE]) =>
@@ -375,8 +399,9 @@ def extractCPhaseProductBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Templat
   withLocalDecl `z .default extRegTy fun z => do
     let hworkTy ← mkAppM ``Shor.CSignedRecursiveWorkspaceOK #[opsE, ctrl, x, z]
     withLocalDecl `hworkspace .default hworkTy fun hworkspace => do
+      let (ptsE, hptsE) ← setupPtsExprs setup kE
       let eq1App := mkAppN (mkConst ``Shor.standardCSignedPhaseLoweringPlan.eq_1)
-        #[kE, hkE, ctrl, phi, x, z, opsE, hworkspace]
+        #[kE, hkE, ctrl, phi, x, z, opsE, ptsE, hptsE, hworkspace]
       let rhsPlan := (← inferType eq1App).getAppArgs[2]!
       match rhsPlan.getAppFnArgs with
       | (``dite, #[_, condE, _instE, thenFnE, elseFnE]) =>
@@ -446,8 +471,9 @@ def extractQFTBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template := do
   withLocalDecl `zWork .default regTy fun zWork => do
     let hworkTy ← mkAppM ``Shor.QFTWorkspaceOK #[opsE, r, xWork, zWork]
     withLocalDecl `hworkspace .default hworkTy fun hworkspace => do
+      let (ptsE, hptsE) ← setupPtsExprs setup kE
       let eq1App := mkAppN (mkConst ``Shor.standardQFTLoweringPlan.eq_1)
-        #[kE, hkE, opsE, r, xWork, zWork, hworkspace]
+        #[kE, hkE, opsE, ptsE, hptsE, r, xWork, zWork, hworkspace]
       let rhsOuter := (← inferType eq1App).getAppArgs[2]!
       match rhsOuter.getAppFnArgs with
       | (``dite, #[_, condZeroE, _instZ, thenZeroFnE, elseZeroFnE]) => do

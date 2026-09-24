@@ -70,6 +70,8 @@ private theorem LoweredCleanResult.adj
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         (†U)
         hworkspace
         ψ := by
@@ -79,6 +81,8 @@ private theorem LoweredCleanResult.adj
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U
         hworkspace
         (qs.eval (†U) ψ)
@@ -94,6 +98,7 @@ private theorem LoweredCleanResult.adj
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.good
         lowering.consumes
         lowering.returns
         (†U)
@@ -280,6 +285,8 @@ private theorem
       lowering.k
       lowering.hk
       lowering.ops
+      lowering.pts
+      lowering.hpts
       (Gate.CPhaseProdUsing
         ctrl φ x z ws)
       hworkspace
@@ -518,6 +525,8 @@ private theorem lowered_step5Forward_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U1
         hworkspace.1
         ψ := by
@@ -533,6 +542,8 @@ private theorem lowered_step5Forward_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U1
         hworkspace.1)
       ψ
@@ -548,6 +559,7 @@ private theorem lowered_step5Forward_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.good
         lowering.consumes
         lowering.returns
         U1
@@ -586,6 +598,8 @@ private theorem lowered_step5Forward_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U2
         hworkspace.2.1
         ψ1 := by
@@ -607,6 +621,8 @@ private theorem lowered_step5Forward_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U2
         hworkspace.2.1)
       ψ1
@@ -622,6 +638,7 @@ private theorem lowered_step5Forward_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.good
         lowering.consumes
         lowering.returns
         U2
@@ -718,6 +735,8 @@ private theorem lowered_step5Forward_ready_and_full_clean
         lowering.k
         lowering.hk
         lowering.ops
+        lowering.pts
+        lowering.hpts
         U3
         hworkspace.2.2
         ψ2 := by
@@ -745,6 +764,7 @@ private theorem lowered_step5Forward_ready_and_full_clean
           lowering.k
           lowering.hk
           lowering.ops
+          lowering.good
           lowering.consumes
           lowering.returns
           U3
