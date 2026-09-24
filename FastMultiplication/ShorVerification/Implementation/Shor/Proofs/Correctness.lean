@@ -12,7 +12,7 @@ import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Config
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Precision
-import FastMultiplication.ShorVerification.Framework.Submission
+import FastMultiplication.ShorVerification.Framework.Contract
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real

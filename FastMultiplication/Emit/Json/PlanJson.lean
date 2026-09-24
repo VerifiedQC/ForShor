@@ -93,7 +93,7 @@ partial def planJson {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.lengt
 /-- Check 1's deep flattener: splice `seq` nodes fully (matching
 `LowGate.flattenSeq`), substitute `SignedPhaseProd`/`CSignedPhaseProd`
 annotations with their `expansion`/`body`, drop `id`. Moved here from the
-now-deleted `Lower/Instantiate.lean` (`Emit/PLAN.md` R4) — still used by
+now-deleted `Lower/Instantiate.lean` (R4) — still used by
 `pp`/`cpp`'s `annotated_eq_flat` check, which has nothing to do with the
 extracted `Doc`. -/
 partial def deepFlattenPlanJsonList (j : Json) : List Json :=

@@ -54,8 +54,8 @@ structure BundleArgs where
   k : ℕ
   mMax : ℕ := 16
   -- Covers `nextWidth`/`reserveNeed`/`qftWorkspaceNeed` at every width a
-  -- consumer's recursive unrolling is likely to visit, and (`Emit/PLAN.md`
-  -- §7) at least `template`'s own checked width `4 * k` for `k` up to 16.
+  -- consumer's recursive unrolling is likely to visit, and at least
+  -- `template`'s own checked width `4 * k` for `k` up to 16.
   wMax : ℕ := 64
   checkCramer : Bool := false
   noTemplate : Bool := false
@@ -94,7 +94,7 @@ unsafe def runBundle (a : BundleArgs) : IO UInt32 := do
     IO.eprintln s!"error: need k > 1 (k = {a.k})"
     return 2
 
-/-- `template <k>`: print the extracted `Doc` alone (`Emit/PLAN.md` §7),
+/-- `template <k>`: print the extracted `Doc` alone,
 after `Doc.wellFormed` and the R2 instance checks — refuses with exit 3 on
 any failure (extraction, verification, or `--w-max` too small).
 `SUBMISSION_PLAN.md` S1.6 retired `--table generate`, so the exit-2 "that

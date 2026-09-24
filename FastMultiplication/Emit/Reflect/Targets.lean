@@ -151,7 +151,7 @@ def precomputePhaseProductSlots (opsE xE zE layoutE : Expr) (childFieldName : Na
   return { initRegs, initWidths, finalRegs, finalWidths }
 
 /-- Extract the `pp_body` template: `compileOpsToSignedGate` specialised at
-the given table (`Emit/PLAN.md` R5: any `ShorLoweringSetup` — its four side
+the given table (R5: any `ShorLoweringSetup` — its four side
 conditions are exactly what makes its `(ops, pts)` pair a table the lowering
 theorems cover), symbolic in `phi, x, z`
 (and, internally, the layout's per-child reserves). -/

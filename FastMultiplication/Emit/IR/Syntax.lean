@@ -5,7 +5,7 @@ import FastMultiplication.ShorVerification.Framework.AbstractMachine.LowGate
 
 A small first-order language of parameterised templates that R1's extractor
 (`Emit/Reflect/Extract.lean`) produces by reading the verified
-`referenceProgramAt` call chain via reflection (see `Emit/PLAN.md` §0–§1).
+`referenceProgramAt` call chain via reflection.
 Nothing here is written by hand per table or per `k`: a `Doc` is data, and
 its shape comes entirely from what the extractor found.
 

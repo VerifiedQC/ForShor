@@ -1,54 +1,20 @@
-import Mathlib.Data.Int.Basic
-import Mathlib.Data.Fin.Basic
-import Mathlib.Algebra.EuclideanDomain.Basic
--- import Mathlib.Tactic
+import FastMultiplication.ShorVerification.Framework.ToomCookTable
 
 /-!
 # Table-generation linear state model
 
-This file defines the symbolic register/state model used by the table
-generation proofs, together with the primitive operations and basic algebraic
-facts about shifts, negation, scaled addition, and right-shift success.
+The symbolic register/state model used by the table generation proofs:
+basic algebraic facts about shifts, negation, scaled addition, and
+right-shift success, plus the operation inverse.
+
+`SUBMISSION_PLAN.md` S2.0 moved the *definitions* this file used to open with
+(`Register`, `State` and their update functions, `Operations.Point`,
+`Operations.valid_ops`) into `Framework/ToomCookTable.lean`, where a
+submissions repo can read the rules without reading the construction that
+satisfies them. They keep their fully-qualified names; only this import line
+is new. Everything below — every lemma, `Operations.inv`, and the `simp` sets
+— stayed here.
 -/
-
-/-! =========================================================
-    Section 1: Registers and coefficient operations
-========================================================= -/
-
-/-- A register is a linear combo of `x₀,…,x_{k-1}` with **integer** coefficients. -/
-abbrev Register (k : ℕ) := Fin k → ℤ
-
-/-- A state is `k` registers. -/
-abbrev State (k : ℕ) := Fin k → Register k
-
-namespace Register
-
-/-- Zero register. -/
-def zero (k : ℕ) : Register k := fun _ => 0
-
-/-- Negate all coefficients in a register. -/
-def negate {k : ℕ} (r : Register k) : Register k :=
-  fun j => - (r j)
-
-/-- Left shift every coefficient by `n` (multiply by `2^n`). -/
-def shiftL {k : ℕ} (r : Register k) (n : ℕ) : Register k :=
-  fun j => (r j) * (2 : ℤ) ^ n
-
-/-- Right shift every coefficient by `n`, **iff each coeff is divisible by `2^n`**.
-    Returns `none` if any coefficient would be fractional. -/
-def shiftR? {k : ℕ} (r : Register k) (n : ℕ) : Option (Register k) :=
-  let m : ℤ := (2 : ℤ) ^ n
-  if ∀ j, (r j) % m = 0 then
-    some (fun j => (r j) / m)
-  else
-    none
-
-/-- `dst ← dst + (±1) * (src << shift)` (no implicit right shifts). -/
-def addScaled {k : ℕ} (dst src : Register k) (negSrc : Bool) (shift : ℕ) : Register k :=
-  let sgn : ℤ := if negSrc then -1 else 1
-  fun j => (dst j) + sgn * (src j) * (2 : ℤ) ^ shift
-
-end Register
 
 /-! =========================================================
     Section 2: State updates and cancellation helpers
@@ -56,32 +22,6 @@ end Register
 
 namespace State
 open Register
-
-/-- Basis state: register `i` = `x_i`. -/
-def start_state {k : ℕ} : State k :=
-  fun i => fun j => if j = i then (1 : ℤ) else 0
-
-/-- Overwrite register `i`. -/
-def setReg {k : ℕ} (σ : State k) (i : Fin k) (r : Register k) : State k :=
-  fun j => if j = i then r else σ j
-
-/-- Negate register `i`. -/
-def negateReg {k : ℕ} (σ : State k) (i : Fin k) : State k :=
-  setReg σ i (Register.negate (σ i))
-
-/-- Left shift register `i` by `n`. -/
-def shiftLReg {k : ℕ} (σ : State k) (i : Fin k) (n : ℕ) : State k :=
-  setReg σ i (Register.shiftL (σ i) n)
-
-/-- Right shift register `i` by `n` *iff* all coeffs are divisible by `2^n`. -/
-def shiftRReg? {k : ℕ} (σ : State k) (i : Fin k) (n : ℕ) : Option (State k) := do
-  let r' ← Register.shiftR? (σ i) n
-  pure (setReg σ i r')
-
-/-- `dst ← dst + (±1) * (src << shift)`. -/
-def addScaledReg {k : ℕ} (σ : State k)
-    (dst src : Fin k) (negSrc : Bool) (shift : ℕ) : State k :=
-  setReg σ dst (Register.addScaled (σ dst) (σ src) negSrc shift)
 
 theorem negate_addScaledReg_negate
     {k : ℕ} (σ : State k) (dst src : Fin k) (hds : dst ≠ src) :
@@ -226,22 +166,6 @@ end State
 ========================================================= -/
 
 namespace Operations
-
-inductive Point where
-  | int  (z : Int)
-  | frac (m : Int)
-deriving Repr, DecidableEq
-
-/-- Valid operations on registers. -/
-inductive valid_ops (k : ℕ) where
-  | shiftL    (i : Fin k) (n : ℕ)
-  | shiftR    (i : Fin k) (n : ℕ)
-  | negate    (i : Fin k)
-  | addScaled (dst src : Fin k) (negSrc : Bool) (shift : ℕ)
-  | phaseProduct (i : Fin k)
-
---deriving Repr, DecidableEq
-
 
 def inv {k : ℕ} : valid_ops k → valid_ops k
   | .shiftL i n               => .shiftR i n

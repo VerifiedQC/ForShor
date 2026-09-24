@@ -1,3 +1,4 @@
+import FastMultiplication.ShorVerification.Framework.ToomCookTable
 import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.Workspace
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Cleanliness
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
@@ -10,33 +11,16 @@ import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.
 The user-facing setup/readiness records consumed by the final Shor
 correctness statements, and the bridge from the lower-level implementation
 setup to the public one.
+
+`SUBMISSION_PLAN.md` S2.0 moved `ShorLoweringSetup` itself — which since P1/P7
+*is* the submission, not merely an assumption bundle — into
+`Framework/ToomCookTable.lean`, alongside the C1-C4 vocabulary it is stated
+in. It keeps its fully-qualified name (`Shor.ShorLoweringSetup`), and
+`Shor.ShorSubmission` there is an `abbrev` for it. The records below, which
+are about the *quantum* side rather than the table, stayed here.
 -/
 namespace Shor
 open Operations
-
-/-! =========================================================
-    Lowering Program Setup
-========================================================= -/
-
-/-- Low-level lowering assumptions shared by lowered Shor statements. -/
-structure ShorLoweringSetup where
-  /-- Number of synthesis registers used by the lowering program. -/
-  k : ℕ
-  /-- At least two synthesis registers are available. -/
-  hk : 1 < k
-  /-- Interpolation points the submission's table is built against. -/
-  pts : List Point
-  /-- One point per product coefficient. -/
-  hpts : pts.length = q k
-  /-- The chosen points interpolate a degree-`2k - 2` polynomial. -/
-  good : GoodToomCookPoints k pts hpts
-  /-- Program that consumes the interpolation points used by lowering. -/
-  ops : Prog k
-  /-- The point-consuming program is safe. -/
-  consumes :
-    ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts
-  /-- The point-consuming program uncomputes back to the start state. -/
-  returns : run? ops State.start_state = some State.start_state
 
 /-! =========================================================
     Approximate Setup

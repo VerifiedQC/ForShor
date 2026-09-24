@@ -17,7 +17,7 @@ bit-length `n` (except `shor_plan`'s own explicit `n`-ladder, which is the
 whole point of that section). `k` enters everywhere; `n` never does outside
 `shor_plan`.
 
-R3 (`Emit/PLAN.md` §7) split this file's old single pure `buildBundle` in
+R3 split this file's old single pure `buildBundle` in
 two: `buildBundleCore` (schedule/coeff_poly/width/qft_plan/shor_plan — pure,
 `native_decide`-testable, no reflection) and `buildBundle`/`buildTemplateDoc`
 (`unsafe`, `IO`, since embedding the extracted `Doc` needs
@@ -148,15 +148,15 @@ def shorPlanRowJson (row : ShorPlanRow) : Json :=
     ("per_m", Json.arr (row.perM.map shorPlanPerMJson).toArray)
   ]
 
-/-- E5: the Shor register plan (widths and reserves only — no affine tail;
-`Emit/PLAN.md` R4). -/
+/-- E5: the Shor register plan (widths and reserves only — no affine tail
+since R4). -/
 def shorPlanJson {k : ℕ} (ops : Prog k) (nMin nMax mMax : ℕ) : Json :=
   Json.mkObj [
     ("rows", Json.arr ((shorPlanTable ops nMin nMax mMax).map shorPlanRowJson).toArray)
   ]
 
-/-- The extracted-`Doc` provenance string (`Emit/PLAN.md` §7, D7's trust
-statement, verbatim). -/
+/-- The extracted-`Doc` provenance string: D7's trust statement, verbatim
+(`Emit/README.md`). -/
 def templateProvenance : String :=
   "extracted by reflection from the named constants; trusted: translation " ++
   "table and Lean normalisation; checked: instantiate = real term at the " ++
@@ -254,7 +254,7 @@ of the width table, or the value tables published alongside `template`
 would have a gap right where the check itself looked. -/
 def templateCheckWidth (k : ℕ) : ℕ := 4 * k
 
-/-- Build the standalone `template` document (`Emit/PLAN.md` §7, §11/R5):
+/-- Build the standalone `template` document (R3, generalised by R5):
 extract the `Doc` by reflection, verify it (`Reflect.Verify.verifyDoc`), and
 print it together with the checks that passed and this section's
 provenance. Refuses (`.error`) if extraction/verification fails or if `wMax`

@@ -100,7 +100,7 @@ extracts the template by reflection (`Reflect.runExtractAndVerify`) to run
     `lowerCSignedPhaseProdWithWorkspace` via `emitLowGateDoc` directly, no
     checks, no reflection.
 
-`Emit/PLAN.md` R3/R4: this replaced the old `template_match`/`ladder`
+R3/R4 (`Emit/README.md`'s round history): this replaced the old `template_match`/`ladder`
 checks (`Symbolic/Template.lean`/`Symbolic/Recursion.lean`, both deleted)
 with a check against the *extracted* template directly.
 

@@ -2,7 +2,7 @@ import FastMultiplication.ShorVerification.Implementation.Reference.StandardLowe
 import FastMultiplication.ShorVerification.Implementation.Reference.ReferenceShorImplementation
 import FastMultiplication.Emit.Json.LowGateJson
 import FastMultiplication.Emit.Symbolic.Bundle
-import FastMultiplication.Emit.Table.Decide
+import FastMultiplication.ShorVerification.Submission.Decide
 import FastMultiplication.Emit.Lower.PhaseProduct
 import FastMultiplication.Emit.Lower.Qft
 import FastMultiplication.Emit.Reflect.Driver
@@ -113,7 +113,7 @@ example :
 
 -- 8. The `bundle` document has `schema = "forshor.emit/v1"` and `n_free = true`.
 -- `buildBundleCore` (the pure sections only — `template` needs `IO`, see
--- `Emit/PLAN.md` §7/R3, and is checked at run time via the deliverable
+-- R3's split, and is checked at run time via the deliverable
 -- checklist's `forshor_emit bundle`/`template` invocations instead).
 example :
     (match buildBundleCore 2 (by decide) 6 10 false with
@@ -129,7 +129,7 @@ example :
 -- which check the *extracted* `Doc` directly against the real term, and by
 -- `Reflect.Verify`'s run-time `instantiate_eq_real` check that replaced
 -- `template_match`/`ladder`/`split` in `pp`/`cpp`/`qft` themselves
--- (`Emit/PLAN.md` R3/R4) — `buildPP`/`buildCPP`/`buildQFT`/`buildBundle`/
+-- (R3/R4) — `buildPP`/`buildCPP`/`buildQFT`/`buildBundle`/
 -- `buildTemplateDoc` all need `IO` now (the extractor's environment
 -- reload), so they are no longer `native_decide`-testable; they are
 -- exercised by the deliverable checklist's `lake exe forshor_emit`
@@ -148,7 +148,7 @@ example :
 example : (buildPhases 2 8 1 8).toOption.map List.length = some (q 2) := by native_decide
 example : (buildPhases 3 8 1 8).toOption.map List.length = some (q 3) := by native_decide
 
--- 15. R2.1's exit criterion (`Emit/PLAN.md` §6, §6.1): `pp_body`, extracted
+-- 15. R2.1's exit criterion (`Emit/README.md`): `pp_body`, extracted
 -- by reflection (`extract_ir_doc`, pinning a `Doc` at build time) and
 -- `instantiateGate`'d at a concrete `k = 2`, standard table, `x`/`z` both
 -- width 4 with enough reserve that `targetSignedLayoutState`'s growth to
@@ -240,7 +240,7 @@ example :
 
 end R2_1
 
--- 16. R2.3's exit criterion (`Emit/PLAN.md` §6, §6.2): `naive_leaf`
+-- 16. R2.3's exit criterion: `naive_leaf`
 -- (`LowGate.Naive_SignedPhaseProd`) needs no `k`/table and so no
 -- `extract_ir_doc` pinning either — `Reflect/Targets.lean`'s
 -- `naiveLeafTemplate` is already a plain `def`, hand-specified rather than
@@ -279,7 +279,7 @@ example :
 
 end R2_3
 
--- 17. R2.2's exit criterion (`Emit/PLAN.md` §6.4): `phase_product`
+-- 17. R2.2's exit criterion: `phase_product`
 -- (`Shor.standardSignedPhaseLoweringPlan` + `Shor.lowerGateRec`), checked
 -- against `IR.instantiate` at `n = 8` (base — `nextWidth ops 8 8 = 9 ≥ 8`,
 -- so the guard is false and the real term is
@@ -384,7 +384,7 @@ end R2_2_Rec
 
 end R2_2
 
--- 18. R2.4's `naive_cleaf` exit criterion (`Emit/PLAN.md` §6, controlled
+-- 18. R2.4's `naive_cleaf` exit criterion (controlled
 -- counterpart of R2.3's `naive_leaf`): `LowGate.Naive_CSignedPhaseProd`'s
 -- own double loop, `CCPhase` instead of `CPhase`, `ctrl` a single-qubit
 -- register parameter per `IR/Instantiate.lean`'s `buildLowGate` convention.
@@ -424,7 +424,7 @@ example :
 
 end R2_4_NaiveCLeaf
 
--- 19. R2.4's `cphase_product` exit criterion (`Emit/PLAN.md` §6, controlled
+-- 19. R2.4's `cphase_product` exit criterion (controlled
 -- counterpart of R2.2's `phase_product`): `standardCSignedPhaseLoweringPlan`
 -- + `lowerGateRec`, checked at `n = 8` (base) and `n = 16` (recurses) —
 -- same widths, same `reserveNeed`/`nextWidth` values as R2.2, since `ctrl`
@@ -533,7 +533,7 @@ end R2_4_Rec
 
 end R2_4_CPhaseProduct
 
--- 20. R2.5's exit criterion (`Emit/PLAN.md` §6): `qft`
+-- 20. R2.5's exit criterion: `qft`
 -- (`Shor.standardQFTLoweringPlan` + `Shor.lowerQFTPlan`), checked against
 -- `IR.instantiate` at `w = 4` (two levels of `qft`'s own recursion: 4
 -- splits into two width-2 halves, each of which splits again into two
@@ -789,7 +789,7 @@ example :
 
 end R2_6_Shor
 
--- R2.7 (`Emit/PLAN.md` §6, the genericity checkpoint): `Extract.lean`/
+-- R2.7 (the genericity checkpoint): `Extract.lean`/
 -- `Targets.lean` are keyed by Lean construct name only (D2), never by `k` or
 -- table source — so R2.2's and R2.5's own exit criteria should carry over to
 -- `k = 3` (standard) and to `k = 2` with the `generate` table source with
@@ -860,7 +860,7 @@ example :
 
 end R2_7_PhaseProduct_K3Standard
 
--- R5 (`Emit/PLAN.md` §11): D5's amendment means "any table" is now "any
+-- R5: D5's amendment means "any table" is now "any
 -- `ShorLoweringSetup`". §11.3's exit criterion, and the only table-genericity
 -- demonstration left once `SUBMISSION_PLAN.md` S1.6 retired `TableSource`: a
 -- hand-built `ShorLoweringSetup` whose `ops` genuinely differ from

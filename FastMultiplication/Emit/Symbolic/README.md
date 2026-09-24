@@ -1,6 +1,6 @@
 # `Symbolic/`
 
-The D4-opaque value tables (`Emit/PLAN.md` §7/R3): `CoeffPoly.lean`,
+The D4-opaque value tables (R3): `CoeffPoly.lean`,
 `Width.lean`, `QftPlan.lean`, `ShorPlan.lean` — the values of the few
 functions the extracted templates (`Reflect/`, `IR/`) call by name but
 never evaluate symbolically — plus `Bundle.lean`, which assembles them (and

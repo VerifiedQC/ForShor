@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFinding
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
-import FastMultiplication.ShorVerification.Framework.Submission
+import FastMultiplication.ShorVerification.Framework.Contract
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
 import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.Defs
 

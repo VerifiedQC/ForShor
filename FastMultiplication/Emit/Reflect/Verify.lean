@@ -32,7 +32,7 @@ exhaustive coverage is what R2's own compile-time suite already
 established, and D2 (the extractor is keyed by Lean construct name, never
 by `k`) is exactly why agreement at one representative width generalizes.
 
-`Emit/PLAN.md` §11 (R5): `verifyDoc` takes the `Shor.ShorLoweringSetup` the
+R5: `verifyDoc` takes the `Shor.ShorLoweringSetup` the
 `Doc` was extracted from, so `shor_gate`/`shor`'s canary — which §7.1 could
 only run for `.standard`, since only the standard table had a
 `ShorLoweringSetup` to build a reference Shor instance from — now runs for
@@ -93,7 +93,7 @@ at length why that was not a bug — `standardSignedPhaseLoweringPlan`/
 `standardCSignedPhaseLoweringPlan`/`standardQFTLoweringPlan` hard-wired
 `genInterpolationPoints k` into their own `recurse` obligation's stated
 type, so the *real* term this canary compares against used the canonical
-coefficients regardless of the `ops` it was given (`Emit/PLAN.md` §6.9's
+coefficients regardless of the `ops` it was given (R2.7's
 genericity finding). S1.2/S1.3 removed that hard-wiring: the plan builders
 now take `pts hpts`, the real term's coefficients follow the points it was
 built with, and so does this oracle. The quirk is gone rather than
@@ -127,10 +127,10 @@ def phaseProductAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (pts : List Operati
   | .error _ => false
   | .ok g => flattenLowGate g == flattenLowGate real
 
-/-- `phase_product` canary: one representative width `n = 4k`. -/
-def checkPhaseProduct (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit :=
+/-- `phase_product` agreement at one concrete width. -/
+def checkPhaseProductAt (setup : Shor.ShorLoweringSetup) (n : ℕ) (doc : Doc) :
+    Except String Unit :=
   let ops := setup.ops
-  let n := 4 * setup.k
   match ppRegisters ops n with
   | .error e => .error s!"template check (phase_product): {e}"
   | .ok (x, z, _ctrl) =>
@@ -139,6 +139,10 @@ def checkPhaseProduct (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except Stri
           .ok ()
         else .error "template check (phase_product): instantiate disagrees with the real term"
       else .error s!"template check (phase_product): insufficient workspace at n={n}"
+
+/-- `phase_product` canary: one representative width `n = 4k`. -/
+def checkPhaseProduct (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit :=
+  checkPhaseProductAt setup (4 * setup.k) doc
 
 /-- `cphase_product`, instantiated against `doc` with concrete `ctrl, x, z,
 phi`, agrees with the real compiled term. Controlled analogue of
@@ -167,10 +171,10 @@ def cPhaseProductAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (pts : List Operat
   | .error _ => false
   | .ok g => flattenLowGate g == flattenLowGate real
 
-/-- `cphase_product` canary, controlled analogue of `checkPhaseProduct`. -/
-def checkCPhaseProduct (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit :=
+/-- `cphase_product` agreement at one concrete width. -/
+def checkCPhaseProductAt (setup : Shor.ShorLoweringSetup) (n : ℕ) (doc : Doc) :
+    Except String Unit :=
   let ops := setup.ops
-  let n := 4 * setup.k
   match ppRegisters ops n with
   | .error e => .error s!"template check (cphase_product): {e}"
   | .ok (x, z, ctrlIdx) =>
@@ -179,6 +183,10 @@ def checkCPhaseProduct (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except Str
         then .ok ()
         else .error "template check (cphase_product): instantiate disagrees with the real term"
       else .error s!"template check (cphase_product): insufficient workspace at n={n}"
+
+/-- `cphase_product` canary, controlled analogue of `checkPhaseProduct`. -/
+def checkCPhaseProduct (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit :=
+  checkCPhaseProductAt setup (4 * setup.k) doc
 
 /-- `qft`, instantiated against `doc` with concrete register `r`, agrees
 with the real compiled term. Exposed for `qft`'s own CLI command the same
@@ -206,10 +214,9 @@ def qftAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (pts : List Operations.Point
   | .error _ => false
   | .ok g => flattenLowGate g == flattenLowGate real
 
-/-- `qft` canary: one representative width `w = 4k`. -/
-def checkQft (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit :=
+/-- `qft` agreement at one concrete width. -/
+def checkQftAt (setup : Shor.ShorLoweringSetup) (w : ℕ) (doc : Doc) : Except String Unit :=
   let ops := setup.ops
-  let w := 4 * setup.k
   match qftRegister ops w with
   | .error e => .error s!"template check (qft): {e}"
   | .ok r =>
@@ -217,6 +224,10 @@ def checkQft (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit :
         if qftAgrees setup.hk ops setup.pts setup.hpts doc r hws then .ok ()
         else .error "template check (qft): instantiate disagrees with the real term"
       else .error s!"template check (qft): insufficient workspace at w={w}"
+
+/-- `qft` canary: one representative width `w = 4k`. -/
+def checkQft (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit :=
+  checkQftAt setup (4 * setup.k) doc
 
 /-- The fixed small reference instance `shor_gate`/`shor`'s canary checks
 against (`a = 2, N = 15`, precision `0`) — independent of `k`, matching
@@ -275,8 +286,7 @@ def checkShor (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit 
       if flattenLowGate g == flattenLowGate real then .ok ()
       else .error "template check (shor): instantiate disagrees with the real term"
 
-/-- The full canary suite (`Emit/PLAN.md` §7, generalized to any table by
-§11/R5): `Doc.wellFormed`, then instance agreement for every template this
+/-- The full canary suite (R3, generalized to any table by R5): `Doc.wellFormed`, then instance agreement for every template this
 `setup` extracted, at one representative width apiece. Every check now
 always runs — `setup : ShorLoweringSetup` is, by construction, a table the
 reference-instance machinery is proven to work over (D5), and since
@@ -290,10 +300,68 @@ def verifyDoc (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit 
   checkShorGate setup doc
   checkShor setup doc
 
+/-! =========================================================
+    S4.2: the same checks, as one `Bool` a submission can pin
+========================================================= -/
+
+/-- `Except.isOk`, spelled out so the `Bool` checks below reduce cleanly
+under `native_decide` (the error strings are `String`s built by `s!`, which
+there is no reason to evaluate just to discard). -/
+def okB {ε α : Type} : Except ε α → Bool
+  | .ok _ => true
+  | .error _ => false
+
+/-- The widths a submission's `phase_product`/`cphase_product` templates are
+checked at (`SUBMISSION_PLAN.md` S4.2).
+
+Two, not one, and the second is the one that earns its place. At `k = 2`,
+`n = 8` takes the base case and `n = 16` the recursive one. Checking
+`Submission/Template.lean`'s table (the canonical ladder plus a
+semantically-inert `shiftL 0 0 ;; shiftR 0 0` pair) against a `Doc` extracted
+from the canonical ladder *without* it: `n = 8` passes — the compiled
+circuits really do coincide there, the extra ops being inert — and `n = 16`
+fails, because the recursion's `nextWidth`/`reserveNeed` are computed from
+the op list and the two tables' lists differ. A single representative width
+below the guard would have called two different tables' IR interchangeable.
+-/
+def submissionPPWidths : List ℕ := [8, 16]
+
+/-- The widths a submission's `qft` template is checked at (S4.2). -/
+def submissionQFTWidths : List ℕ := [4, 8]
+
+/-- **The evaluation tier** (decision P5, `SUBMISSION_PLAN.md` §10/S4.2).
+`verifyDoc`'s checks, with two differences: several widths instead of the
+single representative `4k`, and a `Bool` instead of an `Except` so a
+submission can pin the result with `native_decide` at build time rather than
+running it at print time.
+
+There is no per-submission theorem that the extracted IR is correct for
+*every* width — that is an Emit-side project about the reference table only
+(R6, archived on `emit-proofs-archive`). What a submission is held to is
+this: the four kernel-checked side conditions on the table
+(`Submission/Decide.lean`), plus `instantiate = real` verified by evaluation
+at these sampled widths and at the smallest reference Shor instance. Since
+S1.6 the comparison is against the submitter's own points, not the canonical
+ladder. -/
+def evaluationChecks (setup : Shor.ShorLoweringSetup) (doc : Doc)
+    (ppWidths qftWidths : List ℕ) : Bool :=
+  doc.wellFormed
+    && ppWidths.all (fun n => okB (checkPhaseProductAt setup n doc))
+    && ppWidths.all (fun n => okB (checkCPhaseProductAt setup n doc))
+    && qftWidths.all (fun w => okB (checkQftAt setup w doc))
+    && okB (checkShorGate setup doc)
+    && okB (checkShor setup doc)
+
+/-- `evaluationChecks` at the default sampled widths. This is the single
+`Bool` `Submission/Template.lean` pins, so a submitter writes one
+`native_decide` line and none of the machinery behind it. -/
+def submissionChecks (setup : Shor.ShorLoweringSetup) (doc : Doc) : Bool :=
+  evaluationChecks setup doc submissionPPWidths submissionQFTWidths
+
 /-- Run-time entry point: extract, then verify. `PLAN.md` §7's blocking
 check — a failure here refuses the whole `bundle`/`template` output with
-exit 3 (`Main.lean`). Standard-table only at run time (`Emit/PLAN.md` §11.2
-point 4) — `runExtract` already fixes this. -/
+exit 3 (`Main.lean`). Standard-table only at run time — `runExtract`
+already fixes this. -/
 unsafe def runExtractAndVerify (k : Nat) : IO (Except String Doc) := do
   match ← runExtract k with
   | .error e => return .error e

@@ -20,7 +20,7 @@ abstract proof for general `n` anywhere in this file. The table is always
 theorems are about); a table of one's own is a build-time path
 (`extract_ir_doc`, `Reflect/Driver.lean`), never a CLI flag.
 
-`Emit/PLAN.md` R3/R4: the annotated view's `template_match`/`ladder` checks
+R3/R4: the annotated view's `template_match`/`ladder` checks
 (`Symbolic/Template.lean`/`Symbolic/Recursion.lean`, both removed) are
 replaced by `instantiate_eq_real` — the extracted `phase_product`/
 `cphase_product` template (`Reflect.Verify`), instantiated at *this* `n`,

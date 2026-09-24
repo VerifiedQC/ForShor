@@ -69,7 +69,7 @@ def Env.call (env : Env) (wParams : List String) (wVals : List ℕ) (aParams : L
 
 -- Evaluate a `WExpr` against `env`, threading opaque-function lookups
 -- through `Except`. Mutual with `evalWList` (`opaque`'s `List WExpr`
--- arguments) rather than `partial`, per `Emit/PLAN.md` R6 (§12): a `partial
+-- arguments) rather than `partial`, a choice R6 forced: a `partial
 -- def` compiles via an opaque fixpoint with no equation lemmas at all — `simp
 -- [evalW]`/`unfold evalW`/`rfl` all fail to make any progress on it, which
 -- would make every R6 theorem statement about `instantiate` unprovable before

@@ -6,7 +6,7 @@ import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.Workspace
 For `w = 1..wMax`: `qftWorkspaceNeed`, the one D4-opaque function the
 extracted `qft` template calls by name (`left`/`right` split widths,
 `qftPhi`, and the radix-reverse cost are all printed directly by the
-template itself now — see `Emit/PLAN.md` R3/R4).
+template itself now, since R3/R4).
 -/
 
 namespace Shor

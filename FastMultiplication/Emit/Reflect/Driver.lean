@@ -88,7 +88,7 @@ for backwards compatibility with `extract_ir_doc`'s existing callers
 (`Tests.lean`'s R2.1 section); callers that want `phase_product`/
 `cphase_product`/`qft` name it explicitly to `instantiate`.
 
-`Emit/PLAN.md` R5: takes any `Shor.ShorLoweringSetup`, not a `(k, hk, table
+R5: takes any `Shor.ShorLoweringSetup`, not a `(k, hk, table
 source)` triple — D5's amendment. `setup` is a table the lowering theorems
 actually cover *by construction* (its four side conditions are exactly those
 theorems' hypotheses), so there is no second kind of table to special-case
@@ -109,7 +109,7 @@ def buildDoc (setup : Shor.ShorLoweringSetup) : MetaM IR.Doc := do
         ("step5Const", 2), ("modpow", 3)]
       entry := pp.name }
 
--- `extract_ir_doc <id> <setupIdent>` (`Emit/PLAN.md` §11.2 point 2):
+-- `extract_ir_doc <id> <setupIdent>` (R5):
 -- `setupIdent` names a `Shor.ShorLoweringSetup` declaration in scope (the
 -- *value*, not a numeral — this replaces the old `<id> <k>`/`<id> (<k>,
 -- generate)` numeric forms, both removed: with the table itself carrying its
@@ -184,7 +184,8 @@ kernel takes it on faith"), same as `native_decide`.
 Every `MetaM`/`CoreM` error (an `unrecognised construct …`, say) is caught
 and reported as `Except.error`, never an uncaught `IO` exception.
 
-`Emit/PLAN.md` §11.2 point 4: the run-time CLI (`template`/`bundle`) only
+R5, and unchanged by `SUBMISSION_PLAN.md` S4.3: the run-time CLI
+(`template`/`bundle`) only
 ever extracts the standard table — `standardLoweringSetup k h`, built here
 as an ordinary (non-reflected) function call, exactly as it always was
 before R5's `ShorLoweringSetup` refactor just moved one level up. A custom

@@ -1,5 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.Reference.ShorProgram
-import FastMultiplication.ShorVerification.Framework.Submission
+import FastMultiplication.ShorVerification.Framework.Contract
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Correctness
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Config

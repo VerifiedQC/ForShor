@@ -11,7 +11,7 @@ with the real term — this is a much cheaper structural smoke test that would
 catch, e.g., a `call` naming a template that does not exist, or a `var`
 nobody bound.
 
-Four checks, matching `Emit/PLAN.md` §4.3:
+Four checks:
 
 1. every `var` is a parameter of its template or an enclosing `loop` variable;
 2. every `call` names a template in the `Doc` and matches its arity in all

@@ -1,11 +1,10 @@
 # `Table/`
 
-The Toom-Cook table a bundle is built from — `Source.lean` — plus
-`Decide.lean`'s `Decidable` instances for packaging a custom table as a
-`Shor.ShorLoweringSetup`.
+The Toom-Cook table a bundle is built from: the `(ops, points)` view of a
+`Shor.ShorLoweringSetup` that the JSON value-table builders read.
 
 `Census.lean` (the old op census / per-op-class `LowGate` resource table,
-E1) was deleted in R3/R4 (`Emit/PLAN.md`): those counts now fall out of the
+E1) was deleted in R3/R4 (see `Emit/README.md`'s round history): those counts now fall out of the
 extracted `Doc` (`Reflect/`, `IR/`) plus the repository's own
 `shorGateResourceModel`, rather than a separate hand-evaluated table.
 
@@ -27,7 +26,7 @@ re-derivation of what a `ShorLoweringSetup` already proves, and the
 `.generate` path are all gone. A table of one's own now enters exactly one
 way: as a `ShorLoweringSetup` in a Lean file, via `extract_ir_doc`
 (`Reflect/Driver.lean`), with the four conditions discharged by
-`Decide.lean`'s instances.
+`Submission/Decide.lean`'s instances.
 
 ## `Source.lean`
 
@@ -50,31 +49,11 @@ read-only view of them the JSON value-table builders want.
   `Shor.standardLoweringSetup k hk`'s own, the table the lowering theorems
   are about and the only one the CLI builds.
 
-## `Decide.lean`
-
-`Decidable` instances for a user's own `Shor.ShorLoweringSetup` proofs
-(`Emit/PLAN.md` §11.2 point 5): neither `ProgConsumesPts` nor `SafeProg`
-had one anywhere in the repo before this file, so proving `consumes` for a
-hand-built table meant writing an abstract proof by hand — exactly the
-friction R5's whole point (any table the theorems cover, not just the
-standard one) would otherwise run into.
-
-- `decideProgConsumesPts`/`instance decidableProgConsumesPts` — term-mode,
-  mirroring `ProgConsumesPts`'s own recursion on `ops` constructor by
-  constructor (`phaseProduct i`'s existential witness is `pts`'s own head;
-  every other op's is whatever `applyOp?` computes) rather than via a
-  separately-proven Boolean mirror — `ProgConsumesPts` is a `def`, not an
-  `inductive`, so its own internal `match op with …` only reduces once `op`
-  is a literal constructor, which is why `decideProgConsumesPtsOther`
-  (the shared "non-`phaseProduct`" case) takes its unfolding proof as an
-  argument (`Iff.rfl`, defeq-provable only at each concrete call site)
-  rather than proving it once generically.
-- `safeProgCheck`, `safeProg_iff_check`, `instance decidableSafeProg` —
-  `SafeProg ops` (a `∀` over list decompositions: every `addScaled d s _ _`
-  anywhere in `ops` has `d ≠ s`) is equivalent to one Boolean scan over
-  `ops` (`List.mem_iff_append` in one direction, `List.mem_append_right`/
-  `List.mem_cons_self` in the other), and *that* is directly decidable.
-- `instance decidableProgConsumesPtsSafe` — the pair, since
-  `ShorLoweringSetup.consumes : ProgConsumesPtsSafe …` bundles both fields
-  and callers want to write `consumes := by native_decide` once, not
-  `⟨by native_decide, by native_decide⟩`.
+`Decide.lean` moved out (`SUBMISSION_PLAN.md` S2.1). Its `Decidable`
+instances are how a submitter discharges a table's four side conditions, and
+they never needed anything from `Emit/` — they only used the vocabulary S2.0
+put in `Framework/ToomCookTable.lean`, but reached it through this folder's
+`Source.lean` and so dragged in the compiler, the plan builders and the
+standard setup with it. They now live in
+`ShorVerification/Submission/Decide.lean`, which imports `Framework/` and
+Mathlib and nothing else, together with the C2 instance S2.1 added.

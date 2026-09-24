@@ -1,9 +1,10 @@
 # PLAN: a submission is a table and a set of interpolation points
 
-Status: revised 2026-09-23. Owner decisions in §1. **S1 is done** (in the
-working tree on `ir-reflection-r0`, not yet committed); next is **S2.0**, the
-move of the table definitions into `Framework/` (§6). The S1 site inventory
-(§5) was taken from the tree at commit `c045219`.
+Status: 2026-09-24. Owner decisions in §1. **All stages done** (S1 committed
+as `b4856a5`; S2–S6 committed on top of it on `ir-reflection-r0`); see the
+checklist in the last section. Open follow-up outside this repo: the
+submissions repo's own lakefile around its copy of `Submission/Template.lean`.
+The S1 site inventory (§5) was taken from the tree at commit `c045219`.
 
 ## 0. What changes and why
 
@@ -133,6 +134,7 @@ Submission/                   the public surface the submissions repo builds aga
   Correct.lean                S2.2: submissionPrecision, submission_correct (imports Reference/)
   Score.lean                  S3: success bound, computable trial count
   Template.lean               S4: the file a submitter copies (imports Emit/)
+  Main.lean                   S4: forshor_submission's printer (not edited by submitters)
 Emit/                         setup ↦ IR
 ```
 
@@ -209,7 +211,7 @@ bytes, sha1 `25081f41…`). `bundle`/`schedule`/`coeff_poly`/`width`/
 `pp`/`cpp`/`qft`/`phases`/`shor` are byte-identical. The `R2_7_*_CustomTable`
 tests pass unchanged. The five `scripts/check_*_layers.sh` stay green.
 
-## 6. Stage S2.0 — `Framework/ToomCookTable.lean`: the rules, implementation-free
+## 6. Stage S2.0 — `Framework/ToomCookTable.lean`: the rules, implementation-free (done)
 
 One new file, imports Mathlib only, containing exactly the definitions needed
 to state `ShorLoweringSetup`, and the record. Definitions keep their current
@@ -253,16 +255,35 @@ remaining lemmas relied on implicitly; and the two `interpMatrix`s
 (`ToomCookMath.interpMatrix`, generic, moves; `Shor.interpMatrix`, compiler,
 stays).
 
-**S2.0.4 Exit.** Same as S1's: `lake build` and `lake build EmitTests
-forshor_emit` green, axioms unchanged, `template 2` byte-identical, layer
-scripts green, and `Framework/ToomCookTable.lean` has no import outside
-Mathlib.
+**S2.0.4 Exit** (met). `lake build` (3306 jobs) and `lake build EmitTests
+forshor_emit` (6611 jobs) green, no `sorry`; axioms on the three headline
+theorems unchanged; `template 2` byte-identical; the five layer scripts
+green; `Framework/ToomCookTable.lean` imports `Mathlib.Data.Int.Basic`,
+`Mathlib.Data.Fin.Basic`, `Mathlib.Algebra.EuclideanDomain.Basic`,
+`Mathlib.LinearAlgebra.Matrix.NonsingularInverse` and `Mathlib.Tactic`, and
+nothing else. No call site changed: every moved definition kept its
+fully-qualified name, so the six source files gained an import line and lost
+the definitions, and nothing else in the tree moved.
 
-## 7. Stage S2 — decidability and the certificate
+Two notes. `MatchesAt`, `matchesAt_pointRow` and `MatchesAtState.ofRegister`
+stayed in `Core/Language.lean` even though `MatchesAtState` moved — only the
+state-aware matcher is C3 vocabulary. And the new file is reached by `lake
+build` explicitly: `FastMultiplication.lean` imports it and the two
+`Submission/` files, rather than relying on the transitive path through
+`Core/Registers.lean`. (That matters — see S2.2 on what happened to the one
+`Reference/` file nothing imported.)
+
+## 7. Stage S2 — decidability and the certificate (done)
 
 **S2.1 `Submission/Decide.lean`.** Move `Emit/Table/Decide.lean` here (it
-already has the `consumes` and `safe-add` instances; its proofs may keep
-importing the `Table_Generation` lemmas), and add the C2 instance.
+already has the `consumes` and `safe-add` instances) and add the C2 instance.
+Today it imports `Emit/Table/Source.lean` (and through it the compiler, plan
+builders and standard setup), but its code only uses `Prog`, `run?`,
+`applyOp?`, `SafeProg`, `ProgConsumesPts(Safe)`, `matchesAt_pointRow_state`
+and `State.start_state` — all moved by S2.0 — so after the move it imports
+only `Framework/ToomCookTable` (and Mathlib). The checking side of a
+submission is then implementation-free; only `Correct.lean` and the
+template reach into `Implementation/`.
 `GoodToomCookPoints` unfolds to `Matrix.det (ToomCookMath.interpMatrix
 (interpEntry k) (listToFin pts hpts)) ≠ 0`, which is decidable outright
 (`det` over `ℚ` with a `Fin (q k)` index is computable):
@@ -272,10 +293,20 @@ instance (k pts hpts) : Decidable (GoodToomCookPoints k pts hpts) :=
   inferInstanceAs (Decidable (Matrix.det _ ≠ 0))
 ```
 
-Smoke tests: `native_decide` closes all four fields for
-`standardLoweringSetup 3 _`'s data restated as literals, and *rejects* the K3
-precomputed table paired with the canonical points (C3 fails) while
-accepting it paired with its own point order.
+*Done.* The instance is the one-liner above: `GoodToomCookPoints` and
+`GoodInterpolationPoints` are plain `def`s, so `isDefEq` unfolds both and
+typeclass search finds `Matrix.det`'s `DecidableEq ℚ` by itself. The move went
+through unchanged — after S2.0 the file's one import is
+`Framework/ToomCookTable`.
+
+Smoke tests (in the same file, over literals, so it keeps that one import):
+`standardLoweringSetup 3 _`'s data restated as literals closes all four
+fields and assembles into a `ShorSubmission`; and the K3 precomputed table is
+*rejected* against the canonical points (C3 fails) while being accepted
+against its own point order, with C2 and C4 holding either way — C2 cannot
+see the order at all, since a permutation only flips the determinant's sign.
+That pair is the concrete evidence for P1: the same five points in a
+different order are a different table.
 
 **S2.2 `Submission/Correct.lean`.** The certificate: `def
 submissionPrecision : ℕ := m2048` (one place to change; defined here so S3
@@ -289,15 +320,33 @@ theorem submission_correct (s : ShorSubmission) :
 
 restating the already-generic theorem at the fixed `m`, so every accepted
 submission gets one named certificate. This is the only `Submission/` file
-besides `Template` that must import `Implementation/Reference/`.
+besides `Score` and `Template` that must import `Implementation/Reference/`.
 
-## 8. Stage S3 — fixed-`m` scoring on the Lean side
+*Done*, with one repair on the way in. `m2048` lives in
+`Reference/Reference2048Headline.lean`, which turned out to be an **orphan**:
+nothing imported it, so it sat outside `lake build` and had gone stale — five
+call sites passed `(qs := qs)` to `referenceProgramAt`/`headlineGateCount`,
+which no longer take a `qs` (the reference program is classical data). The
+fix was deleting those five named arguments, nothing else; the file is now
+reached through `Submission/Correct.lean` and stays built. `#print axioms
+Shor.submission_correct` is `propext`/`Classical.choice`/`Quot.sound` — the
+smoke tests' `native_decide` does not leak into it.
 
-**S3.1 `Submission/Score.lean`** (imports `Correct`).
+## 8. Stage S3 — fixed-`m` scoring on the Lean side (done)
+
+**S3.1 `Submission/Score.lean`** (imports `Correct`). *Done.*
 `noncomputable def submissionSuccessBound (N) := referenceSuccessProbabilityAt
-submissionPrecision N`. State and prove that it does not depend on the setup
-(it is literally a function of `m, N` only, so this is `rfl`-level, but say
-it in a theorem so the leaderboard can cite it).
+submissionPrecision N`, plus `submissionSuccessBound_bounds`/`_nonneg`/`_le_one`.
+
+On "state and prove that it does not depend on the setup": there is no
+non-vacuous theorem to write. The definition takes a modulus and nothing
+else, so a literal independence statement
+(`∀ s₁ s₂, submissionSuccessBound N = submissionSuccessBound N`) is `rfl` on
+a goal that never mentions `s₁` or `s₂` — it reads as a theorem but asserts
+nothing. What is citable instead is `submissionSuccessBound_le_success`:
+`submission_correct` restated with the bound named, so that where `s` occurs
+is visible in the statement — only on the right. That is the form a
+leaderboard should quote.
 
 **S3.2 Computable trial count.** `headlineTrialCount` is `Nat.find`, which
 the submissions repo cannot evaluate. Provide
@@ -318,7 +367,31 @@ theorem submissionTrialCount_correct (N) (hN : Is2048Bit N) :
 via `(1-p)^t ≤ exp(-p t) ≤ 1/100` when `p t ≥ ln 100 < 5`. This number is the
 same for every submission; it is published once, not recomputed per PR.
 
-**S3.3 `Framework/Submission.lean` → `Framework/Contract.lean`.** Rename (the
+*Done*, as planned and with no slack worth tightening.
+`pLower _N : ℚ := 99 / (2500 * 2047 ^ 4)` composes `headline_success_bound`
+with `kappa_ge_one_div_25`; the chain is `1 - p ≤ 1 - c ≤ exp (-c)`, so
+`(1-p)^t ≤ exp (-(c·t)) ≤ exp (-5) ≤ 1/100`, the one analytic input being
+`100 ≤ e⁵` (`hundred_le_exp_five`, from `Real.exp_one_gt_d9`). `pLower`
+takes an `N` it does not use: `log₂ N = 2047` across the whole 2048-bit
+range, so the bound really is constant there, and the argument is kept so a
+sharper `N`-dependent bound can replace it without touching call sites.
+
+Both are computable: `#eval submissionTrialCount N` gives
+`2 216 900 437 333 460`. That is large because the baseline `κ / (log₂ N)⁴`
+being amplified is weak — a property of the correctness bound this repository
+proves, not of any table.
+
+One thing found on the way: `Is2048Bit` is defined **twice**, as
+`Shor.Is2048Bit` (`Framework/Contract.lean`, used by
+`ShorImplementation.trialCount_correct`) and `Reference.Is2048Bit`
+(`Reference2048Headline.lean`, used by `headline_success_bound`). They are
+the same proposition definitionally, so nothing breaks and no transport is
+needed; `reference_is2048Bit_eq` in `Score.lean` records that by `rfl`
+rather than leaving a reader of the scoring API to rediscover it. Collapsing
+the two is a tidy-up for S6, not a blocker.
+
+**S3.3 `Framework/Submission.lean` → `Framework/Contract.lean`.** *Done.*
+Rename (the
 name now collides conceptually with `Submission/` and with
 `ShorSubmission`), fix its importers, and rewrite the module and
 `ShorImplementation` docstrings: it is the framework's semantic contract,
@@ -328,10 +401,16 @@ count)`. Remove the sentence "the leaderboard score is `trialCount N *
 frameworkGateCount`". Keep `frameworkGateCount` itself (the asymptotic
 theorems are stated with it).
 
-## 9. Stage S4 — the surface the submissions repo builds against
+`git mv` plus eight import lines; all three docstrings (module,
+`frameworkGateCount`, `ShorImplementation`) rewritten as described, and the
+score sentence is gone from both places it appeared.
+`Implementation/README.md`'s path reference was repointed too — the rename
+broke it, so that is a consequence of this stage rather than S6 work.
 
-**S4.1 `Submission/Template.lean`.** The one file a submitter copies and
-fills:
+## 9. Stage S4 — the surface the submissions repo builds against (done)
+
+**S4.1 `Submission/Template.lean`.** *Done.* The one file a submitter copies
+and fills:
 
 ```lean
 import FastMultiplication.ShorVerification.Framework.ToomCookTable
@@ -365,6 +444,31 @@ provenance block. The submissions repo's CI is then exactly:
 lake build Submission && lake exe forshor_submission > ir.json
 ```
 
+Built and run: `lake build Submission` green (6601 jobs), `lake exe
+forshor_submission` prints 74 507 bytes of `forshor.submission/v1` — table,
+IR (all eight templates), precision, benchmark trial count, provenance, and
+an explicit `checks` block saying which tier established what.
+
+Notes on the shape it actually took:
+
+- `k` is an `abbrev`, not a `def`. `ops : Prog k` needs `Fin k` to reduce to
+  `Fin 2` for the register indices to be plain numerals; a `def` leaves
+  `OfNat (Fin k) 0` unsynthesizable.
+- The `main` went in a separate `Submission/Main.lean` rather than at the
+  bottom of `Template.lean`. P2's promise is "drop in **one** Lean file", so
+  the file a submitter replaces should hold nothing but their table and the
+  checks on it.
+- The shipped default is the canonical `k = 2` ladder plus one inert
+  `shiftL 0 0 ;; shiftR 0 0` pair — a real table, distinct from
+  `standardLoweringSetup 2`, so the default build is a worked example of an
+  edit rather than a copy of the reference. `k = 2` and not the sketch's
+  `k = 3` to keep the `shor`-at-smallest-instance check cheap; a submitter
+  raising `k` may need a larger heartbeat budget, which the template says.
+- The certificate handle is a `def` (`Submission.correct`), not a `theorem`:
+  `theorem` demands an explicit type, and restating
+  `submission_correct`'s conclusion in full would put twenty lines of
+  boilerplate in the file a submitter is supposed to find legible.
+
 **S4.2 Evaluation checks in the template.** Generic versions of `Tests.lean`'s
 `R2_7_*_CustomTable` sections (`instantiate doc "phase_product" … =
 lowerSignedPhaseProdWithWorkspace …` at `n = 8, 16`; `qft` at `w = 4, 8`;
@@ -373,9 +477,35 @@ lowerSignedPhaseProdWithWorkspace …` at `n = 8, 16`; `qft` at `w = 4, 8`;
 already runs unconditionally on any setup reaching `buildDoc`, and since S1.6
 checks against the submitter's own points.
 
+*Done*, and it lives in `Emit/Reflect/Verify.lean` rather than a new file:
+`phaseProductAgrees`/`cPhaseProductAgrees`/`qftAgrees` were already exposed
+there "so `pp`'s own CLI command can run the same check at whatever width the
+caller actually asked for", which is exactly this. `checkPhaseProduct`/
+`checkCPhaseProduct`/`checkQft` were split into width-taking `…At` forms with
+the old `4k` versions as one-line wrappers (so `verifyDoc` and the CLI are
+untouched), and `evaluationChecks`/`submissionChecks` fold them into one
+`Bool` the template pins with a single `native_decide` line.
+
+**The second width is not belt-and-braces.** Negative control: run the
+template's table against a `Doc` extracted from the canonical ladder
+*without* its inert pair. `n = 8` **passes** — the compiled circuits really
+do coincide there — and `n = 16` fails, because the recursive case computes
+`nextWidth`/`reserveNeed` from the op list and the two lists differ. `qft` at
+both widths, `shor` and `shor_gate` all pass too. A single representative
+width below the recursion guard would have certified two different tables'
+IR as interchangeable.
+
 **S4.3 No CLI table input.** `forshor_emit template <k>` keeps extracting the
 standard setup only. This is deliberate and unchanged from R5: a table enters
-through a Lean declaration, never through a parser.
+through a Lean declaration, never through a parser. *Done by doing nothing*:
+verified unchanged, and `template 2` is still byte-identical to the pre-S1
+baseline.
+
+**Exit** (met). `lake build` (3311), `lake build EmitTests forshor_emit`
+(6611) and `lake build Submission forshor_submission` (6601) all green, no
+`sorry`; axioms unchanged on the five tracked theorems; `template 2`
+byte-identical; layer scripts green; and the submissions-repo CI one-liner
+runs end to end.
 
 ## 10. S5 — scratched: no per-submission IR theorem (decision P5)
 
@@ -399,26 +529,66 @@ What stands instead:
 - The template's provenance string says `"checked by evaluation"` for every
   submission, exactly as D7 does today.
 
-## 11. Stage S6 — documentation
+## 11. Stage S6 — documentation (done)
 
-- `README.md` (top level): "Status" and "Repository layout" rows for
-  `Framework/ToomCookTable.lean`, `Framework/Contract.lean`, `Reference/`,
-  `Submission/`, `Emit/`; add a "Submitting a table" section pointing at
-  `Submission/Template.lean`.
-- `ARCHITECTURE.md`: a paragraph on the §4 layout — the rules in
-  `Framework/ToomCookTable.lean`, the certificate in `Submission/Correct.lean`.
-- `Implementation/README.md`: the opening paragraph and the `Reference/`
-  section no longer say "this folder is the submission"; the submission is a
-  `ShorLoweringSetup` (defined in `Framework/`), `Reference/` is the
-  construction that consumes one. `PhaseProduct/Math/Table_Generation/Core/README.md`
-  and `PhaseProduct/Compiler/README.md` note which definitions now live in
-  `Framework/ToomCookTable.lean`.
-- `RESTRUCTURE_PLAN.md` Phase 5: rewrite in terms of P1–P8.
-- `Emit/README.md`: point "Using a custom table" at the S4 workflow, and drop
-  its `good`-has-no-`Decidable`-instance caveat once S2.1 lands one.
-- `Emit/PLAN.md`: add a §13 pointer to this file; mark the ground rule "no
-  edits under `ShorVerification/`" as lifted; mark §12 (R6) archived, with
-  the branch and commit.
+Two plan files were **deleted** rather than rewritten (owner's call):
+
+- `RESTRUCTURE_PLAN.md` — the v2 Framework/Implementation split, long since
+  carried out and superseded by this file's §4 layout. Its one live claim
+  (`Compilation/` as a planned folder; the compiler actually landed at
+  `Shor/Lowering/`) is now recorded where it was cited, in
+  `REORG_COMPILATION.md`.
+- `Emit/PLAN.md` — 4 312 lines, most of it the R6 engineering log for work
+  that P5 scratched and that is archived on `emit-proofs-archive`.
+
+Deleting the second one was not free: 33 `.lean` docstrings and 7 markdown
+files cited it, usually as "`Emit/PLAN.md` §7" or "(R3/R4)". Leaving 40
+dangling references would have been worse than keeping the file, so before
+deleting, `Emit/README.md` gained a **round history** section defining
+R0–R6 in a table — which is what the `R`-labels scattered through the
+emitter's docstrings now mean — and every citation was rewritten to drop the
+dead `§`-numbers and point there where a target is needed. Both files remain
+in git history.
+
+The rest, as planned:
+
+- `README.md` (top level): "Status" note that the reference is no longer the
+  only admissible implementation; "Repository layout" rows for
+  `Framework/` (now naming `Contract.lean` and `ToomCookTable.lean`),
+  `Reference/` (re-described as table ↦ circuit family), `Submission/` (new)
+  and `Emit/`; a new **"Submitting a table"** section with the C1–C4 table
+  and the two-command workflow; the build section lists the new targets.
+- `ARCHITECTURE.md`: a new **"The submission boundary"** section — the §4
+  layout as a table, and the consequence stated plainly (correctness proved
+  once, generic in the table; a submission is *checked*, not proved).
+- `Implementation/README.md`: the opening no longer says "this folder *is*
+  the submission" — it is the construction, and a submission is a
+  `ShorSubmission` in `Framework/`. The `Reference/` section is retitled
+  "table ↦ circuit family" and now leads with `referenceProgramAt_success`'s
+  genericity rather than with `referenceShorImplementation`.
+- `PhaseProduct/Math/Table_Generation/Core/README.md`,
+  `PhaseProduct/Compiler/README.md` and `PhaseProduct/Math/README.md` each
+  note which of their definitions moved to `Framework/ToomCookTable.lean`
+  and that the lemmas stayed. The third was not on the original list but
+  documents `listToFin`/`interpMatrix`/`GoodInterpolationPoints`, which
+  moved.
+- `Emit/README.md`: "Using a custom table" now opens by redirecting to the
+  S4 workflow and keeps the `extract_ir_doc` path below it for callers who
+  want the `Doc` alone. Two claims that S2/S4 had falsified were corrected
+  while there — "nothing under `ShorVerification/` was changed to support
+  it" and "the only edits outside this folder are two `lakefile.lean`
+  entries".
+- `Submission/README.md` (new, written during S2–S4) covers the new folder.
+
+Still open, and not documentation:
+
+- Collapse the duplicate `Is2048Bit` (`Shor.Is2048Bit` in
+  `Framework/Contract.lean` vs `Reference.Is2048Bit`) into one.
+  `Score.lean`'s `reference_is2048Bit_eq` records that they agree until then.
+- The top-level `PLAN.md` (the "make the reference circuit computable and
+  emit it" plan) and `REORG_COMPILATION.md` are both finished-work logs of
+  the same kind as the two files deleted here. They were left alone because
+  no one asked for them; the same argument would retire them.
 
 ## 12. Risks
 
@@ -452,13 +622,13 @@ What stands instead:
 - [x] S1.5 GateCount predicates and lemmas
 - [x] S1.6 `standardLoweringSetup`, `coeffDispatch`, `Targets.lean`, `TableInstance`, tests
 - [x] S1 exit: builds green, axioms unchanged, `template 2` byte-identical
-- [ ] S1 committed on `ir-reflection-r0`
-- [ ] S2.0 `Framework/ToomCookTable.lean` (definitions + `ShorLoweringSetup` + `ShorSubmission`), old sites import it, exit checks
-- [ ] S2.1 `Submission/Decide.lean` incl. `Decidable (GoodToomCookPoints …)`, smoke tests
-- [ ] S2.2 `Submission/Correct.lean`: `submissionPrecision`, `submission_correct`
-- [ ] S3.1–S3.2 `Submission/Score.lean`: success bound, computable trial count, proofs
-- [ ] S3.3 `Framework/Submission.lean` → `Framework/Contract.lean`, docstrings
-- [ ] S4.1 `Submission/Template.lean`, `lean_lib Submission`, `lean_exe forshor_submission`
-- [ ] S4.2 generic evaluation checks in the template
+- [x] S1 committed on `ir-reflection-r0` (`b4856a5`)
+- [x] S2.0 `Framework/ToomCookTable.lean` (definitions + `ShorLoweringSetup` + `ShorSubmission`), old sites import it, exit checks
+- [x] S2.1 `Submission/Decide.lean` incl. `Decidable (GoodToomCookPoints …)`, smoke tests
+- [x] S2.2 `Submission/Correct.lean`: `submissionPrecision`, `submission_correct` (+ repaired the orphaned `Reference2048Headline.lean` it depends on)
+- [x] S3.1–S3.2 `Submission/Score.lean`: success bound, computable trial count, proofs
+- [x] S3.3 `Framework/Submission.lean` → `Framework/Contract.lean`, docstrings
+- [x] S4.1 `Submission/Template.lean` (+ `Submission/Main.lean`), `lean_lib Submission`, `lean_exe forshor_submission`
+- [x] S4.2 generic evaluation checks (`Reflect/Verify.lean`'s `submissionChecks`), with a negative control
 - [x] S5 scratched (P5): acceptance bar is the evaluation tier; R6 archived
-- [ ] S6 docs
+- [x] S6 docs (+ `RESTRUCTURE_PLAN.md` and `Emit/PLAN.md` deleted, their live content preserved in `Emit/README.md`'s round history)

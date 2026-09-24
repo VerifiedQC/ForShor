@@ -87,7 +87,7 @@ from `LowGate`.
 `pp`/`cpp`'s `annotated_eq_flat` check (`Lower/PhaseProduct.lean`) —
 whether the annotated view above and the independently-computed flat
 `LowGate` term describe the same circuit — also lives here, moved in from
-the now-deleted `Lower/Instantiate.lean` (`Emit/PLAN.md` R4): it has
+the now-deleted `Lower/Instantiate.lean` (R4): it has
 nothing to do with the extracted IR (`Reflect/`, `IR/`), only with this
 file's own two views of the same real term, so it belongs next to
 `planJson`/`lowGateJson`, not in `Lower/` or `Reflect/`.

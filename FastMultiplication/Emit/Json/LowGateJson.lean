@@ -1,5 +1,5 @@
 import FastMultiplication.Emit.Json.Common
-import FastMultiplication.ShorVerification.Framework.Submission
+import FastMultiplication.ShorVerification.Framework.Contract
 
 /-!
 # `LowGate` JSON printer

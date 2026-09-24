@@ -1,3 +1,4 @@
+import FastMultiplication.ShorVerification.Framework.ToomCookTable
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Layout
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.ToomCook
 
@@ -7,7 +8,14 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Toom
 Interpolation and phase-coefficient definitions (`interpMatrix`,
 `phaseCoeffFromPts`, `cramerCoeffFromPts`, ...), the canonical interpolation
 points (`alternatingPoint`, `genInterpolationPoints`), and the bridge to the
-pure Toom-Cook math file (`GoodToomCookPoints`, `toMathPoint`).
+pure Toom-Cook math file (`toMathPoint`).
+
+`SUBMISSION_PLAN.md` S2.0 moved `q`, `interpEntry` and `GoodToomCookPoints`
+(C1's count and C2's statement) into `Framework/ToomCookTable.lean`. They keep
+their fully-qualified names; `Shor.interpMatrix` — the compiler's own, not to
+be confused with the generic `ToomCookMath.interpMatrix` that moved — the
+Cramer coefficients, the canonical point ladder and `genInterpolationPoints_good`
+all stayed here.
 -/
 
 namespace Shor
@@ -18,17 +26,6 @@ open scoped BigOperators
 /-! =========================================================
     Interpolation and phase coefficients
 ========================================================= -/
-
-/-- Number of interpolation points used for radix-`k` phase decomposition. -/
-def q (k : ℕ) : ℕ := 2 * k - 1
-
-/-- One entry of the interpolation matrix. -/
-def interpEntry (k : ℕ) (p : Point) (j : Fin (q k)) : ℚ :=
-  match p with
-  | .int z =>
-      (z : ℚ) ^ (j : ℕ)
-  | .frac c =>
-      (c : ℚ) ^ (q k - 1 - (j : ℕ))
 
 /-- Interpolation matrix built from the chosen point set. -/
 def interpMatrix (k : ℕ) (pts : Fin (q k) → Point) : Matrix (Fin (q k)) (Fin (q k)) ℚ :=
@@ -100,9 +97,6 @@ def genInterpolationPoints (k : ℕ) : List Point := (List.range (2 * k - 1)).ma
     These declarations connect compiler interpolation points with the pure math
     Toom-Cook matrix used by the final interpolation proof.
 ========================================================= -/
-
-def GoodToomCookPoints (k : ℕ) (pts : List Point) (hpts : pts.length = q k) : Prop :=
-  ToomCookMath.GoodInterpolationPoints (row := interpEntry k) (pts := ToomCookMath.listToFin pts hpts)
 
 /--
 Convert a compiler interpolation point to the pure-math point representation.

@@ -4,6 +4,21 @@ The register/state model, the op language and its partial execution
 semantics, the phase-product coverage predicates, a small set of proof
 tactics, and the reusable lemma layer built on top of all of that.
 
+> **Where the definitions live now.** A submission to this repository is a
+> Toom-Cook table, so the vocabulary needed to *state* what makes one
+> admissible was moved out of this subtree into
+> `Framework/ToomCookTable.lean`, which imports Mathlib and nothing else
+> (`SUBMISSION_PLAN.md` S2.0). Moved: `Register`, `State` and their update
+> functions; `Operations.Point`, `Operations.valid_ops`; `Prog`, `applyOp?`,
+> `run?`; `MatchesAtState`, `expectedRow`, `regEqExpected`,
+> `matchesAt_pointRow_state`, `ProgConsumesPts`; `SafeProg`,
+> `ProgConsumesPtsSafe`. They kept their fully-qualified names, so nothing
+> below changed except the file each one is written in, and every *lemma*
+> about them — plus `Operations.inv`, the richer matchers, the unordered
+> coverage predicate and the block decomposition — stayed here. The listings
+> below still describe the whole language; treat them as a guide to the
+> vocabulary rather than to file contents.
+
 ## `Registers.lean`
 
 - **`Register k`** — a linear combination of `x₀,…,x_{k-1}` with integer

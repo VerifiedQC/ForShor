@@ -2,9 +2,16 @@
 
 The `LowGate` emitter: prints the circuits this repository proves correct,
 and an n-free ("symbolic") description of them a resource model can price,
-as JSON. This folder is output-only tooling. Nothing in it is imported by
-the verified core, and nothing under `ShorVerification/` was changed to
-support it.
+as JSON. Nothing here is imported by the verified core — no theorem in
+`Implementation/` or `Framework/` depends on a line of it, and the `Doc` it
+extracts is explicitly not a theorem (D7).
+
+It is no longer *only* output tooling, though. `ShorVerification/Submission/`
+sits above this folder: `Template.lean` runs the extractor on a submitted
+table at build time and pins the result against the real circuit, which is
+the second of the two tiers a submission is accepted on. So a change here can
+break a submission's build — see
+[`Submission/README.md`](../ShorVerification/Submission/README.md).
 
 **New to this folder?** Read this file top to bottom once, then open each
 subfolder's own `README.md` in the order `Json → Table → IR → Reflect →
@@ -18,6 +25,7 @@ folder.
 - [Three artifacts](#three-artifacts)
 - [Decisions](#decisions)
 - [What is and is not a theorem](#what-is-and-is-not-a-theorem)
+- [How this folder was built (R0–R6)](#how-this-folder-was-built-r0r6)
 - [R2 exit criteria (the test list)](#r2-exit-criteria-the-test-list)
 - [Folder map](#folder-map)
 - [CLI reference](#cli-reference)
@@ -90,7 +98,7 @@ instances (`pp`/`cpp`/`qft`) and `shor` additionally take a concrete `n`/`w`.
 
 ## Decisions
 
-Confirmed with the owner (`Emit/PLAN.md` §1); these are the invariants the
+Confirmed with the owner before R0; these are the invariants the
 extractor and its callers are built to:
 
 | # | decision |
@@ -99,9 +107,9 @@ extractor and its callers are built to:
 | D2 | **Genericity boundary.** The translation table is keyed by Lean *construct* (`Gate.seq`, `dite`, `Reg.interval`, `WellFounded.fix`, …), never by `k`, table, or width. A new `k` or table needs no code change. An unknown construct is a hard error naming the constant, never a silent drop. |
 | D3 | **Recursion is not unrolled in Lean.** A recursive definition yields one template whose body is one activation; the recursive call is a `Node.call` with its argument expressions. The consumer (and the Lean-side `IR/Instantiate.lean`) unrolls at a concrete `n`. |
 | D4 | **Opaque set.** Left unevaluated and tabulated: `nextWidth`, `reserveNeed`, `qftWorkspaceNeed`, `coeff(l, m)`, `Nat.log2`, `mod`, `pow`, `step5Constant`, `modpow`. |
-| D5 | **Concrete table required, supplied through Lean as a `ShorLoweringSetup`** (amended by R5, §11 — originally `k` and `TableSource`; `TableSource` itself retired by `SUBMISSION_PLAN.md` S1.6). The input to the extractor is a `Shor.ShorLoweringSetup` value: `k`, `hk`, `ops`, its own interpolation points `pts`, and the four proofs (`hpts`/`good`/`consumes`/`returns`) the lowering theorems need. A table that can be packaged as one is, by definition, a table those theorems cover; a table that cannot be is not a table this emitter has anything to say about, which is why there is no longer a second "table source" of any kind — see `Table/README.md`. Symbolic: `n, m, a, N` (Shor), `W, phi, x, z` (phase product), `w, r` (QFT). |
+| D5 | **Concrete table required, supplied through Lean as a `ShorLoweringSetup`** (amended by R5 — originally `k` and `TableSource`; `TableSource` itself retired by `SUBMISSION_PLAN.md` S1.6). The input to the extractor is a `Shor.ShorLoweringSetup` value: `k`, `hk`, `ops`, its own interpolation points `pts`, and the four proofs (`hpts`/`good`/`consumes`/`returns`) the lowering theorems need. A table that can be packaged as one is, by definition, a table those theorems cover; a table that cannot be is not a table this emitter has anything to say about, which is why there is no longer a second "table source" of any kind — see `Table/README.md`. Symbolic: `n, m, a, N` (Shor), `W, phi, x, z` (phase product), `w, r` (QFT). |
 | D6 | **Reference instances stay.** `pp`, `cpp`, `qft`, `shor` and their annotated views remain; they are what the extracted IR is checked against. |
-| D7 | **Not a theorem.** Trusted: the translation table and Lean's normaliser. Checked: `instantiate`/`instantiateGate` unrolls the extracted `Doc` at concrete widths and agrees with the real term — at build time (`Tests.lean`'s R2.1–R2.7 `native_decide` suite, §6) and at run time (`Reflect/Verify.lean`'s canary, run before `template`/`bundle` ever print anything). The provenance strings say exactly this. |
+| D7 | **Not a theorem.** Trusted: the translation table and Lean's normaliser. Checked: `instantiate`/`instantiateGate` unrolls the extracted `Doc` at concrete widths and agrees with the real term — at build time (`Tests.lean`'s R2.1–R2.7 `native_decide` suite) and at run time (`Reflect/Verify.lean`'s canary, run before `template`/`bundle` ever print anything). The provenance strings say exactly this. |
 
 ## What is and is not a theorem
 
@@ -137,9 +145,31 @@ extractor and its callers are built to:
   steps U3/U4 of `CmodMulInPlaceCore`) are fitted from concrete `shor`
   emissions outside Lean, not tabulated.
 
+## How this folder was built (R0–R6)
+
+The code is littered with references to rounds `R0`–`R6` and decisions
+`D1`–`D7`. The decisions are the table above; the rounds are here. They were
+tracked in an `Emit/PLAN.md` that has since been deleted — it was a 4 000-line
+engineering log, most of it about R6, which is archived — so this is what the
+labels mean now. The full log is in git history.
+
+| round | what it did |
+|---|---|
+| **R0** | The IR language: `IR/Syntax.lean`'s `WExpr`/`RegExpr`/`AExpr`/`Node`/`Template`/`Doc`, its JSON printer, decidable `Doc.wellFormed`, and the `instantiate`/`instantiateGate` interpreter that unrolls a `Doc` at a concrete width. |
+| **R1** | The extractor: `Reflect/Extract.lean`'s `MetaM` walk over a real Lean term, keyed by construct (D2), and `Reflect/Quote.lean`'s `ToExpr` instances for splicing a concrete table in. |
+| **R2** | The extraction targets (`Reflect/Targets.lean`) one at a time, each with an exit criterion — the table below. R2.7 was the genericity checkpoint: the same criteria at a different `k` and a different table, with no code change. |
+| **R3** | Bundle integration. `buildBundle` split into a pure `buildBundleCore` (still `native_decide`-testable) and an `unsafe`/`IO` `buildTemplateDoc` that embeds the extracted `Doc`; `pp`/`cpp`/`qft`'s hand-written `template_match`/`ladder`/`split` checks replaced by `instantiate_eq_real` against the real term. |
+| **R4** | Removals. The hand-written symbolic machinery the extractor superseded — `Symbolic/Template.lean`, `Symbolic/Recursion.lean`, `Lower/Instantiate.lean`, `Table/Census.lean` — deleted, and `shor_plan` reduced to widths and reserves with no affine tail. |
+| **R5** | The table became a `Shor.ShorLoweringSetup` rather than a `(k, TableSource)` pair (D5, as amended): a table that can be packaged as one is, by definition, a table the lowering theorems cover. Added the `Decidable` instances that let a user discharge a custom table's side conditions — since moved to `ShorVerification/Submission/Decide.lean`. |
+| **R6** | Proving the extractor's output correct for *all* widths, for the `k = 2` reference table (`evalNode … = lowerGateRec …`, no `native_decide` in the proofs). Substantial but incomplete, and superseded as a goal by `SUBMISSION_PLAN.md`'s decision P5: acceptance is the evaluation tier, not a per-submission IR theorem. Archived to branch `emit-proofs-archive` (commit `2218ba6`) and removed from this branch along with its `lean_lib EmitProofs`. |
+
+`SUBMISSION_PLAN.md`'s stages S1–S6 continue from here; S1.6 retired
+`TableSource`, and S4 added the submission template that this folder's
+extractor feeds.
+
 ## R2 exit criteria (the test list)
 
-Each row was one extraction step (`Emit/PLAN.md` §6); "equals" means
+Each row was one extraction step; "equals" means
 `instantiate`/`instantiateGate` of the extracted template, with `Env` built
 from the real opaque functions, agrees with the real term after flattening.
 Each is a `native_decide` example in `Tests.lean`.
@@ -152,14 +182,14 @@ Each is a `native_decide` example in `Tests.lean`.
 | R2.4 | `cphase_product`, `naive_cleaf` | as R2.2/R2.3, controlled |
 | R2.5 | `qft` | equals `lowerQFT` at `w = 4` (two recursion levels) and `w = 8` (three) |
 | R2.6 | `shor_gate`, `shor` | `shor_gate` equals `orderFindingApprox` as `Gate`; `shor` equals `Reference.referenceShorCircuit`, both at `k = 2, a = 2, N = 15, m = 0` |
-| R2.7 | genericity | R2.2/R2.5 criteria hold at `k = 3` standard and at a hand-built `k = 2` `ShorLoweringSetup` whose `ops` differ from the standard table's (§11.3), with **no code change** to `Reflect/Extract.lean` or `Reflect/Targets.lean` |
+| R2.7 | genericity | R2.2/R2.5 criteria hold at `k = 3` standard and at a hand-built `k = 2` `ShorLoweringSetup` whose `ops` differ from the standard table's, with **no code change** to `Reflect/Extract.lean` or `Reflect/Targets.lean` |
 
 ## Folder map
 
 | folder | contents | see |
 |---|---|---|
 | `Json/` | JSON printers only — one spelling per value type, no proof obligations of their own (though `PlanJson.lean` walks proof-carrying plan terms). | [`Json/README.md`](Json/README.md) |
-| `Table/` | The `(ops, points)` view of a `ShorLoweringSetup` the value tables read, plus `Decidable` instances (`Decide.lean`) that let a user discharge a custom table's `ShorLoweringSetup` proofs with `by decide`/`by native_decide`. | [`Table/README.md`](Table/README.md) |
+| `Table/` | The `(ops, points)` view of a `ShorLoweringSetup` the value tables read. (The `Decidable` instances that let a user discharge a table's side conditions moved to `ShorVerification/Submission/Decide.lean` in `SUBMISSION_PLAN.md` S2.1.) | [`Table/README.md`](Table/README.md) |
 | `IR/` | The extracted-IR language (`Syntax.lean`), its JSON printer, decidable well-formedness, and the interpreter (`instantiate`/`instantiateGate`). | — |
 | `Reflect/` | The `MetaM` extractor (`Extract.lean`, `Targets.lean`), the build-time/run-time drivers (`Driver.lean`), and the run-time instance-check canary (`Verify.lean`). | — |
 | `Symbolic/` | The opaque value tables (`CoeffPoly.lean`, `Width.lean`, `QftPlan.lean`, `ShorPlan.lean`) plus the assembly file `Bundle.lean`. | [`Symbolic/README.md`](Symbolic/README.md) |
@@ -203,17 +233,28 @@ if omitted, e.g. `pp 2 8 1` for `phi = π`).
 
 `template`/`bundle` (unless `--no-template`) load a fresh `Environment` via
 `importModules` to run the extractor — this is the one place run time and
-memory cost noticeably rises (`Emit/PLAN.md` §9); `--no-template` skips it
+memory cost noticeably rises; `--no-template` skips it
 entirely.
 
 ## Using a custom table
+
+If what you want is to *submit* a table, you are in the wrong folder: copy
+`ShorVerification/Submission/Template.lean`, edit its three definitions, and
+run `lake build Submission && lake exe forshor_submission > ir.json`. That
+path runs this folder's extractor for you, checks the result against the real
+circuit at sampled widths, and prints the IR alongside the precision and
+trial count a score needs. See
+[`Submission/README.md`](../ShorVerification/Submission/README.md).
+
+What follows is the lower-level entry point the template is built on, for
+when you want the `Doc` and nothing else.
 
 The run-time CLI (`template`/`bundle`) only ever extracts the standard
 table — there is deliberately no way to name a table on the command line,
 since a table's side-condition proofs need the kernel, not a parser. To
 extract a table of your own, write it as a `Shor.ShorLoweringSetup` in a
-Lean file that imports `FastMultiplication.Emit.Reflect.Driver`, and use
-the build-time `extract_ir_doc` command:
+Lean file that imports `FastMultiplication.Emit.Reflect.Driver`, and use the
+build-time `extract_ir_doc` command:
 
 ```lean
 def myTable : Shor.ShorLoweringSetup :=
@@ -222,34 +263,29 @@ def myTable : Shor.ShorLoweringSetup :=
     hpts := Shor.generatedInterpolationPoints_length 3
     good := Shor.genInterpolationPoints_good 3
     ops := myOps
-    consumes := by native_decide   -- Table/Decide.lean's instances make this work
+    consumes := by native_decide   -- Submission/Decide.lean's instances make this work
     returns := by native_decide }
 
 extract_ir_doc myDoc myTable
 #eval IO.println (Shor.IR.docJson myDoc).compress
 ```
 
-`SUBMISSION_PLAN.md` S1 made the interpolation points `pts` submission data
-rather than a constant baked into the plan builders' types, so a table is
-now the pair `(ops, pts)` plus four conditions on it: `hpts : pts.length =
-q k`, `good : GoodToomCookPoints k pts hpts` (the points interpolate a
-degree-`2k-2` polynomial), `consumes : ProgConsumesPtsSafe hk
+A table is the pair `(ops, pts)` plus four conditions on it: `hpts :
+pts.length = q k`, `good : GoodToomCookPoints k pts hpts` (the points
+interpolate a degree-`2k-2` polynomial), `consumes : ProgConsumesPtsSafe hk
 State.start_state myOps pts` (running `myOps` from the start state, the
-`i`-th `phaseProduct` checkpoint finds exactly `pts[i]`'s row, all points
-are consumed, and no `addScaled` has `dst = src`), and `returns : run?
-myOps State.start_state = some State.start_state`.
-
-`consumes` and `returns` are `Decidable` at a concrete `k`/`ops`/`pts`
-(`Table/Decide.lean`'s instances for `ProgConsumesPts`/`SafeProg`), so `by
+`i`-th `phaseProduct` checkpoint finds exactly `pts[i]`'s row, all points are
+consumed, and no `addScaled` has `dst = src`), and `returns : run? myOps
+State.start_state = some State.start_state`. All four are stated in
+`Framework/ToomCookTable.lean` and all four are `Decidable` at a concrete
+`k`/`ops`/`pts` (`ShorVerification/Submission/Decide.lean`), so `by
 decide`/`by native_decide` closes them directly — no hand-written proof
 needed, the same as the standard table's own `k`-generic proofs
 (`genOpsWithProduct_ProgConsumesPtsSafe`/`_returns_to_original`) are for
-`standardLoweringSetup`. `good` does not have a `Decidable` instance yet
-(`SUBMISSION_PLAN.md` S2.1 adds one, via the interpolation matrix's
-determinant); until then, points of your own need their own invertibility
-proof, and reusing the canonical ladder as above lets you cite
-`genInterpolationPoints_good` instead. A table that cannot be packaged this
-way is, correctly, one the extractor refuses to accept — see D5.
+`standardLoweringSetup`. Points of your own are fine; citing
+`genInterpolationPoints_good` as above is just the shortcut when you reuse
+the canonical ladder. A table that cannot be packaged this way is,
+correctly, one the extractor refuses to accept — see D5.
 
 ## Build
 
@@ -261,9 +297,10 @@ lake exe forshor_emit bundle 2 --m-max 24 --w-max 96
 lake exe forshor_emit shor 2 2 15 0
 ```
 
-The only edits outside this folder are two `lakefile.lean` entries
-(`lean_exe forshor_emit`, `lean_lib EmitTests`). `FastMultiplication.lean` is
-not changed; the emitter builds via its own targets.
+This folder's own `lakefile.lean` entries are `lean_exe forshor_emit` and
+`lean_lib EmitTests`; it is not part of the default target, so a plain `lake
+build` does not touch it. The `Submission` library and the
+`forshor_submission` executable are separate targets that consume it.
 
 ## Known limitations and deviations from the original design
 
@@ -295,7 +332,7 @@ not changed; the emitter builds via its own targets.
   and recursive cases is what `Tests.lean`'s R2.1–R2.7 compile-time suite
   already established, and D2 (the extractor is keyed by Lean construct,
   never by `k`) is why agreement at one representative width generalizes.
-  Since R5 (§11), the canary runs `shor_gate`/`shor` for *every* table
+  Since R5, the canary runs `shor_gate`/`shor` for *every* table
   reaching it (any `ShorLoweringSetup` is, by construction, one
   `Reference.allocateReferenceLayout`/`referenceShorCircuit` are proven to
   work over) — it is no longer `.standard`-only the way it was before D5's

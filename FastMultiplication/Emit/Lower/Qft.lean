@@ -13,7 +13,7 @@ One register of width `w`, reserve sized by `qftWorkspaceNeed ops w`.
 `ExtReg` at all) are `Decidable` at this concrete `w` (`Lower/Decide.lean`),
 discharged with `if h : … then … else refuse`.
 
-`Emit/PLAN.md` R3/R4: the `split` check (`Symbolic/Recursion.lean`-adjacent,
+R3/R4: the `split` check (`Symbolic/Recursion.lean`-adjacent,
 now-deleted `Lower/Instantiate.lean`) is replaced by `instantiate_eq_real` —
 the extracted `qft` template (`Reflect.Verify`), instantiated at this `w`,
 agreeing with the real compiled term directly. -/
