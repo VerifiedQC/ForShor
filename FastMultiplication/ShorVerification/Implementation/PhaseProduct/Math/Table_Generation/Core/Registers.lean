@@ -3,17 +3,14 @@ import FastMultiplication.ShorVerification.Framework.ToomCookTable
 /-!
 # Table-generation linear state model
 
-The symbolic register/state model used by the table generation proofs:
-basic algebraic facts about shifts, negation, scaled addition, and
-right-shift success, plus the operation inverse.
+The lemma layer over the symbolic register/state model: algebraic facts
+about shifts, negation and scaled addition, when a right shift succeeds, the
+`simp` sets for `Register`/`State` projections, and `Operations.inv`, the
+syntactic inverse of one operation.
 
-`SUBMISSION_PLAN.md` S2.0 moved the *definitions* this file used to open with
-(`Register`, `State` and their update functions, `Operations.Point`,
-`Operations.valid_ops`) into `Framework/ToomCookTable.lean`, where a
-submissions repo can read the rules without reading the construction that
-satisfies them. They keep their fully-qualified names; only this import line
-is new. Everything below — every lemma, `Operations.inv`, and the `simp` sets
-— stayed here.
+The model itself — `Register`, `State` and their update functions,
+`Operations.Point`, `Operations.valid_ops` — is defined in
+`Framework/ToomCookTable.lean`.
 -/
 
 /-! =========================================================

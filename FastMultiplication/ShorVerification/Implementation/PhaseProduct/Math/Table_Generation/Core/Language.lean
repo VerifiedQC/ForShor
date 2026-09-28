@@ -6,17 +6,16 @@ import Mathlib.Data.ZMod.Basic
 /-!
 # Table-generation program language
 
-Well-formedness, point-row matchers, phase-product coverage predicates,
-notation, and lightweight program equivalence for programs over the symbolic
-table-generation operations.
+Programs over the symbolic table-generation operations: the syntactic
+inverse `apply_Op_inverse`, well-formedness (`Prog.OpOK`/`WellFormed`), the
+richer point-row matchers (`expectedRow2`, `pointAnchor`, `finLast`) and how
+they relate to the plain one, the unordered coverage predicate
+`PhaseProductCoverage(M)`, program notation, and program equivalence.
 
-`SUBMISSION_PLAN.md` S2.0 moved `Prog`, `applyOp?`, `run?` (the C4
-vocabulary) and `MatchesAtState`, `expectedRow`, `regEqExpected`,
-`matchesAt_pointRow_state`, `ProgConsumesPts` (the C3 vocabulary) into
-`Framework/ToomCookTable.lean`. They keep their fully-qualified names; the
-lemmas about them, the richer matchers (`expectedRow2`, `pointAnchor`,
-`finLast`), the unordered `PhaseProductCoverage(M)`, the notation and the
-examples all stayed here.
+The program language itself — `Prog`, `applyOp?`, `run?` — and the ordered
+consumption predicate `ProgConsumesPts` with its `expectedRow`/
+`regEqExpected`/`matchesAt_pointRow_state` vocabulary are defined in
+`Framework/ToomCookTable.lean`.
 -/
 
 /-! =========================================================

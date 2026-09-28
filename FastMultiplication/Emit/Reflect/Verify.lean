@@ -84,20 +84,12 @@ def opaqueDispatch {k : ℕ} (ops : Prog k) : String → List ℕ → Option ℕ
     | "step5Const", [c, n] => some (step5Constant c n)
     | _, _ => none
 
-/-- The `coeff` oracle every template's `Env` needs, generalized over the
-points a setup actually carries — mirrors `Tests.lean`'s own `coeff` fields.
+/-- The `coeff` oracle every template's `Env` needs, over the points a setup
+actually carries — mirrors `Tests.lean`'s own `coeff` fields.
 
-`SUBMISSION_PLAN.md` S1.6: this used to read the `.standard` table's points
-unconditionally, whatever table it was handed, and the docstring explained
-at length why that was not a bug — `standardSignedPhaseLoweringPlan`/
-`standardCSignedPhaseLoweringPlan`/`standardQFTLoweringPlan` hard-wired
-`genInterpolationPoints k` into their own `recurse` obligation's stated
-type, so the *real* term this canary compares against used the canonical
-coefficients regardless of the `ops` it was given (R2.7's
-genericity finding). S1.2/S1.3 removed that hard-wiring: the plan builders
-now take `pts hpts`, the real term's coefficients follow the points it was
-built with, and so does this oracle. The quirk is gone rather than
-documented. -/
+`pts`/`hpts` are the caller's, not the canonical ladder's: the plan builders
+take the points as parameters, so the real term this canary compares against
+uses whatever points it was built with, and this oracle has to match. -/
 def coeffDispatch (k : ℕ) (pts : List Operations.Point) (hpts : pts.length = q k) :
     ℕ → ℕ → Option ℚ :=
   fun l mv =>
@@ -286,12 +278,12 @@ def checkShor (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit 
       if flattenLowGate g == flattenLowGate real then .ok ()
       else .error "template check (shor): instantiate disagrees with the real term"
 
-/-- The full canary suite (R3, generalized to any table by R5): `Doc.wellFormed`, then instance agreement for every template this
-`setup` extracted, at one representative width apiece. Every check now
-always runs — `setup : ShorLoweringSetup` is, by construction, a table the
-reference-instance machinery is proven to work over (D5), and since
-`SUBMISSION_PLAN.md` S1.6 retired `TableSource` there is no longer any other
-kind of table for this file to skip `shor_gate`/`shor` for. -/
+/-- The full canary suite: `Doc.wellFormed`, then instance agreement for
+every template this `setup` extracted, at one representative width apiece.
+
+Every check runs for every setup. A `ShorLoweringSetup` is, by construction,
+a table the reference-instance machinery is proven to work over (D5), so
+`shor_gate`/`shor` are never skipped. -/
 def verifyDoc (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit := do
   if doc.wellFormed then pure () else .error "extracted doc is not well-formed"
   checkPhaseProduct setup doc
@@ -301,7 +293,7 @@ def verifyDoc (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit 
   checkShor setup doc
 
 /-! =========================================================
-    S4.2: the same checks, as one `Bool` a submission can pin
+    The same checks, as one `Bool` a submission can pin
 ========================================================= -/
 
 /-- `Except.isOk`, spelled out so the `Bool` checks below reduce cleanly
@@ -312,37 +304,46 @@ def okB {ε α : Type} : Except ε α → Bool
   | .error _ => false
 
 /-- The widths a submission's `phase_product`/`cphase_product` templates are
-checked at (`SUBMISSION_PLAN.md` S4.2).
+checked at.
 
 Two, not one, and the second is the one that earns its place. At `k = 2`,
-`n = 8` takes the base case and `n = 16` the recursive one. Checking
-`Submission/Template.lean`'s table (the canonical ladder plus a
-semantically-inert `shiftL 0 0 ;; shiftR 0 0` pair) against a `Doc` extracted
-from the canonical ladder *without* it: `n = 8` passes — the compiled
-circuits really do coincide there, the extra ops being inert — and `n = 16`
-fails, because the recursion's `nextWidth`/`reserveNeed` are computed from
-the op list and the two tables' lists differ. A single representative width
-below the guard would have called two different tables' IR interchangeable.
--/
+`n = 8` takes the base case and `n = 16` the recursive one, and the pair
+separates tables the base case alone calls equal.
+
+Two measurements, both at `k = 2`, both `n = 8` passing and `n = 16`
+failing:
+
+* the canonical ladder plus a semantically-inert `shiftL 0 0 ;; shiftR 0 0`
+  pair, checked against a `Doc` extracted from the canonical ladder
+  *without* it. The compiled circuits really do coincide at `n = 8`, the
+  extra ops being inert; at `n = 16` the recursion's
+  `nextWidth`/`reserveNeed` are computed from the op list and the two
+  tables' lists differ.
+* a table whose `phaseProduct` checkpoints do not all sit on register 0,
+  checked against its *own* `Doc`. Admissible (C1-C4 all pass) and
+  agreeing at `n = 8`, disagreeing at `n = 16` — a live limitation of this
+  tier, recorded in `Submission/Template.lean`'s docstring.
+
+A single representative width below the guard would have called the first
+pair's two different tables interchangeable, and would have accepted the
+second table's IR. -/
 def submissionPPWidths : List ℕ := [8, 16]
 
-/-- The widths a submission's `qft` template is checked at (S4.2). -/
+/-- The widths a submission's `qft` template is checked at. -/
 def submissionQFTWidths : List ℕ := [4, 8]
 
-/-- **The evaluation tier** (decision P5, `SUBMISSION_PLAN.md` §10/S4.2).
-`verifyDoc`'s checks, with two differences: several widths instead of the
-single representative `4k`, and a `Bool` instead of an `Except` so a
-submission can pin the result with `native_decide` at build time rather than
-running it at print time.
+/-- **The evaluation tier.** `verifyDoc`'s checks, with two differences:
+several widths instead of the single representative `4k`, and a `Bool`
+instead of an `Except` so a submission can pin the result with
+`native_decide` at build time rather than running it at print time.
 
-There is no per-submission theorem that the extracted IR is correct for
-*every* width — that is an Emit-side project about the reference table only
-(R6, archived on `emit-proofs-archive`). What a submission is held to is
-this: the four kernel-checked side conditions on the table
-(`Submission/Decide.lean`), plus `instantiate = real` verified by evaluation
-at these sampled widths and at the smallest reference Shor instance. Since
-S1.6 the comparison is against the submitter's own points, not the canonical
-ladder. -/
+This is evaluation, not a theorem: it does not establish that the extracted
+IR is correct at *every* width. What a submission is held to is the four
+kernel-checked side conditions on its table (proved in
+`Submission/Template.lean`, decided by `Submission/Decide.lean`, audited by
+`Submission/Audit.lean`), plus
+`instantiate = real` verified here at these sampled widths and at the
+smallest reference Shor instance, against the submitter's own points. -/
 def evaluationChecks (setup : Shor.ShorLoweringSetup) (doc : Doc)
     (ppWidths qftWidths : List ℕ) : Bool :=
   doc.wellFormed
@@ -353,8 +354,9 @@ def evaluationChecks (setup : Shor.ShorLoweringSetup) (doc : Doc)
     && okB (checkShor setup doc)
 
 /-- `evaluationChecks` at the default sampled widths. This is the single
-`Bool` `Submission/Template.lean` pins, so a submitter writes one
-`native_decide` line and none of the machinery behind it. -/
+`Bool` `Submission/Check.lean` pins, so the acceptance build carries one
+`native_decide` line and none of the machinery behind it — and no submitter
+writes it. -/
 def submissionChecks (setup : Shor.ShorLoweringSetup) (doc : Doc) : Bool :=
   evaluationChecks setup doc submissionPPWidths submissionQFTWidths
 

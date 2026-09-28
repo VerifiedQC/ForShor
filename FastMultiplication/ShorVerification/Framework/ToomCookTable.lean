@@ -7,11 +7,10 @@ import Mathlib.Tactic
 /-!
 # What a Toom-Cook table is, and what makes one admissible
 
-`SUBMISSION_PLAN.md` P8/S2.0. This file is the *rules* of the submission
-challenge: the minimal vocabulary needed to state `Shor.ShorLoweringSetup`,
-plus the record itself. It imports Mathlib and nothing else — no compiler, no
-plan builders, no generator, no proofs — so a submissions repo can read the
-specification without reading the implementation that satisfies it.
+The minimal vocabulary needed to state `Shor.ShorLoweringSetup`, plus the
+record itself. This file imports Mathlib and nothing else — no compiler, no
+plan builders, no generator, no proofs — so the specification can be read
+without the implementation that satisfies it.
 
 A submission is a Toom-Cook table: an arithmetic program `ops : Prog k` over
 `k` limb registers, together with the interpolation points `pts` its
@@ -22,15 +21,14 @@ admissible, all decidable at a concrete `k`, `ops`, `pts`
 | | condition | meaning |
 |---|---|---|
 | C1 | `pts.length = q k` (`= 2k - 1`) | one point per product coefficient |
-| C2 | `GoodToomCookPoints k pts hpts` | `det (interpMatrix …) ≠ 0`: the points interpolate a degree-`2k-2` polynomial. The row for `int z` is `[1, z, …, z^(2k-2)]`; `frac c` means the point `1/c`, row `[c^(2k-2), …, c, 1]`; `frac 0` is the point at infinity |
+| C2 | `GoodToomCookPoints k pts hpts` | `det (interpMatrix …) ≠ 0`: the points interpolate a degree-`2k-2` polynomial. The row for `int z` is `[1, z, …, z^(2k-2)]`; `frac c` means the point `1/c`, row `[c^(2k-2), …, c, 1]`; `frac 0` is the point at infinity. The matrix is a projective Vandermonde, so this is *equivalent* to the points being pairwise distinct — `Submission/Decide.lean`'s `goodToomCookPoints_iff_distinct`, which is how a submission discharges it without evaluating a `(2k-1)!`-term determinant |
 | C3 | `ProgConsumesPtsSafe … ops pts` | running `ops` from `State.start_state`, the `i`-th `phaseProduct r` checkpoint finds register `r` holding exactly the `k`-entry row of `pts[i]`, all points are consumed, and no `addScaled` has `dst = src`. **Order matters**: leaf `l` receives coefficient `l` |
 | C4 | `run? ops State.start_state = some State.start_state` | the table uncomputes itself; every right shift is exact |
 
-Everything here was moved verbatim from `Implementation/` (the tables in
-`SUBMISSION_PLAN.md` §6 say from where) and keeps its fully-qualified name,
-so no use site changed except for an added import. The lemmas about these
-definitions, the point generator, the compiler and the correctness proofs all
-stayed behind and import this file back.
+Only definitions live here. Every lemma about them, the point generator, the
+compiler and the correctness proofs are under `Implementation/`, which
+imports this file. The section headers below name the file each group is
+used from.
 -/
 
 /-! =========================================================
@@ -250,10 +248,13 @@ def GoodToomCookPoints (k : ℕ) (pts : List Point) (hpts : pts.length = q k) : 
     The submission (`Implementation/Shor/Spec/Setup.lean`)
 ========================================================= -/
 
-/-- Low-level lowering assumptions shared by lowered Shor statements — and,
-since `SUBMISSION_PLAN.md` P1/P7, exactly what a submission *is*: the table
-(`ops`), the points it evaluates at (`pts`), and the four conditions C1–C4
-relating them. -/
+/-- A Toom-Cook table and the assumptions the lowered Shor statements need
+about it: the program (`ops`), the interpolation points it evaluates at
+(`pts`), and the four conditions C1–C4 relating them.
+
+This record is also what a submission is. `Reference.referenceProgramAt` is
+generic in it, so a value of this type is all the reference construction
+needs to produce a circuit family with a proved success bound. -/
 structure ShorLoweringSetup where
   /-- Number of synthesis registers used by the lowering program. -/
   k : ℕ
@@ -273,9 +274,9 @@ structure ShorLoweringSetup where
   /-- The point-consuming program uncomputes back to the start state. (C4) -/
   returns : run? ops State.start_state = some State.start_state
 
-/-- The submitter-facing spelling of `ShorLoweringSetup`. The same record: a
-submission is the table plus its proofs, not a data-only wrapper a checker
-converts (`SUBMISSION_PLAN.md` P7). -/
+/-- The submitter-facing spelling of `ShorLoweringSetup`. The same record:
+a submission is the table together with its proofs, not data a checker
+converts. -/
 abbrev ShorSubmission := ShorLoweringSetup
 
 end Shor

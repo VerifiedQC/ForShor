@@ -16,29 +16,20 @@ What "a correct Shor order-finding construction" means, stated once:
 meets a declared single-run success bound on every valid instance and a
 trial count amplifying that bound past 99% on the 2048-bit benchmark.
 
-**This is no longer what a submitter writes.** `SUBMISSION_PLAN.md` §0/P7
-narrowed the challenge: a submission is a Toom-Cook table
-(`Shor.ShorSubmission`, in `Framework/ToomCookTable.lean`) — an arithmetic
-program and the interpolation points it evaluates at — and the reference
-construction turns any admissible table into a circuit family. So
-`ShorImplementation` became the framework's *internal* contract rather than
-its public boundary: every accepted submission `s` still yields one, as
-`Reference.referenceShorImplementation s`, but nobody writes the fields by
-hand. The file was called `Framework/Submission.lean` until S3.3; the name
-now collides with both `Submission/` and `ShorSubmission`, and "contract" is
-what it always was.
+`ShorImplementation` is an internal contract, not something written by hand.
+A submission is a Toom-Cook table (`Shor.ShorSubmission`,
+`Framework/ToomCookTable.lean`) — an arithmetic program and the interpolation
+points it evaluates at — and `Reference.referenceShorImplementation` builds
+this record from any admissible one.
 
-Scoring moved out too (decision P4). The leaderboard score is
-`Shor.submissionTrialCount N` (`Submission/Score.lean`, fixed for every
-submission at the organiser's chosen precision) times the gate count
-Qualtran measures on the IR `Emit/` extracts — not a quantity computed in
-Lean. `ShorOrderFindingProgram.frameworkGateCount` below is kept, and is
-still the count the asymptotic theorems (`GateCount/Shor_GateCount.lean`)
-are stated with; it is just no longer the scored number.
+`ShorOrderFindingProgram.frameworkGateCount` is the gate count the asymptotic
+bounds in `GateCount/Shor_GateCount.lean` are stated with. It is not a
+leaderboard score: that is `Shor.submissionTrialCount N`
+(`Submission/Score.lean`) times a single-run count measured outside Lean, on
+the IR `Emit/` extracts.
 
 Construction, lowering, synthesis, precision selection, workspace layout,
-and all other implementation details remain entirely on the implementation
-side.
+and all other implementation details live on the implementation side.
 -/
 
 variable {qs : QSemantics}
@@ -105,8 +96,7 @@ The logical gate count of a program under the framework's shared cost model.
 
 Computed by the framework, never declared. It is what
 `GateCount/Shor_GateCount.lean`'s asymptotic bounds are about; it is *not*
-the leaderboard score, which is measured by Qualtran on the emitted IR
-(P4).
+the leaderboard score, which is measured outside Lean on the emitted IR.
 -/
 def ShorOrderFindingProgram.frameworkGateCount
     (P : ShorOrderFindingProgram) : ℕ :=
@@ -126,16 +116,15 @@ benchmark-specific: `trialCount` is one concrete natural number of
 independent trials sufficient to push the declared success lower bound past
 99% for every 2048-bit modulus.
 
-Not written by hand any more. An accepted submission is a
-`Shor.ShorSubmission` (`Framework/ToomCookTable.lean`), and
-`Reference.referenceShorImplementation` builds this record from it, filling
-`correct` from `Reference.referenceSubmittedProgram_correct` — the theorem
-that is generic in the table, which is what makes the four decidable side
-conditions on a table a *complete* acceptance test.
+Built rather than written by hand: `Reference.referenceShorImplementation`
+constructs this record from a `Shor.ShorSubmission`, filling `correct` from
+`Reference.referenceSubmittedProgram_correct`. That theorem is generic in
+the table, which is what makes the four decidable side conditions on a
+submitted table a complete acceptance test.
 
 There is no declared gate-count field: the logical gate count of a circuit is
 computed by the framework (`ShorOrderFindingProgram.frameworkGateCount`), and
-the scored count is measured outside Lean altogether (P4).
+the scored count is measured outside Lean altogether.
 -/
 structure ShorImplementation : Type where
 

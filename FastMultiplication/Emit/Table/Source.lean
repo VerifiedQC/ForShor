@@ -6,22 +6,14 @@ import FastMultiplication.ShorVerification.Implementation.Reference.StandardLowe
 /-!
 # The Toom-Cook table a bundle is built from
 
-`SUBMISSION_PLAN.md` S1.6 retired `TableSource`. Until S1 the interpolation
-points were not a parameter — the lowering chain hard-wired
-`genInterpolationPoints k` into the *types* of the plan builders, so a second
-table with points of its own (`Table_Generation.generate`, the older
-table-generation tooling) could never be more than a value-table curiosity:
-it had no `ShorLoweringSetup`, hence no `consumes`/`returns` theorem, hence
-nothing the emitter's extraction path was allowed to touch, and
-`--table generate` was refused by everything downstream of the pure value
-sections. S1 made `pts` submission data, which removes the distinction at its
-root: a table *is* a `ShorLoweringSetup` (its `ops`, its `pts`, and the four
-side conditions relating them), and anything that cannot be packaged as one
-is not a table this emitter has anything to say about. So the inductive, the
-`--table` flag, `checkTable`'s run-time re-derivation of what a
-`ShorLoweringSetup` already proves, and the `.generate` value-table path are
-all gone; `TableInstance` survives as the read-only `(ops, points, hlen)`
-projection the JSON value-table builders (`Symbolic/Bundle.lean`) consume.
+A table is a `Shor.ShorLoweringSetup`: an arithmetic program `ops`, the
+interpolation points `pts` its `phaseProduct` checkpoints consume, and the
+four side conditions relating them. There is no other kind, and nothing that
+cannot be packaged as one is a table this emitter has anything to say about.
+
+`TableInstance` is the read-only `(ops, points, hlen)` projection of that
+record which the JSON value-table builders (`Symbolic/Bundle.lean`) consume;
+they need the data but none of the proofs.
 -/
 
 namespace Shor

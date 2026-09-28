@@ -10,14 +10,11 @@ import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.
 
 The user-facing setup/readiness records consumed by the final Shor
 correctness statements, and the bridge from the lower-level implementation
-setup to the public one.
+setup to the public one. These are all about the quantum side: register
+layout, workspace capacity, precision and clean-input assumptions.
 
-`SUBMISSION_PLAN.md` S2.0 moved `ShorLoweringSetup` itself — which since P1/P7
-*is* the submission, not merely an assumption bundle — into
-`Framework/ToomCookTable.lean`, alongside the C1-C4 vocabulary it is stated
-in. It keeps its fully-qualified name (`Shor.ShorLoweringSetup`), and
-`Shor.ShorSubmission` there is an `abbrev` for it. The records below, which
-are about the *quantum* side rather than the table, stayed here.
+The table side — `Shor.ShorLoweringSetup`, which the records below take as a
+parameter — is defined in `Framework/ToomCookTable.lean`.
 -/
 namespace Shor
 open Operations
@@ -167,6 +164,58 @@ private lemma active_get_mem_ownedQubits
   dsimp [Reg.get]
   exact List.get_mem x.active.qubits _
 
+/--
+`ModExpLayout` from the ownership facts of `ShorApproxSetupMinimal`.
+
+Stated without any `QSemantics`, so the static layout can be established for a
+concrete register allocation without choosing a semantics.
+-/
+theorem modExpLayout_of_disjoint
+    {x data work : ExtReg}
+    {flag : ℕ}
+    (exponent_data_disjoint : ExtReg.OwnedDisjoint x data)
+    (data_work_disjoint : ExtReg.OwnedDisjoint data work)
+    (flag_outside_data : flag ∉ data.ownedQubits)
+    (flag_outside_work : flag ∉ work.ownedQubits)
+    (controls_outside_work :
+      ∀ q ∈ x.active.qubits, q ∉ work.ownedQubits)
+    (flag_outside_controls : flag ∉ x.active.qubits) :
+    ModExpLayout x.active data work flag := by
+  intro i
+
+  have hctrlMem :
+      x.active.get i ∈ x.active.qubits := by
+    dsimp [Reg.get]
+    exact List.get_mem x.active.qubits _
+
+  have hctrlData :
+      x.active.get i ∉ data.ownedQubits := by
+    intro hdata
+    exact
+      exponent_data_disjoint
+        (active_get_mem_ownedQubits x i)
+        hdata
+
+  have hctrlWork :
+      x.active.get i ∉ work.ownedQubits :=
+    controls_outside_work
+      (x.active.get i)
+      hctrlMem
+
+  have hctrlFlag :
+      x.active.get i ≠ flag := by
+    intro heq
+    apply flag_outside_controls
+    rwa [← heq]
+
+  exact
+    ⟨data_work_disjoint,
+      flag_outside_data,
+      flag_outside_work,
+      hctrlData,
+      hctrlWork,
+      hctrlFlag⟩
+
 /-- Bridge from the lower-level setup to the public approximate setup. -/
 def ShorApproxSetupMinimal.toShorApproxSetup
     {qs : QSemantics}
@@ -196,41 +245,14 @@ def ShorApproxSetupMinimal.toShorApproxSetup
     }
 
   · -- Reconstruct `ModExpLayout`.
-    intro i
-
-    have hctrlMem :
-        x.active.get i ∈ x.active.qubits := by
-      dsimp [Reg.get]
-      exact List.get_mem x.active.qubits _
-
-    have hctrlData :
-        x.active.get i ∉ data.ownedQubits := by
-      intro hdata
-
-      exact
-        h.exponent_data_disjoint
-          (active_get_mem_ownedQubits x i)
-          hdata
-
-    have hctrlWork :
-        x.active.get i ∉ work.ownedQubits :=
-      h.controls_outside_work
-        (x.active.get i)
-        hctrlMem
-
-    have hctrlFlag :
-        x.active.get i ≠ flag := by
-      intro heq
-      apply h.flag_outside_controls
-      rwa [← heq]
-
     exact
-      ⟨h.data_work_disjoint,
-        h.flag_outside_data,
-        h.flag_outside_work,
-        hctrlData,
-        hctrlWork,
-        hctrlFlag⟩
+      modExpLayout_of_disjoint
+        h.exponent_data_disjoint
+        h.data_work_disjoint
+        h.flag_outside_data
+        h.flag_outside_work
+        h.controls_outside_work
+        h.flag_outside_controls
 
   · -- Reconstruct `ModMulCircuitWorkspaceOK`.
     exact

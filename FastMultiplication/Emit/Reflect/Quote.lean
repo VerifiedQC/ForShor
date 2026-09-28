@@ -10,8 +10,7 @@ concrete `ops : Prog k` — computed with compiled code, at run time — into an
 `Lean.toExpr` (needing `ToExpr (Prog k)`, i.e. `ToExpr (List
 (Operations.valid_ops k))`) does exactly that. `ToExpr Operations.Point` is
 here for the same reason on the other half of a table: `Targets.lean`'s
-`setupPtsExprs` quotes `setup.pts` as a literal (`SUBMISSION_PLAN.md`
-S1.6).
+`setupPtsExprs` quotes `setup.pts` as a literal.
 
 Neither `Operations.Point` nor `Operations.valid_ops k` is self-recursive
 (no field of either is a `List` of itself — contrast `IR/Syntax.lean`'s

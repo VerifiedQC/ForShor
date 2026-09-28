@@ -79,13 +79,10 @@ example :
 
 example : (smallJson.getObjVal? "resources").toOption.isSome := by native_decide
 
--- 6 (the `checkTable .generate` run-time coverage checks for `k = 2, 3`) is
--- gone with `TableSource` itself (`SUBMISSION_PLAN.md` S1.6): its subject was
--- the second table source, which S1 removed rather than generalised — a table
--- is now a `ShorLoweringSetup`, and the conditions `checkTable` re-derived at
--- run time are that record's own fields. R2.7's `r2_7c_setup` below is what
--- exercises a non-canonical table now, and it discharges those conditions by
--- `native_decide` into real proof terms instead of a Boolean report.
+-- 6 is gone: it checked a second kind of table source at run time, and a
+-- table is now a `ShorLoweringSetup` whose own fields are those conditions.
+-- R2.7's `r2_7c_setup` below is what exercises a non-canonical table, and it
+-- discharges them by `native_decide` into proof terms rather than a Boolean.
 
 -- 7. `check1_inverseOf`/`check2_agreesWithCramer` succeed for `k = 2, 3` at a
 -- small `mMax`, on the standard table (Gauss-Jordan `M⁻¹` agrees with the
@@ -860,18 +857,14 @@ example :
 
 end R2_7_PhaseProduct_K3Standard
 
--- R5: D5's amendment means "any table" is now "any
--- `ShorLoweringSetup`". §11.3's exit criterion, and the only table-genericity
--- demonstration left once `SUBMISSION_PLAN.md` S1.6 retired `TableSource`: a
--- hand-built `ShorLoweringSetup` whose `ops` genuinely differ from
--- `standardLoweringSetup 2`'s (a redundant, semantically-inert
--- `shiftL`/`shiftR 0` pair appended) but still consume its own `pts` in order
--- and return to the start state — discharged by `native_decide` using
--- `Table/Decide.lean`'s `Decidable` instances, not assumed. The points here
--- are still the canonical ones; S1 made them a *field* of the setup rather
--- than a constant baked into the plan builders' types, so this section's
--- `coeff` oracle and real terms both read `r2_7c_setup.pts` and would follow
--- a different choice if this setup made one.
+-- The table-genericity demonstration: a hand-built `ShorLoweringSetup` whose
+-- `ops` genuinely differ from `standardLoweringSetup 2`'s (a redundant,
+-- semantically-inert `shiftL`/`shiftR 0` pair appended) but still consume its
+-- own `pts` in order and return to the start state — discharged by
+-- `native_decide` using `Submission/Decide.lean`'s instances, not assumed.
+-- The points here are still the canonical ones, but they are read off
+-- `r2_7c_setup.pts` by both the `coeff` oracle and the real terms below, so
+-- this section would follow a different choice if the setup made one.
 section R2_7_PhaseProduct_CustomTable
 
 abbrev r2_7c_k : Nat := 2

@@ -254,14 +254,11 @@ of the width table, or the value tables published alongside `template`
 would have a gap right where the check itself looked. -/
 def templateCheckWidth (k : ℕ) : ℕ := 4 * k
 
-/-- Build the standalone `template` document (R3, generalised by R5):
-extract the `Doc` by reflection, verify it (`Reflect.Verify.verifyDoc`), and
-print it together with the checks that passed and this section's
-provenance. Refuses (`.error`) if extraction/verification fails or if `wMax`
-doesn't cover the verifier's own checked width. `SUBMISSION_PLAN.md` S1.6
-retired `TableSource`, so the old third refusal — `src = .generate`, a table
-with no `ShorLoweringSetup` and therefore nothing the lowering theorems
-cover — has no input left to reject. -/
+/-- Build the standalone `template` document: extract the `Doc` by
+reflection, verify it (`Reflect.Verify.verifyDoc`), and print it together
+with the checks that passed and this section's provenance. Refuses
+(`.error`) if extraction or verification fails, or if `wMax` doesn't cover
+the verifier's own checked width. -/
 unsafe def buildTemplateDoc (k : ℕ) (_hk : 1 < k) (wMax : ℕ) :
     IO (Except String Json) := do
   if wMax < templateCheckWidth k then

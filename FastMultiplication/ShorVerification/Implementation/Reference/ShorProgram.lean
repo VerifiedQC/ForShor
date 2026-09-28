@@ -1,8 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.Reference.ReferenceReadiness
 import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFinding
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
-import FastMultiplication.ShorVerification.Framework.Instantiation.QSemantics
-import FastMultiplication.ShorVerification.Framework.Instantiation.RegEncoding
 
 namespace Shor
 namespace Reference
@@ -148,11 +146,9 @@ def referenceLowerWorkspace
 Static lowering-workspace witness for the reference circuit, stated without
 any `QSemantics` argument.
 
-The underlying fact is proved by instantiating `gateWorkspaceOK_orderFindingApprox`
-at an arbitrary concrete quantum semantics (`ConcreteQSemantics.concreteQSemantics`): the
-conclusion `GateWorkspaceOK ops (orderFindingApprox ...)` no longer mentions
-`qs` once `orderFindingApprox` itself does not, so the choice of witness is
-immaterial and does not leak into the statement.
+It follows from `gateWorkspaceOK_orderFindingApprox_of_static`, which needs
+only the allocator's static layout and workspace facts, so no quantum
+semantics is involved at all.
 -/
 private theorem reference_gateWorkspaceOK_orderFindingApprox
     (lowering : ShorLoweringSetup)
@@ -167,20 +163,31 @@ private theorem reference_gateWorkspaceOK_orderFindingApprox
         (allocateReferenceLayout lowering.ops inst m).flag
         (reference_modMulCircuitWorkspaceOK lowering.ops inst m)
         (reference_step4Workspace lowering.ops inst m)) := by
+  have hlayout :
+      ModExpLayout
+        (allocateReferenceLayout lowering.ops inst m).x.active
+        (allocateReferenceLayout lowering.ops inst m).data
+        (allocateReferenceLayout lowering.ops inst m).work
+        (allocateReferenceLayout lowering.ops inst m).flag := by
+    simpa [allocateReferenceLayout] using
+      modExpLayout_of_disjoint
+        (reference_exponent_data_disjoint lowering.ops inst m)
+        (reference_data_work_disjoint lowering.ops inst m)
+        (reference_flag_outside_data lowering.ops inst m)
+        (reference_flag_outside_work lowering.ops inst m)
+        (reference_controls_outside_work lowering.ops inst m)
+        (reference_flag_outside_controls lowering.ops inst m)
   exact
-    gateWorkspaceOK_orderFindingApprox
-      (qs := ConcreteQSemantics.concreteQSemantics)
-      (ops := lowering.ops)
-      (η := referencePrecision m)
-      (a := inst.a)
-      (N := inst.N)
-      (x := (allocateReferenceLayout lowering.ops inst m).x)
-      (data := (allocateReferenceLayout lowering.ops inst m).data)
-      (work := (allocateReferenceLayout lowering.ops inst m).work)
-      (scratch := (allocateReferenceLayout lowering.ops inst m).scratch)
-      (flag := (allocateReferenceLayout lowering.ops inst m).flag)
-      (b0 := RegEncoding.zero (Basis := ConcreteQSemantics.concreteQSemantics.Basis))
-      (referenceApproxSetup (qs := ConcreteQSemantics.concreteQSemantics) lowering inst m)
+    gateWorkspaceOK_orderFindingApprox_of_static
+      lowering.ops inst.a inst.N
+      (allocateReferenceLayout lowering.ops inst m).x
+      (allocateReferenceLayout lowering.ops inst m).data
+      (allocateReferenceLayout lowering.ops inst m).work
+      (allocateReferenceLayout lowering.ops inst m).scratch
+      (allocateReferenceLayout lowering.ops inst m).flag
+      (reference_modMulCircuitWorkspaceOK lowering.ops inst m)
+      (reference_step4Workspace lowering.ops inst m)
+      hlayout
       (allocatedReferenceWorkspaceLargeEnough lowering.ops inst m)
 
 /--

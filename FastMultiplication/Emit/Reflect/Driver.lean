@@ -88,13 +88,11 @@ for backwards compatibility with `extract_ir_doc`'s existing callers
 (`Tests.lean`'s R2.1 section); callers that want `phase_product`/
 `cphase_product`/`qft` name it explicitly to `instantiate`.
 
-R5: takes any `Shor.ShorLoweringSetup`, not a `(k, hk, table
-source)` triple — D5's amendment. `setup` is a table the lowering theorems
-actually cover *by construction* (its four side conditions are exactly those
-theorems' hypotheses), so there is no second kind of table to special-case
-or reject here: an invalid one simply cannot be packaged as a
-`ShorLoweringSetup` in the first place. `SUBMISSION_PLAN.md` S1.6 retired
-the `TableSource` inductive that used to be the alternative. -/
+Takes any `Shor.ShorLoweringSetup` (D5). `setup` is a table the lowering
+theorems cover *by construction* — its four side conditions are exactly
+those theorems' hypotheses — so there is no kind of table to special-case or
+reject here: an invalid one cannot be packaged as a `ShorLoweringSetup` in
+the first place. -/
 def buildDoc (setup : Shor.ShorLoweringSetup) : MetaM IR.Doc := do
   let pp ← extractPPBody setup
   let pp2 ← extractPhaseProductBody setup
@@ -184,14 +182,13 @@ kernel takes it on faith"), same as `native_decide`.
 Every `MetaM`/`CoreM` error (an `unrecognised construct …`, say) is caught
 and reported as `Except.error`, never an uncaught `IO` exception.
 
-R5, and unchanged by `SUBMISSION_PLAN.md` S4.3: the run-time CLI
-(`template`/`bundle`) only
-ever extracts the standard table — `standardLoweringSetup k h`, built here
-as an ordinary (non-reflected) function call, exactly as it always was
-before R5's `ShorLoweringSetup` refactor just moved one level up. A custom
-table is a build-time-only path (`extract_ir_doc` above, named in a Lean
-file the user writes and compiles); there is deliberately no way to hand
-`runExtract` an arbitrary `ShorLoweringSetup` from the command line. -/
+The run-time CLI (`template`/`bundle`) only ever extracts the standard
+table — `standardLoweringSetup k h`, built here as an ordinary
+(non-reflected) function call. A custom table is a build-time-only path
+(`extract_ir_doc` above, named in a Lean file the user writes and compiles);
+there is deliberately no way to hand `runExtract` an arbitrary
+`ShorLoweringSetup` from the command line, because a table's side-condition
+proofs need the kernel rather than a parser. -/
 unsafe def runExtract (k : Nat) : IO (Except String IR.Doc) := do
   if h : 1 < k then
     try

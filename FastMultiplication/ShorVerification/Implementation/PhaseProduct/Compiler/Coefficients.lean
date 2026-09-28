@@ -5,17 +5,16 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Toom
 /-!
 # Phase-Product Compiler: Coefficients
 
-Interpolation and phase-coefficient definitions (`interpMatrix`,
+Interpolation and phase-coefficient definitions (`Shor.interpMatrix`,
 `phaseCoeffFromPts`, `cramerCoeffFromPts`, ...), the canonical interpolation
-points (`alternatingPoint`, `genInterpolationPoints`), and the bridge to the
-pure Toom-Cook math file (`toMathPoint`).
+points (`alternatingPoint`, `genInterpolationPoints`) together with the proof
+that they interpolate (`genInterpolationPoints_good`), and the bridge to the
+pure Toom-Cook algebra (`toMathPoint`).
 
-`SUBMISSION_PLAN.md` S2.0 moved `q`, `interpEntry` and `GoodToomCookPoints`
-(C1's count and C2's statement) into `Framework/ToomCookTable.lean`. They keep
-their fully-qualified names; `Shor.interpMatrix` — the compiler's own, not to
-be confused with the generic `ToomCookMath.interpMatrix` that moved — the
-Cramer coefficients, the canonical point ladder and `genInterpolationPoints_good`
-all stayed here.
+`Shor.interpMatrix` here is the compiler's own, indexed by `Fin (q k)`; the
+generic `ToomCookMath.interpMatrix` that `GoodToomCookPoints` is defined
+through is a different function. `q`, `interpEntry` and `GoodToomCookPoints`
+are defined in `Framework/ToomCookTable.lean`.
 -/
 
 namespace Shor

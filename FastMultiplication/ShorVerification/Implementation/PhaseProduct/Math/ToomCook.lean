@@ -21,11 +21,9 @@ compiler: interpolation points, Vandermonde-style invertibility, reconstruction
 at a radix, and the exponential phase scalars obtained from weighted point
 sums.
 
-`SUBMISSION_PLAN.md` S2.0 moved the three definitions C2 is stated in terms
-of — `listToFin`, `interpMatrix` and `GoodInterpolationPoints`, all generic
-in the point type — into `Framework/ToomCookTable.lean`. They keep their
-fully-qualified names; `ToomCookMath.Point`, `pointRow`, `radixRow` and every
-invertibility and interpolation proof stayed here.
+`ToomCookMath.listToFin`, `interpMatrix` and `GoodInterpolationPoints` — the
+three generic definitions the invertibility statements are phrased in — are
+defined in `Framework/ToomCookTable.lean`.
 -/
 
 /-! =========================================================

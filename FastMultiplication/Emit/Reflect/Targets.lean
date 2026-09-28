@@ -281,18 +281,16 @@ def naiveCLeafTemplate : IR.Template :=
 to feed `standardSignedPhaseLoweringPlan`/`standardCSignedPhaseLoweringPlan`/
 `standardQFTLoweringPlan`'s `.eq_1` lemmas.
 
-`SUBMISSION_PLAN.md` S1.6: these used to be `genInterpolationPoints k` and
-`generatedInterpolationPoints_length k` at every call site, whatever setup
-the extractor was handed. That was invisible rather than wrong — the
-extracted `Doc` does not depend on the point *values*, since a leaf's angle
-translates to the D4-opaque `AExpr.coeff l m` and `tryCramerCoeffApp`
-(`Extract.lean`) discards the `pts`/`hpts` arguments it matches on — but it
-meant reflecting over a term describing a different table from the one the
-caller asked about, which stops being a harmless accident as soon as a
-submitter's setup chooses points of its own. The points are quoted as a
-literal (`ToExpr Operations.Point`, `Reflect/Quote.lean`) the same way
-`setup.ops` already is, and the length obligation is discharged by `decide`
-rather than by naming a lemma about one particular list. -/
+The points are quoted as a literal (`ToExpr Operations.Point`,
+`Reflect/Quote.lean`) the same way `setup.ops` is, and the length obligation
+is discharged by `decide` rather than by naming a lemma about one particular
+list, so the term being reflected over describes the setup it was given.
+
+The extracted `Doc` does not in fact depend on the point *values* — a leaf's
+angle translates to the D4-opaque `AExpr.coeff l m`, and `tryCramerCoeffApp`
+(`Extract.lean`) discards the `pts`/`hpts` arguments it matches on — but
+reflecting over the caller's own table is what makes that an observation
+rather than an assumption. -/
 def setupPtsExprs (setup : Shor.ShorLoweringSetup) (kE : Expr) : MetaM (Expr × Expr) := do
   let ptsE : Expr := Lean.toExpr setup.pts
   let lenE ← mkAppM ``List.length #[ptsE]

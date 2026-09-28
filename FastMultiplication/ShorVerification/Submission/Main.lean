@@ -1,18 +1,18 @@
-import FastMultiplication.ShorVerification.Submission.Template
+import FastMultiplication.ShorVerification.Submission.Check
 import FastMultiplication.Emit.Json.Common
 
 /-!
 # `forshor_submission`: what a submission hands over
 
-`SUBMISSION_PLAN.md` S4.1. Prints one `forshor.submission/v1` JSON document
-on stdout: the submitted table, the IR extracted from it (what a resource
+Prints one `forshor.submission/v1` JSON document on stdout: the submitted table, the IR extracted from it (what a resource
 estimator reads), the fixed precision, and the trial count the score is
 multiplied by.
 
 This executable is a *printer*, not a checker. Everything it reports as
 established was established by `lake build Submission` — the four side
-conditions by Lean's kernel, the IR agreement by `native_decide` in
-`Template.lean`. That is why the submissions repo's CI is
+conditions by Lean's kernel on the proofs in `Template.lean`, the absence of
+`native_decide`/`sorry` among them by `#assert_axioms`, and the IR agreement
+by `native_decide` in `Check.lean`. That is why the submissions repo's CI is
 
 ```bash
 lake build Submission && lake exe forshor_submission > ir.json
@@ -22,8 +22,8 @@ with `&&`: if the table is inadmissible the build fails and this never runs.
 Re-deciding the same conditions here would cost the same again and prove
 nothing new.
 
-Nothing in this file is edited by a submitter; it reads `Submission.doc` and
-`Submission.setup` from the template.
+Nothing in this file is edited by a submitter; it reads `Submission.setup`
+from the template and `Submission.doc` from `Check.lean`.
 -/
 
 open Lean (Json)
@@ -71,16 +71,20 @@ def submissionJson : Json :=
        The gate count is not computed in Lean."),
     ("checks", Json.mkObj [
       ("side_conditions", Json.str
-        "C1 length, C2 det ≠ 0, C3 ordered point consumption + safe adds, C4 returns to start: \
-         all four decided by Submission/Decide.lean and checked by the kernel at build time"),
+        "C1 length, C2 det ≠ 0 (proved from pairwise projective distinctness), C3 ordered \
+         point consumption + safe adds, C4 returns to start: all four proved in \
+         Submission/Template.lean by the submitter, reduced by Lean's kernel at build time, \
+         and audited by #assert_axioms Submission.setup in Submission/Check.lean — which \
+         fails the build on native_decide (Lean.ofReduceBool), sorry (sorryAx) or any \
+         declared axiom"),
       ("correctness", Json.str
         "Shor.submission_correct: proved once, generic in the table; no per-submission proof"),
       ("ir_agreement", Json.str
         "Shor.Reflect.submissionChecks: instantiate = real compiled circuit at n = 8, 16 \
          (phase_product, cphase_product), w = 4, 8 (qft), and the smallest reference Shor \
-         instance — pinned by native_decide in Submission/Template.lean"),
+         instance — pinned by native_decide in Submission/Check.lean"),
       ("ir_not_proved", Json.str
-        "the IR is NOT proved equal to the circuit at every width (decision P5); the line above \
+        "the IR is NOT proved equal to the circuit at every width; the line above \
          is evaluation at sampled widths, not a theorem")
     ]),
     ("provenance", Json.str

@@ -17,12 +17,11 @@ stated abstractly (independent of the compiler's own `Point`/register types;
 - **`interpMatrix`**, **`GoodInterpolationPoints`**, **`listToFin`** — the
   interpolation matrix built from a chosen row function and point set, the
   statement that it's invertible (nonzero determinant), and the list-to-`Fin`
-  adapter the two are applied through. These three **moved to
-  `Framework/ToomCookTable.lean`** (`SUBMISSION_PLAN.md` S2.0), keeping their
-  names: they are how a *submitted* point set's admissibility is stated, so
-  they belong with the rules rather than the algebra. "Decidable in
-  principle" is now decidable in fact — `Submission/Decide.lean` supplies the
-  instance. Every invertibility and interpolation *proof* stayed here.
+  adapter the two are applied through. These three are **defined in
+  `Framework/ToomCookTable.lean`**: they are how a submitted point set's
+  admissibility is stated, so they belong with the rules rather than the
+  algebra, and `Submission/Decide.lean` supplies the `Decidable` instance.
+  Every invertibility and interpolation *proof* is here.
 - **`interpCoeff`** — the actual interpolation coefficients for evaluating at
   radix `B`: `(radixRow B) · M⁻¹`. **`interpCoeff_correct`** is the key
   algebraic fact: summing `interpCoeff i * (value at point i)` reproduces

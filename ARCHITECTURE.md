@@ -23,7 +23,7 @@ This repository is a Lean 4 verification project for a fast-multiplication-based
 The development has six main pieces (original names; see the note above for
 where each now lives):
 
-1. `Basic.lean` (now split across `Framework/Quantum/`, `Framework/AbstractMachine/`, `Framework/Semantics/`, `Framework/Instantiation/`) defines the shared register, gate, and quantum-semantics vocabulary.
+1. `Basic.lean` (now split across `Framework/Quantum/`, `Framework/AbstractMachine/`, `Framework/Semantics/`) defines the shared register, gate, and quantum-semantics vocabulary.
 2. `MathBackbone/` (now `Implementation/PhaseProduct/Math/` and `Framework/Math/`) proves the classical algebra and number theory used by the circuits.
 3. `AlgorithmCorrectness/` (now `Implementation/{PhaseProduct,QFT,ModularExponentiation}/Proofs/`) proves high-level circuit identities and approximation bounds.
 4. `AbstractMachine/` (now `Implementation/{PhaseProduct,QFT,Shor}/Proofs/LoweringCorrectness/` and `Implementation/Shor/Proofs/Lowering.lean`, with the lowerer itself at `Implementation/Shor/Lowering/LowerGate.lean`; the *language* itself, `LowGate`, lives at `Framework/AbstractMachine/LowGate.lean`) proves that the high-level gates lower correctly to the low-level abstract machine.
@@ -336,15 +336,13 @@ Important results include:
 - `shors_probability_bound`, which states the postprocessing success probability bound.
 - `Shor_end_to_end_factoring`, which combines order finding with the classical factoring reduction.
 
-This file is where the exact-lowering branch, approximation branch, and classical postprocessing branch meet. `Shor_correct` and every other theorem in the development are fully proved — no `sorry` remains anywhere in the codebase (`grep -rn sorry FastMultiplication` is empty; `#print axioms` on the headline theorems reports only `propext`, `Classical.choice`, and `Quot.sound`). The exact-lowering, approximate, and gate-count developments are organized as separate supporting branches that this file assembles.
+This file is where the exact-lowering branch, approximation branch, and classical postprocessing branch meet. `Shor_correct` and every other theorem in the development are fully proved — no proof anywhere in the codebase uses `sorry`, and `#print axioms` on the headline theorems reports only `propext`, `Classical.choice`, and `Quot.sound`. (`grep -rn sorry FastMultiplication` is not empty, but every hit is in `Submission/Audit.lean`, which deliberately writes one so it can demonstrate that `#assert_axioms` rejects it; the resulting warning is captured by `#guard_msgs` rather than emitted.) The exact-lowering, approximate, and gate-count developments are organized as separate supporting branches that this file assembles.
 
 ## The submission boundary
 
 The tail of the development has a second organising split, later than the
 `AlgorithmCorrectness`/`AbstractMachine` one described below and orthogonal
 to it: the line between *the rules* and *a construction satisfying them*.
-`SUBMISSION_PLAN.md` (under `ShorVerification/`) is the working record; the
-layout it produced is:
 
 | where | what |
 | --- | --- |
@@ -352,14 +350,32 @@ layout it produced is:
 | `Framework/Contract.lean` | The semantic contract: `probability_of_success`, `ShorImplementation`. Formerly `Framework/Submission.lean`; renamed because it is now the framework's *internal* contract, not what a submitter writes. |
 | `Implementation/` | The Toom-Cook construction. Every file that used to define one of the moved definitions now imports `Framework/ToomCookTable.lean` instead; the lemmas about them, the point generator and the compiler all stayed. |
 | `Implementation/Reference/` | `setup ↦ referenceProgramAt`, and `referenceProgramAt_success` — generic in the setup, which is what makes the four side conditions a complete acceptance test. |
-| `Submission/` | The public surface: `Decide.lean` (the four conditions, decidable; `Framework/` + Mathlib only), `Correct.lean` (the fixed precision and the certificate), `Score.lean` (the declared bound and a computable trial count), `Template.lean` + `Main.lean` (what a submitter copies, and the printer). |
+| `Submission/` | The public surface: `Decide.lean` (the four conditions, decidable *in the kernel*; `Framework/` + Mathlib only), `Audit.lean` (`#assert_axioms`, `Lean` only), `Correct.lean` (the fixed precision and the certificate), `Score.lean` (the declared bound and a computable trial count), `Template.lean` (**the submitter's file**: the table and its C1–C4 proofs), `Check.lean` (the acceptance check: the axiom audit, the IR extraction, the evaluation tier, the certificate) and `Main.lean` (the printer). |
 | `Emit/` | `setup ↦ IR`: reflection over the verified construction, producing a `Doc` a resource estimator prices. |
 
 The consequence worth stating plainly: correctness is proved *once*, generic
-in the table. A submission is checked, not proved — four decidable side
-conditions through the kernel, plus IR agreement verified by evaluation at
-sampled widths. There is no per-submission correctness obligation, which is
-the whole reason the challenge was narrowed to the table.
+in the table. There is no per-submission correctness obligation, which is the
+whole reason the challenge was narrowed to the table.
+
+What a submission does owe is C1–C4 on its own table, and those are the
+submitter's proofs rather than the template's. `Template.lean` holds `k`,
+`pts`, `ops` and the `ShorSubmission` record with every field proved by
+`decide +kernel`; `Check.lean` then runs `#assert_axioms Submission.setup`,
+which fails the build unless the finished term's axioms lie inside `propext`,
+`Classical.choice`, `Quot.sound`. That is what rules out `native_decide`
+(`Lean.ofReduceBool`), `sorry` (`sorryAx`) and a submitter's own `axiom`, and
+it is what makes "kernel-checked" a checked claim rather than a documented
+intention. C2 would be the one condition too expensive to reduce — a
+determinant over `(2k-1)!` permutations — except that the interpolation
+matrix is a projective Vandermonde, so `Submission/Decide.lean` proves C2
+*equivalent* to the points being pairwise distinct as projective points and a
+quadratic scan discharges it at every supported `k`.
+
+The IR tier is different in kind and is deliberately left so: `Check.lean`
+pins `Shor.Reflect.submissionChecks` with `native_decide`, which is
+evaluation at sampled widths rather than a theorem. Those are repo-owned
+`example`s about the *extractor*, not fields of `setup`, so they never enter
+the audit above.
 
 ## Big Picture
 

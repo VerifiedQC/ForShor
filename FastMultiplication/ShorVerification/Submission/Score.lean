@@ -3,13 +3,12 @@ import FastMultiplication.ShorVerification.Submission.Correct
 /-!
 # The scored quantities, fixed once for every submission
 
-`SUBMISSION_PLAN.md` S3. Decision P4 makes the leaderboard score
-`trialCount N × (Qualtran's gate count for the emitted IR)`. The gate count
-is measured outside Lean, on the IR `Emit/` produces. The *trial count* is
-not measured at all: it follows from the declared single-run success bound,
-which by P3 is fixed at one precision `submissionPrecision` for everybody.
-So both factors of the score are settled here, once, and neither is something
-a submitter can influence:
+The leaderboard score is `trialCount N × (a single-run gate count for the
+emitted IR)`. The gate count is measured outside Lean, on the IR `Emit/`
+produces. The *trial count* is not measured at all: it follows from the
+declared single-run success bound, which is fixed at one precision
+`submissionPrecision` for every submission. So both factors of the score are
+settled here, once, and neither is something a submitter can influence:
 
 - `submissionSuccessBound N` is `referenceSuccessProbabilityAt` at the fixed
   precision. Its definition takes a modulus and nothing else — there is no
@@ -30,11 +29,11 @@ namespace Shor
 open Reference
 
 /-! =========================================================
-    S3.1: the declared single-run success bound
+    The declared single-run success bound
 ========================================================= -/
 
 /-- The single-run success probability every submission declares, at the one
-precision the organiser fixed (P3).
+precision the organiser fixed.
 
 **Independent of the submission**, in the strongest sense available: the
 right-hand side mentions no `ShorSubmission`, so there is nothing for a
@@ -63,7 +62,7 @@ variable [GateSemanticsFacts qs]
 variable [LowerGateClass qs]
 variable [IdealCtrlModMulExactSemantics qs]
 
-/-- `submission_correct` (S2.2) with the declared bound named. Note where `s`
+/-- `submission_correct` with the declared bound named. Note where `s`
 occurs: only on the right. Whatever table a submitter hands in, the number it
 is held to is `submissionSuccessBound inst.N`. -/
 theorem submissionSuccessBound_le_success (s : ShorSubmission) :
@@ -85,7 +84,7 @@ theorem submissionSuccessBound_le_success (s : ShorSubmission) :
 end Certificate
 
 /-! =========================================================
-    S3.2: a computable trial count
+    A computable trial count
 ========================================================= -/
 
 /-- A rational lower bound on `submissionSuccessBound N` for 2048-bit `N`

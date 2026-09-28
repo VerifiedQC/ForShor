@@ -94,11 +94,9 @@ unsafe def runBundle (a : BundleArgs) : IO UInt32 := do
     IO.eprintln s!"error: need k > 1 (k = {a.k})"
     return 2
 
-/-- `template <k>`: print the extracted `Doc` alone,
-after `Doc.wellFormed` and the R2 instance checks — refuses with exit 3 on
-any failure (extraction, verification, or `--w-max` too small).
-`SUBMISSION_PLAN.md` S1.6 retired `--table generate`, so the exit-2 "that
-table cannot be extracted" refusal has no input left to reject. -/
+/-- `template <k>`: print the extracted `Doc` alone, after `Doc.wellFormed`
+and the instance checks — refuses with exit 3 on any failure (extraction,
+verification, or `--w-max` too small). -/
 unsafe def runTemplate (a : BundleArgs) : IO UInt32 := do
   if hk : 1 < a.k then
     match ← Shor.buildTemplateDoc a.k hk a.wMax with

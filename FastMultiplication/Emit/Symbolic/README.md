@@ -131,9 +131,7 @@ CLI-facing per-section, `template`, and `phases` builders.
   the `Doc` (`Reflect.runExtractAndVerify`, which also runs
   `Reflect.Verify`'s instance-check canary), refusing if `wMax` doesn't
   cover the canary's own checked width (`templateCheckWidth k = 4 * k`).
-  Backs `forshor_emit template <k>`. The old `src = .generate` refusal, and
-  the `src` parameter that carried it, went with `TableSource`
-  (`SUBMISSION_PLAN.md` S1.6).
+  Backs `forshor_emit template <k>`.
 - `buildBundle (k) (hk) (mMax) (wMax) (checkCramer) (noTemplate) : IO
   (Except String Json)` — `buildBundleCore` plus `buildTemplateDoc`'s
   result under `"template"`, unless `noTemplate` (`--no-template`, which

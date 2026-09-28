@@ -52,7 +52,7 @@ noncomputable def shorGateRate (ε : ℝ) (n : ℕ) : ℝ :=
 
 ### Status
 
-All components are proved: phase-product compilation, QFT decomposition, continued-fraction recovery, lowering correctness, modular-exponentiation error bounds, and the full resource-estimation stack. No `sorry` remains anywhere in the codebase, and `#print axioms` on the headline theorems reports only `propext`, `Classical.choice`, and `Quot.sound`.
+All components are proved: phase-product compilation, QFT decomposition, continued-fraction recovery, lowering correctness, modular-exponentiation error bounds, and the full resource-estimation stack. No proof in the codebase uses `sorry` — the one occurrence is a deliberate test that `Submission/Audit.lean`'s axiom check rejects it — and `#print axioms` on the headline theorems reports only `propext`, `Classical.choice`, and `Quot.sound`.
 
 The reference implementation (`FastMultiplication/ShorVerification/Implementation/Reference/`) instantiates the whole framework concretely and is fully computable end to end: `Shor.Reference.referenceProgramAt` lowers to an executable `LowGate` circuit with no noncomputable interpolation step (the phase-product coefficients are computed via `Matrix.cramer`, not `Matrix.inv`). `FastMultiplication/Emit/` prints that circuit as JSON (`forshor.lowgate/v2` schema); `lake exe forshor_emit <k> <a> <N> <m>` writes it to stdout.
 
@@ -70,7 +70,7 @@ The reference is no longer the only implementation the development admits. `Fast
 | `FastMultiplication/ShorVerification/Implementation/GateCount/` | Resource estimation: counting bounds for the phase product, the QFT, and the complete Shor circuit. |
 | `FastMultiplication/ShorVerification/Implementation/Shared/` | Lemma libraries over Framework vocabulary shared by every subroutine folder; imports nothing from them. |
 | `FastMultiplication/ShorVerification/Implementation/Reference/` | The construction that turns an admissible table into a circuit family: fully computable, and generic in the table rather than tied to one. |
-| `FastMultiplication/ShorVerification/Submission/` | The public surface a submissions repo builds against: deciding the four side conditions, the certificate, the score, and the template a submitter copies. |
+| `FastMultiplication/ShorVerification/Submission/` | The public surface a submissions repo builds against: deciding the four side conditions, auditing the axioms behind them, the certificate, the score, and the template a submitter copies. |
 | `FastMultiplication/Emit/` | JSON printer for a lowered circuit, the symbolic IR extractor, and the `forshor_emit` executable. |
 | `docs/` | An interactive visualization of the proof architecture. |
 
@@ -98,22 +98,36 @@ correctness proof, the precision, the trial count — is fixed here and is the
 same for every submission.
 
 A submission is therefore a value of `Shor.ShorSubmission`
-(`Framework/ToomCookTable.lean`): the table, plus proofs of four conditions.
+(`Framework/ToomCookTable.lean`): the table, plus the submitter's proofs of
+four conditions.
 
-| | condition | decided by |
+| | condition | proved by |
 | --- | --- | --- |
 | C1 | `pts.length = 2k - 1` — one point per product coefficient | `rfl` |
-| C2 | `det (interpMatrix …) ≠ 0` — the points interpolate a degree-`2k-2` polynomial | `Matrix.det` over `ℚ` |
-| C3 | running `ops` from the start state, the `i`-th checkpoint holds exactly `pts[i]`'s row, all points are consumed, and no `addScaled` has `dst = src` | `Submission/Decide.lean` |
-| C4 | `run? ops start = some start` — the table uncomputes itself | `DecidableEq (State k)` |
+| C2 | `det (interpMatrix …) ≠ 0` — the points interpolate a degree-`2k-2` polynomial | `goodToomCookPoints_of_distinct _ (by decide +kernel)` |
+| C3 | running `ops` from the start state, the `i`-th checkpoint holds exactly `pts[i]`'s row, all points are consumed, and no `addScaled` has `dst = src` | `by decide +kernel` |
+| C4 | `run? ops start = some start` — the table uncomputes itself | `by decide +kernel` |
 
-All four are decidable, so the kernel checks a submission rather than a
-parser. Passing them is not evidence of admissibility, it *is* admissibility:
+All four are decidable *in the kernel*, so the kernel checks a submission
+rather than a parser or the compiled evaluator. C2 would be the exception —
+its determinant is a sum over `(2k-1)!` permutations — except that the
+interpolation matrix is a projective Vandermonde, so `Submission/Decide.lean`
+proves C2 equivalent to the points being pairwise distinct as projective
+points, which is a quadratic scan.
+
+`decide +kernel`, not `native_decide`, and that is enforced rather than
+requested: `Submission/Check.lean` runs `#assert_axioms Submission.setup`,
+which fails the build unless the finished term's axioms lie inside `propext`,
+`Classical.choice`, `Quot.sound` — so `native_decide` (`Lean.ofReduceBool`),
+`sorry` (`sorryAx`) and a submitter's own `axiom` are all rejected by name.
+
+Passing C1–C4 is not evidence of admissibility, it *is* admissibility:
 `Shor.submission_correct` is proved once, generic in the table, and applies
 with no per-submission proof.
 
-Copy `FastMultiplication/ShorVerification/Submission/Template.lean`, edit the
-three definitions it marks (`k`, `pts`, `ops`), and run:
+Copy `FastMultiplication/ShorVerification/Submission/Template.lean` — the
+only file a submitter owns — edit the three definitions it marks (`k`, `pts`,
+`ops`), prove the four conditions for them, and run:
 
 ```sh
 lake build Submission && lake exe forshor_submission > ir.json
@@ -123,7 +137,8 @@ Building is the check. The executable is a printer: it emits the table, the
 extracted IR a resource estimator reads, the fixed precision, and the trial
 count the score is multiplied by. See
 [`Submission/README.md`](FastMultiplication/ShorVerification/Submission/README.md)
-for what the two tiers of checking do and do not establish.
+for what the two tiers of checking do and do not establish, and for the CI
+rules a submissions repo should enforce.
 
 ## Building
 
@@ -144,7 +159,7 @@ The other build targets:
 
 ```sh
 lake build EmitTests     # the emitter's native_decide acceptance suite
-lake build Submission    # checks the table in Submission/Template.lean
+lake build Submission    # checks the table and proofs in Submission/Template.lean
 lake exe forshor_submission
 ```
 

@@ -1,64 +1,87 @@
 import FastMultiplication.ShorVerification.Framework.ToomCookTable
 import FastMultiplication.ShorVerification.Submission.Decide
-import FastMultiplication.ShorVerification.Submission.Correct
-import FastMultiplication.ShorVerification.Submission.Score
-import FastMultiplication.Emit.Reflect.Driver
-import FastMultiplication.Emit.Reflect.Verify
-import FastMultiplication.Emit.IR.Json
 
 /-!
 # The file a submitter copies
 
-`SUBMISSION_PLAN.md` S4. A submission to this challenge is a Toom-Cook table:
-an arithmetic program `ops` over `k` limb registers, plus the interpolation
-points `pts` its `phaseProduct` checkpoints evaluate at. Everything else —
-the quantum construction, its correctness proof, the precision, the trial
-count, the IR the resource estimate is computed from — is fixed by this
-repository and is the same for every submission.
+A submission to this challenge is a Toom-Cook table: an arithmetic program
+`ops` over `k` limb registers, plus the interpolation points `pts` its
+`phaseProduct` checkpoints evaluate at, **and a proof that the pair is
+admissible**. Everything else — the quantum construction, its correctness
+proof, the precision, the trial count, the IR the resource estimate is
+computed from — is fixed by this repository and is the same for every
+submission.
 
-So there are exactly **three definitions to edit**, marked below. Change
-them, run
+This file is the whole of what a submitter owns. It is three definitions and
+one record:
+
+| | what to write |
+|---|---|
+| `k` | the number of limb registers, `1 < k ≤ 6` |
+| `pts` | the interpolation points, in the order the checkpoints consume them |
+| `ops` | the table |
+| `setup` | the record, with C1–C4 proved |
+
+Then run
 
 ```bash
 lake build Submission && lake exe forshor_submission > ir.json
 ```
 
-and if the build is green the submission is admissible. Nothing else in this
-file should need touching; in particular every `by native_decide` stays as
-it is.
+and if the build is green the submission is admissible. Nothing outside this
+file is edited.
 
-## What the green build means
+## The proofs
 
-Two tiers, and it is worth being precise about which is which
-(decision P5).
+The four side conditions C1–C4 are stated in
+[`../Framework/ToomCookTable.lean`] and made
+decidable by [`Decide.lean`], so at a concrete table each one is
+a line:
 
-**Kernel-checked.** The four fields of `setup` are the conditions C1-C4 of
-`Framework/ToomCookTable.lean`, decided by `Submission/Decide.lean` and
-checked by Lean's kernel. Passing them is not evidence about the table, it
-*is* the table being admissible — and `Shor.submission_correct` then applies
-to it with no further work, giving the same proved success bound every other
-submission gets. That theorem is generic in the table; there is no
-per-submission correctness proof, which is the entire point of narrowing the
-challenge this way.
+```lean
+theorem hpts : pts.length = q k := rfl                              -- C1
 
-**Checked by evaluation.** `Shor.Reflect.submissionChecks` compares the
-extracted IR against the real compiled circuit at sampled widths (`n = 8, 16`
-for the phase products, `w = 4, 8` for the QFT, and the smallest reference
-Shor instance). This is evaluation, not a theorem: the IR is not proved
-correct at *every* width. That project (R6) concerns the reference table only
-and was archived; it is deliberately not a submission requirement. The
-extractor is keyed by Lean construct, never by `k` or by a table, which is
-why agreement at sampled widths is meaningful evidence rather than a
-coincidence.
+good     := goodToomCookPoints_of_distinct hpts (by decide +kernel) -- C2
+consumes := by decide +kernel                                       -- C3
+returns  := by decide +kernel                                       -- C4
+```
+
+`decide +kernel`, not `native_decide`: `native_decide` closes a goal by
+running the *compiled evaluator* and asserting the result through
+`Lean.ofReduceBool`, which is an axiom. `decide +kernel` makes Lean's kernel
+reduce the decision procedure itself. `Submission/Check.lean` runs
+`#assert_axioms Submission.setup`, so a submission that reaches for
+`native_decide` — or for `sorry`, or for an `axiom` of its own — fails the
+acceptance build with the offending axiom named.
+
+This is not a claim that the proofs are hard. For most tables each field is
+one line and the kernel does the work; what the audit buys is that the work
+really was the kernel's.
+
+C2 is the one condition that needed a lemma rather than a decision
+procedure. `GoodToomCookPoints` is `det (interpMatrix …) ≠ 0`, a sum over
+`(2k-1)!` permutations — 39 916 800 of them at `k = 6`. The interpolation
+matrix is Mathlib's `Matrix.projVandermonde`, whose determinant factors, so
+C2 is *equivalent* to the points being pairwise distinct as projective
+points: `int z` is `z`, `frac c` is `1 / c`, and `frac 0` is the point at
+infinity. That is the quadratic scan `PointsDistinct` performs and
+`goodToomCookPoints_of_distinct` converts.
 
 ## The table shipped here
 
-The canonical `k = 2` ladder, with one semantically inert
-`shiftL 0 0 ;; shiftR 0 0` pair appended. Shifting by zero is the identity
-and never fails, so the pair changes the *list* the extractor walks without
-changing what points the program consumes or what state it returns to. It is
-therefore a real table, distinct from `Shor.standardLoweringSetup 2`, and a
-working example of an edit rather than a copy of the reference.
+`k = 2` at the canonical points `0, -1, 1`, reaching each row by a different
+route than `Shor.standardLoweringSetup 2` does: it negates register 1 rather
+than subtracting, so the program is nine operations where the reference's is
+seven, and the two op lists are not permutations of each other. It is a
+worked example of an edit, not a copy of the reference.
+
+A table whose checkpoints sit on a register other than 0 is *admissible* —
+C1–C4 all pass — but currently fails the IR agreement check of
+`Check.lean` at `n = 16`, the recursive width. This is a limitation of the
+evaluation tier, not of the rules; it is why the table below keeps every
+`phaseProduct` on register 0, and why `frac` points are not exercised here
+(at `k = 2` the row of `frac 0` is `[0, 1]`, which is register 1's start
+value and cannot be built in register 0).
 -/
 
 namespace Submission
@@ -70,9 +93,7 @@ open Shor Operations
 ========================================================= -/
 
 /-- **Edit me.** The number of limb registers. `k > 1`; `k ≤ 6` is the
-supported range (C2 is decided by a determinant over `(2k-1)!` permutations,
-which `native_decide` handles instantly through `k = 5` and slowly at
-`k = 6`).
+supported range.
 
 An `abbrev`, not a `def`, so that `Fin k` in `ops` below reduces to
 `Fin 2` and the register indices can be written as plain numerals. -/
@@ -89,61 +110,40 @@ permuted are a different table, and C3 will reject the mismatch
 def pts : List Point :=
   [Point.int 0, Point.int (-1), Point.int 1]
 
-/-- **Edit me.** The table itself. -/
+/-- **Edit me.** The table itself.
+
+Register 0 holds `x₀` and register 1 holds `x₁` at the start. The three
+checkpoints see `[1, 0]`, `[1, -1]` and `[1, 1]` — the rows of `0`, `-1` and
+`1` — and the last operation puts register 0 back, which is C4. -/
 def ops : Prog k :=
-  [ valid_ops.phaseProduct 0
-  , valid_ops.addScaled 0 1 true 0
+  [ valid_ops.phaseProduct 0          -- reg 0 = [1, 0]  = row of 0
+  , valid_ops.negate 1                -- reg 1 = [0, -1]
+  , valid_ops.addScaled 0 1 false 0   -- reg 0 = [1, -1] = row of -1
   , valid_ops.phaseProduct 0
-  , valid_ops.addScaled 0 1 false 0
-  , valid_ops.addScaled 0 1 false 0
+  , valid_ops.negate 1                -- reg 1 = [0, 1], back to its start
+  , valid_ops.addScaled 0 1 false 0   -- reg 0 = [1, 0]
+  , valid_ops.addScaled 0 1 false 0   -- reg 0 = [1, 1]  = row of 1
   , valid_ops.phaseProduct 0
-  , valid_ops.addScaled 0 1 true 0
-  -- The inert pair described in the module docstring. Delete it, or replace
-  -- the whole list, when submitting a table of your own.
-  , valid_ops.shiftL 0 0
-  , valid_ops.shiftR 0 0
+  , valid_ops.addScaled 0 1 true 0    -- reg 0 = [1, 0], back to its start
   ]
 
-/-! =========================================================
-    Below here: nothing to edit
-========================================================= -/
+/-- **Edit me.** C1: one point per product coefficient. `rfl` whenever `pts`
+has the right length; if it does not, that is the error to read. -/
+theorem hpts : pts.length = 2 * k - 1 := rfl
 
-/-- The submission. Each proof field is one of C1-C4; all four are decided,
-so `native_decide` closes them for whatever `k`, `pts`, `ops` are written
-above. A failure here means the table is not admissible — read it as the
-check working, not as the template being broken. -/
+/-- **Edit me.** The submission: the table together with its proofs. Each
+field is one of C1–C4, and each is checked by Lean's kernel — see the module
+docstring for why the spelling matters. A failure here means the table is
+not admissible; read it as the check working, not as the template being
+broken. -/
 def setup : Shor.ShorSubmission where
   k := k
   hk := by decide
   pts := pts
-  hpts := by rfl
-  good := by native_decide
+  hpts := hpts
+  good := goodToomCookPoints_of_distinct hpts (by decide +kernel)
   ops := ops
-  consumes := by native_decide
-  returns := by native_decide
-
-/-! `doc` is the IR a resource estimator reads: extracted by reflection from
-the reference construction specialised at `setup`, and printed by
-`Submission/Main.lean`. -/
-set_option maxHeartbeats 4000000 in
-extract_ir_doc doc setup
-
-/-- The IR is well-formed: every template's free variables are bound, every
-`Node.call` names a template in the document, and so on. -/
-example : IR.Doc.wellFormed doc = true := by native_decide
-
-/-! The evaluation tier: `instantiate doc` agrees with the real compiled
-circuit at the sampled widths and at the smallest reference Shor instance,
-against *this* submission's points. -/
-set_option maxHeartbeats 4000000 in
-set_option maxRecDepth 4000 in
-example : Shor.Reflect.submissionChecks setup doc = true := by native_decide
-
-/-- The certificate at this submission, as a name the submissions repo can
-cite. There is nothing to prove: `Shor.submission_correct` is generic in the
-table, so `setup` existing is the whole argument. -/
-def correct {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
-    [GateSemanticsFacts qs] [LowerGateClass qs] [IdealCtrlModMulExactSemantics qs] :=
-  Shor.submission_correct (qs := qs) setup
+  consumes := by decide +kernel
+  returns := by decide +kernel
 
 end Submission

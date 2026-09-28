@@ -124,35 +124,31 @@ private theorem constArithmeticWorkspace_of_cmpLtNWWorkspace
       omega)
 
 /--
-Main static theorem for this module.
+Static workspace theorem from the purely static facts it depends on.
 
-It expands the public Shor reserve budget into the per-stage
-`GateWorkspaceOK` facts required by lowering the full approximate order-finding
-circuit.
+Stated without any `QSemantics`: only the register layout, the
+modular-multiplication workspace and the Step-4 comparator workspace are
+needed, so a concrete allocator can use it without choosing a semantics.
 -/
-theorem gateWorkspaceOK_orderFindingApprox
-    {qs : QSemantics}
-    [RegEncoding qs.Basis]
+theorem gateWorkspaceOK_orderFindingApprox_of_static
     {k : ℕ}
     (ops : Prog k)
-    (η : ℝ)
     (a N : ℕ)
     (x data work scratch : ExtReg)
     (flag : ℕ)
-    (b0 : qs.Basis)
-    (hsetup :
-      ShorApproxSetup
-        qs η N x data work scratch flag b0)
+    (hcircuit : ModMulCircuitWorkspaceOK data work)
+    (hstep : CmpLtNWWorkspace N (data.grow 1) work scratch flag)
+    (hlayout : ModExpLayout x.active data work flag)
     (hlarge :
       ShorWorkspaceLargeEnough
         ops x data work scratch) :
     GateWorkspaceOK ops
       (orderFindingApprox a N x data work scratch flag
-        hsetup.circuit_workspace hsetup.step4_workspace) := by
+        hcircuit hstep) := by
   let hmod : ModMulCircuitWorkspaceOK data work :=
-    hsetup.circuit_workspace
+    hcircuit
   let hstep4 : CmpLtNWWorkspace N (data.grow 1) work scratch flag :=
-    hsetup.step4_workspace
+    hstep
   have hConst :
       ConstArithmeticWorkspace N (data.grow 1) scratch flag :=
     constArithmeticWorkspace_of_cmpLtNWWorkspace
@@ -567,7 +563,7 @@ theorem gateWorkspaceOK_orderFindingApprox
     have hget : x.active.get i = ctrl := by
       dsimp [i, Reg.get]
       simpa [Reg.width] using hj
-    have hi := hsetup.register_layout i
+    have hi := hlayout i
     simpa only [hget] using hi
 
   have hSteps :
@@ -633,6 +629,39 @@ theorem gateWorkspaceOK_orderFindingApprox
 
   simpa [orderFindingApprox, GateWorkspaceOK, hmod, hstep4] using hAll
 
+
+/--
+Main static theorem for this module.
+
+It expands the public Shor reserve budget into the per-stage
+`GateWorkspaceOK` facts required by lowering the full approximate order-finding
+circuit.
+-/
+theorem gateWorkspaceOK_orderFindingApprox
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    {k : ℕ}
+    (ops : Prog k)
+    (η : ℝ)
+    (a N : ℕ)
+    (x data work scratch : ExtReg)
+    (flag : ℕ)
+    (b0 : qs.Basis)
+    (hsetup :
+      ShorApproxSetup
+        qs η N x data work scratch flag b0)
+    (hlarge :
+      ShorWorkspaceLargeEnough
+        ops x data work scratch) :
+    GateWorkspaceOK ops
+      (orderFindingApprox a N x data work scratch flag
+        hsetup.circuit_workspace hsetup.step4_workspace) :=
+  gateWorkspaceOK_orderFindingApprox_of_static
+    ops a N x data work scratch flag
+    hsetup.circuit_workspace
+    hsetup.step4_workspace
+    hsetup.register_layout
+    hlarge
 
 /--
 Static workspace theorem exposed through `LoweredShorReady`.

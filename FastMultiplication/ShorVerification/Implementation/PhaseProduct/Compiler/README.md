@@ -45,16 +45,15 @@ Workspace` (each file may use anything from the ones before it).
   coefficients (two equivalent formulations: matrix inverse and Cramer's
   rule, the latter computable).
 - **`alternatingPoint`**, **`genInterpolationPoints`** — the canonical point
-  set: `0, -1, 1, -2, 2, …` (`2k-1` points). Since `SUBMISSION_PLAN.md` S1
-  this is the *reference's* choice of points, not the framework's — the
-  lowering chain takes `pts` as a parameter, and a submission may choose its
-  own.
+  set: `0, -1, 1, -2, 2, …` (`2k-1` points). This is the *reference's* choice
+  of points, not the framework's: the lowering chain takes `pts` as a
+  parameter, and a submission may choose its own.
 - **`genInterpolationPoints_good`** — that the canonical set satisfies C2,
   proved via `toMathPoint` and the pure algebra in `Math/ToomCook.lean`.
 - **`toMathPoint`** — the bridge from this compiler's own
   `Point`/interpolation-row representation to that algebra.
 
-> **Moved to `Framework/ToomCookTable.lean`** (S2.0), keeping their names:
+> **Defined in `Framework/ToomCookTable.lean`**, not here:
 > **`q k`** (the point count, `2k - 1`), **`interpEntry`** (one entry of the
 > interpolation matrix) and **`GoodToomCookPoints`** (C2 itself). They state
 > what makes a *submitted* point set admissible, so they belong with the

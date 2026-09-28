@@ -10,10 +10,8 @@ This file packages ordered point consumption into explicit phase blocks. The
 main results turn `ProgConsumesPts` proofs into block decompositions and then
 back into unordered `PhaseProductCoverage` proofs.
 
-`SUBMISSION_PLAN.md` S2.0 moved `SafeProg` and `ProgConsumesPtsSafe` — C3's
-own statement, which a submission has to discharge — into
-`Framework/ToomCookTable.lean`. They keep their fully-qualified names; every
-lemma about them stayed here.
+`SafeProg` and `ProgConsumesPtsSafe`, which those proofs are stated against,
+are defined in `Framework/ToomCookTable.lean`.
 -/
 
 /-! =========================================================
