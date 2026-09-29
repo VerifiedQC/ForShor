@@ -74,7 +74,7 @@ The reference is no longer the only implementation the development admits. `Fast
 | `FastMultiplication/Emit/` | JSON printer for a lowered circuit, the symbolic IR extractor, and the `forshor_emit` executable. |
 | `docs/` | An interactive visualization of the proof architecture. |
 
-For a detailed file-by-file guide, see [ARCHITECTURE.md](ARCHITECTURE.md) (some paths there predate this layout; see the note at the top of that file). Each folder also has its own `README.md`.
+For a detailed file-by-file guide, see [ARCHITECTURE.md](ARCHITECTURE.md). Each folder also has its own `README.md`.
 
 ## Proof architecture
 
