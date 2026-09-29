@@ -320,7 +320,6 @@ lemma shiftL_after_shiftR_exact {k} {σ σ' : State k} (i : Fin k) (n : ℕ) :
 /-- Adding a scaled (or negated) source and then the opposite undoes the change. -/
 lemma addScaled_cancel {k} (σ : State k) (dst src : Fin k) (negSrc : Bool) (n : ℕ) (hds:dst≠src):
   State.addScaledReg (State.addScaledReg σ dst src negSrc n) dst src (!negSrc) n = σ := by
-  -- TODO: unfold `addScaledReg` and check the `dst` component; other regs unchanged
     unfold addScaledReg setReg Register.addScaled
     funext j q
     simp

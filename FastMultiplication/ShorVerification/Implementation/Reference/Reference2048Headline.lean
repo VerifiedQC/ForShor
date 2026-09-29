@@ -50,10 +50,14 @@ variable [IdealCtrlModMulExactSemantics qs]
 /-- `N` has exactly 2048 bits: `2^2047 ≤ N < 2^2048`. -/
 def Is2048Bit (N : ℕ) : Prop := 2 ^ 2047 ≤ N ∧ N < 2 ^ 2048
 
+-- `Is2048Bit`'s `2 ^ 2047` bound trips the default `exponentiation.threshold` of 256.
+set_option exponentiation.threshold 4100 in
 theorem Is2048Bit.log2_eq {N : ℕ} (hN : Is2048Bit N) : Nat.log2 N = 2047 := by
   rw [Nat.log2_eq_log_two]
   exact Nat.log_eq_of_pow_le_of_lt_pow hN.1 hN.2
 
+-- The `2 ^ 4097` step below trips the default `exponentiation.threshold` of 256.
+set_option exponentiation.threshold 4100 in
 /-- The exponent/output-register width `tbits` is at most `4096` bits for any
 2048-bit modulus (it need not be exactly `4096`: `2*N^2` can straddle a power
 of two boundary depending on where exactly `N` sits in `[2^2047, 2^2048)`). -/
