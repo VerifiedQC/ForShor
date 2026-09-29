@@ -1,0 +1,53 @@
+# Everything a reviewer would otherwise have to remember to run by hand:
+# the three lake targets, the five layer scripts, and the docs graph.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Cold runs (empty .lake cache) build the whole library from scratch;
+    # a warm run is ~15 minutes, most of it EmitTests.
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSfL https://github.com/leanprover/elan/releases/latest/download/elan-x86_64-unknown-linux-gnu.tar.gz \
+            | tar xz
+          ./elan-init -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Cache .lake
+        uses: actions/cache@v4
+        with:
+          path: .lake
+          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}
+          restore-keys: |
+            lake-${{ runner.os }}-
+
+      - name: Fetch Mathlib build cache
+        run: lake exe cache get
+
+      - name: Build
+        run: lake build FastMultiplication EmitTests Submission
+
+      - name: Check import layering
+        run: |
+          for s in scripts/check_*_layers.sh; do
+            echo "== $s"
+            bash "$s"
+          done
+
+      - name: Check docs graph
+        run: |
+          python3 scripts/gen_docs_graph.py --check
+          # A stale committed graph.js fails the job: the step above rewrites
+          # it, so any diff means it was not regenerated with the change.
+          git diff --exit-code docs/data/graph.js
