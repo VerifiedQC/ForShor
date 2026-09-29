@@ -89,7 +89,7 @@ per-step error bounds (those live in `Step1Bound.lean`/`Step2Bound.lean`/
 - **`eval_step3_clean_ket`** / **`eval_step4_cancels_ket`** — exact
   basis-ket semantics of Step 3 (comparator + subtract) and Step 4 (flag
   cleanup) on a clean workspace; **`eval_step3_local_ket`** /
-  **`eval_step4_local_ket`** are the versions `Shor/Proofs/Readiness.lean`
+  **`eval_step4_local_ket`** are the versions `Shor/Proofs/Readiness/`
   imports this file directly for.
 - **`alg1TargetResidue_lt_N`**, **`alg1Step2Value_lt_dataCarry_capacity`**,
   **`alg1OutputValue_lt_data_capacity`** — the three named `Model.lean`
@@ -130,8 +130,8 @@ realizations of Step 3's typed comparator/subtractor.
   ket-level facts above to every state in the clean-workspace span, i.e.
   `lowerCmpGeConst`/`lowerCSubConst` evaluate exactly like the typed
   source-language gates `Gate.CmpGeConst`/`Gate.CSubConst` on the full clean
-  subspace. Consumed by `Shor/Proofs/WholeProgramCorrectness.lean` and
-  `Shor/Proofs/Readiness.lean` rather than by other files in this folder.
+  subspace. Consumed by `Shor/Proofs/Correctness.lean` and
+  `Shor/Proofs/Readiness/` rather than by other files in this folder.
 
 ## Algorithm 1 proof outline
 

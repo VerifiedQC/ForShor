@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Generate docs/data/graph.js from the FastMultiplication/ShorVerification tree.
 
-Walks Framework/ and Implementation/ (Emit/ and Qualtran/ are out of scope and
-never visited), parses `import` lines, docstrings, and top-level declarations
+Walks Framework/ and Implementation/ (Emit/ is out of scope and never visited), parses `import` lines, docstrings, and top-level declarations
 out of every .lean file, converts every README.md to HTML, and aggregates
 in-repo import edges (and cross-view "ghost" edges) for every folder in the
 tree. The result is committed as docs/data/graph.js, a plain
@@ -137,8 +136,8 @@ def walk():
         dirnames.sort()
 
         if rel_dir == "":
-            # Only Framework/ and Implementation/ are in scope; Emit/, Qualtran/
-            # live outside ROOT already so nothing to filter here except making
+            # Only Framework/ and Implementation/ are in scope; Emit/ lives
+            # outside ROOT already so nothing to filter here except making
             # sure we recurse into exactly these two.
             dirnames[:] = [d for d in dirnames if d in ("Framework", "Implementation")]
             continue
@@ -307,7 +306,10 @@ def ghosts_for_view(nodes, view_path, child_ids):
 
     providers = {}
     consumers = {}
-    for f in scope:
+    # sorted(), not the set's own order: the dicts below are built in iteration
+    # order and ties in the sort key keep it, so an unsorted walk makes the
+    # output depend on PYTHONHASHSEED.
+    for f in sorted(scope):
         fnode = nodes[f]
         for g in fnode.imports:
             if g not in scope:
@@ -319,8 +321,10 @@ def ghosts_for_view(nodes, view_path, child_ids):
                 consumers[target] = consumers.get(target, 0) + 1
 
     return {
-        "providers": sorted(({"target": t, "weight": w} for t, w in providers.items()), key=lambda x: -x["weight"]),
-        "consumers": sorted(({"target": t, "weight": w} for t, w in consumers.items()), key=lambda x: -x["weight"]),
+        "providers": sorted(({"target": t, "weight": w} for t, w in providers.items()),
+                            key=lambda x: (-x["weight"], x["target"])),
+        "consumers": sorted(({"target": t, "weight": w} for t, w in consumers.items()),
+                            key=lambda x: (-x["weight"], x["target"])),
     }
 
 

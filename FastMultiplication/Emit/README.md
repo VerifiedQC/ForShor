@@ -329,7 +329,7 @@ build` does not touch it. The `Submission` library and the
   in their own order, and pairing them with the plain `(List.range (q
   k)).map streamPoint` enumeration made the ordered-coverage check fail at
   `k = 3`.) `ShorLoweringSetup.consumes` is the ordered statement, and
-  `Table/Decide.lean` decides it.
+  `ShorVerification/Submission/Decide.lean` decides it.
 - **`Reflect/Verify.lean`'s canary is representative, not exhaustive**: one
   width per template (`4 * k`), not a scan over every base/recursive
   combination for the caller's own table. Exhaustive coverage across base

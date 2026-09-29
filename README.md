@@ -10,7 +10,7 @@ The development verifies an implementation of order finding built on fast (Toom-
 
 ## Main results
 
-**Correctness** (`FastMultiplication/ShorVerification/Implementation/Shor/Proofs/NaiveShor/Main.lean`): the ideal order-finding circuit recovers the multiplicative order with at least the standard inverse-polylogarithmic probability.
+**Correctness** (`FastMultiplication/ShorVerification/Implementation/Shor/Proofs/NaiveShor/Correctness.lean`): the ideal order-finding circuit recovers the multiplicative order with at least the standard inverse-polylogarithmic probability.
 
 ```lean
 theorem Shor_correct (T : ℕ → ℕ) (inst : ShorOrderFindingInstance)
@@ -74,11 +74,11 @@ The reference is no longer the only implementation the development admits. `Fast
 | `FastMultiplication/Emit/` | JSON printer for a lowered circuit, the symbolic IR extractor, and the `forshor_emit` executable. |
 | `docs/` | An interactive visualization of the proof architecture. |
 
-For a detailed file-by-file guide, see [ARCHITECTURE.md](ARCHITECTURE.md) (some paths there predate this layout; see the note at the top of that file). Each folder also has its own `README.md`.
+For a detailed file-by-file guide, see [ARCHITECTURE.md](ARCHITECTURE.md). Each folder also has its own `README.md`.
 
 ## Proof architecture
 
-The dependency story in one paragraph: `Implementation/PhaseProduct/Math/Table_Generation` produces the symbolic source programs and phase-point structure, and `Implementation/PhaseProduct/Math/Toom_Cook_formula.lean` supplies the interpolation algebra. `Implementation/PhaseProduct/Proofs/` uses both to prove the high-level Toom-Cook phase identity, the correctness of the compiled signed phase-product circuit, and its lowering to `LowGate`; `Implementation/QFT/Proofs/` proves the QFT split identity and its lowering. Together with `Implementation/ModularExponentiation/`'s approximation bounds, these feed into `Implementation/Shor/`, which assembles order finding and whole-program lowering correctness, while `Implementation/GateCount/` supplies the resource estimates for the compiled circuit. `Implementation/Reference/` instantiates all of this concretely into an executable circuit family, which `FastMultiplication/Emit/` serializes to JSON.
+The dependency story in one paragraph: `Implementation/PhaseProduct/Math/Table_Generation` produces the symbolic source programs and phase-point structure, and `Implementation/PhaseProduct/Math/ToomCook.lean` supplies the interpolation algebra. `Implementation/PhaseProduct/Proofs/` uses both to prove the high-level Toom-Cook phase identity, the correctness of the compiled signed phase-product circuit, and its lowering to `LowGate`; `Implementation/QFT/Proofs/` proves the QFT split identity and its lowering. Together with `Implementation/ModularExponentiation/`'s approximation bounds, these feed into `Implementation/Shor/`, which assembles order finding and whole-program lowering correctness, while `Implementation/GateCount/` supplies the resource estimates for the compiled circuit. `Implementation/Reference/` instantiates all of this concretely into an executable circuit family, which `FastMultiplication/Emit/` serializes to JSON.
 
 You can explore the proof graph interactively:
 

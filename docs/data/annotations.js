@@ -21,7 +21,7 @@ window.ANNOTATIONS = {
  "repo": { "owner": "VerifiedQC", "repo": "ForShor", "branch": "main" },
  "intro": {
   "title": "ShorVerification",
-  "summary": "Framework/ is the specification: it defines what a Shor order-finding submission is (Framework/Submission.lean's ShorImplementation structure) and the vocabulary every proof is stated in. Everything else is the submission: three independently-verified subroutines (PhaseProduct, QFT, ModularExponentiation) feed the Shor assembly, which is scored by GateCount and packaged as the concrete Reference implementation. Shared is a lemma library used by all three subroutines, not a step in the story.",
+  "summary": "Framework/ is the specification: it defines what a Shor order-finding submission is \u2014 Framework/Contract.lean's ShorImplementation structure, and Framework/ToomCookTable.lean's ShorSubmission, the Toom-Cook table (an arithmetic program plus the interpolation points it evaluates at) an entrant actually hands in \u2014 and the vocabulary every proof is stated in. Everything else is the construction: three independently-verified subroutines (PhaseProduct, QFT, ModularExponentiation) feed the Shor assembly, which is scored by GateCount and turned into a concrete ShorImplementation by Reference. Shared is a lemma library used by all three subroutines, not a step in the story.",
   "spine": ["Reference", "Shor", "ModularExponentiation", "QFT", "PhaseProduct"]
  },
  "roles": {
@@ -44,7 +44,7 @@ window.ANNOTATIONS = {
   "Framework": {
    "role": "framework",
    "subtitle": "the contract",
-   "summary": "Defines what a Shor order-finding submission is: registers and the Gate/LowGate languages, the QSemantics/MeasureClass semantic interfaces, the LowGate cost model, and Framework/Submission.lean's ShorImplementation structure that every Implementation/ folder exists to build one value of."
+   "summary": "Defines what a Shor order-finding submission is: registers and the Gate/LowGate languages, the QSemantics/MeasureClass semantic interfaces, the LowGate cost model, Framework/Contract.lean's ShorImplementation structure that every Implementation/ folder exists to build one value of, and Framework/ToomCookTable.lean's ShorSubmission, the Toom-Cook table a submission consists of."
   },
   "Shared": {
    "role": "support",
@@ -84,10 +84,14 @@ window.ANNOTATIONS = {
   "Framework/Quantum": { "role": "framework", "subtitle": "registers and measurement" },
   "Framework/AbstractMachine": { "role": "framework", "subtitle": "Gate and LowGate languages" },
   "Framework/Semantics": { "role": "framework", "subtitle": "abstract evaluation classes" },
-  "Framework/Instantiation": { "role": "framework", "subtitle": "one concrete QSemantics instance" },
+  "Framework/ToomCookTable.lean": {
+   "role": "framework",
+   "subtitle": "what a submission is",
+   "summary": "ShorSubmission: an arithmetic program over k limb registers plus the interpolation points its phaseProduct checkpoints evaluate at, with four decidable side conditions that make the pair admissible. Imports Mathlib and nothing else, so the acceptance test can be read without the construction that satisfies it."
+  },
   "Framework/Gatecount": { "role": "framework", "subtitle": "the cost-model interface" },
   "Framework/Math": { "role": "framework", "subtitle": "classical order/factoring definitions" },
-  "Framework/Submission.lean": {
+  "Framework/Contract.lean": {
    "role": "framework",
    "subtitle": "the public boundary",
    "summary": "ShorImplementation asks for one LowGate circuit per valid order-finding instance, a declared success probability, a trial count amplifying that probability to 99% on 2048-bit moduli, and proofs that both are honest."
@@ -98,7 +102,7 @@ window.ANNOTATIONS = {
    "columns": [["Framework", "Shared"], ["PhaseProduct"], ["QFT"], ["ModularExponentiation"], ["Shor"], ["GateCount"], ["Reference"]],
    "edges": [
     { "from": "Framework", "to": "PhaseProduct", "emphasis": "primary", "label": "vocabulary: Reg, Gate, LowGate, QSemantics", "why": "Every subroutine is built over Framework's register, gate, and semantic vocabulary; PhaseProduct is where the site draws that arrow once rather than fanning it to all four subsystems." },
-    { "from": "Framework", "to": "Reference", "emphasis": "primary", "theorem": "ShorImplementation", "label": "ShorImplementation, the submission structure", "why": "Everything under Implementation/ exists to build one concrete value of Framework/Submission.lean's ShorImplementation structure and hand it to the framework; Reference is where that value is actually assembled." },
+    { "from": "Framework", "to": "Reference", "emphasis": "primary", "theorem": "ShorImplementation", "label": "ShorImplementation, the submission structure", "why": "Everything under Implementation/ exists to build one concrete value of Framework/Contract.lean's ShorImplementation structure and hand it to the framework; Reference is where that value is actually assembled." },
     { "from": "Framework", "to": "Shared", "emphasis": "dim" },
     { "from": "PhaseProduct", "to": "QFT", "emphasis": "primary", "theorem": "lowerSignedPhaseProduct_correct", "label": "phase product for the QFT split", "why": "QFT's recursive split needs an unsigned phase-product macro between the two half-size QFTs; that macro's lowered correctness comes from PhaseProduct/Main.lean." },
     { "from": "PhaseProduct", "to": "ModularExponentiation", "emphasis": "secondary" },
@@ -112,16 +116,14 @@ window.ANNOTATIONS = {
    ]
   },
   "Framework": {
-   "columns": [["Framework/Quantum", "Framework/Math"], ["Framework/AbstractMachine"], ["Framework/Semantics", "Framework/Gatecount"], ["Framework/Submission.lean", "Framework/Instantiation"]],
+   "columns": [["Framework/Quantum", "Framework/Math"], ["Framework/AbstractMachine"], ["Framework/Semantics", "Framework/Gatecount"], ["Framework/Contract.lean", "Framework/ToomCookTable.lean"]],
    "edges": [
     { "from": "Framework/Quantum", "to": "Framework/AbstractMachine", "emphasis": "primary", "theorem": "Reg", "label": "Reg as gate operand", "why": "Gate and LowGate syntax (Framework/AbstractMachine) is built over the Reg register type Quantum defines." },
     { "from": "Framework/AbstractMachine", "to": "Framework/Semantics", "emphasis": "primary", "theorem": "LowGate", "label": "LowerGateClass over LowGate", "why": "LowerGateClass and GateSemanticsCore (Framework/Semantics) give evaluation meaning to the LowGate/Gate syntax AbstractMachine defines." },
-    { "from": "Framework/Semantics", "to": "Framework/Submission.lean", "emphasis": "primary", "theorem": "LowerGateClass", "label": "evaluating the submitted circuit", "why": "ShorImplementation's correct field states that evaluating the submitted LowGate program (via LowerGateClass) matches the framework's order-finding specification." },
+    { "from": "Framework/Semantics", "to": "Framework/Contract.lean", "emphasis": "primary", "theorem": "LowerGateClass", "label": "evaluating the submitted circuit", "why": "ShorImplementation's correct field states that evaluating the submitted LowGate program (via LowerGateClass) matches the framework's order-finding specification." },
     { "from": "Framework/AbstractMachine", "to": "Framework/Gatecount", "emphasis": "primary", "theorem": "gateCount", "label": "gateCount over LowGate", "why": "The cost model in Framework/Gatecount is a fold over exactly the LowGate syntax AbstractMachine defines." },
-    { "from": "Framework/Gatecount", "to": "Framework/Submission.lean", "emphasis": "secondary" },
-    { "from": "Framework/Math", "to": "Framework/Submission.lean", "emphasis": "primary", "label": "order-finding spec", "why": "ShorImplementation's correctness statement is phrased in terms of the classical order/factoring definitions Framework/Math supplies." },
-    { "from": "Framework/Quantum", "to": "Framework/Instantiation", "emphasis": "secondary" },
-    { "from": "Framework/Semantics", "to": "Framework/Instantiation", "emphasis": "secondary" }
+    { "from": "Framework/Gatecount", "to": "Framework/Contract.lean", "emphasis": "secondary" },
+    { "from": "Framework/Math", "to": "Framework/Contract.lean", "emphasis": "primary", "label": "order-finding spec", "why": "ShorImplementation's correctness statement is phrased in terms of the classical order/factoring definitions Framework/Math supplies." }
    ]
   },
   "PhaseProduct": {

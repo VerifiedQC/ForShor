@@ -61,4 +61,4 @@ builds on both.
   `lowerQFTPlan`. Its workspace is selected deterministically from the
   reserve precondition; callers do not supply separate physical workspace
   registers. This is the function `Spec/Assertions.lean`'s claim is about,
-  and what `Shor/Defs.lean` imports to get a lowered QFT circuit.
+  and what `Shor/Lowering/LowerGate.lean` calls to get a lowered QFT circuit.

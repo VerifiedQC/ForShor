@@ -34,10 +34,10 @@ lemma streamPoint_eq_canonicalPoint (n : ℕ) : streamPoint n = canonicalPoint n
   · by_cases h0 : n % 4 = 0
     · simp [streamPoint, canonicalPoint, h0]
     · by_cases h1 : n % 4 = 1
-      · simp [streamPoint, canonicalPoint, h0, h1]
+      · simp [streamPoint, canonicalPoint, h1]
       · by_cases h2 : n % 4 = 2
-        · simp [streamPoint, canonicalPoint, h0, h1, h2]
-        · simp [streamPoint, canonicalPoint, h0, h1, h2]
+        · simp [streamPoint, canonicalPoint, h2]
+        · simp [streamPoint, canonicalPoint]
 
 def carrierTerm {k : ℕ} (type : PointPairType) (e : ℕ)
     (dst : Fin k) (parity : ℕ) (j : Fin k) (σ : State k) (u : Fin k) : ℤ :=
@@ -1491,13 +1491,13 @@ lemma generatePointsInOrder_valid (mode : ProductMode) (k : ℕ) (hk : k ≥ 2) 
   | PhaseProduct =>
       by_cases h2 : k = 2
       · subst k
-        simp [ValidPointOrder, generatePointsInOrder, generatedPoints,
-          canonicalPoints, streamPoint]
+        simp [ValidPointOrder, generatePointsInOrder,
+          canonicalPoints]
         decide
       · by_cases h3 : k = 3
         · subst k
-          simp [ValidPointOrder, generatePointsInOrder, generatedPoints,
-            canonicalPoints, streamPoint]
+          simp [ValidPointOrder, generatePointsInOrder,
+            canonicalPoints]
           decide
         ·
           simp [ValidPointOrder, generatePointsInOrder, generatedPoints,
@@ -1511,13 +1511,13 @@ lemma generatePointsInOrder_valid (mode : ProductMode) (k : ℕ) (hk : k ≥ 2) 
   | PhaseTripleProduct =>
       by_cases h2 : k = 2
       · subst k
-        simp [ValidPointOrder, generatePointsInOrder, generatedPoints,
-          canonicalPoints, streamPoint]
+        simp [ValidPointOrder, generatePointsInOrder,
+          canonicalPoints]
         decide
       · by_cases h3 : k = 3
         · subst k
-          simp [ValidPointOrder, generatePointsInOrder, generatedPoints,
-            canonicalPoints, streamPoint]
+          simp [ValidPointOrder, generatePointsInOrder,
+            canonicalPoints]
           decide
         ·
           simp [ValidPointOrder, generatePointsInOrder, generatedPoints,
