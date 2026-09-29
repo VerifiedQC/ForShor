@@ -37,11 +37,8 @@ has no `Shared/` dependencies and sits outside the chain.
 
 ## Provenance
 
-This folder is the renamed, reorganized `Implementation/Semantics/` plus the
-stray `Implementation/RegisterLemmas.lean` (see `REORG_COMPILATION.md` Part B):
-the one large `GateSemanticsLemmas.lean` file was split at its own section
-banners into the topic files above, and `CleanClosure.lean` (a single
-definition) was folded into `States.lean` rather than kept as its own file.
+This folder was assembled during the reorg by splitting a single lemma file
+at its own section banners into the topic files above; see git history.
 
 **Known stale citation:** `Framework/Quantum/Registers.lean`'s docstring
 (line 19) still says "Derived register laws and proof helpers live in

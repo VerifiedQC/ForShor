@@ -159,7 +159,7 @@ open Lean Elab Command in
 elab "extract_ir_doc " id:ident setupIdent:ident : command =>
   unsafe elabExtractIrDocImpl id setupIdent
 
-/-- Run-time entry point (`PLAN.md` §5.4): `lake exe forshor_emit`'s own
+/-- Run-time entry point (R3): `lake exe forshor_emit`'s own
 process has `FastMultiplication.Emit.Reflect.Targets` compiled in already
 (it's an ordinary `import`), but not as a first-class `Environment` value
 `MetaM` can reflect over — that's exactly what `importModules` builds.

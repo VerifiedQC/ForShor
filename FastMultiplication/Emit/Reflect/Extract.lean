@@ -10,7 +10,7 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFind
 # The extractor: shared machinery
 
 Generic pieces used by every `Reflect/Targets.lean` extraction, factored out
-of the R2.1 spike (`PLAN.md` §5.5) once it had de-risked the approach:
+of the R2.1 spike once it had de-risked the approach:
 building a structure literal with fine-grained fresh leaves (Finding 1), and
 a `Registry`-driven translator rather than a fully general one (Finding 2)
 — `translateW`/`translateA`/`translateReg` first check whether the *exact*
@@ -292,7 +292,7 @@ partial def translateW (reg : Registry) (e : Expr) : MetaM IR.WExpr := do
       return .opaque "log2" [← translateW reg nE]
   | (``Shor.commonNeededWidth, _) =>
       -- D4: opaque outright, by constant name — never inspect the argument
-      -- (which genuinely depends on the table; PLAN.md §5.5 Finding 2).
+      -- (which genuinely depends on the table; the R2.1 spike's Finding 2).
       return .opaque "nextWidth" reg.nextWidthArgs
   | (``Shor.nextSignedWidth, #[_, _, _, _]) =>
       -- `nextSignedWidth a b ops := commonNeededWidth (scanNeededWidths a b

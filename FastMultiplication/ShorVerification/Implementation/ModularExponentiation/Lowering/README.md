@@ -29,6 +29,6 @@ operation.
   depending on `flag`, add it into `data` with one fixed-width `AddScaled`,
   then uncompute the preparation. Also consumes a `ConstArithmeticWorkspace`.
 
-These are the two lowerers `Shor/Proofs/Readiness.lean` and
-`Shor/Proofs/WholeProgramCorrectness.lean` need directly to connect the
+These are the two lowerers `Shor/Proofs/Readiness/` and
+`Shor/Proofs/Correctness.lean` need directly to connect the
 source-level `Circuit/Steps.lean:step3` to an actual `LowGate` circuit.

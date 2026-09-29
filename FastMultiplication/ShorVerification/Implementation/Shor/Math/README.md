@@ -5,8 +5,10 @@ geometric-sum, and counting lemmas backing the ideal order-finding
 good-outcome analysis. Import closure is Mathlib plus the project's
 semantics-free vocabulary (`ord`, `qftPhase`, `GoodOutcome`) — no
 `QSemantics`, `eval`, or measurement. The one file, `OrderFindingAnalysis.lean`,
-carries no internal section banners; it was moved byte-for-byte from the old
-`Proofs/NaiveShor/Lemmas.lean`, so the grouping below follows its actual
+carries no internal section banners; it was moved byte-for-byte out of the
+single `Proofs/NaiveShor/Lemmas.lean` that preceded today's `NaiveShor/`
+split (`Preliminaries.lean`, `PhaseEstimation.lean`,
+`GoodOutcomeMassLowerBound.lean`), so the grouping below follows its actual
 top-to-bottom logical flow rather than author-labeled sections.
 
 ## `OrderFindingAnalysis.lean`

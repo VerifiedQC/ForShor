@@ -20,7 +20,7 @@ for whatever `k` the caller actually asks for at run time
 (`Reflect.runExtract`), so this file re-runs the *same kind* of check —
 `Doc.wellFormed`, then `instantiate`/`instantiateGate` agreeing with the
 real compiled/reference term — generically over the whole
-`ShorLoweringSetup`, as the safety net `PLAN.md` §7 asks for: "preceded by
+`ShorLoweringSetup`, as R3's run-time safety net asks for: "preceded by
 `Doc.wellFormed` and by the R2 instance checks at a ladder of small widths;
 any failure refuses the whole bundle with exit 3."
 
@@ -360,7 +360,7 @@ writes it. -/
 def submissionChecks (setup : Shor.ShorLoweringSetup) (doc : Doc) : Bool :=
   evaluationChecks setup doc submissionPPWidths submissionQFTWidths
 
-/-- Run-time entry point: extract, then verify. `PLAN.md` §7's blocking
+/-- Run-time entry point: extract, then verify. R3's blocking run-time
 check — a failure here refuses the whole `bundle`/`template` output with
 exit 3 (`Main.lean`). Standard-table only at run time — `runExtract`
 already fixes this. -/

@@ -6,7 +6,7 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 # The extraction targets
 
 `extractPPBody`: R2.1's target, `Shor.compileOpsToSignedGate` (the `pp_body`
-row of `PLAN.md` §5.3's table). Fixed: `k`, `hk`, `ops`, `pts` (from the
+row of `README.md`'s R2 exit-criteria table). Fixed: `k`, `hk`, `ops`, `pts` (from the
 given `ShorLoweringSetup`). Symbolic: `phi` (angle), `x`/`z` (the two operand
 registers), and — per the R2.1 spike's Finding 1 — the `layout` argument is
 *not* one opaque free variable; it is built from `k` fresh per-child `Reg`
@@ -299,7 +299,7 @@ def setupPtsExprs (setup : Shor.ShorLoweringSetup) (kE : Expr) : MetaM (Expr × 
   return (ptsE, hptsE)
 
 /-- `phase_product` (R2.2): `standardSignedPhaseLoweringPlan` + `lowerGateRec`
-(`PLAN.md` §5.3/§6.2). Symbolic: `phi, x, z`; `xCap`/`zCap` (`x`/`z`'s
+(R2.2's row in `README.md`'s exit-criteria table). Symbolic: `phi, x, z`; `xCap`/`zCap` (`x`/`z`'s
 *reserve* capacity — new width parameters `pp_body` never needed, since
 `canonicalSignedStep`'s reserve split, unlike `pp_body`'s hand-built
 `layout`, is a real formula over the parent's actual capacity). Unfolds
