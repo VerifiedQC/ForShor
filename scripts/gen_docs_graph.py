@@ -306,7 +306,10 @@ def ghosts_for_view(nodes, view_path, child_ids):
 
     providers = {}
     consumers = {}
-    for f in scope:
+    # sorted(), not the set's own order: the dicts below are built in iteration
+    # order and ties in the sort key keep it, so an unsorted walk makes the
+    # output depend on PYTHONHASHSEED.
+    for f in sorted(scope):
         fnode = nodes[f]
         for g in fnode.imports:
             if g not in scope:
@@ -318,8 +321,10 @@ def ghosts_for_view(nodes, view_path, child_ids):
                 consumers[target] = consumers.get(target, 0) + 1
 
     return {
-        "providers": sorted(({"target": t, "weight": w} for t, w in providers.items()), key=lambda x: -x["weight"]),
-        "consumers": sorted(({"target": t, "weight": w} for t, w in consumers.items()), key=lambda x: -x["weight"]),
+        "providers": sorted(({"target": t, "weight": w} for t, w in providers.items()),
+                            key=lambda x: (-x["weight"], x["target"])),
+        "consumers": sorted(({"target": t, "weight": w} for t, w in consumers.items()),
+                            key=lambda x: (-x["weight"], x["target"])),
     }
 
 

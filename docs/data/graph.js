@@ -17946,11 +17946,11 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "Reference",
+      "target": "QFT",
       "weight": 2
      },
      {
-      "target": "QFT",
+      "target": "Reference",
       "weight": 2
      }
     ],
@@ -18003,11 +18003,11 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "Shor",
+      "target": "Framework/Gatecount",
       "weight": 1
      },
      {
-      "target": "Framework/Gatecount",
+      "target": "Shor",
       "weight": 1
      }
     ],
@@ -18157,19 +18157,19 @@ window.GRAPH = {
    "ghosts": {
     "consumers": [
      {
-      "target": "Shared",
-      "weight": 2
-     },
-     {
       "target": "Framework/AbstractMachine",
       "weight": 2
      },
      {
-      "target": "Framework/Semantics",
-      "weight": 1
+      "target": "Shared",
+      "weight": 2
      },
      {
       "target": "Framework/Contract.lean",
+      "weight": 1
+     },
+     {
+      "target": "Framework/Semantics",
       "weight": 1
      },
      {
@@ -18374,11 +18374,11 @@ window.GRAPH = {
    "ghosts": {
     "consumers": [
      {
-      "target": "Reference",
+      "target": "GateCount/QFT_GateCount.lean",
       "weight": 1
      },
      {
-      "target": "GateCount/QFT_GateCount.lean",
+      "target": "Reference",
       "weight": 1
      }
     ],
@@ -18920,15 +18920,15 @@ window.GRAPH = {
       "weight": 7
      },
      {
+      "target": "GateCount",
+      "weight": 1
+     },
+     {
       "target": "ModularExponentiation/Main.lean",
       "weight": 1
      },
      {
       "target": "Reference",
-      "weight": 1
-     },
-     {
-      "target": "GateCount",
       "weight": 1
      }
     ],
@@ -19270,11 +19270,11 @@ window.GRAPH = {
    "ghosts": {
     "consumers": [
      {
-      "target": "Shor",
+      "target": "GateCount",
       "weight": 27
      },
      {
-      "target": "GateCount",
+      "target": "Shor",
       "weight": 27
      },
      {
@@ -19402,11 +19402,11 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "Reference",
+      "target": "PhaseProduct/Spec",
       "weight": 1
      },
      {
-      "target": "PhaseProduct/Spec",
+      "target": "Reference",
       "weight": 1
      }
     ],
@@ -19756,11 +19756,11 @@ window.GRAPH = {
       "weight": 12
      },
      {
-      "target": "Reference",
+      "target": "PhaseProduct/Compiler",
       "weight": 1
      },
      {
-      "target": "PhaseProduct/Compiler",
+      "target": "Reference",
       "weight": 1
      }
     ],
@@ -19800,11 +19800,11 @@ window.GRAPH = {
     ],
     "providers": [
      {
-      "target": "PhaseProduct/Math/Table_Generation/Examples.lean",
+      "target": "PhaseProduct/Math/Table_Generation/Core",
       "weight": 1
      },
      {
-      "target": "PhaseProduct/Math/Table_Generation/Core",
+      "target": "PhaseProduct/Math/Table_Generation/Examples.lean",
       "weight": 1
      }
     ]
@@ -19896,11 +19896,11 @@ window.GRAPH = {
       "weight": 3
      },
      {
-      "target": "PhaseProduct/Math/Table_Generation/Programs",
+      "target": "PhaseProduct/Math/Table_Generation/Builders",
       "weight": 1
      },
      {
-      "target": "PhaseProduct/Math/Table_Generation/Builders",
+      "target": "PhaseProduct/Math/Table_Generation/Programs",
       "weight": 1
      }
     ]
@@ -20091,11 +20091,11 @@ window.GRAPH = {
       "weight": 4
      },
      {
-      "target": "Shor",
+      "target": "QFT",
       "weight": 4
      },
      {
-      "target": "QFT",
+      "target": "Shor",
       "weight": 4
      },
      {
@@ -20247,11 +20247,11 @@ window.GRAPH = {
       "weight": 4
      },
      {
-      "target": "PhaseProduct/Spec",
+      "target": "PhaseProduct/Gates",
       "weight": 1
      },
      {
-      "target": "PhaseProduct/Gates",
+      "target": "PhaseProduct/Spec",
       "weight": 1
      }
     ]
@@ -20450,11 +20450,11 @@ window.GRAPH = {
    "ghosts": {
     "consumers": [
      {
-      "target": "QFT",
+      "target": "ModularExponentiation",
       "weight": 2
      },
      {
-      "target": "ModularExponentiation",
+      "target": "QFT",
       "weight": 2
      },
      {
@@ -20462,11 +20462,11 @@ window.GRAPH = {
       "weight": 1
      },
      {
-      "target": "Shor",
+      "target": "PhaseProduct/Main.lean",
       "weight": 1
      },
      {
-      "target": "PhaseProduct/Main.lean",
+      "target": "Shor",
       "weight": 1
      }
     ],
@@ -20885,11 +20885,11 @@ window.GRAPH = {
       "weight": 7
      },
      {
-      "target": "QFT/Main.lean",
+      "target": "ModularExponentiation",
       "weight": 1
      },
      {
-      "target": "ModularExponentiation",
+      "target": "QFT/Main.lean",
       "weight": 1
      }
     ],
@@ -21017,11 +21017,11 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "Shor",
+      "target": "QFT/Main.lean",
       "weight": 1
      },
      {
-      "target": "QFT/Main.lean",
+      "target": "Shor",
       "weight": 1
      }
     ],
@@ -21719,11 +21719,11 @@ window.GRAPH = {
       "weight": 2
      },
      {
-      "target": "Shor/Main.lean",
+      "target": "GateCount",
       "weight": 1
      },
      {
-      "target": "GateCount",
+      "target": "Shor/Main.lean",
       "weight": 1
      },
      {
@@ -21761,11 +21761,11 @@ window.GRAPH = {
       "weight": 4
      },
      {
-      "target": "Shor/Math",
+      "target": "Shor/Lowering",
       "weight": 2
      },
      {
-      "target": "Shor/Lowering",
+      "target": "Shor/Math",
       "weight": 2
      }
     ]
@@ -21838,6 +21838,10 @@ window.GRAPH = {
       "weight": 4
      },
      {
+      "target": "Framework",
+      "weight": 2
+     },
+     {
       "target": "ModularExponentiation",
       "weight": 2
      },
@@ -21847,10 +21851,6 @@ window.GRAPH = {
      },
      {
       "target": "Shor/Spec",
-      "weight": 2
-     },
-     {
-      "target": "Framework",
       "weight": 2
      },
      {
