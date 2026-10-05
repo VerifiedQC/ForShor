@@ -78,34 +78,47 @@ instance : ToExpr Node where
 deriving instance ToExpr for Template
 deriving instance ToExpr for Doc
 
-/-- The `Doc` this file's extractors can currently build: `pp_body`,
-`phase_product`/`naive_leaf`, `cphase_product`/`naive_cleaf` (each pair
-needed together — a phase-product template's base case is a `Node.call` to
-its `naive_*leaf` counterpart, so a `Doc` with one but not the other is
-never `wellFormed`), and `qft` (which itself `Node.call`s `phase_product`
-at each split, so needs it in the same `Doc` too). `entry` stays `pp_body`
-for backwards compatibility with `extract_ir_doc`'s existing callers
-(`Tests.lean`'s R2.1 section); callers that want `phase_product`/
-`cphase_product`/`qft` name it explicitly to `instantiate`.
+/-- The `Doc` this file's extractors build: `phase_product`/`naive_leaf`,
+`cphase_product`/`naive_cleaf` (each pair needed together — a phase-product
+template's base case is a `Node.call` to its `naive_*leaf` counterpart, so a
+`Doc` with one but not the other is never `wellFormed`), `qft` (which itself
+`Node.call`s `phase_product` at each split, so needs it in the same `Doc`
+too), and `shor_gate`/`shor`. `entry` is `phase_product`.
+
+`pp_body` is *not* among them, and `includePPBody` is how `Tests.lean`'s
+R2.1 section still gets it. It was R2.1's spike target — one level of
+`compileOpsToSignedGate` with the layout left symbolic — and its `layout`
+is built from `k` fresh per-child reserve *variables* (`x0R`, `z1R`, …,
+`Targets.lean`'s Finding 1). Those are free `RegExpr.var`s with nothing in
+the bundle that says what to bind them to: R2.1 binds them by calling
+`ReserveBudget.childReserve` itself, which is exactly the thing a consumer
+holding only the bundle cannot do. Shipping it invited a reader to
+instantiate a template that cannot be instantiated from the document, so it
+stays a test artifact (PLAN.md T4.4).
 
 Takes any `Shor.ShorLoweringSetup` (D5). `setup` is a table the lowering
 theorems cover *by construction* — its four side conditions are exactly
 those theorems' hypotheses — so there is no kind of table to special-case or
 reject here: an invalid one cannot be packaged as a `ShorLoweringSetup` in
 the first place. -/
-def buildDoc (setup : Shor.ShorLoweringSetup) : MetaM IR.Doc := do
-  let pp ← extractPPBody setup
+def buildDoc (setup : Shor.ShorLoweringSetup) (includePPBody : Bool := false) : MetaM IR.Doc := do
   let pp2 ← extractPhaseProductBody setup
   let cpp2 ← extractCPhaseProductBody setup
   let qft ← extractQFTBody setup
   let shorGate ← extractShorGateBody
   let shor ← extractShorBody setup
+  let core := [pp2, cpp2, qft, shorGate, shor, naiveLeafTemplate, naiveCLeafTemplate]
+  let templates ←
+    if includePPBody then do
+      let pp ← extractPPBody setup
+      pure (pp :: core)
+    else pure core
   pure
-    { templates := [pp, pp2, cpp2, qft, shorGate, shor, naiveLeafTemplate, naiveCLeafTemplate]
+    { templates := templates
       opaqueFns := [("nextWidth", 2), ("reserveNeed_x", 2), ("reserveNeed_z", 2),
         ("qftXWork", 1), ("qftZWork", 1), ("log2", 1), ("mod", 2), ("pow", 2),
         ("step5Const", 2), ("modpow", 3)]
-      entry := pp.name }
+      entry := pp2.name }
 
 -- `extract_ir_doc <id> <setupIdent>` (R5):
 -- `setupIdent` names a `Shor.ShorLoweringSetup` declaration in scope (the
@@ -141,14 +154,15 @@ def buildDoc (setup : Shor.ShorLoweringSetup) : MetaM IR.Doc := do
 -- whole command elaborator marked `unsafe` (which the `elab` syntax does
 -- not accept directly).
 open Lean Elab Command in
-unsafe def elabExtractIrDocImpl (id : Ident) (setupIdent : Ident) : CommandElabM Unit := do
+unsafe def elabExtractIrDocImpl (id : Ident) (setupIdent : Ident) (includePPBody : Bool) :
+    CommandElabM Unit := do
   let ns ← getCurrNamespace
   let declName := ns ++ id.getId
   let setupName ← resolveGlobalConstNoOverload setupIdent
   liftTermElabM do
     let setupTyE := mkConst ``Shor.ShorLoweringSetup
     let setup ← Lean.Meta.evalExpr Shor.ShorLoweringSetup setupTyE (mkConst setupName)
-    let doc ← buildDoc setup
+    let doc ← buildDoc setup includePPBody
     let decl := Declaration.defnDecl
       { name := declName, levelParams := [], type := mkConst ``Shor.IR.Doc
         value := toExpr doc, hints := .regular 0, safety := .safe }
@@ -157,7 +171,13 @@ unsafe def elabExtractIrDocImpl (id : Ident) (setupIdent : Ident) : CommandElabM
 
 open Lean Elab Command in
 elab "extract_ir_doc " id:ident setupIdent:ident : command =>
-  unsafe elabExtractIrDocImpl id setupIdent
+  unsafe elabExtractIrDocImpl id setupIdent false
+
+-- `extract_ir_doc_with_pp_body <id> <setupIdent>`: the same, plus `pp_body`.
+-- Only `Tests.lean`'s R2.1 section wants it — see `buildDoc`.
+open Lean Elab Command in
+elab "extract_ir_doc_with_pp_body " id:ident setupIdent:ident : command =>
+  unsafe elabExtractIrDocImpl id setupIdent true
 
 /-- Run-time entry point (R3): `lake exe forshor_emit`'s own
 process has `FastMultiplication.Emit.Reflect.Targets` compiled in already

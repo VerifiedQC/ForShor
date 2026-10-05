@@ -34,9 +34,12 @@ unsafe def buildQFT (k w : ℕ) (annotated : Bool) : IO (Except String Json) := 
     | .ok r =>
         if hws : QFTReserveOK ops r then
           if annotated then
-            match ← Reflect.runExtractAndVerify k with
+            match ← Reflect.runExtract k with
             | .error e => return .error e
             | .ok doc =>
+                if !doc.wellFormed then
+                  return .error "extracted doc is not well-formed"
+                else
                 let plan := reserveQFTLoweringPlan k hk ops setup.pts setup.hpts r hws
                 let check1 :=
                   lowGateJson (lowerQFTPlan plan)

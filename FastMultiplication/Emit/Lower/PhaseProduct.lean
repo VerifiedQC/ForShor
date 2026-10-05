@@ -53,9 +53,12 @@ unsafe def buildPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (Ex
         if hws : SignedRecursiveWorkspaceOK ops x z then
           let phi : Angle := (phiNum : ℚ) / (phiDen : ℚ)
           if annotated then
-            match ← Reflect.runExtractAndVerify k with
+            match ← Reflect.runExtract k with
             | .error e => return .error e
             | .ok doc =>
+                if !doc.wellFormed then
+                  return .error "extracted doc is not well-formed"
+                else
                 let plan :=
                   standardSignedPhaseLoweringPlan k hk phi x z ops setup.pts setup.hpts hws
                 let check1 := check1_annotatedEqFlat (planJson plan) (lowerGateRec plan)
@@ -93,9 +96,12 @@ unsafe def buildCPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (E
         if hws : CSignedRecursiveWorkspaceOK ops ctrl x z then
           let phi : Angle := (phiNum : ℚ) / (phiDen : ℚ)
           if annotated then
-            match ← Reflect.runExtractAndVerify k with
+            match ← Reflect.runExtract k with
             | .error e => return .error e
             | .ok doc =>
+                if !doc.wellFormed then
+                  return .error "extracted doc is not well-formed"
+                else
                 let plan :=
                   standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops setup.pts setup.hpts hws
                 let check1 := check1_annotatedEqFlat (planJson plan) (lowerGateRec plan)

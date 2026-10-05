@@ -57,6 +57,12 @@ structure SideSlots where
   initWidths : Array (Expr × IR.WExpr)
   finalRegs : Array (Expr × IR.RegExpr)
   finalWidths : Array (Expr × IR.WExpr)
+  /-- The leftover reserve `fillSlack` hands to the *top* chunk on top of
+  its `requiredChildReserve` — `capacity - Σ required`. `none` when this
+  side's layout is not the real `ReserveBudget` construction (`pp_body`'s
+  hand-built one, `precomputeSideSlots`), where there is no slack to speak
+  of. Consumed via `Registry.topChunkSlack`. -/
+  topSlack : Option IR.WExpr := none
 
 /-- Precompute side `base` (`x` or `z`, named `varName` in the IR)'s `k`
 chunks: chunk `i`'s init slot is `ExtReg.withReserve (phaseChunkActive base k
@@ -148,7 +154,8 @@ def precomputePhaseProductSlots (opsE xE zE layoutE : Expr) (childFieldName : Na
     let finalRegExpr : IR.RegExpr := .grow initRegExpr (IR.WExpr.sub nextWidthWExpr widthW)
     finalRegs := finalRegs.push (finalE, finalRegExpr)
     finalWidths := finalWidths.push ((← mkAppM ``Shor.ExtReg.width #[finalE]), nextWidthWExpr)
-  return { initRegs, initWidths, finalRegs, finalWidths }
+  return { initRegs, initWidths, finalRegs, finalWidths,
+           topSlack := some (IR.WExpr.sub (.var capVar) usedW) }
 
 /-- Extract the `pp_body` template: `compileOpsToSignedGate` specialised at
 the given table (R5: any `ShorLoweringSetup` — its four side
@@ -231,7 +238,7 @@ itself doesn't either, so there is nothing to specialise or reflect over:
 xTerm zTerm)` is a `List.flatMap`/`List.map` walk over two registers whose
 *length* (`x.width`/`z.width`) is symbolic — there is no equation lemma or
 `whnf` step that turns "recursion over a symbolic-length list" into a loop
-the way `.eq_1` turns `WellFounded.fix` into a visible self-call (§6.2);
+the way `.eq_1` turns `WellFounded.fix` into a visible self-call (R6);
 generic reflection has nothing to grab onto here. So this instead
 recognises `Naive_SignedPhaseProd` by name (D2's translation table is
 *keyed* by construct, and a whole function is as much a "construct" as
@@ -353,7 +360,8 @@ def extractPhaseProductBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template
             let reg : Registry :=
               { regs := regs, widths := widths, angles := angles
                 phaseCoeffFVar := none, coeffMExpr := limbWExpr
-                nextWidthArgs := [.var "xw", .var "zw"] }
+                nextWidthArgs := [.var "xw", .var "zw"]
+                topChunkSlack := do pure (← xSlots.topSlack, ← zSlots.topSlack) }
             let guard ← translateProp reg condE
             let notCond ← mkAppM ``Not #[condE]
             let thenPlan ← whnfR (mkApp thenFnE (← mkSorry condE false))
@@ -429,7 +437,8 @@ def extractCPhaseProductBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Templat
             let reg : Registry :=
               { regs := regs, widths := widths, angles := angles
                 phaseCoeffFVar := none, coeffMExpr := limbWExpr
-                nextWidthArgs := [.var "xw", .var "zw"] }
+                nextWidthArgs := [.var "xw", .var "zw"]
+                topChunkSlack := do pure (← xSlots.topSlack, ← zSlots.topSlack) }
             let guard ← translateProp reg condE
             let notCond ← mkAppM ``Not #[condE]
             let thenPlan ← whnfR (mkApp thenFnE (← mkSorry condE false))

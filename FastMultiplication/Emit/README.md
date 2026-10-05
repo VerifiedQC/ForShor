@@ -25,6 +25,7 @@ folder.
 - [Three artifacts](#three-artifacts)
 - [Decisions](#decisions)
 - [What is and is not a theorem](#what-is-and-is-not-a-theorem)
+- [What is hand-stated](#what-is-hand-stated)
 - [How this folder was built (R0–R6)](#how-this-folder-was-built-r0r6)
 - [R2 exit criteria (the test list)](#r2-exit-criteria-the-test-list)
 - [Folder map](#folder-map)
@@ -37,10 +38,14 @@ folder.
 
 Three kinds of document, all JSON except `phases`:
 
-- **`template <k>`**: the extracted, n-free symbolic IR — `pp_body`,
+- **`template <k>`**: the extracted, n-free symbolic IR —
   `phase_product`/`naive_leaf`, `cphase_product`/`naive_cleaf`, `qft`,
   `shor_gate`, `shor` — obtained by *reflection* over the real, verified
-  definitions (see [Three artifacts](#three-artifacts)), not hand-written.
+  definitions (see [Three artifacts](#three-artifacts)), except for the
+  constructs listed under [What is hand-stated](#what-is-hand-stated).
+  (`pp_body`, R2.1's spike target, is no longer shipped: its layout is built
+  from per-child reserve variables nothing in the document says how to bind.
+  `extract_ir_doc_with_pp_body` still extracts it for the test suite.)
 - **`bundle`** (and its per-section commands): an **n-free** document — every
   number in it is a function of `k` (the Toom-Cook table arity) alone, never
   of a modulus bit-length `n`. It bundles the extracted `template` together
@@ -74,9 +79,14 @@ Everything in this folder is one of three things:
    becomes one `Template` whose body contains a `Node.call` to itself with
    translated argument expressions — the recursion is never unrolled in
    Lean (D3); a consumer (or `IR/Instantiate.lean`'s own `instantiate`)
-   unrolls it at a concrete width. Nothing about a template's shape is
-   written by hand: this is what replaced the old hand-transcribed
-   `Symbolic/Template.lean`.
+   unrolls it at a concrete width.
+
+   The recursion skeleton and the arithmetic are reflected; the loops and
+   the workspace bookkeeping around them are **hand-stated** and trusted on
+   the sampled comparison. See
+   [What is hand-stated](#what-is-hand-stated) — this is the part of the
+   folder where a bug can hide, and §1.1 of `PLAN.md` is a worked example of
+   one that did.
 2. **The opaque value tables** (`Symbolic/{Width,QftPlan,ShorPlan,
    CoeffPoly}.lean`). A handful of functions the templates call by name but
    never evaluate symbolically (D4: `RecursivePhaseWorkspace.nextWidth`,
@@ -121,13 +131,22 @@ extractor and its callers are built to:
   `m = referenceChosenPrecision N`, which the emitter cannot compute).
 - The annotated trees (`pp`/`cpp`/`qft`) are printed from the plan terms
   those functions consume; `annotated_eq_flat` checks the two agree by
-  evaluation.
+  evaluation, and `instantiate_eq_real` checks the extracted template,
+  instantiated at the requested width, against the real compiled term. Those
+  two plus `Doc.wellFormed` are all the annotated CLI modes check — the full
+  width-ladder canary belongs to `template` and `bundle`.
 - **The extracted templates are not theorems.** They are checked against
-  the real term by evaluation (D7): `instantiate_eq_real` on `pp`/`cpp`/
+  the real term by evaluation (D7). That comparison is
+  `Reflect.lowGateAgrees`/`gateAgrees`, which compares a flat stream of leaf
+  tokens with adjoint boundaries marked. The obvious spelling
+  (`flattenLowGate a == flattenLowGate b`) is *not* stack-safe — the derived
+  `BEq LowGate` walks an adjoint's body one stack frame per nested gate, and
+  a circuit of a few thousand gates aborted the process outright, taking
+  `lake build Submission` with it (`PLAN.md` §6). Details: `instantiate_eq_real` on `pp`/`cpp`/
   `qft` re-runs the check at whatever width the caller asked for;
-  `Reflect/Verify.lean`'s canary re-runs it at a representative width for
-  whatever `(k, src)` `template`/`bundle` was asked to extract, before
-  either prints anything; `Tests.lean`'s R2.1–R2.7 suite established it
+  `Reflect/Verify.lean`'s canary re-runs it at a ladder of widths derived from
+  whatever table `template`/`bundle` was asked to extract, before either
+  prints anything; `Tests.lean`'s R2.1–R2.7 suite established it
   exhaustively (base case and one recursive level, `k = 2, 3`, both table
   sources) once, at build time, via `native_decide`.
 - The opaque value tables (E2's `coeff_poly`, `width`, `qft_plan`,
@@ -145,13 +164,63 @@ extractor and its callers are built to:
   steps U3/U4 of `CmodMulInPlaceCore`) are fitted from concrete `shor`
   emissions outside Lean, not tabulated.
 
+## What is hand-stated
+
+"Extracted by reflection" is true of the recursion skeleton and the
+arithmetic. It is not true of everything. Three kinds of construct are
+written out by hand in `Reflect/` and trusted on the sampled comparison
+instead:
+
+- **Folds over a symbolic-length list.** `naiveSignedPhaseGates`'s double
+  fold, `H_reg`'s fold over `regQubits`, `modExpApproxValid`'s per-exponent-bit
+  recursion, `lowerCopyConstFromUnit`'s walk over `N.bitIndices`. No equation
+  lemma turns these into a visible loop the way `.eq_1` does for
+  `WellFounded.fix`, so the extractor recognises each **by name** (D2) and
+  emits the `Node.loop` it knows the function to be.
+- **Workspace and slot bookkeeping.** `precomputeSideSlots` and
+  `precomputePhaseProductSlots` (`Reflect/Targets.lean`) restate
+  `PhaseSplitLayout.child`, `ReserveBudget.ofRequirements` and `fillSlack`
+  as `RegExpr`/`WExpr` formulas, because reducing the real ones through a
+  `LayoutState` projection cascades.
+- **The annotated-ops walk.** `translateAnnotatedOps`
+  (`Reflect/Extract.lean`) replays `annotatePhaseTermsAux` +
+  `planCompileAnnotatedOpsToSignedGateAux` over the table's own op list by
+  hand, for the same reason.
+
+A hand mirror is only as complete as the cases its author had in mind, and
+the sampled comparison is the only detector. §1.1 of
+[`PLAN.md`](PLAN.md) records one that got through: the reserve split gives
+the *top* chunk every leftover qubit, the hand-written capacity argument did
+not, and no sampled width reached a configuration where it showed.
+
+Each of these is covered by at least one check in
+`Reflect/Verify.lean`'s `evaluationChecks`:
+
+| hand-stated construct | covered by |
+|---|---|
+| `naiveLeafTemplate` (`naiveSignedPhaseGates`) | `checkNaiveLeafAt` at `(13, 7)`, `(7, 13)`, `(6, 5)`, and `checkPhaseProductAt`'s base-case width |
+| `naiveCLeafTemplate` | `checkNaiveCLeafAt` at the same pairs |
+| `H_reg` loop | `checkShorGateAt` at both reference instances (`N = 143`, `m = 1` is the one with a long loop) |
+| `initY1` | `checkShorGateAt`, both instances |
+| `modExpApproxValid` per-exponent-bit loop | `checkShorGateAt`, both instances; `checkShorAt` at the small one for its lowering |
+| `lowerCopyConstFromUnit` bit loop | `checkShorAt` (it appears only in the lowered circuit) |
+| `precomputeSideSlots` (`pp_body`'s layout) | `Tests.lean`'s R2.1 — the only consumer, and not shipped |
+| `precomputePhaseProductSlots` (reserve split) | `checkPhaseProductAt`/`checkCPhaseProductAt` across the width ladder **and both slack regimes** — the slack regime is what makes the top-chunk row of the split observable |
+| `translateAnnotatedOps` (annotated-ops walk) | the same, plus `Tests.lean`'s `T1_1_TopChunkReserve` anchors |
+
+The widths and instances those checks use are not fixed: `ppWidthLadder`
+and `qftWidthLadder` derive them from the table's own `nextWidth` chain, so
+a table that recurses later is checked later. See `Reflect/Verify.lean`.
+
 ## How this folder was built (R0–R6)
 
 The code is littered with references to rounds `R0`–`R6` and decisions
 `D1`–`D7`. The decisions are the table above; the rounds are here. They were
-tracked in an `Emit/PLAN.md` that has since been deleted — it was a 4 000-line
-engineering log, most of it about R6, which is archived — so this is what the
-labels mean now. The full log is in git history.
+tracked in a 4 000-line `Emit/PLAN.md` engineering log, most of it about R6,
+which is archived; that log was deleted and lives in git history, so this
+table is what the `R`/`D` labels mean now. The `Emit/PLAN.md` in the tree
+today is a different, much shorter document — the T-tier plan (T1–T3) for the
+evaluation-tier work, cited as `PLAN.md §...` elsewhere in this file.
 
 | round | what it did |
 |---|---|
@@ -191,12 +260,12 @@ Each is a `native_decide` example in `Tests.lean`.
 |---|---|---|
 | `Json/` | JSON printers only — one spelling per value type, no proof obligations of their own (though `PlanJson.lean` walks proof-carrying plan terms). | [`Json/README.md`](Json/README.md) |
 | `Table/` | The `(ops, points)` view of a `ShorLoweringSetup` the value tables read. (The `Decidable` instances that let a user discharge a table's side conditions live in `ShorVerification/Submission/Decide.lean`.) | [`Table/README.md`](Table/README.md) |
-| `IR/` | The extracted-IR language (`Syntax.lean`), its JSON printer, decidable well-formedness, and the interpreter (`instantiate`/`instantiateGate`). | — |
+| `IR/` | The extracted-IR language (`Syntax.lean`), its JSON printer, decidable well-formedness, and the interpreter (`instantiate`/`instantiateGate`) — which is also the only definition of what the shipped `Doc` *means*. | [`IR/README.md`](IR/README.md) |
 | `Reflect/` | The `MetaM` extractor (`Extract.lean`, `Targets.lean`), the build-time/run-time drivers (`Driver.lean`), and the run-time instance-check canary (`Verify.lean`). | — |
 | `Symbolic/` | The opaque value tables (`CoeffPoly.lean`, `Width.lean`, `QftPlan.lean`, `ShorPlan.lean`) plus the assembly file `Bundle.lean`. | [`Symbolic/README.md`](Symbolic/README.md) |
 | `Lower/` | Concrete-width instances (`pp`/`cpp`/`qft`/`shor`), the `Decidable` instances that let the emitter discharge workspace preconditions on the fly, and shared register construction. | [`Lower/README.md`](Lower/README.md) |
 | `Main.lean` | The `forshor_emit` executable: argument parsing and subcommand dispatch only — no logic of its own lives here, everything is a call into one of the folders above. | — |
-| `Tests.lean` (`lean_lib EmitTests`) | Acceptance anchors: `native_decide` on the pure functions the folders above export, plus R2.1–R2.7's extraction exit criteria. | — |
+| `Tests.lean` (`lean_lib EmitTests`) | Acceptance anchors: `native_decide` on the pure functions the folders above export, plus R2.1–R2.7's extraction exit criteria, the `T1_1_TopChunkReserve` regression tables and the `T4_1_TableOracle` consumer check. | — |
 
 Internal import order is mostly `Json → Table → IR → Reflect → Symbolic →
 Lower → Main`, but not a strict per-folder layering: `Lower/Registers.lean`
@@ -213,8 +282,8 @@ from outside `Emit/`.
 | command | prints |
 |---|---|
 | `forshor_emit template <k> [--w-max W]` | the extracted `Doc` alone, after `Doc.wellFormed` and the R2-style instance-check canary pass (refuses with exit 3 otherwise) |
-| `forshor_emit bundle <k> [--m-max M] [--w-max W] [--check-cramer] [--no-template]` | `forshor.emit/v1`: the n-free document (`schedule, coeff_poly, width, qft_plan, shor_plan`, plus `template` unless `--no-template`) |
-| `forshor_emit <schedule\|coeff_poly\|width\|qft_plan\|shor_plan> <k> [same opts as bundle]` | one pure section of the above, in the same envelope |
+| `forshor_emit bundle <k> [--m-max M] [--w-max W] [--check-cramer] [--no-template]` | `forshor.emit/v1`: the n-free document (`schedule, coeff_poly, width, split_width, qft_plan, shor_plan`, plus `template` unless `--no-template`) |
+| `forshor_emit <schedule\|coeff_poly\|width\|split_width\|qft_plan\|shor_plan> <k> [same opts as bundle]` | one pure section of the above, in the same envelope |
 | `forshor_emit phases <k> <m> <phiNum/phiDen>` | exactly `q k` plain-text lines, `c_l(2^m)·phi` as reduced `num/den` |
 | `forshor_emit pp <k> <n> <phiNum/phiDen> [--flat]` | the signed phase product at width `n`: annotated (default, with embedded `meta.checks`) or flat `forshor.lowgate/v2` |
 | `forshor_emit cpp <k> <n> <phiNum/phiDen> [--flat]` | same, controlled |
@@ -236,6 +305,13 @@ if omitted, e.g. `pp 2 8 1` for `phi = π`).
 `importModules` to run the extractor — this is the one place run time and
 memory cost noticeably rises; `--no-template` skips it
 entirely.
+
+`--w-max` must reach at least the largest width the canary itself checks
+(`Symbolic/Bundle.lean`'s `templateCheckWidth`, derived from the table's own
+recursion ladder), or `template`/`bundle` refuses: otherwise the published
+value tables would have a gap exactly where the check looked. The default
+`64` covers `k = 2` and `k = 3`; larger `k` needs an explicit `--w-max`, and
+the refusal says how much.
 
 ## Using a custom table
 
@@ -330,12 +406,21 @@ build` does not touch it. The `Submission` library and the
   k)).map streamPoint` enumeration made the ordered-coverage check fail at
   `k = 3`.) `ShorLoweringSetup.consumes` is the ordered statement, and
   `ShorVerification/Submission/Decide.lean` decides it.
-- **`Reflect/Verify.lean`'s canary is representative, not exhaustive**: one
-  width per template (`4 * k`), not a scan over every base/recursive
-  combination for the caller's own table. Exhaustive coverage across base
-  and recursive cases is what `Tests.lean`'s R2.1–R2.7 compile-time suite
-  already established, and D2 (the extractor is keyed by Lean construct,
-  never by `k`) is why agreement at one representative width generalizes.
+- **`Reflect/Verify.lean`'s canary is a ladder, not an exhaustive scan**:
+  `ppWidthLadder`/`qftWidthLadder` on the caller's own table — the largest
+  base-case width plus the smallest widths reaching one, two and three levels
+  of recursion — with each phase-product width run in two reserve regimes.
+  It was one width per template (`4 * k`) until T2.1, and that is what let
+  the top-chunk capacity bug through: the fault is visible only at a
+  grandchild of the top-level call and only when the parent has slack to
+  split, so neither a single width nor a single regime could see it
+  (`PLAN.md` §1.1, §2 T2.1). Exhaustive coverage across base and recursive
+  cases at small widths is still `Tests.lean`'s R2.1–R2.7 compile-time
+  suite, and D2 (the extractor is keyed by Lean construct, never by `k`) is
+  why agreement on the ladder generalizes. The ladder is derived from the
+  table, so its cost is too: `k = 3` reaches `n = 35` and runs for roughly
+  35 minutes, `k = 4` reaches `n = 87`. Capping it is an open decision
+  (`PLAN.md` §4.1).
   Since R5, the canary runs `shor_gate`/`shor` for *every* table
   reaching it (any `ShorLoweringSetup` is, by construction, one
   `Reference.allocateReferenceLayout`/`referenceShorCircuit` are proven to

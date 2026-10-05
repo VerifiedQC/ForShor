@@ -18,17 +18,25 @@ namespace Shor
 The controlled variant additionally allocates a control qubit past both
 registers' full extent (so it is disjoint from both by construction, still
 checked decidably by the caller since that's what
-`CSignedRecursiveWorkspaceOK` itself demands). -/
-def ppRegisters {k : ℕ} (ops : Prog k) (n : ℕ) : Except String (ExtReg × ExtReg × ℕ) :=
+`CSignedRecursiveWorkspaceOK` itself demands).
+
+`slack` is how much reserve each side gets *beyond* `reserveNeed`, and it is
+not cosmetic: the recursion's reserve split (`ReserveBudget.ofRequirements`/
+`fillSlack`) hands every leftover qubit to the top chunk, so a table whose
+checkpoints reach that chunk behaves differently at `slack = 0` than at any
+`slack > 0`. The default `1` is the historical value every caller used
+before the parameter existed. -/
+def ppRegisters {k : ℕ} (ops : Prog k) (n : ℕ) (slack : ℕ := 1) :
+    Except String (ExtReg × ExtReg × ℕ) :=
   let need := RecursivePhaseWorkspace.reserveNeed ops n n
   let xActive := Reg.interval 0 n
-  let xReserve := Reg.interval n (need.1 + 1)
+  let xReserve := Reg.interval n (need.1 + slack)
   if hx : Disjoint xActive xReserve then
-    let zStart := n + (need.1 + 1)
+    let zStart := n + (need.1 + slack)
     let zActive := Reg.interval zStart n
-    let zReserve := Reg.interval (zStart + n) (need.2 + 1)
+    let zReserve := Reg.interval (zStart + n) (need.2 + slack)
     if hz : Disjoint zActive zReserve then
-      let ctrl := zStart + n + (need.2 + 1)
+      let ctrl := zStart + n + (need.2 + slack)
       .ok (ExtReg.withReserve xActive xReserve hx, ExtReg.withReserve zActive zReserve hz, ctrl)
     else
       .error "internal: z active/reserve overlap"
