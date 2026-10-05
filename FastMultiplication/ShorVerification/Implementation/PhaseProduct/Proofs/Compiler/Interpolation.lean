@@ -708,8 +708,8 @@ lemma cramerCoeffFromPts_eq_phaseCoeffFromPts
       phaseCoeffFromPts k pts b i = (M.transpose⁻¹ *ᵥ radixVec) i := by
     have hstep1 :
         phaseCoeffFromPts k pts b i = (radixVec ᵥ* M⁻¹) i := by
-      show (radixRow k b * M⁻¹) 0 i = (radixVec ᵥ* M⁻¹) i
-      simp [Matrix.mul_apply, Matrix.vecMul, dotProduct, radixRow, radixVec]
+      show (ToomCookMath.radixRow (q k) b * M⁻¹) 0 i = (radixVec ᵥ* M⁻¹) i
+      simp [Matrix.mul_apply, Matrix.vecMul, dotProduct, ToomCookMath.radixRow, radixVec]
     rw [hstep1, ← Matrix.mulVec_transpose, Matrix.transpose_nonsing_inv]
   rw [hphase, hinv_component, cramerCoeffFromPts, hM, hradixVec]
   simp [Matrix.det_transpose]
@@ -726,7 +726,7 @@ lemma phaseCoeffFromPtsWidth_eq_interpCoeff
     ((2 : ℚ) ^ W) := by
   funext i
   simp [phaseCoeffFromPtsWidth, phaseCoeffFromPts, ToomCookMath.interpCoeff]
-  unfold ToomCookMath.interpMatrix ToomCookMath.radixRow interpMatrix radixRow ptsToFin ToomCookMath.listToFin
+  unfold ToomCookMath.interpMatrix ToomCookMath.radixRow interpMatrix ptsToFin ToomCookMath.listToFin
   simp
 
 /--

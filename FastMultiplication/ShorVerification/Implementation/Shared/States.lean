@@ -15,8 +15,6 @@ universe u
 variable {Basis : Type u} [RegEncoding Basis]
 open QSemantics
 
-attribute [instance] QSemantics.instNormed
-attribute [instance] QSemantics.instIP
 
 /-! =========================================================
     Derived Core Evaluator Laws

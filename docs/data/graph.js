@@ -25,7 +25,7 @@ window.GRAPH = {
     "Framework/Semantics",
     "Framework/ToomCookTable.lean"
    ],
-   "declCount": 233,
+   "declCount": 230,
    "fileCount": 16,
    "fsPath": "Framework",
    "kind": "folder",
@@ -425,7 +425,7 @@ window.GRAPH = {
     "Framework/Math/Factoring_Reduction",
     "Framework/Math/ShorDefinition.lean"
    ],
-   "declCount": 65,
+   "declCount": 64,
    "fileCount": 4,
    "fsPath": "Framework/Math",
    "kind": "folder",
@@ -439,7 +439,7 @@ window.GRAPH = {
     "Framework/Math/Factoring_Reduction/ProbabilityBound.lean",
     "Framework/Math/Factoring_Reduction/Reduction.lean"
    ],
-   "declCount": 39,
+   "declCount": 38,
    "fileCount": 3,
    "fsPath": "Framework/Math/Factoring_Reduction",
    "kind": "folder",
@@ -451,37 +451,32 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "def",
-     "line": 28,
+     "line": 34,
      "name": "is_period"
     },
     {
      "kind": "def",
-     "line": 31,
-     "name": "ord"
-    },
-    {
-     "kind": "def",
-     "line": 41,
+     "line": 45,
      "name": "shor_success_conditions"
     },
     {
      "kind": "def",
-     "line": 45,
+     "line": 49,
      "name": "is_nontrivial_factor"
     },
     {
      "kind": "def",
-     "line": 53,
+     "line": 57,
      "name": "is_successful_choice"
     },
     {
      "kind": "def",
-     "line": 57,
+     "line": 61,
      "name": "valid_choices"
     },
     {
      "kind": "def",
-     "line": 61,
+     "line": 65,
      "name": "successful_choices"
     }
    ],
@@ -491,9 +486,11 @@ window.GRAPH = {
     "Framework/Math/Factoring_Reduction/ProbabilityBound.lean",
     "Shor/Spec/Assertions.lean"
    ],
-   "imports": [],
+   "imports": [
+    "Framework/Math/ShorDefinition.lean"
+   ],
    "kind": "file",
-   "lines": 62,
+   "lines": 66,
    "name": "Defs.lean",
    "path": "Framework/Math/Factoring_Reduction/Defs.lean"
   },
@@ -653,27 +650,27 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "lemma",
-     "line": 21,
+     "line": 23,
      "name": "is_period_ord"
     },
     {
      "kind": "lemma",
-     "line": 26,
+     "line": 28,
      "name": "factorization_identity"
     },
     {
      "kind": "lemma",
-     "line": 29,
+     "line": 31,
      "name": "shor_key_identity"
     },
     {
      "kind": "lemma",
-     "line": 40,
+     "line": 42,
      "name": "gcd_nontrivial_from_product"
     },
     {
      "kind": "theorem",
-     "line": 81,
+     "line": 83,
      "name": "shors_classical_reduction"
     }
    ],
@@ -686,7 +683,7 @@ window.GRAPH = {
     "Framework/Math/Factoring_Reduction/ProbabilityBound.lean"
    ],
    "kind": "file",
-   "lines": 155,
+   "lines": 157,
    "name": "Reduction.lean",
    "path": "Framework/Math/Factoring_Reduction/Reduction.lean"
   },
@@ -827,6 +824,7 @@ window.GRAPH = {
    "fsPath": "Framework/Math/ShorDefinition.lean",
    "importedBy": [
     "Framework/Contract.lean",
+    "Framework/Math/Factoring_Reduction/Defs.lean",
     "Shor/Math/OrderFindingAnalysis.lean",
     "Shor/Proofs/Correctness.lean",
     "Shor/Spec/Assertions.lean"
@@ -843,7 +841,7 @@ window.GRAPH = {
     "Framework/Quantum/QSemantics.lean",
     "Framework/Quantum/Registers.lean"
    ],
-   "declCount": 56,
+   "declCount": 54,
    "fileCount": 3,
    "fsPath": "Framework/Quantum",
    "kind": "folder",
@@ -1142,31 +1140,21 @@ window.GRAPH = {
     {
      "kind": "def",
      "line": 347,
-     "name": "Shor.signedLo"
-    },
-    {
-     "kind": "def",
-     "line": 350,
-     "name": "Shor.signedHi"
-    },
-    {
-     "kind": "def",
-     "line": 353,
      "name": "Shor.tcModExt"
     },
     {
      "kind": "def",
-     "line": 356,
+     "line": 350,
      "name": "Shor.signedMin"
     },
     {
      "kind": "def",
-     "line": 359,
+     "line": 353,
      "name": "Shor.signedMax"
     },
     {
      "kind": "def",
-     "line": 362,
+     "line": 356,
      "name": "Shor.FitsSignedWidth"
     }
    ],
@@ -1179,7 +1167,7 @@ window.GRAPH = {
    ],
    "imports": [],
    "kind": "file",
-   "lines": 366,
+   "lines": 360,
    "name": "Registers.lean",
    "path": "Framework/Quantum/Registers.lean"
   },
@@ -1200,147 +1188,147 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "class",
-     "line": 39,
+     "line": 37,
      "name": "Shor.GateSemanticsCore"
     },
     {
      "kind": "abbrev",
-     "line": 60,
+     "line": 58,
      "name": "Shor.QSemantics.eval"
     },
     {
      "kind": "class",
-     "line": 70,
+     "line": 68,
      "name": "Shor.QFTSemantics"
     },
     {
      "kind": "class",
-     "line": 84,
+     "line": 82,
      "name": "Shor.HadamardSemantics"
     },
     {
      "kind": "class",
-     "line": 101,
+     "line": 99,
      "name": "Shor.PauliXSemantics"
     },
     {
      "kind": "def",
-     "line": 114,
+     "line": 112,
      "name": "Shor.radixReverseBasis"
     },
     {
      "kind": "class",
-     "line": 132,
+     "line": 130,
      "name": "Shor.RadixReverseSemantics"
     },
     {
      "kind": "class",
-     "line": 143,
+     "line": 141,
      "name": "Shor.PhaseSemantics"
     },
     {
      "kind": "def",
-     "line": 184,
+     "line": 182,
      "name": "Shor.signExtendNewValue"
     },
     {
      "kind": "def",
-     "line": 197,
+     "line": 195,
      "name": "Shor.signExtendBasis"
     },
     {
      "kind": "def",
-     "line": 215,
+     "line": 213,
      "name": "Shor.signDeallocBasis"
     },
     {
      "kind": "class",
-     "line": 224,
+     "line": 222,
      "name": "Shor.ExtensionSemantics"
     },
     {
      "kind": "def",
-     "line": 258,
+     "line": 256,
      "name": "Shor.signedShiftLWord"
     },
     {
      "kind": "def",
-     "line": 272,
+     "line": 270,
      "name": "Shor.signedShiftRWord"
     },
     {
      "kind": "def",
-     "line": 283,
+     "line": 281,
      "name": "Shor.shiftLBasisRaw"
     },
     {
      "kind": "def",
-     "line": 295,
+     "line": 293,
      "name": "Shor.shiftRBasisRaw"
     },
     {
      "kind": "def",
-     "line": 306,
+     "line": 304,
      "name": "Shor.shiftLBasis"
     },
     {
      "kind": "def",
-     "line": 323,
+     "line": 321,
      "name": "Shor.shiftRBasis"
     },
     {
      "kind": "def",
-     "line": 343,
+     "line": 341,
      "name": "Shor.negateBasis"
     },
     {
      "kind": "def",
-     "line": 351,
+     "line": 349,
      "name": "Shor.addScaledBasis"
     },
     {
      "kind": "class",
-     "line": 371,
+     "line": 369,
      "name": "Shor.ArithmeticSemantics"
     },
     {
      "kind": "def",
-     "line": 406,
+     "line": 404,
      "name": "Shor.cnotBasis"
     },
     {
      "kind": "def",
-     "line": 417,
+     "line": 415,
      "name": "Shor.toffoliBasis"
     },
     {
      "kind": "class",
-     "line": 428,
+     "line": 426,
      "name": "Shor.ClassicalReversibleSemantics"
     },
     {
      "kind": "def",
-     "line": 443,
+     "line": 441,
      "name": "Shor.cmpGeConstBasis"
     },
     {
      "kind": "def",
-     "line": 456,
+     "line": 454,
      "name": "Shor.csubConstBasis"
     },
     {
      "kind": "class",
-     "line": 469,
+     "line": 467,
      "name": "Shor.ModularArithmeticSemantics"
     },
     {
      "kind": "class",
-     "line": 485,
+     "line": 483,
      "name": "Shor.IdealCtrlModMulExactSemantics"
     },
     {
      "kind": "class",
-     "line": 502,
+     "line": 500,
      "name": "Shor.GateSemanticsFacts"
     }
    ],
@@ -1350,7 +1338,7 @@ window.GRAPH = {
     "Framework/Semantics/LowGateSemantics.lean",
     "ModularExponentiation/Circuit/Workspace.lean",
     "ModularExponentiation/Proofs/Core.lean",
-    "ModularExponentiation/Proofs/Model.lean",
+    "ModularExponentiation/Spec/Model.lean",
     "ModularExponentiation/Spec/Precision.lean",
     "ModularExponentiation/Spec/Validity.lean",
     "PhaseProduct/Compiler/Layout.lean",
@@ -1367,7 +1355,7 @@ window.GRAPH = {
     "Framework/Quantum/QSemantics.lean"
    ],
    "kind": "file",
-   "lines": 518,
+   "lines": 516,
    "name": "GateSemantics.lean",
    "path": "Framework/Semantics/GateSemantics.lean"
   },
@@ -1586,156 +1574,179 @@ window.GRAPH = {
   "GateCount": {
    "children": [
     "GateCount/Definitions.lean",
-    "GateCount/Lemmas",
     "GateCount/PhaseProduct",
     "GateCount/QFT_GateCount.lean",
     "GateCount/Shor_GateCount.lean"
    ],
-   "declCount": 211,
-   "fileCount": 6,
+   "declCount": 210,
+   "fileCount": 5,
    "fsPath": "Implementation/GateCount",
    "kind": "folder",
    "name": "GateCount",
    "path": "GateCount",
-   "readmeHtml": "<h1>GateCount</h1>\n<p>This folder proves the asymptotic gate-count bound for the lowered Shor implementation. It starts with a concrete cost model for <code>LowGate</code>, proves bounds for PhaseProduct and QFT lowering, then assembles those bounds into the final Shor order-finding estimate.</p>\n<p>The final results are the <code>O(n^(2 + epsilon))</code> gate-count theorems:</p>\n<pre><code>shorGateCountBound_of_setup\nexists_shorGateCountBound\nexists_k_shorGateCountBound_of_programOK</code></pre>\n<h2>Final Approach</h2>\n<p>The proof is organized around one comparison rate for PhaseProduct and one coarser comparison rate for the full Shor circuit.</p>\n<p>PhaseProduct uses</p>\n<pre><code>n^(log_k(q k))</code></pre>\n<p>where <code>q k</code> is the number of recursive PhaseProduct calls(<code>2k-1</code>) produced by the Toom-Cook interpolation program.</p>\n<p>The complete Shor circuit uses</p>\n<pre><code>n^(2 + epsilon)</code></pre>\n<p>The main strategy is:</p>\n<ol><li>Define a concrete cost model for lowered gates.</li><li>Prove unsigned and controlled PhaseProduct bounds at rate</li></ol>\n<p><code>n^(log_k(q k))</code>.</p>\n<ol><li>Prove exact QFT lowering via the Cooley-Tuckey Decomposition is bounded by the same PhaseProduct rate.</li><li>Prove one controlled modular-multiplication core is bounded by the</li></ol>\n<p>PhaseProduct rate.</p>\n<ol><li>Sum that core bound over modular exponentiation, adding one factor of <code>n</code>.</li><li>Add the order-finding QFT and initialization costs.</li><li>Choose <code>k</code> large enough that <code>log_k(q k) &lt;= 1 + epsilon</code>, converting the</li></ol>\n<p>full exponent to <code>2 + epsilon</code>.</p>\n<h2>Main Theorems</h2>\n<p>The PhaseProduct endpoint is:</p>\n<pre><code>phaseProductGateCountBound_of_programOK</code></pre>\n<p>This proves <code>PhaseProductGateCountBound</code> for any interpolation program satisfying <code>PhaseProductProgramOK</code>, which is C1-C4: the conditions that make a Toom-Cook table admissible. The recurrence is solved against the number of recursive leaves, <code>phaseProductCount ops = q k</code>, which C3 and <code>hpts</code> supply through <code>ProgConsumesPts.phaseProductCount_eq</code> in <code>PhaseProduct/Proofs/Compiler/Support.lean</code>: ordered point consumption peels one point per <code>phaseProduct</code> operation and passes the list through every other operation, so leaves and interpolation points are in bijection.</p>\n<p>The controlled PhaseProduct endpoint is:</p>\n<pre><code>CPhaseProductReduction.cPhaseProductGateCountBound_of_programOK</code></pre>\n<p>This proves <code>CPhaseProductGateCountBound</code>, using the unsigned PhaseProduct bound plus a constant-factor controlled overhead.</p>\n<p>The QFT endpoint is:</p>\n<pre><code>qftGateCountBound_of_programOK</code></pre>\n<p>This proves <code>QFTGateCountBound</code> for the standard exact-QFT lowering plan, using the PhaseProduct theorem for the split interaction at each QFT recursion node.</p>\n<p>The Shor component assembly endpoint is:</p>\n<pre><code>shorGateCountBound_of_programOK</code></pre>\n<p>This proves <code>ShorGateCountBound</code> once the chosen <code>k</code> has <code>phaseProductExponent k &lt;= 1 + epsilon</code>.</p>\n<p><code>ShorGateCountBound</code> is parametric in the per-step precision <code>eta</code>, under a work-width budget: fix any <code>cWork &gt;= 1</code>, and one constant <code>C</code> serves every <code>eta</code> whose <code>algorithm1ExtraBits</code> fit <code>(cWork - 1) * n</code>. Shor's own schedule <code>eta = delta/n^2</code> is one such choice; <code>shorGateCountBoundShorEta_of_bound</code> and <code>shorGateCountBoundShorEta_of_setup</code> specialise to it, and are the only public statements here that mention <code>delta</code>.</p>\n<p>The per-submission endpoint is:</p>\n<pre><code>shorGateCountBound_of_setup</code></pre>\n<p>This proves <code>ShorGateCountBound</code> for an arbitrary <code>ShorLoweringSetup</code> - any admissible table, not only the generated one. A setup's <code>good</code>, <code>consumes</code> and <code>returns</code> fields are <code>PhaseProductProgramOK</code>, which is what <code>ShorLoweringSetup.programOK</code> (<code>Definitions.lean</code>) records, so the submission conditions are the only hypotheses. Here <code>epsilon</code> is a hypothesis rather than a choice: a table fixes its own arity <code>k</code>, and with it its exponent <code>phaseProductExponent k = log (2k - 1) / log k</code>, so a <code>k = 2</code> table runs at roughly <code>n^2.585</code> and supports no smaller <code>epsilon</code>.</p>\n<p>The fully existential endpoint is:</p>\n<pre><code>exists_shorGateCountBound</code></pre>\n<p>This chooses both a suitable <code>k</code> and a generated PhaseProduct program. Driving <code>epsilon</code> towards <code>0</code> means letting <code>k</code> grow, which is why this form quantifies over <code>k</code> existentially where <code>shorGateCountBound_of_setup</code> takes the exponent bound as a hypothesis.</p>\n<h2>Folder Layout</h2>\n<pre><code>GateCount/\n  Definitions.lean\n  PhaseProduct/\n    Lemmas.lean\n    Main.lean\n  QFT_GateCount.lean\n  Shor_GateCount.lean\n  Lemmas/\n    LowGateCount.lean</code></pre>"
+   "readmeHtml": "<h1>GateCount</h1>\n<p>This folder proves the asymptotic gate-count bound for the lowered Shor implementation. It starts with a concrete cost model for <code>LowGate</code>, proves bounds for PhaseProduct and QFT lowering, then assembles those bounds into the final Shor order-finding estimate.</p>\n<p>The final results are the <code>O(n^(2 + epsilon))</code> gate-count theorems:</p>\n<pre><code>shorGateCountBound_of_setup\nexists_shorGateCountBound\nexists_k_shorGateCountBound_of_programOK</code></pre>\n<h2>Final Approach</h2>\n<p>The proof is organized around one comparison rate for PhaseProduct and one coarser comparison rate for the full Shor circuit.</p>\n<p>PhaseProduct uses</p>\n<pre><code>n^(log_k(q k))</code></pre>\n<p>where <code>q k</code> is the number of recursive PhaseProduct calls(<code>2k-1</code>) produced by the Toom-Cook interpolation program.</p>\n<p>The complete Shor circuit uses</p>\n<pre><code>n^(2 + epsilon)</code></pre>\n<p>The main strategy is:</p>\n<ol><li>Define a concrete cost model for lowered gates.</li><li>Prove unsigned and controlled PhaseProduct bounds at rate</li></ol>\n<p><code>n^(log_k(q k))</code>.</p>\n<ol><li>Prove exact QFT lowering via the Cooley-Tuckey Decomposition is bounded by the same PhaseProduct rate.</li><li>Prove one controlled modular-multiplication core is bounded by the</li></ol>\n<p>PhaseProduct rate.</p>\n<ol><li>Sum that core bound over modular exponentiation, adding one factor of <code>n</code>.</li><li>Add the order-finding QFT and initialization costs.</li><li>Choose <code>k</code> large enough that <code>log_k(q k) &lt;= 1 + epsilon</code>, converting the</li></ol>\n<p>full exponent to <code>2 + epsilon</code>.</p>\n<h2>Main Theorems</h2>\n<p>The PhaseProduct endpoint is:</p>\n<pre><code>phaseProductGateCountBound_of_programOK</code></pre>\n<p>This proves <code>PhaseProductGateCountBound</code> for any interpolation program satisfying <code>PhaseProductProgramOK</code>, which is C1-C4: the conditions that make a Toom-Cook table admissible. The recurrence is solved against the number of recursive leaves, <code>phaseProductCount ops = q k</code>, which C3 and <code>hpts</code> supply through <code>ProgConsumesPts.phaseProductCount_eq</code> in <code>PhaseProduct/Proofs/Compiler/Support.lean</code>: ordered point consumption peels one point per <code>phaseProduct</code> operation and passes the list through every other operation, so leaves and interpolation points are in bijection.</p>\n<p>The controlled PhaseProduct endpoint is:</p>\n<pre><code>CPhaseProductReduction.cPhaseProductGateCountBound_of_programOK</code></pre>\n<p>This proves <code>CPhaseProductGateCountBound</code>, using the unsigned PhaseProduct bound plus a constant-factor controlled overhead.</p>\n<p>The QFT endpoint is:</p>\n<pre><code>qftGateCountBound_of_programOK</code></pre>\n<p>This proves <code>QFTGateCountBound</code> for the standard exact-QFT lowering plan, using the PhaseProduct theorem for the split interaction at each QFT recursion node.</p>\n<p>The Shor component assembly endpoint is:</p>\n<pre><code>shorGateCountBound_of_programOK</code></pre>\n<p>This proves <code>ShorGateCountBound</code> once the chosen <code>k</code> has <code>phaseProductExponent k &lt;= 1 + epsilon</code>.</p>\n<p><code>ShorGateCountBound</code> is parametric in the per-step precision <code>eta</code>, under a work-width budget: fix any <code>cWork &gt;= 1</code>, and one constant <code>C</code> serves every <code>eta</code> whose <code>algorithm1ExtraBits</code> fit <code>(cWork - 1) * n</code>. Shor's own schedule <code>eta = delta/n^2</code> is one such choice; <code>shorGateCountBoundShorEta_of_bound</code> and <code>shorGateCountBoundShorEta_of_setup</code> specialise to it, and are the only public statements here that mention <code>delta</code>.</p>\n<p>The per-submission endpoint is:</p>\n<pre><code>shorGateCountBound_of_setup</code></pre>\n<p>This proves <code>ShorGateCountBound</code> for an arbitrary <code>ShorLoweringSetup</code> - any admissible table, not only the generated one. A setup's <code>good</code>, <code>consumes</code> and <code>returns</code> fields are <code>PhaseProductProgramOK</code>, which is what <code>ShorLoweringSetup.programOK</code> (<code>Definitions.lean</code>) records, so the submission conditions are the only hypotheses. Here <code>epsilon</code> is a hypothesis rather than a choice: a table fixes its own arity <code>k</code>, and with it its exponent <code>phaseProductExponent k = log (2k - 1) / log k</code>, so a <code>k = 2</code> table runs at roughly <code>n^2.585</code> and supports no smaller <code>epsilon</code>.</p>\n<p>The fully existential endpoint is:</p>\n<pre><code>exists_shorGateCountBound</code></pre>\n<p>This chooses both a suitable <code>k</code> and a generated PhaseProduct program. Driving <code>epsilon</code> towards <code>0</code> means letting <code>k</code> grow, which is why this form quantifies over <code>k</code> existentially where <code>shorGateCountBound_of_setup</code> takes the exponent bound as a hypothesis.</p>\n<h2>Folder Layout</h2>\n<pre><code>GateCount/\n  Definitions.lean\n  PhaseProduct/\n    Lemmas.lean\n    Main.lean\n  QFT_GateCount.lean\n  Shor_GateCount.lean</code></pre>"
   },
   "GateCount/Definitions.lean": {
    "declarations": [
     {
+     "kind": "theorem",
+     "line": 43,
+     "name": "Shor.LowGate.gateCount_id_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 48,
+     "name": "Shor.LowGate.gateCount_seq_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 53,
+     "name": "Shor.LowGate.gateCount_adj_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 58,
+     "name": "Shor.LowGate.gateCount_H_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 63,
+     "name": "Shor.LowGate.gateCount_X_eq"
+    },
+    {
      "kind": "def",
-     "line": 35,
+     "line": 71,
      "name": "Shor.phaseProductExponent"
     },
     {
      "kind": "def",
-     "line": 38,
+     "line": 74,
      "name": "Shor.phaseProductGateRate"
     },
     {
      "kind": "def",
-     "line": 42,
+     "line": 78,
      "name": "Shor.phaseProductSafeRate"
     },
     {
      "kind": "def",
-     "line": 46,
+     "line": 82,
      "name": "Shor.phaseProductInputSize"
     },
     {
      "kind": "def",
-     "line": 51,
+     "line": 87,
      "name": "Shor.PhaseProductGateCountBound"
     },
     {
      "kind": "def",
-     "line": 72,
+     "line": 108,
      "name": "Shor.PhaseProductProgramOK"
     },
     {
      "kind": "theorem",
-     "line": 82,
+     "line": 118,
      "name": "Shor.ShorLoweringSetup.programOK"
     },
     {
      "kind": "def",
-     "line": 101,
+     "line": 137,
      "name": "Shor.signedPhaseProductGateCount"
     },
     {
      "kind": "def",
-     "line": 110,
+     "line": 146,
      "name": "Shor.cSignedPhaseProductGateCount"
     },
     {
      "kind": "def",
-     "line": 120,
+     "line": 156,
      "name": "Shor.BalancedSignedPhaseProductBound"
     },
     {
      "kind": "def",
-     "line": 131,
+     "line": 167,
      "name": "Shor.phaseArithmeticOpCost"
     },
     {
      "kind": "def",
-     "line": 140,
+     "line": 176,
      "name": "Shor.phaseProgramOverhead"
     },
     {
      "kind": "def",
-     "line": 145,
+     "line": 181,
      "name": "Shor.phaseOpWidthGrowth"
     },
     {
      "kind": "def",
-     "line": 153,
+     "line": 189,
      "name": "Shor.phaseProgramWidthGrowth"
     },
     {
      "kind": "structure",
-     "line": 159,
+     "line": 195,
      "name": "Shor.BalancedPhaseProductInstance"
     },
     {
      "kind": "def",
-     "line": 179,
+     "line": 215,
      "name": "Shor.WidthStateBounded"
     },
     {
      "kind": "def",
-     "line": 183,
+     "line": 219,
      "name": "Shor.NeededWidthsBounded"
     },
     {
      "kind": "def",
-     "line": 200,
+     "line": 236,
      "name": "Shor.shorGateRate"
     },
     {
      "kind": "def",
-     "line": 205,
+     "line": 241,
      "name": "Shor.CPhaseProductGateCountBound"
     },
     {
      "kind": "def",
-     "line": 231,
+     "line": 267,
      "name": "Shor.QFTGateCountBound"
     },
     {
      "kind": "def",
-     "line": 241,
+     "line": 277,
      "name": "Shor.qftHalfWidth"
     },
     {
      "kind": "def",
-     "line": 244,
+     "line": 280,
      "name": "Shor.qftLeftReg"
     },
     {
      "kind": "def",
-     "line": 247,
+     "line": 283,
      "name": "Shor.qftRightReg"
     },
     {
      "kind": "def",
-     "line": 250,
+     "line": 286,
      "name": "Shor.loweredQFTGateCount"
     },
     {
      "kind": "def",
-     "line": 258,
+     "line": 294,
      "name": "Shor.qftSplitPhaseGateCount"
     },
     {
      "kind": "def",
-     "line": 268,
+     "line": 304,
      "name": "Shor.qftSplitRadixGateCount"
     }
    ],
    "docstring": "=========================================================\n    GateCount Definitions\n\nThe vocabulary the rest of the resource estimate is written in: the comparison\nrates (`phaseProductExponent k = log_k (2k - 1)`, and the `n^\u00b7` rates derived\nfrom it), the public bound Prop `PhaseProductGateCountBound`, and\n`PhaseProductProgramOK` \u2014 the C1-C4 hypothesis every bound in this folder is\nstated under. `ShorLoweringSetup.programOK` discharges that hypothesis for an\narbitrary submission, which is what makes the estimates claims about admissible\ntables rather than about one generated program.\n\nThe second half fixes the signed recursion data the PhaseProduct bound is\nproved by induction over: its measured gate count, its balanced input bound,\nand the per-node costs entering the recurrence.\n=========================================================",
    "fsPath": "Implementation/GateCount/Definitions.lean",
    "importedBy": [
-    "GateCount/Lemmas/LowGateCount.lean",
     "GateCount/PhaseProduct/Lemmas.lean"
    ],
    "imports": [
@@ -1752,69 +1763,16 @@ window.GRAPH = {
     "Shor/Lowering/LowerGate.lean"
    ],
    "kind": "file",
-   "lines": 273,
+   "lines": 309,
    "name": "Definitions.lean",
    "path": "GateCount/Definitions.lean"
-  },
-  "GateCount/Lemmas": {
-   "children": [
-    "GateCount/Lemmas/LowGateCount.lean"
-   ],
-   "declCount": 5,
-   "fileCount": 1,
-   "fsPath": "Implementation/GateCount/Lemmas",
-   "kind": "folder",
-   "name": "Lemmas",
-   "path": "GateCount/Lemmas",
-   "readmeHtml": null
-  },
-  "GateCount/Lemmas/LowGateCount.lean": {
-   "declarations": [
-    {
-     "kind": "theorem",
-     "line": 13,
-     "name": "Shor.LowGate.gateCount_id_eq"
-    },
-    {
-     "kind": "theorem",
-     "line": 18,
-     "name": "Shor.LowGate.gateCount_seq_eq"
-    },
-    {
-     "kind": "theorem",
-     "line": 23,
-     "name": "Shor.LowGate.gateCount_adj_eq"
-    },
-    {
-     "kind": "theorem",
-     "line": 28,
-     "name": "Shor.LowGate.gateCount_H_eq"
-    },
-    {
-     "kind": "theorem",
-     "line": 33,
-     "name": "Shor.LowGate.gateCount_X_eq"
-    }
-   ],
-   "docstring": "=========================================================\n    Generic low-gate counting lemmas\n=========================================================",
-   "fsPath": "Implementation/GateCount/Lemmas/LowGateCount.lean",
-   "importedBy": [
-    "GateCount/QFT_GateCount.lean"
-   ],
-   "imports": [
-    "GateCount/Definitions.lean"
-   ],
-   "kind": "file",
-   "lines": 38,
-   "name": "LowGateCount.lean",
-   "path": "GateCount/Lemmas/LowGateCount.lean"
   },
   "GateCount/PhaseProduct": {
    "children": [
     "GateCount/PhaseProduct/Lemmas.lean",
     "GateCount/PhaseProduct/Main.lean"
    ],
-   "declCount": 105,
+   "declCount": 104,
    "fileCount": 2,
    "fsPath": "Implementation/GateCount/PhaseProduct",
    "kind": "folder",
@@ -2321,22 +2279,17 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 4562,
+     "line": 4561,
      "name": "Shor.CPhaseProductReduction.cSignedPhaseProductGateCount_le_five_signed"
     },
     {
      "kind": "lemma",
-     "line": 4981,
-     "name": "Shor.CPhaseProductReduction.phaseProdUsing_signedWorkspace"
-    },
-    {
-     "kind": "lemma",
-     "line": 4995,
+     "line": 4980,
      "name": "Shor.CPhaseProductReduction.cPhaseProdUsing_controlledWorkspace"
     },
     {
      "kind": "lemma",
-     "line": 5010,
+     "line": 4995,
      "name": "Shor.CPhaseProductReduction.lowerGate_CPhaseProdUsing_gateCount_eq_cSigned"
     }
    ],
@@ -2364,7 +2317,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/NaiveLeaf.lean"
    ],
    "kind": "file",
-   "lines": 5054,
+   "lines": 5039,
    "name": "Lemmas.lean",
    "path": "GateCount/PhaseProduct/Lemmas.lean"
   },
@@ -2401,122 +2354,122 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "lemma",
-     "line": 32,
+     "line": 31,
      "name": "Shor.regSize_qftLeftReg"
     },
     {
      "kind": "lemma",
-     "line": 37,
+     "line": 36,
      "name": "Shor.regSize_qftRightReg"
     },
     {
      "kind": "lemma",
-     "line": 42,
+     "line": 41,
      "name": "Shor.qftSplit_disjoint"
     },
     {
      "kind": "lemma",
-     "line": 47,
+     "line": 46,
      "name": "Shor.qftSplit_strictly_smaller"
     },
     {
      "kind": "lemma",
-     "line": 59,
+     "line": 58,
      "name": "Shor.qftSplit_phase_size_bounds"
     },
     {
      "kind": "def",
-     "line": 85,
+     "line": 84,
      "name": "Shor.explicitQFTGateCount"
     },
     {
      "kind": "def",
-     "line": 95,
+     "line": 94,
      "name": "Shor.explicitQFTPhaseGateCount"
     },
     {
      "kind": "lemma",
-     "line": 109,
+     "line": 108,
      "name": "Shor.explicitQFTPhaseGateCount_eq_lowerGate"
     },
     {
      "kind": "lemma",
-     "line": 128,
+     "line": 127,
      "name": "Shor.explicitQFTPhaseGateCount_eq_signed"
     },
     {
      "kind": "lemma",
-     "line": 175,
+     "line": 174,
      "name": "Shor.explicitQFTGateCount_split"
     },
     {
      "kind": "lemma",
-     "line": 214,
+     "line": 213,
      "name": "Shor.explicitQFTGateCount_zero"
     },
     {
      "kind": "lemma",
-     "line": 230,
+     "line": 229,
      "name": "Shor.explicitQFTGateCount_one"
     },
     {
      "kind": "lemma",
-     "line": 272,
+     "line": 271,
      "name": "Shor.phaseProductGateRate_mono"
     },
     {
      "kind": "lemma",
-     "line": 284,
+     "line": 283,
      "name": "Shor.explicitQFTPhaseGateCount_eventually_le"
     },
     {
      "kind": "lemma",
-     "line": 340,
+     "line": 339,
      "name": "Shor.qftSplitRadixGateCount_le"
     },
     {
      "kind": "lemma",
-     "line": 361,
+     "line": 360,
      "name": "Shor.qftSplitRadixGateCount_eventually_le"
     },
     {
      "kind": "lemma",
-     "line": 398,
+     "line": 397,
      "name": "Shor.explicitQFTPhaseGateCount_bounded_on_bounded_sizes"
     },
     {
      "kind": "lemma",
-     "line": 427,
+     "line": 426,
      "name": "Shor.explicitQFTGateCount_bounded_on_bounded_sizes"
     },
     {
      "kind": "lemma",
-     "line": 497,
+     "line": 496,
      "name": "Shor.explicitQFTGateCount_one_level_recurrence"
     },
     {
      "kind": "lemma",
-     "line": 555,
+     "line": 554,
      "name": "Shor.qft_half_rate_contraction"
     },
     {
      "kind": "lemma",
-     "line": 729,
+     "line": 728,
      "name": "Shor.explicitQFT_binary_recurrence_solution"
     },
     {
      "kind": "lemma",
-     "line": 935,
+     "line": 934,
      "name": "Shor.lowerQFT_gateCount_eq_explicit"
     },
     {
      "kind": "theorem",
-     "line": 951,
+     "line": 950,
      "name": "Shor.qftGateCountBound_of_phaseProduct"
     },
     {
      "kind": "theorem",
-     "line": 981,
+     "line": 980,
      "name": "Shor.qftGateCountBound_of_programOK"
     }
    ],
@@ -2526,14 +2479,13 @@ window.GRAPH = {
     "GateCount/Shor_GateCount.lean"
    ],
    "imports": [
-    "GateCount/Lemmas/LowGateCount.lean",
     "GateCount/PhaseProduct/Main.lean",
     "PhaseProduct/Compiler/Workspace.lean",
     "PhaseProduct/Lowering/Lower.lean",
     "PhaseProduct/Lowering/Plan.lean"
    ],
    "kind": "file",
-   "lines": 995,
+   "lines": 994,
    "name": "QFT_GateCount.lean",
    "path": "GateCount/QFT_GateCount.lean"
   },
@@ -2821,7 +2773,7 @@ window.GRAPH = {
     "ModularExponentiation/Proofs",
     "ModularExponentiation/Spec"
    ],
-   "declCount": 423,
+   "declCount": 422,
    "fileCount": 22,
    "fsPath": "Implementation/ModularExponentiation",
    "kind": "folder",
@@ -2997,9 +2949,9 @@ window.GRAPH = {
    "importedBy": [
     "ModularExponentiation/Circuit/ModExp.lean",
     "ModularExponentiation/Proofs/Core.lean",
-    "ModularExponentiation/Proofs/Model.lean",
     "ModularExponentiation/Proofs/Step34Exact.lean",
     "ModularExponentiation/Spec/Config.lean",
+    "ModularExponentiation/Spec/Model.lean",
     "Shor/Circuit/OrderFinding.lean",
     "Shor/Proofs/Correctness.lean",
     "Shor/Proofs/Readiness/Dynamic.lean",
@@ -3100,8 +3052,9 @@ window.GRAPH = {
     "ModularExponentiation/Proofs/CmpLtNW.lean",
     "ModularExponentiation/Proofs/ConstArithmetic.lean",
     "ModularExponentiation/Proofs/Core.lean",
-    "ModularExponentiation/Proofs/Model.lean",
     "ModularExponentiation/Spec/Config.lean",
+    "ModularExponentiation/Spec/Model.lean",
+    "ModularExponentiation/Spec/Validity.lean",
     "Reference/ReferenceLayout.lean",
     "Shor/Lowering/LowerGate.lean",
     "Shor/Proofs/Correctness.lean",
@@ -3472,14 +3425,13 @@ window.GRAPH = {
     "ModularExponentiation/Proofs/Core.lean",
     "ModularExponentiation/Proofs/FinalModMul.lean",
     "ModularExponentiation/Proofs/ModExp.lean",
-    "ModularExponentiation/Proofs/Model.lean",
     "ModularExponentiation/Proofs/Step1Bound.lean",
     "ModularExponentiation/Proofs/Step1QPE.lean",
     "ModularExponentiation/Proofs/Step2Bound.lean",
     "ModularExponentiation/Proofs/Step34Exact.lean"
    ],
-   "declCount": 314,
-   "fileCount": 11,
+   "declCount": 267,
+   "fileCount": 10,
    "fsPath": "Implementation/ModularExponentiation/Proofs",
    "kind": "folder",
    "name": "Proofs",
@@ -4217,8 +4169,8 @@ window.GRAPH = {
     "ModularExponentiation/Circuit/Steps.lean",
     "ModularExponentiation/Circuit/Workspace.lean",
     "ModularExponentiation/Proofs/CmpLtNW.lean",
-    "ModularExponentiation/Proofs/Model.lean",
     "ModularExponentiation/Spec/Config.lean",
+    "ModularExponentiation/Spec/Model.lean",
     "PhaseProduct/Gates/Macros.lean",
     "Shared/Hadamard.lean",
     "Shared/Registers.lean",
@@ -4253,10 +4205,10 @@ window.GRAPH = {
     "ModularExponentiation/Proofs/ModExp.lean"
    ],
    "imports": [
-    "ModularExponentiation/Proofs/Model.lean",
     "ModularExponentiation/Proofs/Step2Bound.lean",
     "ModularExponentiation/Proofs/Step34Exact.lean",
     "ModularExponentiation/Spec/Config.lean",
+    "ModularExponentiation/Spec/Model.lean",
     "ModularExponentiation/Spec/Precision.lean"
    ],
    "kind": "file",
@@ -4267,48 +4219,38 @@ window.GRAPH = {
   "ModularExponentiation/Proofs/ModExp.lean": {
    "declarations": [
     {
-     "kind": "def",
-     "line": 29,
-     "name": "ModExpTailLayout"
-    },
-    {
-     "kind": "def",
-     "line": 36,
-     "name": "ModExpTailArithmeticOK"
-    },
-    {
      "kind": "lemma",
-     "line": 40,
+     "line": 26,
      "name": "modExpTailLayout_tail"
     },
     {
      "kind": "lemma",
-     "line": 53,
+     "line": 39,
      "name": "modExpTailArithmeticOK_tail"
     },
     {
      "kind": "theorem",
-     "line": 70,
+     "line": 56,
      "name": "ideal_preserves_algorithm1_good_ket"
     },
     {
      "kind": "theorem",
-     "line": 231,
+     "line": 217,
      "name": "ideal_preserves_valid"
     },
     {
      "kind": "theorem",
-     "line": 304,
+     "line": 290,
      "name": "modExpApproxSteps_valid_dist_uniform"
     },
     {
      "kind": "theorem",
-     "line": 466,
+     "line": 452,
      "name": "modExpApprox_valid_dist_uniform"
     },
     {
      "kind": "theorem",
-     "line": 511,
+     "line": 497,
      "name": "modExpApprox_valid_dist_2048"
     }
    ],
@@ -4322,251 +4264,9 @@ window.GRAPH = {
     "ModularExponentiation/Proofs/FinalModMul.lean"
    ],
    "kind": "file",
-   "lines": 532,
+   "lines": 518,
    "name": "ModExp.lean",
    "path": "ModularExponentiation/Proofs/ModExp.lean"
-  },
-  "ModularExponentiation/Proofs/Model.lean": {
-   "declarations": [
-    {
-     "kind": "def",
-     "line": 30,
-     "name": "Shor.Step5ConstantOK"
-    },
-    {
-     "kind": "def",
-     "line": 54,
-     "name": "Shor.ModMulConfig.U34"
-    },
-    {
-     "kind": "def",
-     "line": 64,
-     "name": "Shor.ModMulConfig.U1"
-    },
-    {
-     "kind": "def",
-     "line": 72,
-     "name": "Shor.ModMulConfig.U2"
-    },
-    {
-     "kind": "def",
-     "line": 80,
-     "name": "Shor.ModMulConfig.U5"
-    },
-    {
-     "kind": "def",
-     "line": 92,
-     "name": "Shor.ModMulConfig.stagedGate"
-    },
-    {
-     "kind": "def",
-     "line": 116,
-     "name": "Shor.alg1TargetResidue"
-    },
-    {
-     "kind": "def",
-     "line": 128,
-     "name": "Shor.alg1TargetFraction"
-    },
-    {
-     "kind": "def",
-     "line": 136,
-     "name": "Shor.alg1WorkFraction"
-    },
-    {
-     "kind": "def",
-     "line": 143,
-     "name": "Shor.alg1GoodLabels"
-    },
-    {
-     "kind": "def",
-     "line": 154,
-     "name": "Shor.alg1Step2Value"
-    },
-    {
-     "kind": "def",
-     "line": 176,
-     "name": "Shor.alg1Step2Phase"
-    },
-    {
-     "kind": "def",
-     "line": 186,
-     "name": "Shor.alg1Step2QFTScale"
-    },
-    {
-     "kind": "def",
-     "line": 195,
-     "name": "Shor.alg1Step2ActualFourierCoeff"
-    },
-    {
-     "kind": "def",
-     "line": 215,
-     "name": "Shor.alg1Step2IdealFourierCoeff"
-    },
-    {
-     "kind": "def",
-     "line": 234,
-     "name": "Shor.alg1Step2ShiftDiscrepancy"
-    },
-    {
-     "kind": "abbrev",
-     "line": 244,
-     "name": "Shor.Alg1Step2SourceIndex"
-    },
-    {
-     "kind": "abbrev",
-     "line": 252,
-     "name": "Shor.Alg1Step2FourierIndex"
-    },
-    {
-     "kind": "def",
-     "line": 261,
-     "name": "Shor.alg1Step2FourierIndices"
-    },
-    {
-     "kind": "def",
-     "line": 272,
-     "name": "Shor.alg1Step2FourierLabel"
-    },
-    {
-     "kind": "def",
-     "line": 284,
-     "name": "Shor.alg1Step2FourierBaseCoeff"
-    },
-    {
-     "kind": "def",
-     "line": 299,
-     "name": "Shor.alg1Step2FourierMultiplier"
-    },
-    {
-     "kind": "def",
-     "line": 318,
-     "name": "Shor.alg1Step2Error"
-    },
-    {
-     "kind": "def",
-     "line": 348,
-     "name": "Shor.alg1OutputValue"
-    },
-    {
-     "kind": "def",
-     "line": 359,
-     "name": "Shor.alg1Step4CrossCondition"
-    },
-    {
-     "kind": "abbrev",
-     "line": 368,
-     "name": "Shor.alg1Overflow"
-    },
-    {
-     "kind": "structure",
-     "line": 376,
-     "name": "Shor.Alg1Trace"
-    },
-    {
-     "kind": "def",
-     "line": 414,
-     "name": "Shor.Alg1Trace.goodStep1"
-    },
-    {
-     "kind": "def",
-     "line": 435,
-     "name": "Shor.Alg1Trace.afterStep2Ref"
-    },
-    {
-     "kind": "def",
-     "line": 459,
-     "name": "Shor.Alg1Trace.afterStep34Ref"
-    },
-    {
-     "kind": "def",
-     "line": 498,
-     "name": "Shor.alg1PhaseCoeff"
-    },
-    {
-     "kind": "def",
-     "line": 511,
-     "name": "Shor.alg1QpeBadMass"
-    },
-    {
-     "kind": "def",
-     "line": 528,
-     "name": "Shor.alg1TraceBadMass"
-    },
-    {
-     "kind": "def",
-     "line": 545,
-     "name": "Shor.Alg1Trace.badStep1"
-    },
-    {
-     "kind": "def",
-     "line": 567,
-     "name": "Shor.Alg1Trace.afterStep34Full"
-    },
-    {
-     "kind": "def",
-     "line": 586,
-     "name": "Shor.Alg1Trace.afterStep34Bad"
-    },
-    {
-     "kind": "def",
-     "line": 608,
-     "name": "Shor.alg1Step1Phase"
-    },
-    {
-     "kind": "def",
-     "line": 612,
-     "name": "Shor.alg1Step5Phase"
-    },
-    {
-     "kind": "def",
-     "line": 620,
-     "name": "Shor.alg1Step5Forward"
-    },
-    {
-     "kind": "def",
-     "line": 637,
-     "name": "Shor.alg1Step1PhaseScalar"
-    },
-    {
-     "kind": "def",
-     "line": 656,
-     "name": "Shor.alg1TargetPhaseScalar"
-    },
-    {
-     "kind": "def",
-     "line": 673,
-     "name": "Shor.alg1LoadPreCoeff"
-    },
-    {
-     "kind": "def",
-     "line": 684,
-     "name": "Shor.alg1IQFTCoeff"
-    },
-    {
-     "kind": "def",
-     "line": 695,
-     "name": "Shor.alg1FractionalLoadCoeff"
-    }
-   ],
-   "docstring": "=========================================================\n    Algorithm 1 precision and arithmetic constants\n\nThis section packages the concrete precision schedule for Algorithm 1 and the\nStep-5 inverse constant used by the cleanup phase.\n=========================================================",
-   "fsPath": "Implementation/ModularExponentiation/Proofs/Model.lean",
-   "importedBy": [
-    "ModularExponentiation/Proofs/Core.lean",
-    "ModularExponentiation/Proofs/FinalModMul.lean",
-    "ModularExponentiation/Proofs/Step34Exact.lean"
-   ],
-   "imports": [
-    "Framework/Semantics/GateSemantics.lean",
-    "ModularExponentiation/Circuit/Steps.lean",
-    "ModularExponentiation/Circuit/Workspace.lean",
-    "ModularExponentiation/Spec/Config.lean",
-    "PhaseProduct/Gates/Macros.lean"
-   ],
-   "kind": "file",
-   "lines": 708,
-   "name": "Model.lean",
-   "path": "ModularExponentiation/Proofs/Model.lean"
   },
   "ModularExponentiation/Proofs/Step1Bound.lean": {
    "declarations": [
@@ -5217,57 +4917,52 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 116,
-     "name": "disjoint_qubitReg_of_outside"
-    },
-    {
-     "kind": "lemma",
-     "line": 129,
+     "line": 115,
      "name": "freshFor_writeNat_of_disjoint"
     },
     {
      "kind": "lemma",
-     "line": 146,
+     "line": 132,
      "name": "toNat_zero_writeNat_of_disjoint"
     },
     {
      "kind": "lemma",
-     "line": 163,
+     "line": 149,
      "name": "disjoint_newBits_active_self"
     },
     {
      "kind": "lemma",
-     "line": 172,
+     "line": 158,
      "name": "disjoint_newBits_active_of_owned"
     },
     {
      "kind": "lemma",
-     "line": 188,
+     "line": 174,
      "name": "disjoint_active_active_of_owned"
     },
     {
      "kind": "lemma",
-     "line": 204,
+     "line": 190,
      "name": "take_two_tail_eq_tail_take_one"
     },
     {
      "kind": "lemma",
-     "line": 213,
+     "line": 199,
      "name": "freshFor_grow_one_of_freshFor_two"
     },
     {
      "kind": "lemma",
-     "line": 252,
+     "line": 238,
      "name": "disjoint_of_qubitReg_outside"
     },
     {
      "kind": "lemma",
-     "line": 277,
+     "line": 263,
      "name": "alg1_step34_reference_exact_core"
     },
     {
      "kind": "lemma",
-     "line": 1053,
+     "line": 1039,
      "name": "alg1_step34_reference_exact"
     }
    ],
@@ -5280,14 +4975,14 @@ window.GRAPH = {
     "ModularExponentiation/Circuit/Steps.lean",
     "ModularExponentiation/Proofs/Algorithm1Expansion.lean",
     "ModularExponentiation/Proofs/Core.lean",
-    "ModularExponentiation/Proofs/Model.lean",
     "ModularExponentiation/Proofs/Step1QPE.lean",
     "ModularExponentiation/Spec/Config.lean",
+    "ModularExponentiation/Spec/Model.lean",
     "ModularExponentiation/Spec/Validity.lean",
     "Shared/Registers.lean"
    ],
    "kind": "file",
-   "lines": 1065,
+   "lines": 1051,
    "name": "Step34Exact.lean",
    "path": "ModularExponentiation/Proofs/Step34Exact.lean"
   },
@@ -5295,11 +4990,12 @@ window.GRAPH = {
    "children": [
     "ModularExponentiation/Spec/Assertions.lean",
     "ModularExponentiation/Spec/Config.lean",
+    "ModularExponentiation/Spec/Model.lean",
     "ModularExponentiation/Spec/Precision.lean",
     "ModularExponentiation/Spec/Validity.lean"
    ],
-   "declCount": 23,
-   "fileCount": 4,
+   "declCount": 69,
+   "fileCount": 5,
    "fsPath": "Implementation/ModularExponentiation/Spec",
    "kind": "folder",
    "name": "Spec",
@@ -5392,9 +5088,9 @@ window.GRAPH = {
    "importedBy": [
     "ModularExponentiation/Proofs/Core.lean",
     "ModularExponentiation/Proofs/FinalModMul.lean",
-    "ModularExponentiation/Proofs/Model.lean",
     "ModularExponentiation/Proofs/Step34Exact.lean",
     "ModularExponentiation/Spec/Assertions.lean",
+    "ModularExponentiation/Spec/Model.lean",
     "Reference/ReferenceShorImplementation.lean",
     "Shor/Proofs/Correctness.lean",
     "Shor/Spec/Assertions.lean"
@@ -5410,6 +5106,248 @@ window.GRAPH = {
    "lines": 94,
    "name": "Config.lean",
    "path": "ModularExponentiation/Spec/Config.lean"
+  },
+  "ModularExponentiation/Spec/Model.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 31,
+     "name": "Shor.Step5ConstantOK"
+    },
+    {
+     "kind": "def",
+     "line": 55,
+     "name": "Shor.ModMulConfig.U34"
+    },
+    {
+     "kind": "def",
+     "line": 65,
+     "name": "Shor.ModMulConfig.U1"
+    },
+    {
+     "kind": "def",
+     "line": 73,
+     "name": "Shor.ModMulConfig.U2"
+    },
+    {
+     "kind": "def",
+     "line": 81,
+     "name": "Shor.ModMulConfig.U5"
+    },
+    {
+     "kind": "def",
+     "line": 93,
+     "name": "Shor.ModMulConfig.stagedGate"
+    },
+    {
+     "kind": "def",
+     "line": 117,
+     "name": "Shor.alg1TargetResidue"
+    },
+    {
+     "kind": "def",
+     "line": 129,
+     "name": "Shor.alg1TargetFraction"
+    },
+    {
+     "kind": "def",
+     "line": 137,
+     "name": "Shor.alg1WorkFraction"
+    },
+    {
+     "kind": "def",
+     "line": 144,
+     "name": "Shor.alg1GoodLabels"
+    },
+    {
+     "kind": "def",
+     "line": 155,
+     "name": "Shor.alg1Step2Value"
+    },
+    {
+     "kind": "def",
+     "line": 177,
+     "name": "Shor.alg1Step2Phase"
+    },
+    {
+     "kind": "def",
+     "line": 187,
+     "name": "Shor.alg1Step2QFTScale"
+    },
+    {
+     "kind": "def",
+     "line": 196,
+     "name": "Shor.alg1Step2ActualFourierCoeff"
+    },
+    {
+     "kind": "def",
+     "line": 216,
+     "name": "Shor.alg1Step2IdealFourierCoeff"
+    },
+    {
+     "kind": "def",
+     "line": 235,
+     "name": "Shor.alg1Step2ShiftDiscrepancy"
+    },
+    {
+     "kind": "abbrev",
+     "line": 245,
+     "name": "Shor.Alg1Step2SourceIndex"
+    },
+    {
+     "kind": "abbrev",
+     "line": 253,
+     "name": "Shor.Alg1Step2FourierIndex"
+    },
+    {
+     "kind": "def",
+     "line": 262,
+     "name": "Shor.alg1Step2FourierIndices"
+    },
+    {
+     "kind": "def",
+     "line": 273,
+     "name": "Shor.alg1Step2FourierLabel"
+    },
+    {
+     "kind": "def",
+     "line": 285,
+     "name": "Shor.alg1Step2FourierBaseCoeff"
+    },
+    {
+     "kind": "def",
+     "line": 300,
+     "name": "Shor.alg1Step2FourierMultiplier"
+    },
+    {
+     "kind": "def",
+     "line": 319,
+     "name": "Shor.alg1Step2Error"
+    },
+    {
+     "kind": "def",
+     "line": 349,
+     "name": "Shor.alg1OutputValue"
+    },
+    {
+     "kind": "def",
+     "line": 360,
+     "name": "Shor.alg1Step4CrossCondition"
+    },
+    {
+     "kind": "abbrev",
+     "line": 369,
+     "name": "Shor.alg1Overflow"
+    },
+    {
+     "kind": "structure",
+     "line": 377,
+     "name": "Shor.Alg1Trace"
+    },
+    {
+     "kind": "def",
+     "line": 415,
+     "name": "Shor.Alg1Trace.goodStep1"
+    },
+    {
+     "kind": "def",
+     "line": 436,
+     "name": "Shor.Alg1Trace.afterStep2Ref"
+    },
+    {
+     "kind": "def",
+     "line": 460,
+     "name": "Shor.Alg1Trace.afterStep34Ref"
+    },
+    {
+     "kind": "def",
+     "line": 499,
+     "name": "Shor.alg1PhaseCoeff"
+    },
+    {
+     "kind": "def",
+     "line": 512,
+     "name": "Shor.alg1QpeBadMass"
+    },
+    {
+     "kind": "def",
+     "line": 529,
+     "name": "Shor.alg1TraceBadMass"
+    },
+    {
+     "kind": "def",
+     "line": 546,
+     "name": "Shor.Alg1Trace.badStep1"
+    },
+    {
+     "kind": "def",
+     "line": 568,
+     "name": "Shor.Alg1Trace.afterStep34Full"
+    },
+    {
+     "kind": "def",
+     "line": 587,
+     "name": "Shor.Alg1Trace.afterStep34Bad"
+    },
+    {
+     "kind": "def",
+     "line": 609,
+     "name": "Shor.alg1Step1Phase"
+    },
+    {
+     "kind": "def",
+     "line": 613,
+     "name": "Shor.alg1Step5Phase"
+    },
+    {
+     "kind": "def",
+     "line": 621,
+     "name": "Shor.alg1Step5Forward"
+    },
+    {
+     "kind": "def",
+     "line": 638,
+     "name": "Shor.alg1Step1PhaseScalar"
+    },
+    {
+     "kind": "def",
+     "line": 657,
+     "name": "Shor.alg1TargetPhaseScalar"
+    },
+    {
+     "kind": "def",
+     "line": 674,
+     "name": "Shor.alg1LoadPreCoeff"
+    },
+    {
+     "kind": "def",
+     "line": 685,
+     "name": "Shor.alg1IQFTCoeff"
+    },
+    {
+     "kind": "def",
+     "line": 696,
+     "name": "Shor.alg1FractionalLoadCoeff"
+    }
+   ],
+   "docstring": "=========================================================\n    Algorithm 1 precision and arithmetic constants\n\nThis section packages the concrete precision schedule for Algorithm 1 and the\nStep-5 inverse constant used by the cleanup phase.\n=========================================================",
+   "fsPath": "Implementation/ModularExponentiation/Spec/Model.lean",
+   "importedBy": [
+    "ModularExponentiation/Proofs/Core.lean",
+    "ModularExponentiation/Proofs/FinalModMul.lean",
+    "ModularExponentiation/Proofs/Step34Exact.lean"
+   ],
+   "imports": [
+    "Framework/Semantics/GateSemantics.lean",
+    "ModularExponentiation/Circuit/Steps.lean",
+    "ModularExponentiation/Circuit/Workspace.lean",
+    "ModularExponentiation/Spec/Config.lean",
+    "PhaseProduct/Gates/Macros.lean"
+   ],
+   "kind": "file",
+   "lines": 709,
+   "name": "Model.lean",
+   "path": "ModularExponentiation/Spec/Model.lean"
   },
   "ModularExponentiation/Spec/Precision.lean": {
    "declarations": [
@@ -5452,43 +5390,53 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "def",
-     "line": 26,
+     "line": 27,
      "name": "Shor.GoodModMulBasisInput"
     },
     {
      "kind": "def",
-     "line": 42,
+     "line": 43,
      "name": "Shor.ValidModMulState"
     },
     {
      "kind": "def",
-     "line": 50,
+     "line": 51,
      "name": "Shor.GoodAlgorithm1BasisInput"
     },
     {
      "kind": "def",
-     "line": 57,
+     "line": 58,
      "name": "Shor.ValidAlgorithm1State"
     },
     {
      "kind": "def",
-     "line": 67,
+     "line": 68,
      "name": "Shor.ConstArithmeticCleanBasis"
     },
     {
      "kind": "def",
-     "line": 74,
+     "line": 75,
      "name": "Shor.CSubConstCleanBasis"
     },
     {
      "kind": "abbrev",
-     "line": 80,
+     "line": 81,
      "name": "Shor.CmpGeConstCleanState"
     },
     {
      "kind": "abbrev",
-     "line": 85,
+     "line": 86,
      "name": "Shor.CSubConstCleanState"
+    },
+    {
+     "kind": "def",
+     "line": 96,
+     "name": "Shor.ModExpTailLayout"
+    },
+    {
+     "kind": "def",
+     "line": 103,
+     "name": "Shor.ModExpTailArithmeticOK"
     }
    ],
    "docstring": "# Modular-Exponentiation Validity\n\nThe clean-input predicates for the valid-input subspace the approximation\ntheorems work on (`GoodModMulBasisInput`, `ValidModMulState`,\n`GoodAlgorithm1BasisInput`, `ValidAlgorithm1State`), and the state-level\ncleanliness predicates consumed by the two concrete constant-arithmetic\nlowerers (`ConstArithmeticCleanBasis`, `CSubConstCleanBasis`,\n`CmpGeConstCleanState`, `CSubConstCleanState`).",
@@ -5503,10 +5451,11 @@ window.GRAPH = {
    ],
    "imports": [
     "Framework/Semantics/GateSemantics.lean",
+    "ModularExponentiation/Circuit/Workspace.lean",
     "Shared/States.lean"
    ],
    "kind": "file",
-   "lines": 90,
+   "lines": 106,
    "name": "Validity.lean",
    "path": "ModularExponentiation/Spec/Validity.lean"
   },
@@ -5520,7 +5469,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs",
     "PhaseProduct/Spec"
    ],
-   "declCount": 999,
+   "declCount": 997,
    "fileCount": 58,
    "fsPath": "Implementation/PhaseProduct",
    "kind": "folder",
@@ -5536,7 +5485,7 @@ window.GRAPH = {
     "PhaseProduct/Compiler/Widths.lean",
     "PhaseProduct/Compiler/Workspace.lean"
    ],
-   "declCount": 139,
+   "declCount": 138,
    "fileCount": 5,
    "fsPath": "Implementation/PhaseProduct/Compiler",
    "kind": "folder",
@@ -5554,86 +5503,81 @@ window.GRAPH = {
     {
      "kind": "def",
      "line": 34,
-     "name": "Shor.radixRow"
-    },
-    {
-     "kind": "def",
-     "line": 37,
      "name": "Shor.phaseCoeffFromPts"
     },
     {
      "kind": "def",
-     "line": 43,
+     "line": 40,
      "name": "Shor.ptsToFin"
     },
     {
      "kind": "def",
-     "line": 47,
+     "line": 44,
      "name": "Shor.phaseRadix"
     },
     {
      "kind": "def",
-     "line": 50,
+     "line": 47,
      "name": "Shor.phaseRadixWidth"
     },
     {
      "kind": "def",
-     "line": 53,
+     "line": 50,
      "name": "Shor.chunkRadix"
     },
     {
      "kind": "def",
-     "line": 56,
+     "line": 53,
      "name": "Shor.phaseCoeffFromPtsWidth"
     },
     {
      "kind": "def",
-     "line": 67,
+     "line": 64,
      "name": "Shor.cramerCoeffFromPts"
     },
     {
      "kind": "def",
-     "line": 73,
+     "line": 70,
      "name": "Shor.cramerCoeffFromPtsWidth"
     },
     {
      "kind": "def",
-     "line": 77,
+     "line": 74,
      "name": "Shor.phaseCoeffFromPtsForRegs"
     },
     {
      "kind": "def",
-     "line": 87,
+     "line": 84,
      "name": "Shor.alternatingPoint"
     },
     {
      "kind": "def",
-     "line": 91,
+     "line": 88,
      "name": "Shor.genInterpolationPoints"
     },
     {
      "kind": "def",
-     "line": 103,
+     "line": 100,
      "name": "Shor.toMathPoint"
     },
     {
      "kind": "lemma",
-     "line": 110,
+     "line": 107,
      "name": "Shor.toMathPoint_interpEntry"
     },
     {
      "kind": "lemma",
-     "line": 114,
+     "line": 111,
      "name": "Shor.toMathPoint_alternatingPoint"
     },
     {
      "kind": "lemma",
-     "line": 122,
+     "line": 119,
      "name": "Shor.listToFin_genInterpolationPoints_toMathPoint"
     },
     {
      "kind": "lemma",
-     "line": 131,
+     "line": 128,
      "name": "Shor.genInterpolationPoints_good"
     }
    ],
@@ -5657,7 +5601,7 @@ window.GRAPH = {
     "PhaseProduct/Math/ToomCook.lean"
    ],
    "kind": "file",
-   "lines": 151,
+   "lines": 148,
    "name": "Coefficients.lean",
    "path": "PhaseProduct/Compiler/Coefficients.lean"
   },
@@ -6452,10 +6396,10 @@ window.GRAPH = {
     "ModularExponentiation/Circuit/Workspace.lean",
     "ModularExponentiation/Proofs/Algorithm1Expansion.lean",
     "ModularExponentiation/Proofs/Core.lean",
-    "ModularExponentiation/Proofs/Model.lean",
     "ModularExponentiation/Proofs/Step1Bound.lean",
     "ModularExponentiation/Proofs/Step1QPE.lean",
     "ModularExponentiation/Proofs/Step2Bound.lean",
+    "ModularExponentiation/Spec/Model.lean",
     "PhaseProduct/Proofs/Compiler/MacroSemantics.lean",
     "QFT/Lowering/Plan.lean",
     "QFT/Lowering/Workspace.lean",
@@ -6818,7 +6762,7 @@ window.GRAPH = {
     "PhaseProduct/Math/Table_Generation.lean",
     "PhaseProduct/Math/ToomCook.lean"
    ],
-   "declCount": 519,
+   "declCount": 518,
    "fileCount": 22,
    "fsPath": "Implementation/PhaseProduct/Math",
    "kind": "folder",
@@ -6939,7 +6883,7 @@ window.GRAPH = {
     "PhaseProduct/Math/Table_Generation/Generator.lean",
     "PhaseProduct/Math/Table_Generation/Programs"
    ],
-   "declCount": 474,
+   "declCount": 473,
    "fileCount": 19,
    "fsPath": "Implementation/PhaseProduct/Math/Table_Generation",
    "kind": "folder",
@@ -7805,7 +7749,7 @@ window.GRAPH = {
     "PhaseProduct/Math/Table_Generation/Core/RunLemmas.lean",
     "PhaseProduct/Math/Table_Generation/Core/Tactics.lean"
    ],
-   "declCount": 142,
+   "declCount": 141,
    "fileCount": 7,
    "fsPath": "Implementation/PhaseProduct/Math/Table_Generation/Core",
    "kind": "folder",
@@ -8288,18 +8232,13 @@ window.GRAPH = {
      "name": "State.apply_Op_inverse_cons"
     },
     {
-     "kind": "lemma",
-     "line": 370,
-     "name": "State.apply_Op_inverse_append"
-    },
-    {
      "kind": "theorem",
-     "line": 376,
+     "line": 372,
      "name": "State.WF_cons"
     },
     {
      "kind": "theorem",
-     "line": 383,
+     "line": 379,
      "name": "State.run?_inverse_undoes_WF"
     }
    ],
@@ -8313,7 +8252,7 @@ window.GRAPH = {
     "PhaseProduct/Math/Table_Generation/Core/Language.lean"
    ],
    "kind": "file",
-   "lines": 412,
+   "lines": 408,
    "name": "RegisterLemmas.lean",
    "path": "PhaseProduct/Math/Table_Generation/Core/RegisterLemmas.lean"
   },
@@ -12813,7 +12752,7 @@ window.GRAPH = {
     "Reference/ShorProgram.lean",
     "Reference/StandardLoweringSetup.lean"
    ],
-   "declCount": 138,
+   "declCount": 137,
    "fileCount": 7,
    "fsPath": "Implementation/Reference",
    "kind": "folder",
@@ -12824,78 +12763,73 @@ window.GRAPH = {
   "Reference/Reference2048Headline.lean": {
    "declarations": [
     {
-     "kind": "def",
-     "line": 51,
-     "name": "Shor.Reference.Is2048Bit"
+     "kind": "theorem",
+     "line": 52,
+     "name": "Shor.Reference._root_.Shor.Is2048Bit.log2_eq"
     },
     {
      "kind": "theorem",
-     "line": 55,
-     "name": "Shor.Reference.Is2048Bit.log2_eq"
-    },
-    {
-     "kind": "theorem",
-     "line": 64,
-     "name": "Shor.Reference.Is2048Bit.tbits_le"
+     "line": 62,
+     "name": "Shor.Reference._root_.Shor.Is2048Bit.tbits_le"
     },
     {
      "kind": "def",
-     "line": 83,
+     "line": 81,
      "name": "Shor.Reference.m2048"
     },
     {
      "kind": "theorem",
-     "line": 85,
+     "line": 83,
      "name": "Shor.Reference.referencePrecision_m2048"
     },
     {
      "kind": "theorem",
-     "line": 99,
+     "line": 97,
      "name": "Shor.Reference.kappa_ge_one_div_25"
     },
     {
      "kind": "theorem",
-     "line": 141,
+     "line": 139,
      "name": "Shor.Reference.headline_success_bound"
     },
     {
      "kind": "theorem",
-     "line": 220,
+     "line": 218,
      "name": "Shor.Reference.headline_program_success"
     },
     {
      "kind": "def",
-     "line": 245,
+     "line": 243,
      "name": "Shor.Reference.headlineP"
     },
     {
      "kind": "theorem",
-     "line": 247,
+     "line": 245,
      "name": "Shor.Reference.headlineP_pos"
     },
     {
      "kind": "theorem",
-     "line": 251,
+     "line": 249,
      "name": "Shor.Reference.exists_headline_trialCount"
     },
     {
      "kind": "def",
-     "line": 264,
+     "line": 262,
      "name": "Shor.Reference.headlineTrialCount"
     },
     {
      "kind": "theorem",
-     "line": 266,
+     "line": 264,
      "name": "Shor.Reference.headlineTrialCount_correct"
     },
     {
      "kind": "def",
-     "line": 275,
+     "line": 273,
      "name": "Shor.Reference.headlineGateCount"
     },
     {
      "kind": "def",
-     "line": 285,
+     "line": 283,
      "name": "Shor.Reference.headlineTotalGateCount"
     }
    ],
@@ -12906,7 +12840,7 @@ window.GRAPH = {
     "Reference/ReferenceShorImplementation.lean"
    ],
    "kind": "file",
-   "lines": 292,
+   "lines": 290,
    "name": "Reference2048Headline.lean",
    "path": "Reference/Reference2048Headline.lean"
   },
@@ -13642,7 +13576,7 @@ window.GRAPH = {
     "Shared/Registers.lean",
     "Shared/States.lean"
    ],
-   "declCount": 155,
+   "declCount": 152,
    "fileCount": 7,
    "fsPath": "Implementation/Shared",
    "kind": "folder",
@@ -13663,193 +13597,188 @@ window.GRAPH = {
      "name": "Shor.zeroExtend_preserves_bit"
     },
     {
-     "kind": "lemma",
-     "line": 100,
-     "name": "Shor.GateSemanticsFacts.zeroExtend_preserves_bit"
-    },
-    {
      "kind": "theorem",
-     "line": 125,
+     "line": 110,
      "name": "Shor.radixReverseBasis_writeNat"
     },
     {
      "kind": "theorem",
-     "line": 232,
+     "line": 217,
      "name": "Shor.RadixReverseSemantics.eval_RadixReverse_ket"
     },
     {
      "kind": "theorem",
-     "line": 267,
+     "line": 252,
      "name": "Shor.ExtReg.active_newBits_disjoint"
     },
     {
      "kind": "theorem",
-     "line": 277,
+     "line": 262,
      "name": "Shor.signExtendNewValue_lt"
     },
     {
      "kind": "theorem",
-     "line": 299,
+     "line": 284,
      "name": "Shor.toNat_newBits_signExtendBasis"
     },
     {
      "kind": "theorem",
-     "line": 317,
+     "line": 302,
      "name": "Shor.toNat_signExtendBasis"
     },
     {
      "kind": "theorem",
-     "line": 336,
+     "line": 321,
      "name": "Shor.extToInt_signExtendBasis"
     },
     {
      "kind": "theorem",
-     "line": 347,
+     "line": 332,
      "name": "Shor.signExtendNewValue_signExtendBasis"
     },
     {
      "kind": "theorem",
-     "line": 374,
+     "line": 359,
      "name": "Shor.signExtendBasis_involutive"
     },
     {
      "kind": "theorem",
-     "line": 400,
+     "line": 385,
      "name": "Shor.signExtendNewValue_of_fresh"
     },
     {
      "kind": "lemma",
-     "line": 421,
+     "line": 406,
      "name": "Shor.tcDecodeWidth_signExtend"
     },
     {
      "kind": "theorem",
-     "line": 582,
+     "line": 567,
      "name": "Shor.extToInt_grow_signExtendBasis"
     },
     {
      "kind": "theorem",
-     "line": 617,
+     "line": 602,
      "name": "Shor.toNat_signExtendBasis_of_activeDisjoint"
     },
     {
      "kind": "theorem",
-     "line": 657,
+     "line": 642,
      "name": "Shor.GateSemanticsCore.eval_eq_of_ket_eq"
     },
     {
      "kind": "theorem",
-     "line": 701,
+     "line": 686,
      "name": "Shor.ExtensionSemantics.eval_signExtend_ket"
     },
     {
      "kind": "theorem",
-     "line": 744,
+     "line": 729,
      "name": "Shor.ExtensionSemantics.eval_signDealloc_eq_adj"
     },
     {
      "kind": "lemma",
-     "line": 789,
+     "line": 774,
      "name": "Shor.tcModWidth_lt_pow"
     },
     {
      "kind": "lemma",
-     "line": 825,
+     "line": 810,
      "name": "Shor.tcModWidth_lt_ASize_active"
     },
     {
      "kind": "lemma",
-     "line": 834,
+     "line": 819,
      "name": "Shor.shiftLBasis_of_fits"
     },
     {
      "kind": "lemma",
-     "line": 852,
+     "line": 837,
      "name": "Shor.extToInt_writeNat_tcModWidth"
     },
     {
      "kind": "lemma",
-     "line": 880,
+     "line": 865,
      "name": "Shor.extToInt_writeNat_active_of_disjoint"
     },
     {
      "kind": "lemma",
-     "line": 900,
+     "line": 885,
      "name": "Shor.extToInt_negateBasis"
     },
     {
      "kind": "lemma",
-     "line": 914,
+     "line": 899,
      "name": "Shor.extToInt_negateBasis_of_activeDisjoint"
     },
     {
      "kind": "def",
-     "line": 927,
+     "line": 912,
      "name": "Shor.addScaledValue"
     },
     {
      "kind": "lemma",
-     "line": 939,
+     "line": 924,
      "name": "Shor.addScaledBasis_eq"
     },
     {
      "kind": "lemma",
-     "line": 957,
+     "line": 942,
      "name": "Shor.extToInt_addScaledBasis_dst"
     },
     {
      "kind": "lemma",
-     "line": 975,
+     "line": 960,
      "name": "Shor.extToInt_addScaledBasis_src"
     },
     {
      "kind": "lemma",
-     "line": 995,
+     "line": 980,
      "name": "Shor.extToInt_addScaledBasis_of_activeDisjoint"
     },
     {
      "kind": "lemma",
-     "line": 1013,
+     "line": 998,
      "name": "Shor.extToInt_shiftLBasis_of_activeDisjoint"
     },
     {
      "kind": "lemma",
-     "line": 1045,
+     "line": 1030,
      "name": "Shor.extToInt_shiftRBasis_of_activeDisjoint"
     },
     {
      "kind": "lemma",
-     "line": 1087,
+     "line": 1072,
      "name": "Shor.extToInt_shiftLBasis_of_fits"
     },
     {
      "kind": "lemma",
-     "line": 1120,
+     "line": 1105,
      "name": "Shor.shiftRBasis_of_exact"
     },
     {
      "kind": "lemma",
-     "line": 1160,
+     "line": 1145,
      "name": "Shor.extToInt_shiftRBasis_of_exact"
     },
     {
      "kind": "theorem",
-     "line": 1188,
+     "line": 1173,
      "name": "Shor.ArithmeticSemantics.eval_Negate_ket_mod"
     },
     {
      "kind": "theorem",
-     "line": 1215,
+     "line": 1200,
      "name": "Shor.ArithmeticSemantics.eval_AddScaled_ket_mod"
     },
     {
      "kind": "theorem",
-     "line": 1268,
+     "line": 1253,
      "name": "Shor.ArithmeticSemantics.eval_ShiftL_ket_exact"
     },
     {
      "kind": "theorem",
-     "line": 1305,
+     "line": 1290,
      "name": "Shor.ArithmeticSemantics.eval_ShiftR_ket_exact"
     }
    ],
@@ -13866,7 +13795,7 @@ window.GRAPH = {
     "Shared/States.lean"
    ],
    "kind": "file",
-   "lines": 1345,
+   "lines": 1330,
    "name": "GateLaws.lean",
    "path": "Shared/GateLaws.lean"
   },
@@ -14307,114 +14236,104 @@ window.GRAPH = {
      "name": "Shor.ExtReg.capacity_grow"
     },
     {
-     "kind": "lemma",
-     "line": 801,
-     "name": "Shor.writeNat_comm_of_disjoint"
-    },
-    {
      "kind": "theorem",
-     "line": 811,
+     "line": 805,
      "name": "Shor.ExtReg.toNat_ofReg"
     },
     {
      "kind": "theorem",
-     "line": 819,
+     "line": 813,
      "name": "Shor.ExtReg.toNat_lt"
     },
     {
      "kind": "lemma",
-     "line": 830,
+     "line": 824,
      "name": "Shor.tcDecodeWidth_inj_of_lt"
     },
     {
      "kind": "lemma",
-     "line": 876,
+     "line": 870,
      "name": "Shor.FitsSignedWidth_mono"
     },
     {
      "kind": "lemma",
-     "line": 902,
+     "line": 896,
      "name": "Shor.tcWrapInt_eq_of_fits"
     },
     {
      "kind": "theorem",
-     "line": 978,
+     "line": 972,
      "name": "Shor.Gate.Reg.take_append_drop"
     },
     {
      "kind": "theorem",
-     "line": 984,
+     "line": 978,
      "name": "Shor.Gate.ExtReg.newBits_size"
     },
     {
      "kind": "theorem",
-     "line": 994,
+     "line": 988,
      "name": "Shor.Gate.ExtReg.ownedQubits_grow"
     },
     {
      "kind": "theorem",
-     "line": 1001,
+     "line": 995,
      "name": "Shor.Gate.RegEncoding.toNat_append_eq"
     },
     {
      "kind": "theorem",
-     "line": 1013,
+     "line": 1007,
      "name": "Shor.Gate.ExtReg.active_grow_qubits"
     },
     {
      "kind": "theorem",
-     "line": 1020,
+     "line": 1014,
      "name": "Shor.Gate.ExtReg.toNat_grow"
     },
     {
      "kind": "theorem",
-     "line": 1034,
+     "line": 1028,
      "name": "Shor.Gate.ExtReg.toNat_grow_of_fresh"
     },
     {
      "kind": "lemma",
-     "line": 1047,
+     "line": 1041,
      "name": "Shor.Gate.tcDecodeWidth_add_eq_of_lt"
     },
     {
      "kind": "theorem",
-     "line": 1066,
+     "line": 1060,
      "name": "Shor.Gate.ExtReg.extToInt_grow_of_fresh"
     },
     {
      "kind": "lemma",
-     "line": 1087,
+     "line": 1081,
      "name": "Shor.writeNat_overwrite_same_reg"
     },
     {
      "kind": "def",
-     "line": 1115,
+     "line": 1109,
      "name": "Shor.ExtReg.ownedReg"
     },
     {
      "kind": "theorem",
-     "line": 1126,
+     "line": 1120,
      "name": "Shor.bit_writeNat_qubitReg"
     },
     {
      "kind": "theorem",
-     "line": 1162,
+     "line": 1156,
      "name": "Shor.bit_of_toNat_zero_of_mem"
     },
     {
      "kind": "theorem",
-     "line": 1186,
+     "line": 1180,
      "name": "Shor.bit_writeNat_reg_one_of_mem"
     },
     {
      "kind": "theorem",
-     "line": 1262,
+     "line": 1256,
      "name": "Shor.writeNat_lowQubit_one_of_toNat_zero"
-    },
-    {
-     "kind": "lemma",
-     "line": 1336,
-     "name": "Shor.toNat_left_write_right"
     }
    ],
    "docstring": "# Register and encoding laws\n\nThe Framework register module owns only data structures, operations, and the\nminimal `RegEncoding` interface. This module contains every derived register\nlaw used by concrete implementations and their correctness proofs. Keeping\nthese declarations here preserves the public theorem names without introducing\na Framework-to-Implementation import.",
@@ -14452,7 +14371,7 @@ window.GRAPH = {
     "Framework/Quantum/QSemantics.lean"
    ],
    "kind": "file",
-   "lines": 1345,
+   "lines": 1336,
    "name": "Registers.lean",
    "path": "Shared/Registers.lean"
   },
@@ -14460,107 +14379,107 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "theorem",
-     "line": 31,
+     "line": 29,
      "name": "Shor.GateSemanticsCore.eval_zero"
     },
     {
      "kind": "theorem",
-     "line": 41,
+     "line": 39,
      "name": "Shor.GateSemanticsCore.hsub"
     },
     {
      "kind": "theorem",
-     "line": 64,
+     "line": 62,
      "name": "Shor.GateSemanticsCore.eval_injective"
     },
     {
      "kind": "theorem",
-     "line": 96,
+     "line": 94,
      "name": "Shor.GateSemanticsCore.eval_apply_adj"
     },
     {
      "kind": "theorem",
-     "line": 113,
+     "line": 111,
      "name": "Shor.GateSemanticsCore.inner_eval_adj"
     },
     {
      "kind": "theorem",
-     "line": 131,
+     "line": 129,
      "name": "Shor.GateSemanticsCore.state_eq_of_inner_ket_eq"
     },
     {
      "kind": "theorem",
-     "line": 185,
+     "line": 183,
      "name": "Shor.QSemantics.eval_id"
     },
     {
      "kind": "theorem",
-     "line": 193,
+     "line": 191,
      "name": "Shor.QSemantics.eval_seq"
     },
     {
      "kind": "theorem",
-     "line": 202,
+     "line": 200,
      "name": "Shor.QSemantics.inner_preserved"
     },
     {
      "kind": "theorem",
-     "line": 211,
+     "line": 209,
      "name": "Shor.QSemantics.eval_zero"
     },
     {
      "kind": "theorem",
-     "line": 219,
+     "line": 217,
      "name": "Shor.QSemantics.eval_add"
     },
     {
      "kind": "theorem",
-     "line": 228,
+     "line": 226,
      "name": "Shor.QSemantics.eval_smul"
     },
     {
      "kind": "theorem",
-     "line": 238,
+     "line": 236,
      "name": "Shor.QSemantics.hsub"
     },
     {
      "kind": "theorem",
-     "line": 247,
+     "line": 245,
      "name": "Shor.QSemantics.eval_adj_apply"
     },
     {
      "kind": "theorem",
-     "line": 256,
+     "line": 254,
      "name": "Shor.QSemantics.eval_apply_adj"
     },
     {
      "kind": "lemma",
-     "line": 272,
+     "line": 270,
      "name": "Shor.eval_sum"
     },
     {
      "kind": "lemma",
-     "line": 293,
+     "line": 291,
      "name": "Shor.eval_isometry"
     },
     {
      "kind": "lemma",
-     "line": 307,
+     "line": 305,
      "name": "Shor.eval_seq_simp"
     },
     {
      "kind": "lemma",
-     "line": 315,
+     "line": 313,
      "name": "Shor.eval_norm_preserved"
     },
     {
      "kind": "lemma",
-     "line": 325,
+     "line": 323,
      "name": "Shor.FreshZero.of_eq_on_bits"
     },
     {
      "kind": "inductive",
-     "line": 418,
+     "line": 416,
      "name": "Shor.CleanClosure"
     }
    ],
@@ -14596,7 +14515,7 @@ window.GRAPH = {
     "Framework/Semantics/GateSemantics.lean"
    ],
    "kind": "file",
-   "lines": 427,
+   "lines": 425,
    "name": "States.lean",
    "path": "Shared/States.lean"
   },
@@ -14609,7 +14528,7 @@ window.GRAPH = {
     "Shor/Proofs",
     "Shor/Spec"
    ],
-   "declCount": 245,
+   "declCount": 244,
    "fileCount": 27,
    "fsPath": "Implementation/Shor",
    "kind": "folder",
@@ -15030,7 +14949,7 @@ window.GRAPH = {
     "Shor/Proofs/Readiness",
     "Shor/Proofs/Setup.lean"
    ],
-   "declCount": 166,
+   "declCount": 165,
    "fileCount": 19,
    "fsPath": "Implementation/Shor/Proofs",
    "kind": "folder",
@@ -15626,7 +15545,7 @@ window.GRAPH = {
     "Shor/Proofs/Readiness/Step2.lean",
     "Shor/Proofs/Readiness/Step5.lean"
    ],
-   "declCount": 85,
+   "declCount": 84,
    "fileCount": 11,
    "fsPath": "Implementation/Shor/Proofs/Readiness",
    "kind": "folder",
@@ -16281,71 +16200,66 @@ window.GRAPH = {
     {
      "kind": "theorem",
      "line": 1309,
-     "name": "Shor.bit_writeNat_qubitReg"
-    },
-    {
-     "kind": "theorem",
-     "line": 1354,
      "name": "Shor.bit_eq_testBit_toNat_qubitReg"
     },
     {
      "kind": "lemma",
-     "line": 1379,
+     "line": 1334,
      "name": "Shor.hadamard_scale_sq"
     },
     {
      "kind": "lemma",
-     "line": 1405,
+     "line": 1360,
      "name": "Shor.hadamard_plus_identity"
     },
     {
      "kind": "lemma",
-     "line": 1429,
+     "line": 1384,
      "name": "Shor.hadamard_minus_identity"
     },
     {
      "kind": "theorem",
-     "line": 1454,
+     "line": 1409,
      "name": "Shor.eval_H_involutive_ket"
     },
     {
      "kind": "theorem",
-     "line": 1642,
+     "line": 1597,
      "name": "Shor.eval_H_involutive"
     },
     {
      "kind": "theorem",
-     "line": 1713,
+     "line": 1668,
      "name": "Shor.eval_adj_H_eq_eval_H"
     },
     {
      "kind": "theorem",
-     "line": 1734,
+     "line": 1689,
      "name": "Shor.eval_H_preserves_threeRegsCleanState"
     },
     {
      "kind": "theorem",
-     "line": 1850,
+     "line": 1805,
      "name": "Shor.eval_adj_H_preserves_threeRegsCleanState"
     },
     {
      "kind": "theorem",
-     "line": 1959,
+     "line": 1914,
      "name": "Shor.eval_adj_H_reg_work_preserves_full_clean"
     },
     {
      "kind": "theorem",
-     "line": 2067,
+     "line": 2022,
      "name": "Shor.eval_adj_step5Forward_eq"
     },
     {
      "kind": "theorem",
-     "line": 2120,
+     "line": 2075,
      "name": "Shor.eval_adj_step5Forward_preserves_full_clean"
     },
     {
      "kind": "theorem",
-     "line": 2232,
+     "line": 2187,
      "name": "Shor.lowered_step5_ready_and_full_clean"
     }
    ],
@@ -16374,7 +16288,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 2395,
+   "lines": 2350,
    "name": "Step5.lean",
    "path": "Shor/Proofs/Readiness/Step5.lean"
   },
@@ -16790,7 +16704,7 @@ window.GRAPH = {
       ],
       [
        "Framework/Semantics/GateSemantics.lean",
-       "ModularExponentiation/Proofs/Model.lean"
+       "ModularExponentiation/Spec/Model.lean"
       ],
       [
        "Framework/Semantics/GateSemantics.lean",
@@ -17249,10 +17163,6 @@ window.GRAPH = {
       ],
       [
        "PhaseProduct/Gates/Macros.lean",
-       "ModularExponentiation/Proofs/Model.lean"
-      ],
-      [
-       "PhaseProduct/Gates/Macros.lean",
        "ModularExponentiation/Proofs/Step1Bound.lean"
       ],
       [
@@ -17262,6 +17172,10 @@ window.GRAPH = {
       [
        "PhaseProduct/Gates/Macros.lean",
        "ModularExponentiation/Proofs/Step2Bound.lean"
+      ],
+      [
+       "PhaseProduct/Gates/Macros.lean",
+       "ModularExponentiation/Spec/Model.lean"
       ],
       [
        "PhaseProduct/Proofs/Compiler/MacroSemantics.lean",
@@ -18178,7 +18092,19 @@ window.GRAPH = {
     "Framework/Math/Factoring_Reduction",
     "Framework/Math/ShorDefinition.lean"
    ],
-   "edges": [],
+   "edges": [
+    {
+     "from": "Framework/Math/ShorDefinition.lean",
+     "pairs": [
+      [
+       "Framework/Math/ShorDefinition.lean",
+       "Framework/Math/Factoring_Reduction/Defs.lean"
+      ]
+     ],
+     "to": "Framework/Math/Factoring_Reduction",
+     "weight": 1
+    }
+   ],
    "ghosts": {
     "consumers": [
      {
@@ -18231,7 +18157,12 @@ window.GRAPH = {
       "weight": 3
      }
     ],
-    "providers": []
+    "providers": [
+     {
+      "target": "Framework/Math/ShorDefinition.lean",
+      "weight": 1
+     }
+    ]
    },
    "path": "Framework/Math/Factoring_Reduction"
   },
@@ -18349,7 +18280,6 @@ window.GRAPH = {
   "GateCount": {
    "children": [
     "GateCount/Definitions.lean",
-    "GateCount/Lemmas",
     "GateCount/PhaseProduct",
     "GateCount/QFT_GateCount.lean",
     "GateCount/Shor_GateCount.lean"
@@ -18360,32 +18290,10 @@ window.GRAPH = {
      "pairs": [
       [
        "GateCount/Definitions.lean",
-       "GateCount/Lemmas/LowGateCount.lean"
-      ]
-     ],
-     "to": "GateCount/Lemmas",
-     "weight": 1
-    },
-    {
-     "from": "GateCount/Definitions.lean",
-     "pairs": [
-      [
-       "GateCount/Definitions.lean",
        "GateCount/PhaseProduct/Lemmas.lean"
       ]
      ],
      "to": "GateCount/PhaseProduct",
-     "weight": 1
-    },
-    {
-     "from": "GateCount/Lemmas",
-     "pairs": [
-      [
-       "GateCount/Lemmas/LowGateCount.lean",
-       "GateCount/QFT_GateCount.lean"
-      ]
-     ],
-     "to": "GateCount/QFT_GateCount.lean",
      "weight": 1
     },
     {
@@ -18442,27 +18350,6 @@ window.GRAPH = {
     ]
    },
    "path": "GateCount"
-  },
-  "GateCount/Lemmas": {
-   "children": [
-    "GateCount/Lemmas/LowGateCount.lean"
-   ],
-   "edges": [],
-   "ghosts": {
-    "consumers": [
-     {
-      "target": "GateCount/QFT_GateCount.lean",
-      "weight": 1
-     }
-    ],
-    "providers": [
-     {
-      "target": "GateCount/Definitions.lean",
-      "weight": 1
-     }
-    ]
-   },
-   "path": "GateCount/Lemmas"
   },
   "GateCount/PhaseProduct": {
    "children": [
@@ -18540,10 +18427,6 @@ window.GRAPH = {
       ],
       [
        "ModularExponentiation/Circuit/Steps.lean",
-       "ModularExponentiation/Proofs/Model.lean"
-      ],
-      [
-       "ModularExponentiation/Circuit/Steps.lean",
        "ModularExponentiation/Proofs/Step34Exact.lean"
       ],
       [
@@ -18557,14 +18440,10 @@ window.GRAPH = {
       [
        "ModularExponentiation/Circuit/Workspace.lean",
        "ModularExponentiation/Proofs/Core.lean"
-      ],
-      [
-       "ModularExponentiation/Circuit/Workspace.lean",
-       "ModularExponentiation/Proofs/Model.lean"
       ]
      ],
      "to": "ModularExponentiation/Proofs",
-     "weight": 8
+     "weight": 6
     },
     {
      "from": "ModularExponentiation/Circuit",
@@ -18582,12 +18461,24 @@ window.GRAPH = {
        "ModularExponentiation/Spec/Config.lean"
       ],
       [
+       "ModularExponentiation/Circuit/Steps.lean",
+       "ModularExponentiation/Spec/Model.lean"
+      ],
+      [
        "ModularExponentiation/Circuit/Workspace.lean",
        "ModularExponentiation/Spec/Config.lean"
+      ],
+      [
+       "ModularExponentiation/Circuit/Workspace.lean",
+       "ModularExponentiation/Spec/Model.lean"
+      ],
+      [
+       "ModularExponentiation/Circuit/Workspace.lean",
+       "ModularExponentiation/Spec/Validity.lean"
       ]
      ],
      "to": "ModularExponentiation/Spec",
-     "weight": 4
+     "weight": 7
     },
     {
      "from": "ModularExponentiation/Lowering",
@@ -18646,10 +18537,18 @@ window.GRAPH = {
       ],
       [
        "ModularExponentiation/Spec/Config.lean",
-       "ModularExponentiation/Proofs/Model.lean"
+       "ModularExponentiation/Proofs/Step34Exact.lean"
       ],
       [
-       "ModularExponentiation/Spec/Config.lean",
+       "ModularExponentiation/Spec/Model.lean",
+       "ModularExponentiation/Proofs/Core.lean"
+      ],
+      [
+       "ModularExponentiation/Spec/Model.lean",
+       "ModularExponentiation/Proofs/FinalModMul.lean"
+      ],
+      [
+       "ModularExponentiation/Spec/Model.lean",
        "ModularExponentiation/Proofs/Step34Exact.lean"
       ],
       [
@@ -18666,7 +18565,7 @@ window.GRAPH = {
       ]
      ],
      "to": "ModularExponentiation/Proofs",
-     "weight": 7
+     "weight": 9
     }
    ],
    "ghosts": {
@@ -18776,12 +18675,12 @@ window.GRAPH = {
       "weight": 33
      },
      {
-      "target": "ModularExponentiation/Proofs",
-      "weight": 8
+      "target": "ModularExponentiation/Spec",
+      "weight": 7
      },
      {
-      "target": "ModularExponentiation/Spec",
-      "weight": 4
+      "target": "ModularExponentiation/Proofs",
+      "weight": 6
      },
      {
       "target": "ModularExponentiation/Lowering",
@@ -18862,7 +18761,6 @@ window.GRAPH = {
     "ModularExponentiation/Proofs/Core.lean",
     "ModularExponentiation/Proofs/FinalModMul.lean",
     "ModularExponentiation/Proofs/ModExp.lean",
-    "ModularExponentiation/Proofs/Model.lean",
     "ModularExponentiation/Proofs/Step1Bound.lean",
     "ModularExponentiation/Proofs/Step1QPE.lean",
     "ModularExponentiation/Proofs/Step2Bound.lean",
@@ -18933,39 +18831,6 @@ window.GRAPH = {
       ]
      ],
      "to": "ModularExponentiation/Proofs/ModExp.lean",
-     "weight": 1
-    },
-    {
-     "from": "ModularExponentiation/Proofs/Model.lean",
-     "pairs": [
-      [
-       "ModularExponentiation/Proofs/Model.lean",
-       "ModularExponentiation/Proofs/Core.lean"
-      ]
-     ],
-     "to": "ModularExponentiation/Proofs/Core.lean",
-     "weight": 1
-    },
-    {
-     "from": "ModularExponentiation/Proofs/Model.lean",
-     "pairs": [
-      [
-       "ModularExponentiation/Proofs/Model.lean",
-       "ModularExponentiation/Proofs/FinalModMul.lean"
-      ]
-     ],
-     "to": "ModularExponentiation/Proofs/FinalModMul.lean",
-     "weight": 1
-    },
-    {
-     "from": "ModularExponentiation/Proofs/Model.lean",
-     "pairs": [
-      [
-       "ModularExponentiation/Proofs/Model.lean",
-       "ModularExponentiation/Proofs/Step34Exact.lean"
-      ]
-     ],
-     "to": "ModularExponentiation/Proofs/Step34Exact.lean",
      "weight": 1
     },
     {
@@ -19046,19 +18911,19 @@ window.GRAPH = {
      },
      {
       "target": "PhaseProduct",
-      "weight": 11
-     },
-     {
-      "target": "ModularExponentiation/Circuit",
-      "weight": 8
+      "weight": 10
      },
      {
       "target": "ModularExponentiation/Spec",
-      "weight": 7
+      "weight": 9
+     },
+     {
+      "target": "ModularExponentiation/Circuit",
+      "weight": 6
      },
      {
       "target": "Framework",
-      "weight": 2
+      "weight": 1
      },
      {
       "target": "ModularExponentiation/Lowering",
@@ -19080,6 +18945,7 @@ window.GRAPH = {
    "children": [
     "ModularExponentiation/Spec/Assertions.lean",
     "ModularExponentiation/Spec/Config.lean",
+    "ModularExponentiation/Spec/Model.lean",
     "ModularExponentiation/Spec/Precision.lean",
     "ModularExponentiation/Spec/Validity.lean"
    ],
@@ -19093,6 +18959,17 @@ window.GRAPH = {
       ]
      ],
      "to": "ModularExponentiation/Spec/Assertions.lean",
+     "weight": 1
+    },
+    {
+     "from": "ModularExponentiation/Spec/Config.lean",
+     "pairs": [
+      [
+       "ModularExponentiation/Spec/Config.lean",
+       "ModularExponentiation/Spec/Model.lean"
+      ]
+     ],
+     "to": "ModularExponentiation/Spec/Model.lean",
      "weight": 1
     },
     {
@@ -19132,12 +19009,12 @@ window.GRAPH = {
    "ghosts": {
     "consumers": [
      {
-      "target": "Shor",
-      "weight": 8
+      "target": "ModularExponentiation/Proofs",
+      "weight": 9
      },
      {
-      "target": "ModularExponentiation/Proofs",
-      "weight": 7
+      "target": "Shor",
+      "weight": 8
      },
      {
       "target": "Reference",
@@ -19151,11 +19028,15 @@ window.GRAPH = {
     "providers": [
      {
       "target": "ModularExponentiation/Circuit",
-      "weight": 4
+      "weight": 7
      },
      {
       "target": "Framework",
-      "weight": 2
+      "weight": 3
+     },
+     {
+      "target": "PhaseProduct",
+      "weight": 1
      },
      {
       "target": "Shared",

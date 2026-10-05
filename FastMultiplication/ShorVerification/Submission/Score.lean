@@ -122,15 +122,6 @@ theorem pLower_le_bound {N : ℕ} (hN : Is2048Bit N) :
   rw [hcast]
   linarith
 
-/-- The 2048-bit benchmark predicate is spelled twice in this repository —
-`Reference.Is2048Bit` (used by `headline_success_bound`, and so by everything
-in this file) and `Shor.Is2048Bit` (used by
-`ShorImplementation.trialCount_correct`, `Framework/Contract.lean`). They are
-the same `2 ^ 2047 ≤ N ∧ N < 2 ^ 2048`, definitionally, so either theorem
-feeds the other without a transport. Recorded here rather than left for a
-reader of the scoring API to rediscover. -/
-theorem reference_is2048Bit_eq (N : ℕ) : Reference.Is2048Bit N = Is2048Bit N := rfl
-
 /-- The number of independent runs the score is computed over: the smallest
 `t` with `pLower N * t ≥ 5`, and `5 > log 100`, so `t` runs amplify the
 declared single-run bound past 99% overall (`submissionTrialCount_correct`).

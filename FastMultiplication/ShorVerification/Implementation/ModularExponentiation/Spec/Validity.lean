@@ -1,3 +1,4 @@
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Implementation.Shared.States
 
@@ -86,5 +87,20 @@ abbrev CSubConstCleanState
     (qs : QSemantics) [RegEncoding qs.Basis]
     (N : ℕ) (data scratch : ExtReg) (flag : ℕ) : qs.State → Prop :=
   CleanClosure (CSubConstCleanBasis N data scratch flag)
+
+
+/--
+Layout condition required by every controlled modular-multiplication step in a
+tail of exponent-control qubits.
+-/
+def ModExpTailLayout (data work : ExtReg) (flag : ℕ) (ctrls : List ℕ) : Prop :=
+  ∀ i : Fin ctrls.length, ModMulCoreLayout data work flag (ctrls.get i)
+
+/--
+Arithmetic side condition for a modular-exponentiation tail: the multiplier
+used at every remaining exponent position is coprime to `N`.
+-/
+def ModExpTailArithmeticOK (a N e : ℕ) (ctrls : List ℕ) : Prop :=
+  ∀ i : Fin ctrls.length, Nat.Coprime ((a ^ (2 ^ (e + i.1))) % N) N
 
 end Shor

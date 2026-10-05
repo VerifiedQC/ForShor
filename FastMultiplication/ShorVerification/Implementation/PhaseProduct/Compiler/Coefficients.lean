@@ -30,13 +30,10 @@ open scoped BigOperators
 def interpMatrix (k : ℕ) (pts : Fin (q k) → Point) : Matrix (Fin (q k)) (Fin (q k)) ℚ :=
   fun i j => interpEntry k (pts i) j
 
-/-- Row vector `[1, b, b^2, ...]` used for interpolation evaluation. -/
-def radixRow (k : ℕ) (b : ℚ) : Matrix (Fin 1) (Fin (q k)) ℚ := fun _ j => b ^ (j : ℕ)
-
 /-- Coefficients obtained by multiplying the radix row by the inverse interpolation matrix. -/
 noncomputable def phaseCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) : Fin (q k) → ℚ :=
   let B : Matrix (Fin (q k)) (Fin (q k)) ℚ := interpMatrix k pts
-  let v : Matrix (Fin 1) (Fin (q k)) ℚ := radixRow k b * B⁻¹
+  let v : Matrix (Fin 1) (Fin (q k)) ℚ := ToomCookMath.radixRow (q k) b * B⁻¹
   fun i => v 0 i
 
 /-- Convert a point list of the right length into a `Fin`-indexed family. -/

@@ -132,6 +132,4 @@ GateCount/
     Main.lean
   QFT_GateCount.lean
   Shor_GateCount.lean
-  Lemmas/
-    LowGateCount.lean
 ```

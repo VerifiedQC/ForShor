@@ -97,21 +97,6 @@ variable {qs : QSemantics}
 variable [RegEncoding qs.Basis]
 variable [GateSemanticsFacts qs]
 
-private lemma zeroExtend_preserves_bit
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [ExtensionSemantics qs]
-    (r : ExtReg)
-    (n : ℕ)
-    (b b' : qs.Basis)
-    (q : ℕ)
-    (hEval :
-      qs.eval (Gate.zeroExtend r n) (qs.ket b) = qs.ket b') :
-    RegEncoding.bit q b' = RegEncoding.bit q b := by
-  classical
-  exact Shor.zeroExtend_preserves_bit qs r n b b' q hEval
-
 end GateSemanticsFacts
 
 

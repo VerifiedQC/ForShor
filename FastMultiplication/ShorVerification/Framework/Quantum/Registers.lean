@@ -343,12 +343,6 @@ def tcModWidth (w : ℕ) (z : ℤ) : ℕ := Int.toNat (z % ((2^w : ℕ) : ℤ))
 /-- Wrap an integer to `w` bits and decode the result as two's-complement. -/
 def tcWrapInt (w : ℕ) (z : ℤ) : ℤ := tcDecodeWidth w (tcModWidth w z)
 
-/-- Inclusive lower endpoint of the signed `w`-bit range. -/
-def signedLo (w : ℕ) : ℤ := -(((2^(w-1) : ℕ) : ℤ))
-
-/-- Exclusive upper endpoint of the signed `w`-bit range. -/
-def signedHi (w : ℕ) : ℤ := (((2^(w-1) : ℕ) : ℤ))
-
 /-- Modulo reduction using the active width of an extendable register. -/
 def tcModExt (e : ExtReg) (z : ℤ) : ℕ := tcModWidth (ExtReg.width e) z
 

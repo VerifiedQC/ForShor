@@ -187,11 +187,9 @@ window.ANNOTATIONS = {
    ]
   },
   "GateCount": {
-   "columns": [["GateCount/Definitions.lean"], ["GateCount/PhaseProduct", "GateCount/Lemmas"], ["GateCount/QFT_GateCount.lean"], ["GateCount/Shor_GateCount.lean"]],
+   "columns": [["GateCount/Definitions.lean"], ["GateCount/PhaseProduct"], ["GateCount/QFT_GateCount.lean"], ["GateCount/Shor_GateCount.lean"]],
    "edges": [
-    { "from": "GateCount/Definitions.lean", "to": "GateCount/Lemmas", "emphasis": "secondary" },
     { "from": "GateCount/Definitions.lean", "to": "GateCount/PhaseProduct", "emphasis": "primary", "label": "the cost model", "why": "PhaseProduct/'s recurrence bounds are proved directly over the LowGateCostModel fold Definitions.lean defines." },
-    { "from": "GateCount/Lemmas", "to": "GateCount/QFT_GateCount.lean", "emphasis": "secondary" },
     { "from": "GateCount/PhaseProduct", "to": "GateCount/QFT_GateCount.lean", "emphasis": "primary", "label": "phase-product recurrence bound", "why": "The QFT gate-count recurrence is solved by applying PhaseProduct/'s component bound to the cross-term phase product." },
     { "from": "GateCount/QFT_GateCount.lean", "to": "GateCount/Shor_GateCount.lean", "emphasis": "primary", "theorem": "exists_shorGateCountBound", "label": "exists_shorGateCountBound", "why": "The final theorem combines the QFT and phase-product component bounds with the modular-exponentiation count, then picks k so the rate collapses to n^(2+epsilon)." }
    ]

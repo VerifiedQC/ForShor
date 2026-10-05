@@ -24,7 +24,8 @@ section Algorithm1PrecisionAndConstants
 /--
 The Step-5 constant represents `1 - c⁻¹ mod N`.
 
-The concrete `step5Constant` above chooses such an inverse with `Nat.find`
+The concrete `step5Constant` (`Circuit/Steps.lean`) chooses such an inverse
+with `Nat.find`
 when coprimality guarantees one exists.
 -/
 def Step5ConstantOK (c N k5val : ℕ) : Prop :=

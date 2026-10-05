@@ -10,6 +10,12 @@ import Mathlib.RingTheory.ZMod.UnitsCyclic
 import Mathlib.Data.Complex.Basic
 import Mathlib.Analysis.Complex.Exponential
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
+
+-- `ord` is `Shor.ord` (`Framework/Math/ShorDefinition.lean`). This file used to
+-- carry an identical second copy in the root namespace, which `Shor/Main.lean`
+-- mixed with the first and typechecked only by unfolding.
+open Shor (ord)
 
 open Classical
 
@@ -28,8 +34,6 @@ the finite choice sets used for probability statements.
 def is_period (a r N : ℕ) : Prop :=
   orderOf (a : ZMod N) = r
 
-noncomputable def ord (a N : ℕ) (hgcd : Nat.gcd a N = 1) : ℕ :=
-  orderOf (ZMod.unitOfCoprime a ((Nat.coprime_iff_gcd_eq_one).2 hgcd))
 
 /-! =========================================================
     Section 2: Success conditions and factors

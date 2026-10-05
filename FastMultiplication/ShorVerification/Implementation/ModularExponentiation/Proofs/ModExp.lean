@@ -22,20 +22,6 @@ total error is proportional to the number of exponent-control bits.
     lemmas that peel the head control off both conditions.
 ========================================================= -/
 
-/--
-Layout condition required by every controlled modular-multiplication step in a
-tail of exponent-control qubits.
--/
-def ModExpTailLayout (data work : ExtReg) (flag : ℕ) (ctrls : List ℕ) : Prop :=
-  ∀ i : Fin ctrls.length, ModMulCoreLayout data work flag (ctrls.get i)
-
-/--
-Arithmetic side condition for a modular-exponentiation tail: the multiplier
-used at every remaining exponent position is coprime to `N`.
--/
-def ModExpTailArithmeticOK (a N e : ℕ) (ctrls : List ℕ) : Prop :=
-  ∀ i : Fin ctrls.length, Nat.Coprime ((a ^ (2 ^ (e + i.1))) % N) N
-
 /-- Removing the head control preserves the layout condition on the tail. -/
 lemma modExpTailLayout_tail
     (data work : ExtReg) (flag ctrl : ℕ) (ctrls : List ℕ)

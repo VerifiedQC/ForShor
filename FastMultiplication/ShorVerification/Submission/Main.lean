@@ -40,7 +40,7 @@ across `[2^2047, 2^2048)` — the bound it is derived from depends on `N` only
 through `log₂ N = 2047` — so one member of the range stands for all of it. -/
 def benchmarkModulus : ℕ := 2 ^ 2047
 
-theorem benchmarkModulus_is2048Bit : Reference.Is2048Bit benchmarkModulus :=
+theorem benchmarkModulus_is2048Bit : Is2048Bit benchmarkModulus :=
   ⟨le_refl _, Nat.pow_lt_pow_right (by norm_num) (by norm_num)⟩
 
 /-- The number of independent runs the score is computed over, for the

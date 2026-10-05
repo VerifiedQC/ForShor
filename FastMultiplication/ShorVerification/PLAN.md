@@ -711,3 +711,289 @@ git status --porcelain                     # empty after item 17
 
 and the GitHub Actions run on the PR is green on the first try, with the
 cache restored from `.lake/packages` only.
+
+---
+
+# Third batch: duplication and misplaced definitions
+
+Items 21–23 are review items 22, 23 and 28 from the original pass. None of
+them changes a statement; each removes a second copy of something or moves
+a definition to the folder whose rules say it belongs there. Same
+conventions. Line numbers re-checked on 2026-10-05 after items 1–20.
+
+## 21. Delete the verified duplicates — DONE (three pairs were not duplicates)
+
+Each pair below is the same statement, or the same definition, in two
+places. Each was confirmed by reading both. Grouped by how to fix; every
+group is one commit, and every deletion is safe because the survivor is
+already in scope at (or importable by) each caller.
+
+**Two definitions of the same thing — keep one, repoint callers.**
+
+- `ord`: `Framework/Math/Factoring_Reduction/Defs.lean:31` (root namespace)
+  and `Framework/Math/ShorDefinition.lean:29` (`Shor.ord`), identical
+  bodies. `Shor/Main.lean` mixes both and typechecks only by unfolding.
+  Delete the root one; wrap `Factoring_Reduction/*` in `namespace Shor` and
+  move `ord_pos_of_gcd` / `pow_ord_mod_eq_one` / `ord_le_of_pow_mod_eq_one`
+  from the top of `Shor/Math/OrderFindingAnalysis.lean` next to the
+  definition.
+- `Is2048Bit`: `Framework/Contract.lean:44` and
+  `Reference/Reference2048Headline.lean:51`, with `Score.lean:132`
+  `reference_is2048Bit_eq … := rfl` bridging them. Delete the Reference
+  copy and the bridge.
+- `radixRow`, `alternatingPoint`, `genInterpolationPoints` in
+  `PhaseProduct/Compiler/Coefficients.lean:34,87,91` re-define
+  `Math/ToomCook.lean:48,209,213` (`genFiniteInterpolationPoints`), which
+  is why `Coefficients.lean:114,122` need two bridge lemmas. Keep the
+  `ToomCook.lean` versions, delete the Compiler copies and the bridges,
+  repoint `:129,147`.
+- `signedLo` / `signedHi` (`Framework/Quantum/Registers.lean:347,350`):
+  used nowhere; `signedMin` / `signedMax` at `:356,359` are the live ones.
+  Delete.
+- `attribute [instance] QSemantics.instNormed / instIP` declared in both
+  `Framework/Quantum/QSemantics.lean:60-61` and
+  `Framework/Semantics/GateSemantics.lean:25-26`. Drop the second pair.
+
+**Same lemma proved in two files — delete the copy, import the original.**
+
+- Seven `evalL_*` aliases in
+  `PhaseProduct/Proofs/Lowering/EvalL.lean:89-121` (and `signExtend`,
+  `signDealloc`, `radixReverse` further down) restate
+  `Shared/LowGateEval.lean:356-488` with implicit instead of explicit `qs`;
+  `EvalL.lean:18 evalL_eq_eval_of_ket` restates
+  `Shared/LowGateEval.lean:308`. `EvalL.lean` already imports the Shared
+  file. Delete the aliases (or one `export` line), repoint
+  `Lowerable.lean`, `BodyReadiness.lean`,
+  `ModularExponentiation/Proofs/ConstArithmetic.lean`. `EvalL.lean` keeps
+  the H/X/CNOT/Toffoli/naive-leaf/zeroExtend/zeroDealloc lemmas, which are
+  genuinely new.
+- `ExtReg.ownedQubits_grow`: `PhaseProduct/Compiler/Workspace.lean:47`
+  and `Shared/Registers.lean:994`. Keep Shared's.
+- `bit_writeNat_qubitReg`: `private` in `Shared/Registers.lean:1126` and
+  again `private` in `Shor/Proofs/Readiness/Step5.lean:1309`, which already
+  imports Shared. Make the Shared one public, delete Step5's.
+- `bit_cnotBasis_of_ne_target`: public at
+  `PhaseProduct/Proofs/NaiveLeaf.lean:33`, `private` copy at
+  `ModularExponentiation/Proofs/ConstArithmetic.lean:165`. Move the public
+  one to `Shared/GateLaws.lean`, delete the copy.
+- `apply_Op_inverse_append`: `Table_Generation/Core/Language.lean:288` and
+  `Core/RegisterLemmas.lean:370`, both `@[simp]`, same proof. Keep
+  Language's (lower in the chain).
+
+**Same lemma twice in one file — delete the second.**
+
+- `Shared/Registers.lean`: `writeNat_comm_of_disjoint` at `:354` and
+  `:801`; `toNat_left_write_right` at `:518` and `:1336` (the latter with
+  the odd `[QSemantics] [RegEncoding QSemantics.Basis]` binder, treating
+  the class as an instance). Migrate callers to the first, delete the
+  second.
+- `Shared/GateLaws.lean:100` `private lemma zeroExtend_preserves_bit` is a
+  one-line wrapper around the public `:58`. Delete.
+- `Shared/States.lean`: `hsub` at `:41` and `:238`, `eval_apply_adj` at
+  `:96` and `:256` (`GateSemanticsCore.*` vs `QSemantics.*` spellings).
+  Keep one, `alias` the other name if callers need it.
+- `GateCount/PhaseProduct/Lemmas.lean`: `phaseProdUsing_signedWorkspace`
+  at `:3213` and `:4981`, identical statement and proof in two
+  namespaces. Delete the second, qualify callers.
+- `ModularExponentiation/Proofs/Algorithm1Expansion.lean`:
+  `eval_Hreg_zero_eq_QFT` at `:16`, `:54` and `:1840`; the last is a
+  `simpa` of the second. Delete `:1840`.
+- `Shor/Proofs/NaiveShor/Preliminaries.lean:234` and
+  `GoodOutcomeMassLowerBound.lean:339` both have `private
+  eval_modExpIdealSteps_ket`. Make Preliminaries' public, delete the other.
+- `ModularExponentiation/Proofs/Core.lean:452` and
+  `Step34Exact.lean:116`: `private disjoint_qubitReg_of_outside`, same up
+  to the `QubitOutside` spelling. Make Core's public, delete Step34Exact's.
+
+**Fold a one-lemma folder.** `GateCount/Lemmas/LowGateCount.lean` (38
+lines, sole file of `Lemmas/`) holds `gateCount_seq_eq/adj_eq/H_eq/X_eq`;
+`Shor_GateCount.lean:191 loweredGateCount_seq` restates the `seq` law one
+level up. Move the four into `GateCount/Definitions.lean` (or
+`Framework/Gatecount/CostModel.lean`, which has no simp lemmas), delete the
+folder, fix the `GateCount/README.md` layout block.
+
+**Deliberately not touched.** `GateCount/PhaseProduct/Lemmas.lean:42-63`
+(`SafeProg_of_WellFormed`, `phaseProduct_singleton_WellFormed`,
+`opsForPointWithProduct_WellFormed`) and `Compiler/Compile.lean:42
+phaseProductCount` have copies in `Table_Generation/Generator/`
+(`WellFormed.lean:10,142,149`, `Metrics.lean:14`). The Generator copies are
+the duplicates, but item 11 leaves that subtree alone, so the live copies
+stay where they are. `Core/ListHelpers.lean` is item 20's.
+
+Check: `lake build FastMultiplication EmitTests Submission`;
+`scripts/check_layers.py`; `#print axioms` on the headline list unchanged.
+For each deleted name, `grep -rn <name> FastMultiplication` must show only
+the survivor's definition and its callers.
+
+## 22. Prove `BodyReadiness.lean`'s controlled and uncontrolled halves once — NOT DONE (blocked)
+
+`PhaseProduct/Proofs/Lowering/PlanReadiness/BodyReadiness.lean` (1 558
+lines) is four lemmas:
+
+| lines | lemma |
+|---|---|
+| 24–245 | `planCompileAnnotatedOps_ready_append_of_noPhase` |
+| 246–786 | `planCompileAnnotatedOps_ready_ket_of_blocks_from` |
+| 787–1009 | `planCompileAnnotatedOps_c_ready_append_of_noPhase` |
+| 1010–1558 | `planCompileAnnotatedOps_c_ready_ket_of_blocks_from` |
+
+After normalising the control tokens, the first and third are 94%
+identical and the second and fourth 97% identical (measured with
+`difflib`). About 760 lines are a second copy of a proof with `ctrl`
+threaded through. By contrast the two `Controlled.lean` variants at
+`:111`/`:314` are only 70% similar and are a real fork; leave those.
+
+- Find the one-step lemma each half rests on (the `SingleStep.lean`
+  lemma for the plain compile and its `_c` twin) and the leaf-builder
+  function each half calls. Those are the only points where the two
+  proofs differ.
+- State each of the two proofs once, parametrised by `(ctrl : Option ℕ)`,
+  or by the leaf builder and its one-step lemma as explicit arguments if
+  the `Option` form makes the `none` case awkward.
+- Derive the four existing names as one-line instances so no caller
+  changes.
+- Expected result: the file drops to roughly 800 lines and the next
+  change to the compile-body invariant is made in one place.
+
+Check: `lake build FastMultiplication`; the four names still exist with
+the same statements (`#check` each before and after, diff the output);
+`scripts/check_layers.py`.
+
+## 23. Move definitions out of `Proofs/` — PARTIAL
+
+The folder READMEs say `Proofs/` holds theorems about things defined in
+`Spec/`, `Circuit/` or `Compiler/`. Three places break that in a way a
+reader notices.
+
+**`ModularExponentiation/Proofs/Model.lean` is 708 lines, 44 `def`s, zero
+theorems.** Its own README entry calls it "the analysis vocabulary"
+(`Proofs/README.md:17`): `U1`/`U2`/`U34`/`U5`/`stagedGate`, the
+`alg1Step2*Coeff` family, `Alg1Trace`, `afterStep34*`. It is imported by
+`Proofs/Core.lean`, `FinalModMul.lean` and `Step34Exact.lean`. Move it to
+`ModularExponentiation/Spec/Model.lean` unchanged, update the three
+imports and both READMEs, and fix the stale comment at `Model.lean:24-27`
+("the concrete `step5Constant` *above*" — it is in
+`Circuit/Steps.lean:65`). The layer script already allows `Spec → Circuit`,
+so no new exception.
+
+**`PhaseLoweringReady` and `QFTLoweringReady` are Props defined by tactic
+recursion.** `PhaseProduct/Spec/Readiness.lean:21` and
+`QFT/Spec/Readiness.lean:18` are `qs.State → Prop` built by `induction plan
+with … exact …`. That is why both are `noncomputable` (they elaborate to
+the recursor) and why the six downstream call sites
+(`PlanReadiness/AllocDeallocReadiness.lean:62,75,87,166`,
+`QFT/Proofs/Lowering/Readiness.lean:308,324`) rely on `simp
+[PhaseLoweringReady]` iota-reducing a recursor application rather than on
+equation lemmas. Rewrite each as a structural `match` on `plan` with one
+arm per constructor, same bodies. Lean then generates equation lemmas, the
+`noncomputable` goes away, and the spec reads as a spec. Behaviour is
+unchanged, so the six `simp` calls should keep working; if one does not,
+`simp [PhaseLoweringReady.eq_def]` or the generated `_eq_N` lemma is the
+replacement.
+
+**Smaller strays**, each a one-line move with its import:
+
+- `Shor/Proofs/Readiness/Primitives.lean:48 inductive WorkspaceFree` and
+  `Sequencing.lean:32 def LoweredCleanResult` → `Shor/Spec/Cleanliness.lean`.
+- `Shor/Proofs/Readiness/ModMul.lean:34 def shorConcreteCarrier` →
+  `Shor/Spec/Setup.lean`.
+- `ModularExponentiation/Proofs/ModExp.lean:29,36 ModExpTailLayout`,
+  `ModExpTailArithmeticOK` → `ModularExponentiation/Spec/Validity.lean`.
+- `Shor/Proofs/Correctness.lean:580 ShorApproxSetup.toModExpConfig` →
+  `Shor/Spec/Setup.lean` (it is a projection of the setup record).
+- `Shor/Proofs/NaiveShor/PhaseEstimation.lean:29 idealPreIQFTState` →
+  `Shor/Circuit/OrderFinding.lean` or `Shor/Spec/Setup.lean`, whichever
+  already imports what its body needs.
+
+Each move: `scripts/check_layers.py` must stay green (all moves go
+downward), and the moved name's callers must not need a new import they
+did not already have transitively.
+
+## Outcomes for items 21–23
+
+**21 — done, but three listed pairs were not duplicates.** Verified by reading
+both sides before each deletion, which is how the three were caught.
+
+Deleted or folded: `signedLo`/`signedHi` (dead), the duplicate
+`attribute [instance]` pairs (there were *three* copies, not two —
+`QSemantics.lean`, `GateSemantics.lean`, `Shared/States.lean`),
+`Reference.Is2048Bit` and its bridge, the root `ord`,
+`Coefficients.radixRow`, `RegisterLemmas.apply_Op_inverse_append`,
+`GateLaws`'s private `zeroExtend_preserves_bit` wrapper, Step5's
+`bit_writeNat_qubitReg`, Step34Exact's `disjoint_qubitReg_of_outside`, the
+second `phaseProdUsing_signedWorkspace`, and the `GateCount/Lemmas/` folder.
+`Shared/Registers.lean`'s two self-wrapping restatements became `export`
+lines.
+
+Not duplicates, left alone:
+
+- `Coefficients.alternatingPoint` / `genInterpolationPoints` vs
+  `ToomCook.lean`'s. `ToomCookMath.Point` is a **distinct inductive type**;
+  `toMathPoint` is a real conversion, not a bridge to delete. Only
+  `radixRow` (over ℚ, no `Point`) was genuinely duplicated.
+- `eval_Hreg_zero_eq_QFT` at `Algorithm1Expansion:1840`. It is a `simpa` of
+  the `:54` lemma, but it restates it in terms of `H_reg` rather than the
+  unfolded `foldl`, and two `rw` sites depend on that spelling. Deleting it
+  trades 20 lines for two `show` blocks.
+- `eval_modExpIdealSteps_ket`. The two versions have **different
+  hypotheses** — Preliminaries' takes `ctrls.Nodup` and a `Disjoint`;
+  GoodOutcomeMassLowerBound's takes a membership condition and no `Nodup`.
+  Same conclusion, neither implies the other as stated.
+
+**22 — not done; it needs a prerequisite the item does not mention.**
+
+The duplication is real and worse than stated: after normalising control
+tokens the two `append_of_noPhase` proofs are **99.8%** identical and the two
+`ket_of_blocks_from` proofs **98.5%** (the item says 94% and 97%). The
+differences are exactly what the item predicts — the builder
+(`planCompileAnnotatedOpsToSignedGateAux` vs `...ToCSignedGateAux`), the leaf
+(`Gate.SignedPhaseProd` vs `Gate.CSignedPhaseProd ctrl`), and one `ctrl`
+binder.
+
+But the proofs **unfold the builder by name**: eight `dsimp`/`simp` lines
+name `planCompileAnnotatedOpsTo*SignedGateAux` among 36 references. A proof
+parametrised over an opaque builder, or over `(ctrl : Option ℕ)`, cannot
+`dsimp` it. Unifying them therefore requires *first* unifying the two
+builders in `Lowering/PlanBuilders.lean:134,188` — a change to the compiler,
+not to `Proofs/` — or abstracting those eight unfolding steps into explicit
+equation hypotheses on a shared lemma.
+
+That is a materially larger piece of work than the item scopes, on 1 558
+lines of load-bearing proof. Left for a decision rather than started
+half-way.
+
+**23 — partial.** Done: `Proofs/Model.lean` → `Spec/Model.lean` (708 lines,
+44 defs, zero theorems — the main case), with the stale `step5Constant`
+comment fixed; `ModExpTailLayout`/`ModExpTailArithmeticOK` →
+`Spec/Validity.lean` (needed a `Circuit/Workspace` import, which the item
+does not mention).
+
+Not done, and not "one-line moves with their import" as the item claims:
+
+- `shorConcreteCarrier` → `Spec/Setup.lean`: its proof body uses
+  `not_mem_right_of_mem_left_of_disjoint` from
+  `Proofs/Readiness/Primitives.lean`, which is *above* `Spec/` in the layer
+  order. The move needs that lemma moved too, or the proof inlined.
+- `ShorApproxSetup.toModExpConfig` → `Spec/Setup.lean`: same shape. It is a
+  tactic proof depending on `shor_data_capacity_from_log2`, defined directly
+  above it in `Proofs/Correctness.lean`.
+- `WorkspaceFree` and `LoweredCleanResult` → `Spec/Cleanliness.lean`: that
+  file imports only `Shared/States` and `Shared/Registers`, so both moves
+  need new imports (`ToomCookTable` for `ShorLoweringSetup`,
+  `Shor/Lowering/LowerGate` for `LowerGateClass`). Layer-legal, but not free.
+- `idealPreIQFTState`: not attempted.
+
+The pattern across all four: a `def` in `Proofs/` whose *proof body* reaches
+upward. Moving the definition means moving or inlining what its proof uses,
+which is why these did not land with the others.
+
+## Verification (after items 21–23)
+
+```sh
+lake build FastMultiplication EmitTests Submission forshor_emit forshor_submission
+lake env lean scripts/AxiomCheck.lean
+python3 scripts/check_layers.py
+python3 scripts/gen_docs_graph.py --check
+wc -l FastMultiplication/ShorVerification/Implementation/PhaseProduct/Proofs/Lowering/PlanReadiness/BodyReadiness.lean   # ≈ 800
+grep -c "^def \|^noncomputable def " FastMultiplication/ShorVerification/Implementation/ModularExponentiation/Proofs/*.lean  # Model.lean gone
+```
