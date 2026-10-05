@@ -504,3 +504,29 @@ theorem modExpApprox_valid_dist_uniform
 
   simpa [ModExpConfig.approxGate, ModExpConfig.idealGate, modExpApproxValid,
     modExpIdeal', tbits, regSize, Reg.width] using h
+
+/-- The uniform modular-exponentiation bound at the explicit constant `2048`.
+`modExpApprox_valid_dist_uniform` gives some `K ≤ 2048`; `stepErr` is monotone
+in `K`, so the bound also holds at `2048` itself. -/
+theorem modExpApprox_valid_dist_2048
+    (qs : QSemantics) [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs] :
+    ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
+      ModExpConfig.ValidUnitState qs cfg ψ →
+      ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
+          qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
+        ≤ (tbits cfg.x : ℝ) * stepErr 2048 η := by
+  obtain ⟨K, hK_nonneg, hK_le, hbound⟩ :=
+    modExpApprox_valid_dist_uniform (qs := qs)
+  intro η cfg ψ hψ
+  have hη : 0 ≤ η := le_of_lt cfg.env.precision.1
+  have hstep_mono : stepErr K η ≤ stepErr 2048 η := by
+    unfold stepErr
+    apply Real.sqrt_le_sqrt
+    nlinarith [hK_le, hη]
+  calc
+    ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
+        qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
+      ≤ (tbits cfg.x : ℝ) * stepErr K η := hbound η cfg ψ hψ
+    _ ≤ (tbits cfg.x : ℝ) * stepErr 2048 η :=
+      mul_le_mul_of_nonneg_left hstep_mono (by positivity)

@@ -2,11 +2,18 @@
 
 This folder proves workspace readiness and dynamic clean-state preservation
 for the complete lowered Shor order-finding circuit, split by circuit stage
-and chained in dependency order (each file may import all earlier ones):
+and ordered by dependency. The order is partial, not a chain — a file may
+import anything strictly to its left, and nothing in its own group:
 
 ```
-Static < Sequencing < Primitives < Init < Step1 < Step2 < Step5 < IQFT < ModMul < ModExp < Dynamic
+Static, Sequencing  <  Primitives  <  {Init, Step1}  <  {Step2, Step5}
+                     <  {IQFT, ModMul}  <  ModExp  <  Dynamic
 ```
+
+`Step2` and `Step5` are independent (neither imports the other), as are
+`Init`/`Step1` and `IQFT`/`ModMul`. `scripts/check_layers.py` fails on an
+import between siblings, so the independence is checked rather than merely
+described.
 
 ## `Static.lean`
 

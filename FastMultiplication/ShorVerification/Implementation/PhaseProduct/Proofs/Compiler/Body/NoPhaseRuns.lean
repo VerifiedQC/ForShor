@@ -1,3 +1,4 @@
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Core.Coverage
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Body.SingleStep
 
 namespace Shor

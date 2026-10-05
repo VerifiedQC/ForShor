@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.Reference.ShorProgram
 import FastMultiplication.ShorVerification.Framework.Contract
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Correctness
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
+import FastMultiplication.ShorVerification.Implementation.Shor.Main
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Main
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Config
 
 namespace Shor
@@ -38,36 +38,18 @@ Uniform constant controlling the modular-exponentiation approximation error.
 Unlike an arbitrary `Classical.choose` witness, this is a concrete numeral:
 `modExpApprox_valid_dist_uniform` proves a uniform constant `K ≤ 2048` works
 (traced from `Cpe = 512` and `Cstep2 = 2π + 2π²` in the Algorithm-1 error
-bounds), so `2048` itself is a valid, and clean, choice of constant. -/
+bounds), so `2048` itself is a valid, and clean, choice of constant.
+
+The bound at this constant is `modExpApprox_correct_2048`
+(`ModularExponentiation/Main.lean`); it used to be a private copy here. This
+definition remains because the error schedule below and
+`Reference2048Headline.lean` compute with the numeral by name. -/
 noncomputable def referenceK : ℝ := 2048
 
 omit [MeasureClass qs] [LowerGateClass qs] in
 theorem referenceK_nonneg :
     0 ≤ referenceK := by
   norm_num [referenceK]
-
-omit [MeasureClass qs] [LowerGateClass qs] in
-theorem referenceK_modExp_bound :
-    ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
-      ModExpConfig.ValidUnitState qs cfg ψ →
-      ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
-          qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
-        ≤ (tbits cfg.x : ℝ) * stepErr (referenceK) η := by
-  obtain ⟨K, hK_nonneg, hK_le, hbound⟩ :=
-    modExpApprox_valid_dist_uniform (qs := qs)
-  intro η cfg ψ hψ
-  have hη : 0 ≤ η := le_of_lt cfg.env.precision.1
-  have hstep_mono : stepErr K η ≤ stepErr (referenceK) η := by
-    unfold stepErr referenceK
-    apply Real.sqrt_le_sqrt
-    nlinarith [hK_le, hη]
-  calc
-    ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
-        qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
-      ≤ (tbits cfg.x : ℝ) * stepErr K η := hbound η cfg ψ hψ
-    _ ≤ (tbits cfg.x : ℝ) * stepErr (referenceK) η :=
-      mul_le_mul_of_nonneg_left hstep_mono (by positivity)
-
 
 /-! =========================================================
     Section 2: Reference program at fixed approximation `m`
@@ -134,11 +116,11 @@ theorem referenceProgramAt_success
     simp[layout]
 
   have hb :=
-    Shor_correct_approx_lowered_of_modExp_bound
+    Shor_correct_approx_lowered_of_modExp_bound_assertion
       (qs := qs)
       (referenceK)
-      (referenceK_modExp_bound (qs := qs))
       T hT
+      (modExpApprox_correct_2048 (qs := qs))
       inst lowering
       layout.x layout.data layout.work layout.scratch layout.flag
       (RegEncoding.zero (Basis := qs.Basis))
@@ -282,9 +264,7 @@ theorem exists_reference_positive_precision
   have hlog : (0 : ℝ) < Nat.log2 N := by
     exact_mod_cast hlogNat
 
-  have hκ : 0 < κ := by
-    unfold κ
-    positivity
+  have hκ : 0 < κ := κ_pos
 
   have hideal : 0 < κ / (Nat.log2 N : ℝ) ^ 4 := by
     positivity

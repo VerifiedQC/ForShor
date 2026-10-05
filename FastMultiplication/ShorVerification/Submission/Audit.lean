@@ -28,10 +28,25 @@ What it catches:
 * `sorry`, and any tactic that failed and was admitted — `sorryAx`.
 * Any `axiom` the submitter declares, by name.
 
-What it does *not* catch: `set_option debug.skipKernelTC true`, which skips
-the kernel without adding an axiom. Nothing visible in the environment does;
-that is what replaying the built `.olean`s through `lean4checker` is for, and
-why `Submission/README.md` asks a submissions repo to run it.
+What it does *not* catch, and what covers each instead:
+
+* `set_option debug.skipKernelTC true`, which skips the kernel without adding
+  an axiom. Nothing visible in the environment does; that is what replaying
+  the built `.olean`s through `lean4checker` is for, and why
+  `Submission/README.md` asks a submissions repo to run it.
+* Anything that changes only the *compiled* code behind a declaration:
+  `@[implemented_by]`, `@[extern]`, and `@[csimp]` with an unsound proof.
+  These are invisible here by construction — `collectAxioms` traverses the
+  term the kernel checked, and that term is unchanged. They matter because
+  the acceptance pipeline has a second tier that does not go through the
+  kernel: `extract_ir_doc` reads `setup` with `Lean.Meta.evalExpr`, the two
+  evaluation-tier `example`s use `native_decide`, and
+  `lake exe forshor_submission` is a compiled binary. A table that is
+  kernel-checked under C1–C4 can therefore be printed into `ir.json` as a
+  different table. `lean4checker` does not see this either, since it too
+  replays the kernel. The cover is lexical, in step 1 of
+  `Submission/README.md`'s CI: `Template.lean` is rejected if it mentions
+  those attributes or the metaprogramming surface around them.
 -/
 
 namespace Shor.Audit
@@ -132,5 +147,27 @@ error: 'Shor.Audit.Test.declared_bad' is not kernel-checked. Axioms outside the 
 -/
 #guard_msgs in
 #assert_axioms declared_bad
+
+/-! The one that is *not* caught, pinned so it stays a known quantity.
+
+`substituted` reduces to `realThree` in the kernel and evaluates to
+`fakeThree` when compiled. `#assert_axioms` reports it clean — correctly:
+the term the kernel checked is unchanged, and `collectAxioms` traverses that
+term. Nothing in the environment marks the substitution. This is why
+`Template.lean` is gated lexically rather than by this command. -/
+
+def realThree : List Nat := [1, 2, 3]
+def fakeThree : List Nat := [9, 9, 9]
+
+@[implemented_by fakeThree] def substituted : List Nat := realThree
+
+theorem substituted_eq : substituted = [1, 2, 3] := by decide +kernel
+
+/-- info: 'Shor.Audit.Test.substituted_eq' is kernel-checked; axioms: [] -/
+#guard_msgs in
+#assert_axioms substituted_eq
+
+/-- The compiled value disagrees, and `native_decide` proves it does. -/
+example : substituted = [9, 9, 9] := by native_decide
 
 end Shor.Audit.Test

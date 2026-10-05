@@ -3,9 +3,10 @@
 This folder proves the asymptotic gate-count bound for the lowered Shor
 implementation. It starts with a concrete cost model for `LowGate`, proves bounds for PhaseProduct and QFT lowering, then assembles those bounds into the final Shor order-finding estimate.
 
-The final results are the two `O(n^(2 + epsilon))` gate-count theorem:
+The final results are the `O(n^(2 + epsilon))` gate-count theorems:
 
 ```lean
+shorGateCountBound_of_setup
 exists_shorGateCountBound
 exists_k_shorGateCountBound_of_programOK
 ```
@@ -53,7 +54,13 @@ phaseProductGateCountBound_of_programOK
 ```
 
 This proves `PhaseProductGateCountBound` for any interpolation program
-satisfying `PhaseProductProgramOK`.
+satisfying `PhaseProductProgramOK`, which is C1-C4: the conditions that make a
+Toom-Cook table admissible. The recurrence is solved against the number of
+recursive leaves, `phaseProductCount ops = q k`, which C3 and `hpts` supply
+through `ProgConsumesPts.phaseProductCount_eq` in
+`PhaseProduct/Proofs/Compiler/Support.lean`: ordered point consumption peels one
+point per `phaseProduct` operation and passes the list through every other
+operation, so leaves and interpolation points are in bijection.
 
 The controlled PhaseProduct endpoint is:
 
@@ -82,13 +89,38 @@ shorGateCountBound_of_programOK
 This proves `ShorGateCountBound` once the chosen `k` has
 `phaseProductExponent k <= 1 + epsilon`.
 
+`ShorGateCountBound` is parametric in the per-step precision `eta`, under a
+work-width budget: fix any `cWork >= 1`, and one constant `C` serves every
+`eta` whose `algorithm1ExtraBits` fit `(cWork - 1) * n`. Shor's own schedule
+`eta = delta/n^2` is one such choice; `shorGateCountBoundShorEta_of_bound`
+and `shorGateCountBoundShorEta_of_setup` specialise to it, and are the only
+public statements here that mention `delta`.
+
+The per-submission endpoint is:
+
+```lean
+shorGateCountBound_of_setup
+```
+
+This proves `ShorGateCountBound` for an arbitrary `ShorLoweringSetup` - any
+admissible table, not only the generated one. A setup's `good`, `consumes` and
+`returns` fields are `PhaseProductProgramOK`, which is what
+`ShorLoweringSetup.programOK` (`Definitions.lean`) records, so the submission
+conditions are the only hypotheses. Here `epsilon` is a hypothesis rather than
+a choice: a table fixes its own arity `k`, and with it its exponent
+`phaseProductExponent k = log (2k - 1) / log k`, so a `k = 2` table runs at
+roughly `n^2.585` and supports no smaller `epsilon`.
+
 The fully existential endpoint is:
 
 ```lean
 exists_shorGateCountBound
 ```
 
-This chooses both a suitable `k` and a generated PhaseProduct program.
+This chooses both a suitable `k` and a generated PhaseProduct program. Driving
+`epsilon` towards `0` means letting `k` grow, which is why this form quantifies
+over `k` existentially where `shorGateCountBound_of_setup` takes the exponent
+bound as a hypothesis.
 
 ## Folder Layout
 

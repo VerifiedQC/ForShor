@@ -16,9 +16,14 @@ open Filter
 
 This file assembles the component bounds for PhaseProduct, controlled
 PhaseProduct, QFT, controlled modular multiplication, modular exponentiation,
-and the full order-finding circuit. The final theorems package the asymptotic
-`O(n^(2+ε))` gate-count bound and show that a suitable interpolation program
-exists for every positive `ε`.
+and the full order-finding circuit into `ShorGateCountBound`.
+
+Three endpoints package it, in increasing genericity over the table:
+`shorGateCountBound_of_programOK` for a program satisfying C1-C4 at a fixed
+arity, `shorGateCountBound_of_setup` for a `ShorLoweringSetup` — that is, for
+any submission, since the record's fields are those same conditions — and
+`exists_shorGateCountBound`, which also chooses the arity, so the asymptotic
+`O(n^(2+ε))` statement is available for every positive `ε`.
 ========================================================= -/
 
 /-! ---------------------------------------------------------
@@ -78,8 +83,59 @@ noncomputable def shorOrderFindingGateCount
 The complete lowered Shor order-finding circuit has gate count
 `O(n^(2+ε))`.  The static lowering-workspace proof is explicit because it is
 the precondition required by `lowerGate`; the count is proof-independent.
+
+The statement is parametric in the per-step precision `η`, under a work-width
+budget `cWork`: fix a budget, and one constant `C` serves every `η` whose
+`algorithm1ExtraBits` fit it. `ShorGateCountBoundShorEta` below specialises
+this to Shor's `η = δ/n²`.
+
+`_hxWidth` and `_hyWidth` carry a leading underscore because they do not
+appear in the *conclusion*, not because they are unused: they fix the two
+register widths, and `shorGateCountBound_of_components` feeds them to
+`ShorApproxSetup.toShorGateCountLayout`. Deleting them does not typecheck.
+The same reading applies to the underscored binders in
+`Shor/Spec/Assertions.lean`.
 -/
 def ShorGateCountBound
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    (ε : ℝ)
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k)
+    (pts : List Point)
+    (hpts : pts.length = q k) : Prop :=
+  ∀ cWork : ℕ, 1 ≤ cWork →
+  ∃ C : ℝ, 0 < C ∧
+  ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+    ∀ (inst : ShorOrderFindingInstance)
+      (x y work scratch : ExtReg)
+      (_hxWidth : regSize x.active = Nat.log2 (2 * inst.N^2))
+      (_hyWidth : regSize y.active = Nat.log2 (2 * inst.N))
+      (flag : ℕ) (b0 : qs.Basis)
+      (η : ℝ)
+      (hsetup : ShorApproxSetup qs η inst.N
+        x y work scratch flag b0),
+      let n := y.width
+      n₀ ≤ n →
+      algorithm1ExtraBits η ≤ (cWork - 1) * regSize y.active →
+      ∀ hLowerWorkspace :
+        GateWorkspaceOK ops
+          (orderFindingApprox inst.a inst.N
+            x y work scratch flag hsetup.circuit_workspace
+              hsetup.step4_workspace),
+      (shorOrderFindingGateCount qs k hk ops pts hpts inst.a inst.N
+        x y work scratch flag hsetup.circuit_workspace hsetup.step4_workspace
+          hLowerWorkspace : ℝ)
+        ≤ C * shorGateRate ε n
+
+/-- The same bound along Shor's own precision schedule `η = δ/n²`.
+
+This is `ShorGateCountBound` with the work-width budget discharged rather than
+assumed: `algorithm1ExtraBits_shorEta_eventually_linear` shows `δ/n²` fits some
+budget for all large `n`. Keeping it separate is what lets the main bound be
+stated without `δ`, which no consumer of the gate count supplies. -/
+def ShorGateCountBoundShorEta
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     (ε δ : ℝ)
@@ -643,7 +699,6 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     {Basis : Type u}
     [RegEncoding Basis]
     (cWork : ℕ)
-    (_hcWork : 1 ≤ cWork)
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -1210,7 +1265,6 @@ lemma modExpApproxValid_gateCount_phase_bound_of_core
     {Basis : Type u}
     [RegEncoding Basis]
     (cWork : ℕ)
-    (_hcWork : 1 ≤ cWork)
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -1400,7 +1454,6 @@ lemma orderFindingApproxLow_gateCount_phase_bound
     (pts : List Point)
     (hpts : pts.length = q k)
     (cWork : ℕ)
-    (_hcWork : 1 ≤ cWork)
     (hQFT : QFTGateCountBound (Basis := qs.Basis) k hk ops pts hpts)
     (B : ℝ)
     (hB : 0 < B)
@@ -1896,8 +1949,7 @@ section ComponentAssembly
 theorem shorGateCountBound_of_components
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    (ε δ : ℝ)
-    (hδ : 0 < δ)
+    (ε : ℝ)
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
@@ -1910,50 +1962,33 @@ theorem shorGateCountBound_of_components
       CPhaseProductGateCountBound (Basis := qs.Basis) k hk ops pts hpts)
     (hQFT :
       QFTGateCountBound (Basis := qs.Basis) k hk ops pts hpts) :
-    ShorGateCountBound qs ε δ k hk ops pts hpts := by
-  rcases algorithm1ExtraBits_shorEta_eventually_linear δ hδ with
-    ⟨cWork, hcWork, nExtra, hnExtra, hExtraFits⟩
+    ShorGateCountBound qs ε k hk ops pts hpts := by
+  intro cWork hcWork
   rcases cmodMulInPlaceCore_gateCount_phase_bound
       (Basis := qs.Basis)
-      cWork hcWork k hk ops pts hpts hPhase hCPhase hQFT with
+      cWork k hk ops pts hpts hPhase hCPhase hQFT with
     ⟨A, hA, nCore, hnCore, hCore⟩
   rcases modExpApproxValid_gateCount_phase_bound_of_core
       (Basis := qs.Basis)
-      cWork hcWork k hk ops pts hpts A hA nCore hnCore hCore with
+      cWork k hk ops pts hpts A hA nCore hnCore hCore with
     ⟨B, hB, nModExp, hnModExp, hModExp⟩
   rcases orderFindingApproxLow_gateCount_phase_bound
-      qs k hk ops pts hpts cWork hcWork hQFT
+      qs k hk ops pts hpts cWork hQFT
       B hB nModExp hnModExp hModExp with
     ⟨C, hC, nOrder, hnOrder, hOrderFinding⟩
-  let nFinal : ℕ := max nOrder nExtra
-  have hnFinal : 1 ≤ nFinal := by
-    dsimp [nFinal]
-    omega
-  refine ⟨C, hC, nFinal, hnFinal, ?_⟩
-  intro inst x y work scratch hxWidth hyWidth flag b0 hsetup
+  refine ⟨C, hC, nOrder, hnOrder, ?_⟩
+  intro inst x y work scratch hxWidth hyWidth flag b0 η hsetup
   dsimp
-  intro hn hLowerWorkspace
+  intro hn hExtra hLowerWorkspace
 
   let n : ℕ := y.width
 
   have hnOrder' : nOrder ≤ n := by
-    dsimp [nFinal, n] at hn
-    omega
-
-  have hnExtra' : nExtra ≤ n := by
-    dsimp [nFinal, n] at hn
+    dsimp [n] at hn ⊢
     omega
 
   have hnOne : 1 ≤ n :=
     hnOrder.trans hnOrder'
-
-  have hExtra :
-      algorithm1ExtraBits
-          (shorEta δ y.width)
-        ≤ (cWork - 1) * regSize y.active := by
-    have h :=
-      hExtraFits y.width (by simpa [n] using hnExtra')
-    simpa [ExtReg.width] using h
 
   have hN : 1 < inst.N := by
     rcases inst.range with ⟨ha0, haN⟩
@@ -1990,18 +2025,17 @@ theorem shorGateCountBound_of_components
 theorem shorGateCountBound_of_programOK
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    (ε δ : ℝ)
-    (hδ : 0 < δ)
+    (ε : ℝ)
     (k : ℕ)
     (hk : 1 < k)
     (hExponent : phaseProductExponent k ≤ 1 + ε) :
     ∀ (ops : Prog k) (pts : List Point) (hpts : pts.length = q k),
       PhaseProductProgramOK k hk pts hpts ops →
-      ShorGateCountBound qs ε δ k hk ops pts hpts := by
+      ShorGateCountBound qs ε k hk ops pts hpts := by
   intro ops pts hpts hops
   exact
     shorGateCountBound_of_components
-      qs ε δ hδ k hk ops pts hpts hExponent
+      qs ε k hk ops pts hpts hExponent
       (phaseProductGateCountBound_of_programOK
         (Basis := qs.Basis) k hk ops pts hpts hops)
       (CPhaseProductReduction.cPhaseProductGateCountBound_of_programOK
@@ -2115,25 +2149,20 @@ theorem exists_phaseProductProgramOK
       genOpsWithProduct_ProgConsumesPtsSafe
         (k := k) hk0 (genInterpolationPoints k),
       genOpsWithProduct_returns_to_original
-        (k := k) hk0 (genInterpolationPoints k),
-      by
-        simpa [genInterpolationPoints, q] using
-          phaseProductCount_genOpsWithProduct
-            (k := k) hk0 (genInterpolationPoints k)⟩
+        (k := k) hk0 (genInterpolationPoints k)⟩
 
 /-- Existential complete Shor gate-count theorem: choose both `k` and the generated PhaseProduct program. -/
 theorem exists_shorGateCountBound
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    (ε δ : ℝ)
-    (hδ : 0 < δ)
+    (ε : ℝ)
     (hε : 0 < ε) :
     ∃ k : ℕ,
     ∃ hk : 1 < k,
     ∃ ops : Prog k,
       PhaseProductProgramOK k hk
           (genInterpolationPoints k) (generatedInterpolationPoints_length k) ops ∧
-      ShorGateCountBound qs ε δ k hk ops
+      ShorGateCountBound qs ε k hk ops
         (genInterpolationPoints k) (generatedInterpolationPoints_length k) := by
   rcases exists_k_phaseProductExponent_le ε hε with
     ⟨k, hk, hExponent⟩
@@ -2142,26 +2171,90 @@ theorem exists_shorGateCountBound
   exact
     ⟨k, hk, ops, hops,
       shorGateCountBound_of_programOK
-        qs ε δ hδ k hk hExponent ops
+        qs ε k hk hExponent ops
         (genInterpolationPoints k) (generatedInterpolationPoints_length k) hops⟩
+
+/-- The `O(n^(2 + ε))` bound for an arbitrary submitted table.
+
+The hypotheses are the submission conditions and nothing else: a
+`ShorLoweringSetup` carries C1–C4, which is `PhaseProductProgramOK`
+(`ShorLoweringSetup.programOK`). The exponent is set by the table's own arity —
+`phaseProductExponent k = log (2k - 1) / log k`, so `k = 2` admits any
+`ε ≥ log 3 / log 2 - 1 ≈ 0.585`, and larger `k` admits smaller `ε`. Reaching
+every positive `ε` therefore means quantifying over `k`, as
+`exists_shorGateCountBound` does. -/
+theorem shorGateCountBound_of_setup
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    (s : ShorLoweringSetup)
+    (ε : ℝ)
+    (hExponent : phaseProductExponent s.k ≤ 1 + ε) :
+    ShorGateCountBound qs ε s.k s.hk s.ops s.pts s.hpts :=
+  shorGateCountBound_of_programOK
+    qs ε s.k s.hk hExponent s.ops s.pts s.hpts s.programOK
+
+/-- Shor's own precision schedule `η = δ/n²` satisfies the work-width budget,
+so the bound specialises to it.
+
+This is the only place `δ` appears in a public statement. The main bound is
+stated for any `η` fitting a budget, because the schedule is a choice the
+caller makes and no consumer of the gate count supplies a `δ`. -/
+theorem shorGateCountBoundShorEta_of_bound
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    (ε δ : ℝ)
+    (hδ : 0 < δ)
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k)
+    (pts : List Point)
+    (hpts : pts.length = q k)
+    (hbound : ShorGateCountBound qs ε k hk ops pts hpts) :
+    ShorGateCountBoundShorEta qs ε δ k hk ops pts hpts := by
+  rcases algorithm1ExtraBits_shorEta_eventually_linear δ hδ with
+    ⟨cWork, hcWork, nExtra, hnExtra, hExtraFits⟩
+  rcases hbound cWork hcWork with ⟨C, hC, n₀, hn₀, hmain⟩
+  refine ⟨C, hC, max n₀ nExtra, by omega, ?_⟩
+  intro inst x y work scratch hxWidth hyWidth flag b0 hsetup
+  dsimp
+  intro hn hLowerWorkspace
+  have hn₀' : n₀ ≤ y.width := by omega
+  have hnExtra' : nExtra ≤ y.width := by omega
+  have hExtra :
+      algorithm1ExtraBits (shorEta δ y.width)
+        ≤ (cWork - 1) * regSize y.active := by
+    simpa [ExtReg.width] using hExtraFits y.width hnExtra'
+  exact hmain inst x y work scratch hxWidth hyWidth flag b0
+    (shorEta δ y.width) hsetup hn₀' hExtra hLowerWorkspace
+
+/-- The `δ/n²` schedule at an arbitrary submitted table. -/
+theorem shorGateCountBoundShorEta_of_setup
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    (s : ShorLoweringSetup)
+    (ε δ : ℝ)
+    (hδ : 0 < δ)
+    (hExponent : phaseProductExponent s.k ≤ 1 + ε) :
+    ShorGateCountBoundShorEta qs ε δ s.k s.hk s.ops s.pts s.hpts :=
+  shorGateCountBoundShorEta_of_bound qs ε δ hδ s.k s.hk s.ops s.pts s.hpts
+    (shorGateCountBound_of_setup qs s ε hExponent)
 
 /-- Chooses only `k`; any program satisfying the PhaseProduct contract then yields the Shor bound. -/
 theorem exists_k_shorGateCountBound_of_programOK
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    (ε δ : ℝ)
-    (hε : 0 < ε)
-    (hδ : 0 < δ) :
+    (ε : ℝ)
+    (hε : 0 < ε) :
     ∃ (k : ℕ) (hk : 1 < k),
       ∀ (ops : Prog k) (pts : List Point) (hpts : pts.length = q k),
         PhaseProductProgramOK k hk pts hpts ops →
-        ShorGateCountBound qs ε δ k hk ops pts hpts := by
+        ShorGateCountBound qs ε k hk ops pts hpts := by
   rcases exists_k_phaseProductExponent_le ε hε with
     ⟨k, hk, hExponent⟩
   exact
     ⟨k, hk,
       shorGateCountBound_of_programOK
-        qs ε δ hδ k hk hExponent⟩
+        qs ε k hk hExponent⟩
 
 end ExistenceResults
 

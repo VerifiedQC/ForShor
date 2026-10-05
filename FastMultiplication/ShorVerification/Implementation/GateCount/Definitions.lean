@@ -13,6 +13,22 @@ import FastMultiplication.ShorVerification.Framework.Gatecount.ResourceModel
 namespace Shor
 open Operations
 
+/-! =========================================================
+    GateCount Definitions
+
+The vocabulary the rest of the resource estimate is written in: the comparison
+rates (`phaseProductExponent k = log_k (2k - 1)`, and the `n^·` rates derived
+from it), the public bound Prop `PhaseProductGateCountBound`, and
+`PhaseProductProgramOK` — the C1-C4 hypothesis every bound in this folder is
+stated under. `ShorLoweringSetup.programOK` discharges that hypothesis for an
+arbitrary submission, which is what makes the estimates claims about admissible
+tables rather than about one generated program.
+
+The second half fixes the signed recursion data the PhaseProduct bound is
+proved by induction over: its measured gate count, its balanced input bound,
+and the per-node costs entering the recurrence.
+========================================================= -/
+
 section PhaseProductStatements
 
 /-- The Toom-Cook PhaseProduct exponent `log_k (2k - 1)`. -/
@@ -44,15 +60,28 @@ def PhaseProductGateCountBound
           (lowerGate k hk ops pts hpts (Gate.PhaseProdUsing φ x z ws) hworkspace) : ℝ)
         ≤ C * Real.rpow n (phaseProductExponent k)
 
-/-- Static correctness assumptions on the fixed PhaseProduct program: the
-interpolation points are good, point consumption is safe, the program preserves
-the start state, and it contains exactly `q k` recursive PhaseProduct leaves. -/
+/-- Static correctness assumptions on the PhaseProduct program: the
+interpolation points are good (C1/C2), point consumption is safe (C3), and the
+program preserves the start state (C4).
+
+These are the conditions a `ShorLoweringSetup` carries, so every admissible
+table satisfies the predicate; `ShorLoweringSetup.programOK` below is the
+bridge. The recurrence in `GateCount/PhaseProduct/` also needs the leaf count
+`phaseProductCount ops = q k`, which C3 and `hpts` supply through
+`ProgConsumesPts.phaseProductCount_eq`. -/
 def PhaseProductProgramOK
     (k : ℕ) (hk : 1 < k) (pts : List Point) (hpts : pts.length = q k) (ops : Prog k) : Prop :=
   GoodToomCookPoints k pts hpts ∧
   ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts ∧
-  run? ops State.start_state = some State.start_state ∧
-  phaseProductCount ops = q k
+  run? ops State.start_state = some State.start_state
+
+/-- Every submission satisfies the PhaseProduct program contract: a setup's
+`good`, `consumes` and `returns` fields are C1–C4. This is the bridge that lets
+the gate-count theorems be stated about an arbitrary admissible table rather
+than about one particular program. -/
+theorem ShorLoweringSetup.programOK (s : ShorLoweringSetup) :
+    PhaseProductProgramOK s.k s.hk s.pts s.hpts s.ops :=
+  ⟨s.good, s.consumes, s.returns⟩
 
 end PhaseProductStatements
 

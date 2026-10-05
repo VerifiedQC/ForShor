@@ -103,7 +103,17 @@ approximation error.
 * `Shor_correct_approx_lowered_uniform` — the version that actually connects
   to a submitted circuit: the fully lowered, approximate order-finding
   circuit's success probability is uniformly bounded below, for a single
-  `K` independent of the modulus, precision, or instance.
+  `K` independent of the modulus, precision, or instance. The per-step
+  precision `η` is left free here, and the lower bound it states is
+  informative only once `η` is chosen as a function of `N`.
+* `Shor_correct_approx_lowered` — the same circuit at a precision schedule
+  tied to `N`. At any `η ≤ shorPrecision N x` the approximation loss is at
+  most half of the ideal bound, so the circuit certifiably keeps the other
+  half, `κ / (2 · log₂(N)⁴)`. This is the lowered statement to cite.
+* `Shor_correct_approx_lowered_of_modExp_bound_assertion` — the lowered bound
+  at a constant the caller fixes, rather than one hoisted into an
+  existential. `Reference/` consumes this one, which is why nothing outside
+  `Shor/` needs to import `Shor/Proofs/`.
 
 ## `GateCount/` — the resource-estimation layer
 

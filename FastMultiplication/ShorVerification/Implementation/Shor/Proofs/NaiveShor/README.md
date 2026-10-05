@@ -203,6 +203,33 @@ here into the final good-outcome probability-mass lower bound.
 
 The folder's public theorem.
 
+### What the statement says
+
+`probability_of_success ≥ κ/log₂(N)⁴` is short for five definitions. In full:
+
+- **`probability_of_success`** (`Framework/Contract.lean:52`) is
+  `∑ o : Fin Q, r_found T verify o Q r * probMeas x o (evalC C ψ)` — the
+  measured outcome's probability, weighted by whether classical
+  post-processing of that outcome returns the order. It is a probability of
+  *ending up with `r`*, not of landing in a good window.
+- **`r_found`** (`Framework/Math/ShorDefinition.lean:293`) is the 0/1
+  indicator `if OF_post T verify o Q = r then 1 else 0`. `OF_post` scans the
+  first `T Q` continued-fraction convergents of `o/Q`, keeps those whose
+  denominator `d` passes `verify` (here `a^d ≡ 1 mod N`), and returns the
+  smallest — so a credited outcome is one the classical half really does
+  turn into `r`.
+- **`T`** is any classical post-processing budget with
+  `continuedFractionSearchBound Q ≤ T Q`
+  (`ContinuedFractionSearchComplete`, `ShorDefinition.lean:113`). It bounds
+  how far the convergent scan may look; it is not a circuit parameter and
+  costs no gates.
+- **`κ = 4e⁻²/π²`** (`ShorDefinition.lean:297`), about `0.0548`.
+- The register widths are fixed by the hypotheses: the exponent register `x`
+  has `log₂(2N²)` bits and the modulus register `y` has `log₂(2N)` (`hm`,
+  `hn`), the outcome range is `Q = ASize x.active`, and the input state is
+  the ideal `IdealOrderFindingInput` — all registers clean, `x` in uniform
+  superposition.
+
 - **`Shor_correct`** — ideal order-finding success probability for Shor's
   algorithm: `ShorCorrect T hT inst x y b0 hm hn hinput` (i.e.
   `probability_of_success ≥ κ/log₂(N)⁴`). Two-step proof: the good-outcome

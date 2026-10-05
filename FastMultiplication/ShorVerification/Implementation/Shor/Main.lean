@@ -169,4 +169,74 @@ theorem Shor_correct_approx_lowered_uniform
           exact happrox inst x y work scratch flag b0 hm hn η
             (ShorApproxSetupMinimal.toShorApproxSetup hready.approx)
 
+/--
+The lowered circuit's success bound at a caller-supplied constant `K`,
+against an assumed uniform modular-exponentiation distance bound at that `K`.
+
+`Shor_correct_approx_lowered_uniform` hoists `K` into an existential, which
+suits a headline statement but not a caller that has already fixed its own
+constant. `Reference` has: it takes `K = 2048`, justified by
+`modExpApprox_correct`'s `K ≤ 2048` and monotonicity of `stepErr`, and needs
+the conclusion at that constant. This is the theorem it consumes.
+-/
+theorem Shor_correct_approx_lowered_of_modExp_bound_assertion
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [IdealCtrlModMulExactSemantics qs]
+    (K : ℝ)
+    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
+    ShorCorrectApproxLoweredOfModExpBound K T hT := by
+  intro hmodExp inst lowering x y work scratch flag b0 hm hn η hready
+  exact Shor_correct_approx_lowered_of_modExp_bound (qs := qs) K hmodExp T hT
+    inst lowering x y work scratch flag b0 hm hn η hready
+
+/--
+Correctness of the fully lowered approximate Shor order-finding circuit at a
+precision chosen from `N`.
+
+`Shor_correct_approx_lowered_uniform` leaves `η` free, and its right-hand side
+is informative only once `η` is tied to `N`: the subtracted term
+`2 · tbits(x) · √(2Kη)` does not shrink with `N` on its own, so a fixed `η`
+makes the bound negative for large `N`. At any `η ≤ shorPrecision N x` the loss
+is at most half of the ideal bound, and half of it survives.
+
+`shorPrecision` is a closed form, not a threshold behind an existential: the
+proof runs at the explicit constant `2048` (`modExpApprox_valid_dist_2048`), so
+a circuit builder can compute the precision it needs before building anything.
+
+The precision this asks for is `Θ(n⁻¹⁰)`, costing `O(log n)` work bits, so it
+composes with `shorGateCountBound_of_setup`, whose budget for
+`algorithm1ExtraBits` is linear in `n`.
+-/
+theorem Shor_correct_approx_lowered
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    [IdealCtrlModMulExactSemantics qs]
+    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
+    ShorCorrectApproxLowered T hT := by
+  intro inst lowering x y work scratch flag b0 hm hn η hη hready
+  have hmain :=
+    Shor_correct_approx_lowered_of_modExp_bound_assertion (qs := qs) 2048 T hT
+      (modExpApprox_valid_dist_2048 (qs := qs))
+      inst lowering x y work scratch flag b0 hm hn η hready
+  have hN : 2 ≤ inst.N := by
+    have := inst.range
+    omega
+  have hlogNat : 0 < Nat.log2 inst.N := by
+    rw [Nat.log2_eq_log_two]
+    exact Nat.log_pos Nat.one_lt_two hN
+  have hx : 1 ≤ tbits x.active := by
+    unfold tbits
+    rw [hm, Nat.log2_eq_log_two]
+    exact Nat.log_pos Nat.one_lt_two (by nlinarith)
+  have hloss := lowering_loss_le_half η inst.N hN x.active hx hη
+  -- `linarith` sees `κ / L⁴` and `κ / (2L⁴)` as unrelated atoms, so relate them.
+  have hLpos : (0 : ℝ) < (Nat.log2 inst.N : ℝ) := by exact_mod_cast hlogNat
+  have hhalf :
+      κ / (Nat.log2 inst.N : ℝ) ^ 4 - κ / (2 * (Nat.log2 inst.N : ℝ) ^ 4)
+        = κ / (2 * (Nat.log2 inst.N : ℝ) ^ 4) := by
+    field_simp
+    ring
+  linarith [hmain, hloss, hhalf]
+
 end Shor

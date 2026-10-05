@@ -1,3 +1,4 @@
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Core.Coverage
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.PlanBuilders
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients

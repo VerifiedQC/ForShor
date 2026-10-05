@@ -64,7 +64,7 @@ ones before it).
 | `Precision.lean` | The concrete precision schedule for Algorithm 1 (`algorithm1ExtraBits`, `Algorithm1Precision`) and the per-core norm error scale used by the hybrid bound (`stepErr`). |
 | `Validity.lean` | The clean-input predicates for the valid-input subspace the approximation theorems work on (`GoodModMulBasisInput`, `ValidModMulState`, `GoodAlgorithm1BasisInput`, `ValidAlgorithm1State`), and the state-level cleanliness predicates consumed by the two concrete constant-arithmetic lowerers (`ConstArithmeticCleanBasis`, `CSubConstCleanBasis`, `CmpGeConstCleanState`, `CSubConstCleanState`). |
 | `Config.lean` | Compact configuration records so the bound files don't repeatedly thread the modulus, registers, precision proof, workspace proof, layout proof, and coprimality hypotheses: `Algorithm1Env`, `ModExpConfig` (+ `approxGate`/`idealGate`/`ValidUnitState`), `ModMulConfig` (+ `approxGate`/`idealGate`/`ValidState`/`ValidUnitState`). |
-| `Assertions.lean` | `ModExpApproxValidDistUniform` — the final claim: a single `η`-independent constant `K` bounds the approximate-vs-ideal modular-exponentiation distance uniformly over valid unit states. Proved in `Main.lean`. |
+| `Assertions.lean` | `ModExpApproxValidDistUniform` — the final claim: a single `η`-independent constant `K ≤ 2048` bounds the approximate-vs-ideal modular-exponentiation distance uniformly over valid unit states. `ModExpApproxValidDist2048` is the same claim with the constant written out, for callers that must choose a precision and so cannot use an existential one. Both proved in `Main.lean`. |
 
 ## `Proofs/` — everything below is proof-only; nothing outside `Proofs/`/`Main.lean` may import it
 
@@ -89,5 +89,7 @@ proof outline (how Steps 1–5's error analysis is split across files).
 
 Proves the folder's public theorem, `modExpApprox_correct`, packaging
 `Spec.Assertions.ModExpApproxValidDistUniform` from
-`Proofs.ModExp.modExpApprox_valid_dist_uniform`. Imports only `Spec.Assertions`
+`Proofs.ModExp.modExpApprox_valid_dist_uniform`, and `modExpApprox_correct_2048`
+packaging `ModExpApproxValidDist2048` from `Proofs.ModExp`'s
+`modExpApprox_valid_dist_2048`. Imports only `Spec.Assertions`
 and `Proofs.ModExp` — every other dependency is transitive through those two.

@@ -28,11 +28,17 @@ A file may import its own folder or any folder to its left. Inside `Proofs/`:
 Lowering, Budgets, Setup  <  Readiness/*  <  NaiveShor/*  <  Correctness
 ```
 
-and the `Readiness/` chain is itself ordered
+and `Readiness/` is a partial order, not a chain:
 
 ```
-Static < Sequencing < Primitives < Init < Step1 < Step2 < Step5 < IQFT < ModMul < ModExp < Dynamic
+Static, Sequencing  <  Primitives  <  {Init, Step1}  <  {Step2, Step5}
+                     <  {IQFT, ModMul}  <  ModExp  <  Dynamic
 ```
+
+Braces are genuinely independent: `Step2` and `Step5` do not import each
+other, nor do `Init` and `Step1`, nor `IQFT` and `ModMul`. `scripts/check_layers.py`
+enforces that — an import between two siblings at the same rank fails, which a
+total order could not express.
 
 **One allowlisted exception:** `Spec/Assertions.lean` imports
 `Proofs/Readiness/Static.lean` directly. The assertion
@@ -73,7 +79,7 @@ traversal.
 |---|---|
 | `Cleanliness.lean` | The static clean-input predicates and dynamic clean-state invariants (`ThreeRegsCleanState`, `FullShorWorkspaceCleanState`, `ShorLoweringCleanState`, `ShorConcreteCleanState`, `IdealOrderFindingInput`) used by the readiness proofs and the final correctness statements. |
 | `Setup.lean` | The user-facing setup/readiness records (`ShorLoweringSetup`, `ShorApproxSetup(Minimal)`, `LoweredShorReady`, `ShorFactoringInstance`) and the bridge from the lower-level implementation setup to the public one. |
-| `Assertions.lean` | The final Shor correctness guarantees (`ShorCorrect`, `ShorCorrectApproxLoweredUniform`), each stated once as a named proposition. `Proofs/Correctness.lean`'s theorems are typed directly by these Props, so there is exactly one copy of each statement. |
+| `Assertions.lean` | The final Shor correctness guarantees (`ShorCorrect`, `ShorCorrectApproxLoweredUniform`, `ShorCorrectApproxLoweredOfModExpBound`, `ShorCorrectApproxLowered`), each stated once as a named proposition, plus `shorPrecision N x` — the precision schedule the last of them is stated at, a closed form in `N` and the register width with the uniform constant `2048` folded in, so nothing about it is existential. `Proofs/Correctness.lean`'s theorems are typed directly by these Props, so there is exactly one copy of each statement. |
 
 ## `Proofs/` — everything below is proof-only; nothing outside `Proofs/`/`Main.lean` may import it
 
@@ -104,10 +110,30 @@ traversal.
 
 ## `Main.lean`
 
-The three final Shor correctness theorems (`Shor_end_to_end_factoring`,
-`Shor_correct_approx_lowered_uniform`, and the one in between), each typed by
-its named proposition from `Spec/Assertions.lean` and proven from
-`Proofs/Correctness.lean` and `Framework/Math/Factoring_Reduction/*`. Content
-is byte-identical across this reorganization — only its import lines
-changed. This is the file the `Reference/` implementations consume; all
-supporting lemmas live under `Shor.Proofs`.
+The final Shor correctness theorems, each typed by its named proposition from
+`Spec/Assertions.lean` and proven from `Proofs/Correctness.lean` and
+`Framework/Math/Factoring_Reduction/*`. All supporting lemmas live under
+`Shor.Proofs`. This is the file other folders consume: `Proofs/` is proof-only,
+and `scripts/check_shor_layers.sh` fails on an import of `Shor.Proofs.*` from
+outside `Implementation/Shor/` (two provider files are allowlisted —
+`Proofs/Lowering.lean` for `GateCount/` and `Proofs/Readiness/Static.lean` for
+`Reference/ShorProgram.lean` — and named in the script).
+
+| theorem | what it gives |
+|---|---|
+| `Shor_end_to_end_factoring` | the ideal circuit, plus the classical reduction from a good outcome to a nontrivial factor |
+| `Shor_correct_approx_lowered_uniform` | the fully lowered circuit, `K` hoisted into an existential, `η` free |
+| `Shor_correct_approx_lowered_of_modExp_bound_assertion` | the same, at a `K` the caller supplies together with a modular-exponentiation distance bound at that `K` — this is what `Reference/` consumes |
+| `Shor_correct_approx_lowered` | the lowered circuit at `η ≤ shorPrecision N x`, concluding `κ / (2 · log₂(N)⁴)` |
+
+These differ in how the per-step precision `η` and the uniform constant `K` are
+handled, and the difference matters when citing them. The uniform theorem
+leaves `η` free and hoists `K` into an existential; its loss term
+`2 · tbits(x) · √(2Kη)` does not shrink as `N` grows, so the right-hand side
+is informative only once `η` is tied to `N`, and the threshold for doing that
+would itself depend on an unknown `K`. `Shor_correct_approx_lowered` closes
+both gaps: it runs at the explicit constant `2048`
+(`modExpApprox_valid_dist_2048`), so `shorPrecision N x` is a closed form a
+circuit builder can evaluate before building, and at any `η` below it the
+conclusion is `≥ κ / (2 · log₂(N)⁴)` — half the ideal bound, positive for
+every admissible `N`. Cite that one.
