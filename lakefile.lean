@@ -8,8 +8,11 @@ package «ForShor» where
   ]
   -- add any additional package configuration options here
 
+-- Pinned. `lake-manifest.json` records the same revision, but without `@ rev`
+-- a `lake update` silently jumps to Mathlib master. This rev matches
+-- `lean-toolchain` (v4.28.0) and is the one `lake exe cache get` fetches.
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git"
+  "https://github.com/leanprover-community/mathlib4.git" @ "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42"
 
 @[default_target]
 lean_lib «FastMultiplication» where

@@ -1,5 +1,13 @@
-# Everything a reviewer would otherwise have to remember to run by hand:
-# the three lake targets, the five layer scripts, and the docs graph.
+# Everything a reviewer would otherwise have to remember to run by hand: the
+# three lake targets and the two executables, a smoke run of each, the axiom
+# guard, the lexical gate on the shipped template, the layer check and the docs
+# graph.
+#
+# What this workflow does NOT do: run `lean4checker`. That is step 3 of the CI
+# a *submissions* repo should enforce (Submission/README.md), and so are the
+# diff rule and the lexical gate as an acceptance control -- this repository has
+# no submission to police, so the gate runs here only to prove the published
+# command still works.
 name: CI
 
 on:
@@ -7,43 +15,86 @@ on:
     branches: [main]
   pull_request:
 
+# One run per ref: a new push cancels the superseded build instead of letting
+# two ~25-minute jobs stack up.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Cold runs (empty .lake cache) build the whole library from scratch;
-    # a warm run is ~15 minutes, most of it EmitTests.
+    # Cold runs (empty cache) build the whole library from scratch; a warm run
+    # is ~25 minutes, most of it EmitTests, which rebuilds whenever anything
+    # under ShorVerification/ changes because Emit/Tests.lean imports Reference
+    # and Submission.
     timeout-minutes: 90
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install elan
+        # Pinned: `releases/latest` would let a new elan change the toolchain
+        # installer under the job with no commit in this repository.
         run: |
-          curl -sSfL https://github.com/leanprover/elan/releases/latest/download/elan-x86_64-unknown-linux-gnu.tar.gz \
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.0.0/elan-x86_64-unknown-linux-gnu.tar.gz \
             | tar xz
           ./elan-init -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - name: Cache .lake
+      - name: Cache .lake/packages
+        # Dependency *sources* only. Caching all of `.lake` would restore this
+        # project's own stale `.lake/build` on a hit, and save every Mathlib
+        # olean on a miss (near GitHub's 10 GB cap). Mathlib's build comes from
+        # `lake exe cache get`, which is what the next step is for.
         uses: actions/cache@v4
         with:
-          path: .lake
-          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}
+          path: .lake/packages
+          key: lake-packages-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}
           restore-keys: |
-            lake-${{ runner.os }}-
+            lake-packages-${{ runner.os }}-
 
       - name: Fetch Mathlib build cache
         run: lake exe cache get
 
       - name: Build
-        run: lake build FastMultiplication EmitTests Submission
+        # Warnings are failures: the library is warning-free and stays so.
+        # `-KwarningAsError=true` does not reach Lean's own linter warnings
+        # (verified: a stray `unused variable` still builds green under it), so
+        # the build log is grepped instead.
+        run: |
+          set -o pipefail
+          lake build FastMultiplication EmitTests Submission 2>&1 | tee build.log
+          if grep -q "warning:" build.log; then
+            echo "::error::build produced warnings:"
+            grep "warning:" build.log
+            exit 1
+          fi
+
+      - name: Build executables
+        # Neither executable is reachable from the three library targets --
+        # Emit/Tests.lean does not import Emit/Main.lean and Submission/Check.lean
+        # does not import Submission/Main.lean -- so without this they can stop
+        # compiling without CI noticing.
+        run: lake build forshor_emit forshor_submission
+
+      - name: Smoke-run executables
+        run: |
+          lake exe forshor_emit 2 2 15 0 > /dev/null
+          lake exe forshor_submission | python3 -c 'import json,sys; json.load(sys.stdin)'
+
+      - name: Axiom guard
+        # The README's claim that the headline theorems use only propext,
+        # Classical.choice and Quot.sound, checked rather than asserted.
+        run: lake env lean scripts/AxiomCheck.lean
+
+      - name: Lexical gate on the shipped template
+        # Proves the grep published in Submission/README.md still executes and
+        # still passes on the example table.
+        run: bash scripts/check_template_lexical.sh FastMultiplication/ShorVerification/Submission/Template.lean
 
       - name: Check import layering
-        run: |
-          for s in scripts/check_*_layers.sh; do
-            echo "== $s"
-            bash "$s"
-          done
+        run: python3 scripts/check_layers.py
 
       - name: Check docs graph
         run: |
