@@ -9,14 +9,9 @@ Four files:
 | `WellFormed.lean` | the structural checks a `Doc` must pass before anyone instantiates it |
 | `Json.lean` | the printer, `forshor.ir/v1` |
 
-This file is for the fourth kind of reader: someone outside this repository
-who has the printed `Doc` and wants to instantiate it themselves. Everything
-below is the semantics `Instantiate.lean` gives, stated once, naming the Lean
-definition it comes from. Where the two disagree, `Instantiate.lean` is
-right and this file is a bug.
+Everything below is the semantics `Instantiate.lean` gives, stated once, naming the Lean definition it comes from.
 
-Nothing here is a theorem. What is checked is that `instantiate` agrees with
-the real compiled circuit at the widths `Reflect/Verify.lean` samples — see
+Nothing here is a theorem. What is checked is that `instantiate` agrees with the real compiled circuit at the widths `Reflect/Verify.lean` samples — see
 `../README.md`'s "What is and is not a theorem".
 
 ## Registers

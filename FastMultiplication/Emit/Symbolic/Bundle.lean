@@ -5,6 +5,7 @@ import FastMultiplication.Emit.Symbolic.QftPlan
 import FastMultiplication.Emit.Symbolic.ShorPlan
 import FastMultiplication.Emit.IR.Json
 import FastMultiplication.Emit.Reflect.Verify
+import FastMultiplication.Emit.Table.Source
 
 /-!
 # The `forshor.emit/v1` bundle

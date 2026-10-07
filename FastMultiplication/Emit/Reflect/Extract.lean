@@ -1,6 +1,5 @@
 import Lean
 import FastMultiplication.Emit.IR.Syntax
-import FastMultiplication.Emit.Reflect.Quote
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.PlanBuilders
@@ -21,6 +20,15 @@ opaque-function escape hatch) for the handful of shapes a given target
 actually produces. An unrecognised shape is a hard error naming the
 constant (D2), never a silent guess.
 -/
+
+-- Quoting a concrete table. The Specialise step splices a `ShorLoweringSetup`'s
+-- `ops : Prog k` (computed at run time) into an `Expr` so the compiler's
+-- `match ops with …` collapses under `whnf`; `Targets.lean`'s `setupPtsExprs`
+-- quotes `setup.pts` the same way. Neither type is self-recursive, so
+-- `deriving` works, and `ToExpr (Prog k)` then falls out of core's
+-- `ToExpr (List α)` instance.
+deriving instance Lean.ToExpr for Operations.Point
+deriving instance Lean.ToExpr for Operations.valid_ops
 
 namespace Shor.Reflect
 

@@ -225,7 +225,7 @@ evaluation-tier work, cited as `PLAN.md §...` elsewhere in this file.
 | round | what it did |
 |---|---|
 | **R0** | The IR language: `IR/Syntax.lean`'s `WExpr`/`RegExpr`/`AExpr`/`Node`/`Template`/`Doc`, its JSON printer, decidable `Doc.wellFormed`, and the `instantiate`/`instantiateGate` interpreter that unrolls a `Doc` at a concrete width. |
-| **R1** | The extractor: `Reflect/Extract.lean`'s `MetaM` walk over a real Lean term, keyed by construct (D2), and `Reflect/Quote.lean`'s `ToExpr` instances for splicing a concrete table in. |
+| **R1** | The extractor: `Reflect/Extract.lean`'s `MetaM` walk over a real Lean term, keyed by construct (D2), and its `ToExpr` instances for splicing a concrete table in. |
 | **R2** | The extraction targets (`Reflect/Targets.lean`) one at a time, each with an exit criterion — the table below. R2.7 was the genericity checkpoint: the same criteria at a different `k` and a different table, with no code change. |
 | **R3** | Bundle integration. `buildBundle` split into a pure `buildBundleCore` (still `native_decide`-testable) and an `unsafe`/`IO` `buildTemplateDoc` that embeds the extracted `Doc`; `pp`/`cpp`/`qft`'s hand-written `template_match`/`ladder`/`split` checks replaced by `instantiate_eq_real` against the real term. |
 | **R4** | Removals. The hand-written symbolic machinery the extractor superseded — `Symbolic/Template.lean`, `Symbolic/Recursion.lean`, `Lower/Instantiate.lean`, `Table/Census.lean` — deleted, and `shor_plan` reduced to widths and reserves with no affine tail. |

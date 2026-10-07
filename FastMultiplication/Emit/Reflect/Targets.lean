@@ -289,7 +289,7 @@ to feed `standardSignedPhaseLoweringPlan`/`standardCSignedPhaseLoweringPlan`/
 `standardQFTLoweringPlan`'s `.eq_1` lemmas.
 
 The points are quoted as a literal (`ToExpr Operations.Point`,
-`Reflect/Quote.lean`) the same way `setup.ops` is, and the length obligation
+`Extract.lean`'s `deriving instance`) the same way `setup.ops` is, and the length obligation
 is discharged by `decide` rather than by naming a lemma about one particular
 list, so the term being reflected over describes the setup it was given.
 

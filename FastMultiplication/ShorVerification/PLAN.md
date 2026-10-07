@@ -716,7 +716,7 @@ cache restored from `.lake/packages` only.
 
 # Third batch: duplication and misplaced definitions
 
-Items 21–23 are review items 22, 23 and 28 from the original pass. None of
+Items 21–23 are review items 22, 23 and 28; item 24 is a follow-up found while reading `Reflect/` from the original pass. None of
 them changes a statement; each removes a second copy of something or moves
 a definition to the folder whose rules say it belongs there. Same
 conventions. Line numbers re-checked on 2026-10-05 after items 1–20.
@@ -986,6 +986,30 @@ Not done, and not "one-line moves with their import" as the item claims:
 The pattern across all four: a `def` in `Proofs/` whose *proof body* reaches
 upward. Moving the definition means moving or inlining what its proof uses,
 which is why these did not land with the others.
+
+## 24. Fold `Emit/Reflect/Quote.lean` into `Extract.lean` — DONE
+
+`Reflect/Quote.lean` was 26 lines: a docstring and two
+`deriving instance Lean.ToExpr` lines for `Operations.Point` and
+`Operations.valid_ops`. It had one importer (`Extract.lean`) and pulled in
+`Emit.Table.Source` for nothing, since both types live in
+`Table_Generation/Core/Language.lean`, which `Extract.lean` already reaches.
+
+- The two `deriving` lines now sit at the top of `Reflect/Extract.lean`
+  under a six-line comment that keeps the one useful fact from the old
+  docstring (`ToExpr (Prog k)` falls out of core's `ToExpr (List α)`).
+- `Reflect/Quote.lean` deleted; `Extract.lean` drops the import.
+- `Symbolic/Bundle.lean` gains `import Emit.Table.Source`: it uses
+  `standardTableInstance` and had been reaching it only through the
+  deleted `Quote.lean` import (the build said so; nothing else did).
+- `Emit/README.md`'s R1 row and `Reflect/Targets.lean`'s `setupPtsExprs`
+  docstring no longer name the file. `Driver.lean`'s header, which says
+  `IR/Syntax.lean` "deferred `ToExpr` to this file", was about `Driver.lean`
+  itself and is unchanged.
+
+`Reflect/` is now four files, each with one recognisable job: `Extract`
+(the translator), `Targets` (what to extract), `Driver` (entry points),
+`Verify` (the checks).
 
 ## Verification (after items 21–23)
 
