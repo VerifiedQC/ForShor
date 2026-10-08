@@ -69,17 +69,32 @@ window.ANNOTATIONS = {
   "Shor": {
    "role": "assembly",
    "subtitle": "order-finding assembly and correctness",
-   "summary": "Builds the concrete approximate order-finding circuit from the three subroutines above, proves workspace readiness for the whole lowered circuit, and proves the two results that make it Shor's algorithm: the ideal circuit's success-probability lower bound and the transfer of that bound across the modular-exponentiation implementation's approximation error."
+   "summary": "Builds the concrete approximate order-finding circuit from the three subroutines above, proves workspace readiness for the whole lowered circuit, and proves the two results that make it Shor's algorithm: the ideal circuit's success-probability lower bound and the transfer of that bound across the modular-exponentiation implementation's approximation error. That transfer costs a loss term in the per-step precision eta, so the lowered result is stated twice \u2014 once with eta free, and once at a precision tied to N, where half the ideal bound provably survives."
   },
   "GateCount": {
    "role": "resource",
    "subtitle": "O(n^(2+eps)) resource estimate",
-   "summary": "Gives LowGate a concrete cost model, bounds PhaseProduct's and QFT's lowered gate counts at a shared comparison rate, sums one modular-multiplication core's bound over the whole exponentiation, and chooses the recursion arity k large enough that the rate collapses to 2+epsilon."
+   "summary": "Gives LowGate a concrete cost model, bounds PhaseProduct's and QFT's lowered gate counts at a shared comparison rate, sums one modular-multiplication core's bound over the whole exponentiation, and chooses the recursion arity k large enough that the rate collapses to 2+epsilon. The bounds are stated against the submission contract rather than against one program: their hypothesis PhaseProductProgramOK is the same C1-C4 a ShorSubmission carries, so the estimate covers any admissible table."
   },
   "Reference": {
    "role": "submission",
    "subtitle": "the concrete submission",
    "summary": "Makes every choice the folders above leave abstract (interpolation-point program, physical register layout, precision schedule) into one deterministic, fully computable construction, and packages the result as the framework's ShorImplementation value — including the 2048-bit-benchmark trial count and gate count the leaderboard scores on."
+  },
+  "Shor/Main.lean": {
+   "role": "assembly",
+   "subtitle": "the three final theorems",
+   "summary": "Shor_end_to_end_factoring (ideal circuit, plus the classical reduction from a good outcome to a nontrivial factor), Shor_correct_approx_lowered_uniform (the fully lowered circuit, per-step precision eta left free), Shor_correct_approx_lowered_of_modExp_bound_assertion (the same at a constant the caller fixes \u2014 what Reference/ consumes) and Shor_correct_approx_lowered (at any eta below shorPrecision N x — a closed form with no hidden constant, concluding kappa / (2 log2(N)^4)). The last is the one to cite for the bound itself: the uniform form subtracts a loss that does not shrink as N grows, so it says something only once eta is tied to N. This file is the only way into Shor/Proofs from outside Shor/; check_shor_layers.sh enforces that."
+  },
+  "GateCount/Definitions.lean": {
+   "role": "resource",
+   "subtitle": "comparison rates and the C1-C4 hypothesis",
+   "summary": "The vocabulary the rest of the folder is written in: phaseProductExponent k = log_k (2k-1) and the n^. rates derived from it, the PhaseProductGateCountBound Prop, and PhaseProductProgramOK \u2014 the hypothesis every bound here is stated under, which is C1-C4 and nothing else. ShorLoweringSetup.programOK discharges it for an arbitrary submission. Read this file to see exactly what a gate-count theorem assumes about a table."
+  },
+  "GateCount/Shor_GateCount.lean": {
+   "role": "resource",
+   "subtitle": "the three final bounds",
+   "summary": "Combines the QFT and phase-product component bounds with the modular-exponentiation count into ShorGateCountBound, then packages it three ways, in increasing genericity over the table: shorGateCountBound_of_programOK for a C1-C4 program at a fixed arity, shorGateCountBound_of_setup for a ShorLoweringSetup (any submission, since the record's fields are those conditions), and exists_shorGateCountBound, which also picks the arity so the rate collapses to 2+epsilon for every positive epsilon. The bound is parametric in the per-step precision eta under a work-width budget; Shor's own eta = delta/n^2 schedule is the separate corollary shorGateCountBoundShorEta_of_setup."
   },
   "Framework/Quantum": { "role": "framework", "subtitle": "registers and measurement" },
   "Framework/AbstractMachine": { "role": "framework", "subtitle": "Gate and LowGate languages" },
@@ -110,7 +125,7 @@ window.ANNOTATIONS = {
     { "from": "ModularExponentiation", "to": "Shor", "emphasis": "primary", "theorem": "modExpApprox_correct", "label": "modExpApprox_correct", "why": "Shor's approximate correctness theorem transfers this eta-independent distance bound into a success-probability lower bound for the full lowered circuit." },
     { "from": "QFT", "to": "Shor", "emphasis": "secondary" },
     { "from": "Shor", "to": "GateCount", "emphasis": "primary", "theorem": "lowerGate_correctness", "label": "the LowGate program being counted", "why": "GateCount counts gates in the same lowered circuit (orderFindingApproxLow, built via Shor/Lowering's lowerGate) whose semantics lowerGate_correctness verifies; correctness and resource estimation share the circuit but not the proof." },
-    { "from": "Shor", "to": "Reference", "emphasis": "primary", "theorem": "Shor_correct_approx_lowered_uniform", "label": "Shor_correct_approx_lowered_uniform", "why": "Reference discharges this theorem's hypotheses concretely (layout, precision, readiness) to get one honest success probability for referenceShorImplementation." },
+    { "from": "Shor", "to": "Reference", "emphasis": "primary", "theorem": "Shor_correct_approx_lowered_of_modExp_bound_assertion", "label": "Shor_correct_approx_lowered_of_modExp_bound_assertion", "why": "Reference discharges this theorem's hypotheses concretely (layout, precision, readiness) at its own constant K = 2048 to get one honest success probability for referenceShorImplementation. It consumes Shor/Main.lean, not Shor/Proofs." },
     { "from": "GateCount", "to": "Reference", "emphasis": "primary", "theorem": "exists_shorGateCountBound", "label": "exists_shorGateCountBound", "why": "Reference2048Headline.lean instantiates this existential at the 2048-bit benchmark to compute the headline gate count the leaderboard scores on." },
     { "from": "PhaseProduct", "to": "GateCount", "emphasis": "secondary" }
    ]
@@ -167,16 +182,14 @@ window.ANNOTATIONS = {
     { "from": "Shor/Circuit", "to": "Shor/Spec", "emphasis": "primary", "label": "orderFindingApprox", "why": "Spec/'s setup and cleanliness assertions are stated over the concrete order-finding circuit orderFindingApprox Circuit/ defines." },
     { "from": "Shor/Spec", "to": "Shor/Proofs", "emphasis": "primary", "why": "Proofs/ discharges exactly the setup and readiness assertions Spec/ states." },
     { "from": "Shor/Math", "to": "Shor/Proofs", "emphasis": "secondary" },
-    { "from": "Shor/Proofs", "to": "Shor/Main.lean", "emphasis": "primary", "theorem": "Shor_end_to_end_factoring", "label": "Shor_end_to_end_factoring", "why": "Main.lean combines the ideal correctness, approximation transfer, and classical reduction proofs from Proofs/ into the complete factoring statement, and the fully-lowered Shor_correct_approx_lowered_uniform that Reference/ actually discharges." },
+    { "from": "Shor/Proofs", "to": "Shor/Main.lean", "emphasis": "primary", "theorem": "Shor_end_to_end_factoring", "label": "Shor_end_to_end_factoring", "why": "Main.lean combines the ideal correctness, approximation transfer, and classical reduction proofs from Proofs/ into the complete factoring statement, and into the lowered theorems other folders consume \u2014 Proofs/ is proof-only, so Main.lean is the only route out of Shor/." },
     { "from": "Shor/Spec", "to": "Shor/Main.lean", "emphasis": "secondary" }
    ]
   },
   "GateCount": {
-   "columns": [["GateCount/Definitions.lean"], ["GateCount/PhaseProduct", "GateCount/Lemmas"], ["GateCount/QFT_GateCount.lean"], ["GateCount/Shor_GateCount.lean"]],
+   "columns": [["GateCount/Definitions.lean"], ["GateCount/PhaseProduct"], ["GateCount/QFT_GateCount.lean"], ["GateCount/Shor_GateCount.lean"]],
    "edges": [
-    { "from": "GateCount/Definitions.lean", "to": "GateCount/Lemmas", "emphasis": "secondary" },
     { "from": "GateCount/Definitions.lean", "to": "GateCount/PhaseProduct", "emphasis": "primary", "label": "the cost model", "why": "PhaseProduct/'s recurrence bounds are proved directly over the LowGateCostModel fold Definitions.lean defines." },
-    { "from": "GateCount/Lemmas", "to": "GateCount/QFT_GateCount.lean", "emphasis": "secondary" },
     { "from": "GateCount/PhaseProduct", "to": "GateCount/QFT_GateCount.lean", "emphasis": "primary", "label": "phase-product recurrence bound", "why": "The QFT gate-count recurrence is solved by applying PhaseProduct/'s component bound to the cross-term phase product." },
     { "from": "GateCount/QFT_GateCount.lean", "to": "GateCount/Shor_GateCount.lean", "emphasis": "primary", "theorem": "exists_shorGateCountBound", "label": "exists_shorGateCountBound", "why": "The final theorem combines the QFT and phase-product component bounds with the modular-exponentiation count, then picks k so the rate collapses to n^(2+epsilon)." }
    ]

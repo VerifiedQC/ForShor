@@ -1,6 +1,5 @@
 import Lean
 import FastMultiplication.Emit.IR.Syntax
-import FastMultiplication.Emit.Reflect.Quote
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
 import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.PlanBuilders
@@ -21,6 +20,15 @@ opaque-function escape hatch) for the handful of shapes a given target
 actually produces. An unrecognised shape is a hard error naming the
 constant (D2), never a silent guess.
 -/
+
+-- Quoting a concrete table. The Specialise step splices a `ShorLoweringSetup`'s
+-- `ops : Prog k` (computed at run time) into an `Expr` so the compiler's
+-- `match ops with …` collapses under `whnf`; `Targets.lean`'s `setupPtsExprs`
+-- quotes `setup.pts` the same way. Neither type is self-recursive, so
+-- `deriving` works, and `ToExpr (Prog k)` then falls out of core's
+-- `ToExpr (List α)` instance.
+deriving instance Lean.ToExpr for Operations.Point
+deriving instance Lean.ToExpr for Operations.valid_ops
 
 namespace Shor.Reflect
 
@@ -90,6 +98,16 @@ structure Registry where
   call — fixed per target (e.g. `[xw, zw]`), never read off the actual
   `Expr` (D4: opaque by name, the argument is never inspected). -/
   nextWidthArgs : List IR.WExpr := []
+  /-- The extra reserve the *top* chunk (`i = k - 1`) of this target's
+  reserve split receives, `(x side, z side)` — `capacity - Σ required`,
+  `fillSlack`'s "all slack to the last child" policy. Set only by
+  `precomputePhaseProductSlots`'s callers (`phase_product`/`cphase_product`,
+  the targets whose layout is the real `ReserveBudget.ofRequirements`
+  construction); `none` for `pp_body`, whose layout is hand-built from fresh
+  per-child reserve variables and has no slack to distribute. Read by
+  `translateAnnotatedOpsGo` when it emits the recursive call's *capacity*
+  arguments — see the comment there. -/
+  topChunkSlack : Option (IR.WExpr × IR.WExpr) := none
 
 def Registry.lookupReg (reg : Registry) (e : Expr) : MetaM (Option IR.RegExpr) := do
   for (cand, r) in reg.regs do
@@ -889,10 +907,10 @@ partial def translateAnnotatedOps (reg : Registry) (st phi annotatedOpsE : Expr)
   let some n ← finValLit? annArgs[1]!
     | throwError "translateAnnotatedOps: non-literal annotation counter {annArgs[1]!}"
   let qk := Shor.q k
-  translateAnnotatedOpsGo reg st phi ctrl qk n (← whnfR annArgs[2]!)
+  translateAnnotatedOpsGo reg st phi ctrl k qk n (← whnfR annArgs[2]!)
 
 partial def translateAnnotatedOpsGo (reg : Registry) (st phi : Expr) (ctrl : Option Expr)
-    (qk n : Nat) (opsE : Expr) : MetaM IR.Node := do
+    (k qk n : Nat) (opsE : Expr) : MetaM IR.Node := do
   let xreg (iE : Expr) : MetaM IR.RegExpr := do
     translateReg reg (← mkAppM ``Shor.LayoutState.xslot #[st, iE])
   let zreg (iE : Expr) : MetaM IR.RegExpr := do
@@ -905,17 +923,17 @@ partial def translateAnnotatedOpsGo (reg : Registry) (st phi : Expr) (ctrl : Opt
       | (``Operations.valid_ops.shiftL, #[_, iE, mE]) => do
           let some m ← natLit? mE
             | throwError "translateAnnotatedOps: non-literal shiftL amount {mE}"
-          let tail ← translateAnnotatedOpsGo reg st phi ctrl qk n restE
+          let tail ← translateAnnotatedOpsGo reg st phi ctrl k qk n restE
           return .seq [.op "ShiftL" [← xreg iE] [.lit m] none [],
             .op "ShiftL" [← zreg iE] [.lit m] none [], tail]
       | (``Operations.valid_ops.shiftR, #[_, iE, mE]) => do
           let some m ← natLit? mE
             | throwError "translateAnnotatedOps: non-literal shiftR amount {mE}"
-          let tail ← translateAnnotatedOpsGo reg st phi ctrl qk n restE
+          let tail ← translateAnnotatedOpsGo reg st phi ctrl k qk n restE
           return .seq [.op "ShiftR" [← xreg iE] [.lit m] none [],
             .op "ShiftR" [← zreg iE] [.lit m] none [], tail]
       | (``Operations.valid_ops.negate, #[_, iE]) => do
-          let tail ← translateAnnotatedOpsGo reg st phi ctrl qk n restE
+          let tail ← translateAnnotatedOpsGo reg st phi ctrl k qk n restE
           return .seq [.op "Negate" [← xreg iE] [] none [], .op "Negate" [← zreg iE] [] none [], tail]
       | (``Operations.valid_ops.addScaled, #[_, dstE, srcE, negSrcE, shE]) => do
           let some sh ← natLit? shE
@@ -924,11 +942,11 @@ partial def translateAnnotatedOpsGo (reg : Registry) (st phi : Expr) (ctrl : Opt
             if negSrcE.isConstOf ``Bool.true then pure true
             else if negSrcE.isConstOf ``Bool.false then pure false
             else throwError "translateAnnotatedOps: addScaled negSrc not a literal Bool: {negSrcE}"
-          let tail ← translateAnnotatedOpsGo reg st phi ctrl qk n restE
+          let tail ← translateAnnotatedOpsGo reg st phi ctrl k qk n restE
           return .seq [.op "AddScaled" [← xreg dstE, ← xreg srcE] [.lit sh] none [negSrcB],
             .op "AddScaled" [← zreg dstE, ← zreg srcE] [.lit sh] none [negSrcB], tail]
       | (``Operations.valid_ops.phaseProduct, #[_, iE]) => do
-          let tail ← translateAnnotatedOpsGo reg st phi ctrl qk (n + 1) restE
+          let tail ← translateAnnotatedOpsGo reg st phi ctrl k qk (n + 1) restE
           if n < qk then
             let xwE ← mkAppM ``Shor.ExtReg.width #[← mkAppM ``Shor.LayoutState.xslot #[st, iE]]
             let zwE ← mkAppM ``Shor.ExtReg.width #[← mkAppM ``Shor.LayoutState.zslot #[st, iE]]
@@ -945,9 +963,33 @@ partial def translateAnnotatedOpsGo (reg : Registry) (st phi : Expr) (ctrl : Opt
             -- `width`, `ExtReg.capacity` was never registered against these
             -- slots, so a registry miss would fall through to reduction —
             -- exactly the D4-opaque quantity this file never computes.
+            --
+            -- …with one correction the sentence above misses. `fillSlack`
+            -- gives the child at index `i` exactly `requiredChildReserve i`
+            -- *except* for the top chunk `i = k - 1`, which additionally
+            -- receives all of the parent's leftover reserve
+            -- (`capacity - Σ required`). Grown to `nextWidth`, chunk `k - 1`
+            -- therefore carries `reserveNeed + slack`, not `reserveNeed`.
+            -- The *register* handed to the call is already right
+            -- (`precomputePhaseProductSlots` replicates `fillSlack` for the
+            -- `RegExpr`); only this capacity *parameter* was not, and the
+            -- callee splits its own reserve among grandchildren from it, so
+            -- every grandchild-level gate printing a reserve list came out
+            -- one or more qubits short. `i` is a literal at extraction time,
+            -- so the choice is made here in `MetaM` and never enters the IR.
             let nextWidthW : IR.WExpr := .opaque "nextWidth" [.var "xw", .var "zw"]
-            let xCap : IR.WExpr := .opaque "reserveNeed_x" [nextWidthW, nextWidthW]
-            let zCap : IR.WExpr := .opaque "reserveNeed_z" [nextWidthW, nextWidthW]
+            let some i ← finValLit? (← mkAppM ``Fin.val #[iE])
+              | throwError "translateAnnotatedOps: non-literal phaseProduct index {iE}"
+            let slack : Option (IR.WExpr × IR.WExpr) :=
+              if i + 1 = k then reg.topChunkSlack else none
+            let addSlack (base : IR.WExpr) (pick : IR.WExpr × IR.WExpr → IR.WExpr) : IR.WExpr :=
+              match slack with
+              | some sides => .add base (pick sides)
+              | none => base
+            let xCap : IR.WExpr :=
+              addSlack (.opaque "reserveNeed_x" [nextWidthW, nextWidthW]) Prod.fst
+            let zCap : IR.WExpr :=
+              addSlack (.opaque "reserveNeed_z" [nextWidthW, nextWidthW]) Prod.snd
             let phiAExpr ← translateA reg phi
             let callNode : IR.Node ←
               match ctrl with

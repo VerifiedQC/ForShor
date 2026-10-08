@@ -173,34 +173,56 @@ admissible, it *is* admissibility — `Shor.submission_correct` is generic in
 the table, so it applies with no further work and no per-submission proof.
 
 **Checked by evaluation.** `Shor.Reflect.submissionChecks` compares the
-extracted IR against the real compiled circuit at `n = 8, 16` (phase
-products), `w = 4, 8` (QFT) and the smallest reference Shor instance. The IR
-is *not* proved equal to the circuit at every width; that project (R6)
-concerns the reference table only and was archived. Sampling two widths
-rather than one is not belt-and-braces: at `k = 2`, `n = 8` is the base case
-and `n = 16` the recursive one, and two different tables have now been
-observed to agree at `n = 8` and disagree at `n = 16`. One width below the
-guard would have called them interchangeable.
+extracted IR against the real compiled circuit at ladders of widths derived
+from the submitted table itself: the phase products at `ppWidthLadder
+setup.ops`, in each of two reserve regimes; the hand-stated leaf templates at
+three unequal `(xw, zw)` pairs; the QFT at `qftWidthLadder setup.ops`; and
+`shor_gate`/`shor` at two reference Shor instances. The IR is *not* proved
+equal to the circuit at every width; that project (R6) concerns the reference
+table only and was archived.
+
+The ladders are not a fixed list, and that is the point. `ppWidthLadder`
+returns the largest base-case width together with the smallest widths
+reaching one, two and three levels of recursion, computed from the table's
+own `nextWidth` chain — for the shipped `k = 2` table, `[13, 14, 15, 17]`.
+Sampling a single width per template is what let a real extractor bug sit
+unseen: the top chunk receives all the slack in the reserve split, so a fault
+in its child capacity shows up only at a *grandchild*, three levels down, and
+only when a `phaseProduct` checkpoint sits on register `k - 1` with slack
+available. Hence three levels, and hence two reserve regimes rather than one
+(`Emit/PLAN.md` §1.1, §2 T2.1).
+
+A submitter should know what this costs. The ladder is derived from the
+table, and a table that recurses later is checked at larger widths: the
+shipped `k = 2` table's acceptance build is about a minute, while a `k = 3`
+table reaches `n = 35` and runs for roughly **35 minutes**; `k = 4` reaches
+`n = 87` and is not a build anyone will wait for. Capping the ladder depth is
+an open decision (`Emit/PLAN.md` §4.1), not a bug.
 
 These two lines stay on `native_decide` deliberately. They are repo-owned
 `example`s about the *extractor*, not fields of `setup`, so they do not enter
 the audit; making the evaluation tier kernel-checked is a separate project.
 
-### A known limitation of the evaluation tier
+### Where a checkpoint sits, and where `frac` points can go
 
-A table whose `phaseProduct` checkpoints do not all sit on register 0 is
-admissible — C1–C4 all pass — but its extracted `phase_product` and
-`cphase_product` IR disagrees with the real compiled term at `n = 16`. This
-is a limitation of the IR extractor, not of the rules, and it is why the
-shipped table keeps every checkpoint on register 0.
+Nowhere in particular: any register, any points. This used to carry a
+caveat — a table whose `phaseProduct` checkpoints did not all sit on
+register 0 was admissible but failed the IR check at `n = 16` — and the
+caveat is gone. The cause was in the extractor, not in the rules: the
+recursion's reserve split gives the *top* chunk (register `k - 1`) every
+qubit left over after each child's requirement is paid, and the emitted IR
+passed the recursive call the un-topped-up figure, so a checkpoint on that
+register produced grandchild gates carrying short reserve lists. Both of
+`Emit/Tests.lean`'s `T1_1_TopChunkReserve` tables — one with its checkpoints
+on register 1, one at the points `0, -1, frac 0` — are anchors on the fix.
 
-It is also why the shipped table uses no `frac` points: at `k = 2` the row of
-`frac 0` is `[0, 1]`, which is register 1's start value and cannot be built
-in register 0, so exercising `frac 0` at `k = 2` requires a checkpoint on
-register 1. `frac` points are fine as far as C1–C4 are concerned —
+The `frac` caveat went with it. At `k = 2` the row of `frac 0` (the point at
+infinity) is `[0, 1]`, which is register 1's start value and cannot be built
+in register 0, so exercising `frac 0` at `k = 2` *requires* a checkpoint on
+register 1; that is now an ordinary table, not a limitation to work around.
+`frac` points were always fine as far as C1–C4 are concerned —
 `Decide.lean`'s smoke tests cover them, and the `k = 3` precomputed table
-consumes a `frac 0` — but a submission that uses one must currently place its
-checkpoints so that the IR check still passes.
+consumes a `frac 0`.
 
 `forshor_emit template <k>` still extracts the standard table and only the
 standard table. A table enters through a Lean declaration, never through a
@@ -208,14 +230,49 @@ parser: its side conditions need the kernel.
 
 ## CI for a submissions repo
 
-This repository has no CI of its own. A submissions repo enforcing the
-acceptance check should run, per pull request:
+This repository's own CI (`.github/workflows/ci.yml`) builds the three lake
+targets, runs the five layer scripts and checks the docs graph. It does *not*
+run `lean4checker`, and it does not apply the diff rule or the lexical gate
+below — those are about a *submission*, and this repository has none to
+police. Steps 1 and 3 are therefore enforced only by a submissions repo.
+
+Such a repo should run, per pull request:
 
 1. **The diff rule.** A PR may change only its copy of
    `Submission/Template.lean`. Everything else — `Decide.lean`,
    `Audit.lean`, `Check.lean`, `Correct.lean`, `Score.lean`, `Main.lean`,
    `Framework/`, `Implementation/`, `lakefile.lean` — is repo-owned. A PR
    touching any of it changes the rules rather than answering them.
+
+   Together with a lexical gate on what `Template.lean` may contain. The
+   patterns are anchored at code positions, so the file's own prose
+   describing the restriction does not trip it:
+
+   ```bash
+   ! grep -nE \
+     '^[[:space:]]*(@\[|attribute[[:space:]]*\[)[^]]*(implemented_by|extern|csimp)|^[[:space:]]*((private|protected|noncomputable|scoped|local)[[:space:]]+)*(unsafe|run_cmd|run_meta|initialize|elab|macro|syntax|notation)\b|^import[[:space:]]+Lean\b|^[[:space:]]*set_option[[:space:]]+debug' \
+     Submission/Template.lean
+   ```
+
+   The reason is that two tiers read the table and they can be made to
+   disagree. C1–C4 are reduced by the *kernel*, which sees a definition's
+   body; the IR extraction (`Lean.Meta.evalExpr`), the two `native_decide`
+   lines and `lake exe forshor_submission` all run *compiled* code, which
+   sees whatever the compiler was told to emit. An
+   `@[implemented_by fakeOps] def ops := realOps` is kernel-checked on
+   `realOps` while `ir.json` is computed from `fakeOps` — so the accepted
+   table and the scored circuit are different objects. `implemented_by` and
+   `extern` add no axiom, so step 2's `#assert_axioms` cannot see them, and
+   `lean4checker` replays the kernel, which also sees only `realOps`;
+   neither of the other two steps catches this. `csimp` needs a proof of
+   `realOps = fakeOps`, so it is only an opening if that proof is itself
+   unsound. The remaining tokens (`unsafe`, `run_cmd`/`run_meta`,
+   `initialize`, `elab`/`macro`/`syntax`/`notation`, `import Lean`,
+   `set_option debug`) are the metaprogramming surface that can reach the
+   environment directly.
+
+   A submitter's table needs none of this: the template is three
+   definitions and one record.
 
 2. **The build and the print**, as now:
 
@@ -233,3 +290,9 @@ acceptance check should run, per pull request:
    adding an axiom, and nothing else visible in the environment does either.
    Replaying the built environment through the kernel does. A submission is
    not accepted until this passes.
+
+   Note what the three steps divide between them. Step 3 certifies that the
+   *kernel* accepts every proof in the environment; step 2's
+   `#assert_axioms` certifies which axioms those proofs rest on. Neither
+   says anything about the compiled code the IR and `ir.json` come from —
+   that is step 1's lexical gate, and it is the only thing standing there.

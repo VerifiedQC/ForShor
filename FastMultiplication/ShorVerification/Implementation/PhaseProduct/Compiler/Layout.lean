@@ -3,7 +3,7 @@ import FastMultiplication.ShorVerification.Framework.AbstractMachine.LowGate
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Framework.Semantics.LowGateSemantics
 import FastMultiplication.ShorVerification.Implementation.Shared.Registers
-import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Core.Coverage
+import FastMultiplication.ShorVerification.Framework.ToomCookTable
 import Mathlib.Tactic
 
 /-!

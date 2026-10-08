@@ -81,21 +81,28 @@ and QFT leaves individually.
 
 The `pp`/`cpp` subcommands: concrete-width signed (and controlled) phase
 product via the real lowering. `unsafe`/`IO` since the annotated view
-extracts the template by reflection (`Reflect.runExtractAndVerify`) to run
+extracts the template by reflection (`Reflect.runExtract`) to run
 `instantiate_eq_real`.
 
 - `buildPP`/`buildCPP (k n) (phiNum phiDen) (annotated) : IO (Except String
   Json)` — discharge `SignedRecursiveWorkspaceOK`/`CSignedRecursiveWorkspaceOK`
   (via `ppRegisters`, `Decide.lean`), then either:
   - `annotated = true` (the default): build `standardSignedPhaseLoweringPlan`/
-    `standardCSignedPhaseLoweringPlan`, extract+verify the `Doc`
-    (`Reflect.runExtractAndVerify k` — standard table only; R5, §11), run
-    `check1_annotatedEqFlat` (`Json/PlanJson.lean`) and
+    `standardCSignedPhaseLoweringPlan`, extract the `Doc`
+    (`Reflect.runExtract k` — standard table only; R5) and check
+    `Doc.wellFormed`, run `check1_annotatedEqFlat` (`Json/PlanJson.lean`) and
     `Reflect.phaseProductAgrees`/`cPhaseProductAgrees` (now `(hk) (ops)`,
     not `(k) (hk) (src)` — `instantiate_eq_real`: the extracted template,
     instantiated at *this* `n`, agreeing with the real compiled term),
     embed both under `meta.checks`, and refuse (`.error`) if either failed;
     otherwise print `planJson` via `emitPlanDoc`.
+
+    This runs `runExtract`, **not** `runExtractAndVerify`: the full canary
+    iterates `verifyDoc`'s per-table width ladders, which costs about 35
+    minutes at `k = 3` to print a circuit of a few hundred gates, and the
+    only check relevant to the width actually requested —
+    `instantiate_eq_real` at *this* `n` — is computed here anyway. The
+    full canary stays on `template` and `bundle`, where it is the point.
   - `annotated = false` (`--flat`): print `lowerSignedPhaseProdWithWorkspace`/
     `lowerCSignedPhaseProdWithWorkspace` via `emitLowGateDoc` directly, no
     checks, no reflection.
@@ -110,7 +117,8 @@ The `qft` subcommand, same shape as `PhaseProduct.lean`:
 
 - `buildQFT (k w) (annotated) : IO (Except String Json)` — discharges
   `QFTReserveOK` (via `qftRegister`), then either builds
-  `reserveQFTLoweringPlan`, extracts+verifies the `Doc`, runs
+  `reserveQFTLoweringPlan`, extracts the `Doc` and checks `Doc.wellFormed`
+  (`runExtract`, not the full canary — see `buildPP` above), runs
   `annotated_eq_flat` and `Reflect.qftAgrees` (`instantiate_eq_real`),
   embeds them under `meta.checks`, and prints via
   `qftPlanJsonOf`/`emitPlanDoc`; or (`--flat`) prints `lowerQFT` directly

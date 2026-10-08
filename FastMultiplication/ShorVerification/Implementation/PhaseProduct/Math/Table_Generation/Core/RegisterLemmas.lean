@@ -367,10 +367,6 @@ lemma run?_inv_singleton_OK {k} (op : valid_ops k) (ok : Prog.OpOK op) :
   unfold apply_Op_inverse
   simp [List.reverse_cons, List.map_append]
 
-@[simp] lemma apply_Op_inverse_append {k} (p q : Prog k) :
-  apply_Op_inverse (p ;; q) = apply_Op_inverse q ;; apply_Op_inverse p := by
-  unfold apply_Op_inverse
-  simp [List.reverse_append, List.map_append]
 
 
 theorem WF_cons {k} (op: valid_ops k) (p : Prog k)

@@ -58,6 +58,17 @@ This is not a claim that the proofs are hard. For most tables each field is
 one line and the kernel does the work; what the audit buys is that the work
 really was the kernel's.
 
+One matching restriction on this file: it may not use `@[implemented_by]`,
+`@[extern]`, `@[csimp]`, `unsafe`, `run_cmd`/`run_meta`, `initialize`,
+`elab`/`macro`/`syntax`/`notation`, `import Lean`, or `set_option debug`. The
+IR and `ir.json` are produced by *running* `setup` rather than by reducing it,
+so an attribute that changes the compiled code — and only the compiled code —
+would let the kernel check one table while the resource estimator reads
+another. No axiom appears when that happens, so `#assert_axioms` cannot see
+it; a submissions repo's CI rejects these lexically instead
+(`Submission/README.md`, "CI for a submissions repo", step 1). A table needs
+none of them.
+
 C2 is the one condition that needed a lemma rather than a decision
 procedure. `GoodToomCookPoints` is `det (interpMatrix …) ≠ 0`, a sum over
 `(2k-1)!` permutations — 39 916 800 of them at `k = 6`. The interpolation
@@ -75,13 +86,13 @@ than subtracting, so the program is nine operations where the reference's is
 seven, and the two op lists are not permutations of each other. It is a
 worked example of an edit, not a copy of the reference.
 
-A table whose checkpoints sit on a register other than 0 is *admissible* —
-C1–C4 all pass — but currently fails the IR agreement check of
-`Check.lean` at `n = 16`, the recursive width. This is a limitation of the
-evaluation tier, not of the rules; it is why the table below keeps every
-`phaseProduct` on register 0, and why `frac` points are not exercised here
-(at `k = 2` the row of `frac 0` is `[0, 1]`, which is register 1's start
-value and cannot be built in register 0).
+Its checkpoints all sit on register 0 and its points are all `int`s, but
+neither is a requirement: a checkpoint may sit on any register, and `frac`
+points — including `frac 0`, the point at infinity — are as admissible as
+any other. The caveat this docstring used to carry (checkpoints off register
+0 failed the IR check at `n = 16`) described a bug in the extractor's
+reserve bookkeeping, now fixed and anchored by `Emit/Tests.lean`'s
+`T1_1_TopChunkReserve` section.
 -/
 
 namespace Submission

@@ -1,3 +1,5 @@
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Core.Registers
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Builders.Fragments
 import FastMultiplication.ShorVerification.Implementation.Shared.States
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
 
@@ -613,6 +615,39 @@ lemma annotatePhaseTermsAux_append (k n : ℕ) (ops₁ ops₂ : List (valid_ops 
       simp [phaseProductCount]
   | cons op xs ih =>
       cases op <;> simp [phaseProductCount, ih,  Nat.add_comm, Nat.add_left_comm]
+
+/-- Ordered point consumption pins the number of phase-product leaves: a
+program that consumes `pts` from left to right has exactly `pts.length`
+`phaseProduct` operations, since every such operation peels one point and no
+other operation touches the list. -/
+theorem ProgConsumesPts.phaseProductCount_eq {k : ℕ} (hk : k > 0) :
+    ∀ (σ : State k) (ops : Prog k) (pts : List Point),
+      ProgConsumesPts hk σ ops pts → phaseProductCount ops = pts.length := by
+  intro σ ops
+  induction ops generalizing σ with
+  | nil =>
+      intro pts h
+      simp only [ProgConsumesPts] at h
+      subst h
+      simp [phaseProductCount]
+  | cons op ops ih =>
+      intro pts h
+      cases op with
+      | phaseProduct i =>
+          obtain ⟨pt, ptsTail, rfl, _, htail⟩ := h
+          simp [phaseProductCount, ih σ ptsTail htail]
+      | shiftL i n =>
+          obtain ⟨σ', _, htail⟩ := h
+          simp [phaseProductCount, ih σ' pts htail]
+      | shiftR i n =>
+          obtain ⟨σ', _, htail⟩ := h
+          simp [phaseProductCount, ih σ' pts htail]
+      | negate i =>
+          obtain ⟨σ', _, htail⟩ := h
+          simp [phaseProductCount, ih σ' pts htail]
+      | addScaled d s negSrc sh =>
+          obtain ⟨σ', _, htail⟩ := h
+          simp [phaseProductCount, ih σ' pts htail]
 
 @[simp] lemma phaseProductCount_computeLocalAux
   {k : ℕ} (hk : 0 < k) (z : Int) :

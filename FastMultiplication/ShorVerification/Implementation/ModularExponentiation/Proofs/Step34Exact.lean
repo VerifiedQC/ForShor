@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Config
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Model
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Model
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Step1QPE
 import FastMultiplication.ShorVerification.Implementation.Shared.Registers
@@ -111,20 +111,6 @@ private lemma writeNat_overwrite_same
       =
     RegEncoding.writeNat r v b :=
   writeNat_overwrite_same_reg r v w b
-
-/-- A qubit outside a register forms a disjoint singleton register. -/
-private lemma disjoint_qubitReg_of_outside
-    {q : ℕ} {r : Reg}
-    (h : QubitOutside q r) :
-    Shor.Disjoint (qubitReg q) r := by
-  rw [Shor.Disjoint, List.disjoint_left]
-  intro p hp hr
-
-  have hpq : p = q := by
-    simpa [qubitReg, Reg.singleton] using hp
-
-  subst p
-  exact h hr
 
 private lemma freshFor_writeNat_of_disjoint
     {Basis : Type u} [RegEncoding Basis]

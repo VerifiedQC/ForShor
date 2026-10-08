@@ -67,7 +67,24 @@ already impractical at `k = 5` (`q 5 = 9`; `81` entries × `9! = 362880`).
 compiler's own definitions, no recomputation — over `w = 1..wMax`.
 
 - `widthTable {k} (ops) (wMax) : List (ℕ × ℕ × ℕ × ℕ)` — `(w, nextWidth,
-  reserve_x, reserve_z)` rows.
+  reserve_x, reserve_z)` rows. The **diagonal** only: `nextWidth w w`.
+- `splitWidthTable {k} (ops) (wMax) : List (ℕ × ℕ × ℕ × ℕ × ℕ × ℕ)` —
+  `(w, xw, zw, nextWidth, reserve_x, reserve_z)` at the **unequal** pair
+  `(w / 2, w - w / 2)`. The diagonal suffices for `phase_product`, whose
+  recursion grows both children to `nextWidth` and so stays symmetric
+  forever after; it does not suffice for `qft`, which splits its register at
+  `splitM r = regSize r / 2` and hands `phase_product` an unequal pair at
+  every odd width. Without these rows a consumer holding only the bundle
+  cannot instantiate `qft` at an odd width at all — `Emit/Tests.lean`'s
+  `T4_1_TableOracle` section is the check that, with them, it can.
+- `tableOpaqueW (wrows) (srows) (qrows) : String → List ℕ → Option ℕ` — the
+  `IR.Env.opaqueW` oracle built from the published rows **by lookup**, with
+  no call into `nextWidth`/`reserveNeed`/`qftWorkspaceNeed`. This is the
+  consumer's side of the contract, written down in Lean so it can be run:
+  anything it cannot resolve is a `none`, which `instantiate` reports as an
+  error rather than papering over. `modpow`/`step5Const` are deliberately
+  absent — they are `shor`'s, modulus-dependent rather than table-dependent,
+  and a consumer implements them directly.
 
 (The old `widthTableByM`/`limbWidth` column and the `affineTail` advisory
 helper were dropped in R3/R4 — `nextWidth`/`reserveNeed` are the only D4
@@ -112,8 +129,8 @@ Turns the value tables above (plus the extracted `template`) into JSON
 objects and assembles the `forshor.emit/v1` document; also the home of the
 CLI-facing per-section, `template`, and `phases` builders.
 
-- `scheduleJson`, `coeffPolyJson`, `widthJson`, `qftPlanJson`, `shorPlanJson`
-  — one JSON builder per pure section, each taking a `TableInstance`/
+- `scheduleJson`, `coeffPolyJson`, `widthJson`, `splitWidthJson`,
+  `qftPlanJson`, `shorPlanJson` — one JSON builder per pure section, each taking a `TableInstance`/
   `Prog k` plus whatever options that section needs (`mMax`, `wMax`,
   `checkCramer`). `scheduleJson` keeps only `ops`/`points` (the old op
   census/per-width `LowGate` resource counts were dropped along with
@@ -130,13 +147,14 @@ CLI-facing per-section, `template`, and `phases` builders.
 - `buildTemplateDoc (k) (hk) (wMax) : IO (Except String Json)` — extracts
   the `Doc` (`Reflect.runExtractAndVerify`, which also runs
   `Reflect.Verify`'s instance-check canary), refusing if `wMax` doesn't
-  cover the canary's own checked width (`templateCheckWidth k = 4 * k`).
-  Backs `forshor_emit template <k>`.
+  cover the canary's own checked width (`templateCheckWidth k hk`, now the
+  maximum of the table's own derived width ladders rather than a fixed
+  `4 * k`). Backs `forshor_emit template <k>`.
 - `buildBundle (k) (hk) (mMax) (wMax) (checkCramer) (noTemplate) : IO
   (Except String Json)` — `buildBundleCore` plus `buildTemplateDoc`'s
   result under `"template"`, unless `noTemplate` (`--no-template`, which
   skips the environment load entirely).
-- `sectionNames : List String` — the five pure section names `buildSection`
+- `sectionNames : List String` — the six pure section names `buildSection`
   understands (`template` is a dedicated command, not a `buildSection`
   case, since it needs `IO`).
 - `buildSection (sectionName) (k) (hk) (mMax) (wMax) (checkCramer) :

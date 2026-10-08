@@ -26,6 +26,10 @@ Nothing in this file is edited by a submitter; it reads `Submission.setup`
 from the template and `Submission.doc` from `Check.lean`.
 -/
 
+-- `2 ^ 2047` and `2 ^ 2048` are the point of this file, so the elaborator's
+-- warning that it declined to evaluate an exponent above 256 is noise here.
+set_option exponentiation.threshold 4096
+
 open Lean (Json)
 open Shor
 
@@ -36,7 +40,7 @@ across `[2^2047, 2^2048)` — the bound it is derived from depends on `N` only
 through `log₂ N = 2047` — so one member of the range stands for all of it. -/
 def benchmarkModulus : ℕ := 2 ^ 2047
 
-theorem benchmarkModulus_is2048Bit : Reference.Is2048Bit benchmarkModulus :=
+theorem benchmarkModulus_is2048Bit : Is2048Bit benchmarkModulus :=
   ⟨le_refl _, Nat.pow_lt_pow_right (by norm_num) (by norm_num)⟩
 
 /-- The number of independent runs the score is computed over, for the
@@ -52,9 +56,9 @@ def submissionJson : Json :=
   Json.mkObj [
     ("schema", Json.str "forshor.submission/v1"),
     ("table", Json.mkObj [
-      ("k", (k : Json)),
-      ("points", Json.arr (pts.map pointJson).toArray),
-      ("ops", progJson ops)
+      ("k", (setup.k : Json)),
+      ("points", Json.arr (setup.pts.map pointJson).toArray),
+      ("ops", progJson setup.ops)
     ]),
     ("precision", Json.mkObj [
       ("m", natStr submissionPrecision),
@@ -80,9 +84,13 @@ def submissionJson : Json :=
       ("correctness", Json.str
         "Shor.submission_correct: proved once, generic in the table; no per-submission proof"),
       ("ir_agreement", Json.str
-        "Shor.Reflect.submissionChecks: instantiate = real compiled circuit at n = 8, 16 \
-         (phase_product, cphase_product), w = 4, 8 (qft), and the smallest reference Shor \
-         instance — pinned by native_decide in Submission/Check.lean"),
+        s!"Shor.Reflect.submissionChecks: instantiate = real compiled circuit at \
+           phase_product/cphase_product widths {Reflect.submissionPPWidths setup} in reserve \
+           regimes {Reflect.submissionPPSlacks}, leaf (xw, zw) pairs \
+           {Reflect.submissionLeafWidths}, qft widths {Reflect.submissionQFTWidths setup}, and \
+           {Reflect.submissionShorInstances.length} reference Shor instances — pinned by \
+           native_decide in Submission/Check.lean. The width ladders are derived from this \
+           table's own recursion depth, so they are not the same for every submission."),
       ("ir_not_proved", Json.str
         "the IR is NOT proved equal to the circuit at every width; the line above \
          is evaluation at sampled widths, not a theorem")

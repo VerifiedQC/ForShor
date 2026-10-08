@@ -159,7 +159,7 @@ section R2_1
 -- (imported transitively via `Symbolic.Bundle`), reused here and throughout.
 
 set_option maxHeartbeats 1000000 in
-extract_ir_doc pp_body_doc_k2 smallLowering
+extract_ir_doc_with_pp_body pp_body_doc_k2 smallLowering
 
 abbrev r2_1_k : Nat := 2
 def r2_1_hk : 1 < r2_1_k := by decide
@@ -229,10 +229,9 @@ partial def r2_1_flatten : Gate → List Gate
   | g => [g]
 
 example :
-    ((match IR.instantiateGate pp_body_doc_k2 "pp_body" r2_1_env 10 with
-      | .ok g => r2_1_flatten g
-      | .error _ => [])
-      == r2_1_flatten r2_1_real) = true := by
+    (match IR.instantiateGate pp_body_doc_k2 "pp_body" r2_1_env 10 with
+      | .ok g => Reflect.gateAgrees g r2_1_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_1
@@ -347,10 +346,9 @@ def r2_2b_real : LowGate :=
 
 set_option maxHeartbeats 1000000 in
 example :
-    ((match IR.instantiate r2_2_doc "phase_product" (r2_2_env r2_2_ops r2_2b_x r2_2b_z) 50 with
-      | .ok g => r2_2_flatten g
-      | .error _ => [])
-      == r2_2_flatten r2_2b_real) = true := by
+    (match IR.instantiate r2_2_doc "phase_product" (r2_2_env r2_2_ops r2_2b_x r2_2b_z) 50 with
+      | .ok g => Reflect.lowGateAgrees g r2_2b_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_2_Base
@@ -371,10 +369,9 @@ def r2_2r_real : LowGate :=
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
 example :
-    ((match IR.instantiate r2_2_doc "phase_product" (r2_2_env r2_2_ops r2_2r_x r2_2r_z) 50 with
-      | .ok g => r2_2_flatten g
-      | .error _ => [])
-      == r2_2_flatten r2_2r_real) = true := by
+    (match IR.instantiate r2_2_doc "phase_product" (r2_2_env r2_2_ops r2_2r_x r2_2r_z) 50 with
+      | .ok g => Reflect.lowGateAgrees g r2_2r_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_2_Rec
@@ -490,11 +487,10 @@ def r2_4b_real : LowGate :=
 
 set_option maxHeartbeats 1000000 in
 example :
-    ((match IR.instantiate r2_4_doc "cphase_product" (r2_4_env r2_4_ops r2_4_ctrl r2_4b_x r2_4b_z)
+    (match IR.instantiate r2_4_doc "cphase_product" (r2_4_env r2_4_ops r2_4_ctrl r2_4b_x r2_4b_z)
         50 with
-      | .ok g => r2_4_flatten g
-      | .error _ => [])
-      == r2_4_flatten r2_4b_real) = true := by
+      | .ok g => Reflect.lowGateAgrees g r2_4b_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_4_Base
@@ -519,11 +515,10 @@ def r2_4r_real : LowGate :=
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
 example :
-    ((match IR.instantiate r2_4_doc "cphase_product" (r2_4_env r2_4_ops r2_4_ctrl r2_4r_x r2_4r_z)
+    (match IR.instantiate r2_4_doc "cphase_product" (r2_4_env r2_4_ops r2_4_ctrl r2_4r_x r2_4r_z)
         50 with
-      | .ok g => r2_4_flatten g
-      | .error _ => [])
-      == r2_4_flatten r2_4r_real) = true := by
+      | .ok g => Reflect.lowGateAgrees g r2_4r_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_4_Rec
@@ -592,11 +587,10 @@ def r2_5w4_real : LowGate :=
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
 example :
-    ((match IR.instantiate r2_5_doc "qft" (r2_5_env r2_5_ops r2_5w4_r r2_5w4_xWork r2_5w4_zWork)
+    (match IR.instantiate r2_5_doc "qft" (r2_5_env r2_5_ops r2_5w4_r r2_5w4_xWork r2_5w4_zWork)
         100 with
-      | .ok g => r2_5_flatten g
-      | .error _ => [])
-      == r2_5_flatten r2_5w4_real) = true := by
+      | .ok g => Reflect.lowGateAgrees g r2_5w4_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_5_W4
@@ -614,11 +608,10 @@ def r2_5w8_real : LowGate :=
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
 example :
-    ((match IR.instantiate r2_5_doc "qft" (r2_5_env r2_5_ops r2_5w8_r r2_5w8_xWork r2_5w8_zWork)
+    (match IR.instantiate r2_5_doc "qft" (r2_5_env r2_5_ops r2_5w8_r r2_5w8_xWork r2_5w8_zWork)
         200 with
-      | .ok g => r2_5_flatten g
-      | .error _ => [])
-      == r2_5_flatten r2_5w8_real) = true := by
+      | .ok g => Reflect.lowGateAgrees g r2_5w8_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_5_W8
@@ -666,7 +659,7 @@ def r2_6g_env (a N : ℕ) (x y work scratch : ExtReg) (flag : ℕ) : IR.Env :=
 -- `†(H_reg ;; CPhaseProdUsing ;; IQFT)`, `cmpLtNW`'s `†diff ;; †mul`) wrap
 -- *multi-gate* sub-sequences whose own `Node.seq`↦`foldGateSeq` folding
 -- introduces a trailing `.id` the real term's direct `;;` chain never has —
--- `translateNode`'s `.seq`/`.adj` cases are still exactly right (§6.7's
+-- `translateNode`'s `.seq`/`.adj` cases are still exactly right (the R6
 -- `flatten` idiom already handles it at the top level); it is only *this
 -- test's own comparison* that must recurse into `.adj` bodies too, or a
 -- mismatch hidden under an `adj` never surfaces (confirmed empirically).
@@ -698,13 +691,12 @@ example : IR.Doc.wellFormed r2_6g_doc = true := by native_decide
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
 example :
-    ((match IR.instantiateGate r2_6g_doc "shor_gate"
+    (match IR.instantiateGate r2_6g_doc "shor_gate"
         (r2_6g_env smallInst.a smallInst.N r2_6g_layout.x r2_6g_layout.data r2_6g_layout.work
           r2_6g_layout.scratch r2_6g_layout.flag)
         300 with
-      | .ok g => r2_6g_flatten g
-      | .error _ => [])
-      == r2_6g_flatten r2_6g_real) = true := by
+      | .ok g => Reflect.gateAgrees g r2_6g_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_6_ShorGate
@@ -775,13 +767,12 @@ example : IR.Doc.wellFormed r2_6_doc = true := by native_decide
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
 example :
-    ((match IR.instantiate r2_6_doc "shor"
+    (match IR.instantiate r2_6_doc "shor"
         (r2_6_env smallInst.a smallInst.N r2_6g_layout.x r2_6g_layout.data r2_6g_layout.work
           r2_6g_layout.scratch r2_6g_layout.flag)
         300 with
-      | .ok g => r2_6_flatten g
-      | .error _ => [])
-      == r2_6_flatten r2_6_real) = true := by
+      | .ok g => Reflect.lowGateAgrees g r2_6_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_6_Shor
@@ -848,11 +839,10 @@ def r2_7pp3_real : LowGate :=
 
 set_option maxHeartbeats 1000000 in
 example :
-    ((match IR.instantiate r2_7pp3_doc "phase_product" (r2_7pp3_env r2_7pp3_ops r2_7pp3_x r2_7pp3_z)
+    (match IR.instantiate r2_7pp3_doc "phase_product" (r2_7pp3_env r2_7pp3_ops r2_7pp3_x r2_7pp3_z)
         50 with
-      | .ok g => r2_7pp3_flatten g
-      | .error _ => [])
-      == r2_7pp3_flatten r2_7pp3_real) = true := by
+      | .ok g => Reflect.lowGateAgrees g r2_7pp3_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_7_PhaseProduct_K3Standard
@@ -940,10 +930,9 @@ def r2_7c_real : LowGate :=
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
 example :
-    ((match IR.instantiate r2_7c_doc "phase_product" (r2_7c_env r2_7c_ops r2_7c_x r2_7c_z) 50 with
-      | .ok g => r2_7c_flatten g
-      | .error _ => [])
-      == r2_7c_flatten r2_7c_real) = true := by
+    (match IR.instantiate r2_7c_doc "phase_product" (r2_7c_env r2_7c_ops r2_7c_x r2_7c_z) 50 with
+      | .ok g => Reflect.lowGateAgrees g r2_7c_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_7_PhaseProduct_CustomTable
@@ -1001,11 +990,10 @@ def r2_7q3_real : LowGate :=
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
 example :
-    ((match IR.instantiate r2_7q3_doc "qft" (r2_7q3_env r2_7q3_ops r2_7q3_r r2_7q3_xWork r2_7q3_zWork)
+    (match IR.instantiate r2_7q3_doc "qft" (r2_7q3_env r2_7q3_ops r2_7q3_r r2_7q3_xWork r2_7q3_zWork)
         100 with
-      | .ok g => r2_7q3_flatten g
-      | .error _ => [])
-      == r2_7q3_flatten r2_7q3_real) = true := by
+      | .ok g => Reflect.lowGateAgrees g r2_7q3_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_7_Qft_K3Standard
@@ -1056,15 +1044,276 @@ def r2_7cq_real : LowGate := lowerQFT r2_7c_k r2_7c_hk r2_7c_ops
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
 example :
-    ((match IR.instantiate r2_7c_doc "qft" (r2_7cq_env r2_7c_ops r2_7cq_r r2_7cq_xWork r2_7cq_zWork)
+    (match IR.instantiate r2_7c_doc "qft" (r2_7cq_env r2_7c_ops r2_7cq_r r2_7cq_xWork r2_7cq_zWork)
         100 with
-      | .ok g => r2_7cq_flatten g
-      | .error _ => [])
-      == r2_7cq_flatten r2_7cq_real) = true := by
+      | .ok g => Reflect.lowGateAgrees g r2_7cq_real
+      | .error _ => false) = true := by
   native_decide
 
 end R2_7_Qft_CustomTable
 
 end R2_7
+
+/-! =========================================================
+    T1.1 regression: the top chunk's reserve capacity
+========================================================= -/
+
+-- `fillSlack` gives the *top* chunk (`i = k - 1`) of a phase product's
+-- reserve split everything left over after each child's
+-- `requiredChildReserve` is paid, so a `phaseProduct` checkpoint on register
+-- `k - 1` hands its recursive call a child carrying `reserveNeed + slack`,
+-- not `reserveNeed`. `translateAnnotatedOpsGo` used to emit the latter for
+-- every chunk; the callee then split *its* reserve among grandchildren from
+-- a capacity one or more qubits too small, and every grandchild-level gate
+-- that prints a reserve list came out different from the real circuit.
+--
+-- Three things have to coincide for that to show: a checkpoint on register
+-- `k - 1`, non-zero slack in the parent's reserve, and a width at which the
+-- child still recurses. Neither table below is exotic — both are admissible
+-- (C1-C4 by `decide`/`native_decide`) — but the R2 sections above miss all
+-- three: their checkpoints sit on register 0.
+--
+-- These are *anchors*: each width/slack pair listed here is one that
+-- disagreed before the fix and agrees after. The `slack = 0` rows are kept
+-- deliberately — they passed before the fix too, and a change that made them
+-- fail would mean the capacity went wrong in the other direction.
+section T1_1_TopChunkReserve
+
+/-! A `k = 2` table whose last checkpoint sits on register 1, at the
+canonical points. Each checkpoint sees register 1 holding the row of its
+point: `[1, 0]`, `[1, -1]`, `[1, 1]`. -/
+section TopChunkReg1
+
+abbrev t11a_k : Nat := 2
+
+def t11a_pts : List Operations.Point :=
+  [Operations.Point.int 0, Operations.Point.int (-1), Operations.Point.int 1]
+
+def t11a_ops : Prog t11a_k :=
+  [ Operations.valid_ops.addScaled 0 1 false 0   -- r0 = [1, 1]
+  , Operations.valid_ops.addScaled 1 0 true 0    -- r1 = [-1, 0]
+  , Operations.valid_ops.negate 1                -- r1 = [1, 0]   = row of 0
+  , Operations.valid_ops.phaseProduct 1
+  , Operations.valid_ops.addScaled 0 1 true 0    -- r0 = [0, 1]
+  , Operations.valid_ops.addScaled 1 0 true 0    -- r1 = [1, -1]  = row of -1
+  , Operations.valid_ops.phaseProduct 1
+  , Operations.valid_ops.addScaled 1 0 false 0   -- r1 = [1, 0]
+  , Operations.valid_ops.addScaled 1 0 false 0   -- r1 = [1, 1]   = row of 1
+  , Operations.valid_ops.phaseProduct 1
+  , Operations.valid_ops.addScaled 1 0 true 0    -- r1 = [1, 0]
+  , Operations.valid_ops.addScaled 0 1 false 0   -- r0 = [1, 1]
+  , Operations.valid_ops.addScaled 1 0 true 0    -- r1 = [0, -1]
+  , Operations.valid_ops.addScaled 0 1 false 0   -- r0 = [1, 0], back to start
+  , Operations.valid_ops.negate 1 ]              -- r1 = [0, 1], back to start
+
+def t11a_setup : ShorLoweringSetup :=
+  { k := t11a_k
+    hk := by decide
+    pts := t11a_pts
+    hpts := rfl
+    good := goodToomCookPoints_of_distinct rfl (by native_decide)
+    ops := t11a_ops
+    consumes := by native_decide
+    returns := by native_decide }
+
+set_option maxHeartbeats 4000000 in
+extract_ir_doc t11a_doc t11a_setup
+
+example : IR.Doc.wellFormed t11a_doc = true := by native_decide
+
+-- `n = 8` and `n = 16` agree either way: at `n = 16` the child is a base
+-- case (`nextWidth 16 16 = 15`), so no grandchild exists to misreserve.
+-- `n = 32` with slack is where the old emission diverged, at gate 91 935.
+set_option maxHeartbeats 4000000 in
+set_option maxRecDepth 4000 in
+example :
+    (Reflect.okB (Reflect.checkPhaseProductAt t11a_setup 8 t11a_doc 1)
+      && Reflect.okB (Reflect.checkPhaseProductAt t11a_setup 16 t11a_doc 1)
+      && Reflect.okB (Reflect.checkPhaseProductAt t11a_setup 32 t11a_doc 0)
+      && Reflect.okB (Reflect.checkPhaseProductAt t11a_setup 32 t11a_doc 1)
+      && Reflect.okB (Reflect.checkCPhaseProductAt t11a_setup 32 t11a_doc 1)) = true := by
+  native_decide
+
+end TopChunkReg1
+
+/-! A `k = 2` table at the points `0, -1, frac 0` — the point at infinity,
+whose row `[0, 1]` is register 1's start value and so cannot be built in
+register 0. Its last checkpoint therefore *has* to sit on register 1, which
+is the condition §1.1 of `PLAN.md` identifies; the `frac`-points caveat the
+submission docs used to carry was a consequence of that, not of `frac`. -/
+section TopChunkFracInfinity
+
+abbrev t11b_k : Nat := 2
+
+def t11b_pts : List Operations.Point :=
+  [Operations.Point.int 0, Operations.Point.int (-1), Operations.Point.frac 0]
+
+def t11b_ops : Prog t11b_k :=
+  [ Operations.valid_ops.phaseProduct 0          -- r0 = [1, 0]  = row of 0
+  , Operations.valid_ops.negate 1                -- r1 = [0, -1]
+  , Operations.valid_ops.addScaled 0 1 false 0   -- r0 = [1, -1] = row of -1
+  , Operations.valid_ops.phaseProduct 0
+  , Operations.valid_ops.negate 1                -- r1 = [0, 1], back to start
+  , Operations.valid_ops.addScaled 0 1 false 0   -- r0 = [1, 0], back to start
+  , Operations.valid_ops.phaseProduct 1 ]        -- r1 = [0, 1]  = row of 1/0
+
+def t11b_setup : ShorLoweringSetup :=
+  { k := t11b_k
+    hk := by decide
+    pts := t11b_pts
+    hpts := rfl
+    good := goodToomCookPoints_of_distinct rfl (by native_decide)
+    ops := t11b_ops
+    consumes := by native_decide
+    returns := by native_decide }
+
+set_option maxHeartbeats 4000000 in
+extract_ir_doc t11b_doc t11b_setup
+
+example : IR.Doc.wellFormed t11b_doc = true := by native_decide
+
+-- Shorter table, so the recursion bottoms out later: `n = 16` already has a
+-- recursing top-chunk child. Both slack regimes are anchored, the generous
+-- one because §1.1's measurement at `slack = 84` is where the diff was
+-- shown to be *only* in unused reserve width (erasing the reserve lists made
+-- all 24 differing gates agree).
+set_option maxHeartbeats 4000000 in
+set_option maxRecDepth 4000 in
+example :
+    (Reflect.okB (Reflect.checkPhaseProductAt t11b_setup 8 t11b_doc 1)
+      && Reflect.okB (Reflect.checkPhaseProductAt t11b_setup 16 t11b_doc 0)
+      && Reflect.okB (Reflect.checkPhaseProductAt t11b_setup 16 t11b_doc 1)
+      && Reflect.okB (Reflect.checkPhaseProductAt t11b_setup 16 t11b_doc 84)
+      && Reflect.okB (Reflect.checkCPhaseProductAt t11b_setup 16 t11b_doc 1)
+      && Reflect.okB (Reflect.checkCPhaseProductAt t11b_setup 16 t11b_doc 84)) = true := by
+  native_decide
+
+end TopChunkFracInfinity
+
+end T1_1_TopChunkReserve
+
+/-! =========================================================
+    T4.1: the bundle's tables are enough to instantiate `qft`
+========================================================= -/
+
+-- The Lean-side checks resolve every opaque width by calling the real
+-- function. An external consumer cannot: all it has is the published value
+-- tables. `width` alone is the *diagonal* (`nextWidth w w`), and `qft`
+-- splits its register at `splitM r = regSize r / 2`, handing
+-- `phase_product` the pair `(w / 2, w - w / 2)` — unequal at every odd `w`.
+-- So the one `nextWidth` value an odd-width QFT needs was the one value the
+-- bundle did not publish. `Symbolic/Width.lean`'s `splitWidthTable` is that
+-- row set, and `tableOpaqueW` is the oracle a consumer builds from the
+-- tables alone, by lookup, with no call into `nextWidth`/`reserveNeed`/
+-- `qftWorkspaceNeed`.
+--
+-- This is the exit criterion for that, spelled as the consumer would meet
+-- it: `instantiate` of the extracted `qft` at odd widths, with the *table*
+-- oracle in place of `opaqueDispatch`, agreeing with the real circuit.
+section T4_1_TableOracle
+
+abbrev t41_wMax : Nat := 40
+
+/-- The oracle a consumer builds from the published `width`, `split_width`
+and `qft_plan` rows — nothing else. -/
+def t41_oracle : String → List Nat → Option Nat :=
+  tableOpaqueW (widthTable smallLowering.ops t41_wMax)
+    (splitWidthTable smallLowering.ops t41_wMax)
+    (qftPlanTable smallLowering.ops t41_wMax)
+
+-- `9` is odd with a base-case phase product; `25` is odd *and* reaches a
+-- recursive one (`Reflect.qftWidthLadder` derives both).
+set_option maxHeartbeats 4000000 in
+set_option maxRecDepth 4000 in
+example :
+    (Reflect.okB (Reflect.checkQftAt smallLowering 8 r2_5_doc t41_oracle)
+      && Reflect.okB (Reflect.checkQftAt smallLowering 9 r2_5_doc t41_oracle)
+      && Reflect.okB (Reflect.checkQftAt smallLowering 13 r2_5_doc t41_oracle)
+      && Reflect.okB (Reflect.checkQftAt smallLowering 25 r2_5_doc t41_oracle)) = true := by
+  native_decide
+
+-- …and the oracle really is partial: a width past the published range has
+-- no row, so `instantiate` fails rather than inventing a value.
+example : t41_oracle "nextWidth" [t41_wMax + 1, t41_wMax + 1] = none := by native_decide
+
+end T4_1_TableOracle
+
+/-! =========================================================
+    The circuit comparison must not recurse once per gate
+========================================================= -/
+
+-- `Reflect.lowGateAgrees`/`gateAgrees`, not `flattenLowGate a ==
+-- flattenLowGate b`. The obvious comparison is not stack-safe:
+-- `flattenLowGate` leaves an `.adj` element holding its whole re-folded
+-- body, so the derived `BEq LowGate` walks that subtree one stack frame per
+-- nested gate.
+--
+-- This is not a hypothetical. With the old comparison, `lake build
+-- Submission` aborted with exit 134 —
+--
+--   libc++abi: terminating due to uncaught exception of type
+--   lean::throwable: deep recursion was detected at 'interpreter'
+--
+-- — inside `native_decide`, i.e. the acceptance build a submitter runs, and
+-- the whole build died rather than reporting a failed check. It was found
+-- by a sweep over generated admissible tables: one batch of sixteen tables
+-- produced no verdicts at all, just the abort. The observed limit was about
+-- 8 600 frames, so a circuit of a few thousand gates was enough.
+--
+-- The two anchors below are the shape that broke (one adjoint wrapping a
+-- long chain) and the size that broke (the reference Shor circuit at the
+-- eight-bit instance, 247 428 leaf tokens).
+section StackSafeComparison
+
+/-- A right-nested `;;` chain of `n` gates under a single adjoint. Built
+with a tail-recursive loop, so constructing it is not itself the test. -/
+def deepChainGo : ℕ → LowGate → LowGate
+  | 0, acc => acc
+  | m + 1, acc => deepChainGo m (LowGate.seq (LowGate.H m) acc)
+
+def deepAdjChain (n : ℕ) : LowGate := LowGate.adj (deepChainGo n LowGate.id)
+
+-- Far past the depth at which the derived `BEq` aborted.
+example : Reflect.lowGateAgrees (deepAdjChain 20000) (deepAdjChain 20000) = true := by
+  native_decide
+
+-- …and it still distinguishes: equal-length prefixes are not enough.
+example : Reflect.lowGateAgrees (deepAdjChain 20000) (deepAdjChain 19999) = false := by
+  native_decide
+
+-- The real case, at the size that aborted the acceptance build: the flat
+-- reference Shor circuit at `a = 2, N = 143, m = 1`.
+set_option maxHeartbeats 4000000 in
+set_option maxRecDepth 4000 in
+example :
+    Reflect.okB (Reflect.checkShorAt smallLowering Reflect.largeInst 1 r2_6_doc) = true := by
+  native_decide
+
+-- …and it is exactly as discriminating as the comparison it replaced:
+-- `;;` associativity and `.id` are quotiented away, adjoint boundaries and
+-- leaf order/payload are not. (Checked against the old spelling on these
+-- shapes before the switch; kept here as the contract, since a comparison
+-- that got *weaker* would also have made the crash go away.)
+def ssX : LowGate := LowGate.H 0
+def ssY : LowGate := LowGate.H 1
+
+example :
+    -- associativity and identities: agree
+    (Reflect.lowGateAgrees (LowGate.seq (LowGate.seq ssX ssY) (LowGate.H 2))
+        (LowGate.seq ssX (LowGate.seq ssY (LowGate.H 2)))
+      && Reflect.lowGateAgrees (LowGate.seq ssX (LowGate.seq LowGate.id ssY))
+        (LowGate.seq ssX ssY)
+      && Reflect.lowGateAgrees (LowGate.adj (LowGate.seq (LowGate.seq ssX ssY) LowGate.id))
+        (LowGate.adj (LowGate.seq ssX ssY))
+      -- adjoint boundaries, nesting, leaf order and payload: differ
+      && !Reflect.lowGateAgrees (LowGate.adj (LowGate.seq ssX ssY))
+        (LowGate.seq (LowGate.adj ssX) (LowGate.adj ssY))
+      && !Reflect.lowGateAgrees (LowGate.adj (LowGate.adj ssX)) (LowGate.adj ssX)
+      && !Reflect.lowGateAgrees (LowGate.adj ssX) ssX
+      && !Reflect.lowGateAgrees (LowGate.seq ssX ssY) (LowGate.seq ssY ssX)
+      && !Reflect.lowGateAgrees ssX ssY) = true := by
+  native_decide
+
+end StackSafeComparison
 
 end Shor.Emit.Tests

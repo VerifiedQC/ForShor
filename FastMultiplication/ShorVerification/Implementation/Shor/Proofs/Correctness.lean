@@ -5,6 +5,7 @@ import FastMultiplication.ShorVerification.Implementation.Shared.Measurement
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Dynamic
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Setup
+import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Assertions
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
@@ -1093,3 +1094,59 @@ whole-program lowering workspace and dynamic cleanliness facts for
 `orderFindingApprox`.  The current lowerer exposes those hypotheses, but this
 file does not yet contain the numerical allocation bridge from the Shor setup.
 -/
+
+/-! ---------------------------------------------------------
+    Choosing the precision from `N`
+
+`Shor_correct_approx_lowered_uniform` leaves `η` free and subtracts
+`2 · tbits(x) · √(2Kη)` from the ideal bound. These two lemmas are the pure
+real arithmetic that turns a precision schedule into a positive bound: below
+`shorPrecision N x` the subtracted term is at most half of `κ / log₂(N)⁴`, so
+half of the ideal bound survives. The constant is the explicit `2048`, not an
+existential witness, so the threshold is a closed form in `N` and `tbits x`.
+--------------------------------------------------------- -/
+
+/-- The Shor success constant `κ = 4e⁻²/π²` is positive. -/
+lemma κ_pos : 0 < κ := by
+  unfold κ
+  positivity
+
+/-- Below `shorPrecision N x`, the lowering loss at the uniform constant `2048`
+is at most half of the ideal success bound. Pure real arithmetic; no circuit
+content.
+
+No sign hypothesis on `η` is needed: for `η ≤ 0` the loss term is zero, since
+`Real.sqrt` of a nonpositive number is zero. -/
+lemma lowering_loss_le_half
+    (η : ℝ)
+    (N : ℕ) (hN : 2 ≤ N) (x : Reg) (hx : 1 ≤ tbits x)
+    (hle : η ≤ shorPrecision N x) :
+    2 * (tbits x : ℝ) * Real.sqrt (2 * (2048 * η))
+      ≤ κ / (2 * (Nat.log2 N : ℝ) ^ 4) := by
+  have hlogNat : 0 < Nat.log2 N := by
+    rw [Nat.log2_eq_log_two]
+    exact Nat.log_pos Nat.one_lt_two hN
+  have hL : (1 : ℝ) ≤ (Nat.log2 N : ℝ) := by exact_mod_cast hlogNat
+  have ht : (1 : ℝ) ≤ (tbits x : ℝ) := by exact_mod_cast hx
+  set L : ℝ := (Nat.log2 N : ℝ) with hLdef
+  set t : ℝ := (tbits x : ℝ) with htdef
+  have hLpos : (0 : ℝ) < L := by linarith
+  have htpos : (0 : ℝ) < t := by linarith
+  have hκ := κ_pos
+  -- `S` is the half-loss threshold on `√(2 · 2048 · η)`.
+  set S : ℝ := κ / (4 * t * L ^ 4) with hSdef
+  have hSnonneg : 0 ≤ S := by rw [hSdef]; positivity
+  have hsq : 2 * (2048 * η) ≤ S ^ 2 := by
+    have h4 : S ^ 2 = κ ^ 2 / (16 * t ^ 2 * L ^ 8) := by
+      rw [hSdef]; field_simp; norm_num
+    have h5 : η ≤ κ ^ 2 / (65536 * t ^ 2 * L ^ 8) := by
+      simpa [shorPrecision] using hle
+    rw [le_div_iff₀ (by positivity)] at h5
+    rw [h4, le_div_iff₀ (by positivity)]
+    nlinarith [h5]
+  have hsqrt : Real.sqrt (2 * (2048 * η)) ≤ S := by
+    calc Real.sqrt (2 * (2048 * η)) ≤ Real.sqrt (S ^ 2) := Real.sqrt_le_sqrt hsq
+      _ = S := Real.sqrt_sq hSnonneg
+  calc 2 * t * Real.sqrt (2 * (2048 * η)) ≤ 2 * t * S :=
+        mul_le_mul_of_nonneg_left hsqrt (by positivity)
+    _ = κ / (2 * L ^ 4) := by rw [hSdef]; field_simp; ring

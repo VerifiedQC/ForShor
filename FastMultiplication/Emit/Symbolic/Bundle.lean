@@ -5,6 +5,7 @@ import FastMultiplication.Emit.Symbolic.QftPlan
 import FastMultiplication.Emit.Symbolic.ShorPlan
 import FastMultiplication.Emit.IR.Json
 import FastMultiplication.Emit.Reflect.Verify
+import FastMultiplication.Emit.Table.Source
 
 /-!
 # The `forshor.emit/v1` bundle
@@ -117,6 +118,21 @@ def widthJson {k : ℕ} (ops : Prog k) (wMax : ℕ) : Json :=
         ])).toArray)
   ]
 
+/-- E3b: the *off-diagonal* width table — `nextWidth`/`reserveNeed` at the
+unequal operand pair `qft` hands `phase_product` when it splits a register
+of width `v`. `width` alone is the diagonal, which a consumer cannot
+instantiate `qft` at an odd width from. -/
+def splitWidthJson {k : ℕ} (ops : Prog k) (wMax : ℕ) : Json :=
+  Json.mkObj [
+    ("rows",
+      Json.arr ((splitWidthTable ops wMax).map (fun row =>
+        Json.mkObj [
+          ("w", (row.1 : Json)), ("xw", (row.2.1 : Json)), ("zw", (row.2.2.1 : Json)),
+          ("next_width", (row.2.2.2.1 : Json)),
+          ("reserve_x", (row.2.2.2.2.1 : Json)), ("reserve_z", (row.2.2.2.2.2 : Json))
+        ])).toArray)
+  ]
+
 /-- E4: the QFT workspace table (`qftWorkspaceNeed`, D4-opaque). -/
 def qftPlanJson {k : ℕ} (ops : Prog k) (wMax : ℕ) : Json :=
   Json.mkObj [
@@ -180,6 +196,9 @@ def provenanceJson : Json :=
       "cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth")),
     ("width", Json.str
       "RecursivePhaseWorkspace.nextWidth/reserveNeed evaluated directly (D4: opaque)"),
+    ("split_width", Json.str
+      ("RecursivePhaseWorkspace.nextWidth/reserveNeed evaluated directly (D4: opaque) at " ++
+      "(w/2, w - w/2), the unequal operand pair qft hands phase_product")),
     ("qft_plan", Json.str "qftWorkspaceNeed evaluated directly (D4: opaque)"),
     ("shor_plan", Json.str
       ("referenceXWidth/referenceDataWidth/referenceWorkWidth/referenceScratchWidth/" ++
@@ -208,6 +227,7 @@ def buildBundleCore (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ) (checkCramer : Bool
     ("schedule", scheduleJson inst),
     ("coeff_poly", coeffPolyJson inst checkCramer mMax),
     ("width", widthJson inst.ops wMax),
+    ("split_width", splitWidthJson inst.ops wMax),
     ("qft_plan", qftPlanJson inst.ops wMax),
     ("shor_plan", shorPlanJson inst.ops nMin nMax mMax),
     ("provenance", provenanceJson)
@@ -215,7 +235,8 @@ def buildBundleCore (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ) (checkCramer : Bool
 
 /-- The section names `buildSection` understands (the pure sections only —
 `template` is a dedicated command, see `Main.lean`). -/
-def sectionNames : List String := ["schedule", "coeff_poly", "width", "qft_plan", "shor_plan"]
+def sectionNames : List String :=
+  ["schedule", "coeff_poly", "width", "split_width", "qft_plan", "shor_plan"]
 
 /-- Build a single named pure section of the bundle document, in the same
 envelope (`schema, k, table, n_free, opts, provenance`) but with only that
@@ -230,6 +251,7 @@ def buildSection (sectionName : String) (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ)
     | "schedule" => .ok (scheduleJson inst)
     | "coeff_poly" => .ok (coeffPolyJson inst checkCramer mMax)
     | "width" => .ok (widthJson inst.ops wMax)
+    | "split_width" => .ok (splitWidthJson inst.ops wMax)
     | "qft_plan" => .ok (qftPlanJson inst.ops wMax)
     | "shor_plan" => .ok (shorPlanJson inst.ops nMin nMax mMax)
     | other => .error s!"unknown section: {other} (expected one of {sectionNames})"
@@ -248,23 +270,30 @@ def buildSection (sectionName : String) (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ)
       ])
 
 /-- The largest width `Reflect.Verify`'s canary checks exercise for a given
-`k` (`4 * k`, `phase_product`/`cphase_product`/`qft`'s own representative
-width — see `Reflect/Verify.lean`). `--w-max` must cover at least this much
-of the width table, or the value tables published alongside `template`
-would have a gap right where the check itself looked. -/
-def templateCheckWidth (k : ℕ) : ℕ := 4 * k
+`k`. `--w-max` must cover at least this much of the width table, or the
+value tables published alongside `template` would have a gap right where the
+check itself looked.
+
+Derived from the ladders, not fixed at `4 * k` as it was: the canary now
+samples widths read off the table's own `nextWidth` chain, which for the
+standard table runs to `15` at `k = 2` and `55` at `k = 6`'s QFT. A fixed
+`4 * k` would have waved through a `--w-max` that leaves the published
+tables short of what the check itself used. -/
+def templateCheckWidth (k : ℕ) (hk : 1 < k) : ℕ :=
+  let setup := standardLoweringSetup k hk
+  ((Reflect.submissionPPWidths setup ++ Reflect.submissionQFTWidths setup).foldl Nat.max (4 * k))
 
 /-- Build the standalone `template` document: extract the `Doc` by
 reflection, verify it (`Reflect.Verify.verifyDoc`), and print it together
 with the checks that passed and this section's provenance. Refuses
 (`.error`) if extraction or verification fails, or if `wMax` doesn't cover
 the verifier's own checked width. -/
-unsafe def buildTemplateDoc (k : ℕ) (_hk : 1 < k) (wMax : ℕ) :
+unsafe def buildTemplateDoc (k : ℕ) (hk : 1 < k) (wMax : ℕ) :
     IO (Except String Json) := do
-  if wMax < templateCheckWidth k then
+  if wMax < templateCheckWidth k hk then
     let msg :=
       s!"--w-max {wMax} is below the largest width template's own instance checks use " ++
-        s!"({templateCheckWidth k}); raise --w-max"
+        s!"({templateCheckWidth k hk}); raise --w-max"
     return .error msg
   match ← Reflect.runExtractAndVerify k with
   | .error e => return .error e

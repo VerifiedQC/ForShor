@@ -32,8 +32,9 @@ theorem phaseProductGateCountBound_of_programOK
 
   have hcount :
       phaseProductCount ops = q k := by
-    unfold PhaseProductProgramOK at hops
-    exact hops.2.2.2
+    rw [ProgConsumesPts.phaseProductCount_eq (k := k) (by omega)
+      State.start_state ops pts hops.2.1.consumes]
+    exact hpts
 
   have hbalancedWidth :
       ∃ c : ℕ, ∀ x z : ExtReg,

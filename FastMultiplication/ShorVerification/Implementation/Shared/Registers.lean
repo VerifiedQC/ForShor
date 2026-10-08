@@ -797,15 +797,9 @@ namespace ExtReg
 end ExtReg
 
 
-/-- Namespace-free compatibility wrapper for commuting writes to disjoint registers. -/
-lemma writeNat_comm_of_disjoint
-  {Basis : Type u} [RegEncoding Basis]
-  (left right : Reg) (hdisj : Disjoint left right)
-  (yL yR : ℕ) (b : Basis) :
-  RegEncoding.writeNat left yL (RegEncoding.writeNat right yR b)
-    =
-  RegEncoding.writeNat right yR (RegEncoding.writeNat left yL b) := by
-  exact RegEncoding.writeNat_comm_of_disjoint left right hdisj yL yR b
+-- Namespace-free spelling of `RegEncoding.writeNat_comm_of_disjoint` above.
+-- This used to be a second `lemma` restating it as a wrapper of itself.
+export RegEncoding (writeNat_comm_of_disjoint)
 
 
 @[simp] theorem ExtReg.toNat_ofReg
@@ -1123,7 +1117,7 @@ def ExtReg.ownedReg (e : ExtReg) : Reg :=
     feed the Pauli-X and unsigned phase-product macro semantics below.
 ========================================================= -/
 
-private theorem bit_writeNat_qubitReg
+theorem bit_writeNat_qubitReg
     {Basis : Type u}
     [RegEncoding Basis]
     (q v : ℕ)
@@ -1333,13 +1327,10 @@ theorem writeNat_lowQubit_one_of_toNat_zero
     Encoding Transport
 ========================================================= -/
 
-lemma toNat_left_write_right [QSemantics] [RegEncoding (QSemantics.Basis)]
-  (left right : Reg) (h : Disjoint left right) (b : QSemantics.Basis) (yR : ℕ) :
-  RegEncoding.toNat left (RegEncoding.writeNat right yR b)
-    = RegEncoding.toNat left b := by
-  simpa using
-    (RegEncoding.toNat_left_write_right
-      (left := left) (right := right) (Basis:=QSemantics.Basis) (b := b) (yR := yR) h)
+-- Namespace-free spelling of `RegEncoding.toNat_left_write_right` above. This
+-- used to be a second `lemma` restating it at `QSemantics.Basis`, with
+-- `[QSemantics]` written as if the class were an instance.
+export RegEncoding (toNat_left_write_right)
 
 
 end Shor

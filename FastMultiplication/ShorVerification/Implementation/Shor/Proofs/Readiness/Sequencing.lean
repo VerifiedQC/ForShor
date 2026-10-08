@@ -1,9 +1,9 @@
+import FastMultiplication.ShorVerification.Implementation.Shor.Lowering.LowerGate
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
 
 /-!
 # Clean-Result Sequencing Infrastructure

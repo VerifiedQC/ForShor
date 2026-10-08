@@ -2,7 +2,6 @@ import FastMultiplication.ShorVerification.Implementation.GateCount.PhaseProduct
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
-import FastMultiplication.ShorVerification.Implementation.GateCount.Lemmas.LowGateCount
 
 open Shor
 

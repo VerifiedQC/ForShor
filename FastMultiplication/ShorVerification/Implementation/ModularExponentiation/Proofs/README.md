@@ -353,3 +353,6 @@ the number of exponent-control bits.
   qubits of the exponent register, with final factor `tbits cfg.x`.
   `Main.lean` imports this file directly and packages the theorem into
   `Spec.Assertions.ModExpApproxValidDistUniform`.
+- **`modExpApprox_valid_dist_2048`** — the same bound at the explicit constant
+  `2048`, by monotonicity of `stepErr` in `K`. Packaged as
+  `Spec.Assertions.ModExpApproxValidDist2048`.

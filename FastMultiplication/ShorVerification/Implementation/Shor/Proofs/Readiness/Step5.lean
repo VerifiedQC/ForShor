@@ -1306,51 +1306,6 @@ theorem writeNat_writeNat_same
         r v b q hq
     ]
 
-private theorem bit_writeNat_qubitReg
-    {Basis : Type u}
-    [RegEncoding Basis]
-    (q v : ℕ)
-    (b : Basis)
-    (hv : v < 2) :
-    RegEncoding.bit q
-        (RegEncoding.writeNat
-          (qubitReg q)
-          v
-          b)
-      =
-    Nat.testBit v 0 := by
-  let i : Fin (regSize (qubitReg q)) :=
-    ⟨0, by simp⟩
-
-  have hbit :=
-    RegEncoding.bit_eq_testBit_toNat
-      (qubitReg q)
-      (RegEncoding.writeNat
-        (qubitReg q)
-        v
-        b)
-      i
-
-  have hget :
-      (qubitReg q).get i = q := by
-    rfl
-
-  rw [hget] at hbit
-
-  have hv' :
-      v < ASize (qubitReg q) := by
-    simpa [ASize] using hv
-
-  rw [
-    RegEncoding.toNat_writeNat_of_lt
-      (qubitReg q)
-      v
-      b
-      hv'
-  ] at hbit
-
-  exact hbit
-
 theorem bit_eq_testBit_toNat_qubitReg
     {Basis : Type u}
     [RegEncoding Basis]

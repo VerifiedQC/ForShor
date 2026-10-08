@@ -4412,8 +4412,7 @@ lemma lgc_cbody_le_five
       simp [
         annotatePhaseTermsAux,
         planCompileAnnotatedOpsToCSignedGateAux,
-        planCompileAnnotatedOpsToSignedGateAux,
-        LowGate.gateCount
+        planCompileAnnotatedOpsToSignedGateAux
       ]
 
   | cons op rest ih =>
@@ -4976,20 +4975,6 @@ decreasing_by
 
     _ < phaseInputSize x z :=
       hrec
-
-/-- The controlled namespace reuses the unsigned workspace extraction for its public bridge theorem. -/
-lemma phaseProdUsing_signedWorkspace
-    (ops : Prog k)
-    (φ : Angle)
-    (x z : Reg)
-    (ws : Gate.PhaseProdWorkspace x z)
-    (hworkspace :
-      GateWorkspaceOK ops
-        (Gate.PhaseProdUsing φ x z ws)) :
-    SignedRecursiveWorkspaceOK ops
-      (ws.xExt.grow 1)
-      (ws.zExt.grow 1) := by
-  simpa [GateWorkspaceOK, Gate.PhaseProdUsing] using hworkspace
 
 /-- Extracts controlled signed recursive workspace from a public controlled PhaseProduct workspace proof. -/
 lemma cPhaseProdUsing_controlledWorkspace

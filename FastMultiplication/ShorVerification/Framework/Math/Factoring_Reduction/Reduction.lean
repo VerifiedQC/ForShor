@@ -4,6 +4,8 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.ProbabilityBound
 
 open Classical
+-- `ord` is `Shor.ord`; see Defs.lean.
+open Shor (ord)
 
 /-!
 # Classical factoring reduction

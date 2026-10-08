@@ -94,3 +94,10 @@ for this one allowlisted layer exception.
   `2·tbits(x)·√(2Kη)` of the same ideal bound. Proved by
   `Proofs/Correctness.lean`'s `Shor_correct_approx_lowered_of_modExp_bound`,
   exposed as `Main.lean`'s `Shor_correct_approx_lowered_uniform`.
+- **`ShorCorrectApproxLoweredOfModExpBound`** — the same conclusion at a `K`
+  the caller supplies, against an assumed modular-exponentiation distance
+  bound at that `K`. The existential form above suits a headline statement;
+  this one suits a caller that has already fixed its constant, which is why
+  `Reference/` consumes it (`Main.lean`'s
+  `Shor_correct_approx_lowered_of_modExp_bound_assertion`) rather than
+  reaching into `Proofs/`.

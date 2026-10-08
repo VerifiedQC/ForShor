@@ -22,7 +22,7 @@ def usageText : String :=
   "       forshor_emit <k> <a> <N> <m>   (alias of shor)\n" ++
   "       forshor_emit bundle <k> [--m-max M] " ++
   "[--w-max W] [--check-cramer] [--no-template]\n" ++
-  "       forshor_emit <schedule|coeff_poly|width|qft_plan|shor_plan> <k> " ++
+  "       forshor_emit <schedule|coeff_poly|width|split_width|qft_plan|shor_plan> <k> " ++
   "[--m-max M] [--w-max W] [--check-cramer]\n" ++
   "       forshor_emit template <k> [--w-max W]\n" ++
   "       forshor_emit phases <k> <m> <phiNum/phiDen>\n" ++
@@ -73,6 +73,31 @@ def parseFlags : List String → BundleArgs → Option BundleArgs
   | "--check-cramer" :: rest, acc => parseFlags rest { acc with checkCramer := true }
   | "--no-template" :: rest, acc => parseFlags rest { acc with noTemplate := true }
   | _, _ => none
+
+/-- `[--flat]` and nothing else. `rest.contains "--flat"` used to accept any
+trailing junk, so a typo like `--falt` silently selected the *annotated* path
+and its extraction. Unknown arguments are now an error. -/
+def parseFlatFlag : List String → Option Bool
+  | [] => some false
+  | ["--flat"] => some true
+  | _ => none
+
+/-- `template <k> [--w-max W]`. Its own parser: `parseBundleArgs` also accepts
+`--m-max`, `--check-cramer` and `--no-template`, none of which `template`
+reads. -/
+def parseTemplateArgs : List String → Option BundleArgs
+  | [] => none
+  | kStr :: rest =>
+      match kStr.toNat? with
+      | none => none
+      | some k =>
+          match rest with
+          | [] => some { k := k }
+          | ["--w-max", wStr] =>
+              match wStr.toNat? with
+              | some w => some { k := k, wMax := w }
+              | none => none
+          | _ => none
 
 def parseBundleArgs : List String → Option BundleArgs
   | [] => none
@@ -197,6 +222,10 @@ unsafe def runPP (isCtrl : Bool) (kStr nStr phiStr : String) (flat : Bool) : IO 
 unsafe def main (args : List String) : IO UInt32 := do
   match args with
   | "shor" :: kStr :: aStr :: NStr :: mStr :: [] => runShorArgs kStr aStr NStr mStr
+  | "shor" :: _ => do
+      IO.eprintln "error: shor takes exactly four arguments: <k> <a> <N> <m>"
+      IO.eprint usageText
+      return 2
   | "bundle" :: rest =>
       match parseBundleArgs rest with
       | some ba => runBundle ba
@@ -205,16 +234,33 @@ unsafe def main (args : List String) : IO UInt32 := do
           IO.eprint usageText
           return 2
   | "template" :: rest =>
-      match parseBundleArgs rest with
+      match parseTemplateArgs rest with
       | some ba => runTemplate ba
       | none =>
           IO.eprintln "error: bad template arguments"
           IO.eprint usageText
           return 2
-  | "pp" :: kStr :: nStr :: phiStr :: rest => runPP false kStr nStr phiStr (rest.contains "--flat")
-  | "cpp" :: kStr :: nStr :: phiStr :: rest => runPP true kStr nStr phiStr (rest.contains "--flat")
+  | "pp" :: kStr :: nStr :: phiStr :: rest =>
+      match parseFlatFlag rest with
+      | some flat => runPP false kStr nStr phiStr flat
+      | none => do
+          IO.eprintln "error: unknown argument after pp (only --flat is accepted)"
+          IO.eprint usageText
+          return 2
+  | "cpp" :: kStr :: nStr :: phiStr :: rest =>
+      match parseFlatFlag rest with
+      | some flat => runPP true kStr nStr phiStr flat
+      | none => do
+          IO.eprintln "error: unknown argument after cpp (only --flat is accepted)"
+          IO.eprint usageText
+          return 2
   | "qft" :: kStr :: wStr :: rest =>
-      runPPQFT Shor.buildQFT kStr wStr (rest.contains "--flat")
+      match parseFlatFlag rest with
+      | some flat => runPPQFT Shor.buildQFT kStr wStr flat
+      | none => do
+          IO.eprintln "error: unknown argument after qft (only --flat is accepted)"
+          IO.eprint usageText
+          return 2
   | "phases" :: kStr :: mStr :: phiStr :: [] => runPhases kStr mStr phiStr
   | sectionName :: rest =>
       if Shor.sectionNames.contains sectionName then

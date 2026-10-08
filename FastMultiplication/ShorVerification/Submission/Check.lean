@@ -35,9 +35,13 @@ proof, which is the entire point of narrowing the challenge this way.
 ## Checked by evaluation
 
 `Shor.Reflect.submissionChecks` compares the extracted IR against the real
-compiled circuit at sampled widths (`n = 8, 16` for the phase products,
-`w = 4, 8` for the QFT, and the smallest reference Shor instance). This is
-evaluation, not a theorem: the IR is not proved correct at *every* width.
+compiled circuit at ladders of widths derived from *this* table: the phase
+products at `ppWidthLadder setup.ops` in each of two reserve regimes, the
+hand-stated leaves at three unequal `(xw, zw)` pairs, the QFT at
+`qftWidthLadder setup.ops`, and `shor_gate`/`shor` at two reference
+instances. The ladders are computed from the table's own recursion depth, so
+a table that recurses later is checked later; they are not a fixed list. This
+is evaluation, not a theorem: the IR is not proved correct at *every* width.
 That project (R6) concerns the reference table only and was archived; it is
 deliberately not a submission requirement. The extractor is keyed by Lean
 construct, never by `k` or by a table, which is why agreement at sampled
@@ -60,6 +64,14 @@ nothing else. This line is what makes "kernel-checked" a checked claim
 rather than a documented intention. -/
 
 #assert_axioms Submission.setup
+
+/-! The three definitions a submitter marks in `Template.lean` are the ones
+`setup` carries, so the table printed by `Main.lean` and the table C1–C4 were
+proved about are the same table. `rfl`, because `setup` is built from them. -/
+
+example : setup.k = k := rfl
+example : setup.pts = pts := rfl
+example : setup.ops = ops := rfl
 
 /-! ## The IR
 

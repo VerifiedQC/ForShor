@@ -113,6 +113,10 @@ implementation error to obtain the approximate order-finding statement.
   theorem: combines `orderFindingApproxLow_probability_eq` (lowering is
   exact) with `Shor_correct_approx_uniform_of_modExp_bound` (the approximate
   circuit's bound) to get the final lowered success-probability guarantee
-  from a `LoweredShorReady` package. Typed by
-  `Spec.Assertions.ShorCorrectApproxLoweredUniform` and exposed as
-  `Main.lean`'s `Shor_correct_approx_lowered_uniform`.
+  from a `LoweredShorReady` package. Reached from outside `Shor/` only through
+  `Main.lean`, in two shapes: `Shor_correct_approx_lowered_uniform` (`K`
+  existentially quantified, typed by
+  `Spec.Assertions.ShorCorrectApproxLoweredUniform`) and
+  `Shor_correct_approx_lowered_of_modExp_bound_assertion` (`K` supplied by the
+  caller, typed by `Spec.Assertions.ShorCorrectApproxLoweredOfModExpBound`) —
+  the latter is what `Reference/` uses.

@@ -12,10 +12,13 @@ independent siblings; `Config.lean` builds on both plus `Circuit/`;
   modular-exponentiation hybrid bound.
 - **`algorithm1ExtraBits`** — the extra work-register bits the paper's
   precision schedule prescribes: `⌈2·log₂(2 + 1/(2η))⌉`.
-- **`Algorithm1Precision`** — the sufficient precision condition on the
-  data/work register widths this development actually uses (`0 < η < 1/2`
-  and `regSize work = regSize data + algorithm1ExtraBits η`), which implies
-  the paper's `2^(m-n) ≥ (2 + 1/(2η))²` bound.
+- **`Algorithm1Precision`** — the precision condition on the data/work
+  register widths this development actually uses (`0 < η < 1/2` and
+  `regSize work = regSize data + algorithm1ExtraBits η`), which implies the
+  paper's `2^(m-n) ≥ (2 + 1/(2η))²` bound. The width is pinned, not bounded
+  below: correctness needs only `≥`, but the gate count needs `≤` as well,
+  so an inequality here would cost the `O(n^(2+ε))` theorem. See the
+  docstring in `Precision.lean`.
 
 ## `Validity.lean`
 
@@ -61,6 +64,10 @@ hypotheses individually.
 
 ## `Assertions.lean`
 
+- **`ModExpApproxValidDist2048`** — the same claim with the constant written
+  out as `2048` instead of hidden behind an existential. A caller that must
+  pick a precision before building a circuit (Shor's `shorPrecision`,
+  `Reference`) needs the number, not the witness.
 - **`ModExpApproxValidDistUniform`** — the final claim: there is a single
   constant `K ≥ 0`, independent of `η`, the configuration, or the input
   state, such that on every valid unit state the approximate

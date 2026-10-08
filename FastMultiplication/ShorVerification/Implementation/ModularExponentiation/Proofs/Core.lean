@@ -2,7 +2,7 @@ import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Config
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.CmpLtNW
-import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Proofs.Model
+import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Spec.Model
 import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 import FastMultiplication.ShorVerification.Implementation.Shared.States
@@ -449,7 +449,7 @@ variable
     Small register/flag helpers
 ========================================================= -/
 
-private lemma disjoint_qubitReg_of_outside
+lemma disjoint_qubitReg_of_outside
     {q : ℕ} {r : Reg}
     (h : q ∉ r.qubits) :
     Disjoint (qubitReg q) r := by
