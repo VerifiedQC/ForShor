@@ -23,14 +23,10 @@ noncomputable def PhaseLoweringReady
     [RegEncoding qs.Basis]
     [GateSemanticsCore qs]
     [LowerGateClass qs]
-    {k : ℕ}
-    {hk : 1 < k}
-    {pts : List Point}
-    {hpts : pts.length = q k}
-    {ops : Prog k}
+    {P : ShorLoweringPolicy}
     {initSize : ℕ}
     {U : Gate}
-    (plan : PhaseLoweringPlan k hk pts hpts ops initSize U) :
+    (plan : PhaseLoweringPlan P initSize U) :
     qs.State → Prop := by
   induction plan with
   | id initSize => exact fun _ => True
@@ -49,14 +45,14 @@ noncomputable def PhaseLoweringReady
   | signDealloc initSize r n => exact fun _ => True
   | RadixReverse initSize r m => exact fun _ => True
   | signedBase phi x z hstop => exact fun _ => True
-  | signedStep phi x z layout hrec hcapacity child readyChild =>
+  | signedStep phi x z T hT layout hrec hcapacity child readyChild =>
       exact fun ψ =>
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z ops) ψ ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ ∧
         readyChild ψ
   | cSignedBase ctrl phi x z hstop => exact fun _ => True
-  | cSignedStep ctrl phi x z layout hrec hcapacity hctrl child readyChild =>
+  | cSignedStep ctrl phi x z T hT layout hrec hcapacity hctrl child readyChild =>
       exact fun ψ =>
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z ops) ψ ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ ∧
         readyChild ψ
 
 end Shor

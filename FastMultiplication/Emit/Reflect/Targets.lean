@@ -332,14 +332,24 @@ def extractPhaseProductBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template
     let hworkTy ← mkAppM ``Shor.SignedRecursiveWorkspaceOK #[opsE, x, z]
     withLocalDecl `hworkspace .default hworkTy fun hworkspace => do
       let (ptsE, hptsE) ← setupPtsExprs setup kE
-      let eq1App := mkAppN (mkConst ``Shor.standardSignedPhaseLoweringPlan.eq_1)
-        #[kE, hkE, phi, x, z, opsE, ptsE, hptsE, hworkspace]
+      -- The planner is the policy dispatcher at the constant policy. Its
+      -- `signedPlanOf.eq_2` is the equation whose RHS is the shrink-test
+      -- `dite` this extractor reads; `standardSignedPhaseLoweringPlan.eq_1`
+      -- only gets as far as `Policy.signedPlan`.
+      let tblE ← mkAppM ``Shor.ToomCookTable.mk #[kE, hkE, ptsE, hptsE, opsE]
+      let polE ← mkAppM ``Shor.ShorLoweringPolicy.constPolicy #[tblE]
+      let hwsPE ← mkAppM ``Shor.Policy.workspaceOK_of_const #[tblE, x, z, hworkspace]
+      let sizeE ← mkAppM ``Shor.phaseInputSize #[x, z]
+      let hchooseE ← mkAppM ``Shor.ShorLoweringPolicy.constPolicy_choose #[tblE, sizeE]
+      let eq1App := mkAppN (mkConst ``Shor.Policy.signedPlanOf.eq_2)
+        #[polE, phi, x, z, hwsPE, tblE, hchooseE]
       let rhsPlan := (← inferType eq1App).getAppArgs[2]!
       match rhsPlan.getAppFnArgs with
       | (``dite, #[_, condE, _instE, thenFnE, elseFnE]) =>
           withLocalDecl `hrec .default condE fun hrecW => do
-            let stepE ← mkAppM ``Shor.canonicalSignedStep #[hkE, opsE, x, z, hrecW, hworkspace]
-            let layoutE ← mkAppM ``Shor.CanonicalSignedStep.layout #[stepE]
+            let stepE ← mkAppM ``Shor.Policy.canonicalStep
+              #[polE, tblE, x, z, hchooseE, hrecW, hwsPE]
+            let layoutE ← mkAppM ``Shor.Policy.CanonicalStep.layout #[stepE]
             let xwE ← mkAppM ``Shor.ExtReg.width #[x]
             let zwE ← mkAppM ``Shor.ExtReg.width #[z]
             let xCapE ← mkAppM ``Shor.ExtReg.capacity #[x]
@@ -406,16 +416,21 @@ def extractCPhaseProductBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Templat
     let hworkTy ← mkAppM ``Shor.CSignedRecursiveWorkspaceOK #[opsE, ctrl, x, z]
     withLocalDecl `hworkspace .default hworkTy fun hworkspace => do
       let (ptsE, hptsE) ← setupPtsExprs setup kE
-      let eq1App := mkAppN (mkConst ``Shor.standardCSignedPhaseLoweringPlan.eq_1)
-        #[kE, hkE, ctrl, phi, x, z, opsE, ptsE, hptsE, hworkspace]
+      let tblE ← mkAppM ``Shor.ToomCookTable.mk #[kE, hkE, ptsE, hptsE, opsE]
+      let polE ← mkAppM ``Shor.ShorLoweringPolicy.constPolicy #[tblE]
+      let hwsPE ← mkAppM ``Shor.Policy.cWorkspaceOK_of_const #[tblE, ctrl, x, z, hworkspace]
+      let sizeE ← mkAppM ``Shor.phaseInputSize #[x, z]
+      let hchooseE ← mkAppM ``Shor.ShorLoweringPolicy.constPolicy_choose #[tblE, sizeE]
+      let eq1App := mkAppN (mkConst ``Shor.Policy.cSignedPlanOf.eq_2)
+        #[polE, ctrl, phi, x, z, hwsPE, tblE, hchooseE]
       let rhsPlan := (← inferType eq1App).getAppArgs[2]!
       match rhsPlan.getAppFnArgs with
       | (``dite, #[_, condE, _instE, thenFnE, elseFnE]) =>
           withLocalDecl `hrec .default condE fun hrecW => do
-            let stepE ← mkAppM ``Shor.canonicalSignedStep #[hkE, opsE, x, z, hrecW,
-              (← mkAppM ``Shor.CSignedRecursiveWorkspaceOK.toSignedRecursiveWorkspaceOK
-                #[hworkspace])]
-            let layoutE ← mkAppM ``Shor.CanonicalSignedStep.layout #[stepE]
+            let stepE ← mkAppM ``Shor.Policy.canonicalStep
+              #[polE, tblE, x, z, hchooseE, hrecW,
+                (← mkAppM ``Shor.Policy.CWorkspaceOK.toWorkspaceOK #[hwsPE])]
+            let layoutE ← mkAppM ``Shor.Policy.CanonicalStep.layout #[stepE]
             let xwE ← mkAppM ``Shor.ExtReg.width #[x]
             let zwE ← mkAppM ``Shor.ExtReg.width #[z]
             let xCapE ← mkAppM ``Shor.ExtReg.capacity #[x]

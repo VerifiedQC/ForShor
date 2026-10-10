@@ -18,20 +18,37 @@ lemma PhaseLoweringReady.cast_gate_mpr
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
-    {k : ℕ}
-    {hk : 1 < k}
-    {pts : List Point}
-    {hpts : pts.length = q k}
-    {ops : Prog k}
+    {P : ShorLoweringPolicy}
     {initSize : ℕ}
     {U V : Gate}
     (h : V = U)
-    (plan : PhaseLoweringPlan k hk pts hpts ops initSize U)
+    (plan : PhaseLoweringPlan P initSize U)
     {ψ : qs.State}
     (hready : PhaseLoweringReady qs plan ψ) :
     PhaseLoweringReady qs
-      (Eq.mpr (congrArg (PhaseLoweringPlan k hk pts hpts ops initSize) h) plan) ψ := by
+      (Eq.mpr (congrArg (PhaseLoweringPlan P initSize) h) plan) ψ := by
   subst V
+  exact hready
+
+/-- Readiness survives the index cast the dispatcher performs on a child plan.
+
+The planner builds the child at the child's own `phaseInputSize` and transports
+it along `childInputSize` to the parent's `nextSignedWidth`; this is the lemma
+that carries readiness across that transport. -/
+lemma PhaseLoweringReady.cast_initSize
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    [GateSemanticsFacts qs]
+    {P : ShorLoweringPolicy}
+    {m n : ℕ}
+    (h : m = n)
+    {U : Gate}
+    (plan : PhaseLoweringPlan P m U)
+    {ψ : qs.State}
+    (hready : PhaseLoweringReady qs plan ψ) :
+    PhaseLoweringReady qs (h ▸ plan : PhaseLoweringPlan P n U) ψ := by
+  subst h
   exact hready
 
 /-- Allocation chunk plans are always ready because they contain only primitive low gates. -/
@@ -40,17 +57,14 @@ lemma planAllocChunkGate_ready
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    {P : ShorLoweringPolicy}
     {k : ℕ}
-    {hk : 1 < k}
-    {pts : List Point}
-    {hpts : pts.length = q k}
-    {ops : Prog k}
     (initSize : ℕ)
     (i : Fin k)
     (src dst : ExtReg)
     (ψ : qs.State) :
     PhaseLoweringReady qs
-      (planAllocChunkGate (hk := hk) (pts := pts) (hpts := hpts) (ops := ops) initSize i src dst)
+      (planAllocChunkGate (P := P) initSize i src dst)
       ψ := by
   by_cases hzero : extraDelta src dst = 0
   · have hdecZero : instDecidableEqNat (extraDelta src dst) 0 = Decidable.isTrue hzero :=
@@ -92,17 +106,13 @@ lemma planCompileSignedAllocationsAux_ready
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    {P : ShorLoweringPolicy}
     {k : ℕ}
-    {hk : 1 < k}
-    {pts : List Point}
-    {hpts : pts.length = q k}
-    {ops : Prog k}
     (initSize : ℕ)
     (src dst : LayoutState k) :
     ∀ n hn ψ,
       PhaseLoweringReady qs
-        (planCompileSignedAllocationsAux (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
-          initSize src dst n hn)
+        (planCompileSignedAllocationsAux (P := P) initSize src dst n hn)
         ψ := by
   intro n
   induction n with
@@ -123,20 +133,16 @@ lemma planCompileSignedAllocations_ready
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    {P : ShorLoweringPolicy}
     {k : ℕ}
-    (hk : 1 < k)
-    (pts : List Point)
-    (hpts : pts.length = q k)
-    (ops : Prog k)
     (initSize : ℕ)
     (src dst : LayoutState k)
     (ψ : qs.State) :
     PhaseLoweringReady qs
-      (planCompileSignedAllocations (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
-        initSize src dst)
+      (planCompileSignedAllocations (P := P) initSize src dst)
       ψ := by
   unfold planCompileSignedAllocations
-  exact planCompileSignedAllocationsAux_ready qs initSize src dst k le_rfl ψ
+  exact planCompileSignedAllocationsAux_ready (P := P) qs initSize src dst k le_rfl ψ
 
 /-- Deallocation chunk plans are always ready because they contain only primitive low gates. -/
 lemma planDeallocChunkGate_ready
@@ -144,17 +150,14 @@ lemma planDeallocChunkGate_ready
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    {P : ShorLoweringPolicy}
     {k : ℕ}
-    {hk : 1 < k}
-    {pts : List Point}
-    {hpts : pts.length = q k}
-    {ops : Prog k}
     (initSize : ℕ)
     (i : Fin k)
     (src dst : ExtReg)
     (ψ : qs.State) :
     PhaseLoweringReady qs
-      (planDeallocChunkGate (hk := hk) (pts := pts) (hpts := hpts) (ops := ops) initSize i src dst)
+      (planDeallocChunkGate (P := P) initSize i src dst)
       ψ := by
   by_cases hzero : extraDelta src dst = 0
   · have hdecZero : instDecidableEqNat (extraDelta src dst) 0 = Decidable.isTrue hzero :=
@@ -196,17 +199,13 @@ lemma planCompileSignedDeallocationsAux_ready
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    {P : ShorLoweringPolicy}
     {k : ℕ}
-    {hk : 1 < k}
-    {pts : List Point}
-    {hpts : pts.length = q k}
-    {ops : Prog k}
     (initSize : ℕ)
     (src dst : LayoutState k) :
     ∀ n hn ψ,
       PhaseLoweringReady qs
-        (planCompileSignedDeallocationsAux (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
-          initSize src dst n hn)
+        (planCompileSignedDeallocationsAux (P := P) initSize src dst n hn)
         ψ := by
   intro n
   induction n with
@@ -227,19 +226,15 @@ lemma planCompileSignedDeallocations_ready
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    {P : ShorLoweringPolicy}
     {k : ℕ}
-    (hk : 1 < k)
-    (pts : List Point)
-    (hpts : pts.length = q k)
-    (ops : Prog k)
     (initSize : ℕ)
     (src dst : LayoutState k)
     (ψ : qs.State) :
     PhaseLoweringReady qs
-      (planCompileSignedDeallocations (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
-        initSize src dst)
+      (planCompileSignedDeallocations (P := P) initSize src dst)
       ψ := by
   unfold planCompileSignedDeallocations
-  exact planCompileSignedDeallocationsAux_ready qs initSize src dst k le_rfl ψ
+  exact planCompileSignedDeallocationsAux_ready (P := P) qs initSize src dst k le_rfl ψ
 
 end Shor

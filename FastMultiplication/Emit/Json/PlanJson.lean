@@ -25,9 +25,8 @@ open Lean (Json)
 open Operations
 
 /-- Printer over `PhaseLoweringPlan`, constructor for constructor. -/
-partial def planJson {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k}
-    {ops : Prog k} {initSize : ℕ} {U : Gate} :
-    PhaseLoweringPlan k hk pts hpts ops initSize U → Json
+partial def planJson {P : ShorLoweringPolicy} {initSize : ℕ} {U : Gate} :
+    PhaseLoweringPlan P initSize U → Json
   | .id _ => Json.mkObj [("op", Json.str "id")]
   | .seq left right =>
       Json.mkObj [("op", Json.str "seq"), ("body", Json.arr #[planJson left, planJson right])]
@@ -57,17 +56,17 @@ partial def planJson {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.lengt
         ("phi", angleJson phi), ("x", extRegJson x), ("z", extRegJson z),
         ("expansion", lowGateJson (LowGate.Naive_SignedPhaseProd phi x z))
       ]
-  | .signedStep phi x z _layout _hrec _hcapacity child =>
+  | .signedStep phi x z T _hT _layout _hrec _hcapacity child =>
       Json.mkObj [
         ("op", Json.str "SignedPhaseProd"),
         ("phi", angleJson phi), ("x", extRegJson x), ("z", extRegJson z),
         ("input_size", (initSize : Json)),
-        ("next_width", ((nextSignedWidth x z ops : ℕ) : Json)),
-        ("limb_width", ((phaseLimbWidth x z k : ℕ) : Json)),
+        ("next_width", ((nextSignedWidth x z T.ops : ℕ) : Json)),
+        ("limb_width", ((phaseLimbWidth x z T.k : ℕ) : Json)),
         ("coeffs",
           Json.arr
-            (((List.finRange (q k)).map
-              (fun l => ratJson (loweringPhaseCoeff k x z pts hpts l))).toArray)),
+            (((List.finRange (q T.k)).map
+              (fun l => ratJson (loweringPhaseCoeff T.k x z T.pts T.hpts l))).toArray)),
         ("body", planJson child)
       ]
   | .cSignedBase ctrl phi x z _ =>
@@ -76,17 +75,17 @@ partial def planJson {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.lengt
         ("ctrl", (ctrl : Json)), ("phi", angleJson phi), ("x", extRegJson x), ("z", extRegJson z),
         ("expansion", lowGateJson (LowGate.Naive_CSignedPhaseProd ctrl phi x z))
       ]
-  | .cSignedStep ctrl phi x z _layout _hrec _hcapacity _hctrl child =>
+  | .cSignedStep ctrl phi x z T _hT _layout _hrec _hcapacity _hctrl child =>
       Json.mkObj [
         ("op", Json.str "CSignedPhaseProd"),
         ("ctrl", (ctrl : Json)), ("phi", angleJson phi), ("x", extRegJson x), ("z", extRegJson z),
         ("input_size", (initSize : Json)),
-        ("next_width", ((nextSignedWidth x z ops : ℕ) : Json)),
-        ("limb_width", ((phaseLimbWidth x z k : ℕ) : Json)),
+        ("next_width", ((nextSignedWidth x z T.ops : ℕ) : Json)),
+        ("limb_width", ((phaseLimbWidth x z T.k : ℕ) : Json)),
         ("coeffs",
           Json.arr
-            (((List.finRange (q k)).map
-              (fun l => ratJson (loweringPhaseCoeff k x z pts hpts l))).toArray)),
+            (((List.finRange (q T.k)).map
+              (fun l => ratJson (loweringPhaseCoeff T.k x z T.pts T.hpts l))).toArray)),
         ("body", planJson child)
       ]
 

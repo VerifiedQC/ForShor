@@ -27,6 +27,12 @@ open Shor.Audit
 #assert_axioms Shor.shorGateCountBound_of_setup
 #assert_axioms Shor.shorGateCountBoundShorEta_of_setup
 
+-- The phase-product lowering theorems, in both spellings.
+#assert_axioms Shor.lowerSignedPhaseProduct_correct
+#assert_axioms Shor.lowerCSignedPhaseProduct_correct
+#assert_axioms Shor.Policy.lowerSignedPhaseProduct_correct
+#assert_axioms Shor.Policy.lowerCSignedPhaseProduct_correct
+
 -- The submission surface.
 #assert_axioms Shor.submission_correct
 #assert_axioms Shor.ShorLoweringSetup.programOK

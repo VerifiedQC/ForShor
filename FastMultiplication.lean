@@ -6,5 +6,7 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Main             
 import FastMultiplication.ShorVerification.Implementation.QFT.Main
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Main
 import FastMultiplication.ShorVerification.Implementation.GateCount.Shor_GateCount  -- resource bounds
+import FastMultiplication.ShorVerification.Framework.Policy                         -- policy submissions
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.PolicyWorkspace  -- policy reserve model
 import FastMultiplication.ShorVerification.Submission.Decide                        -- submission surface
 import FastMultiplication.ShorVerification.Submission.Score

@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.PolicyWorkspace
 import FastMultiplication.ShorVerification.Implementation.Shared.States
 
 /-!
@@ -87,5 +88,54 @@ structure CSignedRecursiveWorkspaceStateOK
     (ops : Prog k) (ctrl : ℕ) (x z : ExtReg) (ψ : qs.State) : Prop where
   static : CSignedRecursiveWorkspaceOK ops ctrl x z
   clean : RecursiveWorkspaceCleanState qs x z ψ
+
+/-! =========================================================
+    The policy forms
+
+    Same two records with the policy's static predicate in place of the fixed
+    table's. The cleanliness half is unchanged: it is about the registers, not
+    about which table will be used on them.
+========================================================= -/
+
+/--
+The complete public workspace precondition for an uncontrolled signed phase
+product lowered through a policy.
+-/
+structure Policy.WorkspaceStateOK
+    (qs : QSemantics) [RegEncoding qs.Basis]
+    (P : ShorLoweringPolicy) (x z : ExtReg) (ψ : qs.State) : Prop where
+  /-- The reserves are large enough for the whole policy-driven recursion. -/
+  static : Policy.WorkspaceOK P x z
+  /-- Every reserve qubit is zero. -/
+  clean : RecursiveWorkspaceCleanState qs x z ψ
+
+/--
+The complete public workspace precondition for a controlled signed phase
+product lowered through a policy.
+-/
+structure Policy.CWorkspaceStateOK
+    (qs : QSemantics) [RegEncoding qs.Basis]
+    (P : ShorLoweringPolicy) (ctrl : ℕ) (x z : ExtReg) (ψ : qs.State) : Prop where
+  /-- The reserves are large enough, and the control is outside both operands. -/
+  static : Policy.CWorkspaceOK P ctrl x z
+  /-- Every reserve qubit is zero. -/
+  clean : RecursiveWorkspaceCleanState qs x z ψ
+
+/-- The fixed-table precondition is the policy one at `constPolicy`. -/
+theorem Policy.workspaceStateOK_const_iff
+    {qs : QSemantics} [RegEncoding qs.Basis] {T : ToomCookTable} {x z : ExtReg} {ψ : qs.State} :
+    Policy.WorkspaceStateOK qs (ShorLoweringPolicy.constPolicy T) x z ψ ↔
+      SignedRecursiveWorkspaceStateOK qs T.ops x z ψ :=
+  ⟨fun h => ⟨Policy.workspaceOK_const_iff.mp h.static, h.clean⟩,
+   fun h => ⟨Policy.workspaceOK_const_iff.mpr h.static, h.clean⟩⟩
+
+/-- The controlled bridge. -/
+theorem Policy.cWorkspaceStateOK_const_iff
+    {qs : QSemantics} [RegEncoding qs.Basis] {T : ToomCookTable} {ctrl : ℕ} {x z : ExtReg}
+    {ψ : qs.State} :
+    Policy.CWorkspaceStateOK qs (ShorLoweringPolicy.constPolicy T) ctrl x z ψ ↔
+      CSignedRecursiveWorkspaceStateOK qs T.ops ctrl x z ψ :=
+  ⟨fun h => ⟨Policy.cWorkspaceOK_const_iff.mp h.static, h.clean⟩,
+   fun h => ⟨Policy.cWorkspaceOK_const_iff.mpr h.static, h.clean⟩⟩
 
 end Shor

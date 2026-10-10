@@ -44,18 +44,17 @@ inductive LowerablePhaseGate : Gate → Prop where
 
 namespace PhaseLoweringPlan
 
-variable {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {ops : Prog k}
+variable {P : ShorLoweringPolicy}
 
 @[simp] lemma lowerGateRec_id (initSize : ℕ) :
-    lowerGateRec (PhaseLoweringPlan.id (k := k) (hk := hk) (pts := pts) (hpts := hpts) (ops := ops)
-      initSize) = LowGate.id := by
+    lowerGateRec (PhaseLoweringPlan.id (P := P) initSize) = LowGate.id := by
   rfl
 
 @[simp] lemma lowerGateRec_seq
     {initSize : ℕ}
     {U V : Gate}
-    (left : PhaseLoweringPlan k hk pts hpts ops initSize U)
-    (right : PhaseLoweringPlan k hk pts hpts ops initSize V) :
+    (left : PhaseLoweringPlan P initSize U)
+    (right : PhaseLoweringPlan P initSize V) :
     lowerGateRec (PhaseLoweringPlan.seq left right)
       = LowGate.seq (lowerGateRec left) (lowerGateRec right) := by
   rfl
@@ -64,22 +63,24 @@ variable {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {op
     {initSize : ℕ}
     (phi : Angle)
     (x z : ExtReg)
-    (hstop : ¬ nextSignedWidth x z ops < initSize) :
-    lowerGateRec (PhaseLoweringPlan.signedBase (k := k) (hk := hk) (pts := pts) (hpts := hpts)
-      (ops := ops) phi x z hstop) = LowGate.Naive_SignedPhaseProd phi x z := by
+    (hstop : P.Stops initSize (fun T => nextSignedWidth x z T.ops)) :
+    lowerGateRec (PhaseLoweringPlan.signedBase (P := P) phi x z hstop)
+      = LowGate.Naive_SignedPhaseProd phi x z := by
   rfl
 
 @[simp] lemma lowerGateRec_signedStep
     {initSize : ℕ}
     (phi : Angle)
     (x z : ExtReg)
-    (layout : Gate.PhaseProductLayout x z k)
-    (hrec : nextSignedWidth x z ops < initSize)
-    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
-    (child : PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
-        (compiledSignedPhaseGate k hk pts hpts ops phi x z layout)) :
-    lowerGateRec (PhaseLoweringPlan.signedStep (k := k) (hk := hk) (pts := pts) (hpts := hpts)
-      (ops := ops) phi x z layout hrec hcapacity child) = lowerGateRec child := by
+    (T : ToomCookTable)
+    (hT : P.choose initSize = some T)
+    (layout : Gate.PhaseProductLayout x z T.k)
+    (hrec : nextSignedWidth x z T.ops < initSize)
+    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z T.ops))
+    (child : PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+        (compiledSignedPhaseGate T.k T.hk T.pts T.hpts T.ops phi x z layout)) :
+    lowerGateRec (PhaseLoweringPlan.signedStep (P := P) phi x z T hT layout hrec hcapacity child)
+      = lowerGateRec child := by
   rfl
 
 @[simp] lemma lowerGateRec_cSignedBase
@@ -87,9 +88,9 @@ variable {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {op
     (ctrl : ℕ)
     (phi : Angle)
     (x z : ExtReg)
-    (hstop : ¬ nextSignedWidth x z ops < initSize) :
-    lowerGateRec (PhaseLoweringPlan.cSignedBase (k := k) (hk := hk) (pts := pts) (hpts := hpts)
-      (ops := ops) ctrl phi x z hstop) = LowGate.Naive_CSignedPhaseProd ctrl phi x z := by
+    (hstop : P.Stops initSize (fun T => nextSignedWidth x z T.ops)) :
+    lowerGateRec (PhaseLoweringPlan.cSignedBase (P := P) ctrl phi x z hstop)
+      = LowGate.Naive_CSignedPhaseProd ctrl phi x z := by
   rfl
 
 @[simp] lemma lowerGateRec_cSignedStep
@@ -97,14 +98,16 @@ variable {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {op
     (ctrl : ℕ)
     (phi : Angle)
     (x z : ExtReg)
-    (layout : Gate.PhaseProductLayout x z k)
-    (hrec : nextSignedWidth x z ops < initSize)
-    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
+    (T : ToomCookTable)
+    (hT : P.choose initSize = some T)
+    (layout : Gate.PhaseProductLayout x z T.k)
+    (hrec : nextSignedWidth x z T.ops < initSize)
+    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z T.ops))
     (hctrl : layout.ControlDisjoint ctrl)
-    (child : PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
-        (compiledCSignedPhaseGate k hk pts hpts ops ctrl phi x z layout)) :
-    lowerGateRec (PhaseLoweringPlan.cSignedStep (k := k) (hk := hk) (pts := pts) (hpts := hpts)
-      (ops := ops) ctrl phi x z layout hrec hcapacity hctrl child) = lowerGateRec child := by
+    (child : PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+        (compiledCSignedPhaseGate T.k T.hk T.pts T.hpts T.ops ctrl phi x z layout)) :
+    lowerGateRec (PhaseLoweringPlan.cSignedStep (P := P) ctrl phi x z T hT layout hrec hcapacity
+      hctrl child) = lowerGateRec child := by
   rfl
 
 end PhaseLoweringPlan

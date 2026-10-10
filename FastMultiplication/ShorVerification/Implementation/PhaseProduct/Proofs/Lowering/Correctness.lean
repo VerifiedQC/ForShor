@@ -46,6 +46,26 @@ lemma evalL_lowerSignedPhaseProd_of_plan
     (hRun : run? ops State.start_state = some State.start_state) :
     LowerGateClass.evalL (qs := qs) (lowerSignedPhaseProd k hk phi x z ops pts hpts plan) ψ
       = qs.eval (Gate.SignedPhaseProd phi x z) ψ := by
-  exact evalL_lowerGateRec_correct (qs := qs) (hInterp := hInterp) (hC := hC) (hRun := hRun) plan ψ hready
+  exact evalL_lowerGateRec_correct (qs := qs)
+    (ShorLoweringPolicy.constPolicy_admissible (T := ⟨k, hk, pts, hpts, ops⟩)
+      ⟨hInterp, hC, hRun⟩) plan ψ hready
+
+/-- Correctness of lowering a supplied policy plan: the same bridge, with the
+policy's admissibility in place of one table's C2–C4. -/
+lemma Policy.evalL_lowerSignedPhaseProd_of_plan
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
+    (phi : Angle)
+    (x z : ExtReg)
+    (plan : PhaseLoweringPlan P (phaseInputSize x z) (Gate.SignedPhaseProd phi x z))
+    (ψ : qs.State)
+    (hready : PhaseLoweringReady qs plan ψ) :
+    LowerGateClass.evalL (qs := qs) (lowerGateRec plan) ψ
+      = qs.eval (Gate.SignedPhaseProd phi x z) ψ :=
+  evalL_lowerGateRec_correct (qs := qs) hP plan ψ hready
 
 end Shor

@@ -1244,7 +1244,7 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
   -- like this is, by construction, always the recursive call, never
   -- something to unfold further. `translatePlan` (below) handles every
   -- other `PhaseLoweringPlan` shape.
-  | (``Shor.lowerGateRec, #[_, _, _, _, _, _, _, plan]) => translatePlan reg plan
+  | (``Shor.lowerGateRec, #[_, _, _, plan]) => translatePlan reg plan
   -- R2.6's `shor` target: `referenceShorCircuit`'s whole body is
   -- `lowerGate k hk ops (orderFindingApprox …) hLowerWorkspace` — routes to
   -- `translateLowerGate`'s own dedicated structural walk (`lowerGate` needs
@@ -1298,6 +1298,38 @@ recognisers — not a second reduction — decide what happens next. -/
 partial def translatePlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
   let plan ← whnfR plan
   match plan.getAppFnArgs with
+  -- The dispatcher's self-call. `Policy.signedPlanOf P theta y w hws o h`:
+  -- 0 P, 1 theta, 2 x, 3 z, 4 hworkspace, 5 o, 6 h.
+  | (``Shor.Policy.signedPlanOf, #[_, theta, x, z, _, _, _]) => do
+      let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
+      let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
+      let xCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[x])
+      let zCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[z])
+      return .call "phase_product" [xw, zw, xCap, zCap] [← translateA reg theta]
+        [← translateReg reg x, ← translateReg reg z]
+  | (``Shor.Policy.signedPlan, #[_, theta, x, z, _]) => do
+      let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
+      let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
+      let xCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[x])
+      let zCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[z])
+      return .call "phase_product" [xw, zw, xCap, zCap] [← translateA reg theta]
+        [← translateReg reg x, ← translateReg reg z]
+  -- `Policy.cSignedPlanOf P ctrl theta y w hws o h`:
+  -- 0 P, 1 ctrl, 2 theta, 3 x, 4 z, 5 hworkspace, 6 o, 7 h.
+  | (``Shor.Policy.cSignedPlanOf, #[_, ctrl, theta, x, z, _, _, _]) => do
+      let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
+      let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
+      let xCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[x])
+      let zCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[z])
+      return .call "cphase_product" [xw, zw, xCap, zCap] [← translateA reg theta]
+        [← translateReg reg ctrl, ← translateReg reg x, ← translateReg reg z]
+  | (``Shor.Policy.cSignedPlan, #[_, ctrl, theta, x, z, _]) => do
+      let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
+      let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
+      let xCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[x])
+      let zCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[z])
+      return .call "cphase_product" [xw, zw, xCap, zCap] [← translateA reg theta]
+        [← translateReg reg ctrl, ← translateReg reg x, ← translateReg reg z]
   | (``Shor.standardSignedPhaseLoweringPlan, #[_, _, theta, x, z, _, _, _, _]) => do
       let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
       let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
@@ -1314,32 +1346,32 @@ partial def translatePlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
         [← translateReg reg ctrl, ← translateReg reg x, ← translateReg reg z]
   | (``Shor.PhaseLoweringPlan.id, _) =>
       translateNode reg (← mkAppM ``Shor.LowGate.id #[])
-  | (``Shor.PhaseLoweringPlan.seq, #[_, _, _, _, _, _, _, _, left, right]) =>
+  | (``Shor.PhaseLoweringPlan.seq, #[_, _, _, _, left, right]) =>
       return .seq [← translatePlan reg left, ← translatePlan reg right]
-  | (``Shor.PhaseLoweringPlan.ShiftL, #[_, _, _, _, _, _, r, n]) =>
+  | (``Shor.PhaseLoweringPlan.ShiftL, #[_, _, r, n]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.ShiftL #[r, n])
-  | (``Shor.PhaseLoweringPlan.ShiftR, #[_, _, _, _, _, _, r, n]) =>
+  | (``Shor.PhaseLoweringPlan.ShiftR, #[_, _, r, n]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.ShiftR #[r, n])
-  | (``Shor.PhaseLoweringPlan.Negate, #[_, _, _, _, _, _, r]) =>
+  | (``Shor.PhaseLoweringPlan.Negate, #[_, _, r]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.Negate #[r])
-  | (``Shor.PhaseLoweringPlan.AddScaled, #[_, _, _, _, _, _, dst, src, negSrc, shift]) =>
+  | (``Shor.PhaseLoweringPlan.AddScaled, #[_, _, dst, src, negSrc, shift]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.AddScaled #[dst, src, negSrc, shift])
-  | (``Shor.PhaseLoweringPlan.zeroExtend, #[_, _, _, _, _, _, r, n]) =>
+  | (``Shor.PhaseLoweringPlan.zeroExtend, #[_, _, r, n]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.zeroExtend #[r, n])
-  | (``Shor.PhaseLoweringPlan.signExtend, #[_, _, _, _, _, _, r, n]) =>
+  | (``Shor.PhaseLoweringPlan.signExtend, #[_, _, r, n]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.signExtend #[r, n])
-  | (``Shor.PhaseLoweringPlan.zeroDealloc, #[_, _, _, _, _, _, r, n]) =>
+  | (``Shor.PhaseLoweringPlan.zeroDealloc, #[_, _, r, n]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.zeroDealloc #[r, n])
-  | (``Shor.PhaseLoweringPlan.signDealloc, #[_, _, _, _, _, _, r, n]) =>
+  | (``Shor.PhaseLoweringPlan.signDealloc, #[_, _, r, n]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.signDealloc #[r, n])
-  | (``Shor.PhaseLoweringPlan.signedBase, #[_, _, _, _, _, _, phi, x, z, _]) =>
+  | (``Shor.PhaseLoweringPlan.signedBase, #[_, _, phi, x, z, _]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.Naive_SignedPhaseProd #[phi, x, z])
-  | (``Shor.PhaseLoweringPlan.signedStep, #[_, _, _, _, _, _, _, _, _, _, _, _, child]) =>
+  | (``Shor.PhaseLoweringPlan.signedStep, #[_, _, _, _, _, _, _, _, _, _, child]) =>
       translatePlan reg child
-  | (``Shor.PhaseLoweringPlan.cSignedBase, #[_, _, _, _, _, _, ctrl, phi, x, z, _]) =>
+  | (``Shor.PhaseLoweringPlan.cSignedBase, #[_, _, ctrl, phi, x, z, _]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.Naive_CSignedPhaseProd #[ctrl, phi, x, z])
   | (``Shor.PhaseLoweringPlan.cSignedStep,
-      #[_, _, _, _, _, _, _, _, _, _, _, _, _, _, child]) =>
+      #[_, _, _, _, _, _, _, _, _, _, _, _, child]) =>
       translatePlan reg child
   | _ =>
       -- Not yet a recognised shape: `plan` is an application of a named
@@ -1416,6 +1448,8 @@ partial def translatePlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
       | some declName =>
           if declName == ``Shor.planCompiledSignedPhaseGate ||
               declName == ``Shor.planCompiledCSignedPhaseGate ||
+              declName == ``Shor.Policy.stepPlan ||
+              declName == ``Shor.Policy.cStepPlan ||
               declName == ``Shor.standardPhaseProdUsingPlan then
             -- `:= by ... simpa [...] using completePlan`: like
             -- `standardSignedPhaseLoweringPlan`, a plain delta-unfold would
@@ -1444,14 +1478,14 @@ partial def translatePlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
             -- `ops` list embedded in `annotatedOps`'s own argument list by
             -- hand — see `translateAnnotatedOps`.
             let args := plan.getAppArgs
-            translateAnnotatedOps reg args[8]! args[6]! args.back! none
+            translateAnnotatedOps reg args[6]! args[4]! args.back! none
           else if declName == ``Shor.planCompileAnnotatedOpsToCSignedGateAux then
             -- Controlled counterpart of the case above, same reasoning:
             -- `st`/`phi`/`ctrl` come from the arg list unreduced, `ctrl`
             -- threaded through so `.phaseProduct` leaves call
             -- `cphase_product` instead of `phase_product`.
             let args := plan.getAppArgs
-            translateAnnotatedOps reg args[9]! args[7]! args.back! (some args[6]!)
+            translateAnnotatedOps reg args[7]! args[5]! args.back! (some args[4]!)
           else
             -- `planCompileSignedAllocations`/`planCompileSignedDeallocations`
             -- (`:= by unfold X; exact Y`, no casting at all) and their

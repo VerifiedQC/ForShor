@@ -1,5 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.NaiveLeaf
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.PolicyWorkspace
+import FastMultiplication.ShorVerification.Framework.Policy
 
 namespace Shor
 open Gate
@@ -77,85 +79,81 @@ This file now reads in the same order as the lowering pipeline:
 
 /-- Finite, structurally recursive plan for lowering one high-level gate. -/
 inductive PhaseLoweringPlan
-    (k : ℕ)
-    (hk : 1 < k)
-    (pts : List Point)
-    (hpts : pts.length = q k)
-    (ops : Prog k) :
+    (P : ShorLoweringPolicy) :
     ℕ → Gate → Type
   | id (initSize : ℕ) :
-      PhaseLoweringPlan k hk pts hpts ops initSize Gate.id
+      PhaseLoweringPlan P initSize Gate.id
 
   | seq
       {initSize : ℕ}
       {U V : Gate}
-      (left : PhaseLoweringPlan k hk pts hpts ops initSize U)
-      (right : PhaseLoweringPlan k hk pts hpts ops initSize V) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (U ;; V)
+      (left : PhaseLoweringPlan P initSize U)
+      (right : PhaseLoweringPlan P initSize V) :
+      PhaseLoweringPlan P initSize (U ;; V)
 
   | H
       (initSize : ℕ)
       (qbit : ℕ) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.H qbit)
+      PhaseLoweringPlan P initSize (Gate.H qbit)
 
   | X
       (initSize : ℕ)
       (qbit : ℕ) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.X qbit)
+      PhaseLoweringPlan P initSize (Gate.X qbit)
 
   | ShiftL
       (initSize : ℕ)
       (r : ExtReg)
       (n : ℕ) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.ShiftL r n)
+      PhaseLoweringPlan P initSize (Gate.ShiftL r n)
 
   | ShiftR
       (initSize : ℕ)
       (r : ExtReg)
       (n : ℕ) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.ShiftR r n)
+      PhaseLoweringPlan P initSize (Gate.ShiftR r n)
 
   | Negate
       (initSize : ℕ)
       (r : ExtReg) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.Negate r)
+      PhaseLoweringPlan P initSize (Gate.Negate r)
 
   | AddScaled
       (initSize : ℕ)
       (dst src : ExtReg)
       (negSrc : Bool)
       (shift : ℕ) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.AddScaled dst src negSrc shift)
+      PhaseLoweringPlan P initSize (Gate.AddScaled dst src negSrc shift)
 
   | zeroExtend
       (initSize : ℕ)
       (r : ExtReg)
       (n : ℕ) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.zeroExtend r n)
+      PhaseLoweringPlan P initSize (Gate.zeroExtend r n)
 
   | signExtend
       (initSize : ℕ)
       (r : ExtReg)
       (n : ℕ) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.signExtend r n)
+      PhaseLoweringPlan P initSize (Gate.signExtend r n)
 
   | zeroDealloc
       (initSize : ℕ)
       (r : ExtReg)
       (n : ℕ) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.zeroDealloc r n)
+      PhaseLoweringPlan P initSize (Gate.zeroDealloc r n)
 
   | signDealloc
       (initSize : ℕ)
       (r : ExtReg)
       (n : ℕ) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.signDealloc r n)
+      PhaseLoweringPlan P initSize (Gate.signDealloc r n)
 
   | RadixReverse
       (initSize : ℕ)
       (r : Reg)
       (m : ℕ) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.RadixReverse r m)
+      PhaseLoweringPlan P initSize (Gate.RadixReverse r m)
 
   /--
   The phase-product recursion has reached its base case.
@@ -165,8 +163,8 @@ inductive PhaseLoweringPlan
   | signedBase
       {initSize : ℕ}
       (phi : Angle) (x z : ExtReg)
-      (hstop : ¬ nextSignedWidth x z ops < initSize) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.SignedPhaseProd phi x z)
+      (hstop : P.Stops initSize (fun T => nextSignedWidth x z T.ops)) :
+      PhaseLoweringPlan P initSize (Gate.SignedPhaseProd phi x z)
   /--
   A recursive signed phase-product step.
   `layout` specifies the physical chunk and reserve registers for this level.
@@ -177,12 +175,14 @@ inductive PhaseLoweringPlan
       {initSize : ℕ}
       (phi : Angle)
       (x z : ExtReg)
-      (layout : Gate.PhaseProductLayout x z k)
-      (hrec : nextSignedWidth x z ops < initSize)
-      (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
-      (child : PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
-          (compiledSignedPhaseGate k hk pts hpts ops phi x z layout)) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.SignedPhaseProd phi x z)
+      (T : ToomCookTable)
+      (hT : P.choose initSize = some T)
+      (layout : Gate.PhaseProductLayout x z T.k)
+      (hrec : nextSignedWidth x z T.ops < initSize)
+      (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z T.ops))
+      (child : PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+          (compiledSignedPhaseGate T.k T.hk T.pts T.hpts T.ops phi x z layout)) :
+      PhaseLoweringPlan P initSize (Gate.SignedPhaseProd phi x z)
   /--
   The controlled phase-product recursion has reached its base case.
   -/
@@ -191,8 +191,8 @@ inductive PhaseLoweringPlan
       (ctrl : ℕ)
       (phi : Angle)
       (x z : ExtReg)
-      (hstop : ¬ nextSignedWidth x z ops < initSize) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.CSignedPhaseProd ctrl phi x z)
+      (hstop : P.Stops initSize (fun T => nextSignedWidth x z T.ops)) :
+      PhaseLoweringPlan P initSize (Gate.CSignedPhaseProd ctrl phi x z)
   /--
   A recursive controlled signed phase-product step.
   In addition to capacity, the control qubit must be outside every physical
@@ -203,13 +203,15 @@ inductive PhaseLoweringPlan
       (ctrl : ℕ)
       (phi : Angle)
       (x z : ExtReg)
-      (layout : Gate.PhaseProductLayout x z k)
-      (hrec : nextSignedWidth x z ops < initSize)
-      (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
+      (T : ToomCookTable)
+      (hT : P.choose initSize = some T)
+      (layout : Gate.PhaseProductLayout x z T.k)
+      (hrec : nextSignedWidth x z T.ops < initSize)
+      (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z T.ops))
       (hctrl : layout.ControlDisjoint ctrl)
-      (child : PhaseLoweringPlan k hk pts hpts ops (nextSignedWidth x z ops)
-          (compiledCSignedPhaseGate k hk pts hpts ops ctrl phi x z layout)) :
-      PhaseLoweringPlan k hk pts hpts ops initSize (Gate.CSignedPhaseProd ctrl phi x z)
+      (child : PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+          (compiledCSignedPhaseGate T.k T.hk T.pts T.hpts T.ops ctrl phi x z layout)) :
+      PhaseLoweringPlan P initSize (Gate.CSignedPhaseProd ctrl phi x z)
 
 /-! =========================================================
     Plan-directed recursive lowering
@@ -225,14 +227,10 @@ child plan already contains the concrete layout and capacity proof required
 for the next recursive call.
 -/
 def lowerGateRec
-    {k : ℕ}
-    {hk : 1 < k}
-    {pts : List Point}
-    {hpts : pts.length = q k}
-    {ops : Prog k}
+    {P : ShorLoweringPolicy}
     {initSize : ℕ}
     {U : Gate}
-    (plan : PhaseLoweringPlan k hk pts hpts ops initSize U) :
+    (plan : PhaseLoweringPlan P initSize U) :
     LowGate :=
   match plan with
   | .id _ => LowGate.id
@@ -249,9 +247,9 @@ def lowerGateRec
   | .signDealloc _ r n => LowGate.signDealloc r n
   | .RadixReverse _ r m => LowGate.RadixReverse r m
   | .signedBase phi x z _ => LowGate.Naive_SignedPhaseProd phi x z
-  | .signedStep phi x z _layout _hrec _hcapacity child => lowerGateRec child
+  | .signedStep phi x z _T _hT _layout _hrec _hcapacity child => lowerGateRec child
   | .cSignedBase ctrl phi x z _ => LowGate.Naive_CSignedPhaseProd ctrl phi x z
-  | .cSignedStep ctrl phi x z _layout _hrec _hcapacity _hctrl child => lowerGateRec child
+  | .cSignedStep ctrl phi x z _T _hT _layout _hrec _hcapacity _hctrl child => lowerGateRec child
 
 /-! =========================================================
     Standard interpolation-point public interface
@@ -265,14 +263,23 @@ lemma generatedInterpolationPoints_length (k : ℕ) : (genInterpolationPoints k)
   simp [genInterpolationPoints, q]
 
 /--
-A lowering plan using the standard interpolation points.
-This abbreviation hides the interpolation-point bookkeeping while leaving the
-physical layout and workspace choices explicit in the plan.
+A lowering plan that uses **one** table at every level: the single-table
+submission, as a plan.
+
+This is now an alias with content. `PhaseLoweringPlan` is indexed by a policy,
+and a table submission is the one-band policy at threshold `0`
+(`Framework/Policy.lean`), so the fixed-table plan type is the policy plan
+type at `constPolicy`. Every existing caller keeps its five arguments and its
+proofs; nothing about the fixed-table path changes.
+
+(The name says "standard" for historical reasons. `pts` is the submitter's
+own point list, not `genInterpolationPoints k`; the points have been a
+parameter ever since tables became submissions.)
 -/
 abbrev StandardPhaseLoweringPlan
     (k : ℕ) (hk : 1 < k) (pts : List Point) (hpts : pts.length = q k)
     (ops : Prog k) (initSize : ℕ) (U : Gate) : Type :=
-  PhaseLoweringPlan k hk pts hpts ops initSize U
+  PhaseLoweringPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) initSize U
 
 /-- Interpret a standard lowering plan for any gate in the supported fragment. -/
 def lowerPhasePlan

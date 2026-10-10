@@ -265,8 +265,9 @@ theorem evalL_lowerQFTPlan
             =
           qs.eval (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws)
               (LowerGateClass.evalL (qs := qs) (lowerQFTPlan rightPlan) ψ) := by
-        exact evalL_lowerGateRec_correct (qs := qs) (hInterp := hInterp) (hC := hC)
-          (hRun := hRun) phasePlan _ hreadyPhase
+        exact evalL_lowerGateRec_correct (qs := qs)
+          (ShorLoweringPolicy.constPolicy_admissible (T := ⟨k, hk, pts, hpts, ops⟩)
+            ⟨hInterp, hC, hRun⟩) phasePlan _ hreadyPhase
 
       have hLeft :
           LowerGateClass.evalL (qs := qs) (lowerQFTPlan leftPlan)

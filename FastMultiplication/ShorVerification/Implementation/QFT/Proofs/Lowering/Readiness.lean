@@ -221,8 +221,10 @@ theorem standardPhaseProdUsingPlan_ready_and_clean
             (lowerGateRec (standardPhaseProdUsingPlan k hk ops pts hpts phi ws hstatic)) ψ
           =
         qs.eval (Gate.PhaseProdUsing phi x z ws) ψ := by
-      exact evalL_lowerGateRec_correct (qs := qs) (hInterp := hInterp) (hC := hC)
-        (hRun := hRun) (standardPhaseProdUsingPlan k hk ops pts hpts phi ws hstatic) ψ hready
+      exact evalL_lowerGateRec_correct (qs := qs)
+        (ShorLoweringPolicy.constPolicy_admissible (T := ⟨k, hk, pts, hpts, ops⟩)
+          ⟨hInterp, hC, hRun⟩)
+        (standardPhaseProdUsingPlan k hk ops pts hpts phi ws hstatic) ψ hready
 
     rw [heval]
     exact eval_PhaseProdUsing_preserves_QFTWorkspaceCleanState

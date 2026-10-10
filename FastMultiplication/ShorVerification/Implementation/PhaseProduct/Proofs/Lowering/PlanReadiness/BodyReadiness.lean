@@ -26,18 +26,16 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    {P : ShorLoweringPolicy}
     {k : ℕ}
     (hk : 1 < k)
-    (pts : List Point)
-    (hpts : pts.length = q k)
-    (allOps : Prog k)
     (initSize : ℕ)
     (phi : Angle)
     (coeff : Fin (q k) → ℚ)
     (dst : LayoutState k)
     (recurse :
       ∀ (i : Fin k) (theta : Angle),
-        PhaseLoweringPlan k hk pts hpts allOps initSize
+        PhaseLoweringPlan P initSize
           (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)))
     (pre : Prog k)
     (hNo : NoPhase pre)
@@ -46,7 +44,7 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
     (ψ : qs.State)
     (hTail :
       PhaseLoweringReady qs
-        (planCompileAnnotatedOpsToSignedGateAux (hk := hk) (pts := pts) (hpts := hpts) (ops := allOps)
+        (planCompileAnnotatedOpsToSignedGateAux (hk := hk)
           initSize phi coeff dst recurse suffix)
         (qs.eval
           (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst (annotatePhaseTermsAux k n pre)) ψ)) :
@@ -54,9 +52,6 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
       qs
       (planCompileAnnotatedOpsToSignedGateAux
         (hk := hk)
-        (pts := pts)
-        (hpts := hpts)
-        (ops := allOps)
         initSize phi coeff dst recurse
         (annotatePhaseTermsAux k n pre ++ suffix))
       ψ := by
@@ -75,9 +70,6 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                 qs
                 (planCompileAnnotatedOpsToSignedGateAux
                   (hk := hk)
-                  (pts := pts)
-                  (hpts := hpts)
-                  (ops := allOps)
                   initSize phi coeff dst recurse suffix)
                 (qs.eval
                   (compileAnnotatedOpsToSignedGateAux
@@ -111,9 +103,6 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                 qs
                 (planCompileAnnotatedOpsToSignedGateAux
                   (hk := hk)
-                  (pts := pts)
-                  (hpts := hpts)
-                  (ops := allOps)
                   initSize phi coeff dst recurse suffix)
                 (qs.eval
                   (compileAnnotatedOpsToSignedGateAux
@@ -147,9 +136,6 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                 qs
                 (planCompileAnnotatedOpsToSignedGateAux
                   (hk := hk)
-                  (pts := pts)
-                  (hpts := hpts)
-                  (ops := allOps)
                   initSize phi coeff dst recurse suffix)
                 (qs.eval
                   (compileAnnotatedOpsToSignedGateAux
@@ -183,9 +169,6 @@ lemma planCompileAnnotatedOps_ready_append_of_noPhase
                 qs
                 (planCompileAnnotatedOpsToSignedGateAux
                   (hk := hk)
-                  (pts := pts)
-                  (hpts := hpts)
-                  (ops := allOps)
                   initSize phi coeff dst recurse suffix)
                 (qs.eval
                   (compileAnnotatedOpsToSignedGateAux
@@ -248,21 +231,17 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
+    {P : ShorLoweringPolicy}
     {k : ℕ}
     (hk : 1 < k)
-    (planPts : List Point)
-    (hPlanPts : planPts.length = q k)
-    (hInterp : GoodToomCookPoints k planPts hPlanPts)
-    (allOps : Prog k)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state allOps planPts)
-    (hRun : run? allOps State.start_state = some State.start_state)
+    (hP : P.Admissible)
     (initSize : ℕ)
     (phi : Angle)
     (coeff : Fin (q k) → ℚ)
     (src dst : LayoutState k)
     (recurse :
       ∀ (i : Fin k) (theta : Angle),
-        PhaseLoweringPlan k hk planPts hPlanPts allOps initSize
+        PhaseLoweringPlan P initSize
           (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)))
     (hleaf :
       ∀ (i : Fin k) (theta : Angle) (b' : qs.Basis),
@@ -311,9 +290,6 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
           qs
           (planCompileAnnotatedOpsToSignedGateAux
             (hk := hk)
-            (pts := planPts)
-            (hpts := hPlanPts)
-            (ops := allOps)
             initSize
             phi
             coeff
@@ -327,7 +303,7 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
       intro n hn b₀ bCur hdisjoint hFits hSafeAdd hEnc hcleanOutside
       have hready :=
         planCompileAnnotatedOps_ready_append_of_noPhase
-          qs hk planPts hPlanPts allOps
+          qs hk
           initSize phi coeff dst recurse
           tail hNo n []
           (qs.ket bCur)
@@ -550,9 +526,6 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
             qs
             (planCompileAnnotatedOpsToSignedGateAux
               (hk := hk)
-              (pts := planPts)
-              (hpts := hPlanPts)
-              (ops := allOps)
               initSize
               phi
               coeff
@@ -588,9 +561,7 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
         exact
           evalL_lowerGateRec_correct
             (qs := qs)
-            (hInterp := hInterp)
-            (hC := hC)
-            (hRun := hRun)
+            hP
             (recurse B.i theta)
             (qs.ket bMid)
             hLeafReady
@@ -599,9 +570,6 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
             qs
             (planCompileAnnotatedOpsToSignedGateAux
               (hk := hk)
-              (pts := planPts)
-              (hpts := hPlanPts)
-              (ops := allOps)
               initSize
               phi
               coeff
@@ -626,9 +594,6 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
             qs
             (planCompileAnnotatedOpsToSignedGateAux
               (hk := hk)
-              (pts := planPts)
-              (hpts := hPlanPts)
-              (ops := allOps)
               initSize
               phi
               coeff
@@ -651,9 +616,6 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
               qs
               (planCompileAnnotatedOpsToSignedGateAux
                 (hk := hk)
-                (pts := planPts)
-                (hpts := hPlanPts)
-                (ops := allOps)
                 initSize
                 phi
                 coeff
@@ -672,9 +634,6 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
             qs
             (planCompileAnnotatedOpsToSignedGateAux
               (hk := hk)
-              (pts := planPts)
-              (hpts := hPlanPts)
-              (ops := allOps)
               initSize
               phi
               coeff
@@ -699,9 +658,6 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
             qs
             (planCompileAnnotatedOpsToSignedGateAux
               (hk := hk)
-              (pts := planPts)
-              (hpts := hPlanPts)
-              (ops := allOps)
               initSize
               phi
               coeff
@@ -718,7 +674,7 @@ lemma planCompileAnnotatedOps_ready_ket_of_blocks_from
             (qs.ket bCur) := by
         exact
           planCompileAnnotatedOps_ready_append_of_noPhase
-            qs hk planPts hPlanPts allOps
+            qs hk
             initSize phi coeff dst recurse
             B.arith
             B.noPhase_pre
@@ -789,11 +745,9 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
     [RegEncoding qs.Basis]
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    {P : ShorLoweringPolicy}
     {k : ℕ}
     (hk : 1 < k)
-    (pts : List Point)
-    (hpts : pts.length = q k)
-    (allOps : Prog k)
     (initSize : ℕ)
     (ctrl : ℕ)
     (phi : Angle)
@@ -801,7 +755,7 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
     (dst : LayoutState k)
     (recurse :
       ∀ (i : Fin k) (theta : Angle),
-        PhaseLoweringPlan k hk pts hpts allOps initSize
+        PhaseLoweringPlan P initSize
           (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i)))
     (pre : Prog k)
     (hNo : NoPhase pre)
@@ -810,7 +764,7 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
     (ψ : qs.State)
     (hTail :
       PhaseLoweringReady qs
-        (planCompileAnnotatedOpsToCSignedGateAux (hk := hk) (pts := pts) (hpts := hpts) (ops := allOps)
+        (planCompileAnnotatedOpsToCSignedGateAux (hk := hk)
           initSize ctrl phi coeff dst recurse suffix)
         (qs.eval
           (compileAnnotatedOpsToSignedGateAux k hk phi coeff dst (annotatePhaseTermsAux k n pre)) ψ)) :
@@ -818,9 +772,6 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
       qs
       (planCompileAnnotatedOpsToCSignedGateAux
         (hk := hk)
-        (pts := pts)
-        (hpts := hpts)
-        (ops := allOps)
         initSize ctrl phi coeff dst recurse
         (annotatePhaseTermsAux k n pre ++ suffix))
       ψ := by
@@ -839,9 +790,6 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                 qs
                 (planCompileAnnotatedOpsToCSignedGateAux
                   (hk := hk)
-                  (pts := pts)
-                  (hpts := hpts)
-                  (ops := allOps)
                   initSize ctrl phi coeff dst recurse suffix)
                 (qs.eval
                   (compileAnnotatedOpsToSignedGateAux
@@ -875,9 +823,6 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                 qs
                 (planCompileAnnotatedOpsToCSignedGateAux
                   (hk := hk)
-                  (pts := pts)
-                  (hpts := hpts)
-                  (ops := allOps)
                   initSize ctrl phi coeff dst recurse suffix)
                 (qs.eval
                   (compileAnnotatedOpsToSignedGateAux
@@ -911,9 +856,6 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                 qs
                 (planCompileAnnotatedOpsToCSignedGateAux
                   (hk := hk)
-                  (pts := pts)
-                  (hpts := hpts)
-                  (ops := allOps)
                   initSize ctrl phi coeff dst recurse suffix)
                 (qs.eval
                   (compileAnnotatedOpsToSignedGateAux
@@ -947,9 +889,6 @@ lemma planCompileAnnotatedOps_c_ready_append_of_noPhase
                 qs
                 (planCompileAnnotatedOpsToCSignedGateAux
                   (hk := hk)
-                  (pts := pts)
-                  (hpts := hpts)
-                  (ops := allOps)
                   initSize ctrl phi coeff dst recurse suffix)
                 (qs.eval
                   (compileAnnotatedOpsToSignedGateAux
@@ -1012,14 +951,10 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
+    {P : ShorLoweringPolicy}
     {k : ℕ}
     (hk : 1 < k)
-    (planPts : List Point)
-    (hPlanPts : planPts.length = q k)
-    (hInterp : GoodToomCookPoints k planPts hPlanPts)
-    (allOps : Prog k)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state allOps planPts)
-    (hRun : run? allOps State.start_state = some State.start_state)
+    (hP : P.Admissible)
     (initSize : ℕ)
     (ctrl : ℕ)
     (phi : Angle)
@@ -1027,7 +962,7 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
     (src dst : LayoutState k)
     (recurse :
       ∀ (i : Fin k) (theta : Angle),
-        PhaseLoweringPlan k hk planPts hPlanPts allOps initSize
+        PhaseLoweringPlan P initSize
           (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i)))
     (hleaf :
       ∀ (i : Fin k) (theta : Angle) (b' : qs.Basis),
@@ -1076,9 +1011,6 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
           qs
           (planCompileAnnotatedOpsToCSignedGateAux
             (hk := hk)
-            (pts := planPts)
-            (hpts := hPlanPts)
-            (ops := allOps)
             initSize
             ctrl
             phi
@@ -1093,7 +1025,7 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
       intro n hn b₀ bCur hdisjoint hFits hSafeAdd hEnc hcleanOutside
       have hready :=
         planCompileAnnotatedOps_c_ready_append_of_noPhase
-          qs hk planPts hPlanPts allOps
+          qs hk
           initSize ctrl phi coeff dst recurse
           tail hNo n []
           (qs.ket bCur)
@@ -1316,9 +1248,6 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
             qs
             (planCompileAnnotatedOpsToCSignedGateAux
               (hk := hk)
-              (pts := planPts)
-              (hpts := hPlanPts)
-              (ops := allOps)
               initSize
               ctrl
               phi
@@ -1356,9 +1285,7 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
         exact
           evalL_lowerGateRec_correct
             (qs := qs)
-            (hInterp := hInterp)
-            (hC := hC)
-            (hRun := hRun)
+            hP
             (recurse B.i theta)
             (qs.ket bMid)
             hLeafReady
@@ -1367,9 +1294,6 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
             qs
             (planCompileAnnotatedOpsToCSignedGateAux
               (hk := hk)
-              (pts := planPts)
-              (hpts := hPlanPts)
-              (ops := allOps)
               initSize
               ctrl
               phi
@@ -1394,9 +1318,6 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
             qs
             (planCompileAnnotatedOpsToCSignedGateAux
               (hk := hk)
-              (pts := planPts)
-              (hpts := hPlanPts)
-              (ops := allOps)
               initSize
               ctrl
               phi
@@ -1420,9 +1341,6 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
               qs
               (planCompileAnnotatedOpsToCSignedGateAux
                 (hk := hk)
-                (pts := planPts)
-                (hpts := hPlanPts)
-                (ops := allOps)
                 initSize
                 ctrl
                 phi
@@ -1442,9 +1360,6 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
             qs
             (planCompileAnnotatedOpsToCSignedGateAux
               (hk := hk)
-              (pts := planPts)
-              (hpts := hPlanPts)
-              (ops := allOps)
               initSize
               ctrl
               phi
@@ -1470,9 +1385,6 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
             qs
             (planCompileAnnotatedOpsToCSignedGateAux
               (hk := hk)
-              (pts := planPts)
-              (hpts := hPlanPts)
-              (ops := allOps)
               initSize
               ctrl
               phi
@@ -1490,7 +1402,7 @@ lemma planCompileAnnotatedOps_c_ready_ket_of_blocks_from
             (qs.ket bCur) := by
         exact
           planCompileAnnotatedOps_c_ready_append_of_noPhase
-            qs hk planPts hPlanPts allOps
+            qs hk
             initSize ctrl phi coeff dst recurse
             B.arith
             B.noPhase_pre

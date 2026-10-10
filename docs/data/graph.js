@@ -957,7 +957,10 @@ window.GRAPH = {
    "docstring": "# What a lowering policy is, and what makes one admissible\n\nThe second kind of submission. A table submission\n(`Framework/ToomCookTable.lean`) is one Toom-Cook table used at every level\nof the recursive phase product. A **policy** chooses a table by operand\nwidth \u2014 Toom-6 at the top, Toom-3 in the middle, Karatsuba near the leaves,\nthe schoolbook leaf below an explicit threshold \u2014 and each table it can pick\ncarries its own C1\u2013C4. The score is a gate count at one fixed size, not an\nasymptotic exponent, and at a fixed size the optimum is a cascade rather\nthan a single radix; that is the whole motivation.\n\nLike the file it imports, this one is implementation-free: it imports\n`Framework/ToomCookTable.lean` and nothing else (not even Mathlib directly),\nso each kind of submission can be read on its own. The import rule is\none-directional \u2014 `Policy.lean` imports `ToomCookTable.lean`, never the\nreverse \u2014 because a reader of the single-table specification should not have\nto read the policy to understand a table.\n\nThe split between data and proof mirrors the one the plan type already\nmakes. `PhaseLoweringPlan` needs only `(k, hk, pts, hpts, ops)`; C2\u2013C4 are\nhypotheses of the correctness theorem, not fields of the object being built.\nSo:\n\n| | what it is |\n|---|---|\n| `ToomCookTable` | the data `(k, hk, pts, hpts, ops)`, no side conditions |\n| `ToomCookTable.Admissible` | C2\u2013C4 for one table |\n| `ShorLoweringPolicy` | a list of `(threshold, table)` bands, strictly decreasing in threshold |\n| `ShorLoweringPolicy.Admissible` | every table the policy can pick is admissible |\n| `ShorPolicySubmission` | a list of `(threshold, ShorLoweringSetup)`: the bands *with* their proofs |\n\nThree design points, each load-bearing downstream:\n\n- **The policy is keyed on width, not depth.** `choose` is applied to a plan\n  node's `initSize` (`= max x.width z.width`). The width at depth 3 depends\n  on the choices made at depths 1 and 2, so a depth-indexed policy could not\n  be reasoned about without simulating the chain. Width-indexing also makes\n  the leaf threshold explicit: `choose n = none` *is* the leaf.\n- **The shrink test stays.** Within a band the recursion still falls to the\n  leaf when the chosen table does not shrink the width (`Stops`). Termination\n  stays free and no fifth side condition is introduced.\n- **A table submission is the one-band policy at threshold `0`.**\n  `constPolicy` and `ShorPolicySubmission.ofSetup` are what make the existing\n  single-table path a special case rather than a parallel one.",
    "fsPath": "Framework/Policy.lean",
    "importedBy": [
-    "GateCount/Definitions.lean"
+    "GateCount/Definitions.lean",
+    "PhaseProduct/Compiler/PolicyWorkspace.lean",
+    "PhaseProduct/Lowering/Plan.lean",
+    "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
    ],
    "imports": [
     "Framework/ToomCookTable.lean"
@@ -2108,332 +2111,332 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 896,
+     "line": 897,
      "name": "Shor.lgc_id"
     },
     {
      "kind": "lemma",
-     "line": 912,
+     "line": 909,
      "name": "Shor.lgc_seq"
     },
     {
      "kind": "lemma",
-     "line": 938,
+     "line": 933,
      "name": "Shor.lowerGateRec_transport_initSize_eq"
     },
     {
      "kind": "lemma",
-     "line": 950,
+     "line": 945,
      "name": "Shor.lowerGateRec_transport_gate_eq"
     },
     {
      "kind": "lemma",
-     "line": 963,
+     "line": 958,
      "name": "Shor.lowerGateRec_cast_initSize_of_eq"
     },
     {
      "kind": "lemma",
-     "line": 980,
+     "line": 975,
      "name": "Shor.lowerGateRec_cast_gate_of_eq"
     },
     {
      "kind": "lemma",
-     "line": 997,
+     "line": 992,
      "name": "Shor.lowerGateRec_mpr_gate_of_eq"
     },
     {
      "kind": "lemma",
-     "line": 1011,
+     "line": 1006,
      "name": "Shor.lgc_shiftL"
     },
     {
      "kind": "lemma",
-     "line": 1021,
+     "line": 1015,
      "name": "Shor.lgc_shiftR"
     },
     {
      "kind": "lemma",
-     "line": 1031,
+     "line": 1024,
      "name": "Shor.lgc_negate"
     },
     {
      "kind": "lemma",
-     "line": 1042,
+     "line": 1034,
      "name": "Shor.lgc_negate_le"
     },
     {
      "kind": "lemma",
-     "line": 1054,
+     "line": 1045,
      "name": "Shor.lgc_addScaled"
     },
     {
      "kind": "lemma",
-     "line": 1068,
+     "line": 1058,
      "name": "Shor.lgc_addScaled_le"
     },
     {
      "kind": "lemma",
-     "line": 1085,
+     "line": 1074,
      "name": "Shor.lgc_zeroExtend"
     },
     {
      "kind": "lemma",
-     "line": 1095,
+     "line": 1083,
      "name": "Shor.lgc_signExtend"
     },
     {
      "kind": "lemma",
-     "line": 1105,
+     "line": 1092,
      "name": "Shor.lgc_zeroDealloc"
     },
     {
      "kind": "lemma",
-     "line": 1115,
+     "line": 1101,
      "name": "Shor.lgc_signDealloc"
     },
     {
      "kind": "lemma",
-     "line": 1125,
+     "line": 1110,
      "name": "Shor.lgc_radixReverse"
     },
     {
      "kind": "def",
-     "line": 1151,
+     "line": 1135,
      "name": "Shor.BookkeepingGate"
     },
     {
      "kind": "def",
-     "line": 1167,
+     "line": 1151,
      "name": "Shor.bookkeepingGateCost"
     },
     {
      "kind": "lemma",
-     "line": 1184,
+     "line": 1168,
      "name": "Shor.gateCount_lowerGateRec_eq_bookkeepingCost"
     },
     {
      "kind": "lemma",
-     "line": 1288,
+     "line": 1271,
      "name": "Shor.allocChunkGate_bookkeeping"
     },
     {
      "kind": "lemma",
-     "line": 1299,
+     "line": 1282,
      "name": "Shor.deallocChunkGate_bookkeeping"
     },
     {
      "kind": "lemma",
-     "line": 1310,
+     "line": 1293,
      "name": "Shor.compileSignedAllocationsAux_bookkeeping"
     },
     {
      "kind": "lemma",
-     "line": 1334,
+     "line": 1317,
      "name": "Shor.compileSignedDeallocationsAux_bookkeeping"
     },
     {
      "kind": "lemma",
-     "line": 1358,
+     "line": 1341,
      "name": "Shor.compileSignedAllocations_bookkeeping"
     },
     {
      "kind": "lemma",
-     "line": 1368,
+     "line": 1351,
      "name": "Shor.compileSignedDeallocations_bookkeeping"
     },
     {
      "kind": "lemma",
-     "line": 1378,
+     "line": 1361,
      "name": "Shor.lgc_allocs"
     },
     {
      "kind": "lemma",
-     "line": 1391,
+     "line": 1373,
      "name": "Shor.lgc_deallocs"
     },
     {
      "kind": "lemma",
-     "line": 1405,
+     "line": 1386,
      "name": "Shor.gateCount_standardSignedPhaseLoweringPlan"
     },
     {
      "kind": "lemma",
-     "line": 1428,
+     "line": 1409,
      "name": "Shor.gateCount_standardSignedPhaseLoweringPlan_of_not_recurse"
     },
     {
      "kind": "lemma",
-     "line": 1456,
+     "line": 1438,
      "name": "Shor.phaseProgramOverhead_cons"
     },
     {
      "kind": "lemma",
-     "line": 1460,
+     "line": 1442,
      "name": "Shor.bookkeepingGateCost_allocChunkGate_le_width"
     },
     {
      "kind": "lemma",
-     "line": 1482,
+     "line": 1464,
      "name": "Shor.bookkeepingGateCost_deallocChunkGate_le_width"
     },
     {
      "kind": "lemma",
-     "line": 1504,
+     "line": 1486,
      "name": "Shor.bookkeepingGateCost_compileSignedAllocationsAux_le"
     },
     {
      "kind": "lemma",
-     "line": 1595,
+     "line": 1577,
      "name": "Shor.bookkeepingGateCost_compileSignedDeallocationsAux_le"
     },
     {
      "kind": "lemma",
-     "line": 1686,
+     "line": 1668,
      "name": "Shor.lgc_allocs_le"
     },
     {
      "kind": "lemma",
-     "line": 1705,
+     "line": 1686,
      "name": "Shor.lgc_deallocs_le"
     },
     {
      "kind": "lemma",
-     "line": 1725,
+     "line": 1705,
      "name": "Shor.lgc_body_le"
     },
     {
      "kind": "lemma",
-     "line": 2192,
+     "line": 2150,
      "name": "Shor.lowerSignedPhaseProd_one_level_cost_le"
     },
     {
      "kind": "lemma",
-     "line": 2593,
+     "line": 2506,
      "name": "Shor.phaseArithmeticOpCost_mono"
     },
     {
      "kind": "lemma",
-     "line": 2606,
+     "line": 2519,
      "name": "Shor.phaseProgramOverhead_mono"
     },
     {
      "kind": "lemma",
-     "line": 2628,
+     "line": 2541,
      "name": "Shor.lowerSignedPhaseProd_one_level_cost_le_nat"
     },
     {
      "kind": "lemma",
-     "line": 2702,
+     "line": 2615,
      "name": "Shor.signedPhaseProductGateCount_bounded_on_bounded_inputs"
     },
     {
      "kind": "lemma",
-     "line": 2874,
+     "line": 2787,
      "name": "Shor.one_lt_phaseProductExponent"
     },
     {
      "kind": "lemma",
-     "line": 2897,
+     "line": 2810,
      "name": "Shor.rpow_phaseProductExponent_eq_q"
     },
     {
      "kind": "lemma",
-     "line": 2919,
+     "line": 2832,
      "name": "Shor.balanced_nextSignedWidth_shifted"
     },
     {
      "kind": "lemma",
-     "line": 2983,
+     "line": 2896,
      "name": "Shor.balanced_phaseProduct_recurrence_solution"
     },
     {
      "kind": "lemma",
-     "line": 3213,
+     "line": 3126,
      "name": "Shor.phaseProdUsing_signedWorkspace"
     },
     {
      "kind": "lemma",
-     "line": 3228,
+     "line": 3141,
      "name": "Shor.lowerGate_PhaseProdUsing_gateCount_eq_signed"
     },
     {
      "kind": "lemma",
-     "line": 3269,
+     "line": 3182,
      "name": "Shor.width_phaseProdUsing_x"
     },
     {
      "kind": "lemma",
-     "line": 3278,
+     "line": 3191,
      "name": "Shor.width_phaseProdUsing_z"
     },
     {
      "kind": "lemma",
-     "line": 3288,
+     "line": 3201,
      "name": "Shor.phaseInputSize_phaseProdUsing"
     },
     {
      "kind": "lemma",
-     "line": 3312,
+     "line": 3225,
      "name": "Shor.phaseProductSafeRate_le_scaled_rpow"
     },
     {
      "kind": "lemma",
-     "line": 3393,
+     "line": 3306,
      "name": "Shor.natCast_le_phaseProduct_rpow"
     },
     {
      "kind": "lemma",
-     "line": 3413,
+     "line": 3326,
      "name": "Shor.signedPhaseProductGateCount_eq_direct_of_not_recurse"
     },
     {
      "kind": "lemma",
-     "line": 3442,
+     "line": 3355,
      "name": "Shor.signedPhaseProductGateCount_unsignedView_recurse_case_bound"
     },
     {
      "kind": "lemma",
-     "line": 3846,
+     "line": 3759,
      "name": "Shor.signedPhaseProductGateCount_unsignedView_no_recurse_case_bound"
     },
     {
      "kind": "lemma",
-     "line": 4064,
+     "line": 3977,
      "name": "Shor.phaseProductGateCountBound_of_balanced_signed_bound"
     },
     {
      "kind": "lemma",
-     "line": 4140,
+     "line": 4053,
      "name": "Shor.prog_balanced_nextSignedWidth"
     },
     {
      "kind": "lemma",
-     "line": 4231,
+     "line": 4144,
      "name": "Shor.prog_nextSignedWidth_le_input_add_const"
     },
     {
      "kind": "lemma",
-     "line": 4248,
+     "line": 4161,
      "name": "Shor.prog_no_recurse_implies_small_operand"
     },
     {
      "kind": "lemma",
-     "line": 4351,
+     "line": 4264,
      "name": "Shor.CPhaseProductReduction.lgc_cbody_le_five"
     },
     {
      "kind": "lemma",
-     "line": 4561,
+     "line": 4461,
      "name": "Shor.CPhaseProductReduction.cSignedPhaseProductGateCount_le_five_signed"
     },
     {
      "kind": "lemma",
-     "line": 4980,
+     "line": 4851,
      "name": "Shor.CPhaseProductReduction.cPhaseProdUsing_controlledWorkspace"
     },
     {
      "kind": "lemma",
-     "line": 4995,
+     "line": 4866,
      "name": "Shor.CPhaseProductReduction.lowerGate_CPhaseProdUsing_gateCount_eq_cSigned"
     }
    ],
@@ -2461,7 +2464,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/NaiveLeaf.lean"
    ],
    "kind": "file",
-   "lines": 5039,
+   "lines": 4910,
    "name": "Lemmas.lean",
    "path": "GateCount/PhaseProduct/Lemmas.lean"
   },
@@ -5613,8 +5616,8 @@ window.GRAPH = {
     "PhaseProduct/Proofs",
     "PhaseProduct/Spec"
    ],
-   "declCount": 997,
-   "fileCount": 58,
+   "declCount": 1049,
+   "fileCount": 59,
    "fsPath": "Implementation/PhaseProduct",
    "kind": "folder",
    "name": "PhaseProduct",
@@ -5626,11 +5629,12 @@ window.GRAPH = {
     "PhaseProduct/Compiler/Coefficients.lean",
     "PhaseProduct/Compiler/Compile.lean",
     "PhaseProduct/Compiler/Layout.lean",
+    "PhaseProduct/Compiler/PolicyWorkspace.lean",
     "PhaseProduct/Compiler/Widths.lean",
     "PhaseProduct/Compiler/Workspace.lean"
    ],
-   "declCount": 138,
-   "fileCount": 5,
+   "declCount": 159,
+   "fileCount": 6,
    "fsPath": "Implementation/PhaseProduct/Compiler",
    "kind": "folder",
    "name": "Compiler",
@@ -6124,6 +6128,130 @@ window.GRAPH = {
    "name": "Layout.lean",
    "path": "PhaseProduct/Compiler/Layout.lean"
   },
+  "PhaseProduct/Compiler/PolicyWorkspace.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 58,
+     "name": "Shor.Policy.reserveNeed"
+    },
+    {
+     "kind": "theorem",
+     "line": 73,
+     "name": "Shor.Policy.reserveNeed_of_choose_none"
+    },
+    {
+     "kind": "theorem",
+     "line": 79,
+     "name": "Shor.Policy.reserveNeed_fst_of_choose"
+    },
+    {
+     "kind": "theorem",
+     "line": 91,
+     "name": "Shor.Policy.reserveNeed_snd_of_choose"
+    },
+    {
+     "kind": "theorem",
+     "line": 105,
+     "name": "Shor.Policy.reserveNeed_const"
+    },
+    {
+     "kind": "structure",
+     "line": 136,
+     "name": "Shor.Policy.WorkspaceOK"
+    },
+    {
+     "kind": "structure",
+     "line": 146,
+     "name": "Shor.Policy.CWorkspaceOK"
+    },
+    {
+     "kind": "theorem",
+     "line": 154,
+     "name": "Shor.Policy.workspaceOK_const_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 170,
+     "name": "Shor.Policy.cWorkspaceOK_const_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 188,
+     "name": "Shor.Policy.widthModelX_width"
+    },
+    {
+     "kind": "theorem",
+     "line": 192,
+     "name": "Shor.Policy.widthModelZ_width"
+    },
+    {
+     "kind": "theorem",
+     "line": 197,
+     "name": "Shor.Policy.limbWidth_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 204,
+     "name": "Shor.Policy.nextSignedWidth_eq_widthModel"
+    },
+    {
+     "kind": "def",
+     "line": 224,
+     "name": "Shor.Policy.requiredChildReserve"
+    },
+    {
+     "kind": "abbrev",
+     "line": 232,
+     "name": "Shor.Policy.requiredXChildReserve"
+    },
+    {
+     "kind": "abbrev",
+     "line": 237,
+     "name": "Shor.Policy.requiredZChildReserve"
+    },
+    {
+     "kind": "lemma",
+     "line": 244,
+     "name": "Shor.Policy.requiredChildReserve_sum"
+    },
+    {
+     "kind": "lemma",
+     "line": 256,
+     "name": "Shor.Policy.requiredXChildReserve_sum"
+    },
+    {
+     "kind": "lemma",
+     "line": 263,
+     "name": "Shor.Policy.requiredZChildReserve_sum"
+    },
+    {
+     "kind": "structure",
+     "line": 286,
+     "name": "Shor.Policy.CanonicalStep"
+    },
+    {
+     "kind": "def",
+     "line": 312,
+     "name": "Shor.Policy.canonicalStep"
+    }
+   ],
+   "docstring": "# The workspace model under a policy\n\n`Compiler/Workspace.lean` sizes the reserve for a recursion that uses **one**\ntable at every level: `RecursivePhaseWorkspace.reserveNeed ops wx wz` recurses\non `ops` alone. A policy picks a table by operand width, so the reserve\nrecurrence has to look the table up at each level, and the lookup is also what\nsupplies the base case \u2014 `choose n = none` is the leaf, alongside the shrink\ntest that was already there.\n\nEverything here is additive and lives in its own file. `Workspace.lean` has 19\ndirect importers, so appending to it would rebuild `PhaseProduct/`, `QFT/`,\n`Shor/`, `GateCount/`, `Reference/`, `Submission/` and `Emit/` for definitions\nnothing uses yet. Nothing in this file is imported by the existing tree; item 4\nis where `Plan.lean` starts consuming it.\n\nThe four `const` bridges are the point of the file: each policy-level notion\nreduces to the fixed-table notion at `constPolicy T`, so the single-table path\nkeeps its existing statements and proofs unchanged.\n\n| policy | fixed table | bridge |\n|---|---|---|\n| `Policy.reserveNeed P` | `RecursivePhaseWorkspace.reserveNeed ops` | `reserveNeed_const` |\n| `Policy.WorkspaceOK P` | `SignedRecursiveWorkspaceOK ops` | `workspaceOK_const_iff` |\n| `Policy.CWorkspaceOK P` | `CSignedRecursiveWorkspaceOK ops` | `cWorkspaceOK_const_iff` |\n| `Policy.canonicalStep` | `canonicalSignedStep` | shared lemmas, not a shared definition |\n\n`canonicalStep` duplicates about two hundred lines of arithmetic from\n`canonicalSignedStep`. That is deliberate and temporary: the old one has no\n`pts` to build a `ToomCookTable` from, so it cannot be *defined* as the\nconstant-policy case, and it is still what the Shor side calls. Item 4 removes\nthe duplicate once the Shor side moves over.",
+   "fsPath": "Implementation/PhaseProduct/Compiler/PolicyWorkspace.lean",
+   "importedBy": [
+    "PhaseProduct/Lowering/Plan.lean",
+    "PhaseProduct/Lowering/PlanBuilders.lean",
+    "PhaseProduct/Spec/Cleanliness.lean"
+   ],
+   "imports": [
+    "Framework/Policy.lean",
+    "PhaseProduct/Compiler/Workspace.lean"
+   ],
+   "kind": "file",
+   "lines": 467,
+   "name": "PolicyWorkspace.lean",
+   "path": "PhaseProduct/Compiler/PolicyWorkspace.lean"
+  },
   "PhaseProduct/Compiler/Widths.lean": {
    "declarations": [
     {
@@ -6434,6 +6562,7 @@ window.GRAPH = {
     "GateCount/PhaseProduct/Lemmas.lean",
     "GateCount/PhaseProduct/Main.lean",
     "GateCount/QFT_GateCount.lean",
+    "PhaseProduct/Compiler/PolicyWorkspace.lean",
     "PhaseProduct/Lowering/PlanBuilders.lean",
     "PhaseProduct/Spec/Cleanliness.lean",
     "QFT/Lowering/Workspace.lean",
@@ -6676,7 +6805,7 @@ window.GRAPH = {
     "PhaseProduct/Lowering/Plan.lean",
     "PhaseProduct/Lowering/PlanBuilders.lean"
    ],
-   "declCount": 24,
+   "declCount": 38,
    "fileCount": 3,
    "fsPath": "Implementation/PhaseProduct/Lowering",
    "kind": "folder",
@@ -6695,9 +6824,29 @@ window.GRAPH = {
      "kind": "def",
      "line": 27,
      "name": "Shor.lowerCSignedPhaseProdWithWorkspace"
+    },
+    {
+     "kind": "def",
+     "line": 53,
+     "name": "Shor.Policy.lowerSignedPhaseProd"
+    },
+    {
+     "kind": "def",
+     "line": 64,
+     "name": "Shor.Policy.lowerCSignedPhaseProd"
+    },
+    {
+     "kind": "theorem",
+     "line": 74,
+     "name": "Shor.lowerSignedPhaseProdWithWorkspace_eq_policy"
+    },
+    {
+     "kind": "theorem",
+     "line": 84,
+     "name": "Shor.lowerCSignedPhaseProdWithWorkspace_eq_policy"
     }
    ],
-   "docstring": null,
+   "docstring": "=========================================================\n    The policy-level lowerers\n\n    The names the Shor layer calls once it lowers through a policy (item 5).\n    The fixed-table lowerers above are these at `constPolicy`, which is what\n    `Policy.workspaceOK_const_iff` says.\n=========================================================",
    "fsPath": "Implementation/PhaseProduct/Lowering/Lower.lean",
    "importedBy": [
     "GateCount/Definitions.lean",
@@ -6711,7 +6860,7 @@ window.GRAPH = {
     "PhaseProduct/Lowering/PlanBuilders.lean"
    ],
    "kind": "file",
-   "lines": 41,
+   "lines": 93,
    "name": "Lower.lean",
    "path": "PhaseProduct/Lowering/Lower.lean"
   },
@@ -6719,52 +6868,52 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "def",
-     "line": 26,
+     "line": 28,
      "name": "Shor.loweringPhaseCoeff"
     },
     {
      "kind": "def",
-     "line": 30,
+     "line": 32,
      "name": "Shor.compiledSignedPhaseGate"
     },
     {
      "kind": "def",
-     "line": 43,
+     "line": 45,
      "name": "Shor.compiledCSignedPhaseGate"
     },
     {
      "kind": "inductive",
-     "line": 79,
+     "line": 81,
      "name": "Shor.PhaseLoweringPlan"
     },
     {
      "kind": "def",
-     "line": 227,
+     "line": 229,
      "name": "Shor.lowerGateRec"
     },
     {
      "kind": "lemma",
-     "line": 264,
+     "line": 262,
      "name": "Shor.generatedInterpolationPoints_length"
     },
     {
      "kind": "abbrev",
-     "line": 272,
+     "line": 279,
      "name": "Shor.StandardPhaseLoweringPlan"
     },
     {
      "kind": "def",
-     "line": 278,
+     "line": 285,
      "name": "Shor.lowerPhasePlan"
     },
     {
      "kind": "def",
-     "line": 297,
+     "line": 304,
      "name": "Shor.lowerSignedPhaseProd"
     },
     {
      "kind": "def",
-     "line": 314,
+     "line": 321,
      "name": "Shor.lowerCSignedPhaseProd"
     }
    ],
@@ -6782,11 +6931,13 @@ window.GRAPH = {
     "QFT/Proofs/Lowering/Readiness.lean"
    ],
    "imports": [
+    "Framework/Policy.lean",
     "PhaseProduct/Compiler/Compile.lean",
+    "PhaseProduct/Compiler/PolicyWorkspace.lean",
     "PhaseProduct/Gates/NaiveLeaf.lean"
    ],
    "kind": "file",
-   "lines": 328,
+   "lines": 335,
    "name": "Plan.lean",
    "path": "PhaseProduct/Lowering/Plan.lean"
   },
@@ -6794,12 +6945,12 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "def",
-     "line": 17,
+     "line": 23,
      "name": "Shor.planAllocChunkGate"
     },
     {
      "kind": "def",
-     "line": 36,
+     "line": 39,
      "name": "Shor.planDeallocChunkGate"
     },
     {
@@ -6809,51 +6960,101 @@ window.GRAPH = {
     },
     {
      "kind": "def",
-     "line": 76,
+     "line": 73,
      "name": "Shor.planCompileSignedAllocations"
     },
     {
      "kind": "def",
-     "line": 90,
+     "line": 84,
      "name": "Shor.planCompileSignedDeallocationsAux"
     },
     {
      "kind": "def",
-     "line": 112,
+     "line": 103,
      "name": "Shor.planCompileSignedDeallocations"
     },
     {
      "kind": "def",
-     "line": 134,
+     "line": 126,
      "name": "Shor.planCompileAnnotatedOpsToSignedGateAux"
     },
     {
      "kind": "def",
-     "line": 188,
+     "line": 178,
      "name": "Shor.planCompileAnnotatedOpsToCSignedGateAux"
     },
     {
      "kind": "def",
-     "line": 244,
+     "line": 239,
+     "name": "Shor.Policy.stepPlan"
+    },
+    {
+     "kind": "def",
+     "line": 289,
+     "name": "Shor.Policy.cStepPlan"
+    },
+    {
+     "kind": "def",
+     "line": 343,
      "name": "Shor.planCompiledSignedPhaseGate"
     },
     {
      "kind": "def",
-     "line": 296,
+     "line": 364,
      "name": "Shor.planCompiledCSignedPhaseGate"
     },
     {
      "kind": "def",
-     "line": 359,
+     "line": 407,
+     "name": "Shor.Policy.signedPlanOf"
+    },
+    {
+     "kind": "def",
+     "line": 438,
+     "name": "Shor.Policy.signedPlan"
+    },
+    {
+     "kind": "def",
+     "line": 448,
+     "name": "Shor.Policy.cSignedPlanOf"
+    },
+    {
+     "kind": "def",
+     "line": 489,
+     "name": "Shor.Policy.cSignedPlan"
+    },
+    {
+     "kind": "theorem",
+     "line": 506,
+     "name": "Shor.Policy.signedPlan_constPolicy"
+    },
+    {
+     "kind": "theorem",
+     "line": 514,
+     "name": "Shor.Policy.cSignedPlan_constPolicy"
+    },
+    {
+     "kind": "theorem",
+     "line": 523,
+     "name": "Shor.Policy.workspaceOK_of_const"
+    },
+    {
+     "kind": "theorem",
+     "line": 529,
+     "name": "Shor.Policy.cWorkspaceOK_of_const"
+    },
+    {
+     "kind": "def",
+     "line": 543,
      "name": "Shor.standardSignedPhaseLoweringPlan"
     },
     {
      "kind": "def",
-     "line": 417,
+     "line": 557,
      "name": "Shor.standardCSignedPhaseLoweringPlan"
     }
    ],
-   "docstring": "=========================================================\n    Allocation and deallocation plan builders\n\n    These definitions mirror the compiler constructors for moving values into\n    and out of a recursive phase-product layout. Each allocation or deallocation\n    gate is replaced by the corresponding primitive plan node.\n=========================================================",
+   "docstring": "=========================================================\n    Allocation and deallocation plan builders\n\n    These definitions mirror the compiler constructors for moving values into\n    and out of a recursive phase-product layout. Each allocation or deallocation\n    gate is replaced by the corresponding primitive plan node.\n\n    None of them mentions the table: they build primitive plan nodes, whose\n    shapes are unchanged by policy indexing. The five table parameters are\n    replaced by a single `{P}`, and `{k}` now comes from the gate rather than\n    from the plan, so every call site is unaffected.\n=========================================================",
    "fsPath": "Implementation/PhaseProduct/Lowering/PlanBuilders.lean",
    "importedBy": [
     "GateCount/PhaseProduct/Lemmas.lean",
@@ -6864,11 +7065,12 @@ window.GRAPH = {
     "QFT/Proofs/Lowering/Readiness.lean"
    ],
    "imports": [
+    "PhaseProduct/Compiler/PolicyWorkspace.lean",
     "PhaseProduct/Compiler/Workspace.lean",
     "PhaseProduct/Lowering/Plan.lean"
    ],
    "kind": "file",
-   "lines": 488,
+   "lines": 571,
    "name": "PlanBuilders.lean",
    "path": "PhaseProduct/Lowering/PlanBuilders.lean"
   },
@@ -6883,6 +7085,16 @@ window.GRAPH = {
      "kind": "theorem",
      "line": 43,
      "name": "Shor.lowerCSignedPhaseProduct_correct"
+    },
+    {
+     "kind": "theorem",
+     "line": 78,
+     "name": "Shor.Policy.lowerSignedPhaseProduct_correct"
+    },
+    {
+     "kind": "theorem",
+     "line": 94,
+     "name": "Shor.Policy.lowerCSignedPhaseProduct_correct"
     }
    ],
    "docstring": "# Phase-Product Main Theorems\n\nThis module proves the public assertions for the phase-product implementation.\nAll supporting lemmas are kept under `PhaseProduct.Proofs`.",
@@ -6895,7 +7107,7 @@ window.GRAPH = {
     "PhaseProduct/Spec/Assertions.lean"
    ],
    "kind": "file",
-   "lines": 67,
+   "lines": 111,
    "name": "Main.lean",
    "path": "PhaseProduct/Main.lean"
   },
@@ -9976,7 +10188,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering",
     "PhaseProduct/Proofs/NaiveLeaf.lean"
    ],
-   "declCount": 274,
+   "declCount": 283,
    "fileCount": 22,
    "fsPath": "Implementation/PhaseProduct/Proofs",
    "kind": "folder",
@@ -10986,7 +11198,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/PlanSemantics.lean",
     "PhaseProduct/Proofs/Lowering/Workspace.lean"
    ],
-   "declCount": 73,
+   "declCount": 82,
    "fileCount": 9,
    "fsPath": "Implementation/PhaseProduct/Proofs/Lowering",
    "kind": "folder",
@@ -11000,6 +11212,11 @@ window.GRAPH = {
      "kind": "lemma",
      "line": 29,
      "name": "Shor.evalL_lowerSignedPhaseProd_of_plan"
+    },
+    {
+     "kind": "lemma",
+     "line": 55,
+     "name": "Shor.Policy.evalL_lowerSignedPhaseProd_of_plan"
     }
    ],
    "docstring": "# Phase-Product Lowering Correctness Bridge\n\nThis proof module supplies the plan-level semantic bridge used by the public\ntheorems in `PhaseProduct.Main`. Earlier files build the plan, workspace, and\nreadiness invariants; `Main` packages the final reader-facing statements.",
@@ -11016,7 +11233,7 @@ window.GRAPH = {
     "PhaseProduct/Spec/Readiness.lean"
    ],
    "kind": "file",
-   "lines": 51,
+   "lines": 71,
    "name": "Correctness.lean",
    "path": "PhaseProduct/Proofs/Lowering/Correctness.lean"
   },
@@ -11129,37 +11346,42 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 49,
+     "line": 50,
+     "name": "Shor.Policy.signedPlan_preserves_clean_of_ready"
+    },
+    {
+     "kind": "lemma",
+     "line": 76,
      "name": "Shor.standardSignedPhaseLoweringPlan_preserves_clean_of_ready"
     },
     {
      "kind": "lemma",
-     "line": 83,
+     "line": 106,
      "name": "Shor.evalL_lowerGateRec_zero"
     },
     {
      "kind": "lemma",
-     "line": 99,
+     "line": 118,
      "name": "Shor.PhaseLoweringReady.zero"
     },
     {
      "kind": "lemma",
-     "line": 168,
+     "line": 183,
      "name": "Shor.evalL_lowerGateRec_add"
     },
     {
      "kind": "lemma",
-     "line": 187,
+     "line": 198,
      "name": "Shor.PhaseLoweringReady.add"
     },
     {
      "kind": "lemma",
-     "line": 295,
+     "line": 302,
      "name": "Shor.evalL_lowerGateRec_smul"
     },
     {
      "kind": "lemma",
-     "line": 314,
+     "line": 317,
      "name": "Shor.PhaseLoweringReady.smul"
     }
    ],
@@ -11175,7 +11397,7 @@ window.GRAPH = {
     "PhaseProduct/Spec/Cleanliness.lean"
    ],
    "kind": "file",
-   "lines": 403,
+   "lines": 402,
    "name": "Linearity.lean",
    "path": "PhaseProduct/Proofs/Lowering/Linearity.lean"
   },
@@ -11193,87 +11415,87 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 54,
+     "line": 53,
      "name": "Shor.PhaseLoweringPlan.lowerGateRec_seq"
     },
     {
      "kind": "lemma",
-     "line": 63,
+     "line": 62,
      "name": "Shor.PhaseLoweringPlan.lowerGateRec_signedBase"
     },
     {
      "kind": "lemma",
-     "line": 72,
+     "line": 71,
      "name": "Shor.PhaseLoweringPlan.lowerGateRec_signedStep"
     },
     {
      "kind": "lemma",
-     "line": 85,
+     "line": 86,
      "name": "Shor.PhaseLoweringPlan.lowerGateRec_cSignedBase"
     },
     {
      "kind": "lemma",
-     "line": 95,
+     "line": 96,
      "name": "Shor.PhaseLoweringPlan.lowerGateRec_cSignedStep"
     },
     {
      "kind": "theorem",
-     "line": 118,
+     "line": 121,
      "name": "Shor.LowerablePhaseGate.not_adj"
     },
     {
      "kind": "theorem",
-     "line": 121,
+     "line": 124,
      "name": "Shor.LowerablePhaseGate.not_QFT"
     },
     {
      "kind": "lemma",
-     "line": 134,
+     "line": 137,
      "name": "Shor.lowerable_allocChunkGate"
     },
     {
      "kind": "lemma",
-     "line": 143,
+     "line": 146,
      "name": "Shor.lowerable_deallocChunkGate"
     },
     {
      "kind": "lemma",
-     "line": 152,
+     "line": 155,
      "name": "Shor.lowerable_compileSignedAllocationsAux"
     },
     {
      "kind": "lemma",
-     "line": 172,
+     "line": 175,
      "name": "Shor.lowerable_compileSignedAllocations"
     },
     {
      "kind": "lemma",
-     "line": 178,
+     "line": 181,
      "name": "Shor.lowerable_compileSignedDeallocationsAux"
     },
     {
      "kind": "lemma",
-     "line": 201,
+     "line": 204,
      "name": "Shor.lowerable_compileSignedDeallocations"
     },
     {
      "kind": "lemma",
-     "line": 207,
+     "line": 210,
      "name": "Shor.lowerable_compileAnnotatedOpsToSignedGateAux"
     },
     {
      "kind": "lemma",
-     "line": 230,
+     "line": 233,
      "name": "Shor.lowerable_compileOpsToSignedGate"
     },
     {
      "kind": "lemma",
-     "line": 250,
+     "line": 253,
      "name": "Shor.lowerable_controlPhaseLeaves"
     },
     {
      "kind": "lemma",
-     "line": 270,
+     "line": 273,
      "name": "Shor.lowerable_compileOpsToCSignedGate"
     }
    ],
@@ -11289,7 +11511,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/EvalL.lean"
    ],
    "kind": "file",
-   "lines": 277,
+   "lines": 280,
    "name": "Lowerable.lean",
    "path": "PhaseProduct/Proofs/Lowering/Lowerable.lean"
   },
@@ -11299,7 +11521,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/PlanReadiness/BodyReadiness.lean",
     "PhaseProduct/Proofs/Lowering/PlanReadiness/RecursiveReadiness.lean"
    ],
-   "declCount": 20,
+   "declCount": 27,
    "fileCount": 3,
    "fsPath": "Implementation/PhaseProduct/Proofs/Lowering/PlanReadiness",
    "kind": "folder",
@@ -11317,31 +11539,36 @@ window.GRAPH = {
     {
      "kind": "lemma",
      "line": 38,
+     "name": "Shor.PhaseLoweringReady.cast_initSize"
+    },
+    {
+     "kind": "lemma",
+     "line": 55,
      "name": "Shor.planAllocChunkGate_ready"
     },
     {
      "kind": "lemma",
-     "line": 90,
+     "line": 104,
      "name": "Shor.planCompileSignedAllocationsAux_ready"
     },
     {
      "kind": "lemma",
-     "line": 121,
+     "line": 131,
      "name": "Shor.planCompileSignedAllocations_ready"
     },
     {
      "kind": "lemma",
-     "line": 142,
+     "line": 148,
      "name": "Shor.planDeallocChunkGate_ready"
     },
     {
      "kind": "lemma",
-     "line": 194,
+     "line": 197,
      "name": "Shor.planCompileSignedDeallocationsAux_ready"
     },
     {
      "kind": "lemma",
-     "line": 225,
+     "line": 224,
      "name": "Shor.planCompileSignedDeallocations_ready"
     }
    ],
@@ -11354,7 +11581,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/PlanReadiness/BodyReadiness.lean"
    ],
    "kind": "file",
-   "lines": 245,
+   "lines": 240,
    "name": "AllocDeallocReadiness.lean",
    "path": "PhaseProduct/Proofs/Lowering/PlanReadiness/AllocDeallocReadiness.lean"
   },
@@ -11367,17 +11594,17 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 246,
+     "line": 229,
      "name": "Shor.planCompileAnnotatedOps_ready_ket_of_blocks_from"
     },
     {
      "kind": "lemma",
-     "line": 787,
+     "line": 743,
      "name": "Shor.planCompileAnnotatedOps_c_ready_append_of_noPhase"
     },
     {
      "kind": "lemma",
-     "line": 1010,
+     "line": 949,
      "name": "Shor.planCompileAnnotatedOps_c_ready_ket_of_blocks_from"
     }
    ],
@@ -11399,7 +11626,7 @@ window.GRAPH = {
     "PhaseProduct/Spec/Readiness.lean"
    ],
    "kind": "file",
-   "lines": 1558,
+   "lines": 1470,
    "name": "BodyReadiness.lean",
    "path": "PhaseProduct/Proofs/Lowering/PlanReadiness/BodyReadiness.lean"
   },
@@ -11412,43 +11639,73 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 116,
+     "line": 117,
+     "name": "Shor.Policy.signedPlanOf_ready_ket"
+    },
+    {
+     "kind": "lemma",
+     "line": 190,
+     "name": "Shor.Policy.signedPlan_ready_ket"
+    },
+    {
+     "kind": "lemma",
+     "line": 207,
      "name": "Shor.standardSignedPhaseLoweringPlan_ready_ket"
     },
     {
      "kind": "theorem",
-     "line": 194,
+     "line": 231,
      "name": "Shor.standardSignedPhaseLoweringPlan_ready_and_clean"
     },
     {
      "kind": "theorem",
-     "line": 232,
+     "line": 269,
      "name": "Shor.standardSignedPhaseLoweringPlan_ready"
     },
     {
      "kind": "lemma",
-     "line": 255,
+     "line": 292,
      "name": "Shor.standardSignedPhaseLoweringPlan_ready_of_workspace"
     },
     {
      "kind": "lemma",
-     "line": 277,
+     "line": 314,
      "name": "Shor.planCompiledCSignedPhaseGate_ready_ket"
     },
     {
      "kind": "lemma",
-     "line": 389,
+     "line": 422,
+     "name": "Shor.Policy.cSignedPlanOf_ready_ket"
+    },
+    {
+     "kind": "lemma",
+     "line": 506,
+     "name": "Shor.Policy.cSignedPlan_ready_ket"
+    },
+    {
+     "kind": "lemma",
+     "line": 524,
      "name": "Shor.standardCSignedPhaseLoweringPlan_ready_ket"
     },
     {
      "kind": "theorem",
-     "line": 481,
+     "line": 551,
      "name": "Shor.standardCSignedPhaseLoweringPlan_ready"
     },
     {
      "kind": "lemma",
-     "line": 510,
+     "line": 580,
      "name": "Shor.standardCSignedPhaseLoweringPlan_ready_of_workspace"
+    },
+    {
+     "kind": "lemma",
+     "line": 610,
+     "name": "Shor.Policy.signedPlan_ready"
+    },
+    {
+     "kind": "lemma",
+     "line": 631,
+     "name": "Shor.Policy.cSignedPlan_ready"
     }
    ],
    "docstring": "=========================================================\n    Recursive Signed Phase-Product Readiness\n    These lemmas assemble allocation, body readiness, recursive child readiness,\n    and deallocation into readiness for the canonical signed phase-product\n    lowering plan. The basis-ket proof is extended to arbitrary clean states by\n    linearity.\n=========================================================",
@@ -11462,7 +11719,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/PlanReadiness/AllocDeallocReadiness.lean"
    ],
    "kind": "file",
-   "lines": 532,
+   "lines": 652,
    "name": "RecursiveReadiness.lean",
    "path": "PhaseProduct/Proofs/Lowering/PlanReadiness/RecursiveReadiness.lean"
   },
@@ -11470,17 +11727,17 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "lemma",
-     "line": 30,
+     "line": 31,
      "name": "Shor.eval_compiledSignedPhaseGate_correct"
     },
     {
      "kind": "lemma",
-     "line": 59,
+     "line": 60,
      "name": "Shor.eval_compiledCSignedPhaseGate_correct"
     },
     {
      "kind": "lemma",
-     "line": 99,
+     "line": 100,
      "name": "Shor.evalL_lowerGateRec_correct"
     }
    ],
@@ -11492,13 +11749,14 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/PlanReadiness/BodyReadiness.lean"
    ],
    "imports": [
+    "Framework/Policy.lean",
     "PhaseProduct/Proofs/Compiler/Compilation.lean",
     "PhaseProduct/Proofs/Compiler/Correctness.lean",
     "PhaseProduct/Proofs/Lowering/Lowerable.lean",
     "PhaseProduct/Spec/Readiness.lean"
    ],
    "kind": "file",
-   "lines": 238,
+   "lines": 237,
    "name": "PlanSemantics.lean",
    "path": "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
   },
@@ -11845,7 +12103,7 @@ window.GRAPH = {
     "PhaseProduct/Spec/Cleanliness.lean",
     "PhaseProduct/Spec/Readiness.lean"
    ],
-   "declCount": 12,
+   "declCount": 18,
    "fileCount": 3,
    "fsPath": "Implementation/PhaseProduct/Spec",
    "kind": "folder",
@@ -11864,6 +12122,16 @@ window.GRAPH = {
      "kind": "def",
      "line": 45,
      "name": "Shor.LowerCSignedPhaseProductCorrect"
+    },
+    {
+     "kind": "def",
+     "line": 81,
+     "name": "Shor.Policy.LowerSignedPhaseProductCorrect"
+    },
+    {
+     "kind": "def",
+     "line": 99,
+     "name": "Shor.Policy.LowerCSignedPhaseProductCorrect"
     }
    ],
    "docstring": "# Phase-Product Public Assertions\n\nThe final semantic claims of the phase-product implementation, stated as named\npropositions.",
@@ -11876,7 +12144,7 @@ window.GRAPH = {
     "PhaseProduct/Spec/Cleanliness.lean"
    ],
    "kind": "file",
-   "lines": 66,
+   "lines": 115,
    "name": "Assertions.lean",
    "path": "PhaseProduct/Spec/Assertions.lean"
   },
@@ -11884,48 +12152,68 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "def",
-     "line": 18,
+     "line": 19,
      "name": "Shor.LayoutState.CleanForGrowth"
     },
     {
      "kind": "def",
-     "line": 23,
+     "line": 24,
      "name": "Shor.CompilerWorkspaceOK"
     },
     {
      "kind": "abbrev",
-     "line": 29,
+     "line": 30,
      "name": "Shor.CleanWorkspaceState"
     },
     {
      "kind": "def",
-     "line": 34,
+     "line": 35,
      "name": "Shor.LayoutReserveCleanBasis"
     },
     {
      "kind": "abbrev",
-     "line": 40,
+     "line": 41,
      "name": "Shor.LayoutReserveCleanState"
     },
     {
      "kind": "def",
-     "line": 53,
+     "line": 54,
      "name": "Shor.RecursiveWorkspaceCleanBasis"
     },
     {
      "kind": "abbrev",
-     "line": 63,
+     "line": 64,
      "name": "Shor.RecursiveWorkspaceCleanState"
     },
     {
      "kind": "structure",
-     "line": 75,
+     "line": 76,
      "name": "Shor.SignedRecursiveWorkspaceStateOK"
     },
     {
      "kind": "structure",
-     "line": 85,
+     "line": 86,
      "name": "Shor.CSignedRecursiveWorkspaceStateOK"
+    },
+    {
+     "kind": "structure",
+     "line": 104,
+     "name": "Shor.Policy.WorkspaceStateOK"
+    },
+    {
+     "kind": "structure",
+     "line": 116,
+     "name": "Shor.Policy.CWorkspaceStateOK"
+    },
+    {
+     "kind": "theorem",
+     "line": 125,
+     "name": "Shor.Policy.workspaceStateOK_const_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 133,
+     "name": "Shor.Policy.cWorkspaceStateOK_const_iff"
     }
    ],
    "docstring": "# Phase-Product Cleanliness Predicates\n\nThe cleanliness predicates needed to state phase-product readiness/assertions:\ncompiler-workspace cleanliness during a recursive compile step\n(`CompilerWorkspaceOK`, `CleanWorkspaceState`), reserve cleanliness for a\nlayout (`LayoutReserveCleanBasis`, `LayoutReserveCleanState`), and cleanliness\nof the complete reserves (`RecursiveWorkspaceCleanState`,\n`SignedRecursiveWorkspaceStateOK`, `CSignedRecursiveWorkspaceStateOK`).",
@@ -11945,11 +12233,12 @@ window.GRAPH = {
     "Shor/Proofs/Readiness/Step5.lean"
    ],
    "imports": [
+    "PhaseProduct/Compiler/PolicyWorkspace.lean",
     "PhaseProduct/Compiler/Workspace.lean",
     "Shared/States.lean"
    ],
    "kind": "file",
-   "lines": 91,
+   "lines": 141,
    "name": "Cleanliness.lean",
    "path": "PhaseProduct/Spec/Cleanliness.lean"
   },
@@ -11976,7 +12265,7 @@ window.GRAPH = {
     "PhaseProduct/Spec/Cleanliness.lean"
    ],
    "kind": "file",
-   "lines": 62,
+   "lines": 58,
    "name": "Readiness.lean",
    "path": "PhaseProduct/Spec/Readiness.lean"
   },
@@ -12559,32 +12848,32 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 309,
+     "line": 310,
      "name": "Shor.evalL_lowerQFTPlan_add"
     },
     {
      "kind": "lemma",
-     "line": 320,
+     "line": 321,
      "name": "Shor.evalL_lowerQFTPlan_smul"
     },
     {
      "kind": "lemma",
-     "line": 333,
+     "line": 334,
      "name": "Shor.QFTLoweringReady.add"
     },
     {
      "kind": "lemma",
-     "line": 386,
+     "line": 387,
      "name": "Shor.QFTLoweringReady.smul"
     },
     {
      "kind": "lemma",
-     "line": 434,
+     "line": 435,
      "name": "Shor.evalL_lowerQFTPlan_zero"
     },
     {
      "kind": "lemma",
-     "line": 442,
+     "line": 443,
      "name": "Shor.QFTLoweringReady.zero"
     }
    ],
@@ -12607,7 +12896,7 @@ window.GRAPH = {
     "Shared/States.lean"
    ],
    "kind": "file",
-   "lines": 464,
+   "lines": 465,
    "name": "PlanSemantics.lean",
    "path": "QFT/Proofs/Lowering/PlanSemantics.lean"
   },
@@ -12665,32 +12954,32 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 235,
+     "line": 237,
      "name": "Shor.eval_QFT_preserves_QFTWorkspaceCleanState"
     },
     {
      "kind": "theorem",
-     "line": 288,
+     "line": 290,
      "name": "Shor.standardQFTLoweringPlan_ready_and_clean_explicit"
     },
     {
      "kind": "theorem",
-     "line": 419,
+     "line": 421,
      "name": "Shor.standardQFTLoweringPlan_ready_and_clean"
     },
     {
      "kind": "lemma",
-     "line": 440,
+     "line": 442,
      "name": "Shor.reserveQFTLoweringPlan_ready_ket"
     },
     {
      "kind": "lemma",
-     "line": 457,
+     "line": 459,
      "name": "Shor.reserveQFTLoweringPlan_preserves_clean_of_ready"
     },
     {
      "kind": "theorem",
-     "line": 477,
+     "line": 479,
      "name": "Shor.evalL_lowerQFT"
     }
    ],
@@ -12725,7 +13014,7 @@ window.GRAPH = {
     "Shared/States.lean"
    ],
    "kind": "file",
-   "lines": 520,
+   "lines": 522,
    "name": "Readiness.lean",
    "path": "QFT/Proofs/Lowering/Readiness.lean"
   },
@@ -16773,6 +17062,18 @@ window.GRAPH = {
        "PhaseProduct/Gates/NaiveLeaf.lean"
       ],
       [
+       "Framework/Policy.lean",
+       "PhaseProduct/Compiler/PolicyWorkspace.lean"
+      ],
+      [
+       "Framework/Policy.lean",
+       "PhaseProduct/Lowering/Plan.lean"
+      ],
+      [
+       "Framework/Policy.lean",
+       "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
+      ],
+      [
        "Framework/Semantics/GateSemantics.lean",
        "PhaseProduct/Compiler/Layout.lean"
       ],
@@ -16818,7 +17119,7 @@ window.GRAPH = {
       ]
      ],
      "to": "PhaseProduct",
-     "weight": 16
+     "weight": 19
     },
     {
      "from": "Framework",
@@ -18112,7 +18413,7 @@ window.GRAPH = {
     "consumers": [
      {
       "target": "PhaseProduct",
-      "weight": 16
+      "weight": 19
      },
      {
       "target": "Shor",
@@ -19225,12 +19526,20 @@ window.GRAPH = {
        "PhaseProduct/Lowering/Plan.lean"
       ],
       [
+       "PhaseProduct/Compiler/PolicyWorkspace.lean",
+       "PhaseProduct/Lowering/Plan.lean"
+      ],
+      [
+       "PhaseProduct/Compiler/PolicyWorkspace.lean",
+       "PhaseProduct/Lowering/PlanBuilders.lean"
+      ],
+      [
        "PhaseProduct/Compiler/Workspace.lean",
        "PhaseProduct/Lowering/PlanBuilders.lean"
       ]
      ],
      "to": "PhaseProduct/Lowering",
-     "weight": 2
+     "weight": 4
     },
     {
      "from": "PhaseProduct/Compiler",
@@ -19271,12 +19580,16 @@ window.GRAPH = {
      "from": "PhaseProduct/Compiler",
      "pairs": [
       [
+       "PhaseProduct/Compiler/PolicyWorkspace.lean",
+       "PhaseProduct/Spec/Cleanliness.lean"
+      ],
+      [
        "PhaseProduct/Compiler/Workspace.lean",
        "PhaseProduct/Spec/Cleanliness.lean"
       ]
      ],
      "to": "PhaseProduct/Spec",
-     "weight": 1
+     "weight": 2
     },
     {
      "from": "PhaseProduct/Gates",
@@ -19476,7 +19789,7 @@ window.GRAPH = {
     "providers": [
      {
       "target": "Framework",
-      "weight": 16
+      "weight": 19
      },
      {
       "target": "Shared",
@@ -19491,6 +19804,7 @@ window.GRAPH = {
     "PhaseProduct/Compiler/Coefficients.lean",
     "PhaseProduct/Compiler/Compile.lean",
     "PhaseProduct/Compiler/Layout.lean",
+    "PhaseProduct/Compiler/PolicyWorkspace.lean",
     "PhaseProduct/Compiler/Widths.lean",
     "PhaseProduct/Compiler/Workspace.lean"
    ],
@@ -19560,6 +19874,17 @@ window.GRAPH = {
      ],
      "to": "PhaseProduct/Compiler/Compile.lean",
      "weight": 1
+    },
+    {
+     "from": "PhaseProduct/Compiler/Workspace.lean",
+     "pairs": [
+      [
+       "PhaseProduct/Compiler/Workspace.lean",
+       "PhaseProduct/Compiler/PolicyWorkspace.lean"
+      ]
+     ],
+     "to": "PhaseProduct/Compiler/PolicyWorkspace.lean",
+     "weight": 1
     }
    ],
    "ghosts": {
@@ -19577,16 +19902,16 @@ window.GRAPH = {
       "weight": 7
      },
      {
+      "target": "PhaseProduct/Lowering",
+      "weight": 4
+     },
+     {
       "target": "QFT",
       "weight": 4
      },
      {
-      "target": "PhaseProduct/Lowering",
-      "weight": 2
-     },
-     {
       "target": "PhaseProduct/Spec",
-      "weight": 1
+      "weight": 2
      },
      {
       "target": "Reference",
@@ -19596,7 +19921,7 @@ window.GRAPH = {
     "providers": [
      {
       "target": "Framework",
-      "weight": 6
+      "weight": 7
      },
      {
       "target": "PhaseProduct/Math",
@@ -19708,7 +20033,11 @@ window.GRAPH = {
     "providers": [
      {
       "target": "PhaseProduct/Compiler",
-      "weight": 2
+      "weight": 4
+     },
+     {
+      "target": "Framework",
+      "weight": 1
      },
      {
       "target": "PhaseProduct/Gates",
@@ -20318,6 +20647,10 @@ window.GRAPH = {
      {
       "target": "PhaseProduct/Gates",
       "weight": 2
+     },
+     {
+      "target": "Framework",
+      "weight": 1
      }
     ]
    },
@@ -20699,6 +21032,10 @@ window.GRAPH = {
       "weight": 2
      },
      {
+      "target": "Framework",
+      "weight": 1
+     },
+     {
       "target": "PhaseProduct/Proofs/NaiveLeaf.lean",
       "weight": 1
      }
@@ -20839,12 +21176,12 @@ window.GRAPH = {
     ],
     "providers": [
      {
-      "target": "PhaseProduct/Lowering",
+      "target": "PhaseProduct/Compiler",
       "weight": 2
      },
      {
-      "target": "PhaseProduct/Compiler",
-      "weight": 1
+      "target": "PhaseProduct/Lowering",
+      "weight": 2
      },
      {
       "target": "Shared",
