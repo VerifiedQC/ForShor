@@ -9,6 +9,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
 import FastMultiplication.ShorVerification.Framework.Gatecount.ResourceModel
+import FastMultiplication.ShorVerification.Framework.Policy
 
 namespace Shor
 open Operations
@@ -118,6 +119,24 @@ than about one particular program. -/
 theorem ShorLoweringSetup.programOK (s : ShorLoweringSetup) :
     PhaseProductProgramOK s.k s.hk s.pts s.hpts s.ops :=
   ⟨s.good, s.consumes, s.returns⟩
+
+/-- `ToomCookTable.Admissible` (`Framework/Policy.lean`) and
+`PhaseProductProgramOK` are the same three conjuncts, stated twice because
+the specification must not import the resource estimate. This is the bridge,
+and it is `Iff.rfl`: the `k > 0` proofs the two spellings feed to
+`ProgConsumesPtsSafe` differ syntactically but proof irrelevance is
+definitional. Everything `GateCount/` proves about `PhaseProductProgramOK`
+therefore applies verbatim to a table a policy chose. -/
+theorem ToomCookTable.admissible_iff_programOK (T : ToomCookTable) :
+    T.Admissible ↔ PhaseProductProgramOK T.k T.hk T.pts T.hpts T.ops :=
+  Iff.rfl
+
+/-- Restated the way the lowering proofs will consume it: an admissible
+policy hands each node the program contract for whatever table it chose. -/
+theorem ShorLoweringPolicy.programOK_of_choose {P : ShorLoweringPolicy}
+    (hP : P.Admissible) {n : ℕ} {T : ToomCookTable} (h : P.choose n = some T) :
+    PhaseProductProgramOK T.k T.hk T.pts T.hpts T.ops :=
+  (ToomCookTable.admissible_iff_programOK T).mp (hP.of_choose h)
 
 end PhaseProductStatements
 

@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Framework.ToomCookTable
+import FastMultiplication.ShorVerification.Framework.Policy
 import Mathlib.LinearAlgebra.Vandermonde
 
 /-!
@@ -13,7 +14,9 @@ what holds a submission to that; see `Submission/Template.lean` for the five
 lines this buys.
 
 Like the record it is about, this file is implementation-free: it imports
-`Framework/ToomCookTable` and Mathlib, and nothing else.
+`Framework/ToomCookTable`, `Framework/Policy` and Mathlib, and nothing else.
+(`Policy.lean` is for the policy smoke tests at the end; the four
+single-table decision procedures need nothing from it.)
 
 - **C1** `pts.length = q k` is `Nat` equality: decidable already, `rfl` in
   practice.
@@ -450,5 +453,83 @@ list with a repeated point is not merely unproven but inadmissible. -/
 example : ¬ GoodToomCookPoints 2 [Point.int 1, Point.frac 1, Point.int 0] rfl := by
   rw [goodToomCookPoints_iff_distinct]
   decide +kernel
+
+/-! ### A policy submission
+
+A policy is a list of `(threshold, ShorLoweringSetup)` bands with strictly
+decreasing thresholds (`Framework/Policy.lean`). Nothing new has to be
+decided: each band is a table submission, carrying exactly the C1–C4 above,
+and the one extra field — that the thresholds strictly decrease — is closed
+by Batteries' `Decidable (l.IsChain R)` instance over `Nat.decLt`.
+
+The policy below is the `k = 3` reference table above width 40 and the
+`k = 2` table `Submission/Template.lean` ships between 12 and 40, with the
+schoolbook leaf below 12. (`Template.lean` imports this file, so its table is
+restated here rather than referenced.) -/
+
+/-- The `k = 2` table of `Submission/Template.lean`: canonical points
+`0, -1, 1`, reached by negating register 1 rather than subtracting. -/
+def tmplPts : List Point :=
+  [Point.int 0, Point.int (-1), Point.int 1]
+
+theorem tmplPts_length : tmplPts.length = q 2 := rfl
+
+def tmplOps : Prog 2 :=
+  [ valid_ops.phaseProduct 0
+  , valid_ops.negate 1
+  , valid_ops.addScaled 0 1 false 0
+  , valid_ops.phaseProduct 0
+  , valid_ops.negate 1
+  , valid_ops.addScaled 0 1 false 0
+  , valid_ops.addScaled 0 1 false 0
+  , valid_ops.phaseProduct 0
+  , valid_ops.addScaled 0 1 true 0
+  ]
+
+def tmplSubmission : ShorSubmission where
+  k := 2
+  hk := by decide
+  pts := tmplPts
+  hpts := tmplPts_length
+  good := goodToomCookPoints_of_distinct tmplPts_length (by decide +kernel)
+  ops := tmplOps
+  consumes := by decide +kernel
+  returns := by decide +kernel
+
+/-- Two bands: Toom-3 above 40, Karatsuba from 12 to 39, leaf below 12. The
+`sorted` field is the whole of what a policy adds to its bands. -/
+def refPolicySubmission : ShorPolicySubmission where
+  bands := [(40, refSubmission), (12, tmplSubmission)]
+  sorted := by decide
+
+/-- Above the top threshold the widest band wins. -/
+example : refPolicySubmission.policy.choose 100 = some refSubmission.table := rfl
+
+/-- At `40` itself, too: a band covers `[threshold, _)`. -/
+example : refPolicySubmission.policy.choose 40 = some refSubmission.table := rfl
+
+/-- Between the thresholds, the second band. -/
+example : refPolicySubmission.policy.choose 20 = some tmplSubmission.table := rfl
+
+/-- Below the last threshold there is no table, which *is* the leaf. -/
+example : refPolicySubmission.policy.choose 5 = none := rfl
+
+/-- And the policy is admissible, because its bands are submissions. -/
+example : refPolicySubmission.policy.Admissible :=
+  refPolicySubmission.policy_admissible
+
+/-- The sort check is a real verdict: the same two thresholds the other way
+round are rejected, so a policy cannot list a narrow band before a wide one
+and have the wide one shadowed. -/
+example : ¬ List.IsChain (· > ·) [12, 40] := by decide
+
+/-- Equal thresholds are rejected too — the decrease is strict, so a width is
+covered by exactly one band. -/
+example : ¬ List.IsChain (· > ·) [40, 40] := by decide
+
+/-- A table submission is the one-band policy at threshold `0`, and that
+policy picks the same table at every width. -/
+example (n : ℕ) : (ShorPolicySubmission.ofSetup refSubmission).policy.choose n
+    = some refSubmission.table := by simp
 
 end Shor.SubmissionSmokeTest

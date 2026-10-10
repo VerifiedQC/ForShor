@@ -21,12 +21,13 @@ window.GRAPH = {
     "Framework/Contract.lean",
     "Framework/Gatecount",
     "Framework/Math",
+    "Framework/Policy.lean",
     "Framework/Quantum",
     "Framework/Semantics",
     "Framework/ToomCookTable.lean"
    ],
-   "declCount": 230,
-   "fileCount": 16,
+   "declCount": 253,
+   "fileCount": 17,
    "fsPath": "Framework",
    "kind": "folder",
    "name": "Framework",
@@ -835,6 +836,137 @@ window.GRAPH = {
    "name": "ShorDefinition.lean",
    "path": "Framework/Math/ShorDefinition.lean"
   },
+  "Framework/Policy.lean": {
+   "declarations": [
+    {
+     "kind": "structure",
+     "line": 64,
+     "name": "Shor.ToomCookTable"
+    },
+    {
+     "kind": "def",
+     "line": 81,
+     "name": "Shor.ToomCookTable.Admissible"
+    },
+    {
+     "kind": "def",
+     "line": 91,
+     "name": "Shor.ShorLoweringSetup.table"
+    },
+    {
+     "kind": "theorem",
+     "line": 96,
+     "name": "Shor.ShorLoweringSetup.table_admissible"
+    },
+    {
+     "kind": "theorem",
+     "line": 99,
+     "name": "Shor.ShorLoweringSetup.table_k"
+    },
+    {
+     "kind": "theorem",
+     "line": 101,
+     "name": "Shor.ShorLoweringSetup.table_pts"
+    },
+    {
+     "kind": "theorem",
+     "line": 103,
+     "name": "Shor.ShorLoweringSetup.table_ops"
+    },
+    {
+     "kind": "structure",
+     "line": 110,
+     "name": "Shor.PolicyBand"
+    },
+    {
+     "kind": "structure",
+     "line": 123,
+     "name": "Shor.ShorLoweringPolicy"
+    },
+    {
+     "kind": "def",
+     "line": 133,
+     "name": "Shor.ShorLoweringPolicy.choose"
+    },
+    {
+     "kind": "def",
+     "line": 141,
+     "name": "Shor.ShorLoweringPolicy.Admissible"
+    },
+    {
+     "kind": "theorem",
+     "line": 146,
+     "name": "Shor.ShorLoweringPolicy.Admissible.of_choose"
+    },
+    {
+     "kind": "def",
+     "line": 164,
+     "name": "Shor.ShorLoweringPolicy.Stops"
+    },
+    {
+     "kind": "def",
+     "line": 174,
+     "name": "Shor.ShorLoweringPolicy.constPolicy"
+    },
+    {
+     "kind": "theorem",
+     "line": 177,
+     "name": "Shor.ShorLoweringPolicy.constPolicy_choose"
+    },
+    {
+     "kind": "theorem",
+     "line": 181,
+     "name": "Shor.ShorLoweringPolicy.constPolicy_bands"
+    },
+    {
+     "kind": "theorem",
+     "line": 184,
+     "name": "Shor.ShorLoweringPolicy.constPolicy_admissible"
+    },
+    {
+     "kind": "structure",
+     "line": 199,
+     "name": "Shor.ShorPolicySubmission"
+    },
+    {
+     "kind": "def",
+     "line": 208,
+     "name": "Shor.ShorPolicySubmission.policy"
+    },
+    {
+     "kind": "theorem",
+     "line": 212,
+     "name": "Shor.ShorPolicySubmission.policy_bands"
+    },
+    {
+     "kind": "theorem",
+     "line": 218,
+     "name": "Shor.ShorPolicySubmission.policy_admissible"
+    },
+    {
+     "kind": "def",
+     "line": 225,
+     "name": "Shor.ShorPolicySubmission.ofSetup"
+    },
+    {
+     "kind": "theorem",
+     "line": 227,
+     "name": "Shor.ShorPolicySubmission.ofSetup_policy"
+    }
+   ],
+   "docstring": "# What a lowering policy is, and what makes one admissible\n\nThe second kind of submission. A table submission\n(`Framework/ToomCookTable.lean`) is one Toom-Cook table used at every level\nof the recursive phase product. A **policy** chooses a table by operand\nwidth \u2014 Toom-6 at the top, Toom-3 in the middle, Karatsuba near the leaves,\nthe schoolbook leaf below an explicit threshold \u2014 and each table it can pick\ncarries its own C1\u2013C4. The score is a gate count at one fixed size, not an\nasymptotic exponent, and at a fixed size the optimum is a cascade rather\nthan a single radix; that is the whole motivation.\n\nLike the file it imports, this one is implementation-free: it imports\n`Framework/ToomCookTable.lean` and nothing else (not even Mathlib directly),\nso each kind of submission can be read on its own. The import rule is\none-directional \u2014 `Policy.lean` imports `ToomCookTable.lean`, never the\nreverse \u2014 because a reader of the single-table specification should not have\nto read the policy to understand a table.\n\nThe split between data and proof mirrors the one the plan type already\nmakes. `PhaseLoweringPlan` needs only `(k, hk, pts, hpts, ops)`; C2\u2013C4 are\nhypotheses of the correctness theorem, not fields of the object being built.\nSo:\n\n| | what it is |\n|---|---|\n| `ToomCookTable` | the data `(k, hk, pts, hpts, ops)`, no side conditions |\n| `ToomCookTable.Admissible` | C2\u2013C4 for one table |\n| `ShorLoweringPolicy` | a list of `(threshold, table)` bands, strictly decreasing in threshold |\n| `ShorLoweringPolicy.Admissible` | every table the policy can pick is admissible |\n| `ShorPolicySubmission` | a list of `(threshold, ShorLoweringSetup)`: the bands *with* their proofs |\n\nThree design points, each load-bearing downstream:\n\n- **The policy is keyed on width, not depth.** `choose` is applied to a plan\n  node's `initSize` (`= max x.width z.width`). The width at depth 3 depends\n  on the choices made at depths 1 and 2, so a depth-indexed policy could not\n  be reasoned about without simulating the chain. Width-indexing also makes\n  the leaf threshold explicit: `choose n = none` *is* the leaf.\n- **The shrink test stays.** Within a band the recursion still falls to the\n  leaf when the chosen table does not shrink the width (`Stops`). Termination\n  stays free and no fifth side condition is introduced.\n- **A table submission is the one-band policy at threshold `0`.**\n  `constPolicy` and `ShorPolicySubmission.ofSetup` are what make the existing\n  single-table path a special case rather than a parallel one.",
+   "fsPath": "Framework/Policy.lean",
+   "importedBy": [
+    "GateCount/Definitions.lean"
+   ],
+   "imports": [
+    "Framework/ToomCookTable.lean"
+   ],
+   "kind": "file",
+   "lines": 232,
+   "name": "Policy.lean",
+   "path": "Framework/Policy.lean"
+  },
   "Framework/Quantum": {
    "children": [
     "Framework/Quantum/Measurement.lean",
@@ -1557,6 +1689,7 @@ window.GRAPH = {
    "docstring": "# What a Toom-Cook table is, and what makes one admissible\n\nThe minimal vocabulary needed to state `Shor.ShorLoweringSetup`, plus the\nrecord itself. This file imports Mathlib and nothing else \u2014 no compiler, no\nplan builders, no generator, no proofs \u2014 so the specification can be read\nwithout the implementation that satisfies it.\n\nA submission is a Toom-Cook table: an arithmetic program `ops : Prog k` over\n`k` limb registers, together with the interpolation points `pts` its\n`phaseProduct` checkpoints evaluate at. Four side conditions make the pair\nadmissible, all decidable at a concrete `k`, `ops`, `pts`\n(`Submission/Decide.lean`):\n\n| | condition | meaning |\n|---|---|---|\n| C1 | `pts.length = q k` (`= 2k - 1`) | one point per product coefficient |\n| C2 | `GoodToomCookPoints k pts hpts` | `det (interpMatrix \u2026) \u2260 0`: the points interpolate a degree-`2k-2` polynomial. The row for `int z` is `[1, z, \u2026, z^(2k-2)]`; `frac c` means the point `1/c`, row `[c^(2k-2), \u2026, c, 1]`; `frac 0` is the point at infinity. The matrix is a projective Vandermonde, so this is *equivalent* to the points being pairwise distinct \u2014 `Submission/Decide.lean`'s `goodToomCookPoints_iff_distinct`, which is how a submission discharges it without evaluating a `(2k-1)!`-term determinant |\n| C3 | `ProgConsumesPtsSafe \u2026 ops pts` | running `ops` from `State.start_state`, the `i`-th `phaseProduct r` checkpoint finds register `r` holding exactly the `k`-entry row of `pts[i]`, all points are consumed, and no `addScaled` has `dst = src`. **Order matters**: leaf `l` receives coefficient `l` |\n| C4 | `run? ops State.start_state = some State.start_state` | the table uncomputes itself; every right shift is exact |\n\nOnly definitions live here. Every lemma about them, the point generator, the\ncompiler and the correctness proofs are under `Implementation/`, which\nimports this file. The section headers below name the file each group is\nused from.",
    "fsPath": "Framework/ToomCookTable.lean",
    "importedBy": [
+    "Framework/Policy.lean",
     "PhaseProduct/Compiler/Coefficients.lean",
     "PhaseProduct/Compiler/Layout.lean",
     "PhaseProduct/Math/Table_Generation/Core/Coverage.lean",
@@ -1578,7 +1711,7 @@ window.GRAPH = {
     "GateCount/QFT_GateCount.lean",
     "GateCount/Shor_GateCount.lean"
    ],
-   "declCount": 210,
+   "declCount": 212,
    "fileCount": 5,
    "fsPath": "Implementation/GateCount",
    "kind": "folder",
@@ -1590,157 +1723,167 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "theorem",
-     "line": 43,
+     "line": 44,
      "name": "Shor.LowGate.gateCount_id_eq"
     },
     {
      "kind": "theorem",
-     "line": 48,
+     "line": 49,
      "name": "Shor.LowGate.gateCount_seq_eq"
     },
     {
      "kind": "theorem",
-     "line": 53,
+     "line": 54,
      "name": "Shor.LowGate.gateCount_adj_eq"
     },
     {
      "kind": "theorem",
-     "line": 58,
+     "line": 59,
      "name": "Shor.LowGate.gateCount_H_eq"
     },
     {
      "kind": "theorem",
-     "line": 63,
+     "line": 64,
      "name": "Shor.LowGate.gateCount_X_eq"
     },
     {
      "kind": "def",
-     "line": 71,
+     "line": 72,
      "name": "Shor.phaseProductExponent"
     },
     {
      "kind": "def",
-     "line": 74,
+     "line": 75,
      "name": "Shor.phaseProductGateRate"
     },
     {
      "kind": "def",
-     "line": 78,
+     "line": 79,
      "name": "Shor.phaseProductSafeRate"
     },
     {
      "kind": "def",
-     "line": 82,
+     "line": 83,
      "name": "Shor.phaseProductInputSize"
     },
     {
      "kind": "def",
-     "line": 87,
+     "line": 88,
      "name": "Shor.PhaseProductGateCountBound"
     },
     {
      "kind": "def",
-     "line": 108,
+     "line": 109,
      "name": "Shor.PhaseProductProgramOK"
     },
     {
      "kind": "theorem",
-     "line": 118,
+     "line": 119,
      "name": "Shor.ShorLoweringSetup.programOK"
     },
     {
-     "kind": "def",
-     "line": 137,
-     "name": "Shor.signedPhaseProductGateCount"
+     "kind": "theorem",
+     "line": 130,
+     "name": "Shor.ToomCookTable.admissible_iff_programOK"
     },
     {
-     "kind": "def",
-     "line": 146,
-     "name": "Shor.cSignedPhaseProductGateCount"
+     "kind": "theorem",
+     "line": 136,
+     "name": "Shor.ShorLoweringPolicy.programOK_of_choose"
     },
     {
      "kind": "def",
      "line": 156,
+     "name": "Shor.signedPhaseProductGateCount"
+    },
+    {
+     "kind": "def",
+     "line": 165,
+     "name": "Shor.cSignedPhaseProductGateCount"
+    },
+    {
+     "kind": "def",
+     "line": 175,
      "name": "Shor.BalancedSignedPhaseProductBound"
     },
     {
      "kind": "def",
-     "line": 167,
+     "line": 186,
      "name": "Shor.phaseArithmeticOpCost"
     },
     {
      "kind": "def",
-     "line": 176,
+     "line": 195,
      "name": "Shor.phaseProgramOverhead"
     },
     {
      "kind": "def",
-     "line": 181,
+     "line": 200,
      "name": "Shor.phaseOpWidthGrowth"
     },
     {
      "kind": "def",
-     "line": 189,
+     "line": 208,
      "name": "Shor.phaseProgramWidthGrowth"
     },
     {
      "kind": "structure",
-     "line": 195,
+     "line": 214,
      "name": "Shor.BalancedPhaseProductInstance"
     },
     {
      "kind": "def",
-     "line": 215,
+     "line": 234,
      "name": "Shor.WidthStateBounded"
     },
     {
      "kind": "def",
-     "line": 219,
+     "line": 238,
      "name": "Shor.NeededWidthsBounded"
     },
     {
      "kind": "def",
-     "line": 236,
+     "line": 255,
      "name": "Shor.shorGateRate"
     },
     {
      "kind": "def",
-     "line": 241,
+     "line": 260,
      "name": "Shor.CPhaseProductGateCountBound"
     },
     {
      "kind": "def",
-     "line": 267,
+     "line": 286,
      "name": "Shor.QFTGateCountBound"
     },
     {
      "kind": "def",
-     "line": 277,
+     "line": 296,
      "name": "Shor.qftHalfWidth"
     },
     {
      "kind": "def",
-     "line": 280,
+     "line": 299,
      "name": "Shor.qftLeftReg"
     },
     {
      "kind": "def",
-     "line": 283,
+     "line": 302,
      "name": "Shor.qftRightReg"
     },
     {
      "kind": "def",
-     "line": 286,
+     "line": 305,
      "name": "Shor.loweredQFTGateCount"
     },
     {
      "kind": "def",
-     "line": 294,
+     "line": 313,
      "name": "Shor.qftSplitPhaseGateCount"
     },
     {
      "kind": "def",
-     "line": 304,
+     "line": 323,
      "name": "Shor.qftSplitRadixGateCount"
     }
    ],
@@ -1751,6 +1894,7 @@ window.GRAPH = {
    ],
    "imports": [
     "Framework/Gatecount/ResourceModel.lean",
+    "Framework/Policy.lean",
     "PhaseProduct/Compiler/Coefficients.lean",
     "PhaseProduct/Compiler/Compile.lean",
     "PhaseProduct/Compiler/Layout.lean",
@@ -1763,7 +1907,7 @@ window.GRAPH = {
     "Shor/Lowering/LowerGate.lean"
    ],
    "kind": "file",
-   "lines": 309,
+   "lines": 328,
    "name": "Definitions.lean",
    "path": "GateCount/Definitions.lean"
   },
@@ -16787,10 +16931,14 @@ window.GRAPH = {
       [
        "Framework/Gatecount/ResourceModel.lean",
        "GateCount/Definitions.lean"
+      ],
+      [
+       "Framework/Policy.lean",
+       "GateCount/Definitions.lean"
       ]
      ],
      "to": "GateCount",
-     "weight": 2
+     "weight": 3
     },
     {
      "from": "Framework",
@@ -17846,6 +17994,7 @@ window.GRAPH = {
     "Framework/Contract.lean",
     "Framework/Gatecount",
     "Framework/Math",
+    "Framework/Policy.lean",
     "Framework/Quantum",
     "Framework/Semantics",
     "Framework/ToomCookTable.lean"
@@ -17946,6 +18095,17 @@ window.GRAPH = {
      ],
      "to": "Framework/Contract.lean",
      "weight": 1
+    },
+    {
+     "from": "Framework/ToomCookTable.lean",
+     "pairs": [
+      [
+       "Framework/ToomCookTable.lean",
+       "Framework/Policy.lean"
+      ]
+     ],
+     "to": "Framework/Policy.lean",
+     "weight": 1
     }
    ],
    "ghosts": {
@@ -17968,7 +18128,7 @@ window.GRAPH = {
      },
      {
       "target": "GateCount",
-      "weight": 2
+      "weight": 3
      },
      {
       "target": "QFT",
@@ -18336,12 +18496,12 @@ window.GRAPH = {
       "weight": 4
      },
      {
-      "target": "QFT",
+      "target": "Framework",
       "weight": 3
      },
      {
-      "target": "Framework",
-      "weight": 2
+      "target": "QFT",
+      "weight": 3
      },
      {
       "target": "ModularExponentiation",

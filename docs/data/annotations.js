@@ -106,6 +106,11 @@ window.ANNOTATIONS = {
   },
   "Framework/Gatecount": { "role": "framework", "subtitle": "the cost-model interface" },
   "Framework/Math": { "role": "framework", "subtitle": "classical order/factoring definitions" },
+  "Framework/Policy.lean": {
+   "role": "framework",
+   "subtitle": "what a policy submission is",
+   "summary": "ShorPolicySubmission: a list of Toom-Cook tables indexed by operand width, each band carrying the same four side conditions a single table does, plus one decidable field saying the thresholds strictly decrease. choose picks the first band at or below a width and none is the schoolbook leaf; constPolicy makes a table submission the one-band policy at threshold 0. Imports Framework/ToomCookTable.lean and nothing else."
+  },
   "Framework/Contract.lean": {
    "role": "framework",
    "subtitle": "the public boundary",
@@ -131,14 +136,15 @@ window.ANNOTATIONS = {
    ]
   },
   "Framework": {
-   "columns": [["Framework/Quantum", "Framework/Math"], ["Framework/AbstractMachine"], ["Framework/Semantics", "Framework/Gatecount"], ["Framework/Contract.lean", "Framework/ToomCookTable.lean"]],
+   "columns": [["Framework/Quantum", "Framework/Math"], ["Framework/AbstractMachine"], ["Framework/Semantics", "Framework/Gatecount"], ["Framework/Contract.lean", "Framework/ToomCookTable.lean"], ["Framework/Policy.lean"]],
    "edges": [
     { "from": "Framework/Quantum", "to": "Framework/AbstractMachine", "emphasis": "primary", "theorem": "Reg", "label": "Reg as gate operand", "why": "Gate and LowGate syntax (Framework/AbstractMachine) is built over the Reg register type Quantum defines." },
     { "from": "Framework/AbstractMachine", "to": "Framework/Semantics", "emphasis": "primary", "theorem": "LowGate", "label": "LowerGateClass over LowGate", "why": "LowerGateClass and GateSemanticsCore (Framework/Semantics) give evaluation meaning to the LowGate/Gate syntax AbstractMachine defines." },
     { "from": "Framework/Semantics", "to": "Framework/Contract.lean", "emphasis": "primary", "theorem": "LowerGateClass", "label": "evaluating the submitted circuit", "why": "ShorImplementation's correct field states that evaluating the submitted LowGate program (via LowerGateClass) matches the framework's order-finding specification." },
     { "from": "Framework/AbstractMachine", "to": "Framework/Gatecount", "emphasis": "primary", "theorem": "gateCount", "label": "gateCount over LowGate", "why": "The cost model in Framework/Gatecount is a fold over exactly the LowGate syntax AbstractMachine defines." },
     { "from": "Framework/Gatecount", "to": "Framework/Contract.lean", "emphasis": "secondary" },
-    { "from": "Framework/Math", "to": "Framework/Contract.lean", "emphasis": "primary", "label": "order-finding spec", "why": "ShorImplementation's correctness statement is phrased in terms of the classical order/factoring definitions Framework/Math supplies." }
+    { "from": "Framework/Math", "to": "Framework/Contract.lean", "emphasis": "primary", "label": "order-finding spec", "why": "ShorImplementation's correctness statement is phrased in terms of the classical order/factoring definitions Framework/Math supplies." },
+    { "from": "Framework/ToomCookTable.lean", "to": "Framework/Policy.lean", "emphasis": "primary", "theorem": "ShorLoweringSetup", "label": "a policy is a list of tables", "why": "A policy band is one Toom-Cook table, so Policy.lean is stated over ToomCookTable.lean's vocabulary and records. The import runs one way only: a reader of the single-table specification never has to read the policy." }
    ]
   },
   "PhaseProduct": {

@@ -94,7 +94,7 @@ The reference is no longer the only implementation the development admits. `Fast
 
 | Directory | Contents |
 | --- | --- |
-| `FastMultiplication/ShorVerification/Framework/` | Semantic core, shared by every implementation: registers (`Quantum/`), the high-level `Gate` and low-level `LowGate` languages (`AbstractMachine/`), `QSemantics` and the other semantic classes (`Semantics/`), the cost model (`Gatecount/`), general classical math (`Math/`), the correctness contract (`Contract.lean`), and what makes a submitted Toom-Cook table admissible (`ToomCookTable.lean`, which imports Mathlib and nothing else). |
+| `FastMultiplication/ShorVerification/Framework/` | Semantic core, shared by every implementation: registers (`Quantum/`), the high-level `Gate` and low-level `LowGate` languages (`AbstractMachine/`), `QSemantics` and the other semantic classes (`Semantics/`), the cost model (`Gatecount/`), general classical math (`Math/`), the correctness contract (`Contract.lean`), what makes a submitted Toom-Cook table admissible (`ToomCookTable.lean`, which imports Mathlib and nothing else), and what makes a submitted *policy* admissible (`Policy.lean`: a policy is a list of width-indexed bands, and a table is the one-band policy at threshold `0`; it imports `ToomCookTable.lean`, never the reverse). |
 | `FastMultiplication/ShorVerification/Implementation/PhaseProduct/` | The recursive phase-product compiler: Toom-Cook interpolation, table generation, and compilation/lowering correctness. |
 | `FastMultiplication/ShorVerification/Implementation/QFT/` | The QFT split identity and QFT lowering correctness. |
 | `FastMultiplication/ShorVerification/Implementation/ModularExponentiation/` | Modular-multiplication/exponentiation approximation bounds. |
@@ -132,6 +132,14 @@ same for every submission.
 A submission is therefore a value of `Shor.ShorSubmission`
 (`Framework/ToomCookTable.lean`): the table, plus the submitter's proofs of
 four conditions.
+
+(A second kind of submission is being built on top of this one: a
+`Shor.ShorPolicySubmission` (`Framework/Policy.lean`) is a list of such
+tables indexed by operand width — Toom-6 at the top, Karatsuba near the
+leaves, the schoolbook leaf below an explicit threshold — each band carrying
+the same four proofs, plus one decidable field saying the thresholds strictly
+decrease. A table submission is the one-band policy at threshold `0`, so
+nothing below changes for it.)
 
 | | condition | proved by |
 | --- | --- | --- |
