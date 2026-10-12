@@ -2311,132 +2311,132 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 2506,
+     "line": 2507,
      "name": "Shor.phaseArithmeticOpCost_mono"
     },
     {
      "kind": "lemma",
-     "line": 2519,
+     "line": 2520,
      "name": "Shor.phaseProgramOverhead_mono"
     },
     {
      "kind": "lemma",
-     "line": 2541,
+     "line": 2542,
      "name": "Shor.lowerSignedPhaseProd_one_level_cost_le_nat"
     },
     {
      "kind": "lemma",
-     "line": 2615,
+     "line": 2616,
      "name": "Shor.signedPhaseProductGateCount_bounded_on_bounded_inputs"
     },
     {
      "kind": "lemma",
-     "line": 2787,
+     "line": 2788,
      "name": "Shor.one_lt_phaseProductExponent"
     },
     {
      "kind": "lemma",
-     "line": 2810,
+     "line": 2811,
      "name": "Shor.rpow_phaseProductExponent_eq_q"
     },
     {
      "kind": "lemma",
-     "line": 2832,
+     "line": 2833,
      "name": "Shor.balanced_nextSignedWidth_shifted"
     },
     {
      "kind": "lemma",
-     "line": 2896,
+     "line": 2897,
      "name": "Shor.balanced_phaseProduct_recurrence_solution"
     },
     {
      "kind": "lemma",
-     "line": 3126,
+     "line": 3127,
      "name": "Shor.phaseProdUsing_signedWorkspace"
     },
     {
      "kind": "lemma",
-     "line": 3141,
+     "line": 3142,
      "name": "Shor.lowerGate_PhaseProdUsing_gateCount_eq_signed"
     },
     {
      "kind": "lemma",
-     "line": 3182,
+     "line": 3185,
      "name": "Shor.width_phaseProdUsing_x"
     },
     {
      "kind": "lemma",
-     "line": 3191,
+     "line": 3194,
      "name": "Shor.width_phaseProdUsing_z"
     },
     {
      "kind": "lemma",
-     "line": 3201,
+     "line": 3204,
      "name": "Shor.phaseInputSize_phaseProdUsing"
     },
     {
      "kind": "lemma",
-     "line": 3225,
+     "line": 3228,
      "name": "Shor.phaseProductSafeRate_le_scaled_rpow"
     },
     {
      "kind": "lemma",
-     "line": 3306,
+     "line": 3309,
      "name": "Shor.natCast_le_phaseProduct_rpow"
     },
     {
      "kind": "lemma",
-     "line": 3326,
+     "line": 3329,
      "name": "Shor.signedPhaseProductGateCount_eq_direct_of_not_recurse"
     },
     {
      "kind": "lemma",
-     "line": 3355,
+     "line": 3358,
      "name": "Shor.signedPhaseProductGateCount_unsignedView_recurse_case_bound"
     },
     {
      "kind": "lemma",
-     "line": 3759,
+     "line": 3762,
      "name": "Shor.signedPhaseProductGateCount_unsignedView_no_recurse_case_bound"
     },
     {
      "kind": "lemma",
-     "line": 3977,
+     "line": 3980,
      "name": "Shor.phaseProductGateCountBound_of_balanced_signed_bound"
     },
     {
      "kind": "lemma",
-     "line": 4053,
+     "line": 4056,
      "name": "Shor.prog_balanced_nextSignedWidth"
     },
     {
      "kind": "lemma",
-     "line": 4144,
+     "line": 4147,
      "name": "Shor.prog_nextSignedWidth_le_input_add_const"
     },
     {
      "kind": "lemma",
-     "line": 4161,
+     "line": 4164,
      "name": "Shor.prog_no_recurse_implies_small_operand"
     },
     {
      "kind": "lemma",
-     "line": 4264,
+     "line": 4267,
      "name": "Shor.CPhaseProductReduction.lgc_cbody_le_five"
     },
     {
      "kind": "lemma",
-     "line": 4461,
+     "line": 4464,
      "name": "Shor.CPhaseProductReduction.cSignedPhaseProductGateCount_le_five_signed"
     },
     {
      "kind": "lemma",
-     "line": 4851,
+     "line": 4856,
      "name": "Shor.CPhaseProductReduction.cPhaseProdUsing_controlledWorkspace"
     },
     {
      "kind": "lemma",
-     "line": 4866,
+     "line": 4872,
      "name": "Shor.CPhaseProductReduction.lowerGate_CPhaseProdUsing_gateCount_eq_cSigned"
     }
    ],
@@ -2464,7 +2464,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/NaiveLeaf.lean"
    ],
    "kind": "file",
-   "lines": 4910,
+   "lines": 4918,
    "name": "Lemmas.lean",
    "path": "GateCount/PhaseProduct/Lemmas.lean"
   },
@@ -2493,7 +2493,7 @@ window.GRAPH = {
     "PhaseProduct/Compiler/Workspace.lean"
    ],
    "kind": "file",
-   "lines": 226,
+   "lines": 227,
    "name": "Main.lean",
    "path": "GateCount/PhaseProduct/Main.lean"
   },
@@ -2541,82 +2541,82 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 127,
+     "line": 126,
      "name": "Shor.explicitQFTPhaseGateCount_eq_signed"
     },
     {
      "kind": "lemma",
-     "line": 174,
+     "line": 175,
      "name": "Shor.explicitQFTGateCount_split"
     },
     {
      "kind": "lemma",
-     "line": 213,
+     "line": 216,
      "name": "Shor.explicitQFTGateCount_zero"
     },
     {
      "kind": "lemma",
-     "line": 229,
+     "line": 232,
      "name": "Shor.explicitQFTGateCount_one"
     },
     {
      "kind": "lemma",
-     "line": 271,
+     "line": 273,
      "name": "Shor.phaseProductGateRate_mono"
     },
     {
      "kind": "lemma",
-     "line": 283,
+     "line": 285,
      "name": "Shor.explicitQFTPhaseGateCount_eventually_le"
     },
     {
      "kind": "lemma",
-     "line": 339,
+     "line": 341,
      "name": "Shor.qftSplitRadixGateCount_le"
     },
     {
      "kind": "lemma",
-     "line": 360,
+     "line": 362,
      "name": "Shor.qftSplitRadixGateCount_eventually_le"
     },
     {
      "kind": "lemma",
-     "line": 397,
+     "line": 399,
      "name": "Shor.explicitQFTPhaseGateCount_bounded_on_bounded_sizes"
     },
     {
      "kind": "lemma",
-     "line": 426,
+     "line": 428,
      "name": "Shor.explicitQFTGateCount_bounded_on_bounded_sizes"
     },
     {
      "kind": "lemma",
-     "line": 496,
+     "line": 498,
      "name": "Shor.explicitQFTGateCount_one_level_recurrence"
     },
     {
      "kind": "lemma",
-     "line": 554,
+     "line": 556,
      "name": "Shor.qft_half_rate_contraction"
     },
     {
      "kind": "lemma",
-     "line": 728,
+     "line": 730,
      "name": "Shor.explicitQFT_binary_recurrence_solution"
     },
     {
      "kind": "lemma",
-     "line": 934,
+     "line": 936,
      "name": "Shor.lowerQFT_gateCount_eq_explicit"
     },
     {
      "kind": "theorem",
-     "line": 950,
+     "line": 953,
      "name": "Shor.qftGateCountBound_of_phaseProduct"
     },
     {
      "kind": "theorem",
-     "line": 980,
+     "line": 983,
      "name": "Shor.qftGateCountBound_of_programOK"
     }
    ],
@@ -2632,7 +2632,7 @@ window.GRAPH = {
     "PhaseProduct/Lowering/Plan.lean"
    ],
    "kind": "file",
-   "lines": 994,
+   "lines": 997,
    "name": "QFT_GateCount.lean",
    "path": "GateCount/QFT_GateCount.lean"
   },
@@ -5616,13 +5616,13 @@ window.GRAPH = {
     "PhaseProduct/Proofs",
     "PhaseProduct/Spec"
    ],
-   "declCount": 1049,
+   "declCount": 1050,
    "fileCount": 59,
    "fsPath": "Implementation/PhaseProduct",
    "kind": "folder",
    "name": "PhaseProduct",
    "path": "PhaseProduct",
-   "readmeHtml": "<h1><code>Implementation/PhaseProduct/</code></h1>\n<p>This folder implements and proves correct the <strong>phase-product</strong> subroutine: the recursive, chunked circuit that computes <code>exp(i\u00b7\u03c6\u00b7x\u00b7z)</code> on two registers <code>x</code>, <code>z</code> (signed and controlled-signed variants), the compiler that builds it from an interpolation-based Toom-Cook decomposition, and the lowering machinery that turns it into primitive <code>LowGate</code>s.</p>\n<p>The folder is organized in layers (below). <strong>Every import is \"justified\":</strong> a file may only import another file if it directly uses a declaration that file defines \u2014 never a declaration it merely re-exports transitively. <code>scripts/check_phaseproduct_layers.sh</code> (repo root) enforces both the layer order and the absence of umbrella files (a file that only imports and declares nothing of its own).</p>\n<h2>Layer order</h2>\n<pre><code>Math  &lt;  Compiler  &lt;  Gates  &lt;  Lowering  &lt;  Spec  &lt;  Proofs  &lt;  Main</code></pre>\n<p>A file may import its own folder or any folder to its left. <code>Math/Table_Generation/</code> is a self-contained subtree with its own internal layering (see below) and is exempt from this rule \u2014 treat it as a black box.</p>\n<p>Reading order for newcomers: start at <code>Main.lean</code>, then follow imports <em>backwards</em> \u2014 <code>Spec/Assertions.lean</code> for what is claimed, <code>Proofs/Lowering/Correctness.lean</code> for how the claim is proved, and outward from there into <code>Proofs/</code>, <code>Lowering/</code>, <code>Compiler/</code> as needed. The one-line descriptions below are grouped in dependency order (lowest layer first) to match that traversal.</p>\n<h2><code>Math/</code> \u2014 pure math, no framework/register dependencies (besides <code>Table_Generation</code>)</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>ToomCook.lean</code></td><td>Pure interpolation algebra: interpolation points, Vandermonde-style invertibility, radix reconstruction, and the exponential phase scalars from weighted point sums.</td></tr><tr><td><code>MasterTheorem.lean</code></td><td>The shifted scalar-recurrence envelope (master-theorem-style bound) used to derive the <code>O(n^(2+\u03b5))</code> asymptotic gate-count result.</td></tr><tr><td><code>Table_Generation.lean</code></td><td>Umbrella re-exporting the whole table-generation development (see below).</td></tr><tr><td><code>Table_Generation/</code></td><td><strong>Self-contained subtree</strong> with its own internal layering; nothing outside it should import anything but its existing public paths (<code>Math.Table_Generation</code>, <code>Math.Table_Generation.Generator</code>, <code>Math.Table_Generation.Programs.WithProduct</code>). It synthesizes and certifies the concrete interpolation-point programs used by the compiler. Internal layout:</td></tr><tr><td><code>Table_Generation/Core/Registers.lean</code></td><td>Symbolic register/state model: shifts, negation, scaled addition, right-shift success.</td></tr><tr><td><code>Table_Generation/Core/RegisterLemmas.lean</code></td><td>First proof layer over that model: inverse-program facts, <code>run?</code> simp lemmas, state algebra, well-formed undo.</td></tr><tr><td><code>Table_Generation/Core/Language.lean</code></td><td>The table-generation program language: symbolic ops, partial execution semantics, point-row matchers, coverage predicates, notation.</td></tr><tr><td><code>Table_Generation/Core/ListHelpers.lean</code></td><td>Generic list lemmas used across the table-generation proofs.</td></tr><tr><td><code>Table_Generation/Core/RunLemmas.lean</code></td><td>Program-agnostic coverage/execution lemmas: coverage bookkeeping, composition under concatenation, the <code>NoPhase</code> framework.</td></tr><tr><td><code>Table_Generation/Core/Coverage.lean</code></td><td>Turns ordered point-consumption proofs into explicit phase-block decompositions and back into unordered <code>PhaseProductCoverage</code> proofs.</td></tr><tr><td><code>Table_Generation/Core/Tactics.lean</code></td><td>Tactic elaborators automating phase-product coverage / return-to-original-state checks, plus small example programs.</td></tr><tr><td><code>Table_Generation/Builders/Fragments.lean</code></td><td>Concrete program-fragment builders (<code>computeLocal<em></code>, <code>addConst</em></code>, \u2026) and the per-point/whole-list generators built from them (<code>opsForPointWithProduct</code>, <code>genOpsWithProduct</code>).</td></tr><tr><td><code>Table_Generation/Builders/FragmentLemmas.lean</code></td><td>Correctness of those fragments.</td></tr><tr><td><code>Table_Generation/Programs/WithProduct.lean</code></td><td>Certifies <code>genOpsWithProduct</code> (defined in <code>Builders/Fragments.lean</code>) end to end: its two headline theorems (<code>genOpsWithProduct_returns_to_original</code>, <code>genOpsWithProduct_PhaseProductCoverage</code>).</td></tr><tr><td><code>Table_Generation/Generator.lean</code></td><td>Umbrella for the parity-reset generator (imports <code>Metrics</code> + <code>Correctness</code>).</td></tr><tr><td><code>Table_Generation/Generator/Spec.lean</code></td><td><code>ProductMode</code> (phase product vs. triple product) and its point-count spec.</td></tr><tr><td><code>Table_Generation/Generator/Defs.lean</code></td><td><code>streamPoint</code> (deterministic interpolation-point stream <code>0,\u221e,1,-1,2,-2,\u2026</code>) and the generator built from it.</td></tr><tr><td><code>Table_Generation/Generator/Precomputed.lean</code></td><td>Precomputed <code>k=2</code>/<code>k=3</code> table-generator artifacts for both product modes.</td></tr><tr><td><code>Table_Generation/Generator/Metrics.lean</code></td><td><code>arithmeticOperationCount</code>, <code>phaseProductCount</code> and other program size metrics.</td></tr><tr><td><code>Table_Generation/Generator/WellFormed.lean</code></td><td>Well-formedness lemmas for the generator's output programs.</td></tr><tr><td><code>Table_Generation/Generator/Correctness.lean</code></td><td>Correctness of the generator (e.g. <code>streamPoint_allowed</code>).</td></tr><tr><td><code>Table_Generation/Generator/Examples.lean</code></td><td>Utilities for inspecting generated point streams/programs (<code>ToString</code> instances, etc.).</td></tr><tr><td><code>Table_Generation/Examples.lean</code></td><td>Worked examples certified with the <code>Tactics.lean</code> elaborators, plus a few state-update helper lemmas.</td></tr></tbody></table>\n<h2><code>Compiler/</code> \u2014 the recursive phase-product compiler's definitions</h2>\n<p>Internal order: <code>Layout \u2192 Widths \u2192 Coefficients \u2192 Compile \u2192 Workspace</code> (each may import the ones before it).</p>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Layout.lean</code></td><td><code>LayoutState</code>, <code>WidthState</code>, <code>NeededWidths</code> and their bookkeeping; top-heavy split parameters; the abstract <code>PhaseSplitLayout</code>/<code>Gate.PhaseProductLayout</code> split interface; <code>initSignedLayoutState</code>/<code>targetSignedLayoutState</code>/<code>growExtRegTo</code>/<code>ExtReg.CanGrowTo</code>/<code>LayoutState.CanGrowToNeeds</code>; <code>ReserveBudget</code>.</td></tr><tr><td><code>Widths.lean</code></td><td>Width scanning over a source program (<code>scanNeededWidths</code>), the recursion-size parameters (<code>phaseInputSize</code>, <code>nextSignedWidth</code>), and the lemmas connecting a scan back to the layout it was scanned from.</td></tr><tr><td><code>Coefficients.lean</code></td><td>Interpolation/phase-coefficient definitions (<code>interpMatrix</code>, <code>phaseCoeffFromPts</code>, <code>cramerCoeffFromPts</code>, \u2026), the canonical interpolation points (<code>alternatingPoint</code>, <code>genInterpolationPoints</code>), and the bridge to the pure Toom-Cook math (<code>GoodToomCookPoints</code>, <code>toMathPoint</code>).</td></tr><tr><td><code>Compile.lean</code></td><td>The annotated-operation compiler: <code>AnnotatedOp</code>/<code>annotatePhaseTermsAux</code>, per-chunk allocation/deallocation gates, and the full signed/controlled-signed compilers (<code>compileOpsToSignedGate</code>, <code>compileOpsToCSignedGate</code>, <code>controlPhaseLeaves</code>, <code>Gate.PhaseProductLayout.ControlDisjoint</code>).</td></tr><tr><td><code>Workspace.lean</code></td><td>The recursive-workspace size model (<code>RecursivePhaseWorkspace.reserveNeed</code>), the static workspace-sufficiency predicates (<code>SignedRecursiveWorkspaceOK</code>, <code>CSignedRecursiveWorkspaceOK</code>), the concrete reserve-budget construction (<code>PhaseSplitLayout.ofBudget</code>, <code>ReserveBudget.ofRequirements</code>), and the canonical deterministic recursive step (<code>CanonicalSignedStep</code>, <code>canonicalSignedStep</code>). Top of the <code>Compiler/*</code> chain.</td></tr></tbody></table>\n<h2><code>Gates/</code> \u2014 circuit-macro definitions</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Macros.lean</code></td><td>The unsigned/controlled phase-product macros (<code>PhaseProdWorkspace</code>, <code>PhaseProdUsing</code>, <code>CPhaseProdUsing</code>) \u2014 implementation-only circuit constructions the lowering/correctness proofs consume. Depends only on <code>Framework/</code>, not on <code>Compiler/</code>.</td></tr><tr><td><code>NaiveLeaf.lean</code></td><td>The reference (unoptimized) signed/controlled phase-product circuits (<code>Naive_SignedPhaseProd</code>, <code>Naive_CSignedPhaseProd</code>) and their <code>\u2102</code>-valued term/exponent bookkeeping. Correctness lemmas about these live in <code>Proofs/NaiveLeaf.lean</code>.</td></tr></tbody></table>\n<h2><code>Lowering/</code> \u2014 turning a compiled circuit into a certified plan</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Plan.lean</code></td><td>Compiled gate packages (<code>compiledSignedPhaseGate</code>/<code>compiledCSignedPhaseGate</code>), the <code>PhaseLoweringPlan</code> inductive plan language, the interpreter <code>lowerGateRec</code>, and the standard interpolation-point public interface (<code>lowerSignedPhaseProd</code>, <code>lowerCSignedPhaseProd</code>).</td></tr><tr><td><code>PlanBuilders.lean</code></td><td>Allocation/deallocation plan builders, annotated-body plan builders, one-level compiled phase-product plans, and the canonical recursive planners <code>standardSignedPhaseLoweringPlan</code>/<code>standardCSignedPhaseLoweringPlan</code>.</td></tr><tr><td><code>Lower.lean</code></td><td>The two top-level lowered-circuit constructors from a root workspace assumption: <code>lowerSignedPhaseProdWithWorkspace</code>, <code>lowerCSignedPhaseProdWithWorkspace</code>.</td></tr></tbody></table>\n<h2><code>Spec/</code> \u2014 the public specification surface</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Cleanliness.lean</code></td><td>The cleanliness predicates needed to state readiness/assertions: compiler-workspace cleanliness (<code>CompilerWorkspaceOK</code>, <code>CleanWorkspaceState</code>), layout reserve cleanliness, and cleanliness of the complete reserves (<code>RecursiveWorkspaceCleanState</code>, <code>SignedRecursiveWorkspaceStateOK</code>, <code>CSignedRecursiveWorkspaceStateOK</code>).</td></tr><tr><td><code>Readiness.lean</code></td><td><code>PhaseLoweringReady</code>: the semantic precondition for executing a lowering plan on a state. <code>QFT/Spec/Readiness.lean</code> needs this to <em>define</em> <code>QFTLoweringReady</code>, which is why it can't live in <code>Proofs/</code>.</td></tr><tr><td><code>Assertions.lean</code></td><td>The final named propositions the implementation claims to satisfy (proved in <code>Main.lean</code>).</td></tr></tbody></table>\n<h2><code>Proofs/</code> \u2014 everything below is proof-only; nothing outside <code>Proofs/</code>/<code>Main.lean</code> may import it</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>NaiveLeaf.lean</code></td><td>Correctness of the naive reference circuits in <code>Gates/NaiveLeaf.lean</code>. Its apex theorems (<code>evalL_naive_signedPhaseProd_ket</code>, <code>gateCount_Naive_SignedPhaseProd</code>, and the controlled variants) are consumed by <code>Proofs/Lowering/EvalL.lean</code> and <code>GateCount/PhaseProduct/Lemmas.lean</code>, which is why they stay here rather than in <code>Main.lean</code>.</td></tr></tbody></table>\n<h3><code>Proofs/Compiler/</code> \u2014 correctness of the compiler (<code>Compiler/</code>, <code>Gates/</code>)</h3>\n<p>Internal order: <code>Support/WidthSoundness \u2192 Allocation/Body/Interpolation \u2192 Compilation \u2192 Correctness</code> (each may import the ones before it); <code>MacroSemantics</code> stands slightly apart (see below).</p>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Support.lean</code></td><td>Shared definitions/small lemmas for the gate-level proof: symbolic row semantics, encoding invariants, layout locality predicates, signed-width arithmetic.</td></tr><tr><td><code>WidthSoundness.lean</code></td><td>The width scan is large enough for every symbolic row value reached during execution (one-step preservation \u2192 prefix domination \u2192 allocation-facing soundness).</td></tr><tr><td><code>Allocation.lean</code></td><td>The allocation prefix copies each symbolic source chunk into the widened target layout (static arithmetic \u2192 freshness/disjointness \u2192 single-chunk \u2192 full allocation).</td></tr><tr><td><code>Body/SingleStep.lean</code></td><td>Slot disjointness and single-instruction correctness: layout disjointness \u27f6 active-register disjointness, and that each compiled arithmetic instruction preserves the encoded symbolic state; plus outside-layout preservation for one step.</td></tr><tr><td><code>Body/NoPhaseRuns.lean</code></td><td>A no-phase segment is a sequence of arithmetic row updates; carries outside-layout preservation and encoded-state preservation through such a segment.</td></tr><tr><td><code>Body/PhaseBlocks.lean</code></td><td>After a no-phase prefix produces the matching row, the phase gate contributes exactly the prescribed scalar; block inductions compose those scalars across all interpolation points.</td></tr><tr><td><code>Body/Controlled.lean</code></td><td><code>controlPhaseLeaves</code> only changes phase-product leaves \u2014 pushes it through compiled lists and shows purely arithmetic fragments are fixed; then the public body theorems (uncontrolled evaluates to the phase scalar, controlled evaluates to that scalar or identity).</td></tr><tr><td><code>Body/Dealloc.lean</code></td><td>Allocation followed by deallocation cancels slot-by-slot, transporting the proved body scalar back to the original input basis state.</td></tr><tr><td><code>Interpolation.lean</code></td><td>The algebraic identity behind compilation: reconstructing signed extended registers from split chunks, then turning accumulated Toom-Cook point phases into the final signed product phase.</td></tr><tr><td><code>Compilation.lean</code></td><td>Assembles allocation + body/deallocation + the Toom-Cook identity into the public correctness theorems for compiled signed/controlled circuits.</td></tr><tr><td><code>Correctness.lean</code></td><td>The apex gate-level results: compiled signed/controlled-signed gates evaluate as specified. This folder's public surface, consumed by <code>Proofs/Lowering/</code>.</td></tr><tr><td><code>MacroSemantics.lean</code></td><td>The <code>PhaseProdUsing</code>/<code>CPhaseProdUsing</code> semantic bridge: on a clean workspace, the macros contribute exactly the expected phase.</td></tr></tbody></table>\n<h3><code>Proofs/Lowering/</code> \u2014 correctness of the plan/lowering machinery (<code>Lowering/</code>, <code>Spec/</code>)</h3>\n<p>Internal order: <code>EvalL \u2192 Lowerable \u2192 PlanSemantics \u2192 Linearity \u2192 Workspace \u2192 PlanReadiness/* \u2192 Correctness</code> (each may import the ones before it).</p>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>EvalL.lean</code></td><td><code>evalL_*</code> rewrite lemmas unfolding <code>LowerGateClass.evalL</code> for each phase-product primitive \u2014 the simp library the rest of this folder builds on.</td></tr><tr><td><code>Lowerable.lean</code></td><td><code>LowerablePhaseGate</code> and the <code>lowerable_*</code> lemmas showing every gate the compiler produces inhabits it.</td></tr><tr><td><code>PlanSemantics.lean</code></td><td>The core interpreter theorem: evaluating the low-level circuit selected by a ready plan agrees with the high-level gate stored in the plan; one-step semantic facts for compiled signed/controlled recursive nodes.</td></tr><tr><td><code>Linearity.lean</code></td><td>Lifts basis-level readiness/cleanliness proofs to arbitrary quantum states: phase products preserve clean recursive workspace, and plan evaluation/readiness respect zero/add/scalar-multiplication.</td></tr><tr><td><code>Workspace.lean</code></td><td>Moves reserve-cleanliness facts through the concrete layouts created by recursive lowering; shows signed allocation produces a fitted target encoding while keeping every child reserve clean for later recursive calls.</td></tr><tr><td><code>PlanReadiness/BodyReadiness.lean</code></td><td>Readiness for compiled bodies: no-phase prefixes thread readiness forward; block decompositions identify the basis state reached before each recursive phase leaf.</td></tr><tr><td><code>PlanReadiness/AllocDeallocReadiness.lean</code></td><td>Allocation/deallocation chunks compile to primitive low gates, so their readiness proofs mostly transport across the plan constructors' definitional equalities.</td></tr><tr><td><code>PlanReadiness/RecursiveReadiness.lean</code></td><td>Assembles allocation + body readiness + recursive child readiness + deallocation into readiness for the canonical (un)controlled signed lowering plan; extends the basis-ket proof to arbitrary clean states by linearity.</td></tr><tr><td><code>Correctness.lean</code></td><td>The plan-level semantic bridge <code>Main.lean</code> packages into its final reader-facing statements.</td></tr></tbody></table>\n<h2><code>Main.lean</code></h2>\n<p>Proves the two public headline theorems referenced throughout the rest of the codebase (<code>#print axioms</code> gate target). Imports only <code>Spec.Assertions</code> and <code>Proofs.Lowering.Correctness</code> \u2014 every other dependency is transitive through those two.</p>"
+   "readmeHtml": "<h1><code>Implementation/PhaseProduct/</code></h1>\n<p>This folder implements and proves correct the <strong>phase-product</strong> subroutine: the recursive, chunked circuit that computes <code>exp(i\u00b7\u03c6\u00b7x\u00b7z)</code> on two registers <code>x</code>, <code>z</code> (signed and controlled-signed variants), the compiler that builds it from an interpolation-based Toom-Cook decomposition, and the lowering machinery that turns it into primitive <code>LowGate</code>s.</p>\n<p>Lowering is parameterised by a <strong><code>ShorLoweringPolicy</code></strong>: a width-indexed choice of Toom-Cook table, so a recursion can use a wide table at wide operands and narrower ones as it descends. The familiar fixed-table names \u2014 <code>StandardPhaseLoweringPlan</code>, <code>standardSignedPhaseLoweringPlan</code>, <code>SignedRecursiveWorkspaceOK</code>, and every statement phrased with them \u2014 are the <strong>constant policy</strong> on one table, and are unchanged. See [<code>Lowering/README.md</code>](Lowering/README.md) for the plan type and the step/dispatcher split, and [<code>Compiler/README.md</code>](Compiler/README.md) for the workspace model and why both spellings of it exist.</p>\n<p>The folder is organized in layers (below). <strong>Every import is \"justified\":</strong> a file may only import another file if it directly uses a declaration that file defines \u2014 never a declaration it merely re-exports transitively. <code>scripts/check_layers.py</code> (repo root) enforces both the layer order and the absence of umbrella files (a file that only imports and declares nothing of its own).</p>\n<h2>Layer order</h2>\n<pre><code>Math  &lt;  Compiler  &lt;  Gates  &lt;  Lowering  &lt;  Spec  &lt;  Proofs  &lt;  Main</code></pre>\n<p>A file may import its own folder or any folder to its left. <code>Math/Table_Generation/</code> is a self-contained subtree with its own internal layering (see below) and is exempt from this rule \u2014 treat it as a black box.</p>\n<p>Reading order for newcomers: start at <code>Main.lean</code>, then follow imports <em>backwards</em> \u2014 <code>Spec/Assertions.lean</code> for what is claimed, <code>Proofs/Lowering/Correctness.lean</code> for how the claim is proved, and outward from there into <code>Proofs/</code>, <code>Lowering/</code>, <code>Compiler/</code> as needed. The one-line descriptions below are grouped in dependency order (lowest layer first) to match that traversal.</p>\n<h2><code>Math/</code> \u2014 pure math, no framework/register dependencies (besides <code>Table_Generation</code>)</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>ToomCook.lean</code></td><td>Pure interpolation algebra: interpolation points, Vandermonde-style invertibility, radix reconstruction, and the exponential phase scalars from weighted point sums.</td></tr><tr><td><code>MasterTheorem.lean</code></td><td>The shifted scalar-recurrence envelope (master-theorem-style bound) used to derive the <code>O(n^(2+\u03b5))</code> asymptotic gate-count result.</td></tr><tr><td><code>Table_Generation.lean</code></td><td>Umbrella re-exporting the whole table-generation development (see below).</td></tr><tr><td><code>Table_Generation/</code></td><td><strong>Self-contained subtree</strong> with its own internal layering; nothing outside it should import anything but its existing public paths (<code>Math.Table_Generation</code>, <code>Math.Table_Generation.Generator</code>, <code>Math.Table_Generation.Programs.WithProduct</code>). It synthesizes and certifies the concrete interpolation-point programs used by the compiler. Internal layout:</td></tr><tr><td><code>Table_Generation/Core/Registers.lean</code></td><td>Symbolic register/state model: shifts, negation, scaled addition, right-shift success.</td></tr><tr><td><code>Table_Generation/Core/RegisterLemmas.lean</code></td><td>First proof layer over that model: inverse-program facts, <code>run?</code> simp lemmas, state algebra, well-formed undo.</td></tr><tr><td><code>Table_Generation/Core/Language.lean</code></td><td>The table-generation program language: symbolic ops, partial execution semantics, point-row matchers, coverage predicates, notation.</td></tr><tr><td><code>Table_Generation/Core/ListHelpers.lean</code></td><td>Generic list lemmas used across the table-generation proofs.</td></tr><tr><td><code>Table_Generation/Core/RunLemmas.lean</code></td><td>Program-agnostic coverage/execution lemmas: coverage bookkeeping, composition under concatenation, the <code>NoPhase</code> framework.</td></tr><tr><td><code>Table_Generation/Core/Coverage.lean</code></td><td>Turns ordered point-consumption proofs into explicit phase-block decompositions and back into unordered <code>PhaseProductCoverage</code> proofs.</td></tr><tr><td><code>Table_Generation/Core/Tactics.lean</code></td><td>Tactic elaborators automating phase-product coverage / return-to-original-state checks, plus small example programs.</td></tr><tr><td><code>Table_Generation/Builders/Fragments.lean</code></td><td>Concrete program-fragment builders (<code>computeLocal<em></code>, <code>addConst</em></code>, \u2026) and the per-point/whole-list generators built from them (<code>opsForPointWithProduct</code>, <code>genOpsWithProduct</code>).</td></tr><tr><td><code>Table_Generation/Builders/FragmentLemmas.lean</code></td><td>Correctness of those fragments.</td></tr><tr><td><code>Table_Generation/Programs/WithProduct.lean</code></td><td>Certifies <code>genOpsWithProduct</code> (defined in <code>Builders/Fragments.lean</code>) end to end: its two headline theorems (<code>genOpsWithProduct_returns_to_original</code>, <code>genOpsWithProduct_PhaseProductCoverage</code>).</td></tr><tr><td><code>Table_Generation/Generator.lean</code></td><td>Umbrella for the parity-reset generator (imports <code>Metrics</code> + <code>Correctness</code>).</td></tr><tr><td><code>Table_Generation/Generator/Spec.lean</code></td><td><code>ProductMode</code> (phase product vs. triple product) and its point-count spec.</td></tr><tr><td><code>Table_Generation/Generator/Defs.lean</code></td><td><code>streamPoint</code> (deterministic interpolation-point stream <code>0,\u221e,1,-1,2,-2,\u2026</code>) and the generator built from it.</td></tr><tr><td><code>Table_Generation/Generator/Precomputed.lean</code></td><td>Precomputed <code>k=2</code>/<code>k=3</code> table-generator artifacts for both product modes.</td></tr><tr><td><code>Table_Generation/Generator/Metrics.lean</code></td><td><code>arithmeticOperationCount</code>, <code>phaseProductCount</code> and other program size metrics.</td></tr><tr><td><code>Table_Generation/Generator/WellFormed.lean</code></td><td>Well-formedness lemmas for the generator's output programs.</td></tr><tr><td><code>Table_Generation/Generator/Correctness.lean</code></td><td>Correctness of the generator (e.g. <code>streamPoint_allowed</code>).</td></tr><tr><td><code>Table_Generation/Generator/Examples.lean</code></td><td>Utilities for inspecting generated point streams/programs (<code>ToString</code> instances, etc.).</td></tr><tr><td><code>Table_Generation/Examples.lean</code></td><td>Worked examples certified with the <code>Tactics.lean</code> elaborators, plus a few state-update helper lemmas.</td></tr></tbody></table>\n<h2><code>Compiler/</code> \u2014 the recursive phase-product compiler's definitions</h2>\n<p>Internal order: <code>Layout \u2192 Widths \u2192 Coefficients \u2192 Compile \u2192 Workspace \u2192 PolicyWorkspace</code> (each may import the ones before it).</p>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Layout.lean</code></td><td><code>LayoutState</code>, <code>WidthState</code>, <code>NeededWidths</code> and their bookkeeping; top-heavy split parameters; the abstract <code>PhaseSplitLayout</code>/<code>Gate.PhaseProductLayout</code> split interface; <code>initSignedLayoutState</code>/<code>targetSignedLayoutState</code>/<code>growExtRegTo</code>/<code>ExtReg.CanGrowTo</code>/<code>LayoutState.CanGrowToNeeds</code>; <code>ReserveBudget</code>.</td></tr><tr><td><code>Widths.lean</code></td><td>Width scanning over a source program (<code>scanNeededWidths</code>), the recursion-size parameters (<code>phaseInputSize</code>, <code>nextSignedWidth</code>), and the lemmas connecting a scan back to the layout it was scanned from.</td></tr><tr><td><code>Coefficients.lean</code></td><td>Interpolation/phase-coefficient definitions (<code>interpMatrix</code>, <code>phaseCoeffFromPts</code>, <code>cramerCoeffFromPts</code>, \u2026), the canonical interpolation points (<code>alternatingPoint</code>, <code>genInterpolationPoints</code>), and the bridge to the pure Toom-Cook math (<code>GoodToomCookPoints</code>, <code>toMathPoint</code>).</td></tr><tr><td><code>Compile.lean</code></td><td>The annotated-operation compiler: <code>AnnotatedOp</code>/<code>annotatePhaseTermsAux</code>, per-chunk allocation/deallocation gates, and the full signed/controlled-signed compilers (<code>compileOpsToSignedGate</code>, <code>compileOpsToCSignedGate</code>, <code>controlPhaseLeaves</code>, <code>Gate.PhaseProductLayout.ControlDisjoint</code>).</td></tr><tr><td><code>Workspace.lean</code></td><td>The recursive-workspace size model (<code>RecursivePhaseWorkspace.reserveNeed</code>), the static workspace-sufficiency predicates (<code>SignedRecursiveWorkspaceOK</code>, <code>CSignedRecursiveWorkspaceOK</code>), the concrete reserve-budget construction (<code>PhaseSplitLayout.ofBudget</code>, <code>ReserveBudget.ofRequirements</code>), and the canonical deterministic recursive step (<code>CanonicalSignedStep</code>, <code>canonicalSignedStep</code>), all for a single fixed table.</td></tr><tr><td><code>PolicyWorkspace.lean</code></td><td>The same model for a width-indexed <strong>policy</strong>: <code>Policy.reserveNeed</code> (asks <code>P.choose</code> for each level's table instead of reusing one), <code>Policy.WorkspaceOK</code>/<code>Policy.CWorkspaceOK</code>, and <code>Policy.CanonicalStep</code>/<code>Policy.canonicalStep</code>. <code>reserveNeed_const</code> and <code>workspaceOK_const_iff</code> identify these with the names above at a constant policy \u2014 propositionally, not definitionally, which is why both spellings exist. Top of the <code>Compiler/*</code> chain.</td></tr></tbody></table>\n<h2><code>Gates/</code> \u2014 circuit-macro definitions</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Macros.lean</code></td><td>The unsigned/controlled phase-product macros (<code>PhaseProdWorkspace</code>, <code>PhaseProdUsing</code>, <code>CPhaseProdUsing</code>) \u2014 implementation-only circuit constructions the lowering/correctness proofs consume. Depends only on <code>Framework/</code>, not on <code>Compiler/</code>.</td></tr><tr><td><code>NaiveLeaf.lean</code></td><td>The reference (unoptimized) signed/controlled phase-product circuits (<code>Naive_SignedPhaseProd</code>, <code>Naive_CSignedPhaseProd</code>) and their <code>\u2102</code>-valued term/exponent bookkeeping. Correctness lemmas about these live in <code>Proofs/NaiveLeaf.lean</code>.</td></tr></tbody></table>\n<h2><code>Lowering/</code> \u2014 turning a compiled circuit into a certified plan</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Plan.lean</code></td><td>Compiled gate packages (<code>compiledSignedPhaseGate</code>/<code>compiledCSignedPhaseGate</code>), the <code>PhaseLoweringPlan P</code> inductive plan language (indexed by a <code>ShorLoweringPolicy</code>; the recursive constructors carry the table used and the proof that <code>P</code> chose it), the interpreter <code>lowerGateRec</code>, and the fixed-table public interface (<code>StandardPhaseLoweringPlan</code>, <code>lowerSignedPhaseProd</code>, <code>lowerCSignedPhaseProd</code>).</td></tr><tr><td><code>PlanBuilders.lean</code></td><td>Allocation/deallocation plan builders, annotated-body plan builders, the one-level step at a given table (<code>Policy.stepPlan</code>/<code>Policy.cStepPlan</code>), the width dispatcher that picks that table (<code>Policy.signedPlanOf</code>/<code>Policy.signedPlan</code> and controlled twins), and the fixed-table wrappers <code>standardSignedPhaseLoweringPlan</code>/<code>standardCSignedPhaseLoweringPlan</code>.</td></tr><tr><td><code>Lower.lean</code></td><td>The two top-level lowered-circuit constructors from a root workspace assumption: <code>lowerSignedPhaseProdWithWorkspace</code>, <code>lowerCSignedPhaseProdWithWorkspace</code>.</td></tr></tbody></table>\n<h2><code>Spec/</code> \u2014 the public specification surface</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Cleanliness.lean</code></td><td>The cleanliness predicates needed to state readiness/assertions: compiler-workspace cleanliness (<code>CompilerWorkspaceOK</code>, <code>CleanWorkspaceState</code>), layout reserve cleanliness, and cleanliness of the complete reserves (<code>RecursiveWorkspaceCleanState</code>, <code>SignedRecursiveWorkspaceStateOK</code>, <code>CSignedRecursiveWorkspaceStateOK</code>).</td></tr><tr><td><code>Readiness.lean</code></td><td><code>PhaseLoweringReady</code>: the semantic precondition for executing a lowering plan on a state. <code>QFT/Spec/Readiness.lean</code> needs this to <em>define</em> <code>QFTLoweringReady</code>, which is why it can't live in <code>Proofs/</code>.</td></tr><tr><td><code>Assertions.lean</code></td><td>The final named propositions the implementation claims to satisfy (proved in <code>Main.lean</code>).</td></tr></tbody></table>\n<h2><code>Proofs/</code> \u2014 everything below is proof-only; nothing outside <code>Proofs/</code>/<code>Main.lean</code> may import it</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>NaiveLeaf.lean</code></td><td>Correctness of the naive reference circuits in <code>Gates/NaiveLeaf.lean</code>. Its apex theorems (<code>evalL_naive_signedPhaseProd_ket</code>, <code>gateCount_Naive_SignedPhaseProd</code>, and the controlled variants) are consumed by <code>Proofs/Lowering/EvalL.lean</code> and <code>GateCount/PhaseProduct/Lemmas.lean</code>, which is why they stay here rather than in <code>Main.lean</code>.</td></tr></tbody></table>\n<h3><code>Proofs/Compiler/</code> \u2014 correctness of the compiler (<code>Compiler/</code>, <code>Gates/</code>)</h3>\n<p>Internal order: <code>Support/WidthSoundness \u2192 Allocation/Body/Interpolation \u2192 Compilation \u2192 Correctness</code> (each may import the ones before it); <code>MacroSemantics</code> stands slightly apart (see below).</p>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Support.lean</code></td><td>Shared definitions/small lemmas for the gate-level proof: symbolic row semantics, encoding invariants, layout locality predicates, signed-width arithmetic.</td></tr><tr><td><code>WidthSoundness.lean</code></td><td>The width scan is large enough for every symbolic row value reached during execution (one-step preservation \u2192 prefix domination \u2192 allocation-facing soundness).</td></tr><tr><td><code>Allocation.lean</code></td><td>The allocation prefix copies each symbolic source chunk into the widened target layout (static arithmetic \u2192 freshness/disjointness \u2192 single-chunk \u2192 full allocation).</td></tr><tr><td><code>Body/SingleStep.lean</code></td><td>Slot disjointness and single-instruction correctness: layout disjointness \u27f6 active-register disjointness, and that each compiled arithmetic instruction preserves the encoded symbolic state; plus outside-layout preservation for one step.</td></tr><tr><td><code>Body/NoPhaseRuns.lean</code></td><td>A no-phase segment is a sequence of arithmetic row updates; carries outside-layout preservation and encoded-state preservation through such a segment.</td></tr><tr><td><code>Body/PhaseBlocks.lean</code></td><td>After a no-phase prefix produces the matching row, the phase gate contributes exactly the prescribed scalar; block inductions compose those scalars across all interpolation points.</td></tr><tr><td><code>Body/Controlled.lean</code></td><td><code>controlPhaseLeaves</code> only changes phase-product leaves \u2014 pushes it through compiled lists and shows purely arithmetic fragments are fixed; then the public body theorems (uncontrolled evaluates to the phase scalar, controlled evaluates to that scalar or identity).</td></tr><tr><td><code>Body/Dealloc.lean</code></td><td>Allocation followed by deallocation cancels slot-by-slot, transporting the proved body scalar back to the original input basis state.</td></tr><tr><td><code>Interpolation.lean</code></td><td>The algebraic identity behind compilation: reconstructing signed extended registers from split chunks, then turning accumulated Toom-Cook point phases into the final signed product phase.</td></tr><tr><td><code>Compilation.lean</code></td><td>Assembles allocation + body/deallocation + the Toom-Cook identity into the public correctness theorems for compiled signed/controlled circuits.</td></tr><tr><td><code>Correctness.lean</code></td><td>The apex gate-level results: compiled signed/controlled-signed gates evaluate as specified. This folder's public surface, consumed by <code>Proofs/Lowering/</code>.</td></tr><tr><td><code>MacroSemantics.lean</code></td><td>The <code>PhaseProdUsing</code>/<code>CPhaseProdUsing</code> semantic bridge: on a clean workspace, the macros contribute exactly the expected phase.</td></tr></tbody></table>\n<h3><code>Proofs/Lowering/</code> \u2014 correctness of the plan/lowering machinery (<code>Lowering/</code>, <code>Spec/</code>)</h3>\n<p>Internal order: <code>EvalL \u2192 Lowerable \u2192 PlanSemantics \u2192 Linearity \u2192 Workspace \u2192 PlanReadiness/* \u2192 Correctness</code> (each may import the ones before it).</p>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>EvalL.lean</code></td><td><code>evalL_*</code> rewrite lemmas unfolding <code>LowerGateClass.evalL</code> for each phase-product primitive \u2014 the simp library the rest of this folder builds on.</td></tr><tr><td><code>Lowerable.lean</code></td><td><code>LowerablePhaseGate</code> and the <code>lowerable_*</code> lemmas showing every gate the compiler produces inhabits it.</td></tr><tr><td><code>PlanSemantics.lean</code></td><td>The core interpreter theorem: evaluating the low-level circuit selected by a ready plan agrees with the high-level gate stored in the plan; one-step semantic facts for compiled signed/controlled recursive nodes.</td></tr><tr><td><code>Linearity.lean</code></td><td>Lifts basis-level readiness/cleanliness proofs to arbitrary quantum states: phase products preserve clean recursive workspace, and plan evaluation/readiness respect zero/add/scalar-multiplication.</td></tr><tr><td><code>Workspace.lean</code></td><td>Moves reserve-cleanliness facts through the concrete layouts created by recursive lowering; shows signed allocation produces a fitted target encoding while keeping every child reserve clean for later recursive calls.</td></tr><tr><td><code>PlanReadiness/BodyReadiness.lean</code></td><td>Readiness for compiled bodies: no-phase prefixes thread readiness forward; block decompositions identify the basis state reached before each recursive phase leaf.</td></tr><tr><td><code>PlanReadiness/AllocDeallocReadiness.lean</code></td><td>Allocation/deallocation chunks compile to primitive low gates, so their readiness proofs mostly transport across the plan constructors' definitional equalities.</td></tr><tr><td><code>PlanReadiness/RecursiveReadiness.lean</code></td><td>Assembles allocation + body readiness + recursive child readiness + deallocation into readiness for the canonical (un)controlled signed lowering plan; extends the basis-ket proof to arbitrary clean states by linearity.</td></tr><tr><td><code>Correctness.lean</code></td><td>The plan-level semantic bridge <code>Main.lean</code> packages into its final reader-facing statements.</td></tr></tbody></table>\n<h2><code>Main.lean</code></h2>\n<p>Proves the two public headline theorems referenced throughout the rest of the codebase (<code>#print axioms</code> gate target). Imports only <code>Spec.Assertions</code> and <code>Proofs.Lowering.Correctness</code> \u2014 every other dependency is transitive through those two.</p>"
   },
   "PhaseProduct/Compiler": {
    "children": [
@@ -5639,7 +5639,7 @@ window.GRAPH = {
    "kind": "folder",
    "name": "Compiler",
    "path": "PhaseProduct/Compiler",
-   "readmeHtml": "<h1><code>Compiler/</code></h1>\n<p>Definitions for the recursive phase-product compiler: turning a pair of registers <code>x</code>, <code>z</code> and a source arithmetic program into a concrete <code>Gate</code> circuit. Internal order: <code>Layout \u2192 Widths \u2192 Coefficients \u2192 Compile \u2192 Workspace</code> (each file may use anything from the ones before it).</p>\n<h2><code>Layout.lean</code></h2>\n<ul><li><strong><code>LayoutState k</code></strong> \u2014 the current chunk-to-register assignment: an <code>xslot</code>/<code>zslot</code></li></ul>\n<p>function from <code>Fin k</code> to <code>ExtReg</code>, i.e. where each of the <code>k</code> chunks of <code>x</code> and <code>z</code> currently live.</p>\n<ul><li><strong><code>WidthState k</code></strong> / <strong><code>NeededWidths k</code></strong> \u2014 plain width bookkeeping (no</li></ul>\n<p>registers): the current logical width of each chunk, and the maximum width each chunk will need once the whole source program has run.</p>\n<ul><li><strong><code>ValidPhaseSplit</code></strong>, <strong><code>PhaseSplitLayout parent k W</code></strong> \u2014 the abstract</li></ul>\n<p>interface for splitting one extendable register into <code>k</code> \"top-heavy\" active chunks (the last chunk absorbs the remainder) plus a disjoint reserve partition.</p>\n<ul><li><strong><code>Gate.PhaseProductLayout x z k</code></strong> \u2014 a pair of compatible <code>PhaseSplitLayout</code>s</li></ul>\n<p>for <code>x</code> and <code>z</code>, with a proof that no chunk of <code>x</code> overlaps any chunk of <code>z</code>.</p>\n<ul><li><strong><code>ExtReg.CanGrowTo</code></strong>, <strong><code>growExtRegTo</code></strong> \u2014 whether/how a register can be</li></ul>\n<p>widened in place to a target width using its reserve.</p>\n<ul><li><strong><code>initSignedLayoutState</code></strong> \u2014 the starting <code>LayoutState</code> built directly from</li></ul>\n<p>a <code>PhaseProductLayout</code>'s split chunks.</p>\n<ul><li><strong><code>targetSignedLayoutState</code></strong> \u2014 the same layout after every slot has been</li></ul>\n<p>grown to the common width the source program will need.</p>\n<ul><li><strong><code>ReserveBudget parent k</code></strong> \u2014 a partition of a parent register's reserve</li></ul>\n<p>into <code>k</code> child reserve sizes that sum to the parent's total capacity.</p>\n<h2><code>Widths.lean</code></h2>\n<ul><li><strong><code>scanNeededWidths</code></strong> \u2014 walks the source program once, tracking how wide</li></ul>\n<p>each chunk's logical value grows (shifts, negation, scaled addition), and returns the resulting <code>NeededWidths</code>.</p>\n<ul><li><strong><code>phaseInputSize</code></strong> \u2014 <code>max x.width z.width</code>, the size used to decide</li></ul>\n<p>whether a phase product should recurse again.</p>\n<ul><li><strong><code>nextSignedWidth</code></strong> \u2014 the width the <em>next</em> recursion level will actually</li></ul>\n<p>need, i.e. <code>commonNeededWidth (scanNeededWidths x z ops)</code>.</p>\n<h2><code>Coefficients.lean</code></h2>\n<ul><li><strong><code>interpMatrix</code></strong>, <strong><code>phaseCoeffFromPts</code></strong>, <strong><code>cramerCoeffFromPts</code></strong> \u2014 build</li></ul>\n<p>the interpolation matrix from a chosen point set and solve for the phase coefficients (two equivalent formulations: matrix inverse and Cramer's rule, the latter computable).</p>\n<ul><li><strong><code>alternatingPoint</code></strong>, <strong><code>genInterpolationPoints</code></strong> \u2014 the canonical point</li></ul>\n<p>set: <code>0, -1, 1, -2, 2, \u2026</code> (<code>2k-1</code> points). This is the <em>reference's</em> choice of points, not the framework's: the lowering chain takes <code>pts</code> as a parameter, and a submission may choose its own.</p>\n<ul><li><strong><code>genInterpolationPoints_good</code></strong> \u2014 that the canonical set satisfies C2,</li></ul>\n<p>proved via <code>toMathPoint</code> and the pure algebra in <code>Math/ToomCook.lean</code>.</p>\n<ul><li><strong><code>toMathPoint</code></strong> \u2014 the bridge from this compiler's own</li></ul>\n<p><code>Point</code>/interpolation-row representation to that algebra.</p>\n<p>&gt; <strong>Defined in <code>Framework/ToomCookTable.lean</code></strong>, not here: &gt; <strong><code>q k</code></strong> (the point count, <code>2k - 1</code>), <strong><code>interpEntry</code></strong> (one entry of the &gt; interpolation matrix) and <strong><code>GoodToomCookPoints</code></strong> (C2 itself). They state &gt; what makes a <em>submitted</em> point set admissible, so they belong with the &gt; rules rather than with the construction. Note the two <code>interpMatrix</code>s stayed &gt; apart: <code>Shor.interpMatrix</code> here is the compiler's, while the generic &gt; <code>ToomCookMath.interpMatrix</code> that <code>GoodToomCookPoints</code> is defined through &gt; moved.</p>\n<h2><code>Compile.lean</code></h2>\n<ul><li><strong><code>AnnotatedOp k</code></strong> \u2014 a source operation tagged with which interpolation</li></ul>\n<p>point (if any) its phase-product leaf corresponds to.</p>\n<ul><li><strong><code>compileOpsToSignedGate</code></strong> \u2014 the full signed compiler: allocate widened</li></ul>\n<p>chunks, emit the annotated-body circuit (arithmetic gates plus one <code>SignedPhaseProd</code> per phase-product leaf, phased by the matching coefficient), then deallocate back down.</p>\n<ul><li><strong><code>controlPhaseLeaves</code></strong>, <strong><code>compileOpsToCSignedGate</code></strong> \u2014 wraps only the</li></ul>\n<p>phase-product leaves of a compiled circuit with a shared control qubit, giving the controlled compiler.</p>\n<ul><li><strong><code>Gate.PhaseProductLayout.ControlDisjoint</code></strong> \u2014 the control qubit must sit</li></ul>\n<p>outside every child register the layout touches.</p>\n<h2><code>Workspace.lean</code></h2>\n<ul><li><strong><code>RecursivePhaseWorkspace.reserveNeed</code></strong> \u2014 the conservative reserve (on</li></ul>\n<p>each side) that a complete recursive compilation needs: growth room for the current level plus one full descendant reserve per chunk.</p>\n<ul><li><strong><code>SignedRecursiveWorkspaceOK</code></strong> / <strong><code>CSignedRecursiveWorkspaceOK</code></strong> \u2014 the</li></ul>\n<p>static (non-quantum) precondition packaging register disjointness plus \"the reserve is big enough for the whole recursion\" for the uncontrolled and controlled cases.</p>\n<ul><li><strong><code>PhaseSplitLayout.ofBudget</code></strong>, <strong><code>ReserveBudget.ofRequirements</code></strong> \u2014</li></ul>\n<p>construct a concrete split layout / reserve budget from per-child requirements, given that they fit in the parent's capacity.</p>\n<ul><li><strong><code>CanonicalSignedStep</code></strong>, <strong><code>canonicalSignedStep</code></strong> \u2014 the canonical,</li></ul>\n<p>deterministic choice of layout for one recursive step: builds the layout, and proves it has enough capacity for the next level and that every child's recursive input size is exactly <code>nextSignedWidth</code>.</p>"
+   "readmeHtml": "<h1><code>Compiler/</code></h1>\n<p>Definitions for the recursive phase-product compiler: turning a pair of registers <code>x</code>, <code>z</code> and a source arithmetic program into a concrete <code>Gate</code> circuit. Internal order: <code>Layout \u2192 Widths \u2192 Coefficients \u2192 Compile \u2192 Workspace \u2192 PolicyWorkspace</code> (each file may use anything from the ones before it).</p>\n<h2><code>Layout.lean</code></h2>\n<ul><li><strong><code>LayoutState k</code></strong> \u2014 the current chunk-to-register assignment: an <code>xslot</code>/<code>zslot</code></li></ul>\n<p>function from <code>Fin k</code> to <code>ExtReg</code>, i.e. where each of the <code>k</code> chunks of <code>x</code> and <code>z</code> currently live.</p>\n<ul><li><strong><code>WidthState k</code></strong> / <strong><code>NeededWidths k</code></strong> \u2014 plain width bookkeeping (no</li></ul>\n<p>registers): the current logical width of each chunk, and the maximum width each chunk will need once the whole source program has run.</p>\n<ul><li><strong><code>ValidPhaseSplit</code></strong>, <strong><code>PhaseSplitLayout parent k W</code></strong> \u2014 the abstract</li></ul>\n<p>interface for splitting one extendable register into <code>k</code> \"top-heavy\" active chunks (the last chunk absorbs the remainder) plus a disjoint reserve partition.</p>\n<ul><li><strong><code>Gate.PhaseProductLayout x z k</code></strong> \u2014 a pair of compatible <code>PhaseSplitLayout</code>s</li></ul>\n<p>for <code>x</code> and <code>z</code>, with a proof that no chunk of <code>x</code> overlaps any chunk of <code>z</code>.</p>\n<ul><li><strong><code>ExtReg.CanGrowTo</code></strong>, <strong><code>growExtRegTo</code></strong> \u2014 whether/how a register can be</li></ul>\n<p>widened in place to a target width using its reserve.</p>\n<ul><li><strong><code>initSignedLayoutState</code></strong> \u2014 the starting <code>LayoutState</code> built directly from</li></ul>\n<p>a <code>PhaseProductLayout</code>'s split chunks.</p>\n<ul><li><strong><code>targetSignedLayoutState</code></strong> \u2014 the same layout after every slot has been</li></ul>\n<p>grown to the common width the source program will need.</p>\n<ul><li><strong><code>ReserveBudget parent k</code></strong> \u2014 a partition of a parent register's reserve</li></ul>\n<p>into <code>k</code> child reserve sizes that sum to the parent's total capacity.</p>\n<h2><code>Widths.lean</code></h2>\n<ul><li><strong><code>scanNeededWidths</code></strong> \u2014 walks the source program once, tracking how wide</li></ul>\n<p>each chunk's logical value grows (shifts, negation, scaled addition), and returns the resulting <code>NeededWidths</code>.</p>\n<ul><li><strong><code>phaseInputSize</code></strong> \u2014 <code>max x.width z.width</code>, the size used to decide</li></ul>\n<p>whether a phase product should recurse again.</p>\n<ul><li><strong><code>nextSignedWidth</code></strong> \u2014 the width the <em>next</em> recursion level will actually</li></ul>\n<p>need, i.e. <code>commonNeededWidth (scanNeededWidths x z ops)</code>.</p>\n<h2><code>Coefficients.lean</code></h2>\n<ul><li><strong><code>interpMatrix</code></strong>, <strong><code>phaseCoeffFromPts</code></strong>, <strong><code>cramerCoeffFromPts</code></strong> \u2014 build</li></ul>\n<p>the interpolation matrix from a chosen point set and solve for the phase coefficients (two equivalent formulations: matrix inverse and Cramer's rule, the latter computable).</p>\n<ul><li><strong><code>alternatingPoint</code></strong>, <strong><code>genInterpolationPoints</code></strong> \u2014 the canonical point</li></ul>\n<p>set: <code>0, -1, 1, -2, 2, \u2026</code> (<code>2k-1</code> points). This is the <em>reference's</em> choice of points, not the framework's: the lowering chain takes <code>pts</code> as a parameter, and a submission may choose its own.</p>\n<ul><li><strong><code>genInterpolationPoints_good</code></strong> \u2014 that the canonical set satisfies C2,</li></ul>\n<p>proved via <code>toMathPoint</code> and the pure algebra in <code>Math/ToomCook.lean</code>.</p>\n<ul><li><strong><code>toMathPoint</code></strong> \u2014 the bridge from this compiler's own</li></ul>\n<p><code>Point</code>/interpolation-row representation to that algebra.</p>\n<p>&gt; <strong>Defined in <code>Framework/ToomCookTable.lean</code></strong>, not here: &gt; <strong><code>q k</code></strong> (the point count, <code>2k - 1</code>), <strong><code>interpEntry</code></strong> (one entry of the &gt; interpolation matrix) and <strong><code>GoodToomCookPoints</code></strong> (C2 itself). They state &gt; what makes a <em>submitted</em> point set admissible, so they belong with the &gt; rules rather than with the construction. Note the two <code>interpMatrix</code>s stayed &gt; apart: <code>Shor.interpMatrix</code> here is the compiler's, while the generic &gt; <code>ToomCookMath.interpMatrix</code> that <code>GoodToomCookPoints</code> is defined through &gt; moved.</p>\n<h2><code>Compile.lean</code></h2>\n<ul><li><strong><code>AnnotatedOp k</code></strong> \u2014 a source operation tagged with which interpolation</li></ul>\n<p>point (if any) its phase-product leaf corresponds to.</p>\n<ul><li><strong><code>compileOpsToSignedGate</code></strong> \u2014 the full signed compiler: allocate widened</li></ul>\n<p>chunks, emit the annotated-body circuit (arithmetic gates plus one <code>SignedPhaseProd</code> per phase-product leaf, phased by the matching coefficient), then deallocate back down.</p>\n<ul><li><strong><code>controlPhaseLeaves</code></strong>, <strong><code>compileOpsToCSignedGate</code></strong> \u2014 wraps only the</li></ul>\n<p>phase-product leaves of a compiled circuit with a shared control qubit, giving the controlled compiler.</p>\n<ul><li><strong><code>Gate.PhaseProductLayout.ControlDisjoint</code></strong> \u2014 the control qubit must sit</li></ul>\n<p>outside every child register the layout touches.</p>\n<h2><code>Workspace.lean</code></h2>\n<ul><li><strong><code>RecursivePhaseWorkspace.reserveNeed</code></strong> \u2014 the conservative reserve (on</li></ul>\n<p>each side) that a complete recursive compilation needs: growth room for the current level plus one full descendant reserve per chunk.</p>\n<ul><li><strong><code>SignedRecursiveWorkspaceOK</code></strong> / <strong><code>CSignedRecursiveWorkspaceOK</code></strong> \u2014 the</li></ul>\n<p>static (non-quantum) precondition packaging register disjointness plus \"the reserve is big enough for the whole recursion\" for the uncontrolled and controlled cases.</p>\n<ul><li><strong><code>PhaseSplitLayout.ofBudget</code></strong>, <strong><code>ReserveBudget.ofRequirements</code></strong> \u2014</li></ul>\n<p>construct a concrete split layout / reserve budget from per-child requirements, given that they fit in the parent's capacity.</p>\n<ul><li><strong><code>CanonicalSignedStep</code></strong>, <strong><code>canonicalSignedStep</code></strong> \u2014 the canonical,</li></ul>\n<p>deterministic choice of layout for one recursive step: builds the layout, and proves it has enough capacity for the next level and that every child's recursive input size is exactly <code>nextSignedWidth</code>.</p>\n<h2><code>PolicyWorkspace.lean</code></h2>\n<p>The same workspace model, for a width-indexed <strong>policy</strong> rather than a single table. <code>Lowering/</code> builds <code>PhaseLoweringPlan P</code> against the definitions here; the ones above are what the fixed-table spellings keep using.</p>\n<ul><li><strong><code>Policy.reserveNeed</code></strong> \u2014 the policy twin of</li></ul>\n<p><code>RecursivePhaseWorkspace.reserveNeed</code>: at each width it asks <code>P.choose</code> for that level's table and recurses with it, so the reserve is sized for whichever tables the recursion will actually meet, not for one table repeated. Fuelled, like its fixed-table counterpart.</p>\n<ul><li><strong><code>Policy.WorkspaceOK</code></strong> / <strong><code>Policy.CWorkspaceOK</code></strong> \u2014 the policy forms of</li></ul>\n<p><code>SignedRecursiveWorkspaceOK</code>/<code>CSignedRecursiveWorkspaceOK</code>, with <code>workspaceOK_const_iff</code> / <code>cWorkspaceOK_const_iff</code> identifying them with the originals at a constant policy.</p>\n<ul><li><strong><code>Policy.CanonicalStep</code></strong>, <strong><code>Policy.canonicalStep</code></strong> \u2014 the policy form of</li></ul>\n<p>the canonical step.</p>\n<h3>Why this file is separate, and why <code>canonicalSignedStep</code> survives</h3>\n<p><code>Policy.reserveNeed (constPolicy T)</code> and <code>RecursivePhaseWorkspace.reserveNeed T.ops</code> are equal \u2014 <code>reserveNeed_const</code> proves it \u2014 but only <strong>propositionally</strong>. They are two distinct well-founded fixpoints, so the equation is a rewrite, never a <code>rfl</code> the elaborator can use silently. Anything that must reduce definitionally therefore needs the spelling it was written against, which is why <code>canonicalSignedStep</code> still exists alongside <code>Policy.canonicalStep</code> and why <code>lowerGate_correctness</code> is proved in both spellings (~570 duplicated lines).</p>\n<p>The duplication is deliberate rather than pending. <code>Workspace.lean</code> has 19 importers, so folding <code>PolicyWorkspace.lean</code> into it, or deleting <code>canonicalSignedStep</code> and porting its callers, costs a full rebuild cascade across the library. That price is worth paying only alongside a change that is already paying it; the alternative \u2014 doing it on its own \u2014 buys tidiness and nothing else. Until then: **new work should be written against the <code>Policy.*</code> names**, and the fixed-table names are the constant policy kept for the statements that already depend on their definitional behaviour.</p>"
   },
   "PhaseProduct/Compiler/Coefficients.lean": {
    "declarations": [
@@ -6241,7 +6241,8 @@ window.GRAPH = {
    "importedBy": [
     "PhaseProduct/Lowering/Plan.lean",
     "PhaseProduct/Lowering/PlanBuilders.lean",
-    "PhaseProduct/Spec/Cleanliness.lean"
+    "PhaseProduct/Spec/Cleanliness.lean",
+    "QFT/Lowering/Workspace.lean"
    ],
    "imports": [
     "Framework/Policy.lean",
@@ -6811,7 +6812,7 @@ window.GRAPH = {
    "kind": "folder",
    "name": "Lowering",
    "path": "PhaseProduct/Lowering",
-   "readmeHtml": "<h1><code>Lowering/</code></h1>\n<p>Turns a compiled circuit into a finite, structurally-checked <em>plan</em> for lowering it to primitive <code>LowGate</code>s, and provides the public entry points that build such a plan automatically from a workspace assumption.</p>\n<h2><code>Plan.lean</code></h2>\n<ul><li><strong><code>compiledSignedPhaseGate</code></strong> / <strong><code>compiledCSignedPhaseGate</code></strong> \u2014 the</li></ul>\n<p>specific <code>Gate</code> a recursive step's child call must lower (i.e. <code>compileOpsToSignedGate</code>/<code>compileOpsToCSignedGate</code> applied at the next recursion width), named up front because the plan type below refers to them.</p>\n<ul><li><strong><code>PhaseLoweringPlan k hk pts hpts ops initSize U</code></strong> \u2014 an inductive,</li></ul>\n<p>finite certificate that gate <code>U</code> can be lowered: one constructor per primitive gate (<code>id</code>, <code>seq</code>, <code>H</code>, <code>X</code>, shifts, <code>AddScaled</code>, extend/dealloc, <code>RadixReverse</code>), plus <code>signedBase</code>/<code>signedStep</code> and <code>cSignedBase</code>/<code>cSignedStep</code> for signed phase products \u2014 either \"stop here, use the naive base gate\" or \"recurse, carrying a concrete layout, capacity proof, and child plan\".</p>\n<ul><li><strong><code>lowerGateRec</code></strong> \u2014 the interpreter: erases a plan's proof data and returns</li></ul>\n<p>the <code>LowGate</code> it certifies (structural recursion on the plan).</p>\n<ul><li><strong><code>StandardPhaseLoweringPlan</code></strong>, <strong><code>lowerPhasePlan</code></strong> \u2014 the plan type</li></ul>\n<p>specialized to the canonical interpolation points, and its interpreter.</p>\n<ul><li><strong><code>lowerSignedPhaseProd</code></strong> / <strong><code>lowerCSignedPhaseProd</code></strong> \u2014 the public</li></ul>\n<p>entry points: given a plan whose initial size is the actual operand <code>phaseInputSize</code>, produce the lowered <code>LowGate</code>.</p>\n<h2><code>PlanBuilders.lean</code></h2>\n<p>Constructs plans (rather than just interpreting them), mirroring the compiler one gate at a time:</p>\n<ul><li><strong><code>planAllocChunkGate</code>/<code>planDeallocChunkGate</code></strong> and their <code>*Aux</code>/whole-layout</li></ul>\n<p>versions \u2014 plans for the per-chunk (de)allocation gates and their sequential composition.</p>\n<ul><li><strong><code>planCompileAnnotatedOpsToSignedGateAux</code></strong> (and the controlled</li></ul>\n<p><code>...CSignedGateAux</code>) \u2014 a plan for the annotated-body circuit, taking a <code>recurse</code> callback used at each phase-product leaf.</p>\n<ul><li><strong><code>planCompiledSignedPhaseGate</code></strong> / <strong><code>planCompiledCSignedPhaseGate</code></strong> \u2014</li></ul>\n<p>assembles allocation + body + deallocation plans for one full recursive level.</p>\n<ul><li><strong><code>standardSignedPhaseLoweringPlan</code></strong> / <strong><code>standardCSignedPhaseLoweringPlan</code></strong></li></ul>\n<p>\u2014 the canonical planners: given the static workspace precondition (<code>SignedRecursiveWorkspaceOK</code>/<code>CSignedRecursiveWorkspaceOK</code>), recursively choose either the naive base case or one compiled recursive step (via <code>canonicalSignedStep</code>), all the way down. These are what everything else in the codebase actually calls to get a plan.</p>\n<h2><code>Lower.lean</code></h2>\n<ul><li><strong><code>lowerSignedPhaseProdWithWorkspace</code></strong> / <strong><code>lowerCSignedPhaseProdWithWorkspace</code></strong></li></ul>\n<p>\u2014 the two public top-level constructors: build the canonical standard plan from a root workspace assumption and lower it. These are the functions <code>Spec/Assertions.lean</code>'s claims are about, and what the rest of the codebase (<code>QFT</code>, <code>Shor</code>, \u2026) actually imports to get a lowered phase-product circuit.</p>"
+   "readmeHtml": "<h1><code>Lowering/</code></h1>\n<p>Turns a compiled circuit into a finite, structurally-checked <em>plan</em> for lowering it to primitive <code>LowGate</code>s, and provides the public entry points that build such a plan automatically from a workspace assumption.</p>\n<h2>Plans are indexed by a policy</h2>\n<p>A plan is parameterised by a <strong><code>ShorLoweringPolicy</code></strong> \u2014 a width-indexed choice of Toom-Cook table, so that a deep recursion may use a wide table while the operands are wide and narrower ones as it descends. The policy is fixed for a whole plan and threaded unchanged through every constructor; what varies with depth is which table <code>P.choose initSize</code> hands back at that level.</p>\n<p><strong>The old names are the constant policy.</strong> <code>StandardPhaseLoweringPlan k hk pts hpts ops</code> is now an <code>abbrev</code> for <code>PhaseLoweringPlan (constPolicy \u27e8k, hk, pts, hpts, ops\u27e9)</code>, and <code>standardSignedPhaseLoweringPlan</code> and friends are wrappers that build at that policy. Fixed-table statements elsewhere in the codebase are therefore byte-identical to what they were before policies existed \u2014 they are the one-band case, not a separate mechanism.</p>\n<h2><code>Plan.lean</code></h2>\n<ul><li><strong><code>compiledSignedPhaseGate</code></strong> / <strong><code>compiledCSignedPhaseGate</code></strong> \u2014 the</li></ul>\n<p>specific <code>Gate</code> a recursive step's child call must lower (i.e. <code>compileOpsToSignedGate</code>/<code>compileOpsToCSignedGate</code> applied at the next recursion width), named up front because the plan type below refers to them.</p>\n<ul><li><strong><code>PhaseLoweringPlan P initSize U</code></strong> \u2014 an inductive, finite certificate</li></ul>\n<p>that gate <code>U</code> can be lowered under policy <code>P</code>: one constructor per primitive gate (<code>id</code>, <code>seq</code>, <code>H</code>, <code>X</code>, shifts, <code>AddScaled</code>, extend/dealloc, <code>RadixReverse</code>), plus <code>signedBase</code>/<code>signedStep</code> and <code>cSignedBase</code>/<code>cSignedStep</code> for signed phase products \u2014 either \"stop here, use the naive base gate\" or \"recurse, carrying a concrete layout, capacity proof, and child plan\".</p>\n<p>The recursive constructors carry the table they used and the evidence that the policy chose it: <code>signedStep</code> takes <code>(T : ToomCookTable)</code> together with <code>hT : P.choose initSize = some T</code>, and its child is a plan <em>at the same policy</em> for the next width. So a plan records not just that each level recursed but which table that level was entitled to. Correspondingly <code>signedBase</code> carries <code>\u2200 T, P.choose initSize \u2260 some T</code> \u2014 stopping is only licensed where the policy offers nothing.</p>\n<ul><li><strong><code>lowerGateRec</code></strong> \u2014 the interpreter: erases a plan's proof data and returns</li></ul>\n<p>the <code>LowGate</code> it certifies (structural recursion on the plan).</p>\n<ul><li><strong><code>StandardPhaseLoweringPlan</code></strong>, <strong><code>lowerPhasePlan</code></strong> \u2014 the plan type at</li></ul>\n<p>the constant policy on one table (see above), and its interpreter.</p>\n<ul><li><strong><code>lowerSignedPhaseProd</code></strong> / <strong><code>lowerCSignedPhaseProd</code></strong> \u2014 the public</li></ul>\n<p>entry points: given a plan whose initial size is the actual operand <code>phaseInputSize</code>, produce the lowered <code>LowGate</code>.</p>\n<h2><code>PlanBuilders.lean</code></h2>\n<p>Constructs plans (rather than just interpreting them), mirroring the compiler one gate at a time:</p>\n<ul><li><strong><code>planAllocChunkGate</code>/<code>planDeallocChunkGate</code></strong> and their <code>*Aux</code>/whole-layout</li></ul>\n<p>versions \u2014 plans for the per-chunk (de)allocation gates and their sequential composition.</p>\n<ul><li><strong><code>planCompileAnnotatedOpsToSignedGateAux</code></strong> (and the controlled</li></ul>\n<p><code>...CSignedGateAux</code>) \u2014 a plan for the annotated-body circuit, taking a <code>recurse</code> callback used at each phase-product leaf.</p>\n<ul><li><strong><code>planCompiledSignedPhaseGate</code></strong> / <strong><code>planCompiledCSignedPhaseGate</code></strong> \u2014</li></ul>\n<p>assembles allocation + body + deallocation plans for one full recursive level.</p>\n<ul><li><strong><code>Policy.stepPlan</code></strong> / <strong><code>Policy.cStepPlan</code></strong> \u2014 one compiled recursive</li></ul>\n<p><em>step</em> at an explicitly given table: allocation + body + deallocation, with the child supplied by a <code>recurse</code> callback. The step knows nothing about where its table came from.</p>\n<ul><li><strong><code>Policy.signedPlanOf</code></strong> / <strong><code>Policy.cSignedPlanOf</code></strong> \u2014 the <em>dispatcher</em>:</li></ul>\n<p>given the policy's answer at this width, either take a step at the table it named or stop at the base case. Note the shape \u2014 the lookup result is an explicit argument,</p>\n<p>``<code>lean \u2200 (o : Option ToomCookTable), P.choose (phaseInputSize x z) = o \u2192 PhaseLoweringPlan P \u2026 </code>``</p>\n<p>rather than a <code>match h : P.choose \u2026 with</code> inside the body. Written the latter way the definition unfolds to an <code>Option.casesOn</code> under an <code>Eq.ndrec</code> motive, which <code>split</code> and <code>cases</code> cannot see through, and every downstream proof about the dispatcher becomes unworkable. Passing the result in keeps both branches reachable by <code>cases o</code>.</p>\n<ul><li><strong><code>Policy.signedPlan</code></strong> / <strong><code>Policy.cSignedPlan</code></strong> \u2014 the dispatcher applied</li></ul>\n<p>to its own lookup (<code>\u2026 _ rfl</code>). These are the general planners.</p>\n<ul><li><strong><code>standardSignedPhaseLoweringPlan</code></strong> / <strong><code>standardCSignedPhaseLoweringPlan</code></strong></li></ul>\n<p>\u2014 the canonical planners at a single fixed table: <code>Policy.signedPlan</code> at the constant policy, with the workspace precondition converted by <code>Policy.workspaceOK_of_const</code> from the familiar <code>SignedRecursiveWorkspaceOK</code>/<code>CSignedRecursiveWorkspaceOK</code>. These are what everything else in the codebase actually calls to get a plan, and <code>Policy.signedPlan_constPolicy</code> identifies them with the dispatcher's <code>some</code> branch by <code>rfl</code>.</p>\n<h2><code>Lower.lean</code></h2>\n<ul><li><strong><code>lowerSignedPhaseProdWithWorkspace</code></strong> / <strong><code>lowerCSignedPhaseProdWithWorkspace</code></strong></li></ul>\n<p>\u2014 the two public top-level constructors: build the canonical standard plan from a root workspace assumption and lower it. These are the functions <code>Spec/Assertions.lean</code>'s claims are about, and what the rest of the codebase (<code>QFT</code>, <code>Shor</code>, \u2026) actually imports to get a lowered phase-product circuit.</p>"
   },
   "PhaseProduct/Lowering/Lower.lean": {
    "declarations": [
@@ -10188,7 +10189,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering",
     "PhaseProduct/Proofs/NaiveLeaf.lean"
    ],
-   "declCount": 283,
+   "declCount": 284,
    "fileCount": 22,
    "fsPath": "Implementation/PhaseProduct/Proofs",
    "kind": "folder",
@@ -11198,13 +11199,13 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/PlanSemantics.lean",
     "PhaseProduct/Proofs/Lowering/Workspace.lean"
    ],
-   "declCount": 82,
+   "declCount": 83,
    "fileCount": 9,
    "fsPath": "Implementation/PhaseProduct/Proofs/Lowering",
    "kind": "folder",
    "name": "Lowering",
    "path": "PhaseProduct/Proofs/Lowering",
-   "readmeHtml": "<h1><code>Proofs/Lowering/</code></h1>\n<p>Correctness of the <code>Lowering/</code> plan machinery: that lowering a <code>PhaseLoweringPlan</code> to a <code>LowGate</code> (via <code>lowerGateRec</code>) preserves semantics, given the plan is \"ready\" (<code>PhaseLoweringReady</code>, <code>Spec/Readiness.lean</code>). Internal order: <code>EvalL</code> \u2192 <code>Lowerable</code> \u2192 <code>PlanSemantics</code> \u2192 <code>Linearity</code> \u2192 <code>Workspace</code> \u2192 <code>PlanReadiness/*</code> \u2192 <code>Correctness</code> (each may use anything from the ones before it).</p>\n<p>The two results this folder's proofs ultimately exist to feed <code>Main.lean</code>:</p>\n<ul><li><strong><code>evalL_lowerGateRec_correct</code></strong> (<code>PlanSemantics.lean</code>) \u2014 the core</li></ul>\n<p>interpreter theorem: for <em>any</em> <code>PhaseLoweringPlan</code> that is ready on a state <code>\u03c8</code> (and the source program satisfies the usual interpolation-safety side conditions), <code>LowerGateClass.evalL (lowerGateRec plan) \u03c8 = qs.eval U \u03c8</code>, i.e. the lowered circuit evaluates exactly like the high-level gate <code>U</code> the plan certifies. Proved by structural induction on the plan.</p>\n<ul><li><strong><code>evalL_lowerSignedPhaseProd_of_plan</code></strong> (<code>Correctness.lean</code>) \u2014 the same</li></ul>\n<p>fact repackaged for the <em>standard</em> uncontrolled plan specifically (fixing <code>U := Gate.SignedPhaseProd phi x z</code>); this is the lemma <code>Main.lean</code> calls directly for the uncontrolled headline theorem. (<code>Main.lean</code> calls <code>evalL_lowerGateRec_correct</code> itself for the controlled case, since no separate wrapper for it was needed.)</p>\n<p>Getting to those two required: <code>EvalL.lean</code>'s simp lemmas for <code>evalL</code> on each primitive; <code>Lowerable.lean</code> showing every gate the compiler emits is a valid lowering target; <code>Linearity.lean</code> lifting basis-ket facts to arbitrary clean states; <code>Workspace.lean</code> showing allocation produces a fitted, still-clean target encoding; and the readiness proofs in <code>PlanReadiness/</code> (see its own README) showing the <em>standard</em> planners actually produce ready plans.</p>"
+   "readmeHtml": "<h1><code>Proofs/Lowering/</code></h1>\n<p>Correctness of the <code>Lowering/</code> plan machinery: that lowering a <code>PhaseLoweringPlan</code> to a <code>LowGate</code> (via <code>lowerGateRec</code>) preserves semantics, given the plan is \"ready\" (<code>PhaseLoweringReady</code>, <code>Spec/Readiness.lean</code>). Internal order: <code>EvalL</code> \u2192 <code>Lowerable</code> \u2192 <code>PlanSemantics</code> \u2192 <code>Linearity</code> \u2192 <code>Workspace</code> \u2192 <code>PlanReadiness/*</code> \u2192 <code>Correctness</code> (each may use anything from the ones before it).</p>\n<p>The two results this folder's proofs ultimately exist to feed <code>Main.lean</code>:</p>\n<ul><li><strong><code>evalL_lowerGateRec_correct</code></strong> (<code>PlanSemantics.lean</code>) \u2014 the core</li></ul>\n<p>interpreter theorem: for <em>any</em> <code>PhaseLoweringPlan P</code> that is ready on a state <code>\u03c8</code> (and the source program satisfies the usual interpolation-safety side conditions), <code>LowerGateClass.evalL (lowerGateRec plan) \u03c8 = qs.eval U \u03c8</code>, i.e. the lowered circuit evaluates exactly like the high-level gate <code>U</code> the plan certifies. Proved by structural induction on the plan.</p>\n<p>This is generic in the policy <code>P</code> and always was generic in the table: the induction never inspects which table a <code>signedStep</code> used, only that the step is well-formed and its child is ready. Admitting a width-indexed policy therefore cost this theorem nothing \u2014 the side conditions it needs are per-level, and <code>P.choose</code> supplying a different table at a different level is invisible to it.</p>\n<ul><li><strong><code>evalL_lowerSignedPhaseProd_of_plan</code></strong> (<code>Correctness.lean</code>) \u2014 the same</li></ul>\n<p>fact repackaged for the <em>standard</em> uncontrolled plan specifically (fixing <code>U := Gate.SignedPhaseProd phi x z</code>); this is the lemma <code>Main.lean</code> calls directly for the uncontrolled headline theorem. (<code>Main.lean</code> calls <code>evalL_lowerGateRec_correct</code> itself for the controlled case, since no separate wrapper for it was needed.)</p>\n<p>Getting to those two required: <code>EvalL.lean</code>'s simp lemmas for <code>evalL</code> on each primitive; <code>Lowerable.lean</code> showing every gate the compiler emits is a valid lowering target; <code>Linearity.lean</code> lifting basis-ket facts to arbitrary clean states; <code>Workspace.lean</code> showing allocation produces a fitted, still-clean target encoding; and the readiness proofs in <code>PlanReadiness/</code> (see its own README) showing the planners actually produce ready plans.</p>\n<p>Readiness is where the policy is visible, because that is where a plan is <em>built</em>: the dispatcher's two branches (<code>Policy.signedPlanOf</code> at <code>some T</code> and at <code>none</code>) are discharged separately, and the recursive branch needs the chosen table's own workspace facts. The fixed-table statements are the constant-policy instances, which is why they read exactly as before.</p>"
   },
   "PhaseProduct/Proofs/Lowering/Correctness.lean": {
    "declarations": [
@@ -11521,7 +11522,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/PlanReadiness/BodyReadiness.lean",
     "PhaseProduct/Proofs/Lowering/PlanReadiness/RecursiveReadiness.lean"
    ],
-   "declCount": 27,
+   "declCount": 28,
    "fileCount": 3,
    "fsPath": "Implementation/PhaseProduct/Proofs/Lowering/PlanReadiness",
    "kind": "folder",
@@ -11706,6 +11707,11 @@ window.GRAPH = {
      "kind": "lemma",
      "line": 631,
      "name": "Shor.Policy.cSignedPlan_ready"
+    },
+    {
+     "kind": "theorem",
+     "line": 655,
+     "name": "Shor.Policy.signedPlan_ready_and_clean"
     }
    ],
    "docstring": "=========================================================\n    Recursive Signed Phase-Product Readiness\n    These lemmas assemble allocation, body readiness, recursive child readiness,\n    and deallocation into readiness for the canonical signed phase-product\n    lowering plan. The basis-ket proof is extended to arbitrary clean states by\n    linearity.\n=========================================================",
@@ -11719,7 +11725,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/PlanReadiness/AllocDeallocReadiness.lean"
    ],
    "kind": "file",
-   "lines": 652,
+   "lines": 674,
    "name": "RecursiveReadiness.lean",
    "path": "PhaseProduct/Proofs/Lowering/PlanReadiness/RecursiveReadiness.lean"
   },
@@ -12277,13 +12283,13 @@ window.GRAPH = {
     "QFT/Spec",
     "QFT/Split.lean"
    ],
-   "declCount": 118,
+   "declCount": 157,
    "fileCount": 11,
    "fsPath": "Implementation/QFT",
    "kind": "folder",
    "name": "QFT",
    "path": "QFT",
-   "readmeHtml": "<h1><code>Implementation/QFT/</code></h1>\n<p>This folder implements and proves correct the recursive <strong>Quantum Fourier Transform (QFT)</strong>: splitting a register's QFT into two half-size recursive QFTs joined by a phase-product macro and a radix reversal, the workspace budget model for that recursion, and the lowering machinery that turns the recursive plan into primitive <code>LowGate</code>s.</p>\n<p>The folder is organized in layers (below). <strong>Every import is \"justified\":</strong> a file may only import another file if it directly uses a declaration that file defines \u2014 never a declaration it merely re-exports transitively. <code>scripts/check_qft_layers.sh</code> (repo root) enforces both the layer order and the absence of umbrella files (a file that only imports and declares nothing of its own).</p>\n<h2>Layer order</h2>\n<pre><code>Split  &lt;  Lowering  &lt;  Spec  &lt;  Proofs  &lt;  Main</code></pre>\n<p>A file may import its own folder or any folder to its left. Within <code>Lowering/</code>, <code>Workspace.lean</code> and <code>Plan.lean</code> are independent siblings (both depend only on <code>Split.lean</code>); <code>PlanBuilders.lean</code> builds on both.</p>\n<p>Reading order for newcomers: start at <code>Main.lean</code>, then follow imports <em>backwards</em> \u2014 <code>Spec/Assertions.lean</code> for what is claimed, <code>Proofs/Lowering/Readiness.lean</code> for how the claim is proved, and outward from there into <code>Proofs/Decomposition.lean</code>, <code>Lowering/</code>, <code>Split.lean</code> as needed. The one-line descriptions below are grouped in dependency order (lowest layer first) to match that traversal.</p>\n<h2><code>Split.lean</code> \u2014 register-splitting convention</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Split.lean</code></td><td>Fixes the low/right\u2013high/left split convention (<code>splitM</code>, <code>halfSplitPoint</code>, <code>leftReg</code>, <code>rightReg</code>) and the small containment/disjointness facts (<code>leftReg_mem_parent</code>, <code>rightReg_mem_parent</code>, <code>disjoint_left_right</code>) used whenever the recursion reuses the same workspace pools on both halves.</td></tr></tbody></table>\n<h2><code>Lowering/</code> \u2014 the workspace budget model and turning a recursive QFT plan into a circuit</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Workspace.lean</code></td><td><code>qftWorkspaceNeed</code>: how large the two global reserve pools (x-side, z-side) must be for a register of a given width, accounting for the middle phase product and both recursive QFT calls. The public precondition on a single <code>ExtReg</code> (<code>QFTReserveOK</code>), the internal static condition on an already-selected pair of workspace registers (<code>QFTWorkspaceOK</code>), the monotonicity bounds letting a child reuse the same pools, and the constructions (<code>QFTWorkspaceOK.phaseWorkspace</code>, <code>.signedWorkspaceOK</code>, <code>.left</code>, <code>.right</code>) that carve those pools for the phase-product macro and for each recursive child.</td></tr><tr><td><code>Plan.lean</code></td><td><code>QFTLoweringPlan</code>: the finite certificate carried by the public lowerer \u2014 empty/singleton base cases and a recursive split case (carrying the phase-product workspace and subplan for the middle macro). <code>lowerQFTPlan</code>: the interpreter erasing such a plan to a <code>LowGate</code>.</td></tr><tr><td><code>PlanBuilders.lean</code></td><td>Builds plans rather than just interpreting them: <code>standardPhaseProdUsingPlan</code> (the canonical unsigned phase-product subplan used at each split, built by zero-extending both operands, lowering the resulting signed phase product, then deallocating the extensions), the two public plan constructors <code>standardQFTLoweringPlan</code> (from explicit workspace registers satisfying <code>QFTWorkspaceOK</code>) and <code>reserveQFTLoweringPlan</code> (the bridge from the public reserve precondition <code>QFTReserveOK</code> to a concrete plan, deriving its workspace registers from <code>qftXWork</code>/<code>qftZWork</code>), and <code>lowerQFT</code> (the final public constructor \u2014 the canonical lowered QFT circuit, its workspace selected deterministically from the reserve precondition rather than supplied separately).</td></tr></tbody></table>\n<h2><code>Spec/</code> \u2014 the public specification surface</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Cleanliness.lean</code></td><td>The cleanliness predicates needed to state QFT workspace readiness: <code>Gate.PhaseProdWorkspace.CleanState</code> (the unsigned phase-product macro's own clean-workspace subspace) and <code>QFTWorkspaceCleanState</code>/<code>QFTWorkspaceStateOK</code> (the state-level precondition on the QFT lowerer's inactive register).</td></tr><tr><td><code>Readiness.lean</code></td><td><code>QFTLoweringReady</code>: the semantic precondition required to execute a <code>QFTLoweringPlan</code> on a state \u2014 a split node needs the phase-product macro workspace clean, the right child's plan ready, and (after evaluating the right child and the phase gate) the left child's plan ready.</td></tr><tr><td><code>Assertions.lean</code></td><td><code>LowerQFTCorrect</code> \u2014 the final claim: the canonical recursive lowering of a QFT gate has the same semantics as the high-level <code>Gate.QFT</code> gate, on states with valid, clean recursive workspace. Proved in <code>Main.lean</code>.</td></tr></tbody></table>\n<h2><code>Proofs/</code> \u2014 everything below is proof-only; nothing outside <code>Proofs/</code>/<code>Main.lean</code> may import it</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Decomposition.lean</code></td><td>The high-level circuit identity: <code>Gate.QFT</code> on a register decomposes into a QFT on the right half, the unsigned phase-product macro, a QFT on the left half, and a radix reversal. See its own README for the exact statements.</td></tr><tr><td><code>Lowering/</code></td><td>Correctness of the plan/lowering machinery \u2014 see <code>Proofs/Lowering/README.md</code>.</td></tr></tbody></table>\n<h2><code>Main.lean</code></h2>\n<p>Proves the folder's one public theorem, <code>lowerQFT_correct</code> (packaging <code>Spec.Assertions.LowerQFTCorrect</code>), from <code>Proofs.Lowering.Readiness</code>'s <code>evalL_lowerQFT</code>. Imports only <code>Spec.Assertions</code> and <code>Proofs.Lowering.Readiness</code> \u2014 every other dependency is transitive through those two.</p>"
+   "readmeHtml": "<h1><code>Implementation/QFT/</code></h1>\n<p>This folder implements and proves correct the recursive <strong>Quantum Fourier Transform (QFT)</strong>: splitting a register's QFT into two half-size recursive QFTs joined by a phase-product macro and a radix reversal, the workspace budget model for that recursion, and the lowering machinery that turns the recursive plan into primitive <code>LowGate</code>s.</p>\n<p>The folder is organized in layers (below). <strong>Every import is \"justified\":</strong> a file may only import another file if it directly uses a declaration that file defines \u2014 never a declaration it merely re-exports transitively. <code>scripts/check_qft_layers.sh</code> (repo root) enforces both the layer order and the absence of umbrella files (a file that only imports and declares nothing of its own).</p>\n<h2>Layer order</h2>\n<pre><code>Split  &lt;  Lowering  &lt;  Spec  &lt;  Proofs  &lt;  Main</code></pre>\n<p>A file may import its own folder or any folder to its left. Within <code>Lowering/</code>, <code>Workspace.lean</code> and <code>Plan.lean</code> are independent siblings (both depend only on <code>Split.lean</code>); <code>PlanBuilders.lean</code> builds on both.</p>\n<p>Reading order for newcomers: start at <code>Main.lean</code>, then follow imports <em>backwards</em> \u2014 <code>Spec/Assertions.lean</code> for what is claimed, <code>Proofs/Lowering/Readiness.lean</code> for how the claim is proved, and outward from there into <code>Proofs/Decomposition.lean</code>, <code>Lowering/</code>, <code>Split.lean</code> as needed. The one-line descriptions below are grouped in dependency order (lowest layer first) to match that traversal.</p>\n<h2><code>Split.lean</code> \u2014 register-splitting convention</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Split.lean</code></td><td>Fixes the low/right\u2013high/left split convention (<code>splitM</code>, <code>halfSplitPoint</code>, <code>leftReg</code>, <code>rightReg</code>) and the small containment/disjointness facts (<code>leftReg_mem_parent</code>, <code>rightReg_mem_parent</code>, <code>disjoint_left_right</code>) used whenever the recursion reuses the same workspace pools on both halves.</td></tr></tbody></table>\n<h2><code>Lowering/</code> \u2014 the workspace budget model and turning a recursive QFT plan into a circuit</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Workspace.lean</code></td><td><code>qftWorkspaceNeed</code>: how large the two global reserve pools (x-side, z-side) must be for a register of a given width, accounting for the middle phase product and both recursive QFT calls. The public precondition on a single <code>ExtReg</code> (<code>QFTReserveOK</code>), the internal static condition on an already-selected pair of workspace registers (<code>QFTWorkspaceOK</code>), the monotonicity bounds letting a child reuse the same pools, and the constructions (<code>QFTWorkspaceOKOf.phaseWorkspace</code>, <code>.signedWorkspaceOK</code>, <code>.left</code>, <code>.right</code>) that carve those pools for the phase-product macro and for each recursive child.</td></tr><tr><td><code>Plan.lean</code></td><td><code>QFTLoweringPlan</code>: the finite certificate carried by the public lowerer \u2014 empty/singleton base cases and a recursive split case (carrying the phase-product workspace and subplan for the middle macro). <code>lowerQFTPlan</code>: the interpreter erasing such a plan to a <code>LowGate</code>.</td></tr><tr><td><code>PlanBuilders.lean</code></td><td>Builds plans rather than just interpreting them: <code>standardPhaseProdUsingPlan</code> (the canonical unsigned phase-product subplan used at each split, built by zero-extending both operands, lowering the resulting signed phase product, then deallocating the extensions), the two public plan constructors <code>standardQFTLoweringPlan</code> (from explicit workspace registers satisfying <code>QFTWorkspaceOK</code>) and <code>reserveQFTLoweringPlan</code> (the bridge from the public reserve precondition <code>QFTReserveOK</code> to a concrete plan, deriving its workspace registers from <code>qftXWork</code>/<code>qftZWork</code>), and <code>lowerQFT</code> (the final public constructor \u2014 the canonical lowered QFT circuit, its workspace selected deterministically from the reserve precondition rather than supplied separately).</td></tr></tbody></table>\n<h2><code>Spec/</code> \u2014 the public specification surface</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Cleanliness.lean</code></td><td>The cleanliness predicates needed to state QFT workspace readiness: <code>Gate.PhaseProdWorkspace.CleanState</code> (the unsigned phase-product macro's own clean-workspace subspace) and <code>QFTWorkspaceCleanState</code>/<code>QFTWorkspaceStateOK</code> (the state-level precondition on the QFT lowerer's inactive register).</td></tr><tr><td><code>Readiness.lean</code></td><td><code>QFTLoweringReady</code>: the semantic precondition required to execute a <code>QFTLoweringPlan</code> on a state \u2014 a split node needs the phase-product macro workspace clean, the right child's plan ready, and (after evaluating the right child and the phase gate) the left child's plan ready.</td></tr><tr><td><code>Assertions.lean</code></td><td><code>LowerQFTCorrect</code> \u2014 the final claim: the canonical recursive lowering of a QFT gate has the same semantics as the high-level <code>Gate.QFT</code> gate, on states with valid, clean recursive workspace. Proved in <code>Main.lean</code>.</td></tr></tbody></table>\n<h2><code>Proofs/</code> \u2014 everything below is proof-only; nothing outside <code>Proofs/</code>/<code>Main.lean</code> may import it</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Decomposition.lean</code></td><td>The high-level circuit identity: <code>Gate.QFT</code> on a register decomposes into a QFT on the right half, the unsigned phase-product macro, a QFT on the left half, and a radix reversal. See its own README for the exact statements.</td></tr><tr><td><code>Lowering/</code></td><td>Correctness of the plan/lowering machinery \u2014 see <code>Proofs/Lowering/README.md</code>.</td></tr></tbody></table>\n<h2><code>Main.lean</code></h2>\n<p>Proves the folder's one public theorem, <code>lowerQFT_correct</code> (packaging <code>Spec.Assertions.LowerQFTCorrect</code>), from <code>Proofs.Lowering.Readiness</code>'s <code>evalL_lowerQFT</code>. Imports only <code>Spec.Assertions</code> and <code>Proofs.Lowering.Readiness</code> \u2014 every other dependency is transitive through those two.</p>\n<h3>One definition, two spellings</h3>\n<p><code>qftWorkspaceNeed ops</code> is <code>qftWorkspaceNeedOf (RecursivePhaseWorkspace.reserveNeed ops)</code>: the recursion over register widths is written <strong>once</strong>, abstracted over the phase-product reserve model it calls, and the fixed-table name is that function applied to the fixed-table model. <code>QFTReserveOK</code> and <code>QFTWorkspaceOK</code> are likewise <code>abbrev</code>s for <code>QFTReserveOKOf</code> / <code>QFTWorkspaceOKOf</code> at <code>qftWorkspaceNeed ops</code>.</p>\n<p>The point is that a policy-indexed reserve model can be substituted without restating or reproving anything here \u2014 the lemmas are about <code>need</code>, not about which table produced it. Keying them on the <em>need</em> function rather than on the reserve model matters: field spellings like <code>x_large_enough</code> then mention the same term the fixed-table statements always did, so <code>omega</code> and friends in downstream files still see the atoms they expect.</p>"
   },
   "QFT/Lowering": {
    "children": [
@@ -12291,7 +12297,7 @@ window.GRAPH = {
     "QFT/Lowering/PlanBuilders.lean",
     "QFT/Lowering/Workspace.lean"
    ],
-   "declCount": 34,
+   "declCount": 69,
    "fileCount": 3,
    "fsPath": "Implementation/QFT/Lowering",
    "kind": "folder",
@@ -12307,8 +12313,13 @@ window.GRAPH = {
      "name": "Shor.QFTLoweringPlan"
     },
     {
+     "kind": "abbrev",
+     "line": 54,
+     "name": "Shor.StandardQFTLoweringPlan"
+    },
+    {
      "kind": "def",
-     "line": 50,
+     "line": 59,
      "name": "Shor.lowerQFTPlan"
     }
    ],
@@ -12326,7 +12337,7 @@ window.GRAPH = {
     "QFT/Split.lean"
    ],
    "kind": "file",
-   "lines": 63,
+   "lines": 72,
    "name": "Plan.lean",
    "path": "QFT/Lowering/Plan.lean"
   },
@@ -12340,21 +12351,46 @@ window.GRAPH = {
     {
      "kind": "def",
      "line": 49,
+     "name": "Shor.Policy.phaseProdUsingPlan"
+    },
+    {
+     "kind": "def",
+     "line": 96,
      "name": "Shor.standardPhaseProdUsingPlan"
     },
     {
      "kind": "def",
-     "line": 107,
+     "line": 118,
+     "name": "Shor.Policy.qftPlan"
+    },
+    {
+     "kind": "theorem",
+     "line": 165,
+     "name": "Shor.Policy.qftWorkspaceOK_of_const"
+    },
+    {
+     "kind": "def",
+     "line": 171,
      "name": "Shor.standardQFTLoweringPlan"
     },
     {
      "kind": "def",
-     "line": 159,
+     "line": 186,
+     "name": "Shor.Policy.reserveQftPlan"
+    },
+    {
+     "kind": "def",
+     "line": 195,
      "name": "Shor.reserveQFTLoweringPlan"
     },
     {
      "kind": "def",
-     "line": 170,
+     "line": 206,
+     "name": "Shor.Policy.lowerQFT"
+    },
+    {
+     "kind": "def",
+     "line": 213,
      "name": "Shor.lowerQFT"
     }
    ],
@@ -12372,7 +12408,7 @@ window.GRAPH = {
     "QFT/Lowering/Workspace.lean"
    ],
    "kind": "file",
-   "lines": 176,
+   "lines": 219,
    "name": "PlanBuilders.lean",
    "path": "QFT/Lowering/PlanBuilders.lean"
   },
@@ -12380,138 +12416,283 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "def",
-     "line": 28,
-     "name": "Shor.qftWorkspaceNeed"
+     "line": 38,
+     "name": "Shor.qftWorkspaceNeedOf"
     },
     {
      "kind": "def",
      "line": 53,
-     "name": "Shor.qftXWork"
+     "name": "Shor.qftWorkspaceNeed"
     },
     {
      "kind": "def",
-     "line": 60,
+     "line": 58,
+     "name": "Shor.Policy.qftWorkspaceNeed"
+    },
+    {
+     "kind": "theorem",
+     "line": 62,
+     "name": "Shor.Policy.qftWorkspaceNeed_const"
+    },
+    {
+     "kind": "def",
+     "line": 81,
+     "name": "Shor.qftXWorkOf"
+    },
+    {
+     "kind": "abbrev",
+     "line": 85,
+     "name": "Shor.qftXWork"
+    },
+    {
+     "kind": "abbrev",
+     "line": 89,
+     "name": "Shor.Policy.qftXWork"
+    },
+    {
+     "kind": "def",
+     "line": 96,
+     "name": "Shor.qftZWorkOf"
+    },
+    {
+     "kind": "abbrev",
+     "line": 102,
      "name": "Shor.qftZWork"
     },
     {
+     "kind": "abbrev",
+     "line": 106,
+     "name": "Shor.Policy.qftZWork"
+    },
+    {
      "kind": "structure",
-     "line": 69,
+     "line": 113,
+     "name": "Shor.QFTReserveOKOf"
+    },
+    {
+     "kind": "abbrev",
+     "line": 118,
      "name": "Shor.QFTReserveOK"
     },
     {
+     "kind": "abbrev",
+     "line": 122,
+     "name": "Shor.Policy.QFTReserveOK"
+    },
+    {
+     "kind": "theorem",
+     "line": 126,
+     "name": "Shor.Policy.qftXWork_const"
+    },
+    {
+     "kind": "theorem",
+     "line": 132,
+     "name": "Shor.Policy.qftZWork_const"
+    },
+    {
+     "kind": "theorem",
+     "line": 138,
+     "name": "Shor.Policy.qftReserveOK_const_iff"
+    },
+    {
      "kind": "structure",
-     "line": 78,
+     "line": 149,
+     "name": "Shor.QFTWorkspaceOKOf"
+    },
+    {
+     "kind": "abbrev",
+     "line": 158,
      "name": "Shor.QFTWorkspaceOK"
     },
     {
+     "kind": "abbrev",
+     "line": 162,
+     "name": "Shor.Policy.QFTWorkspaceOK"
+    },
+    {
+     "kind": "theorem",
+     "line": 166,
+     "name": "Shor.Policy.qftWorkspaceOK_const_iff"
+    },
+    {
      "kind": "lemma",
-     "line": 93,
+     "line": 180,
      "name": "Shor.regSize_leftReg"
     },
     {
      "kind": "lemma",
-     "line": 96,
+     "line": 183,
      "name": "Shor.regSize_rightReg"
     },
     {
      "kind": "lemma",
-     "line": 100,
+     "line": 187,
      "name": "Shor.disjoint_of_left_subset"
     },
     {
      "kind": "lemma",
-     "line": 107,
+     "line": 194,
      "name": "Shor.disjoint_of_right_subset"
     },
     {
      "kind": "lemma",
-     "line": 114,
-     "name": "Shor.qftXWork_mem_reserve"
+     "line": 201,
+     "name": "Shor.qftXWorkOf_mem_reserve"
     },
     {
      "kind": "lemma",
-     "line": 120,
-     "name": "Shor.qftZWork_mem_reserve"
-    },
-    {
-     "kind": "lemma",
-     "line": 128,
-     "name": "Shor.qftXWork_qftZWork_disjoint"
-    },
-    {
-     "kind": "lemma",
-     "line": 142,
-     "name": "Shor.regSize_qftXWork"
-    },
-    {
-     "kind": "lemma",
-     "line": 150,
-     "name": "Shor.regSize_qftZWork"
-    },
-    {
-     "kind": "lemma",
-     "line": 163,
-     "name": "Shor.QFTReserveOK.explicitWorkspace"
-    },
-    {
-     "kind": "lemma",
-     "line": 192,
-     "name": "Shor.qftWorkspaceNeed_eq_of_two_le"
-    },
-    {
-     "kind": "lemma",
-     "line": 208,
-     "name": "Shor.qftWorkspaceNeed_phase_x_le"
+     "line": 207,
+     "name": "Shor.qftZWorkOf_mem_reserve"
     },
     {
      "kind": "lemma",
      "line": 215,
+     "name": "Shor.qftXWorkOf_qftZWorkOf_disjoint"
+    },
+    {
+     "kind": "lemma",
+     "line": 229,
+     "name": "Shor.regSize_qftXWorkOf"
+    },
+    {
+     "kind": "lemma",
+     "line": 237,
+     "name": "Shor.regSize_qftZWorkOf"
+    },
+    {
+     "kind": "lemma",
+     "line": 251,
+     "name": "Shor.qftXWork_mem_reserve"
+    },
+    {
+     "kind": "lemma",
+     "line": 255,
+     "name": "Shor.qftZWork_mem_reserve"
+    },
+    {
+     "kind": "lemma",
+     "line": 259,
+     "name": "Shor.qftXWork_qftZWork_disjoint"
+    },
+    {
+     "kind": "lemma",
+     "line": 263,
+     "name": "Shor.regSize_qftXWork"
+    },
+    {
+     "kind": "lemma",
+     "line": 268,
+     "name": "Shor.regSize_qftZWork"
+    },
+    {
+     "kind": "lemma",
+     "line": 275,
+     "name": "Shor.QFTReserveOKOf.explicitWorkspace"
+    },
+    {
+     "kind": "lemma",
+     "line": 306,
+     "name": "Shor.qftWorkspaceNeedOf_eq_of_two_le"
+    },
+    {
+     "kind": "lemma",
+     "line": 322,
+     "name": "Shor.qftWorkspaceNeed_eq_of_two_le"
+    },
+    {
+     "kind": "lemma",
+     "line": 333,
+     "name": "Shor.Policy.qftWorkspaceNeed_eq_of_two_le"
+    },
+    {
+     "kind": "lemma",
+     "line": 344,
+     "name": "Shor.qftWorkspaceNeedOf_phase_x_le"
+    },
+    {
+     "kind": "lemma",
+     "line": 351,
+     "name": "Shor.qftWorkspaceNeed_phase_x_le"
+    },
+    {
+     "kind": "lemma",
+     "line": 356,
+     "name": "Shor.qftWorkspaceNeedOf_phase_z_le"
+    },
+    {
+     "kind": "lemma",
+     "line": 363,
      "name": "Shor.qftWorkspaceNeed_phase_z_le"
     },
     {
      "kind": "lemma",
-     "line": 222,
+     "line": 368,
+     "name": "Shor.qftWorkspaceNeedOf_left_x_le"
+    },
+    {
+     "kind": "lemma",
+     "line": 374,
      "name": "Shor.qftWorkspaceNeed_left_x_le"
     },
     {
      "kind": "lemma",
-     "line": 228,
+     "line": 378,
+     "name": "Shor.qftWorkspaceNeedOf_left_z_le"
+    },
+    {
+     "kind": "lemma",
+     "line": 384,
      "name": "Shor.qftWorkspaceNeed_left_z_le"
     },
     {
      "kind": "lemma",
-     "line": 234,
+     "line": 388,
+     "name": "Shor.qftWorkspaceNeedOf_right_x_le"
+    },
+    {
+     "kind": "lemma",
+     "line": 394,
      "name": "Shor.qftWorkspaceNeed_right_x_le"
     },
     {
      "kind": "lemma",
-     "line": 240,
+     "line": 398,
+     "name": "Shor.qftWorkspaceNeedOf_right_z_le"
+    },
+    {
+     "kind": "lemma",
+     "line": 404,
      "name": "Shor.qftWorkspaceNeed_right_z_le"
     },
     {
      "kind": "lemma",
-     "line": 254,
+     "line": 416,
      "name": "Shor.Gate.PhaseProdWorkspace.ownedDisjoint_grow"
     },
     {
      "kind": "def",
-     "line": 278,
-     "name": "Shor.QFTWorkspaceOK.phaseWorkspace"
+     "line": 440,
+     "name": "Shor.QFTWorkspaceOKOf.phaseWorkspace"
     },
     {
      "kind": "lemma",
-     "line": 315,
-     "name": "Shor.QFTWorkspaceOK.signedWorkspaceOK"
+     "line": 477,
+     "name": "Shor.QFTWorkspaceOKOf.signedWorkspaceOK"
     },
     {
      "kind": "lemma",
-     "line": 361,
-     "name": "Shor.QFTWorkspaceOK.left"
+     "line": 524,
+     "name": "Shor.QFTWorkspaceOKOf.policySignedWorkspaceOK"
     },
     {
      "kind": "lemma",
-     "line": 382,
-     "name": "Shor.QFTWorkspaceOK.right"
+     "line": 571,
+     "name": "Shor.QFTWorkspaceOKOf.left"
+    },
+    {
+     "kind": "lemma",
+     "line": 592,
+     "name": "Shor.QFTWorkspaceOKOf.right"
     }
    ],
    "docstring": "# QFT Workspace Budget Model\n\nThe recursive-workspace size model for QFT lowering (`qftWorkspaceNeed` and\nits bounds), the public workspace precondition on a single `ExtReg`\n(`QFTReserveOK`), the internal static condition on an already-selected pair\nof workspace registers (`QFTWorkspaceOK`), and the construction of the two\nchild workspaces a recursive QFT split needs.",
@@ -12525,12 +12706,13 @@ window.GRAPH = {
     "Shor/Lowering/LowerGate.lean"
    ],
    "imports": [
+    "PhaseProduct/Compiler/PolicyWorkspace.lean",
     "PhaseProduct/Compiler/Workspace.lean",
     "PhaseProduct/Gates/Macros.lean",
     "QFT/Split.lean"
    ],
    "kind": "file",
-   "lines": 402,
+   "lines": 612,
    "name": "Workspace.lean",
    "path": "QFT/Lowering/Workspace.lean"
   },
@@ -12540,6 +12722,11 @@ window.GRAPH = {
      "kind": "theorem",
      "line": 17,
      "name": "Shor.lowerQFT_correct"
+    },
+    {
+     "kind": "theorem",
+     "line": 26,
+     "name": "Shor.Policy.lowerQFT_correct"
     }
    ],
    "docstring": "# QFT Main Theorem\n\nThis module proves the public assertion for the QFT implementation.  All\nsupporting lemmas are kept under `QFT` proof files (`Decomposition`,\n`Lowering/*`).",
@@ -12550,7 +12737,7 @@ window.GRAPH = {
     "QFT/Spec/Assertions.lean"
    ],
    "kind": "file",
-   "lines": 25,
+   "lines": 33,
    "name": "Main.lean",
    "path": "QFT/Main.lean"
   },
@@ -12559,7 +12746,7 @@ window.GRAPH = {
     "QFT/Proofs/Decomposition.lean",
     "QFT/Proofs/Lowering"
    ],
-   "declCount": 70,
+   "declCount": 71,
    "fileCount": 3,
    "fsPath": "Implementation/QFT/Proofs",
    "kind": "folder",
@@ -12811,7 +12998,7 @@ window.GRAPH = {
     "QFT/Proofs/Lowering/PlanSemantics.lean",
     "QFT/Proofs/Lowering/Readiness.lean"
    ],
-   "declCount": 27,
+   "declCount": 28,
    "fileCount": 2,
    "fsPath": "Implementation/QFT/Proofs/Lowering",
    "kind": "folder",
@@ -12848,32 +13035,32 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 310,
+     "line": 304,
      "name": "Shor.evalL_lowerQFTPlan_add"
     },
     {
      "kind": "lemma",
-     "line": 321,
+     "line": 315,
      "name": "Shor.evalL_lowerQFTPlan_smul"
     },
     {
      "kind": "lemma",
-     "line": 334,
+     "line": 328,
      "name": "Shor.QFTLoweringReady.add"
     },
     {
      "kind": "lemma",
-     "line": 387,
+     "line": 381,
      "name": "Shor.QFTLoweringReady.smul"
     },
     {
      "kind": "lemma",
-     "line": 435,
+     "line": 429,
      "name": "Shor.evalL_lowerQFTPlan_zero"
     },
     {
      "kind": "lemma",
-     "line": 443,
+     "line": 437,
      "name": "Shor.QFTLoweringReady.zero"
     }
    ],
@@ -12896,7 +13083,7 @@ window.GRAPH = {
     "Shared/States.lean"
    ],
    "kind": "file",
-   "lines": 465,
+   "lines": 459,
    "name": "PlanSemantics.lean",
    "path": "QFT/Proofs/Lowering/PlanSemantics.lean"
   },
@@ -12950,36 +13137,41 @@ window.GRAPH = {
     {
      "kind": "theorem",
      "line": 178,
-     "name": "Shor.standardPhaseProdUsingPlan_ready_and_clean"
+     "name": "Shor.Policy.phaseProdUsingPlan_ready_and_clean"
     },
     {
      "kind": "lemma",
-     "line": 237,
+     "line": 231,
      "name": "Shor.eval_QFT_preserves_QFTWorkspaceCleanState"
     },
     {
      "kind": "theorem",
-     "line": 290,
-     "name": "Shor.standardQFTLoweringPlan_ready_and_clean_explicit"
+     "line": 284,
+     "name": "Shor.Policy.qftPlan_ready_and_clean_explicit"
     },
     {
      "kind": "theorem",
-     "line": 421,
-     "name": "Shor.standardQFTLoweringPlan_ready_and_clean"
+     "line": 411,
+     "name": "Shor.Policy.qftPlan_ready_and_clean"
     },
     {
      "kind": "lemma",
-     "line": 442,
-     "name": "Shor.reserveQFTLoweringPlan_ready_ket"
+     "line": 428,
+     "name": "Shor.Policy.reserveQftPlan_ready_ket"
     },
     {
      "kind": "lemma",
-     "line": 459,
-     "name": "Shor.reserveQFTLoweringPlan_preserves_clean_of_ready"
+     "line": 440,
+     "name": "Shor.Policy.reserveQftPlan_preserves_clean_of_ready"
     },
     {
      "kind": "theorem",
-     "line": 479,
+     "line": 455,
+     "name": "Shor.Policy.evalL_lowerQFT"
+    },
+    {
+     "kind": "theorem",
+     "line": 493,
      "name": "Shor.evalL_lowerQFT"
     }
    ],
@@ -13014,7 +13206,7 @@ window.GRAPH = {
     "Shared/States.lean"
    ],
    "kind": "file",
-   "lines": 522,
+   "lines": 536,
    "name": "Readiness.lean",
    "path": "QFT/Proofs/Lowering/Readiness.lean"
   },
@@ -13024,7 +13216,7 @@ window.GRAPH = {
     "QFT/Spec/Cleanliness.lean",
     "QFT/Spec/Readiness.lean"
    ],
-   "declCount": 6,
+   "declCount": 8,
    "fileCount": 3,
    "fsPath": "Implementation/QFT/Spec",
    "kind": "folder",
@@ -13038,6 +13230,11 @@ window.GRAPH = {
      "kind": "def",
      "line": 19,
      "name": "Shor.LowerQFTCorrect"
+    },
+    {
+     "kind": "def",
+     "line": 35,
+     "name": "Shor.Policy.LowerQFTCorrect"
     }
    ],
    "docstring": "# QFT Public Assertion\n\nThe final semantic claim of the QFT implementation, stated as a named\nproposition.",
@@ -13050,7 +13247,7 @@ window.GRAPH = {
     "QFT/Spec/Cleanliness.lean"
    ],
    "kind": "file",
-   "lines": 30,
+   "lines": 44,
    "name": "Assertions.lean",
    "path": "QFT/Spec/Assertions.lean"
   },
@@ -13075,6 +13272,11 @@ window.GRAPH = {
      "kind": "structure",
      "line": 46,
      "name": "Shor.QFTWorkspaceStateOK"
+    },
+    {
+     "kind": "structure",
+     "line": 53,
+     "name": "Shor.Policy.QFTWorkspaceStateOK"
     }
    ],
    "docstring": "# QFT Cleanliness Predicates\n\nThe cleanliness predicates needed to state QFT workspace readiness: the\nunsigned phase-product macro's own clean-workspace subspace, and the\nstate-level precondition on the QFT lowerer's inactive register.",
@@ -13091,7 +13293,7 @@ window.GRAPH = {
     "Shared/States.lean"
    ],
    "kind": "file",
-   "lines": 52,
+   "lines": 61,
    "name": "Cleanliness.lean",
    "path": "QFT/Spec/Cleanliness.lean"
   },
@@ -13185,7 +13387,7 @@ window.GRAPH = {
     "Reference/ShorProgram.lean",
     "Reference/StandardLoweringSetup.lean"
    ],
-   "declCount": 137,
+   "declCount": 139,
    "fileCount": 7,
    "fsPath": "Implementation/Reference",
    "kind": "folder",
@@ -13336,297 +13538,297 @@ window.GRAPH = {
     },
     {
      "kind": "def",
-     "line": 138,
+     "line": 137,
      "name": "Shor.Reference.referenceXReserveSize"
     },
     {
      "kind": "def",
-     "line": 144,
+     "line": 143,
      "name": "Shor.Reference.referenceDataReserveSize"
     },
     {
      "kind": "def",
-     "line": 150,
+     "line": 149,
      "name": "Shor.Reference.referenceWorkReserveSize"
     },
     {
      "kind": "def",
-     "line": 156,
+     "line": 155,
      "name": "Shor.Reference.referenceScratchReserveSize"
     },
     {
      "kind": "theorem",
-     "line": 161,
+     "line": 160,
      "name": "Shor.Reference.shorWorkspaceNeed_ext"
     },
     {
      "kind": "def",
-     "line": 180,
+     "line": 179,
      "name": "Shor.Reference.referenceXActive"
     },
     {
      "kind": "def",
-     "line": 183,
+     "line": 182,
      "name": "Shor.Reference.referenceXReserveStart"
     },
     {
      "kind": "def",
-     "line": 187,
+     "line": 186,
      "name": "Shor.Reference.referenceDataStart"
     },
     {
      "kind": "def",
-     "line": 193,
+     "line": 192,
      "name": "Shor.Reference.referenceDataReserveStart"
     },
     {
      "kind": "def",
-     "line": 199,
+     "line": 198,
      "name": "Shor.Reference.referenceWorkStart"
     },
     {
      "kind": "def",
-     "line": 205,
+     "line": 204,
      "name": "Shor.Reference.referenceWorkReserveStart"
     },
     {
      "kind": "def",
-     "line": 211,
+     "line": 210,
      "name": "Shor.Reference.referenceScratchStart"
     },
     {
      "kind": "def",
-     "line": 217,
+     "line": 216,
      "name": "Shor.Reference.referenceScratchReserveStart"
     },
     {
      "kind": "def",
-     "line": 223,
+     "line": 222,
      "name": "Shor.Reference.referenceFlag"
     },
     {
      "kind": "def",
-     "line": 229,
+     "line": 228,
      "name": "Shor.Reference.referenceXReserve"
     },
     {
      "kind": "def",
-     "line": 236,
+     "line": 235,
      "name": "Shor.Reference.referenceDataActive"
     },
     {
      "kind": "def",
-     "line": 243,
+     "line": 242,
      "name": "Shor.Reference.referenceDataReserve"
     },
     {
      "kind": "def",
-     "line": 250,
+     "line": 249,
      "name": "Shor.Reference.referenceWorkActive"
     },
     {
      "kind": "def",
-     "line": 257,
+     "line": 256,
      "name": "Shor.Reference.referenceWorkReserve"
     },
     {
      "kind": "def",
-     "line": 264,
+     "line": 263,
      "name": "Shor.Reference.referenceScratchActive"
     },
     {
      "kind": "def",
-     "line": 271,
+     "line": 270,
      "name": "Shor.Reference.referenceScratchReserve"
     },
     {
      "kind": "def",
-     "line": 282,
+     "line": 281,
      "name": "Shor.Reference.referenceX"
     },
     {
      "kind": "def",
-     "line": 290,
+     "line": 289,
      "name": "Shor.Reference.referenceData"
     },
     {
      "kind": "def",
-     "line": 299,
+     "line": 298,
      "name": "Shor.Reference.referenceWork"
     },
     {
      "kind": "def",
-     "line": 308,
+     "line": 307,
      "name": "Shor.Reference.referenceScratch"
     },
     {
      "kind": "theorem",
-     "line": 318,
+     "line": 317,
      "name": "Shor.Reference.withReserve_active"
     },
     {
      "kind": "theorem",
-     "line": 323,
+     "line": 322,
      "name": "Shor.Reference.withReserve_reserve"
     },
     {
      "kind": "structure",
-     "line": 329,
+     "line": 328,
      "name": "Shor.Reference.ReferenceShorLayout"
     },
     {
      "kind": "def",
-     "line": 340,
+     "line": 339,
      "name": "Shor.Reference.allocateReferenceLayout"
     },
     {
      "kind": "theorem",
-     "line": 357,
+     "line": 355,
      "name": "Shor.Reference.allocateReferenceLayout_x_active"
     },
     {
      "kind": "theorem",
-     "line": 364,
+     "line": 362,
      "name": "Shor.Reference.allocateReferenceLayout_x_width"
     },
     {
      "kind": "theorem",
-     "line": 372,
+     "line": 370,
      "name": "Shor.Reference.allocateReferenceLayout_data_width"
     },
     {
      "kind": "theorem",
-     "line": 380,
+     "line": 378,
      "name": "Shor.Reference.allocateReferenceLayout_work_width"
     },
     {
      "kind": "theorem",
-     "line": 388,
+     "line": 386,
      "name": "Shor.Reference.allocateReferenceLayout_scratch_width"
     },
     {
      "kind": "theorem",
-     "line": 396,
+     "line": 394,
      "name": "Shor.Reference.allocateReferenceLayout_x_capacity"
     },
     {
      "kind": "theorem",
-     "line": 404,
+     "line": 402,
      "name": "Shor.Reference.allocateReferenceLayout_data_capacity"
     },
     {
      "kind": "theorem",
-     "line": 412,
+     "line": 410,
      "name": "Shor.Reference.allocateReferenceLayout_work_capacity"
     },
     {
      "kind": "theorem",
-     "line": 420,
+     "line": 418,
      "name": "Shor.Reference.allocateReferenceLayout_scratch_capacity"
     },
     {
      "kind": "lemma",
-     "line": 432,
+     "line": 430,
      "name": "Shor.Reference.referenceX_owned_lt_dataStart"
     },
     {
      "kind": "lemma",
-     "line": 453,
+     "line": 451,
      "name": "Shor.Reference.referenceData_owned_ge_dataStart"
     },
     {
      "kind": "lemma",
-     "line": 472,
+     "line": 470,
      "name": "Shor.Reference.referenceWork_owned_ge_workStart"
     },
     {
      "kind": "lemma",
-     "line": 486,
+     "line": 484,
      "name": "Shor.Reference.referenceWork_owned_lt_scratchStart"
     },
     {
      "kind": "lemma",
-     "line": 501,
+     "line": 499,
      "name": "Shor.Reference.referenceScratch_owned_ge_scratchStart"
     },
     {
      "kind": "lemma",
-     "line": 515,
+     "line": 513,
      "name": "Shor.Reference.referenceScratch_owned_lt_flag"
     },
     {
      "kind": "theorem",
-     "line": 535,
+     "line": 533,
      "name": "Shor.Reference.reference_exponent_data_disjoint"
     },
     {
      "kind": "lemma",
-     "line": 547,
+     "line": 545,
      "name": "Shor.Reference.referenceX_owned_lt_workStart"
     },
     {
      "kind": "lemma",
-     "line": 558,
+     "line": 556,
      "name": "Shor.Reference.referenceData_owned_lt_workStart"
     },
     {
      "kind": "theorem",
-     "line": 579,
+     "line": 577,
      "name": "Shor.Reference.reference_data_work_disjoint"
     },
     {
      "kind": "theorem",
-     "line": 592,
+     "line": 590,
      "name": "Shor.Reference.reference_exponent_work_disjoint"
     },
     {
      "kind": "theorem",
-     "line": 607,
+     "line": 605,
      "name": "Shor.Reference.reference_exponent_scratch_disjoint"
     },
     {
      "kind": "theorem",
-     "line": 622,
+     "line": 620,
      "name": "Shor.Reference.reference_data_scratch_disjoint"
     },
     {
      "kind": "theorem",
-     "line": 637,
+     "line": 635,
      "name": "Shor.Reference.reference_work_scratch_disjoint"
     },
     {
      "kind": "theorem",
-     "line": 650,
+     "line": 648,
      "name": "Shor.Reference.reference_flag_outside_exponent"
     },
     {
      "kind": "theorem",
-     "line": 664,
+     "line": 662,
      "name": "Shor.Reference.reference_flag_outside_data"
     },
     {
      "kind": "theorem",
-     "line": 678,
+     "line": 676,
      "name": "Shor.Reference.reference_flag_outside_work"
     },
     {
      "kind": "theorem",
-     "line": 688,
+     "line": 686,
      "name": "Shor.Reference.reference_flag_outside_scratch"
     },
     {
      "kind": "theorem",
-     "line": 698,
+     "line": 696,
      "name": "Shor.Reference.reference_controls_outside_work"
     },
     {
      "kind": "theorem",
-     "line": 710,
+     "line": 708,
      "name": "Shor.Reference.reference_flag_outside_controls"
     },
     {
      "kind": "theorem",
-     "line": 726,
+     "line": 724,
      "name": "Shor.Reference.reference_workspaceNeed_eq"
     },
     {
@@ -13751,32 +13953,32 @@ window.GRAPH = {
     },
     {
      "kind": "def",
-     "line": 218,
+     "line": 217,
      "name": "Shor.Reference.allocatedReferenceApproxSetupMinimal"
     },
     {
      "kind": "theorem",
-     "line": 248,
+     "line": 246,
      "name": "Shor.Reference.referenceWorkspaceCleanInput"
     },
     {
      "kind": "theorem",
-     "line": 271,
+     "line": 268,
      "name": "Shor.Reference.allocatedReferenceWorkspaceCleanInput"
     },
     {
      "kind": "theorem",
-     "line": 297,
+     "line": 293,
      "name": "Shor.Reference.allocatedReferenceWorkspaceLargeEnough"
     },
     {
      "kind": "theorem",
-     "line": 316,
+     "line": 311,
      "name": "Shor.Reference.allocatedReferenceWorkspaceIsolation"
     },
     {
      "kind": "def",
-     "line": 351,
+     "line": 345,
      "name": "Shor.Reference.referenceLayout_ready"
     }
    ],
@@ -13790,7 +13992,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 406,
+   "lines": 400,
    "name": "ReferenceReadiness.lean",
    "path": "Reference/ReferenceReadiness.lean"
   },
@@ -13838,77 +14040,77 @@ window.GRAPH = {
     },
     {
      "kind": "theorem",
-     "line": 193,
+     "line": 194,
      "name": "Shor.Reference.exists_precision_error_le"
     },
     {
      "kind": "theorem",
-     "line": 257,
+     "line": 258,
      "name": "Shor.Reference.exists_reference_positive_precision"
     },
     {
      "kind": "def",
-     "line": 299,
+     "line": 300,
      "name": "Shor.Reference.referenceChosenPrecision"
     },
     {
      "kind": "theorem",
-     "line": 306,
+     "line": 307,
      "name": "Shor.Reference.referenceChosenPrecision_positive"
     },
     {
      "kind": "def",
-     "line": 321,
+     "line": 322,
      "name": "Shor.Reference.referenceSubmittedProgram"
     },
     {
      "kind": "def",
-     "line": 328,
+     "line": 329,
      "name": "Shor.Reference.referenceSuccessProbability"
     },
     {
      "kind": "theorem",
-     "line": 336,
+     "line": 337,
      "name": "Shor.Reference.referenceSuccessProbability_bounds"
     },
     {
      "kind": "theorem",
-     "line": 347,
+     "line": 348,
      "name": "Shor.Reference.referenceSuccessProbability_pos"
     },
     {
      "kind": "theorem",
-     "line": 355,
+     "line": 356,
      "name": "Shor.Reference.referenceSubmittedProgram_correct"
     },
     {
      "kind": "theorem",
-     "line": 396,
+     "line": 398,
      "name": "Shor.Reference.exists_reference_trialCount"
     },
     {
      "kind": "def",
-     "line": 421,
+     "line": 423,
      "name": "Shor.Reference.referenceTrialCount"
     },
     {
      "kind": "theorem",
-     "line": 425,
+     "line": 427,
      "name": "Shor.Reference.referenceTrialCount_correct"
     },
     {
      "kind": "def",
-     "line": 449,
+     "line": 451,
      "name": "Shor.Reference.referenceGateCount"
     },
     {
      "kind": "theorem",
-     "line": 456,
+     "line": 458,
      "name": "Shor.Reference.referenceGateCount_correct"
     },
     {
      "kind": "def",
-     "line": 464,
+     "line": 466,
      "name": "Shor.Reference.referenceShorImplementation"
     }
    ],
@@ -13925,7 +14127,7 @@ window.GRAPH = {
     "Shor/Main.lean"
    ],
    "kind": "file",
-   "lines": 477,
+   "lines": 479,
    "name": "ReferenceShorImplementation.lean",
    "path": "Reference/ReferenceShorImplementation.lean"
   },
@@ -13958,11 +14160,11 @@ window.GRAPH = {
     },
     {
      "kind": "def",
-     "line": 231,
+     "line": 230,
      "name": "Shor.Reference.referenceShorProg"
     }
    ],
-   "docstring": "# Reference LowGate Shor program\n\nThis file turns the deterministic reference register allocator into the concrete\nLowGate circuit family required by `ShorImplementation`.\n\nThe framework exposes only a natural-number precision level `m`.  The reference\nimplementation translates `m` into its private approximation parameter `\u03b7`\n(`referencePrecision`, defined in `Reference.ReferencePrecision`), allocates all\nimplementation-specific storage, proves the resulting layout satisfies the\nstatic circuit requirements, and lowers the resulting approximate\norder-finding circuit.\n\nAfter fixing `lowering`, the public shape is exactly\n\n    ShorOrderFindingInstance \u2192 \u2115 \u2192 LowGate.",
+   "docstring": "# Reference LowGate Shor program\n\nThis file turns the deterministic reference register allocator into the concrete\nLowGate circuit family required by `ShorImplementation`.\n\nThe framework exposes only a natural-number precision level `m`.  The reference\nimplementation translates `m` into its private approximation parameter `\u03b7`\n(`referencePrecision`, defined in `Reference.ReferencePrecision`), allocates all\nimplementation-specific storage, proves the resulting layout satisfies the\nstatic circuit requirements, and lowers the resulting approximate\norder-finding circuit.\n\nAfter fixing `P`, the public shape is exactly\n\n    ShorOrderFindingInstance \u2192 \u2115 \u2192 LowGate.",
    "fsPath": "Implementation/Reference/ShorProgram.lean",
    "importedBy": [
     "Reference/ReferenceShorImplementation.lean"
@@ -13973,7 +14175,7 @@ window.GRAPH = {
     "Shor/Proofs/Readiness/Static.lean"
    ],
    "kind": "file",
-   "lines": 241,
+   "lines": 240,
    "name": "ShorProgram.lean",
    "path": "Reference/ShorProgram.lean"
   },
@@ -13983,9 +14185,19 @@ window.GRAPH = {
      "kind": "def",
      "line": 19,
      "name": "Shor.standardLoweringSetup"
+    },
+    {
+     "kind": "def",
+     "line": 30,
+     "name": "Shor.standardPolicy"
+    },
+    {
+     "kind": "theorem",
+     "line": 34,
+     "name": "Shor.standardPolicy_admissible"
     }
    ],
-   "docstring": "# Standard lowering setup\n\nA concrete `ShorLoweringSetup` built from the generated interpolation-point\ntable `genOpsWithProduct`. This is the program family the emitter uses: it\nmatches `ShorLoweringSetup.consumes`'s expected point stream\n(`genInterpolationPoints k`) exactly, unlike the K2/K3 precomputed tables or\nthe `k \u2265 4` parity generator, which consume a different point stream.",
+   "docstring": "# Standard P setup\n\nA concrete `ShorLoweringSetup` built from the generated interpolation-point\ntable `genOpsWithProduct`. This is the program family the emitter uses: it\nmatches `ShorLoweringSetup.consumes`'s expected point stream\n(`genInterpolationPoints k`) exactly, unlike the K2/K3 precomputed tables or\nthe `k \u2265 4` parity generator, which consume a different point stream.",
    "fsPath": "Implementation/Reference/StandardLoweringSetup.lean",
    "importedBy": [],
    "imports": [
@@ -13995,7 +14207,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 29,
+   "lines": 38,
    "name": "StandardLoweringSetup.lean",
    "path": "Reference/StandardLoweringSetup.lean"
   },
@@ -14961,20 +15173,20 @@ window.GRAPH = {
     "Shor/Proofs",
     "Shor/Spec"
    ],
-   "declCount": 244,
+   "declCount": 262,
    "fileCount": 27,
    "fsPath": "Implementation/Shor",
    "kind": "folder",
    "name": "Shor",
    "path": "Shor",
-   "readmeHtml": "<h1><code>Implementation/Shor/</code></h1>\n<p>This folder assembles the pieces proved in <code>QFT/</code>, <code>PhaseProduct/</code>, and <code>ModularExponentiation/</code> into the full approximate order-finding circuit and proves Shor's algorithm correct: workspace readiness for the whole lowered circuit, the success-probability bound, and the classical reduction from a good order-finding outcome to a nontrivial factor. The whole-program lowerer itself \u2014 the compiler that dispatches a source <code>Gate</code> to the three subroutine lowerers \u2014 lives in <code>Lowering/</code>.</p>\n<p>The folder is organized in layers (below). <strong>Every import is \"justified\":</strong> a file may only import another file if it directly uses a declaration that file defines \u2014 never a declaration it merely re-exports transitively. <code>scripts/check_shor_layers.sh</code> (repo root) enforces the layer order, the <code>Proofs/Readiness/</code> chain order, and the absence of umbrella files (a file that only imports and declares nothing of its own); it also enforces the one allowlisted exception below.</p>\n<h2>Layer order</h2>\n<pre><code>Math  &lt;  Lowering  &lt;  Circuit  &lt;  Spec  &lt;  Proofs  &lt;  Main</code></pre>\n<p>A file may import its own folder or any folder to its left. Inside <code>Proofs/</code>:</p>\n<pre><code>Lowering, Budgets, Setup  &lt;  Readiness/*  &lt;  NaiveShor/*  &lt;  Correctness</code></pre>\n<p>and <code>Readiness/</code> is a partial order, not a chain:</p>\n<pre><code>Static, Sequencing  &lt;  Primitives  &lt;  {Init, Step1}  &lt;  {Step2, Step5}\n                     &lt;  {IQFT, ModMul}  &lt;  ModExp  &lt;  Dynamic</code></pre>\n<p>Braces are genuinely independent: <code>Step2</code> and <code>Step5</code> do not import each other, nor do <code>Init</code> and <code>Step1</code>, nor <code>IQFT</code> and <code>ModMul</code>. <code>scripts/check_layers.py</code> enforces that \u2014 an import between two siblings at the same rank fails, which a total order could not express.</p>\n<p><strong>One allowlisted exception:</strong> <code>Spec/Assertions.lean</code> imports <code>Proofs/Readiness/Static.lean</code> directly. The assertion <code>ShorCorrectApproxLoweredUniform</code> inlines a <code>GateWorkspaceOK</code> proof term into the circuit; by proof irrelevance the <em>meaning</em> of the Prop doesn't depend on that proof's body, but the <em>file</em> dependency is real until <code>Spec</code> gains its own <code>hws : GateWorkspaceOK \u2026</code> field or existentially quantifies over it.</p>\n<p>Reading order for newcomers: start at <code>Main.lean</code>, then follow imports <em>backwards</em> \u2014 <code>Spec/Assertions.lean</code> for what is claimed, <code>Proofs/Correctness.lean</code> for how the claim is proved, and outward from there into <code>Proofs/Readiness/</code>, <code>Spec/</code>, <code>Circuit/</code>, <code>Lowering/</code>, <code>Math/</code> as needed. The one-line descriptions below are grouped in dependency order (lowest layer first) to match that traversal.</p>\n<h2><code>Math/</code> \u2014 pure math, no framework/register dependencies</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>OrderFindingAnalysis.lean</code></td><td>Number-theory, Fourier/geometric-sum, and counting lemmas backing the ideal order-finding good-outcome analysis. Import closure is Mathlib plus the project's semantics-free vocabulary (<code>ord</code>, <code>qftPhase</code>, <code>GoodOutcome</code>) \u2014 no <code>QSemantics</code>, <code>eval</code>, or measurement.</td></tr></tbody></table>\n<h2><code>Lowering/</code> \u2014 the whole-program <code>Gate</code> \u2192 <code>LowGate</code> lowerer</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>LowerGate.lean</code></td><td><code>GateWorkspaceOK</code> (static reserve precondition, recursive on <code>Gate</code>), <code>lowerGate</code> (the whole-<code>Gate</code> \u2192 <code>LowGate</code> compiler, dispatching QFT/phase-product/comparator nodes to their subroutine lowerers), and <code>GateWorkspaceCleanState</code> (the dynamic clean-state precondition). Imports from <code>QFT/</code>, <code>PhaseProduct/</code>, and <code>ModularExponentiation/</code>; imports nothing from <code>Shor/</code>.</td></tr></tbody></table>\n<h2><code>Circuit/</code> \u2014 the concrete order-finding circuit</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Workspace.lean</code></td><td>The static reserve budgets and capacity/isolation conditions (<code>ShorWorkspaceNeed</code>, <code>shorWorkspaceNeed</code>, <code>ShorWorkspaceLargeEnough</code>, <code>ShorWorkspaceIsolation</code>) used by the lowering readiness proofs.</td></tr><tr><td><code>OrderFinding.lean</code></td><td>The approximate order-finding circuit (<code>orderFindingApprox</code>/<code>orderFindingApproxLow</code>), built from the verified modular-exponentiation implementation, and the ideal circuit (<code>orderFindingIdeal</code>) that swaps in the abstract exact modular-exponentiation gate.</td></tr></tbody></table>\n<h2><code>Spec/</code> \u2014 the public specification surface</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Cleanliness.lean</code></td><td>The static clean-input predicates and dynamic clean-state invariants (<code>ThreeRegsCleanState</code>, <code>FullShorWorkspaceCleanState</code>, <code>ShorLoweringCleanState</code>, <code>ShorConcreteCleanState</code>, <code>IdealOrderFindingInput</code>) used by the readiness proofs and the final correctness statements.</td></tr><tr><td><code>Setup.lean</code></td><td>The user-facing setup/readiness records (<code>ShorLoweringSetup</code>, <code>ShorApproxSetup(Minimal)</code>, <code>LoweredShorReady</code>, <code>ShorFactoringInstance</code>) and the bridge from the lower-level implementation setup to the public one.</td></tr><tr><td><code>Assertions.lean</code></td><td>The final Shor correctness guarantees (<code>ShorCorrect</code>, <code>ShorCorrectApproxLoweredUniform</code>, <code>ShorCorrectApproxLoweredOfModExpBound</code>, <code>ShorCorrectApproxLowered</code>), each stated once as a named proposition, plus <code>shorPrecision N x</code> \u2014 the precision schedule the last of them is stated at, a closed form in <code>N</code> and the register width with the uniform constant <code>2048</code> folded in, so nothing about it is existential. <code>Proofs/Correctness.lean</code>'s theorems are typed directly by these Props, so there is exactly one copy of each statement.</td></tr></tbody></table>\n<h2><code>Proofs/</code> \u2014 everything below is proof-only; nothing outside <code>Proofs/</code>/<code>Main.lean</code> may import it</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Lowering.lean</code></td><td>Correctness of the whole-program lowerer (<code>lowerGate_correctness</code>), the <code>GateWorkspaceOK</code> projection lemmas, and the <code>lowerGate</code> simp equations. Imports nothing from <code>Shor/</code>; consumed by <code>Readiness/*</code>, <code>Correctness.lean</code>, and <code>GateCount/</code>.</td></tr><tr><td><code>Budgets.lean</code></td><td>The dynamic clean-state preservation lemmas for the clean-state invariants declared in <code>Spec/Cleanliness.lean</code>.</td></tr><tr><td><code>Setup.lean</code></td><td><code>ShorApproxSetup.toIdealOrderFindingInput</code> \u2014 the final bridge from the approximate setup to the ideal order-finding input predicate.</td></tr><tr><td><code>Readiness/</code></td><td>Workspace readiness and clean-state preservation for the full lowered circuit, split by circuit stage (below); see each file's own docstring for its exact scope.</td></tr><tr><td><code>Correctness.lean</code></td><td>The quantum-facing part of the Shor statement: the ideal and approximate order-finding circuits, the measurement interface, and the final success-probability theorem. Classical order/continued-fraction material lives in <code>NaiveShor/</code>.</td></tr><tr><td><code>NaiveShor/</code></td><td>The ideal-circuit (<code>ctrlModMul</code>) analysis: preliminaries, the QPE/IQFT chain, the good-outcome mass lower bound, and the classical reduction tying a good outcome to a nontrivial factor.</td></tr></tbody></table>\n<h3><code>Proofs/Readiness/</code> \u2014 chained by circuit stage</h3>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Static.lean</code></td><td>The public static readiness theorem <code>gateWorkspaceOK_orderFindingApprox</code>, expanding <code>ShorWorkspaceLargeEnough</code> into the per-stage <code>GateWorkspaceOK</code> facts, and its packaged form <code>LoweredShorReady.workspace</code>.</td></tr><tr><td><code>Sequencing.lean</code></td><td><code>LoweredCleanResult</code>/<code>LoweredCleanResult.seq</code> \u2014 the two-fact package (clean local workspace + post-state satisfies <code>P</code>) and its sequencing lemma across <code>Gate.seq</code>, used by every later stage.</td></tr><tr><td><code>Primitives.lean</code></td><td>Workspace-free gate locality (<code>WorkspaceFree.clean</code>) and the primitive register-locality/disjointness helpers, plus Steps 3/4 (comparator and its lowering) readiness and clean-state preservation.</td></tr><tr><td><code>Init.lean</code></td><td>Readiness and clean-state preservation for <code>H_reg</code>/<code>initY1</code>, which allocate no recursive lowering workspace but must still preserve the global clean-state invariant.</td></tr><tr><td><code>Step1.lean</code></td><td>Step 1 (data reserve after dropping the carry bit, full work reserve); final theorem <code>lowered_step1_ready_and_full_clean</code>.</td></tr><tr><td><code>Step2.lean</code></td><td>Step 2 (carry bit active, swapped phase-product operand order), preserving <code>ShorLoweringCleanState</code>.</td></tr><tr><td><code>Step5.lean</code></td><td>Step 5 via adjoint decomposition: proves the forward Step-5 body clean, then applies the generic adjoint lemma <code>LoweredCleanResult.adj</code>.</td></tr><tr><td><code>IQFT.lean</code></td><td>The final inverse QFT on the exponent register: <code>lowered_IQFT_ready_and_full_clean</code> under the full clean-state invariant, <code>lowered_IQFT_ready_and_concrete_clean</code> under the strengthened concrete one.</td></tr><tr><td><code>ModMul.lean</code></td><td>One controlled modular-multiplication core (<code>CmodMulInPlaceCore</code>), one exponent/control qubit at a time.</td></tr><tr><td><code>ModExp.lean</code></td><td>Folds <code>ModMul.lean</code>'s per-core result over the full list of exponent/control qubits, preserving the invariant through the whole loop.</td></tr><tr><td><code>Dynamic.lean</code></td><td>Assembles the per-stage results above into readiness and dynamic clean-state preservation for the complete circuit: <code>gateWorkspaceCleanState_orderFindingApprox</code> and its packaged form <code>LoweredShorReady.workspace_clean</code>.</td></tr></tbody></table>\n<h2><code>Main.lean</code></h2>\n<p>The final Shor correctness theorems, each typed by its named proposition from <code>Spec/Assertions.lean</code> and proven from <code>Proofs/Correctness.lean</code> and <code>Framework/Math/Factoring_Reduction/<em></code>. All supporting lemmas live under <code>Shor.Proofs</code>. This is the file other folders consume: <code>Proofs/</code> is proof-only, and <code>scripts/check_shor_layers.sh</code> fails on an import of <code>Shor.Proofs.</em></code> from outside <code>Implementation/Shor/</code> (two provider files are allowlisted \u2014 <code>Proofs/Lowering.lean</code> for <code>GateCount/</code> and <code>Proofs/Readiness/Static.lean</code> for <code>Reference/ShorProgram.lean</code> \u2014 and named in the script).</p>\n<table><thead><tr><th>theorem</th><th>what it gives</th></tr></thead><tbody><tr><td><code>Shor_end_to_end_factoring</code></td><td>the ideal circuit, plus the classical reduction from a good outcome to a nontrivial factor</td></tr><tr><td><code>Shor_correct_approx_lowered_uniform</code></td><td>the fully lowered circuit, <code>K</code> hoisted into an existential, <code>\u03b7</code> free</td></tr><tr><td><code>Shor_correct_approx_lowered_of_modExp_bound_assertion</code></td><td>the same, at a <code>K</code> the caller supplies together with a modular-exponentiation distance bound at that <code>K</code> \u2014 this is what <code>Reference/</code> consumes</td></tr><tr><td><code>Shor_correct_approx_lowered</code></td><td>the lowered circuit at <code>\u03b7 \u2264 shorPrecision N x</code>, concluding <code>\u03ba / (2 \u00b7 log\u2082(N)\u2074)</code></td></tr></tbody></table>\n<p>These differ in how the per-step precision <code>\u03b7</code> and the uniform constant <code>K</code> are handled, and the difference matters when citing them. The uniform theorem leaves <code>\u03b7</code> free and hoists <code>K</code> into an existential; its loss term <code>2 \u00b7 tbits(x) \u00b7 \u221a(2K\u03b7)</code> does not shrink as <code>N</code> grows, so the right-hand side is informative only once <code>\u03b7</code> is tied to <code>N</code>, and the threshold for doing that would itself depend on an unknown <code>K</code>. <code>Shor_correct_approx_lowered</code> closes both gaps: it runs at the explicit constant <code>2048</code> (<code>modExpApprox_valid_dist_2048</code>), so <code>shorPrecision N x</code> is a closed form a circuit builder can evaluate before building, and at any <code>\u03b7</code> below it the conclusion is <code>\u2265 \u03ba / (2 \u00b7 log\u2082(N)\u2074)</code> \u2014 half the ideal bound, positive for every admissible <code>N</code>. Cite that one.</p>"
+   "readmeHtml": "<h1><code>Implementation/Shor/</code></h1>\n<p>This folder assembles the pieces proved in <code>QFT/</code>, <code>PhaseProduct/</code>, and <code>ModularExponentiation/</code> into the full approximate order-finding circuit and proves Shor's algorithm correct: workspace readiness for the whole lowered circuit, the success-probability bound, and the classical reduction from a good order-finding outcome to a nontrivial factor. The whole-program lowerer itself \u2014 the compiler that dispatches a source <code>Gate</code> to the three subroutine lowerers \u2014 lives in <code>Lowering/</code>.</p>\n<p>The folder is organized in layers (below). <strong>Every import is \"justified\":</strong> a file may only import another file if it directly uses a declaration that file defines \u2014 never a declaration it merely re-exports transitively. <code>scripts/check_shor_layers.sh</code> (repo root) enforces the layer order, the <code>Proofs/Readiness/</code> chain order, and the absence of umbrella files (a file that only imports and declares nothing of its own); it also enforces the one allowlisted exception below.</p>\n<h2>Layer order</h2>\n<pre><code>Math  &lt;  Lowering  &lt;  Circuit  &lt;  Spec  &lt;  Proofs  &lt;  Main</code></pre>\n<p>A file may import its own folder or any folder to its left. Inside <code>Proofs/</code>:</p>\n<pre><code>Lowering, Budgets, Setup  &lt;  Readiness/*  &lt;  NaiveShor/*  &lt;  Correctness</code></pre>\n<p>and <code>Readiness/</code> is a partial order, not a chain:</p>\n<pre><code>Static, Sequencing  &lt;  Primitives  &lt;  {Init, Step1}  &lt;  {Step2, Step5}\n                     &lt;  {IQFT, ModMul}  &lt;  ModExp  &lt;  Dynamic</code></pre>\n<p>Braces are genuinely independent: <code>Step2</code> and <code>Step5</code> do not import each other, nor do <code>Init</code> and <code>Step1</code>, nor <code>IQFT</code> and <code>ModMul</code>. <code>scripts/check_layers.py</code> enforces that \u2014 an import between two siblings at the same rank fails, which a total order could not express.</p>\n<p><strong>One allowlisted exception:</strong> <code>Spec/Assertions.lean</code> imports <code>Proofs/Readiness/Static.lean</code> directly. The assertion <code>ShorCorrectApproxLoweredUniform</code> inlines a <code>GateWorkspaceOK</code> proof term into the circuit; by proof irrelevance the <em>meaning</em> of the Prop doesn't depend on that proof's body, but the <em>file</em> dependency is real until <code>Spec</code> gains its own <code>hws : GateWorkspaceOK \u2026</code> field or existentially quantifies over it.</p>\n<p>Reading order for newcomers: start at <code>Main.lean</code>, then follow imports <em>backwards</em> \u2014 <code>Spec/Assertions.lean</code> for what is claimed, <code>Proofs/Correctness.lean</code> for how the claim is proved, and outward from there into <code>Proofs/Readiness/</code>, <code>Spec/</code>, <code>Circuit/</code>, <code>Lowering/</code>, <code>Math/</code> as needed. The one-line descriptions below are grouped in dependency order (lowest layer first) to match that traversal.</p>\n<h2><code>Math/</code> \u2014 pure math, no framework/register dependencies</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>OrderFindingAnalysis.lean</code></td><td>Number-theory, Fourier/geometric-sum, and counting lemmas backing the ideal order-finding good-outcome analysis. Import closure is Mathlib plus the project's semantics-free vocabulary (<code>ord</code>, <code>qftPhase</code>, <code>GoodOutcome</code>) \u2014 no <code>QSemantics</code>, <code>eval</code>, or measurement.</td></tr></tbody></table>\n<h2><code>Lowering/</code> \u2014 the whole-program <code>Gate</code> \u2192 <code>LowGate</code> lowerer</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>LowerGate.lean</code></td><td><code>GateWorkspaceOK</code> (static reserve precondition, recursive on <code>Gate</code>), <code>lowerGate</code> (the whole-<code>Gate</code> \u2192 <code>LowGate</code> compiler, dispatching QFT/phase-product/comparator nodes to their subroutine lowerers), and <code>GateWorkspaceCleanState</code> (the dynamic clean-state precondition). Imports from <code>QFT/</code>, <code>PhaseProduct/</code>, and <code>ModularExponentiation/</code>; imports nothing from <code>Shor/</code>.</td></tr></tbody></table>\n<h2><code>Circuit/</code> \u2014 the concrete order-finding circuit</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Workspace.lean</code></td><td>The static reserve budgets and capacity/isolation conditions (<code>ShorWorkspaceNeed</code>, <code>shorWorkspaceNeed</code>, <code>ShorWorkspaceLargeEnough</code>, <code>ShorWorkspaceIsolation</code>) used by the lowering readiness proofs. <code>shorWorkspaceNeed ops</code> is <code>shorWorkspaceNeedOf</code> applied to that table's QFT need and phase-product reserve model \u2014 the budget arithmetic is written once, abstracted over both, so a policy-indexed model substitutes into it without restating anything.</td></tr><tr><td><code>OrderFinding.lean</code></td><td>The approximate order-finding circuit (<code>orderFindingApprox</code>/<code>orderFindingApproxLow</code>), built from the verified modular-exponentiation implementation, and the ideal circuit (<code>orderFindingIdeal</code>) that swaps in the abstract exact modular-exponentiation gate.</td></tr></tbody></table>\n<h2><code>Spec/</code> \u2014 the public specification surface</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Cleanliness.lean</code></td><td>The static clean-input predicates and dynamic clean-state invariants (<code>ThreeRegsCleanState</code>, <code>FullShorWorkspaceCleanState</code>, <code>ShorLoweringCleanState</code>, <code>ShorConcreteCleanState</code>, <code>IdealOrderFindingInput</code>) used by the readiness proofs and the final correctness statements.</td></tr><tr><td><code>Setup.lean</code></td><td>The user-facing setup/readiness records (<code>ShorLoweringSetup</code>, <code>ShorApproxSetup(Minimal)</code>, <code>LoweredShorReady</code>, <code>ShorFactoringInstance</code>) and the bridge from the lower-level implementation setup to the public one.</td></tr><tr><td><code>Assertions.lean</code></td><td>The final Shor correctness guarantees (<code>ShorCorrect</code>, <code>ShorCorrectApproxLoweredUniform</code>, <code>ShorCorrectApproxLoweredOfModExpBound</code>, <code>ShorCorrectApproxLowered</code>), each stated once as a named proposition, plus <code>shorPrecision N x</code> \u2014 the precision schedule the last of them is stated at, a closed form in <code>N</code> and the register width with the uniform constant <code>2048</code> folded in, so nothing about it is existential. <code>Proofs/Correctness.lean</code>'s theorems are typed directly by these Props, so there is exactly one copy of each statement.</td></tr></tbody></table>\n<h2><code>Proofs/</code> \u2014 everything below is proof-only; nothing outside <code>Proofs/</code>/<code>Main.lean</code> may import it</h2>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Lowering.lean</code></td><td>Correctness of the whole-program lowerer (<code>lowerGate_correctness</code>), the <code>GateWorkspaceOK</code> projection lemmas, and the <code>lowerGate</code> simp equations. Imports nothing from <code>Shor/</code>; consumed by <code>Readiness/*</code>, <code>Correctness.lean</code>, and <code>GateCount/</code>.</td></tr><tr><td><code>Budgets.lean</code></td><td>The dynamic clean-state preservation lemmas for the clean-state invariants declared in <code>Spec/Cleanliness.lean</code>.</td></tr><tr><td><code>Setup.lean</code></td><td><code>ShorApproxSetup.toIdealOrderFindingInput</code> \u2014 the final bridge from the approximate setup to the ideal order-finding input predicate.</td></tr><tr><td><code>Readiness/</code></td><td>Workspace readiness and clean-state preservation for the full lowered circuit, split by circuit stage (below); see each file's own docstring for its exact scope.</td></tr><tr><td><code>Correctness.lean</code></td><td>The quantum-facing part of the Shor statement: the ideal and approximate order-finding circuits, the measurement interface, and the final success-probability theorem. Classical order/continued-fraction material lives in <code>NaiveShor/</code>.</td></tr><tr><td><code>NaiveShor/</code></td><td>The ideal-circuit (<code>ctrlModMul</code>) analysis: preliminaries, the QPE/IQFT chain, the good-outcome mass lower bound, and the classical reduction tying a good outcome to a nontrivial factor.</td></tr></tbody></table>\n<h3><code>Proofs/Readiness/</code> \u2014 chained by circuit stage</h3>\n<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Static.lean</code></td><td>The public static readiness theorem <code>gateWorkspaceOK_orderFindingApprox</code>, expanding <code>ShorWorkspaceLargeEnough</code> into the per-stage <code>GateWorkspaceOK</code> facts, and its packaged form <code>LoweredShorReady.workspace</code>.</td></tr><tr><td><code>Sequencing.lean</code></td><td><code>LoweredCleanResult</code>/<code>LoweredCleanResult.seq</code> \u2014 the two-fact package (clean local workspace + post-state satisfies <code>P</code>) and its sequencing lemma across <code>Gate.seq</code>, used by every later stage.</td></tr><tr><td><code>Primitives.lean</code></td><td>Workspace-free gate locality (<code>WorkspaceFree.clean</code>) and the primitive register-locality/disjointness helpers, plus Steps 3/4 (comparator and its lowering) readiness and clean-state preservation.</td></tr><tr><td><code>Init.lean</code></td><td>Readiness and clean-state preservation for <code>H_reg</code>/<code>initY1</code>, which allocate no recursive lowering workspace but must still preserve the global clean-state invariant.</td></tr><tr><td><code>Step1.lean</code></td><td>Step 1 (data reserve after dropping the carry bit, full work reserve); final theorem <code>lowered_step1_ready_and_full_clean</code>.</td></tr><tr><td><code>Step2.lean</code></td><td>Step 2 (carry bit active, swapped phase-product operand order), preserving <code>ShorLoweringCleanState</code>.</td></tr><tr><td><code>Step5.lean</code></td><td>Step 5 via adjoint decomposition: proves the forward Step-5 body clean, then applies the generic adjoint lemma <code>LoweredCleanResult.adj</code>.</td></tr><tr><td><code>IQFT.lean</code></td><td>The final inverse QFT on the exponent register: <code>lowered_IQFT_ready_and_full_clean</code> under the full clean-state invariant, <code>lowered_IQFT_ready_and_concrete_clean</code> under the strengthened concrete one.</td></tr><tr><td><code>ModMul.lean</code></td><td>One controlled modular-multiplication core (<code>CmodMulInPlaceCore</code>), one exponent/control qubit at a time.</td></tr><tr><td><code>ModExp.lean</code></td><td>Folds <code>ModMul.lean</code>'s per-core result over the full list of exponent/control qubits, preserving the invariant through the whole loop.</td></tr><tr><td><code>Dynamic.lean</code></td><td>Assembles the per-stage results above into readiness and dynamic clean-state preservation for the complete circuit: <code>gateWorkspaceCleanState_orderFindingApprox</code> and its packaged form <code>LoweredShorReady.workspace_clean</code>.</td></tr></tbody></table>\n<h2><code>Main.lean</code></h2>\n<p>The final Shor correctness theorems, each typed by its named proposition from <code>Spec/Assertions.lean</code> and proven from <code>Proofs/Correctness.lean</code> and <code>Framework/Math/Factoring_Reduction/<em></code>. All supporting lemmas live under <code>Shor.Proofs</code>. This is the file other folders consume: <code>Proofs/</code> is proof-only, and <code>scripts/check_shor_layers.sh</code> fails on an import of <code>Shor.Proofs.</em></code> from outside <code>Implementation/Shor/</code> (two provider files are allowlisted \u2014 <code>Proofs/Lowering.lean</code> for <code>GateCount/</code> and <code>Proofs/Readiness/Static.lean</code> for <code>Reference/ShorProgram.lean</code> \u2014 and named in the script).</p>\n<table><thead><tr><th>theorem</th><th>what it gives</th></tr></thead><tbody><tr><td><code>Shor_end_to_end_factoring</code></td><td>the ideal circuit, plus the classical reduction from a good outcome to a nontrivial factor</td></tr><tr><td><code>Shor_correct_approx_lowered_uniform</code></td><td>the fully lowered circuit, <code>K</code> hoisted into an existential, <code>\u03b7</code> free</td></tr><tr><td><code>Shor_correct_approx_lowered_of_modExp_bound_assertion</code></td><td>the same, at a <code>K</code> the caller supplies together with a modular-exponentiation distance bound at that <code>K</code> \u2014 this is what <code>Reference/</code> consumes</td></tr><tr><td><code>Shor_correct_approx_lowered</code></td><td>the lowered circuit at <code>\u03b7 \u2264 shorPrecision N x</code>, concluding <code>\u03ba / (2 \u00b7 log\u2082(N)\u2074)</code></td></tr></tbody></table>\n<p>These differ in how the per-step precision <code>\u03b7</code> and the uniform constant <code>K</code> are handled, and the difference matters when citing them. The uniform theorem leaves <code>\u03b7</code> free and hoists <code>K</code> into an existential; its loss term <code>2 \u00b7 tbits(x) \u00b7 \u221a(2K\u03b7)</code> does not shrink as <code>N</code> grows, so the right-hand side is informative only once <code>\u03b7</code> is tied to <code>N</code>, and the threshold for doing that would itself depend on an unknown <code>K</code>. <code>Shor_correct_approx_lowered</code> closes both gaps: it runs at the explicit constant <code>2048</code> (<code>modExpApprox_valid_dist_2048</code>), so <code>shorPrecision N x</code> is a closed form a circuit builder can evaluate before building, and at any <code>\u03b7</code> below it the conclusion is <code>\u2265 \u03ba / (2 \u00b7 log\u2082(N)\u2074)</code> \u2014 half the ideal bound, positive for every admissible <code>N</code>. Cite that one.</p>\n<h2>Lowering is policy-indexed underneath</h2>\n<p><code>Shor/</code> itself is still phrased in terms of a single table: <code>lowerGate</code>, <code>GateWorkspaceOK</code>, <code>shorWorkspaceNeed</code> and every theorem quoted above take <code>k</code>, <code>hk</code>, <code>ops</code>, <code>pts</code>, <code>hpts</code> exactly as they always did, and their statements are unchanged.</p>\n<p>What changed is one level down. The phase-product lowering those definitions call is now indexed by a <code>ShorLoweringPolicy</code> (a width-indexed choice of table \u2014 see [<code>../PhaseProduct/README.md</code>](../PhaseProduct/README.md)), and the fixed-table names are its <strong>constant policy</strong> instance. Nothing in this folder has to know that; the reason it is worth knowing is that the budget and need functions here were abstracted over their reserve model (<code>shorWorkspaceNeedOf</code>, <code>qftWorkspaceNeedOf</code>) precisely so that a policy-indexed model can be substituted later without reproving the readiness chain.</p>"
   },
   "Shor/Circuit": {
    "children": [
     "Shor/Circuit/OrderFinding.lean",
     "Shor/Circuit/Workspace.lean"
    ],
-   "declCount": 9,
+   "declCount": 18,
    "fileCount": 2,
    "fsPath": "Implementation/Shor/Circuit",
    "kind": "folder",
@@ -15001,7 +15213,7 @@ window.GRAPH = {
     },
     {
      "kind": "def",
-     "line": 53,
+     "line": 51,
      "name": "Shor.orderFindingIdeal"
     }
    ],
@@ -15024,7 +15236,7 @@ window.GRAPH = {
     "Shor/Lowering/LowerGate.lean"
    ],
    "kind": "file",
-   "lines": 64,
+   "lines": 62,
    "name": "OrderFinding.lean",
    "path": "Shor/Circuit/OrderFinding.lean"
   },
@@ -15038,21 +15250,66 @@ window.GRAPH = {
     {
      "kind": "def",
      "line": 24,
+     "name": "Shor.qftReserveNeedOf"
+    },
+    {
+     "kind": "abbrev",
+     "line": 28,
      "name": "Shor.qftReserveNeed"
     },
     {
-     "kind": "def",
+     "kind": "abbrev",
+     "line": 32,
+     "name": "Shor.Policy.qftReserveNeed"
+    },
+    {
+     "kind": "theorem",
      "line": 36,
+     "name": "Shor.Policy.qftReserveNeed_const"
+    },
+    {
+     "kind": "def",
+     "line": 47,
+     "name": "Shor.shorWorkspaceNeedOf"
+    },
+    {
+     "kind": "abbrev",
+     "line": 80,
      "name": "Shor.shorWorkspaceNeed"
     },
     {
-     "kind": "structure",
-     "line": 77,
-     "name": "Shor.ShorWorkspaceLargeEnough"
+     "kind": "abbrev",
+     "line": 86,
+     "name": "Shor.Policy.shorWorkspaceNeed"
+    },
+    {
+     "kind": "theorem",
+     "line": 91,
+     "name": "Shor.Policy.shorWorkspaceNeed_const"
     },
     {
      "kind": "structure",
-     "line": 107,
+     "line": 105,
+     "name": "Shor.ShorWorkspaceLargeEnoughOf"
+    },
+    {
+     "kind": "abbrev",
+     "line": 131,
+     "name": "Shor.ShorWorkspaceLargeEnough"
+    },
+    {
+     "kind": "abbrev",
+     "line": 135,
+     "name": "Shor.Policy.ShorWorkspaceLargeEnough"
+    },
+    {
+     "kind": "theorem",
+     "line": 141,
+     "name": "Shor.Policy.shorWorkspaceLargeEnough_const_iff"
+    },
+    {
+     "kind": "structure",
+     "line": 152,
      "name": "Shor.ShorWorkspaceIsolation"
     }
    ],
@@ -15069,7 +15326,7 @@ window.GRAPH = {
     "QFT/Lowering/Workspace.lean"
    ],
    "kind": "file",
-   "lines": 124,
+   "lines": 169,
    "name": "Workspace.lean",
    "path": "Shor/Circuit/Workspace.lean"
   },
@@ -15077,7 +15334,7 @@ window.GRAPH = {
    "children": [
     "Shor/Lowering/LowerGate.lean"
    ],
-   "declCount": 3,
+   "declCount": 7,
    "fileCount": 1,
    "fsPath": "Implementation/Shor/Lowering",
    "kind": "folder",
@@ -15101,6 +15358,26 @@ window.GRAPH = {
      "kind": "def",
      "line": 179,
      "name": "Shor.GateWorkspaceCleanState"
+    },
+    {
+     "kind": "def",
+     "line": 239,
+     "name": "Shor.Policy.GateWorkspaceOK"
+    },
+    {
+     "kind": "def",
+     "line": 261,
+     "name": "Shor.Policy.lowerGate"
+    },
+    {
+     "kind": "def",
+     "line": 336,
+     "name": "Shor.Policy.GateWorkspaceCleanState"
+    },
+    {
+     "kind": "theorem",
+     "line": 385,
+     "name": "Shor.Policy.gateWorkspaceOK_const_iff"
     }
    ],
    "docstring": "# Generic Whole-Gate Lowering\n\nThe public whole-program lowerer does not ask its caller to construct QFT or\nphase-product lowering plans.  Instead, the caller proves one recursive static\nworkspace condition on the source gate.  At each QFT or signed-phase-product\nnode, that proof supplies the reserve-capacity facts needed by the already\ndefined concrete lowerer.\n\nCleanliness is deliberately absent from `GateWorkspaceOK`: it is a condition\non the input state, not a condition on the syntax or physical register layout.\nIt belongs in the later semantic-correctness theorem.",
@@ -15124,7 +15401,7 @@ window.GRAPH = {
     "QFT/Spec/Cleanliness.lean"
    ],
    "kind": "file",
-   "lines": 231,
+   "lines": 416,
    "name": "LowerGate.lean",
    "path": "Shor/Lowering/LowerGate.lean"
   },
@@ -15382,7 +15659,7 @@ window.GRAPH = {
     "Shor/Proofs/Readiness",
     "Shor/Proofs/Setup.lean"
    ],
-   "declCount": 165,
+   "declCount": 170,
    "fileCount": 19,
    "fsPath": "Implementation/Shor/Proofs",
    "kind": "folder",
@@ -15498,22 +15775,22 @@ window.GRAPH = {
     },
     {
      "kind": "theorem",
-     "line": 948,
+     "line": 938,
      "name": "Shor.orderFindingApproxLow_probability_eq"
     },
     {
      "kind": "theorem",
-     "line": 1003,
+     "line": 989,
      "name": "Shor.Shor_correct_approx_lowered_of_modExp_bound"
     },
     {
      "kind": "lemma",
-     "line": 1110,
+     "line": 1096,
      "name": "Shor.\u03ba_pos"
     },
     {
      "kind": "lemma",
-     "line": 1120,
+     "line": 1106,
      "name": "Shor.lowering_loss_le_half"
     }
    ],
@@ -15542,7 +15819,7 @@ window.GRAPH = {
     "Shor/Spec/Assertions.lean"
    ],
    "kind": "file",
-   "lines": 1152,
+   "lines": 1138,
    "name": "Correctness.lean",
    "path": "Shor/Proofs/Correctness.lean"
   },
@@ -15607,6 +15884,11 @@ window.GRAPH = {
      "kind": "theorem",
      "line": 206,
      "name": "Shor.lowerGate_correctness"
+    },
+    {
+     "kind": "theorem",
+     "line": 570,
+     "name": "Shor.Policy.lowerGate_correctness"
     }
    ],
    "docstring": "# Whole-program lowering correctness\n\nThis file proves `lowerGate` (`Shor/Lowering/LowerGate.lean`) correct and\ncollects the lemmas needed to work with it:\n\n* the `GateWorkspaceOK` projection lemmas (`.left`, `.right`, `.of_adj`,\n  `.qft`, `.signedPhaseProd`, `.cSignedPhaseProd`) \u2014 how a `GateWorkspaceOK`\n  proof for a compound gate yields proofs for its parts;\n* the `@[simp]` definitional equations for `lowerGate` (`lowerGate_id`,\n  `lowerGate_seq`, `lowerGate_QFT`, `lowerGate_SignedPhaseProd`,\n  `lowerGate_CSignedPhaseProd`);\n* `lowerGate_correctness`, stating that the lowered program has the same\n  action as the source gate whenever the static precondition\n  (`GateWorkspaceOK`) and the dynamic one (`GateWorkspaceCleanState`) hold,\n  given the interpolation program's `ProgConsumesPtsSafe`/`run?` side\n  conditions (the two fields `ShorLoweringSetup.consumes`/`.returns` provide\n  them).",
@@ -15632,7 +15914,7 @@ window.GRAPH = {
     "Shor/Lowering/LowerGate.lean"
    ],
    "kind": "file",
-   "lines": 570,
+   "lines": 920,
    "name": "Lowering.lean",
    "path": "Shor/Proofs/Lowering.lean"
   },
@@ -15978,7 +16260,7 @@ window.GRAPH = {
     "Shor/Proofs/Readiness/Step2.lean",
     "Shor/Proofs/Readiness/Step5.lean"
    ],
-   "declCount": 84,
+   "declCount": 88,
    "fileCount": 11,
    "fsPath": "Implementation/Shor/Proofs/Readiness",
    "kind": "folder",
@@ -15995,7 +16277,7 @@ window.GRAPH = {
     },
     {
      "kind": "theorem",
-     "line": 303,
+     "line": 305,
      "name": "Shor.gateWorkspaceCleanState_orderFindingApprox"
     },
     {
@@ -16029,7 +16311,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 484,
+   "lines": 482,
    "name": "Dynamic.lean",
    "path": "Shor/Proofs/Readiness/Dynamic.lean"
   },
@@ -16042,7 +16324,7 @@ window.GRAPH = {
     },
     {
      "kind": "theorem",
-     "line": 148,
+     "line": 141,
      "name": "Shor.lowered_IQFT_ready_and_concrete_clean"
     }
    ],
@@ -16063,7 +16345,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 251,
+   "lines": 244,
    "name": "IQFT.lean",
    "path": "Shor/Proofs/Readiness/IQFT.lean"
   },
@@ -16086,12 +16368,12 @@ window.GRAPH = {
     },
     {
      "kind": "theorem",
-     "line": 304,
+     "line": 297,
      "name": "Shor.eval_initY1_preserves_fullShorWorkspaceCleanState"
     },
     {
      "kind": "theorem",
-     "line": 387,
+     "line": 380,
      "name": "Shor.lowered_initY1_ready_and_full_clean"
     }
    ],
@@ -16117,7 +16399,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 457,
+   "lines": 443,
    "name": "Init.lean",
    "path": "Shor/Proofs/Readiness/Init.lean"
   },
@@ -16144,7 +16426,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 179,
+   "lines": 178,
    "name": "ModExp.lean",
    "path": "Shor/Proofs/Readiness/ModExp.lean"
   },
@@ -16194,7 +16476,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 400,
+   "lines": 402,
    "name": "ModMul.lean",
    "path": "Shor/Proofs/Readiness/ModMul.lean"
   },
@@ -16212,82 +16494,82 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 146,
+     "line": 126,
      "name": "Shor.workspaceFree_H_reg"
     },
     {
      "kind": "lemma",
-     "line": 182,
+     "line": 162,
      "name": "Shor.workspaceFree_initY1"
     },
     {
      "kind": "lemma",
-     "line": 202,
+     "line": 182,
      "name": "Shor.reserve_active_disjoint_of_ownedDisjoint"
     },
     {
      "kind": "lemma",
-     "line": 226,
+     "line": 206,
      "name": "Shor.ownedDisjoint_symm"
     },
     {
      "kind": "lemma",
-     "line": 233,
+     "line": 213,
      "name": "Shor.disjoint_qubitReg_of_mem_right"
     },
     {
      "kind": "lemma",
-     "line": 249,
+     "line": 229,
      "name": "Shor.disjoint_drop_left"
     },
     {
      "kind": "lemma",
-     "line": 258,
+     "line": 238,
      "name": "Shor.reserve_drop_active_disjoint_of_ownedDisjoint"
     },
     {
      "kind": "lemma",
-     "line": 268,
+     "line": 248,
      "name": "Shor.reserve_drop_active_disjoint_self"
     },
     {
      "kind": "lemma",
-     "line": 278,
+     "line": 258,
      "name": "Shor.mem_grow_active_owned"
     },
     {
      "kind": "lemma",
-     "line": 303,
+     "line": 283,
      "name": "Shor.reserve_grow_active_disjoint_of_ownedDisjoint"
     },
     {
      "kind": "lemma",
-     "line": 325,
+     "line": 305,
      "name": "Shor.reserve_drop_grow_active_disjoint_self"
     },
     {
      "kind": "lemma",
-     "line": 340,
+     "line": 320,
      "name": "Shor.not_mem_right_of_mem_left_of_disjoint"
     },
     {
      "kind": "theorem",
-     "line": 349,
+     "line": 329,
      "name": "Shor.eval_step3_preserves_lowering_clean"
     },
     {
      "kind": "theorem",
-     "line": 516,
+     "line": 496,
      "name": "Shor.eval_step4_preserves_lowering_clean"
     },
     {
      "kind": "theorem",
-     "line": 776,
+     "line": 756,
      "name": "Shor.shorConcreteCleanState_to_constArithmeticCleanState"
     },
     {
      "kind": "theorem",
-     "line": 835,
+     "line": 815,
      "name": "Shor.lowered_step3_ready_and_clean"
     }
    ],
@@ -16320,7 +16602,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 917,
+   "lines": 890,
    "name": "Primitives.lean",
    "path": "Shor/Proofs/Readiness/Primitives.lean"
   },
@@ -16333,7 +16615,7 @@ window.GRAPH = {
     },
     {
      "kind": "theorem",
-     "line": 69,
+     "line": 61,
      "name": "Shor.LoweredCleanResult.seq"
     }
    ],
@@ -16355,7 +16637,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 133,
+   "lines": 113,
    "name": "Sequencing.lean",
    "path": "Shor/Proofs/Readiness/Sequencing.lean"
   },
@@ -16378,22 +16660,22 @@ window.GRAPH = {
     },
     {
      "kind": "theorem",
-     "line": 67,
+     "line": 66,
      "name": "Shor.constArithmeticWorkspace_of_cmpLtNWWorkspace"
     },
     {
      "kind": "theorem",
-     "line": 133,
+     "line": 132,
      "name": "Shor.gateWorkspaceOK_orderFindingApprox_of_static"
     },
     {
      "kind": "theorem",
-     "line": 640,
+     "line": 638,
      "name": "Shor.gateWorkspaceOK_orderFindingApprox"
     },
     {
      "kind": "theorem",
-     "line": 669,
+     "line": 666,
      "name": "Shor.LoweredShorReady.workspace"
     }
    ],
@@ -16424,7 +16706,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 702,
+   "lines": 699,
    "name": "Static.lean",
    "path": "Shor/Proofs/Readiness/Static.lean"
   },
@@ -16442,18 +16724,28 @@ window.GRAPH = {
     },
     {
      "kind": "theorem",
-     "line": 139,
+     "line": 135,
      "name": "Shor.eval_CPhaseProdUsing_preserves_threeRegsCleanState"
     },
     {
      "kind": "theorem",
-     "line": 225,
+     "line": 221,
      "name": "Shor.eval_IQFT_preserves_threeRegsCleanState"
     },
     {
      "kind": "theorem",
-     "line": 352,
+     "line": 348,
+     "name": "Shor.threeRegsCleanState_to_QFTWorkspaceCleanStateOf"
+    },
+    {
+     "kind": "theorem",
+     "line": 411,
      "name": "Shor.threeRegsCleanState_to_QFTWorkspaceCleanState"
+    },
+    {
+     "kind": "theorem",
+     "line": 419,
+     "name": "Shor.Policy.threeRegsCleanState_to_QFTWorkspaceCleanState"
     }
    ],
    "docstring": "# Step 1 Readiness\n\nStep 1 uses the data reserve after dropping the carry bit and the full work\nreserve. The final theorem in this section is\n`lowered_step1_ready_and_full_clean`.",
@@ -16477,7 +16769,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 414,
+   "lines": 425,
    "name": "Step1.lean",
    "path": "Shor/Proofs/Readiness/Step1.lean"
   },
@@ -16510,32 +16802,32 @@ window.GRAPH = {
     },
     {
      "kind": "theorem",
-     "line": 304,
+     "line": 300,
      "name": "Shor.eval_PhaseProdUsing_preserves_threeRegsCleanState"
     },
     {
      "kind": "theorem",
-     "line": 390,
+     "line": 386,
      "name": "Shor.shorConcreteCleanState_to_step4ReserveClean"
     },
     {
      "kind": "theorem",
-     "line": 431,
+     "line": 427,
      "name": "Shor.lowered_fastConstMulInto_ready_and_clean"
     },
     {
      "kind": "theorem",
-     "line": 636,
+     "line": 630,
      "name": "Shor.lowered_step4_ready_and_clean"
     },
     {
      "kind": "theorem",
-     "line": 933,
+     "line": 925,
      "name": "Shor.lowered_step1_ready_and_full_clean"
     },
     {
      "kind": "theorem",
-     "line": 1312,
+     "line": 1273,
      "name": "Shor.lowered_step2_ready_and_carry_clean"
     }
    ],
@@ -16564,7 +16856,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 1691,
+   "lines": 1621,
    "name": "Step2.lean",
    "path": "Shor/Proofs/Readiness/Step2.lean"
   },
@@ -16577,123 +16869,133 @@ window.GRAPH = {
     },
     {
      "kind": "def",
-     "line": 112,
+     "line": 101,
      "name": "Shor.step5Forward"
     },
     {
      "kind": "theorem",
-     "line": 132,
+     "line": 121,
      "name": "Shor.step5_eq_adj_step5Forward"
     },
     {
      "kind": "theorem",
-     "line": 146,
+     "line": 135,
      "name": "Shor.ThreeRegsCleanState.weaken"
     },
     {
      "kind": "theorem",
-     "line": 397,
+     "line": 382,
      "name": "Shor.lowered_step5Forward_ready_and_full_clean"
     },
     {
      "kind": "theorem",
-     "line": 812,
+     "line": 766,
      "name": "Shor.qeval_injective"
     },
     {
      "kind": "theorem",
-     "line": 825,
+     "line": 779,
      "name": "Shor.eval_adj_seq_eq"
     },
     {
      "kind": "theorem",
-     "line": 856,
+     "line": 810,
      "name": "Shor.eval_adj_adj_eq"
     },
     {
      "kind": "theorem",
-     "line": 885,
+     "line": 839,
      "name": "Shor.eval_step5_QFT_preserves_full_clean"
     },
     {
      "kind": "theorem",
-     "line": 1074,
+     "line": 1028,
      "name": "Shor.step5Workspace_xReserve_subset"
     },
     {
      "kind": "theorem",
-     "line": 1090,
+     "line": 1044,
      "name": "Shor.step5Workspace_zReserve_subset"
     },
     {
      "kind": "theorem",
-     "line": 1275,
+     "line": 1229,
      "name": "Shor.writeNat_writeNat_same"
     },
     {
      "kind": "theorem",
-     "line": 1309,
+     "line": 1263,
      "name": "Shor.bit_eq_testBit_toNat_qubitReg"
     },
     {
      "kind": "lemma",
-     "line": 1334,
+     "line": 1288,
      "name": "Shor.hadamard_scale_sq"
     },
     {
      "kind": "lemma",
-     "line": 1360,
+     "line": 1314,
      "name": "Shor.hadamard_plus_identity"
     },
     {
      "kind": "lemma",
-     "line": 1384,
+     "line": 1338,
      "name": "Shor.hadamard_minus_identity"
     },
     {
      "kind": "theorem",
-     "line": 1409,
+     "line": 1363,
      "name": "Shor.eval_H_involutive_ket"
     },
     {
      "kind": "theorem",
-     "line": 1597,
+     "line": 1551,
      "name": "Shor.eval_H_involutive"
     },
     {
      "kind": "theorem",
-     "line": 1668,
+     "line": 1622,
      "name": "Shor.eval_adj_H_eq_eval_H"
     },
     {
      "kind": "theorem",
-     "line": 1689,
+     "line": 1643,
      "name": "Shor.eval_H_preserves_threeRegsCleanState"
     },
     {
      "kind": "theorem",
-     "line": 1805,
+     "line": 1759,
      "name": "Shor.eval_adj_H_preserves_threeRegsCleanState"
     },
     {
      "kind": "theorem",
-     "line": 1914,
+     "line": 1868,
      "name": "Shor.eval_adj_H_reg_work_preserves_full_clean"
     },
     {
      "kind": "theorem",
-     "line": 2022,
+     "line": 1976,
      "name": "Shor.eval_adj_step5Forward_eq"
     },
     {
      "kind": "theorem",
-     "line": 2075,
+     "line": 2029,
      "name": "Shor.eval_adj_step5Forward_preserves_full_clean"
     },
     {
      "kind": "theorem",
-     "line": 2187,
+     "line": 2141,
      "name": "Shor.lowered_step5_ready_and_full_clean"
+    },
+    {
+     "kind": "theorem",
+     "line": 2308,
+     "name": "Shor.threeRegsCleanState_to_QFTWorkspaceCleanState_first"
+    },
+    {
+     "kind": "theorem",
+     "line": 2316,
+     "name": "Shor.Policy.threeRegsCleanState_to_QFTWorkspaceCleanState_first"
     }
    ],
    "docstring": "# Step 5 Readiness via Adjoint Decomposition\n\nStep 5 is proved by proving the forward Step-5 body clean, then using the\ngeneric adjoint lemma `LoweredCleanResult.adj`.\n\nCovers, in order: semantic decomposition of adjoint circuits; Step-5 QFT\nlocality; Step-5 workspace subset facts; adjoint controlled phase-product\nlocality; elementary Hadamard inverse facts; locality of a single adjoint\nHadamard and of the adjoint register-Hadamard fold; the semantic\ndecomposition of the Step-5 adjoint; and the main Step-5 adjoint\npreservation theorem.",
@@ -16721,7 +17023,7 @@ window.GRAPH = {
     "Shor/Spec/Setup.lean"
    ],
    "kind": "file",
-   "lines": 2350,
+   "lines": 2322,
    "name": "Step5.lean",
    "path": "Shor/Proofs/Readiness/Step5.lean"
   },
@@ -16949,7 +17251,7 @@ window.GRAPH = {
      "name": "Shor.ShorFactoringInstance"
     }
    ],
-   "docstring": "# Shor Setup Records\n\nThe user-facing setup/readiness records consumed by the final Shor\ncorrectness statements, and the bridge from the lower-level implementation\nsetup to the public one. These are all about the quantum side: register\nlayout, workspace capacity, precision and clean-input assumptions.\n\nThe table side \u2014 `Shor.ShorLoweringSetup`, which the records below take as a\nparameter \u2014 is defined in `Framework/ToomCookTable.lean`.",
+   "docstring": "# Shor Setup Records\n\nThe user-facing setup/readiness records consumed by the final Shor\ncorrectness statements, and the bridge from the lower-level implementation\nsetup to the public one. These are all about the quantum side: register\nlayout, workspace capacity, precision and clean-input assumptions.\n\nThe table side \u2014 `Shor.ShorLoweringPolicy`, which the records below take as a\nparameter \u2014 is defined in `Framework/ToomCookTable.lean`.",
    "fsPath": "Implementation/Shor/Spec/Setup.lean",
    "importedBy": [
     "GateCount/Shor_GateCount.lean",
@@ -17512,6 +17814,10 @@ window.GRAPH = {
        "QFT/Proofs/Lowering/Readiness.lean"
       ],
       [
+       "PhaseProduct/Compiler/PolicyWorkspace.lean",
+       "QFT/Lowering/Workspace.lean"
+      ],
+      [
        "PhaseProduct/Compiler/Workspace.lean",
        "QFT/Lowering/Workspace.lean"
       ],
@@ -17593,7 +17899,7 @@ window.GRAPH = {
       ]
      ],
      "to": "QFT",
-     "weight": 22
+     "weight": 23
     },
     {
      "from": "PhaseProduct",
@@ -19775,7 +20081,7 @@ window.GRAPH = {
      },
      {
       "target": "QFT",
-      "weight": 22
+      "weight": 23
      },
      {
       "target": "ModularExponentiation",
@@ -19902,11 +20208,11 @@ window.GRAPH = {
       "weight": 7
      },
      {
-      "target": "PhaseProduct/Lowering",
-      "weight": 4
+      "target": "QFT",
+      "weight": 5
      },
      {
-      "target": "QFT",
+      "target": "PhaseProduct/Lowering",
       "weight": 4
      },
      {
@@ -21332,7 +21638,7 @@ window.GRAPH = {
     "providers": [
      {
       "target": "PhaseProduct",
-      "weight": 22
+      "weight": 23
      },
      {
       "target": "Shared",
@@ -21398,7 +21704,7 @@ window.GRAPH = {
     "providers": [
      {
       "target": "PhaseProduct",
-      "weight": 5
+      "weight": 6
      },
      {
       "target": "QFT/Split.lean",

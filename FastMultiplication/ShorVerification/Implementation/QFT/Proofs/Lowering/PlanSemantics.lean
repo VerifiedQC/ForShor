@@ -194,12 +194,8 @@ universe u
 
 theorem evalL_lowerQFTPlan
     (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]
-    {k : ℕ} (hk : 1 < k) (ops : Prog k)
-    {pts : List Point} {hpts : pts.length = q k}
-    (hInterp : GoodToomCookPoints k pts hpts)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
-    (hRun : run? ops State.start_state = some State.start_state)
-    {r : Reg} (plan : QFTLoweringPlan k hk pts hpts ops r) (ψ : qs.State)
+    {P : ShorLoweringPolicy} (hP : P.Admissible)
+    {r : Reg} (plan : QFTLoweringPlan P r) (ψ : qs.State)
     (hready : QFTLoweringReady qs plan ψ) :
     LowerGateClass.evalL (qs := qs) (lowerQFTPlan plan) ψ
       =
@@ -265,9 +261,7 @@ theorem evalL_lowerQFTPlan
             =
           qs.eval (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws)
               (LowerGateClass.evalL (qs := qs) (lowerQFTPlan rightPlan) ψ) := by
-        exact evalL_lowerGateRec_correct (qs := qs)
-          (ShorLoweringPolicy.constPolicy_admissible (T := ⟨k, hk, pts, hpts, ops⟩)
-            ⟨hInterp, hC, hRun⟩) phasePlan _ hreadyPhase
+        exact evalL_lowerGateRec_correct (qs := qs) hP phasePlan _ hreadyPhase
 
       have hLeft :
           LowerGateClass.evalL (qs := qs) (lowerQFTPlan leftPlan)
@@ -309,8 +303,8 @@ theorem evalL_lowerQFTPlan
 
 lemma evalL_lowerQFTPlan_add
     (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]
-    {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {ops : Prog k} {r : Reg}
-    (plan : QFTLoweringPlan k hk pts hpts ops r) (ψ φ : qs.State) :
+    {P : ShorLoweringPolicy} {r : Reg}
+    (plan : QFTLoweringPlan P r) (ψ φ : qs.State) :
     LowerGateClass.evalL (qs := qs) (lowerQFTPlan plan) (ψ + φ)
       =
     LowerGateClass.evalL (qs := qs) (lowerQFTPlan plan) ψ
@@ -320,8 +314,8 @@ lemma evalL_lowerQFTPlan_add
 
 lemma evalL_lowerQFTPlan_smul
     (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]
-    {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {ops : Prog k} {r : Reg}
-    (plan : QFTLoweringPlan k hk pts hpts ops r) (a : ℂ) (ψ : qs.State) :
+    {P : ShorLoweringPolicy} {r : Reg}
+    (plan : QFTLoweringPlan P r) (a : ℂ) (ψ : qs.State) :
     LowerGateClass.evalL (qs := qs) (lowerQFTPlan plan) (a • ψ)
       =
     a • LowerGateClass.evalL (qs := qs) (lowerQFTPlan plan) ψ := by
@@ -333,8 +327,8 @@ lemma evalL_lowerQFTPlan_smul
 
 lemma QFTLoweringReady.add
     (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs] [LowerGateClass qs]
-    {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {ops : Prog k} {r : Reg}
-    (plan : QFTLoweringPlan k hk pts hpts ops r)
+    {P : ShorLoweringPolicy} {r : Reg}
+    (plan : QFTLoweringPlan P r)
     {ψ φ : qs.State} (hψ : QFTLoweringReady qs plan ψ) (hφ : QFTLoweringReady qs plan φ) :
     QFTLoweringReady qs plan (ψ + φ) := by
   induction plan generalizing ψ φ with
@@ -386,8 +380,8 @@ lemma QFTLoweringReady.add
 
 lemma QFTLoweringReady.smul
     (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs] [LowerGateClass qs]
-    {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {ops : Prog k} {r : Reg}
-    (plan : QFTLoweringPlan k hk pts hpts ops r) (a : ℂ)
+    {P : ShorLoweringPolicy} {r : Reg}
+    (plan : QFTLoweringPlan P r) (a : ℂ)
     {ψ : qs.State} (hψ : QFTLoweringReady qs plan ψ) :
     QFTLoweringReady qs plan (a • ψ) := by
   induction plan generalizing ψ with
@@ -434,7 +428,7 @@ lemma QFTLoweringReady.smul
 
 lemma evalL_lowerQFTPlan_zero
     (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]
-    {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {ops : Prog k} {r : Reg} (plan : QFTLoweringPlan k hk pts hpts ops r) :
+    {P : ShorLoweringPolicy} {r : Reg} (plan : QFTLoweringPlan P r) :
     LowerGateClass.evalL (qs := qs) (lowerQFTPlan plan) 0
       =
     0 := by
@@ -442,7 +436,7 @@ lemma evalL_lowerQFTPlan_zero
 
 lemma QFTLoweringReady.zero
     (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs] [LowerGateClass qs]
-    {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {ops : Prog k} {r : Reg} (plan : QFTLoweringPlan k hk pts hpts ops r) :
+    {P : ShorLoweringPolicy} {r : Reg} (plan : QFTLoweringPlan P r) :
     QFTLoweringReady qs plan 0 := by
   induction plan with
   | empty =>

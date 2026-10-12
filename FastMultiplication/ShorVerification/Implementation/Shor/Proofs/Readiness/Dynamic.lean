@@ -47,7 +47,8 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (η : ℝ)
     (a N : ℕ)
     (x data work scratch : ExtReg)
@@ -57,13 +58,13 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
       ShorApproxSetup
         qs η N x data work scratch flag b0)
     (_hlarge :
-      ShorWorkspaceLargeEnough
-        lowering.ops x data work scratch)
+      Policy.ShorWorkspaceLargeEnough
+        P x data work scratch)
     (hisolated :
       ShorWorkspaceIsolation x work scratch flag)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (orderFindingApprox a N x data work scratch flag
           hsetup.circuit_workspace hsetup.step4_workspace))
     {ψ : qs.State}
@@ -76,7 +77,7 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
         ModMulCoreLayout data work flag ctrl) :
     LoweredCleanResult
       qs
-      lowering
+      P
       (ShorConcreteCleanState
         qs x data work scratch
         hisolated.exponent_scratch_disjoint)
@@ -96,38 +97,38 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
   let U4 := IQFT x
 
   change
-    GateWorkspaceOK lowering.ops U1
+    Policy.GateWorkspaceOK P U1
       ∧
-    GateWorkspaceOK lowering.ops U2
+    Policy.GateWorkspaceOK P U2
       ∧
-    GateWorkspaceOK lowering.ops U3
+    Policy.GateWorkspaceOK P U3
       ∧
-    GateWorkspaceOK lowering.ops U4
+    Policy.GateWorkspaceOK P U4
     at hworkspace
 
   have hworkspace34 :
-      GateWorkspaceOK lowering.ops (U3 ;; U4) := by
+      Policy.GateWorkspaceOK P (U3 ;; U4) := by
     exact hworkspace.2.2
 
   have hworkspace234 :
-      GateWorkspaceOK lowering.ops (U2 ;; U3 ;; U4) := by
+      Policy.GateWorkspaceOK P (U2 ;; U3 ;; U4) := by
     exact hworkspace.2
 
   have hworkspace1234 :
-      GateWorkspaceOK lowering.ops (U1 ;; U2 ;; U3 ;; U4) := by
+      Policy.GateWorkspaceOK P (U1 ;; U2 ;; U3 ;; U4) := by
     exact hworkspace
 
   let ψ1 :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U1 hworkspace.1)
       ψ
 
   have h1 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch
           hisolated.exponent_scratch_disjoint)
@@ -152,7 +153,7 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
             hsetup.step4_workspace.work_scratch_disjoint)
       simpa [carrier, shorConcreteCarrier] using
         (lowered_H_reg_ready_and_full_clean
-          qs lowering carrier data work
+          qs P hP carrier data work
           hcarrierData hcarrierWork
           hworkspace.1 ψ
           (by
@@ -161,14 +162,14 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
   let ψ2 :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U2 hworkspace.2.1)
       ψ1
 
   have h2 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch
           hisolated.exponent_scratch_disjoint)
@@ -187,7 +188,7 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
           (ownedDisjoint_symm hdataScratch)
       simpa [carrier, shorConcreteCarrier] using
         (lowered_initY1_ready_and_full_clean
-          qs lowering carrier data work
+          qs P hP carrier data work
           hcarrierData hsetup.circuit_workspace
           hworkspace.2.1 ψ1
           (by
@@ -196,20 +197,21 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
   let ψ3 :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U3 hworkspace.2.2.1)
       ψ2
 
   have h3 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch
           hisolated.exponent_scratch_disjoint)
         U3 hworkspace.2.2.1 ψ2 :=
     lowered_modExpApproxStepsValid_ready_and_clean
-      lowering
+      P
+      hP
       x data work scratch
       a N flag 0
       x.active.qubits
@@ -226,13 +228,13 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
 
   have h4 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch
           hisolated.exponent_scratch_disjoint)
         U4 hworkspace.2.2.2 ψ3 :=
     lowered_IQFT_ready_and_concrete_clean
-      lowering x data work scratch
+      P hP x data work scratch
       hsetup.exponent_data_disjoint
       hisolated.exponent_work_disjoint
       hisolated.exponent_scratch_disjoint
@@ -242,7 +244,7 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
 
   have h34 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch
           hisolated.exponent_scratch_disjoint)
@@ -257,7 +259,7 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
 
   have h234 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch
           hisolated.exponent_scratch_disjoint)
@@ -272,7 +274,7 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
 
   have h1234 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch
           hisolated.exponent_scratch_disjoint)
@@ -305,7 +307,8 @@ theorem gateWorkspaceCleanState_orderFindingApprox
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (η : ℝ)
     (a N : ℕ)
     (x data work scratch : ExtReg)
@@ -315,8 +318,8 @@ theorem gateWorkspaceCleanState_orderFindingApprox
       ShorApproxSetup
         qs η N x data work scratch flag b0)
     (hlarge :
-      ShorWorkspaceLargeEnough
-        lowering.ops x data work scratch)
+      Policy.ShorWorkspaceLargeEnough
+        P x data work scratch)
     (hisolated :
       ShorWorkspaceIsolation x work scratch flag)
     (hzero :
@@ -324,7 +327,7 @@ theorem gateWorkspaceCleanState_orderFindingApprox
         x data work scratch b0) :
     let hworkspace :=
       gateWorkspaceOK_orderFindingApprox
-        (ops := lowering.ops)
+        (P := P)
         (η := η)
         (a := a)
         (N := N)
@@ -337,20 +340,16 @@ theorem gateWorkspaceCleanState_orderFindingApprox
         hsetup
         hlarge
 
-    GateWorkspaceCleanState
+    Policy.GateWorkspaceCleanState
       qs
-      lowering.k
-      lowering.hk
-      lowering.ops
-      lowering.pts
-      lowering.hpts
+      P
       (orderFindingApprox a N x data work scratch flag
         hsetup.circuit_workspace hsetup.step4_workspace)
       hworkspace
       (qs.ket b0) := by
   let hworkspace :=
     gateWorkspaceOK_orderFindingApprox
-      (ops := lowering.ops)
+      (P := P)
       (η := η)
       (a := a)
       (N := N)
@@ -397,7 +396,7 @@ theorem gateWorkspaceCleanState_orderFindingApprox
   have hResult :
       LoweredCleanResult
         qs
-        lowering
+        P
         (ShorConcreteCleanState
           qs x data work scratch
           hisolated.exponent_scratch_disjoint)
@@ -416,7 +415,8 @@ theorem gateWorkspaceCleanState_orderFindingApprox
     -- `lowered_modExpApproxStepsValid_ready_and_clean`.
     exact
       lowered_orderFindingApprox_ready_and_full_clean
-        lowering
+        P
+        hP
         η
         a N
         x data work scratch
@@ -443,7 +443,8 @@ theorem LoweredShorReady.workspace_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    {lowering : ShorLoweringSetup}
+    {P : ShorLoweringPolicy}
+    (hP : P.Admissible)
     {η : ℝ}
     {a N : ℕ}
     {x y work scratch : ExtReg}
@@ -451,14 +452,10 @@ theorem LoweredShorReady.workspace_clean
     {b0 : qs.Basis}
     (h :
       LoweredShorReady
-        qs lowering η a N x y work scratch flag b0) :
-    GateWorkspaceCleanState
+        qs P η a N x y work scratch flag b0) :
+    Policy.GateWorkspaceCleanState
       qs
-      lowering.k
-      lowering.hk
-      lowering.ops
-      lowering.pts
-      lowering.hpts
+      P
       (orderFindingApprox a N x y work scratch flag
         (ShorApproxSetupMinimal.toShorApproxSetup h.approx).circuit_workspace
         (ShorApproxSetupMinimal.toShorApproxSetup h.approx).step4_workspace)
@@ -466,7 +463,8 @@ theorem LoweredShorReady.workspace_clean
       (qs.ket b0) := by
   exact
     gateWorkspaceCleanState_orderFindingApprox
-      lowering
+      P
+      hP
       η
       a
       N

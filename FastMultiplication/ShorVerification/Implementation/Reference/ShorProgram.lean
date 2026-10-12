@@ -18,7 +18,7 @@ implementation-specific storage, proves the resulting layout satisfies the
 static circuit requirements, and lowers the resulting approximate
 order-finding circuit.
 
-After fixing `lowering`, the public shape is exactly
+After fixing `P`, the public shape is exactly
 
     ShorOrderFindingInstance → ℕ → LowGate.
 -/
@@ -36,11 +36,11 @@ This is a proof object only; it is not part of the framework-facing interface.
 def referenceMinimalSetup
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) :
     let η := referencePrecision m
-    let layout := allocateReferenceLayout lowering.ops inst m
+    let layout := allocateReferenceLayout P inst m
     ShorApproxSetupMinimal
       qs
       η
@@ -56,7 +56,7 @@ def referenceMinimalSetup
   exact
     allocatedReferenceApproxSetupMinimal
       (qs := qs)
-      lowering.ops
+      P
       inst
       m
 
@@ -67,11 +67,11 @@ facts.
 noncomputable def referenceApproxSetup
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) :
     let η := referencePrecision m
-    let layout := allocateReferenceLayout lowering.ops inst m
+    let layout := allocateReferenceLayout P inst m
     ShorApproxSetup
       qs
       η
@@ -88,29 +88,29 @@ noncomputable def referenceApproxSetup
     ShorApproxSetupMinimal.toShorApproxSetup
       (referenceMinimalSetup
         (qs := qs)
-        lowering
+        P
         inst
         m)
 
 /--
-The complete lowering workspace proof generated internally for the reference
+The complete P workspace proof generated internally for the reference
 circuit.
 -/
 def referenceLowerWorkspace
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) :
-    let layout := allocateReferenceLayout lowering.ops inst m
+    let layout := allocateReferenceLayout P inst m
     let hsetup :=
       referenceApproxSetup
         (qs := qs)
-        lowering
+        P
         inst
         m
-    GateWorkspaceOK
-      lowering.ops
+    Policy.GateWorkspaceOK
+      P
       (orderFindingApprox
         inst.a
         inst.N
@@ -124,26 +124,26 @@ def referenceLowerWorkspace
   dsimp
   exact
     gateWorkspaceOK_orderFindingApprox
-      (ops := lowering.ops)
+      (P := P)
       (η := referencePrecision m)
       (a := inst.a)
       (N := inst.N)
-      (x := (allocateReferenceLayout lowering.ops inst m).x)
-      (data := (allocateReferenceLayout lowering.ops inst m).data)
-      (work := (allocateReferenceLayout lowering.ops inst m).work)
-      (scratch := (allocateReferenceLayout lowering.ops inst m).scratch)
-      (flag := (allocateReferenceLayout lowering.ops inst m).flag)
+      (x := (allocateReferenceLayout P inst m).x)
+      (data := (allocateReferenceLayout P inst m).data)
+      (work := (allocateReferenceLayout P inst m).work)
+      (scratch := (allocateReferenceLayout P inst m).scratch)
+      (flag := (allocateReferenceLayout P inst m).flag)
       (b0 := RegEncoding.zero (Basis := qs.Basis))
-      (referenceApproxSetup (qs := qs) lowering inst m)
+      (referenceApproxSetup (qs := qs) P inst m)
       (allocatedReferenceWorkspaceLargeEnough
-        lowering.ops inst m)
+        P inst m)
 
 /-! =========================================================
     Section 3: Concrete LowGate program
 ========================================================= -/
 
 /--
-Static lowering-workspace witness for the reference circuit, stated without
+Static P-workspace witness for the reference circuit, stated without
 any `QSemantics` argument.
 
 It follows from `gateWorkspaceOK_orderFindingApprox_of_static`, which needs
@@ -151,44 +151,44 @@ only the allocator's static layout and workspace facts, so no quantum
 semantics is involved at all.
 -/
 private theorem reference_gateWorkspaceOK_orderFindingApprox
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) :
-    GateWorkspaceOK lowering.ops
+    Policy.GateWorkspaceOK P
       (orderFindingApprox inst.a inst.N
-        (allocateReferenceLayout lowering.ops inst m).x
-        (allocateReferenceLayout lowering.ops inst m).data
-        (allocateReferenceLayout lowering.ops inst m).work
-        (allocateReferenceLayout lowering.ops inst m).scratch
-        (allocateReferenceLayout lowering.ops inst m).flag
-        (reference_modMulCircuitWorkspaceOK lowering.ops inst m)
-        (reference_step4Workspace lowering.ops inst m)) := by
+        (allocateReferenceLayout P inst m).x
+        (allocateReferenceLayout P inst m).data
+        (allocateReferenceLayout P inst m).work
+        (allocateReferenceLayout P inst m).scratch
+        (allocateReferenceLayout P inst m).flag
+        (reference_modMulCircuitWorkspaceOK P inst m)
+        (reference_step4Workspace P inst m)) := by
   have hlayout :
       ModExpLayout
-        (allocateReferenceLayout lowering.ops inst m).x.active
-        (allocateReferenceLayout lowering.ops inst m).data
-        (allocateReferenceLayout lowering.ops inst m).work
-        (allocateReferenceLayout lowering.ops inst m).flag := by
+        (allocateReferenceLayout P inst m).x.active
+        (allocateReferenceLayout P inst m).data
+        (allocateReferenceLayout P inst m).work
+        (allocateReferenceLayout P inst m).flag := by
     simpa [allocateReferenceLayout] using
       modExpLayout_of_disjoint
-        (reference_exponent_data_disjoint lowering.ops inst m)
-        (reference_data_work_disjoint lowering.ops inst m)
-        (reference_flag_outside_data lowering.ops inst m)
-        (reference_flag_outside_work lowering.ops inst m)
-        (reference_controls_outside_work lowering.ops inst m)
-        (reference_flag_outside_controls lowering.ops inst m)
+        (reference_exponent_data_disjoint P inst m)
+        (reference_data_work_disjoint P inst m)
+        (reference_flag_outside_data P inst m)
+        (reference_flag_outside_work P inst m)
+        (reference_controls_outside_work P inst m)
+        (reference_flag_outside_controls P inst m)
   exact
     gateWorkspaceOK_orderFindingApprox_of_static
-      lowering.ops inst.a inst.N
-      (allocateReferenceLayout lowering.ops inst m).x
-      (allocateReferenceLayout lowering.ops inst m).data
-      (allocateReferenceLayout lowering.ops inst m).work
-      (allocateReferenceLayout lowering.ops inst m).scratch
-      (allocateReferenceLayout lowering.ops inst m).flag
-      (reference_modMulCircuitWorkspaceOK lowering.ops inst m)
-      (reference_step4Workspace lowering.ops inst m)
+      P inst.a inst.N
+      (allocateReferenceLayout P inst m).x
+      (allocateReferenceLayout P inst m).data
+      (allocateReferenceLayout P inst m).work
+      (allocateReferenceLayout P inst m).scratch
+      (allocateReferenceLayout P inst m).flag
+      (reference_modMulCircuitWorkspaceOK P inst m)
+      (reference_step4Workspace P inst m)
       hlayout
-      (allocatedReferenceWorkspaceLargeEnough lowering.ops inst m)
+      (allocatedReferenceWorkspaceLargeEnough P inst m)
 
 /--
 The concrete reference implementation of approximate Shor order finding.
@@ -200,23 +200,22 @@ All implementation-specific choices are internal:
 * the allocator proves the modular-arithmetic workspace requirements; and
 * `orderFindingApproxLow` produces the final `LowGate`.
 
-This definition mentions no `QSemantics`: after `lowering` is fixed, the
+This definition mentions no `QSemantics`: after `P` is fixed, the
 exposed circuit family has exactly the construction-free shape required by
 `ShorImplementation`:
 
     ShorOrderFindingInstance → ℕ → LowGate.
 -/
 def referenceShorCircuit
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) : LowGate :=
-  let layout := allocateReferenceLayout lowering.ops inst m
-  orderFindingApproxLow lowering.k lowering.hk lowering.ops
-      lowering.pts lowering.hpts
+  let layout := allocateReferenceLayout P inst m
+  orderFindingApproxLow P
       inst.a inst.N layout.x layout.data layout.work layout.scratch layout.flag
-      (reference_modMulCircuitWorkspaceOK lowering.ops inst m)
-      (reference_step4Workspace lowering.ops inst m)
-      (reference_gateWorkspaceOK_orderFindingApprox lowering inst m)
+      (reference_modMulCircuitWorkspaceOK P inst m)
+      (reference_step4Workspace P inst m)
+      (reference_gateWorkspaceOK_orderFindingApprox P inst m)
 
 /-! =========================================================
     Section 4: Framework-facing Shor program
@@ -229,13 +228,13 @@ The reference implementation chooses both the circuit and the register whose
 measurement contains the order-finding result.
 -/
 def referenceShorProg
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) : ShorOrderFindingProgram :=
   {
-    circuit := referenceShorCircuit lowering inst m
+    circuit := referenceShorCircuit P inst m
 
-    output := (allocateReferenceLayout lowering.ops inst m).x.active
+    output := (allocateReferenceLayout P inst m).x.active
   }
 end Reference
 end Shor

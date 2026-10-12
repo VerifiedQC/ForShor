@@ -35,7 +35,8 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (x data work scratch : ExtReg)
     (a N flag e : ℕ)
     (ctrls : List ℕ)
@@ -55,8 +56,8 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
       ∀ ctrl ∈ ctrls,
         ModMulCoreLayout data work flag ctrl)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (modExpApproxStepsValid
           a N data work scratch flag hmod hstep4 e ctrls))
     (ψ : qs.State)
@@ -65,7 +66,7 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
         qs x data work scratch hxScratch ψ) :
     LoweredCleanResult
       qs
-      lowering
+      P
       (ShorConcreteCleanState
         qs x data work scratch hxScratch)
       (modExpApproxStepsValid
@@ -77,11 +78,12 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
       constructor
       · simp [
           modExpApproxStepsValid,
-          GateWorkspaceCleanState
+          Policy.GateWorkspaceCleanState
         ]
       · simpa [
           LoweredCleanResult,
           modExpApproxStepsValid,
+          Policy.lowerGate,
           LowerGateClass.evalL_id
         ] using hclean
 
@@ -98,9 +100,9 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
           (e + 1) ctrls
 
       change
-        GateWorkspaceOK lowering.ops U
+        Policy.GateWorkspaceOK P U
           ∧
-        GateWorkspaceOK lowering.ops V
+        Policy.GateWorkspaceOK P V
         at hworkspace
 
       have hHeadLayout :
@@ -117,12 +119,13 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
 
       have hU :
           LoweredCleanResult
-            qs lowering
+            qs P
             (ShorConcreteCleanState
               qs x data work scratch hxScratch)
             U hworkspace.1 ψ :=
         lowered_CmodMulInPlaceCore_ready_and_clean
-          lowering
+          P
+          hP
           x data work scratch
           c N ctrl flag
           hxData
@@ -139,19 +142,15 @@ theorem lowered_modExpApproxStepsValid_ready_and_clean
       let ψ' :=
         LowerGateClass.evalL
           (qs := qs)
-          (lowerGate
-            lowering.k
-            lowering.hk
-            lowering.ops
-            lowering.pts
-            lowering.hpts
+          (Policy.lowerGate
+            P
             U
             hworkspace.1)
           ψ
 
       have hV :
           LoweredCleanResult
-            qs lowering
+            qs P
             (ShorConcreteCleanState
               qs x data work scratch hxScratch)
             V hworkspace.2 ψ' :=

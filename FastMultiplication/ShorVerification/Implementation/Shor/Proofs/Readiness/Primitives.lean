@@ -68,19 +68,15 @@ theorem WorkspaceFree.clean
     [GateSemanticsCore qs]
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
-    {lowering : ShorLoweringSetup}
+    {P : ShorLoweringPolicy}
     {G : Gate}
     (hfree : WorkspaceFree G)
     (hworkspace :
-      GateWorkspaceOK lowering.ops G)
+      Policy.GateWorkspaceOK P G)
     (ψ : qs.State) :
-    GateWorkspaceCleanState
+    Policy.GateWorkspaceCleanState
       qs
-      lowering.k
-      lowering.hk
-      lowering.ops
-      lowering.pts
-      lowering.hpts
+      P
       G
       hworkspace
       ψ := by
@@ -96,34 +92,22 @@ theorem WorkspaceFree.clean
 
   | @seq U V hU hV ihU ihV =>
       change
-        GateWorkspaceCleanState
+        Policy.GateWorkspaceCleanState
             qs
-            lowering.k
-            lowering.hk
-            lowering.ops
-            lowering.pts
-            lowering.hpts
+            P
             U
             hworkspace.1
             ψ
           ∧
-        GateWorkspaceCleanState
+        Policy.GateWorkspaceCleanState
             qs
-            lowering.k
-            lowering.hk
-            lowering.ops
-            lowering.pts
-            lowering.hpts
+            P
             V
             hworkspace.2
             (LowerGateClass.evalL
               (qs := qs)
-              (lowerGate
-                lowering.k
-                lowering.hk
-                lowering.ops
-                lowering.pts
-                lowering.hpts
+              (Policy.lowerGate
+                P
                 U
                 hworkspace.1)
               ψ)
@@ -133,12 +117,8 @@ theorem WorkspaceFree.clean
           ihV hworkspace.2
             (LowerGateClass.evalL
               (qs := qs)
-              (lowerGate
-                lowering.k
-                lowering.hk
-                lowering.ops
-                lowering.pts
-                lowering.hpts
+              (Policy.lowerGate
+                P
                 U
                 hworkspace.1)
               ψ)⟩
@@ -837,7 +817,8 @@ theorem lowered_step3_ready_and_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (x data work scratch : ExtReg)
     (N flag : ℕ)
     (hxData :
@@ -851,8 +832,8 @@ theorem lowered_step3_ready_and_clean
     (hstep4 :
       CmpLtNWWorkspace N (data.grow 1) work scratch flag)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (step3 N (data.grow 1) scratch flag))
     (ψ : qs.State)
     (hclean :
@@ -860,7 +841,7 @@ theorem lowered_step3_ready_and_clean
         qs x data work scratch hxScratch ψ) :
     LoweredCleanResult
       qs
-      lowering
+      P
       (ShorConcreteCleanState
         qs x data work scratch hxScratch)
       (step3 N (data.grow 1) scratch flag)
@@ -873,13 +854,9 @@ theorem lowered_step3_ready_and_clean
       x data work scratch hxScratch hclean
 
   have hgateClean :
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+        P
         (step3 N (data.grow 1) scratch flag)
         hworkspace
         ψ := by
@@ -896,14 +873,10 @@ theorem lowered_step3_ready_and_clean
   constructor
   · exact hgateClean
   · rw [
-      lowerGate_correctness
+      Policy.lowerGate_correctness
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.good
-        lowering.consumes
-        lowering.returns
+        P
+        hP
         (step3 N (data.grow 1) scratch flag)
         hworkspace
         ψ

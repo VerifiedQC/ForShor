@@ -70,7 +70,7 @@ traversal.
 
 | File | Purpose |
 |---|---|
-| `Workspace.lean` | The static reserve budgets and capacity/isolation conditions (`ShorWorkspaceNeed`, `shorWorkspaceNeed`, `ShorWorkspaceLargeEnough`, `ShorWorkspaceIsolation`) used by the lowering readiness proofs. |
+| `Workspace.lean` | The static reserve budgets and capacity/isolation conditions (`ShorWorkspaceNeed`, `shorWorkspaceNeed`, `ShorWorkspaceLargeEnough`, `ShorWorkspaceIsolation`) used by the lowering readiness proofs. `shorWorkspaceNeed ops` is `shorWorkspaceNeedOf` applied to that table's QFT need and phase-product reserve model — the budget arithmetic is written once, abstracted over both, so a policy-indexed model substitutes into it without restating anything. |
 | `OrderFinding.lean` | The approximate order-finding circuit (`orderFindingApprox`/`orderFindingApproxLow`), built from the verified modular-exponentiation implementation, and the ideal circuit (`orderFindingIdeal`) that swaps in the abstract exact modular-exponentiation gate. |
 
 ## `Spec/` — the public specification surface
@@ -137,3 +137,20 @@ both gaps: it runs at the explicit constant `2048`
 circuit builder can evaluate before building, and at any `η` below it the
 conclusion is `≥ κ / (2 · log₂(N)⁴)` — half the ideal bound, positive for
 every admissible `N`. Cite that one.
+
+## Lowering is policy-indexed underneath
+
+`Shor/` itself is still phrased in terms of a single table: `lowerGate`,
+`GateWorkspaceOK`, `shorWorkspaceNeed` and every theorem quoted above take
+`k`, `hk`, `ops`, `pts`, `hpts` exactly as they always did, and their
+statements are unchanged.
+
+What changed is one level down. The phase-product lowering those definitions
+call is now indexed by a `ShorLoweringPolicy` (a width-indexed choice of
+table — see [`../PhaseProduct/README.md`](../PhaseProduct/README.md)), and
+the fixed-table names are its **constant policy** instance. Nothing in this
+folder has to know that; the reason it is worth knowing is that the budget
+and need functions here were abstracted over their reserve model
+(`shorWorkspaceNeedOf`, `qftWorkspaceNeedOf`) precisely so that a
+policy-indexed model can be substituted later without reproving the
+readiness chain.

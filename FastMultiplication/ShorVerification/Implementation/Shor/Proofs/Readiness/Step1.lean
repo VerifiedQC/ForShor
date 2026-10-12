@@ -85,7 +85,7 @@ theorem gateWorkspaceCleanState_CPhaseProdUsing_of_threeRegsClean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    {lowering : ShorLoweringSetup}
+    {P : ShorLoweringPolicy}
     {r₁ r₂ r₃ : Reg}
     {x z : Reg}
     (ctrl : ℕ)
@@ -96,21 +96,17 @@ theorem gateWorkspaceCleanState_CPhaseProdUsing_of_threeRegsClean
     (hzReserve :
       ws.zExt.reserve = r₃)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (Gate.CPhaseProdUsing
           ctrl φ x z ws))
     (ψ : qs.State)
     (hclean :
       ThreeRegsCleanState
         qs r₁ r₂ r₃ ψ) :
-    GateWorkspaceCleanState
+    Policy.GateWorkspaceCleanState
       qs
-      lowering.k
-      lowering.hk
-      lowering.ops
-      lowering.pts
-      lowering.hpts
+      P
       (Gate.CPhaseProdUsing
         ctrl φ x z ws)
       hworkspace
@@ -129,8 +125,8 @@ theorem gateWorkspaceCleanState_CPhaseProdUsing_of_threeRegsClean
 
   simpa [
     Gate.CPhaseProdUsing,
-    GateWorkspaceCleanState,
-    lowerGate,
+    Policy.GateWorkspaceCleanState,
+    Policy.lowerGate,
     LowerGateClass.evalL_zeroExtend,
     ExtensionSemantics.eval_zeroExtend
   ] using hrecursive
@@ -349,11 +345,10 @@ theorem eval_IQFT_preserves_threeRegsCleanState
           ihψ
 
 
-theorem threeRegsCleanState_to_QFTWorkspaceCleanState
+theorem threeRegsCleanState_to_QFTWorkspaceCleanStateOf
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    {k : ℕ}
-    (ops : Prog k)
+    (need : ℕ → ℕ × ℕ)
     (r : ExtReg)
     {r₁ r₂ r₃ : Reg}
     (hreserve :
@@ -364,8 +359,8 @@ theorem threeRegsCleanState_to_QFTWorkspaceCleanState
         qs r₁ r₂ r₃ ψ) :
     QFTWorkspaceCleanState
       qs
-      (qftXWork ops r)
-      (qftZWork ops r)
+      (qftXWorkOf need r)
+      (qftZWorkOf need r)
       ψ := by
   induction hclean with
   | zero =>
@@ -375,26 +370,26 @@ theorem threeRegsCleanState_to_QFTWorkspaceCleanState
       apply QFTWorkspaceCleanState.ket b
 
       · apply FreshZero.of_subset
-          (qftXWork ops r)
+          (qftXWorkOf need r)
           r₃
           b
         · intro q hq
 
           simpa only [hreserve] using
-            qftXWork_mem_reserve
-              ops r hq
+            qftXWorkOf_mem_reserve
+              need r hq
 
         · exact h₃
 
       · apply FreshZero.of_subset
-          (qftZWork ops r)
+          (qftZWorkOf need r)
           r₃
           b
         · intro q hq
 
           simpa only [hreserve] using
-            qftZWork_mem_reserve
-              ops r hq
+            qftZWorkOf_mem_reserve
+              need r hq
 
         · exact h₃
 
@@ -411,4 +406,20 @@ theorem threeRegsCleanState_to_QFTWorkspaceCleanState
           ihψ
 
 
+
+/-- The fixed-table spelling. -/
+theorem threeRegsCleanState_to_QFTWorkspaceCleanState
+    {qs : QSemantics} [RegEncoding qs.Basis] {k : ℕ} (ops : Prog k) (r : ExtReg)
+    {r₁ r₂ r₃ : Reg} (hreserve : r.reserve = r₃)
+    {ψ : qs.State} (hclean : ThreeRegsCleanState qs r₁ r₂ r₃ ψ) :
+    QFTWorkspaceCleanState qs (qftXWork ops r) (qftZWork ops r) ψ :=
+  threeRegsCleanState_to_QFTWorkspaceCleanStateOf _ r hreserve hclean
+
+/-- The policy spelling. -/
+theorem Policy.threeRegsCleanState_to_QFTWorkspaceCleanState
+    {qs : QSemantics} [RegEncoding qs.Basis] (P : ShorLoweringPolicy) (r : ExtReg)
+    {r₁ r₂ r₃ : Reg} (hreserve : r.reserve = r₃)
+    {ψ : qs.State} (hclean : ThreeRegsCleanState qs r₁ r₂ r₃ ψ) :
+    QFTWorkspaceCleanState qs (Policy.qftXWork P r) (Policy.qftZWork P r) ψ :=
+  threeRegsCleanState_to_QFTWorkspaceCleanStateOf _ r hreserve hclean
 end Shor

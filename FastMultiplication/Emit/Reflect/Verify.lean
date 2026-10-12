@@ -356,10 +356,10 @@ def shorEnv (setup : Shor.ShorLoweringSetup) (inst : ShorOrderFindingInstance)
 (`orderFindingApprox`, the `Gate`-level target). -/
 def checkShorGateAt (setup : Shor.ShorLoweringSetup) (inst : ShorOrderFindingInstance) (m : ℕ)
     (doc : Doc) : Except String Unit :=
-  let ops := setup.ops
-  let layout := Reference.allocateReferenceLayout ops inst m
-  let hworkspace := Reference.reference_modMulCircuitWorkspaceOK ops inst m
-  let hstep4 := Reference.reference_step4Workspace ops inst m
+  let pol := Shor.ShorLoweringPolicy.constPolicy setup.table
+  let layout := Reference.allocateReferenceLayout pol inst m
+  let hworkspace := Reference.reference_modMulCircuitWorkspaceOK pol inst m
+  let hstep4 := Reference.reference_step4Workspace pol inst m
   let real :=
     orderFindingApprox inst.a inst.N layout.x layout.data layout.work layout.scratch
       layout.flag hworkspace hstep4
@@ -379,8 +379,8 @@ def checkShorGate (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String U
 (`Reference.referenceShorCircuit`, the flat `LowGate` target). -/
 def checkShorAt (setup : Shor.ShorLoweringSetup) (inst : ShorOrderFindingInstance) (m : ℕ)
     (doc : Doc) : Except String Unit :=
-  let layout := Reference.allocateReferenceLayout setup.ops inst m
-  let real := Reference.referenceShorCircuit setup inst m
+  let layout := Reference.allocateReferenceLayout (Shor.ShorLoweringPolicy.constPolicy setup.table) inst m
+  let real := Reference.referenceShorCircuit (Shor.ShorLoweringPolicy.constPolicy setup.table) inst m
   match instantiate doc "shor" (shorEnv setup inst layout) 400 with
   | .error e => .error s!"template check (shor): instantiate: {e}"
   | .ok g =>

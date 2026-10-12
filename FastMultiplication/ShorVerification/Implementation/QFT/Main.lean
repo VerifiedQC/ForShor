@@ -22,4 +22,12 @@ theorem lowerQFT_correct
   exact evalL_lowerQFT (qs := qs) (k := k) (hk := hk) (ops := ops) (r := r) (ψ := ψ)
     (pts := pts) (hpts := hpts) hworkspace hInterp hC hRun
 
+/-- Main QFT lowering theorem under a policy. -/
+theorem Policy.lowerQFT_correct
+    (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]
+    (P : ShorLoweringPolicy) (r : ExtReg) :
+    Policy.LowerQFTCorrect qs P r := by
+  intro ψ hworkspace hP
+  exact Policy.evalL_lowerQFT qs P hP r ψ hworkspace
+
 end Shor

@@ -3,7 +3,8 @@
 Definitions for the recursive phase-product compiler: turning a pair of
 registers `x`, `z` and a source arithmetic program into a concrete `Gate`
 circuit. Internal order: `Layout → Widths → Coefficients → Compile →
-Workspace` (each file may use anything from the ones before it).
+Workspace → PolicyWorkspace` (each file may use anything from the ones
+before it).
 
 ## `Layout.lean`
 
@@ -92,3 +93,41 @@ Workspace` (each file may use anything from the ones before it).
   deterministic choice of layout for one recursive step: builds the layout,
   and proves it has enough capacity for the next level and that every child's
   recursive input size is exactly `nextSignedWidth`.
+
+## `PolicyWorkspace.lean`
+
+The same workspace model, for a width-indexed **policy** rather than a single
+table. `Lowering/` builds `PhaseLoweringPlan P` against the definitions here;
+the ones above are what the fixed-table spellings keep using.
+
+- **`Policy.reserveNeed`** — the policy twin of
+  `RecursivePhaseWorkspace.reserveNeed`: at each width it asks `P.choose` for
+  that level's table and recurses with it, so the reserve is sized for
+  whichever tables the recursion will actually meet, not for one table
+  repeated. Fuelled, like its fixed-table counterpart.
+- **`Policy.WorkspaceOK`** / **`Policy.CWorkspaceOK`** — the policy forms of
+  `SignedRecursiveWorkspaceOK`/`CSignedRecursiveWorkspaceOK`, with
+  `workspaceOK_const_iff` / `cWorkspaceOK_const_iff` identifying them with
+  the originals at a constant policy.
+- **`Policy.CanonicalStep`**, **`Policy.canonicalStep`** — the policy form of
+  the canonical step.
+
+### Why this file is separate, and why `canonicalSignedStep` survives
+
+`Policy.reserveNeed (constPolicy T)` and
+`RecursivePhaseWorkspace.reserveNeed T.ops` are equal — `reserveNeed_const`
+proves it — but only **propositionally**. They are two distinct well-founded
+fixpoints, so the equation is a rewrite, never a `rfl` the elaborator can use
+silently. Anything that must reduce definitionally therefore needs the
+spelling it was written against, which is why `canonicalSignedStep` still
+exists alongside `Policy.canonicalStep` and why `lowerGate_correctness` is
+proved in both spellings (~570 duplicated lines).
+
+The duplication is deliberate rather than pending. `Workspace.lean` has 19
+importers, so folding `PolicyWorkspace.lean` into it, or deleting
+`canonicalSignedStep` and porting its callers, costs a full rebuild cascade
+across the library. That price is worth paying only alongside a change that
+is already paying it; the alternative — doing it on its own — buys tidiness
+and nothing else. Until then: **new work should be written against the
+`Policy.*` names**, and the fixed-table names are the constant policy kept
+for the statements that already depend on their definitional behaviour.

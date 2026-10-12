@@ -86,9 +86,9 @@ noncomputable def explicitQFTGateCount
     [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r xWork zWork : Reg)
-    (hworkspace : QFTWorkspaceOK ops r xWork zWork) : ℕ :=
+    (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork) : ℕ :=
   LowGate.gateCount shorGateCostModel
-    (lowerQFTPlan (standardQFTLoweringPlan k hk ops pts hpts r xWork zWork hworkspace))
+    (lowerQFTPlan (Policy.qftPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork hworkspace))
 
 /-- Concrete low-gate count of the PhaseProduct node used at a nontrivial QFT split. -/
 noncomputable def explicitQFTPhaseGateCount
@@ -96,13 +96,13 @@ noncomputable def explicitQFTPhaseGateCount
     [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r xWork zWork : Reg)
-    (hworkspace : QFTWorkspaceOK ops r xWork zWork)
+    (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork)
     (hsize : 2 ≤ regSize r) : ℕ :=
   LowGate.gateCount shorGateCostModel
     (lowerGateRec
-      (standardPhaseProdUsingPlan k hk ops pts hpts (qftPhi (regSize r))
+      (Policy.phaseProdUsingPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (qftPhi (regSize r))
         (hworkspace.phaseWorkspace hsize)
-        (hworkspace.signedWorkspaceOK hsize)))
+        (hworkspace.policySignedWorkspaceOK hsize)))
 
 /-- Reidentifies the planned PhaseProduct node with the public `lowerGate` entry point. -/
 lemma explicitQFTPhaseGateCount_eq_lowerGate
@@ -111,17 +111,16 @@ lemma explicitQFTPhaseGateCount_eq_lowerGate
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (φ : Angle) (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
-    (hsigned : SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1)) :
+    (hsigned : Policy.WorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (ws.xExt.grow 1) (ws.zExt.grow 1)) :
     LowGate.gateCount shorGateCostModel
-        (lowerGateRec (standardPhaseProdUsingPlan k hk ops pts hpts φ ws hsigned))
+        (lowerGateRec (Policy.phaseProdUsingPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) φ ws hsigned))
       =
     LowGate.gateCount shorGateCostModel
-        (lowerGate k hk ops pts hpts
+        (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
           (Gate.PhaseProdUsing φ x z ws)
-          (by simpa [GateWorkspaceOK, Gate.PhaseProdUsing] using hsigned)) := by
-  simp [standardPhaseProdUsingPlan, Gate.PhaseProdUsing, lowerGate,
-    lowerGateRec, lowerSignedPhaseProdWithWorkspace]
-  congr
+          (by simpa [Policy.GateWorkspaceOK, Gate.PhaseProdUsing] using hsigned)) := by
+  simp [Policy.phaseProdUsingPlan, Gate.PhaseProdUsing,
+    Policy.lowerGate, lowerGateRec, Policy.lowerSignedPhaseProd]
 
 /-- Rewrites the split PhaseProduct node as the signed PhaseProduct recurrence cost. -/
 lemma explicitQFTPhaseGateCount_eq_signed
@@ -129,37 +128,39 @@ lemma explicitQFTPhaseGateCount_eq_signed
     [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r xWork zWork : Reg)
-    (hworkspace : QFTWorkspaceOK ops r xWork zWork)
+    (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork)
     (hsize : 2 ≤ regSize r) :
     explicitQFTPhaseGateCount (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace hsize
       =
     signedPhaseProductGateCount (Basis := Basis) k hk ops pts hpts (qftPhi (regSize r))
       ((hworkspace.phaseWorkspace hsize).xExt.grow 1)
       ((hworkspace.phaseWorkspace hsize).zExt.grow 1)
-      (hworkspace.signedWorkspaceOK hsize) := by
+      (Policy.workspaceOK_const_iff.mp (hworkspace.policySignedWorkspaceOK hsize)) := by
   let ws := hworkspace.phaseWorkspace hsize
   let hsigned : SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1) :=
-    hworkspace.signedWorkspaceOK hsize
+    Policy.workspaceOK_const_iff.mp (hworkspace.policySignedWorkspaceOK hsize)
   let hgate :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws) := by
-    simpa [GateWorkspaceOK, Gate.PhaseProdUsing] using hsigned
+    simpa [Policy.GateWorkspaceOK, Gate.PhaseProdUsing] using Policy.workspaceOK_const_iff.mpr hsigned
   calc
     explicitQFTPhaseGateCount (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace hsize
         =
       LowGate.gateCount shorGateCostModel
-        (lowerGate k hk ops pts hpts
+        (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
           (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws)
           hgate) := by
             simpa [explicitQFTPhaseGateCount, ws, hsigned, hgate] using
               explicitQFTPhaseGateCount_eq_lowerGate
                 (Basis := Basis) k hk ops pts hpts (qftPhi (regSize r))
-                (leftReg r) (rightReg r) ws hsigned
+                (leftReg r) (rightReg r) ws
+                (Policy.workspaceOK_const_iff.mpr hsigned)
     _ =
       signedPhaseProductGateCount (Basis := Basis) k hk ops pts hpts (qftPhi (regSize r))
         (ws.xExt.grow 1) (ws.zExt.grow 1)
-        (phaseProdUsing_signedWorkspace ops (qftPhi (regSize r))
-          (leftReg r) (rightReg r) ws hgate) :=
+        (Policy.workspaceOK_const_iff.mp
+          (phaseProdUsing_signedWorkspace _ (qftPhi (regSize r))
+            (leftReg r) (rightReg r) ws hgate)) :=
       lowerGate_PhaseProdUsing_gateCount_eq_signed
         (Basis := Basis) k hk ops pts hpts (qftPhi (regSize r))
         (leftReg r) (rightReg r) ws hgate
@@ -167,7 +168,7 @@ lemma explicitQFTPhaseGateCount_eq_signed
       signedPhaseProductGateCount (Basis := Basis) k hk ops pts hpts (qftPhi (regSize r))
         ((hworkspace.phaseWorkspace hsize).xExt.grow 1)
         ((hworkspace.phaseWorkspace hsize).zExt.grow 1)
-        (hworkspace.signedWorkspaceOK hsize) := by
+        (Policy.workspaceOK_const_iff.mp (hworkspace.policySignedWorkspaceOK hsize)) := by
           congr
 
 /-- Exact cost decomposition for a nontrivial QFT split: right child, PhaseProduct, left child, then radix overhead. -/
@@ -176,7 +177,7 @@ lemma explicitQFTGateCount_split
     [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r xWork zWork : Reg)
-    (hworkspace : QFTWorkspaceOK ops r xWork zWork)
+    (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork)
     (hsize : 2 ≤ regSize r) :
     explicitQFTGateCount (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace
       =
@@ -190,19 +191,21 @@ lemma explicitQFTGateCount_split
       +
     qftSplitRadixGateCount r := by
   have hplan :
-      standardQFTLoweringPlan k hk ops pts hpts r xWork zWork hworkspace =
+      Policy.qftPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork hworkspace =
         QFTLoweringPlan.split r hsize
           (hworkspace.phaseWorkspace hsize)
           (phaseProdUsingInputSize (hworkspace.phaseWorkspace hsize))
-          (standardPhaseProdUsingPlan k hk ops pts hpts (qftPhi (regSize r))
+          (Policy.phaseProdUsingPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (qftPhi (regSize r))
             (hworkspace.phaseWorkspace hsize)
-            (hworkspace.signedWorkspaceOK hsize))
-          (standardQFTLoweringPlan k hk ops pts hpts (rightReg r) xWork zWork
+            (hworkspace.policySignedWorkspaceOK hsize))
+          (Policy.qftPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (rightReg r) xWork zWork
             (hworkspace.right hsize))
-          (standardQFTLoweringPlan k hk ops pts hpts (leftReg r) xWork zWork
+          (Policy.qftPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (leftReg r) xWork zWork
             (hworkspace.left hsize)) := by
-    rw [standardQFTLoweringPlan]
-    simp [show regSize r ≠ 0 by omega, show regSize r ≠ 1 by omega]
+    rw [Policy.qftPlan]
+    simp only [show regSize r ≠ 0 by omega, show regSize r ≠ 1 by omega,
+      dif_neg, not_false_eq_true]
+
   unfold explicitQFTGateCount
   rw [hplan]
   simp only [lowerQFTPlan, LowGate.gateCount_seq_eq]
@@ -215,13 +218,13 @@ lemma explicitQFTGateCount_zero
     [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r xWork zWork : Reg)
-    (hworkspace : QFTWorkspaceOK ops r xWork zWork)
+    (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork)
     (hzero : regSize r = 0) :
     explicitQFTGateCount (Basis := Basis) k hk ops pts hpts r xWork zWork hworkspace = 0 := by
   have hplan :
-      standardQFTLoweringPlan k hk ops pts hpts r xWork zWork hworkspace =
+      Policy.qftPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork hworkspace =
         QFTLoweringPlan.empty r hzero := by
-    rw [standardQFTLoweringPlan]
+    rw [Policy.qftPlan]
     simp [hzero]
   simp [explicitQFTGateCount, hplan, lowerQFTPlan]
 
@@ -234,7 +237,7 @@ lemma explicitQFTGateCount_one
     (ops : Prog k)
     (pts : List Point) (hpts : pts.length = q k)
     (r xWork zWork : Reg)
-    (hworkspace : QFTWorkspaceOK ops r xWork zWork)
+    (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork)
     (hone : regSize r = 1) :
     explicitQFTGateCount
         (Basis := Basis)
@@ -242,11 +245,10 @@ lemma explicitQFTGateCount_one
       = 1 := by
 
   have hplan :
-      standardQFTLoweringPlan
-          k hk ops pts hpts r xWork zWork hworkspace
+      Policy.qftPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork hworkspace
         =
       QFTLoweringPlan.singleton r hone := by
-    rw [standardQFTLoweringPlan]
+    rw [Policy.qftPlan]
     simp [hone]
 
   simp [
@@ -291,7 +293,7 @@ lemma explicitQFTPhaseGateCount_eventually_le
     ∃ Cφ : ℝ, 0 < Cφ ∧
     ∃ Nφ : ℕ, 2 ≤ Nφ ∧
       ∀ (r xWork zWork : Reg)
-        (hworkspace : QFTWorkspaceOK ops r xWork zWork)
+        (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork)
         (hsize : 2 ≤ regSize r),
         Nφ ≤ regSize r →
         (explicitQFTPhaseGateCount (Basis := Basis)
@@ -302,11 +304,11 @@ lemma explicitQFTPhaseGateCount_eventually_le
   intro r xWork zWork hworkspace hsize hn
   let ws := hworkspace.phaseWorkspace hsize
   let hsigned : SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1) :=
-    hworkspace.signedWorkspaceOK hsize
+    Policy.workspaceOK_const_iff.mp (hworkspace.policySignedWorkspaceOK hsize)
   let hgate :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws) := by
-    simpa [GateWorkspaceOK, Gate.PhaseProdUsing] using hsigned
+    simpa [Policy.GateWorkspaceOK, Gate.PhaseProdUsing] using Policy.workspaceOK_const_iff.mpr hsigned
   have hleftLarge : n₀ ≤ regSize r / 2 := by
     apply (Nat.le_div_iff_mul_le (by omega : 0 < 2)).2
     omega
@@ -325,13 +327,13 @@ lemma explicitQFTPhaseGateCount_eventually_le
           k hk ops pts hpts r xWork zWork hworkspace hsize
         =
       LowGate.gateCount shorGateCostModel
-        (lowerGate k hk ops pts hpts
+        (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
           (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws)
           hgate) := by
     simpa [explicitQFTPhaseGateCount, ws, hsigned, hgate] using
       explicitQFTPhaseGateCount_eq_lowerGate
         (Basis := Basis) k hk ops pts hpts (qftPhi (regSize r))
-        (leftReg r) (rightReg r) ws hsigned
+        (leftReg r) (rightReg r) ws (Policy.workspaceOK_const_iff.mpr hsigned)
   rw [hplanEq]
   exact hnode.trans (mul_le_mul_of_nonneg_left hrate (le_of_lt hCφ))
 
@@ -404,7 +406,7 @@ lemma explicitQFTPhaseGateCount_bounded_on_bounded_sizes
     (N : ℕ) :
     ∃ P : ℕ,
       ∀ (r xWork zWork : Reg)
-        (hworkspace : QFTWorkspaceOK ops r xWork zWork)
+        (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork)
         (hsize : 2 ≤ regSize r),
         regSize r ≤ N →
         explicitQFTPhaseGateCount (Basis := Basis)
@@ -433,7 +435,7 @@ lemma explicitQFTGateCount_bounded_on_bounded_sizes
     (N : ℕ) :
     ∃ D : ℕ,
       ∀ (r xWork zWork : Reg)
-        (hworkspace : QFTWorkspaceOK ops r xWork zWork),
+        (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork),
         regSize r ≤ N →
         explicitQFTGateCount (Basis := Basis)
           k hk ops pts hpts r xWork zWork hworkspace ≤ D := by
@@ -504,7 +506,7 @@ lemma explicitQFTGateCount_one_level_recurrence
     ∃ A : ℝ, 0 < A ∧
     ∃ N : ℕ, 2 ≤ N ∧
       ∀ (r xWork zWork : Reg)
-        (hworkspace : QFTWorkspaceOK ops r xWork zWork)
+        (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork)
         (hsize : 2 ≤ regSize r),
         N ≤ regSize r →
         (explicitQFTGateCount (Basis := Basis)
@@ -744,7 +746,7 @@ lemma explicitQFT_binary_recurrence_solution
       ∀ N : ℕ,
         ∃ D : ℕ,
           ∀ (r xWork zWork : Reg)
-            (hworkspace : QFTWorkspaceOK ops r xWork zWork),
+            (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork),
             regSize r ≤ N →
             explicitQFTGateCount (Basis := Basis)
               k hk ops pts hpts r xWork zWork hworkspace ≤ D)
@@ -752,7 +754,7 @@ lemma explicitQFT_binary_recurrence_solution
       ∃ A : ℝ, 0 < A ∧
       ∃ N : ℕ, 2 ≤ N ∧
         ∀ (r xWork zWork : Reg)
-          (hworkspace : QFTWorkspaceOK ops r xWork zWork)
+          (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork)
           (hsize : 2 ≤ regSize r),
           N ≤ regSize r →
           (explicitQFTGateCount (Basis := Basis)
@@ -769,7 +771,7 @@ lemma explicitQFT_binary_recurrence_solution
           A * phaseProductGateRate k (regSize r)) :
     ∃ C : ℝ, 0 < C ∧
     ∀ (r xWork zWork : Reg)
-      (hworkspace : QFTWorkspaceOK ops r xWork zWork),
+      (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork),
       1 ≤ regSize r →
       (explicitQFTGateCount (Basis := Basis)
         k hk ops pts hpts r xWork zWork hworkspace : ℝ)
@@ -803,7 +805,7 @@ lemma explicitQFT_binary_recurrence_solution
       ∀ n : ℕ,
         1 ≤ n →
         ∀ (r xWork zWork : Reg)
-          (hworkspace : QFTWorkspaceOK ops r xWork zWork),
+          (hworkspace : Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork),
           regSize r = n →
           (explicitQFTGateCount (Basis := Basis)
             k hk ops pts hpts r xWork zWork hworkspace : ℝ)
@@ -939,11 +941,12 @@ lemma lowerQFT_gateCount_eq_explicit
     (ops : Prog k)
     (pts : List Point) (hpts : pts.length = q k)
     (r : ExtReg)
-    (hworkspace : QFTReserveOK ops r) :
-    LowGate.gateCount shorGateCostModel (lowerQFT k hk ops pts hpts r hworkspace)
+    (hworkspace : Policy.QFTReserveOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r) :
+    LowGate.gateCount shorGateCostModel (Policy.lowerQFT (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r hworkspace)
       =
     explicitQFTGateCount (Basis := Basis) k hk ops pts hpts r.active
-      (qftXWork ops r) (qftZWork ops r) hworkspace.explicitWorkspace := by
+      (Policy.qftXWork (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r) (Policy.qftZWork (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r)
+      hworkspace.explicitWorkspace :=
   rfl
 
 /-- Main QFT gate-count theorem assuming the corresponding PhaseProduct gate-count bound. -/
@@ -969,7 +972,7 @@ theorem qftGateCountBound_of_phaseProduct
   intro r hworkspace hn
   have hactiveSize : regSize r.active = r.width := by rfl
   have hgate :=
-    hbound r.active (qftXWork ops r) (qftZWork ops r)
+    hbound r.active (Policy.qftXWork (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r) (Policy.qftZWork (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r)
       hworkspace.explicitWorkspace (by simpa [hactiveSize] using hn)
   rw [lowerQFT_gateCount_eq_explicit
     (Basis := Basis) k hk ops pts hpts r hworkspace]

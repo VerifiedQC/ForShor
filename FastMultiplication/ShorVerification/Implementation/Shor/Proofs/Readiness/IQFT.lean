@@ -32,15 +32,16 @@ private theorem lowered_IQFT_ready_and_full_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (x data work : ExtReg)
     (hxData :
       ExtReg.OwnedDisjoint x data)
     (hxWork :
       ExtReg.OwnedDisjoint x work)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (IQFT x))
     (ψ : qs.State)
     (hclean :
@@ -48,7 +49,7 @@ private theorem lowered_IQFT_ready_and_full_clean
         qs x data work ψ) :
     LoweredCleanResult
       qs
-      lowering
+      P
       (ShorLoweringCleanState
         qs x data work)
       (IQFT x)
@@ -96,30 +97,26 @@ private theorem lowered_IQFT_ready_and_full_clean
   have hQFTWorkspaceClean :
       QFTWorkspaceCleanState
         qs
-        (qftXWork lowering.ops x)
-        (qftZWork lowering.ops x)
+        (Policy.qftXWork P x)
+        (Policy.qftZWork P x)
         (qs.eval (IQFT x) ψ) := by
     exact
-      threeRegsCleanState_to_QFTWorkspaceCleanState_first
-        lowering.ops
+      Policy.threeRegsCleanState_to_QFTWorkspaceCleanState_first
+        P
         x
         rfl
         hHighClean
 
   have hgateClean :
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+        P
         (IQFT x)
         hworkspace
         ψ := by
     simpa [
       IQFT,
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
     ] using hQFTWorkspaceClean
 
   constructor
@@ -127,14 +124,10 @@ private theorem lowered_IQFT_ready_and_full_clean
   · exact hgateClean
 
   · rw [
-      lowerGate_correctness
+      Policy.lowerGate_correctness
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.good
-        lowering.consumes
-        lowering.returns
+        P
+        hP
         (IQFT x)
         hworkspace
         ψ
@@ -150,19 +143,20 @@ theorem lowered_IQFT_ready_and_concrete_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (x data work scratch : ExtReg)
     (hxData : x.OwnedDisjoint data)
     (hxWork : x.OwnedDisjoint work)
     (hxScratch : x.OwnedDisjoint scratch)
     (hworkspace :
-      GateWorkspaceOK lowering.ops (IQFT x))
+      Policy.GateWorkspaceOK P (IQFT x))
     (ψ : qs.State)
     (hclean :
       ShorConcreteCleanState
         qs x data work scratch hxScratch ψ) :
     LoweredCleanResult
-      qs lowering
+      qs P
       (ShorConcreteCleanState
         qs x data work scratch hxScratch)
       (IQFT x) hworkspace ψ := by
@@ -224,25 +218,24 @@ theorem lowered_IQFT_ready_and_concrete_clean
   have hQFTWorkspaceClean :
       QFTWorkspaceCleanState
         qs
-        (qftXWork lowering.ops x)
-        (qftZWork lowering.ops x)
+        (Policy.qftXWork P x)
+        (Policy.qftZWork P x)
         (qs.eval (IQFT x) ψ) :=
-    threeRegsCleanState_to_QFTWorkspaceCleanState_first
-      lowering.ops x rfl hLoweringClean
+    Policy.threeRegsCleanState_to_QFTWorkspaceCleanState_first
+      P x rfl hLoweringClean
 
   have hgateClean :
-      GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      Policy.GateWorkspaceCleanState
+        qs P
         (IQFT x) hworkspace ψ := by
-    simpa [IQFT, GateWorkspaceCleanState] using hQFTWorkspaceClean
+    simpa [IQFT, Policy.GateWorkspaceCleanState] using hQFTWorkspaceClean
 
   constructor
   · exact hgateClean
   · rw [
-      lowerGate_correctness
-        qs lowering.k lowering.hk lowering.ops
-        lowering.good
-        lowering.consumes lowering.returns
+      Policy.lowerGate_correctness
+        qs P
+        hP
         (IQFT x) hworkspace ψ hgateClean
     ]
     exact hHighClean

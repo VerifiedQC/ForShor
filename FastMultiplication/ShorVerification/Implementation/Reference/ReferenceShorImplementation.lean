@@ -57,9 +57,9 @@ theorem referenceK_nonneg :
 
 /-- Reference order-finding program at approximation level `m`. -/
 def referenceProgramAt
-    (lowering : ShorLoweringSetup) (m : ℕ) (inst : ShorOrderFindingInstance) :
+    (P : ShorLoweringPolicy) (_hP : P.Admissible) (m : ℕ) (inst : ShorOrderFindingInstance) :
     ShorOrderFindingProgram :=
-  referenceShorProg lowering inst m
+  referenceShorProg P inst m
 
 /-- Approximation error appearing in the reference correctness bound. -/
 noncomputable def referenceApproximationErrorAt (m N : ℕ) : ℝ :=
@@ -84,7 +84,7 @@ theorem referenceSuccessProbabilityAt_bounds (m N : ℕ) :
 
 /-- Every fixed-`m` reference program achieves its declared success bound. -/
 theorem referenceProgramAt_success
-    (lowering : ShorLoweringSetup) (m : ℕ) :
+    (P : ShorLoweringPolicy) (hP : P.Admissible) (m : ℕ) :
     ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
     ∀ inst : ShorOrderFindingInstance,
       referenceSuccessProbabilityAt m inst.N ≤
@@ -93,23 +93,23 @@ theorem referenceProgramAt_success
           (evalC := LowerGateClass.evalL (qs := qs))
           (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := (referenceProgramAt lowering m inst).output)
+          (x := (referenceProgramAt P hP m inst).output)
           (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize (referenceProgramAt lowering m inst).output)
-          (C := (referenceProgramAt lowering m inst).circuit)
+          (Q := ASize (referenceProgramAt P hP m inst).output)
+          (C := (referenceProgramAt P hP m inst).circuit)
           (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) := by
   intro T hT inst
 
   let η : ℝ := referencePrecision m
-  let layout := allocateReferenceLayout lowering.ops inst m
+  let layout := allocateReferenceLayout P inst m
 
   let hready :=
-    referenceLayout_ready (qs := qs) lowering inst m
+    referenceLayout_ready (qs := qs) P inst m
 
   have hxwidth :
       regSize layout.x.active = Nat.log2 (2 * inst.N^2) := by
     simpa [layout] using
-      allocateReferenceLayout_x_width lowering.ops inst m
+      allocateReferenceLayout_x_width P inst m
 
   have hywidth :
       regSize layout.data.active = Nat.log2 (2 * inst.N) := by
@@ -121,7 +121,8 @@ theorem referenceProgramAt_success
       (referenceK)
       T hT
       (modExpApprox_correct_2048 (qs := qs))
-      inst lowering
+      inst P
+      hP
       layout.x layout.data layout.work layout.scratch layout.flag
       (RegEncoding.zero (Basis := qs.Basis))
       hxwidth hywidth η hready
@@ -133,10 +134,10 @@ theorem referenceProgramAt_success
           (evalC := LowerGateClass.evalL (qs := qs))
           (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := (referenceProgramAt lowering m inst).output)
+          (x := (referenceProgramAt P hP m inst).output)
           (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize (referenceProgramAt lowering m inst).output)
-          (C := (referenceProgramAt lowering m inst).circuit)
+          (Q := ASize (referenceProgramAt P hP m inst).output)
+          (C := (referenceProgramAt P hP m inst).circuit)
           (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) := by
     simpa [
       referenceProgramAt,
@@ -162,10 +163,10 @@ theorem referenceProgramAt_success
           (evalC := LowerGateClass.evalL (qs := qs))
           (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := (referenceProgramAt lowering m inst).output)
+          (x := (referenceProgramAt P hP m inst).output)
           (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize (referenceProgramAt lowering m inst).output)
-          (C := (referenceProgramAt lowering m inst).circuit)
+          (Q := ASize (referenceProgramAt P hP m inst).output)
+          (C := (referenceProgramAt P hP m inst).circuit)
           (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) := by
     unfold probability_of_success
     apply Finset.sum_nonneg
@@ -175,7 +176,7 @@ theorem referenceProgramAt_success
             (T := T)
             (fun d => decide ((inst.a ^ d) % inst.N = 1))
             o.1
-            (ASize (referenceProgramAt lowering m inst).output)
+            (ASize (referenceProgramAt P hP m inst).output)
           =
         ord inst.a inst.N inst.coprime
     · simp [r_found, h, MeasureClass.probMeas]
@@ -319,9 +320,9 @@ theorem referenceChosenPrecision_positive
 
 /-- Final submitted program, with approximation precision chosen internally. -/
 noncomputable def referenceSubmittedProgram
-    (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) :
+    (P : ShorLoweringPolicy) (hP : P.Admissible) (inst : ShorOrderFindingInstance) :
     ShorOrderFindingProgram :=
-  referenceProgramAt lowering
+  referenceProgramAt P hP
     (referenceChosenPrecision inst.N) inst
 
 /-- Final single-run success probability declared by the reference submission. -/
@@ -353,7 +354,7 @@ theorem referenceSuccessProbability_pos (N : ℕ) :
 
 /-- The final submitted program satisfies its declared single-run success bound. -/
 theorem referenceSubmittedProgram_correct
-    (lowering : ShorLoweringSetup) :
+    (P : ShorLoweringPolicy) (hP : P.Admissible) :
     ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
     ∀ inst : ShorOrderFindingInstance,
       0 ≤ referenceSuccessProbability inst.N ∧
@@ -364,10 +365,10 @@ theorem referenceSubmittedProgram_correct
           (evalC := LowerGateClass.evalL (qs := qs))
           (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := (referenceSubmittedProgram lowering inst).output)
+          (x := (referenceSubmittedProgram P hP inst).output)
           (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize (referenceSubmittedProgram lowering inst).output)
-          (C := (referenceSubmittedProgram lowering inst).circuit)
+          (Q := ASize (referenceSubmittedProgram P hP inst).output)
+          (C := (referenceSubmittedProgram P hP inst).circuit)
           (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) := by
   intro T hT inst
 
@@ -383,7 +384,8 @@ theorem referenceSubmittedProgram_correct
   simpa [referenceSuccessProbability, hN, referenceSubmittedProgram] using
     (referenceProgramAt_success
       (qs := qs)
-      lowering
+      P
+      hP
       (referenceChosenPrecision inst.N)
       T hT inst)
 
@@ -447,26 +449,26 @@ asks that the *declared* value equal the *actual* count of the *submitted*
 circuit, so the honest and provable choice is to declare exactly that count.
 -/
 noncomputable def referenceGateCount
-    (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) : ℕ :=
+    (P : ShorLoweringPolicy) (hP : P.Admissible) (inst : ShorOrderFindingInstance) : ℕ :=
   LowGate.gateCount shorGateCostModel
-    (referenceSubmittedProgram lowering inst).circuit
+    (referenceSubmittedProgram P hP inst).circuit
 
 omit [MeasureClass qs] [GateSemanticsFacts qs] [LowerGateClass qs]
   [IdealCtrlModMulExactSemantics qs] in
 theorem referenceGateCount_correct
-    (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) :
+    (P : ShorLoweringPolicy) (hP : P.Admissible) (inst : ShorOrderFindingInstance) :
     LowGate.gateCount shorGateCostModel
-        (referenceSubmittedProgram lowering inst).circuit =
-      referenceGateCount lowering inst :=
+        (referenceSubmittedProgram P hP inst).circuit =
+      referenceGateCount P hP inst :=
   rfl
 
 /-- Reference implementation packaged into the public submission interface. -/
 noncomputable def referenceShorImplementation
-    (lowering : ShorLoweringSetup) :
+    (P : ShorLoweringPolicy) (hP : P.Admissible) :
     ShorImplementation (qs := qs) where
-  program := referenceSubmittedProgram lowering
+  program := referenceSubmittedProgram P hP
   successProbability := referenceSuccessProbability
-  correct := referenceSubmittedProgram_correct (qs := qs) lowering
+  correct := referenceSubmittedProgram_correct (qs := qs) P hP
   trialCount := referenceTrialCount
   trialCount_correct := by
     intro N h

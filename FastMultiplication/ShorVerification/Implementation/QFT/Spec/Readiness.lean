@@ -17,8 +17,8 @@ open Operations
 
 noncomputable def QFTLoweringReady
     (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs] [LowerGateClass qs]
-    {k : ℕ} {hk : 1 < k} {pts : List Point} {hpts : pts.length = q k} {ops : Prog k} {r : Reg}
-    (plan : QFTLoweringPlan k hk pts hpts ops r) :
+    {P : ShorLoweringPolicy} {r : Reg}
+    (plan : QFTLoweringPlan P r) :
     qs.State → Prop := by
   induction plan with
   | empty r hsize => exact fun _ => True

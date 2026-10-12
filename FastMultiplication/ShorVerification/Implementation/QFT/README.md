@@ -40,7 +40,7 @@ needed. The one-line descriptions below are grouped in dependency order
 
 | File | Purpose |
 |---|---|
-| `Workspace.lean` | `qftWorkspaceNeed`: how large the two global reserve pools (x-side, z-side) must be for a register of a given width, accounting for the middle phase product and both recursive QFT calls. The public precondition on a single `ExtReg` (`QFTReserveOK`), the internal static condition on an already-selected pair of workspace registers (`QFTWorkspaceOK`), the monotonicity bounds letting a child reuse the same pools, and the constructions (`QFTWorkspaceOK.phaseWorkspace`, `.signedWorkspaceOK`, `.left`, `.right`) that carve those pools for the phase-product macro and for each recursive child. |
+| `Workspace.lean` | `qftWorkspaceNeed`: how large the two global reserve pools (x-side, z-side) must be for a register of a given width, accounting for the middle phase product and both recursive QFT calls. The public precondition on a single `ExtReg` (`QFTReserveOK`), the internal static condition on an already-selected pair of workspace registers (`QFTWorkspaceOK`), the monotonicity bounds letting a child reuse the same pools, and the constructions (`QFTWorkspaceOKOf.phaseWorkspace`, `.signedWorkspaceOK`, `.left`, `.right`) that carve those pools for the phase-product macro and for each recursive child. |
 | `Plan.lean` | `QFTLoweringPlan`: the finite certificate carried by the public lowerer — empty/singleton base cases and a recursive split case (carrying the phase-product workspace and subplan for the middle macro). `lowerQFTPlan`: the interpreter erasing such a plan to a `LowGate`. |
 | `PlanBuilders.lean` | Builds plans rather than just interpreting them: `standardPhaseProdUsingPlan` (the canonical unsigned phase-product subplan used at each split, built by zero-extending both operands, lowering the resulting signed phase product, then deallocating the extensions), the two public plan constructors `standardQFTLoweringPlan` (from explicit workspace registers satisfying `QFTWorkspaceOK`) and `reserveQFTLoweringPlan` (the bridge from the public reserve precondition `QFTReserveOK` to a concrete plan, deriving its workspace registers from `qftXWork`/`qftZWork`), and `lowerQFT` (the final public constructor — the canonical lowered QFT circuit, its workspace selected deterministically from the reserve precondition rather than supplied separately). |
 
@@ -66,3 +66,19 @@ Proves the folder's one public theorem, `lowerQFT_correct` (packaging
 `evalL_lowerQFT`. Imports only `Spec.Assertions` and
 `Proofs.Lowering.Readiness` — every other dependency is transitive through
 those two.
+
+### One definition, two spellings
+
+`qftWorkspaceNeed ops` is `qftWorkspaceNeedOf (RecursivePhaseWorkspace.reserveNeed ops)`:
+the recursion over register widths is written **once**, abstracted over the
+phase-product reserve model it calls, and the fixed-table name is that
+function applied to the fixed-table model. `QFTReserveOK` and
+`QFTWorkspaceOK` are likewise `abbrev`s for `QFTReserveOKOf` /
+`QFTWorkspaceOKOf` at `qftWorkspaceNeed ops`.
+
+The point is that a policy-indexed reserve model can be substituted without
+restating or reproving anything here — the lemmas are about `need`, not about
+which table produced it. Keying them on the *need* function rather than on
+the reserve model matters: field spellings like `x_large_enough` then mention
+the same term the fixed-table statements always did, so `omega` and friends
+in downstream files still see the atoms they expect.

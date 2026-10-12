@@ -649,4 +649,26 @@ lemma Policy.cSignedPlan_ready
   | add hψ hφ ihψ ihφ => exact PhaseLoweringReady.add qs _ ihψ ihφ
   | smul a hψ ihψ => exact PhaseLoweringReady.smul qs _ a ihψ
 
+/-- Readiness together with preservation of reserve cleanliness, for the
+policy planner. The two halves are `Policy.signedPlan_ready` and
+`Policy.signedPlan_preserves_clean_of_ready`. -/
+theorem Policy.signedPlan_ready_and_clean
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
+    (phi : Angle)
+    (x z : ExtReg)
+    (ψ : qs.State)
+    (hstatic : Policy.WorkspaceOK P x z)
+    (hclean : RecursiveWorkspaceCleanState qs x z ψ) :
+    let plan := Policy.signedPlan P phi x z hstatic
+    PhaseLoweringReady qs plan ψ ∧
+    RecursiveWorkspaceCleanState qs x z (LowerGateClass.evalL (qs := qs) (lowerGateRec plan) ψ) := by
+  have hready := Policy.signedPlan_ready qs P hP phi x z ψ hstatic hclean
+  exact ⟨hready,
+    Policy.signedPlan_preserves_clean_of_ready qs P phi x z ψ hstatic hclean hready hP⟩
+
 end Shor

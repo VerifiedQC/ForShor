@@ -1,7 +1,7 @@
 # Everything a reviewer would otherwise have to remember to run by hand: the
-# three lake targets and the two executables, a smoke run of each, the axiom
-# guard, the lexical gate on the shipped template, the layer check and the docs
-# graph.
+# four lake targets and the three executables, a smoke run of each, the axiom
+# guard, the lexical gate on each shipped template, the layer check and the
+# docs graph.
 #
 # What this workflow does NOT do: run `lean4checker`. That is step 3 of the CI
 # a *submissions* repo should enforce (Submission/README.md), and so are the
@@ -64,7 +64,7 @@ jobs:
         # the build log is grepped instead.
         run: |
           set -o pipefail
-          lake build FastMultiplication EmitTests Submission 2>&1 | tee build.log
+          lake build FastMultiplication EmitTests Submission PolicySubmission 2>&1 | tee build.log
           if grep -q "warning:" build.log; then
             echo "::error::build produced warnings:"
             grep "warning:" build.log
@@ -72,26 +72,31 @@ jobs:
           fi
 
       - name: Build executables
-        # Neither executable is reachable from the three library targets --
-        # Emit/Tests.lean does not import Emit/Main.lean and Submission/Check.lean
-        # does not import Submission/Main.lean -- so without this they can stop
-        # compiling without CI noticing.
-        run: lake build forshor_emit forshor_submission
+        # No executable is reachable from the library targets --
+        # Emit/Tests.lean does not import Emit/Main.lean, Submission/Check.lean
+        # does not import Submission/Main.lean, and PolicyCheck.lean does not
+        # import PolicyMain.lean -- so without this they can stop compiling
+        # without CI noticing.
+        run: lake build forshor_emit forshor_submission forshor_policy_submission
 
       - name: Smoke-run executables
         run: |
           lake exe forshor_emit 2 2 15 0 > /dev/null
           lake exe forshor_submission | python3 -c 'import json,sys; json.load(sys.stdin)'
+          lake exe forshor_policy_submission | python3 -c 'import json,sys; json.load(sys.stdin)'
 
       - name: Axiom guard
         # The README's claim that the headline theorems use only propext,
         # Classical.choice and Quot.sound, checked rather than asserted.
         run: lake env lean scripts/AxiomCheck.lean
 
-      - name: Lexical gate on the shipped template
+      - name: Lexical gate on the shipped templates
         # Proves the grep published in Submission/README.md still executes and
-        # still passes on the example table.
-        run: bash scripts/check_template_lexical.sh FastMultiplication/ShorVerification/Submission/Template.lean
+        # still passes on the example table and the example policy. Both
+        # templates are submitter-owned files, so both are in scope for it.
+        run: |
+          bash scripts/check_template_lexical.sh FastMultiplication/ShorVerification/Submission/Template.lean
+          bash scripts/check_template_lexical.sh FastMultiplication/ShorVerification/Submission/PolicyTemplate.lean
 
       - name: Check import layering
         run: python3 scripts/check_layers.py

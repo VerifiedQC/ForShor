@@ -216,7 +216,7 @@ theorem headline_success_bound {N : ℕ} (hN : Is2048Bit N) :
 /-- Single-run success of the fixed-level reference program, for a 2048-bit
 instance, is at least 99% of the ideal `κ/(log₂N)^4` baseline. -/
 theorem headline_program_success
-    (lowering : ShorLoweringSetup) {N : ℕ} (hN : Is2048Bit N)
+    (P : ShorLoweringPolicy) (hP : P.Admissible) {N : ℕ} (hN : Is2048Bit N)
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)
     (inst : ShorOrderFindingInstance) (hinstN : inst.N = N) :
     (99 / 100 : ℝ) * (κ / (2047 : ℝ) ^ 4) ≤
@@ -225,12 +225,12 @@ theorem headline_program_success
         (evalC := LowerGateClass.evalL (qs := qs))
         (T := T)
         (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-        (x := (referenceProgramAt lowering m2048 inst).output)
+        (x := (referenceProgramAt P hP m2048 inst).output)
         (r := ord inst.a inst.N inst.coprime)
-        (Q := ASize (referenceProgramAt lowering m2048 inst).output)
-        (C := (referenceProgramAt lowering m2048 inst).circuit)
+        (Q := ASize (referenceProgramAt P hP m2048 inst).output)
+        (C := (referenceProgramAt P hP m2048 inst).circuit)
         (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) := by
-  have h := referenceProgramAt_success (qs := qs) lowering m2048 T hT inst
+  have h := referenceProgramAt_success (qs := qs) P hP m2048 T hT inst
   rw [← hinstN] at hN
   exact le_trans (headline_success_bound hN) h
 
@@ -271,9 +271,9 @@ closed-form/concrete-numeral formula for this quantity anywhere in the
 codebase (`Shor_GateCount.lean` proves only asymptotic bounds with unnamed
 constants); this is the honest declared value. -/
 def headlineGateCount
-    (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) : ℕ :=
+    (P : ShorLoweringPolicy) (hP : P.Admissible) (inst : ShorOrderFindingInstance) : ℕ :=
   LowGate.gateCount shorGateCostModel
-    (referenceProgramAt lowering m2048 inst).circuit
+    (referenceProgramAt P hP m2048 inst).circuit
 
 /-- Total gate count across all `headlineTrialCount` independent runs: this is
 the quantity ("trials × single-run gate count") that a fast-vs-naive Shor
@@ -281,8 +281,8 @@ comparison should be made against, for a 2048-bit modulus, given that
 `headlineTrialCount` independent runs are proved sufficient for ≥99% overall
 success. -/
 def headlineTotalGateCount
-    (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) : ℕ :=
-  headlineTrialCount * headlineGateCount lowering inst
+    (P : ShorLoweringPolicy) (hP : P.Admissible) (inst : ShorOrderFindingInstance) : ℕ :=
+  headlineTrialCount * headlineGateCount P hP inst
 
 end
 

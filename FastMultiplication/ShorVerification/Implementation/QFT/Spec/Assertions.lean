@@ -27,4 +27,18 @@ def LowerQFTCorrect
     (hRun : run? ops State.start_state = some State.start_state),
     LowerGateClass.evalL (qs := qs) (lowerQFT k hk ops pts hpts r hworkspace.static) ψ = qs.eval (Gate.QFT r) ψ
 
+/--
+The policy form: the canonical recursive lowering of a QFT gate under a
+policy agrees with `Gate.QFT`, provided every table the policy can choose is
+admissible.
+-/
+def Policy.LowerQFTCorrect
+    (qs : QSemantics)
+    [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]
+    (P : ShorLoweringPolicy) (r : ExtReg) : Prop :=
+  ∀ (ψ : qs.State) (hworkspace : Policy.QFTWorkspaceStateOK qs P r ψ),
+    P.Admissible →
+    LowerGateClass.evalL (qs := qs) (Policy.lowerQFT P r hworkspace.static) ψ
+      = qs.eval (Gate.QFT r) ψ
+
 end Shor

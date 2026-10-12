@@ -59,6 +59,25 @@ every order-finding instance and every complete continued-fraction search.
 This is `referenceProgramAt_success` restated at `submissionPrecision`.
 Proving it for a new submission costs nothing, which is what narrowing the
 challenge to the table buys. -/
+theorem policy_submission_correct (s : ShorPolicySubmission) :
+    ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
+    ∀ inst : ShorOrderFindingInstance,
+      referenceSuccessProbabilityAt submissionPrecision inst.N ≤
+        probability_of_success
+          (qs := qs)
+          (evalC := LowerGateClass.evalL (qs := qs))
+          (T := T)
+          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+          (x := (referenceProgramAt s.policy s.policy_admissible
+            submissionPrecision inst).output)
+          (r := ord inst.a inst.N inst.coprime)
+          (Q := ASize (referenceProgramAt s.policy s.policy_admissible
+            submissionPrecision inst).output)
+          (C := (referenceProgramAt s.policy s.policy_admissible
+            submissionPrecision inst).circuit)
+          (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) :=
+  referenceProgramAt_success (qs := qs) s.policy s.policy_admissible submissionPrecision
+
 theorem submission_correct (s : ShorSubmission) :
     ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
     ∀ inst : ShorOrderFindingInstance,
@@ -68,12 +87,18 @@ theorem submission_correct (s : ShorSubmission) :
           (evalC := LowerGateClass.evalL (qs := qs))
           (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := (referenceProgramAt s submissionPrecision inst).output)
+          (x := (referenceProgramAt (ShorLoweringPolicy.constPolicy s.table)
+            (ShorLoweringPolicy.constPolicy_admissible s.table_admissible)
+            submissionPrecision inst).output)
           (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize (referenceProgramAt s submissionPrecision inst).output)
-          (C := (referenceProgramAt s submissionPrecision inst).circuit)
+          (Q := ASize (referenceProgramAt (ShorLoweringPolicy.constPolicy s.table)
+            (ShorLoweringPolicy.constPolicy_admissible s.table_admissible)
+            submissionPrecision inst).output)
+          (C := (referenceProgramAt (ShorLoweringPolicy.constPolicy s.table)
+            (ShorLoweringPolicy.constPolicy_admissible s.table_admissible)
+            submissionPrecision inst).circuit)
           (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) :=
-  referenceProgramAt_success (qs := qs) s submissionPrecision
+  policy_submission_correct (ShorPolicySubmission.ofSetup s)
 
 end
 

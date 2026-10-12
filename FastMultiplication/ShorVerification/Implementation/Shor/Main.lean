@@ -107,7 +107,7 @@ theorem Shor_correct_approx_lowered_uniform
   obtain ⟨K, hK, happrox⟩ := Shor_correct_approx_uniform (qs := qs) T hT
 
   refine ⟨K, hK, ?_⟩
-  intro inst lowering x y work scratch flag b0 hm hn η hready
+  intro inst P hP x y work scratch flag b0 hm hn η hready
 
   calc
     probability_of_success
@@ -121,7 +121,7 @@ theorem Shor_correct_approx_lowered_uniform
         (Q := ASize x.active)
         (evalC := LowerGateClass.evalL (qs := qs))
         (C :=
-          orderFindingApproxLow lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+          orderFindingApproxLow P
             inst.a inst.N x y work
             scratch flag
             (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
@@ -146,7 +146,7 @@ theorem Shor_correct_approx_lowered_uniform
           exact
             orderFindingApproxLow_probability_eq
               (qs := qs)
-              (lowering := lowering)
+              (P := P) hP
               (T := T)
               (verify :=
                 fun d =>
@@ -157,7 +157,7 @@ theorem Shor_correct_approx_lowered_uniform
               (hstep4 := (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace)
               (hLowerWorkspace := hready.workspace)
               (ψ := qs.ket b0)
-              (hclean := hready.workspace_clean)
+              (hclean := hready.workspace_clean hP)
               (r := ord inst.a inst.N inst.coprime)
               (Q := ASize x.active)
 
@@ -186,9 +186,9 @@ theorem Shor_correct_approx_lowered_of_modExp_bound_assertion
     (K : ℝ)
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
     ShorCorrectApproxLoweredOfModExpBound K T hT := by
-  intro hmodExp inst lowering x y work scratch flag b0 hm hn η hready
+  intro hmodExp inst P hP x y work scratch flag b0 hm hn η hready
   exact Shor_correct_approx_lowered_of_modExp_bound (qs := qs) K hmodExp T hT
-    inst lowering x y work scratch flag b0 hm hn η hready
+    inst P hP x y work scratch flag b0 hm hn η hready
 
 /--
 Correctness of the fully lowered approximate Shor order-finding circuit at a
@@ -214,11 +214,11 @@ theorem Shor_correct_approx_lowered
     [IdealCtrlModMulExactSemantics qs]
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
     ShorCorrectApproxLowered T hT := by
-  intro inst lowering x y work scratch flag b0 hm hn η hη hready
+  intro inst P hP x y work scratch flag b0 hm hn η hη hready
   have hmain :=
     Shor_correct_approx_lowered_of_modExp_bound_assertion (qs := qs) 2048 T hT
       (modExpApprox_valid_dist_2048 (qs := qs))
-      inst lowering x y work scratch flag b0 hm hn η hready
+      inst P hP x y work scratch flag b0 hm hn η hready
   have hN : 2 ≤ inst.N := by
     have := inst.range
     omega

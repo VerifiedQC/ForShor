@@ -42,15 +42,14 @@ private lemma reserve_le_capacity_sub_two_of_two_add_le
   omega
 
 private theorem gateWorkspaceOK_H_reg
-    {k : ℕ}
-    (ops : Prog k)
+    (P : ShorLoweringPolicy)
     (r : Reg) :
-    GateWorkspaceOK ops (H_reg r) := by
+    Policy.GateWorkspaceOK P (H_reg r) := by
   unfold H_reg
   have hfold :
       ∀ (l : List ℕ) (U : Gate),
-        GateWorkspaceOK ops U →
-        GateWorkspaceOK ops
+        Policy.GateWorkspaceOK P U →
+        Policy.GateWorkspaceOK P
           (l.foldl (fun acc q => Gate.H q ;; acc) U) := by
     intro l
     induction l with
@@ -131,8 +130,7 @@ modular-multiplication workspace and the Step-4 comparator workspace are
 needed, so a concrete allocator can use it without choosing a semantics.
 -/
 theorem gateWorkspaceOK_orderFindingApprox_of_static
-    {k : ℕ}
-    (ops : Prog k)
+    (P : ShorLoweringPolicy)
     (a N : ℕ)
     (x data work scratch : ExtReg)
     (flag : ℕ)
@@ -140,9 +138,9 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
     (hstep : CmpLtNWWorkspace N (data.grow 1) work scratch flag)
     (hlayout : ModExpLayout x.active data work flag)
     (hlarge :
-      ShorWorkspaceLargeEnough
-        ops x data work scratch) :
-    GateWorkspaceOK ops
+      Policy.ShorWorkspaceLargeEnough
+        P x data work scratch) :
+    Policy.GateWorkspaceOK P
       (orderFindingApprox a N x data work scratch flag
         hcircuit hstep) := by
   let hmod : ModMulCircuitWorkspaceOK data work :=
@@ -164,7 +162,7 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
   have hDataBounds := hlarge.data_large_enough
   have hWorkBounds := hlarge.auxiliary_large_enough
   have hScratchBounds := hlarge.scratch_large_enough
-  dsimp [shorWorkspaceNeed] at hDataBounds hWorkBounds hScratchBounds
+  dsimp [Policy.shorWorkspaceNeed, shorWorkspaceNeedOf] at hDataBounds hWorkBounds hScratchBounds
   simp only [max_le_iff] at hDataBounds hWorkBounds hScratchBounds
   rcases hDataBounds with
     ⟨hDataStep1, hDataQFT, hDataStep2, hDataStep5⟩
@@ -173,23 +171,23 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
   rcases hScratchBounds with
     ⟨hScratchQFT, hScratchStep4⟩
 
-  have hQFTX : QFTReserveOK ops x := by
+  have hQFTX : Policy.QFTReserveOK P x := by
     refine ⟨?_⟩
-    change qftReserveNeed ops x.width ≤ x.capacity
+    change Policy.qftReserveNeed P x.width ≤ x.capacity
     exact hlarge.exponent_large_enough
 
-  have hQFTWork : QFTReserveOK ops work := by
+  have hQFTWork : Policy.QFTReserveOK P work := by
     refine ⟨?_⟩
-    simpa [qftReserveNeed] using hWorkQFT
+    simpa [Policy.qftReserveNeed, qftReserveNeedOf] using hWorkQFT
 
-  have hQFTDataCarry : QFTReserveOK ops (data.grow 1) := by
+  have hQFTDataCarry : Policy.QFTReserveOK P (data.grow 1) := by
     refine ⟨?_⟩
     rw [
       ExtReg.width_grow data 1 hDataGrow,
       ExtReg.capacity_grow data 1 hDataGrow
     ]
     have h := hDataQFT
-    simp only [qftReserveNeed] at h
+    simp only [qftReserveNeedOf] at h
     omega
 
   have hStep1ZExt : hmod.step1Workspace.zExt = work := by
@@ -217,13 +215,13 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
     ]
     exact ⟨rfl, hstep4.mul_zReserve_eq⟩
 
-  have hQFTScratch : QFTReserveOK ops scratch := by
+  have hQFTScratch : Policy.QFTReserveOK P scratch := by
     refine ⟨?_⟩
-    simpa [qftReserveNeed] using hScratchQFT
+    simpa [Policy.qftReserveNeed, qftReserveNeedOf] using hScratchQFT
 
   have hStep4Phase :
-      SignedRecursiveWorkspaceOK
-        ops
+      Policy.WorkspaceOK
+        P
         (hstep4.mulWorkspace.xExt.grow 1)
         (hstep4.mulWorkspace.zExt.grow 1) := by
     rw [hStep4XExt, hStep4ZExt]
@@ -257,27 +255,27 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
       exact reserve_le_capacity_sub_one_of_succ_le hScratchStep4
 
   have hStep4QFT :
-      QFTReserveOK ops hstep4.mulWorkspace.zExt := by
+      Policy.QFTReserveOK P hstep4.mulWorkspace.zExt := by
     simpa only [hStep4ZExt] using hQFTScratch
 
   have hStep4OK :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK P
         (step4 N (data.grow 1) work scratch flag hstep4) := by
     unfold step4 cmpLtNW fastConstMulInto cmpLtNWDifference
     simp [
       Gate.PhaseProdUsing,
-      GateWorkspaceOK,
+      Policy.GateWorkspaceOK,
       hStep4Phase,
       hStep4QFT
     ]
 
-  have hHWork : GateWorkspaceOK ops (H_reg work.active) :=
-    gateWorkspaceOK_H_reg ops work.active
+  have hHWork : Policy.GateWorkspaceOK P (H_reg work.active) :=
+    gateWorkspaceOK_H_reg P work.active
 
   have hCore :
       ∀ (c ctrl : ℕ),
         ModMulCoreLayout data work flag ctrl →
-        GateWorkspaceOK ops
+        Policy.GateWorkspaceOK P
           (CmodMulInPlaceCore
             c N ctrl data work scratch flag hmod hstep4) := by
     intro c ctrl hlayout
@@ -288,12 +286,12 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
       hlayout.2.2.2.2.1
 
     have hStep1Static :
-        CSignedRecursiveWorkspaceOK
-          ops ctrl
+        Policy.CWorkspaceOK
+          P ctrl
           (hmod.step1Workspace.xExt.grow 1)
           (hmod.step1Workspace.zExt.grow 1) :=
       {
-        toSignedRecursiveWorkspaceOK :=
+        toWorkspaceOK :=
           {
             owned_disjoint := by
               rw [
@@ -390,8 +388,8 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
       }
 
     have hStep2Static :
-        SignedRecursiveWorkspaceOK
-          ops
+        Policy.WorkspaceOK
+          P
           (work.grow 1)
           ((data.grow 1).grow 1) :=
       {
@@ -424,12 +422,12 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
       }
 
     have hStep5Static :
-        CSignedRecursiveWorkspaceOK
-          ops ctrl
+        Policy.CWorkspaceOK
+          P ctrl
           ((data.grow 1).grow 1)
           (work.grow 1) :=
       {
-        toSignedRecursiveWorkspaceOK :=
+        toWorkspaceOK :=
           {
             owned_disjoint := by
               simpa [
@@ -467,67 +465,67 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
       }
 
     have hStep1Phase :
-        CSignedRecursiveWorkspaceOK
-          ops ctrl
+        Policy.CWorkspaceOK
+          P ctrl
           (hmod.step1Workspace.xExt.grow 1)
           (hmod.step1Workspace.zExt.grow 1) := by
       exact hStep1Static
 
     have hStep2Phase :
-        SignedRecursiveWorkspaceOK
-          ops
+        Policy.WorkspaceOK
+          P
           (hmod.step2Workspace.xExt.grow 1)
           (hmod.step2Workspace.zExt.grow 1) := by
       simpa only [hStep2XExt, hStep2ZExt] using hStep2Static
 
     have hStep5Phase :
-        CSignedRecursiveWorkspaceOK
-          ops ctrl
+        Policy.CWorkspaceOK
+          P ctrl
           (hmod.step5Workspace.xExt.grow 1)
           (hmod.step5Workspace.zExt.grow 1) := by
       simpa only [hStep5XExt, hStep5ZExt] using hStep5Static
 
     have hStep1QFT :
-        QFTReserveOK ops hmod.step1Workspace.zExt := by
+        Policy.QFTReserveOK P hmod.step1Workspace.zExt := by
       simpa only [hStep1ZExt] using hQFTWork
 
     have hStep2QFT :
-        QFTReserveOK ops hmod.step2Workspace.zExt := by
+        Policy.QFTReserveOK P hmod.step2Workspace.zExt := by
       simpa only [hStep2ZExt] using hQFTDataCarry
 
     have hStep5QFT :
-        QFTReserveOK ops hmod.step5Workspace.zExt := by
+        Policy.QFTReserveOK P hmod.step5Workspace.zExt := by
       simpa only [hStep5ZExt] using hQFTWork
 
     have hStep1OK :
-        GateWorkspaceOK ops
+        Policy.GateWorkspaceOK P
           (step1
             c N ctrl data work hmod) := by
       simp [
         step1,
         IQFT,
         Gate.CPhaseProdUsing,
-        GateWorkspaceOK,
+        Policy.GateWorkspaceOK,
         hHWork,
         hStep1Phase,
         hStep1QFT
       ]
 
     have hStep2OK :
-        GateWorkspaceOK ops
+        Policy.GateWorkspaceOK P
           (step2
             N data work hmod) := by
       simp [
         step2,
         IQFT,
         Gate.PhaseProdUsing,
-        GateWorkspaceOK,
+        Policy.GateWorkspaceOK,
         hStep2Phase,
         hStep2QFT
       ]
 
     have hStep5OK :
-        GateWorkspaceOK ops
+        Policy.GateWorkspaceOK P
           (step5
             (step5Constant c N)
             N ctrl data work hmod) := by
@@ -535,7 +533,7 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
         step5,
         IQFT,
         Gate.CPhaseProdUsing,
-        GateWorkspaceOK,
+        Policy.GateWorkspaceOK,
         hHWork,
         hStep5Phase,
         hStep5QFT
@@ -544,7 +542,7 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
     simp [
       CmodMulInPlaceCore,
       step3,
-      GateWorkspaceOK,
+      Policy.GateWorkspaceOK,
       hConst,
       hStep4OK,
       hStep1OK,
@@ -570,14 +568,14 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
       ∀ (e : ℕ) (ctrls : List ℕ),
         (∀ ctrl ∈ ctrls,
           ModMulCoreLayout data work flag ctrl) →
-        GateWorkspaceOK ops
+        Policy.GateWorkspaceOK P
           (modExpApproxStepsValid
             a N data work scratch flag hmod hstep4 e ctrls) := by
     intro e ctrls
     induction ctrls generalizing e with
     | nil =>
         intro _
-        simp [modExpApproxStepsValid, GateWorkspaceOK]
+        simp [modExpApproxStepsValid, Policy.GateWorkspaceOK]
 
     | cons ctrl ctrls ih =>
         intro hLayout
@@ -597,37 +595,37 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
           And.intro hHead hTail
 
   have hHExponent :
-      GateWorkspaceOK ops (H_reg x.active) :=
-    gateWorkspaceOK_H_reg ops x.active
+      Policy.GateWorkspaceOK P (H_reg x.active) :=
+    gateWorkspaceOK_H_reg P x.active
 
   have hInit :
-      GateWorkspaceOK ops (initY1 data.active) := by
+      Policy.GateWorkspaceOK P (initY1 data.active) := by
     cases hq : data.active.qubits with
     | nil =>
-        simp [initY1, hq, GateWorkspaceOK]
+        simp [initY1, hq, Policy.GateWorkspaceOK]
     | cons q qs =>
-        simp [initY1, hq, GateWorkspaceOK]
+        simp [initY1, hq, Policy.GateWorkspaceOK]
 
   have hModExp :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK P
         (modExpApproxValid
           a N x.active data work scratch flag hmod hstep4) :=
     hSteps 0 x.active.qubits hLayoutOfMem
 
   have hFinalQFT :
-      GateWorkspaceOK ops (IQFT x) := by
-    simpa [IQFT, GateWorkspaceOK] using hQFTX
+      Policy.GateWorkspaceOK P (IQFT x) := by
+    simpa [IQFT, Policy.GateWorkspaceOK] using hQFTX
 
   have hAll :
-      GateWorkspaceOK ops (H_reg x.active) ∧
-      GateWorkspaceOK ops (initY1 data.active) ∧
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK P (H_reg x.active) ∧
+      Policy.GateWorkspaceOK P (initY1 data.active) ∧
+      Policy.GateWorkspaceOK P
         (modExpApproxValid
           a N x.active data work scratch flag hmod hstep4) ∧
-      GateWorkspaceOK ops (IQFT x) :=
+      Policy.GateWorkspaceOK P (IQFT x) :=
     ⟨hHExponent, hInit, hModExp, hFinalQFT⟩
 
-  simpa [orderFindingApprox, GateWorkspaceOK, hmod, hstep4] using hAll
+  simpa [orderFindingApprox, Policy.GateWorkspaceOK, hmod, hstep4] using hAll
 
 
 /--
@@ -640,8 +638,7 @@ circuit.
 theorem gateWorkspaceOK_orderFindingApprox
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    {k : ℕ}
-    (ops : Prog k)
+    (P : ShorLoweringPolicy)
     (η : ℝ)
     (a N : ℕ)
     (x data work scratch : ExtReg)
@@ -651,13 +648,13 @@ theorem gateWorkspaceOK_orderFindingApprox
       ShorApproxSetup
         qs η N x data work scratch flag b0)
     (hlarge :
-      ShorWorkspaceLargeEnough
-        ops x data work scratch) :
-    GateWorkspaceOK ops
+      Policy.ShorWorkspaceLargeEnough
+        P x data work scratch) :
+    Policy.GateWorkspaceOK P
       (orderFindingApprox a N x data work scratch flag
         hsetup.circuit_workspace hsetup.step4_workspace) :=
   gateWorkspaceOK_orderFindingApprox_of_static
-    ops a N x data work scratch flag
+    P a N x data work scratch flag
     hsetup.circuit_workspace
     hsetup.step4_workspace
     hsetup.register_layout
@@ -671,7 +668,7 @@ theorem LoweredShorReady.workspace
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    {lowering : ShorLoweringSetup}
+    {P : ShorLoweringPolicy}
     {η : ℝ}
     {a N : ℕ}
     {x y work scratch : ExtReg}
@@ -679,14 +676,14 @@ theorem LoweredShorReady.workspace
     {b0 : qs.Basis}
     (h :
       LoweredShorReady
-        qs lowering η a N x y work scratch flag b0) :
-    GateWorkspaceOK lowering.ops
+        qs P η a N x y work scratch flag b0) :
+    Policy.GateWorkspaceOK P
       (orderFindingApprox a N x y work scratch flag
         (ShorApproxSetupMinimal.toShorApproxSetup h.approx).circuit_workspace
         (ShorApproxSetupMinimal.toShorApproxSetup h.approx).step4_workspace) := by
   exact
     gateWorkspaceOK_orderFindingApprox
-      (ops := lowering.ops)
+      (P := P)
       (η := η)
       (a := a)
       (N := N)

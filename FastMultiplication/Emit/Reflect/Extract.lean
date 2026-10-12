@@ -232,7 +232,7 @@ empirically) the same way `planCompiledSignedPhaseGate` did before its own
 `.eq_1` fix. -/
 partial def unfoldPhaseWorkspace (wsE : Expr) : MetaM Expr := do
   let ws' ← whnfR wsE
-  if ws'.isAppOf ``Shor.QFTWorkspaceOK.phaseWorkspace || ws'.isAppOf ``Shor.Gate.PhaseProdWorkspace.ofExtRegs then
+  if ws'.isAppOf ``Shor.QFTWorkspaceOKOf.phaseWorkspace || ws'.isAppOf ``Shor.Gate.PhaseProdWorkspace.ofExtRegs then
     let some eqns ← Lean.Meta.getEqnsFor? ws'.getAppFn.constName! | return wsE
     let some eqnName := eqns[0]? | return wsE
     let eqApp := mkAppN (mkConst eqnName) ws'.getAppArgs
@@ -1450,6 +1450,7 @@ partial def translatePlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
               declName == ``Shor.planCompiledCSignedPhaseGate ||
               declName == ``Shor.Policy.stepPlan ||
               declName == ``Shor.Policy.cStepPlan ||
+              declName == ``Shor.Policy.phaseProdUsingPlan ||
               declName == ``Shor.standardPhaseProdUsingPlan then
             -- `:= by ... simpa [...] using completePlan`: like
             -- `standardSignedPhaseLoweringPlan`, a plain delta-unfold would
@@ -1519,6 +1520,13 @@ here. -/
 partial def translateQFTPlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
   let plan ← whnfR plan
   match plan.getAppFnArgs with
+  -- The policy planner's self-call: `Policy.qftPlan P r xWork zWork hws`.
+  | (``Shor.Policy.qftPlan, #[_, r, xWork, zWork, _]) => do
+      let w ← translateW reg (← mkAppM ``Shor.regSize #[r])
+      let xWorkW ← translateW reg (← mkAppM ``Shor.regSize #[xWork])
+      let zWorkW ← translateW reg (← mkAppM ``Shor.regSize #[zWork])
+      return .call "qft" [w, xWorkW, zWorkW] []
+        [← translateReg reg r, ← translateReg reg xWork, ← translateReg reg zWork]
   | (``Shor.standardQFTLoweringPlan, #[_, _, _, _, _, r, xWork, zWork, _]) => do
       let w ← translateW reg (← mkAppM ``Shor.regSize #[r])
       let xWorkW ← translateW reg (← mkAppM ``Shor.regSize #[xWork])
@@ -1527,11 +1535,11 @@ partial def translateQFTPlan (reg : Registry) (plan : Expr) : MetaM IR.Node := d
         [← translateReg reg r, ← translateReg reg xWork, ← translateReg reg zWork]
   | (``Shor.QFTLoweringPlan.empty, _) =>
       translateNode reg (← mkAppM ``Shor.LowGate.id #[])
-  | (``Shor.QFTLoweringPlan.singleton, #[_, _, _, _, _, r, _]) => do
+  | (``Shor.QFTLoweringPlan.singleton, #[_, r, _]) => do
       let hproof ← mkSorry (← mkAppM ``LT.lt #[mkNatLit 0, ← mkAppM ``Shor.regSize #[r]]) false
       translateNode reg (← mkAppM ``Shor.LowGate.H #[← mkAppM ``Shor.Reg.lowQubit #[r, hproof]])
   | (``Shor.QFTLoweringPlan.split,
-      #[_, _, _, _, _, r, _, _ws, _phaseInitSize, phasePlan, rightPlan, leftPlan]) => do
+      #[_, r, _, _ws, _phaseInitSize, phasePlan, rightPlan, leftPlan]) => do
       let rightNode ← translateQFTPlan reg rightPlan
       let phaseNode ← translateNode reg (← mkAppM ``Shor.lowerGateRec #[phasePlan])
       let leftNode ← translateQFTPlan reg leftPlan

@@ -99,20 +99,20 @@ def ShorCorrectApproxLoweredUniform
     (T : ℕ → ℕ) (_hT : ContinuedFractionSearchComplete T) : Prop :=
   ∃ K : ℝ, 0 ≤ K ∧
       ∀ (inst : ShorOrderFindingInstance)
-        (lowering : ShorLoweringSetup)
+        (P : ShorLoweringPolicy)
+        (_hP : P.Admissible)
         (x y work scratch : ExtReg) (flag : ℕ)
         (b0 : qs.Basis)
         (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))
         (_hn : regSize y.active = Nat.log2 (2 * inst.N))
         (η : ℝ)
         (hready : LoweredShorReady
-          qs lowering η inst.a inst.N x y work scratch flag b0),
+          qs P η inst.a inst.N x y work scratch flag b0),
         probability_of_success (qs := qs) (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
           (x := x.active) (r := ord inst.a inst.N inst.coprime)
           (Q := ASize x.active) (evalC := LowerGateClass.evalL (qs := qs))
-          (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
-              lowering.pts lowering.hpts
+          (C := orderFindingApproxLow P
               inst.a inst.N x y work scratch flag
               (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
               (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
@@ -143,20 +143,20 @@ def ShorCorrectApproxLoweredOfModExpBound
           qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
         ≤ (tbits cfg.x : ℝ) * stepErr K η) →
     ∀ (inst : ShorOrderFindingInstance)
-      (lowering : ShorLoweringSetup)
+      (P : ShorLoweringPolicy)
+      (_hP : P.Admissible)
       (x y work scratch : ExtReg) (flag : ℕ)
       (b0 : qs.Basis)
       (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))
       (_hn : regSize y.active = Nat.log2 (2 * inst.N))
       (η : ℝ)
       (hready : LoweredShorReady
-        qs lowering η inst.a inst.N x y work scratch flag b0),
+        qs P η inst.a inst.N x y work scratch flag b0),
       probability_of_success (qs := qs) (T := T)
         (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
         (x := x.active) (r := ord inst.a inst.N inst.coprime)
         (Q := ASize x.active) (evalC := LowerGateClass.evalL (qs := qs))
-        (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
-            lowering.pts lowering.hpts
+        (C := orderFindingApproxLow P
             inst.a inst.N x y work scratch flag
             (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
             (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
@@ -195,7 +195,8 @@ def ShorCorrectApproxLowered
     [IdealCtrlModMulExactSemantics qs]
     (T : ℕ → ℕ) (_hT : ContinuedFractionSearchComplete T) : Prop :=
   ∀ (inst : ShorOrderFindingInstance)
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (_hP : P.Admissible)
     (x y work scratch : ExtReg) (flag : ℕ)
     (b0 : qs.Basis)
     (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))
@@ -203,13 +204,12 @@ def ShorCorrectApproxLowered
     (η : ℝ)
     (_hη : η ≤ shorPrecision inst.N x.active)
     (hready : LoweredShorReady
-      qs lowering η inst.a inst.N x y work scratch flag b0),
+      qs P η inst.a inst.N x y work scratch flag b0),
     probability_of_success (qs := qs) (T := T)
       (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
       (x := x.active) (r := ord inst.a inst.N inst.coprime)
       (Q := ASize x.active) (evalC := LowerGateClass.evalL (qs := qs))
-      (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
-          lowering.pts lowering.hpts
+      (C := orderFindingApproxLow P
           inst.a inst.N x y work scratch flag
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace

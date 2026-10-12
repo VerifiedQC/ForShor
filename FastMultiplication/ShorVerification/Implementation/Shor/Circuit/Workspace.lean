@@ -21,84 +21,129 @@ structure ShorWorkspaceNeed where
   scratch : ℕ
 
 /-- Total reserve required for lowering a QFT of width `n`. -/
-def qftReserveNeed
-    {k : ℕ}
-    (ops : Prog k)
-    (n : ℕ) : ℕ :=
-  (qftWorkspaceNeed ops n).1 +
-  (qftWorkspaceNeed ops n).2
+def qftReserveNeedOf (need : ℕ → ℕ × ℕ) (n : ℕ) : ℕ :=
+  (need n).1 + (need n).2
+
+/-- The fixed-table spelling. -/
+abbrev qftReserveNeed {k : ℕ} (ops : Prog k) (n : ℕ) : ℕ :=
+  qftReserveNeedOf (qftWorkspaceNeed ops) n
+
+/-- The policy spelling. -/
+abbrev Policy.qftReserveNeed (P : ShorLoweringPolicy) (n : ℕ) : ℕ :=
+  qftReserveNeedOf (Policy.qftWorkspaceNeed P) n
+
+/-- Bridge. -/
+@[simp] theorem Policy.qftReserveNeed_const (T : ToomCookTable) (n : ℕ) :
+    Policy.qftReserveNeed (ShorLoweringPolicy.constPolicy T) n
+      = _root_.Shor.qftReserveNeed T.ops n := by
+  unfold Policy.qftReserveNeed _root_.Shor.qftReserveNeed
+  rw [Policy.qftWorkspaceNeed_const]
 
 /--
 Compute the reserve required from the exponent, data, auxiliary, and comparator
 scratch registers
 when lowering the approximate Shor order-finding circuit.
 -/
-def shorWorkspaceNeed
-    {k : ℕ}
-    (ops : Prog k)
+def shorWorkspaceNeedOf
+    (need : ℕ → ℕ × ℕ)
+    (res : ℕ → ℕ → ℕ × ℕ)
     (x data work scratch : ExtReg) :
     ShorWorkspaceNeed :=
 
-  let step1Need :=
-    RecursivePhaseWorkspace.reserveNeed ops (data.width + 1) (work.width + 1)
+  let step1Need := res (data.width + 1) (work.width + 1)
 
-  let step2Need :=
-    RecursivePhaseWorkspace.reserveNeed ops (work.width + 1) (data.width + 2)
+  let step2Need := res (work.width + 1) (data.width + 2)
 
-  let step5Need :=
-    RecursivePhaseWorkspace.reserveNeed ops (data.width + 2) (work.width + 1)
+  let step5Need := res (data.width + 2) (work.width + 1)
 
-  let step4Need :=
-    RecursivePhaseWorkspace.reserveNeed ops (work.width + 1) (scratch.width + 1)
+  let step4Need := res (work.width + 1) (scratch.width + 1)
 
   {
-    exponent := qftReserveNeed ops x.width
+    exponent := qftReserveNeedOf need x.width
 
     data :=
       (max (2 + step1Need.1)
-        (max (1 + qftReserveNeed ops (data.width + 1))
+        (max (1 + qftReserveNeedOf need (data.width + 1))
           (max (2 + step2Need.2) (2 + step5Need.1))))
 
     auxiliary :=
-      (max (qftReserveNeed ops work.width)
+      (max (qftReserveNeedOf need work.width)
         (max (1 + step1Need.2)
           (max (1 + step2Need.1)
             (max (1 + step4Need.1) (1 + step5Need.2)))))
 
     scratch :=
-      max (qftReserveNeed ops scratch.width) (1 + step4Need.2)
+      max (qftReserveNeedOf need scratch.width) (1 + step4Need.2)
   }
+
+/-- The fixed-table spelling. -/
+abbrev shorWorkspaceNeed {k : ℕ} (ops : Prog k) (x data work scratch : ExtReg) :
+    ShorWorkspaceNeed :=
+  shorWorkspaceNeedOf (qftWorkspaceNeed ops) (RecursivePhaseWorkspace.reserveNeed ops)
+    x data work scratch
+
+/-- The policy spelling. -/
+abbrev Policy.shorWorkspaceNeed (P : ShorLoweringPolicy) (x data work scratch : ExtReg) :
+    ShorWorkspaceNeed :=
+  shorWorkspaceNeedOf (Policy.qftWorkspaceNeed P) (Policy.reserveNeed P) x data work scratch
+
+/-- Bridge. -/
+theorem Policy.shorWorkspaceNeed_const (T : ToomCookTable) (x data work scratch : ExtReg) :
+    Policy.shorWorkspaceNeed (ShorLoweringPolicy.constPolicy T) x data work scratch
+      = _root_.Shor.shorWorkspaceNeed T.ops x data work scratch := by
+  unfold Policy.shorWorkspaceNeed _root_.Shor.shorWorkspaceNeed
+  rw [Policy.qftWorkspaceNeed_const,
+    show Policy.reserveNeed (ShorLoweringPolicy.constPolicy T)
+        = RecursivePhaseWorkspace.reserveNeed T.ops from
+      funext fun wx => funext fun wz => Policy.reserveNeed_const T wx wz]
 
 
 /--
 The exponent, data, auxiliary, and comparator scratch registers contain enough inactive reserve
 for lowering the complete approximate Shor order-finding circuit.
 -/
-structure ShorWorkspaceLargeEnough
-    {k : ℕ}
-    (ops : Prog k)
+structure ShorWorkspaceLargeEnoughOf
+    (needs : ShorWorkspaceNeed)
     (x data work scratch : ExtReg) :
     Prop where
 
   /-- The exponent reserve meets the computed QFT-lowering budget. -/
   exponent_large_enough :
-    (shorWorkspaceNeed ops x data work scratch).exponent
+    needs.exponent
       ≤ x.capacity
 
   /-- The data reserve covers carry bits, QFT workspace, and phase-product use. -/
   data_large_enough :
-    (shorWorkspaceNeed ops x data work scratch).data
+    needs.data
       ≤ data.capacity
 
   /-- The auxiliary reserve covers QFT and all phase-product workspaces. -/
   auxiliary_large_enough :
-    (shorWorkspaceNeed ops x data work scratch).auxiliary
+    needs.auxiliary
       ≤ work.capacity
 
   /-- Scratch reserve covers its QFT, phase-product sign bit, and Step-3 unit bit. -/
   scratch_large_enough :
-    (shorWorkspaceNeed ops x data work scratch).scratch
+    needs.scratch
       ≤ scratch.capacity
+
+/-- The fixed-table spelling. -/
+abbrev ShorWorkspaceLargeEnough {k : ℕ} (ops : Prog k) (x data work scratch : ExtReg) : Prop :=
+  ShorWorkspaceLargeEnoughOf (shorWorkspaceNeed ops x data work scratch) x data work scratch
+
+/-- The policy spelling. -/
+abbrev Policy.ShorWorkspaceLargeEnough (P : ShorLoweringPolicy)
+    (x data work scratch : ExtReg) : Prop :=
+  ShorWorkspaceLargeEnoughOf (Policy.shorWorkspaceNeed P x data work scratch)
+    x data work scratch
+
+/-- Bridge: at the constant policy the two coincide. -/
+theorem Policy.shorWorkspaceLargeEnough_const_iff {T : ToomCookTable}
+    {x data work scratch : ExtReg} :
+    Policy.ShorWorkspaceLargeEnough (ShorLoweringPolicy.constPolicy T) x data work scratch
+      ↔ _root_.Shor.ShorWorkspaceLargeEnough T.ops x data work scratch := by
+  unfold Policy.ShorWorkspaceLargeEnough _root_.Shor.ShorWorkspaceLargeEnough
+  rw [Policy.shorWorkspaceNeed_const]
 
 /--
 The reserve belonging to the exponent register is not reused by the

@@ -54,6 +54,8 @@ theorem shorGateCountBound_of_setup (qs : QSemantics) ... (s : ShorLoweringSetup
 
 The two forms differ in who chooses `k`. A submitted table fixes its own arity, and with it its own exponent `phaseProductExponent k = log(2k−1)/log k` — a `k = 2` table runs at roughly `n^2.585` — so `shorGateCountBound_of_setup` takes the `ε` that table supports as a hypothesis. Reaching every positive `ε` means letting `k` grow, which is why `exists_shorGateCountBound` quantifies over `k` existentially.
 
+Both theorems are about the **constant policy**: one table used at every width. That is the right statement for an asymptotic exponent, since a finite cascade of tables is eventually the widest one and does not change the exponent — but it is the wrong statement for the score, which is a gate count at `n = 2048`, where the bands below the top are exactly what a cascade is for. A gate count for a general width-indexed policy is separate work, not a corollary of these; it is what the IR for a policy (above) would feed.
+
 Here `ShorGateCountBound` says the count of elementary gates in the fully lowered order-finding circuit is at most `C · n^(2+ε)`, where `n` is the size of the modulus register (typeclass arguments elided):
 
 ```lean
@@ -175,9 +177,41 @@ lake build Submission && lake exe forshor_submission > ir.json
 
 Building is the check. The executable is a printer: it emits the table, the
 extracted IR a resource estimator reads, the fixed precision, and the trial
-count the score is multiplied by. See
+count the score is multiplied by.
+
+### The second kind: a policy
+
+The score is a gate count at one fixed size, not an asymptotic exponent, and
+at a fixed size the best circuit is generally a **cascade** of tables rather
+than one table used at every width: a wide table while the operands are wide,
+narrower ones as the recursion descends, the schoolbook leaf at the bottom.
+A **policy** submission is that cascade — a list of `(threshold, table)`
+bands, widest first.
+
+```sh
+lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
+```
+
+A policy owns `Submission/PolicyTemplate.lean` instead, and writes per band
+exactly what a table submitter writes once: `k`, `pts`, `ops`, and C1–C4.
+The one new obligation is `sorted` — the thresholds strictly decrease, closed
+by `decide` — which is what makes each band's range well defined. There is
+deliberately no condition that a band's table shrink the width on its own
+band: the recursion already falls back to the leaf when it does not, so such
+a band is dead weight rather than unsoundness, and `Shor.Policy.bandShrinks`
+reports it as an advisory check.
+
+The certificate is the same theorem. `Shor.policy_submission_correct` is
+generic in the policy, and `Shor.submission_correct` is literally its
+one-band case at threshold `0` — a table submission *is* a policy. **What a
+policy does not yet get is a score:** there is no IR extraction for a
+width-indexed cascade (one template per band plus a width dispatcher, with
+`n` symbolic), so `policy.json` carries `"ir": null` and an `ir_status`
+saying why. A policy submission is admissible and unscored.
+
+See
 [`Submission/README.md`](FastMultiplication/ShorVerification/Submission/README.md)
-for what the two tiers of checking do and do not establish, and for the CI
+for what the tiers of checking do and do not establish, and for the CI
 rules a submissions repo should enforce.
 
 ## Building
@@ -198,9 +232,11 @@ lake exe forshor_emit 2 2 15 0
 The other build targets:
 
 ```sh
-lake build EmitTests     # the emitter's native_decide acceptance suite
-lake build Submission    # checks the table and proofs in Submission/Template.lean
+lake build EmitTests          # the emitter's native_decide acceptance suite
+lake build Submission         # checks the table and proofs in Submission/Template.lean
 lake exe forshor_submission
+lake build PolicySubmission   # the same, for Submission/PolicyTemplate.lean
+lake exe forshor_policy_submission
 ```
 
 ## License

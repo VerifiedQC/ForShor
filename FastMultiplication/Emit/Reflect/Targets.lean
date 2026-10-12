@@ -494,8 +494,15 @@ def extractQFTBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template := do
     let hworkTy ← mkAppM ``Shor.QFTWorkspaceOK #[opsE, r, xWork, zWork]
     withLocalDecl `hworkspace .default hworkTy fun hworkspace => do
       let (ptsE, hptsE) ← setupPtsExprs setup kE
-      let eq1App := mkAppN (mkConst ``Shor.standardQFTLoweringPlan.eq_1)
-        #[kE, hkE, opsE, ptsE, hptsE, r, xWork, zWork, hworkspace]
+      -- As for the phase-product targets: `standardQFTLoweringPlan.eq_1` only
+      -- reaches `Policy.qftPlan`, so the nested `dite`s come from the policy
+      -- planner's own equation.
+      let tblE ← mkAppM ``Shor.ToomCookTable.mk #[kE, hkE, ptsE, hptsE, opsE]
+      let polE ← mkAppM ``Shor.ShorLoweringPolicy.constPolicy #[tblE]
+      let hwsPE ← mkAppM ``Shor.Policy.qftWorkspaceOK_of_const
+        #[tblE, r, xWork, zWork, hworkspace]
+      let eq1App := mkAppN (mkConst ``Shor.Policy.qftPlan.eq_1)
+        #[polE, r, xWork, zWork, hwsPE]
       let rhsOuter := (← inferType eq1App).getAppArgs[2]!
       match rhsOuter.getAppFnArgs with
       | (``dite, #[_, condZeroE, _instZ, thenZeroFnE, elseZeroFnE]) => do

@@ -36,17 +36,15 @@ def orderFindingApprox
 
 /-- The lowered implementation of approximate order finding. -/
 def orderFindingApproxLow
-    (k : ℕ) (hk : 1 < k)
-    (ops : Prog k)
-    (pts : List Point) (hpts : pts.length = q k)
+    (P : ShorLoweringPolicy)
     (a N : ℕ)
     (x y work scratch : ExtReg)
     (flag : ℕ)
     (hmodWorkspace : ModMulCircuitWorkspaceOK y work)
     (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
-    (hLowerWorkspace : GateWorkspaceOK ops (orderFindingApprox a N x y work scratch flag
+    (hLowerWorkspace : Policy.GateWorkspaceOK P (orderFindingApprox a N x y work scratch flag
           hmodWorkspace hstep4)) :=
-  lowerGate k hk ops pts hpts (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
+  Policy.lowerGate P (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
     hLowerWorkspace
 
 /-- Ideal order-finding circuit using exact modular exponentiation. -/

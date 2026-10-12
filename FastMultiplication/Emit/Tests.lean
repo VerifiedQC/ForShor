@@ -24,10 +24,17 @@ open Lean (Json)
 /-- A tiny concrete instance: `a = 2`, `N = 3` (`gcd 2 3 = 1`, `0 < 2 < 3`). -/
 def smallLowering : ShorLoweringSetup := standardLoweringSetup 2 (by decide)
 
+/-- The same table as a one-band policy, which is what the Reference layer
+takes since the policy migration. -/
+def smallPolicy : ShorLoweringPolicy := standardPolicy 2 (by decide)
+
+theorem smallPolicy_admissible : smallPolicy.Admissible :=
+  standardPolicy_admissible 2 (by decide)
+
 def smallInst : ShorOrderFindingInstance := ⟨2, 15, by decide, by decide⟩
 
 def smallProgram : ShorOrderFindingProgram :=
-  Reference.referenceProgramAt smallLowering 0 smallInst
+  Reference.referenceProgramAt smallPolicy smallPolicy_admissible 0 smallInst
 
 def smallJson : Json := emitProgram smallProgram (Json.mkObj [])
 
@@ -55,17 +62,23 @@ example (r : Reg) : r.qubits.Nodup := r.nodup
 precision — documents that `standardLoweringSetup`/`referenceProgramAt` (what
 the emitter calls) matches what `referenceShorImplementation` actually
 submits. -/
-example (lowering : ShorLoweringSetup) (inst : ShorOrderFindingInstance) :
-    Reference.referenceSubmittedProgram lowering inst
+example (P : ShorLoweringPolicy) (hP : P.Admissible) (inst : ShorOrderFindingInstance) :
+    Reference.referenceSubmittedProgram P hP inst
       =
-    Reference.referenceProgramAt lowering (Reference.referenceChosenPrecision inst.N) inst :=
+    Reference.referenceProgramAt P hP (Reference.referenceChosenPrecision inst.N) inst :=
   rfl
 
 /-- 4. Exercise the `k = 3` (`q k = 5`) interpolation-coefficient path. -/
 def k3Lowering : ShorLoweringSetup := standardLoweringSetup 3 (by decide)
 
+/-- The `k = 3` table as a one-band policy. -/
+def k3Policy : ShorLoweringPolicy := standardPolicy 3 (by decide)
+
+theorem k3Policy_admissible : k3Policy.Admissible :=
+  standardPolicy_admissible 3 (by decide)
+
 def k3Program : ShorOrderFindingProgram :=
-  Reference.referenceProgramAt k3Lowering 0 smallInst
+  Reference.referenceProgramAt k3Policy k3Policy_admissible 0 smallInst
 
 example : 0 < LowGate.gateCount shorGateCostModel k3Program.circuit := by native_decide
 
@@ -671,16 +684,19 @@ partial def r2_6g_flatten : Gate → List Gate
 
 def r2_6g_ops := smallLowering.ops
 
+/-- The same table as a policy, for the Reference allocators. -/
+def r2_6g_pol : ShorLoweringPolicy := smallPolicy
+
 def r2_6g_layout : Reference.ReferenceShorLayout :=
-  Reference.allocateReferenceLayout r2_6g_ops smallInst 0
+  Reference.allocateReferenceLayout r2_6g_pol smallInst 0
 
 def r2_6g_hworkspace : ModMulCircuitWorkspaceOK r2_6g_layout.data r2_6g_layout.work :=
-  Reference.reference_modMulCircuitWorkspaceOK r2_6g_ops smallInst 0
+  Reference.reference_modMulCircuitWorkspaceOK r2_6g_pol smallInst 0
 
 def r2_6g_hstep4 :
     CmpLtNWWorkspace smallInst.N (r2_6g_layout.data.grow 1) r2_6g_layout.work r2_6g_layout.scratch
       r2_6g_layout.flag :=
-  Reference.reference_step4Workspace r2_6g_ops smallInst 0
+  Reference.reference_step4Workspace r2_6g_pol smallInst 0
 
 def r2_6g_real : Gate :=
   orderFindingApprox smallInst.a smallInst.N r2_6g_layout.x r2_6g_layout.data r2_6g_layout.work
@@ -760,7 +776,7 @@ partial def r2_6_flatten : LowGate → List LowGate
   | g => [g]
 
 def r2_6_real : LowGate :=
-  Reference.referenceShorCircuit smallLowering smallInst 0
+  Reference.referenceShorCircuit smallPolicy smallInst 0
 
 example : IR.Doc.wellFormed r2_6_doc = true := by native_decide
 

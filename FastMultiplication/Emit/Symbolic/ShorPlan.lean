@@ -40,7 +40,7 @@ deriving Repr
 using the synthetic instance `N := 2^n - 1, a := 2`. `none` if that instance
 is invalid (defensively checked the same way `Main.lean`'s `runEmit` checks a
 real instance; cannot happen for `n ≥ 2`, since `N` is odd and `2 < N`). -/
-def shorPlanRow {k : ℕ} (ops : Prog k) (n mMax : ℕ) : Option ShorPlanRow :=
+def shorPlanRow (pol : Shor.ShorLoweringPolicy) (n mMax : ℕ) : Option ShorPlanRow :=
   let N := 2 ^ n - 1
   let a := 2
   if hrange : 0 < a ∧ a < N then
@@ -52,7 +52,7 @@ def shorPlanRow {k : ℕ} (ops : Prog k) (n mMax : ℕ) : Option ShorPlanRow :=
           dataWidth := referenceDataWidth inst
           perM :=
             (List.range (mMax + 1)).map fun m =>
-              let need := referenceWorkspaceNeed ops inst m
+              let need := referenceWorkspaceNeed pol inst m
               { m := m
                 workWidth := referenceWorkWidth inst m
                 scratchWidth := referenceScratchWidth inst m
@@ -65,8 +65,8 @@ def shorPlanRow {k : ℕ} (ops : Prog k) (n mMax : ℕ) : Option ShorPlanRow :=
 
 /-- The Shor register plan for `n = nMin..nMax`, dropping any bit-length whose
 synthetic instance is invalid. -/
-def shorPlanTable {k : ℕ} (ops : Prog k) (nMin nMax mMax : ℕ) : List ShorPlanRow :=
+def shorPlanTable (pol : Shor.ShorLoweringPolicy) (nMin nMax mMax : ℕ) : List ShorPlanRow :=
   ((List.range (nMax + 1 - nMin)).map (fun i => nMin + i)).filterMap fun n =>
-    shorPlanRow ops n mMax
+    shorPlanRow pol n mMax
 
 end Shor

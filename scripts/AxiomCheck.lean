@@ -37,6 +37,8 @@ open Shor.Audit
 #assert_axioms Shor.submission_correct
 #assert_axioms Shor.ShorLoweringSetup.programOK
 #assert_axioms Shor.ShorPolicySubmission.policy_admissible
+#assert_axioms Shor.policy_submission_correct
+#assert_axioms Shor.Policy.lowerGate_correctness
 
 -- The modular-exponentiation bound the precision schedule is stated against.
 #assert_axioms Shor.modExpApprox_correct

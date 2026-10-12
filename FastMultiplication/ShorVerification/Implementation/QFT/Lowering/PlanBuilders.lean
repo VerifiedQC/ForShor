@@ -46,12 +46,12 @@ The plan follows the definition of `Gate.PhaseProdUsing`:
 4. deallocate the `z` extension;
 5. deallocate the `x` extension.
 -/
-def standardPhaseProdUsingPlan
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
+def Policy.phaseProdUsingPlan
+    (P : ShorLoweringPolicy)
     (phi : Angle) {x z : Reg}
     (ws : Gate.PhaseProdWorkspace x z)
-    (hworkspace : SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1)) :
-    StandardPhaseLoweringPlan k hk pts hpts ops (phaseProdUsingInputSize ws)
+    (hworkspace : Policy.WorkspaceOK P (ws.xExt.grow 1) (ws.zExt.grow 1)) :
+    PhaseLoweringPlan P (phaseProdUsingInputSize ws)
       (Gate.PhaseProdUsing phi x z ws) := by
   let initSize : ℕ := phaseProdUsingInputSize ws
   let xExt : ExtReg := ws.xExt
@@ -59,26 +59,26 @@ def standardPhaseProdUsingPlan
   let xSigned : ExtReg := xExt.grow 1
   let zSigned : ExtReg := zExt.grow 1
 
-  let extendXPlan : StandardPhaseLoweringPlan k hk pts hpts ops initSize (Gate.zeroExtend xExt 1) :=
+  let extendXPlan : PhaseLoweringPlan P initSize (Gate.zeroExtend xExt 1) :=
     PhaseLoweringPlan.zeroExtend initSize xExt 1
 
-  let extendZPlan : StandardPhaseLoweringPlan k hk pts hpts ops initSize (Gate.zeroExtend zExt 1) :=
+  let extendZPlan : PhaseLoweringPlan P initSize (Gate.zeroExtend zExt 1) :=
     PhaseLoweringPlan.zeroExtend initSize zExt 1
 
   let signedPlan :
-      StandardPhaseLoweringPlan k hk pts hpts ops initSize (Gate.SignedPhaseProd phi xSigned zSigned) := by
+      PhaseLoweringPlan P initSize (Gate.SignedPhaseProd phi xSigned zSigned) := by
     have hsize : phaseInputSize xSigned zSigned = initSize := by rfl
     simpa [hsize] using
-      standardSignedPhaseLoweringPlan k hk phi xSigned zSigned ops pts hpts hworkspace
+      Policy.signedPlan P phi xSigned zSigned hworkspace
 
-  let deallocZPlan : StandardPhaseLoweringPlan k hk pts hpts ops initSize (Gate.zeroDealloc zExt 1) :=
+  let deallocZPlan : PhaseLoweringPlan P initSize (Gate.zeroDealloc zExt 1) :=
     PhaseLoweringPlan.zeroDealloc initSize zExt 1
 
-  let deallocXPlan : StandardPhaseLoweringPlan k hk pts hpts ops initSize (Gate.zeroDealloc xExt 1) :=
+  let deallocXPlan : PhaseLoweringPlan P initSize (Gate.zeroDealloc xExt 1) :=
     PhaseLoweringPlan.zeroDealloc initSize xExt 1
 
   let completePlan :
-      StandardPhaseLoweringPlan k hk pts hpts ops initSize
+      PhaseLoweringPlan P initSize
         (Gate.zeroExtend xExt 1 ;;
           Gate.zeroExtend zExt 1 ;;
           Gate.SignedPhaseProd phi xSigned zSigned ;;
@@ -92,6 +92,17 @@ def standardPhaseProdUsingPlan
   simpa [Gate.PhaseProdUsing, phaseProdUsingInputSize, initSize, xExt, zExt, xSigned, zSigned]
     using completePlan
 
+/-- The fixed-table spelling: the policy builder at the constant policy. -/
+def standardPhaseProdUsingPlan
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
+    (phi : Angle) {x z : Reg}
+    (ws : Gate.PhaseProdWorkspace x z)
+    (hworkspace : SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1)) :
+    StandardPhaseLoweringPlan k hk pts hpts ops (phaseProdUsingInputSize ws)
+      (Gate.PhaseProdUsing phi x z ws) :=
+  Policy.phaseProdUsingPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) phi ws
+    (Policy.workspaceOK_const_iff.mpr hworkspace)
+
 /-! =========================================================
     Canonical plans and public lowerers
 
@@ -104,11 +115,11 @@ def standardPhaseProdUsingPlan
 Build the standard recursive QFT plan from explicit x-side and z-side
 workspace pools satisfying `QFTWorkspaceOK`.
 -/
-def standardQFTLoweringPlan
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
+def Policy.qftPlan
+    (P : ShorLoweringPolicy)
     (r xWork zWork : Reg)
-    (hworkspace : QFTWorkspaceOK ops r xWork zWork) :
-    QFTLoweringPlan k hk pts hpts ops r := by
+    (hworkspace : Policy.QFTWorkspaceOK P r xWork zWork) :
+    QFTLoweringPlan P r := by
   by_cases hzero : regSize r = 0
   · exact QFTLoweringPlan.empty r hzero
   · by_cases hone : regSize r = 1
@@ -119,24 +130,24 @@ def standardQFTLoweringPlan
         hworkspace.phaseWorkspace hlarge
 
       have hphaseWorkspace :
-          SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1) := by
-        simpa [ws] using hworkspace.signedWorkspaceOK hlarge
+          Policy.WorkspaceOK P (ws.xExt.grow 1) (ws.zExt.grow 1) := by
+        simpa [ws] using hworkspace.policySignedWorkspaceOK hlarge
 
-      have hrightWorkspace : QFTWorkspaceOK ops (rightReg r) xWork zWork :=
+      have hrightWorkspace : Policy.QFTWorkspaceOK P (rightReg r) xWork zWork :=
         hworkspace.right hlarge
 
-      have hleftWorkspace : QFTWorkspaceOK ops (leftReg r) xWork zWork :=
+      have hleftWorkspace : Policy.QFTWorkspaceOK P (leftReg r) xWork zWork :=
         hworkspace.left hlarge
 
-      let phasePlan : StandardPhaseLoweringPlan k hk pts hpts ops (phaseProdUsingInputSize ws)
+      let phasePlan : PhaseLoweringPlan P (phaseProdUsingInputSize ws)
           (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws) :=
-        standardPhaseProdUsingPlan k hk ops pts hpts (qftPhi (regSize r)) ws hphaseWorkspace
+        Policy.phaseProdUsingPlan P (qftPhi (regSize r)) ws hphaseWorkspace
 
-      let rightPlan : QFTLoweringPlan k hk pts hpts ops (rightReg r) :=
-        standardQFTLoweringPlan k hk ops pts hpts (rightReg r) xWork zWork hrightWorkspace
+      let rightPlan : QFTLoweringPlan P (rightReg r) :=
+        Policy.qftPlan P (rightReg r) xWork zWork hrightWorkspace
 
-      let leftPlan : QFTLoweringPlan k hk pts hpts ops (leftReg r) :=
-        standardQFTLoweringPlan k hk ops pts hpts (leftReg r) xWork zWork hleftWorkspace
+      let leftPlan : QFTLoweringPlan P (leftReg r) :=
+        Policy.qftPlan P (leftReg r) xWork zWork hleftWorkspace
 
       exact QFTLoweringPlan.split r hlarge ws (phaseProdUsingInputSize ws)
           phasePlan rightPlan leftPlan
@@ -149,6 +160,22 @@ decreasing_by
   · have hleft : regSize r / 2 < regSize r := Nat.div_lt_self (by omega) (by decide)
     simpa [leftReg, halfSplitPoint, splitM] using hleft
 
+/-- `qftWorkspaceOK_const_iff.mpr` with every argument explicit, so the IR
+extractor can build it with `mkAppM`. -/
+theorem Policy.qftWorkspaceOK_of_const (T : ToomCookTable) (r xWork zWork : Reg)
+    (h : _root_.Shor.QFTWorkspaceOK T.ops r xWork zWork) :
+    Policy.QFTWorkspaceOK (ShorLoweringPolicy.constPolicy T) r xWork zWork :=
+  Policy.qftWorkspaceOK_const_iff.mpr h
+
+/-- The fixed-table spelling: the policy planner at the constant policy. -/
+def standardQFTLoweringPlan
+    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
+    (r xWork zWork : Reg)
+    (hworkspace : QFTWorkspaceOK ops r xWork zWork) :
+    StandardQFTLoweringPlan k hk pts hpts ops r :=
+  Policy.qftPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r xWork zWork
+    (Policy.qftWorkspaceOK_const_iff.mpr hworkspace)
+
 /--
 Canonical reserve-backed QFT plan.
 
@@ -156,10 +183,19 @@ The canonical plan obtained by splitting the inactive portion of `r`. This is
 the bridge from the public reserve predicate `QFTReserveOK` to the recursive
 QFT plan used by the low-level lowerer.
 -/
+def Policy.reserveQftPlan
+    (P : ShorLoweringPolicy)
+    (r : ExtReg) (hworkspace : Policy.QFTReserveOK P r) :
+    QFTLoweringPlan P r.active :=
+  Policy.qftPlan P r.active (Policy.qftXWork P r) (Policy.qftZWork P r)
+    hworkspace.explicitWorkspace
+
+/-- The fixed-table spelling. Its workspace pools stay the `ops`-keyed
+slices, so nothing downstream has to transport along the pool bridges. -/
 def reserveQFTLoweringPlan
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r : ExtReg) (hworkspace : QFTReserveOK ops r) :
-    QFTLoweringPlan k hk pts hpts ops r.active :=
+    StandardQFTLoweringPlan k hk pts hpts ops r.active :=
   standardQFTLoweringPlan k hk ops pts hpts r.active (qftXWork ops r) (qftZWork ops r)
     hworkspace.explicitWorkspace
 
@@ -167,6 +203,13 @@ def reserveQFTLoweringPlan
 The canonical lowered QFT. Its workspace is selected deterministically from
 `r.reserve`; callers do not supply separate physical workspace registers.
 -/
+def Policy.lowerQFT
+    (P : ShorLoweringPolicy)
+    (r : ExtReg) (hworkspace : Policy.QFTReserveOK P r) :
+    LowGate :=
+  lowerQFTPlan (Policy.reserveQftPlan P r hworkspace)
+
+/-- The fixed-table spelling. -/
 def lowerQFT
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r : ExtReg) (hworkspace : QFTReserveOK ops r) :

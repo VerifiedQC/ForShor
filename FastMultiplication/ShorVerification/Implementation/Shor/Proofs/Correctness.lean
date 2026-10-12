@@ -890,25 +890,19 @@ available.
 lemma probability_of_success_lowerGate_eq
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (k : ℕ) (hk : 1 < k)
-    (ops : Prog k)
-    {pts : List Point} {hpts : pts.length = q k}
-    (hInterp : GoodToomCookPoints k pts hpts)
-    (hC : ProgConsumesPtsSafe
-      (k := k) (by omega)
-      State.start_state ops pts)
-    (hRun : run? ops State.start_state = some State.start_state)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (T : ℕ → ℕ)
     (verify : OrderVerifier)
     (x : Reg)
     (r Q : ℕ)
     (G : Gate)
-    (hworkspace : GateWorkspaceOK ops G)
+    (hworkspace : Policy.GateWorkspaceOK P G)
     (ψ : qs.State)
-    (hclean : GateWorkspaceCleanState qs k hk ops pts hpts G hworkspace ψ) :
+    (hclean : Policy.GateWorkspaceCleanState qs P G hworkspace ψ) :
     probability_of_success (qs := qs) (evalC := LowerGateClass.evalL (qs := qs))
         (T := T) (verify := verify) (x := x) (r := r) (Q := Q)
-        (C := lowerGate k hk ops pts hpts G hworkspace) (ψ := ψ)
+        (C := Policy.lowerGate P G hworkspace) (ψ := ψ)
       =
     probability_of_success (qs := qs) (evalC := qs.eval)
         (T := T) (verify := verify) (x := x) (r := r) (Q := Q)
@@ -916,18 +910,14 @@ lemma probability_of_success_lowerGate_eq
   have hEval :
       LowerGateClass.evalL
           (qs := qs)
-          (lowerGate k hk ops pts hpts G hworkspace)
+          (Policy.lowerGate P G hworkspace)
           ψ
         =
       qs.eval G ψ :=
-    lowerGate_correctness
+    Policy.lowerGate_correctness
       qs
-      k
-      hk
-      ops
-      hInterp
-      hC
-      hRun
+      P
+      hP
       G
       hworkspace
       ψ
@@ -948,7 +938,8 @@ with `orderFindingIdeal`.
 theorem orderFindingApproxLow_probability_eq
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (T : ℕ → ℕ)
     (verify : OrderVerifier)
     (a N : ℕ)
@@ -956,11 +947,10 @@ theorem orderFindingApproxLow_probability_eq
     (flag : ℕ)
     (hmodWorkspace : ModMulCircuitWorkspaceOK y work)
     (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
-    (hLowerWorkspace : GateWorkspaceOK lowering.ops
+    (hLowerWorkspace : Policy.GateWorkspaceOK P
       (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4))
     (ψ : qs.State)
-    (hclean : GateWorkspaceCleanState qs lowering.k lowering.hk lowering.ops
-        lowering.pts lowering.hpts
+    (hclean : Policy.GateWorkspaceCleanState qs P
         (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
         hLowerWorkspace ψ)
     (r Q : ℕ) :
@@ -969,7 +959,7 @@ theorem orderFindingApproxLow_probability_eq
         (T := T) (verify := verify) (x := x.active) (r := r)
         (Q := Q)
         (C := orderFindingApproxLow
-            lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts a N x y work scratch flag
+            P a N x y work scratch flag
             hmodWorkspace hstep4 hLowerWorkspace)
         (ψ := ψ)
       =
@@ -983,12 +973,8 @@ theorem orderFindingApproxLow_probability_eq
   simpa only [orderFindingApproxLow] using
     (probability_of_success_lowerGate_eq
       (qs := qs)
-      (k := lowering.k)
-      (hk := lowering.hk)
-      (ops := lowering.ops)
-      (hInterp := lowering.good)
-      (hC := lowering.consumes)
-      (hRun := lowering.returns)
+      (P := P)
+      hP
       (T := T)
       (verify := verify)
       (x := x.active)
@@ -1013,14 +999,15 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
           ≤ (tbits cfg.x : ℝ) * stepErr K η)
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)
     (inst : ShorOrderFindingInstance)
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (x y work scratch : ExtReg) (flag : ℕ)
     (b0 : qs.Basis)
     (hm : regSize x.active = Nat.log2 (2 * inst.N^2))
     (hn : regSize y.active = Nat.log2 (2 * inst.N))
     (η : ℝ)
     (hready : LoweredShorReady
-      qs lowering η inst.a inst.N x y work scratch flag b0) :
+      qs P η inst.a inst.N x y work scratch flag b0) :
     probability_of_success
         (qs := qs) (T := T)
         (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
@@ -1028,8 +1015,7 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (r := ord inst.a inst.N inst.coprime)
         (Q := ASize x.active)
         (evalC := LowerGateClass.evalL (qs := qs))
-        (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
-          lowering.pts lowering.hpts
+        (C := orderFindingApproxLow P
           inst.a inst.N x y work scratch flag
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
@@ -1046,8 +1032,7 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (r := ord inst.a inst.N inst.coprime)
         (Q := ASize x.active)
         (evalC := LowerGateClass.evalL (qs := qs))
-        (C := orderFindingApproxLow lowering.k lowering.hk lowering.ops
-          lowering.pts lowering.hpts
+        (C := orderFindingApproxLow P
           inst.a inst.N x y work scratch flag
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
@@ -1067,7 +1052,8 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (ψ := qs.ket b0) := by
       exact orderFindingApproxLow_probability_eq
         (qs := qs)
-        (lowering := lowering)
+        (P := P)
+        hP
         (T := T)
         (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
         (a := inst.a) (N := inst.N)
@@ -1078,7 +1064,7 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
           (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace)
         (hLowerWorkspace := hready.workspace)
         (ψ := qs.ket b0)
-        (hclean := hready.workspace_clean)
+        (hclean := hready.workspace_clean hP)
         (r := ord inst.a inst.N inst.coprime)
         (Q := ASize x.active)
 

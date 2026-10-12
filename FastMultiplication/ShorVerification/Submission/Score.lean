@@ -62,6 +62,26 @@ variable [GateSemanticsFacts qs]
 variable [LowerGateClass qs]
 variable [IdealCtrlModMulExactSemantics qs]
 
+/-- The policy form of the scored bound. -/
+theorem policy_submissionSuccessBound_le_success (s : ShorPolicySubmission) :
+    ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
+    ∀ inst : ShorOrderFindingInstance,
+      submissionSuccessBound inst.N ≤
+        probability_of_success
+          (qs := qs)
+          (evalC := LowerGateClass.evalL (qs := qs))
+          (T := T)
+          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
+          (x := (referenceProgramAt s.policy s.policy_admissible
+            submissionPrecision inst).output)
+          (r := ord inst.a inst.N inst.coprime)
+          (Q := ASize (referenceProgramAt s.policy s.policy_admissible
+            submissionPrecision inst).output)
+          (C := (referenceProgramAt s.policy s.policy_admissible
+            submissionPrecision inst).circuit)
+          (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) :=
+  policy_submission_correct (qs := qs) s
+
 /-- `submission_correct` with the declared bound named. Note where `s`
 occurs: only on the right. Whatever table a submitter hands in, the number it
 is held to is `submissionSuccessBound inst.N`. -/
@@ -74,10 +94,16 @@ theorem submissionSuccessBound_le_success (s : ShorSubmission) :
           (evalC := LowerGateClass.evalL (qs := qs))
           (T := T)
           (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))
-          (x := (referenceProgramAt s submissionPrecision inst).output)
+          (x := (referenceProgramAt (ShorLoweringPolicy.constPolicy s.table)
+            (ShorLoweringPolicy.constPolicy_admissible s.table_admissible)
+            submissionPrecision inst).output)
           (r := ord inst.a inst.N inst.coprime)
-          (Q := ASize (referenceProgramAt s submissionPrecision inst).output)
-          (C := (referenceProgramAt s submissionPrecision inst).circuit)
+          (Q := ASize (referenceProgramAt (ShorLoweringPolicy.constPolicy s.table)
+            (ShorLoweringPolicy.constPolicy_admissible s.table_admissible)
+            submissionPrecision inst).output)
+          (C := (referenceProgramAt (ShorLoweringPolicy.constPolicy s.table)
+            (ShorLoweringPolicy.constPolicy_admissible s.table_admissible)
+            submissionPrecision inst).circuit)
           (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis))) :=
   submission_correct (qs := qs) s
 

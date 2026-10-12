@@ -72,11 +72,11 @@ noncomputable def shorOrderFindingGateCount
     (hmodWorkspace : ModMulCircuitWorkspaceOK y work)
     (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
     (hLowerWorkspace :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (orderFindingApprox a N x y work scratch flag
           hmodWorkspace hstep4)) : ℕ :=
   LowGate.gateCount shorGateCostModel
-    (orderFindingApproxLow k hk ops pts hpts a N x y work scratch flag
+    (orderFindingApproxLow (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) a N x y work scratch flag
       hmodWorkspace hstep4 hLowerWorkspace)
 
 /--
@@ -120,7 +120,7 @@ def ShorGateCountBound
       n₀ ≤ n →
       algorithm1ExtraBits η ≤ (cWork - 1) * regSize y.active →
       ∀ hLowerWorkspace :
-        GateWorkspaceOK ops
+        Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
           (orderFindingApprox inst.a inst.N
             x y work scratch flag hsetup.circuit_workspace
               hsetup.step4_workspace),
@@ -156,7 +156,7 @@ def ShorGateCountBoundShorEta
       let n := y.width
       n₀ ≤ n →
       ∀ hLowerWorkspace :
-        GateWorkspaceOK ops
+        Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
           (orderFindingApprox inst.a inst.N
             x y work scratch flag hsetup.circuit_workspace
               hsetup.step4_workspace),
@@ -183,9 +183,9 @@ noncomputable def loweredGateCount
     {Basis : Type u}
     [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
-    (G : Gate) (hworkspace : GateWorkspaceOK ops G) : ℕ :=
+    (G : Gate) (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) G) : ℕ :=
   LowGate.gateCount shorGateCostModel
-    (lowerGate k hk ops pts hpts G hworkspace)
+    (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) G hworkspace)
 
 /-- Lowered costs add across sequential composition. -/
 @[simp] lemma loweredGateCount_seq
@@ -193,7 +193,7 @@ noncomputable def loweredGateCount
     [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (U V : Gate)
-    (hworkspace : GateWorkspaceOK ops (U ;; V)) :
+    (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (U ;; V)) :
     loweredGateCount (Basis := Basis) k hk ops pts hpts (U ;; V) hworkspace =
       loweredGateCount (Basis := Basis) k hk ops pts hpts U hworkspace.1 +
       loweredGateCount (Basis := Basis) k hk ops pts hpts V hworkspace.2 := by
@@ -205,10 +205,10 @@ noncomputable def loweredGateCount
     [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (U : Gate)
-    (hworkspace : GateWorkspaceOK ops (†U)) :
+    (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (†U)) :
     loweredGateCount (Basis := Basis) k hk ops pts hpts (†U) hworkspace =
       loweredGateCount (Basis := Basis) k hk ops pts hpts U hworkspace := by
-  simp [loweredGateCount, lowerGate]
+  simp [loweredGateCount, Policy.lowerGate]
 
 /-- Applying Hadamards to every qubit in a register costs exactly the register width. -/
 lemma lowered_H_reg_gateCount
@@ -216,13 +216,13 @@ lemma lowered_H_reg_gateCount
     [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (r : Reg)
-    (hworkspace : GateWorkspaceOK ops (H_reg r)) :
+    (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (H_reg r)) :
     loweredGateCount (Basis := Basis) k hk ops pts hpts (H_reg r) hworkspace =
       regSize r := by
   have hfold :
       ∀ (l : List ℕ) (U : Gate)
-        (hU : GateWorkspaceOK ops U)
-        (hws : GateWorkspaceOK ops
+        (hU : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) U)
+        (hws : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
           (l.foldl (fun acc q => Gate.H q ;; acc) U)),
         loweredGateCount (Basis := Basis) k hk ops pts hpts
           (l.foldl (fun acc q => Gate.H q ;; acc) U) hws =
@@ -236,7 +236,7 @@ lemma lowered_H_reg_gateCount
         intro U hU hws
         simp only [List.foldl_cons]
         rw [ih (Gate.H q ;; U) (by exact ⟨trivial, hU⟩)]
-        simp [loweredGateCount, lowerGate, LowGate.gateCount]
+        simp [loweredGateCount, Policy.lowerGate, LowGate.gateCount]
         omega
   simpa [H_reg, regQubits, regSize] using
     hfold (regQubits r) Gate.id trivial hworkspace
@@ -250,7 +250,7 @@ lemma test_core_expand
     (hmod : ModMulCircuitWorkspaceOK data work)
     (hstep4 : CmpLtNWWorkspace N (data.grow 1) work scratch flag)
     (hworkspace :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (CmodMulInPlaceCore c N ctrl data work scratch flag
           hmod hstep4)) :
     loweredGateCount (Basis := Basis) k hk ops pts hpts
@@ -288,7 +288,7 @@ lemma step1_gateCount_decompose
     (c N ctrl : ℕ) (data work : ExtReg)
     (hmod : ModMulCircuitWorkspaceOK data work)
     (hworkspace :
-      GateWorkspaceOK ops (step1 c N ctrl data work hmod)) :
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (step1 c N ctrl data work hmod)) :
     loweredGateCount (Basis := Basis) k hk ops pts hpts
         (step1 c N ctrl data work hmod) hworkspace
       =
@@ -313,7 +313,7 @@ lemma step2_gateCount_decompose
     (N : ℕ) (data work : ExtReg)
     (hmod : ModMulCircuitWorkspaceOK data work)
     (hworkspace :
-      GateWorkspaceOK ops (step2 N data work hmod)) :
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (step2 N data work hmod)) :
     loweredGateCount (Basis := Basis) k hk ops pts hpts
         (step2 N data work hmod) hworkspace
       =
@@ -340,7 +340,7 @@ lemma step5_gateCount_decompose
     (k5 N ctrl : ℕ) (data work : ExtReg)
     (hmod : ModMulCircuitWorkspaceOK data work)
     (hworkspace :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (step5 k5 N ctrl data work hmod)) :
     loweredGateCount (Basis := Basis) k hk ops pts hpts
         (step5 k5 N ctrl data work hmod) hworkspace
@@ -457,7 +457,7 @@ lemma step3_gateCount_le
     (dataCarry scratch : ExtReg)
     (flag : ℕ)
     (hworkspace :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (step3 N dataCarry scratch flag)) :
     loweredGateCount
         (Basis := Basis)
@@ -524,7 +524,7 @@ lemma step3_gateCount_le
   simp only [
     step3,
     loweredGateCount,
-    lowerGate,
+    Policy.lowerGate,
     lowerCmpGeConst,
     lowerCSubConst,
     lowerPrepareNegConst,
@@ -556,7 +556,7 @@ lemma fastConstMulInto_gateCount_decompose
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (N : ℕ) (work scratch : ExtReg)
     (hmul : Gate.PhaseProdWorkspace work.active scratch.active)
-    (hworkspace : GateWorkspaceOK ops
+    (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
       (fastConstMulInto N work scratch hmul)) :
     loweredGateCount (Basis := Basis) k hk ops pts hpts
         (fastConstMulInto N work scratch hmul) hworkspace =
@@ -584,7 +584,7 @@ lemma cmpLtNWDifference_gateCount_le
     (dataCarry work scratch : ExtReg)
     (hdata : dataCarry.CanGrow 1)
     (hworkspace :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (cmpLtNWDifference
           dataCarry work scratch hdata)) :
     loweredGateCount
@@ -599,7 +599,7 @@ lemma cmpLtNWDifference_gateCount_le
   simp [
     cmpLtNWDifference,
     loweredGateCount,
-    lowerGate,
+    Policy.lowerGate,
     LowGate.gateCount,
     shorGateCostModel,
     LowGateResourceModel.toCostModel,
@@ -618,7 +618,7 @@ lemma step4_gateCount_decompose
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (N : ℕ) (dataCarry work scratch : ExtReg) (flag : ℕ)
     (hstep4 : CmpLtNWWorkspace N dataCarry work scratch flag)
-    (hworkspace : GateWorkspaceOK ops
+    (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
       (step4 N dataCarry work scratch flag hstep4)) :
     loweredGateCount (Basis := Basis) k hk ops pts hpts
         (step4 N dataCarry work scratch flag hstep4) hworkspace =
@@ -630,7 +630,7 @@ lemma step4_gateCount_decompose
         hworkspace.2.1 + 1 := by
   simp only [step4, cmpLtNW, loweredGateCount_seq]
   rw [loweredGateCount_adj, loweredGateCount_adj]
-  simp [loweredGateCount, lowerGate]
+  simp [loweredGateCount, Policy.lowerGate]
   omega
 
 /-- Step 1's PhaseProduct target workspace has the same width as the work register. -/
@@ -715,7 +715,7 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
         (hmod : ModMulCircuitWorkspaceOK data work)
         (hstep4 : CmpLtNWWorkspace N (data.grow 1) work scratch flag)
         (hworkspace :
-          GateWorkspaceOK ops
+          Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
             (CmodMulInPlaceCore
               c N ctrl data work scratch flag hmod hstep4)),
         n₀ ≤ n →
@@ -956,7 +956,7 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     rw [hsafe] at hQ1
     have hb :=
       hQ1.trans (mul_le_mul_of_nonneg_left hscaleWork (le_of_lt hCq))
-    simpa [loweredGateCount, lowerGate, S, α, mul_assoc] using hb
+    simpa [loweredGateCount, Policy.lowerGate, S, α, mul_assoc] using hb
   have hQ2ab :
       (loweredGateCount (Basis := Basis) k hk ops pts hpts
         (Gate.QFT hmod.step2Workspace.zExt) hws2.1 : ℝ)
@@ -970,7 +970,7 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     rw [hsafe] at hQ2a
     have hb :=
       hQ2a.trans (mul_le_mul_of_nonneg_left hscaleCarry (le_of_lt hCq))
-    simpa [loweredGateCount, lowerGate, S, α, mul_assoc] using hb
+    simpa [loweredGateCount, Policy.lowerGate, S, α, mul_assoc] using hb
   have hQ2bb :
       (loweredGateCount (Basis := Basis) k hk ops pts hpts
         (Gate.QFT hmod.step2Workspace.zExt) hws2.2.2 : ℝ)
@@ -984,7 +984,7 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     rw [hsafe] at hQ2b
     have hb :=
       hQ2b.trans (mul_le_mul_of_nonneg_left hscaleCarry (le_of_lt hCq))
-    simpa [loweredGateCount, lowerGate, S, α, mul_assoc] using hb
+    simpa [loweredGateCount, Policy.lowerGate, S, α, mul_assoc] using hb
   have hQ5b :
       (loweredGateCount (Basis := Basis) k hk ops pts hpts
         (Gate.QFT hmod.step5Workspace.zExt) hws5.2.2 : ℝ)
@@ -996,7 +996,7 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     rw [hsafe] at hQ5
     have hb :=
       hQ5.trans (mul_le_mul_of_nonneg_left hscaleWork (le_of_lt hCq))
-    simpa [loweredGateCount, lowerGate, S, α, mul_assoc] using hb
+    simpa [loweredGateCount, Policy.lowerGate, S, α, mul_assoc] using hb
   have hP4b :
       (loweredGateCount (Basis := Basis) k hk ops pts hpts
         (Gate.PhaseProdUsing
@@ -1014,7 +1014,7 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
         ≤ Cq * S * Real.rpow (n : ℝ) α := by
     have hQ4a' :
         (LowGate.gateCount shorGateCostModel
-          (lowerQFT k hk ops pts hpts hstep4.mulWorkspace.zExt hws4.1.1) : ℝ) ≤
+          (Policy.lowerQFT (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) hstep4.mulWorkspace.zExt hws4.1.1) : ℝ) ≤
           Cq * phaseProductSafeRate k scratch.width := by
       simpa only [hStep4ZExt] using hQ4a
     have hsafe : phaseProductSafeRate k scratch.width =
@@ -1025,14 +1025,14 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     have hb :=
       hQ4a'.trans
         (mul_le_mul_of_nonneg_left hscaleScratch (le_of_lt hCq))
-    simpa [loweredGateCount, lowerGate, S, α, mul_assoc] using hb
+    simpa [loweredGateCount, Policy.lowerGate, S, α, mul_assoc] using hb
   have hQ4bb :
       (loweredGateCount (Basis := Basis) k hk ops pts hpts
         (Gate.QFT hstep4.mulWorkspace.zExt) hws4.1.2.2 : ℝ)
         ≤ Cq * S * Real.rpow (n : ℝ) α := by
     have hQ4b' :
         (LowGate.gateCount shorGateCostModel
-          (lowerQFT k hk ops pts hpts hstep4.mulWorkspace.zExt hws4.1.2.2) : ℝ) ≤
+          (Policy.lowerQFT (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) hstep4.mulWorkspace.zExt hws4.1.2.2) : ℝ) ≤
           Cq * phaseProductSafeRate k scratch.width := by
       simpa only [hStep4ZExt] using hQ4b
     have hsafe : phaseProductSafeRate k scratch.width =
@@ -1043,7 +1043,7 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     have hb :=
       hQ4b'.trans
         (mul_le_mul_of_nonneg_left hscaleScratch (le_of_lt hCq))
-    simpa [loweredGateCount, lowerGate, S, α, mul_assoc] using hb
+    simpa [loweredGateCount, Policy.lowerGate, S, α, mul_assoc] using hb
   have hH1 :
       (loweredGateCount (Basis := Basis) k hk ops pts hpts
         (H_reg work.active) hws1.1 : ℝ) ≤ cWork * n := by
@@ -1281,7 +1281,7 @@ lemma modExpApproxValid_gateCount_phase_bound_of_core
         (hmod : ModMulCircuitWorkspaceOK data work)
         (hstep4 : CmpLtNWWorkspace N (data.grow 1) work scratch flag)
         (hworkspace :
-          GateWorkspaceOK ops
+          Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
             (CmodMulInPlaceCore
               c N ctrl data work scratch flag hmod hstep4)),
         nCore ≤ n →
@@ -1301,7 +1301,7 @@ lemma modExpApproxValid_gateCount_phase_bound_of_core
         (hmod : ModMulCircuitWorkspaceOK data work)
         (hstep4 : CmpLtNWWorkspace N (data.grow 1) work scratch flag)
         (hworkspace :
-          GateWorkspaceOK ops
+          Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
             (modExpApproxValid
               a N x.active data work scratch flag hmod hstep4)),
         n₀ ≤ n →
@@ -1326,7 +1326,7 @@ lemma modExpApproxValid_gateCount_phase_bound_of_core
   have hSteps :
       ∀ (e : ℕ) (ctrls : List ℕ)
         (hws :
-          GateWorkspaceOK ops
+          Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
             (modExpApproxStepsValid
               a N data work scratch flag hmod hstep4 e ctrls)),
         (loweredGateCount (Basis := Basis) k hk ops pts hpts
@@ -1401,13 +1401,13 @@ lemma lowered_initY1_gateCount_le
     [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k)
     (y : Reg)
-    (hworkspace : GateWorkspaceOK ops (initY1 y)) :
+    (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (initY1 y)) :
     loweredGateCount (Basis := Basis) k hk ops pts hpts
       (initY1 y) hworkspace ≤ 1 := by
   by_cases hnil : y.qubits = []
-  · simp [initY1, hnil, loweredGateCount]
+  · simp [initY1, hnil, loweredGateCount, Policy.lowerGate]
   · obtain ⟨q, tail, hcons⟩ := List.exists_cons_of_ne_nil hnil
-    simp [initY1, hcons, loweredGateCount, lowerGate]
+    simp [initY1, hcons, loweredGateCount, Policy.lowerGate]
 
 /-- Decomposes the order-finding circuit into Hadamards, initialization, modular exponentiation, and inverse-QFT. -/
 lemma orderFindingApprox_gateCount_decompose
@@ -1420,7 +1420,7 @@ lemma orderFindingApprox_gateCount_decompose
     (hmod : ModMulCircuitWorkspaceOK y work)
     (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
     (hworkspace :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (orderFindingApprox a N x y work scratch flag hmod hstep4)) :
     loweredGateCount (Basis := qs.Basis) k hk ops pts hpts
         (orderFindingApprox a N x y work scratch flag hmod hstep4) hworkspace
@@ -1466,7 +1466,7 @@ lemma orderFindingApproxLow_gateCount_phase_bound
         (hmod : ModMulCircuitWorkspaceOK y work)
         (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
         (hworkspace :
-          GateWorkspaceOK ops
+          Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
             (modExpApproxValid
               a N x.active y work scratch flag hmod hstep4)),
         nModExp ≤ n →
@@ -1484,7 +1484,7 @@ lemma orderFindingApproxLow_gateCount_phase_bound
         (hmod : ModMulCircuitWorkspaceOK y work)
         (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
         (hworkspace :
-          GateWorkspaceOK ops
+          Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
             (orderFindingApprox a N x y work scratch flag hmod hstep4)),
         n₀ ≤ n →
         ShorGateCountLayout cWork n x y work scratch flag →
@@ -1549,7 +1549,7 @@ lemma orderFindingApproxLow_gateCount_phase_bound
       (loweredGateCount (Basis := qs.Basis) k hk ops pts hpts
         (IQFT x) hworkspace.2.2.2 : ℝ)
         ≤ Cq * S * Real.rpow (n : ℝ) α := by
-    simpa [loweredGateCount, lowerGate, IQFT, S, α,
+    simpa [loweredGateCount, Policy.lowerGate, IQFT, S, α,
       LowGate.gateCount, mul_assoc] using hQScaled
   have hrateNonneg :
       0 ≤ Real.rpow (n : ℝ) α :=

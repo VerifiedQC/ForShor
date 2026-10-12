@@ -6,10 +6,20 @@ recursive, chunked circuit that computes `exp(i·φ·x·z)` on two registers `x`
 interpolation-based Toom-Cook decomposition, and the lowering machinery that
 turns it into primitive `LowGate`s.
 
+Lowering is parameterised by a **`ShorLoweringPolicy`**: a width-indexed
+choice of Toom-Cook table, so a recursion can use a wide table at wide
+operands and narrower ones as it descends. The familiar fixed-table names —
+`StandardPhaseLoweringPlan`, `standardSignedPhaseLoweringPlan`,
+`SignedRecursiveWorkspaceOK`, and every statement phrased with them — are the
+**constant policy** on one table, and are unchanged. See
+[`Lowering/README.md`](Lowering/README.md) for the plan type and the
+step/dispatcher split, and [`Compiler/README.md`](Compiler/README.md) for the
+workspace model and why both spellings of it exist.
+
 The folder is organized in layers (below). **Every import is "justified":** a
 file may only import another file if it directly uses a declaration that file
 defines — never a declaration it merely re-exports transitively.
-`scripts/check_phaseproduct_layers.sh` (repo root) enforces both the layer
+`scripts/check_layers.py` (repo root) enforces both the layer
 order and the absence of umbrella files (a file that only imports and
 declares nothing of its own).
 
@@ -59,8 +69,8 @@ dependency order (lowest layer first) to match that traversal.
 
 ## `Compiler/` — the recursive phase-product compiler's definitions
 
-Internal order: `Layout → Widths → Coefficients → Compile → Workspace` (each
-may import the ones before it).
+Internal order: `Layout → Widths → Coefficients → Compile → Workspace →
+PolicyWorkspace` (each may import the ones before it).
 
 | File | Purpose |
 |---|---|
@@ -68,7 +78,8 @@ may import the ones before it).
 | `Widths.lean` | Width scanning over a source program (`scanNeededWidths`), the recursion-size parameters (`phaseInputSize`, `nextSignedWidth`), and the lemmas connecting a scan back to the layout it was scanned from. |
 | `Coefficients.lean` | Interpolation/phase-coefficient definitions (`interpMatrix`, `phaseCoeffFromPts`, `cramerCoeffFromPts`, …), the canonical interpolation points (`alternatingPoint`, `genInterpolationPoints`), and the bridge to the pure Toom-Cook math (`GoodToomCookPoints`, `toMathPoint`). |
 | `Compile.lean` | The annotated-operation compiler: `AnnotatedOp`/`annotatePhaseTermsAux`, per-chunk allocation/deallocation gates, and the full signed/controlled-signed compilers (`compileOpsToSignedGate`, `compileOpsToCSignedGate`, `controlPhaseLeaves`, `Gate.PhaseProductLayout.ControlDisjoint`). |
-| `Workspace.lean` | The recursive-workspace size model (`RecursivePhaseWorkspace.reserveNeed`), the static workspace-sufficiency predicates (`SignedRecursiveWorkspaceOK`, `CSignedRecursiveWorkspaceOK`), the concrete reserve-budget construction (`PhaseSplitLayout.ofBudget`, `ReserveBudget.ofRequirements`), and the canonical deterministic recursive step (`CanonicalSignedStep`, `canonicalSignedStep`). Top of the `Compiler/*` chain. |
+| `Workspace.lean` | The recursive-workspace size model (`RecursivePhaseWorkspace.reserveNeed`), the static workspace-sufficiency predicates (`SignedRecursiveWorkspaceOK`, `CSignedRecursiveWorkspaceOK`), the concrete reserve-budget construction (`PhaseSplitLayout.ofBudget`, `ReserveBudget.ofRequirements`), and the canonical deterministic recursive step (`CanonicalSignedStep`, `canonicalSignedStep`), all for a single fixed table. |
+| `PolicyWorkspace.lean` | The same model for a width-indexed **policy**: `Policy.reserveNeed` (asks `P.choose` for each level's table instead of reusing one), `Policy.WorkspaceOK`/`Policy.CWorkspaceOK`, and `Policy.CanonicalStep`/`Policy.canonicalStep`. `reserveNeed_const` and `workspaceOK_const_iff` identify these with the names above at a constant policy — propositionally, not definitionally, which is why both spellings exist. Top of the `Compiler/*` chain. |
 
 ## `Gates/` — circuit-macro definitions
 
@@ -81,8 +92,8 @@ may import the ones before it).
 
 | File | Purpose |
 |---|---|
-| `Plan.lean` | Compiled gate packages (`compiledSignedPhaseGate`/`compiledCSignedPhaseGate`), the `PhaseLoweringPlan` inductive plan language, the interpreter `lowerGateRec`, and the standard interpolation-point public interface (`lowerSignedPhaseProd`, `lowerCSignedPhaseProd`). |
-| `PlanBuilders.lean` | Allocation/deallocation plan builders, annotated-body plan builders, one-level compiled phase-product plans, and the canonical recursive planners `standardSignedPhaseLoweringPlan`/`standardCSignedPhaseLoweringPlan`. |
+| `Plan.lean` | Compiled gate packages (`compiledSignedPhaseGate`/`compiledCSignedPhaseGate`), the `PhaseLoweringPlan P` inductive plan language (indexed by a `ShorLoweringPolicy`; the recursive constructors carry the table used and the proof that `P` chose it), the interpreter `lowerGateRec`, and the fixed-table public interface (`StandardPhaseLoweringPlan`, `lowerSignedPhaseProd`, `lowerCSignedPhaseProd`). |
+| `PlanBuilders.lean` | Allocation/deallocation plan builders, annotated-body plan builders, the one-level step at a given table (`Policy.stepPlan`/`Policy.cStepPlan`), the width dispatcher that picks that table (`Policy.signedPlanOf`/`Policy.signedPlan` and controlled twins), and the fixed-table wrappers `standardSignedPhaseLoweringPlan`/`standardCSignedPhaseLoweringPlan`. |
 | `Lower.lean` | The two top-level lowered-circuit constructors from a root workspace assumption: `lowerSignedPhaseProdWithWorkspace`, `lowerCSignedPhaseProdWithWorkspace`. |
 
 ## `Spec/` — the public specification surface

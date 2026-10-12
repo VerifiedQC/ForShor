@@ -7,6 +7,14 @@ proofs that the pair is admissible** — and this folder is everything that
 happens to one: the checking, the audit, the certificate, the score, and the
 file a submitter copies.
 
+There are two kinds of submission. A **table** submission is one table, used
+at every width; a **policy** submission is a width-indexed list of them, a
+wide table at the top of the recursion and narrower ones below it. They share
+everything: the same four side conditions per table, the same audit, the same
+certificate, and in fact the same theorem — a table submission *is* the
+one-band policy at threshold `0`, and [`Policy submissions`](#policy-submissions)
+below says what the second kind adds and what it does not yet have.
+
 The rules themselves are not here. They are in
 [`../Framework/ToomCookTable.lean`](../Framework/ToomCookTable.lean), which
 imports Mathlib and nothing else: the record `Shor.ShorSubmission` (an
@@ -23,6 +31,10 @@ construction that satisfies it.
 | **`Template.lean`** | **the file a submitter owns**: three definitions and the `ShorSubmission` record with C1–C4 proved | no — `Framework/` + `Decide.lean` |
 | `Check.lean` | the acceptance check, repo-owned: the axiom audit, the IR extraction, the evaluation tier, the certificate | yes (`Emit/`) |
 | `Main.lean` | `forshor_submission`: prints the table, the IR, the precision and the trial count as one JSON document | yes (`Emit/`) |
+| **`PolicyTemplate.lean`** | **the file a policy submitter owns**: the per-band definitions and the `ShorPolicySubmission` record | no — `Framework/` + `Decide.lean` |
+| `PolicyDecide.lean` | `bandShrinks`, an **advisory** performance check on a policy's bands; not an admissibility condition | yes (`Implementation/`) |
+| `PolicyCheck.lean` | the acceptance check for a policy, repo-owned: the axiom audit and the certificate. No IR tier | yes |
+| `PolicyMain.lean` | `forshor_policy_submission`: prints the bands, the precision and the trial count, with `"ir": null` | yes |
 
 ## `Decide.lean`
 
@@ -228,9 +240,78 @@ consumes a `frac 0`.
 standard table. A table enters through a Lean declaration, never through a
 parser: its side conditions need the kernel.
 
+## Policy submissions
+
+The score is a gate count at one fixed size, not an asymptotic exponent, and
+at a fixed size the optimum is generally a cascade rather than a single
+radix: a wide table while the operands are wide, narrower ones as the
+recursion descends, the schoolbook leaf at the bottom. A **policy** is that
+cascade, and it is the second kind of submission.
+
+```bash
+lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
+```
+
+`lean_lib PolicySubmission` is rooted at `PolicyCheck.lean`, so as before
+**building it is the check**, and `forshor_policy_submission` is a printer
+that re-decides nothing.
+
+**`PolicyTemplate.lean` is the only file a policy submitter owns.** Per band
+it holds exactly what `Template.lean` holds for one table — `k`, `pts`,
+`ops`, the C1 lemma and the `ShorLoweringSetup` record with C1–C4 proved —
+and then one thing more, once:
+
+```lean
+def policy : ShorPolicySubmission where
+  bands := [(40, band0), (14, band1)]
+  sorted := by decide
+```
+
+`sorted` says the thresholds strictly decrease. That is the only obligation a
+policy adds on top of its bands' own C1–C4, and it is what makes "band `i`
+covers `[tᵢ, tᵢ₋₁)`" literally true, so every width is served by exactly one
+band and the width dispatcher is a clean chain of guards. It is decidable, so
+`by decide` closes it. Widths below the last threshold take the schoolbook
+leaf.
+
+There is deliberately **no** condition requiring a band's table to shrink the
+width on its own band. The recursion already falls back to the leaf when the
+chosen table does not shrink (`ShorLoweringPolicy.Stops`), so a
+non-shrinking band is dead weight rather than unsoundness: it is selected, it
+declines to recurse, and the leaf runs instead. `Shor.Policy.bandShrinks` in
+`PolicyDecide.lean` reports exactly that, `PolicyCheck.lean` runs it on both
+shipped bands, and `policy.json` carries it per band as `bands[].shrinks`. It
+is a warning a submitter should act on by raising a threshold, never a reason
+to reject a policy.
+
+The shipped example is a worked instance of that warning. Its lower band is
+the `k = 2` table from `Template.lean` at threshold `14`, not `12`: that
+table's `nextWidth` maps `12 ↦ 12` and `13 ↦ 13`, so at the bottom two widths
+of a band starting at `12` it would decline to recurse. `PolicyCheck.lean`
+records both — the passing check at `14` and the failing one at `12` — so the
+advisory has a test as well as a definition.
+
+### What a policy gets, and what it does not
+
+**It gets the certificate.** `Shor.policy_submission_correct` is generic in
+the policy, so a policy existing is the whole argument; there is no
+per-submission proof, exactly as for a table. `Shor.submission_correct` is
+literally its one-band case, via `Shor.ShorPolicySubmission.ofSetup`.
+
+**It does not get a score.** The single-table check runs
+`Shor.Reflect.submissionChecks`: it extracts the IR a resource estimator
+reads and pins it against the real compiled circuit at width ladders derived
+from the submitted table. **There is no such tier for a policy.**
+`PolicyCheck.lean` performs no extraction, and `forshor_policy_submission`
+prints `"ir": null` with an `ir_status` field naming the reason. A policy's
+IR is a different object — one template per band plus a width dispatcher,
+with `n` left symbolic — and producing it is separate work. Until it lands, a
+policy submission is **admissible and unscored**, and the JSON says so rather
+than implying a number.
+
 ## CI for a submissions repo
 
-This repository's own CI (`.github/workflows/ci.yml`) builds the three lake
+This repository's own CI (`.github/workflows/ci.yml`) builds the four lake
 targets, runs the five layer scripts and checks the docs graph. It does *not*
 run `lean4checker`, and it does not apply the diff rule or the lexical gate
 below — those are about a *submission*, and this repository has none to
@@ -239,10 +320,13 @@ police. Steps 1 and 3 are therefore enforced only by a submissions repo.
 Such a repo should run, per pull request:
 
 1. **The diff rule.** A PR may change only its copy of
-   `Submission/Template.lean`. Everything else — `Decide.lean`,
-   `Audit.lean`, `Check.lean`, `Correct.lean`, `Score.lean`, `Main.lean`,
-   `Framework/`, `Implementation/`, `lakefile.lean` — is repo-owned. A PR
-   touching any of it changes the rules rather than answering them.
+   `Submission/Template.lean` — or, for a policy submission,
+   `Submission/PolicyTemplate.lean`, and only one of the two. Everything
+   else — `Decide.lean`, `Audit.lean`, `Check.lean`, `Correct.lean`,
+   `Score.lean`, `Main.lean`, `PolicyDecide.lean`, `PolicyCheck.lean`,
+   `PolicyMain.lean`, `Framework/`, `Implementation/`, `lakefile.lean` — is
+   repo-owned. A PR touching any of it changes the rules rather than
+   answering them.
 
    Together with a lexical gate on what `Template.lean` may contain. The
    patterns are anchored at code positions, so the file's own prose
@@ -251,8 +335,12 @@ Such a repo should run, per pull request:
    ```bash
    ! grep -nE \
      '^[[:space:]]*(@\[|attribute[[:space:]]*\[)[^]]*(implemented_by|extern|csimp)|^[[:space:]]*((private|protected|noncomputable|scoped|local)[[:space:]]+)*(unsafe|run_cmd|run_meta|initialize|elab|macro|syntax|notation)\b|^import[[:space:]]+Lean\b|^[[:space:]]*set_option[[:space:]]+debug' \
-     Submission/Template.lean
+     Submission/Template.lean    # or Submission/PolicyTemplate.lean
    ```
+
+   The gate applies unchanged to a policy template, which is why
+   `scripts/check_template_lexical.sh` takes the file as an argument and this
+   repository's CI runs it on both.
 
    The reason is that two tiers read the table and they can be made to
    disagree. C1–C4 are reduced by the *kernel*, which sees a definition's
@@ -278,11 +366,16 @@ Such a repo should run, per pull request:
 
    ```bash
    lake build Submission && lake exe forshor_submission > ir.json
+   # or, for a policy submission:
+   lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
    ```
 
-   This is where the four side conditions are checked, where
-   `#assert_axioms` runs, and where the IR is pinned against the real
-   circuit. `ir.json` is what the resource estimator reads.
+   This is where the four side conditions are checked — per band, for a
+   policy, along with the thresholds' strict decrease — and where
+   `#assert_axioms` runs. For a table it is also where the IR is pinned
+   against the real circuit, and `ir.json` is what the resource estimator
+   reads; for a policy there is no IR tier, so `policy.json` carries
+   `"ir": null` and the submission is unscored.
 
 3. **`lean4checker` on the `.olean`s step 2 built.** `#assert_axioms` reads
    the axioms a declaration depends on; it does not see

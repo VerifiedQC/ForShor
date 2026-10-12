@@ -111,7 +111,8 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (x data work scratch : ExtReg)
     (c N ctrl flag : ℕ)
     (hxData :
@@ -129,8 +130,8 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
     (hstep4 :
       CmpLtNWWorkspace N (data.grow 1) work scratch flag)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (CmodMulInPlaceCore
           c N ctrl data work scratch flag hmod hstep4))
     (ψ : qs.State)
@@ -139,7 +140,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
         qs x data work scratch hxScratch ψ) :
     LoweredCleanResult
       qs
-      lowering
+      P
       (ShorConcreteCleanState
         qs x data work scratch hxScratch)
       (CmodMulInPlaceCore
@@ -191,51 +192,51 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
       N ctrl data work hmod
 
   change
-    GateWorkspaceOK lowering.ops U1
+    Policy.GateWorkspaceOK P U1
       ∧
-    GateWorkspaceOK lowering.ops U2
+    Policy.GateWorkspaceOK P U2
       ∧
-    GateWorkspaceOK lowering.ops U3
+    Policy.GateWorkspaceOK P U3
       ∧
-    GateWorkspaceOK lowering.ops U4
+    Policy.GateWorkspaceOK P U4
       ∧
-    GateWorkspaceOK lowering.ops U5
+    Policy.GateWorkspaceOK P U5
     at hworkspace
 
   have hworkspace45 :
-      GateWorkspaceOK lowering.ops (U4 ;; U5) := by
+      Policy.GateWorkspaceOK P (U4 ;; U5) := by
     exact hworkspace.2.2.2
 
   have hworkspace345 :
-      GateWorkspaceOK lowering.ops (U3 ;; U4 ;; U5) := by
+      Policy.GateWorkspaceOK P (U3 ;; U4 ;; U5) := by
     exact hworkspace.2.2
 
   have hworkspace2345 :
-      GateWorkspaceOK lowering.ops (U2 ;; U3 ;; U4 ;; U5) := by
+      Policy.GateWorkspaceOK P (U2 ;; U3 ;; U4 ;; U5) := by
     exact hworkspace.2
 
   have hworkspace12345 :
-      GateWorkspaceOK lowering.ops (U1 ;; U2 ;; U3 ;; U4 ;; U5) := by
+      Policy.GateWorkspaceOK P (U1 ;; U2 ;; U3 ;; U4 ;; U5) := by
     exact hworkspace
 
   let ψ1 :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U1 hworkspace.1)
       ψ
 
   have h1 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch hxScratch)
         U1 hworkspace.1 ψ :=
     by
       simpa [carrier, shorConcreteCarrier] using
         (lowered_step1_ready_and_full_clean
-          qs lowering carrier data work
+          qs P hP carrier data work
           c N ctrl
           hcarrierWork
           hmod
@@ -244,21 +245,21 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
   let ψ2 :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U2 hworkspace.2.1)
       ψ1
 
   have h2 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch hxScratch)
         U2 hworkspace.2.1 ψ1 :=
     by
       simpa [carrier, shorConcreteCarrier] using
         (lowered_step2_ready_and_carry_clean
-          qs lowering carrier data work
+          qs P hP carrier data work
           N
           hcarrierData
           hmod
@@ -270,19 +271,19 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
   let ψ3 :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U3 hworkspace.2.2.1)
       ψ2
 
   have h3 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch hxScratch)
         U3 hworkspace.2.2.1 ψ2 :=
     lowered_step3_ready_and_clean
-      lowering x data work scratch N flag
+      P hP x data work scratch N flag
       hxData hxScratch hmod hflagX hstep4
       hworkspace.2.2.1
       ψ2
@@ -291,19 +292,20 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
   let ψ4 :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U4 hworkspace.2.2.2.1)
       ψ3
 
   have h4 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch hxScratch)
         U4 hworkspace.2.2.2.1 ψ3 :=
     lowered_step4_ready_and_clean
-      lowering
+      P
+      hP
       x data work scratch
       N flag
       hxData hxWork hxScratch hmod hflagX hstep4
@@ -313,14 +315,14 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
 
   have h5 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch hxScratch)
         U5 hworkspace.2.2.2.2 ψ4 :=
     by
       simpa [carrier, shorConcreteCarrier] using
         (lowered_step5_ready_and_full_clean
-          qs lowering carrier data work
+          qs P hP carrier data work
           (step5Constant c N)
           N ctrl
           hcarrierData
@@ -333,7 +335,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
 
   have h45 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch hxScratch)
         (U4 ;; U5)
@@ -347,7 +349,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
 
   have h345 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch hxScratch)
         (U3 ;; U4 ;; U5)
@@ -361,7 +363,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
 
   have h2345 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch hxScratch)
         (U2 ;; U3 ;; U4 ;; U5)
@@ -375,7 +377,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
 
   have h12345 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ShorConcreteCleanState
           qs x data work scratch hxScratch)
         (U1 ;; U2 ;; U3 ;; U4 ;; U5)

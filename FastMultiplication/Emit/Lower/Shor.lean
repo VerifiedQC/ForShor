@@ -42,10 +42,11 @@ def runEmit (k a N m : ℕ) : IO UInt32 := do
   if hk : 1 < k then
     if hrange : 0 < a ∧ a < N then
       if hcop : Nat.gcd a N = 1 then
-        let lowering := Shor.standardLoweringSetup k hk
+        let pol := Shor.standardPolicy k hk
+        let hP := Shor.standardPolicy_admissible k hk
         let inst : Shor.ShorOrderFindingInstance := ⟨a, N, hrange, hcop⟩
-        let prog := Shor.Reference.referenceProgramAt lowering m inst
-        let layout := Shor.Reference.allocateReferenceLayout lowering.ops inst m
+        let prog := Shor.Reference.referenceProgramAt pol hP m inst
+        let layout := Shor.Reference.allocateReferenceLayout pol inst m
         let metaJson : Lean.Json :=
           Lean.Json.mkObj [
             ("k", (k : Lean.Json)),

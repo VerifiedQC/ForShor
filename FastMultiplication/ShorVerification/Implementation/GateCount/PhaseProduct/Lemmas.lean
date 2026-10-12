@@ -2310,6 +2310,7 @@ lemma lowerSignedPhaseProd_one_level_cost_le
     simpa [
       signedPhaseProductGateCount,
       lowerSignedPhaseProdWithWorkspace,
+    Policy.lowerSignedPhaseProd,
       lowerSignedPhaseProd
     ] using
       hchildren
@@ -3124,17 +3125,17 @@ lemma balanced_phaseProduct_recurrence_solution
 /-- The public unsigned macro's workspace proof contains exactly the signed
 recursive workspace proof needed by its central signed phase-product node. -/
 lemma phaseProdUsing_signedWorkspace
-    (ops : Prog k)
+    (Pol : ShorLoweringPolicy)
     (φ : Angle)
     (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (hworkspace :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK Pol
         (Gate.PhaseProdUsing φ x z ws)) :
-    SignedRecursiveWorkspaceOK ops
+    Policy.WorkspaceOK Pol
       (ws.xExt.grow 1)
       (ws.zExt.grow 1) := by
-  simpa [GateWorkspaceOK, Gate.PhaseProdUsing] using hworkspace
+  simpa [Policy.GateWorkspaceOK, Gate.PhaseProdUsing] using hworkspace
 
 /-- Rewrites the public unsigned `PhaseProdUsing` lowering as the signed
 recurrence on the two one-bit-grown workspace registers. -/
@@ -3150,11 +3151,11 @@ lemma lowerGate_PhaseProdUsing_gateCount_eq_signed
     (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (hworkspace :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (Gate.PhaseProdUsing φ x z ws)) :
     LowGate.gateCount shorGateCostModel
-      (lowerGate
-        k hk ops pts hpts
+      (Policy.lowerGate
+        (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (Gate.PhaseProdUsing φ x z ws)
         hworkspace)
       =
@@ -3163,19 +3164,21 @@ lemma lowerGate_PhaseProdUsing_gateCount_eq_signed
       k hk ops pts hpts φ
       (ws.xExt.grow 1)
       (ws.zExt.grow 1)
-      (phaseProdUsing_signedWorkspace
-        ops φ x z ws hworkspace) := by
+      (Policy.workspaceOK_const_iff.mp
+        (phaseProdUsing_signedWorkspace _ φ x z ws hworkspace)) := by
   simp [
-    lowerGate,
+    Policy.lowerGate,
     Gate.PhaseProdUsing,
     signedPhaseProductGateCount,
     lowerSignedPhaseProdWithWorkspace,
+    Policy.lowerSignedPhaseProd,
     LowGate.gateCount,
     shorGateCostModel,
     LowGateResourceModel.toCostModel,
     shorGateResourceModel,
     GateResources.totalGates
   ]
+  rfl
 
 /-- The unsigned bridge adds exactly one active high bit to the x operand. -/
 @[simp]
@@ -4019,8 +4022,8 @@ lemma phaseProductGateCountBound_of_balanced_signed_bound
         SignedRecursiveWorkspaceOK ops
           (ws.xExt.grow 1)
           (ws.zExt.grow 1) :=
-      phaseProdUsing_signedWorkspace
-        ops φ x z ws hworkspace
+      Policy.workspaceOK_const_iff.mp
+        (phaseProdUsing_signedWorkspace _ φ x z ws hworkspace)
     let n := max (regSize x) (regSize z)
     have hnᵣ_le : nᵣ ≤ n := by
       exact le_trans (Nat.le_max_left nᵣ nₙ) hnLarge
@@ -4648,7 +4651,9 @@ lemma cSignedPhaseProductGateCount_le_five_signed
         cSignedPhaseProductGateCount,
         signedPhaseProductGateCount,
         lowerCSignedPhaseProdWithWorkspace,
+    Policy.lowerCSignedPhaseProd,
         lowerSignedPhaseProdWithWorkspace,
+    Policy.lowerSignedPhaseProd,
         lowerCSignedPhaseProd,
         lowerSignedPhaseProd
       ] using
@@ -4855,12 +4860,13 @@ lemma cPhaseProdUsing_controlledWorkspace
     (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (hworkspace :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (Gate.CPhaseProdUsing ctrl φ x z ws)) :
     CSignedRecursiveWorkspaceOK ops ctrl
       (ws.xExt.grow 1)
-      (ws.zExt.grow 1) := by
-  simpa [GateWorkspaceOK, Gate.CPhaseProdUsing] using hworkspace
+      (ws.zExt.grow 1) :=
+  Policy.cWorkspaceOK_const_iff.mp
+    (by simpa [Policy.GateWorkspaceOK, Gate.CPhaseProdUsing] using hworkspace)
 
 /-- Identifies public controlled PhaseProduct lowering cost with controlled signed recursive cost. -/
 lemma lowerGate_CPhaseProdUsing_gateCount_eq_cSigned
@@ -4876,12 +4882,12 @@ lemma lowerGate_CPhaseProdUsing_gateCount_eq_cSigned
     (x z : Reg)
     (ws : Gate.PhaseProdWorkspace x z)
     (hworkspace :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (Gate.CPhaseProdUsing
           ctrl φ x z ws)) :
     LowGate.gateCount shorGateCostModel
-        (lowerGate
-          k hk ops pts hpts
+        (Policy.lowerGate
+          (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
           (Gate.CPhaseProdUsing
             ctrl φ x z ws)
           hworkspace)
@@ -4892,18 +4898,20 @@ lemma lowerGate_CPhaseProdUsing_gateCount_eq_cSigned
       (ws.xExt.grow 1)
       (ws.zExt.grow 1)
       (cPhaseProdUsing_controlledWorkspace
-        ops ctrl φ x z ws hworkspace) := by
+        _ ctrl φ x z ws hworkspace) := by
   simp [
-    lowerGate,
+    Policy.lowerGate,
     Gate.CPhaseProdUsing,
     cSignedPhaseProductGateCount,
     lowerCSignedPhaseProdWithWorkspace,
+    Policy.lowerCSignedPhaseProd,
     LowGate.gateCount,
     shorGateCostModel,
     LowGateResourceModel.toCostModel,
     shorGateResourceModel,
     GateResources.totalGates
   ]
+  rfl
 
 end CPhaseProductReduction
 

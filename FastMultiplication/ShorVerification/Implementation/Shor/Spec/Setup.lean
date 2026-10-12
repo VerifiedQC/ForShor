@@ -13,7 +13,7 @@ correctness statements, and the bridge from the lower-level implementation
 setup to the public one. These are all about the quantum side: register
 layout, workspace capacity, precision and clean-input assumptions.
 
-The table side — `Shor.ShorLoweringSetup`, which the records below take as a
+The table side — `Shor.ShorLoweringPolicy`, which the records below take as a
 parameter — is defined in `Framework/ToomCookTable.lean`.
 -/
 namespace Shor
@@ -281,7 +281,7 @@ structure LoweredShorReady
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
     (η : ℝ)
     (a N : ℕ)
     (x y work scratch : ExtReg)
@@ -295,7 +295,7 @@ structure LoweredShorReady
 
   /-- Static reserve capacity is sufficient for all recursive lowerers. -/
   workspace_large_enough :
-    ShorWorkspaceLargeEnough lowering.ops x y work scratch
+    Policy.ShorWorkspaceLargeEnough P x y work scratch
 
   /-- Shared temporary resources do not overlap unsafe regions. -/
   workspace_isolated :

@@ -125,90 +125,89 @@ The only hypotheses are the implementation's admissible precision conditions
 def referenceApproxSetupMinimal
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    {k : ℕ}
-    (ops : Prog k)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) :
     ShorApproxSetupMinimal
       qs
       (referencePrecision m)
       inst.N
-      (referenceX ops inst m)
-      (referenceData ops inst m)
-      (referenceWork ops inst m)
-      (referenceScratch ops inst m)
-      (referenceFlag ops inst m)
+      (referenceX P inst m)
+      (referenceData P inst m)
+      (referenceWork P inst m)
+      (referenceScratch P inst m)
+      (referenceFlag P inst m)
       (RegEncoding.zero (Basis := qs.Basis)) := by
   refine
     {
       data_can_grow_two :=
-        reference_data_canGrow_two ops inst m
+        reference_data_canGrow_two P inst m
 
       work_can_grow_one :=
-        reference_work_canGrow_one ops inst m
+        reference_work_canGrow_one P inst m
 
       step4_workspace :=
-        reference_step4Workspace ops inst m
+        reference_step4Workspace P inst m
 
       exponent_data_disjoint :=
-        reference_exponent_data_disjoint ops inst m
+        reference_exponent_data_disjoint P inst m
 
       exponent_scratch_disjoint :=
-        reference_exponent_scratch_disjoint ops inst m
+        reference_exponent_scratch_disjoint P inst m
 
       data_work_disjoint :=
-        reference_data_work_disjoint ops inst m
+        reference_data_work_disjoint P inst m
 
       flag_outside_data :=
-        reference_flag_outside_data ops inst m
+        reference_flag_outside_data P inst m
 
       flag_outside_work :=
-        reference_flag_outside_work ops inst m
+        reference_flag_outside_work P inst m
 
       controls_outside_work :=
-        reference_controls_outside_work ops inst m
+        reference_controls_outside_work P inst m
 
       flag_outside_controls :=
-        reference_flag_outside_controls ops inst m
+        reference_flag_outside_controls P inst m
 
       algorithm1_precision :=
         reference_algorithm1Precision
-          ops inst m
+          P inst m
 
       exponent_zero :=
         toNat_ground_zero
-          (referenceX ops inst m).active
+          (referenceX P inst m).active
 
       data_zero :=
         toNat_ground_zero
-          (referenceData ops inst m).active
+          (referenceData P inst m).active
 
       data_fresh :=
         freshFor_ground_zero
-          (referenceData ops inst m)
+          (referenceData P inst m)
           2
 
       work_zero :=
         toNat_ground_zero
-          (referenceWork ops inst m).active
+          (referenceWork P inst m).active
 
       work_fresh :=
         freshFor_ground_zero
-          (referenceWork ops inst m)
+          (referenceWork P inst m)
           1
 
       scratch_zero :=
         toNat_ground_zero
-          (referenceScratch ops inst m).active
+          (referenceScratch P inst m).active
 
       scratch_fresh :=
         freshFor_ground_zero
-          (referenceScratch ops inst m)
+          (referenceScratch P inst m)
           1
 
       flag_zero :=
         toNat_ground_zero
-          (qubitReg (referenceFlag ops inst m))
+          (qubitReg (referenceFlag P inst m))
     }
 
 /--
@@ -218,27 +217,26 @@ def referenceApproxSetupMinimal
 def allocatedReferenceApproxSetupMinimal
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    {k : ℕ}
-    (ops : Prog k)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) :
     ShorApproxSetupMinimal
       qs
       (referencePrecision m)
       inst.N
-      (allocateReferenceLayout ops inst m).x
-      (allocateReferenceLayout ops inst m).data
-      (allocateReferenceLayout ops inst m).work
-      (allocateReferenceLayout ops inst m).scratch
-      (allocateReferenceLayout ops inst m).flag
+      (allocateReferenceLayout P inst m).x
+      (allocateReferenceLayout P inst m).data
+      (allocateReferenceLayout P inst m).work
+      (allocateReferenceLayout P inst m).scratch
+      (allocateReferenceLayout P inst m).flag
       (RegEncoding.zero (Basis := qs.Basis)) := by
   simpa [allocateReferenceLayout] using
     referenceApproxSetupMinimal
       (qs := qs)
-      ops inst m
+      P inst m
 
 /-! =========================================================
-    Section 3: Global zero implies clean lowering workspace
+    Section 3: Global zero implies clean P workspace
 ========================================================= -/
 
 /--
@@ -248,22 +246,21 @@ canonical global zero basis state.
 theorem referenceWorkspaceCleanInput
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    {k : ℕ}
-    (ops : Prog k)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) :
     ShorWorkspaceCleanInput
-      (referenceX ops inst m)
-      (referenceData ops inst m)
-      (referenceWork ops inst m)
-      (referenceScratch ops inst m)
+      (referenceX P inst m)
+      (referenceData P inst m)
+      (referenceWork P inst m)
+      (referenceScratch P inst m)
       (RegEncoding.zero (Basis := qs.Basis)) := by
   unfold ShorWorkspaceCleanInput
   exact
-    ⟨freshZero_ground_zero (referenceX ops inst m).reserve,
-      freshZero_ground_zero (referenceData ops inst m).reserve,
-      freshZero_ground_zero (referenceWork ops inst m).reserve,
-      freshZero_ground_zero (referenceScratch ops inst m).reserve⟩
+    ⟨freshZero_ground_zero (referenceX P inst m).reserve,
+      freshZero_ground_zero (referenceData P inst m).reserve,
+      freshZero_ground_zero (referenceWork P inst m).reserve,
+      freshZero_ground_zero (referenceScratch P inst m).reserve⟩
 
 /--
 The same clean-workspace fact stated through the packaged allocator result.
@@ -271,20 +268,19 @@ The same clean-workspace fact stated through the packaged allocator result.
 theorem allocatedReferenceWorkspaceCleanInput
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    {k : ℕ}
-    (ops : Prog k)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) :
     ShorWorkspaceCleanInput
-      (allocateReferenceLayout ops inst m).x
-      (allocateReferenceLayout ops inst m).data
-      (allocateReferenceLayout ops inst m).work
-      (allocateReferenceLayout ops inst m).scratch
+      (allocateReferenceLayout P inst m).x
+      (allocateReferenceLayout P inst m).data
+      (allocateReferenceLayout P inst m).work
+      (allocateReferenceLayout P inst m).scratch
       (RegEncoding.zero (Basis := qs.Basis)) := by
   simpa [allocateReferenceLayout] using
     referenceWorkspaceCleanInput
       (qs := qs)
-      ops inst m
+      P inst m
 
 /-! =========================================================
     Section 4: Static allocator wrappers
@@ -295,37 +291,35 @@ The packaged reference layout has enough reserve for the complete Shor
 lowering.
 -/
 theorem allocatedReferenceWorkspaceLargeEnough
-    {k : ℕ}
-    (ops : Prog k)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) :
-    ShorWorkspaceLargeEnough
-      ops
-      (allocateReferenceLayout ops inst m).x
-      (allocateReferenceLayout ops inst m).data
-      (allocateReferenceLayout ops inst m).work
-      (allocateReferenceLayout ops inst m).scratch := by
+    Policy.ShorWorkspaceLargeEnough
+      P
+      (allocateReferenceLayout P inst m).x
+      (allocateReferenceLayout P inst m).data
+      (allocateReferenceLayout P inst m).work
+      (allocateReferenceLayout P inst m).scratch := by
   simpa [allocateReferenceLayout] using
     reference_shorWorkspaceLargeEnough
-      ops inst m
+      P inst m
 
 /--
 The packaged reference layout satisfies the implementation-specific isolation
 condition required by lowered Shor.
 -/
 theorem allocatedReferenceWorkspaceIsolation
-    {k : ℕ}
-    (ops : Prog k)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) :
     ShorWorkspaceIsolation
-      (allocateReferenceLayout ops inst m).x
-      (allocateReferenceLayout ops inst m).work
-      (allocateReferenceLayout ops inst m).scratch
-      (allocateReferenceLayout ops inst m).flag := by
+      (allocateReferenceLayout P inst m).x
+      (allocateReferenceLayout P inst m).work
+      (allocateReferenceLayout P inst m).scratch
+      (allocateReferenceLayout P inst m).flag := by
   simpa [allocateReferenceLayout] using
     reference_shorWorkspaceIsolation
-      ops inst m
+      P inst m
 
 /-! =========================================================
     Section 5: Main readiness theorem
@@ -353,20 +347,20 @@ def referenceLayout_ready
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) :
     LoweredShorReady
       qs
-      lowering
+      P
       (referencePrecision m)
       inst.a
       inst.N
-      (allocateReferenceLayout lowering.ops inst m).x
-      (allocateReferenceLayout lowering.ops inst m).data
-      (allocateReferenceLayout lowering.ops inst m).work
-      (allocateReferenceLayout lowering.ops inst m).scratch
-      (allocateReferenceLayout lowering.ops inst m).flag
+      (allocateReferenceLayout P inst m).x
+      (allocateReferenceLayout P inst m).data
+      (allocateReferenceLayout P inst m).work
+      (allocateReferenceLayout P inst m).scratch
+      (allocateReferenceLayout P inst m).flag
       (RegEncoding.zero (Basis := qs.Basis)) := by
   refine
     {
@@ -379,26 +373,26 @@ def referenceLayout_ready
   · exact
       allocatedReferenceApproxSetupMinimal
         (qs := qs)
-        lowering.ops
+        P
         inst
         m
 
   · exact
       allocatedReferenceWorkspaceLargeEnough
-        lowering.ops
+        P
         inst
         m
 
   · exact
       allocatedReferenceWorkspaceIsolation
-        lowering.ops
+        P
         inst
         m
 
   · exact
       allocatedReferenceWorkspaceCleanInput
         (qs := qs)
-        lowering.ops
+        P
         inst
         m
 

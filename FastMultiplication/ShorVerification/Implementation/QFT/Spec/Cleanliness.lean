@@ -49,4 +49,13 @@ structure QFTWorkspaceStateOK
   static : QFTReserveOK ops r
   clean : QFTWorkspaceCleanState qs (qftXWork ops r) (qftZWork ops r) ψ
 
+/-- The policy spelling of the public QFT workspace precondition. -/
+structure Policy.QFTWorkspaceStateOK
+    (qs : QSemantics) [RegEncoding qs.Basis] (P : ShorLoweringPolicy) (r : ExtReg)
+    (ψ : qs.State) : Prop where
+  /-- The reserve is large enough for the whole policy-driven QFT recursion. -/
+  static : Policy.QFTReserveOK P r
+  /-- Both workspace pools are clean. -/
+  clean : QFTWorkspaceCleanState qs (Policy.qftXWork P r) (Policy.qftZWork P r) ψ
+
 end Shor

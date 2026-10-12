@@ -90,11 +90,11 @@ def PhaseProductGateCountBound
     (pts : List Point) (hpts : pts.length = q k) : Prop :=
   ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
     ∀ (φ : Angle) (x z : Reg) (ws : Gate.PhaseProdWorkspace x z)
-      (hworkspace : GateWorkspaceOK ops (Gate.PhaseProdUsing φ x z ws)),
+      (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (Gate.PhaseProdUsing φ x z ws)),
       let n := max (regSize x) (regSize z)
       n₀ ≤ n →
       (LowGate.gateCount shorGateCostModel
-          (lowerGate k hk ops pts hpts (Gate.PhaseProdUsing φ x z ws) hworkspace) : ℝ)
+          (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (Gate.PhaseProdUsing φ x z ws) hworkspace) : ℝ)
         ≤ C * Real.rpow n (phaseProductExponent k)
 
 /-- Static correctness assumptions on the PhaseProduct program: the
@@ -262,11 +262,11 @@ def CPhaseProductGateCountBound
     (pts : List Point) (hpts : pts.length = q k) : Prop :=
   ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
     ∀ (ctrl : ℕ) (φ : Angle) (x z : Reg) (ws : Gate.PhaseProdWorkspace x z)
-      (hworkspace : GateWorkspaceOK ops (Gate.CPhaseProdUsing ctrl φ x z ws)),
+      (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (Gate.CPhaseProdUsing ctrl φ x z ws)),
       let n := max (regSize x) (regSize z)
       n₀ ≤ n →
       (LowGate.gateCount shorGateCostModel
-          (lowerGate k hk ops pts hpts (Gate.CPhaseProdUsing ctrl φ x z ws) hworkspace) : ℝ)
+          (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (Gate.CPhaseProdUsing ctrl φ x z ws) hworkspace) : ℝ)
         ≤ C * phaseProductSafeRate k n
 
 end ControlledAndShorBounds
@@ -287,9 +287,9 @@ def QFTGateCountBound
     {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k)
     (pts : List Point) (hpts : pts.length = q k) : Prop :=
   ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
-    ∀ (r : ExtReg) (hworkspace : QFTReserveOK ops r),
+    ∀ (r : ExtReg) (hworkspace : Policy.QFTReserveOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r),
       n₀ ≤ r.width →
-      (LowGate.gateCount shorGateCostModel (lowerQFT k hk ops pts hpts r hworkspace) : ℝ)
+      (LowGate.gateCount shorGateCostModel (Policy.lowerQFT (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r hworkspace) : ℝ)
         ≤ C * phaseProductSafeRate k r.width
 
 /-- Width of the left half in a QFT split. -/
@@ -305,8 +305,8 @@ def qftRightReg (r : Reg) : Reg := rightReg r
 noncomputable def loweredQFTGateCount
     {Basis : Type u} [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) (r : ExtReg)
-    (hworkspace : QFTReserveOK ops r) : ℕ :=
-  LowGate.gateCount shorGateCostModel (lowerQFT k hk ops pts hpts r hworkspace)
+    (hworkspace : Policy.QFTReserveOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r) : ℕ :=
+  LowGate.gateCount shorGateCostModel (Policy.lowerQFT (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r hworkspace)
 
 /-- Gate count of the PhaseProduct joining the two halves of one exact-QFT
 recursion node. -/
@@ -314,9 +314,9 @@ noncomputable def qftSplitPhaseGateCount
     {Basis : Type u} [RegEncoding Basis]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) (r : Reg)
     (ws : Gate.PhaseProdWorkspace (qftLeftReg r) (qftRightReg r))
-    (hworkspace : GateWorkspaceOK ops (Gate.PhaseProdUsing (qftPhi (regSize r)) (qftLeftReg r) (qftRightReg r) ws)) : ℕ :=
+    (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (Gate.PhaseProdUsing (qftPhi (regSize r)) (qftLeftReg r) (qftRightReg r) ws)) : ℕ :=
   LowGate.gateCount shorGateCostModel
-    (lowerGate k hk ops pts hpts
+    (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
       (Gate.PhaseProdUsing (qftPhi (regSize r)) (qftLeftReg r) (qftRightReg r) ws) hworkspace)
 
 /-- Gate count of the final radix reversal at one exact-QFT recursion node. -/

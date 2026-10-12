@@ -35,20 +35,16 @@ def LoweredCleanResult
     [GateSemanticsCore qs]
     [LowerGateClass qs]
     [GateSemanticsFacts qs]
-    (lowering : ShorLoweringSetup)
+    (Pol : ShorLoweringPolicy)
     (P : qs.State → Prop)
     (G : Gate)
     (hworkspace :
-      GateWorkspaceOK lowering.ops G)
+      Policy.GateWorkspaceOK Pol G)
     (ψ : qs.State) :
     Prop :=
-  GateWorkspaceCleanState
+  Policy.GateWorkspaceCleanState
       qs
-      lowering.k
-      lowering.hk
-      lowering.ops
-      lowering.pts
-      lowering.hpts
+      Pol
       G
       hworkspace
       ψ
@@ -56,12 +52,8 @@ def LoweredCleanResult
   P
     (LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+      (Policy.lowerGate
+        Pol
         G
         hworkspace)
       ψ)
@@ -71,34 +63,30 @@ theorem LoweredCleanResult.seq
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    {lowering : ShorLoweringSetup}
+    {Pol : ShorLoweringPolicy}
     {Pmid Pout : qs.State → Prop}
     {U V : Gate}
     (hworkspace :
-      GateWorkspaceOK lowering.ops (U ;; V))
+      Policy.GateWorkspaceOK Pol (U ;; V))
     (ψ : qs.State)
     (hU :
       LoweredCleanResult
-        qs lowering Pmid
+        qs Pol Pmid
         U hworkspace.1 ψ)
     (hV :
       LoweredCleanResult
-        qs lowering Pout
+        qs Pol Pout
         V
         hworkspace.2
         (LowerGateClass.evalL
           (qs := qs)
-          (lowerGate
-            lowering.k
-            lowering.hk
-            lowering.ops
-            lowering.pts
-            lowering.hpts
+          (Policy.lowerGate
+            Pol
             U
             hworkspace.1)
           ψ)) :
     LoweredCleanResult
-      qs lowering Pout
+      qs Pol Pout
       (U ;; V)
       hworkspace
       ψ := by
@@ -109,20 +97,12 @@ theorem LoweredCleanResult.seq
         (LowerGateClass.evalL
           (qs := qs)
           (LowGate.seq
-            (lowerGate
-              lowering.k
-              lowering.hk
-              lowering.ops
-              lowering.pts
-              lowering.hpts
+            (Policy.lowerGate
+              Pol
               U
               hworkspace.1)
-            (lowerGate
-              lowering.k
-              lowering.hk
-              lowering.ops
-              lowering.pts
-              lowering.hpts
+            (Policy.lowerGate
+              Pol
               V
               hworkspace.2))
           ψ)

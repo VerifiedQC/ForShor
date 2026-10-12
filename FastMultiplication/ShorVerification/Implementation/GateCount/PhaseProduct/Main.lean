@@ -95,16 +95,17 @@ theorem cPhaseProductGateCountBound_of_programOK
         (ws.xExt.grow 1)
         (ws.zExt.grow 1) :=
     cPhaseProdUsing_controlledWorkspace
-      ops ctrl φ x z ws hworkspace
+      _ ctrl φ x z ws hworkspace
   let hs :
       SignedRecursiveWorkspaceOK ops
         (ws.xExt.grow 1)
         (ws.zExt.grow 1) :=
     hc.toSignedRecursiveWorkspaceOK
   have hunsignedWorkspace :
-      GateWorkspaceOK ops
+      Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
         (Gate.PhaseProdUsing φ x z ws) := by
-    simpa [GateWorkspaceOK, Gate.PhaseProdUsing] using hs
+    simpa [Policy.GateWorkspaceOK, Gate.PhaseProdUsing] using
+      Policy.workspaceOK_const_iff.mpr hs
   have hdomNat :
       cSignedPhaseProductGateCount
           (Basis := Basis)
@@ -158,8 +159,8 @@ theorem cPhaseProductGateCountBound_of_programOK
           hs
         =
       LowGate.gateCount shorGateCostModel
-        (lowerGate
-          k hk ops pts hpts
+        (Policy.lowerGate
+          (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
           (Gate.PhaseProdUsing φ x z ws)
           hunsignedWorkspace) := by
     symm
@@ -170,8 +171,8 @@ theorem cPhaseProductGateCountBound_of_programOK
   rw [hsignedEq] at hdomReal
   have hb' :
       (LowGate.gateCount shorGateCostModel
-          (lowerGate
-            k hk ops pts hpts
+          (Policy.lowerGate
+            (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
             (Gate.PhaseProdUsing φ x z ws)
             hunsignedWorkspace) : ℝ)
         ≤
@@ -196,8 +197,8 @@ theorem cPhaseProductGateCountBound_of_programOK
   _ ≤
       5 *
         (LowGate.gateCount shorGateCostModel
-          (lowerGate
-            k hk ops pts hpts
+          (Policy.lowerGate
+            (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
             (Gate.PhaseProdUsing φ x z ws)
             hunsignedWorkspace) : ℝ) := by
     simpa only using hdomReal

@@ -166,9 +166,9 @@ def shorPlanRowJson (row : ShorPlanRow) : Json :=
 
 /-- E5: the Shor register plan (widths and reserves only — no affine tail
 since R4). -/
-def shorPlanJson {k : ℕ} (ops : Prog k) (nMin nMax mMax : ℕ) : Json :=
+def shorPlanJson (pol : Shor.ShorLoweringPolicy) (nMin nMax mMax : ℕ) : Json :=
   Json.mkObj [
-    ("rows", Json.arr ((shorPlanTable ops nMin nMax mMax).map shorPlanRowJson).toArray)
+    ("rows", Json.arr ((shorPlanTable pol nMin nMax mMax).map shorPlanRowJson).toArray)
   ]
 
 /-- The extracted-`Doc` provenance string: D7's trust statement, verbatim
@@ -229,7 +229,7 @@ def buildBundleCore (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ) (checkCramer : Bool
     ("width", widthJson inst.ops wMax),
     ("split_width", splitWidthJson inst.ops wMax),
     ("qft_plan", qftPlanJson inst.ops wMax),
-    ("shor_plan", shorPlanJson inst.ops nMin nMax mMax),
+    ("shor_plan", shorPlanJson (Shor.standardPolicy k hk) nMin nMax mMax),
     ("provenance", provenanceJson)
   ])
 
@@ -253,7 +253,7 @@ def buildSection (sectionName : String) (k : ℕ) (hk : 1 < k) (mMax wMax : ℕ)
     | "width" => .ok (widthJson inst.ops wMax)
     | "split_width" => .ok (splitWidthJson inst.ops wMax)
     | "qft_plan" => .ok (qftPlanJson inst.ops wMax)
-    | "shor_plan" => .ok (shorPlanJson inst.ops nMin nMax mMax)
+    | "shor_plan" => .ok (shorPlanJson (Shor.standardPolicy k hk) nMin nMax mMax)
     | other => .error s!"unknown section: {other} (expected one of {sectionNames})"
   match sectionJson? with
   | .error e => .error e

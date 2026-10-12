@@ -252,7 +252,7 @@ private theorem gateWorkspaceCleanState_PhaseProdUsing_of_threeRegsClean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    {lowering : ShorLoweringSetup}
+    {P : ShorLoweringPolicy}
     {r₁ r₂ r₃ : Reg}
     {x z : Reg}
     (φ : Angle)
@@ -262,21 +262,17 @@ private theorem gateWorkspaceCleanState_PhaseProdUsing_of_threeRegsClean
     (hzReserve :
       ws.zExt.reserve = r₃)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (Gate.PhaseProdUsing
           φ x z ws))
     (ψ : qs.State)
     (hclean :
       ThreeRegsCleanState
         qs r₁ r₂ r₃ ψ) :
-    GateWorkspaceCleanState
+    Policy.GateWorkspaceCleanState
       qs
-      lowering.k
-      lowering.hk
-      lowering.ops
-      lowering.pts
-      lowering.hpts
+      P
       (Gate.PhaseProdUsing
         φ x z ws)
       hworkspace
@@ -295,8 +291,8 @@ private theorem gateWorkspaceCleanState_PhaseProdUsing_of_threeRegsClean
 
   simpa [
     Gate.PhaseProdUsing,
-    GateWorkspaceCleanState,
-    lowerGate,
+    Policy.GateWorkspaceCleanState,
+    Policy.lowerGate,
     LowerGateClass.evalL_zeroExtend,
     ExtensionSemantics.eval_zeroExtend
   ] using hrecursive
@@ -433,7 +429,8 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (r₁ : Reg)
     (N : ℕ)
     (work scratch : ExtReg)
@@ -444,8 +441,8 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     (hworkScratch : Disjoint work.reserve scratch.active)
     (hscratchScratch : Disjoint scratch.reserve scratch.active)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (fastConstMulInto N work scratch ws))
     (ψ : qs.State)
     (hclean :
@@ -453,7 +450,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
         qs r₁ work.reserve scratch.reserve ψ) :
     LoweredCleanResult
       qs
-      lowering
+      P
       (ThreeRegsCleanState
         qs r₁ work.reserve scratch.reserve)
       (fastConstMulInto N work scratch ws)
@@ -468,9 +465,9 @@ private theorem lowered_fastConstMulInto_ready_and_clean
   let U3 : Gate := IQFT ws.zExt
 
   change
-    GateWorkspaceOK lowering.ops U1 ∧
-      GateWorkspaceOK lowering.ops U2 ∧
-      GateWorkspaceOK lowering.ops U3
+    Policy.GateWorkspaceOK P U1 ∧
+      Policy.GateWorkspaceOK P U2 ∧
+      Policy.GateWorkspaceOK P U3
     at hworkspace
 
   have hzActive : ws.zExt.active = scratch.active := by
@@ -483,18 +480,18 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     simpa only [hzActive] using hscratchScratch
 
   have hU1Clean :
-      GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      Policy.GateWorkspaceCleanState
+        qs P
         U1 hworkspace.1 ψ := by
     exact
-      threeRegsCleanState_to_QFTWorkspaceCleanState
-        lowering.ops ws.zExt hzReserve hclean
+      Policy.threeRegsCleanState_to_QFTWorkspaceCleanState
+        P ws.zExt hzReserve hclean
 
   let ψ1 : qs.State :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U1 hworkspace.1)
       ψ
 
@@ -503,10 +500,9 @@ private theorem lowered_fastConstMulInto_ready_and_clean
         qs r₁ work.reserve scratch.reserve ψ1 := by
     dsimp only [ψ1]
     rw [
-      lowerGate_correctness
-        qs lowering.k lowering.hk lowering.ops
-        lowering.good
-        lowering.consumes lowering.returns
+      Policy.lowerGate_correctness
+        qs P
+        hP
         U1 hworkspace.1 ψ hU1Clean
     ]
     exact
@@ -516,15 +512,15 @@ private theorem lowered_fastConstMulInto_ready_and_clean
 
   have hU1 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ThreeRegsCleanState
           qs r₁ work.reserve scratch.reserve)
         U1 hworkspace.1 ψ :=
     ⟨hU1Clean, hψ1⟩
 
   have hU2Clean :
-      GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      Policy.GateWorkspaceCleanState
+        qs P
         U2 hworkspace.2.1 ψ1 := by
     exact
       gateWorkspaceCleanState_PhaseProdUsing_of_threeRegsClean
@@ -533,8 +529,8 @@ private theorem lowered_fastConstMulInto_ready_and_clean
   let ψ2 : qs.State :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U2 hworkspace.2.1)
       ψ1
 
@@ -543,10 +539,9 @@ private theorem lowered_fastConstMulInto_ready_and_clean
         qs r₁ work.reserve scratch.reserve ψ2 := by
     dsimp only [ψ2]
     rw [
-      lowerGate_correctness
-        qs lowering.k lowering.hk lowering.ops
-        lowering.good
-        lowering.consumes lowering.returns
+      Policy.lowerGate_correctness
+        qs P
+        hP
         U2 hworkspace.2.1 ψ1 hU2Clean
     ]
     simpa only [U2] using
@@ -555,7 +550,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
 
   have hU2 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ThreeRegsCleanState
           qs r₁ work.reserve scratch.reserve)
         U2 hworkspace.2.1 ψ1 :=
@@ -573,38 +568,37 @@ private theorem lowered_fastConstMulInto_ready_and_clean
   have hQFTLocal :
       QFTWorkspaceCleanState
         qs
-        (qftXWork lowering.ops ws.zExt)
-        (qftZWork lowering.ops ws.zExt)
+        (Policy.qftXWork P ws.zExt)
+        (Policy.qftZWork P ws.zExt)
         (qs.eval U3 ψ2) :=
-    threeRegsCleanState_to_QFTWorkspaceCleanState
-      lowering.ops ws.zExt hzReserve hHighU3
+    Policy.threeRegsCleanState_to_QFTWorkspaceCleanState
+      P ws.zExt hzReserve hHighU3
 
   have hU3Clean :
-      GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      Policy.GateWorkspaceCleanState
+        qs P
         U3 hworkspace.2.2 ψ2 := by
-    simpa [U3, IQFT, GateWorkspaceCleanState] using hQFTLocal
+    simpa [U3, IQFT, Policy.GateWorkspaceCleanState] using hQFTLocal
 
   have hU3 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ThreeRegsCleanState
           qs r₁ work.reserve scratch.reserve)
         U3 hworkspace.2.2 ψ2 := by
     constructor
     · exact hU3Clean
     · rw [
-        lowerGate_correctness
-          qs lowering.k lowering.hk lowering.ops
-          lowering.good
-          lowering.consumes lowering.returns
+        Policy.lowerGate_correctness
+          qs P
+          hP
           U3 hworkspace.2.2 ψ2 hU3Clean
       ]
       exact hHighU3
 
   have hU23 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ThreeRegsCleanState
           qs r₁ work.reserve scratch.reserve)
         (U2 ;; U3) hworkspace.2 ψ1 :=
@@ -613,7 +607,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
 
   have hU123 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ThreeRegsCleanState
           qs r₁ work.reserve scratch.reserve)
         (U1 ;; U2 ;; U3) hworkspace ψ :=
@@ -638,7 +632,8 @@ theorem lowered_step4_ready_and_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (x data work scratch : ExtReg)
     (N flag : ℕ)
     (hxData : x.OwnedDisjoint data)
@@ -649,8 +644,8 @@ theorem lowered_step4_ready_and_clean
     (hstep4 :
       CmpLtNWWorkspace N (data.grow 1) work scratch flag)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (step4 N (data.grow 1) work scratch flag hstep4))
     (ψ : qs.State)
     (hclean :
@@ -658,7 +653,7 @@ theorem lowered_step4_ready_and_clean
         qs x data work scratch hxScratch ψ) :
     LoweredCleanResult
       qs
-      lowering
+      P
       (ShorConcreteCleanState
         qs x data work scratch hxScratch)
       (step4 N (data.grow 1) work scratch flag hstep4)
@@ -679,11 +674,11 @@ theorem lowered_step4_ready_and_clean
   let U5 := †U1
 
   change
-    GateWorkspaceOK lowering.ops U1 ∧
-      GateWorkspaceOK lowering.ops U2 ∧
-      GateWorkspaceOK lowering.ops U3 ∧
-      GateWorkspaceOK lowering.ops U4 ∧
-      GateWorkspaceOK lowering.ops U5
+    Policy.GateWorkspaceOK P U1 ∧
+      Policy.GateWorkspaceOK P U2 ∧
+      Policy.GateWorkspaceOK P U3 ∧
+      Policy.GateWorkspaceOK P U4 ∧
+      Policy.GateWorkspaceOK P U5
     at hworkspace
 
   have hlocal :
@@ -712,7 +707,7 @@ theorem lowered_step4_ready_and_clean
 
   have hU1 :
       LoweredCleanResult
-        qs lowering
+        qs P
         (ThreeRegsCleanState
           qs
           (data.reserve.drop 1)
@@ -721,7 +716,8 @@ theorem lowered_step4_ready_and_clean
         U1 hworkspace.1 ψ := by
     simpa only [U1] using
       lowered_fastConstMulInto_ready_and_clean
-        lowering
+        P
+        hP
         (data.reserve.drop 1)
         N work scratch hstep4.mulWorkspace
         hstep4.mul_xReserve_eq
@@ -736,57 +732,55 @@ theorem lowered_step4_ready_and_clean
   let ψ1 :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U1 hworkspace.1)
       ψ
 
   have hψ1 : ψ1 = qs.eval U1 ψ := by
     dsimp only [ψ1]
     rw [
-      lowerGate_correctness
-        qs lowering.k lowering.hk lowering.ops
-        lowering.good
-        lowering.consumes lowering.returns
+      Policy.lowerGate_correctness
+        qs P
+        hP
         U1 hworkspace.1 ψ hU1.1
     ]
 
   have hU2Clean :
-      GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      Policy.GateWorkspaceCleanState
+        qs P
         U2 hworkspace.2.1 ψ1 := by
-    simp [U2, cmpLtNWDifference, GateWorkspaceCleanState]
+    simp [U2, cmpLtNWDifference, Policy.GateWorkspaceCleanState]
 
   let ψ2 :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U2 hworkspace.2.1)
       ψ1
 
   have hψ2 : ψ2 = qs.eval U2 (qs.eval U1 ψ) := by
     dsimp only [ψ2]
     rw [
-      lowerGate_correctness
-        qs lowering.k lowering.hk lowering.ops
-        lowering.good
-        lowering.consumes lowering.returns
+      Policy.lowerGate_correctness
+        qs P
+        hP
         U2 hworkspace.2.1 ψ1 hU2Clean,
       hψ1
     ]
 
   have hU3Clean :
-      GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      Policy.GateWorkspaceCleanState
+        qs P
         U3 hworkspace.2.2.1 ψ2 := by
-    simp [U3, GateWorkspaceCleanState]
+    simp [U3, Policy.GateWorkspaceCleanState]
 
   let ψ3 :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U3 hworkspace.2.2.1)
       ψ2
 
@@ -794,25 +788,24 @@ theorem lowered_step4_ready_and_clean
       ψ3 = qs.eval U3 (qs.eval U2 (qs.eval U1 ψ)) := by
     dsimp only [ψ3]
     rw [
-      lowerGate_correctness
-        qs lowering.k lowering.hk lowering.ops
-        lowering.good
-        lowering.consumes lowering.returns
+      Policy.lowerGate_correctness
+        qs P
+        hP
         U3 hworkspace.2.2.1 ψ2 hU3Clean,
       hψ2
     ]
 
   have hU4Clean :
-      GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      Policy.GateWorkspaceCleanState
+        qs P
         U4 hworkspace.2.2.2.1 ψ3 := by
-    simp [U4, U2, cmpLtNWDifference, GateWorkspaceCleanState]
+    simp [U4, U2, cmpLtNWDifference, Policy.GateWorkspaceCleanState]
 
   let ψ4 :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      (Policy.lowerGate
+        P
         U4 hworkspace.2.2.2.1)
       ψ3
 
@@ -822,10 +815,9 @@ theorem lowered_step4_ready_and_clean
           (qs.eval U3 (qs.eval U2 (qs.eval U1 ψ))) := by
     dsimp only [ψ4]
     rw [
-      lowerGate_correctness
-        qs lowering.k lowering.hk lowering.ops
-        lowering.good
-        lowering.consumes lowering.returns
+      Policy.lowerGate_correctness
+        qs P
+        hP
         U4 hworkspace.2.2.2.1 ψ3 hU4Clean,
       hψ3
     ]
@@ -871,17 +863,18 @@ theorem lowered_step4_ready_and_clean
     ]
 
   have hU5Clean :
-      GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      Policy.GateWorkspaceCleanState
+        qs P
         U5 hworkspace.2.2.2.2 ψ4 := by
     change
-      GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      Policy.GateWorkspaceCleanState
+        qs P
         U1 hworkspace.2.2.2.2 (qs.eval U5 ψ4)
     rw [hU5Input]
     exact
       (lowered_fastConstMulInto_ready_and_clean
-        lowering
+        P
+        hP
         (data.reserve.drop 1)
         N work scratch hstep4.mulWorkspace
         hstep4.mul_xReserve_eq
@@ -896,35 +889,34 @@ theorem lowered_step4_ready_and_clean
         hLocalFull).1
 
   have hgateClean :
-      GateWorkspaceCleanState
-        qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      Policy.GateWorkspaceCleanState
+        qs P
         (step4 N (data.grow 1) work scratch flag hstep4)
         hworkspace ψ := by
     change
-      GateWorkspaceCleanState
-          qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+      Policy.GateWorkspaceCleanState
+          qs P
           U1 hworkspace.1 ψ ∧
-        GateWorkspaceCleanState
-          qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+        Policy.GateWorkspaceCleanState
+          qs P
           U2 hworkspace.2.1 ψ1 ∧
-        GateWorkspaceCleanState
-          qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+        Policy.GateWorkspaceCleanState
+          qs P
           U3 hworkspace.2.2.1 ψ2 ∧
-        GateWorkspaceCleanState
-          qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+        Policy.GateWorkspaceCleanState
+          qs P
           U4 hworkspace.2.2.2.1 ψ3 ∧
-        GateWorkspaceCleanState
-          qs lowering.k lowering.hk lowering.ops lowering.pts lowering.hpts
+        Policy.GateWorkspaceCleanState
+          qs P
           U5 hworkspace.2.2.2.2 ψ4
     exact ⟨hU1.1, hU2Clean, hU3Clean, hU4Clean, hU5Clean⟩
 
   constructor
   · exact hgateClean
   · rw [
-      lowerGate_correctness
-        qs lowering.k lowering.hk lowering.ops
-        lowering.good
-        lowering.consumes lowering.returns
+      Policy.lowerGate_correctness
+        qs P
+        hP
         (step4 N (data.grow 1) work scratch flag hstep4)
         hworkspace ψ hgateClean
     ]
@@ -935,7 +927,8 @@ theorem lowered_step1_ready_and_full_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (x data work : ExtReg)
     (c N ctrl : ℕ)
     (hxWork :
@@ -943,8 +936,8 @@ theorem lowered_step1_ready_and_full_clean
     (hmod :
       ModMulCircuitWorkspaceOK data work)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (step1
           c N ctrl data work hmod))
     (ψ : qs.State)
@@ -953,7 +946,7 @@ theorem lowered_step1_ready_and_full_clean
         qs x data work ψ) :
     LoweredCleanResult
       qs
-      lowering
+      P
       (ShorLoweringCleanState
         qs x data work)
       (step1
@@ -981,17 +974,17 @@ theorem lowered_step1_ready_and_full_clean
     IQFT hmod.step1Workspace.zExt
 
   change
-    GateWorkspaceOK lowering.ops U1
+    Policy.GateWorkspaceOK P U1
       ∧
-    GateWorkspaceOK lowering.ops U2
+    Policy.GateWorkspaceOK P U2
       ∧
-    GateWorkspaceOK lowering.ops U3
+    Policy.GateWorkspaceOK P U3
     at hworkspace
 
   change
     LoweredCleanResult
       qs
-      lowering
+      P
       (ShorLoweringCleanState
         qs x data work)
       (U1 ;; U2 ;; U3)
@@ -1017,13 +1010,9 @@ theorem lowered_step1_ready_and_full_clean
   /- Hadamard stage. -/
 
   have hU1Clean :
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+        P
         U1
         hworkspace.1
         ψ := by
@@ -1035,12 +1024,8 @@ theorem lowered_step1_ready_and_full_clean
   let ψ1 : qs.State :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+      (Policy.lowerGate
+        P
         U1
         hworkspace.1)
       ψ
@@ -1051,14 +1036,10 @@ theorem lowered_step1_ready_and_full_clean
     dsimp only [ψ1]
 
     rw [
-      lowerGate_correctness
+      Policy.lowerGate_correctness
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.good
-        lowering.consumes
-        lowering.returns
+        P
+        hP
         U1
         hworkspace.1
         ψ
@@ -1079,7 +1060,7 @@ theorem lowered_step1_ready_and_full_clean
   have hU1 :
       LoweredCleanResult
         qs
-        lowering
+        P
         (ShorLoweringCleanState
           qs x data work)
         U1
@@ -1100,13 +1081,9 @@ theorem lowered_step1_ready_and_full_clean
     rfl
 
   have hU2Clean :
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+        P
         U2
         hworkspace.2.1
         ψ1 := by
@@ -1124,12 +1101,8 @@ theorem lowered_step1_ready_and_full_clean
   let ψ2 : qs.State :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+      (Policy.lowerGate
+        P
         U2
         hworkspace.2.1)
       ψ1
@@ -1140,14 +1113,10 @@ theorem lowered_step1_ready_and_full_clean
     dsimp only [ψ2]
 
     rw [
-      lowerGate_correctness
+      Policy.lowerGate_correctness
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.good
-        lowering.consumes
-        lowering.returns
+        P
+        hP
         U2
         hworkspace.2.1
         ψ1
@@ -1166,7 +1135,7 @@ theorem lowered_step1_ready_and_full_clean
   have hU2 :
       LoweredCleanResult
         qs
-        lowering
+        P
         (ShorLoweringCleanState
           qs x data work)
         U2
@@ -1220,41 +1189,37 @@ theorem lowered_step1_ready_and_full_clean
   have hQFTLocal :
       QFTWorkspaceCleanState
         qs
-        (qftXWork
-          lowering.ops
+        (Policy.qftXWork
+          P
           hmod.step1Workspace.zExt)
-        (qftZWork
-          lowering.ops
+        (Policy.qftZWork
+          P
           hmod.step1Workspace.zExt)
         (qs.eval U3 ψ2) := by
     exact
-      threeRegsCleanState_to_QFTWorkspaceCleanState
-        lowering.ops
+      Policy.threeRegsCleanState_to_QFTWorkspaceCleanState
+        P
         hmod.step1Workspace.zExt
         hzReserve
         hHighU3
 
   have hU3Clean :
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+        P
         U3
         hworkspace.2.2
         ψ2 := by
     simpa [
       U3,
       IQFT,
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
     ] using hQFTLocal
 
   have hU3 :
       LoweredCleanResult
         qs
-        lowering
+        P
         (ShorLoweringCleanState
           qs x data work)
         U3
@@ -1264,14 +1229,10 @@ theorem lowered_step1_ready_and_full_clean
     · exact hU3Clean
 
     · rw [
-        lowerGate_correctness
+        Policy.lowerGate_correctness
           qs
-          lowering.k
-          lowering.hk
-          lowering.ops
-          lowering.good
-          lowering.consumes
-          lowering.returns
+          P
+          hP
           U3
           hworkspace.2.2
           ψ2
@@ -1285,7 +1246,7 @@ theorem lowered_step1_ready_and_full_clean
   have hU23 :
       LoweredCleanResult
         qs
-        lowering
+        P
         (ShorLoweringCleanState
           qs x data work)
         (U2 ;; U3)
@@ -1314,7 +1275,8 @@ theorem lowered_step2_ready_and_carry_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (x data work : ExtReg)
     (N : ℕ)
     (hxData :
@@ -1322,8 +1284,8 @@ theorem lowered_step2_ready_and_carry_clean
     (hmod :
       ModMulCircuitWorkspaceOK data work)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (step2
           N data work hmod))
     (ψ : qs.State)
@@ -1332,7 +1294,7 @@ theorem lowered_step2_ready_and_carry_clean
         qs x data work ψ) :
     LoweredCleanResult
       qs
-      lowering
+      P
       (ShorLoweringCleanState
         qs x data work)
       (step2
@@ -1364,11 +1326,11 @@ theorem lowered_step2_ready_and_carry_clean
   let U3 : Gate := IQFT ws.zExt
 
   change
-    GateWorkspaceOK lowering.ops U1
+    Policy.GateWorkspaceOK P U1
       ∧
-    GateWorkspaceOK lowering.ops U2
+    Policy.GateWorkspaceOK P U2
       ∧
-    GateWorkspaceOK lowering.ops U3
+    Policy.GateWorkspaceOK P U3
     at hworkspace
 
   /- Layout facts about the carry-extended data register. -/
@@ -1419,19 +1381,15 @@ theorem lowered_step2_ready_and_carry_clean
   /- Forward-QFT stage. -/
 
   have hU1Clean :
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+        P
         U1
         hworkspace.1
         ψ := by
     exact
-      threeRegsCleanState_to_QFTWorkspaceCleanState
-        lowering.ops
+      Policy.threeRegsCleanState_to_QFTWorkspaceCleanState
+        P
         ws.zExt
         hzReserve
         hclean0
@@ -1439,12 +1397,8 @@ theorem lowered_step2_ready_and_carry_clean
   let ψ1 : qs.State :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+      (Policy.lowerGate
+        P
         U1
         hworkspace.1)
       ψ
@@ -1459,14 +1413,10 @@ theorem lowered_step2_ready_and_carry_clean
     dsimp only [ψ1]
 
     rw [
-      lowerGate_correctness
+      Policy.lowerGate_correctness
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.good
-        lowering.consumes
-        lowering.returns
+        P
+        hP
         U1
         hworkspace.1
         ψ
@@ -1487,7 +1437,7 @@ theorem lowered_step2_ready_and_carry_clean
   have hU1 :
       LoweredCleanResult
         qs
-        lowering
+        P
         (ThreeRegsCleanState
           qs
           x.reserve
@@ -1501,13 +1451,9 @@ theorem lowered_step2_ready_and_carry_clean
   /- Unsigned phase-product stage. -/
 
   have hU2Clean :
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+        P
         U2
         hworkspace.2.1
         ψ1 := by
@@ -1524,12 +1470,8 @@ theorem lowered_step2_ready_and_carry_clean
   let ψ2 : qs.State :=
     LowerGateClass.evalL
       (qs := qs)
-      (lowerGate
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+      (Policy.lowerGate
+        P
         U2
         hworkspace.2.1)
       ψ1
@@ -1544,14 +1486,10 @@ theorem lowered_step2_ready_and_carry_clean
     dsimp only [ψ2]
 
     rw [
-      lowerGate_correctness
+      Policy.lowerGate_correctness
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.good
-        lowering.consumes
-        lowering.returns
+        P
+        hP
         U2
         hworkspace.2.1
         ψ1
@@ -1569,7 +1507,7 @@ theorem lowered_step2_ready_and_carry_clean
   have hU2 :
       LoweredCleanResult
         qs
-        lowering
+        P
         (ThreeRegsCleanState
           qs
           x.reserve
@@ -1603,36 +1541,32 @@ theorem lowered_step2_ready_and_carry_clean
   have hQFTLocal :
       QFTWorkspaceCleanState
         qs
-        (qftXWork lowering.ops ws.zExt)
-        (qftZWork lowering.ops ws.zExt)
+        (Policy.qftXWork P ws.zExt)
+        (Policy.qftZWork P ws.zExt)
         (qs.eval U3 ψ2) :=
-    threeRegsCleanState_to_QFTWorkspaceCleanState
-      lowering.ops
+    Policy.threeRegsCleanState_to_QFTWorkspaceCleanState
+      P
       ws.zExt
       hzReserve
       hHighU3
 
   have hU3Clean :
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+        P
         U3
         hworkspace.2.2
         ψ2 := by
     simpa [
       U3,
       IQFT,
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
     ] using hQFTLocal
 
   have hU3 :
       LoweredCleanResult
         qs
-        lowering
+        P
         (ShorLoweringCleanState
           qs x data work)
         U3
@@ -1642,14 +1576,10 @@ theorem lowered_step2_ready_and_carry_clean
     · exact hU3Clean
 
     · rw [
-        lowerGate_correctness
+        Policy.lowerGate_correctness
           qs
-          lowering.k
-          lowering.hk
-          lowering.ops
-          lowering.good
-          lowering.consumes
-          lowering.returns
+          P
+          hP
           U3
           hworkspace.2.2
           ψ2
@@ -1664,7 +1594,7 @@ theorem lowered_step2_ready_and_carry_clean
   have hU23 :
       LoweredCleanResult
         qs
-        lowering
+        P
         (ShorLoweringCleanState
           qs x data work)
         (U2 ;; U3)

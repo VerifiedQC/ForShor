@@ -175,18 +175,14 @@ lemma eval_PhaseProdUsing_preserves_QFTWorkspaceCleanState
     Readiness for the unsigned phase-product bridge
 ========================================================= -/
 
-theorem standardPhaseProdUsingPlan_ready_and_clean
+theorem Policy.phaseProdUsingPlan_ready_and_clean
     (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (phi : Angle) {x z xWork zWork : Reg}
+    (P : ShorLoweringPolicy) (hP : P.Admissible) (phi : Angle) {x z xWork zWork : Reg}
     (ws : Gate.PhaseProdWorkspace x z)
     (hxReserve : ws.xReserve = xWork) (hzReserve : ws.zReserve = zWork) (ψ : qs.State)
-    {pts : List Point} {hpts : pts.length = q k}
-    (hstatic : SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1))
-    (hclean : QFTWorkspaceCleanState qs xWork zWork ψ)
-    (hInterp : GoodToomCookPoints k pts hpts)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
-    (hRun : run? ops State.start_state = some State.start_state) :
-    let plan := standardPhaseProdUsingPlan k hk ops pts hpts phi ws hstatic
+    (hstatic : Policy.WorkspaceOK P (ws.xExt.grow 1) (ws.zExt.grow 1))
+    (hclean : QFTWorkspaceCleanState qs xWork zWork ψ) :
+    let plan := Policy.phaseProdUsingPlan P phi ws hstatic
     PhaseLoweringReady qs plan ψ
       ∧
     QFTWorkspaceCleanState qs xWork zWork
@@ -194,7 +190,7 @@ theorem standardPhaseProdUsingPlan_ready_and_clean
   dsimp only
 
   let signedPlan :=
-    standardSignedPhaseLoweringPlan k hk phi (ws.xExt.grow 1) (ws.zExt.grow 1) ops pts hpts hstatic
+    Policy.signedPlan P phi (ws.xExt.grow 1) (ws.zExt.grow 1) hstatic
 
   have hsignedClean : RecursiveWorkspaceCleanState qs (ws.xExt.grow 1) (ws.zExt.grow 1) ψ :=
     QFTWorkspaceCleanState.signedCleanState qs ws hxReserve hzReserve hclean
@@ -204,13 +200,13 @@ theorem standardPhaseProdUsingPlan_ready_and_clean
         ∧
       RecursiveWorkspaceCleanState qs (ws.xExt.grow 1) (ws.zExt.grow 1)
         (LowerGateClass.evalL (qs := qs) (lowerGateRec signedPlan) ψ) := by
-    exact standardSignedPhaseLoweringPlan_ready_and_clean qs k hk phi
-      (ws.xExt.grow 1) (ws.zExt.grow 1) ops ψ (pts := pts) (hpts := hpts)
-      hstatic hsignedClean hInterp hC hRun
+    exact Policy.signedPlan_ready_and_clean qs P hP phi
+      (ws.xExt.grow 1) (ws.zExt.grow 1) ψ hstatic hsignedClean
 
   have hready :
-      PhaseLoweringReady qs (standardPhaseProdUsingPlan k hk ops pts hpts phi ws hstatic) ψ := by
-    simpa [standardPhaseProdUsingPlan, signedPlan, PhaseLoweringReady, lowerGateRec,
+      PhaseLoweringReady qs (Policy.phaseProdUsingPlan P phi ws hstatic) ψ := by
+    simpa [Policy.phaseProdUsingPlan, signedPlan,
+      PhaseLoweringReady, lowerGateRec,
       LowerGateClass.evalL_zeroExtend, ExtensionSemantics.eval_zeroExtend] using hsigned.1
 
   constructor
@@ -218,13 +214,11 @@ theorem standardPhaseProdUsingPlan_ready_and_clean
   ·
     have heval :
         LowerGateClass.evalL (qs := qs)
-            (lowerGateRec (standardPhaseProdUsingPlan k hk ops pts hpts phi ws hstatic)) ψ
+            (lowerGateRec (Policy.phaseProdUsingPlan P phi ws hstatic)) ψ
           =
         qs.eval (Gate.PhaseProdUsing phi x z ws) ψ := by
-      exact evalL_lowerGateRec_correct (qs := qs)
-        (ShorLoweringPolicy.constPolicy_admissible (T := ⟨k, hk, pts, hpts, ops⟩)
-          ⟨hInterp, hC, hRun⟩)
-        (standardPhaseProdUsingPlan k hk ops pts hpts phi ws hstatic) ψ hready
+      exact evalL_lowerGateRec_correct (qs := qs) hP
+        (Policy.phaseProdUsingPlan P phi ws hstatic) ψ hready
 
     rw [heval]
     exact eval_PhaseProdUsing_preserves_QFTWorkspaceCleanState
@@ -287,16 +281,12 @@ lemma eval_QFT_preserves_QFTWorkspaceCleanState
     Readiness derived from explicit work registers
 ========================================================= -/
 
-theorem standardQFTLoweringPlan_ready_and_clean_explicit
+theorem Policy.qftPlan_ready_and_clean_explicit
     (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (data xWork zWork : Reg) (ψ : qs.State)
-    {pts : List Point} {hpts : pts.length = q k}
-    (hstatic : QFTWorkspaceOK ops data xWork zWork)
-    (hclean : QFTWorkspaceCleanState qs xWork zWork ψ)
-    (hInterp : GoodToomCookPoints k pts hpts)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
-    (hRun : run? ops State.start_state = some State.start_state) :
-    let plan := standardQFTLoweringPlan k hk ops pts hpts data xWork zWork hstatic
+    (P : ShorLoweringPolicy) (hP : P.Admissible) (data xWork zWork : Reg) (ψ : qs.State)
+    (hstatic : Policy.QFTWorkspaceOK P data xWork zWork)
+    (hclean : QFTWorkspaceCleanState qs xWork zWork ψ) :
+    let plan := Policy.qftPlan P data xWork zWork hstatic
     QFTLoweringReady qs plan ψ
       ∧
     QFTWorkspaceCleanState qs xWork zWork
@@ -306,15 +296,15 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
   by_cases hzero : regSize data = 0
   ·
     have hready :
-        QFTLoweringReady qs (standardQFTLoweringPlan k hk ops pts hpts data xWork zWork hstatic) ψ := by
-      simp [standardQFTLoweringPlan, hzero, QFTLoweringReady]
+        QFTLoweringReady qs (Policy.qftPlan P data xWork zWork hstatic) ψ := by
+      simp [Policy.qftPlan, hzero, QFTLoweringReady]
 
     constructor
     · exact hready
     ·
       have heval :=
-        evalL_lowerQFTPlan (qs := qs) (hk := hk) (ops := ops) (hInterp := hInterp) (hC := hC) (hRun := hRun)
-          (plan := standardQFTLoweringPlan k hk ops pts hpts data xWork zWork hstatic) (ψ := ψ) hready
+        evalL_lowerQFTPlan (qs := qs) hP
+          (plan := Policy.qftPlan P data xWork zWork hstatic) (ψ := ψ) hready
       rw [heval]
       exact eval_QFT_preserves_QFTWorkspaceCleanState qs data xWork zWork
         hstatic.data_x_disjoint hstatic.data_z_disjoint hclean
@@ -322,15 +312,15 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
   · by_cases hone : regSize data = 1
     ·
       have hready :
-          QFTLoweringReady qs (standardQFTLoweringPlan k hk ops pts hpts data xWork zWork hstatic) ψ := by
-        simp [standardQFTLoweringPlan, hone, QFTLoweringReady]
+          QFTLoweringReady qs (Policy.qftPlan P data xWork zWork hstatic) ψ := by
+        simp [Policy.qftPlan, hone, QFTLoweringReady]
 
       constructor
       · exact hready
       ·
         have heval :=
-          evalL_lowerQFTPlan (qs := qs) (hk := hk) (ops := ops) (hInterp := hInterp) (hC := hC) (hRun := hRun)
-            (plan := standardQFTLoweringPlan k hk ops pts hpts data xWork zWork hstatic) (ψ := ψ) hready
+          evalL_lowerQFTPlan (qs := qs) hP
+            (plan := Policy.qftPlan P data xWork zWork hstatic) (ψ := ψ) hready
         rw [heval]
         exact eval_QFT_preserves_QFTWorkspaceCleanState qs data xWork zWork
           hstatic.data_x_disjoint hstatic.data_z_disjoint hclean
@@ -341,57 +331,57 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
       let ws : Gate.PhaseProdWorkspace (leftReg data) (rightReg data) :=
         hstatic.phaseWorkspace hlarge
 
-      have hphaseStatic : SignedRecursiveWorkspaceOK ops (ws.xExt.grow 1) (ws.zExt.grow 1) := by
-        simpa [ws] using hstatic.signedWorkspaceOK hlarge
+      have hphaseStatic : Policy.WorkspaceOK P (ws.xExt.grow 1) (ws.zExt.grow 1) := by
+        simpa [ws] using hstatic.policySignedWorkspaceOK hlarge
 
       have hright :=
-        standardQFTLoweringPlan_ready_and_clean_explicit qs k hk ops (rightReg data) xWork zWork ψ
-          (pts := pts) (hpts := hpts) (hstatic.right hlarge) hclean hInterp hC hRun
+        Policy.qftPlan_ready_and_clean_explicit qs P hP (rightReg data) xWork zWork ψ
+          (hstatic.right hlarge) hclean
 
       have hphase :=
-        standardPhaseProdUsingPlan_ready_and_clean qs k hk ops (qftPhi (regSize data)) ws rfl rfl
+        Policy.phaseProdUsingPlan_ready_and_clean qs P hP (qftPhi (regSize data)) ws rfl rfl
           (LowerGateClass.evalL (qs := qs)
-            (lowerQFTPlan (standardQFTLoweringPlan k hk ops pts hpts (rightReg data) xWork zWork
+            (lowerQFTPlan (Policy.qftPlan P (rightReg data) xWork zWork
               (hstatic.right hlarge))) ψ)
-          (pts := pts) (hpts := hpts) hphaseStatic hright.2 hInterp hC hRun
+          hphaseStatic hright.2
 
       have hleft :=
-        standardQFTLoweringPlan_ready_and_clean_explicit qs k hk ops (leftReg data) xWork zWork
+        Policy.qftPlan_ready_and_clean_explicit qs P hP (leftReg data) xWork zWork
           (LowerGateClass.evalL (qs := qs)
-            (lowerGateRec (standardPhaseProdUsingPlan k hk ops pts hpts (qftPhi (regSize data)) ws
+            (lowerGateRec (Policy.phaseProdUsingPlan P (qftPhi (regSize data)) ws
               hphaseStatic))
             (LowerGateClass.evalL (qs := qs)
-              (lowerQFTPlan (standardQFTLoweringPlan k hk ops pts hpts (rightReg data) xWork zWork
+              (lowerQFTPlan (Policy.qftPlan P (rightReg data) xWork zWork
                 (hstatic.right hlarge))) ψ))
-          (pts := pts) (hpts := hpts) (hstatic.left hlarge) hphase.2 hInterp hC hRun
+          (hstatic.left hlarge) hphase.2
 
       have hphaseClean : Gate.PhaseProdWorkspace.CleanState qs ws ψ := by
         exact QFTWorkspaceCleanState.phaseCleanState qs ws rfl rfl hclean
 
       have hready :
-          QFTLoweringReady qs (standardQFTLoweringPlan k hk ops pts hpts data xWork zWork hstatic) ψ := by
-        unfold standardQFTLoweringPlan
+          QFTLoweringReady qs (Policy.qftPlan P data xWork zWork hstatic) ψ := by
+        unfold Policy.qftPlan
         simp only [hzero, hone, ↓reduceDIte]
         change
           Gate.PhaseProdWorkspace.CleanState qs ws ψ
             ∧
           QFTLoweringReady qs
-            (standardQFTLoweringPlan k hk ops pts hpts (rightReg data) xWork zWork (hstatic.right hlarge))
+            (Policy.qftPlan P (rightReg data) xWork zWork (hstatic.right hlarge))
             ψ
             ∧
           PhaseLoweringReady qs
-            (standardPhaseProdUsingPlan k hk ops pts hpts (qftPhi (regSize data)) ws hphaseStatic)
+            (Policy.phaseProdUsingPlan P (qftPhi (regSize data)) ws hphaseStatic)
             (LowerGateClass.evalL (qs := qs)
-              (lowerQFTPlan (standardQFTLoweringPlan k hk ops pts hpts (rightReg data) xWork zWork
+              (lowerQFTPlan (Policy.qftPlan P (rightReg data) xWork zWork
                 (hstatic.right hlarge))) ψ)
             ∧
           QFTLoweringReady qs
-            (standardQFTLoweringPlan k hk ops pts hpts (leftReg data) xWork zWork (hstatic.left hlarge))
+            (Policy.qftPlan P (leftReg data) xWork zWork (hstatic.left hlarge))
             (LowerGateClass.evalL (qs := qs)
-              (lowerGateRec (standardPhaseProdUsingPlan k hk ops pts hpts (qftPhi (regSize data)) ws
+              (lowerGateRec (Policy.phaseProdUsingPlan P (qftPhi (regSize data)) ws
                 hphaseStatic))
               (LowerGateClass.evalL (qs := qs)
-                (lowerQFTPlan (standardQFTLoweringPlan k hk ops pts hpts (rightReg data) xWork zWork
+                (lowerQFTPlan (Policy.qftPlan P (rightReg data) xWork zWork
                   (hstatic.right hlarge))) ψ))
         exact And.intro hphaseClean (And.intro hright.1 (And.intro hphase.1 hleft.1))
 
@@ -399,8 +389,8 @@ theorem standardQFTLoweringPlan_ready_and_clean_explicit
       · exact hready
       ·
         have heval :=
-          evalL_lowerQFTPlan (qs := qs) (hk := hk) (ops := ops) (hInterp := hInterp) (hC := hC) (hRun := hRun)
-            (plan := standardQFTLoweringPlan k hk ops pts hpts data xWork zWork hstatic) (ψ := ψ) hready
+          evalL_lowerQFTPlan (qs := qs) hP
+            (plan := Policy.qftPlan P data xWork zWork hstatic) (ψ := ψ) hready
         rw [heval]
         exact eval_QFT_preserves_QFTWorkspaceCleanState qs data xWork zWork
           hstatic.data_x_disjoint hstatic.data_z_disjoint hclean
@@ -418,64 +408,88 @@ decreasing_by
       Nat.div_lt_self (by omega) (by decide)
     simpa [leftReg, halfSplitPoint, splitM] using hleft
 
-theorem standardQFTLoweringPlan_ready_and_clean
+theorem Policy.qftPlan_ready_and_clean
     (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : ExtReg) (ψ : qs.State)
-    {pts : List Point} {hpts : pts.length = q k}
-    (hworkspace : QFTWorkspaceStateOK qs ops r ψ)
-    (hInterp : GoodToomCookPoints k pts hpts)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
-    (hRun : run? ops State.start_state = some State.start_state) :
-    let plan := reserveQFTLoweringPlan k hk ops pts hpts r hworkspace.static
+    (P : ShorLoweringPolicy) (hP : P.Admissible) (r : ExtReg) (ψ : qs.State)
+    (hworkspace : Policy.QFTWorkspaceStateOK qs P r ψ) :
+    let plan := Policy.reserveQftPlan P r hworkspace.static
     QFTLoweringReady qs plan ψ
       ∧
-    QFTWorkspaceCleanState qs (qftXWork ops r) (qftZWork ops r)
+    QFTWorkspaceCleanState qs (Policy.qftXWork P r) (Policy.qftZWork P r)
       (LowerGateClass.evalL (qs := qs) (lowerQFTPlan plan) ψ) := by
-  exact standardQFTLoweringPlan_ready_and_clean_explicit qs k hk ops r.active
-    (qftXWork ops r) (qftZWork ops r) ψ (pts := pts) (hpts := hpts)
-    hworkspace.static.explicitWorkspace hworkspace.clean hInterp hC hRun
+  exact Policy.qftPlan_ready_and_clean_explicit qs P hP r.active
+    (Policy.qftXWork P r) (Policy.qftZWork P r) ψ
+    hworkspace.static.explicitWorkspace hworkspace.clean
 
 /-! =========================================================
     Reserve plan and the public `evalL_lowerQFT`
 ========================================================= -/
 
-lemma reserveQFTLoweringPlan_ready_ket
+lemma Policy.reserveQftPlan_ready_ket
     (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : ExtReg) (b : qs.Basis)
-    {pts : List Point} {hpts : pts.length = q k}
-    (hstatic : QFTReserveOK ops r)
-    (hx : FreshZero (qftXWork ops r) b) (hz : FreshZero (qftZWork ops r) b)
-    (hInterp : GoodToomCookPoints k pts hpts)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
-    (hRun : run? ops State.start_state = some State.start_state) :
-    QFTLoweringReady qs (reserveQFTLoweringPlan k hk ops pts hpts r hstatic) (qs.ket b) := by
-  let hworkspace : QFTWorkspaceStateOK qs ops r (qs.ket b) :=
+    (P : ShorLoweringPolicy) (hP : P.Admissible) (r : ExtReg) (b : qs.Basis)
+    (hstatic : Policy.QFTReserveOK P r)
+    (hx : FreshZero (Policy.qftXWork P r) b) (hz : FreshZero (Policy.qftZWork P r) b) :
+    QFTLoweringReady qs (Policy.reserveQftPlan P r hstatic) (qs.ket b) := by
+  let hworkspace : Policy.QFTWorkspaceStateOK qs P r (qs.ket b) :=
     { static := hstatic
       clean := QFTWorkspaceCleanState.ket b hx hz }
 
-  exact (standardQFTLoweringPlan_ready_and_clean qs k hk ops r (qs.ket b)
-    (pts := pts) (hpts := hpts) hworkspace hInterp hC hRun).1
+  exact (Policy.qftPlan_ready_and_clean qs P hP r (qs.ket b) hworkspace).1
 
-lemma reserveQFTLoweringPlan_preserves_clean_of_ready
+lemma Policy.reserveQftPlan_preserves_clean_of_ready
     (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : ExtReg) (ψ : qs.State)
-    {pts : List Point} {hpts : pts.length = q k}
-    (hstatic : QFTReserveOK ops r)
-    (hclean : QFTWorkspaceCleanState qs (qftXWork ops r) (qftZWork ops r) ψ)
-    (_hready : QFTLoweringReady qs (reserveQFTLoweringPlan k hk ops pts hpts r hstatic) ψ)
-    (hInterp : GoodToomCookPoints k pts hpts)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
-    (hRun : run? ops State.start_state = some State.start_state) :
-    QFTWorkspaceCleanState qs (qftXWork ops r) (qftZWork ops r)
+    (P : ShorLoweringPolicy) (hP : P.Admissible) (r : ExtReg) (ψ : qs.State)
+    (hstatic : Policy.QFTReserveOK P r)
+    (hclean : QFTWorkspaceCleanState qs (Policy.qftXWork P r) (Policy.qftZWork P r) ψ)
+    (_hready : QFTLoweringReady qs (Policy.reserveQftPlan P r hstatic) ψ) :
+    QFTWorkspaceCleanState qs (Policy.qftXWork P r) (Policy.qftZWork P r)
       (LowerGateClass.evalL (qs := qs)
-        (lowerQFTPlan (reserveQFTLoweringPlan k hk ops pts hpts r hstatic)) ψ) := by
-  let hworkspace : QFTWorkspaceStateOK qs ops r ψ :=
+        (lowerQFTPlan (Policy.reserveQftPlan P r hstatic)) ψ) := by
+  let hworkspace : Policy.QFTWorkspaceStateOK qs P r ψ :=
     { static := hstatic
       clean := hclean }
 
-  exact (standardQFTLoweringPlan_ready_and_clean qs k hk ops r ψ
-    (pts := pts) (hpts := hpts) hworkspace hInterp hC hRun).2
+  exact (Policy.qftPlan_ready_and_clean qs P hP r ψ hworkspace).2
 
+theorem Policy.evalL_lowerQFT
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
+    (r : ExtReg)
+    (ψ : qs.State)
+    (hworkspace : Policy.QFTWorkspaceStateOK qs P r ψ) :
+    LowerGateClass.evalL (qs := qs) (Policy.lowerQFT P r hworkspace.static) ψ
+      =
+    qs.eval (Gate.QFT r) ψ := by
+  unfold Policy.lowerQFT
+
+  have hready : QFTLoweringReady qs (Policy.reserveQftPlan P r hworkspace.static) ψ :=
+    (Policy.qftPlan_ready_and_clean qs P hP r ψ hworkspace).1
+
+  have hcore :
+      LowerGateClass.evalL (qs := qs)
+          (lowerQFTPlan (Policy.reserveQftPlan P r hworkspace.static)) ψ
+        =
+      qs.eval (Gate.QFT (ExtReg.ofReg r.active)) ψ := by
+    exact evalL_lowerQFTPlan (qs := qs) hP
+      (plan := Policy.reserveQftPlan P r hworkspace.static) (ψ := ψ) hready
+
+  calc
+    LowerGateClass.evalL (qs := qs)
+        (lowerQFTPlan (Policy.reserveQftPlan P r hworkspace.static)) ψ
+        =
+      qs.eval (Gate.QFT (ExtReg.ofReg r.active)) ψ := hcore
+
+    _ =
+      qs.eval (Gate.QFT r) ψ := by
+        exact eval_QFT_eq_of_active_eq (qs := qs) (ExtReg.ofReg r.active) r rfl ψ
+
+/-- The fixed-table spelling, unchanged in statement: the policy theorem at
+the constant policy. -/
 theorem evalL_lowerQFT
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -489,34 +503,34 @@ theorem evalL_lowerQFT
     {pts : List Point} {hpts : pts.length = q k}
     (hworkspace : QFTWorkspaceStateOK qs ops r ψ)
     (hInterp : GoodToomCookPoints k pts hpts)
-    (hC : ProgConsumesPtsSafe (k := k) (by omega)
-        State.start_state ops pts)
+    (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state) :
     LowerGateClass.evalL (qs := qs) (lowerQFT k hk ops pts hpts r hworkspace.static) ψ
       =
     qs.eval (Gate.QFT r) ψ := by
+  -- Proved through the policy machinery at `constPolicy`, but keeping the
+  -- `ops`-keyed workspace pools, so no transport along the pool bridges is
+  -- needed (they sit in a dependent position inside the plan's type).
+  have hP : (ShorLoweringPolicy.constPolicy
+      (⟨k, hk, pts, hpts, ops⟩ : ToomCookTable)).Admissible :=
+    ShorLoweringPolicy.constPolicy_admissible (T := ⟨k, hk, pts, hpts, ops⟩)
+      ⟨hInterp, hC, hRun⟩
   unfold lowerQFT
-
-  have hready : QFTLoweringReady qs (reserveQFTLoweringPlan k hk ops pts hpts r hworkspace.static) ψ :=
-    (standardQFTLoweringPlan_ready_and_clean qs k hk ops r ψ
-      (pts := pts) (hpts := hpts) hworkspace hInterp hC hRun).1
-
+  have hready :
+      QFTLoweringReady qs (reserveQFTLoweringPlan k hk ops pts hpts r hworkspace.static) ψ := by
+    unfold reserveQFTLoweringPlan
+    exact (Policy.qftPlan_ready_and_clean_explicit qs _ hP r.active
+      (qftXWork ops r) (qftZWork ops r) ψ
+      (Policy.qftWorkspaceOK_const_iff.mpr hworkspace.static.explicitWorkspace)
+      hworkspace.clean).1
   have hcore :
       LowerGateClass.evalL (qs := qs)
           (lowerQFTPlan (reserveQFTLoweringPlan k hk ops pts hpts r hworkspace.static)) ψ
         =
-      qs.eval (Gate.QFT (ExtReg.ofReg r.active)) ψ := by
-    exact evalL_lowerQFTPlan (qs := qs) (hk := hk) (ops := ops) (hInterp := hInterp) (hC := hC) (hRun := hRun)
+      qs.eval (Gate.QFT (ExtReg.ofReg r.active)) ψ :=
+    evalL_lowerQFTPlan (qs := qs) hP
       (plan := reserveQFTLoweringPlan k hk ops pts hpts r hworkspace.static) (ψ := ψ) hready
-
-  calc
-    LowerGateClass.evalL (qs := qs)
-        (lowerQFTPlan (reserveQFTLoweringPlan k hk ops pts hpts r hworkspace.static)) ψ
-        =
-      qs.eval (Gate.QFT (ExtReg.ofReg r.active)) ψ := hcore
-
-    _ =
-      qs.eval (Gate.QFT r) ψ := by
-        exact eval_QFT_eq_of_active_eq (qs := qs) (ExtReg.ofReg r.active) r rfl ψ
+  rw [hcore]
+  exact eval_QFT_eq_of_active_eq (qs := qs) (ExtReg.ofReg r.active) r rfl ψ
 
 end Shor

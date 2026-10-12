@@ -219,15 +219,16 @@ theorem lowered_H_reg_ready_and_full_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (x data work : ExtReg)
     (hxData :
       ExtReg.OwnedDisjoint x data)
     (hxWork :
       ExtReg.OwnedDisjoint x work)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (H_reg x.active))
     (ψ : qs.State)
     (hclean :
@@ -235,20 +236,16 @@ theorem lowered_H_reg_ready_and_full_clean
         qs x data work ψ) :
     LoweredCleanResult
       qs
-      lowering
+      P
       (ShorLoweringCleanState
         qs x data work)
       (H_reg x.active)
       hworkspace
       ψ := by
   have hgateClean :
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+        P
         (H_reg x.active)
         hworkspace
         ψ :=
@@ -276,14 +273,10 @@ theorem lowered_H_reg_ready_and_full_clean
   · exact hgateClean
 
   · rw [
-      lowerGate_correctness
+      Policy.lowerGate_correctness
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.good
-        lowering.consumes
-        lowering.returns
+        P
+        hP
         (H_reg x.active)
         hworkspace
         ψ
@@ -389,15 +382,16 @@ theorem lowered_initY1_ready_and_full_clean
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    (lowering : ShorLoweringSetup)
+    (P : ShorLoweringPolicy)
+    (hP : P.Admissible)
     (x data work : ExtReg)
     (hxData :
       ExtReg.OwnedDisjoint x data)
     (hmod :
       ModMulCircuitWorkspaceOK data work)
     (hworkspace :
-      GateWorkspaceOK
-        lowering.ops
+      Policy.GateWorkspaceOK
+        P
         (initY1 data.active))
     (ψ : qs.State)
     (hclean :
@@ -405,20 +399,16 @@ theorem lowered_initY1_ready_and_full_clean
         qs x data work ψ) :
     LoweredCleanResult
       qs
-      lowering
+      P
       (ShorLoweringCleanState
         qs x data work)
       (initY1 data.active)
       hworkspace
       ψ := by
   have hgateClean :
-      GateWorkspaceCleanState
+      Policy.GateWorkspaceCleanState
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.pts
-        lowering.hpts
+        P
         (initY1 data.active)
         hworkspace
         ψ :=
@@ -430,14 +420,10 @@ theorem lowered_initY1_ready_and_full_clean
   · exact hgateClean
 
   · rw [
-      lowerGate_correctness
+      Policy.lowerGate_correctness
         qs
-        lowering.k
-        lowering.hk
-        lowering.ops
-        lowering.good
-        lowering.consumes
-        lowering.returns
+        P
+        hP
         (initY1 data.active)
         hworkspace
         ψ
