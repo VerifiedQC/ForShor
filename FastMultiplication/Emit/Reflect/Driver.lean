@@ -1,5 +1,6 @@
 import Lean
 import FastMultiplication.Emit.Reflect.Targets
+import FastMultiplication.Emit.Reflect.PolicyTargets
 import FastMultiplication.ShorVerification.Implementation.Reference.StandardLoweringSetup
 
 /-!
@@ -119,6 +120,76 @@ def buildDoc (setup : Shor.ShorLoweringSetup) (includePPBody : Bool := false) : 
         ("qftXWork", 1), ("qftZWork", 1), ("log2", 1), ("mod", 2), ("pow", 2),
         ("step5Const", 2), ("modpow", 3)]
       entry := pp2.name }
+
+/-- The `Doc` for a **policy**: one dispatcher per phase-product flavour, one
+body template per band, and the shared `qft`/`shor_gate`/`shor`/leaf
+templates.
+
+`entry` is `phase_product`, which is now the *dispatcher* rather than a
+body — and that is what makes the rest of the document need no edit, since
+`qft`, `shor` and every band body reach the phase product by that name
+(`Extract.lean`'s `Policy.signedPlan` cases).
+
+`polE` must be the policy of `s`, as an `Expr` naming a declared constant:
+`ShorLoweringPolicy` carries a `sorted` proof field, so there is no `ToExpr`
+to quote it with, and the band bodies need a `P` whose `choose` the
+elaborator can see through. `elabExtractPolicyIrDocImpl` builds it from the
+same identifier it reads `s` from, so the two cannot disagree.
+
+`opaqueFns` is **unchanged** from `buildDoc`'s. A policy needs no new opaque
+names and no new arities: `Policy.reserveNeed P` is already a function of
+`(wx, wz)` alone — the band enters only through `P.choose (max wx wz)` inside
+it — and `nextWidth` is evaluated by a band body only at widths where the
+dispatcher sent it there, which is where the policy-keyed and band-keyed
+answers agree. -/
+def buildPolicyDoc (s : Shor.ShorPolicySubmission) (polE : Expr) : MetaM IR.Doc := do
+  -- Band `i`'s interpolation points occupy `[offset i, offset i + q kᵢ)` of
+  -- the bands' concatenated point lists; see `Registry.coeffOffset`.
+  let offsets : List ℕ :=
+    (s.bands.foldl (fun (acc, off) b => (acc ++ [off], off + Shor.q b.2.k)) ([], 0)).1
+  let indexed := s.bands.zipIdx.zip offsets
+  let bodies ← indexed.mapM fun ((b, i), off) => extractPolicyPhaseProductBody polE b.2 i off
+  let cbodies ← indexed.mapM fun ((b, i), off) => extractPolicyCPhaseProductBody polE b.2 i off
+  let qft ← extractPolicyQFTBody polE
+  let shorGate ← extractShorGateBody
+  let shor ← extractPolicyShorBody polE
+  pure
+    { templates :=
+        IR.dispatcherTemplate s.policy false :: IR.dispatcherTemplate s.policy true ::
+          bodies ++ cbodies ++
+          [qft, shorGate, shor, naiveLeafTemplate, naiveCLeafTemplate]
+      opaqueFns := [("nextWidth", 2), ("reserveNeed_x", 2), ("reserveNeed_z", 2),
+        ("qftXWork", 1), ("qftZWork", 1), ("log2", 1), ("mod", 2), ("pow", 2),
+        ("step5Const", 2), ("modpow", 3)]
+      entry := "phase_product" }
+
+-- `extract_policy_ir_doc <id> <policyIdent>`: `extract_ir_doc`'s sibling for
+-- a `Shor.ShorPolicySubmission`. Same mechanism throughout — resolve the
+-- identifier, `evalExpr` it to read the bands, splice the resulting `Doc` in
+-- as a `def` — with two differences: the evaluated type, and that the
+-- identifier is *also* kept as an `Expr` (`polE`), because the band bodies
+-- are extracted against the policy as a term and not merely against its
+-- values.
+open Lean Elab Command in
+unsafe def elabExtractPolicyIrDocImpl (id : Ident) (policyIdent : Ident) :
+    CommandElabM Unit := do
+  let ns ← getCurrNamespace
+  let declName := ns ++ id.getId
+  let policyName ← resolveGlobalConstNoOverload policyIdent
+  liftTermElabM do
+    let subTyE := mkConst ``Shor.ShorPolicySubmission
+    let sub ← Lean.Meta.evalExpr Shor.ShorPolicySubmission subTyE (mkConst policyName)
+    let polE := mkApp (mkConst ``Shor.ShorPolicySubmission.policy) (mkConst policyName)
+    let doc ← buildPolicyDoc sub polE
+    let decl := Declaration.defnDecl
+      { name := declName, levelParams := [], type := mkConst ``Shor.IR.Doc
+        value := toExpr doc, hints := .regular 0, safety := .safe }
+    addDecl decl
+    compileDecl decl
+
+open Lean Elab Command in
+elab "extract_policy_ir_doc " id:ident policyIdent:ident : command =>
+  unsafe elabExtractPolicyIrDocImpl id policyIdent
 
 -- `extract_ir_doc <id> <setupIdent>` (R5):
 -- `setupIdent` names a `Shor.ShorLoweringSetup` declaration in scope (the

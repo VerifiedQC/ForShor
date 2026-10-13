@@ -43,8 +43,8 @@ lean_exe forshor_submission where
 -- rather than one table. `Submission/PolicyTemplate.lean` is the submitter's
 -- file, `Submission/PolicyCheck.lean` is the repo-owned root and is the
 -- check. It audits the policy's axioms and kernel-checks C1-C4 per band plus
--- the thresholds' strict decrease. It does *not* extract an IR: see the
--- "Why `ir` is `null`" section of `Submission/PolicyMain.lean`. A policy
+-- the thresholds' strict decrease, extracts the per-band IR and pins it
+-- against the real circuit at sampled widths. A policy
 -- submissions repo's CI is
 --   lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
 -- see Submission/README.md.

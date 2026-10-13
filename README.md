@@ -203,11 +203,13 @@ reports it as an advisory check.
 
 The certificate is the same theorem. `Shor.policy_submission_correct` is
 generic in the policy, and `Shor.submission_correct` is literally its
-one-band case at threshold `0` — a table submission *is* a policy. **What a
-policy does not yet get is a score:** there is no IR extraction for a
-width-indexed cascade (one template per band plus a width dispatcher, with
-`n` symbolic), so `policy.json` carries `"ir": null` and an `ir_status`
-saying why. A policy submission is admissible and unscored.
+one-band case at threshold `0` — a table submission *is* a policy. A policy
+is scored the same way too: `policy.json` carries an IR of one dispatcher
+plus one body template per band, pinned against the real compiled circuit at
+each band boundary and at the widths reaching one, two and three levels of
+the policy's own recursion. That the dispatcher's emitted guard chain picks
+the same band as `ShorLoweringPolicy.choose` at every width is proved, not
+sampled.
 
 See
 [`Submission/README.md`](FastMultiplication/ShorVerification/Submission/README.md)

@@ -83,7 +83,7 @@ jobs:
         run: |
           lake exe forshor_emit 2 2 15 0 > /dev/null
           lake exe forshor_submission | python3 -c 'import json,sys; json.load(sys.stdin)'
-          lake exe forshor_policy_submission | python3 -c 'import json,sys; json.load(sys.stdin)'
+          lake exe forshor_policy_submission | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None, "policy submission printed no IR"'
 
       - name: Axiom guard
         # The README's claim that the headline theorems use only propext,

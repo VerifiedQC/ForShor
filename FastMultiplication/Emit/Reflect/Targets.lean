@@ -641,7 +641,7 @@ def extractShorBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template := do
           phaseCoeffFVar := none, coeffMExpr := .lit 0, nextWidthArgs := [] }
       let gE ← mkAppM ``Shor.orderFindingApprox
         #[a, N, x, y, work, scratch, flag, hworkspace, hstep4]
-      let node ← translateLowerGate reg opsE gE
+      let node ← translateLowerGate reg (QFTWorkSource.ofOps opsE) gE
       return {
         name := "shor"
         wParams := ["a", "N", "xW", "xCap", "yW", "yCap", "workW", "workCap", "scratchW", "scratchCap"]

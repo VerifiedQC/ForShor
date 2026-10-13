@@ -5,9 +5,8 @@ import FastMultiplication.Emit.Json.Common
 # `forshor_policy_submission`: what a policy submission hands over
 
 Prints one `forshor.policy-submission/v1` JSON document on stdout: the bands
-in width order, the fixed precision, the trial count the score is multiplied
-by — and, where the single-table document carries an IR, an explicit `null`
-with a reason.
+in width order, the IR a resource estimator reads, the fixed precision, and
+the trial count the score is multiplied by.
 
 As with [`Main.lean`](Main.lean), this executable is a *printer*, not a
 checker. Everything it reports as established was established by `lake build
@@ -22,14 +21,22 @@ lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
 
 with `&&`: if any band is inadmissible the build fails and this never runs.
 
-## Why `ir` is `null`
+## What the `ir` field holds
 
-The single-table document's `ir` field is the IR a resource estimator reads,
-pinned against the real compiled circuit at sampled widths. A policy's IR is
-a different object — one template per band plus a width dispatcher, with `n`
-symbolic — and extracting it is separate work. Until that lands, this field
-is `null` and `ir_status` says so by name. **A policy submission is
-admissible and unscored**, and this document does not pretend otherwise.
+One dispatcher per phase-product flavour, one body template per band, and
+the shared `qft`/`shor_gate`/`shor`/leaf templates. The dispatcher is the
+entry point and carries the policy's own guard chain, so a consumer
+instantiates `phase_product` at a width and the document routes it to the
+band that covers it.
+
+The width oracles a consumer must supply are **the same ten names, with the
+same arities**, as for a single-table document: `Policy.reserveNeed P` is
+already a function of the operand widths alone, and `nextWidth` is evaluated
+by a band body only where the dispatcher sent it. One index convention does
+change, and `IR/README.md` records it: `coeff`'s point index is a position
+in the bands' interpolation points *concatenated*, band 0 first, because two
+bands with different `k` would otherwise both emit `coeff 0` meaning
+different numbers.
 
 The `bands[].shrinks` flag is the advisory check from
 [`PolicyDecide.lean`](PolicyDecide.lean), reported per band: `false` marks a
@@ -98,8 +105,8 @@ def policySubmissionJson : Json :=
       ("trial_count", natStr benchmarkTrialCount)
     ]),
     ("score", Json.str
-      "UNSCORED. The score would be trial_count × (single-run gate count of the IR), and \
-       there is no IR for a policy yet — see ir_status below."),
+      "trial_count × (single-run gate count of the IR below, as measured by Qualtran). \
+       The gate count is not computed in Lean."),
     ("checks", Json.mkObj [
       ("side_conditions", Json.str
         "per band: C1 length, C2 det ≠ 0 (proved from pairwise projective distinctness), \
@@ -117,6 +124,19 @@ def policySubmissionJson : Json :=
       ("correctness", Json.str
         "Shor.policy_submission_correct: proved once, generic in the policy; no \
          per-submission proof. Shor.submission_correct is the one-band case at threshold 0"),
+      ("ir_agreement", Json.str
+        "Shor.Reflect.policySubmissionChecks: instantiate = real compiled circuit at the \
+         policy's band boundaries and at the widths reaching one, two and three levels of \
+         its own recursion, in both reserve regimes; at odd qft widths where the split \
+         straddles the lowest threshold; and at the reference Shor instances - pinned by \
+         native_decide in Submission/PolicyCheck.lean. Instantiating the entry template \
+         exercises the dispatcher's guard chain, the band body it routes to, and the \
+         recursion back through the dispatcher, all at once."),
+      ("ir_not_proved", Json.str
+        "the IR is NOT proved equal to the circuit at every width; the line above is \
+         evaluation at sampled widths, not a theorem. What IS proved is that the emitted \
+         guard chain picks the same band as ShorLoweringPolicy.choose at every width \
+         (Shor.IR.dispatcherCallAt_dispatcherTemplate)."),
       ("shrink_advisory", Json.str
         "bands[].shrinks is Shor.Policy.bandShrinks: does this band's table shrink the \
          operand width at every width the band covers? false means the recursion falls \
@@ -125,16 +145,11 @@ def policySubmissionJson : Json :=
          policy is correct either way")
     ]),
     ("provenance", Json.str
-      "read by reflection from the named constants in Submission/PolicyTemplate.lean; the \
-       policy printed here is the policy C1-C4 and sortedness were proved about."),
-    ("ir", Json.null),
-    ("ir_status", Json.str
-      "NOT EXTRACTED. The single-table surface extracts an IR and pins it against the real \
-       compiled circuit at sampled widths (Shor.Reflect.submissionChecks). A policy's IR is \
-       a different object - one template per band plus a width dispatcher, with n left \
-       symbolic - and producing it is a separate piece of work (the IR plan). Until that \
-       lands, a policy submission carries its correctness theorem but not a resource \
-       estimate: admissible and unscored.")
+      "extracted by reflection from the named constants in Submission/PolicyTemplate.lean; \
+       trusted: translation table and Lean normalisation; checked: instantiate = real term \
+       at the listed widths; not a theorem. The dispatcher is built from the policy's own \
+       bands rather than extracted, and is proved to agree with ShorLoweringPolicy.choose."),
+    ("ir", IR.docJson doc)
   ]
 
 end PolicySubmission

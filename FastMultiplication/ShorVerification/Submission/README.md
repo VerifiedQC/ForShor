@@ -33,8 +33,8 @@ construction that satisfies it.
 | `Main.lean` | `forshor_submission`: prints the table, the IR, the precision and the trial count as one JSON document | yes (`Emit/`) |
 | **`PolicyTemplate.lean`** | **the file a policy submitter owns**: the per-band definitions and the `ShorPolicySubmission` record | no — `Framework/` + `Decide.lean` |
 | `PolicyDecide.lean` | `bandShrinks`, an **advisory** performance check on a policy's bands; not an admissibility condition | yes (`Implementation/`) |
-| `PolicyCheck.lean` | the acceptance check for a policy, repo-owned: the axiom audit and the certificate. No IR tier | yes |
-| `PolicyMain.lean` | `forshor_policy_submission`: prints the bands, the precision and the trial count, with `"ir": null` | yes |
+| `PolicyCheck.lean` | the acceptance check for a policy, repo-owned: the axiom audit, the per-band IR extraction, the evaluation tier, the certificate | yes (`Emit/`) |
+| `PolicyMain.lean` | `forshor_policy_submission`: prints the bands, the IR, the precision and the trial count | yes (`Emit/`) |
 
 ## `Decide.lean`
 
@@ -291,23 +291,38 @@ of a band starting at `12` it would decline to recurse. `PolicyCheck.lean`
 records both — the passing check at `14` and the failing one at `12` — so the
 advisory has a test as well as a definition.
 
-### What a policy gets, and what it does not
+### A policy gets the same two tiers a table does
 
-**It gets the certificate.** `Shor.policy_submission_correct` is generic in
-the policy, so a policy existing is the whole argument; there is no
+**The certificate.** `Shor.policy_submission_correct` is generic in the
+policy, so a policy existing is the whole argument; there is no
 per-submission proof, exactly as for a table. `Shor.submission_correct` is
 literally its one-band case, via `Shor.ShorPolicySubmission.ofSetup`.
 
-**It does not get a score.** The single-table check runs
-`Shor.Reflect.submissionChecks`: it extracts the IR a resource estimator
-reads and pins it against the real compiled circuit at width ladders derived
-from the submitted table. **There is no such tier for a policy.**
-`PolicyCheck.lean` performs no extraction, and `forshor_policy_submission`
-prints `"ir": null` with an `ir_status` field naming the reason. A policy's
-IR is a different object — one template per band plus a width dispatcher,
-with `n` left symbolic — and producing it is separate work. Until it lands, a
-policy submission is **admissible and unscored**, and the JSON says so rather
-than implying a number.
+**The IR, and its agreement with the circuit.** `extract_policy_ir_doc`
+builds one dispatcher per phase-product flavour, one body template per band,
+and the shared `qft`/`shor_gate`/`shor`/leaf templates; the dispatcher is the
+entry point and carries the policy's guard chain.
+`Shor.Reflect.policySubmissionChecks` then pins that document against the
+real compiled circuit — at every band boundary, at the widths reaching one,
+two and three levels of the policy's own recursion in both reserve regimes,
+at odd `qft` widths where the split straddles the lowest threshold, and at
+the reference Shor instances. Instantiating the entry template exercises the
+guard chain, the band body it routes to, and the recursion back through the
+dispatcher all at once, so a width at the top of the policy covers every band
+the chain descends through.
+
+As for a table, this tier is **evaluation at sampled widths, not a theorem**.
+One part of it is a theorem and is worth naming: `IR.dispatcherCallAt_dispatcherTemplate`
+proves the emitted guard chain picks the same band as
+`ShorLoweringPolicy.choose` at *every* width, so which body a width routes to
+is not something the sampling has to establish.
+
+A consumer needs no new oracles: the same ten opaque names with the same
+arities serve a policy document, because `Policy.reserveNeed P` is already a
+function of the operand widths alone. One convention changes — `coeff`'s
+point index is a position in the bands' interpolation points *concatenated*,
+band 0 first — because two bands with different `k` would otherwise both emit
+`coeff 0` meaning different numbers.
 
 ## CI for a submissions repo
 
@@ -372,10 +387,8 @@ Such a repo should run, per pull request:
 
    This is where the four side conditions are checked — per band, for a
    policy, along with the thresholds' strict decrease — and where
-   `#assert_axioms` runs. For a table it is also where the IR is pinned
-   against the real circuit, and `ir.json` is what the resource estimator
-   reads; for a policy there is no IR tier, so `policy.json` carries
-   `"ir": null` and the submission is unscored.
+   `#assert_axioms` runs, and where the IR is pinned against the real
+   circuit. `ir.json` / `policy.json` is what the resource estimator reads.
 
 3. **`lean4checker` on the `.olean`s step 2 built.** `#assert_axioms` reads
    the axioms a declaration depends on; it does not see

@@ -112,22 +112,27 @@ the ones above are what the fixed-table spellings keep using.
 - **`Policy.CanonicalStep`**, **`Policy.canonicalStep`** — the policy form of
   the canonical step.
 
-### Why this file is separate, and why `canonicalSignedStep` survives
+### Why this file is separate
 
 `Policy.reserveNeed (constPolicy T)` and
 `RecursivePhaseWorkspace.reserveNeed T.ops` are equal — `reserveNeed_const`
 proves it — but only **propositionally**. They are two distinct well-founded
 fixpoints, so the equation is a rewrite, never a `rfl` the elaborator can use
 silently. Anything that must reduce definitionally therefore needs the
-spelling it was written against, which is why `canonicalSignedStep` still
-exists alongside `Policy.canonicalStep` and why `lowerGate_correctness` is
-proved in both spellings (~570 duplicated lines).
+spelling it was written against, which is why `lowerGate_correctness` is
+proved in both spellings rather than derived once and transported.
 
-The duplication is deliberate rather than pending. `Workspace.lean` has 19
-importers, so folding `PolicyWorkspace.lean` into it, or deleting
-`canonicalSignedStep` and porting its callers, costs a full rebuild cascade
-across the library. That price is worth paying only alongside a change that
-is already paying it; the alternative — doing it on its own — buys tidiness
-and nothing else. Until then: **new work should be written against the
-`Policy.*` names**, and the fixed-table names are the constant policy kept
-for the statements that already depend on their definitional behaviour.
+That is the live reason for the split. The *organisational* reason is build
+time: `Workspace.lean` has 19 importers, so folding `PolicyWorkspace.lean`
+into it costs a full rebuild cascade across the library — worth paying only
+alongside a change already paying it. Until then: **new work should be
+written against the `Policy.*` names**, and the fixed-table names are the
+constant policy, kept for the statements that already depend on their
+definitional behaviour.
+
+`canonicalSignedStep` is a different case and is **dead code**: every caller
+moved to `Policy.canonicalStep` when the Shor and GateCount layers ported
+over, and it now appears only at its own definition and in docstrings.
+Deleting it is a pure deletion with nothing to port, deferred only because it
+too edits `Workspace.lean`; see
+`ShorVerification/PLAN_PolicyGateCount.md` §5.

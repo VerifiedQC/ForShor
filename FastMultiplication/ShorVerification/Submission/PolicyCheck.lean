@@ -3,6 +3,9 @@ import FastMultiplication.ShorVerification.Submission.PolicyDecide
 import FastMultiplication.ShorVerification.Submission.Audit
 import FastMultiplication.ShorVerification.Submission.Correct
 import FastMultiplication.ShorVerification.Submission.Score
+import FastMultiplication.Emit.Reflect.Driver
+import FastMultiplication.Emit.Reflect.PolicyVerify
+import FastMultiplication.Emit.IR.Json
 
 /-!
 # The acceptance check for a policy submission
@@ -33,23 +36,28 @@ one-band policy at threshold `0`
 (`Shor.ShorPolicySubmission.ofSetup`), and `Shor.submission_correct` is
 literally a corollary of the policy theorem.
 
-## NOT checked by evaluation — and this is a gap, not an oversight
+## Checked by evaluation, at sampled widths
 
-The single-table check runs `Shor.Reflect.submissionChecks`: it extracts the
-IR a resource estimator reads and compares it against the real compiled
-circuit at width ladders derived from the submitted table. **There is no such
-tier here.** This file performs no `extract_ir_doc` and no
-`submissionChecks`, and `forshor_policy_submission` prints `"ir": null`.
+`extract_policy_ir_doc` builds the IR a resource estimator reads: one
+dispatcher per phase-product flavour, one body template per band, and the
+shared `qft`/`shor_gate`/`shor`/leaf templates.
+`Shor.Reflect.policySubmissionChecks` then instantiates it and compares it
+against the real compiled circuit — at each band boundary, at the widths
+reaching one, two and three levels of the policy's own recursion, at odd
+`qft` widths where the split straddles the lowest threshold, and at the
+reference Shor instances.
 
-The reason is that the IR for a policy is a different object: one template
-per band plus a width dispatcher, with `n` left symbolic. Producing it is a
-separate piece of work (the IR plan), and until that lands a policy
-submission carries its correctness theorem but not a resource estimate. A
-policy submission is therefore admissible and unscored.
+Instantiating the entry template exercises the whole stack at once: the
+dispatcher's guard chain, the band body it routes to, and the recursion back
+through the dispatcher. A width at the top of the policy therefore covers
+every band the chain descends through.
 
-In the words the single-table surface uses for its own boundary: the IR is
-not proved equal to the circuit at every width, and for policies it is not
-yet extracted at all.
+**This tier is evaluation, not proof**, exactly as for a single table: the
+IR is not proved equal to the circuit at every width. One part of it *is*
+proved, and is worth naming — `IR.dispatcherCallAt_dispatcherTemplate` shows
+the emitted guard chain picks the same band as `ShorLoweringPolicy.choose`
+at every width, so which body a width routes to is not something the
+sampling has to establish.
 -/
 
 namespace PolicySubmission
@@ -107,6 +115,27 @@ example :
     Shor.Policy.bandShrinks
       { bands := [(40, band0), (12, band1)], sorted := by decide : ShorPolicySubmission }.policy 1
       = false := by decide +kernel
+
+/-! ## The IR, and its agreement with the circuit
+
+`extract_policy_ir_doc` runs the extractor at build time and splices the
+result in as a plain `def`, so the checks below read a pinned value instead
+of re-running reflection inside a proof.
+
+These lines stay on `native_decide` for the same reason `Check.lean`'s do:
+they are *evaluation*, a deliberately different tier from the kernel-checked
+side conditions above, and `#assert_axioms` is scoped to
+`PolicySubmission.policy` — the proof object — which does not depend on any
+of this. -/
+
+set_option maxHeartbeats 4000000 in
+extract_policy_ir_doc doc policy
+
+example : IR.Doc.wellFormed doc = true := by native_decide
+
+set_option maxHeartbeats 4000000 in
+set_option maxRecDepth 4000 in
+example : Shor.Reflect.policySubmissionChecks policy doc = true := by native_decide
 
 /-! ## The certificate -/
 

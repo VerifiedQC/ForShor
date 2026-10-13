@@ -94,6 +94,20 @@ structure Registry where
   /-- The `m` (limb-width) `WExpr` `AExpr.coeff`'s second argument is built
   from, when `phaseCoeffFVar` is set. -/
   coeffMExpr : IR.WExpr := .lit 0
+  /-- Added to every emitted `AExpr.coeff` point index.
+
+  `0` for a single-table document, where the index is a position in the one
+  table's `pts`. A *policy* document has one body template per band, and two
+  bands with different `k` have different point lists of different lengths —
+  so the same index would name different coefficients in different
+  templates, and one `coeff` oracle could not serve both. Giving band `i`
+  the offset `Σ_{j<i} q kⱼ` makes the index a position in the bands' point
+  lists *concatenated*, which one oracle can resolve.
+
+  This keeps `AExpr` and the published schema unchanged: the index was
+  already opaque data whose meaning is fixed by the document's own oracle
+  contract, and this changes that meaning for policy documents only. -/
+  coeffOffset : ℕ := 0
   /-- Arguments to emit for a recognised `commonNeededWidth` ("nextWidth")
   call — fixed per target (e.g. `[xw, zw]`), never read off the actual
   `Expr` (D4: opaque by name, the argument is never inspected). -/
@@ -327,12 +341,19 @@ partial def translateW (reg : Registry) (e : Expr) : MetaM IR.WExpr := do
           return .opaque "reserveNeed_x" [← translateW reg wxE, ← translateW reg wzE]
       | (``Shor.qftWorkspaceNeed, #[_, _, wE]) =>
           return .opaque "qftXWork" [← translateW reg wE]
+      -- The policy spelling of the same need. Same opaque name and same
+      -- arity: `Policy.qftWorkspaceNeed P` is a function of the width alone,
+      -- so a policy document publishes no new oracle here.
+      | (``Shor.Policy.qftWorkspaceNeed, #[_, wE]) =>
+          return .opaque "qftXWork" [← translateW reg wE]
       | _ => translateWFallback reg e
   | (``Prod.snd, #[_, _, pairE]) =>
       match pairE.getAppFnArgs with
       | (``Shor.RecursivePhaseWorkspace.reserveNeed, #[_, _, wxE, wzE]) =>
           return .opaque "reserveNeed_z" [← translateW reg wxE, ← translateW reg wzE]
       | (``Shor.qftWorkspaceNeed, #[_, _, wE]) =>
+          return .opaque "qftZWork" [← translateW reg wE]
+      | (``Shor.Policy.qftWorkspaceNeed, #[_, wE]) =>
           return .opaque "qftZWork" [← translateW reg wE]
       | _ => translateWFallback reg e
   | (``Shor.regSize, #[rE]) =>
@@ -372,6 +393,13 @@ partial def translateW (reg : Registry) (e : Expr) : MetaM IR.WExpr := do
       | (``Shor.qftXWork, #[_, _, parentE]) =>
           return .opaque "qftXWork" [← translateW reg (← mkAppM ``Shor.ExtReg.width #[parentE])]
       | (``Shor.qftZWork, #[_, _, parentE]) =>
+          return .opaque "qftZWork" [← translateW reg (← mkAppM ``Shor.ExtReg.width #[parentE])]
+      -- Policy spellings. Both are `abbrev`s, so without a case of their own
+      -- they unfold through `qftXWorkOf` into a `Reg` literal over
+      -- `List.take`, which no later case recognises.
+      | (``Shor.Policy.qftXWork, #[_, parentE]) =>
+          return .opaque "qftXWork" [← translateW reg (← mkAppM ``Shor.ExtReg.width #[parentE])]
+      | (``Shor.Policy.qftZWork, #[_, parentE]) =>
           return .opaque "qftZWork" [← translateW reg (← mkAppM ``Shor.ExtReg.width #[parentE])]
       -- `qft`'s `ws.xReserve`/`.zReserve` (`PhaseProdWorkspace.phaseWorkspace`
       -- reuses `xWork`/`zWork` verbatim as each level's own reserve pool):
@@ -573,13 +601,14 @@ partial def translateA (reg : Registry) (e : Expr) : MetaM IR.AExpr := do
       | some cfv, #[lE] =>
           if b.getAppFn.isFVarOf cfv then
             match ← finValLit? (← mkAppM ``Fin.val #[lE]) with
-            | some l => return .coeff (← translateA reg a) l reg.coeffMExpr
+            | some l => return .coeff (← translateA reg a) (reg.coeffOffset + l) reg.coeffMExpr
             | none => throwError "translateA: phaseCoeff applied to non-literal index {lE}"
           else
             return .mul (← translateA reg a) (← translateW reg b)
       | _, _ =>
           match ← tryCramerCoeffApp b with
-          | some (l, m) => return .coeff (← translateA reg a) l (← translateW reg m)
+          | some (l, m) =>
+              return .coeff (← translateA reg a) (reg.coeffOffset + l) (← translateW reg m)
           | none => return .mul (← translateA reg a) (← translateW reg b)
   | (``Neg.neg, #[_, _, a]) => return .neg (← translateA reg a)
   | (``HDiv.hDiv, #[_, _, _, _, a, b]) => do
@@ -798,6 +827,17 @@ partial def translateReg (reg : Registry) (e : Expr) : MetaM IR.RegExpr := do
       let xWorkW := IR.WExpr.opaque "qftXWork" [rw]
       let zWorkW := IR.WExpr.opaque "qftZWork" [rw]
       return .reserveSlice (← translateReg reg rE) xWorkW (.add xWorkW zWorkW)
+  -- The policy spellings, carving the same two slices out of the same
+  -- reserve. Only the constant and its first argument differ.
+  | (``Shor.Policy.qftXWork, #[_, rE]) => do
+      let rw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[rE])
+      let xWorkW := IR.WExpr.opaque "qftXWork" [rw]
+      return .reserveSlice (← translateReg reg rE) (.lit 0) xWorkW
+  | (``Shor.Policy.qftZWork, #[_, rE]) => do
+      let rw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[rE])
+      let xWorkW := IR.WExpr.opaque "qftXWork" [rw]
+      let zWorkW := IR.WExpr.opaque "qftZWork" [rw]
+      return .reserveSlice (← translateReg reg rE) xWorkW (.add xWorkW zWorkW)
   | _ =>
       match ← unfoldDefinition? e with
       | some e' => translateReg reg (← unfoldProj e')
@@ -995,10 +1035,10 @@ partial def translateAnnotatedOpsGo (reg : Registry) (st phi : Expr) (ctrl : Opt
               match ctrl with
               | none =>
                   pure <| .call "phase_product" [xw, zw, xCap, zCap]
-                    [.coeff phiAExpr n reg.coeffMExpr] [← xreg iE, ← zreg iE]
+                    [.coeff phiAExpr (reg.coeffOffset + n) reg.coeffMExpr] [← xreg iE, ← zreg iE]
               | some ctrlE =>
                   pure <| .call "cphase_product" [xw, zw, xCap, zCap]
-                    [.coeff phiAExpr n reg.coeffMExpr]
+                    [.coeff phiAExpr (reg.coeffOffset + n) reg.coeffMExpr]
                     [← translateReg reg ctrlE, ← xreg iE, ← zreg iE]
             return .seq [callNode, tail]
           else
@@ -1007,6 +1047,33 @@ partial def translateAnnotatedOpsGo (reg : Registry) (st phi : Expr) (ctrl : Opt
   | _ => throwError "translateAnnotatedOps: unrecognised annotated-ops list {opsE}"
 
 end
+
+/-- Where `translateLowerGate` gets a `Gate.QFT`'s two workspace registers
+from.
+
+`lowerGate` carves them with `qftXWork ops r`/`qftZWork ops r`, and
+`Policy.lowerGate` with `Policy.qftXWork P r`/`Policy.qftZWork P r`. The two
+spellings differ only in the constant and its first argument, and nothing
+else in the walk depends on which it is — every other node is emitted by
+name — so the difference is carried as data rather than duplicating the
+function.
+
+`owner` is the `ops` or the `P` those constants take. -/
+structure QFTWorkSource where
+  /-- The constant computing the x-side workspace register. -/
+  xWorkFn : Name
+  /-- The constant computing the z-side workspace register. -/
+  zWorkFn : Name
+  /-- Its first argument: a `Prog k`, or a `ShorLoweringPolicy`. -/
+  owner : Expr
+
+/-- The fixed-table spelling, for `Shor.lowerGate`. -/
+def QFTWorkSource.ofOps (opsE : Expr) : QFTWorkSource :=
+  { xWorkFn := ``Shor.qftXWork, zWorkFn := ``Shor.qftZWork, owner := opsE }
+
+/-- The policy spelling, for `Shor.Policy.lowerGate`. -/
+def QFTWorkSource.ofPolicy (polE : Expr) : QFTWorkSource :=
+  { xWorkFn := ``Shor.Policy.qftXWork, zWorkFn := ``Shor.Policy.qftZWork, owner := polE }
 
 mutual
 
@@ -1249,7 +1316,12 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
   -- `lowerGate k hk ops (orderFindingApprox …) hLowerWorkspace` — routes to
   -- `translateLowerGate`'s own dedicated structural walk (`lowerGate` needs
   -- `ops`, which nothing else here threads through).
-  | (``Shor.lowerGate, #[_, _, opsE, _, _, gE, _]) => translateLowerGate reg opsE gE
+  | (``Shor.lowerGate, #[_, _, opsE, _, _, gE, _]) =>
+      translateLowerGate reg (QFTWorkSource.ofOps opsE) gE
+  -- The policy spelling of the same node. `Policy.lowerGate P G hws`: the
+  -- walk is identical, and only `Gate.QFT`'s workspace carving differs.
+  | (``Shor.Policy.lowerGate, #[polE, gE, _]) =>
+      translateLowerGate reg (QFTWorkSource.ofPolicy polE) gE
   -- `lowerCopyConstFromUnit N dst ctrl := lowerCopyBitPowers dst ctrl
   -- N.bitIndices` (R2.6): recursion over a symbolic-length list again (D2),
   -- reformulated as "loop over every bit position of `dst`, guarded on
@@ -1563,13 +1635,13 @@ workspace (confirmed by inspection of `lowerGate`, `lowerQFT`,
 `lowerSignedPhaseProdWithWorkspace`, … themselves: the workspace argument only
 ever supplies further proof obligations passed on downward, never a register
 or width value). -/
-partial def translateLowerGate (reg : Registry) (opsE : Expr) (gE : Expr) : MetaM IR.Node := do
+partial def translateLowerGate (reg : Registry) (src : QFTWorkSource) (gE : Expr) : MetaM IR.Node := do
   let gE ← whnfR gE
   match gE.getAppFnArgs with
   | (``Shor.Gate.id, #[]) => return .op "id" [] [] none []
   | (``Shor.Gate.seq, #[a, b]) =>
-      return .seq [← translateLowerGate reg opsE a, ← translateLowerGate reg opsE b]
-  | (``Shor.Gate.adj, #[a]) => return .adj (← translateLowerGate reg opsE a)
+      return .seq [← translateLowerGate reg src a, ← translateLowerGate reg src b]
+  | (``Shor.Gate.adj, #[a]) => return .adj (← translateLowerGate reg src a)
   | (``Shor.Gate.H, #[q]) => return .op "H" [← translateQubitIndex reg q] [] none []
   | (``Shor.Gate.X, #[q]) => return .op "X" [← translateQubitIndex reg q] [] none []
   | (``Shor.Gate.CNOT, #[c, t]) =>
@@ -1608,8 +1680,8 @@ partial def translateLowerGate (reg : Registry) (opsE : Expr) (gE : Expr) : Meta
   -- its body.
   | (``Shor.Gate.QFT, #[r]) => do
       let rActiveE ← mkAppM ``Shor.ExtReg.active #[r]
-      let xWorkE ← mkAppM ``Shor.qftXWork #[opsE, r]
-      let zWorkE ← mkAppM ``Shor.qftZWork #[opsE, r]
+      let xWorkE ← mkAppM src.xWorkFn #[src.owner, r]
+      let zWorkE ← mkAppM src.zWorkFn #[src.owner, r]
       let w ← translateW reg (← mkAppM ``Shor.regSize #[rActiveE])
       let xWorkW ← translateW reg (← mkAppM ``Shor.regSize #[xWorkE])
       let zWorkW ← translateW reg (← mkAppM ``Shor.regSize #[zWorkE])
@@ -1678,11 +1750,11 @@ partial def translateLowerGate (reg : Registry) (opsE : Expr) (gE : Expr) : Meta
           regs := reg.regs ++ #[(ctrlVar, ctrlReg)] }
         let bodyE ← mkAppM ``Shor.CmodMulInPlaceCore
           #[cVar, nE, ctrlVar, dataE, workE, scratchE, flagE, hworkspaceE, hstep4E]
-        let bodyNode ← translateLowerGate reg' opsE bodyE
+        let bodyNode ← translateLowerGate reg' src bodyE
         return .loop "e" (.lit 0) xw bodyNode
   | _ =>
       match ← unfoldDefinition? gE with
-      | some gE' => translateLowerGate reg opsE gE'
+      | some gE' => translateLowerGate reg src gE'
       | none => throwError "translateLowerGate: unrecognised Gate constructor {gE}"
 
 end

@@ -226,6 +226,41 @@ its layout is built from fresh per-child reserve *variables* that nothing in
 the document says how to bind. It remains extractable for the test suite
 (`extract_ir_doc_with_pp_body`).
 
+### A policy document
+
+A **policy** submission (`Submission/PolicyCheck.lean`, built by
+`extract_policy_ir_doc`) ships the same template names plus two more kinds:
+
+- `phase_product` and `cphase_product` are the **dispatchers**. Their bodies
+  are not extracted from a Lean term at all — they are
+  `ShorLoweringPolicy.choose`'s chain of guards, built directly from the
+  policy's bands by `Symbolic/Dispatcher.lean`:
+  `cond (tᵢ ≤ max(xw, zw)) → call "phase_product_i"`, in band order, falling
+  through to `naive_leaf`. That the chain picks the same band as `choose` at
+  every width is **proved**
+  (`IR.dispatcherCallAt_dispatcherTemplate`), not sampled.
+- `phase_product_<i>` and `cphase_product_<i>` are the **band bodies**, one
+  per band, each extracted from that band's own table exactly as the
+  single-table `phase_product` is. A body's recursive child is a `call` to
+  the dispatcher, never to itself, so the recursion is indirect: dispatcher →
+  body → dispatcher.
+
+`qft`, `shor`, `shor_gate` and the two leaves are unchanged, and reach the
+phase product through the dispatcher's name.
+
+**Nothing about the opaque-function contract changes**: the same ten names
+with the same arities. `reserveNeed_x`/`reserveNeed_z` stay 2-ary because
+the policy's reserve recurrence is a function of the operand widths alone,
+and `nextWidth` stays 2-ary because a band body evaluates it only at widths
+the dispatcher routed to that band, where the per-band and policy-wide
+answers agree.
+
+**One convention does change.** `coeff`'s point index `l` is a position in
+the bands' interpolation point lists **concatenated**, band 0 first: band
+`i`'s indices start at `Σ_{j<i} q kⱼ`. For a single-table document this is
+the identity (there is one band, offset 0). A consumer resolving `coeff`
+from a published `coeff_poly` table must concatenate in band order to match.
+
 ## Checking yourself against it
 
 Instantiate a template with your own reader and diff against what this

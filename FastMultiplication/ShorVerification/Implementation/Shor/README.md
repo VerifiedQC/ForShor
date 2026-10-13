@@ -147,7 +147,7 @@ statements are unchanged.
 
 What changed is one level down. The phase-product lowering those definitions
 call is now indexed by a `ShorLoweringPolicy` (a width-indexed choice of
-table — see [`../PhaseProduct/README.md`](../PhaseProduct/README.md)), and
+table — see `../PhaseProduct/README.md`), and
 the fixed-table names are its **constant policy** instance. Nothing in this
 folder has to know that; the reason it is worth knowing is that the budget
 and need functions here were abstracted over their reserve model

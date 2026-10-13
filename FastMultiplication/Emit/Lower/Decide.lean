@@ -63,4 +63,34 @@ instance decidableQFTReserveOK {k : ℕ} (ops : Prog k) (r : ExtReg) : Decidable
   decidable_of_iff ((qftWorkspaceNeed ops r.width).1 + (qftWorkspaceNeed ops r.width).2 ≤ r.capacity)
     ⟨fun h => ⟨h⟩, fun h => h.reserve_large_enough⟩
 
+/-! ## The policy spellings
+
+Field for field the same predicates with `Policy.reserveNeed P` /
+`Policy.qftWorkspaceNeed P` in place of the fixed-table models, so the
+instances are the same `decidable_of_iff`. They are what lets the policy
+evaluation tier (`Reflect/PolicyVerify.lean`) write
+`if hws : Policy.WorkspaceOK … then` at a concrete width. -/
+
+instance decidablePolicyWorkspaceOK (P : ShorLoweringPolicy) (x z : ExtReg) :
+    Decidable (Policy.WorkspaceOK P x z) :=
+  decidable_of_iff
+    (ExtReg.OwnedDisjoint x z ∧
+      (Policy.reserveNeed P x.width z.width).1 ≤ x.capacity ∧
+      (Policy.reserveNeed P x.width z.width).2 ≤ z.capacity)
+    ⟨fun ⟨a, b, c⟩ => ⟨a, b, c⟩,
+     fun h => ⟨h.owned_disjoint, h.x_reserve_sufficient, h.z_reserve_sufficient⟩⟩
+
+instance decidablePolicyCWorkspaceOK (P : ShorLoweringPolicy) (ctrl : ℕ) (x z : ExtReg) :
+    Decidable (Policy.CWorkspaceOK P ctrl x z) :=
+  decidable_of_iff
+    (Policy.WorkspaceOK P x z ∧ ExtReg.CtrlDisjoint ctrl x z)
+    ⟨fun ⟨a, b⟩ => { a with control_disjoint := b },
+     fun h => ⟨h.toWorkspaceOK, h.control_disjoint⟩⟩
+
+instance decidablePolicyQFTReserveOK (P : ShorLoweringPolicy) (r : ExtReg) :
+    Decidable (Policy.QFTReserveOK P r) :=
+  decidable_of_iff
+    ((Policy.qftWorkspaceNeed P r.width).1 + (Policy.qftWorkspaceNeed P r.width).2 ≤ r.capacity)
+    ⟨fun h => ⟨h⟩, fun h => h.reserve_large_enough⟩
+
 end Shor
