@@ -55,27 +55,18 @@ def scheduleJson {k : ℕ} (inst : TableInstance k) : Json :=
   ]
 
 /-- E2: interpolation-weight polynomials. `M⁻¹` is computed once via
-Gauss-Jordan (`coeffInverse`, `O(n³)`) — fast for any `k` this repository's
-tables reach, unlike calling Mathlib's `Matrix.adjugate` per entry. Only
-`check2` (cross-checking against the pre-existing, unmodifiable
-`cramerCoeffFromPtsWidth`) is gated, and more tightly than the README's own
-`k ≤ 5` text: at `k = 5` (`q k = 9`), evaluating `Matrix.det`'s generic
-`Equiv.Perm`-sum construction there crashes with a stack overflow almost
-immediately (this is a recursion-depth limit of Mathlib's proof-oriented
-`Fintype`/`Equiv.Perm (Fin 9)` machinery, not merely slow — confirmed even
-with `ulimit -s` raised well past its default). So `check2` runs
-unconditionally for `k ≤ 3`, opt-in via `--check-cramer` up to `k ≤ 4`, and
-is always skipped from `k = 5` up — capped at `m ≤ 6` even then, so an
-explicit `--check-cramer --m-max` request can't blow up the check past what's
-actually tractable. -/
-def coeffPolyJson {k : ℕ} (inst : TableInstance k) (checkCramer : Bool) (mMaxCheck : ℕ) : Json :=
+Gauss-Jordan (`coeffInverse`); `check1` re-multiplies it, and `check2`
+cross-checks the polynomials against the compiler's own weights at
+`b = 2^m` for `m ≤ 6`. `_checkCramer` is accepted for CLI compatibility and
+has no effect. -/
+def coeffPolyJson {k : ℕ} (inst : TableInstance k) (_checkCramer : Bool) (mMaxCheck : ℕ) : Json :=
   match coeffInverse k inst.points inst.hlen with
   | none =>
       Json.mkObj [
         ("error", Json.str "singular interpolation matrix (unexpected: GoodToomCookPoints failed)")
       ]
   | some inv =>
-      let doCheck2 := k ≤ 3 ∨ (checkCramer ∧ k ≤ 4)
+      let doCheck2 := true
       let mCheck := min mMaxCheck 6
       let rows :=
         (List.finRange (q k)).map fun (l : Fin (q k)) =>
@@ -102,7 +93,7 @@ def coeffPolyJson {k : ℕ} (inst : TableInstance k) (checkCramer : Bool) (mMaxC
           else
             Json.mkObj [
               ("checked", Json.bool false),
-              ("reason", Json.str "k > 3 without --check-cramer, or k ≥ 5 regardless")
+              ("reason", Json.str "unreachable: check2 runs unconditionally")
             ]),
         ("rows", Json.arr rows.toArray)
       ]

@@ -39,12 +39,36 @@ before it).
 - **`nextSignedWidth`** — the width the *next* recursion level will actually
   need, i.e. `commonNeededWidth (scanNeededWidths x z ops)`.
 
+## `GaussJordan.lean`
+
+Exact Gauss-Jordan elimination over `ℚ` (`matrixToRows`,
+`gaussJordanInverseRows`, `O(n³)`, **unverified**) together with the one
+computation that *is* trusted: `isRightInverseRows M inv` re-multiplies and
+decides `M · inv = I` entrywise, and
+`mul_rowsToMatrix_eq_one_of_isRightInverseRows` turns a `true` into the
+`Matrix` equation. Imports Mathlib only, so it sits at the bottom of this
+folder. It exists here rather than in `Emit/` (its old home) because
+`Coefficients.lean`'s `@[csimp]` lemma has to be in the environment before
+`Lowering/Plan.lean`'s `loweringPhaseCoeff` is compiled.
+
 ## `Coefficients.lean`
 
 - **`interpMatrix`**, **`phaseCoeffFromPts`**, **`cramerCoeffFromPts`** — build
   the interpolation matrix from a chosen point set and solve for the phase
   coefficients (two equivalent formulations: matrix inverse and Cramer's
   rule, the latter computable).
+- **`gjCoeffFromPts`**, **`gjCoeffFromPts_eq_cramerCoeffFromPts`**,
+  **`cramerCoeffFromPts_eq_gjCoeffFromPts_csimp`** — the compiled fast path.
+  `cramerCoeffFromPts` as *code* is a `(2k-1)!`-term `Matrix.det`, which
+  stalls every `native_decide` evaluation of the circuit at `k ≥ 5`.
+  `gjCoeffFromPts` eliminates (`GaussJordan.lean`), verifies `M · M⁻¹ = I`,
+  reads `radixVec ᵥ* M⁻¹` off the verified rows, and falls back to Cramer
+  otherwise; the equality is proved with no assumption on the eliminator and
+  tagged `@[csimp]`, so compiled code runs the cubic path while the kernel —
+  and every proof — still sees Cramer's rule.
+- **`cramerCoeffFromPts_eq_phaseCoeffFromPts`** — Cramer equals the inverse
+  formulation when `det ≠ 0`. Moved here from `Proofs/Compiler/Interpolation.lean`
+  because the `csimp` proof needs it below `Lowering/`.
 - **`alternatingPoint`**, **`genInterpolationPoints`** — the canonical point
   set: `0, -1, 1, -2, 2, …` (`2k-1` points). This is the *reference's* choice
   of points, not the framework's: the lowering chain takes `pts` as a

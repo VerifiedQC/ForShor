@@ -127,6 +127,11 @@ The two differ only in the leaf dispatcher and the sequencing fold.
 
 Three things a consumer gets wrong by guessing:
 
+- **`Env.leafCall`** (default: none) lets the `Gate`-level evaluator treat a
+  named call as a high-level leaf instead of unrolling it, given the
+  evaluated arguments. The `LowGate` evaluator ignores it. It exists for
+  `Reflect/PolicyVerify.lean`'s one-level-per-band check and changes nothing
+  about what a document *means*; an `Env` without it is the semantics above.
 - **`call` does not inherit the caller's variables.** A template body may
   reference only its own `wParams`/`aParams`/`rParams`. Leaking the caller's
   bindings hides missing arguments instead of erroring on them.

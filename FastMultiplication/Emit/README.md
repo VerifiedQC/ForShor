@@ -384,19 +384,26 @@ build` does not touch it. The `Submission` library and the
 
 ## Known limitations and deviations from the original design
 
-- **E2's `M⁻¹`** (`Symbolic/CoeffPoly.lean`) is computed by exact Gauss-Jordan
-  elimination over `ℚ` (`gaussJordanInverseRows`, `O(n³)`), not via Mathlib's
+- **E2's `M⁻¹`** is computed by exact Gauss-Jordan elimination over `ℚ`
+  (`gaussJordanInverseRows`, `O(n³)`), not via Mathlib's
   `Matrix.adjugate`/`Matrix.det`. Those are Leibniz-formula sums over
   `Equiv.Perm`, meant for proofs: evaluating one adjugate entry is an `O(n!)`
   determinant, so a whole inverse that way is `O(n²·n!)` — impractical from
-  `k = 5` on.
-- **`check2`** (cross-checking the polynomials against the pre-existing
-  `cramerCoeffFromPtsWidth`) is gated tightly: unconditional for `k ≤ 3`,
-  opt-in via `--check-cramer` for `k = 4`, always skipped from `k = 5` up,
-  capped at `m ≤ 6` even when it runs. At `k = 5`, evaluating
-  `Matrix.det`'s generic `Equiv.Perm` construction overflows the stack almost
-  immediately — a recursion-depth limit in Mathlib's machinery, confirmed
-  with the OS stack limit raised, not merely slow.
+  `k = 5` on. The eliminator now lives in the compiler
+  (`ShorVerification/Implementation/PhaseProduct/Compiler/GaussJordan.lean`),
+  because the compiler's own `cramerCoeffFromPts` is `@[csimp]`-compiled
+  through it (`gjCoeffFromPts`, `Compiler/Coefficients.lean`): eliminate,
+  re-multiply to verify `M · M⁻¹ = I`, fall back to Cramer if that fails, and
+  a proof that the result equals Cramer's rule unconditionally. The kernel
+  still sees Cramer; only compiled code — `native_decide`, the oracles here,
+  the executables — runs the cubic path.
+- **`check2`** (cross-checking the polynomials against
+  `cramerCoeffFromPtsWidth`) used to be gated by `k` because its right-hand
+  side was the factorial `Matrix.det` evaluation, which overflowed the stack
+  at `k = 5`. Both sides are now cubic, so it runs unconditionally at every
+  `k`; `--check-cramer` is accepted and ignored, and the `m ≤ 6` cap stays
+  only because nothing above it teaches anything new. `Tests.lean` §7c runs
+  it at `k = 5`.
 - **Point *order* is part of a table, not a detail.** A table's
   `phaseProduct` checkpoints consume its points from the front, one per
   checkpoint, and leaf `l` receives coefficient `l` — so a permutation of

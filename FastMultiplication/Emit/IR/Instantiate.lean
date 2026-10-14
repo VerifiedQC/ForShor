@@ -49,6 +49,14 @@ structure Env where
   r : String → Option ExtReg
   opaqueW : String → List ℕ → Option ℕ
   coeff : ℕ → ℕ → Option ℚ
+  /-- An optional shallow treatment of `call`, consulted by `evalNodeGate`
+  before a call is unrolled: given the callee's name and its evaluated
+  arguments, `some g` makes the call evaluate to the high-level gate `g`,
+  and `none` unrolls the callee as usual. The `LowGate` evaluator ignores it.
+  It lets a checker evaluate one recursive level of a template, each child
+  call standing in as the gate the compiler emits for it. -/
+  leafCall : String → List ℕ → List Angle → List ExtReg → Option (Except String Gate) :=
+    fun _ _ _ _ => none
 
 /-- Bind one width variable, shadowing any previous binding of the same
 name (`loop`'s induction variable). -/
@@ -344,15 +352,18 @@ def evalNodeGate (d : Doc) (fuel : ℕ) (env : Env) (node : Node) : Except Strin
       if (← evalProp env guard) then evalNodeGate d fuel env ifTrue
       else evalNodeGate d fuel env ifFalse
   | .call template wArgs aArgs rArgs => do
-      if fuel = 0 then .error s!"instantiate: fuel exhausted at call {template}" else
-      match d.templates.find? (fun t => t.name == template) with
-      | none => .error s!"instantiate: unknown template {template}"
-      | some t => do
-          let wVals ← wArgs.mapM (evalW env)
-          let aVals ← aArgs.mapM (evalA env)
-          let rVals ← rArgs.mapM (evalReg env)
-          evalNodeGate d (fuel - 1) (env.call t.wParams wVals t.aParams aVals t.rParams rVals)
-            t.body
+      let wVals ← wArgs.mapM (evalW env)
+      let aVals ← aArgs.mapM (evalA env)
+      let rVals ← rArgs.mapM (evalReg env)
+      match env.leafCall template wVals aVals rVals with
+      | some g => g
+      | none =>
+        if fuel = 0 then .error s!"instantiate: fuel exhausted at call {template}" else
+        match d.templates.find? (fun t => t.name == template) with
+        | none => .error s!"instantiate: unknown template {template}"
+        | some t =>
+            evalNodeGate d (fuel - 1) (env.call t.wParams wVals t.aParams aVals t.rParams rVals)
+              t.body
   | .loop var lo hi body => do
       let loV ← evalW env lo
       let hiV ← evalW env hi

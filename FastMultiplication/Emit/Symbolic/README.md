@@ -25,7 +25,9 @@ pts[l] j` and `b = 2^m`, so `c_l(b) = Σ_j (M⁻¹)_{j,l} b^j` is a polynomial i
 `b` determined by `k` and the point list alone.
 
 `M⁻¹` is computed by exact **Gauss-Jordan elimination over `ℚ`**
-(`gaussJordanInverseRows`, `O(n³)`) — **not** Mathlib's
+(`gaussJordanInverseRows`, `O(n³)`, defined in
+`Implementation/PhaseProduct/Compiler/GaussJordan.lean` since the compiler
+uses it too) — **not** Mathlib's
 `Matrix.adjugate`/`Matrix.det`. Those are Leibniz-formula sums over
 `Equiv.Perm`, meant for proofs, not computation: one adjugate entry is
 already an `O(n!)` determinant, so a whole inverse that way is `O(n²·n!)` —
@@ -36,25 +38,27 @@ already impractical at `k = 5` (`q 5 = 9`; `81` entries × `9! = 362880`).
 - `matrixToRows`, `gaussJordanInverseRows (n) (rows) : Option (Array (Array
   ℚ))` — dense row-major exact elimination; `none` if singular (shouldn't
   happen — `GoodToomCookPoints` is what the compiler's own
-  `cramerCoeffFromPtsWidth` already relies on).
+  `cramerCoeffFromPtsWidth` already relies on). Both are re-exported from
+  `Compiler/GaussJordan.lean`, where `isRightInverseRows` and the lemma
+  `mul_rowsToMatrix_eq_one_of_isRightInverseRows` turn the re-multiplication
+  check into the `Matrix` equation the compiler's `@[csimp]` proof needs.
 - `coeffInverse (k) (pts) (hpts) : Option (Array (Array ℚ))` — `M⁻¹`,
   computed once.
 - `coeffPolyRowOf (inv) (l) : Fin n → ℚ` — row `l`'s coefficient-of-`bʲ`
   vector, read off a precomputed `M⁻¹` (`coeffPolyRowOf inv l j = (M⁻¹) j l`).
 - `polyEval (c) (b) : ℚ` — evaluate a coefficient vector at concrete `b`.
 - `check1_inverseOf (M) (inv) : Bool` — `M · M⁻¹ = I` exactly, entrywise,
-  `O(n³)` plain arithmetic (no `Matrix.det`).
+  `O(n³)` plain arithmetic (no `Matrix.det`); an `abbrev` for the compiler's
+  `isRightInverseRows`.
 - `check2_agreesWithCramer (inv) (k) (pts) (hpts) (mMax) : Bool` —
   cross-checks the polynomials, evaluated at `b = 2^m`, against the
   compiler's own `cramerCoeffFromPtsWidth` (the function `loweringPhaseCoeff`
-  actually calls). Unlike everything else in this file, `cramerCoeffFromPtsWidth`
-  is pre-existing and unmodifiable, and it **is** one of the expensive
-  `Matrix.det`/`Matrix.cramer` calls — at `k = 5` it overflows the stack
-  almost immediately (a recursion-depth limit in Mathlib's `Equiv.Perm`
-  machinery, not merely slow). `Bundle.lean`'s `coeffPolyJson` is what
-  actually gates this: unconditional for `k ≤ 3`, opt-in via
-  `--check-cramer` for `k = 4`, always skipped from `k = 5`, capped at `m ≤
-  6` even then.
+  actually calls). That function is now `@[csimp]`-compiled through the same
+  eliminator (`Compiler/Coefficients.lean`, `gjCoeffFromPts`), so both sides
+  are cubic; `Bundle.lean`'s `coeffPolyJson` runs the check unconditionally
+  at every `k`, capped at `m ≤ 6`. What it still verifies is that the
+  *polynomial* read off `M⁻¹` (`coeffPolyRowOf`/`polyEval`) matches the
+  compiler's *pointwise* weights.
 - `pointsDistinct (pts) : Bool` — pairwise distinct by `ToomCookMath`'s
   coordinate (`int z ↦ z`, `frac c ↦ 1/c`).
 - `degenerateMs (pts) (mMax) : List ℕ` — every `m ≤ mMax` where `2^m`

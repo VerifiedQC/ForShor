@@ -5616,8 +5616,8 @@ window.GRAPH = {
     "PhaseProduct/Proofs",
     "PhaseProduct/Spec"
    ],
-   "declCount": 1050,
-   "fileCount": 59,
+   "declCount": 1058,
+   "fileCount": 60,
    "fsPath": "Implementation/PhaseProduct",
    "kind": "folder",
    "name": "PhaseProduct",
@@ -5628,104 +5628,125 @@ window.GRAPH = {
    "children": [
     "PhaseProduct/Compiler/Coefficients.lean",
     "PhaseProduct/Compiler/Compile.lean",
+    "PhaseProduct/Compiler/GaussJordan.lean",
     "PhaseProduct/Compiler/Layout.lean",
     "PhaseProduct/Compiler/PolicyWorkspace.lean",
     "PhaseProduct/Compiler/Widths.lean",
     "PhaseProduct/Compiler/Workspace.lean"
    ],
-   "declCount": 159,
-   "fileCount": 6,
+   "declCount": 168,
+   "fileCount": 7,
    "fsPath": "Implementation/PhaseProduct/Compiler",
    "kind": "folder",
    "name": "Compiler",
    "path": "PhaseProduct/Compiler",
-   "readmeHtml": "<h1><code>Compiler/</code></h1>\n<p>Definitions for the recursive phase-product compiler: turning a pair of registers <code>x</code>, <code>z</code> and a source arithmetic program into a concrete <code>Gate</code> circuit. Internal order: <code>Layout \u2192 Widths \u2192 Coefficients \u2192 Compile \u2192 Workspace \u2192 PolicyWorkspace</code> (each file may use anything from the ones before it).</p>\n<h2><code>Layout.lean</code></h2>\n<ul><li><strong><code>LayoutState k</code></strong> \u2014 the current chunk-to-register assignment: an <code>xslot</code>/<code>zslot</code></li></ul>\n<p>function from <code>Fin k</code> to <code>ExtReg</code>, i.e. where each of the <code>k</code> chunks of <code>x</code> and <code>z</code> currently live.</p>\n<ul><li><strong><code>WidthState k</code></strong> / <strong><code>NeededWidths k</code></strong> \u2014 plain width bookkeeping (no</li></ul>\n<p>registers): the current logical width of each chunk, and the maximum width each chunk will need once the whole source program has run.</p>\n<ul><li><strong><code>ValidPhaseSplit</code></strong>, <strong><code>PhaseSplitLayout parent k W</code></strong> \u2014 the abstract</li></ul>\n<p>interface for splitting one extendable register into <code>k</code> \"top-heavy\" active chunks (the last chunk absorbs the remainder) plus a disjoint reserve partition.</p>\n<ul><li><strong><code>Gate.PhaseProductLayout x z k</code></strong> \u2014 a pair of compatible <code>PhaseSplitLayout</code>s</li></ul>\n<p>for <code>x</code> and <code>z</code>, with a proof that no chunk of <code>x</code> overlaps any chunk of <code>z</code>.</p>\n<ul><li><strong><code>ExtReg.CanGrowTo</code></strong>, <strong><code>growExtRegTo</code></strong> \u2014 whether/how a register can be</li></ul>\n<p>widened in place to a target width using its reserve.</p>\n<ul><li><strong><code>initSignedLayoutState</code></strong> \u2014 the starting <code>LayoutState</code> built directly from</li></ul>\n<p>a <code>PhaseProductLayout</code>'s split chunks.</p>\n<ul><li><strong><code>targetSignedLayoutState</code></strong> \u2014 the same layout after every slot has been</li></ul>\n<p>grown to the common width the source program will need.</p>\n<ul><li><strong><code>ReserveBudget parent k</code></strong> \u2014 a partition of a parent register's reserve</li></ul>\n<p>into <code>k</code> child reserve sizes that sum to the parent's total capacity.</p>\n<h2><code>Widths.lean</code></h2>\n<ul><li><strong><code>scanNeededWidths</code></strong> \u2014 walks the source program once, tracking how wide</li></ul>\n<p>each chunk's logical value grows (shifts, negation, scaled addition), and returns the resulting <code>NeededWidths</code>.</p>\n<ul><li><strong><code>phaseInputSize</code></strong> \u2014 <code>max x.width z.width</code>, the size used to decide</li></ul>\n<p>whether a phase product should recurse again.</p>\n<ul><li><strong><code>nextSignedWidth</code></strong> \u2014 the width the <em>next</em> recursion level will actually</li></ul>\n<p>need, i.e. <code>commonNeededWidth (scanNeededWidths x z ops)</code>.</p>\n<h2><code>Coefficients.lean</code></h2>\n<ul><li><strong><code>interpMatrix</code></strong>, <strong><code>phaseCoeffFromPts</code></strong>, <strong><code>cramerCoeffFromPts</code></strong> \u2014 build</li></ul>\n<p>the interpolation matrix from a chosen point set and solve for the phase coefficients (two equivalent formulations: matrix inverse and Cramer's rule, the latter computable).</p>\n<ul><li><strong><code>alternatingPoint</code></strong>, <strong><code>genInterpolationPoints</code></strong> \u2014 the canonical point</li></ul>\n<p>set: <code>0, -1, 1, -2, 2, \u2026</code> (<code>2k-1</code> points). This is the <em>reference's</em> choice of points, not the framework's: the lowering chain takes <code>pts</code> as a parameter, and a submission may choose its own.</p>\n<ul><li><strong><code>genInterpolationPoints_good</code></strong> \u2014 that the canonical set satisfies C2,</li></ul>\n<p>proved via <code>toMathPoint</code> and the pure algebra in <code>Math/ToomCook.lean</code>.</p>\n<ul><li><strong><code>toMathPoint</code></strong> \u2014 the bridge from this compiler's own</li></ul>\n<p><code>Point</code>/interpolation-row representation to that algebra.</p>\n<p>&gt; <strong>Defined in <code>Framework/ToomCookTable.lean</code></strong>, not here: &gt; <strong><code>q k</code></strong> (the point count, <code>2k - 1</code>), <strong><code>interpEntry</code></strong> (one entry of the &gt; interpolation matrix) and <strong><code>GoodToomCookPoints</code></strong> (C2 itself). They state &gt; what makes a <em>submitted</em> point set admissible, so they belong with the &gt; rules rather than with the construction. Note the two <code>interpMatrix</code>s stayed &gt; apart: <code>Shor.interpMatrix</code> here is the compiler's, while the generic &gt; <code>ToomCookMath.interpMatrix</code> that <code>GoodToomCookPoints</code> is defined through &gt; moved.</p>\n<h2><code>Compile.lean</code></h2>\n<ul><li><strong><code>AnnotatedOp k</code></strong> \u2014 a source operation tagged with which interpolation</li></ul>\n<p>point (if any) its phase-product leaf corresponds to.</p>\n<ul><li><strong><code>compileOpsToSignedGate</code></strong> \u2014 the full signed compiler: allocate widened</li></ul>\n<p>chunks, emit the annotated-body circuit (arithmetic gates plus one <code>SignedPhaseProd</code> per phase-product leaf, phased by the matching coefficient), then deallocate back down.</p>\n<ul><li><strong><code>controlPhaseLeaves</code></strong>, <strong><code>compileOpsToCSignedGate</code></strong> \u2014 wraps only the</li></ul>\n<p>phase-product leaves of a compiled circuit with a shared control qubit, giving the controlled compiler.</p>\n<ul><li><strong><code>Gate.PhaseProductLayout.ControlDisjoint</code></strong> \u2014 the control qubit must sit</li></ul>\n<p>outside every child register the layout touches.</p>\n<h2><code>Workspace.lean</code></h2>\n<ul><li><strong><code>RecursivePhaseWorkspace.reserveNeed</code></strong> \u2014 the conservative reserve (on</li></ul>\n<p>each side) that a complete recursive compilation needs: growth room for the current level plus one full descendant reserve per chunk.</p>\n<ul><li><strong><code>SignedRecursiveWorkspaceOK</code></strong> / <strong><code>CSignedRecursiveWorkspaceOK</code></strong> \u2014 the</li></ul>\n<p>static (non-quantum) precondition packaging register disjointness plus \"the reserve is big enough for the whole recursion\" for the uncontrolled and controlled cases.</p>\n<ul><li><strong><code>PhaseSplitLayout.ofBudget</code></strong>, <strong><code>ReserveBudget.ofRequirements</code></strong> \u2014</li></ul>\n<p>construct a concrete split layout / reserve budget from per-child requirements, given that they fit in the parent's capacity.</p>\n<ul><li><strong><code>CanonicalSignedStep</code></strong>, <strong><code>canonicalSignedStep</code></strong> \u2014 the canonical,</li></ul>\n<p>deterministic choice of layout for one recursive step: builds the layout, and proves it has enough capacity for the next level and that every child's recursive input size is exactly <code>nextSignedWidth</code>.</p>\n<h2><code>PolicyWorkspace.lean</code></h2>\n<p>The same workspace model, for a width-indexed <strong>policy</strong> rather than a single table. <code>Lowering/</code> builds <code>PhaseLoweringPlan P</code> against the definitions here; the ones above are what the fixed-table spellings keep using.</p>\n<ul><li><strong><code>Policy.reserveNeed</code></strong> \u2014 the policy twin of</li></ul>\n<p><code>RecursivePhaseWorkspace.reserveNeed</code>: at each width it asks <code>P.choose</code> for that level's table and recurses with it, so the reserve is sized for whichever tables the recursion will actually meet, not for one table repeated. Fuelled, like its fixed-table counterpart.</p>\n<ul><li><strong><code>Policy.WorkspaceOK</code></strong> / <strong><code>Policy.CWorkspaceOK</code></strong> \u2014 the policy forms of</li></ul>\n<p><code>SignedRecursiveWorkspaceOK</code>/<code>CSignedRecursiveWorkspaceOK</code>, with <code>workspaceOK_const_iff</code> / <code>cWorkspaceOK_const_iff</code> identifying them with the originals at a constant policy.</p>\n<ul><li><strong><code>Policy.CanonicalStep</code></strong>, <strong><code>Policy.canonicalStep</code></strong> \u2014 the policy form of</li></ul>\n<p>the canonical step.</p>\n<h3>Why this file is separate</h3>\n<p><code>Policy.reserveNeed (constPolicy T)</code> and <code>RecursivePhaseWorkspace.reserveNeed T.ops</code> are equal \u2014 <code>reserveNeed_const</code> proves it \u2014 but only <strong>propositionally</strong>. They are two distinct well-founded fixpoints, so the equation is a rewrite, never a <code>rfl</code> the elaborator can use silently. Anything that must reduce definitionally therefore needs the spelling it was written against, which is why <code>lowerGate_correctness</code> is proved in both spellings rather than derived once and transported.</p>\n<p>That is the live reason for the split. The <em>organisational</em> reason is build time: <code>Workspace.lean</code> has 19 importers, so folding <code>PolicyWorkspace.lean</code> into it costs a full rebuild cascade across the library \u2014 worth paying only alongside a change already paying it. Until then: **new work should be written against the <code>Policy.*</code> names**, and the fixed-table names are the constant policy, kept for the statements that already depend on their definitional behaviour.</p>\n<p><code>canonicalSignedStep</code> is a different case and is <strong>dead code</strong>: every caller moved to <code>Policy.canonicalStep</code> when the Shor and GateCount layers ported over, and it now appears only at its own definition and in docstrings. Deleting it is a pure deletion with nothing to port, deferred only because it too edits <code>Workspace.lean</code>; see <code>ShorVerification/PLAN_PolicyGateCount.md</code> \u00a75.</p>"
+   "readmeHtml": "<h1><code>Compiler/</code></h1>\n<p>Definitions for the recursive phase-product compiler: turning a pair of registers <code>x</code>, <code>z</code> and a source arithmetic program into a concrete <code>Gate</code> circuit. Internal order: <code>Layout \u2192 Widths \u2192 Coefficients \u2192 Compile \u2192 Workspace \u2192 PolicyWorkspace</code> (each file may use anything from the ones before it).</p>\n<h2><code>Layout.lean</code></h2>\n<ul><li><strong><code>LayoutState k</code></strong> \u2014 the current chunk-to-register assignment: an <code>xslot</code>/<code>zslot</code></li></ul>\n<p>function from <code>Fin k</code> to <code>ExtReg</code>, i.e. where each of the <code>k</code> chunks of <code>x</code> and <code>z</code> currently live.</p>\n<ul><li><strong><code>WidthState k</code></strong> / <strong><code>NeededWidths k</code></strong> \u2014 plain width bookkeeping (no</li></ul>\n<p>registers): the current logical width of each chunk, and the maximum width each chunk will need once the whole source program has run.</p>\n<ul><li><strong><code>ValidPhaseSplit</code></strong>, <strong><code>PhaseSplitLayout parent k W</code></strong> \u2014 the abstract</li></ul>\n<p>interface for splitting one extendable register into <code>k</code> \"top-heavy\" active chunks (the last chunk absorbs the remainder) plus a disjoint reserve partition.</p>\n<ul><li><strong><code>Gate.PhaseProductLayout x z k</code></strong> \u2014 a pair of compatible <code>PhaseSplitLayout</code>s</li></ul>\n<p>for <code>x</code> and <code>z</code>, with a proof that no chunk of <code>x</code> overlaps any chunk of <code>z</code>.</p>\n<ul><li><strong><code>ExtReg.CanGrowTo</code></strong>, <strong><code>growExtRegTo</code></strong> \u2014 whether/how a register can be</li></ul>\n<p>widened in place to a target width using its reserve.</p>\n<ul><li><strong><code>initSignedLayoutState</code></strong> \u2014 the starting <code>LayoutState</code> built directly from</li></ul>\n<p>a <code>PhaseProductLayout</code>'s split chunks.</p>\n<ul><li><strong><code>targetSignedLayoutState</code></strong> \u2014 the same layout after every slot has been</li></ul>\n<p>grown to the common width the source program will need.</p>\n<ul><li><strong><code>ReserveBudget parent k</code></strong> \u2014 a partition of a parent register's reserve</li></ul>\n<p>into <code>k</code> child reserve sizes that sum to the parent's total capacity.</p>\n<h2><code>Widths.lean</code></h2>\n<ul><li><strong><code>scanNeededWidths</code></strong> \u2014 walks the source program once, tracking how wide</li></ul>\n<p>each chunk's logical value grows (shifts, negation, scaled addition), and returns the resulting <code>NeededWidths</code>.</p>\n<ul><li><strong><code>phaseInputSize</code></strong> \u2014 <code>max x.width z.width</code>, the size used to decide</li></ul>\n<p>whether a phase product should recurse again.</p>\n<ul><li><strong><code>nextSignedWidth</code></strong> \u2014 the width the <em>next</em> recursion level will actually</li></ul>\n<p>need, i.e. <code>commonNeededWidth (scanNeededWidths x z ops)</code>.</p>\n<h2><code>GaussJordan.lean</code></h2>\n<p>Exact Gauss-Jordan elimination over <code>\u211a</code> (<code>matrixToRows</code>, <code>gaussJordanInverseRows</code>, <code>O(n\u00b3)</code>, <strong>unverified</strong>) together with the one computation that <em>is</em> trusted: <code>isRightInverseRows M inv</code> re-multiplies and decides <code>M \u00b7 inv = I</code> entrywise, and <code>mul_rowsToMatrix_eq_one_of_isRightInverseRows</code> turns a <code>true</code> into the <code>Matrix</code> equation. Imports Mathlib only, so it sits at the bottom of this folder. It exists here rather than in <code>Emit/</code> (its old home) because <code>Coefficients.lean</code>'s <code>@[csimp]</code> lemma has to be in the environment before <code>Lowering/Plan.lean</code>'s <code>loweringPhaseCoeff</code> is compiled.</p>\n<h2><code>Coefficients.lean</code></h2>\n<ul><li><strong><code>interpMatrix</code></strong>, <strong><code>phaseCoeffFromPts</code></strong>, <strong><code>cramerCoeffFromPts</code></strong> \u2014 build</li></ul>\n<p>the interpolation matrix from a chosen point set and solve for the phase coefficients (two equivalent formulations: matrix inverse and Cramer's rule, the latter computable).</p>\n<ul><li><strong><code>gjCoeffFromPts</code></strong>, <strong><code>gjCoeffFromPts_eq_cramerCoeffFromPts</code></strong>,</li></ul>\n<p><strong><code>cramerCoeffFromPts_eq_gjCoeffFromPts_csimp</code></strong> \u2014 the compiled fast path. <code>cramerCoeffFromPts</code> as <em>code</em> is a <code>(2k-1)!</code>-term <code>Matrix.det</code>, which stalls every <code>native_decide</code> evaluation of the circuit at <code>k \u2265 5</code>. <code>gjCoeffFromPts</code> eliminates (<code>GaussJordan.lean</code>), verifies <code>M \u00b7 M\u207b\u00b9 = I</code>, reads <code>radixVec \u1d65* M\u207b\u00b9</code> off the verified rows, and falls back to Cramer otherwise; the equality is proved with no assumption on the eliminator and tagged <code>@[csimp]</code>, so compiled code runs the cubic path while the kernel \u2014 and every proof \u2014 still sees Cramer's rule.</p>\n<ul><li><strong><code>cramerCoeffFromPts_eq_phaseCoeffFromPts</code></strong> \u2014 Cramer equals the inverse</li></ul>\n<p>formulation when <code>det \u2260 0</code>. Moved here from <code>Proofs/Compiler/Interpolation.lean</code> because the <code>csimp</code> proof needs it below <code>Lowering/</code>.</p>\n<ul><li><strong><code>alternatingPoint</code></strong>, <strong><code>genInterpolationPoints</code></strong> \u2014 the canonical point</li></ul>\n<p>set: <code>0, -1, 1, -2, 2, \u2026</code> (<code>2k-1</code> points). This is the <em>reference's</em> choice of points, not the framework's: the lowering chain takes <code>pts</code> as a parameter, and a submission may choose its own.</p>\n<ul><li><strong><code>genInterpolationPoints_good</code></strong> \u2014 that the canonical set satisfies C2,</li></ul>\n<p>proved via <code>toMathPoint</code> and the pure algebra in <code>Math/ToomCook.lean</code>.</p>\n<ul><li><strong><code>toMathPoint</code></strong> \u2014 the bridge from this compiler's own</li></ul>\n<p><code>Point</code>/interpolation-row representation to that algebra.</p>\n<p>&gt; <strong>Defined in <code>Framework/ToomCookTable.lean</code></strong>, not here: &gt; <strong><code>q k</code></strong> (the point count, <code>2k - 1</code>), <strong><code>interpEntry</code></strong> (one entry of the &gt; interpolation matrix) and <strong><code>GoodToomCookPoints</code></strong> (C2 itself). They state &gt; what makes a <em>submitted</em> point set admissible, so they belong with the &gt; rules rather than with the construction. Note the two <code>interpMatrix</code>s stayed &gt; apart: <code>Shor.interpMatrix</code> here is the compiler's, while the generic &gt; <code>ToomCookMath.interpMatrix</code> that <code>GoodToomCookPoints</code> is defined through &gt; moved.</p>\n<h2><code>Compile.lean</code></h2>\n<ul><li><strong><code>AnnotatedOp k</code></strong> \u2014 a source operation tagged with which interpolation</li></ul>\n<p>point (if any) its phase-product leaf corresponds to.</p>\n<ul><li><strong><code>compileOpsToSignedGate</code></strong> \u2014 the full signed compiler: allocate widened</li></ul>\n<p>chunks, emit the annotated-body circuit (arithmetic gates plus one <code>SignedPhaseProd</code> per phase-product leaf, phased by the matching coefficient), then deallocate back down.</p>\n<ul><li><strong><code>controlPhaseLeaves</code></strong>, <strong><code>compileOpsToCSignedGate</code></strong> \u2014 wraps only the</li></ul>\n<p>phase-product leaves of a compiled circuit with a shared control qubit, giving the controlled compiler.</p>\n<ul><li><strong><code>Gate.PhaseProductLayout.ControlDisjoint</code></strong> \u2014 the control qubit must sit</li></ul>\n<p>outside every child register the layout touches.</p>\n<h2><code>Workspace.lean</code></h2>\n<ul><li><strong><code>RecursivePhaseWorkspace.reserveNeed</code></strong> \u2014 the conservative reserve (on</li></ul>\n<p>each side) that a complete recursive compilation needs: growth room for the current level plus one full descendant reserve per chunk.</p>\n<ul><li><strong><code>SignedRecursiveWorkspaceOK</code></strong> / <strong><code>CSignedRecursiveWorkspaceOK</code></strong> \u2014 the</li></ul>\n<p>static (non-quantum) precondition packaging register disjointness plus \"the reserve is big enough for the whole recursion\" for the uncontrolled and controlled cases.</p>\n<ul><li><strong><code>PhaseSplitLayout.ofBudget</code></strong>, <strong><code>ReserveBudget.ofRequirements</code></strong> \u2014</li></ul>\n<p>construct a concrete split layout / reserve budget from per-child requirements, given that they fit in the parent's capacity.</p>\n<ul><li><strong><code>CanonicalSignedStep</code></strong>, <strong><code>canonicalSignedStep</code></strong> \u2014 the canonical,</li></ul>\n<p>deterministic choice of layout for one recursive step: builds the layout, and proves it has enough capacity for the next level and that every child's recursive input size is exactly <code>nextSignedWidth</code>.</p>\n<h2><code>PolicyWorkspace.lean</code></h2>\n<p>The same workspace model, for a width-indexed <strong>policy</strong> rather than a single table. <code>Lowering/</code> builds <code>PhaseLoweringPlan P</code> against the definitions here; the ones above are what the fixed-table spellings keep using.</p>\n<ul><li><strong><code>Policy.reserveNeed</code></strong> \u2014 the policy twin of</li></ul>\n<p><code>RecursivePhaseWorkspace.reserveNeed</code>: at each width it asks <code>P.choose</code> for that level's table and recurses with it, so the reserve is sized for whichever tables the recursion will actually meet, not for one table repeated. Fuelled, like its fixed-table counterpart.</p>\n<ul><li><strong><code>Policy.WorkspaceOK</code></strong> / <strong><code>Policy.CWorkspaceOK</code></strong> \u2014 the policy forms of</li></ul>\n<p><code>SignedRecursiveWorkspaceOK</code>/<code>CSignedRecursiveWorkspaceOK</code>, with <code>workspaceOK_const_iff</code> / <code>cWorkspaceOK_const_iff</code> identifying them with the originals at a constant policy.</p>\n<ul><li><strong><code>Policy.CanonicalStep</code></strong>, <strong><code>Policy.canonicalStep</code></strong> \u2014 the policy form of</li></ul>\n<p>the canonical step.</p>\n<h3>Why this file is separate</h3>\n<p><code>Policy.reserveNeed (constPolicy T)</code> and <code>RecursivePhaseWorkspace.reserveNeed T.ops</code> are equal \u2014 <code>reserveNeed_const</code> proves it \u2014 but only <strong>propositionally</strong>. They are two distinct well-founded fixpoints, so the equation is a rewrite, never a <code>rfl</code> the elaborator can use silently. Anything that must reduce definitionally therefore needs the spelling it was written against, which is why <code>lowerGate_correctness</code> is proved in both spellings rather than derived once and transported.</p>\n<p>That is the live reason for the split. The <em>organisational</em> reason is build time: <code>Workspace.lean</code> has 19 importers, so folding <code>PolicyWorkspace.lean</code> into it costs a full rebuild cascade across the library \u2014 worth paying only alongside a change already paying it. Until then: **new work should be written against the <code>Policy.*</code> names**, and the fixed-table names are the constant policy, kept for the statements that already depend on their definitional behaviour.</p>\n<p><code>canonicalSignedStep</code> is a different case and is <strong>dead code</strong>: every caller moved to <code>Policy.canonicalStep</code> when the Shor and GateCount layers ported over, and it now appears only at its own definition and in docstrings. Deleting it is a pure deletion with nothing to port, deferred only because it too edits <code>Workspace.lean</code>; see <code>ShorVerification/PLAN_PolicyGateCount.md</code> \u00a75.</p>"
   },
   "PhaseProduct/Compiler/Coefficients.lean": {
    "declarations": [
     {
      "kind": "def",
-     "line": 30,
+     "line": 32,
      "name": "Shor.interpMatrix"
     },
     {
      "kind": "def",
-     "line": 34,
+     "line": 36,
      "name": "Shor.phaseCoeffFromPts"
     },
     {
      "kind": "def",
-     "line": 40,
+     "line": 42,
      "name": "Shor.ptsToFin"
     },
     {
      "kind": "def",
-     "line": 44,
+     "line": 46,
      "name": "Shor.phaseRadix"
     },
     {
      "kind": "def",
-     "line": 47,
+     "line": 49,
      "name": "Shor.phaseRadixWidth"
     },
     {
      "kind": "def",
-     "line": 50,
+     "line": 52,
      "name": "Shor.chunkRadix"
     },
     {
      "kind": "def",
-     "line": 53,
+     "line": 55,
      "name": "Shor.phaseCoeffFromPtsWidth"
     },
     {
      "kind": "def",
-     "line": 64,
+     "line": 66,
      "name": "Shor.cramerCoeffFromPts"
     },
     {
+     "kind": "lemma",
+     "line": 83,
+     "name": "Shor.cramerCoeffFromPts_eq_phaseCoeffFromPts"
+    },
+    {
      "kind": "def",
-     "line": 70,
+     "line": 147,
+     "name": "Shor.gjCoeffFromPts"
+    },
+    {
+     "kind": "theorem",
+     "line": 160,
+     "name": "Shor.gjCoeffFromPts_eq_cramerCoeffFromPts"
+    },
+    {
+     "kind": "theorem",
+     "line": 181,
+     "name": "Shor.cramerCoeffFromPts_eq_gjCoeffFromPts_csimp"
+    },
+    {
+     "kind": "def",
+     "line": 191,
      "name": "Shor.cramerCoeffFromPtsWidth"
     },
     {
      "kind": "def",
-     "line": 74,
+     "line": 195,
      "name": "Shor.phaseCoeffFromPtsForRegs"
     },
     {
      "kind": "def",
-     "line": 84,
+     "line": 205,
      "name": "Shor.alternatingPoint"
     },
     {
      "kind": "def",
-     "line": 88,
+     "line": 209,
      "name": "Shor.genInterpolationPoints"
     },
     {
      "kind": "def",
-     "line": 100,
+     "line": 221,
      "name": "Shor.toMathPoint"
     },
     {
      "kind": "lemma",
-     "line": 107,
+     "line": 228,
      "name": "Shor.toMathPoint_interpEntry"
     },
     {
      "kind": "lemma",
-     "line": 111,
+     "line": 232,
      "name": "Shor.toMathPoint_alternatingPoint"
     },
     {
      "kind": "lemma",
-     "line": 119,
+     "line": 240,
      "name": "Shor.listToFin_genInterpolationPoints_toMathPoint"
     },
     {
      "kind": "lemma",
-     "line": 128,
+     "line": 249,
      "name": "Shor.genInterpolationPoints_good"
     }
    ],
@@ -5745,11 +5766,12 @@ window.GRAPH = {
    ],
    "imports": [
     "Framework/ToomCookTable.lean",
+    "PhaseProduct/Compiler/GaussJordan.lean",
     "PhaseProduct/Compiler/Layout.lean",
     "PhaseProduct/Math/ToomCook.lean"
    ],
    "kind": "file",
-   "lines": 148,
+   "lines": 269,
    "name": "Coefficients.lean",
    "path": "PhaseProduct/Compiler/Coefficients.lean"
   },
@@ -5896,6 +5918,45 @@ window.GRAPH = {
    "lines": 274,
    "name": "Compile.lean",
    "path": "PhaseProduct/Compiler/Compile.lean"
+  },
+  "PhaseProduct/Compiler/GaussJordan.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 38,
+     "name": "Shor.matrixToRows"
+    },
+    {
+     "kind": "def",
+     "line": 44,
+     "name": "Shor.rowsToMatrix"
+    },
+    {
+     "kind": "def",
+     "line": 50,
+     "name": "Shor.gaussJordanInverseRows"
+    },
+    {
+     "kind": "def",
+     "line": 83,
+     "name": "Shor.isRightInverseRows"
+    },
+    {
+     "kind": "theorem",
+     "line": 89,
+     "name": "Shor.mul_rowsToMatrix_eq_one_of_isRightInverseRows"
+    }
+   ],
+   "docstring": "# Phase-Product Compiler: exact Gauss-Jordan elimination, with a verified inverse\n\nThe compiler's interpolation weights are specified through `Matrix.cramer`\nand `Matrix.det` (`Coefficients.lean`, `cramerCoeffFromPts`). Those are sums\nover all permutations, so they serve as a specification, not as code. This\nfile is the computational counterpart, arranged so that nothing about the\nalgorithm has to be proved:\n\n- `gaussJordanInverseRows` is an ordinary eliminator over `\u211a`. Nothing is\n  proved about it; it may return anything.\n- `isRightInverseRows M inv` re-multiplies and decides `M \u00b7 inv = I`\n  entrywise. That is the only computation that is trusted, and\n  `mul_rowsToMatrix_eq_one_of_isRightInverseRows` turns a `true` into the\n  proposition `M * rowsToMatrix inv = 1`.\n- `Coefficients.lean` defines `gjCoeffFromPts` as \"eliminate, verify, and\n  fall back to Cramer if the verification fails\", proves it equal to\n  `cramerCoeffFromPts` (the verified branch through `Matrix.inv_eq_right_inv`,\n  the fallbacks by `rfl`), and tags the equality `@[csimp]`.\n\n`csimp` changes compiled code only: the kernel keeps seeing\n`cramerCoeffFromPts`, so proofs are unaffected, while compiled code runs the\neliminator. It is the sound counterpart of `@[implemented_by]`, because it\ndemands the equality proof.\n\nThe file imports Mathlib and nothing from the project, so it sits at the\nbottom of `Compiler/`: the `@[csimp]` lemma must be in the environment before\nthe definitions that call `cramerCoeffFromPts` are compiled.",
+   "fsPath": "Implementation/PhaseProduct/Compiler/GaussJordan.lean",
+   "importedBy": [
+    "PhaseProduct/Compiler/Coefficients.lean"
+   ],
+   "imports": [],
+   "kind": "file",
+   "lines": 98,
+   "name": "GaussJordan.lean",
+   "path": "PhaseProduct/Compiler/GaussJordan.lean"
   },
   "PhaseProduct/Compiler/Layout.lean": {
    "declarations": [
@@ -10189,7 +10250,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering",
     "PhaseProduct/Proofs/NaiveLeaf.lean"
    ],
-   "declCount": 284,
+   "declCount": 283,
    "fileCount": 22,
    "fsPath": "Implementation/PhaseProduct/Proofs",
    "kind": "folder",
@@ -10208,7 +10269,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Compiler/Support.lean",
     "PhaseProduct/Proofs/Compiler/WidthSoundness.lean"
    ],
-   "declCount": 148,
+   "declCount": 147,
    "fileCount": 12,
    "fsPath": "Implementation/PhaseProduct/Proofs/Compiler",
    "kind": "folder",
@@ -10724,72 +10785,67 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 673,
-     "name": "Shor.cramerCoeffFromPts_eq_phaseCoeffFromPts"
-    },
-    {
-     "kind": "lemma",
-     "line": 718,
+     "line": 664,
      "name": "Shor.phaseCoeffFromPtsWidth_eq_interpCoeff"
     },
     {
      "kind": "theorem",
-     "line": 740,
+     "line": 686,
      "name": "Shor.cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth"
     },
     {
      "kind": "lemma",
-     "line": 760,
+     "line": 706,
      "name": "Shor.phaseScalarFrom_eq_phaseScalarFromList_aux"
     },
     {
      "kind": "lemma",
-     "line": 824,
+     "line": 770,
      "name": "Shor.phaseScalarFrom_eq_phaseScalarFromList"
     },
     {
      "kind": "lemma",
-     "line": 851,
+     "line": 797,
      "name": "Shor.expectedRow_mul_expectedRow_eq_interpEntry"
     },
     {
      "kind": "lemma",
-     "line": 879,
+     "line": 825,
      "name": "Shor.sum_degree_group"
     },
     {
      "kind": "lemma",
-     "line": 954,
+     "line": 900,
      "name": "Shor.tcPointTerm_eq_evalAtPoint_tcProductCoeff"
     },
     {
      "kind": "lemma",
-     "line": 1081,
+     "line": 1027,
      "name": "Shor.GoodToomCookPoints.to_GoodInterpolationPoints"
     },
     {
      "kind": "lemma",
-     "line": 1091,
+     "line": 1037,
      "name": "Shor.evalAtRadix_tcProductCoeff_eq_chunk_product"
     },
     {
      "kind": "lemma",
-     "line": 1176,
+     "line": 1122,
      "name": "Shor.sourceChunks_reconstruct_x"
     },
     {
      "kind": "lemma",
-     "line": 1212,
+     "line": 1158,
      "name": "Shor.sourceChunks_reconstruct_z"
     },
     {
      "kind": "lemma",
-     "line": 1248,
+     "line": 1194,
      "name": "Shor.evalAtRadix_tcProductCoeff_eq_ext_product"
     },
     {
      "kind": "lemma",
-     "line": 1315,
+     "line": 1261,
      "name": "Shor.toom_cook_interpolation"
     }
    ],
@@ -10802,7 +10858,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Compiler/Support.lean"
    ],
    "kind": "file",
-   "lines": 1460,
+   "lines": 1406,
    "name": "Interpolation.lean",
    "path": "PhaseProduct/Proofs/Compiler/Interpolation.lean"
   },
@@ -20109,6 +20165,7 @@ window.GRAPH = {
    "children": [
     "PhaseProduct/Compiler/Coefficients.lean",
     "PhaseProduct/Compiler/Compile.lean",
+    "PhaseProduct/Compiler/GaussJordan.lean",
     "PhaseProduct/Compiler/Layout.lean",
     "PhaseProduct/Compiler/PolicyWorkspace.lean",
     "PhaseProduct/Compiler/Widths.lean",
@@ -20135,6 +20192,17 @@ window.GRAPH = {
       ]
      ],
      "to": "PhaseProduct/Compiler/Workspace.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseProduct/Compiler/GaussJordan.lean",
+     "pairs": [
+      [
+       "PhaseProduct/Compiler/GaussJordan.lean",
+       "PhaseProduct/Compiler/Coefficients.lean"
+      ]
+     ],
+     "to": "PhaseProduct/Compiler/Coefficients.lean",
      "weight": 1
     },
     {

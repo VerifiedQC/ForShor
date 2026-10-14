@@ -1,6 +1,7 @@
 import FastMultiplication.ShorVerification.Framework.ToomCookTable
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Layout
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.ToomCook
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.GaussJordan
 
 /-!
 # Phase-Product Compiler: Coefficients
@@ -21,6 +22,7 @@ namespace Shor
 open Gate
 open Operations
 open scoped BigOperators
+open scoped Matrix
 
 /-! =========================================================
     Interpolation and phase coefficients
@@ -66,7 +68,126 @@ def cramerCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) : Fin (q 
   let radixVec : Fin (q k) → ℚ := fun j => b ^ (j : ℕ)
   fun i => Matrix.cramer M.transpose radixVec i / M.det
 
-/-- `cramerCoeffFromPts` specialised to a fixed chunk width. -/
+
+/--
+`Matrix.cramer`-based coefficients agree with the `Matrix.inv`-based ones
+whenever the interpolation matrix is invertible.
+
+The argument is pure linear algebra and does not need the points to be
+distinct integers (unlike a closed-form Lagrange-weight product, which would
+only be valid for plain monomial rows): from `M *ᵥ cramer M v = M.det • v`
+(`Matrix.mulVec_cramer`), left-multiplying by `M⁻¹` gives
+`cramer M v = M.det • (M⁻¹ *ᵥ v)`, and dividing by the (nonzero) determinant
+recovers `M⁻¹ *ᵥ v` from `cramer M v`.
+-/
+lemma cramerCoeffFromPts_eq_phaseCoeffFromPts
+    {k : ℕ}
+    (pts : Fin (q k) → Point)
+    (b : ℚ)
+    (hgood : (interpMatrix k pts).det ≠ 0) :
+    cramerCoeffFromPts k pts b = phaseCoeffFromPts k pts b := by
+  funext i
+  set M : Matrix (Fin (q k)) (Fin (q k)) ℚ := interpMatrix k pts with hM
+  set radixVec : Fin (q k) → ℚ := fun j => b ^ (j : ℕ) with hradixVec
+  have hUnitT : IsUnit M.transpose.det := by
+    rw [Matrix.det_transpose]
+    exact isUnit_iff_ne_zero.mpr hgood
+  have hleft :
+      M.transpose⁻¹ *ᵥ (M.transpose *ᵥ Matrix.cramer M.transpose radixVec)
+        = Matrix.cramer M.transpose radixVec := by
+    rw [Matrix.mulVec_mulVec, Matrix.nonsing_inv_mul M.transpose hUnitT, Matrix.one_mulVec]
+  have hkey :
+      Matrix.cramer M.transpose radixVec
+        = M.transpose.det • (M.transpose⁻¹ *ᵥ radixVec) := by
+    calc Matrix.cramer M.transpose radixVec
+        = M.transpose⁻¹ *ᵥ (M.transpose *ᵥ Matrix.cramer M.transpose radixVec) := hleft.symm
+      _ = M.transpose⁻¹ *ᵥ (M.transpose.det • radixVec) := by rw [Matrix.mulVec_cramer]
+      _ = M.transpose.det • (M.transpose⁻¹ *ᵥ radixVec) := Matrix.mulVec_smul _ _ _
+  have hcomp :
+      Matrix.cramer M.transpose radixVec i
+        = M.transpose.det * (M.transpose⁻¹ *ᵥ radixVec) i := by
+    have h := congrFun hkey i
+    simpa [Pi.smul_apply, smul_eq_mul] using h
+  have hdet_ne : M.transpose.det ≠ 0 := by rw [Matrix.det_transpose]; exact hgood
+  have hinv_component :
+      (M.transpose⁻¹ *ᵥ radixVec) i
+        = Matrix.cramer M.transpose radixVec i / M.transpose.det := by
+    rw [eq_div_iff hdet_ne, mul_comm]
+    exact hcomp.symm
+  have hphase :
+      phaseCoeffFromPts k pts b i = (M.transpose⁻¹ *ᵥ radixVec) i := by
+    have hstep1 :
+        phaseCoeffFromPts k pts b i = (radixVec ᵥ* M⁻¹) i := by
+      show (ToomCookMath.radixRow (q k) b * M⁻¹) 0 i = (radixVec ᵥ* M⁻¹) i
+      simp [Matrix.mul_apply, Matrix.vecMul, dotProduct, ToomCookMath.radixRow, radixVec]
+    rw [hstep1, ← Matrix.mulVec_transpose, Matrix.transpose_nonsing_inv]
+  rw [hphase, hinv_component, cramerCoeffFromPts, hM, hradixVec]
+  simp [Matrix.det_transpose]
+
+/-! =========================================================
+    Interpolation weights by Gauss-Jordan elimination
+
+    `cramerCoeffFromPts` is the definition the proofs reason about.
+    `gjCoeffFromPts` computes the same weights by elimination with a verified
+    inverse, and the `@[csimp]` lemma makes the compiler use it: the kernel
+    sees Cramer's rule, compiled code runs the eliminator (`GaussJordan.lean`).
+========================================================= -/
+
+/--
+`cramerCoeffFromPts` computed by Gauss-Jordan elimination. The interpolation
+matrix is inverted by `gaussJordanInverseRows`, the result is verified by
+re-multiplication (`isRightInverseRows`), and the weights are
+`radixVec ᵥ* M⁻¹` read off the verified rows. If elimination fails or the
+verification does not pass, the value is `cramerCoeffFromPts` itself, so the
+function equals Cramer's rule with no assumption on the eliminator.
+
+Declared before the `@[csimp]` lemma so that its fallback branches compile
+to the genuine Cramer code.
+-/
+def gjCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) : Fin (q k) → ℚ :=
+  let M : Matrix (Fin (q k)) (Fin (q k)) ℚ := interpMatrix k pts
+  match gaussJordanInverseRows (q k) (matrixToRows M) with
+  | some inv =>
+      if isRightInverseRows M inv then
+        fun i => ∑ j : Fin (q k), b ^ (j : ℕ) * rowsToMatrix (n := q k) inv j i
+      else cramerCoeffFromPts k pts b
+  | none => cramerCoeffFromPts k pts b
+
+/-- `gjCoeffFromPts` equals Cramer's rule. In the verified branch
+`M * inv = 1` gives `det M ≠ 0` and `M⁻¹ = inv`, and
+`cramerCoeffFromPts_eq_phaseCoeffFromPts` identifies the two; the fallback
+branches are definitional. -/
+theorem gjCoeffFromPts_eq_cramerCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) :
+    gjCoeffFromPts k pts b = cramerCoeffFromPts k pts b := by
+  unfold gjCoeffFromPts
+  dsimp only
+  rcases hgj : gaussJordanInverseRows (q k) (matrixToRows (interpMatrix k pts)) with _ | inv
+  · rfl
+  · dsimp only
+    by_cases hchk : isRightInverseRows (interpMatrix k pts) inv = true
+    · rw [if_pos hchk]
+      have hmul : interpMatrix k pts * rowsToMatrix (n := q k) inv = 1 :=
+        mul_rowsToMatrix_eq_one_of_isRightInverseRows hchk
+      have hdet : (interpMatrix k pts).det ≠ 0 :=
+        (Matrix.isUnit_det_of_right_inverse hmul).ne_zero
+      rw [cramerCoeffFromPts_eq_phaseCoeffFromPts pts b hdet]
+      funext i
+      simp only [phaseCoeffFromPts, Matrix.inv_eq_right_inv hmul, Matrix.mul_apply,
+        ToomCookMath.radixRow]
+    · rw [if_neg hchk]
+
+/-- Compiled code evaluates `cramerCoeffFromPts` as `gjCoeffFromPts`; the
+kernel, and every proof, sees Cramer's rule. -/
+@[csimp] theorem cramerCoeffFromPts_eq_gjCoeffFromPts_csimp :
+    @cramerCoeffFromPts = @gjCoeffFromPts := by
+  funext k pts b
+  exact (gjCoeffFromPts_eq_cramerCoeffFromPts k pts b).symm
+
+/-- `cramerCoeffFromPts` specialised to a fixed chunk width.
+
+Declared after the `@[csimp]` lemma: `csimp` rewrites a definition's compiled
+body when that definition is compiled, so a caller takes the elimination path
+only if it comes after the lemma. -/
 def cramerCoeffFromPtsWidth (k W : ℕ) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → ℚ :=
   cramerCoeffFromPts k (ptsToFin k pts hpts) ((2 : ℚ) ^ W)
 

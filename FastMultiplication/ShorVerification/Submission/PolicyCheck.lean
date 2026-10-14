@@ -41,11 +41,18 @@ literally a corollary of the policy theorem.
 `extract_policy_ir_doc` builds the IR a resource estimator reads: one
 dispatcher per phase-product flavour, one body template per band, and the
 shared `qft`/`shor_gate`/`shor`/leaf templates.
-`Shor.Reflect.policySubmissionChecks` then instantiates it and compares it
-against the real compiled circuit — at each band boundary, at the widths
-reaching one, two and three levels of the policy's own recursion, at odd
-`qft` widths where the split straddles the lowest threshold, and at the
-reference Shor instances.
+`Shor.Reflect.policySubmissionChecks` then compares it against the real
+compiled circuit in two ways. Each band's body is instantiated **one level
+deep** at the band's own threshold, with child calls treated as the
+phase-product leaves the compiler emits there (and each call's capacity
+arguments checked against the registers it passes), and compared with the
+compiler's one-level step on the real layout.
+Then the document is instantiated at **full depth** at the widths reaching
+one, two and three levels of the policy's own recursion, provided they fit
+a leaf budget (`policyFullDepthLeafBudget`): a band boundary at the top of
+the policy unrolls every band below it, so those boundaries are covered one
+level deep instead. Then `qft` at odd widths where the split straddles the
+lowest threshold, the leaves, and the reference Shor instances.
 
 Instantiating the entry template exercises the whole stack at once: the
 dispatcher's guard chain, the band body it routes to, and the recursion back

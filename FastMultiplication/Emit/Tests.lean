@@ -121,6 +121,34 @@ example :
       | none => false) = true := by
   native_decide
 
+-- 7b. The compiler's Gauss-Jordan weights (`gjCoeffFromPts`, the compiled
+-- form of `cramerCoeffFromPts`) on the `k = 2` canonical points at `b = 4`:
+-- the weights solve `Mᵀ c = (1, 4, 16)` for the rows `[1,0,0]`, `[1,-1,1]`,
+-- `[1,1,1]`, i.e. `c = (-15, 6, 10)`. Stated on `gjCoeffFromPts` directly so
+-- the test is of the eliminator's output.
+example :
+    gjCoeffFromPts 2 (ptsToFin 2 [Operations.Point.int 0, Operations.Point.int (-1), Operations.Point.int 1] rfl) 4
+      = ![-15, 6, 10] := by
+  native_decide
+
+-- 7c. On the standard `k = 5` table the elimination succeeds and the
+-- re-multiplication verifies, so the weights come from the verified inverse
+-- and not from the Cramer fallback; and `check2`, which evaluates
+-- `cramerCoeffFromPtsWidth` on every row at every `m`, agrees.
+def k5StdInst : TableInstance 5 := standardTableInstance 5 (by decide)
+
+example :
+    (match gaussJordanInverseRows (q 5) (matrixToRows (coeffMatrix 5 k5StdInst.points k5StdInst.hlen)) with
+      | some inv => isRightInverseRows (coeffMatrix 5 k5StdInst.points k5StdInst.hlen) inv
+      | none => false) = true := by
+  native_decide
+
+example :
+    (match coeffInverse 5 k5StdInst.points k5StdInst.hlen with
+      | some inv => check2_agreesWithCramer inv 5 k5StdInst.points k5StdInst.hlen 4
+      | none => false) = true := by
+  native_decide
+
 -- 8. The `bundle` document has `schema = "forshor.emit/v1"` and `n_free = true`.
 -- `buildBundleCore` (the pure sections only — `template` needs `IO`, see
 -- R3's split, and is checked at run time via the deliverable

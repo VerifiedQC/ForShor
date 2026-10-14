@@ -303,13 +303,31 @@ builds one dispatcher per phase-product flavour, one body template per band,
 and the shared `qft`/`shor_gate`/`shor`/leaf templates; the dispatcher is the
 entry point and carries the policy's guard chain.
 `Shor.Reflect.policySubmissionChecks` then pins that document against the
-real compiled circuit — at every band boundary, at the widths reaching one,
-two and three levels of the policy's own recursion in both reserve regimes,
-at odd `qft` widths where the split straddles the lowest threshold, and at
-the reference Shor instances. Instantiating the entry template exercises the
-guard chain, the band body it routes to, and the recursion back through the
-dispatcher all at once, so a width at the top of the policy covers every band
-the chain descends through.
+real compiled circuit in two ways. **One level per band:** each band body is
+instantiated at the band's own threshold with child calls treated as the
+phase-product leaves the compiler emits there — each call's capacity
+arguments checked against the registers it passes — and compared with the
+compiler's one-level step on the real layout. This is milliseconds at any
+threshold, so a `k = 5` band at width 117 costs the same as a `k = 2` band at
+14. **Full depth where cheap:** the entry template is instantiated and
+compared with the fully lowered circuit at the widths reaching one, two and
+three levels of the policy's own recursion, in both reserve regimes, provided
+they fit `policyFullDepthLeafBudget` (100 leaves). Band boundaries at the top
+of a policy never fit — a band's threshold is its cheapest width and still
+unrolls every band below it; at the shipped policy's `k = 3` threshold that
+is a million gates, two and a half minutes per instantiation — and are
+covered by the one-level check instead. The dispatcher's routing is a
+theorem (`Emit/Symbolic/Dispatcher.lean`), not a sampled check. Then `qft` at
+odd widths straddling the lowest threshold, the leaves, and the reference
+Shor instances, as for a single table.
+
+What the one-level check sees and does not see: it sees a band's
+allocations, its table's arithmetic, every checkpoint's angle and register
+arguments including each child's reserve slice, and it rejects an IR that
+hands a child a capacity other than the reserve it sliced (the T1.1 bug
+class). It does not unroll the child. Cross-level composition is exercised
+at full depth only at the budgeted widths, which for the shipped policy lie
+in its lowest band.
 
 As for a table, this tier is **evaluation at sampled widths, not a theorem**.
 One part of it is a theorem and is worth naming: `IR.dispatcherCallAt_dispatcherTemplate`

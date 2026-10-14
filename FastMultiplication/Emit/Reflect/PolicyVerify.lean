@@ -317,25 +317,201 @@ threshold.
 unequal pair straddles threshold `t`, and is the one shape neither the
 phase-product ladder (always symmetric) nor a single table ever reaches.
 
-Only the lowest threshold, deliberately. Straddling the *top* threshold
-would mean a `qft` at `w ≈ 2·t₀`, whose embedded phase product starts at
-`t₀` and recurses all the way down — the most expensive check in the suite,
-and one that tests nothing the phase-product ladder does not already test at
-`t₀` and `t₀ - 1` directly. What is unique here is the unequal pair, and the
-lowest threshold exercises it at a width that costs seconds rather than
-minutes. -/
+Only the lowest threshold. What is unique to `qft` is the unequal operand
+pair, and the lowest threshold exercises it; a `qft` straddling the top
+threshold would unroll the whole recursion from `t₀` and test nothing the
+phase-product checks do not already cover at `t₀` and `t₀ - 1`. -/
 def policyQFTWidthLadder (P : ShorLoweringPolicy) : List ℕ :=
   let lowest := (P.bands.map PolicyBand.threshold).min?.getD 0
   ([4, 8, 9] ++ (if 1 ≤ lowest then [2 * lowest - 1, 2 * lowest + 1] else [])).eraseDups
 
+/-! ## One recursive level per band
+
+A band body instantiated at full depth unrolls every band below it, so even
+the cheapest full-depth width of an upper band — its own threshold — is the
+whole recursion from there down. The per-band check instead instantiates
+the body one level deep: `Env.leafCall` turns each child call into the
+phase-product leaf the compiler emits at that checkpoint, and the result is
+compared at the `Gate` level with `compiledSignedPhaseGate` on the layout
+`Policy.canonicalStep` builds. This covers the band's allocations, its
+table's arithmetic, and every checkpoint's angle and register arguments,
+including each child's reserve slice. A call's capacity arguments must also
+equal the capacities of the registers it passes (`shallowLeafCall`), so a
+document that hands a child a capacity other than the reserve it sliced is
+rejected without unrolling the child. Composition across levels is covered
+by the full-depth checks at `policyFullDepthWidths`. -/
+
+/-- Shallow treatment of a dispatcher or leaf call: the high-level
+phase-product gate on the registers the call passes, after checking the
+call's capacity arguments against those registers. -/
+def shallowLeafCall (controlled : Bool) :
+    String → List ℕ → List Angle → List ExtReg → Option (Except String Gate)
+  | name, wVals, [phi], rVals =>
+      if name == dispatcherName controlled || name == dispatcherLeafName controlled then
+        some (do
+          let (ctrl?, x, z) ← (match controlled, rVals with
+            | false, [x, z] => pure ((none : Option ExtReg), x, z)
+            | true, [c, x, z] => pure (some c, x, z)
+            | _, _ => throw s!"shallow call {name}: unexpected register arguments")
+          match wVals with
+          | [_, _, xCap, zCap] =>
+              if xCap ≠ x.capacity ∨ zCap ≠ z.capacity then
+                throw s!"shallow call {name}: capacity arguments ({xCap}, {zCap}) disagree with \
+                  the passed registers' reserves ({x.capacity}, {z.capacity})"
+          | [_, _] => pure ()
+          | _ => throw s!"shallow call {name}: unexpected width arguments"
+          match ctrl? with
+          | none => pure (Gate.SignedPhaseProd phi x z)
+          | some c =>
+              match c.active.qubits with
+              | [qb] => pure (Gate.CSignedPhaseProd qb phi x z)
+              | _ => throw s!"shallow call {name}: control register is not a single qubit")
+      else none
+  | _, _, _, _ => none
+
+/-- One level of band `i`'s body against the compiler's one-level gate. -/
+def policyBandBodyAgrees (s : ShorPolicySubmission) (doc : Doc) (i : ℕ) (T : ToomCookTable)
+    (x z : ExtReg) (phi : Angle)
+    (hT : s.policy.choose (phaseInputSize x z) = some T)
+    (hws : Policy.WorkspaceOK s.policy x z) : Except String Unit :=
+  let real : Gate :=
+    if hrec : nextSignedWidth x z T.ops < phaseInputSize x z then
+      compiledSignedPhaseGate T.k T.hk T.pts T.hpts T.ops phi x z
+        (Policy.canonicalStep s.policy T x z hT hrec hws).layout
+    else Gate.SignedPhaseProd phi x z
+  let env : Env :=
+    { w := fun name =>
+        if name == "xw" then some x.width
+        else if name == "zw" then some z.width
+        else if name == "xCap" then some x.capacity
+        else if name == "zCap" then some z.capacity
+        else none
+      a := fun name => if name == "phi" then some phi else none
+      r := fun name => if name == "x" then some x else if name == "z" then some z else none
+      opaqueW := policyOpaqueDispatch s.policy
+      coeff := policyCoeffDispatch s
+      leafCall := shallowLeafCall false }
+  match instantiateGate doc (bandBodyName false i) env policyFuel with
+  | .error e => .error e
+  | .ok g => if gateAgrees g real then .ok () else .error "one level of the band body disagrees with the compiler's step"
+
+/-- Controlled counterpart of `policyBandBodyAgrees`. -/
+def policyCBandBodyAgrees (s : ShorPolicySubmission) (doc : Doc) (i : ℕ) (T : ToomCookTable)
+    (ctrl : ℕ) (x z : ExtReg) (phi : Angle)
+    (hT : s.policy.choose (phaseInputSize x z) = some T)
+    (hws : Policy.CWorkspaceOK s.policy ctrl x z) : Except String Unit :=
+  let real : Gate :=
+    if hrec : nextSignedWidth x z T.ops < phaseInputSize x z then
+      compiledCSignedPhaseGate T.k T.hk T.pts T.hpts T.ops ctrl phi x z
+        (Policy.canonicalStep s.policy T x z hT hrec hws.toWorkspaceOK).layout
+    else Gate.CSignedPhaseProd ctrl phi x z
+  let ctrlReg := ExtReg.ofReg (Reg.interval ctrl 1)
+  let env : Env :=
+    { w := fun name =>
+        if name == "xw" then some x.width
+        else if name == "zw" then some z.width
+        else if name == "xCap" then some x.capacity
+        else if name == "zCap" then some z.capacity
+        else none
+      a := fun name => if name == "phi" then some phi else none
+      r := fun name =>
+        if name == "ctrl" then some ctrlReg
+        else if name == "x" then some x else if name == "z" then some z else none
+      opaqueW := policyOpaqueDispatch s.policy
+      coeff := policyCoeffDispatch s
+      leafCall := shallowLeafCall true }
+  match instantiateGate doc (bandBodyName true i) env policyFuel with
+  | .error e => .error e
+  | .ok g => if gateAgrees g real then .ok () else .error "one level of the band body disagrees with the compiler's step"
+
+/-- Band `i`'s body, one level deep, at the band's own threshold. -/
+def checkPolicyBandBodyAt (s : ShorPolicySubmission) (i : ℕ) (doc : Doc) (slack : ℕ := 1) :
+    Except String Unit :=
+  match s.policy.bands[i]? with
+  | none => .error s!"policy band check: no band {i}"
+  | some b =>
+    let n := b.threshold
+    match policyPPRegisters s.policy n slack with
+    | .error e => .error s!"policy band check (band {i}, phase_product): {e}"
+    | .ok (x, z, _) =>
+      match hc : chooseIdx s.policy (phaseInputSize x z) with
+      | none => .error s!"policy band check: no band covers width {n}"
+      | some (j, T) =>
+        if j = i then
+          have hT : s.policy.choose (phaseInputSize x z) = some T := by
+            rw [← chooseIdx_map, hc]; rfl
+          if hws : Policy.WorkspaceOK s.policy x z then
+            match policyBandBodyAgrees s doc i T x z ((1 : ℚ) / 4) hT hws with
+            | .ok _ => .ok ()
+            | .error e =>
+              .error s!"policy band check (band {i}, phase_product) at n={n}, slack={slack}: {e}"
+          else .error s!"policy band check (band {i}): insufficient workspace at n={n}, slack={slack}"
+        else .error s!"policy band check: width {n} is covered by band {j}, not band {i}"
+
+/-- Controlled counterpart of `checkPolicyBandBodyAt`. -/
+def checkPolicyCBandBodyAt (s : ShorPolicySubmission) (i : ℕ) (doc : Doc) (slack : ℕ := 1) :
+    Except String Unit :=
+  match s.policy.bands[i]? with
+  | none => .error s!"policy band check: no band {i}"
+  | some b =>
+    let n := b.threshold
+    match policyPPRegisters s.policy n slack with
+    | .error e => .error s!"policy band check (band {i}, cphase_product): {e}"
+    | .ok (x, z, ctrl) =>
+      match hc : chooseIdx s.policy (phaseInputSize x z) with
+      | none => .error s!"policy band check: no band covers width {n}"
+      | some (j, T) =>
+        if j = i then
+          have hT : s.policy.choose (phaseInputSize x z) = some T := by
+            rw [← chooseIdx_map, hc]; rfl
+          if hws : Policy.CWorkspaceOK s.policy ctrl x z then
+            match policyCBandBodyAgrees s doc i T ctrl x z ((1 : ℚ) / 4) hT hws with
+            | .ok _ => .ok ()
+            | .error e =>
+              .error s!"policy band check (band {i}, cphase_product) at n={n}, slack={slack}: {e}"
+          else .error s!"policy band check (band {i}): insufficient workspace at n={n}, slack={slack}"
+        else .error s!"policy band check: width {n} is covered by band {j}, not band {i}"
+
+/-! ## Full depth, within the leaf budget -/
+
+/-- The number of schoolbook leaves a phase product at width `n` unrolls
+to under the policy: `2k - 1` per recursing node, `1` at a leaf. The gate
+count of the full-depth circuit is roughly proportional to it. -/
+def policyLeafCount (P : ShorLoweringPolicy) : ℕ → ℕ → ℕ
+  | 0, _ => 1
+  | fuel + 1, n =>
+      match P.choose n with
+      | none => 1
+      | some T =>
+          let n' := policyNextWidth P n n
+          if n' < n then q T.k * policyLeafCount P fuel n' else 1
+
+/-- The largest leaf count a full-depth instantiation may have. Widths
+above it are covered one level deep by the per-band check instead. -/
+def policyFullDepthLeafBudget : ℕ := 100
+
+/-- The widths of `policyPPWidthLadder` whose full-depth instantiation fits
+the leaf budget. An upper band's boundaries do not fit — a band's threshold
+still unrolls every band below it — and are covered one level deep by
+`checkPolicyBandBodyAt` instead. -/
+def policyFullDepthWidths (P : ShorLoweringPolicy) : List ℕ :=
+  (policyPPWidthLadder P).filter fun n =>
+    policyLeafCount P widthSearchBound n ≤ policyFullDepthLeafBudget
+
 /-- **The policy evaluation tier**, as one `Bool` a submission can pin.
 
-Mirrors `submissionChecks` check for check. The leaf templates are
-table-independent, so their existing checks are reused verbatim. -/
+Every band body one level deep at its own threshold, in both reserve
+regimes, plain and controlled; then full-depth instantiation at the ladder
+widths within the leaf budget; then `qft`, the leaves and the Shor instances
+as for a single table. The leaf templates are table-independent, so their
+existing checks are reused verbatim. -/
 def policySubmissionChecks (s : ShorPolicySubmission) (doc : Doc) : Bool :=
-  let ppW := policyPPWidthLadder s.policy
+  let ppW := policyFullDepthWidths s.policy
+  let bands := List.range s.policy.bands.length
   let qftW := policyQFTWidthLadder s.policy
   doc.wellFormed
+    && bands.all (fun i => submissionPPSlacks.all fun sl => okB (checkPolicyBandBodyAt s i doc sl))
+    && bands.all (fun i => submissionPPSlacks.all fun sl => okB (checkPolicyCBandBodyAt s i doc sl))
     && ppW.all (fun n => submissionPPSlacks.all fun sl => okB (checkPolicyPhaseProductAt s n doc sl))
     && ppW.all (fun n => submissionPPSlacks.all fun sl => okB (checkPolicyCPhaseProductAt s n doc sl))
     && qftW.all (fun w => okB (checkPolicyQftAt s w doc))

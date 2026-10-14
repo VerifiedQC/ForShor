@@ -125,13 +125,15 @@ def policySubmissionJson : Json :=
         "Shor.policy_submission_correct: proved once, generic in the policy; no \
          per-submission proof. Shor.submission_correct is the one-band case at threshold 0"),
       ("ir_agreement", Json.str
-        "Shor.Reflect.policySubmissionChecks: instantiate = real compiled circuit at the \
-         policy's band boundaries and at the widths reaching one, two and three levels of \
-         its own recursion, in both reserve regimes; at odd qft widths where the split \
-         straddles the lowest threshold; and at the reference Shor instances - pinned by \
-         native_decide in Submission/PolicyCheck.lean. Instantiating the entry template \
-         exercises the dispatcher's guard chain, the band body it routes to, and the \
-         recursion back through the dispatcher, all at once."),
+        "Shor.Reflect.policySubmissionChecks: each band body instantiated one level deep at \
+         its own threshold (child calls as the compiler's phase-product leaves, capacity \
+         arguments checked against the registers passed) = the compiler's one-level step; \
+         plus full-depth instantiate = real compiled circuit at the widths reaching one, two \
+         and three levels of the policy's own recursion within the leaf budget, in both \
+         reserve regimes; at odd qft widths where the split straddles the lowest threshold; \
+         and at the reference Shor instances - pinned by native_decide in \
+         Submission/PolicyCheck.lean. The dispatcher's routing is a theorem \
+         (Emit/Symbolic/Dispatcher.lean), not a sampled check."),
       ("ir_not_proved", Json.str
         "the IR is NOT proved equal to the circuit at every width; the line above is \
          evaluation at sampled widths, not a theorem. What IS proved is that the emitted \

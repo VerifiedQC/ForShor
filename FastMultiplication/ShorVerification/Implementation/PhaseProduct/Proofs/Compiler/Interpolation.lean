@@ -659,60 +659,6 @@ def tcProductCoeff
       else
         0
 
-/--
-`Matrix.cramer`-based coefficients agree with the `Matrix.inv`-based ones
-whenever the interpolation matrix is invertible.
-
-The argument is pure linear algebra and does not need the points to be
-distinct integers (unlike a closed-form Lagrange-weight product, which would
-only be valid for plain monomial rows): from `M *ᵥ cramer M v = M.det • v`
-(`Matrix.mulVec_cramer`), left-multiplying by `M⁻¹` gives
-`cramer M v = M.det • (M⁻¹ *ᵥ v)`, and dividing by the (nonzero) determinant
-recovers `M⁻¹ *ᵥ v` from `cramer M v`.
--/
-lemma cramerCoeffFromPts_eq_phaseCoeffFromPts
-    {k : ℕ}
-    (pts : Fin (q k) → Point)
-    (b : ℚ)
-    (hgood : (interpMatrix k pts).det ≠ 0) :
-    cramerCoeffFromPts k pts b = phaseCoeffFromPts k pts b := by
-  funext i
-  set M : Matrix (Fin (q k)) (Fin (q k)) ℚ := interpMatrix k pts with hM
-  set radixVec : Fin (q k) → ℚ := fun j => b ^ (j : ℕ) with hradixVec
-  have hUnitT : IsUnit M.transpose.det := by
-    rw [Matrix.det_transpose]
-    exact isUnit_iff_ne_zero.mpr hgood
-  have hleft :
-      M.transpose⁻¹ *ᵥ (M.transpose *ᵥ Matrix.cramer M.transpose radixVec)
-        = Matrix.cramer M.transpose radixVec := by
-    rw [Matrix.mulVec_mulVec, Matrix.nonsing_inv_mul M.transpose hUnitT, Matrix.one_mulVec]
-  have hkey :
-      Matrix.cramer M.transpose radixVec
-        = M.transpose.det • (M.transpose⁻¹ *ᵥ radixVec) := by
-    calc Matrix.cramer M.transpose radixVec
-        = M.transpose⁻¹ *ᵥ (M.transpose *ᵥ Matrix.cramer M.transpose radixVec) := hleft.symm
-      _ = M.transpose⁻¹ *ᵥ (M.transpose.det • radixVec) := by rw [Matrix.mulVec_cramer]
-      _ = M.transpose.det • (M.transpose⁻¹ *ᵥ radixVec) := Matrix.mulVec_smul _ _ _
-  have hcomp :
-      Matrix.cramer M.transpose radixVec i
-        = M.transpose.det * (M.transpose⁻¹ *ᵥ radixVec) i := by
-    have h := congrFun hkey i
-    simpa [Pi.smul_apply, smul_eq_mul] using h
-  have hdet_ne : M.transpose.det ≠ 0 := by rw [Matrix.det_transpose]; exact hgood
-  have hinv_component :
-      (M.transpose⁻¹ *ᵥ radixVec) i
-        = Matrix.cramer M.transpose radixVec i / M.transpose.det := by
-    rw [eq_div_iff hdet_ne, mul_comm]
-    exact hcomp.symm
-  have hphase :
-      phaseCoeffFromPts k pts b i = (M.transpose⁻¹ *ᵥ radixVec) i := by
-    have hstep1 :
-        phaseCoeffFromPts k pts b i = (radixVec ᵥ* M⁻¹) i := by
-      show (ToomCookMath.radixRow (q k) b * M⁻¹) 0 i = (radixVec ᵥ* M⁻¹) i
-      simp [Matrix.mul_apply, Matrix.vecMul, dotProduct, ToomCookMath.radixRow, radixVec]
-    rw [hstep1, ← Matrix.mulVec_transpose, Matrix.transpose_nonsing_inv]
-  rw [hphase, hinv_component, cramerCoeffFromPts, hM, hradixVec]
-  simp [Matrix.det_transpose]
 
 /-- The compiler's phase coefficients are exactly the generic interpolation coefficients. -/
 lemma phaseCoeffFromPtsWidth_eq_interpCoeff
