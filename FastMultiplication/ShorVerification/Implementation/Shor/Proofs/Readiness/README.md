@@ -151,7 +151,8 @@ reserve).
   register `r` preserves `ThreeRegsCleanState` on any three registers
   disjoint from `r.active`, by expanding it into its basis sum
   (`eval_iqft_work_expansion`) and checking each term.
-- **`threeRegsCleanState_to_QFTWorkspaceCleanState`** — `ThreeRegsCleanState`
+- **`threeRegsCleanState_to_QFTWorkspaceCleanStateOf`** and its policy form
+  **`Policy.threeRegsCleanState_to_QFTWorkspaceCleanState`** — `ThreeRegsCleanState`
   implies `QFTWorkspaceCleanState` for a QFT's x/z workspace pools, when the
   third clean register matches the reserve they're both carved from
   (`qftXWork`/`qftZWork_mem_reserve`).
@@ -277,9 +278,9 @@ adjoint-preservation lemma. The largest file in the folder.
   `lowered_step5Forward_ready_and_full_clean`'s local workspace obligations
   (via `LoweredCleanResult.adj`) into a `LoweredCleanResult` for the public
   `step5` gate.
-- **`threeRegsCleanState_to_QFTWorkspaceCleanState_first`** — the
+- **`Policy.threeRegsCleanState_to_QFTWorkspaceCleanState_first`** — the
   first-register variant of `Step1.lean`'s
-  `threeRegsCleanState_to_QFTWorkspaceCleanState` (matching the *first* clean
+  `Policy.threeRegsCleanState_to_QFTWorkspaceCleanState` (matching the *first* clean
   register against the QFT reserve instead of the third); consumed by
   `IQFT.lean` for the final inverse QFT, whose reserve happens to line up
   with the exponent register rather than the third clean slot.
@@ -293,7 +294,7 @@ register at the end of order finding.
   `ShorLoweringCleanState` invariant: the high-level inverse QFT changes only
   `x.active`, so all three reserve registers stay clean
   (`eval_IQFT_preserves_threeRegsCleanState`), and the QFT's own workspace
-  cleanliness follows from `threeRegsCleanState_to_QFTWorkspaceCleanState_first`.
+  cleanliness follows from `Policy.threeRegsCleanState_to_QFTWorkspaceCleanState_first`.
 - **`lowered_IQFT_ready_and_concrete_clean`** — the same fact under the
   strengthened `ShorConcreteCleanState` invariant that also tracks the
   Step-3/4 scratch register, reducing to the full-clean case via

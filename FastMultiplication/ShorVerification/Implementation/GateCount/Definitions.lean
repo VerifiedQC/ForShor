@@ -78,10 +78,6 @@ noncomputable def phaseProductGateRate (k n : ℕ) : ℝ := Real.rpow (n : ℝ) 
 clamped to at least one so small widths do not create degenerate powers. -/
 noncomputable def phaseProductSafeRate (k n : ℕ) : ℝ := Real.rpow (((max 1 n : ℕ) : ℝ)) (phaseProductExponent k)
 
-/-- The public unsigned PhaseProduct input size: the larger of the two source
-register widths. -/
-def phaseProductInputSize (x z : Reg) : ℕ := max (regSize x) (regSize z)
-
 /-- Final unsigned PhaseProduct asymptotic statement for a fixed `k` and source
 program `ops`: above some threshold, the lowered gate count is bounded by
 `C * n^(log_k (2k - 1))`. -/
@@ -300,24 +296,6 @@ def qftLeftReg (r : Reg) : Reg := leftReg r
 
 /-- Right subregister used by one QFT recursion split. -/
 def qftRightReg (r : Reg) : Reg := rightReg r
-
-/-- Gate count of the recursively lowered exact QFT on an extended register. -/
-noncomputable def loweredQFTGateCount
-    {Basis : Type u} [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) (r : ExtReg)
-    (hworkspace : Policy.QFTReserveOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r) : ℕ :=
-  LowGate.gateCount shorGateCostModel (Policy.lowerQFT (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r hworkspace)
-
-/-- Gate count of the PhaseProduct joining the two halves of one exact-QFT
-recursion node. -/
-noncomputable def qftSplitPhaseGateCount
-    {Basis : Type u} [RegEncoding Basis]
-    (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) (r : Reg)
-    (ws : Gate.PhaseProdWorkspace (qftLeftReg r) (qftRightReg r))
-    (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (Gate.PhaseProdUsing (qftPhi (regSize r)) (qftLeftReg r) (qftRightReg r) ws)) : ℕ :=
-  LowGate.gateCount shorGateCostModel
-    (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
-      (Gate.PhaseProdUsing (qftPhi (regSize r)) (qftLeftReg r) (qftRightReg r) ws) hworkspace)
 
 /-- Gate count of the final radix reversal at one exact-QFT recursion node. -/
 def qftSplitRadixGateCount (r : Reg) : ℕ :=

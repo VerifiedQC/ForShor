@@ -89,10 +89,8 @@ worked example of an edit, not a copy of the reference.
 Its checkpoints all sit on register 0 and its points are all `int`s, but
 neither is a requirement: a checkpoint may sit on any register, and `frac`
 points — including `frac 0`, the point at infinity — are as admissible as
-any other. The caveat this docstring used to carry (checkpoints off register
-0 failed the IR check at `n = 16`) described a bug in the extractor's
-reserve bookkeeping, now fixed and anchored by `Emit/Tests.lean`'s
-`T1_1_TopChunkReserve` section.
+any other. `Emit/Tests.lean`'s `TopChunkReserve` section exercises
+both: checkpoints on register 1, and a `frac 0` point.
 -/
 
 namespace Submission

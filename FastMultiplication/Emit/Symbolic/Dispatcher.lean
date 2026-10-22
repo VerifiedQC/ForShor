@@ -13,7 +13,7 @@ not a circuit — and the dispatcher is that `find?` spelled as a chain of
 
 So this file is a plain function from a policy to an `IR.Template`, with no
 `MetaM`, no `Expr` and no trust in the translation table. What it *does* need
-is to agree with `choose`, and `dispatcherCallAt_eq_choose` below proves it
+is to agree with `choose`, and `dispatcherCallAt_dispatcherTemplate` below proves it
 rather than sampling it: if the emitted guards and `choose` ever disagreed,
 the extracted document would route a width to a band whose body was built for
 a different table, and every tier downstream would still pass.
@@ -172,7 +172,9 @@ policy offers no table.
 With `chooseIdx_map`, this is the statement that the emitted guards and
 `ShorLoweringPolicy.choose` cannot drift apart: a width routed to
 `phase_product_j` is a width at which the policy really does choose band
-`j`'s table, which is the table `phase_product_j` was extracted from. -/
+`j`'s table, and `phase_product_j` is the body for that table — extracted
+from it, or (when an earlier band has the same table) that band's body
+renamed with its `coeff` indices shifted (`Driver.policyBandBodies`). -/
 theorem dispatcherCallAt_dispatcherTemplate (P : ShorLoweringPolicy) (controlled : Bool)
     (xw zw : ℕ) :
     dispatcherCallAt (dispatcherTemplate P controlled).body xw zw
@@ -182,4 +184,30 @@ theorem dispatcherCallAt_dispatcherTemplate (P : ShorLoweringPolicy) (controlled
   dispatcherCallAt_chain controlled xw zw 0 P.bands
 
 end IR
+namespace IR
+
+/-! ## Shifting `coeff` indices
+
+Used by the extractor to reuse a band body for a repeated table (`Driver.policyBandBodies`) and by the evaluation tier to check that a reused body is exactly that copy (`PolicyVerify.bandCopyOK`). -/
+
+/-- Shift every `coeff` point index in an angle expression by `d`. -/
+partial def shiftCoeffA (d : ℕ) : AExpr → AExpr
+  | .coeff phi l m => .coeff (shiftCoeffA d phi) (l + d) m
+  | .mul a w => .mul (shiftCoeffA d a) w
+  | .div2 a => .div2 (shiftCoeffA d a)
+  | .neg a => .neg (shiftCoeffA d a)
+  | .signedPair phi xi xw zi zw => .signedPair (shiftCoeffA d phi) xi xw zi zw
+  | a => a
+
+/-- Shift every `coeff` point index in a template body by `d`. -/
+partial def shiftCoeffN (d : ℕ) : Node → Node
+  | .op name regs nats angle flags => .op name regs nats (angle.map (shiftCoeffA d)) flags
+  | .seq body => .seq (body.map (shiftCoeffN d))
+  | .adj body => .adj (shiftCoeffN d body)
+  | .cond g t e => .cond g (shiftCoeffN d t) (shiftCoeffN d e)
+  | .call t wArgs aArgs rArgs => .call t wArgs (aArgs.map (shiftCoeffA d)) rArgs
+  | .loop v lo hi body => .loop v lo hi (shiftCoeffN d body)
+
+end IR
+
 end Shor

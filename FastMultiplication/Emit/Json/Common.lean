@@ -7,7 +7,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Math.Tabl
 
 One printer each for the small value types shared across the emitter:
 rationals, angles, registers, points, and `Prog` ops. No file outside this one
-declares any of these spellings (README design principle 5).
+declares any of these spellings.
 -/
 
 namespace Shor

@@ -105,7 +105,7 @@ where the general parity generator (which needs `k ≥ 4`) does not apply.
 
 ## `Correctness.lean`
 
-Proves the two headline theorems about `generate`/`generatePointsInOrder`:
+Proves the two main theorems about `generate`/`generatePointsInOrder`:
 `generatedPoints_valid` and `generate_ProgConsumesPtsSafe` establish that the
 generated program (for every `k ≥ 2` and every `ProductMode`) is well-formed,
 safely consumes exactly a permutation of the canonical point list, and

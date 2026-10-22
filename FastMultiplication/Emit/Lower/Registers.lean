@@ -5,7 +5,7 @@ import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.Workspace
 # Concrete register construction for a chosen `Prog k` and width
 
 Shared by `Lower/PhaseProduct.lean`, `Lower/Qft.lean` (the `pp`/`cpp`/`qft`
-CLI commands), and `Reflect/Verify.lean` (the R3 instance-check canary) —
+CLI commands), and `Reflect/Verify.lean` (the instance-check canary) —
 split out on its own so `Reflect/Verify.lean` can build the same concrete
 registers those commands do without importing them back (`Verify.lean`
 itself is what those files need for their own `instantiate_eq_real` check,
@@ -24,8 +24,8 @@ checked decidably by the caller since that's what
 not cosmetic: the recursion's reserve split (`ReserveBudget.ofRequirements`/
 `fillSlack`) hands every leftover qubit to the top chunk, so a table whose
 checkpoints reach that chunk behaves differently at `slack = 0` than at any
-`slack > 0`. The default `1` is the historical value every caller used
-before the parameter existed. -/
+`slack > 0`. The CLI commands use the default `1`; the canary runs `0` and
+`64`. -/
 def ppRegisters {k : ℕ} (ops : Prog k) (n : ℕ) (slack : ℕ := 1) :
     Except String (ExtReg × ExtReg × ℕ) :=
   let need := RecursivePhaseWorkspace.reserveNeed ops n n

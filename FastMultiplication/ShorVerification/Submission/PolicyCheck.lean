@@ -42,17 +42,24 @@ literally a corollary of the policy theorem.
 dispatcher per phase-product flavour, one body template per band, and the
 shared `qft`/`shor_gate`/`shor`/leaf templates.
 `Shor.Reflect.policySubmissionChecks` then compares it against the real
-compiled circuit in two ways. Each band's body is instantiated **one level
-deep** at the band's own threshold, with child calls treated as the
-phase-product leaves the compiler emits there (and each call's capacity
-arguments checked against the registers it passes), and compared with the
-compiler's one-level step on the real layout.
+compiled circuit. The document's two dispatchers must be exactly
+`dispatcherTemplate` of this policy, whose routing is proved. The sampled
+checks run on the *probe submission*: the same band setups in the same
+order, so the same band bodies and `coeff` offsets, at the smallest strictly
+decreasing thresholds where each band's table shrinks (a band whose table
+never shrinks is probed at the leaf, as the compiler treats it), with the
+dispatchers rebuilt for it. There, the first band of each distinct table has its body
+instantiated **one level deep** at its probe threshold, with child calls
+treated as the phase-product leaves the compiler emits there (and each call's
+width and capacity arguments checked against the registers it passes), and
+compared with the compiler's one-level step on the real layout; every later
+band with the same table must be that body with its `coeff` indices shifted.
 Then the document is instantiated at **full depth** at the widths reaching
-one, two and three levels of the policy's own recursion, provided they fit
-a leaf budget (`policyFullDepthLeafBudget`): a band boundary at the top of
-the policy unrolls every band below it, so those boundaries are covered one
-level deep instead. Then `qft` at odd widths where the split straddles the
-lowest threshold, the leaves, and the reference Shor instances.
+one, two and three levels of the probe's own recursion, provided they fit
+a leaf budget (`policyFullDepthLeafBudget`). Then `qft` at odd widths where
+the split straddles the lowest probe threshold, the leaves, and the
+reference Shor instances. The cost depends on the distinct tables only, not
+on the submission's thresholds.
 
 Instantiating the entry template exercises the whole stack at once: the
 dispatcher's guard chain, the band body it routes to, and the recursion back
@@ -75,74 +82,39 @@ open Shor Operations Shor.Audit
 
 Every per-band side condition and the sortedness proof, reduced by the kernel
 and by nothing else. This line is what makes "kernel-checked" a checked claim
-rather than a documented intention. -/
+rather than a documented intention.
 
-#assert_axioms PolicySubmission.policy
+Every repo-owned name below is written with `_root_.`, for the reason given
+in `Check.lean`: inside `namespace PolicySubmission` a partly qualified name
+resolves one namespace deeper first, where a submitter could place a decoy.
+-/
 
-/-! The bands a submitter writes are the bands the policy carries, so the
-policy printed by `PolicyMain.lean` and the policy C1–C4 were proved about
-are the same policy. `rfl`, because `policy` is built from them. -/
-
-example : policy.bands = [(40, band0), (14, band1)] := rfl
-example : band0.k = band0K := rfl
-example : band0.ops = band0Ops := rfl
-example : band1.k = band1K := rfl
-example : band1.ops = band1Ops := rfl
-
-/-! ## What the policy chooses
-
-One width per band, and one below the last threshold where the schoolbook
-leaf takes over. These reduce by `rfl`: `choose` is a `List.find?` over a
-literal band list. -/
-
-example : policy.policy.choose 100 = some band0.table := rfl
-example : policy.policy.choose 40 = some band0.table := rfl
-example : policy.policy.choose 39 = some band1.table := rfl
-example : policy.policy.choose 14 = some band1.table := rfl
-example : policy.policy.choose 13 = none := rfl
+#assert_axioms _root_.PolicySubmission.policy
 
 /-- The policy is admissible, which is exactly its bands being submissions. -/
 example : policy.policy.Admissible := policy.policy_admissible
 
-/-! ## The advisory shrink check
-
-Not an admissibility condition (see [`PolicyDecide.lean`](PolicyDecide.lean)):
-a band whose table does not shrink the width on its own range is dead weight,
-not unsound. Both shipped bands pass. -/
-
-example : Shor.Policy.bandShrinks policy.policy 0 = true := by decide +kernel
-example : Shor.Policy.bandShrinks policy.policy 1 = true := by decide +kernel
-
-/-- And the check has teeth: dropping band 1's threshold to `12` is still a
-perfectly admissible policy, but `bandShrinks` reports it as dead weight,
-because this `k = 2` table maps `12 ↦ 12` and `13 ↦ 13` and so declines to
-recurse at the bottom two widths of its own band. This is the warning a
-submitter is meant to act on by raising the threshold. -/
-example :
-    Shor.Policy.bandShrinks
-      { bands := [(40, band0), (12, band1)], sorted := by decide : ShorPolicySubmission }.policy 1
-      = false := by decide +kernel
+/-! Nothing in this file names the shipped bands or thresholds: this library's
+build is the acceptance check, so every line here must hold for any
+admissible policy. The worked examples on the shipped template (`choose` at
+particular widths, the advisory shrink check firing at threshold `12`) are in
+[`PolicyTests.lean`](PolicyTests.lean), built by `lean_lib PolicyTests`. -/
 
 /-! ## The IR, and its agreement with the circuit
 
 `extract_policy_ir_doc` runs the extractor at build time and splices the
-result in as a plain `def`, so the checks below read a pinned value instead
-of re-running reflection inside a proof.
-
-These lines stay on `native_decide` for the same reason `Check.lean`'s do:
-they are *evaluation*, a deliberately different tier from the kernel-checked
-side conditions above, and `#assert_axioms` is scoped to
-`PolicySubmission.policy` — the proof object — which does not depend on any
-of this. -/
+result in as a plain `def`. Well-formedness is pinned here by `native_decide`;
+`Shor.Reflect.policySubmissionChecks policy doc` is evaluated by the compiled
+`forshor_policy_submission` executable (`PolicyMain.lean`), which prints
+`policy.json` only when it is `true` and exits `1` otherwise. Both are
+*evaluation*, a deliberately different tier from the kernel-checked side
+conditions above, and `#assert_axioms` is scoped to `PolicySubmission.policy`
+— the proof object — which does not depend on any of this. -/
 
 set_option maxHeartbeats 4000000 in
 extract_policy_ir_doc doc policy
 
-example : IR.Doc.wellFormed doc = true := by native_decide
-
-set_option maxHeartbeats 4000000 in
-set_option maxRecDepth 4000 in
-example : Shor.Reflect.policySubmissionChecks policy doc = true := by native_decide
+example : _root_.Shor.IR.Doc.wellFormed doc = true := by native_decide
 
 /-! ## The certificate -/
 
@@ -151,11 +123,11 @@ can cite. There is nothing to prove: `Shor.policy_submission_correct` is
 generic in the policy, so `policy` existing is the whole argument. -/
 def correct {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
     [GateSemanticsFacts qs] [LowerGateClass qs] [IdealCtrlModMulExactSemantics qs] :=
-  Shor.policy_submission_correct (qs := qs) policy
+  _root_.Shor.policy_submission_correct (qs := qs) policy
 
 /-- The scored form, with the declared bound named. -/
 def scored {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
     [GateSemanticsFacts qs] [LowerGateClass qs] [IdealCtrlModMulExactSemantics qs] :=
-  Shor.policy_submissionSuccessBound_le_success (qs := qs) policy
+  _root_.Shor.policy_submissionSuccessBound_le_success (qs := qs) policy
 
 end PolicySubmission

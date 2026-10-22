@@ -13,7 +13,7 @@ wide table at the top of the recursion and narrower ones below it. They share
 everything: the same four side conditions per table, the same audit, the same
 certificate, and in fact the same theorem — a table submission *is* the
 one-band policy at threshold `0`, and [`Policy submissions`](#policy-submissions)
-below says what the second kind adds and what it does not yet have.
+below says what the second kind adds.
 
 The rules themselves are not here. They are in
 [`../Framework/ToomCookTable.lean`](../Framework/ToomCookTable.lean), which
@@ -33,8 +33,9 @@ construction that satisfies it.
 | `Main.lean` | `forshor_submission`: prints the table, the IR, the precision and the trial count as one JSON document | yes (`Emit/`) |
 | **`PolicyTemplate.lean`** | **the file a policy submitter owns**: the per-band definitions and the `ShorPolicySubmission` record | no — `Framework/` + `Decide.lean` |
 | `PolicyDecide.lean` | `bandShrinks`, an **advisory** performance check on a policy's bands; not an admissibility condition | yes (`Implementation/`) |
-| `PolicyCheck.lean` | the acceptance check for a policy, repo-owned: the axiom audit, the per-band IR extraction, the evaluation tier, the certificate | yes (`Emit/`) |
-| `PolicyMain.lean` | `forshor_policy_submission`: prints the bands, the IR, the precision and the trial count | yes (`Emit/`) |
+| `PolicyCheck.lean` | the kernel-checked half of a policy's acceptance check, repo-owned: the axiom audit, the IR extraction (one body per distinct table), its well-formedness, the certificate. Nothing in it names the shipped bands, so it builds for any admissible policy | yes (`Emit/`) |
+| `PolicyTests.lean` | worked examples on the shipped policy template (`choose` at particular widths, the advisory shrink check firing at threshold `12`); built by `lean_lib PolicyTests`, never by the acceptance check | no |
+| `PolicyMain.lean` | `forshor_policy_submission`: runs the evaluation tier natively, then prints the bands, the IR, the precision and the trial count; prints nothing and exits `1` if the tier fails | yes (`Emit/`) |
 
 ## `Decide.lean`
 
@@ -87,8 +88,8 @@ It catches `native_decide` (`Lean.ofReduceBool`, `Lean.trustCompiler`),
 `sorry` (`sorryAx`), and any `axiom` a submitter declares, naming the
 offender. It does **not** catch `set_option debug.skipKernelTC true`, which
 skips the kernel without adding an axiom — nothing visible in the environment
-does. That is what `lean4checker` is for; see the CI rules at the end of this
-file.
+does. The lexical gate rejects `set_option debug` in a template for that
+reason.
 
 ## `Correct.lean`
 
@@ -126,8 +127,8 @@ particular table. It is published once, not recomputed per pull request.
 
 The other factor, the single-run gate count, is measured by Qualtran on the
 IR `Emit/` extracts, not computed in Lean.
-`ShorOrderFindingProgram.frameworkGateCount` survives as what the asymptotic
-theorems are stated with; it is no longer the scored number.
+`ShorOrderFindingProgram.frameworkGateCount` is what the asymptotic
+theorems are stated with; it is not the scored number.
 
 ## `Template.lean`, `Check.lean` and `Main.lean`
 
@@ -171,8 +172,8 @@ so a submitter never builds `Implementation/` to iterate on a table.
 Nine operations where the reference's is seven, and not a permutation of it —
 a worked example of an edit rather than a copy of the reference.
 
-`Check.lean` is repo-owned and is where everything that used to sit below the
-edit line in `Template.lean` now lives: `#assert_axioms Submission.setup`,
+`Check.lean` is repo-owned and holds the acceptance check itself:
+`#assert_axioms _root_.Submission.setup`,
 `extract_ir_doc doc setup`, the two `native_decide` evaluation examples, and
 `correct`.
 
@@ -190,8 +191,8 @@ from the submitted table itself: the phase products at `ppWidthLadder
 setup.ops`, in each of two reserve regimes; the hand-stated leaf templates at
 three unequal `(xw, zw)` pairs; the QFT at `qftWidthLadder setup.ops`; and
 `shor_gate`/`shor` at two reference Shor instances. The IR is *not* proved
-equal to the circuit at every width; that project (R6) concerns the reference
-table only and was archived.
+equal to the circuit at every width; agreement at sampled widths is
+evaluation, not a theorem.
 
 The ladders are not a fixed list, and that is the point. `ppWidthLadder`
 returns the largest base-case width together with the smallest widths
@@ -201,15 +202,14 @@ Sampling a single width per template is what let a real extractor bug sit
 unseen: the top chunk receives all the slack in the reserve split, so a fault
 in its child capacity shows up only at a *grandchild*, three levels down, and
 only when a `phaseProduct` checkpoint sits on register `k - 1` with slack
-available. Hence three levels, and hence two reserve regimes rather than one
-(`Emit/PLAN.md` §1.1, §2 T2.1).
+available. Hence three levels, and hence two reserve regimes rather than one.
 
 A submitter should know what this costs. The ladder is derived from the
 table, and a table that recurses later is checked at larger widths: the
 shipped `k = 2` table's acceptance build is about a minute, while a `k = 3`
 table reaches `n = 35` and runs for roughly **35 minutes**; `k = 4` reaches
 `n = 87` and is not a build anyone will wait for. Capping the ladder depth is
-an open decision (`Emit/PLAN.md` §4.1), not a bug.
+an open decision, not a bug.
 
 These two lines stay on `native_decide` deliberately. They are repo-owned
 `example`s about the *extractor*, not fields of `setup`, so they do not enter
@@ -217,22 +217,18 @@ the audit; making the evaluation tier kernel-checked is a separate project.
 
 ### Where a checkpoint sits, and where `frac` points can go
 
-Nowhere in particular: any register, any points. This used to carry a
-caveat — a table whose `phaseProduct` checkpoints did not all sit on
-register 0 was admissible but failed the IR check at `n = 16` — and the
-caveat is gone. The cause was in the extractor, not in the rules: the
-recursion's reserve split gives the *top* chunk (register `k - 1`) every
-qubit left over after each child's requirement is paid, and the emitted IR
-passed the recursive call the un-topped-up figure, so a checkpoint on that
-register produced grandchild gates carrying short reserve lists. Both of
-`Emit/Tests.lean`'s `T1_1_TopChunkReserve` tables — one with its checkpoints
-on register 1, one at the points `0, -1, frac 0` — are anchors on the fix.
+Nowhere in particular: any register, any points. The recursion's reserve
+split gives the *top* chunk (register `k - 1`) every qubit left over after
+each child's requirement is paid, and the emitted IR passes the recursive
+call that topped-up figure, so a checkpoint on that register is handled like
+any other. Both of `Emit/Tests.lean`'s `TopChunkReserve` tables — one
+with its checkpoints on register 1, one at the points `0, -1, frac 0` —
+exercise this.
 
-The `frac` caveat went with it. At `k = 2` the row of `frac 0` (the point at
-infinity) is `[0, 1]`, which is register 1's start value and cannot be built
-in register 0, so exercising `frac 0` at `k = 2` *requires* a checkpoint on
-register 1; that is now an ordinary table, not a limitation to work around.
-`frac` points were always fine as far as C1–C4 are concerned —
+At `k = 2` the row of `frac 0` (the point at infinity) is `[0, 1]`, which is
+register 1's start value and cannot be built in register 0, so exercising
+`frac 0` at `k = 2` *requires* a checkpoint on register 1; that is an
+ordinary table. `frac` points are fine as far as C1–C4 are concerned —
 `Decide.lean`'s smoke tests cover them, and the `k = 3` precomputed table
 consumes a `frac 0`.
 
@@ -252,9 +248,13 @@ cascade, and it is the second kind of submission.
 lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
 ```
 
-`lean_lib PolicySubmission` is rooted at `PolicyCheck.lean`, so as before
-**building it is the check**, and `forshor_policy_submission` is a printer
-that re-decides nothing.
+`lean_lib PolicySubmission` is rooted at `PolicyCheck.lean`, so **building
+it is the kernel-checked half of the check**: the per-band side conditions,
+the axiom audit and the extracted IR's well-formedness. The evaluation tier
+(`Shor.Reflect.policySubmissionChecks`) runs inside
+`forshor_policy_submission`, compiled natively, before anything is printed;
+a failing submission prints nothing on stdout and exits `1`, so the `&&`
+line above yields a `policy.json` only for a submission that passed both.
 
 **`PolicyTemplate.lean` is the only file a policy submitter owns.** Per band
 it holds exactly what `Template.lean` holds for one table — `k`, `pts`,
@@ -279,17 +279,16 @@ width on its own band. The recursion already falls back to the leaf when the
 chosen table does not shrink (`ShorLoweringPolicy.Stops`), so a
 non-shrinking band is dead weight rather than unsoundness: it is selected, it
 declines to recurse, and the leaf runs instead. `Shor.Policy.bandShrinks` in
-`PolicyDecide.lean` reports exactly that, `PolicyCheck.lean` runs it on both
-shipped bands, and `policy.json` carries it per band as `bands[].shrinks`. It
-is a warning a submitter should act on by raising a threshold, never a reason
-to reject a policy.
+`PolicyDecide.lean` reports exactly that, and `policy.json` carries it per
+band as `bands[].shrinks`. It is a warning a submitter should act on by
+raising a threshold, never a reason to reject a policy.
 
 The shipped example is a worked instance of that warning. Its lower band is
 the `k = 2` table from `Template.lean` at threshold `14`, not `12`: that
 table's `nextWidth` maps `12 ↦ 12` and `13 ↦ 13`, so at the bottom two widths
-of a band starting at `12` it would decline to recurse. `PolicyCheck.lean`
-records both — the passing check at `14` and the failing one at `12` — so the
-advisory has a test as well as a definition.
+of a band starting at `12` it would decline to recurse. `PolicyTests.lean`
+records the failing check at `12`, so the advisory has a test as well as a
+definition; the passing one at `14` is what `policy.json` reports.
 
 ### A policy gets the same two tiers a table does
 
@@ -303,31 +302,38 @@ builds one dispatcher per phase-product flavour, one body template per band,
 and the shared `qft`/`shor_gate`/`shor`/leaf templates; the dispatcher is the
 entry point and carries the policy's guard chain.
 `Shor.Reflect.policySubmissionChecks` then pins that document against the
-real compiled circuit in two ways. **One level per band:** each band body is
-instantiated at the band's own threshold with child calls treated as the
-phase-product leaves the compiler emits there — each call's capacity
-arguments checked against the registers it passes — and compared with the
-compiler's one-level step on the real layout. This is milliseconds at any
-threshold, so a `k = 5` band at width 117 costs the same as a `k = 2` band at
-14. **Full depth where cheap:** the entry template is instantiated and
-compared with the fully lowered circuit at the widths reaching one, two and
-three levels of the policy's own recursion, in both reserve regimes, provided
-they fit `policyFullDepthLeafBudget` (100 leaves). Band boundaries at the top
-of a policy never fit — a band's threshold is its cheapest width and still
-unrolls every band below it; at the shipped policy's `k = 3` threshold that
-is a million gates, two and a half minutes per instantiation — and are
-covered by the one-level check instead. The dispatcher's routing is a
-theorem (`Emit/Symbolic/Dispatcher.lean`), not a sampled check. Then `qft` at
-odd widths straddling the lowest threshold, the leaves, and the reference
-Shor instances, as for a single table.
+real compiled circuit. **The dispatchers are checked exactly:** the
+document's `phase_product` and `cphase_product` must be
+`dispatcherTemplate` of the submitted policy, whose routing is a theorem
+(`Emit/Symbolic/Dispatcher.lean`), not a sampled check. **The bodies are
+checked on a probe:** a band body names its table, its `coeff` offset and
+the opaque oracles, never a threshold, so the sampled checks run on the
+*probe submission* — the same setups in the same band order at the smallest
+strictly decreasing thresholds where each table shrinks, a band whose table
+never shrinks being probed at the leaf as the compiler treats it — with the
+dispatchers rebuilt for it. There, **one level per distinct table:** the
+first band with a given table has its body instantiated at its probe
+threshold with child calls treated as the phase-product leaves the compiler
+emits there — each call's width and capacity arguments checked against the
+registers it passes — and compared with the compiler's one-level step on the
+real layout; every later band with the same table must be that body with its
+`coeff` indices shifted by the offset difference, which is what the extractor
+emits for it. **Full depth where cheap:** the entry template is instantiated
+and compared with the fully lowered circuit at the widths reaching one, two
+and three levels of the probe's recursion, in both reserve regimes, provided
+they fit `policyFullDepthLeafBudget` (100 leaves). Then `qft` at odd widths
+straddling the lowest probe threshold, the leaves, and the reference Shor
+instances, as for a single table. The widths sampled depend on the tables
+only, so the cost of the tier does not grow with the submission's
+thresholds.
 
 What the one-level check sees and does not see: it sees a band's
 allocations, its table's arithmetic, every checkpoint's angle and register
 arguments including each child's reserve slice, and it rejects an IR that
-hands a child a capacity other than the reserve it sliced (the T1.1 bug
-class). It does not unroll the child. Cross-level composition is exercised
-at full depth only at the budgeted widths, which for the shipped policy lie
-in its lowest band.
+hands a child a capacity other than the reserve it sliced (the bug class
+`Emit/Tests.lean`'s `TopChunkReserve` section anchors). It does not
+unroll the child. Cross-level composition is exercised
+at full depth only at the budgeted widths of the probe.
 
 As for a table, this tier is **evaluation at sampled widths, not a theorem**.
 One part of it is a theorem and is worth naming: `IR.dispatcherCallAt_dispatcherTemplate`
@@ -344,11 +350,11 @@ band 0 first — because two bands with different `k` would otherwise both emit
 
 ## CI for a submissions repo
 
-This repository's own CI (`.github/workflows/ci.yml`) builds the four lake
-targets, runs the five layer scripts and checks the docs graph. It does *not*
-run `lean4checker`, and it does not apply the diff rule or the lexical gate
-below — those are about a *submission*, and this repository has none to
-police. Steps 1 and 3 are therefore enforced only by a submissions repo.
+This repository's own CI (`.github/workflows/ci.yml`) builds the lake
+targets, runs the layer script and checks the docs graph. It does not apply
+the diff rule or the lexical gate below as an acceptance control — those are
+about a *submission*, and this repository has none to police. Step 1 is
+therefore enforced only by a submissions repo.
 
 Such a repo should run, per pull request:
 
@@ -383,9 +389,8 @@ Such a repo should run, per pull request:
    `@[implemented_by fakeOps] def ops := realOps` is kernel-checked on
    `realOps` while `ir.json` is computed from `fakeOps` — so the accepted
    table and the scored circuit are different objects. `implemented_by` and
-   `extern` add no axiom, so step 2's `#assert_axioms` cannot see them, and
-   `lean4checker` replays the kernel, which also sees only `realOps`;
-   neither of the other two steps catches this. `csimp` needs a proof of
+   `extern` add no axiom, so step 2's `#assert_axioms` cannot see them;
+   nothing in step 2 catches this. `csimp` needs a proof of
    `realOps = fakeOps`, so it is only an opening if that proof is itself
    unsound. The remaining tokens (`unsafe`, `run_cmd`/`run_meta`,
    `initialize`, `elab`/`macro`/`syntax`/`notation`, `import Lean`,
@@ -395,7 +400,7 @@ Such a repo should run, per pull request:
    A submitter's table needs none of this: the template is three
    definitions and one record.
 
-2. **The build and the print**, as now:
+2. **The build and the print**:
 
    ```bash
    lake build Submission && lake exe forshor_submission > ir.json
@@ -406,17 +411,11 @@ Such a repo should run, per pull request:
    This is where the four side conditions are checked — per band, for a
    policy, along with the thresholds' strict decrease — and where
    `#assert_axioms` runs, and where the IR is pinned against the real
-   circuit. `ir.json` / `policy.json` is what the resource estimator reads.
+   circuit (for a policy, the `lake exe` step runs that tier and prints
+   nothing if it fails). `ir.json` / `policy.json` is what the resource
+   estimator reads.
 
-3. **`lean4checker` on the `.olean`s step 2 built.** `#assert_axioms` reads
-   the axioms a declaration depends on; it does not see
-   `set_option debug.skipKernelTC true`, which skips the kernel without
-   adding an axiom, and nothing else visible in the environment does either.
-   Replaying the built environment through the kernel does. A submission is
-   not accepted until this passes.
-
-   Note what the three steps divide between them. Step 3 certifies that the
-   *kernel* accepts every proof in the environment; step 2's
-   `#assert_axioms` certifies which axioms those proofs rest on. Neither
-   says anything about the compiled code the IR and `ir.json` come from —
-   that is step 1's lexical gate, and it is the only thing standing there.
+   Note what the two steps divide between them. Step 2's `#assert_axioms`
+   certifies which axioms the proofs rest on. It says nothing about the
+   compiled code the IR and `ir.json` come from — that is step 1's lexical
+   gate, and it is the only thing standing there.

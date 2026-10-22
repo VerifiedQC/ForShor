@@ -1253,7 +1253,7 @@ lemma range_stream_prefix_tail (rem : ℕ) :
         (List.range rem).map (fun n => streamPoint (4 + n)) := by
   induction rem with
   | zero =>
-      native_decide
+      decide +kernel
   | succ rem ih =>
       rw [show 4 + (rem + 1) = (4 + rem).succ by omega]
       rw [List.range_succ, List.map_append, ih]
@@ -1375,7 +1375,7 @@ lemma precomputed_k3_product_consumes :
     PrecomputedTables.K3Product.orderedPoints,
     matchesAt_pointRow_state, regEqExpected, expectedRow,
     State.start_state, applyOp?, State.addScaledReg, State.setReg, Register.addScaled]
-  native_decide
+  decide +kernel
 
 lemma precomputed_k2_triple_consumes :
     ProgConsumesPts (by decide) State.start_state
@@ -1395,7 +1395,7 @@ lemma precomputed_k3_triple_consumes :
     PrecomputedTables.K3TripleProduct.orderedPoints,
     matchesAt_pointRow_state, regEqExpected, expectedRow,
     State.start_state, applyOp?, State.addScaledReg, State.setReg, Register.addScaled]
-  native_decide
+  decide +kernel
 
 /- Precomputed table lemmas for safe operations (src ≠ dst) -/
 

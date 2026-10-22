@@ -4,9 +4,9 @@ The `LowGate` emitter: prints the circuits this repository proves correct,
 and an n-free ("symbolic") description of them a resource model can price,
 as JSON. Nothing here is imported by the verified core — no theorem in
 `Implementation/` or `Framework/` depends on a line of it, and the `Doc` it
-extracts is explicitly not a theorem (D7).
+extracts is explicitly not a theorem.
 
-It is no longer *only* output tooling, though. `ShorVerification/Submission/`
+It is not *only* output tooling, though. `ShorVerification/Submission/`
 sits above this folder: `Template.lean` runs the extractor on a submitted
 table at build time and pins the result against the real circuit, which is
 the second of the two tiers a submission is accepted on. So a change here can
@@ -23,16 +23,15 @@ folder.
 
 - [What this tool prints](#what-this-tool-prints)
 - [Three artifacts](#three-artifacts)
-- [Decisions](#decisions)
+- [Design rules](#design-rules)
 - [What is and is not a theorem](#what-is-and-is-not-a-theorem)
 - [What is hand-stated](#what-is-hand-stated)
-- [How this folder was built (R0–R6)](#how-this-folder-was-built-r0r6)
-- [R2 exit criteria (the test list)](#r2-exit-criteria-the-test-list)
 - [Folder map](#folder-map)
+- [What `Tests.lean` checks](#what-testslean-checks)
 - [CLI reference](#cli-reference)
 - [Using a custom table](#using-a-custom-table)
 - [Build](#build)
-- [Known limitations and deviations from the original design](#known-limitations-and-deviations-from-the-original-design)
+- [Known limitations](#known-limitations)
 
 ## What this tool prints
 
@@ -43,8 +42,8 @@ Three kinds of document, all JSON except `phases`:
   `shor_gate`, `shor` — obtained by *reflection* over the real, verified
   definitions (see [Three artifacts](#three-artifacts)), except for the
   constructs listed under [What is hand-stated](#what-is-hand-stated).
-  (`pp_body`, R2.1's spike target, is no longer shipped: its layout is built
-  from per-child reserve variables nothing in the document says how to bind.
+  (`pp_body` is not shipped: its layout is built from per-child reserve
+  variables nothing in the document says how to bind.
   `extract_ir_doc_with_pp_body` still extracts it for the test suite.)
 - **`bundle`** (and its per-section commands): an **n-free** document — every
   number in it is a function of `k` (the Toom-Cook table arity) alone, never
@@ -78,18 +77,17 @@ Everything in this folder is one of three things:
    `RegExpr`, `Prop'`, `Node`, `Template`, `Doc`). A recursive definition
    becomes one `Template` whose body contains a `Node.call` to itself with
    translated argument expressions — the recursion is never unrolled in
-   Lean (D3); a consumer (or `IR/Instantiate.lean`'s own `instantiate`)
+   Lean; a consumer (or `IR/Instantiate.lean`'s own `instantiate`)
    unrolls it at a concrete width.
 
    The recursion skeleton and the arithmetic are reflected; the loops and
    the workspace bookkeeping around them are **hand-stated** and trusted on
    the sampled comparison. See
    [What is hand-stated](#what-is-hand-stated) — this is the part of the
-   folder where a bug can hide, and §1.1 of `PLAN.md` is a worked example of
-   one that did.
+   folder where a bug can hide.
 2. **The opaque value tables** (`Symbolic/{Width,QftPlan,ShorPlan,
    CoeffPoly}.lean`). A handful of functions the templates call by name but
-   never evaluate symbolically (D4: `RecursivePhaseWorkspace.nextWidth`,
+   never evaluate symbolically (`RecursivePhaseWorkspace.nextWidth`,
    `reserveNeed`, `qftWorkspaceNeed`, the interpolation weight `coeff(l, m)`
    `= cramerCoeffFromPtsWidth`, plus a few arithmetic primitives —
    `Nat.log2`, `mod`, `pow`, `step5Constant`, and a hand-built `modpow`).
@@ -106,20 +104,44 @@ Everything in this folder is one of three things:
 and the value tables are functions of `k` (and a width variable) only;
 instances (`pp`/`cpp`/`qft`) and `shor` additionally take a concrete `n`/`w`.
 
-## Decisions
+## Design rules
 
-Confirmed with the owner before R0; these are the invariants the
-extractor and its callers are built to:
+The invariants the extractor and its callers are built to:
 
-| # | decision |
-|---|---|
-| D1 | **Run-time extraction.** `forshor_emit template <k>` loads the environment with `importModules` and runs the extractor on the standard table at `k`. No per-`k` line anywhere in this folder's own code; a build-time elaborator command (`extract_ir_doc`) exists to extract any `ShorLoweringSetup` (not just the standard one) and pin a `Doc` for `native_decide` tests. |
-| D2 | **Genericity boundary.** The translation table is keyed by Lean *construct* (`Gate.seq`, `dite`, `Reg.interval`, `WellFounded.fix`, …), never by `k`, table, or width. A new `k` or table needs no code change. An unknown construct is a hard error naming the constant, never a silent drop. |
-| D3 | **Recursion is not unrolled in Lean.** A recursive definition yields one template whose body is one activation; the recursive call is a `Node.call` with its argument expressions. The consumer (and the Lean-side `IR/Instantiate.lean`) unrolls at a concrete `n`. |
-| D4 | **Opaque set.** Left unevaluated and tabulated: `nextWidth`, `reserveNeed`, `qftWorkspaceNeed`, `coeff(l, m)`, `Nat.log2`, `mod`, `pow`, `step5Constant`, `modpow`. |
-| D5 | **Concrete table required, supplied through Lean as a `ShorLoweringSetup`** (amended by R5; originally `k` plus a choice of table source, which no longer exists). The input to the extractor is a `Shor.ShorLoweringSetup` value: `k`, `hk`, `ops`, its own interpolation points `pts`, and the four proofs (`hpts`/`good`/`consumes`/`returns`) the lowering theorems need. A table that can be packaged as one is, by definition, a table those theorems cover; a table that cannot be is not a table this emitter has anything to say about, which is why there is no longer a second "table source" of any kind — see `Table/README.md`. Symbolic: `n, m, a, N` (Shor), `W, phi, x, z` (phase product), `w, r` (QFT). |
-| D6 | **Reference instances stay.** `pp`, `cpp`, `qft`, `shor` and their annotated views remain; they are what the extracted IR is checked against. |
-| D7 | **Not a theorem.** Trusted: the translation table and Lean's normaliser. Checked: `instantiate`/`instantiateGate` unrolls the extracted `Doc` at concrete widths and agrees with the real term — at build time (`Tests.lean`'s R2.1–R2.7 `native_decide` suite) and at run time (`Reflect/Verify.lean`'s canary, run before `template`/`bundle` ever print anything). The provenance strings say exactly this. |
+- **Run-time extraction.** `forshor_emit template <k>` loads the
+  environment with `importModules` and runs the extractor on the standard
+  table at `k`. No per-`k` line anywhere in this folder's own code; the
+  build-time elaborator command `extract_ir_doc` extracts any
+  `ShorLoweringSetup` (not just the standard one) and pins a `Doc` for
+  `native_decide` tests.
+- **Genericity boundary.** The translation table is keyed by Lean
+  *construct* (`Gate.seq`, `dite`, `Reg.interval`, `WellFounded.fix`, …),
+  never by `k`, table, or width. A new `k` or table needs no code change. An
+  unknown construct is a hard error naming the constant, never a silent
+  drop.
+- **Recursion is not unrolled in Lean.** A recursive definition yields one
+  template whose body is one activation; the recursive call is a
+  `Node.call` with its argument expressions. The consumer (and the Lean-side
+  `IR/Instantiate.lean`) unrolls at a concrete `n`.
+- **Opaque set.** Left unevaluated and tabulated: `nextWidth`,
+  `reserveNeed`, `qftWorkspaceNeed`, `coeff(l, m)`, `Nat.log2`, `mod`,
+  `pow`, `step5Constant`, `modpow`.
+- **A table is a `ShorLoweringSetup`.** The input to the extractor is a
+  `Shor.ShorLoweringSetup` value: `k`, `hk`, `ops`, its own interpolation
+  points `pts`, and the four proofs (`hpts`/`good`/`consumes`/`returns`)
+  the lowering theorems need. A table that can be packaged as one is, by
+  definition, a table those theorems cover; a table that cannot be is not a
+  table this emitter has anything to say about, which is why there is no
+  second "table source" of any kind — see `Table/README.md`. Symbolic:
+  `n, m, a, N` (Shor), `W, phi, x, z` (phase product), `w, r` (QFT).
+- **Reference instances stay.** `pp`, `cpp`, `qft`, `shor` and their
+  annotated views are what the extracted IR is checked against.
+- **Not a theorem.** Trusted: the translation table and Lean's normaliser.
+  Checked: `instantiate`/`instantiateGate` unrolls the extracted `Doc` at
+  concrete widths and agrees with the real term — at build time
+  (`Tests.lean`'s `native_decide` suite) and at run time
+  (`Reflect/Verify.lean`'s canary, run before `template`/`bundle` ever
+  print anything). The provenance strings say exactly this.
 
 ## What is and is not a theorem
 
@@ -127,7 +149,7 @@ extractor and its callers are built to:
   `lowerSignedPhaseProdWithWorkspace`, `lowerCSignedPhaseProdWithWorkspace`,
   `lowerQFT`, `referenceProgramAt` evaluate to. Their correctness is
   `Shor.lowerSignedPhaseProduct_correct`, `Shor.lowerQFT_correct`,
-  `Shor.lowerGate_correctness`, `Shor.Shor_correct` (the last at
+  `Shor.Policy.lowerGate_correctness`, `Shor.Shor_correct` (the last at
   `m = referenceChosenPrecision N`, which the emitter cannot compute).
 - The annotated trees (`pp`/`cpp`/`qft`) are printed from the plan terms
   those functions consume; `annotated_eq_flat` checks the two agree by
@@ -136,30 +158,33 @@ extractor and its callers are built to:
   two plus `Doc.wellFormed` are all the annotated CLI modes check — the full
   width-ladder canary belongs to `template` and `bundle`.
 - **The extracted templates are not theorems.** They are checked against
-  the real term by evaluation (D7). That comparison is
+  the real term by evaluation. That comparison is
   `Reflect.lowGateAgrees`/`gateAgrees`, which compares a flat stream of leaf
   tokens with adjoint boundaries marked. The obvious spelling
   (`flattenLowGate a == flattenLowGate b`) is *not* stack-safe — the derived
   `BEq LowGate` walks an adjoint's body one stack frame per nested gate, and
-  a circuit of a few thousand gates aborted the process outright, taking
-  `lake build Submission` with it (`PLAN.md` §6). Details: `instantiate_eq_real` on `pp`/`cpp`/
-  `qft` re-runs the check at whatever width the caller asked for;
-  `Reflect/Verify.lean`'s canary re-runs it at a ladder of widths derived from
-  whatever table `template`/`bundle` was asked to extract, before either
-  prints anything; `Tests.lean`'s R2.1–R2.7 suite established it
-  exhaustively (base case and one recursive level, `k = 2, 3`, both table
-  sources) once, at build time, via `native_decide`.
-- The opaque value tables (E2's `coeff_poly`, `width`, `qft_plan`,
+  a circuit of a few thousand gates overflows the interpreter's stack.
+  `instantiate_eq_real` on `pp`/`cpp`/`qft` runs the check at whatever width
+  the caller asked for; `Reflect/Verify.lean`'s canary runs it at a ladder
+  of widths derived from whatever table `template`/`bundle` was asked to
+  extract, before either prints anything; `Tests.lean` runs it exhaustively
+  at small widths (base case and one recursive level, `k = 2, 3`, the
+  standard table and a hand-built one) at build time, via `native_decide`.
+- The one proved result in this folder is
+  `IR.dispatcherCallAt_dispatcherTemplate` (`Symbolic/Dispatcher.lean`): a
+  policy document's width dispatcher routes every width to the band
+  `ShorLoweringPolicy.choose` picks. The band bodies it routes to are
+  extracted and sampled like everything else.
+- The opaque value tables (`coeff_poly`, `width`, `qft_plan`,
   `shor_plan`) are the named functions evaluated directly — not
   recomputed, not re-derived. `coeff_poly`'s own Gauss-Jordan `M⁻¹` is the
   one genuinely re-derived quantity, and it is cross-checked against the
   pre-existing `cramerCoeffFromPtsWidth` by evaluation
   (`cramerCoeffFromPtsWidth = phaseCoeffFromPtsWidth` is itself the theorem
   `cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth`).
-- Cost-model numbers, where printed (`Table/README.md`'s op census), are
-  `shorGateResourceModel` evaluated, not proved bounds; the asymptotic
-  statement they evaluate is `phaseProductGateCountBound_of_programOK` /
-  `exists_shorGateCountBound`.
+- Cost-model numbers, where printed, are `shorGateResourceModel` evaluated,
+  not proved bounds; the asymptotic statement they evaluate is
+  `phaseProductGateCountBound_of_programOK` / `exists_shorGateCountBound`.
 - The constant-arithmetic step costs (`lowerCmpGeConst`/`lowerCSubConst`,
   steps U3/U4 of `CmodMulInPlaceCore`) are fitted from concrete `shor`
   emissions outside Lean, not tabulated.
@@ -175,7 +200,7 @@ instead:
   fold, `H_reg`'s fold over `regQubits`, `modExpApproxValid`'s per-exponent-bit
   recursion, `lowerCopyConstFromUnit`'s walk over `N.bitIndices`. No equation
   lemma turns these into a visible loop the way `.eq_1` does for
-  `WellFounded.fix`, so the extractor recognises each **by name** (D2) and
+  `WellFounded.fix`, so the extractor recognises each **by name** and
   emits the `Node.loop` it knows the function to be.
 - **Workspace and slot bookkeeping.** `precomputeSideSlots` and
   `precomputePhaseProductSlots` (`Reflect/Targets.lean`) restate
@@ -188,10 +213,11 @@ instead:
   hand, for the same reason.
 
 A hand mirror is only as complete as the cases its author had in mind, and
-the sampled comparison is the only detector. §1.1 of
-[`PLAN.md`](PLAN.md) records one that got through: the reserve split gives
-the *top* chunk every leftover qubit, the hand-written capacity argument did
-not, and no sampled width reached a configuration where it showed.
+the sampled comparison is the only detector. The reserve split, for
+instance, gives the *top* chunk every leftover qubit; a capacity formula
+that omits that is wrong only at a grandchild of the top-level call and
+only when the parent has slack to split, which is what the width ladder and
+the two reserve regimes below are there to reach.
 
 Each of these is covered by at least one check in
 `Reflect/Verify.lean`'s `evaluationChecks`:
@@ -204,55 +230,13 @@ Each of these is covered by at least one check in
 | `initY1` | `checkShorGateAt`, both instances |
 | `modExpApproxValid` per-exponent-bit loop | `checkShorGateAt`, both instances; `checkShorAt` at the small one for its lowering |
 | `lowerCopyConstFromUnit` bit loop | `checkShorAt` (it appears only in the lowered circuit) |
-| `precomputeSideSlots` (`pp_body`'s layout) | `Tests.lean`'s R2.1 — the only consumer, and not shipped |
+| `precomputeSideSlots` (`pp_body`'s layout) | `Tests.lean`'s `pp_body` section — the only consumer, and not shipped |
 | `precomputePhaseProductSlots` (reserve split) | `checkPhaseProductAt`/`checkCPhaseProductAt` across the width ladder **and both slack regimes** — the slack regime is what makes the top-chunk row of the split observable |
-| `translateAnnotatedOps` (annotated-ops walk) | the same, plus `Tests.lean`'s `T1_1_TopChunkReserve` anchors |
+| `translateAnnotatedOps` (annotated-ops walk) | the same, plus `Tests.lean`'s `TopChunkReserve` anchors |
 
 The widths and instances those checks use are not fixed: `ppWidthLadder`
 and `qftWidthLadder` derive them from the table's own `nextWidth` chain, so
 a table that recurses later is checked later. See `Reflect/Verify.lean`.
-
-## How this folder was built (R0–R6)
-
-The code is littered with references to rounds `R0`–`R6` and decisions
-`D1`–`D7`. The decisions are the table above; the rounds are here. They were
-tracked in a 4 000-line `Emit/PLAN.md` engineering log, most of it about R6,
-which is archived; that log was deleted and lives in git history, so this
-table is what the `R`/`D` labels mean now. The `Emit/PLAN.md` in the tree
-today is a different, much shorter document — the T-tier plan (T1–T3) for the
-evaluation-tier work, cited as `PLAN.md §...` elsewhere in this file.
-
-| round | what it did |
-|---|---|
-| **R0** | The IR language: `IR/Syntax.lean`'s `WExpr`/`RegExpr`/`AExpr`/`Node`/`Template`/`Doc`, its JSON printer, decidable `Doc.wellFormed`, and the `instantiate`/`instantiateGate` interpreter that unrolls a `Doc` at a concrete width. |
-| **R1** | The extractor: `Reflect/Extract.lean`'s `MetaM` walk over a real Lean term, keyed by construct (D2), and its `ToExpr` instances for splicing a concrete table in. |
-| **R2** | The extraction targets (`Reflect/Targets.lean`) one at a time, each with an exit criterion — the table below. R2.7 was the genericity checkpoint: the same criteria at a different `k` and a different table, with no code change. |
-| **R3** | Bundle integration. `buildBundle` split into a pure `buildBundleCore` (still `native_decide`-testable) and an `unsafe`/`IO` `buildTemplateDoc` that embeds the extracted `Doc`; `pp`/`cpp`/`qft`'s hand-written `template_match`/`ladder`/`split` checks replaced by `instantiate_eq_real` against the real term. |
-| **R4** | Removals. The hand-written symbolic machinery the extractor superseded — `Symbolic/Template.lean`, `Symbolic/Recursion.lean`, `Lower/Instantiate.lean`, `Table/Census.lean` — deleted, and `shor_plan` reduced to widths and reserves with no affine tail. |
-| **R5** | The table became a `Shor.ShorLoweringSetup` rather than a `(k, TableSource)` pair (D5, as amended): a table that can be packaged as one is, by definition, a table the lowering theorems cover. Added the `Decidable` instances that let a user discharge a custom table's side conditions — since moved to `ShorVerification/Submission/Decide.lean`. |
-| **R6** | Proving the extractor's output correct for *all* widths, for the `k = 2` reference table (`evalNode … = lowerGateRec …`, no `native_decide` in the proofs). Substantial but incomplete, and superseded as a goal: a submission is accepted on the evaluation tier, not on a per-submission IR theorem. Archived to branch `emit-proofs-archive` (commit `2218ba6`) and removed from this branch along with its `lean_lib EmitProofs`. |
-
-Since then the interpolation points became a parameter of the lowering
-chain rather than a constant, the second table source was retired, and
-`ShorVerification/Submission/` was added — a submission template this
-folder's extractor feeds.
-
-## R2 exit criteria (the test list)
-
-Each row was one extraction step; "equals" means
-`instantiate`/`instantiateGate` of the extracted template, with `Env` built
-from the real opaque functions, agrees with the real term after flattening.
-Each is a `native_decide` example in `Tests.lean`.
-
-| step | target | exit criterion |
-|---|---|---|
-| R2.1 | `pp_body`, `k = 2` standard | equals `compileOpsToSignedGate` for `x, z` of width 4 with enough reserve |
-| R2.2 | `phase_product` | equals `standardSignedPhaseLoweringPlan` + `lowerGateRec` at `n = 8` (base case) and `n = 16` (recurses once) |
-| R2.3 | `naive_leaf` | equals `Naive_SignedPhaseProd` at six `(xw, zw)` pairs covering widths 1..6 |
-| R2.4 | `cphase_product`, `naive_cleaf` | as R2.2/R2.3, controlled |
-| R2.5 | `qft` | equals `lowerQFT` at `w = 4` (two recursion levels) and `w = 8` (three) |
-| R2.6 | `shor_gate`, `shor` | `shor_gate` equals `orderFindingApprox` as `Gate`; `shor` equals `Reference.referenceShorCircuit`, both at `k = 2, a = 2, N = 15, m = 0` |
-| R2.7 | genericity | R2.2/R2.5 criteria hold at `k = 3` standard and at a hand-built `k = 2` `ShorLoweringSetup` whose `ops` differ from the standard table's, with **no code change** to `Reflect/Extract.lean` or `Reflect/Targets.lean` |
 
 ## Folder map
 
@@ -261,11 +245,11 @@ Each is a `native_decide` example in `Tests.lean`.
 | `Json/` | JSON printers only — one spelling per value type, no proof obligations of their own (though `PlanJson.lean` walks proof-carrying plan terms). | [`Json/README.md`](Json/README.md) |
 | `Table/` | The `(ops, points)` view of a `ShorLoweringSetup` the value tables read. (The `Decidable` instances that let a user discharge a table's side conditions live in `ShorVerification/Submission/Decide.lean`.) | [`Table/README.md`](Table/README.md) |
 | `IR/` | The extracted-IR language (`Syntax.lean`), its JSON printer, decidable well-formedness, and the interpreter (`instantiate`/`instantiateGate`) — which is also the only definition of what the shipped `Doc` *means*. | [`IR/README.md`](IR/README.md) |
-| `Reflect/` | The `MetaM` extractor (`Extract.lean`, `Targets.lean`), the build-time/run-time drivers (`Driver.lean`), and the run-time instance-check canary (`Verify.lean`). | — |
-| `Symbolic/` | The opaque value tables (`CoeffPoly.lean`, `Width.lean`, `QftPlan.lean`, `ShorPlan.lean`) plus the assembly file `Bundle.lean`. | [`Symbolic/README.md`](Symbolic/README.md) |
+| `Reflect/` | The `MetaM` extractor (`Extract.lean`, `Targets.lean`, and `PolicyTargets.lean` for per-band bodies), the build-time/run-time drivers (`Driver.lean`), the run-time instance-check canary and single-table evaluation tier (`Verify.lean`), and the policy evaluation tier (`PolicyVerify.lean`). | [`Reflect/README.md`](Reflect/README.md) |
+| `Symbolic/` | The opaque value tables (`CoeffPoly.lean`, `Width.lean`, `QftPlan.lean`, `ShorPlan.lean`), the built (not extracted) policy width dispatcher and its agreement theorem (`Dispatcher.lean`), plus the assembly file `Bundle.lean`. | [`Symbolic/README.md`](Symbolic/README.md) |
 | `Lower/` | Concrete-width instances (`pp`/`cpp`/`qft`/`shor`), the `Decidable` instances that let the emitter discharge workspace preconditions on the fly, and shared register construction. | [`Lower/README.md`](Lower/README.md) |
 | `Main.lean` | The `forshor_emit` executable: argument parsing and subcommand dispatch only — no logic of its own lives here, everything is a call into one of the folders above. | — |
-| `Tests.lean` (`lean_lib EmitTests`) | Acceptance anchors: `native_decide` on the pure functions the folders above export, plus R2.1–R2.7's extraction exit criteria, the `T1_1_TopChunkReserve` regression tables and the `T4_1_TableOracle` consumer check. | — |
+| `Tests.lean` (`lean_lib EmitTests`) | Acceptance anchors: `native_decide` on the pure functions the folders above export, the extraction checks listed below, the `TopChunkReserve` regression tables and the `TableOracle` consumer check. | [below](#what-testslean-checks) |
 
 Internal import order is mostly `Json → Table → IR → Reflect → Symbolic →
 Lower → Main`, but not a strict per-folder layering: `Lower/Registers.lean`
@@ -274,14 +258,41 @@ its own, so `Reflect/Verify.lean` imports it directly rather than importing
 back through `Lower/PhaseProduct.lean`/`Lower/Qft.lean` — which is exactly
 what lets those two files import `Reflect/Verify.lean` in turn, for their
 own `instantiate_eq_real` check, without an import cycle (see
-`Lower/README.md`). `Tests` imports anything. No module here is imported
-from outside `Emit/`.
+`Lower/README.md`). `Tests` imports anything.
+
+Outside `Emit/`, only `ShorVerification/Submission/` imports from here:
+`Check.lean` and `PolicyCheck.lean` import `Reflect/Driver.lean`,
+`Reflect/Verify.lean` (or `Reflect/PolicyVerify.lean`) and `IR/Json.lean`;
+`Main.lean` and `PolicyMain.lean` import `Json/Common.lean`. Nothing in
+`Implementation/` or `Framework/` imports anything here.
+
+## What `Tests.lean` checks
+
+Beyond `native_decide` checks on the pure JSON builders (`buildBundleCore`,
+`buildSection`, `buildPhases`, the `coeff_poly` checks at `k = 2, 3, 5`),
+the suite pins a `Doc` per table with `extract_ir_doc` at build time and
+checks each template against the real term. "Equals" means
+`instantiate`/`instantiateGate` of the extracted template, with `Env` built
+from the real opaque functions, agrees with the real term after flattening.
+
+| target | check |
+|---|---|
+| `pp_body`, `k = 2` standard | equals `compileOpsToSignedGate` for `x, z` of width 4 with enough reserve |
+| `phase_product` | equals `standardSignedPhaseLoweringPlan` + `lowerGateRec` at `n = 8` (base case) and `n = 16` (recurses once) |
+| `naive_leaf` | equals `Naive_SignedPhaseProd` at six `(xw, zw)` pairs covering widths 1..6 |
+| `cphase_product`, `naive_cleaf` | as the two rows above, controlled |
+| `qft` | equals `lowerQFT` at `w = 4` (two recursion levels) and `w = 8` (three) |
+| `shor_gate`, `shor` | `shor_gate` equals `orderFindingApprox` as `Gate`; `shor` equals `Reference.referenceShorCircuit`, both at `k = 2, a = 2, N = 15, m = 0` |
+| genericity | the `phase_product` and `qft` checks hold at `k = 3` standard and at a hand-built `k = 2` `ShorLoweringSetup` whose `ops` differ from the standard table's, with no code path keyed on either |
+| `TopChunkReserve` | anchors for the top chunk's reserve capacity: tables whose last `phaseProduct` checkpoint sits on register `k - 1`, at widths where the top-chunk child recurses, in both slack regimes |
+| `TableOracle` | a consumer holding only the bundle's published `width`/`split_width`/`qft_plan` rows (no call into `nextWidth`/`reserveNeed`/`qftWorkspaceNeed`) can instantiate `qft` at odd widths |
+| comparison contract | `lowGateAgrees` is stack-safe on a deep adjoint and exactly as discriminating as a flat-list comparison |
 
 ## CLI reference
 
 | command | prints |
 |---|---|
-| `forshor_emit template <k> [--w-max W]` | the extracted `Doc` alone, after `Doc.wellFormed` and the R2-style instance-check canary pass (refuses with exit 3 otherwise) |
+| `forshor_emit template <k> [--w-max W]` | the extracted `Doc` alone, after `Doc.wellFormed` and the instance-check canary pass (refuses with exit 3 otherwise) |
 | `forshor_emit bundle <k> [--m-max M] [--w-max W] [--check-cramer] [--no-template]` | `forshor.emit/v1`: the n-free document (`schedule, coeff_poly, width, split_width, qft_plan, shor_plan`, plus `template` unless `--no-template`) |
 | `forshor_emit <schedule\|coeff_poly\|width\|split_width\|qft_plan\|shor_plan> <k> [same opts as bundle]` | one pure section of the above, in the same envelope |
 | `forshor_emit phases <k> <m> <phiNum/phiDen>` | exactly `q k` plain-text lines, `c_l(2^m)·phi` as reduced `num/den` |
@@ -363,15 +374,16 @@ standard table's own `k`-generic proofs
 `genInterpolationPoints_good` as above is just the shortcut when you reuse
 the canonical ladder — for points of your own, `good :=
 Shor.goodToomCookPoints_of_distinct hpts (by decide +kernel)` is the cheap
-route (C2's determinant has `(2k-1)!` terms; pairwise projective distinctness
-is equivalent to it and quadratic). A table that cannot be packaged this way is,
-correctly, one the extractor refuses to accept — see D5.
+route (the `GoodToomCookPoints` determinant has `(2k-1)!` terms; pairwise
+projective distinctness is equivalent to it and quadratic). A table that
+cannot be packaged this way is, correctly, one the extractor refuses to
+accept — see [Design rules](#design-rules).
 
 ## Build
 
 ```bash
 lake build forshor_emit
-lake build EmitTests
+lake build EmitTests          # the build-time acceptance suite; slow (tens of minutes)
 lake exe forshor_emit template 2
 lake exe forshor_emit bundle 2 --m-max 24 --w-max 96
 lake exe forshor_emit shor 2 2 15 0
@@ -382,14 +394,14 @@ This folder's own `lakefile.lean` entries are `lean_exe forshor_emit` and
 build` does not touch it. The `Submission` library and the
 `forshor_submission` executable are separate targets that consume it.
 
-## Known limitations and deviations from the original design
+## Known limitations
 
-- **E2's `M⁻¹`** is computed by exact Gauss-Jordan elimination over `ℚ`
-  (`gaussJordanInverseRows`, `O(n³)`), not via Mathlib's
+- **`coeff_poly`'s `M⁻¹`** is computed by exact Gauss-Jordan elimination
+  over `ℚ` (`gaussJordanInverseRows`, `O(n³)`), not via Mathlib's
   `Matrix.adjugate`/`Matrix.det`. Those are Leibniz-formula sums over
   `Equiv.Perm`, meant for proofs: evaluating one adjugate entry is an `O(n!)`
   determinant, so a whole inverse that way is `O(n²·n!)` — impractical from
-  `k = 5` on. The eliminator now lives in the compiler
+  `k = 5` on. The eliminator lives in the compiler
   (`ShorVerification/Implementation/PhaseProduct/Compiler/GaussJordan.lean`),
   because the compiler's own `cramerCoeffFromPts` is `@[csimp]`-compiled
   through it (`gjCoeffFromPts`, `Compiler/Coefficients.lean`): eliminate,
@@ -398,41 +410,32 @@ build` does not touch it. The `Submission` library and the
   still sees Cramer; only compiled code — `native_decide`, the oracles here,
   the executables — runs the cubic path.
 - **`check2`** (cross-checking the polynomials against
-  `cramerCoeffFromPtsWidth`) used to be gated by `k` because its right-hand
-  side was the factorial `Matrix.det` evaluation, which overflowed the stack
-  at `k = 5`. Both sides are now cubic, so it runs unconditionally at every
-  `k`; `--check-cramer` is accepted and ignored, and the `m ≤ 6` cap stays
-  only because nothing above it teaches anything new. `Tests.lean` §7c runs
-  it at `k = 5`.
+  `cramerCoeffFromPtsWidth`) runs unconditionally at every `k`, since both
+  sides are cubic; `--check-cramer` is accepted and ignored, and the `m ≤ 6`
+  cap stays only because nothing above it teaches anything new.
+  `Tests.lean` runs it at `k = 5`.
 - **Point *order* is part of a table, not a detail.** A table's
   `phaseProduct` checkpoints consume its points from the front, one per
   checkpoint, and leaf `l` receives coefficient `l` — so a permutation of
-  the same point set is a different table. (This bit the retired `generate`
-  source: its `k = 2, 3` precomputed programs consume the canonical points
-  in their own order, and pairing them with the plain `(List.range (q
-  k)).map streamPoint` enumeration made the ordered-coverage check fail at
-  `k = 3`.) `ShorLoweringSetup.consumes` is the ordered statement, and
-  `ShorVerification/Submission/Decide.lean` decides it.
+  the same point set is a different table. `ShorLoweringSetup.consumes` is
+  the ordered statement, and `ShorVerification/Submission/Decide.lean`
+  decides it.
 - **`Reflect/Verify.lean`'s canary is a ladder, not an exhaustive scan**:
   `ppWidthLadder`/`qftWidthLadder` on the caller's own table — the largest
   base-case width plus the smallest widths reaching one, two and three levels
   of recursion — with each phase-product width run in two reserve regimes.
-  It was one width per template (`4 * k`) until T2.1, and that is what let
-  the top-chunk capacity bug through: the fault is visible only at a
-  grandchild of the top-level call and only when the parent has slack to
-  split, so neither a single width nor a single regime could see it
-  (`PLAN.md` §1.1, §2 T2.1). Exhaustive coverage across base and recursive
-  cases at small widths is still `Tests.lean`'s R2.1–R2.7 compile-time
-  suite, and D2 (the extractor is keyed by Lean construct, never by `k`) is
+  Three levels and two regimes are what it takes to observe the top chunk's
+  reserve capacity: it is visible only at a grandchild of the top-level call
+  and only when the parent has slack to split. Exhaustive coverage across
+  base and recursive cases at small widths is `Tests.lean`'s compile-time
+  suite, and the extractor being keyed by Lean construct, never by `k`, is
   why agreement on the ladder generalizes. The ladder is derived from the
   table, so its cost is too: `k = 3` reaches `n = 35` and runs for roughly
-  35 minutes, `k = 4` reaches `n = 87`. Capping it is an open decision
-  (`PLAN.md` §4.1).
-  Since R5, the canary runs `shor_gate`/`shor` for *every* table
+  35 minutes, `k = 4` reaches `n = 87`. Whether to cap the ladder's depth is
+  an open decision. The canary runs `shor_gate`/`shor` for *every* table
   reaching it (any `ShorLoweringSetup` is, by construction, one
   `Reference.allocateReferenceLayout`/`referenceShorCircuit` are proven to
-  work over) — it is no longer `.standard`-only the way it was before D5's
-  amendment.
+  work over).
 - **`shor --annotated` is not implemented.** `Lower/Shor.lean` always prints
   the `layout` block, but the `Gate`-tree-of-`orderFindingApprox` annotated
   view needs the raw pre-lowering `Gate` tree (which `referenceProgramAt`
@@ -446,8 +449,9 @@ build` does not touch it. The `Submission` library and the
   in register width with no recursion and no table dependence, so their
   per-width counts are meant to be read off concrete `shor` documents and
   fitted outside Lean.
-- **No `Decidable` instance for the workspace `Prop`s existed anywhere in
-  the repo** before `Lower/Decide.lean` (needed so the emitter can discharge
-  `SignedRecursiveWorkspaceOK`/`CSignedRecursiveWorkspaceOK`/`QFTReserveOK`
-  with `if h : … then … else refuse` against a concrete width, rather than
-  proving them abstractly for all widths).
+- **The workspace `Prop`s are decided, not proved, at the CLI.**
+  `Lower/Decide.lean` is the only place in the repo with `Decidable`
+  instances for `SignedRecursiveWorkspaceOK`/`CSignedRecursiveWorkspaceOK`/
+  `QFTReserveOK`; the emitter discharges them with `if h : … then … else
+  refuse` against a concrete width rather than proving them abstractly for
+  all widths.

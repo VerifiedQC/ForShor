@@ -94,7 +94,7 @@ example : (smallJson.getObjVal? "resources").toOption.isSome := by native_decide
 
 -- 6 is gone: it checked a second kind of table source at run time, and a
 -- table is now a `ShorLoweringSetup` whose own fields are those conditions.
--- R2.7's `r2_7c_setup` below is what exercises a non-canonical table, and it
+-- `r2_7c_setup` below is what exercises a non-canonical table, and it
 -- discharges them by `native_decide` into proof terms rather than a Boolean.
 
 -- 7. `check1_inverseOf`/`check2_agreesWithCramer` succeed for `k = 2, 3` at a
@@ -150,9 +150,9 @@ example :
   native_decide
 
 -- 8. The `bundle` document has `schema = "forshor.emit/v1"` and `n_free = true`.
--- `buildBundleCore` (the pure sections only — `template` needs `IO`, see
--- R3's split, and is checked at run time via the deliverable
--- checklist's `forshor_emit bundle`/`template` invocations instead).
+-- `buildBundleCore` (the pure sections only — `template` needs `IO` and is
+-- checked at run time via the `forshor_emit bundle`/`template` invocations
+-- instead).
 example :
     (match buildBundleCore 2 (by decide) 6 10 false with
       | .ok json =>
@@ -161,17 +161,13 @@ example :
       | .error _ => false) = true := by
   native_decide
 
--- 9/10/11 (the old hand-written E7 template's leaf count, the bundle's
--- `template` section shape, and `pp`/`cpp`/`qft`'s `template_match`/`ladder`/
--- `split` checks) are superseded by R2.1-R2.7's own exit criteria below,
--- which check the *extracted* `Doc` directly against the real term, and by
--- `Reflect.Verify`'s run-time `instantiate_eq_real` check that replaced
--- `template_match`/`ladder`/`split` in `pp`/`cpp`/`qft` themselves
--- (R3/R4) — `buildPP`/`buildCPP`/`buildQFT`/`buildBundle`/
--- `buildTemplateDoc` all need `IO` now (the extractor's environment
--- reload), so they are no longer `native_decide`-testable; they are
--- exercised by the deliverable checklist's `lake exe forshor_emit`
--- invocations instead.
+-- 9/10/11 are absent: the extraction sections below check the *extracted*
+-- `Doc` directly against the real term, and `Reflect.Verify`'s run-time
+-- `instantiate_eq_real` check covers `pp`/`cpp`/`qft` themselves.
+-- `buildPP`/`buildCPP`/`buildQFT`/`buildBundle`/`buildTemplateDoc` all need
+-- `IO` (the extractor's environment reload), so they are not
+-- `native_decide`-testable; they are exercised by `lake exe forshor_emit`
+-- instead.
 
 -- 13. Every named section (`sectionNames`) is buildable standalone and
 -- carries its own name as a top-level key, for `k = 2`.
@@ -186,7 +182,7 @@ example :
 example : (buildPhases 2 8 1 8).toOption.map List.length = some (q 2) := by native_decide
 example : (buildPhases 3 8 1 8).toOption.map List.length = some (q 3) := by native_decide
 
--- 15. R2.1's exit criterion (`Emit/README.md`): `pp_body`, extracted
+-- 15. `pp_body`, extracted
 -- by reflection (`extract_ir_doc`, pinning a `Doc` at build time) and
 -- `instantiateGate`'d at a concrete `k = 2`, standard table, `x`/`z` both
 -- width 4 with enough reserve that `targetSignedLayoutState`'s growth to
@@ -194,7 +190,7 @@ example : (buildPhases 3 8 1 8).toOption.map List.length = some (q 3) := by nati
 -- agrees with `compileOpsToSignedGate` itself — flattened first (raw `Gate`
 -- `BEq` compares tree shape, and `Gate.seq` bracketing differs harmlessly
 -- between the two sides; same convention as `check1_annotatedEqFlat`).
-section R2_1
+section PpBody
 
 -- `BEq Shor.Gate`/`BEq Shor.LowGate` are derived once in `Reflect/Verify.lean`
 -- (imported transitively via `Symbolic.Bundle`), reused here and throughout.
@@ -275,9 +271,9 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_1
+end PpBody
 
--- 16. R2.3's exit criterion: `naive_leaf`
+-- 16. `naive_leaf`
 -- (`LowGate.Naive_SignedPhaseProd`) needs no `k`/table and so no
 -- `extract_ir_doc` pinning either — `Reflect/Targets.lean`'s
 -- `naiveLeafTemplate` is already a plain `def`, hand-specified rather than
@@ -287,7 +283,7 @@ end R2_1
 -- this check, not the hand-transcription. `instantiate` agrees with the
 -- real term at six different `(xw, zw)` pairs covering widths 1..6 on both
 -- sides.
-section R2_3
+section NaiveLeaf
 
 open Shor.Reflect in
 def r2_3_doc : IR.Doc :=
@@ -314,9 +310,9 @@ example :
       r2_3_check 6 5] = [true, true, true, true, true, true] := by
   native_decide
 
-end R2_3
+end NaiveLeaf
 
--- 17. R2.2's exit criterion: `phase_product`
+-- 17. `phase_product`
 -- (`Shor.standardSignedPhaseLoweringPlan` + `Shor.lowerGateRec`), checked
 -- against `IR.instantiate` at `n = 8` (base — `nextWidth ops 8 8 = 9 ≥ 8`,
 -- so the guard is false and the real term is
@@ -326,7 +322,7 @@ end R2_3
 -- now bundles `phase_product` and `naive_leaf` together with `pp_body` —
 -- `phase_product`'s base case is a `Node.call` to `naive_leaf`, so a `Doc`
 -- with one but not the other is never `wellFormed`.
-section R2_2
+section PhaseProduct
 
 abbrev r2_2_k : Nat := 2
 def r2_2_hk : 1 < r2_2_k := by decide
@@ -372,7 +368,7 @@ partial def r2_2_flatten : LowGate → List LowGate
   | .seq a b => r2_2_flatten a ++ r2_2_flatten b
   | g => [g]
 
-section R2_2_Base
+section PhaseProduct_Base
 
 def r2_2b_x : ExtReg := ExtReg.ofReg (Reg.interval 0 8)
 def r2_2b_z : ExtReg := ExtReg.ofReg (Reg.interval 100 8)
@@ -392,9 +388,9 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_2_Base
+end PhaseProduct_Base
 
-section R2_2_Rec
+section PhaseProduct_Rec
 
 def r2_2r_x : ExtReg := ExtReg.withReserve (Reg.interval 0 16) (Reg.interval 16 100) (by decide)
 def r2_2r_z : ExtReg := ExtReg.withReserve (Reg.interval 200 16) (Reg.interval 216 100) (by decide)
@@ -415,17 +411,17 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_2_Rec
+end PhaseProduct_Rec
 
-end R2_2
+end PhaseProduct
 
--- 18. R2.4's `naive_cleaf` exit criterion (controlled
--- counterpart of R2.3's `naive_leaf`): `LowGate.Naive_CSignedPhaseProd`'s
+-- 18. `naive_cleaf` (controlled counterpart of `naive_leaf`):
+-- `LowGate.Naive_CSignedPhaseProd`'s
 -- own double loop, `CCPhase` instead of `CPhase`, `ctrl` a single-qubit
 -- register parameter per `IR/Instantiate.lean`'s `buildLowGate` convention.
 -- `instantiate` agrees with the real term at the same six `(xw, zw)` pairs
--- R2.3 used, plus a fixed `ctrl` qubit disjoint from both `x`/`z`.
-section R2_4_NaiveCLeaf
+-- `naive_leaf` used, plus a fixed `ctrl` qubit disjoint from both `x`/`z`.
+section NaiveCLeaf
 
 open Shor.Reflect in
 def r2_4nc_doc : IR.Doc :=
@@ -457,16 +453,16 @@ example :
       r2_4nc_check 6 5] = [true, true, true, true, true, true] := by
   native_decide
 
-end R2_4_NaiveCLeaf
+end NaiveCLeaf
 
--- 19. R2.4's `cphase_product` exit criterion (controlled
--- counterpart of R2.2's `phase_product`): `standardCSignedPhaseLoweringPlan`
+-- 19. `cphase_product` (controlled counterpart of `phase_product`):
+-- `standardCSignedPhaseLoweringPlan`
 -- + `lowerGateRec`, checked at `n = 8` (base) and `n = 16` (recurses) —
--- same widths, same `reserveNeed`/`nextWidth` values as R2.2, since `ctrl`
+-- same widths, same `reserveNeed`/`nextWidth` values as `phase_product`, since `ctrl`
 -- plays no part in the layout/reserve bookkeeping, only in which qubit the
 -- phase leaves are controlled by. `ctrl` is a fixed qubit disjoint from
 -- both `x`/`z`'s complete ranges (`CtrlDisjoint`).
-section R2_4_CPhaseProduct
+section CPhaseProduct
 
 abbrev r2_4_k : Nat := 2
 def r2_4_hk : 1 < r2_4_k := by decide
@@ -509,7 +505,7 @@ partial def r2_4_flatten : LowGate → List LowGate
 
 def r2_4_ctrl : ExtReg := ExtReg.ofReg (Reg.interval r2_4_ctrlIdx 1)
 
-section R2_4_Base
+section CPhaseProduct_Base
 
 def r2_4b_x : ExtReg := ExtReg.ofReg (Reg.interval 0 8)
 def r2_4b_z : ExtReg := ExtReg.ofReg (Reg.interval 100 8)
@@ -534,9 +530,9 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_4_Base
+end CPhaseProduct_Base
 
-section R2_4_Rec
+section CPhaseProduct_Rec
 
 def r2_4r_x : ExtReg := ExtReg.withReserve (Reg.interval 0 16) (Reg.interval 16 100) (by decide)
 def r2_4r_z : ExtReg := ExtReg.withReserve (Reg.interval 200 16) (Reg.interval 216 100) (by decide)
@@ -562,11 +558,11 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_4_Rec
+end CPhaseProduct_Rec
 
-end R2_4_CPhaseProduct
+end CPhaseProduct
 
--- 20. R2.5's exit criterion: `qft`
+-- 20. `qft`
 -- (`Shor.standardQFTLoweringPlan` + `Shor.lowerQFTPlan`), checked against
 -- `IR.instantiate` at `w = 4` (two levels of `qft`'s own recursion: 4
 -- splits into two width-2 halves, each of which splits again into two
@@ -575,7 +571,7 @@ end R2_4_CPhaseProduct
 -- enough. `qft`'s own `Node.call`s to `phase_product` at each split are
 -- exactly why `buildDoc` bundles `phase_product`/`naive_leaf` into the same
 -- `Doc` as `qft`.
-section R2_5
+section Qft
 
 abbrev r2_5_k : Nat := 2
 def r2_5_hk : 1 < r2_5_k := by decide
@@ -615,7 +611,7 @@ partial def r2_5_flatten : LowGate → List LowGate
   | .seq a b => r2_5_flatten a ++ r2_5_flatten b
   | g => [g]
 
-section R2_5_W4
+section Qft_W4
 
 def r2_5w4_r : ExtReg := ExtReg.withReserve (Reg.interval 0 4) (Reg.interval 4 2) (by decide)
 def r2_5w4_hworkspace : QFTReserveOK r2_5_ops r2_5w4_r := ⟨by native_decide⟩
@@ -634,9 +630,9 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_5_W4
+end Qft_W4
 
-section R2_5_W8
+section Qft_W8
 
 def r2_5w8_r : ExtReg := ExtReg.withReserve (Reg.interval 0 8) (Reg.interval 8 2) (by decide)
 def r2_5w8_hworkspace : QFTReserveOK r2_5_ops r2_5w8_r := ⟨by native_decide⟩
@@ -655,11 +651,11 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_5_W8
+end Qft_W8
 
-end R2_5
+end Qft
 
-section R2_6_ShorGate
+section ShorGate
 
 set_option maxHeartbeats 4000000 in
 extract_ir_doc r2_6g_doc smallLowering
@@ -700,7 +696,7 @@ def r2_6g_env (a N : ℕ) (x y work scratch : ExtReg) (flag : ℕ) : IR.Env :=
 -- `†(H_reg ;; CPhaseProdUsing ;; IQFT)`, `cmpLtNW`'s `†diff ;; †mul`) wrap
 -- *multi-gate* sub-sequences whose own `Node.seq`↦`foldGateSeq` folding
 -- introduces a trailing `.id` the real term's direct `;;` chain never has —
--- `translateNode`'s `.seq`/`.adj` cases are still exactly right (the R6
+-- `translateNode`'s `.seq`/`.adj` cases are exactly right (the
 -- `flatten` idiom already handles it at the top level); it is only *this
 -- test's own comparison* that must recurse into `.adj` bodies too, or a
 -- mismatch hidden under an `adj` never surfaces (confirmed empirically).
@@ -743,16 +739,16 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_6_ShorGate
+end ShorGate
 
-section R2_6_Shor
+section ShorCircuit
 
 set_option maxHeartbeats 4000000 in
 extract_ir_doc r2_6_doc smallLowering
 
 -- `shor`'s `Node.call`s reach into `qft`/`phase_product`/`cphase_product`'s
 -- own bodies, so this env needs every opaque name/`coeff` those templates
--- need too (`r2_2_env`/`r2_5_env`'s formulas), on top of R2.6's own
+-- need too (`r2_2_env`/`r2_5_env`'s formulas), on top of `shor_gate`'s own
 -- `mod`/`pow`/`modpow`/`step5Const`/`log2` (`r2_6g_env`'s).
 def r2_6_env (a N : ℕ) (x y work scratch : ExtReg) (flag : ℕ) : IR.Env :=
   { w := fun n =>
@@ -819,18 +815,18 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_6_Shor
+end ShorCircuit
 
--- R2.7 (the genericity checkpoint): `Extract.lean`/
--- `Targets.lean` are keyed by Lean construct name only (D2), never by `k` or
--- table source — so R2.2's and R2.5's own exit criteria should carry over to
--- `k = 3` (standard) and to `k = 2` with the `generate` table source with
--- **no code change** to either file. This section is exactly that recheck:
+-- Genericity: `Extract.lean`/`Targets.lean` are keyed by Lean construct
+-- name only, never by `k` or table source — so the `phase_product` and `qft`
+-- checks above should carry over to `k = 3` (standard) and to `k = 2` with
+-- the `generate` table source with **no code change** to either file. This
+-- section is exactly that recheck:
 -- same `extractPhaseProductBody`/`extractQFTBody`, same `r2_2_env`/`r2_5_env`
 -- shape, same `_flatten` idiom, just called at different `(k, src)` pairs.
-section R2_7
+section Genericity
 
-section R2_7_PhaseProduct_K3Standard
+section Genericity_PhaseProduct_K3Standard
 
 abbrev r2_7pp3_k : Nat := 3
 def r2_7pp3_hk : 1 < r2_7pp3_k := by decide
@@ -889,7 +885,7 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_7_PhaseProduct_K3Standard
+end Genericity_PhaseProduct_K3Standard
 
 -- The table-genericity demonstration: a hand-built `ShorLoweringSetup` whose
 -- `ops` genuinely differ from `standardLoweringSetup 2`'s (a redundant,
@@ -899,7 +895,7 @@ end R2_7_PhaseProduct_K3Standard
 -- The points here are still the canonical ones, but they are read off
 -- `r2_7c_setup.pts` by both the `coeff` oracle and the real terms below, so
 -- this section would follow a different choice if the setup made one.
-section R2_7_PhaseProduct_CustomTable
+section Genericity_PhaseProduct_CustomTable
 
 abbrev r2_7c_k : Nat := 2
 def r2_7c_hk : 1 < r2_7c_k := by decide
@@ -955,7 +951,7 @@ partial def r2_7c_flatten : LowGate → List LowGate
   | .seq a b => r2_7c_flatten a ++ r2_7c_flatten b
   | g => [g]
 
--- `n = 16` recurses (R2.2's own recursive case, `nextWidth ops 16 16 < 16`)
+-- `n = 16` recurses (`phase_product`'s own recursive case, `nextWidth ops 16 16 < 16`)
 -- — the two extra trailing ops don't change that, since `nextWidth`/
 -- `reserveNeed` are computed from the same `addScaled`/adder-class ops
 -- either way; the generous reserve margin absorbs whatever small change the
@@ -979,9 +975,9 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_7_PhaseProduct_CustomTable
+end Genericity_PhaseProduct_CustomTable
 
-section R2_7_Qft_K3Standard
+section Genericity_Qft_K3Standard
 
 abbrev r2_7q3_k : Nat := 3
 def r2_7q3_hk : 1 < r2_7q3_k := by decide
@@ -1040,13 +1036,13 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_7_Qft_K3Standard
+end Genericity_Qft_K3Standard
 
--- Reuses `r2_7c_doc`/`r2_7c_setup` (`R2_7_PhaseProduct_CustomTable` above):
+-- Reuses `r2_7c_doc`/`r2_7c_setup` (`Genericity_PhaseProduct_CustomTable` above):
 -- `buildDoc` extracts every template from one `setup` at once, so `qft`'s
 -- own genericity is already checked by the same extraction — no second
 -- `extract_ir_doc` needed.
-section R2_7_Qft_CustomTable
+section Genericity_Qft_CustomTable
 
 def r2_7cq_env (ops : Prog r2_7c_k) (r xWork zWork : ExtReg) : IR.Env :=
   { w := fun n =>
@@ -1094,34 +1090,34 @@ example :
       | .error _ => false) = true := by
   native_decide
 
-end R2_7_Qft_CustomTable
+end Genericity_Qft_CustomTable
 
-end R2_7
+end Genericity
 
 /-! =========================================================
-    T1.1 regression: the top chunk's reserve capacity
+    Regression: the top chunk's reserve capacity
 ========================================================= -/
 
 -- `fillSlack` gives the *top* chunk (`i = k - 1`) of a phase product's
 -- reserve split everything left over after each child's
 -- `requiredChildReserve` is paid, so a `phaseProduct` checkpoint on register
 -- `k - 1` hands its recursive call a child carrying `reserveNeed + slack`,
--- not `reserveNeed`. `translateAnnotatedOpsGo` used to emit the latter for
--- every chunk; the callee then split *its* reserve among grandchildren from
+-- not `reserveNeed`. If `translateAnnotatedOpsGo` emitted the latter for
+-- every chunk, the callee would split *its* reserve among grandchildren from
 -- a capacity one or more qubits too small, and every grandchild-level gate
--- that prints a reserve list came out different from the real circuit.
+-- that prints a reserve list would differ from the real circuit.
 --
 -- Three things have to coincide for that to show: a checkpoint on register
 -- `k - 1`, non-zero slack in the parent's reserve, and a width at which the
 -- child still recurses. Neither table below is exotic — both are admissible
--- (C1-C4 by `decide`/`native_decide`) — but the R2 sections above miss all
+-- (C1-C4 by `decide`/`native_decide`) — but the extraction sections above miss all
 -- three: their checkpoints sit on register 0.
 --
 -- These are *anchors*: each width/slack pair listed here is one that
 -- disagreed before the fix and agrees after. The `slack = 0` rows are kept
 -- deliberately — they passed before the fix too, and a change that made them
 -- fail would mean the capacity went wrong in the other direction.
-section T1_1_TopChunkReserve
+section TopChunkReserve
 
 /-! A `k = 2` table whose last checkpoint sits on register 1, at the
 canonical points. Each checkpoint sees register 1 holding the row of its
@@ -1183,8 +1179,8 @@ end TopChunkReg1
 /-! A `k = 2` table at the points `0, -1, frac 0` — the point at infinity,
 whose row `[0, 1]` is register 1's start value and so cannot be built in
 register 0. Its last checkpoint therefore *has* to sit on register 1, which
-is the condition §1.1 of `PLAN.md` identifies; the `frac`-points caveat the
-submission docs used to carry was a consequence of that, not of `frac`. -/
+is exactly the condition this regression is about: `frac` points are not
+special, a checkpoint on the top register is. -/
 section TopChunkFracInfinity
 
 abbrev t11b_k : Nat := 2
@@ -1218,9 +1214,9 @@ example : IR.Doc.wellFormed t11b_doc = true := by native_decide
 
 -- Shorter table, so the recursion bottoms out later: `n = 16` already has a
 -- recursing top-chunk child. Both slack regimes are anchored, the generous
--- one because §1.1's measurement at `slack = 84` is where the diff was
--- shown to be *only* in unused reserve width (erasing the reserve lists made
--- all 24 differing gates agree).
+-- one because at `slack = 84` a wrong child capacity shows up *only* in
+-- unused reserve width (erasing the reserve lists would make every
+-- differing gate agree).
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
 example :
@@ -1234,10 +1230,10 @@ example :
 
 end TopChunkFracInfinity
 
-end T1_1_TopChunkReserve
+end TopChunkReserve
 
 /-! =========================================================
-    T4.1: the bundle's tables are enough to instantiate `qft`
+    The bundle's tables are enough to instantiate `qft`
 ========================================================= -/
 
 -- The Lean-side checks resolve every opaque width by calling the real
@@ -1254,7 +1250,7 @@ end T1_1_TopChunkReserve
 -- This is the exit criterion for that, spelled as the consumer would meet
 -- it: `instantiate` of the extracted `qft` at odd widths, with the *table*
 -- oracle in place of `opaqueDispatch`, agreeing with the real circuit.
-section T4_1_TableOracle
+section TableOracle
 
 abbrev t41_wMax : Nat := 40
 
@@ -1280,7 +1276,7 @@ example :
 -- no row, so `instantiate` fails rather than inventing a value.
 example : t41_oracle "nextWidth" [t41_wMax + 1, t41_wMax + 1] = none := by native_decide
 
-end T4_1_TableOracle
+end TableOracle
 
 /-! =========================================================
     The circuit comparison must not recurse once per gate

@@ -41,9 +41,8 @@ hand-stated leaves at three unequal `(xw, zw)` pairs, the QFT at
 `qftWidthLadder setup.ops`, and `shor_gate`/`shor` at two reference
 instances. The ladders are computed from the table's own recursion depth, so
 a table that recurses later is checked later; they are not a fixed list. This
-is evaluation, not a theorem: the IR is not proved correct at *every* width.
-That project (R6) concerns the reference table only and was archived; it is
-deliberately not a submission requirement. The extractor is keyed by Lean
+is evaluation, not a theorem: the IR is not proved correct at *every* width,
+and proving it is deliberately not a submission requirement. The extractor is keyed by Lean
 construct, never by `k` or by a table, which is why agreement at sampled
 widths is meaningful evidence rather than a coincidence.
 
@@ -61,9 +60,18 @@ open Shor Operations Shor.Audit
 
 Every field of `setup` — C1, C2, C3, C4 — reduced by the kernel and by
 nothing else. This line is what makes "kernel-checked" a checked claim
-rather than a documented intention. -/
+rather than a documented intention.
 
-#assert_axioms Submission.setup
+Every repo-owned name below is written with `_root_.`. Inside
+`namespace Submission`, a partly qualified name such as `Submission.setup`
+resolves to `Submission.Submission.setup` first if that exists, and a
+submitter can declare it: a clean decoy one namespace deeper would then be
+what the audit inspects while the real `setup` rests on an axiom. `_root_.`
+makes every reference absolute, so the only `setup` the audit, the
+evaluation tier and the certificate can see is the one the kernel checked
+(`Audit.lean`'s `Shadow` test pins the pitfall). -/
+
+#assert_axioms _root_.Submission.setup
 
 /-! The three definitions a submitter marks in `Template.lean` are the ones
 `setup` carries, so the table printed by `Main.lean` and the table C1–C4 were
@@ -84,14 +92,14 @@ extract_ir_doc doc setup
 
 /-- The IR is well-formed: every template's free variables are bound, every
 `Node.call` names a template in the document, and so on. -/
-example : IR.Doc.wellFormed doc = true := by native_decide
+example : _root_.Shor.IR.Doc.wellFormed doc = true := by native_decide
 
 /-! The evaluation tier: `instantiate doc` agrees with the real compiled
 circuit at the sampled widths and at the smallest reference Shor instance,
 against *this* submission's points. -/
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
-example : Shor.Reflect.submissionChecks setup doc = true := by native_decide
+example : _root_.Shor.Reflect.submissionChecks setup doc = true := by native_decide
 
 /-! ## The certificate -/
 
@@ -100,6 +108,6 @@ cite. There is nothing to prove: `Shor.submission_correct` is generic in the
 table, so `setup` existing is the whole argument. -/
 def correct {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
     [GateSemanticsFacts qs] [LowerGateClass qs] [IdealCtrlModMulExactSemantics qs] :=
-  Shor.submission_correct (qs := qs) setup
+  _root_.Shor.submission_correct (qs := qs) setup
 
 end Submission

@@ -38,7 +38,7 @@ deriving Repr
 
 /-- Build one `ShorPlanRow` at bit-length `n`, precision levels `0..mMax`,
 using the synthetic instance `N := 2^n - 1, a := 2`. `none` if that instance
-is invalid (defensively checked the same way `Main.lean`'s `runEmit` checks a
+is invalid (defensively checked the same way `Lower/Shor.lean`'s `runEmit` checks a
 real instance; cannot happen for `n ≥ 2`, since `N` is odd and `2 < N`). -/
 def shorPlanRow (pol : Shor.ShorLoweringPolicy) (n mMax : ℕ) : Option ShorPlanRow :=
   let N := 2 ^ n - 1

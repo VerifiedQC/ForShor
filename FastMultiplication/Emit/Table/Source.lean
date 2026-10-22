@@ -29,11 +29,10 @@ structure TableInstance (k : ℕ) where
   points : List Point
   hlen : points.length = q k
 
-/-- The table a `ShorLoweringSetup` carries. Total, and proof-free: S1 made
-`pts` a field of the setup, so there is nothing left to resolve or to check
-here — `setup.consumes`/`setup.returns`/`setup.good` are exactly the
-conditions that used to be re-run at run time by `checkTable`, and they hold
-by construction of the setup. -/
+/-- The table a `ShorLoweringSetup` carries. Total, and proof-free: `pts` is
+a field of the setup, so there is nothing to resolve or to check here —
+`setup.consumes`/`setup.returns`/`setup.good` hold by construction of the
+setup. -/
 def ShorLoweringSetup.tableInstance (setup : ShorLoweringSetup) : TableInstance setup.k :=
   { ops := setup.ops, points := setup.pts, hlen := setup.hpts }
 

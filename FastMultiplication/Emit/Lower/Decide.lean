@@ -7,14 +7,12 @@ import FastMultiplication.ShorVerification.Implementation.QFT.Lowering.Workspace
 `SignedRecursiveWorkspaceOK`, `CSignedRecursiveWorkspaceOK`, and `QFTReserveOK`
 are `Prop`-valued structures whose fields are all `≤` on `ℕ` (already
 decidable) or `ExtReg.OwnedDisjoint`/`ExtReg.CtrlDisjoint` (disjointness of
-concrete `List ℕ` qubit lists). No `Decidable` instance for the latter two
-exists anywhere in the repo or in `.lake/packages` — every existing
-construction of these structures is an abstract tactic proof from assumed
-hypotheses, never a decidability check against concrete registers (this
-folder is the first place that needs one). The two instances below use the
-same `unfold; infer_instance` idiom already used twice elsewhere in the repo
-for other decidable `Prop`s (`isTopChunk`, `Layout.lean:104-107`;
-`outcomePred`, `MeasureClass.lean:16-20`) — `List.Disjoint`'s `∀ ⦃a⦄, a ∈ l₁
+concrete `List ℕ` qubit lists). This file holds the only `Decidable`
+instances for the latter two in the repo — every other construction of
+these structures is an abstract tactic proof from assumed hypotheses, never
+a decidability check against concrete registers. The two instances below
+use the same `unfold; infer_instance` idiom `Compiler/Layout.lean:104-107`
+uses for `isTopChunk` — `List.Disjoint`'s `∀ ⦃a⦄, a ∈ l₁
 → a ∈ l₂ → False` shape is exactly the bounded-forall form
 `List.decidableBAll` already covers for `DecidableEq α`.
 

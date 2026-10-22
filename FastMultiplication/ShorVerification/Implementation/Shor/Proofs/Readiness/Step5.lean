@@ -175,7 +175,6 @@ private theorem ThreeRegsCleanState.weaken
   | smul a hψ ihψ =>
       exact ThreeRegsCleanState.smul a ihψ
 
-
 private theorem
     threeRegsCleanState_to_grownRecursiveWorkspaceCleanState_of_subset
     {qs : QSemantics}
@@ -239,7 +238,6 @@ private theorem
   | smul a hψ ihψ =>
       exact CleanClosure.smul a ihψ
 
-
 private theorem
     gateWorkspaceCleanState_CPhaseProdUsing_of_threeRegsClean_of_subset
     {qs : QSemantics}
@@ -295,7 +293,6 @@ private theorem
     LowerGateClass.evalL_zeroExtend,
     ExtensionSemantics.eval_zeroExtend
   ] using hrecursive
-
 
 private theorem
     eval_CPhaseProdUsing_preserves_threeRegsCleanState_of_subset
@@ -758,7 +755,6 @@ private theorem lowered_step5Forward_ready_and_full_clean
 
   simpa only [ψ1] using hU23
 
-
 /-! =========================================================
     Semantic decomposition of adjoint circuits
 ========================================================= -/
@@ -1021,7 +1017,6 @@ private theorem eval_step5_QFT_preserves_full_clean
           a
           ihψ
 
-
 /-! =========================================================
     Step-5 workspace subset facts
 ========================================================= -/
@@ -1053,7 +1048,6 @@ theorem step5Workspace_zReserve_subset
 
   change q ∈ work.reserve.qubits at hq
   exact hq
-
 
 /-! =========================================================
     Adjoint controlled phase-product locality
@@ -1310,7 +1304,6 @@ lemma hadamard_scale_sq :
 
   simpa [sq] using hsqrt_sq.symm
 
-
 lemma hadamard_plus_identity
     {M : Type*}
     [AddCommGroup M]
@@ -1358,7 +1351,6 @@ lemma hadamard_minus_identity
     _ = v := by
       rw [ha]
       simp
-
 
 private theorem eval_H_involutive_ket
     (qs : QSemantics)
@@ -1547,7 +1539,6 @@ private theorem eval_H_involutive_ket
         (qs.ket b0)
         (qs.ket b1)
 
-
 private theorem eval_H_involutive
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -1618,7 +1609,6 @@ private theorem eval_H_involutive
       eval_H_involutive_ket
         qs q b
 
-
 private theorem eval_adj_H_eq_eval_H
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -1634,7 +1624,6 @@ private theorem eval_adj_H_eq_eval_H
     qs.eval_apply_adj,
     eval_H_involutive
   ]
-
 
 /-! =========================================================
     Locality of a single adjoint Hadamard
@@ -1755,7 +1744,6 @@ private theorem eval_H_preserves_threeRegsCleanState
           a
           ihψ
 
-
 private theorem eval_adj_H_preserves_threeRegsCleanState
     {qs : QSemantics}
     [RegEncoding qs.Basis]
@@ -1864,7 +1852,6 @@ private theorem
 
       · exact hclean
 
-
 private theorem eval_adj_H_reg_work_preserves_full_clean
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -1967,8 +1954,6 @@ private theorem eval_adj_H_reg_work_preserves_full_clean
       ψ
       hclean
 
-
-
 /-! =========================================================
     Semantic decomposition of the Step-5 adjoint
 ========================================================= -/
@@ -2013,7 +1998,6 @@ private theorem eval_adj_step5Forward_eq
   simp only [IQFT]
 
   rw [eval_adj_adj_eq]
-
 
 /-! =========================================================
     Main Step-5 adjoint preservation theorem
@@ -2301,16 +2285,6 @@ theorem
         QFTWorkspaceCleanState.smul
           a
           ihψ
-
-
-
-/-- The fixed-table spelling. -/
-theorem threeRegsCleanState_to_QFTWorkspaceCleanState_first
-    {qs : QSemantics} [RegEncoding qs.Basis] {k : ℕ} (ops : Prog k) (r : ExtReg)
-    {r₁ r₂ r₃ : Reg} (hreserve : r.reserve = r₁)
-    {ψ : qs.State} (hclean : ThreeRegsCleanState qs r₁ r₂ r₃ ψ) :
-    QFTWorkspaceCleanState qs (qftXWork ops r) (qftZWork ops r) ψ :=
-  threeRegsCleanState_to_QFTWorkspaceCleanState_firstOf _ r hreserve hclean
 
 /-- The policy spelling. -/
 theorem Policy.threeRegsCleanState_to_QFTWorkspaceCleanState_first

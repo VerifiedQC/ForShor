@@ -61,4 +61,13 @@ builds on both.
   `lowerQFTPlan`. Its workspace is selected deterministically from the
   reserve precondition; callers do not supply separate physical workspace
   registers. This is the function `Spec/Assertions.lean`'s claim is about,
-  and what `Shor/Lowering/LowerGate.lean` calls to get a lowered QFT circuit.
+  and what the fixed-table `lowerGate` in `Shor/Lowering/LowerGate.lean`
+  calls to get a lowered QFT circuit.
+- **`Policy.phaseProdUsingPlan`**, **`Policy.qftPlan`**,
+  **`Policy.reserveQftPlan`**, **`Policy.lowerQFT`** — the same four
+  constructions over a `ShorLoweringPolicy`: the phase-product subplan at
+  each split is built by the policy's width dispatcher
+  (`Policy.signedPlan` in `PhaseProduct/Lowering/PlanBuilders.lean`), so a
+  recursion may use different tables at different widths. `Policy.lowerQFT`
+  is what `Policy.lowerGate` calls, and `Policy.qftWorkspaceOK_of_const`
+  relates the two spellings at a constant policy.

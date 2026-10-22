@@ -57,11 +57,11 @@ files instantiate or reason against.
 | concept | file | main names |
 | --- | --- | --- |
 | Registers, encodings, extended registers | `Framework/Quantum/Registers.lean` | `Reg` (an ordered list of distinct physical qubits, so layouts need not be contiguous), `Reg.width`/`ASize`/`Reg.append`/`SplitPoint`; `RegEncoding` (the basis-level read/write interface: `toNat`, `writeNat`, `bit`, read-after-write and disjoint-write laws, `basis_ext`); `ExtReg` (an active register plus an owned inactive reserve: `CanGrow`, `newBits`, `grow`, `ownedQubits`, the `*Disjoint` conditions), the signed/two's-complement decodings (`tcDecodeWidth`, `extToInt`, `FitsSignedWidth`) and the freshness predicates (`FreshZero`, `ExtReg.FreshFor`) that say workspace is clean |
-| Abstract quantum semantics | `Framework/Quantum/QSemantics.lean` | `QSemantics`: a basis type, an inner-product state space, `ket`, `eval : Gate → State → State`, and laws for identity, sequencing, linearity, adjoints and inner-product preservation, plus a state induction principle. Circuit equations are proved in *any* model satisfying these axioms |
+| Abstract quantum semantics | `Framework/Quantum/QSemantics.lean` | `QSemantics`: a basis type, an inner-product state space, `ket`, ket orthonormality, and a state induction principle (every state is a finite combination of kets). The gate evaluator `eval : Gate → State → State` and its laws for identity, sequencing, linearity, adjoints and inner-product preservation are `GateSemanticsCore` in `Semantics/GateSemantics.lean`. Circuit equations are proved in *any* model satisfying these laws |
 | Measurement | `Framework/Quantum/Measurement.lean` | `MeasureClass`, the outcome-probability interface the success bounds are stated against |
-| High-level gate language | `Framework/AbstractMachine/Gates.lean`, `Angle.lean` | `Gate`: structural (`id`, `seq`, `adj`), elementary and structured (`H`, `X`, `QFT`, `RadixReverse`, `SignedPhaseProd`, `CSignedPhaseProd`, `Prim`), and arithmetic/workspace (`ShiftL`, `ShiftR`, `Negate`, `AddScaled`, `zeroExtend`/`signExtend`, `zeroDealloc`/`signDealloc`); the QFT phase helpers `qftPhi`, `qftPhase`, `radixReverseIndex`; `Angle` |
+| High-level gate language | `Framework/AbstractMachine/Gates.lean`, `Angle.lean` | `Gate`: structural (`id`, `seq`, `adj`), elementary (`H`, `X`, `CNOT`, `Toffoli`), structured (`QFT`, `RadixReverse`, `SignedPhaseProd`, `CSignedPhaseProd`, `CmpGeConst`, `CSubConst`, the oracle `idealCtrlModMul`), and arithmetic/workspace (`ShiftL`, `ShiftR`, `Negate`, `AddScaled`, `zeroExtend`/`signExtend`, `zeroDealloc`/`signDealloc`); the QFT phase helpers `qftPhi`, `qftPhase`, `radixReverseIndex`; `Angle` |
 | Low-level target language | `Framework/AbstractMachine/LowGate.lean` | `LowGate`, the abstract machine the whole development lowers onto |
-| Gate-family semantic classes | `Framework/Semantics/GateSemantics.lean` | `GateSemanticsCore` plus one class per gate family — `QFTSemantics`, `HadamardSemantics`, `PauliXSemantics`, `RadixReverseSemantics`, `PhaseSemantics`, `ExtensionSemantics`, `ArithmeticSemantics`, `ClassicalReversibleSemantics`, `ModularArithmeticSemantics`, `IdealCtrlModMulExactSemantics` — and `GateSemanticsFacts`, the convenience bundle large theorems take instead of eight separate instances |
+| Gate-family semantic classes | `Framework/Semantics/GateSemantics.lean` | `GateSemanticsCore` plus one class per gate family — `QFTSemantics`, `HadamardSemantics`, `PauliXSemantics`, `RadixReverseSemantics`, `PhaseSemantics`, `ExtensionSemantics`, `ArithmeticSemantics`, `ClassicalReversibleSemantics`, `ModularArithmeticSemantics`, `IdealCtrlModMulExactSemantics` — and `GateSemanticsFacts`, the convenience bundle large theorems take instead of the eleven separate instances |
 | `LowGate` semantics | `Framework/Semantics/LowGateSemantics.lean` | `LowerGateClass`, which gives the lowered circuits their evaluation meaning |
 | Cost model | `Framework/Gatecount/CostModel.lean`, `ResourceModel.lean` | `LowGateCostModel` and `LowGate.gateCount`, the fold that prices a lowered circuit; `GateResources`, `LowGateResourceModel`, `shorGateCostModel` |
 | Classical number theory | `Framework/Math/ShorDefinition.lean`, `Math/Factoring_Reduction/` | `ord`, `GoodOutcome`, the continued-fraction postprocessing vocabulary (`continuedFractionConvergent`, `OrderVerifier`, `OF_post`); `shors_classical_reduction` and `shors_probability_bound` |
@@ -161,13 +161,14 @@ Important parts:
 - `QFT/Lowering/` defines the QFT workspace requirements and the plan builders;
   `QFT/Proofs/Lowering/` proves correctness and readiness of recursive QFT
   lowering. Main endpoints are `evalL_lowerQFTPlan`
-  (`Lowering/PlanSemantics.lean`), and `standardQFTLoweringPlan_ready_and_clean`
-  and `evalL_lowerQFT` (`Lowering/Readiness.lean`). `QFT/Main.lean` states
-  `lowerQFT_correct`.
+  (`Lowering/PlanSemantics.lean`), and `Policy.qftPlan_ready_and_clean`
+  and `Policy.evalL_lowerQFT` (`Lowering/Readiness.lean`), with
+  `evalL_lowerQFT` as their fixed-table instance. `QFT/Main.lean` states
+  `Policy.lowerQFT_correct` and `lowerQFT_correct`.
 - `Shor/Lowering/LowerGate.lean` defines `GateWorkspaceOK` and the recursive
   `lowerGate` function from high-level `Gate` to `LowGate`;
   `Shor/Proofs/Lowering.lean` proves whole-program lowering correctness. The
-  main theorem is `lowerGate_correctness`.
+  main theorem is `Policy.lowerGate_correctness`.
 
 The final role of this layer is to connect high-level semantic correctness to
 the actual lowered circuit representation.
@@ -273,8 +274,8 @@ between *the rules* and *a construction satisfying them*.
 | --- | --- |
 | `Framework/ToomCookTable.lean` | The rules, implementation-free. The table language (`Register`, `State`, `Prog`, `run?`), the point-row vocabulary (`expectedRow`, `ProgConsumesPtsSafe`), the interpolation vocabulary (`interpMatrix`, `GoodToomCookPoints`), and the record `ShorLoweringSetup` / `ShorSubmission` that bundles them. Imports Mathlib and nothing else, so the specification can be read without the construction. |
 | `Framework/Policy.lean` | The same rules for a *policy*: a list of `(threshold, table)` bands with strictly decreasing thresholds, `choose` picking by operand width, and `Admissible` asking C2–C4 of every band. `constPolicy` / `ShorPolicySubmission.ofSetup` make a table submission the one-band case rather than a parallel path. The import runs one way — `Policy.lean` imports `ToomCookTable.lean`, never the reverse — so each kind of submission reads on its own. |
-| `Framework/Contract.lean` | The semantic contract: `probability_of_success`, `ShorImplementation`. Formerly `Framework/Submission.lean`; renamed because it is now the framework's *internal* contract, not what a submitter writes. |
-| `Implementation/` | The Toom-Cook construction. Every file that used to define one of the moved definitions now imports `Framework/ToomCookTable.lean` instead; the lemmas about them, the point generator and the compiler all stayed. |
+| `Framework/Contract.lean` | The semantic contract: `probability_of_success`, `ShorImplementation`. It is the framework's *internal* contract, not what a submitter writes. |
+| `Implementation/` | The Toom-Cook construction: the lemmas about tables, the point generator and the compiler. It imports the rules from `Framework/ToomCookTable.lean` rather than defining them. |
 | `Implementation/Reference/` | `setup ↦ referenceProgramAt`, and `referenceProgramAt_success` — generic in the setup, which is what makes the four side conditions a complete acceptance test. |
 | `Submission/` | The public surface: `Decide.lean` (the four conditions, decidable *in the kernel*; `Framework/` + Mathlib only), `Audit.lean` (`#assert_axioms`, `Lean` only), `Correct.lean` (the fixed precision and the certificate), `Score.lean` (the declared bound and a computable trial count), `Template.lean` (**the submitter's file**: the table and its C1–C4 proofs), `Check.lean` (the acceptance check: the axiom audit, the IR extraction, the evaluation tier, the certificate) and `Main.lean` (the printer). |
 | `Emit/` | `setup ↦ IR`: reflection over the verified construction, producing a `Doc` a resource estimator prices. |

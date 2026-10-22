@@ -18,17 +18,15 @@ Every workspace precondition the rest of this folder needs to discharge
 and the plain `Disjoint active reserve` needed just to build an `ExtReg` at
 all) is a `Prop`-valued structure built entirely from `≤` on `ℕ` (already
 decidable) and `ExtReg.OwnedDisjoint`/`ExtReg.CtrlDisjoint` (disjointness of
-concrete `List ℕ` qubit lists). **No `Decidable` instance for the latter two
-existed anywhere in the repo or in `.lake/packages`** before this file —
-every existing construction of these structures elsewhere is an abstract
-tactic proof from assumed hypotheses, never a decidability check against
-concrete registers.
+concrete `List ℕ` qubit lists). This file is the only place in the repo
+with `Decidable` instances for the latter two — every other construction of
+these structures is an abstract tactic proof from assumed hypotheses, never
+a decidability check against concrete registers.
 
 - `decidableRegDisjoint`, `decidableExtRegOwnedDisjoint`,
   `decidableExtRegCtrlDisjoint` — the two base instances, via `unfold;
-  infer_instance` (the same idiom already used twice elsewhere in the repo
-  for other decidable `Prop`s: `isTopChunk`, `Layout.lean:104-107`;
-  `outcomePred`, `MeasureClass.lean:16-20`). `List.Disjoint`'s `∀ ⦃a⦄, a ∈
+  infer_instance` (the same idiom `Compiler/Layout.lean:104-107` uses for
+  `isTopChunk`). `List.Disjoint`'s `∀ ⦃a⦄, a ∈
   l₁ → a ∈ l₂ → False` shape is exactly the bounded-forall form
   `List.decidableBAll` already covers for `DecidableEq α`.
 - `decidableSignedRecursiveWorkspaceOK`, `decidableCSignedRecursiveWorkspaceOK`,
@@ -49,10 +47,14 @@ instance-check canary — split into its own file specifically so
 importing them back (they need `Verify.lean` for their own
 `instantiate_eq_real` check, so the dependency has to run this direction).
 
-- `ppRegisters {k} (ops) (n) : Except String (ExtReg × ExtReg × ℕ)` —
-  registers `x = [0, n)`, `z = [n, 2n)`, reserves placed immediately after
-  each, sized by `RecursivePhaseWorkspace.reserveNeed ops n n` plus one bit
-  each; a control qubit (for `cpp`) placed past both registers' full extent.
+- `ppRegisters {k} (ops) (n) (slack := 1) : Except String (ExtReg × ExtReg
+  × ℕ)` — with `need = RecursivePhaseWorkspace.reserveNeed ops n n`:
+  `x.active = [0, n)`, `x.reserve = [n, n + need.x + slack)`, then
+  `zStart = n + need.x + slack`, `z.active = [zStart, zStart + n)`,
+  `z.reserve = [zStart + n, zStart + n + need.z + slack)`, and a control
+  qubit (for `cpp`) at `zStart + n + need.z + slack`, past both registers'
+  full extent. `slack` is the reserve each side gets beyond `reserveNeed`:
+  the CLI uses `1`, `Reflect/Verify.lean`'s canary runs `0` and `64`.
   Active/reserve disjointness (needed just to call `ExtReg.withReserve`) is
   discharged with `if hx : Disjoint xActive xReserve then ... else .error
   ...` — decidable at this concrete `n`, from `Decide.lean`.
@@ -89,11 +91,11 @@ extracts the template by reflection (`Reflect.runExtract`) to run
   (via `ppRegisters`, `Decide.lean`), then either:
   - `annotated = true` (the default): build `standardSignedPhaseLoweringPlan`/
     `standardCSignedPhaseLoweringPlan`, extract the `Doc`
-    (`Reflect.runExtract k` — standard table only; R5) and check
+    (`Reflect.runExtract k` — standard table only) and check
     `Doc.wellFormed`, run `check1_annotatedEqFlat` (`Json/PlanJson.lean`) and
-    `Reflect.phaseProductAgrees`/`cPhaseProductAgrees` (now `(hk) (ops)`,
-    not `(k) (hk) (src)` — `instantiate_eq_real`: the extracted template,
-    instantiated at *this* `n`, agreeing with the real compiled term),
+    `Reflect.phaseProductAgrees`/`cPhaseProductAgrees` (`instantiate_eq_real`:
+    the extracted template, instantiated at *this* `n`, agreeing with the
+    real compiled term),
     embed both under `meta.checks`, and refuse (`.error`) if either failed;
     otherwise print `planJson` via `emitPlanDoc`.
 
@@ -107,10 +109,6 @@ extracts the template by reflection (`Reflect.runExtract`) to run
     `lowerCSignedPhaseProdWithWorkspace` via `emitLowGateDoc` directly, no
     checks, no reflection.
 
-R3/R4 (`Emit/README.md`'s round history): this replaced the old `template_match`/`ladder`
-checks (`Symbolic/Template.lean`/`Symbolic/Recursion.lean`, both deleted)
-with a check against the *extracted* template directly.
-
 ## `Qft.lean`
 
 The `qft` subcommand, same shape as `PhaseProduct.lean`:
@@ -123,7 +121,3 @@ The `qft` subcommand, same shape as `PhaseProduct.lean`:
   embeds them under `meta.checks`, and prints via
   `qftPlanJsonOf`/`emitPlanDoc`; or (`--flat`) prints `lowerQFT` directly
   via `emitLowGateDoc`.
-
-(The old `split` check, tied to `Symbolic/Recursion.lean`-adjacent
-`Lower/Instantiate.lean`, was dropped along with that file in R3/R4 —
-`instantiate_eq_real`'s full-depth agreement subsumes what it was checking.)

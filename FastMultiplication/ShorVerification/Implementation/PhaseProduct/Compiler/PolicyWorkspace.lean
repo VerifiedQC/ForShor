@@ -11,28 +11,23 @@ recurrence has to look the table up at each level, and the lookup is also what
 supplies the base case — `choose n = none` is the leaf, alongside the shrink
 test that was already there.
 
-Everything here is additive and lives in its own file. `Workspace.lean` has 19
-direct importers, so appending to it would rebuild `PhaseProduct/`, `QFT/`,
-`Shor/`, `GateCount/`, `Reference/`, `Submission/` and `Emit/` for definitions
-nothing uses yet. Nothing in this file is imported by the existing tree; item 4
-is where `Plan.lean` starts consuming it.
+This file is separate from `Workspace.lean` because that file has many
+direct importers and these definitions sit above it; `Plan.lean`,
+`PlanBuilders.lean`, `Spec/Cleanliness.lean` and `QFT/Lowering/Workspace.lean`
+import this one.
 
-The four `const` bridges are the point of the file: each policy-level notion
-reduces to the fixed-table notion at `constPolicy T`, so the single-table path
-keeps its existing statements and proofs unchanged.
+The `const` bridges are the point of the file: each policy-level notion
+reduces to the fixed-table notion at `constPolicy T`, so the single-table
+statements keep their existing form.
 
 | policy | fixed table | bridge |
 |---|---|---|
 | `Policy.reserveNeed P` | `RecursivePhaseWorkspace.reserveNeed ops` | `reserveNeed_const` |
 | `Policy.WorkspaceOK P` | `SignedRecursiveWorkspaceOK ops` | `workspaceOK_const_iff` |
 | `Policy.CWorkspaceOK P` | `CSignedRecursiveWorkspaceOK ops` | `cWorkspaceOK_const_iff` |
-| `Policy.canonicalStep` | `canonicalSignedStep` | shared lemmas, not a shared definition |
 
-`canonicalStep` duplicates about two hundred lines of arithmetic from
-`canonicalSignedStep`. That is deliberate and temporary: the old one has no
-`pts` to build a `ToomCookTable` from, so it cannot be *defined* as the
-constant-policy case, and it is still what the Shor side calls. Item 4 removes
-the duplicate once the Shor side moves over.
+`Policy.canonicalStep` is the canonical recursive step; it is the only one,
+and every lowering plan is built with it.
 -/
 
 namespace Shor.Policy
@@ -178,10 +173,7 @@ theorem cWorkspaceOK_const_iff {T : ToomCookTable} {ctrl : ℕ} {x z : ExtReg} :
 /-! =========================================================
     The width-model transfer, as a standalone lemma
 
-`canonicalSignedStep` proves this inline (`Workspace.lean:623–640`). After this
-plan it is needed three times, so it is stated once here. It belongs in
-`Workspace.lean`; it is parked here for the same build-time reason the rest of
-the file is, and can move home in item 4.
+Needed three times below, so it is stated once here.
 ========================================================= -/
 
 /-- The `x` width model reproduces the operand's active width. -/
@@ -269,12 +261,10 @@ lemma requiredZChildReserve_sum (P : ShorLoweringPolicy) (T : ToomCookTable) (wx
 /-! =========================================================
     The canonical recursive step, parametrised by the chosen table
 
-`canonicalSignedStep` (`Workspace.lean:607`) with three substitutions and no
-new mathematics: the table comes from `hT` rather than from the ambient
-parameter, `k`/`ops` become `T.k`/`T.ops`, and the two reserve-fit steps
-rewrite with `reserveNeed_fst_of_choose`/`_snd_of_choose` instead of the
-unconditional `reserveNeed_fst`/`_snd`. The width-model transfer, the budget
-construction and the capacity arithmetic are unchanged.
+Builds the layout for one level from the table the policy chose (`hT`):
+the width-model transfer above, then the budget construction
+(`ReserveBudget.ofRequirements`) and the capacity arithmetic, with the two
+reserve-fit steps supplied by `reserveNeed_fst_of_choose`/`_snd_of_choose`.
 ========================================================= -/
 
 /--

@@ -5,7 +5,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.
 
 Over `w = 1..wMax`: `RecursivePhaseWorkspace.nextWidth` and `reserveNeed`,
 read directly off the compiler's own definitions — no recomputation. These
-are the D4-opaque functions the extracted `phase_product`/`qft` templates
+are the opaque functions the extracted `phase_product`/`qft` templates
 call by name; this table is where their values live. Only the symbolic
 policy is emitted; the older tooling's exact reachable-value ("tight") width
 scan is not carried over (nothing on this repository's data path uses it).

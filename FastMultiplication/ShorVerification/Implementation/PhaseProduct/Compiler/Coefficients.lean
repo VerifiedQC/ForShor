@@ -42,15 +42,6 @@ noncomputable def phaseCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : �
 def ptsToFin (k : ℕ) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → Point :=
   fun i => pts.get ⟨i.val, by have hi : i.val < q k := i.is_lt; simp [hpts]⟩
 
-/-- Radix used for chunked phase decomposition. -/
-def phaseRadix (x : Reg) (k : ℕ) : ℚ := (2 : ℚ) ^ (regSize x / k)
-
-/-- Radix determined directly by an operand width. -/
-def phaseRadixWidth (w k : ℕ) : ℚ := (2 : ℚ) ^ (w / k)
-
-/-- Radix for an already chosen chunk width. -/
-def chunkRadix (W : ℕ) : ℚ := (2 : ℚ) ^ W
-
 /-- Phase coefficients for a fixed chunk width. -/
 noncomputable def phaseCoeffFromPtsWidth (k W : ℕ) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → ℚ :=
   phaseCoeffFromPts k (ptsToFin k pts hpts) ((2 : ℚ) ^ W)
@@ -67,7 +58,6 @@ def cramerCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) : Fin (q 
   let M : Matrix (Fin (q k)) (Fin (q k)) ℚ := interpMatrix k pts
   let radixVec : Fin (q k) → ℚ := fun j => b ^ (j : ℕ)
   fun i => Matrix.cramer M.transpose radixVec i / M.det
-
 
 /--
 `Matrix.cramer`-based coefficients agree with the `Matrix.inv`-based ones

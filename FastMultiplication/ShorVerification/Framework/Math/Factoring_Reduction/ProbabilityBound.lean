@@ -961,7 +961,7 @@ lemma success_eq_conditions (a N : ℕ) (h : a ∈ successful_choices N) :
   simp [h.1]
 }
 
-/- At least half of the coprime classical choices are successful for the
+/-- At least half of the coprime classical choices are successful for the
 classical reduction, assuming `N` is odd, composite in the required sense, and
 not a prime power. -/
 theorem shors_probability_bound (N : ℕ)

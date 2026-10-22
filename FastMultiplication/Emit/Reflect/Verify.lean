@@ -10,42 +10,39 @@ import FastMultiplication.ShorVerification.Implementation.Reference.ReferenceLay
 import FastMultiplication.ShorVerification.Implementation.Reference.ReferenceShorImplementation
 
 /-!
-# R3: runtime instance verification of an extracted `Doc`
+# Runtime instance verification of an extracted `Doc`
 
-D7's trust statement ("checked: instantiate = real term at the listed
-widths") is established once, at build time, by `Tests.lean`'s R2.1-R2.7
+The trust statement ("checked: instantiate = real term at the listed
+widths") is established once, at build time, by `Tests.lean`'s
 `native_decide` suite — but those checks are pinned to fixed small `k`
 (2, 3) and to one fixed table apiece. `bundle`/`template` extract a `Doc`
 for whatever `k` the caller actually asks for at run time
 (`Reflect.runExtract`), so this file re-runs the *same kind* of check —
 `Doc.wellFormed`, then `instantiate`/`instantiateGate` agreeing with the
 real compiled/reference term — generically over the whole
-`ShorLoweringSetup`, as R3's run-time safety net asks for: "preceded by
-`Doc.wellFormed` and by the R2 instance checks at a ladder of small widths;
-any failure refuses the whole bundle with exit 3."
+`ShorLoweringSetup`: `Doc.wellFormed`, then the instance checks at a
+ladder of small widths; any failure refuses the whole bundle with exit 3.
 
 This is a canary, not an exhaustive scan — but it is a canary over a
 *ladder* of widths per template, derived from the table under test, not one
 representative width. `ppWidthLadder`/`qftWidthLadder` (below) return the
 largest base-case width plus the smallest widths reaching one, two and three
 levels of recursion, and each phase-product width is checked in two reserve
-regimes. One width per template (the old `4 * k`) is what let the top-chunk
-capacity bug through: it is visible only at a grandchild of the top-level
-call, so the ladder has to reach three levels, and only when the parent has
-slack to split, so both regimes have to run (`Emit/PLAN.md` §1.1, §2 T2.1).
-R2's compile-time suite still supplies the exhaustive small-width coverage,
-and D2 (the extractor is keyed by Lean construct name, never by `k`) is why
-agreement on the ladder generalizes; the ladder is what makes "agreement"
+regimes. One width per template would not do: the top chunk's reserve
+capacity is visible only at a grandchild of the top-level call, so the
+ladder has to reach three levels, and only when the parent has slack to
+split, so both regimes have to run.
+`Tests.lean`'s compile-time suite supplies the exhaustive small-width
+coverage, and the extractor being keyed by Lean construct name, never by
+`k`, is why agreement on the ladder generalizes; the ladder is what makes "agreement"
 mean something at the recursive arm.
 
-R5: `verifyDoc` takes the `Shor.ShorLoweringSetup` the
-`Doc` was extracted from, so `shor_gate`/`shor`'s canary — which before R5
-could only run for `.standard`, since only the standard table had a
-`ShorLoweringSetup` to build a reference Shor instance from — now runs for
-*every* input table: `setup.ops`/`setup.k`/`setup.hk` are exactly what
-`Reference.allocateReferenceLayout`/`referenceShorCircuit` need, and D5's
-amendment means any `setup` reaching this file is, by construction, a table
-those functions are proven to work over. -/
+`verifyDoc` takes the `Shor.ShorLoweringSetup` the `Doc` was extracted
+from, so `shor_gate`/`shor`'s canary runs for *every* input table:
+`setup.ops`/`setup.k`/`setup.hk` are exactly what
+`Reference.allocateReferenceLayout`/`referenceShorCircuit` need, and any
+`setup` reaching this file is, by construction, a table those functions are
+proven to work over. -/
 
 namespace Shor.Reflect
 
@@ -56,8 +53,9 @@ deriving instance BEq for Shor.Gate
 
 /-- Flatten one top-level `;;` chain, recursing into `.adj` bodies too (an
 adjoint's own body is a `Node.seq`/`foldLowGateSeq`-folded sub-sequence that
-can hide a mismatch if left unflattened — see `Tests.lean`'s R2.6 comment
-for why this matters once a target's adjoints wrap multi-gate bodies).
+can hide a mismatch if left unflattened — see `Tests.lean`'s `shor_gate`
+section for why this matters once a target's adjoints wrap multi-gate
+bodies).
 
 Kept for callers that want the list itself. The *comparison* below does not
 use it — see `tokenize`. -/
@@ -146,7 +144,7 @@ def lowGateAgrees (a b : LowGate) : Bool := tokenizeLowGate a == tokenizeLowGate
 /-- `lowGateAgrees`'s `Gate`-valued counterpart. -/
 def gateAgrees (a b : Gate) : Bool := tokenizeGate a == tokenizeGate b
 
-/-- The opaque-width dispatch every template's `Env` needs (D4's opaque
+/-- The opaque-width dispatch every template's `Env` needs (the opaque
 list), generalized over `ops : Prog k` — mirrors `Tests.lean`'s
 `r2_2_env`/`r2_5_env`/`r2_6_env` exactly, just not pinned to one fixed
 `ops`. -/
@@ -321,7 +319,7 @@ def canaryInst : ShorOrderFindingInstance := ⟨2, 15, by decide, by decide⟩
 of modulus against `canaryInst`'s four. Paired with a precision `m > 0` in
 `submissionShorInstances`, it is what makes the exponent loop, the Hadamard
 loop and the `m`-dependent register widths more than a two-iteration walk —
-every one of those is a hand-stated template body (T3.4), so the only thing
+every one of those is a hand-stated template body, so the only thing
 standing behind it is a comparison at a size where it could go wrong. -/
 def largeInst : ShorOrderFindingInstance := ⟨2, 143, by decide, by decide⟩
 
@@ -403,7 +401,7 @@ def checkShor (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit 
 which no equation lemma turns into a visible loop the way `.eq_1` does for
 `WellFounded.fix`. What stands behind it is this comparison and nothing
 else, which is why the evaluation tier runs it at widths well past the 1..6
-pairs `Tests.lean`'s R2.3 covers — and at unequal ones, since the loop
+pairs `Tests.lean`'s `naive_leaf` section covers — and at unequal ones, since the loop
 bounds are the one place `xw` and `zw` could be transposed without any equal
 pair noticing. -/
 def checkNaiveLeafAt (doc : Doc) (xw zw : ℕ) : Except String Unit :=
@@ -488,15 +486,14 @@ still takes the *base* case, then the smallest width reaching one, two and
 three levels of recursion.
 
 Derived from the table's own `nextWidth` chain rather than fixed, because a
-fixed pair cannot do this job. The retired `[8, 16]` was chosen against the
-`k = 2` standard ladder; a table with one more adder in it moves every
-width in the chain, and at `k = 6` the standard table does not recurse at
-all below `n = 261`. Three levels, not one, is what makes the *grandchild*
-of a recursive call exist — which is where the reserve-split bug of
-`PLAN.md` §1.1 lived, invisible at every width `[8, 16]` sampled.
+fixed pair cannot do this job: a pair chosen against the `k = 2` standard
+ladder is moved by a table with one more adder in it, and at `k = 6` the
+standard table does not recurse at all below `n = 261`. Three levels, not
+one, is what makes the *grandchild* of a recursive call exist — which is
+where the top chunk's reserve capacity is first observable.
 
 A table that never recurses below `widthSearchBound` (none is known) falls
-back to the single representative `4k` the run-time canary always used. -/
+back to the single representative width `4k`. -/
 def ppWidthLadder {k : ℕ} (ops : Prog k) : List ℕ :=
   let depths := [1, 2, 3].filterMap fun d =>
     (List.range widthSearchBound).find? fun n => d ≤ ppRecursionDepth ops widthSearchBound n
@@ -528,9 +525,8 @@ def okB {ε α : Type} : Except ε α → Bool
 /-- The widths a submission's `phase_product`/`cphase_product` templates are
 checked at: `ppWidthLadder` on the submission's own table.
 
-What the ladder buys over a fixed pair, in the terms the two historical
-measurements were recorded in. Both were at `k = 2`, both passed at `n = 8`
-and failed at `n = 16`:
+What the ladder buys over a fixed pair, in two examples at `k = 2` that a
+fixed `[8, 16]` tells apart only at `n = 16`:
 
 * the canonical ladder plus a semantically-inert `shiftL 0 0 ;; shiftR 0 0`
   pair, checked against a `Doc` extracted from the canonical ladder
@@ -540,16 +536,15 @@ and failed at `n = 16`:
   tables' lists differ. A ladder derived from the table's own chain sees
   this sooner, since the two tables' ladders are themselves different.
 * a table whose `phaseProduct` checkpoints do not all sit on register 0,
-  checked against its *own* `Doc`. That one was a real bug in the extractor
-  — the top chunk's reserve capacity, `PLAN.md` §1.1 — fixed, and anchored
-  by `Emit/Tests.lean`'s `T1_1_TopChunkReserve` section. It needed a
-  *grandchild* of the top-level call to exist, which is why the ladder goes
-  three levels deep and not one. -/
+  checked against its *own* `Doc`. This is where the top chunk's reserve
+  capacity matters, anchored by `Emit/Tests.lean`'s `TopChunkReserve`
+  section. It needs a *grandchild* of the top-level call to exist, which is
+  why the ladder goes three levels deep and not one. -/
 def submissionPPWidths (setup : Shor.ShorLoweringSetup) : List ℕ := ppWidthLadder setup.ops
 
 /-- The `(xw, zw)` pairs the hand-stated leaf templates are checked at.
 
-Unequal and well past `Tests.lean`'s R2.3/R2.4 range (1..6 on both sides),
+Unequal and well past `Tests.lean`'s leaf range (1..6 on both sides),
 in both orders, because the leaves' two loop bounds are independent and a
 square check cannot tell them apart. The pairs are small enough to cost
 nothing: `(13, 7)` is 91 `CPhase`s. -/
@@ -561,8 +556,9 @@ Not a detail of the harness: `ReserveBudget.ofRequirements`/`fillSlack` pay
 each child its `requiredChildReserve` and give the *whole* remainder to the
 top chunk, so a register carrying exactly `reserveNeed` and one carrying
 `reserveNeed + 64` drive genuinely different reserve arithmetic below the
-first recursive call. Checking only one of them is what let §1.1's bug sit
-unseen: `ppRegisters` used to hand out exactly one spare qubit, always. -/
+first recursive call. Checking only one of them would leave the top chunk's
+capacity unobserved, since `ppRegisters`'s default hands out exactly one
+spare qubit. -/
 def submissionPPSlacks : List ℕ := [0, 64]
 
 /-- The widths a submission's `qft` template is checked at: `qftWidthLadder`
@@ -577,8 +573,8 @@ is four bits of modulus and a short exponent loop — enough to reach every
 construct, not enough to tell a correct loop template from one that is right
 for its first two steps. `largeInst` at `m = 1` is eight bits and a longer
 loop, and the `m`-dependent register widths differ from the `m = 0` ones.
-Both the Hadamard loop and the exponent loop are hand-stated template bodies
-(`PLAN.md` T3.4), so a second instance is the only thing separating them
+Both the Hadamard loop and the exponent loop are hand-stated template bodies,
+so a second instance is the only thing separating them
 from their first two iterations.
 
 `shor_gate` keeps the modular arithmetic as opaque `Gate`s, so its
@@ -589,13 +585,11 @@ def submissionShorGateInstances : List (ShorOrderFindingInstance × ℕ) :=
 
 /-- The reference Shor instances the *fully lowered* `shor` is checked at.
 
-The same two, which was not always affordable. With the old comparison
-(`flattenLowGate a == flattenLowGate b`) `largeInst` at `m = 1` did not
-finish: `LowGate`'s derived `BEq` walks an `.adj` element one stack frame
-per nested gate, and the interpreter aborted the process outright rather
-than returning a verdict. `lowGateAgrees` compares a flat leaf-token stream
-instead, and the same circuit — 247 428 tokens — now compares in about
-1.5 s. -/
+The same two. This is affordable because `lowGateAgrees` compares a flat
+leaf-token stream: the derived `BEq LowGate` walks an `.adj` element one
+stack frame per nested gate and overflows the interpreter's stack on
+`largeInst` at `m = 1`, whereas the token comparison of the same circuit —
+247 428 tokens — takes about 1.5 s. -/
 def submissionShorInstances : List (ShorOrderFindingInstance × ℕ) :=
   [(canaryInst, 0), (largeInst, 1)]
 
@@ -637,14 +631,13 @@ def submissionChecks (setup : Shor.ShorLoweringSetup) (doc : Doc) : Bool :=
 that failed: exactly `submissionChecks`' sampling, run at print time instead
 of pinned at build time.
 
-The same lists, deliberately (`PLAN.md` T2.5). The run-time canary used to
-sample one representative width per template, `4k`, which at `k = 2` is `8`
-— the base case, so `forshor_emit template 2` never once exercised
+The same lists, deliberately: a single representative width per template,
+`4k`, is `8` at `k = 2` — the base case — so it would never exercise
 `phase_product`'s recursion. Two tiers that sample differently are two
 tiers, and the weaker one is the one a reader meets first.
 
 Every check runs for every setup. A `ShorLoweringSetup` is, by construction,
-a table the reference-instance machinery is proven to work over (D5), so
+a table the reference-instance machinery is proven to work over, so
 `shor_gate`/`shor` are never skipped. -/
 def verifyDoc (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit := do
   if doc.wellFormed then pure () else .error "extracted doc is not well-formed"
@@ -662,7 +655,7 @@ def verifyDoc (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except String Unit 
   for (inst, m) in submissionShorInstances do
     checkShorAt setup inst m doc
 
-/-- Run-time entry point: extract, then verify. R3's blocking run-time
+/-- Run-time entry point: extract, then verify. The blocking run-time
 check — a failure here refuses the whole `bundle`/`template` output with
 exit 3 (`Main.lean`). Standard-table only at run time — `runExtract`
 already fixes this. -/

@@ -6,9 +6,9 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Nai
 /-!
 # The extracted symbolic IR: instantiation
 
-The interpreter D3 relies on: a recursive template is one activation plus a
+The interpreter: a recursive template is one activation plus a
 `Node.call` to itself, and *this* file is what unrolls that call at a
-concrete width. It is also D7's safety net — the only thing checked against
+concrete width. It is also the safety net — the only thing checked against
 the extracted IR is that `instantiate`, run here with `Env` built from the
 real opaque functions (`RecursivePhaseWorkspace.nextWidth`,
 `cramerCoeffFromPtsWidth`, …), agrees with the real compiled term; this file
@@ -17,7 +17,7 @@ structure is actually right.
 
 `instantiate` targets `LowGate` (the flat compiled circuits: `pp`, `cpp`,
 `qft`); `instantiateGate` targets `Gate` (the high-level tree
-`orderFindingApprox`/`shor` is stated over, for R2.6). Both share the same
+`orderFindingApprox`/`shor_gate` is stated over). Both share the same
 `WExpr`/`AExpr`/`RegExpr`/`Prop'` evaluator and the same `Doc`/`call`/`loop`
 machinery; only the leaf `op` dispatcher differs, since the two gate
 languages are different (though overlapping) sets of constructors.
@@ -36,7 +36,7 @@ def ExtReg.singleQubit? (e : ExtReg) : Option ℕ :=
 namespace IR
 
 /-- The oracle side of instantiation: everything the extracted `Doc` cannot
-compute for itself because D4 keeps it opaque, or that a caller supplies as
+compute for itself because it is kept opaque, or that a caller supplies as
 the concrete instance data (the initial width/angle/register parameters of
 the `entry` template). `opaqueW`/`coeff` are meant to be instantiated with
 the real functions (`RecursivePhaseWorkspace.nextWidth ops`,
@@ -77,11 +77,10 @@ def Env.call (env : Env) (wParams : List String) (wVals : List ℕ) (aParams : L
 
 -- Evaluate a `WExpr` against `env`, threading opaque-function lookups
 -- through `Except`. Mutual with `evalWList` (`opaque`'s `List WExpr`
--- arguments) rather than `partial`, a choice R6 forced: a `partial
--- def` compiles via an opaque fixpoint with no equation lemmas at all — `simp
--- [evalW]`/`unfold evalW`/`rfl` all fail to make any progress on it, which
--- would make every R6 theorem statement about `instantiate` unprovable before
--- it even starts. Structured this way (paired with an explicit `List`-of-self
+-- arguments) rather than `partial`: a `partial def` compiles via an opaque
+-- fixpoint with no equation lemmas at all — `simp [evalW]`/`unfold
+-- evalW`/`rfl` make no progress on it — which would make any theorem about
+-- `instantiate` unprovable before it starts. Structured this way (paired with an explicit `List`-of-self
 -- helper, exactly `Reflect/Driver.lean`'s `wexprToExpr`/`wexprListToExpr`
 -- shape), Lean's ordinary structural-recursion equation compiler accepts it
 -- directly and produces real `.eq_n` lemmas.
@@ -188,12 +187,12 @@ def evalReg (env : Env) : RegExpr → Except String ExtReg
       pure (rv.grow nv)
 
 /-- Build one `LowGate` leaf from an `op` node's already-evaluated
-arguments. Op names are exactly the `LowGate` constructor names (D2), with
+arguments. Op names are exactly the `LowGate` constructor names, with
 two exceptions: `CPhase`/`CCPhase` name the derived functions
 `LowGate.CPhase`/`LowGate.CCPhase` directly rather than one constructor,
 since their qubit-equality branches (`ctrl = target`, and `CCPhase`'s three
 pairwise equalities) are only ever decidable once every qubit involved is
-concrete (D2's "opaque named function" treatment, same idea as
+concrete (the "opaque named function" treatment, same idea as
 `RegExpr.grow` for `ExtReg.grow` — do not force a symbolic guard where the
 real function already isn't one). `CCPhase`'s `ctrl` — like
 `CSignedPhaseProd`'s — is a bare qubit index in the real source, not sliced
@@ -287,7 +286,7 @@ def foldGateSeq : List Gate → Gate
   | g :: gs => g ;; foldGateSeq gs
 
 -- Instantiate one template's body against `d`/`env`, unrolling `call`
--- nodes (D3) until `fuel` runs out. `loop var lo hi body` iterates `body`
+-- nodes until `fuel` runs out. `loop var lo hi body` iterates `body`
 -- with `var` bound to each of `lo, lo+1, …, hi-1` and right-folds the
 -- results (`foldLowGateSeq`), matching how the naive leaf's `signedTerms`
 -- sum and Shor's per-exponent-bit loop are actually laid out as one flat
@@ -335,8 +334,8 @@ decreasing_by
   · exact Prod.Lex.left _ _ (by omega)
   · exact Prod.Lex.right _ (by omega)
 
--- `evalNode`'s `Gate`-valued counterpart, for R2.6's `orderFindingApprox`
--- criterion. Shares `Env`/`WExpr`/`AExpr`/`RegExpr`/`Prop'` evaluation; only
+-- `evalNode`'s `Gate`-valued counterpart, for the `shor_gate` check against
+-- `orderFindingApprox`. Shares `Env`/`WExpr`/`AExpr`/`RegExpr`/`Prop'` evaluation; only
 -- the `op` leaf dispatcher (`buildGate`) and the fold target differ. Not
 -- `partial`, same reason and same termination measure as `evalNode`.
 def evalNodeGate (d : Doc) (fuel : ℕ) (env : Env) (node : Node) : Except String Gate :=
@@ -382,7 +381,7 @@ decreasing_by
 
 /-- Instantiate template `t` of `d` at `env`, targeting `LowGate`. `fuel`
 bounds the number of `call` unrollings (a concrete run always terminates
-well before fuel runs out, since D3's recursion is guarded by a strictly
+well before fuel runs out, since the recursion is guarded by a strictly
 decreasing width — see `IR/WellFormed.lean`'s check 3 — but nothing here
 depends on that guard holding; running out of fuel is a plain `Except`
 error, never a proof obligation). -/

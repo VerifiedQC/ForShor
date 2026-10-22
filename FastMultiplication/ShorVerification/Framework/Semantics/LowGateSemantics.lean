@@ -4,10 +4,9 @@ import FastMultiplication.ShorVerification.Framework.Semantics.GateSemantics
 namespace Shor
 
 /-! =========================================================
-    Section 2: Low-level semantic interface
+    Low-level semantic interface
     `LowerGateClass` is the semantic interface for lowered gates. It is stated
-    directly over the low-level evaluator and basis-ket behavior; comparison
-    with the internal high-level `Gate` evaluator is kept in bridge lemmas below.
+    directly over the low-level evaluator and basis-ket behavior.
 ========================================================= -/
 
 /-- Semantic interface for interpreting low-level gates in a quantum semantics. -/

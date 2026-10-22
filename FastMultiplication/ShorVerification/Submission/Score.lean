@@ -18,8 +18,8 @@ settled here, once, and neither is something a submitter can influence:
   `Reference/Reference2048Headline.lean` uses: a submissions repo has to be
   able to *evaluate* it, and `Nat.find` only proves a number exists.
 
-Scope of the trial-count theorem: 2048-bit moduli, the case P3's precision
-was chosen for. `submissionTrialCount` is total, but its correctness proof
+Scope of the trial-count theorem: 2048-bit moduli, the case the fixed
+precision `m2048` was chosen for. `submissionTrialCount` is total, but its correctness proof
 needs `Is2048Bit N` — that is where the rational lower bound on the success
 probability comes from.
 -/
@@ -122,8 +122,8 @@ end Certificate
 
 Rational, not real, so that `submissionTrialCount` below is a number the
 submissions repo can evaluate rather than a `Nat.find` witness. It takes `N`
-because that is the shape the rest of the scoring API has and because a
-sharper, genuinely `N`-dependent bound could replace it later; at present the
+because that is the shape the rest of the scoring API has and so that a
+sharper, genuinely `N`-dependent bound can be substituted; at present the
 value is the same for every 2048-bit modulus, since `log₂ N = 2047`
 throughout that range. -/
 def pLower (_N : ℕ) : ℚ := 99 / (2500 * 2047 ^ 4)

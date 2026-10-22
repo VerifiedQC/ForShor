@@ -319,17 +319,6 @@ lemma qftWorkspaceNeedOf_eq_of_two_le (res : ℕ → ℕ → ℕ × ℕ) (n : �
       | zero => omega
       | succ n => conv_lhs => unfold qftWorkspaceNeedOf
 
-lemma qftWorkspaceNeed_eq_of_two_le {k : ℕ} (ops : Prog k) (n : ℕ) (hn : 2 ≤ n) :
-    qftWorkspaceNeed ops n =
-      let leftWidth := n / 2
-      let rightWidth := n - leftWidth
-      let phaseNeed := RecursivePhaseWorkspace.reserveNeed ops (leftWidth + 1) (rightWidth + 1)
-      let leftNeed := qftWorkspaceNeed ops leftWidth
-      let rightNeed := qftWorkspaceNeed ops rightWidth
-      (max (1 + phaseNeed.1) (max leftNeed.1 rightNeed.1),
-        max (1 + phaseNeed.2) (max leftNeed.2 rightNeed.2)) :=
-  qftWorkspaceNeedOf_eq_of_two_le _ n hn
-
 lemma Policy.qftWorkspaceNeed_eq_of_two_le (P : ShorLoweringPolicy) (n : ℕ) (hn : 2 ≤ n) :
     Policy.qftWorkspaceNeed P n =
       let leftWidth := n / 2

@@ -9,7 +9,7 @@ recursive plan into primitive `LowGate`s.
 The folder is organized in layers (below). **Every import is "justified":** a
 file may only import another file if it directly uses a declaration that file
 defines — never a declaration it merely re-exports transitively.
-`scripts/check_qft_layers.sh` (repo root) enforces both the layer order and
+`scripts/check_layers.py QFT` (repo root) enforces both the layer order and
 the absence of umbrella files (a file that only imports and declares nothing
 of its own).
 
@@ -42,7 +42,7 @@ needed. The one-line descriptions below are grouped in dependency order
 |---|---|
 | `Workspace.lean` | `qftWorkspaceNeed`: how large the two global reserve pools (x-side, z-side) must be for a register of a given width, accounting for the middle phase product and both recursive QFT calls. The public precondition on a single `ExtReg` (`QFTReserveOK`), the internal static condition on an already-selected pair of workspace registers (`QFTWorkspaceOK`), the monotonicity bounds letting a child reuse the same pools, and the constructions (`QFTWorkspaceOKOf.phaseWorkspace`, `.signedWorkspaceOK`, `.left`, `.right`) that carve those pools for the phase-product macro and for each recursive child. |
 | `Plan.lean` | `QFTLoweringPlan`: the finite certificate carried by the public lowerer — empty/singleton base cases and a recursive split case (carrying the phase-product workspace and subplan for the middle macro). `lowerQFTPlan`: the interpreter erasing such a plan to a `LowGate`. |
-| `PlanBuilders.lean` | Builds plans rather than just interpreting them: `standardPhaseProdUsingPlan` (the canonical unsigned phase-product subplan used at each split, built by zero-extending both operands, lowering the resulting signed phase product, then deallocating the extensions), the two public plan constructors `standardQFTLoweringPlan` (from explicit workspace registers satisfying `QFTWorkspaceOK`) and `reserveQFTLoweringPlan` (the bridge from the public reserve precondition `QFTReserveOK` to a concrete plan, deriving its workspace registers from `qftXWork`/`qftZWork`), and `lowerQFT` (the final public constructor — the canonical lowered QFT circuit, its workspace selected deterministically from the reserve precondition rather than supplied separately). |
+| `PlanBuilders.lean` | Builds plans rather than just interpreting them: `standardPhaseProdUsingPlan` (the canonical unsigned phase-product subplan used at each split, built by zero-extending both operands, lowering the resulting signed phase product, then deallocating the extensions), the two public plan constructors `standardQFTLoweringPlan` (from explicit workspace registers satisfying `QFTWorkspaceOK`) and `reserveQFTLoweringPlan` (the bridge from the public reserve precondition `QFTReserveOK` to a concrete plan, deriving its workspace registers from `qftXWork`/`qftZWork`), and `lowerQFT` (the final public constructor — the canonical lowered QFT circuit, its workspace selected deterministically from the reserve precondition rather than supplied separately). The policy forms `Policy.phaseProdUsingPlan`, `Policy.qftPlan`, `Policy.reserveQftPlan` and `Policy.lowerQFT` are the same four constructions over a `ShorLoweringPolicy`, with the phase-product subplan at each split chosen by width; `Policy.qftWorkspaceOK_of_const` relates the two spellings at a constant policy. |
 
 ## `Spec/` — the public specification surface
 
@@ -61,9 +61,10 @@ needed. The one-line descriptions below are grouped in dependency order
 
 ## `Main.lean`
 
-Proves the folder's one public theorem, `lowerQFT_correct` (packaging
+Proves the folder's two public theorems: `lowerQFT_correct` (packaging
 `Spec.Assertions.LowerQFTCorrect`), from `Proofs.Lowering.Readiness`'s
-`evalL_lowerQFT`. Imports only `Spec.Assertions` and
+`evalL_lowerQFT`, and `Policy.lowerQFT_correct`, the same statement for
+`Policy.lowerQFT` at any admissible policy, from `Policy.evalL_lowerQFT`. Imports only `Spec.Assertions` and
 `Proofs.Lowering.Readiness` — every other dependency is transitive through
 those two.
 
@@ -76,9 +77,10 @@ function applied to the fixed-table model. `QFTReserveOK` and
 `QFTWorkspaceOK` are likewise `abbrev`s for `QFTReserveOKOf` /
 `QFTWorkspaceOKOf` at `qftWorkspaceNeed ops`.
 
-The point is that a policy-indexed reserve model can be substituted without
-restating or reproving anything here — the lemmas are about `need`, not about
-which table produced it. Keying them on the *need* function rather than on
-the reserve model matters: field spellings like `x_large_enough` then mention
-the same term the fixed-table statements always did, so `omega` and friends
-in downstream files still see the atoms they expect.
+The point is that the policy-indexed reserve model (`Policy.qftPlan`,
+`Policy.lowerQFT`) reuses these lemmas without restating or reproving
+anything here — they are about `need`, not about which table produced it.
+Keying them on the *need* function rather than on the reserve model also
+keeps field spellings like `x_large_enough` on the same term in both
+spellings, so `omega` and friends in downstream files see the atoms they
+expect.

@@ -17,10 +17,9 @@ reduction analysis.
 
 ## `Lowering.lean` — correctness of the whole-program lowerer
 
-Correctness of the whole-program lowerer (`lowerGate_correctness`), the
-`GateWorkspaceOK` projection lemmas, and the `lowerGate` simp equations.
-Imports nothing from `Shor/`; consumed by `Readiness/*`, `Correctness.lean`,
-and `GateCount/`.
+Correctness of the whole-program lowerer, `Policy.lowerGate_correctness`,
+for any admissible policy. Imports nothing from `Shor/`; consumed by
+`Readiness/*`, `Correctness.lean`, and `GateCount/`.
 
 ## `Budgets.lean` — dynamic clean-state preservation
 
@@ -104,7 +103,7 @@ implementation error to obtain the approximate order-finding statement.
   Shor order-finding bound" — `K` is chosen once, independent of `η`.
 - **`probability_of_success_lowerGate_eq`** — lowering preserves success
   probability exactly, given whole-program lowering workspace and dynamic
-  cleanliness (via `lowerGate_correctness`).
+  cleanliness (via `Policy.lowerGate_correctness`).
 - **`orderFindingApproxLow_probability_eq`** — specializes the above to
   `orderFindingApproxLow` vs. the high-level `orderFindingApprox` (not vs.
   `orderFindingIdeal` — whole-program lowering introduces no additional

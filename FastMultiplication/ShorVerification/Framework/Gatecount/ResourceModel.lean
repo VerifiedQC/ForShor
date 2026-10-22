@@ -6,8 +6,11 @@ namespace Shor
 
 This section gives the numerical costs assigned to arithmetic primitives and
 packages them into the concrete model used throughout the gate-count proofs.
-The constants are intentionally conservative; the later asymptotic results only
-need linear arithmetic costs and quadratic direct PhaseProduct base cases.
+The arithmetic primitives are charged under stated conventions, not proved
+decompositions: adders and negation follow published circuits, shifts and
+sign handling are charged as wiring, and radix reversal as `m/2` swaps. The
+asymptotic results only need linear arithmetic costs and quadratic direct
+PhaseProduct base cases.
 ========================================================= -/
 
 section ConcreteCostModel
@@ -20,10 +23,6 @@ def negateGateBound (r : ExtReg) : ℕ := ExtReg.width r + rippleAdderGateBound 
 
 /-- Direct signed PhaseProduct base-case cost, quadratic in the operand widths. -/
 def directSignedPhaseProductGateCount (x z : ExtReg) : ℕ := 5 * ExtReg.width x * ExtReg.width z
-
-/-- Direct controlled signed PhaseProduct base-case cost, with a constant-factor
-controlled overhead over the signed direct implementation. -/
-def directCSignedPhaseProductGateCount (x z : ExtReg) : ℕ := 9 * ExtReg.width x * ExtReg.width z
 
 /-- Cost assigned to the final radix-reversal swaps for a register split. -/
 def radixReverseGateCount (_r : Reg) (m : ℕ) : ℕ := 3 * (m / 2)
@@ -147,8 +146,10 @@ Important convention:
 `cleanAnc` counts temporary scratch qubits required by the implementation,
 not qubits already owned by an `ExtReg` reserve.
 
-The numerical formulas are concrete circuit upper bounds, rather than
-free constants chosen only to obtain the desired asymptotics.
+The adder and negation formulas follow published circuits; shifts are
+charged as wiring and radix reversal as `m/2` swaps, by convention rather than
+by a proved decomposition. None is a free constant chosen only to obtain the
+desired asymptotics.
 ========================================================= -/
 
 section ConcreteResourceModel
@@ -229,7 +230,6 @@ def negateResources (r : ExtReg) : GateResources :=
     cleanAnc := w + a.cleanAnc
   }
 
-
 /-! ---------------------------------------------------------
     AddScaled
 
@@ -259,16 +259,14 @@ def addScaledResources
 /-! ---------------------------------------------------------
     Radix reversal
 
-We retain the existing implementation as `floor(m/2)` pairwise SWAPs.
-
- floor(m/2) SWAP = 3 * floor(m/2) CNOT.
+Charged as `floor(m/2)` pairwise SWAPs, by convention:
+`floor(m/2)` SWAP = `3 * floor(m/2)` CNOT.
 --------------------------------------------------------- -/
 
 def radixReverseResources (_r : Reg) (m : ℕ) : GateResources :=
   {
     cnot := 3 * (m / 2)
   }
-
 
 /-! ---------------------------------------------------------
     Concrete Shor resource model
@@ -365,6 +363,5 @@ def LowGate.qubitCount
     (M : LowGateResourceModel)
     (g : LowGate) : ℕ :=
   (usedQubits g).card + (resources M g).cleanAnc
-
 
 end Shor

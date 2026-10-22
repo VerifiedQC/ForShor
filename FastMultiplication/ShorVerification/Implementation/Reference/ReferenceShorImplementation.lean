@@ -41,9 +41,9 @@ Unlike an arbitrary `Classical.choose` witness, this is a concrete numeral:
 bounds), so `2048` itself is a valid, and clean, choice of constant.
 
 The bound at this constant is `modExpApprox_correct_2048`
-(`ModularExponentiation/Main.lean`); it used to be a private copy here. This
-definition remains because the error schedule below and
-`Reference2048Headline.lean` compute with the numeral by name. -/
+(`ModularExponentiation/Main.lean`). This definition exists because the error
+schedule below and `Reference2048Headline.lean` compute with the numeral by
+name. -/
 noncomputable def referenceK : ℝ := 2048
 
 omit [MeasureClass qs] [LowerGateClass qs] in

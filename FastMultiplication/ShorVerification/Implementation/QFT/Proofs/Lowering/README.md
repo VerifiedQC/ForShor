@@ -19,22 +19,25 @@ The two results this folder's proofs ultimately exist to feed `Main.lean`:
   high-level decomposition. `evalL_lowerQFTPlan_add`/`_smul`/`_zero` and
   `QFTLoweringReady.add`/`.smul`/`.zero` extend both notions from basis kets
   to arbitrary states.
-- **`evalL_lowerQFT`** (`Readiness.lean`) — the file and folder's capstone,
-  and the lemma `Main.lean` calls directly: for any state with a valid,
-  clean `QFTWorkspaceStateOK` workspace, `lowerQFT`'s output evaluates
-  exactly like `Gate.QFT r`. It follows from `evalL_lowerQFTPlan` once the
-  *canonical* reserve-backed plan (`reserveQFTLoweringPlan`) is shown ready —
-  which is most of this file's work.
+- **`Policy.evalL_lowerQFT`** (`Readiness.lean`) — the file and folder's
+  capstone: for any admissible policy and any state with a valid, clean
+  `Policy.QFTWorkspaceStateOK` workspace, `Policy.lowerQFT`'s output
+  evaluates exactly like `Gate.QFT r`. It follows from `evalL_lowerQFTPlan`
+  once the canonical reserve-backed plan (`Policy.reserveQftPlan`) is shown
+  ready — which is most of this file's work. **`evalL_lowerQFT`** is the
+  fixed-table spelling, the same statement at the constant policy, proved
+  through the policy theorem. `Main.lean` packages the two as
+  `Policy.lowerQFT_correct` and `lowerQFT_correct`.
 
-Getting to `evalL_lowerQFT` required: converting fresh-zero reserve facts
-into the phase-product macro's own clean-state hypothesis
+Getting to `Policy.evalL_lowerQFT` required: converting fresh-zero reserve
+facts into the phase-product macro's own clean-state hypothesis
 (`QFTWorkspaceCleanState.phaseCleanState`/`.signedCleanState`); showing both
 the phase-product macro and recursive QFT calls preserve
 `QFTWorkspaceCleanState` on the *shared* workspace pools
 (`eval_PhaseProdUsing_preserves_QFTWorkspaceCleanState`,
 `eval_QFT_preserves_QFTWorkspaceCleanState`); readiness for the
-phase-product bridge itself (`standardPhaseProdUsingPlan_ready_and_clean`);
+phase-product bridge itself (`Policy.phaseProdUsingPlan_ready_and_clean`);
 and finally assembling all of that, by recursion on register width, into
-readiness and clean-preservation for the standard planner
-(`standardQFTLoweringPlan_ready_and_clean_explicit`, specialized to the
-public reserve-backed plan as `standardQFTLoweringPlan_ready_and_clean`).
+readiness and clean-preservation for the planner
+(`Policy.qftPlan_ready_and_clean_explicit`, specialized to the public
+reserve-backed plan as `Policy.qftPlan_ready_and_clean`).

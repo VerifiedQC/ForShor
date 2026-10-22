@@ -46,7 +46,7 @@ theorem benchmarkModulus_is2048Bit : Is2048Bit benchmarkModulus :=
 /-- The number of independent runs the score is computed over, for the
 benchmark. Backed by `Shor.submissionTrialCount_correct`, which
 `benchmarkModulus_is2048Bit` discharges the hypothesis of. -/
-def benchmarkTrialCount : ℕ := submissionTrialCount benchmarkModulus
+def benchmarkTrialCount : ℕ := _root_.Shor.submissionTrialCount benchmarkModulus
 
 /-- Big naturals go out as strings: `submissionPrecision` is a 46-digit
 number and JSON consumers routinely parse numbers as doubles. -/
@@ -57,11 +57,11 @@ def submissionJson : Json :=
     ("schema", Json.str "forshor.submission/v1"),
     ("table", Json.mkObj [
       ("k", (setup.k : Json)),
-      ("points", Json.arr (setup.pts.map pointJson).toArray),
-      ("ops", progJson setup.ops)
+      ("points", Json.arr (setup.pts.map _root_.Shor.pointJson).toArray),
+      ("ops", _root_.Shor.progJson setup.ops)
     ]),
     ("precision", Json.mkObj [
-      ("m", natStr submissionPrecision),
+      ("m", natStr _root_.Shor.submissionPrecision),
       ("m_expr", Json.str "2^150 - 3 (Reference.m2048)"),
       ("eta", Json.str "2^-150")
     ]),
@@ -78,17 +78,17 @@ def submissionJson : Json :=
         "C1 length, C2 det ≠ 0 (proved from pairwise projective distinctness), C3 ordered \
          point consumption + safe adds, C4 returns to start: all four proved in \
          Submission/Template.lean by the submitter, reduced by Lean's kernel at build time, \
-         and audited by #assert_axioms Submission.setup in Submission/Check.lean — which \
+         and audited by #assert_axioms _root_.Submission.setup in Submission/Check.lean — which \
          fails the build on native_decide (Lean.ofReduceBool), sorry (sorryAx) or any \
          declared axiom"),
       ("correctness", Json.str
         "Shor.submission_correct: proved once, generic in the table; no per-submission proof"),
       ("ir_agreement", Json.str
         s!"Shor.Reflect.submissionChecks: instantiate = real compiled circuit at \
-           phase_product/cphase_product widths {Reflect.submissionPPWidths setup} in reserve \
-           regimes {Reflect.submissionPPSlacks}, leaf (xw, zw) pairs \
-           {Reflect.submissionLeafWidths}, qft widths {Reflect.submissionQFTWidths setup}, and \
-           {Reflect.submissionShorInstances.length} reference Shor instances — pinned by \
+           phase_product/cphase_product widths {_root_.Shor.Reflect.submissionPPWidths setup} in reserve \
+           regimes {_root_.Shor.Reflect.submissionPPSlacks}, leaf (xw, zw) pairs \
+           {_root_.Shor.Reflect.submissionLeafWidths}, qft widths {_root_.Shor.Reflect.submissionQFTWidths setup}, and \
+           {_root_.Shor.Reflect.submissionShorInstances.length} reference Shor instances — pinned by \
            native_decide in Submission/Check.lean. The width ladders are derived from this \
            table's own recursion depth, so they are not the same for every submission."),
       ("ir_not_proved", Json.str
@@ -98,10 +98,10 @@ def submissionJson : Json :=
     ("provenance", Json.str
       "extracted by reflection from the named constants; trusted: translation table and Lean \
        normalisation; checked: instantiate = real term at the listed widths; not a theorem."),
-    ("ir", IR.docJson doc)
+    ("ir", _root_.Shor.IR.docJson doc)
   ]
 
 end Submission
 
 def main : IO Unit :=
-  IO.println Submission.submissionJson.compress
+  IO.println _root_.Submission.submissionJson.compress

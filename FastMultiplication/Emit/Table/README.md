@@ -1,12 +1,9 @@
 # `Table/`
 
 The Toom-Cook table a bundle is built from: the `(ops, points)` view of a
-`Shor.ShorLoweringSetup` that the JSON value-table builders read.
-
-`Census.lean` (the old op census / per-op-class `LowGate` resource table,
-E1) was deleted in R3/R4 (see `Emit/README.md`'s round history): those counts now fall out of the
-extracted `Doc` (`Reflect/`, `IR/`) plus the repository's own
-`shorGateResourceModel`, rather than a separate hand-evaluated table.
+`Shor.ShorLoweringSetup` that the JSON value-table builders read. There is
+no op census here: per-op resource counts fall out of the extracted `Doc`
+(`Reflect/`, `IR/`) plus the repository's own `shorGateResourceModel`.
 
 **There is one kind of table.** A table *is* a `Shor.ShorLoweringSetup`:
 `ops`, `pts`, and the four side conditions relating them. Anything that
@@ -29,12 +26,10 @@ read-only view of them the JSON value-table builders want.
 - `TableInstance k` — `{ ops : Prog k, points : List Point, hlen :
   points.length = q k }`. The `hlen` field exists so downstream
   interpolation code (`Symbolic/CoeffPoly.lean`) never has to re-derive it.
-  The `decl`/`srcFile` provenance strings went with `TableSource`: they
-  recorded *which* source a instance came from, and nothing read them.
 - `ShorLoweringSetup.tableInstance (setup) : TableInstance setup.k` — the
-  projection. Total and proof-free: `setup.consumes`/`.returns`/`.good` are
-  exactly the conditions `checkTable` used to re-run at run time, and they
-  hold by construction.
+  projection. Total and proof-free: `setup.consumes`/`.returns`/`.good`
+  hold by construction of the setup, so there is nothing to re-check at run
+  time.
 - `standardTableInstance (k) (hk) : TableInstance k` —
   `Shor.standardLoweringSetup k hk`'s own, the table the lowering theorems
   are about and the only one the CLI builds.

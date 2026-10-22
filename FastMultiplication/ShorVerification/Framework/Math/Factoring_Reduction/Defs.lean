@@ -12,9 +12,7 @@ import Mathlib.Analysis.Complex.Exponential
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition
 
--- `ord` is `Shor.ord` (`Framework/Math/ShorDefinition.lean`). This file used to
--- carry an identical second copy in the root namespace, which `Shor/Main.lean`
--- mixed with the first and typechecked only by unfolding.
+-- `ord` is `Shor.ord` (`Framework/Math/ShorDefinition.lean`).
 open Shor (ord)
 
 open Classical

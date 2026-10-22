@@ -11,7 +11,7 @@ subroutine lowerers — lives in `Lowering/`.
 The folder is organized in layers (below). **Every import is "justified":** a
 file may only import another file if it directly uses a declaration that
 file defines — never a declaration it merely re-exports transitively.
-`scripts/check_shor_layers.sh` (repo root) enforces the layer order, the
+`scripts/check_layers.py Shor` (repo root) enforces the layer order, the
 `Proofs/Readiness/` chain order, and the absence of umbrella files (a file
 that only imports and declares nothing of its own); it also enforces the
 one allowlisted exception below.
@@ -85,7 +85,7 @@ traversal.
 
 | File | Purpose |
 |---|---|
-| `Lowering.lean` | Correctness of the whole-program lowerer (`lowerGate_correctness`), the `GateWorkspaceOK` projection lemmas, and the `lowerGate` simp equations. Imports nothing from `Shor/`; consumed by `Readiness/*`, `Correctness.lean`, and `GateCount/`. |
+| `Lowering.lean` | Correctness of the whole-program lowerer, `Policy.lowerGate_correctness`, for any admissible policy. Imports nothing from `Shor/`; consumed by `Readiness/*`, `Correctness.lean`, and `GateCount/`. |
 | `Budgets.lean` | The dynamic clean-state preservation lemmas for the clean-state invariants declared in `Spec/Cleanliness.lean`. |
 | `Setup.lean` | `ShorApproxSetup.toIdealOrderFindingInput` — the final bridge from the approximate setup to the ideal order-finding input predicate. |
 | `Readiness/` | Workspace readiness and clean-state preservation for the full lowered circuit, split by circuit stage (below); see each file's own docstring for its exact scope. |
@@ -114,7 +114,7 @@ The final Shor correctness theorems, each typed by its named proposition from
 `Spec/Assertions.lean` and proven from `Proofs/Correctness.lean` and
 `Framework/Math/Factoring_Reduction/*`. All supporting lemmas live under
 `Shor.Proofs`. This is the file other folders consume: `Proofs/` is proof-only,
-and `scripts/check_shor_layers.sh` fails on an import of `Shor.Proofs.*` from
+and `scripts/check_layers.py` fails on an import of `Shor.Proofs.*` from
 outside `Implementation/Shor/` (two provider files are allowlisted —
 `Proofs/Lowering.lean` for `GateCount/` and `Proofs/Readiness/Static.lean` for
 `Reference/ShorProgram.lean` — and named in the script).
@@ -138,19 +138,21 @@ circuit builder can evaluate before building, and at any `η` below it the
 conclusion is `≥ κ / (2 · log₂(N)⁴)` — half the ideal bound, positive for
 every admissible `N`. Cite that one.
 
-## Lowering is policy-indexed underneath
+## Lowering is policy-indexed
 
-`Shor/` itself is still phrased in terms of a single table: `lowerGate`,
-`GateWorkspaceOK`, `shorWorkspaceNeed` and every theorem quoted above take
-`k`, `hk`, `ops`, `pts`, `hpts` exactly as they always did, and their
-statements are unchanged.
+The lowering in this folder is indexed by a `ShorLoweringPolicy`, a
+width-indexed choice of Toom-Cook table (see `../PhaseProduct/README.md`).
+`Policy.lowerGate`, `Policy.GateWorkspaceOK`, `Policy.shorWorkspaceNeed`,
+`Policy.ShorWorkspaceLargeEnough` and `Policy.lowerGate_correctness` are the
+policy forms, and every theorem in `Main.lean` takes a
+`P : ShorLoweringPolicy` together with its admissibility proof.
 
-What changed is one level down. The phase-product lowering those definitions
-call is now indexed by a `ShorLoweringPolicy` (a width-indexed choice of
-table — see `../PhaseProduct/README.md`), and
-the fixed-table names are its **constant policy** instance. Nothing in this
-folder has to know that; the reason it is worth knowing is that the budget
-and need functions here were abstracted over their reserve model
-(`shorWorkspaceNeedOf`, `qftWorkspaceNeedOf`) precisely so that a
-policy-indexed model can be substituted later without reproving the
-readiness chain.
+The fixed-table names — `lowerGate`, `GateWorkspaceOK`, `shorWorkspaceNeed`,
+`ShorWorkspaceLargeEnough`, each taking `k`, `hk`, `ops`, `pts`, `hpts` — are
+the **constant policy** instance, one table used at every width, and the
+`*_const` / `*_const_iff` lemmas beside them
+(`Policy.gateWorkspaceOK_const_iff`, `Policy.shorWorkspaceNeed_const`,
+`Policy.shorWorkspaceLargeEnough_const_iff`) identify the two spellings. The
+budget and need functions are abstracted over their reserve model
+(`shorWorkspaceNeedOf`, `qftWorkspaceNeedOf`), which is what lets both
+spellings share one readiness chain.

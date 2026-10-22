@@ -2,8 +2,7 @@
 
 JSON printers. Every other folder in `Emit/` builds a value and hands it to
 one printer here to turn it into `Lean.Json` — no file outside `Json/`
-declares its own spelling for a shared type (design principle 6 in the top
-`README.md`).
+declares its own spelling for a shared type.
 
 Import order within the folder: `Common.lean → LowGateJson.lean → PlanJson.lean`.
 
@@ -29,8 +28,8 @@ The flat `LowGate` printer and the three document envelopes built on top of
 it.
 
 - `LowGate.flattenSeq : LowGate → List LowGate` — flattens nested `seq`
-  nodes into an ordered leaf list, dropping `id`s. `partial`: a plain
-  structural traversal with no proof obligations.
+  nodes into an ordered leaf list, dropping `id`s. A structural recursion
+  on the gate tree (not `partial`), so it has ordinary equation lemmas.
 - `lowGateJson : LowGate → Json` — the tree printer. Op names are exactly
   the `LowGate` constructor names. A `.seq` node prints its *entire*
   subtree flattened into one `{"op": "seq", "body": [...]}` array (via
@@ -55,9 +54,9 @@ it.
 The annotated printer: walks the *plan* term (`PhaseLoweringPlan`,
 `QFTLoweringPlan`) rather than the flat `LowGate` those plans lower to, so
 the recursive structure — where a phase product or QFT split began, and
-what its layout/coefficients were — stays visible in the JSON. See the top
-`README.md`'s "Key concepts" table for why this is a separate representation
-from `LowGate`.
+what its layout/coefficients were — stays visible in the JSON. The flat
+`LowGate` term carries no record of where a split began, which is why this
+is a separate representation.
 
 - `planJson : PhaseLoweringPlan k hk pts hpts ops initSize U → Json` —
   constructor-for-constructor with `lowerGateRec`, *except*:
@@ -86,8 +85,7 @@ from `LowGate`.
 
 `pp`/`cpp`'s `annotated_eq_flat` check (`Lower/PhaseProduct.lean`) —
 whether the annotated view above and the independently-computed flat
-`LowGate` term describe the same circuit — also lives here, moved in from
-the now-deleted `Lower/Instantiate.lean` (R4): it has
+`LowGate` term describe the same circuit — also lives here: it has
 nothing to do with the extracted IR (`Reflect/`, `IR/`), only with this
 file's own two views of the same real term, so it belongs next to
 `planJson`/`lowGateJson`, not in `Lower/` or `Reflect/`.

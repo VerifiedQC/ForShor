@@ -47,7 +47,7 @@ computation that *is* trusted: `isRightInverseRows M inv` re-multiplies and
 decides `M · inv = I` entrywise, and
 `mul_rowsToMatrix_eq_one_of_isRightInverseRows` turns a `true` into the
 `Matrix` equation. Imports Mathlib only, so it sits at the bottom of this
-folder. It exists here rather than in `Emit/` (its old home) because
+folder. It lives here rather than in `Emit/` because
 `Coefficients.lean`'s `@[csimp]` lemma has to be in the environment before
 `Lowering/Plan.lean`'s `loweringPhaseCoeff` is compiled.
 
@@ -67,8 +67,8 @@ folder. It exists here rather than in `Emit/` (its old home) because
   tagged `@[csimp]`, so compiled code runs the cubic path while the kernel —
   and every proof — still sees Cramer's rule.
 - **`cramerCoeffFromPts_eq_phaseCoeffFromPts`** — Cramer equals the inverse
-  formulation when `det ≠ 0`. Moved here from `Proofs/Compiler/Interpolation.lean`
-  because the `csimp` proof needs it below `Lowering/`.
+  formulation when `det ≠ 0`. It lives here rather than in
+  `Proofs/Compiler/` because the `csimp` proof needs it below `Lowering/`.
 - **`alternatingPoint`**, **`genInterpolationPoints`** — the canonical point
   set: `0, -1, 1, -2, 2, …` (`2k-1` points). This is the *reference's* choice
   of points, not the framework's: the lowering chain takes `pts` as a
@@ -113,10 +113,6 @@ folder. It exists here rather than in `Emit/` (its old home) because
 - **`PhaseSplitLayout.ofBudget`**, **`ReserveBudget.ofRequirements`** —
   construct a concrete split layout / reserve budget from per-child
   requirements, given that they fit in the parent's capacity.
-- **`CanonicalSignedStep`**, **`canonicalSignedStep`** — the canonical,
-  deterministic choice of layout for one recursive step: builds the layout,
-  and proves it has enough capacity for the next level and that every child's
-  recursive input size is exactly `nextSignedWidth`.
 
 ## `PolicyWorkspace.lean`
 
@@ -136,27 +132,3 @@ the ones above are what the fixed-table spellings keep using.
 - **`Policy.CanonicalStep`**, **`Policy.canonicalStep`** — the policy form of
   the canonical step.
 
-### Why this file is separate
-
-`Policy.reserveNeed (constPolicy T)` and
-`RecursivePhaseWorkspace.reserveNeed T.ops` are equal — `reserveNeed_const`
-proves it — but only **propositionally**. They are two distinct well-founded
-fixpoints, so the equation is a rewrite, never a `rfl` the elaborator can use
-silently. Anything that must reduce definitionally therefore needs the
-spelling it was written against, which is why `lowerGate_correctness` is
-proved in both spellings rather than derived once and transported.
-
-That is the live reason for the split. The *organisational* reason is build
-time: `Workspace.lean` has 19 importers, so folding `PolicyWorkspace.lean`
-into it costs a full rebuild cascade across the library — worth paying only
-alongside a change already paying it. Until then: **new work should be
-written against the `Policy.*` names**, and the fixed-table names are the
-constant policy, kept for the statements that already depend on their
-definitional behaviour.
-
-`canonicalSignedStep` is a different case and is **dead code**: every caller
-moved to `Policy.canonicalStep` when the Shor and GateCount layers ported
-over, and it now appears only at its own definition and in docstrings.
-Deleting it is a pure deletion with nothing to port, deferred only because it
-too edits `Workspace.lean`; see
-`ShorVerification/PLAN_PolicyGateCount.md` §5.

@@ -5,7 +5,7 @@ import FastMultiplication.Emit.IR.Syntax
 
 A cheap, `Bool`-valued sanity check on an extracted `Doc`, run before it is
 trusted anywhere downstream (`Symbolic/Bundle.lean` refuses the whole bundle
-if this fails). It is not part of D7's trust statement — that rests on the
+if this fails). It is not part of the trust statement — that rests on the
 translation table and Lean's normaliser, checked by `instantiate` agreeing
 with the real term — this is a much cheaper structural smoke test that would
 catch, e.g., a `call` naming a template that does not exist, or a `var`
@@ -17,7 +17,7 @@ Four checks:
 2. every `call` names a template in the `Doc` and matches its arity in all
    three parameter lists;
 3. every `call` that can lead back to the enclosing template occurs under a
-   `cond` whose guard is `lt`/`le`/`eq` *mentioning* a `wParam` or a D4
+   `cond` whose guard is `lt`/`le`/`eq` *mentioning* a `wParam` or an
    opaque-function application — `phase_product`'s own guard,
    `nextWidth(xw, zw) < max(xw, zw)`, and the policy dispatcher's
    `t ≤ max(xw, zw)`, are both of this form; `qft`'s is a chain of `eq`s
@@ -118,10 +118,10 @@ def Prop'.wellFormed (opaqueFns : List (String × ℕ)) (wScope : List String) :
   | .eq a b => a.wellFormed opaqueFns wScope && b.wellFormed opaqueFns wScope
   | .testBit n i => n.wellFormed opaqueFns wScope && i.wellFormed opaqueFns wScope
 
-/-- Does `w` mention a width parameter or a D4 opaque-function application?
+/-- Does `w` mention a width parameter or an opaque-function application?
 
 `phase_product`'s own guard is `nextWidth(xw, zw) < max(xw, zw)`: the left
-side is the opaque `nextWidth`, which by D4 is the quantity that decreases
+side is the opaque `nextWidth`, which is the quantity that decreases
 across the recursive call. The policy dispatcher's guard is
 `t ≤ max(xw, zw)`, where the evidence is the *parameters* inside a `max` —
 so the search descends through arithmetic rather than looking only at the
@@ -139,7 +139,7 @@ def wLicenses (tWParams : List String) : WExpr → Bool
   | .lit _ => false
 
 /-- Does this guard license a direct-recursive `call` under it: `lt`/`le`
-between a `wParam` (one of `tWParams`) — or a D4 opaque-function application
+between a `wParam` (one of `tWParams`) — or an opaque-function application
 of the parameters, `wLicenses` — and anything else? -/
 -- `qft`'s own recursion guard is a *chain* of `eq`s ruling out base-case
 -- widths (`regSize r = 0`, then `regSize r = 1`), not an `lt`/`le` at

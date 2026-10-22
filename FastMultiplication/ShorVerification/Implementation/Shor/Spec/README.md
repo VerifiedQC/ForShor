@@ -76,8 +76,8 @@ This file imports `Proofs.Readiness.Static`: the statements below plug
 proof-derived terms into `Prop`-valued hypothesis slots (e.g.
 `hready.workspace`), so by proof irrelevance the *meaning* of each Prop does
 not depend on those proof bodies — the trusted reading surface remains
-`Spec/*`, not `Proofs/*`. See the repo-root `scripts/check_shor_layers.sh`
-for this one allowlisted layer exception.
+`Spec/*`, not `Proofs/*`. `scripts/check_layers.py` (repo root) allowlists
+this one layer exception.
 
 - **`ShorCorrect`** — the ideal-circuit success-probability guarantee:
   running `orderFindingIdeal` on a clean input succeeds with probability at

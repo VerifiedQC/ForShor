@@ -9,8 +9,9 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.
 /-!
 # `pp`/`cpp`: concrete-width signed (and controlled) phase product
 
-Registers `x = [0, n)`, `z = [n, 2n)`, reserves placed immediately after each
-sized by `RecursivePhaseWorkspace.reserveNeed ops n n` plus one bit each.
+Registers from `Lower/Registers.lean`'s `ppRegisters`: `x = [0, n)` with its
+reserve immediately after it, then `z` after that with its own reserve, each
+reserve sized by `RecursivePhaseWorkspace.reserveNeed ops n n` plus one bit.
 `SignedRecursiveWorkspaceOK`/`CSignedRecursiveWorkspaceOK`, and the plain
 `Disjoint active reserve` needed to build the `ExtReg`s at all, are all
 `Decidable` (`Lower/Decide.lean`) at this *concrete* `n`, so every
@@ -20,12 +21,10 @@ abstract proof for general `n` anywhere in this file. The table is always
 theorems are about); a table of one's own is a build-time path
 (`extract_ir_doc`, `Reflect/Driver.lean`), never a CLI flag.
 
-R3/R4: the annotated view's `template_match`/`ladder` checks
-(`Symbolic/Template.lean`/`Symbolic/Recursion.lean`, both removed) are
-replaced by `instantiate_eq_real` — the extracted `phase_product`/
-`cphase_product` template (`Reflect.Verify`), instantiated at *this* `n`,
-agreeing with the real compiled term directly. That needs `Reflect.
-runExtractAndVerify`'s environment reload, so `buildPP`/`buildCPP` are now
+The annotated view's check is `instantiate_eq_real` — the extracted
+`phase_product`/`cphase_product` template (`Reflect.Verify`), instantiated
+at *this* `n`, agreeing with the real compiled term directly. That needs
+`Reflect.runExtract`'s environment reload, so `buildPP`/`buildCPP` are
 `unsafe`/`IO`. -/
 
 namespace Shor

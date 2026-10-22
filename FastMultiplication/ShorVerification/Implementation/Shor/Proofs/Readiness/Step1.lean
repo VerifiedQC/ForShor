@@ -25,7 +25,6 @@ namespace Shor
 open Gate
 open Classical
 
-
 theorem threeRegsCleanState_to_grownRecursiveWorkspaceCleanState
     {qs : QSemantics}
     [RegEncoding qs.Basis]
@@ -130,7 +129,6 @@ theorem gateWorkspaceCleanState_CPhaseProdUsing_of_threeRegsClean
     LowerGateClass.evalL_zeroExtend,
     ExtensionSemantics.eval_zeroExtend
   ] using hrecursive
-
 
 theorem eval_CPhaseProdUsing_preserves_threeRegsCleanState
     {qs : QSemantics}
@@ -344,7 +342,6 @@ theorem eval_IQFT_preserves_threeRegsCleanState
           a
           ihψ
 
-
 theorem threeRegsCleanState_to_QFTWorkspaceCleanStateOf
     {qs : QSemantics}
     [RegEncoding qs.Basis]
@@ -404,16 +401,6 @@ theorem threeRegsCleanState_to_QFTWorkspaceCleanStateOf
         QFTWorkspaceCleanState.smul
           a
           ihψ
-
-
-
-/-- The fixed-table spelling. -/
-theorem threeRegsCleanState_to_QFTWorkspaceCleanState
-    {qs : QSemantics} [RegEncoding qs.Basis] {k : ℕ} (ops : Prog k) (r : ExtReg)
-    {r₁ r₂ r₃ : Reg} (hreserve : r.reserve = r₃)
-    {ψ : qs.State} (hclean : ThreeRegsCleanState qs r₁ r₂ r₃ ψ) :
-    QFTWorkspaceCleanState qs (qftXWork ops r) (qftZWork ops r) ψ :=
-  threeRegsCleanState_to_QFTWorkspaceCleanStateOf _ r hreserve hclean
 
 /-- The policy spelling. -/
 theorem Policy.threeRegsCleanState_to_QFTWorkspaceCleanState

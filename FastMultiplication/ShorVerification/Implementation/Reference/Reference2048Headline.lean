@@ -12,7 +12,7 @@ precision level `m` automatically (via `Nat.find`, an unspecified and
 generally very weak choice: it only guarantees a *positive* success
 probability, not any particular fraction of the ideal baseline).
 
-This file is additive: it does not change that general submission. It
+This file does not change that general result. It
 answers a narrower, concrete question for the case the whole codebase is
 ultimately aimed at — `N` a 2048-bit modulus — by fixing a single explicit
 precision `η = 2⁻¹⁵⁰` (via an explicit level `m2048`) and proving that,

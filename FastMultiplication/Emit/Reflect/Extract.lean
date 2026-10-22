@@ -8,17 +8,17 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Circuit.OrderFind
 /-!
 # The extractor: shared machinery
 
-Generic pieces used by every `Reflect/Targets.lean` extraction, factored out
-of the R2.1 spike once it had de-risked the approach:
-building a structure literal with fine-grained fresh leaves (Finding 1), and
-a `Registry`-driven translator rather than a fully general one (Finding 2)
+Generic pieces used by every `Reflect/Targets.lean` extraction. Two
+techniques run through all of it:
+building a structure literal with fine-grained fresh leaves, and
+a `Registry`-driven translator rather than a fully general one
 — `translateW`/`translateA`/`translateReg` first check whether the *exact*
 `Expr` they were handed is one the Specialise step already built and named
 (a slot, a width parameter, an angle parameter, …), and only fall back to
 structural recognition (arithmetic, register-slicing constructors, the
 opaque-function escape hatch) for the handful of shapes a given target
 actually produces. An unrecognised shape is a hard error naming the
-constant (D2), never a silent guess.
+constant, never a silent guess.
 -/
 
 -- Quoting a concrete table. The Specialise step splices a `ShorLoweringSetup`'s
@@ -38,7 +38,7 @@ open Lean Lean.Meta
 vals[1] else … else vals[last]`, for concrete `k = vals.size`. Used to give
 a dependent record's data field (e.g. `PhaseSplitLayout.reserve : Fin k →
 Reg`) a real value built from `k` fresh leaves instead of one opaque
-function variable (Finding 1). -/
+function variable. -/
 partial def buildFinFnGo (elemTy ival : Expr) (vals : Array Expr) (n : Nat) : MetaM Expr := do
   if n + 1 = vals.size then
     pure vals[n]!
@@ -89,7 +89,7 @@ structure Registry where
   angles : Array (Expr × IR.AExpr) := #[]
   /-- The target's `phaseCoeff : Fin (q k) → ℚ` parameter, if it has one:
   recognising `phaseCoeffFVar l` for a literal `l` is how `AExpr.coeff`
-  gets produced (D4: the interpolation weight is opaque). -/
+  gets produced (the interpolation weight is opaque). -/
   phaseCoeffFVar : Option FVarId := none
   /-- The `m` (limb-width) `WExpr` `AExpr.coeff`'s second argument is built
   from, when `phaseCoeffFVar` is set. -/
@@ -110,7 +110,7 @@ structure Registry where
   coeffOffset : ℕ := 0
   /-- Arguments to emit for a recognised `commonNeededWidth` ("nextWidth")
   call — fixed per target (e.g. `[xw, zw]`), never read off the actual
-  `Expr` (D4: opaque by name, the argument is never inspected). -/
+  `Expr` (opaque by name, the argument is never inspected). -/
   nextWidthArgs : List IR.WExpr := []
   /-- The extra reserve the *top* chunk (`i = k - 1`) of this target's
   reserve split receives, `(x side, z side)` — `capacity - Σ required`,
@@ -195,7 +195,7 @@ node for `ExtReg.reserve`, invisible to every named case below). This
 rebuilds the named form (`structName.fieldName scrutinee`) from a `.proj`
 node so the ordinary dispatch gets another look, looping since the rebuilt
 application can itself unfold to another `.proj` one level down. Returns `e`
-unchanged once it is no longer `.proj`-headed. -/
+unchanged once it is not `.proj`-headed. -/
 partial def unfoldProj (e : Expr) : MetaM Expr := do
   match e with
   | .proj structName idx scrutinee => do
@@ -252,7 +252,7 @@ partial def unfoldPhaseWorkspace (wsE : Expr) : MetaM Expr := do
     let eqApp := mkAppN (mkConst eqnName) ws'.getAppArgs
     return (← inferType eqApp).getAppArgs[2]!
   else
-    -- R2.6: `ModMulCircuitWorkspaceOK.step1Workspace`/`.step2Workspace`/
+    -- `shor`: `ModMulCircuitWorkspaceOK.step1Workspace`/`.step2Workspace`/
     -- `.step5Workspace` are plain (non-reducible) `def`s that merely apply
     -- `Gate.PhaseProdWorkspace.ofExtRegs` to already-known registers —
     -- `whnfR` alone (reducible-only) never unfolds them, so a bounded
@@ -284,20 +284,20 @@ partial def translateW (reg : Registry) (e : Expr) : MetaM IR.WExpr := do
   | (``HMul.hMul, #[_, _, _, _, a, b]) => return .mul (← translateW reg a) (← translateW reg b)
   | (``HDiv.hDiv, #[_, _, _, _, a, b]) => return .div (← translateW reg a) (← translateW reg b)
   | (``HMod.hMod, #[_, _, _, _, a, b]) =>
-      -- D4: opaque outright, by constant name — R2.6's Step 1/5 phase-load
+      -- Opaque outright, by constant name — `shor`'s Step 1/5 phase-load
       -- constants (`(c + N - 1) % N`, `step5Constant c N % N`) are `Nat.mod`
       -- on genuinely symbolic operands. Recognised *before* any reduction,
       -- same discipline as `Min.min`/`Max.max` above: `Nat.mod` is defined by
       -- well-founded recursion, so an unrecognised `%` falling through to
       -- `translateWFallback`'s last-resort `whnf` cascades into `Acc.rec`
-      -- machinery instead of stopping (confirmed empirically — this is what
-      -- actually caused the R2.6 `isDefEq` timeout, not anything about `%`
+      -- machinery instead of stopping (this is what times out `isDefEq`
+      -- on the `shor` target, not anything about `%`
       -- itself being hard to name).
       return .opaque "mod" [← translateW reg a, ← translateW reg b]
   | (``HPow.hPow, #[_, _, _, _, a, b]) =>
-      -- D4: opaque outright, by constant name — same discipline and
+      -- Opaque outright, by constant name — same discipline and
       -- justification as `HMod.hMod` above. `ASize r := 2 ^ regSize r`
-      -- (R2.6's `fastConstMulInto`) is the one case seen so far; `Nat.pow`
+      -- (`shor`'s `fastConstMulInto`) is the one case seen so far; `Nat.pow`
       -- on a symbolic exponent has the same well-founded-recursion cascade
       -- risk `Nat.mod` does.
       return .opaque "pow" [← translateW reg a, ← translateW reg b]
@@ -308,7 +308,7 @@ partial def translateW (reg : Registry) (e : Expr) : MetaM IR.WExpr := do
       -- already peeled the instance away — same opaque treatment.
       return .opaque "pow" [← translateW reg a, ← translateW reg b]
   | (``Shor.step5Constant, #[cE, nE]) =>
-      -- D4: opaque outright, by constant name — `step5Constant`'s `dite`
+      -- Opaque outright, by constant name — `step5Constant`'s `dite`
       -- guard is `∃ cinv, cinv < N ∧ (c * cinv) % N = 1`, decided via
       -- `Nat.find` on a symbolic `N`: not just non-reducible but genuinely
       -- undecidable-looking to `whnf`, which strands a raw `Decidable.rec`
@@ -318,17 +318,17 @@ partial def translateW (reg : Registry) (e : Expr) : MetaM IR.WExpr := do
   | (``Max.max, #[_, _, a, b]) => return .max (← translateW reg a) (← translateW reg b)
   | (``Min.min, #[_, _, a, b]) => return .min (← translateW reg a) (← translateW reg b)
   | (``Nat.log2, #[nE]) =>
-      -- D4: opaque outright, by constant name — `referenceXWidth`/
-      -- `referenceWorkWidth`/`cmpLtNWWidth` (R2.6) all size registers off
+      -- Opaque outright, by constant name — `referenceXWidth`/
+      -- `referenceWorkWidth`/`cmpLtNWWidth` (`shor`) all size registers off
       -- `Nat.log2` of a symbolic `N`, which has no closed form in `WExpr`.
       return .opaque "log2" [← translateW reg nE]
   | (``Shor.commonNeededWidth, _) =>
-      -- D4: opaque outright, by constant name — never inspect the argument
-      -- (which genuinely depends on the table; the R2.1 spike's Finding 2).
+      -- Opaque outright, by constant name — never inspect the argument
+      -- (which genuinely depends on the table).
       return .opaque "nextWidth" reg.nextWidthArgs
   | (``Shor.nextSignedWidth, #[_, _, _, _]) =>
       -- `nextSignedWidth a b ops := commonNeededWidth (scanNeededWidths a b
-      -- ops)` — recognised directly by name (D4), same as
+      -- ops)` — recognised directly by name, same as
       -- `commonNeededWidth` itself, rather than relying on
       -- `unfoldDefinition?` to expose it: cheap and, more importantly,
       -- avoids ever asking anything to reduce into `Finset.univ.sup`.
@@ -358,7 +358,7 @@ partial def translateW (reg : Registry) (e : Expr) : MetaM IR.WExpr := do
       | _ => translateWFallback reg e
   | (``Shor.regSize, #[rE]) =>
       -- `regSize`/`Reg.width` is an ordinary computable `List.length`, not
-      -- D4-opaque — but on a symbolic-length register it can't reduce, so
+      -- opaque — but on a symbolic-length register it can't reduce, so
       -- `leftReg`/`rightReg`'s effect on it (`w/2`, `w - w/2`) is named
       -- directly rather than left for `unfoldDefinition?` to get stuck on.
       match rE.getAppFnArgs with
@@ -367,12 +367,12 @@ partial def translateW (reg : Registry) (e : Expr) : MetaM IR.WExpr := do
       | (``Shor.rightReg, #[srcE]) => do
           let srcW ← translateW reg (← mkAppM ``Shor.regSize #[srcE])
           return .sub srcW (.div srcW (.lit 2))
-      -- A *bare* `Reg.drop` (R2.6: `ofExtRegs`'s `dataNoCarry.reserve =
+      -- A *bare* `Reg.drop` (`shor`: `ofExtRegs`'s `dataNoCarry.reserve =
       -- y.reserve.drop 1`, once `unfoldProj` resolves the field access down
       -- to it): `regSize (r.drop n) = regSize r - n`.
       | (``Shor.Reg.drop, #[srcE, loE]) =>
           return .sub (← translateW reg (← mkAppM ``Shor.regSize #[srcE])) (← translateW reg loE)
-      -- `regSize r.active = r.width` by definition (R2.6:
+      -- `regSize r.active = r.width` by definition (`shor`:
       -- `CmodMulInPlaceCore`'s `regSize (data.grow 1).active`) — routes
       -- through `ExtReg.width`'s own `.grow`/`.withReserve` cases below
       -- instead of falling to the generic `unfoldDefinition?` chain, which
@@ -382,7 +382,7 @@ partial def translateW (reg : Registry) (e : Expr) : MetaM IR.WExpr := do
           translateW reg (← mkAppM ``Shor.ExtReg.width #[parentE])
       -- `regSize r.reserve = r.capacity` by definition, same as `.active`
       -- above — needed once `unfoldProj` rebuilds `ExtReg.reserve
-      -- (ExtReg.withReserve _ reserveE _)` (R2.6's `capacity`-of-`.xExt`
+      -- (ExtReg.withReserve _ reserveE _)` (`shor`'s `capacity`-of-`.xExt`
       -- chain): without this case that shape only unwraps one layer per
       -- `unfoldDefinition?`/`unfoldProj` round trip, effectively never
       -- reaching `reserveE` itself (confirmed empirically — this is what
@@ -406,7 +406,7 @@ partial def translateW (reg : Registry) (e : Expr) : MetaM IR.WExpr := do
       -- `unfoldPhaseWorkspace` exposes the struct literal (once `ws` is
       -- `phaseWorkspace`-headed), then the projection on that literal is a
       -- plain iota reduction the generic fallback below handles fine.
-      -- (R2.6: `CmpLtNWWorkspace.mulWorkspace hstep4` needs the same named
+      -- (`shor`: `CmpLtNWWorkspace.mulWorkspace hstep4` needs the same named
       -- shortcut here `resolvePhaseReserve`'s doc comment explains — bare
       -- projection on a genuinely opaque `hstep4`, no amount of unfolding
       -- exposes an `ofExtRegs` application.)
@@ -526,7 +526,7 @@ partial def translateWFallback (reg : Registry) (e : Expr) : MetaM IR.WExpr := d
   | some e' => translateW reg (← unfoldProj e')
   | none =>
       -- Last resort, same discipline (and justification) as `translateNode`'s
-      -- own final fallback: every genuinely dangerous, D4-opaque-headed shape
+      -- own final fallback: every genuinely dangerous, opaque-headed shape
       -- (`nextWidth`, `reserveNeed`, `qftWorkspaceNeed`, …) is caught by name
       -- earlier in `translateW`, before ever reaching here — reaching this
       -- point at all means whatever remains is ordinary, ground Nat/`Reg`
@@ -561,7 +561,7 @@ partial def tryCramerCoeffApp (b : Expr) : MetaM (Option (Nat × Expr)) := do
 
 /-- Recognise a `ℚ`-valued `e` that is really just a `ℕ` value cast up,
 possibly scaled by a literal factor (`Nat.cast n`, `2 * Nat.cast n`, …) —
-`Algorithm 1`'s Step 1/2/5 phase-load angles (R2.6) are built as ordinary
+`Algorithm 1`'s Step 1/2/5 phase-load angles (`shor`) are built as ordinary
 `ℚ` arithmetic on `ℕ`-cast operands (`(2 * ((c + N - 1) % N : ℕ) : ℚ)`),
 never through `AExpr`'s `mul`/`coeff`/`qftPhi` vocabulary, so recovering the
 underlying `WExpr` this way lets `translateA`'s `HDiv.hDiv` case build an
@@ -612,7 +612,7 @@ partial def translateA (reg : Registry) (e : Expr) : MetaM IR.AExpr := do
           | none => return .mul (← translateA reg a) (← translateW reg b)
   | (``Neg.neg, #[_, _, a]) => return .neg (← translateA reg a)
   | (``HDiv.hDiv, #[_, _, _, _, a, b]) => do
-      -- R2.6: Algorithm 1's Step 1/2/5 phase-load angles are raw `ℚ`
+      -- `shor`: Algorithm 1's Step 1/2/5 phase-load angles are raw `ℚ`
       -- arithmetic on `ℕ`-cast operands, not calls through `AExpr`'s
       -- existing vocabulary. A power-of-two denominator (Step 2's
       -- `(2 * N) / 2 ^ e`) is `N * qftPhi(e)` (`qftPhi m := 2 / 2 ^ m`);
@@ -654,12 +654,12 @@ mutual
 `translateReg`'s public entry forces `reg.lookupReg`'s `isDefEq` to compare it
 against every registered (often atomic-`FVar`) candidate, which — for a query
 still headed by a plain, non-reducible `def` like `ModMulCircuitWorkspaceOK.
-step1Workspace` (as opposed to `QFTWorkspaceOK.phaseWorkspace`, R2.5's only
-prior caller, which apparently never triggers this) — forces Lean's *own*
+step1Workspace` (as opposed to `QFTWorkspaceOK.phaseWorkspace`, `qft`'s
+caller, which never triggers this) — forces Lean's *own*
 unbounded-transparency reduction machinery to try to unfold straight through
 the `ofExtRegs` tactic proof looking for a match, independently of and far
 more expensively than `unfoldPhaseWorkspace`'s targeted `.eq_1` shortcut
-(confirmed empirically: this alone was the R2.6 `isDefEq` "hang", easily
+(this alone is an `isDefEq` "hang" on the `shor` target, easily
 mistaken for non-termination at 1..4 million heartbeats). -/
 partial def resolvePhaseReserve
     (reg : Registry) (isX : Bool) (wsE origWhole : Expr) : MetaM IR.RegExpr := do
@@ -692,7 +692,7 @@ partial def translateReg (reg : Registry) (e : Expr) : MetaM IR.RegExpr := do
   match ← reg.lookupReg e with
   | some r => return r
   | none =>
-  -- R2.6: normalise a low-level `.proj` node (e.g. `whnfR`/`unfoldDefinition?`
+  -- Normalise a low-level `.proj` node (e.g. `whnfR`/`unfoldDefinition?`
   -- collapsing a chain of structure-field accessors on an `ofExtRegs`-style
   -- literal) back to its named-constant form *first* — `.proj` never matches
   -- any `getAppFnArgs`-keyed case below, so left unnormalised it always falls
@@ -703,7 +703,7 @@ partial def translateReg (reg : Registry) (e : Expr) : MetaM IR.RegExpr := do
   | (``Shor.ExtReg.withReserve, #[activeE, reserveE, _]) =>
       return .ext (← translateReg reg activeE) (← translateReg reg reserveE)
   | (``Shor.growExtRegTo, #[parentE, wE]) => do
-      -- `growExtRegTo e W := e.grow (W - e.width)`: named directly (D2) —
+      -- `growExtRegTo e W := e.grow (W - e.width)`: named directly —
       -- the grown register's active part is an append of two different
       -- sources, not a slice of anything nameable (`IR/Syntax.lean`'s
       -- `RegExpr.grow` doc comment).
@@ -730,7 +730,7 @@ partial def translateReg (reg : Registry) (e : Expr) : MetaM IR.RegExpr := do
               | some e' => translateReg reg e'
               | none => throwError "translateReg: unrecognised slice source {srcE}"
       -- A *bare* `Reg.take` (no outer `.drop`, i.e. "from the start" — e.g.
-      -- `ExtReg.newBits n := e.reserve.take n`, R2.6's `constArithmeticUnitQubit`).
+      -- `ExtReg.newBits n := e.reserve.take n`, `shor`'s `constArithmeticUnitQubit`).
       | (``Shor.ExtReg.active, #[parentE]) => do
           let hi ← translateW reg widthE
           return .activeSlice (← translateReg reg parentE) (.lit 0) hi
@@ -743,7 +743,7 @@ partial def translateReg (reg : Registry) (e : Expr) : MetaM IR.RegExpr := do
           | none => throwError "translateReg: unrecognised take source {dropE}"
   -- A *bare* `Reg.drop` (not wrapped in an outer `.take`, e.g. `ofExtRegs`'s
   -- `dataNoCarry := ExtReg.withReserve data.active (data.reserve.drop 1) _`,
-  -- R2.6): "drop `lo`, keep everything else" — the slice runs to the
+  -- `shor`): "drop `lo`, keep everything else" — the slice runs to the
   -- source's own full width, not a separately-given one.
   | (``Shor.Reg.drop, #[srcE, loE]) =>
       match srcE.getAppFnArgs with
@@ -814,8 +814,8 @@ partial def translateReg (reg : Registry) (e : Expr) : MetaM IR.RegExpr := do
           return .reserveSlice (← translateReg reg parentE) (.lit 0) cap
   -- `qftXWork ops r := r.reserve.take (qftWorkspaceNeed ops r.width).1`,
   -- `qftZWork ops r := (r.reserve.drop xNeed).take zNeed` (`Lowering/
-  -- Workspace.lean`): named directly (D2), like `growExtRegTo` — both the
-  -- *offset* and *size* are D4-opaque (`qftWorkspaceNeed`), so there is no
+  -- Workspace.lean`): named directly, like `growExtRegTo` — both the
+  -- *offset* and *size* are opaque (`qftWorkspaceNeed`), so there is no
   -- concrete slice bound to decompose into the `Reg.take`/`.drop` shapes
   -- above even in principle.
   | (``Shor.qftXWork, #[_, _, rE]) => do
@@ -847,8 +847,8 @@ end
 
 /-- A `dite`/`ite` guard: `Eq`/`LT.lt`/`LE.le` between two `WExpr`s (the only
 shapes a concrete-`k` extractor's `n = 0`/`isTopChunk`-style conditions
-produce — a matcher-generated guard would need its own case, not yet
-needed by any target this file handles). -/
+produce — a matcher-generated guard would need its own case, which no
+target this file handles needs). -/
 def translateProp (reg : Registry) (e : Expr) : MetaM IR.Prop' := do
   match e.getAppFnArgs with
   | (``Eq, #[_, a, b]) => return .eq (← translateW reg a) (← translateW reg b)
@@ -872,7 +872,7 @@ partial def translateQubitIndex (reg : Registry) (qE : Expr) : MetaM IR.RegExpr 
   | (``Shor.Reg.get, #[rE, iE]) =>
       return .qubit (← translateReg reg rE) (← translateW reg (← mkAppM ``Fin.val #[iE]))
   -- `cmpLtNWSignQubit scratch _ := scratch.active.get ⟨regSize scratch.active - 1, _⟩`
-  -- (R2.6): named directly (D2) rather than left for `unfoldDefinition?` to
+  -- (`shor`): named directly rather than left for `unfoldDefinition?` to
   -- expose — its own internal `Fin` proof is unrelated to (and doesn't use)
   -- the `h` parameter matched away below, but a *symbolic* `scratch` still
   -- leaves `Reg.get`'s underlying `List.get` stuck on a symbolic-length
@@ -906,7 +906,7 @@ partial def flattenGateSeq (e : Expr) : MetaM (List Expr) := do
   | (``Shor.Gate.id, #[]) => return []
   | _ => return [e]
 
-/-- `flattenGateSeq`'s `LowGate` counterpart — `phase_product` (R2.2) is
+/-- `flattenGateSeq`'s `LowGate` counterpart — `phase_product` is
 `LowGate`-valued (via `lowerGateRec`), not `Gate`-valued like `pp_body`, so
 its `;;`/`id` are a *different* pair of constructors sharing the same
 names. -/
@@ -919,7 +919,7 @@ partial def flattenLowGateSeq (e : Expr) : MetaM (List Expr) := do
 
 mutual
 
-/-- Named-construct translation (D2, the same escape hatch `naive_leaf`
+/-- Named-construct translation (the same escape hatch `naive_leaf`
 uses) of `planCompileAnnotatedOpsToSignedGateAux`'s body. Its `.phaseProduct`
 leaf case's dependent match has `st.xslot i`/`st.zslot i` in its *motive*, so
 no amount of narrowing a `whnf`/`unfoldDefinition?` attempt avoids forcing
@@ -993,7 +993,7 @@ partial def translateAnnotatedOpsGo (reg : Registry) (st phi : Expr) (ctrl : Opt
             let xw ← translateW reg xwE
             let zw ← translateW reg zwE
             -- `x'`/`z'` (`st.xslot i`/`st.zslot i`) are grown to exactly
-            -- `nextWidth`, and `canonicalSignedStep`'s whole purpose is
+            -- `nextWidth`, and `Policy.canonicalStep`'s whole purpose is
             -- guaranteeing each carries the child level's own reserve —
             -- i.e. `x'.capacity`/`z'.capacity` *are*
             -- `reserveNeed_x`/`reserveNeed_z` at the child's own width
@@ -1002,7 +1002,7 @@ partial def translateAnnotatedOpsGo (reg : Registry) (st phi : Expr) (ctrl : Opt
             -- directly as opaque `WExpr`s, not via `translateW`: unlike
             -- `width`, `ExtReg.capacity` was never registered against these
             -- slots, so a registry miss would fall through to reduction —
-            -- exactly the D4-opaque quantity this file never computes.
+            -- exactly the opaque quantity this file never computes.
             --
             -- …with one correction the sentence above misses. `fillSlack`
             -- gives the child at index `i` exactly `requiredChildReserve i`
@@ -1078,7 +1078,7 @@ def QFTWorkSource.ofPolicy (polE : Expr) : QFTWorkSource :=
 mutual
 
 /-- Translate one (already- or not-yet-reduced) `Gate`-valued `Expr` into a
-`Node`. Op names are exactly the `Gate` constructor names (D2). Only
+`Node`. Op names are exactly the `Gate` constructor names. Only
 `whnfR`s at each step — see `translateW`'s doc comment: a plain `whnf` would
 blow straight past `dite`'s own head into a raw `Decidable.rec` case split
 (confirmed empirically, the same failure mode `Min.min` hit), destroying the
@@ -1086,12 +1086,11 @@ one thing this function needs to recognise. The fallback for a stuck,
 *ordinary* (ergo non-reducible, ergo `whnfR`-invisible) definition head like
 `compileOpsToSignedGate`/`allocChunkGate`/`compileSignedAllocationsAux` is
 one `unfoldDefinition?` delta step, then retry — exactly `translateW`'s
-discipline. Only the constructs `pp_body` (`compileOpsToSignedGate`,
-uncontrolled) actually produces are handled; an unrecognised head is a hard
-error naming the constant, never a silent drop (D2), including constructs a
-*future* target will need (`Gate.CSignedPhaseProd`, `WellFounded.fix`'s
-`.eq_def` rewrite, `Nat.casesOn`, …) — those are R2.2+'s job, not stubbed
-here. -/
+discipline. Only the constructs the targets in `Targets.lean` and
+`PolicyTargets.lean` actually produce are handled (`Gate` and `LowGate`
+constructors, `CSignedPhaseProd` among them, the symbolic-length folds by
+name, `dite`, and the nested `lowerGateRec` self-call); an unrecognised
+head is a hard error naming the constant, never a silent drop. -/
 partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
   let e ← whnfR e
   match e.getAppFnArgs with
@@ -1143,9 +1142,9 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
       return .op "CSubConst" [← translateReg reg data, ← translateReg reg scratch,
         ← translateQubitIndex reg flag] [← translateW reg nE] none []
   -- `H_reg r := (regQubits r).foldl (fun acc q => Gate.H q ;; acc) Gate.id`
-  -- (R2.6): recursion over a symbolic-length list (`regQubits r = r.qubits`,
-  -- `r`'s width symbolic) — the same shape `naive_leaf` (R2.3) hit, same
-  -- resolution (D2: name the whole function, state its known loop shape
+  -- (`shor_gate`): recursion over a symbolic-length list (`regQubits r = r.qubits`,
+  -- `r`'s width symbolic) — the same shape `naive_leaf` has, same
+  -- resolution (name the whole function, state its known loop shape
   -- directly). The `foldl` builds gates in *descending* physical order
   -- (`H (r[w-1]) ;; H (r[w-2]) ;; … ;; H (r[0]) ;; id`, since each new `H q`
   -- is prepended in front of the accumulator) — `w - 1 - i` for an
@@ -1155,7 +1154,7 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
       let rReg ← translateReg reg rE
       return .loop "i" (.lit 0) rw
         (.op "H" [.qubit rReg (.sub (.sub rw (.lit 1)) (.var "i"))] [] none [])
-  -- `initY1 y := match y.qubits with | [] => id | q :: _ => X q` (R2.6):
+  -- `initY1 y := match y.qubits with | [] => id | q :: _ => X q` (`shor_gate`):
   -- named directly rather than reduced — `y.qubits`'s length is symbolic,
   -- so the match can't fire on its own, but "is it empty" is exactly
   -- `regSize y = 0`, and the `X` target is `y`'s own 0th qubit
@@ -1166,12 +1165,12 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
       return .cond (.eq yw (.lit 0)) (.op "id" [] [] none [])
         (.op "X" [.qubit yReg (.lit 0)] [] none [])
   -- `modExpApproxValid a N x data work scratch flag hworkspace hstep4 :=
-  -- modExpApproxStepsValid ... 0 x.qubits` (R2.6): recursion over a
+  -- modExpApproxStepsValid ... 0 x.qubits` (`shor_gate`): recursion over a
   -- symbolic-length list, same shape as `H_reg`/`initY1` above. Each step
   -- consumes one qubit of `x` (in ascending order, `e = 0, 1, …`) and runs
   -- `CmodMulInPlaceCore` with the loop-indexed multiplier
   -- `c := (a ^ (2 ^ e)) % N`. Rather than reduce that recursion, this names
-  -- the whole function (D2) and re-runs `translateNode`/`translateW` on one
+  -- the whole function and re-runs `translateNode`/`translateW` on one
   -- generic step body — with `e` and `c` as fresh free variables registered
   -- directly against `.var "e"`/an `.opaque "modpow"` term — so the *loop
   -- body*'s own translation (five real algorithm steps: `CPhaseProdUsing`,
@@ -1223,13 +1222,13 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
       return .op "CSignedPhaseProd"
         [← translateQubitIndex reg ctrl, ← translateReg reg x, ← translateReg reg z]
         [] (some (← translateA reg phi)) []
-  -- `LowGate`'s counterparts (R2.2, `phase_product` — `Gate`/`LowGate` share
-  -- op-name vocabulary by D2 but are different inductives).
+  -- `LowGate`'s counterparts (`phase_product` — `Gate`/`LowGate` share
+  -- op-name vocabulary but are different inductives).
   | (``Shor.LowGate.seq, #[a, b]) =>
       return .seq
         (← (← flattenLowGateSeq (mkApp2 (mkConst ``Shor.LowGate.seq) a b)).mapM (translateNode reg))
   | (``Shor.LowGate.id, #[]) => return .op "id" [] [] none []
-  -- R2.6: `lowerCmpGeConst`/`lowerCSubConst` are the first target whose own
+  -- `shor`: `lowerCmpGeConst`/`lowerCSubConst` are the one target whose own
   -- adjoints stay unresolved past `flattenLowGateSeq` (`†diff ;; †prep`, both
   -- multi-gate) — `Shor.Gate.adj`'s counterpart.
   | (``Shor.LowGate.adj, #[a]) => return .adj (← translateNode reg a)
@@ -1243,9 +1242,9 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
       | (``Shor.Reg.lowQubit, #[rE, _]) =>
           return .op "H" [.qubit (← translateReg reg rE) (.lit 0)] [] none []
       | _ => throwError "translateNode: unrecognised H qubit expr {qE}"
-  -- `LowGate.X`/`.CNOT`/`.Toffoli` (R2.6: `lowerCmpGeConst`/`lowerCSubConst`'s
+  -- `LowGate.X`/`.CNOT`/`.Toffoli` (`shor`: `lowerCmpGeConst`/`lowerCSubConst`'s
   -- `lowerPrepareNegConst`/sign-copy steps produce these directly, unlike
-  -- every earlier target) — same `translateQubitIndex` treatment as their
+  -- every other target) — same `translateQubitIndex` treatment as their
   -- `Gate` counterparts, general enough for any qubit-shaped argument
   -- (`constArithmeticUnitQubit`, `cmpLtNWSignQubit`, a registered free `flag`).
   | (``Shor.LowGate.X, #[qE]) => return .op "X" [← translateQubitIndex reg qE] [] none []
@@ -1284,13 +1283,13 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
       return .op "signDealloc" [← translateReg reg r] [← translateW reg n] none []
   -- The base case of `standardSignedPhaseLoweringPlan`'s recursion
   -- (`lowerGateRec`'s `.signedBase phi x z _ => LowGate.Naive_SignedPhaseProd
-  -- phi x z`): a call to the `naive_leaf` template (R2.3), never inlined.
+  -- phi x z`): a call to the `naive_leaf` template, never inlined.
   | (``Shor.LowGate.Naive_SignedPhaseProd, #[phi, x, z]) => do
       let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
       let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
       return .call "naive_leaf" [xw, zw] [← translateA reg phi]
         [← translateReg reg x, ← translateReg reg z]
-  -- `cSignedBase`'s controlled counterpart: a call to `naive_cleaf` (R2.4).
+  -- `cSignedBase`'s controlled counterpart: a call to `naive_cleaf`.
   -- `ctrl : ℕ` here is a bare qubit index (not sliced from any register),
   -- but per `IR/Instantiate.lean`'s `buildLowGate` convention it is still a
   -- register parameter, not a width one — `translateReg` finds it via the
@@ -1304,7 +1303,7 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
       return .call "naive_cleaf" [xw, zw] [← translateA reg phi]
         [← translateReg reg ctrl, ← translateReg reg x, ← translateReg reg z]
   -- The step case's self-call: `lowerGateRec (standardSignedPhaseLoweringPlan
-  -- k hk theta x' z' ops hchild)`, D3's recursive `Node.call`. This is *only*
+  -- k hk theta x' z' ops hchild)`, the recursive `Node.call`. This is *only*
   -- ever a nested occurrence — `Targets.lean`'s `extractPhaseProductBody`
   -- unfolds the entry occurrence via `.eq_1` itself, once, before ever
   -- calling `translateNode`; anything found afterwards that still looks
@@ -1312,7 +1311,7 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
   -- something to unfold further. `translatePlan` (below) handles every
   -- other `PhaseLoweringPlan` shape.
   | (``Shor.lowerGateRec, #[_, _, _, plan]) => translatePlan reg plan
-  -- R2.6's `shor` target: `referenceShorCircuit`'s whole body is
+  -- The `shor` target: `referenceShorCircuit`'s whole body is
   -- `lowerGate k hk ops (orderFindingApprox …) hLowerWorkspace` — routes to
   -- `translateLowerGate`'s own dedicated structural walk (`lowerGate` needs
   -- `ops`, which nothing else here threads through).
@@ -1323,7 +1322,7 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
   | (``Shor.Policy.lowerGate, #[polE, gE, _]) =>
       translateLowerGate reg (QFTWorkSource.ofPolicy polE) gE
   -- `lowerCopyConstFromUnit N dst ctrl := lowerCopyBitPowers dst ctrl
-  -- N.bitIndices` (R2.6): recursion over a symbolic-length list again (D2),
+  -- N.bitIndices` (`shor`): recursion over a symbolic-length list again,
   -- reformulated as "loop over every bit position of `dst`, guarded on
   -- whether `N` has that bit set" — the two coincide by `Nat.bitIndices`'s
   -- own definition (its values are exactly `{i | N.testBit i}`, sorted
@@ -1356,7 +1355,7 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
           if e' == e then throwError "translateNode: unrecognised construct {e}"
           else translateNode reg e'
 
-/-- Translate a `PhaseLoweringPlan` value directly (D2: named-construct
+/-- Translate a `PhaseLoweringPlan` value directly (named-construct
 translation, mirroring `lowerGateRec`'s own match table by hand). This is
 needed because `lowerGateRec` isn't `@[reducible]`, so `whnfR` never exposes
 its match, while a blind full `whnf` overshoots: it doesn't stop at
@@ -1510,8 +1509,8 @@ partial def translatePlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
       -- formulas agree): the cast only repackages the *type*, never the
       -- underlying value — `@Eq.rec {α}{a}{motive}(minor)( {b}(h:a=b) :
       -- motive b h`, so the value being transported is always the minor
-      -- premise, the *fourth* argument, regardless of `h`'s shape (D7:
-      -- trust is the translation table, not any particular proof term).
+      -- premise, the *fourth* argument, regardless of `h`'s shape (what
+      -- is trusted is the translation table, not any particular proof term).
       match plan.getAppArgs with
       | #[_, _, _, minor, _, _] => translatePlan reg minor
       | _ => throwError "translatePlan: unexpected Eq.rec arity {plan}"
@@ -1546,7 +1545,7 @@ partial def translatePlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
             -- `LayoutState`/`RecursivePhaseWorkspace`/`ReserveBudget`
             -- exactly like the `Min`/`Max`/`nextWidth` cases this file
             -- already avoids (confirmed empirically, repeatedly). The named-
-            -- construct escape hatch (D2, `naive_leaf`'s technique) is the
+            -- construct escape hatch (`naive_leaf`'s technique) is the
             -- only way through: walk the *already syntactically concrete*
             -- `ops` list embedded in `annotatedOps`'s own argument list by
             -- hand — see `translateAnnotatedOps`.
@@ -1575,12 +1574,12 @@ translation table hasn't accounted for yet — every genuine cascade risk
 this file has hit (`planCompileAnnotatedOpsToSignedGateAux`'s dependent
 `.phaseProduct` match, chief among them) now has its own named-construct
 case above instead of a generic reduction attempt, so a blind `whnf` here
-would only be guessing. A hard, immediate error naming the constant (D2),
+would only be guessing. A hard, immediate error naming the constant,
 never a silent hang. -/
 partial def translatePlanWhnfFallback (_reg : Registry) (plan : Expr) : MetaM IR.Node :=
   throwError "translatePlan: unsupported PhaseLoweringPlan constructor {plan}"
 
-/-- `QFTLoweringPlan`'s named-construct translation (R2.5), mirroring
+/-- `QFTLoweringPlan`'s named-construct translation, mirroring
 `lowerQFTPlan`'s own 3-arm match by hand exactly as `translatePlan` mirrors
 `lowerGateRec`'s — a *different* plan type (indexed by `Reg`, not `ExtReg`
 `x`/`z`), so its own function, not a `PhaseLoweringPlan` case. The `.split`
@@ -1623,8 +1622,8 @@ partial def translateQFTPlan (reg : Registry) (plan : Expr) : MetaM IR.Node := d
       | some plan' => translateQFTPlan reg plan'
       | none => throwError "translateQFTPlan: unsupported QFTLoweringPlan constructor {plan}"
 
-/-- R2.6's `shor` target: `Shor.lowerGate`'s own structural walk over a
-`Gate`, mirroring its match table by hand (same D2 discipline as
+/-- The `shor` target: `Shor.lowerGate`'s own structural walk over a
+`Gate`, mirroring its match table by hand (same named-construct discipline as
 `translatePlan`/`translateQFTPlan` above — `lowerGate` isn't `@[reducible]`,
 so `whnfR` never exposes it). `opsE` is `lowerGate`'s own `ops` argument,
 needed only to rebuild `Gate.QFT`'s `qftXWork`/`qftZWork` calls; the

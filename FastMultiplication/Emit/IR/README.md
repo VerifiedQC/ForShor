@@ -125,7 +125,7 @@ The two differ only in the leaf dispatcher and the sequencing fold.
 | `call template wArgs aArgs rArgs` | evaluate the arguments **in the caller's env**, then run the callee's body in a **fresh** env binding only the callee's own parameters, with `opaqueW`/`coeff` carried over; costs one unit of fuel |
 | `loop var lo hi body` | evaluate `body` once per `i` in `lo, lo+1, …, hi-1` with `var` bound to `i`, then right-fold as `seq` does; `hi ≤ lo` is the empty sequence |
 
-Three things a consumer gets wrong by guessing:
+Four things a consumer gets wrong by guessing:
 
 - **`Env.leafCall`** (default: none) lets the `Gate`-level evaluator treat a
   named call as a high-level leaf instead of unrolling it, given the
@@ -203,7 +203,7 @@ tabulated rather than defined: a consumer cannot compute them without
 reimplementing the compiler's width analysis. They are published in the
 bundle's `width`, `split_width` and `qft_plan` sections, and
 `Shor.tableOpaqueW` (`Symbolic/Width.lean`) is the oracle built from those
-rows alone — `Emit/Tests.lean`'s `T4_1_TableOracle` section instantiates
+rows alone — `Emit/Tests.lean`'s `TableOracle` section instantiates
 `qft` at odd widths through it, which is the check that the published tables
 really are sufficient.
 
@@ -226,8 +226,8 @@ alone.
 `phase_product` (the entry), `cphase_product`, `naive_leaf`, `naive_cleaf`,
 `qft`, `shor_gate`, `shor`.
 
-`pp_body` is **not** shipped, deliberately: it was R2.1's spike target and
-its layout is built from fresh per-child reserve *variables* that nothing in
+`pp_body` is **not** shipped, deliberately: its layout is built from fresh
+per-child reserve *variables* that nothing in
 the document says how to bind. It remains extractable for the test suite
 (`extract_ir_doc_with_pp_body`).
 
@@ -245,9 +245,12 @@ A **policy** submission (`Submission/PolicyCheck.lean`, built by
   every width is **proved**
   (`IR.dispatcherCallAt_dispatcherTemplate`), not sampled.
 - `phase_product_<i>` and `cphase_product_<i>` are the **band bodies**, one
-  per band, each extracted from that band's own table exactly as the
-  single-table `phase_product` is. A body's recursive child is a `call` to
-  the dispatcher, never to itself, so the recursion is indirect: dispatcher →
+  per band. The first band with a given table has its body extracted from
+  that table exactly as the single-table `phase_product` is; a later band
+  with the same table gets that body renamed, with every `coeff` index
+  shifted by the difference of the two bands' offsets (`IR.shiftCoeffN`),
+  and its provenance says so. A body's recursive child is a `call` to the
+  dispatcher, never to itself, so the recursion is indirect: dispatcher →
   body → dispatcher.
 
 `qft`, `shor`, `shor_gate` and the two leaves are unchanged, and reach the

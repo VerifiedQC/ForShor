@@ -9,7 +9,8 @@ import FastMultiplication.ShorVerification.Implementation.Reference.StandardLowe
 `IR/Syntax.lean`'s deriving note deferred `ToExpr` to this file: `WExpr`
 (`opaque`'s `List WExpr`) and `Node` (`seq`'s `List Node`) are the two types
 with a self-referential `List` field, and Lean's `deriving ToExpr` handler
-rejects that shape exactly like `DecidableEq`/`LawfulBEq` did in R0. The fix
+rejects that shape exactly as it rejects `DecidableEq`/`LawfulBEq` (see
+`IR/Syntax.lean`'s deriving note). The fix
 is the same shape as core's own `ToExpr (List α)` instance
 (`List.toExprAux`): a *manual*, plain recursive function pairing the type's
 own `toExpr` with a `List`-of-itself `toExpr`, so the recursion is ordinary
@@ -87,17 +88,16 @@ template's base case is a `Node.call` to its `naive_*leaf` counterpart, so a
 too), and `shor_gate`/`shor`. `entry` is `phase_product`.
 
 `pp_body` is *not* among them, and `includePPBody` is how `Tests.lean`'s
-R2.1 section still gets it. It was R2.1's spike target — one level of
-`compileOpsToSignedGate` with the layout left symbolic — and its `layout`
-is built from `k` fresh per-child reserve *variables* (`x0R`, `z1R`, …,
-`Targets.lean`'s Finding 1). Those are free `RegExpr.var`s with nothing in
-the bundle that says what to bind them to: R2.1 binds them by calling
-`ReserveBudget.childReserve` itself, which is exactly the thing a consumer
-holding only the bundle cannot do. Shipping it invited a reader to
-instantiate a template that cannot be instantiated from the document, so it
-stays a test artifact (PLAN.md T4.4).
+`pp_body` section gets it. It is one level of `compileOpsToSignedGate` with
+the layout left symbolic, and its `layout` is built from `k` fresh
+per-child reserve *variables* (`x0R`, `z1R`, …). Those are free
+`RegExpr.var`s with nothing in the bundle that says what to bind them to:
+the test binds them by calling `ReserveBudget.childReserve` itself, which
+is exactly the thing a consumer holding only the bundle cannot do. Shipping
+it would invite a reader to instantiate a template that cannot be
+instantiated from the document, so it stays a test artifact.
 
-Takes any `Shor.ShorLoweringSetup` (D5). `setup` is a table the lowering
+Takes any `Shor.ShorLoweringSetup`. `setup` is a table the lowering
 theorems cover *by construction* — its four side conditions are exactly
 those theorems' hypotheses — so there is no kind of table to special-case or
 reject here: an invalid one cannot be packaged as a `ShorLoweringSetup` in
@@ -120,6 +120,51 @@ def buildDoc (setup : Shor.ShorLoweringSetup) (includePPBody : Bool := false) : 
         ("qftXWork", 1), ("qftZWork", 1), ("log2", 1), ("mod", 2), ("pow", 2),
         ("step5Const", 2), ("modpow", 3)]
       entry := pp2.name }
+
+/-! ### Reusing a band body for a repeated table
+
+A best-known policy at large `n` reuses a handful of tables across many bands
+(34 bands over 7 tables at `n = 50000`), and the body extraction is by far the
+most expensive step of the build (minutes per band, all elaboration). A band
+body depends on its table, its template name and its `coeff` offset only: the
+policy enters through opaque oracle names (`Registry`), never through a
+threshold. So a band whose table already occurred at an earlier band reuses
+that body, with every `coeff` index shifted by the difference of the two
+offsets and the template renamed. The evaluation tier checks every band body
+(one level deep, on the probe submission), reused or not. -/
+
+/-- The same table, compared as quoted terms (`k`, points, program). -/
+def sameTable (a b : Shor.ShorLoweringSetup) : MetaM Bool := do
+  if a.k != b.k then return false
+  let kE := Lean.toExpr a.k
+  let (pa, _) ← setupPtsExprs a kE
+  let (pb, _) ← setupPtsExprs b kE
+  return pa == pb && Lean.toExpr a.ops == Lean.toExpr b.ops
+
+/-- Band bodies of one flavour, extracting each distinct table once. -/
+def policyBandBodies (controlled : Bool) (polE : Expr)
+    (indexed : List ((ℕ × Shor.ShorLoweringSetup) × ℕ) × List ℕ) : MetaM (List IR.Template) := do
+  let (bands, offsets) := indexed
+  let mut done : Array (Shor.ShorLoweringSetup × ℕ × ℕ × IR.Template) := #[]   -- setup, band, offset, body
+  let mut out : Array IR.Template := #[]
+  for (((_, setup), i), off) in bands.zip offsets do
+    let mut reused : Option IR.Template := none
+    for (s', j, off', t') in done do
+      if reused.isNone && off' ≤ off then
+        if (← sameTable setup s') then
+          reused := some { t' with
+            name := IR.bandBodyName controlled i
+            body := IR.shiftCoeffN (off - off') t'.body
+            provenance := s!"{t'.provenance}; reused for band {i} (same table as band {j}), coeff indices +{off - off'}" }
+    let t ← match reused with
+      | some t => pure t
+      | none =>
+          if controlled then extractPolicyCPhaseProductBody polE setup i off
+          else extractPolicyPhaseProductBody polE setup i off
+    if reused.isNone then
+      done := done.push (setup, i, off, t)
+    out := out.push t
+  return out.toList
 
 /-- The `Doc` for a **policy**: one dispatcher per phase-product flavour, one
 body template per band, and the shared `qft`/`shor_gate`/`shor`/leaf
@@ -147,9 +192,9 @@ def buildPolicyDoc (s : Shor.ShorPolicySubmission) (polE : Expr) : MetaM IR.Doc 
   -- the bands' concatenated point lists; see `Registry.coeffOffset`.
   let offsets : List ℕ :=
     (s.bands.foldl (fun (acc, off) b => (acc ++ [off], off + Shor.q b.2.k)) ([], 0)).1
-  let indexed := s.bands.zipIdx.zip offsets
-  let bodies ← indexed.mapM fun ((b, i), off) => extractPolicyPhaseProductBody polE b.2 i off
-  let cbodies ← indexed.mapM fun ((b, i), off) => extractPolicyCPhaseProductBody polE b.2 i off
+  let bandsIdx := s.bands.zipIdx
+  let bodies ← policyBandBodies false polE (bandsIdx, offsets)
+  let cbodies ← policyBandBodies true polE (bandsIdx, offsets)
   let qft ← extractPolicyQFTBody polE
   let shorGate ← extractShorGateBody
   let shor ← extractPolicyShorBody polE
@@ -191,12 +236,11 @@ open Lean Elab Command in
 elab "extract_policy_ir_doc " id:ident policyIdent:ident : command =>
   unsafe elabExtractPolicyIrDocImpl id policyIdent
 
--- `extract_ir_doc <id> <setupIdent>` (R5):
+-- `extract_ir_doc <id> <setupIdent>`:
 -- `setupIdent` names a `Shor.ShorLoweringSetup` declaration in scope (the
--- *value*, not a numeral — this replaces the old `<id> <k>`/`<id> (<k>,
--- generate)` numeric forms, both removed: with the table itself carrying its
--- own points and coverage proofs, there is nothing left for a table-source
--- argument to select between). Resolved with `resolveGlobalConstNoOverload`, then
+-- *value*, not a numeral: with the table itself carrying its own points and
+-- coverage proofs, there is nothing for a table-source argument to select
+-- between). Resolved with `resolveGlobalConstNoOverload`, then
 -- *evaluated* — not reflected over — with `Lean.Meta.evalExpr`: unlike `k`,
 -- which is quoted into an `Expr` `buildDoc`'s callees reflect over,
 -- `setupIdent`'s value only needs to be read out to a plain `ShorLoweringSetup`
@@ -211,10 +255,8 @@ elab "extract_policy_ir_doc " id:ident policyIdent:ident : command =>
 -- `PrettyPrinter.delab`-ing it into surface syntax and re-elaborating that via
 -- `elabCommand`: `phase_product`'s `Doc` is large enough (thousands of nested
 -- `WExpr`/`Node` constructors) that delab starts eliding subterms as
--- unreconstructable placeholders, which then fail to re-elaborate (`buildDoc`
--- grew from `pp_body` alone once R2.2 added `phase_product` + `naive_leaf` to
--- it — confirmed empirically: this is exactly where the delab round-trip
--- stopped scaling). Going straight from the `Expr` `buildDoc` already produced
+-- unreconstructable placeholders, which then fail to re-elaborate (the
+-- `phase_product` template is already past that size). Going straight from the `Expr` `buildDoc` already produced
 -- to a declaration sidesteps the surface syntax step entirely.
 --
 -- `elabExtractIrDocImpl` is `unsafe` (it calls `Lean.Meta.evalExpr`); the
@@ -245,12 +287,12 @@ elab "extract_ir_doc " id:ident setupIdent:ident : command =>
   unsafe elabExtractIrDocImpl id setupIdent false
 
 -- `extract_ir_doc_with_pp_body <id> <setupIdent>`: the same, plus `pp_body`.
--- Only `Tests.lean`'s R2.1 section wants it — see `buildDoc`.
+-- Only `Tests.lean`'s `pp_body` section wants it — see `buildDoc`.
 open Lean Elab Command in
 elab "extract_ir_doc_with_pp_body " id:ident setupIdent:ident : command =>
   unsafe elabExtractIrDocImpl id setupIdent true
 
-/-- Run-time entry point (R3): `lake exe forshor_emit`'s own
+/-- Run-time entry point: `lake exe forshor_emit`'s own
 process has `FastMultiplication.Emit.Reflect.Targets` compiled in already
 (it's an ordinary `import`), but not as a first-class `Environment` value
 `MetaM` can reflect over — that's exactly what `importModules` builds.

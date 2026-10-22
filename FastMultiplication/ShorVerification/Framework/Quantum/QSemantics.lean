@@ -20,7 +20,7 @@ namespace Shor
 variable {Basis : Type u} [RegEncoding Basis]
 
 /-! =========================================================
-    Section 6: Abstract quantum semantics
+    Abstract quantum semantics
 ========================================================= -/
 
 /--

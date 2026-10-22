@@ -1,22 +1,21 @@
 # `Symbolic/`
 
-The D4-opaque value tables (R3): `CoeffPoly.lean`,
+The opaque value tables: `CoeffPoly.lean`,
 `Width.lean`, `QftPlan.lean`, `ShorPlan.lean` — the values of the few
 functions the extracted templates (`Reflect/`, `IR/`) call by name but
 never evaluate symbolically — plus `Bundle.lean`, which assembles them (and
 the extracted `template`, via `Reflect/Verify.lean`) into the `forshor.
 emit/v1` document and exposes the CLI-facing builders (`buildBundle`,
-`buildSection`, `buildTemplateDoc`, `buildPhases`).
-
-`Symbolic/Template.lean` (the old hand-transcribed E7 template) and
-`Symbolic/Recursion.lean` (the old E6 recursion-cost ladder) were deleted in
-R3/R4: the extracted `Doc` (`Reflect/`, `IR/`) replaced the former, and a
-consumer deriving cost from the `width` table plus the repository's own
-`shorGateResourceModel` replaced the latter — see the top-level `README.md`.
+`buildSection`, `buildTemplateDoc`, `buildPhases`). `Dispatcher.lean` is
+the one template in a policy document that is built rather than extracted:
+the width dispatcher, with the theorem that it routes as the policy does.
 
 Import order: `CoeffPoly.lean`, `Width.lean`, `QftPlan.lean`, `ShorPlan.lean`
 are mutually independent within this folder → `Bundle.lean`, which imports
-all four plus `Json/Common.lean`, `IR/Json.lean`, and `Reflect/Verify.lean`.
+all four plus `Json/Common.lean`, `IR/Json.lean`, `Table/Source.lean` and
+`Reflect/Verify.lean`. `Dispatcher.lean` imports only `IR/Syntax.lean` and
+`Framework/Policy.lean`; it is used by `Reflect/PolicyTargets.lean`,
+`Reflect/PolicyVerify.lean` and `Reflect/Driver.lean`, not by `Bundle.lean`.
 
 ## `CoeffPoly.lean` — interpolation-weight polynomials
 
@@ -80,7 +79,7 @@ compiler's own definitions, no recomputation — over `w = 1..wMax`.
   `splitM r = regSize r / 2` and hands `phase_product` an unequal pair at
   every odd width. Without these rows a consumer holding only the bundle
   cannot instantiate `qft` at an odd width at all — `Emit/Tests.lean`'s
-  `T4_1_TableOracle` section is the check that, with them, it can.
+  `TableOracle` section is the check that, with them, it can.
 - `tableOpaqueW (wrows) (srows) (qrows) : String → List ℕ → Option ℕ` — the
   `IR.Env.opaqueW` oracle built from the published rows **by lookup**, with
   no call into `nextWidth`/`reserveNeed`/`qftWorkspaceNeed`. This is the
@@ -90,17 +89,16 @@ compiler's own definitions, no recomputation — over `w = 1..wMax`.
   absent — they are `shor`'s, modulus-dependent rather than table-dependent,
   and a consumer implements them directly.
 
-(The old `widthTableByM`/`limbWidth` column and the `affineTail` advisory
-helper were dropped in R3/R4 — `nextWidth`/`reserveNeed` are the only D4
-values the extracted template actually calls by name.)
+`nextWidth`/`reserveNeed` are the only opaque values the extracted
+template calls by name from this table.
 
 ## `QftPlan.lean` — QFT workspace table
 
 - `qftPlanTable {k} (ops) (wMax) : List (ℕ × ℕ × ℕ)` — for `w = 1..wMax`:
-  `(w, xWorkspaceNeed, zWorkspaceNeed)`. `qftWorkspaceNeed` is the only D4
-  value the extracted `qft` template calls by name — `left`/`right` split
-  widths, `qftPhi`, and the radix-reverse cost are printed directly by the
-  template itself now (R3/R4 dropped the old split-width columns).
+  `(w, xWorkspaceNeed, zWorkspaceNeed)`. `qftWorkspaceNeed` is the only
+  opaque value the extracted `qft` template calls by name — `left`/`right`
+  split widths, `qftPhi`, and the radix-reverse cost are printed directly by
+  the template itself.
 
 ## `ShorPlan.lean` — Shor register plan
 
@@ -111,21 +109,56 @@ synthetic instances `N = 2^n − 1, a = 2` (`N` is always odd, so `gcd a N =
 - `ShorPlanPerM` — `{m, workWidth, scratchWidth, exponentReserve,
   dataReserve, auxiliaryReserve, scratchReserve}`.
 - `ShorPlanRow` — `{n, xWidth, dataWidth, perM : List ShorPlanPerM}`.
-- `shorPlanRow {k} (ops) (n) (mMax) : Option ShorPlanRow` — one row, `none`
+- `shorPlanRow (pol : ShorLoweringPolicy) (n) (mMax) : Option ShorPlanRow` — one row, `none`
   if the synthetic instance is invalid (defensive; can't happen for `n ≥
   2`). Uses `referenceXWidth`, `referenceDataWidth`, `referenceWorkWidth`
   (through `algorithm1ExtraBitsNat m`), `referenceScratchWidth`, and the
   four reserve sizes from `referenceWorkspaceNeed`.
-- `shorPlanTable {k} (ops) (nMin nMax mMax) : List ShorPlanRow`.
-
-(The old per-column `affineTail` advisory field was dropped in R3/R4 —
-widths and reserves only.)
+- `shorPlanTable (pol) (nMin nMax mMax) : List ShorPlanRow` — widths and
+  reserves only.
 
 The constant-arithmetic primitives `lowerCmpGeConst`/`lowerCSubConst` (steps
 U3, U4 of `CmodMulInPlaceCore`) are **not** tabulated here — they're linear
 in register width with no recursion and no table dependence, so their
 per-width counts are meant to be read off concrete `shor` documents and
 fitted outside Lean (`Bundle.lean`'s `provenanceJson` says so).
+
+## `Dispatcher.lean` — the policy width dispatcher
+
+Every other template in a `Doc` is extracted from a Lean term. A policy's
+choice of table at a width is `ShorLoweringPolicy.choose`, a `List.find?`
+over the bands — data, not a circuit — so its template is built directly: a
+chain of `Node.cond` guards `t_i ≤ max xw zw`, in band order, each calling
+`phase_product_<i>` and falling through to `naive_leaf`. No `MetaM`, no
+`Expr`, no trust in the translation table.
+
+- `dispatcherName`, `dispatcherLeafName`, `bandBodyName (controlled) (i)` —
+  the template names: `phase_product`/`cphase_product` for the dispatcher
+  itself, `naive_leaf`/`naive_cleaf` for the fallthrough,
+  `phase_product_<i>`/`cphase_product_<i>` for band `i`'s body.
+- `dispatcherChain (controlled) (i) (bands) : Node` — the guard chain,
+  structurally recursive on the bands so the proof below is a list
+  induction.
+- `dispatcherTemplate (P) (controlled) : Template` — the dispatcher for `P`,
+  with exactly the parameter lists `extractPhaseProductBody` gives the
+  single-table `phase_product`, so `qft`, `shor` and the band bodies call it
+  by that name with no edit.
+- `dispatcherCallAt (node) (xw zw) : Option String` — walks an emitted chain
+  at concrete widths and names the template it lands on; an oracle for
+  `dispatcherChain`'s own node shapes, not a general evaluator.
+- `chooseIdx (P) (n)` and `chooseIdx_map` — `choose` with the chosen band's
+  index attached, and the proof that it picks the table `choose` picks.
+- **`dispatcherCallAt_dispatcherTemplate`** — the one proved result in
+  `Emit/`: the dispatcher calls band `j`'s body exactly where `chooseIdx`
+  picks band `j`, and the leaf exactly where the policy offers no table.
+  With `chooseIdx_map`, the emitted guards and `ShorLoweringPolicy.choose`
+  cannot drift apart; what the evaluation tier samples is only whether each
+  band's body matches the circuit.
+- `shiftCoeffA (d)`, `shiftCoeffN (d)` — shift every `coeff` point index in
+  an angle expression / template body by `d`. `Reflect/Driver.lean`'s
+  `policyBandBodies` uses them to reuse one band's body for a later band
+  with the same table; `Reflect/PolicyVerify.lean`'s `bandCopyOK` checks a
+  reused body is exactly that shifted copy.
 
 ## `Bundle.lean` — assembly
 
@@ -136,14 +169,16 @@ CLI-facing per-section, `template`, and `phases` builders.
 - `scheduleJson`, `coeffPolyJson`, `widthJson`, `splitWidthJson`,
   `qftPlanJson`, `shorPlanJson` — one JSON builder per pure section, each taking a `TableInstance`/
   `Prog k` plus whatever options that section needs (`mMax`, `wMax`,
-  `checkCramer`). `scheduleJson` keeps only `ops`/`points` (the old op
-  census/per-width `LowGate` resource counts were dropped along with
-  `Table/Census.lean` — they fall out of the extracted `Doc` plus the
-  repository's own `shorGateResourceModel`).
+  `checkCramer`). `scheduleJson` holds `ops`/`points` only; per-op resource
+  counts fall out of the extracted `Doc` plus the repository's own
+  `shorGateResourceModel`.
 - `provenanceJson : Json` — per-section text naming the Lean
   declaration each section evaluates, and whether it's a theorem (`table`)
   or "evaluated, not proved" (`coeff_poly`, `width`, `qft_plan`,
-  `shor_plan`); `templateProvenance` is D7's trust statement verbatim.
+  `shor_plan`); `templateProvenance` is the `template` section's trust
+  statement verbatim (extracted by reflection; trusted: translation table
+  and Lean normalisation; checked: instantiate = real term at the listed
+  widths; not a theorem).
 - `buildBundleCore (k) (hk) (mMax) (wMax) (checkCramer) : Except
   String Json` — the pure sections only (no `template` — that needs `IO`,
   see below). `native_decide`-testable; `Tests.lean` uses this, not
@@ -151,9 +186,9 @@ CLI-facing per-section, `template`, and `phases` builders.
 - `buildTemplateDoc (k) (hk) (wMax) : IO (Except String Json)` — extracts
   the `Doc` (`Reflect.runExtractAndVerify`, which also runs
   `Reflect.Verify`'s instance-check canary), refusing if `wMax` doesn't
-  cover the canary's own checked width (`templateCheckWidth k hk`, now the
-  maximum of the table's own derived width ladders rather than a fixed
-  `4 * k`). Backs `forshor_emit template <k>`.
+  cover the canary's own checked width (`templateCheckWidth k hk`, the
+  maximum of the table's own derived width ladders). Backs
+  `forshor_emit template <k>`.
 - `buildBundle (k) (hk) (mMax) (wMax) (checkCramer) (noTemplate) : IO
   (Except String Json)` — `buildBundleCore` plus `buildTemplateDoc`'s
   result under `"template"`, unless `noTemplate` (`--no-template`, which

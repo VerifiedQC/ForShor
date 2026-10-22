@@ -31,7 +31,7 @@ gates (that correctness is proved separately in `Proofs/Lowering/`).
   the digit-reversed single sum that a radix reversal undoes.
 
 The file also contains proof-local vocabulary not meant to be read as public
-API: `finMulAddEquiv`, `nTot`, `mHalf`, `leftQFTReg`, `rightQFTReg`, `j0`,
+API: `finMulAddEquiv`, `nTot`, `leftQFTReg`, `rightQFTReg`, `j0`,
 `j1` (register/index bookkeeping used only inside these proofs — deliberately
 not deduplicated against similar-looking definitions elsewhere), and a small
 `Fin`-casting utility section used to reindex the sums above.

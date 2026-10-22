@@ -9,10 +9,9 @@ import FastMultiplication.Emit.Json.LowGateJson
 Prints the reference lowered Shor circuit for `(k, a, N, m)` as JSON on
 stdout (`Shor.emitProgram`'s `forshor.lowgate/v2` schema), plus a `layout`
 block (`allocateReferenceLayout`'s four registers and flag qubit). This is
-the existing `referenceProgramAt` path (moved here from the old `Main.lean`,
-which is now dispatch-only, per `Emit/README.md`'s Phase 0).
+the `referenceProgramAt` path; `Main.lean` is dispatch-only.
 
-`--annotated`'s `Gate`-tree-of-`orderFindingApprox` view (README, Phase 2) is
+`--annotated`'s `Gate`-tree-of-`orderFindingApprox` view is
 not implemented here: it needs the raw pre-lowering `Gate` tree, which
 `referenceProgramAt` does not expose separately from its already-lowered
 `LowGate` result, and re-deriving it (plus a per-leaf workspace-discharge

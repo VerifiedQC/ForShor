@@ -383,15 +383,6 @@ lemma gateCount_lowerCopyBitPowers_of_valid
       (negateResources r).totalGates := by
   rfl
 
-lemma gateCount_shor_negate_le (r : ExtReg) :
-    LowGate.gateCount shorGateCostModel (LowGate.Negate r) ≤
-      negateGateBound r := by
-  change
-    (negateResources r).totalGates ≤
-      negateGateBound r
-  exact negateResources_totalGates_le_negateGateBound r
-
-
 @[simp] lemma gateCount_shor_addScaled
     (dst src : ExtReg)
     (negSrc : Bool)
@@ -400,20 +391,6 @@ lemma gateCount_shor_negate_le (r : ExtReg) :
         (LowGate.AddScaled dst src negSrc shift) =
       (addScaledResources dst src negSrc shift).totalGates := by
   rfl
-
-lemma gateCount_shor_addScaled_le
-    (dst src : ExtReg)
-    (negSrc : Bool)
-    (shift : ℕ) :
-    LowGate.gateCount shorGateCostModel
-        (LowGate.AddScaled dst src negSrc shift) ≤
-      rippleAdderGateBound dst.width := by
-  change
-    (addScaledResources dst src negSrc shift).totalGates ≤
-      rippleAdderGateBound dst.width
-  simpa [addScaledResources] using
-    cuccaroModAddResources_totalGates_le_rippleAdderGateBound
-      dst.width
 
 @[simp] lemma gateCount_shor_zeroExtend (r : ExtReg) (n : ℕ) :
     LowGate.gateCount shorGateCostModel (LowGate.zeroExtend r n) = 0 := rfl

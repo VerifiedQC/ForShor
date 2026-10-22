@@ -16,7 +16,7 @@ call) — `O(n² · n!)` for a whole inverse this way, which is intractable
 already at `k = 5` (`q 5 = 9`, `9! = 362880`, times `81` entries). Gauss-Jordan
 is `O(n³)` and stays fast for any `k` this repository's tables reach.
 
-Blocking checks (design principle 3): `check1_inverse` re-verifies
+Blocking checks: `check1_inverseOf` re-verifies
 `M · M⁻¹ = I` exactly (also `O(n³)`, plain arithmetic, no `Matrix.det`).
 `check2_agreesWithCramer` re-verifies that evaluating these polynomials at
 `b = 2^m` agrees with the compiler's own `cramerCoeffFromPtsWidth`: that the

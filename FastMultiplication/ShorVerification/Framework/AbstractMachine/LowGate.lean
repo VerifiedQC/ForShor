@@ -9,14 +9,14 @@ namespace Shor
 
 This file contains the abstract target language for lowering.  It is separated
 from the phase-product correctness development so the abstract-machine layer
-owns only the low-level syntax and the recursive translation machinery.
+owns only the low-level syntax.
 -/
 
 /-! =========================================================
     Low-level target syntax
 
     `LowGate` mirrors primitive high-level gates and includes explicit nodes
-    for allocation, deallocation, phase-product fallbacks, and radix reversal.
+    for allocation, deallocation, and radix reversal.
 ========================================================= -/
 
 /-- Low-level target gate language for lowering. -/

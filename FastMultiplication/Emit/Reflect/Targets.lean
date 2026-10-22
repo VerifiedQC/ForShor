@@ -5,16 +5,16 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 /-!
 # The extraction targets
 
-`extractPPBody`: R2.1's target, `Shor.compileOpsToSignedGate` (the `pp_body`
-row of `README.md`'s R2 exit-criteria table). Fixed: `k`, `hk`, `ops`, `pts` (from the
+`extractPPBody`: `Shor.compileOpsToSignedGate`, the `pp_body` template
+(test-only). Fixed: `k`, `hk`, `ops`, `pts` (from the
 given `ShorLoweringSetup`). Symbolic: `phi` (angle), `x`/`z` (the two operand
-registers), and — per the R2.1 spike's Finding 1 — the `layout` argument is
+registers), and the `layout` argument is
 *not* one opaque free variable; it is built from `k` fresh per-child `Reg`
 reserve variables plus opaque `Prop`-typed witnesses (`Extract.lean`'s
 `appFillingSorry`), so every genuinely-opaque piece is a plain named
 variable `RegExpr` can already express.
 
-Per Finding 2, the per-chunk `stInit`/`stFinal` slot values (and their
+The per-chunk `stInit`/`stFinal` slot values (and their
 widths) are *precomputed* here — built the same way `compileOpsToSignedGate`
 itself builds them (`initSignedLayoutState`/`targetSignedLayoutState`
 applied to the same `layout`/`need`) — and *registered* against the
@@ -26,9 +26,9 @@ from a `LayoutState.xslot`-projection-of-a-`def`-application chain. The
 same arguments), which is exactly what `isDefEq`-based registry lookup
 needs — it does not require them to be syntactically identical.
 
-Other call-chain targets (`phase_product`, `qft`, `shor`, …) are R2.2+ and
-are not attempted here: they need `WellFounded.fix`'s `.eq_def` rewrite and
-`Nat.casesOn` handling this file does not yet have.
+The shipped targets follow: `phase_product`/`cphase_product` and `qft`
+(each a `WellFounded.fix` definition unfolded once through its `.eq_1`),
+the hand-stated `naive_leaf`/`naive_cleaf`, and `shor_gate`/`shor`.
 -/
 
 namespace Shor.Reflect
@@ -98,13 +98,13 @@ def precomputeSideSlots (kE wE : Expr) (base : Expr) (varName : String) (widthVa
   return { initRegs, initWidths, finalRegs, finalWidths }
 
 /-- `phase_product`'s per-side reserve-split bookkeeping. Unlike `pp_body`'s
-`layout` (hand-built from fresh reserve variables, Finding 1),
-`canonicalSignedStep`'s layout is the *real* deterministic construction
+`layout` (hand-built from fresh reserve variables),
+`Policy.canonicalStep`'s layout is the *real* deterministic construction
 (`ReserveBudget.ofRequirements`/`fillSlack`, driven by the opaque
 `reserveNeed`) — reflecting through its tactic-mode definition gets stuck
-the same way `LayoutState.xslot`-composed-with-a-`def` did in R2.1 (a
-projection chain, not the outer head, is what's stuck; confirmed by a spike
-before writing this). Same fix as Finding 2: precompute the ground-truth
+the same way `LayoutState.xslot`-composed-with-a-`def` does in `pp_body` (a
+projection chain, not the outer head, is what's stuck). Same fix as
+`precomputeSideSlots`: precompute the ground-truth
 `Expr` (`step.layout.xSplit.child i`, built by calling the real functions)
 and register it against a hand-computed `RegExpr`/`WExpr` formula that
 replicates `requiredChildReserve`/`fillSlack`'s arithmetic —
@@ -158,7 +158,7 @@ def precomputePhaseProductSlots (opsE xE zE layoutE : Expr) (childFieldName : Na
            topSlack := some (IR.WExpr.sub (.var capVar) usedW) }
 
 /-- Extract the `pp_body` template: `compileOpsToSignedGate` specialised at
-the given table (R5: any `ShorLoweringSetup` — its four side
+the given table (any `ShorLoweringSetup` — its four side
 conditions are exactly what makes its `(ops, pts)` pair a table the lowering
 theorems cover), symbolic in `phi, x, z`
 (and, internally, the layout's per-child reserves). -/
@@ -230,7 +230,7 @@ def extractPPBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template := do
         provenance := "Shor.compileOpsToSignedGate"
       }
 
-/-- `naive_leaf` (R2.3): `Shor.LowGate.Naive_SignedPhaseProd`. Unlike
+/-- `naive_leaf`: `Shor.LowGate.Naive_SignedPhaseProd`. Unlike
 `pp_body`, this target takes no `k`/table at all — the function
 itself doesn't either, so there is nothing to specialise or reflect over:
 `naiveSignedPhaseGates phi x z = (signedTerms x).flatMap fun xTerm =>
@@ -238,14 +238,14 @@ itself doesn't either, so there is nothing to specialise or reflect over:
 xTerm zTerm)` is a `List.flatMap`/`List.map` walk over two registers whose
 *length* (`x.width`/`z.width`) is symbolic — there is no equation lemma or
 `whnf` step that turns "recursion over a symbolic-length list" into a loop
-the way `.eq_1` turns `WellFounded.fix` into a visible self-call (R6);
+the way `.eq_1` turns `WellFounded.fix` into a visible self-call;
 generic reflection has nothing to grab onto here. So this instead
-recognises `Naive_SignedPhaseProd` by name (D2's translation table is
+recognises `Naive_SignedPhaseProd` by name (the translation table is
 *keyed* by construct, and a whole function is as much a "construct" as
 `Gate.seq` or `ExtReg.grow` are) and states its known double-loop shape
 directly, the same escape hatch already used for one sub-formula at a time
 (`RegExpr.grow`, `AExpr.signedPair`) — here for the whole leaf. What makes
-this trustworthy is the same D7 standard as everywhere else: not written
+this trustworthy is the same standard as everywhere else: not written
 once and assumed, but checked against the real `Naive_SignedPhaseProd` by
 `native_decide` (`Tests.lean`), at several widths. -/
 def naiveLeafTemplate : IR.Template :=
@@ -261,7 +261,7 @@ def naiveLeafTemplate : IR.Template :=
             (some (.signedPair (.var "phi") (.var "i") (.var "xw") (.var "j") (.var "zw"))) []))
   }
 
-/-- `naive_cleaf` (R2.4): `LowGate.Naive_CSignedPhaseProd`'s controlled
+/-- `naive_cleaf`: `LowGate.Naive_CSignedPhaseProd`'s controlled
 counterpart of `naive_leaf` — same double loop, `CCPhase` instead of
 `CPhase`. `ctrl` is a bare qubit index in the real source
 (`naiveCSignedPhaseGates ctrl phi x z`), not sliced from any register, but
@@ -294,7 +294,7 @@ is discharged by `decide` rather than by naming a lemma about one particular
 list, so the term being reflected over describes the setup it was given.
 
 The extracted `Doc` does not in fact depend on the point *values* — a leaf's
-angle translates to the D4-opaque `AExpr.coeff l m`, and `tryCramerCoeffApp`
+angle translates to the opaque `AExpr.coeff l m`, and `tryCramerCoeffApp`
 (`Extract.lean`) discards the `pts`/`hpts` arguments it matches on — but
 reflecting over the caller's own table is what makes that an observation
 rather than an assumption. -/
@@ -305,18 +305,18 @@ def setupPtsExprs (setup : Shor.ShorLoweringSetup) (kE : Expr) : MetaM (Expr × 
   let hptsE ← mkDecideProof (← mkAppM ``Eq #[lenE, qkE])
   return (ptsE, hptsE)
 
-/-- `phase_product` (R2.2): `standardSignedPhaseLoweringPlan` + `lowerGateRec`
-(R2.2's row in `README.md`'s exit-criteria table). Symbolic: `phi, x, z`; `xCap`/`zCap` (`x`/`z`'s
+/-- `phase_product`: `standardSignedPhaseLoweringPlan` + `lowerGateRec`.
+Symbolic: `phi, x, z`; `xCap`/`zCap` (`x`/`z`'s
 *reserve* capacity — new width parameters `pp_body` never needed, since
-`canonicalSignedStep`'s reserve split, unlike `pp_body`'s hand-built
+`Policy.canonicalStep`'s reserve split, unlike `pp_body`'s hand-built
 `layout`, is a real formula over the parent's actual capacity). Unfolds
-`standardSignedPhaseLoweringPlan`'s `.eq_1` exactly once here (D3: one
-activation), exposing the recursion guard as `Node.cond` and both branches
+`standardSignedPhaseLoweringPlan`'s `.eq_1` exactly once here (one
+activation; the recursion is never unrolled), exposing the recursion guard as `Node.cond` and both branches
 as `lowerGateRec` applied to the (now concrete-headed) step/base plan value;
 `translateNode` recognises any *further* `lowerGateRec
 (standardSignedPhaseLoweringPlan …)` it walks into as the self-call — by
 construction those can only be nested occurrences, since this is the only
-place the `.eq_1` unfold itself happens. Table-generic (R5): any
+place the `.eq_1` unfold itself happens. Table-generic: any
 `ShorLoweringSetup`. -/
 def extractPhaseProductBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template := do
   let k := setup.k
@@ -390,7 +390,7 @@ def extractPhaseProductBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template
             }
       | _ => throwError "extractPhaseProductBody: expected .eq_1's RHS to be a dite, got {rhsPlan}"
 
-/-- `cphase_product` (R2.4): `standardCSignedPhaseLoweringPlan` +
+/-- `cphase_product`: `standardCSignedPhaseLoweringPlan` +
 `lowerGateRec`, the controlled counterpart of `extractPhaseProductBody`.
 Identical structure throughout — same guard (`nextSignedWidth x z ops <
 phaseInputSize x z`, `ctrl` plays no part in it), same reserve-split
@@ -400,7 +400,7 @@ with `ctrl : ℕ` threaded through as an extra free variable, registered
 against `RegExpr.var "ctrl"` exactly like `x`/`z` even though its Lean type
 is `ℕ`, not `ExtReg` (`translateReg`/`Extract.lean`'s registry never
 inspects a candidate's type, only its shape — see the `Naive_CSignedPhaseProd`
-case's doc comment). Table-generic (R5): any `ShorLoweringSetup`. -/
+case's doc comment). Table-generic: any `ShorLoweringSetup`. -/
 def extractCPhaseProductBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template := do
   let k := setup.k
   let ops := setup.ops
@@ -472,14 +472,14 @@ def extractCPhaseProductBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Templat
             }
       | _ => throwError "extractCPhaseProductBody: expected .eq_1's RHS to be a dite, got {rhsPlan}"
 
-/-- `qft` (R2.5): `standardQFTLoweringPlan` + `lowerQFTPlan`. Symbolic: `r`
+/-- `qft`: `standardQFTLoweringPlan` + `lowerQFTPlan`. Symbolic: `r`
 (the register being transformed) and `xWork`/`zWork` (the two fixed
 workspace pools, threaded through unchanged across the whole recursion —
 `QFTWorkspaceOK.phaseWorkspace` reuses them verbatim as each level's own
 `xReserve`/`zReserve`, never re-splitting them). Three-way `by_cases`
 (`regSize r = 0` / `= 1` / recurse), so `.eq_1` exposes one `dite` nested
 inside another; each branch of the outer is `whnfR`'d/applied the same way
-`extractPhaseProductBody` does for its single `dite`. Table-generic (R5):
+`extractPhaseProductBody` does for its single `dite`. Table-generic:
 any `ShorLoweringSetup`. -/
 def extractQFTBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template := do
   let k := setup.k
@@ -541,7 +541,7 @@ def extractQFTBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template := do
           | _ => throwError "extractQFTBody: expected inner .eq_1 branch to be a dite, got {innerApp}"
       | _ => throwError "extractQFTBody: expected .eq_1's RHS to be a dite, got {rhsOuter}"
 
-/-- R2.6's `shor_gate` target: `Shor.orderFindingApprox`, `Gate`-valued and
+/-- `shor_gate`: `Shor.orderFindingApprox`, `Gate`-valued and
 entirely table-independent (no `k`/`hk`/`ops`, unlike every earlier target —
 it is built before any lowering plan exists). A plain (non-tactic-mode) `def`
 applied directly to free variables, so — unlike `qft` above — no `.eq_1`
@@ -594,16 +594,16 @@ def extractShorGateBody : MetaM IR.Template := do
         provenance := "Shor.orderFindingApprox"
       }
 
-/-- R2.6's `shor` target: `Shor.lowerGate k hk ops (orderFindingApprox …)
+/-- `shor`: `Shor.lowerGate k hk ops (orderFindingApprox …)
 hLowerWorkspace`, `referenceShorCircuit`'s whole body once `allocateReferenceLayout`'s
-concrete registers/`k` are supplied — the exit criterion instantiates this at
+concrete registers/`k` are supplied — the checks instantiate this at
 `k, hk, ops` fixed exactly as `qft`/`phase_product`/`cphase_product` are.
 `translateLowerGate` walks the `Gate` structure directly (`orderFindingApprox`
 is a plain `def`, no `.eq_1` needed here either); the `Gate.QFT`/
 `.SignedPhaseProd`/`.CSignedPhaseProd` leaves it recognises by name become
 `Node.call`s into the very templates `qft`/`phase_product`/`cphase_product`
 already are, so nothing about the lowering itself is re-derived.
-Table-generic (R5): any `ShorLoweringSetup`. -/
+Table-generic: any `ShorLoweringSetup`. -/
 def extractShorBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template := do
   let ops := setup.ops
   let opsE : Expr := Lean.toExpr ops

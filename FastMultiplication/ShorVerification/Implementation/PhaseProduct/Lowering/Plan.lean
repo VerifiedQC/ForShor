@@ -281,19 +281,6 @@ abbrev StandardPhaseLoweringPlan
     (ops : Prog k) (initSize : ℕ) (U : Gate) : Type :=
   PhaseLoweringPlan (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) initSize U
 
-/-- Interpret a standard lowering plan for any gate in the supported fragment. -/
-def lowerPhasePlan
-    (k : ℕ)
-    (hk : 1 < k)
-    (pts : List Point)
-    (hpts : pts.length = q k)
-    (ops : Prog k)
-    {initSize : ℕ}
-    {U : Gate}
-    (plan : StandardPhaseLoweringPlan k hk pts hpts ops initSize U) :
-    LowGate :=
-  lowerGateRec plan
-
 /--
 Lower a signed phase product using a complete recursive workspace plan.
 The plan is the precondition saying that every recursive call has:

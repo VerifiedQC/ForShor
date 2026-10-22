@@ -15,7 +15,7 @@ universe u
 namespace Shor
 
 /-! =========================================================
-    Section 4: Gate language and derived gate macros
+    Gate language
 ========================================================= -/
 
 /--
@@ -61,7 +61,7 @@ prefix:90 "†" => Gate.adj
 end Gate
 
 /-! =========================================================
-    Section 5: QFT phase helpers
+    QFT phase helpers
 ========================================================= -/
 
 /-- Standard QFT phase schedule. -/

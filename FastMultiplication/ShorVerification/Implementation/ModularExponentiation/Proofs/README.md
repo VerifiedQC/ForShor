@@ -72,9 +72,9 @@ folder states its theorems in terms of these names.
 ## `Core.lean` — basic facts about the model
 
 Everything `Model.lean` defines, this file proves basic facts about — small
-arithmetic lemmas and a few substantial semantic theorems, but not yet the
-per-step error bounds (those live in `Step1Bound.lean`/`Step2Bound.lean`/
-`Step34Exact.lean`/`FinalModMul.lean`).
+arithmetic lemmas and a few substantial semantic theorems. The per-step
+error bounds are not here; they live in `Step1Bound.lean`/`Step2Bound.lean`/
+`Step34Exact.lean`/`FinalModMul.lean`.
 
 - **`IdealCtrlModMulExactSemantics.eval_idealCtrlModMul_good_ket_exact`** /
   **`.eval_idealCtrlModMul_good_ket`** — the ideal controlled-modmul gate is
@@ -202,8 +202,8 @@ bookkeeping, packet algebra, then analysis.
   convert `Algorithm1Precision` into the grid-to-capacity ratio the numeric
   bound in `Math/QPETail.lean` consumes; the definition of `qpeKernel` itself
   lives in this file's `AnalyticQpeSetup` section, straddling the boundary
-  with `Math/QPETail.lean` (everything downstream of it — the numerical
-  majorant argument — was extracted there in an earlier reorg step).
+  with `Math/QPETail.lean`, where everything downstream of it — the
+  numerical majorant argument — lives.
 - **`alg1_qpe_tail_basis_uniform`** — the file's other named endpoint:
   bounds the QPE bad mass by `512 * η` uniformly over good basis inputs, via
   `Math/QPETail.lean`'s `qpeKernel_bad_mass_le_grid_ratio`.

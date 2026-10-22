@@ -64,9 +64,6 @@ def GateWorkspaceOK
   | _ =>
       True
 
-namespace GateWorkspaceOK
-
-end GateWorkspaceOK
 
 /-! =========================================================
     Whole-Program Lowering

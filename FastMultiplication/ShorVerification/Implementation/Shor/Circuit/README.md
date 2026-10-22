@@ -21,6 +21,11 @@ needs. `Workspace.lean` and `OrderFinding.lean` are independent siblings
 - **`ShorWorkspaceIsolation`** — the exponent register's owned qubits are
   disjoint from the auxiliary register, from comparator scratch, and from
   the comparator flag qubit itself.
+- **`Policy.qftReserveNeed`**, **`Policy.shorWorkspaceNeed`**,
+  **`Policy.ShorWorkspaceLargeEnough`** — the same budgets over a
+  `ShorLoweringPolicy`, which is what the circuit below is lowered with. The
+  unprefixed names are their constant-policy instance
+  (`Policy.shorWorkspaceNeed_const`, `Policy.shorWorkspaceLargeEnough_const_iff`).
 
 ## `OrderFinding.lean` — the order-finding circuits
 
@@ -31,8 +36,8 @@ needs. `Workspace.lean` and `OrderFinding.lean` are independent siblings
   exponentiation circuit (`modExpApproxValid`), then inverse QFT on the
   exponent register.
 - **`orderFindingApproxLow`** — `orderFindingApprox` lowered to a `LowGate`
-  via `lowerGate` (`Shor/Lowering/LowerGate.lean`), given a `GateWorkspaceOK`
-  proof for it.
+  via `Policy.lowerGate` (`Shor/Lowering/LowerGate.lean`) at a
+  `ShorLoweringPolicy`, given a `Policy.GateWorkspaceOK` proof for it.
 - **`orderFindingIdeal`** — the ideal order-finding circuit, swapping in the
   abstract exact modular-exponentiation gate (`modExpIdeal'`) in place of the
   approximate one; used by `Proofs/NaiveShor/` for the ideal-circuit analysis.

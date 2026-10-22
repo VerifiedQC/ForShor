@@ -15,7 +15,7 @@ with a quantitative error bound uniform in the precision parameter `η`.
 The folder is organized in layers (below). **Every import is "justified":** a
 file may only import another file if it directly uses a declaration that
 file defines — never a declaration it merely re-exports transitively.
-`scripts/check_modexp_layers.sh` (repo root) enforces both the layer order
+`scripts/check_layers.py ModularExponentiation` (repo root) enforces both the layer order
 and the absence of umbrella files (a file that only imports and declares
 nothing of its own).
 

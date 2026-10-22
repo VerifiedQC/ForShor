@@ -8,18 +8,20 @@ Prints one `forshor.policy-submission/v1` JSON document on stdout: the bands
 in width order, the IR a resource estimator reads, the fixed precision, and
 the trial count the score is multiplied by.
 
-As with [`Main.lean`](Main.lean), this executable is a *printer*, not a
-checker. Everything it reports as established was established by `lake build
-PolicySubmission`: C1–C4 per band by Lean's kernel on the proofs in
-`PolicyTemplate.lean`, the thresholds' strict decrease by `decide`, and the
-absence of `native_decide`/`sorry` among them by `#assert_axioms`. So the CI
-line is
+Unlike [`Main.lean`](Main.lean), this executable runs one check itself: the
+evaluation tier `Shor.Reflect.policySubmissionChecks`, evaluated natively
+before anything is printed. Everything else it reports as established was
+established by `lake build PolicySubmission`: C1–C4 per band by Lean's
+kernel on the proofs in `PolicyTemplate.lean`, the thresholds' strict
+decrease by `decide`, the absence of `native_decide`/`sorry` among them by
+`#assert_axioms`, and the extracted IR's well-formedness. So the CI line is
 
 ```bash
 lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
 ```
 
-with `&&`: if any band is inadmissible the build fails and this never runs.
+with `&&`: if any band is inadmissible the build fails and this never runs,
+and if the evaluation tier fails this prints nothing on stdout and exits `1`.
 
 ## What the `ir` field holds
 
@@ -68,7 +70,7 @@ theorem benchmarkModulus_is2048Bit : Is2048Bit benchmarkModulus :=
 /-- The number of independent runs the score is computed over. Backed by
 `Shor.submissionTrialCount_correct`, whose hypothesis
 `benchmarkModulus_is2048Bit` discharges. -/
-def benchmarkTrialCount : ℕ := submissionTrialCount benchmarkModulus
+def benchmarkTrialCount : ℕ := _root_.Shor.submissionTrialCount benchmarkModulus
 
 /-- Big naturals go out as strings: `submissionPrecision` is a 46-digit
 number and JSON consumers routinely parse numbers as doubles. -/
@@ -82,9 +84,9 @@ def bandJson (i : ℕ) (b : ℕ × ShorLoweringSetup) : Json :=
     ("index", (i : Json)),
     ("threshold", (b.1 : Json)),
     ("k", (b.2.k : Json)),
-    ("points", Json.arr (b.2.pts.map pointJson).toArray),
-    ("ops", progJson b.2.ops),
-    ("shrinks", Json.bool (Shor.Policy.bandShrinks policy.policy i))
+    ("points", Json.arr (b.2.pts.map _root_.Shor.pointJson).toArray),
+    ("ops", _root_.Shor.progJson b.2.ops),
+    ("shrinks", Json.bool (_root_.Shor.Policy.bandShrinks policy.policy i))
   ]
 
 def policySubmissionJson : Json :=
@@ -95,7 +97,7 @@ def policySubmissionJson : Json :=
       s!"widths below the last threshold use the schoolbook leaf; with these bands that is \
          n < {(policy.bands.map Prod.fst).getLast?.getD 0}"),
     ("precision", Json.mkObj [
-      ("m", natStr submissionPrecision),
+      ("m", natStr _root_.Shor.submissionPrecision),
       ("m_expr", Json.str "2^150 - 3 (Reference.m2048)"),
       ("eta", Json.str "2^-150")
     ]),
@@ -118,22 +120,27 @@ def policySubmissionJson : Json :=
          This is the only obligation a policy adds on top of its bands' own C1-C4, and it \
          is what makes band i cover [t_i, t_{i-1}) literally"),
       ("axioms", Json.str
-        "#assert_axioms PolicySubmission.policy in Submission/PolicyCheck.lean: fails the \
+        "#assert_axioms _root_.PolicySubmission.policy in Submission/PolicyCheck.lean: fails the \
          build on native_decide (Lean.ofReduceBool), sorry (sorryAx) or any declared axiom, \
          so every band's side conditions really did go through the kernel"),
       ("correctness", Json.str
         "Shor.policy_submission_correct: proved once, generic in the policy; no \
          per-submission proof. Shor.submission_correct is the one-band case at threshold 0"),
       ("ir_agreement", Json.str
-        "Shor.Reflect.policySubmissionChecks: each band body instantiated one level deep at \
-         its own threshold (child calls as the compiler's phase-product leaves, capacity \
-         arguments checked against the registers passed) = the compiler's one-level step; \
-         plus full-depth instantiate = real compiled circuit at the widths reaching one, two \
-         and three levels of the policy's own recursion within the leaf budget, in both \
-         reserve regimes; at odd qft widths where the split straddles the lowest threshold; \
-         and at the reference Shor instances - pinned by native_decide in \
-         Submission/PolicyCheck.lean. The dispatcher's routing is a theorem \
-         (Emit/Symbolic/Dispatcher.lean), not a sampled check."),
+        "Shor.Reflect.policySubmissionChecks (probe design): the document is well formed \
+         and its two dispatchers are exactly dispatcherTemplate of this policy (routing proved: \
+         Emit/Symbolic/Dispatcher.lean). The sampled checks run on the PROBE submission - the \
+         same band setups in the same order (so the same band bodies and coeff offsets) at the \
+         smallest strictly decreasing thresholds where each band's table shrinks (a band whose \
+         table never shrinks is probed at the leaf) - with the \
+         dispatchers rebuilt for it: each band body one level deep at its probe threshold \
+         (child calls as the compiler's phase-product leaves, width and capacity arguments \
+         checked against the registers passed) = the compiler's one-level step; full-depth \
+         instantiate = real compiled circuit at the probe ladder widths within the leaf budget, \
+         in both reserve regimes; odd qft widths straddling the lowest probe threshold; the \
+         leaves; and the reference Shor instances. Evaluated natively by this executable, which \
+         prints this document only if the check is true. Cost depends on the tables only, not on \
+         the submission's thresholds."),
       ("ir_not_proved", Json.str
         "the IR is NOT proved equal to the circuit at every width; the line above is \
          evaluation at sampled widths, not a theorem. What IS proved is that the emitted \
@@ -151,10 +158,21 @@ def policySubmissionJson : Json :=
        trusted: translation table and Lean normalisation; checked: instantiate = real term \
        at the listed widths; not a theorem. The dispatcher is built from the policy's own \
        bands rather than extracted, and is proved to agree with ShorLoweringPolicy.choose."),
-    ("ir", IR.docJson doc)
+    ("ir", _root_.Shor.IR.docJson doc)
   ]
 
 end PolicySubmission
 
-def main : IO Unit :=
-  IO.println PolicySubmission.policySubmissionJson.compress
+/-- The evaluation tier runs here, natively, before anything is printed. A
+failing submission prints nothing on stdout and exits 1, so
+`lake build PolicySubmission && lake exe forshor_policy_submission > policy.json`
+produces a document only for a submission that passed every check. -/
+def main : IO UInt32 := do
+  if _root_.Shor.Reflect.policySubmissionChecks _root_.PolicySubmission.policy _root_.PolicySubmission.doc then
+    IO.eprintln "forshor_policy_submission: evaluation tier passed"
+    IO.println _root_.PolicySubmission.policySubmissionJson.compress
+    return 0
+  else
+    IO.eprintln "forshor_policy_submission: evaluation tier FAILED \
+      (Shor.Reflect.policySubmissionChecks policy doc = false); no policy.json printed"
+    return 1

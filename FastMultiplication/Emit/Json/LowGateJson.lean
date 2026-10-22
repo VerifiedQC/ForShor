@@ -18,11 +18,10 @@ open Lean (Json)
 -- Not `partial`: `.seq a b`'s two recursive calls are on the strictly
 -- smaller subterms `a`/`b`, so Lean's ordinary structural-recursion
 -- equation compiler accepts this directly (unlike `lowGateJson` below,
--- whose `seq` case calls back into `flattenSeq` first) — and R6
--- (`Emit/Proofs/Correct.lean`) needs `flattenSeq`'s equation lemmas to
--- restate `evalNode`'s output up to "same flattened gate list", the same
--- notion of circuit equality `Tests.lean`'s R2 `native_decide` checks
--- already use via `lowGateJson`.
+-- whose `seq` case calls back into `flattenSeq` first), and `flattenSeq`
+-- therefore has equation lemmas. "Same flattened gate list" is the notion
+-- of circuit equality `Tests.lean`'s `native_decide` checks use via
+-- `lowGateJson`.
 def LowGate.flattenSeq : LowGate → List LowGate
   | .id => []
   | .seq a b => flattenSeq a ++ flattenSeq b

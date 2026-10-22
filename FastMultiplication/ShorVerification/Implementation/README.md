@@ -7,14 +7,16 @@ amplifying that probability to 99% on 2048-bit moduli, and proofs that both
 are honest. Everything under `Implementation/` exists to build values of that
 structure and hand them to the framework.
 
-**This folder is the construction, not the submission.** It used to be both.
-A submission is now a Toom-Cook table — `Framework/ToomCookTable.lean`'s
-`ShorSubmission`: an arithmetic program and the interpolation points it
-evaluates at, plus four decidable side conditions — and `Reference/` is what
-turns any admissible table into a circuit family. The distinction matters
-because `referenceProgramAt_success` is *generic* in the table, so passing
-those four conditions is a complete acceptance test with no per-submission
-proof. See `ShorVerification/Submission/README.md`.
+**This folder is the construction, not the submission.** A submission is a
+Toom-Cook table — `Framework/ToomCookTable.lean`'s `ShorSubmission`: an
+arithmetic program and the interpolation points it evaluates at, plus four
+decidable side conditions — or a width-indexed list of such tables, a
+`ShorPolicySubmission` (`Framework/Policy.lean`); a single table is the
+one-band policy. `Reference/` is what turns any admissible policy into a
+circuit family. The distinction matters because `referenceProgramAt_success`
+is *generic* in the policy, so passing the side conditions is a complete
+acceptance test with no per-submission proof. See
+`ShorVerification/Submission/README.md`.
 
 The work splits into three independently-verified subroutines
 (`PhaseProduct/`, `QFT/`, `ModularExponentiation/`), a library of lemmas
@@ -137,14 +139,15 @@ fully computable construction, discharging the implementation-specific
 readiness obligations against it, and packaging the result as a value of the
 framework's `ShorImplementation` structure.
 
-One choice it no longer makes: the interpolation-point program. That is the
-*input* now — a `ShorLoweringSetup`, i.e. a submission — and
-`standardLoweringSetup` is merely this folder's own default, the canonical
-ladder `0, -1, 1, -2, 2, …`, not a constant baked into anything's type.
+One choice it does not make: the interpolation tables. Those are the
+*input* — a `ShorLoweringPolicy`, i.e. a submission — and
+`standardLoweringSetup` is merely this folder's own default table, the
+canonical ladder `0, -1, 1, -2, 2, …`, not a constant baked into anything's
+type.
 
 **Final theorem/definition:** `referenceProgramAt_success`, which is where
-the genericity lives: it holds for *every* `ShorLoweringSetup`, so a
-submitted table needs no correctness proof of its own.
+the genericity lives: it holds for *every* admissible `ShorLoweringPolicy`,
+so a submitted table or policy needs no correctness proof of its own.
 `referenceShorImplementation lowering` packages a table into the framework's
 structure. Everything else here (`ReferenceLayout.lean`,
 `ReferenceReadiness.lean`, `ReferencePrecision.lean`, `ShorProgram.lean`,

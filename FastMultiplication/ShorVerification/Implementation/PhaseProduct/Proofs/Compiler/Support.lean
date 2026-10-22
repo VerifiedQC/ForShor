@@ -17,12 +17,6 @@ open Gate
 open Operations
 
 section RowSemantics
-/-! =========================================================
-    Legacy Ordinary-Register Helpers
-========================================================= -/
-
-/-- Ordinary-register modular reduction retained for legacy arithmetic gate statements. -/
-def tcMod (r : Reg) (z : ℤ) : ℕ := Int.toNat (z % (ASize r : ℤ))
 
 variable (qs : QSemantics) [RegEncoding qs.Basis]
 
@@ -87,14 +81,6 @@ def WidthStateSoundPlus
 /-- The concrete destination layout is at least as wide as the symbolic scan says. -/
 def WidthStateDominatedByLayout {k : ℕ} (cur : WidthState k) (dst : LayoutState k) : Prop :=
   (∀ i : Fin k, cur.xw i + 1 ≤ (dst.xslot i).width) ∧ (∀ i : Fin k, cur.zw i + 1 ≤ (dst.zslot i).width)
-
-/-- Main body invariant: encoded rows, symbolic fit bounds, and layout domination. -/
-def EncodesStateFromWithWidths
-  (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ}
-  (src dst : LayoutState k) (cur : WidthState k) (σ : State k) (b0 b : qs.Basis) : Prop :=
-  EncodesStateFrom (qs := qs) src dst σ b0 b ∧
-  WidthStateSoundPlus (qs := qs) src cur σ b0 ∧
-  WidthStateDominatedByLayout cur dst
 
 /-! =========================================================
     Phase Scalar
@@ -409,13 +395,6 @@ lemma SameOutsideLayout.trans
   calc
     extToInt e b1 = extToInt e b2 := h12 e he
     _ = extToInt e b3 := h23 e he
-
-/-- Every physical qubit is either in a slot or can be read by an outside singleton register. -/
-def CoversLayoutBits {k : ℕ} (dst : LayoutState k) : Prop :=
-  ∀ q : ℕ,
-    (∃ i : Fin k, q ∈ (dst.xslot i).active.qubits) ∨
-    (∃ i : Fin k, q ∈ (dst.zslot i).active.qubits) ∨
-    OutsideLayout dst (ExtReg.ofReg (qubitReg q))
 
 /-- Equal register values imply equal bits for qubits inside that register. -/
 lemma bit_eq_of_toNat_eq_on_reg

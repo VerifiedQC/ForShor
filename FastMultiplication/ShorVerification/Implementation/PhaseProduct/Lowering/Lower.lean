@@ -41,7 +41,7 @@ def lowerCSignedPhaseProdWithWorkspace
 /-! =========================================================
     The policy-level lowerers
 
-    The names the Shor layer calls once it lowers through a policy (item 5).
+    The names the Shor layer calls when it lowers through a policy.
     The fixed-table lowerers above are these at `constPolicy`, which is what
     `Policy.workspaceOK_const_iff` says.
 ========================================================= -/

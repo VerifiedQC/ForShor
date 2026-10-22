@@ -16,7 +16,7 @@ verification:
 * two's-complement and signed-width definitions.
 
 Derived register laws and proof helpers live in
-`Implementation/RegisterLemmas.lean`; Framework does not import them.
+`Implementation/Shared/Registers.lean`; Framework does not import them.
 -/
 
 universe u
@@ -52,16 +52,13 @@ def empty : Reg := ⟨[], by simp⟩
 /-- Logical width, i.e. the number of physical qubits in the ordered list. -/
 def width (r : Reg) : ℕ := r.qubits.length
 
-/-- Membership of a physical qubit in a register. -/
-def contains (r : Reg) (q : ℕ) : Prop := q ∈ r.qubits
-
 /-- The physical qubit used for logical bit `i`. -/
 def get (r : Reg) (i : Fin r.width) : ℕ := r.qubits.get ⟨i.1, by simp [width]⟩
 
 /-- A single-qubit register. -/
 def singleton (q : ℕ) : Reg := ⟨[q], by simp⟩
 
-/-- Construct the old contiguous interval `[lo, lo + size)`. -/
+/-- The contiguous interval `[lo, lo + size)`. -/
 def interval (lo size : ℕ) : Reg :=
   {
     qubits := (List.range size).map (fun i => lo + i)
@@ -92,7 +89,7 @@ end Reg
 
 /-! ### Compatibility aliases and register combinators -/
 
-/-- Alias used by older Shor files for the logical width of a register. -/
+/-- The logical width of a register, an alias of `Reg.width`. -/
 def regSize (r : Reg) : ℕ := r.width
 
 /-- Cardinality of the computational basis supported by a register. -/
@@ -343,9 +340,6 @@ def tcModWidth (w : ℕ) (z : ℤ) : ℕ := Int.toNat (z % ((2^w : ℕ) : ℤ))
 /-- Wrap an integer to `w` bits and decode the result as two's-complement. -/
 def tcWrapInt (w : ℕ) (z : ℤ) : ℤ := tcDecodeWidth w (tcModWidth w z)
 
-/-- Modulo reduction using the active width of an extendable register. -/
-def tcModExt (e : ExtReg) (z : ℤ) : ℕ := tcModWidth (ExtReg.width e) z
-
 /-- Inclusive lower endpoint of the signed `w`-bit range; canonical name used by proofs. -/
 def signedMin (w : ℕ) : ℤ := -(((2^(w-1) : ℕ) : ℤ))
 
@@ -355,6 +349,5 @@ def signedMax (w : ℕ) : ℤ := (((2^(w-1) : ℕ) : ℤ))
 /-- Predicate saying `z` fits in signed `w`-bit range. -/
 def FitsSignedWidth (w : ℕ) (z : ℤ) : Prop :=
   0 < w ∧ signedMin w ≤ z ∧ z < signedMax w
-
 
 end Shor

@@ -14,11 +14,13 @@ and does not buy.
 **What it checks.** Instantiating the entry template `phase_product` — which
 in a policy document is the *dispatcher* — exercises the guard chain, the
 band body it routes to, and the recursion back through the dispatcher, all
-in one. So a single width check covers every layer, and a width at the top
-of the policy covers every band the chain descends through. That is why the
-ladder below is built from the policy's own `nextWidth` chain *and* from its
-band boundaries: the first finds widths where the recursion is deep, the
-second finds widths where it changes table.
+in one. So a single width check covers every layer the recursion from that
+width passes through.
+`policySubmissionChecks` checks the dispatchers exactly against the proved
+template and samples the bodies on the *probe submission* at widths that
+depend only on the tables (see the section at the end of this file); the
+band boundaries need no sampling, since the dispatcher's routing is a
+theorem.
 
 **What it does not.** This is evaluation at sampled widths, not a theorem,
 exactly as for a single table. The one thing that *is* proved is that the
@@ -288,26 +290,6 @@ def policyPPRecursionDepth (P : ShorLoweringPolicy) : ℕ → ℕ → ℕ
       let n' := policyNextWidth P n n
       if n' < n then policyPPRecursionDepth P fuel n' + 1 else 0
 
-/-- Every band boundary, as a width just inside the band and one just below
-it. These are the widths at which the dispatcher's answer changes, so they
-are where a guard that is off by one would show. -/
-def policyBoundaryWidths (P : ShorLoweringPolicy) : List ℕ :=
-  P.bands.flatMap fun b =>
-    (if 0 < b.threshold then [b.threshold - 1] else []) ++ [b.threshold]
-
-/-- The phase-product widths a policy is checked at: its band boundaries,
-plus the smallest widths reaching one, two and three levels of its own
-recursion.
-
-The boundaries are what a single table never needed — they are where the
-chain changes table — and the depth ladder is `ppWidthLadder`'s rationale
-carried over unchanged: three levels is what makes a *grandchild* of a
-recursive call exist. -/
-def policyPPWidthLadder (P : ShorLoweringPolicy) : List ℕ :=
-  let depths := [1, 2, 3].filterMap fun d =>
-    (List.range widthSearchBound).find? fun n => d ≤ policyPPRecursionDepth P widthSearchBound n
-  (policyBoundaryWidths P ++ depths).eraseDups
-
 /-- The `qft` widths a policy is checked at: the single-table rationale (`4`,
 `8`, `9` for an odd split), plus two odd widths straddling the *lowest*
 threshold.
@@ -339,7 +321,7 @@ including each child's reserve slice. A call's capacity arguments must also
 equal the capacities of the registers it passes (`shallowLeafCall`), so a
 document that hands a child a capacity other than the reserve it sliced is
 rejected without unrolling the child. Composition across levels is covered
-by the full-depth checks at `policyFullDepthWidths`. -/
+by the full-depth checks at `policyDepthWidths`. -/
 
 /-- Shallow treatment of a dispatcher or leaf call: the high-level
 phase-product gate on the registers the call passes, after checking the
@@ -354,11 +336,17 @@ def shallowLeafCall (controlled : Bool) :
             | true, [c, x, z] => pure (some c, x, z)
             | _, _ => throw s!"shallow call {name}: unexpected register arguments")
           match wVals with
-          | [_, _, xCap, zCap] =>
+          | [xw, zw, xCap, zCap] =>
+              if xw ≠ x.width ∨ zw ≠ z.width then
+                throw s!"shallow call {name}: width arguments ({xw}, {zw}) disagree with \
+                  the passed registers' widths ({x.width}, {z.width})"
               if xCap ≠ x.capacity ∨ zCap ≠ z.capacity then
                 throw s!"shallow call {name}: capacity arguments ({xCap}, {zCap}) disagree with \
                   the passed registers' reserves ({x.capacity}, {z.capacity})"
-          | [_, _] => pure ()
+          | [xw, zw] =>
+              if xw ≠ x.width ∨ zw ≠ z.width then
+                throw s!"shallow call {name}: width arguments ({xw}, {zw}) disagree with \
+                  the passed registers' widths ({x.width}, {z.width})"
           | _ => throw s!"shallow call {name}: unexpected width arguments"
           match ctrl? with
           | none => pure (Gate.SignedPhaseProd phi x z)
@@ -490,34 +478,164 @@ def policyLeafCount (P : ShorLoweringPolicy) : ℕ → ℕ → ℕ
 above it are covered one level deep by the per-band check instead. -/
 def policyFullDepthLeafBudget : ℕ := 100
 
-/-- The widths of `policyPPWidthLadder` whose full-depth instantiation fits
-the leaf budget. An upper band's boundaries do not fit — a band's threshold
-still unrolls every band below it — and are covered one level deep by
-`checkPolicyBandBodyAt` instead. -/
-def policyFullDepthWidths (P : ShorLoweringPolicy) : List ℕ :=
-  (policyPPWidthLadder P).filter fun n =>
-    policyLeafCount P widthSearchBound n ≤ policyFullDepthLeafBudget
+/-! ## The probe submission
 
-/-- **The policy evaluation tier**, as one `Bool` a submission can pin.
+A best-known policy's thresholds are `Θ(n)`, and the evaluation works on
+concrete qubit lists, so sampling at the submission's own thresholds costs
+time that grows with `n`. Nothing the sampled checks test depends on the
+thresholds except the dispatcher:
 
-Every band body one level deep at its own threshold, in both reserve
-regimes, plain and controlled; then full-depth instantiation at the ladder
-widths within the leaf budget; then `qft`, the leaves and the Shor instances
-as for a single table. The leaf templates are table-independent, so their
-existing checks are reused verbatim. -/
+* each band body is extracted from `Policy.stepPlan` at band `i`, and names
+  only its table, its position (the `coeff` offset) and the opaque oracles —
+  never a threshold;
+* the dispatcher is *built*, not extracted (`dispatcherTemplate`), and its
+  routing is a theorem (`IR.dispatcherCallAt_dispatcherTemplate`).
+
+So the tier is run on the **probe submission**: the same setups in the same
+band order, at the smallest strictly decreasing thresholds at which each
+band's table shrinks (or, for a table that shrinks nowhere in the search
+window, the smallest width above the previous band: the compiler takes the
+leaf there, and the body check verifies the leaf branch of the band's guard),
+together with the document whose two dispatchers are rebuilt for those
+thresholds. Every check keeps its meaning — band bodies
+one level deep, full depth within the leaf budget, `qft`, leaves, Shor
+instances — at widths that depend only on the tables. What ties the result
+to the submitted document is checked separately: its dispatchers must be
+exactly `dispatcherTemplate s.policy`, and the probe document differs from
+it in those two templates only. -/
+
+/-- Width of the search window for a probe threshold, starting at the width
+above the previous band: above every table's smallest shrinking width in the
+shipped catalogs (`k ≤ 16`: about `1130`), with room for a 64-band probe
+ladder. -/
+def probeSearchBound : ℕ := 4096
+
+/-- The smallest width `≥ lo` at which `T`'s step shrinks a symmetric
+operand pair (the condition `bandShrinks` evaluates, at one width). -/
+def probeShrinkWidth (T : ToomCookTable) (lo : ℕ) : Option ℕ :=
+  (List.range' lo probeSearchBound).find? fun w =>
+    decide (RecursivePhaseWorkspace.nextWidth T.ops w w < w)
+
+/-- Probe thresholds for setups listed **narrowest band first**: each the
+smallest shrinking width strictly above the previous one. A table that
+shrinks nowhere in the window is probed at `lo` itself: such a band is dead
+weight, never unsound (`ShorLoweringPolicy.Stops` sends it to the leaf), and
+at a non-shrinking width `policyBandBodyAgrees` compares the band body
+against the leaf, which is exactly what the compiler emits there. -/
+def probeThresholdsRev : List ShorLoweringSetup → ℕ → Option (List ℕ)
+  | [], _ => some []
+  | b :: bs, lo => do
+      let t := (probeShrinkWidth b.table lo).getD lo
+      let rest ← probeThresholdsRev bs (t + 1)
+      pure (t :: rest)
+
+/-- The probe submission: `s`'s setups, same order, probe thresholds. -/
+def probeSubmission (s : ShorPolicySubmission) : Option ShorPolicySubmission :=
+  match probeThresholdsRev (s.bands.reverse.map Prod.snd) 2 with
+  | none => none
+  | some tsRev =>
+      let bands := (tsRev.reverse).zip (s.bands.map Prod.snd)
+      if bands.length ≠ s.bands.length then none
+      else if h : (bands.map Prod.fst).IsChain (· > ·) then some ⟨bands, h⟩ else none
+
+/-- `doc` with both dispatchers rebuilt for policy `P`. -/
+def withDispatchers (doc : Doc) (P : ShorLoweringPolicy) : Doc :=
+  { doc with templates := doc.templates.map fun t =>
+      if t.name == dispatcherName false then dispatcherTemplate P false
+      else if t.name == dispatcherName true then dispatcherTemplate P true
+      else t }
+
+/-- `doc`'s dispatchers are exactly the ones built for `P` (and both exist). -/
+def dispatchersAre (doc : Doc) (P : ShorLoweringPolicy) : Bool :=
+  (doc.templates.find? (·.name == dispatcherName false)) == some (dispatcherTemplate P false)
+    && (doc.templates.find? (·.name == dispatcherName true)) == some (dispatcherTemplate P true)
+
+/-! ## Distinct tables are checked once
+
+Best-known policies at large `n` repeat a few tables over many bands. The extractor reuses the body of
+the first band with a given table for every later band with the same table, with its `coeff` indices
+shifted by the offset difference (`Driver.policyBandBodies`, `IR.shiftCoeffN`). The tier therefore runs
+its sampled band-body checks once per distinct table, and for every later band checks *symbolically*
+that its bodies are exactly that shifted copy. Under the `coeff` oracle the shifted indices resolve to
+the later band's own points, which are equal to the earlier band's (`sameSetup`). -/
+
+/-- An injective key per operation, so programs over different `k` compare without `DecidableEq`. -/
+def opKey {k : ℕ} : Operations.valid_ops k → ℕ × ℕ × ℕ × Bool × ℕ
+  | .shiftL i n => (0, i.val, 0, false, n)
+  | .shiftR i n => (1, i.val, 0, false, n)
+  | .negate i => (2, i.val, 0, false, 0)
+  | .addScaled d s ng sh => (3, d.val, s.val, ng, sh)
+  | .phaseProduct i => (4, i.val, 0, false, 0)
+
+/-- Same table: same `k`, same interpolation points, same program. -/
+def sameSetup (a b : ShorLoweringSetup) : Bool :=
+  a.k == b.k && decide (a.pts = b.pts) && a.ops.map opKey == b.ops.map opKey
+
+/-- `Registry.coeffOffset` of every band, in band order. -/
+def bandOffsets (s : ShorPolicySubmission) : List ℕ :=
+  (s.bands.foldl (fun (acc, off) b => (acc ++ [off], off + q b.2.k)) ([], 0)).1
+
+/-- The first earlier band with the same table as band `i`, if any. -/
+def firstSameBand (s : ShorPolicySubmission) (i : ℕ) : Option ℕ :=
+  match s.bands[i]? with
+  | none => none
+  | some bi => (List.range i).find? fun j =>
+      match s.bands[j]? with
+      | some bj => sameSetup bj.2 bi.2
+      | none => false
+
+/-- Band `i`'s body of one flavour is exactly band `j`'s, renamed, with `coeff` indices shifted by `d`. -/
+def bandCopyOK (doc : Doc) (controlled : Bool) (i j d : ℕ) : Bool :=
+  match doc.templates.find? (·.name == bandBodyName controlled i),
+        doc.templates.find? (·.name == bandBodyName controlled j) with
+  | some ti, some tj =>
+      ti.body == shiftCoeffN d tj.body && ti.wParams == tj.wParams && ti.aParams == tj.aParams
+        && ti.rParams == tj.rParams
+  | _, _ => false
+
+/-- The widths reaching one, two and three levels of the policy's own recursion, within the leaf budget
+(the band boundaries need no sampling: their routing is the proved dispatcher). -/
+def policyDepthWidths (P : ShorLoweringPolicy) : List ℕ :=
+  ([1, 2, 3].filterMap fun d =>
+    (List.range widthSearchBound).find? fun n => d ≤ policyPPRecursionDepth P widthSearchBound n).eraseDups
+    |>.filter fun n => policyLeafCount P widthSearchBound n ≤ policyFullDepthLeafBudget
+
+/-- The evaluation tier on a probe submission `s'` and document `doc'`: band bodies one level deep for
+the first band of each distinct table, shifted-copy identity for the others, full depth at the
+recursion-depth ladder within the leaf budget, then `qft`, the leaves and the Shor instances as for
+a single table (`submissionChecks` in `Verify.lean`). -/
+def policyProbeChecks (s' : ShorPolicySubmission) (doc' : Doc) : Bool :=
+  let offs := bandOffsets s'
+  let bands := List.range s'.bands.length
+  let ppW := policyDepthWidths s'.policy
+  let qftW := policyQFTWidthLadder s'.policy
+  bands.all (fun i =>
+      match firstSameBand s' i with
+      | some j =>
+          let d := offs.getD i 0 - offs.getD j 0
+          bandCopyOK doc' false i j d && bandCopyOK doc' true i j d
+      | none =>
+          submissionPPSlacks.all (fun sl => okB (checkPolicyBandBodyAt s' i doc' sl))
+            && submissionPPSlacks.all (fun sl => okB (checkPolicyCBandBodyAt s' i doc' sl)))
+    && ppW.all (fun n => submissionPPSlacks.all fun sl => okB (checkPolicyPhaseProductAt s' n doc' sl))
+    && ppW.all (fun n => submissionPPSlacks.all fun sl => okB (checkPolicyCPhaseProductAt s' n doc' sl))
+    && qftW.all (fun w => okB (checkPolicyQftAt s' w doc'))
+    && submissionLeafWidths.all (fun p => okB (checkNaiveLeafAt doc' p.1 p.2))
+    && submissionLeafWidths.all (fun p => okB (checkNaiveCLeafAt doc' p.1 p.2))
+    && submissionShorGateInstances.all (fun im => okB (checkPolicyShorGateAt s' im.1 im.2 doc'))
+    && submissionShorInstances.all (fun im => okB (checkPolicyShorAt s' im.1 im.2 doc'))
+
+/-- **The policy evaluation tier**, as one `Bool`, evaluated natively by the
+`forshor_policy_submission` executable (`Submission/PolicyMain.lean`).
+
+The submitted document is well formed and carries exactly the dispatchers built for its own policy
+(whose routing is a theorem); the sampled checks are `policyProbeChecks` on the probe submission and
+the probe document. The cost depends on the distinct tables only: not on the thresholds, so not on `n`,
+and not on how many bands repeat a table. -/
 def policySubmissionChecks (s : ShorPolicySubmission) (doc : Doc) : Bool :=
-  let ppW := policyFullDepthWidths s.policy
-  let bands := List.range s.policy.bands.length
-  let qftW := policyQFTWidthLadder s.policy
-  doc.wellFormed
-    && bands.all (fun i => submissionPPSlacks.all fun sl => okB (checkPolicyBandBodyAt s i doc sl))
-    && bands.all (fun i => submissionPPSlacks.all fun sl => okB (checkPolicyCBandBodyAt s i doc sl))
-    && ppW.all (fun n => submissionPPSlacks.all fun sl => okB (checkPolicyPhaseProductAt s n doc sl))
-    && ppW.all (fun n => submissionPPSlacks.all fun sl => okB (checkPolicyCPhaseProductAt s n doc sl))
-    && qftW.all (fun w => okB (checkPolicyQftAt s w doc))
-    && submissionLeafWidths.all (fun p => okB (checkNaiveLeafAt doc p.1 p.2))
-    && submissionLeafWidths.all (fun p => okB (checkNaiveCLeafAt doc p.1 p.2))
-    && submissionShorGateInstances.all (fun im => okB (checkPolicyShorGateAt s im.1 im.2 doc))
-    && submissionShorInstances.all (fun im => okB (checkPolicyShorAt s im.1 im.2 doc))
+  doc.wellFormed && dispatchersAre doc s.policy &&
+    match probeSubmission s with
+    | none => false
+    | some s' => policyProbeChecks s' (withDispatchers doc s'.policy)
 
 end Shor.Reflect

@@ -70,8 +70,8 @@ theorem lowerCSignedPhaseProduct_correct
 /-! =========================================================
     The policy forms
 
-    The claim a policy submission receives. The fixed-table theorems above are
-    unchanged in statement and are now corollaries of these.
+    The claim a policy submission receives. The fixed-table theorems above
+    are the same statements at the constant policy.
 ========================================================= -/
 
 /-- Main signed phase-product lowering theorem under a policy. -/

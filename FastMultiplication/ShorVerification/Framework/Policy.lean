@@ -166,11 +166,11 @@ def Stops (P : ShorLoweringPolicy) (initSize : ℕ) (nextW : ToomCookTable → �
 
 /-! ### The constant policy
 
-Today's single-table submission, viewed as a policy. Everything the
+A table submission, viewed as a policy. Everything the
 single-table path proves is the `constPolicy` case of what the policy path
 proves. -/
 
-/-- One table at every width: today's submission, as a policy. -/
+/-- One table at every width: a table submission, as a policy. -/
 def constPolicy (T : ToomCookTable) : ShorLoweringPolicy :=
   ⟨[⟨0, T⟩], by simp⟩
 

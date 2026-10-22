@@ -50,8 +50,7 @@ shrinks the width on its own band. The recursion already falls back to the
 leaf when a table does not shrink (`ShorLoweringPolicy.Stops`), so a
 non-shrinking band is a performance problem, not a soundness one.
 `Policy.bandShrinks` in [`PolicyDecide.lean`](PolicyDecide.lean) is offered as
-an advisory check for exactly that, and `PolicyCheck.lean` runs it on the
-example below.
+an advisory check for exactly that, and `policy.json` reports it per band.
 
 ## The policy shipped here
 
@@ -72,8 +71,8 @@ The lower threshold is `14` rather than `12` for a reason worth copying.
 widths the table does not shrink the operand, so the recursion would fall
 straight through to the schoolbook leaf and the band would be selected only
 to decline. That is sound but wasteful, and it is exactly what
-`Policy.bandShrinks` reports; `PolicyCheck.lean` records both the passing
-check at `14` and the failing one at `12`.
+`Policy.bandShrinks` reports; `PolicyTests.lean` records the failing check
+at `12`, and `policy.json` carries the passing one at `14`.
 -/
 
 namespace PolicySubmission

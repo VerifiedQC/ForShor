@@ -9,10 +9,10 @@ nothing from any subroutine folder, and is imported by two or more of
 `Framework/`, Mathlib, and other `Shared/` files, and (b) it is imported from
 at least two different folders among `PhaseProduct`, `QFT`,
 `ModularExponentiation`, `Shor`, `GateCount`, `Reference`. (a) is enforced by
-`scripts/check_shared_layers.sh`; (b) is reported by the same script as an
-informational warning, not a build failure — a file can be legitimately
-shared-in-waiting (imported from only one folder today, expected to gain a
-second consumer).
+`scripts/check_layers.py Shared` (repo root), which also checks the internal
+layer order below; (b) is reported by the same script as a warning, not a
+build failure, and `Measurement.lean` is the one file it currently flags as
+imported from a single folder.
 
 ## Internal layer order
 
@@ -32,16 +32,5 @@ has no `Shared/` dependencies and sits outside the chain.
 | `Hadamard.lean` | `H_reg` on a register: uniform superposition, span closure | One-qubit register/zero-split/Hadamard-superposition facts and normalization constants, plus the finite-span closure of basis states reachable by applying Hadamards over a register's qubits. | `QFT/`, `ModularExponentiation/`. |
 | `GateLaws.lean` | `Framework/Semantics/GateSemantics.lean` classes (Pauli-X, extension, radix reverse, arithmetic basis functions) | Pauli-X/zero-extension locality, the unsigned phase-product macro semantics, the proof declarations moved out of the framework file for radix reverse/extension/arithmetic basis functions, and the generic basis-write arithmetic lemmas for `ArithmeticSemantics`. | `PhaseProduct/`, `QFT/`, and `Shared/LowGateEval.lean`. |
 | `LowGateEval.lean` | `Framework/Semantics/LowGateSemantics.lean` (`LowerGateClass.evalL` on each primitive, the `Gate` bridge) | `LowerGateClass.evalL`'s zero/algebra consequences, and the `evalL` correctness lemmas for the unsigned macro gates implemented in terms of the signed primitives (`LowerGateGateBridge`). | `PhaseProduct/`, `QFT/`. |
-| `Measurement.lean` | `Framework/Quantum/Measurement.lean` (`MeasureClass`) | Probability estimates built on `MeasureClass`. Unchanged from the pre-split `Semantics/Measurement.lean`. | `Shor/` (currently one folder — shared-in-waiting per rule (b)). |
-| `QftPhase.lean` | `qftPhase`/`ωPow` from `Framework/AbstractMachine/Gates.lean` | Grid-exponential form of `qftPhase`, its conjugate, periodicity, and unit norm. Unchanged from the pre-split `Semantics/QftPhase.lean`. | `ModularExponentiation/`, `Shor/`. |
-
-## Provenance
-
-This folder was assembled during the reorg by splitting a single lemma file
-at its own section banners into the topic files above; see git history.
-
-**Known stale citation:** `Framework/Quantum/Registers.lean`'s docstring
-(line 19) still says "Derived register laws and proof helpers live in
-`Implementation/RegisterLemmas.lean`" — that file is now
-`Implementation/Shared/Registers.lean`. Left unedited pending confirmation,
-since it is a comment inside the Framework layer.
+| `Measurement.lean` | `Framework/Quantum/Measurement.lean` (`MeasureClass`) | Probability estimates built on `MeasureClass`. | `Shor/`. |
+| `QftPhase.lean` | `qftPhase`/`ωPow` from `Framework/AbstractMachine/Gates.lean` | Grid-exponential form of `qftPhase`, its conjugate, periodicity, and unit norm. | `ModularExponentiation/`, `Shor/`. |

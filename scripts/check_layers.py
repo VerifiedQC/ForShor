@@ -79,12 +79,8 @@ UMBRELLA_OK = {
     ("PhaseProduct", "Math.Table_Generation.Generator"),
 }
 
-# Modules not inspected. `Generator*` is the unbuilt table-generation subtree
-# that nothing on the headline path roots; narrowed from the old blanket
-# `Math.Table_Generation*` skip, which is how real inversions escaped.
-SKIP = {
-    "PhaseProduct": [r"^Math\.Table_Generation\.Generator($|\.)"],
-}
+# Modules not inspected. Empty: every folder is built and layer-checked.
+SKIP = {}
 
 # (module, dependency) pairs allowed to break the layer order, with a reason.
 ALLOWED = {

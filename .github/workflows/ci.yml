@@ -3,10 +3,9 @@
 # guard, the lexical gate on each shipped template, the layer check and the
 # docs graph.
 #
-# What this workflow does NOT do: run `lean4checker`. That is step 3 of the CI
-# a *submissions* repo should enforce (Submission/README.md), and so are the
-# diff rule and the lexical gate as an acceptance control -- this repository has
-# no submission to police, so the gate runs here only to prove the published
+# What this workflow does NOT do: apply the diff rule or the lexical gate as
+# an acceptance control (Submission/README.md) -- this repository has no
+# submission to police, so the gate runs here only to prove the published
 # command still works.
 name: CI
 
@@ -64,7 +63,9 @@ jobs:
         # the build log is grepped instead.
         run: |
           set -o pipefail
-          lake build FastMultiplication EmitTests Submission PolicySubmission 2>&1 | tee build.log
+          lake build FastMultiplication EmitTests Submission PolicySubmission PolicyTests \
+            FastMultiplication.ShorVerification.Model.Standard.Headline \
+            FastMultiplication.ShorVerification.Model.QuantumLib.Headline 2>&1 | tee build.log
           if grep -q "warning:" build.log; then
             echo "::error::build produced warnings:"
             grep "warning:" build.log

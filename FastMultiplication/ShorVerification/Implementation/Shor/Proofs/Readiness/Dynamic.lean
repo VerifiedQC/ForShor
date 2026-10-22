@@ -436,7 +436,7 @@ Final theorem of the workspace directory.
 
 For a packaged `LoweredShorReady` assumption, the lowered approximate
 order-finding circuit satisfies the dynamic `GateWorkspaceCleanState`
-precondition needed by `lowerGate_correctness`.
+precondition needed by `Policy.lowerGate_correctness`.
 -/
 theorem LoweredShorReady.workspace_clean
     {qs : QSemantics}

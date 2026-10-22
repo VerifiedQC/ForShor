@@ -10,7 +10,7 @@ import FastMultiplication.Emit.IR.Json
 /-!
 # `forshor_emit` executable
 
-Dispatch only (per `Emit/README.md`'s Phase 0): `shor` prints the reference
+Dispatch only: `shor` prints the reference
 lowered Shor circuit (`Lower/Shor.lean`); `bundle` prints the n-free
 `forshor.emit/v1` symbolic document (`Symbolic/Bundle.lean`). The bare
 `<k> <a> <N> <m>` form (no subcommand) is kept as an alias of `shor`, for
@@ -74,9 +74,9 @@ def parseFlags : List String → BundleArgs → Option BundleArgs
   | "--no-template" :: rest, acc => parseFlags rest { acc with noTemplate := true }
   | _, _ => none
 
-/-- `[--flat]` and nothing else. `rest.contains "--flat"` used to accept any
-trailing junk, so a typo like `--falt` silently selected the *annotated* path
-and its extraction. Unknown arguments are now an error. -/
+/-- `[--flat]` and nothing else. Unknown arguments are an error, so a typo
+like `--falt` cannot silently select the *annotated* path and its
+extraction. -/
 def parseFlatFlag : List String → Option Bool
   | [] => some false
   | ["--flat"] => some true

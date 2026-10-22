@@ -11,8 +11,8 @@ namespace Shor
 
 This file collects the classical number-theoretic and postprocessing material
 needed by the top-level Shor correctness statement.  It deliberately stays
-away from circuit semantics, so `ShorDefinition` can focus on the quantum
-circuit and measurement interfaces.
+away from circuit semantics, which live in `Framework/Semantics/` and
+`Framework/Contract.lean`.
 -/
 
 /-! =========================================================

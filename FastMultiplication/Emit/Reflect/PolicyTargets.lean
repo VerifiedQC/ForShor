@@ -11,8 +11,8 @@ dispatcher (`Emit/Symbolic/Dispatcher.lean`) routes between.
 The body of a band is the body of a table: `Policy.signedPlanOf.eq_2`'s
 right-hand side, read through `Policy.canonicalStep`, with the recursive
 child left as a `Node.call`. `Targets.lean` already goes through exactly
-that route — item 4 of `PLAN_Policy.md` moved the single-table path onto the
-policy machinery at `constPolicy` — so what is new here is only *which*
+that route — the single-table path was moved onto the policy machinery at
+`constPolicy` — so what is new here is only *which*
 policy and *which* table, and the two hypotheses that supplies.
 
 ## The two hypotheses, and why they are local constants

@@ -31,9 +31,8 @@ What it catches:
 What it does *not* catch, and what covers each instead:
 
 * `set_option debug.skipKernelTC true`, which skips the kernel without adding
-  an axiom. Nothing visible in the environment does; that is what replaying
-  the built `.olean`s through `lean4checker` is for, and why
-  `Submission/README.md` asks a submissions repo to run it.
+  an axiom. Nothing visible in the environment does; the lexical gate rejects
+  `set_option debug` in a template for that reason.
 * Anything that changes only the *compiled* code behind a declaration:
   `@[implemented_by]`, `@[extern]`, and `@[csimp]` with an unsound proof.
   These are invisible here by construction — `collectAxioms` traverses the
@@ -43,8 +42,7 @@ What it does *not* catch, and what covers each instead:
   evaluation-tier `example`s use `native_decide`, and
   `lake exe forshor_submission` is a compiled binary. A table that is
   kernel-checked under C1–C4 can therefore be printed into `ir.json` as a
-  different table. `lean4checker` does not see this either, since it too
-  replays the kernel. The cover is lexical, in step 1 of
+  different table. The cover is lexical, in step 1 of
   `Submission/README.md`'s CI: `Template.lean` is rejected if it mentions
   those attributes or the metaprogramming surface around them.
 -/
@@ -169,5 +167,37 @@ theorem substituted_eq : substituted = [1, 2, 3] := by decide +kernel
 
 /-- The compiled value disagrees, and `native_decide` proves it does. -/
 example : substituted = [9, 9, 9] := by native_decide
+
+/-! Name resolution is relative to the enclosing namespaces, innermost first.
+Inside `namespace Shadow`, the partly qualified `Shadow.target` resolves to
+`Shadow.Shadow.target` if that exists, and stops there. A submitter can
+declare such a decoy in their own file, so every repo-owned audit line is
+written `#assert_axioms _root_.…`. This test pins both halves: the relative
+name audits the clean decoy, the absolute name audits the real declaration
+and fails. -/
+
+namespace Shadow
+
+/-- The real declaration: not kernel-checked. -/
+theorem target : (2 : Nat) + 2 = 4 := by native_decide
+
+namespace Shadow
+/-- A clean decoy, one namespace deeper. -/
+theorem target : (2 : Nat) + 2 = 4 := by decide +kernel
+end Shadow
+
+/-- info: 'Shor.Audit.Test.Shadow.Shadow.target' is kernel-checked; axioms: [] -/
+#guard_msgs in
+#assert_axioms Shadow.target
+
+/--
+error: 'Shor.Audit.Test.Shadow.target' is not kernel-checked. Axioms outside the allowlist (propext, Classical.choice, Quot.sound):
+  Lean.ofReduceBool  -- `native_decide`: the compiled evaluator is trusted, the kernel is not run
+  Lean.trustCompiler  -- `native_decide`: the compiled evaluator is trusted, the kernel is not run
+-/
+#guard_msgs in
+#assert_axioms _root_.Shor.Audit.Test.Shadow.target
+
+end Shadow
 
 end Shor.Audit.Test

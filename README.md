@@ -90,7 +90,7 @@ All components are proved: phase-product compilation, QFT decomposition, continu
 
 The reference implementation (`FastMultiplication/ShorVerification/Implementation/Reference/`) instantiates the whole framework concretely and is fully computable end to end: `Shor.Reference.referenceProgramAt` lowers to an executable `LowGate` circuit with no noncomputable interpolation step (the phase-product coefficients are computed via `Matrix.cramer`, not `Matrix.inv`). `FastMultiplication/Emit/` prints that circuit as JSON (`forshor.lowgate/v2` schema); `lake exe forshor_emit <k> <a> <N> <m>` writes it to stdout.
 
-The reference is no longer the only implementation the development admits. `FastMultiplication/ShorVerification/Framework/ToomCookTable.lean` states what makes a Toom-Cook table admissible, and `referenceProgramAt` is generic in it, so any table passing four decidable side conditions gets the same proved correctness theorem — see [Submitting a table](#submitting-a-table).
+The reference is not the only implementation the development admits. `FastMultiplication/ShorVerification/Framework/ToomCookTable.lean` states what makes a Toom-Cook table admissible, and `referenceProgramAt` is generic in it, so any table passing four decidable side conditions gets the same proved correctness theorem — see [Submitting a table](#submitting-a-table).
 
 ## Repository layout
 
@@ -135,13 +135,12 @@ A submission is therefore a value of `Shor.ShorSubmission`
 (`Framework/ToomCookTable.lean`): the table, plus the submitter's proofs of
 four conditions.
 
-(A second kind of submission is being built on top of this one: a
-`Shor.ShorPolicySubmission` (`Framework/Policy.lean`) is a list of such
-tables indexed by operand width — Toom-6 at the top, Karatsuba near the
-leaves, the schoolbook leaf below an explicit threshold — each band carrying
-the same four proofs, plus one decidable field saying the thresholds strictly
-decrease. A table submission is the one-band policy at threshold `0`, so
-nothing below changes for it.)
+(The second kind of submission, a `Shor.ShorPolicySubmission`
+(`Framework/Policy.lean`), is a list of such tables indexed by operand width
+— Toom-6 at the top, Karatsuba near the leaves, the schoolbook leaf below an
+explicit threshold — each band carrying the same four proofs, plus one
+decidable field saying the thresholds strictly decrease. A table submission
+is the one-band policy at threshold `0`, so nothing below changes for it.)
 
 | | condition | proved by |
 | --- | --- | --- |
@@ -205,11 +204,14 @@ The certificate is the same theorem. `Shor.policy_submission_correct` is
 generic in the policy, and `Shor.submission_correct` is literally its
 one-band case at threshold `0` — a table submission *is* a policy. A policy
 is scored the same way too: `policy.json` carries an IR of one dispatcher
-plus one body template per band, pinned against the real compiled circuit at
-each band boundary and at the widths reaching one, two and three levels of
-the policy's own recursion. That the dispatcher's emitted guard chain picks
-the same band as `ShorLoweringPolicy.choose` at every width is proved, not
-sampled.
+plus one body template per band. The dispatcher must be exactly the guard
+chain built from the policy, and that chain picking the same band as
+`ShorLoweringPolicy.choose` at every width is proved, not sampled. The band
+bodies are pinned against the real compiled circuit on a *probe* copy of the
+policy — the same tables in the same order at the smallest thresholds where
+each table shrinks — one level deep per distinct table and at full depth at
+the widths reaching one, two and three levels of the probe's recursion, so
+the cost of the check depends on the tables and not on the thresholds.
 
 See
 [`Submission/README.md`](FastMultiplication/ShorVerification/Submission/README.md)
@@ -237,8 +239,8 @@ The other build targets:
 lake build EmitTests          # the emitter's native_decide acceptance suite
 lake build Submission         # checks the table and proofs in Submission/Template.lean
 lake exe forshor_submission
-lake build PolicySubmission   # the same, for Submission/PolicyTemplate.lean
-lake exe forshor_policy_submission
+lake build PolicySubmission   # the kernel-checked side conditions for Submission/PolicyTemplate.lean
+lake exe forshor_policy_submission   # the evaluation tier; prints policy.json only if it passes
 ```
 
 ## License

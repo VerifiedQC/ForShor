@@ -32,7 +32,7 @@ lean_lib «EmitTests» where
 -- `native_decide`), extracts the IR, and pins that IR against the real
 -- circuit at the sampled widths. A submissions repo's whole CI is
 --   lake build Submission && lake exe forshor_submission > ir.json
--- plus `lean4checker` on the built `.olean`s; see Submission/README.md.
+-- see Submission/README.md.
 lean_lib «Submission» where
   roots := #[`FastMultiplication.ShorVerification.Submission.Check]
 
@@ -43,8 +43,9 @@ lean_exe forshor_submission where
 -- rather than one table. `Submission/PolicyTemplate.lean` is the submitter's
 -- file, `Submission/PolicyCheck.lean` is the repo-owned root and is the
 -- check. It audits the policy's axioms and kernel-checks C1-C4 per band plus
--- the thresholds' strict decrease, extracts the per-band IR and pins it
--- against the real circuit at sampled widths. A policy
+-- the thresholds' strict decrease, extracts the per-band IR and checks it is
+-- well formed; the executable then runs the evaluation tier against the real
+-- circuit at sampled widths and prints only if it passes. A policy
 -- submissions repo's CI is
 --   lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
 -- see Submission/README.md.
@@ -53,3 +54,10 @@ lean_lib «PolicySubmission» where
 
 lean_exe forshor_policy_submission where
   root := `FastMultiplication.ShorVerification.Submission.PolicyMain
+
+-- Worked examples on the *shipped* policy template: `choose` at particular
+-- widths, the advisory shrink check firing. Kept out of `PolicySubmission`
+-- on purpose, since that library's build is the acceptance check and must
+-- hold for any admissible policy, not only the shipped one.
+lean_lib «PolicyTests» where
+  roots := #[`FastMultiplication.ShorVerification.Submission.PolicyTests]

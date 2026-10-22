@@ -63,7 +63,7 @@ def Prop'.render : Prop' → String
   | .testBit n i => s!"testBit({n.render}, {i.render})"
 
 /-- Serialize a template-body `Node`. Op names are exactly the
-`LowGate`/`Gate` constructor names (D2); every width/angle/register operand
+`LowGate`/`Gate` constructor names; every width/angle/register operand
 is a rendered formula string, never re-derived here. -/
 partial def nodeJson : Node → Json
   | .op name regs nats angle flags =>

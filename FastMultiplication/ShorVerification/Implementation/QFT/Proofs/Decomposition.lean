@@ -104,7 +104,6 @@ noncomputable def finMulAddEquiv (A B : ℕ) :
 variable (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]
 
 def nTot (r : Reg) : ℕ := regSize r
-def mHalf (r : Reg) : ℕ := (nTot r) / 2
 
 lemma qft_norm_split (nTot m : ℕ) (hm : m ≤ nTot) :
     ((1 / Real.sqrt ((2^nTot : ℕ) : ℝ) : ℂ)) = ((1 / Real.sqrt ((2^m : ℕ) : ℝ) : ℂ))

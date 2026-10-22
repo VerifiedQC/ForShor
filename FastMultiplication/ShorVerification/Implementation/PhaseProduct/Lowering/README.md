@@ -13,13 +13,12 @@ fixed for a whole plan and threaded unchanged through every constructor; what
 varies with depth is which table `P.choose initSize` hands back at that
 level.
 
-**The old names are the constant policy.** `StandardPhaseLoweringPlan k hk
-pts hpts ops` is now an `abbrev` for
+**The fixed-table names are the constant policy.** `StandardPhaseLoweringPlan
+k hk pts hpts ops` is an `abbrev` for
 `PhaseLoweringPlan (constPolicy ⟨k, hk, pts, hpts, ops⟩)`, and
 `standardSignedPhaseLoweringPlan` and friends are wrappers that build at that
-policy. Fixed-table statements elsewhere in the codebase are therefore
-byte-identical to what they were before policies existed — they are the
-one-band case, not a separate mechanism.
+policy. Fixed-table statements elsewhere in the codebase are the one-band
+case, not a separate mechanism.
 
 ## `Plan.lean`
 
@@ -44,8 +43,8 @@ one-band case, not a separate mechanism.
   licensed where the policy offers nothing.
 - **`lowerGateRec`** — the interpreter: erases a plan's proof data and returns
   the `LowGate` it certifies (structural recursion on the plan).
-- **`StandardPhaseLoweringPlan`**, **`lowerPhasePlan`** — the plan type at
-  the constant policy on one table (see above), and its interpreter.
+- **`StandardPhaseLoweringPlan`** — the plan type at the constant policy on
+  one table (see above); `lowerGateRec` interprets it like any other plan.
 - **`lowerSignedPhaseProd`** / **`lowerCSignedPhaseProd`** — the public
   entry points: given a plan whose initial size is the actual operand
   `phaseInputSize`, produce the lowered `LowGate`.

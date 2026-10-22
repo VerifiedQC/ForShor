@@ -11,15 +11,14 @@ import FastMultiplication.Emit.Table.Source
 # The `forshor.emit/v1` bundle
 
 Assembles E2 (`Symbolic/CoeffPoly.lean`), E3 (`Symbolic/Width.lean`), E4
-(`Symbolic/QftPlan.lean`), E5 (`Symbolic/ShorPlan.lean`) — the D4-opaque
+(`Symbolic/QftPlan.lean`), E5 (`Symbolic/ShorPlan.lean`) — the opaque
 value tables — and E7 (the extracted `Doc`, `Reflect/Verify.lean`) into one
 document, `n`-free: every quantity depends on `k`, never on a modulus
 bit-length `n` (except `shor_plan`'s own explicit `n`-ladder, which is the
 whole point of that section). `k` enters everywhere; `n` never does outside
 `shor_plan`.
 
-R3 split this file's old single pure `buildBundle` in
-two: `buildBundleCore` (schedule/coeff_poly/width/qft_plan/shor_plan — pure,
+The builders come in two kinds: `buildBundleCore` (schedule/coeff_poly/width/qft_plan/shor_plan — pure,
 `native_decide`-testable, no reflection) and `buildBundle`/`buildTemplateDoc`
 (`unsafe`, `IO`, since embedding the extracted `Doc` needs
 `Reflect.runExtract`'s environment reload). `--no-template` skips the load
@@ -45,7 +44,7 @@ def optsJson (o : BundleOpts) : Json :=
   ]
 
 /-- E1: the schedule (`ops`, `points` only — census/per-width `LowGate`
-resource counts are not D4-opaque, so R3 dropped them: they fall out of the
+resource counts are not opaque values: they fall out of the
 extracted `Doc` plus the repository's own `shorGateResourceModel`, not out
 of a separate table here). -/
 def scheduleJson {k : ℕ} (inst : TableInstance k) : Json :=
@@ -98,7 +97,7 @@ def coeffPolyJson {k : ℕ} (inst : TableInstance k) (_checkCramer : Bool) (mMax
         ("rows", Json.arr rows.toArray)
       ]
 
-/-- E3: the width table (`nextWidth`, `reserveNeed_x/z`, D4-opaque). -/
+/-- E3: the width table (`nextWidth`, `reserveNeed_x/z`, opaque to the templates). -/
 def widthJson {k : ℕ} (ops : Prog k) (wMax : ℕ) : Json :=
   Json.mkObj [
     ("rows",
@@ -124,7 +123,7 @@ def splitWidthJson {k : ℕ} (ops : Prog k) (wMax : ℕ) : Json :=
         ])).toArray)
   ]
 
-/-- E4: the QFT workspace table (`qftWorkspaceNeed`, D4-opaque). -/
+/-- E4: the QFT workspace table (`qftWorkspaceNeed`, opaque to the templates). -/
 def qftPlanJson {k : ℕ} (ops : Prog k) (wMax : ℕ) : Json :=
   Json.mkObj [
     ("rows",
@@ -155,15 +154,14 @@ def shorPlanRowJson (row : ShorPlanRow) : Json :=
     ("per_m", Json.arr (row.perM.map shorPlanPerMJson).toArray)
   ]
 
-/-- E5: the Shor register plan (widths and reserves only — no affine tail
-since R4). -/
+/-- E5: the Shor register plan (widths and reserves only). -/
 def shorPlanJson (pol : Shor.ShorLoweringPolicy) (nMin nMax mMax : ℕ) : Json :=
   Json.mkObj [
     ("rows", Json.arr ((shorPlanTable pol nMin nMax mMax).map shorPlanRowJson).toArray)
   ]
 
-/-- The extracted-`Doc` provenance string: D7's trust statement, verbatim
-(`Emit/README.md`). -/
+/-- The extracted-`Doc` provenance string: the trust statement, verbatim
+(`Emit/README.md`, "Design rules"). -/
 def templateProvenance : String :=
   "extracted by reflection from the named constants; trusted: translation " ++
   "table and Lean normalisation; checked: instantiate = real term at the " ++
@@ -186,11 +184,11 @@ def provenanceJson : Json :=
       "cramerCoeffFromPtsWidth = phaseCoeffFromPtsWidth is the theorem " ++
       "cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth")),
     ("width", Json.str
-      "RecursivePhaseWorkspace.nextWidth/reserveNeed evaluated directly (D4: opaque)"),
+      "RecursivePhaseWorkspace.nextWidth/reserveNeed evaluated directly, opaque"),
     ("split_width", Json.str
-      ("RecursivePhaseWorkspace.nextWidth/reserveNeed evaluated directly (D4: opaque) at " ++
+      ("RecursivePhaseWorkspace.nextWidth/reserveNeed evaluated directly, opaque at " ++
       "(w/2, w - w/2), the unequal operand pair qft hands phase_product")),
-    ("qft_plan", Json.str "qftWorkspaceNeed evaluated directly (D4: opaque)"),
+    ("qft_plan", Json.str "qftWorkspaceNeed evaluated directly, opaque"),
     ("shor_plan", Json.str
       ("referenceXWidth/referenceDataWidth/referenceWorkWidth/referenceScratchWidth/" ++
       "referenceWorkspaceNeed evaluated on synthetic instances N = 2^n - 1, a = 2. The " ++
