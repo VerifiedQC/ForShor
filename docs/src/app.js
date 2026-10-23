@@ -131,8 +131,9 @@
     const table = isFramework ? (Model.ANN.roles || {}) : (Model.ANN.layers || {});
     const present = new Set(drawn.children.map((c) => (isFramework ? Model.role(c) : Model.layer(c))));
     const entries = Object.entries(table).filter(([key]) => present.has(key));
-    els.legend.innerHTML = (entries.length ? entries : Object.entries(table)).map(([, r]) => `
-      <div class="legend-item"><span class="legend-dot" style="--legend-color:${r.color}"></span><span>${escapeHtml(r.label)}</span></div>
+    const prefix = isFramework ? "--role-" : "--layer-";
+    els.legend.innerHTML = (entries.length ? entries : Object.entries(table)).map(([key, r]) => `
+      <div class="legend-item"><span class="legend-dot" style="--legend-color:var(${prefix}${key}, ${r.color})"></span><span>${escapeHtml(r.label)}</span></div>
     `).join("");
   }
 

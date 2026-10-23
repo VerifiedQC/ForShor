@@ -42,11 +42,20 @@ function createGraphView(svg, stage, handlers) {
     applyTransform();
   }
 
+  // Colours live in styles.css (--role-*, --layer-*, --edge-*); the values in
+  // data/annotations.js are only the fallback when a variable is missing.
+  function themeColor(name, fallback) {
+    try {
+      const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      return v || fallback;
+    } catch (_) { return fallback; }
+  }
+  function roleColor(role) { return themeColor(`--role-${role}`, (ANN.roles[role] || {}).color || "#7c899c"); }
+  function layerColor(layer) { return themeColor(`--layer-${layer}`, (ANN.layers[layer] || {}).color || "#7c899c"); }
   function colorFor(path) {
     const layer = Model.layer(path);
-    if (layer && ANN.layers[layer]) return ANN.layers[layer].color;
-    const role = Model.role(path);
-    return (ANN.roles[role] || {}).color || "#7c899c";
+    if (layer && ANN.layers[layer]) return layerColor(layer);
+    return roleColor(Model.role(path));
   }
 
   function cubicPoint(p0, p1, p2, p3, t) {
@@ -259,19 +268,19 @@ function createGraphView(svg, stage, handlers) {
     svg.innerHTML = "";
     const defs = make("defs", {}, svg);
     ["framework", "subroutine", "assembly", "resource", "submission", "support"].forEach((role) => {
-      const color = (ANN.roles[role] || {}).color || "#7c899c";
+      const color = roleColor(role);
       const m = make("marker", { id: `arrow-${role}`, markerWidth: 9, markerHeight: 9, refX: 8, refY: 2.5, orient: "auto", markerUnits: "strokeWidth" }, defs);
       make("path", { d: "M 0 0 L 8 2.5 L 0 5 z", fill: color }, m);
     });
     ["math", "definitions", "lowering", "spec", "proofs", "main"].forEach((layer) => {
-      const color = (ANN.layers[layer] || {}).color || "#7c899c";
+      const color = layerColor(layer);
       const m = make("marker", { id: `arrow-layer-${layer}`, markerWidth: 9, markerHeight: 9, refX: 8, refY: 2.5, orient: "auto", markerUnits: "strokeWidth" }, defs);
       make("path", { d: "M 0 0 L 8 2.5 L 0 5 z", fill: color }, m);
     });
     const secMarker = make("marker", { id: "arrow-secondary", markerWidth: 8, markerHeight: 8, refX: 7, refY: 2.2, orient: "auto", markerUnits: "strokeWidth" }, defs);
-    make("path", { d: "M 0 0 L 7 2.2 L 0 4.4 z", fill: "#9aa7bc" }, secMarker);
+    make("path", { d: "M 0 0 L 7 2.2 L 0 4.4 z", fill: themeColor("--edge-secondary", "#9aa7bc") }, secMarker);
     const dimMarker = make("marker", { id: "arrow-dim", markerWidth: 8, markerHeight: 8, refX: 7, refY: 2.2, orient: "auto", markerUnits: "strokeWidth" }, defs);
-    make("path", { d: "M 0 0 L 7 2.2 L 0 4.4 z", fill: "#c3cad6" }, dimMarker);
+    make("path", { d: "M 0 0 L 7 2.2 L 0 4.4 z", fill: themeColor("--edge-dim", "#c3cad6") }, dimMarker);
 
     scene = make("g", { class: "scene" }, svg);
     currentPositions = vm.positions;
@@ -328,7 +337,7 @@ function createGraphView(svg, stage, handlers) {
       const markerId = emphasis === "primary"
         ? (layer && ANN.layers[layer] ? `arrow-layer-${layer}` : `arrow-${Model.role(e.from)}`)
         : `arrow-${emphasis === "secondary" ? "secondary" : "dim"}`;
-      const strokeColor = emphasis === "primary" ? colorFor(e.from) : (emphasis === "secondary" ? "#9aa7bc" : "#d5dbe4");
+      const strokeColor = emphasis === "primary" ? colorFor(e.from) : (emphasis === "secondary" ? themeColor("--edge-secondary", "#9aa7bc") : themeColor("--edge-dim", "#d5dbe4"));
 
       const path = make("path", {
         class: classesFor("edge", [`edge-${emphasis}`, isSelected && "selected", isNeighbor && !isSelected && "neighbor", dim && "dimmed"]),

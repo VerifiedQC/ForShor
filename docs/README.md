@@ -8,7 +8,10 @@ This directory is the project website, published by GitHub Pages at
   the trust base, the dependency spine, build and citation. Plain HTML, styled
   by `landing.css`; every statement on it is taken from the
   [top-level README](../README.md).
-* `navigator.html` — the interactive proof map described below. Deep links
+* `navigator.html` — the interactive proof map described below, in the same
+  dark theme as the project page (`styles.css`; node, edge and legend colours
+  are the `--role-*` / `--layer-*` / `--edge-*` variables there, the colours
+  in `data/annotations.js` are only a fallback). Deep links
   of the old form `index.html#/Folder?sel=...` are redirected to
   `navigator.html` by a one-line script in `index.html`, so existing links
   keep working.
