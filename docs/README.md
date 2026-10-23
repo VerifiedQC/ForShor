@@ -3,11 +3,11 @@
 This directory is the project website, published by GitHub Pages at
 <https://verifiedqc.github.io/ForShor/>. It has two pages:
 
-* `index.html` — the project page: what ForShor is, the theorems it proves
-  (`Shor_correct`, `Shor_correct_approx_lowered`, `exists_shorGateCountBound`),
-  the trust base, the dependency spine, build and citation. Plain HTML, styled
-  by `landing.css`; every statement on it is taken from the
-  [top-level README](../README.md).
+* `index.html` — the project page, written as a short technical-blog post:
+  what ForShor is, what the map is for, how to read it (with screenshots in
+  `img/`), where to start, how to check the development and how to cite it.
+  Plain HTML, styled by `landing.css`; every claim about the proofs is taken
+  from the [top-level README](../README.md).
 * `navigator.html` — the interactive proof map described below, in the same
   dark theme as the project page (`styles.css`; node, edge and legend colours
   are the `--role-*` / `--layer-*` / `--edge-*` variables there, the colours
