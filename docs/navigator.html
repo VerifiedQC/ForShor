@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ForShor — proof map</title>
+    <link rel="stylesheet" href="./styles.css?v=14">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <p class="eyebrow"><a class="eyebrow-link" href="./">ForShor</a> · Shor's algorithm verified in Lean 4</p>
+          <h1>Proof map</h1>
+          <div class="breadcrumb" id="breadcrumb"></div>
+        </div>
+        <div class="toolbar" aria-label="Graph controls">
+          <div class="search-wrap">
+            <input id="searchInput" type="search" placeholder="Search declarations, files, folders" autocomplete="off">
+            <div id="searchResults" class="search-results" hidden></div>
+          </div>
+          <button id="zoomOutButton" class="icon-button" type="button" title="Zoom out">-</button>
+          <button id="zoomInButton" class="icon-button" type="button" title="Zoom in">+</button>
+          <button id="fitButton" type="button" title="Fit graph (f)">Fit</button>
+          <button id="focusToggleButton" type="button" title="Toggle focus dimming">Focus on</button>
+          <button id="allImportsToggleButton" type="button" title="Overlay every import edge, not just the curated ones">All imports</button>
+          <button id="topButton" type="button" title="Open top-level map">Top</button>
+          <a class="toolbar-link" href="./" title="Back to the ForShor project page">Project page</a>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <aside class="rail" aria-label="Proof tree">
+          <div class="rail-title">Tree</div>
+          <nav id="railTree" class="rail-tree"></nav>
+          <div class="rail-card">
+            <div class="rail-title">Legend</div>
+            <div id="legend" class="legend"></div>
+          </div>
+        </aside>
+
+        <section class="graph-stage" aria-label="Interactive proof graph">
+          <div class="graph-hud">
+            <div>
+              <h2 id="viewTitle" class="view-title"></h2>
+              <p id="viewDescription" class="view-description"></p>
+            </div>
+            <div id="graphStats" class="graph-stats"></div>
+          </div>
+          <svg id="graph" role="img" aria-label="ShorVerification proof graph"></svg>
+          <div id="usesStrip" class="boundary-strip boundary-strip-left" hidden></div>
+          <div id="usedByStrip" class="boundary-strip boundary-strip-right" hidden></div>
+          <div id="emptyState" class="empty-state" hidden>No matching nodes</div>
+        </section>
+
+        <aside class="details" aria-label="Selected item details">
+          <div id="detailsContent"></div>
+        </aside>
+      </section>
+    </main>
+
+
+    <script src="./data/graph.js?v=14"></script>
+    <script src="./data/annotations.js?v=14"></script>
+    <script src="./src/model.js?v=14"></script>
+    <script src="./src/layout.js?v=14"></script>
+    <script src="./src/render.js?v=14"></script>
+    <script src="./src/details.js?v=14"></script>
+    <script src="./src/router.js?v=14"></script>
+    <script src="./src/app.js?v=14"></script>
+  </body>
+</html>
