@@ -1,5 +1,13 @@
 # ShorVerification proof graph
 
+This directory is the project website, published by GitHub Pages at
+<https://verifiedqc.github.io/ForShor/>. It is an interactive map of the
+ForShor proof — the Lean 4 verification of Shor's order-finding algorithm and
+its gate-count bound described in the [top-level README](../README.md). The
+**About** button (shown automatically on a first visit to the top view)
+explains what ForShor is, what is proved, what a submission is, and how to
+read the map; everything below is about how the map itself is built.
+
 Interactive map of `FastMultiplication/ShorVerification`: the outermost view
 is `Framework` (the specification) alongside the `Implementation/` subsystems
 (`Shared`, `PhaseProduct`, `QFT`, `ModularExponentiation`, `Shor`, `GateCount`,
