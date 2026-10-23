@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ShorVerification Proof Graph</title>
-    <link rel="stylesheet" href="./styles.css?v=12">
+    <title>ForShor — proof map of a verified Shor's algorithm</title>
+    <link rel="stylesheet" href="./styles.css?v=13">
   </head>
   <body>
     <main class="app-shell">
       <header class="topbar">
         <div class="brand-block">
-          <p class="eyebrow">FastMultiplication / ShorVerification</p>
-          <h1>Framework ⇄ Implementation</h1>
+          <p class="eyebrow">ForShor · Shor's algorithm verified in Lean 4</p>
+          <h1>Proof map</h1>
           <div class="breadcrumb" id="breadcrumb"></div>
         </div>
         <div class="toolbar" aria-label="Graph controls">
@@ -25,6 +25,7 @@
           <button id="focusToggleButton" type="button" title="Toggle focus dimming">Focus on</button>
           <button id="allImportsToggleButton" type="button" title="Overlay every import edge, not just the curated ones">All imports</button>
           <button id="topButton" type="button" title="Open top-level map">Top</button>
+            <button id="aboutButton" type="button" title="What this project and this page are">About</button>
         </div>
       </header>
 
@@ -58,13 +59,63 @@
       </section>
     </main>
 
-    <script src="./data/graph.js?v=12"></script>
-    <script src="./data/annotations.js?v=12"></script>
-    <script src="./src/model.js?v=12"></script>
-    <script src="./src/layout.js?v=12"></script>
-    <script src="./src/render.js?v=12"></script>
-    <script src="./src/details.js?v=12"></script>
-    <script src="./src/router.js?v=12"></script>
-    <script src="./src/app.js?v=12"></script>
+    <div id="aboutOverlay" class="about-overlay" hidden>
+      <div class="about-card" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+        <div class="about-head">
+          <div>
+            <p class="eyebrow">ForShor</p>
+            <h2 id="aboutTitle">Shor's algorithm, verified in Lean 4 — gate count included</h2>
+          </div>
+          <button id="aboutClose" class="icon-button about-close" type="button" title="Close (Esc)" aria-label="Close">×</button>
+        </div>
+        <div class="about-body">
+          <section>
+            <h3>What ForShor is</h3>
+            <p>ForShor is a formal verification of Shor's order-finding algorithm in Lean 4, together with a verified estimate of how many gates the circuit uses. It verifies an implementation of order finding built on fast Toom-Cook multiplication, from a high-level gate language down to a low-level abstract machine. This page is an interactive map of that proof; the code lives in the <a href="https://github.com/VerifiedQC/ForShor" target="_blank" rel="noopener">VerifiedQC/ForShor</a> repository.</p>
+          </section>
+          <section>
+            <h3>What is proved</h3>
+            <ul>
+              <li><strong>Correctness.</strong> <code>Shor_correct</code>: the ideal order-finding circuit, after classical continued-fraction post-processing, returns exactly the order with probability at least <code>κ / (log₂ N)⁴</code>, with <code>κ = 4e⁻²/π² ≈ 0.0548</code>. <code>Shor_correct_approx_lowered</code>: the same bound survives compilation to the low-level machine, up to a factor of two, once the per-step precision is chosen as a closed-form function of <code>N</code>.</li>
+              <li><strong>Resource estimate.</strong> <code>exists_shorGateCountBound</code>: for every <code>ε &gt; 0</code> there is a table arity <code>k</code> for which the fully compiled circuit uses <code>O(n^(2+ε))</code> elementary gates, where <code>n</code> is the modulus register size. The count is an honest count of low-level gate operations under an explicit cost model, not an abstract measure. <code>shorGateCountBound_of_setup</code> gives any admissible submitted table the bound at its own exponent.</li>
+              <li><strong>Trust base.</strong> No proof uses <code>sorry</code> (the one occurrence is a deliberate test that the axiom audit rejects it). <code>#print axioms</code> on the headline theorems reports only <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>. The reference implementation is fully computable end to end and prints its circuit as JSON.</li>
+            </ul>
+          </section>
+          <section>
+            <h3>The challenge</h3>
+            <p>The verified construction exposes exactly one degree of freedom: the Toom-Cook table (an arithmetic program over <code>k</code> limb registers plus its interpolation points), or a cascade of such tables indexed by operand width. A submission is a table plus four side conditions C1–C4, all decided <em>in the Lean kernel</em> (<code>decide +kernel</code>, never <code>native_decide</code>, enforced by an axiom check). Passing them is admissibility: the correctness theorem is proved once, generically in the table, so a submission needs no proof of its own. Everything else — the quantum construction, its proof, the precision, the trial count — is fixed and shared by every entrant.</p>
+          </section>
+          <section>
+            <h3>How to read this map</h3>
+            <ul>
+              <li>Each view is one folder of the proof. <strong>Left to right is dependency order</strong>: a column is a dependency rank, and arrows point from what is used to what uses it. The spine runs Framework (the specification) → PhaseProduct, QFT, ModularExponentiation (three independently verified subroutines) → Shor (the assembly) → GateCount (the score) → Reference (the concrete, executable instance). Shared is a lemma library, not a step.</li>
+              <li><strong>Click a folder</strong> to descend into its own graph, down to individual <code>.lean</code> files; <strong>click a node</strong> to see its declarations and docstrings on the right, with the GitHub link, and what it uses and is used by in the side strips. The tree on the left and the breadcrumb go back up.</li>
+              <li>Only the edges that tell the story are drawn by default; <strong>All imports</strong> overlays every import edge. <strong>Focus</strong> dims everything unrelated to the selection. Search finds any declaration, file or folder. Colours in the legend are roles (framework, subroutine, assembly, resource, submission, support).</li>
+            </ul>
+          </section>
+          <section class="about-links">
+            <h3>Read more</h3>
+            <ul>
+              <li><a href="https://github.com/VerifiedQC/ForShor#readme" target="_blank" rel="noopener">README</a> — main results with the theorem statements, build instructions, citation.</li>
+              <li><a href="https://github.com/VerifiedQC/ForShor/blob/main/ARCHITECTURE.md" target="_blank" rel="noopener">ARCHITECTURE.md</a> — file-by-file guide to the development.</li>
+              <li><a href="https://github.com/VerifiedQC/ForShor#submitting-a-table" target="_blank" rel="noopener">Submitting a table</a> and <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Submission/README.md" target="_blank" rel="noopener">Submission/README.md</a> — the four conditions, what the tiers of checking establish, CI rules.</li>
+            </ul>
+          </section>
+        </div>
+        <div class="about-foot">
+          <span>Anirudh Suresh, Jai Patel, Yudong Cao, Runzhou Tao · Apache-2.0</span>
+          <button id="aboutExplore" type="button" class="about-primary">Explore the proof map</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./data/graph.js?v=13"></script>
+    <script src="./data/annotations.js?v=13"></script>
+    <script src="./src/model.js?v=13"></script>
+    <script src="./src/layout.js?v=13"></script>
+    <script src="./src/render.js?v=13"></script>
+    <script src="./src/details.js?v=13"></script>
+    <script src="./src/router.js?v=13"></script>
+    <script src="./src/app.js?v=13"></script>
   </body>
 </html>

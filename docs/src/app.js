@@ -30,6 +30,10 @@
     topBtn: document.getElementById("topButton"),
     usesStrip: document.getElementById("usesStrip"),
     usedByStrip: document.getElementById("usedByStrip"),
+    aboutBtn: document.getElementById("aboutButton"),
+    aboutOverlay: document.getElementById("aboutOverlay"),
+    aboutClose: document.getElementById("aboutClose"),
+    aboutExplore: document.getElementById("aboutExplore"),
   };
 
   let lastLayout = null;
@@ -283,6 +287,29 @@
     renderGraphOnly();
   });
 
+  // --- about / landing panel ---
+  // Shown once to a first-time visitor who lands on the top view (a deep link
+  // into a folder or declaration is left alone), then only on request.
+  const ABOUT_SEEN_KEY = "forshor.docs.aboutSeen";
+  function aboutIsOpen() { return !els.aboutOverlay.hidden; }
+  function openAbout() {
+    els.aboutOverlay.hidden = false;
+    els.aboutBtn.classList.add("active");
+    els.aboutClose.focus();
+  }
+  function closeAbout() {
+    els.aboutOverlay.hidden = true;
+    els.aboutBtn.classList.remove("active");
+    try { localStorage.setItem(ABOUT_SEEN_KEY, "1"); } catch (_) { /* storage unavailable: just close */ }
+  }
+  function aboutSeenBefore() {
+    try { return localStorage.getItem(ABOUT_SEEN_KEY) === "1"; } catch (_) { return false; }
+  }
+  els.aboutBtn.addEventListener("click", () => (aboutIsOpen() ? closeAbout() : openAbout()));
+  els.aboutClose.addEventListener("click", closeAbout);
+  els.aboutExplore.addEventListener("click", closeAbout);
+  els.aboutOverlay.addEventListener("click", (ev) => { if (ev.target === els.aboutOverlay) closeAbout(); });
+
   // --- toolbar ---
   els.fitBtn.addEventListener("click", () => graphView.fit(buildViewModel()));
   els.topBtn.addEventListener("click", () => setView(""));
@@ -325,6 +352,10 @@
   });
 
   window.addEventListener("keydown", (ev) => {
+    if (aboutIsOpen()) {
+      if (ev.key === "Escape") closeAbout();
+      return;
+    }
     if (ev.target === els.searchInput) {
       if (ev.key === "Escape") { els.searchInput.value = ""; state.query = ""; els.searchResults.hidden = true; renderGraphOnly(); }
       return;
@@ -343,4 +374,7 @@
 
   const initial = Router.current();
   setView(initial.path || "", initial.sel, { skipRouter: true });
+
+  const landedOnTop = !(initial.path || "") && !initial.sel;
+  if (landedOnTop && !aboutSeenBefore()) openAbout();
 })();
