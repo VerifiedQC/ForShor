@@ -215,7 +215,9 @@
   function setView(path, sel, opts) {
     if (path !== "" && !Model.view(path)) return;
     state.path = path;
-    state.selection = sel ? { type: "node", id: sel } : null;
+    // A deep link naming a node that does not exist (a renamed file, a typo)
+    // opens the view with nothing selected instead of a blank page.
+    state.selection = sel && Model.node(sel) ? { type: "node", id: sel } : null;
     state.query = "";
     els.searchInput.value = "";
     els.searchResults.hidden = true;
