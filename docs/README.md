@@ -1,12 +1,17 @@
-# ShorVerification proof graph
+# ForShor project website
 
 This directory is the project website, published by GitHub Pages at
-<https://verifiedqc.github.io/ForShor/>. It is an interactive map of the
-ForShor proof — the Lean 4 verification of Shor's order-finding algorithm and
-its gate-count bound described in the [top-level README](../README.md). The
-**About** button (shown automatically on a first visit to the top view)
-explains what ForShor is, what is proved, what a submission is, and how to
-read the map; everything below is about how the map itself is built.
+<https://verifiedqc.github.io/ForShor/>. It has two pages:
+
+* `index.html` — the project page: what ForShor is, the theorems it proves
+  (`Shor_correct`, `Shor_correct_approx_lowered`, `exists_shorGateCountBound`),
+  the trust base, the dependency spine, build and citation. Plain HTML, styled
+  by `landing.css`; every statement on it is taken from the
+  [top-level README](../README.md).
+* `navigator.html` — the interactive proof map described below. Deep links
+  of the old form `index.html#/Folder?sel=...` are redirected to
+  `navigator.html` by a one-line script in `index.html`, so existing links
+  keep working.
 
 Interactive map of `FastMultiplication/ShorVerification`: the outermost view
 is `Framework` (the specification) alongside the `Implementation/` subsystems
@@ -16,7 +21,7 @@ down to individual `.lean` files. Every view is strictly left to right:
 columns are dependency rank, a column may hold several nodes stacked
 vertically.
 
-Open `index.html` directly in a browser, or serve this directory locally:
+Open `index.html` (or `navigator.html`) directly in a browser, or serve this directory locally:
 
 ```sh
 python3 -m http.server 8765
