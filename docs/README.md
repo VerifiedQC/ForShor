@@ -6,7 +6,7 @@ This directory is the project website, published by GitHub Pages at
 * `index.html` — the project page, written as a short technical-blog post:
   what ForShor is, what the map is for, how to read it (with screenshots in
   `img/`), where to start, how to check the development and how to cite it.
-  Plain HTML, styled by `landing.css`; every claim about the proofs is taken
+  Plain HTML in [Tufte CSS](https://edwardtufte.github.io/tufte-css/) (`tufte.css` + the `et-book/` fonts, MIT, vendored unchanged; `site.css` holds our few additions); every claim about the proofs is taken
   from the [top-level README](../README.md).
 * `navigator.html` — the interactive proof map described below, in the same
   dark theme as the project page (`styles.css`; node, edge and legend colours
