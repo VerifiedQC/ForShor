@@ -589,7 +589,7 @@ lemma phaseSplitLogicalWidth_le_topHeavy
     have hi : i.val = k - 1 := by
       omega
 
-    simp only [phaseSplitLogicalWidth, if_pos htop, hi]
+    simp only [phaseSplitLogicalWidth, ite_eq_left htop, hi]
     omega
 
   ·
@@ -1429,7 +1429,6 @@ lemma gateCount_standardSignedPhaseLoweringPlan_of_not_recurse
   simp only [
     hno,
     ↓reduceDIte,
-    PhaseLoweringPlan.lowerGateRec_signedBase
   ]
   exact LowerGateClass.gateCount_Naive_SignedPhaseProd
     shorGateCostModel φ x z hworkspace.owned_disjoint
@@ -1731,6 +1730,7 @@ lemma lgc_body_le
   | nil =>
       simp [annotatePhaseTermsAux, planCompileAnnotatedOpsToSignedGateAux,
         phaseProgramOverhead, phaseProductCount]
+      erw [lgc_id]
   | cons op rest ih =>
       cases op with
       | shiftL i m =>
@@ -1801,13 +1801,16 @@ lemma lgc_body_le
           simp only [
             annotatePhaseTermsAux,
             planCompileAnnotatedOpsToSignedGateAux,
-            lgc_seq,
             phaseProgramOverhead_cons,
             phaseProductCount,
             phaseArithmeticOpCost,
             Nat.cast_add,
             Nat.cast_mul
           ]
+          -- The plan's gate index is `compileAnnotatedOpsToSignedGateAux … (op :: rest)`, which
+          -- only unfolds to `_ ;; _` at default transparency, so `lgc_seq` needs `erw`.
+          erw [lgc_seq, lgc_seq]
+          push_cast
           simp_all
           have htail := ih n
           calc
@@ -1903,13 +1906,14 @@ lemma lgc_body_le
           simp only [
             annotatePhaseTermsAux,
             planCompileAnnotatedOpsToSignedGateAux,
-            lgc_seq,
             phaseProgramOverhead_cons,
             phaseProductCount,
             phaseArithmeticOpCost,
             Nat.cast_add,
             Nat.cast_mul
           ]
+          erw [lgc_seq, lgc_seq]
+          push_cast
           calc
             (COST PhaseLoweringPlan.AddScaled
                 W (st.xslot dst) (st.xslot src) negSrc sh : ℝ)
@@ -2459,7 +2463,6 @@ lemma lowerSignedPhaseProd_one_level_cost_le
 
   simp only [
     id_eq,
-    lgc_seq
   ]
 
   change
@@ -3296,7 +3299,7 @@ lemma phaseProductSafeRate_le_scaled_rpow
           (phaseProductExponent k) *
         Real.rpow (n : ℝ)
           (phaseProductExponent k) := by
-      simpa only [Nat.cast_mul] using
+      simpa only [Nat.cast_mul] using!
         (Real.mul_rpow
           (show 0 ≤ ((s + 1 : ℕ) : ℝ) by positivity)
           (show 0 ≤ (n : ℝ) by positivity)
@@ -3808,7 +3811,7 @@ lemma signedPhaseProductGateCount_unsignedView_no_recurse_case_bound
 
   have hsmall :
       min (regSize x + 1) (regSize z + 1) ≤ d := by
-    simpa [ux, uz] using hd ux uz hno'
+    simpa [ux, uz] using! hd ux uz hno'
 
   have hprod :
       (regSize x + 1) * (regSize z + 1)
@@ -4317,6 +4320,9 @@ lemma lgc_cbody_le_five
         planCompileAnnotatedOpsToCSignedGateAux,
         planCompileAnnotatedOpsToSignedGateAux
       ]
+      -- Both plans are `PhaseLoweringPlan.id`, at gate indices that only unfold to
+      -- `Gate.id` at default transparency.
+      erw [lgc_id]
 
   | cons op rest ih =>
       cases op with

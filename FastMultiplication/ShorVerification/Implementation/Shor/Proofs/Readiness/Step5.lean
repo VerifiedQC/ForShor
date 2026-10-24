@@ -9,7 +9,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Clea
 import FastMultiplication.ShorVerification.Implementation.Shared.States
 import FastMultiplication.ShorVerification.Implementation.Shared.Registers
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
-import Mathlib.Data.Real.Basic
+import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
@@ -486,7 +486,7 @@ private theorem lowered_step5Forward_ready_and_full_clean
       Gate.PhaseProdWorkspace.ofExtRegs,
       Gate.PhaseProdWorkspace.xExt,
       ExtReg.withReserve
-    ] using hq
+    ] using! hq
 
   have hStep5ZReserve :
       ∀ q,
@@ -1562,12 +1562,7 @@ private theorem eval_H_involutive
       ?_
       ψ
 
-  · change
-      qs.eval (Gate.H q)
-          (qs.eval (Gate.H q) 0)
-        =
-      0
-    rw [qs.eval_zero, qs.eval_zero]
+  · rw [qs.eval_zero, qs.eval_zero]
 
   · intro ψ₁ ψ₂ hψ₁ hψ₂
     calc

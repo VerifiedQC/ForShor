@@ -133,12 +133,17 @@ here into the final good-outcome probability-mass lower bound.
 
 ### Totient ratio bound
 
-- **`shor_totient_ratio_log4_lower_bound`** — a deliberately weak bound,
-  `exp(-2)/log₂(N)⁴ ≤ φ(r)/r` for order `r < N`; weaker than Shor's classical
-  asymptotic bound but convenient because it directly gives the public
-  theorem's inverse-polylogarithmic form. Combines
-  `exp_neg_two_div_pow4_le_inv_succ` (analytic step) and
-  `totient_ratio_ge_inv_log2_succ` (from `Math/OrderFindingAnalysis.lean`).
+- **`shor_totient_ratio_lower_bound`** — `1/(4 · log(log₂ N + 1)) ≤ φ(r)/r`
+  for order `r < N`: the `Ω(1/log log N)` Mertens-type bound Shor cites
+  (Rosser–Schoenfeld shape). Three lines here; the work is in
+  `Math/TotientBounds.lean` and `Math/TotientBoundsLarge.lean`
+  (`shor_totient_ratio`), which split the prime divisors of `r` at a
+  threshold `M` and bound the two halves separately — below `2^2048` with
+  eight explicit dyadic thresholds and Mathlib only, above it with Mertens'
+  third theorem (vendored from Mathlib PR #41394, see
+  `Vendor/Mertens/README.md`). The elementary `1/(log₂ N + 1)` bound
+  `totient_ratio_ge_inv_log2_succ` in `Math/OrderFindingAnalysis.lean` is what
+  the `r < 255` case uses.
 
 ### Exact preparation of the ideal Shor state
 
@@ -187,7 +192,7 @@ here into the final good-outcome probability-mass lower bound.
 ### Final quantum good-outcome mass theorem
 
 - **`ideal_orderFinding_goodOutcome_mass_lower_bound`** — the file's headline
-  theorem: `κ / log₂(N)⁴ ≤` the total probability mass on good outcomes for
+  theorem: `κ / log(log₂ N + 1) ≤` the total probability mass on good outcomes for
   the ideal circuit. Seven-step proof: (1) `0 < r`, `r < N`, `r² < Q`; (2)
   prepare the periodic state (5.2, `eval_orderFindingIdeal_prefix`); (3) the
   Fourier/measurement formula (5.4–5.7, `PhaseEstimation.lean`'s
@@ -196,8 +201,8 @@ here into the final good-outcome probability-mass lower bound.
   from `Math/OrderFindingAnalysis.lean`); (5) at least `φ(r)` distinct good
   outputs (`goodOutcome_card_ge_totient`); (6) sum the per-outcome bounds
   (`goodOutcome_mass_lower_bound_from_card_and_pointwise`); (7) replace
-  `φ(r)/r` by the inverse-polylogarithmic bound
-  (`shor_totient_ratio_log4_lower_bound`) to land on `κ/log₂(N)⁴`.
+  `φ(r)/r` by `1/(4 log(log₂ N + 1))`
+  (`shor_totient_ratio_lower_bound`) to land on `κ/log(log₂ N + 1)`.
 
 ## `Correctness.lean`
 
@@ -205,7 +210,7 @@ The folder's public theorem.
 
 ### What the statement says
 
-`probability_of_success ≥ κ/log₂(N)⁴` is short for five definitions. In full:
+`probability_of_success ≥ κ/log(log₂ N + 1)` is short for five definitions. In full:
 
 - **`probability_of_success`** (`Framework/Contract.lean:52`) is
   `∑ o : Fin Q, r_found T verify o Q r * probMeas x o (evalC C ψ)` — the
@@ -223,7 +228,8 @@ The folder's public theorem.
   (`ContinuedFractionSearchComplete`, `ShorDefinition.lean:113`). It bounds
   how far the convergent scan may look; it is not a circuit parameter and
   costs no gates.
-- **`κ = 4e⁻²/π²`** (`ShorDefinition.lean:297`), about `0.0548`.
+- **`κ = 1/π²`** (`ShorDefinition.lean`), about `0.101`: Shor's per-numerator
+  Fourier constant `4/π²` times the `1/4` of the totient-ratio bound.
 - The register widths are fixed by the hypotheses: the exponent register `x`
   has `log₂(2N²)` bits and the modulus register `y` has `log₂(2N)` (`hm`,
   `hn`), the outcome range is `Q = ASize x.active`, and the input state is
@@ -232,7 +238,7 @@ The folder's public theorem.
 
 - **`Shor_correct`** — ideal order-finding success probability for Shor's
   algorithm: `ShorCorrect T hT inst x y b0 hm hn hinput` (i.e.
-  `probability_of_success ≥ κ/log₂(N)⁴`). Two-step proof: the good-outcome
+  `probability_of_success ≥ κ/log(log₂ N + 1)`). Two-step proof: the good-outcome
   mass lower bound (`ideal_orderFinding_goodOutcome_mass_lower_bound`) is
   itself a lower bound for the full success probability
   (`goodOutcome_mass_le_probability_of_success`, from `Preliminaries.lean`).

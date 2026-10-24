@@ -38,13 +38,12 @@ variable [RegEncoding qs.Basis]
 variable [MeasureClass qs]
 variable [GateSemanticsFacts qs]
 variable [LowerGateClass qs]
-variable [IdealCtrlModMulExactSemantics qs]
 
 /-- The one precision level every submission is scored at. `m2048` is the
 reference schedule's explicit level for a 2048-bit modulus: `referencePrecision m2048 = 2⁻¹⁵⁰` exactly
 (`referencePrecision_m2048`), which
 `Reference.headline_success_bound` turns into at least 99% of
-the ideal `κ / (log₂ N)⁴` baseline.
+the ideal `κ / log(log₂ N + 1)` baseline.
 
 Change it here and nowhere else: `submission_correct` below and
 `Submission/Score.lean` both read this. -/

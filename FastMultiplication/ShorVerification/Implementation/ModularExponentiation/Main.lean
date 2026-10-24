@@ -21,7 +21,7 @@ theorem modExpApprox_correct
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs] :
+ :
     ModExpApproxValidDistUniform qs := by
   obtain ⟨K, hK, hK_le, hbound⟩ := modExpApprox_valid_dist_uniform qs
   exact ⟨K, hK, hK_le, hbound⟩
@@ -32,7 +32,7 @@ theorem modExpApprox_correct_2048
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs] :
+ :
     ModExpApproxValidDist2048 qs :=
   modExpApprox_valid_dist_2048 qs
 

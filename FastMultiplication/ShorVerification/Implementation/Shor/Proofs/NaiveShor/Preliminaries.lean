@@ -138,7 +138,7 @@ lemma goodOutcome_r_found_one
      then (1 : ℝ)
      else 0) = 1
 
-  rw [if_pos hpost]
+  rw [ite_eq_left hpost]
 
 omit [MeasureClass qs] in
 private lemma toNat_qubitReg
@@ -298,7 +298,7 @@ private theorem eval_modExpIdealSteps_ket
         intro q hq
         exact hdisj_all q (by
           right
-          simpa [tail] using hq)
+          simpa [tail] using! hq)
 
       have hx :
           RegEncoding.toNat
@@ -496,7 +496,7 @@ lemma goodOutcome_mass_le_probability_of_success
     simp [goodOutcomeIndicator, hgood, hfound]
 
   · simp only [goodOutcomeIndicator]
-    rw [if_neg hgood]
+    rw [ite_eq_right hgood]
     simp only [zero_mul]
 
     exact mul_nonneg
@@ -533,7 +533,7 @@ lemma shor_order_parameter_bounds
   have hNgt1 : 1 < N := by
     omega
 
-  haveI : NeZero N := ⟨by omega⟩
+  have : NeZero N := ⟨by omega⟩
 
   let u : (ZMod N)ˣ :=
     ZMod.unitOfCoprime a hcop

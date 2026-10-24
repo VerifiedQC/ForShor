@@ -27,7 +27,7 @@ lemma star_qftPhase_eq_negative_grid_phase_shor (M z t : ℕ) :
   rw [← Complex.exp_conj]
   congr 1
   simp [div_eq_mul_inv]
-  simp [starRingEnd]
+  rw [map_ofNat]
   ring
 
 lemma omega_pow_self_shor (r : ℕ) (hr : 0 < r) : (ω r) ^ r = 1 := by

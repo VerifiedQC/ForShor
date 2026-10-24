@@ -25,7 +25,7 @@ table, written in `PolicyTemplate.lean` and reduced by Lean's kernel; and one
 proof that the thresholds strictly decrease. `#assert_axioms` then reads the
 axioms the finished term actually depends on and fails unless they lie inside
 `propext`, `Classical.choice`, `Quot.sound` — so `native_decide`
-(`Lean.ofReduceBool`), `sorry` (`sorryAx`) and a submitter's own `axiom` are
+(its compiled-evaluator axiom), `sorry` (`sorryAx`) and a submitter's own `axiom` are
 all rejected by name. See [`Audit.lean`](Audit.lean).
 
 Passing those obligations is not evidence that the policy is admissible, it
@@ -121,13 +121,15 @@ example : _root_.Shor.IR.Doc.wellFormed doc = true := by native_decide
 /-- The certificate at this policy submission, as a name the submissions repo
 can cite. There is nothing to prove: `Shor.policy_submission_correct` is
 generic in the policy, so `policy` existing is the whole argument. -/
-def correct {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
-    [GateSemanticsFacts qs] [LowerGateClass qs] [IdealCtrlModMulExactSemantics qs] :=
+theorem correct {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
+    [GateSemanticsFacts qs] [LowerGateClass qs] :
+    type_of% (_root_.Shor.policy_submission_correct (qs := qs) policy) :=
   _root_.Shor.policy_submission_correct (qs := qs) policy
 
 /-- The scored form, with the declared bound named. -/
-def scored {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
-    [GateSemanticsFacts qs] [LowerGateClass qs] [IdealCtrlModMulExactSemantics qs] :=
+theorem scored {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
+    [GateSemanticsFacts qs] [LowerGateClass qs] :
+    type_of% (_root_.Shor.policy_submissionSuccessBound_le_success (qs := qs) policy) :=
   _root_.Shor.policy_submissionSuccessBound_le_success (qs := qs) policy
 
 end PolicySubmission

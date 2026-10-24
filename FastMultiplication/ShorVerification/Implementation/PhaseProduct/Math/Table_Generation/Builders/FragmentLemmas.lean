@@ -67,7 +67,7 @@ lemma cover_map_pairToOp_nil {k} (hk:k>0) (σ : State k) (dst src : Fin k) (pair
         | mk =>
           intro h1 h; cases h
       · simp [applyOp?, pairToOp]
-      · simpa using ih _
+      · simpa using! ih _
 
 -- 1) Fold-left with "append-on-the-right" form:  foldl (λ acc a, acc ++ H a)
 lemma foldl_append_hom {α β} :
@@ -180,7 +180,7 @@ lemma cover_computeLocal_nil {k} (hk : 0 < k) (σ : State k) (z : Int) :
               using ih (acc ++ (signedPow2Decomp (z ^ (j : Nat))).map (pairToOp (k := k) dst j)) Hcov' Hrun'
   -- Base accumulator is `[]`.
   have base_cov : ∀ σ, PhaseProductCoverage hk ([] : Prog k) σ [] :=
-    by intro σ0; simpa using PhaseProductCoverageM.nil (M := matchesAt_pointRow_state hk (k := k)) (σ := σ0)
+    by intro σ0; simpa using! PhaseProductCoverageM.nil (M := matchesAt_pointRow_state hk (k := k)) (σ := σ0)
   have base_run : ∀ σ, ∃ σ', run? ([] : Prog k) σ = some σ' :=
     by intro σ0; exact ⟨σ0, by simp [run?]⟩
   -- Apply the fold result to `nonzeroFins hk` and your given `σ`.
@@ -1365,16 +1365,16 @@ lemma run_computeLocalAux_from_start
       (∀ t, t ≠ finZero hk → σ t = State.start_state (k := k) t)
       ∧ (∀ u, σ (finZero hk) u =
               State.start_state (k := k) (finZero hk) u + contrib (k := k) z s u):=by
-intro s hs σ hrun
-have:=run_computeLocalAux_from_start_1 hk z s (σ:=σ) hrun
-apply And.intro
-assumption
-intro u
-have hExecCL:=run_ExecCL hk hrun hs
-have := ExecCL_contrib hk z hs (σ₀:=State.start_state) (σ:=σ)
-simp at this
-rw[this hExecCL u]
-simp
+  intro s hs σ hrun
+  have:=run_computeLocalAux_from_start_1 hk z s (σ:=σ) hrun
+  apply And.intro
+  assumption
+  intro u
+  have hExecCL:=run_ExecCL hk hrun hs
+  have := ExecCL_contrib hk z hs (σ₀:=State.start_state) (σ:=σ)
+  simp at this
+  rw[this hExecCL u]
+  simp
 
 /-- Elements of `nonzeroFins hk` are never `finZero hk`. -/
 lemma mem_nonzeroFins_ne {k : ℕ} (hk : 0 < k) {j : Fin k}
@@ -1467,7 +1467,7 @@ lemma contrib_nonzeroFins
     simp [hnez, h]
   · -- `u = finZero hk`: all indices in the list are ≠ u, so sum is 0
     have hu0 : u = finZero hk := by
-      push_neg at hnez; exact hnez
+      push Not at hnez; exact hnez
     subst hu0
     have hall : ∀ j ∈ nonzeroFins hk, j ≠ finZero hk :=
       fun j hj => mem_nonzeroFins_ne (hk := hk) hj
@@ -1604,7 +1604,7 @@ lemma fracContrib_nonlastFins
       (js := nonlastFins hk) (u := u) hnd hu
     simp [hnel, h]
   · have hul : u = finLast hk := by
-      push_neg at hnel
+      push Not at hnel
       exact hnel
     subst hul
     have hall : ∀ j ∈ nonlastFins hk, j ≠ finLast hk :=

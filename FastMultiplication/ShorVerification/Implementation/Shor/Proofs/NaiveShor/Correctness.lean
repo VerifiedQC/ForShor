@@ -18,7 +18,6 @@ variable [MeasureClass qs]
 /-- Ideal order-finding success probability for Shor's algorithm. -/
 theorem Shor_correct
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     (T : ℕ → ℕ)
     (hT : ContinuedFractionSearchComplete T)
     (inst : ShorOrderFindingInstance)
@@ -46,7 +45,7 @@ theorem Shor_correct
       hn
 
   calc
-    κ / (Nat.log2 inst.N : ℝ) ^ 4
+    κ / Real.log ((Nat.log2 inst.N : ℝ) + 1)
         ≤
       ∑ o : Fin (ASize x.active),
         goodOutcomeIndicator

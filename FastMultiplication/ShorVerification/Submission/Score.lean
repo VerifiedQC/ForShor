@@ -60,7 +60,6 @@ variable [RegEncoding qs.Basis]
 variable [MeasureClass qs]
 variable [GateSemanticsFacts qs]
 variable [LowerGateClass qs]
-variable [IdealCtrlModMulExactSemantics qs]
 
 /-- The policy form of the scored bound. -/
 theorem policy_submissionSuccessBound_le_success (s : ShorPolicySubmission) :
@@ -117,8 +116,8 @@ end Certificate
 (`pLower_le_bound`), obtained by composing the two facts
 `Reference/Reference2048Headline.lean` already proves: at
 `submissionPrecision` the declared bound retains at least 99% of the ideal
-`κ / (log₂ N)⁴ = κ / 2047⁴` baseline (`headline_success_bound`), and
-`1/25 ≤ κ` (`kappa_ge_one_div_25`).
+`κ / log(log₂ N + 1) = κ / log 2048` baseline (`headline_success_bound`),
+`1/10 ≤ κ` (`kappa_ge_one_div_ten`), and `log 2048 = 11 log 2 ≤ 7.63`.
 
 Rational, not real, so that `submissionTrialCount` below is a number the
 submissions repo can evaluate rather than a `Nat.find` witness. It takes `N`
@@ -126,7 +125,7 @@ because that is the shape the rest of the scoring API has and so that a
 sharper, genuinely `N`-dependent bound can be substituted; at present the
 value is the same for every 2048-bit modulus, since `log₂ N = 2047`
 throughout that range. -/
-def pLower (_N : ℕ) : ℚ := 99 / (2500 * 2047 ^ 4)
+def pLower (_N : ℕ) : ℚ := 99 / 7630
 
 theorem pLower_pos (N : ℕ) : 0 < pLower N := by
   unfold pLower; norm_num
@@ -136,14 +135,18 @@ theorem pLower_lt_one (N : ℕ) : pLower N < 1 := by
 
 theorem pLower_le_bound {N : ℕ} (hN : Is2048Bit N) :
     (pLower N : ℝ) ≤ submissionSuccessBound N := by
-  have hbase : (99 / 100 : ℝ) * (κ / (2047 : ℝ) ^ 4) ≤ submissionSuccessBound N :=
+  have hbase : (99 / 100 : ℝ) * (κ / Real.log (2048 : ℝ)) ≤ submissionSuccessBound N :=
     headline_success_bound hN
-  have hpow : (0 : ℝ) < (2047 : ℝ) ^ 4 := by positivity
-  have hκ : (1 : ℝ) / 25 ≤ κ := kappa_ge_one_div_25
-  have hstep : (99 / 100 : ℝ) * (((1 : ℝ) / 25) / (2047 : ℝ) ^ 4)
-      ≤ (99 / 100 : ℝ) * (κ / (2047 : ℝ) ^ 4) := by
+  have hpow : (0 : ℝ) < Real.log (2048 : ℝ) := Real.log_pos (by norm_num)
+  have hlog : Real.log (2048 : ℝ) ≤ 763 / 100 := by
+    have h2 : Real.log (2048 : ℝ) = 11 * Real.log 2 := by
+      rw [show (2048 : ℝ) = 2 ^ 11 by norm_num, Real.log_pow]; norm_num
+    rw [h2]; linarith [Real.log_two_lt_d9]
+  have hκ : (1 : ℝ) / 10 ≤ κ := kappa_ge_one_div_ten
+  have hstep : (99 / 100 : ℝ) * (((1 : ℝ) / 10) / (763 / 100 : ℝ))
+      ≤ (99 / 100 : ℝ) * (κ / Real.log (2048 : ℝ)) := by
     gcongr
-  have hcast : ((pLower N : ℚ) : ℝ) = (99 / 100 : ℝ) * (((1 : ℝ) / 25) / (2047 : ℝ) ^ 4) := by
+  have hcast : ((pLower N : ℚ) : ℝ) = (99 / 100 : ℝ) * (((1 : ℝ) / 10) / (763 / 100 : ℝ)) := by
     unfold pLower; push_cast; ring
   rw [hcast]
   linarith
@@ -154,11 +157,20 @@ declared single-run bound past 99% overall (`submissionTrialCount_correct`).
 
 Computable, unlike `Reference.headlineTrialCount` (a `Nat.find` witness), and
 the same number for every submission at a given `N` — published once, not
-recomputed per pull request. It is large (`≈ 2.2 · 10¹⁵` at 2048 bits)
-because the single-run baseline `κ / (log₂ N)⁴` it amplifies is itself weak;
-that is a property of the correctness bound this repository proves, not of
-any particular table. -/
+recomputed per pull request. It is `386` at 2048 bits: the single-run
+baseline `κ / log(log₂ N + 1)` it amplifies is about `1.3 · 10⁻²` there, from
+the Mertens-type totient bound `φ(r)/r ≥ 1 / (4 log(log₂ N + 1))`; that is a
+property of the correctness bound this repository proves, not of any
+particular table. -/
 def submissionTrialCount (N : ℕ) : ℕ := ⌈(5 : ℚ) / pLower N⌉₊
+
+/-- The published trial count, pinned: `⌈5 / (99/7630)⌉ = ⌈38150/99⌉ = 386`.
+The same number at every `N`, because `pLower` does not yet depend on `N`; it
+is here so that a change to `pLower` shows up as a broken proof rather than as
+a stale number in a docstring. -/
+theorem submissionTrialCount_eq (N : ℕ) : submissionTrialCount N = 386 := by
+  unfold submissionTrialCount pLower
+  norm_num [Nat.ceil_eq_iff]
 
 theorem five_le_pLower_mul_trialCount (N : ℕ) :
     (5 : ℝ) ≤ (pLower N : ℝ) * submissionTrialCount N := by

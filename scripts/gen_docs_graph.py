@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate docs/data/graph.js from the FastMultiplication/ShorVerification tree.
 
-Walks Framework/ and Implementation/ (Emit/ is out of scope and never visited), parses `import` lines, docstrings, and top-level declarations
+Walks Framework/ and Implementation/ (Emit/ and Vendor/ are out of scope and never visited), parses `import` lines, docstrings, and top-level declarations
 out of every .lean file, converts every README.md to HTML, and aggregates
 in-repo import edges (and cross-view "ghost" edges) for every folder in the
 tree. The result is committed as docs/data/graph.js, a plain
@@ -204,6 +204,10 @@ def resolve_imports(nodes):
             continue
         for raw in getattr(node, "_raw_imports", []):
             suffix = raw[len("FastMultiplication.ShorVerification."):]
+            # Vendor/ is third-party Lean copied in verbatim; it is documented by
+            # its own README and deliberately not drawn in the graph.
+            if suffix.startswith("Vendor."):
+                continue
             fs_rel = suffix.replace(".", "/") + ".lean"
             logical = fs_to_logical(fs_rel)
             if logical in nodes and nodes[logical].kind == "file":

@@ -1317,7 +1317,7 @@ lemma alg1_step1_phase_scalar_eq_target (qs : QSemantics) [RegEncoding qs.Basis]
       alg1Step1PhaseScalar,
       alg1TargetPhaseScalar,
       hctrl,
-      if_true
+      ite_true
     ]
 
     calc
@@ -1402,7 +1402,7 @@ lemma alg1_step5_phase_scalar_eq_target (qs : QSemantics) [RegEncoding qs.Basis]
     simp only [
       alg1TargetPhaseScalar,
       hctrl,
-      if_true
+      ite_true
     ]
 
     calc
@@ -1917,6 +1917,7 @@ lemma eval_Hreg_zero_uniform_sum_ext (qs : QSemantics) [RegEncoding qs.Basis] [G
   rw [_root_.eval_Hreg_zero_eq_QFT qs work b]
   · rw [QFTSemantics.eval_QFT_ket]
     simp [ExtReg.width, ExtReg.toNat, ASize, hzero, qpe_qftPhase_zero_left]
+    rfl
   · simpa [ExtReg.toNat] using hzero
 
 /--
@@ -2133,7 +2134,7 @@ private lemma alg1Step1PhaseScalar_eq_qpe_source_phase (qs : QSemantics) [RegEnc
       alg1TargetFraction,
       alg1TargetResidue,
       hctrl,
-      if_true
+      ite_true
     ]
     congr 1
     push_cast
@@ -2181,7 +2182,7 @@ private lemma star_qftPhase_eq_negative_grid_phase (M z t : ℕ) : star (qftPhas
   rw [← Complex.exp_conj]
   congr 1
   simp [div_eq_mul_inv]
-  simp [starRingEnd]
+  rw [map_ofNat]
   ring
 
 /--
@@ -2290,8 +2291,9 @@ lemma alg1_bad_label_set_eq_qpe_bad_set (qs : QSemantics) [RegEncoding qs.Basis]
               ((t.1 : ℝ) / (ASize cfg.env.work.active : ℝ))| <
           η / (ASize cfg.env.data.active : ℝ)) := by
   classical
-  ext t
-  simp [alg1GoodLabels, alg1WorkFraction]
+  refine Finset.filter_congr (fun t _ => ?_)
+  rw [alg1GoodLabels, Finset.mem_filter]
+  simp [alg1WorkFraction]
 
 /--
 Convert `Algorithm1Precision` into the ratio of the actual QPE grid size

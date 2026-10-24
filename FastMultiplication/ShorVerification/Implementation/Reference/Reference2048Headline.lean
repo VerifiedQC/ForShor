@@ -17,7 +17,7 @@ answers a narrower, concrete question for the case the whole codebase is
 ultimately aimed at — `N` a 2048-bit modulus — by fixing a single explicit
 precision `η = 2⁻¹⁵⁰` (via an explicit level `m2048`) and proving that,
 *at that fixed level*, the single-run success probability is at least
-99% of the ideal `κ / (log₂ N)⁴` baseline. Combined with the trial-count
+99% of the ideal `κ / log(log₂ N + 1)` baseline. Combined with the trial-count
 amplification already proved in `ReferenceShorImplementation.lean`, this
 gives a genuine "trials × single-run gate count" total for the 2048-bit
 case, which is what a submission-vs-naive-Shor comparison should be based
@@ -41,7 +41,6 @@ variable [RegEncoding qs.Basis]
 variable [MeasureClass qs]
 variable [GateSemanticsFacts qs]
 variable [LowerGateClass qs]
-variable [IdealCtrlModMulExactSemantics qs]
 
 /-! =========================================================
     Section 1: 2048-bit numerics
@@ -92,52 +91,26 @@ theorem referencePrecision_m2048 :
     Section 3: A safe rational lower bound for `κ`
 ========================================================= -/
 
-/-- A comfortably safe rational lower bound for `κ = 4 e⁻² / π²`: the true
-value is `≈ 0.05485`, well above `1/25 = 0.04`. -/
-theorem kappa_ge_one_div_25 : (1 : ℝ) / 25 ≤ κ := by
-  have he1 : Real.exp 1 < 2.7183 :=
-    lt_of_lt_of_le Real.exp_one_lt_d9 (by norm_num)
-  have he1pos : 0 < Real.exp 1 := Real.exp_pos 1
-  have he2 : Real.exp 2 < 7.39 := by
-    have hsplit : Real.exp 2 = Real.exp 1 * Real.exp 1 := by
-      rw [← Real.exp_add]; norm_num
-    rw [hsplit]
-    nlinarith [he1, he1pos]
-  have he2pos : 0 < Real.exp 2 := Real.exp_pos 2
-  have hpi : Real.pi < 3.15 := Real.pi_lt_d2
+/-- A safe rational lower bound for `κ = 1 / π²`: the true value is
+`≈ 0.1013`, above `1/10` (equivalently `π² ≤ 10`). -/
+theorem kappa_ge_one_div_ten : (1 : ℝ) / 10 ≤ κ := by
   have hpipos : 0 < Real.pi := Real.pi_pos
-  have hpi2 : Real.pi ^ 2 < 9.9225 := by nlinarith [hpi, hpipos]
-  have hprod : Real.pi ^ 2 * Real.exp 2 < 100 := by
-    have hstep : Real.pi ^ 2 * Real.exp 2 < 9.9225 * Real.exp 2 := by
-      apply mul_lt_mul_of_pos_right hpi2 he2pos
-    have hstep2 : (9.9225 : ℝ) * Real.exp 2 < 9.9225 * 7.39 := by
-      apply mul_lt_mul_of_pos_left he2 (by norm_num)
-    linarith [hstep, hstep2]
-  have hexpnegpos : 0 < Real.exp (-2) := Real.exp_pos (-2)
-  have hpi2pos : 0 < Real.pi ^ 2 := by positivity
-  have hcomm : Real.exp 2 * Real.exp (-2) = 1 := by
-    rw [← Real.exp_add]; norm_num
-  have hkey : Real.pi ^ 2 < 100 * Real.exp (-2) := by
-    have h := mul_lt_mul_of_pos_right hprod hexpnegpos
-    have heq : Real.pi ^ 2 * Real.exp 2 * Real.exp (-2) = Real.pi ^ 2 := by
-      calc Real.pi ^ 2 * Real.exp 2 * Real.exp (-2)
-          = Real.pi ^ 2 * (Real.exp 2 * Real.exp (-2)) := by ring
-        _ = Real.pi ^ 2 * 1 := by rw [hcomm]
-        _ = Real.pi ^ 2 := by ring
-    rwa [heq] at h
+  have hpi : Real.pi < 3.15 := Real.pi_lt_d2
+  have hpi2 : Real.pi ^ 2 < 10 := by nlinarith
+  have hpi2pos : (0 : ℝ) < Real.pi ^ 2 := by positivity
   rw [κ, le_div_iff₀ hpi2pos]
-  linarith [hkey]
+  linarith
 
 /-! =========================================================
     Section 4: Single-run success bound at the 2048-bit headline level
 ========================================================= -/
 
 /-- The declared success bound at the fixed 2048-bit precision level retains
-at least 99% of the ideal `κ / (log₂ N)^4` baseline, for every 2048-bit
+at least 99% of the ideal `κ / log(log₂ N + 1)` baseline, for every 2048-bit
 modulus. This is the concrete statement of "choosing `η` and proving the
 achieved success probability" for the case the submission is aimed at. -/
 theorem headline_success_bound {N : ℕ} (hN : Is2048Bit N) :
-    (99 / 100 : ℝ) * (κ / (2047 : ℝ) ^ 4) ≤
+    (99 / 100 : ℝ) * (κ / Real.log (2048 : ℝ)) ≤
       referenceSuccessProbabilityAt m2048 N := by
   have hlog : Nat.log2 N = 2047 := hN.log2_eq
   have htbits : Nat.log2 (2 * N ^ 2) ≤ 4096 := hN.tbits_le
@@ -167,59 +140,55 @@ theorem headline_success_bound {N : ℕ} (hN : Is2048Bit N) :
       2 * (Nat.log2 (2 * N ^ 2) : ℝ) * (1 / (2 : ℝ) ^ 69)
         ≤ 2 * 4096 * (1 / (2 : ℝ) ^ 69) := by gcongr
       _ = 1 / 2 ^ 56 := by norm_num
-  have hkappa : (1 : ℝ) / 25 ≤ κ := kappa_ge_one_div_25
-  have hrational : (1 : ℝ) / 2 ^ 56 ≤ (1 / 100) * (κ / (2047 : ℝ) ^ 4) := by
-    have hnum : (1 : ℝ) / 100 * ((1 : ℝ) / 25) / (2047 : ℝ) ^ 4 ≤
-        (1 / 100) * (κ / (2047 : ℝ) ^ 4) := by
-      have hstep : (1 : ℝ) / 25 / (2047 : ℝ) ^ 4 ≤ κ / (2047 : ℝ) ^ 4 :=
-        div_le_div_of_nonneg_right hkappa (by positivity)
-      have heq : (1 : ℝ) / 100 * ((1 : ℝ) / 25) / (2047 : ℝ) ^ 4 =
-          (1 / 100) * ((1 : ℝ) / 25 / (2047 : ℝ) ^ 4) := by ring
-      rw [heq]
-      exact mul_le_mul_of_nonneg_left hstep (by norm_num)
-    have hkey : (1 : ℝ) / 2 ^ 56 ≤ (1 : ℝ) / 100 * ((1 : ℝ) / 25) / (2047 : ℝ) ^ 4 := by
-      rw [div_le_div_iff₀ (by positivity) (by positivity)]
+  have hkappa : (1 : ℝ) / 10 ≤ κ := kappa_ge_one_div_ten
+  -- `log 2048 = 11 log 2`, bracketed by `Real.log_two_gt_d9` / `Real.log_two_lt_d9`.
+  have hlog_pos : (0 : ℝ) < Real.log (2048 : ℝ) := Real.log_pos (by norm_num)
+  have hlog11 : Real.log (2048 : ℝ) = 11 * Real.log 2 := by
+    rw [show (2048 : ℝ) = 2 ^ 11 by norm_num, Real.log_pow]; norm_num
+  have hlog_le : Real.log (2048 : ℝ) ≤ 763 / 100 := by
+    rw [hlog11]; linarith [Real.log_two_lt_d9]
+  have hlog_ge : (1 : ℝ) ≤ Real.log (2048 : ℝ) := by
+    rw [hlog11]; linarith [Real.log_two_gt_d9]
+  have hrational : (1 : ℝ) / 2 ^ 56 ≤ (1 / 100) * (κ / Real.log (2048 : ℝ)) := by
+    have hstep : ((1 : ℝ) / 10) / (763 / 100 : ℝ) ≤ κ / Real.log (2048 : ℝ) := by
+      rw [div_le_div_iff₀ (by norm_num) hlog_pos]
+      nlinarith [hkappa, hlog_le, hlog_pos]
+    have hkey : (1 : ℝ) / 2 ^ 56 ≤ (1 / 100) * (((1 : ℝ) / 10) / (763 / 100 : ℝ)) := by
       norm_num
-    exact le_trans hkey hnum
-  have hraw : (99 / 100 : ℝ) * (κ / (2047 : ℝ) ^ 4) ≤
+    linarith [mul_le_mul_of_nonneg_left hstep (show (0 : ℝ) ≤ 1 / 100 by norm_num)]
+  have hraw : (99 / 100 : ℝ) * (κ / Real.log (2048 : ℝ)) ≤
       referenceRawSuccessProbabilityAt m2048 N := by
     unfold referenceRawSuccessProbabilityAt
     rw [hlog]
-    have hcomb : referenceApproximationErrorAt m2048 N ≤ (1 / 100) * (κ / (2047 : ℝ) ^ 4) :=
+    have hcomb : referenceApproximationErrorAt m2048 N ≤ (1 / 100) * (κ / Real.log (2048 : ℝ)) :=
       le_trans herr hrational
     have hkappa_nonneg : 0 ≤ κ := by rw [κ]; positivity
     nlinarith [hcomb, hkappa_nonneg]
   -- `headlineP` (the 99%-of-baseline value) is a tiny positive number, so it
   -- lands unclamped inside `max 0 (min 1 raw)` without needing `raw ≤ 1`.
-  have hP_le_one : (99 / 100 : ℝ) * (κ / (2047 : ℝ) ^ 4) ≤ 1 := by
-    have hkappa_small : κ < 4 := by
-      rw [κ]
-      have he2 : Real.exp (-2 : ℝ) < 1 := by
-        have h := Real.exp_lt_exp.mpr (show (-2 : ℝ) < 0 by norm_num)
-        rwa [Real.exp_zero] at h
-      have hpi2 : (1 : ℝ) < Real.pi ^ 2 := by nlinarith [Real.pi_gt_d2, Real.pi_pos]
-      rw [div_lt_iff₀ (show (0 : ℝ) < Real.pi ^ 2 by positivity)]
-      linarith [he2, hpi2]
-    have hdenbig : (4 : ℝ) ≤ (2047 : ℝ) ^ 4 := by norm_num
-    have hratio : κ / (2047 : ℝ) ^ 4 ≤ 1 := by
-      rw [div_le_one (by positivity)]
-      linarith [hkappa_small, hdenbig]
-    nlinarith [hratio]
-  have hP_nonneg : (0 : ℝ) ≤ (99 / 100 : ℝ) * (κ / (2047 : ℝ) ^ 4) := by
-    have hkappa_nonneg : 0 ≤ κ := by rw [κ]; positivity
-    have : 0 ≤ κ / (2047 : ℝ) ^ 4 := div_nonneg hkappa_nonneg (by positivity)
-    linarith [mul_nonneg (show (0:ℝ) ≤ 99/100 by norm_num) this]
+  have hP_le_one : (99 / 100 : ℝ) * (κ / Real.log (2048 : ℝ)) ≤ 1 := by
+    have hkappa_le_one : κ ≤ 1 := by
+      rw [κ, div_le_one (show (0 : ℝ) < Real.pi ^ 2 by positivity)]
+      nlinarith [Real.pi_gt_three]
+    have hratio : κ / Real.log (2048 : ℝ) ≤ 1 := by
+      rw [div_le_one hlog_pos]
+      linarith
+    linarith
+  have hP_nonneg : (0 : ℝ) ≤ (99 / 100 : ℝ) * (κ / Real.log (2048 : ℝ)) := by
+    have hkappa_nonneg : 0 ≤ κ := κ_pos.le
+    have : 0 ≤ κ / Real.log (2048 : ℝ) := div_nonneg hkappa_nonneg hlog_pos.le
+    linarith
   unfold referenceSuccessProbabilityAt
   rw [max_eq_right (le_trans hP_nonneg (le_min hP_le_one hraw))]
   exact le_min hP_le_one hraw
 
 /-- Single-run success of the fixed-level reference program, for a 2048-bit
-instance, is at least 99% of the ideal `κ/(log₂N)^4` baseline. -/
+instance, is at least 99% of the ideal `κ / log(log₂ N + 1)` baseline. -/
 theorem headline_program_success
     (P : ShorLoweringPolicy) (hP : P.Admissible) {N : ℕ} (hN : Is2048Bit N)
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)
     (inst : ShorOrderFindingInstance) (hinstN : inst.N = N) :
-    (99 / 100 : ℝ) * (κ / (2047 : ℝ) ^ 4) ≤
+    (99 / 100 : ℝ) * (κ / Real.log (2048 : ℝ)) ≤
       probability_of_success
         (qs := qs)
         (evalC := LowerGateClass.evalL (qs := qs))
@@ -240,7 +209,7 @@ theorem headline_program_success
 
 /-- The clean 99%-of-baseline success value used to amplify to overall 99%
 success. -/
-def headlineP : ℝ := (99 / 100) * (κ / (2047 : ℝ) ^ 4)
+def headlineP : ℝ := (99 / 100) * (κ / Real.log (2048 : ℝ))
 
 theorem headlineP_pos : 0 < headlineP := by
   unfold headlineP κ
@@ -254,7 +223,6 @@ theorem exists_headline_trialCount :
     exists_pow_lt_of_lt_one (K := ℝ) (x := (1 / 100 : ℝ)) (y := 1 - headlineP)
       (by norm_num) hlt
   refine ⟨k, ?_⟩
-  change (99 / 100 : ℝ) ≤ 1 - (1 - headlineP) ^ k
   linarith
 
 /-- Number of independent trials sufficient to amplify the headline

@@ -39,19 +39,19 @@ theorem permLift_ket_transfer {dim : ℕ} {σ : Equiv.Perm ModelBasis} (h : Belo
     (k : Fin (2 ^ dim)) :
     permLift σ (ket (idxBasis dim k)) = ι dim (permMatrix dim σ * e dim k) := by
   rw [permLift_ket, ι_mul_e, Finset.sum_eq_single (permIdx dim σ k)]
-  · rw [permMatrix, if_pos rfl, one_smul, permIdx,
+  · rw [permMatrix, ite_eq_left rfl, one_smul, permIdx,
       idxBasis_basisIdx (h.fwd _ (idxBasis_below dim k))]
   · intro k' _ hk'
-    rw [permMatrix, if_neg hk', zero_smul]
+    rw [permMatrix, ite_eq_right hk', zero_smul]
   · intro hc; exact absurd (Finset.mem_univ _) hc
 
 theorem diagLift_ket_transfer {dim : ℕ} (φ : ModelBasis → ℂ) (hφ : ∀ b, ‖φ b‖ = 1)
     (k : Fin (2 ^ dim)) :
     diagLift φ hφ (ket (idxBasis dim k)) = ι dim (diagMatrix dim φ * e dim k) := by
   rw [diagLift_ket, ι_mul_e, Finset.sum_eq_single k]
-  · rw [diagMatrix, if_pos rfl]
+  · rw [diagMatrix, ite_eq_left rfl]
   · intro k' _ hk'
-    rw [diagMatrix, if_neg hk', zero_smul]
+    rw [diagMatrix, ite_eq_right hk', zero_smul]
   · intro hc; exact absurd (Finset.mem_univ _) hc
 
 theorem hadamardLift_ket_transfer {dim q : ℕ} (hq : q < dim) (k : Fin (2 ^ dim)) :

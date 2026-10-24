@@ -113,7 +113,7 @@ lemma append_ite_nil_eq {β} (acc : List β) (P : Prop) [Decidable P] (L : List 
   by_cases h : P <;> simp [h]
 
 /-- helper: `pairToOp` with fixed sign equals the direct constructor on shifts. -/
-@[simp] lemma pairToOp_fixed {k} (dst src : Fin k) (neg' : Bool) :
+lemma pairToOp_fixed {k} (dst src : Fin k) (neg' : Bool) :
   (fun s : Nat => pairToOp (k := k) dst src (neg', s))
   = (fun s : Nat => valid_ops.addScaled dst src (negSrc := neg') s) := by
   funext s; simp [pairToOp]

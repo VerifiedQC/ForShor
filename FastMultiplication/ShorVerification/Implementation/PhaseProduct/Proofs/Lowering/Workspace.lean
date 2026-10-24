@@ -301,7 +301,7 @@ lemma eval_compileSignedAllocations_ket_fits_and_child_clean
             List.drop (commonNeededWidth need - (layout.xSplit.child i).width)
               (layout.xSplit.child i).reserve.qubits := by
         simpa [dst, src, targetSignedLayoutState, growExtRegTo, ExtReg.grow,
-          ExtReg.remainingReserve, Reg.drop] using hqTargetReserve
+          ExtReg.remainingReserve, Reg.drop] using! hqTargetReserve
       have hqChildReserve : qbit ∈ (layout.xSplit.child i).reserve.qubits :=
         List.mem_of_mem_drop hqDropped
       apply
@@ -327,7 +327,7 @@ lemma eval_compileSignedAllocations_ket_fits_and_child_clean
             List.drop (commonNeededWidth need - (layout.zSplit.child i).width)
               (layout.zSplit.child i).reserve.qubits := by
         simpa [dst, src, targetSignedLayoutState, growExtRegTo, ExtReg.grow,
-          ExtReg.remainingReserve, Reg.drop] using hqTargetReserve
+          ExtReg.remainingReserve, Reg.drop] using! hqTargetReserve
       have hqChildReserve : qbit ∈ (layout.zSplit.child i).reserve.qubits :=
         List.mem_of_mem_drop hqDropped
       apply

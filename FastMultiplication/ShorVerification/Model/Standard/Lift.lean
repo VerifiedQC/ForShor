@@ -1,4 +1,5 @@
 import FastMultiplication.ShorVerification.Model.Standard.State
+import Mathlib.Analysis.InnerProductSpace.LinearMap
 import Mathlib.LinearAlgebra.Matrix.ToLin
 import Mathlib.LinearAlgebra.UnitaryGroup
 
@@ -63,14 +64,14 @@ theorem inner_liftMap (v : ModelBasis → State)
     rw [inner_smul_left, inner_smul_right]
     by_cases h : b' = b
     · subst h
-      rw [if_pos rfl, inner_eq_innerS, hself b']
+      rw [ite_eq_left rfl, inner_eq_innerS, hself b']
       ring
-    · rw [if_neg h, inner_eq_innerS, hne b b' (Ne.symm h)]
+    · rw [ite_eq_right h, inner_eq_innerS, hne b b' (Ne.symm h)]
       ring
   rw [Finset.sum_congr rfl key, Finset.sum_ite_eq' g.support b]
   by_cases hbg : b ∈ g.support
-  · rw [if_pos hbg]
-  · rw [if_neg hbg, Finsupp.notMem_support_iff.mp hbg]
+  · rw [ite_eq_left hbg]
+  · rw [ite_eq_right hbg, Finsupp.notMem_support_iff.mp hbg]
     ring
 
 /-- A pair of mutually inverse orthonormal families gives a linear isometry
@@ -82,14 +83,16 @@ noncomputable def liftIso (v w : ModelBasis → State)
     (hne : ∀ b b', b ≠ b' → innerS (v b) (v b') = 0) :
     State ≃ₗᵢ[ℂ] State :=
   LinearEquiv.isometryOfInner
-    (LinearEquiv.ofLinear (liftMap v) (liftMap w)
+    (LinearEquiv.ofLinearMap (liftMap v) (liftMap w)
       (lift_ext (by intro b; simp [hwv b]))
       (lift_ext (by intro b; simp [hvw b])))
-    (fun x y => inner_liftMap v hself hne x y)
+    (fun x y => by
+      simpa only [LinearEquiv.coe_ofLinearMap, inner_eq_innerS] using inner_liftMap v hself hne x y)
 
 @[simp] theorem liftIso_ket (v w : ModelBasis → State) (hvw hwv hself hne) (b : ModelBasis) :
     liftIso v w hvw hwv hself hne (ket b) = v b := by
-  simp [liftIso]
+  simp only [liftIso]
+  rw [LinearEquiv.coe_isometryOfInner, LinearEquiv.coe_ofLinearMap, liftMap_ket]
 
 /-! ## 1. Basis relabelling -/
 
@@ -212,9 +215,9 @@ theorem innerS_blockVec_of_agree (r : Reg) (M : Matrix (Fin (ASize r)) (Fin (ASi
     intro y y'
     by_cases h : y = y'
     · subst h
-      rw [if_pos rfl, (mWriteNat_eq_iff y.2 y.2).mpr ⟨rfl, hoff⟩]
+      rw [ite_eq_left rfl, (mWriteNat_eq_iff y.2 y.2).mpr ⟨rfl, hoff⟩]
       exact innerS_ket_self _
-    · rw [if_neg h]
+    · rw [ite_eq_right h]
       exact innerS_ket_of_ne fun hc => h (Fin.ext ((mWriteNat_eq_iff y.2 y'.2).mp hc).1)
   rw [innerS_blockVec]
   have collapse : ∀ y : Fin (ASize r),
@@ -228,7 +231,7 @@ theorem innerS_blockVec_of_agree (r : Reg) (M : Matrix (Fin (ASize r)) (Fin (ASi
           = if y = y' then conj (M y (blockIdx r b)) * M y' (blockIdx r b') else 0 by
         rw [key y y']; by_cases h : y = y' <;> simp [h]),
       Finset.sum_ite_eq Finset.univ y
-        (fun y' => conj (M y (blockIdx r b)) * M y' (blockIdx r b')), if_pos (Finset.mem_univ y)]
+        (fun y' => conj (M y (blockIdx r b)) * M y' (blockIdx r b')), ite_eq_left (Finset.mem_univ y)]
   rw [Finset.sum_congr rfl (fun y _ => collapse y), ← star_mul_apply, hM, Matrix.one_apply]
 
 theorem innerS_blockVec_of_disagree (r : Reg) (M : Matrix (Fin (ASize r)) (Fin (ASize r)) ℂ)
@@ -243,13 +246,13 @@ theorem innerS_blockVec_of_disagree (r : Reg) (M : Matrix (Fin (ASize r)) (Fin (
 theorem innerS_blockVec_self (r : Reg) (M : Matrix (Fin (ASize r)) (Fin (ASize r)) ℂ)
     (hM : star M * M = 1) (b : ModelBasis) :
     innerS (blockVec r M b) (blockVec r M b) = 1 := by
-  rw [innerS_blockVec_of_agree r M hM b b (fun _ _ => rfl), if_pos rfl]
+  rw [innerS_blockVec_of_agree r M hM b b (fun _ _ => rfl), ite_eq_left rfl]
 
 theorem innerS_blockVec_of_ne (r : Reg) (M : Matrix (Fin (ASize r)) (Fin (ASize r)) ℂ)
     (hM : star M * M = 1) (b b' : ModelBasis) (hb : b ≠ b') :
     innerS (blockVec r M b) (blockVec r M b') = 0 := by
   by_cases hoff : ∀ q, q ∉ r.qubits → b q = b' q
-  · rw [innerS_blockVec_of_agree r M hM b b' hoff, if_neg]
+  · rw [innerS_blockVec_of_agree r M hM b b' hoff, ite_eq_right]
     intro hc
     exact hb (eq_of_agree_off hoff (congrArg Fin.val hc))
   · exact innerS_blockVec_of_disagree r M b b' hoff

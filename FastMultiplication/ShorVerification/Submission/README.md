@@ -84,7 +84,7 @@ of `propext`, `Classical.choice`, `Quot.sound`. It is `Lean.collectAxioms` —
 the traversal behind `#print axioms` — turned into a check, and it is what
 makes "kernel-checked" a checked claim instead of a documented intention.
 
-It catches `native_decide` (`Lean.ofReduceBool`, `Lean.trustCompiler`),
+It catches `native_decide` (the auxiliary axiom recording the compiled evaluator's answer),
 `sorry` (`sorryAx`), and any `axiom` a submitter declares, naming the
 offender. It does **not** catch `set_option debug.skipKernelTC true`, which
 skips the kernel without adding an axiom — nothing visible in the environment
@@ -115,13 +115,14 @@ that name, and `s` occurs only on its right-hand side.
 is a `Nat.find` witness, which a submissions repo can cite but not evaluate.
 It is `⌈5 / pLower N⌉₊`, where `pLower N : ℚ` is a rational lower bound on
 the declared bound for 2048-bit moduli, composed from
-`headline_success_bound` (at least 99% of the `κ / 2047⁴` baseline) and
-`kappa_ge_one_div_25`. `submissionTrialCount_correct` proves it suffices,
+`headline_success_bound` (at least 99% of the `κ / log 2048` baseline),
+`kappa_ge_one_div_ten` and `log 2048 ≤ 7.63`. `submissionTrialCount_correct` proves it suffices,
 by `(1 - p)^t ≤ exp (-p·t) ≤ exp (-5) ≤ 1/100`, the one analytic input being
 `100 ≤ e⁵`.
 
-At 2048 bits that is `2 216 900 437 333 460` runs — large because the
-single-run baseline `κ / (log₂ N)⁴` it amplifies is itself weak, which is a
+At 2048 bits that is `386` runs: the single-run baseline
+`κ / log(log₂ N + 1)` it amplifies is about `1.3 · 10⁻²` there, from the
+Mertens-type totient bound `φ(r)/r ≥ 1/(4 · log(log₂ N + 1))`. That is a
 property of the correctness bound this repository proves and not of any
 particular table. It is published once, not recomputed per pull request.
 
@@ -157,8 +158,8 @@ returns  := by decide +kernel                                       -- C4
 ```
 
 `decide +kernel`, not `native_decide`. `native_decide` closes a goal by
-running the compiled evaluator and asserting the answer through
-`Lean.ofReduceBool`, an axiom; `decide +kernel` makes Lean's kernel reduce
+running the compiled evaluator and asserting the answer through an
+axiom; `decide +kernel` makes Lean's kernel reduce
 the decision procedure itself. This is not a claim that the proofs are hard —
 for most tables each field is one line and the kernel does the work. What it
 buys is that the work really was the kernel's, and `Check.lean`'s

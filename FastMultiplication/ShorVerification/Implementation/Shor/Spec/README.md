@@ -81,7 +81,7 @@ this one layer exception.
 
 - **`ShorCorrect`** — the ideal-circuit success-probability guarantee:
   running `orderFindingIdeal` on a clean input succeeds with probability at
-  least `κ / (log₂ N)⁴`. Proved by `Proofs/NaiveShor/Correctness.lean`'s
+  least `κ / log(log₂ N + 1)`. Proved by `Proofs/NaiveShor/Correctness.lean`'s
   `Shor_correct`.
 - **`ShorEndToEndFactoring`** — the full classical statement: enough moduli
   are "successful" that a majority of valid choices work, and for each

@@ -2,7 +2,7 @@ import FastMultiplication.ShorVerification.Framework.Quantum.Registers
 import FastMultiplication.ShorVerification.Framework.AbstractMachine.Angle
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.SpecialFunctions.Sqrt
-import Mathlib.Data.Complex.Basic
+import Mathlib.Basic.Complex.Basic
 import Mathlib.Tactic
 import Mathlib.Data.Nat.Bitwise
 

@@ -144,7 +144,7 @@ theorem permMatrix_unitary {dim : ℕ} {σ : Equiv.Perm ModelBasis} (h : BelowSt
     · simp [h1]
   rw [Finset.sum_congr rfl (fun y _ => hterm y),
     Finset.sum_ite_eq' Finset.univ (permIdx dim σ x) (fun _ => if x = x' then (1:ℂ) else 0),
-    if_pos (Finset.mem_univ _)]
+    ite_eq_left (Finset.mem_univ _)]
 
 /-! ## Diagonal matrices -/
 
@@ -172,7 +172,7 @@ theorem diagMatrix_unitary {dim : ℕ} {φ : ModelBasis → ℂ} (hφ : ∀ b, �
     · simp [h1]
   rw [Finset.sum_congr rfl (fun y _ => hterm y),
     Finset.sum_ite_eq' Finset.univ x (fun _ => if x = x' then (1:ℂ) else 0),
-    if_pos (Finset.mem_univ _)]
+    ite_eq_left (Finset.mem_univ _)]
 
 /-! ## The Hadamard block -/
 
@@ -340,8 +340,8 @@ theorem addScaledPerm_symm_apply (dst src : ExtReg) (negSrc : Bool) (sh : ℕ) (
   classical
   rw [addScaledPerm]
   by_cases hdisj : ExtReg.ActiveDisjoint dst src
-  · rw [dif_pos hdisj]; rfl
-  · rw [dif_neg hdisj, addScaledBasis_of_not_disjoint hdisj]; rfl
+  · rw [dite_eq_left hdisj]; rfl
+  · rw [dite_eq_right hdisj, addScaledBasis_of_not_disjoint hdisj]; rfl
 
 theorem radixReversePerm_symm_apply (r : Reg) (m : ℕ) (b : ModelBasis) :
     (radixReversePerm r m).symm b
@@ -349,8 +349,8 @@ theorem radixReversePerm_symm_apply (r : Reg) (m : ℕ) (b : ModelBasis) :
   classical
   rw [radixReversePerm]
   by_cases hm : m ≤ regSize r
-  · rw [dif_pos hm]; rfl
-  · rw [dif_neg hm, show regSize r - m = 0 from by omega, radixReverseBasis_zero]; rfl
+  · rw [dite_eq_left hm]; rfl
+  · rw [dite_eq_right hm, show regSize r - m = 0 from by omega, radixReverseBasis_zero]; rfl
 
 /-! ### `BelowStable` for every permutation a low gate uses -/
 
@@ -413,7 +413,7 @@ theorem hMatrix_apply (dim q : ℕ) (y x : Fin (2 ^ dim)) :
 
 theorem hMatrix_eq_zero {dim q : ℕ} (hq : q < dim) {y x : Fin (2 ^ dim)}
     (h0 : y ≠ bitIdx dim q false x) (h1 : y ≠ bitIdx dim q true x) : hMatrix dim q y x = 0 := by
-  rw [hMatrix_apply, if_neg]
+  rw [hMatrix_apply, ite_eq_right]
   intro hc
   have := eq_bitIdx_of_clear_eq hq hc
   cases hy : idxBasis dim y q
@@ -423,14 +423,14 @@ theorem hMatrix_eq_zero {dim q : ℕ} (hq : q < dim) {y x : Fin (2 ^ dim)}
 theorem hMatrix_false {dim q : ℕ} (hq : q < dim) {x x' : Fin (2 ^ dim)}
     (hcl : bitIdx dim q false x = bitIdx dim q false x') :
     hMatrix dim q (bitIdx dim q false x) x' = hs := by
-  rw [hMatrix_apply, if_pos (by rw [bitIdx_clear hq, hcl]), bitIdx_bit hq]
+  rw [hMatrix_apply, ite_eq_left (by rw [bitIdx_clear hq, hcl]), bitIdx_bit hq]
   simp
 
 theorem hMatrix_true {dim q : ℕ} (hq : q < dim) {x x' : Fin (2 ^ dim)}
     (hcl : bitIdx dim q false x = bitIdx dim q false x') :
     hMatrix dim q (bitIdx dim q true x) x'
       = hs * (if idxBasis dim x' q then -1 else 1) := by
-  rw [hMatrix_apply, if_pos (by rw [bitIdx_clear hq, hcl]), bitIdx_bit hq]
+  rw [hMatrix_apply, ite_eq_left (by rw [bitIdx_clear hq, hcl]), bitIdx_bit hq]
   cases h : idxBasis dim x' q <;> simp
 
 theorem star_hs : star hs = hs := by
@@ -469,10 +469,10 @@ theorem hMatrix_unitary {dim q : ℕ} (hq : q < dim) :
         hMatrix_true hq rfl, hMatrix_true hq hcl]
       by_cases hxx : x = x'
       · subst hxx
-        rw [if_pos rfl]
+        rw [ite_eq_left rfl]
         refine key1 _ _ ?_
         cases hx : idxBasis dim x q <;> simp
-      · rw [if_neg hxx]
+      · rw [ite_eq_right hxx]
         have hbit : idxBasis dim x q ≠ idxBasis dim x' q := fun hb =>
           hxx (by rw [eq_bitIdx_of_clear_eq hq hcl, hb, bitIdx_self])
         refine key0 _ _ ?_
@@ -481,12 +481,12 @@ theorem hMatrix_unitary {dim q : ℕ} (hq : q < dim) :
     · intro y _ hy
       rw [hstar, hMatrix_eq_zero hq hy.1 hy.2, zero_mul]
   · have hxx : x ≠ x' := fun hc => hcl (by rw [hc])
-    rw [if_neg hxx]
+    rw [ite_eq_right hxx]
     refine Finset.sum_eq_zero fun y _ => ?_
     rw [hstar]
     by_cases h0 : bitIdx dim q false y = bitIdx dim q false x
-    · rw [hMatrix_apply (y := y) (x := x'), if_neg (fun hc => hcl (h0.symm.trans hc)), mul_zero]
-    · rw [hMatrix_apply (y := y) (x := x), if_neg h0, zero_mul]
+    · rw [hMatrix_apply (y := y) (x := x'), ite_eq_right (fun hc => hcl (h0.symm.trans hc)), mul_zero]
+    · rw [hMatrix_apply (y := y) (x := x), ite_eq_right h0, zero_mul]
 
 theorem denote_unitary {dim : ℕ} : ∀ (C : LowGate), maxQubit C ≤ dim →
     denote dim C ∈ Matrix.unitaryGroup (Fin (2 ^ dim)) ℂ

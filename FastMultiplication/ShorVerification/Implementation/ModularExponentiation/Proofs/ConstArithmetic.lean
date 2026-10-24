@@ -20,7 +20,7 @@ private noncomputable def copyBitPowersBasis
         copyBitPowersBasis dst ctrl bits
           (cnotBasis ctrl
             (dst.active.get
-              ⟨i, by simpa [ExtReg.width] using hi⟩) b)
+              ⟨i, by simpa [ExtReg.width] using! hi⟩) b)
       else
         copyBitPowersBasis dst ctrl bits b
 
@@ -122,10 +122,10 @@ private lemma cnotBasis_writeNat_of_outside
   unfold cnotBasis
   by_cases hsame : ctrl = target
   · simp [hsame]
-  · simp only [hsame, if_false]
+  · simp only [hsame, ite_false]
     rw [RegEncoding.bit_writeNat_out r value b ctrl hctrl]
     by_cases hbit : RegEncoding.bit ctrl b
-    · simp only [hbit, if_true]
+    · simp only [hbit, ite_true]
       rw [RegEncoding.bit_writeNat_out r value b target htarget]
       have hdisj : Disjoint (qubitReg target) r := by
         rw [Disjoint, List.disjoint_left]
@@ -171,9 +171,9 @@ private lemma bit_cnotBasis_of_ne_target
   unfold cnotBasis
   by_cases hct : ctrl = target
   · simp [hct]
-  · simp only [hct, if_false]
+  · simp only [hct, ite_false]
     by_cases hc : RegEncoding.bit ctrl b
-    · simp only [hc, if_true]
+    · simp only [hc, ite_true]
       rw [RegEncoding.bit_writeNat_out]
       simpa [qubitReg, Reg.singleton] using hq
     · simp [hc]
@@ -218,7 +218,7 @@ private lemma copyBitPowersBasis_bit_get_of_zero
     (hzero : ∀ i (hi : i ∈ bits),
       RegEncoding.bit
         (dst.active.get
-          ⟨i, by simpa [ExtReg.width] using hvalid i hi⟩) b = false)
+          ⟨i, by simpa [ExtReg.width] using! hvalid i hi⟩) b = false)
     (j : Fin (regSize dst.active)) :
     RegEncoding.bit (dst.active.get j)
         (copyBitPowersBasis dst ctrl bits b) =
@@ -248,30 +248,30 @@ private lemma copyBitPowersBasis_bit_get_of_zero
       have htailZero : ∀ t (ht : t ∈ bits),
           RegEncoding.bit
             (dst.active.get
-              ⟨t, by simpa [ExtReg.width] using htailValid t ht⟩) b₁ = false := by
+              ⟨t, by simpa [ExtReg.width] using! htailValid t ht⟩) b₁ = false := by
         intro t ht
         have hti : t ≠ i := by
           intro heq
           apply hiTail
           simpa [heq] using ht
-        have htargetNe : dst.active.get ⟨t, by simpa [ExtReg.width] using htailValid t ht⟩ ≠ target := by
+        have htargetNe : dst.active.get ⟨t, by simpa [ExtReg.width] using! htailValid t ht⟩ ≠ target := by
           intro heq
           have hfin := dst.active.nodup.get_inj_iff.mp heq
-          exact hti (by simpa [idx] using hfin)
+          exact hti (congrArg Fin.val hfin)
         dsimp [b₁]
         rw [bit_cnotBasis_of_ne_target ctrl target _ b htargetNe]
         exact hzero t (by simp [ht])
       have hrec := ih b₁ htailValid htailNodup hctrl₁ htailZero
-      simp only [copyBitPowersBasis, dif_pos hi]
-      rw [hrec]
+      simp only [copyBitPowersBasis, dite_eq_left hi]
+      erw [hrec]
       by_cases hji : j.1 = i
       · have hjidx : j = idx := Fin.ext hji
-        simp only [List.mem_cons, hji, true_or, if_true]
-        rw [if_neg hiTail]
+        simp only [List.mem_cons, hji, true_or, ite_true]
+        rw [ite_eq_right hiTail]
         rw [hjidx]
         exact bit_cnotBasis_target_of_true_false
           ctrl target b hctrlTarget hctrl
-          (by simpa [idx, target] using hzero i (by simp))
+          (by simpa [idx, target] using! hzero i (by simp))
       · have htargetNe : dst.active.get j ≠ target := by
           intro heq
           have hfin := dst.active.nodup.get_inj_iff.mp heq
@@ -324,13 +324,13 @@ private lemma copyBitPowersBasis_eq_writeNat
   have hzeroBits : ∀ i (hi : i ∈ N.bitIndices),
       RegEncoding.bit
         (dst.active.get
-          ⟨i, by simpa [ExtReg.width] using hvalid i hi⟩) b = false := by
+          ⟨i, by simpa [ExtReg.width] using! hvalid i hi⟩) b = false := by
     intro i hi
     have hbit := RegEncoding.bit_eq_testBit_toNat
       dst.active b
       ⟨i, by simpa [ExtReg.width] using hvalid i hi⟩
     rw [hzero] at hbit
-    simpa using hbit
+    simpa using! hbit
   apply RegEncoding.basis_ext
   intro q
   by_cases hq : q ∈ dst.active.qubits
@@ -379,7 +379,7 @@ private lemma copyBitPowersBasis_writeNat_of_disjoint
       split
       · rw [cnotBasis_writeNat_of_outside ctrl
           (dst.active.get
-            ⟨i, by simpa [ExtReg.width] using ‹i < dst.width›⟩)
+            ⟨i, by simpa [ExtReg.width] using! ‹i < dst.width›⟩)
           r value b hctrl]
         · exact ih _
         · rw [Disjoint, List.disjoint_left] at hdr
@@ -395,9 +395,9 @@ private lemma extToInt_cnotBasis_of_target_out
   unfold cnotBasis
   by_cases hsame : ctrl = target
   · simp [hsame]
-  · simp only [hsame, if_false]
+  · simp only [hsame, ite_false]
     by_cases hctrl : RegEncoding.bit ctrl b
-    · simp only [hctrl, if_true]
+    · simp only [hctrl, ite_true]
       unfold extToInt ExtReg.toNat
       rw [RegEncoding.toNat_left_write_right]
       rw [Disjoint, List.disjoint_left]
@@ -435,7 +435,7 @@ private lemma copyBitPowersBasis_of_ctrl_false
       split
       · have hcnot : cnotBasis ctrl
             (dst.active.get
-              ⟨i, by simpa [ExtReg.width] using ‹i < dst.width›⟩) b = b := by
+              ⟨i, by simpa [ExtReg.width] using! ‹i < dst.width›⟩) b = b := by
           simp [cnotBasis, hctrl]
         rw [hcnot]
         exact ih b hctrl
@@ -576,9 +576,9 @@ private lemma tcModWidth_tcDecodeWidth_sub
       simp [tcDecodeWidth]
     | succ w =>
       by_cases hs : n < 2 ^ w
-      · simp only [tcDecodeWidth, dif_pos hs]
+      · simp only [tcDecodeWidth, dite_eq_left hs]
         exact Int.emod_eq_of_lt (by positivity) (by exact_mod_cast hn)
-      · simp only [tcDecodeWidth, dif_neg hs]
+      · simp only [tcDecodeWidth, dite_eq_right hs]
         have hnmod : (n : ℤ) % ((2 ^ (w + 1) : ℕ) : ℤ) = (n : ℤ) :=
           Int.emod_eq_of_lt (by positivity) (by exact_mod_cast hn)
         rw [Int.sub_emod]
@@ -602,7 +602,7 @@ private lemma addScaledBasis_eq_writeNat_mod_sub
           ASize dst.active) b := by
   rw [addScaledBasis_eq dst src false 0 b hdisj]
   apply congrArg (fun value => RegEncoding.writeNat dst.active value b)
-  simp only [addScaledValue, Bool.false_eq_true, if_false, one_mul,
+  simp only [addScaledValue, Bool.false_eq_true, ite_false, one_mul,
     pow_zero, hsrc, mul_one]
   change tcModWidth dst.width
       (tcDecodeWidth dst.width (dst.toNat b) - (N : ℤ)) = _
@@ -802,7 +802,8 @@ private lemma bit_sign_eq_decide_extToInt_neg
           simpa [ExtReg.width, regSize] using hlt⟩) b =
       decide (extToInt e b < 0) := by
   have hw : e.width = (e.width - 1) + 1 := by omega
-  rw [RegEncoding.bit_eq_testBit_toNat]
+  -- `erw`: the lemma indexes by `Fin (regSize r)`, the goal by `Fin r.width`.
+  erw [RegEncoding.bit_eq_testBit_toNat]
   change Nat.testBit (e.toNat b) (e.width - 1) = _
   have hlt0 := e.toNat_lt b
   have hlt : e.toNat b < 2 ^ ((e.width - 1) + 1) := by
@@ -834,7 +835,7 @@ private lemma evalL_X_CNOT_ket
   rw [LowerGateClass.evalL_seq, LowerGateClass.evalL_X_ket,
     LowerGateClass.evalL_CNOT_ket]
   unfold cnotBasis
-  rw [if_neg hne]
+  rw [ite_eq_right hne]
   rw [RegEncoding.bit_writeNat_out (qubitReg flag)
     (if RegEncoding.bit flag b then 0 else 1) b sign hsignOut]
   cases hflag : RegEncoding.bit flag b <;>

@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Framework.Quantum.Registers
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.SpecialFunctions.Sqrt
-import Mathlib.Data.Complex.Basic
+import Mathlib.Basic.Complex.Basic
 import Mathlib.Tactic
 import Mathlib.Data.Nat.Bitwise
 
@@ -57,6 +57,7 @@ class QSemantics where
 open QSemantics
 
 
+attribute [implicit_reducible] QSemantics.instNormed QSemantics.instIP
 attribute [instance] QSemantics.instNormed
 attribute [instance] QSemantics.instIP
 

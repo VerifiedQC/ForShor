@@ -305,9 +305,6 @@ theorem idealCtrlModMul_preserves_valid
   case add =>
     intro ξ ζ _hξ _hζ hξEval hζEval
 
-    change
-      qs.eval (Gate.idealCtrlModMul c N data.active ctrl) (ξ + ζ) ∈ Submodule.span ℂ validSet
-
     rw [qs.eval_add]
 
     exact (Submodule.span ℂ validSet).add_mem hξEval hζEval
@@ -427,7 +424,7 @@ theorem step5Constant_ok
   · have h1lt : 1 < N := hN
     simpa [Nat.mod_eq_of_lt h1lt] using hcinv.2
   · unfold step5Constant
-    rw [dif_pos hExists]
+    rw [dite_eq_left hExists]
     simp [cinv]
 
 end Algorithm1PrecisionAndConstants
@@ -567,7 +564,7 @@ theorem eval_step3_clean_ket
   by_cases hge : N ≤ RegEncoding.toNat x_ext.active b
 
   · -- The comparison sets flag = 1, then CSUB subtracts N.
-    simp only [hbit0, Bool.false_eq_true, if_false, hge, if_pos]
+    simp only [hbit0, Bool.false_eq_true, ite_false, hge, ite_eq_left]
 
     let b₁ := RegEncoding.writeNat (qubitReg flag) 1 b
 
@@ -597,7 +594,7 @@ theorem eval_step3_clean_ket
 
     rw [eval_csubConst_ket_of_outside (qs := qs) N x_ext scratch flag b₁ hout']
 
-    simp only [hbit₁, if_true, hx₁, hwrapped]
+    simp only [hbit₁, ite_true, hx₁, hwrapped]
 
     apply congrArg qs.ket
 
@@ -606,7 +603,7 @@ theorem eval_step3_clean_ket
         (RegEncoding.toNat x_ext.active b - N) b).symm
 
   · -- The comparison leaves flag = 0, so CSUB is inactive.
-    simp only [hbit0, Bool.false_eq_true, if_false, hge]
+    simp only [hbit0, Bool.false_eq_true, ite_false, hge]
 
     let b₀ := RegEncoding.writeNat (qubitReg flag) 0 b
 
@@ -618,7 +615,7 @@ theorem eval_step3_clean_ket
 
     rw [eval_csubConst_ket_of_outside (qs := qs) N x_ext scratch flag b₀ hout']
 
-    simp only [hbit₀, Bool.false_eq_true, if_false]
+    simp only [hbit₀, Bool.false_eq_true, ite_false]
 
     have hwrite₀ :
         RegEncoding.writeNat x_ext.active (RegEncoding.toNat x_ext.active b) b₀ = b₀ := by

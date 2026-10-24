@@ -84,7 +84,7 @@ window.ANNOTATIONS = {
   "Shor/Main.lean": {
    "role": "assembly",
    "subtitle": "the three final theorems",
-   "summary": "Shor_end_to_end_factoring (ideal circuit, plus the classical reduction from a good outcome to a nontrivial factor), Shor_correct_approx_lowered_uniform (the fully lowered circuit, per-step precision eta left free), Shor_correct_approx_lowered_of_modExp_bound_assertion (the same at a constant the caller fixes \u2014 what Reference/ consumes) and Shor_correct_approx_lowered (at any eta below shorPrecision N x — a closed form with no hidden constant, concluding kappa / (2 log2(N)^4)). The last is the one to cite for the bound itself: the uniform form subtracts a loss that does not shrink as N grows, so it says something only once eta is tied to N. This file is the only way into Shor/Proofs from outside Shor/; check_shor_layers.sh enforces that."
+   "summary": "Shor_end_to_end_factoring (ideal circuit, plus the classical reduction from a good outcome to a nontrivial factor), Shor_correct_approx_lowered_uniform (the fully lowered circuit, per-step precision eta left free), Shor_correct_approx_lowered_of_modExp_bound_assertion (the same at a constant the caller fixes \u2014 what Reference/ consumes) and Shor_correct_approx_lowered (at any eta below shorPrecision N x — a closed form with no hidden constant, concluding kappa / (2 log(log2 N + 1))). The last is the one to cite for the bound itself: the uniform form subtracts a loss that does not shrink as N grows, so it says something only once eta is tied to N. This file is the only way into Shor/Proofs from outside Shor/; check_shor_layers.sh enforces that."
   },
   "GateCount/Definitions.lean": {
    "role": "resource",

@@ -106,9 +106,9 @@ theorem tcDecodeWidth_nonneg_iff {w u : ℕ} (hw : 0 < w) (hu : u < 2 ^ w) :
   by_cases h : u < 2 ^ (w - 1)
   · have hnn : (0:ℤ) ≤ (u:ℤ) := Int.natCast_nonneg u
     simp [h, hnn]
-  · push_neg at h
+  · push Not at h
     have hge : ((2:ℤ)) ^ (w - 1) ≤ (u : ℤ) := int_le_of_nat_le_pow h
-    simp only [if_neg (not_lt.mpr h)]
+    simp only [ite_eq_right (not_lt.mpr h)]
     constructor
     · intro hle; exfalso; linarith
     · intro hlt; exfalso; omega
@@ -123,11 +123,11 @@ theorem tcDecodeWidth_bounds {w u : ℕ} (hw : 0 < w) (hu : u < 2 ^ w) :
   rw [tcDecodeWidth_eq hw]
   by_cases h : u < 2 ^ (w - 1)
   · have hlt : (u : ℤ) < (2:ℤ) ^ (w - 1) := int_lt_of_nat_lt_pow h
-    simp only [if_pos h]
+    simp only [ite_eq_left h]
     constructor <;> linarith
-  · push_neg at h
+  · push Not at h
     have hge : ((2:ℤ)) ^ (w - 1) ≤ (u : ℤ) := int_le_of_nat_le_pow h
-    simp only [if_neg (not_lt.mpr h)]
+    simp only [ite_eq_right (not_lt.mpr h)]
     constructor <;> linarith
 
 theorem fitsSignedWidth_tcDecodeWidth {w u : ℕ} (hw : 0 < w) (hu : u < 2 ^ w) :
@@ -195,23 +195,23 @@ theorem signedShiftLWord_of_lt {w n : ℕ} (h : n < w) (u : ℕ) :
     signedShiftLWord w n u =
       ((u / 2 ^ (w - n)) ^^^ (if Nat.testBit u (w - n - 1) then 2 ^ n - 1 else 0))
         + 2 ^ n * (u % 2 ^ (w - n)) := by
-  rw [signedShiftLWord, dif_pos h]
+  rw [signedShiftLWord, dite_eq_left h]
   rfl
 
 theorem signedShiftLWord_of_ge {w n : ℕ} (h : ¬ n < w) (u : ℕ) :
     signedShiftLWord w n u = u % 2 ^ w := by
-  rw [signedShiftLWord, dif_neg h]
+  rw [signedShiftLWord, dite_eq_right h]
 
 theorem signedShiftRWord_of_lt {w n : ℕ} (h : n < w) (u : ℕ) :
     signedShiftRWord w n u =
       (u / 2 ^ n)
         + 2 ^ (w - n) * ((u % 2 ^ n) ^^^ (if Nat.testBit u (w - 1) then 2 ^ n - 1 else 0)) := by
-  rw [signedShiftRWord, dif_pos h]
+  rw [signedShiftRWord, dite_eq_left h]
   rfl
 
 theorem signedShiftRWord_of_ge {w n : ℕ} (h : ¬ n < w) (u : ℕ) :
     signedShiftRWord w n u = u % 2 ^ w := by
-  rw [signedShiftRWord, dif_neg h]
+  rw [signedShiftRWord, dite_eq_right h]
 
 theorem signedShiftLWord_lt {w n u : ℕ} (hu : u < 2 ^ w) : signedShiftLWord w n u < 2 ^ w := by
   by_cases h : n < w
@@ -351,16 +351,16 @@ theorem shiftLWord_fits_eq {w n u : ℕ} (hu : u < 2 ^ w)
         rw [← pow_succ]; congr 1; omega
       by_cases hsgn : u < 2 ^ (w - 1)
       · -- nonnegative: the whole word already fits below `2 ^ (k-1)`
-        have hx : tcDecodeWidth w u = (u : ℤ) := by rw [tcDecodeWidth_eq hw, if_pos hsgn]
+        have hx : tcDecodeWidth w u = (u : ℤ) := by rw [tcDecodeWidth_eq hw, ite_eq_left hsgn]
         have hult : u < 2 ^ (k - 1) := by
           have : (u : ℤ) < (2:ℤ) ^ (k - 1) := by rw [← hx]; exact hxhi
           rw [← natCast_two_pow] at this
           exact_mod_cast this
-        rw [Nat.div_eq_of_lt (by omega), if_neg (by simp [Nat.testBit_eq_false_of_lt hult])]
+        rw [Nat.div_eq_of_lt (by omega), ite_eq_right (by simp [Nat.testBit_eq_false_of_lt hult])]
       · -- negative: the top `n+1` bits are all ones
-        push_neg at hsgn
+        push Not at hsgn
         have hx : tcDecodeWidth w u = (u : ℤ) - 2 ^ w := by
-          rw [tcDecodeWidth_eq hw, if_neg (by omega)]
+          rw [tcDecodeWidth_eq hw, ite_eq_right (by omega)]
         have hge : (2:ℕ) ^ w ≤ u + 2 ^ (k - 1) := by
           have h1 : -(2:ℤ) ^ (k - 1) ≤ (u : ℤ) - 2 ^ w := by rw [← hx]; exact hxlo
           have h2 : ((2 ^ w : ℕ) : ℤ) ≤ ((u + 2 ^ (k - 1) : ℕ) : ℤ) := by
@@ -386,10 +386,10 @@ theorem shiftLWord_fits_eq {w n u : ℕ} (hu : u < 2 ^ w)
           rw [← testBit_mod_pow_of_lt (a := u) (k := k) (j := k - 1) (by omega),
             testBit_eq_decide_le (by omega)]
           simp [hmodk]
-        rw [hdiv, if_pos (by simp [hbit])]
+        rw [hdiv, ite_eq_left (by simp [hbit])]
     rw [tcModWidth_two_pow_mul_tcDecode hn, signedShiftLWord_of_lt hn, ← hk, hsyn, Nat.zero_add]
   · -- `n ≥ w`: only the zero word fits
-    push_neg at hn
+    push Not at hn
     have hple : (2:ℤ) ^ (w - 1) < 2 ^ n :=
       pow_lt_pow_right₀ (by norm_num) (by omega)
     have hx : tcDecodeWidth w u = 0 := by
@@ -441,20 +441,20 @@ theorem shiftRWord_fits_eq {w n u : ℕ} {q : ℤ} (hu : u < 2 ^ w)
     have hunn : (0:ℤ) ≤ (u : ℤ) := Int.natCast_nonneg u
     rw [signedShiftRWord_of_lt hn, ← hk, hsynN, Nat.zero_xor]
     by_cases hsgn : u < 2 ^ (w - 1)
-    · have hx : tcDecodeWidth w u = (u : ℤ) := by rw [tcDecodeWidth_eq hw, if_pos hsgn]
+    · have hx : tcDecodeWidth w u = (u : ℤ) := by rw [tcDecodeWidth_eq hw, ite_eq_left hsgn]
       have hz : (u : ℤ) = 2 ^ n * q := by rw [← hx, hq]
       have hq0 : 0 ≤ q := by nlinarith [hunn, hpn]
       have hbit : Nat.testBit u (w - 1) = false := by
         rw [testBit_eq_decide_le (by rw [hwpow]; exact hu)]
         simp [Nat.not_le.mpr hsgn]
-      rw [hbit, if_neg (by simp), mul_zero, Nat.add_zero]
+      rw [hbit, ite_eq_right (by simp), mul_zero, Nat.add_zero]
       have hfin : ((tcModWidth w q : ℕ) : ℤ) = ((u / 2 ^ n : ℕ) : ℤ) := by
         rw [hcast, hudiv, hz, Int.mul_ediv_cancel_left _ (ne_of_gt hpn)]
         exact Int.emod_eq_of_lt hq0 (by linarith)
       exact_mod_cast hfin
-    · push_neg at hsgn
+    · push Not at hsgn
       have hx : tcDecodeWidth w u = (u : ℤ) - 2 ^ w := by
-        rw [tcDecodeWidth_eq hw, if_neg (by omega)]
+        rw [tcDecodeWidth_eq hw, ite_eq_right (by omega)]
       have hz0 : (u : ℤ) - 2 ^ w = 2 ^ n * q := by rw [← hx, hq]
       have hz : (u : ℤ) = 2 ^ n * (q + 2 ^ k) := by rw [mul_add, ← hsplitZ]; linarith
       have hultZ : (u : ℤ) < 2 ^ w := int_lt_of_nat_lt_pow hu
@@ -462,7 +462,7 @@ theorem shiftRWord_fits_eq {w n u : ℕ} {q : ℤ} (hu : u < 2 ^ w)
       have hbit : Nat.testBit u (w - 1) = true := by
         rw [testBit_eq_decide_le (by rw [hwpow]; exact hu)]
         simp [hsgn]
-      rw [hbit, if_pos rfl]
+      rw [hbit, ite_eq_left rfl]
       have hone : (1:ℕ) ≤ 2 ^ n := Nat.one_le_two_pow
       have hfin : ((tcModWidth w q : ℕ) : ℤ)
           = ((u / 2 ^ n + 2 ^ k * (2 ^ n - 1) : ℕ) : ℤ) := by
@@ -478,7 +478,7 @@ theorem shiftRWord_fits_eq {w n u : ℕ} {q : ℤ} (hu : u < 2 ^ w)
         ring
       exact_mod_cast hfin
   · -- `n ≥ w`: only `q = 0` fits
-    push_neg at hn
+    push Not at hn
     have hple : (2:ℤ) ^ (w - 1) < 2 ^ n := pow_lt_pow_right₀ (by norm_num) (by omega)
     obtain ⟨hb1, hb2⟩ := tcDecodeWidth_bounds hw hu
     rw [hq] at hb1 hb2

@@ -99,7 +99,7 @@ lemma phaseProduct_coverage_check_append_aux
         refine PhaseProductCoverageM.step_op
           (M := M hk) (op := op) (ps := ps ++ q) (σ := σ) (τ := τ) (pts := pts ++ b)
           (hops := hops) (hstep := hstep) ?_
-        simpa [List.cons_append] using ih q b σret hrun_ps hq
+        exact ih q b σret hrun_ps hq
 
     | @step_phase i ps σ pts pts' hcons hrest ih =>
         intro q b σret hrun hq
@@ -111,7 +111,7 @@ lemma phaseProduct_coverage_check_append_aux
         refine PhaseProductCoverageM.step_phase
           (M := M hk) (i := i) (ps := ps ++ q) (σ := σ)
           (pts := pts ++ b) (pts' := pts' ++ b) hcons' ?_
-        simpa [List.cons_append] using ih q b σret hrun_ps hq
+        exact ih q b σret hrun_ps hq
 
 /-- “Returns to σ” corollary with the same hypothesis order as your goal. -/
 lemma phaseProduct_coverage_check_append

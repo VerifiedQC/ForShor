@@ -1483,7 +1483,7 @@ lemma alg1_step1_ket_expansion
               workReg t.1
               (RegEncoding.writeNat
                 workReg z.1 b)) := by
-                  simpa [ws, workReg] using hraw
+                  simpa [ws, workReg] using! hraw
       _ =
       ∑ t : Fin (ASize workReg),
         γ z t •
@@ -2465,7 +2465,7 @@ lemma alg1_step4_cross_iff_overflow_of_good
         alg1OutputValue,
         alg1TargetResidue,
         hctrl,
-        if_true
+        ite_true
       ]
 
       exact

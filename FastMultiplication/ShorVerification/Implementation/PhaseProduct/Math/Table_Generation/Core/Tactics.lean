@@ -108,13 +108,8 @@ lemma x_fin_checker(k:ℕ)(hk:k>0): (∀ (x : Fin k), x ∈ List.finRange k → 
 }
 
 theorem example_prog_2_phase_converage:
-  phaseProduct_coverage_check example_prog_2 State.start_state [Point.int 0,Point.frac 0,Point.int 1,Point.int (-1),Point.int (-2)]:=by {
-    simp[phaseProduct_coverage_check,phaseCoverageFrom?,phaseCoverageFrom?.loop,example_prog_2,List.eraseFirstMatch?,matchesAt_pointRow,regEqExpected,State.start_state,expectedRow,List.eraseFirstMatch?,Prog.ADD,applyOp?,phaseCoverageFrom?.loop,State.addScaledReg,State.setReg, Register.addScaled]
-    have := x_fin_checker 3 (by simp)
-    split_ifs with h
-    rfl
-    all_goals simp_all
-  }
+  phaseProduct_coverage_check example_prog_2 State.start_state [Point.int 0,Point.frac 0,Point.int 1,Point.int (-1),Point.int (-2)]:=by
+    decide +kernel
 
 /-! =========================================================
     Section 2: Phase-product coverage tactic
@@ -124,9 +119,13 @@ theorem example_prog_2_phase_converage:
 elab "prove_coverage" n:num : tactic => do
   let nVal := n.getNat
 
-  -- We will build the sequence of tactics as syntax
+  -- We will build the sequence of tactics as syntax.  The check is a closed `Bool`
+  -- computation, so the kernel evaluates it directly; the `simp` unfolding is kept
+  -- as a fallback.
   let tacstx ← `(tactic|
-    {
+    first
+    | decide +kernel
+    | {
       simp [phaseProduct_coverage_check, phaseCoverageFrom?, phaseCoverageFrom?.loop, List.eraseFirstMatch?, matchesAt_pointRow, regEqExpected,
             State.start_state, expectedRow, List.eraseFirstMatch?, Prog.ADD,
             applyOp?, phaseCoverageFrom?.loop, State.addScaledReg, State.setReg,

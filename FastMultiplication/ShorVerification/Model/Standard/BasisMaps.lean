@@ -90,27 +90,27 @@ theorem cnotBasis_eq (ctrl target : ℕ) (b : ModelBasis) :
       else if b ctrl then Function.update b target (!b target) else b := by
   simp only [cnotBasis, bit_eq, writeNat_eq]
   by_cases hct : ctrl = target
-  · rw [if_pos hct, if_pos hct]
-  · rw [if_neg hct, if_neg hct]
+  · rw [ite_eq_left hct, ite_eq_left hct]
+  · rw [ite_eq_right hct, ite_eq_right hct]
     by_cases hc : b ctrl
-    · rw [if_pos hc, if_pos hc]
+    · simp only [hc, ite_true]
       exact xBasis_eq target b
-    · rw [if_neg hc, if_neg hc]
+    · simp only [hc, Bool.false_eq_true, ite_false]
 
 theorem cnotBasis_involutive (ctrl target : ℕ) (b : ModelBasis) :
     cnotBasis (Basis := ModelBasis) ctrl target (cnotBasis ctrl target b) = b := by
   by_cases hct : ctrl = target
-  · rw [cnotBasis_eq, if_pos hct, cnotBasis_eq, if_pos hct]
+  · rw [cnotBasis_eq, ite_eq_left hct, cnotBasis_eq, ite_eq_left hct]
   · by_cases hc : b ctrl
     · have h1 : cnotBasis (Basis := ModelBasis) ctrl target b
           = Function.update b target (!b target) := by
-        rw [cnotBasis_eq, if_neg hct, if_pos hc]
-      rw [h1, cnotBasis_eq, if_neg hct, update_apply_ne _ hct, if_pos hc,
+        rw [cnotBasis_eq, ite_eq_right hct, ite_eq_left hc]
+      rw [h1, cnotBasis_eq, ite_eq_right hct, update_apply_ne _ hct, ite_eq_left hc,
         update_apply_self, Function.update_idem, Bool.not_not]
       exact Function.update_eq_self _ _
     · have h1 : cnotBasis (Basis := ModelBasis) ctrl target b = b := by
-        rw [cnotBasis_eq, if_neg hct, if_neg hc]
-      rw [h1, cnotBasis_eq, if_neg hct, if_neg hc]
+        rw [cnotBasis_eq, ite_eq_right hct, ite_eq_right hc]
+      rw [h1, cnotBasis_eq, ite_eq_right hct, ite_eq_right hc]
 
 /-- `CNOT` as a permutation of the computational basis. -/
 def cnotPerm (ctrl target : ℕ) : Equiv.Perm ModelBasis :=
@@ -122,29 +122,29 @@ theorem toffoliBasis_eq (c₁ c₂ target : ℕ) (b : ModelBasis) :
       else if b c₁ ∧ b c₂ then Function.update b target (!b target) else b := by
   simp only [toffoliBasis, bit_eq, writeNat_eq]
   by_cases hg : c₁ = c₂ ∨ c₁ = target ∨ c₂ = target
-  · rw [if_pos hg, if_pos hg]
-  · rw [if_neg hg, if_neg hg]
+  · rw [ite_eq_left hg, ite_eq_left hg]
+  · rw [ite_eq_right hg, ite_eq_right hg]
     by_cases hc : b c₁ ∧ b c₂
-    · rw [if_pos hc, if_pos hc]
+    · simp only [hc, and_self, ite_true]
       exact xBasis_eq target b
-    · rw [if_neg hc, if_neg hc]
+    · simp only [hc, ite_false]
 
 theorem toffoliBasis_involutive (c₁ c₂ target : ℕ) (b : ModelBasis) :
     toffoliBasis (Basis := ModelBasis) c₁ c₂ target (toffoliBasis c₁ c₂ target b) = b := by
   by_cases hg : c₁ = c₂ ∨ c₁ = target ∨ c₂ = target
-  · rw [toffoliBasis_eq, if_pos hg, toffoliBasis_eq, if_pos hg]
+  · rw [toffoliBasis_eq, ite_eq_left hg, toffoliBasis_eq, ite_eq_left hg]
   · have h1t : c₁ ≠ target := fun h => hg (Or.inr (Or.inl h))
     have h2t : c₂ ≠ target := fun h => hg (Or.inr (Or.inr h))
     by_cases hc : b c₁ ∧ b c₂
     · have h1 : toffoliBasis (Basis := ModelBasis) c₁ c₂ target b
           = Function.update b target (!b target) := by
-        rw [toffoliBasis_eq, if_neg hg, if_pos hc]
-      rw [h1, toffoliBasis_eq, if_neg hg, update_apply_ne _ h1t, update_apply_ne _ h2t,
-        if_pos hc, update_apply_self, Function.update_idem, Bool.not_not]
+        rw [toffoliBasis_eq, ite_eq_right hg, ite_eq_left hc]
+      rw [h1, toffoliBasis_eq, ite_eq_right hg, update_apply_ne _ h1t, update_apply_ne _ h2t,
+        ite_eq_left hc, update_apply_self, Function.update_idem, Bool.not_not]
       exact Function.update_eq_self _ _
     · have h1 : toffoliBasis (Basis := ModelBasis) c₁ c₂ target b = b := by
-        rw [toffoliBasis_eq, if_neg hg, if_neg hc]
-      rw [h1, toffoliBasis_eq, if_neg hg, if_neg hc]
+        rw [toffoliBasis_eq, ite_eq_right hg, ite_eq_right hc]
+      rw [h1, toffoliBasis_eq, ite_eq_right hg, ite_eq_right hc]
 
 /-- `Toffoli` as a permutation of the computational basis. -/
 def toffoliPerm (c₁ c₂ target : ℕ) : Equiv.Perm ModelBasis :=
@@ -158,8 +158,8 @@ theorem cmpGeConstBasis_eq (N : ℕ) (data : Reg) (flag : ℕ) (b : ModelBasis) 
       else Function.update b flag (xor (b flag) (decide (N ≤ mToNat data b))) := by
   simp only [cmpGeConstBasis, bit_eq, writeNat_eq, toNat_eq]
   by_cases hf : flag ∈ data.qubits
-  · rw [if_pos hf, if_pos hf]
-  · rw [if_neg hf, if_neg hf]
+  · rw [ite_eq_left hf, ite_eq_left hf]
+  · rw [ite_eq_right hf, ite_eq_right hf]
     rcases Bool.eq_false_or_eq_true (b flag) with hb | hb <;>
       by_cases h : N ≤ mToNat data b <;>
       simp [h, hb, mWriteNat_qubitReg]
@@ -168,15 +168,15 @@ theorem cmpGeConstBasis_involutive (N : ℕ) (data : Reg) (flag : ℕ) (b : Mode
     cmpGeConstBasis (Basis := ModelBasis) N data flag
         (cmpGeConstBasis N data flag b) = b := by
   by_cases hf : flag ∈ data.qubits
-  · rw [cmpGeConstBasis_eq, if_pos hf, cmpGeConstBasis_eq, if_pos hf]
+  · rw [cmpGeConstBasis_eq, ite_eq_left hf, cmpGeConstBasis_eq, ite_eq_left hf]
   · have h1 : cmpGeConstBasis (Basis := ModelBasis) N data flag b
         = Function.update b flag (xor (b flag) (decide (N ≤ mToNat data b))) := by
-      rw [cmpGeConstBasis_eq, if_neg hf]
+      rw [cmpGeConstBasis_eq, ite_eq_right hf]
     have hne : ∀ q ∈ data.qubits, q ≠ flag := fun q hq hc => hf (hc ▸ hq)
     have hdata : mToNat data (Function.update b flag
         (xor (b flag) (decide (N ≤ mToNat data b)))) = mToNat data b :=
       mToNat_congr fun q hq => update_apply_ne _ (hne q hq) _
-    rw [h1, cmpGeConstBasis_eq, if_neg hf, hdata, update_apply_self, Function.update_idem,
+    rw [h1, cmpGeConstBasis_eq, ite_eq_right hf, hdata, update_apply_self, Function.update_idem,
       show ∀ a g : Bool, xor (xor a g) g = a from fun a g => by cases a <;> cases g <;> rfl]
     exact Function.update_eq_self _ _
 
@@ -281,9 +281,9 @@ theorem signExtendBasis_involutive (r : ExtReg) (n : ℕ) (b : ModelBasis) :
       = mToNat (r.newBits n) b'
   rw [signExtendNewValue_eq, hext, hread, signExtendNewValue_eq]
   by_cases hneg : extToInt r b' < 0
-  · simp only [if_pos hneg]
+  · simp only [ite_eq_left hneg]
     omega
-  · simp only [if_neg hneg]
+  · simp only [ite_eq_right hneg]
 
 /-- `signExtend` (and `signDealloc`, the same map) as a permutation. -/
 def signExtendPerm (r : ExtReg) (n : ℕ) : Equiv.Perm ModelBasis :=
@@ -322,13 +322,13 @@ def caddVal (N : ℕ) (data : Reg) (flag : ℕ) (b : ModelBasis) : ℕ :=
 theorem csubConstBasis_of_not_mem {N : ℕ} {data : Reg} {flag : ℕ}
     (hf : flag ∉ data.qubits) (b : ModelBasis) :
     csubConstBasis (Basis := ModelBasis) N data flag b = regWrite data (csubVal N data flag) b := by
-  rw [csubConstBasis, if_neg hf]
+  rw [csubConstBasis, ite_eq_right hf]
   rfl
 
 theorem caddConstBasis_of_not_mem {N : ℕ} {data : Reg} {flag : ℕ}
     (hf : flag ∉ data.qubits) (b : ModelBasis) :
     caddConstBasis N data flag b = regWrite data (caddVal N data flag) b := by
-  rw [caddConstBasis, if_neg hf]
+  rw [caddConstBasis, ite_eq_right hf]
   rfl
 
 theorem csubVal_lt {N : ℕ} {data : Reg} {flag : ℕ} (b : ModelBasis) :
@@ -354,9 +354,9 @@ theorem csub_cadd {N : ℕ} {data : Reg} {flag : ℕ} (hf : flag ∉ data.qubits
   show caddVal N data flag (mWriteNat data (csubVal N data flag b') b') = _
   rw [caddVal, hflag, hread, csubVal]
   by_cases hb : b' flag
-  · rw [if_pos hb, if_pos hb]
+  · rw [ite_eq_left hb, ite_eq_left hb]
     exact mod_sub_then_add hA hm (mToNat_lt data b')
-  · rw [if_neg hb, if_neg hb]
+  · rw [ite_eq_right hb, ite_eq_right hb]
 
 theorem cadd_csub {N : ℕ} {data : Reg} {flag : ℕ} (hf : flag ∉ data.qubits) (b : ModelBasis) :
     csubConstBasis (Basis := ModelBasis) N data flag (caddConstBasis N data flag b) = b := by
@@ -371,9 +371,9 @@ theorem cadd_csub {N : ℕ} {data : Reg} {flag : ℕ} (hf : flag ∉ data.qubits
   show csubVal N data flag (mWriteNat data (caddVal N data flag b') b') = _
   rw [csubVal, hflag, hread, caddVal]
   by_cases hb : b' flag
-  · rw [if_pos hb, if_pos hb]
+  · rw [ite_eq_left hb, ite_eq_left hb]
     exact mod_add_then_sub hA hm (mToNat_lt data b')
-  · rw [if_neg hb, if_neg hb]
+  · rw [ite_eq_right hb, ite_eq_right hb]
 
 /-- `CSubConst` as a permutation of the computational basis. -/
 def csubConstPerm (N : ℕ) (data : Reg) (flag : ℕ) : Equiv.Perm ModelBasis := by
@@ -388,10 +388,10 @@ theorem csubConstPerm_apply (N : ℕ) (data : Reg) (flag : ℕ) (b : ModelBasis)
   classical
   rw [csubConstPerm]
   by_cases hf : flag ∈ data.qubits
-  · rw [dif_pos hf]
+  · rw [dite_eq_left hf]
     show b = _
-    rw [csubConstBasis, if_pos hf]
-  · rw [dif_neg hf]
+    rw [csubConstBasis, ite_eq_left hf]
+  · rw [dite_eq_right hf]
     rfl
 
 /-! ## `AddScaled` -/
@@ -405,13 +405,13 @@ theorem addScaledBasis_of_disjoint {dst src : ExtReg} (hdisj : ExtReg.ActiveDisj
     (negSrc : Bool) (sh : ℕ) (b : ModelBasis) :
     addScaledBasis (Basis := ModelBasis) dst src negSrc sh b
       = regWrite dst.active (addScaledVal dst src negSrc sh) b := by
-  rw [addScaledBasis, dif_pos hdisj]
+  rw [addScaledBasis, dite_eq_left hdisj]
   rfl
 
 theorem addScaledBasis_of_not_disjoint {dst src : ExtReg}
     (hdisj : ¬ ExtReg.ActiveDisjoint dst src) (negSrc : Bool) (sh : ℕ) (b : ModelBasis) :
     addScaledBasis (Basis := ModelBasis) dst src negSrc sh b = b := by
-  rw [addScaledBasis, dif_neg hdisj]
+  rw [addScaledBasis, dite_eq_right hdisj]
 
 theorem addScaled_key {dst src : ExtReg} (hdisj : ExtReg.ActiveDisjoint dst src)
     (negSrc : Bool) (sh : ℕ) (b : ModelBasis) :
@@ -465,8 +465,8 @@ theorem addScaledPerm_apply (dst src : ExtReg) (negSrc : Bool) (sh : ℕ) (b : M
   classical
   rw [addScaledPerm]
   by_cases hdisj : ExtReg.ActiveDisjoint dst src
-  · rw [dif_pos hdisj]; rfl
-  · rw [dif_neg hdisj, addScaledBasis_of_not_disjoint hdisj]; rfl
+  · rw [dite_eq_left hdisj]; rfl
+  · rw [dite_eq_right hdisj, addScaledBasis_of_not_disjoint hdisj]; rfl
 
 /-! ## `RadixReverse`
 
@@ -487,14 +487,14 @@ theorem radixReverseBasis_of_le {r : Reg} {m : ℕ} (hm : m ≤ regSize r) (b : 
     radixReverseBasis (Basis := ModelBasis) r m b
       = mWriteNat r (2 ^ (regSize r - m) * mToNat (splitLeft r ⟨m, hm⟩) b
           + mToNat (splitRight r ⟨m, hm⟩) b) b := by
-  rw [radixReverseBasis, dif_pos hm]
+  rw [radixReverseBasis, dite_eq_left hm]
   show mWriteNat r (ASize (splitRight r ⟨m, hm⟩) * _ + _) b = _
   rw [ASize_splitRight r m hm]
   rfl
 
 theorem radixReverseBasis_of_gt {r : Reg} {m : ℕ} (hm : ¬ m ≤ regSize r) (b : ModelBasis) :
     radixReverseBasis (Basis := ModelBasis) r m b = b := by
-  rw [radixReverseBasis, dif_neg hm]
+  rw [radixReverseBasis, dite_eq_right hm]
 
 @[simp] theorem radixReverseBasis_zero (r : Reg) (b : ModelBasis) :
     radixReverseBasis (Basis := ModelBasis) r 0 b = b := by
@@ -577,8 +577,8 @@ theorem radixReversePerm_apply (r : Reg) (m : ℕ) (b : ModelBasis) :
   classical
   rw [radixReversePerm]
   by_cases hm : m ≤ regSize r
-  · rw [dif_pos hm]; rfl
-  · rw [dif_neg hm, radixReverseBasis_of_gt hm]; rfl
+  · rw [dite_eq_left hm]; rfl
+  · rw [dite_eq_right hm, radixReverseBasis_of_gt hm]; rfl
 
 /-! ## `ShiftL` and `ShiftR`
 
@@ -592,20 +592,20 @@ theorem shiftLBasis_eq_raw (r : ExtReg) (n : ℕ) (b : ModelBasis) :
     shiftLBasis (Basis := ModelBasis) r n b = shiftLBasisRaw r n b := by
   rw [shiftLBasis]
   by_cases h : FitsSignedWidth r.width ((2 : ℤ) ^ n * extToInt r b)
-  · rw [dif_pos h, shiftLBasisRaw]
+  · rw [dite_eq_left h, shiftLBasisRaw]
     congr 1
     exact shiftLWord_fits_eq (mToNat_active_lt r b) h
-  · rw [dif_neg h]
+  · rw [dite_eq_right h]
 
 theorem shiftRBasis_eq_raw (r : ExtReg) (n : ℕ) (b : ModelBasis) :
     shiftRBasis (Basis := ModelBasis) r n b = shiftRBasisRaw r n b := by
   rw [shiftRBasis]
   by_cases h : ∃ q : ℤ, extToInt r b = (2 : ℤ) ^ n * q ∧ FitsSignedWidth r.width q
-  · rw [dif_pos h, shiftRBasisRaw]
+  · rw [dite_eq_left h, shiftRBasisRaw]
     congr 1
     obtain ⟨hq1, hq2⟩ := Classical.choose_spec h
     exact shiftRWord_fits_eq (mToNat_active_lt r b) hq1 hq2
-  · rw [dif_neg h]
+  · rw [dite_eq_right h]
 
 theorem shiftRBasisRaw_shiftLBasisRaw (r : ExtReg) (n : ℕ) (b : ModelBasis) :
     shiftRBasisRaw (Basis := ModelBasis) r n (shiftLBasisRaw r n b) = b := by
@@ -667,7 +667,7 @@ noncomputable def modInv (c N : ℕ) : ℕ := ((c : ZMod N)⁻¹).val
 
 theorem modInv_mul_modEq {c N : ℕ} (hN : 1 < N) (hcop : Nat.Coprime c N) :
     c * modInv c N ≡ 1 [MOD N] := by
-  haveI : NeZero N := ⟨by omega⟩
+  have : NeZero N := ⟨by omega⟩
   refine (ZMod.natCast_eq_natCast_iff _ _ _).mp ?_
   push_cast
   rw [modInv, ZMod.natCast_val, ZMod.cast_id]
@@ -722,15 +722,15 @@ theorem idealCtrlModMul_left_inv (b : ModelBasis) :
     idealCtrlModMulInv c N data ctrl (idealCtrlModMulBasis c N data ctrl b) = b := by
   rw [idealCtrlModMulBasis]
   by_cases hg : IdealGuard c N data ctrl b
-  · rw [if_pos hg]
+  · rw [ite_eq_left hg]
     obtain ⟨hg', hread, hc⟩ := ideal_step (b := b) c hg
     obtain ⟨hN, hNA, hcop, hctrl, hx⟩ := hg
-    rw [idealCtrlModMulInv, if_pos hg', hread, hc]
+    rw [idealCtrlModMulInv, ite_eq_left hg', hread, hc]
     have hkey : (if b ctrl then
         (modInv c N * (if b ctrl then (c * mToNat data b) % N else mToNat data b)) % N
       else (if b ctrl then (c * mToNat data b) % N else mToNat data b)) = mToNat data b := by
       by_cases hb : b ctrl
-      · rw [if_pos hb, if_pos hb]
+      · rw [ite_eq_left hb, ite_eq_left hb]
         have hmod : modInv c N * ((c * mToNat data b) % N) ≡ mToNat data b [MOD N] := by
           calc modInv c N * ((c * mToNat data b) % N)
               ≡ modInv c N * (c * mToNat data b) [MOD N] :=
@@ -741,24 +741,24 @@ theorem idealCtrlModMul_left_inv (b : ModelBasis) :
             _ = mToNat data b := by ring
         rw [Nat.ModEq] at hmod
         rw [hmod, Nat.mod_eq_of_lt hx]
-      · rw [if_neg hb, if_neg hb]
+      · rw [ite_eq_right hb, ite_eq_right hb]
     rw [hkey, mWriteNat_mWriteNat, mWriteNat_mToNat]
-  · rw [if_neg hg, idealCtrlModMulInv, if_neg hg]
+  · rw [ite_eq_right hg, idealCtrlModMulInv, ite_eq_right hg]
 
 theorem idealCtrlModMul_right_inv (b : ModelBasis) :
     idealCtrlModMulBasis c N data ctrl (idealCtrlModMulInv c N data ctrl b) = b := by
   rw [idealCtrlModMulInv]
   by_cases hg : IdealGuard c N data ctrl b
-  · rw [if_pos hg]
+  · rw [ite_eq_left hg]
     obtain ⟨hg', hread, hc⟩ := ideal_step (b := b) (modInv c N) hg
     obtain ⟨hN, hNA, hcop, hctrl, hx⟩ := hg
-    rw [idealCtrlModMulBasis, if_pos hg', hread, hc]
+    rw [idealCtrlModMulBasis, ite_eq_left hg', hread, hc]
     have hkey : (if b ctrl then
         (c * (if b ctrl then (modInv c N * mToNat data b) % N else mToNat data b)) % N
       else (if b ctrl then (modInv c N * mToNat data b) % N else mToNat data b))
         = mToNat data b := by
       by_cases hb : b ctrl
-      · rw [if_pos hb, if_pos hb]
+      · rw [ite_eq_left hb, ite_eq_left hb]
         have hmod : c * ((modInv c N * mToNat data b) % N) ≡ mToNat data b [MOD N] := by
           calc c * ((modInv c N * mToNat data b) % N)
               ≡ c * (modInv c N * mToNat data b) [MOD N] :=
@@ -769,9 +769,9 @@ theorem idealCtrlModMul_right_inv (b : ModelBasis) :
             _ = mToNat data b := by ring
         rw [Nat.ModEq] at hmod
         rw [hmod, Nat.mod_eq_of_lt hx]
-      · rw [if_neg hb, if_neg hb]
+      · rw [ite_eq_right hb, ite_eq_right hb]
     rw [hkey, mWriteNat_mWriteNat, mWriteNat_mToNat]
-  · rw [if_neg hg, idealCtrlModMulBasis, if_neg hg]
+  · rw [ite_eq_right hg, idealCtrlModMulBasis, ite_eq_right hg]
 
 end Ideal
 
@@ -793,7 +793,7 @@ theorem idealCtrlModMulBasis_of_guard {c N : ℕ} {data : Reg} {ctrl : ℕ} {b :
     (hx : mToNat data b < N) :
     idealCtrlModMulBasis c N data ctrl b
       = mWriteNat data (if b ctrl then (c * mToNat data b) % N else mToNat data b) b := by
-  rw [idealCtrlModMulBasis, if_pos ⟨hN, hNA, hcop, hctrl, hx⟩]
+  rw [idealCtrlModMulBasis, ite_eq_left ⟨hN, hNA, hcop, hctrl, hx⟩]
 
 end Model
 end Shor

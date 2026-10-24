@@ -38,7 +38,6 @@ variable [MeasureClass qs]
 /-- Public assertion for `Shor_correct`. -/
 def ShorCorrect
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     (T : ℕ → ℕ)
     (_hT : ContinuedFractionSearchComplete T)
     (inst : ShorOrderFindingInstance)
@@ -57,12 +56,11 @@ def ShorCorrect
         (C := orderFindingIdeal (qs := qs) inst.a inst.N x y)
         (ψ := qs.ket b0)
       ≥
-    κ / (Nat.log2 inst.N : ℝ) ^ 4
+    κ / Real.log ((Nat.log2 inst.N : ℝ) + 1)
 
 /-- Public assertion for `Shor_end_to_end_factoring`. -/
 def ShorEndToEndFactoring
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     (T : ℕ → ℕ)
     (_hT : ContinuedFractionSearchComplete T)
     (fact : ShorFactoringInstance)
@@ -82,7 +80,7 @@ def ShorEndToEndFactoring
       (evalC := qs.eval)
       (C := orderFindingIdeal (qs := qs) a fact.N x y)
       (ψ := qs.ket b0)
-    ≥ κ / (Nat.log2 fact.N : ℝ)^4)
+    ≥ κ / Real.log ((Nat.log2 fact.N : ℝ) + 1))
     ∧
     (is_nontrivial_factor
         (Nat.gcd ((a ^ (ord a fact.N hgcd / 2)) - 1) fact.N)
@@ -95,7 +93,6 @@ def ShorEndToEndFactoring
 def ShorCorrectApproxLoweredUniform
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [IdealCtrlModMulExactSemantics qs]
     (T : ℕ → ℕ) (_hT : ContinuedFractionSearchComplete T) : Prop :=
   ∃ K : ℝ, 0 ≤ K ∧
       ∀ (inst : ShorOrderFindingInstance)
@@ -119,7 +116,7 @@ def ShorCorrectApproxLoweredUniform
               hready.workspace)
             (ψ := qs.ket b0)
           ≥
-        κ / (Nat.log2 inst.N : ℝ) ^ 4
+        κ / Real.log ((Nat.log2 inst.N : ℝ) + 1)
           -
         2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η))
 
@@ -134,7 +131,6 @@ statement but the wrong one for a caller that has already fixed its own `K`
 def ShorCorrectApproxLoweredOfModExpBound
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [IdealCtrlModMulExactSemantics qs]
     (K : ℝ)
     (T : ℕ → ℕ) (_hT : ContinuedFractionSearchComplete T) : Prop :=
   (∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
@@ -163,25 +159,24 @@ def ShorCorrectApproxLoweredOfModExpBound
             hready.workspace)
           (ψ := qs.ket b0)
         ≥
-      κ / (Nat.log2 inst.N : ℝ) ^ 4
+      κ / Real.log ((Nat.log2 inst.N : ℝ) + 1)
         -
       2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η))
 
 /-- The per-step precision at which the lowering loss is at most half of the
-ideal success bound `κ / log₂(N)⁴`.
+ideal success bound `κ / log(log₂ N + 1)`.
 
-Solving `2 · tbits · √(2 · 2048 · η) ≤ κ / (2 · log₂(N)⁴)` for `η` gives this
-threshold; `65536 = 32 · 2048` folds in the uniform constant `K ≤ 2048` of
-`modExpApprox_valid_dist_uniform`. With `tbits ≈ 2n` it is `Θ(n⁻¹⁰)` and costs
-`algorithm1ExtraBits η ≈ 20 · log₂ n` extra work bits; at 2048 bits it is about
-`2⁻¹³⁶`.
+Solving `2 · tbits · √(2 · 2048 · η) ≤ κ / (2 · log(log₂ N + 1))` for `η` gives
+this threshold; `65536 = 32 · 2048` folds in the uniform constant `K ≤ 2048` of
+`modExpApprox_valid_dist_uniform`. With `tbits ≈ 2n` it is `Θ(1 / (n log n)²)`
+and costs `algorithm1ExtraBits η ≈ 4 · log₂ n` extra work bits; at 2048 bits it
+is about `2⁻⁵³`.
 
-The exponents are large because the ideal bound `κ / log₂(N)⁴` is the loose
-textbook one and the loss carries a square root, so solving for `η` squares
-`κ`, `tbits` and `log⁴N`. `2048` is an unoptimised proof constant, not a
-physical one. -/
+The loss carries a square root, so solving for `η` squares `κ`, `tbits` and
+`log(log₂ N + 1)`. `2048` is an unoptimised proof constant, not a physical
+one. -/
 noncomputable def shorPrecision (N : ℕ) (x : Reg) : ℝ :=
-  κ ^ 2 / (65536 * (tbits x : ℝ) ^ 2 * (Nat.log2 N : ℝ) ^ 8)
+  κ ^ 2 / (65536 * (tbits x : ℝ) ^ 2 * (Real.log ((Nat.log2 N : ℝ) + 1)) ^ 2)
 
 /-- Public assertion for `Shor_correct_approx_lowered`: at any precision at or
 below `shorPrecision N x`, the fully lowered approximate order-finding circuit
@@ -192,7 +187,6 @@ is in the statement. -/
 def ShorCorrectApproxLowered
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [IdealCtrlModMulExactSemantics qs]
     (T : ℕ → ℕ) (_hT : ContinuedFractionSearchComplete T) : Prop :=
   ∀ (inst : ShorOrderFindingInstance)
     (P : ShorLoweringPolicy)
@@ -216,6 +210,6 @@ def ShorCorrectApproxLowered
           hready.workspace)
         (ψ := qs.ket b0)
       ≥
-    κ / (2 * (Nat.log2 inst.N : ℝ) ^ 4)
+    κ / (2 * Real.log ((Nat.log2 inst.N : ℝ) + 1))
 
 end Shor

@@ -37,8 +37,8 @@ theorem proj_mul_apply (dim : ℕ) (r : Reg) (o : ℕ) (v : CVector (2 ^ dim))
     (k : Fin (2 ^ dim)) :
     (proj dim r o * v) k 0 = (if mToNat r (idxBasis dim k) = o then 1 else 0) * v k 0 := by
   rw [Matrix.mul_apply, Finset.sum_eq_single k]
-  · rw [proj, if_pos rfl]
-  · intro k' _ hk'; rw [proj, if_neg (Ne.symm hk'), zero_mul]
+  · rw [proj, ite_eq_left rfl]
+  · intro k' _ hk'; rw [proj, ite_eq_right (Ne.symm hk'), zero_mul]
   · intro hc; exact absurd (Finset.mem_univ _) hc
 
 theorem measProj_ι (dim : ℕ) (r : Reg) (o : ℕ) (v : CVector (2 ^ dim)) :
@@ -48,8 +48,8 @@ theorem measProj_ι (dim : ℕ) (r : Reg) (o : ℕ) (v : CVector (2 ^ dim)) :
   refine Finset.sum_congr rfl fun k _ => ?_
   rw [map_smul, measFilter_ket, proj_mul_apply]
   by_cases h : mToNat r (idxBasis dim k) = o
-  · rw [if_pos h, if_pos h, one_mul]
-  · rw [if_neg h, if_neg h, zero_mul, smul_zero, zero_smul]
+  · rw [ite_eq_left h, ite_eq_left h, one_mul]
+  · rw [ite_eq_right h, ite_eq_right h, zero_mul, smul_zero, zero_smul]
 
 /-- **The Born rule, as a matrix statement.** -/
 theorem probMeas_ι (dim : ℕ) (r : Reg) (o : ℕ) (v : CVector (2 ^ dim)) :

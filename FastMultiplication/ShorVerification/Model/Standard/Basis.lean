@@ -106,13 +106,14 @@ instance instRegEncoding : RegEncoding ModelBasis where
     by_cases hi : i < regSize r
     · have hmem : r.get ⟨i, hi⟩ ∈ r.qubits := get_mem r ⟨i, hi⟩
       have hbit : mBit (r.get ⟨i, hi⟩) (mWriteNat r v b) = Nat.testBit v i := by
-        rw [mBit_mWriteNat_mem hmem, idxOf_get r ⟨i, hi⟩]
+        rw [mBit_mWriteNat_mem hmem]
+        exact congrArg (Nat.testBit v) (idxOf_get r ⟨i, hi⟩)
       have hlen : i < r.qubits.length := by simpa [regSize, Reg.width] using hi
       have htb := testBit_toNatList r.qubits (mWriteNat r v b) i hlen
       have hget : r.qubits[i]'hlen = r.get ⟨i, hi⟩ := by simp [Reg.get]
       rw [hget] at htb
-      simpa [mToNat, htb] using hbit
-    · push_neg at hi
+      simpa [mToNat, mBit, htb] using hbit
+    · push Not at hi
       have h1 : Nat.testBit (mToNat r (mWriteNat r v b)) i = false := by
         refine Nat.testBit_eq_false_of_lt (lt_of_lt_of_le ?_ (Nat.pow_le_pow_right (by norm_num) hi))
         simpa [mToNat, regSize, Reg.width] using toNatList_lt r.qubits (mWriteNat r v b)

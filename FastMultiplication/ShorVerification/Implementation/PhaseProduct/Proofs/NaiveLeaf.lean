@@ -792,7 +792,7 @@ theorem evalL_cSignedPairPhase_ket
   rw [evalL_CCPhase_ket]
   by_cases hc : RegEncoding.bit ctrl b
   · simp only [
-      cSignedPairExponent, hc, if_true, signedPairExponent, signedPairAngle, signedTermValue,
+      cSignedPairExponent, hc, ite_true, signedPairExponent, signedPairAngle, signedTermValue,
       basisBitInt, Angle.toReal
     ]
     push_cast

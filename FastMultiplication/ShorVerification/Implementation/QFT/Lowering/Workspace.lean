@@ -202,14 +202,14 @@ lemma qftXWorkOf_mem_reserve
     (need : ℕ → ℕ × ℕ) (r : ExtReg) {q : ℕ}
     (hq : q ∈ (qftXWorkOf need r).qubits) : q ∈ r.reserve.qubits := by
   apply List.mem_of_mem_take
-  simpa [qftXWork, Reg.take] using hq
+  simpa [qftXWork, Reg.take] using! hq
 
 lemma qftZWorkOf_mem_reserve
     (need : ℕ → ℕ × ℕ) (r : ExtReg) {q : ℕ}
     (hq : q ∈ (qftZWorkOf need r).qubits) : q ∈ r.reserve.qubits := by
   have hqDrop : q ∈ r.reserve.qubits.drop (need r.width).1 := by
     apply List.mem_of_mem_take
-    simpa [qftZWork, Reg.take, Reg.drop] using hq
+    simpa [qftZWork, Reg.take, Reg.drop] using! hq
   exact List.mem_of_mem_drop hqDrop
 
 lemma qftXWorkOf_qftZWorkOf_disjoint (need : ℕ → ℕ × ℕ) (r : ExtReg) :
@@ -217,10 +217,10 @@ lemma qftXWorkOf_qftZWorkOf_disjoint (need : ℕ → ℕ × ℕ) (r : ExtReg) :
   rw [Disjoint, List.disjoint_left]
   intro q hqx hqz
   have hqxTake : q ∈ r.reserve.qubits.take (need r.width).1 := by
-    simpa [qftXWork, Reg.take] using hqx
+    simpa [qftXWork, Reg.take] using! hqx
   have hqzDrop : q ∈ r.reserve.qubits.drop (need r.width).1 := by
     apply List.mem_of_mem_take
-    simpa [qftZWork, Reg.take, Reg.drop] using hqz
+    simpa [qftZWork, Reg.take, Reg.drop] using! hqz
   have hdisjoint :=
     List.disjoint_take_drop r.reserve.nodup (le_refl (need r.width).1)
   rw [List.disjoint_left] at hdisjoint

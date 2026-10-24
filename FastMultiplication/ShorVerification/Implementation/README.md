@@ -111,7 +111,7 @@ approximation error.
 * `Shor_correct_approx_lowered` — the same circuit at a precision schedule
   tied to `N`. At any `η ≤ shorPrecision N x` the approximation loss is at
   most half of the ideal bound, so the circuit certifiably keeps the other
-  half, `κ / (2 · log₂(N)⁴)`. This is the lowered statement to cite.
+  half, `κ / (2 · log(log₂ N + 1))`. This is the lowered statement to cite.
 * `Shor_correct_approx_lowered_of_modExp_bound_assertion` — the lowered bound
   at a constant the caller fixes, rather than one hoisted into an
   existential. `Reference/` consumes this one, which is why nothing outside
@@ -154,7 +154,7 @@ structure. Everything else here (`ReferenceLayout.lean`,
 `Reference2048Headline.lean`) exists to construct those fields and discharge
 their obligations. `Reference2048Headline.lean` fixes the explicit precision
 `m2048` (`η = 2⁻¹⁵⁰`) and proves the single-run bound at it retains at
-least 99% of the ideal `κ / (log₂ N)⁴` baseline — which is what
+least 99% of the ideal `κ / log(log₂ N + 1)` baseline — which is what
 `Submission/Score.lean` turns into the trial count the score multiplies by.
 
 ## Reading order for newcomers

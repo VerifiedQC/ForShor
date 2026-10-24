@@ -18,7 +18,7 @@ high-level `Gate.QFT` gate on states with valid, clean recursive workspace.
 -/
 def LowerQFTCorrect
     (qs : QSemantics)
-    [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs] [GateSemanticsFacts qs]
+    [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : ExtReg) : Prop :=
   ∀ (ψ : qs.State) (pts : List Point) (hpts : pts.length = q k)
     (hworkspace : QFTWorkspaceStateOK qs ops r ψ)

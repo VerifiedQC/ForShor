@@ -74,7 +74,7 @@ def basisIdx (dim : ℕ) (b : ModelBasis) : Fin (2 ^ dim) :=
   · have h := testBit_mToNat (fullReg dim) (idxBasis dim k) ⟨i, by simpa using hi⟩
     rw [fullReg_get] at h
     simpa [idxBasis_apply] using h
-  · push_neg at hi
+  · push Not at hi
     have h1 : Nat.testBit (mToNat (fullReg dim) (idxBasis dim k)) i = false :=
       Nat.testBit_eq_false_of_lt (lt_of_lt_of_le (by simpa using mToNat_lt (fullReg dim) _)
         (Nat.pow_le_pow_right (by norm_num) hi))
@@ -123,7 +123,7 @@ theorem mul_eq_sum_e (dim : ℕ) (M : CSquare (2 ^ dim)) (v : CVector (2 ^ dim))
   ext k' j
   have hj : j = 0 := Subsingleton.elim j 0
   subst hj
-  rw [Finset.sum_apply, Finset.sum_apply, Matrix.mul_apply]
+  rw [Matrix.sum_apply, Matrix.mul_apply]
   refine Finset.sum_congr rfl fun i _ => ?_
   rw [Matrix.smul_apply, smul_eq_mul, Matrix.mul_apply, Finset.sum_eq_single i]
   · simp [mul_comm]
@@ -132,7 +132,7 @@ theorem mul_eq_sum_e (dim : ℕ) (M : CSquare (2 ^ dim)) (v : CVector (2 ^ dim))
 
 theorem eq_sum_e (dim : ℕ) (v : CVector (2 ^ dim)) : v = ∑ k, v k 0 • e dim k := by
   ext k' j
-  rw [Finset.sum_apply, Finset.sum_apply, Finset.sum_eq_single k']
+  rw [Matrix.sum_apply, Finset.sum_eq_single k']
   · simp [Subsingleton.elim j 0]
   · intro k _ hk; simp [Ne.symm hk]
   · intro h; exact absurd (Finset.mem_univ k') h

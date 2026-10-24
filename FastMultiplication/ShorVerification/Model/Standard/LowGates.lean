@@ -52,9 +52,9 @@ noncomputable instance instLowerGateClass : LowerGateClass qs where
     show diagLift _ _ (ket b) = _
     rw [diagLift_ket, lowPhaseDiag]
     by_cases h : b q
-    · rw [if_pos h, if_pos (show RegEncoding.bit q b = true from h)]
+    · rw [ite_eq_left h, ite_eq_left (show RegEncoding.bit q b = true from h)]
       rfl
-    · rw [if_neg h, if_neg (show ¬ (RegEncoding.bit q b = true) from h), one_smul]
+    · rw [ite_eq_right h, ite_eq_right (show ¬ (RegEncoding.bit q b = true) from h), one_smul]
       rfl
   evalL_shiftL_ket_total r n b := by
     show permLift _ (ket b) = _

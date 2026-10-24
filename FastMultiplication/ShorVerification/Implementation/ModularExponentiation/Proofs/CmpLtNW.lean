@@ -40,7 +40,8 @@ private lemma cmpLtNW_bit_msb_eq_decide_extToInt_neg
   have hw : e.width = (e.width - 1) + 1 := by
     unfold ExtReg.width at *
     omega
-  rw [RegEncoding.bit_eq_testBit_toNat]
+  -- `erw`: the lemma indexes by `Fin (regSize r)`, the goal by `Fin r.width`.
+  erw [RegEncoding.bit_eq_testBit_toNat]
   change Nat.testBit (e.toNat b) (regSize e.active - 1) = _
   change Nat.testBit (e.toNat b) (e.width - 1) = _
   have hlt0 := e.toNat_lt b
@@ -182,8 +183,7 @@ private lemma eval_cmpLtNWDifference_ket
       ExtensionSemantics.eval_zeroExtend, ExtensionSemantics.eval_zeroDealloc,
       ArithmeticSemantics.eval_Negate_ket_total,
       ArithmeticSemantics.eval_AddScaled_ket_total]
-  · dsimp [bout]
-    rw [extToInt_addScaledBasis_dst scratch (data.grow 1) false
+  · rw [extToInt_addScaledBasis_dst scratch (data.grow 1) false
       (regSize work.active) bneg hs_dg]
     simp [addScaledValue, hneg, hsrc]
     exact tcWrapInt_eq_of_fits hdifffit.1 hdifffit
@@ -430,7 +430,7 @@ private theorem eval_fastConstMulInto_ket
     apply Finset.sum_congr rfl
     intro y hy
     rw [qs.eval_smul]
-    let yM : Fin M := ⟨y.1, by simpa [M, hzwidth] using y.isLt⟩
+    let yM : Fin M := ⟨y.1, by simpa [M, hzwidth] using! y.isLt⟩
     have hphase' := hphase yM
     simp only [yM] at hphase'
     rw [show RegEncoding.writeNat ws.zExt.active y.1 b =

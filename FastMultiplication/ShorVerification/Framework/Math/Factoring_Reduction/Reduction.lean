@@ -1,4 +1,4 @@
-import Mathlib.Data.Real.Basic
+import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import FastMultiplication.ShorVerification.Framework.Math.Factoring_Reduction.ProbabilityBound
@@ -64,7 +64,7 @@ lemma gcd_nontrivial_from_product (x N : ℕ)
   left
   refine ⟨?_, ?_, Nat.gcd_dvd_right _ _⟩
   · by_contra h_le
-    push_neg at h_le
+    push Not at h_le
     have h_cop : Nat.gcd (x - 1) N = 1 := by
       have := Nat.gcd_pos_of_pos_right (x - 1) (show 0 < N by omega)
       omega
@@ -119,7 +119,7 @@ is_nontrivial_factor (Nat.gcd ((a ^ (r / 2)) + 1) N) N := by {
       nth_rw 1 [← h_period]
       exact orderOf_dvd_of_pow_eq_one h_eq_one
     have hr_pos : 0 < r := by
-      haveI : NeZero N := ⟨by linarith⟩
+      have : NeZero N := ⟨by linarith⟩
       let u : (ZMod N)ˣ := ZMod.unitOfCoprime a h_coprime
       have horder : orderOf u = r := by
         have hinj := orderOf_injective (Units.coeHom (ZMod N)) Units.val_injective u

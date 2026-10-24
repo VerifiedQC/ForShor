@@ -271,7 +271,7 @@ lemma OF_post_eq_of_mem_of_least
   unfold OF_post
   dsimp only
 
-  rw [dif_pos hnonempty]
+  rw [dite_eq_left hnonempty]
 
   apply Nat.le_antisymm
 
@@ -293,5 +293,10 @@ lemma OF_post_eq_of_mem_of_least
 noncomputable def r_found (T : ℕ → ℕ) (verify : OrderVerifier) (o Q r : ℕ) : ℝ :=
   if OF_post (T := T) verify o Q = r then (1 : ℝ) else 0
 
-/-- The asymptotic success-probability constant appearing in the final bound. -/
-noncomputable def κ : ℝ := (4 * Real.exp (-2)) / (Real.pi ^ 2)
+/-- The success-probability constant appearing in the final bound,
+`κ = 1/π² = (4/π²) · (1/4)`: the `4/π²` is Shor's per-numerator Fourier
+estimate, and the `1/4` is the constant in the Mertens-type totient bound
+`φ(r)/r ≥ 1 / (4 · log(log₂ N + 1))` (cf. Rosser–Schoenfeld,
+`n/φ(n) < e^γ log log n + 3/log log n`). The ideal single-run bound is
+`κ / log(log₂ N + 1)`, i.e. `Ω(1 / log log N)`. -/
+noncomputable def κ : ℝ := 1 / (Real.pi ^ 2)

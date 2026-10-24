@@ -79,7 +79,7 @@ def submissionJson : Json :=
          point consumption + safe adds, C4 returns to start: all four proved in \
          Submission/Template.lean by the submitter, reduced by Lean's kernel at build time, \
          and audited by #assert_axioms _root_.Submission.setup in Submission/Check.lean — which \
-         fails the build on native_decide (Lean.ofReduceBool), sorry (sorryAx) or any \
+         fails the build on native_decide (its compiled-evaluator axiom), sorry (sorryAx) or any \
          declared axiom"),
       ("correctness", Json.str
         "Shor.submission_correct: proved once, generic in the table; no per-submission proof"),

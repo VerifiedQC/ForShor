@@ -40,7 +40,7 @@ def lowerCopyBitPowers
       if hi : i < dst.width then
         LowGate.CNOT ctrl
           (dst.active.get
-            ⟨i, by simpa [ExtReg.width] using hi⟩) ;;
+            ⟨i, by simpa [ExtReg.width] using! hi⟩) ;;
         lowerCopyBitPowers dst ctrl bits
       else
         lowerCopyBitPowers dst ctrl bits

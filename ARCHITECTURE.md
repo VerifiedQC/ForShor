@@ -279,6 +279,8 @@ between *the rules* and *a construction satisfying them*.
 | `Implementation/Reference/` | `setup ↦ referenceProgramAt`, and `referenceProgramAt_success` — generic in the setup, which is what makes the four side conditions a complete acceptance test. |
 | `Submission/` | The public surface: `Decide.lean` (the four conditions, decidable *in the kernel*; `Framework/` + Mathlib only), `Audit.lean` (`#assert_axioms`, `Lean` only), `Correct.lean` (the fixed precision and the certificate), `Score.lean` (the declared bound and a computable trial count), `Template.lean` (**the submitter's file**: the table and its C1–C4 proofs), `Check.lean` (the acceptance check: the axiom audit, the IR extraction, the evaluation tier, the certificate) and `Main.lean` (the printer). |
 | `Emit/` | `setup ↦ IR`: reflection over the verified construction, producing a `Doc` a resource estimator prices. |
+| `Model/` | Consistency witnesses for the semantic classes: `Standard/` builds the standard matrix model and checks the headline theorems specialise to it; `QuantumLib/` restates them over finite matrices in QuantumLib's types. Nothing outside the folder imports it. |
+| `Vendor/Mertens/` | Three files from an unmerged Mathlib pull request (Mertens' third theorem with an explicit error term), vendored under their Apache-2.0 headers with every change marked; consumed only by `Implementation/Shor/Math/TotientBoundsLarge.lean`. Its README gives the provenance and the removal steps once the pull request is merged. |
 
 The consequence worth stating plainly: correctness is proved *once*, generic
 in the table. There is no per-submission correctness obligation, which is the
@@ -290,7 +292,7 @@ submitter's proofs rather than the template's. `Template.lean` holds `k`,
 `decide +kernel`; `Check.lean` then runs `#assert_axioms Submission.setup`,
 which fails the build unless the finished term's axioms lie inside `propext`,
 `Classical.choice`, `Quot.sound`. That is what rules out `native_decide`
-(`Lean.ofReduceBool`), `sorry` (`sorryAx`) and a submitter's own `axiom`, and
+(its compiled-evaluator axiom), `sorry` (`sorryAx`) and a submitter's own `axiom`, and
 it is what makes "kernel-checked" a checked claim rather than a documented
 intention. C2 would be the one condition too expensive to reduce — a
 determinant over `(2k-1)!` permutations — except that the interpolation

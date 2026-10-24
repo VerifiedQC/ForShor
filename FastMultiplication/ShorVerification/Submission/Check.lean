@@ -22,7 +22,7 @@ which.
 in `Template.lean` and reduced by Lean's kernel. `#assert_axioms` then reads
 the axioms the finished term actually depends on and fails unless they lie
 inside `propext`, `Classical.choice`, `Quot.sound` — so `native_decide`
-(`Lean.ofReduceBool`), `sorry` (`sorryAx`) and a submitter's own `axiom` are
+(its compiled-evaluator axiom), `sorry` (`sorryAx`) and a submitter's own `axiom` are
 all rejected by name. See [`Audit.lean`](Audit.lean) for what this does and
 does not cover.
 
@@ -106,8 +106,9 @@ example : _root_.Shor.Reflect.submissionChecks setup doc = true := by native_dec
 /-- The certificate at this submission, as a name the submissions repo can
 cite. There is nothing to prove: `Shor.submission_correct` is generic in the
 table, so `setup` existing is the whole argument. -/
-def correct {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
-    [GateSemanticsFacts qs] [LowerGateClass qs] [IdealCtrlModMulExactSemantics qs] :=
+theorem correct {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
+    [GateSemanticsFacts qs] [LowerGateClass qs] :
+    type_of% (_root_.Shor.submission_correct (qs := qs) setup) :=
   _root_.Shor.submission_correct (qs := qs) setup
 
 end Submission

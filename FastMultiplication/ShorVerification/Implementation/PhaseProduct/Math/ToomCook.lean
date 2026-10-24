@@ -131,10 +131,13 @@ theorem interpCoeff_correct {Point : Type u} {m : ℕ}
 
   have hInv : M⁻¹ * M = 1 := by simpa using Matrix.nonsing_inv_mul M hUnit
 
+  -- `c`'s entries, so `simp` can expand `_ * c` with `Matrix.mul_apply` before `c` is unfolded.
+  have hc : ∀ j k, c j k = polyCoeff j := fun _ _ => rfl
+
   have hLeft :
       (∑ i : Fin m, interpCoeff row pts B i * evalAtPoint m row polyCoeff (pts i))
         = (((radixRow m B * M⁻¹) * (M * c)) 0 0) := by
-    simp [interpCoeff, evalAtPoint, M, c, Matrix.mul_apply,
+    simp [interpCoeff, evalAtPoint, M, hc, Matrix.mul_apply,
       Finset.mul_sum, mul_assoc, mul_left_comm, mul_comm]
     refine Finset.sum_congr rfl ?_
     intro x hx
@@ -146,7 +149,7 @@ theorem interpCoeff_correct {Point : Type u} {m : ℕ}
     ring
 
   have hRight : evalAtRadix m polyCoeff B = (radixRow m B * c) 0 0 := by
-    simp [evalAtRadix, radixRow, c, Matrix.mul_apply, mul_comm]
+    simp [evalAtRadix, radixRow, hc, Matrix.mul_apply, mul_comm]
 
   have hMat : radixRow m B * M⁻¹ * (M * c) = radixRow m B * c := by
     calc

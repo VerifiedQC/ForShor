@@ -116,7 +116,7 @@ theorem reserveNeed_const (T : ToomCookTable) (wx wz : ℕ) :
     by_cases hrec : nextWidth T.ops wx wz < max wx wz
     · have hchild : max (nextWidth T.ops wx wz) (nextWidth T.ops wx wz) ≤ n := by
         simp only [max_self]; omega
-      simp only [dif_pos hrec]
+      simp only [dite_eq_left hrec]
       rw [ih _ _ hchild]
     · simp [hrec]
 
@@ -231,7 +231,7 @@ abbrev requiredZChildReserve (P : ShorLoweringPolicy) (T : ToomCookTable)
   requiredChildReserve P T PhaseSide.z wx wz i
 
 /-- Summing child requirements gives immediate need plus one descendant
-reserve for each child — the shape the `dif_pos` branch of `reserveNeed`
+reserve for each child — the shape the `dite_eq_left` branch of `reserveNeed`
 produces. -/
 lemma requiredChildReserve_sum (P : ShorLoweringPolicy) (T : ToomCookTable)
     (side : PhaseSide) (wx wz : ℕ) :
@@ -323,13 +323,13 @@ def canonicalStep
     show (List.ofFn (requiredXChildReserve P T x.width z.width)).sum ≤ x.capacity
     rw [requiredXChildReserve_sum]
     have hres := hworkspace.x_reserve_sufficient
-    rw [reserveNeed_fst_of_choose hT', dif_pos hrec'] at hres
+    rw [reserveNeed_fst_of_choose hT', dite_eq_left hrec'] at hres
     exact hres
   have hzfit : (List.ofFn reqZ).sum ≤ z.capacity := by
     show (List.ofFn (requiredZChildReserve P T x.width z.width)).sum ≤ z.capacity
     rw [requiredZChildReserve_sum]
     have hres := hworkspace.z_reserve_sufficient
-    rw [reserveNeed_snd_of_choose hT', dif_pos hrec'] at hres
+    rw [reserveNeed_snd_of_choose hT', dite_eq_left hrec'] at hres
     exact hres
   let xBudget : ReserveBudget x T.k := ReserveBudget.ofRequirements hkpos reqX hxfit
   let zBudget : ReserveBudget z T.k := ReserveBudget.ofRequirements hkpos reqZ hzfit

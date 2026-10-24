@@ -83,7 +83,7 @@ theorem smul (a : ℂ) {ψ : qs.State} (hψ : ThreeRegsCleanState qs r₁ r₂ r
 /-- Custom eliminator preserving the original 3-hypothesis `ket` shape
 (`| ket b h₁ h₂ h₃`) despite the generic single-predicate closure. -/
 @[induction_eliminator, cases_eliminator]
-def rec' {motive : (ψ : qs.State) → ThreeRegsCleanState qs r₁ r₂ r₃ ψ → Prop}
+theorem rec' {motive : (ψ : qs.State) → ThreeRegsCleanState qs r₁ r₂ r₃ ψ → Prop}
     (zero : motive 0 ThreeRegsCleanState.zero)
     (ket : ∀ (b : qs.Basis) (h₁ : FreshZero r₁ b) (h₂ : FreshZero r₂ b)
         (h₃ : FreshZero r₃ b),
@@ -118,7 +118,7 @@ abbrev FullShorWorkspaceCleanState
 namespace FullShorWorkspaceCleanState
 variable {qs : QSemantics} [RegEncoding qs.Basis] {x data work : ExtReg}
 @[induction_eliminator, cases_eliminator]
-def rec' {motive : (ψ : qs.State) → FullShorWorkspaceCleanState qs x data work ψ → Prop}
+theorem rec' {motive : (ψ : qs.State) → FullShorWorkspaceCleanState qs x data work ψ → Prop}
     (zero : motive 0 ThreeRegsCleanState.zero)
     (ket : ∀ (b : qs.Basis) (h₁ : FreshZero x.reserve b) (h₂ : FreshZero data.reserve b)
         (h₃ : FreshZero work.reserve b),
@@ -153,7 +153,7 @@ abbrev ShorLoweringCleanState
 namespace ShorLoweringCleanState
 variable {qs : QSemantics} [RegEncoding qs.Basis] {x data work : ExtReg}
 @[induction_eliminator, cases_eliminator]
-def rec' {motive : (ψ : qs.State) → ShorLoweringCleanState qs x data work ψ → Prop}
+theorem rec' {motive : (ψ : qs.State) → ShorLoweringCleanState qs x data work ψ → Prop}
     (zero : motive 0 ThreeRegsCleanState.zero)
     (ket : ∀ (b : qs.Basis) (h₁ : FreshZero x.reserve b)
         (h₂ : FreshZero (data.reserve.drop 1) b) (h₃ : FreshZero work.reserve b),

@@ -97,7 +97,7 @@ theorem ql_Shor_correct_approx_lowered
         x.active T (fun d => decide ((inst.a ^ d) % inst.N = 1))
         (ord inst.a inst.N inst.coprime) (ASize x.active)
         (e dim (basisIdx dim b0))
-      ≥ κ / (2 * (Nat.log2 inst.N : ℝ) ^ 4) := by
+      ≥ κ / (2 * Real.log ((Nat.log2 inst.N : ℝ) + 1)) := by
   have h := Shor_correct_approx_lowered (qs := qs) T hT inst P hP x y work scratch flag b0
     hm hn η hη hready
   rwa [probability_of_success_ket _ hdim _ _ _ _ _ hb0] at h

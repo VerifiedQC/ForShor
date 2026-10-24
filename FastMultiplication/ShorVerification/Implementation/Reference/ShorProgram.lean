@@ -96,7 +96,7 @@ noncomputable def referenceApproxSetup
 The complete P workspace proof generated internally for the reference
 circuit.
 -/
-def referenceLowerWorkspace
+theorem referenceLowerWorkspace
     {qs : QSemantics}
     [RegEncoding qs.Basis]
     (P : ShorLoweringPolicy)

@@ -7,12 +7,15 @@ package «ForShor» where
     ⟨`pp.unicode.fun, true⟩ -- pretty-prints `fun a ↦ b`
   ]
   -- add any additional package configuration options here
+  -- This project's files are ordinary (non-`module`) Lean files. Mathlib is built for the
+  -- module system, and without this Lake warns on every file that imports it.
+  allowNonModules := true
 
 -- Pinned. `lake-manifest.json` records the same revision, but without `@ rev`
 -- a `lake update` silently jumps to Mathlib master. This rev matches
--- `lean-toolchain` (v4.28.0) and is the one `lake exe cache get` fetches.
+-- `lean-toolchain` (v4.36.0-rc1) and is the one `lake exe cache get` fetches.
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42"
+  "https://github.com/leanprover-community/mathlib4.git" @ "4dc43842a11f257ffba2a611c943a133a65cb4b2"
 
 @[default_target]
 lean_lib «FastMultiplication» where

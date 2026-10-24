@@ -1,6 +1,6 @@
 import FastMultiplication.ShorVerification.Framework.Quantum.Registers
 import FastMultiplication.ShorVerification.Framework.AbstractMachine.Angle
-import Mathlib.Data.Complex.Basic
+import Mathlib.Basic.Complex.Basic
 
 namespace Shor
 

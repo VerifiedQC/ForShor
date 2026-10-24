@@ -124,7 +124,7 @@ outside `Implementation/Shor/` (two provider files are allowlisted —
 | `Shor_end_to_end_factoring` | the ideal circuit, plus the classical reduction from a good outcome to a nontrivial factor |
 | `Shor_correct_approx_lowered_uniform` | the fully lowered circuit, `K` hoisted into an existential, `η` free |
 | `Shor_correct_approx_lowered_of_modExp_bound_assertion` | the same, at a `K` the caller supplies together with a modular-exponentiation distance bound at that `K` — this is what `Reference/` consumes |
-| `Shor_correct_approx_lowered` | the lowered circuit at `η ≤ shorPrecision N x`, concluding `κ / (2 · log₂(N)⁴)` |
+| `Shor_correct_approx_lowered` | the lowered circuit at `η ≤ shorPrecision N x`, concluding `κ / (2 · log(log₂ N + 1))` |
 
 These differ in how the per-step precision `η` and the uniform constant `K` are
 handled, and the difference matters when citing them. The uniform theorem
@@ -135,7 +135,7 @@ would itself depend on an unknown `K`. `Shor_correct_approx_lowered` closes
 both gaps: it runs at the explicit constant `2048`
 (`modExpApprox_valid_dist_2048`), so `shorPrecision N x` is a closed form a
 circuit builder can evaluate before building, and at any `η` below it the
-conclusion is `≥ κ / (2 · log₂(N)⁴)` — half the ideal bound, positive for
+conclusion is `≥ κ / (2 · log(log₂ N + 1))` — half the ideal bound, positive for
 every admissible `N`. Cite that one.
 
 ## Lowering is policy-indexed

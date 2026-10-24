@@ -411,7 +411,7 @@ lemma eval_compileSignedAllocationsAux_ket
   let stInit : LayoutState k := initSignedLayoutState layout
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   let Wwork : ℕ := commonNeededWidth need
-  have hcap : stInit.CanGrowToNeeds need := by simpa [stInit, need] using hworkspace.1
+  have hcap : stInit.CanGrowToNeeds need := by simpa [stInit, need] using! hworkspace.1
   have hInitOwned : stInit.OwnedPairwiseDisjoint := by simpa [stInit] using initSignedLayoutState_owned_disjoint layout
   have hFinalOwned : stFinal.OwnedPairwiseDisjoint := by simpa [stInit, stFinal, need] using targetSignedLayoutState_owned_disjoint layout need
   intro n hn
@@ -454,7 +454,7 @@ lemma eval_compileSignedAllocationsAux_ket
         have howned : ExtReg.OwnedDisjoint (stInit.zslot idx) (stInit.xslot idx) := by
           exact ExtReg.ownedDisjoint_symm (hInitOwned.2.2 idx idx)
         apply freshFor_of_local_toNat (r := stInit.zslot idx) hXLoc
-        · simpa [hXSlot] using
+        · simpa [hXSlot] using!
             ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
               howned
               (Wwork - (stInit.zslot idx).width)
@@ -515,7 +515,7 @@ lemma eval_compileSignedAllocationsAux_ket
                   apply sourceChunkZInt_eq_of_toNat_eq (qs := qs)
                   exact hXLoc (stInit.zslot idx)
                     (by
-                      simpa [hXSlot] using
+                      simpa [hXSlot] using!
                         ExtReg.activeDisjoint_of_ownedDisjoint_right_grow
                           (ExtReg.ownedDisjoint_symm
                             (hInitOwned.2.2 idx idx))
@@ -549,7 +549,7 @@ lemma eval_compileSignedAllocationsAux_ket
                   apply sourceChunkXInt_eq_of_toNat_eq (qs := qs)
                   exact hZLoc (stInit.xslot j)
                     (by
-                      simpa [hZSlot] using
+                      simpa [hZSlot] using!
                         ExtReg.activeDisjoint_of_ownedDisjoint_right_grow
                           (hInitOwned.2.2 j idx)
                           (Wwork - (stInit.zslot idx).width))
@@ -557,7 +557,7 @@ lemma eval_compileSignedAllocationsAux_ket
                 apply sourceChunkXInt_eq_of_toNat_eq (qs := qs)
                 exact hXLoc (stInit.xslot j)
                   (by
-                    simpa [hXSlot] using
+                    simpa [hXSlot] using!
                       ExtReg.activeDisjoint_of_ownedDisjoint_right_grow
                         (hInitOwned.1 j idx hjne)
                         (Wwork - (stInit.xslot idx).width))
@@ -569,7 +569,7 @@ lemma eval_compileSignedAllocationsAux_ket
                   apply sourceChunkZInt_eq_of_toNat_eq (qs := qs)
                   exact hZLoc (stInit.zslot j)
                     (by
-                      simpa [hZSlot] using
+                      simpa [hZSlot] using!
                         ExtReg.activeDisjoint_of_ownedDisjoint_right_grow
                           (hInitOwned.2.1 j idx hjne)
                           (Wwork - (stInit.zslot idx).width))
@@ -577,7 +577,7 @@ lemma eval_compileSignedAllocationsAux_ket
                 apply sourceChunkZInt_eq_of_toNat_eq (qs := qs)
                 exact hXLoc (stInit.zslot j)
                   (by
-                    simpa [hXSlot] using
+                    simpa [hXSlot] using!
                       ExtReg.activeDisjoint_of_ownedDisjoint_right_grow
                         (ExtReg.ownedDisjoint_symm
                           (hInitOwned.2.2 idx j))
@@ -590,14 +590,14 @@ lemma eval_compileSignedAllocationsAux_ket
             hCleanMid.1 j (by omega)
           have hfX : ExtReg.FreshFor (stInit.xslot j) (Wwork - (stInit.xslot j).width) bX := by
             apply freshFor_of_local_toNat (r := stInit.xslot j) hXLoc
-            · simpa [hXSlot] using
+            · simpa [hXSlot] using!
                 ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
                   (hInitOwned.1 j idx hjne)
                   (Wwork - (stInit.xslot j).width)
                   (Wwork - (stInit.xslot idx).width)
             · exact hf0
           apply freshFor_of_local_toNat (r := stInit.xslot j) hZLoc
-          · simpa [hZSlot] using
+          · simpa [hZSlot] using!
               ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
                 (hInitOwned.2.2 j idx)
                 (Wwork - (stInit.xslot j).width)
@@ -609,7 +609,7 @@ lemma eval_compileSignedAllocationsAux_ket
             hCleanMid.2 j (by omega)
           have hfX : ExtReg.FreshFor (stInit.zslot j) (Wwork - (stInit.zslot j).width) bX := by
             apply freshFor_of_local_toNat (r := stInit.zslot j) hXLoc
-            · simpa [hXSlot] using
+            · simpa [hXSlot] using!
                 ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
                   (ExtReg.ownedDisjoint_symm
                     (hInitOwned.2.2 idx j))
@@ -617,7 +617,7 @@ lemma eval_compileSignedAllocationsAux_ket
                   (Wwork - (stInit.xslot idx).width)
             · exact hf0
           apply freshFor_of_local_toNat (r := stInit.zslot j) hZLoc
-          · simpa [hZSlot] using
+          · simpa [hZSlot] using!
               ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
                 (hInitOwned.2.1 j idx hjne)
                 (Wwork - (stInit.zslot j).width)
@@ -673,7 +673,7 @@ lemma eval_compileSignedAllocationsAux_sameOutside
         apply qs.ket_inj
         rw [← hMidEval, ← hMidEval']
       subst bMid'
-      have hcap : stInit.CanGrowToNeeds need := by simpa [stInit, need] using hworkspace.1
+      have hcap : stInit.CanGrowToNeeds need := by simpa [stInit, need] using! hworkspace.1
       let Wwork : ℕ := commonNeededWidth need
       have hxFresh : ExtReg.FreshFor (stInit.xslot idx) (Wwork - (stInit.xslot idx).width) bMid := by
         simpa [RemainingClean, Wwork] using hCleanMid.1 idx (by simp [idx])
@@ -694,7 +694,7 @@ lemma eval_compileSignedAllocationsAux_sameOutside
         simpa [RemainingClean, Wwork] using hCleanMid.2 idx (by simp [idx])
       have hzFreshX : ExtReg.FreshFor (stInit.zslot idx) (Wwork - (stInit.zslot idx).width) bX := by
         apply freshFor_of_local_toNat (r := stInit.zslot idx) hXLoc
-        · simpa [hXSlot] using
+        · simpa [hXSlot] using!
             ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
               (ExtReg.ownedDisjoint_symm (hInitOwned.2.2 idx idx))
               (Wwork - (stInit.zslot idx).width)

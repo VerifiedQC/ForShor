@@ -4,12 +4,19 @@ Pure math, no framework/register dependencies: number-theory, Fourier/
 geometric-sum, and counting lemmas backing the ideal order-finding
 good-outcome analysis. Import closure is Mathlib plus the project's
 semantics-free vocabulary (`ord`, `qftPhase`, `GoodOutcome`) — no
-`QSemantics`, `eval`, or measurement. The one file, `OrderFindingAnalysis.lean`,
-carries no internal section banners; it was moved byte-for-byte out of the
-single `Proofs/NaiveShor/Lemmas.lean` that preceded today's `NaiveShor/`
-split (`Preliminaries.lean`, `PhaseEstimation.lean`,
-`GoodOutcomeMassLowerBound.lean`), so the grouping below follows its actual
-top-to-bottom logical flow rather than author-labeled sections.
+`QSemantics`, `eval`, or measurement.
+
+Three files. `OrderFindingAnalysis.lean` carries no internal section banners; it
+was moved byte-for-byte out of the single `Proofs/NaiveShor/Lemmas.lean` that
+preceded today's `NaiveShor/` split (`Preliminaries.lean`,
+`PhaseEstimation.lean`, `GoodOutcomeMassLowerBound.lean`), so the grouping below
+follows its actual top-to-bottom logical flow rather than author-labeled
+sections. `TotientBounds.lean` and `TotientBoundsLarge.lean` are sectioned;
+together they prove the `Ω(1 / log log N)` totient bound the success constant
+`κ = 1/π²` is stated with — `TotientBounds.lean` below `2 ^ 2048` by a finite
+case split (Mathlib only), `TotientBoundsLarge.lean` above it by Mertens' third
+theorem (which is vendored, see `Vendor/Mertens/README.md`). This file's own
+totient lemmas are the `r < 255` end of that case split.
 
 ## `OrderFindingAnalysis.lean`
 
@@ -119,7 +126,12 @@ top-to-bottom logical flow rather than author-labeled sections.
 ### Totient lower bound (from `r` to `log₂ N`)
 
 A chain converting the totient-ratio bound into one depending only on
-`log₂ N`, then into the concrete `exp(-2)` constant used for `κ`.
+`log₂ N`: `φ(r)/r ≥ 1/(log₂ N + 1)`, from the count of distinct prime factors.
+The success bound uses `φ(r)/r ≥ 1 / (4 · log(log₂ N + 1))`
+(`shor_totient_ratio_lower_bound`, in
+`Proofs/NaiveShor/GoodOutcomeMassLowerBound.lean`), proved by a case split on
+`r`; the lemmas here discharge the `r < 255` case, where `1/(log₂ N + 1)` is
+already at least `1 / (4 · log(log₂ N + 1))`.
 
 - **`le_log2_of_two_pow_le`** — `2^c ≤ N` and `N > 0` imply `c ≤ log₂ N`, by
   induction on `c` unfolding `Nat.log2`.
@@ -138,8 +150,87 @@ A chain converting the totient-ratio bound into one depending only on
 - **`totient_ratio_ge_inv_log2_succ`** — for `0 < r < N`,
   `φ(r)/r ≥ 1/(log₂ N + 1)`, combining the previous two lemmas via
   `primeFactors_card_le_log2`.
-- **`exp_neg_two_div_pow4_le_inv_succ`** — for `L ≥ 1`,
-  `exp(-2)/L⁴ ≤ 1/(L+1)`: the final numeric estimate (case-split on `L = 1`
-  vs. `L ≥ 2`, the latter via `L+1 ≤ L² ≤ L⁴`) that converts the `1/(log₂N+1)`
-  bound above into the `κ`-shaped constant `exp(-2)/(log₂N)⁴` used in
-  `Spec/Assertions.lean`'s final success-probability guarantees.
+  This is the lemma the small-`N` branch of `shor_totient_ratio_lower_bound`
+  consumes: for `log₂ N + 1 ≤ 7` one checks `L + 1 ≤ 4 · log(L + 1)` numerically
+  and the `Ω(1/log log N)` statement follows.
+
+## `TotientBounds.lean`
+
+The Mertens-type bound `φ(r)/r ≥ 1 / (4 · log(log₂ N + 1))`, for `r < 2 ^ 2048`.
+Imports `OrderFindingAnalysis.lean` (for the `r < 255` case) plus Mathlib.
+
+Everything rests on Euler's product `φ(r)/r = ∏_{p ∣ r} (1 − 1/p)` split at a
+natural threshold `M`: divisors below `M` form a subset of the primes below `M`,
+and each of the `k` divisors `≥ M` contributes at least `1 − 1/M`.  The number
+`k` is pinned by `M^k ≤ r`, a `ℕ` computation, so no logarithm enters the split.
+
+### Bounding `log` from below
+
+- **`log_ge_of_two_pow_le`** — `k·log 2 + (1 − 2^k/x) ≤ log x` for `2^k ≤ x`:
+  split off the largest power of two below `x` (`Real.log_div`, `Real.log_pow`)
+  and apply `Real.one_sub_inv_le_log_of_pos` to the remainder.  This is the only
+  analytic input in the file; with `Real.log_two_gt_d9` for `log 2` it makes
+  every logarithm bound a `norm_num` goal.
+- **`log_ge_aux`** (private) — the same with `log 2` already replaced by its
+  rational lower bound, so callers only discharge arithmetic.
+
+### The split
+
+- **`totient_ratio_eq_prod`** — `φ(r)/r = ∏_{p ∣ r} (1 − 1/p)`, transported to
+  `ℝ` from `Nat.totient_eq_mul_prod_factors`.
+- **`pow_card_filter_le`** — `M^k ≤ r` where `k` is the number of prime divisors
+  of `r` that are `≥ M` (`Finset.pow_card_le_prod`, `Nat.prod_primeFactors_dvd`).
+- **`totient_ratio_ge_split`** — the split lemma: `φ(r)/r ≥ P(M) · (1 − k/M)`,
+  with `P(M) = ∏_{p < M, p prime} (1 − 1/p)`.  The small part is
+  `Finset.prod_sdiff` plus `Finset.prod_le_one`; the large part is
+  `Finset.prod_const` plus Bernoulli (`one_add_mul_le_pow`).
+- **`prod_primesBelow_eq_div`**, **`le_prod_primesBelow`** — `P(M)` as the ratio
+  of the two naturals `∏ (p−1)` and `∏ p`, so a rational lower bound for it is
+  two kernel `decide`s and one `norm_num`.
+
+### Regions
+
+- **`totient_ratio_region`** — `φ(r)/r ≥ c · (1 − K/M)` for `r < 2^b`, given
+  `c ≤ P(M)` and any `K` with `2^b ≤ M^(K+1)`.
+- **`region_bound`** (private) — the same with the target
+  `1 / (4 log(log₂(r+1) + 1))` on the left, for `2^a ≤ r + 1`.
+- **`region_A`**, **`region_B1`–`region_B8`** (private) — the nine cases.
+  Region A (`r < 255`) is `totient_ratio_ge_inv_log2_succ` plus the numeric fact
+  `L + 1 ≤ 4 log(L + 1)` for `L ≤ 7` (`log_succ_bound`).  The eight dyadic
+  regions `[255, 2^16), …, [2^1024, 2^2048)` use thresholds
+  `M = 17, 23, 31, 53, 89, 151, 269, 479` (6 to 91 primes); each clears its
+  target by about 30%.
+- **`totient_ratio_loglog_of_lt`** — the nine cases assembled: for `0 < r < 2^2048`,
+  `1 / (4 · log(log₂(r+1) + 1)) ≤ φ(r)/r`.
+- **`shor_totient_ratio_of_lt`** — the `N`-indexed form (`r + 1 ≤ N` and
+  monotonicity of `Nat.log2` and `Real.log`) that
+  `Proofs/NaiveShor/GoodOutcomeMassLowerBound.lean` consumes.
+
+The complementary range `2^2048 ≤ r` is `TotientBoundsLarge.lean`.
+
+## `TotientBoundsLarge.lean`
+
+The same split lemma, with the threshold taken to be `M = ⌊log r⌋₊` and the
+prime product below `M` evaluated by Mertens' third theorem.  Imports
+`TotientBounds.lean` and `Vendor/Mertens/Theorems.lean`.
+
+- **`gamma_lt`** — `γ < 0.609`, from
+  `Real.eulerMascheroniConstant_lt_eulerMascheroniSeq' 16`
+  (`γ < harmonic 16 - log 16`) and `Real.log_two_gt_d9`.
+- **`neg_log_log_two_ge`** — `0.35 ≤ -log (log 2)`, i.e. `log 2 ≤ exp (-0.35)`,
+  from `exp 0.35 = (exp 0.0875)⁴ ≤ (1 - 0.0875)⁻⁴` and `Real.log_two_lt_d9`.
+  This is the `log L - log log 2` gain in the denominator, and the proof does
+  not go through without it.
+- **`prod_primesBelow_ge`** — `exp(-0.609 - (4.387/v + 1/1418)) ≤ P(M) · v`
+  where `v = log (M-1)`: Mertens' `prod_prime_one_minus_inv_eq_nat` together
+  with `E₃_bound`, `gamma_lt`, and `Nat.primesBelow M = Nat.primesLE (M-1)`.
+- **`exp_neg_one_ge`**, **`exp_neg_c_ge`** — `0.2917 ≤ exp (-1.219012)`, via
+  `exp(-c) = exp(-1) · (exp ((1-c)/2))²` and `1 + t ≤ exp t`; `Real.exp_one_lt_d9`
+  supplies `exp(-1)`.  Splitting off `exp(-1)` is what keeps the linear bound
+  usable at an argument above `1`.
+- **`totient_ratio_loglog_of_ge`** — region C: `φ(r)/r ≥ (0.2917/v)(1 - 1.015/v)`
+  against a target of `1/(4(v + 0.35))`, which reduces to a quadratic in `v`
+  that holds for `v ≥ 5.14`; here `v ≥ 7.2`.  Margin at `2 ^ 2048`: about 5%.
+- **`totient_ratio_loglog`** — the two regions combined, for every `0 < r`.
+- **`shor_totient_ratio`** — the `N`-indexed form that
+  `Proofs/NaiveShor/GoodOutcomeMassLowerBound.lean` consumes.

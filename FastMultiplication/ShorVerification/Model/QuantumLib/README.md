@@ -31,9 +31,9 @@ No commit of it builds on this repository's toolchain. QuantumLib's
 | `6f70dcd1` | 2025-12-10 | `v4.26.0-rc2` |
 | `f2af8ad4` | 2026-04-24 | `v4.30.0-rc2` (current `main`) |
 
-and this repository is pinned at `v4.28.0` with Mathlib at `fadcf92b`. It never
-passes through `v4.28.0`, so a `require` would mean moving the toolchain, a
-development-wide change.
+and this repository is pinned at `v4.36.0-rc1` with Mathlib at `4dc43842`. No
+QuantumLib commit uses `v4.36.0-rc1`, so a `require` would mean pinning a
+mismatched toolchain, a development-wide change.
 
 So `Vendored.lean` transcribes the dozen declarations this folder uses, from
 `main` at `44fc4eb1f4ba512e659deacd3468fda0a764d162`, with a header naming the

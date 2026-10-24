@@ -308,7 +308,7 @@ lemma phaseChunkActive_castSucc
         Nat.mul_le_mul_right W hi
   unfold phaseChunkActive phaseChunkStart
   rw [phaseSplitLogicalWidth]
-  simp only [hnotTop, if_false]
+  simp only [hnotTop, ite_false]
   exact
     (take_drop_take_eq
       parent.active
@@ -580,8 +580,8 @@ theorem tcDecode_chunks_signed_top
           rfl
         rw [hdecode, Fin.sum_univ_castSucc]
         simp only [Fin.val_castSucc, Fin.val_last]
-        simp_rw [if_neg (hnotTop _)]
-        rw [if_pos htopLast]
+        simp_rw [ite_eq_right (hnotTop _)]
+        rw [ite_eq_left htopLast]
         rw [← hLowCast]
 
 theorem splitChunkInt_reconstruct
@@ -606,7 +606,7 @@ theorem splitChunkInt_reconstruct
           2 ^ (i.1 * W) :=
     phaseChunks_reconstruct_nat layout b
   unfold extToInt
-  simpa [splitChunkInt] using
+  simpa [splitChunkInt] using!
     tcDecode_chunks_signed_top
     (k := k)
     (W := W)
@@ -1146,9 +1146,9 @@ lemma sourceChunks_reconstruct_x
         rw [PhaseSplitLayout.child_width]
         simp [phaseSplitLogicalWidth, isTopChunk, htop]
       simp only [sourceChunkXInt, splitChunkInt, initSignedLayoutState,
-        isTopChunk, if_pos htop, extToInt, hw]
+        isTopChunk, ite_eq_left htop, extToInt, hw]
     · simp only [sourceChunkXInt, splitChunkInt, initSignedLayoutState,
-        isTopChunk, if_neg htop]
+        isTopChunk, htop, ↓reduceIte]
   rw [splitChunkInt_reconstruct layout.xSplit b]
   push_cast
   refine Finset.sum_congr rfl (fun i _ => ?_)
@@ -1182,9 +1182,9 @@ lemma sourceChunks_reconstruct_z
         rw [PhaseSplitLayout.child_width]
         simp [phaseSplitLogicalWidth, isTopChunk, htop]
       simp only [sourceChunkZInt, splitChunkInt, initSignedLayoutState,
-        isTopChunk, if_pos htop, extToInt, hw]
+        isTopChunk, ite_eq_left htop, extToInt, hw]
     · simp only [sourceChunkZInt, splitChunkInt, initSignedLayoutState,
-        isTopChunk, if_neg htop]
+        isTopChunk, htop, ↓reduceIte]
   rw [splitChunkInt_reconstruct layout.zSplit b]
   push_cast
   refine Finset.sum_congr rfl (fun i _ => ?_)
@@ -1289,7 +1289,7 @@ lemma toom_cook_interpolation
           (interpEntry k)
           (ptsToFin k pts hpts)
           B := by
-    simpa [coeff, phaseCoeffFromPtsForRegs, W, B] using
+    simpa [coeff, phaseCoeffFromPtsForRegs, W, B] using!
       phaseCoeffFromPtsWidth_eq_interpCoeff
         (k := k) (W := W) (pts := pts) (hpts := hpts)
   have hPoint :

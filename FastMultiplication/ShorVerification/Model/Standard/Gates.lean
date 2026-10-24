@@ -83,9 +83,9 @@ noncomputable instance instGateSemanticsFacts : GateSemanticsFacts qs where
     show diagLift _ _ (ket b) = _
     rw [diagLift_ket, cPhaseProdDiag]
     by_cases h : b ctrl
-    · rw [if_pos h, if_pos (show RegEncoding.bit ctrl b = true from h)]
+    · rw [ite_eq_left h, ite_eq_left (show RegEncoding.bit ctrl b = true from h)]
       rfl
-    · rw [if_neg h, if_neg (show ¬ (RegEncoding.bit ctrl b = true) from h), one_smul]
+    · rw [ite_eq_right h, ite_eq_right (show ¬ (RegEncoding.bit ctrl b = true) from h), one_smul]
       rfl
   eval_zeroExtend _ _ _ := rfl
   eval_zeroDealloc _ _ _ := rfl

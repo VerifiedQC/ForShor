@@ -72,7 +72,7 @@ lemma eval_matched_cphase_ket_from
       qs.ket b1 := by
   by_cases hctrl : RegEncoding.bit ctrl b1
   · rw [PhaseSemantics.eval_CSignedPhaseProd_ket]
-    rw [if_pos hctrl, if_pos hctrl]
+    rw [ite_eq_left hctrl, ite_eq_left hctrl]
     have hσi : σ i = expectedRow (k := k) pt := by
       unfold matchesAt_pointRow_state regEqExpected at hmatch
       have hall : ∀ j : Fin k, σ i j = expectedRow (k := k) pt j := by
@@ -85,6 +85,6 @@ lemma eval_matched_cphase_ket_from
     rw [hEnc.1 i, hσi]
     rw [hEnc.2 i, hσi]
   · rw [PhaseSemantics.eval_CSignedPhaseProd_ket]
-    rw [if_neg hctrl, if_neg hctrl]
+    rw [ite_eq_right hctrl, ite_eq_right hctrl]
 
 end Shor

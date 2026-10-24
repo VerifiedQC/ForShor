@@ -10,7 +10,7 @@ import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Spec.Clea
 import FastMultiplication.ShorVerification.Implementation.Shared.States
 import FastMultiplication.ShorVerification.Implementation.Shared.Registers
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
-import Mathlib.Data.Real.Basic
+import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
@@ -614,7 +614,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     LoweredCleanResult.seq hworkspace ψ hU1
       (U := U1)
       (V := U2 ;; U3)
-      (by simpa only [ψ1] using hU23)
+      (by simpa only [ψ1] using! hU23)
 
   simpa [
     U1,
@@ -622,7 +622,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     U3,
     φ,
     fastConstMulInto
-  ] using hU123
+  ] using! hU123
 
 /-- Step 4 has real recursive workspace inside both multiplication blocks.
 The forward block is discharged from the reserve-only invariant; the adjoint

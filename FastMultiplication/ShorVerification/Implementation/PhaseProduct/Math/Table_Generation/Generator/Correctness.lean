@@ -924,11 +924,11 @@ lemma initialBuild_run_effect
     exact start_last_row_frac0 k hk u
   · intro u
     rw [hOddCombine u, hOddRow u, hEvenAfterOdd u]
-    simpa [positivePointOfPair] using
+    simpa [positivePointOfPair] using!
       parityCarrierRows_positive_expected (k := k) .integer 0 u
   · intro u
     rw [hEvenCombine u, hEvenAfterOdd u, hOddRow u]
-    simpa [negativePointOfPair] using
+    simpa [negativePointOfPair] using!
       parityCarrierRows_negative_expected (k := k) .integer 0 u
 
 lemma initialBuild_NoPhase (k : ℕ) (hk : k ≥ 4) :
@@ -1593,7 +1593,7 @@ theorem generate_parallelProductLayerCount_eq
     { subst hc2 ; simp }
     {
       simp [generateParityLayerSizesForMode, ProductMode.pointCount]
-      split_ifs with hq <;> (simp;omega)
+      split_ifs with hq <;> (simp [hq]; omega)
     }
   }
 }

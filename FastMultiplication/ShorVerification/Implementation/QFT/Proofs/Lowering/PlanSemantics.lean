@@ -282,7 +282,7 @@ theorem evalL_lowerQFTPlan
               Gate.QFT (ExtReg.ofReg (leftReg r)) ;;
               Gate.RadixReverse r (splitM r))
             ψ := by
-        simpa [splitM, leftQFTReg, rightQFTReg, ExtReg.width] using
+        simpa [splitM, leftQFTReg, rightQFTReg, ExtReg.width] using!
           eval_QFT_split (qs := qs) (ExtReg.ofReg r) ws ψ hclean hsize
 
       simp only [lowerQFTPlan, LowerGateClass.evalL_seq]

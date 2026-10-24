@@ -1,5 +1,5 @@
 import Mathlib.Data.Matrix.Basic
-import Mathlib.Data.Complex.Basic
+import Mathlib.Basic.Complex.Basic
 import Mathlib.LinearAlgebra.Matrix.Kronecker
 import Mathlib.LinearAlgebra.UnitaryGroup
 import Mathlib.Analysis.SpecialFunctions.Exponential
@@ -30,8 +30,8 @@ v4.26.0-rc2  (6f70dcd1, 2025-12-10)
 v4.30.0-rc2  (f2af8ad4, 2026-04-24, current main)
 ```
 
-and this repository is pinned at `v4.28.0` with Mathlib at `fadcf92b`. A
-`require` would therefore mean moving the toolchain, which is a
+and this repository is pinned at `v4.36.0-rc1` with Mathlib at `4dc43842`. A
+`require` would therefore mean pinning a mismatched toolchain, which is a
 development-wide change and out of scope. Vendoring also keeps the work
 additive: no `lakefile.lean` and no `lake-manifest.json` edit.
 
@@ -92,7 +92,7 @@ theorem kron_def {a b c d : ℕ} (A : CMatrix a b) (B : CMatrix c d) :
     omega
   by_cases h : i = j
   · simp [h]
-  · rw [if_neg h]
+  · rw [ite_eq_right h]
     by_cases h1 : i.divNat = j.divNat
     · have h2 : ¬ (i.modNat = j.modNat) := fun hc => h (key h1 hc)
       simp [h1, h2]

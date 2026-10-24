@@ -275,6 +275,7 @@ theorem eval_QFT_eq_of_active_eq
         dsimp at hactive
         cases hactive
         simp [QFTSemantics.eval_QFT_ket, ExtReg.width, ExtReg.toNat]
+        rfl
 
 def j0 (r : Reg) (b : qs.Basis) : ℕ := RegEncoding.toNat (leftReg r) b
 def j1 (r : Reg) (b : qs.Basis) : ℕ := RegEncoding.toNat (rightReg r) b
@@ -287,7 +288,7 @@ lemma step1_QFT_right_ket
     ∑ kH : Fin B,
       qftPhase B (RegEncoding.toNat right b) kH.1 •
         qs.ket (RegEncoding.writeNat right kH.1 b) := by
-  simpa [ASize, leftReg, rightReg, ExtReg.ofReg, ExtReg.width, ExtReg.toNat, regSize] using
+  simpa [ASize, leftReg, rightReg, ExtReg.ofReg, ExtReg.width, ExtReg.toNat, regSize] using!
     (QFTSemantics.eval_QFT_ket (qs := qs) (r := ExtReg.ofReg (rightReg r)) (b := b))
 
 section EncodingOnly
@@ -412,7 +413,7 @@ lemma step2_PhaseProdUsing_after_QFT_right
         ∑ kH : Fin B,
           (qftPhase B (RegEncoding.toNat right b) kH.1) •
             qs.ket (RegEncoding.writeNat right kH.1 b) := by
-    simpa [ASize, B, right, -regSize_rightReg, -regSize_leftReg] using
+    simpa [ASize, B, right, -regSize_rightReg, -regSize_leftReg] using!
       (QFTSemantics.eval_QFT_ket (qs := qs) (r := ExtReg.ofReg right) (b := b))
 
   have phase_scalar_eq (kH : Fin B) :
@@ -438,7 +439,7 @@ lemma step2_PhaseProdUsing_after_QFT_right
           (r := right) (v := kH.1) (b := b)
           (by
             subst B
-            simp [ASize]))
+            simpa [ASize] using! kH.isLt))
 
     have hmain :=
       exp_phaseProd_eq_qftPhase_of_casts
@@ -639,7 +640,7 @@ lemma step3_QFT_left_after_step2
         congr 2
         funext kH
         congr 1
-        simpa [ASize, A] using
+        simpa [ASize, A] using!
           (QFTSemantics.eval_QFT_ket (qs := qs) (r := ExtReg.ofReg left)
             (b := RegEncoding.writeNat right kH.1 b))
     _ =
@@ -776,7 +777,7 @@ lemma step4_phase_combine
     (qftPhase A j0 k1) * (qftPhase (A*B) k1 j1) * (qftPhase B j1 k0)
         =
       (ω N) ^ (B * (j0 * k1) + (k1 * j1) + A * (j1 * k0)) := by
-        simpa [N] using hLHS
+        simpa [N] using! hLHS
     _ =
       (ω N) ^ ((j0*B + j1) * (k1 + A*k0)) := by
         symm
@@ -984,12 +985,6 @@ lemma radix_reverse_reindex_sum
 
   have hprod :
       (∑ kH : Fin B, ∑ kL : Fin A, F (B * kL.1 + kH.1)) = ∑ p : Fin B × Fin A, F (B * p.2.1 + p.1.1) := by
-    change
-      (Finset.univ.sum
-        (fun kH : Fin B =>
-          Finset.univ.sum
-            (fun kL : Fin A => F (B * kL.1 + kH.1)))) = Finset.univ.sum
-        (fun p : Fin B × Fin A => F (B * p.2.1 + p.1.1))
     rw [Fintype.sum_prod_type]
 
   rw [hprod]
@@ -1140,13 +1135,12 @@ lemma eval_QFT_ket_as_split_sum
     aesop
 
   rw [QFTSemantics.eval_QFT_ket]
-  simp [ExtReg.ofReg, ExtReg.width, ExtReg.toNat, regSize]
-  rw [show 2 ^ r.width = A * B by
-    simpa [regSize] using hAB_pow.symm]
+  -- Resize the sum before `simp`: afterwards its index type and its `Fintype`
+  -- instance spell the width differently and can no longer be rewritten together.
+  rw [show 2 ^ (ExtReg.ofReg r).width = A * B by
+    simpa [regSize, ExtReg.ofReg, ExtReg.width] using hAB_pow.symm]
+  simp [ExtReg.ofReg, ExtReg.toNat]
   rw [hToNat]
-  simp_rw [← one_div]
-  congr 1
-  · simpa [regSize] using hNorm
 
 lemma eval_QFT_split_ket_ofReg
     (qs : QSemantics)

@@ -521,8 +521,8 @@ lemma required_le_fillSlack
     required i ≤ fillSlack hk capacity required i := by
   simp only [fillSlack, Function.update_apply]
   by_cases h : i = topIndex hk
-  · rw [if_pos h, h]; exact Nat.le_add_right _ _
-  · rw [if_neg h]
+  · rw [ite_eq_left h, h]; exact Nat.le_add_right _ _
+  · rw [ite_eq_right h]
 
 /-- Build a concrete reserve budget from per-child requirements that fit in the parent reserve. -/
 def ofRequirements

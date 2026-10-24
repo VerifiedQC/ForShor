@@ -82,7 +82,7 @@ lemma alg1_step3_reduces_to_modmul
     dsimp [x, r, N]
     by_cases hctrl : RegEncoding.bit cfg.ctrl b
     ·
-      simp only [alg1OutputValue, alg1TargetResidue, hctrl, if_true]
+      simp only [alg1OutputValue, alg1TargetResidue, hctrl, ite_true]
       exact alg1_output_mod cfg.c cfg.env.N (RegEncoding.toNat cfg.env.data.active b)
         (Nat.lt_trans Nat.zero_lt_one cfg.env.modulus_gt_one)
     ·

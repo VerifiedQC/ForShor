@@ -2447,14 +2447,14 @@ private lemma norm_sq_sum_ket_mul_le_of_label_constant
     have hrepr_mem : ∀ b ∈ B, repr b ∈ s := by
       intro b hb
       dsimp [repr]
-      rw [dif_pos hb]
+      rw [dite_eq_left hb]
       exact
         (Finset.mem_image.mp (by simpa [B] using hb)).choose_spec.1
 
     have hrepr_label : ∀ b ∈ B, label (repr b) = b := by
       intro b hb
       dsimp [repr]
-      rw [dif_pos hb]
+      rw [dite_eq_left hb]
       exact
         (Finset.mem_image.mp (by simpa [B] using hb)).choose_spec.2
 
@@ -2958,6 +2958,7 @@ private lemma alg1_step2_fixed_work_qft_packet
         Finset.sum_sigma,
         mul_assoc
       ]
+      rfl
 
 /--
 Represent one Step-2 branch error as the inverse QFT of its Fourier-coefficient
@@ -3013,7 +3014,7 @@ private lemma alg1_step2_branch_error_eq_iqft_packet
         alg1Step2ActualFourierCoeff cfg b t y •
           qs.ket
             (RegEncoding.writeNat xext.active y.1 source) := by
-    simpa [actualPre, xext, source] using
+    simpa [actualPre, xext, source] using!
       alg1_step2_actual_preIQFT_packet qs cfg b t hb
 
   have hideal :
@@ -3021,7 +3022,7 @@ private lemma alg1_step2_branch_error_eq_iqft_packet
         alg1Step2IdealFourierCoeff cfg b y •
           qs.ket
             (RegEncoding.writeNat xext.active y.1 source) := by
-    simpa [idealPre, xext, source, target] using
+    simpa [idealPre, xext, source, target] using!
       alg1_step2_ideal_preIQFT_packet qs cfg b t hb
 
   calc
@@ -3145,7 +3146,7 @@ lemma alg1_step2_fixed_work_error_eq_iqft_multiplier_packet
     have hgood : GoodModMulBasisInput qs cfg.env.N cfg.env.data cfg.env.work cfg.flag i.1 :=
       (hfixed i hi).2.1
 
-    simpa [packet, xext] using
+    simpa [packet, xext] using!
       alg1_step2_branch_error_eq_iqft_packet
         qs cfg i.1 i.2 hgood
 

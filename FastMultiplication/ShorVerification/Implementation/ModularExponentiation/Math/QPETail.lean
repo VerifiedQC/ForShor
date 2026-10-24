@@ -1039,8 +1039,6 @@ private lemma qpeCircular_tail_floor_shell_partition
       _ = ∑ n ∈ I, ∑ t ∈ s.filter (fun t => shell t = n), f t := by
           apply Finset.sum_congr rfl
           intro n hn
-          change (∑ t ∈ s, if shell t = n then f t else 0)
-            = ∑ t ∈ s.filter (fun t => shell t = n), f t
           exact (Finset.sum_filter (s := s) (fun t => shell t = n) f).symm
   simpa [s, I, shell, qpeCircularFloorShell] using hpartition
 

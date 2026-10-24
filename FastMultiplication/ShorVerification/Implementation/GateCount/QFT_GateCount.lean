@@ -2,6 +2,7 @@ import FastMultiplication.ShorVerification.Implementation.GateCount.PhaseProduct
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
+import Mathlib.Analysis.Convex.SpecificFunctions.Basic
 
 open Shor
 
@@ -120,7 +121,12 @@ lemma explicitQFTPhaseGateCount_eq_lowerGate
           (Gate.PhaseProdUsing φ x z ws)
           (by simpa [Policy.GateWorkspaceOK, Gate.PhaseProdUsing] using hsigned)) := by
   simp [Policy.phaseProdUsingPlan, Gate.PhaseProdUsing,
-    Policy.lowerGate, lowerGateRec, Policy.lowerSignedPhaseProd]
+    Policy.lowerGate, Policy.lowerSignedPhaseProd]
+  -- `simp` no longer erases the `initSize` cast; its two sizes agree by definition.
+  exact congrArg (LowGate.gateCount shorGateCostModel)
+    (lowerGateRec_cast_initSize_of_eq
+      (hmn := (rfl : phaseInputSize (ws.xExt.grow 1) (ws.zExt.grow 1) = phaseProdUsingInputSize ws))
+      (plan := _))
 
 /-- Rewrites the split PhaseProduct node as the signed PhaseProduct recurrence cost. -/
 lemma explicitQFTPhaseGateCount_eq_signed
@@ -204,7 +210,7 @@ lemma explicitQFTGateCount_split
             (hworkspace.left hsize)) := by
     rw [Policy.qftPlan]
     simp only [show regSize r ≠ 0 by omega, show regSize r ≠ 1 by omega,
-      dif_neg, not_false_eq_true]
+      dite_eq_right, not_false_eq_true]
 
   unfold explicitQFTGateCount
   rw [hplan]

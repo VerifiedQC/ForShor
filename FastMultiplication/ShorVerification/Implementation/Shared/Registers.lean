@@ -239,7 +239,7 @@ theorem writeNat_split
             simp [Nat.add_comm] at h
             rename_i hi_1 hi_2
             subst hi_1
-            simp_all only [splitLeft_size, Fin.eta, ↓reduceIte, List.get_eq_getElem, List.getElem_mem, left, right, iL, iWhole]
+            simp_all only [splitLeft_size, ↓reduceIte, List.get_eq_getElem, List.getElem_mem, left, right, iL, iWhole]
 
       _ =
         RegEncoding.bit q
@@ -933,7 +933,7 @@ lemma tcWrapInt_eq_of_fits
     unfold tcDecodeWidth
     simp [htoNat_lt, htoNat]
   · -- z < 0 case: z % 2^(w'+1) = z + 2^(w'+1), which is in [2^w', 2^(w'+1))
-    push_neg at hz
+    push Not at hz
     have hz_neg : z < 0 := hz
     set M : ℤ := (2 : ℤ) ^ (w' + 1) with hM_def
     have hM_pos : 0 < M := hpow_pos
@@ -1214,15 +1214,11 @@ private theorem bit_writeNat_reg_one_of_mem
 
   by_cases hq_low : q = r.lowQubit hpos
 
-  · rw [if_pos hq_low]
+  · rw [ite_eq_left hq_low]
 
     have hj_eq :
         j = ⟨0, by simpa [regSize, Reg.width] using hpos⟩ := by
       apply (r.nodup.get_inj_iff).mp
-      change
-        r.qubits.get j =
-          r.qubits.get
-            ⟨0, by simpa [regSize, Reg.width] using hpos⟩
       simpa [Reg.lowQubit] using hj.trans hq_low
 
     have hi0 : i.1 = 0 := by
@@ -1231,7 +1227,7 @@ private theorem bit_writeNat_reg_one_of_mem
 
     simpa [hi0] using hbit
 
-  · rw [if_neg hq_low]
+  · rw [ite_eq_right hq_low]
 
     have hi_ne : i.1 ≠ 0 := by
       intro hi0
@@ -1275,7 +1271,7 @@ theorem writeNat_lowQubit_one_of_toNat_zero
     · subst q
       simp [bit_writeNat_qubitReg]
 
-    · rw [if_neg hq_low]
+    · rw [ite_eq_right hq_low]
 
       have hqout :
           q ∉ (qubitReg (r.lowQubit hpos)).qubits := by

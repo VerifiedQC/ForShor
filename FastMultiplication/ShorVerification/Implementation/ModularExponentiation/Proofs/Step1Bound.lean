@@ -166,7 +166,6 @@ lemma alg1_step5_forward_packet_on_basis
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : qs.Basis)
@@ -233,7 +232,6 @@ lemma alg1_step5_full_packet_on_basis
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (b : qs.Basis)
@@ -249,7 +247,7 @@ lemma alg1_step5_full_packet_on_basis
       =
     qs.eval (ModMulConfig.idealGate cfg) (qs.ket b) := by
   rw [← alg1_step5_forward_packet_on_basis qs cfg b hb]
-  simpa [ModMulConfig.U5, step5, alg1Step5Forward, alg1Step5Phase] using
+  simpa [ModMulConfig.U5, step5, alg1Step5Forward, alg1Step5Phase] using!
     qs.eval_adj_apply
       (alg1Step5Forward (Basis := qs.Basis) cfg)
       (qs.eval (ModMulConfig.idealGate cfg) (qs.ket b))
@@ -263,7 +261,6 @@ lemma alg1_step5_full_packet_eq_ideal
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -934,7 +931,6 @@ lemma alg1_step5_cleanup_error_eq_neg_bad_packet
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -962,7 +958,6 @@ lemma alg1_step5_cleanup_sq_eq_trace_bad_mass
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     {η : ℝ}
     (cfg : ModMulConfig η)
     (ψ : qs.State)
@@ -1291,7 +1286,7 @@ lemma alg1_qpe_tail_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs] :
+ :
     ∃ Cpe : ℝ, 0 ≤ Cpe ∧ Cpe ≤ 512 ∧
       (∀ (η : ℝ) (cfg : ModMulConfig η)
           (b : qs.Basis),

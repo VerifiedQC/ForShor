@@ -238,7 +238,7 @@ lemma lowered_H_reg_gateCount
         rw [ih (Gate.H q ;; U) (by exact ⟨trivial, hU⟩)]
         simp [loweredGateCount, Policy.lowerGate, LowGate.gateCount]
         omega
-  simpa [H_reg, regQubits, regSize] using
+  simpa [H_reg, regQubits, regSize] using!
     hfold (regQubits r) Gate.id trivial hworkspace
 
 /-- Expands controlled modular multiplication into the five Algorithm 1 core steps. -/
@@ -355,7 +355,17 @@ lemma step5_gateCount_decompose
       +
     loweredGateCount (Basis := Basis) k hk ops pts hpts
         (Gate.QFT hmod.step5Workspace.zExt) hworkspace.2.2 := by
-  simp [step5, IQFT]
+  -- `erw`: after each rewrite the workspace proof is typed at `†X` while the next lemma
+  -- expects `X`; the two agree only after unfolding `GateWorkspaceOK`.
+  simp only [step5, IQFT]
+  erw [loweredGateCount_adj (Basis := Basis), loweredGateCount_seq (Basis := Basis),
+    loweredGateCount_seq (Basis := Basis), loweredGateCount_adj (Basis := Basis)]
+  have hq : ∀ h, loweredGateCount (Basis := Basis) k hk ops pts hpts
+      (†Gate.QFT hmod.step5Workspace.zExt) h
+        = loweredGateCount (Basis := Basis) k hk ops pts hpts
+            (Gate.QFT hmod.step5Workspace.zExt) hworkspace.2.2 :=
+    fun h => loweredGateCount_adj (Basis := Basis) k hk ops pts hpts _ h
+  erw [hq]
   omega
 
 /-- The controlled bitwise constant loader uses exactly one CNOT per valid
@@ -623,7 +633,7 @@ lemma step4_gateCount_decompose
     (hmod : ModMulCircuitWorkspaceOK data work) :
     (hmod.step2Workspace.zExt).width = data.width + 1 := by
   simpa [ModMulCircuitWorkspaceOK.step2Workspace,
-    Gate.PhaseProdWorkspace.ofExtRegs, Gate.PhaseProdWorkspace.zExt] using
+    Gate.PhaseProdWorkspace.ofExtRegs, Gate.PhaseProdWorkspace.zExt] using!
     ExtReg.width_grow data 1 hmod.data_canGrow_one
 
 /-- Step 5's PhaseProduct target workspace has the same width as the work register. -/
@@ -1315,6 +1325,7 @@ lemma modExpApproxValid_gateCount_phase_bound_of_core
     | nil =>
         intro hws
         simp [modExpApproxStepsValid, loweredGateCount]
+        rfl
     | cons ctrl ctrls ih =>
         intro hws
         let c : ℕ := (a ^ (2 ^ e)) % N
@@ -1725,7 +1736,7 @@ lemma algorithm1ExtraBits_shorEta_eventually_linear
       Tendsto
         (fun n : ℕ => (2 : ℝ) / (2 : ℝ)^n)
         atTop (nhds 0) := by
-    simpa using
+    simpa using!
       (tendsto_pow_const_div_const_pow_of_one_lt
         0
         (show (1 : ℝ) < 2 by norm_num)).const_mul (2 : ℝ)

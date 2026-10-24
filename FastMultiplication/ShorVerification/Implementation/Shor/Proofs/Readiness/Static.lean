@@ -7,7 +7,7 @@ import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.CmpLtNW
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import Mathlib.Data.Real.Basic
+import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 
@@ -591,7 +591,7 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
           hCore ((a ^ (2 ^ e)) % N) ctrl hHeadLayout
         have hTail :=
           ih (e := e + 1) hTailLayout
-        simpa [modExpApproxStepsValid] using
+        simpa [modExpApproxStepsValid] using!
           And.intro hHead hTail
 
   have hHExponent :

@@ -2,7 +2,7 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
-import Mathlib.Data.Real.Basic
+import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
@@ -164,7 +164,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
         (ownedDisjoint_symm hstep4.work_scratch_disjoint)
   have hcleanCarrier :
       ShorLoweringCleanState qs carrier data work ψ := by
-    simpa [carrier, shorConcreteCarrier] using hclean
+    simpa [carrier, shorConcreteCarrier] using! hclean
 
   let U1 :=
     step1
@@ -234,7 +234,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
           qs x data work scratch hxScratch)
         U1 hworkspace.1 ψ :=
     by
-      simpa [carrier, shorConcreteCarrier] using
+      simpa [carrier, shorConcreteCarrier] using!
         (lowered_step1_ready_and_full_clean
           qs P hP carrier data work
           c N ctrl
@@ -257,7 +257,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
           qs x data work scratch hxScratch)
         U2 hworkspace.2.1 ψ1 :=
     by
-      simpa [carrier, shorConcreteCarrier] using
+      simpa [carrier, shorConcreteCarrier] using!
         (lowered_step2_ready_and_carry_clean
           qs P hP carrier data work
           N
@@ -266,7 +266,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
           hworkspace.2.1
           ψ1
           (by
-            simpa [carrier, shorConcreteCarrier] using h1.2))
+            simpa [carrier, shorConcreteCarrier] using! h1.2))
 
   let ψ3 :=
     LowerGateClass.evalL
@@ -320,7 +320,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
           qs x data work scratch hxScratch)
         U5 hworkspace.2.2.2.2 ψ4 :=
     by
-      simpa [carrier, shorConcreteCarrier] using
+      simpa [carrier, shorConcreteCarrier] using!
         (lowered_step5_ready_and_full_clean
           qs P hP carrier data work
           (step5Constant c N)
@@ -331,7 +331,7 @@ theorem lowered_CmodMulInPlaceCore_ready_and_clean
           hworkspace.2.2.2.2
           ψ4
           (by
-            simpa [carrier, shorConcreteCarrier] using h4.2))
+            simpa [carrier, shorConcreteCarrier] using! h4.2))
 
   have h45 :
       LoweredCleanResult

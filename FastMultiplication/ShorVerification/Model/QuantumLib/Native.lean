@@ -132,15 +132,15 @@ theorem single_qubit_kron {dim q : ℕ} (hq : q < dim) (G : CSquare 2) (M : CSqu
       (k.modNat : Fin (2 ^ q)).1 = k.1 % 2 ^ q := fun _ => rfl
   rw [hmod2, hmod2, Matrix.one_apply, Matrix.one_apply]
   by_cases hagree : AgreeOff q i.1 j.1
-  · rw [if_pos hagree, if_pos (Fin.ext (by rw [hdiv, hdiv, hagree.2])),
-      if_pos (Fin.ext (by rw [hmodq, hmodq, hagree.1]))]
+  · rw [ite_eq_left hagree, ite_eq_left (Fin.ext (by rw [hdiv, hdiv, hagree.2])),
+      ite_eq_left (Fin.ext (by rw [hmodq, hmodq, hagree.1]))]
     simp
-  · rw [if_neg hagree]
+  · rw [ite_eq_right hagree]
     rw [AgreeOff, not_and_or] at hagree
     rcases hagree with h | h
-    · rw [if_neg (show ¬ (i.modNat = j.modNat) from fun hc =>
+    · rw [ite_eq_right (show ¬ (i.modNat = j.modNat) from fun hc =>
         h (by rw [← hmodq i, ← hmodq j]; exact congrArg Fin.val hc)), mul_zero]
-    · rw [if_neg (show ¬ (i.divNat.divNat = j.divNat.divNat) from fun hc =>
+    · rw [ite_eq_right (show ¬ (i.divNat.divNat = j.divNat.divNat) from fun hc =>
         h (by rw [← hdiv i, ← hdiv j]; exact congrArg Fin.val hc)), zero_mul, zero_mul]
 
 /-! ## Hadamard -/
@@ -163,11 +163,11 @@ theorem hMatrix_kron {dim q : ℕ} (hq : q < dim) :
   refine single_qubit_kron hq _ _ fun y x => ?_
   rw [hMatrix_apply, hadamard_apply]
   by_cases h : AgreeOff q y.1 x.1
-  · rw [if_pos h,
-      if_pos ((bitIdx_false_eq_iff hq y x).mpr ((agree_off_iff q y.1 x.1).mpr h))]
+  · rw [ite_eq_left h,
+      ite_eq_left ((bitIdx_false_eq_iff hq y x).mpr ((agree_off_iff q y.1 x.1).mpr h))]
     rfl
-  · rw [if_neg h,
-      if_neg (fun hc => h ((agree_off_iff q y.1 x.1).mp ((bitIdx_false_eq_iff hq y x).mp hc)))]
+  · rw [ite_eq_right h,
+      ite_eq_right (fun hc => h ((agree_off_iff q y.1 x.1).mp ((bitIdx_false_eq_iff hq y x).mp hc)))]
 
 /-! ## Phase shift -/
 
@@ -186,13 +186,13 @@ theorem phaseMatrix_kron {dim q : ℕ} (hq : q < dim) (θ : Angle) :
   refine single_qubit_kron hq _ _ fun y x => ?_
   rw [diagMatrix, phaseShift_apply]
   by_cases h : AgreeOff q y.1 x.1
-  · rw [if_pos h]
+  · rw [ite_eq_left h]
     by_cases hb : Nat.testBit y.1 q = Nat.testBit x.1 q
-    · rw [if_pos hb,
-        if_pos ((eq_iff_agree_and_bit (q := q) y x).mpr ⟨(agree_off_iff q y.1 x.1).mpr h, hb⟩)]
+    · rw [ite_eq_left hb,
+        ite_eq_left ((eq_iff_agree_and_bit (q := q) y x).mpr ⟨(agree_off_iff q y.1 x.1).mpr h, hb⟩)]
       rw [lowPhaseDiag, idxBasis_apply, hb]
-    · rw [if_neg hb, if_neg (fun hc => hb (by rw [hc]))]
-  · rw [if_neg h, if_neg (fun hc => h ((agree_off_iff q y.1 x.1).mp (by rw [hc]; exact fun _ _ => rfl)))]
+    · rw [ite_eq_right hb, ite_eq_right (fun hc => hb (by rw [hc]))]
+  · rw [ite_eq_right h, ite_eq_right (fun hc => h ((agree_off_iff q y.1 x.1).mp (by rw [hc]; exact fun _ _ => rfl)))]
 
 /-! ## Two-qubit padding, and `cnot` -/
 
@@ -281,15 +281,15 @@ theorem two_qubit_kron {dim q : ℕ} (hq : q + 1 < dim) (G : CSquare 4) (M : CSq
       (k.modNat : Fin (2 ^ q)).1 = k.1 % 2 ^ q := fun _ => rfl
   rw [hmod4, hmod4, Matrix.one_apply, Matrix.one_apply]
   by_cases hagree : AgreeOff2 q i.1 j.1
-  · rw [if_pos hagree, if_pos (Fin.ext (by rw [hdiv, hdiv, hagree.2])),
-      if_pos (Fin.ext (by rw [hmodq, hmodq, hagree.1]))]
+  · rw [ite_eq_left hagree, ite_eq_left (Fin.ext (by rw [hdiv, hdiv, hagree.2])),
+      ite_eq_left (Fin.ext (by rw [hmodq, hmodq, hagree.1]))]
     simp
-  · rw [if_neg hagree]
+  · rw [ite_eq_right hagree]
     rw [AgreeOff2, not_and_or] at hagree
     rcases hagree with h | h
-    · rw [if_neg (show ¬ (i.modNat = j.modNat) from fun hc =>
+    · rw [ite_eq_right (show ¬ (i.modNat = j.modNat) from fun hc =>
         h (by rw [← hmodq i, ← hmodq j]; exact congrArg Fin.val hc)), mul_zero]
-    · rw [if_neg (show ¬ (i.divNat.divNat = j.divNat.divNat) from fun hc =>
+    · rw [ite_eq_right (show ¬ (i.divNat.divNat = j.divNat.divNat) from fun hc =>
         h (by rw [← hdiv i, ← hdiv j]; exact congrArg Fin.val hc)), zero_mul, zero_mul]
 
 theorem cnot_apply (c t c' t' : Bool) :
@@ -301,16 +301,16 @@ theorem cnot_apply (c t c' t' : Bool) :
 theorem cnotBasis_apply_of_ne {ctrl target : ℕ} (h : ctrl ≠ target) (b : ModelBasis) (i : ℕ) :
     cnotBasis (Basis := ModelBasis) ctrl target b i
       = if i = target then (if b ctrl then !b target else b target) else b i := by
-  rw [cnotBasis_eq, if_neg h]
+  rw [cnotBasis_eq, ite_eq_right h]
   by_cases hc : b ctrl
-  · rw [if_pos hc]
+  · rw [ite_eq_left hc]
     by_cases hi : i = target
     · subst hi; simp [hc]
-    · rw [Function.update_of_ne hi, if_neg hi]
-  · rw [if_neg hc]
+    · rw [Function.update_of_ne hi, ite_eq_right hi]
+  · rw [ite_eq_right hc]
     by_cases hi : i = target
     · subst hi; simp [hc]
-    · rw [if_neg hi]
+    · rw [ite_eq_right hi]
 
 theorem permIdx_cnot {dim q : ℕ} (hq : q + 1 < dim) (x : Fin (2 ^ dim)) (i : ℕ) :
     Nat.testBit (permIdx dim (cnotPerm (q + 1) q) x).1 i
@@ -322,7 +322,8 @@ theorem permIdx_cnot {dim q : ℕ} (hq : q + 1 < dim) (x : Fin (2 ^ dim)) (i : �
       = cnotBasis (Basis := ModelBasis) (q + 1) q (idxBasis dim x) :=
     idxBasis_basisIdx hbelow
   have e := congrArg (fun f => f i) he
-  simpa [idxBasis_apply, cnotBasis_apply_of_ne (show q + 1 ≠ q from by omega)] using e
+  simp only [idxBasis_apply, cnotBasis_apply_of_ne (show q + 1 ≠ q from by omega)] at e
+  exact e
 
 theorem cnot_permIdx_eq_iff {dim q : ℕ} (hq : q + 1 < dim) (y x : Fin (2 ^ dim)) :
     y = permIdx dim (cnotPerm (q + 1) q) x
@@ -331,14 +332,14 @@ theorem cnot_permIdx_eq_iff {dim q : ℕ} (hq : q + 1 < dim) (y x : Fin (2 ^ dim
               = (if Nat.testBit x.1 (q + 1) then !Nat.testBit x.1 q else Nat.testBit x.1 q)) := by
   constructor
   · rintro rfl
-    exact ⟨fun i hi => by rw [permIdx_cnot hq x i, if_neg hi],
-      by rw [permIdx_cnot hq x q, if_pos rfl]⟩
+    exact ⟨fun i hi => by rw [permIdx_cnot hq x i, ite_eq_right hi],
+      by rw [permIdx_cnot hq x q, ite_eq_left rfl]⟩
   · rintro ⟨h1, h2⟩
     refine Fin.ext (Nat.eq_of_testBit_eq fun i => ?_)
     rw [permIdx_cnot hq x i]
     by_cases hi : i = q
-    · subst hi; rw [if_pos rfl]; exact h2
-    · rw [if_neg hi]; exact h1 i hi
+    · subst hi; rw [ite_eq_left rfl]; exact h2
+    · rw [ite_eq_right hi]; exact h1 i hi
 
 /-- **`CNOT` on adjacent qubits is QuantumLib's `cnot`, padded.** The control is
 `q + 1`, the high (left-`kron`) qubit, matching `cnot`'s own convention. -/
@@ -349,16 +350,16 @@ theorem cnotMatrix_kron {dim q : ℕ} (hq : q + 1 < dim) :
   refine two_qubit_kron hq _ _ fun y x => ?_
   rw [permMatrix, cnot_apply]
   by_cases hA : AgreeOff2 q y.1 x.1
-  · rw [if_pos hA]
+  · rw [ite_eq_left hA]
     by_cases hB : Nat.testBit y.1 (q + 1) = Nat.testBit x.1 (q + 1) ∧
         Nat.testBit y.1 q
           = (if Nat.testBit x.1 (q + 1) then !Nat.testBit x.1 q else Nat.testBit x.1 q)
-    · rw [if_pos hB, if_pos ((cnot_permIdx_eq_iff hq y x).mpr
+    · rw [ite_eq_left hB, ite_eq_left ((cnot_permIdx_eq_iff hq y x).mpr
         ⟨agree_off_split.mpr ⟨(agree_off2_iff q y.1 x.1).mpr hA, hB.1⟩, hB.2⟩)]
-    · rw [if_neg hB, if_neg (fun hc => hB ?_)]
+    · rw [ite_eq_right hB, ite_eq_right (fun hc => hB ?_)]
       obtain ⟨ha, hb⟩ := (cnot_permIdx_eq_iff hq y x).mp hc
       exact ⟨(agree_off_split.mp ha).2, hb⟩
-  · rw [if_neg hA, if_neg (fun hc => hA ?_)]
+  · rw [ite_eq_right hA, ite_eq_right (fun hc => hA ?_)]
     obtain ⟨ha, _⟩ := (cnot_permIdx_eq_iff hq y x).mp hc
     exact (agree_off2_iff q y.1 x.1).mp (agree_off_split.mp ha).1
 

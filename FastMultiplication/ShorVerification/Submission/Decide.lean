@@ -451,8 +451,9 @@ example : PointsDistinct [Point.frac 0, Point.int 0, Point.int 7, Point.frac 3] 
 /-- The equivalence runs backwards too, so rejection is a real verdict: a
 list with a repeated point is not merely unproven but inadmissible. -/
 example : ¬ GoodToomCookPoints 2 [Point.int 1, Point.frac 1, Point.int 0] rfl := by
-  rw [goodToomCookPoints_iff_distinct]
-  decide +kernel
+  intro h
+  exact (by decide +kernel : ¬ PointsDistinct [Point.int 1, Point.frac 1, Point.int 0])
+    ((goodToomCookPoints_iff_distinct _).mp h)
 
 /-! ### A policy submission
 

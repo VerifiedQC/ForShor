@@ -2,7 +2,7 @@ import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
-import Mathlib.Data.Real.Basic
+import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static

@@ -1,3 +1,4 @@
+import FastMultiplication.ShorVerification.Implementation.Shor.Math.TotientBoundsLarge
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Preliminaries
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.NaiveShor.PhaseEstimation
 import FastMultiplication.ShorVerification.Implementation.Shared.Registers
@@ -24,65 +25,39 @@ This follows the structure of Shor, Section 5:
 
 
 /--
-A deliberately weak consequence of the standard lower bounds for
-Euler's totient ratio.
+Mertens-type lower bound for Euler's totient ratio in the order-finding
+setting.
 
 For an order `r < N`,
 
-    φ(r) / r ≥ exp(-2) / log₂(N)^4.
+    φ(r) / r ≥ 1 / (4 · log(log₂ N + 1)),
 
-This is much weaker than the classical asymptotic bound used by Shor,
-but is convenient because it gives exactly the public theorem's
-inverse-polylogarithmic form.
+i.e. `φ(r)/r = Ω(1 / log log N)`. This is the shape of the classical
+Rosser–Schoenfeld bound `n/φ(n) < e^γ log log n + 3/log log n`; the constant
+`1/4` leaves room for the explicit error terms.
+
+Proof route: split the prime divisors of `r` at a threshold `y`. The ones below
+`y` contribute at least `∏_{p < y} (1 - 1/p)`; at most `log r / log y` of them
+are above `y`, and each of those contributes at least `1 - 1/y`.
+
+For `r < 2 ^ 2048` this is carried out in `Math/TotientBounds.lean`, with eight
+dyadic thresholds and no analytic input beyond `Real.log_two_gt_d9`
+(`shor_totient_ratio_of_lt`).  Since a 2048-bit modulus has `r < N < 2 ^ 2048`,
+that branch alone covers every concrete headline result in this repository.
+
+For `r ≥ 2 ^ 2048` one takes `y = ⌊log r⌋` and bounds `∏_{p < y} (1 - 1/p)` below by
+Mertens' third theorem with an explicit error term, `e^{-γ} e^{E₃(y)} / log y`.  That is
+Mathlib PR #41394, which is not merged; the three files it adds are vendored against the
+pinned Mathlib in `Vendor/Mertens/`, and the argument is `Math/TotientBoundsLarge.lean`.
 -/
-lemma shor_totient_ratio_log4_lower_bound
+lemma shor_totient_ratio_lower_bound
     {a r N m n : ℕ}
     (hsetting : BasicSetting a r N m n) :
-    Real.exp (-2) / (Nat.log2 N : ℝ) ^ 4
+    1 / (4 * Real.log ((Nat.log2 N : ℝ) + 1))
       ≤
     (Nat.totient r : ℝ) / (r : ℝ) := by
-
-  have hparams :=
-    shor_order_parameter_bounds hsetting
-
-  have hr : 0 < r :=
-    hparams.1
-
-  have hrN : r < N :=
-    hparams.2.1
-
-  /-
-  BasicSetting has 0 < a < N, hence N ≥ 2.
-  -/
-  have hN2 : 2 ≤ N := by
-    rcases hsetting with
-      ⟨ha0, haN, _horder,
-       _hmlo, _hmhi, _hnlo, _hnhi⟩
-    omega
-
-  have hlog :
-      1 ≤ Nat.log2 N := by
-    rw [Nat.log2_def, if_pos hN2]
-    omega
-
-  have hanalytic :
-      Real.exp (-2) /
-          (Nat.log2 N : ℝ) ^ 4
-        ≤
-      1 /
-          (((Nat.log2 N + 1 : ℕ) : ℝ)) :=
-    exp_neg_two_div_pow4_le_inv_succ
-      (Nat.log2 N) hlog
-
-  have htotient :
-      1 /
-          (((Nat.log2 N + 1 : ℕ) : ℝ))
-        ≤
-      (Nat.totient r : ℝ) / (r : ℝ) :=
-    totient_ratio_ge_inv_log2_succ
-      hr hrN
-
-  exact le_trans hanalytic htotient
+  obtain ⟨hr, hrN, _⟩ := shor_order_parameter_bounds hsetting
+  exact shor_totient_ratio hr hrN
 
 /-! ---------------------------------------------------------
     Exact preparation of the ideal Shor state
@@ -221,6 +196,7 @@ lemma eval_Hreg_zero_uniform_sum
         hzero,
         qftPhase_zero_left
       ]
+      rfl
 
 /--
 Starting from `x = 0` and `y = 0`, the first two pieces of ideal
@@ -314,7 +290,7 @@ private lemma ctrlExp_zero_qubits_eq_toNat (x : Reg) (b : qs.Basis) :
       RegEncoding.bit (x.get ⟨i, by simpa [Reg.width] using hi⟩) b
         = Nat.testBit (RegEncoding.toNat x b) i := by
     have := RegEncoding.bit_eq_testBit_toNat x b ⟨i, by simpa [regSize, Reg.width] using hi⟩
-    simpa using this
+    simpa using! this
   simp only [Nat.zero_add]
   rw [hbit]
   cases Nat.testBit (RegEncoding.toNat x b) i <;> simp
@@ -385,7 +361,7 @@ private lemma eval_modExpIdealSteps_ket
       congr 2
       rw [ctrlExp, hv0def]
       by_cases hbit : RegEncoding.bit ctrl b
-      · simp only [hbit, if_true, mul_one]
+      · simp only [hbit, ite_true, mul_one]
         rw [pow_add]
         have hmod :
             ((a ^ 2 ^ e) % N * RegEncoding.toNat y b) % N * a ^ ctrlExp (e + 1) ctrls b
@@ -431,7 +407,6 @@ Exact modular exponentiation on one initialized Shor basis label:
 -/
 private lemma eval_modExpIdeal_on_initialized_label
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     (a N : ℕ)
     (x y : Reg)
     (b0 : qs.Basis)
@@ -551,7 +526,6 @@ to
 -/
 private lemma eval_modExpIdeal_on_initialized_superposition
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     (a N : ℕ)
     (x y : Reg)
     (b0 : qs.Basis)
@@ -603,7 +577,6 @@ This is where `eval_modExpIdeal_ket` is used.
 -/
 lemma eval_orderFindingIdeal_prefix
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     (inst : ShorOrderFindingInstance)
     (x y : ExtReg)
     (b0 : qs.Basis)
@@ -686,7 +659,6 @@ lemma eval_orderFindingIdeal_prefix
 
 lemma ideal_orderFinding_goodOutcome_mass_lower_bound
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     [MeasureClass qs]
     (inst : ShorOrderFindingInstance)
     (x y : ExtReg)
@@ -699,7 +671,7 @@ lemma ideal_orderFinding_goodOutcome_mass_lower_bound
         (regSize x.active)
         (regSize y.active))
     (hinput : IdealOrderFindingInput qs x y b0) :
-    κ / (Nat.log2 inst.N : ℝ) ^ 4
+    κ / Real.log ((Nat.log2 inst.N : ℝ) + 1)
       ≤
     ∑ o : Fin (ASize x.active),
       goodOutcomeIndicator
@@ -841,14 +813,13 @@ lemma ideal_orderFinding_goodOutcome_mass_lower_bound
       hcard
       hpoint
 
-  /- Step 7: replace φ(r)/r by the desired inverse-polylog bound. -/
+  /- Step 7: replace φ(r)/r by the Mertens-type `1 / (4 log(log₂ N + 1))` bound. -/
   have hphi :
-      Real.exp (-2) /
-          (Nat.log2 inst.N : ℝ) ^ 4
+      1 / (4 * Real.log ((Nat.log2 inst.N : ℝ) + 1))
         ≤
       (Nat.totient r : ℝ) / (r : ℝ) := by
     simpa [r] using
-      (shor_totient_ratio_log4_lower_bound
+      (shor_totient_ratio_lower_bound
         hsetting)
 
   have hfourier_nonneg :
@@ -857,8 +828,7 @@ lemma ideal_orderFinding_goodOutcome_mass_lower_bound
 
   have hscaled :
       (4 / Real.pi ^ 2) *
-          (Real.exp (-2) /
-            (Nat.log2 inst.N : ℝ) ^ 4)
+          (1 / (4 * Real.log ((Nat.log2 inst.N : ℝ) + 1)))
         ≤
       (4 / Real.pi ^ 2) *
           ((Nat.totient r : ℝ) / (r : ℝ)) :=
@@ -866,11 +836,10 @@ lemma ideal_orderFinding_goodOutcome_mass_lower_bound
       hphi hfourier_nonneg
 
   calc
-    κ / (Nat.log2 inst.N : ℝ) ^ 4
+    κ / Real.log ((Nat.log2 inst.N : ℝ) + 1)
         =
       (4 / Real.pi ^ 2) *
-        (Real.exp (-2) /
-          (Nat.log2 inst.N : ℝ) ^ 4) := by
+        (1 / (4 * Real.log ((Nat.log2 inst.N : ℝ) + 1))) := by
             unfold κ
             ring
 

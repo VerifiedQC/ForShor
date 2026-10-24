@@ -1,6 +1,6 @@
 # ForShor
 
-[![Lean](https://img.shields.io/badge/Lean-v4.28.0-blue)](https://leanprover.github.io/)
+[![Lean](https://img.shields.io/badge/Lean-v4.36.0--rc1-blue)](https://leanprover.github.io/)
 [![Mathlib](https://img.shields.io/badge/mathlib4-required-9cf)](https://github.com/leanprover-community/mathlib4)
 [![License](https://img.shields.io/badge/license-Apache_2.0-green)](LICENSE)
 
@@ -10,12 +10,12 @@ The development verifies an implementation of order finding built on fast (Toom-
 
 ## Main results
 
-**Correctness** (`FastMultiplication/ShorVerification/Implementation/Shor/Proofs/NaiveShor/Correctness.lean`): the ideal order-finding circuit recovers the multiplicative order with at least the standard inverse-polylogarithmic probability.
+**Correctness** (`FastMultiplication/ShorVerification/Implementation/Shor/Proofs/NaiveShor/Correctness.lean`): the ideal order-finding circuit recovers the multiplicative order with probability `Ω(1 / log log N)`.
 
 ```lean
 theorem Shor_correct (T : ℕ → ℕ) (inst : ShorOrderFindingInstance)
     (ψ0 : qs.State) (hψ0 : ‖ψ0‖ = 1) :
-    probability_of_success ... ≥ κ / (Nat.log2 inst.N : ℝ)^4
+    probability_of_success ... ≥ κ / Real.log ((Nat.log2 inst.N : ℝ) + 1)
 ```
 
 Unpacking the five pieces, since the inequality alone does not say much:
@@ -23,7 +23,7 @@ Unpacking the five pieces, since the inequality alone does not say much:
 - `probability_of_success` (`Framework/Contract.lean`) is `∑ o : Fin Q, r_found T verify o Q r * probMeas x o (evalC C ψ)` — the probability that the measured outcome, *after* classical post-processing, is exactly the order `r`. Not the probability of landing in a good window.
 - `r_found` (`Framework/Math/ShorDefinition.lean`) is the 0/1 indicator that scanning the first `T Q` continued-fraction convergents of `o/Q`, keeping those whose denominator `d` satisfies `a^d ≡ 1 (mod N)`, returns `r`.
 - `T` is any classical budget with `continuedFractionSearchBound Q ≤ T Q`. It bounds the convergent scan, is not a circuit parameter, and costs no gates.
-- `κ = 4e⁻²/π² ≈ 0.0548`.
+- `κ = 1/π² ≈ 0.101`, which is Shor's per-numerator Fourier constant `4/π²` times the `1/4` of the Mertens-type totient bound `φ(r)/r ≥ 1/(4 · log(log₂ N + 1))`. The bound is `Ω(1 / log log N)`, the classical Rosser–Schoenfeld shape.
 - The exponent register has `log₂(2N²)` bits and the modulus register `log₂(2N)`, and the input is the ideal `IdealOrderFindingInput`: all registers clean, exponent register in uniform superposition.
 
 The same bound survives compilation, up to a factor of two, once the per-step precision `η` is chosen as a function of `N` (`Implementation/Shor/Main.lean`):
@@ -31,10 +31,10 @@ The same bound survives compilation, up to a factor of two, once the per-step pr
 ```lean
 theorem Shor_correct_approx_lowered (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
     ShorCorrectApproxLowered T hT
--- at any η ≤ shorPrecision N x:  probability_of_success ... ≥ κ / (2 * (Nat.log2 N : ℝ)^4)
+-- at any η ≤ shorPrecision N x:  probability_of_success ... ≥ κ / (2 * Real.log ((Nat.log2 N : ℝ) + 1))
 ```
 
-The lowering itself is exact; the loss is the modular-exponentiation approximation, bounded by `2 · tbits(x) · √(2 · 2048 · η)`. Holding that to half the ideal bound needs `η = Θ(1/n¹⁰)`, which costs `O(log n)` extra work bits — well inside the budget the resource estimate allows. At 2048 bits this is `η ≈ 2⁻¹³⁶`, about 270 extra work bits; the constant is `κ²/65536` and the exponents come from inverting the square root in the per-step error bound. `shorPrecision` is a closed form — there is no existential constant a circuit builder would have to guess.
+The lowering itself is exact; the loss is the modular-exponentiation approximation, bounded by `2 · tbits(x) · √(2 · 2048 · η)`. Holding that to half the ideal bound needs `η = Θ(1/(n log n)²)`, which costs `O(log n)` extra work bits — well inside the budget the resource estimate allows. At 2048 bits this is `η ≈ 2⁻⁵³`, about 105 extra work bits; the constant is `κ²/65536` and the exponents come from inverting the square root in the per-step error bound. `shorPrecision` is a closed form — there is no existential constant a circuit builder would have to guess.
 
 **Resource estimation** (`FastMultiplication/ShorVerification/Implementation/GateCount/Shor_GateCount.lean`): for every `ε > 0` there is a recursion parameter `k` such that the compiled Shor circuit uses `O(n^(2+ε))` elementary gates.
 
@@ -106,6 +106,8 @@ The reference is not the only implementation the development admits. `FastMultip
 | `FastMultiplication/ShorVerification/Implementation/Reference/` | The construction that turns an admissible table into a circuit family: fully computable, and generic in the table rather than tied to one. |
 | `FastMultiplication/ShorVerification/Submission/` | The public surface a submissions repo builds against: deciding the four side conditions, auditing the axioms behind them, the certificate, the score, and the template a submitter copies. |
 | `FastMultiplication/Emit/` | JSON printer for a lowered circuit, the symbolic IR extractor, and the `forshor_emit` executable. |
+| `FastMultiplication/ShorVerification/Model/` | Consistency witnesses: the standard matrix model of the semantic classes, and the headline theorems restated over QuantumLib matrices. Not imported by anything else. |
+| `FastMultiplication/ShorVerification/Vendor/Mertens/` | Mertens' third theorem with an explicit error term, vendored from an unmerged Mathlib pull request under its Apache-2.0 headers; used by the totient bound behind the success constant. See its README for provenance and removal. |
 | `docs/` | An interactive visualization of the proof architecture. |
 
 For a detailed file-by-file guide, see [ARCHITECTURE.md](ARCHITECTURE.md). Each folder also has its own `README.md`.
@@ -159,7 +161,7 @@ points, which is a quadratic scan.
 `decide +kernel`, not `native_decide`, and that is enforced rather than
 requested: `Submission/Check.lean` runs `#assert_axioms Submission.setup`,
 which fails the build unless the finished term's axioms lie inside `propext`,
-`Classical.choice`, `Quot.sound` — so `native_decide` (`Lean.ofReduceBool`),
+`Classical.choice`, `Quot.sound` — so `native_decide` (its compiled-evaluator axiom),
 `sorry` (`sorryAx`) and a submitter's own `axiom` are all rejected by name.
 
 Passing C1–C4 is not evidence of admissibility, it *is* admissibility:
@@ -220,7 +222,7 @@ rules a submissions repo should enforce.
 
 ## Building
 
-The project uses Lean `v4.28.0` (pinned in `lean-toolchain`) and depends on [mathlib4](https://github.com/leanprover-community/mathlib4) at revision `fadcf92bfcfe7575bbdf04c6f83ab3ada53e3d42`, pinned in both `lakefile.lean` and `lake-manifest.json`. `lake exe cache get` fetches the prebuilt oleans for that exact revision, so the pin is what makes the cache usable. With [elan](https://github.com/leanprover/elan) installed:
+The project uses Lean `v4.36.0-rc1` (pinned in `lean-toolchain`) and depends on [mathlib4](https://github.com/leanprover-community/mathlib4) at revision `4dc43842a11f257ffba2a611c943a133a65cb4b2`, pinned in both `lakefile.lean` and `lake-manifest.json`. `lake exe cache get` fetches the prebuilt oleans for that exact revision, so the pin is what makes the cache usable. With [elan](https://github.com/leanprover/elan) installed:
 
 ```sh
 lake exe cache get   # fetch prebuilt mathlib oleans

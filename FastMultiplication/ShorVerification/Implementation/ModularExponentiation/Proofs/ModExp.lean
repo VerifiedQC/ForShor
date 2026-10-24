@@ -291,7 +291,7 @@ theorem modExpApproxSteps_valid_dist_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs] :
+ :
     ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧
       ∀ (η : ℝ)
         (a N : ℕ) (data work scratch : ExtReg) (flag : ℕ)
@@ -453,7 +453,7 @@ theorem modExpApprox_valid_dist_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs] :
+ :
     ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧
       ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
         ModExpConfig.ValidUnitState qs cfg ψ →
@@ -496,7 +496,7 @@ theorem modExpApprox_valid_dist_uniform
 in `K`, so the bound also holds at `2048` itself. -/
 theorem modExpApprox_valid_dist_2048
     (qs : QSemantics) [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs] [IdealCtrlModMulExactSemantics qs] :
+    [GateSemanticsFacts qs] :
     ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
       ModExpConfig.ValidUnitState qs cfg ψ →
       ‖qs.eval (ModExpConfig.approxGate cfg) ψ -

@@ -121,7 +121,7 @@ def policySubmissionJson : Json :=
          is what makes band i cover [t_i, t_{i-1}) literally"),
       ("axioms", Json.str
         "#assert_axioms _root_.PolicySubmission.policy in Submission/PolicyCheck.lean: fails the \
-         build on native_decide (Lean.ofReduceBool), sorry (sorryAx) or any declared axiom, \
+         build on native_decide (its compiled-evaluator axiom), sorry (sorryAx) or any declared axiom, \
          so every band's side conditions really did go through the kernel"),
       ("correctness", Json.str
         "Shor.policy_submission_correct: proved once, generic in the policy; no \

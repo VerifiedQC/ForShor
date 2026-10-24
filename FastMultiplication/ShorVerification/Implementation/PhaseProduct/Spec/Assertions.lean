@@ -22,7 +22,6 @@ def LowerSignedPhaseProductCorrect
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [GateSemanticsFacts qs]
     (k : ℕ) (hk : 1 < k)
     (phi : Angle)
     (x z : ExtReg)
@@ -47,7 +46,6 @@ def LowerCSignedPhaseProductCorrect
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [GateSemanticsFacts qs]
     (k : ℕ) (hk : 1 < k)
     (ctrl : ℕ)
     (phi : Angle)

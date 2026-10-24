@@ -7,7 +7,7 @@ import Mathlib.Data.Nat.Totient
 import Mathlib.GroupTheory.OrderOfElement
 import Mathlib.GroupTheory.SpecificGroups.Cyclic
 import Mathlib.RingTheory.ZMod.UnitsCyclic
-import Mathlib.Data.Complex.Basic
+import Mathlib.Basic.Complex.Basic
 import Mathlib.Analysis.Complex.Exponential
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import FastMultiplication.ShorVerification.Framework.Math.ShorDefinition

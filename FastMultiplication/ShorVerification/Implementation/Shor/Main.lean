@@ -22,7 +22,6 @@ variable [MeasureClass qs]
 quantum order-finding, and the classical factor extraction theorem. -/
 theorem Shor_end_to_end_factoring
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]
     (T : ℕ → ℕ)
     (hT : ContinuedFractionSearchComplete T)
     (fact : ShorFactoringInstance)
@@ -73,7 +72,7 @@ theorem Shor_end_to_end_factoring
         }
     exact ⟨
       by
-        simpa [N, inst] using
+        simpa [N, inst] using!
           (Shor_correct (qs := qs) T hT inst x y b0 hm hn hinput),
       shors_classical_reduction
         a
@@ -98,7 +97,6 @@ probability is exactly that of `orderFindingApprox`.
 theorem Shor_correct_approx_lowered_uniform
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [IdealCtrlModMulExactSemantics qs]
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
     ShorCorrectApproxLoweredUniform T hT := by
   -- `K` is the single hoisted constant from the gate-level theorem; it is
@@ -162,7 +160,7 @@ theorem Shor_correct_approx_lowered_uniform
               (Q := ASize x.active)
 
     _ ≥
-        κ / (Nat.log2 inst.N : ℝ) ^ 4
+        κ / Real.log ((Nat.log2 inst.N : ℝ) + 1)
           -
         2 * (tbits x.active : ℝ) *
           Real.sqrt (2 * (K * η)) := by
@@ -182,7 +180,6 @@ the conclusion at that constant. This is the theorem it consumes.
 theorem Shor_correct_approx_lowered_of_modExp_bound_assertion
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [IdealCtrlModMulExactSemantics qs]
     (K : ℝ)
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
     ShorCorrectApproxLoweredOfModExpBound K T hT := by
@@ -204,14 +201,13 @@ is at most half of the ideal bound, and half of it survives.
 proof runs at the explicit constant `2048` (`modExpApprox_valid_dist_2048`), so
 a circuit builder can compute the precision it needs before building anything.
 
-The precision this asks for is `Θ(n⁻¹⁰)`, costing `O(log n)` work bits, so it
+The precision this asks for is `Θ(1 / (n log n)²)`, costing `O(log n)` work bits, so it
 composes with `shorGateCountBound_of_setup`, whose budget for
 `algorithm1ExtraBits` is linear in `n`.
 -/
 theorem Shor_correct_approx_lowered
     [GateSemanticsFacts qs]
     [LowerGateClass qs]
-    [IdealCtrlModMulExactSemantics qs]
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
     ShorCorrectApproxLowered T hT := by
   intro inst P hP x y work scratch flag b0 hm hn η hη hready
@@ -230,11 +226,11 @@ theorem Shor_correct_approx_lowered
     rw [hm, Nat.log2_eq_log_two]
     exact Nat.log_pos Nat.one_lt_two (by nlinarith)
   have hloss := lowering_loss_le_half η inst.N hN x.active hx hη
-  -- `linarith` sees `κ / L⁴` and `κ / (2L⁴)` as unrelated atoms, so relate them.
+  -- `linarith` sees `κ / log(L+1)` and `κ / (2 log(L+1))` as unrelated atoms, so relate them.
   have hLpos : (0 : ℝ) < (Nat.log2 inst.N : ℝ) := by exact_mod_cast hlogNat
   have hhalf :
-      κ / (Nat.log2 inst.N : ℝ) ^ 4 - κ / (2 * (Nat.log2 inst.N : ℝ) ^ 4)
-        = κ / (2 * (Nat.log2 inst.N : ℝ) ^ 4) := by
+      κ / Real.log ((Nat.log2 inst.N : ℝ) + 1) - κ / (2 * Real.log ((Nat.log2 inst.N : ℝ) + 1))
+        = κ / (2 * Real.log ((Nat.log2 inst.N : ℝ) + 1)) := by
     field_simp
     ring
   linarith [hmain, hloss, hhalf]

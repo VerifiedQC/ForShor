@@ -136,7 +136,7 @@ lemma not_successful_iff (a N : ℕ) :
     (¬Even (orderOf (a : ZMod N)) ∨
      (a : ZMod N) ^ (orderOf (a : ZMod N) / 2) = -1) := by
   unfold is_successful_choice is_period shor_success_conditions
-  push_neg
+  push Not
   constructor
   · intro h
     by_cases heven : Even (orderOf (a : ZMod N))
@@ -154,7 +154,7 @@ lemma div_orderOf_odd_of_pow_ne_one {G : Type*} [Group G]
   apply h
   -- If orderOf u = 0 then 0 ∣ n forces n = 0, so u^0 = 1, contradicting h
   have ho_pos : 0 < orderOf u := by
-    by_contra h0; push_neg at h0
+    by_contra h0; push Not at h0
     have : orderOf u = 0 := by omega
     rw [this, Nat.zero_dvd] at hdvd; subst hdvd; simp at h
   -- From n / orderOf u = 2k and orderOf u | n, derive n = orderOf u * (2 * k)
@@ -224,7 +224,7 @@ lemma even_of_even_mul_odd {a b : ℕ} (hab : Even (a * b)) (hb : Odd b) :
 lemma unit_pow_half_order_eq_neg_one {p : ℕ} (hp : Nat.Prime p) {x : (ZMod p)ˣ}
     (heven : Even (orderOf x)) :
     (x : ZMod p) ^ (orderOf x / 2) = -1 := by
-  letI : Fact p.Prime := ⟨hp⟩
+  let : Fact p.Prime := ⟨hp⟩
   have hsq : ((x : ZMod p) ^ (orderOf x / 2)) ^ 2 = 1 := by
     rw [← pow_mul, Nat.div_mul_cancel heven.two_dvd]
     simpa [orderOf_units] using pow_orderOf_eq_one (x : ZMod p)
@@ -246,7 +246,7 @@ lemma unit_pow_half_mul_odd_eq_neg_one {p : ℕ} (hp : Nat.Prime p) {x : (ZMod p
     {n : ℕ} (hdvd : orderOf x ∣ n) (hodd : Odd (n / orderOf x))
     (heven : Even (orderOf x)) :
     (x : ZMod p) ^ (n / 2) = -1 := by
-  letI : Fact p.Prime := ⟨hp⟩
+  let : Fact p.Prime := ⟨hp⟩
   have heven' : Even (orderOf x) := heven
   obtain ⟨m, hm⟩ := hdvd
   have hquot : n / orderOf x = m := by
@@ -349,7 +349,7 @@ lemma bad_nat_iff_pair_factorization_eq {p q a : ℕ} (hp : Nat.Prime p) (hq : N
       have hup_ne : up ^ (l / 2) ≠ 1 := by
         intro hup1
         have hpodd := hp.odd_of_ne_two hp2
-        haveI : Fact (2 < p) := by
+        have : Fact (2 < p) := by
           have hp1 : 1 < p := hp.one_lt
           rcases hpodd with ⟨k, hk⟩
           exact ⟨by omega⟩
@@ -362,7 +362,7 @@ lemma bad_nat_iff_pair_factorization_eq {p q a : ℕ} (hp : Nat.Prime p) (hq : N
       have huq_ne : uq ^ (l / 2) ≠ 1 := by
         intro huq1
         have hqodd := hq.odd_of_ne_two hq2
-        haveI : Fact (2 < q) := by
+        have : Fact (2 < q) := by
           have hq1 : 1 < q := hq.one_lt
           rcases hqodd with ⟨k, hk⟩
           exact ⟨by omega⟩
@@ -420,7 +420,7 @@ lemma bad_nat_iff_pair_factorization_eq {p q a : ℕ} (hp : Nat.Prime p) (hq : N
 lemma order_factorization_two_mul_generator_ne {p : ℕ} (hp : Nat.Prime p) (hp2 : p ≠ 2)
     {g u : (ZMod p)ˣ} (hg : orderOf g = p - 1) :
     (orderOf (u * g)).factorization 2 ≠ (orderOf u).factorization 2 := by
-  letI : Fact p.Prime := ⟨hp⟩
+  let : Fact p.Prime := ⟨hp⟩
   have hgcard : orderOf g = Nat.card (ZMod p)ˣ := by
     rw [Nat.card_eq_fintype_card]
     exact hg.trans (ZMod.card_units p).symm
@@ -473,8 +473,8 @@ lemma unsuccessful_bound {p q : ℕ} (hp : Nat.Prime p) (hq : Nat.Prime q)
       Nat.gcd a (p * q) = 1 ∧ ¬is_successful_choice a (p * q))).card
     ≤ (p - 1) * (q - 1) := by
   let hpqcop : Nat.Coprime p q := (Nat.coprime_primes hp hq).mpr hpq
-  letI : NeZero p := ⟨hp.ne_zero⟩
-  letI : NeZero q := ⟨hq.ne_zero⟩
+  let : NeZero p := ⟨hp.ne_zero⟩
+  let : NeZero q := ⟨hq.ne_zero⟩
   let φ : (ZMod (p * q))ˣ ≃* ((ZMod p)ˣ × (ZMod q)ˣ) :=
     (Units.mapEquiv (ZMod.chineseRemainder hpqcop).toMulEquiv).trans
       (@MulEquiv.prodUnits (ZMod p) (ZMod q) _ _)
@@ -487,8 +487,8 @@ lemma unsuccessful_bound {p q : ℕ} (hp : Nat.Prime p) (hq : Nat.Prime q)
   let goodPairs : Finset ((ZMod p)ˣ × (ZMod q)ˣ) := Finset.univ.filter (fun uv => ¬pairBadPred uv)
   let natToPair : ℕ → ((ZMod p)ˣ × (ZMod q)ˣ) := fun a =>
     if hcop : Nat.Coprime a (p * q) then φ (ZMod.unitOfCoprime a hcop) else 1
-  letI : Fact p.Prime := ⟨hp⟩
-  letI : Fact q.Prime := ⟨hq⟩
+  let : Fact p.Prime := ⟨hp⟩
+  let : Fact q.Prime := ⟨hq⟩
   obtain ⟨g, hg⟩ :=
     isCyclic_iff_exists_orderOf_eq_natCard.mp (ZMod.isCyclic_units_prime hp)
   have hg : orderOf g = p - 1 := by
@@ -531,7 +531,7 @@ lemma unsuccessful_bound {p q : ℕ} (hp : Nat.Prime p) (hq : Nat.Prime q)
       simp [Finset.mem_filter]
       have hnatToPair : natToPair a = φ (ZMod.unitOfCoprime a hcop) := by
         dsimp [natToPair]
-        rw [dif_pos hcop]
+        rw [dite_eq_left hcop]
       rw [hnatToPair, crt_units_unitOfCoprime hcop hpqcop]
       simpa [pairBadPred] using
         (bad_nat_iff_pair_factorization_eq hp hq hpq hp2 hq2 hcop).1 ha.2.2
@@ -551,10 +551,10 @@ lemma unsuccessful_bound {p q : ℕ} (hp : Nat.Prime p) (hq : Nat.Prime q)
       have hb_lt : b < p * q := Finset.mem_range.mp hb.1
       have hnatToPairA : natToPair a = φ (ZMod.unitOfCoprime a hacop) := by
         dsimp [natToPair]
-        rw [dif_pos hacop]
+        rw [dite_eq_left hacop]
       have hnatToPairB : natToPair b = φ (ZMod.unitOfCoprime b hbcop) := by
         dsimp [natToPair]
-        rw [dif_pos hbcop]
+        rw [dite_eq_left hbcop]
       have hunit : ZMod.unitOfCoprime a hacop = ZMod.unitOfCoprime b hbcop := by
         apply φ.injective
         calc
@@ -625,8 +625,8 @@ lemma unsuccessful_implies_v2_match {N p q a : ℕ}
   let l := orderOf (a : ZMod N)
   have hap : Nat.Coprime a p := Nat.Coprime.of_dvd_right hpN hcop
   have haq : Nat.Coprime a q := Nat.Coprime.of_dvd_right hqN hcop
-  haveI : Fact p.Prime := ⟨hp⟩
-  haveI : Fact q.Prime := ⟨hq⟩
+  have : Fact p.Prime := ⟨hp⟩
+  have : Fact q.Prime := ⟨hq⟩
   have hap0 : (a : ZMod p) ≠ 0 := by
     intro h0
     exact (hp.coprime_iff_not_dvd).1 hap.symm <| (zmod_eq_zero_iff_dvd (N := p) a).1 h0
@@ -672,8 +672,8 @@ lemma unsuccessful_implies_v2_match {N p q a : ℕ}
     have hq_gt_two : 2 < q := by
       have hq1 : 1 < q := hq.one_lt
       omega
-    haveI : Fact (2 < p) := ⟨hp_gt_two⟩
-    haveI : Fact (2 < q) := ⟨hq_gt_two⟩
+    have : Fact (2 < p) := ⟨hp_gt_two⟩
+    have : Fact (2 < q) := ⟨hq_gt_two⟩
     have hpowp_ne : (a : ZMod p) ^ (l / 2) ≠ 1 := by
       intro h1
       exact ZMod.neg_one_ne_one (hpowp.symm.trans h1)
@@ -736,13 +736,13 @@ lemma bad_pairs_le_half {p q : ℕ} (hp : Nat.Prime p) (hq : Nat.Prime q)
     2 * (Finset.univ.filter (fun uv : (ZMod p)ˣ × (ZMod q)ˣ =>
       (orderOf uv.1).factorization 2 = (orderOf uv.2).factorization 2)).card
     ≤ Fintype.card ((ZMod p)ˣ × (ZMod q)ˣ) := by
-  letI : NeZero p := ⟨hp.ne_zero⟩
-  letI : NeZero q := ⟨hq.ne_zero⟩
+  let : NeZero p := ⟨hp.ne_zero⟩
+  let : NeZero q := ⟨hq.ne_zero⟩
   let pairBadPred : ((ZMod p)ˣ × (ZMod q)ˣ) → Prop := fun uv =>
     (orderOf uv.1).factorization 2 = (orderOf uv.2).factorization 2
   let badPairs : Finset ((ZMod p)ˣ × (ZMod q)ˣ) := Finset.univ.filter pairBadPred
   let goodPairs : Finset ((ZMod p)ˣ × (ZMod q)ˣ) := Finset.univ.filter (fun uv => ¬pairBadPred uv)
-  letI : Fact p.Prime := ⟨hp⟩
+  let : Fact p.Prime := ⟨hp⟩
   obtain ⟨g, hg⟩ :=
     isCyclic_iff_exists_orderOf_eq_natCard.mp (ZMod.isCyclic_units_prime hp)
   have hg : orderOf g = p - 1 := by
@@ -793,12 +793,12 @@ lemma general_unsuccessful_bound {N p q : ℕ}
   by_cases hN0 : N = 0
   · subst hN0
     simp
-  · letI : NeZero N := ⟨hN0⟩
-    letI : NeZero p := ⟨hp.ne_zero⟩
-    letI : NeZero q := ⟨hq.ne_zero⟩
+  · let : NeZero N := ⟨hN0⟩
+    let : NeZero p := ⟨hp.ne_zero⟩
+    let : NeZero q := ⟨hq.ne_zero⟩
     let U := (ZMod N)ˣ
-    haveI : Fintype U := by dsimp [U]; infer_instance
-    haveI : DecidableEq U := by dsimp [U]; infer_instance
+    have : Fintype U := by dsimp [U]; infer_instance
+    have : DecidableEq U := by dsimp [U]; infer_instance
     let hpqcop : Nat.Coprime p q := (Nat.coprime_primes hp hq).mpr hpq
     have hpqN : p * q ∣ N := hpqcop.mul_dvd_of_dvd_of_dvd hpN hqN
     let φpq : (ZMod (p * q))ˣ ≃* ((ZMod p)ˣ × (ZMod q)ˣ) :=
@@ -876,7 +876,7 @@ lemma general_unsuccessful_bound {N p q : ℕ}
         rw [Finset.mem_filter]
         refine ⟨by simp, ?_⟩
         dsimp [natToUnit]
-        simpa [dif_pos hacop] using h_pairBad_of_unsuccessful hacop ha.2.2
+        simpa [dite_eq_left hacop] using h_pairBad_of_unsuccessful hacop ha.2.2
       · intro a ha b hb hEq
         change a ∈ (Finset.range N).filter (fun a => Nat.gcd a N = 1 ∧ ¬is_successful_choice a N) at ha
         change b ∈ (Finset.range N).filter (fun a => Nat.gcd a N = 1 ∧ ¬is_successful_choice a N) at hb
@@ -890,9 +890,9 @@ lemma general_unsuccessful_bound {N p q : ℕ}
         have ha_lt : a < N := Finset.mem_range.mp ha.1
         have hb_lt : b < N := Finset.mem_range.mp hb.1
         have hnatA : natToUnit a = ZMod.unitOfCoprime a hacop := by
-          simp [natToUnit, dif_pos hacop]
+          simp [natToUnit, dite_eq_left hacop]
         have hnatB : natToUnit b = ZMod.unitOfCoprime b hbcop := by
-          simp [natToUnit, dif_pos hbcop]
+          simp [natToUnit, dite_eq_left hbcop]
         have hunit : ZMod.unitOfCoprime a hacop = ZMod.unitOfCoprime b hbcop := by
           calc
             ZMod.unitOfCoprime a hacop = natToUnit a := hnatA.symm

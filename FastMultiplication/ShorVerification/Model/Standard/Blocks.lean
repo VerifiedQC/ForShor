@@ -65,7 +65,8 @@ theorem hadamardLift_ket (q : ℕ) (b : ModelBasis) :
       = ((1 / Real.sqrt (2 : ℝ) : ℂ)) •
           (ket (mWriteNat (qubitReg q) 0 b)
             + (if b q then (-1 : ℂ) else 1) • ket (mWriteNat (qubitReg q) 1 b)) := by
-  rw [hadamardLift, blockLift_ket]
+  show blockLift (qubitReg q) hadamardMatrix hadamardMatrix_unitary (ket b) = _
+  refine (blockLift_ket _ _ _ b).trans ?_
   have hidx := blockIdx_qubitReg q b
   show (∑ y : Fin 2, hadamardMatrix y (blockIdx (qubitReg q) b)
       • ket (mWriteNat (qubitReg q) y.1 b)) = _
@@ -153,7 +154,7 @@ theorem qftMatrix_unitary (w : ℕ) : qftMatrix w ∈ Matrix.unitaryGroup (Fin (
   rw [hsum, hss, Matrix.one_apply]
   by_cases hxx : x = x'
   · subst hxx
-    rw [mul_inv_cancel₀ (pow_ne_zero _ hz0), if_pos rfl]
+    rw [mul_inv_cancel₀ (pow_ne_zero _ hz0), ite_eq_left rfl]
     simp only [one_pow, Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul,
       mul_one]
     field_simp
@@ -170,7 +171,7 @@ theorem qftMatrix_unitary (w : ℕ) : qftMatrix w ∈ Matrix.unitaryGroup (Fin (
       rw [Fin.sum_univ_eq_sum_range (fun i => (zt ^ x'.1 * (zt ^ x.1)⁻¹) ^ i) (2 ^ w),
         geom_sum_eq htne, htN]
       simp
-    rw [hgeom, if_neg hxx, mul_zero]
+    rw [hgeom, ite_eq_right hxx, mul_zero]
 
 /-- The QFT on an extendable register's active part. -/
 noncomputable def qftLift (e : ExtReg) : State ≃ₗᵢ[ℂ] State :=
@@ -183,9 +184,11 @@ theorem qftLift_ket (e : ExtReg) (b : ModelBasis) :
           ∑ y : Fin (2 ^ e.width),
             (qftPhase (2 ^ e.width) (mToNat e.active b) y.1) •
               ket (mWriteNat e.active y.1 b) := by
-  rw [qftLift, blockLift_ket, Finset.smul_sum]
+  show blockLift e.active (qftMatrix e.width) (qftMatrix_unitary e.width) (ket b) = _
+  refine (blockLift_ket _ _ _ b).trans ?_
+  simp only [Finset.smul_sum]
   refine Finset.sum_congr rfl fun y _ => ?_
-  rw [smul_smul, qftMatrix, blockIdx_val]
+  simp only [smul_smul, qftMatrix, blockIdx_val]
 
 /-! ## Diagonal phases -/
 

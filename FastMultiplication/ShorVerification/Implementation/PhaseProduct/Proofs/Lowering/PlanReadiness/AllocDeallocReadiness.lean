@@ -51,6 +51,29 @@ lemma PhaseLoweringReady.cast_initSize
   subst h
   exact hready
 
+/-- Readiness of a dependent `if` between two plans of one type follows from readiness of
+both branches. The `Decidable` instance is an ordinary implicit argument so that it unifies
+with whichever instance the plan was built with. -/
+lemma PhaseLoweringReady.dite
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [LowerGateClass qs]
+    [GateSemanticsFacts qs]
+    {P : ShorLoweringPolicy}
+    {initSize : ℕ}
+    {U : Gate}
+    {c : Prop}
+    {inst : Decidable c}
+    {t : c → PhaseLoweringPlan P initSize U}
+    {e : ¬c → PhaseLoweringPlan P initSize U}
+    {ψ : qs.State}
+    (ht : ∀ h, PhaseLoweringReady qs (t h) ψ)
+    (he : ∀ h, PhaseLoweringReady qs (e h) ψ) :
+    PhaseLoweringReady qs (@dite _ c inst t e) ψ := by
+  by_cases h : c
+  · rw [dite_eq_left h]; exact ht h
+  · rw [dite_eq_right h]; exact he h
+
 /-- Allocation chunk plans are always ready because they contain only primitive low gates. -/
 lemma planAllocChunkGate_ready
     (qs : QSemantics)
@@ -66,39 +89,23 @@ lemma planAllocChunkGate_ready
     PhaseLoweringReady qs
       (planAllocChunkGate (P := P) initSize i src dst)
       ψ := by
-  by_cases hzero : extraDelta src dst = 0
-  · have hdecZero : instDecidableEqNat (extraDelta src dst) 0 = Decidable.isTrue hzero :=
-      Subsingleton.elim _ _
-    unfold planAllocChunkGate
-    simp only [hdecZero]
-    dsimp only [_root_.id]
+  unfold planAllocChunkGate
+  try dsimp only [_root_.id]
+  apply PhaseLoweringReady.dite
+  · intro hzero
     apply PhaseLoweringReady.cast_gate_mpr
     all_goals simp [allocChunkGate, hzero, PhaseLoweringReady]
-  · by_cases htop : isTopChunk i
-    · have hdecZero : instDecidableEqNat (extraDelta src dst) 0 = Decidable.isFalse hzero :=
-        Subsingleton.elim _ _
-      have hdecTop : instDecidableIsTopChunk i = Decidable.isTrue htop := Subsingleton.elim _ _
-      unfold planAllocChunkGate
-      simp only [hdecZero, hdecTop]
-      dsimp only [_root_.id]
-      apply PhaseLoweringReady.cast_gate_mpr
-      all_goals
-        first
-        | apply PhaseLoweringReady.cast_gate_mpr
-        | simp [allocChunkGate, hzero, htop]
-      all_goals simp [htop, PhaseLoweringReady]
-    · have hdecZero : instDecidableEqNat (extraDelta src dst) 0 = Decidable.isFalse hzero :=
-        Subsingleton.elim _ _
-      have hdecTop : instDecidableIsTopChunk i = Decidable.isFalse htop := Subsingleton.elim _ _
-      unfold planAllocChunkGate
-      simp only [hdecZero, hdecTop]
-      dsimp only [_root_.id]
-      apply PhaseLoweringReady.cast_gate_mpr
-      all_goals
-        first
-        | apply PhaseLoweringReady.cast_gate_mpr
-        | simp [allocChunkGate, hzero, htop]
-      all_goals simp [htop, PhaseLoweringReady]
+  · intro hzero
+    apply PhaseLoweringReady.cast_gate_mpr
+    case hready =>
+      apply PhaseLoweringReady.dite
+      · intro htop
+        apply PhaseLoweringReady.cast_gate_mpr
+        all_goals simp [htop, PhaseLoweringReady]
+      · intro htop
+        apply PhaseLoweringReady.cast_gate_mpr
+        all_goals simp [htop, PhaseLoweringReady]
+    all_goals simp [allocChunkGate, hzero]
 
 /-- Auxiliary allocation plans are ready for every starting state. -/
 lemma planCompileSignedAllocationsAux_ready
@@ -159,39 +166,23 @@ lemma planDeallocChunkGate_ready
     PhaseLoweringReady qs
       (planDeallocChunkGate (P := P) initSize i src dst)
       ψ := by
-  by_cases hzero : extraDelta src dst = 0
-  · have hdecZero : instDecidableEqNat (extraDelta src dst) 0 = Decidable.isTrue hzero :=
-      Subsingleton.elim _ _
-    unfold planDeallocChunkGate
-    simp only [hdecZero]
-    dsimp only [_root_.id]
+  unfold planDeallocChunkGate
+  try dsimp only [_root_.id]
+  apply PhaseLoweringReady.dite
+  · intro hzero
     apply PhaseLoweringReady.cast_gate_mpr
     all_goals simp [deallocChunkGate, hzero, PhaseLoweringReady]
-  · by_cases htop : isTopChunk i
-    · have hdecZero : instDecidableEqNat (extraDelta src dst) 0 = Decidable.isFalse hzero :=
-        Subsingleton.elim _ _
-      have hdecTop : instDecidableIsTopChunk i = Decidable.isTrue htop := Subsingleton.elim _ _
-      unfold planDeallocChunkGate
-      simp only [hdecZero, hdecTop]
-      dsimp only [_root_.id]
-      apply PhaseLoweringReady.cast_gate_mpr
-      all_goals
-        first
-        | apply PhaseLoweringReady.cast_gate_mpr
-        | simp [deallocChunkGate, hzero, htop]
-      all_goals simp [htop, PhaseLoweringReady]
-    · have hdecZero : instDecidableEqNat (extraDelta src dst) 0 = Decidable.isFalse hzero :=
-        Subsingleton.elim _ _
-      have hdecTop : instDecidableIsTopChunk i = Decidable.isFalse htop := Subsingleton.elim _ _
-      unfold planDeallocChunkGate
-      simp only [hdecZero, hdecTop]
-      dsimp only [_root_.id]
-      apply PhaseLoweringReady.cast_gate_mpr
-      all_goals
-        first
-        | apply PhaseLoweringReady.cast_gate_mpr
-        | simp [deallocChunkGate, hzero, htop]
-      all_goals simp [htop, PhaseLoweringReady]
+  · intro hzero
+    apply PhaseLoweringReady.cast_gate_mpr
+    case hready =>
+      apply PhaseLoweringReady.dite
+      · intro htop
+        apply PhaseLoweringReady.cast_gate_mpr
+        all_goals simp [htop, PhaseLoweringReady]
+      · intro htop
+        apply PhaseLoweringReady.cast_gate_mpr
+        all_goals simp [htop, PhaseLoweringReady]
+    all_goals simp [deallocChunkGate, hzero]
 
 /-- Auxiliary deallocation plans are ready for every starting state. -/
 lemma planCompileSignedDeallocationsAux_ready

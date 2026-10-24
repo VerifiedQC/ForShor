@@ -26,13 +26,10 @@ theorem evalL_eq_eval_of_ket
     ∀ ψ : qs.State, LowerGateClass.evalL (qs := qs) L ψ = qs.eval U ψ := by
   refine qs.state_induction (fun ψ => LowerGateClass.evalL (qs := qs) L ψ = qs.eval U ψ)
     ?hzero ?hadd ?hsmul hket
-  · change LowerGateClass.evalL (qs := qs) L 0 = qs.eval U 0
-    rw [LowerGateClass.evalL_zero, QSemantics.eval_zero]
+  · rw [LowerGateClass.evalL_zero, QSemantics.eval_zero]
   · intro ψ φ hψ hφ
-    change LowerGateClass.evalL (qs := qs) L (ψ + φ) = qs.eval U (ψ + φ)
     rw [LowerGateClass.evalL_add, QSemantics.eval_add, hψ, hφ]
   · intro a ψ hψ
-    change LowerGateClass.evalL (qs := qs) L (a • ψ) = qs.eval U (a • ψ)
     rw [LowerGateClass.evalL_smul, QSemantics.eval_smul, hψ]
 
 theorem evalL_H

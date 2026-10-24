@@ -20,8 +20,9 @@ determinant.
 
 What it catches:
 
-* `native_decide` — `Lean.ofReduceBool` and `Lean.trustCompiler`. This is the
-  one the repository shipped with and the reason this file exists: a
+* `native_decide` — an auxiliary axiom `<decl>._native.native_decide.ax_…`
+  asserting the compiled evaluator's answer.
+  This is the one the repository shipped with and the reason this file exists: a
   `native_decide` proof is checked by the compiled evaluator, not by the
   kernel, so a submission closed that way is not kernel-checked whatever the
   documentation says.
@@ -54,9 +55,14 @@ open Lean Elab Command
 /-- The axioms a kernel-checked declaration may depend on. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
 
+/-- `native_decide` records its trust as an auxiliary axiom named
+`<decl>._native.native_decide.ax_…`, one per use. -/
+def isNativeDecideAxiom (a : Name) : Bool :=
+  a.components.contains `_native
+
 /-- Why a disallowed axiom is there, when the name alone does not say. -/
 def axiomNote (a : Name) : String :=
-  if a == ``Lean.ofReduceBool || a == ``Lean.ofReduceNat || a == ``Lean.trustCompiler then
+  if isNativeDecideAxiom a then
     "  -- `native_decide`: the compiled evaluator is trusted, the kernel is not run"
   else if a == ``sorryAx then
     "  -- `sorry`, or a tactic that failed and was admitted"
@@ -120,8 +126,7 @@ theorem native_bad : (2 : Nat) + 2 = 4 := by native_decide
 
 /--
 error: 'Shor.Audit.Test.native_bad' is not kernel-checked. Axioms outside the allowlist (propext, Classical.choice, Quot.sound):
-  Lean.ofReduceBool  -- `native_decide`: the compiled evaluator is trusted, the kernel is not run
-  Lean.trustCompiler  -- `native_decide`: the compiled evaluator is trusted, the kernel is not run
+  Shor.Audit.Test.native_bad._native.native_decide.ax_1_1  -- `native_decide`: the compiled evaluator is trusted, the kernel is not run
 -/
 #guard_msgs in
 #assert_axioms native_bad
@@ -192,8 +197,7 @@ end Shadow
 
 /--
 error: 'Shor.Audit.Test.Shadow.target' is not kernel-checked. Axioms outside the allowlist (propext, Classical.choice, Quot.sound):
-  Lean.ofReduceBool  -- `native_decide`: the compiled evaluator is trusted, the kernel is not run
-  Lean.trustCompiler  -- `native_decide`: the compiled evaluator is trusted, the kernel is not run
+  Shor.Audit.Test.Shadow.target._native.native_decide.ax_1_1  -- `native_decide`: the compiled evaluator is trusted, the kernel is not run
 -/
 #guard_msgs in
 #assert_axioms _root_.Shor.Audit.Test.Shadow.target

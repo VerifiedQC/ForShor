@@ -155,7 +155,7 @@ theorem gjCoeffFromPts_eq_cramerCoeffFromPts (k : ℕ) (pts : Fin (q k) → Poin
   · rfl
   · dsimp only
     by_cases hchk : isRightInverseRows (interpMatrix k pts) inv = true
-    · rw [if_pos hchk]
+    · rw [ite_eq_left hchk]
       have hmul : interpMatrix k pts * rowsToMatrix (n := q k) inv = 1 :=
         mul_rowsToMatrix_eq_one_of_isRightInverseRows hchk
       have hdet : (interpMatrix k pts).det ≠ 0 :=
@@ -164,7 +164,7 @@ theorem gjCoeffFromPts_eq_cramerCoeffFromPts (k : ℕ) (pts : Fin (q k) → Poin
       funext i
       simp only [phaseCoeffFromPts, Matrix.inv_eq_right_inv hmul, Matrix.mul_apply,
         ToomCookMath.radixRow]
-    · rw [if_neg hchk]
+    · rw [ite_eq_right hchk]
 
 /-- Compiled code evaluates `cramerCoeffFromPts` as `gjCoeffFromPts`; the
 kernel, and every proof, sees Cramer's rule. -/

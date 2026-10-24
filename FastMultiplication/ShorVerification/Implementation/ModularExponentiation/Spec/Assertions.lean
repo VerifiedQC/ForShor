@@ -22,7 +22,7 @@ def ModExpApproxValidDistUniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs]: Prop :=
+: Prop :=
   ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧
     ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
       ModExpConfig.ValidUnitState qs cfg ψ →
@@ -40,7 +40,7 @@ def ModExpApproxValidDist2048
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs] : Prop :=
+ : Prop :=
   ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
     ModExpConfig.ValidUnitState qs cfg ψ →
     ‖qs.eval (ModExpConfig.approxGate cfg) ψ -

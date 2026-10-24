@@ -127,8 +127,8 @@ example :
 -- `[1,1,1]`, i.e. `c = (-15, 6, 10)`. Stated on `gjCoeffFromPts` directly so
 -- the test is of the eliminator's output.
 example :
-    gjCoeffFromPts 2 (ptsToFin 2 [Operations.Point.int 0, Operations.Point.int (-1), Operations.Point.int 1] rfl) 4
-      = ![-15, 6, 10] := by
+    List.ofFn (gjCoeffFromPts 2 (ptsToFin 2 [Operations.Point.int 0, Operations.Point.int (-1), Operations.Point.int 1] rfl) 4)
+      = [-15, 6, 10] := by
   native_decide
 
 -- 7c. On the standard `k = 5` table the elimination succeeds and the
@@ -199,7 +199,7 @@ set_option maxHeartbeats 1000000 in
 extract_ir_doc_with_pp_body pp_body_doc_k2 smallLowering
 
 abbrev r2_1_k : Nat := 2
-def r2_1_hk : 1 < r2_1_k := by decide
+theorem r2_1_hk : 1 < r2_1_k := by decide
 def r2_1_ops := (standardTableInstance r2_1_k r2_1_hk).ops
 
 def r2_1_x : ExtReg := ExtReg.withReserve (Reg.interval 0 4) (Reg.interval 4 12) (by decide)
@@ -325,7 +325,7 @@ end NaiveLeaf
 section PhaseProduct
 
 abbrev r2_2_k : Nat := 2
-def r2_2_hk : 1 < r2_2_k := by decide
+theorem r2_2_hk : 1 < r2_2_k := by decide
 def r2_2_ops := (standardTableInstance r2_2_k r2_2_hk).ops
 def r2_2_phi : Angle := (1 : ℚ) / 4
 
@@ -373,7 +373,7 @@ section PhaseProduct_Base
 def r2_2b_x : ExtReg := ExtReg.ofReg (Reg.interval 0 8)
 def r2_2b_z : ExtReg := ExtReg.ofReg (Reg.interval 100 8)
 
-def r2_2b_hworkspace : SignedRecursiveWorkspaceOK r2_2_ops r2_2b_x r2_2b_z :=
+theorem r2_2b_hworkspace : SignedRecursiveWorkspaceOK r2_2_ops r2_2b_x r2_2b_z :=
   ⟨by decide, by native_decide, by native_decide⟩
 
 def r2_2b_real : LowGate :=
@@ -395,7 +395,7 @@ section PhaseProduct_Rec
 def r2_2r_x : ExtReg := ExtReg.withReserve (Reg.interval 0 16) (Reg.interval 16 100) (by decide)
 def r2_2r_z : ExtReg := ExtReg.withReserve (Reg.interval 200 16) (Reg.interval 216 100) (by decide)
 
-def r2_2r_hworkspace : SignedRecursiveWorkspaceOK r2_2_ops r2_2r_x r2_2r_z :=
+theorem r2_2r_hworkspace : SignedRecursiveWorkspaceOK r2_2_ops r2_2r_x r2_2r_z :=
   ⟨by native_decide, by native_decide, by native_decide⟩
 
 def r2_2r_real : LowGate :=
@@ -465,7 +465,7 @@ end NaiveCLeaf
 section CPhaseProduct
 
 abbrev r2_4_k : Nat := 2
-def r2_4_hk : 1 < r2_4_k := by decide
+theorem r2_4_hk : 1 < r2_4_k := by decide
 def r2_4_ops := (standardTableInstance r2_4_k r2_4_hk).ops
 def r2_4_phi : Angle := (1 : ℚ) / 4
 def r2_4_ctrlIdx : Nat := 1000
@@ -510,7 +510,7 @@ section CPhaseProduct_Base
 def r2_4b_x : ExtReg := ExtReg.ofReg (Reg.interval 0 8)
 def r2_4b_z : ExtReg := ExtReg.ofReg (Reg.interval 100 8)
 
-def r2_4b_hworkspace : CSignedRecursiveWorkspaceOK r2_4_ops r2_4_ctrlIdx r2_4b_x r2_4b_z :=
+theorem r2_4b_hworkspace : CSignedRecursiveWorkspaceOK r2_4_ops r2_4_ctrlIdx r2_4b_x r2_4b_z :=
   { owned_disjoint := by decide
     x_reserve_sufficient := by native_decide
     z_reserve_sufficient := by native_decide
@@ -537,7 +537,7 @@ section CPhaseProduct_Rec
 def r2_4r_x : ExtReg := ExtReg.withReserve (Reg.interval 0 16) (Reg.interval 16 100) (by decide)
 def r2_4r_z : ExtReg := ExtReg.withReserve (Reg.interval 200 16) (Reg.interval 216 100) (by decide)
 
-def r2_4r_hworkspace : CSignedRecursiveWorkspaceOK r2_4_ops r2_4_ctrlIdx r2_4r_x r2_4r_z :=
+theorem r2_4r_hworkspace : CSignedRecursiveWorkspaceOK r2_4_ops r2_4_ctrlIdx r2_4r_x r2_4r_z :=
   { owned_disjoint := by native_decide
     x_reserve_sufficient := by native_decide
     z_reserve_sufficient := by native_decide
@@ -574,7 +574,7 @@ end CPhaseProduct
 section Qft
 
 abbrev r2_5_k : Nat := 2
-def r2_5_hk : 1 < r2_5_k := by decide
+theorem r2_5_hk : 1 < r2_5_k := by decide
 def r2_5_ops := (standardTableInstance r2_5_k r2_5_hk).ops
 
 set_option maxHeartbeats 1000000 in
@@ -614,7 +614,7 @@ partial def r2_5_flatten : LowGate → List LowGate
 section Qft_W4
 
 def r2_5w4_r : ExtReg := ExtReg.withReserve (Reg.interval 0 4) (Reg.interval 4 2) (by decide)
-def r2_5w4_hworkspace : QFTReserveOK r2_5_ops r2_5w4_r := ⟨by native_decide⟩
+theorem r2_5w4_hworkspace : QFTReserveOK r2_5_ops r2_5w4_r := ⟨by native_decide⟩
 def r2_5w4_xWork : ExtReg := ExtReg.ofReg (qftXWork r2_5_ops r2_5w4_r)
 def r2_5w4_zWork : ExtReg := ExtReg.ofReg (qftZWork r2_5_ops r2_5w4_r)
 def r2_5w4_real : LowGate :=
@@ -635,7 +635,7 @@ end Qft_W4
 section Qft_W8
 
 def r2_5w8_r : ExtReg := ExtReg.withReserve (Reg.interval 0 8) (Reg.interval 8 2) (by decide)
-def r2_5w8_hworkspace : QFTReserveOK r2_5_ops r2_5w8_r := ⟨by native_decide⟩
+theorem r2_5w8_hworkspace : QFTReserveOK r2_5_ops r2_5w8_r := ⟨by native_decide⟩
 def r2_5w8_xWork : ExtReg := ExtReg.ofReg (qftXWork r2_5_ops r2_5w8_r)
 def r2_5w8_zWork : ExtReg := ExtReg.ofReg (qftZWork r2_5_ops r2_5w8_r)
 def r2_5w8_real : LowGate :=
@@ -714,7 +714,7 @@ def r2_6g_pol : ShorLoweringPolicy := smallPolicy
 def r2_6g_layout : Reference.ReferenceShorLayout :=
   Reference.allocateReferenceLayout r2_6g_pol smallInst 0
 
-def r2_6g_hworkspace : ModMulCircuitWorkspaceOK r2_6g_layout.data r2_6g_layout.work :=
+theorem r2_6g_hworkspace : ModMulCircuitWorkspaceOK r2_6g_layout.data r2_6g_layout.work :=
   Reference.reference_modMulCircuitWorkspaceOK r2_6g_pol smallInst 0
 
 def r2_6g_hstep4 :
@@ -829,7 +829,7 @@ section Genericity
 section Genericity_PhaseProduct_K3Standard
 
 abbrev r2_7pp3_k : Nat := 3
-def r2_7pp3_hk : 1 < r2_7pp3_k := by decide
+theorem r2_7pp3_hk : 1 < r2_7pp3_k := by decide
 def r2_7pp3_ops := (standardTableInstance r2_7pp3_k r2_7pp3_hk).ops
 def r2_7pp3_phi : Angle := (1 : ℚ) / 4
 
@@ -867,7 +867,7 @@ partial def r2_7pp3_flatten : LowGate → List LowGate
 def r2_7pp3_x : ExtReg := ExtReg.ofReg (Reg.interval 0 8)
 def r2_7pp3_z : ExtReg := ExtReg.ofReg (Reg.interval 100 8)
 
-def r2_7pp3_hworkspace : SignedRecursiveWorkspaceOK r2_7pp3_ops r2_7pp3_x r2_7pp3_z :=
+theorem r2_7pp3_hworkspace : SignedRecursiveWorkspaceOK r2_7pp3_ops r2_7pp3_x r2_7pp3_z :=
   ⟨by decide, by native_decide, by native_decide⟩
 
 def r2_7pp3_real : LowGate :=
@@ -898,7 +898,7 @@ end Genericity_PhaseProduct_K3Standard
 section Genericity_PhaseProduct_CustomTable
 
 abbrev r2_7c_k : Nat := 2
-def r2_7c_hk : 1 < r2_7c_k := by decide
+theorem r2_7c_hk : 1 < r2_7c_k := by decide
 
 /-- The standard `k = 2` ops, plus one semantically-inert `shiftL i 0 ;;
 shiftR i 0` pair (shifting by `0` is the identity on `State.shiftLReg`/
@@ -959,7 +959,7 @@ partial def r2_7c_flatten : LowGate → List LowGate
 def r2_7c_x : ExtReg := ExtReg.withReserve (Reg.interval 0 16) (Reg.interval 16 100) (by decide)
 def r2_7c_z : ExtReg := ExtReg.withReserve (Reg.interval 200 16) (Reg.interval 216 100) (by decide)
 
-def r2_7c_hworkspace : SignedRecursiveWorkspaceOK r2_7c_ops r2_7c_x r2_7c_z :=
+theorem r2_7c_hworkspace : SignedRecursiveWorkspaceOK r2_7c_ops r2_7c_x r2_7c_z :=
   ⟨by native_decide, by native_decide, by native_decide⟩
 
 def r2_7c_real : LowGate :=
@@ -980,7 +980,7 @@ end Genericity_PhaseProduct_CustomTable
 section Genericity_Qft_K3Standard
 
 abbrev r2_7q3_k : Nat := 3
-def r2_7q3_hk : 1 < r2_7q3_k := by decide
+theorem r2_7q3_hk : 1 < r2_7q3_k := by decide
 def r2_7q3_ops := (standardTableInstance r2_7q3_k r2_7q3_hk).ops
 
 set_option maxHeartbeats 4000000 in
@@ -1020,7 +1020,7 @@ partial def r2_7q3_flatten : LowGate → List LowGate
   | g => [g]
 
 def r2_7q3_r : ExtReg := ExtReg.withReserve (Reg.interval 0 4) (Reg.interval 4 2) (by decide)
-def r2_7q3_hworkspace : QFTReserveOK r2_7q3_ops r2_7q3_r := ⟨by native_decide⟩
+theorem r2_7q3_hworkspace : QFTReserveOK r2_7q3_ops r2_7q3_r := ⟨by native_decide⟩
 def r2_7q3_xWork : ExtReg := ExtReg.ofReg (qftXWork r2_7q3_ops r2_7q3_r)
 def r2_7q3_zWork : ExtReg := ExtReg.ofReg (qftZWork r2_7q3_ops r2_7q3_r)
 def r2_7q3_real : LowGate :=
@@ -1075,7 +1075,7 @@ partial def r2_7cq_flatten : LowGate → List LowGate
   | g => [g]
 
 def r2_7cq_r : ExtReg := ExtReg.withReserve (Reg.interval 0 4) (Reg.interval 4 2) (by decide)
-def r2_7cq_hworkspace : QFTReserveOK r2_7c_ops r2_7cq_r := ⟨by native_decide⟩
+theorem r2_7cq_hworkspace : QFTReserveOK r2_7c_ops r2_7cq_r := ⟨by native_decide⟩
 def r2_7cq_xWork : ExtReg := ExtReg.ofReg (qftXWork r2_7c_ops r2_7cq_r)
 def r2_7cq_zWork : ExtReg := ExtReg.ofReg (qftZWork r2_7c_ops r2_7cq_r)
 def r2_7cq_real : LowGate := lowerQFT r2_7c_k r2_7c_hk r2_7c_ops

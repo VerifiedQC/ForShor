@@ -15,7 +15,7 @@ import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
 import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
-import Mathlib.Data.Real.Basic
+import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 
@@ -151,13 +151,13 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
           hisolated.exponent_work_disjoint
           (ownedDisjoint_symm
             hsetup.step4_workspace.work_scratch_disjoint)
-      simpa [carrier, shorConcreteCarrier] using
+      simpa [carrier, shorConcreteCarrier] using!
         (lowered_H_reg_ready_and_full_clean
           qs P hP carrier data work
           hcarrierData hcarrierWork
           hworkspace.1 ψ
           (by
-            simpa [carrier, shorConcreteCarrier] using hclean))
+            simpa [carrier, shorConcreteCarrier] using! hclean))
 
   let ψ2 :=
     LowerGateClass.evalL
@@ -186,13 +186,13 @@ theorem lowered_orderFindingApprox_ready_and_full_clean
           x scratch data hisolated.exponent_scratch_disjoint
           hsetup.exponent_data_disjoint
           (ownedDisjoint_symm hdataScratch)
-      simpa [carrier, shorConcreteCarrier] using
+      simpa [carrier, shorConcreteCarrier] using!
         (lowered_initY1_ready_and_full_clean
           qs P hP carrier data work
           hcarrierData hsetup.circuit_workspace
           hworkspace.2.1 ψ1
           (by
-            simpa [carrier, shorConcreteCarrier] using h1.2))
+            simpa [carrier, shorConcreteCarrier] using! h1.2))
 
   let ψ3 :=
     LowerGateClass.evalL

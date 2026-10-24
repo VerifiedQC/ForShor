@@ -298,7 +298,7 @@ lemma phaseChunkActive_width (e : ExtReg) (k W : ℕ) (i : Fin k) (hvalid : Vali
       omega
     have hstart : i.1 * W ≤ e.width := by simpa [hik] using hbound
     apply regSize_drop_take_of_add_le
-    simp only [phaseChunkStart, phaseSplitLogicalWidth, htop, if_pos]
+    simp only [phaseChunkStart, phaseSplitLogicalWidth, htop, ite_eq_left]
     exact le_of_eq <| by
       calc
         i.1 * W + (e.width - i.1 * W) = e.width := Nat.add_sub_of_le hstart
@@ -314,7 +314,7 @@ lemma phaseChunkActive_width (e : ExtReg) (k W : ℕ) (i : Fin k) (hvalid : Vali
         _ ≤ (k - 1) * W := hmul
         _ ≤ e.width := hbound
     apply regSize_drop_take_of_add_le
-    simpa [phaseChunkStart, phaseSplitLogicalWidth, htop] using hfit
+    simpa [phaseChunkStart, phaseSplitLogicalWidth, htop, ExtReg.width] using hfit
 
 lemma PhaseSplitLayout.child_width {parent : ExtReg} {k W : ℕ} (layout : PhaseSplitLayout parent k W)
     (i : Fin k) :

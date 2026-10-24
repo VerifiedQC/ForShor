@@ -103,7 +103,7 @@ theorem modMul_approx_valid_dist_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
-    [IdealCtrlModMulExactSemantics qs] :
+ :
     ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧ ∀ (η : ℝ) (cfg : ModMulConfig η) (ψ : qs.State),
       ModMulConfig.ValidUnitState qs cfg ψ →
       ‖qs.eval (ModMulConfig.approxGate cfg) ψ - qs.eval (ModMulConfig.idealGate cfg) ψ‖ ≤ stepErr K η := by

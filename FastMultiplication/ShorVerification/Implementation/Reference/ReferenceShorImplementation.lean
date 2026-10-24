@@ -25,7 +25,6 @@ variable [RegEncoding qs.Basis]
 variable [MeasureClass qs]
 variable [GateSemanticsFacts qs]
 variable [LowerGateClass qs]
-variable [IdealCtrlModMulExactSemantics qs]
 
 
 /-! =========================================================
@@ -69,7 +68,7 @@ noncomputable def referenceApproximationErrorAt (m N : ℕ) : ℝ :=
 
 /-- Raw analytical single-run success lower bound at approximation level `m`. -/
 noncomputable def referenceRawSuccessProbabilityAt (m N : ℕ) : ℝ :=
-  κ / (Nat.log2 N : ℝ) ^ 4 -
+  κ / Real.log ((Nat.log2 N : ℝ) + 1) -
     referenceApproximationErrorAt m N
 
 /-- Declared probability bound at `m`, clamped to `[0,1]`. -/
@@ -154,7 +153,7 @@ theorem referenceProgramAt_success
       referenceApproxSetup,
       referenceMinimalSetup,
       referenceLayout_ready
-    ] using hb
+    ] using! hb
 
   have hprob_nonneg :
       0 ≤
@@ -267,22 +266,24 @@ theorem exists_reference_positive_precision
 
   have hκ : 0 < κ := κ_pos
 
-  have hideal : 0 < κ / (Nat.log2 N : ℝ) ^ 4 := by
-    positivity
+  have hD : 0 < Real.log ((Nat.log2 N : ℝ) + 1) :=
+    Real.log_pos (by linarith)
+
+  have hideal : 0 < κ / Real.log ((Nat.log2 N : ℝ) + 1) := div_pos hκ hD
 
   obtain ⟨m, hm⟩ :=
     exists_precision_error_le
       (tbits (Reg.interval 0 (Nat.log2 (2 * N ^ 2))))
       (referenceK)
       referenceK_nonneg
-      (ε := κ / (Nat.log2 N : ℝ) ^ 4 / 2)
-      (by positivity)
+      (ε := κ / Real.log ((Nat.log2 N : ℝ) + 1) / 2)
+      (div_pos hideal two_pos)
 
   refine ⟨m, ?_⟩
 
   have herr :
       referenceApproximationErrorAt m N ≤
-        κ / (Nat.log2 N : ℝ) ^ 4 / 2 := by
+        κ / Real.log ((Nat.log2 N : ℝ) + 1) / 2 := by
     simpa [referenceApproximationErrorAt] using hm
 
   have hraw :
@@ -309,7 +310,7 @@ theorem referenceChosenPrecision_positive
     0 <
       referenceSuccessProbabilityAt
         (referenceChosenPrecision N) N := by
-  rw [referenceChosenPrecision, dif_pos hN]
+  rw [referenceChosenPrecision, dite_eq_left hN]
   exact Nat.find_spec
     (exists_reference_positive_precision N hN)
 
@@ -453,8 +454,7 @@ noncomputable def referenceGateCount
   LowGate.gateCount shorGateCostModel
     (referenceSubmittedProgram P hP inst).circuit
 
-omit [MeasureClass qs] [GateSemanticsFacts qs] [LowerGateClass qs]
-  [IdealCtrlModMulExactSemantics qs] in
+omit [MeasureClass qs] [GateSemanticsFacts qs] [LowerGateClass qs] in
 theorem referenceGateCount_correct
     (P : ShorLoweringPolicy) (hP : P.Admissible) (inst : ShorOrderFindingInstance) :
     LowGate.gateCount shorGateCostModel

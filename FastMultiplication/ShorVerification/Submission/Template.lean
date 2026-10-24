@@ -47,8 +47,8 @@ returns  := by decide +kernel                                       -- C4
 ```
 
 `decide +kernel`, not `native_decide`: `native_decide` closes a goal by
-running the *compiled evaluator* and asserting the result through
-`Lean.ofReduceBool`, which is an axiom. `decide +kernel` makes Lean's kernel
+running the *compiled evaluator* and asserting the result through an
+axiom. `decide +kernel` makes Lean's kernel
 reduce the decision procedure itself. `Submission/Check.lean` runs
 `#assert_axioms Submission.setup`, so a submission that reaches for
 `native_decide` — or for `sorry`, or for an `axiom` of its own — fails the

@@ -469,7 +469,7 @@ theorem genOpsWithProduct_PhaseProductCoverage
                 (hp := hbuild) (hrun₁) (hphase)
 
             simpa [List.append_assoc]
-              using phaseProduct_coverage_check_append_aux hk
+              using! phaseProduct_coverage_check_append_aux hk
                 (p := computeLocal2 (k := k) hk x ++ [valid_ops.phaseProduct (finZero hk)])
                 (q := apply_Op_inverse (computeLocal2 (k := k) hk x))
                 (σ := State.start_state (k := k)) (σret := σ₁)
@@ -554,7 +554,7 @@ theorem genOpsWithProduct_PhaseProductCoverage
                 (hp := hbuild) (hrun₁) (hphase)
 
             simpa [List.append_assoc]
-              using phaseProduct_coverage_check_append_aux hk
+              using! phaseProduct_coverage_check_append_aux hk
                 (p := computeFracLocal2 (k := k) hk c ++ [valid_ops.phaseProduct (finLast hk)])
                 (q := apply_Op_inverse (computeFracLocal2 (k := k) hk c))
                 (σ := State.start_state (k := k)) (σret := σ₁)

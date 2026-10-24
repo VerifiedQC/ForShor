@@ -11,7 +11,7 @@ import FastMultiplication.ShorVerification.Implementation.ModularExponentiation.
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
 import FastMultiplication.ShorVerification.Implementation.Shared.States
 import FastMultiplication.ShorVerification.Implementation.Shared.Registers
-import Mathlib.Data.Real.Basic
+import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 import FastMultiplication.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
@@ -65,9 +65,8 @@ inductive WorkspaceFree : Gate → Prop
 theorem WorkspaceFree.clean
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
     {P : ShorLoweringPolicy}
     {G : Gate}
     (hfree : WorkspaceFree G)
@@ -866,7 +865,7 @@ theorem lowered_step3_ready_and_clean
         (LowerGateClass.evalL (qs := qs)
           (lowerCmpGeConst N (data.grow 1) scratch flag hworkspace.1) ψ)
     refine ⟨hcmpClean, ?_⟩
-    simpa [CSubConstCleanState, CSubConstCleanBasis] using
+    simpa [CSubConstCleanState, CSubConstCleanBasis] using!
       evalL_lowerCmpGeConst_preserves_clean
         N (data.grow 1) scratch flag hworkspace.1 ψ hcmpClean
 

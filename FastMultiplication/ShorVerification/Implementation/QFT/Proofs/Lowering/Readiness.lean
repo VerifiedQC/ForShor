@@ -54,7 +54,7 @@ theorem smul (a : ℂ) {ψ : qs.State} (hψ : QFTWorkspaceCleanState qs xWork zW
 /-- Custom eliminator so `induction`/`cases` keep the original 2-hypothesis
 `ket` shape (`| ket b hx hz`) despite the generic single-predicate closure. -/
 @[induction_eliminator, cases_eliminator]
-def rec' {motive : (ψ : qs.State) → QFTWorkspaceCleanState qs xWork zWork ψ → Prop}
+theorem rec' {motive : (ψ : qs.State) → QFTWorkspaceCleanState qs xWork zWork ψ → Prop}
     (zero : motive 0 QFTWorkspaceCleanState.zero)
     (ket : ∀ (b : qs.Basis) (hx : FreshZero xWork b) (hz : FreshZero zWork b),
         motive (qs.ket b) (QFTWorkspaceCleanState.ket b hx hz))
@@ -205,9 +205,13 @@ theorem Policy.phaseProdUsingPlan_ready_and_clean
 
   have hready :
       PhaseLoweringReady qs (Policy.phaseProdUsingPlan P phi ws hstatic) ψ := by
-    simpa [Policy.phaseProdUsingPlan, signedPlan,
-      PhaseLoweringReady, lowerGateRec,
-      LowerGateClass.evalL_zeroExtend, ExtensionSemantics.eval_zeroExtend] using hsigned.1
+    -- The plan is `zeroExtend ; zeroExtend ; signedPlan ; zeroDealloc ; zeroDealloc`, up to
+    -- casts along definitionally equal plan types, so its readiness is a five-way
+    -- conjunction whose only non-trivial part is `signedPlan`'s, at the state after the two
+    -- zero-extensions (which act as the identity).
+    refine And.intro trivial (And.intro trivial (And.intro ?_ (And.intro trivial trivial)))
+    simp only [lowerGateRec, LowerGateClass.evalL_zeroExtend, ExtensionSemantics.eval_zeroExtend]
+    exact hsigned.1
 
   constructor
   · exact hready
@@ -269,7 +273,7 @@ lemma eval_QFT_preserves_QFTWorkspaceCleanState
         | @insert y s hy ih =>
             rw [Finset.sum_insert hy]
             exact QFTWorkspaceCleanState.add (hterm y) ih
-      simpa using hsum Finset.univ
+      simpa using! hsum Finset.univ
   | add hψ hφ ihψ ihφ =>
       rw [qs.eval_add]
       exact QFTWorkspaceCleanState.add ihψ ihφ

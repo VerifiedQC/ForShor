@@ -479,14 +479,14 @@ theorem eval_Hreg_zero_uniform
 
         simp [HadamardSemantics.eval_H_ket]
         rw [hbit]
-        --simp only [if_false, one_smul]
+        --simp only [ite_false, one_smul]
 
         -- Replace the singleton qubit register by `right`.
         rw [← hrightQ]
 
         simp only [GateSemanticsCore.eval_add (qs := qs)]
         rw [GateSemanticsCore.eval_smul (qs := qs)]
-        rw [if_neg (by decide : ¬ false = true)]
+        rw [ite_eq_right (by decide : ¬ false = true)]
         rw [GateSemanticsCore.eval_smul (qs := qs)]
         have ih0' :
             GateSemanticsCore.eval

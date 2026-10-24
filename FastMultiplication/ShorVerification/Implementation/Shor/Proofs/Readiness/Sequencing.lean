@@ -1,7 +1,7 @@
 import FastMultiplication.ShorVerification.Implementation.Shor.Lowering.LowerGate
 import FastMultiplication.ShorVerification.Implementation.Shor.Spec.Setup
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import Mathlib.Data.Real.Basic
+import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
 
@@ -32,9 +32,8 @@ open Classical
 def LoweredCleanResult
     (qs : QSemantics)
     [RegEncoding qs.Basis]
-    [GateSemanticsCore qs]
-    [LowerGateClass qs]
     [GateSemanticsFacts qs]
+    [LowerGateClass qs]
     (Pol : ShorLoweringPolicy)
     (P : qs.State → Prop)
     (G : Gate)

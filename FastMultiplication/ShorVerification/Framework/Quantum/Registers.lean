@@ -1,6 +1,6 @@
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.SpecialFunctions.Sqrt
-import Mathlib.Data.Complex.Basic
+import Mathlib.Basic.Complex.Basic
 import Mathlib.Tactic
 import Mathlib.Data.Nat.Bitwise
 
@@ -53,7 +53,7 @@ def empty : Reg := ⟨[], by simp⟩
 def width (r : Reg) : ℕ := r.qubits.length
 
 /-- The physical qubit used for logical bit `i`. -/
-def get (r : Reg) (i : Fin r.width) : ℕ := r.qubits.get ⟨i.1, by simp [width]⟩
+def get (r : Reg) (i : Fin r.width) : ℕ := r.qubits.get ⟨i.1, i.2⟩
 
 /-- A single-qubit register. -/
 def singleton (q : ℕ) : Reg := ⟨[q], by simp⟩
@@ -212,6 +212,12 @@ def ofReg (r : Reg) : ExtReg := { active := r, reserve := Reg.empty, active_rese
 
 /-- Build an extendable register from an active part and owned reserve qubits. -/
 def withReserve (active reserve : Reg) (h : Disjoint active reserve) : ExtReg := ⟨active, reserve, h⟩
+
+@[simp] theorem withReserve_active (active reserve : Reg) (h : Disjoint active reserve) :
+    (withReserve active reserve h).active = active := rfl
+
+@[simp] theorem withReserve_reserve (active reserve : Reg) (h : Disjoint active reserve) :
+    (withReserve active reserve h).reserve = reserve := rfl
 
 /-- Width of the currently active part. -/
 def width (e : ExtReg) : ℕ := regSize e.active

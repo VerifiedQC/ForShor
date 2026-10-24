@@ -637,8 +637,8 @@ lemma shorSpectralAmplitude_eq_qpe
       Complex.exp
         (-(((2 * Real.pi : ℝ) : ℂ) * Complex.I *
           (((t : ℂ) * (o : ℂ)) / (Q : ℂ)))) := by
-    simpa only [starRingEnd] using
-      (star_qftPhase_eq_negative_grid_phase_shor Q t o)
+    rw [starRingEnd_apply]
+    exact star_qftPhase_eq_negative_grid_phase_shor Q t o
 
   rw [hstar, ← Complex.exp_add, ← Complex.exp_nat_mul]
 
@@ -1798,7 +1798,7 @@ lemma le_log2_of_two_pow_le
       have hN2 : 2 ≤ N :=
         le_trans hpow2 hpow
 
-      rw [Nat.log2_def, if_pos hN2]
+      rw [Nat.log2_def, ite_eq_left hN2]
 
       apply Nat.succ_le_succ
 
@@ -1907,11 +1907,11 @@ lemma prod_one_sub_inv_ge_inv_card_succ
   classical
 
   induction S using Finset.induction_on_max with
-  | h0 =>
+  | empty =>
       intro _
       norm_num
 
-  | step p S hmax ih =>
+  | insert p S hmax ih =>
       intro h2
 
       have hpS : p ∉ S := by
@@ -2149,128 +2149,5 @@ lemma totient_ratio_ge_inv_log2_succ
     simpa using hden
 
   exact le_trans hleft hratio
-
-lemma exp_neg_two_div_pow4_le_inv_succ
-    (L : ℕ)
-    (hL : 1 ≤ L) :
-    Real.exp (-2) / (L : ℝ) ^ 4
-      ≤
-    1 / (((L + 1 : ℕ) : ℝ)) := by
-
-  by_cases hL1 : L = 1
-
-  · subst L
-
-    have hexp2 :
-        (5 : ℝ) ≤ Real.exp 2 := by
-      have h :=
-        Real.quadratic_le_exp_of_nonneg
-          (x := (2 : ℝ))
-          (by norm_num)
-      norm_num at h ⊢
-      exact h
-
-    have hneg :
-        0 ≤ Real.exp (-2) := by
-      exact le_of_lt (Real.exp_pos _)
-
-    have hmul :
-        5 * Real.exp (-2) ≤ 1 := by
-      calc
-        5 * Real.exp (-2)
-            ≤
-          Real.exp 2 * Real.exp (-2) :=
-            mul_le_mul_of_nonneg_right
-              hexp2 hneg
-
-        _ = 1 := by
-          rw [← Real.exp_add]
-          norm_num
-
-    norm_num
-    nlinarith
-
-  ·
-    have hL2 : 2 ≤ L := by
-      omega
-
-    have hLR :
-        (2 : ℝ) ≤ (L : ℝ) := by
-      exact_mod_cast hL2
-
-    have hLpos :
-        0 < (L : ℝ) := by
-      positivity
-
-    have hexp :
-        Real.exp (-2) ≤ 1 := by
-      exact
-        (Real.exp_le_one_iff).2
-          (by norm_num)
-
-    have hsq :
-        (L : ℝ) + 1 ≤ (L : ℝ) ^ 2 := by
-      nlinarith
-
-    have hone_sq :
-        (1 : ℝ) ≤ (L : ℝ) ^ 2 := by
-      nlinarith
-
-    have hsq_pow :
-        (L : ℝ) ^ 2 ≤ (L : ℝ) ^ 4 := by
-      calc
-        (L : ℝ) ^ 2
-            =
-          (L : ℝ) ^ 2 * 1 := by
-            ring
-
-        _ ≤
-          (L : ℝ) ^ 2 *
-            (L : ℝ) ^ 2 :=
-          mul_le_mul_of_nonneg_left
-            hone_sq
-            (sq_nonneg _)
-
-        _ =
-          (L : ℝ) ^ 4 := by
-            ring
-
-    have hpoly :
-        (L : ℝ) + 1 ≤ (L : ℝ) ^ 4 :=
-      le_trans hsq hsq_pow
-
-    have hsucc :
-        0 <
-          (((L + 1 : ℕ) : ℝ)) := by
-      positivity
-
-    have hone :
-        (1 : ℝ)
-          ≤
-        (L : ℝ) ^ 4 /
-          (((L + 1 : ℕ) : ℝ)) := by
-      apply (le_div_iff₀ hsucc).2
-      push_cast
-      simpa using hpoly
-
-    have hL4 :
-        0 < (L : ℝ) ^ 4 := by
-      positivity
-
-    apply (div_le_iff₀ hL4).2
-
-    calc
-      Real.exp (-2)
-          ≤ 1 :=
-        hexp
-
-      _ ≤
-        1 /
-            (((L + 1 : ℕ) : ℝ)) *
-          (L : ℝ) ^ 4 := by
-        simpa [
-          div_eq_mul_inv,
-          mul_comm
-        ] using hone
 
 end Shor

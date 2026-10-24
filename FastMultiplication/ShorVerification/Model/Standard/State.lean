@@ -125,6 +125,7 @@ theorem innerS_ket_of_ne {b₁ b₂ : ModelBasis} (h : b₁ ≠ b₂) :
 /-! ## `QSemantics` -/
 
 /-- **The model.** A concrete `QSemantics` over `ModelBasis`. -/
+@[instance_reducible]
 noncomputable def qs : QSemantics where
   Basis := ModelBasis
   State := State
@@ -191,11 +192,11 @@ theorem measFilter_ket (r : Reg) (o : ℕ) (b : ModelBasis) :
   classical
   refine Finsupp.ext fun b' => ?_
   by_cases h : mToNat r b = o
-  · rw [if_pos h, measFilter_apply]
+  · rw [ite_eq_left h, measFilter_apply]
     by_cases hb : b' = b
     · subst hb; simp [h]
     · simp [ket, hb]
-  · rw [if_neg h, measFilter_apply]
+  · rw [ite_eq_right h, measFilter_apply]
     by_cases hb : b' = b
     · subst hb; simp [h]
     · simp [ket, hb]
@@ -234,7 +235,7 @@ noncomputable instance instMeasureClass : MeasureClass qs where
     intro r ψ
     show (∑ o : Fin (2 ^ regSize r), measFilter r o.1 ψ) = ψ
     refine Finsupp.ext fun b => ?_
-    rw [Finsupp.finset_sum_apply]
+    rw [Finset.sum_apply']
     have hlt : mToNat r b < 2 ^ regSize r := by
       simpa [ASize] using RegEncoding.toNat_lt_ASize (Basis := ModelBasis) r b
     rw [Finset.sum_eq_single (⟨mToNat r b, hlt⟩ : Fin (2 ^ regSize r))]

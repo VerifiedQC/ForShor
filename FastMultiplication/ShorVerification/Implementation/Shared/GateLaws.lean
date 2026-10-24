@@ -196,7 +196,7 @@ theorem radixReverseBasis_writeNat
     rw [hb']
     exact RegEncoding.writeNat_overwrite r v _ b
 
-  simp only [radixReverseBasis, dif_pos hm]
+  simp only [radixReverseBasis, dite_eq_left hm]
 
   change
     RegEncoding.writeNat r
@@ -275,9 +275,9 @@ theorem signExtendNewValue_lt
   dsimp
 
   by_cases hneg : extToInt r b < 0
-  · simp only [if_pos hneg]
+  · simp only [ite_eq_left hneg]
     omega
-  · simp only [if_neg hneg]
+  · simp only [ite_eq_right hneg]
     exact hhi
 
 @[simp]
@@ -351,9 +351,9 @@ theorem signExtendNewValue_signExtendBasis
   dsimp
 
   by_cases hneg : extToInt r b < 0
-  · simp only [if_pos hneg]
+  · simp only [ite_eq_left hneg]
     omega
-  · simp only [if_neg hneg]
+  · simp only [ite_eq_right hneg]
 
 @[simp]
 theorem signExtendBasis_involutive
@@ -516,7 +516,7 @@ lemma tcDecodeWidth_signExtend
                   (w + n + 1) + 1 := by
               omega
 
-            rw [if_pos hneg]
+            rw [ite_eq_left hneg]
             rw [hwidth]
             simp only [tcDecodeWidth]
 
@@ -1139,7 +1139,7 @@ lemma shiftRBasis_of_exact
       Classical.choose hEx = q := by
     nlinarith [hchosen, hexact]
 
-  simp only [shiftRBasis, dif_pos hEx]
+  simp only [shiftRBasis, dite_eq_left hEx]
   rw [hchoose]
 
 lemma extToInt_shiftRBasis_of_exact
