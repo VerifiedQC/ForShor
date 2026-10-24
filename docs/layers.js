@@ -196,7 +196,7 @@
     if (reopen) { open(id, false); setHash(id); animate(900); }
     if (force) {
       var b = block(id);
-      setTimeout(function () { b.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 50);
+      setTimeout(function () { if (b.scrollIntoView) b.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 50);
     }
   }
   function setHash(id) {
@@ -209,7 +209,7 @@
   var m = /^#layer-([A-Za-z]+)$/.exec(location.hash || "");
   if (m && byId[m[1]]) {
     open(m[1], true);
-    setTimeout(function () { block(m[1]).scrollIntoView({ block: "center" }); }, 0);
+    setTimeout(function () { var b0 = block(m[1]); if (b0.scrollIntoView) b0.scrollIntoView({ block: "center" }); }, 0);
   }
   draw();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { draw(); });
