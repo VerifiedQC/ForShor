@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>A map of the Lean proofs for ForShor</title>
-    <meta name="description" content="An interactive map of the ForShor development: a Lean 4 verification of Shor's order-finding algorithm with a machine-checked gate-count bound. What the map shows and how to read it.">
+    <meta name="description" content="What is actually proved about Shor's algorithm in ForShor (a Lean 4 development with a machine-checked gate-count bound), and how to find each piece in the code with the interactive proof map.">
     <script>
       // Deep links into the proof map used to live on this page as
       // index.html#/Folder?sel=... . They now belong to navigator.html.
@@ -13,166 +13,166 @@
         if (/^#\//.test(h)) window.location.replace("navigator.html" + h);
       })();
     </script>
-    <link rel="stylesheet" href="./landing.css?v=20">
+    <link rel="stylesheet" href="./tufte.css?v=1">
+    <link rel="stylesheet" href="./site.css?v=1">
   </head>
   <body>
-    <header class="top">
-      <a class="home" href="./">ForShor</a>
-      <nav aria-label="Links">
-        <a href="./navigator.html">Open the map</a>
-        <a href="https://github.com/VerifiedQC/ForShor">GitHub</a>
-        <a href="#cite">Paper</a>
-      </nav>
-    </header>
+    <article>
+      <p class="site-links"><a href="./navigator.html">Open the map</a> · <a href="https://github.com/VerifiedQC/ForShor">GitHub</a> · <a href="#cite">Paper</a></p>
 
-    <main class="post">
       <h1>A map of the Lean proofs for ForShor</h1>
+      <p class="subtitle">What is actually proved about Shor's algorithm here, and where to find it in the code</p>
       <p class="byline">VerifiedQC · October 2026</p>
 
-      <p>
-        ForShor is a Lean 4 development that verifies Shor's order-finding algorithm from end to end.
-        An implementation built on Toom-Cook multiplication is compiled from a high-level gate language down to a
-        low-level abstract machine, and the compiled circuit is proved both correct — it returns the
-        multiplicative order with probability at least <code>κ / (log₂ N)⁴</code>, <code>κ ≈ 0.0548</code> —
-        and cheap: for every <code>ε &gt; 0</code> there is a Toom-Cook arity at which it uses
-        <code>O(n^(2+ε))</code> elementary gates, <code>n</code> the size of the modulus register. The development
-        is about 150 Lean files and 2,600 declarations spread over nine folders, which is more than anyone
-        wants to read top to bottom. This site is a map of it.
-      </p>
-      <p>
-        The map is an interactive dependency graph of the repository. Each node is a folder or a
-        <code>.lean</code> file; each arrow is an import. You can descend from the top-level folders to
-        individual files, read every declaration with its docstring, jump to the source on GitHub, and see what
-        each piece uses and is used by. It is meant to answer questions such as “where is
-        <code>Shor_correct</code> stated, and what does it rest on?” without cloning the repository. The
-        mathematics and the design decisions are described in our paper,
-        <a href="https://github.com/VerifiedQC/ForShor#readme"><em>ForShor: Formal Verification of Shor's Algorithm in Lean 4
-        with Verified Resource Estimation</em></a> (Suresh, Patel, Cao and Tao, 2026); the paper tells the story
-        and the map shows where each step of it lives in the code.
-      </p>
+      <section>
+        <p>
+          <span class="newthought">The number people quote</span> about Shor's algorithm is a gate count.
+          Gate counts are how the field argues about when factoring a 2048-bit RSA modulus becomes
+          feasible, and almost every one of them is an estimate: a circuit design on paper, a cost model,
+          a spreadsheet. The point of ForShor is that this number can be a theorem. The repository is a
+          Lean 4 proof that a specific, fully compiled order-finding circuit is correct, and a second proof,
+          about the same compiled object, that it uses <code>O(n^(2+ε))</code> elementary gates. Both are
+          checked by the same kernel, all the way down from a high-level gate language to a low-level
+          abstract machine, with no <code>sorry</code> and no axioms beyond Lean's own three.<label for="sn-axioms" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-axioms" class="margin-toggle"/><span class="sidenote"><code>#print axioms</code> on the headline theorems reports only <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>. Decidable side conditions are closed by <code>decide +kernel</code>, never <code>native_decide</code>. The one <code>sorry</code> in the repository is a test that the axiom audit rejects it.</span>
+        </p>
+        <p>
+          If we had to pick the single most important thing, it is that the resource bound and the
+          correctness proof are about one object. It is not hard to verify an idealised circuit, and it
+          is not hard to estimate a realistic one; the gap between the two is where the surprises live.
+          Here the circuit whose success probability is bounded is the circuit whose gates are counted.
+        </p>
+        <p>
+          Concretely, three theorems. <code>Shor_correct</code> says the ideal order-finding circuit,
+          after classical continued-fraction post-processing, returns exactly the order <code>r</code>
+          with probability at least <code>κ / (log₂ N)⁴</code>.<label for="sn-kappa" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-kappa" class="margin-toggle"/><span class="sidenote"><code>κ = 4e⁻²/π² ≈ 0.0548</code>. The exponent register has <code>log₂(2N²)</code> bits, the modulus register <code>log₂(2N)</code>. The classical budget <code>T</code> bounds the convergent scan and costs no gates. This is the probability of getting <em>r</em> itself, not of landing in a good window.</span>
+          <code>Shor_correct_approx_lowered</code> says the same bound survives compilation, up to a
+          factor of two, once the per-step precision <code>η</code> is set by a closed form in
+          <code>N</code>.<label for="sn-eta" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-eta" class="margin-toggle"/><span class="sidenote">The lowering itself is exact; the only loss is the modular-exponentiation approximation. Holding it to half the ideal bound costs <code>O(log n)</code> extra work bits, about 270 at 2048 bits. <code>shorPrecision</code> is a closed form, so there is no existential constant a circuit builder would have to guess.</span>
+          And <code>exists_shorGateCountBound</code> says that for every <code>ε &gt; 0</code> there is a
+          Toom-Cook arity <code>k</code> at which the compiled circuit uses at most
+          <code>C · n^(2+ε)</code> gates, <code>n</code> the size of the modulus register. That count is
+          an honest count of <code>LowGate</code> operations under an explicit cost model, not an abstract
+          measure.<label for="sn-count" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-count" class="margin-toggle"/><span class="sidenote"><code>shorOrderFindingGateCount</code> is <code>LowGate.gateCount shorGateCostModel</code> of the compiled circuit, and <code>shorGateRate ε n</code> is just <code>n^(2+ε)</code>. A companion theorem, <code>shorGateCountBound_of_setup</code>, gives any admissible Toom-Cook table the bound at its own exponent <code>log(2k−1)/log k</code>; a <code>k = 2</code> table runs at about <code>n^2.585</code>. Both theorems are about one table used at every width, which is the right statement for an exponent and not a gate count at <code>n = 2048</code>.</span>
+        </p>
+      </section>
 
-      <h2 id="how">How to use the map</h2>
+      <section>
+        <h2 id="what">What this site is</h2>
+        <p>
+          The development is about 150 Lean files and 2,600 declarations in nine folders, which is more
+          than anyone wants to read top to bottom. This site is a map of it: an interactive dependency
+          graph in which every node is a folder or a <code>.lean</code> file and every arrow is an import.
+          You can descend from the top-level folders to individual files, read each declaration with its
+          docstring, jump to the source on GitHub, and see what each piece uses and is used by. It is
+          meant to answer questions like “where is <code>Shor_correct</code> stated, and what does it rest
+          on?” without cloning the repository.
+        </p>
+        <p>
+          The mathematics and the design are in our paper,
+          <a href="https://github.com/VerifiedQC/ForShor#readme"><em>ForShor: Formal Verification of Shor's
+          Algorithm in Lean 4 with Verified Resource Estimation</em></a> (Suresh, Patel, Cao and Tao, 2026).
+          The paper tells the story; the map shows where each step of it lives in the
+          code.<label for="sn-gen" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-gen" class="margin-toggle"/><span class="sidenote">The graph is generated from the source by <code>scripts/gen_docs_graph.py</code>, which reads the import lines, docstrings and declarations of every Lean file and each folder's <code>README.md</code>. The few arrows drawn per view are chosen by hand in <code>docs/data/annotations.js</code> and checked against the generated graph, so a renamed file fails the check instead of going stale.</span>
+        </p>
+      </section>
 
-      <figure>
-        <a href="./navigator.html"><img src="./img/map-top.png" alt="The top view of the proof map: the Framework folder on the left, then PhaseProduct, QFT, ModularExponentiation, Shor, GateCount and Reference from left to right, with Shared below Framework." width="1200" height="771"></a>
-        <figcaption>The top view. One column per dependency rank: <code>Framework</code> on the left is the specification, the three subroutines come next, then <code>Shor</code>, <code>GateCount</code> and <code>Reference</code>.</figcaption>
-      </figure>
+      <section>
+        <h2 id="how">How to use the map</h2>
+        <figure class="fullwidth">
+          <a href="./navigator.html"><img src="./img/map-top.png" alt="The top view of the proof map: the Framework folder on the left, then PhaseProduct, QFT, ModularExponentiation, Shor, GateCount and Reference from left to right, with Shared below Framework." width="1200" height="771"></a>
+        </figure>
+        <p>
+          <label for="mn-top" class="margin-toggle">&#8853;</label><input type="checkbox" id="mn-top" class="margin-toggle"/><span class="marginnote">The top view. One column per dependency rank: <code>Framework</code> on the left is the specification, the three subroutines come next, then <code>Shor</code>, <code>GateCount</code> and <code>Reference</code>.</span>
+          <strong>Nodes.</strong> Every box is a folder or a file. In the top view a folder's colour is
+          its role, as the legend in the lower left says. <code>Framework</code> is the specification every
+          theorem is stated in. <code>PhaseProduct</code>, <code>QFT</code> and
+          <code>ModularExponentiation</code> are the three subroutines, each verified on its own.
+          <code>Shor</code> assembles them, <code>GateCount</code> counts the result, and
+          <code>Reference</code> turns a concrete Toom-Cook table into an executable circuit.
+          <code>Shared</code> is a lemma library that every subroutine uses and that is not a step of the
+          argument. Inside a folder the colours switch to layers, <code>Math</code>,
+          <code>Definitions</code>, <code>Spec</code>, <code>Proofs</code> and <code>Main</code>, which is
+          how each folder is organised. A folder shows how many children it has; a file shows its line
+          count.
+        </p>
+        <p>
+          <strong>Arrows.</strong> An arrow is an import, drawn from the file that is used to the file that
+          uses it, so reading a view left to right follows the proof. Not every import is drawn. A solid
+          coloured arrow with a label is one we chose because the named theorem crosses it; the label is the
+          theorem, and the pane on the right lists these for the view. A thin grey arrow is real structure
+          that is not part of the story. A dashed arrow is an import from <code>Shared</code>. The toolbar
+          button <em>All imports</em> overlays everything that was left out, and <em>Focus on</em> dims
+          everything unrelated to the current selection, which is the quickest way to see what one file
+          depends on.
+        </p>
+        <figure class="fullwidth">
+          <a href="./navigator.html#/Shor"><img src="./img/map-shor.png" alt="The Shor folder opened: Math and Lowering on the left, Circuit, Spec, Proofs and Main.lean to the right, with the three labelled arrows lowerGate, orderFindingApprox and Shor_end_to_end_factoring." width="1200" height="771"></a>
+        </figure>
+        <p>
+          <label for="mn-shor" class="margin-toggle">&#8853;</label><input type="checkbox" id="mn-shor" class="margin-toggle"/><span class="marginnote">Inside <code>Shor</code>. The three labelled arrows are the theorems that carry the argument from one layer to the next. The strips at the bottom, <em>Uses</em> and <em>Used by</em>, are the imports that cross the folder boundary.</span>
+          <strong>Moving around.</strong> Click a folder to descend into its own graph; the tree on the
+          left and the breadcrumb at the top go back up, and <em>Top</em> returns to the first view. Click
+          a node to open it on the right: its docstring, its declarations grouped by kind, and a link to
+          the file on GitHub. The search box finds declarations, files and folders by name. The address bar
+          follows the view and the selection, so any state of the map can be linked
+          to.<label for="sn-link" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-link" class="margin-toggle"/><span class="sidenote">For example <a href="./navigator.html#/Shor/Proofs?sel=Shor%2FProofs%2FCorrectness.lean"><code>navigator.html#/Shor/Proofs?sel=…/Correctness.lean</code></a> opens the <code>Shor/Proofs</code> view with that file selected.</span>
+        </p>
+        <figure class="fullwidth">
+          <a href="./navigator.html#/Shor/Proofs?sel=Shor%2FProofs%2FCorrectness.lean"><img src="./img/map-file.png" alt="The Shor/Proofs view with Correctness.lean selected; the right-hand pane shows the file's docstring, 1138 lines, 15 declarations, and its lemmas." width="1200" height="771"></a>
+        </figure>
+        <p>
+          <label for="mn-file" class="margin-toggle">&#8853;</label><input type="checkbox" id="mn-file" class="margin-toggle"/><span class="marginnote">A file selected. <code>Shor/Proofs/Correctness.lean</code> holds the quantum-facing part of the main statement; the pane lists its lemmas and definitions and links to the source.</span>
+          <strong>Where to start.</strong>
+          <a href="./navigator.html#/Shor/Proofs?sel=Shor%2FProofs%2FNaiveShor%2FCorrectness.lean"><code>Shor_correct</code></a>
+          and <a href="./navigator.html#/Shor/Proofs?sel=Shor%2FProofs%2FCorrectness.lean"><code>Shor_correct_approx_lowered</code></a>
+          for correctness;
+          <a href="./navigator.html#/GateCount?sel=GateCount%2FShor_GateCount.lean"><code>exists_shorGateCountBound</code></a>
+          for the gate count; <a href="./navigator.html#/Framework"><code>Framework</code></a> if you want
+          to know what the statements mean before reading the proofs; and
+          <a href="./navigator.html#/Reference"><code>Reference</code></a> for the computable instance, the
+          one <code>lake exe forshor_emit</code> prints as JSON.
+        </p>
+      </section>
 
-      <p>
-        <strong>Nodes.</strong> Every box is a folder or a file. In the top view the colour of a folder is its role,
-        as the legend in the lower left says: <code>Framework</code> is the specification every theorem is stated in;
-        <code>PhaseProduct</code>, <code>QFT</code> and <code>ModularExponentiation</code> are the three subroutines,
-        each verified on its own; <code>Shor</code> assembles them; <code>GateCount</code> counts the result;
-        <code>Reference</code> turns a concrete Toom-Cook table into an executable circuit; <code>Shared</code> is a
-        lemma library that every subroutine uses and that is not a step of the argument. Inside a folder the colours
-        switch to layers — <code>Math</code>, <code>Definitions</code>, <code>Spec</code>, <code>Proofs</code>,
-        <code>Main</code> — which is how each folder is organised. A folder shows how many children it has; a file
-        shows its line count.
-      </p>
-      <p>
-        <strong>Arrows.</strong> An arrow is an import, drawn from the file that is used to the file that uses it, so
-        reading a view left to right follows the proof. Not every import is drawn. A solid coloured arrow with a label
-        is one we chose because the named theorem crosses it — the label is the theorem, and the right-hand pane lists
-        these “curated arrows” for the view. A thin grey arrow is real structure that is not part of the story. A dashed
-        arrow is an import from <code>Shared</code>. The toolbar button <em>All imports</em> overlays everything that
-        was left out, and <em>Focus on</em> dims everything unrelated to the current selection, which is the quickest
-        way to see what a single file depends on.
-      </p>
-
-      <figure>
-        <a href="./navigator.html#/Shor"><img src="./img/map-shor.png" alt="The Shor folder opened: Math and Lowering on the left, Circuit, Spec, Proofs and Main.lean to the right, with the three labelled arrows lowerGate, orderFindingApprox and Shor_end_to_end_factoring." width="1200" height="771"></a>
-        <figcaption>Inside <code>Shor</code>. The three labelled arrows are the theorems that carry the argument from one layer to the next; the panel on the right lists them. The strips at the bottom, <em>Uses</em> and <em>Used by</em>, are the imports that cross the folder boundary.</figcaption>
-      </figure>
-
-      <p>
-        <strong>Moving around.</strong> Click a folder to descend into its own graph; the tree on the left and the
-        breadcrumb at the top go back up, and <em>Top</em> returns to the first view. Click a node to open it on the
-        right: its docstring, its declarations grouped by kind, and a link to the file on GitHub. The search box finds
-        declarations, files and folders by name and jumps to them. The address bar follows the view and the selection,
-        so any state of the map can be linked to, for example
-        <a href="./navigator.html#/Shor/Proofs?sel=Shor%2FProofs%2FCorrectness.lean"><code>navigator.html#/Shor/Proofs?sel=…Correctness.lean</code></a>.
-      </p>
-
-      <figure>
-        <a href="./navigator.html#/Shor/Proofs?sel=Shor%2FProofs%2FCorrectness.lean"><img src="./img/map-file.png" alt="The Shor/Proofs view with Correctness.lean selected; the right-hand pane shows the file's docstring, 1138 lines, 15 declarations, and the list of lemmas." width="1200" height="771"></a>
-        <figcaption>A file selected. <code>Shor/Proofs/Correctness.lean</code> holds the quantum-facing part of the main statement; the pane lists its lemmas and definitions and links to the source.</figcaption>
-      </figure>
-
-      <p>
-        The graph is generated from the source: <code>scripts/gen_docs_graph.py</code> reads the import lines,
-        docstrings and declarations of every Lean file and every folder's <code>README.md</code>. The few arrows drawn
-        per view are chosen by hand in <code>docs/data/annotations.js</code> and checked against the generated graph,
-        so a renamed file or a dropped import fails the check rather than silently going stale.
-      </p>
-
-      <h2 id="start">Where to start</h2>
-      <ul>
-        <li>
-          <a href="./navigator.html#/Shor/Proofs?sel=Shor%2FProofs%2FNaiveShor%2FCorrectness.lean"><code>Shor_correct</code></a>,
-          the success-probability bound for the ideal circuit, and
-          <a href="./navigator.html#/Shor/Proofs?sel=Shor%2FProofs%2FCorrectness.lean"><code>Shor_correct_approx_lowered</code></a>,
-          the same bound after compilation at the precision <code>shorPrecision N</code>, where half of it survives.
-        </li>
-        <li>
-          <a href="./navigator.html#/GateCount?sel=GateCount%2FShor_GateCount.lean"><code>exists_shorGateCountBound</code></a>,
-          the <code>O(n^(2+ε))</code> gate count, stated as an honest count of <code>LowGate</code> operations under an
-          explicit cost model, and <code>shorGateCountBound_of_setup</code>, the same bound at its own exponent for any
-          admissible Toom-Cook table.
-        </li>
-        <li>
-          <a href="./navigator.html#/Framework"><code>Framework</code></a>, if you want to know what the statements
-          mean before reading the proofs: the registers, the gate languages, the semantics, the cost model and the
-          correctness contract.
-        </li>
-        <li>
-          <a href="./navigator.html#/Reference"><code>Reference</code></a>, the computable instance: it lowers to an
-          executable circuit, and <code>lake exe forshor_emit</code> prints it as JSON.
-        </li>
-      </ul>
-
-      <h2 id="check">Checking it yourself</h2>
-      <p>
-        The project pins Lean <code>v4.28.0</code> and a fixed Mathlib revision, so the prebuilt cache applies.
-        With <a href="https://github.com/leanprover/elan">elan</a> installed:
-      </p>
-<pre><code>lake exe cache get               # prebuilt Mathlib oleans
+      <section>
+        <h2 id="check">Checking it yourself</h2>
+        <p>
+          The project pins Lean <code>v4.28.0</code> and a fixed Mathlib revision, so the prebuilt cache
+          applies. With <a href="https://github.com/leanprover/elan">elan</a> installed:
+        </p>
+<pre class="code">lake exe cache get               # prebuilt Mathlib oleans
 lake build                       # the whole development
-lake exe forshor_emit 2 2 15 0   # the reference circuit for (k, a, N, m), as JSON</code></pre>
-      <p>
-        No proof uses <code>sorry</code>; the one occurrence in the repository is a test that the axiom audit rejects
-        it. <code>#print axioms</code> on the headline theorems reports only <code>propext</code>,
-        <code>Classical.choice</code> and <code>Quot.sound</code>, and decidable side conditions are closed by
-        <code>decide +kernel</code>, never <code>native_decide</code>. The construction is generic in its Toom-Cook
-        table: any table passing four decidable side conditions inherits the correctness theorem and the gate-count
-        bound at its own exponent; the README's
-        <a href="https://github.com/VerifiedQC/ForShor#submitting-a-table">Submitting a table</a> explains how such
-        a table is stated and checked.
-      </p>
+lake exe forshor_emit 2 2 15 0   # the reference circuit for (k, a, N, m), as JSON</pre>
+        <p>
+          The construction is generic in its Toom-Cook table: any table that passes four decidable side
+          conditions inherits the correctness theorem and the gate-count bound at its own exponent. The
+          README's <a href="https://github.com/VerifiedQC/ForShor#submitting-a-table">Submitting a table</a>
+          explains how such a table is stated and checked.
+        </p>
+      </section>
 
-      <h2 id="cite">Citing ForShor</h2>
-      <p>
-        A machine-readable <a href="https://github.com/VerifiedQC/ForShor/blob/main/CITATION.cff"><code>CITATION.cff</code></a>
-        is in the repository.
-      </p>
-<pre><code>@misc{suresh2026forshor,
+      <section>
+        <h2 id="cite">Citing ForShor</h2>
+        <p>
+          A machine-readable <a href="https://github.com/VerifiedQC/ForShor/blob/main/CITATION.cff"><code>CITATION.cff</code></a>
+          is in the repository.
+        </p>
+<pre class="code">@misc{suresh2026forshor,
   author       = {Anirudh Suresh and Jai Patel and Yudong Cao and Runzhou Tao},
   title        = {{ForShor}: Formal Verification of {Shor}'s Algorithm in {Lean~4}
                   with Verified Resource Estimation},
   year         = {2026},
   howpublished = {\url{https://github.com/VerifiedQC/ForShor}},
   note         = {Apache-2.0 licensed Lean~4 development}
-}</code></pre>
-    </main>
-
-    <footer class="foot">
-      <p>Anirudh Suresh, Jai Patel, Yudong Cao, Runzhou Tao · Apache License 2.0</p>
-      <p>
-        <a href="./navigator.html">Proof map</a> ·
-        <a href="https://github.com/VerifiedQC/ForShor#readme">README</a> ·
-        <a href="https://github.com/VerifiedQC/ForShor/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a> ·
-        <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Submission/README.md">Submitting a table</a> ·
-        <a href="https://github.com/VerifiedQC/ForShor">GitHub</a>
-      </p>
-    </footer>
+}</pre>
+        <p class="colophon">
+          Anirudh Suresh, Jai Patel, Yudong Cao, Runzhou Tao · Apache License 2.0 ·
+          <a href="./navigator.html">Proof map</a> ·
+          <a href="https://github.com/VerifiedQC/ForShor#readme">README</a> ·
+          <a href="https://github.com/VerifiedQC/ForShor/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a> ·
+          <a href="https://github.com/VerifiedQC/ForShor">GitHub</a>
+        </p>
+      </section>
+    </article>
   </body>
 </html>

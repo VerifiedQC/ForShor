@@ -1,0 +1,12 @@
+/* Small additions on top of tufte.css for the ForShor project page. */
+.site-links { font-size: 1rem; margin-top: 1.5rem; }
+.byline { font-size: 1.1rem; font-style: italic; margin-top: 0; }
+figure.fullwidth img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #ccc;
+}
+figure.fullwidth a { background: none; text-shadow: none; }
+pre.code { font-size: 0.9rem; }
+.colophon { font-size: 1rem; margin-top: 3rem; }
