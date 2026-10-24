@@ -14,7 +14,7 @@
       })();
     </script>
     <link rel="stylesheet" href="./tufte.css?v=1">
-    <link rel="stylesheet" href="./site.css?v=1">
+    <link rel="stylesheet" href="./site.css?v=2">
   </head>
   <body>
     <article>
@@ -57,6 +57,29 @@
       </section>
 
       <section>
+        <h2 id="layers-section">The proof, layer by layer</h2>
+        <p>
+          The whole development is five layers deep, and they are best read top to bottom, which is also the
+          order the proof goes in. The specification comes first: the vocabulary every statement is written in,
+          and the contract the final object has to meet. Then the three subroutines, each verified on its own
+          and each resting on the one before it. Then the assembly that proves Shor's algorithm correct. Then the
+          cost of that assembled circuit, as a theorem. And finally the concrete instance that fills in every
+          remaining choice and hands the framework the object it asked for.<label for="sn-layers" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-layers" class="margin-toggle"/><span class="sidenote">Every arrow is a real import between these folders, read from the generated graph behind the map. The solid labelled arrows are the ones that carry the argument, and the label is the theorem or the vocabulary that crosses it; thin grey arrows are real structure that is not part of the story; the dashed ones come from <code>Shared</code>, a lemma library that is not a step. Click a layer to open it.</span>
+        </p>
+        <figure class="fullwidth layers-figure">
+          <div id="layers" class="layers"></div>
+        </figure>
+        <p>
+          Each panel shows the folder's role in the argument, the statement that carries it, copied verbatim
+          from the source with a link to the line, and what it rests on and feeds. The Lean statements are
+          deliberately shown as they are, instance arguments and all: the parameters <code>k</code> and
+          <code>ops</code> that appear in every subroutine theorem are the Toom-Cook table, which is why one
+          proof serves every admissible table, and the <code>qs</code> that appears everywhere is the semantics
+          the theorems are generic over.
+        </p>
+      </section>
+
+      <section>
         <h2 id="what">What this site is</h2>
         <p>
           The development is about 150 Lean files and 2,600 declarations in nine folders, which is more
@@ -71,8 +94,8 @@
           The mathematics and the design are in our paper,
           <a href="https://github.com/VerifiedQC/ForShor#readme"><em>ForShor: Formal Verification of Shor's
           Algorithm in Lean 4 with Verified Resource Estimation</em></a> (Suresh, Patel, Cao and Tao, 2026).
-          The paper tells the story; the map shows where each step of it lives in the
-          code.<label for="sn-gen" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-gen" class="margin-toggle"/><span class="sidenote">The graph is generated from the source by <code>scripts/gen_docs_graph.py</code>, which reads the import lines, docstrings and declarations of every Lean file and each folder's <code>README.md</code>. The few arrows drawn per view are chosen by hand in <code>docs/data/annotations.js</code> and checked against the generated graph, so a renamed file fails the check instead of going stale.</span>
+          The paper tells the story; the layer graph above is its outline, and the map shows where each step of it lives
+          in the code.<label for="sn-gen" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-gen" class="margin-toggle"/><span class="sidenote">The graph is generated from the source by <code>scripts/gen_docs_graph.py</code>, which reads the import lines, docstrings and declarations of every Lean file and each folder's <code>README.md</code>. The few arrows drawn per view are chosen by hand in <code>docs/data/annotations.js</code> and checked against the generated graph, so a renamed file fails the check instead of going stale.</span>
         </p>
       </section>
 
@@ -174,5 +197,7 @@ lake exe forshor_emit 2 2 15 0   # the reference circuit for (k, a, N, m), as JS
         </p>
       </section>
     </article>
+    <script src="./data/layers.js?v=1"></script>
+    <script src="./layers.js?v=1"></script>
   </body>
 </html>

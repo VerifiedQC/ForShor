@@ -6,6 +6,12 @@ This directory is the project website, published by GitHub Pages at
 * `index.html` — the project page, written as a short technical-blog post:
   what ForShor is, what the map is for, how to read it (with screenshots in
   `img/`), where to start, how to check the development and how to cite it.
+  It also carries an interactive **layer graph** of the proof architecture
+  (`layers.js`, data in `data/layers.js`): the top-level folders as five
+  layers, the real import edges between them, and, on click, a panel with the
+  layer's role, the theorem that carries it (copied verbatim from the source
+  at a recorded `file:line`, so regenerate rather than edit a snippet), and
+  what it rests on and feeds. `#layer-<Folder>` deep-links to an open layer.
   Plain HTML in [Tufte CSS](https://edwardtufte.github.io/tufte-css/) (`tufte.css` + the `et-book/` fonts, MIT, vendored unchanged; `site.css` holds our few additions); every claim about the proofs is taken
   from the [top-level README](../README.md).
 * `navigator.html` — the interactive proof map described below, in the same
