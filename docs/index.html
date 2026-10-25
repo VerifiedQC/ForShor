@@ -45,10 +45,10 @@
         <p>
           Concretely, three theorems. <code>Shor_correct</code> says the ideal order-finding circuit,
           after classical continued-fraction post-processing, returns exactly the order <code>r</code>
-          with probability at least <code>κ / (log₂ N)⁴</code>.<label for="sn-kappa" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-kappa" class="margin-toggle"/><span class="sidenote"><code>κ = 4e⁻²/π² ≈ 0.0548</code>. The exponent register has <code>log₂(2N²)</code> bits, the modulus register <code>log₂(2N)</code>. The classical budget <code>T</code> bounds the convergent scan and costs no gates. This is the probability of getting <em>r</em> itself, not of landing in a good window.</span>
+          with probability at least <code>κ / log(log₂ N + 1)</code>, that is <code>Ω(1 / log log N)</code>.<label for="sn-kappa" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-kappa" class="margin-toggle"/><span class="sidenote"><code>κ = 1/π² ≈ 0.101</code>: Shor's per-numerator Fourier constant <code>4/π²</code> times the <code>1/4</code> of the totient bound <code>φ(r)/r ≥ 1/(4 · log(log₂ N + 1))</code>. The exponent register has <code>log₂(2N²)</code> bits, the modulus register <code>log₂(2N)</code>. The classical budget <code>T</code> bounds the convergent scan and costs no gates. This is the probability of getting <em>r</em> itself, not of landing in a good window.</span>
           <code>Shor_correct_approx_lowered</code> says the same bound survives compilation, up to a
           factor of two, once the per-step precision <code>η</code> is set by a closed form in
-          <code>N</code>.<label for="sn-eta" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-eta" class="margin-toggle"/><span class="sidenote">The lowering itself is exact; the only loss is the modular-exponentiation approximation. Holding it to half the ideal bound costs <code>O(log n)</code> extra work bits, about 270 at 2048 bits. <code>shorPrecision</code> is a closed form, so there is no existential constant a circuit builder would have to guess.</span>
+          <code>N</code>.<label for="sn-eta" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-eta" class="margin-toggle"/><span class="sidenote">The lowering itself is exact; the only loss is the modular-exponentiation approximation. Holding it to half the ideal bound costs <code>O(log n)</code> extra work bits; at 2048 bits <code>η ≈ 2⁻⁵³</code>, about 105 extra work bits. <code>shorPrecision</code> is a closed form, so there is no existential constant a circuit builder would have to guess.</span>
           And <code>exists_shorGateCountBound</code> says that for every <code>ε &gt; 0</code> there is a
           Toom-Cook arity <code>k</code> at which the compiled circuit uses at most
           <code>C · n^(2+ε)</code> gates, <code>n</code> the size of the modulus register. That count is
@@ -83,7 +83,7 @@
       <section>
         <h2 id="what">What this site is</h2>
         <p>
-          The development is about 150 Lean files and 2,600 declarations in nine folders, which is more
+          The proof is about 160 Lean files and 2,700 declarations in eight folders, which is more
           than anyone wants to read top to bottom. This page is a guide to it. The layer graph above is
           the outline: each block is a top-level folder, each arrow is an import between folders, and
           opening a block shows what that folder is for, what it rests on and what it feeds, and its key
@@ -101,9 +101,9 @@
         <p>
           <strong>Where to start.</strong>
           <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/Shor/Proofs/NaiveShor/Correctness.lean#L19"><code>Shor_correct</code></a>
-          and <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/Shor/Main.lean#L211"><code>Shor_correct_approx_lowered</code></a>
+          and <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/Shor/Main.lean#L208"><code>Shor_correct_approx_lowered</code></a>
           for correctness;
-          <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/GateCount/Shor_GateCount.lean#L2132"><code>exists_shorGateCountBound</code></a>
+          <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/GateCount/Shor_GateCount.lean#L2143"><code>exists_shorGateCountBound</code></a>
           for the gate count; <a href="#layer-Framework"><code>Framework</code></a> if you want
           to know what the statements mean before reading the proofs; and
           <a href="#layer-Reference"><code>Reference</code></a> for the computable instance, the
@@ -114,7 +114,7 @@
       <section>
         <h2 id="check">Checking it yourself</h2>
         <p>
-          The project pins Lean <code>v4.28.0</code> and a fixed Mathlib revision, so the prebuilt cache
+          The project pins Lean <code>v4.36.0-rc1</code> and a fixed Mathlib revision, so the prebuilt cache
           applies. With <a href="https://github.com/leanprover/elan">elan</a> installed:
         </p>
 <pre class="code">lake exe cache get               # prebuilt Mathlib oleans
@@ -150,7 +150,7 @@ lake exe forshor_emit 2 2 15 0   # the reference circuit for (k, a, N, m), as JS
         </p>
       </section>
     </article>
-    <script src="./data/layers.js?v=1"></script>
+    <script src="./data/layers.js?v=2"></script>
     <script src="./layers.js?v=2"></script>
   </body>
 </html>
