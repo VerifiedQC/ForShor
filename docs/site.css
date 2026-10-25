@@ -137,8 +137,40 @@ pre.lsnip > code { display: block; width: auto; margin-left: 0; overflow-x: visi
 .lgroup { fill: none; stroke: #6a7f9e; stroke-width: 1; stroke-dasharray: 5 4; }
 .llabel-group { font-style: italic; fill: #3a4d6b; }
 
-/* The PhaseProduct recursion figure */
-figure.pp-figure img { width: 100%; height: auto; border: 1px solid #e3e3e3; }
+/* The interactive PhaseProduct recursion figure (ppfig.js, data/pp.js) */
+.ppfig { --lane-pad: 0px; font-family: et-book, Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif; }
+.ppsvg { width: 100%; height: auto; display: block; }
+.ppsvg .pt { font-size: 15px; fill: #111; }
+.ppsvg .ph { font-size: 17px; font-weight: bold; }
+.ppsvg .pt-b { font-weight: bold; }
+.ppsvg .pt-i { font-style: italic; fill: #444; }
+.ppsvg .pt-s { font-size: 13px; fill: #444; font-style: italic; }
+.ppsvg .pt-m { font-size: 14.5px; }
+.ppsvg .pt-w { font-size: 14px; fill: #333; }
+.ppsvg .pt-n { font-size: 12px; font-weight: bold; }
+.ppsvg .pw { stroke: #888; stroke-width: 1.2; }
+.ppsvg .pa { stroke: #444; stroke-width: 1.3; }
+.ppsvg .pa-thin { stroke-width: 1; }
+.ppsvg marker path { fill: #444; }
+.ppsvg .pcard rect { fill: #e7f0fb; stroke: #4a8fd4; stroke-width: 1.5; }
+.ppsvg .pn { cursor: pointer; }
+.ppsvg .pn rect { fill: #f3f3f1; stroke: #777; stroke-width: 1.2; transition: fill .2s, stroke .2s; }
+.ppsvg .prow rect { fill: transparent; stroke: none; }
+.ppsvg .pu rect, .ppsvg .pband rect { fill: #dfe9f6; stroke: #4a8fd4; }
+.ppsvg .pstrip rect { fill: #fff; stroke: #4a8fd4; stroke-dasharray: 5 4; }
+.ppsvg .pout rect { fill: #fde8dc; stroke: #e0703a; }
+.ppsvg .pnum circle { fill: #fff; stroke: #111; stroke-width: 1.4; }
+.ppsvg .pn:hover rect { stroke: #111; }
+.ppsvg .prow:hover rect { fill: rgba(74, 143, 212, .14); }
+.ppsvg .pn.on rect { stroke: #111; stroke-width: 2.2; }
+.ppsvg .prow.on rect { fill: rgba(74, 143, 212, .22); stroke: none; }
+.ppsvg .pn:focus { outline: none; }
+.ppsvg .pn:focus-visible rect { stroke: #111; stroke-width: 2.2; }
+.ppdetail { margin: 0.6rem 0 1.4rem 0; }
+.ppdetail .ldetail-grid::before { display: none; }
+table.pstate { border-collapse: collapse; font-size: 1rem; margin-top: 0.8rem; }
+table.pstate th, table.pstate td { padding: 0.15rem 0.9rem 0.15rem 0; text-align: left; font-family: Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.85rem; }
+table.pstate th { font-family: inherit; font-style: italic; font-weight: normal; color: #444; }
 
 @media (max-width: 1100px) {
   .layers.algo { --lane-pad: 140px; }
@@ -161,10 +193,10 @@ figure.pp-figure img { width: 100%; height: auto; border: 1px solid #e3e3e3; }
 }
 
 /* Lean syntax highlighting in the quoted statements (layers.js leanHL). */
-pre.lean .lk { color: #7a2e8c; }
-pre.lean .ld { color: #1d4f91; font-weight: 600; }
-pre.lean .lt { color: #23744a; }
-pre.lean .lo { color: #a3361f; }
-pre.lean .ln { color: #9a5b00; }
-pre.lean .ls { color: #9a5b00; }
-pre.lean .lc { color: #8a8a80; font-style: italic; }
+pre.lean .lk { color: #d6336c; }
+pre.lean .ld { color: #7048e8; font-weight: 600; }
+pre.lean .lt { color: #0c8599; }
+pre.lean .lo { color: #e8590c; }
+pre.lean .ln { color: #1c7ed6; }
+pre.lean .ls { color: #2f9e44; }
+pre.lean .lc { color: #868e96; font-style: italic; }
