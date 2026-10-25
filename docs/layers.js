@@ -119,7 +119,35 @@
   // ---------------------------------------------------------------- detail panel
   var openId = null, panel = null;
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
-  function viewHref(id) { return "./navigator.html#/" + encodeURIComponent(byId[id].view).replace(/%2F/g, "/"); }
+  // Small Lean 4 highlighter for the quoted statements: comments, strings,
+  // keywords, sorts, the declared name, numbers and the logical symbols.
+  // Everything is escaped; unknown text passes through unchanged.
+  var LEAN_KW = /^(theorem|lemma|def|noncomputable|structure|class|instance|where|fun|let|have|show|by|from|at|with|match|if|then|else|do|return|namespace|section|end|variable|open|abbrev|example|deriving|calc|private|protected|partial|universe|extends|in)$/;
+  var LEAN_DECL = /^(theorem|lemma|def|structure|class|instance|abbrev)$/;
+  var LEAN_SORT = /^(Prop|Type|Sort)$/;
+  var LEAN_RE = /(\/-[\s\S]*?-\/|--[^\n]*)|("(?:[^"\\]|\\.)*")|([A-Za-z_α-ωΑ-Ωᴀ-ᶿ₀-ₜ][A-Za-z0-9_'!?.α-ωΑ-Ω₀-ₜᴀ-ᶿ]*)|(\b\d+(?:\.\d+)?\b)|(:=|[∀∃λ→↔∧∨¬≤≥≠↦]|=>)|([ℕℤℚℝℂ])/g;
+  function leanHL(src) {
+    var out = "", last = 0, m, wantName = false;
+    LEAN_RE.lastIndex = 0;
+    while ((m = LEAN_RE.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      last = LEAN_RE.lastIndex;
+      var t = m[0], cls = null;
+      if (m[1]) cls = "lc";
+      else if (m[2]) cls = "ls";
+      else if (m[3]) {
+        if (LEAN_KW.test(t)) { cls = "lk"; if (LEAN_DECL.test(t)) { wantName = true; out += '<span class="lk">' + esc(t) + "</span>"; continue; } }
+        else if (LEAN_SORT.test(t)) cls = "lt";
+        else if (wantName) cls = "ld";
+      }
+      else if (m[4]) cls = "ln";
+      else if (m[5]) cls = "lo";
+      else if (m[6]) cls = "lt";
+      if (m[3]) wantName = false;
+      out += cls ? '<span class="' + cls + '">' + esc(t) + "</span>" : esc(t);
+    }
+    return out + esc(src.slice(last));
+  }
   function ghHref(fsPath, line) {
     return D.repo + "/" + D.root + "/" + fsPath + (line ? "#L" + line : "");
   }
@@ -148,7 +176,7 @@
     var h = '<div class="ldetail-inner"><div class="ldetail-grid"><div class="ldetail-text">';
     h += "<h3>" + esc(L.title) + ' <span class="lrole">' + esc(L.role) + "</span></h3>";
     h += '<p class="lmeta">' + L.files + " files · " + L.decls + " declarations · " +
-         '<a href="' + viewHref(id) + '">open in the map</a> · <a href="' + ghTree(L.fsPath) + '">folder on GitHub</a></p>';
+         '<a href="' + ghTree(L.fsPath) + '">folder on GitHub</a></p>';
     h += L.summary;
     h += '<div class="ldeps"><div><span class="ldeps-k">Rests on</span>' + chips(up, "up") + "</div>" +
          '<div><span class="ldeps-k">Feeds</span>' + chips(down, "down") + "</div></div>";
@@ -156,7 +184,8 @@
     L.snippets.forEach(function (s) {
       h += '<p class="lsnip-head"><code>' + esc(s.name) + "</code> · " +
            '<a href="' + ghHref(s.file, s.line) + '">' + esc(s.file.replace(/^Implementation\//, "")) + ":" + s.line + "</a></p>";
-      h += '<pre class="lsnip"><code>' + esc(s.code) + "</code></pre>";
+      var lean = !/\.md$/.test(s.file);
+      h += '<pre class="lsnip' + (lean ? " lean" : "") + '"><code>' + (lean ? leanHL(s.code) : esc(s.code)) + "</code></pre>";
       if (s.note) h += '<p class="lsnip-note">' + s.note + "</p>";
     });
     h += "</div></div></div>";
@@ -211,6 +240,10 @@
     open(m[1], true);
     setTimeout(function () { var b0 = block(m[1]); if (b0.scrollIntoView) b0.scrollIntoView({ block: "center" }); }, 0);
   }
+  window.addEventListener("hashchange", function () {
+    var h = /^#layer-([A-Za-z]+)$/.exec(location.hash || "");
+    if (h && byId[h[1]] && openId !== h[1]) toggle(h[1], true);
+  });
   draw();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { draw(); });
   window.addEventListener("load", draw);

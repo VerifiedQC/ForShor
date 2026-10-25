@@ -1,4 +1,10 @@
 /* Small additions on top of tufte.css for the ForShor project page. */
+/* Always light: tufte.css switches to a dark body under prefers-color-scheme: dark,
+   but the layer graph and figures are designed for a light page. */
+:root { color-scheme: light; }
+@media (prefers-color-scheme: dark) {
+  body { background-color: #fffff8; color: #111; }
+}
 .site-links { font-size: 1rem; margin-top: 1.5rem; }
 .byline { font-size: 1.1rem; font-style: italic; margin-top: 0; }
 figure.fullwidth img {
@@ -138,3 +144,12 @@ pre.lsnip > code { display: block; width: auto; margin-left: 0; overflow-x: visi
 @media (prefers-reduced-motion: reduce) {
   .ldetail, .layer { transition: none; }
 }
+
+/* Lean syntax highlighting in the quoted statements (layers.js leanHL). */
+pre.lean .lk { color: #7a2e8c; }
+pre.lean .ld { color: #1d4f91; font-weight: 600; }
+pre.lean .lt { color: #23744a; }
+pre.lean .lo { color: #a3361f; }
+pre.lean .ln { color: #9a5b00; }
+pre.lean .ls { color: #9a5b00; }
+pre.lean .lc { color: #8a8a80; font-style: italic; }
