@@ -15,7 +15,7 @@
     </script>
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="./tufte.css?v=1">
-    <link rel="stylesheet" href="./site.css?v=3">
+    <link rel="stylesheet" href="./site.css?v=4">
   </head>
   <body>
     <article>
@@ -58,6 +58,29 @@
       </section>
 
       <section>
+        <h2 id="algorithm-section">Shor's algorithm, as it is stated in Lean</h2>
+        <p>
+          Before the folders, the algorithm. Shor's algorithm is mostly classical. To factor <code>N</code>, pick a
+          random base <code>a</code>; find the order <code>r</code> of <code>a</code> modulo <code>N</code>; and if
+          <code>r</code> is even and <code>a^(r/2)</code> is not <code>−1</code>, then <code>gcd(a^(r/2) ± 1, N)</code>
+          is a factor. Only the middle step, order finding, needs a quantum computer, and even there the quantum
+          part is a single circuit of four steps followed by a measurement. Everything after the measurement is a
+          classical continued-fraction scan.<label for="sn-algo" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-algo" class="margin-toggle"/><span class="sidenote">Every block is a definition or theorem in the repository; click it to see the Lean source, verbatim, with a link to the line. The blue row is <code>orderFindingIdeal</code>, the circuit the correctness theorem is about. The circuit that is compiled and counted has the same four steps, with the verified approximate modular exponentiation in third place.</span>
+          The whole loop is one theorem, <code>Shor_end_to_end_factoring</code>: at least half of the bases are good,
+          and for each good one the circuit and the scan return <code>r</code> with probability at least
+          <code>κ / log(log₂ N + 1)</code>, after which the gcd step gives a factor.
+        </p>
+        <figure class="fullwidth layers-figure">
+          <div id="algorithm" class="layers algo"></div>
+        </figure>
+        <p>
+          Nearly all the gates are in one block, <code>y ← aˣ mod N</code>. That block is where the next diagram
+          starts: it is built from QFT arithmetic, the QFT from phase products, and the phase product is where the
+          fast multiplication lives.
+        </p>
+      </section>
+
+      <section>
         <h2 id="layers-section">The proof, layer by layer</h2>
         <p>
           The whole development is five layers deep, and they are best read top to bottom, which is also the
@@ -77,6 +100,50 @@
           <code>ops</code> that appear in every subroutine theorem are the Toom-Cook table, which is why one
           proof serves every admissible table, and the <code>qs</code> that appears everywhere is the semantics
           the theorems are generic over.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="phaseproduct-section">Inside PhaseProduct: one table, applied recursively</h2>
+        <p>
+          The layer graph says which folder rests on which. It does not say how the most expensive block is
+          built, so here it is. A phase product applies <code>exp(i·φ·x·z)</code> to two <code>n</code>-bit registers.
+          Doing it directly costs about <code>n²</code> gates. ForShor instead does what Toom-Cook does for integer
+          multiplication: split <code>x</code> and <code>z</code> into <code>k</code> chunks, evaluate both
+          chunk polynomials at <code>2k − 1</code> points, take one smaller phase product per point, and recurse.
+          Everything about that scheme is fixed by one small table.
+        </p>
+        <figure class="fullwidth pp-figure">
+          <img src="img/phaseproduct-recursion.png" alt="The PhaseProduct recursion at k = 3: (1) the design parameters k, the points p and the program Prog_k, and the levels of the recursion; (2) one level, where register operations U0, U1, U2 move the chunks to the evaluations at five points and five smaller phase products are taken; (3) each of those is again five phase products with the same table, down to naive base-case leaves, and the gate count sums over the tree.">
+        </figure>
+        <p>
+          <span class="newthought">The table</span> is a straight-line program on <code>k</code> registers, each
+          holding a combination of the chunks. It may add a shifted copy of one register to another, negate, and shift,
+          and at chosen moments it takes a phase product of whatever a register then holds.<label for="sn-pp1" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-pp1" class="margin-toggle"/><span class="sidenote">The program type is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L132"><code>Prog k</code></a>, a list of <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L116"><code>valid_ops k</code></a>: <code>addScaled</code>, <code>negate</code>, <code>shiftL</code>, <code>shiftR</code>, <code>phaseProduct</code>. A point is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L110"><code>Point</code></a>, where <code>frac 0</code> is the point at infinity. The table drawn is one admissible <code>k = 3</code> table, chosen because it reads well; the reference table in <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Submission/Decide.lean#L319"><code>refOps</code></a> uses the points <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/PhaseProduct/Compiler/Coefficients.lean#L199"><code>genInterpolationPoints 3</code></a> = <code>0, −1, 1, −2, 2</code> on a single register.</span>
+          A table is admissible when the points are distinct, each phase product sees exactly the chunk polynomial
+          evaluated at the next point, and the program ends where it started, so the registers are returned
+          clean. These are four decidable conditions, checked by the kernel; nothing else about the table is trusted.
+        </p>
+        <p>
+          <span class="newthought">One level</span> is the middle panel. At <code>k = 3</code> the operations
+          <code>U₀</code> put <code>x₀</code>, <code>x₀ + x₁ + x₂</code> and <code>x₂</code> into the three registers,
+          the values at <code>0</code>, <code>1</code> and <code>∞</code>; three phase products are taken;
+          <code>U₁</code> turns the registers into the values at <code>−2</code> and <code>−1</code> for two more; and
+          <code>U₂</code> undoes everything. Five phase products on chunks of a third of the width replace one on the
+          full width.<label for="sn-pp2" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-pp2" class="margin-toggle"/><span class="sidenote">The phases of the five products are not the product's own: the angle for each point is an interpolation coefficient, so that the five phases multiply out to <code>exp(i·φ·x·z)</code>. That is the algebra in <code>PhaseProduct/Math</code>, and <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/PhaseProduct/Main.lean#L16"><code>lowerSignedPhaseProduct_correct</code></a> is the theorem that the lowered circuit is correct for any admissible table.</span>
+        </p>
+        <p>
+          <span class="newthought">The recursion</span> is the right panel. Each of the five is again a phase
+          product, lowered with the same table, until the width stops shrinking; at that point the circuit uses the
+          naive phase product. The width at the next level is about a <code>k</code>-th of the current one, plus a
+          constant number of padding bits, and the register arithmetic at a node is linear in its width. Summing
+          over the tree gives <code>O(n^(log_k(2k − 1)))</code> gates: <code>n^1.585</code> at <code>k = 2</code>,
+          <code>n^1.465</code> at <code>k = 3</code>, approaching <code>n</code> as <code>k</code> grows.<label for="sn-pp3" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-pp3" class="margin-toggle"/><span class="sidenote">The recursion is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/PhaseProduct/Lowering/PlanBuilders.lean#L407"><code>Policy.signedPlanOf</code></a>, which recurses only while <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/PhaseProduct/Compiler/Widths.lean#L44"><code>nextSignedWidth</code></a> is smaller than the input width, so it terminates by construction. The three facts the count needs are <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/GateCount/PhaseProduct/Lemmas.lean#L4059"><code>prog_balanced_nextSignedWidth</code></a> (next width at most <code>⌈w/k⌉ + c</code>), <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/GateCount/PhaseProduct/Lemmas.lean#L178"><code>phaseProgramOverhead_linear</code></a> (overhead at most <code>A·w + B</code>) and <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/GateCount/PhaseProduct/Lemmas.lean#L2900"><code>balanced_phaseProduct_recurrence_solution</code></a>; the exponent is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/GateCount/Definitions.lean#L72"><code>phaseProductExponent k</code></a> and the bound is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/GateCount/Definitions.lean#L84"><code>PhaseProductGateCountBound</code></a>.</span>
+          Modular exponentiation is a sequence of <code>O(n)</code> modular multiplications built on top of this,
+          which is where the <code>n^(2+ε)</code> of the headline theorem comes from.
+        </p>
+        <p>
+          Back to <a href="#layer-PhaseProduct">the PhaseProduct layer</a> in the graph above.
         </p>
       </section>
 
@@ -150,7 +217,8 @@ lake exe forshor_emit 2 2 15 0   # the reference circuit for (k, a, N, m), as JS
         </p>
       </section>
     </article>
-    <script src="./data/layers.js?v=2"></script>
-    <script src="./layers.js?v=2"></script>
+    <script src="./data/algorithm.js?v=1"></script>
+    <script src="./data/layers.js?v=3"></script>
+    <script src="./layers.js?v=3"></script>
   </body>
 </html>
