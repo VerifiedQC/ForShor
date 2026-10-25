@@ -4,18 +4,23 @@ This directory is the project website, published by GitHub Pages at
 <https://verifiedqc.github.io/ForShor/>. It has two pages:
 
 * `index.html` — the project page, written as a short technical-blog post:
-  what ForShor is, what the map is for, how to read it (with screenshots in
-  `img/`), where to start, how to check the development and how to cite it.
+  what ForShor is, what the site is for, where to start, how to check the
+  development and how to cite it.
   It also carries an interactive **layer graph** of the proof architecture
   (`layers.js`, data in `data/layers.js`): the top-level folders as five
   layers, the real import edges between them, and, on click, a panel with the
   layer's role, the theorem that carries it (copied verbatim from the source
   at a recorded `file:line`, so regenerate rather than edit a snippet), and
   what it rests on and feeds. `#layer-<Folder>` deep-links to an open layer.
+  The quoted Lean statements are syntax-highlighted by a small tokenizer in
+  `layers.js` (`leanHL`; colours in `site.css`). The page is always light,
+  even when the reader's system is in dark mode.
   Plain HTML in [Tufte CSS](https://edwardtufte.github.io/tufte-css/) (`tufte.css` + the `et-book/` fonts, MIT, vendored unchanged; `site.css` holds our few additions); every claim about the proofs is taken
   from the [top-level README](../README.md).
-* `navigator.html` — the interactive proof map described below, in the same
-  dark theme as the project page (`styles.css`; node, edge and legend colours
+* `navigator.html` — the interactive proof map described below. **Not linked
+  from the project page for now** (2026-10-24; the layer graph replaces it);
+  the page and its screenshots in `img/` are kept so it can come back. It is
+  still in the dark theme of the earlier project page (`styles.css`; node, edge and legend colours
   are the `--role-*` / `--layer-*` / `--edge-*` variables there, the colours
   in `data/annotations.js` are only a fallback). Deep links
   of the old form `index.html#/Folder?sel=...` are redirected to
