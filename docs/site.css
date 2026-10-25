@@ -14,7 +14,13 @@ figure.fullwidth img {
   border: 1px solid #ccc;
 }
 figure.fullwidth a { background: none; text-shadow: none; }
-pre.code { font-size: 0.9rem; }
+pre.code {
+  font-size: 0.85rem; line-height: 1.45; overflow-x: auto;
+  padding: 0.8rem 1rem; width: 55%; max-width: none;
+  background: #fff; border: 1px solid #ddd; border-radius: 3px;
+}
+pre.code > code { display: block; width: auto; margin-left: 0; overflow-x: visible; font-size: inherit; line-height: inherit; }
+@media (max-width: 760px) { pre.code { width: auto; } }
 .colophon { font-size: 1rem; margin-top: 3rem; }
 
 /* ---- The layer graph (index.html, data/layers.js, layers.js) ---------- */
@@ -192,11 +198,11 @@ table.pstate th { font-family: inherit; font-style: italic; font-weight: normal;
   .ldetail, .layer { transition: none; }
 }
 
-/* Lean syntax highlighting in the quoted statements (layers.js leanHL). */
-pre.lean .lk { color: #d6336c; }
-pre.lean .ld { color: #7048e8; font-weight: 600; }
-pre.lean .lt { color: #0c8599; }
-pre.lean .lo { color: #e8590c; }
-pre.lean .ln { color: #1c7ed6; }
-pre.lean .ls { color: #2f9e44; }
-pre.lean .lc { color: #868e96; font-style: italic; }
+/* Syntax highlighting: Lean snippets (layers.js leanHL) and the static shell/BibTeX blocks in index.html. */
+pre.lean .lk, pre.hl .lk { color: #d6336c; }
+pre.lean .ld, pre.hl .ld { color: #7048e8; font-weight: 600; }
+pre.lean .lt, pre.hl .lt { color: #0c8599; }
+pre.lean .lo, pre.hl .lo { color: #e8590c; }
+pre.lean .ln, pre.hl .ln { color: #1c7ed6; }
+pre.lean .ls, pre.hl .ls { color: #2f9e44; }
+pre.lean .lc, pre.hl .lc { color: #868e96; font-style: italic; }

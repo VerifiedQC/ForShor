@@ -15,7 +15,7 @@
     </script>
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="./tufte.css?v=1">
-    <link rel="stylesheet" href="./site.css?v=5">
+    <link rel="stylesheet" href="./site.css?v=6">
   </head>
   <body>
     <article>
@@ -184,9 +184,9 @@
           The project pins Lean <code>v4.36.0-rc1</code> and a fixed Mathlib revision, so the prebuilt cache
           applies. With <a href="https://github.com/leanprover/elan">elan</a> installed:
         </p>
-<pre class="code">lake exe cache get               # prebuilt Mathlib oleans
-lake build                       # the whole development
-lake exe forshor_emit 2 2 15 0   # the reference circuit for (k, a, N, m), as JSON</pre>
+<pre class="code hl" data-lang="shell"><code><span class="ld">lake</span> <span class="lk">exe</span> <span class="lt">cache</span> <span class="lt">get</span>               <span class="lc"># prebuilt Mathlib oleans</span>
+<span class="ld">lake</span> <span class="lk">build</span>                       <span class="lc"># the whole development</span>
+<span class="ld">lake</span> <span class="lk">exe</span> <span class="lt">forshor_emit</span> <span class="ln">2</span> <span class="ln">2</span> <span class="ln">15</span> <span class="ln">0</span>   <span class="lc"># the reference circuit for (k, a, N, m), as JSON</span></code></pre>
         <p>
           The construction is generic in its Toom-Cook table: any table that passes four decidable side
           conditions inherits the correctness theorem and the gate-count bound at its own exponent. The
@@ -201,14 +201,14 @@ lake exe forshor_emit 2 2 15 0   # the reference circuit for (k, a, N, m), as JS
           A machine-readable <a href="https://github.com/VerifiedQC/ForShor/blob/main/CITATION.cff"><code>CITATION.cff</code></a>
           is in the repository.
         </p>
-<pre class="code">@misc{suresh2026forshor,
-  author       = {Anirudh Suresh and Jai Patel and Yudong Cao and Runzhou Tao},
-  title        = {{ForShor}: Formal Verification of {Shor}'s Algorithm in {Lean~4}
-                  with Verified Resource Estimation},
-  year         = {2026},
-  howpublished = {\url{https://github.com/VerifiedQC/ForShor}},
-  note         = {Apache-2.0 licensed Lean~4 development}
-}</pre>
+<pre class="code hl" data-lang="bibtex"><code><span class="lk">@misc</span><span class="lo">{</span><span class="ld">suresh2026forshor</span><span class="lo">,</span>
+  <span class="lt">author</span>       <span class="lo">=</span> <span class="ls">{Anirudh Suresh and Jai Patel and Yudong Cao and Runzhou Tao}</span><span class="lo">,</span>
+  <span class="lt">title</span>        <span class="lo">=</span> <span class="ls">{{ForShor}: Formal Verification of {Shor}'s Algorithm in {Lean~4}</span>
+<span class="ls">                  with Verified Resource Estimation},</span>
+  <span class="lt">year</span>         <span class="lo">=</span> <span class="ln">{2026}</span><span class="lo">,</span>
+  <span class="lt">howpublished</span> <span class="lo">=</span> <span class="ls">{\url{https://github.com/VerifiedQC/ForShor}}</span><span class="lo">,</span>
+  <span class="lt">note</span>         <span class="lo">=</span> <span class="ls">{Apache-2.0 licensed Lean~4 development}</span>
+<span class="lo">}</span></code></pre>
         <p class="colophon">
           Anirudh Suresh, Jai Patel, Yudong Cao, Runzhou Tao · Apache License 2.0 ·
           <a href="https://github.com/VerifiedQC/ForShor#readme">README</a> ·
