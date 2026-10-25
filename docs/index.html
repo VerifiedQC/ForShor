@@ -15,7 +15,7 @@
     </script>
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="./tufte.css?v=1">
-    <link rel="stylesheet" href="./site.css?v=4">
+    <link rel="stylesheet" href="./site.css?v=5">
   </head>
   <body>
     <article>
@@ -113,13 +113,13 @@
           chunk polynomials at <code>2k − 1</code> points, take one smaller phase product per point, and recurse.
           Everything about that scheme is fixed by one small table.
         </p>
-        <figure class="fullwidth pp-figure">
-          <img src="img/phaseproduct-recursion.png" alt="The PhaseProduct recursion at k = 3: (1) the design parameters k, the points p and the program Prog_k, and the levels of the recursion; (2) one level, where register operations U0, U1, U2 move the chunks to the evaluations at five points and five smaller phase products are taken; (3) each of those is again five phase products with the same table, down to naive base-case leaves, and the gate count sums over the tree.">
+        <figure class="fullwidth">
+          <div id="ppfig" class="ppfig"></div>
         </figure>
         <p>
           <span class="newthought">The table</span> is a straight-line program on <code>k</code> registers, each
           holding a combination of the chunks. It may add a shifted copy of one register to another, negate, and shift,
-          and at chosen moments it takes a phase product of whatever a register then holds.<label for="sn-pp1" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-pp1" class="margin-toggle"/><span class="sidenote">The program type is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L132"><code>Prog k</code></a>, a list of <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L116"><code>valid_ops k</code></a>: <code>addScaled</code>, <code>negate</code>, <code>shiftL</code>, <code>shiftR</code>, <code>phaseProduct</code>. A point is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L110"><code>Point</code></a>, where <code>frac 0</code> is the point at infinity. The table drawn is one admissible <code>k = 3</code> table, chosen because it reads well; the reference table in <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Submission/Decide.lean#L319"><code>refOps</code></a> uses the points <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/PhaseProduct/Compiler/Coefficients.lean#L199"><code>genInterpolationPoints 3</code></a> = <code>0, −1, 1, −2, 2</code> on a single register.</span>
+          and at chosen moments it takes a phase product of whatever a register then holds.<label for="sn-pp1" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-pp1" class="margin-toggle"/><span class="sidenote">Every box in the figure is clickable: the parameters, each <code>U</code>, each of the five products, the levels, the base case and the output each open a panel with the Lean source. The register contents shown are computed by running the table, not typed in. The program type is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L132"><code>Prog k</code></a>, a list of <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L116"><code>valid_ops k</code></a>: <code>addScaled</code>, <code>negate</code>, <code>shiftL</code>, <code>shiftR</code>, <code>phaseProduct</code>. A point is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L110"><code>Point</code></a>, where <code>frac 0</code> is the point at infinity. The table drawn is one admissible <code>k = 3</code> table, chosen because it reads well; the reference table in <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Submission/Decide.lean#L319"><code>refOps</code></a> uses the points <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/PhaseProduct/Compiler/Coefficients.lean#L199"><code>genInterpolationPoints 3</code></a> = <code>0, −1, 1, −2, 2</code> on a single register.</span>
           A table is admissible when the points are distinct, each phase product sees exactly the chunk polynomial
           evaluated at the next point, and the program ends where it started, so the registers are returned
           clean. These are four decidable conditions, checked by the kernel; nothing else about the table is trusted.
@@ -219,6 +219,8 @@ lake exe forshor_emit 2 2 15 0   # the reference circuit for (k, a, N, m), as JS
     </article>
     <script src="./data/algorithm.js?v=1"></script>
     <script src="./data/layers.js?v=3"></script>
-    <script src="./layers.js?v=3"></script>
+    <script src="./layers.js?v=4"></script>
+    <script src="./data/pp.js?v=1"></script>
+    <script src="./ppfig.js?v=1"></script>
   </body>
 </html>

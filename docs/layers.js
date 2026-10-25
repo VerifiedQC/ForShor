@@ -161,6 +161,7 @@
     }
     return out + esc(src.slice(last));
   }
+  window.leanHL = leanHL;                           // shared with ppfig.js
   function ghHref(fsPath, line) {
     return D.repo + "/" + D.root + "/" + fsPath + (line ? "#L" + line : "");
   }
