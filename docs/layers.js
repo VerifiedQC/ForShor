@@ -1,11 +1,11 @@
-// The interactive layer graph on the project page. Data: data/layers.js
-// (rows, drawn edges, real import edges, per-layer text and verbatim Lean
-// snippets). Click a layer and a panel unfolds below its row with what the
-// layer proves, the theorem that carries it, and what it rests on / feeds.
+// The interactive graphs on the project page: the Shor's algorithm overview
+// (data/algorithm.js, #algorithm) and the layer graph (data/layers.js,
+// #layers). Both are rows of blocks joined by arrows; click a block and a
+// panel unfolds below its row with what it is, the Lean statement that
+// carries it (verbatim, with a link to the line), and its neighbours.
 (function () {
   "use strict";
-  var D = window.LAYERS;
-  var root = document.getElementById("layers");
+  function mount(D, root, prefix) {
   if (!D || !root) return;
 
   var byId = D.layers;
@@ -21,7 +21,7 @@
       var L = byId[id];
       var b = document.createElement("button");
       b.type = "button";
-      b.className = "layer layer-" + id;
+      b.className = "layer layer-" + id + (L.kind ? " step-" + L.kind : "");
       b.dataset.id = id;
       b.setAttribute("aria-expanded", "false");
       b.innerHTML = '<span class="lname">' + L.title + '</span><span class="lrole">' + L.role + "</span>";
@@ -36,9 +36,9 @@
   svg.setAttribute("aria-hidden", "true");
   svg.innerHTML =
     '<defs>' +
-    '<marker id="la-primary" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>' +
-    '<marker id="la-secondary" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>' +
-    '<marker id="la-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>' +
+    '<marker id="' + prefix + '-primary" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>' +
+    '<marker id="' + prefix + '-secondary" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>' +
+    '<marker id="' + prefix + '-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>' +
     "</defs>";
   root.appendChild(svg);
   var gEdges = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -66,6 +66,15 @@
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
     while (gEdges.firstChild) gEdges.removeChild(gEdges.firstChild);
     if (window.matchMedia && window.matchMedia("(max-width: 760px)").matches) return;
+    (D.groups || []).forEach(function (g) {
+      var bs = D.rows[g.row].map(function (id) { return rect(block(id)); });
+      var l = Math.min.apply(null, bs.map(function (r) { return r.left; })) - 16,
+          r = Math.max.apply(null, bs.map(function (r) { return r.right; })) + 16,
+          t = Math.min.apply(null, bs.map(function (r) { return r.top; })) - 12,
+          b = Math.max.apply(null, bs.map(function (r) { return r.bottom; })) + 12;
+      gEdges.appendChild(el("rect", { x: l, y: t, width: r - l, height: b - t, rx: 4, "class": "lgroup" }));
+      gEdges.appendChild(el("text", { x: l + 10, y: b + 18, "class": "llabel llabel-group" }, g.label));
+    });
     var pad = 24, R = 14;
     D.edges.forEach(function (e) {
       var a = rect(block(e.from)), b = rect(block(e.to));
@@ -84,7 +93,11 @@
         if (Math.abs(sx - ex) > 60 && sx > ex) { lx = Math.min(sx, ex) - 10; anchor = "end"; }
       } else {                                           // around the side, skipping rows
         var left = e.side === "left", lane = 30 + (e.lane || 0) * 32;
-        var x0 = left ? Math.min(a.left, b.left) - lane : Math.max(a.right, b.right) + lane;
+        var lo = Math.min(ra, rb), hi = Math.max(ra, rb), span = [];   // clear every row it passes
+        for (var ri = lo; ri <= hi; ri++) D.rows[ri].forEach(function (id) { span.push(rect(block(id))); });
+        var x0 = left ? Math.min.apply(null, span.map(function (r) { return r.left; })) - lane
+                      : Math.max.apply(null, span.map(function (r) { return r.right; })) + lane;
+        if (D.groups) x0 += left ? -16 : 16;
         var fx = left ? a.left - 1 : a.right + 1, tx = left ? b.left - 1 : b.right + 1;
         var fy = a.cy + (e.lane || 0) * 10, ty = b.cy - (e.lane || 0) * 10;
         var s = left ? -1 : 1;                           // direction towards the lane
@@ -94,7 +107,7 @@
             " L" + tx + "," + ty;
         lx = x0 + s * 9; ly = (fy + ty) / 2 + 4; anchor = left ? "end" : "start";
       }
-      var p = el("path", { d: d, "class": "ledge ledge-" + e.kind, "marker-end": "url(#la-" + e.kind + ")" });
+      var p = el("path", { d: d, "class": "ledge ledge-" + e.kind, "marker-end": "url(#" + prefix + "-" + e.kind + ")" });
       gEdges.appendChild(p);
       if (lab) {
         var t = el("text", { x: lx, y: ly, "text-anchor": anchor, "class": "llabel" + (e.mono ? " llabel-mono" : "") }, lab);
@@ -171,15 +184,21 @@
   }
   function render(id) {
     var L = byId[id];
-    var up = D.imports.filter(function (i) { return i.to === id; });
-    var down = D.imports.filter(function (i) { return i.from === id; });
+    var up = (D.imports || []).filter(function (i) { return i.to === id; });
+    var down = (D.imports || []).filter(function (i) { return i.from === id; });
     var h = '<div class="ldetail-inner"><div class="ldetail-grid"><div class="ldetail-text">';
     h += "<h3>" + esc(L.title) + ' <span class="lrole">' + esc(L.role) + "</span></h3>";
-    h += '<p class="lmeta">' + L.files + " files · " + L.decls + " declarations · " +
-         '<a href="' + ghTree(L.fsPath) + '">folder on GitHub</a></p>';
+    if (L.fsPath)
+      h += '<p class="lmeta">' + L.files + " files · " + L.decls + " declarations · " +
+           '<a href="' + ghTree(L.fsPath) + '">folder on GitHub</a></p>';
     h += L.summary;
-    h += '<div class="ldeps"><div><span class="ldeps-k">Rests on</span>' + chips(up, "up") + "</div>" +
-         '<div><span class="ldeps-k">Feeds</span>' + chips(down, "down") + "</div></div>";
+    if (D.imports)
+      h += '<div class="ldeps"><div><span class="ldeps-k">Rests on</span>' + chips(up, "up") + "</div>" +
+           '<div><span class="ldeps-k">Feeds</span>' + chips(down, "down") + "</div></div>";
+    if (L.layers)
+      h += '<div class="ldeps"><div><span class="ldeps-k">In the layer graph</span>' +
+           L.layers.map(function (x) { return '<a class="lchip" href="#layer-' + x + '">' + esc(x) + "</a>"; }).join("") +
+           "</div></div>";
     h += '</div><div class="ldetail-code">';
     L.snippets.forEach(function (s) {
       h += '<p class="lsnip-head"><code>' + esc(s.name) + "</code> · " +
@@ -211,7 +230,13 @@
     rows[rowOf[id]].insertAdjacentElement("afterend", panel);
     var br = rect(b), pr = rect(panel);
     panel.style.setProperty("--caret-x", (br.cx - pr.left) + "px");
-    panel.querySelectorAll(".lchip").forEach(function (c) {
+    panel.querySelectorAll("a.lchip").forEach(function (c) {
+      c.addEventListener("click", function (ev) {    // cross-graph link: open that block
+        var target = c.getAttribute("href");
+        if (location.hash === target) { ev.preventDefault(); window.dispatchEvent(new Event("hashchange")); }
+      });
+    });
+    panel.querySelectorAll("button.lchip").forEach(function (c) {
       c.addEventListener("click", function () { toggle(c.dataset.id, true); });
     });
     if (instant) { panel.classList.add("open", "instant"); }
@@ -231,20 +256,24 @@
   function setHash(id) {
     if (!window.history || !history.replaceState) return;
     var base = location.pathname + location.search;
-    history.replaceState(null, "", id ? base + "#layer-" + id : base);
+    history.replaceState(null, "", id ? base + "#" + prefix + "-" + id : base);
   }
 
   // ---------------------------------------------------------------- init
-  var m = /^#layer-([A-Za-z]+)$/.exec(location.hash || "");
+  var hashRe = new RegExp("^#" + prefix + "-([A-Za-z]+)$");
+  var m = hashRe.exec(location.hash || "");
   if (m && byId[m[1]]) {
     open(m[1], true);
     setTimeout(function () { var b0 = block(m[1]); if (b0.scrollIntoView) b0.scrollIntoView({ block: "center" }); }, 0);
   }
   window.addEventListener("hashchange", function () {
-    var h = /^#layer-([A-Za-z]+)$/.exec(location.hash || "");
-    if (h && byId[h[1]] && openId !== h[1]) toggle(h[1], true);
+    var h = hashRe.exec(location.hash || "");
+    if (h && byId[h[1]]) { if (openId !== h[1]) toggle(h[1], true); else block(h[1]).scrollIntoView({ behavior: "smooth", block: "nearest" }); }
   });
   draw();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { draw(); });
   window.addEventListener("load", draw);
+  }
+  mount(window.ALGORITHM, document.getElementById("algorithm"), "step");
+  mount(window.LAYERS, document.getElementById("layers"), "layer");
 })();

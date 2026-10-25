@@ -127,7 +127,22 @@ pre.lsnip {
 pre.lsnip > code { display: block; width: auto; margin-left: 0; overflow-x: visible; font-size: inherit; line-height: inherit; }
 .lsnip-note { font-size: 1rem !important; color: #333; margin-top: 0.4rem !important; }
 
+/* The Shor's algorithm overview reuses the layer-graph machinery (layers.js). */
+.layers.algo { --lane-pad: 150px; }
+.layers.algo .lrow { gap: 2.6rem; margin-bottom: 3.6rem; }
+.layers.algo .layer { min-width: 9rem; }
+.layers.algo .lname { font-family: inherit; font-size: 1.1rem; }
+.step-classical { background: #f6f6f3; }
+.step-quantum { background: #eef3fa; }
+.lgroup { fill: none; stroke: #6a7f9e; stroke-width: 1; stroke-dasharray: 5 4; }
+.llabel-group { font-style: italic; fill: #3a4d6b; }
+
+/* The PhaseProduct recursion figure */
+figure.pp-figure img { width: 100%; height: auto; border: 1px solid #e3e3e3; }
+
 @media (max-width: 1100px) {
+  .layers.algo { --lane-pad: 140px; }
+  .layers.algo .lrow { gap: 1.4rem; }
   .layers { --lane-pad: 160px; }
   .lrow { gap: 5rem; }
   .llabel { font-size: 0.75rem; }
