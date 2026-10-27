@@ -27,38 +27,53 @@
 
       <section>
         <p>
-          <span class="newthought">The number people quote</span> about Shor's algorithm is a gate count.
-          Gate counts are how the field argues about when factoring a 2048-bit RSA modulus becomes
-          feasible, and almost every one of them is an estimate: a circuit design on paper, a cost model,
-          a spreadsheet. The point of ForShor is that this number can be a theorem. The repository is a
-          Lean 4 proof that a specific, fully compiled order-finding circuit is correct, and a second proof,
-          about the same compiled object, that it uses <code>O(n^(2+ε))</code> elementary gates. Both are
-          checked by the same kernel, all the way down from a high-level gate language to a low-level
-          abstract machine, with no <code>sorry</code> and no axioms beyond Lean's own three.<label for="sn-axioms" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-axioms" class="margin-toggle"/><span class="sidenote"><code>#print axioms</code> on the headline theorems reports only <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>. Decidable side conditions are closed by <code>decide +kernel</code>, never <code>native_decide</code>. The one <code>sorry</code> in the repository is a test that the axiom audit rejects it.</span>
+          <span class="newthought">Feasibility of a quantum algorithm</span> is typically argued
+          using gate counts as the primary metric. In the case of factoring a 2048-bit modulus to 
+          break RSA, Shor's algorithm for order-finding is exceedingly popular, being taught in most
+          introductory quantum computing courses and has an often-quoted gate count to evidence its
+          practicality. Every instance of a gate count is an estimate coming from a cost model, a circuit 
+          design in a paper, or a spreadsheet explicitly accounting for each subroutine. ForShor 
+          develops the estimation from formally stated theorems, being a Lean 4 repository proving that
+          a specific, fully compiled order-finding circuit is correct. It also proves the asymptotic gate scaling to be 
+          <code>O(n^(2+ε))</code> elementary gates when substituting fast-multiplication from Kahanamoku-Meyer and
+          Yao (2024) into the modular exponentiation subroutine. By using high-level gate languages
+          mapping to low-level abstractions, both proofs can be checked in the same kernel, with no <code>sorry<\code> and no axioms beyond Lean's own three.<label for="sn-axioms" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-axioms" class="margin-toggle"/><span class="sidenote"><code>#print axioms</code> on the headline theorems reports only <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>. Decidable side conditions are closed by <code>decide +kernel</code>, never <code>native_decide</code>. The one <code>sorry</code> in the repository is a test that the axiom audit rejects it.</span>
         </p>
         <p>
-          If we had to pick the single most important thing, it is that the resource bound and the
-          correctness proof are about one object. It is not hard to verify an idealised circuit, and it
-          is not hard to estimate a realistic one; the gap between the two is where the surprises live.
-          Here the circuit whose success probability is bounded is the circuit whose gates are counted.
+        When treated independently, verifying correctness for an idealized circuit is not hard, nor 
+        is estimating the cost of a realistic circuit. Coupling these two actions is critically 
+        important as the world looks toward a fault-tolerant future, ensuring the resource bound
+        and the correctness proof consider the same quantum algorithm. This way, a circuit with 
+        a bounded success probability has its gates explicitly counted, maximizing clarity and 
+        confidence as quantum algorithms like Shor’s order-finding, giving efficient solutions to 
+        classically hard problems, come into the scope of realizability. 
         </p>
         <p>
-          Concretely, three theorems. <code>Shor_correct</code> says the ideal order-finding circuit,
+        Here, we will describe Shor’s order-finding algorithm as it is written in Lean. We detail the 
+        stepwise process from modulus to solution using quantum algorithmic subroutines, with 
+        interactive displays to allow the reader to freely traverse the argument. By pairing the proof in 
+        words to the Lean code, we aim to build a mathematical foundation both for Lean experts and 
+        for those who may be new to formal verification. Interactive nodes in the graphs below link 
+        back to the Lean code in the GitHub repository, letting a researcher easily locate where 
+        statements are proven.
+        </p>                                          
+        <p> 
+          We start with three theorems. <code>Shor_correct</code> says the ideal order-finding circuit,
           after classical continued-fraction post-processing, returns exactly the order <code>r</code>
           with probability at least <code>κ / log(log₂ N + 1)</code>, that is <code>Ω(1 / log log N)</code>.<label for="sn-kappa" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-kappa" class="margin-toggle"/><span class="sidenote"><code>κ = 1/π² ≈ 0.101</code>: Shor's per-numerator Fourier constant <code>4/π²</code> times the <code>1/4</code> of the totient bound <code>φ(r)/r ≥ 1/(4 · log(log₂ N + 1))</code>. The exponent register has <code>log₂(2N²)</code> bits, the modulus register <code>log₂(2N)</code>. The classical budget <code>T</code> bounds the convergent scan and costs no gates. This is the probability of getting <em>r</em> itself, not of landing in a good window.</span>
           <code>Shor_correct_approx_lowered</code> says the same bound survives compilation, up to a
           factor of two, once the per-step precision <code>η</code> is set by a closed form in
           <code>N</code>.<label for="sn-eta" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-eta" class="margin-toggle"/><span class="sidenote">The lowering itself is exact; the only loss is the modular-exponentiation approximation. Holding it to half the ideal bound costs <code>O(log n)</code> extra work bits; at 2048 bits <code>η ≈ 2⁻⁵³</code>, about 105 extra work bits. <code>shorPrecision</code> is a closed form, so there is no existential constant a circuit builder would have to guess.</span>
-          And <code>exists_shorGateCountBound</code> says that for every <code>ε &gt; 0</code> there is a
+          Finally, <code>exists_shorGateCountBound</code> says that for every <code>ε &gt; 0</code> there is a
           Toom-Cook arity <code>k</code> at which the compiled circuit uses at most
           <code>C · n^(2+ε)</code> gates, <code>n</code> the size of the modulus register. That count is
-          an honest count of <code>LowGate</code> operations under an explicit cost model, not an abstract
-          measure.<label for="sn-count" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-count" class="margin-toggle"/><span class="sidenote"><code>shorOrderFindingGateCount</code> is <code>LowGate.gateCount shorGateCostModel</code> of the compiled circuit, and <code>shorGateRate ε n</code> is just <code>n^(2+ε)</code>. A companion theorem, <code>shorGateCountBound_of_setup</code>, gives any admissible Toom-Cook table the bound at its own exponent <code>log(2k−1)/log k</code>; a <code>k = 2</code> table runs at about <code>n^2.585</code>. Both theorems are about one table used at every width, which is the right statement for an exponent and not a gate count at <code>n = 2048</code>.</span>
+          derived from <code>LowGate</code> operations under an explicitly stated cost model, containing 
+          common primitives like ripple-carry addition and bit-shifting.<label for="sn-count" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-count" class="margin-toggle"/><span class="sidenote"><code>shorOrderFindingGateCount</code> is <code>LowGate.gateCount shorGateCostModel</code> of the compiled circuit, and <code>shorGateRate ε n</code> is just <code>n^(2+ε)</code>. A companion theorem, <code>shorGateCountBound_of_setup</code>, gives any admissible Toom-Cook table the bound at its own exponent <code>log(2k−1)/log k</code>; a <code>k = 2</code> table runs at about <code>n^2.585</code>. Both theorems are about one table used at every width, which is the right statement for an exponent and not a gate count at <code>n = 2048</code>.</span>
         </p>
       </section>
 
       <section>
-        <h2 id="algorithm-section">Shor's algorithm, as it is stated in Lean</h2>
+        <h2 id="algorithm-section">Shor's algorithm, as stated in Lean</h2>
         <p>
           Before the folders, the algorithm. Shor's algorithm is mostly classical. To factor <code>N</code>, pick a
           random base <code>a</code>; find the order <code>r</code> of <code>a</code> modulo <code>N</code>; and if
