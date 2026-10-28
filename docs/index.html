@@ -175,16 +175,16 @@
         <h2 id="nontrivial">Why PhaseProduct optimization is nontrivial</h2>
         <p>
           <span class="newthought">A policy</span> <em>P</em> = ((<u>w</u><sub>1</sub>, T<sup>(1)</sup>), (<u>w</u><sub>2</sub>, T<sup>(2)</sup>), …)
-          is a short list of instructions: at each width, which table to use (the left panel above).
-          Checking a policy is easy; finding the best one is not, because three things couple together. Inside a table,
+          is a short list of instructions where at each width, there will be a table to use (the left panel above).
+          Finding the best policy is not easy because three things couple together. Inside a table,
           the program of additions, negations and shifts may visit the evaluation points in any order and keep partial
           sums, so each step's cost depends on what earlier steps left in the registers. Between a table and the levels
-          below it, a table is judged by the whole recursion it triggers: saving an addition can widen the registers and
+          below it, a table is judged by the whole recursion it triggers. In this way, saving an addition can widen the registers and
           make every product below more expensive. Across widths, the same table is reused wherever its arity appears,
           and the remainder of the width modulo <code>k</code> enters the child width, so one more input bit can help one
           arity and not another. With arities up to 3 the optimum uses <code>k = 2</code> at <code>n = 60</code>,
           <code>k = 3</code> at <code>n = 62</code> and <code>k = 2</code> again at <code>n = 64</code>. Even the
-          trade-off at arity 2 is delicate: at <code>n = 40</code>, stopping costs 92,800 T gates and one split with a
+          trade-off at arity 2 is sensitive, wherein at <code>n = 40</code>, stopping costs 92,800 T gates and one split with a
           charge-4 table costs 92,750, a saving of 50, while a second split loses.
         </p>
         <p>
@@ -198,23 +198,23 @@
           faster method and prove no lower bound; a faster method would have to exploit the arithmetic inside the tables.
         </p>
         <p>
-          <span class="newthought">What we can't prove.</span> For the problem as posed, finding the best table cannot be
+          <span class="newthought">What we can't prove:</span> For the problem as posed, finding the best table cannot be
           NP-hard unless P = NP: the best structural score grows only polynomially in <code>k</code>, so the yes-instances
-          form a sparse set, and Mahaney's theorem forbids a sparse NP-hard set. Both are checked in Lean. For the full
+          form a sparse set, and Mahaney's theorem forbids a sparse NP-hard set. Both we check in Lean. For the full
           T-count problem the same barrier holds if the optimum is polynomially bounded, a hypothesis we supply. Once the
           evaluation points are part of the input, the problem is NP-hard already at arity 2, by reduction from SAT through
           Hamiltonian cycle, also checked in Lean. That applies to the structural score, not to the T count, and not to the
           points the challenge uses; it shows that point ordering alone carries combinatorial difficulty.
         </p>
         <p>
-          <span class="newthought">What it costs in practice.</span> We implemented the exact algorithm in Fortran 90;
+          <span class="newthought">In our implementation,</span> we built the exact algorithm in Fortran 90;
           every table it returned was replayed independently, and each distinct table was compiled in Lean against the
           benchmark's contract. With arity 2 the answer is immediate up to <code>n = 2048</code>. With arity 3 the search
           took 2.6 s at <code>n = 52</code>, 19 s at 60, 89 s at 62 and 511 s at 64, and at arity 4 the run at
           <code>n = 56</code> stopped with no answer after 4 h 16 min, with a footprint of 130–140 GiB.<label for="sn-hard-meas" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-hard-meas" class="margin-toggle"/><span class="sidenote">One machine (Apple M5 Pro, 24 GiB), whole-process wall time, interim snapshot. These are measurements, not a scaling law.</span>
           In every run that finished the optimal policy was a single level of recursion. The cryptographic target is
           <code>n = 2048</code>, where exact search at arity 3 or higher is out of reach, so the objective is explicit,
-          every candidate can be checked, and the exact optimum is not: that is what the ForShor Challenge is built on.
+          every candidate can be checked, and the exact optimum is not known, founding the ForShor Challenge.
           Any search method is welcome, and a cheaper policy on the leaderboard is a real result.
         </p>
       </section>
