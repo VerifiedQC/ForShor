@@ -1,5 +1,5 @@
-import FastMultiplication
-import FastMultiplication.ShorVerification.Submission.Audit
+import ForShor
+import ForShor.ShorVerification.Submission.Audit
 
 /-!
 # The repository's own axiom guard

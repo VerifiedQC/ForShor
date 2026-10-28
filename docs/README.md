@@ -27,7 +27,7 @@ This directory is the project website, published by GitHub Pages at
   `navigator.html` by a one-line script in `index.html`, so existing links
   keep working.
 
-Interactive map of `FastMultiplication/ShorVerification`: the outermost view
+Interactive map of `ForShor/ShorVerification`: the outermost view
 is `Framework` (the specification) alongside the `Implementation/` subsystems
 (`Shared`, `PhaseProduct`, `QFT`, `ModularExponentiation`, `Shor`, `GateCount`,
 `Reference`); opening any folder descends into its own graph of children,

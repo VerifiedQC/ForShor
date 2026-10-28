@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate docs/data/graph.js from the FastMultiplication/ShorVerification tree.
+"""Generate docs/data/graph.js from the ForShor/ShorVerification tree.
 
 Walks Framework/ and Implementation/ (Emit/ and Vendor/ are out of scope and never visited), parses `import` lines, docstrings, and top-level declarations
 out of every .lean file, converts every README.md to HTML, and aggregates
@@ -22,7 +22,7 @@ import re
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ROOT = "FastMultiplication/ShorVerification"
+ROOT = "ForShor/ShorVerification"
 GRAPH_JS_PATH = os.path.join(REPO_ROOT, "docs/data/graph.js")
 ANNOTATIONS_JS_PATH = os.path.join(REPO_ROOT, "docs/data/annotations.js")
 
@@ -36,7 +36,7 @@ DECL_RE = re.compile(
     r"(theorem|lemma|def|abbrev|structure|class|inductive|instance)\s+"
     r"([^\s(:{\[]+)"
 )
-IMPORT_RE = re.compile(r"^import\s+(FastMultiplication\.ShorVerification\.[A-Za-z0-9_.]+)")
+IMPORT_RE = re.compile(r"^import\s+(ForShor\.ShorVerification\.[A-Za-z0-9_.]+)")
 NAMESPACE_OPEN_RE = re.compile(r"^namespace\s+(\S+)")
 NAMESPACE_CLOSE_RE = re.compile(r"^end\s+(\S+)\s*$")
 DOCSTRING_RE = re.compile(r"/-!(.*?)-/", re.DOTALL)
@@ -203,7 +203,7 @@ def resolve_imports(nodes):
         if node.kind != "file":
             continue
         for raw in getattr(node, "_raw_imports", []):
-            suffix = raw[len("FastMultiplication.ShorVerification."):]
+            suffix = raw[len("ForShor.ShorVerification."):]
             # Vendor/ is third-party Lean copied in verbatim; it is documented by
             # its own README and deliberately not drawn in the graph.
             if suffix.startswith("Vendor."):

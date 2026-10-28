@@ -4,7 +4,7 @@
 // and copies the quoted declarations verbatim. Regenerate, don't edit.
 window.PPFIG = {
  "repo": "https://github.com/VerifiedQC/ForShor/blob/main",
- "root": "FastMultiplication/ShorVerification",
+ "root": "ForShor/ShorVerification",
  "k": 3,
  "q": 5,
  "points": [

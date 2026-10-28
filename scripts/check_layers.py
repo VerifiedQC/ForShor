@@ -16,8 +16,8 @@ import os
 import re
 import sys
 
-IMPL = "FastMultiplication/ShorVerification/Implementation"
-PREFIX = "FastMultiplication.ShorVerification.Implementation."
+IMPL = "ForShor/ShorVerification/Implementation"
+PREFIX = "ForShor.ShorVerification.Implementation."
 
 # A declaration, for the umbrella detector. `private`/`protected`/`opaque`/
 # `example` count: a file of only private lemmas is not an umbrella.
@@ -40,8 +40,7 @@ LAYERS = {
         (r"^Lowering", 4), (r"^Spec", 5), (r"^Proofs", 6), (r"^Main$", 7),
     ],
     "QFT": [
-        (r"^Split$", 1), (r"^Lowering", 2),
-        (r"^Spec", 3), (r"^Proofs", 4), (r"^Main$", 5),
+        (r"^Statement$", 0), (r"^Proofs", 4), (r"^Main$", 5),
     ],
     "Shared": [
         (r"^(QftPhase|Registers|Measurement)$", 1), (r"^States$", 2),
@@ -92,7 +91,7 @@ ALLOWED = {
 # Folders that may not import another subroutine/assembly folder sideways.
 NO_SIDEWAYS = {"Shared"}
 SIDEWAYS_RE = re.compile(
-    r"^import FastMultiplication\.ShorVerification\.Implementation\."
+    r"^import ForShor\.ShorVerification\.Implementation\."
     r"(PhaseProduct|QFT|ModularExponentiation|Shor|GateCount|Reference)\.")
 
 # Shor/Proofs is proof-only: nothing outside Implementation/Shor may import it.
@@ -180,7 +179,7 @@ def check_folder(folder):
 def check_proofs_only():
     """Shor/Proofs may not be imported from outside Implementation/Shor."""
     problems = []
-    for path in lean_files("FastMultiplication"):
+    for path in lean_files("ForShor"):
         if path.startswith(f"{IMPL}/Shor/"):
             continue
         for name in imports(path):

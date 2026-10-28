@@ -3,7 +3,7 @@
 // at the recorded file:line. If a statement no longer matches the source,
 // regenerate rather than edit the snippet.
 window.ALGORITHM = {
- "root": "FastMultiplication/ShorVerification",
+ "root": "ForShor/ShorVerification",
  "repo": "https://github.com/VerifiedQC/ForShor/blob/main",
  "rows": [
   [
@@ -116,14 +116,14 @@ window.ALGORITHM = {
    "snippets": [
     {
      "name": "shor_success_conditions",
-     "file": "Framework/Math/Factoring_Reduction/Defs.lean",
+     "file": "Implementation/Shor/Math/Factoring_Reduction/Defs.lean",
      "line": 43,
      "code": "def shor_success_conditions (a r N : ℕ) : Prop :=\n  (Even r) ∧ ((a : ZMod N) ^ (r / 2) ≠ -1)",
      "note": null
     },
     {
      "name": "valid_choices, successful_choices",
-     "file": "Framework/Math/Factoring_Reduction/Defs.lean",
+     "file": "Implementation/Shor/Math/Factoring_Reduction/Defs.lean",
      "line": 58,
      "code": "-- the set of valid a's; 1 < a < N and a coprime to N\nnoncomputable def valid_choices (N : ℕ) : Finset ℕ :=\n  (Finset.range N).filter (fun a => 1 < a ∧ Nat.gcd a N = 1)\n\n/-- The subset of valid 'a's that will successfully yield a factor. -/\nnoncomputable def successful_choices (N : ℕ) : Finset ℕ :=\n  (valid_choices N).filter (fun a => is_successful_choice a N)",
      "note": "Together with <code>is_successful_choice</code> just above them: some period of <code>a</code> meets the two success conditions."
@@ -223,14 +223,14 @@ window.ALGORITHM = {
    "snippets": [
     {
      "name": "OF_post",
-     "file": "Framework/Math/ShorDefinition.lean",
+     "file": "Implementation/Shor/Math/ShorDefinition.lean",
      "line": 202,
      "code": "noncomputable def OF_post\n    (T : ℕ → ℕ)\n    (verify : OrderVerifier)\n    (o Q : ℕ) : ℕ :=\n  let candidates :=\n    verifiedOrderCandidates T verify o Q\n\n  if h : candidates.Nonempty then\n    candidates.min' h\n  else\n    0",
      "note": null
     },
     {
      "name": "probability_of_success",
-     "file": "Framework/Contract.lean",
+     "file": "Implementation/Shor/Spec/Contract.lean",
      "line": 52,
      "code": "noncomputable def probability_of_success\n    [MeasureClass qs]\n    {Circuit : Type}\n    (evalC : Circuit → qs.State → qs.State)\n    (T : ℕ → ℕ)\n    (verify : OrderVerifier)\n    (x : Reg)\n    (r Q : ℕ)\n    (C : Circuit)\n    (ψ : qs.State) : ℝ :=\n  ∑ o : Fin Q,\n    (r_found (T := T) verify o.1 Q r) *\n      MeasureClass.probMeas (qs := qs) x o.1 (evalC C ψ)",
      "note": null
@@ -249,7 +249,7 @@ window.ALGORITHM = {
    "snippets": [
     {
      "name": "shors_classical_reduction",
-     "file": "Framework/Math/Factoring_Reduction/Reduction.lean",
+     "file": "Implementation/Shor/Math/Factoring_Reduction/Reduction.lean",
      "line": 83,
      "code": "theorem shors_classical_reduction (a r N : ℕ)\n(h_N : N > 2)\n(h_a : 1 < a ∧ a < N)\n(h_coprime : Nat.gcd a N = 1)\n(h_period : is_period a r N)\n(h_success : shor_success_conditions a r N) :\nis_nontrivial_factor (Nat.gcd ((a ^ (r / 2)) - 1) N) N ∨\nis_nontrivial_factor (Nat.gcd ((a ^ (r / 2)) + 1) N) N := by {",
      "note": null

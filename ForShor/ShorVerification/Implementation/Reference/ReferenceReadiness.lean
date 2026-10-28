@@ -1,0 +1,400 @@
+import ForShor.ShorVerification.Implementation.Reference.ReferenceLayout
+import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
+
+namespace Shor
+namespace Reference
+
+universe u
+
+/-!
+# Reference Shor readiness
+
+This file discharges the implementation-specific readiness assumptions for the
+reference LowGate implementation.
+
+`ReferenceLayout` chooses a deterministic physical register layout.  Here we
+show that, when the framework starts from the canonical global zero basis state,
+
+* the approximate Shor setup is valid;
+* all implementation reserves are large enough;
+* all required register regions are isolated; and
+* every reserve/workspace qubit is initially clean.
+
+The main result is `referenceLayout_ready`.
+-/
+
+/-! =========================================================
+    Section 1: The global zero basis is zero on every register
+========================================================= -/
+
+/--
+Every finite register encodes the natural number `0` in the canonical ground
+basis state.
+
+This is the basic bridge from the framework-level assumption that the entire
+physical register file begins in `RegEncoding.zero` to the implementation-level
+zero/freshness predicates.
+-/
+@[simp] private theorem toNat_ground_zero
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : Reg) :
+    RegEncoding.toNat r
+        (RegEncoding.zero (Basis := Basis)) = 0 := by
+  apply Nat.zero_of_testBit_eq_false
+  intro i
+
+  by_cases hi : i < regSize r
+  · let j : Fin (regSize r) := ⟨i, hi⟩
+
+    have hbit :=
+      RegEncoding.bit_eq_testBit_toNat
+        (r := r)
+        (b := RegEncoding.zero (Basis := Basis))
+        j
+
+    calc
+      Nat.testBit
+          (RegEncoding.toNat r
+            (RegEncoding.zero (Basis := Basis)))
+          i
+          =
+          RegEncoding.bit
+            (r.get j)
+            (RegEncoding.zero (Basis := Basis)) := by
+              simpa [j] using hbit.symm
+      _ = false := RegEncoding.bit_zero _
+
+  · have hwidth : regSize r ≤ i :=
+      Nat.le_of_not_gt hi
+
+    have hlt :
+        RegEncoding.toNat r
+            (RegEncoding.zero (Basis := Basis))
+          < 2 ^ regSize r := by
+      simpa [ASize] using
+        (RegEncoding.toNat_lt_ASize
+          (r := r)
+          (b := RegEncoding.zero (Basis := Basis)))
+
+    have hpow :
+        2 ^ regSize r ≤ 2 ^ i :=
+      Nat.pow_le_pow_right (by norm_num) hwidth
+
+    exact
+      Nat.testBit_eq_false_of_lt
+        (lt_of_lt_of_le hlt hpow)
+
+/--
+Every register is `FreshZero` in the canonical global zero basis state.
+-/
+@[simp] private theorem freshZero_ground_zero
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (r : Reg) :
+    FreshZero r
+      (RegEncoding.zero (Basis := Basis)) := by
+  unfold FreshZero
+  exact toNat_ground_zero r
+
+/--
+Every requested prefix of an extended register's reserve is fresh in the
+canonical global zero basis state.
+-/
+@[simp] private theorem freshFor_ground_zero
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (e : ExtReg)
+    (n : ℕ) :
+    e.FreshFor n
+      (RegEncoding.zero (Basis := Basis)) := by
+  unfold ExtReg.FreshFor
+  exact freshZero_ground_zero _
+
+/-! =========================================================
+    Section 2: Minimal approximate-Shor setup
+========================================================= -/
+
+/--
+The reference allocator automatically satisfies all fields of
+`ShorApproxSetupMinimal` in the global zero basis state.
+
+The only hypotheses are the implementation's admissible precision conditions
+`0 < m < 1/2`.
+-/
+def referenceApproxSetupMinimal
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    (P : ShorLoweringPolicy)
+    (inst : ShorOrderFindingInstance)
+    (m : ℕ) :
+    ShorApproxSetupMinimal
+      qs
+      (referencePrecision m)
+      inst.N
+      (referenceX P inst m)
+      (referenceData P inst m)
+      (referenceWork P inst m)
+      (referenceScratch P inst m)
+      (referenceFlag P inst m)
+      (RegEncoding.zero (Basis := qs.Basis)) := by
+  refine
+    {
+      data_can_grow_two :=
+        reference_data_canGrow_two P inst m
+
+      work_can_grow_one :=
+        reference_work_canGrow_one P inst m
+
+      step4_workspace :=
+        reference_step4Workspace P inst m
+
+      exponent_data_disjoint :=
+        reference_exponent_data_disjoint P inst m
+
+      exponent_scratch_disjoint :=
+        reference_exponent_scratch_disjoint P inst m
+
+      data_work_disjoint :=
+        reference_data_work_disjoint P inst m
+
+      flag_outside_data :=
+        reference_flag_outside_data P inst m
+
+      flag_outside_work :=
+        reference_flag_outside_work P inst m
+
+      controls_outside_work :=
+        reference_controls_outside_work P inst m
+
+      flag_outside_controls :=
+        reference_flag_outside_controls P inst m
+
+      algorithm1_precision :=
+        reference_algorithm1Precision
+          P inst m
+
+      exponent_zero :=
+        toNat_ground_zero
+          (referenceX P inst m).active
+
+      data_zero :=
+        toNat_ground_zero
+          (referenceData P inst m).active
+
+      data_fresh :=
+        freshFor_ground_zero
+          (referenceData P inst m)
+          2
+
+      work_zero :=
+        toNat_ground_zero
+          (referenceWork P inst m).active
+
+      work_fresh :=
+        freshFor_ground_zero
+          (referenceWork P inst m)
+          1
+
+      scratch_zero :=
+        toNat_ground_zero
+          (referenceScratch P inst m).active
+
+      scratch_fresh :=
+        freshFor_ground_zero
+          (referenceScratch P inst m)
+          1
+
+      flag_zero :=
+        toNat_ground_zero
+          (qubitReg (referenceFlag P inst m))
+    }
+
+/--
+`referenceApproxSetupMinimal` stated directly through the packaged
+`ReferenceShorLayout`.
+-/
+def allocatedReferenceApproxSetupMinimal
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    (P : ShorLoweringPolicy)
+    (inst : ShorOrderFindingInstance)
+    (m : ℕ) :
+    ShorApproxSetupMinimal
+      qs
+      (referencePrecision m)
+      inst.N
+      (allocateReferenceLayout P inst m).x
+      (allocateReferenceLayout P inst m).data
+      (allocateReferenceLayout P inst m).work
+      (allocateReferenceLayout P inst m).scratch
+      (allocateReferenceLayout P inst m).flag
+      (RegEncoding.zero (Basis := qs.Basis)) := by
+  simpa [allocateReferenceLayout] using
+    referenceApproxSetupMinimal
+      (qs := qs)
+      P inst m
+
+/-! =========================================================
+    Section 3: Global zero implies clean P workspace
+========================================================= -/
+
+/--
+Every reserve allocated by the reference layout is clean in the framework's
+canonical global zero basis state.
+-/
+theorem referenceWorkspaceCleanInput
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    (P : ShorLoweringPolicy)
+    (inst : ShorOrderFindingInstance)
+    (m : ℕ) :
+    ShorWorkspaceCleanInput
+      (referenceX P inst m)
+      (referenceData P inst m)
+      (referenceWork P inst m)
+      (referenceScratch P inst m)
+      (RegEncoding.zero (Basis := qs.Basis)) := by
+  unfold ShorWorkspaceCleanInput
+  exact
+    ⟨freshZero_ground_zero (referenceX P inst m).reserve,
+      freshZero_ground_zero (referenceData P inst m).reserve,
+      freshZero_ground_zero (referenceWork P inst m).reserve,
+      freshZero_ground_zero (referenceScratch P inst m).reserve⟩
+
+/--
+The same clean-workspace fact stated through the packaged allocator result.
+-/
+theorem allocatedReferenceWorkspaceCleanInput
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    (P : ShorLoweringPolicy)
+    (inst : ShorOrderFindingInstance)
+    (m : ℕ) :
+    ShorWorkspaceCleanInput
+      (allocateReferenceLayout P inst m).x
+      (allocateReferenceLayout P inst m).data
+      (allocateReferenceLayout P inst m).work
+      (allocateReferenceLayout P inst m).scratch
+      (RegEncoding.zero (Basis := qs.Basis)) := by
+  simpa [allocateReferenceLayout] using
+    referenceWorkspaceCleanInput
+      (qs := qs)
+      P inst m
+
+/-! =========================================================
+    Section 4: Static allocator wrappers
+========================================================= -/
+
+/--
+The packaged reference layout has enough reserve for the complete Shor
+lowering.
+-/
+theorem allocatedReferenceWorkspaceLargeEnough
+    (P : ShorLoweringPolicy)
+    (inst : ShorOrderFindingInstance)
+    (m : ℕ) :
+    Policy.ShorWorkspaceLargeEnough
+      P
+      (allocateReferenceLayout P inst m).x
+      (allocateReferenceLayout P inst m).data
+      (allocateReferenceLayout P inst m).work
+      (allocateReferenceLayout P inst m).scratch := by
+  simpa [allocateReferenceLayout] using
+    reference_shorWorkspaceLargeEnough
+      P inst m
+
+/--
+The packaged reference layout satisfies the implementation-specific isolation
+condition required by lowered Shor.
+-/
+theorem allocatedReferenceWorkspaceIsolation
+    (P : ShorLoweringPolicy)
+    (inst : ShorOrderFindingInstance)
+    (m : ℕ) :
+    ShorWorkspaceIsolation
+      (allocateReferenceLayout P inst m).x
+      (allocateReferenceLayout P inst m).work
+      (allocateReferenceLayout P inst m).scratch
+      (allocateReferenceLayout P inst m).flag := by
+  simpa [allocateReferenceLayout] using
+    reference_shorWorkspaceIsolation
+      P inst m
+
+/-! =========================================================
+    Section 5: Main readiness theorem
+========================================================= -/
+
+/--
+Main implementation-side readiness theorem.
+
+For any valid order-finding instance and any admissible approximation parameter,
+the deterministic reference allocator supplies every implementation-specific
+precondition needed by the existing lowered Shor correctness theorem.
+
+In particular, no caller supplies:
+
+* reserve-size hypotheses;
+* register-disjointness hypotheses;
+* workspace-layout hypotheses; or
+* workspace-cleanliness hypotheses.
+
+All of those are discharged by the allocator together with the framework's
+canonical `RegEncoding.zero` initial state.
+-/
+def referenceLayout_ready
+    {qs : QSemantics}
+    [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    (P : ShorLoweringPolicy)
+    (inst : ShorOrderFindingInstance)
+    (m : ℕ) :
+    LoweredShorReady
+      qs
+      P
+      (referencePrecision m)
+      inst.a
+      inst.N
+      (allocateReferenceLayout P inst m).x
+      (allocateReferenceLayout P inst m).data
+      (allocateReferenceLayout P inst m).work
+      (allocateReferenceLayout P inst m).scratch
+      (allocateReferenceLayout P inst m).flag
+      (RegEncoding.zero (Basis := qs.Basis)) := by
+  refine
+    {
+      approx := ?_
+      workspace_large_enough := ?_
+      workspace_isolated := ?_
+      workspace_initially_zero := ?_
+    }
+
+  · exact
+      allocatedReferenceApproxSetupMinimal
+        (qs := qs)
+        P
+        inst
+        m
+
+  · exact
+      allocatedReferenceWorkspaceLargeEnough
+        P
+        inst
+        m
+
+  · exact
+      allocatedReferenceWorkspaceIsolation
+        P
+        inst
+        m
+
+  · exact
+      allocatedReferenceWorkspaceCleanInput
+        (qs := qs)
+        P
+        inst
+        m
+
+end Reference
+end Shor

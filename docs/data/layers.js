@@ -4,7 +4,7 @@
 // data/graph.js. If a statement here no longer matches the source, regenerate
 // rather than edit the snippet.
 window.LAYERS = {
- "root": "FastMultiplication/ShorVerification",
+ "root": "ForShor/ShorVerification",
  "repo": "https://github.com/VerifiedQC/ForShor/blob/main",
  "rows": [
   [
@@ -268,7 +268,7 @@ window.LAYERS = {
    "snippets": [
     {
      "name": "ShorImplementation",
-     "file": "Framework/Contract.lean",
+     "file": "Implementation/Shor/Spec/Contract.lean",
      "line": 129,
      "code": "structure ShorImplementation : Type where\n  -- (field docstrings omitted here; see the source)\n\n  program : ShorOrderFindingInstance → ShorOrderFindingProgram\n\n  successProbability : ℕ → ℝ\n\n  correct :\n    ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →\n    ∀ (inst : ShorOrderFindingInstance),\n      0 ≤ successProbability inst.N ∧ successProbability inst.N ≤ 1 ∧\n      successProbability inst.N ≤\n        probability_of_success\n          (qs := qs)\n          (evalC := LowerGateClass.evalL (qs := qs))\n          (T := T)\n          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))\n          (x := (program inst).output)\n          (r := ord inst.a inst.N inst.coprime)\n          (Q := ASize (program inst).output)\n          (C := (program inst).circuit)\n          (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))\n\n  trialCount :\n    ℕ → ℕ\n\n  trialCount_correct :\n    ∀ N : ℕ,\n      Is2048Bit N →\n        (99 / 100 : ℝ) ≤ 1 - (1 - successProbability N) ^ (trialCount N)",
      "note": "The contract. <code>correct</code> says the declared probability is a lower bound on the real one for the submitted circuit, evaluated by <code>LowerGateClass</code>, for every valid instance."
@@ -318,7 +318,7 @@ window.LAYERS = {
    "fsPath": "Implementation/QFT",
    "files": 11,
    "decls": 155,
-   "summary": "<p>The recursive Quantum Fourier Transform: a register's QFT is split into two half-size QFTs joined by a phase-product macro and a radix reversal, with a workspace budget for the recursion, and lowered to <code>LowGate</code>s. The phase product in the middle is the previous layer's; that import is the arrow coming in from the left.</p><p>The folder reads <code>Split &lt; Lowering &lt; Spec &lt; Proofs &lt; Main</code>. <code>Split.lean</code> fixes the left/right split and radix-reversal convention, <code>Proofs/</code> proves the split identity and the lowering, and <code>Main.lean</code> packages them as one theorem.</p>",
+   "summary": "<p>The recursive Quantum Fourier Transform: a register's QFT is split into two half-size QFTs joined by a phase-product macro and a radix reversal, with a workspace budget for the recursion, and lowered to <code>LowGate</code>s. The phase product in the middle is the previous layer's; that import is the arrow coming in from the left.</p><p>The folder reads <code>Statement &lt; Proofs &lt; Main</code>. <code>Statement.lean</code> holds everything needed to state the claim — the split convention, the workspace model, the plans and the lowered QFT — and imports nothing else from the folder, <code>Proofs/</code> proves the split identity and the lowering, and <code>Main.lean</code> packages them as one theorem.</p>",
    "snippets": [
     {
      "name": "lowerQFT_correct",

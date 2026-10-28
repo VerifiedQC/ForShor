@@ -63,9 +63,9 @@ jobs:
         # the build log is grepped instead.
         run: |
           set -o pipefail
-          lake build FastMultiplication EmitTests Submission PolicySubmission PolicyTests \
-            FastMultiplication.ShorVerification.Model.Standard.Headline \
-            FastMultiplication.ShorVerification.Model.QuantumLib.Headline 2>&1 | tee build.log
+          lake build ForShor EmitTests Submission PolicySubmission PolicyTests \
+            ForShor.ShorVerification.Model.Standard.Headline \
+            ForShor.ShorVerification.Model.QuantumLib.Headline 2>&1 | tee build.log
           if grep -q "warning:" build.log; then
             echo "::error::build produced warnings:"
             grep "warning:" build.log
@@ -96,8 +96,8 @@ jobs:
         # still passes on the example table and the example policy. Both
         # templates are submitter-owned files, so both are in scope for it.
         run: |
-          bash scripts/check_template_lexical.sh FastMultiplication/ShorVerification/Submission/Template.lean
-          bash scripts/check_template_lexical.sh FastMultiplication/ShorVerification/Submission/PolicyTemplate.lean
+          bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/Template.lean
+          bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PolicyTemplate.lean
 
       - name: Check import layering
         run: python3 scripts/check_layers.py

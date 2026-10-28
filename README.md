@@ -10,7 +10,7 @@ The development verifies an implementation of order finding built on fast (Toom-
 
 ## Main results
 
-**Correctness** (`FastMultiplication/ShorVerification/Implementation/Shor/Proofs/NaiveShor/Correctness.lean`): the ideal order-finding circuit recovers the multiplicative order with probability `Ω(1 / log log N)`.
+**Correctness** (`ForShor/ShorVerification/Implementation/Shor/Proofs/NaiveShor/Correctness.lean`): the ideal order-finding circuit recovers the multiplicative order with probability `Ω(1 / log log N)`.
 
 ```lean
 theorem Shor_correct (T : ℕ → ℕ) (inst : ShorOrderFindingInstance)
@@ -20,8 +20,8 @@ theorem Shor_correct (T : ℕ → ℕ) (inst : ShorOrderFindingInstance)
 
 Unpacking the five pieces, since the inequality alone does not say much:
 
-- `probability_of_success` (`Framework/Contract.lean`) is `∑ o : Fin Q, r_found T verify o Q r * probMeas x o (evalC C ψ)` — the probability that the measured outcome, *after* classical post-processing, is exactly the order `r`. Not the probability of landing in a good window.
-- `r_found` (`Framework/Math/ShorDefinition.lean`) is the 0/1 indicator that scanning the first `T Q` continued-fraction convergents of `o/Q`, keeping those whose denominator `d` satisfies `a^d ≡ 1 (mod N)`, returns `r`.
+- `probability_of_success` (`Implementation/Shor/Spec/Contract.lean`) is `∑ o : Fin Q, r_found T verify o Q r * probMeas x o (evalC C ψ)` — the probability that the measured outcome, *after* classical post-processing, is exactly the order `r`. Not the probability of landing in a good window.
+- `r_found` (`Implementation/Shor/Math/ShorDefinition.lean`) is the 0/1 indicator that scanning the first `T Q` continued-fraction convergents of `o/Q`, keeping those whose denominator `d` satisfies `a^d ≡ 1 (mod N)`, returns `r`.
 - `T` is any classical budget with `continuedFractionSearchBound Q ≤ T Q`. It bounds the convergent scan, is not a circuit parameter, and costs no gates.
 - `κ = 1/π² ≈ 0.101`, which is Shor's per-numerator Fourier constant `4/π²` times the `1/4` of the Mertens-type totient bound `φ(r)/r ≥ 1/(4 · log(log₂ N + 1))`. The bound is `Ω(1 / log log N)`, the classical Rosser–Schoenfeld shape.
 - The exponent register has `log₂(2N²)` bits and the modulus register `log₂(2N)`, and the input is the ideal `IdealOrderFindingInput`: all registers clean, exponent register in uniform superposition.
@@ -36,7 +36,7 @@ theorem Shor_correct_approx_lowered (T : ℕ → ℕ) (hT : ContinuedFractionSea
 
 The lowering itself is exact; the loss is the modular-exponentiation approximation, bounded by `2 · tbits(x) · √(2 · 2048 · η)`. Holding that to half the ideal bound needs `η = Θ(1/(n log n)²)`, which costs `O(log n)` extra work bits — well inside the budget the resource estimate allows. At 2048 bits this is `η ≈ 2⁻⁵³`, about 105 extra work bits; the constant is `κ²/65536` and the exponents come from inverting the square root in the per-step error bound. `shorPrecision` is a closed form — there is no existential constant a circuit builder would have to guess.
 
-**Resource estimation** (`FastMultiplication/ShorVerification/Implementation/GateCount/Shor_GateCount.lean`): for every `ε > 0` there is a recursion parameter `k` such that the compiled Shor circuit uses `O(n^(2+ε))` elementary gates.
+**Resource estimation** (`ForShor/ShorVerification/Implementation/GateCount/Shor_GateCount.lean`): for every `ε > 0` there is a recursion parameter `k` such that the compiled Shor circuit uses `O(n^(2+ε))` elementary gates.
 
 ```lean
 theorem exists_shorGateCountBound (qs : QSemantics) ... (ε : ℝ) (hε : 0 < ε) :
@@ -88,33 +88,33 @@ noncomputable def shorGateRate (ε : ℝ) (n : ℕ) : ℝ :=
 
 All components are proved: phase-product compilation, QFT decomposition, continued-fraction recovery, lowering correctness, modular-exponentiation error bounds, and the full resource-estimation stack. No proof in the codebase uses `sorry` — the one occurrence is a deliberate test that `Submission/Audit.lean`'s axiom check rejects it — and `#print axioms` on the headline theorems reports only `propext`, `Classical.choice`, and `Quot.sound`.
 
-The reference implementation (`FastMultiplication/ShorVerification/Implementation/Reference/`) instantiates the whole framework concretely and is fully computable end to end: `Shor.Reference.referenceProgramAt` lowers to an executable `LowGate` circuit with no noncomputable interpolation step (the phase-product coefficients are computed via `Matrix.cramer`, not `Matrix.inv`). `FastMultiplication/Emit/` prints that circuit as JSON (`forshor.lowgate/v2` schema); `lake exe forshor_emit <k> <a> <N> <m>` writes it to stdout.
+The reference implementation (`ForShor/ShorVerification/Implementation/Reference/`) instantiates the whole framework concretely and is fully computable end to end: `Shor.Reference.referenceProgramAt` lowers to an executable `LowGate` circuit with no noncomputable interpolation step (the phase-product coefficients are computed via `Matrix.cramer`, not `Matrix.inv`). `ForShor/Emit/` prints that circuit as JSON (`forshor.lowgate/v2` schema); `lake exe forshor_emit <k> <a> <N> <m>` writes it to stdout.
 
-The reference is not the only implementation the development admits. `FastMultiplication/ShorVerification/Framework/ToomCookTable.lean` states what makes a Toom-Cook table admissible, and `referenceProgramAt` is generic in it, so any table passing four decidable side conditions gets the same proved correctness theorem — see [Submitting a table](#submitting-a-table).
+The reference is not the only implementation the development admits. `ForShor/ShorVerification/Framework/ToomCookTable.lean` states what makes a Toom-Cook table admissible, and `referenceProgramAt` is generic in it, so any table passing four decidable side conditions gets the same proved correctness theorem — see [Submitting a table](#submitting-a-table).
 
 ## Repository layout
 
 | Directory | Contents |
 | --- | --- |
-| `FastMultiplication/ShorVerification/Framework/` | Semantic core, shared by every implementation: registers (`Quantum/`), the high-level `Gate` and low-level `LowGate` languages (`AbstractMachine/`), `QSemantics` and the other semantic classes (`Semantics/`), the cost model (`Gatecount/`), general classical math (`Math/`), the correctness contract (`Contract.lean`), what makes a submitted Toom-Cook table admissible (`ToomCookTable.lean`, which imports Mathlib and nothing else), and what makes a submitted *policy* admissible (`Policy.lean`: a policy is a list of width-indexed bands, and a table is the one-band policy at threshold `0`; it imports `ToomCookTable.lean`, never the reverse). |
-| `FastMultiplication/ShorVerification/Implementation/PhaseProduct/` | The recursive phase-product compiler: Toom-Cook interpolation, table generation, and compilation/lowering correctness. |
-| `FastMultiplication/ShorVerification/Implementation/QFT/` | The QFT split identity and QFT lowering correctness. |
-| `FastMultiplication/ShorVerification/Implementation/ModularExponentiation/` | Modular-multiplication/exponentiation approximation bounds. |
-| `FastMultiplication/ShorVerification/Implementation/Shor/` | Order-finding circuits, the top-level theorem `Shor_correct`, and whole-program lowering correctness. |
-| `FastMultiplication/ShorVerification/Implementation/GateCount/` | Resource estimation: counting bounds for the phase product, the QFT, and the complete Shor circuit. |
-| `FastMultiplication/ShorVerification/Implementation/Shared/` | Lemma libraries over Framework vocabulary shared by every subroutine folder; imports nothing from them. |
-| `FastMultiplication/ShorVerification/Implementation/Reference/` | The construction that turns an admissible table into a circuit family: fully computable, and generic in the table rather than tied to one. |
-| `FastMultiplication/ShorVerification/Submission/` | The public surface a submissions repo builds against: deciding the four side conditions, auditing the axioms behind them, the certificate, the score, and the template a submitter copies. |
-| `FastMultiplication/Emit/` | JSON printer for a lowered circuit, the symbolic IR extractor, and the `forshor_emit` executable. |
-| `FastMultiplication/ShorVerification/Model/` | Consistency witnesses: the standard matrix model of the semantic classes, and the headline theorems restated over QuantumLib matrices. Not imported by anything else. |
-| `FastMultiplication/ShorVerification/Vendor/Mertens/` | Mertens' third theorem with an explicit error term, vendored from an unmerged Mathlib pull request under its Apache-2.0 headers; used by the totient bound behind the success constant. See its README for provenance and removal. |
+| `ForShor/ShorVerification/Framework/` | Semantic core, shared by every implementation: registers (`Quantum/`), the high-level `Gate` and low-level `LowGate` languages (`AbstractMachine/`), `QSemantics` and the other semantic classes (`Semantics/`), the cost model (`Gatecount/`), general classical math (`Math/`), the correctness contract (`Contract.lean`), what makes a submitted Toom-Cook table admissible (`ToomCookTable.lean`, which imports Mathlib and nothing else), and what makes a submitted *policy* admissible (`Policy.lean`: a policy is a list of width-indexed bands, and a table is the one-band policy at threshold `0`; it imports `ToomCookTable.lean`, never the reverse). |
+| `ForShor/ShorVerification/Implementation/PhaseProduct/` | The recursive phase-product compiler: Toom-Cook interpolation, table generation, and compilation/lowering correctness. |
+| `ForShor/ShorVerification/Implementation/QFT/` | The QFT split identity and QFT lowering correctness. |
+| `ForShor/ShorVerification/Implementation/ModularExponentiation/` | Modular-multiplication/exponentiation approximation bounds. |
+| `ForShor/ShorVerification/Implementation/Shor/` | Order-finding circuits, the top-level theorem `Shor_correct`, and whole-program lowering correctness. |
+| `ForShor/ShorVerification/Implementation/GateCount/` | Resource estimation: counting bounds for the phase product, the QFT, and the complete Shor circuit. |
+| `ForShor/ShorVerification/Implementation/Shared/` | Lemma libraries over Framework vocabulary shared by every subroutine folder; imports nothing from them. |
+| `ForShor/ShorVerification/Implementation/Reference/` | The construction that turns an admissible table into a circuit family: fully computable, and generic in the table rather than tied to one. |
+| `ForShor/ShorVerification/Submission/` | The public surface a submissions repo builds against: deciding the four side conditions, auditing the axioms behind them, the certificate, the score, and the template a submitter copies. |
+| `ForShor/Emit/` | JSON printer for a lowered circuit, the symbolic IR extractor, and the `forshor_emit` executable. |
+| `ForShor/ShorVerification/Model/` | Consistency witnesses: the standard matrix model of the semantic classes, and the headline theorems restated over QuantumLib matrices. Not imported by anything else. |
+| `ForShor/ShorVerification/Vendor/Mertens/` | Mertens' third theorem with an explicit error term, vendored from an unmerged Mathlib pull request under its Apache-2.0 headers; used by the totient bound behind the success constant. See its README for provenance and removal. |
 | `docs/` | An interactive visualization of the proof architecture. |
 
 For a detailed file-by-file guide, see [ARCHITECTURE.md](ARCHITECTURE.md). Each folder also has its own `README.md`.
 
 ## Proof architecture
 
-The dependency story in one paragraph: `Implementation/PhaseProduct/Math/Table_Generation` produces the symbolic source programs and phase-point structure, and `Implementation/PhaseProduct/Math/ToomCook.lean` supplies the interpolation algebra. `Implementation/PhaseProduct/Proofs/` uses both to prove the high-level Toom-Cook phase identity, the correctness of the compiled signed phase-product circuit, and its lowering to `LowGate`; `Implementation/QFT/Proofs/` proves the QFT split identity and its lowering. Together with `Implementation/ModularExponentiation/`'s approximation bounds, these feed into `Implementation/Shor/`, which assembles order finding and whole-program lowering correctness, while `Implementation/GateCount/` supplies the resource estimates for the compiled circuit. `Implementation/Reference/` instantiates all of this concretely into an executable circuit family, which `FastMultiplication/Emit/` serializes to JSON.
+The dependency story in one paragraph: `Implementation/PhaseProduct/Math/Table_Generation` produces the symbolic source programs and phase-point structure, and `Implementation/PhaseProduct/Math/ToomCook.lean` supplies the interpolation algebra. `Implementation/PhaseProduct/Proofs/` uses both to prove the high-level Toom-Cook phase identity, the correctness of the compiled signed phase-product circuit, and its lowering to `LowGate`; `Implementation/QFT/Proofs/` proves the QFT split identity and its lowering. Together with `Implementation/ModularExponentiation/`'s approximation bounds, these feed into `Implementation/Shor/`, which assembles order finding and whole-program lowering correctness, while `Implementation/GateCount/` supplies the resource estimates for the compiled circuit. `Implementation/Reference/` instantiates all of this concretely into an executable circuit family, which `ForShor/Emit/` serializes to JSON.
 
 You can explore the proof graph interactively:
 
@@ -168,7 +168,7 @@ Passing C1–C4 is not evidence of admissibility, it *is* admissibility:
 `Shor.submission_correct` is proved once, generic in the table, and applies
 with no per-submission proof.
 
-Copy `FastMultiplication/ShorVerification/Submission/Template.lean` — the
+Copy `ForShor/ShorVerification/Submission/Template.lean` — the
 only file a submitter owns — edit the three definitions it marks (`k`, `pts`,
 `ops`), prove the four conditions for them, and run:
 
@@ -216,7 +216,7 @@ the widths reaching one, two and three levels of the probe's recursion, so
 the cost of the check depends on the tables and not on the thresholds.
 
 See
-[`Submission/README.md`](FastMultiplication/ShorVerification/Submission/README.md)
+[`Submission/README.md`](ForShor/ShorVerification/Submission/README.md)
 for what the tiers of checking do and do not establish, and for the CI
 rules a submissions repo should enforce.
 
