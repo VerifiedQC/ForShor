@@ -37,7 +37,7 @@
           a specific, fully compiled order-finding circuit is correct. It also proves the asymptotic gate scaling to be 
           <code>O(n^(2+ε))</code> elementary gates when substituting fast-multiplication from Kahanamoku-Meyer and
           Yao (2024) into the modular exponentiation subroutine. By using high-level gate languages
-          mapping to low-level abstractions, both proofs can be checked in the same kernel, with no <code>sorry<\code> and no axioms beyond Lean's own three.<label for="sn-axioms" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-axioms" class="margin-toggle"/><span class="sidenote"><code>#print axioms</code> on the headline theorems reports only <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>. Decidable side conditions are closed by <code>decide +kernel</code>, never <code>native_decide</code>. The one <code>sorry</code> in the repository is a test that the axiom audit rejects it.</span>
+          mapping to low-level abstractions, both proofs can be checked in the same kernel, with no <code>sorry</code> and no axioms beyond Lean's own three.<label for="sn-axioms" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-axioms" class="margin-toggle"/><span class="sidenote"><code>#print axioms</code> on the headline theorems reports only <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>. Decidable side conditions are closed by <code>decide +kernel</code>, never <code>native_decide</code>. The one <code>sorry</code> in the repository is a test that the axiom audit rejects it.</span>
         </p>
         <p>
         When treated independently, verifying correctness for an idealized circuit is not hard, nor 
@@ -75,46 +75,46 @@
       <section>
         <h2 id="algorithm-section">Shor's algorithm, as stated in Lean</h2>
         <p>
-          Before the folders, the algorithm. Shor's algorithm is mostly classical. To factor <code>N</code>, pick a
-          random base <code>a</code>; find the order <code>r</code> of <code>a</code> modulo <code>N</code>; and if
-          <code>r</code> is even and <code>a^(r/2)</code> is not <code>−1</code>, then <code>gcd(a^(r/2) ± 1, N)</code>
-          is a factor. Only the middle step, order finding, needs a quantum computer, and even there the quantum
-          part is a single circuit of four steps followed by a measurement. Everything after the measurement is a
-          classical continued-fraction scan.<label for="sn-algo" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-algo" class="margin-toggle"/><span class="sidenote">Every block is a definition or theorem in the repository; click it to see the Lean source, verbatim, with a link to the line. The blue row is <code>orderFindingIdeal</code>, the circuit the correctness theorem is about. The circuit that is compiled and counted has the same four steps, with the verified approximate modular exponentiation in third place.</span>
-          The whole loop is one theorem, <code>Shor_end_to_end_factoring</code>: at least half of the bases are good,
-          and for each good one the circuit and the scan return <code>r</code> with probability at least
+          Shor's algorithm has large classical components, which we will discuss first. To factor a modulus <code>N</code>,
+          we must first pick a random base <code>a</code>. The quantum computing target is to find the order <code>r</code>
+          of <code>a</code> modulo <code>N</code>. Once found, if <code>r</code> is even and <code>a^(r/2)</code>
+          is not <code>−1</code>, then <code>gcd(a^(r/2) ± 1, N)</code>is a factor. Narrowing further, the quantum
+          algorithm can be cast as a single circuit composed of four steps (shown below), followed by measurement
+          and a classical continued-fraction scan.<label for="sn-algo" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-algo" class="margin-toggle"/><span class="sidenote">Every block is a definition or theorem in the repository; click it to see the Lean source, verbatim, with a link to the line. The blue row is <code>orderFindingIdeal</code>, the circuit the correctness theorem is about. The circuit that is compiled and counted has the same four steps, with the verified approximate modular exponentiation in third place.</span>
+          Composing this in Lean, we state the full loop as one theorem, <code>Shor_end_to_end_factoring</code>: at
+          least half of the bases are good, and for each good one the circuit and the scan return <code>r</code> with probability at least
           <code>κ / log(log₂ N + 1)</code>, after which the gcd step gives a factor.
         </p>
         <figure class="fullwidth layers-figure">
           <div id="algorithm" class="layers algo"></div>
         </figure>
         <p>
-          Nearly all the gates are in one block, <code>y ← aˣ mod N</code>. That block is where the next diagram
-          starts: it is built from QFT arithmetic, the QFT from phase products, and the phase product is where the
-          fast multiplication lives.
+          Uniform superposition, preparing a data register, and even the inverse QFT are relatively cheap when compared
+          to the modular exponentiation block <code>y ← aˣ mod N</code>.We expand this block in the next diagram,
+          building from QFT arithmetic, QFT using phase products, and the phase product itself, further detailing
+          the optimization problem occurring within scheduling operations for the PhaseProduct primitive.
         </p>
       </section>
 
       <section>
         <h2 id="layers-section">The proof, layer by layer</h2>
         <p>
-          The whole development is five layers deep, and they are best read top to bottom, which is also the
-          order the proof goes in. The specification comes first: the vocabulary every statement is written in,
-          and the contract the final object has to meet. Then the three subroutines, each verified on its own
-          and each resting on the one before it. Then the assembly that proves Shor's algorithm correct. Then the
-          cost of that assembled circuit, as a theorem. And finally the concrete instance that fills in every
-          remaining choice and hands the framework the object it asked for.<label for="sn-layers" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-layers" class="margin-toggle"/><span class="sidenote">Every arrow is a real import between these folders, read from the Lean sources. The solid labelled arrows are the ones that carry the argument, and the label is the theorem or the vocabulary that crosses it; thin grey arrows are real structure that is not part of the story; the dashed ones come from <code>Shared</code>, a lemma library that is not a step. Click a layer to open it.</span>
+          We recommend reading the development of this proof from top-to-bottom, since that is the order in which
+          the proof goes. The schole scheme is five layers deep. The specification comes first: this is the vocabulary
+          every statement is written in, and the contract the final object has to meet. The three subroutines follow, 
+          each verified on its own and resting on the one before it. Assembling these routines gives a proof that
+          Shor's algorithm is correct, followed by a theorem stating the cost of that assembled circuit. The last step
+          fills in every remaining choice and hands the framework a concrete instance.<label for="sn-layers" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-layers" class="margin-toggle"/><span class="sidenote">Every arrow is a real import between these folders, read from the Lean sources. The solid labelled arrows are the ones that carry the argument, and the label is the theorem or the vocabulary that crosses it; thin grey arrows are real structure that is not part of the story; the dashed ones come from <code>Shared</code>, a lemma library that is not a step. Click a layer to open it.</span>
         </p>
         <figure class="fullwidth layers-figure">
           <div id="layers" class="layers"></div>
         </figure>
         <p>
-          Each panel shows the folder's role in the argument, the statement that carries it, copied verbatim
-          from the source with a link to the line, and what it rests on and feeds. The Lean statements are
-          deliberately shown as they are, instance arguments and all: the parameters <code>k</code> and
-          <code>ops</code> that appear in every subroutine theorem are the Toom-Cook table, which is why one
-          proof serves every admissible table, and the <code>qs</code> that appears everywhere is the semantics
-          the theorems are generic over.
+          Each panel shows the folder's role in the argument, its forward and backward dependencies, and
+          a verbatim statement that carries it. The Lean statements are deliberately shown, instance arguments and all:
+          the Toom-Cook table is given from parameters <code>k</code> and
+          <code>ops</code>, appearing in every subroutine theorem and is the reason why one proof serves every 
+          admissible table. We will see everywhere the semantics <code>qs</code> where the theorems are generic.
         </p>
       </section>
 
