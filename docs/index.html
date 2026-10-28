@@ -78,7 +78,7 @@
           Shor's algorithm has large classical components, which we will discuss first. To factor a modulus <code>N</code>,
           we must first pick a random base <code>a</code>. The quantum computing target is to find the order <code>r</code>
           of <code>a</code> modulo <code>N</code>. Once found, if <code>r</code> is even and <code>a^(r/2)</code>
-          is not <code>−1</code>, then <code>gcd(a^(r/2) ± 1, N)</code>is a factor. Narrowing further, the quantum
+          is not <code>−1</code>, then <code>gcd(a^(r/2) ± 1, N)</code> is a factor. Narrowing further, the quantum
           algorithm can be cast as a single circuit composed of four steps (shown below), followed by measurement
           and a classical continued-fraction scan.<label for="sn-algo" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-algo" class="margin-toggle"/><span class="sidenote">Every block is a definition or theorem in the repository; click it to see the Lean source, verbatim, with a link to the line. The blue row is <code>orderFindingIdeal</code>, the circuit the correctness theorem is about. The circuit that is compiled and counted has the same four steps, with the verified approximate modular exponentiation in third place.</span>
           Composing this in Lean, we state the full loop as one theorem, <code>Shor_end_to_end_factoring</code>: at
@@ -90,7 +90,7 @@
         </figure>
         <p>
           Uniform superposition, preparing a data register, and even the inverse QFT are relatively cheap when compared
-          to the modular exponentiation block <code>y ← aˣ mod N</code>.We expand this block in the next diagram,
+          to the modular exponentiation block <code>y ← aˣ mod N</code>. We expand this block in the next diagram,
           building from QFT arithmetic, QFT using phase products, and the phase product itself, further detailing
           the optimization problem occurring within scheduling operations for the PhaseProduct primitive.
         </p>
@@ -100,7 +100,7 @@
         <h2 id="layers-section">The proof, layer by layer</h2>
         <p>
           We recommend reading the development of this proof from top-to-bottom, since that is the order in which
-          the proof goes. The schole scheme is five layers deep. The specification comes first: this is the vocabulary
+          the proof goes. The whole scheme is five layers deep. The specification comes first: this is the vocabulary
           every statement is written in, and the contract the final object has to meet. The three subroutines follow, 
           each verified on its own and resting on the one before it. Assembling these routines gives a proof that
           Shor's algorithm is correct, followed by a theorem stating the cost of that assembled circuit. The last step
@@ -121,46 +121,104 @@
       <section>
         <h2 id="phaseproduct-section">Inside PhaseProduct: one table, applied recursively</h2>
         <p>
-          The layer graph says which folder rests on which. It does not say how the most expensive block is
-          built, so here it is. A phase product applies <code>exp(i·φ·x·z)</code> to two <code>n</code>-bit registers.
-          Doing it directly costs about <code>n²</code> gates. ForShor instead does what Toom-Cook does for integer
-          multiplication: split <code>x</code> and <code>z</code> into <code>k</code> chunks, evaluate both
-          chunk polynomials at <code>2k − 1</code> points, take one smaller phase product per point, and recurse.
-          Everything about that scheme is fixed by one small table.
+          The layer graph shows folder dependencies, but not how expensive blocks are built. As a brief recap,
+          the phase product <code>PP(φxz)</code> applies <code>exp(i·φ·x·z)</code> to two <code>n</code>-bit registers.
+          Doing it directly costs about <code>n²</code> gates. ForShor formalizes the Toom-Cook method for integer
+          multiplication, splitting <code>x</code> and <code>z</code> into <code>k</code> chunks, evaluating both
+          chunk polynomials at <code>2k − 1</code> points, taking one smaller phase product per point, and recursing.
+          Each layer of the recursion can have its own table and <code>k</code>. The left panel of the figure shows a
+          policy that does this: the table T<sup>(1)</sup> (<code>k = 3</code>) is used while the width is at least
+          <u>w</u><sub>1</sub> = 40, the table T<sup>(2)</sup> (<code>k = 2</code>) from there down to
+          <u>w</u><sub>2</sub> = 14, and a naive phase product below that.
         </p>
         <figure class="fullwidth">
-          <div id="ppfig" class="ppfig"></div>
+          <a href="./img/phaseproduct-policy-recursion.png"><img src="./img/phaseproduct-policy-recursion.png" width="3300" height="1060" loading="lazy" alt="Three panels. Left, a policy: for n = 128 the widths 128, 55, 30, 18, 12 are reached by tables of arity 3, 3, 2, 2, with the arity-3 table used for widths of at least 40 and the arity-2 table for widths from 14 up to 40. Middle, the arity-3 table: operations Π0, Π1, Π2 on the registers around five phase products at the points 0, 1, infinity, −2 and −1. Right, the recursion: each of the five phase products is itself five phase products via the same table, ending in base-case leaves."></a>
+          <figcaption>Left: a policy chooses a table for each range of widths; the underlined <u>w</u><sub><em>i</em></sub> are its thresholds and the plain <em>w</em><sub><em>i</em></sub> are the widths the recursion reaches. Middle: one recursion level of the table T<sup>(1)</sup> (<code>k = 3</code>). Right: the recursion. Click the figure to open it at full size.</figcaption>
         </figure>
         <p>
-          <span class="newthought">The table</span> is a straight-line program on <code>k</code> registers, each
-          holding a combination of the chunks. It may add a shifted copy of one register to another, negate, and shift,
-          and at chosen moments it takes a phase product of whatever a register then holds.<label for="sn-pp1" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-pp1" class="margin-toggle"/><span class="sidenote">Every box in the figure is clickable: the parameters, each <code>U</code>, each of the five products, the levels, the base case and the output each open a panel with the Lean source. The register contents shown are computed by running the table, not typed in. The program type is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L132"><code>Prog k</code></a>, a list of <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L116"><code>valid_ops k</code></a>: <code>addScaled</code>, <code>negate</code>, <code>shiftL</code>, <code>shiftR</code>, <code>phaseProduct</code>. A point is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L110"><code>Point</code></a>, where <code>frac 0</code> is the point at infinity. The table drawn is one admissible <code>k = 3</code> table, chosen because it reads well; the reference table in <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Submission/Decide.lean#L319"><code>refOps</code></a> uses the points <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/PhaseProduct/Compiler/Coefficients.lean#L199"><code>genInterpolationPoints 3</code></a> = <code>0, −1, 1, −2, 2</code> on a single register.</span>
+          <span class="newthought">A table</span> is a straight-line program on <code>k</code> registers, each
+          holding a combination of the chunks. It may add, negate, and shift, composing into the ability to move
+          between interpolation points. When one or more of the interpolation points are reached, it may take a
+          phase product of whatever a register then holds.<label for="sn-pp1" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-pp1" class="margin-toggle"/><span class="sidenote">The operations and register contents in the middle panel are those of the repository's <code>k = 3</code> table. The program type is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L132"><code>Prog k</code></a>, a list of <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L116"><code>valid_ops k</code></a>: <code>addScaled</code>, <code>negate</code>, <code>shiftL</code>, <code>shiftR</code>, <code>phaseProduct</code>. A point is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Framework/ToomCookTable.lean#L110"><code>Point</code></a>, where <code>frac 0</code> is the point at infinity. The table drawn is one admissible <code>k = 3</code> table, chosen because it reads well; the reference table in <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Submission/Decide.lean#L319"><code>refOps</code></a> uses the points <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/PhaseProduct/Compiler/Coefficients.lean#L199"><code>genInterpolationPoints 3</code></a> = <code>0, −1, 1, −2, 2</code> on a single register.</span>
           A table is admissible when the points are distinct, each phase product sees exactly the chunk polynomial
           evaluated at the next point, and the program ends where it started, so the registers are returned
           clean. These are four decidable conditions, checked by the kernel; nothing else about the table is trusted.
         </p>
         <p>
-          <span class="newthought">One level</span> is the middle panel. At <code>k = 3</code> the operations
-          <code>U₀</code> put <code>x₀</code>, <code>x₀ + x₁ + x₂</code> and <code>x₂</code> into the three registers,
+          <span class="newthought">One recursion level</span> is shown in the middle panel. For the table T<sup>(1)</sup>, with <code>k = 3</code>, the operations
+          <code>Π<sup>(0)</sup></code> put <code>x₀</code>, <code>x₀ + x₁ + x₂</code> and <code>x₂</code> into the three registers,
           the values at <code>0</code>, <code>1</code> and <code>∞</code>; three phase products are taken;
-          <code>U₁</code> turns the registers into the values at <code>−2</code> and <code>−1</code> for two more; and
-          <code>U₂</code> undoes everything. Five phase products on chunks of a third of the width replace one on the
-          full width.<label for="sn-pp2" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-pp2" class="margin-toggle"/><span class="sidenote">The phases of the five products are not the product's own: the angle for each point is an interpolation coefficient, so that the five phases multiply out to <code>exp(i·φ·x·z)</code>. That is the algebra in <code>PhaseProduct/Math</code>, and <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/PhaseProduct/Main.lean#L16"><code>lowerSignedPhaseProduct_correct</code></a> is the theorem that the lowered circuit is correct for any admissible table.</span>
+          <code>Π<sup>(1)</sup></code> moves the registers to the values at <code>−2</code> and <code>−1</code> for two more
+          phase product operations; and
+          <code>Π<sup>(2)</sup></code> reverses the additions, negations, and shifts. This leaves the measurement-basis back
+          where it started, with the multiplication correctly applied in phase space. Succinctly, applying
+          five smaller phase products on chunks roughly a third of the total circuit width replaces one
+          phase product at the full width.<label for="sn-pp2" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-pp2" class="margin-toggle"/><span class="sidenote">The phases of the five products are not the product's own: the angle for each point is an interpolation coefficient, so that the five phases multiply out to <code>exp(i·φ·x·z)</code>. That is the algebra in <code>PhaseProduct/Math</code>, and <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/PhaseProduct/Main.lean#L16"><code>lowerSignedPhaseProduct_correct</code></a> is the theorem that the lowered circuit is correct for any admissible table.</span>
         </p>
         <p>
-          <span class="newthought">The recursion</span> is the right panel. Each of the five is again a phase
-          product, lowered with the same table, until the width stops shrinking; at that point the circuit uses the
-          naive phase product. The width at the next level is about a <code>k</code>-th of the current one, plus a
-          constant number of padding bits, and the register arithmetic at a node is linear in its width. Summing
-          over the tree gives <code>O(n^(log_k(2k − 1)))</code> gates: <code>n^1.585</code> at <code>k = 2</code>,
+          <span class="newthought">Recursion</span> is emphasized on the right panel, where each of the five terms
+          (for <code>k=3</code>) can also be given as a recursive phase product, lowering with a table until the 
+          width stops shrinking. When stopped, the circuit will use a naive phase product. The width at the next
+          level is about a <code>k</code>-th of the current one, plus a constant number of padding bits, and the 
+          register arithmetic at a node is linear in its width. Summing over the tree gives
+          <code>O(n^(log_k(2k − 1)))</code> gates: <code>n^1.585</code> at <code>k = 2</code>,
           <code>n^1.465</code> at <code>k = 3</code>, approaching <code>n</code> as <code>k</code> grows.<label for="sn-pp3" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-pp3" class="margin-toggle"/><span class="sidenote">The recursion is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/PhaseProduct/Lowering/PlanBuilders.lean#L407"><code>Policy.signedPlanOf</code></a>, which recurses only while <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/PhaseProduct/Compiler/Widths.lean#L44"><code>nextSignedWidth</code></a> is smaller than the input width, so it terminates by construction. The three facts the count needs are <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/GateCount/PhaseProduct/Lemmas.lean#L4059"><code>prog_balanced_nextSignedWidth</code></a> (next width at most <code>⌈w/k⌉ + c</code>), <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/GateCount/PhaseProduct/Lemmas.lean#L178"><code>phaseProgramOverhead_linear</code></a> (overhead at most <code>A·w + B</code>) and <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/GateCount/PhaseProduct/Lemmas.lean#L2900"><code>balanced_phaseProduct_recurrence_solution</code></a>; the exponent is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/GateCount/Definitions.lean#L72"><code>phaseProductExponent k</code></a> and the bound is <a href="https://github.com/VerifiedQC/ForShor/blob/main/FastMultiplication/ShorVerification/Implementation/GateCount/Definitions.lean#L84"><code>PhaseProductGateCountBound</code></a>.</span>
-          Modular exponentiation is a sequence of <code>O(n)</code> modular multiplications built on top of this,
-          which is where the <code>n^(2+ε)</code> of the headline theorem comes from.
+          Applying <code>O(n)</code> of these controlled modular multiplications composes one modular 
+          exponentiation, giving rise to the headline <code>n^(2+ε)</code> scaling.
         </p>
         <p>
           Back to <a href="#layer-PhaseProduct">the PhaseProduct layer</a> in the graph above.
         </p>
       </section>
+
+      <section>
+        <h2 id="nontrivial">Why PhaseProduct optimization is nontrivial</h2>
+        <p>
+          <span class="newthought">A policy</span> <em>P</em> = ((<u>w</u><sub>1</sub>, T<sup>(1)</sup>), (<u>w</u><sub>2</sub>, T<sup>(2)</sup>), …)
+          is a short list of instructions: at each width, which table to use (the left panel above).
+          Checking a policy is easy; finding the best one is not, because three things couple together. Inside a table,
+          the program of additions, negations and shifts may visit the evaluation points in any order and keep partial
+          sums, so each step's cost depends on what earlier steps left in the registers. Between a table and the levels
+          below it, a table is judged by the whole recursion it triggers: saving an addition can widen the registers and
+          make every product below more expensive. Across widths, the same table is reused wherever its arity appears,
+          and the remainder of the width modulo <code>k</code> enters the child width, so one more input bit can help one
+          arity and not another. With arities up to 3 the optimum uses <code>k = 2</code> at <code>n = 60</code>,
+          <code>k = 3</code> at <code>n = 62</code> and <code>k = 2</code> again at <code>n = 64</code>. Even the
+          trade-off at arity 2 is delicate: at <code>n = 40</code>, stopping costs 92,800 T gates and one split with a
+          charge-4 table costs 92,750, a saving of 50, while a second split loses.
+        </p>
+        <p>
+          <span class="newthought">What we can prove.</span> A table matters only through three integers, its arithmetic
+          charge and two width offsets, so the search over programs becomes a search over profiles. Given the cheapest
+          table of each arity, choosing the recursion is an integer program with one unknown per distinct arity, solvable
+          by Lenstra–Kannan in time polynomial in <code>n</code>. So the whole problem has an exact algorithm running in
+          <code>2^O(K⁴ log K) · poly(n)</code>, where <code>K</code> is the largest arity and <code>n</code> is in unary.<label for="sn-hard-rt" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-hard-rt" class="margin-toggle"/><span class="sidenote">This bound is proved on paper; Lean does not check the running time or the shift bound, and Kannan's theorem is imported.</span>
+          All the difficulty is in finding the cheapest table of a given arity: we search exhaustively inside a proven but
+          enormous bound on the shifts, <code>2^O(k² log k)</code> (about <code>2^576</code> for arity 3). We know of no
+          faster method and prove no lower bound; a faster method would have to exploit the arithmetic inside the tables.
+        </p>
+        <p>
+          <span class="newthought">What we can't prove.</span> For the problem as posed, finding the best table cannot be
+          NP-hard unless P = NP: the best structural score grows only polynomially in <code>k</code>, so the yes-instances
+          form a sparse set, and Mahaney's theorem forbids a sparse NP-hard set. Both are checked in Lean. For the full
+          T-count problem the same barrier holds if the optimum is polynomially bounded, a hypothesis we supply. Once the
+          evaluation points are part of the input, the problem is NP-hard already at arity 2, by reduction from SAT through
+          Hamiltonian cycle, also checked in Lean. That applies to the structural score, not to the T count, and not to the
+          points the challenge uses; it shows that point ordering alone carries combinatorial difficulty.
+        </p>
+        <p>
+          <span class="newthought">What it costs in practice.</span> We implemented the exact algorithm in Fortran 90;
+          every table it returned was replayed independently, and each distinct table was compiled in Lean against the
+          benchmark's contract. With arity 2 the answer is immediate up to <code>n = 2048</code>. With arity 3 the search
+          took 2.6 s at <code>n = 52</code>, 19 s at 60, 89 s at 62 and 511 s at 64, and at arity 4 the run at
+          <code>n = 56</code> stopped with no answer after 4 h 16 min, with a footprint of 130–140 GiB.<label for="sn-hard-meas" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-hard-meas" class="margin-toggle"/><span class="sidenote">One machine (Apple M5 Pro, 24 GiB), whole-process wall time, interim snapshot. These are measurements, not a scaling law.</span>
+          In every run that finished the optimal policy was a single level of recursion. The cryptographic target is
+          <code>n = 2048</code>, where exact search at arity 3 or higher is out of reach, so the objective is explicit,
+          every candidate can be checked, and the exact optimum is not: that is what the ForShor Challenge is built on.
+          Any search method is welcome, and a cheaper policy on the leaderboard is a real result.
+        </p>
+      </section>
+
 
       <section>
         <h2 id="what">What this site is</h2>
@@ -217,7 +275,7 @@
           is in the repository.
         </p>
 <pre class="code hl" data-lang="bibtex"><code><span class="lk">@misc</span><span class="lo">{</span><span class="ld">suresh2026forshor</span><span class="lo">,</span>
-  <span class="lt">author</span>       <span class="lo">=</span> <span class="ls">{Anirudh Suresh and Jai Patel and Yudong Cao and Runzhou Tao}</span><span class="lo">,</span>
+  <span class="lt">author</span>       <span class="lo">=</span> <span class="ls">{Anirudh Suresh and Joshua M. Courtney and Jai Patel and Yudong Cao and Runzhou Tao}</span><span class="lo">,</span>
   <span class="lt">title</span>        <span class="lo">=</span> <span class="ls">{{ForShor}: Formal Verification of {Shor}'s Algorithm in {Lean~4}</span>
 <span class="ls">                  with Verified Resource Estimation},</span>
   <span class="lt">year</span>         <span class="lo">=</span> <span class="ln">{2026}</span><span class="lo">,</span>
@@ -235,7 +293,5 @@
     <script src="./data/algorithm.js?v=1"></script>
     <script src="./data/layers.js?v=3"></script>
     <script src="./layers.js?v=4"></script>
-    <script src="./data/pp.js?v=1"></script>
-    <script src="./ppfig.js?v=1"></script>
   </body>
 </html>
