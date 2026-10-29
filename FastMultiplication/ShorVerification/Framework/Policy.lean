@@ -45,6 +45,14 @@ Three design points, each load-bearing downstream:
 - **A table submission is the one-band policy at threshold `0`.**
   `constPolicy` and `ShorPolicySubmission.ofSetup` are what make the existing
   single-table path a special case rather than a parallel one.
+- **The width rule is part of the policy, and defaults to the scan.**
+  `widthRule` says how the compiler sizes each recursion level's working
+  registers: `.scan`, the symbolic scan (one bit per `addScaled`/`negate`),
+  or `.exact`, the least width holding every value the tables reach.
+  Every policy or policy submission built without naming it, `constPolicy`
+  included, uses the scan; `ShorPolicySubmission.policy` copies the
+  submission's rule. The correctness theorems are generic in the policy and
+  so cover both rules.
 -/
 
 namespace Shor
@@ -106,6 +114,18 @@ theorem ShorLoweringSetup.table_admissible (s : ShorLoweringSetup) : s.table.Adm
     The policy
 ========================================================= -/
 
+/-- How the compiler sizes the working registers of a recursive phase
+product (`Implementation/PhaseProduct/Compiler/Widths.lean`, `neededWidthsBy`).
+`scan` is the original symbolic width scan; `exact` is the least width at
+which every value the table reaches fits (`Compiler/ExactWidth.lean`), never
+above the scan. -/
+inductive WidthRule where
+  /-- The symbolic width scan (`scanNeededWidths`). -/
+  | scan
+  /-- The exact width (`exactSignedWidthOfWidths`). -/
+  | exact
+  deriving DecidableEq, Repr
+
 /-- One band of a policy: use `table` whenever `threshold ≤ max xw zw`. -/
 structure PolicyBand where
   /-- The smallest operand width this band covers. -/
@@ -125,6 +145,8 @@ structure ShorLoweringPolicy where
   bands  : List PolicyBand
   /-- Thresholds strictly decrease, so the bands partition the widths. -/
   sorted : (bands.map PolicyBand.threshold).IsChain (· > ·)
+  /-- How the compiler sizes working registers; the scan unless asked. -/
+  widthRule : WidthRule := .scan
 
 namespace ShorLoweringPolicy
 
@@ -157,7 +179,7 @@ table there, or the table it picks does not shrink the width.
 
 The next-width function is abstracted because `nextSignedWidth` lives in
 `Implementation/`; the plan type instantiates
-`nextW := fun T => nextSignedWidth x z T.ops`. This is the side condition
+`nextW := fun T => nextSignedWidthBy P.widthRule x z T.ops`. This is the side condition
 `PhaseLoweringPlan.signedBase` carries, and it is a *consequence* of the
 width-keyed shape rather than a fifth admissibility condition: no submitter
 proves it. -/
@@ -171,8 +193,9 @@ single-table path proves is the `constPolicy` case of what the policy path
 proves. -/
 
 /-- One table at every width: a table submission, as a policy. -/
-def constPolicy (T : ToomCookTable) : ShorLoweringPolicy :=
-  ⟨[⟨0, T⟩], by simp⟩
+def constPolicy (T : ToomCookTable) : ShorLoweringPolicy where
+  bands := [⟨0, T⟩]
+  sorted := by simp
 
 @[simp] theorem constPolicy_choose (T : ToomCookTable) (n : ℕ) :
     (constPolicy T).choose n = some T := by
@@ -180,6 +203,25 @@ def constPolicy (T : ToomCookTable) : ShorLoweringPolicy :=
 
 @[simp] theorem constPolicy_bands (T : ToomCookTable) :
     (constPolicy T).bands = [⟨0, T⟩] := rfl
+
+@[simp] theorem constPolicy_widthRule (T : ToomCookTable) :
+    (constPolicy T).widthRule = .scan := rfl
+
+/-- The same bands under another width rule. -/
+def withRule (P : ShorLoweringPolicy) (R : WidthRule) : ShorLoweringPolicy :=
+  { P with widthRule := R }
+
+@[simp] theorem withRule_bands (P : ShorLoweringPolicy) (R : WidthRule) :
+    (P.withRule R).bands = P.bands := rfl
+
+@[simp] theorem withRule_widthRule (P : ShorLoweringPolicy) (R : WidthRule) :
+    (P.withRule R).widthRule = R := rfl
+
+@[simp] theorem withRule_choose (P : ShorLoweringPolicy) (R : WidthRule) (n : ℕ) :
+    (P.withRule R).choose n = P.choose n := rfl
+
+theorem withRule_admissible {P : ShorLoweringPolicy} (h : P.Admissible) (R : WidthRule) :
+    (P.withRule R).Admissible := h
 
 theorem constPolicy_admissible {T : ToomCookTable} (h : T.Admissible) :
     (constPolicy T).Admissible := by
@@ -201,13 +243,19 @@ structure ShorPolicySubmission where
   bands  : List (ℕ × ShorLoweringSetup)
   /-- Thresholds strictly decrease. -/
   sorted : (bands.map Prod.fst).IsChain (· > ·)
+  /-- How the compiler sizes working registers; the scan unless asked. -/
+  widthRule : WidthRule := .scan
 
 namespace ShorPolicySubmission
 
 /-- The policy a submission denotes: its bands with the proofs forgotten. -/
-def policy (s : ShorPolicySubmission) : ShorLoweringPolicy :=
-  ⟨s.bands.map (fun b => ⟨b.1, b.2.table⟩), by
-    simpa [List.map_map, Function.comp_def] using s.sorted⟩
+def policy (s : ShorPolicySubmission) : ShorLoweringPolicy where
+  bands := s.bands.map (fun b => ⟨b.1, b.2.table⟩)
+  sorted := by simpa [List.map_map, Function.comp_def] using s.sorted
+  widthRule := s.widthRule
+
+@[simp] theorem policy_widthRule (s : ShorPolicySubmission) :
+    s.policy.widthRule = s.widthRule := rfl
 
 @[simp] theorem policy_bands (s : ShorPolicySubmission) :
     s.policy.bands = s.bands.map (fun b => ⟨b.1, b.2.table⟩) := rfl
@@ -222,7 +270,9 @@ theorem policy_admissible (s : ShorPolicySubmission) : s.policy.Admissible := by
   exact a.2.table_admissible
 
 /-- A table submission is the one-band policy submission at threshold `0`. -/
-def ofSetup (s : ShorLoweringSetup) : ShorPolicySubmission := ⟨[(0, s)], by simp⟩
+def ofSetup (s : ShorLoweringSetup) : ShorPolicySubmission where
+  bands := [(0, s)]
+  sorted := by simp
 
 @[simp] theorem ofSetup_policy (s : ShorLoweringSetup) :
     (ofSetup s).policy = ShorLoweringPolicy.constPolicy s.table := rfl

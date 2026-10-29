@@ -47,12 +47,12 @@ noncomputable def PhaseLoweringReady
   | signedBase phi x z hstop => exact fun _ => True
   | signedStep phi x z T hT layout hrec hcapacity child readyChild =>
       exact fun ψ =>
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) ψ ∧
         readyChild ψ
   | cSignedBase ctrl phi x z hstop => exact fun _ => True
   | cSignedStep ctrl phi x z T hT layout hrec hcapacity hctrl child readyChild =>
       exact fun ψ =>
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) ψ ∧
         readyChild ψ
 
 end Shor

@@ -125,6 +125,20 @@ Important parts:
   prove the main ingredients, and `Correctness.lean` assembles them into
   `eval_compileOpsToSignedGate_correct` and the controlled analogue
   `eval_compileOpsToCSignedGate_correct`.
+
+  The compiler sizes each level's registers by a *width rule*, which a policy
+  carries (`ShorLoweringPolicy.widthRule`, default `.scan`): the scan
+  (`scanNeededWidths`), or the exact width (`Compiler/ExactWidth.lean`,
+  `ExactWidthBoxes.lean`). `neededWidthsBy R` and `compileOpsToSignedGateBy R`
+  take the rule. Each width-dependent compiler lemma has a `_by` form for
+  either rule, and the upstream lemma keeps its statement. The `_by` forms
+  of `Compilation.lean`, `Correctness.lean` and `PlanSemantics.lean` live in
+  `*Rule.lean` siblings, so those three files stay upstream's verbatim.
+  Policy-level definitions (plans, `Policy.reserveNeed`, `canonicalStep`)
+  read the rule from the policy.
+  `Proofs/Compiler/WidthSoundness.lean` proves allocation soundness for both
+  (`allocated_widths_sound_exact`), and `ExactWidthBound.lean` shows the exact
+  width is least and never above the scan.
 - `QFT/Proofs/Decomposition.lean` proves the high-level split identity for QFT:
   a QFT over a register can be expressed through right-half QFT, a phase
   product, left-half QFT, and radix reversal. The main results are
@@ -263,6 +277,16 @@ a `ShorImplementation`. `Reference2048Headline.lean` instantiates
 `exists_shorGateCountBound` at the 2048-bit benchmark. The construction is
 generic in the table, which is what makes the four side conditions a complete
 acceptance test.
+
+`Reference/Balanced/` is a second construction choice for unequal operand
+widths, on top of the first: a gate-tree pass ahead of the unchanged
+equal-width core that pads the smaller operand or cuts the larger into
+blocks (`Defs.lean`, `Semantics.lean`), with
+`Policy.lowerGate_balance_correctness` (`Correctness.lean`) and
+`Shor_correct_approx_lowered_balanced_of_modExp_bound` (`Shor.lean`), and its
+reference instance (`Reference.lean`). Like the rest of `Reference/` it is
+generic in the policy. Nothing in the library imports it; it is built by
+`lean_lib Balanced` and used by `forshor_policy_submission --balanced`.
 
 ## The submission boundary
 

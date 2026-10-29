@@ -1,4 +1,6 @@
 import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.Layout
+import FastMultiplication.ShorVerification.Implementation.PhaseProduct.Compiler.ExactWidth
+import FastMultiplication.ShorVerification.Framework.Policy
 
 /-!
 # Phase-Product Compiler: Widths
@@ -7,6 +9,12 @@ Width scanning over a source operation program (`scanNeededWidths`), the
 recursion-size parameters (`phaseInputSize`, `nextSignedWidth`), and the
 lemmas connecting a scan's result back to the concrete layout it was scanned
 from.
+
+**Width rules.** The last section adds `neededWidthsBy R` / `nextSignedWidthBy R`
+for a `WidthRule` (`Framework/Policy.lean`): `.scan` is `scanNeededWidths` /
+`nextSignedWidth` above, unchanged; `.exact` is the exact width
+(`ExactWidth.lean`). The compiler takes the rule from the policy, and every
+policy uses the scan unless it says otherwise.
 -/
 
 namespace Shor
@@ -171,6 +179,147 @@ lemma targetSignedLayoutState_zslot_width_scan
     simpa [stInit] using stInit_zslot_width layout i
   have hscan : (initWidthState x z k).zw i ≤ need.zneed i := by
     simpa [need] using scanNeededWidths_z_ge_init x z ops i
+  have hneed : need.zneed i + 1 ≤ Wwork := commonNeededWidth_ge_zneed need i
+  have hle : (stInit.zslot i).width ≤ Wwork := by
+    rw [hinit]
+    omega
+  have hgrow : (stInit.zslot i).CanGrow (Wwork - (stInit.zslot i).width) := hcap.2 i
+  simpa [stInit, need, Wwork, targetSignedLayoutState] using
+    width_growExtRegTo (stInit.zslot i) Wwork hle hgrow
+
+/-! =========================================================
+    Width rules: the scan, or the exact width
+========================================================= -/
+
+/-- The width needs the compiler grows every slot to, under rule `R`: the
+scan (`scanNeededWidths`), or the exact width as a uniform record
+(`exactNeededWidths`). -/
+def neededWidthsBy (R : WidthRule) {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) :
+    NeededWidths k :=
+  match R with
+  | .scan => scanNeededWidths x z ops
+  | .exact => exactNeededWidths ops x.width z.width
+
+/-! Evaluation-only memo for the exact rule (declared before anything that
+calls `neededWidthsBy`, so that every compiled caller goes through the
+`@[csimp]` below). The compiled circuit generator
+and the evaluation tier ask for the exact width at the same `(table, xw, zw)`
+very many times; the scan was cheap per call, the exact rule recomputes the
+reachable rows. `exactWidthMemo` is *defined* as the exact width (every proof
+sees `exactSignedWidthOfWidths`) and *implemented* by a cache keyed on `k`,
+the program object's address and the two widths; the cache holds the program,
+so an address is not reused while its entry exists. Trusted code for compiled
+evaluation only, never for a kernel proof. The `.scan` branch is untouched, so
+compiled code on the scan rule runs exactly what it ran before. -/
+
+initialize exactWidthCache : IO.Ref (Std.HashMap (ℕ × USize × ℕ × ℕ) (NonScalar × ℕ)) ← IO.mkRef {}
+
+private unsafe def exactWidthMemoImpl {k : ℕ} (ops : Prog k) (xw zw : ℕ) : ℕ :=
+  unsafeBaseIO do
+    let key := (k, ptrAddrUnsafe ops, xw, zw)
+    match (← exactWidthCache.get)[key]? with
+    | some (_, v) => return v
+    | none =>
+      let v := exactSignedWidthOfWidths ops xw zw
+      exactWidthCache.modify (·.insert key (unsafeCast ops, v))
+      return v
+
+/-- The exact width (memoised in compiled code; see above). -/
+@[implemented_by exactWidthMemoImpl]
+def exactWidthMemo {k : ℕ} (ops : Prog k) (xw zw : ℕ) : ℕ := exactSignedWidthOfWidths ops xw zw
+
+/-- A uniform record from an already computed width (`noinline` keeps the
+argument evaluated once, before the call). -/
+@[noinline] def uniformNeededWidths (k E : ℕ) : NeededWidths k where
+  xneed := fun _ => E - 1
+  zneed := fun _ => E - 1
+
+/-- `neededWidthsBy`, with the exact branch evaluated once through the memo. -/
+def neededWidthsByFast (R : WidthRule) {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) :
+    NeededWidths k :=
+  match R with
+  | .scan => scanNeededWidths x z ops
+  | .exact => uniformNeededWidths k (exactWidthMemo ops x.width z.width)
+
+@[csimp] theorem neededWidthsBy_eq_fast : @neededWidthsBy = @neededWidthsByFast := by
+  funext R k x z ops; cases R <;> rfl
+
+/-- The child width under rule `R`. -/
+def nextSignedWidthBy (R : WidthRule) {k : ℕ} (x z : ExtReg) (ops : Prog k) : ℕ :=
+  commonNeededWidth (neededWidthsBy R x z ops)
+
+@[simp] theorem neededWidthsBy_scan {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) :
+    neededWidthsBy .scan x z ops = scanNeededWidths x z ops := rfl
+
+@[simp] theorem nextSignedWidthBy_scan {k : ℕ} (x z : ExtReg) (ops : Prog k) :
+    nextSignedWidthBy .scan x z ops = nextSignedWidth x z ops := rfl
+
+theorem neededWidthsBy_exact {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) :
+    neededWidthsBy .exact x z ops = exactNeededWidths ops x.width z.width := rfl
+
+/-- The exact child width is the exact width of the operands' active widths (`0 < k`). -/
+theorem nextSignedWidthBy_exact {k : ℕ} (hk : 0 < k) (x z : ExtReg) (ops : Prog k) :
+    nextSignedWidthBy .exact x z ops = exactSignedWidthOfWidths ops x.width z.width :=
+  commonNeededWidth_exactNeeded hk ops x.width z.width
+
+/-- The initial `x` width is included in the width needs, under either rule. -/
+lemma neededWidthsBy_x_ge_init (R : WidthRule)
+    {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) (i : Fin k) :
+    (initWidthState x z k).xw i ≤ (neededWidthsBy R x z ops).xneed i := by
+  cases R
+  · exact scanNeededWidths_x_ge_init x z ops i
+  · exact (exactInit_le ops x.width z.width i).1
+
+/-- The initial `z` width is included in the width needs, under either rule. -/
+lemma neededWidthsBy_z_ge_init (R : WidthRule)
+    {k : ℕ} (x z : ExtReg) (ops : List (valid_ops k)) (i : Fin k) :
+    (initWidthState x z k).zw i ≤ (neededWidthsBy R x z ops).zneed i := by
+  cases R
+  · exact scanNeededWidths_z_ge_init x z ops i
+  · exact (exactInit_le ops x.width z.width i).2
+
+/-- A grown target `x` slot has exactly the common width, under either rule. -/
+lemma targetSignedLayoutState_xslot_width_by (R : WidthRule)
+    {x z : ExtReg}
+    {k : ℕ}
+    (layout : Gate.PhaseProductLayout x z k)
+    (ops : Prog k)
+    (i : Fin k)
+    (hcap : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy R x z ops)) :
+    ((targetSignedLayoutState (initSignedLayoutState layout) (neededWidthsBy R x z ops)).xslot i).width
+      = commonNeededWidth (neededWidthsBy R x z ops) := by
+  let stInit := initSignedLayoutState layout
+  let need := neededWidthsBy R x z ops
+  let Wwork := commonNeededWidth need
+  have hinit : (stInit.xslot i).width = (initWidthState x z k).xw i := by
+    simpa [stInit] using stInit_xslot_width layout i
+  have hscan : (initWidthState x z k).xw i ≤ need.xneed i := by
+    simpa [need] using neededWidthsBy_x_ge_init R x z ops i
+  have hneed : need.xneed i + 1 ≤ Wwork := commonNeededWidth_ge_xneed need i
+  have hle : (stInit.xslot i).width ≤ Wwork := by
+    rw [hinit]
+    omega
+  have hgrow : (stInit.xslot i).CanGrow (Wwork - (stInit.xslot i).width) := hcap.1 i
+  simpa [stInit, need, Wwork, targetSignedLayoutState] using
+    width_growExtRegTo (stInit.xslot i) Wwork hle hgrow
+
+/-- A grown target `z` slot has exactly the common width, under either rule. -/
+lemma targetSignedLayoutState_zslot_width_by (R : WidthRule)
+    {x z : ExtReg}
+    {k : ℕ}
+    (layout : Gate.PhaseProductLayout x z k)
+    (ops : Prog k)
+    (i : Fin k)
+    (hcap : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy R x z ops)) :
+    ((targetSignedLayoutState (initSignedLayoutState layout) (neededWidthsBy R x z ops)).zslot i).width
+      = commonNeededWidth (neededWidthsBy R x z ops) := by
+  let stInit := initSignedLayoutState layout
+  let need := neededWidthsBy R x z ops
+  let Wwork := commonNeededWidth need
+  have hinit : (stInit.zslot i).width = (initWidthState x z k).zw i := by
+    simpa [stInit] using stInit_zslot_width layout i
+  have hscan : (initWidthState x z k).zw i ≤ need.zneed i := by
+    simpa [need] using neededWidthsBy_z_ge_init R x z ops i
   have hneed : need.zneed i + 1 ≤ Wwork := commonNeededWidth_ge_zneed need i
   have hle : (stInit.zslot i).width ≤ Wwork := by
     rw [hinit]

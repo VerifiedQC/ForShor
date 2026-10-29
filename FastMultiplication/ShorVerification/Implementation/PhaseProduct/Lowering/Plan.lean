@@ -41,6 +41,20 @@ def compiledSignedPhaseGate
     Gate :=
   compileOpsToSignedGate k hk phi x z layout (loweringPhaseCoeff k x z pts hpts) ops
 
+/-- `compiledSignedPhaseGate` under width rule `R` (`rfl` at `.scan`). -/
+def compiledSignedPhaseGateBy
+    (R : WidthRule)
+    (k : ℕ)
+    (hk : 1 < k)
+    (pts : List Point)
+    (hpts : pts.length = q k)
+    (ops : Prog k)
+    (phi : Angle)
+    (x z : ExtReg)
+    (layout : Gate.PhaseProductLayout x z k) :
+    Gate :=
+  compileOpsToSignedGateBy R k hk phi x z layout (loweringPhaseCoeff k x z pts hpts) ops
+
 /-- Compiled replacement for a controlled signed phase-product gate. -/
 def compiledCSignedPhaseGate
     (k : ℕ)
@@ -54,6 +68,21 @@ def compiledCSignedPhaseGate
     (layout : Gate.PhaseProductLayout x z k) :
     Gate :=
   compileOpsToCSignedGate k hk ctrl phi x z layout (loweringPhaseCoeff k x z pts hpts) ops
+
+/-- `compiledCSignedPhaseGate` under width rule `R` (`rfl` at `.scan`). -/
+def compiledCSignedPhaseGateBy
+    (R : WidthRule)
+    (k : ℕ)
+    (hk : 1 < k)
+    (pts : List Point)
+    (hpts : pts.length = q k)
+    (ops : Prog k)
+    (ctrl : ℕ)
+    (phi : Angle)
+    (x z : ExtReg)
+    (layout : Gate.PhaseProductLayout x z k) :
+    Gate :=
+  compileOpsToCSignedGateBy R k hk ctrl phi x z layout (loweringPhaseCoeff k x z pts hpts) ops
 
 /-!
 # Phase-Product Lowering Plans
@@ -163,7 +192,7 @@ inductive PhaseLoweringPlan
   | signedBase
       {initSize : ℕ}
       (phi : Angle) (x z : ExtReg)
-      (hstop : P.Stops initSize (fun T => nextSignedWidth x z T.ops)) :
+      (hstop : P.Stops initSize (fun T => nextSignedWidthBy P.widthRule x z T.ops)) :
       PhaseLoweringPlan P initSize (Gate.SignedPhaseProd phi x z)
   /--
   A recursive signed phase-product step.
@@ -178,10 +207,10 @@ inductive PhaseLoweringPlan
       (T : ToomCookTable)
       (hT : P.choose initSize = some T)
       (layout : Gate.PhaseProductLayout x z T.k)
-      (hrec : nextSignedWidth x z T.ops < initSize)
-      (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z T.ops))
-      (child : PhaseLoweringPlan P (nextSignedWidth x z T.ops)
-          (compiledSignedPhaseGate T.k T.hk T.pts T.hpts T.ops phi x z layout)) :
+      (hrec : nextSignedWidthBy P.widthRule x z T.ops < initSize)
+      (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy P.widthRule x z T.ops))
+      (child : PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
+          (compiledSignedPhaseGateBy P.widthRule T.k T.hk T.pts T.hpts T.ops phi x z layout)) :
       PhaseLoweringPlan P initSize (Gate.SignedPhaseProd phi x z)
   /--
   The controlled phase-product recursion has reached its base case.
@@ -191,7 +220,7 @@ inductive PhaseLoweringPlan
       (ctrl : ℕ)
       (phi : Angle)
       (x z : ExtReg)
-      (hstop : P.Stops initSize (fun T => nextSignedWidth x z T.ops)) :
+      (hstop : P.Stops initSize (fun T => nextSignedWidthBy P.widthRule x z T.ops)) :
       PhaseLoweringPlan P initSize (Gate.CSignedPhaseProd ctrl phi x z)
   /--
   A recursive controlled signed phase-product step.
@@ -206,11 +235,11 @@ inductive PhaseLoweringPlan
       (T : ToomCookTable)
       (hT : P.choose initSize = some T)
       (layout : Gate.PhaseProductLayout x z T.k)
-      (hrec : nextSignedWidth x z T.ops < initSize)
-      (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z T.ops))
+      (hrec : nextSignedWidthBy P.widthRule x z T.ops < initSize)
+      (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy P.widthRule x z T.ops))
       (hctrl : layout.ControlDisjoint ctrl)
-      (child : PhaseLoweringPlan P (nextSignedWidth x z T.ops)
-          (compiledCSignedPhaseGate T.k T.hk T.pts T.hpts T.ops ctrl phi x z layout)) :
+      (child : PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
+          (compiledCSignedPhaseGateBy P.widthRule T.k T.hk T.pts T.hpts T.ops ctrl phi x z layout)) :
       PhaseLoweringPlan P initSize (Gate.CSignedPhaseProd ctrl phi x z)
 
 /-! =========================================================

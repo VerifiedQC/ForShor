@@ -213,7 +213,7 @@ window.ANNOTATIONS = {
    ]
   },
   "Reference": {
-   "columns": [["Reference/ReferencePrecision.lean"], ["Reference/ReferenceLayout.lean"], ["Reference/ReferenceReadiness.lean"], ["Reference/ShorProgram.lean"], ["Reference/ReferenceShorImplementation.lean"], ["Reference/Reference2048Headline.lean", "Reference/StandardLoweringSetup.lean"]],
+   "columns": [["Reference/ReferencePrecision.lean"], ["Reference/ReferenceLayout.lean"], ["Reference/ReferenceReadiness.lean"], ["Reference/ShorProgram.lean"], ["Reference/ReferenceShorImplementation.lean"], ["Reference/Reference2048Headline.lean", "Reference/StandardLoweringSetup.lean"], ["Reference/Balanced"]],
    "edges": [
     { "from": "Reference/ReferencePrecision.lean", "to": "Reference/ReferenceLayout.lean", "emphasis": "secondary" },
     { "from": "Reference/ReferenceLayout.lean", "to": "Reference/ReferenceReadiness.lean", "emphasis": "primary", "label": "concrete layout", "why": "Readiness discharges the implementation-specific readiness obligations against the concrete register layout ReferenceLayout.lean builds." },

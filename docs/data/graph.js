@@ -26,7 +26,7 @@ window.GRAPH = {
     "Framework/Semantics",
     "Framework/ToomCookTable.lean"
    ],
-   "declCount": 252,
+   "declCount": 260,
    "fileCount": 17,
    "fsPath": "Framework",
    "kind": "folder",
@@ -835,133 +835,175 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "structure",
-     "line": 64,
+     "line": 72,
      "name": "Shor.ToomCookTable"
     },
     {
      "kind": "def",
-     "line": 81,
+     "line": 89,
      "name": "Shor.ToomCookTable.Admissible"
     },
     {
      "kind": "def",
-     "line": 91,
+     "line": 99,
      "name": "Shor.ShorLoweringSetup.table"
     },
     {
      "kind": "theorem",
-     "line": 96,
+     "line": 104,
      "name": "Shor.ShorLoweringSetup.table_admissible"
     },
     {
      "kind": "theorem",
-     "line": 99,
+     "line": 107,
      "name": "Shor.ShorLoweringSetup.table_k"
     },
     {
      "kind": "theorem",
-     "line": 101,
+     "line": 109,
      "name": "Shor.ShorLoweringSetup.table_pts"
     },
     {
      "kind": "theorem",
-     "line": 103,
+     "line": 111,
      "name": "Shor.ShorLoweringSetup.table_ops"
     },
     {
+     "kind": "inductive",
+     "line": 122,
+     "name": "Shor.WidthRule"
+    },
+    {
      "kind": "structure",
-     "line": 110,
+     "line": 130,
      "name": "Shor.PolicyBand"
     },
     {
      "kind": "structure",
-     "line": 123,
+     "line": 143,
      "name": "Shor.ShorLoweringPolicy"
     },
     {
      "kind": "def",
-     "line": 133,
+     "line": 155,
      "name": "Shor.ShorLoweringPolicy.choose"
     },
     {
      "kind": "def",
-     "line": 141,
+     "line": 163,
      "name": "Shor.ShorLoweringPolicy.Admissible"
     },
     {
      "kind": "theorem",
-     "line": 146,
+     "line": 168,
      "name": "Shor.ShorLoweringPolicy.Admissible.of_choose"
     },
     {
      "kind": "def",
-     "line": 164,
+     "line": 186,
      "name": "Shor.ShorLoweringPolicy.Stops"
     },
     {
      "kind": "def",
-     "line": 174,
+     "line": 196,
      "name": "Shor.ShorLoweringPolicy.constPolicy"
     },
     {
      "kind": "theorem",
-     "line": 177,
+     "line": 200,
      "name": "Shor.ShorLoweringPolicy.constPolicy_choose"
     },
     {
      "kind": "theorem",
-     "line": 181,
+     "line": 204,
      "name": "Shor.ShorLoweringPolicy.constPolicy_bands"
     },
     {
      "kind": "theorem",
-     "line": 184,
+     "line": 207,
+     "name": "Shor.ShorLoweringPolicy.constPolicy_widthRule"
+    },
+    {
+     "kind": "def",
+     "line": 211,
+     "name": "Shor.ShorLoweringPolicy.withRule"
+    },
+    {
+     "kind": "theorem",
+     "line": 214,
+     "name": "Shor.ShorLoweringPolicy.withRule_bands"
+    },
+    {
+     "kind": "theorem",
+     "line": 217,
+     "name": "Shor.ShorLoweringPolicy.withRule_widthRule"
+    },
+    {
+     "kind": "theorem",
+     "line": 220,
+     "name": "Shor.ShorLoweringPolicy.withRule_choose"
+    },
+    {
+     "kind": "theorem",
+     "line": 223,
+     "name": "Shor.ShorLoweringPolicy.withRule_admissible"
+    },
+    {
+     "kind": "theorem",
+     "line": 226,
      "name": "Shor.ShorLoweringPolicy.constPolicy_admissible"
     },
     {
      "kind": "structure",
-     "line": 199,
+     "line": 241,
      "name": "Shor.ShorPolicySubmission"
     },
     {
      "kind": "def",
-     "line": 208,
+     "line": 252,
      "name": "Shor.ShorPolicySubmission.policy"
     },
     {
      "kind": "theorem",
-     "line": 212,
+     "line": 257,
+     "name": "Shor.ShorPolicySubmission.policy_widthRule"
+    },
+    {
+     "kind": "theorem",
+     "line": 260,
      "name": "Shor.ShorPolicySubmission.policy_bands"
     },
     {
      "kind": "theorem",
-     "line": 218,
+     "line": 266,
      "name": "Shor.ShorPolicySubmission.policy_admissible"
     },
     {
      "kind": "def",
-     "line": 225,
+     "line": 273,
      "name": "Shor.ShorPolicySubmission.ofSetup"
     },
     {
      "kind": "theorem",
-     "line": 227,
+     "line": 277,
      "name": "Shor.ShorPolicySubmission.ofSetup_policy"
     }
    ],
-   "docstring": "# What a lowering policy is, and what makes one admissible\n\nThe second kind of submission. A table submission\n(`Framework/ToomCookTable.lean`) is one Toom-Cook table used at every level\nof the recursive phase product. A **policy** chooses a table by operand\nwidth \u2014 Toom-6 at the top, Toom-3 in the middle, Karatsuba near the leaves,\nthe schoolbook leaf below an explicit threshold \u2014 and each table it can pick\ncarries its own C1\u2013C4. The score is a gate count at one fixed size, not an\nasymptotic exponent, and at a fixed size the optimum is a cascade rather\nthan a single radix; that is the whole motivation.\n\nLike the file it imports, this one is implementation-free: it imports\n`Framework/ToomCookTable.lean` and nothing else (not even Mathlib directly),\nso each kind of submission can be read on its own. The import rule is\none-directional \u2014 `Policy.lean` imports `ToomCookTable.lean`, never the\nreverse \u2014 because a reader of the single-table specification should not have\nto read the policy to understand a table.\n\nThe split between data and proof mirrors the one the plan type already\nmakes. `PhaseLoweringPlan` needs only `(k, hk, pts, hpts, ops)`; C2\u2013C4 are\nhypotheses of the correctness theorem, not fields of the object being built.\nSo:\n\n| | what it is |\n|---|---|\n| `ToomCookTable` | the data `(k, hk, pts, hpts, ops)`, no side conditions |\n| `ToomCookTable.Admissible` | C2\u2013C4 for one table |\n| `ShorLoweringPolicy` | a list of `(threshold, table)` bands, strictly decreasing in threshold |\n| `ShorLoweringPolicy.Admissible` | every table the policy can pick is admissible |\n| `ShorPolicySubmission` | a list of `(threshold, ShorLoweringSetup)`: the bands *with* their proofs |\n\nThree design points, each load-bearing downstream:\n\n- **The policy is keyed on width, not depth.** `choose` is applied to a plan\n  node's `initSize` (`= max x.width z.width`). The width at depth 3 depends\n  on the choices made at depths 1 and 2, so a depth-indexed policy could not\n  be reasoned about without simulating the chain. Width-indexing also makes\n  the leaf threshold explicit: `choose n = none` *is* the leaf.\n- **The shrink test stays.** Within a band the recursion still falls to the\n  leaf when the chosen table does not shrink the width (`Stops`). Termination\n  stays free and no fifth side condition is introduced.\n- **A table submission is the one-band policy at threshold `0`.**\n  `constPolicy` and `ShorPolicySubmission.ofSetup` are what make the existing\n  single-table path a special case rather than a parallel one.",
+   "docstring": "# What a lowering policy is, and what makes one admissible\n\nThe second kind of submission. A table submission\n(`Framework/ToomCookTable.lean`) is one Toom-Cook table used at every level\nof the recursive phase product. A **policy** chooses a table by operand\nwidth \u2014 Toom-6 at the top, Toom-3 in the middle, Karatsuba near the leaves,\nthe schoolbook leaf below an explicit threshold \u2014 and each table it can pick\ncarries its own C1\u2013C4. The score is a gate count at one fixed size, not an\nasymptotic exponent, and at a fixed size the optimum is a cascade rather\nthan a single radix; that is the whole motivation.\n\nLike the file it imports, this one is implementation-free: it imports\n`Framework/ToomCookTable.lean` and nothing else (not even Mathlib directly),\nso each kind of submission can be read on its own. The import rule is\none-directional \u2014 `Policy.lean` imports `ToomCookTable.lean`, never the\nreverse \u2014 because a reader of the single-table specification should not have\nto read the policy to understand a table.\n\nThe split between data and proof mirrors the one the plan type already\nmakes. `PhaseLoweringPlan` needs only `(k, hk, pts, hpts, ops)`; C2\u2013C4 are\nhypotheses of the correctness theorem, not fields of the object being built.\nSo:\n\n| | what it is |\n|---|---|\n| `ToomCookTable` | the data `(k, hk, pts, hpts, ops)`, no side conditions |\n| `ToomCookTable.Admissible` | C2\u2013C4 for one table |\n| `ShorLoweringPolicy` | a list of `(threshold, table)` bands, strictly decreasing in threshold |\n| `ShorLoweringPolicy.Admissible` | every table the policy can pick is admissible |\n| `ShorPolicySubmission` | a list of `(threshold, ShorLoweringSetup)`: the bands *with* their proofs |\n\nThree design points, each load-bearing downstream:\n\n- **The policy is keyed on width, not depth.** `choose` is applied to a plan\n  node's `initSize` (`= max x.width z.width`). The width at depth 3 depends\n  on the choices made at depths 1 and 2, so a depth-indexed policy could not\n  be reasoned about without simulating the chain. Width-indexing also makes\n  the leaf threshold explicit: `choose n = none` *is* the leaf.\n- **The shrink test stays.** Within a band the recursion still falls to the\n  leaf when the chosen table does not shrink the width (`Stops`). Termination\n  stays free and no fifth side condition is introduced.\n- **A table submission is the one-band policy at threshold `0`.**\n  `constPolicy` and `ShorPolicySubmission.ofSetup` are what make the existing\n  single-table path a special case rather than a parallel one.\n- **The width rule is part of the policy, and defaults to the scan.**\n  `widthRule` says how the compiler sizes each recursion level's working\n  registers: `.scan`, the symbolic scan (one bit per `addScaled`/`negate`),\n  or `.exact`, the least width holding every value the tables reach.\n  Every policy or policy submission built without naming it, `constPolicy`\n  included, uses the scan; `ShorPolicySubmission.policy` copies the\n  submission's rule. The correctness theorems are generic in the policy and\n  so cover both rules.",
    "fsPath": "Framework/Policy.lean",
    "importedBy": [
     "GateCount/Definitions.lean",
     "PhaseProduct/Compiler/PolicyWorkspace.lean",
+    "PhaseProduct/Compiler/Widths.lean",
     "PhaseProduct/Lowering/Plan.lean",
-    "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
+    "PhaseProduct/Proofs/Lowering/PlanSemantics.lean",
+    "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean"
    ],
    "imports": [
     "Framework/ToomCookTable.lean"
    ],
    "kind": "file",
-   "lines": 232,
+   "lines": 282,
    "name": "Policy.lean",
    "path": "Framework/Policy.lean"
   },
@@ -2246,177 +2288,177 @@ window.GRAPH = {
     },
     {
      "kind": "lemma",
-     "line": 1437,
+     "line": 1438,
      "name": "Shor.phaseProgramOverhead_cons"
     },
     {
      "kind": "lemma",
-     "line": 1441,
+     "line": 1442,
      "name": "Shor.bookkeepingGateCost_allocChunkGate_le_width"
     },
     {
      "kind": "lemma",
-     "line": 1463,
+     "line": 1464,
      "name": "Shor.bookkeepingGateCost_deallocChunkGate_le_width"
     },
     {
      "kind": "lemma",
-     "line": 1485,
+     "line": 1486,
      "name": "Shor.bookkeepingGateCost_compileSignedAllocationsAux_le"
     },
     {
      "kind": "lemma",
-     "line": 1576,
+     "line": 1577,
      "name": "Shor.bookkeepingGateCost_compileSignedDeallocationsAux_le"
     },
     {
      "kind": "lemma",
-     "line": 1667,
+     "line": 1668,
      "name": "Shor.lgc_allocs_le"
     },
     {
      "kind": "lemma",
-     "line": 1685,
+     "line": 1686,
      "name": "Shor.lgc_deallocs_le"
     },
     {
      "kind": "lemma",
-     "line": 1704,
+     "line": 1705,
      "name": "Shor.lgc_body_le"
     },
     {
      "kind": "lemma",
-     "line": 2154,
+     "line": 2155,
      "name": "Shor.lowerSignedPhaseProd_one_level_cost_le"
     },
     {
      "kind": "lemma",
-     "line": 2510,
+     "line": 2512,
      "name": "Shor.phaseArithmeticOpCost_mono"
     },
     {
      "kind": "lemma",
-     "line": 2523,
+     "line": 2525,
      "name": "Shor.phaseProgramOverhead_mono"
     },
     {
      "kind": "lemma",
-     "line": 2545,
+     "line": 2547,
      "name": "Shor.lowerSignedPhaseProd_one_level_cost_le_nat"
     },
     {
      "kind": "lemma",
-     "line": 2619,
+     "line": 2621,
      "name": "Shor.signedPhaseProductGateCount_bounded_on_bounded_inputs"
     },
     {
      "kind": "lemma",
-     "line": 2791,
+     "line": 2793,
      "name": "Shor.one_lt_phaseProductExponent"
     },
     {
      "kind": "lemma",
-     "line": 2814,
+     "line": 2816,
      "name": "Shor.rpow_phaseProductExponent_eq_q"
     },
     {
      "kind": "lemma",
-     "line": 2836,
+     "line": 2838,
      "name": "Shor.balanced_nextSignedWidth_shifted"
     },
     {
      "kind": "lemma",
-     "line": 2900,
+     "line": 2902,
      "name": "Shor.balanced_phaseProduct_recurrence_solution"
     },
     {
      "kind": "lemma",
-     "line": 3130,
+     "line": 3132,
      "name": "Shor.phaseProdUsing_signedWorkspace"
     },
     {
      "kind": "lemma",
-     "line": 3145,
+     "line": 3147,
      "name": "Shor.lowerGate_PhaseProdUsing_gateCount_eq_signed"
     },
     {
      "kind": "lemma",
-     "line": 3188,
+     "line": 3190,
      "name": "Shor.width_phaseProdUsing_x"
     },
     {
      "kind": "lemma",
-     "line": 3197,
+     "line": 3199,
      "name": "Shor.width_phaseProdUsing_z"
     },
     {
      "kind": "lemma",
-     "line": 3207,
+     "line": 3209,
      "name": "Shor.phaseInputSize_phaseProdUsing"
     },
     {
      "kind": "lemma",
-     "line": 3231,
+     "line": 3233,
      "name": "Shor.phaseProductSafeRate_le_scaled_rpow"
     },
     {
      "kind": "lemma",
-     "line": 3312,
+     "line": 3314,
      "name": "Shor.natCast_le_phaseProduct_rpow"
     },
     {
      "kind": "lemma",
-     "line": 3332,
+     "line": 3334,
      "name": "Shor.signedPhaseProductGateCount_eq_direct_of_not_recurse"
     },
     {
      "kind": "lemma",
-     "line": 3361,
+     "line": 3363,
      "name": "Shor.signedPhaseProductGateCount_unsignedView_recurse_case_bound"
     },
     {
      "kind": "lemma",
-     "line": 3765,
+     "line": 3767,
      "name": "Shor.signedPhaseProductGateCount_unsignedView_no_recurse_case_bound"
     },
     {
      "kind": "lemma",
-     "line": 3983,
+     "line": 3985,
      "name": "Shor.phaseProductGateCountBound_of_balanced_signed_bound"
     },
     {
      "kind": "lemma",
-     "line": 4059,
+     "line": 4061,
      "name": "Shor.prog_balanced_nextSignedWidth"
     },
     {
      "kind": "lemma",
-     "line": 4150,
+     "line": 4152,
      "name": "Shor.prog_nextSignedWidth_le_input_add_const"
     },
     {
      "kind": "lemma",
-     "line": 4167,
+     "line": 4169,
      "name": "Shor.prog_no_recurse_implies_small_operand"
     },
     {
      "kind": "lemma",
-     "line": 4270,
+     "line": 4272,
      "name": "Shor.CPhaseProductReduction.lgc_cbody_le_five"
     },
     {
      "kind": "lemma",
-     "line": 4470,
+     "line": 4472,
      "name": "Shor.CPhaseProductReduction.cSignedPhaseProductGateCount_le_five_signed"
     },
     {
      "kind": "lemma",
-     "line": 4862,
+     "line": 4864,
      "name": "Shor.CPhaseProductReduction.cPhaseProdUsing_controlledWorkspace"
     },
     {
      "kind": "lemma",
-     "line": 4878,
+     "line": 4880,
      "name": "Shor.CPhaseProductReduction.lowerGate_CPhaseProdUsing_gateCount_eq_cSigned"
     }
    ],
@@ -2444,7 +2486,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/NaiveLeaf.lean"
    ],
    "kind": "file",
-   "lines": 4924,
+   "lines": 4926,
    "name": "Lemmas.lean",
    "path": "GateCount/PhaseProduct/Lemmas.lean"
   },
@@ -5586,8 +5628,8 @@ window.GRAPH = {
     "PhaseProduct/Proofs",
     "PhaseProduct/Spec"
    ],
-   "declCount": 1050,
-   "fileCount": 60,
+   "declCount": 1203,
+   "fileCount": 66,
    "fsPath": "Implementation/PhaseProduct",
    "kind": "folder",
    "name": "PhaseProduct",
@@ -5598,14 +5640,16 @@ window.GRAPH = {
    "children": [
     "PhaseProduct/Compiler/Coefficients.lean",
     "PhaseProduct/Compiler/Compile.lean",
+    "PhaseProduct/Compiler/ExactWidth.lean",
+    "PhaseProduct/Compiler/ExactWidthBoxes.lean",
     "PhaseProduct/Compiler/GaussJordan.lean",
     "PhaseProduct/Compiler/Layout.lean",
     "PhaseProduct/Compiler/PolicyWorkspace.lean",
     "PhaseProduct/Compiler/Widths.lean",
     "PhaseProduct/Compiler/Workspace.lean"
    ],
-   "declCount": 163,
-   "fileCount": 7,
+   "declCount": 263,
+   "fileCount": 9,
    "fsPath": "Implementation/PhaseProduct/Compiler",
    "kind": "folder",
    "name": "Compiler",
@@ -5789,67 +5833,87 @@ window.GRAPH = {
     },
     {
      "kind": "def",
-     "line": 151,
-     "name": "Shor.controlPhaseLeaves"
+     "line": 153,
+     "name": "Shor.compileOpsToSignedGateBy"
     },
     {
-     "kind": "def",
-     "line": 166,
-     "name": "Shor.compileOpsToCSignedGate"
+     "kind": "theorem",
+     "line": 165,
+     "name": "Shor.compileOpsToSignedGateBy_scan"
     },
     {
      "kind": "def",
      "line": 172,
+     "name": "Shor.controlPhaseLeaves"
+    },
+    {
+     "kind": "def",
+     "line": 187,
+     "name": "Shor.compileOpsToCSignedGate"
+    },
+    {
+     "kind": "def",
+     "line": 193,
+     "name": "Shor.compileOpsToCSignedGateBy"
+    },
+    {
+     "kind": "theorem",
+     "line": 198,
+     "name": "Shor.compileOpsToCSignedGateBy_scan"
+    },
+    {
+     "kind": "def",
+     "line": 205,
      "name": "Shor.Gate.PhaseProductLayout.ControlDisjoint"
     },
     {
      "kind": "lemma",
-     "line": 182,
+     "line": 215,
      "name": "Shor.compileSignedAllocationsAux_zero"
     },
     {
      "kind": "lemma",
-     "line": 185,
+     "line": 218,
      "name": "Shor.compileSignedAllocationsAux_succ"
     },
     {
      "kind": "lemma",
-     "line": 195,
+     "line": 228,
      "name": "Shor.compileSignedDeallocationsAux_zero"
     },
     {
      "kind": "lemma",
-     "line": 198,
+     "line": 231,
      "name": "Shor.compileSignedDeallocationsAux_succ"
     },
     {
      "kind": "lemma",
-     "line": 216,
+     "line": 249,
      "name": "Shor.controlPhaseLeaves_allocChunkGate"
     },
     {
      "kind": "lemma",
-     "line": 224,
+     "line": 257,
      "name": "Shor.controlPhaseLeaves_deallocChunkGate"
     },
     {
      "kind": "lemma",
-     "line": 232,
+     "line": 265,
      "name": "Shor.controlPhaseLeaves_compileSignedAllocationsAux"
     },
     {
      "kind": "lemma",
-     "line": 247,
+     "line": 280,
      "name": "Shor.controlPhaseLeaves_compileSignedAllocations"
     },
     {
      "kind": "lemma",
-     "line": 253,
+     "line": 286,
      "name": "Shor.controlPhaseLeaves_compileSignedDeallocationsAux"
     },
     {
      "kind": "lemma",
-     "line": 269,
+     "line": 302,
      "name": "Shor.controlPhaseLeaves_compileSignedDeallocations"
     }
    ],
@@ -5870,9 +5934,400 @@ window.GRAPH = {
     "PhaseProduct/Compiler/Widths.lean"
    ],
    "kind": "file",
-   "lines": 274,
+   "lines": 307,
    "name": "Compile.lean",
    "path": "PhaseProduct/Compiler/Compile.lean"
+  },
+  "PhaseProduct/Compiler/ExactWidth.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 66,
+     "name": "Shor.exactTab"
+    },
+    {
+     "kind": "theorem",
+     "line": 70,
+     "name": "Shor.exactTab_eq"
+    },
+    {
+     "kind": "def",
+     "line": 79,
+     "name": "Shor.exactReachStates"
+    },
+    {
+     "kind": "theorem",
+     "line": 87,
+     "name": "Shor.mem_exactReachStates"
+    },
+    {
+     "kind": "theorem",
+     "line": 104,
+     "name": "Shor.run_of_mem_exactReachStates"
+    },
+    {
+     "kind": "def",
+     "line": 123,
+     "name": "Shor.exactReachRows"
+    },
+    {
+     "kind": "theorem",
+     "line": 126,
+     "name": "Shor.mem_exactReachRows"
+    },
+    {
+     "kind": "theorem",
+     "line": 134,
+     "name": "Shor.exists_of_mem_exactReachRows"
+    },
+    {
+     "kind": "def",
+     "line": 154,
+     "name": "Shor.stArr"
+    },
+    {
+     "kind": "def",
+     "line": 157,
+     "name": "Shor.arrState"
+    },
+    {
+     "kind": "theorem",
+     "line": 159,
+     "name": "Shor.arrState_stArr"
+    },
+    {
+     "kind": "def",
+     "line": 164,
+     "name": "Shor.exactReachArr"
+    },
+    {
+     "kind": "theorem",
+     "line": 171,
+     "name": "Shor.exactReachArr_eq"
+    },
+    {
+     "kind": "def",
+     "line": 183,
+     "name": "Shor.exactReachRowsFast"
+    },
+    {
+     "kind": "theorem",
+     "line": 186,
+     "name": "Shor.exactReachRows_eq_fast"
+    },
+    {
+     "kind": "def",
+     "line": 195,
+     "name": "Shor.rowVal"
+    },
+    {
+     "kind": "def",
+     "line": 198,
+     "name": "Shor.exactLimbLo"
+    },
+    {
+     "kind": "def",
+     "line": 205,
+     "name": "Shor.exactLimbHi"
+    },
+    {
+     "kind": "def",
+     "line": 212,
+     "name": "Shor.InExactBox"
+    },
+    {
+     "kind": "theorem",
+     "line": 215,
+     "name": "Shor.exactLimbLo_le_hi"
+    },
+    {
+     "kind": "def",
+     "line": 227,
+     "name": "Shor.exactRowLo"
+    },
+    {
+     "kind": "def",
+     "line": 231,
+     "name": "Shor.exactRowHi"
+    },
+    {
+     "kind": "def",
+     "line": 236,
+     "name": "Shor.exactRowDemand"
+    },
+    {
+     "kind": "theorem",
+     "line": 239,
+     "name": "Shor.exactRowLo_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 243,
+     "name": "Shor.exactRowHi_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 247,
+     "name": "Shor.exact_term_bounds"
+    },
+    {
+     "kind": "theorem",
+     "line": 256,
+     "name": "Shor.exact_row_bounds"
+    },
+    {
+     "kind": "def",
+     "line": 265,
+     "name": "Shor.exactCornerHi"
+    },
+    {
+     "kind": "def",
+     "line": 269,
+     "name": "Shor.exactCornerLo"
+    },
+    {
+     "kind": "theorem",
+     "line": 272,
+     "name": "Shor.exactCornerHi_box"
+    },
+    {
+     "kind": "theorem",
+     "line": 277,
+     "name": "Shor.exactCornerLo_box"
+    },
+    {
+     "kind": "theorem",
+     "line": 283,
+     "name": "Shor.exact_rowHi_attained"
+    },
+    {
+     "kind": "theorem",
+     "line": 294,
+     "name": "Shor.exact_rowLo_attained"
+    },
+    {
+     "kind": "theorem",
+     "line": 305,
+     "name": "Shor.fits_of_exactDemand"
+    },
+    {
+     "kind": "theorem",
+     "line": 318,
+     "name": "Shor.exactDemand_le_of_fits"
+    },
+    {
+     "kind": "def",
+     "line": 337,
+     "name": "Shor.exactListMax"
+    },
+    {
+     "kind": "theorem",
+     "line": 341,
+     "name": "Shor.le_exactListMax"
+    },
+    {
+     "kind": "theorem",
+     "line": 349,
+     "name": "Shor.exactListMax_le"
+    },
+    {
+     "kind": "def",
+     "line": 357,
+     "name": "Shor.exactLeastExp"
+    },
+    {
+     "kind": "theorem",
+     "line": 361,
+     "name": "Shor.exactLeastExp_spec"
+    },
+    {
+     "kind": "def",
+     "line": 379,
+     "name": "Shor.exactLimbWidth"
+    },
+    {
+     "kind": "def",
+     "line": 382,
+     "name": "Shor.exactDemand"
+    },
+    {
+     "kind": "def",
+     "line": 387,
+     "name": "Shor.rowDemandArr"
+    },
+    {
+     "kind": "def",
+     "line": 392,
+     "name": "Shor.exactDemandWith"
+    },
+    {
+     "kind": "def",
+     "line": 395,
+     "name": "Shor.exactDemandFast"
+    },
+    {
+     "kind": "theorem",
+     "line": 402,
+     "name": "Shor.rowDemandArr_ofFn"
+    },
+    {
+     "kind": "theorem",
+     "line": 407,
+     "name": "Shor.exactDemand_eq_fast"
+    },
+    {
+     "kind": "def",
+     "line": 413,
+     "name": "Shor.tightSignedWidthOfWidths"
+    },
+    {
+     "kind": "def",
+     "line": 417,
+     "name": "Shor.exactInitNeed"
+    },
+    {
+     "kind": "def",
+     "line": 424,
+     "name": "Shor.floorSignedWidthOfWidths"
+    },
+    {
+     "kind": "def",
+     "line": 428,
+     "name": "Shor.exactSignedWidthOfWidths"
+    },
+    {
+     "kind": "def",
+     "line": 433,
+     "name": "Shor.exactNeededWidths"
+    },
+    {
+     "kind": "theorem",
+     "line": 437,
+     "name": "Shor.tightSignedWidth_spec"
+    },
+    {
+     "kind": "theorem",
+     "line": 444,
+     "name": "Shor.tightSignedWidth_pos"
+    },
+    {
+     "kind": "theorem",
+     "line": 448,
+     "name": "Shor.floorSignedWidth_pos"
+    },
+    {
+     "kind": "theorem",
+     "line": 451,
+     "name": "Shor.exactSignedWidth_pos"
+    },
+    {
+     "kind": "theorem",
+     "line": 455,
+     "name": "Shor.tight_le_exactSignedWidth"
+    },
+    {
+     "kind": "theorem",
+     "line": 458,
+     "name": "Shor.floor_le_exactSignedWidth"
+    },
+    {
+     "kind": "theorem",
+     "line": 462,
+     "name": "Shor.exactRowDemand_le_tight"
+    },
+    {
+     "kind": "theorem",
+     "line": 474,
+     "name": "Shor.commonNeededWidth_exactNeeded"
+    },
+    {
+     "kind": "theorem",
+     "line": 484,
+     "name": "Shor.exactInit_le"
+    }
+   ],
+   "docstring": "# Phase-Product Compiler: the exact working width\n\nThe recursive phase product grows every limb slot to one common working width\nbefore running a table. The original compiler chose that width with a symbolic\nscan (`scanNeededWidthsAux`, kept in `Widths.lean` as `foldNeededWidths`): one\nbit more at every `addScaled` and `negate`, whether or not the value grows.\nThat is sufficient, not necessary.\n\nThis file defines the **exact** width, from the values the table can actually\nproduce, and the integer-level facts about it. `Widths.lean` makes it the width\nthe compiler uses; `Proofs/Compiler/WidthSoundness.lean` proves the lowering's\nfit obligation from it; `Proofs/Compiler/ExactWidthBound.lean` proves it never\nexceeds the scan and characterises it as least.\n\n## The model\n\nA register of the table holds an integer row `r : Register k`; read on the\noperand's limbs `L : Fin k \u2192 \u2124` it is `rowVal r L = \u2211\u2c7c r j * L j` (exactly how\n`evalRowX`/`evalRowZ` read a row against the basis: lower chunks as unsigned\ndigits, the top chunk as signed, `Proofs/Compiler/Support.lean`). The limbs of\nan operand of active width `w`, split at lower-limb width `W`, range over the\nbox `exactLimbLo w W \u2264 L \u2264 exactLimbHi w W`: chunk `j` has the logical width\n`t = phaseSplitLogicalWidth w W k j` of the compiler's own split; a lower chunk\nis unsigned (`[0, 2^t - 1]`), the top chunk is signed (`[-2^(t-1), 2^(t-1) - 1]`,\nand `[0, 0]` when `t = 0`, as `tcDecodeWidth 0` reads it).\n\nOver a box a row ranges over `[rowLo, rowHi]` (coordinatewise min/max), both\nends attained at a corner. A signed `E`-bit register holds the row iff\n`rowDemand \u2264 2^(E-1)`, `rowDemand = max(-rowLo, rowHi + 1)`.\n\n* `exactReachRows ops`: every row of every state the program visits from\n  `State.start_state` (the state before each operation and the final one).\n  Every state a prefix reaches is visited (`mem_exactReachStates`), so every\n  checkpoint operand and every intermediate value is covered.\n* `tightSignedWidthOfWidths ops xw zw`: `1 + \u2308log\u2082 D\u2309`, `D` the largest demand\n  over the reachable rows on both operands' boxes (lower-limb width\n  `W = min (xw / k) (zw / k)`, as `phaseLimbWidth`). The least `E` holding every\n  reachable value at every point of the limb box (`ExactWidthBound.lean`, `tightSignedWidth_le_iff`).\n* `floorSignedWidthOfWidths k xw zw`: `1 +` the widest initial chunk, i.e.\n  `commonNeededWidth` of the initial width state. ForShor's allocation\n  (`allocChunkGate`, `Proofs/Compiler/Allocation.lean` `extraDelta_xslot_pos`)\n  grows **every** slot by at least one bit; the floor keeps that invariant, so\n  the allocation proofs are unchanged.\n* `exactSignedWidthOfWidths ops xw zw = max tight floor`: the width the\n  compiler now uses (`Widths.lean`). For a Toom-Cook table at a width where the\n  lower limbs are non-empty the floor is never binding (a point other than `0`\n  and `\u221e` gives a row with every coefficient non-zero, whose demand already\n  exceeds the top chunk's), but that is not used anywhere: the definition is\n  the `max`, and agreement with STO's `tightWidth` is checked, not assumed.\n\nEverything is computable. `exactTab` re-tabulates each visited state into\narrays, so a row entry costs one lookup instead of re-walking the chain of\n`addScaled` closures (which branches two ways per `addScaled`).",
+   "fsPath": "Implementation/PhaseProduct/Compiler/ExactWidth.lean",
+   "importedBy": [
+    "PhaseProduct/Compiler/ExactWidthBoxes.lean",
+    "PhaseProduct/Compiler/Widths.lean"
+   ],
+   "imports": [
+    "PhaseProduct/Compiler/Layout.lean"
+   ],
+   "kind": "file",
+   "lines": 496,
+   "name": "ExactWidth.lean",
+   "path": "PhaseProduct/Compiler/ExactWidth.lean"
+  },
+  "PhaseProduct/Compiler/ExactWidthBoxes.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 25,
+     "name": "Shor.boxRowLo"
+    },
+    {
+     "kind": "def",
+     "line": 28,
+     "name": "Shor.boxRowHi"
+    },
+    {
+     "kind": "def",
+     "line": 31,
+     "name": "Shor.boxRowDemand"
+    },
+    {
+     "kind": "def",
+     "line": 34,
+     "name": "Shor.InBox"
+    },
+    {
+     "kind": "def",
+     "line": 37,
+     "name": "Shor.boxDemand"
+    },
+    {
+     "kind": "def",
+     "line": 42,
+     "name": "Shor.tightOfBoxes"
+    },
+    {
+     "kind": "theorem",
+     "line": 46,
+     "name": "Shor.tightSignedWidthOfWidths_eq_boxes"
+    },
+    {
+     "kind": "theorem",
+     "line": 51,
+     "name": "Shor.tightOfBoxes_spec"
+    },
+    {
+     "kind": "theorem",
+     "line": 58,
+     "name": "Shor.box_row_bounds"
+    },
+    {
+     "kind": "theorem",
+     "line": 67,
+     "name": "Shor.tightOfBoxes_fits"
+    },
+    {
+     "kind": "theorem",
+     "line": 84,
+     "name": "Shor.tightOfBoxes_le"
+    }
+   ],
+   "docstring": "# The exact width over arbitrary limb boxes (interface for other splits)\n\n`ExactWidth.lean` fixes the limb box to ForShor's split (common lower-limb\nwidth `W = min (xw/k) (zw/k)`, top chunk signed). A different split (for\nexample a balanced split of unequal operands) changes only the boxes. This\nleaf module states the exact width as a function of the table's program and\n**two arbitrary boxes**, `x` limbs in `[xlo, xhi]` and `z` limbs in\n`[zlo, zhi]`, with soundness and minimality, and shows the compiler's width\nis its instance at ForShor's boxes (`tightSignedWidthOfWidths_eq_boxes`, by `rfl`).\n\nA split that wants exact widths supplies its boxes and proves that its chunk\nreadings lie in them (as `WidthSoundness.lean`'s `sourceChunkXInt_box` does for\nForShor's split); `tightOfBoxes_fits` then gives the lowering's fit obligation.",
+   "fsPath": "Implementation/PhaseProduct/Compiler/ExactWidthBoxes.lean",
+   "importedBy": [],
+   "imports": [
+    "PhaseProduct/Compiler/ExactWidth.lean"
+   ],
+   "kind": "file",
+   "lines": 133,
+   "name": "ExactWidthBoxes.lean",
+   "path": "PhaseProduct/Compiler/ExactWidthBoxes.lean"
   },
   "PhaseProduct/Compiler/GaussJordan.lean": {
    "declarations": [
@@ -6128,6 +6583,7 @@ window.GRAPH = {
     "GateCount/PhaseProduct/Lemmas.lean",
     "PhaseProduct/Compiler/Coefficients.lean",
     "PhaseProduct/Compiler/Compile.lean",
+    "PhaseProduct/Compiler/ExactWidth.lean",
     "PhaseProduct/Compiler/Widths.lean",
     "PhaseProduct/Proofs/Lowering/Workspace.lean"
    ],
@@ -6148,107 +6604,127 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "def",
-     "line": 53,
+     "line": 54,
      "name": "Shor.Policy.reserveNeed"
     },
     {
      "kind": "theorem",
-     "line": 68,
+     "line": 69,
      "name": "Shor.Policy.reserveNeed_of_choose_none"
     },
     {
      "kind": "theorem",
-     "line": 74,
+     "line": 75,
      "name": "Shor.Policy.reserveNeed_fst_of_choose"
     },
     {
      "kind": "theorem",
-     "line": 86,
+     "line": 87,
      "name": "Shor.Policy.reserveNeed_snd_of_choose"
     },
     {
+     "kind": "def",
+     "line": 121,
+     "name": "Shor.Policy.reserveNeedMemo"
+    },
+    {
+     "kind": "def",
+     "line": 124,
+     "name": "Shor.Policy.reserveNeedFast"
+    },
+    {
      "kind": "theorem",
-     "line": 100,
+     "line": 129,
+     "name": "Shor.Policy.reserveNeed_eq_fast"
+    },
+    {
+     "kind": "theorem",
+     "line": 137,
      "name": "Shor.Policy.reserveNeed_const"
     },
     {
      "kind": "structure",
-     "line": 131,
+     "line": 170,
      "name": "Shor.Policy.WorkspaceOK"
     },
     {
      "kind": "structure",
-     "line": 141,
+     "line": 180,
      "name": "Shor.Policy.CWorkspaceOK"
     },
     {
      "kind": "theorem",
-     "line": 149,
+     "line": 188,
      "name": "Shor.Policy.workspaceOK_const_iff"
     },
     {
      "kind": "theorem",
-     "line": 165,
+     "line": 204,
      "name": "Shor.Policy.cWorkspaceOK_const_iff"
     },
     {
      "kind": "theorem",
-     "line": 180,
+     "line": 219,
      "name": "Shor.Policy.widthModelX_width"
     },
     {
      "kind": "theorem",
-     "line": 184,
+     "line": 223,
      "name": "Shor.Policy.widthModelZ_width"
     },
     {
      "kind": "theorem",
-     "line": 189,
+     "line": 228,
      "name": "Shor.Policy.limbWidth_eq"
     },
     {
      "kind": "theorem",
-     "line": 196,
+     "line": 235,
      "name": "Shor.Policy.nextSignedWidth_eq_widthModel"
     },
     {
+     "kind": "theorem",
+     "line": 246,
+     "name": "Shor.Policy.nextSignedWidthBy_eq_widthModel"
+    },
+    {
      "kind": "def",
-     "line": 216,
+     "line": 263,
      "name": "Shor.Policy.requiredChildReserve"
     },
     {
      "kind": "abbrev",
-     "line": 224,
+     "line": 271,
      "name": "Shor.Policy.requiredXChildReserve"
     },
     {
      "kind": "abbrev",
-     "line": 229,
+     "line": 276,
      "name": "Shor.Policy.requiredZChildReserve"
     },
     {
      "kind": "lemma",
-     "line": 236,
+     "line": 283,
      "name": "Shor.Policy.requiredChildReserve_sum"
     },
     {
      "kind": "lemma",
-     "line": 248,
+     "line": 295,
      "name": "Shor.Policy.requiredXChildReserve_sum"
     },
     {
      "kind": "lemma",
-     "line": 255,
+     "line": 302,
      "name": "Shor.Policy.requiredZChildReserve_sum"
     },
     {
      "kind": "structure",
-     "line": 276,
+     "line": 323,
      "name": "Shor.Policy.CanonicalStep"
     },
     {
      "kind": "def",
-     "line": 302,
+     "line": 349,
      "name": "Shor.Policy.canonicalStep"
     }
    ],
@@ -6265,7 +6741,7 @@ window.GRAPH = {
     "PhaseProduct/Compiler/Workspace.lean"
    ],
    "kind": "file",
-   "lines": 457,
+   "lines": 504,
    "name": "PolicyWorkspace.lean",
    "path": "PhaseProduct/Compiler/PolicyWorkspace.lean"
   },
@@ -6273,81 +6749,151 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "def",
-     "line": 22,
+     "line": 30,
      "name": "Shor.initWidthState"
     },
     {
      "kind": "def",
-     "line": 28,
+     "line": 36,
      "name": "Shor.scanNeededWidthsAux"
     },
     {
      "kind": "def",
-     "line": 36,
+     "line": 44,
      "name": "Shor.scanNeededWidths"
     },
     {
      "kind": "def",
-     "line": 41,
+     "line": 49,
      "name": "Shor.phaseInputSize"
     },
     {
      "kind": "def",
-     "line": 44,
+     "line": 52,
      "name": "Shor.nextSignedWidth"
     },
     {
      "kind": "lemma",
-     "line": 47,
+     "line": 55,
      "name": "Shor.scanNeededWidthsAux_x_ge"
     },
     {
      "kind": "lemma",
-     "line": 62,
+     "line": 70,
      "name": "Shor.scanNeededWidthsAux_z_ge"
     },
     {
      "kind": "lemma",
-     "line": 77,
+     "line": 85,
      "name": "Shor.stInit_xslot_width"
     },
     {
      "kind": "lemma",
-     "line": 84,
+     "line": 92,
      "name": "Shor.stInit_zslot_width"
     },
     {
      "kind": "lemma",
-     "line": 91,
+     "line": 99,
      "name": "Shor.commonNeededWidth_ge_xneed"
     },
     {
      "kind": "lemma",
-     "line": 102,
+     "line": 110,
      "name": "Shor.commonNeededWidth_ge_zneed"
     },
     {
      "kind": "lemma",
-     "line": 117,
+     "line": 125,
      "name": "Shor.scanNeededWidths_x_ge_init"
     },
     {
      "kind": "lemma",
-     "line": 125,
+     "line": 133,
      "name": "Shor.scanNeededWidths_z_ge_init"
     },
     {
      "kind": "lemma",
-     "line": 133,
+     "line": 141,
      "name": "Shor.targetSignedLayoutState_xslot_width_scan"
     },
     {
      "kind": "lemma",
-     "line": 158,
+     "line": 166,
      "name": "Shor.targetSignedLayoutState_zslot_width_scan"
+    },
+    {
+     "kind": "def",
+     "line": 197,
+     "name": "Shor.neededWidthsBy"
+    },
+    {
+     "kind": "def",
+     "line": 229,
+     "name": "Shor.exactWidthMemo"
+    },
+    {
+     "kind": "def",
+     "line": 233,
+     "name": "Shor.uniformNeededWidths"
+    },
+    {
+     "kind": "def",
+     "line": 238,
+     "name": "Shor.neededWidthsByFast"
+    },
+    {
+     "kind": "theorem",
+     "line": 244,
+     "name": "Shor.neededWidthsBy_eq_fast"
+    },
+    {
+     "kind": "def",
+     "line": 248,
+     "name": "Shor.nextSignedWidthBy"
+    },
+    {
+     "kind": "theorem",
+     "line": 251,
+     "name": "Shor.neededWidthsBy_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 254,
+     "name": "Shor.nextSignedWidthBy_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 257,
+     "name": "Shor.neededWidthsBy_exact"
+    },
+    {
+     "kind": "theorem",
+     "line": 261,
+     "name": "Shor.nextSignedWidthBy_exact"
+    },
+    {
+     "kind": "lemma",
+     "line": 266,
+     "name": "Shor.neededWidthsBy_x_ge_init"
+    },
+    {
+     "kind": "lemma",
+     "line": 274,
+     "name": "Shor.neededWidthsBy_z_ge_init"
+    },
+    {
+     "kind": "lemma",
+     "line": 282,
+     "name": "Shor.targetSignedLayoutState_xslot_width_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 307,
+     "name": "Shor.targetSignedLayoutState_zslot_width_by"
     }
    ],
-   "docstring": "# Phase-Product Compiler: Widths\n\nWidth scanning over a source operation program (`scanNeededWidths`), the\nrecursion-size parameters (`phaseInputSize`, `nextSignedWidth`), and the\nlemmas connecting a scan's result back to the concrete layout it was scanned\nfrom.",
+   "docstring": "# Phase-Product Compiler: Widths\n\nWidth scanning over a source operation program (`scanNeededWidths`), the\nrecursion-size parameters (`phaseInputSize`, `nextSignedWidth`), and the\nlemmas connecting a scan's result back to the concrete layout it was scanned\nfrom.\n\n**Width rules.** The last section adds `neededWidthsBy R` / `nextSignedWidthBy R`\nfor a `WidthRule` (`Framework/Policy.lean`): `.scan` is `scanNeededWidths` /\n`nextSignedWidth` above, unchanged; `.exact` is the exact width\n(`ExactWidth.lean`). The compiler takes the rule from the policy, and every\npolicy uses the scan unless it says otherwise.",
    "fsPath": "Implementation/PhaseProduct/Compiler/Widths.lean",
    "importedBy": [
     "GateCount/PhaseProduct/Lemmas.lean",
@@ -6357,10 +6903,12 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/Workspace.lean"
    ],
    "imports": [
+    "Framework/Policy.lean",
+    "PhaseProduct/Compiler/ExactWidth.lean",
     "PhaseProduct/Compiler/Layout.lean"
    ],
    "kind": "file",
-   "lines": 182,
+   "lines": 331,
    "name": "Widths.lean",
    "path": "PhaseProduct/Compiler/Widths.lean"
   },
@@ -6468,97 +7016,127 @@ window.GRAPH = {
     },
     {
      "kind": "def",
-     "line": 338,
+     "line": 332,
+     "name": "Shor.RecursivePhaseWorkspace.nextWidthBy"
+    },
+    {
+     "kind": "theorem",
+     "line": 335,
+     "name": "Shor.RecursivePhaseWorkspace.nextWidthBy_scan"
+    },
+    {
+     "kind": "def",
+     "line": 339,
+     "name": "Shor.RecursivePhaseWorkspace.immediateNeedBy"
+    },
+    {
+     "kind": "theorem",
+     "line": 345,
+     "name": "Shor.RecursivePhaseWorkspace.immediateNeedBy_scan"
+    },
+    {
+     "kind": "abbrev",
+     "line": 349,
+     "name": "Shor.RecursivePhaseWorkspace.immediateXNeedBy"
+    },
+    {
+     "kind": "abbrev",
+     "line": 353,
+     "name": "Shor.RecursivePhaseWorkspace.immediateZNeedBy"
+    },
+    {
+     "kind": "def",
+     "line": 370,
      "name": "Shor.RecursivePhaseWorkspace.reserveNeed"
     },
     {
      "kind": "theorem",
-     "line": 357,
+     "line": 389,
      "name": "Shor.RecursivePhaseWorkspace.reserveNeed_fst"
     },
     {
      "kind": "theorem",
-     "line": 368,
+     "line": 400,
      "name": "Shor.RecursivePhaseWorkspace.reserveNeed_snd"
     },
     {
      "kind": "structure",
-     "line": 391,
+     "line": 423,
      "name": "Shor.SignedRecursiveWorkspaceOK"
     },
     {
      "kind": "def",
-     "line": 416,
+     "line": 448,
      "name": "Shor.RecursivePhaseWorkspace.requiredChildReserve"
     },
     {
      "kind": "abbrev",
-     "line": 428,
+     "line": 460,
      "name": "Shor.RecursivePhaseWorkspace.requiredXChildReserve"
     },
     {
      "kind": "abbrev",
-     "line": 436,
+     "line": 468,
      "name": "Shor.RecursivePhaseWorkspace.requiredZChildReserve"
     },
     {
      "kind": "lemma",
-     "line": 444,
+     "line": 476,
      "name": "Shor.RecursivePhaseWorkspace.requiredChildReserve_sum"
     },
     {
      "kind": "lemma",
-     "line": 457,
+     "line": 489,
      "name": "Shor.RecursivePhaseWorkspace.requiredXChildReserve_sum"
     },
     {
      "kind": "lemma",
-     "line": 466,
+     "line": 498,
      "name": "Shor.RecursivePhaseWorkspace.requiredZChildReserve_sum"
     },
     {
      "kind": "def",
-     "line": 479,
+     "line": 511,
      "name": "Shor.ReserveBudget.topIndex"
     },
     {
      "kind": "def",
-     "line": 482,
+     "line": 514,
      "name": "Shor.ReserveBudget.fillSlack"
     },
     {
      "kind": "lemma",
-     "line": 496,
+     "line": 528,
      "name": "Shor.ReserveBudget.fillSlack_sum"
     },
     {
      "kind": "lemma",
-     "line": 515,
+     "line": 547,
      "name": "Shor.ReserveBudget.required_le_fillSlack"
     },
     {
      "kind": "def",
-     "line": 528,
+     "line": 560,
      "name": "Shor.ReserveBudget.ofRequirements"
     },
     {
      "kind": "theorem",
-     "line": 541,
+     "line": 573,
      "name": "Shor.ReserveBudget.required_le_childReserve_size"
     },
     {
      "kind": "lemma",
-     "line": 579,
+     "line": 611,
      "name": "Shor.PhaseSplitLayout.child_owned_subset_parent"
     },
     {
      "kind": "lemma",
-     "line": 603,
+     "line": 635,
      "name": "Shor.Gate.PhaseProductLayout.controlDisjoint_of_ctrlDisjoint"
     },
     {
      "kind": "structure",
-     "line": 622,
+     "line": 654,
      "name": "Shor.CSignedRecursiveWorkspaceOK"
     }
    ],
@@ -6588,7 +7166,7 @@ window.GRAPH = {
     "PhaseProduct/Compiler/Compile.lean"
    ],
    "kind": "file",
-   "lines": 630,
+   "lines": 662,
    "name": "Workspace.lean",
    "path": "PhaseProduct/Compiler/Workspace.lean"
   },
@@ -6812,7 +7390,7 @@ window.GRAPH = {
     "PhaseProduct/Lowering/Plan.lean",
     "PhaseProduct/Lowering/PlanBuilders.lean"
    ],
-   "declCount": 37,
+   "declCount": 39,
    "fileCount": 3,
    "fsPath": "Implementation/PhaseProduct/Lowering",
    "kind": "folder",
@@ -6886,36 +7464,46 @@ window.GRAPH = {
     {
      "kind": "def",
      "line": 45,
+     "name": "Shor.compiledSignedPhaseGateBy"
+    },
+    {
+     "kind": "def",
+     "line": 59,
      "name": "Shor.compiledCSignedPhaseGate"
     },
     {
+     "kind": "def",
+     "line": 73,
+     "name": "Shor.compiledCSignedPhaseGateBy"
+    },
+    {
      "kind": "inductive",
-     "line": 81,
+     "line": 110,
      "name": "Shor.PhaseLoweringPlan"
     },
     {
      "kind": "def",
-     "line": 229,
+     "line": 258,
      "name": "Shor.lowerGateRec"
     },
     {
      "kind": "lemma",
-     "line": 262,
+     "line": 291,
      "name": "Shor.generatedInterpolationPoints_length"
     },
     {
      "kind": "abbrev",
-     "line": 279,
+     "line": 308,
      "name": "Shor.StandardPhaseLoweringPlan"
     },
     {
      "kind": "def",
-     "line": 291,
+     "line": 320,
      "name": "Shor.lowerSignedPhaseProd"
     },
     {
      "kind": "def",
-     "line": 308,
+     "line": 337,
      "name": "Shor.lowerCSignedPhaseProd"
     }
    ],
@@ -6939,7 +7527,7 @@ window.GRAPH = {
     "PhaseProduct/Gates/NaiveLeaf.lean"
    ],
    "kind": "file",
-   "lines": 322,
+   "lines": 351,
    "name": "Plan.lean",
    "path": "PhaseProduct/Lowering/Plan.lean"
   },
@@ -10190,8 +10778,8 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering",
     "PhaseProduct/Proofs/NaiveLeaf.lean"
    ],
-   "declCount": 281,
-   "fileCount": 22,
+   "declCount": 332,
+   "fileCount": 26,
    "fsPath": "Implementation/PhaseProduct/Proofs",
    "kind": "folder",
    "name": "Proofs",
@@ -10203,14 +10791,17 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Compiler/Allocation.lean",
     "PhaseProduct/Proofs/Compiler/Body",
     "PhaseProduct/Proofs/Compiler/Compilation.lean",
+    "PhaseProduct/Proofs/Compiler/CompilationRule.lean",
     "PhaseProduct/Proofs/Compiler/Correctness.lean",
+    "PhaseProduct/Proofs/Compiler/CorrectnessRule.lean",
+    "PhaseProduct/Proofs/Compiler/ExactWidthBound.lean",
     "PhaseProduct/Proofs/Compiler/Interpolation.lean",
     "PhaseProduct/Proofs/Compiler/MacroSemantics.lean",
     "PhaseProduct/Proofs/Compiler/Support.lean",
     "PhaseProduct/Proofs/Compiler/WidthSoundness.lean"
    ],
-   "declCount": 144,
-   "fileCount": 12,
+   "declCount": 188,
+   "fileCount": 15,
    "fsPath": "Implementation/PhaseProduct/Proofs/Compiler",
    "kind": "folder",
    "name": "Compiler",
@@ -10232,96 +10823,141 @@ window.GRAPH = {
     {
      "kind": "lemma",
      "line": 54,
+     "name": "Shor.extraDelta_xslot_pos_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 73,
      "name": "Shor.extraDelta_xslot_pos"
     },
     {
      "kind": "lemma",
-     "line": 80,
+     "line": 94,
      "name": "Shor.ExtReg.ownedDisjoint_symm"
     },
     {
      "kind": "lemma",
-     "line": 84,
+     "line": 98,
      "name": "Shor.ExtReg.activeDisjoint_of_ownedDisjoint"
     },
     {
      "kind": "lemma",
-     "line": 88,
+     "line": 102,
      "name": "Shor.ExtReg.activeDisjoint_of_ownedDisjoint_right_grow"
     },
     {
      "kind": "lemma",
-     "line": 97,
+     "line": 111,
      "name": "Shor.ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow"
     },
     {
      "kind": "def",
-     "line": 108,
+     "line": 122,
      "name": "Shor.RemainingClean"
     },
     {
      "kind": "lemma",
-     "line": 117,
+     "line": 131,
      "name": "Shor.remainingClean_zero_of_workspaceOK"
     },
     {
      "kind": "lemma",
-     "line": 127,
+     "line": 141,
      "name": "Shor.freshFor_of_local_toNat"
     },
     {
      "kind": "lemma",
-     "line": 146,
+     "line": 160,
      "name": "Shor.extToInt_eq_of_toNat_eq"
     },
     {
      "kind": "lemma",
-     "line": 151,
+     "line": 165,
      "name": "Shor.sourceChunkXInt_eq_of_toNat_eq"
     },
     {
      "kind": "lemma",
-     "line": 164,
+     "line": 178,
      "name": "Shor.sourceChunkZInt_eq_of_toNat_eq"
     },
     {
      "kind": "lemma",
-     "line": 177,
+     "line": 191,
+     "name": "Shor.extraDelta_zslot_pos_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 210,
      "name": "Shor.extraDelta_zslot_pos"
     },
     {
      "kind": "lemma",
-     "line": 204,
+     "line": 232,
+     "name": "Shor.eval_allocChunkGate_x_ket_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 311,
      "name": "Shor.eval_allocChunkGate_x_ket"
     },
     {
      "kind": "lemma",
-     "line": 282,
+     "line": 337,
+     "name": "Shor.eval_allocChunkGate_z_ket_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 424,
      "name": "Shor.eval_allocChunkGate_z_ket"
     },
     {
      "kind": "lemma",
-     "line": 376,
+     "line": 461,
+     "name": "Shor.eval_compileSignedAllocationsAux_ket_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 714,
      "name": "Shor.eval_compileSignedAllocationsAux_ket"
     },
     {
      "kind": "lemma",
-     "line": 628,
+     "line": 750,
+     "name": "Shor.eval_compileSignedAllocationsAux_sameOutside_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 855,
      "name": "Shor.eval_compileSignedAllocationsAux_sameOutside"
     },
     {
      "kind": "lemma",
-     "line": 736,
+     "line": 883,
+     "name": "Shor.eval_compileSignedAllocations_ket_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 918,
      "name": "Shor.eval_compileSignedAllocations_ket"
     },
     {
      "kind": "lemma",
-     "line": 770,
+     "line": 941,
+     "name": "Shor.eval_compileSignedAllocations_sameOutside_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 973,
      "name": "Shor.eval_compileSignedAllocations_sameOutside"
     },
     {
      "kind": "lemma",
-     "line": 801,
+     "line": 996,
+     "name": "Shor.eval_compileSignedAllocations_ket_fits_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 1043,
      "name": "Shor.eval_compileSignedAllocations_ket_fits"
     }
    ],
@@ -10336,7 +10972,7 @@ window.GRAPH = {
     "Shared/GateLaws.lean"
    ],
    "kind": "file",
-   "lines": 846,
+   "lines": 1061,
    "name": "Allocation.lean",
    "path": "PhaseProduct/Proofs/Compiler/Allocation.lean"
   },
@@ -10617,8 +11253,10 @@ window.GRAPH = {
    "docstring": "# Compiled Phase-Product Correctness\n\nThis file assembles allocation correctness, body/deallocation correctness, and\nthe Toom-Cook interpolation identity into the public correctness theorems for\ncompiled signed and controlled phase-product circuits.",
    "fsPath": "Implementation/PhaseProduct/Proofs/Compiler/Compilation.lean",
    "importedBy": [
+    "PhaseProduct/Proofs/Compiler/CompilationRule.lean",
     "PhaseProduct/Proofs/Compiler/Correctness.lean",
-    "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
+    "PhaseProduct/Proofs/Lowering/PlanSemantics.lean",
+    "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean"
    ],
    "imports": [
     "PhaseProduct/Math/Table_Generation/Core/Coverage.lean",
@@ -10629,6 +11267,37 @@ window.GRAPH = {
    "lines": 316,
    "name": "Compilation.lean",
    "path": "PhaseProduct/Proofs/Compiler/Compilation.lean"
+  },
+  "PhaseProduct/Proofs/Compiler/CompilationRule.lean": {
+   "declarations": [
+    {
+     "kind": "lemma",
+     "line": 18,
+     "name": "Shor.eval_compileOpsToSignedGate_correct_ket_of_blocks_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 105,
+     "name": "Shor.eval_compileOpsToSignedGate_correct_ket_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 139,
+     "name": "Shor.eval_compileOpsToCSignedGate_correct_ket_by"
+    }
+   ],
+   "docstring": "# Compiled phase-product correctness under a width rule\n\nThe theorems of `Compilation.lean` for either width rule `R`\n(`Framework/Policy.lean`, `WidthRule`): the same proofs, with the slots grown\nto `neededWidthsBy R`. `Compilation.lean` keeps upstream's statements (the\nscan); the policy lowering uses these.",
+   "fsPath": "Implementation/PhaseProduct/Proofs/Compiler/CompilationRule.lean",
+   "importedBy": [
+    "PhaseProduct/Proofs/Compiler/CorrectnessRule.lean"
+   ],
+   "imports": [
+    "PhaseProduct/Proofs/Compiler/Compilation.lean"
+   ],
+   "kind": "file",
+   "lines": 276,
+   "name": "CompilationRule.lean",
+   "path": "PhaseProduct/Proofs/Compiler/CompilationRule.lean"
   },
   "PhaseProduct/Proofs/Compiler/Correctness.lean": {
    "declarations": [
@@ -10646,6 +11315,7 @@ window.GRAPH = {
    "docstring": "# Gate-Level Correctness \u2014 Final Theorems\n\nThe apex results of the gate-level phase-product correctness proofs: the compiled\nsigned / controlled-signed phase-product gates evaluate as specified. These are\nthe folder's public surface, consumed by `Proofs/Lowering`. Supporting\nlemmas live in the other `Proofs/Compiler` files.",
    "fsPath": "Implementation/PhaseProduct/Proofs/Compiler/Correctness.lean",
    "importedBy": [
+    "PhaseProduct/Proofs/Compiler/CorrectnessRule.lean",
     "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
    ],
    "imports": [
@@ -10655,6 +11325,173 @@ window.GRAPH = {
    "lines": 87,
    "name": "Correctness.lean",
    "path": "PhaseProduct/Proofs/Compiler/Correctness.lean"
+  },
+  "PhaseProduct/Proofs/Compiler/CorrectnessRule.lean": {
+   "declarations": [
+    {
+     "kind": "lemma",
+     "line": 17,
+     "name": "Shor.eval_compileOpsToSignedGate_correct_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 49,
+     "name": "Shor.eval_compileOpsToCSignedGate_correct_by"
+    }
+   ],
+   "docstring": "# Gate-level correctness under a width rule\n\n`eval_compileOpsToSignedGate_correct` and the controlled analogue for either\nwidth rule `R`. `Correctness.lean` keeps upstream's statements (the scan).",
+   "fsPath": "Implementation/PhaseProduct/Proofs/Compiler/CorrectnessRule.lean",
+   "importedBy": [
+    "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean"
+   ],
+   "imports": [
+    "PhaseProduct/Proofs/Compiler/CompilationRule.lean",
+    "PhaseProduct/Proofs/Compiler/Correctness.lean"
+   ],
+   "kind": "file",
+   "lines": 84,
+   "name": "CorrectnessRule.lean",
+   "path": "PhaseProduct/Proofs/Compiler/CorrectnessRule.lean"
+  },
+  "PhaseProduct/Proofs/Compiler/ExactWidthBound.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 40,
+     "name": "Shor.rowVal_shiftL"
+    },
+    {
+     "kind": "theorem",
+     "line": 45,
+     "name": "Shor.rowVal_negate"
+    },
+    {
+     "kind": "theorem",
+     "line": 50,
+     "name": "Shor.rowVal_addScaled"
+    },
+    {
+     "kind": "theorem",
+     "line": 56,
+     "name": "Shor.rowVal_shiftR"
+    },
+    {
+     "kind": "theorem",
+     "line": 70,
+     "name": "Shor.rowVal_start"
+    },
+    {
+     "kind": "def",
+     "line": 83,
+     "name": "Shor.updW"
+    },
+    {
+     "kind": "theorem",
+     "line": 90,
+     "name": "Shor.updateWidthState_xw"
+    },
+    {
+     "kind": "theorem",
+     "line": 93,
+     "name": "Shor.updateWidthState_zw"
+    },
+    {
+     "kind": "theorem",
+     "line": 96,
+     "name": "Shor.foldl_updateWidthState_xw"
+    },
+    {
+     "kind": "theorem",
+     "line": 104,
+     "name": "Shor.foldl_updateWidthState_zw"
+    },
+    {
+     "kind": "def",
+     "line": 113,
+     "name": "Shor.SideFits"
+    },
+    {
+     "kind": "theorem",
+     "line": 116,
+     "name": "Shor.sideFits_step"
+    },
+    {
+     "kind": "theorem",
+     "line": 166,
+     "name": "Shor.sideFits_run"
+    },
+    {
+     "kind": "theorem",
+     "line": 180,
+     "name": "Shor.sideFits_start"
+    },
+    {
+     "kind": "def",
+     "line": 213,
+     "name": "Shor.ExactFits"
+    },
+    {
+     "kind": "theorem",
+     "line": 218,
+     "name": "Shor.exactFits_mono"
+    },
+    {
+     "kind": "theorem",
+     "line": 223,
+     "name": "Shor.exactFits_tight"
+    },
+    {
+     "kind": "theorem",
+     "line": 232,
+     "name": "Shor.tight_le_of_exactFits"
+    },
+    {
+     "kind": "theorem",
+     "line": 252,
+     "name": "Shor.tightSignedWidth_le_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 260,
+     "name": "Shor.exactSignedWidth_le_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 275,
+     "name": "Shor.exactFits_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 294,
+     "name": "Shor.floor_le_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 306,
+     "name": "Shor.exactSignedWidth_le_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 311,
+     "name": "Shor.nextSignedWidthBy_exact_le_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 317,
+     "name": "Shor.nextSignedWidthBy_le_scan"
+    }
+   ],
+   "docstring": "# The exact width: least, and never above the scan\n\n`Compiler/ExactWidth.lean` defines the exact working width (`WidthRule.exact`)\nand `WidthSoundness.lean` proves the lowering's fit obligation from it\n(`allocated_widths_sound_exact`). This file\nproves the two facts that make it the *right* replacement for the scan:\n\n* `tightSignedWidth_le_iff` \u2014 **least**: `tight \u2264 E` iff `0 < E` and every row\n  the program reaches fits signed `E` bits at every point of both operands'\n  limb boxes. (`\u2192` is interval soundness; `\u2190` uses the box corners where each\n  row attains its least and greatest value.) `exactSignedWidth_le_iff` is the\n  same for the compiler's width `max tight floor`, with `floor \u2264 E` added: the\n  least width that grows every slot and holds every reachable value.\n* `nextSignedWidthBy_exact_le_scan` \u2014 the exact width never exceeds the scan\n  (`nextSignedWidth`). Its proof replays the scan's own invariant\n  (`WidthSoundness.lean`'s step lemma) on plain integers over the box.\n\nWhat \"every point of the box\" covers: `WidthSoundness.lean`'s\n`sourceChunkXInt_box` shows every chunk reading the lowering performs lies in\nthe box. The converse (every box point is the reading of some basis state)\nis not proved here; minimality is therefore minimality over the box, which is\nthe ForShor chunk value range by construction (`[0, 2^W)` lower chunks,\ntwo's-complement top chunk).",
+   "fsPath": "Implementation/PhaseProduct/Proofs/Compiler/ExactWidthBound.lean",
+   "importedBy": [],
+   "imports": [
+    "PhaseProduct/Proofs/Compiler/Support.lean",
+    "PhaseProduct/Proofs/Compiler/WidthSoundness.lean"
+   ],
+   "kind": "file",
+   "lines": 323,
+   "name": "ExactWidthBound.lean",
+   "path": "PhaseProduct/Proofs/Compiler/ExactWidthBound.lean"
   },
   "PhaseProduct/Proofs/Compiler/Interpolation.lean": {
    "declarations": [
@@ -11094,6 +11931,7 @@ window.GRAPH = {
    "fsPath": "Implementation/PhaseProduct/Proofs/Compiler/Support.lean",
    "importedBy": [
     "GateCount/PhaseProduct/Lemmas.lean",
+    "PhaseProduct/Proofs/Compiler/ExactWidthBound.lean",
     "PhaseProduct/Proofs/Compiler/Interpolation.lean",
     "PhaseProduct/Proofs/Compiler/WidthSoundness.lean",
     "PhaseProduct/Proofs/Lowering/Workspace.lean"
@@ -11113,60 +11951,86 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "lemma",
-     "line": 25,
+     "line": 29,
      "name": "Shor.scanNeededWidths_eq_aux"
     },
     {
      "kind": "lemma",
-     "line": 39,
+     "line": 43,
      "name": "Shor.widthStateSoundPlus_step"
     },
     {
      "kind": "lemma",
-     "line": 260,
+     "line": 264,
      "name": "Shor.widthStateSoundPlus_run"
     },
     {
      "kind": "lemma",
-     "line": 310,
+     "line": 314,
      "name": "Shor.prefix_foldl_updateWidthState_x_le_scanAux"
     },
     {
      "kind": "lemma",
-     "line": 335,
+     "line": 339,
      "name": "Shor.prefix_foldl_updateWidthState_z_le_scanAux"
     },
     {
      "kind": "lemma",
-     "line": 360,
+     "line": 364,
      "name": "Shor.prefix_foldl_updateWidthState_x_le_scanNeeded"
     },
     {
      "kind": "lemma",
-     "line": 377,
+     "line": 381,
      "name": "Shor.prefix_foldl_updateWidthState_z_le_scanNeeded"
     },
     {
      "kind": "lemma",
-     "line": 394,
+     "line": 398,
      "name": "Shor.widthStateSoundPlus_start_state"
     },
     {
      "kind": "lemma",
-     "line": 454,
+     "line": 458,
      "name": "Shor.allocated_widths_sound"
+    },
+    {
+     "kind": "lemma",
+     "line": 569,
+     "name": "Shor.tcDecodeWidth_exactBox"
+    },
+    {
+     "kind": "lemma",
+     "line": 593,
+     "name": "Shor.sourceChunkXInt_box"
+    },
+    {
+     "kind": "lemma",
+     "line": 617,
+     "name": "Shor.sourceChunkZInt_box"
+    },
+    {
+     "kind": "lemma",
+     "line": 642,
+     "name": "Shor.allocated_widths_sound_exact"
+    },
+    {
+     "kind": "lemma",
+     "line": 689,
+     "name": "Shor.allocated_widths_sound_by"
     }
    ],
-   "docstring": "# Phase-Product Width Soundness\n\nThis file proves that the width scan computed from a symbolic phase-product\nprogram is large enough for every symbolic row value reached during execution.\nThe proof proceeds from one-step preservation, through scan domination for\nprefixes, to the final allocation-facing soundness theorem.",
+   "docstring": "# Phase-Product Width Soundness\n\nThis file proves that the width scan computed from a symbolic phase-product\nprogram is large enough for every symbolic row value reached during execution.\nThe proof proceeds from one-step preservation, through scan domination for\nprefixes, to the final allocation-facing soundness theorem.\n\nThe last section proves the same for the exact width (`allocated_widths_sound_exact`,\nby interval arithmetic over the limb box) and states it for either width rule\n(`allocated_widths_sound_by`).",
    "fsPath": "Implementation/PhaseProduct/Proofs/Compiler/WidthSoundness.lean",
    "importedBy": [
-    "PhaseProduct/Proofs/Compiler/Allocation.lean"
+    "PhaseProduct/Proofs/Compiler/Allocation.lean",
+    "PhaseProduct/Proofs/Compiler/ExactWidthBound.lean"
    ],
    "imports": [
     "PhaseProduct/Proofs/Compiler/Support.lean"
    ],
    "kind": "file",
-   "lines": 556,
+   "lines": 711,
    "name": "WidthSoundness.lean",
    "path": "PhaseProduct/Proofs/Compiler/WidthSoundness.lean"
   },
@@ -11178,10 +12042,11 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/Lowerable.lean",
     "PhaseProduct/Proofs/Lowering/PlanReadiness",
     "PhaseProduct/Proofs/Lowering/PlanSemantics.lean",
+    "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean",
     "PhaseProduct/Proofs/Lowering/Workspace.lean"
    ],
-   "declCount": 84,
-   "fileCount": 9,
+   "declCount": 91,
+   "fileCount": 10,
    "fsPath": "Implementation/PhaseProduct/Proofs/Lowering",
    "kind": "folder",
    "name": "Lowering",
@@ -11468,16 +12333,26 @@ window.GRAPH = {
     {
      "kind": "lemma",
      "line": 233,
+     "name": "Shor.lowerable_compileOpsToSignedGate_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 254,
      "name": "Shor.lowerable_compileOpsToSignedGate"
     },
     {
      "kind": "lemma",
-     "line": 253,
+     "line": 261,
      "name": "Shor.lowerable_controlPhaseLeaves"
     },
     {
      "kind": "lemma",
-     "line": 273,
+     "line": 281,
+     "name": "Shor.lowerable_compileOpsToCSignedGate_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 290,
      "name": "Shor.lowerable_compileOpsToCSignedGate"
     }
    ],
@@ -11485,7 +12360,8 @@ window.GRAPH = {
    "fsPath": "Implementation/PhaseProduct/Proofs/Lowering/Lowerable.lean",
    "importedBy": [
     "GateCount/PhaseProduct/Lemmas.lean",
-    "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
+    "PhaseProduct/Proofs/Lowering/PlanSemantics.lean",
+    "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean"
    ],
    "imports": [
     "PhaseProduct/Compiler/Compile.lean",
@@ -11493,7 +12369,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/EvalL.lean"
    ],
    "kind": "file",
-   "lines": 280,
+   "lines": 296,
    "name": "Lowerable.lean",
    "path": "PhaseProduct/Proofs/Lowering/Lowerable.lean"
   },
@@ -11719,17 +12595,17 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "lemma",
-     "line": 31,
+     "line": 32,
      "name": "Shor.eval_compiledSignedPhaseGate_correct"
     },
     {
      "kind": "lemma",
-     "line": 60,
+     "line": 61,
      "name": "Shor.eval_compiledCSignedPhaseGate_correct"
     },
     {
      "kind": "lemma",
-     "line": 100,
+     "line": 101,
      "name": "Shor.evalL_lowerGateRec_correct"
     }
    ],
@@ -11745,12 +12621,43 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Compiler/Compilation.lean",
     "PhaseProduct/Proofs/Compiler/Correctness.lean",
     "PhaseProduct/Proofs/Lowering/Lowerable.lean",
+    "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean",
     "PhaseProduct/Spec/Readiness.lean"
    ],
    "kind": "file",
-   "lines": 237,
+   "lines": 238,
    "name": "PlanSemantics.lean",
    "path": "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
+  },
+  "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean": {
+   "declarations": [
+    {
+     "kind": "lemma",
+     "line": 22,
+     "name": "Shor.eval_compiledSignedPhaseGate_correct_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 52,
+     "name": "Shor.eval_compiledCSignedPhaseGate_correct_by"
+    }
+   ],
+   "docstring": "# Compiled phase-product gates under a width rule\n\n`eval_compiledSignedPhaseGate_correct` and the controlled analogue for either\nwidth rule `R`, for the policy lowering. `PlanSemantics.lean` keeps upstream's\nscan statements.",
+   "fsPath": "Implementation/PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean",
+   "importedBy": [
+    "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
+   ],
+   "imports": [
+    "Framework/Policy.lean",
+    "PhaseProduct/Proofs/Compiler/Compilation.lean",
+    "PhaseProduct/Proofs/Compiler/CorrectnessRule.lean",
+    "PhaseProduct/Proofs/Lowering/Lowerable.lean",
+    "PhaseProduct/Spec/Readiness.lean"
+   ],
+   "kind": "file",
+   "lines": 83,
+   "name": "PlanSemanticsRule.lean",
+   "path": "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean"
   },
   "PhaseProduct/Proofs/Lowering/Workspace.lean": {
    "declarations": [
@@ -11772,16 +12679,31 @@ window.GRAPH = {
     {
      "kind": "lemma",
      "line": 132,
+     "name": "Shor.compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 179,
      "name": "Shor.compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis"
     },
     {
      "kind": "lemma",
-     "line": 178,
+     "line": 193,
+     "name": "Shor.cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 209,
      "name": "Shor.cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis"
     },
     {
      "kind": "lemma",
-     "line": 204,
+     "line": 234,
+     "name": "Shor.eval_compileSignedAllocations_ket_fits_and_child_clean_by"
+    },
+    {
+     "kind": "lemma",
+     "line": 384,
      "name": "Shor.eval_compileSignedAllocations_ket_fits_and_child_clean"
     }
    ],
@@ -11802,7 +12724,7 @@ window.GRAPH = {
     "Shared/States.lean"
    ],
    "kind": "file",
-   "lines": 345,
+   "lines": 405,
    "name": "Workspace.lean",
    "path": "PhaseProduct/Proofs/Lowering/Workspace.lean"
   },
@@ -12248,6 +13170,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/Correctness.lean",
     "PhaseProduct/Proofs/Lowering/PlanReadiness/BodyReadiness.lean",
     "PhaseProduct/Proofs/Lowering/PlanSemantics.lean",
+    "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean",
     "QFT/Proofs/Lowering/PlanSemantics.lean",
     "QFT/Proofs/Lowering/Readiness.lean",
     "QFT/Spec/Readiness.lean"
@@ -13355,6 +14278,7 @@ window.GRAPH = {
   },
   "Reference": {
    "children": [
+    "Reference/Balanced",
     "Reference/Reference2048Headline.lean",
     "Reference/ReferenceLayout.lean",
     "Reference/ReferencePrecision.lean",
@@ -13363,13 +14287,724 @@ window.GRAPH = {
     "Reference/ShorProgram.lean",
     "Reference/StandardLoweringSetup.lean"
    ],
-   "declCount": 139,
-   "fileCount": 7,
+   "declCount": 255,
+   "fileCount": 14,
    "fsPath": "Implementation/Reference",
    "kind": "folder",
    "name": "Reference",
    "path": "Reference",
    "readmeHtml": null
+  },
+  "Reference/Balanced": {
+   "children": [
+    "Reference/Balanced/Checks.lean",
+    "Reference/Balanced/Correctness.lean",
+    "Reference/Balanced/Defs.lean",
+    "Reference/Balanced/Fault.lean",
+    "Reference/Balanced/Reference.lean",
+    "Reference/Balanced/Semantics.lean",
+    "Reference/Balanced/Shor.lean"
+   ],
+   "declCount": 116,
+   "fileCount": 7,
+   "fsPath": "Implementation/Reference/Balanced",
+   "kind": "folder",
+   "name": "Balanced",
+   "path": "Reference/Balanced",
+   "readmeHtml": null
+  },
+  "Reference/Balanced/Checks.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 16,
+     "name": "Shor.Balanced.defaultPlan_2348_2049"
+    },
+    {
+     "kind": "theorem",
+     "line": 17,
+     "name": "Shor.Balanced.defaultPlan_2348_2050"
+    },
+    {
+     "kind": "theorem",
+     "line": 20,
+     "name": "Shor.Balanced.defaultPlan_4399_2348"
+    },
+    {
+     "kind": "theorem",
+     "line": 23,
+     "name": "Shor.Balanced.defaultPlan_eq"
+    }
+   ],
+   "docstring": "# Balanced phase products: concrete plans at `n = 2048`\n\nThe default rule's plans at the four unequal Shor sites of the reference layout\nat `n = 2048` (work = 2347, data = 2048, scratch = 4398; sites\n`(data+1) \u00d7 (work+1)`, `(work+1) \u00d7 (data+2)`, `(data+2) \u00d7 (work+1)`,\n`(work+1) \u00d7 (scratch+1)`), checked by the kernel (`decide`).",
+   "fsPath": "Implementation/Reference/Balanced/Checks.lean",
+   "importedBy": [],
+   "imports": [
+    "Reference/Balanced/Defs.lean"
+   ],
+   "kind": "file",
+   "lines": 27,
+   "name": "Checks.lean",
+   "path": "Reference/Balanced/Checks.lean"
+  },
+  "Reference/Balanced/Correctness.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 34,
+     "name": "Shor.Balanced.closure_map"
+    },
+    {
+     "kind": "theorem",
+     "line": 45,
+     "name": "Shor.Balanced.closure_mono"
+    },
+    {
+     "kind": "theorem",
+     "line": 53,
+     "name": "Shor.Balanced.eval_eq_on_closure"
+    },
+    {
+     "kind": "def",
+     "line": 65,
+     "name": "Shor.Balanced.Ctl.OK"
+    },
+    {
+     "kind": "theorem",
+     "line": 69,
+     "name": "Shor.Balanced.Ctl.gateOK"
+    },
+    {
+     "kind": "theorem",
+     "line": 73,
+     "name": "Shor.Balanced.Ctl.OK.disjoint"
+    },
+    {
+     "kind": "theorem",
+     "line": 79,
+     "name": "Shor.Balanced.Ctl.OK.away"
+    },
+    {
+     "kind": "theorem",
+     "line": 84,
+     "name": "Shor.Balanced.Ctl.Away.swap"
+    },
+    {
+     "kind": "theorem",
+     "line": 89,
+     "name": "Shor.Balanced.ownedDisjoint_swap"
+    },
+    {
+     "kind": "theorem",
+     "line": 93,
+     "name": "Shor.Balanced.blockOK"
+    },
+    {
+     "kind": "theorem",
+     "line": 119,
+     "name": "Shor.Balanced.lowGate_ok"
+    },
+    {
+     "kind": "theorem",
+     "line": 129,
+     "name": "Shor.Balanced.topGate_ok"
+    },
+    {
+     "kind": "theorem",
+     "line": 139,
+     "name": "Shor.Balanced.splitGate_ok"
+    },
+    {
+     "kind": "theorem",
+     "line": 153,
+     "name": "Shor.Balanced.siteGate_ok"
+    },
+    {
+     "kind": "theorem",
+     "line": 170,
+     "name": "Shor.Balanced.balance_ok"
+    },
+    {
+     "kind": "theorem",
+     "line": 184,
+     "name": "Shor.Balanced.recClean_of_clean"
+    },
+    {
+     "kind": "theorem",
+     "line": 188,
+     "name": "Shor.Balanced.clean_of_recClean"
+    },
+    {
+     "kind": "theorem",
+     "line": 192,
+     "name": "Shor.Balanced.clean_swap"
+    },
+    {
+     "kind": "theorem",
+     "line": 195,
+     "name": "Shor.Balanced.clean_grow"
+    },
+    {
+     "kind": "theorem",
+     "line": 199,
+     "name": "Shor.Balanced.clean_after_signExtend_right"
+    },
+    {
+     "kind": "theorem",
+     "line": 211,
+     "name": "Shor.Balanced.clean_after_signExtend_left"
+    },
+    {
+     "kind": "theorem",
+     "line": 219,
+     "name": "Shor.Balanced.clean_seq"
+    },
+    {
+     "kind": "theorem",
+     "line": 228,
+     "name": "Shor.Balanced.Ctl.clean_gate"
+    },
+    {
+     "kind": "theorem",
+     "line": 234,
+     "name": "Shor.Balanced.Ctl.clean_gate_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 239,
+     "name": "Shor.Balanced.lowGate_clean"
+    },
+    {
+     "kind": "theorem",
+     "line": 259,
+     "name": "Shor.Balanced.topGate_clean"
+    },
+    {
+     "kind": "theorem",
+     "line": 287,
+     "name": "Shor.Balanced.splitGate_clean"
+    },
+    {
+     "kind": "theorem",
+     "line": 308,
+     "name": "Shor.Balanced.splitGate_eval"
+    },
+    {
+     "kind": "theorem",
+     "line": 316,
+     "name": "Shor.Balanced.splitGate_eval_swap"
+    },
+    {
+     "kind": "theorem",
+     "line": 325,
+     "name": "Shor.Balanced.siteGate_correct"
+    },
+    {
+     "kind": "theorem",
+     "line": 357,
+     "name": "Shor.Balanced.balance_correct"
+    },
+    {
+     "kind": "theorem",
+     "line": 409,
+     "name": "Shor.Balanced.Policy.lowerGate_balance_correctness"
+    }
+   ],
+   "docstring": "# Balanced phase products: workspace, cleanliness, and lowering correctness\n\n* `splitGate_ok` (layout/allocation): every block product of a plan that passes\n  `fitsB` gets ForShor's static workspace predicate (`Policy.WorkspaceOK`, or\n  `Policy.CWorkspaceOK` for a controlled site): the block registers are\n  owned-disjoint and the existing reserves cover the extension bits plus\n  `Policy.reserveNeed` at the block width. So `balance` never needs more\n  static workspace than the source circuit (`balance_ok`).\n* `splitGate_clean` (workspace cleanliness): from clean reserves before the\n  site, every block product's reserves are clean when it runs under the real\n  lowering \u2014 ForShor's dynamic precondition `Policy.GateWorkspaceCleanState`.\n* `balance_correct`: the pass preserves both preconditions and the semantics on\n  every state satisfying the source circuit's preconditions, so\n* `Policy.lowerGate_balance_correctness`: lowering the balanced circuit with\n  ForShor's own `Policy.lowerGate` implements the *source* circuit, under the\n  source circuit's own preconditions.",
+   "fsPath": "Implementation/Reference/Balanced/Correctness.lean",
+   "importedBy": [
+    "Reference/Balanced/Shor.lean"
+   ],
+   "imports": [
+    "Reference/Balanced/Semantics.lean",
+    "Shor/Main.lean"
+   ],
+   "kind": "file",
+   "lines": 420,
+   "name": "Correctness.lean",
+   "path": "Reference/Balanced/Correctness.lean"
+  },
+  "Reference/Balanced/Defs.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 45,
+     "name": "Shor.Balanced.disjoint_take_of"
+    },
+    {
+     "kind": "theorem",
+     "line": 49,
+     "name": "Shor.Balanced.disjoint_drop_of"
+    },
+    {
+     "kind": "def",
+     "line": 54,
+     "name": "Shor.Balanced.lowBlock"
+    },
+    {
+     "kind": "def",
+     "line": 58,
+     "name": "Shor.Balanced.highPart"
+    },
+    {
+     "kind": "theorem",
+     "line": 61,
+     "name": "Shor.Balanced.lowBlock_reserve"
+    },
+    {
+     "kind": "theorem",
+     "line": 62,
+     "name": "Shor.Balanced.highPart_reserve"
+    },
+    {
+     "kind": "theorem",
+     "line": 64,
+     "name": "Shor.Balanced.lowBlock_capacity"
+    },
+    {
+     "kind": "theorem",
+     "line": 65,
+     "name": "Shor.Balanced.highPart_capacity"
+    },
+    {
+     "kind": "theorem",
+     "line": 67,
+     "name": "Shor.Balanced.lowBlock_width"
+    },
+    {
+     "kind": "theorem",
+     "line": 71,
+     "name": "Shor.Balanced.highPart_width"
+    },
+    {
+     "kind": "inductive",
+     "line": 77,
+     "name": "Shor.Balanced.Ctl"
+    },
+    {
+     "kind": "def",
+     "line": 83,
+     "name": "Shor.Balanced.Ctl.gate"
+    },
+    {
+     "kind": "structure",
+     "line": 90,
+     "name": "Shor.Balanced.Block"
+    },
+    {
+     "kind": "structure",
+     "line": 97,
+     "name": "Shor.Balanced.Plan"
+    },
+    {
+     "kind": "structure",
+     "line": 103,
+     "name": "Shor.Balanced.Rule"
+    },
+    {
+     "kind": "def",
+     "line": 110,
+     "name": "Shor.Balanced.lowGate"
+    },
+    {
+     "kind": "def",
+     "line": 118,
+     "name": "Shor.Balanced.topGate"
+    },
+    {
+     "kind": "def",
+     "line": 127,
+     "name": "Shor.Balanced.splitGate"
+    },
+    {
+     "kind": "def",
+     "line": 137,
+     "name": "Shor.Balanced.fitsB"
+    },
+    {
+     "kind": "theorem",
+     "line": 148,
+     "name": "Shor.Balanced.fitsB_nil"
+    },
+    {
+     "kind": "theorem",
+     "line": 155,
+     "name": "Shor.Balanced.fitsB_cons"
+    },
+    {
+     "kind": "def",
+     "line": 167,
+     "name": "Shor.Balanced.siteGate"
+    },
+    {
+     "kind": "def",
+     "line": 181,
+     "name": "Shor.Balanced.balance"
+    },
+    {
+     "kind": "def",
+     "line": 200,
+     "name": "Shor.Balanced.defaultPlan"
+    },
+    {
+     "kind": "def",
+     "line": 210,
+     "name": "Shor.Balanced.defaultRule"
+    }
+   ],
+   "docstring": "# Balanced phase products for unequal operands: definitions\n\nForShor splits both operands of a phase product at one common limb width\n`phaseLimbWidth x z k = min (x.width / k) (z.width / k)`, so at an unequal site\nthe larger operand's top chunk takes the whole remainder and fixes the child\nwidth (Step 4 at `n = 2048`: `2348 \u00d7 4399`, child `2849` at `k = 3`).\n\nThis leaf module adds a *gate-level* balancing pass that runs before the\nexisting lowering and leaves ForShor's proved equal-width core untouched:\n\n* `splitGate` cuts the larger operand `x` into blocks: lower blocks of width\n  `w` (read unsigned; they are zero-extended by at least one bit) and a signed\n  top block. Every block is multiplied by the whole small operand with an\n  ordinary ForShor phase product, each block pair first extended to a common\n  target width `t` (zero extension for a lower block, sign extension for the\n  top block and for the small operand). The phases add:\n  `\u03c6\u00b7x\u00b7z = \u03a3_b (\u03c6\u00b72^{offset_b})\u00b7x_b\u00b7z`.\n* A plan with no lower blocks is plain padding of the small operand to a\n  common width (candidate (b)); a plan with lower blocks is the recursive\n  rebalancing (candidate (c)). Both are instances of one construction.\n* `siteGate` applies a plan only when a decidable check `fitsB` says the\n  operands' *existing* reserves cover every block (`Policy.reserveNeed`, i.e.\n  whatever child-width rule ForShor's core uses), otherwise it keeps the\n  original gate. So balancing never needs a bigger layout than the one the\n  original site was proved ready on.\n* `balance` applies `siteGate` at every signed / controlled signed phase\n  product of a circuit (through `seq` and `adj`).\n\nWidths enter only through two parameters: the plan rule `Rule` (block widths\nand targets as a function of the two operand widths) and the core's reserve\nfunction `Policy.reserveNeed P` (which is where the child/working width rule\nlives). Neither is fixed here.",
+   "fsPath": "Implementation/Reference/Balanced/Defs.lean",
+   "importedBy": [
+    "Reference/Balanced/Checks.lean",
+    "Reference/Balanced/Semantics.lean"
+   ],
+   "imports": [
+    "Shor/Lowering/LowerGate.lean"
+   ],
+   "kind": "file",
+   "lines": 213,
+   "name": "Defs.lean",
+   "path": "Reference/Balanced/Defs.lean"
+  },
+  "Reference/Balanced/Fault.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 31,
+     "name": "Shor.Balanced.recombineAt"
+    },
+    {
+     "kind": "theorem",
+     "line": 34,
+     "name": "Shor.Balanced.commonRadix_recombination_fails"
+    },
+    {
+     "kind": "theorem",
+     "line": 45,
+     "name": "Shor.Balanced.commonRadix_recombination_ok"
+    },
+    {
+     "kind": "theorem",
+     "line": 53,
+     "name": "Shor.Balanced.signedLow_decode_fails"
+    },
+    {
+     "kind": "theorem",
+     "line": 59,
+     "name": "Shor.Balanced.shiftless_decode_fails"
+    },
+    {
+     "kind": "def",
+     "line": 67,
+     "name": "Shor.Balanced.shiftlessSplit"
+    },
+    {
+     "kind": "theorem",
+     "line": 70,
+     "name": "Shor.Balanced.shiftlessSplit_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 91,
+     "name": "Shor.Balanced.phaseFactor_ne"
+    },
+    {
+     "kind": "theorem",
+     "line": 124,
+     "name": "Shor.Balanced.shiftless_split_fails"
+    }
+   ],
+   "docstring": "# Fault challenge: wrong recombinations for unequal operands fail\n\n1. `commonRadix_recombination_fails` (candidate (a)): if the two operands are\n   cut at different radices `2^mx \u2260 2^mz`, recombining the convolution\n   coefficients `c_l = \u03a3_{i+j=l} x_i z_j` with any single radix `2^m` is wrong\n   for some limbs (already for `k = 2`). This is the algebraic shape of a\n   one-radix recombination such as `cramerCoeffFromPtsWidth k m`; the lemma is\n   about the local `recombineAt` and is not formally linked to that definition.\n2. `shiftless_split_fails` (a mutated balanced split): dropping the `2^w`\n   from the high part's angle gives a circuit that, in *every* model, differs\n   from `SignedPhaseProd \u03c6 x z` on a clean basis state, for any `\u03c6` in the stated\n   (non-degenerate) range.\n3. `signedLow_decode_fails`: reading the low block signed instead of\n   zero-extending it breaks the recombination identity (concrete values).",
+   "fsPath": "Implementation/Reference/Balanced/Fault.lean",
+   "importedBy": [],
+   "imports": [
+    "Reference/Balanced/Semantics.lean"
+   ],
+   "kind": "file",
+   "lines": 143,
+   "name": "Fault.lean",
+   "path": "Reference/Balanced/Fault.lean"
+  },
+  "Reference/Balanced/Reference.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 30,
+     "name": "Shor.Balanced.reference_gateWorkspaceOK"
+    },
+    {
+     "kind": "def",
+     "line": 69,
+     "name": "Shor.Balanced.balancedShorCircuit"
+    },
+    {
+     "kind": "def",
+     "line": 79,
+     "name": "Shor.Balanced.balancedProgramAt"
+    },
+    {
+     "kind": "theorem",
+     "line": 86,
+     "name": "Shor.Balanced.balancedProgramAt_prob_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 131,
+     "name": "Shor.Balanced.balancedProgramAt_success"
+    },
+    {
+     "kind": "def",
+     "line": 151,
+     "name": "Shor.Balanced.balancedSubmittedProgram"
+    },
+    {
+     "kind": "theorem",
+     "line": 155,
+     "name": "Shor.Balanced.balancedSubmittedProgram_correct"
+    },
+    {
+     "kind": "def",
+     "line": 180,
+     "name": "Shor.Balanced.balancedShorImplementation"
+    }
+   ],
+   "docstring": "# The reference `ShorImplementation` with balanced phase products\n\n`balancedShorImplementation P hP R` is ForShor's reference submission\n(`Reference.referenceShorImplementation`) with one change: the order-finding\ncircuit is lowered after the balancing pass. Same layout\n(`allocateReferenceLayout`), same precision choice, same declared success\nprobability and trial count; the `correct` field is proved by\n`balancedProgramAt_prob_eq` (the balanced program has the reference program's\nsuccess probability from the framework's initial state) and the reference\nprogram's own correctness.",
+   "fsPath": "Implementation/Reference/Balanced/Reference.lean",
+   "importedBy": [],
+   "imports": [
+    "Reference/Balanced/Shor.lean",
+    "Reference/ReferenceShorImplementation.lean"
+   ],
+   "kind": "file",
+   "lines": 191,
+   "name": "Reference.lean",
+   "path": "Reference/Balanced/Reference.lean"
+  },
+  "Reference/Balanced/Semantics.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 30,
+     "name": "Shor.Balanced.tcDecode_split"
+    },
+    {
+     "kind": "theorem",
+     "line": 55,
+     "name": "Shor.Balanced.toNat_take_drop"
+    },
+    {
+     "kind": "theorem",
+     "line": 69,
+     "name": "Shor.Balanced.extToInt_split"
+    },
+    {
+     "kind": "def",
+     "line": 98,
+     "name": "Shor.Balanced.phaseFactor"
+    },
+    {
+     "kind": "theorem",
+     "line": 101,
+     "name": "Shor.Balanced.phaseFactor_add"
+    },
+    {
+     "kind": "theorem",
+     "line": 111,
+     "name": "Shor.Balanced.phaseFactor_comm"
+    },
+    {
+     "kind": "def",
+     "line": 115,
+     "name": "Shor.Balanced.Ctl.on"
+    },
+    {
+     "kind": "def",
+     "line": 120,
+     "name": "Shor.Balanced.Ctl.Away"
+    },
+    {
+     "kind": "def",
+     "line": 125,
+     "name": "Shor.Balanced.Ctl.factor"
+    },
+    {
+     "kind": "theorem",
+     "line": 129,
+     "name": "Shor.Balanced.Ctl.eval_gate_ket"
+    },
+    {
+     "kind": "def",
+     "line": 147,
+     "name": "Shor.Balanced.Clean"
+    },
+    {
+     "kind": "theorem",
+     "line": 150,
+     "name": "Shor.Balanced.Reg.ext_qubits"
+    },
+    {
+     "kind": "theorem",
+     "line": 153,
+     "name": "Shor.Balanced.toNat_take_zero"
+    },
+    {
+     "kind": "theorem",
+     "line": 162,
+     "name": "Shor.Balanced.toNat_drop_zero"
+    },
+    {
+     "kind": "theorem",
+     "line": 177,
+     "name": "Shor.Balanced.fresh_of_zero"
+    },
+    {
+     "kind": "theorem",
+     "line": 182,
+     "name": "Shor.Balanced.zero_of_fresh_capacity"
+    },
+    {
+     "kind": "theorem",
+     "line": 191,
+     "name": "Shor.Balanced.lowBlock_owned_sub"
+    },
+    {
+     "kind": "theorem",
+     "line": 198,
+     "name": "Shor.Balanced.highPart_owned_sub"
+    },
+    {
+     "kind": "theorem",
+     "line": 205,
+     "name": "Shor.Balanced.active_sub_owned"
+    },
+    {
+     "kind": "theorem",
+     "line": 208,
+     "name": "Shor.Balanced.reserve_sub_owned"
+    },
+    {
+     "kind": "theorem",
+     "line": 211,
+     "name": "Shor.Balanced.newBits_sub_owned"
+    },
+    {
+     "kind": "theorem",
+     "line": 214,
+     "name": "Shor.Balanced.grow_active_sub_owned"
+    },
+    {
+     "kind": "theorem",
+     "line": 217,
+     "name": "Shor.Balanced.grow_reserve_sub_reserve"
+    },
+    {
+     "kind": "theorem",
+     "line": 221,
+     "name": "Shor.Balanced.ownedDisjoint_mono"
+    },
+    {
+     "kind": "theorem",
+     "line": 226,
+     "name": "Shor.Balanced.ctlAway_mono"
+    },
+    {
+     "kind": "theorem",
+     "line": 234,
+     "name": "Shor.Balanced.toNat_signExtendBasis_of_disj"
+    },
+    {
+     "kind": "theorem",
+     "line": 240,
+     "name": "Shor.Balanced.bit_signExtendBasis_of_not_mem"
+    },
+    {
+     "kind": "theorem",
+     "line": 246,
+     "name": "Shor.Balanced.extToInt_signExtendBasis_of_disj"
+    },
+    {
+     "kind": "theorem",
+     "line": 252,
+     "name": "Shor.Balanced.disj_of_owned"
+    },
+    {
+     "kind": "theorem",
+     "line": 256,
+     "name": "Shor.Balanced.disj_of_owned'"
+    },
+    {
+     "kind": "theorem",
+     "line": 260,
+     "name": "Shor.Balanced.ctl_on_signExtendBasis"
+    },
+    {
+     "kind": "theorem",
+     "line": 267,
+     "name": "Shor.Balanced.Clean.signExtend_x"
+    },
+    {
+     "kind": "theorem",
+     "line": 276,
+     "name": "Shor.Balanced.lowGate_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 308,
+     "name": "Shor.Balanced.topGate_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 348,
+     "name": "Shor.Balanced.splitGate_ket"
+    }
+   ],
+   "docstring": "# Balanced phase products: basis-state correctness\n\n`splitGate_ket`: on every basis state whose two reserves are zero, the balanced\nsplit of `x` against `z` applies exactly the phase `\u03c6 \u00b7 x \u00b7 z` (signed values)\nand returns the basis state, for every plan that passes `fitsB` \u2014 so for every\npair of widths the plan rule produces. The controlled form applies it exactly\nwhen the control is one.\n\nThe proof is the recombination identity\n`extToInt x = toNat (lowBlock x w) + 2^w \u00b7 extToInt (highPart x w)` (signed top,\nunsigned low part; `extToInt_split`) together with the fact that each block's\nextension gates restore the basis state.",
+   "fsPath": "Implementation/Reference/Balanced/Semantics.lean",
+   "importedBy": [
+    "Reference/Balanced/Correctness.lean",
+    "Reference/Balanced/Fault.lean"
+   ],
+   "imports": [
+    "Reference/Balanced/Defs.lean",
+    "Shared/GateLaws.lean",
+    "Shared/States.lean"
+   ],
+   "kind": "file",
+   "lines": 376,
+   "name": "Semantics.lean",
+   "path": "Reference/Balanced/Semantics.lean"
+  },
+  "Reference/Balanced/Shor.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 22,
+     "name": "Shor.Balanced.orderFindingApproxLowBalanced"
+    },
+    {
+     "kind": "theorem",
+     "line": 35,
+     "name": "Shor.Balanced.probability_of_success_balance_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 55,
+     "name": "Shor.Balanced.Shor_correct_approx_lowered_balanced_of_modExp_bound"
+    }
+   ],
+   "docstring": "# Balanced phase products in the end-to-end Shor theorem\n\n`orderFindingApproxLowBalanced` lowers the approximate order-finding circuit\nwith every phase-product site balanced (`Balanced.balance`) and ForShor's own\n`Policy.lowerGate`. It takes exactly the hypotheses `orderFindingApproxLow`\ntakes, and the success-probability theorem holds for it with exactly the\nhypotheses and conclusion of `Shor_correct_approx_lowered_of_modExp_bound`.",
+   "fsPath": "Implementation/Reference/Balanced/Shor.lean",
+   "importedBy": [
+    "Reference/Balanced/Reference.lean"
+   ],
+   "imports": [
+    "Reference/Balanced/Correctness.lean",
+    "Shor/Main.lean"
+   ],
+   "kind": "file",
+   "lines": 103,
+   "name": "Shor.lean",
+   "path": "Reference/Balanced/Shor.lean"
   },
   "Reference/Reference2048Headline.lean": {
    "declarations": [
@@ -14093,6 +15728,7 @@ window.GRAPH = {
    "docstring": "# Reference `ShorImplementation`\n\nThis file packages the reference approximate Shor construction into the\nframework's `ShorImplementation` interface.\n\nFor each approximation level `m`, we first define the corresponding program,\ncertified single-run success lower bound, and gate count. The final submission\nthen chooses `m` internally as a function of the modulus.",
    "fsPath": "Implementation/Reference/ReferenceShorImplementation.lean",
    "importedBy": [
+    "Reference/Balanced/Reference.lean",
     "Reference/Reference2048Headline.lean"
    ],
    "imports": [
@@ -14408,6 +16044,7 @@ window.GRAPH = {
    "importedBy": [
     "PhaseProduct/Proofs/Compiler/Allocation.lean",
     "QFT/Proofs/Decomposition.lean",
+    "Reference/Balanced/Semantics.lean",
     "Shared/LowGateEval.lean"
    ],
    "imports": [
@@ -15121,6 +16758,7 @@ window.GRAPH = {
     "QFT/Proofs/Lowering/PlanSemantics.lean",
     "QFT/Proofs/Lowering/Readiness.lean",
     "QFT/Spec/Cleanliness.lean",
+    "Reference/Balanced/Semantics.lean",
     "Shared/GateLaws.lean",
     "Shared/Hadamard.lean",
     "Shared/LowGateEval.lean",
@@ -15360,6 +16998,7 @@ window.GRAPH = {
    "fsPath": "Implementation/Shor/Lowering/LowerGate.lean",
    "importedBy": [
     "GateCount/Definitions.lean",
+    "Reference/Balanced/Defs.lean",
     "Shor/Circuit/OrderFinding.lean",
     "Shor/Proofs/Lowering.lean",
     "Shor/Proofs/Readiness/Sequencing.lean",
@@ -15407,6 +17046,8 @@ window.GRAPH = {
    "docstring": "# Shor Main Theorems\n\nThe three final Shor correctness theorems, each typed by its named proposition\nfrom `Assertions.lean` and proven here.  These are the public results the\nReference implementation consumes; all supporting lemmas live under\n`Shor.Proofs`.",
    "fsPath": "Implementation/Shor/Main.lean",
    "importedBy": [
+    "Reference/Balanced/Correctness.lean",
+    "Reference/Balanced/Shor.lean",
     "Reference/ReferenceShorImplementation.lean"
    ],
    "imports": [
@@ -17506,11 +19147,19 @@ window.GRAPH = {
       ],
       [
        "Framework/Policy.lean",
+       "PhaseProduct/Compiler/Widths.lean"
+      ],
+      [
+       "Framework/Policy.lean",
        "PhaseProduct/Lowering/Plan.lean"
       ],
       [
        "Framework/Policy.lean",
        "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
+      ],
+      [
+       "Framework/Policy.lean",
+       "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean"
       ],
       [
        "Framework/Semantics/GateSemantics.lean",
@@ -17558,7 +19207,7 @@ window.GRAPH = {
       ]
      ],
      "to": "PhaseProduct",
-     "weight": 19
+     "weight": 21
     },
     {
      "from": "Framework",
@@ -17938,6 +19587,21 @@ window.GRAPH = {
      ],
      "to": "Shor",
      "weight": 19
+    },
+    {
+     "from": "Shared",
+     "pairs": [
+      [
+       "Shared/GateLaws.lean",
+       "Reference/Balanced/Semantics.lean"
+      ],
+      [
+       "Shared/States.lean",
+       "Reference/Balanced/Semantics.lean"
+      ]
+     ],
+     "to": "Reference",
+     "weight": 2
     },
     {
      "from": "PhaseProduct",
@@ -18695,6 +20359,18 @@ window.GRAPH = {
        "Reference/ReferenceLayout.lean"
       ],
       [
+       "Shor/Lowering/LowerGate.lean",
+       "Reference/Balanced/Defs.lean"
+      ],
+      [
+       "Shor/Main.lean",
+       "Reference/Balanced/Correctness.lean"
+      ],
+      [
+       "Shor/Main.lean",
+       "Reference/Balanced/Shor.lean"
+      ],
+      [
        "Shor/Main.lean",
        "Reference/ReferenceShorImplementation.lean"
       ],
@@ -18712,7 +20388,7 @@ window.GRAPH = {
       ]
      ],
      "to": "Reference",
-     "weight": 6
+     "weight": 9
     },
     {
      "from": "GateCount",
@@ -18856,7 +20532,7 @@ window.GRAPH = {
     "consumers": [
      {
       "target": "PhaseProduct",
-      "weight": 19
+      "weight": 21
      },
      {
       "target": "Shor",
@@ -20200,10 +21876,14 @@ window.GRAPH = {
       [
        "PhaseProduct/Spec/Readiness.lean",
        "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
+      ],
+      [
+       "PhaseProduct/Spec/Readiness.lean",
+       "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean"
       ]
      ],
      "to": "PhaseProduct/Proofs",
-     "weight": 7
+     "weight": 8
     }
    ],
    "ghosts": {
@@ -20232,7 +21912,7 @@ window.GRAPH = {
     "providers": [
      {
       "target": "Framework",
-      "weight": 19
+      "weight": 21
      },
      {
       "target": "Shared",
@@ -20246,6 +21926,8 @@ window.GRAPH = {
    "children": [
     "PhaseProduct/Compiler/Coefficients.lean",
     "PhaseProduct/Compiler/Compile.lean",
+    "PhaseProduct/Compiler/ExactWidth.lean",
+    "PhaseProduct/Compiler/ExactWidthBoxes.lean",
     "PhaseProduct/Compiler/GaussJordan.lean",
     "PhaseProduct/Compiler/Layout.lean",
     "PhaseProduct/Compiler/PolicyWorkspace.lean",
@@ -20273,6 +21955,28 @@ window.GRAPH = {
       ]
      ],
      "to": "PhaseProduct/Compiler/Workspace.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseProduct/Compiler/ExactWidth.lean",
+     "pairs": [
+      [
+       "PhaseProduct/Compiler/ExactWidth.lean",
+       "PhaseProduct/Compiler/ExactWidthBoxes.lean"
+      ]
+     ],
+     "to": "PhaseProduct/Compiler/ExactWidthBoxes.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseProduct/Compiler/ExactWidth.lean",
+     "pairs": [
+      [
+       "PhaseProduct/Compiler/ExactWidth.lean",
+       "PhaseProduct/Compiler/Widths.lean"
+      ]
+     ],
+     "to": "PhaseProduct/Compiler/Widths.lean",
      "weight": 1
     },
     {
@@ -20306,6 +22010,17 @@ window.GRAPH = {
       ]
      ],
      "to": "PhaseProduct/Compiler/Compile.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseProduct/Compiler/Layout.lean",
+     "pairs": [
+      [
+       "PhaseProduct/Compiler/Layout.lean",
+       "PhaseProduct/Compiler/ExactWidth.lean"
+      ]
+     ],
+     "to": "PhaseProduct/Compiler/ExactWidth.lean",
      "weight": 1
     },
     {
@@ -20376,7 +22091,7 @@ window.GRAPH = {
     "providers": [
      {
       "target": "Framework",
-      "weight": 7
+      "weight": 8
      },
      {
       "target": "PhaseProduct/Math",
@@ -21032,8 +22747,16 @@ window.GRAPH = {
        "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
       ],
       [
+       "PhaseProduct/Proofs/Compiler/Compilation.lean",
+       "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean"
+      ],
+      [
        "PhaseProduct/Proofs/Compiler/Correctness.lean",
        "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
+      ],
+      [
+       "PhaseProduct/Proofs/Compiler/CorrectnessRule.lean",
+       "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean"
       ],
       [
        "PhaseProduct/Proofs/Compiler/Support.lean",
@@ -21041,7 +22764,7 @@ window.GRAPH = {
       ]
      ],
      "to": "PhaseProduct/Proofs/Lowering",
-     "weight": 5
+     "weight": 7
     },
     {
      "from": "PhaseProduct/Proofs/NaiveLeaf.lean",
@@ -21084,6 +22807,10 @@ window.GRAPH = {
       "weight": 8
      },
      {
+      "target": "PhaseProduct/Spec",
+      "weight": 8
+     },
+     {
       "target": "Shared",
       "weight": 8
      },
@@ -21092,20 +22819,16 @@ window.GRAPH = {
       "weight": 7
      },
      {
-      "target": "PhaseProduct/Spec",
-      "weight": 7
-     },
-     {
       "target": "PhaseProduct/Lowering",
       "weight": 4
      },
      {
-      "target": "PhaseProduct/Gates",
+      "target": "Framework",
       "weight": 2
      },
      {
-      "target": "Framework",
-      "weight": 1
+      "target": "PhaseProduct/Gates",
+      "weight": 2
      }
     ]
    },
@@ -21116,7 +22839,10 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Compiler/Allocation.lean",
     "PhaseProduct/Proofs/Compiler/Body",
     "PhaseProduct/Proofs/Compiler/Compilation.lean",
+    "PhaseProduct/Proofs/Compiler/CompilationRule.lean",
     "PhaseProduct/Proofs/Compiler/Correctness.lean",
+    "PhaseProduct/Proofs/Compiler/CorrectnessRule.lean",
+    "PhaseProduct/Proofs/Compiler/ExactWidthBound.lean",
     "PhaseProduct/Proofs/Compiler/Interpolation.lean",
     "PhaseProduct/Proofs/Compiler/MacroSemantics.lean",
     "PhaseProduct/Proofs/Compiler/Support.lean",
@@ -21150,10 +22876,43 @@ window.GRAPH = {
      "pairs": [
       [
        "PhaseProduct/Proofs/Compiler/Compilation.lean",
+       "PhaseProduct/Proofs/Compiler/CompilationRule.lean"
+      ]
+     ],
+     "to": "PhaseProduct/Proofs/Compiler/CompilationRule.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseProduct/Proofs/Compiler/Compilation.lean",
+     "pairs": [
+      [
+       "PhaseProduct/Proofs/Compiler/Compilation.lean",
        "PhaseProduct/Proofs/Compiler/Correctness.lean"
       ]
      ],
      "to": "PhaseProduct/Proofs/Compiler/Correctness.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseProduct/Proofs/Compiler/CompilationRule.lean",
+     "pairs": [
+      [
+       "PhaseProduct/Proofs/Compiler/CompilationRule.lean",
+       "PhaseProduct/Proofs/Compiler/CorrectnessRule.lean"
+      ]
+     ],
+     "to": "PhaseProduct/Proofs/Compiler/CorrectnessRule.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseProduct/Proofs/Compiler/Correctness.lean",
+     "pairs": [
+      [
+       "PhaseProduct/Proofs/Compiler/Correctness.lean",
+       "PhaseProduct/Proofs/Compiler/CorrectnessRule.lean"
+      ]
+     ],
+     "to": "PhaseProduct/Proofs/Compiler/CorrectnessRule.lean",
      "weight": 1
     },
     {
@@ -21165,6 +22924,17 @@ window.GRAPH = {
       ]
      ],
      "to": "PhaseProduct/Proofs/Compiler/Compilation.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseProduct/Proofs/Compiler/Support.lean",
+     "pairs": [
+      [
+       "PhaseProduct/Proofs/Compiler/Support.lean",
+       "PhaseProduct/Proofs/Compiler/ExactWidthBound.lean"
+      ]
+     ],
+     "to": "PhaseProduct/Proofs/Compiler/ExactWidthBound.lean",
      "weight": 1
     },
     {
@@ -21199,13 +22969,24 @@ window.GRAPH = {
      ],
      "to": "PhaseProduct/Proofs/Compiler/Allocation.lean",
      "weight": 1
+    },
+    {
+     "from": "PhaseProduct/Proofs/Compiler/WidthSoundness.lean",
+     "pairs": [
+      [
+       "PhaseProduct/Proofs/Compiler/WidthSoundness.lean",
+       "PhaseProduct/Proofs/Compiler/ExactWidthBound.lean"
+      ]
+     ],
+     "to": "PhaseProduct/Proofs/Compiler/ExactWidthBound.lean",
+     "weight": 1
     }
    ],
    "ghosts": {
     "consumers": [
      {
       "target": "PhaseProduct/Proofs/Lowering",
-      "weight": 5
+      "weight": 7
      },
      {
       "target": "ModularExponentiation",
@@ -21335,6 +23116,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Lowering/Lowerable.lean",
     "PhaseProduct/Proofs/Lowering/PlanReadiness",
     "PhaseProduct/Proofs/Lowering/PlanSemantics.lean",
+    "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean",
     "PhaseProduct/Proofs/Lowering/Workspace.lean"
    ],
    "edges": [
@@ -21383,6 +23165,17 @@ window.GRAPH = {
      "weight": 1
     },
     {
+     "from": "PhaseProduct/Proofs/Lowering/Lowerable.lean",
+     "pairs": [
+      [
+       "PhaseProduct/Proofs/Lowering/Lowerable.lean",
+       "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean"
+      ]
+     ],
+     "to": "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean",
+     "weight": 1
+    },
+    {
      "from": "PhaseProduct/Proofs/Lowering/PlanReadiness",
      "pairs": [
       [
@@ -21427,6 +23220,17 @@ window.GRAPH = {
      "weight": 1
     },
     {
+     "from": "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean",
+     "pairs": [
+      [
+       "PhaseProduct/Proofs/Lowering/PlanSemanticsRule.lean",
+       "PhaseProduct/Proofs/Lowering/PlanSemantics.lean"
+      ]
+     ],
+     "to": "PhaseProduct/Proofs/Lowering/PlanSemantics.lean",
+     "weight": 1
+    },
+    {
      "from": "PhaseProduct/Proofs/Lowering/Workspace.lean",
      "pairs": [
       [
@@ -21467,12 +23271,12 @@ window.GRAPH = {
       "weight": 7
      },
      {
-      "target": "PhaseProduct/Spec",
-      "weight": 6
+      "target": "PhaseProduct/Proofs/Compiler",
+      "weight": 7
      },
      {
-      "target": "PhaseProduct/Proofs/Compiler",
-      "weight": 5
+      "target": "PhaseProduct/Spec",
+      "weight": 7
      },
      {
       "target": "PhaseProduct/Lowering",
@@ -21483,12 +23287,12 @@ window.GRAPH = {
       "weight": 3
      },
      {
-      "target": "PhaseProduct/Math",
+      "target": "Framework",
       "weight": 2
      },
      {
-      "target": "Framework",
-      "weight": 1
+      "target": "PhaseProduct/Math",
+      "weight": 2
      },
      {
       "target": "PhaseProduct/Proofs/NaiveLeaf.lean",
@@ -21614,7 +23418,7 @@ window.GRAPH = {
     "consumers": [
      {
       "target": "PhaseProduct/Proofs",
-      "weight": 7
+      "weight": 8
      },
      {
       "target": "Shor",
@@ -22047,6 +23851,7 @@ window.GRAPH = {
   },
   "Reference": {
    "children": [
+    "Reference/Balanced",
     "Reference/Reference2048Headline.lean",
     "Reference/ReferenceLayout.lean",
     "Reference/ReferencePrecision.lean",
@@ -22094,6 +23899,17 @@ window.GRAPH = {
      "pairs": [
       [
        "Reference/ReferenceShorImplementation.lean",
+       "Reference/Balanced/Reference.lean"
+      ]
+     ],
+     "to": "Reference/Balanced",
+     "weight": 1
+    },
+    {
+     "from": "Reference/ReferenceShorImplementation.lean",
+     "pairs": [
+      [
+       "Reference/ReferenceShorImplementation.lean",
        "Reference/Reference2048Headline.lean"
       ]
      ],
@@ -22117,7 +23933,7 @@ window.GRAPH = {
     "providers": [
      {
       "target": "Shor",
-      "weight": 6
+      "weight": 9
      },
      {
       "target": "ModularExponentiation",
@@ -22132,12 +23948,113 @@ window.GRAPH = {
       "weight": 2
      },
      {
+      "target": "Shared",
+      "weight": 2
+     },
+     {
       "target": "GateCount",
       "weight": 1
      }
     ]
    },
    "path": "Reference"
+  },
+  "Reference/Balanced": {
+   "children": [
+    "Reference/Balanced/Checks.lean",
+    "Reference/Balanced/Correctness.lean",
+    "Reference/Balanced/Defs.lean",
+    "Reference/Balanced/Fault.lean",
+    "Reference/Balanced/Reference.lean",
+    "Reference/Balanced/Semantics.lean",
+    "Reference/Balanced/Shor.lean"
+   ],
+   "edges": [
+    {
+     "from": "Reference/Balanced/Correctness.lean",
+     "pairs": [
+      [
+       "Reference/Balanced/Correctness.lean",
+       "Reference/Balanced/Shor.lean"
+      ]
+     ],
+     "to": "Reference/Balanced/Shor.lean",
+     "weight": 1
+    },
+    {
+     "from": "Reference/Balanced/Defs.lean",
+     "pairs": [
+      [
+       "Reference/Balanced/Defs.lean",
+       "Reference/Balanced/Checks.lean"
+      ]
+     ],
+     "to": "Reference/Balanced/Checks.lean",
+     "weight": 1
+    },
+    {
+     "from": "Reference/Balanced/Defs.lean",
+     "pairs": [
+      [
+       "Reference/Balanced/Defs.lean",
+       "Reference/Balanced/Semantics.lean"
+      ]
+     ],
+     "to": "Reference/Balanced/Semantics.lean",
+     "weight": 1
+    },
+    {
+     "from": "Reference/Balanced/Semantics.lean",
+     "pairs": [
+      [
+       "Reference/Balanced/Semantics.lean",
+       "Reference/Balanced/Correctness.lean"
+      ]
+     ],
+     "to": "Reference/Balanced/Correctness.lean",
+     "weight": 1
+    },
+    {
+     "from": "Reference/Balanced/Semantics.lean",
+     "pairs": [
+      [
+       "Reference/Balanced/Semantics.lean",
+       "Reference/Balanced/Fault.lean"
+      ]
+     ],
+     "to": "Reference/Balanced/Fault.lean",
+     "weight": 1
+    },
+    {
+     "from": "Reference/Balanced/Shor.lean",
+     "pairs": [
+      [
+       "Reference/Balanced/Shor.lean",
+       "Reference/Balanced/Reference.lean"
+      ]
+     ],
+     "to": "Reference/Balanced/Reference.lean",
+     "weight": 1
+    }
+   ],
+   "ghosts": {
+    "consumers": [],
+    "providers": [
+     {
+      "target": "Shor",
+      "weight": 3
+     },
+     {
+      "target": "Shared",
+      "weight": 2
+     },
+     {
+      "target": "Reference/ReferenceShorImplementation.lean",
+      "weight": 1
+     }
+    ]
+   },
+   "path": "Reference/Balanced"
   },
   "Shared": {
    "children": [
@@ -22245,6 +24162,10 @@ window.GRAPH = {
      {
       "target": "QFT",
       "weight": 10
+     },
+     {
+      "target": "Reference",
+      "weight": 2
      }
     ],
     "providers": [
@@ -22482,7 +24403,7 @@ window.GRAPH = {
     "consumers": [
      {
       "target": "Reference",
-      "weight": 6
+      "weight": 9
      },
      {
       "target": "GateCount",
@@ -22573,6 +24494,10 @@ window.GRAPH = {
      },
      {
       "target": "GateCount",
+      "weight": 1
+     },
+     {
+      "target": "Reference",
       "weight": 1
      },
      {

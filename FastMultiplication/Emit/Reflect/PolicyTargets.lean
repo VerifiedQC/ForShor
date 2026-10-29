@@ -104,9 +104,9 @@ def extractPolicyPhaseProductBody (polE : Expr) (setup : Shor.ShorLoweringSetup)
             let widths0 : Array (Expr × IR.WExpr) :=
               #[(xwE, .var "xw"), (zwE, .var "zw"), (xCapE, .var "xCap"), (zCapE, .var "zCap")]
             let limbWExpr ← translateW { widths := widths0 } wE
-            let xSlots ← precomputePhaseProductSlots opsE x z layoutE
+            let xSlots ← precomputePhaseProductSlots (← mkAppM ``Shor.ShorLoweringPolicy.widthRule #[polE]) opsE x z layoutE
               ``Shor.Gate.PhaseProductLayout.xSplit "x" "xw" "xCap" "reserveNeed_x" k limbWExpr
-            let zSlots ← precomputePhaseProductSlots opsE x z layoutE
+            let zSlots ← precomputePhaseProductSlots (← mkAppM ``Shor.ShorLoweringPolicy.widthRule #[polE]) opsE x z layoutE
               ``Shor.Gate.PhaseProductLayout.zSplit "z" "zw" "zCap" "reserveNeed_z" k limbWExpr
             let mut regs : Array (Expr × IR.RegExpr) := #[(x, .var "x"), (z, .var "z")]
             regs := xSlots.initRegs ++ xSlots.finalRegs ++ zSlots.initRegs ++ zSlots.finalRegs ++ regs
@@ -180,9 +180,9 @@ def extractPolicyCPhaseProductBody (polE : Expr) (setup : Shor.ShorLoweringSetup
             let widths0 : Array (Expr × IR.WExpr) :=
               #[(xwE, .var "xw"), (zwE, .var "zw"), (xCapE, .var "xCap"), (zCapE, .var "zCap")]
             let limbWExpr ← translateW { widths := widths0 } wE
-            let xSlots ← precomputePhaseProductSlots opsE x z layoutE
+            let xSlots ← precomputePhaseProductSlots (← mkAppM ``Shor.ShorLoweringPolicy.widthRule #[polE]) opsE x z layoutE
               ``Shor.Gate.PhaseProductLayout.xSplit "x" "xw" "xCap" "reserveNeed_x" k limbWExpr
-            let zSlots ← precomputePhaseProductSlots opsE x z layoutE
+            let zSlots ← precomputePhaseProductSlots (← mkAppM ``Shor.ShorLoweringPolicy.widthRule #[polE]) opsE x z layoutE
               ``Shor.Gate.PhaseProductLayout.zSplit "z" "zw" "zCap" "reserveNeed_z" k limbWExpr
             let mut regs : Array (Expr × IR.RegExpr) := #[(ctrl, .var "ctrl"), (x, .var "x"),
               (z, .var "z")]

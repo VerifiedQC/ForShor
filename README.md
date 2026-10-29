@@ -220,6 +220,66 @@ See
 for what the tiers of checking do and do not establish, and for the CI
 rules a submissions repo should enforce.
 
+### Exact widths, the balanced split, and run-time IR
+
+Three additions. None of them changes what a submitter writes, what
+`lake build PolicySubmission` checks, or what the default
+`lake exe forshor_policy_submission` prints: by default every circuit, IR and
+number is upstream's.
+
+**Exact widths, opt-in.** A policy has a width rule
+(`ShorLoweringPolicy.widthRule`, `Framework/Policy.lean`). The default,
+`.scan`, is the scan as before: `scanNeededWidths` and `nextSignedWidth` are
+unchanged. With `.exact`, the compiler grows each level's registers to the
+least width holding every value the table reaches, over the box of limb
+values (`exactSignedWidthOfWidths`, `Compiler/ExactWidth.lean`). That width is
+least (`exactSignedWidth_le_iff`), never above the scan
+(`nextSignedWidthBy_exact_le_scan`) and sound for allocation
+(`allocated_widths_sound_exact`). The compiler takes the rule from the policy
+(`neededWidthsBy`, `compileOpsToSignedGateBy`). The correctness theorems are
+generic in the policy, so `policy_submission_correct` covers both rules with
+the same hypotheses and bound. `PolicyCheck.lean` states it for the shipped
+template on the exact rule (`correct_exact`). `ExactWidthTests.lean` pins one
+instance and its fault challenge: the shipped `k = 2` table at width `20`
+needs `12` bits, and `11` provably do not hold every reachable value.
+
+**The balanced split** (`Implementation/Reference/Balanced/`,
+`lean_lib Balanced`). A gate-tree pass for unequal operand widths runs ahead of
+the unchanged equal-width core. With `s` the smaller width and `L` the
+larger, it pads the small operand if `2L ≤ 3s` and otherwise cuts the large
+one into `⌈L/s⌉` blocks, and only where the existing reserves suffice.
+`Policy.lowerGate_balance_correctness` and
+`Shor_correct_approx_lowered_balanced_of_modExp_bound` are its certificate.
+
+**Run-time policy IR.** `forshor_policy_submission` extracts the policy IR
+itself, at run time, with the extractor `PolicyCheck.lean` used to run at
+build time, which hit the heartbeat wall on `k ≥ 4` tables. The IR templates
+do not depend on the width rule; only the width oracles' values do. Flags:
+
+| Flag | Effect |
+| --- | --- |
+| none | The policy as submitted, on the scan rule: upstream's document |
+| `--exact-widths` | The same bands on the exact rule; the evaluation tier compiles at exact widths, and `ir.width_rule` carries the rule a consumer evaluates `nextWidth` with |
+| `--balanced` | Implies `--exact-widths`; also runs the balanced tier, and prints the balanced document as `ir` and the policy's own as `ir_unbalanced` |
+| `--probe-exact` | Probe where the policy's own rule shrinks each table rather than where the scan does: deeper and much slower |
+| `--probe-scan` | Accepted, does nothing (it is the default) |
+| `--width-table` | Print the compiler's widths per band; not a submission document |
+
+The output's `extraction` field records the rule and the probe tier.
+
+What to trust, and how far:
+
+- The IR is checked against the compiled circuit at sampled widths, as
+  before. That is evaluation, not a theorem.
+- `exactWidthMemo` (`@[implemented_by]`) speeds up compiled evaluation on the
+  exact rule only. No kernel proof uses it; any `native_decide` that reaches
+  the exact width runs through it.
+- At run time the extractor memoises registry lookups and bounds each
+  comparison. One that exceeds its budget counts as no match, and the term is
+  translated structurally instead. The count is recorded as
+  `extraction.lookup_timeouts`, and the evaluation tier checks the result
+  either way. Build-time extraction (`extract_ir_doc`) is unchanged.
+
 ## Building
 
 The project uses Lean `v4.36.0-rc1` (pinned in `lean-toolchain`) and depends on [mathlib4](https://github.com/leanprover-community/mathlib4) at revision `4dc43842a11f257ffba2a611c943a133a65cb4b2`, pinned in both `lakefile.lean` and `lake-manifest.json`. `lake exe cache get` fetches the prebuilt oleans for that exact revision, so the pin is what makes the cache usable. With [elan](https://github.com/leanprover/elan) installed:
@@ -242,7 +302,8 @@ lake build EmitTests          # the emitter's native_decide acceptance suite
 lake build Submission         # checks the table and proofs in Submission/Template.lean
 lake exe forshor_submission
 lake build PolicySubmission   # the kernel-checked side conditions for Submission/PolicyTemplate.lean
-lake exe forshor_policy_submission   # the evaluation tier; prints policy.json only if it passes
+lake exe forshor_policy_submission   # extracts the IR, runs the evaluation tier; prints policy.json only if it passes
+lake build ExactWidthTests Balanced  # exact-width instances and fault challenge; the balanced split
 ```
 
 ## License

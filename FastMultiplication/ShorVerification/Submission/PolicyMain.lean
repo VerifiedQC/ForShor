@@ -1,5 +1,7 @@
 import FastMultiplication.ShorVerification.Submission.PolicyCheck
 import FastMultiplication.Emit.Json.Common
+import FastMultiplication.Emit.Symbolic.ExactWidthJson
+import FastMultiplication.Emit.Balanced.Verify
 
 /-!
 # `forshor_policy_submission`: what a policy submission hands over
@@ -8,20 +10,46 @@ Prints one `forshor.policy-submission/v1` JSON document on stdout: the bands
 in width order, the IR a resource estimator reads, the fixed precision, and
 the trial count the score is multiplied by.
 
-Unlike [`Main.lean`](Main.lean), this executable runs one check itself: the
-evaluation tier `Shor.Reflect.policySubmissionChecks`, evaluated natively
-before anything is printed. Everything else it reports as established was
-established by `lake build PolicySubmission`: C1–C4 per band by Lean's
-kernel on the proofs in `PolicyTemplate.lean`, the thresholds' strict
-decrease by `decide`, the absence of `native_decide`/`sorry` among them by
-`#assert_axioms`, and the extracted IR's well-formedness. So the CI line is
+Unlike [`Main.lean`](Main.lean), this executable extracts the IR and runs
+the evaluation tier itself, natively, before anything is printed.
+Everything else it reports as established was established by
+`lake build PolicySubmission`: C1–C4 per band by Lean's kernel on the proofs
+in `PolicyTemplate.lean`, the thresholds' strict decrease by `decide`, and the
+absence of `native_decide`/`sorry` among them by `#assert_axioms`. So the CI
+line is
 
 ```bash
 lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
 ```
 
 with `&&`: if any band is inadmissible the build fails and this never runs,
-and if the evaluation tier fails this prints nothing on stdout and exits `1`.
+and if the IR is not well formed or the evaluation tier fails this prints
+nothing on stdout and exits `1`.
+
+The IR is extracted at run time (compiled, heartbeat limit off) with the same
+extractor `PolicyCheck.lean` used to run at build time, which refused `k ≥ 5`
+tables and most multi-band policies.
+
+## Flags
+
+* none: the policy as submitted, on its width rule (the scan unless the
+  template sets `widthRule`), checked by `Shor.Reflect.policySubmissionChecks`.
+  The output's `ir` is the document upstream ForShor printed.
+* `--exact-widths`: the same bands on the exact width rule
+  (`WidthRule.exact`): the compiler grows each level's registers to the least
+  width holding every value the table reaches, and the `ir` gains
+  `width_rule` (the rule a consumer evaluates `nextWidth` with). The templates
+  are the same; the evaluation tier compiles the real circuit at exact widths.
+* `--probe-exact`: probe thresholds where the policy's own width rule shrinks
+  each table (`policySubmissionChecksOwnRuleProbe`) rather than where the scan
+  does. Deeper and much slower; the same checks on the same IR.
+* `--probe-scan`: accepted, does nothing (it is the default).
+* `--balanced`: implies `--exact-widths`; also runs the balanced tier, and
+  prints the balanced document as `ir` and the policy's own as `ir_unbalanced`.
+* `--width-table`: print the compiler's widths per band on the chosen rule
+  (not a submission document; no extraction, no checks).
+
+`extraction` in the output records the rule and the probe tier that ran.
 
 ## What the `ir` field holds
 
@@ -76,26 +104,30 @@ def benchmarkTrialCount : ℕ := _root_.Shor.submissionTrialCount benchmarkModul
 number and JSON consumers routinely parse numbers as doubles. -/
 def natStr (n : ℕ) : Json := Json.str (toString n)
 
+/-- Width range of the `ir.width_rule` tables (covers every phase-product and
+QFT width of the 2048-bit reference run; other widths: the rows and formula). -/
+def widthTableMax : ℕ := 2560
+
 /-- One band: the width it takes over at, its table, and the advisory shrink
 flag for the range it covers. `index` is the band's position in the policy,
 which is what `Shor.Policy.bandShrinks` is keyed on. -/
-def bandJson (i : ℕ) (b : ℕ × ShorLoweringSetup) : Json :=
+def bandJson (s : ShorPolicySubmission) (i : ℕ) (b : ℕ × ShorLoweringSetup) : Json :=
   Json.mkObj [
     ("index", (i : Json)),
     ("threshold", (b.1 : Json)),
     ("k", (b.2.k : Json)),
     ("points", Json.arr (b.2.pts.map _root_.Shor.pointJson).toArray),
     ("ops", _root_.Shor.progJson b.2.ops),
-    ("shrinks", Json.bool (_root_.Shor.Policy.bandShrinks policy.policy i))
+    ("shrinks", Json.bool (_root_.Shor.Policy.bandShrinks s.policy i))
   ]
 
-def policySubmissionJson : Json :=
+def policySubmissionJson (s : ShorPolicySubmission) (doc : _root_.Shor.IR.Doc) : Json :=
   Json.mkObj [
     ("schema", Json.str "forshor.policy-submission/v1"),
-    ("bands", Json.arr (policy.bands.zipIdx.map (fun p => bandJson p.2 p.1)).toArray),
+    ("bands", Json.arr (s.bands.zipIdx.map (fun p => bandJson s p.2 p.1)).toArray),
     ("leaf", Json.str
       s!"widths below the last threshold use the schoolbook leaf; with these bands that is \
-         n < {(policy.bands.map Prod.fst).getLast?.getD 0}"),
+         n < {(s.bands.map Prod.fst).getLast?.getD 0}"),
     ("precision", Json.mkObj [
       ("m", natStr _root_.Shor.submissionPrecision),
       ("m_expr", Json.str "2^150 - 3 (Reference.m2048)"),
@@ -158,21 +190,156 @@ def policySubmissionJson : Json :=
        trusted: translation table and Lean normalisation; checked: instantiate = real term \
        at the listed widths; not a theorem. The dispatcher is built from the policy's own \
        bands rather than extracted, and is proved to agree with ShorLoweringPolicy.choose."),
-    ("ir", _root_.Shor.IR.docJson doc)
+    ("ir", match s.widthRule with
+      | .scan => _root_.Shor.IR.docJson doc
+      | .exact => (_root_.Shor.IR.docJson doc).mergeObj
+          (Json.mkObj [("width_rule", _root_.Shor.policyWidthRuleJson s widthTableMax)]))
   ]
 
 end PolicySubmission
 
-/-- The evaluation tier runs here, natively, before anything is printed. A
-failing submission prints nothing on stdout and exits 1, so
+open Lean Meta in
+/-- Constants `isDefEq`/`whnf` must not unfold during run-time extraction.
+
+The extractor translates each of these *by name* into an opaque IR call
+(`nextWidth`, `reserveNeed_x/z`, …) before any reduction
+(`Emit/Reflect/Extract.lean`, `translateW`). But `Registry.lookupWidth` /
+`lookupReg` compare candidate terms by `isDefEq`, and a failing comparison
+unfolds them: on a concrete `k = 4..6` table that is a symbolic evaluation of
+the width scan over every operation, through `match` reduction (the heartbeat
+wall; profiled: `whnfEasyCases`/`reduceMatcher` under `lookupWidth`). Keeping
+them folded makes `isDefEq` decide by their arguments, which is what the
+by-name translation assumes anyway. -/
+def extractOpaqueNames : List Name :=
+  [``Shor.scanNeededWidths, ``Shor.scanNeededWidthsAux, ``Shor.nextSignedWidth,
+   ``Shor.commonNeededWidth, ``Shor.updateWidthState, ``Shor.mergeNeededWidths,
+   ``Shor.RecursivePhaseWorkspace.nextWidth, ``Shor.RecursivePhaseWorkspace.reserveNeed,
+   ``Shor.Policy.reserveNeed, ``Shor.neededWidthsBy, ``Shor.nextSignedWidthBy,
+   ``Shor.RecursivePhaseWorkspace.nextWidthBy, ``Shor.RecursivePhaseWorkspace.immediateNeedBy]
+
+open Lean Meta in
+def extractCanUnfold (cfg : Meta.Config) (info : ConstantInfo) : CoreM Bool := do
+  if extractOpaqueNames.contains info.name then return false
+  canUnfoldDefault cfg info
+
+open Lean Meta in
+/-- The IR, extracted at run time: the same extractor (`Shor.Reflect.buildPolicyDoc`)
+`PolicyCheck.lean` used to run at build time, compiled, with the heartbeat
+limit off and bounded registry lookups, against the environment of the oleans
+`lake build PolicySubmission` produced. It reads the template's policy as
+submitted; the templates do not depend on the width rule (only the width
+oracles' values do). -/
+unsafe def extractPolicyDoc : IO (Except String _root_.Shor.IR.Doc) := do
+  try
+    enableInitializersExecution
+    _root_.Shor.Reflect.enableBoundedLookups
+    initSearchPath (← findSysroot)
+    let env ← importModules #[{module := `FastMultiplication.ShorVerification.Submission.PolicyCheck}] {}
+      (trustLevel := 0) (loadExts := true)
+    let coreCtx : Core.Context :=
+      { fileName := "<extract_policy_ir>", fileMap := FileMap.ofString "", maxHeartbeats := 0 }
+    let polE := mkApp (mkConst ``_root_.Shor.ShorPolicySubmission.policy)
+      (mkConst ``_root_.PolicySubmission.policy)
+    let metaCtx : Meta.Context := { customCanUnfoldPredicate? := some extractCanUnfold }
+    let (doc, _) ← ((_root_.Shor.Reflect.buildPolicyDoc _root_.PolicySubmission.policy polE).run' metaCtx).toIO
+      coreCtx { env := env }
+    return .ok doc
+  catch e =>
+    return .error (toString e)
+
+/-- The balanced splice (`Emit/Balanced/`): `ir` := the balanced document
+(`shor` retargeted to `balanced_(c)phase_product`), `ir_unbalanced` := the
+policy's own document, both carrying `width_rule`; `balanced` := rule,
+theorems, the balanced evaluation tier's record. -/
+def balancedFields (s : ShorPolicySubmission) (doc : _root_.Shor.IR.Doc)
+    (sites : List (Bool × ℕ × ℕ × Bool)) : List (String × Json) :=
+  let wr := Json.mkObj [("width_rule", _root_.Shor.policyWidthRuleJson s _root_.PolicySubmission.widthTableMax)]
+  let siteJson (r : Bool × ℕ × ℕ × Bool) : Json :=
+    Json.mkObj [("agrees", Json.bool r.1), ("xw", (r.2.1 : Json)), ("zw", (r.2.2.1 : Json)),
+      ("split_taken", Json.bool r.2.2.2)]
+  [("ir", (_root_.Shor.IR.docJson (_root_.Shor.IR.Balanced.balanceDoc doc)).mergeObj wr),
+   ("ir_unbalanced", (_root_.Shor.IR.docJson doc).mergeObj wr),
+   ("balanced", Json.mkObj [
+      ("rule", Json.str "Shor.Balanced.defaultRule: s = min width, L = max width; if s < 2 or L = s: unchanged; if 2L <= 3s: pad the small operand to L (one product at L x L); else B = ceil(L/s) blocks, B-1 low blocks of width s-1 zero-extended to t, top block L-(B-1)(s-1), all products at t = max s top, block i at angle phi*2^(i(s-1)); applied only if fitsB (existing reserves suffice), else the original site"),
+      ("correctness", Json.str "Shor.Balanced.Policy.lowerGate_balance_correctness, Shor.Balanced.balancedShorImplementation (kernel-checked, generic in the policy)"),
+      ("ir_agreement", Json.str "Shor.Reflect.Balanced.balancedChecks (evaluation, not a theorem)"),
+      ("widths", Json.str "the equal-width core runs at the post-balance operand widths, so nextWidth (exact) is evaluated there"),
+      ("sites_2048", Json.arr (sites.map siteJson).toArray)])]
+
+/-- `--width-table`: no extraction, no checks; the compiler's own widths on the
+submission's width rule, for a consumer's cross-check (NOT a submission
+document): per band `nextWidthBy` and the policy's `reserveNeed` on the
+diagonal `1..4400`, at `qft`'s split pairs `(v/2+1, v-v/2+1)` for `v ≤ 4400`,
+and at the rectangular sites of the 2048-bit reference run. -/
+def widthTableJson (s : ShorPolicySubmission) : Json :=
+  let rect : List (ℕ × ℕ) := [(2049, 2348), (2348, 2050), (2348, 4399), (2050, 2348), (2348, 2049), (4399, 2348)]
+  let qftPairs := (List.range 4400).map fun i => let v := i + 1; (v / 2 + 1, v - v / 2 + 1)
+  let diag := (List.range 4400).map fun i => (i + 1, i + 1)
+  let row (p : ℕ × ℕ) : Json :=
+    let need := Policy.reserveNeed s.policy p.1 p.2
+    Json.arr (#[(p.1 : Json), (p.2 : Json)] ++
+      (s.bands.map fun b => (RecursivePhaseWorkspace.nextWidthBy s.widthRule b.2.ops p.1 p.2 : Json)).toArray ++
+      #[(need.1 : Json), (need.2 : Json)])
+  Json.mkObj [("schema", Json.str "forshor.width-table/v1 (not a submission)"),
+    ("width_rule", Json.str (match s.widthRule with | .scan => "scan" | .exact => "exact")),
+    ("columns", Json.str "xw, zw, nextWidth per band (band order), reserveNeed_x, reserveNeed_z"),
+    ("bands", Json.arr (s.bands.map fun b => Json.mkObj [("threshold", (b.1 : Json)), ("k", (b.2.k : Json)),
+      ("ops", _root_.Shor.progJson b.2.ops)]).toArray),
+    ("rows", Json.arr ((diag ++ qftPairs ++ rect).map row).toArray)]
+
+/-- Extract the IR, check it (well-formedness, then the evaluation tier; with
+`--balanced` also the balanced tier), and print only a document that passed.
+A failing submission prints nothing on stdout and exits 1, so
 `lake build PolicySubmission && lake exe forshor_policy_submission > policy.json`
 produces a document only for a submission that passed every check. -/
-def main : IO UInt32 := do
-  if _root_.Shor.Reflect.policySubmissionChecks _root_.PolicySubmission.policy _root_.PolicySubmission.doc then
-    IO.eprintln "forshor_policy_submission: evaluation tier passed"
-    IO.println _root_.PolicySubmission.policySubmissionJson.compress
+unsafe def main (args : List String) : IO UInt32 := do
+  let balanced := args.contains "--balanced"
+  let exact := balanced || args.contains "--exact-widths"
+  -- `--probe-scan` is accepted and does nothing: scan-threshold probes are the default
+  let probeOwnRule := args.contains "--probe-exact"
+  -- both are top-level constants, so compiled code shares one object per
+  -- policy and the evaluation-only memos (keyed on its address) hit
+  let s : ShorPolicySubmission :=
+    if exact then _root_.PolicySubmission.policyExact else _root_.PolicySubmission.policy
+  if args.contains "--width-table" then
+    IO.println (widthTableJson s).compress
     return 0
-  else
-    IO.eprintln "forshor_policy_submission: evaluation tier FAILED \
-      (Shor.Reflect.policySubmissionChecks policy doc = false); no policy.json printed"
-    return 1
+  let t0 ← IO.monoMsNow
+  match ← extractPolicyDoc with
+  | .error e =>
+      IO.eprintln s!"forshor_policy_submission: IR extraction FAILED: {e}; no policy.json printed"
+      return 1
+  | .ok doc =>
+    let t1 ← IO.monoMsNow
+    let nto ← _root_.Shor.Reflect.lookupTimeouts.get
+    IO.eprintln s!"forshor_policy_submission: IR extracted at run time in {t1 - t0} ms; bounded registry lookups that timed out: {nto}"
+    if !(_root_.Shor.IR.Doc.wellFormed doc) then
+      IO.eprintln "forshor_policy_submission: extracted IR is NOT well formed; no policy.json printed"
+      return 1
+    let tierOK := if probeOwnRule then _root_.Shor.Reflect.policySubmissionChecksOwnRuleProbe s doc
+      else _root_.Shor.Reflect.policySubmissionChecks s doc
+    if !tierOK then
+      let tier := if probeOwnRule then "policySubmissionChecksOwnRuleProbe" else "policySubmissionChecks"
+      IO.eprintln s!"forshor_policy_submission: evaluation tier FAILED \
+        (Shor.Reflect.{tier} policy doc = false); no policy.json printed"
+      return 1
+    let t2 ← IO.monoMsNow
+    IO.eprintln s!"forshor_policy_submission: evaluation tier passed in {t2 - t1} ms"
+    let base := (_root_.PolicySubmission.policySubmissionJson s doc).mergeObj (Json.mkObj
+        [("extraction", Json.mkObj [("where", Json.str "run time, compiled"),
+          ("width_rule", Json.str (if exact then "exact (--exact-widths)" else "scan")),
+          ("lookup_timeouts", (nto : Json)),
+          ("probe_thresholds", Json.str (if probeOwnRule then "where the policy's own width rule shrinks each table (--probe-exact)"
+             else "where the scan shrinks each table (the default)")),
+          ("note", Json.str "a timed-out registry isDefEq counts as no match and falls back to structural translation; the evaluation tier above checked the result")])])
+    if balanced then
+      let (ok, sites) := _root_.Shor.Reflect.Balanced.balancedChecks s doc
+      let t3 ← IO.monoMsNow
+      if !ok then
+        IO.eprintln s!"forshor_policy_submission: balanced tier FAILED; no policy.json printed"
+        return 1
+      IO.eprintln s!"forshor_policy_submission: balanced tier passed in {t3 - t2} ms"
+      IO.println (base.mergeObj (Json.mkObj (balancedFields s doc sites))).compress
+    else
+      IO.println base.compress
+    return 0
