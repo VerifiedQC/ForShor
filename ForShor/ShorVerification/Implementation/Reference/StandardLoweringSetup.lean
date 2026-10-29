@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
+import ForShor.ShorVerification.Implementation.Shor.Statement
 import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
 import ForShor.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Programs.WithProduct
 import ForShor.ShorVerification.Implementation.GateCount.PhaseProduct.Lemmas

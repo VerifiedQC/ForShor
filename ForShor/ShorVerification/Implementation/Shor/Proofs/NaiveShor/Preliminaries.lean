@@ -1,8 +1,8 @@
-import ForShor.ShorVerification.Implementation.Shor.Math.OrderFindingAnalysis
+import ForShor.ShorVerification.Implementation.Shor.Proofs.NaiveShor.OrderFindingAnalysis
 import ForShor.ShorVerification.Implementation.Shared.Registers
 import ForShor.ShorVerification.Implementation.Shared.States
 import ForShor.ShorVerification.Framework.Quantum.Measurement
-import ForShor.ShorVerification.Implementation.Shor.Spec.Contract
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
 
 /-!
@@ -66,7 +66,7 @@ lemma goodOutcome_r_found_one
   let r : ℕ :=
     ord inst.a inst.N inst.coprime
 
-  let verify : OrderVerifier :=
+  let verify : ℕ → Bool :=
     fun d => decide ((inst.a ^ d) % inst.N = 1)
 
   have hgood' : GoodOutcome o Q r := by
@@ -82,10 +82,6 @@ lemma goodOutcome_r_found_one
         (Nat.succ_le_of_lt inst.range.1)
         inst.range.2
 
-  have hrcandidate :
-      r ∈ orderCandidates T o Q :=
-    GoodOutcome.order_mem_candidates T hT hgood'
-
   have hrpow :
       (inst.a ^ r) % inst.N = 1 := by
     dsimp [r]
@@ -97,16 +93,15 @@ lemma goodOutcome_r_found_one
     simp [verify, hrpow]
 
   have hrverified :
-      r ∈ verifiedOrderCandidates T verify o Q :=
-    mem_verifiedOrderCandidates
-      T verify hrcandidate hrpos hrverify
+      r ∈ orderCandidates T verify o Q :=
+    GoodOutcome.order_mem_candidates T hT verify hgood' hrpos hrverify
 
   have hleast :
-      ∀ d ∈ verifiedOrderCandidates T verify o Q,
+      ∀ d ∈ orderCandidates T verify o Q,
         r ≤ d := by
     intro d hd
 
-    rw [verifiedOrderCandidates, Finset.mem_filter] at hd
+    rw [orderCandidates, Finset.mem_filter] at hd
 
     have hdpos : 0 < d :=
       hd.2.1
@@ -445,7 +440,7 @@ lemma measProbAfter_nonneg
 /-- The classical success indicator is always nonnegative. -/
 lemma r_found_nonneg
     (T : ℕ → ℕ)
-    (verify : OrderVerifier)
+    (verify : ℕ → Bool)
     (o Q r : ℕ) :
     0 ≤ r_found T verify o Q r := by
   unfold r_found

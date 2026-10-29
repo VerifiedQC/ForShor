@@ -1,6 +1,6 @@
 import Lean
 import ForShor.Emit.Reflect.Extract
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
+import ForShor.ShorVerification.Implementation.Shor.Statement
 
 /-!
 # The extraction targets

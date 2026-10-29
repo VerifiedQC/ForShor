@@ -14,8 +14,8 @@ namespace Shor
 /-- Main modular-exponentiation correctness theorem, packaged as the public
 assertion.
 
-The constant bound `K ≤ 2048` travels with the existential because a caller
-that wants a *concrete* `K` needs it: `Reference`'s `referenceK = 2048` is
+The constant bound `K ≤ 1600` travels with the existential because a caller
+that wants a *concrete* `K` needs it: `Reference`'s `referenceK = 1600` is
 justified by exactly this, by monotonicity of `stepErr` in `K`. -/
 theorem modExpApprox_correct
     (qs : QSemantics)
@@ -28,12 +28,12 @@ theorem modExpApprox_correct
 
 /-- The uniform bound at the explicit constant, packaged as the public
 assertion. This is the one a caller that must choose a precision needs. -/
-theorem modExpApprox_correct_2048
+theorem modExpApprox_correct_1600
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
  :
-    ModExpApproxValidDist2048 qs :=
-  modExpApprox_valid_dist_2048 qs
+    ModExpApproxValidDist1600 qs :=
+  modExpApprox_valid_dist_1600 qs
 
 end Shor

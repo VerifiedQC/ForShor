@@ -104,7 +104,7 @@ theorem modMul_approx_valid_dist_uniform
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
  :
-    ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧ ∀ (η : ℝ) (cfg : ModMulConfig η) (ψ : qs.State),
+    ∃ K : ℝ, 0 ≤ K ∧ K ≤ 1600 ∧ ∀ (η : ℝ) (cfg : ModMulConfig η) (ψ : qs.State),
       ModMulConfig.ValidUnitState qs cfg ψ →
       ‖qs.eval (ModMulConfig.approxGate cfg) ψ - qs.eval (ModMulConfig.idealGate cfg) ψ‖ ≤ stepErr K η := by
   classical
@@ -132,7 +132,7 @@ theorem modMul_approx_valid_dist_uniform
   refine ⟨3 * (K₁ + K₂ + K₅), ?_, ?_, ?_⟩
   · nlinarith [hK₁, hK₂, hK₅]
   · -- `3*(Cpe/2 + Cstep2/2 + Cpe/2) = 3*Cpe + 1.5*Cstep2
-    --    ≤ 3*512 + 1.5*(2π+2π²) ≈ 1575.03 ≤ 2048`, using `π < 3.15`.
+    --    ≤ 3*512 + 1.5*(2π+2π²) ≈ 1575.03 ≤ 1600`, using `π < 3.15`.
     have hpi : Real.pi < 3.15 := Real.pi_lt_d2
     dsimp [K₁, K₂, K₅]
     nlinarith [hCpe_le, hCstep2_le, hpi, Real.pi_pos]

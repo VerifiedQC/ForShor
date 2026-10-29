@@ -1,5 +1,5 @@
 import ForShor.ShorVerification.Implementation.Reference.ReferenceLayout
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
+import ForShor.ShorVerification.Implementation.Shor.Statement
 
 namespace Shor
 namespace Reference
@@ -140,35 +140,11 @@ def referenceApproxSetupMinimal
       (RegEncoding.zero (Basis := qs.Basis)) := by
   refine
     {
-      data_can_grow_two :=
-        reference_data_canGrow_two P inst m
-
-      work_can_grow_one :=
-        reference_work_canGrow_one P inst m
-
       step4_workspace :=
         reference_step4Workspace P inst m
 
       exponent_data_disjoint :=
         reference_exponent_data_disjoint P inst m
-
-      exponent_scratch_disjoint :=
-        reference_exponent_scratch_disjoint P inst m
-
-      data_work_disjoint :=
-        reference_data_work_disjoint P inst m
-
-      flag_outside_data :=
-        reference_flag_outside_data P inst m
-
-      flag_outside_work :=
-        reference_flag_outside_work P inst m
-
-      controls_outside_work :=
-        reference_controls_outside_work P inst m
-
-      flag_outside_controls :=
-        reference_flag_outside_controls P inst m
 
       algorithm1_precision :=
         reference_algorithm1Precision
@@ -182,28 +158,13 @@ def referenceApproxSetupMinimal
         toNat_ground_zero
           (referenceData P inst m).active
 
-      data_fresh :=
-        freshFor_ground_zero
-          (referenceData P inst m)
-          2
-
       work_zero :=
         toNat_ground_zero
           (referenceWork P inst m).active
 
-      work_fresh :=
-        freshFor_ground_zero
-          (referenceWork P inst m)
-          1
-
       scratch_zero :=
         toNat_ground_zero
           (referenceScratch P inst m).active
-
-      scratch_fresh :=
-        freshFor_ground_zero
-          (referenceScratch P inst m)
-          1
 
       flag_zero :=
         toNat_ground_zero
@@ -345,8 +306,6 @@ canonical `RegEncoding.zero` initial state.
 def referenceLayout_ready
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    [LowerGateClass qs]
     (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) :

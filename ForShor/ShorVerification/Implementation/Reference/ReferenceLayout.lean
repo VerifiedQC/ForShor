@@ -1,6 +1,7 @@
-import ForShor.ShorVerification.Implementation.Shor.Circuit.Workspace
+import ForShor.ShorVerification.Implementation.Shor.Statement
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
-import ForShor.ShorVerification.Implementation.Shor.Spec.Contract
+import ForShor.ShorVerification.Implementation.Shor.Main
+import ForShor.ShorVerification.Implementation.Reference.Contract
 import ForShor.ShorVerification.Implementation.Reference.ReferencePrecision
 
 namespace Shor

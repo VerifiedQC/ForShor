@@ -1,5 +1,6 @@
 import ForShor.Emit.Json.Common
-import ForShor.ShorVerification.Implementation.Shor.Spec.Contract
+import ForShor.ShorVerification.Implementation.Shor.Main
+import ForShor.ShorVerification.Implementation.Reference.Contract
 
 /-!
 # `LowGate` JSON printer

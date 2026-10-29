@@ -245,7 +245,7 @@ def GoodToomCookPoints (k : ℕ) (pts : List Point) (hpts : pts.length = q k) : 
   ToomCookMath.GoodInterpolationPoints (row := interpEntry k) (pts := ToomCookMath.listToFin pts hpts)
 
 /-! =========================================================
-    The submission (`Implementation/Shor/Spec/Setup.lean`)
+    The submission (`Implementation/Shor/Statement.lean`)
 ========================================================= -/
 
 /-- A Toom-Cook table and the assumptions the lowered Shor statements need

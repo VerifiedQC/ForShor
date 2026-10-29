@@ -1,6 +1,5 @@
-import ForShor.ShorVerification.Implementation.Shor.Circuit.OrderFinding
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Lowering
+import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Compiler.Main
 import ForShor.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.ConstArithmetic
@@ -14,7 +13,6 @@ import ForShor.ShorVerification.Implementation.Shared.Registers
 import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Sequencing
 
 /-!
@@ -872,7 +870,7 @@ theorem lowered_step3_ready_and_clean
   constructor
   · exact hgateClean
   · rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs
         P
         hP

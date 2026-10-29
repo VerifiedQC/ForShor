@@ -1,10 +1,9 @@
 import ForShor.ShorVerification.Implementation.GateCount.QFT_GateCount
 import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
-import ForShor.ShorVerification.Implementation.Shor.Circuit.OrderFinding
-import ForShor.ShorVerification.Implementation.Shor.Spec.Contract
+import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Shor.Main
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Lowering
+import ForShor.ShorVerification.Implementation.Compiler.Main
 
 namespace Shor
 open Operations
@@ -94,7 +93,7 @@ appear in the *conclusion*, not because they are unused: they fix the two
 register widths, and `shorGateCountBound_of_components` feeds them to
 `ShorApproxSetup.toShorGateCountLayout`. Deleting them does not typecheck.
 The same reading applies to the underscored binders in
-`Shor/Spec/Assertions.lean`.
+`Shor/Statement.lean`.
 -/
 def ShorGateCountBound
     (qs : QSemantics)

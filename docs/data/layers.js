@@ -17,6 +17,9 @@ window.LAYERS = {
    "ModularExponentiation"
   ],
   [
+   "Compiler"
+  ],
+  [
    "Shor"
   ],
   [
@@ -90,11 +93,38 @@ window.LAYERS = {
    "kind": "secondary"
   },
   {
-   "from": "Shor",
+   "from": "PhaseProduct",
+   "to": "Compiler",
+   "kind": "secondary"
+  },
+  {
+   "from": "QFT",
+   "to": "Compiler",
+   "kind": "secondary"
+  },
+  {
+   "from": "ModularExponentiation",
+   "to": "Compiler",
+   "kind": "secondary"
+  },
+  {
+   "from": "Compiler",
+   "to": "Shor",
+   "kind": "primary",
+   "label": "Policy.lowerGate",
+   "theorem": "Policy.lowerGate_correct"
+  },
+  {
+   "from": "Compiler",
    "to": "GateCount",
    "kind": "primary",
-   "label": "the program being counted",
-   "theorem": "Policy.lowerGate_correctness"
+   "label": "the lowering being counted",
+   "theorem": "Policy.lowerGate_correct"
+  },
+  {
+   "from": "Shor",
+   "to": "GateCount",
+   "kind": "secondary"
   },
   {
    "from": "PhaseProduct",
@@ -117,7 +147,7 @@ window.LAYERS = {
    "side": "right",
    "lane": 0,
    "label": "lowered correctness",
-   "theorem": "Shor_correct_approx_lowered_of_modExp_bound_assertion"
+   "theorem": "Shor_correct_approx_lowered_uniform"
   },
   {
    "from": "Framework",
@@ -152,17 +182,17 @@ window.LAYERS = {
   },
   {
    "from": "Framework",
+   "to": "Compiler",
+   "files": 2
+  },
+  {
+   "from": "Framework",
    "to": "Shor",
-   "files": 12
+   "files": 6
   },
   {
    "from": "Framework",
    "to": "GateCount",
-   "files": 3
-  },
-  {
-   "from": "Framework",
-   "to": "Reference",
    "files": 2
   },
   {
@@ -188,7 +218,7 @@ window.LAYERS = {
   {
    "from": "PhaseProduct",
    "to": "QFT",
-   "files": 23
+   "files": 20
   },
   {
    "from": "PhaseProduct",
@@ -197,8 +227,13 @@ window.LAYERS = {
   },
   {
    "from": "PhaseProduct",
+   "to": "Compiler",
+   "files": 8
+  },
+  {
+   "from": "PhaseProduct",
    "to": "Shor",
-   "files": 27
+   "files": 20
   },
   {
    "from": "PhaseProduct",
@@ -217,18 +252,28 @@ window.LAYERS = {
   },
   {
    "from": "QFT",
+   "to": "Compiler",
+   "files": 2
+  },
+  {
+   "from": "QFT",
    "to": "Shor",
-   "files": 11
+   "files": 7
   },
   {
    "from": "QFT",
    "to": "GateCount",
+   "files": 1
+  },
+  {
+   "from": "ModularExponentiation",
+   "to": "Compiler",
    "files": 3
   },
   {
    "from": "ModularExponentiation",
    "to": "Shor",
-   "files": 50
+   "files": 42
   },
   {
    "from": "ModularExponentiation",
@@ -241,14 +286,24 @@ window.LAYERS = {
    "files": 4
   },
   {
+   "from": "Compiler",
+   "to": "Shor",
+   "files": 9
+  },
+  {
+   "from": "Compiler",
+   "to": "GateCount",
+   "files": 1
+  },
+  {
    "from": "Shor",
    "to": "GateCount",
-   "files": 4
+   "files": 3
   },
   {
    "from": "Shor",
    "to": "Reference",
-   "files": 6
+   "files": 8
   },
   {
    "from": "GateCount",
@@ -268,8 +323,8 @@ window.LAYERS = {
    "snippets": [
     {
      "name": "ShorImplementation",
-     "file": "Implementation/Shor/Spec/Contract.lean",
-     "line": 129,
+     "file": "Implementation/Reference/Contract.lean",
+     "line": 80,
      "code": "structure ShorImplementation : Type where\n  -- (field docstrings omitted here; see the source)\n\n  program : ShorOrderFindingInstance → ShorOrderFindingProgram\n\n  successProbability : ℕ → ℝ\n\n  correct :\n    ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →\n    ∀ (inst : ShorOrderFindingInstance),\n      0 ≤ successProbability inst.N ∧ successProbability inst.N ≤ 1 ∧\n      successProbability inst.N ≤\n        probability_of_success\n          (qs := qs)\n          (evalC := LowerGateClass.evalL (qs := qs))\n          (T := T)\n          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))\n          (x := (program inst).output)\n          (r := ord inst.a inst.N inst.coprime)\n          (Q := ASize (program inst).output)\n          (C := (program inst).circuit)\n          (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))\n\n  trialCount :\n    ℕ → ℕ\n\n  trialCount_correct :\n    ∀ N : ℕ,\n      Is2048Bit N →\n        (99 / 100 : ℝ) ≤ 1 - (1 - successProbability N) ^ (trialCount N)",
      "note": "The contract. <code>correct</code> says the declared probability is a lower bound on the real one for the submitted circuit, evaluated by <code>LowerGateClass</code>, for every valid instance."
     }
@@ -323,7 +378,7 @@ window.LAYERS = {
     {
      "name": "lowerQFT_correct",
      "file": "Implementation/QFT/Main.lean",
-     "line": 17,
+     "line": 15,
      "code": "theorem lowerQFT_correct\n    (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]\n    (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : ExtReg) :\n    LowerQFTCorrect qs k hk ops r := by",
      "note": "Same shape as the phase-product theorem, and for the same reason: the QFT is built on the phase product, so it inherits its parameters <code>k</code> and <code>ops</code>."
     }
@@ -336,7 +391,7 @@ window.LAYERS = {
    "fsPath": "Implementation/ModularExponentiation",
    "files": 22,
    "decls": 422,
-   "summary": "<p>Algorithm 1: in-place classical-quantum modular multiplication and, recursing over the exponent register, modular exponentiation, built from QFT-based phase products and an inverse-QFT comparator. The circuit is approximate, with a per-step precision <code>η</code>, so its theorem is a distance bound rather than an equation: on every valid state, the approximate gate is within <code>tbits · stepErr K η</code> of the ideal one, with a single constant <code>K ≤ 2048</code> that does not depend on <code>η</code>. That uniformity is exactly what the next layer needs to turn a distance into a success probability.</p><p>The folder reads <code>Math &lt; Circuit &lt; Lowering &lt; Spec &lt; Proofs &lt; Main</code>.</p>",
+   "summary": "<p>Algorithm 1: in-place classical-quantum modular multiplication and, recursing over the exponent register, modular exponentiation, built from QFT-based phase products and an inverse-QFT comparator. The circuit is approximate, with a per-step precision <code>η</code>, so its theorem is a distance bound rather than an equation: on every valid state, the approximate gate is within <code>t · stepErr K η</code> of the ideal one, with <code>t</code> the width of the exponent register, with a single constant <code>K ≤ 1600</code> that does not depend on <code>η</code>. That uniformity is exactly what the next layer needs to turn a distance into a success probability.</p><p>The folder reads <code>Math &lt; Circuit &lt; Lowering &lt; Spec &lt; Proofs &lt; Main</code>.</p>",
    "snippets": [
     {
      "name": "modExpApprox_correct",
@@ -349,9 +404,40 @@ window.LAYERS = {
      "name": "ModExpApproxValidDistUniform",
      "file": "Implementation/ModularExponentiation/Spec/Assertions.lean",
      "line": 21,
-     "code": "def ModExpApproxValidDistUniform\n    (qs : QSemantics)\n    [RegEncoding qs.Basis]\n    [GateSemanticsFacts qs]\n: Prop :=\n  ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧\n    ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),\n      ModExpConfig.ValidUnitState qs cfg ψ →\n      ‖qs.eval (ModExpConfig.approxGate cfg) ψ -\n        qs.eval (ModExpConfig.idealGate qs cfg) ψ‖\n        ≤ (tbits cfg.x : ℝ) * stepErr K η",
+     "code": "def ModExpApproxValidDistUniform\n    (qs : QSemantics)\n    [RegEncoding qs.Basis]\n    [GateSemanticsFacts qs]\n: Prop :=\n  ∃ K : ℝ, 0 ≤ K ∧ K ≤ 1600 ∧\n    ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),\n      ModExpConfig.ValidUnitState qs cfg ψ →\n      ‖qs.eval (ModExpConfig.approxGate cfg) ψ -\n        qs.eval (ModExpConfig.idealGate qs cfg) ψ‖\n        ≤ (tbits cfg.x : ℝ) * stepErr K η",
      "note": "What the theorem asserts, unfolded. <code>Spec/</code> states the claims and <code>Proofs/</code> discharges them; the pattern repeats in every subroutine folder."
     }
+   ]
+  },
+  "Compiler": {
+   "title": "Compiler",
+   "role": "the lowering from Gate to LowGate",
+   "view": "Compiler",
+   "fsPath": "Implementation/Compiler",
+   "files": 4,
+   "decls": 11,
+   "summary": "<p>Lowering. <code>Compiler/</code> turns a <code>Gate</code> circuit into a <code>LowGate</code> program: <code>Policy.lowerGate</code> sends each QFT, phase-product and modular-arithmetic block to its subroutine's lowerer, given a proof <code>Policy.GateWorkspaceOK</code> that every such block has the workspace its lowerer needs. <code>Policy.lowerGate_correct</code> says that for an admissible policy the lowered program acts on a clean state exactly as the <code>Gate</code> does. The circuit the next layers count is this lowering of Shor's circuit.</p><p>The folder reads <code>Statement &lt; Proofs &lt; Main</code>, and <code>Main.lean</code> is the only route out of it.</p>",
+   "snippets": [
+    {
+     "name": "Policy.LowerGateCorrect",
+     "file": "Implementation/Compiler/Statement.lean",
+     "line": 118,
+     "code": "def Policy.LowerGateCorrect (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]\n    [LowerGateClass qs] (P : ShorLoweringPolicy) : Prop :=\n  P.Admissible →\n    ∀ (G : Gate) (hworkspace : Policy.GateWorkspaceOK P G) (ψ : qs.State),\n      Policy.GateWorkspaceCleanState qs P G hworkspace ψ →\n      ⟦Policy.lowerGate P G hworkspace⟧ₗ ψ = ⟦G⟧ ψ",
+     "note": "The claim: the lowered program of a gate with enough workspace acts on a clean state exactly as the gate does."
+    },
+    {
+     "name": "Policy.lowerGate_correct",
+     "file": "Implementation/Compiler/Main.lean",
+     "line": 15,
+     "code": "theorem Policy.lowerGate_correct\n    (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]\n    (P : ShorLoweringPolicy) :\n    Policy.LowerGateCorrect qs P :=",
+     "note": null
+    }
+   ],
+   "layers": [
+    "Compiler",
+    "PhaseProduct",
+    "QFT",
+    "ModularExponentiation"
    ]
   },
   "Shor": {
@@ -360,36 +446,29 @@ window.LAYERS = {
    "view": "Shor",
    "fsPath": "Implementation/Shor",
    "files": 29,
-   "decls": 287,
-   "summary": "<p>Assembly. <code>Shor/</code> puts the three subroutines together into the approximate order-finding circuit and proves Shor's algorithm correct. <code>Shor_correct</code> is the ideal bound: with an exact modular-multiplication oracle, the circuit followed by continued-fraction post-processing returns the order with probability at least <code>κ / log(log₂ N + 1)</code>. <code>Shor_correct_approx_lowered</code> carries that bound through the approximation and through lowering to the <code>LowGate</code> program, up to a factor of two once <code>η</code> is fixed.</p><p><code>Lowering/</code> holds <code>lowerGate</code>, the whole-program lowerer that dispatches a source <code>Gate</code> to the three subroutine lowerers, and <code>Policy.lowerGate_correctness</code> says the lowered program evaluates exactly like the <code>Gate</code> it came from. Hold on to that theorem: the circuit it is about is the circuit the next layer counts. The folder reads <code>Math &lt; Lowering &lt; Circuit &lt; Spec &lt; Proofs &lt; Main</code>, and <code>Main.lean</code> is the only route out of it.</p>",
+   "decls": 357,
+   "summary": "<p>Assembly. <code>Shor/</code> puts the three subroutines together into the approximate order-finding circuit and proves Shor's algorithm correct. <code>Shor_correct</code> is the ideal bound: with an exact modular-multiplication oracle, the circuit followed by continued-fraction post-processing returns the order with probability at least <code>κ / log(log₂ N + 1)</code>. <code>Shor_correct_approx_lowered</code> carries that bound through the approximation and through lowering to the <code>LowGate</code> program, up to a factor of two once <code>η</code> is fixed.</p><p>The lowering to <code>LowGate</code> comes from <code>Compiler/</code>. The folder reads <code>Math &lt; Statement &lt; Interface &lt; Proofs &lt; Main</code>, and <code>Main.lean</code> is the only route out of it.</p>",
    "snippets": [
     {
      "name": "Shor_correct",
      "file": "Implementation/Shor/Proofs/NaiveShor/Correctness.lean",
-     "line": 19,
+     "line": 44,
      "code": "theorem Shor_correct\n    [GateSemanticsFacts qs]\n    (T : ℕ → ℕ)\n    (hT : ContinuedFractionSearchComplete T)\n    (inst : ShorOrderFindingInstance)\n    (x y : ExtReg)\n    (b0 : qs.Basis)\n    (hm : regSize x.active = Nat.log2 (2 * inst.N^2))\n    (hn : regSize y.active = Nat.log2 (2 * inst.N))\n    (hinput : IdealOrderFindingInput qs x y b0) :\n    ShorCorrect T hT inst x y b0 hm hn hinput := by",
      "note": null
     },
     {
      "name": "ShorCorrect",
-     "file": "Implementation/Shor/Spec/Assertions.lean",
-     "line": 39,
+     "file": "Implementation/Shor/Proofs/NaiveShor/Correctness.lean",
+     "line": 17,
      "code": "def ShorCorrect\n    [GateSemanticsFacts qs]\n    (T : ℕ → ℕ)\n    (_hT : ContinuedFractionSearchComplete T)\n    (inst : ShorOrderFindingInstance)\n    (x y : ExtReg)\n    (b0 : qs.Basis)\n    (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))\n    (_hn : regSize y.active = Nat.log2 (2 * inst.N))\n    (_hinput : IdealOrderFindingInput qs x y b0) : Prop :=\n  probability_of_success\n        (qs := qs) (T := T)\n        (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))\n        (x := x.active)\n        (r := ord inst.a inst.N inst.coprime)\n        (Q := ASize x.active)\n        (evalC := qs.eval)\n        (C := orderFindingIdeal (qs := qs) inst.a inst.N x y)\n        (ψ := qs.ket b0)\n      ≥\n    κ / Real.log ((Nat.log2 inst.N : ℝ) + 1)",
      "note": "The statement behind the name: the probability of success of the ideal order-finding circuit is at least <code>κ / log(log₂ N + 1)</code>."
     },
     {
      "name": "Shor_correct_approx_lowered",
      "file": "Implementation/Shor/Main.lean",
-     "line": 208,
-     "code": "theorem Shor_correct_approx_lowered\n    [GateSemanticsFacts qs]\n    [LowerGateClass qs]\n    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :\n    ShorCorrectApproxLowered T hT := by",
+     "line": 55,
+     "code": "theorem Shor_correct_approx_lowered\n    [GateSemanticsFacts qs]\n    [LowerGateClass qs]\n    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :\n    ShorCorrectApproxLowered T hT :=",
      "note": "The same, for the fully lowered approximate circuit; note the extra <code>LowerGateClass</code> instance."
-    },
-    {
-     "name": "Policy.lowerGate_correctness",
-     "file": "Implementation/Shor/Proofs/Lowering.lean",
-     "line": 26,
-     "code": "theorem Policy.lowerGate_correctness\n    (qs : QSemantics)\n    [RegEncoding qs.Basis]\n    [GateSemanticsFacts qs]\n    [LowerGateClass qs]\n    (P : ShorLoweringPolicy)\n    (hP : P.Admissible)\n    (G : Gate)\n    (hworkspace : Policy.GateWorkspaceOK P G)\n    (ψ : qs.State)\n    (hclean : Policy.GateWorkspaceCleanState qs P G hworkspace ψ) :\n    LowerGateClass.evalL (qs := qs) (Policy.lowerGate P G hworkspace) ψ\n      =\n    qs.eval G ψ := by",
-     "note": "Lowering preserves meaning: evaluating the lowered program equals evaluating the source gate."
     }
    ]
   },
@@ -400,12 +479,12 @@ window.LAYERS = {
    "fsPath": "Implementation/GateCount",
    "files": 5,
    "decls": 207,
-   "summary": "<p>Cost. <code>GateCount/</code> proves the asymptotic gate-count bound for the lowered Shor circuit, over the cost model <code>Framework/Gatecount</code> defines: a concrete cost model for <code>LowGate</code>, recurrence bounds for the phase product and the QFT, then the assembly into the Shor rate. <code>exists_shorGateCountBound</code> says that for every <code>ε &gt; 0</code> there is a Toom-Cook arity <code>k</code> and a generated table at which the compiled order-finding circuit uses at most <code>C · n^(2+ε)</code> gates, <code>n</code> the width of the modulus register.</p><p>The quantity bounded is <code>LowGate.gateCount shorGateCostModel</code> of <code>orderFindingApproxLow</code>, the lowered circuit built by <code>Shor/Lowering</code>'s <code>lowerGate</code>, whose semantics the previous layer verified. Correctness and resource estimation share the circuit but not the proof. A companion, <code>shorGateCountBound_of_setup</code>, gives any admissible table the bound at its own exponent.</p>",
+   "summary": "<p>Cost. <code>GateCount/</code> proves the asymptotic gate-count bound for the lowered Shor circuit, over the cost model <code>Framework/Gatecount</code> defines: a concrete cost model for <code>LowGate</code>, recurrence bounds for the phase product and the QFT, then the assembly into the Shor rate. <code>exists_shorGateCountBound</code> says that for every <code>ε &gt; 0</code> there is a Toom-Cook arity <code>k</code> and a generated table at which the compiled order-finding circuit uses at most <code>C · n^(2+ε)</code> gates, <code>n</code> the width of the modulus register.</p><p>The quantity bounded is <code>LowGate.gateCount shorGateCostModel</code> of <code>orderFindingApproxLow</code>, the lowered circuit built by <code>Compiler/Statement.lean</code>'s <code>Policy.lowerGate</code>, whose semantics the previous layer verified. Correctness and resource estimation share the circuit but not the proof. A companion, <code>shorGateCountBound_of_setup</code>, gives any admissible table the bound at its own exponent.</p>",
    "snippets": [
     {
      "name": "exists_shorGateCountBound",
      "file": "Implementation/GateCount/Shor_GateCount.lean",
-     "line": 2143,
+     "line": 2142,
      "code": "theorem exists_shorGateCountBound\n    (qs : QSemantics)\n    [RegEncoding qs.Basis]\n    (ε : ℝ)\n    (hε : 0 < ε) :\n    ∃ k : ℕ,\n    ∃ hk : 1 < k,\n    ∃ ops : Prog k,\n      PhaseProductProgramOK k hk\n          (genInterpolationPoints k) (generatedInterpolationPoints_length k) ops ∧\n      ShorGateCountBound qs ε k hk ops\n        (genInterpolationPoints k) (generatedInterpolationPoints_length k) := by",
      "note": "<code>ShorGateCountBound qs ε k hk ops …</code> unfolds to: there is a <code>C</code> with <code>gateCount ≤ C · shorGateRate ε n</code> for every valid instance and layout, where <code>shorGateRate ε n = n^(2+ε)</code>."
     }
@@ -423,7 +502,7 @@ window.LAYERS = {
     {
      "name": "referenceShorImplementation",
      "file": "Implementation/Reference/ReferenceShorImplementation.lean",
-     "line": 466,
+     "line": 473,
      "code": "noncomputable def referenceShorImplementation\n    (P : ShorLoweringPolicy) (hP : P.Admissible) :\n    ShorImplementation (qs := qs) where\n  program := referenceSubmittedProgram P hP\n  successProbability := referenceSuccessProbability\n  correct := referenceSubmittedProgram_correct (qs := qs) P hP\n  trialCount := referenceTrialCount\n  trialCount_correct := by\n    intro N h\n    apply referenceTrialCount_correct",
      "note": "The five fields of the contract, filled: the program, the declared probability, its proof, the trial count, and its proof."
     }

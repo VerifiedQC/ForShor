@@ -8,8 +8,10 @@ A reader who wants to know *what* the development proves, as opposed to
 the correctness criterion over it:
 [`Implementation/Shor/Math/ShorDefinition.lean`](../Implementation/Shor/Math/ShorDefinition.lean)
 (the classical side of order finding) and
-[`Implementation/Shor/Spec/Contract.lean`](../Implementation/Shor/Spec/Contract.lean)
-(`probability_of_success` and `ShorImplementation`).
+[`Implementation/Shor/Statement.lean`](../Implementation/Shor/Statement.lean)
+(`probability_of_success`) and
+[`Implementation/Shor/Interface.lean`](../Implementation/Shor/Interface.lean)
+(`ShorImplementation`).
 
 Files import only Mathlib and other `Framework/` files.
 `ToomCookTable.lean` imports Mathlib and nothing else, and `Policy.lean`
@@ -52,7 +54,7 @@ Notation: `⟦U⟧ ψ` is `qs.eval U ψ` (a `Gate` applied to a state) and `⟦L
 
 The theorems themselves live in `Implementation/` and `Submission/`; this
 folder only states the vocabulary they are about. The correctness criterion is
-`probability_of_success` in `Implementation/Shor/Spec/Contract.lean`; the gate-count function the
+`probability_of_success` in `Implementation/Shor/Statement.lean`; the gate-count function the
 asymptotic bounds are stated with is `ShorOrderFindingProgram.frameworkGateCount`;
 the admissibility conditions a submission must satisfy are the four fields
 of `ShorLoweringSetup` and the `sorted` field of `ShorPolicySubmission`.

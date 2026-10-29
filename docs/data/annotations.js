@@ -21,7 +21,7 @@ window.ANNOTATIONS = {
  "repo": { "owner": "VerifiedQC", "repo": "ForShor", "branch": "main" },
  "intro": {
   "title": "ShorVerification",
-  "summary": "Framework/ is the specification vocabulary: registers, the Gate/LowGate languages, the semantic classes and cost model every proof is stated in, and Framework/ToomCookTable.lean's ShorSubmission, the Toom-Cook table (an arithmetic program plus the interpolation points it evaluates at) an entrant actually hands in. The correctness contract itself, Shor/Spec/Contract.lean's ShorImplementation structure, is stated over that vocabulary. Everything else is the construction: three independently-verified subroutines (PhaseProduct, QFT, ModularExponentiation) feed the Shor assembly, which is scored by GateCount and turned into a concrete ShorImplementation by Reference. Shared is a lemma library used by all three subroutines, not a step in the story.",
+  "summary": "Framework/ is the specification vocabulary: registers, the Gate/LowGate languages, the semantic classes and cost model every proof is stated in, and Framework/ToomCookTable.lean's ShorSubmission, the Toom-Cook table (an arithmetic program plus the interpolation points it evaluates at) an entrant actually hands in. The correctness contract itself, Reference/Contract.lean's ShorImplementation structure, is stated over that vocabulary. Everything else is the construction: three independently-verified subroutines (PhaseProduct, QFT, ModularExponentiation) feed the Shor assembly, which is scored by GateCount and turned into a concrete ShorImplementation by Reference. Shared is a lemma library used by all three subroutines, not a step in the story.",
   "spine": ["Reference", "Shor", "ModularExponentiation", "QFT", "PhaseProduct"]
  },
  "roles": {
@@ -44,7 +44,7 @@ window.ANNOTATIONS = {
   "Framework": {
    "role": "framework",
    "subtitle": "the vocabulary",
-   "summary": "Defines the vocabulary a Shor order-finding submission is stated in: registers and the Gate/LowGate languages, the QSemantics/MeasureClass semantic interfaces, the LowGate cost model, and Framework/ToomCookTable.lean's ShorSubmission, the Toom-Cook table a submission consists of. The ShorImplementation structure every Implementation/ folder exists to build one value of lives in Shor/Spec/Contract.lean, over this vocabulary."
+   "summary": "Defines the vocabulary a Shor order-finding submission is stated in: registers and the Gate/LowGate languages, the QSemantics/MeasureClass semantic interfaces, the LowGate cost model, and Framework/ToomCookTable.lean's ShorSubmission, the Toom-Cook table a submission consists of. The ShorImplementation structure every Implementation/ folder exists to build one value of lives in Reference/Contract.lean, over this vocabulary."
   },
   "Shared": {
    "role": "support",
@@ -66,6 +66,11 @@ window.ANNOTATIONS = {
    "subtitle": "Algorithm 1: in-place modular multiplication/exponentiation",
    "summary": "Approximates |x><c*x mod N>|0> and, by recursing over the exponent register, modular exponentiation, via a fractional-load-and-cleanup circuit built from QFT-based phase products and an inverse-QFT comparator, with a quantitative error bound uniform in the precision parameter eta."
   },
+  "Compiler": {
+   "role": "subroutine",
+   "subtitle": "Gate to LowGate lowering",
+   "summary": "Policy.lowerGate lowers a Gate circuit to a LowGate program by sending each QFT, phase-product and modular-arithmetic block to its subroutine's lowerer, given a proof that every block has the workspace it needs. Policy.lowerGate_correct: for an admissible policy, the lowered program acts on a clean state exactly as the gate does."
+  },
   "Shor": {
    "role": "assembly",
    "subtitle": "order-finding assembly and correctness",
@@ -83,8 +88,8 @@ window.ANNOTATIONS = {
   },
   "Shor/Main.lean": {
    "role": "assembly",
-   "subtitle": "the three final theorems",
-   "summary": "Shor_end_to_end_factoring (ideal circuit, plus the classical reduction from a good outcome to a nontrivial factor), Shor_correct_approx_lowered_uniform (the fully lowered circuit, per-step precision eta left free), Shor_correct_approx_lowered_of_modExp_bound_assertion (the same at a constant the caller fixes \u2014 what Reference/ consumes) and Shor_correct_approx_lowered (at any eta below shorPrecision N x — a closed form with no hidden constant, concluding kappa / (2 log(log2 N + 1))). The last is the one to cite for the bound itself: the uniform form subtracts a loss that does not shrink as N grows, so it says something only once eta is tied to N. This file is the only way into Shor/Proofs from outside Shor/; check_shor_layers.sh enforces that."
+   "subtitle": "the two final theorems",
+   "summary": "Shor_correct_approx_lowered_uniform (the fully lowered circuit, per-step precision eta left free, constant K \u2264 1600 \u2014 what Reference/ consumes) and Shor_correct_approx_lowered (at any eta below shorPrecision N x — a closed form with no hidden constant, concluding kappa / (2 log(log2 N + 1))). The last is the one to cite for the bound itself: the uniform form subtracts a loss that does not shrink as N grows, so it says something only once eta is tied to N. This file is the only way into Shor/Proofs from outside Shor/; scripts/check_layers.py enforces that."
   },
   "GateCount/Definitions.lean": {
    "role": "resource",
@@ -113,7 +118,7 @@ window.ANNOTATIONS = {
  },
  "views": {
   "": {
-   "columns": [["Framework", "Shared"], ["PhaseProduct"], ["QFT"], ["ModularExponentiation"], ["Shor"], ["GateCount"], ["Reference"]],
+   "columns": [["Framework", "Shared"], ["PhaseProduct"], ["QFT"], ["ModularExponentiation"], ["Compiler"], ["Shor"], ["GateCount"], ["Reference"]],
    "edges": [
     { "from": "Framework", "to": "PhaseProduct", "emphasis": "primary", "label": "vocabulary: Reg, Gate, LowGate, QSemantics", "why": "Every subroutine is built over Framework's register, gate, and semantic vocabulary; PhaseProduct is where the site draws that arrow once rather than fanning it to all four subsystems." },
     { "from": "Framework", "to": "Shared", "emphasis": "dim" },
@@ -122,8 +127,13 @@ window.ANNOTATIONS = {
     { "from": "QFT", "to": "ModularExponentiation", "emphasis": "primary", "label": "QFT-based phase products, IQFT comparator", "why": "ModularExponentiation's approximate circuit is built from QFT-based phase products and an inverse-QFT comparator." },
     { "from": "ModularExponentiation", "to": "Shor", "emphasis": "primary", "theorem": "modExpApprox_correct", "label": "modExpApprox_correct", "why": "Shor's approximate correctness theorem transfers this eta-independent distance bound into a success-probability lower bound for the full lowered circuit." },
     { "from": "QFT", "to": "Shor", "emphasis": "secondary" },
-    { "from": "Shor", "to": "GateCount", "emphasis": "primary", "theorem": "lowerGate_correctness", "label": "the LowGate program being counted", "why": "GateCount counts gates in the same lowered circuit (orderFindingApproxLow, built via Shor/Lowering's lowerGate) whose semantics lowerGate_correctness verifies; correctness and resource estimation share the circuit but not the proof." },
-    { "from": "Shor", "to": "Reference", "emphasis": "primary", "theorem": "Shor_correct_approx_lowered_of_modExp_bound_assertion", "label": "Shor_correct_approx_lowered_of_modExp_bound_assertion", "why": "Reference discharges this theorem's hypotheses concretely (layout, precision, readiness) at its own constant K = 2048 to get one honest success probability for referenceShorImplementation, a value of the ShorImplementation structure Shor/Spec/Contract.lean defines. It consumes Shor/Main.lean and Shor/Spec, not Shor/Proofs." },
+    { "from": "ModularExponentiation", "to": "Compiler", "emphasis": "secondary" },
+    { "from": "QFT", "to": "Compiler", "emphasis": "secondary" },
+    { "from": "PhaseProduct", "to": "Compiler", "emphasis": "secondary" },
+    { "from": "Compiler", "to": "Shor", "emphasis": "primary", "theorem": "lowerGate_correct", "label": "Policy.lowerGate", "why": "Shor's lowered circuit is Policy.lowerGate applied to the order-finding circuit, and its success bound transfers to the lowered program through Policy.lowerGate_correct." },
+    { "from": "Compiler", "to": "GateCount", "emphasis": "primary", "theorem": "lowerGate_correct", "label": "the LowGate program being counted", "why": "GateCount counts gates in the lowered circuit orderFindingApproxLow, built by Compiler/Statement.lean's Policy.lowerGate, whose semantics Policy.lowerGate_correct verifies; correctness and resource estimation share the circuit but not the proof." },
+    { "from": "Shor", "to": "GateCount", "emphasis": "secondary" },
+    { "from": "Shor", "to": "Reference", "emphasis": "primary", "theorem": "Shor_correct_approx_lowered_uniform", "label": "Shor_correct_approx_lowered_uniform", "why": "Reference discharges this theorem's hypotheses concretely (layout, precision, readiness), and the workspace proof LoweredShorReady.workspace, and takes its constant up to K = 1600 by monotonicity to get one honest success probability for referenceShorImplementation, a value of the ShorImplementation structure Reference/Contract.lean defines. It consumes Shor/Main.lean and Shor/Statement.lean, not Shor/Proofs directly." },
     { "from": "GateCount", "to": "Reference", "emphasis": "primary", "theorem": "exists_shorGateCountBound", "label": "exists_shorGateCountBound", "why": "Reference2048Headline.lean instantiates this existential at the 2048-bit benchmark to compute the headline gate count the leaderboard scores on." },
     { "from": "PhaseProduct", "to": "GateCount", "emphasis": "secondary" }
    ]
@@ -169,16 +179,139 @@ window.ANNOTATIONS = {
     { "from": "ModularExponentiation/Spec", "to": "ModularExponentiation/Main.lean", "emphasis": "secondary" }
    ]
   },
-  "Shor": {
-   "columns": [["Shor/Lowering", "Shor/Math"], ["Shor/Circuit"], ["Shor/Spec"], ["Shor/Proofs"], ["Shor/Main.lean"]],
+  "Compiler": {
+   "columns": [["Compiler/Statement.lean"], ["Compiler/Proofs"], ["Compiler/Main.lean"]],
    "edges": [
-    { "from": "Shor/Lowering", "to": "Shor/Circuit", "emphasis": "primary", "theorem": "lowerGate", "label": "lowerGate", "why": "The order-finding circuit is assembled from the same lowered gates Shor/Lowering's lowerGate produces." },
-    { "from": "Shor/Circuit", "to": "Shor/Spec", "emphasis": "primary", "label": "orderFindingApprox", "why": "Spec/'s setup and cleanliness assertions are stated over the concrete order-finding circuit orderFindingApprox Circuit/ defines." },
-    { "from": "Shor/Spec", "to": "Shor/Proofs", "emphasis": "primary", "why": "Proofs/ discharges exactly the setup and readiness assertions Spec/ states." },
-    { "from": "Shor/Math", "to": "Shor/Spec", "emphasis": "primary", "label": "order-finding vocabulary", "why": "Spec/Contract.lean states probability_of_success and ShorImplementation in terms of ord, r_found and the continued-fraction postprocessing Math/ShorDefinition.lean defines." },
-    { "from": "Shor/Math", "to": "Shor/Proofs", "emphasis": "secondary" },
-    { "from": "Shor/Proofs", "to": "Shor/Main.lean", "emphasis": "primary", "theorem": "Shor_end_to_end_factoring", "label": "Shor_end_to_end_factoring", "why": "Main.lean combines the ideal correctness, approximation transfer, and classical reduction proofs from Proofs/ into the complete factoring statement, and into the lowered theorems other folders consume \u2014 Proofs/ is proof-only, so Main.lean is the only route out of Shor/." },
-    { "from": "Shor/Spec", "to": "Shor/Main.lean", "emphasis": "secondary" }
+    { "from": "Compiler/Statement.lean", "to": "Compiler/Proofs", "emphasis": "primary", "why": "Proofs/ proves the correctness claim Statement.lean states, by induction over the gate, and gives the single-table forms used by Emit/, GateCount/ and Reference/." },
+    { "from": "Compiler/Proofs", "to": "Compiler/Main.lean", "emphasis": "primary", "theorem": "lowerGate_correct", "label": "Policy.lowerGate_correct", "why": "Main.lean packages the proof as the claim Policy.LowerGateCorrect; Proofs/ is proof-only, so Main.lean is the only route out of Compiler/." },
+    { "from": "Compiler/Statement.lean", "to": "Compiler/Main.lean", "emphasis": "secondary" }
+   ]
+  },
+  "Shor": {
+   "columns": [["Shor/Statement.lean"], ["Shor/Proofs"], ["Shor/Main.lean"]],
+   "edges": [
+    { "from": "Shor/Statement.lean", "to": "Shor/Proofs", "emphasis": "primary", "why": "Proofs/ proves the lemmas behind the propositions Statement.lean states." },
+    { "from": "Shor/Proofs", "to": "Shor/Main.lean", "emphasis": "primary", "theorem": "Shor_correct_approx_lowered", "label": "Shor_correct_approx_lowered", "why": "Main.lean combines the ideal correctness, approximation transfer, and classical reduction proofs from Proofs/ into the propositions Statement.lean states \u2014 Proofs/ is proof-only, so Main.lean is the only route out of Shor/." },
+    { "from": "Shor/Statement.lean", "to": "Shor/Main.lean", "emphasis": "secondary" }
+   ]
+  },
+  "GateCount": {
+   "role": "resource",
+   "subtitle": "O(n^(2+eps)) resource estimate",
+   "summary": "Gives LowGate a concrete cost model, bounds PhaseProduct's and QFT's lowered gate counts at a shared comparison rate, sums one modular-multiplication core's bound over the whole exponentiation, and chooses the recursion arity k large enough that the rate collapses to 2+epsilon. The bounds are stated against the submission contract rather than against one program: their hypothesis PhaseProductProgramOK is the same C1-C4 a ShorSubmission carries, so the estimate covers any admissible table."
+  },
+  "Reference": {
+   "role": "submission",
+   "subtitle": "the concrete submission",
+   "summary": "Makes every choice the folders above leave abstract (interpolation-point program, physical register layout, precision schedule) into one deterministic, fully computable construction, and packages the result as the framework's ShorImplementation value — including the 2048-bit-benchmark trial count and gate count the leaderboard scores on."
+  },
+  "Shor/Main.lean": {
+   "role": "assembly",
+   "subtitle": "the two final theorems",
+   "summary": "Shor_correct_approx_lowered_uniform (the fully lowered circuit, per-step precision eta left free, constant K \u2264 1600 \u2014 what Reference/ consumes) and Shor_correct_approx_lowered (at any eta below shorPrecision N x — a closed form with no hidden constant, concluding kappa / (2 log(log2 N + 1))). The last is the one to cite for the bound itself: the uniform form subtracts a loss that does not shrink as N grows, so it says something only once eta is tied to N. This file is the only way into Shor/Proofs from outside Shor/; scripts/check_layers.py enforces that."
+  },
+  "GateCount/Definitions.lean": {
+   "role": "resource",
+   "subtitle": "comparison rates and the C1-C4 hypothesis",
+   "summary": "The vocabulary the rest of the folder is written in: phaseProductExponent k = log_k (2k-1) and the n^. rates derived from it, the PhaseProductGateCountBound Prop, and PhaseProductProgramOK \u2014 the hypothesis every bound here is stated under, which is C1-C4 and nothing else. ShorLoweringSetup.programOK discharges it for an arbitrary submission. Read this file to see exactly what a gate-count theorem assumes about a table."
+  },
+  "GateCount/Shor_GateCount.lean": {
+   "role": "resource",
+   "subtitle": "the three final bounds",
+   "summary": "Combines the QFT and phase-product component bounds with the modular-exponentiation count into ShorGateCountBound, then packages it three ways, in increasing genericity over the table: shorGateCountBound_of_programOK for a C1-C4 program at a fixed arity, shorGateCountBound_of_setup for a ShorLoweringSetup (any submission, since the record's fields are those conditions), and exists_shorGateCountBound, which also picks the arity so the rate collapses to 2+epsilon for every positive epsilon. The bound is parametric in the per-step precision eta under a work-width budget; Shor's own eta = delta/n^2 schedule is the separate corollary shorGateCountBoundShorEta_of_setup."
+  },
+  "Framework/Quantum": { "role": "framework", "subtitle": "registers and measurement" },
+  "Framework/AbstractMachine": { "role": "framework", "subtitle": "Gate and LowGate languages" },
+  "Framework/Semantics": { "role": "framework", "subtitle": "abstract evaluation classes" },
+  "Framework/ToomCookTable.lean": {
+   "role": "framework",
+   "subtitle": "what a submission is",
+   "summary": "ShorSubmission: an arithmetic program over k limb registers plus the interpolation points its phaseProduct checkpoints evaluate at, with four decidable side conditions that make the pair admissible. Imports Mathlib and nothing else, so the acceptance test can be read without the construction that satisfies it."
+  },
+  "Framework/Gatecount": { "role": "framework", "subtitle": "the cost-model interface" },
+  "Framework/Policy.lean": {
+   "role": "framework",
+   "subtitle": "what a policy submission is",
+   "summary": "ShorPolicySubmission: a list of Toom-Cook tables indexed by operand width, each band carrying the same four side conditions a single table does, plus one decidable field saying the thresholds strictly decrease. choose picks the first band at or below a width and none is the schoolbook leaf; constPolicy makes a table submission the one-band policy at threshold 0. Imports Framework/ToomCookTable.lean and nothing else."
+  }
+ },
+ "views": {
+  "": {
+   "columns": [["Framework", "Shared"], ["PhaseProduct"], ["QFT"], ["ModularExponentiation"], ["Compiler"], ["Shor"], ["GateCount"], ["Reference"]],
+   "edges": [
+    { "from": "Framework", "to": "PhaseProduct", "emphasis": "primary", "label": "vocabulary: Reg, Gate, LowGate, QSemantics", "why": "Every subroutine is built over Framework's register, gate, and semantic vocabulary; PhaseProduct is where the site draws that arrow once rather than fanning it to all four subsystems." },
+    { "from": "Framework", "to": "Shared", "emphasis": "dim" },
+    { "from": "PhaseProduct", "to": "QFT", "emphasis": "primary", "theorem": "lowerSignedPhaseProduct_correct", "label": "phase product for the QFT split", "why": "QFT's recursive split needs an unsigned phase-product macro between the two half-size QFTs; that macro's lowered correctness comes from PhaseProduct/Main.lean." },
+    { "from": "PhaseProduct", "to": "ModularExponentiation", "emphasis": "secondary" },
+    { "from": "QFT", "to": "ModularExponentiation", "emphasis": "primary", "label": "QFT-based phase products, IQFT comparator", "why": "ModularExponentiation's approximate circuit is built from QFT-based phase products and an inverse-QFT comparator." },
+    { "from": "ModularExponentiation", "to": "Shor", "emphasis": "primary", "theorem": "modExpApprox_correct", "label": "modExpApprox_correct", "why": "Shor's approximate correctness theorem transfers this eta-independent distance bound into a success-probability lower bound for the full lowered circuit." },
+    { "from": "QFT", "to": "Shor", "emphasis": "secondary" },
+    { "from": "ModularExponentiation", "to": "Compiler", "emphasis": "secondary" },
+    { "from": "QFT", "to": "Compiler", "emphasis": "secondary" },
+    { "from": "PhaseProduct", "to": "Compiler", "emphasis": "secondary" },
+    { "from": "Compiler", "to": "Shor", "emphasis": "primary", "theorem": "lowerGate_correct", "label": "Policy.lowerGate", "why": "Shor's lowered circuit is Policy.lowerGate applied to the order-finding circuit, and its success bound transfers to the lowered program through Policy.lowerGate_correct." },
+    { "from": "Compiler", "to": "GateCount", "emphasis": "primary", "theorem": "lowerGate_correct", "label": "the LowGate program being counted", "why": "GateCount counts gates in the lowered circuit orderFindingApproxLow, built by Compiler/Statement.lean's Policy.lowerGate, whose semantics Policy.lowerGate_correct verifies; correctness and resource estimation share the circuit but not the proof." },
+    { "from": "Shor", "to": "GateCount", "emphasis": "secondary" },
+    { "from": "Shor", "to": "Reference", "emphasis": "primary", "theorem": "Shor_correct_approx_lowered_uniform", "label": "Shor_correct_approx_lowered_uniform", "why": "Reference discharges this theorem's hypotheses concretely (layout, precision, readiness), and the workspace proof LoweredShorReady.workspace, and takes its constant up to K = 1600 by monotonicity to get one honest success probability for referenceShorImplementation, a value of the ShorImplementation structure Reference/Contract.lean defines. It consumes Shor/Main.lean and Shor/Statement.lean, not Shor/Proofs directly." },
+    { "from": "GateCount", "to": "Reference", "emphasis": "primary", "theorem": "exists_shorGateCountBound", "label": "exists_shorGateCountBound", "why": "Reference2048Headline.lean instantiates this existential at the 2048-bit benchmark to compute the headline gate count the leaderboard scores on." },
+    { "from": "PhaseProduct", "to": "GateCount", "emphasis": "secondary" }
+   ]
+  },
+  "Framework": {
+   "columns": [["Framework/Quantum"], ["Framework/AbstractMachine"], ["Framework/Semantics", "Framework/Gatecount"], ["Framework/ToomCookTable.lean"], ["Framework/Policy.lean"]],
+   "edges": [
+    { "from": "Framework/Quantum", "to": "Framework/AbstractMachine", "emphasis": "primary", "theorem": "Reg", "label": "Reg as gate operand", "why": "Gate and LowGate syntax (Framework/AbstractMachine) is built over the Reg register type Quantum defines." },
+    { "from": "Framework/AbstractMachine", "to": "Framework/Semantics", "emphasis": "primary", "theorem": "LowGate", "label": "LowerGateClass over LowGate", "why": "LowerGateClass and GateSemanticsCore (Framework/Semantics) give evaluation meaning to the LowGate/Gate syntax AbstractMachine defines." },
+    { "from": "Framework/AbstractMachine", "to": "Framework/Gatecount", "emphasis": "primary", "theorem": "gateCount", "label": "gateCount over LowGate", "why": "The cost model in Framework/Gatecount is a fold over exactly the LowGate syntax AbstractMachine defines." },
+    { "from": "Framework/ToomCookTable.lean", "to": "Framework/Policy.lean", "emphasis": "primary", "theorem": "ShorLoweringSetup", "label": "a policy is a list of tables", "why": "A policy band is one Toom-Cook table, so Policy.lean is stated over ToomCookTable.lean's vocabulary and records. The import runs one way only: a reader of the single-table specification never has to read the policy." }
+   ]
+  },
+  "PhaseProduct": {
+   "columns": [["PhaseProduct/Math"], ["PhaseProduct/Compiler", "PhaseProduct/Gates"], ["PhaseProduct/Lowering"], ["PhaseProduct/Spec"], ["PhaseProduct/Proofs"], ["PhaseProduct/Main.lean"]],
+   "edges": [
+    { "from": "PhaseProduct/Math", "to": "PhaseProduct/Compiler", "emphasis": "primary", "label": "Toom-Cook points and interpolation", "why": "The compiler's layout and coefficient bookkeeping is built directly over the Toom-Cook interpolation algebra and table-generation coverage facts in Math/." },
+    { "from": "PhaseProduct/Compiler", "to": "PhaseProduct/Lowering", "emphasis": "primary", "label": "compiled gates → plans", "why": "The recursive lowering plans are built to lower exactly the compiled signed/controlled-signed phase-product gates Compiler/ defines." },
+    { "from": "PhaseProduct/Gates", "to": "PhaseProduct/Lowering", "emphasis": "secondary" },
+    { "from": "PhaseProduct/Lowering", "to": "PhaseProduct/Spec", "emphasis": "primary", "label": "PhaseLoweringReady", "why": "Spec/Readiness.lean states the readiness precondition the recursive lowering plans in Lowering/ must satisfy." },
+    { "from": "PhaseProduct/Spec", "to": "PhaseProduct/Proofs", "emphasis": "primary", "label": "what is claimed", "why": "Proofs/ discharges exactly the readiness and cleanliness assertions Spec/ states." },
+    { "from": "PhaseProduct/Proofs", "to": "PhaseProduct/Main.lean", "emphasis": "primary", "theorem": "lowerSignedPhaseProduct_correct", "label": "compiler + lowering assembled", "why": "Main.lean states the final theorem by combining the compiler correctness and lowering-readiness proofs developed in Proofs/." },
+    { "from": "PhaseProduct/Spec", "to": "PhaseProduct/Main.lean", "emphasis": "secondary" }
+   ]
+  },
+  "QFT": {
+   "columns": [["QFT/Statement.lean"], ["QFT/Proofs"], ["QFT/Main.lean"]],
+   "edges": [
+    { "from": "QFT/Statement.lean", "to": "QFT/Proofs", "emphasis": "primary", "label": "the lowering and its workspace model", "why": "Statement.lean defines the workspace budget, the plans and the lowered QFT; Proofs/ proves the split identity and that the lowering is correct." },
+    { "from": "QFT/Proofs", "to": "QFT/Main.lean", "emphasis": "primary", "theorem": "lowerQFT_correct", "label": "recursive lowering assembled", "why": "Main.lean packages the plan-semantics and readiness proofs from Proofs/ into the single lowering-correctness theorem." },
+    { "from": "QFT/Statement.lean", "to": "QFT/Main.lean", "emphasis": "primary", "label": "what is claimed", "why": "Statement.lean states LowerQFTCorrect and Policy.LowerQFTCorrect and imports nothing else from QFT/; Main.lean proves them." }
+   ]
+  },
+  "ModularExponentiation": {
+   "columns": [["ModularExponentiation/Circuit", "ModularExponentiation/Math"], ["ModularExponentiation/Lowering", "ModularExponentiation/Spec"], ["ModularExponentiation/Proofs"], ["ModularExponentiation/Main.lean"]],
+   "edges": [
+    { "from": "ModularExponentiation/Circuit", "to": "ModularExponentiation/Lowering", "emphasis": "primary", "label": "Step 3 constant arithmetic", "why": "The constant-arithmetic subtraction stage Lowering/ProvesCorrect targets is exactly the circuit Circuit/ defines." },
+    { "from": "ModularExponentiation/Circuit", "to": "ModularExponentiation/Spec", "emphasis": "primary", "label": "validity and config records", "why": "Spec/'s validity predicates and configuration records are stated over the circuit and workspace Circuit/ defines." },
+    { "from": "ModularExponentiation/Lowering", "to": "ModularExponentiation/Proofs", "emphasis": "secondary" },
+    { "from": "ModularExponentiation/Spec", "to": "ModularExponentiation/Proofs", "emphasis": "primary", "why": "Proofs/ discharges exactly the validity and precision assertions Spec/ states." },
+    { "from": "ModularExponentiation/Math", "to": "ModularExponentiation/Proofs", "emphasis": "secondary" },
+    { "from": "ModularExponentiation/Proofs", "to": "ModularExponentiation/Main.lean", "emphasis": "primary", "theorem": "modExpApprox_correct", "label": "modExpApprox_correct", "why": "Main.lean combines the staged Algorithm-1 approximation proofs in Proofs/ into one eta-independent distance bound." },
+    { "from": "ModularExponentiation/Spec", "to": "ModularExponentiation/Main.lean", "emphasis": "secondary" }
+   ]
+  },
+  "Compiler": {
+   "columns": [["Compiler/Statement.lean"], ["Compiler/Proofs"], ["Compiler/Main.lean"]],
+   "edges": [
+    { "from": "Compiler/Statement.lean", "to": "Compiler/Proofs", "emphasis": "primary", "why": "Proofs/ proves the correctness claim Statement.lean states, by induction over the gate, and gives the single-table forms used by Emit/, GateCount/ and Reference/." },
+    { "from": "Compiler/Proofs", "to": "Compiler/Main.lean", "emphasis": "primary", "theorem": "lowerGate_correct", "label": "Policy.lowerGate_correct", "why": "Main.lean packages the proof as the claim Policy.LowerGateCorrect; Proofs/ is proof-only, so Main.lean is the only route out of Compiler/." },
+    { "from": "Compiler/Statement.lean", "to": "Compiler/Main.lean", "emphasis": "secondary" }
+   ]
+  },
+  "Shor": {
+   "columns": [["Shor/Statement.lean"], ["Shor/Proofs"], ["Shor/Main.lean"]],
+   "edges": [
+    { "from": "Shor/Statement.lean", "to": "Shor/Proofs", "emphasis": "primary", "why": "Proofs/ proves the lemmas behind the propositions Statement.lean states." },
+    { "from": "Shor/Proofs", "to": "Shor/Main.lean", "emphasis": "primary", "theorem": "Shor_correct_approx_lowered", "label": "Shor_correct_approx_lowered", "why": "Main.lean combines the ideal correctness, approximation transfer, and classical reduction proofs from Proofs/ into the propositions Statement.lean states \u2014 Proofs/ is proof-only, so Main.lean is the only route out of Shor/." },
+    { "from": "Shor/Statement.lean", "to": "Shor/Main.lean", "emphasis": "secondary" }
    ]
   },
   "GateCount": {
@@ -202,7 +335,7 @@ window.ANNOTATIONS = {
    ]
   },
   "Reference": {
-   "columns": [["Reference/ReferencePrecision.lean"], ["Reference/ReferenceLayout.lean"], ["Reference/ReferenceReadiness.lean"], ["Reference/ShorProgram.lean"], ["Reference/ReferenceShorImplementation.lean"], ["Reference/Reference2048Headline.lean", "Reference/StandardLoweringSetup.lean"]],
+   "columns": [["Reference/Contract.lean", "Reference/ReferencePrecision.lean"], ["Reference/ReferenceLayout.lean"], ["Reference/ReferenceReadiness.lean"], ["Reference/ShorProgram.lean"], ["Reference/ReferenceShorImplementation.lean"], ["Reference/Reference2048Headline.lean", "Reference/StandardLoweringSetup.lean"]],
    "edges": [
     { "from": "Reference/ReferencePrecision.lean", "to": "Reference/ReferenceLayout.lean", "emphasis": "secondary" },
     { "from": "Reference/ReferenceLayout.lean", "to": "Reference/ReferenceReadiness.lean", "emphasis": "primary", "label": "concrete layout", "why": "Readiness discharges the implementation-specific readiness obligations against the concrete register layout ReferenceLayout.lean builds." },

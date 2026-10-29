@@ -86,21 +86,21 @@ window.ALGORITHM = {
    "title": "Factor N",
    "role": "the problem",
    "kind": "classical",
-   "summary": "<p>The input is an odd composite <code>N &gt; 2</code> that is not a prime power. Those three hypotheses are exactly the fields of <code>ShorFactoringInstance</code>, and they are what the classical reduction needs: an odd <code>N</code> with at least two distinct prime factors.</p><p>The end-to-end theorem, <code>Shor_end_to_end_factoring</code>, is the whole diagram in one statement: at least half of the admissible bases <code>a</code> are good, and for every good one the ideal order-finding circuit, followed by the continued-fraction scan, recovers <code>r = ord a N</code> with probability at least <code>κ / log(log₂ N + 1)</code>, and <code>gcd(a^(r/2) ± 1, N)</code> is then a nontrivial factor.</p>",
+   "summary": "<p>The input is an odd composite <code>N &gt; 2</code> that is not a prime power. Those three hypotheses are exactly the fields of <code>ShorFactoringInstance</code>, and they are what the classical reduction needs: an odd <code>N</code> with at least two distinct prime factors.</p><p>The end-to-end theorem, <code>Shor_end_to_end_factoring_approx_lowered</code>, is the whole diagram in one statement: at least half of the admissible bases <code>a</code> are good, and for every good one the lowered approximate order-finding circuit at any precision <code>η ≤ shorPrecision N x</code>, followed by the continued-fraction scan, recovers <code>r = ord a N</code> with probability at least <code>κ / (2 · log(log₂ N + 1))</code>, and <code>gcd(a^(r/2) ± 1, N)</code> is then a nontrivial factor.</p>",
    "snippets": [
     {
      "name": "ShorFactoringInstance",
-     "file": "Implementation/Shor/Spec/Setup.lean",
-     "line": 313,
-     "code": "structure ShorFactoringInstance where\n  /-- The modulus to factor. -/\n  N : ℕ\n  /-- Shor's classical reduction is stated for odd composite moduli. -/\n  odd : Odd N\n  /-- The modulus is nontrivial. -/\n  gt_two : N > 2\n  /-- The modulus is not a prime power. -/\n  not_prime_power : ∀ (p k : ℕ), Nat.Prime p → N ≠ p ^ k",
+     "file": "Implementation/Shor/Proofs/Support.lean",
+     "line": 306,
+     "code": "structure ShorFactoringInstance where\n  /-- The modulus to factor. -/\n  N : ℕ\n  /-- The modulus is odd. -/\n  odd : Odd N\n  /-- The modulus is nontrivial. -/\n  gt_two : N > 2\n  /-- The modulus is not a prime power. -/\n  not_prime_power : ∀ (p k : ℕ), Nat.Prime p → N ≠ p ^ k",
      "note": null
     },
     {
-     "name": "Shor_end_to_end_factoring",
-     "file": "Implementation/Shor/Main.lean",
-     "line": 23,
-     "code": "theorem Shor_end_to_end_factoring\n    [GateSemanticsFacts qs]\n    (T : ℕ → ℕ)\n    (hT : ContinuedFractionSearchComplete T)\n    (fact : ShorFactoringInstance)\n    (x y : ExtReg)\n    (b0 : qs.Basis)\n    (hinput : IdealOrderFindingInput qs x y b0)\n    (hm : regSize x.active = Nat.log2 (2 * fact.N^2))\n    (hn : regSize y.active = Nat.log2 (2 * fact.N)) :\n    ShorEndToEndFactoring T hT fact x y b0 hinput hm hn := by {",
-     "note": "The conclusion <code>ShorEndToEndFactoring</code> is defined in <code>Shor/Spec/Assertions.lean</code>; it is the conjunction described on the left."
+     "name": "Shor_end_to_end_factoring_approx_lowered",
+     "file": "Implementation/Shor/Proofs/Correctness.lean",
+     "line": 1201,
+     "code": "theorem Shor_end_to_end_factoring_approx_lowered\n    [GateSemanticsFacts qs]\n    [LowerGateClass qs]\n    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)\n    (fact : ShorFactoringInstance) :\n    ShorEndToEndFactoringApproxLowered T hT fact := by",
+     "note": "The conclusion <code>ShorEndToEndFactoringApproxLowered</code> is defined just above it in <code>Shor/Proofs/Correctness.lean</code>; it is the conjunction described on the left."
     }
    ],
    "layers": [
@@ -116,15 +116,15 @@ window.ALGORITHM = {
    "snippets": [
     {
      "name": "shor_success_conditions",
-     "file": "Implementation/Shor/Math/Factoring_Reduction/Defs.lean",
-     "line": 43,
+     "file": "Implementation/Shor/Proofs/Math/Factoring_Reduction/Defs.lean",
+     "line": 40,
      "code": "def shor_success_conditions (a r N : ℕ) : Prop :=\n  (Even r) ∧ ((a : ZMod N) ^ (r / 2) ≠ -1)",
      "note": null
     },
     {
      "name": "valid_choices, successful_choices",
-     "file": "Implementation/Shor/Math/Factoring_Reduction/Defs.lean",
-     "line": 58,
+     "file": "Implementation/Shor/Proofs/Math/Factoring_Reduction/Defs.lean",
+     "line": 59,
      "code": "-- the set of valid a's; 1 < a < N and a coprime to N\nnoncomputable def valid_choices (N : ℕ) : Finset ℕ :=\n  (Finset.range N).filter (fun a => 1 < a ∧ Nat.gcd a N = 1)\n\n/-- The subset of valid 'a's that will successfully yield a factor. -/\nnoncomputable def successful_choices (N : ℕ) : Finset ℕ :=\n  (valid_choices N).filter (fun a => is_successful_choice a N)",
      "note": "Together with <code>is_successful_choice</code> just above them: some period of <code>a</code> meets the two success conditions."
     }
@@ -141,9 +141,9 @@ window.ALGORITHM = {
    "snippets": [
     {
      "name": "orderFindingIdeal",
-     "file": "Implementation/Shor/Circuit/OrderFinding.lean",
-     "line": 51,
-     "code": "noncomputable def orderFindingIdeal\n    (qs : QSemantics)\n    [RegEncoding qs.Basis]\n    [GateSemanticsCore qs]\n    (a N : ℕ)\n    (x y : ExtReg) : Gate :=\n  (H_reg x.active) ;;\n  (initY1 y.active) ;;\n  (modExpIdeal' qs a N x.active y.active) ;;\n  (IQFT x)",
+     "file": "Implementation/Shor/Proofs/Support.lean",
+     "line": 324,
+     "code": "noncomputable def orderFindingIdeal (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs]\n    (a N : ℕ) (x y : ExtReg) : Gate :=\n  (H_reg x.active) ;; (initY1 y.active) ;; (modExpIdeal' qs a N x.active y.active) ;; (IQFT x)",
      "note": "The circuit the correctness theorem is about. The compiled circuit, <code>orderFindingApprox</code> in the same file, has the same four steps with the verified approximate modular exponentiation in third place; <code>Policy.lowerGate</code> then turns it into <code>LowGate</code>s."
     },
     {
@@ -166,8 +166,8 @@ window.ALGORITHM = {
    "snippets": [
     {
      "name": "initY1",
-     "file": "Implementation/Shor/Circuit/OrderFinding.lean",
-     "line": 15,
+     "file": "Implementation/Shor/Statement.lean",
+     "line": 217,
      "code": "def initY1 (y : Reg) : Gate :=\n  match y.qubits with\n  | [] => Gate.id\n  | q :: _ => Gate.X q",
      "note": null
     }
@@ -185,7 +185,7 @@ window.ALGORITHM = {
     {
      "name": "modExpIdeal'",
      "file": "Implementation/ModularExponentiation/Circuit/ModExp.lean",
-     "line": 29,
+     "line": 25,
      "code": "def modExpIdeal'\n    (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs] (a N : ℕ) (x data : Reg) :\n    Gate :=\n  modExpIdealSteps qs a N data 0 x.qubits",
      "note": null
     }
@@ -223,16 +223,16 @@ window.ALGORITHM = {
    "snippets": [
     {
      "name": "OF_post",
-     "file": "Implementation/Shor/Math/ShorDefinition.lean",
-     "line": 202,
-     "code": "noncomputable def OF_post\n    (T : ℕ → ℕ)\n    (verify : OrderVerifier)\n    (o Q : ℕ) : ℕ :=\n  let candidates :=\n    verifiedOrderCandidates T verify o Q\n\n  if h : candidates.Nonempty then\n    candidates.min' h\n  else\n    0",
+     "file": "Implementation/Shor/Statement.lean",
+     "line": 67,
+     "code": "noncomputable def OF_post (T : ℕ → ℕ) (verify : ℕ → Bool) (o Q : ℕ) : ℕ :=\n  if h : (orderCandidates T verify o Q).Nonempty then (orderCandidates T verify o Q).min' h else 0",
      "note": null
     },
     {
      "name": "probability_of_success",
-     "file": "Implementation/Shor/Spec/Contract.lean",
-     "line": 52,
-     "code": "noncomputable def probability_of_success\n    [MeasureClass qs]\n    {Circuit : Type}\n    (evalC : Circuit → qs.State → qs.State)\n    (T : ℕ → ℕ)\n    (verify : OrderVerifier)\n    (x : Reg)\n    (r Q : ℕ)\n    (C : Circuit)\n    (ψ : qs.State) : ℝ :=\n  ∑ o : Fin Q,\n    (r_found (T := T) verify o.1 Q r) *\n      MeasureClass.probMeas (qs := qs) x o.1 (evalC C ψ)",
+     "file": "Implementation/Shor/Statement.lean",
+     "line": 192,
+     "code": "noncomputable def probability_of_success {qs : QSemantics} [RegEncoding qs.Basis]\n    [MeasureClass qs] {Circuit : Type} (evalC : Circuit → qs.State → qs.State) (T : ℕ → ℕ)\n    (verify : OrderVerifier) (x : Reg) (r Q : ℕ) (C : Circuit) (ψ : qs.State) : ℝ :=\n  ∑ o : Fin Q, (r_found (T := T) verify o.1 Q r) *\n    MeasureClass.probMeas (qs := qs) x o.1 (evalC C ψ)",
      "note": null
     }
    ],
@@ -249,8 +249,8 @@ window.ALGORITHM = {
    "snippets": [
     {
      "name": "shors_classical_reduction",
-     "file": "Implementation/Shor/Math/Factoring_Reduction/Reduction.lean",
-     "line": 83,
+     "file": "Implementation/Shor/Proofs/Math/Factoring_Reduction/Reduction.lean",
+     "line": 75,
      "code": "theorem shors_classical_reduction (a r N : ℕ)\n(h_N : N > 2)\n(h_a : 1 < a ∧ a < N)\n(h_coprime : Nat.gcd a N = 1)\n(h_period : is_period a r N)\n(h_success : shor_success_conditions a r N) :\nis_nontrivial_factor (Nat.gcd ((a ^ (r / 2)) - 1) N) N ∨\nis_nontrivial_factor (Nat.gcd ((a ^ (r / 2)) + 1) N) N := by {",
      "note": null
     }

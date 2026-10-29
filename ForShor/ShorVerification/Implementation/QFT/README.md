@@ -1,7 +1,8 @@
 # `Implementation/QFT/`
 
-The QFT lowered to elementary gates, with a proof that the lowered circuit
-implements `Gate.QFT`.
+This folder lowers the quantum Fourier transform to elementary gates by
+recursively splitting it into two smaller QFTs joined by a phase product, and
+proves that the lowered circuit implements `Gate.QFT`.
 
 `Statement.lean` is the only file needed to see what is claimed: it holds
 every definition the claim depends on and imports nothing else from this

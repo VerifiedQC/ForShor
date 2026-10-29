@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.Shor.Lowering.LowerGate
+import ForShor.ShorVerification.Implementation.Compiler.Proofs.SingleTable
 import ForShor.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
 import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
@@ -10,7 +10,7 @@ import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Cons
 /-!
 # Whole-program lowering correctness
 
-This file proves `Policy.lowerGate` (`Shor/Lowering/LowerGate.lean`)
+This file proves `Policy.lowerGate` (`Compiler/Statement.lean`)
 correct: `Policy.lowerGate_correctness` states that the lowered program has
 the same action as the source gate whenever the static precondition
 (`Policy.GateWorkspaceOK`) and the dynamic one

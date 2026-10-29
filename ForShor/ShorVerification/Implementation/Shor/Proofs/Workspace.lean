@@ -1,27 +1,154 @@
-import ForShor.ShorVerification.Implementation.Shor.Circuit.Workspace
-import ForShor.ShorVerification.Implementation.Shor.Circuit.OrderFinding
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.CmpLtNW
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import Mathlib.Basic.Real.Basic
-import Mathlib.Analysis.SpecialFunctions.Pow.Real
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
 
 /-!
-# Static Workspace Readiness
+# Shor: the workspace condition of the order-finding circuit
 
-The public static readiness theorem `gateWorkspaceOK_orderFindingApprox`,
-which expands the public Shor reserve budget (`ShorWorkspaceLargeEnough`)
-into the per-stage `GateWorkspaceOK` facts required by lowering the full
-approximate order-finding circuit, and its packaged form
-`LoweredShorReady.workspace`.
+`LoweredShorReady.workspace`: the readiness package implies
+`Policy.GateWorkspaceOK` for the order-finding circuit, so the circuit can be
+lowered. Also the
+reconstruction of `ShorApproxSetup` from `ShorApproxSetupMinimal`.
 -/
 
 namespace Shor
+
+/-! =========================================================
+    The approximate setup from the minimal one
+========================================================= -/
+
+section
+open Operations
+
+private lemma active_get_mem_ownedQubits
+    (x : ExtReg)
+    (i : Fin (regSize x.active)) :
+    x.active.get i ∈ x.ownedQubits := by
+  rw [ExtReg.ownedQubits, List.mem_append]
+  left
+  dsimp [Reg.get]
+  exact List.get_mem x.active.qubits _
+
+/--
+`ModExpLayout` from the ownership facts of `ShorApproxSetupMinimal`.
+
+Stated without any `QSemantics`, so the static layout can be established for a
+concrete register allocation without choosing a semantics.
+-/
+theorem modExpLayout_of_disjoint
+    {x data work : ExtReg}
+    {flag : ℕ}
+    (exponent_data_disjoint : ExtReg.OwnedDisjoint x data)
+    (data_work_disjoint : ExtReg.OwnedDisjoint data work)
+    (flag_outside_data : flag ∉ data.ownedQubits)
+    (flag_outside_work : flag ∉ work.ownedQubits)
+    (controls_outside_work :
+      ∀ q ∈ x.active.qubits, q ∉ work.ownedQubits)
+    (flag_outside_controls : flag ∉ x.active.qubits) :
+    ModExpLayout x.active data work flag := by
+  intro i
+
+  have hctrlMem :
+      x.active.get i ∈ x.active.qubits := by
+    dsimp [Reg.get]
+    exact List.get_mem x.active.qubits _
+
+  have hctrlData :
+      x.active.get i ∉ data.ownedQubits := by
+    intro hdata
+    exact
+      exponent_data_disjoint
+        (active_get_mem_ownedQubits x i)
+        hdata
+
+  have hctrlWork :
+      x.active.get i ∉ work.ownedQubits :=
+    controls_outside_work
+      (x.active.get i)
+      hctrlMem
+
+  have hctrlFlag :
+      x.active.get i ≠ flag := by
+    intro heq
+    apply flag_outside_controls
+    rwa [← heq]
+
+  exact
+    ⟨data_work_disjoint,
+      flag_outside_data,
+      flag_outside_work,
+      hctrlData,
+      hctrlWork,
+      hctrlFlag⟩
+
+universe u
+
+/-- A reserve that is entirely zero is zero on its first `n` qubits. -/
+theorem freshFor_of_reserve {Basis : Type u} [RegEncoding Basis] {e : ExtReg} {b : Basis}
+    (n : ℕ) (h : FreshZero e.reserve b) : e.FreshFor n b := by
+  have hsplit : e.reserve = Reg.append (e.reserve.take n) (e.reserve.drop n)
+      (by
+        rw [Disjoint, List.disjoint_left]
+        intro q h1 h2
+        exact (List.disjoint_take_drop e.reserve.nodup (le_refl n)) h1 h2) := by
+    cases e.reserve
+    simp [Reg.append, Reg.take, Reg.drop]
+  unfold FreshZero at h
+  rw [hsplit, RegEncoding.toNat_append] at h
+  unfold ExtReg.FreshFor FreshZero ExtReg.newBits
+  omega
+
+variable {qs : QSemantics} [RegEncoding qs.Basis] {P : ShorLoweringPolicy} {η : ℝ} {a N : ℕ}
+  {x y work scratch : ExtReg} {flag : ℕ} {b0 : qs.Basis}
+
+/-! The layout and clean-input facts implied by a readiness package. -/
+
+theorem LoweredShorReady.data_work_disjoint
+    (h : LoweredShorReady qs P η a N x y work scratch flag b0) : ExtReg.OwnedDisjoint y work :=
+  h.modMulWorkspace.2.2
+
+theorem LoweredShorReady.flag_outside_data
+    (h : LoweredShorReady qs P η a N x y work scratch flag b0) : flag ∉ y.ownedQubits := by
+  simpa [ExtReg.ownedQubits_grow] using h.approx.step4_workspace.flag_not_data
+
+theorem LoweredShorReady.flag_outside_work
+    (h : LoweredShorReady qs P η a N x y work scratch flag b0) : flag ∉ work.ownedQubits :=
+  h.approx.step4_workspace.flag_not_work
+
+theorem LoweredShorReady.controls_outside_work
+    (h : LoweredShorReady qs P η a N x y work scratch flag b0) :
+    ∀ q ∈ x.active.qubits, q ∉ work.ownedQubits := fun _ hq =>
+  List.disjoint_left.mp h.workspace_isolated.exponent_work_disjoint
+    (by simp [ExtReg.ownedQubits, hq])
+
+theorem LoweredShorReady.flag_outside_controls
+    (h : LoweredShorReady qs P η a N x y work scratch flag b0) : flag ∉ x.active.qubits :=
+  fun hf => h.workspace_isolated.flag_outside_exponent (by simp [ExtReg.ownedQubits, hf])
+
+/-- The full approximate setup from a readiness package. -/
+def LoweredShorReady.toShorApproxSetup
+    (h : LoweredShorReady qs P η a N x y work scratch flag b0) :
+    ShorApproxSetup qs η N x y work scratch flag b0 where
+  register_layout :=
+    modExpLayout_of_disjoint h.approx.exponent_data_disjoint h.data_work_disjoint
+      h.flag_outside_data h.flag_outside_work h.controls_outside_work h.flag_outside_controls
+  circuit_workspace := h.modMulWorkspace
+  step4_workspace := h.approx.step4_workspace
+  exponent_data_disjoint := h.approx.exponent_data_disjoint
+  exponent_scratch_disjoint := h.workspace_isolated.exponent_scratch_disjoint
+  work_precision := h.approx.algorithm1_precision
+  clean_input :=
+    ⟨h.approx.exponent_zero, h.approx.data_zero,
+      freshFor_of_reserve 2 h.workspace_initially_zero.2.1, h.approx.work_zero,
+      freshFor_of_reserve 1 h.workspace_initially_zero.2.2.1, h.approx.scratch_zero,
+      freshFor_of_reserve 1 h.workspace_initially_zero.2.2.2, h.approx.flag_zero⟩
+
+end
+
+/-! =========================================================
+    The workspace condition of the order-finding circuit
+========================================================= -/
+
+section
 open Gate
 open Classical
 
@@ -61,7 +188,6 @@ private theorem gateWorkspaceOK_H_reg
         simp only [List.foldl_cons]
         exact ih (Gate.H q ;; U) ⟨trivial, hU⟩
   exact hfold (regQubits r) Gate.id trivial
-
 
 private theorem constArithmeticWorkspace_of_cmpLtNWWorkspace
     (N : ℕ)
@@ -627,7 +753,6 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
 
   simpa [orderFindingApprox, Policy.GateWorkspaceOK, hmod, hstep4] using hAll
 
-
 /--
 Main static theorem for this module.
 
@@ -666,8 +791,6 @@ Static workspace theorem exposed through `LoweredShorReady`.
 theorem LoweredShorReady.workspace
     {qs : QSemantics}
     [RegEncoding qs.Basis]
-    [GateSemanticsFacts qs]
-    [LowerGateClass qs]
     {P : ShorLoweringPolicy}
     {η : ℝ}
     {a N : ℕ}
@@ -679,8 +802,8 @@ theorem LoweredShorReady.workspace
         qs P η a N x y work scratch flag b0) :
     Policy.GateWorkspaceOK P
       (orderFindingApprox a N x y work scratch flag
-        (ShorApproxSetupMinimal.toShorApproxSetup h.approx).circuit_workspace
-        (ShorApproxSetupMinimal.toShorApproxSetup h.approx).step4_workspace) := by
+        h.toShorApproxSetup.circuit_workspace
+        h.toShorApproxSetup.step4_workspace) := by
   exact
     gateWorkspaceOK_orderFindingApprox
       (P := P)
@@ -693,7 +816,9 @@ theorem LoweredShorReady.workspace
       (scratch := scratch)
       (flag := flag)
       (b0 := b0)
-      (ShorApproxSetupMinimal.toShorApproxSetup h.approx)
+      h.toShorApproxSetup
       h.workspace_large_enough
+
+end
 
 end Shor

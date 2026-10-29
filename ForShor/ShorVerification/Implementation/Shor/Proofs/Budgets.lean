@@ -1,4 +1,5 @@
-import ForShor.ShorVerification.Implementation.Shor.Spec.Cleanliness
+import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
 import ForShor.ShorVerification.Implementation.Shared.Registers
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
 
@@ -6,7 +7,7 @@ import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Work
 # Shor workspace budgets and clean-state predicates
 
 The dynamic clean-state preservation lemmas for the clean-state invariants
-declared in `Shor.Spec.Cleanliness`.
+declared in `Proofs/Support.lean`.
 
 Main declarations:
 

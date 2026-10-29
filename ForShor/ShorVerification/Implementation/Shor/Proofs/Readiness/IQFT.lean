@@ -1,11 +1,10 @@
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
+import ForShor.ShorVerification.Implementation.Shor.Statement
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Budgets
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Lowering
+import ForShor.ShorVerification.Implementation.Compiler.Main
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
 import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Sequencing
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Primitives
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Step1
@@ -124,7 +123,7 @@ private theorem lowered_IQFT_ready_and_full_clean
   · exact hgateClean
 
   · rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs
         P
         hP
@@ -233,7 +232,7 @@ theorem lowered_IQFT_ready_and_concrete_clean
   constructor
   · exact hgateClean
   · rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs P
         hP
         (IQFT x) hworkspace ψ hgateClean

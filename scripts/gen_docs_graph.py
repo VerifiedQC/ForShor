@@ -28,7 +28,7 @@ ANNOTATIONS_JS_PATH = os.path.join(REPO_ROOT, "docs/data/annotations.js")
 
 DEPTH0_ORDER = [
     "Framework", "Shared", "PhaseProduct", "QFT",
-    "ModularExponentiation", "Shor", "GateCount", "Reference",
+    "ModularExponentiation", "Compiler", "Shor", "GateCount", "Reference",
 ]
 
 DECL_RE = re.compile(

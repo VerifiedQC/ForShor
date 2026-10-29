@@ -8,12 +8,24 @@ bound across the modular-exponentiation implementation error, and (via
 order-finding outcome to a nontrivial factor.
 
 ```
-Lowering, Budgets, Setup  <  Readiness/*  <  NaiveShor/*  <  Correctness
+Support  <  Workspace  <  Lowering, Budgets, Setup  <  Readiness/*  <  NaiveShor/*  <  Correctness
 ```
 
 See `Readiness/README.md` for the workspace-readiness split (11 files, chained
 by circuit stage) and `NaiveShor/README.md` for the ideal-circuit/classical-
 reduction analysis.
+
+## `Workspace.lean` — the workspace condition of the order-finding circuit
+
+- **`gateWorkspaceOK_orderFindingApprox_of_static`** — the static workspace
+  budget and register layout give `Policy.GateWorkspaceOK` for the
+  order-finding circuit: every QFT, phase-product and modular-arithmetic
+  block in it has the workspace its lowerer needs.
+- **`LoweredShorReady.workspace`** — the same, from a readiness package.
+  `Main.lean` exports it as `Shor_ready_workspace_sufficient`, the workspace
+  proof the lowered statements in `Statement.lean` take as an argument.
+- **`ShorApproxSetupMinimal.toShorApproxSetup`** — rebuilds the full
+  `ShorApproxSetup` from the minimal one, via `modExpLayout_of_disjoint`.
 
 ## `Lowering.lean` — correctness of the whole-program lowerer
 
@@ -24,7 +36,7 @@ for any admissible policy. Imports nothing from `Shor/`; consumed by
 ## `Budgets.lean` — dynamic clean-state preservation
 
 The dynamic clean-state preservation lemmas for the clean-state invariants
-declared in `Spec/Cleanliness.lean`.
+declared in `Support.lean`.
 
 - **`freshZero_append`** *(private)* — freshness of an appended register
   follows from freshness of both halves, via `RegEncoding.toNat_append`.
@@ -114,8 +126,6 @@ implementation error to obtain the approximate order-finding statement.
   circuit's bound) to get the final lowered success-probability guarantee
   from a `LoweredShorReady` package. Reached from outside `Shor/` only through
   `Main.lean`, in two shapes: `Shor_correct_approx_lowered_uniform` (`K`
-  existentially quantified, typed by
-  `Spec.Assertions.ShorCorrectApproxLoweredUniform`) and
-  `Shor_correct_approx_lowered_of_modExp_bound_assertion` (`K` supplied by the
-  caller, typed by `Spec.Assertions.ShorCorrectApproxLoweredOfModExpBound`) —
-  the latter is what `Reference/` uses.
+  existentially quantified, typed by `ShorCorrectApproxLoweredUniform`) and
+  `Shor_correct_approx_lowered_2048` (`K = 2048`, typed by
+  `ShorCorrectApproxLowered2048`) — the latter is what `Reference/` uses.

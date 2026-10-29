@@ -33,7 +33,7 @@ Within `Implementation/`, the development has five parts:
    the intended mathematical transformations.
 3. **Lowering correctness** — `Implementation/{PhaseProduct,QFT}/Proofs/Lowering/`
    and `Implementation/Shor/Proofs/Lowering.lean`, over the lowerer at
-   `Implementation/Shor/Lowering/LowerGate.lean`: those high-level gates lower
+   `Implementation/Shor/Statement.lean` (`Policy.lowerGate`): those high-level gates lower
    correctly onto `Framework/AbstractMachine/LowGate.lean`'s language.
 4. **Cost** — `Implementation/GateCount/`: asymptotic gate-count bounds for the
    lowered circuits.
@@ -74,7 +74,7 @@ The two Shor-specific pieces of vocabulary live under `Implementation/Shor/`:
 | concept | file | main names |
 | --- | --- | --- |
 | Classical number theory | `Implementation/Shor/Math/ShorDefinition.lean` | `ord`, `GoodOutcome`, the continued-fraction postprocessing vocabulary (`continuedFractionConvergent`, `OrderVerifier`, `OF_post`). The factoring reduction built on it (`shors_classical_reduction`, `shors_probability_bound`) is proved in `Shor/Math/Factoring_Reduction/` |
-| The correctness contract | `Implementation/Shor/Spec/Contract.lean` | `ShorOrderFindingInstance` (the arithmetic/register data for one order-finding problem), `ShorOrderFindingProgram`, `probability_of_success`, and `ShorImplementation` — one `LowGate` circuit per valid instance, a declared success probability, a trial count, and proofs that both are honest |
+| The correctness contract | `Implementation/Shor/Statement.lean` (`ShorOrderFindingInstance`, `probability_of_success`), `Implementation/Shor/Interface.lean` (`ShorOrderFindingProgram`, `ShorImplementation`) | `ShorOrderFindingInstance` (the arithmetic/register data for one order-finding problem), `ShorOrderFindingProgram`, `probability_of_success`, and `ShorImplementation` — one `LowGate` circuit per valid instance, a declared success probability, a trial count, and proofs that both are honest |
 
 Two design points are worth stating separately, because the rest of the
 development leans on them constantly. Registers are explicit qubit *lists*
@@ -146,7 +146,7 @@ The final role of this layer is to prove that the high-level algorithmic
 circuits are mathematically correct, or close to the ideal circuit in the
 approximate modular-arithmetic branch.
 
-### `Implementation/{PhaseProduct,QFT}/Proofs/Lowering/` and `Implementation/Shor/Lowering/` — lowering correctness
+### `Implementation/{PhaseProduct,QFT}/Proofs/Lowering/` and `Implementation/Shor/Proofs/Lowering.lean` — lowering correctness
 
 The low-level target language and the lowering correctness story. The language
 itself, `LowGate`, is framework vocabulary
@@ -173,8 +173,9 @@ Important parts:
   and `Policy.evalL_lowerQFT` (`Lowering/Readiness.lean`), with
   `evalL_lowerQFT` as their fixed-table instance. `QFT/Main.lean` states
   `Policy.lowerQFT_correct` and `lowerQFT_correct`.
-- `Shor/Lowering/LowerGate.lean` defines `GateWorkspaceOK` and the recursive
-  `lowerGate` function from high-level `Gate` to `LowGate`;
+- `Shor/Statement.lean` defines `GateWorkspaceOK` and the recursive
+  `Policy.lowerGate` function from high-level `Gate` to `LowGate` (the
+  single-table `lowerGate` is in `Shor/Interface.lean`);
   `Shor/Proofs/Lowering.lean` proves whole-program lowering correctness. The
   main theorem is `Policy.lowerGate_correctness`.
 
@@ -217,20 +218,20 @@ postprocessing branch meet.
 
 The setup records it works over:
 
-- `ShorOrderFindingInstance` (`Shor/Spec/Contract.lean`), the
+- `ShorOrderFindingInstance` (`Shor/Statement.lean`), the
   arithmetic/register data for order finding.
 - `ShorLoweringSetup` (`Framework/ToomCookTable.lean`), the assumptions needed
   to lower the chosen circuit. It moved out of this folder, gained the
   interpolation points as a field, and became the submission record itself —
   see "The submission boundary" below.
-- `ShorFactoringInstance` (`Shor/Spec/Setup.lean`), the classical factoring
+- `ShorFactoringInstance` (`Shor/Statement.lean`), the classical factoring
   setup.
-- `ShorCleanInput` (`Shor/Spec/Cleanliness.lean`), the clean-register predicate
+- `ShorCleanInput` (`Shor/Statement.lean`), the clean-register predicate
   for initial states.
-- `ShorApproxSetup` (`Shor/Spec/Setup.lean`), the complete approximate-circuit
+- `ShorApproxSetup` (`Shor/Statement.lean`), the complete approximate-circuit
   setup used by the final statements.
 
-The circuits themselves are in `Shor/Circuit/OrderFinding.lean`
+The circuits themselves are in `Shor/Statement.lean`
 (`orderFindingApprox` and its lowered form `orderFindingApproxLow`).
 
 Important results include:
@@ -283,7 +284,7 @@ between *the rules* and *a construction satisfying them*.
 | `Framework/ToomCookTable.lean` | The rules, implementation-free. The table language (`Register`, `State`, `Prog`, `run?`), the point-row vocabulary (`expectedRow`, `ProgConsumesPtsSafe`), the interpolation vocabulary (`interpMatrix`, `GoodToomCookPoints`), and the record `ShorLoweringSetup` / `ShorSubmission` that bundles them. Imports Mathlib and nothing else, so the specification can be read without the construction. |
 | `Framework/Policy.lean` | The same rules for a *policy*: a list of `(threshold, table)` bands with strictly decreasing thresholds, `choose` picking by operand width, and `Admissible` asking C2–C4 of every band. `constPolicy` / `ShorPolicySubmission.ofSetup` make a table submission the one-band case rather than a parallel path. The import runs one way — `Policy.lean` imports `ToomCookTable.lean`, never the reverse — so each kind of submission reads on its own. |
 | `Implementation/` | The Toom-Cook construction: the lemmas about tables, the point generator and the compiler. It imports the rules from `Framework/ToomCookTable.lean` rather than defining them. |
-| `Implementation/Shor/Spec/Contract.lean` | The semantic contract: `probability_of_success`, `ShorImplementation`. It is the construction's *internal* contract, not what a submitter writes. |
+| `Implementation/Shor/Statement.lean`, `Interface.lean` | The semantic contract: `probability_of_success` (in `Statement.lean`), `ShorImplementation` (in `Interface.lean`). It is the construction's *internal* contract, not what a submitter writes. |
 | `Implementation/Reference/` | `setup ↦ referenceProgramAt`, and `referenceProgramAt_success` — generic in the setup, which is what makes the four side conditions a complete acceptance test. |
 | `Submission/` | The public surface: `Decide.lean` (the four conditions, decidable *in the kernel*; `Framework/` + Mathlib only), `Audit.lean` (`#assert_axioms`, `Lean` only), `Correct.lean` (the fixed precision and the certificate), `Score.lean` (the declared bound and a computable trial count), `Template.lean` (**the submitter's file**: the table and its C1–C4 proofs), `Check.lean` (the acceptance check: the axiom audit, the IR extraction, the evaluation tier, the certificate) and `Main.lean` (the printer). |
 | `Emit/` | `setup ↦ IR`: reflection over the verified construction, producing a `Doc` a resource estimator prices. |

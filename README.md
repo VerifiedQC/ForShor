@@ -20,7 +20,7 @@ theorem Shor_correct (T : ℕ → ℕ) (inst : ShorOrderFindingInstance)
 
 Unpacking the five pieces, since the inequality alone does not say much:
 
-- `probability_of_success` (`Implementation/Shor/Spec/Contract.lean`) is `∑ o : Fin Q, r_found T verify o Q r * probMeas x o (evalC C ψ)` — the probability that the measured outcome, *after* classical post-processing, is exactly the order `r`. Not the probability of landing in a good window.
+- `probability_of_success` (`Implementation/Shor/Statement.lean`) is `∑ o : Fin Q, r_found T verify o Q r * probMeas x o (evalC C ψ)` — the probability that the measured outcome, *after* classical post-processing, is exactly the order `r`. Not the probability of landing in a good window.
 - `r_found` (`Implementation/Shor/Math/ShorDefinition.lean`) is the 0/1 indicator that scanning the first `T Q` continued-fraction convergents of `o/Q`, keeping those whose denominator `d` satisfies `a^d ≡ 1 (mod N)`, returns `r`.
 - `T` is any classical budget with `continuedFractionSearchBound Q ≤ T Q`. It bounds the convergent scan, is not a circuit parameter, and costs no gates.
 - `κ = 1/π² ≈ 0.101`, which is Shor's per-numerator Fourier constant `4/π²` times the `1/4` of the Mertens-type totient bound `φ(r)/r ≥ 1/(4 · log(log₂ N + 1))`. The bound is `Ω(1 / log log N)`, the classical Rosser–Schoenfeld shape.

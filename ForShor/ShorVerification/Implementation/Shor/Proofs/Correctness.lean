@@ -1,11 +1,10 @@
-import ForShor.ShorVerification.Implementation.Shor.Circuit.OrderFinding
+import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Workspace
 import ForShor.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Correctness
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Lowering
+import ForShor.ShorVerification.Implementation.Compiler.Main
 import ForShor.ShorVerification.Implementation.Shared.Measurement
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Dynamic
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Setup
-import ForShor.ShorVerification.Implementation.Shor.Spec.Assertions
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
@@ -13,8 +12,8 @@ import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Mod
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Config
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Precision
-import ForShor.ShorVerification.Implementation.Shor.Spec.Contract
-import ForShor.ShorVerification.Implementation.Shor.Math.ShorDefinition
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
+import ForShor.ShorVerification.Implementation.Shor.Proofs.NaiveShor.ContinuedFractions
 import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
@@ -626,7 +625,7 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
         ModExpConfig.ValidUnitState qs cfg ψ →
         ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
             qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
-          ≤ (tbits cfg.x : ℝ) * stepErr K η)
+          ≤ (regSize cfg.x : ℝ) * stepErr K η)
     (T : ℕ → ℕ)
     (hT : ContinuedFractionSearchComplete T) :
     ∀ (inst : ShorOrderFindingInstance)
@@ -648,7 +647,7 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
           (ψ := qs.ket b0)
         ≥
       κ / Real.log ((Nat.log2 inst.N : ℝ) + 1) -
-        2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+        2 * (regSize x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
   intro inst x y w scratch flag b0 hm hn η hsetup
   let a := inst.a
   let N := inst.N
@@ -710,7 +709,7 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
     ] using
       (And.intro hpreValid hpreUnit)
 
-  let ε : ℝ := (tbits x.active : ℝ) * stepErr K η
+  let ε : ℝ := (regSize x.active : ℝ) * stepErr K η
 
   have hmid :
       ‖qs.eval
@@ -846,7 +845,7 @@ theorem Shor_correct_approx_uniform_of_modExp_bound
           exact sub_le_sub_right hideal (2 * ε)
     _ =
         κ / Real.log ((Nat.log2 N : ℝ) + 1)
-          - 2 * (tbits x.active : ℝ) *
+          - 2 * (regSize x.active : ℝ) *
               Real.sqrt (2 * (K * η)) := by
           simp [ε, stepErr, mul_assoc]
 /--
@@ -875,7 +874,7 @@ theorem Shor_correct_approx_uniform
         (ψ := qs.ket b0)
       ≥
         κ / Real.log ((Nat.log2 inst.N : ℝ) + 1)
-        - 2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+        - 2 * (regSize x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
   obtain ⟨K, hK, _hK_le, hmodExp⟩ := modExpApprox_valid_dist_uniform (qs := qs)
   refine ⟨K, hK, ?_⟩
   exact Shor_correct_approx_uniform_of_modExp_bound
@@ -892,7 +891,7 @@ lemma probability_of_success_lowerGate_eq
     (P : ShorLoweringPolicy)
     (hP : P.Admissible)
     (T : ℕ → ℕ)
-    (verify : OrderVerifier)
+    (verify : ℕ → Bool)
     (x : Reg)
     (r Q : ℕ)
     (G : Gate)
@@ -913,7 +912,7 @@ lemma probability_of_success_lowerGate_eq
           ψ
         =
       qs.eval G ψ :=
-    Policy.lowerGate_correctness
+    Policy.lowerGate_correct
       qs
       P
       hP
@@ -940,7 +939,7 @@ theorem orderFindingApproxLow_probability_eq
     (P : ShorLoweringPolicy)
     (hP : P.Admissible)
     (T : ℕ → ℕ)
-    (verify : OrderVerifier)
+    (verify : ℕ → Bool)
     (a N : ℕ)
     (x y work scratch : ExtReg)
     (flag : ℕ)
@@ -994,7 +993,7 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         ModExpConfig.ValidUnitState qs cfg ψ →
         ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
             qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
-          ≤ (tbits cfg.x : ℝ) * stepErr K η)
+          ≤ (regSize cfg.x : ℝ) * stepErr K η)
     (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)
     (inst : ShorOrderFindingInstance)
     (P : ShorLoweringPolicy)
@@ -1015,13 +1014,13 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (evalC := LowerGateClass.evalL (qs := qs))
         (C := orderFindingApproxLow P
           inst.a inst.N x y work scratch flag
-          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
-          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
+          hready.toShorApproxSetup.circuit_workspace
+          hready.toShorApproxSetup.step4_workspace
           hready.workspace)
         (ψ := qs.ket b0)
       ≥
     κ / Real.log ((Nat.log2 inst.N : ℝ) + 1) -
-      2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+      2 * (regSize x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
   calc
     probability_of_success
         (qs := qs) (T := T)
@@ -1032,8 +1031,8 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (evalC := LowerGateClass.evalL (qs := qs))
         (C := orderFindingApproxLow P
           inst.a inst.N x y work scratch flag
-          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
-          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
+          hready.toShorApproxSetup.circuit_workspace
+          hready.toShorApproxSetup.step4_workspace
           hready.workspace)
         (ψ := qs.ket b0)
       =
@@ -1045,8 +1044,8 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (Q := ASize x.active)
         (evalC := qs.eval)
         (C := orderFindingApprox inst.a inst.N x y work scratch flag
-          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
-          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace)
+          hready.toShorApproxSetup.circuit_workspace
+          hready.toShorApproxSetup.step4_workspace)
         (ψ := qs.ket b0) := by
       exact orderFindingApproxLow_probability_eq
         (qs := qs)
@@ -1057,9 +1056,9 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (a := inst.a) (N := inst.N)
         (x := x) (y := y) (work := work) (scratch := scratch) (flag := flag)
         (hmodWorkspace :=
-          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace)
+          hready.toShorApproxSetup.circuit_workspace)
         (hstep4 :=
-          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace)
+          hready.toShorApproxSetup.step4_workspace)
         (hLowerWorkspace := hready.workspace)
         (ψ := qs.ket b0)
         (hclean := hready.workspace_clean hP)
@@ -1067,11 +1066,11 @@ theorem Shor_correct_approx_lowered_of_modExp_bound
         (Q := ASize x.active)
 
     _ ≥ κ / Real.log ((Nat.log2 inst.N : ℝ) + 1) -
-        2 * (tbits x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
+        2 * (regSize x.active : ℝ) * Real.sqrt (2 * (K * η)) := by
       exact Shor_correct_approx_uniform_of_modExp_bound
         (qs := qs) K hmodExp T hT
         inst x y work scratch flag b0 hm hn η
-        (ShorApproxSetupMinimal.toShorApproxSetup hready.approx)
+        hready.toShorApproxSetup
 /-
 A lowered approximate Shor theorem needs a repository bridge deriving the
 whole-program lowering workspace and dynamic cleanliness facts for
@@ -1083,11 +1082,11 @@ file does not yet contain the numerical allocation bridge from the Shor setup.
     Choosing the precision from `N`
 
 `Shor_correct_approx_lowered_uniform` leaves `η` free and subtracts
-`2 · tbits(x) · √(2Kη)` from the ideal bound. These two lemmas are the pure
+`2 · regSize x · √(2Kη)` from the ideal bound. These two lemmas are the pure
 real arithmetic that turns a precision schedule into a positive bound: below
 `shorPrecision N x` the subtracted term is at most half of `κ / log(log₂ N + 1)`, so
-half of the ideal bound survives. The constant is the explicit `2048`, not an
-existential witness, so the threshold is a closed form in `N` and `tbits x`.
+half of the ideal bound survives. The constant is the explicit `1600`, not an
+existential witness, so the threshold is a closed form in `N` and `regSize x`.
 --------------------------------------------------------- -/
 
 /-- The Shor success constant `κ = 1/π²` is positive. -/
@@ -1095,7 +1094,7 @@ lemma κ_pos : 0 < κ := by
   unfold κ
   positivity
 
-/-- Below `shorPrecision N x`, the lowering loss at the uniform constant `2048`
+/-- Below `shorPrecision N x`, the lowering loss at the uniform constant `1600`
 is at most half of the ideal success bound. Pure real arithmetic; no circuit
 content.
 
@@ -1103,36 +1102,127 @@ No sign hypothesis on `η` is needed: for `η ≤ 0` the loss term is zero, sinc
 `Real.sqrt` of a nonpositive number is zero. -/
 lemma lowering_loss_le_half
     (η : ℝ)
-    (N : ℕ) (hN : 2 ≤ N) (x : Reg) (hx : 1 ≤ tbits x)
+    (N : ℕ) (hN : 2 ≤ N) (x : Reg) (hx : 1 ≤ regSize x)
     (hle : η ≤ shorPrecision N x) :
-    2 * (tbits x : ℝ) * Real.sqrt (2 * (2048 * η))
+    2 * (regSize x : ℝ) * Real.sqrt (2 * (1600 * η))
       ≤ κ / (2 * Real.log ((Nat.log2 N : ℝ) + 1)) := by
   have hlogNat : 0 < Nat.log2 N := by
     rw [Nat.log2_eq_log_two]
     exact Nat.log_pos Nat.one_lt_two hN
   have hL : (1 : ℝ) ≤ (Nat.log2 N : ℝ) := by exact_mod_cast hlogNat
-  have ht : (1 : ℝ) ≤ (tbits x : ℝ) := by exact_mod_cast hx
+  have ht : (1 : ℝ) ≤ (regSize x : ℝ) := by exact_mod_cast hx
   set L : ℝ := Real.log ((Nat.log2 N : ℝ) + 1) with hLdef
-  set t : ℝ := (tbits x : ℝ) with htdef
+  set t : ℝ := (regSize x : ℝ) with htdef
   have hLpos : (0 : ℝ) < L := by
     rw [hLdef]
     exact Real.log_pos (by linarith)
   have htpos : (0 : ℝ) < t := by linarith
   have hκ := κ_pos
-  -- `S` is the half-loss threshold on `√(2 · 2048 · η)`.
+  -- `S` is the half-loss threshold on `√(2 · 1600 · η)`.
   set S : ℝ := κ / (4 * t * L) with hSdef
   have hSnonneg : 0 ≤ S := by rw [hSdef]; positivity
-  have hsq : 2 * (2048 * η) ≤ S ^ 2 := by
+  have hsq : 2 * (1600 * η) ≤ S ^ 2 := by
     have h4 : S ^ 2 = κ ^ 2 / (16 * t ^ 2 * L ^ 2) := by
       rw [hSdef]; field_simp; norm_num
-    have h5 : η ≤ κ ^ 2 / (65536 * t ^ 2 * L ^ 2) := by
+    have h5 : η ≤ κ ^ 2 / (51200 * t ^ 2 * L ^ 2) := by
       simpa [shorPrecision] using hle
     rw [le_div_iff₀ (by positivity)] at h5
     rw [h4, le_div_iff₀ (by positivity)]
     nlinarith [h5]
-  have hsqrt : Real.sqrt (2 * (2048 * η)) ≤ S := by
-    calc Real.sqrt (2 * (2048 * η)) ≤ Real.sqrt (S ^ 2) := Real.sqrt_le_sqrt hsq
+  have hsqrt : Real.sqrt (2 * (1600 * η)) ≤ S := by
+    calc Real.sqrt (2 * (1600 * η)) ≤ Real.sqrt (S ^ 2) := Real.sqrt_le_sqrt hsq
       _ = S := Real.sqrt_sq hSnonneg
-  calc 2 * t * Real.sqrt (2 * (2048 * η)) ≤ 2 * t * S :=
+  calc 2 * t * Real.sqrt (2 * (1600 * η)) ≤ 2 * t * S :=
         mul_le_mul_of_nonneg_left hsqrt (by positivity)
     _ = κ / (2 * L) := by rw [hSdef]; field_simp; ring
+
+/-! ---------------------------------------------------------
+    The lowered circuit at `shorPrecision`, and end-to-end factoring
+--------------------------------------------------------- -/
+
+/-- At any `η ≤ shorPrecision N x` the lowered approximate circuit keeps at
+least half of the ideal success bound. `Main.lean` exports this as
+`Shor_correct_approx_lowered`. -/
+theorem Shor_correct_approx_lowered_at_shorPrecision
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :
+    ShorCorrectApproxLowered T hT := by
+  intro inst P hP x y work scratch flag b0 hm hn η hη hready _hws
+  have hmain :=
+    Shor_correct_approx_lowered_of_modExp_bound (qs := qs) 1600
+      (modExpApprox_valid_dist_1600 (qs := qs)) T hT
+      inst P hP x y work scratch flag b0 hm hn η hready
+  have hN : 2 ≤ inst.N := by
+    have := inst.range
+    omega
+  have hlogNat : 0 < Nat.log2 inst.N := by
+    rw [Nat.log2_eq_log_two]
+    exact Nat.log_pos Nat.one_lt_two hN
+  have hx : 1 ≤ regSize x.active := by
+    rw [hm, Nat.log2_eq_log_two]
+    exact Nat.log_pos Nat.one_lt_two (by nlinarith)
+  have hloss := lowering_loss_le_half η inst.N hN x.active hx hη
+  -- `linarith` sees `κ / log(L+1)` and `κ / (2 log(L+1))` as unrelated atoms, so relate them.
+  have hLpos : (0 : ℝ) < (Nat.log2 inst.N : ℝ) := by exact_mod_cast hlogNat
+  have hhalf :
+      κ / Real.log ((Nat.log2 inst.N : ℝ) + 1) - κ / (2 * Real.log ((Nat.log2 inst.N : ℝ) + 1))
+        = κ / (2 * Real.log ((Nat.log2 inst.N : ℝ) + 1)) := by
+    field_simp
+    ring
+  exact le_trans (by linarith [hloss, hhalf]) hmain
+
+/-- End-to-end factoring with the lowered approximate circuit: at least half
+of the bases are good, and for a good base the lowered circuit at any
+`η ≤ shorPrecision N x` finds the order with probability at least
+`κ / (2 · log(log₂ N + 1))`, from which a nontrivial factor follows. -/
+def ShorEndToEndFactoringApproxLowered [GateSemanticsFacts qs] [LowerGateClass qs] (T : ℕ → ℕ)
+    (_hT : ContinuedFractionSearchComplete T) (fact : ShorFactoringInstance) : Prop :=
+  (2 * (successful_choices fact.N).card ≥ (valid_choices fact.N).card) ∧
+  (∀ a ∈ successful_choices fact.N, ∃ (hgcd : Nat.gcd a fact.N = 1),
+    (∀ (P : ShorLoweringPolicy) (_hP : P.Admissible) (x y work scratch : ExtReg) (flag : ℕ)
+      (b0 : qs.Basis) (_hm : regSize x.active = Nat.log2 (2 * fact.N^2))
+      (_hn : regSize y.active = Nat.log2 (2 * fact.N)) (η : ℝ)
+      (_hη : η ≤ shorPrecision fact.N x.active)
+      (hready : LoweredShorReady qs P η a fact.N x y work scratch flag b0)
+      (hws : Policy.GateWorkspaceOK P hready.circuit),
+      probability_of_success (qs := qs) (T := T)
+        (verify := fun d => decide ((a ^ d) % fact.N = 1))
+        (x := x.active) (r := ord a fact.N hgcd) (Q := ASize x.active)
+        (evalC := LowerGateClass.evalL (qs := qs)) (C := Policy.lowerGate P hready.circuit hws)
+        (ψ := qs.ket b0)
+      ≥ κ / (2 * Real.log ((Nat.log2 fact.N : ℝ) + 1))) ∧
+    (is_nontrivial_factor (Nat.gcd ((a ^ (ord a fact.N hgcd / 2)) - 1) fact.N) fact.N ∨
+     is_nontrivial_factor (Nat.gcd ((a ^ (ord a fact.N hgcd / 2)) + 1) fact.N) fact.N))
+
+/-- End-to-end factoring with the lowered approximate circuit: the classical
+reduction (`shors_probability_bound`, `shors_classical_reduction`) with
+`Shor_correct_approx_lowered_at_shorPrecision` as the quantum step. -/
+theorem Shor_end_to_end_factoring_approx_lowered
+    [GateSemanticsFacts qs]
+    [LowerGateClass qs]
+    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)
+    (fact : ShorFactoringInstance) :
+    ShorEndToEndFactoringApproxLowered T hT fact := by
+  have h_N : fact.N > 2 := fact.gt_two
+  refine ⟨shors_probability_bound fact.N fact.odd (by omega) fact.not_prime_power, ?_⟩
+  intro a ha
+  obtain ⟨⟨ha1, ha2⟩, hgcd⟩ := success_eq_conditions a fact.N ha
+  have h_succ : shor_success_conditions a (ord a fact.N hgcd) fact.N := by
+    have h_a_is_succ : is_successful_choice a fact.N := by
+      unfold successful_choices at ha
+      simp_all
+    unfold is_successful_choice is_period at h_a_is_succ
+    obtain ⟨r, h_per, h_cond⟩ := h_a_is_succ
+    have h_r_eq : r = ord a fact.N hgcd := by
+      have h_bridge := is_period_ord a fact.N hgcd
+      subst h_per
+      simpa
+    rwa [h_r_eq] at h_cond
+  let inst : ShorOrderFindingInstance :=
+    { a := a, N := fact.N, range := ⟨by omega, ha2⟩, coprime := hgcd }
+  refine ⟨hgcd, ?_, shors_classical_reduction a (ord a fact.N hgcd) fact.N h_N ⟨ha1, ha2⟩ hgcd
+    (is_period_ord a fact.N hgcd) h_succ⟩
+  intro P hP x y work scratch flag b0 hm hn η hη hready hws
+  exact Shor_correct_approx_lowered_at_shorPrecision (qs := qs) T hT inst P hP x y work scratch flag b0 hm hn η hη
+    hready hws

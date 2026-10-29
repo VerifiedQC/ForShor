@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.Shor.Math.TotientBoundsLarge
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Math.TotientBoundsLarge
 import ForShor.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Preliminaries
 import ForShor.ShorVerification.Implementation.Shor.Proofs.NaiveShor.PhaseEstimation
 import ForShor.ShorVerification.Implementation.Shared.Registers

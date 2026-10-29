@@ -1,11 +1,9 @@
 import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import ForShor.ShorVerification.Implementation.Shor.Math.Factoring_Reduction.ProbabilityBound
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Math.Factoring_Reduction.ProbabilityBound
 
 open Classical
--- `ord` is `Shor.ord`; see Defs.lean.
-open Shor (ord)
 
 /-!
 # Classical factoring reduction
@@ -18,12 +16,6 @@ a nontrivial factor.
 /-! =========================================================
     Section 1: Algebraic helper lemmas
 ========================================================= -/
-
-/-- Show equivalence between two period definitions -/
-lemma is_period_ord (a N : ℕ) (hgcd : Nat.gcd a N = 1) :
-  is_period a (ord a N hgcd) N := by
-  let u : (ZMod N)ˣ := ZMod.unitOfCoprime a ((Nat.coprime_iff_gcd_eq_one).mpr hgcd)
-  exact orderOf_injective (Units.coeHom (ZMod N)) Units.val_injective u
 
 lemma factorization_identity {N : ℕ} (x : ZMod N) : x^2 - 1 = (x - 1) * (x + 1) := by ring
 

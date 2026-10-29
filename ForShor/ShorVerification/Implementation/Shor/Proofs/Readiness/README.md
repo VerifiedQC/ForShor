@@ -6,7 +6,7 @@ and ordered by dependency. The order is partial, not a chain — a file may
 import anything strictly to its left, and nothing in its own group:
 
 ```
-Static, Sequencing  <  Primitives  <  {Init, Step1}  <  {Step2, Step5}
+Sequencing  <  Primitives  <  {Init, Step1}  <  {Step2, Step5}
                      <  {IQFT, ModMul}  <  ModExp  <  Dynamic
 ```
 
@@ -15,32 +15,8 @@ Static, Sequencing  <  Primitives  <  {Init, Step1}  <  {Step2, Step5}
 import between siblings, so the independence is checked rather than merely
 described.
 
-## `Static.lean`
-
-The static readiness theorem: expands the public Shor reserve budget into
-the per-stage `GateWorkspaceOK` facts the full lowered circuit needs.
-
-- **`reserve_le_capacity_sub_one_of_succ_le`** / **`reserve_le_capacity_sub_two_of_two_add_le`**
-  *(private)* — trivial `omega` arithmetic bridging a `1 + need ≤ capacity` /
-  `2 + need ≤ capacity` hypothesis to `need ≤ capacity - 1`/`- 2`.
-- **`gateWorkspaceOK_H_reg`** *(private)* — `H_reg r` (a left fold of `Gate.H`
-  over a register's qubits) always satisfies `GateWorkspaceOK`, since
-  individual Hadamards carry no recursive lowering obligation.
-- **`constArithmeticWorkspace_of_cmpLtNWWorkspace`** *(private)* — derives
-  the `ConstArithmeticWorkspace` needed by Step 3's typed comparator/subtract
-  gates from a `CmpLtNWWorkspace` (Step 4's concrete comparator layout),
-  including the scratch-width/constant-fits side conditions.
-- **`gateWorkspaceOK_orderFindingApprox`** — the file's main theorem: given a
-  `ShorApproxSetup` and `ShorWorkspaceLargeEnough`, derives `GateWorkspaceOK`
-  for the whole `orderFindingApprox` circuit. Unpacks the reserve budget into
-  per-step QFT/phase-product bounds (Steps 1, 2, 4, 5), discharges each
-  `CmodMulInPlaceCore` invocation (`hCore`), folds that over the exponent
-  qubit list via `hSteps` (mirroring `modExpApproxStepsValid`'s recursion),
-  and combines with the Hadamard/init/final-IQFT obligations.
-- **`LoweredShorReady.workspace`** — packages the theorem above through the
-  public `LoweredShorReady` record, exposed as `.workspace` on a readiness
-  proof; this is the field `Spec/Assertions.lean`'s
-  `ShorCorrectApproxLoweredUniform` inlines.
+The static readiness theorem (`gateWorkspaceOK_orderFindingApprox`, exposed as
+`LoweredShorReady.workspace`) is not here: it is in `../Workspace.lean`.
 
 ## `Sequencing.lean`
 
@@ -353,7 +329,7 @@ this directory.
   local workspace everywhere the lowering procedure needs it.
 - **`LoweredShorReady.workspace_clean`** — packages the theorem above through
   the public `LoweredShorReady` record as `.workspace_clean`; together with
-  `Static.lean`'s `.workspace`, this is what
+  `Statement.lean`'s `.workspace`, this is what
   `Proofs/Correctness.lean`'s `Shor_correct_approx_lowered_of_modExp_bound`
   consumes to discharge `orderFindingApproxLow_probability_eq`'s cleanliness
   hypothesis.

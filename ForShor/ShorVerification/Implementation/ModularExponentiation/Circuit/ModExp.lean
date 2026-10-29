@@ -4,17 +4,13 @@ import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Ste
 /-!
 # Modular-Exponentiation Circuit: Exponentiation Layer
 
-The ideal specification (`tbits`, `modExpIdealSteps`, `modExpIdeal'`) and the
+The ideal specification (`modExpIdealSteps`, `modExpIdeal'`) and the
 approximate modular-exponentiation recursion over a list of control qubits
 (`ModExpLayout`, `ModExpArithmeticOK`, `modExpApproxStepsValid`,
 `modExpApproxValid`), built from the per-core `CmodMulInPlaceCore` circuit.
 -/
 
 namespace Shor
-
-/-- Number of exponent/control bits used by modular exponentiation. -/
-def tbits (x : Reg) : ℕ :=
-  regSize x
 
 /-- Ideal modular-exponentiation recursion over a list of control qubits. -/
 def modExpIdealSteps (qs : QSemantics) [RegEncoding qs.Basis]

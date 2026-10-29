@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.Shor.Math.Factoring_Reduction.Defs
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Math.Factoring_Reduction.Defs
 
 open Classical
 

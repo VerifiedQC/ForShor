@@ -4,16 +4,14 @@ import ForShor.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 /-!
 # QFT Main Theorem
 
-This module proves the public assertion for the QFT implementation.  All
-supporting lemmas are kept under `QFT` proof files (`Decomposition`,
-`Lowering/*`).
+This module proves the public assertion for the QFT implementation.
 -/
 
 namespace Shor
 open Gate
 open Operations
 
-/-- Main QFT lowering theorem, packaged as the public assertion. -/
+/-- QFT lowering theorem with a table -/
 theorem lowerQFT_correct
     (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]
     (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : ExtReg) :

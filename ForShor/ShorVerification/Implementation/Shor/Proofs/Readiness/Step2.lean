@@ -1,5 +1,5 @@
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Lowering
+import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Compiler.Main
 import ForShor.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
@@ -13,7 +13,6 @@ import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Macr
 import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Sequencing
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Primitives
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Init
@@ -500,7 +499,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
         qs r₁ work.reserve scratch.reserve ψ1 := by
     dsimp only [ψ1]
     rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs P
         hP
         U1 hworkspace.1 ψ hU1Clean
@@ -539,7 +538,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
         qs r₁ work.reserve scratch.reserve ψ2 := by
     dsimp only [ψ2]
     rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs P
         hP
         U2 hworkspace.2.1 ψ1 hU2Clean
@@ -589,7 +588,7 @@ private theorem lowered_fastConstMulInto_ready_and_clean
     constructor
     · exact hU3Clean
     · rw [
-        Policy.lowerGate_correctness
+        Policy.lowerGate_correct
           qs P
           hP
           U3 hworkspace.2.2 ψ2 hU3Clean
@@ -740,7 +739,7 @@ theorem lowered_step4_ready_and_clean
   have hψ1 : ψ1 = qs.eval U1 ψ := by
     dsimp only [ψ1]
     rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs P
         hP
         U1 hworkspace.1 ψ hU1.1
@@ -763,7 +762,7 @@ theorem lowered_step4_ready_and_clean
   have hψ2 : ψ2 = qs.eval U2 (qs.eval U1 ψ) := by
     dsimp only [ψ2]
     rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs P
         hP
         U2 hworkspace.2.1 ψ1 hU2Clean,
@@ -788,7 +787,7 @@ theorem lowered_step4_ready_and_clean
       ψ3 = qs.eval U3 (qs.eval U2 (qs.eval U1 ψ)) := by
     dsimp only [ψ3]
     rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs P
         hP
         U3 hworkspace.2.2.1 ψ2 hU3Clean,
@@ -815,7 +814,7 @@ theorem lowered_step4_ready_and_clean
           (qs.eval U3 (qs.eval U2 (qs.eval U1 ψ))) := by
     dsimp only [ψ4]
     rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs P
         hP
         U4 hworkspace.2.2.2.1 ψ3 hU4Clean,
@@ -914,7 +913,7 @@ theorem lowered_step4_ready_and_clean
   constructor
   · exact hgateClean
   · rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs P
         hP
         (step4 N (data.grow 1) work scratch flag hstep4)
@@ -1036,7 +1035,7 @@ theorem lowered_step1_ready_and_full_clean
     dsimp only [ψ1]
 
     rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs
         P
         hP
@@ -1113,7 +1112,7 @@ theorem lowered_step1_ready_and_full_clean
     dsimp only [ψ2]
 
     rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs
         P
         hP
@@ -1229,7 +1228,7 @@ theorem lowered_step1_ready_and_full_clean
     · exact hU3Clean
 
     · rw [
-        Policy.lowerGate_correctness
+        Policy.lowerGate_correct
           qs
           P
           hP
@@ -1413,7 +1412,7 @@ theorem lowered_step2_ready_and_carry_clean
     dsimp only [ψ1]
 
     rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs
         P
         hP
@@ -1486,7 +1485,7 @@ theorem lowered_step2_ready_and_carry_clean
     dsimp only [ψ2]
 
     rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs
         P
         hP
@@ -1576,7 +1575,7 @@ theorem lowered_step2_ready_and_carry_clean
     · exact hU3Clean
 
     · rw [
-        Policy.lowerGate_correctness
+        Policy.lowerGate_correct
           qs
           P
           hP

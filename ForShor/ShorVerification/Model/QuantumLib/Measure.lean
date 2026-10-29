@@ -1,5 +1,6 @@
 import ForShor.ShorVerification.Model.QuantumLib.Transfer
-import ForShor.ShorVerification.Implementation.Shor.Spec.Contract
+import ForShor.ShorVerification.Implementation.Shor.Main
+import ForShor.ShorVerification.Implementation.Reference.Contract
 
 /-!
 # Measurement as a projector matrix
@@ -68,14 +69,14 @@ theorem ket_eq_ι {dim : ℕ} {b : ModelBasis} (hb : Below dim b) :
 onto each outcome of the output register, and weight the squared ℓ² norms by the
 continued-fraction post-processing indicator. -/
 noncomputable def qlSuccessOn (dim : ℕ) (C : LowGate) (x : Reg) (T : ℕ → ℕ)
-    (verify : OrderVerifier) (r Q : ℕ) (w : CVector (2 ^ dim)) : ℝ :=
+    (verify : ℕ → Bool) (r Q : ℕ) (w : CVector (2 ^ dim)) : ℝ :=
   ∑ o : Fin Q,
     r_found (T := T) verify o.1 Q r * cnorm2 (proj dim x o.1 * (denote dim C * w))
 
 /-- **The bridge.** On any embedded input, the abstract success probability and
 the matrix one are the same number. -/
 theorem probability_of_success_ι {dim : ℕ} (C : LowGate) (h : maxQubit C ≤ dim)
-    (T : ℕ → ℕ) (verify : OrderVerifier) (x : Reg) (r Q : ℕ) (w : CVector (2 ^ dim)) :
+    (T : ℕ → ℕ) (verify : ℕ → Bool) (x : Reg) (r Q : ℕ) (w : CVector (2 ^ dim)) :
     probability_of_success (qs := qs) (evalC := LowerGateClass.evalL (qs := qs))
         (T := T) (verify := verify) (x := x) (r := r) (Q := Q) (C := C) (ψ := ι dim w)
       = qlSuccessOn dim C x T verify r Q w := by
@@ -87,11 +88,11 @@ theorem probability_of_success_ι {dim : ℕ} (C : LowGate) (h : maxQubit C ≤ 
 /-- The all-zeros-input specialisation: the input of every headline theorem
 stated over `qs.ket RegEncoding.zero`. -/
 noncomputable def qlSuccess (dim : ℕ) (C : LowGate) (x : Reg) (T : ℕ → ℕ)
-    (verify : OrderVerifier) (r Q : ℕ) : ℝ :=
+    (verify : ℕ → Bool) (r Q : ℕ) : ℝ :=
   qlSuccessOn dim C x T verify r Q (e dim (zeroIdx dim))
 
 theorem probability_of_success_eq {dim : ℕ} (C : LowGate) (h : maxQubit C ≤ dim)
-    (T : ℕ → ℕ) (verify : OrderVerifier) (x : Reg) (r Q : ℕ) :
+    (T : ℕ → ℕ) (verify : ℕ → Bool) (x : Reg) (r Q : ℕ) :
     probability_of_success (qs := qs) (evalC := LowerGateClass.evalL (qs := qs))
         (T := T) (verify := verify) (x := x) (r := r) (Q := Q) (C := C)
         (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))
@@ -99,7 +100,7 @@ theorem probability_of_success_eq {dim : ℕ} (C : LowGate) (h : maxQubit C ≤ 
   rw [ket_zero_eq dim, probability_of_success_ι C h, qlSuccess]
 
 theorem probability_of_success_ket {dim : ℕ} (C : LowGate) (h : maxQubit C ≤ dim)
-    (T : ℕ → ℕ) (verify : OrderVerifier) (x : Reg) (r Q : ℕ)
+    (T : ℕ → ℕ) (verify : ℕ → Bool) (x : Reg) (r Q : ℕ)
     {b : qs.Basis} (hb : Below dim b) :
     probability_of_success (qs := qs) (evalC := LowerGateClass.evalL (qs := qs))
         (T := T) (verify := verify) (x := x) (r := r) (Q := Q) (C := C) (ψ := qs.ket b)

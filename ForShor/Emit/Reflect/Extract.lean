@@ -3,7 +3,9 @@ import ForShor.Emit.IR.Syntax
 import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
 import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
 import ForShor.ShorVerification.Implementation.QFT.Statement
-import ForShor.ShorVerification.Implementation.Shor.Circuit.OrderFinding
+import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Shor.Main
+import ForShor.ShorVerification.Implementation.Reference.Contract
 
 /-!
 # The extractor: shared machinery

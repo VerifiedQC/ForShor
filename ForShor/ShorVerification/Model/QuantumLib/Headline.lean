@@ -83,23 +83,18 @@ theorem ql_Shor_correct_approx_lowered
     (hn : regSize y.active = Nat.log2 (2 * inst.N))
     (η : ℝ) (hη : η ≤ shorPrecision inst.N x.active)
     (hready : LoweredShorReady qs P η inst.a inst.N x y work scratch flag b0)
+    (hws : Policy.GateWorkspaceOK P hready.circuit)
     (dim : ℕ)
-    (hdim : maxQubit (orderFindingApproxLow P inst.a inst.N x y work scratch flag
-        (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
-        (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
-        hready.workspace) ≤ dim)
+    (hdim : maxQubit (Policy.lowerGate P hready.circuit hws) ≤ dim)
     (hb0 : Below dim b0) :
     qlSuccessOn dim
-        (orderFindingApproxLow P inst.a inst.N x y work scratch flag
-          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).circuit_workspace
-          (ShorApproxSetupMinimal.toShorApproxSetup hready.approx).step4_workspace
-          hready.workspace)
+        (Policy.lowerGate P hready.circuit hws)
         x.active T (fun d => decide ((inst.a ^ d) % inst.N = 1))
         (ord inst.a inst.N inst.coprime) (ASize x.active)
         (e dim (basisIdx dim b0))
       ≥ κ / (2 * Real.log ((Nat.log2 inst.N : ℝ) + 1)) := by
   have h := Shor_correct_approx_lowered (qs := qs) T hT inst P hP x y work scratch flag b0
-    hm hn η hη hready
+    hm hn η hη hready hws
   rwa [probability_of_success_ket _ hdim _ _ _ _ _ hb0] at h
 
 /-! ## At the circuit's own qubit count

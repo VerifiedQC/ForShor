@@ -10,10 +10,7 @@ import Mathlib.RingTheory.ZMod.UnitsCyclic
 import Mathlib.Basic.Complex.Basic
 import Mathlib.Analysis.Complex.Exponential
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import ForShor.ShorVerification.Implementation.Shor.Math.ShorDefinition
 
--- `ord` is `Shor.ord` (`Shor/Math/ShorDefinition.lean`).
-open Shor (ord)
 
 open Classical
 

@@ -55,7 +55,7 @@ theorem _root_.Shor.Is2048Bit.log2_eq {N : ℕ} (hN : Is2048Bit N) :
 
 -- The `2 ^ 4097` step below trips the default `exponentiation.threshold` of 256.
 set_option exponentiation.threshold 4100 in
-/-- The exponent/output-register width `tbits` is at most `4096` bits for any
+/-- The exponent/output-register width is at most `4096` bits for any
 2048-bit modulus (it need not be exactly `4096`: `2*N^2` can straddle a power
 of two boundary depending on where exactly `N` sits in `[2^2047, 2^2048)`). -/
 theorem _root_.Shor.Is2048Bit.tbits_le {N : ℕ} (hN : Is2048Bit N) :
@@ -115,29 +115,23 @@ theorem headline_success_bound {N : ℕ} (hN : Is2048Bit N) :
   have hlog : Nat.log2 N = 2047 := hN.log2_eq
   have htbits : Nat.log2 (2 * N ^ 2) ≤ 4096 := hN.tbits_le
   have htbits_eq :
-      tbits (Reg.interval 0 (Nat.log2 (2 * N ^ 2))) = Nat.log2 (2 * N ^ 2) := by
-    simp [tbits, regSize, Reg.width, Reg.interval]
-  -- The error term at `η = 2⁻¹⁵⁰`, `K = referenceK = 2048`, is at most `2⁻⁵⁶`.
+      regSize (Reg.interval 0 (Nat.log2 (2 * N ^ 2))) = Nat.log2 (2 * N ^ 2) := by
+    simp [regSize, Reg.width, Reg.interval]
+  -- The error term at `η = 2⁻¹⁵⁰`, `K = referenceK = 1600`, is at most `2⁻⁵⁶`.
   have herr : referenceApproximationErrorAt m2048 N ≤ (1 : ℝ) / 2 ^ 56 := by
     unfold referenceApproximationErrorAt
     rw [referencePrecision_m2048, htbits_eq]
     have htbits_cast : (Nat.log2 (2 * N ^ 2) : ℝ) ≤ 4096 := by exact_mod_cast htbits
-    have hK : referenceK = 2048 := rfl
-    have hradicand : (2 : ℝ) * (referenceK * (1 / (2 : ℝ) ^ 150)) = 1 / 2 ^ 138 := by
-      rw [hK]
-      rw [show (2 : ℝ) * (2048 * (1 / (2 : ℝ) ^ 150)) = (2 * 2048) / (2 : ℝ) ^ 150 by ring]
-      rw [div_eq_div_iff (by positivity) (by positivity)]
-      have h2048 : (2 : ℝ) * 2048 = 2 ^ 12 := by norm_num
-      rw [h2048, ← pow_add]
-      norm_num
-    rw [hradicand]
-    have hsqrt : Real.sqrt (1 / (2 : ℝ) ^ 138) = 1 / (2 : ℝ) ^ 69 := by
+    have hradicand : (2 : ℝ) * (referenceK * (1 / (2 : ℝ) ^ 150)) ≤ 1 / 2 ^ 138 := by
+      norm_num [referenceK]
+    have hsqrt :
+        Real.sqrt (2 * (referenceK * (1 / (2 : ℝ) ^ 150))) ≤ 1 / (2 : ℝ) ^ 69 := by
       have heq : (1 / (2 : ℝ) ^ 138) = (1 / (2 : ℝ) ^ 69) ^ 2 := by norm_num
-      rw [heq]
-      exact Real.sqrt_sq (by positivity)
-    rw [hsqrt]
+      calc Real.sqrt (2 * (referenceK * (1 / (2 : ℝ) ^ 150)))
+          ≤ Real.sqrt (1 / (2 : ℝ) ^ 138) := Real.sqrt_le_sqrt hradicand
+        _ = 1 / (2 : ℝ) ^ 69 := by rw [heq]; exact Real.sqrt_sq (by positivity)
     calc
-      2 * (Nat.log2 (2 * N ^ 2) : ℝ) * (1 / (2 : ℝ) ^ 69)
+      2 * (Nat.log2 (2 * N ^ 2) : ℝ) * Real.sqrt (2 * (referenceK * (1 / (2 : ℝ) ^ 150)))
         ≤ 2 * 4096 * (1 / (2 : ℝ) ^ 69) := by gcongr
       _ = 1 / 2 ^ 56 := by norm_num
   have hkappa : (1 : ℝ) / 10 ≤ κ := kappa_ge_one_div_ten

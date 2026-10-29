@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.Shor.Math.TotientBounds
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Math.TotientBounds
 import ForShor.ShorVerification.Vendor.Mertens.Theorems
 
 /-!

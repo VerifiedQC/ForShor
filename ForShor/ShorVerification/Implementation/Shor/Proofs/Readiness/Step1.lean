@@ -1,6 +1,6 @@
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
+import ForShor.ShorVerification.Implementation.Shor.Statement
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Primitives
-import ForShor.ShorVerification.Implementation.Shor.Lowering.LowerGate
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
 import ForShor.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps

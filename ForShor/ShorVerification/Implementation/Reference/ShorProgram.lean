@@ -1,6 +1,6 @@
 import ForShor.ShorVerification.Implementation.Reference.ReferenceReadiness
-import ForShor.ShorVerification.Implementation.Shor.Circuit.OrderFinding
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
+import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Shor.Main
 
 namespace Shor
 namespace Reference
@@ -61,8 +61,8 @@ def referenceMinimalSetup
       m
 
 /--
-The full approximate-Shor setup reconstructed from the allocator's minimal
-facts.
+The full approximate-Shor setup, rebuilt from the reference readiness
+package.
 -/
 noncomputable def referenceApproxSetup
     {qs : QSemantics}
@@ -84,13 +84,7 @@ noncomputable def referenceApproxSetup
       (RegEncoding.zero (Basis := qs.Basis)) := by
   dsimp
 
-  exact
-    ShorApproxSetupMinimal.toShorApproxSetup
-      (referenceMinimalSetup
-        (qs := qs)
-        P
-        inst
-        m)
+  exact (referenceLayout_ready (qs := qs) P inst m).toShorApproxSetup
 
 /--
 The complete P workspace proof generated internally for the reference

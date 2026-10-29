@@ -19,6 +19,7 @@ open Shor.Audit
 -- Correctness.
 #assert_axioms Shor.Shor_correct
 #assert_axioms Shor.Shor_end_to_end_factoring
+#assert_axioms Shor.Shor_end_to_end_factoring_approx_lowered
 #assert_axioms Shor.Shor_correct_approx_lowered_uniform
 #assert_axioms Shor.Shor_correct_approx_lowered
 
@@ -38,8 +39,8 @@ open Shor.Audit
 #assert_axioms Shor.ShorLoweringSetup.programOK
 #assert_axioms Shor.ShorPolicySubmission.policy_admissible
 #assert_axioms Shor.policy_submission_correct
-#assert_axioms Shor.Policy.lowerGate_correctness
+#assert_axioms Shor.Policy.lowerGate_correct
 
 -- The modular-exponentiation bound the precision schedule is stated against.
 #assert_axioms Shor.modExpApprox_correct
-#assert_axioms Shor.modExpApprox_correct_2048
+#assert_axioms Shor.modExpApprox_correct_1600

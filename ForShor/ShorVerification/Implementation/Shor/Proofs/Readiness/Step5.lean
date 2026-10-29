@@ -1,5 +1,5 @@
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Lowering
+import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Compiler.Main
 import ForShor.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
@@ -12,7 +12,6 @@ import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Macr
 import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Sequencing
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Primitives
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Init
@@ -86,7 +85,7 @@ private theorem LoweredCleanResult.adj
   · exact hadjClean
 
   · rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs
         Pol
         hP
@@ -529,7 +528,7 @@ private theorem lowered_step5Forward_ready_and_full_clean
     dsimp only [ψ1]
 
     rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs
         Pol
         hP
@@ -596,7 +595,7 @@ private theorem lowered_step5Forward_ready_and_full_clean
     dsimp only [ψ2]
 
     rw [
-      Policy.lowerGate_correctness
+      Policy.lowerGate_correct
         qs
         Pol
         hP
@@ -714,7 +713,7 @@ private theorem lowered_step5Forward_ready_and_full_clean
     · exact hU3Clean
 
     · rw [
-        Policy.lowerGate_correctness
+        Policy.lowerGate_correct
           qs
           Pol
           hP

@@ -1,6 +1,6 @@
 # `Implementation/`
 
-`Shor/Spec/Contract.lean` defines what correctness means, over the
+`Shor/Interface.lean` defines what correctness means, over the
 `Framework/` vocabulary: its `ShorImplementation` structure asks for one `LowGate` circuit per valid
 order-finding instance, a declared success probability, a trial count
 amplifying that probability to 99% on 2048-bit moduli, and proofs that both
@@ -112,10 +112,12 @@ approximation error.
   tied to `N`. At any `η ≤ shorPrecision N x` the approximation loss is at
   most half of the ideal bound, so the circuit certifiably keeps the other
   half, `κ / (2 · log(log₂ N + 1))`. This is the lowered statement to cite.
-* `Shor_correct_approx_lowered_of_modExp_bound_assertion` — the lowered bound
-  at a constant the caller fixes, rather than one hoisted into an
-  existential. `Reference/` consumes this one, which is why nothing outside
-  `Shor/` needs to import `Shor/Proofs/`.
+* `Shor_correct_approx_lowered_2048` — the uniform bound with its constant
+  named, `K = 2048`, at any precision. `Reference/` consumes this one, which
+  is why nothing outside `Shor/` needs to import `Shor/Proofs/`.
+* `Shor_ready_workspace_sufficient` — a readiness package gives the circuit
+  the workspace its lowering needs. The lowered statements take that
+  workspace proof as an argument; this says it can always be supplied.
 
 ## `GateCount/` — the resource-estimation layer
 

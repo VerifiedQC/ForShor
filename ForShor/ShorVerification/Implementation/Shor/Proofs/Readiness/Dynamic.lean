@@ -1,15 +1,14 @@
-import ForShor.ShorVerification.Implementation.Shor.Circuit.Workspace
-import ForShor.ShorVerification.Implementation.Shor.Circuit.OrderFinding
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
+import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Workspace
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Budgets
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Static
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Sequencing
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Primitives
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Init
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.IQFT
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.ModMul
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.ModExp
-import ForShor.ShorVerification.Implementation.Shor.Proofs.Lowering
+import ForShor.ShorVerification.Implementation.Compiler.Main
 import ForShor.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
@@ -436,7 +435,7 @@ Final theorem of the workspace directory.
 
 For a packaged `LoweredShorReady` assumption, the lowered approximate
 order-finding circuit satisfies the dynamic `GateWorkspaceCleanState`
-precondition needed by `Policy.lowerGate_correctness`.
+precondition needed by `Policy.lowerGate_correct`.
 -/
 theorem LoweredShorReady.workspace_clean
     {qs : QSemantics}
@@ -457,8 +456,8 @@ theorem LoweredShorReady.workspace_clean
       qs
       P
       (orderFindingApprox a N x y work scratch flag
-        (ShorApproxSetupMinimal.toShorApproxSetup h.approx).circuit_workspace
-        (ShorApproxSetupMinimal.toShorApproxSetup h.approx).step4_workspace)
+        h.toShorApproxSetup.circuit_workspace
+        h.toShorApproxSetup.step4_workspace)
       h.workspace
       (qs.ket b0) := by
   exact
@@ -474,7 +473,7 @@ theorem LoweredShorReady.workspace_clean
       scratch
       flag
       b0
-      (ShorApproxSetupMinimal.toShorApproxSetup h.approx)
+      h.toShorApproxSetup
       h.workspace_large_enough
       h.workspace_isolated
       h.workspace_initially_zero

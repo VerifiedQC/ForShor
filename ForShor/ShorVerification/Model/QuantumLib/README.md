@@ -91,7 +91,7 @@ whole folder. The folder is not in the library root, so
 | `Denote.lean` | `maxQubit`, `permMatrix`, `diagMatrix`, `hMatrix`, `denote dim : LowGate → CSquare (2 ^ dim)`, and `denote_unitary` | `Embed`, `Standard/LowGates` |
 | `Native.lean` | the sanity lemmas: `denote` of `H`, `CNOT` and `Phase` equals the `kron`-padded `hadamard`, `cnot`, `phaseShift` | `Denote` |
 | `Transfer.lean` | per-primitive commutation lemmas and `transfer : evalL C (ι v) = ι (denote C * v)` | `Denote` |
-| `Measure.lean` | the projector matrices `proj dim r o`, the Born rule `probMeas_ι`, and the bridge `probability_of_success_eq` | `Transfer`, `Shor/Spec/Contract` |
+| `Measure.lean` | the projector matrices `proj dim r o`, the Born rule `probMeas_ι`, and the bridge `probability_of_success_eq` | `Transfer`, `Shor/Statement` |
 | `Headline.lean` | the three headline theorems over matrices | everything, plus `Implementation/` and `Submission/` |
 
 ## How it works

@@ -1,36 +1,23 @@
-import ForShor.ShorVerification.Implementation.Shor.Math.ShorDefinition
-import ForShor.ShorVerification.Framework.Quantum.Measurement
-import ForShor.ShorVerification.Framework.Semantics.LowGateSemantics
-import ForShor.ShorVerification.Framework.Gatecount.ResourceModel
+import ForShor.ShorVerification.Implementation.Shor.Statement
+
+/-!
+# Reference: the order-finding contract
+
+`ShorImplementation`: what a submitted order-finding construction provides (a
+circuit for every instance, a declared success probability it is proved to
+meet, and a trial count), with `ShorOrderFindingProgram` and `Is2048Bit`.
+`referenceShorImplementation` is one value of it.
+-/
 
 namespace Shor
 
+/-! =========================================================
+    The order-finding contract
+========================================================= -/
+
+section
+
 open Classical
-
-/-!
-# The framework's correctness contract
-
-What "a correct Shor order-finding construction" means, stated once:
-`probability_of_success`, the instance and program records, and
-`ShorImplementation`, which bundles a circuit family with a proof that it
-meets a declared single-run success bound on every valid instance and a
-trial count amplifying that bound past 99% on the 2048-bit benchmark.
-
-`ShorImplementation` is an internal contract, not something written by hand.
-A submission is a Toom-Cook table (`Shor.ShorSubmission`,
-`Framework/ToomCookTable.lean`) — an arithmetic program and the interpolation
-points it evaluates at — and `Reference.referenceShorImplementation` builds
-this record from any admissible one.
-
-`ShorOrderFindingProgram.frameworkGateCount` is the gate count the asymptotic
-bounds in `GateCount/Shor_GateCount.lean` are stated with. It is not a
-leaderboard score: that is `Shor.submissionTrialCount N`
-(`Submission/Score.lean`) times a single-run count measured outside Lean, on
-the IR `Emit/` extracts.
-
-Construction, lowering, synthesis, precision selection, workspace layout,
-and all other implementation details live on the implementation side.
--/
 
 variable {qs : QSemantics}
 
@@ -43,42 +30,6 @@ Equivalently, it lies in the interval `[2^2047, 2^2048)`.
 -/
 def Is2048Bit (N : ℕ) : Prop :=
   2 ^ 2047 ≤ N ∧ N < 2 ^ 2048
-
-/--
-Total probability that measurement of the exponent register produces
-an outcome from which continued-fraction postprocessing recovers the
-correct order.
--/
-noncomputable def probability_of_success
-    [MeasureClass qs]
-    {Circuit : Type}
-    (evalC : Circuit → qs.State → qs.State)
-    (T : ℕ → ℕ)
-    (verify : OrderVerifier)
-    (x : Reg)
-    (r Q : ℕ)
-    (C : Circuit)
-    (ψ : qs.State) : ℝ :=
-  ∑ o : Fin Q,
-    (r_found (T := T) verify o.1 Q r) *
-      MeasureClass.probMeas (qs := qs) x o.1 (evalC C ψ)
-
-/--
-Public data and domain assumptions for one order-finding instance.
--/
-structure ShorOrderFindingInstance where
-
-  /-- The base whose order is being found. -/
-  a : ℕ
-
-  /-- The modulus. -/
-  N : ℕ
-
-  /-- The sampled base lies in the valid range. -/
-  range : 0 < a ∧ a < N
-
-  /-- The sampled base is coprime to the modulus. -/
-  coprime : Nat.gcd a N = 1
 
 /--
 The observable output of a submitted order-finding construction.
@@ -178,5 +129,7 @@ structure ShorImplementation : Type where
     ∀ N : ℕ,
       Is2048Bit N →
         (99 / 100 : ℝ) ≤ 1 - (1 - successProbability N) ^ (trialCount N)
+
+end
 
 end Shor

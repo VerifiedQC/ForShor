@@ -42,18 +42,22 @@ LAYERS = {
     "QFT": [
         (r"^Statement$", 0), (r"^Proofs", 4), (r"^Main$", 5),
     ],
+    "Compiler": [
+        (r"^Statement$", 0), (r"^Proofs", 4), (r"^Main$", 5),
+    ],
     "Shared": [
         (r"^(QftPhase|Registers|Measurement)$", 1), (r"^States$", 2),
         (r"^(Hadamard|GateLaws)$", 3), (r"^LowGateEval$", 4),
     ],
     "Shor": [
-        (r"^Math", 10), (r"^Lowering", 15), (r"^Circuit", 20),
-        (r"^Spec\.Assertions$", 31), (r"^Spec", 30),
-        (r"^Proofs\.(Budgets|Setup|Lowering)$", 40),
+        # Statement.lean: everything the propositions in Main.lean need; it
+        # imports nothing from Shor/. Proofs/Math/: number theory, Mathlib only.
+        (r"^Statement$", 12), (r"^Proofs\.Math", 30),
+        (r"^Proofs\.Support$", 35), (r"^Proofs\.Workspace$", 36),
+        (r"^Proofs\.(Budgets|Setup)$", 40),
         # Readiness/: the real partial order, not a total one. Equal ranks are
         # independent and may not import each other -- Step2/Step5,
         # Init/Step1 and IQFT/ModMul each genuinely are.
-        (r"^Proofs\.Readiness\.Static$", 41),
         (r"^Proofs\.Readiness\.Sequencing$", 42),
         (r"^Proofs\.Readiness\.Primitives$", 43),
         (r"^Proofs\.Readiness\.(Init|Step1)$", 44),
@@ -83,9 +87,6 @@ SKIP = {}
 
 # (module, dependency) pairs allowed to break the layer order, with a reason.
 ALLOWED = {
-    ("Shor", "Spec.Assertions", "Proofs.Readiness.Static"):
-        "the assertion inlines a GateWorkspaceOK proof term; proof-irrelevant "
-        "in meaning, but a real file dependency",
 }
 
 # Folders that may not import another subroutine/assembly folder sideways.
@@ -94,13 +95,9 @@ SIDEWAYS_RE = re.compile(
     r"^import ForShor\.ShorVerification\.Implementation\."
     r"(PhaseProduct|QFT|ModularExponentiation|Shor|GateCount|Reference)\.")
 
-# Shor/Proofs is proof-only: nothing outside Implementation/Shor may import it.
-# Two provider files are documented in Shor/README.md as deliberate exports.
-PROOFS_ONLY_PREFIX = PREFIX + "Shor.Proofs"
-PROOFS_ONLY_ALLOWED = {
-    (f"{IMPL}/GateCount/Shor_GateCount.lean", "Shor.Proofs.Lowering"),
-    (f"{IMPL}/Reference/ShorProgram.lean", "Shor.Proofs.Readiness.Static"),
-}
+# Shor/Proofs and Compiler/Proofs are proof-only: nothing outside the folder
+# may import them; other folders go through the folder's Main.lean.
+PROOFS_ONLY = ["Shor", "Compiler"]
 
 
 def imports(path):
@@ -176,20 +173,19 @@ def check_folder(folder):
     return problems
 
 
-def check_proofs_only():
-    """Shor/Proofs may not be imported from outside Implementation/Shor."""
+def check_proofs_only(folder):
+    """`folder`/Proofs may not be imported from outside Implementation/`folder`."""
     problems = []
+    prefix = PREFIX + folder + ".Proofs"
     for path in lean_files("ForShor"):
-        if path.startswith(f"{IMPL}/Shor/"):
+        if path.startswith(f"{IMPL}/{folder}/"):
             continue
         for name in imports(path):
-            if name.startswith(PROOFS_ONLY_PREFIX):
+            if name == prefix or name.startswith(prefix + "."):
                 dep = name[len(PREFIX):]
-                if (path, dep) in PROOFS_ONLY_ALLOWED:
-                    continue
                 problems.append(
                     f"FORBIDDEN PROOFS IMPORT: {path} imports {dep} "
-                    "(Shor/Proofs is proof-only; route through Shor/Main.lean)")
+                    f"({folder}/Proofs is proof-only; route through {folder}/Main.lean)")
     return problems
 
 
@@ -223,8 +219,9 @@ def main():
     problems = []
     for folder in wanted:
         problems += check_folder(folder)
-    if "Shor" in wanted:
-        problems += check_proofs_only()
+    for folder in PROOFS_ONLY:
+        if folder in wanted:
+            problems += check_proofs_only(folder)
     for note in (shared_waiting() if "Shared" in wanted else []):
         print(note)
 

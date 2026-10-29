@@ -4,7 +4,7 @@ The ideal-circuit (`orderFindingIdeal`, using exact modular exponentiation)
 analysis: preparing the periodic pre-IQFT state, the Fourier/measurement
 formula for the post-IQFT outcome probability, the good-outcome mass lower
 bound, and the final ideal-circuit success theorem `Shor_correct` (typed by
-`Spec/Assertions.lean`'s `ShorCorrect`). Internal order:
+`Correctness.lean`'s `ShorCorrect`). Internal order:
 
 ```
 Preliminaries  <  PhaseEstimation  <  GoodOutcomeMassLowerBound  <  Correctness
@@ -212,7 +212,7 @@ The folder's public theorem.
 
 `probability_of_success ≥ κ/log(log₂ N + 1)` is short for five definitions. In full:
 
-- **`probability_of_success`** (`Implementation/Shor/Spec/Contract.lean:52`) is
+- **`probability_of_success`** (`Implementation/Shor/Statement.lean:383`) is
   `∑ o : Fin Q, r_found T verify o Q r * probMeas x o (evalC C ψ)` — the
   measured outcome's probability, weighted by whether classical
   post-processing of that outcome returns the order. It is a probability of
@@ -242,7 +242,7 @@ The folder's public theorem.
   mass lower bound (`ideal_orderFinding_goodOutcome_mass_lower_bound`) is
   itself a lower bound for the full success probability
   (`goodOutcome_mass_le_probability_of_success`, from `Preliminaries.lean`).
-  Typed directly by `Spec/Assertions.lean`'s `ShorCorrect` Prop; consumed by
+  Typed directly by the `ShorCorrect` Prop defined beside it; consumed by
   `Proofs/Correctness.lean`'s `Shor_correct_approx_uniform` (via the uniform
   modular-exponentiation transfer) and exposed as one of `Main.lean`'s public
   theorems.

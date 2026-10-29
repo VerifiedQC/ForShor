@@ -3,6 +3,7 @@
 -- are listed; each line says what it roots.
 import ForShor.ShorVerification.Implementation.Shor.Main                 -- correctness theorems
 import ForShor.ShorVerification.Implementation.QFT.Main
+import ForShor.ShorVerification.Implementation.Compiler.Main
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Main
 import ForShor.ShorVerification.Implementation.GateCount.Shor_GateCount  -- resource bounds
 import ForShor.ShorVerification.Framework.Policy                         -- policy submissions

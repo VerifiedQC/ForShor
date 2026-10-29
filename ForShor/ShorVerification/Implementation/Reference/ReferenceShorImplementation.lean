@@ -1,5 +1,5 @@
 import ForShor.ShorVerification.Implementation.Reference.ShorProgram
-import ForShor.ShorVerification.Implementation.Shor.Spec.Contract
+import ForShor.ShorVerification.Implementation.Reference.Contract
 import ForShor.ShorVerification.Implementation.Shor.Main
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Main
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Config
@@ -35,15 +35,16 @@ variable [LowerGateClass qs]
 Uniform constant controlling the modular-exponentiation approximation error.
 
 Unlike an arbitrary `Classical.choose` witness, this is a concrete numeral:
-`modExpApprox_valid_dist_uniform` proves a uniform constant `K ≤ 2048` works
-(traced from `Cpe = 512` and `Cstep2 = 2π + 2π²` in the Algorithm-1 error
-bounds), so `2048` itself is a valid, and clean, choice of constant.
+`Shor_correct_approx_lowered_uniform` proves the lowered bound for a constant
+`K ≤ 1600` (traced from `Cpe ≤ 512` and `Cstep2 ≤ 2π + 2π²` in the Algorithm-1
+error bounds, which give `K ≤ 1536 + 3π + 3π² ≈ 1575.03`), so by monotonicity
+it holds at `1600` itself.
 
-The bound at this constant is `modExpApprox_correct_2048`
+The bound at this constant is `modExpApprox_correct_1600`
 (`ModularExponentiation/Main.lean`). This definition exists because the error
 schedule below and `Reference2048Headline.lean` compute with the numeral by
 name. -/
-noncomputable def referenceK : ℝ := 2048
+noncomputable def referenceK : ℝ := 1600
 
 omit [MeasureClass qs] [LowerGateClass qs] in
 theorem referenceK_nonneg :
@@ -63,7 +64,7 @@ def referenceProgramAt
 /-- Approximation error appearing in the reference correctness bound. -/
 noncomputable def referenceApproximationErrorAt (m N : ℕ) : ℝ :=
   2 *
-    (tbits (Reg.interval 0 (Nat.log2 (2 * N ^ 2))) : ℝ) *
+    (regSize (Reg.interval 0 (Nat.log2 (2 * N ^ 2))) : ℝ) *
     Real.sqrt (2 * (referenceK * referencePrecision m))
 
 /-- Raw analytical single-run success lower bound at approximation level `m`. -/
@@ -114,17 +115,21 @@ theorem referenceProgramAt_success
       regSize layout.data.active = Nat.log2 (2 * inst.N) := by
     simp[layout]
 
-  have hb :=
-    Shor_correct_approx_lowered_of_modExp_bound_assertion
-      (qs := qs)
-      (referenceK)
-      T hT
-      (modExpApprox_correct_2048 (qs := qs))
-      inst P
-      hP
+  -- The lowered bound holds at some `K ≤ 1600`; the loss is monotone in `K`.
+  obtain ⟨K, _, hK, hunif⟩ := Shor_correct_approx_lowered_uniform (qs := qs) T hT
+  have hb0 :=
+    hunif inst P hP
       layout.x layout.data layout.work layout.scratch layout.flag
       (RegEncoding.zero (Basis := qs.Basis))
       hxwidth hywidth η hready
+      hready.workspace
+  have hη : 0 ≤ η := (referencePrecision_pos m).le
+  have hloss :
+      2 * (regSize layout.x.active : ℝ) * Real.sqrt (2 * (K * η)) ≤
+        2 * (regSize layout.x.active : ℝ) * Real.sqrt (2 * (referenceK * η)) := by
+    have : K * η ≤ referenceK * η := mul_le_mul_of_nonneg_right hK hη
+    gcongr
+  have hb := (sub_le_sub_left hloss _).trans hb0
 
   have hraw :
       referenceRawSuccessProbabilityAt m inst.N ≤
@@ -144,6 +149,8 @@ theorem referenceProgramAt_success
       referenceShorCircuit,
       referenceRawSuccessProbabilityAt,
       referenceApproximationErrorAt,
+      referenceK,
+      LoweredShorReady.circuit,
       referenceXActive,
       referenceXWidth,
       layout,
@@ -273,7 +280,7 @@ theorem exists_reference_positive_precision
 
   obtain ⟨m, hm⟩ :=
     exists_precision_error_le
-      (tbits (Reg.interval 0 (Nat.log2 (2 * N ^ 2))))
+      (regSize (Reg.interval 0 (Nat.log2 (2 * N ^ 2))))
       (referenceK)
       referenceK_nonneg
       (ε := κ / Real.log ((Nat.log2 N : ℝ) + 1) / 2)

@@ -6,7 +6,7 @@ import ForShor.ShorVerification.Framework.AbstractMachine.Gates
 Pure facts about `qftPhase`/`ωPow` (`Framework/AbstractMachine/Gates.lean`): the
 grid-exponential form of `qftPhase`, its conjugate, periodicity of `ω r` and of
 `qftPhase` in its first numeric argument mod `r`, and its unit norm. Used by
-`Shor/Math/OrderFindingAnalysis.lean` and `ModularExponentiation/Proofs/CmpLtNW.lean`.
+`Shor/Proofs/NaiveShor/OrderFindingAnalysis.lean` and `ModularExponentiation/Proofs/CmpLtNW.lean`.
 -/
 
 namespace Shor

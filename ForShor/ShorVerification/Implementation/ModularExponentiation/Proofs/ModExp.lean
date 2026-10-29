@@ -292,7 +292,7 @@ theorem modExpApproxSteps_valid_dist_uniform
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
  :
-    ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧
+    ∃ K : ℝ, 0 ≤ K ∧ K ≤ 1600 ∧
       ∀ (η : ℝ)
         (a N : ℕ) (data work scratch : ExtReg) (flag : ℕ)
         (hworkspace : ModMulCircuitWorkspaceOK data work)
@@ -447,18 +447,18 @@ theorem modExpApproxSteps_valid_dist_uniform
 Uniform approximation theorem for complete modular exponentiation.
 
 The recursive tail theorem is instantiated with all qubits of the exponent
-register, producing the final factor `tbits cfg.x`.
+register, producing the final factor `regSize cfg.x`.
 -/
 theorem modExpApprox_valid_dist_uniform
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
  :
-    ∃ K : ℝ, 0 ≤ K ∧ K ≤ 2048 ∧
+    ∃ K : ℝ, 0 ≤ K ∧ K ≤ 1600 ∧
       ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
         ModExpConfig.ValidUnitState qs cfg ψ →
         ‖qs.eval (ModExpConfig.approxGate cfg) ψ - qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
-          ≤ (tbits cfg.x : ℝ) * stepErr K η := by
+          ≤ (regSize cfg.x : ℝ) * stepErr K η := by
   rcases modExpApproxSteps_valid_dist_uniform (qs := qs) with ⟨K, hK_nonneg, hK_le, hSteps⟩
 
   refine ⟨K, hK_nonneg, hK_le, ?_⟩
@@ -489,30 +489,30 @@ theorem modExpApprox_valid_dist_uniform
     hValid hNorm
 
   simpa [ModExpConfig.approxGate, ModExpConfig.idealGate, modExpApproxValid,
-    modExpIdeal', tbits, regSize, Reg.width] using h
+    modExpIdeal', regSize, Reg.width] using h
 
-/-- The uniform modular-exponentiation bound at the explicit constant `2048`.
-`modExpApprox_valid_dist_uniform` gives some `K ≤ 2048`; `stepErr` is monotone
-in `K`, so the bound also holds at `2048` itself. -/
-theorem modExpApprox_valid_dist_2048
+/-- The uniform modular-exponentiation bound at the explicit constant `1600`.
+`modExpApprox_valid_dist_uniform` gives some `K ≤ 1600`; `stepErr` is monotone
+in `K`, so the bound also holds at `1600` itself. -/
+theorem modExpApprox_valid_dist_1600
     (qs : QSemantics) [RegEncoding qs.Basis]
     [GateSemanticsFacts qs] :
     ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),
       ModExpConfig.ValidUnitState qs cfg ψ →
       ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
           qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
-        ≤ (tbits cfg.x : ℝ) * stepErr 2048 η := by
+        ≤ (regSize cfg.x : ℝ) * stepErr 1600 η := by
   obtain ⟨K, hK_nonneg, hK_le, hbound⟩ :=
     modExpApprox_valid_dist_uniform (qs := qs)
   intro η cfg ψ hψ
   have hη : 0 ≤ η := le_of_lt cfg.env.precision.1
-  have hstep_mono : stepErr K η ≤ stepErr 2048 η := by
+  have hstep_mono : stepErr K η ≤ stepErr 1600 η := by
     unfold stepErr
     apply Real.sqrt_le_sqrt
     nlinarith [hK_le, hη]
   calc
     ‖qs.eval (ModExpConfig.approxGate cfg) ψ -
         qs.eval (ModExpConfig.idealGate qs cfg) ψ‖
-      ≤ (tbits cfg.x : ℝ) * stepErr K η := hbound η cfg ψ hψ
-    _ ≤ (tbits cfg.x : ℝ) * stepErr 2048 η :=
+      ≤ (regSize cfg.x : ℝ) * stepErr K η := hbound η cfg ψ hψ
+    _ ≤ (regSize cfg.x : ℝ) * stepErr 1600 η :=
       mul_le_mul_of_nonneg_left hstep_mono (by positivity)

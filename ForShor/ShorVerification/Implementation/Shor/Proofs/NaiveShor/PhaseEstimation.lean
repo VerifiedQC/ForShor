@@ -1,9 +1,9 @@
 import ForShor.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Preliminaries
-import ForShor.ShorVerification.Implementation.Shor.Math.OrderFindingAnalysis
+import ForShor.ShorVerification.Implementation.Shor.Proofs.NaiveShor.OrderFindingAnalysis
 import ForShor.ShorVerification.Implementation.Shared.Registers
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
-import ForShor.ShorVerification.Implementation.Shor.Circuit.OrderFinding
-import ForShor.ShorVerification.Implementation.Shor.Spec.Cleanliness
+import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
 
 /-!
 # NaiveShor — quantum phase estimation / IQFT analysis

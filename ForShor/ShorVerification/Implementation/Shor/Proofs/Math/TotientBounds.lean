@@ -1,4 +1,5 @@
-import ForShor.ShorVerification.Implementation.Shor.Math.OrderFindingAnalysis
+import Mathlib.Data.Nat.Totient
+import Mathlib.Tactic.IntervalCases
 import Mathlib.NumberTheory.SmoothNumbers
 import Mathlib.Analysis.Complex.ExponentialBounds
 
@@ -12,7 +13,8 @@ This file proves, for every order `r` below `2 ^ 2048`,
 and the `N`-indexed form `shor_totient_ratio_of_lt` used by
 `Proofs/NaiveShor/GoodOutcomeMassLowerBound.lean`.  This is the `Ω(1 / log log N)`
 Mertens-type bound behind the success constant `κ = 1/π²`; the elementary chain
-in `OrderFindingAnalysis.lean` only gives `Ω(1 / log N)`.
+earlier in this file (`totient_ratio_ge_inv_log2_succ`) only gives
+`Ω(1 / log N)`.
 
 ## Method
 
@@ -47,6 +49,240 @@ set_option exponentiation.threshold 5000
 set_option maxRecDepth 100000
 set_option maxHeartbeats 2000000
 
+/-! ### The `1 / (log₂ N + 1)` totient bound -/
+
+/--
+If `2^c ≤ N` and `N > 0`, then `c ≤ log₂ N`.
+-/
+lemma le_log2_of_two_pow_le {c N : ℕ} (hN : 0 < N) (hpow : 2 ^ c ≤ N) : c ≤ Nat.log2 N := by
+  induction c generalizing N with
+  | zero =>
+      omega
+  | succ c ih =>
+      have hpow2 :
+          2 ≤ 2 ^ (c + 1) := by
+        rw [pow_succ]
+        have hp : 0 < 2 ^ c := by positivity
+        omega
+      have hN2 : 2 ≤ N := le_trans hpow2 hpow
+      rw [Nat.log2_def, ite_eq_left hN2]
+      apply Nat.succ_le_succ
+      have hNdiv :
+          0 < N / 2 := by
+        have h :
+            1 ≤ N / 2 := by
+          apply
+            (Nat.le_div_iff_mul_le
+              (by omega : 0 < 2)).2
+          simpa using hN2
+        omega
+      have hpow' :
+          2 ^ c ≤ N / 2 := by
+        apply
+          (Nat.le_div_iff_mul_le
+            (by omega : 0 < 2)).2
+        simpa [pow_succ] using hpow
+      exact ih hNdiv hpow'
+
+lemma two_pow_card_le_prod (S : Finset ℕ) : (∀ p ∈ S, 2 ≤ p) → 2 ^ S.card ≤ ∏ p ∈ S, p := by
+  classical
+  induction S using Finset.induction_on with
+  | empty =>
+      intro _
+      simp
+  | @insert p S hp ih =>
+      intro h2
+      have hp2 : 2 ≤ p :=
+        h2 p (by simp)
+      have h2S :
+          ∀ q ∈ S, 2 ≤ q := by
+        intro q hq
+        exact h2 q (by simp [hq])
+      have ih' := ih h2S
+      rw [Finset.card_insert_of_notMem hp, Finset.prod_insert hp, pow_succ
+      ]
+      have h := Nat.mul_le_mul ih' hp2
+      simpa [Nat.mul_comm] using h
+
+lemma primeFactors_card_le_log2 {r N : ℕ} (hr : 0 < r) (hrN : r < N) :
+    r.primeFactors.card ≤ Nat.log2 N := by
+  have hprime2 :
+      ∀ p ∈ r.primeFactors, 2 ≤ p := by
+    intro p hp
+    exact (Nat.prime_of_mem_primeFactors hp).two_le
+  have hpow_prod :
+      2 ^ r.primeFactors.card ≤
+      ∏ p ∈ r.primeFactors, p :=
+    two_pow_card_le_prod r.primeFactors hprime2
+  have hprod_r :
+      (∏ p ∈ r.primeFactors, p) ≤ r := by
+    exact Nat.le_of_dvd hr (Nat.prod_primeFactors_dvd r)
+  have hpowN :
+      2 ^ r.primeFactors.card ≤ N := by
+    exact le_trans (le_trans hpow_prod hprod_r) (Nat.le_of_lt hrN)
+  have hN : 0 < N := by
+    omega
+  exact le_log2_of_two_pow_le hN hpowN
+
+lemma prod_one_sub_inv_ge_inv_card_succ (S : Finset ℕ) :
+    (∀ p ∈ S, 2 ≤ p) → 1 / (((S.card + 1 : ℕ) : ℝ)) ≤ ∏ p ∈ S, (1 - ((p : ℝ)⁻¹)) := by
+  classical
+  induction S using Finset.induction_on_max with
+  | empty =>
+      intro _
+      norm_num
+  | insert p S hmax ih =>
+      intro h2
+      have hpS : p ∉ S := by
+        intro hp
+        have h := hmax p hp
+        omega
+      have hp2 : 2 ≤ p :=
+        h2 p (by simp)
+      have h2S :
+          ∀ q ∈ S, 2 ≤ q := by
+        intro q hq
+        exact h2 q (by simp [hq])
+      have ih' := ih h2S
+      /-
+      Since every q ∈ S satisfies 2 ≤ q < p,
+      S is contained in [2,p).
+      -/
+      have hsub :
+          S ⊆ Finset.Ico 2 p := by
+        intro q hq
+        simp only [Finset.mem_Ico]
+        exact ⟨h2S q hq, hmax q hq⟩
+      have hcard0 : S.card ≤ (Finset.Ico 2 p).card := Finset.card_le_card hsub
+      have hcard :
+          S.card ≤ p - 2 := by
+        simpa using hcard0
+      have hcardp :
+          S.card + 2 ≤ p := by
+        omega
+      have hcardpR :
+          (((S.card + 2 : ℕ) : ℝ)) ≤
+          (p : ℝ) := by
+        exact_mod_cast hcardp
+      have hpR :
+          0 < (p : ℝ) := by
+        positivity
+      have hc2R :
+          0 <
+            (((S.card + 2 : ℕ) : ℝ)) := by
+        positivity
+      /-
+      1/p ≤ 1/(card S + 2).
+      -/
+      have hinv :
+          (1 : ℝ) / (p : ℝ) ≤
+          1 /
+            (((S.card + 2 : ℕ) : ℝ)) := by
+        apply (div_le_div_iff₀ hpR hc2R).2
+        simpa using hcardpR
+      /-
+      (card+1)/(card+2)
+          = 1 - 1/(card+2)
+          ≤ 1 - 1/p.
+      -/
+      have hfactor :
+          (((S.card + 1 : ℕ) : ℝ) / ((S.card + 2 : ℕ) : ℝ)) ≤
+          1 - ((p : ℝ)⁻¹) := by
+        have hid :
+            (((S.card + 1 : ℕ) : ℝ) / ((S.card + 2 : ℕ) : ℝ)) =
+            1 -
+              1 /
+                (((S.card + 2 : ℕ) : ℝ)) := by
+          field_simp
+          simp
+          ring_nf
+        rw [hid, inv_eq_one_div]
+        linarith
+      have hfactor_nonneg :
+          0 ≤ 1 - ((p : ℝ)⁻¹) := by
+        have hfrac_nonneg :
+            0 ≤
+              (((S.card + 1 : ℕ) : ℝ) /
+                ((S.card + 2 : ℕ) : ℝ)) := by
+          positivity
+        exact le_trans hfrac_nonneg hfactor
+      have hmul :
+          (((S.card + 1 : ℕ) : ℝ) / ((S.card + 2 : ℕ) : ℝ)) *
+          (1 / (((S.card + 1 : ℕ) : ℝ))) ≤
+          (1 - ((p : ℝ)⁻¹)) *
+            ∏ q ∈ S,
+              (1 - ((q : ℝ)⁻¹)) := by
+        exact
+          mul_le_mul
+            hfactor
+            ih'
+            (by positivity)
+            hfactor_nonneg
+      rw [Finset.card_insert_of_notMem hpS, Finset.prod_insert hpS
+      ]
+      calc
+        1 /
+            (((S.card + 1 + 1 : ℕ) : ℝ))
+            =
+          (((S.card + 1 : ℕ) : ℝ) / ((S.card + 2 : ℕ) : ℝ)) *
+          (1 /
+            (((S.card + 1 : ℕ) : ℝ))) := by
+              push_cast
+              field_simp
+              ring
+        _ ≤ (1 - ((p : ℝ)⁻¹)) * ∏ q ∈ S, (1 - ((q : ℝ)⁻¹)) := hmul
+
+lemma totient_ratio_ge_inv_primeFactors_card_succ {r : ℕ} (hr : 0 < r) :
+    1 / (((r.primeFactors.card + 1 : ℕ) : ℝ)) ≤ (Nat.totient r : ℝ) / (r : ℝ) := by
+  have h2 :
+      ∀ p ∈ r.primeFactors, 2 ≤ p := by
+    intro p hp
+    exact (Nat.prime_of_mem_primeFactors hp).two_le
+  have hprod := prod_one_sub_inv_ge_inv_card_succ r.primeFactors h2
+  have hrR :
+      (r : ℝ) ≠ 0 := by
+    exact_mod_cast Nat.ne_of_gt hr
+  have hφQ := Nat.totient_eq_mul_prod_factors r
+  have hφR :
+      (Nat.totient r : ℝ) =
+      (r : ℝ) *
+        ∏ p ∈ r.primeFactors,
+          (1 - ((p : ℝ)⁻¹)) := by
+    have h := congrArg (fun z : ℚ => (z : ℝ)) hφQ
+    simpa using h
+  have hratio :
+      (Nat.totient r : ℝ) / (r : ℝ) =
+      ∏ p ∈ r.primeFactors,
+        (1 - ((p : ℝ)⁻¹)) := by
+    rw [hφR]
+    field_simp [hrR]
+  rw [hratio]
+  exact hprod
+
+lemma totient_ratio_ge_inv_log2_succ {r N : ℕ} (hr : 0 < r) (hrN : r < N) :
+    1 / (((Nat.log2 N + 1 : ℕ) : ℝ)) ≤ (Nat.totient r : ℝ) / (r : ℝ) := by
+  have hcard : r.primeFactors.card ≤ Nat.log2 N := primeFactors_card_le_log2 hr hrN
+  have hratio := totient_ratio_ge_inv_primeFactors_card_succ hr
+  have hden :
+      (((r.primeFactors.card + 1 : ℕ) : ℝ)) ≤
+      (((Nat.log2 N + 1 : ℕ) : ℝ)) := by
+    exact_mod_cast Nat.add_le_add_right hcard 1
+  have hleft :
+      1 / (((Nat.log2 N + 1 : ℕ) : ℝ)) ≤
+      1 /
+          (((r.primeFactors.card + 1 : ℕ) : ℝ)) := by
+    have hL :
+        0 <
+          (((Nat.log2 N + 1 : ℕ) : ℝ)) := by
+      positivity
+    have hR :
+        0 <
+          (((r.primeFactors.card + 1 : ℕ) : ℝ)) := by
+      positivity
+    apply (div_le_div_iff₀ hL hR).2
+    simpa using hden
+  exact le_trans hleft hratio
+
 /-! ### Elementary bounds on `1 - 1/p` -/
 
 private lemma one_sub_inv_nonneg {p : ℕ} (hp : 1 ≤ p) : (0 : ℝ) ≤ 1 - (p : ℝ)⁻¹ := by
@@ -58,8 +294,7 @@ private lemma one_sub_inv_le_one (p : ℕ) : (1 : ℝ) - (p : ℝ)⁻¹ ≤ 1 :=
   have : (0 : ℝ) ≤ (p : ℝ)⁻¹ := by positivity
   linarith
 
-lemma prod_primesBelow_nonneg (M : ℕ) :
-    0 ≤ ∏ p ∈ Nat.primesBelow M, (1 - (p : ℝ)⁻¹) :=
+lemma prod_primesBelow_nonneg (M : ℕ) : 0 ≤ ∏ p ∈ Nat.primesBelow M, (1 - (p : ℝ)⁻¹) :=
   Finset.prod_nonneg fun _ hi =>
     one_sub_inv_nonneg (Nat.Prime.one_lt (Nat.prime_of_mem_primesBelow hi)).le
 
@@ -125,8 +360,7 @@ lemma pow_card_filter_le {r M : ℕ} (hr : 0 < r) :
 and the `k` divisors at least `M` contribute at least `1 - k/M`. -/
 lemma totient_ratio_ge_split {r M : ℕ} (hr : 0 < r) (hM : 2 ≤ M) :
     (∏ p ∈ Nat.primesBelow M, (1 - (p : ℝ)⁻¹)) *
-        (1 - ((r.primeFactors.filter (fun p => M ≤ p)).card : ℝ) / M)
-      ≤ (Nat.totient r : ℝ) / r := by
+    (1 - ((r.primeFactors.filter (fun p => M ≤ p)).card : ℝ) / M) ≤ (Nat.totient r : ℝ) / r := by
   classical
   set f : ℕ → ℝ := fun p => 1 - (p : ℝ)⁻¹ with hfdef
   set large := r.primeFactors.filter (fun p => M ≤ p) with hlarge
@@ -198,9 +432,8 @@ lemma totient_ratio_ge_split {r M : ℕ} (hr : 0 < r) (hM : 2 ≤ M) :
 /-- The product over the primes below `M` as a ratio of two naturals, so that a
 rational lower bound for it is two `decide`s and a `norm_num`. -/
 lemma prod_primesBelow_eq_div (M : ℕ) :
-    ∏ p ∈ Nat.primesBelow M, (1 - (p : ℝ)⁻¹)
-      = ((∏ p ∈ Nat.primesBelow M, (p - 1) : ℕ) : ℝ)
-          / ((∏ p ∈ Nat.primesBelow M, p : ℕ) : ℝ) := by
+    ∏ p ∈ Nat.primesBelow M, (1 - (p : ℝ)⁻¹) = ((∏ p ∈ Nat.primesBelow M, (p - 1) : ℕ) : ℝ)
+    / ((∏ p ∈ Nat.primesBelow M, p : ℕ) : ℝ) := by
   rw [Nat.cast_prod, Nat.cast_prod, ← Finset.prod_div_distrib]
   refine Finset.prod_congr rfl fun p hp => ?_
   have hp1 : 1 ≤ p := (Nat.prime_of_mem_primesBelow hp).one_lt.le
@@ -212,10 +445,8 @@ lemma prod_primesBelow_eq_div (M : ℕ) :
   field_simp
 
 /-- A rational lower bound for `∏_{p < M, p prime} (1 - 1/p)`. -/
-lemma le_prod_primesBelow {M A B : ℕ} {c : ℝ}
-    (hA : ∏ p ∈ Nat.primesBelow M, (p - 1) = A)
-    (hB : ∏ p ∈ Nat.primesBelow M, p = B)
-    (hB0 : (0 : ℝ) < (B : ℝ)) (hcB : c * (B : ℝ) ≤ (A : ℝ)) :
+lemma le_prod_primesBelow {M A B : ℕ} {c : ℝ} (hA : ∏ p ∈ Nat.primesBelow M, (p - 1) = A)
+    (hB : ∏ p ∈ Nat.primesBelow M, p = B) (hB0 : (0 : ℝ) < (B : ℝ)) (hcB : c * (B : ℝ) ≤ (A : ℝ)) :
     c ≤ ∏ p ∈ Nat.primesBelow M, (1 - (p : ℝ)⁻¹) := by
   rw [prod_primesBelow_eq_div, hA, hB, le_div_iff₀ hB0]
   exact hcB
@@ -224,8 +455,7 @@ lemma le_prod_primesBelow {M A B : ℕ} {c : ℝ}
 
 /-- `φ(r)/r ≥ c · (1 - K/M)` for `r < 2 ^ b`, where `c` bounds the product over
 the primes below `M` and `K` is any exponent with `2 ^ b ≤ M ^ (K+1)`. -/
-lemma totient_ratio_region {r M K b : ℕ} {c : ℝ}
-    (hr : 0 < r) (hM : 2 ≤ M) (hKM : K ≤ M)
+lemma totient_ratio_region {r M K b : ℕ} {c : ℝ} (hr : 0 < r) (hM : 2 ≤ M) (hKM : K ≤ M)
     (hb : r < 2 ^ b) (hK : 2 ^ b ≤ M ^ (K + 1))
     (hc : c ≤ ∏ p ∈ Nat.primesBelow M, (1 - (p : ℝ)⁻¹)) :
     c * (1 - (K : ℝ) / M) ≤ (Nat.totient r : ℝ) / r := by
@@ -304,8 +534,8 @@ private lemma log_succ_bound {L : ℕ} (hL1 : 1 ≤ L) (hL7 : L ≤ 7) :
   · linarith [log_seven_ge]
   · linarith [log_eight_ge]
 
-/-- Region A: below `255` the elementary bound `1/(log₂(r+1) + 1) ≤ φ(r)/r` from
-`OrderFindingAnalysis.lean` already beats `1 / (4 log (log₂ (r+1) + 1))`. -/
+/-- Region A: below `255` the elementary bound `1/(log₂(r+1) + 1) ≤ φ(r)/r`
+(`totient_ratio_ge_inv_log2_succ`) already beats `1 / (4 log (log₂ (r+1) + 1))`. -/
 private lemma region_A {r : ℕ} (hr : 0 < r) (hr2 : r < 255) :
     1 / (4 * Real.log ((Nat.log2 (r + 1) : ℝ) + 1)) ≤ (Nat.totient r : ℝ) / r := by
   have hbase := totient_ratio_ge_inv_log2_succ hr (show r < r + 1 by omega)
@@ -456,8 +686,7 @@ theorem totient_ratio_loglog_of_lt {r : ℕ} (hr : 0 < r) (hr2 : r < 2 ^ 2048) :
 
 /-- The `N`-indexed form consumed by `shor_totient_ratio_lower_bound`: `log₂` and
 `log` are monotone and `r + 1 ≤ N`, so the `N` denominator is the larger one. -/
-theorem shor_totient_ratio_of_lt {r N : ℕ} (hr : 0 < r) (hrN : r < N)
-    (hr2 : r < 2 ^ 2048) :
+theorem shor_totient_ratio_of_lt {r N : ℕ} (hr : 0 < r) (hrN : r < N) (hr2 : r < 2 ^ 2048) :
     1 / (4 * Real.log ((Nat.log2 N : ℝ) + 1)) ≤ (Nat.totient r : ℝ) / r := by
   refine le_trans ?_ (totient_ratio_loglog_of_lt hr hr2)
   have hmono : Nat.log2 (r + 1) ≤ Nat.log2 N := by

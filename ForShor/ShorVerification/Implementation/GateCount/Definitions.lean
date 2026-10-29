@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.Shor.Lowering.LowerGate
+import ForShor.ShorVerification.Implementation.Shor.Main
 import ForShor.ShorVerification.Implementation.QFT.Statement
 import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients

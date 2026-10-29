@@ -1,161 +1,95 @@
 # `Implementation/Shor/`
 
-This folder assembles the pieces proved in `QFT/`, `PhaseProduct/`, and
-`ModularExponentiation/` into the full approximate order-finding circuit and
-proves Shor's algorithm correct: workspace readiness for the whole lowered
-circuit, the success-probability bound, and the classical reduction from a
-good order-finding outcome to a nontrivial factor. The whole-program lowerer
-itself — the compiler that dispatches a source `Gate` to the three
-subroutine lowerers — lives in `Lowering/`.
+This folder builds the order-finding circuit of Shor's algorithm from the QFT,
+phase-product and modular-exponentiation subroutines, lowers it to elementary
+gates, and proves a lower bound on the probability that running it and
+post-processing the measured outcome with continued fractions returns the
+order.
 
-The folder is organized in layers (below). **Every import is "justified":** a
-file may only import another file if it directly uses a declaration that
-file defines — never a declaration it merely re-exports transitively.
-`scripts/check_layers.py Shor` (repo root) enforces the layer order, the
-`Proofs/Readiness/` chain order, and the absence of umbrella files (a file
-that only imports and declares nothing of its own); it also enforces the
-one allowlisted exception below.
+`Statement.lean` is the only file needed to see what is claimed: it holds
+every definition the claims depend on and imports nothing else from this
+folder. `Main.lean` proves the claims stated in `Statement.lean`; `Proofs/`
+holds the lemmas those proofs use.
 
-## Layer order
+## Background
+
+**The problem.** Given N and a with gcd(a, N) = 1, find the order r of a
+modulo N: the least r > 0 with aʳ ≡ 1 (mod N).
+
+**The circuit.** It uses an exponent register of t qubits, with Q = 2ᵗ ≥ N²,
+and a data register.
+
+1. Put the exponent register in uniform superposition and the data register in
+   |1⟩, giving (1/√Q) Σₓ |x⟩|1⟩.
+2. Apply modular exponentiation, giving (1/√Q) Σₓ |x⟩|aˣ mod N⟩.
+3. Apply the inverse QFT to the exponent register and measure it, giving an
+   outcome o.
+
+**The outcome.** o/Q is close to k/r for a uniformly random k < r: with
+probability at least 4/π², |o/Q − k/r| ≤ 1/(2Q).
+
+**Post-processing.** Since Q ≥ N² > r², that error is less than 1/(2r²), so by
+Legendre's theorem k/r in lowest terms is a convergent of the continued
+fraction of o/Q. Its denominator is r when gcd(k, r) = 1.
+
+**Success probability.** A run returns r when o lands near some k·Q/r, which
+happens with probability at least 4/π², and that k is coprime to r, which
+holds for a fraction φ(r)/r ≥ 1/(4 · log(log₂ N + 1)) of the k. So
 
 ```
-Math  <  Lowering  <  Circuit  <  Spec  <  Proofs  <  Main
+P(success) ≥ (4/π²) · φ(r)/r ≥ κ / log(log₂ N + 1),   κ = 1/π²
 ```
 
-A file may import its own folder or any folder to its left. Inside `Proofs/`:
+**The approximation.** The circuit here uses the approximate modular
+exponentiation of `ModularExponentiation/`. At per-step precision η it costs at
+most 2 · t · √(2Kη) of that probability.
 
-```
-Lowering, Budgets, Setup  <  Readiness/*  <  NaiveShor/*  <  Correctness
-```
+## `Statement.lean`
 
-and `Readiness/` is a partial order, not a chain:
+The following explains each section of the code in the Statement.lean file
 
-```
-Static, Sequencing  <  Primitives  <  {Init, Step1}  <  {Step2, Step5}
-                     <  {IQFT, ModMul}  <  ModExp  <  Dynamic
-```
+**Problem instance.** `ShorOrderFindingInstance`: a base `a` and a modulus `N`
+with `0 < a < N` and `gcd(a, N) = 1`.
 
-Braces are genuinely independent: `Step2` and `Step5` do not import each
-other, nor do `Init` and `Step1`, nor `IQFT` and `ModMul`. `scripts/check_layers.py`
-enforces that — an import between two siblings at the same rank fails, which a
-total order could not express.
+**The order and continued-fraction post-processing.** `ord` is the order `r`.
+`orderCandidates` collects the denominators of the first `T Q` convergents of
+`o / Q` that are positive and pass `verify` (in the claims, `aᵈ ≡ 1 (mod N)`),
+and `OF_post` returns the least of them, or `0` if there is none.
+`ContinuedFractionSearchComplete T` says `T Q` convergents are enough: the
+expansion of every `o / Q` with `o < Q` terminates before step `T Q`.
+`r_found` is `1` if post-processing returns `r`, and `0` otherwise.
 
-**One allowlisted exception:** `Spec/Assertions.lean` imports
-`Proofs/Readiness/Static.lean` directly. The assertion
-`ShorCorrectApproxLoweredUniform` inlines a `GateWorkspaceOK` proof term into
-the circuit; by proof irrelevance the *meaning* of the Prop doesn't depend on
-that proof's body, but the *file* dependency is real until `Spec` gains its
-own `hws : GateWorkspaceOK …` field or existentially quantifies over it.
+**Workspace budget.** The number of spare qubits the lowered circuit needs on
+the exponent, data, work and comparator scratch registers, computed from the
+QFT and phase-product recursions; the condition that each register has that
+many; and the condition that the exponent register's qubits are not reused by
+the work register, the scratch register or the comparator flag.
 
-Reading order for newcomers: start at `Main.lean`, then follow imports
-*backwards* — `Spec/Assertions.lean` for what is claimed, `Proofs/Correctness.lean`
-for how the claim is proved, and outward from there into `Proofs/Readiness/`,
-`Spec/`, `Circuit/`, `Lowering/`, `Math/` as needed. The one-line descriptions
-below are grouped in dependency order (lowest layer first) to match that
-traversal.
+**Hypotheses.** `ShorApproxSetupMinimal`: the comparator's register layout, the
+exponent and data registers disjoint, the work register wide enough for
+precision `η`, and every active register starting at zero.
+`ShorWorkspaceCleanInput`: every spare qubit starts at zero. `LoweredShorReady`
+collects these with the workspace budget and isolation conditions.
 
-## `Math/` — pure math, no framework/register dependencies
+**Success probability.** `probability_of_success`: the sum over outcomes `o` of
+the probability of measuring `o` times `r_found`. `κ = 1/π²`, and
+`shorPrecision N x`, the precision at which the approximation loss is at most
+half of `κ / log(log₂ N + 1)`.
 
-| File | Purpose |
-|---|---|
-| `ShorDefinition.lean` | The classical side of order finding: `ord`, good outcomes, continued-fraction recovery (`OF_post`, `OrderVerifier`), `ContinuedFractionSearchComplete`, the success indicator `r_found`, and the constant `κ`. Imports Mathlib only. |
-| `OrderFindingAnalysis.lean` | Number-theory, Fourier/geometric-sum, and counting lemmas backing the ideal order-finding good-outcome analysis. Import closure is Mathlib plus the project's semantics-free vocabulary (`ord`, `qftPhase`, `GoodOutcome`) — no `QSemantics`, `eval`, or measurement. |
-| `Factoring_Reduction/` | The classical reduction from a recovered order to a nontrivial factor: `Defs.lean` (`is_period`, `valid_choices`, `successful_choices`, `is_nontrivial_factor`), `Reduction.lean` (`shors_classical_reduction`), and `ProbabilityBound.lean` (`shors_probability_bound`, at least half of the coprime bases succeed). |
+**The order-finding circuit.** `initY1` sets the data register to `1`, and
+`orderFindingApprox` is the circuit above: Hadamards on the exponent register,
+`initY1`, the approximate modular exponentiation, and the inverse QFT.
+`LoweredShorReady.circuit` is that circuit on a readiness package's registers.
 
-## `Lowering/` — the whole-program `Gate` → `LowGate` lowerer
-
-| File | Purpose |
-|---|---|
-| `LowerGate.lean` | `GateWorkspaceOK` (static reserve precondition, recursive on `Gate`), `lowerGate` (the whole-`Gate` → `LowGate` compiler, dispatching QFT/phase-product/comparator nodes to their subroutine lowerers), and `GateWorkspaceCleanState` (the dynamic clean-state precondition). Imports from `QFT/`, `PhaseProduct/`, and `ModularExponentiation/`; imports nothing from `Shor/`. |
-
-## `Circuit/` — the concrete order-finding circuit
-
-| File | Purpose |
-|---|---|
-| `Workspace.lean` | The static reserve budgets and capacity/isolation conditions (`ShorWorkspaceNeed`, `shorWorkspaceNeed`, `ShorWorkspaceLargeEnough`, `ShorWorkspaceIsolation`) used by the lowering readiness proofs. `shorWorkspaceNeed ops` is `shorWorkspaceNeedOf` applied to that table's QFT need and phase-product reserve model — the budget arithmetic is written once, abstracted over both, so a policy-indexed model substitutes into it without restating anything. |
-| `OrderFinding.lean` | The approximate order-finding circuit (`orderFindingApprox`/`orderFindingApproxLow`), built from the verified modular-exponentiation implementation, and the ideal circuit (`orderFindingIdeal`) that swaps in the abstract exact modular-exponentiation gate. |
-
-## `Spec/` — the public specification surface
-
-| File | Purpose |
-|---|---|
-| `Contract.lean` | What "a correct order-finding construction" means: `probability_of_success`, `ShorOrderFindingInstance`, `ShorOrderFindingProgram` with its `frameworkGateCount`, `Is2048Bit`, and the `ShorImplementation` record that bundles a circuit family with its success bound and trial count. `Reference/` builds a value of it; `GateCount/`, `Emit/` and `Model/` import it. |
-| `Cleanliness.lean` | The static clean-input predicates and dynamic clean-state invariants (`ThreeRegsCleanState`, `FullShorWorkspaceCleanState`, `ShorLoweringCleanState`, `ShorConcreteCleanState`, `IdealOrderFindingInput`) used by the readiness proofs and the final correctness statements. |
-| `Setup.lean` | The user-facing setup/readiness records (`ShorLoweringSetup`, `ShorApproxSetup(Minimal)`, `LoweredShorReady`, `ShorFactoringInstance`) and the bridge from the lower-level implementation setup to the public one. |
-| `Assertions.lean` | The final Shor correctness guarantees (`ShorCorrect`, `ShorCorrectApproxLoweredUniform`, `ShorCorrectApproxLoweredOfModExpBound`, `ShorCorrectApproxLowered`), each stated once as a named proposition, plus `shorPrecision N x` — the precision schedule the last of them is stated at, a closed form in `N` and the register width with the uniform constant `2048` folded in, so nothing about it is existential. `Proofs/Correctness.lean`'s theorems are typed directly by these Props, so there is exactly one copy of each statement. |
-
-## `Proofs/` — everything below is proof-only; nothing outside `Proofs/`/`Main.lean` may import it
-
-| File | Purpose |
-|---|---|
-| `Lowering.lean` | Correctness of the whole-program lowerer, `Policy.lowerGate_correctness`, for any admissible policy. Imports nothing from `Shor/`; consumed by `Readiness/*`, `Correctness.lean`, and `GateCount/`. |
-| `Budgets.lean` | The dynamic clean-state preservation lemmas for the clean-state invariants declared in `Spec/Cleanliness.lean`. |
-| `Setup.lean` | `ShorApproxSetup.toIdealOrderFindingInput` — the final bridge from the approximate setup to the ideal order-finding input predicate. |
-| `Readiness/` | Workspace readiness and clean-state preservation for the full lowered circuit, split by circuit stage (below); see each file's own docstring for its exact scope. |
-| `Correctness.lean` | The quantum-facing part of the Shor statement: the ideal and approximate order-finding circuits, the measurement interface, and the final success-probability theorem. Classical order/continued-fraction material lives in `NaiveShor/`. |
-| `NaiveShor/` | The ideal-circuit (`ctrlModMul`) analysis: preliminaries, the QPE/IQFT chain, the good-outcome mass lower bound, and the classical reduction tying a good outcome to a nontrivial factor. |
-
-### `Proofs/Readiness/` — chained by circuit stage
-
-| File | Purpose |
-|---|---|
-| `Static.lean` | The public static readiness theorem `gateWorkspaceOK_orderFindingApprox`, expanding `ShorWorkspaceLargeEnough` into the per-stage `GateWorkspaceOK` facts, and its packaged form `LoweredShorReady.workspace`. |
-| `Sequencing.lean` | `LoweredCleanResult`/`LoweredCleanResult.seq` — the two-fact package (clean local workspace + post-state satisfies `P`) and its sequencing lemma across `Gate.seq`, used by every later stage. |
-| `Primitives.lean` | Workspace-free gate locality (`WorkspaceFree.clean`) and the primitive register-locality/disjointness helpers, plus Steps 3/4 (comparator and its lowering) readiness and clean-state preservation. |
-| `Init.lean` | Readiness and clean-state preservation for `H_reg`/`initY1`, which allocate no recursive lowering workspace but must still preserve the global clean-state invariant. |
-| `Step1.lean` | Step 1 (data reserve after dropping the carry bit, full work reserve); final theorem `lowered_step1_ready_and_full_clean`. |
-| `Step2.lean` | Step 2 (carry bit active, swapped phase-product operand order), preserving `ShorLoweringCleanState`. |
-| `Step5.lean` | Step 5 via adjoint decomposition: proves the forward Step-5 body clean, then applies the generic adjoint lemma `LoweredCleanResult.adj`. |
-| `IQFT.lean` | The final inverse QFT on the exponent register: `lowered_IQFT_ready_and_full_clean` under the full clean-state invariant, `lowered_IQFT_ready_and_concrete_clean` under the strengthened concrete one. |
-| `ModMul.lean` | One controlled modular-multiplication core (`CmodMulInPlaceCore`), one exponent/control qubit at a time. |
-| `ModExp.lean` | Folds `ModMul.lean`'s per-core result over the full list of exponent/control qubits, preserving the invariant through the whole loop. |
-| `Dynamic.lean` | Assembles the per-stage results above into readiness and dynamic clean-state preservation for the complete circuit: `gateWorkspaceCleanState_orderFindingApprox` and its packaged form `LoweredShorReady.workspace_clean`. |
+**Correctness.** The lowered circuit is `Policy.lowerGate P hready.circuit hws`
+(`Compiler/`), where `hws` is a proof that every block in the circuit has the
+workspace its lowering needs. `ShorCorrectApproxLoweredUniform`: at any
+precision `η`, the success probability is at least
+`κ / log(log₂ N + 1) − 2 · t · √(2Kη)` for a constant `K ≤ 1600`, where `t` is
+the width of the exponent register.
+`ShorCorrectApproxLowered`: at any `η ≤ shorPrecision N x`, it is at least
+`κ / (2 · log(log₂ N + 1))`.
 
 ## `Main.lean`
 
-The final Shor correctness theorems, each typed by its named proposition from
-`Spec/Assertions.lean` and proven from `Proofs/Correctness.lean` and
-`Math/Factoring_Reduction/*`. All supporting lemmas live under
-`Shor.Proofs`. This is the file other folders consume: `Proofs/` is proof-only,
-and `scripts/check_layers.py` fails on an import of `Shor.Proofs.*` from
-outside `Implementation/Shor/` (two provider files are allowlisted —
-`Proofs/Lowering.lean` for `GateCount/` and `Proofs/Readiness/Static.lean` for
-`Reference/ShorProgram.lean` — and named in the script).
-
-| theorem | what it gives |
-|---|---|
-| `Shor_end_to_end_factoring` | the ideal circuit, plus the classical reduction from a good outcome to a nontrivial factor |
-| `Shor_correct_approx_lowered_uniform` | the fully lowered circuit, `K` hoisted into an existential, `η` free |
-| `Shor_correct_approx_lowered_of_modExp_bound_assertion` | the same, at a `K` the caller supplies together with a modular-exponentiation distance bound at that `K` — this is what `Reference/` consumes |
-| `Shor_correct_approx_lowered` | the lowered circuit at `η ≤ shorPrecision N x`, concluding `κ / (2 · log(log₂ N + 1))` |
-
-These differ in how the per-step precision `η` and the uniform constant `K` are
-handled, and the difference matters when citing them. The uniform theorem
-leaves `η` free and hoists `K` into an existential; its loss term
-`2 · tbits(x) · √(2Kη)` does not shrink as `N` grows, so the right-hand side
-is informative only once `η` is tied to `N`, and the threshold for doing that
-would itself depend on an unknown `K`. `Shor_correct_approx_lowered` closes
-both gaps: it runs at the explicit constant `2048`
-(`modExpApprox_valid_dist_2048`), so `shorPrecision N x` is a closed form a
-circuit builder can evaluate before building, and at any `η` below it the
-conclusion is `≥ κ / (2 · log(log₂ N + 1))` — half the ideal bound, positive for
-every admissible `N`. Cite that one.
-
-## Lowering is policy-indexed
-
-The lowering in this folder is indexed by a `ShorLoweringPolicy`, a
-width-indexed choice of Toom-Cook table (see `../PhaseProduct/README.md`).
-`Policy.lowerGate`, `Policy.GateWorkspaceOK`, `Policy.shorWorkspaceNeed`,
-`Policy.ShorWorkspaceLargeEnough` and `Policy.lowerGate_correctness` are the
-policy forms, and every theorem in `Main.lean` takes a
-`P : ShorLoweringPolicy` together with its admissibility proof.
-
-The fixed-table names — `lowerGate`, `GateWorkspaceOK`, `shorWorkspaceNeed`,
-`ShorWorkspaceLargeEnough`, each taking `k`, `hk`, `ops`, `pts`, `hpts` — are
-the **constant policy** instance, one table used at every width, and the
-`*_const` / `*_const_iff` lemmas beside them
-(`Policy.gateWorkspaceOK_const_iff`, `Policy.shorWorkspaceNeed_const`,
-`Policy.shorWorkspaceLargeEnough_const_iff`) identify the two spellings. The
-budget and need functions are abstracted over their reserve model
-(`shorWorkspaceNeedOf`, `qftWorkspaceNeedOf`), which is what lets both
-spellings share one readiness chain.
+Proves `ShorCorrectApproxLoweredUniform` and `ShorCorrectApproxLowered`.

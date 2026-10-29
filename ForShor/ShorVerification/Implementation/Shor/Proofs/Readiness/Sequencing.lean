@@ -1,5 +1,5 @@
-import ForShor.ShorVerification.Implementation.Shor.Lowering.LowerGate
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
+import ForShor.ShorVerification.Implementation.Shor.Statement
 import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
 import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real

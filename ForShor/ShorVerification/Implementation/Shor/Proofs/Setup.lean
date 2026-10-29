@@ -1,5 +1,5 @@
-import ForShor.ShorVerification.Implementation.Shor.Spec.Setup
-import ForShor.ShorVerification.Implementation.Shor.Spec.Cleanliness
+import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
 
 /-!
 # Bridge from the approximate setup to the ideal order-finding input
