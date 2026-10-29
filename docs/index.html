@@ -198,7 +198,7 @@
           faster method and prove no lower bound; a faster method would have to exploit the arithmetic inside the tables.
         </p>
         <p>
-          <span class="newthought">What we can't prove:</span> For the problem as posed, finding the best table cannot be
+          <span class="newthought">What we have not proven:</span> For the problem as posed, finding the best table cannot be
           NP-hard unless P = NP: the best structural score grows only polynomially in <code>k</code>, so the yes-instances
           form a sparse set, and Mahaney's theorem forbids a sparse NP-hard set. Both we check in Lean. For the full
           T-count problem the same barrier holds if the optimum is polynomially bounded, a hypothesis we supply. Once the
@@ -233,9 +233,9 @@
         </p>
         <p>
           The mathematics and the design are in our paper,
-          <a href="https://github.com/VerifiedQC/ForShor#readme"><em>ForShor: Formal Verification of Shor's
-          Algorithm in Lean 4 with Verified Resource Estimation</em></a> (Suresh, Patel, Cao and Tao, 2026).
-          The paper tells the story, and the layer graph is its outline in the
+          <a href="https://github.com/VerifiedQC/ForShor#readme"><em>Formally verified harness for Shor's order
+          finding algorithm in O(n^(2+epsilon)) gate cost</em></a> (Suresh, Courtney, Tao, and Cao, 2026).
+          The paper describes the estimation procedure and results, with the layer graph its outline in the
           code.<label for="sn-gen" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-gen" class="margin-toggle"/><span class="sidenote">The arrows are the imports between top-level folders, read from the Lean sources by <code>scripts/gen_docs_graph.py</code>. The quoted statements are verbatim copies of the declarations at the file and line shown.</span>
         </p>
         <p>
@@ -261,10 +261,10 @@
 <span class="ld">lake</span> <span class="lk">build</span>                       <span class="lc"># the whole development</span>
 <span class="ld">lake</span> <span class="lk">exe</span> <span class="lt">forshor_emit</span> <span class="ln">2</span> <span class="ln">2</span> <span class="ln">15</span> <span class="ln">0</span>   <span class="lc"># the reference circuit for (k, a, N, m), as JSON</span></code></pre>
         <p>
-          The construction is generic in its Toom-Cook table: any table that passes four decidable side
+          The construction is generic for a policy: any table or policy that passes four decidable side
           conditions inherits the correctness theorem and the gate-count bound at its own exponent. The
           README's <a href="https://github.com/VerifiedQC/ForShor#submitting-a-table">Submitting a table</a>
-          explains how such a table is stated and checked.
+          explains how such a table or policy is stated and checked.
         </p>
       </section>
 
@@ -275,15 +275,14 @@
           is in the repository.
         </p>
 <pre class="code hl" data-lang="bibtex"><code><span class="lk">@misc</span><span class="lo">{</span><span class="ld">suresh2026forshor</span><span class="lo">,</span>
-  <span class="lt">author</span>       <span class="lo">=</span> <span class="ls">{Anirudh Suresh and Joshua M. Courtney and Jai Patel and Yudong Cao and Runzhou Tao}</span><span class="lo">,</span>
-  <span class="lt">title</span>        <span class="lo">=</span> <span class="ls">{{ForShor}: Formal Verification of {Shor}'s Algorithm in {Lean~4}</span>
-<span class="ls">                  with Verified Resource Estimation},</span>
+  <span class="lt">author</span>       <span class="lo">=</span> <span class="ls">{Anirudh Suresh and Joshua M. Courtney and Runzhou Tao and Yudong Cao}</span><span class="lo">,</span>
+  <span class="lt">title</span>        <span class="lo">=</span> <span class="ls">{Formally verified harness for Shor's order finding algorithm in O(n^(2+epsilon)) gate cost},</span>
   <span class="lt">year</span>         <span class="lo">=</span> <span class="ln">{2026}</span><span class="lo">,</span>
-  <span class="lt">howpublished</span> <span class="lo">=</span> <span class="ls">{\url{https://github.com/VerifiedQC/ForShor}}</span><span class="lo">,</span>
+  <span class="lt">howpublished</span> <span class="lo">=</span> <span class="ls">{arXiv preprint}}</span><span class="lo">,</span>
   <span class="lt">note</span>         <span class="lo">=</span> <span class="ls">{Apache-2.0 licensed Lean~4 development}</span>
 <span class="lo">}</span></code></pre>
         <p class="colophon">
-          Anirudh Suresh, Jai Patel, Yudong Cao, Runzhou Tao · Apache License 2.0 ·
+          Anirudh Suresh, Joshua M. Courtney, Runzhou Tao, Yudong Cao · Apache License 2.0 ·
           <a href="https://github.com/VerifiedQC/ForShor#readme">README</a> ·
           <a href="https://github.com/VerifiedQC/ForShor/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a> ·
           <a href="https://github.com/VerifiedQC/ForShor">GitHub</a>
