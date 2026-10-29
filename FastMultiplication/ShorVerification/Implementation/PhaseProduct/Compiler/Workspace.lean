@@ -321,6 +321,38 @@ abbrev immediateZNeed
     ℕ :=
   immediateNeed PhaseSide.z ops wx wz
 
+/-! ### Under a width rule
+
+`nextWidth` and `immediateNeed` under a `WidthRule`, for the policy recurrence
+(`PolicyWorkspace.lean`). At `.scan` they are the definitions above
+(`nextWidthBy_scan`, `immediateNeedBy_scan`, both `rfl`); the fixed-table
+recurrence `reserveNeed` below stays on the scan. -/
+
+/-- `nextWidth` under rule `R`. -/
+def nextWidthBy (R : WidthRule) {k : ℕ} (ops : Prog k) (wx wz : ℕ) : ℕ :=
+  nextSignedWidthBy R (widthModelX wx) (widthModelZ wx wz) ops
+
+@[simp] theorem nextWidthBy_scan {k : ℕ} (ops : Prog k) (wx wz : ℕ) :
+    nextWidthBy .scan ops wx wz = nextWidth ops wx wz := rfl
+
+/-- `immediateNeed` under rule `R`. -/
+def immediateNeedBy (R : WidthRule) {k : ℕ} (side : PhaseSide) (ops : Prog k) (wx wz : ℕ) : ℕ :=
+  let Wphase := limbWidth k wx wz
+  let Wnext := nextWidthBy R ops wx wz
+  ∑ i : Fin k,
+    (Wnext - phaseSplitLogicalWidth (side.width wx wz) Wphase k i)
+
+@[simp] theorem immediateNeedBy_scan {k : ℕ} (side : PhaseSide) (ops : Prog k) (wx wz : ℕ) :
+    immediateNeedBy .scan side ops wx wz = immediateNeed side ops wx wz := rfl
+
+/-- `immediateXNeed` under rule `R`. -/
+abbrev immediateXNeedBy (R : WidthRule) {k : ℕ} (ops : Prog k) (wx wz : ℕ) : ℕ :=
+  immediateNeedBy R PhaseSide.x ops wx wz
+
+/-- `immediateZNeed` under rule `R`. -/
+abbrev immediateZNeedBy (R : WidthRule) {k : ℕ} (ops : Prog k) (wx wz : ℕ) : ℕ :=
+  immediateNeedBy R PhaseSide.z ops wx wz
+
 /--
 A conservative reserve requirement for the complete recursive compilation.
 The result is:

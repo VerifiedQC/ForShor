@@ -123,20 +123,79 @@ structure Registry where
   arguments — see the comment there. -/
   topChunkSlack : Option (IR.WExpr × IR.WExpr) := none
 
-def Registry.lookupReg (reg : Registry) (e : Expr) : MetaM (Option IR.RegExpr) := do
-  for (cand, r) in reg.regs do
-    if ← isDefEq e cand then return some r
-  return none
+/-! Run-time lookups (policy submissions only). `forshor_policy_submission`
+extracts the policy IR at run time and turns on `boundedLookups`: the three
+lookups are then memoised, and each registry comparison runs `isDefEq` under a
+bounded budget. A band body repeats the same subterms (`nextWidth x z ops`,
+slot widths, slices) thousands of times, and a failing `isDefEq` unfolds
+definitions on concrete `k = 4..6` programs (the profiled cause of the `whnf`
+heartbeat wall). The memo is keyed by the expression and a fingerprint of the
+candidate list; these terms carry no metavariables, so `isDefEq` is
+deterministic and the memo does not change the result. A comparison that runs
+out of budget counts as no match: the term is translated structurally instead,
+the count is reported, and the evaluation tier checks the result either way.
 
-def Registry.lookupWidth (reg : Registry) (e : Expr) : MetaM (Option IR.WExpr) := do
-  for (cand, w) in reg.widths do
-    if ← isDefEq e cand then return some w
-  return none
+With `boundedLookups` off (the default, and every build-time `extract_*`
+command) the lookups are the original unbounded, unmemoised loops. -/
 
-def Registry.lookupAngle (reg : Registry) (e : Expr) : MetaM (Option IR.AExpr) := do
-  for (cand, a) in reg.angles do
-    if ← isDefEq e cand then return some a
-  return none
+initialize boundedLookups : IO.Ref Bool ← IO.mkRef false
+
+initialize lookupRegCache : IO.Ref (Std.HashMap (UInt64 × Expr) (Option IR.RegExpr)) ← IO.mkRef {}
+initialize lookupWidthCache : IO.Ref (Std.HashMap (UInt64 × Expr) (Option IR.WExpr)) ← IO.mkRef {}
+initialize lookupAngleCache : IO.Ref (Std.HashMap (UInt64 × Expr) (Option IR.AExpr)) ← IO.mkRef {}
+
+/-- Heartbeat budget of one registry comparison (raw count; the option
+`maxHeartbeats 200000` is `2·10⁸` raw). -/
+def lookupDefEqBudget : Nat := 20000000
+
+/-- Registry comparisons that ran out of budget (bounded mode). -/
+initialize lookupTimeouts : IO.Ref Nat ← IO.mkRef 0
+
+/-- `isDefEq` for registry lookups in bounded mode: syntactic equality first,
+then `isDefEq` under `lookupDefEqBudget`, an exhausted budget counting as no
+match. -/
+def boundedIsDefEq (a b : Expr) : MetaM Bool := do
+  if a == b then return true
+  tryCatchRuntimeEx
+    (withTheReader Core.Context (fun c => { c with maxHeartbeats := lookupDefEqBudget }) <|
+      withCurrHeartbeats <| isDefEq a b)
+    (fun _ => do lookupTimeouts.modify (· + 1); pure false)
+
+def candidatesFingerprint {α : Type} (cs : Array (Expr × α)) : UInt64 :=
+  cs.foldl (fun h c => mixHash h (hash c.1)) (hash cs.size)
+
+/-- Turn on bounded, memoised lookups and reset the memo and the timeout
+counter (the run-time policy extraction calls this once). -/
+def enableBoundedLookups : IO Unit := do
+  boundedLookups.set true
+  lookupRegCache.set {}; lookupWidthCache.set {}; lookupAngleCache.set {}; lookupTimeouts.set 0
+
+/-- One registry lookup: the original first-match `isDefEq` loop, or, in bounded
+mode, the memoised loop over `boundedIsDefEq`. -/
+def registryLookup {α : Type} (cands : Array (Expr × α))
+    (cache : IO.Ref (Std.HashMap (UInt64 × Expr) (Option α))) (e : Expr) : MetaM (Option α) := do
+  if !(← boundedLookups.get) then
+    for (cand, r) in cands do
+      if ← isDefEq e cand then return some r
+    return none
+  let key := (candidatesFingerprint cands, e)
+  if let some r := (← cache.get)[key]? then return r
+  let mut res : Option α := none
+  for (cand, r) in cands do
+    if ← boundedIsDefEq e cand then
+      res := some r
+      break
+  cache.modify (·.insert key res)
+  return res
+
+def Registry.lookupReg (reg : Registry) (e : Expr) : MetaM (Option IR.RegExpr) :=
+  registryLookup reg.regs lookupRegCache e
+
+def Registry.lookupWidth (reg : Registry) (e : Expr) : MetaM (Option IR.WExpr) :=
+  registryLookup reg.widths lookupWidthCache e
+
+def Registry.lookupAngle (reg : Registry) (e : Expr) : MetaM (Option IR.AExpr) :=
+  registryLookup reg.angles lookupAngleCache e
 
 /-- Read a natural-number literal off a `Expr`, reducing only via `whnfR`
 (never a full `whnf`) to expose it. Originally used full `whnf`: harmless
@@ -334,6 +393,11 @@ partial def translateW (reg : Registry) (e : Expr) : MetaM IR.WExpr := do
       -- avoids ever asking anything to reduce into `Finset.univ.sup`.
       return .opaque "nextWidth" reg.nextWidthArgs
   | (``Shor.RecursivePhaseWorkspace.nextWidth, #[_, _, wxE, wzE]) =>
+      return .opaque "nextWidth" [← translateW reg wxE, ← translateW reg wzE]
+  | (``Shor.nextSignedWidthBy, #[_, _, _, _, _]) =>
+      -- the same child width under a policy's width rule (`Compiler/Widths.lean`)
+      return .opaque "nextWidth" reg.nextWidthArgs
+  | (``Shor.RecursivePhaseWorkspace.nextWidthBy, #[_, _, _, wxE, wzE]) =>
       return .opaque "nextWidth" [← translateW reg wxE, ← translateW reg wzE]
   | (``Prod.fst, #[_, _, pairE]) =>
       match pairE.getAppFnArgs with

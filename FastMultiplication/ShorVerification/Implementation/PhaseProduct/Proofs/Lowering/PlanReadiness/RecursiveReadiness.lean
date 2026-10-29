@@ -30,16 +30,16 @@ lemma planCompiledSignedPhaseGate_ready_ket
     (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
-    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
+    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy P.widthRule x z ops))
     (recurse :
       let src := initSignedLayoutState layout
-      let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
+      let dst := targetSignedLayoutState src (neededWidthsBy P.widthRule x z ops)
       ∀ i theta,
-        PhaseLoweringPlan P (nextSignedWidth x z ops)
+        PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z ops)
           (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)))
     (hleaf :
       let src := initSignedLayoutState layout
-      let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
+      let dst := targetSignedLayoutState src (neededWidthsBy P.widthRule x z ops)
       ∀ i theta b',
         RecursiveWorkspaceCleanBasis (dst.xslot i) (dst.zslot i) b' →
         PhaseLoweringReady qs (recurse i theta) (qs.ket b'))
@@ -48,24 +48,24 @@ lemma planCompiledSignedPhaseGate_ready_ket
     PhaseLoweringReady qs
       (planCompiledSignedPhaseGate hk pts hpts ops phi x z layout recurse)
       (qs.ket b) := by
-  let need : NeededWidths k := scanNeededWidths x z ops
+  let need : NeededWidths k := neededWidthsBy P.widthRule x z ops
   let src : LayoutState k := initSignedLayoutState layout
   let dst : LayoutState k := targetSignedLayoutState src need
   let coeff : Fin (q k) → ℚ := loweringPhaseCoeff k x z pts hpts
   let annOps := annotatePhaseTermsAux k 0 ops
   let allocPlan :=
     planCompileSignedAllocations
-      (P := P) (nextSignedWidth x z ops) src dst
+      (P := P) (nextSignedWidthBy P.widthRule x z ops) src dst
   let bodyPlan :=
     planCompileAnnotatedOpsToSignedGateAux
-      (P := P) (hk := hk) (nextSignedWidth x z ops) phi coeff dst recurse annOps
+      (P := P) (hk := hk) (nextSignedWidthBy P.widthRule x z ops) phi coeff dst recurse annOps
   let deallocPlan :=
     planCompileSignedDeallocations
-      (P := P) (nextSignedWidth x z ops) src dst
+      (P := P) (nextSignedWidthBy P.widthRule x z ops) src dst
   have hworkspace : CompilerWorkspaceOK src need b := by
     simpa [src, need] using
-      compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis ops x z layout hcapacity b hclean
-  rcases eval_compileSignedAllocations_ket_fits_and_child_clean
+      compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis_by (R := P.widthRule) ops x z layout hcapacity b hclean
+  rcases eval_compileSignedAllocations_ket_fits_and_child_clean_by (R := P.widthRule)
         qs ops x z layout b hworkspace hclean with
     ⟨bAlloc, hAllocEval, hEncAlloc, hAllocClean⟩
   have hFits :
@@ -77,7 +77,7 @@ lemma planCompiledSignedPhaseGate_ready_ket
           (evalRowZ (qs := qs) src (τ j) b)) := by
     intro τ hτ
     simpa [src, dst, need] using
-      allocated_widths_sound (qs := qs) layout ops hcapacity b (σ := τ) hτ
+      allocated_widths_sound_by P.widthRule (qs := qs) layout ops hcapacity b (σ := τ) hτ
   have hdisjoint : LayoutSlotsDisjoint dst := by
     simpa [src, dst, need] using targetSignedLayoutState_owned_disjoint layout need
   have hblocks : BlockDecomposition (k := k) (by omega) State.start_state ops pts :=
@@ -86,11 +86,11 @@ lemma planCompiledSignedPhaseGate_ready_ket
     apply
       planCompileAnnotatedOps_ready_ket_of_blocks_from
         qs hk hP
-        (nextSignedWidth x z ops) phi coeff src dst recurse hleaf
+        (nextSignedWidthBy P.widthRule x z ops) phi coeff src dst recurse hleaf
         hblocks 0 (by simpa using hpts) b bAlloc hdisjoint hFits hC.2 hEncAlloc
     exact hAllocClean
   have hAllocReady : PhaseLoweringReady qs allocPlan (qs.ket b) :=
-    planCompileSignedAllocations_ready qs (nextSignedWidth x z ops) src dst (qs.ket b)
+    planCompileSignedAllocations_ready qs (nextSignedWidthBy P.widthRule x z ops) src dst (qs.ket b)
   have hLowAlloc :
       LowerGateClass.evalL (qs := qs) (lowerGateRec allocPlan) (qs.ket b) = qs.ket bAlloc := by
     calc
@@ -101,7 +101,7 @@ lemma planCompiledSignedPhaseGate_ready_ket
   have hDeallocReady :
       PhaseLoweringReady qs deallocPlan
         (LowerGateClass.evalL (qs := qs) (lowerGateRec bodyPlan) (qs.ket bAlloc)) :=
-    planCompileSignedDeallocations_ready qs (nextSignedWidth x z ops) src dst _
+    planCompileSignedDeallocations_ready qs (nextSignedWidthBy P.widthRule x z ops) src dst _
   unfold planCompiledSignedPhaseGate Policy.stepPlan
   dsimp only
   refine ⟨hAllocReady, ?_⟩
@@ -140,11 +140,11 @@ lemma Policy.signedPlanOf_ready_ket
         obtain ⟨hInterp, hC, hRun⟩ := hP.of_choose ho
         let step : Policy.CanonicalStep P T x z := Policy.canonicalStep P T x z ho hrec hstatic
         let src : LayoutState T.k := initSignedLayoutState step.layout
-        let dst : LayoutState T.k := targetSignedLayoutState src (scanNeededWidths x z T.ops)
+        let dst : LayoutState T.k := targetSignedLayoutState src (neededWidthsBy P.widthRule x z T.ops)
         have hcurrent :
             CleanWorkspaceState qs (initSignedLayoutState step.layout)
-              (scanNeededWidths x z T.ops) (qs.ket b) :=
-          cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis qs T.ops x z step.layout
+              (neededWidthsBy P.widthRule x z T.ops) (qs.ket b) :=
+          cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis_by (R := P.widthRule) qs T.ops x z step.layout
             step.capacity b hclean
         dsimp only
         refine And.intro hcurrent ?_
@@ -168,7 +168,7 @@ lemma Policy.signedPlanOf_ready_ket
         intro i theta b' hclean'
         have hchild : Policy.WorkspaceOK P (dst.xslot i) (dst.zslot i) := by
           simpa [src, dst] using step.childWorkspace i
-        have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z T.ops := by
+        have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidthBy P.widthRule x z T.ops := by
           simpa [src, dst] using step.childInputSize i
         have hchildReady :
             PhaseLoweringReady qs
@@ -181,7 +181,7 @@ lemma Policy.signedPlanOf_ready_ket
         exact True.intro
 termination_by phaseInputSize x z
 decreasing_by
-  have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z T.ops := by
+  have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidthBy P.widthRule x z T.ops := by
     simpa [src, dst] using step.childInputSize i
   rw [hsize]
   assumption
@@ -328,16 +328,16 @@ lemma planCompiledCSignedPhaseGate_ready_ket
     (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
-    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
+    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy P.widthRule x z ops))
     (recurse :
       let src := initSignedLayoutState layout
-      let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
+      let dst := targetSignedLayoutState src (neededWidthsBy P.widthRule x z ops)
       ∀ i theta,
-        PhaseLoweringPlan P (nextSignedWidth x z ops)
+        PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z ops)
           (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i)))
     (hleaf :
       let src := initSignedLayoutState layout
-      let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
+      let dst := targetSignedLayoutState src (neededWidthsBy P.widthRule x z ops)
       ∀ i theta b',
         RecursiveWorkspaceCleanBasis (dst.xslot i) (dst.zslot i) b' →
         PhaseLoweringReady qs (recurse i theta) (qs.ket b'))
@@ -346,24 +346,24 @@ lemma planCompiledCSignedPhaseGate_ready_ket
     PhaseLoweringReady qs
       (planCompiledCSignedPhaseGate hk pts hpts ops ctrl phi x z layout recurse)
       (qs.ket b) := by
-  let need : NeededWidths k := scanNeededWidths x z ops
+  let need : NeededWidths k := neededWidthsBy P.widthRule x z ops
   let src : LayoutState k := initSignedLayoutState layout
   let dst : LayoutState k := targetSignedLayoutState src need
   let coeff : Fin (q k) → ℚ := loweringPhaseCoeff k x z pts hpts
   let annOps := annotatePhaseTermsAux k 0 ops
   let allocPlan :=
     planCompileSignedAllocations
-      (P := P) (nextSignedWidth x z ops) src dst
+      (P := P) (nextSignedWidthBy P.widthRule x z ops) src dst
   let bodyPlan :=
     planCompileAnnotatedOpsToCSignedGateAux
-      (P := P) (hk := hk) (nextSignedWidth x z ops) ctrl phi coeff dst recurse annOps
+      (P := P) (hk := hk) (nextSignedWidthBy P.widthRule x z ops) ctrl phi coeff dst recurse annOps
   let deallocPlan :=
     planCompileSignedDeallocations
-      (P := P) (nextSignedWidth x z ops) src dst
+      (P := P) (nextSignedWidthBy P.widthRule x z ops) src dst
   have hworkspace : CompilerWorkspaceOK src need b := by
     simpa [src, need] using
-      compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis ops x z layout hcapacity b hclean
-  rcases eval_compileSignedAllocations_ket_fits_and_child_clean
+      compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis_by (R := P.widthRule) ops x z layout hcapacity b hclean
+  rcases eval_compileSignedAllocations_ket_fits_and_child_clean_by (R := P.widthRule)
         qs ops x z layout b hworkspace hclean with
     ⟨bAlloc, hAllocEval, hEncAlloc, hAllocClean⟩
   have hFits :
@@ -375,7 +375,7 @@ lemma planCompiledCSignedPhaseGate_ready_ket
           (evalRowZ (qs := qs) src (τ j) b)) := by
     intro τ hτ
     simpa [src, dst, need] using
-      allocated_widths_sound (qs := qs) layout ops hcapacity b (σ := τ) hτ
+      allocated_widths_sound_by P.widthRule (qs := qs) layout ops hcapacity b (σ := τ) hτ
   have hdisjoint : LayoutSlotsDisjoint dst := by
     simpa [src, dst, need] using targetSignedLayoutState_owned_disjoint layout need
   have hblocks : BlockDecomposition (k := k) (by omega) State.start_state ops pts :=
@@ -384,11 +384,11 @@ lemma planCompiledCSignedPhaseGate_ready_ket
     apply
       planCompileAnnotatedOps_c_ready_ket_of_blocks_from
         qs hk hP
-        (nextSignedWidth x z ops) ctrl phi coeff src dst recurse hleaf
+        (nextSignedWidthBy P.widthRule x z ops) ctrl phi coeff src dst recurse hleaf
         hblocks 0 (by simpa using hpts) b bAlloc hdisjoint hFits hC.2 hEncAlloc
     exact hAllocClean
   have hAllocReady : PhaseLoweringReady qs allocPlan (qs.ket b) :=
-    planCompileSignedAllocations_ready qs (nextSignedWidth x z ops) src dst (qs.ket b)
+    planCompileSignedAllocations_ready qs (nextSignedWidthBy P.widthRule x z ops) src dst (qs.ket b)
   have hLowAlloc :
       LowerGateClass.evalL (qs := qs) (lowerGateRec allocPlan) (qs.ket b) = qs.ket bAlloc := by
     calc
@@ -399,7 +399,7 @@ lemma planCompiledCSignedPhaseGate_ready_ket
   have hDeallocReady :
       PhaseLoweringReady qs deallocPlan
         (LowerGateClass.evalL (qs := qs) (lowerGateRec bodyPlan) (qs.ket bAlloc)) :=
-    planCompileSignedDeallocations_ready qs (nextSignedWidth x z ops) src dst _
+    planCompileSignedDeallocations_ready qs (nextSignedWidthBy P.widthRule x z ops) src dst _
   have hCompleteReady :
       PhaseLoweringReady qs (PhaseLoweringPlan.seq allocPlan (PhaseLoweringPlan.seq bodyPlan deallocPlan))
         (qs.ket b) := by
@@ -412,7 +412,7 @@ lemma planCompiledCSignedPhaseGate_ready_ket
     PhaseLoweringReady.cast_gate_mpr
       qs
       (by
-        simp [compiledCSignedPhaseGate, compileOpsToCSignedGate, compileOpsToSignedGate,
+        simp [compiledCSignedPhaseGateBy, compileOpsToCSignedGateBy, compileOpsToSignedGateBy,
           controlPhaseLeaves, controlPhaseLeaves_compileSignedAllocations,
           controlPhaseLeaves_compileSignedDeallocations])
       _
@@ -447,11 +447,11 @@ lemma Policy.cSignedPlanOf_ready_ket
         let step : Policy.CanonicalStep P T x z :=
           Policy.canonicalStep P T x z ho hrec hstatic.toWorkspaceOK
         let src : LayoutState T.k := initSignedLayoutState step.layout
-        let dst : LayoutState T.k := targetSignedLayoutState src (scanNeededWidths x z T.ops)
+        let dst : LayoutState T.k := targetSignedLayoutState src (neededWidthsBy P.widthRule x z T.ops)
         have hcurrent :
             CleanWorkspaceState qs (initSignedLayoutState step.layout)
-              (scanNeededWidths x z T.ops) (qs.ket b) :=
-          cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis qs T.ops x z step.layout
+              (neededWidthsBy P.widthRule x z T.ops) (qs.ket b) :=
+          cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis_by (R := P.widthRule) qs T.ops x z step.layout
             step.capacity b hclean
         dsimp only
         refine And.intro hcurrent ?_
@@ -477,14 +477,14 @@ lemma Policy.cSignedPlanOf_ready_ket
         have hctrlLayout : step.layout.ControlDisjoint ctrl :=
           step.layout.controlDisjoint_of_ctrlDisjoint hstatic.control_disjoint
         have hctrlDst :=
-          controlDisjoint_target step.layout ctrl (scanNeededWidths x z T.ops) hctrlLayout
+          controlDisjoint_target step.layout ctrl (neededWidthsBy P.widthRule x z T.ops) hctrlLayout
         have hchild : Policy.CWorkspaceOK P ctrl (dst.xslot i) (dst.zslot i) :=
           { toWorkspaceOK := by simpa [src, dst] using step.childWorkspace i
             control_disjoint := by
               constructor
               · exact (by simpa [src, dst] using hctrlDst.1 i)
               · exact (by simpa [src, dst] using hctrlDst.2 i) }
-        have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z T.ops := by
+        have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidthBy P.widthRule x z T.ops := by
           simpa [src, dst] using step.childInputSize i
         have hchildReady :
             PhaseLoweringReady qs
@@ -497,7 +497,7 @@ lemma Policy.cSignedPlanOf_ready_ket
         exact True.intro
 termination_by phaseInputSize x z
 decreasing_by
-  have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z T.ops := by
+  have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidthBy P.widthRule x z T.ops := by
     simpa [src, dst] using step.childInputSize i
   rw [hsize]
   assumption

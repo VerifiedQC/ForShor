@@ -49,12 +49,13 @@ covers?
 
 `true` means the band earns its place. `false` means that at some width in
 its range the recursion falls through to the schoolbook leaf, so the band is
-dead weight there — a performance warning, never an admissibility failure. -/
+dead weight there — a performance warning, never an admissibility failure.
+The child width is the policy's own (`P.widthRule`). -/
 def bandShrinks (P : ShorLoweringPolicy) (i : ℕ) : Bool :=
   match P.bands[i]? with
   | none => false
   | some b =>
       (bandWidths P i).all fun n =>
-        decide (RecursivePhaseWorkspace.nextWidth b.table.ops n n < n)
+        decide (RecursivePhaseWorkspace.nextWidthBy P.widthRule b.table.ops n n < n)
 
 end Shor.Policy

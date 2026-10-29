@@ -147,6 +147,27 @@ def compileOpsToSignedGate
   let deallocs : Gate := compileSignedDeallocations k stInit stFinal
   allocs ;; body ;; deallocs
 
+/-- `compileOpsToSignedGate` under width rule `R`: the same compiler, with the
+slots grown to `neededWidthsBy R x z ops`. At `.scan` it is
+`compileOpsToSignedGate` (`compileOpsToSignedGateBy_scan`, `rfl`). -/
+def compileOpsToSignedGateBy (R : WidthRule)
+    (k : ℕ) (hk : 1 < k) (phi : Angle) (x z : ExtReg) (layout : Gate.PhaseProductLayout x z k)
+    (phaseCoeff : Fin (q k) → ℚ) (ops : List (valid_ops k)) : Gate :=
+  let annOps : List (AnnotatedOp k) := annotatePhaseTermsAux k 0 ops
+  let need : NeededWidths k := neededWidthsBy R x z ops
+  let stInit : LayoutState k := initSignedLayoutState layout
+  let stFinal : LayoutState k := targetSignedLayoutState stInit need
+  let allocs : Gate := compileSignedAllocations k stInit stFinal
+  let body : Gate := compileAnnotatedOpsToSignedGateAux k hk phi phaseCoeff stFinal annOps
+  let deallocs : Gate := compileSignedDeallocations k stInit stFinal
+  allocs ;; body ;; deallocs
+
+theorem compileOpsToSignedGateBy_scan
+    (k : ℕ) (hk : 1 < k) (phi : Angle) (x z : ExtReg) (layout : Gate.PhaseProductLayout x z k)
+    (phaseCoeff : Fin (q k) → ℚ) (ops : List (valid_ops k)) :
+    compileOpsToSignedGateBy .scan k hk phi x z layout phaseCoeff ops
+      = compileOpsToSignedGate k hk phi x z layout phaseCoeff ops := rfl
+
 /-- Add a shared control to phase-product leaves while leaving structural and arithmetic gates unchanged. -/
 def controlPhaseLeaves (ctrl : ℕ) : Gate → Gate
   | .id => .id
@@ -167,6 +188,18 @@ def compileOpsToCSignedGate
     (k : ℕ) (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k) (coeff : Fin (q k) → ℚ) (ops : Prog k) : Gate :=
   controlPhaseLeaves ctrl (compileOpsToSignedGate k hk phi x z layout coeff ops)
+
+/-- `compileOpsToCSignedGate` under width rule `R`. -/
+def compileOpsToCSignedGateBy (R : WidthRule)
+    (k : ℕ) (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (x z : ExtReg)
+    (layout : Gate.PhaseProductLayout x z k) (coeff : Fin (q k) → ℚ) (ops : Prog k) : Gate :=
+  controlPhaseLeaves ctrl (compileOpsToSignedGateBy R k hk phi x z layout coeff ops)
+
+theorem compileOpsToCSignedGateBy_scan
+    (k : ℕ) (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (x z : ExtReg)
+    (layout : Gate.PhaseProductLayout x z k) (coeff : Fin (q k) → ℚ) (ops : Prog k) :
+    compileOpsToCSignedGateBy .scan k hk ctrl phi x z layout coeff ops
+      = compileOpsToCSignedGate k hk ctrl phi x z layout coeff ops := rfl
 
 /-- The control qubit is outside every child register touched by a phase-product layout. -/
 def Gate.PhaseProductLayout.ControlDisjoint {x z : ExtReg} {k : ℕ} (layout : Gate.PhaseProductLayout x z k) (ctrl : ℕ) : Prop :=

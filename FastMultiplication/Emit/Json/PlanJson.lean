@@ -61,7 +61,7 @@ partial def planJson {P : ShorLoweringPolicy} {initSize : ℕ} {U : Gate} :
         ("op", Json.str "SignedPhaseProd"),
         ("phi", angleJson phi), ("x", extRegJson x), ("z", extRegJson z),
         ("input_size", (initSize : Json)),
-        ("next_width", ((nextSignedWidth x z T.ops : ℕ) : Json)),
+        ("next_width", ((nextSignedWidthBy P.widthRule x z T.ops : ℕ) : Json)),
         ("limb_width", ((phaseLimbWidth x z T.k : ℕ) : Json)),
         ("coeffs",
           Json.arr
@@ -80,7 +80,7 @@ partial def planJson {P : ShorLoweringPolicy} {initSize : ℕ} {U : Gate} :
         ("op", Json.str "CSignedPhaseProd"),
         ("ctrl", (ctrl : Json)), ("phi", angleJson phi), ("x", extRegJson x), ("z", extRegJson z),
         ("input_size", (initSize : Json)),
-        ("next_width", ((nextSignedWidth x z T.ops : ℕ) : Json)),
+        ("next_width", ((nextSignedWidthBy P.widthRule x z T.ops : ℕ) : Json)),
         ("limb_width", ((phaseLimbWidth x z T.k : ℕ) : Json)),
         ("coeffs",
           Json.arr

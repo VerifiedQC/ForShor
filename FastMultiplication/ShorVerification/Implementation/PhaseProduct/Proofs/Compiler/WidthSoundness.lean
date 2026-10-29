@@ -7,6 +7,10 @@ This file proves that the width scan computed from a symbolic phase-product
 program is large enough for every symbolic row value reached during execution.
 The proof proceeds from one-step preservation, through scan domination for
 prefixes, to the final allocation-facing soundness theorem.
+
+The last section proves the same for the exact width (`allocated_widths_sound_exact`,
+by interval arithmetic over the limb box) and states it for either width rule
+(`allocated_widths_sound_by`).
 -/
 
 namespace Shor
@@ -552,5 +556,156 @@ lemma allocated_widths_sound
         rw [hdst]
         exact hcur)
       (hpreZ i)
+
+/-! =========================================================
+    Width soundness at the exact width
+
+    The source chunks lie in the limb box, so every reachable row's value lies
+    in its interval, and the exact width covers that interval.
+========================================================= -/
+
+/-- `tcDecodeWidth t` reads a `t`-bit pattern into the signed `t`-bit range
+(`[0, 0]` at `t = 0`). -/
+lemma tcDecodeWidth_exactBox (t n : ℕ) (h : n < 2 ^ t) :
+    (if t = 0 then (0 : ℤ) else -(2 : ℤ) ^ (t - 1)) ≤ tcDecodeWidth t n ∧
+    tcDecodeWidth t n ≤ (if t = 0 then (0 : ℤ) else (2 : ℤ) ^ (t - 1) - 1) := by
+  cases t with
+  | zero => simp [tcDecodeWidth]
+  | succ s =>
+      simp only [Nat.add_one_ne_zero, ite_false, Nat.add_sub_cancel, tcDecodeWidth]
+      have hp : (0 : ℤ) < (2 : ℤ) ^ s := by positivity
+      have h2 : ((2 ^ (s + 1) : ℕ) : ℤ) = 2 * (2 : ℤ) ^ s := by push_cast; ring
+      have hn : ((n : ℕ) : ℤ) < 2 * (2 : ℤ) ^ s := by
+        have : ((n : ℕ) : ℤ) < ((2 ^ (s + 1) : ℕ) : ℤ) := by exact_mod_cast h
+        rwa [h2] at this
+      split
+      · rename_i hs
+        have : ((n : ℕ) : ℤ) < (2 : ℤ) ^ s := by exact_mod_cast hs
+        constructor <;> omega
+      · rename_i hs
+        have : (2 : ℤ) ^ s ≤ ((n : ℕ) : ℤ) := by
+          have := Nat.le_of_not_lt hs
+          exact_mod_cast this
+        rw [h2]
+        constructor <;> omega
+
+/-- The source `x` chunks, read as `evalRowX` reads them, lie in the limb box. -/
+lemma sourceChunkXInt_box
+    (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ} {x z : ExtReg}
+    (layout : Gate.PhaseProductLayout x z k) (b : qs.Basis) :
+    InExactBox x.width (exactLimbWidth k x.width z.width)
+      (fun j => sourceChunkXInt (qs := qs) (initSignedLayoutState layout) j b) := by
+  intro j
+  have hw : ((initSignedLayoutState layout).xslot j).width
+      = phaseSplitLogicalWidth x.width (exactLimbWidth k x.width z.width) k j :=
+    stInit_xslot_width layout j
+  have hlt := ExtReg.toNat_lt (Basis := qs.Basis) ((initSignedLayoutState layout).xslot j) b
+  rw [hw] at hlt
+  unfold sourceChunkXInt exactLimbLo exactLimbHi
+  by_cases htop : isTopChunk j
+  · simp only [htop, ite_true]
+    unfold extToInt
+    rw [hw]
+    exact tcDecodeWidth_exactBox _ _ hlt
+  · simp only [htop, ite_false]
+    have h1 : ((ExtReg.toNat ((initSignedLayoutState layout).xslot j) b : ℕ) : ℤ)
+        < (2 : ℤ) ^ (phaseSplitLogicalWidth x.width (exactLimbWidth k x.width z.width) k j) := by
+      exact_mod_cast hlt
+    constructor <;> omega
+
+/-- The source `z` chunks lie in the limb box. -/
+lemma sourceChunkZInt_box
+    (qs : QSemantics) [RegEncoding qs.Basis] {k : ℕ} {x z : ExtReg}
+    (layout : Gate.PhaseProductLayout x z k) (b : qs.Basis) :
+    InExactBox z.width (exactLimbWidth k x.width z.width)
+      (fun j => sourceChunkZInt (qs := qs) (initSignedLayoutState layout) j b) := by
+  intro j
+  have hw : ((initSignedLayoutState layout).zslot j).width
+      = phaseSplitLogicalWidth z.width (exactLimbWidth k x.width z.width) k j :=
+    stInit_zslot_width layout j
+  have hlt := ExtReg.toNat_lt (Basis := qs.Basis) ((initSignedLayoutState layout).zslot j) b
+  rw [hw] at hlt
+  unfold sourceChunkZInt exactLimbLo exactLimbHi
+  by_cases htop : isTopChunk j
+  · simp only [htop, ite_true]
+    unfold extToInt
+    rw [hw]
+    exact tcDecodeWidth_exactBox _ _ hlt
+  · simp only [htop, ite_false]
+    have h1 : ((ExtReg.toNat ((initSignedLayoutState layout).zslot j) b : ℕ) : ℤ)
+        < (2 : ℤ) ^ (phaseSplitLogicalWidth z.width (exactLimbWidth k x.width z.width) k j) := by
+      exact_mod_cast hlt
+    constructor <;> omega
+
+/-- Every prefix-reachable symbolic state fits in the target layout chosen by
+the exact width (`WidthRule.exact`). -/
+lemma allocated_widths_sound_exact
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  {k : ℕ}
+  {x z : ExtReg}
+  (layout : Gate.PhaseProductLayout x z k)
+  (ops : Prog k)
+  (hcap : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy .exact x z ops))
+  (b : qs.Basis) :
+  let src := initSignedLayoutState layout
+  let dst :=  targetSignedLayoutState src (neededWidthsBy .exact x z ops)
+  ∀ {σ : State k},
+    (∃ pre rest, ops = pre ++ rest ∧ run? pre State.start_state = some σ) →
+    (∀ i : Fin k, FitsSignedWidth (ExtReg.width (dst.xslot i))
+      (evalRowX (qs := qs) src (σ i) b)) ∧
+    (∀ i : Fin k, FitsSignedWidth (ExtReg.width (dst.zslot i))
+        (evalRowZ (qs := qs) src (σ i) b)) := by
+  dsimp only
+  intro σ hprefix
+  rcases hprefix with ⟨pre, rest, hops, hrun⟩
+  have hE : ∀ (hk : 0 < k),
+      2 ^ (tightSignedWidthOfWidths ops x.width z.width - 1)
+        ≤ 2 ^ (commonNeededWidth (neededWidthsBy .exact x z ops) - 1) := fun hk => by
+    change 2 ^ _ ≤ 2 ^ (nextSignedWidthBy .exact x z ops - 1)
+    rw [nextSignedWidthBy_exact hk]
+    have := tight_le_exactSignedWidth ops x.width z.width
+    exact Nat.pow_le_pow_right (by norm_num) (by omega)
+  have hpos : ∀ (hk : 0 < k), 0 < commonNeededWidth (neededWidthsBy .exact x z ops) := fun hk => by
+    change 0 < nextSignedWidthBy .exact x z ops
+    rw [nextSignedWidthBy_exact hk]
+    exact exactSignedWidth_pos ops x.width z.width
+  have hr : ∀ i : Fin k, σ i ∈ exactReachRows ops := fun i => mem_exactReachRows hops hrun i
+  constructor
+  · intro i
+    have hk : 0 < k := Fin.pos i
+    rw [targetSignedLayoutState_xslot_width_by .exact layout ops i hcap]
+    obtain ⟨hlo, hhi⟩ := exact_row_bounds _ _ (σ i) (sourceChunkXInt_box qs layout b)
+    exact fits_of_exactDemand (hpos hk) hlo hhi
+      (le_trans (exactRowDemand_le_tight (zw := z.width) (hr i)).1 (hE hk))
+  · intro i
+    have hk : 0 < k := Fin.pos i
+    rw [targetSignedLayoutState_zslot_width_by .exact layout ops i hcap]
+    obtain ⟨hlo, hhi⟩ := exact_row_bounds _ _ (σ i) (sourceChunkZInt_box qs layout b)
+    exact fits_of_exactDemand (hpos hk) hlo hhi
+      (le_trans (exactRowDemand_le_tight (xw := x.width) (hr i)).2 (hE hk))
+
+/-- `allocated_widths_sound` under either width rule. -/
+lemma allocated_widths_sound_by
+  (R : WidthRule)
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  {k : ℕ}
+  {x z : ExtReg}
+  (layout : Gate.PhaseProductLayout x z k)
+  (ops : Prog k)
+  (hcap : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy R x z ops))
+  (b : qs.Basis) :
+  let src := initSignedLayoutState layout
+  let dst :=  targetSignedLayoutState src (neededWidthsBy R x z ops)
+  ∀ {σ : State k},
+    (∃ pre rest, ops = pre ++ rest ∧ run? pre State.start_state = some σ) →
+    (∀ i : Fin k, FitsSignedWidth (ExtReg.width (dst.xslot i))
+      (evalRowX (qs := qs) src (σ i) b)) ∧
+    (∀ i : Fin k, FitsSignedWidth (ExtReg.width (dst.zslot i))
+        (evalRowZ (qs := qs) src (σ i) b)) := by
+  cases R
+  · exact allocated_widths_sound qs layout ops hcap b
+  · exact allocated_widths_sound_exact qs layout ops hcap b
 
 end Shor

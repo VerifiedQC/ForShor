@@ -164,7 +164,7 @@ lemma PhaseLoweringReady.zero
   | signedStep
       phi x z T hT layout hrec hcapacity child ihChild =>
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) 0
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) 0
           ∧
         PhaseLoweringReady qs child 0
       exact ⟨CleanClosure.zero, ihChild⟩
@@ -174,7 +174,7 @@ lemma PhaseLoweringReady.zero
       ctrl phi x z T hT layout
       hrec hcapacity hctrl child ihChild =>
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) 0
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) 0
           ∧
         PhaseLoweringReady qs child 0
       exact ⟨CleanClosure.zero, ihChild⟩
@@ -259,19 +259,19 @@ lemma PhaseLoweringReady.add
   | signedStep
       phase x z T hT layout hrec hcapacity child ihChild =>
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) ψ
           ∧
         PhaseLoweringReady qs child ψ
         at hψ
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) φ
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) φ
           ∧
         PhaseLoweringReady qs child φ
         at hφ
       rcases hψ with ⟨hψClean, hψChild⟩
       rcases hφ with ⟨hφClean, hφChild⟩
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) (ψ + φ)
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) (ψ + φ)
           ∧
         PhaseLoweringReady qs child (ψ + φ)
       exact ⟨CleanClosure.add hψClean hφClean, ihChild hψChild hφChild⟩
@@ -281,19 +281,19 @@ lemma PhaseLoweringReady.add
       ctrl phase x z T hT layout
       hrec hcapacity hctrl child ihChild =>
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) ψ
           ∧
         PhaseLoweringReady qs child ψ
         at hψ
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) φ
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) φ
           ∧
         PhaseLoweringReady qs child φ
         at hφ
       rcases hψ with ⟨hψClean, hψChild⟩
       rcases hφ with ⟨hφClean, hφChild⟩
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) (ψ + φ)
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) (ψ + φ)
           ∧
         PhaseLoweringReady qs child (ψ + φ)
       exact ⟨CleanClosure.add hψClean hφClean, ihChild hψChild hφChild⟩
@@ -372,13 +372,13 @@ lemma PhaseLoweringReady.smul
   | signedStep
       phase x z T hT layout hrec hcapacity child ihChild =>
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) ψ
           ∧
         PhaseLoweringReady qs child ψ
         at hψ
       rcases hψ with ⟨hClean, hChild⟩
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) (a • ψ)
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) (a • ψ)
           ∧
         PhaseLoweringReady qs child (a • ψ)
       exact ⟨CleanClosure.smul a hClean, ihChild hChild⟩
@@ -388,13 +388,13 @@ lemma PhaseLoweringReady.smul
       ctrl phase x z T hT layout
       hrec hcapacity hctrl child ihChild =>
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) ψ
           ∧
         PhaseLoweringReady qs child ψ
         at hψ
       rcases hψ with ⟨hClean, hChild⟩
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) (a • ψ)
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) (a • ψ)
           ∧
         PhaseLoweringReady qs child (a • ψ)
       exact ⟨CleanClosure.smul a hClean, ihChild hChild⟩

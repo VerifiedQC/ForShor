@@ -114,7 +114,7 @@ is never among the `j < i` terms, since `i ≤ k - 1`), and only the *size*
 of the last child differs (`required[k-1] + (capacity - sum_all
 required)`). `capVar` names this side's reserve *capacity* (`x.capacity`),
 a width parameter `pp_body` never needed. -/
-def precomputePhaseProductSlots (opsE xE zE layoutE : Expr) (childFieldName : Name) (varName : String)
+def precomputePhaseProductSlots (ruleE opsE xE zE layoutE : Expr) (childFieldName : Name) (varName : String)
     (widthVar capVar reserveNeedName : String) (k : Nat) (limbWExpr : IR.WExpr) :
     MetaM SideSlots := do
   let mut initRegs : Array (Expr × IR.RegExpr) := #[]
@@ -133,7 +133,9 @@ def precomputePhaseProductSlots (opsE xE zE layoutE : Expr) (childFieldName : Na
     (List.range (hi - lo)).foldl (fun acc j => IR.WExpr.add acc (requiredArr.getD (lo + j) (IR.WExpr.lit 0))) (IR.WExpr.lit 0)
   let usedW := sumRange 0 k
   let splitE ← mkAppM childFieldName #[layoutE]
-  let needE ← mkAppM ``Shor.scanNeededWidths #[xE, zE, opsE]
+  -- the plans grow slots to `neededWidthsBy P.widthRule x z ops`; the key is
+  -- built the same way, so the lookup is syntactic.
+  let needE ← mkAppM ``Shor.neededWidthsBy #[ruleE, xE, zE, opsE]
   let wworkE ← mkAppM ``Shor.commonNeededWidth #[needE]
   for i in List.range k do
     let iFin ← finLit (Lean.toExpr k) i
@@ -358,9 +360,9 @@ def extractPhaseProductBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Template
             let widths0 : Array (Expr × IR.WExpr) :=
               #[(xwE, .var "xw"), (zwE, .var "zw"), (xCapE, .var "xCap"), (zCapE, .var "zCap")]
             let limbWExpr ← translateW { widths := widths0 } wE
-            let xSlots ← precomputePhaseProductSlots opsE x z layoutE
+            let xSlots ← precomputePhaseProductSlots (← mkAppM ``Shor.ShorLoweringPolicy.widthRule #[polE]) opsE x z layoutE
               ``Shor.Gate.PhaseProductLayout.xSplit "x" "xw" "xCap" "reserveNeed_x" k limbWExpr
-            let zSlots ← precomputePhaseProductSlots opsE x z layoutE
+            let zSlots ← precomputePhaseProductSlots (← mkAppM ``Shor.ShorLoweringPolicy.widthRule #[polE]) opsE x z layoutE
               ``Shor.Gate.PhaseProductLayout.zSplit "z" "zw" "zCap" "reserveNeed_z" k limbWExpr
             let mut regs : Array (Expr × IR.RegExpr) := #[(x, .var "x"), (z, .var "z")]
             regs := xSlots.initRegs ++ xSlots.finalRegs ++ zSlots.initRegs ++ zSlots.finalRegs ++ regs
@@ -439,9 +441,9 @@ def extractCPhaseProductBody (setup : Shor.ShorLoweringSetup) : MetaM IR.Templat
             let widths0 : Array (Expr × IR.WExpr) :=
               #[(xwE, .var "xw"), (zwE, .var "zw"), (xCapE, .var "xCap"), (zCapE, .var "zCap")]
             let limbWExpr ← translateW { widths := widths0 } wE
-            let xSlots ← precomputePhaseProductSlots opsE x z layoutE
+            let xSlots ← precomputePhaseProductSlots (← mkAppM ``Shor.ShorLoweringPolicy.widthRule #[polE]) opsE x z layoutE
               ``Shor.Gate.PhaseProductLayout.xSplit "x" "xw" "xCap" "reserveNeed_x" k limbWExpr
-            let zSlots ← precomputePhaseProductSlots opsE x z layoutE
+            let zSlots ← precomputePhaseProductSlots (← mkAppM ``Shor.ShorLoweringPolicy.widthRule #[polE]) opsE x z layoutE
               ``Shor.Gate.PhaseProductLayout.zSplit "z" "zw" "zCap" "reserveNeed_z" k limbWExpr
             let mut regs : Array (Expr × IR.RegExpr) := #[(ctrl, .var "ctrl"), (x, .var "x"),
               (z, .var "z")]

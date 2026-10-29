@@ -1426,8 +1426,9 @@ lemma gateCount_standardSignedPhaseLoweringPlan_of_not_recurse
     directSignedPhaseProductGateCount x z := by
   rw [standardSignedPhaseLoweringPlan, Policy.signedPlan_constPolicy,
     Policy.signedPlanOf]
+  have hno' : ¬ nextSignedWidthBy (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩).widthRule x z ops < phaseInputSize x z := hno
   simp only [
-    hno,
+    hno',
     ↓reduceDIte,
   ]
   exact LowerGateClass.gateCount_Naive_SignedPhaseProd
@@ -2206,24 +2207,24 @@ lemma lowerSignedPhaseProd_one_level_cost_le
   let dst : LayoutState k :=
     targetSignedLayoutState
       src
-      (scanNeededWidths x z ops)
+      (neededWidthsBy P₀.widthRule x z ops)
 
   have hxw :
       ∀ i : Fin k,
         ExtReg.width (dst.xslot i) =
-          nextSignedWidth x z ops := by
+          nextSignedWidthBy P₀.widthRule x z ops := by
     intro i
-    simpa [dst, src, nextSignedWidth] using
-      targetSignedLayoutState_xslot_width_scan
+    simpa [dst, src, nextSignedWidthBy] using
+      targetSignedLayoutState_xslot_width_by P₀.widthRule
         step.layout ops i step.capacity
 
   have hzw :
       ∀ i : Fin k,
         ExtReg.width (dst.zslot i) =
-          nextSignedWidth x z ops := by
+          nextSignedWidthBy P₀.widthRule x z ops := by
     intro i
-    simpa [dst, src, nextSignedWidth] using
-      targetSignedLayoutState_zslot_width_scan
+    simpa [dst, src, nextSignedWidthBy] using
+      targetSignedLayoutState_zslot_width_by P₀.widthRule
         step.layout ops i step.capacity
 
   have childWorkspace
@@ -2240,7 +2241,7 @@ lemma lowerSignedPhaseProd_one_level_cost_le
           (dst.xslot i)
           (dst.zslot i)
         =
-      nextSignedWidth x z ops := by
+      nextSignedWidthBy P₀.widthRule x z ops := by
     simpa [src, dst] using
       step.childInputSize i
 
@@ -2268,7 +2269,7 @@ lemma lowerSignedPhaseProd_one_level_cost_le
       ∀ (i : Fin k) (theta : Angle),
         PhaseLoweringPlan
           P₀
-          (nextSignedWidth x z ops)
+          (nextSignedWidthBy P₀.widthRule x z ops)
           (Gate.SignedPhaseProd
             theta
             (dst.xslot i)
@@ -2330,13 +2331,13 @@ lemma lowerSignedPhaseProd_one_level_cost_le
           (lowerGateRec
             (planCompileSignedAllocations
               (P := P₀)
-              (nextSignedWidth x z ops)
+              (nextSignedWidthBy P₀.widthRule x z ops)
               src dst))
         ≤
-      2 * k * nextSignedWidth x z ops := by
+      2 * k * nextSignedWidthBy P₀.widthRule x z ops := by
     apply lgc_allocs_le
       (P := P₀)
-      (W := nextSignedWidth x z ops)
+      (W := nextSignedWidthBy P₀.widthRule x z ops)
     · intro i
       exact le_of_eq (hxw i)
     · intro i
@@ -2347,13 +2348,13 @@ lemma lowerSignedPhaseProd_one_level_cost_le
           (lowerGateRec
             (planCompileSignedDeallocations
               (P := P₀)
-              (nextSignedWidth x z ops)
+              (nextSignedWidthBy P₀.widthRule x z ops)
               src dst))
         ≤
-      2 * k * nextSignedWidth x z ops := by
+      2 * k * nextSignedWidthBy P₀.widthRule x z ops := by
     apply lgc_deallocs_le
       (P := P₀)
-      (W := nextSignedWidth x z ops)
+      (W := nextSignedWidthBy P₀.widthRule x z ops)
     · intro i
       exact le_of_eq (hxw i)
     · intro i
@@ -2384,7 +2385,7 @@ lemma lowerSignedPhaseProd_one_level_cost_le
     lgc_body_le
       (P := P₀)
       (hk := hk)
-      (W := nextSignedWidth x z ops)
+      (W := nextSignedWidthBy P₀.widthRule x z ops)
       (st := dst)
       (coeff :=
         loweringPhaseCoeff
@@ -2404,10 +2405,10 @@ lemma lowerSignedPhaseProd_one_level_cost_le
           (lowerGateRec
             (planCompileSignedAllocations
               (P := P₀)
-              (nextSignedWidth x z ops)
+              (nextSignedWidthBy P₀.widthRule x z ops)
               src dst)) : ℕ) : ℝ)
         ≤
-      ((2 * k * nextSignedWidth x z ops : ℕ) : ℝ) := by
+      ((2 * k * nextSignedWidthBy P₀.widthRule x z ops : ℕ) : ℝ) := by
     exact_mod_cast halloc
 
   have hdeallocR :
@@ -2415,10 +2416,10 @@ lemma lowerSignedPhaseProd_one_level_cost_le
           (lowerGateRec
             (planCompileSignedDeallocations
               (P := P₀)
-              (nextSignedWidth x z ops)
+              (nextSignedWidthBy P₀.widthRule x z ops)
               src dst)) : ℕ) : ℝ)
         ≤
-      ((2 * k * nextSignedWidth x z ops : ℕ) : ℝ) := by
+      ((2 * k * nextSignedWidthBy P₀.widthRule x z ops : ℕ) : ℝ) := by
     exact_mod_cast hdealloc
 
   have hbody' :
@@ -2426,7 +2427,7 @@ lemma lowerSignedPhaseProd_one_level_cost_le
           (lowerGateRec
             (planCompileAnnotatedOpsToSignedGateAux
               (P := P₀) (hk := hk)
-              (nextSignedWidth x z ops)
+              (nextSignedWidthBy P₀.widthRule x z ops)
               φ
               (loweringPhaseCoeff
                 k x z
@@ -2437,7 +2438,7 @@ lemma lowerSignedPhaseProd_one_level_cost_le
               (annotatePhaseTermsAux k 0 ops)))) : ℝ)
         ≤
       (phaseProgramOverhead
-          (nextSignedWidth x z ops) ops : ℝ)
+          (nextSignedWidthBy P₀.widthRule x z ops) ops : ℝ)
         +
       (phaseProductCount ops : ℝ) * R := by
     simpa [
@@ -2456,7 +2457,8 @@ lemma lowerSignedPhaseProd_one_level_cost_le
   rw [standardSignedPhaseLoweringPlan, Policy.signedPlan_constPolicy,
     Policy.signedPlanOf]
 
-  simp only [hrec, ↓reduceDIte]
+  have hrec' : nextSignedWidthBy (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩).widthRule x z ops < phaseInputSize x z := hrec
+  simp only [hrec', ↓reduceDIte]
   simp only [PhaseLoweringPlan.lowerGateRec_signedStep]
 
   unfold Policy.stepPlan
@@ -2469,12 +2471,12 @@ lemma lowerSignedPhaseProd_one_level_cost_le
     ((LowGate.gateCount shorGateCostModel
         (lowerGateRec
           (planCompileSignedAllocations (P := P₀)
-            (nextSignedWidth x z ops) src dst))
+            (nextSignedWidthBy P₀.widthRule x z ops) src dst))
       +
       (LowGate.gateCount shorGateCostModel
           (lowerGateRec
             (planCompileAnnotatedOpsToSignedGateAux (P := P₀) (hk := hk)
-              (nextSignedWidth x z ops)
+              (nextSignedWidthBy P₀.widthRule x z ops)
               φ
               (loweringPhaseCoeff
                 k x z (pts) hpts)
@@ -2485,21 +2487,21 @@ lemma lowerSignedPhaseProd_one_level_cost_le
         LowGate.gateCount shorGateCostModel
           (lowerGateRec
             (planCompileSignedDeallocations (P := P₀)
-              (nextSignedWidth x z ops) src dst))) : ℕ) : ℝ)
+              (nextSignedWidthBy P₀.widthRule x z ops) src dst))) : ℕ) : ℝ)
       ≤
-    ((4 * k * nextSignedWidth x z ops : ℕ) : ℝ)
+    ((4 * k * nextSignedWidthBy P₀.widthRule x z ops : ℕ) : ℝ)
       +
     (phaseProgramOverhead
-        (nextSignedWidth x z ops) ops : ℝ)
+        (nextSignedWidthBy P₀.widthRule x z ops) ops : ℝ)
       +
     (phaseProductCount ops : ℝ) * R
 
   push_cast
 
   have hfour :
-      ((4 * k * nextSignedWidth x z ops : ℕ) : ℝ)
+      ((4 * k * nextSignedWidthBy P₀.widthRule x z ops : ℕ) : ℝ)
         =
-      2 * ((2 * k * nextSignedWidth x z ops : ℕ) : ℝ) := by
+      2 * ((2 * k * nextSignedWidthBy P₀.widthRule x z ops : ℕ) : ℝ) := by
     push_cast
     ring
 
@@ -4491,7 +4493,7 @@ lemma cSignedPhaseProductGateCount_le_five_signed
         hworkspace.toSignedRecursiveWorkspaceOK := by
 
   by_cases hrec :
-      nextSignedWidth x z ops <
+      nextSignedWidthBy (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩).widthRule x z ops <
         phaseInputSize x z
 
   · -- The plans below come from the policy planner at the constant policy, so
@@ -4508,7 +4510,7 @@ lemma cSignedPhaseProductGateCount_le_five_signed
     let dst : LayoutState k :=
       targetSignedLayoutState
         src
-        (scanNeededWidths x z ops)
+        (neededWidthsBy P₀.widthRule x z ops)
 
     have hctrlLayout :
         step.layout.ControlDisjoint ctrl :=
@@ -4524,7 +4526,7 @@ lemma cSignedPhaseProductGateCount_le_five_signed
         controlDisjoint_target
           step.layout
           ctrl
-          (scanNeededWidths x z ops)
+          (neededWidthsBy P₀.widthRule x z ops)
           hctrlLayout
 
     let signedChildWorkspace :
@@ -4557,7 +4559,7 @@ lemma cSignedPhaseProductGateCount_le_five_signed
             (dst.xslot i)
             (dst.zslot i)
           =
-        nextSignedWidth x z ops := by
+        nextSignedWidthBy P₀.widthRule x z ops := by
       simpa [src, dst] using
         step.childInputSize i
 
@@ -4565,7 +4567,7 @@ lemma cSignedPhaseProductGateCount_le_five_signed
         ∀ (i : Fin k) (theta : Angle),
           PhaseLoweringPlan
             P₀
-            (nextSignedWidth x z ops)
+            (nextSignedWidthBy P₀.widthRule x z ops)
             (Gate.CSignedPhaseProd
               ctrl theta
               (dst.xslot i)
@@ -4579,7 +4581,7 @@ lemma cSignedPhaseProductGateCount_le_five_signed
         ∀ (i : Fin k) (theta : Angle),
           PhaseLoweringPlan
             P₀
-            (nextSignedWidth x z ops)
+            (nextSignedWidthBy P₀.widthRule x z ops)
             (Gate.SignedPhaseProd
               theta
               (dst.xslot i)
@@ -4736,9 +4738,9 @@ lemma cSignedPhaseProductGateCount_le_five_signed
         (P := P₀)
         (hUV := by
           simp [
-            compiledCSignedPhaseGate,
-            compileOpsToCSignedGate,
-            compileOpsToSignedGate,
+            compiledCSignedPhaseGateBy,
+            compileOpsToCSignedGateBy,
+            compileOpsToSignedGateBy,
             controlPhaseLeaves,
             controlPhaseLeaves_compileSignedAllocations,
             controlPhaseLeaves_compileSignedDeallocations
@@ -4753,7 +4755,7 @@ lemma cSignedPhaseProductGateCount_le_five_signed
     have hbody :=
       lgc_cbody_le_five
         (hk := hk)
-        (nextSignedWidth x z ops)
+        (nextSignedWidthBy P₀.widthRule x z ops)
         ctrl
         dst
         (loweringPhaseCoeff
@@ -4771,12 +4773,12 @@ lemma cSignedPhaseProductGateCount_le_five_signed
       LowGate.gateCount shorGateCostModel
           (lowerGateRec
             (planCompileSignedAllocations
-              (nextSignedWidth x z ops) src dst))
+              (nextSignedWidthBy P₀.widthRule x z ops) src dst))
         +
       (LowGate.gateCount shorGateCostModel
           (lowerGateRec
             (planCompileAnnotatedOpsToCSignedGateAux
-              (nextSignedWidth x z ops) ctrl φ
+              (nextSignedWidthBy P₀.widthRule x z ops) ctrl φ
               (loweringPhaseCoeff
                 k x z (pts) hpts)
               dst recurseC
@@ -4785,18 +4787,18 @@ lemma cSignedPhaseProductGateCount_le_five_signed
         LowGate.gateCount shorGateCostModel
           (lowerGateRec
             (planCompileSignedDeallocations
-              (nextSignedWidth x z ops) src dst)))
+              (nextSignedWidthBy P₀.widthRule x z ops) src dst)))
         ≤
       5 *
         (LowGate.gateCount shorGateCostModel
             (lowerGateRec
               (planCompileSignedAllocations
-                (nextSignedWidth x z ops) src dst))
+                (nextSignedWidthBy P₀.widthRule x z ops) src dst))
           +
           (LowGate.gateCount shorGateCostModel
               (lowerGateRec
                 (planCompileAnnotatedOpsToSignedGateAux
-                  (nextSignedWidth x z ops) φ
+                  (nextSignedWidthBy P₀.widthRule x z ops) φ
                   (loweringPhaseCoeff
                     k x z (pts) hpts)
                   dst recurseS
@@ -4805,7 +4807,7 @@ lemma cSignedPhaseProductGateCount_le_five_signed
             LowGate.gateCount shorGateCostModel
               (lowerGateRec
                 (planCompileSignedDeallocations
-                  (nextSignedWidth x z ops) src dst))))
+                  (nextSignedWidthBy P₀.widthRule x z ops) src dst))))
 
     omega
 
@@ -4851,7 +4853,7 @@ decreasing_by
         (dst.xslot i)
         (dst.zslot i)
         =
-      nextSignedWidth x z ops := by
+      nextSignedWidthBy P₀.widthRule x z ops := by
         simpa [src, dst] using
           step.childInputSize i
 

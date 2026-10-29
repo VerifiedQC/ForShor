@@ -244,44 +244,44 @@ def Policy.stepPlan
     (layout : Gate.PhaseProductLayout x z T.k)
     (recurse :
       let src := initSignedLayoutState layout
-      let dst := targetSignedLayoutState src (scanNeededWidths x z T.ops)
+      let dst := targetSignedLayoutState src (neededWidthsBy P.widthRule x z T.ops)
       ∀ (i : Fin T.k) (theta : Angle),
-        PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+        PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
           (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i))) :
-    PhaseLoweringPlan P (nextSignedWidth x z T.ops)
-      (compiledSignedPhaseGate T.k T.hk T.pts T.hpts T.ops phi x z layout) := by
-  let need : NeededWidths T.k := scanNeededWidths x z T.ops
+    PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
+      (compiledSignedPhaseGateBy P.widthRule T.k T.hk T.pts T.hpts T.ops phi x z layout) := by
+  let need : NeededWidths T.k := neededWidthsBy P.widthRule x z T.ops
   let src : LayoutState T.k := initSignedLayoutState layout
   let dst : LayoutState T.k := targetSignedLayoutState src need
   let coeff : Fin (q T.k) → ℚ := loweringPhaseCoeff T.k x z T.pts T.hpts
   let annotatedOps : List (AnnotatedOp T.k) := annotatePhaseTermsAux T.k 0 T.ops
   have recurse' :
       ∀ (i : Fin T.k) (theta : Angle),
-        PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+        PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
           (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)) := by
     simpa [src, dst, need] using recurse
   let allocationPlan :
-      PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+      PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
         (compileSignedAllocations T.k src dst) :=
-    planCompileSignedAllocations (nextSignedWidth x z T.ops) src dst
+    planCompileSignedAllocations (nextSignedWidthBy P.widthRule x z T.ops) src dst
   let bodyPlan :
       PhaseLoweringPlan P
-        (nextSignedWidth x z T.ops)
+        (nextSignedWidthBy P.widthRule x z T.ops)
         (compileAnnotatedOpsToSignedGateAux T.k T.hk phi coeff dst annotatedOps) :=
-    planCompileAnnotatedOpsToSignedGateAux (hk := T.hk) (nextSignedWidth x z T.ops)
+    planCompileAnnotatedOpsToSignedGateAux (hk := T.hk) (nextSignedWidthBy P.widthRule x z T.ops)
       phi coeff dst recurse' annotatedOps
   let deallocationPlan :
       PhaseLoweringPlan P
-        (nextSignedWidth x z T.ops)
+        (nextSignedWidthBy P.widthRule x z T.ops)
         (compileSignedDeallocations T.k src dst) :=
-    planCompileSignedDeallocations (nextSignedWidth x z T.ops) src dst
+    planCompileSignedDeallocations (nextSignedWidthBy P.widthRule x z T.ops) src dst
   have completePlan :
-      PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+      PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
         (compileSignedAllocations T.k src dst ;;
           compileAnnotatedOpsToSignedGateAux T.k T.hk phi coeff dst annotatedOps ;;
           compileSignedDeallocations T.k src dst) :=
     PhaseLoweringPlan.seq allocationPlan (PhaseLoweringPlan.seq bodyPlan deallocationPlan)
-  simpa [compiledSignedPhaseGate, compileOpsToSignedGate, src, dst, need, coeff, annotatedOps]
+  simpa [compiledSignedPhaseGateBy, compileOpsToSignedGateBy, src, dst, need, coeff, annotatedOps]
     using completePlan
 
 /-- Plan for the compiled controlled signed phase-product replacement at one
@@ -295,44 +295,44 @@ def Policy.cStepPlan
     (layout : Gate.PhaseProductLayout x z T.k)
     (recurse :
       let src := initSignedLayoutState layout
-      let dst := targetSignedLayoutState src (scanNeededWidths x z T.ops)
+      let dst := targetSignedLayoutState src (neededWidthsBy P.widthRule x z T.ops)
       ∀ (i : Fin T.k) (theta : Angle),
-        PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+        PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
           (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i))) :
-    PhaseLoweringPlan P (nextSignedWidth x z T.ops)
-      (compiledCSignedPhaseGate T.k T.hk T.pts T.hpts T.ops ctrl phi x z layout) := by
-  let need : NeededWidths T.k := scanNeededWidths x z T.ops
+    PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
+      (compiledCSignedPhaseGateBy P.widthRule T.k T.hk T.pts T.hpts T.ops ctrl phi x z layout) := by
+  let need : NeededWidths T.k := neededWidthsBy P.widthRule x z T.ops
   let src : LayoutState T.k := initSignedLayoutState layout
   let dst : LayoutState T.k := targetSignedLayoutState src need
   let coeff : Fin (q T.k) → ℚ := loweringPhaseCoeff T.k x z T.pts T.hpts
   let annotatedOps : List (AnnotatedOp T.k) := annotatePhaseTermsAux T.k 0 T.ops
   have recurse' :
       ∀ (i : Fin T.k) (theta : Angle),
-        PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+        PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
           (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i)) := by
     simpa [src, dst, need] using recurse
   let allocationPlan :
-      PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+      PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
         (compileSignedAllocations T.k src dst) :=
-    planCompileSignedAllocations (nextSignedWidth x z T.ops) src dst
+    planCompileSignedAllocations (nextSignedWidthBy P.widthRule x z T.ops) src dst
   let bodyPlan :
-      PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+      PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
         (controlPhaseLeaves ctrl
           (compileAnnotatedOpsToSignedGateAux T.k T.hk phi coeff dst annotatedOps)) :=
-    planCompileAnnotatedOpsToCSignedGateAux (hk := T.hk) (nextSignedWidth x z T.ops)
+    planCompileAnnotatedOpsToCSignedGateAux (hk := T.hk) (nextSignedWidthBy P.widthRule x z T.ops)
       ctrl phi coeff dst recurse' annotatedOps
   let deallocationPlan :
-      PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+      PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
         (compileSignedDeallocations T.k src dst) :=
-    planCompileSignedDeallocations (nextSignedWidth x z T.ops) src dst
+    planCompileSignedDeallocations (nextSignedWidthBy P.widthRule x z T.ops) src dst
   have completePlan :
-      PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+      PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
         (compileSignedAllocations T.k src dst ;;
           controlPhaseLeaves ctrl
             (compileAnnotatedOpsToSignedGateAux T.k T.hk phi coeff dst annotatedOps) ;;
           compileSignedDeallocations T.k src dst) :=
     PhaseLoweringPlan.seq allocationPlan (PhaseLoweringPlan.seq bodyPlan deallocationPlan)
-  simpa [compiledCSignedPhaseGate, compileOpsToCSignedGate, compileOpsToSignedGate,
+  simpa [compiledCSignedPhaseGateBy, compileOpsToCSignedGateBy, compileOpsToSignedGateBy,
     controlPhaseLeaves, controlPhaseLeaves_compileSignedAllocations,
     controlPhaseLeaves_compileSignedDeallocations, src, dst, need, coeff, annotatedOps]
     using completePlan
@@ -352,12 +352,12 @@ def planCompiledSignedPhaseGate
     (layout : Gate.PhaseProductLayout x z k)
     (recurse :
       let src := initSignedLayoutState layout
-      let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
+      let dst := targetSignedLayoutState src (neededWidthsBy P.widthRule x z ops)
       ∀ (i : Fin k) (theta : Angle),
-        PhaseLoweringPlan P (nextSignedWidth x z ops)
+        PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z ops)
           (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i))) :
-    PhaseLoweringPlan P (nextSignedWidth x z ops)
-      (compiledSignedPhaseGate k hk pts hpts ops phi x z layout) :=
+    PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z ops)
+      (compiledSignedPhaseGateBy P.widthRule k hk pts hpts ops phi x z layout) :=
   Policy.stepPlan P ⟨k, hk, pts, hpts, ops⟩ phi x z layout recurse
 
 /-- The fixed-table spelling of `Policy.cStepPlan`. -/
@@ -374,12 +374,12 @@ def planCompiledCSignedPhaseGate
     (layout : Gate.PhaseProductLayout x z k)
     (recurse :
       let src := initSignedLayoutState layout
-      let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
+      let dst := targetSignedLayoutState src (neededWidthsBy P.widthRule x z ops)
       ∀ (i : Fin k) (theta : Angle),
-        PhaseLoweringPlan P (nextSignedWidth x z ops)
+        PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z ops)
           (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i))) :
-    PhaseLoweringPlan P (nextSignedWidth x z ops)
-      (compiledCSignedPhaseGate k hk pts hpts ops ctrl phi x z layout) :=
+    PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z ops)
+      (compiledCSignedPhaseGateBy P.widthRule k hk pts hpts ops ctrl phi x z layout) :=
   Policy.cStepPlan P ⟨k, hk, pts, hpts, ops⟩ ctrl phi x z layout recurse
 
 /-! =========================================================
@@ -414,15 +414,15 @@ def Policy.signedPlanOf
   | none, h =>
       PhaseLoweringPlan.signedBase phi x z (fun T hT => by rw [h] at hT; simp at hT)
   | some T, h =>
-      if hrec : nextSignedWidth x z T.ops < phaseInputSize x z then
+      if hrec : nextSignedWidthBy P.widthRule x z T.ops < phaseInputSize x z then
         let step : Policy.CanonicalStep P T x z := Policy.canonicalStep P T x z h hrec hworkspace
         let src : LayoutState T.k := initSignedLayoutState step.layout
-        let dst : LayoutState T.k := targetSignedLayoutState src (scanNeededWidths x z T.ops)
+        let dst : LayoutState T.k := targetSignedLayoutState src (neededWidthsBy P.widthRule x z T.ops)
         let recurse : ∀ (i : Fin T.k) (theta : Angle),
-            PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+            PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
               (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)) := fun i theta =>
           have hchild : Policy.WorkspaceOK P (dst.xslot i) (dst.zslot i) := step.childWorkspace i
-          have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z T.ops :=
+          have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidthBy P.widthRule x z T.ops :=
             step.childInputSize i
           hsize ▸ Policy.signedPlanOf P theta (dst.xslot i) (dst.zslot i) hchild _ rfl
         PhaseLoweringPlan.signedStep phi x z T h step.layout hrec step.capacity
@@ -456,22 +456,22 @@ def Policy.cSignedPlanOf
   | none, h =>
       PhaseLoweringPlan.cSignedBase ctrl phi x z (fun T hT => by rw [h] at hT; simp at hT)
   | some T, h =>
-      if hrec : nextSignedWidth x z T.ops < phaseInputSize x z then
+      if hrec : nextSignedWidthBy P.widthRule x z T.ops < phaseInputSize x z then
         let step : Policy.CanonicalStep P T x z :=
           Policy.canonicalStep P T x z h hrec hworkspace.toWorkspaceOK
         let src : LayoutState T.k := initSignedLayoutState step.layout
-        let dst : LayoutState T.k := targetSignedLayoutState src (scanNeededWidths x z T.ops)
+        let dst : LayoutState T.k := targetSignedLayoutState src (neededWidthsBy P.widthRule x z T.ops)
         let recurse : ∀ (i : Fin T.k) (theta : Angle),
-            PhaseLoweringPlan P (nextSignedWidth x z T.ops)
+            PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
               (Gate.CSignedPhaseProd ctrl theta (dst.xslot i) (dst.zslot i)) := fun i theta =>
           have hctrlLayout : step.layout.ControlDisjoint ctrl :=
             step.layout.controlDisjoint_of_ctrlDisjoint hworkspace.control_disjoint
           have hctrlDst :=
-            controlDisjoint_target step.layout ctrl (scanNeededWidths x z T.ops) hctrlLayout
+            controlDisjoint_target step.layout ctrl (neededWidthsBy P.widthRule x z T.ops) hctrlLayout
           have hchild : Policy.CWorkspaceOK P ctrl (dst.xslot i) (dst.zslot i) :=
             { toWorkspaceOK := step.childWorkspace i
               control_disjoint := ⟨hctrlDst.1 i, hctrlDst.2 i⟩ }
-          have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z T.ops :=
+          have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidthBy P.widthRule x z T.ops :=
             step.childInputSize i
           hsize ▸ Policy.cSignedPlanOf P ctrl theta (dst.xslot i) (dst.zslot i) hchild _ rfl
         PhaseLoweringPlan.cSignedStep ctrl phi x z T h step.layout hrec step.capacity
