@@ -211,7 +211,7 @@
           every table it returned was replayed independently, and each distinct table was compiled in Lean against the
           benchmark's contract. With arity 2 the answer is immediate up to <code>n = 2048</code>. With arity 3 the search
           took 2.6 s at <code>n = 52</code>, 19 s at 60, 89 s at 62 and 511 s at 64, and at arity 4 the run at
-          <code>n = 56</code> stopped with no answer after 4 h 16 min, with a footprint of 130–140 GiB.<label for="sn-hard-meas" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-hard-meas" class="margin-toggle"/><span class="sidenote">One machine (Apple M5 Pro, 24 GiB), whole-process wall time, interim snapshot. These are measurements, not a scaling law.</span>
+          <code>n = 56</code> stopped with no answer after 24 hours with a footprint of 130–140 GiB.<label for="sn-hard-meas" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-hard-meas" class="margin-toggle"/><span class="sidenote">One machine (Apple M5 Pro, 24 GiB), whole-process wall time, interim snapshot. These are measurements, not a scaling law.</span>
           In every run that finished the optimal policy was a single level of recursion. The cryptographic target is
           <code>n = 2048</code>, where exact search at arity 3 or higher is out of reach, so the objective is explicit,
           every candidate can be checked, and the exact optimum is not known, founding the ForShor Challenge.
