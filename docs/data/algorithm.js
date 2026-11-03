@@ -134,7 +134,7 @@ window.ALGORITHM = {
    ]
   },
   "hreg": {
-   "title": "H on x",
+   "title": "Hadamard gates on x-register",
    "role": "uniform superposition",
    "kind": "quantum",
    "summary": "<p>The quantum part is one circuit, <code>orderFindingIdeal</code>, four gates in sequence on two registers: the exponent register <code>x</code> of <code>log₂(2N²)</code> qubits and the data register <code>y</code> of <code>log₂(2N)</code> qubits. The first step puts <code>x</code> into the uniform superposition over all exponents.</p>",
