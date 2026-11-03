@@ -23,7 +23,7 @@
 
       <h1>A map of the Lean proofs for ForShor</h1>
       <p class="subtitle">What is actually proved about Shor's algorithm here, and where to find it in the code</p>
-      <p class="byline">VerifiedQC · October 2026</p>
+      <p class="byline">Anirudh Suresh, Joshua M. Courtney, Runzhou Tao, and Yudong Cao · November 2026</p>
 
       <section>
         <p>
@@ -55,7 +55,10 @@
         words to the Lean code, we aim to build a mathematical foundation both for Lean experts and 
         for those who may be new to formal verification. Interactive nodes in the graphs below link 
         back to the Lean code in the GitHub repository, letting a researcher easily locate where 
-        statements are proven.
+        statements are proven. This site primarily focuses on how fast multiplication is integrated with
+        Shor's order-finding algorithm. To learn more about Toom-Cook multiplication and how fast multiplication
+        is brought into controlled modular multiplication, as well as how QFTs can use fast multiplication
+        via Cooley-Tukey decomposition, we recommend reading Appendix A of the paper (link given at the bottom of this page).
         </p>                                          
         <p> 
           We start with three theorems. <code>Shor_correct</code> says the ideal order-finding circuit,
