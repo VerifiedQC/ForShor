@@ -5,6 +5,20 @@
 // carries it (verbatim, with a link to the line), and its neighbours.
 (function () {
   "use strict";
+  // Inline math is MathJax (\( ... \), configured in index.html). Text put
+  // into the page after MathJax's first pass is typeset through these two;
+  // until MathJax has loaded they do nothing, and its first pass picks the
+  // text up instead. <code> and <pre> are never typeset.
+  window.typesetMath = function (el) {
+    var MJ = window.MathJax;
+    if (!MJ || !MJ.typesetPromise || !MJ.startup) return Promise.resolve();
+    return MJ.startup.promise.then(function () { return MJ.typesetPromise([el]); })
+      .catch(function (e) { if (window.console) console.warn("MathJax:", e); });
+  };
+  window.clearMath = function (el) {
+    var MJ = window.MathJax;
+    if (MJ && MJ.typesetClear) MJ.typesetClear([el]);
+  };
   function mount(D, root, prefix) {
   if (!D || !root) return;
 
@@ -216,6 +230,7 @@
     var p = panel; panel = null;
     if (openId) { var b = block(openId); b.classList.remove("open"); b.setAttribute("aria-expanded", "false"); }
     openId = null;
+    window.clearMath(p);
     if (immediate) { p.remove(); return; }
     p.classList.remove("open");
     p.addEventListener("transitionend", function onEnd() { p.removeEventListener("transitionend", onEnd); p.remove(); });
@@ -242,6 +257,7 @@
     });
     if (instant) { panel.classList.add("open", "instant"); }
     else { void panel.offsetHeight; panel.classList.add("open"); }
+    window.typesetMath(panel).then(draw);
   }
   function toggle(id, force) {
     var reopen = openId !== id || force;
@@ -274,6 +290,7 @@
   draw();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { draw(); });
   window.addEventListener("load", draw);
+  window.addEventListener("mathjax-ready", draw);     // typeset titles change block sizes
   }
   mount(window.ALGORITHM, document.getElementById("algorithm"), "step");
   mount(window.LAYERS, document.getElementById("layers"), "layer");

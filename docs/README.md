@@ -17,6 +17,14 @@ This directory is the project website, published by GitHub Pages at
   even when the reader's system is in dark mode.
   Plain HTML in [Tufte CSS](https://edwardtufte.github.io/tufte-css/) (`tufte.css` + the `et-book/` fonts, MIT, vendored unchanged; `site.css` holds our few additions); every claim about the proofs is taken
   from the [top-level README](../README.md).
+  **Math is MathJax** (v3, `tex-chtml`, configured in the `<head>` of
+  `index.html`): write TeX between `\(` and `\)` inline or `\[` and `\]` for
+  display, in the page and in the curated `summary`/`note` text of
+  `data/*.js` (escape the backslashes there: `"\\(n^{2+\\varepsilon}\\)"`).
+  Lean names and Lean expressions stay in `<code>`, which MathJax skips.
+  Panels the figures open after load are typeset by `window.typesetMath`
+  (`layers.js`). Labels drawn inside the SVG figures (edge labels, the
+  PhaseProduct diagram itself) are SVG `<text>` and stay Unicode.
 * `navigator.html` — the interactive proof map described below. **Not linked
   from the project page for now** (2026-10-24; the layer graph replaces it);
   the page and its screenshots in `img/` are kept so it can come back. It is
