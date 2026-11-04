@@ -26,7 +26,7 @@ open Shor.Audit
 -- Resource estimation.
 #assert_axioms Shor.exists_shorGateCountBound
 #assert_axioms Shor.shorGateCountBound_of_setup
-#assert_axioms Shor.shorGateCountBoundShorEta_of_setup
+#assert_axioms Shor.shorGateCountBoundAtShorPrecision_of_setup
 
 -- The phase-product lowering theorems, in both spellings.
 #assert_axioms Shor.lowerSignedPhaseProduct_correct

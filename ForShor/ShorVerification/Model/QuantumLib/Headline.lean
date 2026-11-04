@@ -17,7 +17,7 @@ statement is `rw`-transported from its abstract original through
 
 The dimension is left free, subject only to `maxQubit C ≤ dim`. That is strictly
 more general than fixing `shorDim` to a closed form read off
-`Implementation/Reference/ReferenceLayout.lean`, and it lets a reader plug in
+`Implementation/Reference/Standard/Statement.lean`, and it lets a reader plug in
 any qubit ceiling they can prove — including `maxQubit C` itself, which is the
 `shorDim` corollary at the end.
 -/

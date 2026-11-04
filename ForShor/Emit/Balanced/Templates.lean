@@ -3,7 +3,7 @@ import ForShor.Emit.Symbolic.Dispatcher
 /-!
 # Balanced phase products in the IR: the two site templates and the document transform
 
-`Shor.Balanced.balance` (Implementation/Reference/Balanced/Defs.lean) rewrites every
+`Shor.Balanced.balance` (Implementation/Reference/Balanced/Statement.lean) rewrites every
 Shor-level phase-product site through `siteGate` with `defaultRule`. Its IR form is two
 *built* templates (like the dispatchers, not reflected) with the dispatchers' own
 signature:

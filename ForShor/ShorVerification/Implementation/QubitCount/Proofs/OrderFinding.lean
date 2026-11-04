@@ -331,7 +331,8 @@ lemma reference_aux (P : ShorLoweringPolicy) (hP : P.Admissible) (inst : ShorOrd
 
 theorem referencePeakFormulaRec (P : ShorLoweringPolicy) : Rec.ReferencePeakFormula P := by
   intro hP inst m
-  exact reference_aux P hP inst m _
+  unfold Reference.referenceShorCircuit Reference.referenceShorCircuitOf
+  exact reference_aux P hP inst m (Reference.reference_gateWorkspaceOK P inst m)
 
 end QubitCount
 end Shor

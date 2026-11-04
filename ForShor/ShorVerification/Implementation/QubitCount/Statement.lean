@@ -1,9 +1,6 @@
 import ForShor.ShorVerification.Framework.Gatecount.ResourceModel
 import ForShor.ShorVerification.Implementation.Compiler.Statement
-import ForShor.ShorVerification.Implementation.Reference.ShorProgram
-import ForShor.ShorVerification.Implementation.Reference.Reference2048Headline
-import ForShor.ShorVerification.Implementation.Reference.StandardLoweringSetup
-import ForShor.ShorVerification.Implementation.Reference.Balanced.Reference
+import ForShor.ShorVerification.Implementation.Reference.Balanced.Main
 
 /-!
 # Qubit count: definitions and claims
@@ -413,6 +410,26 @@ def orderFindingPeakBalancedD (R : WidthRule) (D : List (ℕ × TableData)) (Rul
     (xW dW dC wW wC sW sC : ℕ) : ℕ :=
   orderFindingPeakWith (sitePeakD R D Rule) (qftPeakD R D) xW dW dC wW wC sW sC
 
+/-- Peak extra qubits of a balanced site from the widths alone: the split's peak
+wherever the rule has a plan, the product's otherwise. -/
+def sitePeakU (pp : ℕ → ℕ → ℕ) (Rule : Balanced.Rule) (wx wz : ℕ) : ℕ :=
+  if wz < wx then
+    match Rule.plan wx wz with
+    | some p => splitPeakOf pp p.lower p.top wx wz
+    | none => pp wx wz
+  else if wx < wz then
+    match Rule.plan wz wx with
+    | some p => splitPeakOf pp p.lower p.top wz wx
+    | none => pp wx wz
+  else pp wx wz
+
+/-- Peak extra qubits of the order-finding circuit after `Balanced.balanceU` with
+the rule `Rule`, which splits every site, from the register widths alone. -/
+def orderFindingPeakUD (R : WidthRule) (D : List (ℕ × TableData)) (Rule : Balanced.Rule)
+    (xW dW wW sW : ℕ) : ℕ :=
+  orderFindingPeakWith (fun wx _ wz _ => sitePeakU (peakReserveD R D) Rule wx wz) (qftPeakD R D)
+    xW dW 0 wW 0 sW 0
+
 /-! ---------------------------------------------------------
     The budgets of a policy
 --------------------------------------------------------- -/
@@ -439,6 +456,18 @@ the given widths and spare capacities. -/
 def Policy.orderFindingQubitsBalanced (P : ShorLoweringPolicy) (Rule : Balanced.Rule)
     (xW dW dC wW wC sW sC : ℕ) : ℕ :=
   xW + (dW + 1) + wW + sW + 1 + Policy.orderFindingPeakBalanced P Rule xW dW dC wW wC sW sC
+
+/-- Peak extra qubits of the unconditionally balanced order-finding circuit under
+the policy `P` and the rule `Rule`. -/
+def Policy.orderFindingPeakU (P : ShorLoweringPolicy) (Rule : Balanced.Rule) (xW dW wW sW : ℕ) :
+    ℕ :=
+  orderFindingPeakUD P.widthRule (Policy.compile P) Rule xW dW wW sW
+
+/-- **The qubit count of the unconditionally balanced order-finding circuit**, from
+the register widths alone. -/
+def Policy.orderFindingQubitsU (P : ShorLoweringPolicy) (Rule : Balanced.Rule) (xW dW wW sW : ℕ) :
+    ℕ :=
+  xW + (dW + 1) + wW + sW + 1 + Policy.orderFindingPeakU P Rule xW dW wW sW
 
 /-- The qubits that are live throughout the order-finding circuit: the
 exponent register, the data register with its carry bit, the work and scratch
@@ -481,47 +510,6 @@ def Policy.OrderFindingPeakFormula (P : ShorLoweringPolicy) : Prop :=
       = Policy.orderFindingQubits P x.width y.width work.width scratch.width
 
 /--
-The formula for the reference circuit of an instance at precision level `m`,
-in terms of the reference register widths.
--/
-def Policy.ReferencePeakFormula (P : ShorLoweringPolicy) : Prop :=
-  P.Admissible →
-  ∀ (inst : ShorOrderFindingInstance) (m : ℕ),
-    let layout := Reference.allocateReferenceLayout P inst m
-    let xW := Reference.referenceXWidth inst
-    let dW := Reference.referenceDataWidth inst
-    let wW := Reference.referenceWorkWidth inst m
-    let sW := Reference.referenceScratchWidth inst m
-    (Reference.referenceShorCircuit P inst m).peakQubits
-        (orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag)
-      = Policy.orderFindingQubits P xW dW wW sW
-
-/-- The standard table for `k = 2`, as a one-band policy. -/
-abbrev standardPolicy2 : ShorLoweringPolicy := standardPolicy 2 (by decide)
-
-/--
-**The 2048-bit count.** For every 2048-bit modulus, the reference circuit
-built from the standard `k = 2` table at the headline precision level `m2048`
-has registers exponent `log₂(2N²)` (4095 or 4096), data 2048, work 2347 and
-scratch 4398. Started with those registers and the flag live, its peak,
-scratch included, is exactly 19,319 qubits when the exponent register has 4096
-qubits and exactly 19,318 when it has 4095. From an empty start it never
-exceeds 19,319 qubits.
--/
-def Reference2048Peak : Prop :=
-  ∀ inst : ShorOrderFindingInstance, Is2048Bit inst.N →
-    let layout := Reference.allocateReferenceLayout standardPolicy2 inst Reference.m2048
-    let L0 := orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag
-    let g := Reference.referenceShorCircuit standardPolicy2 inst Reference.m2048
-    Reference.referenceDataWidth inst = 2048 ∧
-    Reference.referenceWorkWidth inst Reference.m2048 = 2347 ∧
-    Reference.referenceScratchWidth inst Reference.m2048 = 4398 ∧
-    (Reference.referenceXWidth inst = 4095 ∨ Reference.referenceXWidth inst = 4096) ∧
-    (Reference.referenceXWidth inst = 4096 → g.peakQubits L0 = 19319) ∧
-    (Reference.referenceXWidth inst = 4095 → g.peakQubits L0 = 19318) ∧
-    g.peakQubits ∅ ≤ 19319
-
-/--
 **The qubit-count formula for the balanced order-finding circuit.** Lowered
 after `Balanced.balance` with the rule `R`, and started from the same live
 set, its peak, scratch included, is `orderFindingQubitsBalanced` at the
@@ -540,52 +528,22 @@ def Policy.OrderFindingPeakFormulaBalanced (P : ShorLoweringPolicy) (R : Balance
           y.width y.capacity work.width work.capacity scratch.width scratch.capacity
 
 /--
-**The 2048-bit count, balanced.** The reference circuit of `Reference2048Peak`
-lowered after balancing every phase-product site with `Balanced.defaultRule`
-peaks, scratch included, at exactly 17,291 qubits when the exponent register
-has 4096 qubits and exactly 17,290 when it has 4095. From an empty start it
-never exceeds 17,291 qubits.
+**The qubit-count formula for the unconditionally balanced order-finding
+circuit.** Lowered after `Balanced.balanceU` with the rule `R`, which splits
+every site, on registers whose spare qubits hold every site's plan
+(`Balanced.Fits`), and started from the same live set, its peak, scratch
+included, is `orderFindingQubitsU` at the registers' widths alone.
 -/
-def Reference2048PeakBalanced : Prop :=
-  ∀ inst : ShorOrderFindingInstance, Is2048Bit inst.N →
-    let layout := Reference.allocateReferenceLayout standardPolicy2 inst Reference.m2048
-    let L0 := orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag
-    let g := Balanced.balancedShorCircuit standardPolicy2 Balanced.defaultRule inst Reference.m2048
-    (Reference.referenceXWidth inst = 4096 → g.peakQubits L0 = 17291) ∧
-    (Reference.referenceXWidth inst = 4095 → g.peakQubits L0 = 17290) ∧
-    g.peakQubits ∅ ≤ 17291
-
--- The `2 ^ 2048` literal trips the default `exponentiation.threshold` of 256.
-set_option exponentiation.threshold 4100 in
-/-- The 2048-bit modulus `2²⁰⁴⁸ − 1` with base 2. -/
-def instance2048 : ShorOrderFindingInstance :=
-  ⟨2, 2 ^ 2048 - 1, by norm_num, by decide +kernel⟩
-
-/-- **The count for one concrete 2048-bit modulus**, `N = 2²⁰⁴⁸ − 1`: the
-reference circuit's peak, scratch included, is exactly 19,319 qubits. -/
-def Reference2048PeakExample : Prop :=
-  let layout := Reference.allocateReferenceLayout standardPolicy2 instance2048 Reference.m2048
-  (Reference.referenceShorCircuit standardPolicy2 instance2048 Reference.m2048).peakQubits
-      (orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag)
-    = 19319
-
-/-! =========================================================
-    Evaluations: the balanced circuit at the 2048-bit widths, exact width rule
-========================================================= -/
-
-/-- `orderFindingQubitsBalanced` at the 2048-bit reference widths, each
-register's spare capacity being the policy's own reserve at its sites. -/
-def balancedQubits2048 (P : ShorLoweringPolicy) : ℕ :=
-  let rn := reserveBudgetD P.widthRule (Policy.compile P)
-  let dC := max (rn 2049 2348).1 (max (rn 2348 2050).2 (rn 2050 2348).1) + 2
-  let wC := max (rn 2049 2348).2 (max (rn 2348 2050).1 (max (rn 2050 2348).2 (rn 2348 4399).1)) + 1
-  let sC := (rn 2348 4399).2 + 1
-  Policy.orderFindingQubitsBalanced P Balanced.defaultRule 4096 2048 dC 2347 wC 4398 sC
-
-#eval balancedQubits2048 (standardPolicy2.withRule .exact)
-#eval balancedQubits2048 ((standardPolicy 3 (by decide)).withRule .exact)
-#eval balancedQubits2048 ((standardPolicy 4 (by decide)).withRule .exact)
-#eval balancedQubits2048 (({ bands := [⟨900, (standardLoweringSetup 4 (by decide)).table⟩,
-    ⟨0, (standardLoweringSetup 2 (by decide)).table⟩], sorted := by decide } : ShorLoweringPolicy).withRule .exact)
+def Policy.OrderFindingPeakFormulaBalancedU (P : ShorLoweringPolicy) (R : Balanced.Rule) : Prop :=
+  P.Admissible →
+  ∀ (a N : ℕ) (x y work scratch : ExtReg) (flag : ℕ)
+    (hmod : ModMulCircuitWorkspaceOK y work)
+    (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
+    (hws : Policy.GateWorkspaceOK P (orderFindingApprox a N x y work scratch flag hmod hstep4))
+    (hf : Balanced.Fits P R (orderFindingApprox a N x y work scratch flag hmod hstep4)),
+    OrderFindingSpaceLayout x y work scratch flag →
+    (Balanced.orderFindingApproxLowBalancedU P R a N x y work scratch flag hmod hstep4 hws hf).peakQubits
+        (orderFindingBaseSet x y work scratch flag)
+      = Policy.orderFindingQubitsU P R x.width y.width work.width scratch.width
 
 end Shor

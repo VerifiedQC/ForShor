@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.Reference.Reference2048Headline
+import ForShor.ShorVerification.Implementation.Reference.Standard.Main
 
 /-!
 # The certificate every accepted submission gets

@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.Reference.ReferenceLayout
+import ForShor.ShorVerification.Implementation.Reference.Standard.Statement
 
 /-!
 # E5: Shor register plan

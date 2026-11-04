@@ -1,5 +1,4 @@
-import ForShor.ShorVerification.Implementation.Reference.StandardLoweringSetup
-import ForShor.ShorVerification.Implementation.Reference.ReferenceShorImplementation
+import ForShor.ShorVerification.Implementation.Reference.Standard.Main
 import ForShor.Emit.Json.LowGateJson
 import ForShor.Emit.Symbolic.Bundle
 import ForShor.ShorVerification.Submission.Decide

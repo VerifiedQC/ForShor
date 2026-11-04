@@ -1,6 +1,6 @@
 import ForShor.Emit.BalancedU.Templates
 import ForShor.Emit.Balanced.Verify
-import ForShor.ShorVerification.Implementation.Reference.Balanced.Unconditional
+import ForShor.ShorVerification.Implementation.Reference.Balanced.Main
 
 /-!
 # Unconditionally balanced IR: agreement with the real lowering, at sampled widths

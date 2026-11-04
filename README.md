@@ -307,7 +307,7 @@ lake build ExactWidthTests Balanced  # exact-width instances and fault challenge
 
 ## License
 
-Released under the Apache License 2.0. See [LICENSE](LICENSE).
+Released under the Apache License 2.0. See [LICENSE](LICENSE). Two files carry code from other projects under their own licenses, each reproduced in the file: `ShorVerification/Model/QuantumLib/Vendored.lean` (QuantumLib, MIT) and `ShorVerification/Implementation/Shor/Proofs/Math/Mertens/` (Apache 2.0, from a Mathlib fork).
 
 ## Citation
 

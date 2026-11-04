@@ -1,60 +1,37 @@
-# `Framework/`
+# Framework
 
-The trusted base. Everything in [`Implementation/`](../Implementation),
-[`Submission/`](../Submission) and [`Emit/`](../../Emit) is proved against,
-or built from, the definitions here, and nothing here imports any of them.
-A reader who wants to know *what* the development proves, as opposed to
-*how*, reads this folder together with the two Shor-specific files that state
-the correctness criterion over it:
-[`Implementation/Shor/Math/ShorDefinition.lean`](../Implementation/Shor/Math/ShorDefinition.lean)
-(the classical side of order finding) and
-[`Implementation/Shor/Statement.lean`](../Implementation/Shor/Statement.lean)
-(`probability_of_success`) and
-[`Implementation/Shor/Interface.lean`](../Implementation/Shor/Interface.lean)
-(`ShorImplementation`).
+This folder is the vocabulary everything else is written in: what a register is, what a circuit is, what it means to run one, how gates are counted, and what a submitted Toom-Cook table is. It defines things and states laws; it proves no theorem about Shor's algorithm. Everything in `Implementation/`, `Submission/` and `Emit/` is built on it, and nothing here imports any of them.
 
-Files import only Mathlib and other `Framework/` files.
-`ToomCookTable.lean` imports Mathlib and nothing else, and `Policy.lean`
-imports only `ToomCookTable.lean`, so the rules a submission must meet can be
-read without the rest of the framework.
+If you want to know *what* the development proves rather than *how*, read this folder, then `Implementation/Shor/Statement.lean` for the success probability and `Implementation/Reference/Contract.lean` for what a finished implementation has to provide.
 
-## The trust boundary
+## What is assumed
 
-The theorems are stated over abstract typeclasses rather than a fixed
-encoding of states and gates: a `QSemantics` (a state space with kets), a
-`RegEncoding` on its basis, a `MeasureClass`, the gate laws bundled as
-`GateSemanticsFacts`, and `LowerGateClass` for the lowered language. The
-proofs use only the laws these classes state. [`Model/Standard/`](../Model/Standard)
-instantiates every class with the standard matrix model and checks that the
-headline theorems specialise to it, so the laws are satisfiable by ordinary
-unitaries. Reading this folder therefore answers two questions: which
-statements are assumed (the class laws and the cost model), and which are
-proved elsewhere (everything stated in terms of them).
+The theorems are not stated about one fixed matrix model. They are stated over a few typeclasses: a state space with kets (`QSemantics`), a way to read and write registers in the basis (`RegEncoding`), measurement (`MeasureClass`), and the laws each gate obeys (`GateSemanticsFacts` for the circuit language, `LowerGateClass` for the lowered one). The proofs use only these laws. `Model/` then instantiates every class with the ordinary matrix model and checks that the main theorems specialise to it, which shows the laws are satisfiable.
 
-## Files
+So the trust boundary is: the class laws, and the cost model. Everything stated in terms of them is proved.
 
-| file | what it defines |
-|---|---|
-| `Quantum/Registers.lean` | `Reg` (an ordered list of distinct physical qubits) and its splits (`splitLeft`/`splitRight`, and the halves `leftReg`/`rightReg` at `halfSplitPoint`, with their sizes), `RegEncoding` (the basis-level read/write interface: `toNat`, `writeNat`, `bit`, and their laws), `ExtReg` (an active register plus an owned inactive reserve), the two's-complement decodings (`tcDecodeWidth`, `extToInt`, `FitsSignedWidth`) and the freshness predicates (`FreshZero`, `ExtReg.FreshFor`) |
-| `Quantum/QSemantics.lean` | `QSemantics`: a normed inner-product state space with `ket`, finite-combination induction, and ket orthonormality |
-| `Quantum/Measurement.lean` | `MeasureClass`: the Born-rule projectors for measuring a register, and `probMeas` |
-| `AbstractMachine/Angle.lean` | `Angle`, a rational multiple of π, and `Angle.toReal` |
-| `AbstractMachine/Gates.lean` | `Gate`, the high-level circuit language (QFT, signed and controlled phase products, shifts, negation, scaled addition, comparison and subtraction by a constant, the ideal modular multiplier), and the QFT phase `ω`/`qftPhase` |
-| `AbstractMachine/LowGate.lean` | `LowGate`, the lowered language: H, X, Phase, CNOT, Toffoli, the reversible arithmetic primitives, register extension and deallocation, radix reversal |
-| `Semantics/GateSemantics.lean` | The gate laws, one class per gate family, bundled as `GateSemanticsFacts`: the action of every `Gate` on a basis ket, stated through total basis maps (`negateBasis`, `addScaledBasis`, `shiftLBasis`, …) |
-| `Semantics/LowGateSemantics.lean` | `LowerGateClass`: the same for `LowGate`, over `evalL` |
+## The files
 
-Notation: `⟦U⟧ ψ` is `qs.eval U ψ` (a `Gate` applied to a state) and `⟦L⟧ₗ ψ` is `LowerGateClass.evalL L ψ` (a `LowGate` applied to a state); `qs` is inferred from `ψ`, and goals print in this form.
-| `Gatecount/CostModel.lean` | `LowGateCostModel` and `gateCount`: how a lowered circuit is priced |
-| `Gatecount/ResourceModel.lean` | `shorGateResourceModel`, the concrete charges (Cuccaro adders for scaled addition and negation, wiring conventions for shifts and radix reversal) and the proof-side bounds the asymptotic theorems use |
-| `ToomCookTable.lean` | What a submitted table is and when it is admissible: `Point`, `valid_ops`, `Prog`, the symbolic `State`, `run?`, and the conditions C1–C4 (`q`, `GoodToomCookPoints`, `ProgConsumesPtsSafe`), bundled as `ShorLoweringSetup` / `ShorSubmission` |
-| `Policy.lean` | What a submitted policy is: `ToomCookTable` (a table's data), `ShorLoweringPolicy` (width-indexed bands, `choose`, `Stops`), `Admissible`, `constPolicy`, and `ShorPolicySubmission` with its `sorted` field |
+**`Quantum/`** — registers and states.
+- `Registers.lean`: `Reg`, an ordered list of distinct qubits; `ExtReg`, a register plus the spare qubits it owns; `RegEncoding`, reading and writing a register's value in a basis state; two's-complement decoding; what it means for spare qubits to be clean.
+- `QSemantics.lean`: `QSemantics`, the state space, with kets and finite linear combinations.
+- `Measurement.lean`: `MeasureClass`, the Born-rule projectors and the probability of a measurement outcome.
 
-## Where the headline statements are
+**`AbstractMachine/`** — the two circuit languages.
+- `Angle.lean`: `Angle`, a rational multiple of π.
+- `Gates.lean`: `Gate`, the high-level language the construction is written in: QFT, phase products, shifts, negation, scaled addition, comparison and subtraction by a constant.
+- `LowGate.lean`: `LowGate`, the lowered language the circuit is counted in: H, X, phase, CNOT, Toffoli, the reversible arithmetic primitives, register extension and deallocation.
 
-The theorems themselves live in `Implementation/` and `Submission/`; this
-folder only states the vocabulary they are about. The correctness criterion is
-`probability_of_success` in `Implementation/Shor/Statement.lean`; the gate-count function the
-asymptotic bounds are stated with is `ShorOrderFindingProgram.frameworkGateCount`;
-the admissibility conditions a submission must satisfy are the four fields
-of `ShorLoweringSetup` and the `sorted` field of `ShorPolicySubmission`.
+**`Semantics/`** — what the gates do.
+- `GateSemantics.lean`: the laws of each `Gate` on a basis ket, bundled as `GateSemanticsFacts`.
+- `LowGateSemantics.lean`: the same for `LowGate`, as `LowerGateClass`.
+
+`⟦U⟧ ψ` is a `Gate` applied to a state and `⟦L⟧ₗ ψ` a `LowGate` applied to a state; goals print in this form.
+
+**`Gatecount/`** — how a lowered circuit is priced.
+- `CostModel.lean`: `LowGateCostModel` and `gateCount`.
+- `ResourceModel.lean`: `shorGateResourceModel`, the concrete charges (Cuccaro adders for addition and negation, wiring for shifts and radix reversal), and the per-gate bounds the asymptotic theorems use.
+
+**`ToomCookTable.lean`** — what a submission is: a Toom-Cook table (an arithmetic program over limb registers and the interpolation points it evaluates at) and the four decidable conditions C1–C4 under which it is admissible, bundled as `ShorSubmission`. It imports only Mathlib, so the rules a submission must meet can be read on their own.
+
+**`Policy.lean`** — a policy, which is a list of tables indexed by operand width (`ShorLoweringPolicy`), when it is admissible, and `ShorPolicySubmission`. A single table is the one-band policy. It imports only `ToomCookTable.lean`.

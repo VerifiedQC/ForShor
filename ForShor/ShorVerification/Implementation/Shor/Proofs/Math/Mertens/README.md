@@ -1,4 +1,4 @@
-# `Vendor/Mertens/`
+# `Shor/Proofs/Math/Mertens/`
 
 Third-party Lean source, vendored. **Delete this directory once the Mertens
 pull requests below are merged and the project's Mathlib pin includes them**
@@ -11,7 +11,7 @@ The `κ = 1/π²` success constant rests on the Mertens-type totient bound
     φ(r)/r ≥ 1 / (4 · log (log₂ N + 1)).
 
 For `r < 2^2048` that is proved from scratch in
-`Implementation/Shor/Math/TotientBounds.lean` with no analytic input beyond
+`Implementation/Shor/Proofs/Math/TotientBounds.lean` with no analytic input beyond
 `Real.log_two_gt_d9`. The complementary range needs **Mertens' third theorem
 with an explicit error term**, which is
 [leanprover-community/mathlib4#41394](https://github.com/leanprover-community/mathlib4/pull/41394)
@@ -59,7 +59,7 @@ statements verbatim.
 
 ## Consumers
 
-`Implementation/Shor/Math/TotientBoundsLarge.lean` is the only file that imports
+`Implementation/Shor/Proofs/Math/TotientBoundsLarge.lean` is the only file that imports
 anything here.
 
 ## Removal
@@ -67,8 +67,8 @@ anything here.
 Once #41394 is merged and the Mathlib pin includes it:
 
 1. delete this directory;
-2. in `Math/TotientBoundsLarge.lean`, replace
-   `import ...Vendor.Mertens.Theorems` with
+2. in `Shor/Proofs/Math/TotientBoundsLarge.lean`, replace
+   `import ForShor.ShorVerification.Implementation.Shor.Proofs.Math.Mertens.Theorems` with
    `import Mathlib.NumberTheory.Mertens.Theorems`;
 3. `lake build` — the proof should go through unchanged, since it uses only
    `Mertens.prod_prime_one_minus_inv_eq_nat` and `Mertens.E₃_bound`.

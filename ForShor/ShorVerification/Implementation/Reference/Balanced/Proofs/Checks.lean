@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.Reference.Balanced.Defs
+import ForShor.ShorVerification.Implementation.Reference.Balanced.Statement
 
 /-!
 # Balanced phase products: concrete plans at `n = 2048`

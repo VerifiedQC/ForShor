@@ -1,7 +1,7 @@
 import Lean
 import ForShor.Emit.Reflect.Targets
 import ForShor.Emit.Reflect.PolicyTargets
-import ForShor.ShorVerification.Implementation.Reference.StandardLoweringSetup
+import ForShor.ShorVerification.Implementation.Reference.Standard.Main
 
 /-!
 # The extractor: `ToExpr`, and the build-time/run-time drivers

@@ -564,7 +564,12 @@ theorem phaseInputSize_target_le_by (R : WidthRule) {x z : ExtReg} {k : ℕ}
 --------------------------------------------------------- -/
 
 /-! =========================================================
-    Interpolation and phase coefficients
+    Interpolation weights
+    `cramerCoeffFromPts` is Cramer's rule, which the proofs reason about but
+    which sums over all `(2k-1)!` permutations when evaluated. The `@[csimp]`
+    lemma below has compiled code compute the same weights by Gauss-Jordan
+    elimination with a verified inverse. A `@[csimp]` lemma rewrites only code
+    compiled after it, so it precedes every caller of `cramerCoeffFromPts`.
 ========================================================= -/
 
 /-- Interpolation matrix built from the chosen point set. -/
@@ -581,13 +586,144 @@ def cramerCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) : Fin (q 
   let radixVec : Fin (q k) → ℚ := fun j => b ^ (j : ℕ)
   fun i => Matrix.cramer M.transpose radixVec i / M.det
 
-/-! =========================================================
-    Interpolation weights by Gauss-Jordan elimination
-    `cramerCoeffFromPts` is the definition the proofs reason about.
-    `gjCoeffFromPts` computes the same weights by elimination with a verified
-    inverse, and the `@[csimp]` lemma makes the compiler use it: the kernel
-    sees Cramer's rule, compiled code runs the eliminator (`GaussJordan.lean`).
-========================================================= -/
+/-- For an invertible interpolation matrix, Cramer's rule is the inverse transpose applied to
+the radix vector: from `Mᵀ *ᵥ cramer Mᵀ v = det Mᵀ • v` (`Matrix.mulVec_cramer`). -/
+lemma cramerCoeffFromPts_eq_inv_mulVec {k : ℕ} (pts : Fin (q k) → Point) (b : ℚ)
+    (hgood : (interpMatrix k pts).det ≠ 0) (i : Fin (q k)) :
+    cramerCoeffFromPts k pts b i
+      = ((interpMatrix k pts).transpose⁻¹ *ᵥ fun j : Fin (q k) => b ^ (j : ℕ)) i := by
+  set M : Matrix (Fin (q k)) (Fin (q k)) ℚ := interpMatrix k pts with hM
+  set radixVec : Fin (q k) → ℚ := fun j => b ^ (j : ℕ) with hradixVec
+  have hUnitT : IsUnit M.transpose.det := by
+    rw [Matrix.det_transpose]
+    exact isUnit_iff_ne_zero.mpr hgood
+  have hkey :
+      Matrix.cramer M.transpose radixVec = M.transpose.det • (M.transpose⁻¹ *ᵥ radixVec) := by
+    calc Matrix.cramer M.transpose radixVec
+        = M.transpose⁻¹ *ᵥ (M.transpose *ᵥ Matrix.cramer M.transpose radixVec) := by
+          rw [Matrix.mulVec_mulVec, Matrix.nonsing_inv_mul M.transpose hUnitT, Matrix.one_mulVec]
+      _ = M.transpose⁻¹ *ᵥ (M.transpose.det • radixVec) := by rw [Matrix.mulVec_cramer]
+      _ = M.transpose.det • (M.transpose⁻¹ *ᵥ radixVec) := Matrix.mulVec_smul _ _ _
+  have hdet_ne : M.transpose.det ≠ 0 := by rw [Matrix.det_transpose]; exact hgood
+  have hcomp : Matrix.cramer M.transpose radixVec i
+      = M.transpose.det * (M.transpose⁻¹ *ᵥ radixVec) i := by
+    simpa [Pi.smul_apply, smul_eq_mul] using congrFun hkey i
+  rw [eq_comm, ← mul_div_cancel_left₀ ((M.transpose⁻¹ *ᵥ radixVec) i) hdet_ne, ← hcomp]
+  simp [cramerCoeffFromPts, hM, hradixVec, Matrix.det_transpose]
+
+/-! ### Gauss-Jordan elimination with a verified inverse -/
+
+/-- Row-major dense form of an `n × n` `Matrix`, for the eliminator below. -/
+def matrixToRows {n : ℕ} (M : Matrix (Fin n) (Fin n) ℚ) : Array (Array ℚ) :=
+  ((List.finRange n).map fun i => ((List.finRange n).map fun j => M i j).toArray).toArray
+
+/-- Row-major dense rows read back as a `Matrix`; a missing entry is `0`. The
+inverse of `matrixToRows` on well-formed input, and the bridge that lets the
+verified check below be stated as a `Matrix` equation. -/
+def rowsToMatrix {n : ℕ} (rows : Array (Array ℚ)) : Matrix (Fin n) (Fin n) ℚ :=
+  fun i j => (rows.getD i.val #[]).getD j.val 0
+
+/-- Exact Gauss-Jordan elimination over `ℚ`: given the `n` rows of `M`,
+returns the `n` rows of `M⁻¹`, or `none` if no pivot is found. Unverified;
+its output is only used after `isRightInverseRows` has re-multiplied it. -/
+def gaussJordanInverseRows (n : ℕ) (rows : Array (Array ℚ)) : Option (Array (Array ℚ)) :=
+  Id.run do
+    let mut aug : Array (Array ℚ) :=
+      (Array.range n).map fun i =>
+        (rows.getD i #[]) ++ (Array.range n).map (fun j => if i = j then (1 : ℚ) else 0)
+    for col in [0:n] do
+      let mut pivot : Option ℕ := none
+      for r in [col:n] do
+        if pivot.isNone then
+          if (aug.getD r #[]).getD col 0 ≠ 0 then
+            pivot := some r
+      match pivot with
+      | none => return none
+      | some p =>
+          if p ≠ col then
+            let rowCol := aug.getD col #[]
+            let rowP := aug.getD p #[]
+            aug := aug.set! col rowP
+            aug := aug.set! p rowCol
+          let pv := (aug.getD col #[]).getD col 0
+          aug := aug.set! col ((aug.getD col #[]).map (· / pv))
+          for r in [0:n] do
+            if r ≠ col then
+              let factor := (aug.getD r #[]).getD col 0
+              if factor ≠ 0 then
+                let rowR := aug.getD r #[]
+                let rowColNow := aug.getD col #[]
+                aug := aug.set! r
+                  ((Array.range (2 * n)).map fun c => rowR.getD c 0 - factor * rowColNow.getD c 0)
+    return some ((Array.range n).map fun i => (aug.getD i #[]).extract n (2 * n))
+
+/-- `M · rowsToMatrix inv = I`, decided entrywise over `ℚ`. This is the
+trusted computation. -/
+def isRightInverseRows {n : ℕ} (M : Matrix (Fin n) (Fin n) ℚ) (inv : Array (Array ℚ)) : Bool :=
+  decide (∀ i j : Fin n,
+    (∑ r : Fin n, M i r * rowsToMatrix (n := n) inv r j) = if i = j then (1 : ℚ) else 0)
+
+/-- A `true` from `isRightInverseRows` is a right inverse, as a `Matrix`
+equation. -/
+theorem mul_rowsToMatrix_eq_one_of_isRightInverseRows
+    {n : ℕ} {M : Matrix (Fin n) (Fin n) ℚ} {inv : Array (Array ℚ)}
+    (h : isRightInverseRows M inv = true) :
+    M * rowsToMatrix (n := n) inv = 1 := by
+  have h' := of_decide_eq_true h
+  ext i j
+  rw [Matrix.mul_apply, Matrix.one_apply]
+  exact h' i j
+
+/-! ### The weights by elimination, and the `@[csimp]` lemma -/
+
+/--
+`cramerCoeffFromPts` computed by Gauss-Jordan elimination. The interpolation
+matrix is inverted by `gaussJordanInverseRows`, the result is verified by
+re-multiplication (`isRightInverseRows`), and the weights are
+`radixVec ᵥ* M⁻¹` read off the verified rows. If elimination fails or the
+verification does not pass, the value is `cramerCoeffFromPts` itself, so the
+function equals Cramer's rule with no assumption on the eliminator.
+
+Declared before the `@[csimp]` lemma so that its fallback branches compile
+to the genuine Cramer code.
+-/
+def gjCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) : Fin (q k) → ℚ :=
+  let M : Matrix (Fin (q k)) (Fin (q k)) ℚ := interpMatrix k pts
+  match gaussJordanInverseRows (q k) (matrixToRows M) with
+  | some inv =>
+      if isRightInverseRows M inv then
+        fun i => ∑ j : Fin (q k), b ^ (j : ℕ) * rowsToMatrix (n := q k) inv j i
+      else cramerCoeffFromPts k pts b
+  | none => cramerCoeffFromPts k pts b
+
+/-- `gjCoeffFromPts` equals Cramer's rule. In the verified branch `M * inv = 1` gives
+`det M ≠ 0` and `M⁻¹ = inv`, and `cramerCoeffFromPts_eq_inv_mulVec` identifies the two;
+the fallback branches are definitional. -/
+theorem gjCoeffFromPts_eq_cramerCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) :
+    gjCoeffFromPts k pts b = cramerCoeffFromPts k pts b := by
+  unfold gjCoeffFromPts
+  dsimp only
+  rcases hgj : gaussJordanInverseRows (q k) (matrixToRows (interpMatrix k pts)) with _ | inv
+  · rfl
+  · dsimp only
+    by_cases hchk : isRightInverseRows (interpMatrix k pts) inv = true
+    · rw [ite_eq_left hchk]
+      have hmul : interpMatrix k pts * rowsToMatrix (n := q k) inv = 1 :=
+        mul_rowsToMatrix_eq_one_of_isRightInverseRows hchk
+      have hdet : (interpMatrix k pts).det ≠ 0 :=
+        (Matrix.isUnit_det_of_right_inverse hmul).ne_zero
+      funext i
+      rw [cramerCoeffFromPts_eq_inv_mulVec pts b hdet i, ← Matrix.transpose_nonsing_inv,
+        Matrix.inv_eq_right_inv hmul]
+      simp [Matrix.mulVec, dotProduct, mul_comm]
+    · rw [ite_eq_right hchk]
+
+/-- Compiled code evaluates `cramerCoeffFromPts` as `gjCoeffFromPts`; the
+kernel, and every proof, sees Cramer's rule. -/
+@[csimp] theorem cramerCoeffFromPts_eq_gjCoeffFromPts_csimp :
+    @cramerCoeffFromPts = @gjCoeffFromPts := by
+  funext k pts b
+  exact (gjCoeffFromPts_eq_cramerCoeffFromPts k pts b).symm
 
 /-- `cramerCoeffFromPts` at radix `2 ^ W`. -/
 def cramerCoeffFromPtsWidth (k W : ℕ) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → ℚ :=

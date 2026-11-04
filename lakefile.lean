@@ -79,10 +79,9 @@ lean_lib «ExactWidthTests» where
 
 -- Merged from the balanced-split work (ForShor-split): balanced phase products for unequal
 -- operands, new leaf modules only (Implementation/Reference/Balanced/). The roots are its
--- four leaves, which import the rest. `forshor_policy_submission --balanced` emits the
+-- three leaves, which import the rest. `forshor_policy_submission --balanced` emits the
 -- balanced IR.
 lean_lib «Balanced» where
-  roots := #[`ForShor.ShorVerification.Implementation.Reference.Balanced.Reference,
-    `ForShor.ShorVerification.Implementation.Reference.Balanced.Fault,
-    `ForShor.ShorVerification.Implementation.Reference.Balanced.Checks,
-    `ForShor.ShorVerification.Implementation.Reference.Balanced.Unconditional]
+  roots := #[`ForShor.ShorVerification.Implementation.Reference.Balanced.Main,
+    `ForShor.ShorVerification.Implementation.Reference.Balanced.Proofs.Fault,
+    `ForShor.ShorVerification.Implementation.Reference.Balanced.Proofs.Checks]

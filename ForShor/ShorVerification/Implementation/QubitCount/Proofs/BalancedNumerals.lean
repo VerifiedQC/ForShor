@@ -1,5 +1,5 @@
 import ForShor.ShorVerification.Implementation.QubitCount.Proofs.Numerals
-import ForShor.ShorVerification.Implementation.Reference.Balanced.Checks
+import ForShor.ShorVerification.Implementation.Reference.Balanced.Proofs.Checks
 
 /-!
 # Qubit count: the 2048-bit numerals, balanced
@@ -80,10 +80,19 @@ theorem balancedOrderFindingPeak_2048 {xW dC wC sC : ℕ} (hx : xW = 4095 ∨ xW
     sitePeak_step5 (show 43006 ≤ dC - 2 by omega) (show 42708 ≤ wC - 1 by omega)]
   rcases hx with rfl | rfl <;> decide +kernel
 
-/-! ## The claim -/
+/-! ## The 2048-bit number -/
 
-theorem reference2048PeakBalanced : Reference2048PeakBalanced := by
-  intro inst hN
+/-- For every 2048-bit modulus, the reference circuit of `reference2048Peak` lowered
+after balancing every site with `Balanced.defaultRule` peaks, scratch included, at
+17,291 qubits with 4096 exponent qubits and 17,290 with 4095; from an empty start it
+never exceeds 17,291. -/
+theorem reference2048PeakBalanced (inst : ShorOrderFindingInstance) (hN : Is2048Bit inst.N) :
+    let layout := Reference.allocateReferenceLayout standardPolicy2 inst Reference.m2048
+    let L0 := orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag
+    let g := Balanced.balancedShorCircuit standardPolicy2 Balanced.defaultRule inst Reference.m2048
+    (Reference.referenceXWidth inst = 4096 → g.peakQubits L0 = 17291) ∧
+    (Reference.referenceXWidth inst = 4095 → g.peakQubits L0 = 17290) ∧
+    g.peakQubits ∅ ≤ 17291 := by
   dsimp only
   obtain ⟨hd, hw, hs, hx⟩ := reference_widths_2048 hN
   have hP := standardPolicy_admissible 2 (by decide)
@@ -113,7 +122,7 @@ theorem reference2048PeakBalanced : Reference2048PeakBalanced := by
     (Reference.allocateReferenceLayout standardPolicy2 inst Reference.m2048).flag
     (Reference.reference_modMulCircuitWorkspaceOK standardPolicy2 inst Reference.m2048)
     (Reference.reference_step4Workspace standardPolicy2 inst Reference.m2048)
-    (Balanced.reference_gateWorkspaceOK standardPolicy2 inst Reference.m2048) hlay
+    (Reference.reference_gateWorkspaceOK standardPolicy2 inst Reference.m2048) hlay
   have hcap := Reference.allocatedReferenceWorkspaceLargeEnough standardPolicy2 inst Reference.m2048
   have hD := hcap.data_large_enough
   have hW := hcap.auxiliary_large_enough

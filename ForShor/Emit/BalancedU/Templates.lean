@@ -3,7 +3,7 @@ import ForShor.Emit.Balanced.Templates
 /-!
 # Unconditionally balanced phase products in the IR
 
-`Shor.Balanced.balanceU` (Implementation/Reference/Balanced/Unconditional.lean) rewrites
+`Shor.Balanced.balanceU` (Implementation/Reference/Balanced/Statement.lean) rewrites
 every Shor-level phase-product site through `siteGateU` with `defaultRule`: `siteGate`
 without the fit check `fitsB`. Its IR form is two built templates with the dispatchers'
 signature, as in `Emit/Balanced/Templates.lean`:

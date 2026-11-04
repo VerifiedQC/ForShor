@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.Reference.Balanced.Defs
+import ForShor.ShorVerification.Implementation.Reference.Balanced.Statement
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.GateLaws
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.States
 
@@ -23,6 +23,36 @@ namespace Balanced
 open Gate
 
 universe u
+
+/-! ## Blocks and the fit check -/
+
+@[simp] theorem lowBlock_reserve (x : ExtReg) (w : ℕ) : (lowBlock x w).reserve = x.reserve := rfl
+@[simp] theorem highPart_reserve (x : ExtReg) (w : ℕ) : (highPart x w).reserve = x.reserve := rfl
+
+@[simp] theorem lowBlock_capacity (x : ExtReg) (w : ℕ) : (lowBlock x w).capacity = x.capacity := rfl
+@[simp] theorem highPart_capacity (x : ExtReg) (w : ℕ) : (highPart x w).capacity = x.capacity := rfl
+
+theorem lowBlock_width (x : ExtReg) (w : ℕ) (hw : w ≤ x.width) : (lowBlock x w).width = w := by
+  simp [lowBlock, ExtReg.width, regSize, Reg.width, Reg.take] at hw ⊢
+  omega
+
+theorem highPart_width (x : ExtReg) (w : ℕ) : (highPart x w).width = x.width - w := by
+  simp [highPart, ExtReg.width, regSize, Reg.width, Reg.drop]
+
+theorem fitsB_nil {P : ShorLoweringPolicy} {t : ℕ} {x z : ExtReg} :
+    fitsB P [] t x z = true ↔
+      x.width ≤ t ∧ z.width ≤ t ∧
+      (t - x.width) + (Policy.reserveNeed P t t).1 ≤ x.capacity ∧
+      (t - z.width) + (Policy.reserveNeed P t t).2 ≤ z.capacity := by
+  simp [fitsB, and_assoc]
+
+theorem fitsB_cons {P : ShorLoweringPolicy} {b : Block} {bs : List Block} {t : ℕ} {x z : ExtReg} :
+    fitsB P (b :: bs) t x z = true ↔
+      b.w < x.width ∧ b.w + 1 ≤ b.t ∧ z.width ≤ b.t ∧
+      (b.t - b.w) + (Policy.reserveNeed P b.t b.t).1 ≤ x.capacity ∧
+      (b.t - z.width) + (Policy.reserveNeed P b.t b.t).2 ≤ z.capacity ∧
+      fitsB P bs t (highPart x b.w) z = true := by
+  simp [fitsB, and_assoc]
 
 /-! ## Arithmetic: the recombination identity -/
 

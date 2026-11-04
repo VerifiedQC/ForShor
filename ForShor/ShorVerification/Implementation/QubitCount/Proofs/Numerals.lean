@@ -8,6 +8,16 @@ by kernel evaluation, and the claims.
 -/
 
 namespace Shor
+
+/-- The standard table for `k = 2`, as a one-band policy. -/
+abbrev standardPolicy2 : ShorLoweringPolicy := standardPolicy 2 (by decide)
+
+-- The `2 ^ 2048` literal trips the default `exponentiation.threshold` of 256.
+set_option exponentiation.threshold 4100 in
+/-- The 2048-bit modulus `2²⁰⁴⁸ − 1` with base 2. -/
+def instance2048 : ShorOrderFindingInstance :=
+  ⟨2, 2 ^ 2048 - 1, by norm_num, by decide +kernel⟩
+
 namespace QubitCount
 
 /-! ## The budget at the 2048-bit widths -/
@@ -85,10 +95,24 @@ lemma reference_widths_2048 {inst : ShorOrderFindingInstance} (hN : Is2048Bit in
   have := log2_succ_le hN
   omega
 
-/-! ## The claims -/
+/-! ## The 2048-bit numbers -/
 
-theorem reference2048Peak : Reference2048Peak := by
-  intro inst hN
+/-- For every 2048-bit modulus, the reference circuit from the standard `k = 2`
+table at `m2048` has registers data 2048, work 2347 and scratch 4398, an exponent
+register of 4095 or 4096 qubits, and peaks, scratch included, at 19,319 qubits with
+4096 exponent qubits and 19,318 with 4095; from an empty start it never exceeds
+19,319. -/
+theorem reference2048Peak (inst : ShorOrderFindingInstance) (hN : Is2048Bit inst.N) :
+    let layout := Reference.allocateReferenceLayout standardPolicy2 inst Reference.m2048
+    let L0 := orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag
+    let g := Reference.referenceShorCircuit standardPolicy2 inst Reference.m2048
+    Reference.referenceDataWidth inst = 2048 ∧
+    Reference.referenceWorkWidth inst Reference.m2048 = 2347 ∧
+    Reference.referenceScratchWidth inst Reference.m2048 = 4398 ∧
+    (Reference.referenceXWidth inst = 4095 ∨ Reference.referenceXWidth inst = 4096) ∧
+    (Reference.referenceXWidth inst = 4096 → g.peakQubits L0 = 19319) ∧
+    (Reference.referenceXWidth inst = 4095 → g.peakQubits L0 = 19318) ∧
+    g.peakQubits ∅ ≤ 19319 := by
   dsimp only
   obtain ⟨hd, hw, hs, hx⟩ := reference_widths_2048 hN
   have hp := referencePeakFormula standardPolicy2
@@ -112,7 +136,12 @@ theorem reference2048Peak : Reference2048Peak := by
 
 -- The `2 ^ 4097` bounds trip the default `exponentiation.threshold` of 256.
 set_option exponentiation.threshold 4200 in
-theorem reference2048PeakExample : Reference2048PeakExample := by
+/-- For `N = 2²⁰⁴⁸ − 1` the peak, scratch included, is exactly 19,319 qubits. -/
+theorem reference2048PeakExample :
+    let layout := Reference.allocateReferenceLayout standardPolicy2 instance2048 Reference.m2048
+    (Reference.referenceShorCircuit standardPolicy2 instance2048 Reference.m2048).peakQubits
+        (orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag)
+      = 19319 := by
   have hN : Is2048Bit instance2048.N := by
     show 2 ^ 2047 ≤ 2 ^ 2048 - 1 ∧ 2 ^ 2048 - 1 < 2 ^ 2048
     constructor <;> norm_num

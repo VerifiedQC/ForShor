@@ -18,7 +18,7 @@ import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Math.Table_Ge
 
 The program `genOpsWithProduct` built from the generated interpolation points
 is well formed, consumes the points safely, and has one recursive
-phase-product leaf per point. `Reference/StandardLoweringSetup.lean` uses the
+phase-product leaf per point. `Reference/Standard/Main.lean` uses the
 consumption fact to build the standard setup.
 -/
 

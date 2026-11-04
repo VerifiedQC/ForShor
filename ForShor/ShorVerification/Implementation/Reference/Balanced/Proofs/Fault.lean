@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.Reference.Balanced.Semantics
+import ForShor.ShorVerification.Implementation.Reference.Balanced.Proofs.Semantics
 
 /-!
 # Fault challenge: wrong recombinations for unequal operands fail

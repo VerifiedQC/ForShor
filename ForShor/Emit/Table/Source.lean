@@ -2,7 +2,7 @@ import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Coefficients
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Compile
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Plan
-import ForShor.ShorVerification.Implementation.Reference.StandardLoweringSetup
+import ForShor.ShorVerification.Implementation.Reference.Standard.Main
 
 /-!
 # The Toom-Cook table a bundle is built from

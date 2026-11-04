@@ -6,9 +6,7 @@ import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanBuilders
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Lower
 import ForShor.ShorVerification.Implementation.QFT.Statement
-import ForShor.ShorVerification.Implementation.Reference.StandardLoweringSetup
-import ForShor.ShorVerification.Implementation.Reference.ReferenceLayout
-import ForShor.ShorVerification.Implementation.Reference.ReferenceShorImplementation
+import ForShor.ShorVerification.Implementation.Reference.Standard.Main
 
 /-!
 # Runtime instance verification of an extracted `Doc`

@@ -1,3 +1,33 @@
+/-
+The definitions in this file are transcribed from inQWIRE/LeanQuantum (QuantumLib),
+https://github.com/inQWIRE/LeanQuantum, `main` at commit
+44fc4eb1f4ba512e659deacd3468fda0a764d162, and are distributed under that
+project's MIT license, reproduced here as it requires. The rest of this
+repository is under the Apache License 2.0 (see LICENSE).
+
+MIT License
+
+Copyright (c) 2025 INQWIRE
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-/
+
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Basic.Complex.Basic
 import Mathlib.LinearAlgebra.Matrix.Kronecker
@@ -17,7 +47,7 @@ Transcribed from **inQWIRE/LeanQuantum**, `main` at commit
 * `Quantumlib/Data/Gate/PhaseShift.lean` — `phaseShift`
 * `Quantumlib/Data/Basis/Basic.lean` — `ket0`, `ket1`
 
-MIT licensed; see that repository's `LICENSE`.
+MIT licensed; the license is reproduced in the header of this file.
 
 ## Why vendored rather than `require`d
 

@@ -2,13 +2,13 @@ import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
 import ForShor.ShorVerification.Framework.ToomCookTable
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Layout
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Math.ToomCook
-import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.GaussJordan
 
 /-!
 # Phase-Product Compiler: Coefficients
 
-Interpolation and phase-coefficient definitions (`Shor.interpMatrix`,
-`phaseCoeffFromPts`, `cramerCoeffFromPts`, ...), the canonical interpolation
+The inverse-based phase coefficients (`phaseCoeffFromPts`) and their agreement
+with Cramer's rule (`cramerCoeffFromPts`, in `PhaseProduct/Coefficients.lean`
+with its Gauss-Jordan `@[csimp]` lemma), the canonical interpolation
 points (`alternatingPoint`, `genInterpolationPoints`) together with the proof
 that they interpolate (`genInterpolationPoints_good`), and the bridge to the
 pure Toom-Cook algebra (`toMathPoint`).
@@ -93,65 +93,6 @@ lemma cramerCoeffFromPts_eq_phaseCoeffFromPts
     rw [hstep1, ← Matrix.mulVec_transpose, Matrix.transpose_nonsing_inv]
   rw [hphase, hinv_component, cramerCoeffFromPts, hM, hradixVec]
   simp [Matrix.det_transpose]
-
-/-! =========================================================
-    Interpolation weights by Gauss-Jordan elimination
-
-    `cramerCoeffFromPts` is the definition the proofs reason about.
-    `gjCoeffFromPts` computes the same weights by elimination with a verified
-    inverse, and the `@[csimp]` lemma makes the compiler use it: the kernel
-    sees Cramer's rule, compiled code runs the eliminator (`GaussJordan.lean`).
-========================================================= -/
-
-/--
-`cramerCoeffFromPts` computed by Gauss-Jordan elimination. The interpolation
-matrix is inverted by `gaussJordanInverseRows`, the result is verified by
-re-multiplication (`isRightInverseRows`), and the weights are
-`radixVec ᵥ* M⁻¹` read off the verified rows. If elimination fails or the
-verification does not pass, the value is `cramerCoeffFromPts` itself, so the
-function equals Cramer's rule with no assumption on the eliminator.
-
-Declared before the `@[csimp]` lemma so that its fallback branches compile
-to the genuine Cramer code.
--/
-def gjCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) : Fin (q k) → ℚ :=
-  let M : Matrix (Fin (q k)) (Fin (q k)) ℚ := interpMatrix k pts
-  match gaussJordanInverseRows (q k) (matrixToRows M) with
-  | some inv =>
-      if isRightInverseRows M inv then
-        fun i => ∑ j : Fin (q k), b ^ (j : ℕ) * rowsToMatrix (n := q k) inv j i
-      else cramerCoeffFromPts k pts b
-  | none => cramerCoeffFromPts k pts b
-
-/-- `gjCoeffFromPts` equals Cramer's rule. In the verified branch
-`M * inv = 1` gives `det M ≠ 0` and `M⁻¹ = inv`, and
-`cramerCoeffFromPts_eq_phaseCoeffFromPts` identifies the two; the fallback
-branches are definitional. -/
-theorem gjCoeffFromPts_eq_cramerCoeffFromPts (k : ℕ) (pts : Fin (q k) → Point) (b : ℚ) :
-    gjCoeffFromPts k pts b = cramerCoeffFromPts k pts b := by
-  unfold gjCoeffFromPts
-  dsimp only
-  rcases hgj : gaussJordanInverseRows (q k) (matrixToRows (interpMatrix k pts)) with _ | inv
-  · rfl
-  · dsimp only
-    by_cases hchk : isRightInverseRows (interpMatrix k pts) inv = true
-    · rw [ite_eq_left hchk]
-      have hmul : interpMatrix k pts * rowsToMatrix (n := q k) inv = 1 :=
-        mul_rowsToMatrix_eq_one_of_isRightInverseRows hchk
-      have hdet : (interpMatrix k pts).det ≠ 0 :=
-        (Matrix.isUnit_det_of_right_inverse hmul).ne_zero
-      rw [cramerCoeffFromPts_eq_phaseCoeffFromPts pts b hdet]
-      funext i
-      simp only [phaseCoeffFromPts, Matrix.inv_eq_right_inv hmul, Matrix.mul_apply,
-        ToomCookMath.radixRow]
-    · rw [ite_eq_right hchk]
-
-/-- Compiled code evaluates `cramerCoeffFromPts` as `gjCoeffFromPts`; the
-kernel, and every proof, sees Cramer's rule. -/
-@[csimp] theorem cramerCoeffFromPts_eq_gjCoeffFromPts_csimp :
-    @cramerCoeffFromPts = @gjCoeffFromPts := by
-  funext k pts b
-  exact (gjCoeffFromPts_eq_cramerCoeffFromPts k pts b).symm
 
 /-- Phase coefficients selected from the common limb width of two operands. -/
 noncomputable def phaseCoeffFromPtsForRegs (k : ℕ) (x z : ExtReg) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → ℚ :=

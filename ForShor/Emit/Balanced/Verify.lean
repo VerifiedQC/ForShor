@@ -1,6 +1,6 @@
 import ForShor.Emit.Balanced.Templates
 import ForShor.Emit.Reflect.PolicyVerify
-import ForShor.ShorVerification.Implementation.Reference.Balanced.Reference
+import ForShor.ShorVerification.Implementation.Reference.Balanced.Main
 
 /-!
 # Balanced IR: agreement with the real balanced lowering, at sampled widths

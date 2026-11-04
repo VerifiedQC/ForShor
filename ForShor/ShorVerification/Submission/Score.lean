@@ -15,7 +15,7 @@ settled here, once, and neither is something a submitter can influence:
   submission argument to pass — so every accepted table declares the same
   bound at the same `N`.
 - `submissionTrialCount N` is a computable `ℕ`, not the `Nat.find` witness
-  `Reference/Reference2048Headline.lean` uses: a submissions repo has to be
+  `Reference/Standard/Proofs/Headline.lean` uses: a submissions repo has to be
   able to *evaluate* it, and `Nat.find` only proves a number exists.
 
 Scope of the trial-count theorem: 2048-bit moduli, the case the fixed
@@ -114,7 +114,7 @@ end Certificate
 
 /-- A rational lower bound on `submissionSuccessBound N` for 2048-bit `N`
 (`pLower_le_bound`), obtained by composing the two facts
-`Reference/Reference2048Headline.lean` already proves: at
+`Reference/Standard/Proofs/Headline.lean` already proves: at
 `submissionPrecision` the declared bound retains at least 99% of the ideal
 `κ / log(log₂ N + 1) = κ / log 2048` baseline (`headline_success_bound`),
 `1/10 ≤ κ` (`kappa_ge_one_div_ten`), and `log 2048 = 11 log 2 ≤ 7.63`.
