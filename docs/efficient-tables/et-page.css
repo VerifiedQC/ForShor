@@ -1,0 +1,31 @@
+/* Additions for the efficient-tables landing page; everything else comes from ../tufte.css and ../site.css. */
+.scope { border-left: 4px solid #1b8c97; background: #eef6f7; padding: 0.9rem 1.2rem; margin: 1.6rem 0 0.4rem; width: 55%; }
+.scope p { width: 100%; margin: 0.5rem 0; font-size: 1.15rem; }
+.scope .scope-title { font-variant: small-caps; letter-spacing: 0.06em; font-weight: bold; margin-top: 0; }
+table.results { width: calc(100% - 3rem); max-width: 100%; table-layout: fixed; border-collapse: collapse; margin: 1.2rem 0 1.5rem; font-size: 1.05rem; }
+table.results th { text-align: left; border-bottom: 2px solid #111; padding: 0.3rem 0.6rem; font-weight: bold; }
+table.results td { border-bottom: 1px solid #ccc; padding: 0.55rem 0.6rem; vertical-align: top; }
+table.results th:first-child, table.results td:first-child { width: 24%; overflow-wrap: anywhere; }
+table.results td.go { width: 4.5rem; }
+table.results .where { font-style: italic; font-size: 0.9rem; color: #444; }
+table.results td.go { text-align: right; font-size: 0.95rem; white-space: nowrap; }
+table.results code { font-size: 0.88rem; }
+table.compare td:first-child { font-style: italic; }
+h3 .meta { font-size: 0.95rem; font-weight: normal; font-style: italic; color: #444; margin-left: 0.6rem; }
+.graphnote { font-size: 1.15rem; }
+.et-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.7rem; width: calc(100% - 3rem); margin: 1rem 0 1.8rem; }
+.et-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.et-card { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.7rem 0.8rem; border: 1px solid #111; background: #eef3fa; color: #111; text-decoration: none; background-image: none; text-shadow: none; }
+.et-card:hover { box-shadow: 0 2px 0 #111; transform: translateY(-1px); }
+.et-card .et-name { font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace; font-weight: bold; font-size: 0.95rem; }
+.et-card .et-blurb { font-style: italic; font-size: 0.95rem; line-height: 1.3; }
+.et-card .et-count { font-size: 0.8rem; color: #444; margin-top: auto; }
+.et-ghost { background: #f6f6f3; border-style: dashed; }
+.et-grid-3 .et-card:nth-child(2) { background: #e9f4f5; }
+.et-grid-3 .et-card:nth-child(3) { background: #f8eaf0; }
+a.button { display: inline-block; border: 1px solid #111; padding: 0.4rem 1rem; background: #111; color: #fff; text-decoration: none; background-image: none; text-shadow: none; }
+a.button:hover { background: #333; }
+@media (max-width: 760px) {
+  .scope { width: 100%; }
+  .et-grid, .et-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

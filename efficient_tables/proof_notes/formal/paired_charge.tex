@@ -1,0 +1,60 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{definition}{Definition}
+\newcommand{\Z}{\mathbb Z}\newcommand{\N}{\mathbb N}
+\title{Charge accounting for the paired constructor at arity $k$}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+
+\noindent\textbf{Scope.} This note counts the \emph{charged instructions} of an explicitly described instruction skeleton, the ``paired constructor'' for a phase product at arity $k$. It proves an exact formula for the charge and the bound $6k^2$. It does \emph{not} show that the skeleton is a legal table: that every register is restored, that each marker sees the required row, or that the scan peaks are small are not claimed here. Only instruction counts and their weights are treated.
+
+\section{The point list and the skeleton}
+
+\begin{definition}[Points]
+For $k\ge2$ let $\mathbf p_k=(p_0,\dots,p_{2k-2})$ be the first $2k-1$ entries of the infinite list
+\[
+0,\ \infty,\ -1,\ +1,\ \ -2^{-1},\ +2^{-1},\ -2^{1},\ +2^{1},\ \ -2^{-2},\ +2^{-2},\ -2^{2},\ +2^{2},\ \dots
+\]
+that is, $p_0=0$, $p_1=\infty$, $p_2=-1$, $p_3=+1$, and for $j\ge1$: $p_{4j}=-2^{-j}$, $p_{4j+1}=+2^{-j}$, $p_{4j+2}=-2^{j}$, $p_{4j+3}=+2^{j}$. A point is \emph{negative fractional} if it is $-2^{-j}$ with $j\ge1$ (so $-1$ is not negative fractional). Let $f_-(k)$ be the number of negative fractional points among $p_0,\dots,p_{2k-2}$.
+\end{definition}
+
+\begin{definition}[Charge classes]
+An instruction is one of: a \emph{positive addition} (charge $1$), a \emph{negative addition} (charge $3$), a \emph{negation} (charge $1$), or a free instruction (a shift or a checkpoint, charge $0$). The charge of a finite list of instructions is the sum of the charges of its entries.
+\end{definition}
+
+\begin{definition}[Paired skeleton]
+Let $k\ge2$ and put $q=2k-3$ (the number of points other than $p_0$ and $p_1$), $p=\lfloor q/2\rfloor=k-2$ and $s=q-2p=1$. The points $p_2,\dots,p_{2k-2}$ are grouped as $p$ consecutive pairs $(p_2,p_3),(p_4,p_5),\dots,(p_{2k-4},p_{2k-3})$ followed by one singleton $p_{2k-2}$. The skeleton is the concatenation, in this order, of:
+\begin{enumerate}
+\item the bare checkpoints for $p_0$ and $p_1$ (no charged instruction);
+\item for each pair, a \emph{pair block}: $k-2$ positive additions (the parity build), then three connector additions, namely a positive addition, a negative addition, a positive addition, with a checkpoint after each of the first and second connector, then $k-2$ negative additions (the reversal of the parity build);
+\item for the singleton, a \emph{singleton block}: $k-1$ positive additions, a checkpoint, and $k-1$ negative additions;
+\item for every negative fractional point among $p_2,\dots,p_{2k-2}$, if $k$ is even, two negations placed around its checkpoint (and no negation if $k$ is odd).
+\end{enumerate}
+Shifts, checkpoints and the order of instructions inside a block do not affect the charge and are not modelled.
+\end{definition}
+
+\section{Results}
+
+\begin{theorem}[Charge of the paired skeleton]\label{thm:charge}
+Let $k\ge2$ and let $\nu(k)=2f_-(k)$ if $k$ is even and $\nu(k)=0$ if $k$ is odd. Let $c_{\mathrm{pair}}(k)$ be the charge of the paired skeleton of Definition~3. Then
+\[
+c_{\mathrm{pair}}(k)=(k-2)(4k-3)+4(k-1)+\nu(k)=4k^2-7k+2+\nu(k),
+\]
+and $f_-(k)=\lfloor(k-1)/2\rfloor$, so $\nu(k)\le k-1$.
+\end{theorem}
+\begin{proof}
+A pair block has $(k-2)\cdot1+(1+3+1)+(k-2)\cdot3=4k-3$ charge. A singleton block has $(k-1)\cdot1+(k-1)\cdot3=4(k-1)$. The $k-2$ pair blocks and the singleton block give $(k-2)(4k-3)+4(k-1)=4k^2-11k+6+4k-4=4k^2-7k+2$. Each negative fractional point contributes two negations of charge $1$ if $k$ is even, so the negations contribute $\nu(k)$ in total. For the count of $f_-(k)$: a negative fractional point is $p_{4j}$ with $j\ge1$ and $4j\le2k-2$, that is $1\le j\le\lfloor(k-1)/2\rfloor$. \qed
+\end{proof}
+
+\begin{theorem}[The bound $6k^2$]\label{thm:bound}
+For every $k\ge2$, $c_{\mathrm{pair}}(k)\le4k^2-6k+1\le6k^2$.
+\end{theorem}
+\begin{proof}
+By Theorem~\ref{thm:charge}, $c_{\mathrm{pair}}(k)=4k^2-7k+2+\nu(k)\le4k^2-7k+2+(k-1)=4k^2-6k+1$, and $4k^2-6k+1\le6k^2$ since $2k^2+6k-1>0$. \qed
+\end{proof}
+
+\end{document}
