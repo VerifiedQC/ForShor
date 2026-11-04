@@ -1,10 +1,10 @@
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Layout
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Widths
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Layout
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Compile
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Support
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Allocation
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
-import ForShor.ShorVerification.Implementation.Shared.States
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Cleanliness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.States
 
 namespace Shor
 open Gate
@@ -87,7 +87,8 @@ lemma FreshZero.of_subset
 lemma PhaseSplitLayout.child_newBits_subset_parent_reserve
     {parent : ExtReg}
     {k W : ℕ}
-    (layout : PhaseSplitLayout parent k W)
+    {layout : PhaseSplitLayout parent k W}
+    (hv : layout.Valid)
     (i : Fin k)
     (n : ℕ)
     (qbit : ℕ)
@@ -101,7 +102,7 @@ lemma PhaseSplitLayout.child_newBits_subset_parent_reserve
     rw [List.mem_flatten]
     refine ⟨(layout.reserve i).qubits, ?_, hqChildReserve⟩
     simp
-  rw [layout.reserve_partition] at hqFlatten
+  rw [hv.reserve_partition] at hqFlatten
   exact hqFlatten
 
 /-! =========================================================
@@ -128,20 +129,22 @@ lemma freshZero_reserve_of_freshFor_capacity
         simp [ExtReg.newBits, ExtReg.capacity, Reg.take, regSize, Reg.width]
   simpa [ExtReg.FreshFor, hnewBits] using hclean
 
-/-- Recursive reserve cleanliness supplies the compiler workspace invariant for one allocation layer. -/
-lemma compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis
+/-- For either width rule `R`: Recursive reserve cleanliness supplies the compiler workspace invariant for one allocation layer. -/
+lemma compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis_by
+    (R : WidthRule)
     {Basis : Type u}
     [RegEncoding Basis]
     {k : ℕ}
     (ops : Prog k)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
-    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
+    (hlayout : layout.Valid)
+    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy R x z ops))
     (b : Basis)
     (hclean : RecursiveWorkspaceCleanBasis x z b) :
-    CompilerWorkspaceOK (initSignedLayoutState layout) (scanNeededWidths x z ops) b := by
+    CompilerWorkspaceOK (initSignedLayoutState layout) (neededWidthsBy R x z ops) b := by
   let src : LayoutState k := initSignedLayoutState layout
-  let need : NeededWidths k := scanNeededWidths x z ops
+  let need : NeededWidths k := neededWidthsBy R x z ops
   let Wwork : ℕ := commonNeededWidth need
   have hxReserve : FreshZero x.reserve b := by
     exact freshZero_reserve_of_freshFor_capacity (e := x) (b := b) hclean.1
@@ -159,7 +162,7 @@ lemma compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis
         (big := x.reserve)
         (b := b)
       · exact
-          PhaseSplitLayout.child_newBits_subset_parent_reserve layout.xSplit i
+          PhaseSplitLayout.child_newBits_subset_parent_reserve hlayout.xSplit i
             (Wwork - (layout.xSplit.child i).width)
       · exact hxReserve
     · intro i
@@ -170,9 +173,41 @@ lemma compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis
         (big := z.reserve)
         (b := b)
       · exact
-          PhaseSplitLayout.child_newBits_subset_parent_reserve layout.zSplit i
+          PhaseSplitLayout.child_newBits_subset_parent_reserve hlayout.zSplit i
             (Wwork - (layout.zSplit.child i).width)
       · exact hzReserve
+
+/-- Recursive reserve cleanliness supplies the compiler workspace invariant for one allocation layer. -/
+lemma compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis
+    {Basis : Type u}
+    [RegEncoding Basis]
+    {k : ℕ}
+    (ops : Prog k)
+    (x z : ExtReg)
+    (layout : Gate.PhaseProductLayout x z k)
+    (hlayout : layout.Valid)
+    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
+    (b : Basis)
+    (hclean : RecursiveWorkspaceCleanBasis x z b) :
+    CompilerWorkspaceOK (initSignedLayoutState layout) (scanNeededWidths x z ops) b :=
+  compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis_by .scan ops x z layout hlayout hcapacity b hclean
+
+/-- For either width rule `R`: Basis-ket form of the compiler workspace cleanliness consequence. -/
+lemma cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis_by
+    (R : WidthRule)
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    {k : ℕ}
+    (ops : Prog k)
+    (x z : ExtReg)
+    (layout : Gate.PhaseProductLayout x z k)
+    (hlayout : layout.Valid)
+    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy R x z ops))
+    (b : qs.Basis)
+    (hclean : RecursiveWorkspaceCleanBasis x z b) :
+    CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy R x z ops) (qs.ket b) := by
+  exact
+    CleanClosure.ket b (compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis_by (R := R) ops x z layout hlayout hcapacity b hclean)
 
 /-- Basis-ket form of the compiler workspace cleanliness consequence. -/
 lemma cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis
@@ -182,12 +217,12 @@ lemma cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis
     (ops : Prog k)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
+    (hlayout : layout.Valid)
     (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
     (b : qs.Basis)
     (hclean : RecursiveWorkspaceCleanBasis x z b) :
-    CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z ops) (qs.ket b) := by
-  exact
-    CleanClosure.ket b (compilerWorkspaceOK_of_recursiveWorkspaceCleanBasis ops x z layout hcapacity b hclean)
+    CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z ops) (qs.ket b) :=
+  cleanWorkspaceState_ket_of_recursiveWorkspaceCleanBasis_by .scan qs ops x z layout hlayout hcapacity b hclean
 
 /-! =========================================================
     Main Allocation Theorem
@@ -201,7 +236,8 @@ basis state fits the target layout and every child `(xslot i, zslot i)` still
 has clean recursive reserve workspace. This is the allocation cleanliness fact
 used by recursive phase-product lowering.
 -/
-lemma eval_compileSignedAllocations_ket_fits_and_child_clean
+lemma eval_compileSignedAllocations_ket_fits_and_child_clean_by
+    (R : WidthRule)
     (qs : QSemantics)
     [RegEncoding qs.Basis]
     [GateSemanticsFacts qs]
@@ -209,11 +245,12 @@ lemma eval_compileSignedAllocations_ket_fits_and_child_clean
     (ops : Prog k)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
+    (hlayout : layout.Valid)
     (b : qs.Basis)
-    (hworkspace : CompilerWorkspaceOK (initSignedLayoutState layout) (scanNeededWidths x z ops) b)
+    (hworkspace : CompilerWorkspaceOK (initSignedLayoutState layout) (neededWidthsBy R x z ops) b)
     (hclean : RecursiveWorkspaceCleanBasis x z b) :
     let src := initSignedLayoutState layout
-    let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
+    let dst := targetSignedLayoutState src (neededWidthsBy R x z ops)
     ∃ bAlloc : qs.Basis,
       qs.eval (compileSignedAllocations k src dst) (qs.ket b) = qs.ket bAlloc ∧
       EncodesStateFromFits qs src dst State.start_state b bAlloc ∧
@@ -221,7 +258,7 @@ lemma eval_compileSignedAllocations_ket_fits_and_child_clean
         SameOutsideLayout qs dst bAlloc b' →
         ∀ i : Fin k, RecursiveWorkspaceCleanBasis (dst.xslot i) (dst.zslot i) b' := by
   let src : LayoutState k := initSignedLayoutState layout
-  let need : NeededWidths k := scanNeededWidths x z ops
+  let need : NeededWidths k := neededWidthsBy R x z ops
   let dst : LayoutState k := targetSignedLayoutState src need
   change
     ∃ bAlloc : qs.Basis,
@@ -230,10 +267,10 @@ lemma eval_compileSignedAllocations_ket_fits_and_child_clean
       ∀ b' : qs.Basis,
         SameOutsideLayout qs dst bAlloc b' →
         ∀ i : Fin k, RecursiveWorkspaceCleanBasis (dst.xslot i) (dst.zslot i) b'
-  rcases eval_compileSignedAllocations_ket_fits (qs := qs) (layout := layout) (ops := ops)
+  rcases eval_compileSignedAllocations_ket_fits_by (R := R) (qs := qs) (layout := layout) (hlayout := hlayout) (ops := ops)
       (b := b) hworkspace with
     ⟨bAlloc, hEval, hEnc⟩
-  rcases eval_compileSignedAllocations_sameOutside (qs := qs) (layout := layout) (ops := ops)
+  rcases eval_compileSignedAllocations_sameOutside_by (R := R) (qs := qs) (layout := layout) (hlayout := hlayout) (ops := ops)
       (b := b) hworkspace with
     ⟨bOutside, hEvalOutside, hOutside⟩
   have hbOutside : bOutside = bAlloc := by
@@ -241,7 +278,7 @@ lemma eval_compileSignedAllocations_ket_fits_and_child_clean
     rw [← hEval, ← hEvalOutside]
   subst bOutside
   have hOwned : dst.OwnedPairwiseDisjoint := by
-    simpa [src, dst, need] using targetSignedLayoutState_owned_disjoint layout need
+    simpa [src, dst, need] using targetSignedLayoutState_owned_disjoint hlayout need
   have hxRootZero : FreshZero x.reserve b := freshZero_reserve_of_freshFor_capacity x b hclean.1
   have hzRootZero : FreshZero z.reserve b := freshZero_reserve_of_freshFor_capacity z b hclean.2
   have outsideXReserve :
@@ -305,7 +342,7 @@ lemma eval_compileSignedAllocations_ket_fits_and_child_clean
       have hqChildReserve : qbit ∈ (layout.xSplit.child i).reserve.qubits :=
         List.mem_of_mem_drop hqDropped
       apply
-        PhaseSplitLayout.child_newBits_subset_parent_reserve layout.xSplit i
+        PhaseSplitLayout.child_newBits_subset_parent_reserve hlayout.xSplit i
           (layout.xSplit.child i).capacity
       simpa [ExtReg.newBits, ExtReg.capacity, Reg.take, regSize, Reg.width] using hqChildReserve
     apply
@@ -331,7 +368,7 @@ lemma eval_compileSignedAllocations_ket_fits_and_child_clean
       have hqChildReserve : qbit ∈ (layout.zSplit.child i).reserve.qubits :=
         List.mem_of_mem_drop hqDropped
       apply
-        PhaseSplitLayout.child_newBits_subset_parent_reserve layout.zSplit i
+        PhaseSplitLayout.child_newBits_subset_parent_reserve hlayout.zSplit i
           (layout.zSplit.child i).capacity
       simpa [ExtReg.newBits, ExtReg.capacity, Reg.take, regSize, Reg.width] using hqChildReserve
     apply
@@ -341,5 +378,35 @@ lemma eval_compileSignedAllocations_ket_fits_and_child_clean
     have hqTargetReserve : qbit ∈ (dst.zslot i).reserve.qubits := List.mem_of_mem_take hqNew
     exact SameOutsideLayout.bit_eq_of_outside qs hOutsideTotal qbit
       (outsideZReserve i qbit hqTargetReserve)
+
+/--
+Main theorem for this file.
+
+After `compileSignedAllocations` runs on a clean basis state, the resulting
+basis state fits the target layout and every child `(xslot i, zslot i)` still
+has clean recursive reserve workspace. This is the allocation cleanliness fact
+used by recursive phase-product lowering.
+-/
+lemma eval_compileSignedAllocations_ket_fits_and_child_clean
+    (qs : QSemantics)
+    [RegEncoding qs.Basis]
+    [GateSemanticsFacts qs]
+    {k : ℕ}
+    (ops : Prog k)
+    (x z : ExtReg)
+    (layout : Gate.PhaseProductLayout x z k)
+    (hlayout : layout.Valid)
+    (b : qs.Basis)
+    (hworkspace : CompilerWorkspaceOK (initSignedLayoutState layout) (scanNeededWidths x z ops) b)
+    (hclean : RecursiveWorkspaceCleanBasis x z b) :
+    let src := initSignedLayoutState layout
+    let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
+    ∃ bAlloc : qs.Basis,
+      qs.eval (compileSignedAllocations k src dst) (qs.ket b) = qs.ket bAlloc ∧
+      EncodesStateFromFits qs src dst State.start_state b bAlloc ∧
+      ∀ b' : qs.Basis,
+        SameOutsideLayout qs dst bAlloc b' →
+        ∀ i : Fin k, RecursiveWorkspaceCleanBasis (dst.xslot i) (dst.zslot i) b' :=
+  eval_compileSignedAllocations_ket_fits_and_child_clean_by .scan qs ops x z layout hlayout b hworkspace hclean
 
 end Shor

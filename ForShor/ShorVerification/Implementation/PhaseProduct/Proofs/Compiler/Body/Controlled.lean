@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Core.Coverage
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Math.Table_Generation.Core.Coverage
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Body.PhaseBlocks
 
 namespace Shor

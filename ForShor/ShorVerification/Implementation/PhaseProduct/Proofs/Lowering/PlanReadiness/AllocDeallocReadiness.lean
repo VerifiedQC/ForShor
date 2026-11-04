@@ -30,27 +30,6 @@ lemma PhaseLoweringReady.cast_gate_mpr
   subst V
   exact hready
 
-/-- Readiness survives the index cast the dispatcher performs on a child plan.
-
-The planner builds the child at the child's own `phaseInputSize` and transports
-it along `childInputSize` to the parent's `nextSignedWidth`; this is the lemma
-that carries readiness across that transport. -/
-lemma PhaseLoweringReady.cast_initSize
-    (qs : QSemantics)
-    [RegEncoding qs.Basis]
-    [LowerGateClass qs]
-    [GateSemanticsFacts qs]
-    {P : ShorLoweringPolicy}
-    {m n : ℕ}
-    (h : m = n)
-    {U : Gate}
-    (plan : PhaseLoweringPlan P m U)
-    {ψ : qs.State}
-    (hready : PhaseLoweringReady qs plan ψ) :
-    PhaseLoweringReady qs (h ▸ plan : PhaseLoweringPlan P n U) ψ := by
-  subst h
-  exact hready
-
 /-- Readiness of a dependent `if` between two plans of one type follows from readiness of
 both branches. The `Decidable` instance is an ordinary implicit argument so that it unifies
 with whichever instance the plan was built with. -/

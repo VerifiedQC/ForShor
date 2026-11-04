@@ -1,6 +1,6 @@
 # `Proofs/Lowering/PlanReadiness/`
 
-Proves that the *standard* planners in `Lowering/PlanBuilders.lean`
+Proves that the *standard* planners in `Statement.lean`
 (`standardSignedPhaseLoweringPlan`/`standardCSignedPhaseLoweringPlan`)
 actually produce plans satisfying `PhaseLoweringReady`, given a clean
 recursive workspace. Files run in order `BodyReadiness` → `AllocDeallocReadiness`

@@ -25,7 +25,7 @@ pts[l] j` and `b = 2^m`, so `c_l(b) = Σ_j (M⁻¹)_{j,l} b^j` is a polynomial i
 
 `M⁻¹` is computed by exact **Gauss-Jordan elimination over `ℚ`**
 (`gaussJordanInverseRows`, `O(n³)`, defined in
-`Implementation/PhaseProduct/Compiler/GaussJordan.lean` since the compiler
+`Implementation/PhaseProduct/Statement.lean` since the compiler
 uses it too) — **not** Mathlib's
 `Matrix.adjugate`/`Matrix.det`. Those are Leibniz-formula sums over
 `Equiv.Perm`, meant for proofs, not computation: one adjugate entry is
@@ -38,7 +38,8 @@ already impractical at `k = 5` (`q 5 = 9`; `81` entries × `9! = 362880`).
   ℚ))` — dense row-major exact elimination; `none` if singular (shouldn't
   happen — `GoodToomCookPoints` is what the compiler's own
   `cramerCoeffFromPtsWidth` already relies on). Both are re-exported from
-  `Compiler/GaussJordan.lean`, where `isRightInverseRows` and the lemma
+  `PhaseProduct/Statement.lean` (`isRightInverseRows`) and
+  `PhaseProduct/Proofs/Compiler/GaussJordan.lean`, where the lemma
   `mul_rowsToMatrix_eq_one_of_isRightInverseRows` turn the re-multiplication
   check into the `Matrix` equation the compiler's `@[csimp]` proof needs.
 - `coeffInverse (k) (pts) (hpts) : Option (Array (Array ℚ))` — `M⁻¹`,
@@ -53,7 +54,7 @@ already impractical at `k = 5` (`q 5 = 9`; `81` entries × `9! = 362880`).
   cross-checks the polynomials, evaluated at `b = 2^m`, against the
   compiler's own `cramerCoeffFromPtsWidth` (the function `loweringPhaseCoeff`
   actually calls). That function is now `@[csimp]`-compiled through the same
-  eliminator (`Compiler/Coefficients.lean`, `gjCoeffFromPts`), so both sides
+  eliminator (`PhaseProduct/Proofs/Compiler/Coefficients.lean`, `gjCoeffFromPts`), so both sides
   are cubic; `Bundle.lean`'s `coeffPolyJson` runs the check unconditionally
   at every `k`, capped at `m ≤ 6`. What it still verifies is that the
   *polynomial* read off `M⁻¹` (`coeffPolyRowOf`/`polyEval`) matches the

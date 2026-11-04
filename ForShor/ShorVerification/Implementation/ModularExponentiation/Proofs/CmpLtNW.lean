@@ -1,7 +1,6 @@
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.CmpLtNW
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Statement
 import ForShor.ShorVerification.Implementation.QFT.Proofs.Decomposition
-import ForShor.ShorVerification.Implementation.Shared.QftPhase
+import ForShor.ShorVerification.Implementation.QFT.Proofs.QftPhase
 
 /-!
 # Exact correctness of the concrete `CmpLtNW` circuit

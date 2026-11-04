@@ -35,7 +35,7 @@ construction that satisfies it.
 | `PolicyDecide.lean` | `bandShrinks`, an **advisory** performance check on a policy's bands; not an admissibility condition | yes (`Implementation/`) |
 | `PolicyCheck.lean` | the kernel-checked half of a policy's acceptance check, repo-owned: the axiom audit, the IR extraction (one body per distinct table), its well-formedness, the certificate. Nothing in it names the shipped bands, so it builds for any admissible policy | yes (`Emit/`) |
 | `PolicyTests.lean` | worked examples on the shipped policy template (`choose` at particular widths, the advisory shrink check firing at threshold `12`); built by `lean_lib PolicyTests`, never by the acceptance check | no |
-| `PolicyMain.lean` | `forshor_policy_submission`: runs the evaluation tier natively, then prints the bands, the IR, the precision and the trial count; prints nothing and exits `1` if the tier fails | yes (`Emit/`) |
+| `PolicyMain.lean` | `forshor_policy_submission`: extracts the IR, runs the evaluation tier natively, then prints the bands, the IR, the precision and the trial count; prints nothing and exits `1` if the tier fails. Flags: `--exact-widths`, `--balanced`, `--probe-exact`, `--width-table` (see the file) | yes (`Emit/`) |
 
 ## `Decide.lean`
 
@@ -250,12 +250,20 @@ lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
 ```
 
 `lean_lib PolicySubmission` is rooted at `PolicyCheck.lean`, so **building
-it is the kernel-checked half of the check**: the per-band side conditions,
-the axiom audit and the extracted IR's well-formedness. The evaluation tier
-(`Shor.Reflect.policySubmissionChecks`) runs inside
-`forshor_policy_submission`, compiled natively, before anything is printed;
-a failing submission prints nothing on stdout and exits `1`, so the `&&`
-line above yields a `policy.json` only for a submission that passed both.
+it is the kernel-checked half of the check**: the per-band side conditions
+and the axiom audit. The IR is extracted inside `forshor_policy_submission`,
+at run time, and its well-formedness and the evaluation tier
+(`Shor.Reflect.policySubmissionChecks`) are checked there, compiled natively,
+before anything is printed; a failing submission prints nothing on stdout
+and exits `1`, so the `&&` line above yields a `policy.json` only for a
+submission that passed both.
+
+By default the policy is compiled on the scan width rule, as it always was.
+`--exact-widths` compiles the same bands at exact widths
+(`WidthRule.exact`, `Framework/Policy.lean`): the same certificate covers it
+(`PolicySubmission.correct_exact`), the IR templates are the same, the
+evaluation tier compiles the real circuit at exact widths, and the document's
+`ir.width_rule` gives the widths a consumer must use.
 
 **`PolicyTemplate.lean` is the only file a policy submitter owns.** Per band
 it holds exactly what `Template.lean` holds for one table — `k`, `pts`,
@@ -298,8 +306,8 @@ policy, so a policy existing is the whole argument; there is no
 per-submission proof, exactly as for a table. `Shor.submission_correct` is
 literally its one-band case, via `Shor.ShorPolicySubmission.ofSetup`.
 
-**The IR, and its agreement with the circuit.** `extract_policy_ir_doc`
-builds one dispatcher per phase-product flavour, one body template per band,
+**The IR, and its agreement with the circuit.** `Shor.Reflect.buildPolicyDoc`,
+run by the executable, builds one dispatcher per phase-product flavour, one body template per band,
 and the shared `qft`/`shor_gate`/`shor`/leaf templates; the dispatcher is the
 entry point and carries the policy's guard chain.
 `Shor.Reflect.policySubmissionChecks` then pins that document against the

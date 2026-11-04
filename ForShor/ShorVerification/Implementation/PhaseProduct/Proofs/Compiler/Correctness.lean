@@ -27,6 +27,7 @@ lemma eval_compileOpsToSignedGate_correct
     (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
+    (hlayout : layout.Valid)
     (pts : List Point)
     (hpts : List.length pts = q k)
     (hInterp : GoodToomCookPoints k pts hpts)
@@ -42,7 +43,7 @@ lemma eval_compileOpsToSignedGate_correct
   induction hψ with
   | ket b hworkspace =>
       exact eval_compileOpsToSignedGate_correct_ket
-        (qs := qs) (k := k) (hk := hk) (phi := phi) (x := x) (z := z) (layout := layout)
+        (qs := qs) (k := k) (hk := hk) (phi := phi) (x := x) (z := z) (layout := layout) (hlayout := hlayout)
         (pts := pts) (hpts := hpts) (hInterp := hInterp) (b := b) (ops := ops) (hC := hC)
         (hworkspace := hworkspace) (run_ops_start_state := run_ops_start_state)
   | zero => simp [qs.eval_zero]
@@ -60,6 +61,7 @@ lemma eval_compileOpsToCSignedGate_correct
     (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
+    (hlayout : layout.Valid)
     (hctrl : layout.ControlDisjoint ctrl)
     (pts : List Point)
     (hpts : pts.length = q k)
@@ -70,15 +72,14 @@ lemma eval_compileOpsToCSignedGate_correct
     (ψ : qs.State)
     (hψ : CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z ops) ψ) :
     qs.eval
-        (compileOpsToCSignedGate k hk ctrl phi x z layout
-          (phaseCoeffFromPtsWidth k (phaseLimbWidth x z k) pts hpts) ops)
+        (controlPhaseLeaves ctrl (compileOpsToSignedGate k hk phi x z layout (phaseCoeffFromPtsWidth k (phaseLimbWidth x z k) pts hpts) ops))
         ψ
       = qs.eval (Gate.CSignedPhaseProd ctrl phi x z) ψ := by
   induction hψ with
   | ket b hworkspace =>
       exact eval_compileOpsToCSignedGate_correct_ket
         (qs := qs) (k := k) (hk := hk) (ctrl := ctrl) (phi := phi) (x := x) (z := z)
-        (layout := layout) (hctrl := hctrl) (pts := pts) (hpts := hpts) (hInterp := hInterp)
+        (layout := layout) (hlayout := hlayout) (hctrl := hctrl) (pts := pts) (hpts := hpts) (hInterp := hInterp)
         (ops := ops) (hC := hC) (hRun := hRun) (b := b) (hworkspace := hworkspace)
   | zero => simp [qs.eval_zero]
   | add hψ hφ ihψ ihφ => simpa [qs.eval_add] using congrArg₂ (· + ·) ihψ ihφ

@@ -28,6 +28,7 @@ lemma splitChunk_toNat_lt
     {parent : ExtReg}
     {k W : ℕ}
     (layout : PhaseSplitLayout parent k W)
+    (hvalid : ValidPhaseSplit parent k W)
     (i : Fin k)
     (b : Basis) :
     ExtReg.toNat (layout.child i) b
@@ -38,7 +39,7 @@ lemma splitChunk_toNat_lt
         W) := by
   have h :=
     ExtReg.toNat_lt (layout.child i) b
-  rw [layout.child_width i] at h
+  rw [layout.child_width hvalid i] at h
   simpa [phaseSplitLogicalWidth] using h
 
 /-- A sequence of `n` base-`2^W` digits represents a number below
@@ -306,7 +307,7 @@ lemma phaseChunkActive_castSucc
         simp
       _ ≤ n * W :=
         Nat.mul_le_mul_right W hi
-  unfold phaseChunkActive phaseChunkStart
+  unfold phaseChunkActive
   rw [phaseSplitLogicalWidth]
   simp only [hnotTop, ite_false]
   exact
@@ -336,7 +337,7 @@ lemma phaseChunkActive_last
   | mk active reserve hdisj =>
       cases active with
       | mk qubits nodup =>
-          simp [phaseChunkActive, phaseChunkStart, phaseSplitLogicalWidth, htop, ExtReg.width, regSize, Reg.width, Reg.take, Reg.drop]
+          simp [phaseChunkActive, phaseSplitLogicalWidth, htop, ExtReg.width, regSize, Reg.width, Reg.take, Reg.drop]
 
 /-- Reconstruct the unsigned parent value from all child chunk values. -/
 theorem phaseChunks_reconstruct_nat
@@ -345,13 +346,13 @@ theorem phaseChunks_reconstruct_nat
     {parent : ExtReg}
     {k W : ℕ}
     (layout : PhaseSplitLayout parent k W)
+    (hvalid : ValidPhaseSplit parent k W)
     (b : Basis) :
     ExtReg.toNat parent b
       = ∑ i : Fin k,
       ExtReg.toNat (layout.child i) b *
         2 ^ (i.1 * W) := by
-  obtain ⟨hk, hbound, htopValid⟩ :=
-    layout.valid
+  obtain ⟨hk, hbound, htopValid⟩ := hvalid
   cases k with
   | zero =>
       omega
@@ -590,12 +591,13 @@ theorem splitChunkInt_reconstruct
     {parent : ExtReg}
     {k W : ℕ}
     (layout : PhaseSplitLayout parent k W)
+    (hvalid : ValidPhaseSplit parent k W)
     (b : Basis) :
     extToInt parent b
       = ∑ i : Fin k,
       splitChunkInt layout i b *
         ((2 : ℤ) ^ (i.1 * W)) := by
-  obtain ⟨hk, hbound, htop⟩ := layout.valid
+  obtain ⟨hk, hbound, htop⟩ := hvalid
   have hraw :
       ExtReg.toNat parent b < 2 ^ parent.width :=
     ExtReg.toNat_lt parent b
@@ -604,7 +606,7 @@ theorem splitChunkInt_reconstruct
         = ∑ i : Fin k,
         ExtReg.toNat (layout.child i) b *
           2 ^ (i.1 * W) :=
-    phaseChunks_reconstruct_nat layout b
+    phaseChunks_reconstruct_nat layout ⟨hk, hbound, htop⟩ b
   unfold extToInt
   simpa [splitChunkInt] using!
     tcDecode_chunks_signed_top
@@ -615,7 +617,7 @@ theorem splitChunkInt_reconstruct
     (chunks := fun i =>
       ExtReg.toNat (layout.child i) b)
     hk hbound htop hraw
-    (fun i => splitChunk_toNat_lt layout i b)
+    (fun i => splitChunk_toNat_lt layout ⟨hk, hbound, htop⟩ i b)
     hreconstruct
 
 /-! =========================================================
@@ -1123,6 +1125,7 @@ lemma sourceChunks_reconstruct_x
   (qs : QSemantics)
   [RegEncoding qs.Basis]
   {k : ℕ}
+  (hk : 0 < k)
   {x z : ExtReg}
   (layout : Gate.PhaseProductLayout x z k)
   (b : qs.Basis) :
@@ -1143,13 +1146,13 @@ lemma sourceChunks_reconstruct_x
     · have hw :
           (layout.xSplit.child i).width
             = x.width - i.1 * phaseLimbWidth x z k := by
-        rw [PhaseSplitLayout.child_width]
+        rw [PhaseSplitLayout.child_width _ (phaseLimbWidth_valid_left x z hk)]
         simp [phaseSplitLogicalWidth, isTopChunk, htop]
       simp only [sourceChunkXInt, splitChunkInt, initSignedLayoutState,
         isTopChunk, ite_eq_left htop, extToInt, hw]
     · simp only [sourceChunkXInt, splitChunkInt, initSignedLayoutState,
         isTopChunk, htop, ↓reduceIte]
-  rw [splitChunkInt_reconstruct layout.xSplit b]
+  rw [splitChunkInt_reconstruct layout.xSplit (phaseLimbWidth_valid_left x z hk) b]
   push_cast
   refine Finset.sum_congr rfl (fun i _ => ?_)
   rw [hchunk i, ← pow_mul, Nat.mul_comm]
@@ -1159,6 +1162,7 @@ lemma sourceChunks_reconstruct_z
   (qs : QSemantics)
   [RegEncoding qs.Basis]
   {k : ℕ}
+  (hk : 0 < k)
   {x z : ExtReg}
   (layout : Gate.PhaseProductLayout x z k)
   (b : qs.Basis) :
@@ -1179,13 +1183,13 @@ lemma sourceChunks_reconstruct_z
     · have hw :
           (layout.zSplit.child i).width
             = z.width - i.1 * phaseLimbWidth x z k := by
-        rw [PhaseSplitLayout.child_width]
+        rw [PhaseSplitLayout.child_width _ (phaseLimbWidth_valid_right x z hk)]
         simp [phaseSplitLogicalWidth, isTopChunk, htop]
       simp only [sourceChunkZInt, splitChunkInt, initSignedLayoutState,
         isTopChunk, ite_eq_left htop, extToInt, hw]
     · simp only [sourceChunkZInt, splitChunkInt, initSignedLayoutState,
         isTopChunk, htop, ↓reduceIte]
-  rw [splitChunkInt_reconstruct layout.zSplit b]
+  rw [splitChunkInt_reconstruct layout.zSplit (phaseLimbWidth_valid_right x z hk) b]
   push_cast
   refine Finset.sum_congr rfl (fun i _ => ?_)
   rw [hchunk i, ← pow_mul, Nat.mul_comm]
@@ -1226,13 +1230,13 @@ lemma evalAtRadix_tcProductCoeff_eq_ext_product
         = ∑ i : Fin k,
         ((sourceChunkXInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
     simpa [stInit, W, B] using
-      sourceChunks_reconstruct_x (qs := qs) (layout := layout) (b := b)
+      sourceChunks_reconstruct_x (qs := qs) (by omega) (layout := layout) (b := b)
   have hz :
       ((extToInt z b : ℤ) : ℚ)
         = ∑ i : Fin k,
         ((sourceChunkZInt (qs := qs) stInit i b : ℤ) : ℚ) * B ^ (i : ℕ) := by
     simpa [stInit, W, B] using
-      sourceChunks_reconstruct_z (qs := qs) (layout := layout) (b := b)
+      sourceChunks_reconstruct_z (qs := qs) (by omega) (layout := layout) (b := b)
   calc
     ToomCookMath.evalAtRadix
         (q k)

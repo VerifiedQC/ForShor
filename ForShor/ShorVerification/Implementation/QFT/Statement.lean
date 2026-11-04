@@ -1,18 +1,134 @@
 import ForShor.ShorVerification.Framework.Semantics.GateSemantics
-import ForShor.ShorVerification.Implementation.Shared.Registers
-import ForShor.ShorVerification.Implementation.Shared.States
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.PolicyWorkspace
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.PlanBuilders
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
 
 /-!
 # QFT: the lowering and its correctness statement
 
 Everything needed to state the propositions proved in `Main.lean`. This file
 imports nothing else from `QFT/`.
+
+It also defines the unsigned phase-product macros (`PhaseProdWorkspace`,
+`PhaseProdUsing`, `CPhaseProdUsing`): the QFT's middle step is a
+`PhaseProdUsing`, and `ModularExponentiation/Statement.lean` imports this file
+for `CPhaseProdUsing`.
 -/
+
+/-! ---------------------------------------------------------
+    Unsigned phase-product macros
+--------------------------------------------------------- -/
+
+namespace Shor
+namespace Gate
+
+/-! =========================================================
+    Unsigned Phase-Product Workspace
+
+    The unsigned macros reserve one clean bit next to each operand so they can
+    reuse the signed phase-product semantics without changing the public gate.
+========================================================= -/
+
+/--
+Workspace needed to implement an unsigned phase product via the signed phase-product gate.
+The one-bit reserves hold the sign-extension bit for each operand, and the disjointness
+fields make the generated macro local to `x`, `z`, and those reserves.
+-/
+structure PhaseProdWorkspace (x z : Reg) where
+  xReserve : Reg
+  zReserve : Reg
+  x_can_grow : 1 ≤ regSize xReserve
+  z_can_grow : 1 ≤ regSize zReserve
+  xz_disjoint : Disjoint x z
+  x_reserve_disjoint : Disjoint x xReserve
+  z_reserve_disjoint : Disjoint z zReserve
+  xReserve_not_z : Disjoint xReserve z
+  zReserve_not_x : Disjoint zReserve x
+  reserve_disjoint : Disjoint xReserve zReserve
+
+namespace PhaseProdWorkspace
+
+/-! =========================================================
+    Workspace Views And Cleanliness
+========================================================= -/
+
+def xExt {x z : Reg} (ws : PhaseProdWorkspace x z) : ExtReg :=
+  ExtReg.withReserve x ws.xReserve ws.x_reserve_disjoint
+
+def zExt {x z : Reg} (ws : PhaseProdWorkspace x z) : ExtReg :=
+  ExtReg.withReserve z ws.zReserve ws.z_reserve_disjoint
+
+@[simp] theorem xExt_canGrow {x z : Reg} (ws : PhaseProdWorkspace x z) : ws.xExt.CanGrow 1 := by
+  simpa [PhaseProdWorkspace.xExt, ExtReg.CanGrow, ExtReg.capacity] using ws.x_can_grow
+
+@[simp] theorem zExt_canGrow {x z : Reg} (ws : PhaseProdWorkspace x z) : ws.zExt.CanGrow 1 := by
+  simpa [PhaseProdWorkspace.zExt, ExtReg.CanGrow, ExtReg.capacity] using ws.z_can_grow
+
+end PhaseProdWorkspace
+
+/-! =========================================================
+    Macro Gate Definitions
+
+    These are implementation-only circuit macros; the public lowering theorems
+    later prove that they realize the asserted phase-product behavior.
+========================================================= -/
+
+/--
+Unsigned phase product macro: allocate one clean high bit on each operand, run the signed
+phase product on the grown registers, and then deallocate the temporary bits.
+-/
+def PhaseProdUsing (phi : Angle) (x z : Reg) (ws : PhaseProdWorkspace x z) : Gate :=
+  let xext := ws.xExt
+  let zext := ws.zExt
+  Gate.zeroExtend xext 1 ;;
+  Gate.zeroExtend zext 1 ;;
+  Gate.SignedPhaseProd phi (xext.grow 1) (zext.grow 1) ;;
+  Gate.zeroDealloc zext 1 ;;
+  Gate.zeroDealloc xext 1
+
+/-- Controlled unsigned phase-product macro with the same workspace discipline as `PhaseProdUsing`. -/
+def CPhaseProdUsing (ctrl : ℕ) (phi : Angle) (x z : Reg) (ws : PhaseProdWorkspace x z) : Gate :=
+  let xext := ws.xExt
+  let zext := ws.zExt
+  Gate.zeroExtend xext 1 ;;
+  Gate.zeroExtend zext 1 ;;
+  Gate.CSignedPhaseProd ctrl phi (xext.grow 1) (zext.grow 1) ;;
+  Gate.zeroDealloc zext 1 ;;
+  Gate.zeroDealloc xext 1
+
+/-- Build an unsigned PhaseProduct workspace from two growable, owned-disjoint extended registers. -/
+def PhaseProdWorkspace.ofExtRegs
+    (x z : ExtReg) (hx : x.CanGrow 1) (hz : z.CanGrow 1) (howned : ExtReg.OwnedDisjoint x z) :
+    Gate.PhaseProdWorkspace x.active z.active := by
+  have hOwned : ∀ q, q ∈ x.ownedQubits → q ∈ z.ownedQubits → False := by
+    simpa [ExtReg.OwnedDisjoint, List.disjoint_left] using howned
+  refine {
+    xReserve := x.reserve
+    zReserve := z.reserve
+    x_can_grow := ?_
+    z_can_grow := ?_
+    xz_disjoint := ?_
+    x_reserve_disjoint := x.active_reserve_disjoint
+    z_reserve_disjoint := z.active_reserve_disjoint
+    xReserve_not_z := ?_
+    zReserve_not_x := ?_
+    reserve_disjoint := ?_
+  }
+  · simpa [ExtReg.CanGrow, ExtReg.capacity] using hx
+  · simpa [ExtReg.CanGrow, ExtReg.capacity] using hz
+  · rw [Disjoint, List.disjoint_left]
+    intro q hqx hqz
+    exact hOwned q (by simp [ExtReg.ownedQubits, hqx]) (by simp [ExtReg.ownedQubits, hqz])
+  · rw [Disjoint, List.disjoint_left]
+    intro q hqx hqz
+    exact hOwned q (by simp [ExtReg.ownedQubits, hqx]) (by simp [ExtReg.ownedQubits, hqz])
+  · rw [Disjoint, List.disjoint_left]
+    intro q hqz hqx
+    exact hOwned q (by simp [ExtReg.ownedQubits, hqx]) (by simp [ExtReg.ownedQubits, hqz])
+  · rw [Disjoint, List.disjoint_left]
+    intro q hqx hqz
+    exact hOwned q (by simp [ExtReg.ownedQubits, hqx]) (by simp [ExtReg.ownedQubits, hqz])
+
+end Gate
+end Shor
 
 namespace Shor
 
@@ -172,8 +288,12 @@ end QFTReserveOKOf
 
 lemma Gate.PhaseProdWorkspace.ownedDisjoint_grow {x z : Reg} (ws : Gate.PhaseProdWorkspace x z) :
     ExtReg.OwnedDisjoint (ws.xExt.grow 1) (ws.zExt.grow 1) := by
+  have hown : ∀ (e : ExtReg) (n : ℕ), (e.grow n).ownedQubits = e.ownedQubits := by
+    intro e n
+    simp [ExtReg.ownedQubits, ExtReg.grow, Reg.append, ExtReg.newBits,
+      ExtReg.remainingReserve, Reg.take, Reg.drop, List.append_assoc]
   unfold ExtReg.OwnedDisjoint
-  rw [ExtReg.ownedQubits_grow, ExtReg.ownedQubits_grow]
+  rw [hown, hown]
   change (x.qubits ++ ws.xReserve.qubits).Disjoint (z.qubits ++ ws.zReserve.qubits)
   rw [List.disjoint_left]
   intro q hqx hqz
@@ -213,11 +333,14 @@ def phaseWorkspace (hworkspace : QFTWorkspaceOKOf (qftWorkspaceNeedOf res) r xWo
     zReserve := zWork
     x_can_grow := le_trans hxNeed hworkspace.x_large_enough
     z_can_grow := le_trans hzNeed hworkspace.z_large_enough
-    xz_disjoint := splitLeft_splitRight_disjoint (r := r) (m := halfSplitPoint r)
+    xz_disjoint :=
+      (show Disjoint (splitLeft r (halfSplitPoint r)) (splitRight r (halfSplitPoint r)) by
+        simpa [Disjoint, splitLeft, splitRight, Reg.take, Reg.drop] using
+          List.disjoint_take_drop r.nodup (le_refl (halfSplitPoint r).1))
     x_reserve_disjoint := hleftX
     z_reserve_disjoint := hrightZ
-    xReserve_not_z := Disjoint.symm hrightX
-    zReserve_not_x := Disjoint.symm hleftZ
+    xReserve_not_z := List.Disjoint.symm hrightX
+    zReserve_not_x := List.Disjoint.symm hleftZ
     reserve_disjoint := hworkspace.work_disjoint
   }
 
@@ -230,23 +353,31 @@ lemma policySignedWorkspaceOK {P : ShorLoweringPolicy} {r xWork zWork : Reg}
     Policy.WorkspaceOK P (ws.xExt.grow 1) (ws.zExt.grow 1) := by
   dsimp only
   let ws := hworkspace.phaseWorkspace hsize
+  have width_grow : ∀ e : ExtReg, e.CanGrow 1 → (e.grow 1).width = e.width + 1 := by
+    intro e hcap
+    simp [ExtReg.width, ExtReg.grow, Reg.append, ExtReg.newBits, Reg.take, regSize, Reg.width,
+      ExtReg.CanGrow, ExtReg.capacity] at hcap ⊢
+    omega
+  have capacity_grow : ∀ e : ExtReg, (e.grow 1).capacity = e.capacity - 1 := by
+    intro e
+    simp [ExtReg.capacity, ExtReg.grow, ExtReg.remainingReserve, Reg.drop, regSize, Reg.width]
   have hxWidth : (ws.xExt.grow 1).width = regSize (leftReg r) + 1 := by
     calc
-      (ws.xExt.grow 1).width = ws.xExt.width + 1 := ExtReg.width_grow ws.xExt 1 ws.xExt_canGrow
+      (ws.xExt.grow 1).width = ws.xExt.width + 1 := width_grow ws.xExt ws.xExt_canGrow
       _ = regSize (leftReg r) + 1 := rfl
   have hzWidth : (ws.zExt.grow 1).width = regSize (rightReg r) + 1 := by
     calc
-      (ws.zExt.grow 1).width = ws.zExt.width + 1 := ExtReg.width_grow ws.zExt 1 ws.zExt_canGrow
+      (ws.zExt.grow 1).width = ws.zExt.width + 1 := width_grow ws.zExt ws.zExt_canGrow
       _ = regSize (rightReg r) + 1 := rfl
   have hxCapacity : (ws.xExt.grow 1).capacity = regSize xWork - 1 := by
     calc
       (ws.xExt.grow 1).capacity = ws.xExt.capacity - 1 :=
-        ExtReg.capacity_grow ws.xExt 1 ws.xExt_canGrow
+        capacity_grow ws.xExt
       _ = regSize xWork - 1 := rfl
   have hzCapacity : (ws.zExt.grow 1).capacity = regSize zWork - 1 := by
     calc
       (ws.zExt.grow 1).capacity = ws.zExt.capacity - 1 :=
-        ExtReg.capacity_grow ws.zExt 1 ws.zExt_canGrow
+        capacity_grow ws.zExt
       _ = regSize zWork - 1 := rfl
   have hxPhaseBound :
       1 + (Policy.reserveNeed P
@@ -377,8 +508,7 @@ The plan follows the definition of `Gate.PhaseProdUsing`:
 def Policy.phaseProdUsingPlan
     (P : ShorLoweringPolicy)
     (phi : Angle) {x z : Reg}
-    (ws : Gate.PhaseProdWorkspace x z)
-    (hworkspace : Policy.WorkspaceOK P (ws.xExt.grow 1) (ws.zExt.grow 1)) :
+    (ws : Gate.PhaseProdWorkspace x z) :
     PhaseLoweringPlan P (phaseInputSize (ws.xExt.grow 1) (ws.zExt.grow 1))
       (Gate.PhaseProdUsing phi x z ws) := by
   let initSize : ℕ := phaseInputSize (ws.xExt.grow 1) (ws.zExt.grow 1)
@@ -397,7 +527,7 @@ def Policy.phaseProdUsingPlan
       PhaseLoweringPlan P initSize (Gate.SignedPhaseProd phi xSigned zSigned) := by
     have hsize : phaseInputSize xSigned zSigned = initSize := by rfl
     simpa [hsize] using
-      Policy.signedPlan P phi xSigned zSigned hworkspace
+      Policy.signedPlan P phi xSigned zSigned
 
   let deallocZPlan : PhaseLoweringPlan P initSize (Gate.zeroDealloc zExt 1) :=
     PhaseLoweringPlan.zeroDealloc initSize zExt 1
@@ -442,10 +572,6 @@ def Policy.qftPlan
       let ws : Gate.PhaseProdWorkspace (leftReg r) (rightReg r) :=
         hworkspace.phaseWorkspace hlarge
 
-      have hphaseWorkspace :
-          Policy.WorkspaceOK P (ws.xExt.grow 1) (ws.zExt.grow 1) := by
-        simpa [ws] using hworkspace.policySignedWorkspaceOK hlarge
-
       have hrightWorkspace : Policy.QFTWorkspaceOK P (rightReg r) xWork zWork :=
         hworkspace.right hlarge
 
@@ -454,7 +580,7 @@ def Policy.qftPlan
 
       let phasePlan : PhaseLoweringPlan P (phaseInputSize (ws.xExt.grow 1) (ws.zExt.grow 1))
           (Gate.PhaseProdUsing (qftPhi (regSize r)) (leftReg r) (rightReg r) ws) :=
-        Policy.phaseProdUsingPlan P (qftPhi (regSize r)) ws hphaseWorkspace
+        Policy.phaseProdUsingPlan P (qftPhi (regSize r)) ws
 
       let rightPlan : QFTLoweringPlan P (rightReg r) :=
         Policy.qftPlan P (rightReg r) xWork zWork hrightWorkspace
@@ -467,11 +593,14 @@ def Policy.qftPlan
 termination_by regSize r
 decreasing_by
   · have hhalfPos : 0 < regSize r / 2 := Nat.div_pos (by omega) (by decide)
-    have hright : regSize r - regSize r / 2 < regSize r :=
-      Nat.sub_lt (by omega) hhalfPos
-    simpa [rightReg, halfSplitPoint] using hright
-  · have hleft : regSize r / 2 < regSize r := Nat.div_lt_self (by omega) (by decide)
-    simpa [leftReg, halfSplitPoint] using hleft
+    have hright : regSize (rightReg r) < regSize r := by
+      rw [regSize_rightReg]
+      exact Nat.sub_lt (by omega) hhalfPos
+    exact hright
+  · have hleft : regSize (leftReg r) < regSize r := by
+      rw [regSize_leftReg]
+      exact Nat.div_lt_self (by omega) (by decide)
+    exact hleft
 
 /-- The fixed-table spelling: the policy planner at the constant policy. -/
 def standardQFTLoweringPlan
@@ -585,5 +714,26 @@ def Policy.LowerQFTCorrect
   ∀ (ψ : qs.State) (hworkspace : Policy.QFTWorkspaceStateOK qs P r ψ),
     P.Admissible →
     ⟦Policy.lowerQFT P r hworkspace.static⟧ₗ ψ = ⟦Gate.QFT r⟧ ψ
+
+/-! =========================================================
+    Gate count
+========================================================= -/
+
+/--
+**The QFT gate-count bound** for a fixed Toom-Cook table: there are a constant
+`C` and a width `n₀` such that the lowered QFT on any register of width
+`n ≥ n₀` with the reserve the lowering needs costs at most
+`C · n^(log_k (2k - 1))` gates, the rate of the phase product at its splits.
+-/
+def QFTGateCountBound
+    {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k) : Prop :=
+  ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+    ∀ (r : ExtReg)
+      (hworkspace : Policy.QFTReserveOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r),
+      n₀ ≤ r.width →
+      (LowGate.gateCount shorGateCostModel
+          (Policy.lowerQFT (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r hworkspace) : ℝ)
+        ≤ C * Real.rpow r.width (Real.log (q k : ℝ) / Real.log (k : ℝ))
 
 end Shor

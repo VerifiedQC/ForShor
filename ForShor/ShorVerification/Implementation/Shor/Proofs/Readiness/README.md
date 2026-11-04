@@ -11,9 +11,7 @@ Sequencing  <  Primitives  <  {Init, Step1}  <  {Step2, Step5}
 ```
 
 `Step2` and `Step5` are independent (neither imports the other), as are
-`Init`/`Step1` and `IQFT`/`ModMul`. `scripts/check_layers.py` fails on an
-import between siblings, so the independence is checked rather than merely
-described.
+`Init`/`Step1` and `IQFT`/`ModMul`.
 
 The static readiness theorem (`gateWorkspaceOK_orderFindingApprox`, exposed as
 `LoweredShorReady.workspace`) is not here: it is in `../Workspace.lean`.

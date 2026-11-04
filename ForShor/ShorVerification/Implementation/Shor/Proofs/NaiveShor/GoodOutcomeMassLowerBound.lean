@@ -1,7 +1,7 @@
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Math.TotientBoundsLarge
 import ForShor.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Preliminaries
 import ForShor.ShorVerification.Implementation.Shor.Proofs.NaiveShor.PhaseEstimation
-import ForShor.ShorVerification.Implementation.Shared.Registers
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Registers
 import Mathlib.Data.Nat.Totient
 
 
@@ -48,7 +48,7 @@ that branch alone covers every concrete headline result in this repository.
 For `r ≥ 2 ^ 2048` one takes `y = ⌊log r⌋` and bounds `∏_{p < y} (1 - 1/p)` below by
 Mertens' third theorem with an explicit error term, `e^{-γ} e^{E₃(y)} / log y`.  That is
 Mathlib PR #41394, which is not merged; the three files it adds are vendored against the
-pinned Mathlib in `Vendor/Mertens/`, and the argument is `Math/TotientBoundsLarge.lean`.
+pinned Mathlib in `Math/Mertens/`, and the argument is `Math/TotientBoundsLarge.lean`.
 -/
 lemma shor_totient_ratio_lower_bound
     {a r N m n : ℕ}

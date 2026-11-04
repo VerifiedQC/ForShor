@@ -1,10 +1,11 @@
 import ForShor.ShorVerification.Implementation.QFT.Statement
 import ForShor.ShorVerification.Framework.Semantics.GateSemantics
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import ForShor.ShorVerification.Implementation.Shared.States
-import ForShor.ShorVerification.Implementation.Shared.Registers
-import ForShor.ShorVerification.Implementation.Shared.GateLaws
-import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.QFT.Proofs.Macros
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.States
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Registers
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.GateLaws
+import ForShor.ShorVerification.Implementation.QFT.Proofs.MacroSemantics
 
 namespace Shor
 open Gate

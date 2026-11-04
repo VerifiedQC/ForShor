@@ -1,5 +1,6 @@
 import ForShor.ShorVerification.Implementation.Shor.Statement
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Main
 
 /-!
 # Shor: the workspace condition of the order-finding circuit
@@ -108,7 +109,7 @@ theorem LoweredShorReady.data_work_disjoint
 
 theorem LoweredShorReady.flag_outside_data
     (h : LoweredShorReady qs P η a N x y work scratch flag b0) : flag ∉ y.ownedQubits := by
-  simpa [ExtReg.ownedQubits_grow] using h.approx.step4_workspace.flag_not_data
+  simpa [Gate.ExtReg.ownedQubits_grow] using h.approx.step4_workspace.flag_not_data
 
 theorem LoweredShorReady.flag_outside_work
     (h : LoweredShorReady qs P η a N x y work scratch flag b0) : flag ∉ work.ownedQubits :=
@@ -359,7 +360,7 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
       }
     · simpa [
           ExtReg.OwnedDisjoint,
-          ExtReg.ownedQubits_grow
+          Gate.ExtReg.ownedQubits_grow
         ] using hstep4.work_scratch_disjoint
     · rw [
           ExtReg.width_grow work 1 hWorkGrow,
@@ -422,8 +423,8 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
             owned_disjoint := by
               rw [
                 ExtReg.OwnedDisjoint,
-                ExtReg.ownedQubits_grow,
-                ExtReg.ownedQubits_grow,
+                Gate.ExtReg.ownedQubits_grow,
+                Gate.ExtReg.ownedQubits_grow,
                 List.disjoint_left
               ]
               intro q hqx hqz
@@ -499,8 +500,8 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
         control_disjoint := by
           rw [
             ExtReg.CtrlDisjoint,
-            ExtReg.ownedQubits_grow,
-            ExtReg.ownedQubits_grow
+            Gate.ExtReg.ownedQubits_grow,
+            Gate.ExtReg.ownedQubits_grow
           ]
           constructor
           · rw [ExtReg.ownedQubits, List.mem_append]
@@ -522,7 +523,7 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
         owned_disjoint := by
           simpa [
             ExtReg.OwnedDisjoint,
-            ExtReg.ownedQubits_grow
+            Gate.ExtReg.ownedQubits_grow
           ] using hmod.work_dataCarry_disjoint
 
         x_reserve_sufficient := by
@@ -558,7 +559,7 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
             owned_disjoint := by
               simpa [
                 ExtReg.OwnedDisjoint,
-                ExtReg.ownedQubits_grow
+                Gate.ExtReg.ownedQubits_grow
               ] using hmod.dataCarry_work_disjoint
 
             x_reserve_sufficient := by
@@ -586,7 +587,7 @@ theorem gateWorkspaceOK_orderFindingApprox_of_static
         control_disjoint := by
           simpa [
             ExtReg.CtrlDisjoint,
-            ExtReg.ownedQubits_grow
+            Gate.ExtReg.ownedQubits_grow
           ] using And.intro hctrlData hctrlWork
       }
 

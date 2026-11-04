@@ -3,8 +3,9 @@ import ForShor.Emit.Lower.Decide
 import ForShor.Emit.Lower.Registers
 import ForShor.Emit.Reflect.Verify
 import ForShor.Emit.Table.Source
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.PlanBuilders
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanBuilders
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Lower
 
 /-!
 # `pp`/`cpp`: concrete-width signed (and controlled) phase product
@@ -49,7 +50,7 @@ unsafe def buildPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (Ex
     match ppRegisters ops n with
     | .error e => return .error e
     | .ok (x, z, _ctrl) =>
-        if hws : SignedRecursiveWorkspaceOK ops x z then
+        if SignedRecursiveWorkspaceOK ops x z then
           let phi : Angle := (phiNum : ℚ) / (phiDen : ℚ)
           if annotated then
             match ← Reflect.runExtract k with
@@ -59,10 +60,10 @@ unsafe def buildPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (Ex
                   return .error "extracted doc is not well-formed"
                 else
                 let plan :=
-                  standardSignedPhaseLoweringPlan k hk phi x z ops setup.pts setup.hpts hws
+                  standardSignedPhaseLoweringPlan k hk phi x z ops setup.pts setup.hpts
                 let check1 := check1_annotatedEqFlat (planJson plan) (lowerGateRec plan)
                 let instantiateEqReal :=
-                  Reflect.phaseProductAgrees hk ops setup.pts setup.hpts doc x z phi hws
+                  Reflect.phaseProductAgrees hk ops setup.pts setup.hpts doc x z phi
                 let (checksJ, allOk) := checksJson check1 instantiateEqReal
                 let metaJ :=
                   Json.mkObj [
@@ -76,7 +77,7 @@ unsafe def buildPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (Ex
             let metaJ := Json.mkObj [("k", (k : Json)), ("n", (n : Json)), ("phi", angleJson phi)]
             return .ok
               (emitLowGateDoc
-                (lowerSignedPhaseProdWithWorkspace k hk phi x z ops setup.pts setup.hpts hws)
+                (lowerSignedPhaseProd k hk phi x z ops setup.pts setup.hpts)
                 metaJ)
         else
           return .error s!"insufficient workspace for n={n}"
@@ -92,7 +93,7 @@ unsafe def buildCPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (E
     match ppRegisters ops n with
     | .error e => return .error e
     | .ok (x, z, ctrl) =>
-        if hws : CSignedRecursiveWorkspaceOK ops ctrl x z then
+        if CSignedRecursiveWorkspaceOK ops ctrl x z then
           let phi : Angle := (phiNum : ℚ) / (phiDen : ℚ)
           if annotated then
             match ← Reflect.runExtract k with
@@ -102,10 +103,10 @@ unsafe def buildCPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (E
                   return .error "extracted doc is not well-formed"
                 else
                 let plan :=
-                  standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops setup.pts setup.hpts hws
+                  standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops setup.pts setup.hpts
                 let check1 := check1_annotatedEqFlat (planJson plan) (lowerGateRec plan)
                 let instantiateEqReal :=
-                  Reflect.cPhaseProductAgrees hk ops setup.pts setup.hpts doc ctrl x z phi hws
+                  Reflect.cPhaseProductAgrees hk ops setup.pts setup.hpts doc ctrl x z phi
                 let (checksJ, allOk) := checksJson check1 instantiateEqReal
                 let metaJ :=
                   Json.mkObj [
@@ -123,7 +124,7 @@ unsafe def buildCPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (E
               ]
             return .ok
               (emitLowGateDoc
-                (lowerCSignedPhaseProdWithWorkspace k hk ctrl phi x z ops setup.pts setup.hpts hws)
+                (lowerCSignedPhaseProd k hk ctrl phi x z ops setup.pts setup.hpts)
                 metaJ)
         else
           return .error s!"insufficient workspace for n={n}"

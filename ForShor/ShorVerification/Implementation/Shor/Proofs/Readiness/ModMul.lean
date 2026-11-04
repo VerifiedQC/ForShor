@@ -1,7 +1,7 @@
 import ForShor.ShorVerification.Implementation.Shor.Statement
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Workspace
 import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic

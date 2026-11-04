@@ -1,5 +1,5 @@
-import ForShor.ShorVerification.Implementation.Shared.States
-import ForShor.ShorVerification.Implementation.Shared.LowGateEval
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.States
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.LowGateEval
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.NaiveLeaf
 
 /-!

@@ -19,17 +19,17 @@ acceptance test with no per-submission proof. See
 `ShorVerification/Submission/README.md`.
 
 The work splits into three independently-verified subroutines
-(`PhaseProduct/`, `QFT/`, `ModularExponentiation/`), a library of lemmas
-shared across them (`Shared/`), the assembly folder that composes the
+(`PhaseProduct/`, `QFT/`, `ModularExponentiation/`), the assembly folder that composes the
 subroutines into the full order-finding circuit and proves Shor's algorithm
-correct (`Shor/`), the resource-estimation layer (`GateCount/`), and the
+correct (`Shor/`), the resource-estimation layers (`GateCount/` for gates,
+`QubitCount/` for qubits), and the
 folder that makes every remaining choice concrete and turns a table into a
 `ShorImplementation` (`Reference/`).
 
 ```
 PhaseProduct, QFT, ModularExponentiation  <  Shor  <  Reference
-                                    Shared (cross-cutting)
                                  GateCount (consumes Shor + PhaseProduct + QFT)
+                                QubitCount (consumes Shor + Compiler + Reference)
 ```
 
 Each folder below has its own `README.md` with the full file-by-file
@@ -73,17 +73,24 @@ error bound uniform in the precision parameter `η`.
 `η`-independent constant `K` bounds the distance between the approximate and
 ideal modular-exponentiation circuits uniformly over valid unit states.
 
-## `Shared/` — lemma libraries used by every subroutine above
+## Lemma libraries over Framework vocabulary
 
-**Tackles:** nothing on its own — it holds the derived register/encoding
-laws, `QSemantics`/evaluator algebra, Hadamard-superposition facts, per-gate
-semantic-class lemmas, and lowered-gate evaluation rewrites that
-`PhaseProduct/`, `QFT/`, `ModularExponentiation/`, and `Shor/` all need and
-none of them owns individually. See `Shared/README.md` for the admission rule
-and the file-by-file breakdown.
+Derived laws of the Framework definitions live in the proofs of the lowest
+folder that uses them, and later folders import them from there:
 
-**Final theorem:** none — this is a support library, not a subroutine with a
-correctness claim of its own.
+| File | Laws of |
+|---|---|
+| `PhaseProduct/Proofs/Registers.lean` | `Reg`, `RegEncoding`, `ExtReg`, two's complement |
+| `PhaseProduct/Proofs/States.lean` | `QSemantics` evaluation: zero, injectivity, adjoints, norms, freshness |
+| `PhaseProduct/Proofs/GateLaws.lean` | the per-gate semantic classes of `Framework/Semantics/GateSemantics.lean` |
+| `PhaseProduct/Proofs/LowGateEval.lean` | `LowerGateClass.evalL` and its bridge to `Gate` |
+| `QFT/Proofs/Hadamard.lean` | `H_reg`: uniform superposition and span closure |
+| `QFT/Proofs/QftPhase.lean` | `qftPhase`: grid-exponential form, periodicity, unit norm |
+| `Shor/Proofs/Measurement.lean` | `MeasureClass`: projector sums and distance bounds on outcome distributions |
+
+A Statement never imports these. `CleanClosure` is a definition, so it sits in
+`PhaseProduct/Statement.lean`, and the spare-qubit lemmas behind the
+modular-multiplication workspaces sit in `ModularExponentiation/Statement.lean`.
 
 ## `Shor/` — assembling the subroutines into order-finding, and proving Shor's algorithm correct
 
@@ -132,6 +139,25 @@ that the rate collapses to `2 + ε`.
 recursion arity `k` and a generated interpolation program such that the
 complete lowered Shor circuit's gate count is bounded by `n^(2+ε)`.
 
+## `QubitCount/` — the qubit count
+
+**Tackles:** how many qubits the lowered circuit needs at once. A lowered
+circuit is walked in time order with a set of live qubits: gates and
+extensions make qubits live, deallocations release them, and waiting qubits
+stay live. The phase product's recursion runs its children one after another,
+so only one child's reserve is live at a time.
+
+**Final theorem:** `Policy.orderFinding_peak_formula` — from its five
+registers' active qubits, the lowered order-finding circuit returns to that
+set, and its peak is that set's size plus `Policy.orderFindingPeak`, an
+explicit function of the register widths and the policy.
+`Policy.reference_peak_formula` gives the same for the reference circuit and
+bounds its qubit count from an empty start.
+`Policy.orderFinding_peak_formula_balanced` is the same formula for the
+circuit lowered after `Reference/Balanced/`'s balancing pass, each phase
+product costed as its balanced split; at 2048 bits it gives 17,291 qubits
+(`reference_2048_peak_balanced`), against 19,319 unbalanced.
+
 ## `Reference/` — table ↦ circuit family
 
 **Tackles:** making every choice the folders above leave abstract (which
@@ -167,5 +193,5 @@ for what "Shor's algorithm is correct" means at the circuit level,
 `ModularExponentiation/Main.lean` for the implementation error bound
 `Shor/` transfers across, and `QFT/Main.lean` /
 `PhaseProduct/Main.lean` for the two subroutines the circuit is built from.
-`GateCount/` and `Shared/` are consumed along the way rather than sitting on
-this main spine.
+`GateCount/` and the lemma libraries above are consumed along the way rather
+than sitting on this main spine.

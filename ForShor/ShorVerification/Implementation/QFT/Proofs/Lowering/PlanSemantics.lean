@@ -1,12 +1,13 @@
 import ForShor.ShorVerification.Implementation.QFT.Statement
 import ForShor.ShorVerification.Implementation.QFT.Proofs.Decomposition
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Coefficients
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Plan
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Readiness
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Linearity
-import ForShor.ShorVerification.Implementation.Shared.States
-import ForShor.ShorVerification.Implementation.Shared.LowGateEval
-import ForShor.ShorVerification.Implementation.Shared.Hadamard
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.States
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.LowGateEval
+import ForShor.ShorVerification.Implementation.QFT.Proofs.Hadamard
 
 /-!
 # QFT Lowering Plan Semantics
@@ -450,35 +451,3 @@ lemma QFTLoweringReady.smul
     planned QFT is evaluated. The zero-state lemmas provide the small closure
     facts needed by the public lowering assertions.
 ========================================================= -/
-
-lemma evalL_lowerQFTPlan_zero
-    (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]
-    {P : ShorLoweringPolicy} {r : Reg} (plan : QFTLoweringPlan P r) :
-    LowerGateClass.evalL (qs := qs) (lowerQFTPlan plan) 0
-      =
-    0 := by
-  exact LowerGateClass.evalL_zero (qs := qs) (lowerQFTPlan plan)
-
-lemma QFTLoweringReady.zero
-    (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs] [LowerGateClass qs]
-    {P : ShorLoweringPolicy} {r : Reg} (plan : QFTLoweringPlan P r) :
-    QFTLoweringReady qs plan 0 := by
-  induction plan with
-  | empty =>
-      trivial
-  | singleton =>
-      trivial
-  | split r hsize ws phaseInitSize phasePlan rightPlan leftPlan ihRight ihLeft =>
-      change
-        Gate.PhaseProdWorkspace.CleanState qs ws 0
-          ∧
-        QFTLoweringReady qs rightPlan 0
-          ∧
-        PhaseLoweringReady qs phasePlan
-          (LowerGateClass.evalL (qs := qs) (lowerQFTPlan rightPlan) 0)
-          ∧
-        QFTLoweringReady qs leftPlan
-          (LowerGateClass.evalL (qs := qs) (lowerGateRec phasePlan)
-            (LowerGateClass.evalL (qs := qs) (lowerQFTPlan rightPlan) 0))
-      rw [evalL_lowerQFTPlan_zero, evalL_lowerGateRec_zero]
-      exact ⟨CleanClosure.zero, ihRight, PhaseLoweringReady.zero qs phasePlan, ihLeft⟩

@@ -2,8 +2,9 @@ import ForShor.Emit.Reflect.Driver
 import ForShor.Emit.IR.WellFormed
 import ForShor.Emit.IR.Instantiate
 import ForShor.Emit.Lower.Registers
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.PlanBuilders
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanBuilders
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Lower
 import ForShor.ShorVerification.Implementation.QFT.Statement
 import ForShor.ShorVerification.Implementation.Reference.StandardLoweringSetup
 import ForShor.ShorVerification.Implementation.Reference.ReferenceLayout
@@ -180,9 +181,8 @@ def coeffDispatch (k : ℕ) (pts : List Operations.Point) (hpts : pts.length = q
 CLI command (`Lower/PhaseProduct.lean`) can run the *same* check at
 whatever width the caller actually asked for. -/
 def phaseProductAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (pts : List Operations.Point)
-    (hpts : pts.length = q k) (doc : Doc) (x z : ExtReg) (phi : Angle)
-    (hws : SignedRecursiveWorkspaceOK ops x z) : Bool :=
-  let real := lowerGateRec (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hws)
+    (hpts : pts.length = q k) (doc : Doc) (x z : ExtReg) (phi : Angle) : Bool :=
+  let real := lowerGateRec (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts)
   let env : Env :=
     { w := fun name =>
         if name == "xw" then some x.width
@@ -206,8 +206,8 @@ def checkPhaseProductAt (setup : Shor.ShorLoweringSetup) (n : ℕ) (doc : Doc) (
   match ppRegisters ops n slack with
   | .error e => .error s!"template check (phase_product): {e}"
   | .ok (x, z, _ctrl) =>
-      if hws : SignedRecursiveWorkspaceOK ops x z then
-        if phaseProductAgrees setup.hk ops setup.pts setup.hpts doc x z ((1 : ℚ) / 4) hws then
+      if SignedRecursiveWorkspaceOK ops x z then
+        if phaseProductAgrees setup.hk ops setup.pts setup.hpts doc x z ((1 : ℚ) / 4) then
           .ok ()
         else .error
           s!"template check (phase_product): instantiate disagrees with the real term \
@@ -222,9 +222,8 @@ def checkPhaseProduct (setup : Shor.ShorLoweringSetup) (doc : Doc) : Except Stri
 phi`, agrees with the real compiled term. Controlled analogue of
 `phaseProductAgrees`, exposed for `cpp`'s own CLI command the same way. -/
 def cPhaseProductAgrees {k : ℕ} (hk : 1 < k) (ops : Prog k) (pts : List Operations.Point)
-    (hpts : pts.length = q k) (doc : Doc) (ctrlIdx : ℕ) (x z : ExtReg) (phi : Angle)
-    (hws : CSignedRecursiveWorkspaceOK ops ctrlIdx x z) : Bool :=
-  let real := lowerGateRec (standardCSignedPhaseLoweringPlan k hk ctrlIdx phi x z ops pts hpts hws)
+    (hpts : pts.length = q k) (doc : Doc) (ctrlIdx : ℕ) (x z : ExtReg) (phi : Angle) : Bool :=
+  let real := lowerGateRec (standardCSignedPhaseLoweringPlan k hk ctrlIdx phi x z ops pts hpts)
   let ctrl := ExtReg.ofReg (Reg.interval ctrlIdx 1)
   let env : Env :=
     { w := fun name =>
@@ -252,8 +251,8 @@ def checkCPhaseProductAt (setup : Shor.ShorLoweringSetup) (n : ℕ) (doc : Doc) 
   match ppRegisters ops n slack with
   | .error e => .error s!"template check (cphase_product): {e}"
   | .ok (x, z, ctrlIdx) =>
-      if hws : CSignedRecursiveWorkspaceOK ops ctrlIdx x z then
-        if cPhaseProductAgrees setup.hk ops setup.pts setup.hpts doc ctrlIdx x z ((1 : ℚ) / 4) hws
+      if CSignedRecursiveWorkspaceOK ops ctrlIdx x z then
+        if cPhaseProductAgrees setup.hk ops setup.pts setup.hpts doc ctrlIdx x z ((1 : ℚ) / 4)
         then .ok ()
         else .error
           s!"template check (cphase_product): instantiate disagrees with the real term \

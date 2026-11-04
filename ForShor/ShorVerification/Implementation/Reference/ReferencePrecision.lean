@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Precision
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Statement
 
 namespace Shor
 namespace Reference

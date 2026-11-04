@@ -1,4 +1,4 @@
-import ForShor.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Core.Coverage
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Math.Table_Generation.Core.Coverage
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Body.Dealloc
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Interpolation
 
@@ -32,6 +32,7 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
     (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
+    (hlayout : layout.Valid)
     (pts : List Point)
     (hpts : List.length pts = q k)
     (hInterp : GoodToomCookPoints k pts hpts)
@@ -54,7 +55,7 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
   set Wphase : ℕ := phaseLimbWidth x z k
   set coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k Wphase pts hpts
   rcases eval_compileSignedAllocations_ket_fits
-      (qs := qs) (layout := layout) (ops := ops) (b := b) hworkspace with
+      (qs := qs) (layout := layout) (hlayout := hlayout) (ops := ops) (b := b) hworkspace with
     ⟨bAlloc, hAllocEval, hEncAlloc⟩
   have hFitsFinal :
     ∀ {τ : State k},
@@ -67,7 +68,7 @@ lemma eval_compileOpsToSignedGate_correct_ket_of_blocks
     simpa [stInit, stFinal, need] using
       allocated_widths_sound (qs := qs) layout ops hworkspace.1 b (σ := τ) hτ
   have hLayoutDisjoint : LayoutSlotsDisjoint stFinal := by
-    simpa [stFinal, stInit] using targetSignedLayoutState_owned_disjoint layout need
+    simpa [stFinal, stInit] using targetSignedLayoutState_owned_disjoint hlayout need
   have hBodyDealloc :
     qs.eval
         (compileAnnotatedOpsToSignedGateAux k hk phi coeff stFinal (annotatePhaseTermsAux k 0 ops) ;;
@@ -125,6 +126,7 @@ lemma eval_compileOpsToSignedGate_correct_ket
     (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
+    (hlayout : layout.Valid)
     (pts : List Point)
     (hpts : List.length pts = q k)
     (hInterp : GoodToomCookPoints k pts hpts)
@@ -142,7 +144,7 @@ lemma eval_compileOpsToSignedGate_correct_ket
     progConsumesPts_has_blockDecomposition (k := k) (by omega) ops State.start_state pts hC.1
   simpa using
     (eval_compileOpsToSignedGate_correct_ket_of_blocks
-      (qs := qs) (k := k) (hk := hk) (phi := phi) (x := x) (z := z) (layout := layout)
+      (qs := qs) (k := k) (hk := hk) (phi := phi) (x := x) (z := z) (layout := layout) (hlayout := hlayout)
       (pts := pts) (hpts := hpts) (hInterp := hInterp) (b := b) (ops := ops)
       (hB := hB)
       (hworkspace := hworkspace)
@@ -168,6 +170,7 @@ lemma eval_compileOpsToCSignedGate_correct_ket
     (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
+    (hlayout : layout.Valid)
     (hctrl : layout.ControlDisjoint ctrl)
     (pts : List Point)
     (hpts : pts.length = q k)
@@ -178,8 +181,7 @@ lemma eval_compileOpsToCSignedGate_correct_ket
     (b : qs.Basis)
     (hworkspace : CompilerWorkspaceOK (initSignedLayoutState layout) (scanNeededWidths x z ops) b) :
     qs.eval
-      (compileOpsToCSignedGate k hk ctrl phi x z layout
-        (phaseCoeffFromPtsWidth k (phaseLimbWidth x z k) pts hpts) ops)
+      (controlPhaseLeaves ctrl (compileOpsToSignedGate k hk phi x z layout (phaseCoeffFromPtsWidth k (phaseLimbWidth x z k) pts hpts) ops))
       (qs.ket b)
       = qs.eval (Gate.CSignedPhaseProd ctrl phi x z) (qs.ket b) := by
   set need : NeededWidths k := scanNeededWidths x z ops
@@ -188,10 +190,10 @@ lemma eval_compileOpsToCSignedGate_correct_ket
   set Wphase : ℕ := phaseLimbWidth x z k
   set coeff : Fin (q k) → ℚ := phaseCoeffFromPtsWidth k Wphase pts hpts
   rcases eval_compileSignedAllocations_ket_fits
-      (qs := qs) (layout := layout) (ops := ops) (b := b) hworkspace with
+      (qs := qs) (layout := layout) (hlayout := hlayout) (ops := ops) (b := b) hworkspace with
     ⟨bAlloc, hAllocEval, hEncAlloc⟩
   rcases eval_compileSignedAllocations_sameOutside
-      (qs := qs) (layout := layout) (ops := ops) (b := b) hworkspace with
+      (qs := qs) (layout := layout) (hlayout := hlayout) (ops := ops) (b := b) hworkspace with
     ⟨bAllocSO, hAllocSOEval, hAllocSO⟩
   have hbAllocSO : bAllocSO = bAlloc := by
     apply qs.ket_inj
@@ -213,7 +215,7 @@ lemma eval_compileOpsToCSignedGate_correct_ket
     simpa [stInit, stFinal, need] using
       allocated_widths_sound (qs := qs) layout ops hworkspace.1 b (σ := τ) hτ
   have hLayoutDisjoint : LayoutSlotsDisjoint stFinal := by
-    simpa [stFinal, stInit] using targetSignedLayoutState_owned_disjoint layout need
+    simpa [stFinal, stInit] using targetSignedLayoutState_owned_disjoint hlayout need
   have hCtrlOutside : OutsideLayout stFinal (ExtReg.ofReg (qubitReg ctrl)) := by
     have hCtrlOwned :
         (∀ i, ctrl ∉ (stFinal.xslot i).ownedQubits) ∧ (∀ i, ctrl ∉ (stFinal.zslot i).ownedQubits) := by
@@ -265,7 +267,7 @@ lemma eval_compileOpsToCSignedGate_correct_ket
         (qs := qs) (hk := hk) (phi := phi) (x := x) (z := z) (layout := layout)
         (pts := pts) (hpts := hpts) (hInterp := hInterp) (b := b)
   calc
-    qs.eval (compileOpsToCSignedGate k hk ctrl phi x z layout coeff ops) (qs.ket b)
+    qs.eval (controlPhaseLeaves ctrl (compileOpsToSignedGate k hk phi x z layout coeff ops)) (qs.ket b)
         =
       qs.eval
         (controlPhaseLeaves ctrl
@@ -273,7 +275,6 @@ lemma eval_compileOpsToCSignedGate_correct_ket
          compileSignedDeallocations k stInit stFinal)
         (qs.ket bAlloc) := by
           simp [
-            compileOpsToCSignedGate,
             compileOpsToSignedGate,
             controlPhaseLeaves,
             controlPhaseLeaves_compileSignedAllocations,

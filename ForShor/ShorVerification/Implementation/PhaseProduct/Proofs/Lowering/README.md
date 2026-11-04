@@ -2,7 +2,7 @@
 
 Correctness of the `Lowering/` plan machinery: that lowering a `PhaseLoweringPlan`
 to a `LowGate` (via `lowerGateRec`) preserves semantics, given the plan is
-"ready" (`PhaseLoweringReady`, `Spec/Readiness.lean`). Internal order: `EvalL`
+"ready" (`PhaseLoweringReady`, `Statement.lean`). Internal order: `EvalL`
 → `Lowerable` → `PlanSemantics` → `Linearity` → `Workspace` → `PlanReadiness/*`
 → `Correctness` (each may use anything from the ones before it).
 

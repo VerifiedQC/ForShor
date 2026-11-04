@@ -127,7 +127,6 @@ window.ANNOTATIONS = {
     { "from": "QFT", "to": "ModularExponentiation", "emphasis": "primary", "label": "QFT-based phase products, IQFT comparator", "why": "ModularExponentiation's approximate circuit is built from QFT-based phase products and an inverse-QFT comparator." },
     { "from": "ModularExponentiation", "to": "Shor", "emphasis": "primary", "theorem": "modExpApprox_correct", "label": "modExpApprox_correct", "why": "Shor's approximate correctness theorem transfers this eta-independent distance bound into a success-probability lower bound for the full lowered circuit." },
     { "from": "QFT", "to": "Shor", "emphasis": "secondary" },
-    { "from": "ModularExponentiation", "to": "Compiler", "emphasis": "secondary" },
     { "from": "QFT", "to": "Compiler", "emphasis": "secondary" },
     { "from": "PhaseProduct", "to": "Compiler", "emphasis": "secondary" },
     { "from": "Compiler", "to": "Shor", "emphasis": "primary", "theorem": "lowerGate_correct", "label": "Policy.lowerGate", "why": "Shor's lowered circuit is Policy.lowerGate applied to the order-finding circuit, and its success bound transfers to the lowered program through Policy.lowerGate_correct." },
@@ -168,15 +167,11 @@ window.ANNOTATIONS = {
    ]
   },
   "ModularExponentiation": {
-   "columns": [["ModularExponentiation/Circuit", "ModularExponentiation/Math"], ["ModularExponentiation/Lowering", "ModularExponentiation/Spec"], ["ModularExponentiation/Proofs"], ["ModularExponentiation/Main.lean"]],
+   "columns": [["ModularExponentiation/Statement.lean"], ["ModularExponentiation/Proofs"], ["ModularExponentiation/Main.lean"]],
    "edges": [
-    { "from": "ModularExponentiation/Circuit", "to": "ModularExponentiation/Lowering", "emphasis": "primary", "label": "Step 3 constant arithmetic", "why": "The constant-arithmetic subtraction stage Lowering/ProvesCorrect targets is exactly the circuit Circuit/ defines." },
-    { "from": "ModularExponentiation/Circuit", "to": "ModularExponentiation/Spec", "emphasis": "primary", "label": "validity and config records", "why": "Spec/'s validity predicates and configuration records are stated over the circuit and workspace Circuit/ defines." },
-    { "from": "ModularExponentiation/Lowering", "to": "ModularExponentiation/Proofs", "emphasis": "secondary" },
-    { "from": "ModularExponentiation/Spec", "to": "ModularExponentiation/Proofs", "emphasis": "primary", "why": "Proofs/ discharges exactly the validity and precision assertions Spec/ states." },
-    { "from": "ModularExponentiation/Math", "to": "ModularExponentiation/Proofs", "emphasis": "secondary" },
-    { "from": "ModularExponentiation/Proofs", "to": "ModularExponentiation/Main.lean", "emphasis": "primary", "theorem": "modExpApprox_correct", "label": "modExpApprox_correct", "why": "Main.lean combines the staged Algorithm-1 approximation proofs in Proofs/ into one eta-independent distance bound." },
-    { "from": "ModularExponentiation/Spec", "to": "ModularExponentiation/Main.lean", "emphasis": "secondary" }
+    { "from": "ModularExponentiation/Statement.lean", "to": "ModularExponentiation/Proofs", "emphasis": "primary", "label": "circuit and claims", "why": "Proofs/ proves the distance bound Statement.lean states, for the circuit Statement.lean defines." },
+    { "from": "ModularExponentiation/Proofs", "to": "ModularExponentiation/Main.lean", "emphasis": "primary", "theorem": "modExpApprox_correct", "label": "modExpApprox_correct", "why": "Main.lean combines the staged Algorithm-1 approximation proofs in Proofs/ into one eta-independent distance bound; Proofs/ is proof-only, so Main.lean is the only route out of ModularExponentiation/." },
+    { "from": "ModularExponentiation/Statement.lean", "to": "ModularExponentiation/Main.lean", "emphasis": "secondary" }
    ]
   },
   "Compiler": {
@@ -246,7 +241,6 @@ window.ANNOTATIONS = {
     { "from": "QFT", "to": "ModularExponentiation", "emphasis": "primary", "label": "QFT-based phase products, IQFT comparator", "why": "ModularExponentiation's approximate circuit is built from QFT-based phase products and an inverse-QFT comparator." },
     { "from": "ModularExponentiation", "to": "Shor", "emphasis": "primary", "theorem": "modExpApprox_correct", "label": "modExpApprox_correct", "why": "Shor's approximate correctness theorem transfers this eta-independent distance bound into a success-probability lower bound for the full lowered circuit." },
     { "from": "QFT", "to": "Shor", "emphasis": "secondary" },
-    { "from": "ModularExponentiation", "to": "Compiler", "emphasis": "secondary" },
     { "from": "QFT", "to": "Compiler", "emphasis": "secondary" },
     { "from": "PhaseProduct", "to": "Compiler", "emphasis": "secondary" },
     { "from": "Compiler", "to": "Shor", "emphasis": "primary", "theorem": "lowerGate_correct", "label": "Policy.lowerGate", "why": "Shor's lowered circuit is Policy.lowerGate applied to the order-finding circuit, and its success bound transfers to the lowered program through Policy.lowerGate_correct." },
@@ -287,15 +281,11 @@ window.ANNOTATIONS = {
    ]
   },
   "ModularExponentiation": {
-   "columns": [["ModularExponentiation/Circuit", "ModularExponentiation/Math"], ["ModularExponentiation/Lowering", "ModularExponentiation/Spec"], ["ModularExponentiation/Proofs"], ["ModularExponentiation/Main.lean"]],
+   "columns": [["ModularExponentiation/Statement.lean"], ["ModularExponentiation/Proofs"], ["ModularExponentiation/Main.lean"]],
    "edges": [
-    { "from": "ModularExponentiation/Circuit", "to": "ModularExponentiation/Lowering", "emphasis": "primary", "label": "Step 3 constant arithmetic", "why": "The constant-arithmetic subtraction stage Lowering/ProvesCorrect targets is exactly the circuit Circuit/ defines." },
-    { "from": "ModularExponentiation/Circuit", "to": "ModularExponentiation/Spec", "emphasis": "primary", "label": "validity and config records", "why": "Spec/'s validity predicates and configuration records are stated over the circuit and workspace Circuit/ defines." },
-    { "from": "ModularExponentiation/Lowering", "to": "ModularExponentiation/Proofs", "emphasis": "secondary" },
-    { "from": "ModularExponentiation/Spec", "to": "ModularExponentiation/Proofs", "emphasis": "primary", "why": "Proofs/ discharges exactly the validity and precision assertions Spec/ states." },
-    { "from": "ModularExponentiation/Math", "to": "ModularExponentiation/Proofs", "emphasis": "secondary" },
-    { "from": "ModularExponentiation/Proofs", "to": "ModularExponentiation/Main.lean", "emphasis": "primary", "theorem": "modExpApprox_correct", "label": "modExpApprox_correct", "why": "Main.lean combines the staged Algorithm-1 approximation proofs in Proofs/ into one eta-independent distance bound." },
-    { "from": "ModularExponentiation/Spec", "to": "ModularExponentiation/Main.lean", "emphasis": "secondary" }
+    { "from": "ModularExponentiation/Statement.lean", "to": "ModularExponentiation/Proofs", "emphasis": "primary", "label": "circuit and claims", "why": "Proofs/ proves the distance bound Statement.lean states, for the circuit Statement.lean defines." },
+    { "from": "ModularExponentiation/Proofs", "to": "ModularExponentiation/Main.lean", "emphasis": "primary", "theorem": "modExpApprox_correct", "label": "modExpApprox_correct", "why": "Main.lean combines the staged Algorithm-1 approximation proofs in Proofs/ into one eta-independent distance bound; Proofs/ is proof-only, so Main.lean is the only route out of ModularExponentiation/." },
+    { "from": "ModularExponentiation/Statement.lean", "to": "ModularExponentiation/Main.lean", "emphasis": "secondary" }
    ]
   },
   "Compiler": {
@@ -335,7 +325,7 @@ window.ANNOTATIONS = {
    ]
   },
   "Reference": {
-   "columns": [["Reference/Contract.lean", "Reference/ReferencePrecision.lean"], ["Reference/ReferenceLayout.lean"], ["Reference/ReferenceReadiness.lean"], ["Reference/ShorProgram.lean"], ["Reference/ReferenceShorImplementation.lean"], ["Reference/Reference2048Headline.lean", "Reference/StandardLoweringSetup.lean"]],
+   "columns": [["Reference/Contract.lean", "Reference/ReferencePrecision.lean"], ["Reference/ReferenceLayout.lean"], ["Reference/ReferenceReadiness.lean"], ["Reference/ShorProgram.lean"], ["Reference/ReferenceShorImplementation.lean"], ["Reference/Reference2048Headline.lean", "Reference/StandardLoweringSetup.lean"], ["Reference/Balanced"]],
    "edges": [
     { "from": "Reference/ReferencePrecision.lean", "to": "Reference/ReferenceLayout.lean", "emphasis": "secondary" },
     { "from": "Reference/ReferenceLayout.lean", "to": "Reference/ReferenceReadiness.lean", "emphasis": "primary", "label": "concrete layout", "why": "Readiness discharges the implementation-specific readiness obligations against the concrete register layout ReferenceLayout.lean builds." },

@@ -1,9 +1,10 @@
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import ForShor.ShorVerification.Implementation.Shared.States
-import ForShor.ShorVerification.Implementation.Shared.Hadamard
-import ForShor.ShorVerification.Implementation.Shared.Registers
-import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.QFT.Proofs.Macros
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.States
+import ForShor.ShorVerification.Implementation.QFT.Proofs.Hadamard
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Registers
+import ForShor.ShorVerification.Implementation.QFT.Proofs.MacroSemantics
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
 
 namespace Shor

@@ -1,15 +1,16 @@
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.NaiveLeaf
-import ForShor.ShorVerification.Implementation.Shared.Registers
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Gates.NaiveLeaf
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Registers
 
 /-!
 # Naive phase-product leaf: correctness
 
 Correctness lemmas for the naive (reference) signed/controlled phase-product
-circuits defined in `Gates/NaiveLeaf.lean`. The apex theorems
+circuits defined in `Statement.lean`. The apex theorems
 (`evalL_naive_signedPhaseProd_ket`, `gateCount_Naive_SignedPhaseProd`,
 `evalL_naive_csignedPhaseProd_ket`, `gateCount_Naive_CSignedPhaseProd`) stay
 here rather than in `Main.lean`: they are consumed by
-`Proofs/Lowering/EvalL.lean` and `GateCount/PhaseProduct/Lemmas.lean`.
+`Proofs/Lowering/EvalL.lean` and `Proofs/GateCount/Lemmas.lean`.
 -/
 
 namespace Shor
@@ -212,11 +213,11 @@ theorem evalL_signedPairPhase_ket
     {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass qs]
     (phi : Angle) (xTerm zTerm : ℕ × ℤ) (b : qs.Basis) :
     LowerGateClass.evalL
-        (qs := qs) (LowGate.CPhase xTerm.1 zTerm.1 (signedPairAngle phi xTerm zTerm)) (qs.ket b)
+        (qs := qs) (LowGate.CPhase xTerm.1 zTerm.1 (phi * (xTerm.2 : ℚ) * (zTerm.2 : ℚ))) (qs.ket b)
       = Complex.exp (signedPairExponent phi b xTerm zTerm) • qs.ket b := by
   rw [evalL_CPhase_ket]
   congr 2
-  simp only [signedPairExponent, signedPairAngle, signedTermValue, Angle.toReal]
+  simp only [signedPairExponent, signedTermValue, Angle.toReal]
   push_cast
   ring
 
@@ -264,7 +265,7 @@ theorem naiveSignedPhaseGates_diagonal
           List.Forall₂
             (fun g e => LowerGateClass.evalL (qs := qs) g (qs.ket b) = Complex.exp e • qs.ket b)
             ((signedTerms z).map fun zTerm =>
-              LowGate.CPhase xTerm.1 zTerm.1 (signedPairAngle phi xTerm zTerm))
+              LowGate.CPhase xTerm.1 zTerm.1 (phi * (xTerm.2 : ℚ) * (zTerm.2 : ℚ)))
             ((signedTerms z).map fun zTerm => signedPairExponent phi b xTerm zTerm) := by
         induction signedTerms z with
         | nil =>
@@ -539,9 +540,9 @@ lemma gateCount_sequence (M : LowGateCostModel) (gs : List LowGate) :
     LowGate.gateCount M (LowGate.sequence gs) = (gs.map (LowGate.gateCount M)).sum := by
   induction gs with
   | nil =>
-      simp [LowGate.sequence, LowGate.gateCount]
+      simp [LowGate.sequence]
   | cons g gs ih =>
-      simp [LowGate.sequence, LowGate.gateCount, ih]
+      simp [LowGate.sequence, ih]
 
 end LowGate
 
@@ -787,17 +788,17 @@ theorem evalL_cSignedPairPhase_ket
     {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass qs]
     (ctrl : ℕ) (phi : Angle) (xTerm zTerm : ℕ × ℤ) (b : qs.Basis) :
     LowerGateClass.evalL
-        (qs := qs) (LowGate.CCPhase ctrl xTerm.1 zTerm.1 (signedPairAngle phi xTerm zTerm)) (qs.ket b)
+        (qs := qs) (LowGate.CCPhase ctrl xTerm.1 zTerm.1 (phi * (xTerm.2 : ℚ) * (zTerm.2 : ℚ))) (qs.ket b)
       = Complex.exp (cSignedPairExponent ctrl phi b xTerm zTerm) • qs.ket b := by
   rw [evalL_CCPhase_ket]
   by_cases hc : RegEncoding.bit ctrl b
   · simp only [
-      cSignedPairExponent, hc, ite_true, signedPairExponent, signedPairAngle, signedTermValue,
+      cSignedPairExponent, hc, ite_true, signedPairExponent, signedTermValue,
       basisBitInt, Angle.toReal
     ]
     push_cast
     ring_nf
-  · simp [cSignedPairExponent, hc, signedPairAngle, basisBitInt]
+  · simp [cSignedPairExponent, hc, basisBitInt]
 
 theorem naiveCSignedPhaseGates_diagonal
     {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass qs]
@@ -815,7 +816,7 @@ theorem naiveCSignedPhaseGates_diagonal
             List.Forall₂
               (fun g e => LowerGateClass.evalL (qs := qs) g (qs.ket b) = Complex.exp e • qs.ket b)
               ((signedTerms z).map fun zTerm =>
-                LowGate.CCPhase ctrl xTerm.1 zTerm.1 (signedPairAngle phi xTerm zTerm))
+                LowGate.CCPhase ctrl xTerm.1 zTerm.1 (phi * (xTerm.2 : ℚ) * (zTerm.2 : ℚ)))
               ((signedTerms z).map fun zTerm => cSignedPairExponent ctrl phi b xTerm zTerm) := by
           induction signedTerms z with
           | nil =>
@@ -927,7 +928,7 @@ theorem gateCount_Naive_CSignedPhaseProd
     have hxz : xTerm.1 ≠ zTerm.1 :=
       LowerGateClass.signedTerms_ne_of_ownedDisjoint x z hdisjoint hxTerm hzTerm
     exact LowGate.gateCount_CCPhase_of_distinct
-      M ctrl xTerm.1 zTerm.1 (signedPairAngle phi xTerm zTerm) hctrlXTerm hctrlZTerm hxz
+      M ctrl xTerm.1 zTerm.1 (phi * (xTerm.2 : ℚ) * (zTerm.2 : ℚ)) hctrlXTerm hctrlZTerm hxz
 
   unfold LowGate.Naive_CSignedPhaseProd
   rw [LowerGateClass.LowGate.gateCount_sequence]

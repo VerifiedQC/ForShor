@@ -1,9 +1,10 @@
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
-import ForShor.ShorVerification.Implementation.Shared.Registers
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import ForShor.ShorVerification.Implementation.Shared.States
-import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Math.QPETail
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Registers
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.QFT.Proofs.Macros
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.States
+import ForShor.ShorVerification.Implementation.QFT.Proofs.MacroSemantics
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.QPETail
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
 import Mathlib.Algebra.BigOperators.Intervals
 import Mathlib.Algebra.Order.Floor.Semiring

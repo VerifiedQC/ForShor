@@ -1,9 +1,10 @@
-import ForShor.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Core.Coverage
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Math.Table_Generation.Core.Coverage
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.PlanBuilders
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanBuilders
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Coefficients
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Readiness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Cleanliness
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.EvalL
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanSemantics
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Linearity

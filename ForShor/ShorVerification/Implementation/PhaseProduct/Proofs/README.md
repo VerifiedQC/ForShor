@@ -1,13 +1,25 @@
 # `Proofs/`
 
-Proof-only files. Nothing outside `Proofs/` or `Main.lean` may import
-anything in here. See `Proofs/Compiler/README.md`, `Proofs/Lowering/README.md`
-(and their `Body/`/`PlanReadiness/` subfolders) for the compiler- and
-lowering-correctness proofs.
+Proof files. Other folders import the lemma libraries below directly;
+everything else is reached through `Main.lean`. See `Proofs/Compiler/README.md`,
+`Proofs/Lowering/README.md` (and their `Body/`/`PlanReadiness/` subfolders) for
+the compiler- and lowering-correctness proofs.
+
+## Lemma libraries: `Registers.lean`, `States.lean`, `GateLaws.lean`, `LowGateEval.lean`
+
+Derived laws of Framework definitions, used here first and imported by `QFT/`,
+`Compiler/`, `ModularExponentiation/`, `Shor/` and `Reference/` proofs.
+
+| File | Contents |
+|---|---|
+| `Registers.lean` | Laws of `Reg`, `RegEncoding`, `ExtReg` and two's complement: split/append arithmetic, bit and basis-write transport, encoding transport across disjoint registers. |
+| `States.lean` | Consequences of `GateSemanticsCore`: zero, subtraction, injectivity, adjoint inverse; `QSemantics.*` wrapper names for the class laws; isometry, norm and freshness transport. |
+| `GateLaws.lean` | Laws of the per-gate classes of `Framework/Semantics/GateSemantics.lean`: Pauli-X locality, radix reverse, sign extension, and the basis-write arithmetic of `ArithmeticSemantics`. |
+| `LowGateEval.lean` | `LowerGateClass.evalL` on zero and on basis-equal circuits, and the `evalL` laws of the unsigned macro gates built from the signed primitives (`LowerGateGateBridge`). |
 
 ## `NaiveLeaf.lean`
 
-Correctness of the naive reference circuits defined in `Gates/NaiveLeaf.lean`.
+Correctness of the naive reference circuits defined in `Statement.lean`.
 
 - **`evalL_naive_signedPhaseProd_ket`** — evaluating `Naive_SignedPhaseProd`
   on a basis ket contributes exactly the phase `exp(i·φ·x·z)` (as signed

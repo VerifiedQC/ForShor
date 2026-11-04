@@ -206,21 +206,19 @@ def r2_1_x : ExtReg := ExtReg.withReserve (Reg.interval 0 4) (Reg.interval 4 12)
 def r2_1_z : ExtReg := ExtReg.withReserve (Reg.interval 16 4) (Reg.interval 20 12) (by decide)
 
 def r2_1_xBudget : ReserveBudget r2_1_x r2_1_k :=
-  ReserveBudget.ofRequirements (by decide) (fun _ => 5) (by decide)
+  ReserveBudget.ofRequirements (by decide) (fun _ => 5)
 
 def r2_1_zBudget : ReserveBudget r2_1_z r2_1_k :=
-  ReserveBudget.ofRequirements (by decide) (fun _ => 5) (by decide)
+  ReserveBudget.ofRequirements (by decide) (fun _ => 5)
 
 def r2_1_xSplit : PhaseSplitLayout r2_1_x r2_1_k (phaseLimbWidth r2_1_x r2_1_z r2_1_k) :=
-  PhaseSplitLayout.ofBudget r2_1_x r2_1_k (phaseLimbWidth r2_1_x r2_1_z r2_1_k)
-    (phaseLimbWidth_valid_left r2_1_x r2_1_z (by decide)) r2_1_xBudget
+  PhaseSplitLayout.ofBudget r2_1_x r2_1_k (phaseLimbWidth r2_1_x r2_1_z r2_1_k) r2_1_xBudget
 
 def r2_1_zSplit : PhaseSplitLayout r2_1_z r2_1_k (phaseLimbWidth r2_1_x r2_1_z r2_1_k) :=
-  PhaseSplitLayout.ofBudget r2_1_z r2_1_k (phaseLimbWidth r2_1_x r2_1_z r2_1_k)
-    (phaseLimbWidth_valid_right r2_1_x r2_1_z (by decide)) r2_1_zBudget
+  PhaseSplitLayout.ofBudget r2_1_z r2_1_k (phaseLimbWidth r2_1_x r2_1_z r2_1_k) r2_1_zBudget
 
 def r2_1_layout : Gate.PhaseProductLayout r2_1_x r2_1_z r2_1_k :=
-  { xSplit := r2_1_xSplit, zSplit := r2_1_zSplit, cross_owned_disjoint := by decide }
+  { xSplit := r2_1_xSplit, zSplit := r2_1_zSplit }
 
 def r2_1_m : Nat := phaseLimbWidth r2_1_x r2_1_z r2_1_k
 
@@ -378,8 +376,7 @@ theorem r2_2b_hworkspace : SignedRecursiveWorkspaceOK r2_2_ops r2_2b_x r2_2b_z :
 
 def r2_2b_real : LowGate :=
   lowerGateRec (standardSignedPhaseLoweringPlan r2_2_k r2_2_hk r2_2_phi r2_2b_x r2_2b_z r2_2_ops
-    (standardLoweringSetup r2_2_k r2_2_hk).pts (standardLoweringSetup r2_2_k r2_2_hk).hpts
-    r2_2b_hworkspace)
+    (standardLoweringSetup r2_2_k r2_2_hk).pts (standardLoweringSetup r2_2_k r2_2_hk).hpts)
 
 set_option maxHeartbeats 1000000 in
 example :
@@ -400,8 +397,7 @@ theorem r2_2r_hworkspace : SignedRecursiveWorkspaceOK r2_2_ops r2_2r_x r2_2r_z :
 
 def r2_2r_real : LowGate :=
   lowerGateRec (standardSignedPhaseLoweringPlan r2_2_k r2_2_hk r2_2_phi r2_2r_x r2_2r_z r2_2_ops
-    (standardLoweringSetup r2_2_k r2_2_hk).pts (standardLoweringSetup r2_2_k r2_2_hk).hpts
-    r2_2r_hworkspace)
+    (standardLoweringSetup r2_2_k r2_2_hk).pts (standardLoweringSetup r2_2_k r2_2_hk).hpts)
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
@@ -519,8 +515,7 @@ theorem r2_4b_hworkspace : CSignedRecursiveWorkspaceOK r2_4_ops r2_4_ctrlIdx r2_
 def r2_4b_real : LowGate :=
   lowerGateRec (standardCSignedPhaseLoweringPlan r2_4_k r2_4_hk r2_4_ctrlIdx r2_4_phi r2_4b_x
     r2_4b_z r2_4_ops
-    (standardLoweringSetup r2_4_k r2_4_hk).pts (standardLoweringSetup r2_4_k r2_4_hk).hpts
-    r2_4b_hworkspace)
+    (standardLoweringSetup r2_4_k r2_4_hk).pts (standardLoweringSetup r2_4_k r2_4_hk).hpts)
 
 set_option maxHeartbeats 1000000 in
 example :
@@ -546,8 +541,7 @@ theorem r2_4r_hworkspace : CSignedRecursiveWorkspaceOK r2_4_ops r2_4_ctrlIdx r2_
 def r2_4r_real : LowGate :=
   lowerGateRec (standardCSignedPhaseLoweringPlan r2_4_k r2_4_hk r2_4_ctrlIdx r2_4_phi r2_4r_x
     r2_4r_z r2_4_ops
-    (standardLoweringSetup r2_4_k r2_4_hk).pts (standardLoweringSetup r2_4_k r2_4_hk).hpts
-    r2_4r_hworkspace)
+    (standardLoweringSetup r2_4_k r2_4_hk).pts (standardLoweringSetup r2_4_k r2_4_hk).hpts)
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in
@@ -874,8 +868,7 @@ def r2_7pp3_real : LowGate :=
   lowerGateRec (standardSignedPhaseLoweringPlan r2_7pp3_k r2_7pp3_hk r2_7pp3_phi r2_7pp3_x r2_7pp3_z
     r2_7pp3_ops
     (standardLoweringSetup r2_7pp3_k r2_7pp3_hk).pts
-    (standardLoweringSetup r2_7pp3_k r2_7pp3_hk).hpts
-    r2_7pp3_hworkspace)
+    (standardLoweringSetup r2_7pp3_k r2_7pp3_hk).hpts)
 
 set_option maxHeartbeats 1000000 in
 example :
@@ -963,9 +956,8 @@ theorem r2_7c_hworkspace : SignedRecursiveWorkspaceOK r2_7c_ops r2_7c_x r2_7c_z 
   ⟨by native_decide, by native_decide, by native_decide⟩
 
 def r2_7c_real : LowGate :=
-  lowerSignedPhaseProdWithWorkspace r2_7c_k r2_7c_hk r2_7c_phi r2_7c_x r2_7c_z r2_7c_ops
+  lowerSignedPhaseProd r2_7c_k r2_7c_hk r2_7c_phi r2_7c_x r2_7c_z r2_7c_ops
     r2_7c_setup.pts r2_7c_setup.hpts
-    r2_7c_hworkspace
 
 set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 4000 in

@@ -1,10 +1,9 @@
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Config
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Model
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Statement
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Support
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Model
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Step1QPE
-import ForShor.ShorVerification.Implementation.Shared.Registers
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Registers
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
 
 open Shor

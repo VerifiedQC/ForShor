@@ -24,7 +24,7 @@ public surface a submissions repo builds against.
 
 Within `Implementation/`, the development has five parts:
 
-1. **Classical mathematics** — `Implementation/{PhaseProduct,Shor}/Math/`:
+1. **Classical mathematics** — `Implementation/PhaseProduct/Proofs/Math/`, `Implementation/Shor/Math/`:
    source-level arithmetic programs, Toom-Cook interpolation
    algebra, recurrence solving, and the classical Shor/factoring probability
    arguments.
@@ -85,7 +85,7 @@ states happen to be represented.
 
 ## Folder Guide and Main Results
 
-### `Implementation/{PhaseProduct,Shor}/Math/` — the mathematics
+### `Implementation/PhaseProduct/Proofs/Math/`, `Implementation/Shor/Math/` — the mathematics
 
 The non-circuit mathematics the verification needs: source-level arithmetic
 programs, Toom-Cook interpolation algebra, recurrence-solving facts, and
@@ -93,16 +93,16 @@ classical Shor/factoring probability arguments.
 
 Important parts:
 
-- `PhaseProduct/Math/Table_Generation/` defines a symbolic program language and
+- `PhaseProduct/Proofs/Math/Table_Generation/` defines a symbolic program language and
   synthesizes interpolation-table programs. Its main results show that
   generated programs are well formed, return to the original symbolic state,
   and cover the required phase-product interpolation points. Important names
   include `genOpsWithProduct_returns_to_original` and
   `genOpsWithProduct_PhaseProductCoverage` (`Table_Generation/Programs/WithProduct.lean`)
   and `phaseProductCoverage_peel_block` (`Table_Generation/Core/Coverage.lean`).
-- `PhaseProduct/Math/ToomCook.lean` proves the interpolation algebra used by
+- `PhaseProduct/Proofs/Math/ToomCook.lean` proves the interpolation algebra used by
   phase product. The key theorem is `interpCoeff_correct`.
-- `PhaseProduct/Math/MasterTheorem.lean` proves a shifted recurrence theorem
+- `PhaseProduct/Proofs/Math/MasterTheorem.lean` proves a shifted recurrence theorem
   used by the gate-count proof. The key endpoint is
   `shifted_master_theorem_exact_family`.
 - `Shor/Math/Factoring_Reduction/` contains the classical number-theoretic
@@ -126,12 +126,25 @@ Important parts:
 
 - `PhaseProduct/Proofs/Compiler/` proves correctness of the generated
   phase-product compiler. The layout, width scanner, annotations and compiler
-  state are defined next door in `PhaseProduct/Compiler/`
-  (`Layout.lean`, `Widths.lean`, `Coefficients.lean`, `Compile.lean`);
+  state are defined in `PhaseProduct/Statement.lean`;
   `WidthSoundness.lean`, `Allocation.lean`, `Body/` and `Interpolation.lean`
   prove the main ingredients, and `Correctness.lean` assembles them into
   `eval_compileOpsToSignedGate_correct` and the controlled analogue
   `eval_compileOpsToCSignedGate_correct`.
+
+  The compiler sizes each level's registers by a *width rule*, which a policy
+  carries (`ShorLoweringPolicy.widthRule`, default `.scan`): the scan
+  (`scanNeededWidths`), or the exact width (`Compiler/ExactWidth.lean`,
+  `ExactWidthBoxes.lean`). `neededWidthsBy R` and `compileOpsToSignedGateBy R`
+  take the rule. Each width-dependent compiler lemma has a `_by` form for
+  either rule, and the upstream lemma keeps its statement. The `_by` forms
+  of `Compilation.lean`, `Correctness.lean` and `PlanSemantics.lean` live in
+  `*Rule.lean` siblings, so those three files stay upstream's verbatim.
+  Policy-level definitions (plans, `Policy.reserveNeed`, `canonicalStep`)
+  read the rule from the policy.
+  `Proofs/Compiler/WidthSoundness.lean` proves allocation soundness for both
+  (`allocated_widths_sound_exact`), and `ExactWidthBound.lean` shows the exact
+  width is least and never above the scan.
 - `QFT/Proofs/Decomposition.lean` proves the high-level split identity for QFT:
   a QFT over a register can be expressed through right-half QFT, a phase
   product, left-half QFT, and radix reversal. The main results are
@@ -155,10 +168,9 @@ here.
 
 Important parts:
 
-- `PhaseProduct/Lowering/` defines plan-directed lowerings for signed and
-  controlled signed phase products (`Plan.lean`, `PlanBuilders.lean`,
-  `Lower.lean`), with the workspace/readiness predicates in
-  `PhaseProduct/Spec/`. `PhaseProduct/Proofs/Lowering/` proves them correct;
+- `PhaseProduct/Statement.lean` defines plan-directed lowerings for signed
+  and controlled signed phase products, with the workspace/readiness
+  predicates, and imports nothing else from `PhaseProduct/`. `PhaseProduct/Proofs/Lowering/` proves them correct;
   main endpoints are `evalL_lowerGateRec_correct` (`Lowering/PlanSemantics.lean`)
   and `standardSignedPhaseLoweringPlan_ready` /
   `standardCSignedPhaseLoweringPlan_ready`
@@ -209,6 +221,39 @@ The final gate-count result is that for every positive epsilon and delta, there
 exists a PhaseProduct program such that the lowered Shor order-finding circuit
 satisfies the asymptotic `shorGateRate epsilon n`, i.e. the intended
 `O(n^(2+epsilon))` bound.
+
+### `Implementation/QubitCount/` — qubits
+
+`QubitCount` defines the peak number of live qubits of a lowered circuit and
+proves an exact formula for it.
+
+Important parts:
+
+- `Statement.lean` defines the live-set walk (`QubitCount.after`,
+  `QubitCount.peak`), the count (`LowGate.peakQubits`, scratch included), and
+  the budgets `Policy.orderFindingPeak` and
+  `Policy.orderFindingPeakBalanced`, each by
+  fuel-bounded arithmetic the kernel evaluates directly: a table is read once
+  into its width map (`widthMap`, every slot's largest width as a max-plus
+  function of the initial chunk widths), and each recursion level is then a
+  `k × k` max-plus product.
+- `Proofs/Budgets.lean` holds the budgets in the walk's own shape
+  (`Rec.peakReserve` by well-founded recursion through the compiler's width
+  scan, `Rec.qftPeakOf` over the whole halving tree); `Proofs/Arith.lean`
+  proves them equal to the budgets of `Statement.lean`.
+- `Proofs/PhaseProduct.lean` and `Proofs/QFT.lean` prove the phase-product and
+  QFT peaks by induction over their lowering plans; `Proofs/Lowering.lean`
+  lifts them to `Policy.lowerGate`; `Proofs/ModMul.lean` and
+  `Proofs/OrderFinding.lean` assemble the order-finding circuit.
+- `Proofs/Balanced.lean` shows that balancing (`Reference/Balanced/`) changes
+  the walk only at the phase products, each of which then peaks as the site
+  it became (`sitePeakD`: the split, or the product itself when the
+  split does not fit). `Proofs/Formula.lean` combines the walk's formulas
+  with `Arith.lean` into the claims of `Statement.lean`.
+- `Main.lean` proves `Policy.orderFinding_peak_formula`,
+  `Policy.reference_peak_formula`, `reference_2048_peak`,
+  `reference_2048_peak_example`, `Policy.orderFinding_peak_formula_balanced`
+  and `reference_2048_peak_balanced`.
 
 ### `Implementation/Shor/` — the correctness assembly
 
@@ -272,6 +317,16 @@ a `ShorImplementation`. `Reference2048Headline.lean` instantiates
 `exists_shorGateCountBound` at the 2048-bit benchmark. The construction is
 generic in the table, which is what makes the four side conditions a complete
 acceptance test.
+
+`Reference/Balanced/` is a second construction choice for unequal operand
+widths, on top of the first: a gate-tree pass ahead of the unchanged
+equal-width core that pads the smaller operand or cuts the larger into
+blocks (`Defs.lean`, `Semantics.lean`), with
+`Policy.lowerGate_balance_correctness` (`Correctness.lean`) and
+`Shor_correct_approx_lowered_balanced_of_modExp_bound` (`Shor.lean`), and its
+reference instance (`Reference.lean`). Like the rest of `Reference/` it is
+generic in the policy. Nothing in the library imports it; it is built by
+`lean_lib Balanced` and used by `forshor_policy_submission --balanced`.
 
 ## The submission boundary
 

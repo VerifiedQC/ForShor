@@ -16,8 +16,16 @@ holds the lemmas that proof uses, and the single-table forms used by `Emit/`,
 controlled), and comparison and subtraction against a constant. `LowGate` has
 only elementary gates. The compiler walks the circuit, keeps sequencing and
 adjoints, copies elementary gates across, and replaces each high-level block
-by its subroutine's lowered circuit (`QFT/`, `PhaseProduct/`,
-`ModularExponentiation/`).
+by a lowered circuit: the QFT and phase products by those of `QFT/` and
+`PhaseProduct/`, and the constant comparison and subtraction by ones defined
+here.
+
+**Constant arithmetic.** Both use one spare qubit of a scratch register as the
+constant 1, copy the bits of N into the scratch register with one CNOT per set
+bit, and negate it to get −N. The comparison then adds the data register to
+the scratch register, copies the sign of data − N to the flag, and uncomputes.
+The subtraction controls the preparation of −N on the flag, adds the scratch
+register to the data register, and uncomputes.
 
 Those lowered circuits borrow spare qubits as scratch space. Each block
 therefore needs two things:
@@ -34,6 +42,11 @@ is the constant policy.
 ## `Statement.lean`
 
 The following explains each section of the code in the Statement.lean file
+
+**Constant arithmetic.** `lowerCmpGeConst` and `lowerCSubConst`, the lowered
+comparison and subtraction described above; `ConstArithmeticWorkspace`, the
+spare qubits and layout they need; and `CmpGeConstCleanState` /
+`CSubConstCleanState`, the condition that those spare qubits start at zero.
 
 **Static workspace condition.** `Policy.GateWorkspaceOK P G`: every high-level
 block in `G` has the spare qubits its lowerer needs under the policy `P`. The

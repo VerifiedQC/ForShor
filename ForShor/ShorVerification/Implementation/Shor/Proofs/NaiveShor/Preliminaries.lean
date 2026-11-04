@@ -1,9 +1,9 @@
 import ForShor.ShorVerification.Implementation.Shor.Proofs.NaiveShor.OrderFindingAnalysis
-import ForShor.ShorVerification.Implementation.Shared.Registers
-import ForShor.ShorVerification.Implementation.Shared.States
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Registers
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.States
 import ForShor.ShorVerification.Framework.Quantum.Measurement
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Statement
 
 /-!
 # Naive Shor Correctness

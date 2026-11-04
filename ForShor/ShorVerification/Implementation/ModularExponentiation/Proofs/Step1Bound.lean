@@ -1,6 +1,7 @@
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Step1QPE
-import ForShor.ShorVerification.Implementation.Shared.Registers
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Registers
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.QFT.Proofs.Macros
 
 /-!
 # Step-1 Main Bound

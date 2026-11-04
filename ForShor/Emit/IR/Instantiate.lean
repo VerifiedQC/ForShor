@@ -1,7 +1,8 @@
 import ForShor.Emit.IR.Syntax
 import ForShor.Emit.Lower.Decide
 import ForShor.ShorVerification.Framework.AbstractMachine.Gates
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.NaiveLeaf
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Gates.NaiveLeaf
 
 /-!
 # The extracted symbolic IR: instantiation

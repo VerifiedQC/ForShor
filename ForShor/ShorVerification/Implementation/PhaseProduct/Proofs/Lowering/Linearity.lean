@@ -1,6 +1,7 @@
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanSemantics
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.PlanBuilders
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanBuilders
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Cleanliness
 
 namespace Shor
 open Gate
@@ -56,18 +57,17 @@ lemma Policy.signedPlan_preserves_clean_of_ready
     (phi : Angle)
     (x z : ExtReg)
     (ψ : qs.State)
-    (hstatic : Policy.WorkspaceOK P x z)
     (hclean : RecursiveWorkspaceCleanState qs x z ψ)
-    (hready : PhaseLoweringReady qs (Policy.signedPlan P phi x z hstatic) ψ)
+    (hready : PhaseLoweringReady qs (Policy.signedPlan P phi x z) ψ)
     (hP : P.Admissible) :
     RecursiveWorkspaceCleanState qs x z
       (LowerGateClass.evalL (qs := qs)
-        (lowerGateRec (Policy.signedPlan P phi x z hstatic)) ψ) := by
+        (lowerGateRec (Policy.signedPlan P phi x z)) ψ) := by
   have heval :
       LowerGateClass.evalL (qs := qs)
-        (lowerGateRec (Policy.signedPlan P phi x z hstatic)) ψ
+        (lowerGateRec (Policy.signedPlan P phi x z)) ψ
       = qs.eval (Gate.SignedPhaseProd phi x z) ψ :=
-    evalL_lowerGateRec_correct (qs := qs) hP (Policy.signedPlan P phi x z hstatic) ψ hready
+    evalL_lowerGateRec_correct (qs := qs) hP (Policy.signedPlan P phi x z) ψ hready
   rw [heval]
   exact eval_SignedPhaseProd_preserves_recursiveWorkspaceClean qs phi x z hclean
 
@@ -86,20 +86,18 @@ lemma standardSignedPhaseLoweringPlan_preserves_clean_of_ready
     {pts : List Point}
     {hpts : pts.length = q k}
     (ψ : qs.State)
-    (hstatic : SignedRecursiveWorkspaceOK ops x z)
     (hclean : RecursiveWorkspaceCleanState qs x z ψ)
     (hready :
-      PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hstatic) ψ)
+      PhaseLoweringReady qs (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts) ψ)
     (hInterp : GoodToomCookPoints k pts hpts)
     (hC :
       ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state) :
     RecursiveWorkspaceCleanState qs x z
       (LowerGateClass.evalL (qs := qs)
-        (lowerGateRec (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hstatic)) ψ) :=
+        (lowerGateRec (standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts)) ψ) :=
   Policy.signedPlan_preserves_clean_of_ready qs
-    (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) phi x z ψ
-    (Policy.workspaceOK_const_iff.mpr hstatic) hclean hready
+    (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) phi x z ψ hclean hready
     (ShorLoweringPolicy.constPolicy_admissible ⟨hInterp, hC, hRun⟩)
 
 /-- Low-level evaluation of a recursive plan maps the zero state to zero. -/
@@ -114,7 +112,7 @@ lemma evalL_lowerGateRec_zero
     LowerGateClass.evalL (qs := qs) (lowerGateRec plan) 0 = 0 := by
   exact LowerGateClass.evalL_zero (qs := qs) (lowerGateRec plan)
 
-/-- Readiness is closed under the zero state. -/
+/-- A valid plan is ready on the zero state. -/
 lemma PhaseLoweringReady.zero
     (qs : QSemantics)
     [RegEncoding qs.Basis]
@@ -123,7 +121,8 @@ lemma PhaseLoweringReady.zero
     {P : ShorLoweringPolicy}
     {initSize : ℕ}
     {U : Gate}
-    (plan : PhaseLoweringPlan P initSize U) :
+    (plan : PhaseLoweringPlan P initSize U)
+    (hv : plan.Valid) :
     PhaseLoweringReady qs plan 0 := by
   induction plan with
   | id initSize =>
@@ -134,9 +133,9 @@ lemma PhaseLoweringReady.zero
           ∧
         PhaseLoweringReady qs right (LowerGateClass.evalL (qs := qs) (lowerGateRec left) 0)
       constructor
-      · exact ihLeft
+      · exact ihLeft hv.1
       · rw [evalL_lowerGateRec_zero]
-        exact ihRight
+        exact ihRight hv.2
   | H initSize qbit =>
       trivial
   | X initSize qbit =>
@@ -159,25 +158,26 @@ lemma PhaseLoweringReady.zero
       trivial
   | RadixReverse initSize r m =>
       trivial
-  | signedBase phi x z hstop =>
+  | signedBase phi x z =>
       trivial
   | signedStep
-      phi x z T hT layout hrec hcapacity child ihChild =>
+      phi x z T layout child ihChild =>
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) 0
+        SignedStepOK P x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) 0
           ∧
         PhaseLoweringReady qs child 0
-      exact ⟨CleanClosure.zero, ihChild⟩
-  | cSignedBase ctrl phi x z hstop =>
+      exact ⟨hv.1, CleanClosure.zero, ihChild hv.2⟩
+  | cSignedBase ctrl phi x z =>
       trivial
   | cSignedStep
-      ctrl phi x z T hT layout
-      hrec hcapacity hctrl child ihChild =>
+      ctrl phi x z T layout child ihChild =>
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) 0
+        CSignedStepOK P ctrl x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) 0
           ∧
         PhaseLoweringReady qs child 0
-      exact ⟨CleanClosure.zero, ihChild⟩
+      exact ⟨hv.1, CleanClosure.zero, ihChild hv.2⟩
 
 /-- Low-level evaluation of a recursive plan is additive. -/
 lemma evalL_lowerGateRec_add
@@ -254,49 +254,54 @@ lemma PhaseLoweringReady.add
       trivial
   | RadixReverse initSize r m =>
       trivial
-  | signedBase phase x z hstop =>
+  | signedBase phase x z =>
       trivial
   | signedStep
-      phase x z T hT layout hrec hcapacity child ihChild =>
+      phase x z T layout child ihChild =>
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ
+        SignedStepOK P x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) ψ
           ∧
         PhaseLoweringReady qs child ψ
         at hψ
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) φ
+        SignedStepOK P x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) φ
           ∧
         PhaseLoweringReady qs child φ
         at hφ
-      rcases hψ with ⟨hψClean, hψChild⟩
-      rcases hφ with ⟨hφClean, hφChild⟩
+      rcases hψ with ⟨hok, hψClean, hψChild⟩
+      rcases hφ with ⟨-, hφClean, hφChild⟩
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) (ψ + φ)
+        SignedStepOK P x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) (ψ + φ)
           ∧
         PhaseLoweringReady qs child (ψ + φ)
-      exact ⟨CleanClosure.add hψClean hφClean, ihChild hψChild hφChild⟩
-  | cSignedBase ctrl phase x z hstop =>
+      exact ⟨hok, CleanClosure.add hψClean hφClean, ihChild hψChild hφChild⟩
+  | cSignedBase ctrl phase x z =>
       trivial
   | cSignedStep
-      ctrl phase x z T hT layout
-      hrec hcapacity hctrl child ihChild =>
+      ctrl phase x z T layout child ihChild =>
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ
+        CSignedStepOK P ctrl x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) ψ
           ∧
         PhaseLoweringReady qs child ψ
         at hψ
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) φ
+        CSignedStepOK P ctrl x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) φ
           ∧
         PhaseLoweringReady qs child φ
         at hφ
-      rcases hψ with ⟨hψClean, hψChild⟩
-      rcases hφ with ⟨hφClean, hφChild⟩
+      rcases hψ with ⟨hok, hψClean, hψChild⟩
+      rcases hφ with ⟨-, hφClean, hφChild⟩
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) (ψ + φ)
+        CSignedStepOK P ctrl x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) (ψ + φ)
           ∧
         PhaseLoweringReady qs child (ψ + φ)
-      exact ⟨CleanClosure.add hψClean hφClean, ihChild hψChild hφChild⟩
+      exact ⟨hok, CleanClosure.add hψClean hφClean, ihChild hψChild hφChild⟩
 
 /-- Low-level evaluation of a recursive plan commutes with scalar multiplication. -/
 lemma evalL_lowerGateRec_smul
@@ -367,36 +372,39 @@ lemma PhaseLoweringReady.smul
       trivial
   | RadixReverse initSize r m =>
       trivial
-  | signedBase phase x z hstop =>
+  | signedBase phase x z =>
       trivial
   | signedStep
-      phase x z T hT layout hrec hcapacity child ihChild =>
+      phase x z T layout child ihChild =>
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ
+        SignedStepOK P x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) ψ
           ∧
         PhaseLoweringReady qs child ψ
         at hψ
-      rcases hψ with ⟨hClean, hChild⟩
+      rcases hψ with ⟨hok, hClean, hChild⟩
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) (a • ψ)
+        SignedStepOK P x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) (a • ψ)
           ∧
         PhaseLoweringReady qs child (a • ψ)
-      exact ⟨CleanClosure.smul a hClean, ihChild hChild⟩
-  | cSignedBase ctrl phase x z hstop =>
+      exact ⟨hok, CleanClosure.smul a hClean, ihChild hChild⟩
+  | cSignedBase ctrl phase x z =>
       trivial
   | cSignedStep
-      ctrl phase x z T hT layout
-      hrec hcapacity hctrl child ihChild =>
+      ctrl phase x z T layout child ihChild =>
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ
+        CSignedStepOK P ctrl x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) ψ
           ∧
         PhaseLoweringReady qs child ψ
         at hψ
-      rcases hψ with ⟨hClean, hChild⟩
+      rcases hψ with ⟨hok, hClean, hChild⟩
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) (a • ψ)
+        CSignedStepOK P ctrl x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) (a • ψ)
           ∧
         PhaseLoweringReady qs child (a • ψ)
-      exact ⟨CleanClosure.smul a hClean, ihChild hChild⟩
+      exact ⟨hok, CleanClosure.smul a hClean, ihChild hChild⟩
 
 end Shor

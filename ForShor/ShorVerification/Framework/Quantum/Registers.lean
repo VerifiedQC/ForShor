@@ -16,7 +16,7 @@ verification:
 * two's-complement and signed-width definitions.
 
 Derived register laws and proof helpers live in
-`Implementation/Shared/Registers.lean`; Framework does not import them.
+`Implementation/PhaseProduct/Proofs/Registers.lean`; Framework does not import them.
 -/
 
 universe u

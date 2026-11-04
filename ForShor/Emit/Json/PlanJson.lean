@@ -50,42 +50,42 @@ partial def planJson {P : ShorLoweringPolicy} {initSize : ℕ} {U : Gate} :
       Json.mkObj [("op", Json.str "signDealloc"), ("r", extRegJson r), ("n", (n : Json))]
   | .RadixReverse _ r m =>
       Json.mkObj [("op", Json.str "RadixReverse"), ("r", regJson r), ("m", (m : Json))]
-  | .signedBase phi x z _ =>
+  | .signedBase phi x z =>
       Json.mkObj [
         ("op", Json.str "NaiveSignedPhaseProd"),
         ("phi", angleJson phi), ("x", extRegJson x), ("z", extRegJson z),
         ("expansion", lowGateJson (LowGate.Naive_SignedPhaseProd phi x z))
       ]
-  | .signedStep phi x z T _hT _layout _hrec _hcapacity child =>
+  | .signedStep phi x z T _layout child =>
       Json.mkObj [
         ("op", Json.str "SignedPhaseProd"),
         ("phi", angleJson phi), ("x", extRegJson x), ("z", extRegJson z),
         ("input_size", (initSize : Json)),
-        ("next_width", ((nextSignedWidth x z T.ops : ℕ) : Json)),
+        ("next_width", ((nextSignedWidthBy P.widthRule x z T.ops : ℕ) : Json)),
         ("limb_width", ((phaseLimbWidth x z T.k : ℕ) : Json)),
         ("coeffs",
           Json.arr
             (((List.finRange (q T.k)).map
-              (fun l => ratJson (loweringPhaseCoeff T.k x z T.pts T.hpts l))).toArray)),
+              (fun l => ratJson (cramerCoeffFromPtsWidth T.k (phaseLimbWidth x z T.k) T.pts T.hpts l))).toArray)),
         ("body", planJson child)
       ]
-  | .cSignedBase ctrl phi x z _ =>
+  | .cSignedBase ctrl phi x z =>
       Json.mkObj [
         ("op", Json.str "NaiveCSignedPhaseProd"),
         ("ctrl", (ctrl : Json)), ("phi", angleJson phi), ("x", extRegJson x), ("z", extRegJson z),
         ("expansion", lowGateJson (LowGate.Naive_CSignedPhaseProd ctrl phi x z))
       ]
-  | .cSignedStep ctrl phi x z T _hT _layout _hrec _hcapacity _hctrl child =>
+  | .cSignedStep ctrl phi x z T _layout child =>
       Json.mkObj [
         ("op", Json.str "CSignedPhaseProd"),
         ("ctrl", (ctrl : Json)), ("phi", angleJson phi), ("x", extRegJson x), ("z", extRegJson z),
         ("input_size", (initSize : Json)),
-        ("next_width", ((nextSignedWidth x z T.ops : ℕ) : Json)),
+        ("next_width", ((nextSignedWidthBy P.widthRule x z T.ops : ℕ) : Json)),
         ("limb_width", ((phaseLimbWidth x z T.k : ℕ) : Json)),
         ("coeffs",
           Json.arr
             (((List.finRange (q T.k)).map
-              (fun l => ratJson (loweringPhaseCoeff T.k x z T.pts T.hpts l))).toArray)),
+              (fun l => ratJson (cramerCoeffFromPtsWidth T.k (phaseLimbWidth x z T.k) T.pts T.hpts l))).toArray)),
         ("body", planJson child)
       ]
 

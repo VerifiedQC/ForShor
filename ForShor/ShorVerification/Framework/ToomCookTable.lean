@@ -206,7 +206,7 @@ structure ProgConsumesPtsSafe {k : ℕ} (hk : k > 0) (σ : State k) (ops : Prog 
 
 /-! =========================================================
     Interpolation, C1 and C2
-    (`Math/ToomCook.lean`, `Compiler/Coefficients.lean`)
+    (`PhaseProduct/Proofs/Math/ToomCook.lean`, `PhaseProduct/Proofs/Compiler/Coefficients.lean`)
 ========================================================= -/
 
 namespace ToomCookMath

@@ -3,7 +3,7 @@ import Mathlib.Analysis.SpecialFunctions.Complex.Circle
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
 import ForShor.ShorVerification.Implementation.Shor.Proofs.NaiveShor.ContinuedFractions
 import ForShor.ShorVerification.Framework.AbstractMachine.Gates
-import ForShor.ShorVerification.Implementation.Shared.QftPhase
+import ForShor.ShorVerification.Implementation.QFT.Proofs.QftPhase
 
 /-!
 # NaiveShor — order-finding analysis

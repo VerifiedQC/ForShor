@@ -1,15 +1,16 @@
 import ForShor.ShorVerification.Implementation.QFT.Statement
 import ForShor.ShorVerification.Implementation.QFT.Proofs.Lowering.PlanSemantics
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.PlanBuilders
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
-import ForShor.ShorVerification.Implementation.Shared.States
-import ForShor.ShorVerification.Implementation.Shared.Registers
-import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Coefficients
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Workspace
+import ForShor.ShorVerification.Implementation.QFT.Proofs.Macros
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Plan
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanBuilders
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Cleanliness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Readiness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.States
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Registers
+import ForShor.ShorVerification.Implementation.QFT.Proofs.MacroSemantics
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanReadiness.RecursiveReadiness
 
 /-!
@@ -179,7 +180,7 @@ theorem Policy.phaseProdUsingPlan_ready_and_clean
     (hxReserve : ws.xReserve = xWork) (hzReserve : ws.zReserve = zWork) (ψ : qs.State)
     (hstatic : Policy.WorkspaceOK P (ws.xExt.grow 1) (ws.zExt.grow 1))
     (hclean : QFTWorkspaceCleanState qs xWork zWork ψ) :
-    let plan := Policy.phaseProdUsingPlan P phi ws hstatic
+    let plan := Policy.phaseProdUsingPlan P phi ws
     PhaseLoweringReady qs plan ψ
       ∧
     QFTWorkspaceCleanState qs xWork zWork
@@ -187,7 +188,7 @@ theorem Policy.phaseProdUsingPlan_ready_and_clean
   dsimp only
 
   let signedPlan :=
-    Policy.signedPlan P phi (ws.xExt.grow 1) (ws.zExt.grow 1) hstatic
+    Policy.signedPlan P phi (ws.xExt.grow 1) (ws.zExt.grow 1)
 
   have hsignedClean : RecursiveWorkspaceCleanState qs (ws.xExt.grow 1) (ws.zExt.grow 1) ψ :=
     QFTWorkspaceCleanState.signedCleanState qs ws hxReserve hzReserve hclean
@@ -201,7 +202,7 @@ theorem Policy.phaseProdUsingPlan_ready_and_clean
       (ws.xExt.grow 1) (ws.zExt.grow 1) ψ hstatic hsignedClean
 
   have hready :
-      PhaseLoweringReady qs (Policy.phaseProdUsingPlan P phi ws hstatic) ψ := by
+      PhaseLoweringReady qs (Policy.phaseProdUsingPlan P phi ws) ψ := by
     -- The plan is `zeroExtend ; zeroExtend ; signedPlan ; zeroDealloc ; zeroDealloc`, up to
     -- casts along definitionally equal plan types, so its readiness is a five-way
     -- conjunction whose only non-trivial part is `signedPlan`'s, at the state after the two
@@ -215,11 +216,11 @@ theorem Policy.phaseProdUsingPlan_ready_and_clean
   ·
     have heval :
         LowerGateClass.evalL (qs := qs)
-            (lowerGateRec (Policy.phaseProdUsingPlan P phi ws hstatic)) ψ
+            (lowerGateRec (Policy.phaseProdUsingPlan P phi ws)) ψ
           =
         qs.eval (Gate.PhaseProdUsing phi x z ws) ψ := by
       exact evalL_lowerGateRec_correct (qs := qs) hP
-        (Policy.phaseProdUsingPlan P phi ws hstatic) ψ hready
+        (Policy.phaseProdUsingPlan P phi ws) ψ hready
 
     rw [heval]
     exact eval_PhaseProdUsing_preserves_QFTWorkspaceCleanState
@@ -349,8 +350,7 @@ theorem Policy.qftPlan_ready_and_clean_explicit
       have hleft :=
         Policy.qftPlan_ready_and_clean_explicit qs P hP (leftReg data) xWork zWork
           (LowerGateClass.evalL (qs := qs)
-            (lowerGateRec (Policy.phaseProdUsingPlan P (qftPhi (regSize data)) ws
-              hphaseStatic))
+            (lowerGateRec (Policy.phaseProdUsingPlan P (qftPhi (regSize data)) ws))
             (LowerGateClass.evalL (qs := qs)
               (lowerQFTPlan (Policy.qftPlan P (rightReg data) xWork zWork
                 (hstatic.right hlarge))) ψ))
@@ -371,7 +371,7 @@ theorem Policy.qftPlan_ready_and_clean_explicit
             ψ
             ∧
           PhaseLoweringReady qs
-            (Policy.phaseProdUsingPlan P (qftPhi (regSize data)) ws hphaseStatic)
+            (Policy.phaseProdUsingPlan P (qftPhi (regSize data)) ws)
             (LowerGateClass.evalL (qs := qs)
               (lowerQFTPlan (Policy.qftPlan P (rightReg data) xWork zWork
                 (hstatic.right hlarge))) ψ)
@@ -379,8 +379,7 @@ theorem Policy.qftPlan_ready_and_clean_explicit
           QFTLoweringReady qs
             (Policy.qftPlan P (leftReg data) xWork zWork (hstatic.left hlarge))
             (LowerGateClass.evalL (qs := qs)
-              (lowerGateRec (Policy.phaseProdUsingPlan P (qftPhi (regSize data)) ws
-                hphaseStatic))
+              (lowerGateRec (Policy.phaseProdUsingPlan P (qftPhi (regSize data)) ws))
               (LowerGateClass.evalL (qs := qs)
                 (lowerQFTPlan (Policy.qftPlan P (rightReg data) xWork zWork
                   (hstatic.right hlarge))) ψ))

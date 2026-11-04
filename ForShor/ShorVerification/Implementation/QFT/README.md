@@ -29,6 +29,13 @@ in standard order.
 
 The following explains each section of the code in the Statement.lean file
 
+**Unsigned phase-product macros.** `PhaseProdWorkspace` (one spare qubit
+next to each operand), `PhaseProdUsing` and its controlled form
+`CPhaseProdUsing`: zero-extend both operands by that qubit, run the signed
+phase product, and release the qubits. The QFT's middle step is a
+`PhaseProdUsing`; `ModularExponentiation/Statement.lean` imports this file for
+`CPhaseProdUsing` and `PhaseProdWorkspace.ofExtRegs`.
+
 **Workspace budget.** The number of ancillas the full recursion needs for an
 `n`-qubit register, split between the two ancilla registers the phase product uses. Since
 the steps run in sequence and reuse ancillas, it is the maximum over the

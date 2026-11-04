@@ -1,6 +1,7 @@
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Coefficients
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Compile
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Plan
 import ForShor.ShorVerification.Implementation.Reference.StandardLoweringSetup
 
 /-!

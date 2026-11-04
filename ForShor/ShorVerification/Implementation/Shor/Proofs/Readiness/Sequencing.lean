@@ -1,6 +1,7 @@
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
 import ForShor.ShorVerification.Implementation.Shor.Statement
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.QFT.Proofs.Macros
 import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic

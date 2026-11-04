@@ -1,6 +1,6 @@
 import ForShor.ShorVerification.Implementation.Shor.Statement
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Support
-import ForShor.ShorVerification.Implementation.Shared.Registers
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Registers
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Workspace
 
 /-!

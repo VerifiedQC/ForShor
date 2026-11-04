@@ -1,5 +1,5 @@
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.WidthSoundness
-import ForShor.ShorVerification.Implementation.Shared.GateLaws
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.GateLaws
 
 /-!
 # Phase-Product Allocation Correctness
@@ -51,6 +51,25 @@ lemma stFinal_zslot_eq_grow
   simp [targetSignedLayoutState, growExtRegTo]
 
 /-- The scanned target `x` slot strictly grows beyond its initial width. -/
+lemma extraDelta_xslot_pos_by
+    (R : WidthRule)
+    {x z : ExtReg}
+    {k : ℕ}
+    (layout : Gate.PhaseProductLayout x z k)
+    (ops : Prog k)
+    (i : Fin k)
+    (hcap : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy R x z ops)) :
+    let stInit := initSignedLayoutState layout
+    let stFinal := targetSignedLayoutState stInit (neededWidthsBy R x z ops)
+    0 < extraDelta (stInit.xslot i) (stFinal.xslot i) := by
+  dsimp
+  unfold extraDelta
+  rw [targetSignedLayoutState_xslot_width_by R layout ops i hcap, stInit_xslot_width layout i]
+  have hscan := (neededWidthsBy_ge_init R x z ops i).1
+  have hneed := (commonNeededWidth_gt (neededWidthsBy R x z ops) i).1
+  omega
+
+/-- The scanned target `x` slot strictly grows beyond its initial width. -/
 lemma extraDelta_xslot_pos
     {x z : ExtReg}
     {k : ℕ}
@@ -60,13 +79,8 @@ lemma extraDelta_xslot_pos
     (hcap : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops)) :
     let stInit := initSignedLayoutState layout
     let stFinal := targetSignedLayoutState stInit (scanNeededWidths x z ops)
-    0 < extraDelta (stInit.xslot i) (stFinal.xslot i) := by
-  dsimp
-  unfold extraDelta
-  rw [targetSignedLayoutState_xslot_width_scan layout ops i hcap, stInit_xslot_width layout i]
-  have hscan := scanNeededWidths_x_ge_init x z ops i
-  have hneed := commonNeededWidth_ge_xneed (scanNeededWidths x z ops) i
-  omega
+    0 < extraDelta (stInit.xslot i) (stFinal.xslot i) :=
+  extraDelta_xslot_pos_by .scan layout ops i hcap
 
 /-! =========================================================
     Disjointness, Freshness, And Source Reads
@@ -90,7 +104,7 @@ lemma ExtReg.activeDisjoint_of_ownedDisjoint_right_grow {a b : ExtReg} (h : ExtR
   intro q hqa hqGrow
   have hqb : q ∈ b.ownedQubits := by
     have : q ∈ (b.grow n).ownedQubits := List.mem_append_left _ hqGrow
-    simpa [ExtReg.ownedQubits_grow] using this
+    simpa [Gate.ExtReg.ownedQubits_grow] using this
   exact h (List.mem_append_left _ hqa) hqb
 
 /-- Fresh reserve bits of one owned-disjoint register are active-disjoint from a grown other register. -/
@@ -101,7 +115,7 @@ lemma ExtReg.activeDisjoint_newBits_of_ownedDisjoint_right_grow
   have hqa : q ∈ a.ownedQubits := List.mem_append_right _ (List.mem_of_mem_take hqNew)
   have hqb : q ∈ b.ownedQubits := by
     have : q ∈ (b.grow n).ownedQubits := List.mem_append_left _ hqGrow
-    simpa [ExtReg.ownedQubits_grow] using this
+    simpa [Gate.ExtReg.ownedQubits_grow] using this
   exact h hqa hqb
 
 /-- Reserve freshness still required for chunks whose index is at least `n`. -/
@@ -174,6 +188,25 @@ lemma sourceChunkZInt_eq_of_toNat_eq
   by_cases htop : isTopChunk i <;> simp [htop, extToInt, h]
 
 /-- The scanned target `z` slot strictly grows beyond its initial width. -/
+lemma extraDelta_zslot_pos_by
+    (R : WidthRule)
+    {x z : ExtReg}
+    {k : ℕ}
+    (layout : Gate.PhaseProductLayout x z k)
+    (ops : Prog k)
+    (i : Fin k)
+    (hcap : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy R x z ops)) :
+    let stInit := initSignedLayoutState layout
+    let stFinal := targetSignedLayoutState stInit (neededWidthsBy R x z ops)
+    0 < extraDelta (stInit.zslot i) (stFinal.zslot i) := by
+  dsimp
+  unfold extraDelta
+  rw [targetSignedLayoutState_zslot_width_by R layout ops i hcap, stInit_zslot_width layout i]
+  have hscan := (neededWidthsBy_ge_init R x z ops i).2
+  have hneed := (commonNeededWidth_gt (neededWidthsBy R x z ops) i).2
+  omega
+
+/-- The scanned target `z` slot strictly grows beyond its initial width. -/
 lemma extraDelta_zslot_pos
     {x z : ExtReg}
     {k : ℕ}
@@ -183,13 +216,8 @@ lemma extraDelta_zslot_pos
     (hcap : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops)) :
     let stInit := initSignedLayoutState layout
     let stFinal := targetSignedLayoutState stInit (scanNeededWidths x z ops)
-    0 < extraDelta (stInit.zslot i) (stFinal.zslot i) := by
-  dsimp
-  unfold extraDelta
-  rw [targetSignedLayoutState_zslot_width_scan layout ops i hcap, stInit_zslot_width layout i]
-  have hscan := scanNeededWidths_z_ge_init x z ops i
-  have hneed := commonNeededWidth_ge_zneed (scanNeededWidths x z ops) i
-  omega
+    0 < extraDelta (stInit.zslot i) (stFinal.zslot i) :=
+  extraDelta_zslot_pos_by .scan layout ops i hcap
 
 /-! =========================================================
     Single-Chunk Allocation Correctness
@@ -200,8 +228,9 @@ lemma extraDelta_zslot_pos
     grown slot keep their raw values.
 ========================================================= -/
 
-/-- Correctness of allocating one `x` chunk. -/
-lemma eval_allocChunkGate_x_ket
+/-- For either width rule `R`: Correctness of allocating one `x` chunk. -/
+lemma eval_allocChunkGate_x_ket_by
+    (R : WidthRule)
   (qs : QSemantics)
   [RegEncoding qs.Basis]
   [GateSemanticsFacts qs]
@@ -211,12 +240,12 @@ lemma eval_allocChunkGate_x_ket
   (ops : Prog k)
   (i : Fin k)
   (bcur : qs.Basis)
-  (hcap : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
+  (hcap : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy R x z ops))
   (hfresh :
-    let need := scanNeededWidths x z ops
+    let need := neededWidthsBy R x z ops
     let stInit := initSignedLayoutState layout
     ExtReg.FreshFor (stInit.xslot i) (commonNeededWidth need - (stInit.xslot i).width) bcur) :
-  let need : NeededWidths k := scanNeededWidths x z ops
+  let need : NeededWidths k := neededWidthsBy R x z ops
   let stInit : LayoutState k := initSignedLayoutState layout
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   ∃ bX : qs.Basis,
@@ -225,16 +254,16 @@ lemma eval_allocChunkGate_x_ket
     (∀ e : ExtReg, ExtReg.ActiveDisjoint e (stFinal.xslot i) →
       ExtReg.toNat e bX = ExtReg.toNat e bcur) := by
   dsimp
-  let need : NeededWidths k := scanNeededWidths x z ops
+  let need : NeededWidths k := neededWidthsBy R x z ops
   let stInit : LayoutState k := initSignedLayoutState layout
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   let δ : ℕ := extraDelta (stInit.xslot i) (stFinal.xslot i)
   have hδpos : 0 < δ := by
-    simpa [δ, need, stInit, stFinal] using extraDelta_xslot_pos layout ops i hcap
+    simpa [δ, need, stInit, stFinal] using extraDelta_xslot_pos_by (R := R) layout ops i hcap
   have hδne : δ ≠ 0 := Nat.ne_of_gt hδpos
   have hδeq : δ = commonNeededWidth need - (stInit.xslot i).width := by
     unfold δ extraDelta
-    rw [targetSignedLayoutState_xslot_width_scan layout ops i hcap]
+    rw [targetSignedLayoutState_xslot_width_by R layout ops i hcap]
   have hslot : stFinal.xslot i = (stInit.xslot i).grow δ := by
     simpa [stInit, stFinal, need, hδeq] using stFinal_xslot_eq_grow layout need i
   have hcapδ : (stInit.xslot i).CanGrow δ := by
@@ -278,8 +307,8 @@ lemma eval_allocChunkGate_x_ket
     · intro e _he
       rfl
 
-/-- Correctness of allocating one `z` chunk. -/
-lemma eval_allocChunkGate_z_ket
+/-- Correctness of allocating one `x` chunk. -/
+lemma eval_allocChunkGate_x_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis]
   [GateSemanticsFacts qs]
@@ -293,11 +322,38 @@ lemma eval_allocChunkGate_z_ket
   (hfresh :
     let need := scanNeededWidths x z ops
     let stInit := initSignedLayoutState layout
+    ExtReg.FreshFor (stInit.xslot i) (commonNeededWidth need - (stInit.xslot i).width) bcur) :
+  let need : NeededWidths k := scanNeededWidths x z ops
+  let stInit : LayoutState k := initSignedLayoutState layout
+  let stFinal : LayoutState k := targetSignedLayoutState stInit need
+  ∃ bX : qs.Basis,
+    qs.eval (allocChunkGate i (stInit.xslot i) (stFinal.xslot i)) (qs.ket bcur) = qs.ket bX ∧
+    extToInt (stFinal.xslot i) bX = sourceChunkXInt (qs := qs) stInit i bcur ∧
+    (∀ e : ExtReg, ExtReg.ActiveDisjoint e (stFinal.xslot i) →
+      ExtReg.toNat e bX = ExtReg.toNat e bcur) :=
+  eval_allocChunkGate_x_ket_by .scan qs layout ops i bcur hcap hfresh
+
+/-- For either width rule `R`: Correctness of allocating one `z` chunk. -/
+lemma eval_allocChunkGate_z_ket_by
+    (R : WidthRule)
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [GateSemanticsFacts qs]
+  {k : ℕ}
+  {x z : ExtReg}
+  (layout : Gate.PhaseProductLayout x z k)
+  (ops : Prog k)
+  (i : Fin k)
+  (bcur : qs.Basis)
+  (hcap : (initSignedLayoutState layout).CanGrowToNeeds (neededWidthsBy R x z ops))
+  (hfresh :
+    let need := neededWidthsBy R x z ops
+    let stInit := initSignedLayoutState layout
     ExtReg.FreshFor
       (stInit.zslot i)
       (commonNeededWidth need - (stInit.zslot i).width)
       bcur) :
-  let need : NeededWidths k := scanNeededWidths x z ops
+  let need : NeededWidths k := neededWidthsBy R x z ops
   let stInit : LayoutState k := initSignedLayoutState layout
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   ∃ bZ : qs.Basis,
@@ -306,16 +362,16 @@ lemma eval_allocChunkGate_z_ket
     (∀ e : ExtReg, ExtReg.ActiveDisjoint e (stFinal.zslot i) →
       ExtReg.toNat e bZ = ExtReg.toNat e bcur) := by
   dsimp
-  let need : NeededWidths k := scanNeededWidths x z ops
+  let need : NeededWidths k := neededWidthsBy R x z ops
   let stInit : LayoutState k := initSignedLayoutState layout
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   let δ : ℕ := extraDelta (stInit.zslot i) (stFinal.zslot i)
   have hδpos : 0 < δ := by
-    simpa [δ, need, stInit, stFinal] using extraDelta_zslot_pos layout ops i hcap
+    simpa [δ, need, stInit, stFinal] using extraDelta_zslot_pos_by (R := R) layout ops i hcap
   have hδne : δ ≠ 0 := Nat.ne_of_gt hδpos
   have hδeq : δ = commonNeededWidth need - (stInit.zslot i).width := by
     unfold δ extraDelta
-    rw [targetSignedLayoutState_zslot_width_scan layout ops i hcap]
+    rw [targetSignedLayoutState_zslot_width_by R layout ops i hcap]
   have hslot : stFinal.zslot i = (stInit.zslot i).grow δ := by
     simpa [stInit, stFinal, need, hδeq] using stFinal_zslot_eq_grow layout need i
   have hcapδ : (stInit.zslot i).CanGrow δ := by
@@ -364,6 +420,35 @@ lemma eval_allocChunkGate_z_ket
     · intro e _he
       rfl
 
+/-- Correctness of allocating one `z` chunk. -/
+lemma eval_allocChunkGate_z_ket
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [GateSemanticsFacts qs]
+  {k : ℕ}
+  {x z : ExtReg}
+  (layout : Gate.PhaseProductLayout x z k)
+  (ops : Prog k)
+  (i : Fin k)
+  (bcur : qs.Basis)
+  (hcap : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z ops))
+  (hfresh :
+    let need := scanNeededWidths x z ops
+    let stInit := initSignedLayoutState layout
+    ExtReg.FreshFor
+      (stInit.zslot i)
+      (commonNeededWidth need - (stInit.zslot i).width)
+      bcur) :
+  let need : NeededWidths k := scanNeededWidths x z ops
+  let stInit : LayoutState k := initSignedLayoutState layout
+  let stFinal : LayoutState k := targetSignedLayoutState stInit need
+  ∃ bZ : qs.Basis,
+    qs.eval (allocChunkGate i (stInit.zslot i) (stFinal.zslot i)) (qs.ket bcur) = qs.ket bZ ∧
+    extToInt (stFinal.zslot i) bZ = sourceChunkZInt (qs := qs) stInit i bcur ∧
+    (∀ e : ExtReg, ExtReg.ActiveDisjoint e (stFinal.zslot i) →
+      ExtReg.toNat e bZ = ExtReg.toNat e bcur) :=
+  eval_allocChunkGate_z_ket_by .scan qs layout ops i bcur hcap hfresh
+
 /-! =========================================================
     Allocation Prefix Induction
 
@@ -372,22 +457,24 @@ lemma eval_allocChunkGate_z_ket
     unallocated slots, and freshness for all remaining reserve slices.
 ========================================================= -/
 
-/-- Prefix allocation creates a basis state with allocated slot values and remaining cleanliness. -/
-lemma eval_compileSignedAllocationsAux_ket
+/-- For either width rule `R`: Prefix allocation creates a basis state with allocated slot values and remaining cleanliness. -/
+lemma eval_compileSignedAllocationsAux_ket_by
+    (R : WidthRule)
   (qs : QSemantics)
   [RegEncoding qs.Basis]
   [GateSemanticsFacts qs]
   {k : ℕ}
   {x z : ExtReg}
   (layout : Gate.PhaseProductLayout x z k)
+  (hlayout : layout.Valid)
   (ops : Prog k)
   (b : qs.Basis)
   (hworkspace :
     CompilerWorkspaceOK
       (initSignedLayoutState layout)
-      (scanNeededWidths x z ops)
+      (neededWidthsBy R x z ops)
       b) :
-  let need : NeededWidths k := scanNeededWidths x z ops
+  let need : NeededWidths k := neededWidthsBy R x z ops
   let stInit : LayoutState k := initSignedLayoutState layout
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   ∀ (n : ℕ) (hn : n ≤ k),
@@ -407,13 +494,13 @@ lemma eval_compileSignedAllocationsAux_ket
           sourceChunkZInt (qs := qs) stInit i b) ∧
       RemainingClean stInit need n bAlloc := by
   dsimp
-  let need : NeededWidths k := scanNeededWidths x z ops
+  let need : NeededWidths k := neededWidthsBy R x z ops
   let stInit : LayoutState k := initSignedLayoutState layout
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   let Wwork : ℕ := commonNeededWidth need
   have hcap : stInit.CanGrowToNeeds need := by simpa [stInit, need] using! hworkspace.1
-  have hInitOwned : stInit.OwnedPairwiseDisjoint := by simpa [stInit] using initSignedLayoutState_owned_disjoint layout
-  have hFinalOwned : stFinal.OwnedPairwiseDisjoint := by simpa [stInit, stFinal, need] using targetSignedLayoutState_owned_disjoint layout need
+  have hInitOwned : stInit.OwnedPairwiseDisjoint := by simpa [stInit] using initSignedLayoutState_owned_disjoint hlayout
+  have hFinalOwned : stFinal.OwnedPairwiseDisjoint := by simpa [stInit, stFinal, need] using targetSignedLayoutState_owned_disjoint hlayout need
   intro n hn
   induction n with
   | zero =>
@@ -426,7 +513,7 @@ lemma eval_compileSignedAllocationsAux_ket
       · simpa [stInit, need] using
           remainingClean_zero_of_workspaceOK
             (src := initSignedLayoutState layout)
-            (need := scanNeededWidths x z ops)
+            (need := neededWidthsBy R x z ops)
             (b := b)
             hworkspace
   | succ n ih =>
@@ -437,7 +524,7 @@ lemma eval_compileSignedAllocationsAux_ket
       have hxFresh : ExtReg.FreshFor (stInit.xslot idx) (Wwork - (stInit.xslot idx).width) bMid := by
         simpa [RemainingClean, Wwork] using hCleanMid.1 idx (by simp [idx])
       rcases
-        eval_allocChunkGate_x_ket
+        eval_allocChunkGate_x_ket_by (R := R)
           (qs := qs)
           (layout := layout)
           (ops := ops)
@@ -461,7 +548,7 @@ lemma eval_compileSignedAllocationsAux_ket
               (Wwork - (stInit.xslot idx).width)
         · exact hzFreshMid
       rcases
-        eval_allocChunkGate_z_ket
+        eval_allocChunkGate_z_ket_by (R := R)
           (qs := qs)
           (layout := layout)
           (ops := ops)
@@ -624,14 +711,15 @@ lemma eval_compileSignedAllocationsAux_ket
                 (Wwork - (stInit.zslot idx).width)
           · exact hfX
 
-/-- Prefix allocation preserves all registers outside the final layout. -/
-lemma eval_compileSignedAllocationsAux_sameOutside
+/-- Prefix allocation creates a basis state with allocated slot values and remaining cleanliness. -/
+lemma eval_compileSignedAllocationsAux_ket
   (qs : QSemantics)
   [RegEncoding qs.Basis]
   [GateSemanticsFacts qs]
   {k : ℕ}
   {x z : ExtReg}
   (layout : Gate.PhaseProductLayout x z k)
+  (hlayout : layout.Valid)
   (ops : Prog k)
   (b : qs.Basis)
   (hworkspace :
@@ -645,15 +733,54 @@ lemma eval_compileSignedAllocationsAux_sameOutside
   ∀ (n : ℕ) (hn : n ≤ k),
     ∃ bAlloc : qs.Basis,
       qs.eval (compileSignedAllocationsAux stInit stFinal n hn) (qs.ket b) = qs.ket bAlloc ∧
+      (∀ i : Fin k, i.1 < n →
+        extToInt (stFinal.xslot i) bAlloc =
+          evalRowX (qs := qs) stInit (State.start_state i) b) ∧
+      (∀ i : Fin k, i.1 < n →
+        extToInt (stFinal.zslot i) bAlloc =
+          evalRowZ (qs := qs) stInit (State.start_state i) b) ∧
+      (∀ i : Fin k, n ≤ i.1 →
+        sourceChunkXInt (qs := qs) stInit i bAlloc =
+          sourceChunkXInt (qs := qs) stInit i b) ∧
+      (∀ i : Fin k, n ≤ i.1 →
+        sourceChunkZInt (qs := qs) stInit i bAlloc =
+          sourceChunkZInt (qs := qs) stInit i b) ∧
+      RemainingClean stInit need n bAlloc :=
+  eval_compileSignedAllocationsAux_ket_by .scan qs layout hlayout ops b hworkspace
+
+/-- For either width rule `R`: Prefix allocation preserves all registers outside the final layout. -/
+lemma eval_compileSignedAllocationsAux_sameOutside_by
+    (R : WidthRule)
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [GateSemanticsFacts qs]
+  {k : ℕ}
+  {x z : ExtReg}
+  (layout : Gate.PhaseProductLayout x z k)
+  (hlayout : layout.Valid)
+  (ops : Prog k)
+  (b : qs.Basis)
+  (hworkspace :
+    CompilerWorkspaceOK
+      (initSignedLayoutState layout)
+      (neededWidthsBy R x z ops)
+      b) :
+  let need : NeededWidths k := neededWidthsBy R x z ops
+  let stInit : LayoutState k := initSignedLayoutState layout
+  let stFinal : LayoutState k := targetSignedLayoutState stInit need
+  ∀ (n : ℕ) (hn : n ≤ k),
+    ∃ bAlloc : qs.Basis,
+      qs.eval (compileSignedAllocationsAux stInit stFinal n hn) (qs.ket b) = qs.ket bAlloc ∧
       SameOutsideLayout qs stFinal b bAlloc := by
   dsimp
-  let need : NeededWidths k := scanNeededWidths x z ops
+  let need : NeededWidths k := neededWidthsBy R x z ops
   let stInit : LayoutState k := initSignedLayoutState layout
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   have hmain :=
-    eval_compileSignedAllocationsAux_ket
+    eval_compileSignedAllocationsAux_ket_by (R := R)
       (qs := qs)
       (layout := layout)
+      (hlayout := hlayout)
       (ops := ops)
       (b := b)
       hworkspace
@@ -678,7 +805,7 @@ lemma eval_compileSignedAllocationsAux_sameOutside
       have hxFresh : ExtReg.FreshFor (stInit.xslot idx) (Wwork - (stInit.xslot idx).width) bMid := by
         simpa [RemainingClean, Wwork] using hCleanMid.1 idx (by simp [idx])
       rcases
-        eval_allocChunkGate_x_ket
+        eval_allocChunkGate_x_ket_by (R := R)
           (qs := qs)
           (layout := layout)
           (ops := ops)
@@ -687,7 +814,7 @@ lemma eval_compileSignedAllocationsAux_sameOutside
           hcap
           (by simpa [stInit, need, Wwork] using hxFresh) with
         ⟨bX, hXEval, _hXVal, hXLoc⟩
-      have hInitOwned : stInit.OwnedPairwiseDisjoint := by simpa [stInit] using initSignedLayoutState_owned_disjoint layout
+      have hInitOwned : stInit.OwnedPairwiseDisjoint := by simpa [stInit] using initSignedLayoutState_owned_disjoint hlayout
       have hXSlot : stFinal.xslot idx = (stInit.xslot idx).grow (Wwork - (stInit.xslot idx).width) := by
         simpa [stInit, stFinal, need, Wwork] using stFinal_xslot_eq_grow layout need idx
       have hzFreshMid : ExtReg.FreshFor (stInit.zslot idx) (Wwork - (stInit.zslot idx).width) bMid := by
@@ -701,7 +828,7 @@ lemma eval_compileSignedAllocationsAux_sameOutside
               (Wwork - (stInit.xslot idx).width)
         · exact hzFreshMid
       rcases
-        eval_allocChunkGate_z_ket
+        eval_allocChunkGate_z_ket_by (R := R)
           (qs := qs)
           (layout := layout)
           (ops := ops)
@@ -728,9 +855,71 @@ lemma eval_compileSignedAllocationsAux_sameOutside
         exact SameOutsideLayout.trans (qs := qs)
           (SameOutsideLayout.trans (qs := qs) hMidSO hXSO) hZSO
 
+/-- Prefix allocation preserves all registers outside the final layout. -/
+lemma eval_compileSignedAllocationsAux_sameOutside
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [GateSemanticsFacts qs]
+  {k : ℕ}
+  {x z : ExtReg}
+  (layout : Gate.PhaseProductLayout x z k)
+  (hlayout : layout.Valid)
+  (ops : Prog k)
+  (b : qs.Basis)
+  (hworkspace :
+    CompilerWorkspaceOK
+      (initSignedLayoutState layout)
+      (scanNeededWidths x z ops)
+      b) :
+  let need : NeededWidths k := scanNeededWidths x z ops
+  let stInit : LayoutState k := initSignedLayoutState layout
+  let stFinal : LayoutState k := targetSignedLayoutState stInit need
+  ∀ (n : ℕ) (hn : n ≤ k),
+    ∃ bAlloc : qs.Basis,
+      qs.eval (compileSignedAllocationsAux stInit stFinal n hn) (qs.ket b) = qs.ket bAlloc ∧
+      SameOutsideLayout qs stFinal b bAlloc :=
+  eval_compileSignedAllocationsAux_sameOutside_by .scan qs layout hlayout ops b hworkspace
+
 /-! =========================================================
     Public Allocation Theorems
 ========================================================= -/
+
+/-- For either width rule `R`: The full allocation program establishes the start-state encoding in the final layout. -/
+lemma eval_compileSignedAllocations_ket_by
+    (R : WidthRule)
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [GateSemanticsFacts qs]
+  {k : ℕ}
+  {x z : ExtReg}
+  (layout : Gate.PhaseProductLayout x z k)
+  (hlayout : layout.Valid)
+  (ops : Prog k)
+  (b : qs.Basis)
+  (hworkspace :
+    CompilerWorkspaceOK
+      (initSignedLayoutState layout)
+      (neededWidthsBy R x z ops)
+      b) :
+  let need : NeededWidths k := neededWidthsBy R x z ops
+  let stInit : LayoutState k := initSignedLayoutState layout
+  let stFinal : LayoutState k := targetSignedLayoutState stInit need
+  ∃ bAlloc : qs.Basis,
+    qs.eval (compileSignedAllocations k stInit stFinal) (qs.ket b) = qs.ket bAlloc ∧
+    EncodesStateFrom (qs := qs) stInit stFinal State.start_state b bAlloc := by
+  dsimp [compileSignedAllocations]
+  rcases
+    eval_compileSignedAllocationsAux_ket_by (R := R)
+      (qs := qs)
+      (layout := layout)
+      (hlayout := hlayout)
+      (ops := ops)
+      (b := b)
+      hworkspace
+      k le_rfl with
+    ⟨bAlloc, hEval, hX, hZ, _hKeepX, _hKeepZ, _hClean⟩
+  refine ⟨bAlloc, hEval, ?_⟩
+  exact ⟨fun i => hX i i.is_lt, fun i => hZ i i.is_lt⟩
 
 /-- The full allocation program establishes the start-state encoding in the final layout. -/
 lemma eval_compileSignedAllocations_ket
@@ -740,6 +929,7 @@ lemma eval_compileSignedAllocations_ket
   {k : ℕ}
   {x z : ExtReg}
   (layout : Gate.PhaseProductLayout x z k)
+  (hlayout : layout.Valid)
   (ops : Prog k)
   (b : qs.Basis)
   (hworkspace :
@@ -752,19 +942,42 @@ lemma eval_compileSignedAllocations_ket
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   ∃ bAlloc : qs.Basis,
     qs.eval (compileSignedAllocations k stInit stFinal) (qs.ket b) = qs.ket bAlloc ∧
-    EncodesStateFrom (qs := qs) stInit stFinal State.start_state b bAlloc := by
+    EncodesStateFrom (qs := qs) stInit stFinal State.start_state b bAlloc :=
+  eval_compileSignedAllocations_ket_by .scan qs layout hlayout ops b hworkspace
+
+/-- For either width rule `R`: The full allocation program preserves all outside-layout registers. -/
+lemma eval_compileSignedAllocations_sameOutside_by
+    (R : WidthRule)
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [GateSemanticsFacts qs]
+  {k : ℕ}
+  {x z : ExtReg}
+  (layout : Gate.PhaseProductLayout x z k)
+  (hlayout : layout.Valid)
+  (ops : Prog k)
+  (b : qs.Basis)
+  (hworkspace :
+    CompilerWorkspaceOK
+      (initSignedLayoutState layout)
+      (neededWidthsBy R x z ops)
+      b) :
+  let need : NeededWidths k := neededWidthsBy R x z ops
+  let stInit : LayoutState k := initSignedLayoutState layout
+  let stFinal : LayoutState k := targetSignedLayoutState stInit need
+  ∃ bAlloc : qs.Basis,
+    qs.eval (compileSignedAllocations k stInit stFinal) (qs.ket b) = qs.ket bAlloc ∧
+    SameOutsideLayout qs stFinal b bAlloc := by
   dsimp [compileSignedAllocations]
-  rcases
-    eval_compileSignedAllocationsAux_ket
+  exact
+    eval_compileSignedAllocationsAux_sameOutside_by (R := R)
       (qs := qs)
       (layout := layout)
+      (hlayout := hlayout)
       (ops := ops)
       (b := b)
       hworkspace
-      k le_rfl with
-    ⟨bAlloc, hEval, hX, hZ, _hKeepX, _hKeepZ, _hClean⟩
-  refine ⟨bAlloc, hEval, ?_⟩
-  exact ⟨fun i => hX i i.is_lt, fun i => hZ i i.is_lt⟩
+      k le_rfl
 
 /-- The full allocation program preserves all outside-layout registers. -/
 lemma eval_compileSignedAllocations_sameOutside
@@ -774,6 +987,7 @@ lemma eval_compileSignedAllocations_sameOutside
   {k : ℕ}
   {x z : ExtReg}
   (layout : Gate.PhaseProductLayout x z k)
+  (hlayout : layout.Valid)
   (ops : Prog k)
   (b : qs.Basis)
   (hworkspace :
@@ -786,52 +1000,47 @@ lemma eval_compileSignedAllocations_sameOutside
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   ∃ bAlloc : qs.Basis,
     qs.eval (compileSignedAllocations k stInit stFinal) (qs.ket b) = qs.ket bAlloc ∧
-    SameOutsideLayout qs stFinal b bAlloc := by
-  dsimp [compileSignedAllocations]
-  exact
-    eval_compileSignedAllocationsAux_sameOutside
-      (qs := qs)
-      (layout := layout)
-      (ops := ops)
-      (b := b)
-      hworkspace
-      k le_rfl
+    SameOutsideLayout qs stFinal b bAlloc :=
+  eval_compileSignedAllocations_sameOutside_by .scan qs layout hlayout ops b hworkspace
 
-/-- Full allocation establishes encoding plus signed-fit obligations for every target slot. -/
-lemma eval_compileSignedAllocations_ket_fits
+/-- For either width rule `R`: Full allocation establishes encoding plus signed-fit obligations for every target slot. -/
+lemma eval_compileSignedAllocations_ket_fits_by
+    (R : WidthRule)
   (qs : QSemantics)
   [RegEncoding qs.Basis]
   [GateSemanticsFacts qs]
   {k : ℕ}
   {x z : ExtReg}
   (layout : Gate.PhaseProductLayout x z k)
+  (hlayout : layout.Valid)
   (ops : Prog k)
   (b : qs.Basis)
-  (hworkspace : CompilerWorkspaceOK (initSignedLayoutState layout) (scanNeededWidths x z ops) b) :
-  let need : NeededWidths k := scanNeededWidths x z ops
+  (hworkspace : CompilerWorkspaceOK (initSignedLayoutState layout) (neededWidthsBy R x z ops) b) :
+  let need : NeededWidths k := neededWidthsBy R x z ops
   let stInit : LayoutState k := initSignedLayoutState layout
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   ∃ bAlloc : qs.Basis,
     qs.eval (compileSignedAllocations k stInit stFinal) (qs.ket b) = qs.ket bAlloc ∧
     EncodesStateFromFits (qs := qs) stInit stFinal State.start_state b bAlloc := by
   have hAlloc :=
-    eval_compileSignedAllocations_ket
+    eval_compileSignedAllocations_ket_by (R := R)
       (qs := qs)
       (layout := layout)
+      (hlayout := hlayout)
       (ops := ops)
       (b := b)
       hworkspace
   rcases hAlloc with ⟨bAlloc, hEval, hEnc⟩
   have hFits :
       let src := initSignedLayoutState layout
-      let dst := targetSignedLayoutState src (scanNeededWidths x z ops)
+      let dst := targetSignedLayoutState src (neededWidthsBy R x z ops)
       (∀ i : Fin k,
         FitsSignedWidth (ExtReg.width (dst.xslot i))
           (evalRowX (qs := qs) src (State.start_state i) b)) ∧
       (∀ i : Fin k,
         FitsSignedWidth (ExtReg.width (dst.zslot i))
           (evalRowZ (qs := qs) src (State.start_state i) b)) := by
-    exact allocated_widths_sound
+    exact allocated_widths_sound_by (R := R)
       (qs := qs)
       layout
       ops
@@ -842,5 +1051,25 @@ lemma eval_compileSignedAllocations_ket_fits
   refine ⟨bAlloc, hEval, ?_⟩
   dsimp at hFits
   exact ⟨hEnc, hFits.1, hFits.2⟩
+
+/-- Full allocation establishes encoding plus signed-fit obligations for every target slot. -/
+lemma eval_compileSignedAllocations_ket_fits
+  (qs : QSemantics)
+  [RegEncoding qs.Basis]
+  [GateSemanticsFacts qs]
+  {k : ℕ}
+  {x z : ExtReg}
+  (layout : Gate.PhaseProductLayout x z k)
+  (hlayout : layout.Valid)
+  (ops : Prog k)
+  (b : qs.Basis)
+  (hworkspace : CompilerWorkspaceOK (initSignedLayoutState layout) (scanNeededWidths x z ops) b) :
+  let need : NeededWidths k := scanNeededWidths x z ops
+  let stInit : LayoutState k := initSignedLayoutState layout
+  let stFinal : LayoutState k := targetSignedLayoutState stInit need
+  ∃ bAlloc : qs.Basis,
+    qs.eval (compileSignedAllocations k stInit stFinal) (qs.ket b) = qs.ket bAlloc ∧
+    EncodesStateFromFits (qs := qs) stInit stFinal State.start_state b bAlloc :=
+  eval_compileSignedAllocations_ket_fits_by .scan qs layout hlayout ops b hworkspace
 
 end Shor

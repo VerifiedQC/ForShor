@@ -2,8 +2,10 @@ import Mathlib.Data.Nat.Bitwise
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Correctness
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Lowerable
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Compilation
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Readiness
 import ForShor.ShorVerification.Framework.Policy
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanSemanticsRule
 
 namespace Shor
 open Gate
@@ -43,15 +45,15 @@ lemma eval_compiledSignedPhaseGate_correct
     (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
+    (hlayout : layout.Valid)
     (ψ : qs.State)
     (hclean : CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z ops) ψ) :
     qs.eval (compiledSignedPhaseGate k hk pts hpts ops phi x z layout) ψ
       = qs.eval (Gate.SignedPhaseProd phi x z) ψ := by
   unfold compiledSignedPhaseGate
-  unfold loweringPhaseCoeff
   rw [cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth pts hpts hInterp]
   apply eval_compileOpsToSignedGate_correct
-    (qs := qs) (k := k) (hk := hk) (phi := phi) (x := x) (z := z) (layout := layout)
+    (qs := qs) (k := k) (hk := hk) (phi := phi) (x := x) (z := z) (layout := layout) (hlayout := hlayout)
     (pts := pts) (hpts := hpts) (hInterp := hInterp) (ψ := ψ) (ops := ops) (hC := hC)
     (run_ops_start_state := hRun)
   exact hclean
@@ -73,17 +75,17 @@ lemma eval_compiledCSignedPhaseGate_correct
     (phi : Angle)
     (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k)
+    (hlayout : layout.Valid)
     (hctrl : layout.ControlDisjoint ctrl)
     (ψ : qs.State)
     (hclean : CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z ops) ψ) :
     qs.eval (compiledCSignedPhaseGate k hk pts hpts ops ctrl phi x z layout) ψ
       = qs.eval (Gate.CSignedPhaseProd ctrl phi x z) ψ := by
   unfold compiledCSignedPhaseGate
-  unfold loweringPhaseCoeff
   rw [cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth pts hpts hInterp]
   apply eval_compileOpsToCSignedGate_correct
     (qs := qs) (k := k) (hk := hk) (ctrl := ctrl) (phi := phi) (x := x) (z := z)
-    (layout := layout) (hctrl := hctrl) (pts := pts) (hpts := hpts) (hInterp := hInterp)
+    (layout := layout) (hlayout := hlayout) (hctrl := hctrl) (pts := pts) (hpts := hpts) (hInterp := hInterp)
     (ops := ops) (hC := hC) (hRun := hRun) (ψ := ψ)
   exact hclean
 
@@ -183,55 +185,57 @@ lemma evalL_lowerGateRec_correct
         LowerGateClass.evalL (qs := qs) (LowGate.RadixReverse r m) ψ
           = qs.eval (Gate.RadixReverse r m) ψ
       exact LowerGateClass.evalL_radixReverse (qs := qs) r m ψ
-  | signedBase phi x z hstop =>
+  | signedBase phi x z =>
       intro ψ _
       change
         LowerGateClass.evalL (qs := qs) (LowGate.Naive_SignedPhaseProd phi x z) ψ
           = qs.eval (Gate.SignedPhaseProd phi x z) ψ
       exact LowerGateClass.evalL_naive_signedPhaseProd (qs := qs) phi x z ψ
-  | signedStep phi x z T hT layout hrec hcapacity child ihChild =>
+  | signedStep phi x z T layout child ihChild =>
       intro ψ hready
-      -- The table this node uses is admissible because the policy is, and the
-      -- node carries the proof `hT` that the policy chose it here.
-      obtain ⟨hInterp, hC, hRun⟩ := hP.of_choose hT
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ ∧
+        SignedStepOK P x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) ψ ∧
         PhaseLoweringReady qs child ψ
         at hready
-      rcases hready with ⟨hclean, hchild⟩
+      rcases hready with ⟨⟨hT, -, hlayout, -⟩, hclean, hchild⟩
+      -- The table this node uses is admissible because the policy is, and the
+      -- readiness facts say the policy chose it here.
+      obtain ⟨hInterp, hC, hRun⟩ := hP.of_choose hT
       change
         LowerGateClass.evalL (qs := qs) (lowerGateRec child) ψ
           = qs.eval (Gate.SignedPhaseProd phi x z) ψ
       calc
         LowerGateClass.evalL (qs := qs) (lowerGateRec child) ψ
-            = qs.eval (compiledSignedPhaseGate T.k T.hk T.pts T.hpts T.ops phi x z layout) ψ :=
+            = qs.eval (compiledSignedPhaseGateBy P.widthRule T.k T.hk T.pts T.hpts T.ops phi x z layout) ψ :=
           ihChild ψ hchild
         _ = qs.eval (Gate.SignedPhaseProd phi x z) ψ :=
-          eval_compiledSignedPhaseGate_correct qs T.k T.hk T.pts T.hpts hInterp T.ops hC hRun
-            phi x z layout ψ hclean
-  | cSignedBase ctrl phi x z hstop =>
+          eval_compiledSignedPhaseGate_correct_by (R := P.widthRule) qs T.k T.hk T.pts T.hpts hInterp T.ops hC hRun
+            phi x z layout hlayout ψ hclean
+  | cSignedBase ctrl phi x z =>
       intro ψ _
       change
         LowerGateClass.evalL (qs := qs) (LowGate.Naive_CSignedPhaseProd ctrl phi x z) ψ
           = qs.eval (Gate.CSignedPhaseProd ctrl phi x z) ψ
       exact LowerGateClass.evalL_naive_csignedPhaseProd (qs := qs) ctrl phi x z ψ
-  | cSignedStep ctrl phi x z T hT layout hrec hcapacity hctrl child ihChild =>
+  | cSignedStep ctrl phi x z T layout child ihChild =>
       intro ψ hready
-      obtain ⟨hInterp, hC, hRun⟩ := hP.of_choose hT
       change
-        CleanWorkspaceState qs (initSignedLayoutState layout) (scanNeededWidths x z T.ops) ψ ∧
+        CSignedStepOK P ctrl x z T layout ∧
+        CleanWorkspaceState qs (initSignedLayoutState layout) (neededWidthsBy P.widthRule x z T.ops) ψ ∧
         PhaseLoweringReady qs child ψ
         at hready
-      rcases hready with ⟨hclean, hchild⟩
+      rcases hready with ⟨⟨⟨hT, -, hlayout, -⟩, hctrl⟩, hclean, hchild⟩
+      obtain ⟨hInterp, hC, hRun⟩ := hP.of_choose hT
       change
         LowerGateClass.evalL (qs := qs) (lowerGateRec child) ψ
           = qs.eval (Gate.CSignedPhaseProd ctrl phi x z) ψ
       calc
         LowerGateClass.evalL (qs := qs) (lowerGateRec child) ψ
-            = qs.eval (compiledCSignedPhaseGate T.k T.hk T.pts T.hpts T.ops ctrl phi x z layout) ψ :=
+            = qs.eval (compiledCSignedPhaseGateBy P.widthRule T.k T.hk T.pts T.hpts T.ops ctrl phi x z layout) ψ :=
           ihChild ψ hchild
         _ = qs.eval (Gate.CSignedPhaseProd ctrl phi x z) ψ :=
-          eval_compiledCSignedPhaseGate_correct qs T.k T.hk T.pts T.hpts hInterp T.ops hC hRun
-            ctrl phi x z layout hctrl ψ hclean
+          eval_compiledCSignedPhaseGate_correct_by (R := P.widthRule) qs T.k T.hk T.pts T.hpts hInterp T.ops hC hRun
+            ctrl phi x z layout hlayout hctrl ψ hclean
 
 end Shor

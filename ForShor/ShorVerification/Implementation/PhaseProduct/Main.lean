@@ -1,5 +1,8 @@
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Assertions
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Lower
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Cleanliness
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Correctness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.GateCount.Lemmas
 
 /-!
 # Phase-Product Main Theorems
@@ -27,7 +30,7 @@ theorem lowerSignedPhaseProduct_correct
   intro ψ pts hpts hworkspace hInterp hC hRun
   let plan :
       StandardPhaseLoweringPlan k hk pts hpts ops (phaseInputSize x z) (Gate.SignedPhaseProd phi x z) :=
-    standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts hworkspace.static
+    standardSignedPhaseLoweringPlan k hk phi x z ops pts hpts
   have hready : PhaseLoweringReady qs plan ψ := by
     simpa [plan] using
       standardSignedPhaseLoweringPlan_ready_of_workspace qs k hk phi x z ops ψ
@@ -37,7 +40,7 @@ theorem lowerSignedPhaseProduct_correct
       (qs := qs) (k := k) (hk := hk) (phi := phi) (x := x) (z := z) (ops := ops)
       (pts := pts) (hpts := hpts) (plan := plan)
       (ψ := ψ) (hready := hready) (hInterp := hInterp) (hC := hC) (hRun := hRun)
-  simpa [lowerSignedPhaseProdWithWorkspace, plan] using hcorrect
+  simpa [lowerSignedPhaseProd, plan] using hcorrect
 
 /-- Main controlled signed phase-product lowering theorem, packaged as the public assertion. -/
 theorem lowerCSignedPhaseProduct_correct
@@ -56,7 +59,7 @@ theorem lowerCSignedPhaseProduct_correct
   let plan :
       StandardPhaseLoweringPlan k hk pts hpts ops (phaseInputSize x z)
         (Gate.CSignedPhaseProd ctrl phi x z) :=
-    standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops pts hpts hworkspace.static
+    standardCSignedPhaseLoweringPlan k hk ctrl phi x z ops pts hpts
   have hready : PhaseLoweringReady qs plan ψ := by
     simpa [plan] using
       standardCSignedPhaseLoweringPlan_ready_of_workspace
@@ -65,7 +68,7 @@ theorem lowerCSignedPhaseProduct_correct
     evalL_lowerGateRec_correct (qs := qs)
       (ShorLoweringPolicy.constPolicy_admissible (T := ⟨k, hk, pts, hpts, ops⟩)
         ⟨hInterp, hC, hRun⟩) plan ψ hready
-  simpa [lowerCSignedPhaseProdWithWorkspace, lowerCSignedPhaseProd, plan] using hcorrect
+  simpa [lowerCSignedPhaseProd, plan] using hcorrect
 
 /-! =========================================================
     The policy forms
@@ -85,9 +88,9 @@ theorem Policy.lowerSignedPhaseProduct_correct
     (x z : ExtReg) :
     Policy.LowerSignedPhaseProductCorrect qs P phi x z := by
   intro ψ hworkspace hP
-  have hready : PhaseLoweringReady qs (Policy.signedPlan P phi x z hworkspace.static) ψ :=
+  have hready : PhaseLoweringReady qs (Policy.signedPlan P phi x z) ψ :=
     Policy.signedPlan_ready qs P hP phi x z ψ hworkspace.static hworkspace.clean
-  exact evalL_lowerGateRec_correct (qs := qs) hP (Policy.signedPlan P phi x z hworkspace.static)
+  exact evalL_lowerGateRec_correct (qs := qs) hP (Policy.signedPlan P phi x z)
     ψ hready
 
 /-- Main controlled signed phase-product lowering theorem under a policy. -/
@@ -103,9 +106,72 @@ theorem Policy.lowerCSignedPhaseProduct_correct
     Policy.LowerCSignedPhaseProductCorrect qs P ctrl phi x z := by
   intro ψ hworkspace hP
   have hready :
-      PhaseLoweringReady qs (Policy.cSignedPlan P ctrl phi x z hworkspace.static) ψ :=
+      PhaseLoweringReady qs (Policy.cSignedPlan P ctrl phi x z) ψ :=
     Policy.cSignedPlan_ready qs P hP ctrl phi x z ψ hworkspace.static hworkspace.clean
   exact evalL_lowerGateRec_correct (qs := qs) hP
-    (Policy.cSignedPlan P ctrl phi x z hworkspace.static) ψ hready
+    (Policy.cSignedPlan P ctrl phi x z) ψ hready
+
+/-! =========================================================
+    Gate count
+========================================================= -/
+
+/-- **The signed phase-product gate count** for a table satisfying C1–C4:
+above some width, at most a constant times `n^(log_k (2k - 1))`. -/
+theorem signedPhaseProductGateCountBound_of_programOK
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k)
+    (pts : List Point)
+    (hpts : pts.length = q k)
+    (hops : PhaseProductProgramOK k hk pts hpts ops) :
+    SignedPhaseProductGateCountBound (Basis := Basis) k hk ops pts hpts := by
+  obtain ⟨C', hC', n₀, hn₀, hshift⟩ :=
+    signedPhaseProductGateCount_shifted_bound_of_programOK (Basis := Basis) k hk ops pts hpts hops
+  refine ⟨C', hC', n₀ + 1, by omega, ?_⟩
+  intro φ x z hws hx hz
+  dsimp only
+  intro hn
+  have hb := hshift φ x z (ExtReg.width x - 1) (ExtReg.width z - 1) (by omega) (by omega) hws
+    (by omega)
+  have hexp : 0 ≤ Real.log (q k : ℝ) / Real.log (k : ℝ) :=
+    le_of_lt (lt_trans zero_lt_one (one_lt_phaseProductExponent k hk))
+  have hmono :
+      Real.rpow ((max (ExtReg.width x - 1) (ExtReg.width z - 1) : ℕ) : ℝ)
+          (phaseProductExponent k)
+        ≤ Real.rpow ((max (ExtReg.width x) (ExtReg.width z) : ℕ) : ℝ)
+          (Real.log (q k : ℝ) / Real.log (k : ℝ)) :=
+    Real.rpow_le_rpow (by positivity) (by exact_mod_cast (by omega)) hexp
+  exact hb.trans (mul_le_mul_of_nonneg_left hmono hC'.le)
+
+/-- **The controlled signed phase-product gate count**: at most five times the
+uncontrolled count, so the same rate. -/
+theorem cSignedPhaseProductGateCountBound_of_programOK
+    {Basis : Type u}
+    [RegEncoding Basis]
+    (k : ℕ)
+    (hk : 1 < k)
+    (ops : Prog k)
+    (pts : List Point)
+    (hpts : pts.length = q k)
+    (hops : PhaseProductProgramOK k hk pts hpts ops) :
+    CSignedPhaseProductGateCountBound (Basis := Basis) k hk ops pts hpts := by
+  obtain ⟨C, hC, n₀, hn₀, hbound⟩ :=
+    signedPhaseProductGateCountBound_of_programOK (Basis := Basis) k hk ops pts hpts hops
+  refine ⟨5 * C, by positivity, n₀, hn₀, ?_⟩
+  intro ctrl φ x z hws hx hz
+  dsimp only
+  intro hn
+  have hb := hbound φ x z hws.toSignedRecursiveWorkspaceOK hx hz hn
+  have h5 : (cSignedPhaseProductGateCount (Basis := Basis) k hk ops pts hpts ctrl φ x z : ℝ)
+      ≤ 5 * (signedPhaseProductGateCount (Basis := Basis) k hk ops pts hpts φ x z : ℝ) := by
+    exact_mod_cast CPhaseProductReduction.cSignedPhaseProductGateCount_le_five_signed
+      (Basis := Basis) k hk ops pts hpts ctrl φ x z hws
+  calc _ ≤ 5 * (signedPhaseProductGateCount (Basis := Basis) k hk ops pts hpts φ x z : ℝ) := h5
+    _ ≤ 5 * (C * Real.rpow ((max (ExtReg.width x) (ExtReg.width z) : ℕ) : ℝ)
+          (Real.log (q k : ℝ) / Real.log (k : ℝ))) :=
+        mul_le_mul_of_nonneg_left hb (by norm_num)
+    _ = _ := by ring
 
 end Shor

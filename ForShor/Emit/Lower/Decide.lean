@@ -1,4 +1,5 @@
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Workspace
 import ForShor.ShorVerification.Implementation.QFT.Statement
 
 /-!

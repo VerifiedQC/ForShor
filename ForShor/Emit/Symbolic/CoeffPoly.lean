@@ -1,4 +1,5 @@
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Coefficients
 
 /-!
 # E2: interpolation-weight polynomials
@@ -8,7 +9,7 @@ pts[l] j` and `b = 2^m`, so `c_l(b) = Σ_j (M⁻¹)_{j,l} b^j` is a polynomial i
 `b` determined by `k` and the point list alone.
 
 `M⁻¹` is computed by exact Gauss-Jordan elimination over `ℚ`
-(`gaussJordanInverseRows`, from `Compiler/GaussJordan.lean`), **not** via Mathlib's `Matrix.adjugate`/
+(`gaussJordanInverseRows`, from `PhaseProduct/Statement.lean`), **not** via Mathlib's `Matrix.adjugate`/
 `Matrix.det`: those are the Leibniz-formula/`Equiv.Perm`-sum definitions used
 for *proofs*, not computation, and evaluating them is `O(n!)` **per entry**
 (`Matrix.adjugate M i j` itself unfolds to one more `n!`-cost `Matrix.det`

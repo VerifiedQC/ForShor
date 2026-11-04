@@ -1,15 +1,14 @@
 import ForShor.ShorVerification.Implementation.Shor.Statement
 import ForShor.ShorVerification.Implementation.Compiler.Main
 import ForShor.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.CmpLtNW
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
-import ForShor.ShorVerification.Implementation.Shared.States
-import ForShor.ShorVerification.Implementation.Shared.Registers
-import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.MacroSemantics
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Workspace
+import ForShor.ShorVerification.Implementation.QFT.Proofs.Macros
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Cleanliness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.States
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Registers
+import ForShor.ShorVerification.Implementation.QFT.Proofs.MacroSemantics
 import Mathlib.Basic.Real.Basic
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
@@ -17,6 +16,7 @@ import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Sequencing
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Primitives
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Init
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Readiness.Step1
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Main
 
 /-!
 # Step 2 Readiness

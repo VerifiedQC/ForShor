@@ -1,10 +1,11 @@
 import ForShor.ShorVerification.Implementation.Compiler.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.PolicyWorkspace
 
 /-!
 # Compiler: the single-table forms
 
 `GateWorkspaceOK`, `lowerGate` and `GateWorkspaceCleanState` for one fixed
-Toom-Cook table, used by `Emit/`, `GateCount/` and `Reference/`, and the bridge
+Toom-Cook table, used by `Emit/`, the Shor gate count and `Reference/`, and the bridge
 saying that at the constant policy of a table the policy workspace conditions
 are that table's.
 -/
@@ -77,11 +78,11 @@ def lowerGate
       lowerQFT
         k hk ops pts hpts r hworkspace
 
-  | Gate.SignedPhaseProd phi x z, hworkspace =>
-      lowerSignedPhaseProdWithWorkspace k hk phi x z ops pts hpts hworkspace
+  | Gate.SignedPhaseProd phi x z, _ =>
+      lowerSignedPhaseProd k hk phi x z ops pts hpts
 
-  | Gate.CSignedPhaseProd ctrl phi x z, hworkspace =>
-      lowerCSignedPhaseProdWithWorkspace k hk ctrl phi x z ops pts hpts hworkspace
+  | Gate.CSignedPhaseProd ctrl phi x z, _ =>
+      lowerCSignedPhaseProd k hk ctrl phi x z ops pts hpts
 
   | Gate.CmpGeConst N data scratch flag, hworkspace =>
       lowerCmpGeConst N data scratch flag hworkspace

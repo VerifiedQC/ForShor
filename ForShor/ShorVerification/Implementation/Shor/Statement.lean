@@ -2,22 +2,10 @@ import ForShor.ShorVerification.Framework.Gatecount.ResourceModel
 import ForShor.ShorVerification.Framework.Quantum.Measurement
 import ForShor.ShorVerification.Framework.Semantics.LowGateSemantics
 import ForShor.ShorVerification.Framework.ToomCookTable
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.CmpLtNW
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.ModExp
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Lowering.ConstArithmetic
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Config
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Precision
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Validity
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
-import ForShor.ShorVerification.Implementation.QFT.Statement
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Statement
 import ForShor.ShorVerification.Implementation.Compiler.Statement
-import ForShor.ShorVerification.Implementation.Shared.Registers
-import ForShor.ShorVerification.Implementation.Shared.States
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.QFT.Statement
 import Mathlib.Algebra.ContinuedFractions.Computation.TerminatesIffRat
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
@@ -240,7 +228,11 @@ theorem LoweredShorReady.modMulWorkspace
   have hw := h.workspace_large_enough.auxiliary_large_enough
   simp only [Policy.shorWorkspaceNeed, shorWorkspaceNeedOf] at hd hw
   refine ⟨by unfold ExtReg.CanGrow; omega, by unfold ExtReg.CanGrow; omega, ?_⟩
-  simpa [ExtReg.OwnedDisjoint, ExtReg.ownedQubits_grow] using
+  have hown : ∀ (e : ExtReg) (n : ℕ), (e.grow n).ownedQubits = e.ownedQubits := by
+    intro e n
+    simp [ExtReg.ownedQubits, ExtReg.grow, Reg.append, ExtReg.newBits,
+      ExtReg.remainingReserve, Reg.take, Reg.drop, List.append_assoc]
+  simpa [ExtReg.OwnedDisjoint, hown] using
     h.approx.step4_workspace.data_work_disjoint
 
 /-- The approximate order-finding circuit on a readiness package's registers. -/
@@ -294,4 +286,102 @@ def ShorCorrectApproxLowered [GateSemanticsFacts qs] [LowerGateClass qs] (T : �
     ≥ κ / (2 * Real.log ((Nat.log2 inst.N : ℝ) + 1))
 
 end
+
+/-! =========================================================
+    The lowered circuit and the approximate setup
+========================================================= -/
+
+section
+open Operations
+
+/-- The lowered approximate order-finding circuit. -/
+def orderFindingApproxLow (P : ShorLoweringPolicy) (a N : ℕ) (x y work scratch : ExtReg)
+    (flag : ℕ) (hmodWorkspace : ModMulCircuitWorkspaceOK y work)
+    (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
+    (hLowerWorkspace : Policy.GateWorkspaceOK P
+      (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)) :=
+  Policy.lowerGate P (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
+    hLowerWorkspace
+
+/-- The input basis state is clean on every register used by Shor. -/
+def ShorCleanInput (qs : QSemantics) [RegEncoding qs.Basis] (x y work scratch : ExtReg)
+    (flag : ℕ) (b0 : qs.Basis) : Prop :=
+  RegEncoding.toNat x.active b0 = 0 ∧ RegEncoding.toNat y.active b0 = 0 ∧ y.FreshFor 2 b0 ∧
+  RegEncoding.toNat work.active b0 = 0 ∧ work.FreshFor 1 b0 ∧
+  RegEncoding.toNat scratch.active b0 = 0 ∧ scratch.FreshFor 1 b0 ∧
+  RegEncoding.toNat (qubitReg flag) b0 = 0
+
+/-- Public assumptions for the approximate implementation of Shor. -/
+structure ShorApproxSetup (qs : QSemantics) [RegEncoding qs.Basis] (η : ℝ) (N : ℕ)
+    (x y work scratch : ExtReg) (flag : ℕ) (b0 : qs.Basis) : Type where
+  /-- The exponent, data, work, carry, and flag qubits do not overlap. -/
+  register_layout : ModExpLayout x.active y work flag
+  /-- The modular-exponentiation subcircuit has enough local workspace. -/
+  circuit_workspace : ModMulCircuitWorkspaceOK y work
+  /-- The concrete Step-4 comparator and its Step-3 scratch are well laid out. -/
+  step4_workspace : CmpLtNWWorkspace N (y.grow 1) work scratch flag
+  /-- The exponent register is owned separately from the modular data register. -/
+  exponent_data_disjoint : ExtReg.OwnedDisjoint x y
+  /-- The exponent register is owned separately from comparator scratch. -/
+  exponent_scratch_disjoint : ExtReg.OwnedDisjoint x scratch
+  /-- The work register has enough extra bits for precision `η`. -/
+  work_precision : Algorithm1Precision η y.active work.active
+  /-- Shor begins in `|0⋯0⟩` on all registers it uses. -/
+  clean_input : ShorCleanInput qs x y work scratch flag b0
+
+end
+
+/-! =========================================================
+    Gate count
+========================================================= -/
+
+section
+open Operations
+
+/-- The lowered order-finding circuit has `O(n^(2+ε))` gates, `n` the data
+width, for every precision `η` whose extra work bits fit a budget `cWork`: one
+constant `C` per budget. `_hxWidth` and `_hyWidth` fix the register widths the
+proof's layout facts need. -/
+def ShorGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ) (k : ℕ) (hk : 1 < k)
+    (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) : Prop :=
+  ∀ cWork : ℕ, 1 ≤ cWork → ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg)
+      (_hxWidth : regSize x.active = Nat.log2 (2 * inst.N^2))
+      (_hyWidth : regSize y.active = Nat.log2 (2 * inst.N))
+      (flag : ℕ) (b0 : qs.Basis) (η : ℝ)
+      (hsetup : ShorApproxSetup qs η inst.N x y work scratch flag b0),
+      let n := y.width
+      n₀ ≤ n → algorithm1ExtraBits η ≤ (cWork - 1) * regSize y.active →
+      ∀ hLowerWorkspace :
+        Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
+          (orderFindingApprox inst.a inst.N x y work scratch flag hsetup.circuit_workspace
+            hsetup.step4_workspace),
+      (LowGate.gateCount shorGateCostModel
+          (orderFindingApproxLow (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
+            inst.a inst.N x y work scratch flag hsetup.circuit_workspace hsetup.step4_workspace
+            hLowerWorkspace) : ℝ)
+        ≤ C * Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)
+
+/-- **The gate count of the circuit `ShorCorrectApproxLowered` is about**: at the
+precision `shorPrecision N x`, with that theorem's hypotheses, the lowered
+order-finding circuit has `O(n^(2+ε))` gates. -/
+def ShorGateCountBoundAtShorPrecision (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ) (k : ℕ)
+    (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) : Prop :=
+  ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg) (flag : ℕ) (b0 : qs.Basis)
+      (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))
+      (_hn : regSize y.active = Nat.log2 (2 * inst.N))
+      (hready : LoweredShorReady qs (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
+        (shorPrecision inst.N x.active) inst.a inst.N x y work scratch flag b0)
+      (hws : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
+        hready.circuit),
+      let n := y.width
+      n₀ ≤ n →
+      (LowGate.gateCount shorGateCostModel
+          (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
+            hready.circuit hws) : ℝ)
+        ≤ C * Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)
+
+end
+
 end Shor

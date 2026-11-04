@@ -60,12 +60,12 @@ is a separate representation.
 
 - `planJson : PhaseLoweringPlan k hk pts hpts ops initSize U → Json` —
   constructor-for-constructor with `lowerGateRec`, *except*:
-  - `signedStep phi x z layout _ _ child` prints `{"op":
+  - `signedStep phi x z T layout child` prints `{"op":
     "SignedPhaseProd", "phi", "x", "z", "input_size", "next_width",
     "limb_width", "coeffs", "body": <planJson child>}` (`coeffs` is the
     full `q k`-length list of E2 interpolation weights,
     `loweringPhaseCoeff`, as `ratJson`s).
-  - `signedBase phi x z _` prints `{"op": "NaiveSignedPhaseProd", "phi",
+  - `signedBase phi x z` prints `{"op": "NaiveSignedPhaseProd", "phi",
     "x", "z", "expansion": <lowGateJson of the naive primitive>}` — the
     `expansion` field means a consumer never has to re-derive the flat
     `CPhase` view of a base case to compare gate counts against it.

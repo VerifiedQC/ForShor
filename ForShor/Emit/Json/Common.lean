@@ -1,6 +1,6 @@
 import Lean.Data.Json
 import ForShor.ShorVerification.Framework.Gatecount.ResourceModel
-import ForShor.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Core.Language
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Math.Table_Generation.Core.Language
 
 /-!
 # Common JSON printers

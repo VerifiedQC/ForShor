@@ -2,7 +2,7 @@ import ForShor.ShorVerification.Implementation.Reference.ShorProgram
 import ForShor.ShorVerification.Implementation.Reference.Contract
 import ForShor.ShorVerification.Implementation.Shor.Main
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Main
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Config
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Statement
 
 namespace Shor
 

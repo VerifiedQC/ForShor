@@ -84,18 +84,15 @@ def extractPolicyPhaseProductBody (polE : Expr) (setup : Shor.ShorLoweringSetup)
     let chooseE ← mkAppM ``Shor.ShorLoweringPolicy.choose #[polE, sizeE]
     let someTE ← mkAppOptM ``Option.some #[mkConst ``Shor.ToomCookTable, tblE]
     let hchooseTy ← mkEq chooseE someTE
-    let hwsTy ← mkAppM ``Shor.Policy.WorkspaceOK #[polE, x, z]
-    withLocalDecl `hchoose .default hchooseTy fun hchooseE =>
-    withLocalDecl `hworkspace .default hwsTy fun hwsPE => do
+    withLocalDecl `hchoose .default hchooseTy fun hchooseE => do
       let eq1App := mkAppN (mkConst ``Shor.Policy.signedPlanOf.eq_2)
-        #[polE, phi, x, z, hwsPE, tblE, hchooseE]
+        #[polE, phi, x, z, sizeE, tblE, hchooseE]
       let rhsPlan := (← inferType eq1App).getAppArgs[2]!
       match rhsPlan.getAppFnArgs with
       | (``dite, #[_, condE, _instE, thenFnE, elseFnE]) =>
-          withLocalDecl `hrec .default condE fun hrecW => do
-            let stepE ← mkAppM ``Shor.Policy.canonicalStep
-              #[polE, tblE, x, z, hchooseE, hrecW, hwsPE]
-            let layoutE ← mkAppM ``Shor.Policy.CanonicalStep.layout #[stepE]
+          do
+            let stepE ← mkAppM ``Shor.Policy.canonicalStep #[polE, tblE, x, z]
+            let layoutE := stepE
             let xwE ← mkAppM ``Shor.ExtReg.width #[x]
             let zwE ← mkAppM ``Shor.ExtReg.width #[z]
             let xCapE ← mkAppM ``Shor.ExtReg.capacity #[x]
@@ -104,9 +101,9 @@ def extractPolicyPhaseProductBody (polE : Expr) (setup : Shor.ShorLoweringSetup)
             let widths0 : Array (Expr × IR.WExpr) :=
               #[(xwE, .var "xw"), (zwE, .var "zw"), (xCapE, .var "xCap"), (zCapE, .var "zCap")]
             let limbWExpr ← translateW { widths := widths0 } wE
-            let xSlots ← precomputePhaseProductSlots opsE x z layoutE
+            let xSlots ← precomputePhaseProductSlots (← mkAppM ``Shor.ShorLoweringPolicy.widthRule #[polE]) opsE x z layoutE
               ``Shor.Gate.PhaseProductLayout.xSplit "x" "xw" "xCap" "reserveNeed_x" k limbWExpr
-            let zSlots ← precomputePhaseProductSlots opsE x z layoutE
+            let zSlots ← precomputePhaseProductSlots (← mkAppM ``Shor.ShorLoweringPolicy.widthRule #[polE]) opsE x z layoutE
               ``Shor.Gate.PhaseProductLayout.zSplit "z" "zw" "zCap" "reserveNeed_z" k limbWExpr
             let mut regs : Array (Expr × IR.RegExpr) := #[(x, .var "x"), (z, .var "z")]
             regs := xSlots.initRegs ++ xSlots.finalRegs ++ zSlots.initRegs ++ zSlots.finalRegs ++ regs
@@ -159,19 +156,15 @@ def extractPolicyCPhaseProductBody (polE : Expr) (setup : Shor.ShorLoweringSetup
     let chooseE ← mkAppM ``Shor.ShorLoweringPolicy.choose #[polE, sizeE]
     let someTE ← mkAppOptM ``Option.some #[mkConst ``Shor.ToomCookTable, tblE]
     let hchooseTy ← mkEq chooseE someTE
-    let hwsTy ← mkAppM ``Shor.Policy.CWorkspaceOK #[polE, ctrl, x, z]
-    withLocalDecl `hchoose .default hchooseTy fun hchooseE =>
-    withLocalDecl `hworkspace .default hwsTy fun hwsPE => do
+    withLocalDecl `hchoose .default hchooseTy fun hchooseE => do
       let eq1App := mkAppN (mkConst ``Shor.Policy.cSignedPlanOf.eq_2)
-        #[polE, ctrl, phi, x, z, hwsPE, tblE, hchooseE]
+        #[polE, ctrl, phi, x, z, sizeE, tblE, hchooseE]
       let rhsPlan := (← inferType eq1App).getAppArgs[2]!
       match rhsPlan.getAppFnArgs with
       | (``dite, #[_, condE, _instE, thenFnE, elseFnE]) =>
-          withLocalDecl `hrec .default condE fun hrecW => do
-            let stepE ← mkAppM ``Shor.Policy.canonicalStep
-              #[polE, tblE, x, z, hchooseE, hrecW,
-                (← mkAppM ``Shor.Policy.CWorkspaceOK.toWorkspaceOK #[hwsPE])]
-            let layoutE ← mkAppM ``Shor.Policy.CanonicalStep.layout #[stepE]
+          do
+            let stepE ← mkAppM ``Shor.Policy.canonicalStep #[polE, tblE, x, z]
+            let layoutE := stepE
             let xwE ← mkAppM ``Shor.ExtReg.width #[x]
             let zwE ← mkAppM ``Shor.ExtReg.width #[z]
             let xCapE ← mkAppM ``Shor.ExtReg.capacity #[x]
@@ -180,9 +173,9 @@ def extractPolicyCPhaseProductBody (polE : Expr) (setup : Shor.ShorLoweringSetup
             let widths0 : Array (Expr × IR.WExpr) :=
               #[(xwE, .var "xw"), (zwE, .var "zw"), (xCapE, .var "xCap"), (zCapE, .var "zCap")]
             let limbWExpr ← translateW { widths := widths0 } wE
-            let xSlots ← precomputePhaseProductSlots opsE x z layoutE
+            let xSlots ← precomputePhaseProductSlots (← mkAppM ``Shor.ShorLoweringPolicy.widthRule #[polE]) opsE x z layoutE
               ``Shor.Gate.PhaseProductLayout.xSplit "x" "xw" "xCap" "reserveNeed_x" k limbWExpr
-            let zSlots ← precomputePhaseProductSlots opsE x z layoutE
+            let zSlots ← precomputePhaseProductSlots (← mkAppM ``Shor.ShorLoweringPolicy.widthRule #[polE]) opsE x z layoutE
               ``Shor.Gate.PhaseProductLayout.zSplit "z" "zw" "zCap" "reserveNeed_z" k limbWExpr
             let mut regs : Array (Expr × IR.RegExpr) := #[(ctrl, .var "ctrl"), (x, .var "x"),
               (z, .var "z")]

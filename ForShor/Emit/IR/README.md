@@ -64,7 +64,7 @@ arithmetic is required — floating point will not reproduce the circuits.
 | `ratio num denom` | `(evalW num : ℚ) / (evalW denom : ℚ)`; `denom = 0` gives `0`, Lean's convention for `ℚ` |
 
 `signedBitWeight w i` is `if i + 1 = w then -(2 ^ i) else 2 ^ i`
-(`Implementation/PhaseProduct/Gates/NaiveLeaf.lean`): the two's-complement
+(`Implementation/PhaseProduct/Statement.lean`): the two's-complement
 weight of bit `i` in a `w`-bit register, so the **top** bit is negative. It
 is a named construct rather than an expression because the sign depends on
 the loop index relative to a symbolic width, and `WExpr` has neither signed

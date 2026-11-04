@@ -146,7 +146,7 @@ The invariants the extractor and its callers are built to:
 ## What is and is not a theorem
 
 - The flat circuits printed by `pp`, `cpp`, `qft`, `shor` are the terms
-  `lowerSignedPhaseProdWithWorkspace`, `lowerCSignedPhaseProdWithWorkspace`,
+  `lowerSignedPhaseProd`, `lowerCSignedPhaseProd`,
   `lowerQFT`, `referenceProgramAt` evaluate to. Their correctness is
   `Shor.lowerSignedPhaseProduct_correct`, `Shor.lowerQFT_correct`,
   `Shor.Policy.lowerGate_correctness`, `Shor.Shor_correct` (the last at
@@ -402,9 +402,9 @@ build` does not touch it. The `Submission` library and the
   `Equiv.Perm`, meant for proofs: evaluating one adjugate entry is an `O(n!)`
   determinant, so a whole inverse that way is `O(n²·n!)` — impractical from
   `k = 5` on. The eliminator lives in the compiler
-  (`ShorVerification/Implementation/PhaseProduct/Compiler/GaussJordan.lean`),
+  (`ShorVerification/Implementation/PhaseProduct/Statement.lean`),
   because the compiler's own `cramerCoeffFromPts` is `@[csimp]`-compiled
-  through it (`gjCoeffFromPts`, `Compiler/Coefficients.lean`): eliminate,
+  through it (`gjCoeffFromPts`, `PhaseProduct/Proofs/Compiler/Coefficients.lean`): eliminate,
   re-multiply to verify `M · M⁻¹ = I`, fall back to Cramer if that fails, and
   a proof that the result equals Cramer's rule unconditionally. The kernel
   still sees Cramer; only compiled code — `native_decide`, the oracles here,

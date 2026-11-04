@@ -105,8 +105,8 @@ extracts the template by reflection (`Reflect.runExtract`) to run
     only check relevant to the width actually requested —
     `instantiate_eq_real` at *this* `n` — is computed here anyway. The
     full canary stays on `template` and `bundle`, where it is the point.
-  - `annotated = false` (`--flat`): print `lowerSignedPhaseProdWithWorkspace`/
-    `lowerCSignedPhaseProdWithWorkspace` via `emitLowGateDoc` directly, no
+  - `annotated = false` (`--flat`): print `lowerSignedPhaseProd`/
+    `lowerCSignedPhaseProd` via `emitLowGateDoc` directly, no
     checks, no reflection.
 
 ## `Qft.lean`

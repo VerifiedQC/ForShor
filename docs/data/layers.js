@@ -103,11 +103,6 @@ window.LAYERS = {
    "kind": "secondary"
   },
   {
-   "from": "ModularExponentiation",
-   "to": "Compiler",
-   "kind": "secondary"
-  },
-  {
    "from": "Compiler",
    "to": "Shor",
    "kind": "primary",
@@ -178,12 +173,12 @@ window.LAYERS = {
   {
    "from": "Framework",
    "to": "ModularExponentiation",
-   "files": 6
+   "files": 3
   },
   {
    "from": "Framework",
    "to": "Compiler",
-   "files": 2
+   "files": 3
   },
   {
    "from": "Framework",
@@ -212,6 +207,11 @@ window.LAYERS = {
   },
   {
    "from": "Shared",
+   "to": "Compiler",
+   "files": 2
+  },
+  {
+   "from": "Shared",
    "to": "Shor",
    "files": 19
   },
@@ -223,12 +223,12 @@ window.LAYERS = {
   {
    "from": "PhaseProduct",
    "to": "ModularExponentiation",
-   "files": 12
+   "files": 11
   },
   {
    "from": "PhaseProduct",
    "to": "Compiler",
-   "files": 8
+   "files": 9
   },
   {
    "from": "PhaseProduct",
@@ -267,13 +267,8 @@ window.LAYERS = {
   },
   {
    "from": "ModularExponentiation",
-   "to": "Compiler",
-   "files": 3
-  },
-  {
-   "from": "ModularExponentiation",
    "to": "Shor",
-   "files": 42
+   "files": 17
   },
   {
    "from": "ModularExponentiation",
@@ -288,7 +283,7 @@ window.LAYERS = {
   {
    "from": "Compiler",
    "to": "Shor",
-   "files": 9
+   "files": 10
   },
   {
    "from": "Compiler",
@@ -396,15 +391,15 @@ window.LAYERS = {
     {
      "name": "modExpApprox_correct",
      "file": "Implementation/ModularExponentiation/Main.lean",
-     "line": 20,
+     "line": 23,
      "code": "theorem modExpApprox_correct\n    (qs : QSemantics)\n    [RegEncoding qs.Basis]\n    [GateSemanticsFacts qs]\n :\n    ModExpApproxValidDistUniform qs := by",
      "note": null
     },
     {
      "name": "ModExpApproxValidDistUniform",
-     "file": "Implementation/ModularExponentiation/Spec/Assertions.lean",
-     "line": 21,
-     "code": "def ModExpApproxValidDistUniform\n    (qs : QSemantics)\n    [RegEncoding qs.Basis]\n    [GateSemanticsFacts qs]\n: Prop :=\n  ∃ K : ℝ, 0 ≤ K ∧ K ≤ 1600 ∧\n    ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State),\n      ModExpConfig.ValidUnitState qs cfg ψ →\n      ‖qs.eval (ModExpConfig.approxGate cfg) ψ -\n        qs.eval (ModExpConfig.idealGate qs cfg) ψ‖\n        ≤ (tbits cfg.x : ℝ) * stepErr K η",
+     "file": "Implementation/ModularExponentiation/Statement.lean",
+     "line": 337,
+     "code": "def ModExpApproxValidDistUniform (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] :\n    Prop :=\n  ∃ K : ℝ, 0 ≤ K ∧ K ≤ 1600 ∧\n    ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State), cfg.ValidUnitState qs ψ →\n      ‖qs.eval cfg.approxGate ψ - qs.eval (cfg.idealGate qs) ψ‖ ≤ (regSize cfg.x : ℝ) * stepErr K η",
      "note": "What the theorem asserts, unfolded. <code>Spec/</code> states the claims and <code>Proofs/</code> discharges them; the pattern repeats in every subroutine folder."
     }
    ]
@@ -421,7 +416,7 @@ window.LAYERS = {
     {
      "name": "Policy.LowerGateCorrect",
      "file": "Implementation/Compiler/Statement.lean",
-     "line": 118,
+     "line": 238,
      "code": "def Policy.LowerGateCorrect (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs]\n    [LowerGateClass qs] (P : ShorLoweringPolicy) : Prop :=\n  P.Admissible →\n    ∀ (G : Gate) (hworkspace : Policy.GateWorkspaceOK P G) (ψ : qs.State),\n      Policy.GateWorkspaceCleanState qs P G hworkspace ψ →\n      ⟦Policy.lowerGate P G hworkspace⟧ₗ ψ = ⟦G⟧ ψ",
      "note": "The claim: the lowered program of a gate with enough workspace acts on a clean state exactly as the gate does."
     },
@@ -466,7 +461,7 @@ window.LAYERS = {
     {
      "name": "Shor_correct_approx_lowered",
      "file": "Implementation/Shor/Main.lean",
-     "line": 55,
+     "line": 36,
      "code": "theorem Shor_correct_approx_lowered\n    [GateSemanticsFacts qs]\n    [LowerGateClass qs]\n    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :\n    ShorCorrectApproxLowered T hT :=",
      "note": "The same, for the fully lowered approximate circuit; note the extra <code>LowerGateClass</code> instance."
     }

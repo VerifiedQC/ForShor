@@ -1,6 +1,5 @@
 import ForShor.ShorVerification.Model.Standard.LowGates
 import ForShor.ShorVerification.Implementation.Shor.Main
-import ForShor.ShorVerification.Implementation.GateCount.Shor_GateCount
 import ForShor.ShorVerification.Submission.Correct
 
 /-!
@@ -45,7 +44,8 @@ theorem model_exists_shorGateCountBound (ε : ℝ) (hε : 0 < ε) :
   exists_shorGateCountBound qs ε hε
 
 theorem model_shorGateCountBound_of_setup
-    (s : ShorLoweringSetup) (ε : ℝ) (hExponent : phaseProductExponent s.k ≤ 1 + ε) :
+    (s : ShorLoweringSetup) (ε : ℝ)
+    (hExponent : Real.log (q s.k : ℝ) / Real.log (s.k : ℝ) ≤ 1 + ε) :
     ShorGateCountBound qs ε s.k s.hk s.ops s.pts s.hpts :=
   shorGateCountBound_of_setup qs s ε hExponent
 

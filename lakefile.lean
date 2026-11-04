@@ -57,6 +57,14 @@ lean_lib «PolicySubmission» where
 
 lean_exe forshor_policy_submission where
   root := `ForShor.ShorVerification.Submission.PolicyMain
+  -- drop-in: the IR is extracted at run time (MetaM over the imported environment)
+  supportInterpreter := true
+
+-- The unconditionally balanced IR (Emit/BalancedU/): the `--balanced` path of
+-- forshor_policy_submission for `Shor.Balanced.balanceU`, which splits every site.
+lean_exe forshor_balanced_u where
+  root := `ForShor.Emit.BalancedU.Main
+  supportInterpreter := true
 
 -- Worked examples on the *shipped* policy template: `choose` at particular
 -- widths, the advisory shrink check firing. Kept out of `PolicySubmission`
@@ -64,3 +72,17 @@ lean_exe forshor_policy_submission where
 -- hold for any admissible policy, not only the shipped one.
 lean_lib «PolicyTests» where
   roots := #[`ForShor.ShorVerification.Submission.PolicyTests]
+
+-- Drop-in: exact-width worked instances and fault challenge (not part of PolicySubmission).
+lean_lib «ExactWidthTests» where
+  roots := #[`ForShor.ShorVerification.Submission.ExactWidthTests]
+
+-- Merged from the balanced-split work (ForShor-split): balanced phase products for unequal
+-- operands, new leaf modules only (Implementation/Reference/Balanced/). The roots are its
+-- four leaves, which import the rest. `forshor_policy_submission --balanced` emits the
+-- balanced IR.
+lean_lib «Balanced» where
+  roots := #[`ForShor.ShorVerification.Implementation.Reference.Balanced.Reference,
+    `ForShor.ShorVerification.Implementation.Reference.Balanced.Fault,
+    `ForShor.ShorVerification.Implementation.Reference.Balanced.Checks,
+    `ForShor.ShorVerification.Implementation.Reference.Balanced.Unconditional]

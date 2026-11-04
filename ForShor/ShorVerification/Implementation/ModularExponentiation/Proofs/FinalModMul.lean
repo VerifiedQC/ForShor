@@ -1,8 +1,8 @@
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Step34Exact
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Step2Bound
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Model
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Config
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Precision
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Model
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Statement
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Support
 import Mathlib.Analysis.Real.Pi.Bounds
 
 open Shor

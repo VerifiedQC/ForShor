@@ -46,7 +46,7 @@ structure ShorOrderFindingProgram where
 The logical gate count of a program under the framework's shared cost model.
 
 Computed by the framework, never declared. It is what
-`GateCount/Shor_GateCount.lean`'s asymptotic bounds are about; it is *not*
+the asymptotic bounds in `Shor/Main.lean` are about; it is *not*
 the leaderboard score, which is measured outside Lean on the emitted IR.
 -/
 def ShorOrderFindingProgram.frameworkGateCount

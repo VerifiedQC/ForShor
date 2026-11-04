@@ -1,7 +1,6 @@
 # Everything a reviewer would otherwise have to remember to run by hand: the
-# four lake targets and the three executables, a smoke run of each, the axiom
-# guard, the lexical gate on each shipped template, the layer check and the
-# docs graph.
+# lake targets and the executables, a smoke run of each, the axiom
+# guard, the lexical gate on each shipped template, and the docs graph.
 #
 # What this workflow does NOT do: apply the diff rule or the lexical gate as
 # an acceptance control (Submission/README.md) -- this repository has no
@@ -63,7 +62,7 @@ jobs:
         # the build log is grepped instead.
         run: |
           set -o pipefail
-          lake build ForShor EmitTests Submission PolicySubmission PolicyTests \
+          lake build ForShor EmitTests Submission PolicySubmission PolicyTests Balanced \
             ForShor.ShorVerification.Model.Standard.Headline \
             ForShor.ShorVerification.Model.QuantumLib.Headline 2>&1 | tee build.log
           if grep -q "warning:" build.log; then
@@ -78,13 +77,15 @@ jobs:
         # does not import Submission/Main.lean, and PolicyCheck.lean does not
         # import PolicyMain.lean -- so without this they can stop compiling
         # without CI noticing.
-        run: lake build forshor_emit forshor_submission forshor_policy_submission
+        run: lake build forshor_emit forshor_submission forshor_policy_submission forshor_balanced_u
 
       - name: Smoke-run executables
         run: |
           lake exe forshor_emit 2 2 15 0 > /dev/null
           lake exe forshor_submission | python3 -c 'import json,sys; json.load(sys.stdin)'
           lake exe forshor_policy_submission | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None, "policy submission printed no IR"'
+          lake exe forshor_policy_submission --balanced | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None and "balanced" in d, "balanced policy submission printed no IR"'
+          lake exe forshor_balanced_u | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None and "balanced_unconditional" in d, "unconditional balanced submission printed no IR"'
 
       - name: Axiom guard
         # The README's claim that the headline theorems use only propext,
@@ -98,9 +99,6 @@ jobs:
         run: |
           bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/Template.lean
           bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PolicyTemplate.lean
-
-      - name: Check import layering
-        run: python3 scripts/check_layers.py
 
       - name: Check docs graph
         run: |

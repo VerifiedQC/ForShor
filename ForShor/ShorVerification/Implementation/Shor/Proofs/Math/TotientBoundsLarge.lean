@@ -1,5 +1,5 @@
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Math.TotientBounds
-import ForShor.ShorVerification.Vendor.Mertens.Theorems
+import ForShor.ShorVerification.Implementation.Shor.Proofs.Math.Mertens.Theorems
 
 /-!
 # The `1 / log log` totient bound above `2 ^ 2048`
@@ -10,7 +10,7 @@ theorem, taking the threshold in the split lemma to be `M = ⌊log r⌋₊`:
 
 * `∏_{p < M} (1 - 1/p) = e^{-γ} e^{E₃(M-1)} / log (M-1)` (`prod_prime_one_minus_inv_eq_nat`),
   with `|E₃ x| ≤ (log 4 + 3)/log x + 1/⌊x⌋₊` (`E₃_bound`), both from the vendored Mertens
-  files in `Vendor/Mertens/`;
+  files in `Math/Mertens/`;
 * at most `log r / log M` prime factors of `r` are `≥ M`, so the large-prime factor is
   at least `1 - 1.015 / log (M-1)`;
 * `γ < 0.609` from `γ < harmonic 16 - log 16` (`eulerMascheroniConstant_lt_eulerMascheroniSeq'`).

@@ -64,6 +64,15 @@ declared in `Support.lean`.
   the exponent/data zero-state and disjointness facts the ideal
   specification (`IdealOrderFindingInput`) needs.
 
+## `Measurement.lean` — distance bounds on measurement distributions
+
+Laws of `MeasureClass`: Pythagoras for orthogonal projector images, the
+projectors decompose the squared state norm, any set of outcomes carries
+projected mass at most `‖ψ‖²`, and `probMeas_weighted_dist`: with weights in
+`[0, 1]`, weighted outcome probabilities of two unit states differ by at most
+`2‖ψ - φ‖`. `Correctness.lean` uses the last
+one.
+
 ## `Correctness.lean` — the quantum-facing Shor statement
 
 Keeps the ideal and approximate order-finding circuits, the measurement
@@ -85,7 +94,7 @@ distance bounds through common circuit context.
 - **`probability_of_success_eval_dist`** — converts a state-distance bound
   between two complete circuits into a lower bound on the approximate
   circuit's postprocessed success probability, via `probMeas_weighted_dist`
-  from `Shared/Measurement.lean`.
+  from `Measurement.lean`.
 
 ### Final correctness statements
 

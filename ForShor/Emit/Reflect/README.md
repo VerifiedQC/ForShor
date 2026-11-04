@@ -283,3 +283,7 @@ is whether each band's body matches the circuit.
   tier: `doc.wellFormed`, `dispatchersAre doc s.policy`, and
   `policyProbeChecks` on `probeSubmission s`. The `forshor_policy_submission`
   executable (`Submission/PolicyMain.lean`) evaluates it natively.
+- **`policySubmissionChecksOwnRuleProbe (s) (doc) : Bool`** — the same checks
+  with the probes where the submission's own width rule shrinks each table
+  (`probeShrinkWidthBy`), rather than where the scan does. On the exact rule
+  that probes much deeper (`forshor_policy_submission --probe-exact`).

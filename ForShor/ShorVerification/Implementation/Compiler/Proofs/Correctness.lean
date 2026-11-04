@@ -1,11 +1,12 @@
 import ForShor.ShorVerification.Implementation.Compiler.Proofs.SingleTable
 import ForShor.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Workspace
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Coefficients
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Workspace
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Lower
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Cleanliness
 import ForShor.ShorVerification.Implementation.PhaseProduct.Main
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.ConstArithmetic
+import ForShor.ShorVerification.Implementation.Compiler.Proofs.ConstArithmetic
 
 /-!
 # Whole-program lowering correctness

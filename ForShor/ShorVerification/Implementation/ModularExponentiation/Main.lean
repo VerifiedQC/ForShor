@@ -1,5 +1,8 @@
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Assertions
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Statement
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.ModExp
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Core
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Algorithm1Expansion
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Support
 
 /-!
 # Modular-Exponentiation Main Theorem

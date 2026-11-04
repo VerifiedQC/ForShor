@@ -1,95 +1,79 @@
 # `Implementation/ModularExponentiation/`
 
-This folder implements and proves correct **Algorithm 1**: in-place
-classical-quantum modular multiplication and, by recursing over the exponent
-register, modular exponentiation —
+This folder builds the approximate modular-exponentiation circuit of Shor's
+algorithm, a chain of in-place modular multiplications built from phase
+products and the QFT, and proves that on every valid input it is within
+`t · √(2Kη)` of exact modular exponentiation, where `t` is the width of the
+exponent register, `η` the per-step precision, and `K ≤ 1600` a constant.
 
-```text
-|x⟩ |0⟩  |->  |c·x mod N⟩ |0⟩
-```
+`Statement.lean` is the only file needed to see what is claimed: it holds
+every definition the claims depend on and imports nothing else from this
+folder. `Main.lean` proves the claims stated in `Statement.lean`; `Proofs/`
+holds the lemmas those proofs use.
 
-approximated by a fractional-load-and-cleanup circuit (QFT-based phase
-products, an inverse-QFT comparator, and a constant-arithmetic subtraction),
-with a quantitative error bound uniform in the precision parameter `η`.
+## Background
 
-The folder is organized in layers (below). **Every import is "justified":** a
-file may only import another file if it directly uses a declaration that
-file defines — never a declaration it merely re-exports transitively.
-`scripts/check_layers.py ModularExponentiation` (repo root) enforces both the layer order
-and the absence of umbrella files (a file that only imports and declares
-nothing of its own).
+**Modular exponentiation.** With exponent register bits x₀, …, x_{t−1},
+the map |x⟩|y⟩ ↦ |x⟩|aˣ·y mod N⟩ is a product of t controlled
+multiplications: bit xᵢ controls multiplication by cᵢ = a^(2ⁱ) mod N.
 
-## Layer order
+**Algorithm 1.** Each controlled multiplication by c is done in place, with a
+work register and a comparator flag, in five steps:
 
-```
-Math  <  Circuit  <  Lowering  <  Spec  <  Proofs  <  Main
-```
+1. Load a Fourier packet into the work register and apply a phase product
+   controlled by the control bit.
+2. Transfer the work register's phase into the data register, extended by one
+   carry bit, with a second phase product.
+3. Compare the data register against N and conditionally subtract N.
+4. Clear the comparison flag with a second comparator, `cmpLtNW`.
+5. Uncompute the work register using the inverse constant 1 − c⁻¹ mod N.
 
-A file may import its own folder or any folder to its left.
+**Precision.** The work register has n + ⌈2 · log₂(2 + 1/(2η))⌉ qubits, where n
+is the width of the data register. Each multiplication is then within √(2Kη)
+of the exact one, and the t multiplications add up to t · √(2Kη).
 
-Reading order for newcomers: start at `Main.lean`, then follow imports
-*backwards* — `Spec/Assertions.lean` for what is claimed, `Proofs/ModExp.lean`
-for how the claim is proved, and outward from there into `Proofs/`, `Spec/`,
-`Lowering/`, `Circuit/`, `Math/` as needed. The one-line descriptions below
-are grouped in dependency order (lowest layer first) to match that traversal.
+## `Statement.lean`
 
-## `Math/` — pure math, no framework/register dependencies
+The following explains each section of the code in the Statement.lean file
 
-| File | Purpose |
-|---|---|
-| `QPETail.lean` | The semantics-free numerical core of Algorithm 1's Step-1 QPE tail-mass bound: the finite QPE kernel `qpeKernel`, its chord-bound estimate, and the floor-shell summation argument giving the closed-form tail bound `qpeKernel_bad_mass_le_grid_ratio`. See its own README. |
+**Precision.** The error scale `stepErr K η = √(2Kη)`, the number of extra
+work-register qubits for precision `η`, and `Algorithm1Precision`, which pins
+the work register to that width.
 
-## `Circuit/` — the concrete Algorithm-1 circuit
+**Spare qubits.** Lemmas on `ExtReg.CanGrow` and `ExtReg.OwnedDisjoint` under
+growing a register and dropping reserve qubits. The Step 1, 2 and 5 workspaces
+below are built from them.
 
-Internal order: `Workspace → CmpLtNW → Steps → ModExp` (each may import the
-ones before it).
+**Workspace.** The register layout one multiplication needs, the spare qubits
+its phase products use (`ModMulCircuitWorkspaceOK`, from which the Step 1, 2
+and 5 workspaces are built), and the Step-4 comparator's scratch register
+(`CmpLtNWWorkspace`).
 
-| File | Purpose |
-|---|---|
-| `Workspace.lean` | The static workspace structures the circuit needs: `ModMulCoreLayout` (register/qubit-disjointness layout for one core invocation), `ModMulCircuitWorkspaceOK` (+ the concrete Step 1/2/5 phase-product workspaces it carves), `cmpLtNWWidth`/`CmpLtNWWorkspace` (Step 4's comparator workspace), and `ConstArithmeticWorkspace` (Step 3's concrete lowering workspace). |
-| `CmpLtNW.lean` | The concrete Step-4 comparator circuit (`cmpLtNW`): a fast constant multiplication into scratch, the signed difference against the data register, and copying its sign bit to the flag. |
-| `Steps.lean` | The reusable high-level gates (`IQFT`, `H_reg`), the five circuit steps (`step1`…`step5`, `step5Constant`), and the controlled in-place modular-multiplication core (`CmodMulInPlaceCore`) they assemble. |
-| `ModExp.lean` | The ideal specification (`tbits`, `modExpIdealSteps`, `modExpIdeal'`) and the approximate modular-exponentiation recursion over a list of control qubits (`ModExpLayout`, `ModExpArithmeticOK`, `modExpApproxStepsValid`, `modExpApproxValid`), built from `CmodMulInPlaceCore`. |
+**The Step-4 comparator.** `cmpLtNW`: compute N times the work register into
+the scratch register in Fourier space, subtract it from the data register
+shifted by the work register's width, copy the sign bit to the flag, and
+uncompute.
 
-## `Lowering/` — turning typed source gates into `LowGate` primitives
+**Algorithm 1.** `step1` to `step5`, and `CmodMulInPlaceCore`, the five steps
+in sequence. Step 3 uses the `CmpGeConst` and `CSubConst` gates, whose lowering
+is in `Compiler/`.
 
-| File | Purpose |
-|---|---|
-| `ConstArithmetic.lean` | Concrete `LowGate` lowering of Step 3's typed `Gate.CmpGeConst`/`Gate.CSubConst`, using one reserve qubit of `scratch` as the signed constant `-1` (`lowerCmpGeConst`, `lowerCSubConst`). |
+**Modular exponentiation.** `modExpIdeal'`, the exact version built from
+`Gate.idealCtrlModMul`, and `modExpApproxValid`, the approximate version built
+from `CmodMulInPlaceCore`, one per exponent bit.
 
-## `Spec/` — the public specification surface
+**Valid inputs.** The data register holds a value below N, and the work,
+scratch and flag qubits start at zero. `ValidAlgorithm1State` is the span of
+such basis states.
 
-| File | Purpose |
-|---|---|
-| `Precision.lean` | The concrete precision schedule for Algorithm 1 (`algorithm1ExtraBits`, `Algorithm1Precision`) and the per-core norm error scale used by the hybrid bound (`stepErr`). |
-| `Validity.lean` | The clean-input predicates for the valid-input subspace the approximation theorems work on (`GoodModMulBasisInput`, `ValidModMulState`, `GoodAlgorithm1BasisInput`, `ValidAlgorithm1State`), and the state-level cleanliness predicates consumed by the two concrete constant-arithmetic lowerers (`ConstArithmeticCleanBasis`, `CSubConstCleanBasis`, `CmpGeConstCleanState`, `CSubConstCleanState`). |
-| `Config.lean` | Compact configuration records so the bound files don't repeatedly thread the modulus, registers, precision proof, workspace proof, layout proof, and coprimality hypotheses: `Algorithm1Env`, `ModExpConfig` (+ `approxGate`/`idealGate`/`ValidUnitState`), `ModMulConfig` (+ `approxGate`/`idealGate`/`ValidState`/`ValidUnitState`). |
-| `Assertions.lean` | `ModExpApproxValidDistUniform` — the final claim: a single `η`-independent constant `K ≤ 2048` bounds the approximate-vs-ideal modular-exponentiation distance uniformly over valid unit states. `ModExpApproxValidDist2048` is the same claim with the constant written out, for callers that must choose a precision and so cannot use an existential one. Both proved in `Main.lean`. |
+**Configuration.** `ModExpConfig` bundles the modulus, registers, precision and
+layout facts, with the approximate and exact gates it determines.
 
-## `Proofs/` — everything below is proof-only; nothing outside `Proofs/`/`Main.lean` may import it
-
-See `Proofs/README.md` for the full breakdown, including the Algorithm-1
-proof outline (how Steps 1–5's error analysis is split across files).
-
-| File | Purpose |
-|---|---|
-| `Model.lean` | The shared analysis vocabulary: staged gates (`U1`/`U2`/`U34`/`U5`/`stagedGate`), the QPE target/good-label definitions, `Alg1Trace`, and the closed-form Step-1/Step-5 phase-coefficient chain. |
-| `Core.lean` | Basic facts about the model: ideal-gate exactness/validity-preservation, Step-3/4 basis-ket semantics (`eval_step3_clean_ket`, `eval_step4_cancels_ket`), and capacity/coprimality side facts. |
-| `CmpLtNW.lean` | Exact correctness of the concrete Step-4 comparator circuit (`eval_cmp_lt_nw_ket`). |
-| `ConstArithmetic.lean` | Correctness of the concrete Step-3 constant-arithmetic lowering (`evalL_lowerCmpGeConst`, `evalL_lowerCSubConst`). |
-| `Algorithm1Expansion.lean` | Expands `U1` on valid basis inputs, building the finite `Alg1Trace` (`alg1_trace_of_valid`) the quantitative bounds are stated over. |
-| `Step1QPE.lean` | Proves the QPE tail estimate for the fractional load (`alg1_qpe_tail_basis_uniform`), on top of `Math/QPETail.lean`. |
-| `Step1Bound.lean` | Lifts the basis-state QPE estimate to arbitrary valid unit states, covering both the Step-1 load and the Step-5 cleanup (`alg1_qpe_tail_uniform`) — why Step 5 has no separate file. |
-| `Step2Bound.lean` | The quantitative Fourier stability bound for Step 2 (`alg1_step2_good_label_branch_uniform`): one retained label first, then orthogonal work-label fibers recombined. |
-| `Step34Exact.lean` | Exactness (not approximation) of Steps 3 and 4 on the reference state (`alg1_step34_reference_exact`). |
-| `FinalModMul.lean` | Combines the Step 1/2/5 error bounds, Step 3/4 exactness, and a three-link triangle inequality into the single-call bound (`modMul_approx_valid_dist_uniform`). |
-| `ModExp.lean` | Lifts the single-call theorem across all exponent/control qubits into the full modular-exponentiation bound (`modExpApprox_valid_dist_uniform`). |
+**Correctness.** `ModExpApproxValidDistUniform`: for some constant `K ≤ 1600`,
+on every valid unit state, the approximate and exact gates differ by at most
+`regSize x · stepErr K η`. `ModExpApproxValidDist1600`: the same bound at
+`K = 1600`.
 
 ## `Main.lean`
 
-Proves the folder's public theorem, `modExpApprox_correct`, packaging
-`Spec.Assertions.ModExpApproxValidDistUniform` from
-`Proofs.ModExp.modExpApprox_valid_dist_uniform`, and `modExpApprox_correct_2048`
-packaging `ModExpApproxValidDist2048` from `Proofs.ModExp`'s
-`modExpApprox_valid_dist_2048`. Imports only `Spec.Assertions`
-and `Proofs.ModExp` — every other dependency is transitive through those two.
+Proves `ModExpApproxValidDistUniform` and `ModExpApproxValidDist1600`.

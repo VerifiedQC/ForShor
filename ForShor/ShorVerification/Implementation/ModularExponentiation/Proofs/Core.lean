@@ -1,13 +1,13 @@
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Steps
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Config
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Statement
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Support
 import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.CmpLtNW
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Spec.Model
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Proofs.Model
 import ForShor.ShorVerification.Framework.Semantics.GateSemantics
-import ForShor.ShorVerification.Implementation.PhaseProduct.Gates.Macros
-import ForShor.ShorVerification.Implementation.Shared.States
-import ForShor.ShorVerification.Implementation.Shared.Registers
-import ForShor.ShorVerification.Implementation.Shared.Hadamard
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.QFT.Proofs.Macros
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.States
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Registers
+import ForShor.ShorVerification.Implementation.QFT.Proofs.Hadamard
 import Mathlib.Data.Int.GCD
 import Mathlib.Analysis.SpecialFunctions.Log.Base
 
@@ -16,6 +16,11 @@ open Shor
 universe u
 
 namespace Shor
+
+/-- `q` is not a qubit of register `r`. -/
+def QubitOutside (q : ℕ) (r : Reg) : Prop :=
+  q ∉ r.qubits
+
 
 namespace IdealCtrlModMulExactSemantics
 

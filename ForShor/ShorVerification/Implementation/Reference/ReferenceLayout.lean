@@ -1,8 +1,10 @@
 import ForShor.ShorVerification.Implementation.Shor.Statement
-import ForShor.ShorVerification.Implementation.ModularExponentiation.Circuit.Workspace
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Statement
 import ForShor.ShorVerification.Implementation.Shor.Main
 import ForShor.ShorVerification.Implementation.Reference.Contract
 import ForShor.ShorVerification.Implementation.Reference.ReferencePrecision
+import ForShor.ShorVerification.Implementation.ModularExponentiation.Main
+import ForShor.ShorVerification.Implementation.Reference.Balanced.Defs
 
 namespace Shor
 namespace Reference
@@ -120,16 +122,23 @@ private def widthShell (n : ℕ) : ExtReg :=
     (widthShell n).width = n := by
   simp [widthShell, ExtReg.ofReg, ExtReg.width]
 
+/-- The phase-product reserve the reference layout gives a site: enough for the
+product itself and for every block of the default rule's split of it. -/
+def referenceSiteReserve (P : ShorLoweringPolicy) (wx wz : ℕ) : ℕ × ℕ :=
+  (max (Policy.reserveNeed P wx wz).1 (Balanced.siteNeed P Balanced.defaultRule wx wz).1,
+   max (Policy.reserveNeed P wx wz).2 (Balanced.siteNeed P Balanced.defaultRule wx wz).2)
+
 /--
-Reserve budget required by the current reference lowerer at these active widths.
-The locations of the shell registers are irrelevant because
-`shorWorkspaceNeed` depends only on active widths.
+Reserve budget of the reference layout at these active widths: the lowerer's
+`shorWorkspaceNeed`, with each phase-product site's reserve `referenceSiteReserve`.
+The locations of the shell registers are irrelevant because the need depends
+only on active widths.
 -/
 def referenceWorkspaceNeed
     (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance)
     (m : ℕ) : ShorWorkspaceNeed :=
-  Policy.shorWorkspaceNeed P
+  shorWorkspaceNeedOf (Policy.qftWorkspaceNeed P) (referenceSiteReserve P)
     (widthShell (referenceXWidth inst))
     (widthShell (referenceDataWidth inst))
     (widthShell (referenceWorkWidth inst m))
@@ -720,12 +729,12 @@ theorem reference_flag_outside_controls
     Section 8: Workspace and precision facts
 ========================================================= -/
 
-/-- The final allocated registers have the same width-based Shor reserve need
-as the shells used to size them. -/
+/-- The final allocated registers have the same width-based reserve need as the
+shells used to size them. -/
 theorem reference_workspaceNeed_eq
     (P : ShorLoweringPolicy)
     (inst : ShorOrderFindingInstance) (m : ℕ) :
-    Policy.shorWorkspaceNeed P
+    shorWorkspaceNeedOf (Policy.qftWorkspaceNeed P) (referenceSiteReserve P)
       (referenceX P inst m)
       (referenceData P inst m)
       (referenceWork P inst m)
@@ -734,7 +743,6 @@ theorem reference_workspaceNeed_eq
     referenceWorkspaceNeed P inst m := by
   apply shorWorkspaceNeed_ext <;>
     simp only [
-      Policy.shorWorkspaceNeed,
       shorWorkspaceNeedOf,
       qftReserveNeedOf,
       referenceWorkspaceNeed,
@@ -851,6 +859,24 @@ def reference_step4Workspace
     rw [hdataGrowWidth, hworkWidth]
     rfl
 
+/-- `referenceSiteReserve` is at least the lowerer's own need at every site. -/
+private theorem shorWorkspaceNeed_le_referenceSiteReserve
+    (P : ShorLoweringPolicy) (x data work scratch : ExtReg) :
+    (Policy.shorWorkspaceNeed P x data work scratch).exponent ≤
+        (shorWorkspaceNeedOf (Policy.qftWorkspaceNeed P) (referenceSiteReserve P)
+          x data work scratch).exponent ∧
+      (Policy.shorWorkspaceNeed P x data work scratch).data ≤
+        (shorWorkspaceNeedOf (Policy.qftWorkspaceNeed P) (referenceSiteReserve P)
+          x data work scratch).data ∧
+      (Policy.shorWorkspaceNeed P x data work scratch).auxiliary ≤
+        (shorWorkspaceNeedOf (Policy.qftWorkspaceNeed P) (referenceSiteReserve P)
+          x data work scratch).auxiliary ∧
+      (Policy.shorWorkspaceNeed P x data work scratch).scratch ≤
+        (shorWorkspaceNeedOf (Policy.qftWorkspaceNeed P) (referenceSiteReserve P)
+          x data work scratch).scratch := by
+  simp only [Policy.shorWorkspaceNeed, shorWorkspaceNeedOf, referenceSiteReserve]
+  omega
+
 /-- The full P reserve budget is guaranteed by construction. -/
 theorem reference_shorWorkspaceLargeEnough
     (P : ShorLoweringPolicy)
@@ -860,20 +886,20 @@ theorem reference_shorWorkspaceLargeEnough
       (referenceData P inst m)
       (referenceWork P inst m)
       (referenceScratch P inst m) := by
-  let need := referenceWorkspaceNeed P inst m
   have hneed := reference_workspaceNeed_eq P inst m
-  refine ⟨?_, ?_, ?_, ?_⟩
-  · rw [hneed]
-    simp [referenceX, referenceXReserve, ExtReg.capacity,
+  have hle := shorWorkspaceNeed_le_referenceSiteReserve P
+    (referenceX P inst m) (referenceData P inst m) (referenceWork P inst m)
+    (referenceScratch P inst m)
+  rw [hneed] at hle
+  obtain ⟨hx, hd, hw, hs⟩ := hle
+  refine ⟨hx.trans ?_, hd.trans ?_, hw.trans ?_, hs.trans ?_⟩
+  · simp [referenceX, referenceXReserve, ExtReg.capacity,
       referenceXReserveSize]
-  · rw [hneed]
-    simp [referenceData, referenceDataReserve, ExtReg.capacity,
+  · simp [referenceData, referenceDataReserve, ExtReg.capacity,
       referenceDataReserveSize]
-  · rw [hneed]
-    simp [referenceWork, referenceWorkReserve, ExtReg.capacity,
+  · simp [referenceWork, referenceWorkReserve, ExtReg.capacity,
       referenceWorkReserveSize]
-  · rw [hneed]
-    simp [referenceScratch, referenceScratchReserve, ExtReg.capacity,
+  · simp [referenceScratch, referenceScratchReserve, ExtReg.capacity,
       referenceScratchReserveSize]
 
 /-- The implementation-specific isolation condition is guaranteed by placement. -/

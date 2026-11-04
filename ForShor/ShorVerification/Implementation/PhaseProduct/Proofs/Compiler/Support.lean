@@ -1,7 +1,8 @@
-import ForShor.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Core.Registers
-import ForShor.ShorVerification.Implementation.PhaseProduct.Math.Table_Generation.Builders.Fragments
-import ForShor.ShorVerification.Implementation.Shared.States
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Cleanliness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Math.Table_Generation.Core.Registers
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Math.Table_Generation.Builders.Fragments
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.States
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Cleanliness
 
 /-!
 # Phase-Product Gate-Level Support Lemmas

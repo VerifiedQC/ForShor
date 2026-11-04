@@ -1,7 +1,8 @@
 import Lean
 import ForShor.Emit.IR.Syntax
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.Lower
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Compile
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Lower
 import ForShor.ShorVerification.Implementation.QFT.Statement
 import ForShor.ShorVerification.Implementation.Shor.Statement
 import ForShor.ShorVerification.Implementation.Shor.Main
@@ -125,20 +126,79 @@ structure Registry where
   arguments — see the comment there. -/
   topChunkSlack : Option (IR.WExpr × IR.WExpr) := none
 
-def Registry.lookupReg (reg : Registry) (e : Expr) : MetaM (Option IR.RegExpr) := do
-  for (cand, r) in reg.regs do
-    if ← isDefEq e cand then return some r
-  return none
+/-! Run-time lookups (policy submissions only). `forshor_policy_submission`
+extracts the policy IR at run time and turns on `boundedLookups`: the three
+lookups are then memoised, and each registry comparison runs `isDefEq` under a
+bounded budget. A band body repeats the same subterms (`nextWidth x z ops`,
+slot widths, slices) thousands of times, and a failing `isDefEq` unfolds
+definitions on concrete `k = 4..6` programs (the profiled cause of the `whnf`
+heartbeat wall). The memo is keyed by the expression and a fingerprint of the
+candidate list; these terms carry no metavariables, so `isDefEq` is
+deterministic and the memo does not change the result. A comparison that runs
+out of budget counts as no match: the term is translated structurally instead,
+the count is reported, and the evaluation tier checks the result either way.
 
-def Registry.lookupWidth (reg : Registry) (e : Expr) : MetaM (Option IR.WExpr) := do
-  for (cand, w) in reg.widths do
-    if ← isDefEq e cand then return some w
-  return none
+With `boundedLookups` off (the default, and every build-time `extract_*`
+command) the lookups are the original unbounded, unmemoised loops. -/
 
-def Registry.lookupAngle (reg : Registry) (e : Expr) : MetaM (Option IR.AExpr) := do
-  for (cand, a) in reg.angles do
-    if ← isDefEq e cand then return some a
-  return none
+initialize boundedLookups : IO.Ref Bool ← IO.mkRef false
+
+initialize lookupRegCache : IO.Ref (Std.HashMap (UInt64 × Expr) (Option IR.RegExpr)) ← IO.mkRef {}
+initialize lookupWidthCache : IO.Ref (Std.HashMap (UInt64 × Expr) (Option IR.WExpr)) ← IO.mkRef {}
+initialize lookupAngleCache : IO.Ref (Std.HashMap (UInt64 × Expr) (Option IR.AExpr)) ← IO.mkRef {}
+
+/-- Heartbeat budget of one registry comparison (raw count; the option
+`maxHeartbeats 200000` is `2·10⁸` raw). -/
+def lookupDefEqBudget : Nat := 20000000
+
+/-- Registry comparisons that ran out of budget (bounded mode). -/
+initialize lookupTimeouts : IO.Ref Nat ← IO.mkRef 0
+
+/-- `isDefEq` for registry lookups in bounded mode: syntactic equality first,
+then `isDefEq` under `lookupDefEqBudget`, an exhausted budget counting as no
+match. -/
+def boundedIsDefEq (a b : Expr) : MetaM Bool := do
+  if a == b then return true
+  tryCatchRuntimeEx
+    (withTheReader Core.Context (fun c => { c with maxHeartbeats := lookupDefEqBudget }) <|
+      withCurrHeartbeats <| isDefEq a b)
+    (fun _ => do lookupTimeouts.modify (· + 1); pure false)
+
+def candidatesFingerprint {α : Type} (cs : Array (Expr × α)) : UInt64 :=
+  cs.foldl (fun h c => mixHash h (hash c.1)) (hash cs.size)
+
+/-- Turn on bounded, memoised lookups and reset the memo and the timeout
+counter (the run-time policy extraction calls this once). -/
+def enableBoundedLookups : IO Unit := do
+  boundedLookups.set true
+  lookupRegCache.set {}; lookupWidthCache.set {}; lookupAngleCache.set {}; lookupTimeouts.set 0
+
+/-- One registry lookup: the original first-match `isDefEq` loop, or, in bounded
+mode, the memoised loop over `boundedIsDefEq`. -/
+def registryLookup {α : Type} (cands : Array (Expr × α))
+    (cache : IO.Ref (Std.HashMap (UInt64 × Expr) (Option α))) (e : Expr) : MetaM (Option α) := do
+  if !(← boundedLookups.get) then
+    for (cand, r) in cands do
+      if ← isDefEq e cand then return some r
+    return none
+  let key := (candidatesFingerprint cands, e)
+  if let some r := (← cache.get)[key]? then return r
+  let mut res : Option α := none
+  for (cand, r) in cands do
+    if ← boundedIsDefEq e cand then
+      res := some r
+      break
+  cache.modify (·.insert key res)
+  return res
+
+def Registry.lookupReg (reg : Registry) (e : Expr) : MetaM (Option IR.RegExpr) :=
+  registryLookup reg.regs lookupRegCache e
+
+def Registry.lookupWidth (reg : Registry) (e : Expr) : MetaM (Option IR.WExpr) :=
+  registryLookup reg.widths lookupWidthCache e
+
+def Registry.lookupAngle (reg : Registry) (e : Expr) : MetaM (Option IR.AExpr) :=
+  registryLookup reg.angles lookupAngleCache e
 
 /-- Read a natural-number literal off a `Expr`, reducing only via `whnfR`
 (never a full `whnf`) to expose it. Originally used full `whnf`: harmless
@@ -336,6 +396,11 @@ partial def translateW (reg : Registry) (e : Expr) : MetaM IR.WExpr := do
       -- avoids ever asking anything to reduce into `Finset.univ.sup`.
       return .opaque "nextWidth" reg.nextWidthArgs
   | (``Shor.RecursivePhaseWorkspace.nextWidth, #[_, _, wxE, wzE]) =>
+      return .opaque "nextWidth" [← translateW reg wxE, ← translateW reg wzE]
+  | (``Shor.nextSignedWidthBy, #[_, _, _, _, _]) =>
+      -- the same child width under a policy's width rule (`Compiler/Widths.lean`)
+      return .opaque "nextWidth" reg.nextWidthArgs
+  | (``Shor.RecursivePhaseWorkspace.nextWidthBy, #[_, _, _, wxE, wzE]) =>
       return .opaque "nextWidth" [← translateW reg wxE, ← translateW reg wzE]
   | (``Prod.fst, #[_, _, pairE]) =>
       match pairE.getAppFnArgs with
@@ -790,7 +855,7 @@ partial def translateReg (reg : Registry) (e : Expr) : MetaM IR.RegExpr := do
   -- `CmpLtNWWorkspace.mulWorkspace` is special-cased by name).
   | (``Shor.Gate.PhaseProdWorkspace.xReserve, #[_, _, wsE]) => resolvePhaseReserve reg true wsE e
   | (``Shor.Gate.PhaseProdWorkspace.zReserve, #[_, _, wsE]) => resolvePhaseReserve reg false wsE e
-  -- `PhaseProdWorkspace.xExt`/`.zExt` (`Gates/Macros.lean`): plain
+  -- `PhaseProdWorkspace.xExt`/`.zExt` (`PhaseProduct/Statement.lean`): plain
   -- projections of the already-known operand plus its reserve — calls
   -- `resolvePhaseReserve` *directly* (not `translateReg`'s public entry) for
   -- the same reason `resolvePhaseReserve`'s own doc comment explains.
@@ -1284,7 +1349,7 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
   | (``Shor.LowGate.signDealloc, #[r, n]) =>
       return .op "signDealloc" [← translateReg reg r] [← translateW reg n] none []
   -- The base case of `standardSignedPhaseLoweringPlan`'s recursion
-  -- (`lowerGateRec`'s `.signedBase phi x z _ => LowGate.Naive_SignedPhaseProd
+  -- (`lowerGateRec`'s `.signedBase phi x z => LowGate.Naive_SignedPhaseProd
   -- phi x z`): a call to the `naive_leaf` template, never inlined.
   | (``Shor.LowGate.Naive_SignedPhaseProd, #[phi, x, z]) => do
       let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
@@ -1371,8 +1436,8 @@ recognisers — not a second reduction — decide what happens next. -/
 partial def translatePlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
   let plan ← whnfR plan
   match plan.getAppFnArgs with
-  -- The dispatcher's self-call. `Policy.signedPlanOf P theta y w hws o h`:
-  -- 0 P, 1 theta, 2 x, 3 z, 4 hworkspace, 5 o, 6 h.
+  -- The dispatcher's self-call. `Policy.signedPlanOf P theta y w n o h`:
+  -- 0 P, 1 theta, 2 x, 3 z, 4 n (the plan's size label), 5 o, 6 h.
   | (``Shor.Policy.signedPlanOf, #[_, theta, x, z, _, _, _]) => do
       let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
       let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
@@ -1380,15 +1445,15 @@ partial def translatePlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
       let zCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[z])
       return .call "phase_product" [xw, zw, xCap, zCap] [← translateA reg theta]
         [← translateReg reg x, ← translateReg reg z]
-  | (``Shor.Policy.signedPlan, #[_, theta, x, z, _]) => do
+  | (``Shor.Policy.signedPlan, #[_, theta, x, z]) => do
       let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
       let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
       let xCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[x])
       let zCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[z])
       return .call "phase_product" [xw, zw, xCap, zCap] [← translateA reg theta]
         [← translateReg reg x, ← translateReg reg z]
-  -- `Policy.cSignedPlanOf P ctrl theta y w hws o h`:
-  -- 0 P, 1 ctrl, 2 theta, 3 x, 4 z, 5 hworkspace, 6 o, 7 h.
+  -- `Policy.cSignedPlanOf P ctrl theta y w n o h`:
+  -- 0 P, 1 ctrl, 2 theta, 3 x, 4 z, 5 n, 6 o, 7 h.
   | (``Shor.Policy.cSignedPlanOf, #[_, ctrl, theta, x, z, _, _, _]) => do
       let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
       let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
@@ -1396,21 +1461,21 @@ partial def translatePlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
       let zCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[z])
       return .call "cphase_product" [xw, zw, xCap, zCap] [← translateA reg theta]
         [← translateReg reg ctrl, ← translateReg reg x, ← translateReg reg z]
-  | (``Shor.Policy.cSignedPlan, #[_, ctrl, theta, x, z, _]) => do
+  | (``Shor.Policy.cSignedPlan, #[_, ctrl, theta, x, z]) => do
       let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
       let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
       let xCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[x])
       let zCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[z])
       return .call "cphase_product" [xw, zw, xCap, zCap] [← translateA reg theta]
         [← translateReg reg ctrl, ← translateReg reg x, ← translateReg reg z]
-  | (``Shor.standardSignedPhaseLoweringPlan, #[_, _, theta, x, z, _, _, _, _]) => do
+  | (``Shor.standardSignedPhaseLoweringPlan, #[_, _, theta, x, z, _, _, _]) => do
       let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
       let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
       let xCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[x])
       let zCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[z])
       return .call "phase_product" [xw, zw, xCap, zCap] [← translateA reg theta]
         [← translateReg reg x, ← translateReg reg z]
-  | (``Shor.standardCSignedPhaseLoweringPlan, #[_, _, ctrl, theta, x, z, _, _, _, _]) => do
+  | (``Shor.standardCSignedPhaseLoweringPlan, #[_, _, ctrl, theta, x, z, _, _, _]) => do
       let xw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[x])
       let zw ← translateW reg (← mkAppM ``Shor.ExtReg.width #[z])
       let xCap ← translateW reg (← mkAppM ``Shor.ExtReg.capacity #[x])
@@ -1437,14 +1502,13 @@ partial def translatePlan (reg : Registry) (plan : Expr) : MetaM IR.Node := do
       translateNode reg (← mkAppM ``Shor.LowGate.zeroDealloc #[r, n])
   | (``Shor.PhaseLoweringPlan.signDealloc, #[_, _, r, n]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.signDealloc #[r, n])
-  | (``Shor.PhaseLoweringPlan.signedBase, #[_, _, phi, x, z, _]) =>
+  | (``Shor.PhaseLoweringPlan.signedBase, #[_, _, phi, x, z]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.Naive_SignedPhaseProd #[phi, x, z])
-  | (``Shor.PhaseLoweringPlan.signedStep, #[_, _, _, _, _, _, _, _, _, _, child]) =>
+  | (``Shor.PhaseLoweringPlan.signedStep, #[_, _, _, _, _, _, _, child]) =>
       translatePlan reg child
-  | (``Shor.PhaseLoweringPlan.cSignedBase, #[_, _, ctrl, phi, x, z, _]) =>
+  | (``Shor.PhaseLoweringPlan.cSignedBase, #[_, _, ctrl, phi, x, z]) =>
       translateNode reg (← mkAppM ``Shor.LowGate.Naive_CSignedPhaseProd #[ctrl, phi, x, z])
-  | (``Shor.PhaseLoweringPlan.cSignedStep,
-      #[_, _, _, _, _, _, _, _, _, _, _, _, child]) =>
+  | (``Shor.PhaseLoweringPlan.cSignedStep, #[_, _, _, _, _, _, _, _, child]) =>
       translatePlan reg child
   | _ =>
       -- Not yet a recognised shape: `plan` is an application of a named
@@ -1633,7 +1697,7 @@ workspace proof argument `lowerGate` itself takes is never threaded through
 at all — `GateWorkspaceOK` is a `Prop`, and every case below reads its
 registers/widths straight off `G`'s own constructor arguments, never off the
 workspace (confirmed by inspection of `lowerGate`, `lowerQFT`,
-`lowerSignedPhaseProdWithWorkspace`, … themselves: the workspace argument only
+`lowerSignedPhaseProd`, … themselves: the workspace argument only
 ever supplies further proof obligations passed on downward, never a register
 or width value). -/
 partial def translateLowerGate (reg : Registry) (src : QFTWorkSource) (gE : Expr) : MetaM IR.Node := do
@@ -1688,7 +1752,7 @@ partial def translateLowerGate (reg : Registry) (src : QFTWorkSource) (gE : Expr
       let zWorkW ← translateW reg (← mkAppM ``Shor.regSize #[zWorkE])
       return .call "qft" [w, xWorkW, zWorkW] []
         [← translateReg reg rActiveE, ← translateReg reg xWorkE, ← translateReg reg zWorkE]
-  -- `lowerSignedPhaseProdWithWorkspace k hk phi x z ops hw := lowerSignedPhaseProd
+  -- `lowerSignedPhaseProd k hk phi x z ops hw := lowerSignedPhaseProd
   -- k hk phi x z ops (standardSignedPhaseLoweringPlan k hk phi x z ops hw)` —
   -- exactly `translatePlan`'s own `standardSignedPhaseLoweringPlan` case.
   | (``Shor.Gate.SignedPhaseProd, #[phi, x, z]) => do

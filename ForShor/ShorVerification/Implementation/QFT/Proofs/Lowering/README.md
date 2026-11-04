@@ -3,7 +3,7 @@
 Correctness of the `Lowering/` plan machinery: that lowering a
 `QFTLoweringPlan` to a `LowGate` (via `lowerQFTPlan`) preserves semantics
 given the plan is "ready" (`QFTLoweringReady`, defined in `PlanSemantics.lean`), and
-that the canonical planners built in `Lowering/PlanBuilders.lean` actually
+that the canonical planners built in `PhaseProduct/Statement.lean` actually
 produce ready, workspace-preserving plans.
 
 The two results this folder's proofs ultimately exist to feed `Main.lean`:

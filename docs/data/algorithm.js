@@ -98,7 +98,7 @@ window.ALGORITHM = {
     {
      "name": "Shor_end_to_end_factoring_approx_lowered",
      "file": "Implementation/Shor/Proofs/Correctness.lean",
-     "line": 1201,
+     "line": 1196,
      "code": "theorem Shor_end_to_end_factoring_approx_lowered\n    [GateSemanticsFacts qs]\n    [LowerGateClass qs]\n    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T)\n    (fact : ShorFactoringInstance) :\n    ShorEndToEndFactoringApproxLowered T hT fact := by",
      "note": "The conclusion <code>ShorEndToEndFactoringApproxLowered</code> is defined just above it in <code>Shor/Proofs/Correctness.lean</code>; it is the conjunction described on the left."
     }
@@ -148,8 +148,8 @@ window.ALGORITHM = {
     },
     {
      "name": "H_reg",
-     "file": "Implementation/ModularExponentiation/Circuit/Steps.lean",
-     "line": 21,
+     "file": "Implementation/ModularExponentiation/Statement.lean",
+     "line": 148,
      "code": "def H_reg (r : Reg) : Gate :=\n  (regQubits r).foldl (fun acc q => (Gate.H q) ;; acc) Gate.id",
      "note": null
     }
@@ -167,7 +167,7 @@ window.ALGORITHM = {
     {
      "name": "initY1",
      "file": "Implementation/Shor/Statement.lean",
-     "line": 217,
+     "line": 210,
      "code": "def initY1 (y : Reg) : Gate :=\n  match y.qubits with\n  | [] => Gate.id\n  | q :: _ => Gate.X q",
      "note": null
     }
@@ -184,9 +184,9 @@ window.ALGORITHM = {
    "snippets": [
     {
      "name": "modExpIdeal'",
-     "file": "Implementation/ModularExponentiation/Circuit/ModExp.lean",
-     "line": 25,
-     "code": "def modExpIdeal'\n    (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs] (a N : ℕ) (x data : Reg) :\n    Gate :=\n  modExpIdealSteps qs a N data 0 x.qubits",
+     "file": "Implementation/ModularExponentiation/Statement.lean",
+     "line": 226,
+     "code": "def modExpIdeal' (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs] (a N : ℕ)\n    (x data : Reg) : Gate :=\n  modExpIdealSteps qs a N data 0 x.qubits",
      "note": null
     }
    ],
@@ -204,8 +204,8 @@ window.ALGORITHM = {
    "snippets": [
     {
      "name": "IQFT",
-     "file": "Implementation/ModularExponentiation/Circuit/Steps.lean",
-     "line": 17,
+     "file": "Implementation/ModularExponentiation/Statement.lean",
+     "line": 144,
      "code": "def IQFT (r : ExtReg) : Gate :=\n  †(Gate.QFT r)",
      "note": null
     }
@@ -224,14 +224,14 @@ window.ALGORITHM = {
     {
      "name": "OF_post",
      "file": "Implementation/Shor/Statement.lean",
-     "line": 67,
+     "line": 60,
      "code": "noncomputable def OF_post (T : ℕ → ℕ) (verify : ℕ → Bool) (o Q : ℕ) : ℕ :=\n  if h : (orderCandidates T verify o Q).Nonempty then (orderCandidates T verify o Q).min' h else 0",
      "note": null
     },
     {
      "name": "probability_of_success",
      "file": "Implementation/Shor/Statement.lean",
-     "line": 192,
+     "line": 185,
      "code": "noncomputable def probability_of_success {qs : QSemantics} [RegEncoding qs.Basis]\n    [MeasureClass qs] {Circuit : Type} (evalC : Circuit → qs.State → qs.State) (T : ℕ → ℕ)\n    (verify : OrderVerifier) (x : Reg) (r Q : ℕ) (C : Circuit) (ψ : qs.State) : ℝ :=\n  ∑ o : Fin Q, (r_found (T := T) verify o.1 Q r) *\n    MeasureClass.probMeas (qs := qs) x o.1 (evalC C ψ)",
      "note": null
     }

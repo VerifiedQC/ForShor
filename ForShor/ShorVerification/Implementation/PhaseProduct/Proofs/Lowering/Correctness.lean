@@ -1,7 +1,8 @@
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Coefficients
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Widths
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
-import ForShor.ShorVerification.Implementation.PhaseProduct.Spec.Readiness
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Coefficients
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Layout
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Plan
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Readiness
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanSemantics
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.PlanReadiness.RecursiveReadiness
 
@@ -44,7 +45,7 @@ lemma evalL_lowerSignedPhaseProd_of_plan
     (hInterp : GoodToomCookPoints k pts hpts)
     (hC : ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts)
     (hRun : run? ops State.start_state = some State.start_state) :
-    LowerGateClass.evalL (qs := qs) (lowerSignedPhaseProd k hk phi x z ops pts hpts plan) ψ
+    LowerGateClass.evalL (qs := qs) (lowerGateRec plan) ψ
       = qs.eval (Gate.SignedPhaseProd phi x z) ψ := by
   exact evalL_lowerGateRec_correct (qs := qs)
     (ShorLoweringPolicy.constPolicy_admissible (T := ⟨k, hk, pts, hpts, ops⟩)

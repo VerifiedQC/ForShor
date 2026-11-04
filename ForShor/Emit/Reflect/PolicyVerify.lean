@@ -59,7 +59,7 @@ Total because the IR's opaque functions are, and single-valued because
 where it coincides with that band's own table's `nextWidth`. -/
 def policyNextWidth (P : ShorLoweringPolicy) (wx wz : ℕ) : ℕ :=
   match P.choose (max wx wz) with
-  | some T => RecursivePhaseWorkspace.nextWidth T.ops wx wz
+  | some T => RecursivePhaseWorkspace.nextWidthBy P.widthRule T.ops wx wz
   | none => max wx wz
 
 /-- `opaqueDispatch`, keyed on a policy. Same names, same arities: a policy
@@ -127,9 +127,9 @@ def policyFuel : ℕ := 600
 
 /-- The dispatcher, instantiated at concrete registers, agrees with the real
 policy-lowered circuit. -/
-def policyPhaseProductAgrees (s : ShorPolicySubmission) (doc : Doc) (x z : ExtReg) (phi : Angle)
-    (hws : Policy.WorkspaceOK s.policy x z) : Bool :=
-  let real := Policy.lowerSignedPhaseProd s.policy phi x z hws
+def policyPhaseProductAgrees (s : ShorPolicySubmission) (doc : Doc) (x z : ExtReg) (phi : Angle) :
+    Bool :=
+  let real := Policy.lowerSignedPhaseProd s.policy phi x z
   let env : Env :=
     { w := fun name =>
         if name == "xw" then some x.width
@@ -151,8 +151,8 @@ def checkPolicyPhaseProductAt (s : ShorPolicySubmission) (n : ℕ) (doc : Doc) (
   match policyPPRegisters s.policy n slack with
   | .error e => .error s!"policy template check (phase_product): {e}"
   | .ok (x, z, _ctrl) =>
-      if hws : Policy.WorkspaceOK s.policy x z then
-        if policyPhaseProductAgrees s doc x z ((1 : ℚ) / 4) hws then .ok ()
+      if Policy.WorkspaceOK s.policy x z then
+        if policyPhaseProductAgrees s doc x z ((1 : ℚ) / 4) then .ok ()
         else .error
           s!"policy template check (phase_product): instantiate disagrees with the real term \
             at n={n}, slack={slack}"
@@ -161,8 +161,8 @@ def checkPolicyPhaseProductAt (s : ShorPolicySubmission) (n : ℕ) (doc : Doc) (
 
 /-- Controlled counterpart of `policyPhaseProductAgrees`. -/
 def policyCPhaseProductAgrees (s : ShorPolicySubmission) (doc : Doc) (ctrl : ℕ)
-    (x z : ExtReg) (phi : Angle) (hws : Policy.CWorkspaceOK s.policy ctrl x z) : Bool :=
-  let real := Policy.lowerCSignedPhaseProd s.policy ctrl phi x z hws
+    (x z : ExtReg) (phi : Angle) : Bool :=
+  let real := Policy.lowerCSignedPhaseProd s.policy ctrl phi x z
   let ctrlReg := ExtReg.ofReg (Reg.interval ctrl 1)
   let env : Env :=
     { w := fun name =>
@@ -187,8 +187,8 @@ def checkPolicyCPhaseProductAt (s : ShorPolicySubmission) (n : ℕ) (doc : Doc) 
   match policyPPRegisters s.policy n slack with
   | .error e => .error s!"policy template check (cphase_product): {e}"
   | .ok (x, z, ctrl) =>
-      if hws : Policy.CWorkspaceOK s.policy ctrl x z then
-        if policyCPhaseProductAgrees s doc ctrl x z ((1 : ℚ) / 4) hws then .ok ()
+      if Policy.CWorkspaceOK s.policy ctrl x z then
+        if policyCPhaseProductAgrees s doc ctrl x z ((1 : ℚ) / 4) then .ok ()
         else .error
           s!"policy template check (cphase_product): instantiate disagrees with the real term \
             at n={n}, slack={slack}"
@@ -359,13 +359,11 @@ def shallowLeafCall (controlled : Bool) :
 
 /-- One level of band `i`'s body against the compiler's one-level gate. -/
 def policyBandBodyAgrees (s : ShorPolicySubmission) (doc : Doc) (i : ℕ) (T : ToomCookTable)
-    (x z : ExtReg) (phi : Angle)
-    (hT : s.policy.choose (phaseInputSize x z) = some T)
-    (hws : Policy.WorkspaceOK s.policy x z) : Except String Unit :=
+    (x z : ExtReg) (phi : Angle) : Except String Unit :=
   let real : Gate :=
-    if hrec : nextSignedWidth x z T.ops < phaseInputSize x z then
-      compiledSignedPhaseGate T.k T.hk T.pts T.hpts T.ops phi x z
-        (Policy.canonicalStep s.policy T x z hT hrec hws).layout
+    if nextSignedWidthBy s.policy.widthRule x z T.ops < phaseInputSize x z then
+      compiledSignedPhaseGateBy s.policy.widthRule T.k T.hk T.pts T.hpts T.ops phi x z
+        (Policy.canonicalStep s.policy T x z)
     else Gate.SignedPhaseProd phi x z
   let env : Env :=
     { w := fun name =>
@@ -385,13 +383,11 @@ def policyBandBodyAgrees (s : ShorPolicySubmission) (doc : Doc) (i : ℕ) (T : T
 
 /-- Controlled counterpart of `policyBandBodyAgrees`. -/
 def policyCBandBodyAgrees (s : ShorPolicySubmission) (doc : Doc) (i : ℕ) (T : ToomCookTable)
-    (ctrl : ℕ) (x z : ExtReg) (phi : Angle)
-    (hT : s.policy.choose (phaseInputSize x z) = some T)
-    (hws : Policy.CWorkspaceOK s.policy ctrl x z) : Except String Unit :=
+    (ctrl : ℕ) (x z : ExtReg) (phi : Angle) : Except String Unit :=
   let real : Gate :=
-    if hrec : nextSignedWidth x z T.ops < phaseInputSize x z then
-      compiledCSignedPhaseGate T.k T.hk T.pts T.hpts T.ops ctrl phi x z
-        (Policy.canonicalStep s.policy T x z hT hrec hws.toWorkspaceOK).layout
+    if nextSignedWidthBy s.policy.widthRule x z T.ops < phaseInputSize x z then
+      compiledCSignedPhaseGateBy s.policy.widthRule T.k T.hk T.pts T.hpts T.ops ctrl phi x z
+        (Policy.canonicalStep s.policy T x z)
     else Gate.CSignedPhaseProd ctrl phi x z
   let ctrlReg := ExtReg.ofReg (Reg.interval ctrl 1)
   let env : Env :=
@@ -422,14 +418,12 @@ def checkPolicyBandBodyAt (s : ShorPolicySubmission) (i : ℕ) (doc : Doc) (slac
     match policyPPRegisters s.policy n slack with
     | .error e => .error s!"policy band check (band {i}, phase_product): {e}"
     | .ok (x, z, _) =>
-      match hc : chooseIdx s.policy (phaseInputSize x z) with
+      match chooseIdx s.policy (phaseInputSize x z) with
       | none => .error s!"policy band check: no band covers width {n}"
       | some (j, T) =>
         if j = i then
-          have hT : s.policy.choose (phaseInputSize x z) = some T := by
-            rw [← chooseIdx_map, hc]; rfl
-          if hws : Policy.WorkspaceOK s.policy x z then
-            match policyBandBodyAgrees s doc i T x z ((1 : ℚ) / 4) hT hws with
+          if Policy.WorkspaceOK s.policy x z then
+            match policyBandBodyAgrees s doc i T x z ((1 : ℚ) / 4) with
             | .ok _ => .ok ()
             | .error e =>
               .error s!"policy band check (band {i}, phase_product) at n={n}, slack={slack}: {e}"
@@ -446,14 +440,12 @@ def checkPolicyCBandBodyAt (s : ShorPolicySubmission) (i : ℕ) (doc : Doc) (sla
     match policyPPRegisters s.policy n slack with
     | .error e => .error s!"policy band check (band {i}, cphase_product): {e}"
     | .ok (x, z, ctrl) =>
-      match hc : chooseIdx s.policy (phaseInputSize x z) with
+      match chooseIdx s.policy (phaseInputSize x z) with
       | none => .error s!"policy band check: no band covers width {n}"
       | some (j, T) =>
         if j = i then
-          have hT : s.policy.choose (phaseInputSize x z) = some T := by
-            rw [← chooseIdx_map, hc]; rfl
-          if hws : Policy.CWorkspaceOK s.policy ctrl x z then
-            match policyCBandBodyAgrees s doc i T ctrl x z ((1 : ℚ) / 4) hT hws with
+          if Policy.CWorkspaceOK s.policy ctrl x z then
+            match policyCBandBodyAgrees s doc i T ctrl x z ((1 : ℚ) / 4) with
             | .ok _ => .ok ()
             | .error e =>
               .error s!"policy band check (band {i}, cphase_product) at n={n}, slack={slack}: {e}"
@@ -536,7 +528,9 @@ def probeSubmission (s : ShorPolicySubmission) : Option ShorPolicySubmission :=
   | some tsRev =>
       let bands := (tsRev.reverse).zip (s.bands.map Prod.snd)
       if bands.length ≠ s.bands.length then none
-      else if h : (bands.map Prod.fst).IsChain (· > ·) then some ⟨bands, h⟩ else none
+      else if h : (bands.map Prod.fst).IsChain (· > ·) then
+        some { bands := bands, sorted := h, widthRule := s.widthRule }
+      else none
 
 /-- `doc` with both dispatchers rebuilt for policy `P`. -/
 def withDispatchers (doc : Doc) (P : ShorLoweringPolicy) : Doc :=
@@ -635,6 +629,49 @@ and not on how many bands repeat a table. -/
 def policySubmissionChecks (s : ShorPolicySubmission) (doc : Doc) : Bool :=
   doc.wellFormed && dispatchersAre doc s.policy &&
     match probeSubmission s with
+    | none => false
+    | some s' => policyProbeChecks s' (withDispatchers doc s'.policy)
+
+/-! ### Probes at exact-width thresholds (`--probe-exact`)
+
+`probeShrinkWidth` places the probes where the scan first shrinks each table,
+whatever the policy's width rule: the instance sizes the tier has always
+checked. Under the exact rule a table shrinks at much smaller widths (shipped
+`k = 2` table: from 5 rather than 14), and since the exact width never exceeds
+the scan (`nextSignedWidthBy_exact_le_scan`), every band still recurses at its
+scan probe threshold. The variant below probes where the policy's own rule
+first shrinks each table instead: the same checks, run deeper and on much
+larger circuits. -/
+
+/-- `probeShrinkWidth` under the policy's width rule. -/
+def probeShrinkWidthBy (R : WidthRule) (T : ToomCookTable) (lo : ℕ) : Option ℕ :=
+  (List.range' lo probeSearchBound).find? fun w =>
+    decide (RecursivePhaseWorkspace.nextWidthBy R T.ops w w < w)
+
+/-- `probeThresholdsRev` under a width rule. -/
+def probeThresholdsRevBy (R : WidthRule) : List ShorLoweringSetup → ℕ → Option (List ℕ)
+  | [], _ => some []
+  | b :: bs, lo => do
+      let t := (probeShrinkWidthBy R b.table lo).getD lo
+      let rest ← probeThresholdsRevBy R bs (t + 1)
+      pure (t :: rest)
+
+/-- `probeSubmission` with the thresholds of the submission's own width rule. -/
+def probeSubmissionOwnRule (s : ShorPolicySubmission) : Option ShorPolicySubmission :=
+  match probeThresholdsRevBy s.widthRule (s.bands.reverse.map Prod.snd) 2 with
+  | none => none
+  | some tsRev =>
+      let bands := (tsRev.reverse).zip (s.bands.map Prod.snd)
+      if bands.length ≠ s.bands.length then none
+      else if h : (bands.map Prod.fst).IsChain (· > ·) then
+        some { bands := bands, sorted := h, widthRule := s.widthRule }
+      else none
+
+/-- `policySubmissionChecks` with probes where the submission's own width
+rule shrinks each table (`forshor_policy_submission --probe-exact`). -/
+def policySubmissionChecksOwnRuleProbe (s : ShorPolicySubmission) (doc : Doc) : Bool :=
+  doc.wellFormed && dispatchersAre doc s.policy &&
+    match probeSubmissionOwnRule s with
     | none => false
     | some s' => policyProbeChecks s' (withDispatchers doc s'.policy)
 

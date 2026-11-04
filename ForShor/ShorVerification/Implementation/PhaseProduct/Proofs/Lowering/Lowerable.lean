@@ -1,5 +1,6 @@
-import ForShor.ShorVerification.Implementation.PhaseProduct.Compiler.Compile
-import ForShor.ShorVerification.Implementation.PhaseProduct.Lowering.Plan
+import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Compile
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Plan
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.EvalL
 
 /-!
@@ -62,9 +63,8 @@ variable {P : ShorLoweringPolicy}
 @[simp] lemma lowerGateRec_signedBase
     {initSize : ℕ}
     (phi : Angle)
-    (x z : ExtReg)
-    (hstop : P.Stops initSize (fun T => nextSignedWidth x z T.ops)) :
-    lowerGateRec (PhaseLoweringPlan.signedBase (P := P) phi x z hstop)
+    (x z : ExtReg) :
+    lowerGateRec (PhaseLoweringPlan.signedBase (P := P) (initSize := initSize) phi x z)
       = LowGate.Naive_SignedPhaseProd phi x z := by
   rfl
 
@@ -73,13 +73,10 @@ variable {P : ShorLoweringPolicy}
     (phi : Angle)
     (x z : ExtReg)
     (T : ToomCookTable)
-    (hT : P.choose initSize = some T)
     (layout : Gate.PhaseProductLayout x z T.k)
-    (hrec : nextSignedWidth x z T.ops < initSize)
-    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z T.ops))
-    (child : PhaseLoweringPlan P (nextSignedWidth x z T.ops)
-        (compiledSignedPhaseGate T.k T.hk T.pts T.hpts T.ops phi x z layout)) :
-    lowerGateRec (PhaseLoweringPlan.signedStep (P := P) phi x z T hT layout hrec hcapacity child)
+    (child : PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
+        (compiledSignedPhaseGateBy P.widthRule T.k T.hk T.pts T.hpts T.ops phi x z layout)) :
+    lowerGateRec (PhaseLoweringPlan.signedStep (P := P) (initSize := initSize) phi x z T layout child)
       = lowerGateRec child := by
   rfl
 
@@ -87,9 +84,8 @@ variable {P : ShorLoweringPolicy}
     {initSize : ℕ}
     (ctrl : ℕ)
     (phi : Angle)
-    (x z : ExtReg)
-    (hstop : P.Stops initSize (fun T => nextSignedWidth x z T.ops)) :
-    lowerGateRec (PhaseLoweringPlan.cSignedBase (P := P) ctrl phi x z hstop)
+    (x z : ExtReg) :
+    lowerGateRec (PhaseLoweringPlan.cSignedBase (P := P) (initSize := initSize) ctrl phi x z)
       = LowGate.Naive_CSignedPhaseProd ctrl phi x z := by
   rfl
 
@@ -99,15 +95,11 @@ variable {P : ShorLoweringPolicy}
     (phi : Angle)
     (x z : ExtReg)
     (T : ToomCookTable)
-    (hT : P.choose initSize = some T)
     (layout : Gate.PhaseProductLayout x z T.k)
-    (hrec : nextSignedWidth x z T.ops < initSize)
-    (hcapacity : (initSignedLayoutState layout).CanGrowToNeeds (scanNeededWidths x z T.ops))
-    (hctrl : layout.ControlDisjoint ctrl)
-    (child : PhaseLoweringPlan P (nextSignedWidth x z T.ops)
-        (compiledCSignedPhaseGate T.k T.hk T.pts T.hpts T.ops ctrl phi x z layout)) :
-    lowerGateRec (PhaseLoweringPlan.cSignedStep (P := P) ctrl phi x z T hT layout hrec hcapacity
-      hctrl child) = lowerGateRec child := by
+    (child : PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)
+        (compiledCSignedPhaseGateBy P.widthRule T.k T.hk T.pts T.hpts T.ops ctrl phi x z layout)) :
+    lowerGateRec (PhaseLoweringPlan.cSignedStep (P := P) (initSize := initSize) ctrl phi x z T layout
+      child) = lowerGateRec child := by
   rfl
 
 end PhaseLoweringPlan
@@ -229,12 +221,13 @@ lemma lowerable_compileAnnotatedOpsToSignedGateAux
           LowerablePhaseGate.SignedPhaseProd
         ]
 
-/-- The full compiled signed phase-product circuit is lowerable. -/
-lemma lowerable_compileOpsToSignedGate
+/-- For either width rule `R`: The full compiled signed phase-product circuit is lowerable. -/
+lemma lowerable_compileOpsToSignedGate_by
+    (R : WidthRule)
     (k : ℕ) (hk : 1 < k) (phi : Angle) (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k) (coeff : Fin (q k) → ℚ) (ops : Prog k) :
-    LowerablePhaseGate (compileOpsToSignedGate k hk phi x z layout coeff ops) := by
-  let need : NeededWidths k := scanNeededWidths x z ops
+    LowerablePhaseGate (compileOpsToSignedGateBy R k hk phi x z layout coeff ops) := by
+  let need : NeededWidths k := neededWidthsBy R x z ops
   let stInit : LayoutState k := initSignedLayoutState layout
   let stFinal : LayoutState k := targetSignedLayoutState stInit need
   change
@@ -248,6 +241,13 @@ lemma lowerable_compileOpsToSignedGate
       (lowerable_compileAnnotatedOpsToSignedGateAux k hk phi coeff stFinal
         (annotatePhaseTermsAux k 0 ops))
       (lowerable_compileSignedDeallocations k stInit stFinal))
+
+/-- The full compiled signed phase-product circuit is lowerable. -/
+lemma lowerable_compileOpsToSignedGate
+    (k : ℕ) (hk : 1 < k) (phi : Angle) (x z : ExtReg)
+    (layout : Gate.PhaseProductLayout x z k) (coeff : Fin (q k) → ℚ) (ops : Prog k) :
+    LowerablePhaseGate (compileOpsToSignedGate k hk phi x z layout coeff ops) :=
+  lowerable_compileOpsToSignedGate_by .scan k hk phi x z layout coeff ops
 
 /-- Control-phase wrapping preserves lowerability. -/
 lemma lowerable_controlPhaseLeaves (ctrl : ℕ) {U : Gate} (hU : LowerablePhaseGate U) :
@@ -273,8 +273,7 @@ lemma lowerable_controlPhaseLeaves (ctrl : ℕ) {U : Gate} (hU : LowerablePhaseG
 lemma lowerable_compileOpsToCSignedGate
     (k : ℕ) (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (x z : ExtReg)
     (layout : Gate.PhaseProductLayout x z k) (coeff : Fin (q k) → ℚ) (ops : Prog k) :
-    LowerablePhaseGate (compileOpsToCSignedGate k hk ctrl phi x z layout coeff ops) := by
-  unfold compileOpsToCSignedGate
+    LowerablePhaseGate (controlPhaseLeaves ctrl (compileOpsToSignedGate k hk phi x z layout coeff ops)) := by
   exact lowerable_controlPhaseLeaves ctrl (lowerable_compileOpsToSignedGate k hk phi x z layout coeff ops)
 
 end Shor

@@ -38,7 +38,7 @@ literally a corollary of the policy theorem.
 
 ## Checked by evaluation, at sampled widths
 
-`extract_policy_ir_doc` builds the IR a resource estimator reads: one
+`Shor.Reflect.buildPolicyDoc` (run by the executable) builds the IR a resource estimator reads: one
 dispatcher per phase-product flavour, one body template per band, and the
 shared `qft`/`shor_gate`/`shor`/leaf templates.
 `Shor.Reflect.policySubmissionChecks` then compares it against the real
@@ -100,21 +100,21 @@ admissible policy. The worked examples on the shipped template (`choose` at
 particular widths, the advisory shrink check firing at threshold `12`) are in
 [`PolicyTests.lean`](PolicyTests.lean), built by `lean_lib PolicyTests`. -/
 
-/-! ## The IR, and its agreement with the circuit
+/-! ## The IR, and its agreement with the circuit (at run time)
 
-`extract_policy_ir_doc` runs the extractor at build time and splices the
-result in as a plain `def`. Well-formedness is pinned here by `native_decide`;
-`Shor.Reflect.policySubmissionChecks policy doc` is evaluated by the compiled
-`forshor_policy_submission` executable (`PolicyMain.lean`), which prints
-`policy.json` only when it is `true` and exits `1` otherwise. Both are
-*evaluation*, a deliberately different tier from the kernel-checked side
-conditions above, and `#assert_axioms` is scoped to `PolicySubmission.policy`
-— the proof object — which does not depend on any of this. -/
+Upstream extracted the IR here, at build time, with
+`extract_policy_ir_doc doc policy` under `maxHeartbeats 4000000`, and pinned
+`doc.wellFormed` by `native_decide`. That elaboration-time reflection refused
+`k = 5, 6` tables and most multi-band policies (deterministic `whnf` timeout;
+`k = 4` alone did not finish in 30 minutes at `4·10⁸`).
 
-set_option maxHeartbeats 4000000 in
-extract_policy_ir_doc doc policy
-
-example : _root_.Shor.IR.Doc.wellFormed doc = true := by native_decide
+Nothing in this library's *proof* content depended on it: `#assert_axioms` is
+scoped to `PolicySubmission.policy`, and `correct`/`scored` below are generic.
+So `forshor_policy_submission` builds the same `Doc` with the same extractor
+(`Shor.Reflect.buildPolicyDoc`), compiled and with the heartbeat limit off (as
+`forshor_emit template` already does), and checks well-formedness and the full
+evaluation tier before printing (`PolicyMain.lean`). The IR claim stays
+evaluation, never proof, and every check is the same. -/
 
 /-! ## The certificate -/
 
@@ -131,5 +131,22 @@ theorem scored {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
     [GateSemanticsFacts qs] [LowerGateClass qs] :
     type_of% (_root_.Shor.policy_submissionSuccessBound_le_success (qs := qs) policy) :=
   _root_.Shor.policy_submissionSuccessBound_le_success (qs := qs) policy
+
+/-- The same bands on the exact width rule (`forshor_policy_submission
+--exact-widths`): the policy that run prints. -/
+abbrev policyExact : ShorPolicySubmission := { policy with widthRule := .exact }
+
+/-- The certificate on the exact width rule: the same theorem, at the
+exact-width copy of the submission. Same hypotheses, same bound. -/
+theorem correct_exact {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
+    [GateSemanticsFacts qs] [LowerGateClass qs] :
+    type_of% (_root_.Shor.policy_submission_correct (qs := qs) policyExact) :=
+  _root_.Shor.policy_submission_correct (qs := qs) policyExact
+
+/-- The scored form on the exact width rule. -/
+theorem scored_exact {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
+    [GateSemanticsFacts qs] [LowerGateClass qs] :
+    type_of% (_root_.Shor.policy_submissionSuccessBound_le_success (qs := qs) policyExact) :=
+  _root_.Shor.policy_submissionSuccessBound_le_success (qs := qs) policyExact
 
 end PolicySubmission
