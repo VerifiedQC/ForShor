@@ -1,0 +1,114 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{definition}{Definition}
+\newcommand{\N}{\mathbb N}
+\newcommand{\bl}{\operatorname{bl}}
+\title{Arithmetic composition of stage-wise cost bounds for exact policy search}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+
+\noindent\textbf{Scope.} This note proves an \emph{arithmetic composition}, not a runtime theorem about any algorithm. It takes bounds on the costs of three stages as \emph{hypotheses} (stage-wise cost contracts (H1)--(H3) below) and derives, by elementary arithmetic on natural numbers, the explicit bound $\mathrm{Total}\le2^{\kappa K^4\bl(K)}(n+1)^{\delta}$. It does not show that any algorithm satisfies the contracts, it proves nothing about correctness, and in particular the cost of integer feasibility (Kannan's theorem) enters only as an input contract. The constants $c,e$ below are fixed natural numbers.
+
+\section{Notation}
+
+For an integer $x\ge1$ let $\bl(x)=\lfloor\log_2x\rfloor+1$ be its bit length, so $x<2^{\bl(x)}$. For $k\ge2$ put
+\[
+S(k)=(6k^2+1)\,(6k^2)!\,(8k^2)^{6k^2}.
+\]
+All quantities are natural numbers. ``Constants'' $c,e\ge1$ are arbitrary fixed natural numbers.
+
+\section{Elementary lemmas}
+
+\begin{lemma}[Size of $S(k)$]\label{lem:S}
+For every natural number $k\ge2$, with $S(k)=(6k^2+1)\,(6k^2)!\,(8k^2)^{6k^2}$ and $\bl(x)=\lfloor\log_2x\rfloor+1$, we have $S(k)\le 2^{70\,k^2\,\bl(k)}$.
+\end{lemma}
+\begin{proof}
+By definition $S(k)=(6k^2+1)\,(6k^2)!\,(8k^2)^{6k^2}$. Since $(6k^2)!\le(6k^2)^{6k^2}$, we get $S(k)\le(6k^2+1)\,(6k^2)^{6k^2}(8k^2)^{6k^2}=(6k^2+1)\,(48k^4)^{6k^2}$. As $6k^2+1\le48k^4$, this gives $S(k)\le(48k^4)^{6k^2+1}\le(48k^4)^{7k^2}$ (using $48k^4\ge1$ and $6k^2+1\le7k^2$). Since $k<2^{\bl(k)}$ and $48<2^6$, $48k^4<2^{6+4\bl(k)}$. As $k\ge2$ gives $\bl(k)\ge2$, $6+4\bl(k)\le 10\,\bl(k)$. Hence $S(k)<2^{70k^2\bl(k)}$. \qed
+\end{proof}
+
+\begin{lemma}[$t^t\le(t!)^2$]\label{lem:tt}
+For every natural number $t\ge1$, $t^t\le(t!)^2$. Consequently, for every natural number $c\ge1$ and every natural number $U$ with $t!\le U$, $t^{ct}\le U^{2c}$.
+\end{lemma}
+\begin{proof}
+$(t!)^2=\prod_{i=1}^{t}i\,(t+1-i)$ and $i(t+1-i)-t=(i-1)(t-i)\ge0$ for $1\le i\le t$, so each factor is $\ge t$. For the consequence, $t^{ct}=(t^t)^c\le((t!)^2)^c\le U^{2c}$. \qed
+\end{proof}
+
+\begin{lemma}[Number of local queries]\label{lem:count}
+For $K\ge2$, the number of triples $(k,d,C)$ with $2\le k\le K$, $0\le d<k$, $0\le C\le27k^3$ is at most $28K^5$, hence at most $2^{5+5\bl(K)}$.
+\end{lemma}
+\begin{proof}
+It equals $\sum_{k=2}^K k\,(27k^3+1)$. Each term is at most $K(27K^3+1)\le28K^4$ and there are $K-1<K$ terms, so the total is less than $28K^5$. Since $K<2^{\bl(K)}$ and $28<2^5$, $28K^5<2^{5+5\bl(K)}$. \qed
+\end{proof}
+
+\section{The local factor}
+
+\begin{lemma}[Local factor]\label{lem:local}
+Let $c\ge1$ be a natural number, put $\kappa_0=600\,c$, and let $S(k)$ and $\bl$ be as in Section 1. Let $k\ge2$, $C,\Lambda,m\in\N$ satisfy $C\le27k^3$ and
+\[
+\bigl(C\le 6k^2\ \Rightarrow\ \Lambda+1\le S(k)\bigr)\quad\text{and}\quad\bigl(C\ge6k^2\ \Rightarrow\ \Lambda\le 9k^2\bigr).
+\]
+Then
+\[
+(k^2(\Lambda+1))^{c\,(C+1)}\,(k+\Lambda+m+1)^{c}\;\le\;2^{\kappa_0\,k^4\bl(k)}\,(m+1)^{c}.
+\]
+\end{lemma}
+\begin{proof}
+\emph{Factor bound.} $k+\Lambda+m+1\le(k+1)(\Lambda+1)(m+1)$ and $k+1\le2^{\bl(k)}$, so the second factor is at most $\bigl(2^{\bl(k)}(\Lambda+1)\bigr)^{c}(m+1)^{c}$.
+
+\emph{Low regime} $C\le6k^2$. Then $\Lambda+1\le S(k)\le2^{70k^2\bl(k)}$ by Lemma~\ref{lem:S}; also $k^2<2^{2\bl(k)}$, so $k^2(\Lambda+1)\le 2^{72k^2\bl(k)}$ and, since $C+1\le7k^2$, the first factor is at most $2^{504\,c\,k^4\bl(k)}$. The second factor is at most $2^{c(\bl(k)+70k^2\bl(k))}(m+1)^c\le2^{71c\,k^2\bl(k)}(m+1)^c$.
+
+\emph{High regime} $C\ge6k^2$, so $\Lambda\le9k^2$. Then $k^2(\Lambda+1)\le10k^4<2^{4+4\bl(k)}\le2^{6\bl(k)}$ (as $\bl(k)\ge2$), and $C+1\le28k^3$, so the first factor is at most $2^{168\,c\,k^3\bl(k)}$. The second is at most $\bigl(2^{\bl(k)}(9k^2+1)\bigr)^c(m+1)^c\le2^{6c\,\bl(k)}(m+1)^c$.
+
+In both regimes the product is at most $2^{(504+71)c\,k^4\bl(k)}(m+1)^c\le2^{600c\,k^4\bl(k)}(m+1)^c$. \qed
+\end{proof}
+
+\section{The composition theorem}
+
+\begin{theorem}[Arithmetic composition]\label{thm:comp}
+Let $\bl(x)=\lfloor\log_2x\rfloor+1$ for $x\ge1$ and $S(k)=(6k^2+1)\,(6k^2)!\,(8k^2)^{6k^2}$. Let $c,e\ge1$ be natural numbers. Let $K\ge2$ and $n\ge2$ be natural numbers, and let $m=\bl(n+1)$. Let $U\ge1$ with $U\le(n+1)^{e}$. Let
+\[
+\mathrm{Loc}:\N^3\to\N,\qquad\Lambda:\N^2\to\N,
+\]
+be arbitrary functions (the cost of one local threshold query for arity $k$, difference $d$, charge $C$, and the width cutoff used for charge $C$ at arity $k$). Assume:
+
+\begin{enumerate}
+\item[(H1)] (\emph{local cost contract}) for all $k,d,C$ with $2\le k\le K$, $d<k$, $C\le27k^3$:
+\[
+\mathrm{Loc}(k,d,C)\le(k^2(\Lambda(k,C)+1))^{c\,(C+1)}\,(k+\Lambda(k,C)+m+1)^{c}.
+\]
+\item[(H2)] (\emph{cutoff contract}) for all $k$ with $2\le k\le K$ and all $C\le 27k^3$: if $C\le6k^2$ then $\Lambda(k,C)+1\le S(k)$; if $C\ge6k^2$ then $\Lambda(k,C)\le9k^2$.
+\item[(H3)] (\emph{outer cost contract}) there are naturals $W,t,P$ with $t\ge1$, $W\le3U^{10}$, $t!\le U$, $P\le t^{c\,t}\,(\bl(U)+2)^{c}$, and
+\[
+\mathrm{Outer}\le W\cdot n\cdot(\bl(U)+1)\cdot P .
+\]
+\end{enumerate}
+Define
+\[
+\mathrm{LocalTotal}=\sum_{k=2}^{K}\ \sum_{d=0}^{k-1}\ \sum_{C=0}^{27k^3}\mathrm{Loc}(k,d,C),\qquad \mathrm{Total}=\mathrm{LocalTotal}+\mathrm{Outer}.
+\]
+Then, with $\kappa=611\,c$ and $\delta=e\,(11+3c)+2c+4$ (which depend only on $c$ and $e$),
+\[
+\mathrm{Total}\ \le\ 2^{\kappa\,K^4\,\bl(K)}\cdot(n+1)^{\delta}.
+\]
+\end{theorem}
+\begin{proof}
+\emph{Local part.} By (H1), (H2) and Lemma~\ref{lem:local}, each term satisfies $\mathrm{Loc}(k,d,C)\le2^{600c\,k^4\bl(k)}(m+1)^c\le2^{600c\,K^4\bl(K)}(n+1)^c$, using $k\le K$ (so $k^4\bl(k)\le K^4\bl(K)$, as $\bl$ is monotone) and $m+1=\bl(n+1)+1\le n+1$ for $n\ge2$. By Lemma~\ref{lem:count} there are at most $2^{5+5\bl(K)}$ terms. Since $K\ge2$ gives $K^4\bl(K)\ge 32$, we have $5+5\bl(K)\le 10K^4\bl(K)$, so
+\[
+\mathrm{LocalTotal}\le2^{610\,c\,K^4\bl(K)}(n+1)^c.
+\]
+\emph{Outer part.} Lemma~\ref{lem:tt} with $t!\le U$ gives $t^{ct}\le U^{2c}$. Also $\bl(U)\le U$ for $U\ge1$ (because $\bl(U)\le2^{\bl(U)-1}\le U$), so $\bl(U)+2\le3U$ and $\bl(U)+1\le2U$. Hence
+\[
+\mathrm{Outer}\le3U^{10}\cdot n\cdot2U\cdot U^{2c}\cdot(3U)^c\le 6\cdot 3^{c}\,n\,U^{11+3c}\le 2^{2c+3}\,n\,U^{11+3c}.
+\]
+With $U\le(n+1)^e$ and $2^{2c+3}\le (n+1)^{2c+3}$ (as $n+1\ge3>2$), this is at most $(n+1)^{1+e(11+3c)+2c+3}$.
+
+\emph{Combine.} Both parts are at most $2^{610c\,K^4\bl(K)}(n+1)^{\delta}$ for $\delta\ge\max(c,\,e(11+3c)+2c+4)$, so $\mathrm{Total}\le2\cdot2^{610c\,K^4\bl(K)}(n+1)^{\delta}\le2^{610c\,K^4\bl(K)+1}(n+1)^\delta$, and $1\le K^4\bl(K)$. Since $2\le2^{c\,K^4\bl(K)}$, the claim holds with $\kappa=611c$ and $\delta=e(11+3c)+2c+4$ (note $\delta\ge c$). \qed
+\end{proof}
+
+\paragraph{Remark (informal reading; not an additional claim).} Since $\bl(K)\le \log_2K+1$, the theorem says that, for fixed $c$ and $e$, $\mathrm{Total}\le2^{O(K^4\log K)}\cdot n^{O(1)}$ with implied constants depending only on $c$ and $e$ (for $K\ge2$, $n\ge2$). This is only as good as the hypotheses (H1)--(H3), which are contracts on the stages' costs and are not established here.
+
+\end{document}

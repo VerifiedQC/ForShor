@@ -1,0 +1,17 @@
+# Final audit and provenance
+
+The authoritative new entry point is [RESULT](../RESULT.2026-10-15.md). The final stronger proof is [SATURATION_AND_SINGLE_EXP_FPT](../algorithm_astra/SATURATION_AND_SINGLE_EXP_FPT.2026-10-15T190800.md), with [explicit weighted-charge and scope clarifications](../algorithm_astra/SATURATION_CLARIFICATIONS.2026-10-15T191000.md).
+
+The final independent audits are [the fresh reviewer's saturation addendum](../independent_astra/SATURATION_ADDENDUM.2026-10-15T151032.md) and [the refutation lane's singly exponential review](../refute_astra/SINGLY_EXPONENTIAL_REVIEW.2026-10-15T155500.md). The primary coordinator read both full proof versions, checked the normalization cases, prefix legality and scanner constraints, the small-point proof including lower-dimensional polyhedra, explicit coefficient bounds, the budget split, and the cutoff-to-enumeration composition. No blocking mathematical defect was found. These reviews are proof-visible, not blinded; none is full machine verification.
+
+One correction to an earlier lane note is retained explicitly: SATURATION_REFINEMENT.2026-10-15T154500.md says target coefficient exponents are O(k log k). The F.2 dyadic sequence instead gives the sufficient bound O(k^2). The final author's proof uses the correct bound k(k-1)<k^2, and B=8k^2 remains valid. Earlier notes were preserved.
+
+The final local algorithm enforces the sum of asymmetric charges <=C, not merely a bound of C on the number of macros. Macro count <=C follows because every charged macro costs at least one. The symbolic proof uses at most one exponent variable per addition template; optional right-shift output need not be maximally normalized to be a legal symbolic witness. Re-normalization supplies the primitive search witness.
+
+The initial double-exponential FPT report is a valid weaker bound. The final single-exponential construction uses symbolic patterns only to prove saturation, and does not execute their disjunction or import Kannan for local synthesis. The outer recursive theorem still uses its separately source-verified Kannan import.
+
+The small-point proof itself supplies the required finite-polytope decomposition and conic support reduction. For bibliographic context, the standard dimension bound for extreme-ray representations of pointed closed convex cones is explicitly stated in [Ito and Lourenco, A bound on the Caratheodory number, arXiv:1608.07170](https://arxiv.org/abs/1608.07170). This corroborates that general geometric step; it does not prove our table-specific saturation or runtime theorem. No external small-integer-solution bound is assumed in the final proof.
+
+Framework use: ResearchSkills S03/S04 supplied the derivation/algorithm and preregistered falsification structure; InventMath M03/M05 kept conjectures, attempts, proofs and refutations distinct. MindPalace's actual Claim schema validates the staged proposal, with no canonical graph mutation. Existing autoresearcher workbench and autoformalizer adapters check five elementary implications under the [scoped formal certificate](FORMAL_CERTIFICATE.2026-10-15.md). Existing toolkit primitives were imported, not replaced. No local inference was launched.
+
+No scientific claim has been silently promoted to uniform P. The remaining unproved theorem is a constructive polynomial(n,k) profile threshold algorithm in this same unrestricted model. Finite points, short witnesses, parameter-only saturation, or small practical arities do not supply that theorem by themselves.

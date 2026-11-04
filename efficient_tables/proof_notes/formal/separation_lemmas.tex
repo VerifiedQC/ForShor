@@ -1,0 +1,64 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{definition}{Definition}
+\newcommand{\Z}{\mathbb Z}\newcommand{\Q}{\mathbb Q}\newcommand{\N}{\mathbb N}
+\title{Separation of signed sums of powers of two}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+
+\noindent\textbf{Scope.} This note proves two exact criteria for a finite signed sum of powers of two, $S=\sum_i\varepsilon_i2^{\lambda_i}$ with integer exponents (possibly negative) and rational value: when it is zero, and when it is an integer. The criteria reduce both questions to finitely many independent ``clusters'' of exponents that are separated by large gaps. Nothing here concerns tables, circuits or algorithms.
+
+\section{Setting}
+
+\begin{definition}[Gap-separated family]
+Let $\iota$ be a finite type, $H\in\N$, and let $\varepsilon:\iota\to\Z$ with $\varepsilon_i\in\{-1,0,1\}$ for all $i$, $\lambda:\iota\to\Z$ and $c:\iota\to\N$. The tuple $(\iota,H,\varepsilon,\lambda,c)$ is a \emph{gap-separated family} if
+\begin{enumerate}
+\item the number of elements of $\iota$ is less than $2^{H}$, and
+\item for all $i,j\in\iota$: if $c(i)<c(j)$ then $\lambda(i)+H\le\lambda(j)$.
+\end{enumerate}
+For $q\in\N$ the \emph{cluster sum} is $S_q=\sum_{i\in\iota,\ c(i)=q}\varepsilon_i\,2^{\lambda(i)}\in\Q$, and the \emph{total} is $S=\sum_{i\in\iota}\varepsilon_i\,2^{\lambda(i)}\in\Q$. Here $2^{m}$ for $m\in\Z$ is the rational number $2^m$.
+\end{definition}
+
+Since $S=\sum_qS_q$ (only finitely many $S_q$ are nonzero), and $S_q$ depends only on the elements of cluster $q$, the clusters are the groups of terms; terms in different clusters are at least $H$ apart in exponent, with the lower cluster index having the smaller exponents.
+
+\section{Peeling}
+
+\begin{lemma}[Peeling]\label{lem:peel}
+Let $(\iota,H,\varepsilon,\lambda,c)$ be a gap-separated family, and let $L\subseteq\iota$ be a subset (the ``low'' part) with complement $U=\iota\setminus L$. Let $A,B\in\Z$ satisfy $A+H\le B$, $\lambda(i)\le A$ for every $i\in L$, and $\lambda(j)\ge B$ for every $j\in U$. Put $X=\sum_{i\in L}\varepsilon_i2^{\lambda(i)}$ and $Y=\sum_{j\in U}\varepsilon_j2^{\lambda(j)}$. If $X+Y\in2^{B}\Z$ (that is, $X+Y=2^{B}m$ for some integer $m$), then $X=0$.
+\end{lemma}
+\begin{proof}
+Each $j\in U$ has $\lambda(j)\ge B$, so $2^{\lambda(j)}=2^{B}\cdot2^{\lambda(j)-B}$ with $2^{\lambda(j)-B}$ a positive integer. Hence $Y\in2^{B}\Z$, and so $X=(X+Y)-Y\in2^{B}\Z$. On the other hand $|X|\le\sum_{i\in L}2^{\lambda(i)}\le|L|\,2^{A}<2^{H}2^{A}=2^{A+H}\le2^{B}$, because $|L|\le|\iota|<2^{H}$. An element of $2^{B}\Z$ of absolute value less than $2^{B}$ is $0$. \qed
+\end{proof}
+
+\section{The criteria}
+
+\begin{theorem}[Zero criterion]\label{thm:zero}
+Let $(\iota,H,\varepsilon,\lambda,c)$ be a gap-separated family. Then $S=0$ if and only if $S_q=0$ for every $q\in\N$.
+\end{theorem}
+\begin{proof}
+($\Leftarrow$) $S=\sum_qS_q$. ($\Rightarrow$) By strong induction on the number of elements of $\iota$ (the statement is for all gap-separated families on all finite types). If $\iota$ is empty there is nothing to prove. Otherwise let $q_0=\min_{i\in\iota}c(i)$, $L=\{i:c(i)=q_0\}$ and $U=\iota\setminus L$. If $U$ is empty, then $S=S_{q_0}$ and $S_q=0$ for $q\ne q_0$, so $S=0$ gives the claim. Otherwise put $A=\max_{i\in L}\lambda(i)$ and $B=\min_{j\in U}\lambda(j)$. For $i\in L$ and $j\in U$ we have $c(i)=q_0<c(j)$, hence $\lambda(i)+H\le\lambda(j)$; taking the maximum over $i$ and the minimum over $j$ gives $A+H\le B$. Since $S=X+Y=0\in2^{B}\Z$, Lemma~\ref{lem:peel} gives $X=S_{q_0}=0$. Then $Y=S-X=0$, and the family restricted to $U$ is gap-separated (its size is smaller, and conditions 1 and 2 are inherited), so by induction every cluster sum of the restricted family vanishes; these are the cluster sums $S_q$ for $q\ne q_0$. \qed
+\end{proof}
+
+\begin{theorem}[Integrality criterion with an anchor]\label{thm:int}
+Let $(\iota,H,\varepsilon,\lambda,c)$ be a gap-separated family, and let $a\in\iota$ be an element (the \emph{anchor}) with $\varepsilon_a=0$ and $\lambda(a)=0$. Put $q_a=c(a)$. Then $S\in\Z$ if and only if
+\begin{enumerate}
+\item $S_q=0$ for every $q<q_a$, and
+\item $S_{q_a}\in\Z$.
+\end{enumerate}
+\end{theorem}
+\begin{proof}
+First, every cluster above the anchor is integral: if $c(j)>q_a$ then $\lambda(j)\ge\lambda(a)+H=H\ge0$, so $2^{\lambda(j)}$ is an integer; hence $S_q\in\Z$ for every $q>q_a$ (indeed every term of such a cluster is an integer).
+
+($\Leftarrow$) Under 1 and 2, $S=\sum_{q<q_a}S_q+S_{q_a}+\sum_{q>q_a}S_q=0+S_{q_a}+\sum_{q>q_a}S_q\in\Z$.
+
+($\Rightarrow$) Assume $S\in\Z$. We show $S_q=0$ for all $q<q_a$ by strong induction on the number $m$ of values $q<q_a$ that occur as $c(i)$ for some $i\in\iota$ (for all gap-separated families with an anchor). If no such value occurs, 1 holds vacuously. Otherwise let $q_0=\min_ic(i)<q_a$, $L=\{i:c(i)=q_0\}$, $U=\iota\setminus L$ (which contains $a$). Put $A=\max_{i\in L}\lambda(i)$ and $B=\min_{j\in U}\lambda(j)$. As in the proof of Theorem~\ref{thm:zero}, $A+H\le B$. Moreover $a\in U$, so $B\le\lambda(a)=0$. Since $B\le0$, every integer lies in $2^{B}\Z$; in particular $S\in2^{B}\Z$. Lemma~\ref{lem:peel} gives $S_{q_0}=0$. The restriction of the family to $U$ is gap-separated, contains the anchor, has the same total $S$ (since $S_{q_0}=0$) and has one fewer cluster index below $q_a$; by induction $S_q=0$ for all $q_0<q<q_a$. Finally, with 1 established, $S=S_{q_a}+\sum_{q>q_a}S_q$ with $\sum_{q>q_a}S_q\in\Z$, so $S_{q_a}=S-\sum_{q>q_a}S_q\in\Z$. \qed
+\end{proof}
+
+\section{Remark}
+In applications the number of terms is at most $2^{C}+1$ and one takes $H=C+2$, so that $2^{H}=4\cdot2^{C}>2^{C}+1$. The cluster sums $S_q$ depend only on the relative exponents inside a cluster; the criteria therefore decide zero and integrality from the cluster structure, with no restriction on the absolute exponents.
+
+\end{document}

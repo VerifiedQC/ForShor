@@ -1,0 +1,12 @@
+# build outputs
+build/
+.lake/
+*.olean
+*.ilean
+*.exe
+*.o
+*.mod
+__pycache__/
+*.pyc
+.DS_Store
+*.stackdump

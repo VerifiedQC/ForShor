@@ -1,0 +1,85 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{definition}{Definition}
+\newcommand{\Z}{\mathbb Z}\newcommand{\R}{\mathbb R}\newcommand{\Q}{\mathbb Q}
+\title{A small integer point in a polyhedron with bounded integer data}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+
+\noindent\textbf{Scope.} This note proves one self-contained statement of integer linear programming. It is elementary: it uses determinant (Laplace and Leibniz) expansions and a convexity argument. Bounds of this kind are classical (Borosh and Treybig; Papadimitriou; Cook, Gerards, Schrijver and Tardos); the point here is a complete, self-contained proof of the explicit bound below, and no claim is made that the bound is tight (Hadamard's inequality would give a smaller constant). It does \emph{not} use Lenstra's or Kannan's algorithm, and it makes no complexity claim.
+
+\section{Statement}
+
+Let $t\ge 1$, $s\ge 0$ be natural numbers, $A\in\Z^{s\times t}$, $b\in\Z^{s}$, and $B\ge 1$ a natural number with $|A_{ij}|\le B$ and $|b_i|\le B$ for all $i,j$. Put
+\[
+P=\{x\in\R^{t}\;:\;x\ge 0,\ Ax\le b\},\qquad D=t!\,B^{t}.
+\]
+
+\begin{theorem}[Small integer point]\label{thm:sip}
+Let $t\ge1$, $s\ge0$ and $B\ge1$ be natural numbers, $A\in\Z^{s\times t}$ and $b\in\Z^{s}$ with $|A_{ij}|\le B$ and $|b_i|\le B$ for all $i,j$, and let $P=\{x\in\R^{t}: x\ge0,\ Ax\le b\}$ and $D=t!\,B^{t}$. If $P$ contains an integer point, then $P$ contains an integer point $y\in\Z^t$ with $0\le y_i\le (t+1)\,D=(t+1)\,t!\,B^{t}$ for every $i\in\{1,\dots,t\}$.
+\end{theorem}
+
+The number of rows $s$ is arbitrary and does not enter the bound.
+
+\section{Homogenization}
+
+Let $G\in\Z^{(s+t+1)\times(t+1)}$ be the matrix whose rows are: the $s$ rows $(A_{i\cdot},\,-b_i)$; the $t$ rows $(-e_j^{\top},\,0)$ for $j=1,\dots,t$; and the single row $(0,\dots,0,-1)$. Every entry of $G$ has absolute value at most $B$. Define the cone
+\[
+K=\{(x,\sigma)\in\R^{t}\times\R\;:\;G\,(x,\sigma)\le 0\}=\{x\ge0,\ \sigma\ge 0,\ Ax\le \sigma b\}.
+\]
+Then $x\in P$ if and only if $(x,1)\in K$. $K$ is a closed convex cone contained in the nonnegative orthant of $\R^{t+1}$ (because the rows $(-e_j^\top,0)$ and $(0,\dots,0,-1)$ are among the rows of $G$), hence $K\cap(-K)=\{0\}$ (it is \emph{pointed}). Throughout, \emph{$K$ means this cone}, defined by the integer matrix $G$ all of whose entries have absolute value at most $B$, and every $w\in K$ satisfies $w\ge0$.
+
+For $w\in K$ let $T(w)$ be the set of rows $h$ of $G$ with $h\cdot w=0$ (the \emph{tight} rows) and let $\rho(w)$ be the rank of the matrix formed by the rows in $T(w)$. A nonzero $w\in K$ is called an \emph{extreme vector} if $\rho(w)=t$ (the largest possible value for a nonzero vector of $K$, since $w$ itself lies in the kernel of the tight rows).
+
+\section{Cofactor bound for extreme vectors}
+
+\begin{lemma}[Integer generator of an extreme ray]\label{lem:cofactor}
+Let $K$ be the cone of Section 2 (defined by an integer matrix $G$ with entries of absolute value at most $B$, and contained in the nonnegative orthant), and let $w\in K$ be an extreme vector. Then there is a vector $g\in\Z^{t+1}$ and a real $\mu>0$ with $w=\mu g$, $g\ge 0$, and $0\le g_i\le D=t!\,B^t$ for all $i\in\{1,\dots,t+1\}$.
+\end{lemma}
+\begin{proof}
+Since $\rho(w)=t$, choose $t$ linearly independent tight rows and let $R$ be the $t\times(t+1)$ integer matrix they form. For $i=1,\dots,t+1$ let $c_i=(-1)^{i}\det R^{(i)}$, where $R^{(i)}$ is $R$ with column $i$ deleted. By Laplace expansion, $R c=0$, and $c\neq 0$ because $R$ has rank $t$. The kernel of $R$ is one-dimensional, and $w\in\ker R$, $w\ne 0$, so $w=\mu' c$ for some real $\mu'\ne0$. Set $g=c$ if $\mu'>0$ and $g=-c$ otherwise, $\mu=|\mu'|$; then $g\ge0$ because $w\ge0$ and $\mu>0$. Each $c_i$ is a determinant of a $t\times t$ integer matrix with all entries of absolute value at most $B$, so $|c_i|\le t!\,B^t$ by the Leibniz formula. \qed
+\end{proof}
+
+\section{Decomposition into extreme vectors}
+
+\begin{lemma}[Extreme decomposition]\label{lem:decomp}
+Let $K$ be the cone of Section 2 (a closed, pointed convex cone defined by finitely many rows). Every $w\in K$ is a finite sum $w=\sum_{j=1}^{m}w_j$ of extreme vectors $w_j\in K$ (and $w=0$ is the empty sum).
+\end{lemma}
+\begin{proof}
+Induction on $t-\rho(w)$ for $w\neq 0$ (note $\rho(w)\le t$ because $w\ne0$ lies in the kernel of the tight rows). If $\rho(w)=t$, $w$ is extreme. Otherwise the kernel $N$ of the tight rows at $w$ has dimension $\ge 2$. Pick $d\in N$ not a multiple of $w$ and let $\Pi=\operatorname{span}(w,d)\subseteq N$, a plane. Every row tight at $w$ vanishes on $\Pi$; every row not tight at $w$ is strictly negative at $w$, hence negative on a neighbourhood of $w$ in $\Pi$. So a neighbourhood of $w$ in $\Pi$ lies in $K$. The set $K_\Pi=K\cap\Pi$ is a closed convex cone in the plane $\Pi$ which is pointed (as $K$ is) and has nonempty interior in $\Pi$ (it contains a neighbourhood of $w$). A pointed closed convex cone with nonempty interior in a plane is a sector of opening angle less than $\pi$, so it is generated by its two boundary rays $u_1,u_2$, which are nonzero and not proportional; as $w$ is an interior point, $w=\alpha_1u_1+\alpha_2u_2$ with $\alpha_1,\alpha_2>0$. Each $u_i$ lies on the boundary of $K_\Pi$ relative to $\Pi$, so some row not tight at $w$ is tight at $u_i$; all rows tight at $w$ remain tight at $u_i$ (they vanish on $\Pi$). The new tight row is nonzero on $\Pi$ (it is strictly negative at $w$ but vanishes at $u_i$), while every row of $T(w)$ vanishes on $\Pi$; so it is not in the span of $T(w)$, and $\rho(u_i)>\rho(w)$. By induction each $\alpha_iu_i$ is a sum of extreme vectors (the property is invariant under positive scaling), so $w$ is. \qed
+\end{proof}
+
+\begin{lemma}[Conic Carath\'eodory]\label{lem:cara}
+If $w=\sum_{j=1}^{m}w_j$ with every $w_j\in K$ extreme, then there is a subset $I\subseteq\{1,\dots,m\}$ with $|I|\le t+1$ and reals $\lambda_j>0$ ($j\in I$) such that $w=\sum_{j\in I}\lambda_jw_j$.
+\end{lemma}
+\begin{proof}
+Standard: if more than $t+1$ vectors occur with positive coefficients they are linearly dependent in $\R^{t+1}$; subtract a multiple of a nontrivial dependence until one coefficient reaches $0$, keeping all coefficients nonnegative, and repeat. \qed
+\end{proof}
+
+\section{Proof of Theorem~\ref{thm:sip}}
+
+Let $z\in P\cap\Z^t$. Then $(z,1)\in K$. By Lemmas~\ref{lem:decomp} and~\ref{lem:cara}, $(z,1)=\sum_{j\in I}\mu_j\,\tilde g_j$ with $|I|\le t+1$, $\mu_j>0$, and by Lemma~\ref{lem:cofactor} each summand is $\mu_j\tilde g_j$ with $\tilde g_j=(g_j,\sigma_j)\in\Z^{t+1}$, $0\le g_{j,i}\le D$, $0\le\sigma_j\le D$.
+
+Split $I=I_+\cup I_0$ according to $\sigma_j\ge 1$ (then $\sigma_j$ is a positive integer) or $\sigma_j=0$. Comparing last coordinates, $\sum_{j\in I_+}\mu_j\sigma_j=1$. Put $\nu_j=\mu_j\sigma_j$ and $v_j=g_j/\sigma_j$ for $j\in I_+$; then $\nu_j>0$, $\sum\nu_j=1$, and $0\le v_{j,i}\le D$ because $\sigma_j\ge 1$. Put $r_j=g_j$ for $j\in I_0$. Then
+\[
+z=\sum_{j\in I_+}\nu_jv_j+\sum_{j\in I_0}\mu_jr_j .
+\]
+Since $\sum_{j\in I_+}\nu_j=1$, $I_+\neq\emptyset$, hence $|I_0|\le t$.
+
+Define $y=z-\sum_{j\in I_0}\lfloor\mu_j\rfloor\,r_j$. Each $r_j$ is an integer vector, so $y\in\Z^t$. Also
+\[
+y=\sum_{j\in I_+}\nu_jv_j+\sum_{j\in I_0}\{\mu_j\}\,r_j,\qquad \{\mu_j\}=\mu_j-\lfloor\mu_j\rfloor\in[0,1).
+\]
+Then $(y,1)=\sum_{I_+}\nu_j(v_j,1)+\sum_{I_0}\{\mu_j\}(r_j,0)$; each $(v_j,1)=\tilde g_j/\sigma_j\in K$ and each $(r_j,0)=\tilde g_j\in K$, and $K$ is a convex cone, so $(y,1)\in K$, that is $y\in P$. Finally for every $i$,
+\[
+0\le y_i\le\sum_{I_+}\nu_jD+\sum_{I_0}1\cdot D\le D+tD=(t+1)D .\qquad\qed
+\]
+
+\section{Remark}
+For the application, $t$ is the number of integer variables and $B$ bounds all coefficients and right-hand sides. Putting $t\le 6k^2$ and $B=8k^2$ gives $(t+1)\,t!\,B^t\le(6k^2+1)\,(6k^2)!\,(8k^2)^{6k^2}=2^{O(k^2\log k)}$, since $(t+1)\,t!\,B^t$ is nondecreasing in $t$ and in $B$.
+
+\end{document}
