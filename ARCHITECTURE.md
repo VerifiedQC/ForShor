@@ -5,27 +5,27 @@ and build instructions, see the [README](README.md). Every folder named below
 also has its own `README.md` with the full file-by-file breakdown; this page
 is the map between them.
 
-# FastMultiplication Shor Verification
+# ForShor Shor Verification
 
 This repository is a Lean 4 verification project for a fast-multiplication-based
 implementation of the phase-product, QFT, modular multiplication, modular
 exponentiation, and order-finding pieces used in Shor's algorithm.
 
-The tree splits in two. `FastMultiplication/ShorVerification/Framework/` is the
+The tree splits in two. `ForShor/ShorVerification/Framework/` is the
 specification: the register/gate vocabulary every theorem is stated in, the
-abstract semantic classes those theorems quantify over, the cost model, the
-classical number theory, the correctness contract, and what makes a submitted
-Toom-Cook table admissible. `FastMultiplication/ShorVerification/Implementation/`
+abstract semantic classes those theorems quantify over, the cost model, and
+what makes a submitted Toom-Cook table admissible. `ForShor/ShorVerification/Implementation/`
 is the construction: the phase-product compiler, the QFT, modular
-exponentiation, the Shor assembly, the gate-count proofs, and the concrete
-`Reference/` circuit family. `FastMultiplication/Emit/` serialises that circuit
-family to JSON, and `FastMultiplication/ShorVerification/Submission/` is the
+exponentiation, the Shor assembly (together with the classical order-finding
+definitions and the correctness contract `ShorImplementation` it is stated
+against), the gate-count proofs, and the concrete `Reference/` circuit family. `ForShor/Emit/` serialises that circuit
+family to JSON, and `ForShor/ShorVerification/Submission/` is the
 public surface a submissions repo builds against.
 
 Within `Implementation/`, the development has five parts:
 
-1. **Classical mathematics** — `Implementation/PhaseProduct/Math/` and
-   `Framework/Math/`: source-level arithmetic programs, Toom-Cook interpolation
+1. **Classical mathematics** — `Implementation/PhaseProduct/Proofs/Math/`, `Implementation/Shor/Math/`:
+   source-level arithmetic programs, Toom-Cook interpolation
    algebra, recurrence solving, and the classical Shor/factoring probability
    arguments.
 2. **High-level circuit identities** — `Implementation/{PhaseProduct,QFT,
@@ -33,7 +33,7 @@ Within `Implementation/`, the development has five parts:
    the intended mathematical transformations.
 3. **Lowering correctness** — `Implementation/{PhaseProduct,QFT}/Proofs/Lowering/`
    and `Implementation/Shor/Proofs/Lowering.lean`, over the lowerer at
-   `Implementation/Shor/Lowering/LowerGate.lean`: those high-level gates lower
+   `Implementation/Shor/Statement.lean` (`Policy.lowerGate`): those high-level gates lower
    correctly onto `Framework/AbstractMachine/LowGate.lean`'s language.
 4. **Cost** — `Implementation/GateCount/`: asymptotic gate-count bounds for the
    lowered circuits.
@@ -49,14 +49,16 @@ lowered circuits have the intended asymptotic size.
 ## The `Framework/` vocabulary
 
 Every definition the single file this development began with once held now
-lives under `Framework/`.
+lives under `Framework/`, except the classical order-finding vocabulary and the
+correctness contract, which sit with the Shor assembly in `Implementation/Shor/`
+(see the table after this one).
 It deliberately avoids committing to one concrete Hilbert-space implementation:
 it defines registers, gate syntax, and abstract semantic interfaces that later
 files instantiate or reason against.
 
 | concept | file | main names |
 | --- | --- | --- |
-| Registers, encodings, extended registers | `Framework/Quantum/Registers.lean` | `Reg` (an ordered list of distinct physical qubits, so layouts need not be contiguous), `Reg.width`/`ASize`/`Reg.append`/`SplitPoint`; `RegEncoding` (the basis-level read/write interface: `toNat`, `writeNat`, `bit`, read-after-write and disjoint-write laws, `basis_ext`); `ExtReg` (an active register plus an owned inactive reserve: `CanGrow`, `newBits`, `grow`, `ownedQubits`, the `*Disjoint` conditions), the signed/two's-complement decodings (`tcDecodeWidth`, `extToInt`, `FitsSignedWidth`) and the freshness predicates (`FreshZero`, `ExtReg.FreshFor`) that say workspace is clean |
+| Registers, encodings, extended registers | `Framework/Quantum/Registers.lean` | `Reg` (an ordered list of distinct physical qubits, so layouts need not be contiguous), `Reg.width`/`ASize`/`Reg.append`/`SplitPoint`, the halves `leftReg`/`rightReg`; `RegEncoding` (the basis-level read/write interface: `toNat`, `writeNat`, `bit`, read-after-write and disjoint-write laws, `basis_ext`); `ExtReg` (an active register plus an owned inactive reserve: `CanGrow`, `newBits`, `grow`, `ownedQubits`, the `*Disjoint` conditions), the signed/two's-complement decodings (`tcDecodeWidth`, `extToInt`, `FitsSignedWidth`) and the freshness predicates (`FreshZero`, `ExtReg.FreshFor`) that say workspace is clean |
 | Abstract quantum semantics | `Framework/Quantum/QSemantics.lean` | `QSemantics`: a basis type, an inner-product state space, `ket`, ket orthonormality, and a state induction principle (every state is a finite combination of kets). The gate evaluator `eval : Gate → State → State` and its laws for identity, sequencing, linearity, adjoints and inner-product preservation are `GateSemanticsCore` in `Semantics/GateSemantics.lean`. Circuit equations are proved in *any* model satisfying these laws |
 | Measurement | `Framework/Quantum/Measurement.lean` | `MeasureClass`, the outcome-probability interface the success bounds are stated against |
 | High-level gate language | `Framework/AbstractMachine/Gates.lean`, `Angle.lean` | `Gate`: structural (`id`, `seq`, `adj`), elementary (`H`, `X`, `CNOT`, `Toffoli`), structured (`QFT`, `RadixReverse`, `SignedPhaseProd`, `CSignedPhaseProd`, `CmpGeConst`, `CSubConst`, the oracle `idealCtrlModMul`), and arithmetic/workspace (`ShiftL`, `ShiftR`, `Negate`, `AddScaled`, `zeroExtend`/`signExtend`, `zeroDealloc`/`signDealloc`); the QFT phase helpers `qftPhi`, `qftPhase`, `radixReverseIndex`; `Angle` |
@@ -64,10 +66,15 @@ files instantiate or reason against.
 | Gate-family semantic classes | `Framework/Semantics/GateSemantics.lean` | `GateSemanticsCore` plus one class per gate family — `QFTSemantics`, `HadamardSemantics`, `PauliXSemantics`, `RadixReverseSemantics`, `PhaseSemantics`, `ExtensionSemantics`, `ArithmeticSemantics`, `ClassicalReversibleSemantics`, `ModularArithmeticSemantics`, `IdealCtrlModMulExactSemantics` — and `GateSemanticsFacts`, the convenience bundle large theorems take instead of the eleven separate instances |
 | `LowGate` semantics | `Framework/Semantics/LowGateSemantics.lean` | `LowerGateClass`, which gives the lowered circuits their evaluation meaning |
 | Cost model | `Framework/Gatecount/CostModel.lean`, `ResourceModel.lean` | `LowGateCostModel` and `LowGate.gateCount`, the fold that prices a lowered circuit; `GateResources`, `LowGateResourceModel`, `shorGateCostModel` |
-| Classical number theory | `Framework/Math/ShorDefinition.lean`, `Math/Factoring_Reduction/` | `ord`, `GoodOutcome`, the continued-fraction postprocessing vocabulary (`continuedFractionConvergent`, `OrderVerifier`, `OF_post`); `shors_classical_reduction` and `shors_probability_bound` |
-| The correctness contract | `Framework/Contract.lean` | `ShorOrderFindingInstance` (the arithmetic/register data for one order-finding problem), `ShorOrderFindingProgram`, `probability_of_success`, and `ShorImplementation` — one `LowGate` circuit per valid instance, a declared success probability, a trial count, and proofs that both are honest |
 | What a submission is | `Framework/ToomCookTable.lean` | `Register`, `State`, `Prog`, `run?`, `expectedRow`, `ProgConsumesPtsSafe`, `interpMatrix`, `GoodToomCookPoints`, and the records `ShorLoweringSetup` / `ShorSubmission`. Imports Mathlib and nothing else |
 | What a *policy* submission is | `Framework/Policy.lean` | `ToomCookTable` (a table's data, without its proofs) and `ToomCookTable.Admissible` (C2–C4); `PolicyBand`, `ShorLoweringPolicy`, `choose`, `Admissible`, `Stops`; `constPolicy`; and `ShorPolicySubmission` with `policy` / `policy_admissible` / `ofSetup`. A policy is a list of width-indexed bands; a table is the one-band policy at threshold `0`. Imports `ToomCookTable.lean` and nothing else |
+
+The two Shor-specific pieces of vocabulary live under `Implementation/Shor/`:
+
+| concept | file | main names |
+| --- | --- | --- |
+| Classical number theory | `Implementation/Shor/Math/ShorDefinition.lean` | `ord`, `GoodOutcome`, the continued-fraction postprocessing vocabulary (`continuedFractionConvergent`, `OrderVerifier`, `OF_post`). The factoring reduction built on it (`shors_classical_reduction`, `shors_probability_bound`) is proved in `Shor/Math/Factoring_Reduction/` |
+| The correctness contract | `Implementation/Shor/Statement.lean` (`ShorOrderFindingInstance`, `probability_of_success`), `Implementation/Shor/Interface.lean` (`ShorOrderFindingProgram`, `ShorImplementation`) | `ShorOrderFindingInstance` (the arithmetic/register data for one order-finding problem), `ShorOrderFindingProgram`, `probability_of_success`, and `ShorImplementation` — one `LowGate` circuit per valid instance, a declared success probability, a trial count, and proofs that both are honest |
 
 Two design points are worth stating separately, because the rest of the
 development leans on them constantly. Registers are explicit qubit *lists*
@@ -78,7 +85,7 @@ states happen to be represented.
 
 ## Folder Guide and Main Results
 
-### `Implementation/PhaseProduct/Math/` and `Framework/Math/` — the mathematics
+### `Implementation/PhaseProduct/Proofs/Math/`, `Implementation/Shor/Math/` — the mathematics
 
 The non-circuit mathematics the verification needs: source-level arithmetic
 programs, Toom-Cook interpolation algebra, recurrence-solving facts, and
@@ -86,23 +93,23 @@ classical Shor/factoring probability arguments.
 
 Important parts:
 
-- `PhaseProduct/Math/Table_Generation/` defines a symbolic program language and
+- `PhaseProduct/Proofs/Math/Table_Generation/` defines a symbolic program language and
   synthesizes interpolation-table programs. Its main results show that
   generated programs are well formed, return to the original symbolic state,
   and cover the required phase-product interpolation points. Important names
   include `genOpsWithProduct_returns_to_original` and
   `genOpsWithProduct_PhaseProductCoverage` (`Table_Generation/Programs/WithProduct.lean`)
   and `phaseProductCoverage_peel_block` (`Table_Generation/Core/Coverage.lean`).
-- `PhaseProduct/Math/ToomCook.lean` proves the interpolation algebra used by
+- `PhaseProduct/Proofs/Math/ToomCook.lean` proves the interpolation algebra used by
   phase product. The key theorem is `interpCoeff_correct`.
-- `PhaseProduct/Math/MasterTheorem.lean` proves a shifted recurrence theorem
+- `PhaseProduct/Proofs/Math/MasterTheorem.lean` proves a shifted recurrence theorem
   used by the gate-count proof. The key endpoint is
   `shifted_master_theorem_exact_family`.
-- `Framework/Math/Factoring_Reduction/` contains the classical number-theoretic
+- `Shor/Math/Factoring_Reduction/` contains the classical number-theoretic
   reduction/probability material behind Shor's postprocessing. Important
   probability lemmas include `general_unsuccessful_bound`
   (`Factoring_Reduction/ProbabilityBound.lean`).
-- `Framework/Math/ShorDefinition.lean` contains the classical definitions around
+- `Shor/Math/ShorDefinition.lean` contains the classical definitions around
   Shor/order finding that the top-level theorems are phrased in.
 
 The final role of this layer is to provide the mathematical facts that the
@@ -119,8 +126,7 @@ Important parts:
 
 - `PhaseProduct/Proofs/Compiler/` proves correctness of the generated
   phase-product compiler. The layout, width scanner, annotations and compiler
-  state are defined next door in `PhaseProduct/Compiler/`
-  (`Layout.lean`, `Widths.lean`, `Coefficients.lean`, `Compile.lean`);
+  state are defined in `PhaseProduct/Statement.lean`;
   `WidthSoundness.lean`, `Allocation.lean`, `Body/` and `Interpolation.lean`
   prove the main ingredients, and `Correctness.lean` assembles them into
   `eval_compileOpsToSignedGate_correct` and the controlled analogue
@@ -153,7 +159,7 @@ The final role of this layer is to prove that the high-level algorithmic
 circuits are mathematically correct, or close to the ideal circuit in the
 approximate modular-arithmetic branch.
 
-### `Implementation/{PhaseProduct,QFT}/Proofs/Lowering/` and `Implementation/Shor/Lowering/` — lowering correctness
+### `Implementation/{PhaseProduct,QFT}/Proofs/Lowering/` and `Implementation/Shor/Proofs/Lowering.lean` — lowering correctness
 
 The low-level target language and the lowering correctness story. The language
 itself, `LowGate`, is framework vocabulary
@@ -162,25 +168,26 @@ here.
 
 Important parts:
 
-- `PhaseProduct/Lowering/` defines plan-directed lowerings for signed and
-  controlled signed phase products (`Plan.lean`, `PlanBuilders.lean`,
-  `Lower.lean`), with the workspace/readiness predicates in
-  `PhaseProduct/Spec/`. `PhaseProduct/Proofs/Lowering/` proves them correct;
+- `PhaseProduct/Statement.lean` defines plan-directed lowerings for signed
+  and controlled signed phase products, with the workspace/readiness
+  predicates, and imports nothing else from `PhaseProduct/`. `PhaseProduct/Proofs/Lowering/` proves them correct;
   main endpoints are `evalL_lowerGateRec_correct` (`Lowering/PlanSemantics.lean`)
   and `standardSignedPhaseLoweringPlan_ready` /
   `standardCSignedPhaseLoweringPlan_ready`
   (`Lowering/PlanReadiness/RecursiveReadiness.lean`). `PhaseProduct/Main.lean`
   states the two headline results, `lowerSignedPhaseProduct_correct` and
   `lowerCSignedPhaseProduct_correct`.
-- `QFT/Lowering/` defines the QFT workspace requirements and the plan builders;
-  `QFT/Proofs/Lowering/` proves correctness and readiness of recursive QFT
+- `QFT/Statement.lean` holds everything needed to state the QFT claims (the
+  split convention, the workspace requirements, the plans and `lowerQFT`) and
+  imports nothing else from `QFT/`. `QFT/Proofs/Lowering/` proves correctness and readiness of recursive QFT
   lowering. Main endpoints are `evalL_lowerQFTPlan`
   (`Lowering/PlanSemantics.lean`), and `Policy.qftPlan_ready_and_clean`
   and `Policy.evalL_lowerQFT` (`Lowering/Readiness.lean`), with
   `evalL_lowerQFT` as their fixed-table instance. `QFT/Main.lean` states
   `Policy.lowerQFT_correct` and `lowerQFT_correct`.
-- `Shor/Lowering/LowerGate.lean` defines `GateWorkspaceOK` and the recursive
-  `lowerGate` function from high-level `Gate` to `LowGate`;
+- `Shor/Statement.lean` defines `GateWorkspaceOK` and the recursive
+  `Policy.lowerGate` function from high-level `Gate` to `LowGate` (the
+  single-table `lowerGate` is in `Shor/Interface.lean`);
   `Shor/Proofs/Lowering.lean` proves whole-program lowering correctness. The
   main theorem is `Policy.lowerGate_correctness`.
 
@@ -215,6 +222,39 @@ exists a PhaseProduct program such that the lowered Shor order-finding circuit
 satisfies the asymptotic `shorGateRate epsilon n`, i.e. the intended
 `O(n^(2+epsilon))` bound.
 
+### `Implementation/QubitCount/` — qubits
+
+`QubitCount` defines the peak number of live qubits of a lowered circuit and
+proves an exact formula for it.
+
+Important parts:
+
+- `Statement.lean` defines the live-set walk (`QubitCount.after`,
+  `QubitCount.peak`), the count (`LowGate.peakQubits`, scratch included), and
+  the budgets `Policy.orderFindingPeak` and
+  `Policy.orderFindingPeakBalanced`, each by
+  fuel-bounded arithmetic the kernel evaluates directly: a table is read once
+  into its width map (`widthMap`, every slot's largest width as a max-plus
+  function of the initial chunk widths), and each recursion level is then a
+  `k × k` max-plus product.
+- `Proofs/Budgets.lean` holds the budgets in the walk's own shape
+  (`Rec.peakReserve` by well-founded recursion through the compiler's width
+  scan, `Rec.qftPeakOf` over the whole halving tree); `Proofs/Arith.lean`
+  proves them equal to the budgets of `Statement.lean`.
+- `Proofs/PhaseProduct.lean` and `Proofs/QFT.lean` prove the phase-product and
+  QFT peaks by induction over their lowering plans; `Proofs/Lowering.lean`
+  lifts them to `Policy.lowerGate`; `Proofs/ModMul.lean` and
+  `Proofs/OrderFinding.lean` assemble the order-finding circuit.
+- `Proofs/Balanced.lean` shows that balancing (`Reference/Balanced/`) changes
+  the walk only at the phase products, each of which then peaks as the site
+  it became (`sitePeakD`: the split, or the product itself when the
+  split does not fit). `Proofs/Formula.lean` combines the walk's formulas
+  with `Arith.lean` into the claims of `Statement.lean`.
+- `Main.lean` proves `Policy.orderFinding_peak_formula`,
+  `Policy.reference_peak_formula`, `reference_2048_peak`,
+  `reference_2048_peak_example`, `Policy.orderFinding_peak_formula_balanced`
+  and `reference_2048_peak_balanced`.
+
 ### `Implementation/Shor/` — the correctness assembly
 
 `Shor/` is the top-level correctness assembly, and `Shor/Main.lean` is where
@@ -223,20 +263,20 @@ postprocessing branch meet.
 
 The setup records it works over:
 
-- `ShorOrderFindingInstance` (`Framework/Contract.lean`), the
+- `ShorOrderFindingInstance` (`Shor/Statement.lean`), the
   arithmetic/register data for order finding.
 - `ShorLoweringSetup` (`Framework/ToomCookTable.lean`), the assumptions needed
   to lower the chosen circuit. It moved out of this folder, gained the
   interpolation points as a field, and became the submission record itself —
   see "The submission boundary" below.
-- `ShorFactoringInstance` (`Shor/Spec/Setup.lean`), the classical factoring
+- `ShorFactoringInstance` (`Shor/Statement.lean`), the classical factoring
   setup.
-- `ShorCleanInput` (`Shor/Spec/Cleanliness.lean`), the clean-register predicate
+- `ShorCleanInput` (`Shor/Statement.lean`), the clean-register predicate
   for initial states.
-- `ShorApproxSetup` (`Shor/Spec/Setup.lean`), the complete approximate-circuit
+- `ShorApproxSetup` (`Shor/Statement.lean`), the complete approximate-circuit
   setup used by the final statements.
 
-The circuits themselves are in `Shor/Circuit/OrderFinding.lean`
+The circuits themselves are in `Shor/Statement.lean`
 (`orderFindingApprox` and its lowered form `orderFindingApproxLow`).
 
 Important results include:
@@ -253,7 +293,7 @@ Important results include:
 - `Shor_correct` (`Shor/Proofs/NaiveShor/Correctness.lean`), the ideal
   order-finding theorem, proved over the analysis in
   `Shor/Math/OrderFindingAnalysis.lean`.
-- `shors_probability_bound` (`Framework/Math/Factoring_Reduction/ProbabilityBound.lean`),
+- `shors_probability_bound` (`Shor/Math/Factoring_Reduction/ProbabilityBound.lean`),
   which states the postprocessing success probability bound.
 - `Shor_end_to_end_factoring` (`Shor/Main.lean`), which combines order finding
   with the classical factoring reduction.
@@ -261,7 +301,7 @@ Important results include:
 `Shor_correct` and every other theorem in the development are fully proved — no
 proof anywhere in the codebase uses `sorry`, and `#print axioms` on the headline
 theorems reports only `propext`, `Classical.choice`, and `Quot.sound`.
-(`grep -rn sorry FastMultiplication` is not empty, but every hit is in
+(`grep -rn sorry ForShor` is not empty, but every hit is in
 `Submission/Audit.lean`, which deliberately writes one so it can demonstrate
 that `#assert_axioms` rejects it; the resulting warning is captured by
 `#guard_msgs` rather than emitted.)
@@ -298,8 +338,8 @@ between *the rules* and *a construction satisfying them*.
 | --- | --- |
 | `Framework/ToomCookTable.lean` | The rules, implementation-free. The table language (`Register`, `State`, `Prog`, `run?`), the point-row vocabulary (`expectedRow`, `ProgConsumesPtsSafe`), the interpolation vocabulary (`interpMatrix`, `GoodToomCookPoints`), and the record `ShorLoweringSetup` / `ShorSubmission` that bundles them. Imports Mathlib and nothing else, so the specification can be read without the construction. |
 | `Framework/Policy.lean` | The same rules for a *policy*: a list of `(threshold, table)` bands with strictly decreasing thresholds, `choose` picking by operand width, and `Admissible` asking C2–C4 of every band. `constPolicy` / `ShorPolicySubmission.ofSetup` make a table submission the one-band case rather than a parallel path. The import runs one way — `Policy.lean` imports `ToomCookTable.lean`, never the reverse — so each kind of submission reads on its own. |
-| `Framework/Contract.lean` | The semantic contract: `probability_of_success`, `ShorImplementation`. It is the framework's *internal* contract, not what a submitter writes. |
 | `Implementation/` | The Toom-Cook construction: the lemmas about tables, the point generator and the compiler. It imports the rules from `Framework/ToomCookTable.lean` rather than defining them. |
+| `Implementation/Shor/Statement.lean`, `Interface.lean` | The semantic contract: `probability_of_success` (in `Statement.lean`), `ShorImplementation` (in `Interface.lean`). It is the construction's *internal* contract, not what a submitter writes. |
 | `Implementation/Reference/` | `setup ↦ referenceProgramAt`, and `referenceProgramAt_success` — generic in the setup, which is what makes the four side conditions a complete acceptance test. |
 | `Submission/` | The public surface: `Decide.lean` (the four conditions, decidable *in the kernel*; `Framework/` + Mathlib only), `Audit.lean` (`#assert_axioms`, `Lean` only), `Correct.lean` (the fixed precision and the certificate), `Score.lean` (the declared bound and a computable trial count), `Template.lean` (**the submitter's file**: the table and its C1–C4 proofs), `Check.lean` (the acceptance check: the axiom audit, the IR extraction, the evaluation tier, the certificate) and `Main.lean` (the printer). |
 | `Emit/` | `setup ↦ IR`: reflection over the verified construction, producing a `Doc` a resource estimator prices. |

@@ -35,9 +35,9 @@ This directory is the project website, published by GitHub Pages at
   `navigator.html` by a one-line script in `index.html`, so existing links
   keep working.
 
-Interactive map of `FastMultiplication/ShorVerification`: the outermost view
+Interactive map of `ForShor/ShorVerification`: the outermost view
 is `Framework` (the specification) alongside the `Implementation/` subsystems
-(`Shared`, `PhaseProduct`, `QFT`, `ModularExponentiation`, `Shor`, `GateCount`,
+(`PhaseProduct`, `QFT`, `ModularExponentiation`, `Compiler`, `Shor`, `QubitCount`,
 `Reference`); opening any folder descends into its own graph of children,
 down to individual `.lean` files. Every view is strictly left to right:
 columns are dependency rank, a column may hold several nodes stacked
@@ -64,6 +64,16 @@ another port such as `8766`.
   scripts/gen_docs_graph.py
   ```
 
+* `data/layers.js`, `data/algorithm.js` and `data/pp.js` quote Lean declarations (file, line, code) for
+  the project page, and `index.html` links to source lines inline. When files move or declarations are
+  reformatted those quotes go stale; `scripts/reanchor_docs_data.py` finds each declaration again by
+  name (namespace- and kind-aware, no guessing: an ambiguous name is an error), rewrites file, line
+  and, where the code changed beyond whitespace, the code, keeping each snippet's trimming convention,
+  and prints an old/new diff for every changed snippet so the caption next to it can be re-read.
+  `scripts/reanchor_docs_data.py --check` exits 1 if anything is stale or unresolved. The folder blocks
+  in `data/layers.js` (rows, curated edges, counts, summaries) are hand-curated; its `imports` are the
+  real folder-to-folder imports, and every curated edge must be one of them.
+
 * `data/annotations.js` is **curated** by hand under its `views` key, one
   entry per view path. A view entry can set:
   * `columns` (optional) — pins the left-to-right grid explicitly, one array
@@ -75,7 +85,7 @@ another port such as `8766`.
     `{from, to, emphasis, label?, theorem?, why?}` with `emphasis` one of
     `"primary"` (full role/layer colour, labelled if `label` is set),
     `"secondary"` (thin grey, unlabelled — real structure that isn't the
-    story), or `"dim"` (light dashed — Shared's edges). Every curated edge
+    story), or `"dim"` (light dashed — real but incidental edges). Every curated edge
     must be a real import edge in that view, and every `theorem` must
     resolve to a real declaration, or `--check` fails. Edges left out are
     not lost: a selected node's "Also imports / also imported by" section
