@@ -398,7 +398,7 @@ python -B tests/audit_f90.py</code></pre>
           <tbody>
             <tr><td>Object</td><td>A verified quantum circuit for order finding</td><td>A classical optimization problem over tables</td></tr>
             <tr><td>Main claims</td><td>Correctness of the lowered circuit; gate count \(O(n^{2+\varepsilon})\)</td><td>Optimality over source-legal tables at fixed \((K,W,N)\); sparsity barriers; NP-hardness with supplied points</td></tr>
-            <tr><td>Where</td><td><code>FastMultiplication/</code></td><td><code>efficient_tables/</code></td></tr>
+            <tr><td>Where</td><td><code>ForShor/</code></td><td><code>efficient_tables/</code></td></tr>
             <tr><td>Toolchain</td><td>Lean 4.36.0-rc1, one Lake project</td><td>Lean 4.28.0 + Mathlib <code>fadcf92b</code> (<code>lean/</code>); Lean 4.35.0-rc3 + complexitylib (<code>lean_hardness/</code>)</td></tr>
             <tr><td>Imports</td><td colspan="2">None in either direction. ForShor's main build does not include this package; a separate lightweight workflow checks its graph and axiom hygiene.</td></tr>
             <tr><td>Site</td><td><a href="../">verifiedqc.github.io/ForShor</a></td><td>this page and the <a href="navigator.html">proof map</a>, which reuse ForShor's map viewer</td></tr>

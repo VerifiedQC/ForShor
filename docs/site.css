@@ -64,12 +64,10 @@ figure.layers-figure { margin-top: 1.4rem; margin-bottom: 2rem; }
 .layer .lrole { font-style: italic; font-size: 1rem; color: #333; }
 /* a soft tint per role, matching the map's legend roughly */
 .layer-Framework { background: #eef3fa; }
-.layer-Shared { background: #f6f6f3; border-style: dashed; }
-.layer-PhaseProduct, .layer-QFT, .layer-ModularExponentiation { background: #eff6ea; }
+.layer-PhaseProduct, .layer-QFT, .layer-ModularExponentiation, .layer-Compiler { background: #eff6ea; }
 .layer-Shor { background: #fbf0e3; }
-.layer-GateCount { background: #f8eaf0; }
+.layer-QubitCount { background: #f8eaf0; }
 .layer-Reference { background: #efeaf7; }
-.layer-Shared .lname { font-weight: normal; }
 
 .larrows { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 0; }
 .ledge { fill: none; }

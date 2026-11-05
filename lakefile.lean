@@ -18,14 +18,14 @@ require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "4dc43842a11f257ffba2a611c943a133a65cb4b2"
 
 @[default_target]
-lean_lib «FastMultiplication» where
+lean_lib «ForShor» where
   -- add any library configuration options here
 
 lean_exe forshor_emit where
-  root := `FastMultiplication.Emit.Main
+  root := `ForShor.Emit.Main
 
 lean_lib «EmitTests» where
-  roots := #[`FastMultiplication.Emit.Tests]
+  roots := #[`ForShor.Emit.Tests]
 
 -- Building this library *is* the acceptance check for a submitted table.
 -- `Submission/Template.lean` is the submitter's file: the table plus the
@@ -37,10 +37,10 @@ lean_lib «EmitTests» where
 --   lake build Submission && lake exe forshor_submission > ir.json
 -- see Submission/README.md.
 lean_lib «Submission» where
-  roots := #[`FastMultiplication.ShorVerification.Submission.Check]
+  roots := #[`ForShor.ShorVerification.Submission.Check]
 
 lean_exe forshor_submission where
-  root := `FastMultiplication.ShorVerification.Submission.Main
+  root := `ForShor.ShorVerification.Submission.Main
 
 -- The same thing for a *policy* submission: a width-indexed list of tables
 -- rather than one table. `Submission/PolicyTemplate.lean` is the submitter's
@@ -53,11 +53,17 @@ lean_exe forshor_submission where
 --   lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
 -- see Submission/README.md.
 lean_lib «PolicySubmission» where
-  roots := #[`FastMultiplication.ShorVerification.Submission.PolicyCheck]
+  roots := #[`ForShor.ShorVerification.Submission.PolicyCheck]
 
 lean_exe forshor_policy_submission where
-  root := `FastMultiplication.ShorVerification.Submission.PolicyMain
+  root := `ForShor.ShorVerification.Submission.PolicyMain
   -- drop-in: the IR is extracted at run time (MetaM over the imported environment)
+  supportInterpreter := true
+
+-- The unconditionally balanced IR (Emit/BalancedU/): the `--balanced` path of
+-- forshor_policy_submission for `Shor.Balanced.balanceU`, which splits every site.
+lean_exe forshor_balanced_u where
+  root := `ForShor.Emit.BalancedU.Main
   supportInterpreter := true
 
 -- Worked examples on the *shipped* policy template: `choose` at particular
@@ -65,17 +71,17 @@ lean_exe forshor_policy_submission where
 -- on purpose, since that library's build is the acceptance check and must
 -- hold for any admissible policy, not only the shipped one.
 lean_lib «PolicyTests» where
-  roots := #[`FastMultiplication.ShorVerification.Submission.PolicyTests]
+  roots := #[`ForShor.ShorVerification.Submission.PolicyTests]
 
 -- Drop-in: exact-width worked instances and fault challenge (not part of PolicySubmission).
 lean_lib «ExactWidthTests» where
-  roots := #[`FastMultiplication.ShorVerification.Submission.ExactWidthTests]
+  roots := #[`ForShor.ShorVerification.Submission.ExactWidthTests]
 
 -- Merged from the balanced-split work (ForShor-split): balanced phase products for unequal
 -- operands, new leaf modules only (Implementation/Reference/Balanced/). The roots are its
 -- three leaves, which import the rest. `forshor_policy_submission --balanced` emits the
 -- balanced IR.
 lean_lib «Balanced» where
-  roots := #[`FastMultiplication.ShorVerification.Implementation.Reference.Balanced.Reference,
-    `FastMultiplication.ShorVerification.Implementation.Reference.Balanced.Fault,
-    `FastMultiplication.ShorVerification.Implementation.Reference.Balanced.Checks]
+  roots := #[`ForShor.ShorVerification.Implementation.Reference.Balanced.Main,
+    `ForShor.ShorVerification.Implementation.Reference.Balanced.Proofs.Fault,
+    `ForShor.ShorVerification.Implementation.Reference.Balanced.Proofs.Checks]
