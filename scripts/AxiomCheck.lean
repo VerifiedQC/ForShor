@@ -1,5 +1,5 @@
-import FastMultiplication
-import FastMultiplication.ShorVerification.Submission.Audit
+import ForShor
+import ForShor.ShorVerification.Submission.Audit
 
 /-!
 # The repository's own axiom guard
@@ -19,13 +19,14 @@ open Shor.Audit
 -- Correctness.
 #assert_axioms Shor.Shor_correct
 #assert_axioms Shor.Shor_end_to_end_factoring
+#assert_axioms Shor.Shor_end_to_end_factoring_approx_lowered
 #assert_axioms Shor.Shor_correct_approx_lowered_uniform
 #assert_axioms Shor.Shor_correct_approx_lowered
 
 -- Resource estimation.
 #assert_axioms Shor.exists_shorGateCountBound
 #assert_axioms Shor.shorGateCountBound_of_setup
-#assert_axioms Shor.shorGateCountBoundShorEta_of_setup
+#assert_axioms Shor.shorGateCountBoundAtShorPrecision_of_setup
 
 -- The phase-product lowering theorems, in both spellings.
 #assert_axioms Shor.lowerSignedPhaseProduct_correct
@@ -38,8 +39,8 @@ open Shor.Audit
 #assert_axioms Shor.ShorLoweringSetup.programOK
 #assert_axioms Shor.ShorPolicySubmission.policy_admissible
 #assert_axioms Shor.policy_submission_correct
-#assert_axioms Shor.Policy.lowerGate_correctness
+#assert_axioms Shor.Policy.lowerGate_correct
 
 -- The modular-exponentiation bound the precision schedule is stated against.
 #assert_axioms Shor.modExpApprox_correct
-#assert_axioms Shor.modExpApprox_correct_2048
+#assert_axioms Shor.modExpApprox_correct_1600

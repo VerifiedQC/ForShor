@@ -16,7 +16,7 @@
 # Usage: scripts/check_template_lexical.sh <template.lean>
 set -euo pipefail
 
-target=${1:-FastMultiplication/ShorVerification/Submission/Template.lean}
+target=${1:-ForShor/ShorVerification/Submission/Template.lean}
 
 if [ ! -f "$target" ]; then
   echo "check_template_lexical: no such file: $target" >&2
