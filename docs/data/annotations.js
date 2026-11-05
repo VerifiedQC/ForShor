@@ -169,7 +169,8 @@ window.ANNOTATIONS = {
      "PhaseProduct"
     ],
     [
-     "QFT"
+     "QFT",
+     "PhaseTripleProduct"
     ],
     [
      "ModularExponentiation"
@@ -188,6 +189,16 @@ window.ANNOTATIONS = {
     ]
    ],
    "edges": [
+    {
+     "from": "Framework",
+     "to": "PhaseTripleProduct",
+     "emphasis": "secondary"
+    },
+    {
+     "from": "PhaseProduct",
+     "to": "PhaseTripleProduct",
+     "emphasis": "secondary"
+    },
     {
      "from": "Framework",
      "to": "PhaseProduct",
