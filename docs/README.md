@@ -1,7 +1,31 @@
 # ForShor project website
 
 This directory is the project website, published by GitHub Pages at
-<https://verifiedqc.github.io/ForShor/>. It has two pages:
+<https://verifiedqc.github.io/ForShor/>. It has three tracks, joined by the site navigation
+(`<nav class="site-nav">`, styled in `site.css`, repeated in each page's markup; keep the three
+links in step when adding a page):
+
+* `index.html` (below): order finding, the ForShor proofs.
+* `phasetripleproduct/`: the PhaseTripleProduct development, which lives in this repository under
+  `ForShor/ShorVerification/Implementation/PhaseTripleProduct/` (`Statement.lean`, `Proofs/`,
+  `Main.lean`). `index.html` has an algorithm-flow diagram and a layer graph (the shared `layers.js`,
+  mounted with `window.mountLayerGraph`), the recursion figure (`ptpfig.js`) and the theorem table.
+  Its data in `data/` is **generated** by `scripts/gen_ptp_site.py` from the Lean sources, with
+  edges read from the `import` lines and quotations copied verbatim at a recorded `file:line`.
+  Arguments: `--suite` is a ForShor checkout (a git repository) holding the development; `--ref`
+  (default `HEAD` of it), `--repo-url` and `--root` set where the source links point; `--sto` is
+  the ShorTableOptimization fork, still read for three inputs that are not part of the Lean
+  development (the benchmark's `leaderboard/best-known.md`, and `policies/ref_ptp_2048.json` with
+  `scripts/ptp_exact_width.py` for the figure's ladder). The generator refuses a dirty checkout
+  (`--allow-dirty` overrides it while developing) and any file not tracked at `--ref`. Run it with
+  `--check` to see whether the data is stale. It must be re-run when the Lean files change, and
+  once the branch is pushed so the pinned commit exists on the remote.
+* `efficient-tables/`: the `efficient_tables/` package (Lean proofs, Fortran solver, paper),
+  with its own proof map; see its page.
+
+The pages below describe the order-finding track.
+
+The order-finding track has two pages:
 
 * `index.html` — the project page, written as a short technical-blog post:
   what ForShor is, what the site is for, where to start, how to check the

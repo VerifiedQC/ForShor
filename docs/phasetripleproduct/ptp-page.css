@@ -1,0 +1,51 @@
+/* Additions for the PhaseTripleProduct page; everything else comes from ../tufte.css and ../site.css.
+   The scope / results / button rules mirror ../efficient-tables/et-page.css (candidates to hoist into site.css). */
+.scope { border-left: 4px solid #b8651b; background: #fbf0e3; padding: 0.9rem 1.2rem; margin: 1.6rem 0 0.4rem; width: 55%; }
+.scope p { width: 100%; margin: 0.5rem 0; font-size: 1.15rem; }
+.scope .scope-title { font-variant: small-caps; letter-spacing: 0.06em; font-weight: bold; margin-top: 0; }
+table.results { width: calc(100% - 3rem); max-width: 100%; table-layout: fixed; border-collapse: collapse; margin: 1.2rem 0 1.5rem; font-size: 1.05rem; }
+table.results th { text-align: left; border-bottom: 2px solid #111; padding: 0.3rem 0.6rem; font-weight: bold; }
+table.results td { border-bottom: 1px solid #ccc; padding: 0.55rem 0.6rem; vertical-align: top; }
+table.results th:first-child, table.results td:first-child { width: 26%; overflow-wrap: anywhere; }
+table.results .where { font-style: italic; font-size: 0.9rem; color: #444; }
+table.results code { font-size: 0.88rem; }
+table.compare td:first-child { font-style: italic; }
+table.nums td, table.nums th { text-align: right; font-variant-numeric: tabular-nums; }
+table.nums td:first-child, table.nums th:first-child { text-align: left; width: auto; }
+.graphnote { font-size: 1.15rem; }
+a.button { display: inline-block; border: 1px solid #111; padding: 0.4rem 1rem; background: #111; color: #fff; text-decoration: none; background-image: none; text-shadow: none; }
+a.button:hover { background: #333; }
+
+/* The layer graph: wider side lanes (long theorem names label the long edges), tighter rows. */
+.layers.ptp { --lane-pad: 250px; }
+.layers.ptp .lrow { gap: 5rem; margin-bottom: 2.7rem; }
+.layers.ptp .layer { min-width: 13rem; max-width: 17rem; }
+.step-upstream { background: #f6f6f3; border-style: dashed; }
+.step-table { background: #eef3fa; }
+.step-gate { background: #eff6ea; }
+.step-surface { background: #fbf0e3; }
+.step-ext { background: #f8eaf0; }
+.step-witness { background: #efeaf7; }
+.step-harness { background: #f6f6f3; }
+.step-statement { background: #fff6cf; border-width: 2px; }
+.step-main { background: #e3f1e0; border-width: 2px; }
+.layers.ptp .layer .lrole { font-size: 0.95rem; }
+table.ptp-mods { width: 100%; border-collapse: collapse; margin: 0.6rem 0 0.4rem; font-size: 0.95rem; }
+table.ptp-mods td { padding: 0.15rem 0.7rem 0.15rem 0; vertical-align: top; border-bottom: 1px solid #e4e4e0; }
+table.ptp-mods td:first-child { font-family: Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.85rem; white-space: nowrap; }
+table.ptp-mods td:nth-child(2) { color: #555; white-space: nowrap; font-size: 0.85rem; }
+.lmeta { font-size: 0.95rem; color: #555; margin: 0 0 0.5rem; }
+
+/* Figure: two extra band tints (the reference policy has four bands). */
+.ppsvg .psw3, .ppsvg .pbr3 rect { fill: #a6d3c0; }
+.ppsvg .pbr4 rect { fill: #cfe3a8; }
+.ppsvg .pbr5 rect { fill: #e8d7a0; }
+.ppsvg .pchild rect { fill: #f3f3f1; }
+.ppsvg .pbase rect { fill: #ece9f6; stroke: #7b6fb0; }
+
+@media (max-width: 1100px) { .layers.ptp { --lane-pad: 200px; } .layers.ptp .lrow { gap: 2.5rem; } }
+@media (max-width: 760px) { .scope { width: 100%; } .layers.ptp { --lane-pad: 0px; } .layers.ptp .lrow { gap: 0.6rem; margin-bottom: 1.2rem; } .layers.ptp .layer { max-width: none; min-width: 0; } }
+
+/* Tufte floats figcaptions to the right of fixed-width paragraphs, which then overlap; set it in the flow. */
+figure.fullwidth figcaption { float: none; clear: both; max-width: 55%; margin: 0.8rem 0 1.5rem 0; }
+@media (max-width: 760px) { figure.fullwidth figcaption { max-width: none; } }
