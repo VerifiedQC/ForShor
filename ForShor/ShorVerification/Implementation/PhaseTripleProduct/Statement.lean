@@ -832,7 +832,8 @@ def PTPExactCensus (P : PTPPolicy) (n : ℕ) (G : LowGate) : Prop :=
 registers below `base`, there is a circuit family following `P` at exact widths, with workspace
 `W` above `base`, which acts as the PTP phase operator on every clean state (for every
 specification operator `U`) and has the exact-board gate counts (equalities) and a qubit upper bound. For `n = 0` no basis ket is
-clean (`FitsSignedWidth` needs `0 < n`), so the statement is trivial there. -/
+clean (`FitsSignedWidth` needs `0 < n`), so the state-level conjunct is vacuous there (the circuit, the
+workspace bound and the census are still required). -/
 def PTPLowerExactCorrect (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]
     (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) : Prop :=
   P.check = true → Good X n base →
@@ -905,9 +906,11 @@ def PTPGateTotalBound (t : ℕ) (T : PTPTable) (wd : WidthRule) : Prop :=
     ∃ C : ℝ, 0 < C ∧ ∀ n : ℕ, 1 ≤ n →
       (ptpGateTotalD (constPTPPolicy t T) wd n : ℝ) ≤ C * Real.rpow (n : ℝ) (ptpExponent T.k)
 
-/-- **Claim (gate count of the constructed circuit, constant policy).** The circuit of
-`PTPLowerExactCorrect` for a constant policy has at most `C · n ^ log_k (3k - 2)` gates, counted by
-`shorGateResourceModel`. (`Main.lean`: `ptp_circuit_gateCount_bound`.) -/
+/-- **Claim (gate count of a constructed circuit, constant policy).** For a constant policy there is a
+circuit following it (a `PolicyImplX`, the family `PTPLowerExactCorrect` is about) with at most
+`C · n ^ log_k (3k - 2)` gates, counted by `shorGateResourceModel`. The claim is existential: it does
+not itself say the circuit is correct (that is `PTPLowerExactCorrect`), nor that it is the circuit
+that claim produces. (`Main.lean`: `ptp_circuit_gateCount_bound`.) -/
 def PTPCircuitGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]
     (t : ℕ) (T : PTPTable) : Prop :=
   T.contract = true → (constPTPPolicy t T).check = true →
@@ -919,7 +922,7 @@ def PTPCircuitGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] [LowerGate
             C * Real.rpow (n : ℝ) (ptpExponent T.k)
 
 /-- **Claim (tight qubit count, any admissible width rule).** There is a circuit following `P`
-with node widths `wd` that touches at most `3 n + ptpWsTD P wd n` qubits, which is at most the
+with node widths `wd` (existential: not tied to the circuit of `PTPLowerExactCorrect`) that touches at most `3 n + ptpWsTD P wd n` qubits, which is at most the
 `ptpQubits`-shaped bound `3 n + 3 ptpReserveNeedD + max ptpCleanAncD 2`. This counts the qubits
 the gates name (`LowGate.usedQubits`), not the framework's `qubitCount`, which adds the scratch
 `cleanAnc`. (`Main.lean`: `ptp_qubits_tight`.) -/
