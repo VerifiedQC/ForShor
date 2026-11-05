@@ -1,7 +1,24 @@
 # ForShor project website
 
 This directory is the project website, published by GitHub Pages at
-<https://verifiedqc.github.io/ForShor/>. It has two pages:
+<https://verifiedqc.github.io/ForShor/>. It has three tracks, joined by the site navigation
+(`<nav class="site-nav">`, styled in `site.css`, repeated in each page's markup; keep the three
+links in step when adding a page):
+
+* `index.html` (below): order finding, the ForShor proofs.
+* `phasetripleproduct/`: the PhaseTripleProduct verification suite. `index.html` has a layer
+  graph (the shared `layers.js`, mounted with `window.mountLayerGraph`), the recursion figure
+  (`ptpfig.js`) and the theorem table. Its data in `data/` is **generated** by
+  `scripts/gen_ptp_site.py` from the suite's Lean sources, which live in the ShorTableOptimization
+  interim fork, not in this repository: `--sto` points at a checkout and `--repo-url`, `--ref`
+  and `--root` set where the links go. Run it with `--check` to see whether the data is stale.
+  If the suite is later moved into this repository, regenerate with the new `--repo-url`/`--root`.
+* `efficient-tables/`: the `efficient_tables/` package (Lean proofs, Fortran solver, paper),
+  with its own proof map; see its page.
+
+The pages below describe the order-finding track.
+
+The order-finding track has two pages:
 
 * `index.html` — the project page, written as a short technical-blog post:
   what ForShor is, what the site is for, where to start, how to check the

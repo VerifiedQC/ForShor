@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>A map of the Lean proofs for PhaseTripleProduct</title>
+    <meta name="description" content="The PhaseTripleProduct verification suite: a recursive Toom-Cook construction for the three-register phase exp(i pi phi x y z), with Lean proofs of its correctness, gate counts and qubit counts, and an interactive map of its layers. Separate from ForShor's order-finding circuit.">
+    <meta name="color-scheme" content="light">
+    <link rel="stylesheet" href="../tufte.css?v=1">
+    <link rel="stylesheet" href="../site.css?v=7">
+    <link rel="stylesheet" href="./ptp-page.css?v=1">
+    <script>
+      // Math on this page, including the panels the figures open, is TeX between \( and \)
+      // (inline) or \[ and \] (display), typeset by MathJax. Lean names stay in <code>.
+      window.MathJax = {
+        tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] },
+        startup: {
+          pageReady: function () {
+            return MathJax.startup.defaultPageReady().then(function () {
+              window.dispatchEvent(new Event("mathjax-ready"));
+            });
+          }
+        }
+      };
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+  </head>
+  <body>
+    <article>
+      <nav class="site-nav" aria-label="ForShor site"><a href="../">Order finding</a><a href="./" aria-current="page">PhaseTripleProduct</a><a href="../efficient-tables/">Efficient tables</a><span class="nav-out"><a href="https://github.com/VerifiedQC/ForShor">GitHub</a> · <a href="../#cite">Paper</a></span></nav>
+
+      <h1>A map of the Lean proofs for PhaseTripleProduct</h1>
+      <p class="subtitle">A recursive Toom–Cook construction for a three-register phase, and what is proved about it</p>
+
+      <div class="scope">
+        <p class="scope-title">Scope: read this first</p>
+        <p>
+          This page is about a <strong>different primitive from the one in ForShor's order-finding circuit</strong>.
+          PhaseProduct applies \(\exp(i\pi\varphi\,xz)\) to <em>two</em> registers and is what ForShor's modular
+          multiplication is built from. PhaseTripleProduct (PTP) applies \(\exp(i\pi\varphi\,xyz)\) to <em>three</em>. ForShor's
+          correctness and gate-count theorems do not use it, and nothing here changes them.
+        </p>
+        <p>
+          The suite is standalone: it uses ForShor's gate language, semantics classes and cost model, and STO's table
+          language, but sits in the benchmark repository (ShorTableOptimization), where it is an <strong>interim fork not yet
+          merged upstream</strong>. See <a href="#where">where it lives</a>.
+        </p>
+      </div>
+
+      <section>
+        <p>
+          <span class="newthought">A phase triple product</span> multiplies a basis state by
+          \(\exp(i\pi\varphi\,x\,y\,z)\), where \(x,y,z\) are the signed integers held in three \(n\)-qubit registers. Done
+          directly, with a doubly-controlled phase for each triple of bits, it costs about \(n^3\) gates. The recursive
+          construction is ForShor's PhaseProduct one with a third factor. Split each operand into \(k\) limbs; the product of
+          three degree-\((k-1)\) limb polynomials has degree \(3(k-1)\), so its value at the limb radix is a fixed rational
+          combination of its values at \(3(k-1)+1 = 3k-2\) distinct points. Evaluating the three operands at each point with a
+          short program of additions, negations and shifts, taking one smaller phase triple product per point, and recursing
+          gives \(O(n^{\log_k(3k-2)})\) gates for a fixed table: \(n^{2}\) at \(k=2\), \(n^{1.77}\) at \(k=3\), tending to
+          \(n\).<label for="sn-ptp-exp" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-ptp-exp" class="margin-toggle"/><span class="sidenote">\(\log_k(3k-2)\) for \(k = 2,3,4,5,6\): \(2.000,\ 1.771,\ 1.661,\ 1.609,\ 1.547\). The PhaseProduct exponent \(\log_k(2k-1)\) is \(1.585,\ 1.465,\ 1.404,\ 1.365,\ 1.343\). The comparison is between the exponents of the two constructions, not between two ways of computing the same thing.</span>
+        </p>
+        <p>
+          The table is the same object as in PhaseProduct: STO's <code>Prog k</code>, a straight-line program of
+          <code>addScaled</code>, <code>negate</code>, <code>shiftL</code>, <code>shiftR</code> and
+          <code>phaseProduct i</code> checkpoints, with its interpolation points. What changes is the point count
+          (\(3k-2\) rather than \(2k-1\)) and what a checkpoint means: each is taken on all three operands. The
+          suite verifies this at the gate level in ForShor's <code>LowGate</code> language, for whole banded policies,
+          and states one theorem: for every checked policy and every width there is a circuit following the policy that
+          acts as the specification operator on every clean state, with an exact gate census. Extensions give a controlled
+          version, the \(O(n^{\log_k(3k-2)})\) gate count, operands of unequal width and a qubit count.
+        </p>
+        <p>
+          Below, the construction first as a flow, then the proof as a graph of layers, then the recursion itself as a figure, then the theorems, what is
+          <em>not</em> claimed, and how to check it. Every block links back to the Lean source at a recorded line.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="flow-section">How one node is computed</h2>
+        <p>
+          The whole construction is one step, repeated. Given three registers and a width, the policy either stops at a leaf or picks a
+          table; the registers are split into limbs, moved to each interpolation point by the table's program, a smaller phase triple
+          product is taken there, and everything is undone. Each of the \(3k-2\) smaller products is the same problem at a smaller
+          width, which is the loop on the left. Click a step for what it does and the Lean statement that carries it.
+        </p>
+        <figure class="fullwidth layers-figure">
+          <div id="flow" class="layers algo"></div>
+        </figure>
+      </section>
+
+      <section>
+        <h2 id="layers-section">The proof, layer by layer</h2>
+        <p>
+          Read the graph top to bottom. A module may import only modules that come earlier in the suite's layer order
+          (the blocks below group modules by role, so an arrow never points up the figure); the suite enforces the order with <code>scripts/check_ptp_layers.py</code>, and every arrow below is a real import
+          read from the Lean sources by this site's generator (the dashed arrow into <code>Harness</code> is the exception:
+          the harness <em>writes</em> a Lean file that imports the suite). Open a block for its role, the modules in it, what
+          it rests on and feeds, and the statements it carries, quoted verbatim.
+        </p>
+        <figure class="fullwidth layers-figure">
+          <div id="layers" class="layers ptp"></div>
+        </figure>
+        <p>
+          The spine is <a href="#layer-Table">Table</a> → <a href="#layer-Values">Values</a> → <a href="#layer-Gates">Gates</a>
+          → <a href="#layer-Scan">Scan</a> → <a href="#layer-ExactBoard">ExactBoard</a> → <a href="#layer-Surface">Surface</a>.
+          The mathematics (<code>node_identity</code>) comes before any gate. The recursion exists twice, over the
+          conservative <em>scan</em> widths and over the <em>exact</em> widths, and the headline theorem is stated at the
+          exact ones. Everything below <code>Surface</code> is an extension or a witness.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="recursion-section">Inside PTP: one table, applied recursively</h2>
+        <p>
+          The layer graph does not show how the circuit is built. The figure below draws the reference policy of the
+          benchmark, <code>policies/ref_ptp_2048.json</code>, at \(n = 2048\). Its four bands use \(k = 6, 4, 2, 2\); at exact
+          widths the recursion goes \(2048 \to 375 \to 189 \to 96 \to 50\), using the first, third, third and fourth bands and
+          then the leaf, so the \(k = 4\) band is never reached. The middle panel draws the \(k = 2\) table of the third band,
+          which splits one product into four, and the right panel what happens to each.
+        </p>
+        <figure class="fullwidth">
+          <div id="ptpfig" class="ppfig"></div>
+          <figcaption>Left: a policy chooses a table for each range of widths; the underlined \(\underline{w}_j\) are its thresholds, the plain \(w_i\) the widths the recursion reaches. Middle: one recursion level of a \(k=2\) table. Registers \(r_0, r_1\) hold the two limbs of each of \(x, y, z\); the operations \(\Pi^{(j)}\) act on all three alike; four phase triple products are taken at \(p = 1, 0, -1, \infty\). Right: each of the four is itself lowered the same way, until a policy gives no table. Click anything.</figcaption>
+        </figure>
+        <p>
+          <span class="newthought">One recursion level.</span> \(\Pi^{(0)}\) turns \((x_0, x_1)\) into \((x_0, x_0+x_1)\); two
+          phase triple products are taken, at \(p=1\) on \(r_1\) and at \(p=0\) on \(r_0\). \(\Pi^{(1)}\) moves the registers to
+          \((x_0 - x_1,\ x_1)\), for \(p=-1\) and \(p=\infty\). \(\Pi^{(2)}\) adds \(r_1\) back into \(r_0\), restoring
+          \((x_0, x_1)\). Each product has its own angle, \(\varphi\,c_t\), with \(c_t\) the interpolation weight of its point at the
+          limb radix \(B\): for this table \(c = (B+B^2)/2,\ 1-B^2,\ (B^2-B)/2,\ B^3-B\), and
+          <code>node_identity</code> says they combine the four products into \(\varphi\,xyz\). The arithmetic is shared by all three
+          operands, so a table operation becomes three gates, one per operand.
+        </p>
+        <p>
+          <span class="newthought">Why this has to be checked.</span> A table is trusted only through its contract:
+          \(3k-2\) distinct valid points, each checkpoint consuming the next point in order with the registers holding exactly
+          that point's values, and the program returning the registers to where they started. The fault witnesses show the
+          conditions are load-bearing. Declaring the points in the wrong order is rejected by the contract; and evaluated anyway
+          it applies \(B^3+3B^2-5B+1\) rather than \((B+1)^3\) at \(x=y=z=B+1\). Running the children one bit below the exact width gives a circuit that is
+          provably wrong on a concrete state, because an intermediate value overflows and is then read by a child.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="results">What is proved</h2>
+        <p>
+          Statements are quoted at the strength Lean proves them. Every row depends on at most the axioms
+          <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>, checked by
+          <code>scripts/PTPAxiomCheck.lean</code> (34 theorems; re-run for this page on 2026-11-05 against ForShor <code>6d55ad9</code>, all 34 reported kernel-checked with exactly those three axioms). The links go to the line in the source.
+        </p>
+        <table class="results">
+          <thead><tr><th>Theorem</th><th>What it says</th></tr></thead>
+          <tbody>
+          <tr><td><code data-decl="ptp_lowerExact_correct"></code><br><span class="where">Surface</span></td>
+            <td>For every checked policy \(P\), width \(n\) and three disjoint \(n\)-qubit registers there is a circuit following \(P\) at exact widths that acts as the specification \(\exp(i\pi\varphi\,x_0x_1x_2)\) on every <em>clean</em> state (operands fit signed \(n\) bits, workspace \(|0\rangle\)), with the exact-board gate census as equalities and a qubit upper bound. Vacuous at \(n=0\).</td></tr>
+          <tr><td><code data-decl="node_identity"></code><br><span class="where">Values</span></td>
+            <td>The weighted sum over the \(3k-2\) declared points of the products of the three operands' point values equals \(\varphi\,x_0x_1x_2\), for every admissible table.</td></tr>
+          <tr><td><code data-decl="tight_minimal"></code><br><span class="where">Values</span></td>
+            <td>The exact width is minimal: one bit fewer and some operand that fits \(n\) bits has a reachable register value that does not fit.</td></tr>
+          <tr><td><code data-decl="ptp_gate_full_exact"></code><br><span class="where">ExactBoard</span></td>
+            <td>Existence of the recursion for every checked policy and width at exact widths, with correctness and the census.</td></tr>
+          <tr><td><code data-decl="chainContractsTight_iff_reach"></code><br><span class="where">Accept</span></td>
+            <td>The acceptance rule without the ladder: every table chosen at every width the exact recursion from \(n\) reaches has \(k \le m\) and strictly shrinks the width.</td></tr>
+          <tr><td><code data-decl="ptp_ctl_lowerExact_correct"></code><br><span class="where">Controlled</span></td>
+            <td>Controlled PTP by <em>masking</em> one operand, on the clean subspace: \(2n\) Toffolis (\(n\) of them \(\dagger\)), \(n+1\) extra qubits, no extra rotations.</td></tr>
+          <tr><td><code data-decl="ptp_circuit_gateCount_bound"></code><br><span class="where">Asymptotic</span></td>
+            <td>For a constant policy the constructed circuit has \(O(n^{\log_k(3k-2)})\) gates under <code>shorGateResourceModel</code> (<code>ptp_gateTotal_bound</code> for the exact-board count).</td></tr>
+          <tr><td><code data-decl="ptp_pad_lowerExact_correct"></code><br><span class="where">Unbalanced</span></td>
+            <td>Operands of unequal width, by in-place sign-extension padding: \(+2(d_0+d_1+d_2)\) CNOTs, qubits \(\le 3n\) plus workspace.</td></tr>
+          <tr><td><code data-decl="ptp_qubits_tight"></code><br><span class="where">QubitsTight</span></td>
+            <td>The circuit touches at most \(3n + \texttt{ptpWsTD}\) distinct qubits; <code>ptp_qubits_le_ptpQubits</code> makes <code>ptpQubits</code> a proved upper bound at the scan rule.</td></tr>
+          <tr><td><code data-decl="model_ptp_lowerExact_correct"></code><br><span class="where">Witness</span></td>
+            <td>The headline theorem specialised to ForShor's concrete <code>Model.qs</code>: the hypotheses are satisfiable.</td></tr>
+          <tr><td><code data-decl="plan_check"></code><br><span class="where">Planner</span></td>
+            <td>Every output of the Lean planner, for every oracle and width, passes <code>PTPPolicy.check</code>; <code>plan_ladder</code> says its ladder is the oracle's.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 id="not">What is not claimed</h2>
+        <ul>
+          <li><strong>Not part of order finding.</strong> ForShor's circuit uses PhaseProduct. These theorems do not enter its correctness or its \(n^{2+\varepsilon}\) bound.</li>
+          <li><strong>Clean states only.</strong> The state-level theorems cover the span of clean kets. Zero widths make them vacuous.</li>
+          <li><strong>Controlled PTP is the masked construction.</strong> ForShor-style leaf control, where every leaf phase is controlled, is a different construction and is <em>not</em> proved here. In the masked statement the control is not constrained against the other registers; the degenerate case is the identity on the clean span.</li>
+          <li><strong>The gate count is for a constant policy</strong> (one table at every width), as in ForShor, and counts <code>rz + toffoli + x + h + cnot</code> under <code>shorGateResourceModel</code> (Cuccaro adders, arbitrary-angle rotations). It is not a T count. The multi-band reference policy is verified for correctness and census, not given an asymptotic bound.</li>
+          <li><strong>Qubits.</strong> The theorems bound <code>LowGate.usedQubits</code>, not the framework's <code>qubitCount</code>, which adds the Cuccaro/negation scratch <code>cleanAnc</code>; that scratch is not bounded for the recursive circuit. <code>ptpQubits</code> is loose by up to a factor \(k\) per level.</li>
+          <li><strong>Unequal widths are padded</strong>, not handled by a native unbalanced node. Open: that node, the least width at which the wrapping semantics is correct, and the leaf-control variant.</li>
+          <li><strong>No optimality statement.</strong> The planner's <em>output</em> is proved valid; nothing says the oracle's choices are good, and no table is claimed optimal. The benchmark scores PTP targets by the structural score only (below).</li>
+          <li><strong>Review status.</strong> Audited by independent read-only AI reviewer passes, whose findings were fixed or narrowed (<code>docs/ptp_gap_note/PTP_RIGOR_2026-11-04.md</code> in the suite records them); no human review. The reference policy <code>ref_ptp_2048.json</code> was re-checked end to end for this page on 2026-11-05 against ForShor <code>6d55ad9</code>: accepted at \(n=2048\) with exact widths, both kernel replays passing. The per-module trusted kernel replay (<code>scripts/trusted</code>) of the 2026-11-04 modules is recorded in that note as not re-run.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 id="benchmark">The benchmark targets</h2>
+        <p>
+          ShorTableOptimization asks for tables at \(k = 2,\dots,16\) for each of two modes. A table's score is
+          <code>arithmetic operations + 5 × parallel phase-product layers</code>, a convention that trades size against depth. The
+          benchmark prices <code>PhaseTripleProduct</code> <em>structurally</em> only: upstream has no gate model for it, so these
+          scores are never T counts or gate counts. The table below is the current champion for each target from
+          <code>leaderboard/best-known.md</code>.
+        </p>
+        <table class="results nums" id="champions">
+          <thead><tr><th>k</th><th>PTP score</th><th>arith. ops</th><th>layers</th><th>products (3k−2)</th><th>PP score</th><th>PP products (2k−1)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 id="check">Checking it yourself</h2>
+        <p>
+          In a checkout of the suite, with <a href="https://github.com/leanprover/elan">elan</a> installed. The suite builds against
+          ForShor, so the first build compiles much of it (the fork's validation record for ForShor <code>6d55ad9</code>: 8,753 jobs, about 10 minutes, 3.7 GB peak, on an M-series Mac):
+        </p>
+<pre class="code"><code>lake exe cache get
+lake build TableGeneration.RecursiveCost.PTP TableGeneration.RecursiveCost.PTP.Main \
+           TableGeneration.RecursiveCost.PTP.Controlled TableGeneration.RecursiveCost.PTP.Asymptotic \
+           TableGeneration.RecursiveCost.PTP.StandardModel
+lake env lean scripts/PTPAxiomCheck.lean     # #assert_axioms on the headline theorems
+python3 scripts/check_ptp_layers.py          # layer order; no sorry / native_decide / axiom</code></pre>
+        <p>
+          To check a policy end to end, hand the harness a JSON file. It generates Lean, has the kernel decide the check and the
+          exact-width acceptance rule, replays the kernel's report, and cross-checks the widths against a Python mirror. It exits 0 on
+          accept and 1 on reject; the <code>threshold_*</code> and <code>faulty_*</code> policies are negative controls that must be rejected.
+        </p>
+<pre class="code"><code>python3 scripts/check_ptp_policy.py policies/ref_ptp_2048.json --target-width 2048 --widths exact --out ref_ptp.record.json
+python3 scripts/ptp_exact_width.py policies/ref_ptp_2048.json 2048     # the exact and scan ladders, no Lean needed</code></pre>
+        <p>
+          This page's graph and figure are generated from the Lean sources by <code>scripts/gen_ptp_site.py</code> in the ForShor
+          repository (<code>--check</code> fails if the data on disk is stale). The figure's table is executed by the generator,
+          which also re-checks the node identity on it by exact arithmetic.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="where">Where this lives</h2>
+        <table class="results compare">
+          <thead><tr><th></th><th>ForShor PhaseProduct</th><th>This suite (PhaseTripleProduct)</th></tr></thead>
+          <tbody>
+            <tr><td>Object</td><td>Verified lowering of \(\exp(i\pi\varphi\,xz)\), inside the order-finding circuit</td><td>Verified lowering of \(\exp(i\pi\varphi\,xyz)\), standalone</td></tr>
+            <tr><td>Points per node</td><td>\(2k-1\)</td><td>\(3k-2\)</td></tr>
+            <tr><td>Exponent</td><td>\(\log_k(2k-1)\)</td><td>\(\log_k(3k-2)\)</td></tr>
+            <tr><td>Policies</td><td>Banded policies and a verified compiler (<code>Policy</code>)</td><td>Banded policies, <code>PolicyImpl</code>, exact-width and scan boards</td></tr>
+            <tr><td>Controlled</td><td>Leaf-controlled</td><td>Operand masking only</td></tr>
+            <tr><td>Where</td><td><code>ForShor/</code> in ForShor (the <code>qubitCount</code> layout; <code>FastMultiplication/</code> before it)</td><td><code>TableGeneration/RecursiveCost/PTP/</code> in the ShorTableOptimization interim fork</td></tr>
+            <tr><td>Toolchain</td><td colspan="2">Lean 4.36.0-rc1 and ForShor's pinned Mathlib; the suite imports ForShor and is not imported by it.</td></tr>
+          </tbody>
+        </table>
+        <p>
+          The suite is part of an interim fork of
+          <a href="https://github.com/VerifiedQC/ShorTableOptimization">VerifiedQC/ShorTableOptimization</a>
+          (<code>JMC_NOTES.md</code> there records what it adds and how it was validated) and is not merged upstream. It adds files
+          only: banded PhaseProduct and PhaseTripleProduct policies, a planner and a bridge to ForShor's policy submission. The
+          links on this page go to a pinned commit of the fork.
+        </p>
+        <p class="colophon">
+          <a href="https://github.com/VerifiedQC/ForShor#readme">README</a> ·
+          <a href="https://github.com/VerifiedQC/ForShor">GitHub</a> ·
+          <a href="../">Order finding</a> ·
+          <a href="../efficient-tables/">Efficient tables</a>
+        </p>
+      </section>
+    </article>
+    <script src="./data/layers.js?v=2"></script>
+    <script src="./data/flow.js?v=1"></script>
+    <script src="../layers.js?v=6"></script>
+    <script src="./data/ptpfig.js?v=1"></script>
+    <script src="./data/champions.js?v=1"></script>
+    <script>
+      (function () {
+        var D = window.PTP_LAYERS;
+        if (window.mountLayerGraph && D) window.mountLayerGraph(D, document.getElementById("layers"), "layer");
+        if (window.mountLayerGraph && window.PTP_FLOW) window.mountLayerGraph(window.PTP_FLOW, document.getElementById("flow"), "flow");
+        // Theorem names in the table link to their line in the source, from the generated data.
+        var where = {};
+        Object.keys(D.layers).forEach(function (id) {
+          D.layers[id].snippets.forEach(function (s) { where[s.name.split(".").pop()] = s; });
+        });
+        document.querySelectorAll("code[data-decl]").forEach(function (c) {
+          var n = c.getAttribute("data-decl"), s = where[n];
+          if (!s) { c.textContent = n; c.title = "not quoted in the graph data"; return; }
+          var a = document.createElement("a");
+          a.href = D.repo + "/" + D.root + "/" + s.file + "#L" + s.line;
+          a.textContent = n;
+          c.appendChild(a);
+        });
+        var C = window.PTP_CHAMPIONS, tb = document.querySelector("#champions tbody");
+        if (C && tb) Object.keys(C.PhaseTripleProduct).sort(function (a, b) { return a - b; }).forEach(function (k) {
+          var t = C.PhaseTripleProduct[k], p = C.PhaseProduct[k];
+          var tr = document.createElement("tr");
+          tr.innerHTML = [k, t[0], t[1], t[2], t[3], p ? p[0] : "", p ? p[3] : ""].map(function (v) { return "<td>" + v + "</td>"; }).join("");
+          tb.appendChild(tr);
+        });
+      })();
+    </script>
+    <script src="./ptpfig.js?v=1"></script>
+  </body>
+</html>

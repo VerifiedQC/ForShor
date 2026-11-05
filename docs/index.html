@@ -15,7 +15,7 @@
     </script>
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="./tufte.css?v=1">
-    <link rel="stylesheet" href="./site.css?v=6">
+    <link rel="stylesheet" href="./site.css?v=7">
     <script>
       // Math on this page, including the panels the figures open, is TeX
       // between \( and \) (inline) or \[ and \] (display), typeset by
@@ -35,7 +35,7 @@
   </head>
   <body>
     <article>
-      <p class="site-links"><a href="https://github.com/VerifiedQC/ForShor">GitHub</a> · <a href="#cite">Paper</a></p>
+      <nav class="site-nav" aria-label="ForShor site"><a href="./" aria-current="page">Order finding</a><a href="phasetripleproduct/">PhaseTripleProduct</a><a href="efficient-tables/">Efficient tables</a><span class="nav-out"><a href="https://github.com/VerifiedQC/ForShor">GitHub</a> · <a href="#cite">Paper</a></span></nav>
 
       <h1>A map of the Lean proofs for ForShor</h1>
       <p class="subtitle">What is actually proved about Shor's algorithm here, and where to find it in the code</p>
@@ -271,6 +271,19 @@
       </section>
 
       <section>
+        <h2 id="companions">Two companion pages</h2>
+        <p>
+          Two related developments have their own pages, each with the same kind of interactive map.
+          <a href="phasetripleproduct/"><strong>PhaseTripleProduct</strong></a> is the three-register analogue of the
+          PhaseProduct primitive above, \(\exp(i\pi\varphi\,xyz)\), with a verified recursive circuit, its gate and qubit
+          counts, and a policy checker; it is not used by the order-finding circuit.
+          <a href="efficient-tables/"><strong>Efficient tables</strong></a> studies the table-optimization problem behind
+          the benchmark: Lean proofs of exact optimality and of hardness barriers, and the exact Fortran solver.
+          Neither is imported by ForShor, and nothing on them changes the theorems on this page.
+        </p>
+      </section>
+
+      <section>
         <h2 id="check">Checking it yourself</h2>
         <p>
           The project pins Lean <code>v4.36.0-rc1</code> and a fixed Mathlib revision, so the prebuilt cache
@@ -310,7 +323,7 @@
     </article>
     <script src="./data/algorithm.js?v=2"></script>
     <script src="./data/layers.js?v=4"></script>
-    <script src="./layers.js?v=5"></script>
+    <script src="./layers.js?v=6"></script>
     <script src="./data/pp.js?v=2"></script>
     <script src="./ppfig.js?v=3"></script>
   </body>

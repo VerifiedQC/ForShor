@@ -6,6 +6,14 @@
   body { background-color: #fffff8; color: #111; }
 }
 .site-links { font-size: 1rem; margin-top: 1.5rem; }
+/* The site-wide navigation (every page): the three tracks, then the outside links. */
+.site-nav { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 1.6rem; margin-top: 1.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #111; font-size: 1.05rem; width: 55%; }
+.site-nav a { background: none; text-shadow: none; text-decoration: none; color: #111; padding-bottom: 1px; border-bottom: 1px solid transparent; }
+.site-nav a:hover { border-bottom-color: #111; }
+.site-nav a[aria-current="page"] { font-weight: bold; border-bottom-color: #111; }
+.site-nav .nav-out { margin-left: auto; font-size: 0.95rem; }
+.site-nav .nav-out a { color: #444; }
+@media (max-width: 760px) { .site-nav { width: auto; } .site-nav .nav-out { margin-left: 0; } }
 .byline { font-size: 1.1rem; font-style: italic; margin-top: 0; }
 figure.fullwidth img {
   display: block;
