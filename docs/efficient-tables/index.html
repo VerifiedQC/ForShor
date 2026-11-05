@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>A map of the proofs for exact table optimization</title>
+    <meta name="description" content="A classical, theoretical companion to ForShor: Lean proofs that characterize and solve the table-optimization problem behind ForShor's PhaseProduct benchmark, with an interactive proof map. Separate from ForShor's verified order-finding circuit.">
+    <script>
+      // Deep links into the proof map belong to navigator.html.
+      (function () {
+        var h = window.location.hash || "";
+        if (/^#\//.test(h)) window.location.replace("navigator.html" + h);
+      })();
+    </script>
+    <meta name="color-scheme" content="light">
+    <link rel="stylesheet" href="../tufte.css?v=1">
+    <link rel="stylesheet" href="../site.css?v=6">
+    <link rel="stylesheet" href="./et-page.css?v=1">
+    <script>
+      window.MathJax = { tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] } };
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
+  </head>
+  <body>
+    <article>
+      <p class="site-links"><a href="https://github.com/VerifiedQC/ForShor/tree/main/efficient_tables">GitHub</a> · <a href="navigator.html">Proof map</a> · <a href="../">ForShor</a></p>
+
+      <h1>A map of the proofs for exact table optimization</h1>
+      <p class="subtitle">The classical, theoretical companion to ForShor's PhaseProduct benchmark</p>
+
+      <div class="scope">
+        <p class="scope-title">Scope: read this first</p>
+        <p>
+          This page is about a <strong>classical optimization problem</strong>, not a quantum circuit.
+          Nothing in <a href="../">ForShor's</a> verified order-finding circuit, its correctness theorem or its
+          gate-count theorem depends on anything here, and no Lean file on either side imports the other.
+          The two live in separate Lake projects with different toolchains.
+        </p>
+        <p>
+          The word <em>PhaseProduct</em> means two related things. In ForShor it is a lowered, verified
+          quantum subroutine. Here, <code>PhaseProduct/</code> is the <em>optimization model</em> of the table
+          that drives it: a shift/add program with per-operation costs, and the question of which such
+          program is cheapest.
+        </p>
+      </div>
+
+      <section>
+        <p>
+          <span class="newthought">ForShor's fast multiplication</span> is driven by a <em>table</em>: for a
+          Toom-Cook-style split with arity \(k\), a list of interpolation points together with a program of
+          additions, shifts and negations that carries out the interpolation. ForShor verifies that
+          <em>any</em> table passing four decidable side conditions yields a correct circuit with a gate-count
+          bound. It does not say which table is best. Choosing one is the table-optimization problem posed by the
+          paper and by ShorTableOptimization: for a target \((\text{mode},k)\) a policy chooses a point list,
+          an order and a program; a contract checks them; and the structural score
+          \(S = A + 5L\) counts arithmetic operations \(A\) and parallel phase-product layers \(L\).<label for="sn-1" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-1" class="margin-toggle"/><span class="sidenote">The score is <code>arithmeticOperationCount + 5 * parallelPhaseProductLayerCount</code> from the benchmark’s <code>leaderboard/config.json</code>. T-count is a different, downstream objective and is <strong>not</strong> what is shown NP-hard anywhere below.</span>
+        </p>
+        <p>
+          This package answers two questions about that problem. <em>What is the exact optimum?</em> A Lean
+          library, <strong>Library</strong>, models tables and their recursive cost and proves an optimizer optimal,
+          and an exact Fortran solver (not formalized) computes the optima.
+          <em>How hard is it?</em> A second, separate Lean project, <strong>Hardness</strong>, proves the
+          sparsity barriers that make NP-hardness of the paper's own problem unlikely, and proves NP-hardness of
+          a nearby problem in which the points are part of the input.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="results">What is proved</h2>
+        <p>
+          Statements are quoted at the strength Lean proves them. Every row below depends on at most the axioms
+          <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>; the
+          <a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/LEAN_MAP.md">paper-to-Lean map</a>
+          records, statement by statement, what is checked, what is checked in a narrower form, and what is
+          paper-only.
+        </p>
+        <table class="results">
+          <thead><tr><th>Theorem</th><th>What it says</th><th></th></tr></thead>
+          <tbody>
+          <tr>
+            <td><a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/lean/Provider/Effective/ProfileExact.lean#L21"><code>optimal_raw_F2_exact</code></a><br><span class="where">Provider/Effective</span></td>
+            <td>For every <em>fixed</em> arity bound \(K\ge 2\), root width \(W\) and multiplicity \(N\): a policy that is semantically correct for all signed \(W\)-bit inputs and whose cost is at most that of every ladder of source-legal tables of arity \(\le K\), one table per arity. The strongest optimality statement here.</td>
+            <td class="go"><a href="navigator.html#/Library/Provider/Effective?sel=Library/Provider/Effective/ProfileExact.lean">map</a></td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/lean/PhaseProduct/Catalog/EndToEnd.lean#L123"><code>pp_through_arity_K</code></a><br><span class="where">PhaseProduct/Catalog</span></td>
+            <td>The finite-catalogue form: optimal relative to a catalogue of verified candidate tables. Weaker than the row above, and the one the layered library is organized around.</td>
+            <td class="go"><a href="navigator.html#/Library/PhaseProduct/Catalog?sel=Library/PhaseProduct/Catalog/EndToEnd.lean">map</a></td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/lean/Planner/TauPrice.lean#L49"><code>tauRS_eq_tauExact</code></a><br><span class="where">Planner</span></td>
+            <td>The rounded rotation price used in the objective equals its exact integer form, for every \(R\in\mathbb N\).</td>
+            <td class="go"><a href="navigator.html#/Library/Planner?sel=Library/Planner/TauPrice.lean">map</a></td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/lean/Provider/Ceiling/FinalCeiling.lean#L55"><code>feasible_has_ceiling_grouped</code></a><br><span class="where">Provider/Ceiling</span></td>
+            <td>Every feasible charge cap has a minimum-charge witness of charge at most \(27k^3\) (<code>minCharge_le_27_cube</code>), unconditionally.</td>
+            <td class="go"><a href="navigator.html#/Library/Provider/Ceiling?sel=Library/Provider/Ceiling/FinalCeiling.lean">map</a></td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/lean/Foundations/SmallPoint/Main.lean#L61"><code>small_integer_point</code></a><br><span class="where">Foundations/SmallPoint</span></td>
+            <td>A polyhedron \(\{x\ge 0,\ Ax\le b\}\) with bounded integer data has an integer point of size at most \((t+1)\,t!\,B^t\) when it has one.</td>
+            <td class="go"><a href="navigator.html#/Library/Foundations/SmallPoint?sel=Library/Foundations/SmallPoint/Main.lean">map</a></td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/lean/Foundations/RuntimeComposition/Main.lean#L29"><code>composition</code></a><br><span class="where">Foundations/RuntimeComposition</span></td>
+            <td>Arithmetic only: from stage-wise cost bounds taken as <em>hypotheses</em> (including Kannan’s theorem, as a contract) it derives a total bound. It is not a running-time theorem about the algorithm.</td>
+            <td class="go"><a href="navigator.html#/Library/Foundations/RuntimeComposition?sel=Library/Foundations/RuntimeComposition/Main.lean">map</a></td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/lean_hardness/Mahaney/Theorem.lean#L236"><code>mahaney</code></a><br><span class="where">Hardness/Mahaney</span></td>
+            <td>Mahaney’s theorem on complexitylib’s multi-tape Turing machines: a sparse NP-hard set implies P = NP.</td>
+            <td class="go"><a href="navigator.html#/Hardness/Mahaney?sel=Hardness/Mahaney/Theorem.lean">map</a></td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/lean_hardness/Mahaney/TableLang.lean#L274"><code>tableOpt_barrier</code></a><br><span class="where">Hardness/Mahaney</span></td>
+            <td>Conditional: if the paper’s problem (target \((\text{mode},k)\) with \(k\) in unary, the policy choosing its own points) were NP-hard, then P = NP. Its sibling <code>policyOpt_barrier</code> does the same for a unary-\(n\) policy language whose optimum is polynomially bounded; that bound is a hypothesis.</td>
+            <td class="go"><a href="navigator.html#/Hardness/Mahaney?sel=Hardness/Mahaney/TableLang.lean">map</a></td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/lean_hardness/Points/SatRed.lean#L243"><code>genLang_NPHard</code></a><br><span class="where">Hardness/Points</span></td>
+            <td>The structural-score table problem is NP-hard <em>when the interpolation points are supplied as input</em>, already at arity 2, by SAT → directed Hamiltonian cycle (out-degree \(\le 2\)) → edge-Hamiltonian cycle → table.</td>
+            <td class="go"><a href="navigator.html#/Hardness/Points?sel=Hardness/Points/SatRed.lean">map</a></td>
+          </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 id="not">What is not claimed</h2>
+        <ul>
+          <li><strong>No NP-hardness of T-count.</strong> NP-hardness is shown only for the structural score with points supplied as input. It is not shown for T-count optimization, in general or for the Kahanamoku-Meyer–Yao (KMY) points, and the paper's fixed-points problem stays barrier-blocked.</li>
+          <li><strong>The barriers are conditional.</strong> They say that an NP-hardness proof would imply P = NP. They are not hardness results and they do not show membership in P.</li>
+          <li><strong>No running-time theorem.</strong> The optimality theorems are statements for each fixed \((K,W,N)\). Polynomial-time synthesis of optimal tables is not proved; for growing arity it is open. <code>composition</code> is arithmetic over hypotheses.</li>
+          <li><strong>The solver is not formalized.</strong> The Fortran solver and its outputs are reproducible from the repository but are not Lean statements; <code>Alignment/</code> relates its search windows to the Lean model.</li>
+          <li><strong>Four research packages are prose.</strong> The thresholds, outer planner, profiles and normalization arguments the paper cites ship as prose proofs with review records in <code>proof_notes/</code>. They were reviewed by AI reviewers and are not machine-checked.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 id="graph">The proof, as a graph</h2>
+        <p>
+          The <a href="navigator.html">proof map</a> draws the development the way ForShor's does. Each node is a
+          folder or a file, each arrow an import read from the Lean sources, and opening a node shows its role, what it
+          rests on, what rests on it, and its declarations with links to the line on GitHub. Labelled arrows name the
+          theorem that carries the dependency. Start from the top of either project.
+        </p>
+        <h3>Library <span class="meta">216 files · 2279 declarations · Lean 4.28, Mathlib</span></h3>
+        <p class="graphnote">
+          Eight layers, read bottom to top. A file imports only from its own layer or one listed before it
+          (checked on every run of the graph generator); <code>Helpers/</code> is a standalone library.
+          The spine of the argument is <a href="navigator.html#/Library">Source → Model → Planner → PhaseProduct → Provider → ILPEncoding → Alignment</a>.
+        </p>
+        <div class="et-grid">
+<a class="et-card " href="navigator.html#/Library/Foundations"><span class="et-name">Foundations</span><span class="et-blurb">counting, budgets, four side developments</span><span class="et-count">36 files · 215 decls</span></a>
+<a class="et-card " href="navigator.html#/Library/Source"><span class="et-name">Source</span><span class="et-blurb">program language, contracts, best-known tables</span><span class="et-count">17 files · 253 decls</span></a>
+<a class="et-card " href="navigator.html#/Library/Model"><span class="et-name">Model</span><span class="et-blurb">instructions, scanner, interpreter, profile algebra</span><span class="et-count">22 files · 371 decls</span></a>
+<a class="et-card " href="navigator.html#/Library/Planner"><span class="et-name">Planner</span><span class="et-blurb">recursive planner, exact rotation price</span><span class="et-count">6 files · 93 decls</span></a>
+<a class="et-card " href="navigator.html#/Library/PhaseProduct"><span class="et-name">PhaseProduct</span><span class="et-blurb">phase identity, finite-catalogue optimum</span><span class="et-count">29 files · 212 decls</span></a>
+<a class="et-card " href="navigator.html#/Library/Provider"><span class="et-name">Provider</span><span class="et-blurb">ladders, ceilings, compression, exhaustive optimizer</span><span class="et-count">49 files · 501 decls</span></a>
+<a class="et-card " href="navigator.html#/Library/ILPEncoding"><span class="et-name">ILPEncoding</span><span class="et-blurb">affine cost encoding and its bit size</span><span class="et-count">35 files · 386 decls</span></a>
+<a class="et-card " href="navigator.html#/Library/Alignment"><span class="et-name">Alignment</span><span class="et-blurb">Fortran solver vs. the Lean model</span><span class="et-count">2 files · 131 decls</span></a>
+        </div>
+        <h3>Hardness <span class="meta">41 files · 893 declarations · Lean 4.35.0-rc3, complexitylib</span></h3>
+        <p class="graphnote">
+          A separate Lake project. <code>TableGeneration</code> is not original to this package: it is the
+          benchmark's contract, vendored as a snapshot, and the table problem is stated against it. The
+          <a href="navigator.html#/Hardness/Points">SAT → table chain</a> is drawn as a single path, and the
+          <a href="navigator.html#/Hardness/Mahaney">Mahaney proof</a> as the pruning argument feeding the two barriers.
+        </p>
+        <div class="et-grid et-grid-3">
+<a class="et-card et-ghost" href="navigator.html#/Hardness/TableGeneration"><span class="et-name">TableGeneration</span><span class="et-blurb">vendored benchmark contract</span><span class="et-count">5 files · 65 decls</span></a>
+<a class="et-card " href="navigator.html#/Hardness/Mahaney"><span class="et-name">Mahaney</span><span class="et-blurb">Mahaney’s theorem and the sparsity barriers</span><span class="et-count">13 files · 253 decls</span></a>
+<a class="et-card " href="navigator.html#/Hardness/Points"><span class="et-name">Points</span><span class="et-blurb">SAT → table, points as input</span><span class="et-count">23 files · 575 decls</span></a>
+        </div>
+        <p>
+          <a class="button" href="navigator.html">Open the proof map</a>
+        </p>
+      </section>
+
+      <section>
+        <h2 id="vs">How this relates to ForShor</h2>
+        <table class="results compare">
+          <thead><tr><th></th><th>ForShor</th><th>This package</th></tr></thead>
+          <tbody>
+            <tr><td>Object</td><td>A verified quantum circuit for order finding</td><td>A classical optimization problem over tables</td></tr>
+            <tr><td>Main claims</td><td>Correctness of the lowered circuit; gate count \(O(n^{2+\varepsilon})\)</td><td>Optimality over source-legal tables at fixed \((K,W,N)\); sparsity barriers; NP-hardness with supplied points</td></tr>
+            <tr><td>Where</td><td><code>ForShor/</code></td><td><code>efficient_tables/</code></td></tr>
+            <tr><td>Toolchain</td><td>Lean 4.36.0-rc1, one Lake project</td><td>Lean 4.28.0 + Mathlib <code>fadcf92b</code> (<code>lean/</code>); Lean 4.35.0-rc3 + complexitylib (<code>lean_hardness/</code>)</td></tr>
+            <tr><td>Imports</td><td colspan="2">None in either direction. ForShor's main build does not include this package; a separate lightweight workflow checks its graph and axiom hygiene.</td></tr>
+            <tr><td>Site</td><td><a href="../">verifiedqc.github.io/ForShor</a></td><td>this page and the <a href="navigator.html">proof map</a>, which reuse ForShor's map viewer</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 id="check">Checking it yourself</h2>
+        <p>
+          Each Lake project builds on its own. With <a href="https://github.com/leanprover/elan">elan</a> installed,
+          and about 16 GB of RAM for the first (do not run the two builds at once):
+        </p>
+<pre class="code"><code>cd efficient_tables
+lake exe cache get                          # prebuilt Mathlib oleans, pinned revision
+lake build EfficientTables EfficientTablesHelpers
+lake env lean scripts/AxiomAudit.lean       # #print axioms on the headline theorems
+
+cd lean_hardness                            # separate project, separate toolchain
+lake build                                  # compiles ~2.3k complexitylib modules, ~20 min
+lake env lean Mahaney/Audit.lean
+lake env lean Points/Audit4.lean</code></pre>
+        <p>
+          The Fortran solver is reproduced separately; see
+          <a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/REPRODUCING.md"><code>REPRODUCING.md</code></a>.
+          This page's graph is regenerated with <code>python3 efficient_tables/scripts/gen_docs_graph.py --check</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="cite">Licensing and citation</h2>
+        <p>
+          Code is Apache License 2.0, as in ForShor; the paper source and Markdown documents in
+          <code>efficient_tables/</code> are Creative Commons Attribution 4.0 International
+          (<a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/LICENSE-TEXT"><code>LICENSE-TEXT</code></a>).
+          Citation and author information for this package will be added by the repository owners.
+        </p>
+        <p class="colophon">
+          <a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/README.md">README</a> ·
+          <a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/LEAN_MAP.md">LEAN_MAP.md</a> ·
+          <a href="https://github.com/VerifiedQC/ForShor/tree/main/efficient_tables">GitHub</a> ·
+          <a href="../">ForShor</a>
+        </p>
+      </section>
+    </article>
+  </body>
+</html>

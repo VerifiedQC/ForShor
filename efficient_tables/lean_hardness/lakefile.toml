@@ -1,0 +1,26 @@
+name = "mahaney"
+version = "0.1.0"
+defaultTargets = ["Mahaney", "Points"]
+
+# Concrete-machine version of the sparsity barrier (2026-10-12). Built on complexitylib
+# (Arora–Barak multi-tape TMs; P, NP, FP, Cook–Levin, Cobham, `polytime` tactic).
+[[require]]
+name = "complexitylib"
+git = "https://github.com/elazarg/complexitylib"
+rev = "3f4b5fee8bbd49721a5b70473c81bf3db2e7500d"
+
+[[lean_lib]]
+name = "Mahaney"
+
+# ShorTableOptimization contract: a snapshot (October 2026) of TableGeneration/{Basic,Language,Spec,
+# Metrics,ContractSoundness}.lean from the benchmark repository (VerifiedQC/ShorTableOptimization).
+# Spec, Metrics and ContractSoundness differ from current main; see ../README.md.
+[[lean_lib]]
+name = "TableGeneration"
+srcDir = "vendor/ShorTableOptimization"
+globs = ["TableGeneration.+"]
+moreLeanArgs = ["-s", "1048576"]
+
+[[lean_lib]]
+name = "Points"
+globs = ["Points.+"]

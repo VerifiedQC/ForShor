@@ -56,12 +56,10 @@ figure.layers-figure { margin-top: 1.4rem; margin-bottom: 2rem; }
 .layer .lrole { font-style: italic; font-size: 1rem; color: #333; }
 /* a soft tint per role, matching the map's legend roughly */
 .layer-Framework { background: #eef3fa; }
-.layer-Shared { background: #f6f6f3; border-style: dashed; }
-.layer-PhaseProduct, .layer-QFT, .layer-ModularExponentiation { background: #eff6ea; }
+.layer-PhaseProduct, .layer-QFT, .layer-ModularExponentiation, .layer-Compiler { background: #eff6ea; }
 .layer-Shor { background: #fbf0e3; }
-.layer-GateCount { background: #f8eaf0; }
+.layer-QubitCount { background: #f8eaf0; }
 .layer-Reference { background: #efeaf7; }
-.layer-Shared .lname { font-weight: normal; }
 
 .larrows { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 0; }
 .ledge { fill: none; }
@@ -172,6 +170,22 @@ pre.lsnip > code { display: block; width: auto; margin-left: 0; overflow-x: visi
 .ppsvg .prow.on rect { fill: rgba(74, 143, 212, .22); stroke: none; }
 .ppsvg .pn:focus { outline: none; }
 .ppsvg .pn:focus-visible rect { stroke: #111; stroke-width: 2.2; }
+.ppsvg .ptitle rect { fill: transparent; stroke: none; }
+.ppsvg .ptitle:hover rect { fill: rgba(74, 143, 212, .14); stroke: none; }
+.ppsvg .ptitle.on rect { fill: rgba(74, 143, 212, .22); stroke: none; }
+.ppsvg .psw { stroke: #4a8fd4; stroke-width: 1; }
+.ppsvg .psw1, .ppsvg .pbr1 rect { fill: #b9d9ea; }
+.ppsvg .psw2, .ppsvg .pbr2 rect { fill: #8fc1d9; }
+.ppsvg .pbandreg rect { stroke: none; }
+.ppsvg .pbr0 rect { fill: #f1f1ef; }
+.ppsvg .pbandreg:hover rect, .ppsvg .pbandreg.on rect { stroke: #111; stroke-width: 1.6; }
+.ppsvg .pwrow rect { fill: #fff; stroke: #4a8fd4; }
+.ppsvg .pthr { stroke: #222; stroke-width: 1.4; stroke-dasharray: 7 4; }
+.ppsvg .pthrlab rect { fill: #fff; stroke: #222; }
+.ppsvg .pt-thr { font-style: normal; font-weight: bold; fill: #111; }
+.ppsvg .pt-pi { font-size: 12px; }
+.ppsvg .prow rect.psw1 { fill: #b9d9ea; stroke: #4a8fd4; }
+.ppsvg .prow rect.psw2 { fill: #8fc1d9; stroke: #4a8fd4; }
 .ppdetail { margin: 0.6rem 0 1.4rem 0; }
 .ppdetail .ldetail-grid::before { display: none; }
 table.pstate { border-collapse: collapse; font-size: 1rem; margin-top: 0.8rem; }

@@ -3,6 +3,41 @@
 // Framework/ToomCookTable.lean (checked against the repository's own tables)
 // and copies the quoted declarations verbatim. Regenerate, don't edit.
 window.PPFIG = {
+ "policy": {
+  "n": 128,
+  "bands": [
+   {
+    "threshold": 40,
+    "k": 3
+   },
+   {
+    "threshold": 14,
+    "k": 2
+   }
+  ],
+  "levels": [
+   {
+    "w": 128,
+    "band": 0
+   },
+   {
+    "w": 55,
+    "band": 0
+   },
+   {
+    "w": 30,
+    "band": 1
+   },
+   {
+    "w": 18,
+    "band": 1
+   },
+   {
+    "w": 12,
+    "band": -1
+   }
+  ]
+ },
  "repo": "https://github.com/VerifiedQC/ForShor/blob/main",
  "root": "ForShor/ShorVerification",
  "k": 3,
@@ -229,64 +264,106 @@ window.PPFIG = {
   },
   "genPts": {
    "name": "genInterpolationPoints",
-   "file": "Implementation/PhaseProduct/Compiler/Coefficients.lean",
-   "line": 199,
+   "file": "Implementation/PhaseProduct/Proofs/Compiler/Coefficients.lean",
+   "line": 112,
    "code": "def genInterpolationPoints (k : ℕ) : List Point := (List.range (2 * k - 1)).map alternatingPoint",
    "note": null
   },
   "phaseCoeff": {
    "name": "phaseCoeffFromPtsWidth",
-   "file": "Implementation/PhaseProduct/Compiler/Coefficients.lean",
-   "line": 46,
+   "file": "Implementation/PhaseProduct/Proofs/Compiler/Coefficients.lean",
+   "line": 39,
    "code": "noncomputable def phaseCoeffFromPtsWidth (k W : ℕ) (pts : List Point) (hpts : pts.length = q k) : Fin (q k) → ℚ :=\n  phaseCoeffFromPts k (ptsToFin k pts hpts) ((2 : ℚ) ^ W)",
    "note": null
   },
   "nextSignedWidth": {
    "name": "nextSignedWidth",
-   "file": "Implementation/PhaseProduct/Compiler/Widths.lean",
-   "line": 44,
+   "file": "Implementation/PhaseProduct/Statement.lean",
+   "line": 185,
    "code": "def nextSignedWidth {k : ℕ} (x z : ExtReg) (ops : Prog k) : ℕ := commonNeededWidth (scanNeededWidths x z ops)",
    "note": null
   },
   "balanced": {
    "name": "prog_balanced_nextSignedWidth",
-   "file": "Implementation/GateCount/PhaseProduct/Lemmas.lean",
-   "line": 4059,
+   "file": "Implementation/PhaseProduct/Proofs/GateCount/Lemmas.lean",
+   "line": 3742,
    "code": "lemma prog_balanced_nextSignedWidth\n    (k : ℕ)\n    (hk : 1 < k)\n    (ops : Prog k) :\n    ∃ c : ℕ, ∀ x z : ExtReg,\n      ExtReg.width x = ExtReg.width z →\n      nextSignedWidth x z ops\n        ≤\n      (ExtReg.width x + k - 1) / k + c := by",
    "note": null
   },
   "overhead": {
    "name": "phaseProgramOverhead_linear",
-   "file": "Implementation/GateCount/PhaseProduct/Lemmas.lean",
-   "line": 178,
+   "file": "Implementation/PhaseProduct/Proofs/GateCount/Lemmas.lean",
+   "line": 41,
    "code": "lemma phaseProgramOverhead_linear\n    {k : ℕ}\n    (ops : Prog k) :\n    ∃ A B : ℕ, ∀ W : ℕ,\n      phaseProgramOverhead W ops ≤ A * W + B := by",
    "note": null
   },
   "signedPlanOf": {
    "name": "Policy.signedPlanOf",
-   "file": "Implementation/PhaseProduct/Lowering/PlanBuilders.lean",
-   "line": 407,
-   "code": "def Policy.signedPlanOf\n    (P : ShorLoweringPolicy)\n    (phi : Angle)\n    (x z : ExtReg)\n    (hworkspace : Policy.WorkspaceOK P x z) :\n    ∀ (o : Option ToomCookTable), P.choose (phaseInputSize x z) = o →\n      PhaseLoweringPlan P (phaseInputSize x z) (Gate.SignedPhaseProd phi x z)\n  | none, h =>\n      PhaseLoweringPlan.signedBase phi x z (fun T hT => by rw [h] at hT; simp at hT)\n  | some T, h =>\n      if hrec : nextSignedWidth x z T.ops < phaseInputSize x z then\n        let step : Policy.CanonicalStep P T x z := Policy.canonicalStep P T x z h hrec hworkspace\n        let src : LayoutState T.k := initSignedLayoutState step.layout\n        let dst : LayoutState T.k := targetSignedLayoutState src (scanNeededWidths x z T.ops)\n        let recurse : ∀ (i : Fin T.k) (theta : Angle),\n            PhaseLoweringPlan P (nextSignedWidth x z T.ops)\n              (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)) := fun i theta =>\n          have hchild : Policy.WorkspaceOK P (dst.xslot i) (dst.zslot i) := step.childWorkspace i\n          have hsize : phaseInputSize (dst.xslot i) (dst.zslot i) = nextSignedWidth x z T.ops :=\n            step.childInputSize i\n          hsize ▸ Policy.signedPlanOf P theta (dst.xslot i) (dst.zslot i) hchild _ rfl\n        PhaseLoweringPlan.signedStep phi x z T h step.layout hrec step.capacity\n          (Policy.stepPlan P T phi x z step.layout recurse)\n      else\n        PhaseLoweringPlan.signedBase phi x z\n          (fun T' hT => by rw [h] at hT; obtain rfl := Option.some.inj hT; exact hrec)\ntermination_by phaseInputSize x z\ndecreasing_by\n  exact (step.childInputSize i) ▸ hrec",
+   "file": "Implementation/PhaseProduct/Statement.lean",
+   "line": 1706,
+   "code": "def Policy.signedPlanOf\n    (P : ShorLoweringPolicy)\n    (phi : Angle)\n    (x z : ExtReg)\n    (n : ℕ) :\n    ∀ (o : Option ToomCookTable), P.choose (phaseInputSize x z) = o →\n      PhaseLoweringPlan P n (Gate.SignedPhaseProd phi x z)\n  | none, _ =>\n      PhaseLoweringPlan.signedBase phi x z\n  | some T, _ =>\n      if _hrec : nextSignedWidthBy P.widthRule x z T.ops < phaseInputSize x z then\n        let layout : Gate.PhaseProductLayout x z T.k := Policy.canonicalStep P T x z\n        let src : LayoutState T.k := initSignedLayoutState layout\n        let dst : LayoutState T.k := targetSignedLayoutState src (neededWidthsBy P.widthRule x z T.ops)\n        let recurse : ∀ (i : Fin T.k) (theta : Angle),\n            PhaseLoweringPlan P (nextSignedWidthBy P.widthRule x z T.ops)\n              (Gate.SignedPhaseProd theta (dst.xslot i) (dst.zslot i)) := fun i theta =>\n          Policy.signedPlanOf P theta (dst.xslot i) (dst.zslot i) (nextSignedWidthBy P.widthRule x z T.ops) _ rfl\n        PhaseLoweringPlan.signedStep phi x z T layout\n          (Policy.stepPlan P T phi x z layout recurse)\n      else\n        PhaseLoweringPlan.signedBase phi x z\ntermination_by phaseInputSize x z\ndecreasing_by\n  exact lt_of_le_of_lt (phaseInputSize_target_le_by P.widthRule layout T.ops i) _hrec",
    "note": null
   },
   "exponent": {
    "name": "phaseProductExponent",
-   "file": "Implementation/GateCount/Definitions.lean",
-   "line": 72,
+   "file": "Implementation/PhaseProduct/Proofs/GateCount/Basic.lean",
+   "line": 20,
    "code": "noncomputable def phaseProductExponent (k : ℕ) : ℝ := Real.log (q k : ℝ) / Real.log (k : ℝ)",
    "note": null
   },
   "bound": {
    "name": "PhaseProductGateCountBound",
-   "file": "Implementation/GateCount/Definitions.lean",
-   "line": 84,
+   "file": "Implementation/Shor/Proofs/GateCount.lean",
+   "line": 76,
    "code": "def PhaseProductGateCountBound\n    {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k)\n    (pts : List Point) (hpts : pts.length = q k) : Prop :=\n  ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧\n    ∀ (φ : Angle) (x z : Reg) (ws : Gate.PhaseProdWorkspace x z)\n      (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (Gate.PhaseProdUsing φ x z ws)),\n      let n := max (regSize x) (regSize z)\n      n₀ ≤ n →\n      (LowGate.gateCount shorGateCostModel\n          (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (Gate.PhaseProdUsing φ x z ws) hworkspace) : ℝ)\n        ≤ C * Real.rpow n (phaseProductExponent k)",
+   "note": null
+  },
+  "band": {
+   "name": "PolicyBand",
+   "file": "Framework/Policy.lean",
+   "line": 130,
+   "code": "structure PolicyBand where\n  /-- The smallest operand width this band covers. -/\n  threshold : ℕ\n  /-- The table to use on that band. -/\n  table     : ToomCookTable",
+   "note": null
+  },
+  "policy": {
+   "name": "ShorLoweringPolicy",
+   "file": "Framework/Policy.lean",
+   "line": 143,
+   "code": "structure ShorLoweringPolicy where\n  /-- The bands, widest first. -/\n  bands  : List PolicyBand\n  /-- Thresholds strictly decrease, so the bands partition the widths. -/\n  sorted : (bands.map PolicyBand.threshold).IsChain (· > ·)\n  /-- How the compiler sizes working registers; the scan unless asked. -/\n  widthRule : WidthRule := .scan",
+   "note": null
+  },
+  "choose": {
+   "name": "ShorLoweringPolicy.choose",
+   "file": "Framework/Policy.lean",
+   "line": 155,
+   "code": "def choose (P : ShorLoweringPolicy) (n : ℕ) : Option ToomCookTable :=\n  (P.bands.find? (fun b => decide (b.threshold ≤ n))).map PolicyBand.table",
+   "note": null
+  },
+  "constPolicy": {
+   "name": "constPolicy",
+   "file": "Framework/Policy.lean",
+   "line": 196,
+   "code": "def constPolicy (T : ToomCookTable) : ShorLoweringPolicy where\n  bands := [⟨0, T⟩]\n  sorted := by simp",
+   "note": null
+  },
+  "shorBound": {
+   "name": "ShorGateCountBound",
+   "file": "Implementation/Shor/Statement.lean",
+   "line": 345,
+   "code": "def ShorGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ) (k : ℕ) (hk : 1 < k)\n    (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) : Prop :=\n  ∀ cWork : ℕ, 1 ≤ cWork → ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧\n    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg)\n      (_hxWidth : regSize x.active = Nat.log2 (2 * inst.N^2))\n      (_hyWidth : regSize y.active = Nat.log2 (2 * inst.N))\n      (flag : ℕ) (b0 : qs.Basis) (η : ℝ)\n      (hsetup : ShorApproxSetup qs η inst.N x y work scratch flag b0),\n      let n := y.width\n      n₀ ≤ n → algorithm1ExtraBits η ≤ (cWork - 1) * regSize y.active →\n      ∀ hLowerWorkspace :\n        Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)\n          (orderFindingApprox inst.a inst.N x y work scratch flag hsetup.circuit_workspace\n            hsetup.step4_workspace),\n      (LowGate.gateCount shorGateCostModel\n          (orderFindingApproxLow (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)\n            inst.a inst.N x y work scratch flag hsetup.circuit_workspace hsetup.step4_workspace\n            hLowerWorkspace) : ℝ)\n        ≤ C * Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)",
+   "note": null
+  },
+  "ppcorrectPolicy": {
+   "name": "Policy.lowerSignedPhaseProduct_correct",
+   "file": "Implementation/PhaseProduct/Main.lean",
+   "line": 81,
+   "code": "theorem Policy.lowerSignedPhaseProduct_correct\n    (qs : QSemantics)\n    [RegEncoding qs.Basis]\n    [GateSemanticsFacts qs]\n    [LowerGateClass qs]\n    (P : ShorLoweringPolicy)\n    (phi : Angle)\n    (x z : ExtReg) :\n    Policy.LowerSignedPhaseProductCorrect qs P phi x z := by",
    "note": null
   },
   "ppcorrect": {
    "name": "lowerSignedPhaseProduct_correct",
    "file": "Implementation/PhaseProduct/Main.lean",
-   "line": 16,
+   "line": 19,
    "code": "theorem lowerSignedPhaseProduct_correct\n    (qs : QSemantics)\n    [RegEncoding qs.Basis]\n    [GateSemanticsFacts qs]\n    [LowerGateClass qs]\n    (k : ℕ)\n    (hk : 1 < k)\n    (phi : Angle)\n    (x z : ExtReg)\n    (ops : Prog k) :\n    LowerSignedPhaseProductCorrect qs k hk phi x z ops := by",
    "note": null
   }

@@ -17,6 +17,14 @@ This directory is the project website, published by GitHub Pages at
   even when the reader's system is in dark mode.
   Plain HTML in [Tufte CSS](https://edwardtufte.github.io/tufte-css/) (`tufte.css` + the `et-book/` fonts, MIT, vendored unchanged; `site.css` holds our few additions); every claim about the proofs is taken
   from the [top-level README](../README.md).
+  **Math is MathJax** (v3, `tex-chtml`, configured in the `<head>` of
+  `index.html`): write TeX between `\(` and `\)` inline or `\[` and `\]` for
+  display, in the page and in the curated `summary`/`note` text of
+  `data/*.js` (escape the backslashes there: `"\\(n^{2+\\varepsilon}\\)"`).
+  Lean names and Lean expressions stay in `<code>`, which MathJax skips.
+  Panels the figures open after load are typeset by `window.typesetMath`
+  (`layers.js`). Labels drawn inside the SVG figures (edge labels, the
+  PhaseProduct diagram itself) are SVG `<text>` and stay Unicode.
 * `navigator.html` — the interactive proof map described below. **Not linked
   from the project page for now** (2026-10-24; the layer graph replaces it);
   the page and its screenshots in `img/` are kept so it can come back. It is
@@ -29,7 +37,7 @@ This directory is the project website, published by GitHub Pages at
 
 Interactive map of `ForShor/ShorVerification`: the outermost view
 is `Framework` (the specification) alongside the `Implementation/` subsystems
-(`Shared`, `PhaseProduct`, `QFT`, `ModularExponentiation`, `Shor`, `GateCount`,
+(`PhaseProduct`, `QFT`, `ModularExponentiation`, `Compiler`, `Shor`, `QubitCount`,
 `Reference`); opening any folder descends into its own graph of children,
 down to individual `.lean` files. Every view is strictly left to right:
 columns are dependency rank, a column may hold several nodes stacked
@@ -56,6 +64,16 @@ another port such as `8766`.
   scripts/gen_docs_graph.py
   ```
 
+* `data/layers.js`, `data/algorithm.js` and `data/pp.js` quote Lean declarations (file, line, code) for
+  the project page, and `index.html` links to source lines inline. When files move or declarations are
+  reformatted those quotes go stale; `scripts/reanchor_docs_data.py` finds each declaration again by
+  name (namespace- and kind-aware, no guessing: an ambiguous name is an error), rewrites file, line
+  and, where the code changed beyond whitespace, the code, keeping each snippet's trimming convention,
+  and prints an old/new diff for every changed snippet so the caption next to it can be re-read.
+  `scripts/reanchor_docs_data.py --check` exits 1 if anything is stale or unresolved. The folder blocks
+  in `data/layers.js` (rows, curated edges, counts, summaries) are hand-curated; its `imports` are the
+  real folder-to-folder imports, and every curated edge must be one of them.
+
 * `data/annotations.js` is **curated** by hand under its `views` key, one
   entry per view path. A view entry can set:
   * `columns` (optional) — pins the left-to-right grid explicitly, one array
@@ -67,7 +85,7 @@ another port such as `8766`.
     `{from, to, emphasis, label?, theorem?, why?}` with `emphasis` one of
     `"primary"` (full role/layer colour, labelled if `label` is set),
     `"secondary"` (thin grey, unlabelled — real structure that isn't the
-    story), or `"dim"` (light dashed — Shared's edges). Every curated edge
+    story), or `"dim"` (light dashed — real but incidental edges). Every curated edge
     must be a real import edge in that view, and every `theorem` must
     resolve to a real declaration, or `--check` fails. Edges left out are
     not lost: a selected node's "Also imports / also imported by" section

@@ -44,42 +44,82 @@
   svg.innerHTML = '<defs><marker id="pp-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>';
   root.appendChild(svg);
 
-  // ------------------------------------------------------------ ① the table
-  txt(svg, 12, 24, "① Design: one table", "pt ph");
+  // ------------------------------------------------------------ ① the policy
+  // The example follows the figure drawn for the page (n = 128); the widths are
+  // illustrative, not computed by the compiler for a particular pair of tables.
+  var POL = D.policy;
+  txt(svg, 12, 24, "① Policy", "pt ph");
   var card = el("g", { "class": "pcard" });
-  card.appendChild(el("rect", { x: 10, y: 38, width: 290, height: 124, rx: 8 }));
+  card.appendChild(el("rect", { x: 10, y: 34, width: 300, height: 446, rx: 10 }));
   svg.appendChild(card);
-  txt(svg, 24, 60, "design parameters (k, p, Prog" + "ₖ)", "pt pt-b");
-  function rowBtn(id, y, s) {
+  function rowBtn(id, x, y, w, s, cls, tx) {
     var g = el("g", { "class": "pn prow", "data-id": id, tabindex: "0", role: "button" });
-    g.appendChild(el("rect", { x: 16, y: y - 16, width: 278, height: 24, rx: 4 }));
-    txt(g, 24, y, s, "pt");
+    g.appendChild(el("rect", { x: x, y: y - 16, width: w, height: 23, rx: 4 }));
+    txt(g, tx || x + 8, y, s, cls || "pt");
     svg.appendChild(g);
+    return g;
   }
-  rowBtn("k", 86, "k = " + D.k + "   (" + D.q + " = 2k − 1 points)");
-  rowBtn("pts", 112, "p = (" + D.points.slice(0, 3).join(", ") + " | " + D.points.slice(3).join(", ") + ")");
-  rowBtn("prog", 138, "Prog₃ = U₀, U₁, U₂  (" + D.segments.filter(function (s) { return s.kind === "U"; })
-    .reduce(function (a, s) { return a + s.ops.length; }, 0) + " ops)");
-  var lv = [
-    { id: "width", y: 182, a: "level 0:  h₀ = n", b: "1 node" },
-    { id: "width", y: 252, a: "level 1:  h₁", b: D.q + " nodes" },
-    { id: "width", y: 322, a: "level 2:  h₂", b: D.q * D.q + " nodes" },
-  ];
-  lv.forEach(function (l, i) {
-    var g = node(l.id, 10, l.y, 290, 40, [], "plevel");
-    txt(g, 24, l.y + 25, l.a, "pt pt-b");
-    txt(g, 288, l.y + 25, l.b, "pt pt-i", "end");
-    if (i < 2) arrow(40, l.y + 40, 40, l.y + 68);
+  rowBtn("policy", 16, 58, 288, "policy  P = ((w̲₁, T⁽¹⁾), (w̲₂, T⁽²⁾), …)", "pt pt-b");
+  var lg1 = rowBtn("prog", 16, 84, 288, "T⁽¹⁾ = (k, p, Π),  k = 3  (see ②)", null, 46);
+  lg1.appendChild(el("rect", { x: 26, y: 73, width: 12, height: 12, "class": "psw psw1" }));
+  var lg2 = rowBtn("band2", 16, 108, 288, "T⁽²⁾ = (k, p, Π),  k = 2", null, 46);
+  lg2.appendChild(el("rect", { x: 26, y: 97, width: 12, height: 12, "class": "psw psw2" }));
+  txt(svg, 160, 136, "Example: n = " + POL.n, "pt pt-b", "middle");
+  txt(svg, 160, 154, "w̲₁ > w̲₂;  on width w use the first T⁽ʲ⁾ with w ≥ w̲ⱼ", "pt pt-s", "middle");
+  // bands as shaded regions, widest first
+  var top = 166, rowH = 44, bx = 24, bw = 272;
+  var bandY = [], y = top;
+  POL.bands.forEach(function (b, bi) {
+    var rows = POL.levels.filter(function (l) { return l.band === bi; });
+    var h = rows.length * rowH + 8;
+    var g = el("g", { "class": "pn pbandreg pbr" + (bi + 1), "data-id": "band" + (bi + 1), tabindex: "0", role: "button" });
+    g.appendChild(el("rect", { x: bx, y: y, width: bw, height: h }));
+    txt(g, bx + 6, y + 30, "T⁽" + "¹²³"[bi] + "⁾", "pt pt-b");
+    txt(g, bx + 6, y + 48, "k = " + b.k, "pt pt-b");
+    txt(g, bx + 6, y + 64, bi === 0 ? "w ≥ w̲₁" : "w̲₂ ≤ w < w̲₁", "pt pt-s");
+    svg.appendChild(g);
+    bandY.push(y); y += h;
   });
-  txt(svg, 52, 245, "next width ≤ ⌈h / k⌉ + c", "pt pt-s");
-  txt(svg, 40, 385, "⋮", "pt pt-b");
-  var gb = node("base", 10, 400, 290, 52, [], "plevel pbase");
-  txt(gb, 24, 422, "base level D:  naive PP", "pt pt-b");
-  txt(gb, 288, 422, D.q + "ᴰ leaves", "pt pt-i", "end");
-  txt(gb, 24, 442, "stop once the width no longer shrinks", "pt pt-s");
+  var gbase = el("g", { "class": "pn pbandreg pbr0", "data-id": "base", tabindex: "0", role: "button" });
+  gbase.appendChild(el("rect", { x: bx, y: y, width: bw, height: rowH + 8 }));
+  txt(gbase, bx + 6, y + 28, "base case", "pt pt-b");
+  txt(gbase, bx + 6, y + 44, "w < w̲₂", "pt pt-s");
+  svg.appendChild(gbase);
+  var baseY = y;
+  // width rows
+  var ry = {};
+  POL.levels.forEach(function (l, i) {
+    var y0 = (l.band >= 0 ? bandY[l.band] + 4 + POL.levels.filter(function (m, j) { return j < i && m.band === l.band; }).length * rowH : baseY + 4) + 4;
+    ry[i] = y0;
+    var g = el("g", { "class": "pn pwrow", "data-id": l.band >= 0 ? "width" : "base", tabindex: "0", role: "button" });
+    g.appendChild(el("rect", { x: 104, y: y0, width: 184, height: 32, rx: 6 }));
+    txt(g, 114, y0 + 21, "w" + SUB[i] + (i === 0 ? " = n = " : " = ") + l.w, "pt pt-m");
+    txt(g, 280, y0 + 21, l.band >= 0 ? "k" + SUB[i] + " = " + POL.bands[l.band].k : "D = " + i, "pt pt-m", "end");
+    svg.appendChild(g);
+    if (i > 0) arrow(196, ry[i - 1] + 32, 196, y0 - 1, "pa pa-thin");
+  });
+  // thresholds: dashed lines at band boundaries
+  POL.bands.forEach(function (b, bi) {
+    var yl = bi + 1 < POL.bands.length ? bandY[bi + 1] : baseY;
+    svg.appendChild(el("line", { x1: bx, y1: yl, x2: bx + bw, y2: yl, "class": "pthr" }));
+    var g = el("g", { "class": "pn pthrlab", "data-id": "thr", tabindex: "0", role: "button" });
+    g.appendChild(el("rect", { x: bx + 4, y: yl - 10, width: 66, height: 20, rx: 10 }));
+    txt(g, bx + 37, yl + 5, "w̲" + SUB[bi + 1] + " = " + b.threshold, "pt pt-s pt-thr", "middle");
+    svg.appendChild(g);
+  });
+  var gf = el("g", { "class": "pn prow", "data-id": "width", tabindex: "0", role: "button" });
+  gf.appendChild(el("rect", { x: 16, y: baseY + rowH + 14, width: 288, height: 44, rx: 4 }));
+  txt(gf, 160, baseY + rowH + 32, "(k₀, k₁, …) = (" + POL.levels.filter(function (l) { return l.band >= 0; })
+    .map(function (l) { return POL.bands[l.band].k; }).join(", ") + ")", "pt pt-b", "middle");
+  txt(gf, 160, baseY + rowH + 51, "wᵢ₊₁ = W(wᵢ) < wᵢ", "pt pt-b", "middle");
+  svg.appendChild(gf);
 
   // ------------------------------------------------------------ ② one level
-  txt(svg, 340, 24, "② PP(φ·x·z) → 2k − 1 = " + D.q + " phase products", "pt ph");
+  var tg = el("g", { "class": "pn ptitle", "data-id": "prog", tabindex: "0", role: "button" });
+  tg.appendChild(el("rect", { x: 334, y: 6, width: 560, height: 26, rx: 4 }));
+  txt(tg, 340, 24, "② T⁽¹⁾ (k = " + D.k + "):  PP(φxz) → 2k − 1 = " + D.q + " PhaseProducts", "pt ph");
+  svg.appendChild(tg);
+  function uName(id) { return "Π⁽" + "⁰¹²"[+id.slice(1)] + "⁾"; }
   var wy = function (w) { return 64 + w * 50; };           // wires x0 z0 x1 z1 x2 z2
   var names = ["x₀", "z₀", "x₁", "z₁", "x₂", "z₂"];
   for (var w = 0; w < 6; w++) {
@@ -93,8 +133,11 @@
     if (s.kind === "U") {
       segU[s.name] = s;
       var x = cols[s.name];
-      var g = node(s.name, x, wy(0) - 18, 44, wy(5) - wy(0) + 36, [], "pu");
-      txt(g, x + 22, (wy(0) + wy(5)) / 2 + 6, s.name.replace(/(\d)/, function (d) { return SUB[+d]; }), "pt pt-b", "middle");
+      // one bar on the x wires and one on the z wires: the same ops act on both
+      [0, 1].forEach(function (side) {
+        var g = node(s.name, x + side * 25, wy(side) - 16, 24, wy(4) - wy(0) + 32, [], "pu");
+        txt(g, x + side * 25 + 12, (wy(side) + wy(side + 4)) / 2 + 5, uName(s.name), "pt pt-b pt-pi", "middle");
+      });
     } else {
       ppGroup++;
       var x0 = ppGroup === 1 ? cols.PP1 : cols.PP2;
@@ -117,26 +160,23 @@
     var s = segU[b.id];
     var g = el("g", { "class": "pn pband", "data-id": b.id, tabindex: "0", role: "button" });
     g.appendChild(el("rect", { x: b.x, y: 368, width: b.w, height: 84, rx: 6 }));
-    var lab = b.id.replace(/(\d)/, function (d) { return SUB[+d]; }) + ":";
+    var lab = uName(b.id) + ":";
     var per = b.id === "U1" ? 3 : 2, chunks = [];
     for (var i = 0; i < s.math.length; i += per) chunks.push(s.math.slice(i, i + per).join(", "));
     txt(g, b.x + 10, 390, lab, "pt pt-b");
     chunks.forEach(function (c, i) { txt(g, b.x + 10, 410 + i * 18, c, "pt pt-m"); });
     svg.appendChild(g);
   });
-  txt(svg, 340, 474, "rᵢ = (xᵢ, zᵢ): each op acts on the x and z chunks alike", "pt pt-s");
+  txt(svg, 340, 474, "rⱼ = (xⱼ, zⱼ): each op acts on the x and z chunks alike", "pt pt-s");
   // the table as a strip
   var strip = el("g", { "class": "pn pstrip", "data-id": "prog", tabindex: "0", role: "button" });
   strip.appendChild(el("rect", { x: 340, y: 484, width: 562, height: 30, rx: 6 }));
-  txt(strip, 352, 504, "table:  U₀ → p = " + D.points.slice(0, 3).join(", ") + " → U₁ → p = " +
-    D.points.slice(3).join(", ") + " → U₂", "pt");
+  txt(strip, 352, 504, "T⁽¹⁾:  Π⁽⁰⁾ → p = " + D.points.slice(0, 3).join(", ") + " → Π⁽¹⁾ → p = " +
+    D.points.slice(3).join(", ") + " → Π⁽²⁾", "pt");
   svg.appendChild(strip);
 
   // ------------------------------------------------------------ ③ recursion
   txt(svg, 930, 24, "③ Recursive PP blocks", "pt ph");
-  txt(svg, 975, 50, "h₁", "pt pt-i", "middle");
-  txt(svg, 1090, 50, "h₂", "pt pt-i", "middle");
-  txt(svg, 1201, 50, "level D", "pt pt-i", "middle");
   D.pps.forEach(function (p, i) {
     var y = 60 + i * 60;
     node("child", 930, y, 92, 40, ["PP at " + p.point], "pchild");
@@ -145,16 +185,19 @@
     txt(c, 930, y + 5, String(p.n), "pt pt-n", "middle");
     svg.appendChild(c);
     for (var t = -1; t <= 1; t++) arrow(1023, y + 20, 1046, y + 20 + t * 9, "pa pa-thin");
-    node("child", 1048, y, 92, 40, [D.q + " PPs", { s: "same table", cls: "pt pt-s" }], "pchild");
+    node("child", 1048, y, 92, 40, [D.q + " PPs", { s: "via T⁽¹⁾", cls: "pt pt-s" }], "pchild");
     txt(svg, 1153, y + 25, "…", "pt pt-b", "middle");
   });
-  node("base", 1168, 60, 66, 280, ["base", "case", "PP", "", D.q + "ᴰ", "leaves"], "pbase");
+  var gB = node("base", 1168, 60, 66, 280, ["base", "case", "", "M", "leaves"], "pbase");
+  var tM = gB.querySelectorAll("text")[3];
+  tM.appendChild(el("tspan", { "baseline-shift": "sub", "font-size": "11px" }, "D"));
   txt(svg, 1090, 372, "sum over nodes", "pt pt-s", "middle");
   txt(svg, 1090, 388, "(arithmetic + PP leaves)", "pt pt-s", "middle");
   arrow(1200, 342, 1200, 410);
-  node("bound", 930, 412, 304, 70,
-    [{ s: "Output: gate count of PP(φ·x·z) on n bits", cls: "pt pt-b" },
-     { s: "width ⌈h/k⌉ + c per level  ⇒  O(n^log_k(2k−1))", cls: "pt pt-m" }], "pout");
+  node("bound", 930, 410, 304, 84,
+    [{ s: "Output: gate count of PP(φxz)", cls: "pt pt-b" },
+     { s: "Lean, one band: order finding", cls: "pt pt-m" },
+     { s: "in O(n^(1+log_k(2k−1))) gates", cls: "pt pt-m" }], "pout");
 
   // ------------------------------------------------------------ detail panels
   var S = D.snippets;
@@ -166,21 +209,27 @@
     if (label) h += '<p class="lsnip-note">' + label + "</p>";
     return h;
   }
+  // Unicode math from data/pp.js ("x₀ − 2x₁ + 4x₂", "r₁ += r₀", "∞") as inline MathJax.
+  function tex(u) {
+    return "\\(" + String(u).replace(/−/g, "-").replace(/([+-])=/g, "\\mathrel{$1}=")
+      .replace(/[₀-₉]/g, function (d) { return "_" + SUB.indexOf(d); }).replace(/∞/g, "\\infty") + "\\)";
+  }
+  function uTex(id) { return "\\(\\Pi^{(" + id.slice(1) + ")}\\)"; }
   function stateTable(s) {
     var h = '<table class="pstate"><tr><th></th><th>before</th><th>after</th></tr>';
     for (var i = 0; i < s.before.length; i++)
-      h += "<tr><td>r" + SUB[i] + "</td><td>" + esc(s.before[i]) + "</td><td>" + esc(s.after[i]) + "</td></tr>";
+      h += "<tr><td>\\(r_" + i + "\\)</td><td>" + tex(s.before[i]) + "</td><td>" + tex(s.after[i]) + "</td></tr>";
     return h + "</table>";
   }
   function uPanel(id) {
-    var s = segU[id], n = id.replace(/(\d)/, function (d) { return SUB[+d]; });
+    var s = segU[id], n = uTex(id);
     var t = "<p>" + n + " is the arithmetic between two rounds of phase products: " + s.ops.length +
-      " in-place additions of a shifted register into another, applied to the <code>x</code> chunks and the " +
-      "<code>z</code> chunks alike. In order: " + s.math.map(function (m) { return "<code>" + esc(m) + "</code>"; }).join(", ") + ".</p>" +
+      " in-place additions of a shifted register into another, applied to the \\(x\\) chunks and the " +
+      "\\(z\\) chunks alike. In order: " + s.math.map(tex).join(", ") + ".</p>" +
       stateTable(s) +
-      "<p>Each <code>rᵢ</code> holds an integer combination of the chunks, and that is all the table manipulates; the " +
+      "<p>Each \\(r_i\\) holds an integer combination of the chunks, and that is all the table manipulates; the " +
       "compiler turns each operation into gates on the actual qubits. " +
-      (id === "U2" ? "U₂ brings every register back to its own chunk, which is admissibility condition C4: the program ends where it started, so the workspace is returned clean." :
+      (id === "U2" ? "\\(\\Pi^{(2)}\\) brings every register back to its own chunk, which is admissibility condition C4: the program ends where it started, so the workspace is returned clean." :
        "Both columns are computed by running the table, not typed in.") + "</p>";
     var c = '<p class="lsnip-head">the same operations, as <code>valid_ops</code></p><pre class="lsnip lean"><code>' +
       window.leanHL(s.ops.join("\n")) + "</code></pre>" + code(S.addScaled);
@@ -188,77 +237,112 @@
   }
   function ppPanel(n) {
     var p = D.pps[n - 1];
-    var t = "<p>Phase product " + n + " of " + D.q + ", taken on register <code>r" + SUB[p.reg] + "</code>, which at this moment holds " +
-      "<code>" + esc(p.x) + "</code> on the <code>x</code> side and <code>" + esc(p.z) + "</code> on the <code>z</code> side: " +
-      "the chunk polynomials evaluated at <code>p = " + esc(p.point) + "</code>" +
+    var t = "<p>Phase product " + n + " of " + D.q + ", taken on register \\(r_" + p.reg + "\\), which at this moment holds " +
+      tex(p.x) + " on the \\(x\\) side and " + tex(p.z) + " on the \\(z\\) side: " +
+      "the chunk polynomials evaluated at " + tex("p = " + p.point) +
       (p.point === "∞" ? " (at infinity, the leading coefficient)" : "") + ".</p>" +
       "<p>That match is admissibility condition C3. <code>ProgConsumesPts</code> walks the program; at every " +
-      "<code>phaseProduct i</code> it takes the next point and requires register <code>i</code> to equal " +
+      "<code>phaseProduct i</code> it takes the next point and requires register \\(i\\) to equal " +
       "<code>expectedRow</code> of that point, here <code>[" + p.row.join(", ") + "]</code>. Kernel-checked tables " +
-      "cannot get this wrong.</p><p>The angle is not <code>φ</code>: each of the " + D.q + " products gets its own " +
-      "interpolation coefficient times <code>φ</code>, chosen so that the " + D.q + " phases multiply out to " +
-      "<code>exp(i·φ·x·z)</code>. The product itself is a smaller phase product, which recurses (panel ③).</p>";
-    return { title: "PP at p = " + p.point, role: "one of the " + D.q + " smaller products", text: t,
+      "cannot get this wrong.</p><p>The angle is not \\(\\varphi\\): each of the " + D.q + " products gets its own " +
+      "interpolation coefficient times \\(\\varphi\\), chosen so that the " + D.q + " phases multiply out to " +
+      "\\(\\exp(i \\varphi x z)\\). The product itself is a smaller phase product, which recurses (panel ③).</p>";
+    return { title: "\\(\\mathrm{PP}\\) at " + tex("p = " + p.point), role: "one of the " + D.q + " smaller products", text: t,
       code: code(S.consumes) + code(S.expectedRow) + code(S.phaseCoeff) };
   }
   var P = {
-    k: function () { return { title: "k = " + D.k, role: "the arity", text:
-      "<p>Each operand is split into <code>k</code> chunks of about <code>n/k</code> bits. A product of two " +
-      "degree-<code>(k−1)</code> chunk polynomials has degree <code>2k−2</code>, so it is pinned down by its values at " +
-      "<code>q k = 2k − 1</code> points: here " + D.q + " phase products on chunk-sized registers replace one on the full width.</p>" +
-      "<p><code>k</code> is the only number that matters for the exponent: the gate count grows as " +
-      "<code>n^(log_k(2k−1))</code>, which is <code>n^1.585</code> at <code>k = 2</code>, <code>n^1.465</code> at <code>k = 3</code>, and tends to <code>n</code>.</p>",
+    k: function () { return { title: "\\(k = " + D.k + "\\)", role: "the arity", text:
+      "<p>Each operand is split into \\(k\\) chunks of about \\(n/k\\) bits. A product of two " +
+      "degree-\\((k-1)\\) chunk polynomials has degree \\(2k-2\\), so it is pinned down by its values at " +
+      "<code>q k</code> = \\(2k - 1\\) points: here " + D.q + " phase products on chunk-sized registers replace one on the full width.</p>" +
+      "<p>\\(k\\) is the only number that matters for the exponent: the gate count grows as " +
+      "\\(n^{\\log_k(2k-1)}\\), which is \\(n^{1.585}\\) at \\(k = 2\\), \\(n^{1.465}\\) at \\(k = 3\\), and tends to \\(n\\).</p>",
       code: code(S.q) + code(S.exponent) }; },
-    pts: function () { return { title: "p = (" + D.points.join(", ") + ")", role: "the interpolation points", text:
-      "<p>The " + D.q + " points, in the order the program consumes them: three after <code>U₀</code>, two after " +
-      "<code>U₁</code>. A point is an integer or <code>frac m</code>, meaning <code>1/m</code>; <code>frac 0</code> is the point " +
+    pts: function () { return { title: tex("p = (" + D.points.join(", ") + ")"), role: "the interpolation points", text:
+      "<p>The " + D.q + " points, in the order the program consumes them: three after \\(\\Pi^{(0)}\\), two after " +
+      "\\(\\Pi^{(1)}\\). A point is an integer or <code>frac m</code>, meaning \\(1/m\\); <code>frac 0</code> is the point " +
       "at infinity, whose row picks out the leading coefficient.</p><p>Admissibility asks only that the points be distinct " +
       "(C2, equivalent to the interpolation matrix being invertible) and that they be consumed in this order (C3). The " +
-      "points are submission data, not a function of <code>k</code>: the reference table uses " +
-      "<code>genInterpolationPoints 3</code> = <code>0, −1, 1, −2, 2</code> on a single register.</p>",
+      "points are submission data, not a function of \\(k\\): the reference table uses " +
+      "<code>genInterpolationPoints 3</code> = \\(0, -1, 1, -2, 2\\) on a single register.</p>",
       code: code(S.Point) + code(S.expectedRow) + code(S.genPts) }; },
-    prog: function () { return { title: "Prog₃", role: "the table", text:
-      "<p>The table is a straight-line program over <code>k</code> registers: <code>addScaled</code>, <code>negate</code>, " +
+    prog: function () { return { title: "Prog 3", role: "the table", text:
+      "<p>The table is a straight-line program over \\(k\\) registers: <code>addScaled</code>, <code>negate</code>, " +
       "<code>shiftL</code>, <code>shiftR</code>, and <code>phaseProduct i</code> checkpoints. It is the one degree of freedom of " +
       "the whole construction; every theorem about the phase product takes it as a parameter, so one proof serves every " +
-      "admissible table.</p><p>The table drawn here is one admissible <code>k = 3</code> table, picked because it reads well; " +
+      "admissible table.</p><p>The table drawn here is one admissible \\(k = 3\\) table, picked because it reads well; " +
       "it is not a file in the repository. On the right it is written out as a <code>Prog 3</code>. It was checked by " +
       "executing it with a direct mirror of the Lean definitions of <code>run?</code> and <code>ProgConsumesPts</code>, which " +
       "agrees with the kernel's verdicts on the repository's own tables; it has not itself been through the kernel.</p>",
       code: '<p class="lsnip-head">this figure\'s table</p><pre class="lsnip lean"><code>' + window.leanHL(D.tableLean) +
         "</code></pre>" + code(S.valid_ops) + code(S.Prog) + code(S.run) }; },
     U0: function () { return uPanel("U0"); }, U1: function () { return uPanel("U1"); }, U2: function () { return uPanel("U2"); },
-    width: function () { return { title: "Widths per level", role: "next width ≤ ⌈h/k⌉ + c", text:
-      "<p>Level <code>d</code> has <code>" + D.q + "ᵈ</code> nodes, each a phase product of width <code>h_d</code>. The " +
-      "width of a child is what the table's arithmetic needs: a <code>k</code>-th of the parent, plus a constant number of " +
-      "carry bits, because adding shifted chunks grows them by a bounded amount. That is " +
-      "<code>prog_balanced_nextSignedWidth</code>: for any table there is a <code>c</code> with " +
-      "<code>nextSignedWidth ≤ ⌈w/k⌉ + c</code>.</p><p>The constant is why the recursion has to stop: once " +
-      "<code>⌈w/k⌉ + c</code> is no smaller than <code>w</code>, splitting no longer helps.</p>",
+    width: function () {
+      var lv = POL.levels.map(function (l, i) { return "\\(w_" + i + " = " + l.w + "\\)" +
+        (l.band >= 0 ? " (\\(T^{(" + (l.band + 1) + ")}\\), \\(k = " + POL.bands[l.band].k + "\\))" : " (base case)"); }).join(", ");
+      return { title: "Widths per level", role: "\\(w_{i+1} = W_T(w_i) < w_i\\)", text:
+      "<p>Each level is one phase product width. The policy looks at the width, picks a table, and the table's " +
+      "arithmetic fixes the next width: a \\(k\\)-th of the current one, plus a constant number of carry bits, because " +
+      "adding shifted chunks grows them by a bounded amount. That is <code>nextSignedWidth</code>, and " +
+      "<code>prog_balanced_nextSignedWidth</code> shows that for any table there is a \\(c\\) with " +
+      "<code>nextSignedWidth</code> \\(\\le \\lceil w/k \\rceil + c\\).</p><p>In the example: " + lv + ". The arities used, top to bottom, are the " +
+      "list \\((k_0, \\ldots, k_{D-1})\\). These widths illustrate the shape of a two-band policy; they were not produced by " +
+      "running the compiler on a particular pair of tables.</p><p>The constant \\(c\\) is why the recursion has to " +
+      "stop: once \\(\\lceil w/k \\rceil + c\\) is no smaller than \\(w\\), splitting no longer helps.</p>",
       code: code(S.nextSignedWidth) + code(S.balanced) }; },
+    policy: function () { return { title: "A policy", role: "a table for each range of widths", text:
+      "<p>A policy is a list of bands \\((\\underline{w}_j, T^{(j)})\\), widest first, with strictly decreasing thresholds. At a node " +
+      "of width \\(w\\), <code>choose</code> returns the table of the first band whose threshold is at most " +
+      "\\(w\\); below the last threshold it returns <code>none</code>, the base case. The policy is keyed on width, " +
+      "not depth, because the width at depth 3 depends on the choices made at depths 1 and 2.</p><p>A single-table " +
+      "submission is the one-band policy at threshold 0 (<code>constPolicy</code>). Admissibility of a policy is " +
+      "admissibility of every table it can pick; nothing else about it is trusted.</p>",
+      code: code(S.band) + code(S.policy) + code(S.choose) + code(S.constPolicy) }; },
+    band1: function () { var b = POL.bands[0]; return { title: "\\(T^{(1)}\\) band", role: "\\(k = " + b.k + ",\\ w \\ge " + b.threshold + "\\)", text:
+      "<p>The widest band: every node of width at least \\(\\underline{w}_1 = " + b.threshold + "\\) is split with " +
+      "\\(T^{(1)}\\), the \\(k = " + b.k + "\\) table drawn in panel ②, into " + (2 * b.k - 1) + " smaller phase products.</p>" +
+      "<p>Click the title of panel ② or a \\(\\Pi\\) bar for the table itself.</p>",
+      code: code(S.band) + code(S.choose) }; },
+    band2: function () { var b = POL.bands[1]; return { title: "\\(T^{(2)}\\) band", role: "\\(k = " + b.k + ",\\ " + b.threshold + " \\le w < " + POL.bands[0].threshold + "\\)", text:
+      "<p>The second band: nodes of width from \\(\\underline{w}_2 = " + b.threshold + "\\) up to \\(\\underline{w}_1\\) use a " +
+      "\\(k = " + b.k + "\\) table, which splits into " + (2 * b.k - 1) + " phase products (Karatsuba-shaped). The " +
+      "figure does not fix which \\(k = 2\\) table; any admissible one may fill this band.</p>",
+      code: code(S.band) + code(S.choose) }; },
+    thr: function () { return { title: "Thresholds", role: "\\(\\underline{w}_1 > \\underline{w}_2 > \\cdots\\)", text:
+      "<p>The underlined \\(\\underline{w}_j\\) are the policy's thresholds; the plain \\(w_i\\) are the widths the recursion " +
+      "actually reaches. The thresholds must strictly decrease (<code>sorted</code>, closed by <code>decide</code> in a " +
+      "submission), so the bands partition the widths and the compiled dispatcher is a chain of guards.</p>" +
+      "<p>Here " + POL.bands.map(function (b, i) { return "\\(\\underline{w}_" + (i + 1) + " = " + b.threshold + "\\)"; }).join(", ") +
+      ": a width of " + POL.levels[2].w + " falls below \\(\\underline{w}_1\\) and switches to \\(T^{(2)}\\); a width of " +
+      POL.levels[POL.levels.length - 1].w + " falls below \\(\\underline{w}_2\\) and takes the base case.</p>",
+      code: code(S.policy) + code(S.choose) }; },
     base: function () { return { title: "Base case", role: "naive phase product", text:
       "<p>The recursion is <code>Policy.signedPlanOf</code>, the only recursive definition in the lowering. At each node it " +
       "asks the policy for a table at this width; if there is none, or if the table would not shrink the width " +
       "(<code>nextSignedWidth x z T.ops &lt; phaseInputSize x z</code> fails), it stops and emits the naive phase product " +
       "<code>LowGate.Naive_SignedPhaseProd</code>. Otherwise it takes one step of the table and calls itself on each of the " +
       "children.</p><p>Termination is by that same test (<code>termination_by phaseInputSize x z</code>), so the recursion " +
-      "depth <code>D</code> is about <code>log_k n</code> and there are <code>" + D.q + "ᴰ</code> leaves.</p>",
+      "depth \\(D\\) is about \\(\\log_k n\\). \\(M_D\\) counts the leaves: the product of " +
+      "\\(2k_i - 1\\) over the levels, which is \\(" + D.q + "^D\\) when one table is used throughout.</p>",
       code: code(S.signedPlanOf) }; },
-    child: function () { return { title: "Recursive PP blocks", role: "same table at every level", text:
-      "<p>Each of the " + D.q + " products in panel ② is itself a phase product of width <code>h₁</code>, and is lowered the " +
-      "same way: split into chunks, the same " + D.q + " points, the same program. In <code>signedPlanOf</code> this is the " +
-      "<code>recurse</code> argument handed to the per-table step, one call per child.</p><p>“Same table” is the " +
-      "constant policy, which is what the gate-count theorems are stated for: one table used at every width. The " +
-      "correctness proof is more general and allows the policy to choose a table per width.</p>",
-      code: code(S.signedPlanOf) + code(S.ppcorrect) }; },
-    bound: function () { return { title: "The gate count", role: "O(n^log_k(2k−1))", text:
-      "<p>Summing over the tree: a node of width <code>w</code> costs its own arithmetic, linear in <code>w</code> " +
-      "(<code>phaseProgramOverhead_linear</code>), plus its " + D.q + " children of width at most <code>⌈w/k⌉ + c</code>. " +
-      "That recurrence solves to <code>C · n^(log_k(2k−1))</code>, and <code>PhaseProductGateCountBound</code> is exactly that " +
-      "statement about the lowered circuit's <code>LowGate.gateCount</code>, for one table at every width.</p>" +
-      "<p>Modular exponentiation makes <code>O(n)</code> modular multiplications out of these, which is where the headline " +
-      "<code>n^(2+ε)</code> comes from.</p>",
-      code: code(S.overhead) + code(S.exponent) + code(S.bound) }; },
+    child: function () { return { title: "Recursive PP blocks", role: "each child is lowered again", text:
+      "<p>Each of the " + D.q + " products in panel ② is itself a phase product, of the next width, and is lowered the same " +
+      "way: the policy picks a table at that width and the step repeats. In <code>signedPlanOf</code> this is the " +
+      "<code>recurse</code> argument handed to the per-table step, one call per child. In the example the children of the " +
+      "top node have width " + POL.levels[1].w + ", still in the \\(T^{(1)}\\) band, hence “via \\(T^{(1)}\\)”.</p><p>Correctness " +
+      "(<code>Policy.lowerSignedPhaseProduct_correct</code>) holds for any admissible policy. The gate-count theorems are " +
+      "stated for one band, the constant policy: one table at every width.</p>",
+      code: code(S.signedPlanOf) + code(S.ppcorrectPolicy) }; },
+    bound: function () { return { title: "The gate count", role: "one band: \\(O(n^{1+\\log_k(2k-1)})\\)", text:
+      "<p>Summing over the tree: a node of width \\(w\\) costs its own arithmetic, linear in \\(w\\) " +
+      "(<code>phaseProgramOverhead_linear</code>), plus its children of width at most \\(\\lceil w/k \\rceil + c\\). With one table " +
+      "at every width that recurrence solves to \\(C \\cdot n^{\\log_k(2k-1)}\\), and <code>PhaseProductGateCountBound</code> " +
+      "is exactly that statement about the lowered circuit's <code>LowGate.gateCount</code>.</p><p>Order finding uses " +
+      "\\(O(n)\\) modular multiplications built from these, so <code>ShorGateCountBound</code> bounds the whole " +
+      "order-finding circuit by \\(C \\cdot n^{2+\\varepsilon}\\) whenever \\(\\log_k(2k-1) \\le 1 + \\varepsilon\\); the proof goes " +
+      "through \\(n^{1 + \\log_k(2k-1)}\\). Both are stated for the constant policy.</p><p>The count is the gate " +
+      "count of the repository's cost model (<code>shorGateCostModel</code>), not a T count.</p>",
+      code: code(S.overhead) + code(S.exponent) + code(S.bound) + code(S.shorBound) }; },
   };
   for (var i = 1; i <= D.pps.length; i++) (function (n) { P["pp" + n] = function () { return ppPanel(n); }; })(i);
 
@@ -274,6 +358,7 @@
     if (openId === id) { openId = null; mark(null); panel.classList.remove("open"); setHash(null); return; }
     var d = P[id]();
     openId = id; mark(id);
+    if (window.clearMath) window.clearMath(panel);
     panel.innerHTML = '<div class="ldetail-inner"><div class="ldetail-grid"><div class="ldetail-text"><h3>' + esc(d.title) +
       ' <span class="lrole">' + esc(d.role) + "</span></h3>" + d.text +
       '<p><a href="#layer-PhaseProduct">The PhaseProduct layer in the graph above</a></p></div><div class="ldetail-code">' +
@@ -281,6 +366,7 @@
     if (instant) panel.classList.add("instant");
     void panel.offsetHeight;
     panel.classList.add("open");
+    if (window.typesetMath) window.typesetMath(panel);
     setHash(id);
   }
   function setHash(id) {
