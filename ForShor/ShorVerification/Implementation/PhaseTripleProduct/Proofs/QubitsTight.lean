@@ -341,7 +341,7 @@ theorem ptpWsTD_le_workspace (P : PTPPolicy) (wd : WidthRule) :
 /-- **Tight qubit count of the constructed circuit** (any admissible width rule): it touches at most
 `3 n + ptpWsTD P wd n` qubits, and that is at most the `ptpQubits`-shaped formula
 `3 n + 3 ptpReserveNeedD + max ptpCleanAncD 2`. -/
-theorem ptp_qubits_tight (P : PTPPolicy) (hP : P.check = true) (wd : WidthRule)
+theorem ptp_qubits_tight_core (P : PTPPolicy) (hP : P.check = true) (wd : WidthRule)
     (hwd : Admissible P wd) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) (hG : Good X n base) :
     ∃ (W : List ℕ) (G : Angle → LowGate), PolicyImplD P wd X n W G ∧
       ∀ φ, (LowGate.usedQubits (G φ)).card ≤ 3 * n + ptpWsTD P wd n ∧
@@ -386,22 +386,22 @@ theorem ptp_qubits_tight (P : PTPPolicy) (hP : P.check = true) (wd : WidthRule)
 /-- Exact board (some `PolicyImplX` witness; not tied to the witness of `ptp_gate_full_exact`, though
 both come from the same construction): the circuit touches at most `3 n + ptpWsTD P exactRule n`
 qubits (never more than the interval bound `3 n + ptpWorkspaceX P n`). -/
-theorem ptp_qubits_tight_exact (P : PTPPolicy) (hP : P.check = true) (n : ℕ)
+theorem ptp_qubits_tight_exact_core (P : PTPPolicy) (hP : P.check = true) (n : ℕ)
     (X : Fin 3 → ExtReg) (base : ℕ) (hG : Good X n base) :
     ∃ (W : List ℕ) (G : Angle → LowGate), PolicyImplX P X n W G ∧
       ∀ φ, (LowGate.usedQubits (G φ)).card ≤ 3 * n + ptpWsTD P exactRule n ∧
         ptpWsTD P exactRule n ≤ ptpWorkspaceX P n :=
-  let ⟨W, G, hI, h⟩ := ptp_qubits_tight P hP exactRule (admissible_exact P) n X base hG
+  let ⟨W, G, hI, h⟩ := ptp_qubits_tight_core P hP exactRule (admissible_exact P) n X base hG
   ⟨W, G, hI, fun φ => ⟨(h φ).1, ptpWsTD_le_workspace P exactRule n⟩⟩
 
 
 /-- **`ptpQubits` is a proved upper bound** (scan board): there is a circuit following `P` with the
 PTP scan widths touching at most `ptpQubits P n` qubits. -/
-theorem ptp_qubits_le_ptpQubits (P : PTPPolicy) (hP : P.check = true) (n : ℕ)
+theorem ptp_qubits_le_ptpQubits_core (P : PTPPolicy) (hP : P.check = true) (n : ℕ)
     (X : Fin 3 → ExtReg) (base : ℕ) (hG : Good X n base) :
     ∃ (W : List ℕ) (G : Angle → LowGate), PolicyImpl P X n W G ∧
       ∀ φ, (LowGate.usedQubits (G φ)).card ≤ ptpQubits P n := by
-  obtain ⟨W, G, hI, h⟩ := ptp_qubits_tight P hP scanRule (admissible_scan P hP) n X base hG
+  obtain ⟨W, G, hI, h⟩ := ptp_qubits_tight_core P hP scanRule (admissible_scan P hP) n X base hG
   refine ⟨W, G, hI.toScan, fun φ => ?_⟩
   have := h φ
   rw [ptpReserveNeedD_scan, ptpCleanAncD_scan] at this

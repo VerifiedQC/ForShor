@@ -196,7 +196,7 @@ theorem resources_padGate (d : Fin 3 → ℕ) (X : Fin 3 → ExtReg) :
 
 
 /-- **Main theorem: unequal operand widths, exact board.** -/
-theorem ptp_pad_lowerExact_correct {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass qs]
+theorem ptp_pad_lowerExact_correct_core {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass qs]
     (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (d : Fin 3 → ℕ) (base : ℕ) :
     PTPPadLowerExactCorrect qs P n X d base := by
   intro hP hpad hG

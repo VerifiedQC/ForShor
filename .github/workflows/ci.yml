@@ -64,6 +64,7 @@ jobs:
           set -o pipefail
           lake build ForShor EmitTests Submission PolicySubmission PolicyTests Balanced \
             ForShor.ShorVerification.Model.Standard.Headline \
+            ForShor.ShorVerification.Model.Standard.PhaseTripleProductHeadline \
             ForShor.ShorVerification.Model.QuantumLib.Headline 2>&1 | tee build.log
           if grep -q "warning:" build.log; then
             echo "::error::build produced warnings:"
@@ -91,6 +92,11 @@ jobs:
         # The README's claim that the headline theorems use only propext,
         # Classical.choice and Quot.sound, checked rather than asserted.
         run: lake env lean scripts/AxiomCheck.lean
+
+      - name: Statement closure (PhaseTripleProduct)
+        # Every constant the PTP claims reach must live in Mathlib/core, Framework/ or a
+        # Statement.lean, so reading Statement.lean and Main.lean is enough to know what is claimed.
+        run: lake env lean scripts/StatementClosure.lean
 
       - name: Lexical gate on the shipped templates
         # Proves the grep published in Submission/README.md still executes and

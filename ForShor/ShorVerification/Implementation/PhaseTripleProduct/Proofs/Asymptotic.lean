@@ -6,8 +6,8 @@ import Mathlib.Analysis.SpecialFunctions.Log.Base
 # PTP asymptotic gate count (analogue of ForShor `GateCount/PhaseProduct`)
 
 For a constant policy (one table `T`, `k` limbs, `3k - 2` points) the exact-board gate count
-`ptpGateTotalD` is `O(n ^ α)` with `α = log_k (3k - 2)` (`ptp_gateTotal_bound`), and the
-constructed circuit of `ptp_gate_full_exact` has that many gates (`ptp_circuit_gateCount_bound`).
+`ptpGateTotalD` is `O(n ^ α)` with `α = log_k (3k - 2)` (`ptp_gateTotal_bound_core`), and the
+constructed circuit of `ptp_gate_full_exact` has that many gates (`ptp_circuit_gateCount_bound_core`).
 
 Structure (as ForShor's `Math/MasterTheorem` + `GateCount/PhaseProduct`):
 1. `scanMax_le`, `childWidth_le`, `ptpTightWidth_le`: the width contraction
@@ -192,7 +192,7 @@ theorem choose_const (t : ℕ) (T : PTPTable) (n : ℕ) :
 
 /-- **Asymptotic gate count of a constant PTP policy** (any width rule contracting like the PTP
 scan): `O(n ^ log_k (3k - 2))`. -/
-theorem ptp_gateTotal_bound (t : ℕ) (T : PTPTable) (hT : T.contract = true) (wd : WidthRule)
+theorem ptp_gateTotal_bound_core (t : ℕ) (T : PTPTable) (hT : T.contract = true) (wd : WidthRule)
     (hwd : ∀ n, 0 < n → wd T n ≤ n / T.k + T.k + growth T.ops) :
     ∃ C : ℝ, 0 < C ∧ ∀ n : ℕ, 1 ≤ n →
       (ptpGateTotalD (constPTPPolicy t T) wd n : ℝ) ≤ C * Real.rpow (n : ℝ) (ptpExponent T.k) := by
@@ -262,7 +262,7 @@ theorem ptp_gateTotal_bound (t : ℕ) (T : PTPTable) (hT : T.contract = true) (w
 
 /-- **The constructed circuit has `O(n ^ log_k (3k - 2))` gates** (exact board, constant policy):
 the circuit of `ptp_gate_full_exact` has `totalGates = ptpGateTotalD` and hence the bound. -/
-theorem ptp_circuit_gateCount_bound {qs : Shor.QSemantics} [Shor.RegEncoding qs.Basis]
+theorem ptp_circuit_gateCount_bound_core {qs : Shor.QSemantics} [Shor.RegEncoding qs.Basis]
     [Shor.LowerGateClass qs] (t : ℕ) (T : PTPTable) (hT : T.contract = true)
     (hP : (constPTPPolicy t T).check = true) :
     ∃ C : ℝ, 0 < C ∧ ∀ (n : ℕ), 1 ≤ n → ∀ (X : Fin 3 → Shor.ExtReg) (base : ℕ), Good X n base →
@@ -271,7 +271,7 @@ theorem ptp_circuit_gateCount_bound {qs : Shor.QSemantics} [Shor.RegEncoding qs.
         ∀ φ : Shor.Angle,
           ((Shor.LowGate.resources Shor.shorGateResourceModel (G φ)).totalGates : ℝ) ≤
             C * Real.rpow (n : ℝ) (ptpExponent T.k) := by
-  obtain ⟨C, hC, hb⟩ := ptp_gateTotal_bound t T hT exactRule
+  obtain ⟨C, hC, hb⟩ := ptp_gateTotal_bound_core t T hT exactRule
     (fun n hn => ptpTightWidth_le T hT hn)
   refine ⟨C, hC, fun n hn X base hG => ?_⟩
   obtain ⟨W, G, hI, _, _, hR⟩ := ptp_gate_full_exact (qs := qs) (constPTPPolicy t T) hP n X base hG

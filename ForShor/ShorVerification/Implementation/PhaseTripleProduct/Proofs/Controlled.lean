@@ -438,7 +438,7 @@ variable {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass qs]
 
 
 /-- **Main theorem: controlled PTP, exact board, state level, with census.** -/
-theorem ptp_ctl_lowerExact_correct (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (Y : ExtReg)
+theorem ptp_ctl_lowerExact_correct_core (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (Y : ExtReg)
     (c base : ℕ) : PTPCtlLowerExactCorrect qs P n X Y c base := by
   intro hP hn hG hdisj hcX hcY
   have e1 : (Function.update X 0 Y) 1 = X 1 := Function.update_of_ne (by decide) _ _
