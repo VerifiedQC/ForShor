@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>A map of the proofs for exact table optimization</title>
-    <meta name="description" content="A classical, theoretical companion to ForShor: Lean proofs that characterize and solve the table-optimization problem behind ForShor's PhaseProduct benchmark, with an interactive proof map. Separate from ForShor's verified order-finding circuit.">
+    <meta name="description" content="A classical, theoretical companion to ForShor: the Lean proofs, the exact Fortran solver, the paper and the tests for the table-optimization problem behind ForShor's PhaseProduct benchmark, with interactive maps. Separate from ForShor's verified order-finding circuit.">
     <script>
       // Deep links into the proof map belong to navigator.html.
       (function () {
@@ -14,19 +14,30 @@
     </script>
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="../tufte.css?v=1">
-    <link rel="stylesheet" href="../site.css?v=6">
-    <link rel="stylesheet" href="./et-page.css?v=1">
+    <link rel="stylesheet" href="../site.css?v=7">
+    <link rel="stylesheet" href="./et-page.css?v=2">
     <script>
-      window.MathJax = { tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] } };
+      // As on the project page: layers.js redraws the figures once MathJax has typeset their titles.
+      window.MathJax = {
+        tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] },
+        startup: {
+          pageReady: function () {
+            return MathJax.startup.defaultPageReady().then(function () {
+              window.dispatchEvent(new Event("mathjax-ready"));
+            });
+          }
+        }
+      };
     </script>
     <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
   </head>
   <body>
     <article>
-      <p class="site-links"><a href="https://github.com/VerifiedQC/ForShor/tree/main/efficient_tables">GitHub</a> · <a href="navigator.html">Proof map</a> · <a href="../">ForShor</a></p>
+      <nav class="site-nav" aria-label="ForShor site"><a href="../">Order finding</a><a href="../phasetripleproduct/">PhaseTripleProduct</a><a href="./" aria-current="page">Efficient tables</a><span class="nav-out"><a href="https://github.com/VerifiedQC/ForShor">GitHub</a> · <a href="../#cite">Paper</a></span></nav>
 
       <h1>A map of the proofs for exact table optimization</h1>
       <p class="subtitle">The classical, theoretical companion to ForShor's PhaseProduct benchmark</p>
+      <p class="et-toc"><a href="#results">What is proved</a> · <a href="#not">What is not claimed</a> · <a href="#graph">The proof graph</a> · <a href="#whole-suite">The whole suite</a> · <a href="#solver">The exact solver</a> · <a href="#complexity">Complexity</a> · <a href="#check">Checking it</a></p>
 
       <div class="scope">
         <p class="scope-title">Scope: read this first</p>
@@ -62,6 +73,11 @@
           <em>How hard is it?</em> A second, separate Lean project, <strong>Hardness</strong>, proves the
           sparsity barriers that make NP-hardness of the paper's own problem unlikely, and proves NP-hardness of
           a nearby problem in which the points are part of the input.
+        </p>
+        <p>
+          The package is more than the proofs. It also ships <a href="#whole-suite">the paper, the prose research notes, the
+          scripts that audit and map the Lean, an exact Fortran solver, and its independent tests</a>, and says
+          for each what kind of evidence it is: a kernel-checked theorem, a prose proof, or a program checked by replay.
         </p>
       </section>
 
@@ -179,6 +195,203 @@
       </section>
 
       <section>
+        <h2 id="whole-suite">The whole suite</h2>
+        <p>
+          <span class="newthought">The proof map shows only the Lean.</span> The package has several other kinds of
+          material, and they support the claims differently. The paper states the problem and argues for the
+          algorithm; four prose research packages carry the proofs it cites; the Lean library and the separate hardness
+          project are machine-checked; the Fortran solver computes the optima and is checked by replay and by independent
+          tests, not by Lean; a few scripts audit axioms and generate the maps. The figure draws each component as a
+          block, and an arrow means one of them states, builds on, models, or checks the other. Click a block
+          for what it holds, what it is <em>not</em>, and a verbatim quotation with a link to the line.
+        </p>
+        <figure class="fullwidth layers-figure">
+          <div id="suite" class="layers et-suite"></div>
+        </figure>
+        <table class="results compare suite-table">
+          <thead><tr><th>Component</th><th>Where</th><th>What kind of evidence</th></tr></thead>
+          <tbody>
+            <tr><td>Paper</td><td><code>paper/</code></td><td>Prose and formal statements; the argument the rest supports. Not machine-checked.</td></tr>
+            <tr><td>Research notes</td><td><code>proof_notes/</code></td><td>Prose proofs with internal AI review records. Not machine-checked; the saturation theorem, the symbolic threshold reduction, the running-time analysis and the recursive optimizer are not formalized.</td></tr>
+            <tr><td>Proof library</td><td><code>lean/</code></td><td>Lean 4.28 + Mathlib; <code>#print axioms</code> on the headline theorems lists only <code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code>.</td></tr>
+            <tr><td>Hardness</td><td><code>lean_hardness/</code></td><td>Lean 4.35.0-rc3 + complexitylib; same axioms. Conditional barriers, and NP-hardness with supplied points.</td></tr>
+            <tr><td>Alignment</td><td><code>lean/Alignment/</code></td><td>Lean facts about models of the solver's loops and arithmetic. The match between model and Fortran source is <em>not</em> asserted by Lean.</td></tr>
+            <tr><td>Exact solver</td><td><code>fortran/</code></td><td>Fortran 90; every table is replayed before it is printed; checked against independent Python implementations. Not formalized.</td></tr>
+            <tr><td>Tests</td><td><code>fortran/…/tests/</code></td><td>Independent oracles and brute force on finite fixtures. They establish correctness on those fixtures, not optimality in general.</td></tr>
+            <tr><td>Scripts</td><td><code>scripts/</code></td><td>Axiom audit, graph and figure-data generators, the record of the restructure.</td></tr>
+          </tbody>
+        </table>
+        <p>
+          Two arrows deserve a caution. <em>Alignment → Fortran</em> says that Lean states facts about models of
+          the solver's search windows and arithmetic; it does not say that the solver is verified. And no arrow joins the
+          Lean library to the solver's <em>output</em>: <code>LEAN_MAP.md</code> lists the solver and its reproducible costs under
+          “Not in Lean”.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="solver">The exact solver</h2>
+        <p>
+          <span class="newthought">What it computes.</span> Given a root width \(n\) and a largest arity \(K\), the solver
+          returns the cheapest recursion for ForShor's <em>PhaseProduct</em>: which arity to use at each level, the
+          literal table at each arity (the actual list of shift, add and negate instructions), and the total cost under the
+          repository's cost model. It prints <code>STATUS OPTIMAL</code> only after replaying every table it reports.
+          <strong>It solves PhaseProduct only; PhaseTripleProduct is not part of this application.</strong>
+          It has no time, node or state budget: it finishes, or it stops with an <code>ERROR</code>, and an error
+          is never an infeasibility or an optimality certificate.
+        </p>
+        <p>
+          <span class="newthought">How.</span> There are three stages, which the figure shows from the top down: the decision for one table, the thresholds, and the outer optimizer.
+          First, for one arity and one charge cap, an exact search decides whether a legal table exists and returns it
+          (<em>Oracle</em>). Second, for each arity, bisection over the cap with a proved saturation ceiling finds the
+          thresholds and the charge plateaus (<em>Threshold</em>). Third, the outer stage enumerates arity sequences with
+          one integer offset per distinct arity and turns terminal integrality, width contraction, profile intervals and
+          the exact objective into bounded integer linear constraints, which Kannan's algorithm solves exactly
+          (<em>Outer</em>, <em>Ilp</em>, <em>Lattice</em>), over exact rationals (<em>Rational</em>) and saturating
+          cost arithmetic (<em>Arithmetic</em>). Click a block for the procedures and the tests that exercise it.
+        </p>
+        <figure class="fullwidth layers-figure">
+          <div id="fortran" class="layers et-fortran"></div>
+        </figure>
+        <p>
+          <span class="newthought">What is claimed about the cost.</span> These are the solver README's statements, which rest
+          on the prose proofs in <code>proof_notes/</code>, not on Lean. The local threshold bound is
+          \(2^{O(k^4\log(k+1))}\,\mathrm{poly}(\log n)\). The supplied-catalogue outer stage is separately polynomial in the
+          numerical input width and the catalogue encoding, and the full route has
+          \(2^{O(K^4\log(K+1))}\,\mathrm{poly}(n)\) complexity in the ideal exact-arithmetic model. Lean checks only the arithmetic of
+          composing such bounds from hypotheses (<code>RuntimeComposition.composition</code>), including Kannan's theorem
+          taken as a contract; there is no Lean running-time theorem about the algorithm.<label for="sn-fast" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-fast" class="margin-toggle"/><span class="sidenote">The README adds a caution worth repeating: the vertex-rounding preprocessing contributes \(m^{O(t)}\) to a generic bounded integer program, and only for this outer family (\(m=O(\log U)\), \(t!\le U\), with \(U\) the root-stop cost) is that polynomial in \(U\). Generic polynomial dependence on the number of constraint rows is not claimed.</span>
+        </p>
+        <p>
+          <span class="newthought">How the answers are checked.</span> Inside the program, every table is padded to its literal form and
+          replayed by an independent routine before printing. Outside it, the tests recompute things in Python without sharing
+          code with the Fortran:
+        </p>
+        <table class="results compare suite-table tests-table">
+          <thead><tr><th>Test</th><th>Covers</th><th>How</th></tr></thead>
+          <tbody>
+            <tr><td><code>test_solver.py</code></td><td>the built executable</td><td>replays every <code>TABLE</code> and recomputes <code>COST</code>, the level widths and the arities; exact \(K=2\) against a direct reference; pruning on or off must agree; a node-budget input must be rejected</td></tr>
+            <tr><td><code>test_frontend.py</code>, <code>test_surface_outer.py</code></td><td><em>Outer</em></td><td>independent enumeration of finite catalogues, with a strict shared-versus-unshared gap, decreasing and increasing arity sequences, and a case that really runs HKZ and suffix batches</td></tr>
+            <tr><td><code>test_local.py</code>, <code>test_threshold_positive.py</code></td><td><em>Oracle</em>, <em>Threshold</em></td><td>the paired constructor against a Python witness, replayed instruction by instruction; a successful non-trivial threshold with no timeout</td></tr>
+            <tr><td><code>test_backend.py</code></td><td><em>Rational</em>, <em>Lattice</em>, <em>Ilp</em></td><td>random integer programs against brute force; HKZ-reduced bases checked against enumeration; allocation-failure injection</td></tr>
+            <tr><td><code>test_wrapper_cli.py</code>, <code>audit_f90.py</code></td><td><code>build.py</code>, all sources</td><td>build-wrapper behaviour with the compiler mocked; a lexical guard for the Fortran 90 subset</td></tr>
+          </tbody>
+        </table>
+        <p>
+          The solver README is careful about what these show: the fixtures are finite, and the catalogue tests
+          “establish outer correctness, not unrestricted physical table optimality by themselves”. The Fortran replay,
+          the tests' Python replay and the Lean legality predicate are three separate implementations of the same rules;
+          no theorem ties the solver's replay to the Lean predicate.
+        </p>
+        <p>
+          <span class="newthought">Reproducible numbers.</span> Costs are the reproducible part; timings depend on hardware.
+          From <code>REPRODUCING.md</code>: \(n=6,\ K=3\) gives cost 1476, \(n=40,\ K=5\) gives 92750, and \(n=60,\ K=3\) gives
+          200311. (We re-ran all three for this page; they match.) At \(n=2048\) the exact optimum at arity three or higher
+          is not known; that is the question the ForShor challenge poses.
+        </p>
+<pre class="code"><code>cd efficient_tables/fortran/phaseproduct_saturation_f90
+python -B build.py --debug                  # gfortran, -std=f95, bounds and overflow checks
+python -B build.py                          # release build
+echo '&amp;run n=60, kmax=3, use_bounds=.true. /' | ./build/release/phaseproduct_saturation
+python -B tests/test_solver.py build/debug/phaseproduct_saturation
+python -B tests/audit_f90.py</code></pre>
+      </section>
+
+      <section>
+        <h2 id="complexity">What is known about complexity</h2>
+        <p>
+          <span class="newthought">Two questions are easy to blur.</span> What does the exact algorithm cost, and how hard is the
+          problem? The paper answers the first with an upper bound, and the Lean library answers the second only in part. This
+          section draws each as a graph of <em>results</em>, not files: a block is a claim, an arrow means “is used by”, and an arrow
+          that needs a hypothesis carries it. The colour of a block says how the claim is established. Open any block for exactly what is
+          and is not proved, and for the source quoted verbatim, with a link to the line.
+        </p>
+        <p class="cx-legend">
+          <span class="cx-key cx-lean">checked in Lean</span>
+          <span class="cx-key cx-narrow">Lean, in a narrower form or as ingredients</span>
+          <span class="cx-key cx-prose">prose proof or paper statement, not machine-checked</span>
+          <span class="cx-key cx-open">open: nothing is claimed</span>
+          <span class="cx-key cx-ext">external dependency</span>
+        </p>
+
+        <h3 id="cx-upper">What the exact algorithm costs</h3>
+        <p>
+          The algorithm of the <a href="#solver">previous section</a> is justified by an upper bound,
+          \(2^{O(K^4\log K)}\cdot\mathrm{poly}(n)\) for largest arity \(K\) and root width \(n\). Every arrow that leads to that bound
+          passes through prose. What Lean checks is the ceiling, the exact optimality and the profile transfer at the top,
+          and an arithmetic lemma that composes bounds it is handed as hypotheses.
+        </p>
+        <figure class="fullwidth layers-figure">
+          <div id="cxupper" class="layers et-cx"></div>
+        </figure>
+        <p>
+          <span class="newthought">Read the figure this way.</span> The \(27k^3\) charge ceiling is a Lean theorem, without hypotheses.
+          Exact optimality is a Lean theorem for each fixed \((K,W,N)\), obtained from an exhaustive provider: it shows the optimum exists
+          and is attained, and says nothing about running time. The profile transfer is Lean; that every table <em>has</em> a three-integer
+          profile is prose. Saturation, the integer-program reduction, the local bound and the headline bound are prose or paper
+          statements; Lean holds ingredients (<code>small_integer_point</code>, the separation criteria) that no other Lean file imports.
+          The one Lean theorem that has the shape of a running time, <code>composition</code>, derives its bound from hypotheses
+          that nothing verifies, so it is arithmetic and not a runtime theorem. The bound is fixed-parameter in \(K\); it is not
+          uniform polynomial time.
+        </p>
+
+        <h3 id="cx-barrier">How hard the problem is: the sparsity barriers</h3>
+        <p>
+          Lean proves that NP-hardness of the benchmark's table problem would collapse P and NP. The argument is Mahaney's:
+          the optimum is at most \(B(k)=15k(2k-1)\), so with \(k\) in unary the yes-instances form a sparse set, and a sparse NP-hard set
+          implies \(\mathrm P=\mathrm{NP}\). The two barriers differ in what they need. The first has no hypotheses and is for the
+          structural score with the policy choosing its own points. The second is for a unary-parameter optimization language
+          and needs a polynomial bound on the optimum as a hypothesis, which Lean cannot discharge for T-count because the T-count
+          model is not formalized.
+        </p>
+        <figure class="fullwidth layers-figure">
+          <div id="cxbarrier" class="layers et-cx"></div>
+        </figure>
+        <p>
+          The barriers are conditional and not hardness results. They do not put the problem in P. The two open blocks are the
+          questions they leave: Lean has no statement about the KMY points fixed, or about T-count, beyond the conditional.
+        </p>
+
+        <h3 id="cx-chain">NP-hardness when the points are supplied</h3>
+        <p>
+          If the interpolation points are part of the input, the structural-score problem is NP-hard already at arity 2. The reduction
+          composes three steps, each an equivalence proved in Lean: a satisfiable formula becomes a digraph of out-degree at most 2
+          with a Hamiltonian cycle, that becomes a Hamiltonian cycle in a line graph, and that becomes a table instance whose
+          cheap schedules are exactly such cycles. The map is polynomial-time on complexitylib's machines. The figure is
+          drawn in dependency order, from the lemmas the composition rests on at the top to the theorem at the bottom, so
+          the reduction itself runs against the arrows.
+        </p>
+        <figure class="fullwidth layers-figure">
+          <div id="cxchain" class="layers et-cx"></div>
+        </figure>
+        <p>
+          It is a result about the structural score \(S=A+5L\) with supplied points. It is not a statement about T-count, not about the
+          KMY points, and not about the problem where the policy chooses the points, which the barrier makes NP-hardness of unlikely.
+          What it shows is that the ordering of the points alone carries combinatorial difficulty.
+        </p>
+
+        <h3 id="cx-table">All of it, in one table</h3>
+        <table class="results suite-table">
+          <thead><tr><th>Claim</th><th>How it is established</th><th>Where</th></tr></thead>
+          <tbody>
+            <tr><td>Charge ceiling \(27k^3\)</td><td>Lean, unconditional</td><td><code>Provider/Ceiling/FinalCeiling.lean</code></td></tr>
+            <tr><td>Exact optimality at fixed \((K,W,N)\)</td><td>Lean, per instance; says nothing about running time</td><td><code>Provider/Effective/ProfileExact.lean</code></td></tr>
+            <tr><td>Profile transfer</td><td>Lean for given profiles; that every table has one is prose</td><td><code>Model/Scanner/Planner.lean</code>, <code>proof_notes/profile/</code></td></tr>
+            <tr><td>Threshold saturation \(S(k)=2^{O(k^2\log k)}\)</td><td>Prose; Lean has ingredients only</td><td><code>proof_notes/threshold/</code></td></tr>
+            <tr><td>Outer problem as an integer program</td><td>Prose; Kannan's theorem is an external citation</td><td><code>proof_notes/outer/</code></td></tr>
+            <tr><td>Local bound (24)–(25), headline bound (26)</td><td>Paper statements with prose proofs; not in Lean</td><td>paper §6; <code>LEAN_MAP.md</code> §3</td></tr>
+            <tr><td>Composition of stage bounds</td><td>Lean, arithmetic over hypotheses</td><td><code>Foundations/RuntimeComposition/</code></td></tr>
+            <tr><td>Budget decision in NP (unary \(n,K\))</td><td>Paper prose; not in Lean</td><td>paper §4.4</td></tr>
+            <tr><td>Mahaney's theorem; <code>tableOpt_barrier</code></td><td>Lean, no hypotheses beyond NP-hardness</td><td><code>lean_hardness/Mahaney/</code></td></tr>
+            <tr><td><code>policyOpt_barrier</code></td><td>Lean, with a polynomial bound supplied as a hypothesis</td><td><code>lean_hardness/Mahaney/PolicyLang.lean</code></td></tr>
+            <tr><td>NP-hardness, points supplied</td><td>Lean</td><td><code>lean_hardness/Points/</code></td></tr>
+            <tr><td>NP-hardness of the problem as posed, of T-count, or for the KMY points</td><td>Not shown; for the first, blocked unless \(\mathrm P=\mathrm{NP}\)</td><td>—</td></tr>
+            <tr><td>Uniform polynomial time for growing arity; a lower bound</td><td>Open</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
         <h2 id="vs">How this relates to ForShor</h2>
         <table class="results compare">
           <thead><tr><th></th><th>ForShor</th><th>This package</th></tr></thead>
@@ -209,9 +422,23 @@ lake build                                  # compiles ~2.3k complexitylib modul
 lake env lean Mahaney/Audit.lean
 lake env lean Points/Audit4.lean</code></pre>
         <p>
-          The Fortran solver is reproduced separately; see
+          The Fortran solver needs only a GNU Fortran compiler and Python 3 (the reference build used GNU Fortran 16.2.0;
+          <code>build.py</code> reads <code>FC</code>, <code>--compiler</code>, or <code>gfortran</code> on the path), and builds
+          independently of both Lake projects:
+        </p>
+<pre class="code"><code>cd efficient_tables/fortran/phaseproduct_saturation_f90
+python -B build.py --debug
+python -B tests/test_solver.py build/debug/phaseproduct_saturation   # replay + cost checks on the executable
+python -B tests/test_frontend.py                                      # outer stage vs. independent enumeration
+python -B tests/test_backend.py                                       # ILP and lattice vs. brute force
+python -B tests/test_local.py                                         # oracle and threshold vs. Python witness
+python -B tests/audit_f90.py                                          # Fortran 90 subset guard</code></pre>
+        <p>
+          The full procedure, with the expected costs, is in
           <a href="https://github.com/VerifiedQC/ForShor/blob/main/efficient_tables/REPRODUCING.md"><code>REPRODUCING.md</code></a>.
-          This page's graph is regenerated with <code>python3 efficient_tables/scripts/gen_docs_graph.py --check</code>.
+          The proof map is regenerated with <code>python3 efficient_tables/scripts/gen_docs_graph.py --check</code>, and the data of the
+          two figures above with <code>python3 efficient_tables/scripts/gen_suite_data.py --check</code>, which fails if a quoted line,
+          a count, or a Fortran <code>use</code> edge no longer matches the sources.
         </p>
       </section>
 
@@ -231,5 +458,10 @@ lake env lean Points/Audit4.lean</code></pre>
         </p>
       </section>
     </article>
+    <script src="../layers.js?v=6"></script>
+    <script src="./data/suite.js?v=1"></script>
+    <script src="./data/fortran.js?v=1"></script>
+    <script src="./data/complexity.js?v=1"></script>
+    <script src="./et-figures.js?v=2"></script>
   </body>
 </html>

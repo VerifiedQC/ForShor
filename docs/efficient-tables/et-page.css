@@ -29,3 +29,50 @@ a.button:hover { background: #333; }
   .scope { width: 100%; }
   .et-grid, .et-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ---- Contents line, suite map and solver figures (et-figures.js, data/suite.js, data/fortran.js) ---- */
+.et-toc { font-size: 1.05rem; margin-top: 0.4rem; }
+/* tints per block; ids are the figure data's layer ids */
+.layer-Paper, .layer-ProofNotes { background: #f6f6f3; }
+.layer-ProofNotes { border-style: dashed; }
+.layer-Library { background: #eef3fa; }
+.layer-Hardness { background: #e9f4f5; }
+.layer-Alignment { background: #efeaf7; }
+.layer-Scripts { background: #f6f6f3; border-style: dashed; }
+.layer-Fortran, .layer-Tests { background: #fbf0e3; }
+.layer-Tests { border-style: dashed; }
+.layer-Arithmetic, .layer-Rational, .layer-Lattice, .layer-Ilp { background: #eff6ea; }
+.layer-Oracle, .layer-Threshold { background: #eef3fa; }
+.layer-Outer, .layer-Main { background: #fbf0e3; }
+.et-suite .layer, .et-fortran .layer { min-width: 11rem; }
+.et-suite .lrow { gap: 7rem; }
+.et-fortran .lrow { gap: 7rem; }
+table.suite-table { table-layout: auto; }
+table.suite-table th:first-child, table.suite-table td:first-child { width: 17%; font-style: normal; }
+table.suite-table td:nth-child(2) { width: 22%; }
+table.tests-table td:nth-child(2) { width: 22%; font-style: normal; }
+@media (max-width: 760px) { .et-suite .lrow, .et-fortran .lrow { gap: 0.6rem; } }
+/* long inline commands and the scope box must not push the page wider than a phone */
+section p code { overflow-wrap: anywhere; }
+.scope { box-sizing: border-box; }
+
+/* ---- Complexity results: claim-dependency graphs (data/complexity.js). Tints say how a claim is established. ---- */
+.step-lean { background: #eef3fa; }
+.step-narrow { background: #eff6ea; }
+.step-prose { background: #fbf0e3; }
+.step-open { background: #fff; border-style: dashed; }
+.step-open .lname { font-weight: normal; }
+.step-ext { background: #f6f6f3; border-style: dashed; }
+.et-cx .lrow { gap: 6rem; }
+.et-cx .layer { min-width: 11.5rem; max-width: 16rem; }
+.et-cx .layer .lname { font-family: et-book, Palatino, "Palatino Linotype", Georgia, serif; font-size: 1.05rem; }
+.et-cx .layer .lrole { font-size: 0.92rem; }
+.cx-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 0.6rem; font-size: 0.95rem; margin: 0.4rem 0 1rem; }
+.cx-key { padding: 0.15rem 0.6rem; border: 1px solid #111; border-radius: 3px; }
+.cx-lean { background: #eef3fa; } .cx-narrow { background: #eff6ea; } .cx-prose { background: #fbf0e3; }
+.cx-open { background: #fff; border-style: dashed; } .cx-ext { background: #f6f6f3; border-style: dashed; }
+h3 { scroll-margin-top: 1rem; }
+@media (max-width: 760px) { .et-cx .lrow { gap: 0.6rem; } .et-cx .layer { max-width: none; min-width: 0; } }
+/* long file names inside the results tables must wrap, not widen the page */
+table.results code { overflow-wrap: anywhere; }
+@media (max-width: 760px) { table.results { width: 100%; } table.results th:first-child, table.results td:first-child { width: auto; } }
