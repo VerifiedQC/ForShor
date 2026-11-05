@@ -27,6 +27,8 @@ a.button:hover { background: #333; }
 .step-ext { background: #f8eaf0; }
 .step-witness { background: #efeaf7; }
 .step-harness { background: #f6f6f3; }
+.step-statement { background: #fff6cf; border-width: 2px; }
+.step-main { background: #e3f1e0; border-width: 2px; }
 .layers.ptp .layer .lrole { font-size: 0.95rem; }
 table.ptp-mods { width: 100%; border-collapse: collapse; margin: 0.6rem 0 0.4rem; font-size: 0.95rem; }
 table.ptp-mods td { padding: 0.15rem 0.7rem 0.15rem 0; vertical-align: top; border-bottom: 1px solid #e4e4e0; }

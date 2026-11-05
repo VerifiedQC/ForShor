@@ -41,9 +41,11 @@
           correctness and gate-count theorems do not use it, and nothing here changes them.
         </p>
         <p>
-          The suite is standalone: it uses ForShor's gate language, semantics classes and cost model, and STO's table
-          language, but sits in the benchmark repository (ShorTableOptimization), where it is an <strong>interim fork not yet
-          merged upstream</strong>. See <a href="#where">where it lives</a>.
+          The development is part of ForShor, under <code>Implementation/PhaseTripleProduct/</code>, in the same layout as
+          <code>PhaseProduct/</code>: <code>Statement.lean</code> defines everything and states the claims, <code>Proofs/</code>
+          holds the lemmas, and <code>Main.lean</code> proves the claims. Read those two files and you know what is claimed.
+          It is on the branch <code>ptp/phasetripleproduct</code> and <strong>is not merged into <code>main</code> yet</strong>;
+          the source links on this page point at a pinned commit of that branch. See <a href="#where">where it lives</a>.
         </p>
       </div>
 
@@ -60,12 +62,12 @@
           \(n\).<label for="sn-ptp-exp" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-ptp-exp" class="margin-toggle"/><span class="sidenote">\(\log_k(3k-2)\) for \(k = 2,3,4,5,6\): \(2.000,\ 1.771,\ 1.661,\ 1.609,\ 1.547\). The PhaseProduct exponent \(\log_k(2k-1)\) is \(1.585,\ 1.465,\ 1.404,\ 1.365,\ 1.343\). The comparison is between the exponents of the two constructions, not between two ways of computing the same thing.</span>
         </p>
         <p>
-          The table is the same object as in PhaseProduct: STO's <code>Prog k</code>, a straight-line program of
+          The table is the same object as in PhaseProduct: the Framework's <code>Prog k</code>, a straight-line program of
           <code>addScaled</code>, <code>negate</code>, <code>shiftL</code>, <code>shiftR</code> and
           <code>phaseProduct i</code> checkpoints, with its interpolation points. What changes is the point count
           (\(3k-2\) rather than \(2k-1\)) and what a checkpoint means: each is taken on all three operands. The
-          suite verifies this at the gate level in ForShor's <code>LowGate</code> language, for whole banded policies,
-          and states one theorem: for every checked policy and every width there is a circuit following the policy that
+          development verifies this at the gate level in ForShor's <code>LowGate</code> language, for whole banded policies,
+          and states its claims as propositions in one file; the central one: for every checked policy and every width there is a circuit following the policy that
           acts as the specification operator on every clean state, with an exact gate census. Extensions give a controlled
           version, the \(O(n^{\log_k(3k-2)})\) gate count, operands of unequal width and a qubit count.
         </p>
@@ -91,21 +93,27 @@
       <section>
         <h2 id="layers-section">The proof, layer by layer</h2>
         <p>
-          Read the graph top to bottom. A module may import only modules that come earlier in the suite's layer order
-          (the blocks below group modules by role, so an arrow never points up the figure); the suite enforces the order with <code>scripts/check_ptp_layers.py</code>, and every arrow below is a real import
-          read from the Lean sources by this site's generator (the dashed arrow into <code>Harness</code> is the exception:
-          the harness <em>writes</em> a Lean file that imports the suite). Open a block for its role, the modules in it, what
-          it rests on and feeds, and the statements it carries, quoted verbatim.
+          The development follows ForShor's own layout. <a href="#layer-Statement">Statement</a> holds every definition the
+          claims mention and the claims themselves; <a href="#layer-Main">Main</a> proves them; the blocks between the two are
+          the lemmas (<code>Proofs/</code>). A reader needs only those two files, and building <code>Main.lean</code> is the
+          guarantee that the claims are proved. Every arrow below is a real import, read from the Lean sources by this site's
+          generator, and no arrow points up the figure. The rule that makes Statement plus Main enough is checked rather than
+          asserted: <code>scripts/StatementClosure.lean</code> computes every constant the claims reach, unfolding
+          definitions, and fails if one lives outside Mathlib, <code>Framework/</code> or a <code>Statement.lean</code>, and CI
+          runs it. Open a block for its role, the files in it, what it rests on and feeds, and the statements it carries,
+          quoted verbatim.
         </p>
         <figure class="fullwidth layers-figure">
           <div id="layers" class="layers ptp"></div>
         </figure>
         <p>
-          The spine is <a href="#layer-Table">Table</a> → <a href="#layer-Values">Values</a> → <a href="#layer-Gates">Gates</a>
-          → <a href="#layer-Scan">Scan</a> → <a href="#layer-ExactBoard">ExactBoard</a> → <a href="#layer-Surface">Surface</a>.
-          The mathematics (<code>node_identity</code>) comes before any gate. The recursion exists twice, over the
-          conservative <em>scan</em> widths and over the <em>exact</em> widths, and the headline theorem is stated at the
-          exact ones. Everything below <code>Surface</code> is an extension or a witness.
+          Every block between <a href="#layer-Statement">Statement</a> and <a href="#layer-Main">Main</a> imports Statement directly, so only the arrows that carry something are drawn. The
+          spine is <a href="#layer-Support">Support</a> → <a href="#layer-Table">Table</a> → <a href="#layer-Values">Values</a>
+          → <a href="#layer-Gates">Gates</a> → <a href="#layer-Recursion">Recursion</a> → <a href="#layer-ExactBoard">ExactBoard</a>
+          → <a href="#layer-Surface">Surface</a>. The mathematics (<code>node_identity</code>) comes before any gate. The
+          recursion exists twice, over the conservative <em>scan</em> widths and over the <em>exact</em> widths, and the headline
+          theorem is stated at the exact ones. Everything after <code>Surface</code> is an extension, a witness, or the proof of
+          the claims.
         </p>
       </section>
 
@@ -113,7 +121,7 @@
         <h2 id="recursion-section">Inside PTP: one table, applied recursively</h2>
         <p>
           The layer graph does not show how the circuit is built. The figure below draws the reference policy of the
-          benchmark, <code>policies/ref_ptp_2048.json</code>, at \(n = 2048\). Its four bands use \(k = 6, 4, 2, 2\); at exact
+          benchmark (<code>policies/ref_ptp_2048.json</code> in the ShorTableOptimization fork, where the benchmark lives; it is input to this figure, not part of the Lean development), at \(n = 2048\). Its four bands use \(k = 6, 4, 2, 2\); at exact
           widths the recursion goes \(2048 \to 375 \to 189 \to 96 \to 50\), using the first, third, third and fourth bands and
           then the leaf, so the \(k = 4\) band is never reached. The middle panel draws the \(k = 2\) table of the third band,
           which splits one product into four, and the right panel what happens to each.
@@ -144,35 +152,37 @@
       <section>
         <h2 id="results">What is proved</h2>
         <p>
-          Statements are quoted at the strength Lean proves them. Every row depends on at most the axioms
-          <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>, checked by
-          <code>scripts/PTPAxiomCheck.lean</code> (34 theorems; re-run for this page on 2026-11-05 against ForShor <code>6d55ad9</code>, all 34 reported kernel-checked with exactly those three axioms). The links go to the line in the source.
+          Statements are quoted at the strength Lean proves them. The theorem names are those of <code>Main.lean</code>, each
+          stated as exactly the proposition of the same name in <code>Statement.lean</code>. Every row depends on at most the
+          axioms <code>propext</code>, <code>Classical.choice</code> and <code>Quot.sound</code>: <code>scripts/AxiomCheck.lean</code>
+          asserts it for all nine claims (CI runs it), and a trusted kernel replay re-checked every module of the development
+          on exactly those axioms (see the review status below). The links go to the line in the source.
         </p>
         <table class="results">
           <thead><tr><th>Theorem</th><th>What it says</th></tr></thead>
           <tbody>
-          <tr><td><code data-decl="ptp_lowerExact_correct"></code><br><span class="where">Surface</span></td>
-            <td>For every checked policy \(P\), width \(n\) and three disjoint \(n\)-qubit registers there is a circuit following \(P\) at exact widths that acts as the specification \(\exp(i\pi\varphi\,x_0x_1x_2)\) on every <em>clean</em> state (operands fit signed \(n\) bits, workspace \(|0\rangle\)), with the exact-board gate census as equalities and a qubit upper bound. Vacuous at \(n=0\).</td></tr>
+          <tr><td><code data-decl="ptp_lowerExact_correct"></code><br><span class="where">Main</span></td>
+            <td>For every checked policy \(P\), width \(n\) and three disjoint \(n\)-qubit registers there is a circuit following \(P\) at exact widths that acts as the specification \(\exp(i\pi\varphi\,x_0x_1x_2)\) on every <em>clean</em> state (operands fit signed \(n\) bits, workspace \(|0\rangle\)), with the exact-board gate census as equalities and a qubit upper bound. For \(n=0\) the state-level conjunct is vacuous.</td></tr>
           <tr><td><code data-decl="node_identity"></code><br><span class="where">Values</span></td>
             <td>The weighted sum over the \(3k-2\) declared points of the products of the three operands' point values equals \(\varphi\,x_0x_1x_2\), for every admissible table.</td></tr>
           <tr><td><code data-decl="tight_minimal"></code><br><span class="where">Values</span></td>
             <td>The exact width is minimal: one bit fewer and some operand that fits \(n\) bits has a reachable register value that does not fit.</td></tr>
           <tr><td><code data-decl="ptp_gate_full_exact"></code><br><span class="where">ExactBoard</span></td>
             <td>Existence of the recursion for every checked policy and width at exact widths, with correctness and the census.</td></tr>
-          <tr><td><code data-decl="chainContractsTight_iff_reach"></code><br><span class="where">Accept</span></td>
+          <tr><td><code data-decl="ptp_chainContractsTight_iff_reach"></code><br><span class="where">Accept</span></td>
             <td>The acceptance rule without the ladder: every table chosen at every width the exact recursion from \(n\) reaches has \(k \le m\) and strictly shrinks the width.</td></tr>
           <tr><td><code data-decl="ptp_ctl_lowerExact_correct"></code><br><span class="where">Controlled</span></td>
             <td>Controlled PTP by <em>masking</em> one operand, on the clean subspace: \(2n\) Toffolis (\(n\) of them \(\dagger\)), \(n+1\) extra qubits, no extra rotations.</td></tr>
-          <tr><td><code data-decl="ptp_circuit_gateCount_bound"></code><br><span class="where">Asymptotic</span></td>
-            <td>For a constant policy the constructed circuit has \(O(n^{\log_k(3k-2)})\) gates under <code>shorGateResourceModel</code> (<code>ptp_gateTotal_bound</code> for the exact-board count).</td></tr>
           <tr><td><code data-decl="ptp_pad_lowerExact_correct"></code><br><span class="where">Unbalanced</span></td>
             <td>Operands of unequal width, by in-place sign-extension padding: \(+2(d_0+d_1+d_2)\) CNOTs, qubits \(\le 3n\) plus workspace.</td></tr>
+          <tr><td><code data-decl="ptp_gateTotal_bound"></code><br><span class="where">Asymptotic</span></td>
+            <td>For a constant policy the exact-board gate count (the census total) is \(O(n^{\log_k(3k-2)})\) under <code>shorGateResourceModel</code>.</td></tr>
+          <tr><td><code data-decl="ptp_circuit_gateCount_bound"></code><br><span class="where">Asymptotic</span></td>
+            <td>For a constant policy there is a circuit following it with \(O(n^{\log_k(3k-2)})\) gates. Existential: see <a href="#not">what is not claimed</a>.</td></tr>
           <tr><td><code data-decl="ptp_qubits_tight"></code><br><span class="where">QubitsTight</span></td>
-            <td>The circuit touches at most \(3n + \texttt{ptpWsTD}\) distinct qubits; <code>ptp_qubits_le_ptpQubits</code> makes <code>ptpQubits</code> a proved upper bound at the scan rule.</td></tr>
-          <tr><td><code data-decl="model_ptp_lowerExact_correct"></code><br><span class="where">Witness</span></td>
-            <td>The headline theorem specialised to ForShor's concrete <code>Model.qs</code>: the hypotheses are satisfiable.</td></tr>
-          <tr><td><code data-decl="plan_check"></code><br><span class="where">Planner</span></td>
-            <td>Every output of the Lean planner, for every oracle and width, passes <code>PTPPolicy.check</code>; <code>plan_ladder</code> says its ladder is the oracle's.</td></tr>
+            <td>There is a circuit following the policy touching at most \(3n + \texttt{ptpWsTD}\) distinct qubits; <code>ptp_qubits_tight_exact</code> and <code>ptp_qubits_le_ptpQubits</code> are the exact-board and scan-board forms (<code>ptpQubits</code> is a proved upper bound at the scan rule).</td></tr>
+          <tr><td><code data-decl="model_ptp_lowerExact_correct"></code><br><span class="where">Model</span></td>
+            <td>The headline claim specialised to ForShor's concrete <code>Model.qs</code>: the hypotheses are satisfiable.</td></tr>
           </tbody>
         </table>
       </section>
@@ -181,13 +191,14 @@
         <h2 id="not">What is not claimed</h2>
         <ul>
           <li><strong>Not part of order finding.</strong> ForShor's circuit uses PhaseProduct. These theorems do not enter its correctness or its \(n^{2+\varepsilon}\) bound.</li>
-          <li><strong>Clean states only.</strong> The state-level theorems cover the span of clean kets. Zero widths make them vacuous.</li>
+          <li><strong>Clean states only.</strong> The state-level theorems cover the span of clean kets. For \(n=0\) no ket is clean, so the state-level conjunct is vacuous (the circuit, the workspace bound and the census are still required).</li>
           <li><strong>Controlled PTP is the masked construction.</strong> ForShor-style leaf control, where every leaf phase is controlled, is a different construction and is <em>not</em> proved here. In the masked statement the control is not constrained against the other registers; the degenerate case is the identity on the clean span.</li>
           <li><strong>The gate count is for a constant policy</strong> (one table at every width), as in ForShor, and counts <code>rz + toffoli + x + h + cnot</code> under <code>shorGateResourceModel</code> (Cuccaro adders, arbitrary-angle rotations). It is not a T count. The multi-band reference policy is verified for correctness and census, not given an asymptotic bound.</li>
+          <li><strong>The gate-count and qubit claims are existential.</strong> <code>PTPCircuitGateCountBound</code>, <code>PTPQubitsTight</code>, <code>PTPQubitsTightExact</code> and <code>PTPQubitsLePtpQubits</code> each say that <em>some</em> circuit following the policy has that count. None says it is the circuit of <code>PTPLowerExactCorrect</code> or that it is correct; correctness and the census are proved separately, for every circuit of the form <code>PolicyImplX</code>, but no single claim bundles the two.</li>
           <li><strong>Qubits.</strong> The theorems bound <code>LowGate.usedQubits</code>, not the framework's <code>qubitCount</code>, which adds the Cuccaro/negation scratch <code>cleanAnc</code>; that scratch is not bounded for the recursive circuit. <code>ptpQubits</code> is loose by up to a factor \(k\) per level.</li>
           <li><strong>Unequal widths are padded</strong>, not handled by a native unbalanced node. Open: that node, the least width at which the wrapping semantics is correct, and the leaf-control variant.</li>
-          <li><strong>No optimality statement.</strong> The planner's <em>output</em> is proved valid; nothing says the oracle's choices are good, and no table is claimed optimal. The benchmark scores PTP targets by the structural score only (below).</li>
-          <li><strong>Review status.</strong> Audited by independent read-only AI reviewer passes, whose findings were fixed or narrowed (<code>docs/ptp_gap_note/PTP_RIGOR_2026-11-04.md</code> in the suite records them); no human review. The reference policy <code>ref_ptp_2048.json</code> was re-checked end to end for this page on 2026-11-05 against ForShor <code>6d55ad9</code>: accepted at \(n=2048\) with exact widths, both kernel replays passing. The per-module trusted kernel replay (<code>scripts/trusted</code>) of the 2026-11-04 modules is recorded in that note as not re-run.</li>
+          <li><strong>No optimality statement.</strong> No table is claimed optimal, and the benchmark scores PTP targets by the structural score only (below). The policy checker and planner of the ShorTableOptimization fork are separate from this development and are not covered by these claims.</li>
+          <li><strong>Review status.</strong> Verified on ForShor <code>qubitCount</code> (<code>6d55ad9</code>): the full CI build (every target, warnings counted as failures) passes; the axiom guard asserts all nine claims on <code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code>; a trusted kernel replay (the autoformalizer toolkit's, one module per process) re-checked all 28 modules of the development, 2,141 declarations, on exactly those axioms. An independent statement-fidelity review compared <code>Statement.lean</code> with the original suite this was ported from and found no difference in meaning; it noted that the gate-count and qubit claims are existential, which is stated above. The one CI step that fails is the docs-graph check, which already fails on an unmodified <code>qubitCount</code> (<code>KeyError: 'Shared'</code>: its folder list and curated annotations predate that branch's reorganisation). No human review; the original suite was additionally audited by independent AI reviewer passes whose record is in the ShorTableOptimization fork.</li>
         </ul>
       </section>
 
@@ -197,8 +208,8 @@
           ShorTableOptimization asks for tables at \(k = 2,\dots,16\) for each of two modes. A table's score is
           <code>arithmetic operations + 5 × parallel phase-product layers</code>, a convention that trades size against depth. The
           benchmark prices <code>PhaseTripleProduct</code> <em>structurally</em> only: upstream has no gate model for it, so these
-          scores are never T counts or gate counts. The table below is the current champion for each target from
-          <code>leaderboard/best-known.md</code>.
+          scores are never T counts or gate counts. The table below is the current champion for each target from the
+          benchmark repository's <code>leaderboard/best-known.md</code>.
         </p>
         <table class="results nums" id="champions">
           <thead><tr><th>k</th><th>PTP score</th><th>arith. ops</th><th>layers</th><th>products (3k−2)</th><th>PP score</th><th>PP products (2k−1)</th></tr></thead>
@@ -209,25 +220,26 @@
       <section>
         <h2 id="check">Checking it yourself</h2>
         <p>
-          In a checkout of the suite, with <a href="https://github.com/leanprover/elan">elan</a> installed. The suite builds against
-          ForShor, so the first build compiles much of it (the fork's validation record for ForShor <code>6d55ad9</code>: 8,753 jobs, about 10 minutes, 3.7 GB peak, on an M-series Mac):
+          In a checkout of ForShor with <a href="https://github.com/leanprover/elan">elan</a> installed, on the branch above. The
+          Mathlib build cache is fetched, so only ForShor itself compiles; a cold <code>lake build ForShor</code> took about
+          8.5 minutes and 4.7 GB peak on an M-series Mac before this development was added.
         </p>
 <pre class="code"><code>lake exe cache get
-lake build TableGeneration.RecursiveCost.PTP TableGeneration.RecursiveCost.PTP.Main \
-           TableGeneration.RecursiveCost.PTP.Controlled TableGeneration.RecursiveCost.PTP.Asymptotic \
-           TableGeneration.RecursiveCost.PTP.StandardModel
-lake env lean scripts/PTPAxiomCheck.lean     # #assert_axioms on the headline theorems
-python3 scripts/check_ptp_layers.py          # layer order; no sorry / native_decide / axiom</code></pre>
+lake build ForShor.ShorVerification.Implementation.PhaseTripleProduct.Main
+lake env lean scripts/StatementClosure.lean   # every constant the claims reach is in Mathlib/core, Framework/ or a Statement.lean
+lake build ForShor &amp;&amp; lake env lean scripts/AxiomCheck.lean   # #assert_axioms on all nine claims and the width fault</code></pre>
         <p>
-          To check a policy end to end, hand the harness a JSON file. It generates Lean, has the kernel decide the check and the
-          exact-width acceptance rule, replays the kernel's report, and cross-checks the widths against a Python mirror. It exits 0 on
-          accept and 1 on reject; the <code>threshold_*</code> and <code>faulty_*</code> policies are negative controls that must be rejected.
+          The ShorTableOptimization fork has, separately, a harness that takes a policy as JSON and has the kernel decide the check
+          and the exact-width acceptance rule (<code>scripts/check_ptp_policy.py</code>), and a Python mirror of the exact-width
+          ladder (<code>scripts/ptp_exact_width.py</code>). They are not part of ForShor and not covered by the claims above; the
+          reference policy and the ladder in the figure come from there.
         </p>
-<pre class="code"><code>python3 scripts/check_ptp_policy.py policies/ref_ptp_2048.json --target-width 2048 --widths exact --out ref_ptp.record.json
+<pre class="code"><code># in the ShorTableOptimization fork
 python3 scripts/ptp_exact_width.py policies/ref_ptp_2048.json 2048     # the exact and scan ladders, no Lean needed</code></pre>
         <p>
-          This page's graph and figure are generated from the Lean sources by <code>scripts/gen_ptp_site.py</code> in the ForShor
-          repository (<code>--check</code> fails if the data on disk is stale). The figure's table is executed by the generator,
+          This page's graph and figure are generated from the Lean sources by <code>scripts/gen_ptp_site.py</code>
+          (<code>--suite</code> points at a ForShor checkout; <code>--check</code> fails if the data on disk is stale; it refuses a
+          dirty checkout, and any file that is not tracked at the pinned commit). The figure's table is executed by the generator,
           which also re-checks the node identity on it by exact arithmetic.
         </p>
       </section>
@@ -235,23 +247,26 @@ python3 scripts/ptp_exact_width.py policies/ref_ptp_2048.json 2048     # the exa
       <section>
         <h2 id="where">Where this lives</h2>
         <table class="results compare">
-          <thead><tr><th></th><th>ForShor PhaseProduct</th><th>This suite (PhaseTripleProduct)</th></tr></thead>
+          <thead><tr><th></th><th>ForShor PhaseProduct</th><th>PhaseTripleProduct</th></tr></thead>
           <tbody>
             <tr><td>Object</td><td>Verified lowering of \(\exp(i\pi\varphi\,xz)\), inside the order-finding circuit</td><td>Verified lowering of \(\exp(i\pi\varphi\,xyz)\), standalone</td></tr>
             <tr><td>Points per node</td><td>\(2k-1\)</td><td>\(3k-2\)</td></tr>
             <tr><td>Exponent</td><td>\(\log_k(2k-1)\)</td><td>\(\log_k(3k-2)\)</td></tr>
-            <tr><td>Policies</td><td>Banded policies and a verified compiler (<code>Policy</code>)</td><td>Banded policies, <code>PolicyImpl</code>, exact-width and scan boards</td></tr>
+            <tr><td>Policies</td><td>Banded policies (<code>ShorLoweringPolicy</code>) and a verified compiler</td><td>Banded policies (<code>PTPPolicy</code>), <code>PolicyImpl</code>, scan and exact boards</td></tr>
             <tr><td>Controlled</td><td>Leaf-controlled</td><td>Operand masking only</td></tr>
-            <tr><td>Where</td><td><code>ForShor/</code> in ForShor (the <code>qubitCount</code> layout; <code>FastMultiplication/</code> before it)</td><td><code>TableGeneration/RecursiveCost/PTP/</code> in the ShorTableOptimization interim fork</td></tr>
-            <tr><td>Toolchain</td><td colspan="2">Lean 4.36.0-rc1 and ForShor's pinned Mathlib; the suite imports ForShor and is not imported by it.</td></tr>
+            <tr><td>Where</td><td><code>ForShor/ShorVerification/Implementation/PhaseProduct/</code></td><td><code>ForShor/ShorVerification/Implementation/PhaseTripleProduct/</code></td></tr>
+            <tr><td>Layout</td><td colspan="2"><code>Statement.lean</code> (definitions and claims, imports only <code>Framework/</code> and other Statements), <code>Proofs/</code>, <code>Main.lean</code></td></tr>
+            <tr><td>Toolchain</td><td colspan="2">Lean 4.36.0-rc1 and ForShor's pinned Mathlib, one Lake project. Nothing in the order-finding development imports PhaseTripleProduct; only <code>ForShor.lean</code> (the library root) and <code>Model/Standard/PhaseTripleProductHeadline.lean</code> do.</td></tr>
           </tbody>
         </table>
         <p>
-          The suite is part of an interim fork of
-          <a href="https://github.com/VerifiedQC/ShorTableOptimization">VerifiedQC/ShorTableOptimization</a>
-          (<code>JMC_NOTES.md</code> there records what it adds and how it was validated) and is not merged upstream. It adds files
-          only: banded PhaseProduct and PhaseTripleProduct policies, a planner and a bridge to ForShor's policy submission. The
-          links on this page go to a pinned commit of the fork.
+          The Lean was ported from the PTP verification suite of an interim fork of ShorTableOptimization onto ForShor's own
+          table language (<code>Framework/ToomCookTable.lean</code>); theorem names are those of that suite, except that the
+          final theorems of the extensions carry a <code>_core</code> suffix in <code>Proofs/</code> and are re-stated in
+          <code>Main.lean</code> under the claim's name. It is on the branch <code>ptp/phasetripleproduct</code> of ForShor,
+          based on <code>qubitCount</code>, and not yet merged into <code>main</code>. The folder is not yet in the main page's
+          proof map: ForShor's docs-graph generator already fails on an unmodified <code>qubitCount</code>, so the proof map
+          has to be regenerated first.
         </p>
         <p class="colophon">
           <a href="https://github.com/VerifiedQC/ForShor#readme">README</a> ·

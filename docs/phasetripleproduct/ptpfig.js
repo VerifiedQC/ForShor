@@ -222,7 +222,7 @@
       code: '<p class="lsnip-head">the same operations, as in the policy file</p><pre class="lsnip lean"><code>' +
         window.leanHL(D.tableOps.filter(function (o) { return o[0] !== "phaseProduct"; })
           .map(function (o) { return "addScaled dst=" + o[1] + " src=" + o[2] + " sign=" + o[3] + " shift=" + o[4]; }).join("\n")) +
-        "</code></pre>" + code(S.ptpNode) };
+        "</code></pre>" + code(S.ptpSubNode) };
   }
   function ppPanel(n) {
     var p = D.pps[n - 1];
@@ -250,7 +250,7 @@
       "<code>phaseProduct i</code> checkpoints. What changes is the point count and what a checkpoint means: " + Q + " points, and each checkpoint is taken on three operands at once.</p>" +
       "<p>The table drawn here is the third band of <code>" + esc(D.policyFile) + "</code> (\\(k = 2\\), " + D.arithmetic + " arithmetic operations in " + D.layers + " layers, " +
       "benchmark score \\(" + D.arithmetic + " + 5\\cdot " + D.layers + " = " + D.score + "\\), which equals the champion for <code>PhaseTripleProduct</code> \\(k=2\\) in <code>leaderboard/best-known.md</code>). " +
-      "Its register contents were computed by executing it here with a direct mirror of the Lean definitions; the policy that contains it is accepted by the PTP checker.</p>",
+      "Its register contents were computed by executing it here with a direct mirror of the Lean definitions; the policy that contains it is accepted by the fork's PTP policy checker, which is not part of this development.</p>",
       code: '<p class="lsnip-head">this figure\'s program, as in the policy file</p><pre class="lsnip lean"><code>' +
         window.leanHL(D.tableOps.map(function (o) { return o.join(" "); }).join("\n")) + "</code></pre>" + code(S.PTPTable_contract || S.contract) }; },
     U0: function () { return uPanel("U0"); }, U1: function () { return uPanel("U1"); }, U2: function () { return uPanel("U2"); },
@@ -260,7 +260,7 @@
       return { title: "Widths per level", role: "\\(w_{i+1} = \\mathtt{ptpTightWidth}(T_i, w_i) < w_i\\)", text:
       "<p>Each level is one operand width. The policy looks at it, picks a table, and the table's arithmetic fixes the next width: <code>ptpTightWidth</code> is the " +
       "<em>least</em> width that holds every value the program produces, proved sound and minimal (<code>ptpTightWidth_spec</code>, <code>tight_minimal</code>).</p>" +
-      "<p>For this policy at \\(n = " + POL.n + "\\), the exact ladder is " + lv + ". This is <code>ladderX</code> (quoted on the right), computed here by a Python mirror of the Lean definitions; when the harness checks the policy it has the kernel recompute and decide the same ladder. " +
+      "<p>For this policy at \\(n = " + POL.n + "\\), the exact ladder is " + lv + ". This is <code>ladderX</code> (quoted on the right), computed here by a Python mirror of the Lean definitions; the ShorTableOptimization fork's policy checker (not part of this development) has the kernel recompute and decide the same ladder when it checks the policy. " +
       "Note that the second band, \\(k=4\\), is never used: at exact widths the first child width, 375, is below its threshold of 398.</p>" +
       "<p>The conservative <em>scan</em> board gives a different ladder, " + sc + ", because its widths are larger and so land in different bands. Both boards are proved; the headline theorem and the gate-count theorem use the exact one.</p>",
       code: code(S.ptpTightWidth_spec || S.ptpTightWidth) + code(S.ladderX) + code(S.childWidth3)}; },
@@ -290,7 +290,7 @@
       "With one table at every width that recurrence solves to \\(C\\cdot n^{\\log_k(3k-2)}\\) by ForShor's shifted master theorem; <code>ptp_circuit_gateCount_bound</code> states it for the constructed circuit.</p>" +
       "<p>The statement is for a <strong>constant policy</strong>, as in ForShor, and the count is <code>rz + toffoli + x + h + cnot</code> under <code>shorGateResourceModel</code>, not a T count. " +
       "It is a bound on a classical object (the census of a circuit), not a claim about any factoring cost: PTP is not used by ForShor's order-finding circuit.</p>",
-      code: code(S.ptpExponent) + code(S.ptp_gateTotal_bound) + code(S.ptp_lowerExact_correct) }; },
+      code: code(S.ptpExponent) + code(S.PTPGateTotalBound) + code(S.ptp_lowerExact_correct) }; },
   };
   for (var i = 1; i <= D.pps.length; i++) (function (n) { P["pp" + n] = function () { return ppPanel(n); }; })(i);
   for (var j = 1; j <= nb; j++) (function (n) {
