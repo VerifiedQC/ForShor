@@ -311,7 +311,7 @@ window.LAYERS = {
      "file": "Implementation/ModularExponentiation/Statement.lean",
      "line": 397,
      "code": "def ModExpApproxValidDistUniform (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] :\n    Prop :=\n  ∃ K : ℝ, 0 ≤ K ∧ K ≤ 1600 ∧\n    ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State), cfg.ValidUnitState qs ψ →\n      ‖qs.eval cfg.approxGate ψ - qs.eval (cfg.idealGate qs) ψ‖ ≤ (regSize cfg.x : ℝ) * stepErr K η",
-     "note": "What the theorem asserts, unfolded. <code>Spec/</code> states the claims and <code>Proofs/</code> discharges them; the pattern repeats in every subroutine folder."
+     "note": "What the theorem asserts, unfolded. <code>Statement.lean</code> states the claims, <code>Proofs/</code> holds the lemmas and <code>Main.lean</code> discharges the claims; the pattern repeats in every subroutine folder."
     }
    ]
   },

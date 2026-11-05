@@ -14,7 +14,7 @@
 // they are just not drawn by default. `emphasis` is "primary" (full role
 // colour, thick, labelled if `label` is set), "secondary" (grey, thin,
 // unlabelled — real structure that is not the story), or "dim" (light grey
-// dashed — Shared's edges). A view with no `views[path]` entry (or an empty
+// dashed — real but incidental edges). A view with no `views[path]` entry (or an empty
 // `edges` list) falls back to an automatic transitive reduction of its full
 // import DAG, drawn as primary with no labels.
 window.ANNOTATIONS = {
@@ -125,7 +125,7 @@ window.ANNOTATIONS = {
   "Shor/Main.lean": {
    "role": "assembly",
    "subtitle": "the two final theorems",
-   "summary": "Shor_correct_approx_lowered_uniform (the fully lowered circuit, per-step precision eta left free, constant K ≤ 1600 — what Reference/ consumes) and Shor_correct_approx_lowered (at any eta below shorPrecision N x — a closed form with no hidden constant, concluding kappa / (2 log(log2 N + 1))). The last is the one to cite for the bound itself: the uniform form subtracts a loss that does not shrink as N grows, so it says something only once eta is tied to N. This file is the only way into Shor/Proofs from outside Shor/; scripts/check_layers.py enforces that."
+   "summary": "Shor_correct_approx_lowered_uniform (the fully lowered circuit, per-step precision eta left free, constant K ≤ 1600 — what Reference/ consumes) and Shor_correct_approx_lowered (at any eta below shorPrecision N x — a closed form with no hidden constant, concluding kappa / (2 log(log2 N + 1))). The last is the one to cite for the bound itself: the uniform form subtracts a loss that does not shrink as N grows, so it says something only once eta is tied to N. This file is the only way into Shor/Proofs from outside Shor/."
   },
   "Framework/Quantum": {
    "role": "framework",
@@ -443,7 +443,7 @@ window.ANNOTATIONS = {
      "from": "Compiler/Statement.lean",
      "to": "Compiler/Proofs",
      "emphasis": "primary",
-     "why": "Proofs/ proves the correctness claim Statement.lean states, by induction over the gate, and gives the single-table forms used by Emit/, GateCount/ and Reference/."
+     "why": "Proofs/ proves the correctness claim Statement.lean states, by induction over the gate, and gives the single-table forms used by Emit/, the gate-count proofs and Reference/."
     },
     {
      "from": "Compiler/Proofs",
