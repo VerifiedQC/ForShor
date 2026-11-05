@@ -87,7 +87,7 @@
           Toom-Cook arity \(k\) at which the compiled circuit uses at most
           \(C \cdot n^{2+\varepsilon}\) gates, \(n\) the size of the modulus register. That count is
           derived from <code>LowGate</code> operations under an explicitly stated cost model, containing 
-          common primitives like ripple-carry addition and bit-shifting.<label for="sn-count" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-count" class="margin-toggle"/><span class="sidenote"><code>shorOrderFindingGateCount</code> is <code>LowGate.gateCount shorGateCostModel</code> of the compiled circuit, and <code>shorGateRate ε n</code> is just \(n^{2+\varepsilon}\). A companion theorem, <code>shorGateCountBound_of_setup</code>, gives any admissible Toom-Cook table the bound at its own exponent \(\log(2k-1)/\log k\); a \(k = 2\) table runs at about \(n^{2.585}\). Both theorems are about one table used at every width, which is the right statement for an exponent and not a gate count at \(n = 2048\).</span>
+          common primitives like ripple-carry addition and bit-shifting.<label for="sn-count" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-count" class="margin-toggle"/><span class="sidenote">The quantity bounded is <code>LowGate.gateCount shorGateCostModel</code> of <code>orderFindingApproxLow</code>, the compiled circuit, and the rate is \(n^{2+\varepsilon}\). A companion theorem, <code>shorGateCountBound_of_setup</code>, gives any admissible Toom-Cook table the bound at its own exponent \(\log(2k-1)/\log k\); a \(k = 2\) table runs at about \(n^{2.585}\). Both theorems are about one table used at every width, which is the right statement for an exponent and not a gate count at \(n = 2048\).</span>
         </p>
       </section>
 
@@ -119,11 +119,12 @@
         <h2 id="layers-section">The proof, layer by layer</h2>
         <p>
           We recommend reading the development of this proof from top-to-bottom, since that is the order in which
-          the proof goes. The whole scheme is five layers deep. The specification comes first: this is the vocabulary
+          the proof goes. The whole scheme is six layers deep. The specification comes first: this is the vocabulary
           every statement is written in, and the contract the final object has to meet. The three subroutines follow, 
-          each verified on its own and resting on the one before it. Assembling these routines gives a proof that
-          Shor's algorithm is correct, followed by a theorem stating the cost of that assembled circuit. The last step
-          fills in every remaining choice and hands the framework a concrete instance.<label for="sn-layers" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-layers" class="margin-toggle"/><span class="sidenote">Every arrow is a real import between these folders, read from the Lean sources. The solid labelled arrows are the ones that carry the argument, and the label is the theorem or the vocabulary that crosses it; thin grey arrows are real structure that is not part of the story; the dashed ones come from <code>Shared</code>, a lemma library that is not a step. Click a layer to open it.</span>
+          each verified on its own and resting on the one before it, and a compiler lowers them to elementary gates.
+          Assembling these routines gives a proof that Shor's algorithm is correct, together with a theorem stating the
+          cost of that assembled circuit. The last layer fills in every remaining choice, hands the framework a concrete
+          instance, and counts the qubits it needs.<label for="sn-layers" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-layers" class="margin-toggle"/><span class="sidenote">Every arrow is a real import between these folders, read from the Lean sources. The solid labelled arrows are the ones that carry the argument, and the label is the theorem or the vocabulary that crosses it; thin grey arrows are real structure that is not part of the story. Click a layer to open it.</span>
         </p>
         <figure class="fullwidth layers-figure">
           <div id="layers" class="layers"></div>
@@ -242,7 +243,7 @@
       <section>
         <h2 id="what">What this site is</h2>
         <p>
-          The proof is about 160 Lean files and 2,700 declarations in eight folders, which is more
+          The proof is about 180 Lean files and 3,500 declarations in eight folders, which is more
           than anyone wants to read top to bottom. This page is a guide to it. The layer graph above is
           the outline: each block is a top-level folder, each arrow is an import between folders, and
           opening a block shows what that folder is for, what it rests on and what it feeds, and its key
@@ -263,7 +264,7 @@
           and <a href="https://github.com/VerifiedQC/ForShor/blob/main/ForShor/ShorVerification/Implementation/Shor/Main.lean#L38"><code>Shor_correct_approx_lowered</code></a>
           for correctness;
           <a href="https://github.com/VerifiedQC/ForShor/blob/main/ForShor/ShorVerification/Implementation/Shor/Main.lean#L92"><code>exists_shorGateCountBound</code></a>
-          for the gate count; <a href="#layer-Framework"><code>Framework</code></a> if you want
+          for the gate count; <a href="https://github.com/VerifiedQC/ForShor/blob/main/ForShor/ShorVerification/Implementation/QubitCount/Main.lean#L21"><code>Policy.orderFinding_peak_formula</code></a> for the peak number of live qubits (<a href="#layer-QubitCount"><code>QubitCount</code></a>); <a href="#layer-Framework"><code>Framework</code></a> if you want
           to know what the statements mean before reading the proofs; and
           <a href="#layer-Reference"><code>Reference</code></a> for the computable instance, the
           one <code>lake exe forshor_emit</code> prints as JSON.

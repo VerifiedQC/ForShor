@@ -8,8 +8,7 @@ window.LAYERS = {
  "repo": "https://github.com/VerifiedQC/ForShor/blob/main",
  "rows": [
   [
-   "Framework",
-   "Shared"
+   "Framework"
   ],
   [
    "PhaseProduct",
@@ -23,10 +22,10 @@ window.LAYERS = {
    "Shor"
   ],
   [
-   "GateCount"
+   "Reference"
   ],
   [
-   "Reference"
+   "QubitCount"
   ]
  ],
  "edges": [
@@ -46,21 +45,6 @@ window.LAYERS = {
    "from": "Framework",
    "to": "ModularExponentiation",
    "kind": "secondary"
-  },
-  {
-   "from": "Shared",
-   "to": "PhaseProduct",
-   "kind": "dim"
-  },
-  {
-   "from": "Shared",
-   "to": "QFT",
-   "kind": "dim"
-  },
-  {
-   "from": "Shared",
-   "to": "ModularExponentiation",
-   "kind": "dim"
   },
   {
    "from": "PhaseProduct",
@@ -110,30 +94,11 @@ window.LAYERS = {
    "theorem": "Policy.lowerGate_correct"
   },
   {
-   "from": "Compiler",
-   "to": "GateCount",
-   "kind": "primary",
-   "label": "the lowering being counted",
-   "theorem": "Policy.lowerGate_correct"
-  },
-  {
-   "from": "Shor",
-   "to": "GateCount",
-   "kind": "secondary"
-  },
-  {
    "from": "PhaseProduct",
-   "to": "GateCount",
+   "to": "Reference",
    "kind": "secondary",
    "side": "left",
    "lane": 0
-  },
-  {
-   "from": "GateCount",
-   "to": "Reference",
-   "kind": "primary",
-   "label": "exists_shorGateCountBound",
-   "mono": true
   },
   {
    "from": "Shor",
@@ -145,30 +110,29 @@ window.LAYERS = {
    "theorem": "Shor_correct_approx_lowered_uniform"
   },
   {
-   "from": "Framework",
-   "to": "Reference",
+   "from": "Reference",
+   "to": "QubitCount",
    "kind": "primary",
+   "label": "the circuits it counts"
+  },
+  {
+   "from": "Compiler",
+   "to": "QubitCount",
+   "kind": "secondary",
    "side": "left",
-   "lane": 1,
-   "label": "ShorImplementation",
-   "mono": true
+   "lane": 1
   }
  ],
  "imports": [
   {
    "from": "Framework",
-   "to": "Shared",
-   "files": 9
-  },
-  {
-   "from": "Framework",
    "to": "PhaseProduct",
-   "files": 19
+   "files": 16
   },
   {
    "from": "Framework",
    "to": "QFT",
-   "files": 2
+   "files": 5
   },
   {
    "from": "Framework",
@@ -178,77 +142,52 @@ window.LAYERS = {
   {
    "from": "Framework",
    "to": "Compiler",
-   "files": 3
+   "files": 1
   },
   {
    "from": "Framework",
    "to": "Shor",
-   "files": 6
+   "files": 4
   },
   {
    "from": "Framework",
-   "to": "GateCount",
-   "files": 2
-  },
-  {
-   "from": "Shared",
-   "to": "PhaseProduct",
-   "files": 10
-  },
-  {
-   "from": "Shared",
-   "to": "QFT",
-   "files": 10
-  },
-  {
-   "from": "Shared",
-   "to": "ModularExponentiation",
-   "files": 15
-  },
-  {
-   "from": "Shared",
-   "to": "Compiler",
-   "files": 2
-  },
-  {
-   "from": "Shared",
-   "to": "Shor",
-   "files": 19
+   "to": "QubitCount",
+   "files": 1
   },
   {
    "from": "PhaseProduct",
    "to": "QFT",
-   "files": 20
+   "files": 7
   },
   {
    "from": "PhaseProduct",
    "to": "ModularExponentiation",
-   "files": 11
+   "files": 8
   },
   {
    "from": "PhaseProduct",
    "to": "Compiler",
-   "files": 9
+   "files": 4
   },
   {
    "from": "PhaseProduct",
    "to": "Shor",
-   "files": 20
+   "files": 14
   },
   {
    "from": "PhaseProduct",
-   "to": "GateCount",
-   "files": 27
+   "to": "QubitCount",
+   "files": 4
   },
   {
    "from": "PhaseProduct",
    "to": "Reference",
-   "files": 2
+   "files": 3
   },
   {
    "from": "QFT",
    "to": "ModularExponentiation",
-   "files": 1
+   "files": 8
   },
   {
    "from": "QFT",
@@ -258,52 +197,42 @@ window.LAYERS = {
   {
    "from": "QFT",
    "to": "Shor",
-   "files": 7
+   "files": 10
   },
   {
    "from": "QFT",
-   "to": "GateCount",
+   "to": "QubitCount",
    "files": 1
   },
   {
    "from": "ModularExponentiation",
    "to": "Shor",
-   "files": 17
+   "files": 15
   },
   {
    "from": "ModularExponentiation",
-   "to": "GateCount",
+   "to": "QubitCount",
    "files": 1
   },
   {
-   "from": "ModularExponentiation",
+   "from": "Compiler",
+   "to": "Shor",
+   "files": 10
+  },
+  {
+   "from": "Compiler",
+   "to": "QubitCount",
+   "files": 2
+  },
+  {
+   "from": "Shor",
    "to": "Reference",
    "files": 4
   },
   {
-   "from": "Compiler",
-   "to": "Shor",
-   "files": 10
-  },
-  {
-   "from": "Compiler",
-   "to": "GateCount",
-   "files": 1
-  },
-  {
-   "from": "Shor",
-   "to": "GateCount",
-   "files": 3
-  },
-  {
-   "from": "Shor",
-   "to": "Reference",
-   "files": 8
-  },
-  {
-   "from": "GateCount",
-   "to": "Reference",
-   "files": 1
+   "from": "Reference",
+   "to": "QubitCount",
+   "files": 2
   }
  ],
  "layers": {
@@ -312,34 +241,16 @@ window.LAYERS = {
    "role": "the specification",
    "view": "Framework",
    "fsPath": "Framework",
-   "files": 17,
-   "decls": 252,
-   "summary": "<p>The trusted base. Everything in <code>Implementation/</code> is proved against, or built from, the definitions here, and nothing here imports any of them. If you want to know <em>what</em> the development proves, as opposed to <em>how</em>, read this folder and nothing else.</p><p>It defines registers (<code>Reg</code>, an ordered list of distinct qubits, so layouts need not be contiguous), the high-level <code>Gate</code> language and the low-level <code>LowGate</code> machine everything is lowered onto, the semantics as a <em>class</em> rather than a model (<code>QSemantics</code>, <code>GateSemanticsCore</code>, <code>LowerGateClass</code>), so no theorem depends on how basis states are represented, the cost model <code>LowGate.gateCount</code>, the classical number theory behind order finding (<code>ord</code>, the continued-fraction post-processing, <code>shors_classical_reduction</code>), and the contract every layer above is working towards: <code>ShorImplementation</code>, one <code>LowGate</code> circuit per valid instance, a declared success probability, a trial count, and proofs that both are honest.</p>",
+   "files": 12,
+   "decls": 202,
+   "summary": "<p>The vocabulary everything else is written in, and the trust boundary. Everything in <code>Implementation/</code> is proved against, or built from, the definitions here, and nothing here imports any of it. If you want to know <em>what</em> the development proves, as opposed to <em>how</em>, read this folder, <code>Implementation/Shor/Statement.lean</code> for the success probability, and <code>Implementation/Reference/Contract.lean</code> for what a finished implementation has to provide.</p><p>It defines registers (<code>Reg</code>, an ordered list of distinct qubits, so layouts need not be contiguous), the high-level <code>Gate</code> language and the low-level <code>LowGate</code> machine everything is lowered onto, the semantics as a <em>class</em> rather than a model (<code>QSemantics</code>, <code>GateSemanticsFacts</code>, <code>LowerGateClass</code>), so no theorem depends on how basis states are represented, the cost model (<code>Gatecount/</code>: <code>LowGateCostModel</code>, and <code>shorGateResourceModel</code> with its Cuccaro adders), and what a submission is: a Toom-Cook table with its four decidable side conditions, or a policy of tables indexed by width. It defines things and states laws; it proves no theorem about Shor's algorithm.</p>",
    "snippets": [
     {
-     "name": "ShorImplementation",
-     "file": "Implementation/Reference/Contract.lean",
-     "line": 60,
-     "code": "structure ShorImplementation : Type where\n  -- (field docstrings omitted here; see the source)\n\n  program : ShorOrderFindingInstance → ShorOrderFindingProgram\n\n  successProbability : ℕ → ℝ\n\n  correct :\n    ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →\n    ∀ (inst : ShorOrderFindingInstance),\n      0 ≤ successProbability inst.N ∧ successProbability inst.N ≤ 1 ∧\n      successProbability inst.N ≤\n        probability_of_success\n          (qs := qs)\n          (evalC := LowerGateClass.evalL (qs := qs))\n          (T := T)\n          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))\n          (x := (program inst).output)\n          (r := ord inst.a inst.N inst.coprime)\n          (Q := ASize (program inst).output)\n          (C := (program inst).circuit)\n          (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))\n\n  trialCount : ℕ → ℕ\n\n  trialCount_correct :\n    ∀ N : ℕ, Is2048Bit N →\n      (99 / 100 : ℝ) ≤ 1 - (1 - successProbability N) ^ (trialCount N)",
-     "note": "The contract. <code>correct</code> says the declared probability is a lower bound on the real one for the submitted circuit, evaluated by <code>LowerGateClass</code>, for every valid instance."
-    }
-   ]
-  },
-  "Shared": {
-   "title": "Shared",
-   "role": "a lemma library, not a step",
-   "view": "Shared",
-   "fsPath": "Implementation/Shared",
-   "files": 7,
-   "decls": 152,
-   "summary": "<p>What the seven files here have in common is their <em>position</em>: each is a lemma library over Framework vocabulary, imports nothing from any subroutine folder, and is imported by two or more of <code>PhaseProduct</code>, <code>QFT</code>, <code>ModularExponentiation</code> and <code>Shor</code>. It is drawn dashed because it is not a step of the argument.</p><p><code>Registers.lean</code> and <code>States.lean</code> derive the register and state algebra, <code>Hadamard.lean</code> the uniform-superposition facts, <code>GateLaws.lean</code> and <code>LowGateEval.lean</code> the consequences of the gate classes, <code>Measurement.lean</code> the probability estimates the success bound is stated against, and <code>QftPhase.lean</code> the grid form of the QFT phase.</p>",
-   "snippets": [
-    {
-     "name": "internal layer order",
-     "file": "Implementation/Shared/README.md",
-     "line": 21,
-     "code": "QftPhase, Registers  <  States  <  Hadamard, GateLaws  <  LowGateEval        Measurement (independent)",
-     "note": "From the folder's <code>README.md</code>; a file may import its own layer or any layer to its left, and <code>scripts/check_layers.py Shared</code> enforces it."
+     "name": "ShorLoweringSetup",
+     "file": "Framework/ToomCookTable.lean",
+     "line": 258,
+     "code": "structure ShorLoweringSetup where\n  /-- Number of synthesis registers used by the lowering program. -/\n  k : ℕ\n  /-- At least two synthesis registers are available. -/\n  hk : 1 < k\n  /-- Interpolation points the submission's table is built against. -/\n  pts : List Point\n  /-- One point per product coefficient. (C1) -/\n  hpts : pts.length = q k\n  /-- The chosen points interpolate a degree-`2k - 2` polynomial. (C2) -/\n  good : GoodToomCookPoints k pts hpts\n  /-- Program that consumes the interpolation points used by lowering. -/\n  ops : Prog k\n  /-- The point-consuming program is safe. (C3) -/\n  consumes :\n    ProgConsumesPtsSafe (k := k) (by omega) State.start_state ops pts\n  /-- The point-consuming program uncomputes back to the start state. (C4) -/\n  returns : run? ops State.start_state = some State.start_state",
+     "note": "A submitted table: the arity \\(k\\), the points, a program that consumes them, and the four decidable conditions C1&ndash;C4 under which it is admissible. It is the one degree of freedom of the whole construction, and it appears as a parameter in every subroutine theorem."
     }
    ]
   },
@@ -348,9 +259,9 @@ window.LAYERS = {
    "role": "the fast multiplication",
    "view": "PhaseProduct",
    "fsPath": "Implementation/PhaseProduct",
-   "files": 60,
-   "decls": 1050,
-   "summary": "<p>The phase-product subroutine: the recursive, chunked circuit that computes \\(\\exp(i \\varphi x z)\\) on two registers \\(x\\), \\(z\\), in signed and controlled-signed variants; the compiler that builds it from a Toom-Cook interpolation of the product; and the lowering that turns it into primitive <code>LowGate</code>s. This is where the fast multiplication lives, and it holds the one degree of freedom of the whole construction: the Toom-Cook table, an arithmetic program over \\(k\\) limb registers plus the points it interpolates at.</p><p>The folder reads <code>Math &lt; Compiler &lt; Gates &lt; Lowering &lt; Spec &lt; Proofs &lt; Main</code>. <code>Math/</code> proves the interpolation algebra (<code>interpCoeff_correct</code>) and that the generated tables cover the points they must (<code>genOpsWithProduct_PhaseProductCoverage</code>); <code>Proofs/</code> proves that the compiled circuit computes the phase and that it lowers correctly; <code>Main.lean</code> states the one theorem the other folders use. It is the largest folder by a wide margin.</p><p><a href=\"#phaseproduct-section\">How the recursion works, with a picture ↓</a></p>",
+   "files": 71,
+   "decls": 1415,
+   "summary": "<p>The phase-product subroutine: the recursive, chunked circuit that computes \\(\\exp(i \\varphi x z)\\) on two registers \\(x\\), \\(z\\), in signed and controlled-signed variants; the compiler that builds it from a Toom-Cook interpolation of the product; and the lowering that turns it into primitive <code>LowGate</code>s. This is where the fast multiplication lives, and it holds the one degree of freedom of the whole construction: the Toom-Cook table, an arithmetic program over \\(k\\) limb registers plus the points it interpolates at.</p><p>The folder reads <code>Statement &lt; Proofs &lt; Main</code>. <code>Statement.lean</code> holds the definitions (the compiler, the lowering plans, the workspace model) and the statements of the theorems; <code>Proofs/Math/</code> proves the interpolation algebra (<code>interpCoeff_correct</code>) and that the generated tables cover the points they must (<code>genOpsWithProduct_PhaseProductCoverage</code>); <code>Proofs/Compiler</code> and <code>Proofs/Lowering</code> prove that the compiled circuit computes the phase and that it lowers correctly, and <code>Proofs/GateCount</code> its gate-count recurrence; <code>Main.lean</code> states the one theorem the other folders use. It is the largest folder by a wide margin.</p><p><a href=\"#phaseproduct-section\">How the recursion works, with a picture ↓</a></p>",
    "snippets": [
     {
      "name": "lowerSignedPhaseProduct_correct",
@@ -366,8 +277,8 @@ window.LAYERS = {
    "role": "the recursive Fourier transform",
    "view": "QFT",
    "fsPath": "Implementation/QFT",
-   "files": 11,
-   "decls": 155,
+   "files": 10,
+   "decls": 173,
    "summary": "<p>The recursive Quantum Fourier Transform: a register's QFT is split into two half-size QFTs joined by a phase-product macro and a radix reversal, with a workspace budget for the recursion, and lowered to <code>LowGate</code>s. The phase product in the middle is the previous layer's; that import is the arrow coming in from the left.</p><p>The folder reads <code>Statement &lt; Proofs &lt; Main</code>. <code>Statement.lean</code> holds everything needed to state the claim — the split convention, the workspace model, the plans and the lowered QFT — and imports nothing else from the folder, <code>Proofs/</code> proves the split identity and the lowering, and <code>Main.lean</code> packages them as one theorem.</p>",
    "snippets": [
     {
@@ -384,9 +295,9 @@ window.LAYERS = {
    "role": "Algorithm 1, approximately",
    "view": "ModularExponentiation",
    "fsPath": "Implementation/ModularExponentiation",
-   "files": 22,
-   "decls": 422,
-   "summary": "<p>Algorithm 1: in-place classical-quantum modular multiplication and, recursing over the exponent register, modular exponentiation, built from QFT-based phase products and an inverse-QFT comparator. The circuit is approximate, with a per-step precision \\(\\eta\\), so its theorem is a distance bound rather than an equation: on every valid state, the approximate gate is within \\(t \\cdot \\mathrm{stepErr}\\,K\\,\\eta\\) of the ideal one, with \\(t\\) the width of the exponent register, with a single constant \\(K \\le 1600\\) that does not depend on \\(\\eta\\). That uniformity is exactly what the next layer needs to turn a distance into a success probability.</p><p>The folder reads <code>Math &lt; Circuit &lt; Lowering &lt; Spec &lt; Proofs &lt; Main</code>.</p>",
+   "files": 14,
+   "decls": 370,
+   "summary": "<p>Algorithm 1: in-place classical-quantum modular multiplication and, recursing over the exponent register, modular exponentiation, built from QFT-based phase products and an inverse-QFT comparator. The circuit is approximate, with a per-step precision \\(\\eta\\), so its theorem is a distance bound rather than an equation: on every valid state, the approximate gate is within \\(t \\cdot \\mathrm{stepErr}\\,K\\,\\eta\\) of the ideal one, with \\(t\\) the width of the exponent register, with a single constant \\(K \\le 1600\\) that does not depend on \\(\\eta\\). That uniformity is exactly what the next layer needs to turn a distance into a success probability.</p><p>The folder reads <code>Statement &lt; Proofs &lt; Main</code>: <code>Statement.lean</code> is the only file needed to see what is claimed, <code>Proofs/</code> holds the lemmas, and <code>Main.lean</code> proves <code>ModExpApproxValidDistUniform</code>.</p>",
    "snippets": [
     {
      "name": "modExpApprox_correct",
@@ -409,8 +320,8 @@ window.LAYERS = {
    "role": "the lowering from Gate to LowGate",
    "view": "Compiler",
    "fsPath": "Implementation/Compiler",
-   "files": 4,
-   "decls": 11,
+   "files": 5,
+   "decls": 70,
    "summary": "<p>Lowering. <code>Compiler/</code> turns a <code>Gate</code> circuit into a <code>LowGate</code> program: <code>Policy.lowerGate</code> sends each QFT, phase-product and modular-arithmetic block to its subroutine's lowerer, given a proof <code>Policy.GateWorkspaceOK</code> that every such block has the workspace its lowerer needs. <code>Policy.lowerGate_correct</code> says that for an admissible policy the lowered program acts on a clean state exactly as the <code>Gate</code> does. The circuit the next layers count is this lowering of Shor's circuit.</p><p>The folder reads <code>Statement &lt; Proofs &lt; Main</code>, and <code>Main.lean</code> is the only route out of it.</p>",
    "snippets": [
     {
@@ -427,22 +338,16 @@ window.LAYERS = {
      "code": "theorem Policy.lowerGate_correct\n    (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]\n    (P : ShorLoweringPolicy) :\n    Policy.LowerGateCorrect qs P :=",
      "note": null
     }
-   ],
-   "layers": [
-    "Compiler",
-    "PhaseProduct",
-    "QFT",
-    "ModularExponentiation"
    ]
   },
   "Shor": {
    "title": "Shor",
-   "role": "the assembly and the main theorems",
+   "role": "the assembly, correctness and cost",
    "view": "Shor",
    "fsPath": "Implementation/Shor",
-   "files": 29,
-   "decls": 357,
-   "summary": "<p>Assembly. <code>Shor/</code> puts the three subroutines together into the approximate order-finding circuit and proves Shor's algorithm correct. <code>Shor_correct</code> is the ideal bound: with an exact modular-multiplication oracle, the circuit followed by continued-fraction post-processing returns the order with probability at least \\(\\kappa / \\log(\\log_2 N + 1)\\). <code>Shor_correct_approx_lowered</code> carries that bound through the approximation and through lowering to the <code>LowGate</code> program, up to a factor of two once \\(\\eta\\) is fixed.</p><p>The lowering to <code>LowGate</code> comes from <code>Compiler/</code>. The folder reads <code>Math &lt; Statement &lt; Interface &lt; Proofs &lt; Main</code>, and <code>Main.lean</code> is the only route out of it.</p>",
+   "files": 33,
+   "decls": 549,
+   "summary": "<p>Assembly. <code>Shor/</code> puts the three subroutines together into the approximate order-finding circuit and proves Shor's algorithm correct. <code>Shor_correct</code> is the ideal bound: with an exact modular-multiplication oracle, the circuit followed by continued-fraction post-processing returns the order with probability at least \\(\\kappa / \\log(\\log_2 N + 1)\\). <code>Shor_correct_approx_lowered</code> carries that bound through the approximation and through lowering to the <code>LowGate</code> program, up to a factor of two once \\(\\eta\\) is fixed.</p><p>The lowering to <code>LowGate</code> comes from <code>Compiler/</code>. The folder reads <code>Statement &lt; Proofs &lt; Main</code>, and <code>Main.lean</code> is the only route out of it.</p><p>It also holds the cost. <code>exists_shorGateCountBound</code> says that for every \\(\\varepsilon &gt; 0\\) there is a Toom-Cook arity \\(k\\) and a generated table at which the compiled order-finding circuit uses at most \\(C \\cdot n^{2+\\varepsilon}\\) gates, \\(n\\) the width of the modulus register. The quantity bounded is <code>LowGate.gateCount shorGateCostModel</code> of <code>orderFindingApproxLow</code>, the lowered circuit built by <code>Compiler/Statement.lean</code>'s <code>Policy.lowerGate</code>, over the cost model <code>Framework/Gatecount</code> defines. The recurrences are proved where the circuits are: <code>PhaseProduct/Proofs/GateCount</code> for the phase product, <code>QFT/Proofs/GateCount.lean</code> for the QFT, and <code>Proofs/GateCount.lean</code> here assembles them into the Shor rate. Correctness and resource estimation share the circuit but not the proof. A companion, <code>shorGateCountBound_of_setup</code>, gives any admissible table the bound at its own exponent.</p>",
    "snippets": [
     {
      "name": "Shor_correct",
@@ -464,24 +369,20 @@ window.LAYERS = {
      "line": 36,
      "code": "theorem Shor_correct_approx_lowered\n    [GateSemanticsFacts qs]\n    [LowerGateClass qs]\n    (T : ℕ → ℕ) (hT : ContinuedFractionSearchComplete T) :\n    ShorCorrectApproxLowered T hT :=",
      "note": "The same, for the fully lowered approximate circuit; note the extra <code>LowerGateClass</code> instance."
-    }
-   ]
-  },
-  "GateCount": {
-   "title": "GateCount",
-   "role": "the cost, as a theorem",
-   "view": "GateCount",
-   "fsPath": "Implementation/GateCount",
-   "files": 5,
-   "decls": 207,
-   "summary": "<p>Cost. <code>GateCount/</code> proves the asymptotic gate-count bound for the lowered Shor circuit, over the cost model <code>Framework/Gatecount</code> defines: a concrete cost model for <code>LowGate</code>, recurrence bounds for the phase product and the QFT, then the assembly into the Shor rate. <code>exists_shorGateCountBound</code> says that for every \\(\\varepsilon &gt; 0\\) there is a Toom-Cook arity \\(k\\) and a generated table at which the compiled order-finding circuit uses at most \\(C \\cdot n^{2+\\varepsilon}\\) gates, \\(n\\) the width of the modulus register.</p><p>The quantity bounded is <code>LowGate.gateCount shorGateCostModel</code> of <code>orderFindingApproxLow</code>, the lowered circuit built by <code>Compiler/Statement.lean</code>'s <code>Policy.lowerGate</code>, whose semantics the previous layer verified. Correctness and resource estimation share the circuit but not the proof. A companion, <code>shorGateCountBound_of_setup</code>, gives any admissible table the bound at its own exponent.</p>",
-   "snippets": [
+    },
+    {
+     "name": "ShorGateCountBound",
+     "file": "Implementation/Shor/Statement.lean",
+     "line": 345,
+     "code": "def ShorGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ) (k : ℕ) (hk : 1 < k)\n    (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) : Prop :=\n  ∀ cWork : ℕ, 1 ≤ cWork → ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧\n    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg)\n      (_hxWidth : regSize x.active = Nat.log2 (2 * inst.N^2))\n      (_hyWidth : regSize y.active = Nat.log2 (2 * inst.N))\n      (flag : ℕ) (b0 : qs.Basis) (η : ℝ)\n      (hsetup : ShorApproxSetup qs η inst.N x y work scratch flag b0),\n      let n := y.width\n      n₀ ≤ n → algorithm1ExtraBits η ≤ (cWork - 1) * regSize y.active →\n      ∀ hLowerWorkspace :\n        Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)\n          (orderFindingApprox inst.a inst.N x y work scratch flag hsetup.circuit_workspace\n            hsetup.step4_workspace),\n      (LowGate.gateCount shorGateCostModel\n          (orderFindingApproxLow (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)\n            inst.a inst.N x y work scratch flag hsetup.circuit_workspace hsetup.step4_workspace\n            hLowerWorkspace) : ℝ)\n        ≤ C * Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)",
+     "note": "The claim, unfolded: for every work-register size there are \\(C\\) and \\(n_0\\) such that for every instance with \\(n \\ge n_0\\), <code>LowGate.gateCount shorGateCostModel</code> of the lowered circuit <code>orderFindingApproxLow</code> is at most \\(C \\cdot n^{2+\\varepsilon}\\) (written <code>Real.rpow (max 1 n) (2+ε)</code>), for the table <code>ops</code> used at every width."
+    },
     {
      "name": "exists_shorGateCountBound",
      "file": "Implementation/Shor/Main.lean",
      "line": 92,
-     "code": "theorem exists_shorGateCountBound\n    (ε : ℝ)\n    (hε : 0 < ε) :\n    ∃ k : ℕ,\n    ∃ hk : 1 < k,\n    ∃ ops : Prog k,\n      PhaseProductProgramOK k hk\n          (genInterpolationPoints k) (generatedInterpolationPoints_length k) ops ∧\n      ShorGateCountBound qs ε k hk ops\n        (genInterpolationPoints k) (generatedInterpolationPoints_length k) := by",
-     "note": "<code>ShorGateCountBound qs ε k hk ops …</code> unfolds to: there is a \\(C\\) with <code>gateCount ≤ C · shorGateRate ε n</code> for every valid instance and layout, where <code>shorGateRate ε n = n^(2+ε)</code>."
+     "code": "variable (qs : QSemantics) [RegEncoding qs.Basis]\n\ntheorem exists_shorGateCountBound\n    (ε : ℝ)\n    (hε : 0 < ε) :\n    ∃ k : ℕ,\n    ∃ hk : 1 < k,\n    ∃ ops : Prog k,\n      PhaseProductProgramOK k hk\n          (genInterpolationPoints k) (generatedInterpolationPoints_length k) ops ∧\n      ShorGateCountBound qs ε k hk ops\n        (genInterpolationPoints k) (generatedInterpolationPoints_length k) := by",
+     "note": "For every \\(\\varepsilon > 0\\) there is an arity \\(k\\) and a generated table with <code>ShorGateCountBound</code>. <code>qs</code> and its instance come from the file's <code>variable</code> line, shown first."
     }
    ]
   },
@@ -490,16 +391,48 @@ window.LAYERS = {
    "role": "the concrete instance",
    "view": "Reference",
    "fsPath": "Implementation/Reference",
-   "files": 7,
-   "decls": 139,
-   "summary": "<p>The concrete instance. <code>Reference/</code> makes every remaining choice concrete, the physical register layout (<code>ReferenceLayout.lean</code>), the precision schedule (<code>ReferencePrecision.lean</code>), the readiness side conditions (<code>ReferenceReadiness.lean</code>), and turns an admissible table into a circuit family, packaged as a <code>ShorImplementation</code>. <code>referenceShorImplementation</code> is the value every layer above exists to build, generic in the table. The circuit family itself is computable, and is what <code>lake exe forshor_emit</code> prints as JSON; the packaged value also carries the real-valued success bound, hence <code>noncomputable</code>.</p><p><code>Reference2048Headline.lean</code> fixes \\(\\eta = 2^{-150}\\) at 2048 bits and proves that, at that level, the single-run success probability is at least 99% of the ideal \\(\\kappa / \\log(\\log_2 N + 1)\\) baseline. Its gate count is declared, honestly, as the actual <code>LowGate.gateCount</code> of the submitted circuit, not a computed numeral; the development proves exponents, not a number at \\(n = 2048\\).</p>",
+   "files": 14,
+   "decls": 338,
+   "summary": "<p>The concrete instance. The other folders prove things about the order-finding circuit for any registers, layout and policy that satisfy their conditions; <code>Reference/</code> picks all of those concretely and proves the conditions hold. <code>Contract.lean</code> says what &ldquo;finished&rdquo; means: a <code>ShorImplementation</code> provides a circuit for every valid instance, a declared lower bound on the single-run success probability with a proof that the circuit meets it, and a trial count that pushes that bound to 99% for every 2048-bit modulus, with a proof.</p><p><code>Standard/</code> is the reference implementation: it lowers the order-finding circuit directly, on the layout it chooses (precision, register widths, where each register sits). <code>referenceShorImplementation</code> is the value every layer above exists to build, generic in the table. The circuit family is computable, and is what <code>lake exe forshor_emit</code> prints as JSON; the packaged value also carries the real-valued success bound, hence <code>noncomputable</code>. At the 2048-bit level, <code>η = 2<sup>−150</sup></code>, the single-run success probability is at least 99% of the ideal \\(\\kappa / \\log 2048\\) baseline.</p><p><code>Balanced/</code> keeps the same layout, precision and success bound but changes the circuit: phase products whose operands have different widths are first cut into equal-width blocks, which is what brings the peak qubit count down (see <code>QubitCount/</code>). Both folders build a <code>ShorImplementation</code>.</p>",
    "snippets": [
+    {
+     "name": "ShorImplementation",
+     "file": "Implementation/Reference/Contract.lean",
+     "line": 60,
+     "code": "structure ShorImplementation : Type where\n  -- (field docstrings omitted here; see the source)\n\n  program : ShorOrderFindingInstance → ShorOrderFindingProgram\n\n  successProbability : ℕ → ℝ\n\n  correct :\n    ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →\n    ∀ (inst : ShorOrderFindingInstance),\n      0 ≤ successProbability inst.N ∧ successProbability inst.N ≤ 1 ∧\n      successProbability inst.N ≤\n        probability_of_success\n          (qs := qs)\n          (evalC := LowerGateClass.evalL (qs := qs))\n          (T := T)\n          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))\n          (x := (program inst).output)\n          (r := ord inst.a inst.N inst.coprime)\n          (Q := ASize (program inst).output)\n          (C := (program inst).circuit)\n          (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))\n\n  trialCount : ℕ → ℕ\n\n  trialCount_correct :\n    ∀ N : ℕ, Is2048Bit N →\n      (99 / 100 : ℝ) ≤ 1 - (1 - successProbability N) ^ (trialCount N)",
+     "note": "The contract. <code>correct</code> says the declared probability is a lower bound on the real one for the submitted circuit, evaluated by <code>LowerGateClass</code>, for every valid instance."
+    },
     {
      "name": "referenceShorImplementation",
      "file": "Implementation/Reference/Standard/Main.lean",
      "line": 185,
      "code": "noncomputable def referenceShorImplementation (P : ShorLoweringPolicy) (hP : P.Admissible) :\n    ShorImplementation (qs := qs) where\n  program := referenceSubmittedProgram P hP\n  successProbability := referenceSuccessProbability\n  correct := referenceSubmittedProgram_correct (qs := qs) P hP\n  trialCount := referenceTrialCount\n  trialCount_correct := fun N _ => referenceTrialCount_correct N",
      "note": "The five fields of the contract, filled: the program, the declared probability, its proof, the trial count, and its proof."
+    }
+   ]
+  },
+  "QubitCount": {
+   "title": "QubitCount",
+   "role": "the peak qubit count",
+   "view": "QubitCount",
+   "fsPath": "Implementation/QubitCount",
+   "files": 20,
+   "decls": 412,
+   "summary": "<p>How many qubits the lowered order-finding circuit needs at once, with an exact formula. We walk the lowered circuit in order and keep the set of live qubits: a gate makes the qubits it touches live, extending a register brings its reserve in, and deallocating releases it. <code>AddScaled</code> and <code>Negate</code> also borrow a few clean scratch qubits while they run. The peak is the largest the live set ever gets.</p><p>This is not <code>LowGate.qubitCount</code>, the number of qubits the circuit ever touches: the allocator gives every child of a phase-product recursion its own reserve, but the children run one after another, so only one is live at a time. <code>Policy.orderFinding_peak_formula</code> proves the peak is the base registers plus the most expensive step, for any admissible policy, and the same for the balanced circuits of <code>Reference/Balanced</code>.</p><p>At 2048 bits, with the standard \\(k = 2\\) table and a 4096-qubit exponent register, the peak is 19,319 for the plain circuit and 17,291 for the balanced one, checked by the kernel (<code>decide +kernel</code>) in <code>Proofs/Numerals.lean</code> and <code>Proofs/BalancedNumerals.lean</code>. The folder reads <code>Statement &lt; Proofs &lt; Main</code>.</p>",
+   "snippets": [
+    {
+     "name": "Policy.orderFinding_peak_formula",
+     "file": "Implementation/QubitCount/Main.lean",
+     "line": 21,
+     "code": "theorem Policy.orderFinding_peak_formula (P : ShorLoweringPolicy) :\n    Policy.OrderFindingPeakFormula P :=",
+     "note": "The headline: for any admissible policy, the peak number of live qubits of the lowered order-finding circuit is the base registers plus the most expensive step. <code>Policy.OrderFindingPeakFormula</code>, in <code>Statement.lean</code>, says what that means; the two balanced circuits have the same shape of theorem."
+    },
+    {
+     "name": "Policy.orderFinding_peak_formula_balanced_u",
+     "file": "Implementation/QubitCount/Main.lean",
+     "line": 35,
+     "code": "theorem Policy.orderFinding_peak_formula_balanced_u (P : ShorLoweringPolicy) (R : Balanced.Rule) :\n    Policy.OrderFindingPeakFormulaBalancedU P R :=",
+     "note": "The same for the unconditionally balanced circuit, where every site is split, so the count depends on the register widths alone."
     }
    ]
   }
