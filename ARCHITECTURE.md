@@ -222,6 +222,30 @@ exists a PhaseProduct program such that the lowered Shor order-finding circuit
 satisfies the asymptotic `shorGateRate epsilon n`, i.e. the intended
 `O(n^(2+epsilon))` bound.
 
+### `Implementation/PhaseTripleProduct/` — the three-register phase product
+
+A standalone sibling of `PhaseProduct`: the circuit for `exp(iπφ·x·y·z)` on three registers,
+by the same Toom-Cook recursion with `3k − 2` interpolation points instead of `2k − 1`. Nothing in
+the order-finding development uses it, and it is not imported by `Shor/` or `Reference/`.
+
+- `Statement.lean` defines everything the claims mention (tables and policies, the exact
+  widths, the leaf and node circuits, the recursion `PolicyImpl`, the resource census, the
+  specification operators) and states the claims as propositions. It imports only `Framework/`
+  and `PhaseProduct/Statement.lean`; `scripts/StatementClosure.lean` checks that every constant
+  the claims reach lives in `Framework/`, a `Statement.lean` or Mathlib, and CI runs it.
+- `Proofs/` holds the lemmas: `Support/` (the table-language lemmas), `Table/` (contract and width
+  scan), `Values/` (the node identity and exact widths), `Gates/` (leaf and node circuits),
+  `Recursion/` and `ExactBoard/` (the gate-level recursion at scan and exact widths), `Surface.lean`,
+  `Controlled.lean`, `Unbalanced.lean`, `Asymptotic.lean`, `QubitsTight.lean`, `Threshold.lean`, and
+  `Witness/` (negative controls: the point-order and width faults, and a concrete recursion).
+- `Main.lean` proves the claims: `ptp_lowerExact_correct`, `ptp_ctl_lowerExact_correct`,
+  `ptp_pad_lowerExact_correct`, `ptp_gateTotal_bound`, `ptp_circuit_gateCount_bound`,
+  `ptp_qubits_tight`, `ptp_qubits_tight_exact`, `ptp_qubits_le_ptpQubits` and
+  `ptp_chainContractsTight_iff_reach`.
+
+The state-level theorems cover the span of clean basis kets; the gate-count theorem is for a
+constant policy; the qubit theorems bound `LowGate.usedQubits`, not `qubitCount`.
+
 ### `Implementation/QubitCount/` — qubits
 
 `QubitCount` defines the peak number of live qubits of a lowered circuit and

@@ -34,6 +34,18 @@ open Shor.Audit
 #assert_axioms Shor.Policy.lowerSignedPhaseProduct_correct
 #assert_axioms Shor.Policy.lowerCSignedPhaseProduct_correct
 
+-- The three-register phase product (PhaseTripleProduct): every claim of its Statement.lean.
+#assert_axioms Shor.PTP.ptp_lowerExact_correct
+#assert_axioms Shor.PTP.ptp_ctl_lowerExact_correct
+#assert_axioms Shor.PTP.ptp_pad_lowerExact_correct
+#assert_axioms Shor.PTP.ptp_gateTotal_bound
+#assert_axioms Shor.PTP.ptp_circuit_gateCount_bound
+#assert_axioms Shor.PTP.ptp_qubits_tight
+#assert_axioms Shor.PTP.ptp_qubits_tight_exact
+#assert_axioms Shor.PTP.ptp_qubits_le_ptpQubits
+#assert_axioms Shor.PTP.ptp_chainContractsTight_iff_reach
+#assert_axioms Shor.PTP.Instances.ExactFault.gate_fault_wrong
+
 -- The submission surface.
 #assert_axioms Shor.submission_correct
 #assert_axioms Shor.ShorLoweringSetup.programOK

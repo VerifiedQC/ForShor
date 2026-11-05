@@ -27,7 +27,7 @@ GRAPH_JS_PATH = os.path.join(REPO_ROOT, "docs/data/graph.js")
 ANNOTATIONS_JS_PATH = os.path.join(REPO_ROOT, "docs/data/annotations.js")
 
 DEPTH0_ORDER = [
-    "Framework", "PhaseProduct", "QFT",
+    "Framework", "PhaseProduct", "PhaseTripleProduct", "QFT",
     "ModularExponentiation", "Compiler", "Shor", "QubitCount", "Reference",
 ]
 

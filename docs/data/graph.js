@@ -5,6 +5,7 @@ window.GRAPH = {
   "order0": [
    "Framework",
    "PhaseProduct",
+   "PhaseTripleProduct",
    "QFT",
    "ModularExponentiation",
    "Compiler",
@@ -645,6 +646,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Compiler/Layout.lean",
     "PhaseProduct/Proofs/Registers.lean",
     "PhaseProduct/Statement.lean",
+    "PhaseTripleProduct/Statement.lean",
     "QFT/Proofs/Macros.lean",
     "QFT/Proofs/QftPhase.lean",
     "Shor/Proofs/NaiveShor/OrderFindingAnalysis.lean"
@@ -673,6 +675,7 @@ window.GRAPH = {
     "Framework/Semantics/LowGateSemantics.lean",
     "PhaseProduct/Proofs/Compiler/Layout.lean",
     "PhaseProduct/Statement.lean",
+    "PhaseTripleProduct/Statement.lean",
     "QFT/Proofs/Macros.lean"
    ],
    "imports": [
@@ -867,6 +870,9 @@ window.GRAPH = {
    "fsPath": "Framework/Gatecount/ResourceModel.lean",
    "importedBy": [
     "PhaseProduct/Statement.lean",
+    "PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean",
+    "PhaseTripleProduct/Proofs/Recursion/Census.lean",
+    "PhaseTripleProduct/Statement.lean",
     "QubitCount/Statement.lean",
     "Shor/Statement.lean"
    ],
@@ -1143,7 +1149,8 @@ window.GRAPH = {
    "importedBy": [
     "Framework/Quantum/Measurement.lean",
     "Framework/Semantics/GateSemantics.lean",
-    "PhaseProduct/Proofs/Registers.lean"
+    "PhaseProduct/Proofs/Registers.lean",
+    "PhaseTripleProduct/Statement.lean"
    ],
    "imports": [
     "Framework/Quantum/Registers.lean"
@@ -1406,7 +1413,8 @@ window.GRAPH = {
    "importedBy": [
     "Framework/AbstractMachine/Gates.lean",
     "Framework/AbstractMachine/LowGate.lean",
-    "Framework/Quantum/QSemantics.lean"
+    "Framework/Quantum/QSemantics.lean",
+    "PhaseTripleProduct/Statement.lean"
    ],
    "imports": [],
    "kind": "file",
@@ -1592,6 +1600,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/GateLaws.lean",
     "PhaseProduct/Proofs/States.lean",
     "PhaseProduct/Statement.lean",
+    "PhaseTripleProduct/Statement.lean",
     "QFT/Proofs/Decomposition.lean",
     "QFT/Proofs/Hadamard.lean",
     "QFT/Proofs/Macros.lean",
@@ -1628,6 +1637,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Gates/NaiveLeaf.lean",
     "PhaseProduct/Proofs/LowGateEval.lean",
     "PhaseProduct/Statement.lean",
+    "PhaseTripleProduct/Statement.lean",
     "QFT/Proofs/Macros.lean",
     "Shor/Statement.lean"
    ],
@@ -1820,6 +1830,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/Math/Table_Generation/Core/Registers.lean",
     "PhaseProduct/Proofs/Math/ToomCook.lean",
     "PhaseProduct/Statement.lean",
+    "PhaseTripleProduct/Statement.lean",
     "Shor/Statement.lean"
    ],
    "imports": [],
@@ -6970,6 +6981,7 @@ window.GRAPH = {
    "importedBy": [
     "PhaseProduct/Proofs/Compiler/Allocation.lean",
     "PhaseProduct/Proofs/LowGateEval.lean",
+    "PhaseTripleProduct/Proofs/Gates/Node.lean",
     "QFT/Proofs/Decomposition.lean",
     "Reference/Balanced/Proofs/Semantics.lean"
    ],
@@ -8125,7 +8137,8 @@ window.GRAPH = {
    "fsPath": "Implementation/PhaseProduct/Proofs/Math/MasterTheorem.lean",
    "importedBy": [
     "PhaseProduct/Proofs/Compiler/GeneratedProgram.lean",
-    "PhaseProduct/Proofs/GateCount/Lemmas.lean"
+    "PhaseProduct/Proofs/GateCount/Lemmas.lean",
+    "PhaseTripleProduct/Proofs/Asymptotic.lean"
    ],
    "imports": [],
    "kind": "file",
@@ -11076,7 +11089,8 @@ window.GRAPH = {
    "docstring": "# Toom-Cook interpolation formula\n\nThis file develops the pure interpolation algebra used by the phase-product\ncompiler: interpolation points, Vandermonde-style invertibility, reconstruction\nat a radix, and the exponential phase scalars obtained from weighted point\nsums.\n\n`ToomCookMath.listToFin`, `interpMatrix` and `GoodInterpolationPoints` \u2014 the\nthree generic definitions the invertibility statements are phrased in \u2014 are\ndefined in `Framework/ToomCookTable.lean`.",
    "fsPath": "Implementation/PhaseProduct/Proofs/Math/ToomCook.lean",
    "importedBy": [
-    "PhaseProduct/Proofs/Compiler/Coefficients.lean"
+    "PhaseProduct/Proofs/Compiler/Coefficients.lean",
+    "PhaseTripleProduct/Proofs/Support/Mirror.lean"
    ],
    "imports": [
     "Framework/ToomCookTable.lean"
@@ -11359,7 +11373,8 @@ window.GRAPH = {
    "importedBy": [
     "PhaseProduct/Proofs/Compiler/GeneratedProgram.lean",
     "PhaseProduct/Proofs/GateCount/Lemmas.lean",
-    "PhaseProduct/Proofs/Lowering/EvalL.lean"
+    "PhaseProduct/Proofs/Lowering/EvalL.lean",
+    "PhaseTripleProduct/Proofs/Gates/Leaf.lean"
    ],
    "imports": [
     "PhaseProduct/Proofs/Gates/NaiveLeaf.lean",
@@ -11587,6 +11602,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/GateLaws.lean",
     "PhaseProduct/Proofs/LowGateEval.lean",
     "PhaseProduct/Proofs/NaiveLeaf.lean",
+    "PhaseTripleProduct/Proofs/Table/Width.lean",
     "QFT/Proofs/Decomposition.lean",
     "QFT/Proofs/Hadamard.lean",
     "QFT/Proofs/Lowering/Readiness.lean",
@@ -12830,6 +12846,7 @@ window.GRAPH = {
     "PhaseProduct/Proofs/NaiveLeaf.lean",
     "PhaseProduct/Proofs/Spec/Cleanliness.lean",
     "PhaseProduct/Proofs/Spec/Readiness.lean",
+    "PhaseTripleProduct/Statement.lean",
     "QFT/Proofs/Decomposition.lean",
     "QFT/Proofs/GateCount.lean",
     "QFT/Proofs/Lowering/PlanSemantics.lean",
@@ -12860,6 +12877,4026 @@ window.GRAPH = {
    "lines": 2048,
    "name": "Statement.lean",
    "path": "PhaseProduct/Statement.lean"
+  },
+  "PhaseTripleProduct": {
+   "children": [
+    "PhaseTripleProduct/Main.lean",
+    "PhaseTripleProduct/Proofs",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "declCount": 673,
+   "fileCount": 27,
+   "fsPath": "Implementation/PhaseTripleProduct",
+   "kind": "folder",
+   "name": "PhaseTripleProduct",
+   "path": "PhaseTripleProduct",
+   "readmeHtml": "<h1>PhaseTripleProduct</h1>\n<p>This folder builds the phase-triple-product circuit, which applies the phase <code>exp(i\u00b7\u03c0\u00b7\u03c6\u00b7x\u00b7y\u00b7z)</code> to three registers <code>x</code>, <code>y</code> and <code>z</code>, and proves it correct. It is the three-operand analogue of <code>PhaseProduct</code>, and it is <strong>not</strong> used by the order-finding circuit: nothing in <code>Shor/</code>, <code>QFT/</code> or <code>ModularExponentiation/</code> imports it.</p>\n<p>The circuit is a Toom-Cook recursion. Each operand is cut into <code>k</code> limbs, the product phase is rebuilt from <code>3k - 2</code> smaller phase triple products (the product of three degree-<code>k - 1</code> limb polynomials has degree <code>3 (k - 1)</code>) plus classical arithmetic, and the recursion bottoms out in a leaf that multiplies out bit by bit. Which table is used at each width comes from a banded policy, <code>PTPPolicy</code>; a single fixed table is the policy with one band.</p>\n<h2>Files</h2>\n<ul><li><code>Statement.lean</code> has the definitions (tables and policies, widths, the leaf and node circuits, the recursion, the census, the specification operators) and the statements of the claims as propositions. It imports only Mathlib, <code>Framework/</code> and <code>PhaseProduct/Statement.lean</code>, so you can check the claims against it alone. <code>scripts/StatementClosure.lean</code> checks that rule semantically: it computes every constant the claims reach and fails if one lives outside Mathlib/core, <code>Framework/</code> or a <code>Statement.lean</code>. CI runs it.</li><li><code>Proofs/</code> has all the lemmas:</li><li><code>Support/</code>: the table-language lemmas, and the bridges between the Boolean checkers in the Statement and the Framework's propositions.</li><li><code>Table/</code>, <code>Values/</code>: the table contract and width scan; the node identity and exact widths.</li><li><code>Gates/</code>, <code>Recursion/</code>, <code>ExactBoard/</code>: the leaf and node circuits, and the gate-level recursion at the conservative scan widths and at exact widths.</li><li><code>Surface.lean</code>, <code>Threshold.lean</code>, <code>Controlled.lean</code>, <code>Unbalanced.lean</code>, <code>Asymptotic.lean</code>, <code>QubitsTight.lean</code>: the state-level lemmas, the acceptance rule and the extensions. The final theorem of each extension carries a <code>_core</code> suffix here; <code>Main.lean</code> re-states it under the claim's name.</li><li><code>Witness/</code>: negative controls and non-vacuity (see below).</li><li><code>Main.lean</code> proves the claims.</li></ul>\n<p>If you are new here, read <code>Main.lean</code> first to see what is proved, then <code>Statement.lean</code> for what the claims mean. <code>Model/Standard/PhaseTripleProductHeadline.lean</code> specialises the two state-level claims to ForShor's concrete model <code>Model.qs</code>.</p>\n<h2>The claims</h2>\n<p>Each is a <code>def \u2026 : Prop</code> in <code>Statement.lean</code>; <code>Main.lean</code> proves it under the name in the last column.</p>\n<table><thead><tr><th>Claim</th><th>In words</th><th>Proved as</th></tr></thead><tbody><tr><td><code>PTPLowerExactCorrect</code> (with <code>PTPExactCensus</code>)</td><td>For a checked policy and three disjoint <code>n</code>-qubit registers there is a circuit following the policy at exact widths that acts as the PTP phase operator on every clean state, with an exact gate census and a qubit upper bound</td><td><code>ptp_lowerExact_correct</code></td></tr><tr><td><code>PTPCtlLowerExactCorrect</code></td><td>The same, controlled, by masking one operand</td><td><code>ptp_ctl_lowerExact_correct</code></td></tr><tr><td><code>PTPPadLowerExactCorrect</code></td><td>The same on operands of unequal widths, by sign-extension padding</td><td><code>ptp_pad_lowerExact_correct</code></td></tr><tr><td><code>PTPGateTotalBound</code></td><td>For a constant policy the census total is <code>O(n ^ log_k (3k \u2212 2))</code></td><td><code>ptp_gateTotal_bound</code></td></tr><tr><td><code>PTPCircuitGateCountBound</code></td><td>For a constant policy there is a circuit following it with at most that many gates</td><td><code>ptp_circuit_gateCount_bound</code></td></tr><tr><td><code>PTPQubitsTight</code>, <code>PTPQubitsTightExact</code>, <code>PTPQubitsLePtpQubits</code></td><td>There is a circuit following the policy touching at most <code>3n + ptpWsTD</code> distinct qubits; <code>ptpQubits</code> is a proved upper bound at the scan rule</td><td><code>ptp_qubits_tight</code>, <code>ptp_qubits_tight_exact</code>, <code>ptp_qubits_le_ptpQubits</code></td></tr><tr><td><code>PTPChainContractsTightIffReach</code></td><td>The exact-width acceptance rule, stated without the ladder</td><td><code>ptp_chainContractsTight_iff_reach</code></td></tr></tbody></table>\n<h2>Scope, read before citing</h2>\n<ul><li>The state-level claims cover the span of <strong>clean</strong> kets: the operands fit signed <code>n \u2265 1</code> bits and the workspace is <code>|0\u27e9</code>. For <code>n = 0</code> no basis ket is clean, so the state-level conjunct is vacuous (the circuit, the workspace bound and the census are still required).</li><li><strong>The gate-count and qubit claims are existential.</strong> Each says that <em>some</em> circuit following the policy has that count. None of them says it is the circuit of <code>PTPLowerExactCorrect</code>, or that it is correct; correctness and the census are separately proved for every circuit of the form <code>PolicyImplX</code>, but no single claim bundles the two.</li><li>Controlled PTP is built by <strong>masking</strong> one operand. ForShor's construction, which controls every leaf phase, is a different one and is not covered here.</li><li>The gate-count claims are for a <strong>constant policy</strong> (one table at every width) and count <code>rz + toffoli + x + h + cnot</code> under <code>shorGateResourceModel</code>. They are not T counts.</li><li>The qubit claims bound <code>LowGate.usedQubits</code>, the qubits the gates name. They are not the framework's <code>qubitCount</code>, which also adds the scratch <code>cleanAnc</code>.</li><li>A table is admissible when it passes <code>PTPTable.contract</code>, a Boolean check: <code>3k \u2212 2</code> distinct benchmark-valid points (<code>validPoint?</code>, signed powers of two and <code>\u221e</code>), the program consumes them in order, no <code>addScaled</code> adds a register to itself, and the program returns the registers to where they started. The \"benchmark-valid\" restriction is the benchmark's rule, not something the mathematics needs.</li></ul>\n<h2>Witnesses</h2>\n<p><code>Proofs/Witness/</code> holds executable evidence that the hypotheses are satisfiable and that the side conditions matter. <code>FaultChallenge</code> shows the contract rejects a table whose points are declared in the wrong order, and that evaluating it anyway gives the wrong value; and that wrapping the registers one bit below the width scan breaks the node. <code>RecursionWitness</code> builds a concrete depth-one recursion on three 20-qubit registers. <code>ExactFault</code> shows that one bit below the exact width the gate-level circuit is wrong on a concrete state.</p>\n<h2>Relation to the Framework's table language</h2>\n<p><code>Statement.lean</code> reuses <code>Framework/ToomCookTable.lean</code> for registers, states, points, <code>valid_ops</code>, <code>Prog</code>, <code>applyOp?</code>, <code>run?</code> and <code>expectedRow</code>. The Framework states admissibility as propositions (<code>ProgConsumesPts</code>, <code>SafeProg</code>); the PTP contract needs a decision procedure, so <code>Statement.lean</code> also defines the Boolean checkers <code>progConsumesPts?</code>, <code>safeProg?</code> and <code>returnsToStartCheck</code>. <code>Proofs/Support/Language.lean</code> relates each to its propositional form (<code>checkedProg_iff_framework</code>, <code>contract_iff_framework</code>).</p>\n<h2>Provenance</h2>\n<p>This development was ported from the PTP verification suite of an interim fork of ShorTableOptimization (<code>TableGeneration/RecursiveCost/PTP/</code>, commit <code>11fd68b</code>), onto this repository's table language. Theorem names are as in that suite, except that the seven final theorems of the extensions are named in <code>Main.lean</code> and carry a <code>_core</code> suffix in <code>Proofs/</code>. Statements of the first three claims are verbatim copies; the others were rewritten from theorem statements into propositions with their hypotheses as implications, and an independent line-by-line review found no difference in meaning.</p>"
+  },
+  "PhaseTripleProduct/Main.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 25,
+     "name": "Shor.PTP.ptp_lowerExact_correct"
+    },
+    {
+     "kind": "theorem",
+     "line": 34,
+     "name": "Shor.PTP.ptp_ctl_lowerExact_correct"
+    },
+    {
+     "kind": "theorem",
+     "line": 40,
+     "name": "Shor.PTP.ptp_pad_lowerExact_correct"
+    },
+    {
+     "kind": "theorem",
+     "line": 47,
+     "name": "Shor.PTP.ptp_gateTotal_bound"
+    },
+    {
+     "kind": "theorem",
+     "line": 53,
+     "name": "Shor.PTP.ptp_circuit_gateCount_bound"
+    },
+    {
+     "kind": "theorem",
+     "line": 59,
+     "name": "Shor.PTP.ptp_qubits_tight"
+    },
+    {
+     "kind": "theorem",
+     "line": 64,
+     "name": "Shor.PTP.ptp_qubits_tight_exact"
+    },
+    {
+     "kind": "theorem",
+     "line": 69,
+     "name": "Shor.PTP.ptp_qubits_le_ptpQubits"
+    },
+    {
+     "kind": "theorem",
+     "line": 74,
+     "name": "Shor.PTP.ptp_chainContractsTight_iff_reach"
+    }
+   ],
+   "docstring": "# PhaseTripleProduct Main Theorems\n\nThis module proves the public claims stated in `Statement.lean`. All supporting lemmas are\nkept under `PhaseTripleProduct.Proofs`.\n\nRead `Statement.lean` for what each claim means; building this file is the guarantee that every\none of them is proved. Each theorem below has the same name as the claim it proves, in lower case.",
+   "fsPath": "Implementation/PhaseTripleProduct/Main.lean",
+   "importedBy": [],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Asymptotic.lean",
+    "PhaseTripleProduct/Proofs/Controlled.lean",
+    "PhaseTripleProduct/Proofs/QubitsTight.lean",
+    "PhaseTripleProduct/Proofs/Surface.lean",
+    "PhaseTripleProduct/Proofs/Threshold.lean",
+    "PhaseTripleProduct/Proofs/Unbalanced.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 79,
+   "name": "Main.lean",
+   "path": "PhaseTripleProduct/Main.lean"
+  },
+  "PhaseTripleProduct/Proofs": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Asymptotic.lean",
+    "PhaseTripleProduct/Proofs/Controlled.lean",
+    "PhaseTripleProduct/Proofs/ExactBoard",
+    "PhaseTripleProduct/Proofs/Gates",
+    "PhaseTripleProduct/Proofs/QubitsTight.lean",
+    "PhaseTripleProduct/Proofs/Recursion",
+    "PhaseTripleProduct/Proofs/Support",
+    "PhaseTripleProduct/Proofs/Surface.lean",
+    "PhaseTripleProduct/Proofs/Table",
+    "PhaseTripleProduct/Proofs/Threshold.lean",
+    "PhaseTripleProduct/Proofs/Unbalanced.lean",
+    "PhaseTripleProduct/Proofs/Values",
+    "PhaseTripleProduct/Proofs/Witness"
+   ],
+   "declCount": 532,
+   "fileCount": 25,
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs",
+   "kind": "folder",
+   "name": "Proofs",
+   "path": "PhaseTripleProduct/Proofs",
+   "readmeHtml": null
+  },
+  "PhaseTripleProduct/Proofs/Asymptotic.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 28,
+     "name": "Shor.PTP.foldl_max_le_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 34,
+     "name": "Shor.PTP.wMax_le_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 37,
+     "name": "Shor.PTP.le_wMax"
+    },
+    {
+     "kind": "theorem",
+     "line": 40,
+     "name": "Shor.PTP.wget_le_wMax"
+    },
+    {
+     "kind": "theorem",
+     "line": 46,
+     "name": "Shor.PTP.wMax_set_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 54,
+     "name": "Shor.PTP.wMax_wStep_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 70,
+     "name": "Shor.PTP.scanMax_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 79,
+     "name": "Shor.PTP.initW_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 87,
+     "name": "Shor.PTP.top_limb_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 98,
+     "name": "Shor.PTP.childWidth_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 111,
+     "name": "Shor.PTP.ptpTightWidth_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 117,
+     "name": "Shor.PTP.cpCount_eq_pointCount"
+    },
+    {
+     "kind": "theorem",
+     "line": 132,
+     "name": "Shor.PTP.gateTotal_leaf"
+    },
+    {
+     "kind": "theorem",
+     "line": 144,
+     "name": "Shor.PTP.gateTotal_node"
+    },
+    {
+     "kind": "theorem",
+     "line": 168,
+     "name": "Shor.PTP.cast_three_k_sub_two"
+    },
+    {
+     "kind": "theorem",
+     "line": 172,
+     "name": "Shor.PTP.ptpExponent_rpow"
+    },
+    {
+     "kind": "theorem",
+     "line": 179,
+     "name": "Shor.PTP.one_lt_ptpExponent"
+    },
+    {
+     "kind": "theorem",
+     "line": 188,
+     "name": "Shor.PTP.choose_const"
+    },
+    {
+     "kind": "theorem",
+     "line": 195,
+     "name": "Shor.PTP.ptp_gateTotal_bound_core"
+    },
+    {
+     "kind": "theorem",
+     "line": 265,
+     "name": "Shor.PTP.ptp_circuit_gateCount_bound_core"
+    }
+   ],
+   "docstring": "# PTP asymptotic gate count (analogue of ForShor `GateCount/PhaseProduct`)\n\nFor a constant policy (one table `T`, `k` limbs, `3k - 2` points) the exact-board gate count\n`ptpGateTotalD` is `O(n ^ \u03b1)` with `\u03b1 = log_k (3k - 2)` (`ptp_gateTotal_bound_core`), and the\nconstructed circuit of `ptp_gate_full_exact` has that many gates (`ptp_circuit_gateCount_bound_core`).\n\nStructure (as ForShor's `Math/MasterTheorem` + `GateCount/PhaseProduct`):\n1. `scanMax_le`, `childWidth_le`, `ptpTightWidth_le`: the width contraction\n   `n \u21a6 n/k + k + D(ops)` (`D` = total shift and add growth of the program);\n2. the census recursion `gateTotal_node`: per-level cost `\u2264 \u039b\u00b7C + B` plus `3k - 2` children;\n3. ForShor's `shifted_master_theorem_exact_family` applied to that recurrence.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Asymptotic.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Main.lean"
+   ],
+   "imports": [
+    "PhaseProduct/Proofs/Math/MasterTheorem.lean",
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 288,
+   "name": "Asymptotic.lean",
+   "path": "PhaseTripleProduct/Proofs/Asymptotic.lean"
+  },
+  "PhaseTripleProduct/Proofs/Controlled.lean": {
+   "declarations": [
+    {
+     "kind": "structure",
+     "line": 39,
+     "name": "Shor.PTP.MaskOK"
+    },
+    {
+     "kind": "theorem",
+     "line": 45,
+     "name": "Shor.PTP.MaskOK.tail"
+    },
+    {
+     "kind": "theorem",
+     "line": 60,
+     "name": "Shor.PTP.evalL_maskGate_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 96,
+     "name": "Shor.PTP.evalL_unmask_mask"
+    },
+    {
+     "kind": "theorem",
+     "line": 114,
+     "name": "Shor.PTP.toNat_congr_bits"
+    },
+    {
+     "kind": "theorem",
+     "line": 132,
+     "name": "Shor.PTP.toNat_mask"
+    },
+    {
+     "kind": "theorem",
+     "line": 163,
+     "name": "Shor.PTP.tcDecodeWidth_mask"
+    },
+    {
+     "kind": "theorem",
+     "line": 179,
+     "name": "Shor.PTP.mem_zip_fst"
+    },
+    {
+     "kind": "theorem",
+     "line": 182,
+     "name": "Shor.PTP.mem_zip_snd"
+    },
+    {
+     "kind": "theorem",
+     "line": 185,
+     "name": "Shor.PTP.maskOK_reg"
+    },
+    {
+     "kind": "theorem",
+     "line": 197,
+     "name": "Shor.PTP.pair_mem_zip"
+    },
+    {
+     "kind": "theorem",
+     "line": 206,
+     "name": "Shor.PTP.evalL_maskReg_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 229,
+     "name": "Shor.PTP.evalL_ctlGate_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 255,
+     "name": "Shor.PTP.fitsSignedWidth_zero"
+    },
+    {
+     "kind": "theorem",
+     "line": 267,
+     "name": "Shor.PTP.evalL_ctl_ptp_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 339,
+     "name": "Shor.PTP.evalL_ctl_ptp_state"
+    },
+    {
+     "kind": "theorem",
+     "line": 366,
+     "name": "Shor.PTP.resources_maskGate"
+    },
+    {
+     "kind": "theorem",
+     "line": 377,
+     "name": "Shor.PTP.resources_unmaskGate"
+    },
+    {
+     "kind": "theorem",
+     "line": 388,
+     "name": "Shor.PTP.adjToffCount_maskGate"
+    },
+    {
+     "kind": "theorem",
+     "line": 393,
+     "name": "Shor.PTP.adjToffCount_unmaskGate"
+    },
+    {
+     "kind": "theorem",
+     "line": 399,
+     "name": "Shor.PTP.usedQubits_maskGate"
+    },
+    {
+     "kind": "theorem",
+     "line": 414,
+     "name": "Shor.PTP.usedQubits_unmaskGate"
+    },
+    {
+     "kind": "theorem",
+     "line": 441,
+     "name": "Shor.PTP.ptp_ctl_lowerExact_correct_core"
+    }
+   ],
+   "docstring": "# Controlled PTP by operand masking (blueprint item O3, masked-operand form)\n\n`c`-controlled PTP: apply `exp(i\u00b7\u03c0\u00b7\u03c6\u00b7\u27e6x\u2080\u27e7\u27e6x\u2081\u27e7\u27e6x\u2082\u27e7)` when the control qubit `c` is `|1\u27e9`, and the\nidentity when it is `|0\u27e9`. Scope: on the span of **clean** kets only (the fresh register `Y` and the\nrecursion workspace are `|0\u27e9`, the operands fit signed `n` bits, `n \u2265 1`); this is not a statement\nabout arbitrary states, and ForShor's leaf-controlled gate is not what is built.\n\n**Construction (not ForShor's leaf control).** The phase is trilinear in integers, so\n`c \u00b7 x\u2080` can replace `x\u2080`: in two's complement, the bitwise AND of an `n`-bit register with a\nsingle bit `c` is exactly the register holding `c \u00b7 x\u2080` (`tcDecodeWidth_mask`). The circuit is\n\n    mask ;; G(Y, X\u2081, X\u2082) ;; \u2020mask,      mask = \u220f\u1d62 Toffoli c (X\u2080\u1d62) (Y\u1d62),\n\nwith `Y` a fresh clean `n`-qubit register and `G` any circuit meeting the *uncontrolled* PTP\ncontract on `(Y, X\u2081, X\u2082)` (for instance `ptp_gate_full_exact`'s). No proof about the node or the\nrecursion is redone; the control costs `2n` Toffoli (`n` of them uncomputations), `n + 1` extra qubits (`Y` and the control)\nand no extra rotations. ForShor's `controlPhaseLeaves` instead controls every leaf phase\n(three rotations per leaf cell instead of one); the two constructions have different cost\nprofiles and neither is claimed optimal. The leaf-control construction remains open.\n\nContents: `maskGate`, `evalL_maskGate_ket` (basis behaviour), `toNat_mask` (register value),\n`evalL_ctlGate_ket` (controlled correctness from an uncontrolled gate), and in\n`ControlledPolicy` section the instantiation at the exact board.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Controlled.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Main.lean",
+    "PhaseTripleProduct/Proofs/Unbalanced.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Surface.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 553,
+   "name": "Controlled.lean",
+   "path": "PhaseTripleProduct/Proofs/Controlled.lean"
+  },
+  "PhaseTripleProduct/Proofs/ExactBoard": {
+   "children": [
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean",
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean"
+   ],
+   "declCount": 42,
+   "fileCount": 3,
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/ExactBoard",
+   "kind": "folder",
+   "name": "ExactBoard",
+   "path": "PhaseTripleProduct/Proofs/ExactBoard",
+   "readmeHtml": null
+  },
+  "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 24,
+     "name": "Shor.PTP.limb_le_floor"
+    },
+    {
+     "kind": "def",
+     "line": 33,
+     "name": "Shor.PTP.mkSplitD"
+    },
+    {
+     "kind": "theorem",
+     "line": 95,
+     "name": "Shor.PTP.mem_R_mkSplitD"
+    },
+    {
+     "kind": "theorem",
+     "line": 111,
+     "name": "Shor.PTP.slot_lt_mkSplitD"
+    },
+    {
+     "kind": "theorem",
+     "line": 124,
+     "name": "Shor.PTP.exists_policyImplD"
+    },
+    {
+     "kind": "theorem",
+     "line": 190,
+     "name": "Shor.PTP.ptp_gate_full_D"
+    },
+    {
+     "kind": "theorem",
+     "line": 220,
+     "name": "Shor.PTP.ptp_gate_full_exact"
+    },
+    {
+     "kind": "theorem",
+     "line": 240,
+     "name": "Shor.PTP.ptp_gate_full_of_D"
+    }
+   ],
+   "docstring": "# O5 closed: gate-level PTP recursion at EXACT widths exists, is correct, and is counted\n\n`mkSplitD`: the explicit split layout of `Build.lean` (`mkSplit`) at any child width `C'` meeting\nthe layout floor `ptpFloor T.k C \u2264 C'` (lower chunks `< C'`, top chunk `\u2264 C'`); the floor is\nimplied by `ptpTightWidth T C \u2264 C'` (`floor_le_tight`), so it costs nothing at exact widths.\n\n* `exists_policyImplD`: for a checked policy and any admissible rule (every node width \u2265 exact),\n  every width `C` and disjoint `C`-qubit registers below `base`, a `PolicyImplD` exists with\n  workspace in `[base, base + ptpWorkspaceD P wd C)`;\n* `ptp_gate_full_D`: existence + correctness + full census + qubits, any admissible rule;\n* `ptp_gate_full_exact` (headline, O5): the same on the exact board (`exactRule`);\n* `ptp_gate_full_of_D`: the original `ptp_gate_full` (scan) re-derived as a corollary.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/Asymptotic.lean",
+    "PhaseTripleProduct/Proofs/QubitsTight.lean",
+    "PhaseTripleProduct/Proofs/Surface.lean",
+    "PhaseTripleProduct/Proofs/Witness/ExactFault.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 262,
+   "name": "ExactBuild.lean",
+   "path": "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean"
+  },
+  "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 36,
+     "name": "Shor.PTP.mem_traceVals_head"
+    },
+    {
+     "kind": "theorem",
+     "line": 41,
+     "name": "Shor.PTP.lower_lt_tight"
+    },
+    {
+     "kind": "theorem",
+     "line": 68,
+     "name": "Shor.PTP.top_le_tight"
+    },
+    {
+     "kind": "def",
+     "line": 97,
+     "name": "Shor.PTP.ptpFloor"
+    },
+    {
+     "kind": "theorem",
+     "line": 99,
+     "name": "Shor.PTP.floor_le_tight"
+    },
+    {
+     "kind": "def",
+     "line": 104,
+     "name": "Shor.PTP.exactWidth"
+    },
+    {
+     "kind": "theorem",
+     "line": 108,
+     "name": "Shor.PTP.exactWidth_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 114,
+     "name": "Shor.PTP.AllFits.headF"
+    },
+    {
+     "kind": "theorem",
+     "line": 121,
+     "name": "Shor.PTP.opBasis_invF"
+    },
+    {
+     "kind": "theorem",
+     "line": 200,
+     "name": "Shor.PTP.opGates_stepF"
+    },
+    {
+     "kind": "theorem",
+     "line": 226,
+     "name": "Shor.PTP.body_eval_genF"
+    },
+    {
+     "kind": "theorem",
+     "line": 287,
+     "name": "Shor.PTP.evalL_nodeBody_ket_exact"
+    },
+    {
+     "kind": "theorem",
+     "line": 346,
+     "name": "Shor.PTP.evalL_ptpNode_ket_exact"
+    },
+    {
+     "kind": "theorem",
+     "line": 359,
+     "name": "Shor.PTP.evalL_ptpNodeCCPhase_ket_exact"
+    },
+    {
+     "kind": "theorem",
+     "line": 371,
+     "name": "Shor.PTP.evalL_ptpNode_ket_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 393,
+     "name": "Shor.PTP.specOn_ptpSubNode_exact"
+    },
+    {
+     "kind": "theorem",
+     "line": 423,
+     "name": "Shor.PTP.specOn_ptpSubNode_scan"
+    }
+   ],
+   "docstring": "# O5: gate-level PTP node at EXACT widths\n\nThe gate-level node theorems of `Node.lean` / `Recursion.lean` assume the working width is at\nleast the PTP scan (`childWidth n T.ops \u2264 Lay.width`). Here the hypothesis is weakened to the\nexact width, `ptpTightWidth T n \u2264 Lay.width` (`Exact.lean`), and the scan versions are\nrecovered as corollaries (`tight_le_childWidth`).\n\nWhat the layout needs (the \"floor\"). ForShor's PhaseProduct allocation grows every slot by at\nleast one bit, so its compiler width is `max tight floor`. The PTP split (`SplitLayout`)\nneeds `ext > 0` only for the zero-extended LOWER chunks (`C' \u2265 n/k + 1`); the sign-extended\ntop chunk only needs `C' \u2265 topWidth` (`ext = 0` allowed). Both are implied by the exact width,\nbecause the initial limbs are themselves reachable register values (the start state is in\n`reachRows`): `lower_lt_tight`, `top_le_tight`, `floor_le_tight`. So `exactWidth T n :=\nmax (ptpTightWidth T n) (ptpFloor T.k n) = ptpTightWidth T n` (`exactWidth_eq`): no floor term.\n\n* `body_eval_genF`: body simulation under `AllFits` (signed fit, `-2^(C-1)` allowed) instead of\n  `AllBounded (C-1)` (strict magnitude), which the exact width needs: the exact width is\n  defined by signed fit.\n* `evalL_nodeBody_ket_exact`, `evalL_ptpNode_ket_exact`, `evalL_ptpNodeCCPhase_ket_exact`:\n  one node, any width \u2265 exact.\n* `specOn_ptpSubNode_exact`: the O2 step at any width \u2265 exact.\n* `*_scan`: the original statements re-derived from the exact ones.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Recursion/Recursion.lean",
+    "PhaseTripleProduct/Proofs/Values/Exact.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 434,
+   "name": "ExactNode.lean",
+   "path": "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean"
+  },
+  "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean": {
+   "declarations": [
+    {
+     "kind": "abbrev",
+     "line": 31,
+     "name": "Shor.PTP.scanRule"
+    },
+    {
+     "kind": "theorem",
+     "line": 34,
+     "name": "Shor.PTP.admissible_exact"
+    },
+    {
+     "kind": "theorem",
+     "line": 36,
+     "name": "Shor.PTP.admissible_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 42,
+     "name": "Shor.PTP.PolicyImplD.specOn"
+    },
+    {
+     "kind": "theorem",
+     "line": 54,
+     "name": "Shor.PTP.evalL_policyImplD_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 72,
+     "name": "Shor.PTP.PolicyImpl.toD"
+    },
+    {
+     "kind": "theorem",
+     "line": 79,
+     "name": "Shor.PTP.PolicyImplD.toScan"
+    },
+    {
+     "kind": "theorem",
+     "line": 87,
+     "name": "Shor.PTP.PolicyImpl.specOn_of_exact"
+    },
+    {
+     "kind": "theorem",
+     "line": 100,
+     "name": "Shor.PTP.ptpResourcesD_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 111,
+     "name": "Shor.PTP.ptpAndDagD_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 122,
+     "name": "Shor.PTP.ptpCnotFullD_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 133,
+     "name": "Shor.PTP.ptpWorkspaceD_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 147,
+     "name": "Shor.PTP.PolicyImplD.resources"
+    },
+    {
+     "kind": "theorem",
+     "line": 198,
+     "name": "Shor.PTP.PolicyImplD.andDag_count"
+    },
+    {
+     "kind": "theorem",
+     "line": 223,
+     "name": "Shor.PTP.PolicyImplD.cnot"
+    },
+    {
+     "kind": "theorem",
+     "line": 254,
+     "name": "Shor.PTP.PolicyImplD.usedQubits"
+    },
+    {
+     "kind": "theorem",
+     "line": 319,
+     "name": "Shor.PTP.qubits_le_of_policyImplD"
+    }
+   ],
+   "docstring": "# O5: gate-level PTP recursion under any admissible width rule (exact widths included)\n\n`PolicyImpl` (Recursion.lean) fixes the child width of every node to the PTP scan\n`childWidth C T.ops`. Here the child width is a parameter `wd : WidthRule`\n(`wd T C` = working width of the children of the node with table `T` at width `C`):\n\n* `PolicyImplD P wd`: gate-level recursions following `P` with node widths `wd`;\n* `Admissible P wd`: every band's node width is at least exact (`ptpTightWidth \u2264 wd`, `0 < n`);\n  `exactRule` (the exact board) and `scanRule` (the PTP scan) are admissible;\n* `PolicyImplD.specOn`: correctness through the full recursion for every admissible rule;\n* census: `ptpResourcesD`, `ptpCnotFullD`, `ptpAndDagD`, `ptpWorkspaceD` (the `ptp*` formulas\n  with `childWidth` replaced by `wd`), proved equal to the circuit's counts at every depth\n  (`PolicyImplD.resources`, `.cnot`, `.andDag_count`, `qubits_le_of_policyImplD`);\n* scan corollaries: `PolicyImpl P = PolicyImplD P scanRule` (`PolicyImpl.toD`,\n  `PolicyImplD.toScan`), the `D` formulas at `scanRule` are the original ones\n  (`ptpResourcesD_scan`, \u2026), and `PolicyImpl.specOn_of_exact` re-derives `PolicyImpl.specOn`.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean",
+    "PhaseTripleProduct/Proofs/Recursion/CensusFull.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 347,
+   "name": "ExactRecursion.lean",
+   "path": "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean"
+  },
+  "PhaseTripleProduct/Proofs/Gates": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Gates/Leaf.lean",
+    "PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean",
+    "PhaseTripleProduct/Proofs/Gates/Node.lean"
+   ],
+   "declCount": 85,
+   "fileCount": 3,
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Gates",
+   "kind": "folder",
+   "name": "Gates",
+   "path": "PhaseTripleProduct/Proofs/Gates",
+   "readmeHtml": null
+  },
+  "PhaseTripleProduct/Proofs/Gates/Leaf.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 42,
+     "name": "Shor.PTP.triples"
+    },
+    {
+     "kind": "def",
+     "line": 46,
+     "name": "Shor.PTP.leafCells"
+    },
+    {
+     "kind": "def",
+     "line": 49,
+     "name": "Shor.PTP.cellGate"
+    },
+    {
+     "kind": "def",
+     "line": 53,
+     "name": "Shor.PTP.ptpLeafCCPhase"
+    },
+    {
+     "kind": "theorem",
+     "line": 58,
+     "name": "Shor.PTP.triples_length"
+    },
+    {
+     "kind": "theorem",
+     "line": 69,
+     "name": "Shor.PTP.mem_triples"
+    },
+    {
+     "kind": "theorem",
+     "line": 76,
+     "name": "Shor.PTP.leafCells_length"
+    },
+    {
+     "kind": "def",
+     "line": 83,
+     "name": "Shor.PTP.cellExp"
+    },
+    {
+     "kind": "theorem",
+     "line": 89,
+     "name": "Shor.PTP.evalL_cellGate_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 100,
+     "name": "Shor.PTP.sum_triples_one"
+    },
+    {
+     "kind": "theorem",
+     "line": 110,
+     "name": "Shor.PTP.sum_triples_two"
+    },
+    {
+     "kind": "theorem",
+     "line": 121,
+     "name": "Shor.PTP.sum_triples"
+    },
+    {
+     "kind": "theorem",
+     "line": 134,
+     "name": "Shor.PTP.cellExp_sum"
+    },
+    {
+     "kind": "theorem",
+     "line": 164,
+     "name": "Shor.PTP.evalL_ptpLeafCCPhase_ket"
+    },
+    {
+     "kind": "def",
+     "line": 182,
+     "name": "Shor.PTP.rotCount"
+    },
+    {
+     "kind": "def",
+     "line": 189,
+     "name": "Shor.PTP.cnotCount"
+    },
+    {
+     "kind": "def",
+     "line": 196,
+     "name": "Shor.PTP.toffCount"
+    },
+    {
+     "kind": "theorem",
+     "line": 202,
+     "name": "Shor.PTP.count_sequence"
+    },
+    {
+     "kind": "def",
+     "line": 210,
+     "name": "Shor.PTP.LeafDisjoint"
+    },
+    {
+     "kind": "theorem",
+     "line": 213,
+     "name": "Shor.PTP.cell_distinct"
+    },
+    {
+     "kind": "theorem",
+     "line": 222,
+     "name": "Shor.PTP.ne_of_activeDisjoint"
+    },
+    {
+     "kind": "theorem",
+     "line": 230,
+     "name": "Shor.PTP.cell_distinct'"
+    },
+    {
+     "kind": "theorem",
+     "line": 237,
+     "name": "Shor.PTP.cellGate_census"
+    },
+    {
+     "kind": "theorem",
+     "line": 242,
+     "name": "Shor.PTP.sum_const_of_mem"
+    },
+    {
+     "kind": "theorem",
+     "line": 248,
+     "name": "Shor.PTP.leafCCPhase_census"
+    },
+    {
+     "kind": "theorem",
+     "line": 263,
+     "name": "Shor.PTP.gateCount_ptpLeafCCPhase"
+    }
+   ],
+   "docstring": "# The PTP CCPhase leaf: a 3-way grid of doubly-controlled phases (gate level)\n\n**Status: documented alternative.** The default PTP leaf is the compute\u2013rotate\u2013uncompute\nsandwich `ptpLeafSandwich` (`LeafSandwich.lean`; its definition is in `Statement.lean`, together\nwith `Cell`, `cellAngle` and `LeafActiveDisjoint`), 1 Rz per cell instead of 5. This module keeps\nthe original CCPhase leaf, which the claims do not mention, and all its theorems,\nrenamed `ptpLeafCCPhase`, `evalL_ptpLeafCCPhase_ket`, `leafCCPhase_census`,\n`gateCount_ptpLeafCCPhase`; it also holds the shared grid algebra (`leafCells`,\n`cellExp`, `cellExp_sum`, `triples`) and the gate counters.\n\nThe PTP base case, in ForShor's low-level gate language `Shor.LowGate` and its\nsemantics `Shor.LowerGateClass`, modelled on ForShor's PhaseProduct naive leaf\n(`Naive_SignedPhaseProd`, a 2-way grid of `CPhase` cells).\n\n**Cell.** For one bit `a` of `x`, `c` of `y` and `d` of `z`, with two's-complement\nweights `w\u2090, w_c, w_d \u2208 {\u00b12^i}` (`Shor.signedTerms`; the top bit has weight\n`-2^(w-1)`), the cell is ForShor's `LowGate.CCPhase a c d \u03b8` with\n`\u03b8 = \u03c6 \u00b7 w\u2090 \u00b7 w_c \u00b7 w_d`. Its gates (ForShor `Gates/NaiveLeaf.lean`), for\ndistinct qubits:\n\n    CPhase a c (\u03b8/2)  = Phase a (\u03b8/4); Phase c (\u03b8/4); CNOT a c; Phase c (-\u03b8/4); CNOT a c\n    Phase d (\u03b8/2); Toffoli a c d; Phase d (-\u03b8/2); Toffoli a c d\n\ni.e. 5 single-qubit phase rotations, 2 CNOT, 2 Toffoli (9 gates). On a basis\nstate it multiplies by `exp(i\u00b7\u03c0\u00b7\u03b8\u00b7b\u2090\u00b7b_c\u00b7b_d)` (ForShor `evalL_CCPhase_ket`).\n\n**Leaf.** `ptpLeafCCPhase \u03c6 x y z` is the sequence of all `|x|\u00b7|y|\u00b7|z|` cells. Since\n`extToInt r = \u03a3 w\u1d62 b\u1d62`, the phases add up to `\u03c0\u00b7\u03c6\u00b7\u27e6x\u27e7\u00b7\u27e6y\u27e7\u00b7\u27e6z\u27e7`\n(`evalL_ptpLeafCCPhase_ket`), on every basis state, with no disjointness or workspace\nhypothesis. Gate counts (`gateCount_ptpLeafCCPhase`, `leafCCPhase_census`) need the three\nregisters to own disjoint qubits.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Gates/Leaf.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean"
+   ],
+   "imports": [
+    "PhaseProduct/Proofs/NaiveLeaf.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 273,
+   "name": "Leaf.lean",
+   "path": "PhaseTripleProduct/Proofs/Gates/Leaf.lean"
+  },
+  "PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 56,
+     "name": "Shor.PTP.AncClean"
+    },
+    {
+     "kind": "theorem",
+     "line": 60,
+     "name": "Shor.PTP.bit_false_of_freshZero"
+    },
+    {
+     "kind": "theorem",
+     "line": 69,
+     "name": "Shor.PTP.ancClean_of_freshZero"
+    },
+    {
+     "kind": "theorem",
+     "line": 80,
+     "name": "Shor.PTP.evalL_adjToffoli_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 95,
+     "name": "Shor.PTP.bit_toffoliBasis_clean"
+    },
+    {
+     "kind": "def",
+     "line": 105,
+     "name": "Shor.PTP.sandCellExp"
+    },
+    {
+     "kind": "theorem",
+     "line": 111,
+     "name": "Shor.PTP.evalL_sandCell_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 125,
+     "name": "Shor.PTP.sandCellExp_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 139,
+     "name": "Shor.PTP.evalL_sandRow_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 164,
+     "name": "Shor.PTP.mem_pairsOf"
+    },
+    {
+     "kind": "theorem",
+     "line": 171,
+     "name": "Shor.PTP.pairsOf_length"
+    },
+    {
+     "kind": "theorem",
+     "line": 179,
+     "name": "Shor.PTP.sum_rows_eq_sum_triples"
+    },
+    {
+     "kind": "theorem",
+     "line": 199,
+     "name": "Shor.PTP.forall\u2082_map_of_forall"
+    },
+    {
+     "kind": "theorem",
+     "line": 214,
+     "name": "Shor.PTP.evalL_ptpLeafSandwich_ket"
+    },
+    {
+     "kind": "structure",
+     "line": 240,
+     "name": "Shor.PTP.AddField"
+    },
+    {
+     "kind": "def",
+     "line": 245,
+     "name": "Shor.PTP.fRz"
+    },
+    {
+     "kind": "def",
+     "line": 246,
+     "name": "Shor.PTP.fCnot"
+    },
+    {
+     "kind": "def",
+     "line": 247,
+     "name": "Shor.PTP.fToff"
+    },
+    {
+     "kind": "def",
+     "line": 248,
+     "name": "Shor.PTP.fX"
+    },
+    {
+     "kind": "def",
+     "line": 249,
+     "name": "Shor.PTP.fH"
+    },
+    {
+     "kind": "theorem",
+     "line": 251,
+     "name": "Shor.PTP.field_sequence"
+    },
+    {
+     "kind": "theorem",
+     "line": 257,
+     "name": "Shor.PTP.sandCell_resources"
+    },
+    {
+     "kind": "theorem",
+     "line": 262,
+     "name": "Shor.PTP.sandRow_field"
+    },
+    {
+     "kind": "theorem",
+     "line": 272,
+     "name": "Shor.PTP.leafSandwich_field"
+    },
+    {
+     "kind": "theorem",
+     "line": 285,
+     "name": "Shor.PTP.leafSandwich_cleanAnc"
+    },
+    {
+     "kind": "theorem",
+     "line": 308,
+     "name": "Shor.PTP.ptpLeafSandwich_resources"
+    },
+    {
+     "kind": "theorem",
+     "line": 326,
+     "name": "Shor.PTP.ptpLeafSandwich_counts"
+    },
+    {
+     "kind": "theorem",
+     "line": 358,
+     "name": "Shor.PTP.ptpLeafSandwich_usedQubits_subset"
+    }
+   ],
+   "docstring": "# The PTP sandwich leaf: compute\u2013rotate\u2013uncompute (gate level)\n\nThe default PTP base case (2026-10-28), in ForShor's `Shor.LowGate` language. It\nreplaces the CCPhase grid (`Leaf.lean`, kept as `ptpLeafCCPhase`): every cell is\n**one** rotation on an ancilla holding the AND of its three control bits, and the\nAND of the `x`/`y` bits is shared along the `z` row.\n\n**Gates.** Two clean ancilla qubits `t`, `u`. For every signed bit term `a` of `x`\nand `c` of `y` (a *row*):\n\n    Toffoli a c t                       -- compute t = x_a \u2227 y_c\n    for every signed bit term d of z:   -- one cell\n      Toffoli t d u                     --   compute u = t \u2227 z_d\n      Phase u (\u03c6 \u00b7 w\u2090 \u00b7 w_c \u00b7 w_d)      --   the one Rz of the cell\n      \u2020 Toffoli t d u                   --   uncompute u\n    \u2020 Toffoli a c t                     -- uncompute t\n\nUncomputations are written `LowGate.adj (Toffoli \u2026)` (ForShor's `\u2020`), so the census\ncan tell And from And\u2020 (the Qualtran `And` / `And(uncompute=True)` of the site's\n`TripleLeaf`); semantically a Toffoli is its own inverse.\n\n**Ancilla model.** ForShor's `LowGate` has no allocation node for scratch qubits:\nthe PP lowering keeps workspace in `ExtReg` reserves and states cleanliness as\n`FreshZero r b` (`toNat r b = 0`), with `zeroExtend`/`zeroDealloc` semantically\nthe identity. The sandwich leaf follows the same convention: the ancillas are two\nqubit indices, and the hypotheses (`SandwichAnc`) are exactly\n\n* `t \u2260 u`, and neither is an active qubit of `x`, `y` or `z`;\n* both are `|0\u27e9` in the input basis state (`bit t b = false`, `bit u b = false`;\n  `ancClean_of_freshZero` derives this from ForShor's `FreshZero` of any register\n  containing them);\n\nplus active-qubit disjointness of `x`, `y`, `z` (`LeafActiveDisjoint`). Under them\n`evalL_ptpLeafSandwich_ket`: the leaf multiplies `ket b` by\n`exp(i\u00b7\u03c0\u00b7\u03c6\u00b7\u27e6x\u27e7\u00b7\u27e6y\u27e7\u00b7\u27e6z\u27e7)` and returns `ket b` itself, so the ancillas are back in\n`|0\u27e9`. (Unlike the CCPhase leaf, the hypotheses are needed: a dirty `t` or a\nqubit shared between operands breaks the AND.)\n\n**Census** (`ptpLeafSandwich_resources`, any `LowGateResourceModel`), with\n`W\u00b2 = |x|\u00b7|y|`, `W\u00b3 = |x|\u00b7|y|\u00b7|z|`: `Rz = W\u00b3` (one per cell), `Toffoli = 2(W\u00b2 + W\u00b3)`\nof which `W\u00b2 + W\u00b3` are uncomputations (`adjToffCount`), `CNOT = X = H = 0`, model\n`cleanAnc = 0`; the qubits touched are inside `x \u222a y \u222a z \u222a {t, u}`\n(`ptpLeafSandwich_usedQubits_subset`), i.e. 2 ancillas.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/Gates/Node.lean"
+   ],
+   "imports": [
+    "Framework/Gatecount/ResourceModel.lean",
+    "PhaseTripleProduct/Proofs/Gates/Leaf.lean"
+   ],
+   "kind": "file",
+   "lines": 399,
+   "name": "LeafSandwich.lean",
+   "path": "PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean"
+  },
+  "PhaseTripleProduct/Proofs/Gates/Node.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 54,
+     "name": "Shor.PTP.ptpNode"
+    },
+    {
+     "kind": "def",
+     "line": 61,
+     "name": "Shor.PTP.ptpNodeCCPhase"
+    },
+    {
+     "kind": "theorem",
+     "line": 72,
+     "name": "Shor.PTP.bit_shiftLBasis_out"
+    },
+    {
+     "kind": "theorem",
+     "line": 80,
+     "name": "Shor.PTP.bit_shiftRBasis_out"
+    },
+    {
+     "kind": "theorem",
+     "line": 87,
+     "name": "Shor.PTP.bit_negateBasis_out"
+    },
+    {
+     "kind": "theorem",
+     "line": 91,
+     "name": "Shor.PTP.bit_addScaledBasis_out"
+    },
+    {
+     "kind": "abbrev",
+     "line": 104,
+     "name": "Shor.PTP.Files"
+    },
+    {
+     "kind": "def",
+     "line": 107,
+     "name": "Shor.PTP.updF"
+    },
+    {
+     "kind": "def",
+     "line": 111,
+     "name": "Shor.PTP.Inv"
+    },
+    {
+     "kind": "def",
+     "line": 117,
+     "name": "Shor.PTP.dstOf"
+    },
+    {
+     "kind": "theorem",
+     "line": 124,
+     "name": "Shor.PTP.vStepF_ne"
+    },
+    {
+     "kind": "def",
+     "line": 129,
+     "name": "Shor.PTP.opBasis"
+    },
+    {
+     "kind": "theorem",
+     "line": 137,
+     "name": "Shor.PTP.evalL_opGate"
+    },
+    {
+     "kind": "theorem",
+     "line": 149,
+     "name": "Shor.PTP.opBasis_inv"
+    },
+    {
+     "kind": "theorem",
+     "line": 231,
+     "name": "Shor.PTP.inv_unique"
+    },
+    {
+     "kind": "def",
+     "line": 255,
+     "name": "Shor.PTP.bodyPhase"
+    },
+    {
+     "kind": "theorem",
+     "line": 265,
+     "name": "Shor.PTP.updF_three"
+    },
+    {
+     "kind": "theorem",
+     "line": 272,
+     "name": "Shor.PTP.opGates_step"
+    },
+    {
+     "kind": "theorem",
+     "line": 297,
+     "name": "Shor.PTP.evalL_leafCCPhaseChild"
+    },
+    {
+     "kind": "def",
+     "line": 316,
+     "name": "Shor.PTP.ChildSpec"
+    },
+    {
+     "kind": "theorem",
+     "line": 327,
+     "name": "Shor.PTP.leafCCPhase_childSpec"
+    },
+    {
+     "kind": "theorem",
+     "line": 339,
+     "name": "Shor.PTP.triple_disjoint"
+    },
+    {
+     "kind": "def",
+     "line": 344,
+     "name": "Shor.PTP.NodeAnc"
+    },
+    {
+     "kind": "theorem",
+     "line": 347,
+     "name": "Shor.PTP.NodeAnc.sandwichAnc"
+    },
+    {
+     "kind": "theorem",
+     "line": 354,
+     "name": "Shor.PTP.leafSandwich_childSpec"
+    },
+    {
+     "kind": "theorem",
+     "line": 372,
+     "name": "Shor.PTP.body_eval_gen"
+    },
+    {
+     "kind": "theorem",
+     "line": 429,
+     "name": "Shor.PTP.bodyPhase_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 451,
+     "name": "Shor.PTP.cpCount_eq_length"
+    },
+    {
+     "kind": "theorem",
+     "line": 464,
+     "name": "Shor.PTP.evalL_nodeBody_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 544,
+     "name": "Shor.PTP.evalL_ptpNode_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 558,
+     "name": "Shor.PTP.evalL_ptpNodeCCPhase_ket"
+    }
+   ],
+   "docstring": "# One PTP recursion level at the gate level\n\nThe PTP node circuit in ForShor's `LowGate` language, modelled on ForShor's\n`compileAnnotatedOpsToSignedGateAux` (PhaseProduct), with three operand\nfamilies instead of two:\n\n* the layout holds `3 k` slot registers `slot s i` (operand `s`, limb `i`), all\n  of the node's working width `C`, pairwise disjoint;\n* each table operation becomes **three** gates, one per operand: `ShiftL`,\n  `ShiftR`, `Negate` on `slot s i`, `AddScaled (slot s d) (slot s src)`;\n* the `t`-th `phaseProduct i` becomes the child on the triple\n  `(slot 0 i, slot 1 i, slot 2 i)` with angle `\u03c6 \u00b7 c\u209c`; here the child is the\n  compute\u2013rotate\u2013uncompute leaf `ptpLeafSandwich` (`PTP/LeafSandwich.lean`), sharing\n  two clean ancillas `ta`, `ua` across all children (`ptpNodeCCPhase` keeps the\n  original CCPhase-leaf node, `evalL_ptpNodeCCPhase_ket`).\n\n`evalL_ptpNode_ket` (headline): on a basis state whose slots hold the\ntop-heavy limbs of three operands that fit signed `n` bits, whose two leaf\nancillas are off the slots and `|0\u27e9`, and with `C \u2265 childWidth n T.ops`, the\nnode multiplies by `exp(i\u00b7\u03c0\u00b7\u03c6\u00b7x\u2080\u00b7x\u2081\u00b7x\u2082)` and\nreturns the basis state unchanged. The proof is a classical simulation of the\nthree register files, using ForShor's basis-level gate laws\n(`extToInt_addScaledBasis_dst`, `extToInt_shiftLBasis_of_fits`, ...), PTP\nwidth soundness (`node_width_sound`: no write ever wraps) and the PTP node\nidentity.\n\nNot covered here (stated in the inquiry records): the split of three parent\nregisters into the slots and the zero/sign extension to `C` (ForShor's\n`PhaseSplitLayout` + `allocChunkGate`), reserve/workspace management, children\nthat are themselves nodes (only through the `ChildSpec` interface), and any\ncontrolled variant: the circuit is uncontrolled. `evalL_ptpNode_ket` is one\nrecursion level with leaf children on pre-split slots, not the gate-level\ncorrectness of a whole policy.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Gates/Node.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/Recursion/Census.lean"
+   ],
+   "imports": [
+    "PhaseProduct/Proofs/GateLaws.lean",
+    "PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean",
+    "PhaseTripleProduct/Proofs/Values/Semantics.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 569,
+   "name": "Node.lean",
+   "path": "PhaseTripleProduct/Proofs/Gates/Node.lean"
+  },
+  "PhaseTripleProduct/Proofs/QubitsTight.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 40,
+     "name": "Shor.PTP.ptpReserveNeedD_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 51,
+     "name": "Shor.PTP.ptpCleanAncD_scan"
+    },
+    {
+     "kind": "theorem",
+     "line": 63,
+     "name": "Shor.PTP.ptpWsTD_le_formula"
+    },
+    {
+     "kind": "def",
+     "line": 89,
+     "name": "Shor.PTP.nodeExt"
+    },
+    {
+     "kind": "def",
+     "line": 94,
+     "name": "Shor.PTP.poolU"
+    },
+    {
+     "kind": "theorem",
+     "line": 103,
+     "name": "Shor.PTP.sum_chunk"
+    },
+    {
+     "kind": "theorem",
+     "line": 117,
+     "name": "Shor.PTP.sum_extOf"
+    },
+    {
+     "kind": "theorem",
+     "line": 136,
+     "name": "Shor.PTP.card_nodeExt_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 149,
+     "name": "Shor.PTP.card_poolU_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 171,
+     "name": "Shor.PTP.ptpSubNode_used"
+    },
+    {
+     "kind": "theorem",
+     "line": 213,
+     "name": "Shor.PTP.mem_nodeExt_of_R"
+    },
+    {
+     "kind": "theorem",
+     "line": 227,
+     "name": "Shor.PTP.exists_policyImplD_tight"
+    },
+    {
+     "kind": "theorem",
+     "line": 326,
+     "name": "Shor.PTP.ptpWsTD_le_workspace"
+    },
+    {
+     "kind": "theorem",
+     "line": 344,
+     "name": "Shor.PTP.ptp_qubits_tight_core"
+    },
+    {
+     "kind": "theorem",
+     "line": 389,
+     "name": "Shor.PTP.ptp_qubits_tight_exact_core"
+    },
+    {
+     "kind": "theorem",
+     "line": 400,
+     "name": "Shor.PTP.ptp_qubits_le_ptpQubits_core"
+    }
+   ],
+   "docstring": "# Tight qubit accounting for the constructed PTP circuit (blueprint item O7)\n\n`ptp_gate_full_exact` bounds the qubit count by `3n + ptpWorkspaceX P n`, where the workspace is\nan *interval* `[base, base + ptpWorkspace)` whose slot blocks are spaced `C'` apart although only\n`extOf` qubits of each block are used. Here the count is made tight:\n\n* `ptpWsTD P wd n`: workspace actually used: at a node, the `3 (k C' - n)` extension qubits\n  (all three operands grow from `n` to `k` slots of width `C'`) plus the children's workspace,\n  which the children **share**; two leaf ancillas at the bottom;\n* `poolU`: the canonical set of workspace qubits the construction touches (`card \u2264 ptpWsTD`,\n  `card_poolU_le`);\n* `exists_policyImplD_tight`: the existence theorem with the extra clause that every qubit the\n  circuit touches is in the registers or in `poolU`, hence `qubits_le_tight`:\n  `|used| \u2264 3 n + ptpWsTD P wd n`;\n* `ptpWsTD_le_formula`: `3 n + ptpWsTD \u2264` the `ptpQubits`-shaped formula\n  `3 n + 3 \u00b7 ptpReserveNeedD + max (ptpCleanAncD) 2` (at the scan rule this is `ptpQubits`), so the\n  formula, previously unproved, is a proved **upper bound** on the number of distinct qubits the\n  circuit names (`LowGate.usedQubits`).\n\n**What is not bounded.** The framework's qubit total is `usedQubits + resources.cleanAnc`\n(`LowGate.qubitCount`); the Cuccaro/negation scratch counted in `cleanAnc` is *not* part of these\nbounds, and `cleanAnc` of the full recursive circuit is not proved here (only single-node lemmas such\nas `ptpNode_cleanAnc_le`). The formula is also loose by up to a factor `k` per level below depth one:\n`ptpReserveNeed` gives every child slot a private workspace, while the construction shares one pool.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/QubitsTight.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Main.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 412,
+   "name": "QubitsTight.lean",
+   "path": "PhaseTripleProduct/Proofs/QubitsTight.lean"
+  },
+  "PhaseTripleProduct/Proofs/Recursion": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Recursion/Build.lean",
+    "PhaseTripleProduct/Proofs/Recursion/Census.lean",
+    "PhaseTripleProduct/Proofs/Recursion/CensusFull.lean",
+    "PhaseTripleProduct/Proofs/Recursion/Recursion.lean"
+   ],
+   "declCount": 102,
+   "fileCount": 4,
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Recursion",
+   "kind": "folder",
+   "name": "Recursion",
+   "path": "PhaseTripleProduct/Proofs/Recursion",
+   "readmeHtml": null
+  },
+  "PhaseTripleProduct/Proofs/Recursion/Build.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 24,
+     "name": "Shor.PTP.mem_chunkReg"
+    },
+    {
+     "kind": "theorem",
+     "line": 31,
+     "name": "Shor.PTP.chunkReg_length"
+    },
+    {
+     "kind": "theorem",
+     "line": 43,
+     "name": "Shor.PTP.mem_take_of_lower"
+    },
+    {
+     "kind": "theorem",
+     "line": 57,
+     "name": "Shor.PTP.mem_drop_chunk"
+    },
+    {
+     "kind": "theorem",
+     "line": 65,
+     "name": "Shor.PTP.chunk_disjoint"
+    },
+    {
+     "kind": "theorem",
+     "line": 73,
+     "name": "Shor.PTP.mem_interval"
+    },
+    {
+     "kind": "theorem",
+     "line": 79,
+     "name": "Shor.PTP.wMax_initW_ge"
+    },
+    {
+     "kind": "theorem",
+     "line": 87,
+     "name": "Shor.PTP.wMax_le_scanMax"
+    },
+    {
+     "kind": "theorem",
+     "line": 93,
+     "name": "Shor.PTP.limb_lt_childWidth"
+    },
+    {
+     "kind": "def",
+     "line": 105,
+     "name": "Shor.PTP.extOf"
+    },
+    {
+     "kind": "def",
+     "line": 109,
+     "name": "Shor.PTP.slotIdx"
+    },
+    {
+     "kind": "theorem",
+     "line": 111,
+     "name": "Shor.PTP.slotIdx_lt"
+    },
+    {
+     "kind": "theorem",
+     "line": 116,
+     "name": "Shor.PTP.slotIdx_inj"
+    },
+    {
+     "kind": "def",
+     "line": 130,
+     "name": "Shor.PTP.preOf"
+    },
+    {
+     "kind": "theorem",
+     "line": 138,
+     "name": "Shor.PTP.mem_grow_preOf"
+    },
+    {
+     "kind": "theorem",
+     "line": 150,
+     "name": "Shor.PTP.idx_of_range"
+    },
+    {
+     "kind": "def",
+     "line": 157,
+     "name": "Shor.PTP.mkSplit"
+    },
+    {
+     "kind": "theorem",
+     "line": 219,
+     "name": "Shor.PTP.mem_R_mkSplit"
+    },
+    {
+     "kind": "theorem",
+     "line": 235,
+     "name": "Shor.PTP.slot_lt_mkSplit"
+    },
+    {
+     "kind": "def",
+     "line": 251,
+     "name": "Shor.PTP.ptpWorkspace"
+    },
+    {
+     "kind": "theorem",
+     "line": 262,
+     "name": "Shor.PTP.exists_policyImpl"
+    },
+    {
+     "kind": "theorem",
+     "line": 330,
+     "name": "Shor.PTP.ptp_gate_correct"
+    }
+   ],
+   "docstring": "# O2 closed: every checked PTP policy has a gate-level recursion at every width\n\n`exists_policyImpl`: for a checked policy `P`, every width `C` and any three pairwise\ndisjoint `C`-qubit registers whose qubits lie below `base`, there is a gate-level\nrecursion following `P` (`PolicyImpl`) whose workspace lies in `[base, base + ptpWorkspace P C)`.\nThe construction is explicit (in the proof): at each node the child slot `(s, j)` is chunk\n`j` of `X s` plus `C' - |chunk|` fresh qubits at `base + (s k + j) C'`; the children share\nthe pool above `base + 3 k C'`; the leaves use two fresh ancillas.\nWith `PolicyImpl.specOn` this gives gate-level correctness through the full recursion\n(`ptp_gate_correct`), and with `PolicyImpl.resources` the Rz / Toffoli / X / H census\n`ptpResources P n` becomes a theorem at every depth (`ptp_gate_census`).",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Recursion/Build.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/Recursion/CensusFull.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Recursion/Recursion.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 349,
+   "name": "Build.lean",
+   "path": "PhaseTripleProduct/Proofs/Recursion/Build.lean"
+  },
+  "PhaseTripleProduct/Proofs/Recursion/Census.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 53,
+     "name": "Shor.PTP.cell_resources"
+    },
+    {
+     "kind": "theorem",
+     "line": 61,
+     "name": "Shor.PTP.leafCCPhase_field"
+    },
+    {
+     "kind": "theorem",
+     "line": 70,
+     "name": "Shor.PTP.leafCCPhase_resources"
+    },
+    {
+     "kind": "def",
+     "line": 86,
+     "name": "Shor.PTP.opRes"
+    },
+    {
+     "kind": "theorem",
+     "line": 97,
+     "name": "Shor.PTP.opGate_resources"
+    },
+    {
+     "kind": "def",
+     "line": 111,
+     "name": "Shor.PTP.bodyField"
+    },
+    {
+     "kind": "theorem",
+     "line": 116,
+     "name": "Shor.PTP.body_field"
+    },
+    {
+     "kind": "theorem",
+     "line": 134,
+     "name": "Shor.PTP.bodyField_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 145,
+     "name": "Shor.PTP.ptpNode_resources"
+    },
+    {
+     "kind": "theorem",
+     "line": 179,
+     "name": "Shor.PTP.ptpNode_adjToffCount"
+    },
+    {
+     "kind": "theorem",
+     "line": 203,
+     "name": "Shor.PTP.ptpNodeCCPhase_resources"
+    },
+    {
+     "kind": "theorem",
+     "line": 235,
+     "name": "Shor.PTP.body_cleanAnc_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 259,
+     "name": "Shor.PTP.ptpNode_cleanAnc_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 264,
+     "name": "Shor.PTP.ptpNodeCCPhase_cleanAnc_le"
+    },
+    {
+     "kind": "def",
+     "line": 281,
+     "name": "Shor.PTP.slotQubits"
+    },
+    {
+     "kind": "theorem",
+     "line": 285,
+     "name": "Shor.PTP.mem_slotQubits"
+    },
+    {
+     "kind": "theorem",
+     "line": 290,
+     "name": "Shor.PTP.slotQubits_card_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 312,
+     "name": "Shor.PTP.usedQubits_CCPhase_subset"
+    },
+    {
+     "kind": "theorem",
+     "line": 319,
+     "name": "Shor.PTP.body_usedQubits_subset"
+    },
+    {
+     "kind": "theorem",
+     "line": 351,
+     "name": "Shor.PTP.ptpNode_usedQubits_subset"
+    },
+    {
+     "kind": "theorem",
+     "line": 361,
+     "name": "Shor.PTP.ptpNode_qubits_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 368,
+     "name": "Shor.PTP.ptpNodeCCPhase_usedQubits_subset"
+    },
+    {
+     "kind": "theorem",
+     "line": 394,
+     "name": "Shor.PTP.ptpNodeCCPhase_qubits_le"
+    },
+    {
+     "kind": "def",
+     "line": 401,
+     "name": "Shor.PTP.Census.total"
+    },
+    {
+     "kind": "def",
+     "line": 405,
+     "name": "Shor.PTP.leafCensusCCPhase"
+    },
+    {
+     "kind": "def",
+     "line": 411,
+     "name": "Shor.PTP.ptpResources"
+    },
+    {
+     "kind": "def",
+     "line": 423,
+     "name": "Shor.PTP.ptpResourcesCCPhase"
+    },
+    {
+     "kind": "def",
+     "line": 437,
+     "name": "Shor.PTP.ptpQubitsCCPhase"
+    },
+    {
+     "kind": "theorem",
+     "line": 444,
+     "name": "Shor.PTP.ptpResources_depth_one"
+    },
+    {
+     "kind": "theorem",
+     "line": 464,
+     "name": "Shor.PTP.ptpResourcesCCPhase_depth_one"
+    }
+   ],
+   "docstring": "# PTP gate census and qubit layout, from the gate-level lowering\n\nThe analogue of ForShor's `ResourceModel` / `Workspace.reserveNeed` for PTP,\nread off the circuits of `PTP/Leaf.lean` and `PTP/Node.lean` under ForShor's\nown structural resource model `Shor.shorGateResourceModel` (Cuccaro adders,\nCuccaro-based negation, shifts as wiring; basis `H, X, CNOT, Toffoli, Rz` plus\npeak clean scratch ancillas).\n\nProved, for one node at working width `C` (all `3k` slots of width `C`), with\n`A`, `N`, `P` the numbers of `addScaled`, `negate` and `phaseProduct` operations of\nthe table (`P = 3k - 2` for a contract-passing table).\n\n**Sandwich-leaf children (default; `ptpNode_resources`, `ptpNode_adjToffCount`,\n`ptpNode_cleanAnc_le`, `ptpNode_qubits_le`):**\n\n    Rz      = P \u00b7 C\u00b3                                  (exactly one per leaf cell)\n    Toffoli = 3 (A + N)(2C - 3) + P \u00b7 2 (C\u00b2 + C\u00b3)     (leaves: P(C\u00b2 + C\u00b3) And + as many And\u2020)\n    \u2020 Toffoli (uncompute) = P \u00b7 (C\u00b2 + C\u00b3)\n    CNOT    = 3 (A + N)(5C - 7)\n    X       = 3 (A (2C - 6) + N (C + (2C - 6) + 2))\n    H       = 0\n    model scratch ancillas \u2264 C + 1;  qubits touched \u2264 3 k C + 2 (slots + 2 leaf ancillas)\n\n**CCPhase-leaf children (documented alternative; `ptpNodeCCPhase_resources`, ...):**\n`Rz = P \u00b7 5C\u00b3`, `CNOT = 3(A+N)(5C-7) + P \u00b7 2C\u00b3`, `Toffoli = 3(A+N)(2C-3) + P \u00b7 2C\u00b3`,\nsame `X`, `H`; qubits \u2264 3 k C.\n\nLeaves alone (width `w` operands): sandwich `Rz = w\u00b3, Toffoli = 2(w\u00b2 + w\u00b3), CNOT = 0`\n(`ptpLeafSandwich_resources`, any resource model, no disjointness hypothesis);\nCCPhase `Rz = 5 w\u00b3, CNOT = 2 w\u00b3, Toffoli = 2 w\u00b3` (`leafCCPhase_resources`).\n\n`ptpResources P n` (policy level) composes the node formula recursively down\nthe policy's ladder, with the leaf formula at the bottom; `ptpReserveNeed P n`\nis ForShor's `reserveNeed` recursion for three operands. At depth one (the\nchild width is a leaf width) `ptpResources` is the proved node census\n(`ptpResources_depth_one`; `ptpResourcesCCPhase`, `ptpResourcesCCPhase_depth_one` for the CCPhase leaf); deeper levels compose the same node formula, which\nis proved per node but whose composition is not yet a gate-level theorem\n(`PTP/Node.lean`, residual).",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Recursion/Census.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/Recursion/Recursion.lean"
+   ],
+   "imports": [
+    "Framework/Gatecount/ResourceModel.lean",
+    "PhaseTripleProduct/Proofs/Gates/Node.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 485,
+   "name": "Census.lean",
+   "path": "PhaseTripleProduct/Proofs/Recursion/Census.lean"
+  },
+  "PhaseTripleProduct/Proofs/Recursion/CensusFull.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 24,
+     "name": "Shor.PTP.ptpAndDag"
+    },
+    {
+     "kind": "def",
+     "line": 34,
+     "name": "Shor.PTP.ptpCnotFull"
+    },
+    {
+     "kind": "theorem",
+     "line": 45,
+     "name": "Shor.PTP.body_count"
+    },
+    {
+     "kind": "theorem",
+     "line": 59,
+     "name": "Shor.PTP.adjToffCount_alloc"
+    },
+    {
+     "kind": "theorem",
+     "line": 73,
+     "name": "Shor.PTP.PolicyImpl.andDag_count"
+    },
+    {
+     "kind": "theorem",
+     "line": 97,
+     "name": "Shor.PTP.cnot_alloc"
+    },
+    {
+     "kind": "theorem",
+     "line": 120,
+     "name": "Shor.PTP.SplitLayout.ext_top"
+    },
+    {
+     "kind": "theorem",
+     "line": 134,
+     "name": "Shor.PTP.PolicyImpl.cnot"
+    },
+    {
+     "kind": "theorem",
+     "line": 165,
+     "name": "Shor.PTP.SplitLayout.mem_slot"
+    },
+    {
+     "kind": "theorem",
+     "line": 174,
+     "name": "Shor.PTP.PolicyImpl.usedQubits"
+    },
+    {
+     "kind": "theorem",
+     "line": 240,
+     "name": "Shor.PTP.qubits_le_of_policyImpl"
+    },
+    {
+     "kind": "theorem",
+     "line": 274,
+     "name": "Shor.PTP.ptp_gate_full"
+    }
+   ],
+   "docstring": "# The rest of the census through the full recursion: And\u2020 and CNOT\n\n`PolicyImpl.resources` (Recursion.lean) proves the Rz / Toffoli / X / H fields of every\ngate-level recursion equal `ptpResources P n`. Here:\n\n* `ptpAndDag P n`: the number of uncomputing Toffolis (`\u2020 Toffoli`, the Qualtran\n  `And(uncompute=True)`, 0 T) at every depth (`PolicyImpl.adjToffCount`). Computing\n  Toffolis (Qualtran `And`, 4 T) = `ptpResources.toffoli - ptpAndDag`.\n* `ptpCnotFull P n`: CNOT including the sign-extension fan-out of the split\n  (ForShor charges `signExtend r m` as `m` CNOT, and the un-extension `\u2020 alloc` the same):\n  per node `6 (C' - topLimbWidth)` on top of `ptpResources`' `3 (A + N)(5C' - 7)`\n  (`PolicyImpl.cnot`).",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Recursion/CensusFull.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Recursion/Build.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 297,
+   "name": "CensusFull.lean",
+   "path": "PhaseTripleProduct/Proofs/Recursion/CensusFull.lean"
+  },
+  "PhaseTripleProduct/Proofs/Recursion/Recursion.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 30,
+     "name": "Shor.PTP.take_drop_disjoint"
+    },
+    {
+     "kind": "theorem",
+     "line": 36,
+     "name": "Shor.PTP.reg_take_append_drop"
+    },
+    {
+     "kind": "theorem",
+     "line": 41,
+     "name": "Shor.PTP.regSize_take"
+    },
+    {
+     "kind": "theorem",
+     "line": 45,
+     "name": "Shor.PTP.regSize_drop"
+    },
+    {
+     "kind": "theorem",
+     "line": 49,
+     "name": "Shor.PTP.toNat_take_drop"
+    },
+    {
+     "kind": "theorem",
+     "line": 56,
+     "name": "Shor.PTP.toNat_take_lt"
+    },
+    {
+     "kind": "theorem",
+     "line": 62,
+     "name": "Shor.PTP.toNat_chunk"
+    },
+    {
+     "kind": "theorem",
+     "line": 74,
+     "name": "Shor.PTP.tcDecodeWidth_split"
+    },
+    {
+     "kind": "theorem",
+     "line": 96,
+     "name": "Shor.PTP.tcDecode_top_chunk"
+    },
+    {
+     "kind": "theorem",
+     "line": 110,
+     "name": "Shor.PTP.tcDecode_lower_chunk"
+    },
+    {
+     "kind": "theorem",
+     "line": 145,
+     "name": "Shor.PTP.toNat_congr"
+    },
+    {
+     "kind": "theorem",
+     "line": 162,
+     "name": "Shor.PTP.extToInt_congr"
+    },
+    {
+     "kind": "theorem",
+     "line": 169,
+     "name": "Shor.PTP.freshZero_of_bits"
+    },
+    {
+     "kind": "theorem",
+     "line": 184,
+     "name": "Shor.PTP.bit_signExtendBasis_out"
+    },
+    {
+     "kind": "theorem",
+     "line": 191,
+     "name": "Shor.PTP.extToInt_grow_signExtendBasis"
+    },
+    {
+     "kind": "theorem",
+     "line": 217,
+     "name": "Shor.PTP.SplitLayout.mem_R"
+    },
+    {
+     "kind": "theorem",
+     "line": 222,
+     "name": "Shor.PTP.SplitLayout.newBits_sub_slot"
+    },
+    {
+     "kind": "theorem",
+     "line": 227,
+     "name": "Shor.PTP.SplitLayout.pre_sub_slot"
+    },
+    {
+     "kind": "theorem",
+     "line": 233,
+     "name": "Shor.PTP.SplitLayout.R_sub_slots"
+    },
+    {
+     "kind": "def",
+     "line": 240,
+     "name": "Shor.PTP.SplitLayout.allocBasis"
+    },
+    {
+     "kind": "theorem",
+     "line": 245,
+     "name": "Shor.PTP.SplitLayout.evalL_sequence_id"
+    },
+    {
+     "kind": "theorem",
+     "line": 254,
+     "name": "Shor.PTP.SplitLayout.evalL_alloc"
+    },
+    {
+     "kind": "theorem",
+     "line": 267,
+     "name": "Shor.PTP.SplitLayout.bit_allocBasis_out"
+    },
+    {
+     "kind": "theorem",
+     "line": 282,
+     "name": "Shor.PTP.SplitLayout.not_mem_newBits"
+    },
+    {
+     "kind": "theorem",
+     "line": 287,
+     "name": "Shor.PTP.SplitLayout.top_ne"
+    },
+    {
+     "kind": "theorem",
+     "line": 289,
+     "name": "Shor.PTP.SplitLayout.fresh_of_clean"
+    },
+    {
+     "kind": "theorem",
+     "line": 295,
+     "name": "Shor.PTP.SplitLayout.top_value"
+    },
+    {
+     "kind": "theorem",
+     "line": 351,
+     "name": "Shor.PTP.SplitLayout.lower_value"
+    },
+    {
+     "kind": "theorem",
+     "line": 370,
+     "name": "Shor.PTP.SplitLayout.slot_value"
+    },
+    {
+     "kind": "def",
+     "line": 421,
+     "name": "Shor.PTP.SpecOn"
+    },
+    {
+     "kind": "theorem",
+     "line": 433,
+     "name": "Shor.PTP.SpecOn.mono"
+    },
+    {
+     "kind": "theorem",
+     "line": 439,
+     "name": "Shor.PTP.childSpec_of_specOn"
+    },
+    {
+     "kind": "theorem",
+     "line": 449,
+     "name": "Shor.PTP.specOn_leafSandwich"
+    },
+    {
+     "kind": "theorem",
+     "line": 466,
+     "name": "Shor.PTP.specOn_ptpSubNode"
+    },
+    {
+     "kind": "theorem",
+     "line": 508,
+     "name": "Shor.PTP.PolicyImpl.specOn"
+    },
+    {
+     "kind": "theorem",
+     "line": 520,
+     "name": "Shor.PTP.evalL_policyImpl_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 537,
+     "name": "Shor.PTP.alloc_field_zero"
+    },
+    {
+     "kind": "theorem",
+     "line": 553,
+     "name": "Shor.PTP.PolicyImpl.resources"
+    }
+   ],
+   "docstring": "# O2: a PTP node meets the child contract, so gate-level correctness recurses\n\n* Register arithmetic: chunk `j` of a two's-complement register is the floor limb\n  (`tcDecode_lower_chunk`, `tcDecode_top_chunk`).\n* `SplitLayout`: the in-place split of three parent registers into child slots\n  (ForShor `PhaseSplitLayout`, three operands), zero-extension of lower chunks,\n  sign-extension of the top chunk (`alloc`, `slot_value`); undone by `\u2020 alloc`.\n* `SpecOn`: a register-level phase contract with explicit workspace; the sandwich leaf\n  meets it (`specOn_leafSandwich`), and a node over children that meet it meets it\n  (`specOn_ptpSubNode`: \"a PTP node satisfies `ChildSpec` given a clean reserve\").\n* `PolicyImpl`: gate-level recursions following a policy; correct (`PolicyImpl.specOn`)\n  and with census `ptpResources` (Rz/Toffoli/X/H, `PolicyImpl.resources`) at every depth.\n  Existence for every checked policy and width: `Build.lean`; CNOT/And\u2020: `CensusFull.lean`.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Recursion/Recursion.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean",
+    "PhaseTripleProduct/Proofs/Recursion/Build.lean",
+    "PhaseTripleProduct/Proofs/Witness/RecursionWitness.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Recursion/Census.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 604,
+   "name": "Recursion.lean",
+   "path": "PhaseTripleProduct/Proofs/Recursion/Recursion.lean"
+  },
+  "PhaseTripleProduct/Proofs/Support": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Support/Language.lean",
+    "PhaseTripleProduct/Proofs/Support/Mirror.lean"
+   ],
+   "declCount": 35,
+   "fileCount": 2,
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Support",
+   "kind": "folder",
+   "name": "Support",
+   "path": "PhaseTripleProduct/Proofs/Support",
+   "readmeHtml": null
+  },
+  "PhaseTripleProduct/Proofs/Support/Language.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 31,
+     "name": "Shor.PTP.statesEqual_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 45,
+     "name": "Shor.PTP.returnsToStartCheck_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 63,
+     "name": "Shor.PTP.opOK?_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 81,
+     "name": "Shor.PTP.safeProg?_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 107,
+     "name": "Shor.PTP.progConsumesPts?_iff"
+    },
+    {
+     "kind": "structure",
+     "line": 158,
+     "name": "Shor.PTP.CheckedProg"
+    },
+    {
+     "kind": "theorem",
+     "line": 164,
+     "name": "Shor.PTP.checkedProg_of_checks"
+    },
+    {
+     "kind": "theorem",
+     "line": 172,
+     "name": "Shor.PTP.positive_of_ge_two"
+    },
+    {
+     "kind": "theorem",
+     "line": 177,
+     "name": "Shor.PTP.checkedProg_iff_framework"
+    },
+    {
+     "kind": "theorem",
+     "line": 191,
+     "name": "Shor.PTP.regEqExpected_eq"
+    },
+    {
+     "kind": "def",
+     "line": 199,
+     "name": "Shor.PTP.checkpointRows"
+    },
+    {
+     "kind": "theorem",
+     "line": 211,
+     "name": "Shor.PTP.checkpointRows_of_consumes"
+    },
+    {
+     "kind": "theorem",
+     "line": 252,
+     "name": "Shor.PTP.sortedDesc_iff"
+    }
+   ],
+   "docstring": "# The table language: Boolean checkers against the Framework's propositions\n\n`Statement.lean` decides admissibility of a table with Boolean checkers (`progConsumesPts?`,\n`safeProg?`, `returnsToStartCheck`), because a policy is checked by `decide`. The Framework\n(`ToomCookTable.lean`) states the same conditions as propositions (`ProgConsumesPts`,\n`SafeProg`, `run? \u2026 = some \u2026`). This file proves the two agree, and collects the small lemmas\nabout the checkers that the later proofs use:\n\n* `statesEqual_iff`, `returnsToStartCheck_iff`: the Boolean C4 is `run? ops \u03c3 = some \u03c3`.\n* `safeProg?_iff`, `progConsumesPts?_iff`: the Boolean C3 is the Framework's `SafeProg` and\n  `ProgConsumesPts`.\n* `CheckedProg`: the three Boolean checks together (the PTP analogue of the Framework's\n  `ProgConsumesPtsSafe`, which has no round-trip field).\n* `regEqExpected_eq`, `checkpointRows`, `checkpointRows_of_consumes`: consumption pins every\n  checkpoint register to the row of its point.\n* `sortedDesc_iff`: thresholds strictly decrease.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Support/Language.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/Table/Contract.lean",
+    "PhaseTripleProduct/Proofs/Table/Width.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 263,
+   "name": "Language.lean",
+   "path": "PhaseTripleProduct/Proofs/Support/Language.lean"
+  },
+  "PhaseTripleProduct/Proofs/Support/Mirror.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 41,
+     "name": "Shor.PTP.projV"
+    },
+    {
+     "kind": "def",
+     "line": 46,
+     "name": "Shor.PTP.projW"
+    },
+    {
+     "kind": "theorem",
+     "line": 50,
+     "name": "Shor.PTP.pointRowQ_eq"
+    },
+    {
+     "kind": "def",
+     "line": 56,
+     "name": "Shor.PTP.DistinctPair"
+    },
+    {
+     "kind": "theorem",
+     "line": 61,
+     "name": "Shor.PTP.distinctPair_of_normalize_ne"
+    },
+    {
+     "kind": "theorem",
+     "line": 100,
+     "name": "Shor.PTP.pairwise_distinct_of_nodup"
+    },
+    {
+     "kind": "theorem",
+     "line": 108,
+     "name": "Shor.PTP.pointRowQ_good"
+    },
+    {
+     "kind": "def",
+     "line": 127,
+     "name": "Shor.PTP.hom"
+    },
+    {
+     "kind": "theorem",
+     "line": 130,
+     "name": "Shor.PTP.hom_of_ne_zero"
+    },
+    {
+     "kind": "theorem",
+     "line": 140,
+     "name": "Shor.PTP.hom_zero_right"
+    },
+    {
+     "kind": "theorem",
+     "line": 147,
+     "name": "Shor.PTP.hom_mul"
+    },
+    {
+     "kind": "theorem",
+     "line": 158,
+     "name": "Shor.PTP.hom_prod"
+    },
+    {
+     "kind": "theorem",
+     "line": 173,
+     "name": "Shor.PTP.sum_fin_eq_hom"
+    },
+    {
+     "kind": "def",
+     "line": 182,
+     "name": "Shor.PTP.limbPoly"
+    },
+    {
+     "kind": "theorem",
+     "line": 185,
+     "name": "Shor.PTP.limbPoly_coeff"
+    },
+    {
+     "kind": "theorem",
+     "line": 195,
+     "name": "Shor.PTP.limbPoly_natDegree"
+    },
+    {
+     "kind": "theorem",
+     "line": 203,
+     "name": "Shor.PTP.hom_limbPoly"
+    },
+    {
+     "kind": "theorem",
+     "line": 216,
+     "name": "Shor.PTP.toomCook_exact"
+    },
+    {
+     "kind": "def",
+     "line": 258,
+     "name": "Shor.PTP.limbs"
+    },
+    {
+     "kind": "theorem",
+     "line": 261,
+     "name": "Shor.PTP.lower_add_top"
+    },
+    {
+     "kind": "theorem",
+     "line": 272,
+     "name": "Shor.PTP.sum_limbs"
+    },
+    {
+     "kind": "theorem",
+     "line": 286,
+     "name": "Shor.PTP.expectedRow_cast"
+    }
+   ],
+   "docstring": "# The Toom\u2013Cook identity at an arbitrary number of points\n\nPure algebra for the PTP node. Nothing here mentions widths, bands or the recursion; the node\nidentity (`Values/Semantics.lean`) uses `toomCook_exact`.\n\n`r` is the arity of the product: `3` for the phase triple product. A table with `k` limb\nregisters evaluates each of the `r` operands' limb polynomials (degree `\u2264 k - 1`) at\n`r (k - 1) + 1` points; the product polynomial has degree `\u2264 r (k - 1)`, so that many distinct\nprojective points determine it, and the interpolation weights at the radix recover the product\nof the operands.\n\nThe interpolation weights are ForShor's `ToomCookMath.interpCoeff`\n(`PhaseProduct/Proofs/Math/ToomCook.lean`), which is generic in the matrix size, and its\ncorrectness theorem `ToomCookMath.interpCoeff_correct` is used as is. ForShor states C2\n(invertibility) only at size `q k = 2k - 1`; `pointRowQ_good` below is the same\nprojective-Vandermonde argument at an arbitrary size, which the phase triple product (`3k - 2`)\nneeds.\n\nPoint conventions are the Framework's (`Operations.Point`): `int z` is the affine point `z`,\ni.e. projective `(z : 1)`; `frac c` is the point `1 / c`, projective `(1 : c)`; `frac 0` is the\npoint at infinity. These are the conventions of `expectedRow` and of ForShor's `interpEntry`.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Support/Mirror.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/Table/Width.lean",
+    "PhaseTripleProduct/Proofs/Values/Semantics.lean",
+    "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean"
+   ],
+   "imports": [
+    "PhaseProduct/Proofs/Math/ToomCook.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 291,
+   "name": "Mirror.lean",
+   "path": "PhaseTripleProduct/Proofs/Support/Mirror.lean"
+  },
+  "PhaseTripleProduct/Proofs/Surface.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 28,
+     "name": "Shor.PTP.evalL_zero"
+    },
+    {
+     "kind": "theorem",
+     "line": 34,
+     "name": "Shor.PTP.evalL_eq_of_clean_kets"
+    },
+    {
+     "kind": "theorem",
+     "line": 47,
+     "name": "Shor.PTP.PTPPhaseOp.op_zero"
+    },
+    {
+     "kind": "theorem",
+     "line": 53,
+     "name": "Shor.PTP.evalL_eq_phaseOp_of_clean"
+    },
+    {
+     "kind": "theorem",
+     "line": 64,
+     "name": "Shor.PTP.evalL_policyImplD_state"
+    }
+   ],
+   "docstring": "# PTP state-level lift: the circuit equals the specification on every clean state\n\nThe *definitions* of this layer (`ptpEigenphase`, `PTPPhaseOp`, `PTPCleanBasis`, `PTPCleanState`,\n`PTPExactCensus`) and the claim `PTPLowerExactCorrect` live in `Statement.lean`. This file holds\nthe lemmas that lift the basis-ket result of `ptp_gate_full_exact` (`ExactBoard/ExactBuild.lean`)\nto all states in the linear closure of the clean kets (`CleanClosure`):\n`evalL_eq_of_clean_kets`, `evalL_eq_phaseOp_of_clean`, `evalL_policyImplD_state`. `Main.lean`\nassembles them into `ptp_lowerExact_correct`.\n\nWhat this does not give: that the specification operator exists in an arbitrary `qs` (it does in\nForShor's Standard model), or anything about states outside the clean closure.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Surface.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Main.lean",
+    "PhaseTripleProduct/Proofs/Controlled.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 75,
+   "name": "Surface.lean",
+   "path": "PhaseTripleProduct/Proofs/Surface.lean"
+  },
+  "PhaseTripleProduct/Proofs/Table": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Table/Contract.lean",
+    "PhaseTripleProduct/Proofs/Table/Width.lean"
+   ],
+   "declCount": 50,
+   "fileCount": 2,
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Table",
+   "kind": "folder",
+   "name": "Table",
+   "path": "PhaseTripleProduct/Proofs/Table",
+   "readmeHtml": null
+  },
+  "PhaseTripleProduct/Proofs/Table/Contract.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 40,
+     "name": "Shor.PTP.pointCount_eq"
+    },
+    {
+     "kind": "def",
+     "line": 45,
+     "name": "Shor.PTP.ValidPTPPoints"
+    },
+    {
+     "kind": "theorem",
+     "line": 55,
+     "name": "Shor.PTP.PTPTable.contract_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 73,
+     "name": "Shor.PTP.PTPTable.contract_iff_framework"
+    },
+    {
+     "kind": "theorem",
+     "line": 84,
+     "name": "Shor.PTP.limbWidth_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 94,
+     "name": "Shor.PTP.PTPPolicy.choose_mem"
+    },
+    {
+     "kind": "theorem",
+     "line": 103,
+     "name": "Shor.PTP.PTPPolicy.check_tables"
+    },
+    {
+     "kind": "theorem",
+     "line": 109,
+     "name": "Shor.PTP.PTPPolicy.check_sorted"
+    },
+    {
+     "kind": "def",
+     "line": 116,
+     "name": "Shor.PTP.PTPPolicy.chainFuel"
+    },
+    {
+     "kind": "def",
+     "line": 123,
+     "name": "Shor.PTP.PTPPolicy.chainContracts"
+    },
+    {
+     "kind": "def",
+     "line": 125,
+     "name": "Shor.PTP.PTPPolicy.ladderFuel"
+    },
+    {
+     "kind": "def",
+     "line": 135,
+     "name": "Shor.PTP.PTPPolicy.ladder"
+    }
+   ],
+   "docstring": "# PhaseTripleProduct: the table contract and the banded policy, with their lemmas\n\n`Statement.lean` defines the table (`PTPTable`), its Boolean contract (`PTPTable.contract`), the\nwidth scan (`childWidth3`) and the banded policy (`PTPPolicy`, `check`, `choose`). This file proves\nwhat the rest of the development needs of them.\n\n## Table contract (`PTPTable.contract`)\n\nThe PTP point count is `3 k - 2 = 3 (k - 1) + 1` (`pointCount_eq`): three limb polynomials of\ndegree `\u2264 k - 1` multiply to a polynomial of degree `\u2264 3 (k - 1)`, which `3 (k - 1) + 1` distinct\nprojective points determine. `contract_iff` unfolds the Boolean contract into its parts: the point\nlist is valid (`ValidPTPPoints`: right length, pairwise distinct after normalisation, each a point\nthe benchmark admits) and the program passes the three checks of `CheckedProg` (consumption,\nsafety, round trip). `contract_iff_framework` restates it in the Framework's own language:\n`ProgConsumesPtsSafe` and `run? ops start = some start`.\n\n## Banded policy (`PTPPolicy`)\n\nBands widest first, strictly decreasing thresholds; at width `n` the first band with\n`threshold \u2264 n` is used (ForShor's `choose`), and the node recurses at `childWidth n T.ops` when\nthat is `< n`, else takes the 3-way grid leaf. `choose_mem`, `check_tables` and `check_sorted`\nare the facts about `choose` and `check` that every later proof starts from. The scan-board\nladder (`chainFuel`, `ladderFuel`) is defined here because only reports and proofs use it.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Table/Contract.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/Table/Width.lean",
+    "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Support/Language.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 140,
+   "name": "Contract.lean",
+   "path": "PhaseTripleProduct/Proofs/Table/Contract.lean"
+  },
+  "PhaseTripleProduct/Proofs/Table/Width.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 42,
+     "name": "Shor.PTP.foldl_max_ge"
+    },
+    {
+     "kind": "theorem",
+     "line": 53,
+     "name": "Shor.PTP.get_le_wMax"
+    },
+    {
+     "kind": "theorem",
+     "line": 61,
+     "name": "Shor.PTP.get_set_self"
+    },
+    {
+     "kind": "theorem",
+     "line": 67,
+     "name": "Shor.PTP.get_set_ne"
+    },
+    {
+     "kind": "theorem",
+     "line": 74,
+     "name": "Shor.PTP.wStep_length"
+    },
+    {
+     "kind": "abbrev",
+     "line": 81,
+     "name": "Shor.PTP.Vals"
+    },
+    {
+     "kind": "def",
+     "line": 84,
+     "name": "Shor.PTP.upd"
+    },
+    {
+     "kind": "def",
+     "line": 89,
+     "name": "Shor.PTP.vStepF"
+    },
+    {
+     "kind": "def",
+     "line": 98,
+     "name": "Shor.PTP.runF"
+    },
+    {
+     "kind": "theorem",
+     "line": 106,
+     "name": "Shor.PTP.runF_cons"
+    },
+    {
+     "kind": "def",
+     "line": 114,
+     "name": "Shor.PTP.AllBounded"
+    },
+    {
+     "kind": "def",
+     "line": 119,
+     "name": "Shor.PTP.AllFits"
+    },
+    {
+     "kind": "def",
+     "line": 124,
+     "name": "Shor.PTP.ShiftExact"
+    },
+    {
+     "kind": "def",
+     "line": 129,
+     "name": "Shor.PTP.ExactShifts"
+    },
+    {
+     "kind": "theorem",
+     "line": 133,
+     "name": "Shor.PTP.AllBounded.head"
+    },
+    {
+     "kind": "theorem",
+     "line": 139,
+     "name": "Shor.PTP.AllBounded.mono"
+    },
+    {
+     "kind": "theorem",
+     "line": 150,
+     "name": "Shor.PTP.fits_of_abs_lt"
+    },
+    {
+     "kind": "theorem",
+     "line": 157,
+     "name": "Shor.PTP.AllBounded.allFits"
+    },
+    {
+     "kind": "theorem",
+     "line": 166,
+     "name": "Shor.PTP.abs_pow_two_mul"
+    },
+    {
+     "kind": "theorem",
+     "line": 170,
+     "name": "Shor.PTP.abs_ediv_pow_two"
+    },
+    {
+     "kind": "theorem",
+     "line": 190,
+     "name": "Shor.PTP.abs_addScaled"
+    },
+    {
+     "kind": "theorem",
+     "line": 206,
+     "name": "Shor.PTP.step_sound"
+    },
+    {
+     "kind": "theorem",
+     "line": 237,
+     "name": "Shor.PTP.scan_sound"
+    },
+    {
+     "kind": "theorem",
+     "line": 251,
+     "name": "Shor.PTP.lowerBound_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 263,
+     "name": "Shor.PTP.init_get"
+    },
+    {
+     "kind": "theorem",
+     "line": 269,
+     "name": "Shor.PTP.initW_length"
+    },
+    {
+     "kind": "theorem",
+     "line": 274,
+     "name": "Shor.PTP.init_bound"
+    },
+    {
+     "kind": "theorem",
+     "line": 312,
+     "name": "Shor.PTP.vStepF_wrap_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 330,
+     "name": "Shor.PTP.runF_wrap_eq"
+    },
+    {
+     "kind": "def",
+     "line": 352,
+     "name": "Shor.PTP.regVal"
+    },
+    {
+     "kind": "def",
+     "line": 355,
+     "name": "Shor.PTP.valOf"
+    },
+    {
+     "kind": "theorem",
+     "line": 357,
+     "name": "Shor.PTP.valOf_start"
+    },
+    {
+     "kind": "theorem",
+     "line": 361,
+     "name": "Shor.PTP.valOf_setReg"
+    },
+    {
+     "kind": "theorem",
+     "line": 369,
+     "name": "Shor.PTP.applyOp_val"
+    },
+    {
+     "kind": "theorem",
+     "line": 426,
+     "name": "Shor.PTP.run_val"
+    },
+    {
+     "kind": "theorem",
+     "line": 449,
+     "name": "Shor.PTP.checkpoint_val"
+    },
+    {
+     "kind": "def",
+     "line": 482,
+     "name": "Shor.PTP.limbsAt"
+    },
+    {
+     "kind": "theorem",
+     "line": 494,
+     "name": "Shor.PTP.node_width_sound"
+    }
+   ],
+   "docstring": "# PTP register-width soundness\n\nThe value machine of one PTP operand: `k` limb registers holding integers,\ntransformed by the table's operations. Two semantics:\n\n* exact, `runF id`: unbounded integers;\n* wrapping at width `C`, `runF (Shor.tcWrapInt C)`: every written value is\n  reduced to `C`-bit two's complement, which is what ForShor's `LowGate`\n  adders/negators/shifters do on a width-`C` register\n  (`Shor.extToInt_addScaledBasis_dst` etc.).\n\nResults:\n\n* `scan_sound`: the PTP magnitude scan is sound: if every register starts with\n  `|v| < 2 ^ w_i`, every register value at every step stays below\n  `2 ^ scanMax w ops` (shifts must be exact, which a successful run gives);\n* `init_bound`: the top-heavy limbs of a signed width-`nW` operand meet the\n  scan's initial bounds;\n* `runF_wrap_eq`: if every value along the run is below `2 ^ (C - 1)`,\n  wrapping at `C` changes nothing;\n* `node_width_sound` (headline): for a table passing the PTP contract and three\n  operands that fit their signed widths, every intermediate register value and\n  every child operand of each of the three operands fits signed\n  `childWidth3 n ops` bits, the wrapping run equals the exact run, the child\n  operands are the declared-point values, and the run returns the limbs.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Table/Width.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/Values/Semantics.lean",
+    "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean"
+   ],
+   "imports": [
+    "PhaseProduct/Proofs/Registers.lean",
+    "PhaseTripleProduct/Proofs/Support/Language.lean",
+    "PhaseTripleProduct/Proofs/Support/Mirror.lean",
+    "PhaseTripleProduct/Proofs/Table/Contract.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 548,
+   "name": "Width.lean",
+   "path": "PhaseTripleProduct/Proofs/Table/Width.lean"
+  },
+  "PhaseTripleProduct/Proofs/Threshold.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 32,
+     "name": "Shor.PTP.PTPPolicy.ladderFuelX_fuel"
+    },
+    {
+     "kind": "theorem",
+     "line": 46,
+     "name": "Shor.PTP.PTPPolicy.ladderX_none"
+    },
+    {
+     "kind": "theorem",
+     "line": 50,
+     "name": "Shor.PTP.PTPPolicy.ladderX_stuck"
+    },
+    {
+     "kind": "theorem",
+     "line": 54,
+     "name": "Shor.PTP.PTPPolicy.ladderX_step"
+    },
+    {
+     "kind": "theorem",
+     "line": 62,
+     "name": "Shor.PTP.PTPPolicy.chainContractsTight_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 81,
+     "name": "Shor.PTP.PTPPolicy.ExactReach.trans_step"
+    },
+    {
+     "kind": "theorem",
+     "line": 89,
+     "name": "Shor.PTP.PTPPolicy.chainContractsTight_iff_reach"
+    }
+   ],
+   "docstring": "# The threshold acceptance rule at exact widths\n\nA banded policy says which table to use at each width (`choose`: the first band whose\nthreshold is `\u2264 w`). Its semantics (`evalPhaseD`, `evalPhaseTight`, `evalPhase`) silently fall back to the\nleaf when the chosen table does not shrink the width, so a threshold set too low is not a\ncorrectness fault of the semantics: it is a policy that does not do what it declares. The\nharness rejects such a policy. This file states the rule it applies.\n\n`chainContractsTight P n` (a `Bool`, decided by the kernel in the certificate): on the\nexact-width recursion from `n` (`ladderX`), every band chosen\n\n* strictly shrinks the width (`ptpTightWidth T w < w`), and\n* is applied only where its limbs are not degenerate (`T.k \u2264 w`; below that the lower limbs\n  `w / k` have width 0).\n\n`chainContractsTight_iff_reach` restates it without the ladder: for every width `m` the exact\nrecursion from `n` reaches (`ExactReach`) and every table `T` chosen there,\n`T.k \u2264 m \u2227 ptpTightWidth T m < m`. `chainContractsTight_iff` is the one-step unfolding.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Threshold.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Main.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Values/Exact.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 112,
+   "name": "Threshold.lean",
+   "path": "PhaseTripleProduct/Proofs/Threshold.lean"
+  },
+  "PhaseTripleProduct/Proofs/Unbalanced.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 28,
+     "name": "Shor.PTP.padBasis"
+    },
+    {
+     "kind": "theorem",
+     "line": 38,
+     "name": "Shor.PTP.evalL_padGate_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 42,
+     "name": "Shor.PTP.mem_newBits_grow"
+    },
+    {
+     "kind": "theorem",
+     "line": 46,
+     "name": "Shor.PTP.mem_active_grow"
+    },
+    {
+     "kind": "theorem",
+     "line": 50,
+     "name": "Shor.PTP.adisj_not_mem"
+    },
+    {
+     "kind": "theorem",
+     "line": 57,
+     "name": "Shor.PTP.extToInt_step_of_disjoint"
+    },
+    {
+     "kind": "theorem",
+     "line": 66,
+     "name": "Shor.PTP.newBits_avoid"
+    },
+    {
+     "kind": "theorem",
+     "line": 71,
+     "name": "Shor.PTP.extToInt_pad_step_other"
+    },
+    {
+     "kind": "theorem",
+     "line": 76,
+     "name": "Shor.PTP.extToInt_base_step_other"
+    },
+    {
+     "kind": "theorem",
+     "line": 84,
+     "name": "Shor.PTP.padBasis_spec"
+    },
+    {
+     "kind": "theorem",
+     "line": 132,
+     "name": "Shor.PTP.fitsSignedWidth_mono"
+    },
+    {
+     "kind": "theorem",
+     "line": 144,
+     "name": "Shor.PTP.mem_padNew"
+    },
+    {
+     "kind": "theorem",
+     "line": 156,
+     "name": "Shor.PTP.evalL_pad_ptp_ket"
+    },
+    {
+     "kind": "theorem",
+     "line": 187,
+     "name": "Shor.PTP.resources_padGate"
+    },
+    {
+     "kind": "theorem",
+     "line": 199,
+     "name": "Shor.PTP.ptp_pad_lowerExact_correct_core"
+    }
+   ],
+   "docstring": "# Unbalanced operand widths at gate level (blueprint item O6), by in-place padding\n\nThe gate-level recursion (`PolicyImplD`, `ptp_gate_full_exact`) takes three registers of one common\nwidth `n`. For operands of widths `n\u2080, n\u2081, n\u2082 \u2264 n` this file **sign-extends each operand in place**\ninto its clean reserve (`LowGate.signExtend`, ForShor's own allocation primitive) to width `n`, runs\nthe balanced circuit on the grown registers, and undoes the extension with the adjoint:\n\n    padGate ;; G ;; \u2020padGate.\n\nValues are preserved by sign extension (`extToInt_grow_signExtendBasis`), so the circuit applies\n`exp(i\u03c0\u03c6\u00b7\u27e6X\u2080\u27e7\u27e6X\u2081\u27e7\u27e6X\u2082\u27e7)` for the *original* operands. This is a padding construction, **not** a native\nunbalanced node: the recursion still runs at the common width `n` (a node working at the minimum\nlimb width `min(n\u209b/k)` would be cheaper and is not built or proved). Cost: the three extensions\nand their adjoints, priced by the resource model's `signExtend`.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Unbalanced.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Main.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Controlled.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 283,
+   "name": "Unbalanced.lean",
+   "path": "PhaseTripleProduct/Proofs/Unbalanced.lean"
+  },
+  "PhaseTripleProduct/Proofs/Values": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Values/Exact.lean",
+    "PhaseTripleProduct/Proofs/Values/Semantics.lean"
+   ],
+   "declCount": 53,
+   "fileCount": 2,
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Values",
+   "kind": "folder",
+   "name": "Values",
+   "path": "PhaseTripleProduct/Proofs/Values",
+   "readmeHtml": null
+  },
+  "PhaseTripleProduct/Proofs/Values/Exact.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 48,
+     "name": "Shor.PTP.traceVals"
+    },
+    {
+     "kind": "theorem",
+     "line": 52,
+     "name": "Shor.PTP.allFits_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 65,
+     "name": "Shor.PTP.trace_reach"
+    },
+    {
+     "kind": "theorem",
+     "line": 80,
+     "name": "Shor.PTP.cp_mem_trace"
+    },
+    {
+     "kind": "theorem",
+     "line": 97,
+     "name": "Shor.PTP.runF_wrap_eq_of_fits"
+    },
+    {
+     "kind": "theorem",
+     "line": 145,
+     "name": "Shor.PTP.rowLo_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 149,
+     "name": "Shor.PTP.rowHi_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 153,
+     "name": "Shor.PTP.le_maxDemand"
+    },
+    {
+     "kind": "theorem",
+     "line": 162,
+     "name": "Shor.PTP.exists_maxDemand"
+    },
+    {
+     "kind": "theorem",
+     "line": 173,
+     "name": "Shor.PTP.maxDemand_le"
+    },
+    {
+     "kind": "theorem",
+     "line": 178,
+     "name": "Shor.PTP.limbLo_le_limbHi"
+    },
+    {
+     "kind": "theorem",
+     "line": 186,
+     "name": "Shor.PTP.top_offset_lt"
+    },
+    {
+     "kind": "theorem",
+     "line": 191,
+     "name": "Shor.PTP.limbs_box"
+    },
+    {
+     "kind": "theorem",
+     "line": 219,
+     "name": "Shor.PTP.term_bounds"
+    },
+    {
+     "kind": "theorem",
+     "line": 228,
+     "name": "Shor.PTP.row_bounds"
+    },
+    {
+     "kind": "theorem",
+     "line": 236,
+     "name": "Shor.PTP.fits_of_demand"
+    },
+    {
+     "kind": "def",
+     "line": 249,
+     "name": "Shor.PTP.cornerHi"
+    },
+    {
+     "kind": "def",
+     "line": 253,
+     "name": "Shor.PTP.cornerLo"
+    },
+    {
+     "kind": "theorem",
+     "line": 256,
+     "name": "Shor.PTP.cornerHi_box"
+    },
+    {
+     "kind": "theorem",
+     "line": 261,
+     "name": "Shor.PTP.cornerLo_box"
+    },
+    {
+     "kind": "theorem",
+     "line": 266,
+     "name": "Shor.PTP.regVal_cornerHi"
+    },
+    {
+     "kind": "theorem",
+     "line": 276,
+     "name": "Shor.PTP.regVal_cornerLo"
+    },
+    {
+     "kind": "theorem",
+     "line": 292,
+     "name": "Shor.PTP.digits_lt"
+    },
+    {
+     "kind": "theorem",
+     "line": 305,
+     "name": "Shor.PTP.sum_split"
+    },
+    {
+     "kind": "theorem",
+     "line": 313,
+     "name": "Shor.PTP.ediv_digits"
+    },
+    {
+     "kind": "theorem",
+     "line": 320,
+     "name": "Shor.PTP.emod_head"
+    },
+    {
+     "kind": "theorem",
+     "line": 332,
+     "name": "Shor.PTP.box_surj"
+    },
+    {
+     "kind": "theorem",
+     "line": 384,
+     "name": "Shor.PTP.leastExp_spec"
+    },
+    {
+     "kind": "theorem",
+     "line": 400,
+     "name": "Shor.PTP.ptpTightWidth_spec"
+    },
+    {
+     "kind": "theorem",
+     "line": 407,
+     "name": "Shor.PTP.ptpTightWidth_pos"
+    },
+    {
+     "kind": "def",
+     "line": 411,
+     "name": "Shor.PTP.opTrace"
+    },
+    {
+     "kind": "theorem",
+     "line": 414,
+     "name": "Shor.PTP.opTrace_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 426,
+     "name": "Shor.PTP.tight_fits"
+    },
+    {
+     "kind": "theorem",
+     "line": 441,
+     "name": "Shor.PTP.tight_minimal"
+    },
+    {
+     "kind": "theorem",
+     "line": 487,
+     "name": "Shor.PTP.tight_le_iff"
+    },
+    {
+     "kind": "theorem",
+     "line": 497,
+     "name": "Shor.PTP.reach_bounded"
+    },
+    {
+     "kind": "theorem",
+     "line": 523,
+     "name": "Shor.PTP.box_init"
+    },
+    {
+     "kind": "theorem",
+     "line": 543,
+     "name": "Shor.PTP.tight_le_childWidth"
+    },
+    {
+     "kind": "def",
+     "line": 575,
+     "name": "Shor.PTP.PTPPolicy.evalPhaseD"
+    },
+    {
+     "kind": "def",
+     "line": 588,
+     "name": "Shor.PTP.PTPPolicy.evalPhaseTight"
+    },
+    {
+     "kind": "def",
+     "line": 591,
+     "name": "Shor.PTP.PTPPolicy.chainFuelX"
+    },
+    {
+     "kind": "def",
+     "line": 599,
+     "name": "Shor.PTP.PTPPolicy.chainContractsX"
+    },
+    {
+     "kind": "theorem",
+     "line": 609,
+     "name": "Shor.PTP.evalPhaseD_correct"
+    },
+    {
+     "kind": "theorem",
+     "line": 647,
+     "name": "Shor.PTP.evalPhaseTight_correct"
+    }
+   ],
+   "docstring": "# Exact PTP widths (`ptpTightWidth`)\n\nThe PTP board's width: the least `W` at which every register value of every\nstate the program reaches (hence every child operand), for every operand\nfitting signed `n` bits, fits signed `W` bits. Computed by exact interval\narithmetic over the coefficient rows the program holds: register row `r`\nholds `\u2211\u2c7c r j \u00b7 L\u2c7c`, and under the PTP limb split (lower width `W = n / k`,\nlower limbs unsigned in `[0, 2^W - 1]`, top limb signed in\n`[-2^(t-1), 2^(t-1) - 1]`, `t = n - (k-1) W`) the limbs range independently\nover a box, so the row's range is `[rowLo, rowHi]` (coordinatewise min/max)\nand both ends are attained (`box_surj`). The three PTP operands of a node all\nhave width `n` (every PTP board node is balanced: the children of a node are\nall at its child width), so their three boxes are the same box and the\nthree-operand maximum is the one-box maximum.\n\nProvenance: the box, row-range, attainment (`box_surj`) and `leastExp` lemmas\nare adapted, with proofs, from the PhaseProduct agent's\n`ShorTableOptimization-policy-mirror/.../BandedPolicy/Tight.lean` (2026-10-28;\narity-free; not edited there). Everything that touches the PTP register\nmachine, the PTP scan, the policy and the semantics is new here.\n\nResults:\n* `tight_fits` (soundness), `tight_minimal` (minimality, attained witness),\n  `tight_le_iff` (both): `ptpTightWidth T n \u2264 W \u2194` every reachable value of\n  every operand fitting `n` fits `W`;\n* `tight_le_childWidth`: `ptpTightWidth T n \u2264 childWidth n T.ops` (the PTP scan);\n* `evalPhaseD_correct`: the wrapping semantics with any node width\n  `wd T n \u2265 ptpTightWidth T n` applies `\u03c6 \u00b7 x\u2080 \u00b7 x\u2081 \u00b7 x\u2082` at every level;\n  `evalPhaseTight_correct` is `wd = ptpTightWidth` (the exact board).",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Values/Exact.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean",
+    "PhaseTripleProduct/Proofs/Threshold.lean",
+    "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Values/Semantics.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 653,
+   "name": "Exact.lean",
+   "path": "PhaseTripleProduct/Proofs/Values/Exact.lean"
+  },
+  "PhaseTripleProduct/Proofs/Values/Semantics.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 44,
+     "name": "Shor.PTP.PTPTable.coeff_eq_interpCoeff"
+    },
+    {
+     "kind": "def",
+     "line": 50,
+     "name": "Shor.PTP.PTPTable.children"
+    },
+    {
+     "kind": "def",
+     "line": 58,
+     "name": "Shor.PTP.PTPPolicy.evalPhase"
+    },
+    {
+     "kind": "def",
+     "line": 71,
+     "name": "Shor.PTP.PTPPolicy.evalPhaseW"
+    },
+    {
+     "kind": "theorem",
+     "line": 86,
+     "name": "Shor.PTP.children_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 96,
+     "name": "Shor.PTP.children_getD"
+    },
+    {
+     "kind": "theorem",
+     "line": 105,
+     "name": "Shor.PTP.node_identity"
+    },
+    {
+     "kind": "theorem",
+     "line": 142,
+     "name": "Shor.PTP.evalPhase_correct"
+    },
+    {
+     "kind": "theorem",
+     "line": 170,
+     "name": "Shor.PTP.evalPhaseW_correct"
+    }
+   ],
+   "docstring": "# What a PTP policy computes: exact and wrapping-register semantics\n\n`PTPPolicy.evalPhase P n \u03c6 x` is the total phase the recursive PTP construction\napplies to three operands `x 0, x 1, x 2` at width `n` with angle `\u03c6`:\n\n* leaf (no band, or the chosen table does not shrink the width): the 3-way\n  grid phase `\u03c6 \u00b7 x\u2080 \u00b7 x\u2081 \u00b7 x\u2082` (`Statement.lean`'s `ptpLeafSandwich` is its gate circuit);\n* node with table `T`: each operand is split top-heavy at `limbWidth n T.k`\n  (`= n / k`), the program is **run** on each operand's limbs\n  (`runF id`, `Table/Width.lean`), and the `t`-th checkpoint value of each operand\n  is the `t`-th child operand; child `t` gets angle `\u03c6 \u00b7 c\u209c` (interpolation\n  weight of declared point `t` at radix `2 ^ (n / k)`), at the PTP child width\n  `childWidth n T.ops`.\n\n`evalPhaseW` is the same recursion with every register write wrapped to\n`childWidth n T.ops` bits (`runF (tcWrapInt C)`): the register semantics a\nwidth-`C` circuit has.\n\nTheorems:\n* `evalPhase_correct` (a): every checked policy gives `\u03c6\u00b7x\u2080\u00b7x\u2081\u00b7x\u2082` at every\n  width, for all integer operands;\n* `evalPhaseW_correct` (a)+(b): for operands that fit signed `n` bits, the\n  wrapping semantics also gives `\u03c6\u00b7x\u2080\u00b7x\u2081\u00b7x\u2082` at every width; at every node the\n  child operands fit signed `childWidth` bits, which is the hypothesis one\n  level down.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Values/Semantics.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/Gates/Node.lean",
+    "PhaseTripleProduct/Proofs/Values/Exact.lean",
+    "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Support/Mirror.lean",
+    "PhaseTripleProduct/Proofs/Table/Width.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 210,
+   "name": "Semantics.lean",
+   "path": "PhaseTripleProduct/Proofs/Values/Semantics.lean"
+  },
+  "PhaseTripleProduct/Proofs/Witness": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Witness/ExactFault.lean",
+    "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean",
+    "PhaseTripleProduct/Proofs/Witness/RecursionWitness.lean"
+   ],
+   "declCount": 79,
+   "fileCount": 3,
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Witness",
+   "kind": "folder",
+   "name": "Witness",
+   "path": "PhaseTripleProduct/Proofs/Witness",
+   "readmeHtml": null
+  },
+  "PhaseTripleProduct/Proofs/Witness/ExactFault.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 42,
+     "name": "Shor.PTP.Instances.ExactFault.noShift"
+    },
+    {
+     "kind": "def",
+     "line": 49,
+     "name": "Shor.PTP.Instances.ExactFault.bodyPhaseF"
+    },
+    {
+     "kind": "theorem",
+     "line": 59,
+     "name": "Shor.PTP.Instances.ExactFault.bodyPhaseF_eq"
+    },
+    {
+     "kind": "theorem",
+     "line": 82,
+     "name": "Shor.PTP.Instances.ExactFault.vStepF_neF"
+    },
+    {
+     "kind": "theorem",
+     "line": 87,
+     "name": "Shor.PTP.Instances.ExactFault.opBasis_invW"
+    },
+    {
+     "kind": "theorem",
+     "line": 144,
+     "name": "Shor.PTP.Instances.ExactFault.opGates_stepW"
+    },
+    {
+     "kind": "def",
+     "line": 166,
+     "name": "Shor.PTP.Instances.ExactFault.ChildSpecW"
+    },
+    {
+     "kind": "theorem",
+     "line": 176,
+     "name": "Shor.PTP.Instances.ExactFault.leafSandwich_childSpecW"
+    },
+    {
+     "kind": "theorem",
+     "line": 192,
+     "name": "Shor.PTP.Instances.ExactFault.body_eval_wrap"
+    },
+    {
+     "kind": "def",
+     "line": 237,
+     "name": "Shor.PTP.Instances.ExactFault.S11"
+    },
+    {
+     "kind": "theorem",
+     "line": 242,
+     "name": "Shor.PTP.Instances.ExactFault.S11_sub"
+    },
+    {
+     "kind": "theorem",
+     "line": 245,
+     "name": "Shor.PTP.Instances.ExactFault.fixed_noShift"
+    },
+    {
+     "kind": "theorem",
+     "line": 246,
+     "name": "Shor.PTP.Instances.ExactFault.fixed_wf"
+    },
+    {
+     "kind": "theorem",
+     "line": 247,
+     "name": "Shor.PTP.Instances.ExactFault.fixed_cp"
+    },
+    {
+     "kind": "def",
+     "line": 250,
+     "name": "Shor.PTP.Instances.ExactFault.Lbig"
+    },
+    {
+     "kind": "theorem",
+     "line": 252,
+     "name": "Shor.PTP.Instances.ExactFault.wrap11_returns"
+    },
+    {
+     "kind": "theorem",
+     "line": 256,
+     "name": "Shor.PTP.Instances.ExactFault.phase11"
+    },
+    {
+     "kind": "theorem",
+     "line": 275,
+     "name": "Shor.PTP.Instances.ExactFault.fault_body_eval"
+    },
+    {
+     "kind": "theorem",
+     "line": 294,
+     "name": "Shor.PTP.Instances.ExactFault.disj_of_check"
+    },
+    {
+     "kind": "def",
+     "line": 301,
+     "name": "Shor.PTP.Instances.ExactFault.X"
+    },
+    {
+     "kind": "def",
+     "line": 304,
+     "name": "Shor.PTP.Instances.ExactFault.pre"
+    },
+    {
+     "kind": "def",
+     "line": 309,
+     "name": "Shor.PTP.Instances.ExactFault.SL11"
+    },
+    {
+     "kind": "def",
+     "line": 325,
+     "name": "Shor.PTP.Instances.ExactFault.Y"
+    },
+    {
+     "kind": "def",
+     "line": 328,
+     "name": "Shor.PTP.Instances.ExactFault.G"
+    },
+    {
+     "kind": "def",
+     "line": 333,
+     "name": "Shor.PTP.Instances.ExactFault.W"
+    },
+    {
+     "kind": "theorem",
+     "line": 337,
+     "name": "Shor.PTP.Instances.ExactFault.fault_impl"
+    },
+    {
+     "kind": "theorem",
+     "line": 351,
+     "name": "Shor.PTP.Instances.ExactFault.fault_not_admissible"
+    },
+    {
+     "kind": "theorem",
+     "line": 357,
+     "name": "Shor.PTP.Instances.ExactFault.nodeAnc11"
+    },
+    {
+     "kind": "theorem",
+     "line": 361,
+     "name": "Shor.PTP.Instances.ExactFault.fault_subnode_eval"
+    },
+    {
+     "kind": "def",
+     "line": 394,
+     "name": "Shor.PTP.Instances.ExactFault.bigState"
+    },
+    {
+     "kind": "theorem",
+     "line": 398,
+     "name": "Shor.PTP.Instances.ExactFault.X_disjoint"
+    },
+    {
+     "kind": "theorem",
+     "line": 401,
+     "name": "Shor.PTP.Instances.ExactFault.bigState_bit_off"
+    },
+    {
+     "kind": "theorem",
+     "line": 412,
+     "name": "Shor.PTP.Instances.ExactFault.bigState_val"
+    },
+    {
+     "kind": "theorem",
+     "line": 441,
+     "name": "Shor.PTP.Instances.ExactFault.gate_fault_wrong"
+    },
+    {
+     "kind": "theorem",
+     "line": 474,
+     "name": "Shor.PTP.Instances.ExactFault.exact_contrast"
+    }
+   ],
+   "docstring": "# O5 fault challenge: one bit below the exact width, the GATE-LEVEL circuit is wrong\n\nFaultChallenge's accepted table `fixedTable` (k = 2, policy `fixed`, one band at 20) has exact\nwidth `ptpTightWidth fixedTable 20 = 12` (`fixed_tight`). Here the gate-level circuit of a node\nwhose children run at `11 = 12 - 1` bits is built and evaluated in ForShor's `LowGate`\nsemantics, with every arithmetic gate WRAPPING at 11 bits (ForShor's basis laws\n`extToInt_addScaledBasis_dst`, `extToInt_negateBasis`, no fit hypothesis):\n\n* `body_eval_wrap`: classical simulation of a node body whose arithmetic wraps (programs\n  without shifts), any children meeting `ChildSpecW` (sandwich leaves do);\n* `fault_body_eval`: on slots holding the limbs `(1023, 511)` of `big = 2^19 - 1` (all three\n  operands), the 11-bit node body applies `exp(i\u03c0 \u03c6 S\u2081\u2081)` with `S\u2081\u2081 = \u03a3\u209c c\u209c w\u209c\u00b3`, wrapped\n  children `w = (1023, 511, -514, 512)` (the checkpoint `x\u2080 + x\u2081 = 1534` overflows 11 bits and is\n  READ by child 2), while the correct phase is `\u03c6 \u00b7 big\u00b3`; `S\u2081\u2081 - big\u00b3 = \u0394 = -1965658367590400`;\n* `fault_impl`: the concrete split layout (20-bit parent registers, one extension qubit per\n  slot) assembled as a `PolicyImplD fixed (fun _ _ => 11)`: a gate-level recursion following the\n  policy with an INADMISSIBLE node width (`11 < ptpTightWidth = 12`);\n* `gate_fault_wrong` (headline): there is a basis state with operands `big` (fitting 20 bits),\n  clean workspace, on which that circuit, at angle `\u03c6\u2080 = 1/\u0394`, does NOT produce\n  `exp(i\u03c0 \u03c6\u2080 big\u00b3) \u00b7 |b\u27e9`: it produces `-exp(i\u03c0 \u03c6\u2080 big\u00b3) \u00b7 |b\u27e9` (`fault_subnode_eval`);\n* contrast: `ptp_gate_full_exact` (width 12) is correct on the same registers.\n\nPer HG7 X1: minimality of `ptpTightWidth` is overflow-minimality; a wrong gate-level result needs\nthe overflowing value to be READ (here 1534 is a checkpoint). Ring operations commute with\n`mod 2^W`, so where the overflowing value is only an intermediate that is later undone, the\none-bit-narrower circuit can still be correct (X1 example: Sfb4e5db96f73 band 1).",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Witness/ExactFault.lean",
+   "importedBy": [],
+   "imports": [
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+    "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 488,
+   "name": "ExactFault.lean",
+   "path": "PhaseTripleProduct/Proofs/Witness/ExactFault.lean"
+  },
+  "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 35,
+     "name": "Shor.PTP.Instances.FaultChallenge.ops"
+    },
+    {
+     "kind": "def",
+     "line": 44,
+     "name": "Shor.PTP.Instances.FaultChallenge.faultyTable"
+    },
+    {
+     "kind": "def",
+     "line": 45,
+     "name": "Shor.PTP.Instances.FaultChallenge.fixedTable"
+    },
+    {
+     "kind": "def",
+     "line": 47,
+     "name": "Shor.PTP.Instances.FaultChallenge.faulty"
+    },
+    {
+     "kind": "def",
+     "line": 48,
+     "name": "Shor.PTP.Instances.FaultChallenge.fixed"
+    },
+    {
+     "kind": "theorem",
+     "line": 50,
+     "name": "Shor.PTP.Instances.FaultChallenge.faulty_rejected"
+    },
+    {
+     "kind": "theorem",
+     "line": 51,
+     "name": "Shor.PTP.Instances.FaultChallenge.fixed_accepted"
+    },
+    {
+     "kind": "theorem",
+     "line": 53,
+     "name": "Shor.PTP.Instances.FaultChallenge.fixed_childWidth"
+    },
+    {
+     "kind": "theorem",
+     "line": 54,
+     "name": "Shor.PTP.Instances.FaultChallenge.limbWidth_20"
+    },
+    {
+     "kind": "theorem",
+     "line": 57,
+     "name": "Shor.PTP.Instances.FaultChallenge.inv_faulty"
+    },
+    {
+     "kind": "theorem",
+     "line": 67,
+     "name": "Shor.PTP.Instances.FaultChallenge.inv_fixed"
+    },
+    {
+     "kind": "def",
+     "line": 76,
+     "name": "Shor.PTP.Instances.FaultChallenge.B"
+    },
+    {
+     "kind": "theorem",
+     "line": 78,
+     "name": "Shor.PTP.Instances.FaultChallenge.faulty_coeff"
+    },
+    {
+     "kind": "theorem",
+     "line": 88,
+     "name": "Shor.PTP.Instances.FaultChallenge.fixed_coeff"
+    },
+    {
+     "kind": "theorem",
+     "line": 99,
+     "name": "Shor.PTP.Instances.FaultChallenge.children_1025"
+    },
+    {
+     "kind": "theorem",
+     "line": 103,
+     "name": "Shor.PTP.Instances.FaultChallenge.faulty_value"
+    },
+    {
+     "kind": "theorem",
+     "line": 119,
+     "name": "Shor.PTP.Instances.FaultChallenge.faulty_wrong"
+    },
+    {
+     "kind": "def",
+     "line": 125,
+     "name": "Shor.PTP.Instances.FaultChallenge.big"
+    },
+    {
+     "kind": "theorem",
+     "line": 127,
+     "name": "Shor.PTP.Instances.FaultChallenge.big_fits"
+    },
+    {
+     "kind": "theorem",
+     "line": 130,
+     "name": "Shor.PTP.Instances.FaultChallenge.exact_children"
+    },
+    {
+     "kind": "theorem",
+     "line": 133,
+     "name": "Shor.PTP.Instances.FaultChallenge.wrapped11_children"
+    },
+    {
+     "kind": "theorem",
+     "line": 137,
+     "name": "Shor.PTP.Instances.FaultChallenge.wrapped14_children"
+    },
+    {
+     "kind": "def",
+     "line": 141,
+     "name": "Shor.PTP.Instances.FaultChallenge.nodeSum"
+    },
+    {
+     "kind": "theorem",
+     "line": 144,
+     "name": "Shor.PTP.Instances.FaultChallenge.nodeSum_exact"
+    },
+    {
+     "kind": "theorem",
+     "line": 152,
+     "name": "Shor.PTP.Instances.FaultChallenge.width_fault_wrong"
+    },
+    {
+     "kind": "theorem",
+     "line": 161,
+     "name": "Shor.PTP.Instances.FaultChallenge.fixed_tight"
+    },
+    {
+     "kind": "theorem",
+     "line": 164,
+     "name": "Shor.PTP.Instances.FaultChallenge.fixed_ladderX"
+    },
+    {
+     "kind": "theorem",
+     "line": 168,
+     "name": "Shor.PTP.Instances.FaultChallenge.big_trace_has_1534"
+    },
+    {
+     "kind": "theorem",
+     "line": 170,
+     "name": "Shor.PTP.Instances.FaultChallenge.not_fits_11"
+    },
+    {
+     "kind": "theorem",
+     "line": 174,
+     "name": "Shor.PTP.Instances.FaultChallenge.wrapped12_children"
+    },
+    {
+     "kind": "theorem",
+     "line": 179,
+     "name": "Shor.PTP.Instances.FaultChallenge.exact_fault_wrong"
+    },
+    {
+     "kind": "theorem",
+     "line": 194,
+     "name": "Shor.PTP.Instances.FaultChallenge.exact_board_correct"
+    }
+   ],
+   "docstring": "# PTP fault challenge: the contract and the width are load-bearing\n\nTautology checks for the PTP theorems (reference `\u03c6\u00b7x\u2080\u00b7x\u2081\u00b7x\u2082` held fixed,\nsystem altered).\n\n**Point-order fault.** A valid `k = 2` PTP program consumes its four\ncheckpoints in the order `0, \u221e, 1, -1`. The faulty table declares\n`0, \u221e, -1, 1`. The PTP contract rejects it (`faulty_rejected`); the corrected\norder passes (`fixed_accepted`). Evaluated anyway, at width `20` with\n`x\u2080 = x\u2081 = x\u2082 = 1025 = 2^10 + 1` and `\u03c6 = 1`, the faulty policy applies\n`B\u00b3 + 3B\u00b2 - 5B + 1` (`B = 2^10`), not `1025\u00b3 = (B+1)\u00b3` (`faulty_wrong`).\n\n**Width fault.** For the corrected table the PTP child width at `20` is `14`\n(`fixed_childWidth`). On `x = 2^19 - 1 = 511\u00b72^10 + 1023` (fits 20 signed\nbits) the intermediate `x\u2080 + x\u2081 = 1534` needs 12 signed bits: wrapping the\nregisters at 11 bits turns the third child operand into `-514`\n(`wrapped11_children`), so the node's weighted sum is wrong\n(`width_fault_wrong`), while wrapping at the PTP width changes nothing\n(`wrapped14_children`, an instance of `node_width_sound`).",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Proofs/Witness/ExactFault.lean",
+    "PhaseTripleProduct/Proofs/Witness/RecursionWitness.lean"
+   ],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Support/Mirror.lean",
+    "PhaseTripleProduct/Proofs/Table/Contract.lean",
+    "PhaseTripleProduct/Proofs/Table/Width.lean",
+    "PhaseTripleProduct/Proofs/Values/Exact.lean",
+    "PhaseTripleProduct/Proofs/Values/Semantics.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 198,
+   "name": "FaultChallenge.lean",
+   "path": "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean"
+  },
+  "PhaseTripleProduct/Proofs/Witness/RecursionWitness.lean": {
+   "declarations": [
+    {
+     "kind": "theorem",
+     "line": 19,
+     "name": "Shor.PTP.Witness.disj_of_check"
+    },
+    {
+     "kind": "def",
+     "line": 26,
+     "name": "Shor.PTP.Witness.X"
+    },
+    {
+     "kind": "def",
+     "line": 29,
+     "name": "Shor.PTP.Witness.pre"
+    },
+    {
+     "kind": "theorem",
+     "line": 33,
+     "name": "Shor.PTP.Witness.childWidth_20"
+    },
+    {
+     "kind": "def",
+     "line": 35,
+     "name": "Shor.PTP.Witness.SL"
+    },
+    {
+     "kind": "def",
+     "line": 51,
+     "name": "Shor.PTP.Witness.Y"
+    },
+    {
+     "kind": "theorem",
+     "line": 54,
+     "name": "Shor.PTP.Witness.leafImpl"
+    },
+    {
+     "kind": "theorem",
+     "line": 68,
+     "name": "Shor.PTP.Witness.impl"
+    },
+    {
+     "kind": "theorem",
+     "line": 77,
+     "name": "Shor.PTP.Witness.impl_correct"
+    },
+    {
+     "kind": "theorem",
+     "line": 88,
+     "name": "Shor.PTP.Witness.impl_hyps_sat"
+    },
+    {
+     "kind": "theorem",
+     "line": 94,
+     "name": "Shor.PTP.Witness.impl_resources"
+    },
+    {
+     "kind": "theorem",
+     "line": 100,
+     "name": "Shor.PTP.Witness.ptpResources_fixed_20"
+    }
+   ],
+   "docstring": "# Non-vacuity of O2: a concrete gate-level recursion\n\nThe accepted k = 2 FaultChallenge policy `fixed` (one band at 20, child width 14) on three\n20-qubit registers `X s = [20s, 20s + 20)`: a concrete split layout (reserve qubits\n60..83, four extension qubits per child slot), sandwich leaves at width 14 with ancillas\n84, 85, assembled as a `PolicyImpl`, so `evalL_policyImpl_ket` applies to an actual circuit.\nEvery structural hypothesis is discharged by `decide`.",
+   "fsPath": "Implementation/PhaseTripleProduct/Proofs/Witness/RecursionWitness.lean",
+   "importedBy": [],
+   "imports": [
+    "PhaseTripleProduct/Proofs/Recursion/Recursion.lean",
+    "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 102,
+   "name": "RecursionWitness.lean",
+   "path": "PhaseTripleProduct/Proofs/Witness/RecursionWitness.lean"
+  },
+  "PhaseTripleProduct/Statement.lean": {
+   "declarations": [
+    {
+     "kind": "def",
+     "line": 56,
+     "name": "Shor.PTP.opOK?"
+    },
+    {
+     "kind": "def",
+     "line": 61,
+     "name": "Shor.PTP.wellFormed?"
+    },
+    {
+     "kind": "def",
+     "line": 67,
+     "name": "Shor.PTP.safeProg?"
+    },
+    {
+     "kind": "def",
+     "line": 73,
+     "name": "Shor.PTP.progConsumesPts?"
+    },
+    {
+     "kind": "def",
+     "line": 90,
+     "name": "Shor.PTP.statesEqual"
+    },
+    {
+     "kind": "def",
+     "line": 96,
+     "name": "Shor.PTP.returnsToStartCheck"
+    },
+    {
+     "kind": "def",
+     "line": 102,
+     "name": "Shor.PTP.sortedDesc"
+    },
+    {
+     "kind": "def",
+     "line": 107,
+     "name": "Shor.PTP.natPowerOfTwoFuel"
+    },
+    {
+     "kind": "def",
+     "line": 120,
+     "name": "Shor.PTP.natPowerOfTwo?"
+    },
+    {
+     "kind": "def",
+     "line": 124,
+     "name": "Shor.PTP.signedPowerOfTwo?"
+    },
+    {
+     "kind": "def",
+     "line": 129,
+     "name": "Shor.PTP.validPoint?"
+    },
+    {
+     "kind": "def",
+     "line": 134,
+     "name": "Shor.PTP.normalizePoint"
+    },
+    {
+     "kind": "structure",
+     "line": 150,
+     "name": "Shor.PTP.PTPTable"
+    },
+    {
+     "kind": "def",
+     "line": 156,
+     "name": "Shor.PTP.pointCount"
+    },
+    {
+     "kind": "def",
+     "line": 160,
+     "name": "Shor.PTP.PTPTable.contract"
+    },
+    {
+     "kind": "abbrev",
+     "line": 175,
+     "name": "Shor.PTP.Widths"
+    },
+    {
+     "kind": "def",
+     "line": 178,
+     "name": "Shor.PTP.wget"
+    },
+    {
+     "kind": "def",
+     "line": 181,
+     "name": "Shor.PTP.wStep"
+    },
+    {
+     "kind": "def",
+     "line": 189,
+     "name": "Shor.PTP.wMax"
+    },
+    {
+     "kind": "def",
+     "line": 192,
+     "name": "Shor.PTP.scanMax"
+    },
+    {
+     "kind": "def",
+     "line": 197,
+     "name": "Shor.PTP.limbWidth3"
+    },
+    {
+     "kind": "def",
+     "line": 201,
+     "name": "Shor.PTP.initW"
+    },
+    {
+     "kind": "def",
+     "line": 205,
+     "name": "Shor.PTP.childWidth3"
+    },
+    {
+     "kind": "def",
+     "line": 211,
+     "name": "Shor.PTP.childWidth"
+    },
+    {
+     "kind": "def",
+     "line": 214,
+     "name": "Shor.PTP.limbWidth"
+    },
+    {
+     "kind": "structure",
+     "line": 216,
+     "name": "Shor.PTP.PTPBand"
+    },
+    {
+     "kind": "structure",
+     "line": 221,
+     "name": "Shor.PTP.PTPPolicy"
+    },
+    {
+     "kind": "def",
+     "line": 226,
+     "name": "Shor.PTP.PTPPolicy.choose"
+    },
+    {
+     "kind": "def",
+     "line": 231,
+     "name": "Shor.PTP.PTPPolicy.check"
+    },
+    {
+     "kind": "def",
+     "line": 240,
+     "name": "Shor.PTP.pointRowQ"
+    },
+    {
+     "kind": "def",
+     "line": 249,
+     "name": "Shor.PTP.PTPTable.coeff"
+    },
+    {
+     "kind": "abbrev",
+     "line": 257,
+     "name": "Shor.PTP.Cell"
+    },
+    {
+     "kind": "def",
+     "line": 260,
+     "name": "Shor.PTP.cellAngle"
+    },
+    {
+     "kind": "def",
+     "line": 264,
+     "name": "Shor.PTP.LeafActiveDisjoint"
+    },
+    {
+     "kind": "def",
+     "line": 268,
+     "name": "Shor.PTP.sandCell"
+    },
+    {
+     "kind": "def",
+     "line": 273,
+     "name": "Shor.PTP.sandRow"
+    },
+    {
+     "kind": "def",
+     "line": 278,
+     "name": "Shor.PTP.pairsOf"
+    },
+    {
+     "kind": "def",
+     "line": 282,
+     "name": "Shor.PTP.leafPairs"
+    },
+    {
+     "kind": "def",
+     "line": 285,
+     "name": "Shor.PTP.sandRows"
+    },
+    {
+     "kind": "def",
+     "line": 289,
+     "name": "Shor.PTP.ptpLeafSandwich"
+    },
+    {
+     "kind": "def",
+     "line": 293,
+     "name": "Shor.PTP.SandwichAnc"
+    },
+    {
+     "kind": "def",
+     "line": 298,
+     "name": "Shor.PTP.adjToffCount"
+    },
+    {
+     "kind": "structure",
+     "line": 306,
+     "name": "Shor.PTP.NodeLayout"
+    },
+    {
+     "kind": "def",
+     "line": 313,
+     "name": "Shor.PTP.opGate"
+    },
+    {
+     "kind": "def",
+     "line": 321,
+     "name": "Shor.PTP.opGates"
+    },
+    {
+     "kind": "def",
+     "line": 325,
+     "name": "Shor.PTP.body"
+    },
+    {
+     "kind": "def",
+     "line": 334,
+     "name": "Shor.PTP.coeffN"
+    },
+    {
+     "kind": "def",
+     "line": 338,
+     "name": "Shor.PTP.cpCount"
+    },
+    {
+     "kind": "def",
+     "line": 351,
+     "name": "Shor.PTP.reachRows"
+    },
+    {
+     "kind": "def",
+     "line": 359,
+     "name": "Shor.PTP.topWidth"
+    },
+    {
+     "kind": "def",
+     "line": 361,
+     "name": "Shor.PTP.limbLo"
+    },
+    {
+     "kind": "def",
+     "line": 364,
+     "name": "Shor.PTP.limbHi"
+    },
+    {
+     "kind": "def",
+     "line": 367,
+     "name": "Shor.PTP.rowLo"
+    },
+    {
+     "kind": "def",
+     "line": 370,
+     "name": "Shor.PTP.rowHi"
+    },
+    {
+     "kind": "def",
+     "line": 374,
+     "name": "Shor.PTP.rowDemand"
+    },
+    {
+     "kind": "def",
+     "line": 377,
+     "name": "Shor.PTP.maxDemand"
+    },
+    {
+     "kind": "def",
+     "line": 382,
+     "name": "Shor.PTP.leastExp"
+    },
+    {
+     "kind": "def",
+     "line": 387,
+     "name": "Shor.PTP.ptpDemand"
+    },
+    {
+     "kind": "def",
+     "line": 392,
+     "name": "Shor.PTP.ptpTightWidth"
+    },
+    {
+     "kind": "def",
+     "line": 397,
+     "name": "Shor.PTP.PTPPolicy.ladderFuelX"
+    },
+    {
+     "kind": "def",
+     "line": 407,
+     "name": "Shor.PTP.PTPPolicy.ladderX"
+    },
+    {
+     "kind": "def",
+     "line": 416,
+     "name": "Shor.PTP.addCount"
+    },
+    {
+     "kind": "def",
+     "line": 421,
+     "name": "Shor.PTP.negCount"
+    },
+    {
+     "kind": "structure",
+     "line": 427,
+     "name": "Shor.PTP.Census"
+    },
+    {
+     "kind": "def",
+     "line": 437,
+     "name": "Shor.PTP.leafCensus"
+    },
+    {
+     "kind": "def",
+     "line": 442,
+     "name": "Shor.PTP.nodeCensus"
+    },
+    {
+     "kind": "def",
+     "line": 452,
+     "name": "Shor.PTP.ptpReserveNeed"
+    },
+    {
+     "kind": "def",
+     "line": 462,
+     "name": "Shor.PTP.ptpCleanAnc"
+    },
+    {
+     "kind": "def",
+     "line": 476,
+     "name": "Shor.PTP.ptpQubits"
+    },
+    {
+     "kind": "def",
+     "line": 483,
+     "name": "Shor.PTP.chunkReg"
+    },
+    {
+     "kind": "structure",
+     "line": 492,
+     "name": "Shor.PTP.SplitLayout"
+    },
+    {
+     "kind": "def",
+     "line": 506,
+     "name": "Shor.PTP.SplitLayout.lay"
+    },
+    {
+     "kind": "def",
+     "line": 519,
+     "name": "Shor.PTP.SplitLayout.top"
+    },
+    {
+     "kind": "def",
+     "line": 522,
+     "name": "Shor.PTP.SplitLayout.R"
+    },
+    {
+     "kind": "def",
+     "line": 528,
+     "name": "Shor.PTP.SplitLayout.alloc"
+    },
+    {
+     "kind": "def",
+     "line": 539,
+     "name": "Shor.PTP.ptpSubNode"
+    },
+    {
+     "kind": "inductive",
+     "line": 555,
+     "name": "Shor.PTP.PolicyImpl"
+    },
+    {
+     "kind": "def",
+     "line": 570,
+     "name": "Shor.PTP.Good"
+    },
+    {
+     "kind": "def",
+     "line": 575,
+     "name": "Shor.PTP.topLimbWidth"
+    },
+    {
+     "kind": "def",
+     "line": 583,
+     "name": "Shor.PTP.PTPPolicy.rungOK"
+    },
+    {
+     "kind": "def",
+     "line": 589,
+     "name": "Shor.PTP.PTPPolicy.chainContractsTight"
+    },
+    {
+     "kind": "inductive",
+     "line": 593,
+     "name": "Shor.PTP.PTPPolicy.ExactReach"
+    },
+    {
+     "kind": "abbrev",
+     "line": 604,
+     "name": "Shor.PTP.WidthRule"
+    },
+    {
+     "kind": "abbrev",
+     "line": 607,
+     "name": "Shor.PTP.exactRule"
+    },
+    {
+     "kind": "def",
+     "line": 610,
+     "name": "Shor.PTP.Admissible"
+    },
+    {
+     "kind": "inductive",
+     "line": 615,
+     "name": "Shor.PTP.PolicyImplD"
+    },
+    {
+     "kind": "abbrev",
+     "line": 630,
+     "name": "Shor.PTP.PolicyImplX"
+    },
+    {
+     "kind": "def",
+     "line": 633,
+     "name": "Shor.PTP.ptpResourcesD"
+    },
+    {
+     "kind": "def",
+     "line": 644,
+     "name": "Shor.PTP.ptpAndDagD"
+    },
+    {
+     "kind": "def",
+     "line": 653,
+     "name": "Shor.PTP.ptpCnotFullD"
+    },
+    {
+     "kind": "def",
+     "line": 665,
+     "name": "Shor.PTP.ptpWorkspaceD"
+    },
+    {
+     "kind": "abbrev",
+     "line": 675,
+     "name": "Shor.PTP.ptpResourcesX"
+    },
+    {
+     "kind": "abbrev",
+     "line": 677,
+     "name": "Shor.PTP.ptpCnotFullX"
+    },
+    {
+     "kind": "abbrev",
+     "line": 679,
+     "name": "Shor.PTP.ptpAndDagX"
+    },
+    {
+     "kind": "abbrev",
+     "line": 681,
+     "name": "Shor.PTP.ptpWorkspaceX"
+    },
+    {
+     "kind": "def",
+     "line": 684,
+     "name": "Shor.PTP.ptpWsTD"
+    },
+    {
+     "kind": "def",
+     "line": 692,
+     "name": "Shor.PTP.ptpReserveNeedD"
+    },
+    {
+     "kind": "def",
+     "line": 700,
+     "name": "Shor.PTP.ptpCleanAncD"
+    },
+    {
+     "kind": "def",
+     "line": 711,
+     "name": "Shor.PTP.opGrowth"
+    },
+    {
+     "kind": "def",
+     "line": 719,
+     "name": "Shor.PTP.growth"
+    },
+    {
+     "kind": "def",
+     "line": 725,
+     "name": "Shor.PTP.ptpGateTotalD"
+    },
+    {
+     "kind": "def",
+     "line": 730,
+     "name": "Shor.PTP.ptpExponent"
+    },
+    {
+     "kind": "def",
+     "line": 733,
+     "name": "Shor.PTP.constPTPPolicy"
+    },
+    {
+     "kind": "def",
+     "line": 738,
+     "name": "Shor.PTP.ptpEigenphase"
+    },
+    {
+     "kind": "structure",
+     "line": 745,
+     "name": "Shor.PTP.PTPPhaseOp"
+    },
+    {
+     "kind": "def",
+     "line": 753,
+     "name": "Shor.PTP.PTPCleanBasis"
+    },
+    {
+     "kind": "abbrev",
+     "line": 758,
+     "name": "Shor.PTP.PTPCleanState"
+    },
+    {
+     "kind": "def",
+     "line": 763,
+     "name": "Shor.PTP.maskGate"
+    },
+    {
+     "kind": "def",
+     "line": 768,
+     "name": "Shor.PTP.unmaskGate"
+    },
+    {
+     "kind": "def",
+     "line": 773,
+     "name": "Shor.PTP.maskReg"
+    },
+    {
+     "kind": "def",
+     "line": 775,
+     "name": "Shor.PTP.unmaskReg"
+    },
+    {
+     "kind": "def",
+     "line": 778,
+     "name": "Shor.PTP.ctlGate"
+    },
+    {
+     "kind": "def",
+     "line": 783,
+     "name": "Shor.PTP.ptpCtlEigenphase"
+    },
+    {
+     "kind": "structure",
+     "line": 788,
+     "name": "Shor.PTP.PTPCtlPhaseOp"
+    },
+    {
+     "kind": "def",
+     "line": 796,
+     "name": "Shor.PTP.padGate"
+    },
+    {
+     "kind": "def",
+     "line": 800,
+     "name": "Shor.PTP.padCtl"
+    },
+    {
+     "kind": "structure",
+     "line": 804,
+     "name": "Shor.PTP.PadOK"
+    },
+    {
+     "kind": "abbrev",
+     "line": 809,
+     "name": "Shor.PTP.padReg"
+    },
+    {
+     "kind": "def",
+     "line": 812,
+     "name": "Shor.PTP.padNew"
+    },
+    {
+     "kind": "def",
+     "line": 817,
+     "name": "Shor.PTP.PTPCleanBasisU"
+    },
+    {
+     "kind": "def",
+     "line": 824,
+     "name": "Shor.PTP.PTPExactCensus"
+    },
+    {
+     "kind": "def",
+     "line": 837,
+     "name": "Shor.PTP.PTPLowerExactCorrect"
+    },
+    {
+     "kind": "def",
+     "line": 848,
+     "name": "Shor.PTP.PTPCtlExactCensus"
+    },
+    {
+     "kind": "def",
+     "line": 862,
+     "name": "Shor.PTP.PTPCtlLowerExactCorrect"
+    },
+    {
+     "kind": "def",
+     "line": 878,
+     "name": "Shor.PTP.PTPPadExactCensus"
+    },
+    {
+     "kind": "def",
+     "line": 888,
+     "name": "Shor.PTP.PTPPadLowerExactCorrect"
+    },
+    {
+     "kind": "def",
+     "line": 903,
+     "name": "Shor.PTP.PTPGateTotalBound"
+    },
+    {
+     "kind": "def",
+     "line": 914,
+     "name": "Shor.PTP.PTPCircuitGateCountBound"
+    },
+    {
+     "kind": "def",
+     "line": 929,
+     "name": "Shor.PTP.PTPQubitsTight"
+    },
+    {
+     "kind": "def",
+     "line": 938,
+     "name": "Shor.PTP.PTPQubitsTightExact"
+    },
+    {
+     "kind": "def",
+     "line": 946,
+     "name": "Shor.PTP.PTPQubitsLePtpQubits"
+    },
+    {
+     "kind": "def",
+     "line": 954,
+     "name": "Shor.PTP.PTPChainContractsTightIffReach"
+    }
+   ],
+   "docstring": "# Phase triple product: statement\n\nEverything needed to state what `Main.lean` proves about the **phase triple product** (PTP): the\noperator that multiplies a basis state by `exp(i\u03c0\u03c6\u00b7x\u00b7y\u00b7z)` on three registers. This is the\nthree-operand analogue of `PhaseProduct`: each operand is cut into `k` limbs, the product phase\nis rebuilt from `3k - 2` smaller phase triple products plus classical arithmetic, and the\nrecursion bottoms out in a leaf that multiplies out bit by bit.\n\nThe definitions are plain data; their invariants are stated and proved in `Proofs/`. A reader who\nwants to know what is claimed needs only this file and `Main.lean`.\n\nThe file is laid out in the order a reader needs it:\n\n1. **Tables and policies**: what a PTP table and a banded policy are, and the contract that\n   decides whether they are admissible (`PTPTable.contract`, `PTPPolicy.check`).\n2. **Widths**: the conservative magnitude scan (`childWidth`) and the exact width\n   (`ptpTightWidth`) each node's registers are allocated at.\n3. **Circuits**: the leaf, one recursion level, the split of three registers into limbs, and the\n   recursion `PolicyImpl` / `PolicyImplD` that follows a policy.\n4. **Census**: the closed-form gate and qubit counts the circuits are claimed to have.\n5. **Specification**: the operators the circuits are compared with, independent of any circuit.\n6. **Claims**: the propositions `Main.lean` proves.\n\nThis file imports only `Mathlib`, `Framework/` and `PhaseProduct/Statement.lean`.\nIt reuses `Framework/ToomCookTable.lean` for registers, states, points, `valid_ops`, `Prog`,\n`applyOp?`, `run?` and `expectedRow`. The Boolean checkers that a decision procedure needs\n(`progConsumesPts?`, `safeProg?`, `returnsToStartCheck`, `validPoint?`) are defined here,\nbecause the Framework states the same conditions as propositions; `Proofs/` relates the two.",
+   "fsPath": "Implementation/PhaseTripleProduct/Statement.lean",
+   "importedBy": [
+    "PhaseTripleProduct/Main.lean",
+    "PhaseTripleProduct/Proofs/Asymptotic.lean",
+    "PhaseTripleProduct/Proofs/Controlled.lean",
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean",
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean",
+    "PhaseTripleProduct/Proofs/Gates/Leaf.lean",
+    "PhaseTripleProduct/Proofs/Gates/Node.lean",
+    "PhaseTripleProduct/Proofs/QubitsTight.lean",
+    "PhaseTripleProduct/Proofs/Recursion/Build.lean",
+    "PhaseTripleProduct/Proofs/Recursion/Census.lean",
+    "PhaseTripleProduct/Proofs/Recursion/CensusFull.lean",
+    "PhaseTripleProduct/Proofs/Recursion/Recursion.lean",
+    "PhaseTripleProduct/Proofs/Support/Language.lean",
+    "PhaseTripleProduct/Proofs/Support/Mirror.lean",
+    "PhaseTripleProduct/Proofs/Surface.lean",
+    "PhaseTripleProduct/Proofs/Table/Contract.lean",
+    "PhaseTripleProduct/Proofs/Table/Width.lean",
+    "PhaseTripleProduct/Proofs/Threshold.lean",
+    "PhaseTripleProduct/Proofs/Unbalanced.lean",
+    "PhaseTripleProduct/Proofs/Values/Exact.lean",
+    "PhaseTripleProduct/Proofs/Values/Semantics.lean",
+    "PhaseTripleProduct/Proofs/Witness/ExactFault.lean",
+    "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean",
+    "PhaseTripleProduct/Proofs/Witness/RecursionWitness.lean"
+   ],
+   "imports": [
+    "Framework/AbstractMachine/Gates.lean",
+    "Framework/AbstractMachine/LowGate.lean",
+    "Framework/Gatecount/ResourceModel.lean",
+    "Framework/Quantum/QSemantics.lean",
+    "Framework/Quantum/Registers.lean",
+    "Framework/Semantics/GateSemantics.lean",
+    "Framework/Semantics/LowGateSemantics.lean",
+    "Framework/ToomCookTable.lean",
+    "PhaseProduct/Statement.lean"
+   ],
+   "kind": "file",
+   "lines": 960,
+   "name": "Statement.lean",
+   "path": "PhaseTripleProduct/Statement.lean"
   },
   "QFT": {
    "children": [
@@ -22065,6 +26102,7 @@ window.GRAPH = {
    "children": [
     "Framework",
     "PhaseProduct",
+    "PhaseTripleProduct",
     "QFT",
     "ModularExponentiation",
     "Compiler",
@@ -22201,6 +26239,53 @@ window.GRAPH = {
      "pairs": [
       [
        "Framework/AbstractMachine/Gates.lean",
+       "PhaseTripleProduct/Statement.lean"
+      ],
+      [
+       "Framework/AbstractMachine/LowGate.lean",
+       "PhaseTripleProduct/Statement.lean"
+      ],
+      [
+       "Framework/Gatecount/ResourceModel.lean",
+       "PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean"
+      ],
+      [
+       "Framework/Gatecount/ResourceModel.lean",
+       "PhaseTripleProduct/Proofs/Recursion/Census.lean"
+      ],
+      [
+       "Framework/Gatecount/ResourceModel.lean",
+       "PhaseTripleProduct/Statement.lean"
+      ],
+      [
+       "Framework/Quantum/QSemantics.lean",
+       "PhaseTripleProduct/Statement.lean"
+      ],
+      [
+       "Framework/Quantum/Registers.lean",
+       "PhaseTripleProduct/Statement.lean"
+      ],
+      [
+       "Framework/Semantics/GateSemantics.lean",
+       "PhaseTripleProduct/Statement.lean"
+      ],
+      [
+       "Framework/Semantics/LowGateSemantics.lean",
+       "PhaseTripleProduct/Statement.lean"
+      ],
+      [
+       "Framework/ToomCookTable.lean",
+       "PhaseTripleProduct/Statement.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct",
+     "weight": 10
+    },
+    {
+     "from": "Framework",
+     "pairs": [
+      [
+       "Framework/AbstractMachine/Gates.lean",
        "QFT/Proofs/Macros.lean"
       ],
       [
@@ -22322,6 +26407,37 @@ window.GRAPH = {
      ],
      "to": "QubitCount",
      "weight": 1
+    },
+    {
+     "from": "PhaseProduct",
+     "pairs": [
+      [
+       "PhaseProduct/Proofs/GateLaws.lean",
+       "PhaseTripleProduct/Proofs/Gates/Node.lean"
+      ],
+      [
+       "PhaseProduct/Proofs/Math/MasterTheorem.lean",
+       "PhaseTripleProduct/Proofs/Asymptotic.lean"
+      ],
+      [
+       "PhaseProduct/Proofs/Math/ToomCook.lean",
+       "PhaseTripleProduct/Proofs/Support/Mirror.lean"
+      ],
+      [
+       "PhaseProduct/Proofs/NaiveLeaf.lean",
+       "PhaseTripleProduct/Proofs/Gates/Leaf.lean"
+      ],
+      [
+       "PhaseProduct/Proofs/Registers.lean",
+       "PhaseTripleProduct/Proofs/Table/Width.lean"
+      ],
+      [
+       "PhaseProduct/Statement.lean",
+       "PhaseTripleProduct/Statement.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct",
+     "weight": 6
     },
     {
      "from": "PhaseProduct",
@@ -23382,6 +27498,10 @@ window.GRAPH = {
       "weight": 29
      },
      {
+      "target": "PhaseTripleProduct",
+      "weight": 10
+     },
+     {
       "target": "QFT",
       "weight": 8
      },
@@ -23451,6 +27571,10 @@ window.GRAPH = {
       "weight": 2
      },
      {
+      "target": "PhaseTripleProduct",
+      "weight": 2
+     },
+     {
       "target": "Framework/Gatecount",
       "weight": 1
      },
@@ -23490,6 +27614,10 @@ window.GRAPH = {
     "consumers": [
      {
       "target": "PhaseProduct",
+      "weight": 3
+     },
+     {
+      "target": "PhaseTripleProduct",
       "weight": 3
      },
      {
@@ -23551,6 +27679,10 @@ window.GRAPH = {
       "weight": 2
      },
      {
+      "target": "PhaseTripleProduct",
+      "weight": 2
+     },
+     {
       "target": "Framework/Semantics",
       "weight": 1
      },
@@ -23597,6 +27729,10 @@ window.GRAPH = {
      },
      {
       "target": "Compiler",
+      "weight": 2
+     },
+     {
+      "target": "PhaseTripleProduct",
       "weight": 2
      },
      {
@@ -24142,6 +28278,10 @@ window.GRAPH = {
      {
       "target": "QubitCount",
       "weight": 7
+     },
+     {
+      "target": "PhaseTripleProduct",
+      "weight": 6
      },
      {
       "target": "Reference",
@@ -24690,6 +28830,10 @@ window.GRAPH = {
      {
       "target": "Reference",
       "weight": 6
+     },
+     {
+      "target": "PhaseTripleProduct",
+      "weight": 5
      },
      {
       "target": "QubitCount",
@@ -25739,6 +29883,10 @@ window.GRAPH = {
       "weight": 2
      },
      {
+      "target": "PhaseTripleProduct",
+      "weight": 2
+     },
+     {
       "target": "PhaseProduct/Proofs/GateCount",
       "weight": 1
      },
@@ -26248,6 +30396,823 @@ window.GRAPH = {
     ]
    },
    "path": "PhaseProduct/Proofs/Spec"
+  },
+  "PhaseTripleProduct": {
+   "children": [
+    "PhaseTripleProduct/Main.lean",
+    "PhaseTripleProduct/Proofs",
+    "PhaseTripleProduct/Statement.lean"
+   ],
+   "edges": [
+    {
+     "from": "PhaseTripleProduct/Proofs",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Asymptotic.lean",
+       "PhaseTripleProduct/Main.lean"
+      ],
+      [
+       "PhaseTripleProduct/Proofs/Controlled.lean",
+       "PhaseTripleProduct/Main.lean"
+      ],
+      [
+       "PhaseTripleProduct/Proofs/QubitsTight.lean",
+       "PhaseTripleProduct/Main.lean"
+      ],
+      [
+       "PhaseTripleProduct/Proofs/Surface.lean",
+       "PhaseTripleProduct/Main.lean"
+      ],
+      [
+       "PhaseTripleProduct/Proofs/Threshold.lean",
+       "PhaseTripleProduct/Main.lean"
+      ],
+      [
+       "PhaseTripleProduct/Proofs/Unbalanced.lean",
+       "PhaseTripleProduct/Main.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Main.lean",
+     "weight": 6
+    },
+    {
+     "from": "PhaseTripleProduct/Statement.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Main.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Main.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Statement.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Asymptotic.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Controlled.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Gates/Leaf.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Gates/Node.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/QubitsTight.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Recursion/Build.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Recursion/Census.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Recursion/CensusFull.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Recursion/Recursion.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Support/Language.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Support/Mirror.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Surface.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Table/Contract.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Table/Width.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Threshold.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Unbalanced.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Values/Exact.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Values/Semantics.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Witness/ExactFault.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean"
+      ],
+      [
+       "PhaseTripleProduct/Statement.lean",
+       "PhaseTripleProduct/Proofs/Witness/RecursionWitness.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs",
+     "weight": 24
+    }
+   ],
+   "ghosts": {
+    "consumers": [],
+    "providers": [
+     {
+      "target": "Framework",
+      "weight": 10
+     },
+     {
+      "target": "PhaseProduct",
+      "weight": 6
+     }
+    ]
+   },
+   "path": "PhaseTripleProduct"
+  },
+  "PhaseTripleProduct/Proofs": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Asymptotic.lean",
+    "PhaseTripleProduct/Proofs/Controlled.lean",
+    "PhaseTripleProduct/Proofs/ExactBoard",
+    "PhaseTripleProduct/Proofs/Gates",
+    "PhaseTripleProduct/Proofs/QubitsTight.lean",
+    "PhaseTripleProduct/Proofs/Recursion",
+    "PhaseTripleProduct/Proofs/Support",
+    "PhaseTripleProduct/Proofs/Surface.lean",
+    "PhaseTripleProduct/Proofs/Table",
+    "PhaseTripleProduct/Proofs/Threshold.lean",
+    "PhaseTripleProduct/Proofs/Unbalanced.lean",
+    "PhaseTripleProduct/Proofs/Values",
+    "PhaseTripleProduct/Proofs/Witness"
+   ],
+   "edges": [
+    {
+     "from": "PhaseTripleProduct/Proofs/Controlled.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Controlled.lean",
+       "PhaseTripleProduct/Proofs/Unbalanced.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Unbalanced.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/ExactBoard",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+       "PhaseTripleProduct/Proofs/Asymptotic.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Asymptotic.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/ExactBoard",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+       "PhaseTripleProduct/Proofs/QubitsTight.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/QubitsTight.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/ExactBoard",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+       "PhaseTripleProduct/Proofs/Surface.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Surface.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/ExactBoard",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+       "PhaseTripleProduct/Proofs/Witness/ExactFault.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Witness",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Gates",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Gates/Node.lean",
+       "PhaseTripleProduct/Proofs/Recursion/Census.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Recursion",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Recursion",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Recursion/CensusFull.lean",
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean"
+      ],
+      [
+       "PhaseTripleProduct/Proofs/Recursion/Recursion.lean",
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/ExactBoard",
+     "weight": 2
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Recursion",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Recursion/Recursion.lean",
+       "PhaseTripleProduct/Proofs/Witness/RecursionWitness.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Witness",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Support",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Support/Language.lean",
+       "PhaseTripleProduct/Proofs/Table/Contract.lean"
+      ],
+      [
+       "PhaseTripleProduct/Proofs/Support/Language.lean",
+       "PhaseTripleProduct/Proofs/Table/Width.lean"
+      ],
+      [
+       "PhaseTripleProduct/Proofs/Support/Mirror.lean",
+       "PhaseTripleProduct/Proofs/Table/Width.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Table",
+     "weight": 3
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Support",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Support/Mirror.lean",
+       "PhaseTripleProduct/Proofs/Values/Semantics.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Values",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Support",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Support/Mirror.lean",
+       "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Witness",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Surface.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Surface.lean",
+       "PhaseTripleProduct/Proofs/Controlled.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Controlled.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Table",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Table/Width.lean",
+       "PhaseTripleProduct/Proofs/Values/Semantics.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Values",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Table",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Table/Contract.lean",
+       "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean"
+      ],
+      [
+       "PhaseTripleProduct/Proofs/Table/Width.lean",
+       "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Witness",
+     "weight": 2
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Values",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Values/Exact.lean",
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/ExactBoard",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Values",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Values/Semantics.lean",
+       "PhaseTripleProduct/Proofs/Gates/Node.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Gates",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Values",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Values/Exact.lean",
+       "PhaseTripleProduct/Proofs/Threshold.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Threshold.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Values",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Values/Exact.lean",
+       "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean"
+      ],
+      [
+       "PhaseTripleProduct/Proofs/Values/Semantics.lean",
+       "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Witness",
+     "weight": 2
+    }
+   ],
+   "ghosts": {
+    "consumers": [
+     {
+      "target": "PhaseTripleProduct/Main.lean",
+      "weight": 6
+     }
+    ],
+    "providers": [
+     {
+      "target": "PhaseTripleProduct/Statement.lean",
+      "weight": 24
+     },
+     {
+      "target": "PhaseProduct",
+      "weight": 5
+     },
+     {
+      "target": "Framework",
+      "weight": 2
+     }
+    ]
+   },
+   "path": "PhaseTripleProduct/Proofs"
+  },
+  "PhaseTripleProduct/Proofs/ExactBoard": {
+   "children": [
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean",
+    "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean"
+   ],
+   "edges": [
+    {
+     "from": "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactNode.lean",
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactRecursion.lean",
+       "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
+     "weight": 1
+    }
+   ],
+   "ghosts": {
+    "consumers": [
+     {
+      "target": "PhaseTripleProduct/Proofs/Asymptotic.lean",
+      "weight": 1
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/QubitsTight.lean",
+      "weight": 1
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Surface.lean",
+      "weight": 1
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Witness",
+      "weight": 1
+     }
+    ],
+    "providers": [
+     {
+      "target": "PhaseTripleProduct/Statement.lean",
+      "weight": 3
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Recursion",
+      "weight": 2
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Values",
+      "weight": 1
+     }
+    ]
+   },
+   "path": "PhaseTripleProduct/Proofs/ExactBoard"
+  },
+  "PhaseTripleProduct/Proofs/Gates": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Gates/Leaf.lean",
+    "PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean",
+    "PhaseTripleProduct/Proofs/Gates/Node.lean"
+   ],
+   "edges": [
+    {
+     "from": "PhaseTripleProduct/Proofs/Gates/Leaf.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Gates/Leaf.lean",
+       "PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Gates/LeafSandwich.lean",
+       "PhaseTripleProduct/Proofs/Gates/Node.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Gates/Node.lean",
+     "weight": 1
+    }
+   ],
+   "ghosts": {
+    "consumers": [
+     {
+      "target": "PhaseTripleProduct/Proofs/Recursion",
+      "weight": 1
+     }
+    ],
+    "providers": [
+     {
+      "target": "PhaseProduct",
+      "weight": 2
+     },
+     {
+      "target": "PhaseTripleProduct/Statement.lean",
+      "weight": 2
+     },
+     {
+      "target": "Framework",
+      "weight": 1
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Values",
+      "weight": 1
+     }
+    ]
+   },
+   "path": "PhaseTripleProduct/Proofs/Gates"
+  },
+  "PhaseTripleProduct/Proofs/Recursion": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Recursion/Build.lean",
+    "PhaseTripleProduct/Proofs/Recursion/Census.lean",
+    "PhaseTripleProduct/Proofs/Recursion/CensusFull.lean",
+    "PhaseTripleProduct/Proofs/Recursion/Recursion.lean"
+   ],
+   "edges": [
+    {
+     "from": "PhaseTripleProduct/Proofs/Recursion/Build.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Recursion/Build.lean",
+       "PhaseTripleProduct/Proofs/Recursion/CensusFull.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Recursion/CensusFull.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Recursion/Census.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Recursion/Census.lean",
+       "PhaseTripleProduct/Proofs/Recursion/Recursion.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Recursion/Recursion.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Recursion/Recursion.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Recursion/Recursion.lean",
+       "PhaseTripleProduct/Proofs/Recursion/Build.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Recursion/Build.lean",
+     "weight": 1
+    }
+   ],
+   "ghosts": {
+    "consumers": [
+     {
+      "target": "PhaseTripleProduct/Proofs/ExactBoard",
+      "weight": 2
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Witness",
+      "weight": 1
+     }
+    ],
+    "providers": [
+     {
+      "target": "PhaseTripleProduct/Statement.lean",
+      "weight": 4
+     },
+     {
+      "target": "Framework",
+      "weight": 1
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Gates",
+      "weight": 1
+     }
+    ]
+   },
+   "path": "PhaseTripleProduct/Proofs/Recursion"
+  },
+  "PhaseTripleProduct/Proofs/Support": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Support/Language.lean",
+    "PhaseTripleProduct/Proofs/Support/Mirror.lean"
+   ],
+   "edges": [],
+   "ghosts": {
+    "consumers": [
+     {
+      "target": "PhaseTripleProduct/Proofs/Table",
+      "weight": 3
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Values",
+      "weight": 1
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Witness",
+      "weight": 1
+     }
+    ],
+    "providers": [
+     {
+      "target": "PhaseTripleProduct/Statement.lean",
+      "weight": 2
+     },
+     {
+      "target": "PhaseProduct",
+      "weight": 1
+     }
+    ]
+   },
+   "path": "PhaseTripleProduct/Proofs/Support"
+  },
+  "PhaseTripleProduct/Proofs/Table": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Table/Contract.lean",
+    "PhaseTripleProduct/Proofs/Table/Width.lean"
+   ],
+   "edges": [
+    {
+     "from": "PhaseTripleProduct/Proofs/Table/Contract.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Table/Contract.lean",
+       "PhaseTripleProduct/Proofs/Table/Width.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Table/Width.lean",
+     "weight": 1
+    }
+   ],
+   "ghosts": {
+    "consumers": [
+     {
+      "target": "PhaseTripleProduct/Proofs/Witness",
+      "weight": 2
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Values",
+      "weight": 1
+     }
+    ],
+    "providers": [
+     {
+      "target": "PhaseTripleProduct/Proofs/Support",
+      "weight": 3
+     },
+     {
+      "target": "PhaseTripleProduct/Statement.lean",
+      "weight": 2
+     },
+     {
+      "target": "PhaseProduct",
+      "weight": 1
+     }
+    ]
+   },
+   "path": "PhaseTripleProduct/Proofs/Table"
+  },
+  "PhaseTripleProduct/Proofs/Values": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Values/Exact.lean",
+    "PhaseTripleProduct/Proofs/Values/Semantics.lean"
+   ],
+   "edges": [
+    {
+     "from": "PhaseTripleProduct/Proofs/Values/Semantics.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Values/Semantics.lean",
+       "PhaseTripleProduct/Proofs/Values/Exact.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Values/Exact.lean",
+     "weight": 1
+    }
+   ],
+   "ghosts": {
+    "consumers": [
+     {
+      "target": "PhaseTripleProduct/Proofs/Witness",
+      "weight": 2
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/ExactBoard",
+      "weight": 1
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Gates",
+      "weight": 1
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Threshold.lean",
+      "weight": 1
+     }
+    ],
+    "providers": [
+     {
+      "target": "PhaseTripleProduct/Statement.lean",
+      "weight": 2
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Support",
+      "weight": 1
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Table",
+      "weight": 1
+     }
+    ]
+   },
+   "path": "PhaseTripleProduct/Proofs/Values"
+  },
+  "PhaseTripleProduct/Proofs/Witness": {
+   "children": [
+    "PhaseTripleProduct/Proofs/Witness/ExactFault.lean",
+    "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean",
+    "PhaseTripleProduct/Proofs/Witness/RecursionWitness.lean"
+   ],
+   "edges": [
+    {
+     "from": "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean",
+       "PhaseTripleProduct/Proofs/Witness/ExactFault.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Witness/ExactFault.lean",
+     "weight": 1
+    },
+    {
+     "from": "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean",
+     "pairs": [
+      [
+       "PhaseTripleProduct/Proofs/Witness/FaultChallenge.lean",
+       "PhaseTripleProduct/Proofs/Witness/RecursionWitness.lean"
+      ]
+     ],
+     "to": "PhaseTripleProduct/Proofs/Witness/RecursionWitness.lean",
+     "weight": 1
+    }
+   ],
+   "ghosts": {
+    "consumers": [],
+    "providers": [
+     {
+      "target": "PhaseTripleProduct/Statement.lean",
+      "weight": 3
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Table",
+      "weight": 2
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Values",
+      "weight": 2
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/ExactBoard",
+      "weight": 1
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Recursion",
+      "weight": 1
+     },
+     {
+      "target": "PhaseTripleProduct/Proofs/Support",
+      "weight": 1
+     }
+    ]
+   },
+   "path": "PhaseTripleProduct/Proofs/Witness"
   },
   "QFT": {
    "children": [
