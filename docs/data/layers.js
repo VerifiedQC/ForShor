@@ -319,8 +319,8 @@ window.LAYERS = {
     {
      "name": "ShorImplementation",
      "file": "Implementation/Reference/Contract.lean",
-     "line": 80,
-     "code": "structure ShorImplementation : Type where\n  -- (field docstrings omitted here; see the source)\n\n  program : ShorOrderFindingInstance → ShorOrderFindingProgram\n\n  successProbability : ℕ → ℝ\n\n  correct :\n    ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →\n    ∀ (inst : ShorOrderFindingInstance),\n      0 ≤ successProbability inst.N ∧ successProbability inst.N ≤ 1 ∧\n      successProbability inst.N ≤\n        probability_of_success\n          (qs := qs)\n          (evalC := LowerGateClass.evalL (qs := qs))\n          (T := T)\n          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))\n          (x := (program inst).output)\n          (r := ord inst.a inst.N inst.coprime)\n          (Q := ASize (program inst).output)\n          (C := (program inst).circuit)\n          (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))\n\n  trialCount :\n    ℕ → ℕ\n\n  trialCount_correct :\n    ∀ N : ℕ,\n      Is2048Bit N →\n        (99 / 100 : ℝ) ≤ 1 - (1 - successProbability N) ^ (trialCount N)",
+     "line": 60,
+     "code": "structure ShorImplementation : Type where\n  -- (field docstrings omitted here; see the source)\n\n  program : ShorOrderFindingInstance → ShorOrderFindingProgram\n\n  successProbability : ℕ → ℝ\n\n  correct :\n    ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →\n    ∀ (inst : ShorOrderFindingInstance),\n      0 ≤ successProbability inst.N ∧ successProbability inst.N ≤ 1 ∧\n      successProbability inst.N ≤\n        probability_of_success\n          (qs := qs)\n          (evalC := LowerGateClass.evalL (qs := qs))\n          (T := T)\n          (verify := fun d => decide ((inst.a ^ d) % inst.N = 1))\n          (x := (program inst).output)\n          (r := ord inst.a inst.N inst.coprime)\n          (Q := ASize (program inst).output)\n          (C := (program inst).circuit)\n          (ψ := qs.ket (RegEncoding.zero (Basis := qs.Basis)))\n\n  trialCount : ℕ → ℕ\n\n  trialCount_correct :\n    ∀ N : ℕ, Is2048Bit N →\n      (99 / 100 : ℝ) ≤ 1 - (1 - successProbability N) ^ (trialCount N)",
      "note": "The contract. <code>correct</code> says the declared probability is a lower bound on the real one for the submitted circuit, evaluated by <code>LowerGateClass</code>, for every valid instance."
     }
    ]
@@ -355,7 +355,7 @@ window.LAYERS = {
     {
      "name": "lowerSignedPhaseProduct_correct",
      "file": "Implementation/PhaseProduct/Main.lean",
-     "line": 16,
+     "line": 19,
      "code": "theorem lowerSignedPhaseProduct_correct\n    (qs : QSemantics)\n    [RegEncoding qs.Basis]\n    [GateSemanticsFacts qs]\n    [LowerGateClass qs]\n    (k : ℕ)\n    (hk : 1 < k)\n    (phi : Angle)\n    (x z : ExtReg)\n    (ops : Prog k) :\n    LowerSignedPhaseProductCorrect qs k hk phi x z ops := by",
      "note": "For any semantics, any Toom-Cook arity \\(k &gt; 1\\), any angle and any table <code>ops</code>: the lowered signed phase product is correct. The table is a parameter, which is what later lets any admissible table inherit the proof."
     }
@@ -398,7 +398,7 @@ window.LAYERS = {
     {
      "name": "ModExpApproxValidDistUniform",
      "file": "Implementation/ModularExponentiation/Statement.lean",
-     "line": 337,
+     "line": 397,
      "code": "def ModExpApproxValidDistUniform (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] :\n    Prop :=\n  ∃ K : ℝ, 0 ≤ K ∧ K ≤ 1600 ∧\n    ∀ (η : ℝ) (cfg : ModExpConfig η) (ψ : qs.State), cfg.ValidUnitState qs ψ →\n      ‖qs.eval cfg.approxGate ψ - qs.eval (cfg.idealGate qs) ψ‖ ≤ (regSize cfg.x : ℝ) * stepErr K η",
      "note": "What the theorem asserts, unfolded. <code>Spec/</code> states the claims and <code>Proofs/</code> discharges them; the pattern repeats in every subroutine folder."
     }
@@ -478,9 +478,9 @@ window.LAYERS = {
    "snippets": [
     {
      "name": "exists_shorGateCountBound",
-     "file": "Implementation/GateCount/Shor_GateCount.lean",
-     "line": 2142,
-     "code": "theorem exists_shorGateCountBound\n    (qs : QSemantics)\n    [RegEncoding qs.Basis]\n    (ε : ℝ)\n    (hε : 0 < ε) :\n    ∃ k : ℕ,\n    ∃ hk : 1 < k,\n    ∃ ops : Prog k,\n      PhaseProductProgramOK k hk\n          (genInterpolationPoints k) (generatedInterpolationPoints_length k) ops ∧\n      ShorGateCountBound qs ε k hk ops\n        (genInterpolationPoints k) (generatedInterpolationPoints_length k) := by",
+     "file": "Implementation/Shor/Main.lean",
+     "line": 92,
+     "code": "theorem exists_shorGateCountBound\n    (ε : ℝ)\n    (hε : 0 < ε) :\n    ∃ k : ℕ,\n    ∃ hk : 1 < k,\n    ∃ ops : Prog k,\n      PhaseProductProgramOK k hk\n          (genInterpolationPoints k) (generatedInterpolationPoints_length k) ops ∧\n      ShorGateCountBound qs ε k hk ops\n        (genInterpolationPoints k) (generatedInterpolationPoints_length k) := by",
      "note": "<code>ShorGateCountBound qs ε k hk ops …</code> unfolds to: there is a \\(C\\) with <code>gateCount ≤ C · shorGateRate ε n</code> for every valid instance and layout, where <code>shorGateRate ε n = n^(2+ε)</code>."
     }
    ]
@@ -496,9 +496,9 @@ window.LAYERS = {
    "snippets": [
     {
      "name": "referenceShorImplementation",
-     "file": "Implementation/Reference/ReferenceShorImplementation.lean",
-     "line": 473,
-     "code": "noncomputable def referenceShorImplementation\n    (P : ShorLoweringPolicy) (hP : P.Admissible) :\n    ShorImplementation (qs := qs) where\n  program := referenceSubmittedProgram P hP\n  successProbability := referenceSuccessProbability\n  correct := referenceSubmittedProgram_correct (qs := qs) P hP\n  trialCount := referenceTrialCount\n  trialCount_correct := by\n    intro N h\n    apply referenceTrialCount_correct",
+     "file": "Implementation/Reference/Standard/Main.lean",
+     "line": 185,
+     "code": "noncomputable def referenceShorImplementation (P : ShorLoweringPolicy) (hP : P.Admissible) :\n    ShorImplementation (qs := qs) where\n  program := referenceSubmittedProgram P hP\n  successProbability := referenceSuccessProbability\n  correct := referenceSubmittedProgram_correct (qs := qs) P hP\n  trialCount := referenceTrialCount\n  trialCount_correct := fun N _ => referenceTrialCount_correct N",
      "note": "The five fields of the contract, filled: the program, the declared probability, its proof, the trial count, and its proof."
     }
    ]

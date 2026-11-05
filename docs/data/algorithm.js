@@ -91,7 +91,7 @@ window.ALGORITHM = {
     {
      "name": "ShorFactoringInstance",
      "file": "Implementation/Shor/Proofs/Support.lean",
-     "line": 306,
+     "line": 245,
      "code": "structure ShorFactoringInstance where\n  /-- The modulus to factor. -/\n  N : ℕ\n  /-- The modulus is odd. -/\n  odd : Odd N\n  /-- The modulus is nontrivial. -/\n  gt_two : N > 2\n  /-- The modulus is not a prime power. -/\n  not_prime_power : ∀ (p k : ℕ), Nat.Prime p → N ≠ p ^ k",
      "note": null
     },
@@ -124,7 +124,7 @@ window.ALGORITHM = {
     {
      "name": "valid_choices, successful_choices",
      "file": "Implementation/Shor/Proofs/Math/Factoring_Reduction/Defs.lean",
-     "line": 59,
+     "line": 55,
      "code": "-- the set of valid a's; 1 < a < N and a coprime to N\nnoncomputable def valid_choices (N : ℕ) : Finset ℕ :=\n  (Finset.range N).filter (fun a => 1 < a ∧ Nat.gcd a N = 1)\n\n/-- The subset of valid 'a's that will successfully yield a factor. -/\nnoncomputable def successful_choices (N : ℕ) : Finset ℕ :=\n  (valid_choices N).filter (fun a => is_successful_choice a N)",
      "note": "Together with <code>is_successful_choice</code> just above them: some period of \\(a\\) meets the two success conditions."
     }
@@ -142,14 +142,14 @@ window.ALGORITHM = {
     {
      "name": "orderFindingIdeal",
      "file": "Implementation/Shor/Proofs/Support.lean",
-     "line": 324,
+     "line": 263,
      "code": "noncomputable def orderFindingIdeal (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs]\n    (a N : ℕ) (x y : ExtReg) : Gate :=\n  (H_reg x.active) ;; (initY1 y.active) ;; (modExpIdeal' qs a N x.active y.active) ;; (IQFT x)",
      "note": "The circuit the correctness theorem is about. The compiled circuit, <code>orderFindingApprox</code> in the same file, has the same four steps with the verified approximate modular exponentiation in third place; <code>Policy.lowerGate</code> then turns it into <code>LowGate</code>s."
     },
     {
      "name": "H_reg",
      "file": "Implementation/ModularExponentiation/Statement.lean",
-     "line": 148,
+     "line": 208,
      "code": "def H_reg (r : Reg) : Gate :=\n  (regQubits r).foldl (fun acc q => (Gate.H q) ;; acc) Gate.id",
      "note": null
     }
@@ -167,7 +167,7 @@ window.ALGORITHM = {
     {
      "name": "initY1",
      "file": "Implementation/Shor/Statement.lean",
-     "line": 210,
+     "line": 205,
      "code": "def initY1 (y : Reg) : Gate :=\n  match y.qubits with\n  | [] => Gate.id\n  | q :: _ => Gate.X q",
      "note": null
     }
@@ -185,7 +185,7 @@ window.ALGORITHM = {
     {
      "name": "modExpIdeal'",
      "file": "Implementation/ModularExponentiation/Statement.lean",
-     "line": 226,
+     "line": 286,
      "code": "def modExpIdeal' (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsCore qs] (a N : ℕ)\n    (x data : Reg) : Gate :=\n  modExpIdealSteps qs a N data 0 x.qubits",
      "note": null
     }
@@ -205,7 +205,7 @@ window.ALGORITHM = {
     {
      "name": "IQFT",
      "file": "Implementation/ModularExponentiation/Statement.lean",
-     "line": 144,
+     "line": 204,
      "code": "def IQFT (r : ExtReg) : Gate :=\n  †(Gate.QFT r)",
      "note": null
     }
@@ -224,15 +224,15 @@ window.ALGORITHM = {
     {
      "name": "OF_post",
      "file": "Implementation/Shor/Statement.lean",
-     "line": 60,
+     "line": 55,
      "code": "noncomputable def OF_post (T : ℕ → ℕ) (verify : ℕ → Bool) (o Q : ℕ) : ℕ :=\n  if h : (orderCandidates T verify o Q).Nonempty then (orderCandidates T verify o Q).min' h else 0",
      "note": null
     },
     {
      "name": "probability_of_success",
      "file": "Implementation/Shor/Statement.lean",
-     "line": 185,
-     "code": "noncomputable def probability_of_success {qs : QSemantics} [RegEncoding qs.Basis]\n    [MeasureClass qs] {Circuit : Type} (evalC : Circuit → qs.State → qs.State) (T : ℕ → ℕ)\n    (verify : OrderVerifier) (x : Reg) (r Q : ℕ) (C : Circuit) (ψ : qs.State) : ℝ :=\n  ∑ o : Fin Q, (r_found (T := T) verify o.1 Q r) *\n    MeasureClass.probMeas (qs := qs) x o.1 (evalC C ψ)",
+     "line": 180,
+     "code": "noncomputable def probability_of_success {qs : QSemantics} [RegEncoding qs.Basis]\n    [MeasureClass qs] {Circuit : Type} (evalC : Circuit → qs.State → qs.State) (T : ℕ → ℕ)\n    (verify : ℕ → Bool) (x : Reg) (r Q : ℕ) (C : Circuit) (ψ : qs.State) : ℝ :=\n  ∑ o : Fin Q, (r_found (T := T) verify o.1 Q r) *\n    MeasureClass.probMeas (qs := qs) x o.1 (evalC C ψ)",
      "note": null
     }
    ],
