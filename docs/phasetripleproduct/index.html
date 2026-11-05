@@ -44,8 +44,8 @@
           The development is part of ForShor, under <code>Implementation/PhaseTripleProduct/</code>, in the same layout as
           <code>PhaseProduct/</code>: <code>Statement.lean</code> defines everything and states the claims, <code>Proofs/</code>
           holds the lemmas, and <code>Main.lean</code> proves the claims. Read those two files and you know what is claimed.
-          It is on the branch <code>ptp/phasetripleproduct</code> and <strong>is not merged into <code>main</code> yet</strong>;
-          the source links on this page point at a pinned commit of that branch. See <a href="#where">where it lives</a>.
+          The source links on this page point at a pinned commit in <code>main</code>'s history. See
+          <a href="#where">where it lives</a>.
         </p>
       </div>
 
@@ -263,10 +263,8 @@ python3 scripts/ptp_exact_width.py policies/ref_ptp_2048.json 2048     # the exa
           The Lean was ported from the PTP verification suite of an interim fork of ShorTableOptimization onto ForShor's own
           table language (<code>Framework/ToomCookTable.lean</code>); theorem names are those of that suite, except that the
           final theorems of the extensions carry a <code>_core</code> suffix in <code>Proofs/</code> and are re-stated in
-          <code>Main.lean</code> under the claim's name. It is on the branch <code>ptp/phasetripleproduct</code> of ForShor,
-          based on <code>qubitCount</code>, and not yet merged into <code>main</code>. The folder is not yet in the main page's
-          proof map: ForShor's docs-graph generator already fails on an unmodified <code>qubitCount</code>, so the proof map
-          has to be regenerated first.
+          <code>Main.lean</code> under the claim's name. It is standalone, so the project page's layer graph (the order-finding
+          story) does not include it; the repository's docs graph (<code>docs/data/graph.js</code>) does.
         </p>
         <p class="colophon">
           <a href="https://github.com/VerifiedQC/ForShor#readme">README</a> ·
