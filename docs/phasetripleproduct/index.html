@@ -29,7 +29,7 @@
     <article>
       <nav class="site-nav" aria-label="ForShor site"><a href="../">Order finding</a><a href="./" aria-current="page">PhaseTripleProduct</a><a href="../efficient-tables/">Efficient tables</a><span class="nav-out"><a href="https://github.com/VerifiedQC/ForShor">GitHub</a> · <a href="../#cite">Paper</a></span></nav>
 
-      <h1>A map of the Lean proofs for PhaseTripleProduct</h1>
+      <h1>PhaseTripleProduct</h1>
       <p class="subtitle">A recursive Toom–Cook construction for a three-register phase, and what is proved about it</p>
 
       <div class="scope">
@@ -37,53 +37,51 @@
         <p>
           This page is about a <strong>different primitive from the one in ForShor's order-finding circuit</strong>.
           PhaseProduct applies \(\exp(i\pi\varphi\,xz)\) to <em>two</em> registers and is what ForShor's modular
-          multiplication is built from. PhaseTripleProduct (PTP) applies \(\exp(i\pi\varphi\,xyz)\) to <em>three</em>. ForShor's
-          correctness and gate-count theorems do not use it, and nothing here changes them.
+          multiplication is built from. PhaseTripleProduct (PTP) applies \(\exp(i\pi\varphi\,xyz)\) to <em>three</em> registers.
+          As such, it is distinct from ForShor's
+          correctness and gate-count theorems, but is a part of the larger ForShor.ai challenge.
         </p>
         <p>
-          The development is part of ForShor, under <code>Implementation/PhaseTripleProduct/</code>, in the same layout as
-          <code>PhaseProduct/</code>: <code>Statement.lean</code> defines everything and states the claims, <code>Proofs/</code>
-          holds the lemmas, and <code>Main.lean</code> proves the claims. Read those two files and you know what is claimed.
-          The source links on this page point at a pinned commit in <code>main</code>'s history. See
-          <a href="#where">where it lives</a>.
+          We construct PhaseTripleProduct in the same layout as PhaseProduct, defining the key theorems and claimed validity in <code>Statement.lean</code>, 
+          storing the lemmas in <code>Proofs/</code> and proving the claims in 
+          <code>Main.lean</code> proves the claims. We will explain the primitives similarly here, and point to these files for a reader to learn more.
+          See
+          <a href="#where">the structure here</a>.
         </p>
       </div>
 
       <section>
         <p>
-          <span class="newthought">A phase triple product</span> multiplies a basis state by
-          \(\exp(i\pi\varphi\,x\,y\,z)\), where \(x,y,z\) are the signed integers held in three \(n\)-qubit registers. Done
-          directly, with a doubly-controlled phase for each triple of bits, it costs about \(n^3\) gates. The recursive
-          construction is ForShor's PhaseProduct one with a third factor. Split each operand into \(k\) limbs; the product of
-          three degree-\((k-1)\) limb polynomials has degree \(3(k-1)\), so its value at the limb radix is a fixed rational
-          combination of its values at \(3(k-1)+1 = 3k-2\) distinct points. Evaluating the three operands at each point with a
+          <span class="newthought">A phase triple product</span>, just like a phase product, performs multiplication, but focuses on 
+          a basis state by
+          \(\exp(i\pi\varphi\,x\,y\,z)\), where \(x,y,z\) are the signed integers held in three \(n\)-qubit registers. 
+          A direct product application will use \(O(n^3)\) gates. The recursion will act the same way as PhaseProduct, splitting an operand into \(k\) limbs the product of
+          three degree-\((k-1)\) limb polynomials has degree \(3(k-1)\). At the limb radix, the polynomial is a fixed rational
+          combination of its values at \(3(k-1)+1 = 3k-2\) distinct points. Evaluating each of the three operands at each point with a
           short program of additions, negations and shifts, taking one smaller phase triple product per point, and recursing
-          gives \(O(n^{\log_k(3k-2)})\) gates for a fixed table: \(n^{2}\) at \(k=2\), \(n^{1.77}\) at \(k=3\), tending to
-          \(n\).<label for="sn-ptp-exp" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-ptp-exp" class="margin-toggle"/><span class="sidenote">\(\log_k(3k-2)\) for \(k = 2,3,4,5,6\): \(2.000,\ 1.771,\ 1.661,\ 1.609,\ 1.547\). The PhaseProduct exponent \(\log_k(2k-1)\) is \(1.585,\ 1.465,\ 1.404,\ 1.365,\ 1.343\). The comparison is between the exponents of the two constructions, not between two ways of computing the same thing.</span>
+          gives \(O(n^{\log_k(3k-2)})\) gates for a fixed table. As such, the triple product gate complexity will be \(O(n^{2})\) at \(k=2\), \(O(n^{1.77})\) at \(k=3\), etc.<label for="sn-ptp-exp" class="margin-toggle sidenote-number"></label><input type="checkbox" id="sn-ptp-exp" class="margin-toggle"/><span class="sidenote">\(\log_k(3k-2)\) for \(k = 2,3,4,5,6\): \(2.000,\ 1.771,\ 1.661,\ 1.609,\ 1.547\). The PhaseProduct exponent \(\log_k(2k-1)\) is \(1.585,\ 1.465,\ 1.404,\ 1.365,\ 1.343\). The comparison is between the exponents of the two constructions, not between two ways of computing the same thing.</span>
         </p>
         <p>
-          The table is the same object as in PhaseProduct: the Framework's <code>Prog k</code>, a straight-line program of
+          We can write the instruction set at some level of the recursion as a table, just like PhaseProduct, defining a straight-line program of
           <code>addScaled</code>, <code>negate</code>, <code>shiftL</code>, <code>shiftR</code> and
-          <code>phaseProduct i</code> checkpoints, with its interpolation points. What changes is the point count
-          (\(3k-2\) rather than \(2k-1\)) and what a checkpoint means: each is taken on all three operands. The
-          development verifies this at the gate level in ForShor's <code>LowGate</code> language, for whole banded policies,
-          and states its claims as propositions in one file; the central one: for every checked policy and every width there is a circuit following the policy that
+          <code>PhaseProduct i</code> checkpoints, with now \(3k-2\) interpolation points. We formally verify this
+          at the gate level in ForShor's <code>LowGate</code> language, for whole banded policies. 
+          We state its claims as propositions, primarily that for every checked policy and every width there is a circuit following the policy that
           acts as the specification operator on every clean state, with an exact gate census. Extensions give a controlled
           version, the \(O(n^{\log_k(3k-2)})\) gate count, operands of unequal width and a qubit count.
         </p>
         <p>
-          Below, the construction first as a flow, then the proof as a graph of layers, then the recursion itself as a figure, then the theorems, what is
-          <em>not</em> claimed, and how to check it. Every block links back to the Lean source at a recorded line.
+          An interactive diagram is given below to visualize the flow of the argument. We provide the proof as a directed graph, alongside a figure for the recursion itself. 
         </p>
       </section>
 
       <section>
         <h2 id="flow-section">How one node is computed</h2>
         <p>
-          The whole construction is one step, repeated. Given three registers and a width, the policy either stops at a leaf or picks a
-          table; the registers are split into limbs, moved to each interpolation point by the table's program, a smaller phase triple
+          Given three registers and a width, the policy either stops at a leaf or picks a
+          table. Registers are split into limbs, moved to each interpolation point by the table's program, a smaller phase triple
           product is taken there, and everything is undone. Each of the \(3k-2\) smaller products is the same problem at a smaller
-          width, which is the loop on the left. Click a step for what it does and the Lean statement that carries it.
+          width, which is the loop on the left.
         </p>
         <figure class="fullwidth layers-figure">
           <div id="flow" class="layers algo"></div>
@@ -93,35 +91,24 @@
       <section>
         <h2 id="layers-section">The proof, layer by layer</h2>
         <p>
-          The development follows ForShor's own layout. <a href="#layer-Statement">Statement</a> holds every definition the
-          claims mention and the claims themselves; <a href="#layer-Main">Main</a> proves them; the blocks between the two are
-          the lemmas (<code>Proofs/</code>). A reader needs only those two files, and building <code>Main.lean</code> is the
-          guarantee that the claims are proved. Every arrow below is a real import, read from the Lean sources by this site's
-          generator, and no arrow points up the figure. The rule that makes Statement plus Main enough is checked rather than
+          The development follows ForShor's own layout, wherein <a href="#layer-Statement">Statement</a> holds each definition and claim;
+          <a href="#layer-Main">Main</a> proves these claims true with the blocks between the two are
+          the lemmas (<code>Proofs/</code>). Building <code>Main.lean</code> is the
+          guarantee that the claims are proved. The rule that makes Statement plus Main enough is checked rather than
           asserted: <code>scripts/StatementClosure.lean</code> computes every constant the claims reach, unfolding
           definitions, and fails if one lives outside Mathlib, <code>Framework/</code> or a <code>Statement.lean</code>, and CI
-          runs it. Open a block for its role, the files in it, what it rests on and feeds, and the statements it carries,
+          runs it. Open a block for its role, the files within, what it rests on and feeds, and the statements it carries,
           quoted verbatim.
         </p>
         <figure class="fullwidth layers-figure">
           <div id="layers" class="layers ptp"></div>
         </figure>
-        <p>
-          Every block between <a href="#layer-Statement">Statement</a> and <a href="#layer-Main">Main</a> imports Statement directly, so only the arrows that carry something are drawn. The
-          spine is <a href="#layer-Support">Support</a> → <a href="#layer-Table">Table</a> → <a href="#layer-Values">Values</a>
-          → <a href="#layer-Gates">Gates</a> → <a href="#layer-Recursion">Recursion</a> → <a href="#layer-ExactBoard">ExactBoard</a>
-          → <a href="#layer-Surface">Surface</a>. The mathematics (<code>node_identity</code>) comes before any gate. The
-          recursion exists twice, over the conservative <em>scan</em> widths and over the <em>exact</em> widths, and the headline
-          theorem is stated at the exact ones. Everything after <code>Surface</code> is an extension, a witness, or the proof of
-          the claims.
-        </p>
       </section>
 
       <section>
-        <h2 id="recursion-section">Inside PTP: one table, applied recursively</h2>
+        <h2 id="recursion-section">Inside PTP</h2>
         <p>
-          The layer graph does not show how the circuit is built. The figure below draws the reference policy of the
-          benchmark (<code>policies/ref_ptp_2048.json</code> in the ShorTableOptimization fork, where the benchmark lives; it is input to this figure, not part of the Lean development), at \(n = 2048\). Its four bands use \(k = 6, 4, 2, 2\); at exact
+          The figure below draws a reference policy, where at \(n = 2048\), its four bands use \(k = 6, 4, 2, 2\); at exact
           widths the recursion goes \(2048 \to 375 \to 189 \to 96 \to 50\), using the first, third, third and fourth bands and
           then the leaf, so the \(k = 4\) band is never reached. The middle panel draws the \(k = 2\) table of the third band,
           which splits one product into four, and the right panel what happens to each.
