@@ -292,7 +292,7 @@
   window.addEventListener("load", draw);
   window.addEventListener("mathjax-ready", draw);     // typeset titles change block sizes
   }
-  // Other pages (docs/phasetripleproduct, docs/efficient-tables) reuse the same graph:
+  // Other pages (docs/phasetripleproduct) reuse the same graph:
   // window.mountLayerGraph(data, element, hashPrefix), data in the shape of data/layers.js.
   window.mountLayerGraph = mount;
   mount(window.ALGORITHM, document.getElementById("algorithm"), "step");
