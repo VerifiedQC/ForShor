@@ -1,8 +1,8 @@
 # ForShor project website
 
 This directory is the project website, published by GitHub Pages at
-<https://verifiedqc.github.io/ForShor/>. It has three tracks, joined by the site navigation
-(`<nav class="site-nav">`, styled in `site.css`, repeated in each page's markup; keep the three
+<https://verifiedqc.github.io/ForShor/>. It has two tracks, joined by the site navigation
+(`<nav class="site-nav">`, styled in `site.css`, repeated in each page's markup; keep the
 links in step when adding a page):
 
 * `index.html` (below): order finding, the ForShor proofs.
@@ -20,8 +20,6 @@ links in step when adding a page):
   (`--allow-dirty` overrides it while developing) and any file not tracked at `--ref`. Run it with
   `--check` to see whether the data is stale. It must be re-run when the Lean files change, and
   once the branch is pushed so the pinned commit exists on the remote.
-* `efficient-tables/`: the `efficient_tables/` package (Lean proofs, Fortran solver, paper),
-  with its own proof map; see its page.
 
 The pages below describe the order-finding track.
 

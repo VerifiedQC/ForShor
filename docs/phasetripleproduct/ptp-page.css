@@ -1,5 +1,5 @@
 /* Additions for the PhaseTripleProduct page; everything else comes from ../tufte.css and ../site.css.
-   The scope / results / button rules mirror ../efficient-tables/et-page.css (candidates to hoist into site.css). */
+   The scope / results / button rules are candidates to hoist into site.css. */
 .scope { border-left: 4px solid #b8651b; background: #fbf0e3; padding: 0.9rem 1.2rem; margin: 1.6rem 0 0.4rem; width: 55%; }
 .scope p { width: 100%; margin: 0.5rem 0; font-size: 1.15rem; }
 .scope .scope-title { font-variant: small-caps; letter-spacing: 0.06em; font-weight: bold; margin-top: 0; }
