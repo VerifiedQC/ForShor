@@ -16,7 +16,7 @@ Each folder has the same shape: `Statement.lean` holds the definitions and the c
 
 **`Shor/`** puts the pieces together into the order-finding circuit and proves it is Shor's algorithm: a lower bound on the success probability, carried across the approximation error of the modular exponentiation. Main results: `Shor_correct_approx_lowered` and the gate-count bound `exists_shorGateCountBound`, which is `O(n^(2+ε))`.
 
-**`QubitCount/`** counts how many qubits the lowered circuit needs at once, and proves an exact formula for it. Main results: the three formulas `Policy.orderFinding_peak_formula`, `_balanced` and `_balanced_u`. At 2048 bits the plain circuit peaks at 19,319 qubits and the balanced one at 17,291.
+**`QubitCount/`** counts how many qubits the lowered circuit needs at once, and proves an exact formula for it. Main results: the three formulas `Policy.orderFinding_peak_formula`, `_balanced` and `_balanced_u`. At 2048 bits the plain circuit peaks at 19,319 qubits and the balanced one at 13,449.
 
 **`Reference/`** exists because everything above is stated for *any* registers, layout and policy that satisfy some conditions. Somebody has to actually pick them. `Reference/` makes every choice concrete: the precision, the register widths, where each register sits, and proves that this concrete layout satisfies all the conditions the other folders ask for. The result is a value of `ShorImplementation` (`Contract.lean`), the contract a submission has to meet: a circuit for every instance, a declared success probability, and a trial count.
 

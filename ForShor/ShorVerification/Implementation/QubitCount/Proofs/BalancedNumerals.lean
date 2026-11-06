@@ -5,9 +5,12 @@ import ForShor.ShorVerification.Implementation.Reference.Balanced.Proofs.Checks
 # Qubit count: the 2048-bit numerals, balanced
 
 The default rule's plans at the four unequal sites of the 2048-bit reference
-layout fit the reserves those sites hold, and the balanced budget is 4400:
-the negation of the 4398-qubit scratch register with its unit qubit and its
-scratch.
+layout fit the reserves those sites hold, and the balanced budget is 558:
+the phase product of Step 1 (a 2049 x 2348 site split into two) with its two
+qubits of scratch. Before modular swap 001 the budget was 4400, the negation of
+the 4398-qubit scratch register with its unit qubit and its register-wide
+constant; the incrementer negation (one clean ancilla) removes that step from
+the top.
 -/
 
 namespace Shor
@@ -67,11 +70,11 @@ lemma sitePeak_step5 {cx cz : ℕ} (hx : 43006 ≤ cx) (hz : 42708 ≤ cz) :
     reserveBudgetD_2348_2348, splitPeakOf, peakReserveD_2348_2348, hx, hz]
 
 /-- The balanced budget at the 2048-bit widths, for registers with the spare
-qubits the plans need: the scratch negation's `4398 + 2`. -/
+qubits the plans need (the scratch register's `4398 + 2` before swap 001 is no longer binding). -/
 theorem balancedOrderFindingPeak_2048 {xW dC wC sC : ℕ} (hx : xW = 4095 ∨ xW = 4096)
     (hd : 43009 ≤ dC) (hw : 42709 ≤ wC) (hs : 43005 ≤ sC) :
     Policy.orderFindingPeakBalanced standardPolicy2 defaultRule xW 2048 dC 2347 wC 4398 sC
-      = 4400 := by
+      = 558 := by
   simp only [Policy.orderFindingPeakBalanced, orderFindingPeakBalancedD, orderFindingPeakWith,
     modMulPeakWith, modMulPhasePeaksWith, Nat.reduceAdd,
     sitePeak_step1 (show 43007 ≤ dC - 2 by omega) (show 42708 ≤ wC - 1 by omega),
@@ -84,15 +87,15 @@ theorem balancedOrderFindingPeak_2048 {xW dC wC sC : ℕ} (hx : xW = 4095 ∨ xW
 
 /-- For every 2048-bit modulus, the reference circuit of `reference2048Peak` lowered
 after balancing every site with `Balanced.defaultRule` peaks, scratch included, at
-17,291 qubits with 4096 exponent qubits and 17,290 with 4095; from an empty start it
-never exceeds 17,291. -/
+13,449 qubits with 4096 exponent qubits and 13,448 with 4095; from an empty start it
+never exceeds 13,449. -/
 theorem reference2048PeakBalanced (inst : ShorOrderFindingInstance) (hN : Is2048Bit inst.N) :
     let layout := Reference.allocateReferenceLayout standardPolicy2 inst Reference.m2048
     let L0 := orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag
     let g := Balanced.balancedShorCircuit standardPolicy2 Balanced.defaultRule inst Reference.m2048
-    (Reference.referenceXWidth inst = 4096 → g.peakQubits L0 = 17291) ∧
-    (Reference.referenceXWidth inst = 4095 → g.peakQubits L0 = 17290) ∧
-    g.peakQubits ∅ ≤ 17291 := by
+    (Reference.referenceXWidth inst = 4096 → g.peakQubits L0 = 13449) ∧
+    (Reference.referenceXWidth inst = 4095 → g.peakQubits L0 = 13448) ∧
+    g.peakQubits ∅ ≤ 13449 := by
   dsimp only
   obtain ⟨hd, hw, hs, hx⟩ := reference_widths_2048 hN
   have hP := standardPolicy_admissible 2 (by decide)
@@ -132,8 +135,8 @@ theorem reference2048PeakBalanced (inst : ShorOrderFindingInstance) (hN : Is2048
     reserveNeed_2348_4399] at hD hW hS
   rw [Policy.orderFindingQubitsBalanced, hxw, hdw, hww, hsw, hd, hw, hs,
     balancedOrderFindingPeak_2048 hx (by omega) (by omega) (by omega)] at hp
-  have hbase : Reference.referenceXWidth inst + (2048 + 1) + 2347 + 4398 + 1 + 4400
-      = Reference.referenceXWidth inst + 13195 := by
+  have hbase : Reference.referenceXWidth inst + (2048 + 1) + 2347 + 4398 + 1 + 558
+      = Reference.referenceXWidth inst + 9353 := by
     omega
   rw [hbase] at hp
   have hmono := (mono scratch

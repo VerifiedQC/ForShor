@@ -6,7 +6,7 @@ This folder works out how many qubits the lowered order-finding circuit needs at
 
 We walk the lowered circuit in order and keep track of which qubits are live. A gate makes the qubits it touches live. Extending a register brings reserve qubits in, and deallocating releases them. The peak is the largest the live set ever gets.
 
-`AddScaled` and `Negate` also borrow a few clean scratch qubits while they run (a carry for the adder, a constant-one register and a carry for negation). Those are added in while the primitive runs and returned afterwards.
+`AddScaled` and `Negate` also borrow clean scratch qubits while they run: one carry for the adder, and one ancilla for negation. (Before modular swap 001, negation borrowed a constant-one register as wide as the register it negated, plus a carry. It is now the complement followed by a one-clean-ancilla increment gate, so it no longer needs a register of scratch.) Those qubits are added in while the primitive runs and returned afterwards.
 
 This is not the same as the number of qubits the circuit ever touches (`LowGate.qubitCount`). The allocator gives every child of a phase-product recursion its own reserve, but the children run one after another, so only one of them is live at a time.
 
@@ -26,8 +26,8 @@ These are for the reference circuit with the standard `k = 2` table. The registe
 | circuit | base registers | most expensive step | peak |
 |---|---|---|---|
 | plain | 12,891 | Step 4's phase product, 6,428 | **19,319** |
-| balanced | 12,891 | negating the scratch register, 4,400 | **17,291** |
+| balanced | 12,891 | Step 1's phase product, 558 | **13,449** |
 
-With 4095 exponent qubits, take one off each. The plain circuit peaks in Step 4 because that phase product multiplies a 2348-bit register by a 4399-bit one. Balancing splits it into two 2348 × 2348 products, which cost 553 qubits instead, so the negation becomes the largest step.
+With 4095 exponent qubits, take one off each. The plain circuit peaks in Step 4 because that phase product multiplies a 2348-bit register by a 4399-bit one. Balancing splits it into two 2348 × 2348 products, which cost 553 qubits instead. Before modular swap 001 the negation of the scratch register (4,400 qubits) was then the largest step; with the one-ancilla negation it is no longer, and Step 1's phase product, with its two qubits of scratch, is (558).
 
 The numbers are proved in `Proofs/Numerals.lean` and `Proofs/BalancedNumerals.lean`, checked by the kernel (`decide +kernel`). The formula without scratch was also compared against the real compiled circuit from `forshor_emit` for small instances, and it matched every time.

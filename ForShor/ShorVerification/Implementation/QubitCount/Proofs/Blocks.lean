@@ -83,10 +83,10 @@ lemma SFact.CNOT {c t : ℕ} {L : Finset ℕ} (hc : c ∈ L) (ht : t ∈ L) (d :
   rw [h, scratch_CNOT]
 
 lemma SFact.Negate {r : ExtReg} {L : Finset ℕ} (hr : regQubitSet r.active ⊆ L) (d : Bool) :
-    SFact P pc (.Negate r) d L L (L.card + (r.width + 1)) := by
+    SFact P pc (.Negate r) d L L (L.card + 1) := by
   have h : L ∪ LowGate.usedQubits (.Negate r) = L := Finset.union_eq_left.mpr hr
   show WellFormed (.Negate r) d L ∧ after (.Negate r) d L = L ∧
-    peak scratch (.Negate r) d L = L.card + (r.width + 1)
+    peak scratch (.Negate r) d L = L.card + 1
   refine ⟨hr, h, ?_⟩
   show (L ∪ _).card + scratch (.Negate r) = _
   rw [h, scratch_Negate]

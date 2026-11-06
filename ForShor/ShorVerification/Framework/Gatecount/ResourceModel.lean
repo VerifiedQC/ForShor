@@ -18,8 +18,9 @@ section ConcreteCostModel
 /-- Conservative linear bound for one ripple-adder on `w` qubits. -/
 def rippleAdderGateBound (w : ℕ) : ℕ := 9 * w + 2
 
-/-- Negation is bounded by sign-width handling plus one ripple-adder. -/
-def negateGateBound (r : ExtReg) : ℕ := ExtReg.width r + rippleAdderGateBound (ExtReg.width r)
+/-- Negation is bounded by the complement plus the one-ancilla incrementer:
+`w` X gates and `32 w` Toffolis (swap 001). -/
+def negateGateBound (r : ExtReg) : ℕ := ExtReg.width r + 32 * ExtReg.width r
 
 /-- Direct signed PhaseProduct base-case cost, quadratic in the operand widths. -/
 def directSignedPhaseProductGateCount (x z : ExtReg) : ℕ := 5 * ExtReg.width x * ExtReg.width z
@@ -199,36 +200,34 @@ Two's-complement negation is
 
     -x = (~x) + 1  (mod 2^w).
 
-We therefore:
-  * apply X to all `w` data qubits;
-  * prepare a clean `w`-bit register containing 1;
-  * apply a Cuccaro modulo adder;
-  * erase the constant-one register.
+We therefore apply X to all `w` data qubits and then increment the register
+in place, with a single clean ancilla (the sign/carry qubit) and no scratch
+register.
 
-Cuccaro adder:
-  https://arxiv.org/abs/quant-ph/0410184
+MODULAR SWAP 001 (2026-11-05). This replaces the earlier construction
+(a clean `w`-bit constant-one register plus a Cuccaro modulo adder: `2w - 3`
+Toffolis, `w + 1` clean qubits). The incrementer is Gidney's one-clean-ancilla
+increment gate:
+  Craig Gidney, "Constructing Large Increment Gates", 2015,
+  https://algassert.com/circuits/2015/06/12/Constructing-Large-Increment-Gates.html
+and its cost is taken from Table 1 of Khattar--Gidney, arXiv:2407.17966
+(row "Incrementer", "One clean", [Gid15a]): `32 n` Toffolis, i.e. `128 n` T.
+Alternatives recorded in `ForShor_modular_swaps/swap-001_negation_incrementer`:
+Khattar--Gidney's `3 n` Toffolis with `log2* n` clean ancillae, and the same
+with dirty ancillae at about twice the Toffolis.
 
-Khattar--Gidney independently give a linear-size dedicated incrementer:
-  https://arxiv.org/abs/2407.17966
-
-The version below is intentionally the simpler directly-auditable
-Cuccaro construction.
+Conventions, stated not proved (like every other primitive here):
+  * `toffoli := 32 * w` and `cleanAnc := 1` come from the table above.
+  * `x := w` is the bitwise complement. The Clifford (CNOT) count of the
+    incrementer is not given by the source table and is charged as 0 here;
+    this does not affect any T count. See OPEN.md Q7 in the swap log.
 --------------------------------------------------------- -/
 
 def negateResources (r : ExtReg) : GateResources :=
   let w := ExtReg.width r
-  let a := cuccaroModAddResources w
-  {
-    h := a.h
-    -- `w` X gates for bitwise complement; 2 more to prepare/erase |1⟩.
-    x := w + a.x + 2
-    cnot := a.cnot
-    toffoli := a.toffoli
-    rz := a.rz
-
-    -- `w` clean bits for the constant-one register + Cuccaro carry.
-    cleanAnc := w + a.cleanAnc
-  }
+  { x := w
+    toffoli := 32 * w
+    cleanAnc := 1 }
 
 /-! ---------------------------------------------------------
     AddScaled

@@ -712,7 +712,7 @@ lemma step3_gateCount_le
         (step3 N dataCarry scratch flag)
         hworkspace
       ≤
-    100 * (scratch.width + 1) := by
+    200 * (scratch.width + 1) := by
 
   have hbits0 :=
     bitIndices_length_le_of_lt_two_pow
@@ -841,7 +841,7 @@ lemma cmpLtNWDifference_gateCount_le
           dataCarry work scratch hdata)
         hworkspace
       ≤
-    20 * scratch.width + 4 := by
+    43 * scratch.width + 4 := by
 
   simp [
     cmpLtNWDifference,
@@ -980,7 +980,7 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
   let cMax : ℕ := max 2 (cWork + 5)
   let α : ℝ := phaseProductExponent k
   let S : ℝ := Real.rpow (cMax : ℝ) α
-  let L : ℝ := 150 * cMax + 20
+  let L : ℝ := 300 * cMax + 20
   let A : ℝ := (3 * Cp + 2 * Cc + 8 * Cq) * S + L + 1
   have hS : 0 < S := by
     dsimp [S, cMax]
@@ -1328,23 +1328,23 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
   have hS3Nat' :
       loweredGateCount (Basis := Basis) k hk ops pts hpts
           (step3 N (data.grow 1) scratch flag) hws3 ≤
-        100 * (cMax * n) := by
+        200 * (cMax * n) := by
     exact hS3Nat.trans
-      (Nat.mul_le_mul_left 100 hscratchSucc)
+      (Nat.mul_le_mul_left 200 hscratchSucc)
   have hS3 :
       (loweredGateCount (Basis := Basis) k hk ops pts hpts
         (step3 N (data.grow 1) scratch flag) hws3 : ℝ)
-        ≤ 100 * (cMax : ℝ) * Real.rpow (n : ℝ) α := by
+        ≤ 200 * (cMax : ℝ) * Real.rpow (n : ℝ) α := by
     have hS3R :
         (loweredGateCount (Basis := Basis) k hk ops pts hpts
           (step3 N (data.grow 1) scratch flag) hws3 : ℝ) ≤
-        (100 * (cMax * n) : ℕ) := by
+        (200 * (cMax * n) : ℕ) := by
       exact_mod_cast hS3Nat'
     push_cast at hS3R
     calc
-      _ ≤ 100 * ((cMax : ℝ) * n) := hS3R
-      _ = (100 * (cMax : ℝ)) * n := by ring
-      _ ≤ (100 * (cMax : ℝ)) * Real.rpow (n : ℝ) α :=
+      _ ≤ 200 * ((cMax : ℝ) * n) := hS3R
+      _ = (200 * (cMax : ℝ)) * n := by ring
+      _ ≤ (200 * (cMax : ℝ)) * Real.rpow (n : ℝ) α :=
         mul_le_mul_of_nonneg_left hnRate (by positivity)
   have hDiffNat := cmpLtNWDifference_gateCount_le (Basis := Basis)
     k hk ops pts hpts (data.grow 1) work scratch hstep4.data_can_grow hws4.2.1
@@ -1352,12 +1352,12 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
       (loweredGateCount (Basis := Basis) k hk ops pts hpts
         (cmpLtNWDifference (data.grow 1) work scratch
           hstep4.data_can_grow) hws4.2.1 : ℝ)
-        ≤ (20 * (cMax : ℝ) + 4) * n := by
+        ≤ (43 * (cMax : ℝ) + 4) * n := by
     have hDiffR :
         (loweredGateCount (Basis := Basis) k hk ops pts hpts
           (cmpLtNWDifference (data.grow 1) work scratch
             hstep4.data_can_grow) hws4.2.1 : ℝ)
-          ≤ (20 * scratch.width + 4 : ℕ) := by
+          ≤ (43 * scratch.width + 4 : ℕ) := by
       exact_mod_cast hDiffNat
     have hsR : (scratch.width : ℝ) ≤ (cMax : ℝ) * n := by
       have hsCast : (scratch.width : ℝ) ≤ ((cMax * n : ℕ) : ℝ) :=
@@ -1370,16 +1370,16 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     have h4n : (4 : ℝ) ≤ 4 * n := by
       simpa using mul_le_mul_of_nonneg_left hnR h4
     calc
-      _ ≤ 20 * (scratch.width : ℝ) + 4 := hDiffR
-      _ ≤ 20 * ((cMax : ℝ) * n) + 4 := by
+      _ ≤ 43 * (scratch.width : ℝ) + 4 := hDiffR
+      _ ≤ 43 * ((cMax : ℝ) * n) + 4 := by
         simpa [add_comm] using
           add_le_add_right
             (mul_le_mul_of_nonneg_left hsR h20) 4
-      _ ≤ 20 * ((cMax : ℝ) * n) + 4 * n :=
+      _ ≤ 43 * ((cMax : ℝ) * n) + 4 * n :=
         by
           simpa [add_comm] using
-            add_le_add_left h4n (20 * ((cMax : ℝ) * n))
-      _ = (20 * (cMax : ℝ) + 4) * n := by ring
+            add_le_add_left h4n (43 * ((cMax : ℝ) * n))
+      _ = (43 * (cMax : ℝ) + 4) * n := by ring
   have hFast :
       (loweredGateCount (Basis := Basis) k hk ops pts hpts
         (fastConstMulInto N work scratch hstep4.mulWorkspace)
@@ -1397,27 +1397,27 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
       (loweredGateCount (Basis := Basis) k hk ops pts hpts
         (step4 N (data.grow 1) work scratch flag hstep4) hws4 : ℝ)
         ≤ (2 * Cp + 4 * Cq) * S * Real.rpow (n : ℝ) α +
-          (40 * (cMax : ℝ) + 9) *
+          (86 * (cMax : ℝ) + 9) *
             Real.rpow (n : ℝ) α := by
     rw [step4_gateCount_decompose]
     push_cast
     calc
       _ ≤ 2 * ((Cp + 2 * Cq) * S * Real.rpow (n : ℝ) α) +
-          2 * ((20 * (cMax : ℝ) + 4) * n) + 1 := by
+          2 * ((43 * (cMax : ℝ) + 4) * n) + 1 := by
         gcongr
       _ = (2 * Cp + 4 * Cq) * S * Real.rpow (n : ℝ) α +
-          (40 * (cMax : ℝ) + 8) * n + 1 := by ring
+          (86 * (cMax : ℝ) + 8) * n + 1 := by ring
       _ ≤ (2 * Cp + 4 * Cq) * S * Real.rpow (n : ℝ) α +
-          (40 * (cMax : ℝ) + 9) *
+          (86 * (cMax : ℝ) + 9) *
             Real.rpow (n : ℝ) α := by
-        have hcNonneg : 0 ≤ (40 * (cMax : ℝ) + 8) := by positivity
+        have hcNonneg : 0 ≤ (86 * (cMax : ℝ) + 8) := by positivity
         have hlin := mul_le_mul_of_nonneg_left hnRate hcNonneg
         have htail :
-            (40 * (cMax : ℝ) + 8) * n + 1 ≤
-              (40 * (cMax : ℝ) + 9) *
+            (86 * (cMax : ℝ) + 8) * n + 1 ≤
+              (86 * (cMax : ℝ) + 9) *
                 Real.rpow (n : ℝ) α := by
           calc
-            _ ≤ (40 * (cMax : ℝ) + 8) *
+            _ ≤ (86 * (cMax : ℝ) + 8) *
                   Real.rpow (n : ℝ) α +
                 Real.rpow (n : ℝ) α :=
               add_le_add hlin hbaseOne
@@ -1440,11 +1440,11 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
           (Cq * S * Real.rpow (n : ℝ) (phaseProductExponent k) +
             Cp * S * Real.rpow (n : ℝ) (phaseProductExponent k) +
             Cq * S * Real.rpow (n : ℝ) (phaseProductExponent k)) +
-          100 * (cMax : ℝ) *
+          200 * (cMax : ℝ) *
             Real.rpow (n : ℝ) (phaseProductExponent k) +
           ((2 * Cp + 4 * Cq) * S *
               Real.rpow (n : ℝ) (phaseProductExponent k) +
-            (40 * (cMax : ℝ) + 9) *
+            (86 * (cMax : ℝ) + 9) *
               Real.rpow (n : ℝ) (phaseProductExponent k)) +
           ((cWork : ℝ) * n +
             Cc * S * Real.rpow (n : ℝ) (phaseProductExponent k) +
@@ -1453,14 +1453,14 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
     _ =
         (3 * Cp + 2 * Cc + 8 * Cq) * S *
             Real.rpow (n : ℝ) (phaseProductExponent k) +
-          (140 * (cMax : ℝ) + 9) *
+          (286 * (cMax : ℝ) + 9) *
             Real.rpow (n : ℝ) (phaseProductExponent k) +
           2 * cWork * n := by
       ring
     _ ≤
         (3 * Cp + 2 * Cc + 8 * Cq) * S *
             Real.rpow (n : ℝ) (phaseProductExponent k) +
-          (142 * (cMax : ℝ) + 9) *
+          (288 * (cMax : ℝ) + 9) *
             Real.rpow (n : ℝ) (phaseProductExponent k) := by
       have hcWorkR : (cWork : ℝ) ≤ cMax := by exact_mod_cast hcMaxWork
       have hlin : (2 : ℝ) * cWork * n ≤
@@ -1475,18 +1475,18 @@ lemma cmodMulInPlaceCore_gateCount_phase_bound
       nlinarith
     _ =
         ((3 * Cp + 2 * Cc + 8 * Cq) * S +
-            (142 * (cMax : ℝ) + 9)) *
+            (288 * (cMax : ℝ) + 9)) *
           Real.rpow (n : ℝ) (phaseProductExponent k) := by
       ring
     _ ≤
         ((3 * Cp + 2 * Cc + 8 * Cq) * S +
-            (150 * (cMax : ℝ) + 20)) *
+            (300 * (cMax : ℝ) + 20)) *
           Real.rpow (n : ℝ) (phaseProductExponent k) := by
       apply mul_le_mul_of_nonneg_right _ hbaseNonneg
       nlinarith
     _ ≤
         ((3 * Cp + 2 * Cc + 8 * Cq) * S +
-            (150 * (cMax : ℝ) + 20) + 1) *
+            (300 * (cMax : ℝ) + 20) + 1) *
           Real.rpow (n : ℝ) (phaseProductExponent k) := by
       nlinarith
 

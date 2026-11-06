@@ -261,7 +261,7 @@ open Operations in
 theorem scratch_compile (T : ToomCookTable) (W : ℕ) :
     T.compile.scratch W = Policy.opsScratch T.ops W := by
   have key : ∀ ops : Prog T.k,
-      (if ops.any (fun op => match op with | .negate _ => true | _ => false) then W + 1
+      (if ops.any (fun op => match op with | .negate _ => true | _ => false) then 1
         else if ops.any (fun op => match op with | .addScaled _ _ _ _ => true | _ => false) then 1
         else 0)
       = Policy.opsScratch ops W := by

@@ -15,7 +15,7 @@ open Operations in
 /-- The scratch one table operation charges on chunks of width `W`: a negation
 its constant register and carry, an addition its carry. -/
 def Policy.opScratch {k : ℕ} : valid_ops k → ℕ → ℕ
-  | .negate _, W => W + 1
+  | .negate _, _ => 1
   | .addScaled _ _ _ _, _ => 1
   | _, _ => 0
 
@@ -77,7 +77,7 @@ def modMulPhasePeaksWith (P : ShorLoweringPolicy) (pp : ℕ → ℕ → ℕ → 
   , qftPeak P wW
   , qftPeak P (dW + 1)
   , 2 + pp (wW + 1) (wC - 1) (dW + 2) (dC - 2)
-  , sW + 2
+  , 3
   , qftPeak P sW
   , 2 + pp (wW + 1) (wC - 1) (sW + 1) (sC - 1)
   , 2 + pp (dW + 2) (dC - 2) (wW + 1) (wC - 1) ]

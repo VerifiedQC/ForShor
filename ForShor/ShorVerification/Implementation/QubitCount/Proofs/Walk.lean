@@ -65,7 +65,7 @@ def reach : LowGate → Finset ℕ
 @[simp] lemma scratch_ShiftL (r : ExtReg) (n : ℕ) : scratch (.ShiftL r n) = 0 := rfl
 @[simp] lemma scratch_ShiftR (r : ExtReg) (n : ℕ) : scratch (.ShiftR r n) = 0 := rfl
 @[simp] lemma scratch_RadixReverse (r : Reg) (m : ℕ) : scratch (.RadixReverse r m) = 0 := rfl
-@[simp] lemma scratch_Negate (r : ExtReg) : scratch (.Negate r) = r.width + 1 := rfl
+@[simp] lemma scratch_Negate (r : ExtReg) : scratch (.Negate r) = 1 := rfl
 @[simp] lemma scratch_AddScaled (d s : ExtReg) (b : Bool) (n : ℕ) :
     scratch (.AddScaled d s b n) = 1 := rfl
 

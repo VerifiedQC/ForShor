@@ -231,7 +231,7 @@ def chooseData (D : List (ℕ × TableData)) (n : ℕ) : Option TableData :=
 
 /-- The largest scratch a table's arithmetic charges on chunks of width `W`. -/
 def TableData.scratch (d : TableData) (W : ℕ) : ℕ :=
-  if d.negates then W + 1 else if d.adds then 1 else 0
+  if d.negates then 1 else if d.adds then 1 else 0
 
 /-- The common width of the next recursion level: under the scan rule one
 above the largest slot width the table's map gives at `initWidths`, under the
@@ -317,8 +317,9 @@ a QFT on `n` qubits peaks `qp n`:
 3. Step 2's QFTs on the data register with its carry bit.
 4. Step 2's phase product, between the work register and the data register
    with its carry bit.
-5. The negations of the scratch register: one more qubit and the negation's
-   scratch.
+5. Step 3's constant comparison and subtraction on the scratch register: one
+   unit qubit, two qubits of arithmetic scratch (swap 001: the negation is the
+   incrementer, one clean ancilla, not a register-wide constant).
 6. Step 4's QFTs on the scratch register.
 7. Step 4's phase product, between the work and scratch registers.
 8. Step 5's phase product, between the data register with its carry bit and
@@ -332,7 +333,7 @@ def modMulPhasePeaksWith (pp : ℕ → ℕ → ℕ → ℕ → ℕ) (qp : ℕ �
   , qp wW
   , qp (dW + 1)
   , 2 + pp (wW + 1) (wC - 1) (dW + 2) (dC - 2)
-  , sW + 2
+  , 3
   , qp sW
   , 2 + pp (wW + 1) (wC - 1) (sW + 1) (sC - 1)
   , 2 + pp (dW + 2) (dC - 2) (wW + 1) (wC - 1) ]

@@ -63,8 +63,9 @@ def sAfter : Gate → Bool → Finset ℕ → Finset ℕ
 
 /-- Peak of a high-level gate, its blocks opaque, scratch included, when a
 phase product on operands of widths `wx`, `wz` and spare capacities `cx`, `cz`
-peaks `pc wx cx wz cz` above its start. The constant arithmetic peaks at the negation of its scratch register,
-or, for the comparison, at the addition with the data register grown by one. -/
+peaks `pc wx cx wz cz` above its start. The constant arithmetic needs one unit qubit and two qubits of
+arithmetic scratch (the negation is the one-ancilla incrementer, so it no longer peaks at a register's width),
+or, for the comparison, three with the data register grown by one. -/
 def sPeak (pc : ℕ → ℕ → ℕ → ℕ → ℕ) : Gate → Bool → Finset ℕ → ℕ
   | .id, _, L => L.card
   | .seq U V, true, L => max (sPeak pc U true L) (sPeak pc V true (sAfter P U true L))
@@ -75,8 +76,8 @@ def sPeak (pc : ℕ → ℕ → ℕ → ℕ → ℕ) : Gate → Bool → Finset 
       else L.card
   | .SignedPhaseProd _ x z, _, L => L.card + pc x.width x.capacity z.width z.capacity
   | .CSignedPhaseProd _ _ x z, _, L => L.card + pc x.width x.capacity z.width z.capacity
-  | .CmpGeConst _ _ s _, _, L => (L ∪ allocBits s 1).card + max 2 (s.width + 1)
-  | .CSubConst _ _ s _, _, L => (L ∪ allocBits s 1).card + (s.width + 1)
+  | .CmpGeConst _ _ s _, _, L => (L ∪ allocBits s 1).card + 2
+  | .CSubConst _ _ s _, _, L => (L ∪ allocBits s 1).card + 1
   | .idealCtrlModMul _ _ _ _, _, L => L.card
   | g, d, L => match sPrim g with
     | some u => peak scratch u d L
@@ -236,23 +237,23 @@ lemma touch_fact {g : LowGate} {L : Finset ℕ} (h : TouchIn L g) (d : Bool) :
     after g d L = L ∧ peak scratch g d L = L.card + tmax scratch g :=
   ⟨(touch_walk_anc scratch L g h d).1, (touch_walk_anc scratch L g h d).2.1⟩
 
-lemma cmpGe_arith (c w : ℕ) :
-    max (max c (c + max 0 (w + 1)))
+lemma cmpGe_arith (c : ℕ) :
+    max (max c (c + max 0 1))
       (max (max (c + 1) (max (c + 1 + 1) (c + 1)))
         (max (c + max 0 0)
-          (max (max (c + 1) (max (c + 1 + 1) (c + 1))) (c + max 0 (max 0 (w + 1)))))) =
-    c + max 2 (w + 1) := by
+          (max (max (c + 1) (max (c + 1 + 1) (c + 1))) (c + max 0 (max 0 1))))) =
+    c + 2 := by
   omega
 
-lemma cSub_arith (c w : ℕ) :
-    max (max c (c + max 0 (w + 1))) (max (c + 1) (c + max 0 (max 0 (w + 1)))) = c + (w + 1) := by
+lemma cSub_arith (c : ℕ) :
+    max (max c (c + max 0 1)) (max (c + 1) (c + max 0 (max 0 1))) = c + 1 := by
   omega
 
 lemma cmpGe_block (N : ℕ) (data s : ExtReg) (flag : ℕ) (hws : ConstArithmeticWorkspace N data s flag)
     (L : Finset ℕ) (h : sGood P (.CmpGeConst N data s flag) true L) :
     after (lowerCmpGeConst N data s flag hws) true L = L ∪ allocBits s 1 ∧
     peak scratch (lowerCmpGeConst N data s flag hws) true L
-      = (L ∪ allocBits s 1).card + max 2 (s.width + 1) := by
+      = (L ∪ allocBits s 1).card + 2 := by
   obtain ⟨hd, hs, hf, hfresh⟩ := h
   set q := constArithmeticUnitQubit s hws.scratch_can_grow with hq
   have hbits : allocBits s 1 = {q} := allocBits_one_eq s hws.scratch_can_grow
@@ -323,13 +324,13 @@ lemma cmpGe_block (N : ℕ) (data s : ExtReg) (flag : ℕ) (hws : ConstArithmeti
   rw [show peak scratch (lowerCmpGeConst N data s flag hws) true L = _ from hall.2]
   simp only [lowerPrepareNegConst, lowerCopyConstFromUnit, tmax_seq, tmax_X, tmax_CNOT,
     tmax_Negate, scratch_X, scratch_CNOT, scratch_Negate, tmax_copyBitPowers]
-  exact cmpGe_arith _ _
+  exact cmpGe_arith _
 
 lemma cSub_block (N : ℕ) (data s : ExtReg) (flag : ℕ) (hws : ConstArithmeticWorkspace N data s flag)
     (L : Finset ℕ) (h : sGood P (.CSubConst N data s flag) true L) :
     after (lowerCSubConst N data s flag hws) true L = L ∪ allocBits s 1 ∧
     peak scratch (lowerCSubConst N data s flag hws) true L
-      = (L ∪ allocBits s 1).card + (s.width + 1) := by
+      = (L ∪ allocBits s 1).card + 1 := by
   obtain ⟨hd, hs, hf⟩ := h
   set q := constArithmeticUnitQubit s hws.scratch_can_grow with hq
   have hbits : allocBits s 1 = {q} := allocBits_one_eq s hws.scratch_can_grow
@@ -356,7 +357,7 @@ lemma cSub_block (N : ℕ) (data s : ExtReg) (flag : ℕ) (hws : ConstArithmetic
   rw [show peak scratch (lowerCSubConst N data s flag hws) true L = _ from hall.2]
   simp only [lowerCopyConstFromUnit, tmax_seq, tmax_CNOT, tmax_Negate, tmax_AddScaled,
     scratch_CNOT, scratch_Negate, scratch_AddScaled, tmax_copyBitPowers]
-  exact cSub_arith _ _
+  exact cSub_arith _
 
 /-! ## The theorem -/
 

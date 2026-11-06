@@ -441,9 +441,9 @@ def leafCensus (w : ℕ) : Census :=
 `P` checkpoints, children costing `ch` each. -/
 def nodeCensus (C A N P : ℕ) (ch : Census) : Census :=
   ⟨P * ch.h,
-   3 * (A * (2 * C - 6) + N * (C + (2 * C - 6) + 2)) + P * ch.x,
-   3 * ((A + N) * (5 * C - 7)) + P * ch.cnot,
-   3 * ((A + N) * (2 * C - 3)) + P * ch.toffoli,
+   3 * (A * (2 * C - 6) + N * C) + P * ch.x,
+   3 * (A * (5 * C - 7)) + P * ch.cnot,
+   3 * (A * (2 * C - 3) + N * (32 * C)) + P * ch.toffoli,
    P * ch.rz⟩
 
 /-- Per-operand reserve (ForShor `reserveNeed`, three operands): growing the
@@ -458,7 +458,9 @@ def ptpReserveNeed (P : PTPPolicy) (n : ℕ) : ℕ :=
       else 0
 termination_by n
 
-/-- Peak clean scratch ancillas along the ladder (negation at the widest node). -/
+/-- Peak clean scratch ancillas along the ladder (negation at the widest node).
+This is the model from before modular swap 001, where a negation charged `C + 1`: it is still a valid
+upper bound on the resource model's `cleanAnc` (now 1 per negation or addition), but no longer tight. -/
 def ptpCleanAnc (P : PTPPolicy) (n : ℕ) : ℕ :=
   match P.choose n with
   | none => 0
@@ -655,7 +657,7 @@ def ptpCnotFullD (P : PTPPolicy) (wd : WidthRule) (n : ℕ) : ℕ :=
   | none => 0
   | some T =>
       if _h : wd T n < n then
-        3 * ((addCount T.ops + negCount T.ops) * (5 * wd T n - 7)) +
+        3 * (addCount T.ops * (5 * wd T n - 7)) +
           6 * (wd T n - topLimbWidth n T.k) +
           cpCount T.ops * ptpCnotFullD P wd (wd T n)
       else 0

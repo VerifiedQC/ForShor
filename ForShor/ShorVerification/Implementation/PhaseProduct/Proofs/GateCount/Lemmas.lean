@@ -50,17 +50,17 @@ lemma phaseProgramOverhead_linear
       simp [phaseProgramOverhead]
   | cons op ops ih =>
       rcases ih with ⟨A, B, htail⟩
-      refine ⟨A + 20, B + 4, ?_⟩
+      refine ⟨A + 66, B + 4, ?_⟩
       intro W
       have hop :
-          phaseArithmeticOpCost (k := k) W op ≤ 20 * W + 4 := by
+          phaseArithmeticOpCost (k := k) W op ≤ 66 * W + 4 := by
         cases op <;> simp [phaseArithmeticOpCost, rippleAdderGateBound] <;> omega
       calc
         phaseProgramOverhead W (op :: ops)
             = phaseArithmeticOpCost (k := k) W op + phaseProgramOverhead W ops := rfl
-        _ ≤ (20 * W + 4) + (A * W + B) :=
+        _ ≤ (66 * W + 4) + (A * W + B) :=
             Nat.add_le_add hop (htail W)
-        _ ≤ (A + 20) * W + (B + 4) := by
+        _ ≤ (A + 66) * W + (B + 4) := by
             nlinarith [Nat.zero_le A, Nat.zero_le B, Nat.zero_le W]
 
 
@@ -170,12 +170,9 @@ theorem negateResources_totalGates_le_negateGateBound
       ≤ negateGateBound r := by
   simp [
     negateResources,
-    cuccaroModAddResources,
     GateResources.totalGates,
-    negateGateBound,
-    rippleAdderGateBound
+    negateGateBound
   ]
-  omega
 
 theorem shorGateCostModel_negate_le
     (r : ExtReg) :
@@ -1595,7 +1592,7 @@ lemma lgc_body_le
                       W
                       (st.xslot i))) : ℝ)
                 ≤
-              ((W + rippleAdderGateBound W : ℕ) : ℝ) := by
+              ((W + 32 * W : ℕ) : ℝ) := by
             exact_mod_cast
               (show
                 LowGate.gateCount shorGateCostModel
@@ -1604,7 +1601,7 @@ lemma lgc_body_le
                         (P := P)
                         W
                         (st.xslot i)))
-                  ≤ W + rippleAdderGateBound W
+                  ≤ W + 32 * W
                 from by
                   simpa [negateGateBound, hxw i] using hxNat)
 
@@ -1616,7 +1613,7 @@ lemma lgc_body_le
                       W
                       (st.zslot i))) : ℝ)
                 ≤
-              ((W + rippleAdderGateBound W : ℕ) : ℝ) := by
+              ((W + 32 * W : ℕ) : ℝ) := by
             exact_mod_cast
               (show
                 LowGate.gateCount shorGateCostModel
@@ -1625,7 +1622,7 @@ lemma lgc_body_le
                         (P := P)
                         W
                         (st.zslot i)))
-                  ≤ W + rippleAdderGateBound W
+                  ≤ W + 32 * W
                 from by
                   simpa [negateGateBound, hzw i] using hzNat)
 
@@ -1652,16 +1649,16 @@ lemma lgc_body_le
                           W φ coeff st recurse
                           (annotatePhaseTermsAux k n rest) : ℝ))
                 ≤
-              (W + rippleAdderGateBound W : ℝ)
+              (W + 32 * W : ℝ)
                 +
-              ((W + rippleAdderGateBound W : ℝ)
+              ((W + 32 * W : ℝ)
                 +
               ((phaseProgramOverhead W rest : ℝ)
                 + (phaseProductCount rest : ℝ) * R)) := by
                   exact add_le_add hx (add_le_add hz htail)
 
             _ =
-              2 * ((W : ℝ) + (rippleAdderGateBound W : ℝ))
+              2 * ((W : ℝ) + 32 * (W : ℝ))
                 + (phaseProgramOverhead W rest : ℝ)
                 + (phaseProductCount rest : ℝ) * R := by
                   ring
