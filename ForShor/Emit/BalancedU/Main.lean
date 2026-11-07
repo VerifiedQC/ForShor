@@ -17,7 +17,9 @@ lake build PolicySubmission && lake exe forshor_balanced_u > balanced_u.json
 ```
 
 `ir` is the unconditionally balanced document (`shor` retargeted to
-`balanced_u_(c)phase_product`), `ir_unbalanced` the policy's own.
+`balanced_u_(c)phase_product`), `ir_unbalanced` the policy's own. As in
+`forshor_policy_submission`, `negation` and `negate_charge` name the policy's negation method and what
+one `Negate` costs under it.
 -/
 
 open Lean (Json)
@@ -73,6 +75,8 @@ def balancedUJson (s : _root_.Shor.ShorPolicySubmission) (doc : _root_.Shor.IR.D
       ("split_taken_where_fitsB_fails", Json.bool r.2.2.2.2.2)]
   Json.mkObj [
     ("schema", Json.str "forshor.balanced-unconditional/v1"),
+    ("negation", _root_.Shor.negationMethodJson s.negation),
+    ("negate_charge", _root_.Shor.negateChargeJson s.negation),
     ("bands", Json.arr (s.bands.map fun b => Json.mkObj [("threshold", (b.1 : Json)),
       ("k", (b.2.k : Json)), ("ops", _root_.Shor.progJson b.2.ops)]).toArray),
     ("ir", (_root_.Shor.IR.docJson (_root_.Shor.IR.BalancedU.balanceUDoc doc)).mergeObj wr),

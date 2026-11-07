@@ -42,8 +42,11 @@ def checksJson (check1 instantiateEqReal : Bool) : Json × Bool :=
 
 /-- Build the `pp` document (uncontrolled) at concrete `k, n, phi = phiNum /
 phiDen`. `annotated` selects the `PlanJson` view (with instantiation checks
-embedded, refusing on failure) over the flat `LowGate` view. -/
-unsafe def buildPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (Except String Json) := do
+embedded, refusing on failure) over the flat `LowGate` view. `m` is the negation
+method the flat document's resource figures are priced under (the annotated view
+prints none). -/
+unsafe def buildPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool)
+    (m : NegationMethod := .oneQubit) : IO (Except String Json) := do
   if hk : 1 < k then
     let setup := standardLoweringSetup k hk
     let ops := setup.ops
@@ -78,7 +81,7 @@ unsafe def buildPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (Ex
             return .ok
               (emitLowGateDoc
                 (lowerSignedPhaseProd k hk phi x z ops setup.pts setup.hpts)
-                metaJ)
+                metaJ m)
         else
           return .error s!"insufficient workspace for n={n}"
   else
@@ -86,7 +89,8 @@ unsafe def buildPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (Ex
 
 /-- Build the `cpp` document (controlled) at concrete `k, n, phi = phiNum /
 phiDen`, with the control qubit placed deterministically by `ppRegisters`. -/
-unsafe def buildCPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (Except String Json) := do
+unsafe def buildCPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool)
+    (m : NegationMethod := .oneQubit) : IO (Except String Json) := do
   if hk : 1 < k then
     let setup := standardLoweringSetup k hk
     let ops := setup.ops
@@ -125,7 +129,7 @@ unsafe def buildCPP (k n : ℕ) (phiNum phiDen : ℤ) (annotated : Bool) : IO (E
             return .ok
               (emitLowGateDoc
                 (lowerCSignedPhaseProd k hk ctrl phi x z ops setup.pts setup.hpts)
-                metaJ)
+                metaJ m)
         else
           return .error s!"insufficient workspace for n={n}"
   else

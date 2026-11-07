@@ -38,7 +38,12 @@ def usageText : String :=
   "  phiNum/phiDen : the phase product's angle, as an integer ratio (den " ++
   "defaults to 1 if omitted)\n" ++
   "  --flat : print the flat forshor.lowgate/v2 circuit instead of the " ++
-  "default annotated forshor.plan/v1 view\n"
+  "default annotated forshor.plan/v1 view\n" ++
+  "  --negation oneQubit|scratch : (shor, and pp/cpp/qft with --flat) the negation " ++
+  "method the document's qubit_count and resources are priced under; oneQubit " ++
+  "(Gidney's one-clean-qubit increment, the default) or scratch (a Cuccaro adder " ++
+  "against a clean w-bit register of ones). The circuit is the same; the document " ++
+  "prints the method as \"negation\"\n"
 
 /-- `"n"`, `"n/d"` → `(num, den)`; `d` defaults to `1`. -/
 def parsePhi (s : String) : Option (ℤ × ℤ) :=
@@ -177,9 +182,26 @@ def runPhases (kStr mStr phiStr : String) : IO UInt32 :=
       IO.eprint usageText
       return 2
 
-def runShorArgs (kStr aStr NStr mStr : String) : IO UInt32 :=
+/-- Pull every `--negation M` pair out of `args` (the last one wins). `M` must be `oneQubit` or
+`scratch`. -/
+def extractNegation : List String → Except String (Option Shor.NegationMethod × List String)
+  | [] => .ok (none, [])
+  | "--negation" :: mStr :: rest => do
+      let m ← match mStr with
+        | "oneQubit" => pure Shor.NegationMethod.oneQubit
+        | "scratch" => pure Shor.NegationMethod.scratch
+        | _ => throw s!"--negation takes oneQubit or scratch, not {mStr}"
+      let (later, rest') ← extractNegation rest
+      return (later.orElse fun _ => some m, rest')
+  | ["--negation"] => .error "--negation takes oneQubit or scratch"
+  | a :: rest => do
+      let (m, rest') ← extractNegation rest
+      return (m, a :: rest')
+
+def runShorArgs (kStr aStr NStr mStr : String)
+    (nm : Shor.NegationMethod := .oneQubit) : IO UInt32 :=
   match kStr.toNat?, aStr.toNat?, NStr.toNat?, mStr.toNat? with
-  | some k, some a, some N, some m => Emit.Lower.Shor.runEmit k a N m
+  | some k, some a, some N, some m => Emit.Lower.Shor.runEmit k a N m nm
   | _, _, _, _ => do
       IO.eprintln "error: k, a, N, m must all be natural numbers"
       IO.eprint usageText
@@ -208,7 +230,8 @@ unsafe def runPPQFT (build : ℕ → ℕ → Bool → IO (Except String Lean.Jso
       IO.eprint usageText
       return 2
 
-unsafe def runPP (isCtrl : Bool) (kStr nStr phiStr : String) (flat : Bool) : IO UInt32 :=
+unsafe def runPP (isCtrl : Bool) (kStr nStr phiStr : String) (flat : Bool)
+    (nm : Shor.NegationMethod := .oneQubit) : IO UInt32 :=
   match parsePhi phiStr with
   | none => do
       IO.eprintln "error: phi must be an integer ratio num/den"
@@ -216,12 +239,13 @@ unsafe def runPP (isCtrl : Bool) (kStr nStr phiStr : String) (flat : Bool) : IO 
       return 2
   | some (num, den) =>
       runPPQFT (fun k n annotated =>
-        if isCtrl then Shor.buildCPP k n num den annotated else Shor.buildPP k n num den annotated)
+        if isCtrl then Shor.buildCPP k n num den annotated nm
+        else Shor.buildPP k n num den annotated nm)
         kStr nStr flat
 
-unsafe def main (args : List String) : IO UInt32 := do
+unsafe def dispatch (nm : Shor.NegationMethod) (args : List String) : IO UInt32 := do
   match args with
-  | "shor" :: kStr :: aStr :: NStr :: mStr :: [] => runShorArgs kStr aStr NStr mStr
+  | "shor" :: kStr :: aStr :: NStr :: mStr :: [] => runShorArgs kStr aStr NStr mStr nm
   | "shor" :: _ => do
       IO.eprintln "error: shor takes exactly four arguments: <k> <a> <N> <m>"
       IO.eprint usageText
@@ -242,21 +266,22 @@ unsafe def main (args : List String) : IO UInt32 := do
           return 2
   | "pp" :: kStr :: nStr :: phiStr :: rest =>
       match parseFlatFlag rest with
-      | some flat => runPP false kStr nStr phiStr flat
+      | some flat => runPP false kStr nStr phiStr flat nm
       | none => do
           IO.eprintln "error: unknown argument after pp (only --flat is accepted)"
           IO.eprint usageText
           return 2
   | "cpp" :: kStr :: nStr :: phiStr :: rest =>
       match parseFlatFlag rest with
-      | some flat => runPP true kStr nStr phiStr flat
+      | some flat => runPP true kStr nStr phiStr flat nm
       | none => do
           IO.eprintln "error: unknown argument after cpp (only --flat is accepted)"
           IO.eprint usageText
           return 2
   | "qft" :: kStr :: wStr :: rest =>
       match parseFlatFlag rest with
-      | some flat => runPPQFT Shor.buildQFT kStr wStr flat
+      | some flat =>
+          runPPQFT (fun k w annotated => Shor.buildQFT k w annotated nm) kStr wStr flat
       | none => do
           IO.eprintln "error: unknown argument after qft (only --flat is accepted)"
           IO.eprint usageText
@@ -267,10 +292,35 @@ unsafe def main (args : List String) : IO UInt32 := do
         runSection sectionName rest
       else
         match args with
-        | [kStr, aStr, NStr, mStr] => runShorArgs kStr aStr NStr mStr
+        | [kStr, aStr, NStr, mStr] => runShorArgs kStr aStr NStr mStr nm
         | _ => do
             IO.eprint usageText
             return 2
   | [] =>
       IO.eprint usageText
       return 2
+
+/-- Whether a command line prints resource figures priced under a negation method: `shor` and its bare
+alias, and the `--flat` documents of `pp`/`cpp`/`qft`. The bundle, its sections, `template`, `phases` and
+the annotated plans print none, so they refuse `--negation` instead of ignoring it. -/
+def pricesNegation : List String → Bool
+  | "shor" :: _ => true
+  | cmd :: rest =>
+      if cmd = "pp" || cmd = "cpp" || cmd = "qft" then rest.contains "--flat"
+      else !Shor.sectionNames.contains cmd && cmd != "bundle" && cmd != "template" && cmd != "phases"
+        && rest.length = 3
+  | [] => false
+
+unsafe def main (args : List String) : IO UInt32 :=
+  match extractNegation args with
+  | .error e => do
+      IO.eprintln s!"error: {e}"
+      IO.eprint usageText
+      return 2
+  | .ok (none, rest) => dispatch .oneQubit rest
+  | .ok (some m, rest) =>
+      if pricesNegation rest then dispatch m rest
+      else do
+        IO.eprintln "error: --negation applies to shor and to the --flat pp/cpp/qft documents only"
+        IO.eprint usageText
+        return 2
