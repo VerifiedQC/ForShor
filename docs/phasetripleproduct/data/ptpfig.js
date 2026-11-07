@@ -265,37 +265,37 @@ window.PTPFIG = {
   "PTPTable": {
    "name": "PTPTable",
    "file": "Implementation/PhaseTripleProduct/Statement.lean",
-   "line": 150,
+   "line": 151,
    "code": "/-- One PTP table: `k` limb registers, the interpolation points in the order the\nprogram's `phaseProduct` checkpoints consume them, and the program. -/\nstructure PTPTable where\n  k : Nat\n  pts : List Point\n  ops : Prog k"
   },
   "contract": {
    "name": "PTPTable.contract",
    "file": "Implementation/PhaseTripleProduct/Statement.lean",
-   "line": 160,
+   "line": 161,
    "code": "/-- The PTP table contract as one kernel-reducible `Bool`. -/\ndef contract (T : PTPTable) : Bool :=\n  if hk : 2 ≤ T.k then\n    decide (T.pts.length = pointCount T.k) &&\n    decide ((T.pts.map normalizePoint).Nodup) &&\n    T.pts.all validPoint? &&\n    progConsumesPts? (k := T.k) (by omega) State.start_state T.ops T.pts &&\n    safeProg? T.ops &&\n    returnsToStartCheck T.ops State.start_state\n  else false"
   },
   "pointCount": {
    "name": "pointCount",
    "file": "Implementation/PhaseTripleProduct/Statement.lean",
-   "line": 156,
+   "line": 157,
    "code": "/-- PTP point count: `3 k - 2`. -/\ndef pointCount (k : Nat) : Nat := 3 * k - 2"
   },
   "choose": {
    "name": "PTPPolicy.choose",
    "file": "Implementation/PhaseTripleProduct/Statement.lean",
-   "line": 226,
+   "line": 246,
    "code": "/-- First band with `threshold ≤ n` (ForShor's `choose`). -/\ndef choose (P : PTPPolicy) (n : Nat) : Option PTPTable :=\n  (P.bands.find? (fun b => decide (b.threshold ≤ n))).map PTPBand.table"
   },
   "check": {
    "name": "PTPPolicy.check",
    "file": "Implementation/PhaseTripleProduct/Statement.lean",
-   "line": 231,
+   "line": 251,
    "code": "/-- **The PTP policy check**: thresholds strictly decrease and every band's\ntable passes the PTP contract. -/\ndef check (P : PTPPolicy) : Bool :=\n  sortedDesc (P.bands.map PTPBand.threshold) &&\n    P.bands.all (fun b => b.table.contract)"
   },
   "childWidth3": {
    "name": "childWidth3",
    "file": "Implementation/PhaseTripleProduct/Statement.lean",
-   "line": 205,
+   "line": 206,
    "code": "/-- **PTP child width** for operand widths `n` (three, possibly unequal). -/\ndef childWidth3 {k : Nat} (n : Fin 3 → Nat) (ops : Prog k) : Nat :=\n  let W := limbWidth3 n k\n  1 + max (scanMax (initW (n 0) W k) ops)\n        (max (scanMax (initW (n 1) W k) ops) (scanMax (initW (n 2) W k) ops))"
   },
   "node_identity": {
@@ -313,7 +313,7 @@ window.PTPFIG = {
   "ptpTightWidth": {
    "name": "ptpTightWidth",
    "file": "Implementation/PhaseTripleProduct/Statement.lean",
-   "line": 392,
+   "line": 412,
    "code": "/-- **The exact PTP width** at operand width `n`: the least `W ≥ 1` with\n`ptpDemand ≤ 2^(W-1)` (`ptpTightWidth_spec`). -/\ndef ptpTightWidth (T : PTPTable) (n : ℕ) : ℕ := 1 + leastExp (ptpDemand T n) (ptpDemand T n) 0"
   },
   "ptpTightWidth_spec": {
@@ -325,7 +325,7 @@ window.PTPFIG = {
   "ptpSubNode": {
    "name": "ptpSubNode",
    "file": "Implementation/PhaseTripleProduct/Statement.lean",
-   "line": 539,
+   "line": 608,
    "code": "/-- **A PTP node acting on three parent registers**: allocate the child slots (split +\nzero/sign extension into the level reserve), run the node body with children `gc`, and\nundo the allocation (`† alloc`). -/\nnoncomputable def ptpSubNode {X : Fin 3 → ExtReg} (T : PTPTable) (SL : SplitLayout X T.k C')\n    (gc : ℕ → Fin T.k → LowGate) : LowGate :=\n  SL.alloc ;; body SL.lay gc 0 T.ops ;; LowGate.adj SL.alloc"
   },
   "evalL_ptpNode_ket": {
@@ -337,41 +337,41 @@ window.PTPFIG = {
   "PolicyImpl": {
    "name": "PolicyImpl",
    "file": "Implementation/PhaseTripleProduct/Statement.lean",
-   "line": 555,
+   "line": 624,
    "code": "/-- **A gate-level PTP recursion following policy `P`** at width `C` on parent registers `X`,\nwith workspace `W`, as a family of circuits `G θ`:\n\n* `leaf`: where `P` stops at `C` (no table, or no shrink), the sandwich leaf with its two\n  ancillas;\n* `node`: where `P` chooses `T` and `C' = childWidth C T.ops < C`, a split layout `SL`\n  of `X` into child slots of width `C'`, and for every child slot triple `j` a recursion\n  `G j` at `C'` whose workspace `Wc j` lies in a common `W'` off all child slots; the\n  node's workspace is `R ++ W'`.\n\nChildren at the same level run one after another and each returns its workspace clean,\nso all of them share `W'` (one reserve per level, not per child). -/\ninductive PolicyImpl (P : PTPPolicy) :\n    (Fin 3 → ExtReg) → ℕ → List ℕ → (Angle → LowGate) → Prop\n  | leaf (X : Fin 3 → ExtReg) (C t u : ℕ) (hX : ∀ s, (X s).width = C)\n      (hstop : ∀ T, P.choose C = some T → C ≤ childWidth C T.ops)\n      (hD : LeafActiveDisjoint (X 0) (X 1) (X 2)) (hA : SandwichAnc (X 0) (X 1) (X 2) t u) :\n      PolicyImpl P X C [t, u] (fun θ => ptpLeafSandwich θ (X 0) (X 1) (X 2) t u)\n  | node (X : Fin 3 → ExtReg) (C : ℕ) (T : PTPTable) (hX : ∀ s, (X s).width = C) (hC : 0 < C)\n      (hc : P.choose C = some T) (hlt : childWidth C T.ops < C)\n      (SL : SplitLayout X T.k (childWidth C T.ops)) (G : Fin T.k → Angle → LowGate)\n      (W' : List ℕ) (Wc : Fin T.k → List ℕ) (hWc : ∀ j, ∀ q ∈ Wc j, q ∈ W')\n      (hW' : ∀ q ∈ W', ∀ s j, q ∉ (SL.lay.slot s j).active.qubits)\n      (hsub : ∀ j, PolicyImpl P (fun s => SL.lay.slot s j) (childWidth C T.ops) (Wc j) (G j)) :\n      PolicyImpl P X C (SL.R ++ W') (fun θ => ptpSubNode T SL (fun t j => G j (θ * coeffN T C t)))"
   },
   "ptp_gate_full_exact": {
    "name": "ptp_gate_full_exact",
    "file": "Implementation/PhaseTripleProduct/Proofs/ExactBoard/ExactBuild.lean",
    "line": 220,
-   "code": "/-- **O5 headline: gate-level PTP correctness and census at EXACT widths.** For a checked\npolicy `P`, every width `n` and three pairwise disjoint `n`-qubit registers below `base`, there\nis a ForShor-`LowGate` circuit family following `P` on the exact board (every node's children at\n`ptpTightWidth`; in-place split, zero/sign extension, table program, children, un-extension,\nsandwich leaves), with workspace above `base`, correct on every basis state with fitting operands\nand clean workspace, whose census is the exact-ladder formulas: Rz/Toffoli/X/H =\n`ptpResourcesX P n`, CNOT = `ptpCnotFullX P n`, And† = `ptpAndDagX P n`, qubits ≤\n`3 n + ptpWorkspaceX P n`. Uncontrolled. -/\ntheorem ptp_gate_full_exact {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass qs]\n    (P : PTPPolicy) (hP : P.check = true) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ)\n    (hG : Good X n base) :\n    ∃ (W : List ℕ) (G : Angle → LowGate), PolicyImplX P X n W G ∧\n      (∀ q ∈ W, base ≤ q ∧ q < base + ptpWorkspaceX P n) ∧\n      (∀ (φ : Angle) (b : qs.Basis), (∀ s, FitsSignedWidth n (extToInt (X s) b)) →\n        (∀ q ∈ W, RegEncoding.bit q b = false) →\n        LowerGateClass.evalL (qs := qs) (G φ) (qs.ket b) =\n          Complex.exp (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *\n            (((extToInt (X 0) b : ℤ) : ℂ) * ((extToInt (X 1) b : ℤ) : ℂ) *\n              ((extToInt (X 2) b : ℤ) : ℂ))) • qs.ket b) ∧\n      (∀ φ : Angle, let R := LowGate.resources shorGateResourceModel (G φ)\n        R.rz = (ptpResourcesX P n).rz ∧ R.toffoli = (ptpResourcesX P n).toffoli ∧\n          R.x = (ptpResourcesX P n).x ∧ R.h = (ptpResourcesX P n).h ∧\n          R.cnot = ptpCnotFullX P n ∧ adjToffCount (G φ) = ptpAndDagX P n ∧\n          (LowGate.usedQubits (G φ)).card ≤ 3 * n + ptpWorkspaceX P n) := …"
+   "code": "/-- **O5 headline: gate-level PTP correctness and census at EXACT widths.** For a checked\npolicy `P`, every width `n` and three pairwise disjoint `n`-qubit registers below `base`, there\nis a ForShor-`LowGate` circuit family following `P` on the exact board (every node's children at\n`ptpTightWidth`; in-place split, zero/sign extension, table program, children, un-extension,\nsandwich leaves), with workspace above `base`, correct on every basis state with fitting operands\nand clean workspace, whose census is the exact-ladder formulas: Rz/Toffoli/X/H =\n`ptpResourcesX P n`, CNOT = `ptpCnotFullX P n`, And† = `ptpAndDagX P n`, qubits ≤\n`3 n + ptpWorkspaceX P n`. Uncontrolled. -/\ntheorem ptp_gate_full_exact {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass qs]\n    (P : PTPPolicy) (hP : P.check = true) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ)\n    (hG : Good X n base) :\n    ∃ (W : List ℕ) (G : Angle → LowGate), PolicyImplX P X n W G ∧\n      (∀ q ∈ W, base ≤ q ∧ q < base + ptpWorkspaceX P n) ∧\n      (∀ (φ : Angle) (b : qs.Basis), (∀ s, FitsSignedWidth n (extToInt (X s) b)) →\n        (∀ q ∈ W, RegEncoding.bit q b = false) →\n        LowerGateClass.evalL (qs := qs) (G φ) (qs.ket b) =\n          Complex.exp (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *\n            (((extToInt (X 0) b : ℤ) : ℂ) * ((extToInt (X 1) b : ℤ) : ℂ) *\n              ((extToInt (X 2) b : ℤ) : ℂ))) • qs.ket b) ∧\n      (∀ φ : Angle, let R := LowGate.resources P.resourceModel (G φ)\n        R.rz = (ptpResourcesX P n).rz ∧ R.toffoli = (ptpResourcesX P n).toffoli ∧\n          R.x = (ptpResourcesX P n).x ∧ R.h = (ptpResourcesX P n).h ∧\n          R.cnot = ptpCnotFullX P n ∧ adjToffCount (G φ) = ptpAndDagX P n ∧\n          (LowGate.usedQubits (G φ)).card ≤ 3 * n + ptpWorkspaceX P n) := …"
   },
   "PTPGateTotalBound": {
    "name": "PTPGateTotalBound",
    "file": "Implementation/PhaseTripleProduct/Statement.lean",
-   "line": 903,
-   "code": "/-- **Claim (gate count of the width-rule census, constant policy).** For one table `T` used at\nevery width `≥ t`, if `T` passes the contract and the node width rule contracts like the PTP scan\n(`wd T n ≤ n / k + k + growth ops`), the census total `ptpGateTotalD` is `O(n ^ log_k (3k - 2))`.\n(`Main.lean`: `ptp_gateTotal_bound`.) -/\ndef PTPGateTotalBound (t : ℕ) (T : PTPTable) (wd : WidthRule) : Prop :=\n  T.contract = true →\n  (∀ n, 0 < n → wd T n ≤ n / T.k + T.k + growth T.ops) →\n    ∃ C : ℝ, 0 < C ∧ ∀ n : ℕ, 1 ≤ n →\n      (ptpGateTotalD (constPTPPolicy t T) wd n : ℝ) ≤ C * Real.rpow (n : ℝ) (ptpExponent T.k)"
+   "line": 973,
+   "code": "/-- **Claim (gate count of the width-rule census, constant policy).** For one table `T` used at\nevery width `≥ t`, if `T` passes the contract and the node width rule contracts like the PTP scan\n(`wd T n ≤ n / k + k + growth ops`), the census total `ptpGateTotalD` is `O(n ^ log_k (3k - 2))`, whichever\nnegation method the policy is priced under (`oneQubit` or `scratch`; the constant may depend on the method).\n(`Main.lean`: `ptp_gateTotal_bound`.) -/\ndef PTPGateTotalBound (t : ℕ) (T : PTPTable) (wd : WidthRule) : Prop :=\n  T.contract = true →\n  (∀ n, 0 < n → wd T n ≤ n / T.k + T.k + growth T.ops) →\n    ∀ m : NegationMethod, ∃ C : ℝ, 0 < C ∧ ∀ n : ℕ, 1 ≤ n →\n      (ptpGateTotalD ((constPTPPolicy t T).withNegation m) wd n : ℝ) ≤\n        C * Real.rpow (n : ℝ) (ptpExponent T.k)"
   },
   "ptpExponent": {
    "name": "ptpExponent",
    "file": "Implementation/PhaseTripleProduct/Statement.lean",
-   "line": 730,
+   "line": 799,
    "code": "/-- The PTP Toom–Cook exponent `log_k (3k - 2)`. -/\nnoncomputable def ptpExponent (k : ℕ) : ℝ := Real.logb (k : ℝ) (((3 * k - 2 : ℕ)) : ℝ)"
   },
   "ptp_lowerExact_correct": {
    "name": "ptp_lowerExact_correct",
    "file": "Implementation/PhaseTripleProduct/Main.lean",
-   "line": 25,
-   "code": "/-- **State level, exact board.** For every checked policy there is a circuit following it at exact\nwidths that equals the PTP phase operator on every clean state, with the exact gate census.\n(`PTPLowerExactCorrect`.) -/\ntheorem ptp_lowerExact_correct (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]\n    (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :\n    PTPLowerExactCorrect qs P n X base := by"
+   "line": 27,
+   "code": "/-- **State level, exact board.** For every checked policy there is a circuit following it at exact\nwidths that equals the PTP phase operator on every clean state, with the exact gate census in the\npolicy's own resource model (its negation method). (`PTPLowerExactCorrect`.) -/\ntheorem ptp_lowerExact_correct (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]\n    (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :\n    PTPLowerExactCorrect qs P n X base := by"
   },
   "ladderX": {
    "name": "PTPPolicy.ladderX",
    "file": "Implementation/PhaseTripleProduct/Statement.lean",
-   "line": 407,
+   "line": 427,
    "code": "/-- The exact-width ladder. -/\ndef ladderX (P : PTPPolicy) (n : ℕ) : List (ℕ × Option ℕ) := ladderFuelX P (n + 1) n"
   }
  },
  "root": "ForShor/ShorVerification",
- "repo": "https://github.com/VerifiedQC/ForShor/blob/52a2c9eee41d",
+ "repo": "https://github.com/VerifiedQC/ForShor/blob/eb00c5adc728",
  "policyFile": "policies/ref_ptp_2048.json"
 };

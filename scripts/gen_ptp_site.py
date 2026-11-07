@@ -88,6 +88,8 @@ LAYERS = {
     "Asymptotic": dict(kind="ext", role="O(n^log_k(3k−2)) gates", files=["Proofs/Asymptotic"]),
     "Unbalanced": dict(kind="ext", role="operands of unequal width", files=["Proofs/Unbalanced"]),
     "QubitsTight": dict(kind="ext", role="the qubit count", files=["Proofs/QubitsTight"]),
+    "Peak": dict(kind="ext", role="the peak qubit count, with scratch",
+                 files=["Proofs/Peak/Peak", "Proofs/Peak/Numerals"]),
     "Witness": dict(kind="witness", role="negative controls and non-vacuity",
                     files=["Proofs/Witness/FaultChallenge", "Proofs/Witness/RecursionWitness",
                            "Proofs/Witness/ExactFault"]),
@@ -96,7 +98,7 @@ LAYERS = {
 }
 ROWS = [["Framework"], ["Statement"], ["Support"], ["Table"], ["Values"], ["Gates"], ["Recursion"],
         ["ExactBoard"], ["Surface", "Asymptotic", "QubitsTight"], ["Accept", "Controlled", "Witness"],
-        ["Unbalanced"], ["Main"], ["Model"]]
+        ["Unbalanced", "Peak"], ["Main"], ["Model"]]
 
 # Curated edges (dependency -> importer). Every one must be a real import edge between the blocks.
 EDGES = [
@@ -119,6 +121,9 @@ EDGES = [
     ("Accept", "Main", "secondary", None, {}),
     ("Asymptotic", "Main", "secondary", None, dict(side="right", lane=2)),
     ("QubitsTight", "Main", "secondary", None, dict(side="right", lane=3)),
+    ("QubitsTight", "Peak", "secondary", None, dict(side="right", lane=0)),
+    ("Witness", "Peak", "secondary", None, {}),
+    ("Peak", "Main", "secondary", None, {}),
     ("Main", "Model", "primary", "model_ptp_lowerExact_correct", dict(mono=True)),
     ("Witness", "Model", "secondary", None, {}),
 ]
@@ -128,7 +133,7 @@ SNIPS = {
     "Statement": [
         ("PTPTable", "Statement", "A table: the arity \\(k\\), the interpolation points in the order the program consumes them, and the program (the Framework's <code>Prog k</code>). Nothing about PTP is in the program language; the tripling lives in what the node does with it."),
         ("PTPTable.contract", "Statement", "The admissibility check as one kernel-reducible <code>Bool</code>: \\(3k-2\\) points, pairwise distinct, each benchmark-valid, consumed in order by the program, a safe program, and registers returned to where they started. <code>Proofs/Table/Contract.lean</code> proves it equivalent to the same conditions written in the Framework's language (<code>contract_iff_framework</code>)."),
-        ("PTPPolicy.check", "Statement", "A policy is a list of bands, widest first. It is accepted when the thresholds strictly decrease and every band's table passes the contract."),
+        ("PTPPolicy.check", "Statement", "A policy is a list of bands, widest first. It is accepted when the thresholds strictly decrease and every band's table passes the contract. A policy also carries the negation method it is priced under: <code>oneQubit</code> (the default, one clean qubit) or <code>scratch</code> (\\(w+1\\) clean qubits for a \\(w\\)-bit negation)."),
         ("PolicyImpl", "Statement", "The circuits the claims are about: a gate-level recursion following a policy."),
         ("PTPLowerExactCorrect", "Statement", "The headline claim, as a proposition. <code>Main.lean</code> proves it as <code>ptp_lowerExact_correct</code>."),
     ],
@@ -179,8 +184,14 @@ SNIPS = {
         ("PTPPadLowerExactCorrect", "Statement", "Operands of different widths: sign-extend each in place into a clean reserve to the common width \\(n\\), run the balanced circuit, undo. The extension costs \\(2(d_0+d_1+d_2)\\) CNOTs. A native unbalanced node is not built."),
     ],
     "QubitsTight": [
-        ("PTPQubitsTight", "Statement", "There is a circuit following the policy touching at most \\(3n + \\texttt{ptpWsTD}\\) distinct qubits (children share one workspace pool)."),
-        ("PTPQubitsLePtpQubits", "Statement", "<code>ptpQubits</code> is a proved <em>upper bound</em> at the scan rule. It bounds <code>usedQubits</code>, not the framework's <code>qubitCount</code>, which adds <code>cleanAnc</code>."),
+        ("PTPQubitsTight", "Statement", "There is a circuit following the policy touching at most \\(3n + \\texttt{ptpWsTD}\\) distinct qubits (children share one workspace pool). The framework's <code>qubitCount</code> adds the clean scratch: see <code>PTPPeakQubits</code>."),
+        ("PTPQubitsLePtpQubits", "Statement", "<code>ptpQubits</code> is a proved <em>upper bound</em> at the scan rule. It bounds <code>usedQubits</code>, not the framework's <code>qubitCount</code>, which adds <code>cleanAnc</code>. For <code>qubitCount</code> including the scratch, see <code>PTPPeakQubits</code>."),
+    ],
+    "Peak": [
+        ("PTPPeakQubits", "Statement", "There is a circuit following the policy whose framework <code>qubitCount</code> (the qubits its gates name plus the model's clean scratch, under the policy's negation method) is at most \\(3n + \\texttt{ptpWsTD} + \\texttt{ptpCleanAncD}\\). An upper bound on an existential circuit, not an equality."),
+        ("PTPPeakQubitsExact", "Statement", "The same at the exact widths (the board the headline theorem uses), with no admissibility hypothesis."),
+        ("PTPPeakQubitsScan", "Statement", "The same at the scan widths."),
+        ("PTPPeakLePtpQubitsAdd", "Statement", "Against the formula: at the scan rule, <code>ptpPeakQubits</code> is at most <code>ptpQubits</code> plus <code>ptpCleanAnc</code>. A comparison of two numbers, not a bound on a circuit."),
     ],
     "Witness": [
         ("faulty_rejected", "Proofs/Witness/FaultChallenge", "Negative control: a table whose points are declared in the wrong order is rejected by the contract (and evaluated anyway it gives the wrong value, <code>faulty_wrong</code>)."),
@@ -196,6 +207,10 @@ SNIPS = {
         ("ptp_qubits_tight", "Main", None),
         ("ptp_qubits_tight_exact", "Main", None),
         ("ptp_qubits_le_ptpQubits", "Main", None),
+        ("ptp_peak_qubits", "Main", None),
+        ("ptp_peak_qubits_exact", "Main", None),
+        ("ptp_peak_qubits_scan", "Main", None),
+        ("ptp_peak_le_ptpQubits_add", "Main", None),
         ("ptp_chainContractsTight_iff_reach", "Main", None),
     ],
     "Model": [
@@ -214,6 +229,10 @@ CLAIMS = [
     ("PTPQubitsTight", "ptp_qubits_tight"),
     ("PTPQubitsTightExact", "ptp_qubits_tight_exact"),
     ("PTPQubitsLePtpQubits", "ptp_qubits_le_ptpQubits"),
+    ("PTPPeakQubits", "ptp_peak_qubits"),
+    ("PTPPeakQubitsExact", "ptp_peak_qubits_exact"),
+    ("PTPPeakQubitsScan", "ptp_peak_qubits_scan"),
+    ("PTPPeakLePtpQubitsAdd", "ptp_peak_le_ptpQubits_add"),
     ("PTPChainContractsTightIffReach", "ptp_chainContractsTight_iff_reach"),
 ]
 
@@ -232,7 +251,8 @@ SUMMARY = {
     "Controlled": "<p>A controlled PTP built by <em>masking</em> one operand. This is not ForShor's construction, which controls every leaf phase; that variant is <strong>not</strong> proved here. On the clean subspace, the control may overlap the other registers in a degenerate way (then the circuit is the identity on the clean span), which the claim's docstring states. The final theorem is <code>ptp_ctl_lowerExact_correct_core</code>; <code>Main.lean</code> re-states it as <code>ptp_ctl_lowerExact_correct</code>.</p>",
     "Asymptotic": "<p>The PTP analogue of ForShor's PhaseProduct gate-count theorem, under the same hypothesis: a <strong>constant policy</strong>, one table at every width. The exponent is \\(\\log_k(3k-2)\\): 2.000 at \\(k=2\\), 1.771 at \\(k=3\\), 1.661 at \\(k=4\\), tending to 1. The count is <code>rz + toffoli + x + h + cnot</code> under <code>shorGateResourceModel</code>, not a T count. Both claims of this layer are proved as <code>_core</code> theorems here and re-stated in <code>Main.lean</code>.</p>",
     "Unbalanced": "<p>Operands of unequal width, handled by padding rather than a native unbalanced node. Open: a native node, the least width at which the wrapping semantics is correct, and the leaf-control variant.</p>",
-    "QubitsTight": "<p>The circuit names at most \\(3n + \\texttt{ptpWsTD}\\) qubits, with \\(\\texttt{ptpWsTD} = 3(k\\,C' - n)\\) per node and one shared pool. This is not the framework's <code>qubitCount</code>: the Cuccaro/negation scratch <code>cleanAnc</code> of the recursive circuit is not bounded here. <code>ptpQubits</code> is also loose by up to a factor \\(k\\) per level (private per-child workspace versus the shared pool). The claims are existential: some circuit following the policy has that qubit count.</p>",
+    "QubitsTight": "<p>The circuit names at most \\(3n + \\texttt{ptpWsTD}\\) qubits, with \\(\\texttt{ptpWsTD} = 3(k\\,C' - n)\\) per node and one shared pool. This bounds the qubits the circuit names. The framework's <code>qubitCount</code> also counts the clean scratch of <code>Negate</code> and the adder, which <code>PTPPeakQubits</code> bounds (next block): \\(3n + \\texttt{ptpWsTD} + \\texttt{ptpCleanAncD}\\), under the policy's negation method. <code>ptpQubits</code> is also loose by up to a factor \\(k\\) per level (private per-child workspace versus the shared pool). The claims are existential: some circuit following the policy has that qubit count.</p>",
+    "Peak": "<p>The framework's <code>qubitCount</code> of the constructed circuit: the qubits its gates name plus the clean scratch of its resource model (the adders' carry and the negations). The policy's negation method sets the scratch: <code>oneQubit</code> (the default) holds one clean qubit, <code>scratch</code> holds \\(w+1\\) for a \\(w\\)-bit negation. <code>PTPPeakQubits</code> bounds the named qubits and the scratch separately and their sum by \\(3n + \\texttt{ptpWsTD} + \\texttt{ptpCleanAncD}\\); <code>PTPPeakQubitsExact</code> and <code>PTPPeakQubitsScan</code> are the exact- and scan-width instances, and <code>PTPPeakLePtpQubitsAdd</code> compares it with <code>ptpQubits</code>. The claims are existential upper bounds on the circuit the construction builds, never equalities: equality is kernel-checked for one concrete circuit only (\\(n=20\\), 87 qubits, <code>Peak/Numerals.lean</code>).</p><p><code>ptpQubits</code>, the formula the benchmark board carries as <code>qubits</code>, bounds only the named qubits and is not the framework's <code>qubitCount</code> (at that \\(n=20\\) circuit it is 86). The Lean-proved peak at \\(n=2048\\) for one phase triple product, exact widths, kernel-checked in <code>Peak/BoardNumerals.lean</code>, is 6,405, 7,095, 6,261, 6,342, 6,573 and 6,828 for the six board policies (rows <code>82eaf805f71c</code>, <code>6f7d25984ff8</code>, <code>85fbe1296fbd</code>, <code>265a0f53acbc</code>, <code>2ed7dc90d130</code>, <code>c733baf3cd08</code>), and 6,783 for <code>ref_ptp_2048</code> (scan 7,497, against 10,946 from <code>ptpQubits</code>). No table of these policies negates, so the two methods coincide on them; the same reference policy with a negating top table would add 398 (scan) or 375 (exact) under <code>scratch</code>.</p>",
     "Witness": "<p>Why the theorems are not vacuous, and why the hypotheses are needed. <code>FaultChallenge</code> is the negative control: a point-order fault the contract rejects (and which gives the wrong value if evaluated anyway: \\(B^3+3B^2-5B+1\\) rather than \\((B+1)^3\\) at \\(x=y=z=B+1\\)), and a width fault (wrapping the registers one bit below the scan width corrupts a child operand). <code>RecursionWitness</code> assembles a concrete \\(k=2\\) gate-level recursion on three 20-qubit registers (child width 14), every structural hypothesis discharged by <code>decide</code>. <code>ExactFault</code> shows that one bit below the <em>exact</em> width the gate-level circuit is wrong on a concrete state.</p>",
     "Main": "<p>Proves every claim of the Statement. Each theorem has the name of the claim it proves, in lower case, and is stated as exactly that proposition, so what is proved is what the Statement says. For the extensions the work is done in <code>Proofs/</code> by a theorem with a <code>_core</code> suffix, and <code>Main.lean</code> re-states it. The headline <code>ptp_lowerExact_correct</code> is assembled here from <code>ptp_gate_full_exact</code> and <code>evalL_policyImplD_state</code>.</p><p>The claims, their statements and their proofs:</p>{CLAIMSTABLE}",
     "Model": "<p>Non-vacuity at the concrete model. <code>Model/Standard/PhaseTripleProductHeadline.lean</code> specialises the typeclass stack of the headline claims to ForShor's <code>Model.qs</code>, builds the specification operators there with <code>diagLift</code> (<code>modelPhaseOp</code>, <code>modelCtlPhaseOp</code>), and states the two state-level claims at the model (<code>model_ptp_lowerExact_correct</code>, <code>model_ptp_ctl_lowerExact_correct</code>) together with the concrete \\(k=2\\) witness (<code>model_witness_correct</code>). Like ForShor's other model headlines it reaches into <code>Implementation/</code>, and nothing outside <code>Model/</code> imports it.</p>",
