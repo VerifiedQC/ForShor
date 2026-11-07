@@ -234,7 +234,7 @@ theorem PolicyImplD.cnot {P : PTPPolicy} {wd : WidthRule} {X : Fin 3 → ExtReg}
       exact (ptpLeafSandwich_resources shorGateResourceModel θ (X 0) (X 1) (X 2) t u).2.2.1
   | node X C T hX hC hc hlt SL G W' Wc hWc hW' hsub ih =>
       have hn : ptpCnotFullD P wd C =
-          3 * (addCount T.ops * (5 * wd T C - 7)) +
+          3 * (addCount T.ops * (5 * wd T C - 7) + negCount T.ops * negateCnotGates (wd T C)) +
             6 * (wd T C - topLimbWidth C T.k) +
             cpCount T.ops * ptpCnotFullD P wd (wd T C) := by
         rw [ptpCnotFullD, hc]
@@ -247,7 +247,7 @@ theorem PolicyImplD.cnot {P : PTPPolicy} {wd : WidthRule} {X : Fin 3 → ExtReg}
       simp only [fCnot, opRes, cuccaroModAddResources] at hb
       simp only [LowGate.resources, GateResources.seq, cnot_alloc, SL.ext_top hX]
       rw [show (LowGate.resources shorGateResourceModel (body SL.lay _ 0 T.ops)).cnot = _ from hb, hn]
-      show _ = 3 * (addCount T.ops * (5 * SL.lay.width - 7)) + _ + _
+      show _ = 3 * (addCount T.ops * (5 * SL.lay.width - 7) + negCount T.ops * negateCnotGates (SL.lay.width)) + _ + _
       ring
 
 /-- **Qubits of a gate-level recursion**, any width rule: only the registers and the workspace. -/

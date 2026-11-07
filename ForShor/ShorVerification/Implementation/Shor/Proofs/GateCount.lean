@@ -789,12 +789,13 @@ lemma step3_gateCount_le
 
   simp [
     negateResources,
+    negateXGates, negateCnotGates, negateToffoliGates,
     addScaledResources,
     cuccaroModAddResources,
     GateResources.totalGates
   ]
 
-  omega
+  split_ifs <;> omega
 
 /-- Decompose the Fourier multiplication used by concrete Step 4. -/
 lemma fastConstMulInto_gateCount_decompose
@@ -852,12 +853,13 @@ lemma cmpLtNWDifference_gateCount_le
     LowGateResourceModel.toCostModel,
     shorGateResourceModel,
     negateResources,
+    negateXGates, negateCnotGates, negateToffoliGates,
     addScaledResources,
     cuccaroModAddResources,
     GateResources.totalGates
   ]
 
-  omega
+  split_ifs <;> omega
 /-- Step 4 is compute, copy one sign bit, then uncompute. -/
 lemma step4_gateCount_decompose
     {Basis : Type u}

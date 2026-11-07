@@ -36,7 +36,7 @@ def ptpCnotFull (P : PTPPolicy) (n : ℕ) : ℕ :=
   | none => 0
   | some T =>
       if _h : childWidth n T.ops < n then
-        3 * (addCount T.ops * (5 * childWidth n T.ops - 7)) +
+        3 * (addCount T.ops * (5 * childWidth n T.ops - 7) + negCount T.ops * negateCnotGates (childWidth n T.ops)) +
           6 * (childWidth n T.ops - topLimbWidth n T.k) +
           cpCount T.ops * ptpCnotFull P (childWidth n T.ops)
       else 0
@@ -145,7 +145,7 @@ theorem PolicyImpl.cnot {P : PTPPolicy} {X : Fin 3 → ExtReg} {C : ℕ} {W : Li
       exact (ptpLeafSandwich_resources shorGateResourceModel θ (X 0) (X 1) (X 2) t u).2.2.1
   | node X C T hX hC hc hlt SL G W' Wc hWc hW' hsub ih =>
       have hn : ptpCnotFull P C =
-          3 * (addCount T.ops * (5 * childWidth C T.ops - 7)) +
+          3 * (addCount T.ops * (5 * childWidth C T.ops - 7) + negCount T.ops * negateCnotGates (childWidth C T.ops)) +
             6 * (childWidth C T.ops - topLimbWidth C T.k) +
             cpCount T.ops * ptpCnotFull P (childWidth C T.ops) := by
         rw [ptpCnotFull, hc]
@@ -157,7 +157,7 @@ theorem PolicyImpl.cnot {P : PTPPolicy} {X : Fin 3 → ExtReg} {C : ℕ} {W : Li
       simp only [fCnot, opRes, cuccaroModAddResources] at hb
       simp only [LowGate.resources, GateResources.seq, cnot_alloc, SL.ext_top hX]
       rw [show (LowGate.resources shorGateResourceModel (body SL.lay _ 0 T.ops)).cnot = _ from hb, hn]
-      show _ = 3 * (addCount T.ops * (5 * SL.lay.width - 7)) + _ + _
+      show _ = 3 * (addCount T.ops * (5 * SL.lay.width - 7) + negCount T.ops * negateCnotGates (SL.lay.width)) + _ + _
       ring
 
 /-! ## Qubits -/

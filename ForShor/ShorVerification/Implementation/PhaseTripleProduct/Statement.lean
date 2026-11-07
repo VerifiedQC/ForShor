@@ -441,9 +441,9 @@ def leafCensus (w : ℕ) : Census :=
 `P` checkpoints, children costing `ch` each. -/
 def nodeCensus (C A N P : ℕ) (ch : Census) : Census :=
   ⟨P * ch.h,
-   3 * (A * (2 * C - 6) + N * C) + P * ch.x,
-   3 * (A * (5 * C - 7)) + P * ch.cnot,
-   3 * (A * (2 * C - 3) + N * (32 * C)) + P * ch.toffoli,
+   3 * (A * (2 * C - 6) + N * negateXGates C) + P * ch.x,
+   3 * (A * (5 * C - 7) + N * negateCnotGates C) + P * ch.cnot,
+   3 * (A * (2 * C - 3) + N * negateToffoliGates C) + P * ch.toffoli,
    P * ch.rz⟩
 
 /-- Per-operand reserve (ForShor `reserveNeed`, three operands): growing the
@@ -657,7 +657,7 @@ def ptpCnotFullD (P : PTPPolicy) (wd : WidthRule) (n : ℕ) : ℕ :=
   | none => 0
   | some T =>
       if _h : wd T n < n then
-        3 * (addCount T.ops * (5 * wd T n - 7)) +
+        3 * (addCount T.ops * (5 * wd T n - 7) + negCount T.ops * negateCnotGates (wd T n)) +
           6 * (wd T n - topLimbWidth n T.k) +
           cpCount T.ops * ptpCnotFullD P wd (wd T n)
       else 0

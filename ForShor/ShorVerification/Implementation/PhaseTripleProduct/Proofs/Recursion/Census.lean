@@ -18,9 +18,9 @@ the table (`P = 3k - 2` for a contract-passing table).
 `ptpNode_cleanAnc_le`, `ptpNode_qubits_le`):**
 
     Rz      = P · C³                                  (exactly one per leaf cell)
-    Toffoli = 3 (A (2C - 3) + 32 N C) + P · 2 (C² + C³)     (leaves: P(C² + C³) And + as many And†)
+    Toffoli = 3 (A (2C - 3) + N · negToff C) + P · 2 (C² + C³)     (leaves: P(C² + C³) And + as many And†)
     † Toffoli (uncompute) = P · (C² + C³)
-    CNOT    = 3 A (5C - 7)
+    CNOT    = 3 (A (5C - 7) + N · negCnot C)
     X       = 3 (A (2C - 6) + N (C + (2C - 6) + 2))
     H       = 0
     model scratch ancillas ≤ C + 1;  qubits touched ≤ 3 k C + 2 (slots + 2 leaf ancillas)
@@ -86,9 +86,10 @@ theorem leafCCPhase_resources (M : LowGateResourceModel) (φ : Angle) (x y z : E
 def opRes (C : ℕ) {k : ℕ} : valid_ops k → GateResources
   | .addScaled _ _ _ _ => cuccaroModAddResources C
   | .negate _ =>
-      -- swap 001: complement plus the one-clean-ancilla incrementer (see `negateResources`)
-      { x := C
-        toffoli := 32 * C
+      -- swap 001: complement plus the one-ancilla increment (see `negateResources`)
+      { x := negateXGates C
+        cnot := negateCnotGates C
+        toffoli := negateToffoliGates C
         cleanAnc := 1 }
   | _ => {}
 
@@ -147,9 +148,9 @@ theorem ptpNode_resources (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ) (φ : 
     let N := negCount T.ops
     let P := cpCount T.ops
     R.rz = P * (C * C * C) ∧
-    R.cnot = 3 * (A * (5 * C - 7)) ∧
-    R.toffoli = 3 * (A * (2 * C - 3) + N * (32 * C)) + P * (2 * (C * C + C * C * C)) ∧
-    R.x = 3 * (A * (2 * C - 6) + N * C) ∧
+    R.cnot = 3 * (A * (5 * C - 7) + N * negateCnotGates C) ∧
+    R.toffoli = 3 * (A * (2 * C - 3) + N * negateToffoliGates C) + P * (2 * (C * C + C * C * C)) ∧
+    R.x = 3 * (A * (2 * C - 6) + N * negateXGates C) ∧
     R.h = 0 := by
   intro R C A N P
   have hw : ∀ s i, (Lay.slot s i).width = C := Lay.slot_width
@@ -205,9 +206,9 @@ theorem ptpNodeCCPhase_resources (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ)
     let N := negCount T.ops
     let P := cpCount T.ops
     R.rz = P * (5 * (C * C * C)) ∧
-    R.cnot = 3 * (A * (5 * C - 7)) + P * (2 * (C * C * C)) ∧
-    R.toffoli = 3 * (A * (2 * C - 3) + N * (32 * C)) + P * (2 * (C * C * C)) ∧
-    R.x = 3 * (A * (2 * C - 6) + N * C) ∧
+    R.cnot = 3 * (A * (5 * C - 7) + N * negateCnotGates C) + P * (2 * (C * C * C)) ∧
+    R.toffoli = 3 * (A * (2 * C - 3) + N * negateToffoliGates C) + P * (2 * (C * C * C)) ∧
+    R.x = 3 * (A * (2 * C - 6) + N * negateXGates C) ∧
     R.h = 0 := by
   intro R C A N P
   have hw : ∀ s i, (Lay.slot s i).width = C := Lay.slot_width
@@ -221,7 +222,7 @@ theorem ptpNodeCCPhase_resources (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ)
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · have h := go fRz; simp only [fRz, opRes, cuccaroModAddResources] at h; rw [show R.rz = _ from h]; ring
   · have h := go fCnot; simp only [fCnot, opRes, cuccaroModAddResources] at h
-    rw [show R.cnot = _ from h]; ring
+    rw [show R.cnot = _ from h] <;> ring
   · have h := go fToff; simp only [fToff, opRes, cuccaroModAddResources] at h
     rw [show R.toffoli = _ from h] <;> ring
   · have h := go fX; simp only [fX, opRes, cuccaroModAddResources] at h

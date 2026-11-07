@@ -144,7 +144,7 @@ theorem gateTotal_leaf (P : PTPPolicy) (wd : WidthRule) (n : ℕ)
 theorem gateTotal_node (P : PTPPolicy) (wd : WidthRule) (n : ℕ) (T : PTPTable)
     (hc : P.choose n = some T) (hlt : wd T n < n) :
     ptpGateTotalD P wd n ≤
-      (27 * addCount T.ops + 99 * negCount T.ops + 6) * wd T n + 6 * negCount T.ops +
+      (27 * addCount T.ops + 102 * negCount T.ops + 6) * wd T n + 6 * negCount T.ops +
         cpCount T.ops * ptpGateTotalD P wd (wd T n) := by
   unfold ptpGateTotalD
   rw [ptpResourcesD, ptpCnotFullD, hc]
@@ -154,12 +154,13 @@ theorem gateTotal_node (P : PTPPolicy) (wd : WidthRule) (n : ℕ) (T : PTPTable)
   set N := negCount T.ops
   set p := cpCount T.ops
   have e1 : A * (2 * C - 6) ≤ A * (2 * C) := Nat.mul_le_mul_left _ (Nat.sub_le _ _)
-  have e2 : N * C ≤ N * (3 * C + 2) :=
-    Nat.mul_le_mul_left _ (by omega)
+  have e2 : N * negateXGates C ≤ N * (5 * C + 1) := Nat.mul_le_mul_left _ (negateXGates_le C)
   have e3 : A * (2 * C - 3) ≤ A * (2 * C) := Nat.mul_le_mul_left _ (Nat.sub_le _ _)
   have e4 : A * (5 * C - 7) ≤ A * (5 * C) := Nat.mul_le_mul_left _ (Nat.sub_le _ _)
+  have e6 : N * negateCnotGates C ≤ N * (17 * C) := Nat.mul_le_mul_left _ (negateCnotGates_le C)
+  have e7 : N * negateToffoliGates C ≤ N * (12 * C) := Nat.mul_le_mul_left _ (negateToffoliGates_le C)
   have e5 : C - topLimbWidth n T.k ≤ C := Nat.sub_le _ _
-  nlinarith [e1, e2, e3, e4, e5]
+  nlinarith [e1, e2, e3, e4, e5, e6, e7]
 
 
 /-! ## 3. The exponent and the bound -/
@@ -235,7 +236,7 @@ theorem ptp_gateTotal_bound_core (t : ℕ) (T : PTPTable) (hT : T.contract = tru
   have hstep : ∀ n : ℕ, (if t ≤ n ∧ wd T n < n then wd T n else n) < n → ∀ D : ℕ,
       (∀ j : ℕ, j = (if t ≤ n ∧ wd T n < n then wd T n else n) → ptpGateTotalD P wd j ≤ D) →
       ptpGateTotalD P wd n ≤
-        (27 * addCount T.ops + 99 * negCount T.ops + 6) *
+        (27 * addCount T.ops + 102 * negCount T.ops + 6) *
             (if t ≤ n ∧ wd T n < n then wd T n else n) + 6 * negCount T.ops + (3 * k - 2) * D := by
     intro n hlt D hD
     by_cases hcase : t ≤ n ∧ wd T n < n
@@ -251,7 +252,7 @@ theorem ptp_gateTotal_bound_core (t : ℕ) (T : PTPTable) (hT : T.contract = tru
       exact absurd hlt (lt_irrefl _)
   obtain ⟨C, hC, hbound⟩ := shifted_master_theorem_exact_family
     (k := k) (q := 3 * k - 2) (c := t + 3 * k + 3 * g)
-    (A := 27 * addCount T.ops + 99 * negCount T.ops + 6) (B := 6 * negCount T.ops)
+    (A := 27 * addCount T.ops + 102 * negCount T.ops + 6) (B := 6 * negCount T.ops)
     (α := ptpExponent k) (by omega) hα hrpow
     (fun n => n) (fun n => if t ≤ n ∧ wd T n < n then wd T n else n)
     (fun n => ptpGateTotalD P wd n) hnext hbounded hstep

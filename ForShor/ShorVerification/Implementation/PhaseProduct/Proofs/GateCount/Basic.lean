@@ -70,7 +70,7 @@ noncomputable def BalancedSignedPhaseProductBound
 def phaseArithmeticOpCost {k : ℕ} (W : ℕ) : valid_ops k → ℕ
   | .shiftL _ _ => 0
   | .shiftR _ _ => 0
-  | .negate _ => 2 * (W + 32 * W)
+  | .negate _ => 2 * (34 * W + 1)
   | .addScaled _ _ _ _ => 2 * rippleAdderGateBound W
   | .phaseProduct _ => 0
 

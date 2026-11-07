@@ -18,9 +18,9 @@ section ConcreteCostModel
 /-- Conservative linear bound for one ripple-adder on `w` qubits. -/
 def rippleAdderGateBound (w : ℕ) : ℕ := 9 * w + 2
 
-/-- Negation is bounded by the complement plus the one-ancilla incrementer:
-`w` X gates and `32 w` Toffolis (swap 001). -/
-def negateGateBound (r : ExtReg) : ℕ := ExtReg.width r + 32 * ExtReg.width r
+/-- Negation is bounded by the complement plus the one-ancilla increment: at most `34 w + 1`
+gates in all (swap 001; see `negateResources`). -/
+def negateGateBound (r : ExtReg) : ℕ := 34 * ExtReg.width r + 1
 
 /-- Direct signed PhaseProduct base-case cost, quadratic in the operand widths. -/
 def directSignedPhaseProductGateCount (x z : ExtReg) : ℕ := 5 * ExtReg.width x * ExtReg.width z
@@ -201,33 +201,62 @@ Two's-complement negation is
     -x = (~x) + 1  (mod 2^w).
 
 We therefore apply X to all `w` data qubits and then increment the register
-in place, with a single clean ancilla (the sign/carry qubit) and no scratch
-register.
+in place, with a single ancilla and no scratch register.
 
-MODULAR SWAP 001 (2026-11-05). This replaces the earlier construction
-(a clean `w`-bit constant-one register plus a Cuccaro modulo adder: `2w - 3`
-Toffolis, `w + 1` clean qubits). The incrementer is Gidney's one-clean-ancilla
-increment gate:
+MODULAR SWAP 001 (2026-11-05, counts corrected 2026-11-06). This replaces the
+earlier construction (a clean `w`-bit constant-one register plus a Cuccaro
+modulo adder: `2w - 3` Toffolis, `w + 1` clean qubits). The increment is
+Gidney's single-ancilla increment gate:
   Craig Gidney, "Constructing Large Increment Gates", 2015,
   https://algassert.com/circuits/2015/06/12/Constructing-Large-Increment-Gates.html
-and its cost is taken from Table 1 of Khattar--Gidney, arXiv:2407.17966
-(row "Incrementer", "One clean", [Gid15a]): `32 n` Toffolis, i.e. `128 n` T.
-Alternatives recorded in `ForShor_modular_swaps/swap-001_negation_incrementer`:
-Khattar--Gidney's `3 n` Toffolis with `log2* n` clean ancillae, and the same
-with dirty ancillae at about twice the Toffolis.
+It needs ONE extra qubit, which may be in any state (it is borrowed and returned),
+and borrows everything else from the register's own bits. We charge it as one
+clean qubit, which is valid and conservative.
 
-Conventions, stated not proved (like every other primitive here):
-  * `toffoli := 32 * w` and `cleanAnc := 1` come from the table above.
-  * `x := w` is the bitwise complement. The Clifford (CNOT) count of the
-    incrementer is not given by the source table and is charged as 0 here;
-    this does not affect any T count. See OPEN.md Q7 in the swap log.
+The gate counts are those of an explicit NOT/CNOT/Toffoli circuit built from
+the post's construction and simulated classically (every input and both ancilla
+values for `w <= 12`; random and long-carry inputs up to `w = 4398`; the ancilla
+is always returned), then counted. They are exact for every `w >= 7` (checked
+for each `w` from 7 to 1600 and at 2048, 2049, 4096 and 4398):
+
+                      w even          w odd
+    Toffoli           12 w - 28       10 w - 18
+    CNOT              17 w - 22       17 w - 5
+    X (with the       5 w - 3         5 w + 1
+       complement)
+
+and valid upper bounds below `w = 7`. (The post's "32 n" is the total of
+Toffoli, CNOT and NOT gates, not of Toffolis: a negation here has `34 w`.)
+That circuit is not built in Lean. Like every primitive here, the counts are a
+stated convention, not a proved decomposition: they say that a circuit of this
+shape exists, which a Python/Qualtran build (outside this repository) checks.
+Alternatives recorded in `ForShor_modular_swaps/swap-001_negation_incrementer`.
 --------------------------------------------------------- -/
+
+/-- X gates of a `w`-bit negation: the `w` complement NOTs plus the increment's. -/
+def negateXGates (w : ℕ) : ℕ := if w % 2 = 0 then 5 * w - 3 else 5 * w + 1
+
+/-- CNOT gates of a `w`-bit negation. -/
+def negateCnotGates (w : ℕ) : ℕ := if w % 2 = 0 then 17 * w - 22 else 17 * w - 5
+
+/-- Toffoli gates of a `w`-bit negation. -/
+def negateToffoliGates (w : ℕ) : ℕ := if w % 2 = 0 then 12 * w - 28 else 10 * w - 18
 
 def negateResources (r : ExtReg) : GateResources :=
   let w := ExtReg.width r
-  { x := w
-    toffoli := 32 * w
+  { x := negateXGates w
+    cnot := negateCnotGates w
+    toffoli := negateToffoliGates w
     cleanAnc := 1 }
+
+theorem negateXGates_le (w : ℕ) : negateXGates w ≤ 5 * w + 1 := by
+  unfold negateXGates; split_ifs <;> omega
+
+theorem negateCnotGates_le (w : ℕ) : negateCnotGates w ≤ 17 * w := by
+  unfold negateCnotGates; split_ifs <;> omega
+
+theorem negateToffoliGates_le (w : ℕ) : negateToffoliGates w ≤ 12 * w := by
+  unfold negateToffoliGates; split_ifs <;> omega
 
 /-! ---------------------------------------------------------
     AddScaled
