@@ -198,7 +198,7 @@ theorem ptp_gate_full_D {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass
           Complex.exp (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *
             (((extToInt (X 0) b : ℤ) : ℂ) * ((extToInt (X 1) b : ℤ) : ℂ) *
               ((extToInt (X 2) b : ℤ) : ℂ))) • qs.ket b) ∧
-      (∀ φ : Angle, let R := LowGate.resources shorGateResourceModel (G φ)
+      (∀ φ : Angle, let R := LowGate.resources P.resourceModel (G φ)
         R.rz = (ptpResourcesD P wd n).rz ∧ R.toffoli = (ptpResourcesD P wd n).toffoli ∧
           R.x = (ptpResourcesD P wd n).x ∧ R.h = (ptpResourcesD P wd n).h ∧
           R.cnot = ptpCnotFullD P wd n ∧ adjToffCount (G φ) = ptpAndDagD P wd n ∧
@@ -228,7 +228,7 @@ theorem ptp_gate_full_exact {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateC
           Complex.exp (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *
             (((extToInt (X 0) b : ℤ) : ℂ) * ((extToInt (X 1) b : ℤ) : ℂ) *
               ((extToInt (X 2) b : ℤ) : ℂ))) • qs.ket b) ∧
-      (∀ φ : Angle, let R := LowGate.resources shorGateResourceModel (G φ)
+      (∀ φ : Angle, let R := LowGate.resources P.resourceModel (G φ)
         R.rz = (ptpResourcesX P n).rz ∧ R.toffoli = (ptpResourcesX P n).toffoli ∧
           R.x = (ptpResourcesX P n).x ∧ R.h = (ptpResourcesX P n).h ∧
           R.cnot = ptpCnotFullX P n ∧ adjToffCount (G φ) = ptpAndDagX P n ∧
@@ -248,7 +248,7 @@ theorem ptp_gate_full_of_D {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateCl
           Complex.exp (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *
             (((extToInt (X 0) b : ℤ) : ℂ) * ((extToInt (X 1) b : ℤ) : ℂ) *
               ((extToInt (X 2) b : ℤ) : ℂ))) • qs.ket b) ∧
-      (∀ φ : Angle, let R := LowGate.resources shorGateResourceModel (G φ)
+      (∀ φ : Angle, let R := LowGate.resources P.resourceModel (G φ)
         R.rz = (ptpResources P n).rz ∧ R.toffoli = (ptpResources P n).toffoli ∧
           R.x = (ptpResources P n).x ∧ R.h = (ptpResources P n).h ∧
           R.cnot = ptpCnotFull P n ∧ adjToffCount (G φ) = ptpAndDag P n ∧

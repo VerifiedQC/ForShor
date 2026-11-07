@@ -140,6 +140,25 @@ theorem gateTotal_leaf (P : PTPPolicy) (wd : WidthRule) (n : ℕ)
     · have := hc T hc'
       rw [ptpResourcesD, ptpCnotFullD, hc']; simp [leafCensus, this]
 
+/-- A negation's X, CNOT and Toffoli counts are at most `5 w + 2`, `17 w` and `12 w` under either method
+(`oneQubit`: the sharp bounds of `ResourceModel.lean`, `5 w + 1` for X; `scratch`: `3 w + 2`, `5 w`, `2 w`
+at most; the `+ 2` is the constant-one register's preparation, which at `w = 0` exceeds `5 w + 1`). -/
+theorem negateXGatesFor_le (m : NegationMethod) (w : ℕ) : negateXGatesFor m w ≤ 5 * w + 2 := by
+  cases m
+  · have := negateXGates_le w; simp only [negateXGatesFor]; omega
+  · simp only [negateXGatesFor]; omega
+
+theorem negateCnotGatesFor_le (m : NegationMethod) (w : ℕ) : negateCnotGatesFor m w ≤ 17 * w := by
+  cases m
+  · exact negateCnotGates_le w
+  · simp only [negateCnotGatesFor]; omega
+
+theorem negateToffoliGatesFor_le (m : NegationMethod) (w : ℕ) :
+    negateToffoliGatesFor m w ≤ 12 * w := by
+  cases m
+  · exact negateToffoliGates_le w
+  · simp only [negateToffoliGatesFor]; omega
+
 /-- **One level of the census recursion**: linear cost at the child width plus `3k - 2` children. -/
 theorem gateTotal_node (P : PTPPolicy) (wd : WidthRule) (n : ℕ) (T : PTPTable)
     (hc : P.choose n = some T) (hlt : wd T n < n) :
@@ -148,17 +167,20 @@ theorem gateTotal_node (P : PTPPolicy) (wd : WidthRule) (n : ℕ) (T : PTPTable)
         cpCount T.ops * ptpGateTotalD P wd (wd T n) := by
   unfold ptpGateTotalD
   rw [ptpResourcesD, ptpCnotFullD, hc]
-  simp only [hlt, ↓reduceDIte, nodeCensus]
+  simp only [hlt, ↓reduceDIte, nodeCensusFor]
   set C := wd T n
   set A := addCount T.ops
   set N := negCount T.ops
   set p := cpCount T.ops
   have e1 : A * (2 * C - 6) ≤ A * (2 * C) := Nat.mul_le_mul_left _ (Nat.sub_le _ _)
-  have e2 : N * negateXGates C ≤ N * (5 * C + 1) := Nat.mul_le_mul_left _ (negateXGates_le C)
+  have e2 : N * negateXGatesFor P.negation C ≤ N * (5 * C + 2) :=
+    Nat.mul_le_mul_left _ (negateXGatesFor_le _ C)
   have e3 : A * (2 * C - 3) ≤ A * (2 * C) := Nat.mul_le_mul_left _ (Nat.sub_le _ _)
   have e4 : A * (5 * C - 7) ≤ A * (5 * C) := Nat.mul_le_mul_left _ (Nat.sub_le _ _)
-  have e6 : N * negateCnotGates C ≤ N * (17 * C) := Nat.mul_le_mul_left _ (negateCnotGates_le C)
-  have e7 : N * negateToffoliGates C ≤ N * (12 * C) := Nat.mul_le_mul_left _ (negateToffoliGates_le C)
+  have e6 : N * negateCnotGatesFor P.negation C ≤ N * (17 * C) :=
+    Nat.mul_le_mul_left _ (negateCnotGatesFor_le _ C)
+  have e7 : N * negateToffoliGatesFor P.negation C ≤ N * (12 * C) :=
+    Nat.mul_le_mul_left _ (negateToffoliGatesFor_le _ C)
   have e5 : C - topLimbWidth n T.k ≤ C := Nat.sub_le _ _
   nlinarith [e1, e2, e3, e4, e5, e6, e7]
 
@@ -192,13 +214,15 @@ theorem choose_const (t : ℕ) (T : PTPTable) (n : ℕ) :
   by_cases h : t ≤ n <;> simp [h, List.find?]
 
 /-- **Asymptotic gate count of a constant PTP policy** (any width rule contracting like the PTP
-scan): `O(n ^ log_k (3k - 2))`. -/
-theorem ptp_gateTotal_bound_core (t : ℕ) (T : PTPTable) (hT : T.contract = true) (wd : WidthRule)
+scan): `O(n ^ log_k (3k - 2))`, under negation method `m`. -/
+theorem ptp_gateTotal_bound_core (m : NegationMethod) (t : ℕ) (T : PTPTable)
+    (hT : T.contract = true) (wd : WidthRule)
     (hwd : ∀ n, 0 < n → wd T n ≤ n / T.k + T.k + growth T.ops) :
     ∃ C : ℝ, 0 < C ∧ ∀ n : ℕ, 1 ≤ n →
-      (ptpGateTotalD (constPTPPolicy t T) wd n : ℝ) ≤ C * Real.rpow (n : ℝ) (ptpExponent T.k) := by
+      (ptpGateTotalD ((constPTPPolicy t T).withNegation m) wd n : ℝ) ≤
+        C * Real.rpow (n : ℝ) (ptpExponent T.k) := by
   obtain ⟨hk2, _, _⟩ := (PTPTable.contract_iff T).mp hT
-  set P := constPTPPolicy t T with hP
+  set P := (constPTPPolicy t T).withNegation m with hP
   set g := growth T.ops with hg
   set k := T.k with hk
   have hcp := cpCount_eq_pointCount T hT
@@ -241,7 +265,10 @@ theorem ptp_gateTotal_bound_core (t : ℕ) (T : PTPTable) (hT : T.contract = tru
     intro n hlt D hD
     by_cases hcase : t ≤ n ∧ wd T n < n
     · simp only [hcase, and_self, ↓reduceIte] at hlt ⊢
-      have hc : P.choose n = some T := by rw [hP, choose_const]; simp only [hcase.1, ↓reduceIte]
+      have hc : P.choose n = some T := by
+        have h0 := choose_const t T n
+        simp only [hcase.1, ↓reduceIte] at h0
+        exact h0
       have h := gateTotal_node P wd n T hc hcase.2
       rw [hcp] at h
       have hD' := hD (wd T n) (by simp only [hcase.1, hcase.2, and_self, ↓reduceIte])
@@ -264,18 +291,20 @@ theorem ptp_gateTotal_bound_core (t : ℕ) (T : PTPTable) (hT : T.contract = tru
 /-- **The constructed circuit has `O(n ^ log_k (3k - 2))` gates** (exact board, constant policy):
 the circuit of `ptp_gate_full_exact` has `totalGates = ptpGateTotalD` and hence the bound. -/
 theorem ptp_circuit_gateCount_bound_core {qs : Shor.QSemantics} [Shor.RegEncoding qs.Basis]
-    [Shor.LowerGateClass qs] (t : ℕ) (T : PTPTable) (hT : T.contract = true)
+    [Shor.LowerGateClass qs] (m : NegationMethod) (t : ℕ) (T : PTPTable) (hT : T.contract = true)
     (hP : (constPTPPolicy t T).check = true) :
     ∃ C : ℝ, 0 < C ∧ ∀ (n : ℕ), 1 ≤ n → ∀ (X : Fin 3 → Shor.ExtReg) (base : ℕ), Good X n base →
       ∃ (W : List ℕ) (G : Shor.Angle → Shor.LowGate),
-        PolicyImplX (constPTPPolicy t T) X n W G ∧
+        PolicyImplX ((constPTPPolicy t T).withNegation m) X n W G ∧
         ∀ φ : Shor.Angle,
-          ((Shor.LowGate.resources Shor.shorGateResourceModel (G φ)).totalGates : ℝ) ≤
+          ((Shor.LowGate.resources ((constPTPPolicy t T).withNegation m).resourceModel
+              (G φ)).totalGates : ℝ) ≤
             C * Real.rpow (n : ℝ) (ptpExponent T.k) := by
-  obtain ⟨C, hC, hb⟩ := ptp_gateTotal_bound_core t T hT exactRule
+  obtain ⟨C, hC, hb⟩ := ptp_gateTotal_bound_core m t T hT exactRule
     (fun n hn => ptpTightWidth_le T hT hn)
   refine ⟨C, hC, fun n hn X base hG => ?_⟩
-  obtain ⟨W, G, hI, _, _, hR⟩ := ptp_gate_full_exact (qs := qs) (constPTPPolicy t T) hP n X base hG
+  obtain ⟨W, G, hI, _, _, hR⟩ := ptp_gate_full_exact (qs := qs) ((constPTPPolicy t T).withNegation m)
+    hP n X base hG
   refine ⟨W, G, hI, fun φ => ?_⟩
   obtain ⟨h1, h2, h3, h4, h5, _⟩ := hR φ
   refine le_trans (le_of_eq ?_) (hb n hn)

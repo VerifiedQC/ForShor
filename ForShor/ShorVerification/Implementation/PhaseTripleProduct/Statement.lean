@@ -457,14 +457,53 @@ deriving Repr, DecidableEq
 def leafCensus (w : ℕ) : Census :=
   ⟨0, 0, 0, 2 * (w * w + w * w * w), w * w * w⟩
 
+/-! ### The negation charge, by method
+
+The numbers a negation of a `w`-bit register is charged, as plain functions of `w`, so that the census formulas
+can be written once for both `NegationMethod`s. `negateResourcesFor_eq` (in `Proofs/Recursion/Census.lean`) ties
+them to the Framework's `negateResourcesFor`.
+
+* `oneQubit`: complement plus Gidney's single-ancilla increment (`negateXGates` ...); one clean qubit.
+* `scratch`: complement plus a Cuccaro adder against a clean constant-one register (the construction before
+  modular swap 001): `X = w + (2 w - 6) + 2`, `CNOT = 5 w - 7`, `Toffoli = 2 w - 3`, and `w + 1` clean qubits
+  (the constant-one register and the adder's carry). -/
+
+/-- X gates of a `w`-bit negation under method `m`. -/
+def negateXGatesFor : NegationMethod → ℕ → ℕ
+  | .oneQubit, w => negateXGates w
+  | .scratch, w => w + (2 * w - 6) + 2
+
+/-- CNOT gates of a `w`-bit negation under method `m`. -/
+def negateCnotGatesFor : NegationMethod → ℕ → ℕ
+  | .oneQubit, w => negateCnotGates w
+  | .scratch, w => 5 * w - 7
+
+/-- Toffoli gates of a `w`-bit negation under method `m`. -/
+def negateToffoliGatesFor : NegationMethod → ℕ → ℕ
+  | .oneQubit, w => negateToffoliGates w
+  | .scratch, w => 2 * w - 3
+
+/-- Clean qubits a `w`-bit negation holds while it runs under method `m`: one, or `w + 1`. -/
+def negateCleanAncFor : NegationMethod → ℕ → ℕ
+  | .oneQubit, _ => 1
+  | .scratch, w => w + 1
+
 /-- Node census at working width `C` for a table with `A` adds, `N` negates and
-`P` checkpoints, children costing `ch` each. -/
-def nodeCensus (C A N P : ℕ) (ch : Census) : Census :=
+`P` checkpoints, children costing `ch` each, with negations charged by method `m`. -/
+def nodeCensusFor (m : NegationMethod) (C A N P : ℕ) (ch : Census) : Census :=
   ⟨P * ch.h,
-   3 * (A * (2 * C - 6) + N * negateXGates C) + P * ch.x,
-   3 * (A * (5 * C - 7) + N * negateCnotGates C) + P * ch.cnot,
-   3 * (A * (2 * C - 3) + N * negateToffoliGates C) + P * ch.toffoli,
+   3 * (A * (2 * C - 6) + N * negateXGatesFor m C) + P * ch.x,
+   3 * (A * (5 * C - 7) + N * negateCnotGatesFor m C) + P * ch.cnot,
+   3 * (A * (2 * C - 3) + N * negateToffoliGatesFor m C) + P * ch.toffoli,
    P * ch.rz⟩
+
+/-- Node census under the default (`oneQubit`) negation method. -/
+def nodeCensus (C A N P : ℕ) (ch : Census) : Census := nodeCensusFor .oneQubit C A N P ch
+
+/-- Clean scratch qubits one node holds at working width `C` with `A` adds and `N` negates: an addition holds
+one (the carry), a negation `negateCleanAncFor m C`, and the node holds them one at a time. -/
+def nodeCleanAncFor (m : NegationMethod) (C A N : ℕ) : ℕ :=
+  if N = 0 then (if A = 0 then 0 else 1) else negateCleanAncFor m C
 
 /-- Per-operand reserve (ForShor `reserveNeed`, three operands): growing the
 `k` chunks to `C` at this level, plus a private workspace for each of the `k`
@@ -478,23 +517,28 @@ def ptpReserveNeed (P : PTPPolicy) (n : ℕ) : ℕ :=
       else 0
 termination_by n
 
-/-- Peak clean scratch ancillas along the ladder (negation at the widest node).
-This is the model from before modular swap 001, where a negation charged `C + 1`: it is still a valid
-upper bound on the resource model's `cleanAnc` (now 1 per negation or addition), but no longer tight. -/
+/-- **Peak clean scratch qubits along the ladder**, under the policy's own negation method `P.negation`: the
+largest number of clean qubits the resource model `P.resourceModel` holds at once in one node of the recursion
+(`nodeCleanAncFor`). A node with no addition and no negation holds none; one with only additions holds one (the
+Cuccaro carry); one with a negation holds `negateCleanAncFor P.negation C`, where `C` is the node's working width.
+So for `oneQubit` (complement plus a single-ancilla increment) the peak is `1`, and for `scratch` (a clean
+constant-one register plus the Cuccaro carry) it is `C + 1` at the widest node that negates. The sandwich leaves
+hold none: their two ancillas are explicit qubits, not model scratch. -/
 def ptpCleanAnc (P : PTPPolicy) (n : ℕ) : ℕ :=
   match P.choose n with
   | none => 0
   | some T =>
       if _h : childWidth n T.ops < n then
-        max (if negCount T.ops = 0 then (if addCount T.ops = 0 then 0 else 1)
-             else childWidth n T.ops + 1) (ptpCleanAnc P (childWidth n T.ops))
+        max (nodeCleanAncFor P.negation (childWidth n T.ops) (addCount T.ops) (negCount T.ops))
+          (ptpCleanAnc P (childWidth n T.ops))
       else 0
 termination_by n
 
 /-- Logical qubits of one PTP call at width `n`: three operands, three
 per-operand reserves, peak clean scratch, where the sandwich leaves' two ancillas
 (`ptpNode_qubits_le`) are needed only while a leaf runs, so they share the scratch
-peak: `max (ptpCleanAnc) 2`. -/
+peak: `max (ptpCleanAnc) 2`. The scratch is the one of the policy's negation method
+(`ptpCleanAnc`: `1` for `oneQubit`, up to `C + 1` for `scratch`). -/
 def ptpQubits (P : PTPPolicy) (n : ℕ) : ℕ :=
   3 * n + 3 * ptpReserveNeed P n + max (ptpCleanAnc P n) 2
 
@@ -657,7 +701,7 @@ def ptpResourcesD (P : PTPPolicy) (wd : WidthRule) (n : ℕ) : Census :=
   | none => leafCensus n
   | some T =>
       if _h : wd T n < n then
-        nodeCensus (wd T n) (addCount T.ops) (negCount T.ops) (cpCount T.ops)
+        nodeCensusFor P.negation (wd T n) (addCount T.ops) (negCount T.ops) (cpCount T.ops)
           (ptpResourcesD P wd (wd T n))
       else leafCensus n
 termination_by n
@@ -677,7 +721,7 @@ def ptpCnotFullD (P : PTPPolicy) (wd : WidthRule) (n : ℕ) : ℕ :=
   | none => 0
   | some T =>
       if _h : wd T n < n then
-        3 * (addCount T.ops * (5 * wd T n - 7) + negCount T.ops * negateCnotGates (wd T n)) +
+        3 * (addCount T.ops * (5 * wd T n - 7) + negCount T.ops * negateCnotGatesFor P.negation (wd T n)) +
           6 * (wd T n - topLimbWidth n T.k) +
           cpCount T.ops * ptpCnotFullD P wd (wd T n)
       else 0
@@ -724,7 +768,7 @@ def ptpCleanAncD (P : PTPPolicy) (wd : WidthRule) (n : ℕ) : ℕ :=
   | none => 0
   | some T =>
       if _h : wd T n < n then
-        max (if negCount T.ops = 0 then (if addCount T.ops = 0 then 0 else 1) else wd T n + 1)
+        max (nodeCleanAncFor P.negation (wd T n) (addCount T.ops) (negCount T.ops))
           (ptpCleanAncD P wd (wd T n))
       else 0
 termination_by n
@@ -844,7 +888,7 @@ def PTPCleanBasisU (qs : QSemantics) [RegEncoding qs.Basis] (X : Fin 3 → ExtRe
 
 /-- The gate-level census of a circuit equals the exact-board formulas for `P` at width `n`. -/
 def PTPExactCensus (P : PTPPolicy) (n : ℕ) (G : LowGate) : Prop :=
-  let R := LowGate.resources shorGateResourceModel G
+  let R := LowGate.resources P.resourceModel G
   R.rz = (ptpResourcesX P n).rz ∧ R.toffoli = (ptpResourcesX P n).toffoli ∧
     R.x = (ptpResourcesX P n).x ∧ R.h = (ptpResourcesX P n).h ∧
     R.cnot = ptpCnotFullX P n ∧ adjToffCount G = ptpAndDagX P n ∧
@@ -868,7 +912,7 @@ def PTPLowerExactCorrect (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClas
 /-- The gate-level census of a controlled circuit: the exact-board census of the uncontrolled
 recursion plus `2n` Toffoli (`n` of them `†Toffoli`) and `n + 1` qubits. -/
 def PTPCtlExactCensus (P : PTPPolicy) (n : ℕ) (G : LowGate) : Prop :=
-  let R := LowGate.resources shorGateResourceModel G
+  let R := LowGate.resources P.resourceModel G
   R.rz = (ptpResourcesX P n).rz ∧ R.toffoli = (ptpResourcesX P n).toffoli + 2 * n ∧
     R.x = (ptpResourcesX P n).x ∧ R.h = (ptpResourcesX P n).h ∧
     R.cnot = ptpCnotFullX P n ∧ adjToffCount G = ptpAndDagX P n + n ∧
@@ -898,7 +942,7 @@ def PTPCtlLowerExactCorrect (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateC
 the extensions (`2 (d₀ + d₁ + d₂)`: extend and undo); `usedQubits` at most `3n + workspace` (the
 framework's `cleanAnc` scratch is not included). Vacuous if some operand has width `0`. -/
 def PTPPadExactCensus (P : PTPPolicy) (n : ℕ) (d : Fin 3 → ℕ) (G : LowGate) : Prop :=
-  let R := LowGate.resources shorGateResourceModel G
+  let R := LowGate.resources P.resourceModel G
   R.rz = (ptpResourcesX P n).rz ∧ R.toffoli = (ptpResourcesX P n).toffoli ∧
     R.x = (ptpResourcesX P n).x ∧ R.h = (ptpResourcesX P n).h ∧
     R.cnot = ptpCnotFullX P n + 2 * (d 0 + d 1 + d 2) ∧ adjToffCount G = ptpAndDagX P n ∧
@@ -920,27 +964,32 @@ def PTPPadLowerExactCorrect (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateC
 
 /-- **Claim (gate count of the width-rule census, constant policy).** For one table `T` used at
 every width `≥ t`, if `T` passes the contract and the node width rule contracts like the PTP scan
-(`wd T n ≤ n / k + k + growth ops`), the census total `ptpGateTotalD` is `O(n ^ log_k (3k - 2))`.
+(`wd T n ≤ n / k + k + growth ops`), the census total `ptpGateTotalD` is `O(n ^ log_k (3k - 2))`, whichever
+negation method the policy is priced under (`oneQubit` or `scratch`; the constant may depend on the method).
 (`Main.lean`: `ptp_gateTotal_bound`.) -/
 def PTPGateTotalBound (t : ℕ) (T : PTPTable) (wd : WidthRule) : Prop :=
   T.contract = true →
   (∀ n, 0 < n → wd T n ≤ n / T.k + T.k + growth T.ops) →
-    ∃ C : ℝ, 0 < C ∧ ∀ n : ℕ, 1 ≤ n →
-      (ptpGateTotalD (constPTPPolicy t T) wd n : ℝ) ≤ C * Real.rpow (n : ℝ) (ptpExponent T.k)
+    ∀ m : NegationMethod, ∃ C : ℝ, 0 < C ∧ ∀ n : ℕ, 1 ≤ n →
+      (ptpGateTotalD ((constPTPPolicy t T).withNegation m) wd n : ℝ) ≤
+        C * Real.rpow (n : ℝ) (ptpExponent T.k)
 
-/-- **Claim (gate count of a constructed circuit, constant policy).** For a constant policy there is a
-circuit following it (a `PolicyImplX`, the family `PTPLowerExactCorrect` is about) with at most
-`C · n ^ log_k (3k - 2)` gates, counted by `shorGateResourceModel`. The claim is existential: it does
+/-- **Claim (gate count of a constructed circuit, constant policy).** For a constant policy, under either
+negation method, there is a circuit following it (a `PolicyImplX`, the family `PTPLowerExactCorrect` is about)
+with at most `C · n ^ log_k (3k - 2)` gates, counted by the policy's resource model
+(`PTPPolicy.resourceModel`: `shorGateResourceModel` for `oneQubit`, the same with the pre-swap negation for
+`scratch`). The claim is existential: it does
 not itself say the circuit is correct (that is `PTPLowerExactCorrect`), nor that it is the circuit
 that claim produces. (`Main.lean`: `ptp_circuit_gateCount_bound`.) -/
 def PTPCircuitGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]
     (t : ℕ) (T : PTPTable) : Prop :=
   T.contract = true → (constPTPPolicy t T).check = true →
-    ∃ C : ℝ, 0 < C ∧ ∀ (n : ℕ), 1 ≤ n → ∀ (X : Fin 3 → ExtReg) (base : ℕ), Good X n base →
+    ∀ m : NegationMethod, ∃ C : ℝ, 0 < C ∧
+      ∀ (n : ℕ), 1 ≤ n → ∀ (X : Fin 3 → ExtReg) (base : ℕ), Good X n base →
       ∃ (W : List ℕ) (G : Angle → LowGate),
-        PolicyImplX (constPTPPolicy t T) X n W G ∧
+        PolicyImplX ((constPTPPolicy t T).withNegation m) X n W G ∧
         ∀ φ : Angle,
-          ((LowGate.resources shorGateResourceModel (G φ)).totalGates : ℝ) ≤
+          ((LowGate.resources ((constPTPPolicy t T).withNegation m).resourceModel (G φ)).totalGates : ℝ) ≤
             C * Real.rpow (n : ℝ) (ptpExponent T.k)
 
 /-- **Claim (tight qubit count, any admissible width rule).** There is a circuit following `P`

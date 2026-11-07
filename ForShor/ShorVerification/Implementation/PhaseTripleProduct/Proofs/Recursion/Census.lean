@@ -6,9 +6,14 @@ import ForShor.ShorVerification.Framework.Gatecount.ResourceModel
 
 The analogue of ForShor's `ResourceModel` / `Workspace.reserveNeed` for PTP,
 read off the circuits of `PTP/Leaf.lean` and `PTP/Node.lean` under ForShor's
-own structural resource model `Shor.shorGateResourceModel` (Cuccaro adders,
-Cuccaro-based negation, shifts as wiring; basis `H, X, CNOT, Toffoli, Rz` plus
-peak clean scratch ancillas).
+own structural resource model (Cuccaro adders, shifts as wiring; basis `H, X, CNOT,
+Toffoli, Rz` plus peak clean scratch ancillas). The model depends on how a negation is
+realised (`NegationMethod`): `Shor.shorGateResourceModelFor m`, which is
+`Shor.shorGateResourceModel` for `m = oneQubit` (complement plus a single-ancilla increment)
+and charges the pre-swap negation (complement plus a Cuccaro adder against a clean
+constant-one register) for `m = scratch`. Every node-level theorem below is stated for an
+arbitrary `m`; the policy-level ones use `P.resourceModel`, i.e. the policy's own
+`negation` field.
 
 Proved, for one node at working width `C` (all `3k` slots of width `C`), with
 `A`, `N`, `P` the numbers of `addScaled`, `negate` and `phaseProduct` operations of
@@ -18,16 +23,22 @@ the table (`P = 3k - 2` for a contract-passing table).
 `ptpNode_cleanAnc_le`, `ptpNode_qubits_le`):**
 
     Rz      = P · C³                                  (exactly one per leaf cell)
-    Toffoli = 3 (A (2C - 3) + N · negToff C) + P · 2 (C² + C³)     (leaves: P(C² + C³) And + as many And†)
+    Toffoli = 3 (A (2C - 3) + N · negToff m C) + P · 2 (C² + C³)     (leaves: P(C² + C³) And + as many And†)
     † Toffoli (uncompute) = P · (C² + C³)
-    CNOT    = 3 (A (5C - 7) + N · negCnot C)
-    X       = 3 (A (2C - 6) + N (C + (2C - 6) + 2))
+    CNOT    = 3 (A (5C - 7) + N · negCnot m C)
+    X       = 3 (A (2C - 6) + N · negX m C)
     H       = 0
-    model scratch ancillas ≤ C + 1;  qubits touched ≤ 3 k C + 2 (slots + 2 leaf ancillas)
+    model scratch ancillas ≤ nodeCleanAncFor m C A N   (≤ C + 1);  qubits touched ≤ 3 k C + 2 (slots + 2 leaf ancillas)
+
+with `negX m C`, `negCnot m C`, `negToff m C` the `negateXGatesFor m C`, ... of `Statement.lean`: for
+`oneQubit` they are `negateXGates C` (`5C - 3` / `5C + 1`), `negateCnotGates C`, `negateToffoliGates C`; for
+`scratch` they are `C + (2C - 6) + 2`, `5C - 7` and `2C - 3`, so that for `scratch` the node census is exactly
+the pre-swap one `CNOT = 3 (A + N)(5C - 7)`, `Toffoli = 3 (A + N)(2C - 3) + ...`,
+`X = 3 (A (2C - 6) + N (C + (2C - 6) + 2))` (`nodeCensusFor_scratch`).
 
 **CCPhase-leaf children (documented alternative; `ptpNodeCCPhase_resources`, ...):**
-`Rz = P · 5C³`, `CNOT = 3(A+N)(5C-7) + P · 2C³`, `Toffoli = 3(A+N)(2C-3) + P · 2C³`,
-same `X`, `H`; qubits ≤ 3 k C.
+`Rz = P · 5C³`, `CNOT = 3 (A (5C - 7) + N · negCnot m C) + P · 2C³`,
+`Toffoli = 3 (A (2C - 3) + N · negToff m C) + P · 2C³`, same `X`, `H`; qubits ≤ 3 k C.
 
 Leaves alone (width `w` operands): sandwich `Rz = w³, Toffoli = 2(w² + w³), CNOT = 0`
 (`ptpLeafSandwich_resources`, any resource model, no disjointness hypothesis);
@@ -81,66 +92,131 @@ theorem leafCCPhase_resources (M : LowGateResourceModel) (φ : Angle) (x y z : E
 
 /-! ## The node -/
 
-/-- Resources of one operation on one operand at slot width `C` under ForShor's
-`shorGateResourceModel`. -/
-def opRes (C : ℕ) {k : ℕ} : valid_ops k → GateResources
+/-- Resources of one operation on one operand at slot width `C` under ForShor's resource model for the
+negation method `m` (`shorGateResourceModelFor m`). -/
+def opRes (m : NegationMethod) (C : ℕ) {k : ℕ} : valid_ops k → GateResources
   | .addScaled _ _ _ _ => cuccaroModAddResources C
   | .negate _ =>
-      -- swap 001: complement plus the one-ancilla increment (see `negateResources`)
-      { x := negateXGates C
-        cnot := negateCnotGates C
-        toffoli := negateToffoliGates C
-        cleanAnc := 1 }
+      { x := negateXGatesFor m C
+        cnot := negateCnotGatesFor m C
+        toffoli := negateToffoliGatesFor m C
+        cleanAnc := negateCleanAncFor m C }
   | _ => {}
 
-theorem opGate_resources {k : ℕ} (Lay : NodeLayout k) (s : Fin 3) (op : valid_ops k) :
-    LowGate.resources shorGateResourceModel (opGate Lay s op) = opRes Lay.width op := by
+/-- **The negation charge by method, as the closed forms of `Statement.lean`.** For `oneQubit` this is
+`negateResources` (swap 001: complement plus the one-ancilla increment); for `scratch` it is the pre-swap
+`negateResourcesPreSwap` (a clean constant-one register plus a Cuccaro adder). -/
+theorem negateResourcesFor_eq (m : NegationMethod) (r : ExtReg) :
+    negateResourcesFor m r =
+      { x := negateXGatesFor m (ExtReg.width r)
+        cnot := negateCnotGatesFor m (ExtReg.width r)
+        toffoli := negateToffoliGatesFor m (ExtReg.width r)
+        cleanAnc := negateCleanAncFor m (ExtReg.width r) } := by
+  cases m <;> rfl
+
+theorem negateCleanAncFor_pos (m : NegationMethod) (w : ℕ) : 1 ≤ negateCleanAncFor m w := by
+  cases m <;> simp [negateCleanAncFor]
+
+theorem opGate_resources (m : NegationMethod) {k : ℕ} (Lay : NodeLayout k) (s : Fin 3)
+    (op : valid_ops k) :
+    LowGate.resources (shorGateResourceModelFor m) (opGate Lay s op) = opRes m Lay.width op := by
   cases op with
   | shiftL i n => rfl
   | shiftR i n => rfl
   | negate i =>
-      simp only [opGate, LowGate.resources, shorGateResourceModel, negateResources, opRes,
-        Lay.slot_width]
+      simp only [opGate, LowGate.resources, shorGateResourceModelFor_negate, negateResourcesFor_eq,
+        opRes, Lay.slot_width]
   | addScaled d src neg sh =>
-      simp only [opGate, LowGate.resources, shorGateResourceModel, addScaledResources, opRes,
-        Lay.slot_width]
+      simp only [opGate, LowGate.resources, shorGateResourceModelFor, shorGateResourceModel,
+        addScaledResources, opRes, Lay.slot_width]
   | phaseProduct i => rfl
 
-/-- An additive field of the body, operation by operation. -/
-def bodyField (F : AddField) {k : ℕ} (C : ℕ) (childF : ℕ) : Prog k → ℕ
-  | [] => 0
-  | .phaseProduct _ :: ops => childF + bodyField F C childF ops
-  | op :: ops => 3 * F.f (opRes C op) + bodyField F C childF ops
+/-- The `scratch` node census is exactly the pre-swap closed form (`CNOT = 3 (A + N)(5C - 7)`,
+`Toffoli = 3 (A + N)(2C - 3) + ...`, `X = 3 (A (2C - 6) + N (C + (2C - 6) + 2))`). -/
+theorem nodeCensusFor_scratch (C A N P : ℕ) (ch : Census) :
+    nodeCensusFor .scratch C A N P ch =
+      ⟨P * ch.h,
+       3 * (A * (2 * C - 6) + N * (C + (2 * C - 6) + 2)) + P * ch.x,
+       3 * ((A + N) * (5 * C - 7)) + P * ch.cnot,
+       3 * ((A + N) * (2 * C - 3)) + P * ch.toffoli,
+       P * ch.rz⟩ := by
+  simp only [nodeCensusFor, negateXGatesFor, negateCnotGatesFor, negateToffoliGatesFor, Nat.add_mul]
 
-theorem body_field (F : AddField) {k : ℕ} (Lay : NodeLayout k) (child : ℕ → Fin k → LowGate)
-    (childF : ℕ) (hchild : ∀ t i, F.f (LowGate.resources shorGateResourceModel (child t i)) = childF) :
+/-- For `oneQubit` the generic node census is the one of swap 001 (`nodeCensus`). -/
+theorem nodeCensusFor_oneQubit (C A N P : ℕ) (ch : Census) :
+    nodeCensusFor .oneQubit C A N P ch = nodeCensus C A N P ch := rfl
+
+/-- An additive field of the body, operation by operation. -/
+def bodyField (F : AddField) (m : NegationMethod) {k : ℕ} (C : ℕ) (childF : ℕ) : Prog k → ℕ
+  | [] => 0
+  | .phaseProduct _ :: ops => childF + bodyField F m C childF ops
+  | op :: ops => 3 * F.f (opRes m C op) + bodyField F m C childF ops
+
+theorem body_field (F : AddField) (m : NegationMethod) {k : ℕ} (Lay : NodeLayout k)
+    (child : ℕ → Fin k → LowGate)
+    (childF : ℕ)
+    (hchild : ∀ t i, F.f (LowGate.resources (shorGateResourceModelFor m) (child t i)) = childF) :
     ∀ (ops : Prog k) (t : ℕ),
-      F.f (LowGate.resources shorGateResourceModel (body Lay child t ops)) =
-        bodyField F Lay.width childF ops
+      F.f (LowGate.resources (shorGateResourceModelFor m) (body Lay child t ops)) =
+        bodyField F m Lay.width childF ops
   | [], t => by simp [body, bodyField, LowGate.resources, F.zero]
   | op :: ops, t => by
       cases op with
       | phaseProduct i =>
-          simp only [body, LowGate.resources, F.seq, bodyField, hchild, body_field F Lay child childF
-            hchild ops]
+          simp only [body, LowGate.resources, F.seq, bodyField, hchild,
+            body_field F m Lay child childF hchild ops]
       | _ =>
           simp only [body, opGates, LowGate.resources, F.seq, bodyField, opGate_resources,
-            body_field F Lay child childF hchild ops]
+            body_field F m Lay child childF hchild ops]
           ring
 
 
 
-theorem bodyField_eq (F : AddField) {k : ℕ} (C childF : ℕ) :
-    ∀ ops : Prog k, bodyField F C childF ops =
+theorem bodyField_eq (F : AddField) (m : NegationMethod) {k : ℕ} (C childF : ℕ) :
+    ∀ ops : Prog k, bodyField F m C childF ops =
       3 * (addCount ops * F.f (cuccaroModAddResources C) +
-        negCount ops * F.f (opRes C (.negate (k := 1) 0))) + cpCount ops * childF
+        negCount ops * F.f (opRes m C (.negate (k := 1) 0))) + cpCount ops * childF
   | [] => by simp [bodyField, addCount, negCount, cpCount]
   | op :: ops => by
-      have ih := bodyField_eq F C childF ops
+      have ih := bodyField_eq F m C childF ops
       cases op <;> simp only [bodyField, addCount, negCount, cpCount, ih, opRes, F.zero] <;> ring
 
-/-- **PTP node census (one node, sandwich-leaf children), proved from the lowering.**
-Exactly one Rz per leaf cell: `P · C³`. -/
+/-- **PTP node census (one node, sandwich-leaf children), proved from the lowering, for negation
+method `m`.** Exactly one Rz per leaf cell: `P · C³`. -/
+theorem ptpNode_resourcesFor (m : NegationMethod) (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ)
+    (φ : Angle) (ta ua : ℕ) :
+    let R := LowGate.resources (shorGateResourceModelFor m) (ptpNode T Lay n φ ta ua)
+    let C := Lay.width
+    let A := addCount T.ops
+    let N := negCount T.ops
+    let P := cpCount T.ops
+    R.rz = P * (C * C * C) ∧
+    R.cnot = 3 * (A * (5 * C - 7) + N * negateCnotGatesFor m C) ∧
+    R.toffoli = 3 * (A * (2 * C - 3) + N * negateToffoliGatesFor m C) +
+      P * (2 * (C * C + C * C * C)) ∧
+    R.x = 3 * (A * (2 * C - 6) + N * negateXGatesFor m C) ∧
+    R.h = 0 := by
+  intro R C A N P
+  have hw : ∀ s i, (Lay.slot s i).width = C := Lay.slot_width
+  have go : ∀ F : AddField, F.f R =
+      3 * (A * F.f (cuccaroModAddResources C) + N * F.f (opRes m C (.negate (k := 1) 0))) +
+        P * (C * C * (2 * F.f { toffoli := 1 } + C * F.f { toffoli := 2, rz := 1 })) := fun F =>
+    (body_field F m Lay (fun t i => ptpLeafSandwich (φ * coeffN T n t) (Lay.slot 0 i)
+        (Lay.slot 1 i) (Lay.slot 2 i) ta ua)
+      (C * C * (2 * F.f { toffoli := 1 } + C * F.f { toffoli := 2, rz := 1 }))
+      (fun t i => by rw [leafSandwich_field, hw, hw, hw]) T.ops 0).trans
+      (bodyField_eq F m C _ T.ops)
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · have h := go fRz; simp only [fRz, opRes, cuccaroModAddResources] at h; rw [show R.rz = _ from h]; ring
+  · have h := go fCnot; simp only [fCnot, opRes, cuccaroModAddResources] at h
+    rw [show R.cnot = _ from h]; ring
+  · have h := go fToff; simp only [fToff, opRes, cuccaroModAddResources] at h
+    rw [show R.toffoli = _ from h]; ring
+  · have h := go fX; simp only [fX, opRes, cuccaroModAddResources] at h
+    rw [show R.x = _ from h]; ring
+  · have h := go fH; simp only [fH, opRes, cuccaroModAddResources] at h; rw [show R.h = _ from h]; ring
+
+/-- The `oneQubit` instance of `ptpNode_resourcesFor` (`shorGateResourceModel`). -/
 theorem ptpNode_resources (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ) (φ : Angle) (ta ua : ℕ) :
     let R := LowGate.resources shorGateResourceModel (ptpNode T Lay n φ ta ua)
     let C := Lay.width
@@ -151,26 +227,8 @@ theorem ptpNode_resources (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ) (φ : 
     R.cnot = 3 * (A * (5 * C - 7) + N * negateCnotGates C) ∧
     R.toffoli = 3 * (A * (2 * C - 3) + N * negateToffoliGates C) + P * (2 * (C * C + C * C * C)) ∧
     R.x = 3 * (A * (2 * C - 6) + N * negateXGates C) ∧
-    R.h = 0 := by
-  intro R C A N P
-  have hw : ∀ s i, (Lay.slot s i).width = C := Lay.slot_width
-  have go : ∀ F : AddField, F.f R =
-      3 * (A * F.f (cuccaroModAddResources C) + N * F.f (opRes C (.negate (k := 1) 0))) +
-        P * (C * C * (2 * F.f { toffoli := 1 } + C * F.f { toffoli := 2, rz := 1 })) := fun F =>
-    (body_field F Lay (fun t i => ptpLeafSandwich (φ * coeffN T n t) (Lay.slot 0 i)
-        (Lay.slot 1 i) (Lay.slot 2 i) ta ua)
-      (C * C * (2 * F.f { toffoli := 1 } + C * F.f { toffoli := 2, rz := 1 }))
-      (fun t i => by rw [leafSandwich_field, hw, hw, hw]) T.ops 0).trans
-      (bodyField_eq F C _ T.ops)
-  refine ⟨?_, ?_, ?_, ?_, ?_⟩
-  · have h := go fRz; simp only [fRz, opRes, cuccaroModAddResources] at h; rw [show R.rz = _ from h]; ring
-  · have h := go fCnot; simp only [fCnot, opRes, cuccaroModAddResources] at h
-    rw [show R.cnot = _ from h]; ring
-  · have h := go fToff; simp only [fToff, opRes, cuccaroModAddResources] at h
-    rw [show R.toffoli = _ from h]; ring
-  · have h := go fX; simp only [fX, opRes, cuccaroModAddResources] at h
-    rw [show R.x = _ from h]; ring
-  · have h := go fH; simp only [fH, opRes, cuccaroModAddResources] at h; rw [show R.h = _ from h]; ring
+    R.h = 0 :=
+  ptpNode_resourcesFor .oneQubit T Lay n φ ta ua
 
 /-- Uncomputing Toffolis (`† Toffoli`, the Qualtran And†) of the node: all in the
 leaves, `P · (C² + C³)`; the same number of computing Toffolis (And) are in the
@@ -198,7 +256,39 @@ theorem ptpNode_adjToffCount (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ) (φ
       | _ =>
           simp only [body, opGates, adjToffCount, hop, ih, cpCount]; ring
 
-/-- **PTP node census, CCPhase-leaf children** (documented alternative). -/
+/-- **PTP node census, CCPhase-leaf children** (documented alternative), for negation method `m`. -/
+theorem ptpNodeCCPhase_resourcesFor (m : NegationMethod) (T : PTPTable) (Lay : NodeLayout T.k)
+    (n : ℕ) (φ : Angle) :
+    let R := LowGate.resources (shorGateResourceModelFor m) (ptpNodeCCPhase T Lay n φ)
+    let C := Lay.width
+    let A := addCount T.ops
+    let N := negCount T.ops
+    let P := cpCount T.ops
+    R.rz = P * (5 * (C * C * C)) ∧
+    R.cnot = 3 * (A * (5 * C - 7) + N * negateCnotGatesFor m C) + P * (2 * (C * C * C)) ∧
+    R.toffoli = 3 * (A * (2 * C - 3) + N * negateToffoliGatesFor m C) + P * (2 * (C * C * C)) ∧
+    R.x = 3 * (A * (2 * C - 6) + N * negateXGatesFor m C) ∧
+    R.h = 0 := by
+  intro R C A N P
+  have hw : ∀ s i, (Lay.slot s i).width = C := Lay.slot_width
+  have go : ∀ F : AddField, F.f R =
+      3 * (A * F.f (cuccaroModAddResources C) + N * F.f (opRes m C (.negate (k := 1) 0))) +
+        P * (F.f { rz := 5, cnot := 2, toffoli := 2 } * (C * C * C)) := fun F =>
+    (body_field F m Lay (fun t i => ptpLeafCCPhase (φ * coeffN T n t) (Lay.slot 0 i) (Lay.slot 1 i)
+        (Lay.slot 2 i)) (F.f { rz := 5, cnot := 2, toffoli := 2 } * (C * C * C))
+      (fun t i => by rw [leafCCPhase_field F _ _ _ _ _ (triple_disjoint Lay i), hw, hw, hw]) T.ops 0).trans
+      (bodyField_eq F m C _ T.ops)
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · have h := go fRz; simp only [fRz, opRes, cuccaroModAddResources] at h; rw [show R.rz = _ from h]; ring
+  · have h := go fCnot; simp only [fCnot, opRes, cuccaroModAddResources] at h
+    rw [show R.cnot = _ from h]
+  · have h := go fToff; simp only [fToff, opRes, cuccaroModAddResources] at h
+    rw [show R.toffoli = _ from h]
+  · have h := go fX; simp only [fX, opRes, cuccaroModAddResources] at h
+    rw [show R.x = _ from h]; ring
+  · have h := go fH; simp only [fH, opRes, cuccaroModAddResources] at h; rw [show R.h = _ from h]; ring
+
+/-- The `oneQubit` instance of `ptpNodeCCPhase_resourcesFor` (`shorGateResourceModel`). -/
 theorem ptpNodeCCPhase_resources (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ) (φ : Angle) :
     let R := LowGate.resources shorGateResourceModel (ptpNodeCCPhase T Lay n φ)
     let C := Lay.width
@@ -209,50 +299,71 @@ theorem ptpNodeCCPhase_resources (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ)
     R.cnot = 3 * (A * (5 * C - 7) + N * negateCnotGates C) + P * (2 * (C * C * C)) ∧
     R.toffoli = 3 * (A * (2 * C - 3) + N * negateToffoliGates C) + P * (2 * (C * C * C)) ∧
     R.x = 3 * (A * (2 * C - 6) + N * negateXGates C) ∧
-    R.h = 0 := by
-  intro R C A N P
-  have hw : ∀ s i, (Lay.slot s i).width = C := Lay.slot_width
-  have go : ∀ F : AddField, F.f R =
-      3 * (A * F.f (cuccaroModAddResources C) + N * F.f (opRes C (.negate (k := 1) 0))) +
-        P * (F.f { rz := 5, cnot := 2, toffoli := 2 } * (C * C * C)) := fun F =>
-    (body_field F Lay (fun t i => ptpLeafCCPhase (φ * coeffN T n t) (Lay.slot 0 i) (Lay.slot 1 i)
-        (Lay.slot 2 i)) (F.f { rz := 5, cnot := 2, toffoli := 2 } * (C * C * C))
-      (fun t i => by rw [leafCCPhase_field F _ _ _ _ _ (triple_disjoint Lay i), hw, hw, hw]) T.ops 0).trans
-      (bodyField_eq F C _ T.ops)
-  refine ⟨?_, ?_, ?_, ?_, ?_⟩
-  · have h := go fRz; simp only [fRz, opRes, cuccaroModAddResources] at h; rw [show R.rz = _ from h]; ring
-  · have h := go fCnot; simp only [fCnot, opRes, cuccaroModAddResources] at h
-    rw [show R.cnot = _ from h] <;> ring
-  · have h := go fToff; simp only [fToff, opRes, cuccaroModAddResources] at h
-    rw [show R.toffoli = _ from h] <;> ring
-  · have h := go fX; simp only [fX, opRes, cuccaroModAddResources] at h
-    rw [show R.x = _ from h]; ring
-  · have h := go fH; simp only [fH, opRes, cuccaroModAddResources] at h; rw [show R.h = _ from h]; ring
+    R.h = 0 :=
+  ptpNodeCCPhase_resourcesFor .oneQubit T Lay n φ
 
-/-- Peak model scratch of a body whose children need none: at most `C + 1`.
-After modular swap 001 a negation charges one clean ancilla and an addition one, so this bound is
-loose (the true peak is 1); it was the negation's constant-one register plus the Cuccaro carry. -/
-theorem body_cleanAnc_le {k : ℕ} (Lay : NodeLayout k) (child : ℕ → Fin k → LowGate)
-    (hchild : ∀ t i, (LowGate.resources shorGateResourceModel (child t i)).cleanAnc = 0) :
+/-- **Peak model scratch of a body, tight, for method `m`.** If every child needs at most `c` clean qubits,
+the body needs at most `max (nodeCleanAncFor m C A N) c`: one for the Cuccaro carry of an addition, and
+`negateCleanAncFor m C` (`1` for `oneQubit`, `C + 1` for `scratch`) for a negation. -/
+theorem body_cleanAnc_leFor (m : NegationMethod) {k : ℕ} (Lay : NodeLayout k)
+    (child : ℕ → Fin k → LowGate) (c : ℕ)
+    (hchild : ∀ t i, (LowGate.resources (shorGateResourceModelFor m) (child t i)).cleanAnc ≤ c) :
     ∀ (ops : Prog k) (t : ℕ),
-      (LowGate.resources shorGateResourceModel (body Lay child t ops)).cleanAnc ≤ Lay.width + 1 := by
-  have hop : ∀ (s : Fin 3) (op : valid_ops k),
-      (LowGate.resources shorGateResourceModel (opGate Lay s op)).cleanAnc ≤ Lay.width + 1 := by
-    intro s op
-    rw [opGate_resources]
-    cases op <;> simp [opRes, cuccaroModAddResources]
+      (LowGate.resources (shorGateResourceModelFor m) (body Lay child t ops)).cleanAnc ≤
+        max (nodeCleanAncFor m Lay.width (addCount ops) (negCount ops)) c := by
+  have hpos := negateCleanAncFor_pos m Lay.width
   intro ops
   induction ops with
   | nil => intro t; simp [body, LowGate.resources]
   | cons op ops ih =>
       intro t
+      have ih' := ih t
+      have ih1 := ih (t + 1)
       cases op with
       | phaseProduct i =>
-          simp only [body, LowGate.resources, GateResources.seq, hchild]
-          exact max_le (Nat.zero_le _) (ih _)
-      | _ =>
-          simp only [body, opGates, LowGate.resources, GateResources.seq]
-          exact max_le (max_le (hop _ _) (max_le (hop _ _) (hop _ _))) (ih _)
+          simp only [body, LowGate.resources, GateResources.seq, addCount, negCount]
+          exact max_le (le_trans (hchild _ i) (le_max_right _ _)) ih1
+      | shiftL i n =>
+          simp only [body, opGates, LowGate.resources, GateResources.seq, addCount, negCount,
+            opGate_resources, opRes]
+          simpa using ih'
+      | shiftR i n =>
+          simp only [body, opGates, LowGate.resources, GateResources.seq, addCount, negCount,
+            opGate_resources, opRes]
+          simpa using ih'
+      | negate i =>
+          simp only [body, opGates, LowGate.resources, GateResources.seq, addCount, negCount,
+            opGate_resources, opRes]
+          simp only [nodeCleanAncFor] at ih' ⊢
+          split_ifs at ih' ⊢ <;> simp_all <;> omega
+      | addScaled d src neg sh =>
+          simp only [body, opGates, LowGate.resources, GateResources.seq, addCount, negCount,
+            opGate_resources, opRes, cuccaroModAddResources]
+          simp only [nodeCleanAncFor] at ih' ⊢
+          split_ifs at ih' ⊢ <;> simp_all <;> omega
+
+/-- Peak model scratch of a body whose children need none: at most `C + 1`.
+After modular swap 001 a negation charges one clean ancilla and an addition one, so under `oneQubit` this bound is
+loose (the true peak is `1`, `body_cleanAnc_leFor`); under `scratch` it is the negation's constant-one register plus
+the Cuccaro carry, and tight. -/
+theorem body_cleanAnc_le {k : ℕ} (Lay : NodeLayout k) (child : ℕ → Fin k → LowGate)
+    (hchild : ∀ t i, (LowGate.resources shorGateResourceModel (child t i)).cleanAnc = 0) :
+    ∀ (ops : Prog k) (t : ℕ),
+      (LowGate.resources shorGateResourceModel (body Lay child t ops)).cleanAnc ≤ Lay.width + 1 := by
+  intro ops t
+  refine (body_cleanAnc_leFor .oneQubit Lay child 0 (fun t i => (hchild t i).le) ops t).trans ?_
+  simp only [nodeCleanAncFor, negateCleanAncFor, max_le_iff]
+  split_ifs <;> omega
+
+/-- Peak model scratch ancillas of the (sandwich) node under method `m`: at most `nodeCleanAncFor m C A N`.
+The two leaf ancillas `ta`, `ua` are explicit qubits, counted in `ptpNode_qubits_le`. -/
+theorem ptpNode_cleanAnc_leFor (m : NegationMethod) (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ)
+    (φ : Angle) (ta ua : ℕ) :
+    (LowGate.resources (shorGateResourceModelFor m) (ptpNode T Lay n φ ta ua)).cleanAnc ≤
+      nodeCleanAncFor m Lay.width (addCount T.ops) (negCount T.ops) := by
+  refine (body_cleanAnc_leFor m Lay _ 0
+    (fun _ _ => (leafSandwich_cleanAnc _ _ _ _ _ _ _).le) T.ops 0).trans ?_
+  simp
 
 /-- Peak model scratch ancillas of the (sandwich) node: at most `C + 1`. The two leaf
 ancillas `ta`, `ua` are explicit qubits, counted in `ptpNode_qubits_le`. -/
@@ -261,10 +372,12 @@ theorem ptpNode_cleanAnc_le (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ) (φ 
     (LowGate.resources shorGateResourceModel (ptpNode T Lay n φ ta ua)).cleanAnc ≤ Lay.width + 1 :=
   body_cleanAnc_le Lay _ (fun _ _ => leafSandwich_cleanAnc _ _ _ _ _ _ _) T.ops 0
 
-theorem ptpNodeCCPhase_cleanAnc_le (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ) (φ : Angle) :
-    (LowGate.resources shorGateResourceModel (ptpNodeCCPhase T Lay n φ)).cleanAnc ≤ Lay.width + 1 := by
+theorem ptpNodeCCPhase_cleanAnc_leFor (m : NegationMethod) (T : PTPTable) (Lay : NodeLayout T.k)
+    (n : ℕ) (φ : Angle) :
+    (LowGate.resources (shorGateResourceModelFor m) (ptpNodeCCPhase T Lay n φ)).cleanAnc ≤
+      nodeCleanAncFor m Lay.width (addCount T.ops) (negCount T.ops) := by
   have hleaf : ∀ (θ : Angle) (x y z : ExtReg),
-      (LowGate.resources shorGateResourceModel (ptpLeafCCPhase θ x y z)).cleanAnc = 0 := by
+      (LowGate.resources (shorGateResourceModelFor m) (ptpLeafCCPhase θ x y z)).cleanAnc = 0 := by
     intro θ x y z
     unfold ptpLeafCCPhase
     induction leafCells x y z with
@@ -273,7 +386,14 @@ theorem ptpNodeCCPhase_cleanAnc_le (T : PTPTable) (Lay : NodeLayout T.k) (n : �
         simp only [List.map_cons, LowGate.sequence, LowGate.resources, GateResources.seq, ih]
         simp only [cellGate, LowGate.CCPhase, LowGate.CPhase]
         split_ifs <;> simp [LowGate.resources, GateResources.seq]
-  exact body_cleanAnc_le Lay _ (fun _ _ => hleaf _ _ _ _) T.ops 0
+  refine (body_cleanAnc_leFor m Lay _ 0 (fun _ _ => (hleaf _ _ _ _).le) T.ops 0).trans ?_
+  simp
+
+theorem ptpNodeCCPhase_cleanAnc_le (T : PTPTable) (Lay : NodeLayout T.k) (n : ℕ) (φ : Angle) :
+    (LowGate.resources shorGateResourceModel (ptpNodeCCPhase T Lay n φ)).cleanAnc ≤ Lay.width + 1 := by
+  refine (ptpNodeCCPhase_cleanAnc_leFor .oneQubit T Lay n φ).trans ?_
+  simp only [nodeCleanAncFor, negateCleanAncFor]
+  split_ifs <;> omega
 
 /-! ## Qubits -/
 
@@ -413,8 +533,8 @@ def ptpResources (P : PTPPolicy) (n : ℕ) : Census :=
   | none => leafCensus n
   | some T =>
       if _h : childWidth n T.ops < n then
-        nodeCensus (childWidth n T.ops) (addCount T.ops) (negCount T.ops) (cpCount T.ops)
-          (ptpResources P (childWidth n T.ops))
+        nodeCensusFor P.negation (childWidth n T.ops) (addCount T.ops) (negCount T.ops)
+          (cpCount T.ops) (ptpResources P (childWidth n T.ops))
       else leafCensus n
 termination_by n
 
@@ -425,8 +545,8 @@ def ptpResourcesCCPhase (P : PTPPolicy) (n : ℕ) : Census :=
   | none => leafCensusCCPhase n
   | some T =>
       if _h : childWidth n T.ops < n then
-        nodeCensus (childWidth n T.ops) (addCount T.ops) (negCount T.ops) (cpCount T.ops)
-          (ptpResourcesCCPhase P (childWidth n T.ops))
+        nodeCensusFor P.negation (childWidth n T.ops) (addCount T.ops) (negCount T.ops)
+          (cpCount T.ops) (ptpResourcesCCPhase P (childWidth n T.ops))
       else leafCensusCCPhase n
 termination_by n
 
@@ -444,42 +564,42 @@ leaves) at working width `C = childWidth n T.ops`. -/
 theorem ptpResources_depth_one (P : PTPPolicy) (n : ℕ) (T : PTPTable) (hc : P.choose n = some T)
     (hlt : childWidth n T.ops < n) (hleaf : P.choose (childWidth n T.ops) = none)
     (Lay : NodeLayout T.k) (hw : Lay.width = childWidth n T.ops) (φ : Angle) (ta ua : ℕ) :
-    let R := LowGate.resources shorGateResourceModel (ptpNode T Lay n φ ta ua)
+    let R := LowGate.resources P.resourceModel (ptpNode T Lay n φ ta ua)
     let c := ptpResources P n
     c.rz = R.rz ∧ c.cnot = R.cnot ∧ c.toffoli = R.toffoli ∧ c.x = R.x ∧ c.h = R.h := by
   intro R c
-  have hc' : c = nodeCensus (childWidth n T.ops) (addCount T.ops) (negCount T.ops) (cpCount T.ops)
-      (leafCensus (childWidth n T.ops)) := by
+  have hc' : c = nodeCensusFor P.negation (childWidth n T.ops) (addCount T.ops) (negCount T.ops)
+      (cpCount T.ops) (leafCensus (childWidth n T.ops)) := by
     simp only [c]
     rw [ptpResources, hc]
     simp only [hlt, ↓reduceDIte]
     rw [ptpResources, hleaf]
-  obtain ⟨h1, h2, h3, h4, h5⟩ := ptpNode_resources T Lay n φ ta ua
+  obtain ⟨h1, h2, h3, h4, h5⟩ := ptpNode_resourcesFor P.negation T Lay n φ ta ua
   rw [hc']
-  simp only [R] at *
+  simp only [R, PTPPolicy.resourceModel] at *
   rw [h1, h2, h3, h4, h5, hw]
-  simp [nodeCensus, leafCensus]
+  simp [nodeCensusFor, leafCensus]
 
 /-- Depth one, CCPhase leaves (documented alternative). -/
 theorem ptpResourcesCCPhase_depth_one (P : PTPPolicy) (n : ℕ) (T : PTPTable)
     (hc : P.choose n = some T) (hlt : childWidth n T.ops < n)
     (hleaf : P.choose (childWidth n T.ops) = none)
     (Lay : NodeLayout T.k) (hw : Lay.width = childWidth n T.ops) (φ : Angle) :
-    let R := LowGate.resources shorGateResourceModel (ptpNodeCCPhase T Lay n φ)
+    let R := LowGate.resources P.resourceModel (ptpNodeCCPhase T Lay n φ)
     let c := ptpResourcesCCPhase P n
     c.rz = R.rz ∧ c.cnot = R.cnot ∧ c.toffoli = R.toffoli ∧ c.x = R.x ∧ c.h = R.h := by
   intro R c
-  have hc' : c = nodeCensus (childWidth n T.ops) (addCount T.ops) (negCount T.ops) (cpCount T.ops)
-      (leafCensusCCPhase (childWidth n T.ops)) := by
+  have hc' : c = nodeCensusFor P.negation (childWidth n T.ops) (addCount T.ops) (negCount T.ops)
+      (cpCount T.ops) (leafCensusCCPhase (childWidth n T.ops)) := by
     simp only [c]
     rw [ptpResourcesCCPhase, hc]
     simp only [hlt, ↓reduceDIte]
     rw [ptpResourcesCCPhase, hleaf]
-  obtain ⟨h1, h2, h3, h4, h5⟩ := ptpNodeCCPhase_resources T Lay n φ
+  obtain ⟨h1, h2, h3, h4, h5⟩ := ptpNodeCCPhase_resourcesFor P.negation T Lay n φ
   rw [hc']
-  simp only [R] at *
+  simp only [R, PTPPolicy.resourceModel] at *
   rw [h1, h2, h3, h4, h5, hw]
-  simp [nodeCensus, leafCensusCCPhase]
+  simp [nodeCensusFor, leafCensusCCPhase]
 
 end PTP
 end Shor

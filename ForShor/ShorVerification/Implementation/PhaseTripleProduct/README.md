@@ -26,8 +26,8 @@ Each is a `def … : Prop` in `Statement.lean`; `Main.lean` proves it under the 
 | `PTPLowerExactCorrect` (with `PTPExactCensus`) | For a checked policy and three disjoint `n`-qubit registers there is a circuit following the policy at exact widths that acts as the PTP phase operator on every clean state, with an exact gate census and a qubit upper bound | `ptp_lowerExact_correct` |
 | `PTPCtlLowerExactCorrect` | The same, controlled, by masking one operand | `ptp_ctl_lowerExact_correct` |
 | `PTPPadLowerExactCorrect` | The same on operands of unequal widths, by sign-extension padding | `ptp_pad_lowerExact_correct` |
-| `PTPGateTotalBound` | For a constant policy the census total is `O(n ^ log_k (3k − 2))` | `ptp_gateTotal_bound` |
-| `PTPCircuitGateCountBound` | For a constant policy there is a circuit following it with at most that many gates | `ptp_circuit_gateCount_bound` |
+| `PTPGateTotalBound` | For a constant policy, under either negation method, the census total is `O(n ^ log_k (3k − 2))` | `ptp_gateTotal_bound` |
+| `PTPCircuitGateCountBound` | For a constant policy, under either negation method, there is a circuit following it with at most that many gates | `ptp_circuit_gateCount_bound` |
 | `PTPQubitsTight`, `PTPQubitsTightExact`, `PTPQubitsLePtpQubits` | There is a circuit following the policy touching at most `3n + ptpWsTD` distinct qubits; `ptpQubits` is a proved upper bound at the scan rule | `ptp_qubits_tight`, `ptp_qubits_tight_exact`, `ptp_qubits_le_ptpQubits` |
 | `PTPChainContractsTightIffReach` | The exact-width acceptance rule, stated without the ladder | `ptp_chainContractsTight_iff_reach` |
 
@@ -36,9 +36,25 @@ Each is a `def … : Prop` in `Statement.lean`; `Main.lean` proves it under the 
 - The state-level claims cover the span of **clean** kets: the operands fit signed `n ≥ 1` bits and the workspace is `|0⟩`. For `n = 0` no basis ket is clean, so the state-level conjunct is vacuous (the circuit, the workspace bound and the census are still required).
 - **The gate-count and qubit claims are existential.** Each says that *some* circuit following the policy has that count. None of them says it is the circuit of `PTPLowerExactCorrect`, or that it is correct; correctness and the census are separately proved for every circuit of the form `PolicyImplX`, but no single claim bundles the two.
 - Controlled PTP is built by **masking** one operand. ForShor's construction, which controls every leaf phase, is a different one and is not covered here.
-- The gate-count claims are for a **constant policy** (one table at every width) and count `rz + toffoli + x + h + cnot` under `shorGateResourceModel`. They are not T counts.
-- The qubit claims bound `LowGate.usedQubits`, the qubits the gates name. They are not the framework's `qubitCount`, which also adds the scratch `cleanAnc`.
+- The gate-count claims are for a **constant policy** (one table at every width), for **either negation method** (next section), and count `rz + toffoli + x + h + cnot` under the policy's own resource model `PTPPolicy.resourceModel` (`shorGateResourceModel` for the default method). They are not T counts.
+- The qubit claims bound `LowGate.usedQubits`, the qubits the gates name. They are not the framework's `qubitCount`, which also adds the scratch `cleanAnc` (bounded separately, see the next section).
 - A table is admissible when it passes `PTPTable.contract`, a Boolean check: `3k − 2` distinct benchmark-valid points (`validPoint?`, signed powers of two and `∞`), the program consumes them in order, no `addScaled` adds a register to itself, and the program returns the registers to where they started. The "benchmark-valid" restriction is the benchmark's rule, not something the mathematics needs.
+
+## The negation method
+
+A table's `negate` operation is realised by one of two circuits, and a policy chooses which: `PTPPolicy.negation : NegationMethod` (default `oneQubit`; `PTPPolicy.withNegation` changes it). The gate `LowGate.Negate` and its meaning are the same for both, so correctness is unaffected; only the resource charge differs, and `PTPPolicy.resourceModel P = shorGateResourceModelFor P.negation` is the model the policy is costed with. Every census the policy-level definitions compute (`ptpResources`, `ptpCnotFull`, `ptpResourcesD`, `ptpCnotFullD`, `ptpGateTotalD`, `ptpCleanAnc`, `ptpCleanAncD`, `ptpQubits`) reads `P.negation`, and every gate-level theorem is stated for `P.resourceModel`.
+
+| | `oneQubit` (default) | `scratch` |
+| --- | --- | --- |
+| Construction | complement, then Gidney's single-ancilla increment | complement, then a Cuccaro adder against a clean constant-one register as wide as the register |
+| Toffoli | `12 w - 28` (`w` even), `10 w - 18` (`w` odd) | `2 w - 3` |
+| CNOT | `17 w - 22` / `17 w - 5` | `5 w - 7` |
+| X | `5 w - 3` / `5 w + 1` | `w + (2 w - 6) + 2 = 3 w - 4` (for `w ≥ 3`) |
+| Clean scratch held while it runs | `1` | `w + 1` |
+
+(`w` is the width of the register negated; the closed forms are `negateXGatesFor`, `negateCnotGatesFor`, `negateToffoliGatesFor` and `negateCleanAncFor` in `Statement.lean`, and `negateResourcesFor_eq` ties them to the Framework's `negateResourcesFor`.) An addition is charged the same under both methods: the Cuccaro adder, with one clean qubit for its carry.
+
+`ptpCleanAnc P n` is the peak number of clean scratch qubits the model holds at once along the ladder, per node: none if the table neither adds nor negates, one if it only adds, and `negateCleanAncFor P.negation C` (one for `oneQubit`, `C + 1` for `scratch`, `C` the node's working width) if it negates; the sandwich leaves hold none, their two ancillas being explicit qubits. `PolicyImplD.cleanAnc_le` proves it is an upper bound on the `cleanAnc` of every gate-level recursion following `P`. For `scratch` every census equals the one before the one-qubit negation was introduced (`nodeCensusFor_scratch`: for instance `CNOT = 3 (A + N)(5 C - 7)`); `oneQubit` keeps the census of the one-qubit negation; its `ptpCleanAnc` is now the tight `1` (the previous definition was the looser bound `C + 1`, a valid but no longer tight bound), so `max (ptpCleanAnc) 2` in `ptpQubits` is `2` for it.
 
 ## Witnesses
 

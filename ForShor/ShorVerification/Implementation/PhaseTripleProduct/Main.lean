@@ -20,8 +20,8 @@ namespace Shor
 namespace PTP
 
 /-- **State level, exact board.** For every checked policy there is a circuit following it at exact
-widths that equals the PTP phase operator on every clean state, with the exact gate census.
-(`PTPLowerExactCorrect`.) -/
+widths that equals the PTP phase operator on every clean state, with the exact gate census in the
+policy's own resource model (its negation method). (`PTPLowerExactCorrect`.) -/
 theorem ptp_lowerExact_correct (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]
     (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :
     PTPLowerExactCorrect qs P n X base := by
@@ -42,18 +42,18 @@ theorem ptp_pad_lowerExact_correct (qs : QSemantics) [RegEncoding qs.Basis] [Low
     PTPPadLowerExactCorrect qs P n X d base :=
   ptp_pad_lowerExact_correct_core P n X d base
 
-/-- **Gate count of the width-rule census** for a constant policy: `O(n ^ log_k (3k - 2))`.
-(`PTPGateTotalBound`.) -/
+/-- **Gate count of the width-rule census** for a constant policy, under either negation method:
+`O(n ^ log_k (3k - 2))`. (`PTPGateTotalBound`.) -/
 theorem ptp_gateTotal_bound (t : ℕ) (T : PTPTable) (wd : WidthRule) :
     PTPGateTotalBound t T wd :=
-  fun hT hwd => ptp_gateTotal_bound_core t T hT wd hwd
+  fun hT hwd m => ptp_gateTotal_bound_core m t T hT wd hwd
 
-/-- **Gate count of the constructed circuit** for a constant policy: `O(n ^ log_k (3k - 2))`.
-(`PTPCircuitGateCountBound`.) -/
+/-- **Gate count of the constructed circuit** for a constant policy, under either negation method:
+`O(n ^ log_k (3k - 2))`. (`PTPCircuitGateCountBound`.) -/
 theorem ptp_circuit_gateCount_bound (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]
     (t : ℕ) (T : PTPTable) :
     PTPCircuitGateCountBound qs t T :=
-  fun hT hP => ptp_circuit_gateCount_bound_core (qs := qs) t T hT hP
+  fun hT hP m => ptp_circuit_gateCount_bound_core (qs := qs) m t T hT hP
 
 /-- **Tight qubit count** for any admissible width rule. (`PTPQubitsTight`.) -/
 theorem ptp_qubits_tight (P : PTPPolicy) (wd : WidthRule) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :
