@@ -8,6 +8,7 @@ import ForShor.ShorVerification.Framework.Quantum.Registers
 import ForShor.ShorVerification.Framework.Semantics.GateSemantics
 import ForShor.ShorVerification.Framework.Semantics.LowGateSemantics
 import ForShor.ShorVerification.Framework.Gatecount.ResourceModel
+import ForShor.ShorVerification.Framework.Gatecount.PolicyModel
 import ForShor.ShorVerification.Framework.ToomCookTable
 import ForShor.ShorVerification.Implementation.PhaseProduct.Statement
 
@@ -220,8 +221,27 @@ structure PTPBand where
 /-- A banded PhaseTripleProduct policy (the mode is fixed). -/
 structure PTPPolicy where
   bands : List PTPBand
+  /-- How a negation is built and charged; one qubit unless asked (modular swap 002). -/
+  negation : NegationMethod := .oneQubit
 
 namespace PTPPolicy
+
+/-- The resource model a PTP policy is priced under (its negation method). -/
+def resourceModel (P : PTPPolicy) : LowGateResourceModel := shorGateResourceModelFor P.negation
+
+theorem resourceModel_of_oneQubit {P : PTPPolicy} (h : P.negation = .oneQubit) :
+    P.resourceModel = shorGateResourceModel := by
+  simp [resourceModel, h]
+
+/-- The same bands under another negation method. -/
+def withNegation (P : PTPPolicy) (m : NegationMethod) : PTPPolicy := { P with negation := m }
+
+@[simp] theorem withNegation_bands (P : PTPPolicy) (m : NegationMethod) :
+    (P.withNegation m).bands = P.bands := rfl
+
+@[simp] theorem withNegation_negation (P : PTPPolicy) (m : NegationMethod) :
+    (P.withNegation m).negation = m := rfl
+
 /-- First band with `threshold ≤ n` (ForShor's `choose`). -/
 def choose (P : PTPPolicy) (n : Nat) : Option PTPTable :=
   (P.bands.find? (fun b => decide (b.threshold ≤ n))).map PTPBand.table
@@ -732,7 +752,7 @@ def ptpGateTotalD (P : PTPPolicy) (wd : WidthRule) (n : ℕ) : ℕ :=
 noncomputable def ptpExponent (k : ℕ) : ℝ := Real.logb (k : ℝ) (((3 * k - 2 : ℕ)) : ℝ)
 
 /-- The constant policy: one table `T` at every width `≥ t`. -/
-def constPTPPolicy (t : ℕ) (T : PTPTable) : PTPPolicy := ⟨[⟨t, T⟩]⟩
+def constPTPPolicy (t : ℕ) (T : PTPTable) : PTPPolicy := { bands := [⟨t, T⟩] }
 
 /-! ## What a circuit must do: the specification operators -/
 

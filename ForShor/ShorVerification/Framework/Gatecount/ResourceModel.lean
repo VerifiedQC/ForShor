@@ -1,4 +1,5 @@
 import ForShor.ShorVerification.Framework.Gatecount.CostModel
+import ForShor.ShorVerification.Framework.NegationMethod
 
 namespace Shor
 /-! =========================================================
@@ -259,6 +260,79 @@ theorem negateToffoliGates_le (w : ℕ) : negateToffoliGates w ≤ 12 * w := by
   unfold negateToffoliGates; split_ifs <;> omega
 
 /-! ---------------------------------------------------------
+    Negation, by method (modular swap 002: the method is a policy option)
+
+`negateResources` above is the `oneQubit` method. `NegationMethod.scratch` is the construction this file
+had before modular swap 001, kept verbatim as `negateResourcesPreSwap` and tied to it by
+`negateResourcesFor_scratch`: the `scratch` method cannot drift from what was shipped.
+--------------------------------------------------------- -/
+
+/-- The negation as this file charged it before modular swap 001 (a clean `w`-bit constant-one register plus a
+Cuccaro modulo adder). Verbatim; a regression anchor for `NegationMethod.scratch`. -/
+def negateResourcesPreSwap (r : ExtReg) : GateResources :=
+  let w := ExtReg.width r
+  let a := cuccaroModAddResources w
+  {
+    h := a.h
+    -- `w` X gates for bitwise complement; 2 more to prepare/erase |1⟩.
+    x := w + a.x + 2
+    cnot := a.cnot
+    toffoli := a.toffoli
+    rz := a.rz
+
+    -- `w` clean bits for the constant-one register + Cuccaro carry.
+    cleanAnc := w + a.cleanAnc
+  }
+
+/-- The bound the proofs used before modular swap 001: the complement plus one ripple adder. -/
+def negateGateBoundPreSwap (r : ExtReg) : ℕ := ExtReg.width r + rippleAdderGateBound (ExtReg.width r)
+
+/-- A negation of `r`, charged by method. -/
+def negateResourcesFor : NegationMethod → ExtReg → GateResources
+  | .oneQubit => negateResources
+  | .scratch => negateResourcesPreSwap
+
+/-- The gate-count bound for a negation of `r`, by method. -/
+def negateGateBoundFor : NegationMethod → ExtReg → ℕ
+  | .oneQubit => negateGateBound
+  | .scratch => negateGateBoundPreSwap
+
+@[simp] theorem negateResourcesFor_oneQubit (r : ExtReg) :
+    negateResourcesFor .oneQubit r = negateResources r := rfl
+
+@[simp] theorem negateResourcesFor_scratch (r : ExtReg) :
+    negateResourcesFor .scratch r = negateResourcesPreSwap r := rfl
+
+@[simp] theorem negateGateBoundFor_oneQubit (r : ExtReg) :
+    negateGateBoundFor .oneQubit r = negateGateBound r := rfl
+
+@[simp] theorem negateGateBoundFor_scratch (r : ExtReg) :
+    negateGateBoundFor .scratch r = negateGateBoundPreSwap r := rfl
+
+/-- The clean qubits a negation of a `w`-bit register borrows: one, or `w + 1`. -/
+theorem negateResourcesFor_cleanAnc_oneQubit (r : ExtReg) :
+    (negateResourcesFor .oneQubit r).cleanAnc = 1 := rfl
+
+theorem negateResourcesFor_cleanAnc_scratch (r : ExtReg) :
+    (negateResourcesFor .scratch r).cleanAnc = ExtReg.width r + 1 := by
+  simp [negateResourcesFor, negateResourcesPreSwap, cuccaroModAddResources]
+
+theorem negateResourcesPreSwap_totalGates_le (r : ExtReg) :
+    (negateResourcesPreSwap r).totalGates ≤ negateGateBoundPreSwap r := by
+  simp [negateResourcesPreSwap, cuccaroModAddResources, GateResources.totalGates,
+    negateGateBoundPreSwap, rippleAdderGateBound]
+  omega
+
+theorem negateResourcesFor_totalGates_le (m : NegationMethod) (r : ExtReg) :
+    (negateResourcesFor m r).totalGates ≤ negateGateBoundFor m r := by
+  cases m
+  · simp only [negateResourcesFor, negateGateBoundFor]
+    simp only [negateResources, GateResources.totalGates, negateGateBound,
+      negateXGates, negateCnotGates, negateToffoliGates]
+    split_ifs <;> omega
+  · exact negateResourcesPreSwap_totalGates_le r
+
+/-! ---------------------------------------------------------
     AddScaled
 
 The multiplication paper forms Toom-Cook linear combinations using
@@ -327,6 +401,16 @@ def shorGateResourceModel : LowGateResourceModel where
   }
 
   radixReverse := radixReverseResources
+
+/-- The Shor resource model under a negation method. `shorGateResourceModel` is the `oneQubit` one. -/
+def shorGateResourceModelFor (m : NegationMethod) : LowGateResourceModel :=
+  { shorGateResourceModel with negate := negateResourcesFor m }
+
+@[simp] theorem shorGateResourceModelFor_oneQubit :
+    shorGateResourceModelFor .oneQubit = shorGateResourceModel := rfl
+
+@[simp] theorem shorGateResourceModelFor_negate (m : NegationMethod) (r : ExtReg) :
+    (shorGateResourceModelFor m).negate r = negateResourcesFor m r := rfl
 
 /-- Concrete scalar gate-count model obtained by forgetting the
     resource decomposition of `shorGateResourceModel`. -/

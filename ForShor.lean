@@ -10,6 +10,7 @@ import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Main  -- three
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Witness.RecursionWitness  -- its non-vacuity witness
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Witness.ExactFault          -- and its width fault witness
 import ForShor.ShorVerification.Framework.Policy                         -- policy submissions
+import ForShor.ShorVerification.Framework.Gatecount.PolicyModel          -- the model a policy is priced under (its negation method)
 import ForShor.ShorVerification.Implementation.PhaseProduct.Statement                  -- policy reserve model
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.PolicyWorkspace
 import ForShor.ShorVerification.Submission.Decide                        -- submission surface
