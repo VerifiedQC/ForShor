@@ -307,7 +307,7 @@ theorem orderFindingPeakFormulaBalancedRec (P : ShorLoweringPolicy) (R : Rule) :
   obtain ⟨g, -, hp⟩ := orderFinding_fact (P := P) (pc := Rec.sitePeak P R) a hmod hs4 hlay
   obtain ⟨gb, -, pb⟩ := balance_walk (P := P) R _ hws true _ g
   obtain ⟨-, lp⟩ := lower_walk P hP _ (balance_ok P R _ hws) true _ gb
-  show peak QubitCount.scratch (Policy.lowerGate P _ (balance_ok P R _ hws)) true _ = _
+  show peak (QubitCount.scratchFor P.negation) (Policy.lowerGate P _ (balance_ok P R _ hws)) true _ = _
   rw [lp, pb, hp, base_card hmod hs4 hlay]
 
 end QubitCount

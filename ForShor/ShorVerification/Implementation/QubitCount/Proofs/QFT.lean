@@ -58,7 +58,7 @@ theorem qftPlan_walk (P : ShorLoweringPolicy) (hP : P.Admissible) (xW zW : Reg) 
     (hx : L ∩ regQubitSet xW ⊆ firstOf xW) :
     after (lowerQFTPlan (Policy.qftPlan P r xW zW h)) true L
         = (if 2 ≤ regSize r then L \ firstOf xW else L) ∧
-    peak scratch (lowerQFTPlan (Policy.qftPlan P r xW zW h)) true L
+    peak (scratchFor P.negation) (lowerQFTPlan (Policy.qftPlan P r xW zW h)) true L
         = (if 2 ≤ regSize r then (L \ firstOf xW).card + Rec.qftPeak P (regSize r)
             else L.card) ∧
     (_root_.Disjoint L (regQubitSet xW) →
@@ -187,7 +187,7 @@ theorem qftPlan_walk (P : ShorLoweringPolicy) (hP : P.Admissible) (xW zW : Reg) 
   have hSa : after (lowerGateRec c) true (M ∪ allocBits ws.xExt 1 ∪ allocBits ws.zExt 1)
       = M ∪ allocBits ws.xExt 1 ∪ allocBits ws.zExt 1 := by
     rw [hbx, hbz, hMx]; exact aS
-  have hSp : peak scratch (lowerGateRec c) true (M ∪ allocBits ws.xExt 1 ∪ allocBits ws.zExt 1)
+  have hSp : peak (scratchFor P.negation) (lowerGateRec c) true (M ∪ allocBits ws.xExt 1 ∪ allocBits ws.zExt 1)
       = (M ∪ allocBits ws.xExt 1 ∪ allocBits ws.zExt 1).card
         + Rec.peakReserve P (ws.xExt.grow 1).width (ws.zExt.grow 1).width := by
     rw [hbx, hbz, hMx]; exact pS
@@ -207,7 +207,7 @@ theorem qftPlan_walk (P : ShorLoweringPolicy) (hP : P.Admissible) (xW zW : Reg) 
   rw [hL₀d] at aL pL
   have aL' : after (lowerQFTPlan (Policy.qftPlan P (leftReg r) xW zW (h.left hlarge))) true L₀ = L₀ := by
     rw [aL]; split <;> rfl
-  have pL' : peak scratch (lowerQFTPlan (Policy.qftPlan P (leftReg r) xW zW (h.left hlarge)))
+  have pL' : peak (scratchFor P.negation) (lowerQFTPlan (Policy.qftPlan P (leftReg r) xW zW (h.left hlarge)))
       true L₀ = L₀.card + Rec.qftPeak P (regSize (leftReg r)) := by
     rw [pL]; split
     · rfl
@@ -216,7 +216,7 @@ theorem qftPlan_walk (P : ShorLoweringPolicy) (hP : P.Admissible) (xW zW : Reg) 
     Finset.union_eq_left.mpr hrL₀
   -- assemble
   rw [hp, hc]
-  simp only [after, peak, WellFormed, scratch_RadixReverse]
+  simp only [after, peak, WellFormed, scratchFor_RadixReverse]
   rw [← hM, aP, aL', hrad, ite_eq_left hlarge, ite_eq_left hlarge]
   rw [pP, pL', qftPeak_split P hlarge, regSize_leftReg, regSize_rightReg]
   rw [regSize_leftReg] at pL'
@@ -272,7 +272,7 @@ theorem qftPeak_claim (P : ShorLoweringPolicy) :
     ∀ (r : ExtReg) (hws : Policy.QFTReserveOK P r) (L : Finset ℕ),
       regQubitSet r.active ⊆ L → _root_.Disjoint L (regQubitSet r.reserve) →
       after (Policy.lowerQFT P r hws) true L = L ∧
-      (Policy.lowerQFT P r hws).peakQubits L = L.card + Rec.qftPeak P r.width ∧
+      (Policy.lowerQFT P r hws).peakQubitsFor P.negation L = L.card + Rec.qftPeak P r.width ∧
       WellFormed (Policy.lowerQFT P r hws) true L := by
   intro hP r hws L hr hres
   have hpools := qftPools_subset P r
@@ -288,7 +288,7 @@ theorem qftPeak_claim (P : ShorLoweringPolicy) :
   refine ⟨?_, ?_, w hLx⟩
   · show after (lowerQFTPlan (Policy.reserveQftPlan P r hws)) true L = L
     rw [Policy.reserveQftPlan, a]; split <;> rfl
-  · show peak scratch (lowerQFTPlan (Policy.reserveQftPlan P r hws)) true L = _
+  · show peak (scratchFor P.negation) (lowerQFTPlan (Policy.reserveQftPlan P r hws)) true L = _
     rw [Policy.reserveQftPlan, p]
     split
     · rfl

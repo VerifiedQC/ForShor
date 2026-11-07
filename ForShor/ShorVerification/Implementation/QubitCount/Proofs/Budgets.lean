@@ -12,18 +12,19 @@ proves them equal to the budgets of `Statement.lean`.
 namespace Shor
 
 open Operations in
-/-- The scratch one table operation charges on chunks of width `W`: a negation
-its constant register and carry, an addition its carry. -/
-def Policy.opScratch {k : ℕ} : valid_ops k → ℕ → ℕ
-  | .negate _, _ => 1
+/-- The scratch one table operation charges on chunks of width `W` when negations
+are built by `m`: a negation `negationScratch m W` (one qubit for `oneQubit`; for
+`scratch` its constant register and carry), an addition its carry. -/
+def Policy.opScratch {k : ℕ} (m : NegationMethod) : valid_ops k → ℕ → ℕ
+  | .negate _, W => negationScratch m W
   | .addScaled _ _ _ _, _ => 1
   | _, _ => 0
 
 /-- The largest scratch any operation of a table charges, on chunks of
-width `W`. -/
-def Policy.opsScratch {k : ℕ} : Prog k → ℕ → ℕ
+width `W`, when negations are built by `m`. -/
+def Policy.opsScratch {k : ℕ} (m : NegationMethod) : Prog k → ℕ → ℕ
   | [], _ => 0
-  | op :: rest, W => max (Policy.opScratch op W) (Policy.opsScratch rest W)
+  | op :: rest, W => max (Policy.opScratch m op W) (Policy.opsScratch m rest W)
 
 namespace QubitCount
 namespace Rec
@@ -41,7 +42,7 @@ def peakReserve (P : ShorLoweringPolicy) (wx wz : ℕ) : ℕ :=
     if _hrec : Wnext < max wx wz then
       RecursivePhaseWorkspace.immediateXNeedBy P.widthRule T.ops wx wz
         + RecursivePhaseWorkspace.immediateZNeedBy P.widthRule T.ops wx wz
-        + max (peakReserve P Wnext Wnext) (Policy.opsScratch T.ops Wnext)
+        + max (peakReserve P Wnext Wnext) (Policy.opsScratch P.negation T.ops Wnext)
     else 0
 termination_by max wx wz
 decreasing_by simpa using _hrec
@@ -70,14 +71,14 @@ def ppPeak (P : ShorLoweringPolicy) (wx _cx wz _cz : ℕ) : ℕ :=
 
 /-- Peak extra qubits of each phase of one controlled modular multiplication
 when a phase product on widths `wx`, `wz` and spare capacities `cx`, `cz`
-peaks `pp wx cx wz cz`. -/
+peaks `pp wx cx wz cz`, with the negations built by `P.negation`. -/
 def modMulPhasePeaksWith (P : ShorLoweringPolicy) (pp : ℕ → ℕ → ℕ → ℕ → ℕ)
     (dW dC wW wC sW sC : ℕ) : List ℕ :=
   [ 2 + pp (dW + 1) (dC - 2) (wW + 1) (wC - 1)
   , qftPeak P wW
   , qftPeak P (dW + 1)
   , 2 + pp (wW + 1) (wC - 1) (dW + 2) (dC - 2)
-  , 3
+  , step3Peak P.negation sW
   , qftPeak P sW
   , 2 + pp (wW + 1) (wC - 1) (sW + 1) (sC - 1)
   , 2 + pp (dW + 2) (dC - 2) (wW + 1) (wC - 1) ]
@@ -148,7 +149,8 @@ def OrderFindingPeakFormula (P : ShorLoweringPolicy) : Prop :=
     (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
     (hws : Policy.GateWorkspaceOK P (orderFindingApprox a N x y work scratch flag hmod hstep4)),
     OrderFindingSpaceLayout x y work scratch flag →
-    (orderFindingApproxLow P a N x y work scratch flag hmod hstep4 hws).peakQubits
+    (orderFindingApproxLow P a N x y work scratch flag hmod hstep4 hws).peakQubitsFor
+        P.negation
         (orderFindingBaseSet x y work scratch flag)
       = x.width + (y.width + 1) + work.width + scratch.width + 1
         + orderFindingPeak P x.width y.width work.width scratch.width
@@ -162,7 +164,7 @@ def ReferencePeakFormula (P : ShorLoweringPolicy) : Prop :=
     let dW := Reference.referenceDataWidth inst
     let wW := Reference.referenceWorkWidth inst m
     let sW := Reference.referenceScratchWidth inst m
-    (Reference.referenceShorCircuit P inst m).peakQubits
+    (Reference.referenceShorCircuit P inst m).peakQubitsFor P.negation
         (orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag)
       = xW + (dW + 1) + wW + sW + 1 + orderFindingPeak P xW dW wW sW
 
@@ -174,7 +176,8 @@ def OrderFindingPeakFormulaBalanced (P : ShorLoweringPolicy) (R : Balanced.Rule)
     (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
     (hws : Policy.GateWorkspaceOK P (orderFindingApprox a N x y work scratch flag hmod hstep4)),
     OrderFindingSpaceLayout x y work scratch flag →
-    (Balanced.orderFindingApproxLowBalanced P R a N x y work scratch flag hmod hstep4 hws).peakQubits
+    (Balanced.orderFindingApproxLowBalanced P R a N x y work scratch flag hmod hstep4
+        hws).peakQubitsFor P.negation
         (orderFindingBaseSet x y work scratch flag)
       = x.width + (y.width + 1) + work.width + scratch.width + 1
         + orderFindingPeakWith P (sitePeak P R) x.width

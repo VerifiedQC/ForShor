@@ -274,7 +274,7 @@ theorem orderFindingPeakFormulaRec (P : ShorLoweringPolicy) : Rec.OrderFindingPe
   obtain ⟨g, -, hp⟩ := orderFinding_fact (P := P) (pc := Rec.ppPeak P) a hmod hs4 hlay
   obtain ⟨-, lp⟩ := lower_walk P hP _ hws true _ g
   have hcard := base_card hmod hs4 hlay
-  show peak QubitCount.scratch (Policy.lowerGate P _ hws) true _ = _
+  show peak (QubitCount.scratchFor P.negation) (Policy.lowerGate P _ hws) true _ = _
   rw [lp, hp, hcard]; rfl
 
 lemma reference_aux (P : ShorLoweringPolicy) (hP : P.Admissible) (inst : ShorOrderFindingInstance)
@@ -290,7 +290,7 @@ lemma reference_aux (P : ShorLoweringPolicy) (hP : P.Admissible) (inst : ShorOrd
       (Reference.allocateReferenceLayout P inst m).data (Reference.allocateReferenceLayout P inst m).work
       (Reference.allocateReferenceLayout P inst m).scratch (Reference.allocateReferenceLayout P inst m).flag
         (Reference.reference_modMulCircuitWorkspaceOK P inst m)
-        (Reference.reference_step4Workspace P inst m) hws).peakQubits
+        (Reference.reference_step4Workspace P inst m) hws).peakQubitsFor P.negation
         (orderFindingBaseSet (Reference.allocateReferenceLayout P inst m).x
           (Reference.allocateReferenceLayout P inst m).data
           (Reference.allocateReferenceLayout P inst m).work

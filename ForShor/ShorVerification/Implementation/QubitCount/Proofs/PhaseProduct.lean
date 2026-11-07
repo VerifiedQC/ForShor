@@ -201,7 +201,7 @@ lemma max_level (a c : ℕ) : max a (max (a + c) a) = a + c := by
 /-- One compiled level: it returns the live set it started from, and its peak
 is the start size plus the immediate need plus the larger of one child, if it
 has one, and the body's scratch. -/
-theorem level_walk (hv : layout.Valid) (hk : 1 < k) (phi : Angle) (coeff : Fin (q k) → ℚ)
+theorem level_walk (m : NegationMethod) (hv : layout.Valid) (hk : 1 < k) (phi : Angle) (coeff : Fin (q k) → ℚ)
     (hcap : (srcOf layout).CanGrowToNeeds (neededWidthsBy R x z ops))
     (ex : ExtReg → ExtReg → ℕ) (e : ℕ) {L : Finset ℕ}
     (hx : regQubitSet x.active ⊆ L) (hz : regQubitSet z.active ⊆ L)
@@ -209,14 +209,14 @@ theorem level_walk (hv : layout.Valid) (hk : 1 < k) (phi : Angle) (coeff : Fin (
     (hex : ∀ i, ex ((dstOf R layout ops).xslot i) ((dstOf R layout ops).zslot i) = e) :
     gGood (nextSignedWidthBy R x z ops) (compileOpsToSignedGateBy R k hk phi x z layout coeff ops) L ∧
     gAfter (compileOpsToSignedGateBy R k hk phi x z layout coeff ops) L = L ∧
-    gPeak ex (compileOpsToSignedGateBy R k hk phi x z layout coeff ops) L
+    gPeak m ex (compileOpsToSignedGateBy R k hk phi x z layout coeff ops) L
       = L.card + (immediateXNeedBy R ops x.width z.width + immediateZNeedBy R ops x.width z.width)
         + max (if hasLeaf (annotatePhaseTermsAux k 0 ops) then e else 0)
-            (Policy.opsScratch ops (nextSignedWidthBy R x z ops)) := by
+            (Policy.opsScratch m ops (nextSignedWidthBy R x z ops)) := by
   have hfresh := freshBits_of_layout (R := R) (ops := ops) (layout := layout) hv hres
-  obtain ⟨a1, p1, g1⟩ := allocs_walk ex (nextSignedWidthBy R x z ops) hfresh k le_rfl
-  obtain ⟨a3, p3, g3⟩ := deallocs_walk ex (nextSignedWidthBy R x z ops) hfresh k le_rfl
-  obtain ⟨a2, p2, g2⟩ := body_walk hk phi coeff (dstOf R layout ops) ex e (nextSignedWidthBy R x z ops)
+  obtain ⟨a1, p1, g1⟩ := allocs_walk m ex (nextSignedWidthBy R x z ops) hfresh k le_rfl
+  obtain ⟨a3, p3, g3⟩ := deallocs_walk m ex (nextSignedWidthBy R x z ops) hfresh k le_rfl
+  obtain ⟨a2, p2, g2⟩ := body_walk m hk phi coeff (dstOf R layout ops) ex e (nextSignedWidthBy R x z ops)
     (L ∪ allocSet (srcOf layout) (dstOf R layout ops) k) (dst_active_subset hcap hx hz)
     (fun i => ⟨dst_inputSize hcap i, (dst_active_subset hcap hx hz i).1,
       (dst_active_subset hcap hx hz i).2, dst_reserve_disjoint hv hcap hres i⟩)
@@ -225,11 +225,11 @@ theorem level_walk (hv : layout.Valid) (hk : 1 < k) (phi : Angle) (coeff : Fin (
     gAfter, gPeak, gGood]
   rw [a1, a2, a3, p1, p2, p3]
   refine ⟨⟨g1, g2, g3⟩, rfl, ?_⟩
-  rw [card_allocSet hfresh, sum_bits hcap, annScratch_annotate]
+  rw [card_allocSet hfresh, sum_bits hcap, annScratch_annotate m]
   exact max_level _ _
 
 /-- The controlled level: the same, with the control live. -/
-theorem clevel_walk (hv : layout.Valid) (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (coeff : Fin (q k) → ℚ)
+theorem clevel_walk (m : NegationMethod) (hv : layout.Valid) (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (coeff : Fin (q k) → ℚ)
     (hcap : (srcOf layout).CanGrowToNeeds (neededWidthsBy R x z ops))
     (ex : ExtReg → ExtReg → ℕ) (e : ℕ) {L : Finset ℕ} (hc : ctrl ∈ L)
     (hx : regQubitSet x.active ⊆ L) (hz : regQubitSet z.active ⊆ L)
@@ -237,14 +237,14 @@ theorem clevel_walk (hv : layout.Valid) (hk : 1 < k) (ctrl : ℕ) (phi : Angle) 
     (hex : ∀ i, ex ((dstOf R layout ops).xslot i) ((dstOf R layout ops).zslot i) = e) :
     gGood (nextSignedWidthBy R x z ops) (controlPhaseLeaves ctrl (compileOpsToSignedGateBy R k hk phi x z layout coeff ops)) L ∧
     gAfter (controlPhaseLeaves ctrl (compileOpsToSignedGateBy R k hk phi x z layout coeff ops)) L = L ∧
-    gPeak ex (controlPhaseLeaves ctrl (compileOpsToSignedGateBy R k hk phi x z layout coeff ops)) L
+    gPeak m ex (controlPhaseLeaves ctrl (compileOpsToSignedGateBy R k hk phi x z layout coeff ops)) L
       = L.card + (immediateXNeedBy R ops x.width z.width + immediateZNeedBy R ops x.width z.width)
         + max (if hasLeaf (annotatePhaseTermsAux k 0 ops) then e else 0)
-            (Policy.opsScratch ops (nextSignedWidthBy R x z ops)) := by
+            (Policy.opsScratch m ops (nextSignedWidthBy R x z ops)) := by
   have hfresh := freshBits_of_layout (R := R) (ops := ops) (layout := layout) hv hres
-  obtain ⟨a1, p1, g1⟩ := allocs_walk ex (nextSignedWidthBy R x z ops) hfresh k le_rfl
-  obtain ⟨a3, p3, g3⟩ := deallocs_walk ex (nextSignedWidthBy R x z ops) hfresh k le_rfl
-  obtain ⟨a2, p2, g2⟩ := cbody_walk hk ctrl phi coeff (dstOf R layout ops) ex e
+  obtain ⟨a1, p1, g1⟩ := allocs_walk m ex (nextSignedWidthBy R x z ops) hfresh k le_rfl
+  obtain ⟨a3, p3, g3⟩ := deallocs_walk m ex (nextSignedWidthBy R x z ops) hfresh k le_rfl
+  obtain ⟨a2, p2, g2⟩ := cbody_walk m hk ctrl phi coeff (dstOf R layout ops) ex e
     (nextSignedWidthBy R x z ops) (L ∪ allocSet (srcOf layout) (dstOf R layout ops) k)
     (Finset.mem_union_left _ hc) (dst_active_subset hcap hx hz)
     (fun i => ⟨dst_inputSize hcap i, (dst_active_subset hcap hx hz i).1,
@@ -255,7 +255,7 @@ theorem clevel_walk (hv : layout.Valid) (hk : 1 < k) (ctrl : ℕ) (phi : Angle) 
   simp only [compileSignedAllocations, compileSignedDeallocations, gAfter, gPeak, gGood]
   rw [a1, a2, a3, p1, p2, p3]
   refine ⟨⟨g1, g2, g3⟩, rfl, ?_⟩
-  rw [card_allocSet hfresh, sum_bits hcap, annScratch_annotate]
+  rw [card_allocSet hfresh, sum_bits hcap, annScratch_annotate m]
   exact max_level _ _
 
 end Level
@@ -322,7 +322,7 @@ lemma peakReserve_of_step {P : ShorLoweringPolicy} {x z : ExtReg} {n : ℕ} {T :
     Rec.peakReserve P x.width z.width
       = immediateXNeedBy P.widthRule T.ops x.width z.width + immediateZNeedBy P.widthRule T.ops x.width z.width
         + max (Rec.peakReserve P (nextSignedWidthBy P.widthRule x z T.ops) (nextSignedWidthBy P.widthRule x z T.ops))
-            (Policy.opsScratch T.ops (nextSignedWidthBy P.widthRule x z T.ops)) := by
+            (Policy.opsScratch P.negation T.ops (nextSignedWidthBy P.widthRule x z T.ops)) := by
   rw [Rec.peakReserve]
   have hn' : max x.width z.width = n := hn
   rw [hn', hT]
@@ -338,7 +338,7 @@ theorem plan_walk {P : ShorLoweringPolicy} (hP : P.Admissible) {n : ℕ} {U : Ga
     (p : PhaseLoweringPlan P n U) (hv : p.Valid) :
     ∀ L : Finset ℕ, gGood n U L →
       after (lowerGateRec p) true L = gAfter U L ∧
-      peak scratch (lowerGateRec p) true L = gPeak (ppEx P) U L ∧
+      peak (scratchFor P.negation) (lowerGateRec p) true L = gPeak P.negation (ppEx P) U L ∧
       WellFormed (lowerGateRec p) true L := by
   induction p with
   | id n => intro L _; simp [lowerGateRec, gAfter, gPeak, after, peak, WellFormed]
@@ -358,7 +358,7 @@ theorem plan_walk {P : ShorLoweringPolicy} (hP : P.Admissible) {n : ℕ} {U : Ga
   | signedBase phi x z =>
       intro L h
       obtain ⟨hn, hx, hz, _⟩ := h
-      obtain ⟨a, pk, w⟩ := touch_walk_quiet L _ (touchIn_naive phi hx hz) (tmax_naive phi x z) true
+      obtain ⟨a, pk, w⟩ := touch_walk_quiet P.negation L _ (touchIn_naive phi hx hz) (tmax_naive P.negation phi x z) true
       simp only [lowerGateRec, gAfter, gPeak, ppEx]
       rw [a, pk, peakReserve_of_stops hn (hn ▸ hv)]
       exact ⟨rfl, rfl, w⟩
@@ -373,7 +373,7 @@ theorem plan_walk {P : ShorLoweringPolicy} (hP : P.Admissible) {n : ℕ} {U : Ga
         rw [targetSignedLayoutState_xslot_width_by P.widthRule layout T.ops i hcap,
           targetSignedLayoutState_zslot_width_by P.widthRule layout T.ops i hcap]
         rfl
-      obtain ⟨g, a, pk⟩ := level_walk (ops := T.ops) hlayout T.hk phi
+      obtain ⟨g, a, pk⟩ := level_walk P.negation (ops := T.ops) hlayout T.hk phi
         (cramerCoeffFromPtsWidth T.k (phaseLimbWidth x z T.k) T.pts T.hpts) hcap (ppEx P) _ hx hz hres hex
       obtain ⟨a', p', w'⟩ := ih hvChild L g
       simp only [lowerGateRec, gAfter, gPeak]
@@ -383,8 +383,8 @@ theorem plan_walk {P : ShorLoweringPolicy} (hP : P.Admissible) {n : ℕ} {U : Ga
   | cSignedBase ctrl phi x z =>
       intro L h
       obtain ⟨hc, hn, hx, hz, _⟩ := h
-      obtain ⟨a, pk, w⟩ := touch_walk_quiet L _ (touchIn_cnaive phi hc hx hz)
-        (tmax_cnaive ctrl phi x z) true
+      obtain ⟨a, pk, w⟩ := touch_walk_quiet P.negation L _ (touchIn_cnaive phi hc hx hz)
+        (tmax_cnaive P.negation ctrl phi x z) true
       simp only [lowerGateRec, gAfter, gPeak, ppEx]
       rw [a, pk, peakReserve_of_stops hn (hn ▸ hv)]
       exact ⟨rfl, rfl, w⟩
@@ -399,7 +399,7 @@ theorem plan_walk {P : ShorLoweringPolicy} (hP : P.Admissible) {n : ℕ} {U : Ga
         rw [targetSignedLayoutState_xslot_width_by P.widthRule layout T.ops i hcap,
           targetSignedLayoutState_zslot_width_by P.widthRule layout T.ops i hcap]
         rfl
-      obtain ⟨g, a, pk⟩ := clevel_walk (ops := T.ops) hlayout T.hk ctrl phi
+      obtain ⟨g, a, pk⟩ := clevel_walk P.negation (ops := T.ops) hlayout T.hk ctrl phi
         (cramerCoeffFromPtsWidth T.k (phaseLimbWidth x z T.k) T.pts T.hpts) hcap (ppEx P) _ hc hx hz hres hex
       obtain ⟨a', p', w'⟩ := ih hvChild L g
       simp only [lowerGateRec, gAfter, gPeak]
@@ -419,13 +419,13 @@ theorem signedPhaseProductPeak (P : ShorLoweringPolicy) :
       regQubitSet x.active ⊆ L → regQubitSet z.active ⊆ L →
       _root_.Disjoint L (regQubitSet x.reserve ∪ regQubitSet z.reserve) →
       after (Policy.lowerSignedPhaseProd P phi x z) true L = L ∧
-      (Policy.lowerSignedPhaseProd P phi x z).peakQubits L
+      (Policy.lowerSignedPhaseProd P phi x z).peakQubitsFor P.negation L
         = L.card + Rec.peakReserve P x.width z.width ∧
       WellFormed (Policy.lowerSignedPhaseProd P phi x z) true L := by
   intro hP phi x z hws L hx hz hres
   obtain ⟨a, pk, w⟩ := plan_walk hP (Policy.signedPlan P phi x z) (Policy.signedPlan_valid P phi x z hws) L
     ⟨rfl, hx, hz, hres⟩
-  exact ⟨a, by simpa [LowGate.peakQubits, gPeak, ppEx, Policy.lowerSignedPhaseProd] using pk, w⟩
+  exact ⟨a, by simpa [LowGate.peakQubitsFor, gPeak, ppEx, Policy.lowerSignedPhaseProd] using pk, w⟩
 
 /-- The controlled form, with the control qubit live. -/
 theorem cSignedPhaseProductPeak (P : ShorLoweringPolicy) :
@@ -435,14 +435,14 @@ theorem cSignedPhaseProductPeak (P : ShorLoweringPolicy) :
       ctrl ∈ L → regQubitSet x.active ⊆ L → regQubitSet z.active ⊆ L →
       _root_.Disjoint L (regQubitSet x.reserve ∪ regQubitSet z.reserve) →
       after (Policy.lowerCSignedPhaseProd P ctrl phi x z) true L = L ∧
-      (Policy.lowerCSignedPhaseProd P ctrl phi x z).peakQubits L
+      (Policy.lowerCSignedPhaseProd P ctrl phi x z).peakQubitsFor P.negation L
         = L.card + Rec.peakReserve P x.width z.width ∧
       WellFormed (Policy.lowerCSignedPhaseProd P ctrl phi x z) true L := by
   intro hP ctrl phi x z hws L hc hx hz hres
   obtain ⟨a, pk, w⟩ :=
     plan_walk hP (Policy.cSignedPlan P ctrl phi x z)
       (Policy.cSignedPlan_valid P ctrl phi x z hws) L ⟨hc, rfl, hx, hz, hres⟩
-  exact ⟨a, by simpa [LowGate.peakQubits, gPeak, ppEx, Policy.lowerCSignedPhaseProd] using pk, w⟩
+  exact ⟨a, by simpa [LowGate.peakQubitsFor, gPeak, ppEx, Policy.lowerCSignedPhaseProd] using pk, w⟩
 
 end QubitCount
 end Shor

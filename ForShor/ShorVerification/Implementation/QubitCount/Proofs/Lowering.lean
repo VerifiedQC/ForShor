@@ -63,9 +63,11 @@ def sAfter : Gate → Bool → Finset ℕ → Finset ℕ
 
 /-- Peak of a high-level gate, its blocks opaque, scratch included, when a
 phase product on operands of widths `wx`, `wz` and spare capacities `cx`, `cz`
-peaks `pc wx cx wz cz` above its start. The constant arithmetic needs one unit qubit and two qubits of
-arithmetic scratch (the negation is the one-ancilla incrementer, so it no longer peaks at a register's width),
-or, for the comparison, three with the data register grown by one. -/
+peaks `pc wx cx wz cz` above its start, the negations built by `P.negation`. The
+constant arithmetic needs one unit qubit and the scratch of the negation of its scratch
+register `s`: the subtraction `negationScratch P.negation s.width`, the comparison at
+least two (`oneQubit`: one unit qubit, two qubits of arithmetic scratch; `scratch`: the
+register-wide constant). -/
 def sPeak (pc : ℕ → ℕ → ℕ → ℕ → ℕ) : Gate → Bool → Finset ℕ → ℕ
   | .id, _, L => L.card
   | .seq U V, true, L => max (sPeak pc U true L) (sPeak pc V true (sAfter P U true L))
@@ -76,11 +78,12 @@ def sPeak (pc : ℕ → ℕ → ℕ → ℕ → ℕ) : Gate → Bool → Finset 
       else L.card
   | .SignedPhaseProd _ x z, _, L => L.card + pc x.width x.capacity z.width z.capacity
   | .CSignedPhaseProd _ _ x z, _, L => L.card + pc x.width x.capacity z.width z.capacity
-  | .CmpGeConst _ _ s _, _, L => (L ∪ allocBits s 1).card + 2
-  | .CSubConst _ _ s _, _, L => (L ∪ allocBits s 1).card + 1
+  | .CmpGeConst _ _ s _, _, L =>
+      (L ∪ allocBits s 1).card + max 2 (negationScratch P.negation s.width)
+  | .CSubConst _ _ s _, _, L => (L ∪ allocBits s 1).card + negationScratch P.negation s.width
   | .idealCtrlModMul _ _ _ _, _, L => L.card
   | g, d, L => match sPrim g with
-    | some u => peak scratch u d L
+    | some u => peak (scratchFor P.negation) u d L
     | none => L.card
 
 /-- The operands of a phase product are live and their reserves are not. -/
@@ -116,17 +119,17 @@ def sGood : Gate → Bool → Finset ℕ → Prop
 /-! ## Blocks -/
 
 /-- A balanced, well-formed circuit walks backwards as it walks forwards. -/
-lemma backward_of_forward {g : LowGate} {L : Finset ℕ} (hw : WellFormed g true L)
-    (ha : after g true L = L) :
-    after g false L = L ∧ peak scratch g false L = peak scratch g true L := by
-  obtain ⟨_, h2, h3⟩ := reverse scratch g true L hw
+lemma backward_of_forward {anc : LowGate → ℕ} {g : LowGate} {L : Finset ℕ}
+    (hw : WellFormed g true L) (ha : after g true L = L) :
+    after g false L = L ∧ peak anc g false L = peak anc g true L := by
+  obtain ⟨_, h2, h3⟩ := reverse anc g true L hw
   rw [ha] at h2 h3
   exact ⟨h2, h3⟩
 
 lemma qft_block (hP : P.Admissible) (r : ExtReg) (hws : Policy.QFTReserveOK P r) (d : Bool)
     (L : Finset ℕ) (h : sGood P (.QFT r) d L) :
     after (Policy.lowerQFT P r hws) d L = sAfter P (.QFT r) d L ∧
-    peak scratch (Policy.lowerQFT P r hws) d L = sPeak P (Rec.ppPeak P) (.QFT r) d L := by
+    peak (scratchFor P.negation) (Policy.lowerQFT P r hws) d L = sPeak P (Rec.ppPeak P) (.QFT r) d L := by
   have hpools := qftPools_subset P r
   cases d
   · obtain ⟨hr, hres⟩ := h
@@ -136,7 +139,7 @@ lemma qft_block (hP : P.Admissible) (r : ExtReg) (hws : Policy.QFTReserveOK P r)
       (Finset.disjoint_of_subset_right ((firstOf_subset _).trans hpools.1) hres)
     simp only [sAfter, sPeak, hfirst]
     refine ⟨by rw [a']; split <;> rfl, ?_⟩
-    rw [p', show peak scratch (Policy.lowerQFT P r hws) true L = _ from p]
+    rw [p', show peak (scratchFor P.negation) (Policy.lowerQFT P r hws) true L = _ from p]
     split
     · rfl
     · next h2 => rw [qftPeak_lt_two P (by omega)]; rfl
@@ -147,7 +150,7 @@ lemma qft_block (hP : P.Admissible) (r : ExtReg) (hws : Policy.QFTReserveOK P r)
 lemma signed_block (hP : P.Admissible) (phi : Angle) (x z : ExtReg) (hws : Policy.WorkspaceOK P x z)
     (d : Bool) (L : Finset ℕ) (h : ppLive x z L) :
     after (Policy.lowerSignedPhaseProd P phi x z) d L = L ∧
-    peak scratch (Policy.lowerSignedPhaseProd P phi x z) d L
+    peak (scratchFor P.negation) (Policy.lowerSignedPhaseProd P phi x z) d L
       = L.card + Rec.peakReserve P x.width z.width := by
   obtain ⟨a, p, w⟩ := signedPhaseProductPeak P hP phi x z hws L h.1 h.2.1 h.2.2
   cases d
@@ -159,7 +162,7 @@ lemma csigned_block (hP : P.Admissible) (ctrl : ℕ) (phi : Angle) (x z : ExtReg
     (hws : Policy.CWorkspaceOK P ctrl x z) (d : Bool) (L : Finset ℕ) (hc : ctrl ∈ L)
     (h : ppLive x z L) :
     after (Policy.lowerCSignedPhaseProd P ctrl phi x z) d L = L ∧
-    peak scratch (Policy.lowerCSignedPhaseProd P ctrl phi x z) d L
+    peak (scratchFor P.negation) (Policy.lowerCSignedPhaseProd P ctrl phi x z) d L
       = L.card + Rec.peakReserve P x.width z.width := by
   obtain ⟨a, p, w⟩ := cSignedPhaseProductPeak P hP ctrl phi x z hws L hc h.1 h.2.1 h.2.2
   cases d
@@ -196,8 +199,8 @@ lemma touchIn_copyBitPowers {L : Finset ℕ} (dst : ExtReg) {ctrl : ℕ} (hc : c
         exact List.get_mem _ _
       · exact ih
 
-lemma tmax_copyBitPowers (dst : ExtReg) (ctrl : ℕ) :
-    ∀ bits : List ℕ, tmax scratch (lowerCopyBitPowers dst ctrl bits) = 0 := by
+lemma tmax_copyBitPowers (m : NegationMethod) (dst : ExtReg) (ctrl : ℕ) :
+    ∀ bits : List ℕ, tmax (scratchFor m) (lowerCopyBitPowers dst ctrl bits) = 0 := by
   intro bits
   induction bits with
   | nil => simp [lowerCopyBitPowers]
@@ -219,41 +222,42 @@ lemma touchIn_mono {L L' : Finset ℕ} (h : L ⊆ L') : ∀ g : LowGate, TouchIn
   | zeroExtend _ _ | signExtend _ _ | zeroDealloc _ _ | signDealloc _ _ => intro hg; exact hg.elim
 
 /-- Walks compose along a sequence. -/
-lemma chain {U V : LowGate} {L M K : Finset ℕ} {a b : ℕ}
-    (hU : after U true L = M ∧ peak scratch U true L = a)
-    (hV : after V true M = K ∧ peak scratch V true M = b) :
-    after (U ;; V) true L = K ∧ peak scratch (U ;; V) true L = max a b := by
+lemma chain {anc : LowGate → ℕ} {U V : LowGate} {L M K : Finset ℕ} {a b : ℕ}
+    (hU : after U true L = M ∧ peak anc U true L = a)
+    (hV : after V true M = K ∧ peak anc V true M = b) :
+    after (U ;; V) true L = K ∧ peak anc (U ;; V) true L = max a b := by
   simp only [after, peak]
   rw [hU.1, hU.2, hV.1, hV.2]
   exact ⟨rfl, rfl⟩
 
 /-- An adjoint walks its body backwards. -/
-lemma adjoint {U : LowGate} {L M : Finset ℕ} {a : ℕ}
-    (h : after U false L = M ∧ peak scratch U false L = a) :
-    after (†U) true L = M ∧ peak scratch (†U) true L = a := h
+lemma adjoint {anc : LowGate → ℕ} {U : LowGate} {L M : Finset ℕ} {a : ℕ}
+    (h : after U false L = M ∧ peak anc U false L = a) :
+    after (†U) true L = M ∧ peak anc (†U) true L = a := h
 
 /-- A circuit acting on live qubits. -/
-lemma touch_fact {g : LowGate} {L : Finset ℕ} (h : TouchIn L g) (d : Bool) :
-    after g d L = L ∧ peak scratch g d L = L.card + tmax scratch g :=
-  ⟨(touch_walk_anc scratch L g h d).1, (touch_walk_anc scratch L g h d).2.1⟩
+lemma touch_fact {anc : LowGate → ℕ} {g : LowGate} {L : Finset ℕ} (h : TouchIn L g) (d : Bool) :
+    after g d L = L ∧ peak anc g d L = L.card + tmax anc g :=
+  ⟨(touch_walk_anc anc L g h d).1, (touch_walk_anc anc L g h d).2.1⟩
 
-lemma cmpGe_arith (c : ℕ) :
-    max (max c (c + max 0 1))
+lemma cmpGe_arith (c n : ℕ) :
+    max (max c (c + max 0 n))
       (max (max (c + 1) (max (c + 1 + 1) (c + 1)))
         (max (c + max 0 0)
-          (max (max (c + 1) (max (c + 1 + 1) (c + 1))) (c + max 0 (max 0 1))))) =
-    c + 2 := by
+          (max (max (c + 1) (max (c + 1 + 1) (c + 1))) (c + max 0 (max 0 n))))) =
+    c + max 2 n := by
   omega
 
-lemma cSub_arith (c : ℕ) :
-    max (max c (c + max 0 1)) (max (c + 1) (c + max 0 (max 0 1))) = c + 1 := by
+lemma cSub_arith (c n : ℕ) (hn : 1 ≤ n) :
+    max (max c (c + max 0 n)) (max (c + 1) (c + max 0 (max 0 n))) = c + n := by
   omega
+
 
 lemma cmpGe_block (N : ℕ) (data s : ExtReg) (flag : ℕ) (hws : ConstArithmeticWorkspace N data s flag)
     (L : Finset ℕ) (h : sGood P (.CmpGeConst N data s flag) true L) :
     after (lowerCmpGeConst N data s flag hws) true L = L ∪ allocBits s 1 ∧
-    peak scratch (lowerCmpGeConst N data s flag hws) true L
-      = (L ∪ allocBits s 1).card + 2 := by
+    peak (scratchFor P.negation) (lowerCmpGeConst N data s flag hws) true L
+      = (L ∪ allocBits s 1).card + max 2 (negationScratch P.negation s.width) := by
   obtain ⟨hd, hs, hf, hfresh⟩ := h
   set q := constArithmeticUnitQubit s hws.scratch_can_grow with hq
   have hbits : allocBits s 1 = {q} := allocBits_one_eq s hws.scratch_can_grow
@@ -267,11 +271,11 @@ lemma cmpGe_block (N : ℕ) (data s : ExtReg) (flag : ℕ) (hws : ConstArithmeti
     ⟨touchIn_copyBitPowers s hqL1 hsL1 _, hsL1⟩
   have hprep : TouchIn L1 (lowerPrepareNegConst N s hws.scratch_can_grow) :=
     ⟨by show {q} ⊆ L1; exact Finset.singleton_subset_iff.mpr hqL1, hrest⟩
-  have hXq : after (LowGate.X q) true L = L1 ∧ peak scratch (LowGate.X q) true L = L1.card := by
+  have hXq : after (LowGate.X q) true L = L1 ∧ peak (scratchFor P.negation) (LowGate.X q) true L = L1.card := by
     have : L ∪ LowGate.usedQubits (LowGate.X q) = L1 := by
       simp [LowGate.usedQubits, hL1, hbits]
-    refine ⟨?_, ?_⟩ <;> simp only [after, peak, this, scratch_X, add_zero]
-  have fprep := chain hXq (touch_fact hrest true)
+    refine ⟨?_, ?_⟩ <;> simp only [after, peak, this, scratchFor_X, add_zero]
+  have fprep := chain hXq (touch_fact (anc := scratchFor P.negation) hrest true)
   -- the difference
   set b := allocBits data 1 with hb
   have hcb : b.card = 1 := card_allocBits data hws.data_can_grow
@@ -284,15 +288,15 @@ lemma cmpGe_block (N : ℕ) (data s : ExtReg) (flag : ℕ) (hws : ConstArithmeti
   have hc : (L1 ∪ b).card = L1.card + 1 := by
     rw [Finset.card_union_of_disjoint hfresh'.symm, hcb]
   have f1 : after (LowGate.zeroExtend data 1) true L1 = L1 ∪ b ∧
-      peak scratch (LowGate.zeroExtend data 1) true L1 = L1.card + 1 := by
+      peak (scratchFor P.negation) (LowGate.zeroExtend data 1) true L1 = L1.card + 1 := by
     simp only [after, peak, move_true]
     rw [← hb, hc]; exact ⟨rfl, max_eq_right (Nat.le_succ _)⟩
   have f2 : after (LowGate.AddScaled s (data.grow 1) false 0) true (L1 ∪ b) = L1 ∪ b ∧
-      peak scratch (LowGate.AddScaled s (data.grow 1) false 0) true (L1 ∪ b) = L1.card + 1 + 1 := by
+      peak (scratchFor P.negation) (LowGate.AddScaled s (data.grow 1) false 0) true (L1 ∪ b) = L1.card + 1 + 1 := by
     rw [← hc]
-    exact touch_fact (g := LowGate.AddScaled s (data.grow 1) false 0) (L := L1 ∪ b) hdiff_add true
+    exact touch_fact (anc := scratchFor P.negation) (g := LowGate.AddScaled s (data.grow 1) false 0) (L := L1 ∪ b) hdiff_add true
   have f3 : after (LowGate.zeroDealloc data 1) true (L1 ∪ b) = L1 ∧
-      peak scratch (LowGate.zeroDealloc data 1) true (L1 ∪ b) = L1.card + 1 := by
+      peak (scratchFor P.negation) (LowGate.zeroDealloc data 1) true (L1 ∪ b) = L1.card + 1 := by
     simp only [after, peak, Bool.not_true, move_false]
     rw [← hb, Finset.union_sdiff_cancel_right hfresh'.symm, hc]
     exact ⟨rfl, max_eq_left (Nat.le_succ _)⟩
@@ -304,16 +308,16 @@ lemma cmpGe_block (N : ℕ) (data s : ExtReg) (flag : ℕ) (hws : ConstArithmeti
     exact ⟨hfresh', hdiff_add, Finset.subset_union_right⟩
   obtain ⟨da', dp'⟩ := backward_of_forward hdw fdiff.1
   have fdiff' := adjoint ⟨da', dp'.trans fdiff.2⟩
-  have fprep' := adjoint (touch_fact hprep false)
+  have fprep' := adjoint (touch_fact (anc := scratchFor P.negation) hprep false)
   have hsign : ∀ hlt, s.active.get ⟨s.width - 1, hlt⟩ ∈ L1 := fun hlt => by
     apply hsL1; rw [mem_regQubitSet]; exact List.get_mem _ _
   have fflag : ∀ hlt, after (LowGate.X flag ;; LowGate.CNOT (s.active.get ⟨s.width - 1, hlt⟩) flag)
-      true L1 = L1 ∧ peak scratch
+      true L1 = L1 ∧ peak (scratchFor P.negation)
         (LowGate.X flag ;; LowGate.CNOT (s.active.get ⟨s.width - 1, hlt⟩) flag) true L1
-        = L1.card + tmax scratch
+        = L1.card + tmax (scratchFor P.negation)
           (LowGate.X flag ;; LowGate.CNOT (s.active.get ⟨s.width - 1, hlt⟩) flag) :=
     fun hlt => by
-      have := touch_fact (L := L1)
+      have := touch_fact (anc := scratchFor P.negation) (L := L1)
         (g := LowGate.X flag ;; LowGate.CNOT (s.active.get ⟨s.width - 1, hlt⟩) flag)
         ⟨by simp [TouchIn, LowGate.usedQubits, hfL1],
           by simp [TouchIn, LowGate.usedQubits, Finset.insert_subset_iff, hfL1, hsign]⟩ true
@@ -321,16 +325,16 @@ lemma cmpGe_block (N : ℕ) (data s : ExtReg) (flag : ℕ) (hws : ConstArithmeti
   have hall := chain fprep (chain fdiff (chain (fflag (Nat.sub_lt hws.scratch_positive Nat.one_pos))
     (chain fdiff' fprep')))
   refine ⟨hall.1, ?_⟩
-  rw [show peak scratch (lowerCmpGeConst N data s flag hws) true L = _ from hall.2]
+  rw [show peak (scratchFor P.negation) (lowerCmpGeConst N data s flag hws) true L = _ from hall.2]
   simp only [lowerPrepareNegConst, lowerCopyConstFromUnit, tmax_seq, tmax_X, tmax_CNOT,
-    tmax_Negate, scratch_X, scratch_CNOT, scratch_Negate, tmax_copyBitPowers]
-  exact cmpGe_arith _
+    tmax_Negate, scratchFor_X, scratchFor_CNOT, scratchFor_Negate, tmax_copyBitPowers P.negation]
+  exact cmpGe_arith _ _
 
 lemma cSub_block (N : ℕ) (data s : ExtReg) (flag : ℕ) (hws : ConstArithmeticWorkspace N data s flag)
     (L : Finset ℕ) (h : sGood P (.CSubConst N data s flag) true L) :
     after (lowerCSubConst N data s flag hws) true L = L ∪ allocBits s 1 ∧
-    peak scratch (lowerCSubConst N data s flag hws) true L
-      = (L ∪ allocBits s 1).card + 1 := by
+    peak (scratchFor P.negation) (lowerCSubConst N data s flag hws) true L
+      = (L ∪ allocBits s 1).card + negationScratch P.negation s.width := by
   obtain ⟨hd, hs, hf⟩ := h
   set q := constArithmeticUnitQubit s hws.scratch_can_grow with hq
   have hbits : allocBits s 1 = {q} := allocBits_one_eq s hws.scratch_can_grow
@@ -346,18 +350,18 @@ lemma cSub_block (N : ℕ) (data s : ExtReg) (flag : ℕ) (hws : ConstArithmetic
   have hadd : TouchIn L1 (LowGate.AddScaled data s false 0) :=
     Finset.union_subset hdL1 hsL1
   have hC : after (LowGate.CNOT flag q) true L = L1 ∧
-      peak scratch (LowGate.CNOT flag q) true L = L1.card := by
+      peak (scratchFor P.negation) (LowGate.CNOT flag q) true L = L1.card := by
     have : L ∪ LowGate.usedQubits (LowGate.CNOT flag q) = L1 := by
       show L ∪ insert flag {q} = L1
       rw [Finset.union_insert, Finset.insert_eq_of_mem (Finset.mem_union_left _ hf), hL1, hbits]
-    refine ⟨?_, ?_⟩ <;> simp only [after, peak, this, scratch_CNOT, add_zero]
-  have hall := chain (chain hC (touch_fact hrest true))
-    (chain (touch_fact hadd true) (adjoint (touch_fact hprep false)))
+    refine ⟨?_, ?_⟩ <;> simp only [after, peak, this, scratchFor_CNOT, add_zero]
+  have hall := chain (chain hC (touch_fact (anc := scratchFor P.negation) hrest true))
+    (chain (touch_fact (anc := scratchFor P.negation) hadd true) (adjoint (touch_fact (anc := scratchFor P.negation) hprep false)))
   refine ⟨hall.1, ?_⟩
-  rw [show peak scratch (lowerCSubConst N data s flag hws) true L = _ from hall.2]
+  rw [show peak (scratchFor P.negation) (lowerCSubConst N data s flag hws) true L = _ from hall.2]
   simp only [lowerCopyConstFromUnit, tmax_seq, tmax_CNOT, tmax_Negate, tmax_AddScaled,
-    scratch_CNOT, scratch_Negate, scratch_AddScaled, tmax_copyBitPowers]
-  exact cSub_arith _
+    scratchFor_CNOT, scratchFor_Negate, scratchFor_AddScaled, tmax_copyBitPowers P.negation]
+  exact cSub_arith _ _ (one_le_negationScratch _ _)
 
 /-! ## The theorem -/
 
@@ -367,7 +371,7 @@ theorem lower_walk (hP : P.Admissible) :
     ∀ (G : Gate) (hws : Policy.GateWorkspaceOK P G) (d : Bool) (L : Finset ℕ),
       sGood P G d L →
       after (Policy.lowerGate P G hws) d L = sAfter P G d L ∧
-      peak scratch (Policy.lowerGate P G hws) d L = sPeak P (Rec.ppPeak P) G d L := by
+      peak (scratchFor P.negation) (Policy.lowerGate P G hws) d L = sPeak P (Rec.ppPeak P) G d L := by
   intro G
   induction G with
   | id => intro _ d L _; simp [Policy.lowerGate, after, peak, sAfter, sPeak]
