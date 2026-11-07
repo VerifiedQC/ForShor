@@ -1,5 +1,6 @@
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Statement
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Recursion.Recursion
+import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Recursion.CensusFull
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Witness.FaultChallenge
 
 /-!
@@ -92,11 +93,62 @@ theorem impl_hyps_sat {Basis : Type*} [RegEncoding Basis] :
 /-- Its Rz / Toffoli census is the policy formula: `ptpResources fixed 20`
 (4 children of width 14: Rz = 4 · 14³ = 10976). -/
 theorem impl_resources (θ : Angle) :
-    let R := LowGate.resources shorGateResourceModel (ptpSubNode fixedTable SL (fun t j =>
+    let R := LowGate.resources fixed.resourceModel (ptpSubNode fixedTable SL (fun t j =>
       ptpLeafSandwich (θ * coeffN fixedTable 20 t) (Y j 0) (Y j 1) (Y j 2) 84 85))
     R.rz = (ptpResources fixed 20).rz ∧ R.toffoli = (ptpResources fixed 20).toffoli :=
   ⟨(impl.resources θ).1, (impl.resources θ).2.1⟩
 
 theorem ptpResources_fixed_20 : (ptpResources fixed 20).rz = 10976 := by decide +kernel
+
+/-! ## Both negation methods on one concrete policy
+
+`negFixed` is `fixed` with a pair of negations of the second operand appended to the table program
+(`negate x₁; negate x₁` is the identity, so the point order, the returns-to-start check and the child width
+are unchanged). It has `A = 3` additions, `N = 2` negations and `P = 4` checkpoints; at the child width
+`C = 14` the node census is evaluated by the kernel under each method, and compared with the closed forms:
+
+* `scratch` (the pre-swap negation, `X = C + (2C - 6) + 2`, `CNOT = 5C - 7`, `Toffoli = 2C - 3`):
+  `CNOT = 3 (A + N)(5C - 7) = 945`, `Toffoli = 3 (A + N)(2C - 3) + P · 2 (C² + C³) = 23895`,
+  `X = 3 (A (2C - 6) + N (C + (2C - 6) + 2)) = 426`, and `C + 1 = 15` clean qubits;
+* `oneQubit` (`X = 67`, `CNOT = 216`, `Toffoli = 140` per negation at `C = 14`):
+  `CNOT = 1863`, `Toffoli = 24585`, `X = 600`, and `1` clean qubit.
+
+Rz (`P C³ = 10976`) and H (`0`) are the same under both. -/
+
+/-- `fixed`'s table with `negate x₁` twice appended. -/
+def negTable : PTPTable :=
+  ⟨2, fixedTable.pts, ops ++ [.negate ⟨1, by decide⟩, .negate ⟨1, by decide⟩]⟩
+
+/-- `fixed` with the negating table. -/
+def negFixed : PTPPolicy := { bands := [⟨20, negTable⟩] }
+
+theorem negFixed_accepted : negFixed.check = true := by decide +kernel
+
+theorem negFixed_childWidth : childWidth 20 negTable.ops = 14 := by decide +kernel
+
+theorem negFixed_counts : addCount negTable.ops = 3 ∧ negCount negTable.ops = 2 ∧
+    cpCount negTable.ops = 4 := by decide +kernel
+
+/-- Pre-swap anchor: under `scratch` the census is the closed form of the version before the one-qubit
+negation. -/
+theorem negFixed_scratch_census :
+    ptpResources (negFixed.withNegation .scratch) 20 =
+      ⟨0, 426, 945, 23895, 10976⟩ := by decide +kernel
+
+/-- Under `oneQubit` (the default) the census is the one of the one-qubit negation. -/
+theorem negFixed_oneQubit_census :
+    ptpResources negFixed 20 = ⟨0, 600, 1863, 24585, 10976⟩ := by decide +kernel
+
+theorem negFixed_scratch_cnotFull :
+    ptpCnotFull (negFixed.withNegation .scratch) 20 = 945 + 6 * (14 - topLimbWidth 20 2) := by
+  decide +kernel
+
+theorem negFixed_cleanAnc :
+    ptpCleanAnc negFixed 20 = 1 ∧ ptpCleanAnc (negFixed.withNegation .scratch) 20 = 15 := by
+  decide +kernel
+
+/-- The same table, `fixed`, has no negation: both methods price it alike. -/
+theorem fixed_methods_agree :
+    ptpResources (fixed.withNegation .scratch) 20 = ptpResources fixed 20 := by decide +kernel
 
 end Shor.PTP.Witness

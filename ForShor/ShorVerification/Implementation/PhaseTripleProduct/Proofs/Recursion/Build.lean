@@ -325,7 +325,7 @@ checked policy `P`, every width `n` and every three pairwise disjoint `n`-qubit 
 below `base`, there is a circuit family `G` following `P` with workspace `W ⊆ [base, …)`
 such that, for every angle `φ`: on every basis state whose registers fit signed `n` bits and
 whose workspace is `|0⟩`, `G φ` multiplies by `exp(i π φ ⟦X 0⟧⟦X 1⟧⟦X 2⟧)` and returns the
-state; and its Rz, Toffoli, X and H counts (ForShor `shorGateResourceModel`) are exactly
+state; and its Rz, Toffoli, X and H counts (ForShor's resource model for the policy's negation method, `P.resourceModel`) are exactly
 `ptpResources P n`. -/
 theorem ptp_gate_correct {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass qs]
     (P : PTPPolicy) (hP : P.check = true) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ)
@@ -338,7 +338,7 @@ theorem ptp_gate_correct {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClas
           Complex.exp (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *
             (((extToInt (X 0) b : ℤ) : ℂ) * ((extToInt (X 1) b : ℤ) : ℂ) *
               ((extToInt (X 2) b : ℤ) : ℂ))) • qs.ket b) ∧
-      (∀ φ : Angle, let R := LowGate.resources shorGateResourceModel (G φ)
+      (∀ φ : Angle, let R := LowGate.resources P.resourceModel (G φ)
         R.rz = (ptpResources P n).rz ∧ R.toffoli = (ptpResources P n).toffoli ∧
           R.x = (ptpResources P n).x ∧ R.h = (ptpResources P n).h) := by
   obtain ⟨W, G, hI, hB⟩ := exists_policyImpl P hP n X base hG
