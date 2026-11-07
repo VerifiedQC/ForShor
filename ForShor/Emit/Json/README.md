@@ -21,6 +21,8 @@ One printer each for the small value types shared everywhere else in
 | `validOpJson {k} : Operations.valid_ops k → Json` | one of the five `Prog k` op spellings (`shiftL`, `shiftR`, `negate`, `addScaled`, `phaseProduct`); `Fin k` indices print as plain `ℕ` |
 | `progJson {k} (ops : Prog k)` | the op list, in order |
 | `gateResourcesJson (r : GateResources)` | `{"h", "x", "cnot", "toffoli", "rz", "cleanAnc"}` |
+| `negationMethodJson (m : NegationMethod)` | `"oneQubit"` or `"scratch"`, the spelling of the `"negation"` field |
+| `negateChargeJson (m : NegationMethod)` | `{"method", "formulas", "at_width"}`: the charge of one `Negate` under `m` (`negateResourcesFor`), as closed forms (`formulas`: `clean_ancilla`, `x`, `cnot`, `toffoli`, `note`) and evaluated at widths 8, 9 and 2048 (`at_width`, each a `gateResourcesJson`). `oneQubit`: 1 clean qubit, Toffoli 12w−28 / 10w−18 (w even / odd); `scratch`: w+1 clean qubits, Toffoli 2w−3 |
 
 ## `LowGateJson.lean`
 
@@ -37,11 +39,14 @@ it.
   there's a `.adj` in between. This convention matters: `PlanJson.lean`'s
   `check1_annotatedEqFlat` has to reproduce it exactly to compare an
   annotated tree against a flat one.
-- `emitProgram (P : ShorOrderFindingProgram) (metaJson) : Json` — the
+- `emitProgram (P : ShorOrderFindingProgram) (metaJson) (m : NegationMethod := .oneQubit) : Json` — the
   `forshor.lowgate/v2` document for a full submitted program (`shor`'s
   document): `schema, bit_order, angle_unit, output_register, gate_count,
-  qubit_count, max_qubit_index, resources, circuit, meta`.
-- `emitLowGateDoc (g : LowGate) (metaJson) : Json` — the same envelope and
+  negation, qubit_count, max_qubit_index, resources, circuit, meta`. `qubit_count`
+  and `resources` are priced under `shorGateResourceModelFor m` and `negation`
+  names `m` (always printed; the default is `"oneQubit"`, whose figures are those of
+  `shorGateResourceModel`). The circuit and `gate_count` do not depend on `m`.
+- `emitLowGateDoc (g : LowGate) (metaJson) (m : NegationMethod := .oneQubit) : Json` — the same envelope and
   schema, minus `output_register`, for a bare `LowGate` term that has no
   single distinguished output register (`pp`/`cpp`/`qft --flat`'s
   documents).

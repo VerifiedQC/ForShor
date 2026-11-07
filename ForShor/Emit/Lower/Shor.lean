@@ -5,7 +5,8 @@ import ForShor.Emit.Json.LowGateJson
 # `shor` subcommand: the reference lowered Shor circuit
 
 Prints the reference lowered Shor circuit for `(k, a, N, m)` as JSON on
-stdout (`Shor.emitProgram`'s `forshor.lowgate/v2` schema), plus a `layout`
+stdout (`Shor.emitProgram`'s `forshor.lowgate/v2` schema, priced under the
+negation method `--negation` names, the one-qubit one by default), plus a `layout`
 block (`allocateReferenceLayout`'s four registers and flag qubit). This is
 the `referenceProgramAt` path; `Main.lean` is dispatch-only.
 
@@ -35,7 +36,7 @@ end Shor.Reference
 
 namespace Emit.Lower.Shor
 
-def runEmit (k a N m : ℕ) : IO UInt32 := do
+def runEmit (k a N m : ℕ) (nm : Shor.NegationMethod := .oneQubit) : IO UInt32 := do
   if hk : 1 < k then
     if hrange : 0 < a ∧ a < N then
       if hcop : Nat.gcd a N = 1 then
@@ -53,7 +54,7 @@ def runEmit (k a N m : ℕ) : IO UInt32 := do
             ("source", Lean.Json.str "Shor.Reference.referenceProgramAt"),
             ("layout", Shor.Reference.layoutJson layout)
           ]
-        IO.println (Shor.emitProgram prog metaJson).compress
+        IO.println (Shor.emitProgram prog metaJson nm).compress
         return 0
       else
         IO.eprintln s!"error: need gcd a N = 1 (a = {a}, N = {N})"

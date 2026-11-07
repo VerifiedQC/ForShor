@@ -83,8 +83,17 @@ jobs:
       - name: Smoke-run executables
         run: |
           lake exe forshor_emit 2 2 15 0 > /dev/null
+          # The negation method is priced and printed: the default is the one-qubit method, and the
+          # scratch method charges the same circuit differently (more clean qubits, fewer Toffolis).
+          lake exe forshor_emit 2 2 15 0 | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["negation"]=="oneQubit", d["negation"]'
+          lake exe forshor_emit 2 2 15 0 > /tmp/emit_one.json
+          lake exe forshor_emit 2 2 15 0 --negation scratch > /tmp/emit_scratch.json
+          python3 -c 'import json; a=json.load(open("/tmp/emit_one.json")); b=json.load(open("/tmp/emit_scratch.json")); assert a["negation"]=="oneQubit" and b["negation"]=="scratch"; assert a["circuit"]==b["circuit"] and a["gate_count"]==b["gate_count"], "negation method changed the circuit"; assert a["resources"]!=b["resources"] and a["qubit_count"]!=b["qubit_count"], "scratch and oneQubit charge the same"; assert a["resources"]["cleanAnc"] < b["resources"]["cleanAnc"] and a["resources"]["toffoli"] > b["resources"]["toffoli"], "unexpected tradeoff"'
           lake exe forshor_submission | python3 -c 'import json,sys; json.load(sys.stdin)'
-          lake exe forshor_policy_submission | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None, "policy submission printed no IR"'
+          # The policy names its negation method and the document carries the charge of each method:
+          # the policy's own is the one it names, and the two differ (scratch: w+1 clean qubits, 2w-3
+          # Toffolis; oneQubit: one qubit, about 12w Toffolis).
+          lake exe forshor_policy_submission | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None, "policy submission printed no IR"; assert d["negation"] in ("oneQubit","scratch"), "policy submission names no negation method"; by=d["negate_charge_by_method"]; assert by[d["negation"]]==d["negate_charge"], "negate_charge is not that of the named method"; o=by["oneQubit"]["at_width"]["2048"]; s=by["scratch"]["at_width"]["2048"]; assert o!=s, "scratch and oneQubit charge a negation the same"; assert o["cleanAnc"]==1 and s["cleanAnc"]==2049, (o,s); assert s["x"]==3*2048-4 and s["toffoli"]==2*2048-3, s'
           lake exe forshor_policy_submission --balanced | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None and "balanced" in d, "balanced policy submission printed no IR"'
           lake exe forshor_balanced_u | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None and "balanced_unconditional" in d, "unconditional balanced submission printed no IR"'
 

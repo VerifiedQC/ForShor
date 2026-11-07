@@ -36,6 +36,11 @@ one-band policy at threshold `0`
 (`Shor.ShorPolicySubmission.ofSetup`), and `Shor.submission_correct` is
 literally a corollary of the policy theorem.
 
+The policy's `negation` option (how a negation is built and priced, `oneQubit` unless the template says
+`scratch`) is not an obligation: it changes the resource estimate and nothing the kernel checks here
+(`Shor.ShorLoweringPolicy.withNegation_admissible`; the certificate below is generic in the policy,
+negation included).
+
 ## Checked by evaluation, at sampled widths
 
 `Shor.Reflect.buildPolicyDoc` (run by the executable) builds the IR a resource estimator reads: one

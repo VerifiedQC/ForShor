@@ -182,8 +182,9 @@ The invariants the extractor and its callers are built to:
   pre-existing `cramerCoeffFromPtsWidth` by evaluation
   (`cramerCoeffFromPtsWidth = phaseCoeffFromPtsWidth` is itself the theorem
   `cramerCoeffFromPtsWidth_eq_phaseCoeffFromPtsWidth`).
-- Cost-model numbers, where printed, are `shorGateResourceModel` evaluated,
-  not proved bounds; the asymptotic statement they evaluate is
+- Cost-model numbers, where printed, are the resource model evaluated (`shorGateResourceModelFor m`, which is `shorGateResourceModel` at the
+  default negation method `oneQubit`), not proved bounds, and each document that prints them also
+  prints the method as `"negation"` (`oneQubit` or `scratch`); the asymptotic statement they evaluate is
   `phaseProductGateCountBound_of_programOK` / `exists_shorGateCountBound`.
 - The constant-arithmetic step costs (`lowerCmpGeConst`/`lowerCSubConst`,
   steps U3/U4 of `CmodMulInPlaceCore`) are fitted from concrete `shor`
