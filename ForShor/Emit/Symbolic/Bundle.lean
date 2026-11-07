@@ -45,7 +45,8 @@ def optsJson (o : BundleOpts) : Json :=
 
 /-- E1: the schedule (`ops`, `points` only — census/per-width `LowGate`
 resource counts are not opaque values: they fall out of the
-extracted `Doc` plus the repository's own `shorGateResourceModel`, not out
+extracted `Doc` plus the repository's own resource model (`shorGateResourceModelFor m`, the
+model of the policy's negation method; `shorGateResourceModel` at the default), not out
 of a separate table here). -/
 def scheduleJson {k : ℕ} (inst : TableInstance k) : Json :=
   Json.mkObj [

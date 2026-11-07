@@ -463,9 +463,9 @@ theorem ptp_ctl_lowerExact_correct_core (P : PTPPolicy) (n : ℕ) (X : Fin 3 →
       U hψ
   · intro φ
     obtain ⟨hr1, hr2, hr3, hr4, hr5, hr6, hr7⟩ := hR φ
-    obtain ⟨m1, m2, m3, m4, m5⟩ := resources_maskGate shorGateResourceModel c
+    obtain ⟨m1, m2, m3, m4, m5⟩ := resources_maskGate P.resourceModel c
       ((X 0).active.qubits.zip Y.active.qubits)
-    obtain ⟨u1, u2, u3, u4, u5⟩ := resources_unmaskGate shorGateResourceModel c
+    obtain ⟨u1, u2, u3, u4, u5⟩ := resources_unmaskGate P.resourceModel c
       ((X 0).active.qubits.zip Y.active.qubits)
     rw [hzip] at m1 u1
     have hA := adjToffCount_unmaskGate c ((X 0).active.qubits.zip Y.active.qubits)
@@ -476,12 +476,12 @@ theorem ptp_ctl_lowerExact_correct_core (P : PTPPolicy) (n : ℕ) (X : Fin 3 →
           (adjToffCount (G φ) +
             adjToffCount (unmaskGate c ((X 0).active.qubits.zip Y.active.qubits))) := by
       simp only [ctlGate, maskReg, unmaskReg, adjToffCount]
-    have hRc : LowGate.resources shorGateResourceModel (ctlGate c (X 0).active Y.active (G φ)) =
+    have hRc : LowGate.resources P.resourceModel (ctlGate c (X 0).active Y.active (G φ)) =
         GateResources.seq
-          (LowGate.resources shorGateResourceModel
+          (LowGate.resources P.resourceModel
             (maskGate c ((X 0).active.qubits.zip Y.active.qubits)))
-          (GateResources.seq (LowGate.resources shorGateResourceModel (G φ))
-            (LowGate.resources shorGateResourceModel
+          (GateResources.seq (LowGate.resources P.resourceModel (G φ))
+            (LowGate.resources P.resourceModel
               (unmaskGate c ((X 0).active.qubits.zip Y.active.qubits)))) := by
       simp only [ctlGate, maskReg, unmaskReg, LowGate.resources]
     have hsub : LowGate.usedQubits (ctlGate c (X 0).active Y.active (G φ)) ⊆

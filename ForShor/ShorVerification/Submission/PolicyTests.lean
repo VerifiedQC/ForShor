@@ -1,5 +1,7 @@
 import ForShor.ShorVerification.Submission.PolicyTemplate
 import ForShor.ShorVerification.Submission.PolicyDecide
+import ForShor.ShorVerification.Submission.PolicyMain
+import ForShor.ShorVerification.Framework.Gatecount.PolicyModel
 
 /-!
 # Worked examples on the shipped policy
@@ -54,5 +56,69 @@ example :
     _root_.Shor.Policy.bandShrinks
       { bands := [(40, band0), (12, band1)], sorted := by decide : ShorPolicySubmission }.policy 1
       = false := by decide +kernel
+
+/-! ## The negation option
+
+A policy chooses how a negation is built and priced, `oneQubit` unless it says `scratch`
+(`ShorPolicySubmission.negation`). It is not an admissibility condition, so a policy that sets it is
+accepted exactly as one that does not, and the document it prints (`negationFields`) names the method and
+reports its charge. The charges are `Framework/Gatecount/ResourceModel.lean`'s, evaluated by the kernel. -/
+
+/-- The shipped bands, with the field left out, so that it takes its default. -/
+def policyNoField : ShorPolicySubmission := { bands := policy.bands, sorted := policy.sorted }
+
+/-- The shipped bands on the scratch method. -/
+def policyScratch : ShorPolicySubmission := { policy with negation := .scratch }
+
+example : policyNoField.negation = .oneQubit := rfl
+example : policyScratch.negation = .scratch := rfl
+-- the shipped template names the default explicitly
+example : policy.negation = .oneQubit := rfl
+
+-- the option changes neither the bands nor what `choose` routes to
+example : policyScratch.bands = policy.bands := rfl
+example : policyScratch.policy.choose 100 = some band0.table := rfl
+example : policyScratch.policy.choose 14 = some band1.table := rfl
+
+-- the scratch policy is admissible, and the generic certificate applies to it exactly as to the default
+example : policyScratch.policy.Admissible := ShorPolicySubmission.policy_admissible _
+example : policyNoField.policy.Admissible := ShorPolicySubmission.policy_admissible _
+
+theorem correct_scratch {qs : QSemantics} [RegEncoding qs.Basis] [MeasureClass qs]
+    [GateSemanticsFacts qs] [LowerGateClass qs] :
+    type_of% (_root_.Shor.policy_submission_correct (qs := qs) policyScratch) :=
+  _root_.Shor.policy_submission_correct (qs := qs) policyScratch
+
+#assert_axioms _root_.PolicySubmission.policyScratch
+
+-- the policy is priced under the method it names
+example : policyScratch.policy.resourceModel = shorGateResourceModelFor .scratch := rfl
+example : policyNoField.policy.resourceModel = shorGateResourceModel := rfl
+
+-- the charge each reports, at the benchmark width: scratch `3w-4, 5w-7, 2w-3, w+1`, default `5w-3, 17w-22, 12w-28, 1`
+example : negateChargeAt policyScratch.negation 2048 =
+    { x := 6140, cnot := 10233, toffoli := 4093, cleanAnc := 2049 } := by decide +kernel
+example : negateChargeAt policyNoField.negation 2048 =
+    { x := 10237, cnot := 34794, toffoli := 24548, cleanAnc := 1 } := by decide +kernel
+example : negateChargeAt policyScratch.negation 2048 ≠ negateChargeAt policyNoField.negation 2048 := by
+  decide +kernel
+
+-- The printed fields: a policy without the option reports `oneQubit` and its charge, one with
+-- `negation := .scratch` reports `scratch` and the scratch charge.
+#eval show IO Unit from do
+  let get (j : Lean.Json) (k : String) : String :=
+    match j.getObjVal? k with | .ok v => v.compress | .error _ => "<missing>"
+  let fields (s : ShorPolicySubmission) : Lean.Json := Lean.Json.mkObj (negationFields s)
+  let one := fields policyNoField
+  let scr := fields policyScratch
+  unless get one "negation" == "\"oneQubit\"" do throw (IO.userError "default policy does not report oneQubit")
+  unless get scr "negation" == "\"scratch\"" do throw (IO.userError "scratch policy does not report scratch")
+  unless get one "negate_charge" == (_root_.Shor.negateChargeJson .oneQubit).compress do
+    throw (IO.userError "default policy reports the wrong charge")
+  unless get scr "negate_charge" == (_root_.Shor.negateChargeJson .scratch).compress do
+    throw (IO.userError "scratch policy reports the wrong charge")
+  unless get one "negate_charge" != get scr "negate_charge" do
+    throw (IO.userError "the two methods report the same charge")
+  IO.println s!"policy negation fields: default {get one "negation"}, scratch {get scr "negation"}"
 
 end PolicySubmission

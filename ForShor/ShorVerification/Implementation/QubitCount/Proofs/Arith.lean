@@ -258,13 +258,14 @@ theorem levelWidth_compile (T : ToomCookTable) (R : WidthRule) (wx wz : ℕ) :
     exact (commonNeededWidth_exactNeeded (by have := T.hk; omega) T.ops wx wz).symm
 
 open Operations in
-theorem scratch_compile (T : ToomCookTable) (W : ℕ) :
-    T.compile.scratch W = Policy.opsScratch T.ops W := by
+theorem scratch_compile (m : NegationMethod) (T : ToomCookTable) (W : ℕ) :
+    T.compile.scratch m W = Policy.opsScratch m T.ops W := by
+  have h1 := one_le_negationScratch m W
   have key : ∀ ops : Prog T.k,
-      (if ops.any (fun op => match op with | .negate _ => true | _ => false) then W + 1
+      (if ops.any (fun op => match op with | .negate _ => true | _ => false) then negationScratch m W
         else if ops.any (fun op => match op with | .addScaled _ _ _ _ => true | _ => false) then 1
         else 0)
-      = Policy.opsScratch ops W := by
+      = Policy.opsScratch m ops W := by
     intro ops
     induction ops with
     | nil => rfl
@@ -339,7 +340,7 @@ lemma immediateNeedBy_eq (R : WidthRule) (side : PhaseSide) {k : ℕ} (ops : Pro
 
 theorem peakReserveF_eq (P : ShorLoweringPolicy) :
     ∀ (f wx wz : ℕ), max wx wz < f →
-      peakReserveF P.widthRule (Policy.compile P) f wx wz = Rec.peakReserve P wx wz := by
+      peakReserveF P.negation P.widthRule (Policy.compile P) f wx wz = Rec.peakReserve P wx wz := by
   intro f
   induction f with
   | zero => intro wx wz h; omega
@@ -357,7 +358,7 @@ theorem peakReserveF_eq (P : ShorLoweringPolicy) :
       · simp only [hrec, ↓reduceIte, ↓reduceDIte]
 
 theorem peakReserveD_eq (P : ShorLoweringPolicy) :
-    peakReserveD P.widthRule (Policy.compile P) = Rec.peakReserve P := by
+    peakReserveD P.negation P.widthRule (Policy.compile P) = Rec.peakReserve P := by
   funext wx wz
   exact peakReserveF_eq P _ wx wz (Nat.lt_succ_self _)
 
@@ -445,7 +446,7 @@ theorem qftPeakF_eq (pp : ℕ → ℕ → ℕ) :
     · rw [ite_eq_right h2, ite_eq_right h2]
 
 theorem qftPeakD_eq (P : ShorLoweringPolicy) :
-    qftPeakD P.widthRule (Policy.compile P) = Rec.qftPeak P := by
+    qftPeakD P.negation P.widthRule (Policy.compile P) = Rec.qftPeak P := by
   funext n
   rw [qftPeakD, peakReserveD_eq, qftPeakF_eq _ _ _ _ (Nat.lt_succ_self n) le_rfl (Nat.le_succ n),
     max_self, Rec.qftPeak]
@@ -472,7 +473,7 @@ lemma planFitsOf_reserveNeed (P : ShorLoweringPolicy) :
       rw [planFitsOf, Rec.planFits, planFitsOf_reserveNeed P bs]
 
 theorem sitePeakD_eq (P : ShorLoweringPolicy) (R : Balanced.Rule) :
-    sitePeakD P.widthRule (Policy.compile P) R = Rec.sitePeak P R := by
+    sitePeakD P.negation P.widthRule (Policy.compile P) R = Rec.sitePeak P R := by
   funext wx cx wz cz
   unfold sitePeakD sitePeakOf Rec.sitePeak
   rw [peakReserveD_eq, reserveBudgetD_eq]

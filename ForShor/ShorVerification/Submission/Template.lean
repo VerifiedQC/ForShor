@@ -31,6 +31,14 @@ lake build Submission && lake exe forshor_submission > ir.json
 and if the build is green the submission is admissible. Nothing outside this
 file is edited.
 
+## The negation method
+
+A table submission is priced under the default negation method, `NegationMethod.oneQubit`: one clean
+qubit per negation, about `12 w` Toffolis for a `w`-bit register. The other method, `.scratch` (`w + 1`
+clean qubits, `2 w - 3` Toffolis, so fewer gates and more qubits), is an option of a *policy*
+(`negation := .scratch`, see [`PolicyTemplate.lean`](PolicyTemplate.lean)); it changes neither a table nor
+its proofs, only the resource estimate, and `ir.json` prints the method it was priced under as `negation`.
+
 ## The proofs
 
 The four side conditions C1–C4 are stated in

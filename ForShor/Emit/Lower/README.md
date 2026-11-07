@@ -70,6 +70,14 @@ builds `Shor.standardLoweringSetup k hk`, the instance, and
 `emitProgram`. Also prints a `layout` block (`Shor.Reference.layoutJson`,
 `allocateReferenceLayout`'s four registers and flag qubit).
 
+The resource figures in the document are priced under a negation method, chosen
+with `--negation oneQubit|scratch` (default `oneQubit`; `Main.lean` pulls the flag out
+of the argument list) and printed as `"negation"`. `scratch` prices the same circuit with
+a clean `w`-bit register of ones per negation (`w+1` clean qubits, `2w−3` Toffolis) in
+place of the one clean qubit (`12w−28` / `10w−18` Toffolis). `pp`/`cpp`/`qft --flat` take
+the same flag (`buildPP`/`buildCPP`/`buildQFT`'s last argument); the other subcommands
+print no priced figure and refuse it.
+
 `--annotated` is **not implemented**: it would need the raw pre-lowering
 `Gate` tree, which `referenceProgramAt` doesn't expose separately from its
 already-lowered `LowGate` result, plus a per-leaf workspace-discharge walk

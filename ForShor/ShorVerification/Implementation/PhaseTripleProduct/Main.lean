@@ -5,6 +5,8 @@ import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Control
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Unbalanced
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Asymptotic
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.QubitsTight
+import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Peak.Peak
+import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Peak.Numerals
 
 /-!
 # PhaseTripleProduct Main Theorems
@@ -20,8 +22,8 @@ namespace Shor
 namespace PTP
 
 /-- **State level, exact board.** For every checked policy there is a circuit following it at exact
-widths that equals the PTP phase operator on every clean state, with the exact gate census.
-(`PTPLowerExactCorrect`.) -/
+widths that equals the PTP phase operator on every clean state, with the exact gate census in the
+policy's own resource model (its negation method). (`PTPLowerExactCorrect`.) -/
 theorem ptp_lowerExact_correct (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]
     (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :
     PTPLowerExactCorrect qs P n X base := by
@@ -42,18 +44,18 @@ theorem ptp_pad_lowerExact_correct (qs : QSemantics) [RegEncoding qs.Basis] [Low
     PTPPadLowerExactCorrect qs P n X d base :=
   ptp_pad_lowerExact_correct_core P n X d base
 
-/-- **Gate count of the width-rule census** for a constant policy: `O(n ^ log_k (3k - 2))`.
-(`PTPGateTotalBound`.) -/
+/-- **Gate count of the width-rule census** for a constant policy, under either negation method:
+`O(n ^ log_k (3k - 2))`. (`PTPGateTotalBound`.) -/
 theorem ptp_gateTotal_bound (t : ℕ) (T : PTPTable) (wd : WidthRule) :
     PTPGateTotalBound t T wd :=
-  fun hT hwd => ptp_gateTotal_bound_core t T hT wd hwd
+  fun hT hwd m => ptp_gateTotal_bound_core m t T hT wd hwd
 
-/-- **Gate count of the constructed circuit** for a constant policy: `O(n ^ log_k (3k - 2))`.
-(`PTPCircuitGateCountBound`.) -/
+/-- **Gate count of the constructed circuit** for a constant policy, under either negation method:
+`O(n ^ log_k (3k - 2))`. (`PTPCircuitGateCountBound`.) -/
 theorem ptp_circuit_gateCount_bound (qs : QSemantics) [RegEncoding qs.Basis] [LowerGateClass qs]
     (t : ℕ) (T : PTPTable) :
     PTPCircuitGateCountBound qs t T :=
-  fun hT hP => ptp_circuit_gateCount_bound_core (qs := qs) t T hT hP
+  fun hT hP m => ptp_circuit_gateCount_bound_core (qs := qs) m t T hT hP
 
 /-- **Tight qubit count** for any admissible width rule. (`PTPQubitsTight`.) -/
 theorem ptp_qubits_tight (P : PTPPolicy) (wd : WidthRule) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :
@@ -69,6 +71,28 @@ theorem ptp_qubits_tight_exact (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) 
 theorem ptp_qubits_le_ptpQubits (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :
     PTPQubitsLePtpQubits P n X base :=
   fun hP hG => ptp_qubits_le_ptpQubits_core P hP n X base hG
+
+/-- **The single-product peak** for any admissible width rule: a circuit following `P` whose framework qubit
+count (`LowGate.qubitCount P.resourceModel`, under the policy's negation method) is at most
+`3 n + ptpWsTD P wd n + ptpCleanAncD P wd n`. (`PTPPeakQubits`.) -/
+theorem ptp_peak_qubits (P : PTPPolicy) (wd : WidthRule) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :
+    PTPPeakQubits P wd n X base :=
+  fun hP hwd hG => ptp_peak_core P hP wd hwd n X base hG
+
+/-- **The single-product peak on the exact board.** (`PTPPeakQubitsExact`.) -/
+theorem ptp_peak_qubits_exact (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :
+    PTPPeakQubitsExact P n X base :=
+  fun hP hG => ptp_peak_exact_core P hP n X base hG
+
+/-- **The single-product peak on the scan board.** (`PTPPeakQubitsScan`.) -/
+theorem ptp_peak_qubits_scan (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :
+    PTPPeakQubitsScan P n X base :=
+  fun hP hG => ptp_peak_scan_core P hP n X base hG
+
+/-- **The peak against the `ptpQubits` formula** (scan board). (`PTPPeakLePtpQubitsAdd`.) -/
+theorem ptp_peak_le_ptpQubits_add (P : PTPPolicy) (n : ℕ) :
+    PTPPeakLePtpQubitsAdd P n :=
+  fun hP => ptp_peak_le_ptpQubits_add_core P hP n
 
 /-- **The acceptance rule, without the ladder.** (`PTPChainContractsTightIffReach`.) -/
 theorem ptp_chainContractsTight_iff_reach (P : PTPPolicy) (n : ℕ) :

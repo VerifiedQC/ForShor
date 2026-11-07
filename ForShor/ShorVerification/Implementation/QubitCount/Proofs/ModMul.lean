@@ -143,7 +143,8 @@ lemma mulWs_zExt {N : ℕ} {D' : ExtReg} (hs4 : CmpLtNWWorkspace N D' W S flag) 
 
 lemma step3_fact (N : ℕ) (hs4 : CmpLtNWWorkspace N (D.grow 1) W S flag)
     (h : MulSpace D W S flag ctrl L) :
-    SFact P pc (step3 N (D.grow 1) S flag) true L (L ∪ allocBits S 1) (L.card + (S.width + 2)) := by
+    SFact P pc (step3 N (D.grow 1) S flag) true L (L ∪ allocBits S 1)
+      (L.card + step3Peak P.negation S.width) := by
   have hSc := scratch_canGrow hs4
   have hbS : _root_.Disjoint (allocBits S 1) L :=
     Finset.disjoint_of_subset_left (allocBits_subset_reserve S 1) h.scratch_res.symm
@@ -157,27 +158,32 @@ lemma step3_fact (N : ℕ) (hs4 : CmpLtNWWorkspace N (D.grow 1) W S flag)
         (Finset.disjoint_of_subset_right (allocBits_subset_reserve S 1) h.data_scratch)⟩
   have hw2 := scratch_wide hs4
   have f1 : SFact P pc (.CmpGeConst N (D.grow 1) S flag) true L (L ∪ allocBits S 1)
-      (L.card + (S.width + 2)) :=
+      (L.card + (1 + max 2 (negationScratch P.negation S.width))) :=
     ⟨⟨h.data_live, h.scratch_live, h.flag_mem, hbD⟩, rfl,
-      by show (L ∪ allocBits S 1).card + max 2 (S.width + 1) = _; rw [hcard1]; omega⟩
+      by
+        show (L ∪ allocBits S 1).card + max 2 (negationScratch P.negation S.width) = _
+        rw [hcard1]; omega⟩
   have hU : (L ∪ allocBits S 1) ∪ allocBits S 1 = L ∪ allocBits S 1 := by
     rw [Finset.union_assoc, Finset.union_self]
   have f2 : SFact P pc (.CSubConst N (D.grow 1) S flag) true (L ∪ allocBits S 1) (L ∪ allocBits S 1)
-      (L.card + (S.width + 2)) :=
+      (L.card + (1 + negationScratch P.negation S.width)) :=
     ⟨⟨h.data_live.trans Finset.subset_union_left, h.scratch_live.trans Finset.subset_union_left,
       Finset.mem_union_left _ h.flag_mem⟩, hU, by
-        show ((L ∪ allocBits S 1) ∪ allocBits S 1).card + (S.width + 1) = _
+        show ((L ∪ allocBits S 1) ∪ allocBits S 1).card + negationScratch P.negation S.width = _
         rw [hU, hcard1]; omega⟩
-  exact (SFact.seq f1 f2).congr_peak (by simp)
+  refine (SFact.seq f1 f2).congr_peak ?_
+  have := one_le_negationScratch P.negation S.width
+  simp only [step3Peak]
+  omega
 
 /-- The Step-4 difference, forwards and backwards. -/
 lemma diff_facts (D' : ExtReg) (hcap : D'.CanGrow 1) (shift : ℕ)
     (hD' : regQubitSet D'.active ⊆ L) (hS : regQubitSet S.active ⊆ L)
     (hres : _root_.Disjoint L (regQubitSet D'.reserve)) :
     SFact P pc (Gate.zeroExtend D' 1 ;; Gate.Negate S ;; Gate.AddScaled S (D'.grow 1) false shift ;;
-        Gate.zeroDealloc D' 1) true L L (L.card + (S.width + 2)) ∧
+        Gate.zeroDealloc D' 1) true L L (L.card + (1 + negationScratch P.negation S.width)) ∧
     SFact P pc (Gate.zeroExtend D' 1 ;; Gate.Negate S ;; Gate.AddScaled S (D'.grow 1) false shift ;;
-        Gate.zeroDealloc D' 1) false L L (L.card + (S.width + 2)) := by
+        Gate.zeroDealloc D' 1) false L L (L.card + (1 + negationScratch P.negation S.width)) := by
   have hb : _root_.Disjoint (allocBits D' 1) L :=
     Finset.disjoint_of_subset_left (allocBits_subset_reserve D' 1) hres.symm
   have hcard : (L ∪ allocBits D' 1).card = L.card + 1 := by
@@ -186,11 +192,12 @@ lemma diff_facts (D' : ExtReg) (hcap : D'.CanGrow 1) (shift : ℕ)
   have hG : regQubitSet (D'.grow 1).active ⊆ L ∪ allocBits D' 1 := by
     rw [grow_active]; exact Finset.union_subset_union hD' le_rfl
   have fN : ∀ d, SFact P pc (Gate.Negate S) d (L ∪ allocBits D' 1) (L ∪ allocBits D' 1)
-      (L.card + (1 + (S.width + 1))) :=
+      (L.card + (1 + negationScratch P.negation S.width)) :=
     fun d => (SFact.Negate (P := P) (pc := pc) hS' d).congr_peak (by rw [hcard, Nat.add_assoc])
   have fA : ∀ d, SFact P pc (Gate.AddScaled S (D'.grow 1) false shift) d (L ∪ allocBits D' 1)
       (L ∪ allocBits D' 1) (L.card + (1 + 1)) :=
     fun d => (SFact.AddScaled (P := P) (pc := pc) hS' hG d).congr_peak (by rw [hcard])
+  have hn := one_le_negationScratch P.negation S.width
   constructor
   · have := SFact.seq (SFact.extend_fwd (P := P) (pc := pc) hb hcap rfl)
       (SFact.seq (fN true) (SFact.seq (fA true) (SFact.dealloc_fwd (P := P) (pc := pc) hb hcap rfl)))
@@ -204,7 +211,7 @@ lemma step4_fact (N : ℕ) (hs4 : CmpLtNWWorkspace N (D.grow 1) W S flag)
     SFact P pc (step4 N (D.grow 1) W S flag hs4) true (L ∪ allocBits S 1) L
       (L.card + max (Rec.qftPeak P S.width)
         (max (2 + pc (W.width + 1) (W.capacity - 1) (S.width + 1) (S.capacity - 1))
-          (S.width + 2))) := by
+          (1 + negationScratch P.negation S.width))) := by
   have hz := mulWs_zExt hs4
   have hxr : regQubitSet hs4.mulWorkspace.xReserve = regQubitSet W.reserve := by
     rw [hs4.mul_xReserve_eq]
@@ -260,16 +267,16 @@ lemma step5_fact (k5 N : ℕ) (hmod : ModMulCircuitWorkspaceOK D W) (h : MulSpac
   congr 1
   apply le_antisymm <;> simp only [max_le_iff, le_max_iff] <;> omega
 
-lemma core_max (p1 qW qD p2 s qS p4 p5 : ℕ) :
-    max (max (2 + p1) qW) (max (max qD (2 + p2)) (max s (max (max qS (max (2 + p4) s))
+lemma core_max (p1 qW qD p2 s3 qS p4 s4 p5 : ℕ) (h : s4 ≤ s3) :
+    max (max (2 + p1) qW) (max (max qD (2 + p2)) (max s3 (max (max qS (max (2 + p4) s4))
       (max (2 + p5) qW))))
-    = max (2 + p1) (max qW (max qD (max (2 + p2) (max s (max qS (max (2 + p4)
+    = max (2 + p1) (max qW (max qD (max (2 + p2) (max s3 (max qS (max (2 + p4)
       (max (2 + p5) 0))))))) := by
   apply le_antisymm
   · repeat' apply max_le
-    all_goals simp only [le_max_iff, le_refl, true_or, or_true]
+    all_goals omega
   · repeat' apply max_le
-    all_goals simp only [le_max_iff, le_refl, true_or, or_true, Nat.zero_le]
+    all_goals omega
 
 /-- One controlled modular multiplication returns to its start set, peaking
 `modMulPeak` above it. -/
@@ -287,7 +294,10 @@ theorem core_fact (c N : ℕ) (hmod : ModMulCircuitWorkspaceOK D W)
   refine this.congr_peak ?_
   simp only [Rec.modMulPeakWith, Rec.modMulPhasePeaksWith, List.foldr]
   congr 1
-  exact core_max _ _ _ _ _ _ _ _
+  exact core_max _ _ _ _ _ _ _ _ _ (by
+    have := one_le_negationScratch P.negation S.width
+    simp only [step3Peak]
+    omega)
 
 end Steps
 

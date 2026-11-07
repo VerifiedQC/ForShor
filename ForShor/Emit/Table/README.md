@@ -3,7 +3,7 @@
 The Toom-Cook table a bundle is built from: the `(ops, points)` view of a
 `Shor.ShorLoweringSetup` that the JSON value-table builders read. There is
 no op census here: per-op resource counts fall out of the extracted `Doc`
-(`Reflect/`, `IR/`) plus the repository's own `shorGateResourceModel`.
+(`Reflect/`, `IR/`) plus the repository's own resource model (`shorGateResourceModelFor m`: the model of the policy's negation method; the default method gives `shorGateResourceModel`).
 
 **There is one kind of table.** A table *is* a `Shor.ShorLoweringSetup`:
 `ops`, `pts`, and the four side conditions relating them. Anything that

@@ -10,8 +10,13 @@ import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Main  -- three
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Witness.RecursionWitness  -- its non-vacuity witness
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Witness.ExactFault          -- and its width fault witness
 import ForShor.ShorVerification.Framework.Policy                         -- policy submissions
+import ForShor.ShorVerification.Framework.Gatecount.PolicyModel          -- the model a policy is priced under (its negation method)
 import ForShor.ShorVerification.Implementation.PhaseProduct.Statement                  -- policy reserve model
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.PolicyWorkspace
 import ForShor.ShorVerification.Submission.Decide                        -- submission surface
 import ForShor.ShorVerification.Submission.Score
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Math.Table_Generation  -- table generator and its correctness proof
+import ForShor.ShorVerification.Implementation.QubitCount.Proofs.PolicyNumerals       -- peaks of the sister-repository policies, both negation methods (scan rule)
+import ForShor.ShorVerification.Submission.Policies.All                  -- the twelve sister-repository policies as Lean
+import ForShor.ShorVerification.Submission.Policies.Board.All           -- the six PhaseTripleProduct board policies
+import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Peak.BoardNumerals  -- and their single-product peaks, both methods

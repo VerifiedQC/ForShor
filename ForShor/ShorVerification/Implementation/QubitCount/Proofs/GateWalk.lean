@@ -49,14 +49,15 @@ def gAfter : Gate → Finset ℕ → Finset ℕ
     | some u => after u true L
     | none => L
 
-/-- Peak of a high-level gate, a phase product on `x` and `z` costing `ex x z`. -/
-def gPeak (ex : ExtReg → ExtReg → ℕ) : Gate → Finset ℕ → ℕ
+/-- Peak of a high-level gate, a phase product on `x` and `z` costing `ex x z`, the
+scratch charged by the negation method `m`. -/
+def gPeak (m : NegationMethod) (ex : ExtReg → ExtReg → ℕ) : Gate → Finset ℕ → ℕ
   | .id, L => L.card
-  | .seq U V, L => max (gPeak ex U L) (gPeak ex V (gAfter U L))
+  | .seq U V, L => max (gPeak m ex U L) (gPeak m ex V (gAfter U L))
   | .SignedPhaseProd _ x z, L => L.card + ex x z
   | .CSignedPhaseProd _ _ x z, L => L.card + ex x z
   | g, L => match gPrim g with
-    | some u => peak scratch u true L
+    | some u => peak (scratchFor m) u true L
     | none => L.card
 
 /-- A phase product at plan index `n` is ready to be counted from `L`: its
@@ -157,10 +158,10 @@ theorem touch_walk (L : Finset ℕ) :
   exact ⟨a, by rw [p, tmax_zero, Nat.add_zero], w⟩
 
 /-- A circuit that only acts on live qubits and charges no scratch. -/
-theorem touch_walk_quiet (L : Finset ℕ) (g : LowGate) (h : TouchIn L g)
-    (hq : tmax scratch g = 0) (d : Bool) :
-    after g d L = L ∧ peak scratch g d L = L.card ∧ WellFormed g d L := by
-  obtain ⟨a, p, w⟩ := touch_walk_anc scratch L g h d
+theorem touch_walk_quiet (m : NegationMethod) (L : Finset ℕ) (g : LowGate) (h : TouchIn L g)
+    (hq : tmax (scratchFor m) g = 0) (d : Bool) :
+    after g d L = L ∧ peak (scratchFor m) g d L = L.card ∧ WellFormed g d L := by
+  obtain ⟨a, p, w⟩ := touch_walk_anc (scratchFor m) L g h d
   exact ⟨a, by rw [p, hq, Nat.add_zero], w⟩
 
 lemma touchIn_sequence (L : Finset ℕ) :
@@ -182,19 +183,21 @@ lemma tmax_sequence (anc : LowGate → ℕ) :
       simp only [LowGate.sequence, tmax, h g (by simp), ih (fun u hu => h u (by simp [hu]))]
       rfl
 
-lemma tmax_CPhase (c t : ℕ) (θ : Angle) : tmax scratch (LowGate.CPhase c t θ) = 0 := by
+lemma tmax_CPhase (m : NegationMethod) (c t : ℕ) (θ : Angle) :
+    tmax (scratchFor m) (LowGate.CPhase c t θ) = 0 := by
   unfold LowGate.CPhase
   split <;> simp [tmax]
 
-lemma tmax_CCPhase (a b c : ℕ) (θ : Angle) : tmax scratch (LowGate.CCPhase a b c θ) = 0 := by
+lemma tmax_CCPhase (m : NegationMethod) (a b c : ℕ) (θ : Angle) :
+    tmax (scratchFor m) (LowGate.CCPhase a b c θ) = 0 := by
   unfold LowGate.CCPhase
   split
-  · exact tmax_CPhase _ _ _
+  · exact tmax_CPhase m _ _ _
   · split
-    · exact tmax_CPhase _ _ _
+    · exact tmax_CPhase m _ _ _
     · split
-      · exact tmax_CPhase _ _ _
-      · simp [tmax, tmax_CPhase]
+      · exact tmax_CPhase m _ _ _
+      · simp [tmax, tmax_CPhase m]
 
 lemma touchIn_CPhase {L : Finset ℕ} {c t : ℕ} (θ : Angle) (hc : c ∈ L) (ht : t ∈ L) :
     TouchIn L (LowGate.CPhase c t θ) := by
@@ -243,22 +246,22 @@ lemma touchIn_naive {L : Finset ℕ} (phi : Angle) {x z : ExtReg}
   exact touchIn_CPhase _ (hx (signedTerms_mem hxt)) (hz (signedTerms_mem hzt))
 
 /-- The base-case phase product charges no scratch. -/
-lemma tmax_naive (phi : Angle) (x z : ExtReg) :
-    tmax scratch (LowGate.Naive_SignedPhaseProd phi x z) = 0 := by
+lemma tmax_naive (m : NegationMethod) (phi : Angle) (x z : ExtReg) :
+    tmax (scratchFor m) (LowGate.Naive_SignedPhaseProd phi x z) = 0 := by
   apply tmax_sequence
   intro g hg
   simp only [LowGate.naiveSignedPhaseGates, List.mem_flatMap, List.mem_map] at hg
   obtain ⟨xt, _, zt, _, rfl⟩ := hg
-  exact tmax_CPhase _ _ _
+  exact tmax_CPhase m _ _ _
 
 /-- The controlled base case charges no scratch. -/
-lemma tmax_cnaive (ctrl : ℕ) (phi : Angle) (x z : ExtReg) :
-    tmax scratch (LowGate.Naive_CSignedPhaseProd ctrl phi x z) = 0 := by
+lemma tmax_cnaive (m : NegationMethod) (ctrl : ℕ) (phi : Angle) (x z : ExtReg) :
+    tmax (scratchFor m) (LowGate.Naive_CSignedPhaseProd ctrl phi x z) = 0 := by
   apply tmax_sequence
   intro g hg
   simp only [LowGate.naiveCSignedPhaseGates, List.mem_flatMap, List.mem_map] at hg
   obtain ⟨xt, _, zt, _, rfl⟩ := hg
-  exact tmax_CCPhase _ _ _ _
+  exact tmax_CCPhase m _ _ _ _
 
 /-- The controlled base case acts on its operands and its control only. -/
 lemma touchIn_cnaive {L : Finset ℕ} {ctrl : ℕ} (phi : Angle) {x z : ExtReg} (hc : ctrl ∈ L)

@@ -172,7 +172,7 @@ CLI-facing per-section, `template`, and `phases` builders.
   `Prog k` plus whatever options that section needs (`mMax`, `wMax`,
   `checkCramer`). `scheduleJson` holds `ops`/`points` only; per-op resource
   counts fall out of the extracted `Doc` plus the repository's own
-  `shorGateResourceModel`.
+  resource model (`shorGateResourceModelFor m` for the policy's negation method, `shorGateResourceModel` at the default `oneQubit`).
 - `provenanceJson : Json` — per-section text naming the Lean
   declaration each section evaluates, and whether it's a theorem (`table`)
   or "evaluated, not proved" (`coeff_poly`, `width`, `qft_plan`,

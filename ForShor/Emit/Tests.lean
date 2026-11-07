@@ -91,6 +91,56 @@ example :
 
 example : (smallJson.getObjVal? "resources").toOption.isSome := by native_decide
 
+-- 5b. The negation method (swap 002): every document names the method its resource figures are priced
+-- under, `oneQubit` unless asked, and the two methods charge a `Negate` differently. The closed forms are
+-- the ones in `Framework/Gatecount/ResourceModel.lean`, checked by the kernel (no compiled evaluator).
+example : negationMethodStr .oneQubit = "oneQubit" := rfl
+example : negationMethodStr .scratch = "scratch" := rfl
+
+-- `scratch` at width 8: x = 3w-4, cnot = 5w-7, toffoli = 2w-3, clean ancillas w+1 (the pre-swap charge).
+example : negateChargeAt .scratch 8 = { x := 20, cnot := 33, toffoli := 13, cleanAnc := 9 } := by decide +kernel
+-- `oneQubit` at width 8 (even): x = 5w-3, cnot = 17w-22, toffoli = 12w-28, one clean ancilla.
+example : negateChargeAt .oneQubit 8 = { x := 37, cnot := 114, toffoli := 68, cleanAnc := 1 } := by decide +kernel
+-- ... and at 9 (odd): x = 5w+1, cnot = 17w-5, toffoli = 10w-18.
+example : negateChargeAt .oneQubit 9 = { x := 46, cnot := 148, toffoli := 72, cleanAnc := 1 } := by decide +kernel
+example : negateChargeAt .scratch 9 = { x := 23, cnot := 38, toffoli := 15, cleanAnc := 10 } := by decide +kernel
+-- the benchmark width
+example : negateChargeAt .scratch 2048 =
+    { x := 6140, cnot := 10233, toffoli := 4093, cleanAnc := 2049 } := by decide +kernel
+example : negateChargeAt .oneQubit 2048 =
+    { x := 10237, cnot := 34794, toffoli := 24548, cleanAnc := 1 } := by decide +kernel
+example : negateChargeAt .scratch 2048 ≠ negateChargeAt .oneQubit 2048 := by decide +kernel
+
+-- The two methods emit different `negate` charges, and the emitted `negation` field and `resources` carry them.
+#eval show IO Unit from do
+  let one := emitProgram smallProgram (Json.mkObj [])
+  let scr := emitProgram smallProgram (Json.mkObj []) .scratch
+  let field (j : Json) (k : String) : String :=
+    match j.getObjVal? k with | .ok v => v.compress | .error _ => "<missing>"
+  unless field one "negation" == "\"oneQubit\"" do throw (IO.userError "default document is not oneQubit")
+  unless field scr "negation" == "\"scratch\"" do throw (IO.userError "scratch document is not scratch")
+  unless field one "resources" != field scr "resources" do
+    throw (IO.userError "the two methods emit the same resources")
+  unless field one "circuit" == field scr "circuit" do
+    throw (IO.userError "the method changed the circuit")
+  -- `gate_count` is priced under the document's own method: it is the total of its `resources`
+  let nat (j : Json) (k : String) : Nat := ((j.getObjVal? k).bind Json.getNat?).toOption.getD 0
+  let total (j : Json) : Nat := match j.getObjVal? "resources" with
+    | .ok r => ["h", "x", "cnot", "toffoli", "rz"].foldl (fun a k => a + nat r k) 0
+    | .error _ => 0
+  unless 0 < total one && nat one "gate_count" == total one do
+    throw (IO.userError "oneQubit gate_count is not the total of its resources")
+  unless 0 < total scr && nat scr "gate_count" == total scr do
+    throw (IO.userError "scratch gate_count is not the total of its resources")
+  -- the default document is priced exactly as `shorGateResourceModel` prices it
+  unless field one "resources" ==
+      (gateResourcesJson (LowGate.resources shorGateResourceModel smallProgram.circuit)).compress do
+    throw (IO.userError "default resources differ from shorGateResourceModel")
+  IO.println s!"negation anchors: oneQubit resources {field one "resources"}; scratch resources {field scr "resources"}"
+
+#eval (negateChargeJson .scratch).compress
+#eval (negateChargeJson .oneQubit).compress
+
 -- 6 is gone: it checked a second kind of table source at run time, and a
 -- table is now a `ShorLoweringSetup` whose own fields are those conditions.
 -- `r2_7c_setup` below is what exercises a non-canonical table, and it

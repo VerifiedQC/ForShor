@@ -25,7 +25,7 @@ theorem referencePeakFormula (P : ShorLoweringPolicy) (hP : P.Admissible)
     let dW := Reference.referenceDataWidth inst
     let wW := Reference.referenceWorkWidth inst m
     let sW := Reference.referenceScratchWidth inst m
-    (Reference.referenceShorCircuit P inst m).peakQubits
+    (Reference.referenceShorCircuit P inst m).peakQubitsFor P.negation
         (orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag)
       = Policy.orderFindingQubits P xW dW wW sW := by
   have h := referencePeakFormulaRec P hP inst m

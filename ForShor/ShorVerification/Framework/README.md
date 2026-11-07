@@ -30,8 +30,11 @@ So the trust boundary is: the class laws, and the cost model. Everything stated 
 
 **`Gatecount/`** — how a lowered circuit is priced.
 - `CostModel.lean`: `LowGateCostModel` and `gateCount`.
-- `ResourceModel.lean`: `shorGateResourceModel`, the concrete charges (Cuccaro adders for addition and negation, wiring for shifts and radix reversal), and the per-gate bounds the asymptotic theorems use.
+- `ResourceModel.lean`: `shorGateResourceModel`, the concrete charges (Cuccaro adders for addition, wiring for shifts and radix reversal, and a negation charged by the method chosen: `negateResourcesFor`), and the per-gate bounds the asymptotic theorems use. `shorGateResourceModel` is the model at the default method, `shorGateResourceModelFor m` the one at method `m`.
+- `PolicyModel.lean`: `ShorLoweringPolicy.resourceModel`, the model a policy is priced under, which is `shorGateResourceModelFor` of the policy's `negation`.
+
+**`NegationMethod.lean`** — how `Negate` is built, a per-policy option (`ShorLoweringPolicy.negation`, `ShorPolicySubmission.negation`). Both methods complement the register and then add one, and they differ in the increment. `oneQubit`, the default, uses Gidney's single-ancilla increment: one clean qubit, about 12·w Toffolis for a w-bit register. `scratch` uses a Cuccaro adder against a clean w-bit register of ones: w + 1 clean qubits, 2·w − 3 Toffolis. The gate and what it computes are the same; only the charge, and so the qubit count and the gate counts, differ.
 
 **`ToomCookTable.lean`** — what a submission is: a Toom-Cook table (an arithmetic program over limb registers and the interpolation points it evaluates at) and the four decidable conditions C1–C4 under which it is admissible, bundled as `ShorSubmission`. It imports only Mathlib, so the rules a submission must meet can be read on their own.
 
-**`Policy.lean`** — a policy, which is a list of tables indexed by operand width (`ShorLoweringPolicy`), when it is admissible, and `ShorPolicySubmission`. A single table is the one-band policy. It imports only `ToomCookTable.lean`.
+**`Policy.lean`** — a policy, which is a list of tables indexed by operand width (`ShorLoweringPolicy`), when it is admissible, and `ShorPolicySubmission`. A single table is the one-band policy. A policy also names its negation method (`negation`, default `oneQubit`). It imports only `ToomCookTable.lean` and `NegationMethod.lean`.

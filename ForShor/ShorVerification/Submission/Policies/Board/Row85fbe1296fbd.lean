@@ -1,0 +1,89 @@
+import ForShor.ShorVerification.Submission.Policies.Common
+
+/-!
+# Board row `85fbe1296fbd` (PhaseTripleProduct, n = 2048) as a `PTPPolicy`
+
+Board row `85fbe1296fbd` of the public results board: baseline policy `forshor_sub27` (single arity k = 3, the planner's best policy using only that arity); its table is the k = 3 target of `evaluation/engine/data/sto_archive/6f7d25984ff8f4db772a7449c097a6e16098f8be/operations.json`.
+The bands (thresholds, k, point orders, operation programs) are the `policyJson` of the row's panel in the v2 epoch input
+(`forshor-site-v2-page/infra/staging/seed-v2/epoch-input.json`, panels `.../policies/85fbe1296fbd/ptp-*.json`, identical at all four deltas);
+the programs are byte-identical to the archived tables named above (checked outside Lean).
+Ladder printed on the row: `2048:3 -> 687:3 -> 233:3 -> 82:leaf`; it is proved below to be this policy's exact-width ladder.
+
+Generated from the policy JSON of the sister repository's exported results by a script that is not part of this repository.
+The negation method is the default (`.oneQubit`); the policy states no override. No table of this policy contains a `negate`.
+-/
+
+namespace PolicySubmission.Policies.Board.Row85fbe1296fbd
+
+open Shor Operations
+
+/-- Table 0: k = 3, 7 points, 23 operations. -/
+abbrev t0K : ℕ := 3
+
+def t0Pts : List Point :=
+  [Point.int (-2), Point.int (-1), Point.frac 0, Point.int 2, Point.int 1, Point.int 0, Point.frac (2)]
+
+def t0Ops : Prog t0K :=
+  [ valid_ops.addScaled 0 1 true 1
+  , valid_ops.addScaled 1 0 false 0
+  , valid_ops.addScaled 0 2 false 2
+  , valid_ops.addScaled 1 2 false 0
+  , valid_ops.phaseProduct 0
+  , valid_ops.phaseProduct 1
+  , valid_ops.phaseProduct 2
+  , valid_ops.addScaled 0 1 true 1
+  , valid_ops.addScaled 1 2 true 2
+  , valid_ops.addScaled 2 0 true 0
+  , valid_ops.addScaled 1 2 true 0
+  , valid_ops.addScaled 2 1 true 0
+  , valid_ops.addScaled 0 2 false 1
+  , valid_ops.phaseProduct 0
+  , valid_ops.phaseProduct 2
+  , valid_ops.addScaled 0 1 false 1
+  , valid_ops.addScaled 1 2 false 1
+  , valid_ops.addScaled 2 1 false 0
+  , valid_ops.addScaled 2 0 false 0
+  , valid_ops.phaseProduct 0
+  , valid_ops.phaseProduct 2
+  , valid_ops.addScaled 2 1 true 1
+  , valid_ops.addScaled 1 0 true 1 ]
+
+theorem t0Hpts : t0Pts.length = PTP.pointCount t0K := by decide
+
+/-- Table 0 as a `PTPTable` (contract checked below). -/
+def tbl0 : PTP.PTPTable := ⟨t0K, t0Pts, t0Ops⟩
+
+/-- The policy: bands widest first. -/
+def policy : PTP.PTPPolicy where
+  bands := [⟨233, tbl0⟩]
+
+/-- The target width the threshold rule is checked from. -/
+def target : ℕ := 2048
+
+/-- The default negation method (nothing is overridden). -/
+theorem negation_default : policy.negation = .oneQubit := rfl
+
+/-- `PTPPolicy.check`: thresholds strictly decrease and every table passes the PTP contract. -/
+theorem check : policy.check = true := by decide +kernel
+
+/-- The exact-width threshold rule (`PTPPolicy.chainContractsTight`). -/
+theorem chain_exact : policy.chainContractsTight target = true := by decide +kernel
+
+/-- **Verdict**: both of the above (derived from them). -/
+theorem accepted : ptpAccepts policy target = true := by
+  simp [ptpAccepts, check, chain_exact]
+
+/-- The exact-width ladder of the policy from 2048 is the ladder printed on board row `85fbe1296fbd`: `2048:3 -> 687:3 -> 233:3 -> 82:leaf`. -/
+theorem ladder_exact : policy.ladderX target = [(2048, some 3), (687, some 3), (233, some 3), (82, none)] := by decide +kernel
+
+end PolicySubmission.Policies.Board.Row85fbe1296fbd
+
+open Shor.Audit
+
+#assert_axioms _root_.PolicySubmission.Policies.Board.Row85fbe1296fbd.t0Hpts
+#assert_axioms _root_.PolicySubmission.Policies.Board.Row85fbe1296fbd.negation_default
+#assert_axioms _root_.PolicySubmission.Policies.Board.Row85fbe1296fbd.check
+#assert_axioms _root_.PolicySubmission.Policies.Board.Row85fbe1296fbd.chain_exact
+#assert_axioms _root_.PolicySubmission.Policies.Board.Row85fbe1296fbd.accepted
+#assert_axioms _root_.PolicySubmission.Policies.Board.Row85fbe1296fbd.ladder_exact
+#assert_axioms _root_.PolicySubmission.Policies.Board.Row85fbe1296fbd.policy

@@ -73,6 +73,12 @@ lean_exe forshor_balanced_u where
 lean_lib «PolicyTests» where
   roots := #[`ForShor.ShorVerification.Submission.PolicyTests]
 
+-- Kernel-evaluated order-finding peaks of the sister-repository policies under the `exact` width rule.
+-- Each module peaks at 9-12 GB, so they are NOT in the `ForShor` umbrella: they form an import chain (one
+-- heavy evaluation at a time) and CI builds this library in a step of its own.
+lean_lib «PolicyNumeralsExact» where
+  roots := #[`ForShor.ShorVerification.Implementation.QubitCount.Proofs.PolicyNumeralsExact]
+
 -- Drop-in: exact-width worked instances and fault challenge (not part of PolicySubmission).
 lean_lib «ExactWidthTests» where
   roots := #[`ForShor.ShorVerification.Submission.ExactWidthTests]

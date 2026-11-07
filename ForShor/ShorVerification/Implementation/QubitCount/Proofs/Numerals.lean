@@ -4,13 +4,32 @@ import ForShor.ShorVerification.Implementation.QubitCount.Proofs.Formula
 # Qubit count: the 2048-bit numerals
 
 The reference widths for every 2048-bit modulus, the budget at those widths
-by kernel evaluation, and the claims.
+by kernel evaluation, and the claims, for both negation methods.
+
+The `oneQubit` numbers (`standardPolicy2`, the default) and the `scratch` numbers
+(`standardPolicy2S`, the same table with the register-wide-constant negation, the model
+that held before modular swap 001) agree for the plain circuit, whose peak is Step 4's
+phase product; they differ for the balanced circuit (`BalancedNumerals.lean`).
 -/
 
 namespace Shor
 
 /-- The standard table for `k = 2`, as a one-band policy. -/
 abbrev standardPolicy2 : ShorLoweringPolicy := standardPolicy 2 (by decide)
+
+/-- The standard table for `k = 2` under the negation method `m`. -/
+abbrev standardPolicy2For (m : NegationMethod) : ShorLoweringPolicy :=
+  standardPolicy2.withNegation m
+
+/-- The standard table for `k = 2` with the `scratch` negation (an adder against a
+register-wide constant): the pre-swap model. -/
+abbrev standardPolicy2S : ShorLoweringPolicy := standardPolicy2For .scratch
+
+theorem standardPolicy2For_admissible (m : NegationMethod) : (standardPolicy2For m).Admissible :=
+  ShorLoweringPolicy.withNegation_admissible (standardPolicy_admissible 2 (by decide)) m
+
+@[simp] theorem standardPolicy2For_negation (m : NegationMethod) :
+    (standardPolicy2For m).negation = m := rfl
 
 -- The `2 ^ 2048` literal trips the default `exponentiation.threshold` of 256.
 set_option exponentiation.threshold 4100 in
@@ -35,6 +54,25 @@ theorem orderFindingPeak_2048 {xW : ℕ} (hx : xW = 4095 ∨ xW = 4096) :
   rcases hx with rfl | rfl
   · exact orderFindingPeak_2048_4095
   · exact orderFindingPeak_2048_4096
+
+/-- The `scratch` method: the same 6,428 (Step 4's phase product dominates Step 3's
+4,400). -/
+theorem orderFindingPeak_2048_4096_scratch :
+    Policy.orderFindingPeak standardPolicy2S 4096 2048 2347 4398 = 6428 := by
+  decide +kernel
+
+theorem orderFindingPeak_2048_4095_scratch :
+    Policy.orderFindingPeak standardPolicy2S 4095 2048 2347 4398 = 6428 := by
+  decide +kernel
+
+/-- The plain budget at the 2048-bit widths, for either negation method. -/
+theorem orderFindingPeak_2048_for (m : NegationMethod) {xW : ℕ} (hx : xW = 4095 ∨ xW = 4096) :
+    Policy.orderFindingPeak (standardPolicy2For m) xW 2048 2347 4398 = 6428 := by
+  cases m
+  · exact orderFindingPeak_2048 hx
+  · rcases hx with rfl | rfl
+    · exact orderFindingPeak_2048_4095_scratch
+    · exact orderFindingPeak_2048_4096_scratch
 
 /-! ## The 2048-bit widths -/
 
@@ -98,10 +136,48 @@ lemma reference_widths_2048 {inst : ShorOrderFindingInstance} (hN : Is2048Bit in
 /-! ## The 2048-bit numbers -/
 
 /-- For every 2048-bit modulus, the reference circuit from the standard `k = 2`
-table at `m2048` has registers data 2048, work 2347 and scratch 4398, an exponent
-register of 4095 or 4096 qubits, and peaks, scratch included, at 19,319 qubits with
-4096 exponent qubits and 19,318 with 4095; from an empty start it never exceeds
-19,319. -/
+table at `m2048`, under the negation method `m`, has registers data 2048, work 2347
+and scratch 4398, an exponent register of 4095 or 4096 qubits, and peaks, scratch
+included, at 19,319 qubits with 4096 exponent qubits and 19,318 with 4095; from an
+empty start it never exceeds 19,319. The same for both methods: the peak is Step 4's
+phase product. -/
+theorem reference2048Peak_for (m : NegationMethod) (inst : ShorOrderFindingInstance)
+    (hN : Is2048Bit inst.N) :
+    let layout := Reference.allocateReferenceLayout (standardPolicy2For m) inst Reference.m2048
+    let L0 := orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag
+    let g := Reference.referenceShorCircuit (standardPolicy2For m) inst Reference.m2048
+    Reference.referenceDataWidth inst = 2048 ∧
+    Reference.referenceWorkWidth inst Reference.m2048 = 2347 ∧
+    Reference.referenceScratchWidth inst Reference.m2048 = 4398 ∧
+    (Reference.referenceXWidth inst = 4095 ∨ Reference.referenceXWidth inst = 4096) ∧
+    (Reference.referenceXWidth inst = 4096 → g.peakQubitsFor m L0 = 19319) ∧
+    (Reference.referenceXWidth inst = 4095 → g.peakQubitsFor m L0 = 19318) ∧
+    g.peakQubitsFor m ∅ ≤ 19319 := by
+  dsimp only
+  obtain ⟨hd, hw, hs, hx⟩ := reference_widths_2048 hN
+  have hp := referencePeakFormula (standardPolicy2For m) (standardPolicy2For_admissible m) inst
+    Reference.m2048
+  dsimp only at hp
+  rw [Policy.orderFindingQubits, hd, hw, hs, orderFindingPeak_2048_for m hx] at hp
+  have hbase : Reference.referenceXWidth inst + (2048 + 1) + 2347 + 4398 + 1
+      = Reference.referenceXWidth inst + 8795 := by
+    omega
+  rw [hbase] at hp
+  have hmono := (mono (scratchFor m)
+    (Reference.referenceShorCircuit (standardPolicy2For m) inst Reference.m2048)
+    true (Finset.empty_subset (orderFindingBaseSet
+      (Reference.allocateReferenceLayout (standardPolicy2For m) inst Reference.m2048).x
+      (Reference.allocateReferenceLayout (standardPolicy2For m) inst Reference.m2048).data
+      (Reference.allocateReferenceLayout (standardPolicy2For m) inst Reference.m2048).work
+      (Reference.allocateReferenceLayout (standardPolicy2For m) inst Reference.m2048).scratch
+      (Reference.allocateReferenceLayout (standardPolicy2For m) inst Reference.m2048).flag))).2
+  simp only [LowGate.peakQubitsFor, standardPolicy2For_negation] at hp hmono ⊢
+  refine ⟨hd, hw, hs, hx, fun h => by rw [hp, h], fun h => by rw [hp, h], ?_⟩
+  omega
+
+/-- For every 2048-bit modulus, the reference circuit of `reference2048Peak_for` under the
+default (`oneQubit`) method: peak, scratch included, at 19,319 qubits with 4096 exponent
+qubits and 19,318 with 4095; from an empty start it never exceeds 19,319. -/
 theorem reference2048Peak (inst : ShorOrderFindingInstance) (hN : Is2048Bit inst.N) :
     let layout := Reference.allocateReferenceLayout standardPolicy2 inst Reference.m2048
     let L0 := orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag
@@ -112,35 +188,32 @@ theorem reference2048Peak (inst : ShorOrderFindingInstance) (hN : Is2048Bit inst
     (Reference.referenceXWidth inst = 4095 ∨ Reference.referenceXWidth inst = 4096) ∧
     (Reference.referenceXWidth inst = 4096 → g.peakQubits L0 = 19319) ∧
     (Reference.referenceXWidth inst = 4095 → g.peakQubits L0 = 19318) ∧
-    g.peakQubits ∅ ≤ 19319 := by
-  dsimp only
-  obtain ⟨hd, hw, hs, hx⟩ := reference_widths_2048 hN
-  have hp := referencePeakFormula standardPolicy2
-    (standardPolicy_admissible 2 (by decide)) inst Reference.m2048
-  dsimp only at hp
-  rw [Policy.orderFindingQubits, hd, hw, hs, orderFindingPeak_2048 hx] at hp
-  have hbase : Reference.referenceXWidth inst + (2048 + 1) + 2347 + 4398 + 1
-      = Reference.referenceXWidth inst + 8795 := by
-    omega
-  rw [hbase] at hp
-  have hmono := (mono scratch (Reference.referenceShorCircuit standardPolicy2 inst Reference.m2048)
-    true (Finset.empty_subset (orderFindingBaseSet
-      (Reference.allocateReferenceLayout standardPolicy2 inst Reference.m2048).x
-      (Reference.allocateReferenceLayout standardPolicy2 inst Reference.m2048).data
-      (Reference.allocateReferenceLayout standardPolicy2 inst Reference.m2048).work
-      (Reference.allocateReferenceLayout standardPolicy2 inst Reference.m2048).scratch
-      (Reference.allocateReferenceLayout standardPolicy2 inst Reference.m2048).flag))).2
-  simp only [LowGate.peakQubits] at hp hmono ⊢
-  refine ⟨hd, hw, hs, hx, fun h => by rw [hp, h], fun h => by rw [hp, h], ?_⟩
-  omega
+    g.peakQubits ∅ ≤ 19319 :=
+  reference2048Peak_for .oneQubit inst hN
+
+/-- The same for the `scratch` method (the model before swap 001): 19,319 / 19,318. -/
+theorem reference2048Peak_scratch (inst : ShorOrderFindingInstance) (hN : Is2048Bit inst.N) :
+    let layout := Reference.allocateReferenceLayout standardPolicy2S inst Reference.m2048
+    let L0 := orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag
+    let g := Reference.referenceShorCircuit standardPolicy2S inst Reference.m2048
+    Reference.referenceDataWidth inst = 2048 ∧
+    Reference.referenceWorkWidth inst Reference.m2048 = 2347 ∧
+    Reference.referenceScratchWidth inst Reference.m2048 = 4398 ∧
+    (Reference.referenceXWidth inst = 4095 ∨ Reference.referenceXWidth inst = 4096) ∧
+    (Reference.referenceXWidth inst = 4096 → g.peakQubitsFor .scratch L0 = 19319) ∧
+    (Reference.referenceXWidth inst = 4095 → g.peakQubitsFor .scratch L0 = 19318) ∧
+    g.peakQubitsFor .scratch ∅ ≤ 19319 :=
+  reference2048Peak_for .scratch inst hN
 
 -- The `2 ^ 4097` bounds trip the default `exponentiation.threshold` of 256.
 set_option exponentiation.threshold 4200 in
-/-- For `N = 2²⁰⁴⁸ − 1` the peak, scratch included, is exactly 19,319 qubits. -/
-theorem reference2048PeakExample :
-    let layout := Reference.allocateReferenceLayout standardPolicy2 instance2048 Reference.m2048
-    (Reference.referenceShorCircuit standardPolicy2 instance2048 Reference.m2048).peakQubits
-        (orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag)
+/-- For `N = 2²⁰⁴⁸ − 1` the peak, scratch included, is exactly 19,319 qubits, under
+either negation method. -/
+theorem reference2048PeakExample_for (m : NegationMethod) :
+    let layout := Reference.allocateReferenceLayout (standardPolicy2For m) instance2048
+      Reference.m2048
+    (Reference.referenceShorCircuit (standardPolicy2For m) instance2048 Reference.m2048).peakQubitsFor
+        m (orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag)
       = 19319 := by
   have hN : Is2048Bit instance2048.N := by
     show 2 ^ 2047 ≤ 2 ^ 2048 - 1 ∧ 2 ^ 2048 - 1 < 2 ^ 2048
@@ -149,7 +222,15 @@ theorem reference2048PeakExample :
     show Nat.log2 (2 * (2 ^ 2048 - 1) ^ 2) = 4096
     rw [Nat.log2_eq_log_two]
     apply Nat.log_eq_of_pow_le_of_lt_pow <;> norm_num
-  exact (reference2048Peak instance2048 hN).2.2.2.2.1 hx
+  exact (reference2048Peak_for m instance2048 hN).2.2.2.2.1 hx
+
+/-- For `N = 2²⁰⁴⁸ − 1` the peak, scratch included, is exactly 19,319 qubits. -/
+theorem reference2048PeakExample :
+    let layout := Reference.allocateReferenceLayout standardPolicy2 instance2048 Reference.m2048
+    (Reference.referenceShorCircuit standardPolicy2 instance2048 Reference.m2048).peakQubits
+        (orderFindingBaseSet layout.x layout.data layout.work layout.scratch layout.flag)
+      = 19319 :=
+  reference2048PeakExample_for .oneQubit
 
 end QubitCount
 end Shor

@@ -27,6 +27,12 @@ and then one thing more, once:
 |---|---|
 | `policy` | the bands as `(threshold, setup)` pairs, widest first, with `sorted := by decide` |
 
+plus, optionally, one option on the policy:
+
+| | what it chooses |
+|---|---|
+| `negation` | how a negation is built and priced: `.oneQubit` (the default, 1 clean qubit, about `10 w` to `12 w` Toffolis (`10 w - 18` for odd `w`, `12 w - 28` for even) for a `w`-bit register) or `.scratch` (`w + 1` clean qubits, `2 w - 3` Toffolis) |
+
 Then run
 
 ```bash
@@ -51,6 +57,23 @@ leaf when a table does not shrink (`ShorLoweringPolicy.Stops`), so a
 non-shrinking band is a performance problem, not a soundness one.
 `Policy.bandShrinks` in [`PolicyDecide.lean`](PolicyDecide.lean) is offered as
 an advisory check for exactly that, and `policy.json` reports it per band.
+
+## The `negation` option
+
+Every table that negates a register (`valid_ops.negate`) and every width the recursion reaches builds
+that negation by one of two methods, chosen once for the whole policy with `negation := …` next to the
+bands, in the same way `widthRule := .exact` is:
+
+* `.oneQubit` (the default if the field is left out): Gidney's single-ancilla increment, one extra clean
+  qubit, about `10 w` to `12 w` Toffolis (`10 w - 18` for odd `w`, `12 w - 28` for even) for a `w`-bit register;
+* `.scratch`: a Cuccaro adder against a clean register of ones as wide as the operand, `w + 1` clean
+  qubits and `2 w - 3` Toffolis.
+
+It is a qubit against T-count choice and nothing else: the tables, their proofs C1–C4, `sorted` and the
+correctness certificate are the same either way, and the IR is the same. `policy.json` prints the
+method as `negation` and the per-method charge as `negate_charge`, so the resource estimate is made
+under the method the policy names. Nothing here fixes which is better; that depends on the widths
+and on how the score weighs qubits against gates.
 
 ## The policy shipped here
 
@@ -174,9 +197,13 @@ def band1 : ShorLoweringSetup where
 
 /-- **Edit me.** The bands, widest first, each with the smallest operand
 width it covers. `sorted` is the one obligation a policy adds on top of its
-bands' own C1–C4, and `decide` closes it. -/
+bands' own C1–C4, and `decide` closes it. `negation` chooses how a negation is built and priced, see
+"The `negation` option" above. -/
 def policy : ShorPolicySubmission where
   bands := [(40, band0), (14, band1)]
   sorted := by decide
+  /- **Edit me, or delete the line.** `.oneQubit` is the default: 1 clean qubit per negation, about
+     `10 w` to `12 w` Toffolis. `.scratch`: `w + 1` clean qubits, `2 w - 3` Toffolis. -/
+  negation := .oneQubit
 
 end PolicySubmission
