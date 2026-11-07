@@ -5,6 +5,8 @@ import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Control
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Unbalanced
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Asymptotic
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.QubitsTight
+import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Peak.Peak
+import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Peak.Numerals
 
 /-!
 # PhaseTripleProduct Main Theorems
@@ -69,6 +71,28 @@ theorem ptp_qubits_tight_exact (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) 
 theorem ptp_qubits_le_ptpQubits (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :
     PTPQubitsLePtpQubits P n X base :=
   fun hP hG => ptp_qubits_le_ptpQubits_core P hP n X base hG
+
+/-- **The single-product peak** for any admissible width rule: a circuit following `P` whose framework qubit
+count (`LowGate.qubitCount P.resourceModel`, under the policy's negation method) is at most
+`3 n + ptpWsTD P wd n + ptpCleanAncD P wd n`. (`PTPPeakQubits`.) -/
+theorem ptp_peak_qubits (P : PTPPolicy) (wd : WidthRule) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :
+    PTPPeakQubits P wd n X base :=
+  fun hP hwd hG => ptp_peak_core P hP wd hwd n X base hG
+
+/-- **The single-product peak on the exact board.** (`PTPPeakQubitsExact`.) -/
+theorem ptp_peak_qubits_exact (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :
+    PTPPeakQubitsExact P n X base :=
+  fun hP hG => ptp_peak_exact_core P hP n X base hG
+
+/-- **The single-product peak on the scan board.** (`PTPPeakQubitsScan`.) -/
+theorem ptp_peak_qubits_scan (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) :
+    PTPPeakQubitsScan P n X base :=
+  fun hP hG => ptp_peak_scan_core P hP n X base hG
+
+/-- **The peak against the `ptpQubits` formula** (scan board). (`PTPPeakLePtpQubitsAdd`.) -/
+theorem ptp_peak_le_ptpQubits_add (P : PTPPolicy) (n : ℕ) :
+    PTPPeakLePtpQubitsAdd P n :=
+  fun hP => ptp_peak_le_ptpQubits_add_core P hP n
 
 /-- **The acceptance rule, without the ladder.** (`PTPChainContractsTightIffReach`.) -/
 theorem ptp_chainContractsTight_iff_reach (P : PTPPolicy) (n : ℕ) :
