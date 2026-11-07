@@ -538,7 +538,9 @@ termination_by n
 per-operand reserves, peak clean scratch, where the sandwich leaves' two ancillas
 (`ptpNode_qubits_le`) are needed only while a leaf runs, so they share the scratch
 peak: `max (ptpCleanAnc) 2`. The scratch is the one of the policy's negation method
-(`ptpCleanAnc`: `1` for `oneQubit`, up to `C + 1` for `scratch`). -/
+(`ptpCleanAnc`: `1` for `oneQubit`, up to `C + 1` for `scratch`). It bounds the qubits the circuit names
+(`PTPQubitsLePtpQubits`), not the framework's `LowGate.qubitCount`, which holds the leaf ancillas and the scratch
+at once; for that, see `ptpPeakQubits` and `PTPPeakQubits`. -/
 def ptpQubits (P : PTPPolicy) (n : ℕ) : ℕ :=
   3 * n + 3 * ptpReserveNeed P n + max (ptpCleanAnc P n) 2
 
@@ -996,7 +998,7 @@ def PTPCircuitGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] [LowerGate
 with node widths `wd` (existential: not tied to the circuit of `PTPLowerExactCorrect`) that touches at most `3 n + ptpWsTD P wd n` qubits, which is at most the
 `ptpQubits`-shaped bound `3 n + 3 ptpReserveNeedD + max ptpCleanAncD 2`. This counts the qubits
 the gates name (`LowGate.usedQubits`), not the framework's `qubitCount`, which adds the scratch
-`cleanAnc`. (`Main.lean`: `ptp_qubits_tight`.) -/
+`cleanAnc`; that total is `PTPPeakQubits`. (`Main.lean`: `ptp_qubits_tight`.) -/
 def PTPQubitsTight (P : PTPPolicy) (wd : WidthRule) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) : Prop :=
   P.check = true → Admissible P wd → Good X n base →
     ∃ (W : List ℕ) (G : Angle → LowGate), PolicyImplD P wd X n W G ∧
@@ -1018,6 +1020,60 @@ def PTPQubitsLePtpQubits (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base 
   P.check = true → Good X n base →
     ∃ (W : List ℕ) (G : Angle → LowGate), PolicyImpl P X n W G ∧
       ∀ φ, (LowGate.usedQubits (G φ)).card ≤ ptpQubits P n
+
+/-- The scan widths as a width rule: a node's children get `childWidth n T.ops`. (Proofs call it `scanRule`;
+they are the same function.) -/
+abbrev ptpScanWidth : WidthRule := fun T n => childWidth n T.ops
+
+/-- **The single-product peak**: `3 n` for the three operand registers, `ptpWsTD` for the workspace qubits
+the circuit names (the shared pool), and `ptpCleanAncD` for the clean scratch the resource model holds on top
+of the named qubits (`1` under `oneQubit`, `C + 1` at the widest negating node under `scratch`). It is the
+bound `PTPPeakQubits` proves on the framework's own `LowGate.qubitCount`. -/
+def ptpPeakQubits (P : PTPPolicy) (wd : WidthRule) (n : ℕ) : ℕ :=
+  3 * n + ptpWsTD P wd n + ptpCleanAncD P wd n
+
+/-- **Claim (the single-product peak, any admissible width rule).** There is a circuit following `P` with node
+widths `wd` whose framework qubit count `LowGate.qubitCount P.resourceModel` (the distinct qubits the gates name
+plus the peak clean scratch, in the policy's own resource model, so under its negation method `P.negation`) is at
+most `ptpPeakQubits P wd n = 3 n + ptpWsTD P wd n + ptpCleanAncD P wd n`. The two summands are bounded
+separately, and both bounds are part of the claim: the named qubits by `3 n + ptpWsTD P wd n`, the scratch by
+`ptpCleanAncD P wd n`. The claim is existential, like `PTPQubitsTight`: some circuit following the policy,
+the one the construction builds, not every one; and an upper bound, not an equality. Unlike `ptpQubits` it is not
+a bound shape of the form `max (ptpCleanAnc) 2` (the sandwich leaves' two ancillas are named qubits, so they count
+in `ptpWsTD`, not in the scratch). (`Main.lean`: `ptp_peak_qubits`.) -/
+def PTPPeakQubits (P : PTPPolicy) (wd : WidthRule) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) : Prop :=
+  P.check = true → Admissible P wd → Good X n base →
+    ∃ (W : List ℕ) (G : Angle → LowGate), PolicyImplD P wd X n W G ∧
+      ∀ φ, (LowGate.usedQubits (G φ)).card ≤ 3 * n + ptpWsTD P wd n ∧
+        (LowGate.resources P.resourceModel (G φ)).cleanAnc ≤ ptpCleanAncD P wd n ∧
+        LowGate.qubitCount P.resourceModel (G φ) ≤ ptpPeakQubits P wd n
+
+/-- **Claim (the single-product peak, exact board).** As `PTPPeakQubits` at the exact rule (`PolicyImplX`, the
+family `PTPLowerExactCorrect` is about), with no admissibility hypothesis. (`Main.lean`: `ptp_peak_qubits_exact`.) -/
+def PTPPeakQubitsExact (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) : Prop :=
+  P.check = true → Good X n base →
+    ∃ (W : List ℕ) (G : Angle → LowGate), PolicyImplX P X n W G ∧
+      ∀ φ, (LowGate.usedQubits (G φ)).card ≤ 3 * n + ptpWsTD P exactRule n ∧
+        (LowGate.resources P.resourceModel (G φ)).cleanAnc ≤ ptpCleanAncD P exactRule n ∧
+        LowGate.qubitCount P.resourceModel (G φ) ≤ ptpPeakQubits P exactRule n
+
+/-- **Claim (the single-product peak, scan board).** As `PTPPeakQubits` at the scan rule
+(`PolicyImpl`), with no admissibility hypothesis; here `ptpWsTD` and `ptpCleanAncD` are at the scan rule.
+(`Main.lean`: `ptp_peak_qubits_scan`.) -/
+def PTPPeakQubitsScan (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) : Prop :=
+  P.check = true → Good X n base →
+    ∃ (W : List ℕ) (G : Angle → LowGate), PolicyImpl P X n W G ∧
+      ∀ φ, (LowGate.usedQubits (G φ)).card ≤ 3 * n + ptpWsTD P ptpScanWidth n ∧
+        (LowGate.resources P.resourceModel (G φ)).cleanAnc ≤ ptpCleanAnc P n ∧
+        LowGate.qubitCount P.resourceModel (G φ) ≤ ptpPeakQubits P ptpScanWidth n
+
+/-- **Claim (the peak against the `ptpQubits` formula, scan board).** For a checked policy,
+`ptpPeakQubits P ptpScanWidth n ≤ ptpQubits P n + ptpCleanAnc P n`: the peak exceeds the formula
+`ptpQubits` (`3 n + 3 ptpReserveNeed + max (ptpCleanAnc) 2`) by at most the scratch. It is a comparison of two
+numbers, not a bound on a circuit; `ptpQubits` itself does not bound `qubitCount` (it counts the leaf ancillas
+and the scratch as one `max`). (`Main.lean`: `ptp_peak_le_ptpQubits_add`.) -/
+def PTPPeakLePtpQubitsAdd (P : PTPPolicy) (n : ℕ) : Prop :=
+  P.check = true → ptpPeakQubits P ptpScanWidth n ≤ ptpQubits P n + ptpCleanAnc P n
 
 /-- **Claim (the acceptance rule, without the ladder).** `chainContractsTight P n` holds iff every
 table chosen at every width the exact recursion from `n` reaches has `k ≤ m` and strictly shrinks

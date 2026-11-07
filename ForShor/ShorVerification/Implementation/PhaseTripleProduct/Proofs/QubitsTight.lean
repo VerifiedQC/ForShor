@@ -20,12 +20,13 @@ an *interval* `[base, base + ptpWorkspace)` whose slot blocks are spaced `C'` ap
   formula, previously unproved, is a proved **upper bound** on the number of distinct qubits the
   circuit names (`LowGate.usedQubits`).
 
-**What is not bounded.** The framework's qubit total is `usedQubits + resources.cleanAnc`
-(`LowGate.qubitCount`); the Cuccaro/negation scratch counted in `cleanAnc` is *not* part of these
-bounds. It is bounded separately: `PolicyImplD.cleanAnc_le` (`ExactBoard/ExactRecursion.lean`) says that the
-`cleanAnc` of every gate-level recursion, in the policy's own resource model `P.resourceModel`, is at most
-`ptpCleanAncD P wd n` (`1` under `oneQubit`, `C + 1` at the widest negating node under `scratch`), so that
-`qubitCount ≤ 3 n + ptpWsTD P wd n + ptpCleanAncD P wd n`; this file does not state that sum.
+**What these bounds do not include.** The framework's qubit total is `usedQubits + resources.cleanAnc`
+(`LowGate.qubitCount`); the Cuccaro/negation scratch counted in `cleanAnc` is not part of the bounds in this file.
+It is bounded by `PolicyImplD.cleanAnc_le` (`ExactBoard/ExactRecursion.lean`): the `cleanAnc` of every gate-level
+recursion, in the policy's own resource model `P.resourceModel`, is at most `ptpCleanAncD P wd n` (`1` under
+`oneQubit`, `C + 1` at the widest negating node under `scratch`). The two are combined in `Proofs/Peak/Peak.lean`
+(claim `PTPPeakQubits`): `qubitCount ≤ 3 n + ptpWsTD P wd n + ptpCleanAncD P wd n`.
+
 The formula is also loose by up to a factor `k` per level below depth one:
 `ptpReserveNeed` gives every child slot a private workspace, while the construction shares one pool.
 -/
