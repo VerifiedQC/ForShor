@@ -16,3 +16,7 @@ import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Compiler.Poli
 import ForShor.ShorVerification.Submission.Decide                        -- submission surface
 import ForShor.ShorVerification.Submission.Score
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Math.Table_Generation  -- table generator and its correctness proof
+import ForShor.ShorVerification.Implementation.QubitCount.Proofs.PolicyNumerals       -- peaks of the sister-repository policies, both negation methods (scan rule)
+import ForShor.ShorVerification.Submission.Policies.All                  -- the twelve sister-repository policies as Lean
+import ForShor.ShorVerification.Submission.Policies.Board.All           -- the six PhaseTripleProduct board policies
+import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Peak.BoardNumerals  -- and their single-product peaks, both methods

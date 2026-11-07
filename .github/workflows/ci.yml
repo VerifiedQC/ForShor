@@ -72,6 +72,19 @@ jobs:
             exit 1
           fi
 
+      - name: Build exact-width policy numerals
+        # Kernel evaluations of the order-finding peaks under the `exact` width rule. Each module peaks at
+        # 9-12 GB, so they are a library of their own (not in the `ForShor` umbrella), chained by import so that
+        # Lake builds one at a time, and built here, after the main build, alone on the runner.
+        run: |
+          set -o pipefail
+          lake build PolicyNumeralsExact 2>&1 | tee exact.log
+          if grep -q "warning:" exact.log; then
+            echo "::error::exact-width numerals produced warnings:"
+            grep "warning:" exact.log
+            exit 1
+          fi
+
       - name: Build executables
         # No executable is reachable from the library targets --
         # Emit/Tests.lean does not import Emit/Main.lean, Submission/Check.lean
