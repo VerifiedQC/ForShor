@@ -43,6 +43,10 @@ open Shor.Audit
 #assert_axioms Shor.PTP.ptp_qubits_tight
 #assert_axioms Shor.PTP.ptp_qubits_tight_exact
 #assert_axioms Shor.PTP.ptp_qubits_le_ptpQubits
+#assert_axioms Shor.PTP.ptp_peak_qubits
+#assert_axioms Shor.PTP.ptp_peak_qubits_exact
+#assert_axioms Shor.PTP.ptp_peak_qubits_scan
+#assert_axioms Shor.PTP.ptp_peak_le_ptpQubits_add
 #assert_axioms Shor.PTP.ptp_chainContractsTight_iff_reach
 #assert_axioms Shor.PTP.Instances.ExactFault.gate_fault_wrong
 

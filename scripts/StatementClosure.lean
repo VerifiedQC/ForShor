@@ -27,6 +27,8 @@ def claimRoots : List Name := [
   `Shor.PTP.PTPPadLowerExactCorrect, `Shor.PTP.PTPPadExactCensus,
   `Shor.PTP.PTPGateTotalBound, `Shor.PTP.PTPCircuitGateCountBound,
   `Shor.PTP.PTPQubitsTight, `Shor.PTP.PTPQubitsTightExact, `Shor.PTP.PTPQubitsLePtpQubits,
+  `Shor.PTP.PTPPeakQubits, `Shor.PTP.PTPPeakQubitsExact, `Shor.PTP.PTPPeakQubitsScan,
+  `Shor.PTP.PTPPeakLePtpQubitsAdd,
   `Shor.PTP.PTPChainContractsTightIffReach]
 
 /-- The `Statement` module whose claims these are. -/
