@@ -121,8 +121,17 @@ example : negateChargeAt .scratch 2048 ≠ negateChargeAt .oneQubit 2048 := by d
   unless field scr "negation" == "\"scratch\"" do throw (IO.userError "scratch document is not scratch")
   unless field one "resources" != field scr "resources" do
     throw (IO.userError "the two methods emit the same resources")
-  unless field one "gate_count" == field scr "gate_count" do
-    throw (IO.userError "the method changed the circuit's gate count")
+  unless field one "circuit" == field scr "circuit" do
+    throw (IO.userError "the method changed the circuit")
+  -- `gate_count` is priced under the document's own method: it is the total of its `resources`
+  let nat (j : Json) (k : String) : Nat := ((j.getObjVal? k).bind Json.getNat?).toOption.getD 0
+  let total (j : Json) : Nat := match j.getObjVal? "resources" with
+    | .ok r => ["h", "x", "cnot", "toffoli", "rz"].foldl (fun a k => a + nat r k) 0
+    | .error _ => 0
+  unless 0 < total one && nat one "gate_count" == total one do
+    throw (IO.userError "oneQubit gate_count is not the total of its resources")
+  unless 0 < total scr && nat scr "gate_count" == total scr do
+    throw (IO.userError "scratch gate_count is not the total of its resources")
   -- the default document is priced exactly as `shorGateResourceModel` prices it
   unless field one "resources" ==
       (gateResourcesJson (LowGate.resources shorGateResourceModel smallProgram.circuit)).compress do

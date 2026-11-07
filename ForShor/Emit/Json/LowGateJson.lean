@@ -79,9 +79,10 @@ partial def lowGateJson : LowGate → Json
 
 /-- Document wrapper: a submitted program plus caller-supplied metadata.
 
-`m` is the negation method the resource figures (`qubit_count`, `resources`) are priced under
+`m` is the negation method the resource figures (`gate_count`, `qubit_count`, `resources`) are priced under
 (`shorGateResourceModelFor m`; for the default `oneQubit` that is `shorGateResourceModel`); it is printed as
-`"negation"`. The circuit itself, and `gate_count`, do not depend on it. -/
+`"negation"`. The circuit itself does not depend on it; `gate_count` does, because it is the total of the
+resources priced under the same method (`(shorGateResourceModelFor m).toCostModel`). -/
 def emitProgram (P : ShorOrderFindingProgram) (metaJson : Json)
     (m : NegationMethod := .oneQubit) : Json :=
   Json.mkObj [
@@ -89,7 +90,7 @@ def emitProgram (P : ShorOrderFindingProgram) (metaJson : Json)
     ("bit_order", Json.str "lsb_first"),
     ("angle_unit", Json.str "pi"),
     ("output_register", regJson P.output),
-    ("gate_count", (LowGate.gateCount shorGateCostModel P.circuit : Json)),
+    ("gate_count", (LowGate.gateCount (shorGateResourceModelFor m).toCostModel P.circuit : Json)),
     ("negation", negationMethodJson m),
     ("qubit_count", (LowGate.qubitCount (shorGateResourceModelFor m) P.circuit : Json)),
     ("max_qubit_index", (((LowGate.usedQubits P.circuit).sup id : ℕ) : Json)),
@@ -107,7 +108,7 @@ def emitLowGateDoc (g : LowGate) (metaJson : Json) (m : NegationMethod := .oneQu
     ("schema", Json.str "forshor.lowgate/v2"),
     ("bit_order", Json.str "lsb_first"),
     ("angle_unit", Json.str "pi"),
-    ("gate_count", (LowGate.gateCount shorGateCostModel g : Json)),
+    ("gate_count", (LowGate.gateCount (shorGateResourceModelFor m).toCostModel g : Json)),
     ("negation", negationMethodJson m),
     ("qubit_count", (LowGate.qubitCount (shorGateResourceModelFor m) g : Json)),
     ("max_qubit_index", (((LowGate.usedQubits g).sup id : ℕ) : Json)),

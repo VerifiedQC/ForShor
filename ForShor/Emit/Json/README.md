@@ -42,10 +42,11 @@ it.
 - `emitProgram (P : ShorOrderFindingProgram) (metaJson) (m : NegationMethod := .oneQubit) : Json` — the
   `forshor.lowgate/v2` document for a full submitted program (`shor`'s
   document): `schema, bit_order, angle_unit, output_register, gate_count,
-  negation, qubit_count, max_qubit_index, resources, circuit, meta`. `qubit_count`
+  negation, qubit_count, max_qubit_index, resources, circuit, meta`. `gate_count`, `qubit_count`
   and `resources` are priced under `shorGateResourceModelFor m` and `negation`
   names `m` (always printed; the default is `"oneQubit"`, whose figures are those of
-  `shorGateResourceModel`). The circuit and `gate_count` do not depend on `m`.
+  `shorGateResourceModel`). The circuit does not depend on `m`; `gate_count` (the total of `resources` other than `cleanAnc`) and the
+  resources do.
 - `emitLowGateDoc (g : LowGate) (metaJson) (m : NegationMethod := .oneQubit) : Json` — the same envelope and
   schema, minus `output_register`, for a bare `LowGate` term that has no
   single distinguished output register (`pp`/`cpp`/`qft --flat`'s

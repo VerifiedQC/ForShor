@@ -1,5 +1,6 @@
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Peak.Peak
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Witness.RecursionWitness
+import ForShor.ShorVerification.Submission.Policies.RefPtp2048
 
 /-!
 # Kernel-checked single-product peaks, both negation methods
@@ -11,8 +12,9 @@ Two concrete policies, each costed under `oneQubit` (the default) and under `scr
 * `Ref2048.policy`: the golden reference phase-triple-product policy for 2048 bits, four bands (thresholds
   2048, 398, 122, 66; `k = 6, 4, 2, 2`), whose exact-width ladder from 2048 is
   `2048, 375, 189, 96, 50` with a schoolbook leaf at 50. The tables are copied here (from
-  `policies/ref_ptp_2048.json`, as generated for `Submission/Policies/RefPtp2048.lean`), so this file does not
-  depend on the submission files; they are data, and any slip in the copy would make `check` fail, not the numerals.
+  `policies/ref_ptp_2048.json`, as generated for `Submission/Policies/RefPtp2048.lean`). The copy is tied to
+  that file: `Ref2048.policy_eq_submission` proves the two `PTPPolicy` values equal, so the numbers below are
+  those of the shipped reference policy and cannot drift from it.
 
 For each, `ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD` (`Statement.lean`) is evaluated by the kernel
 (`decide +kernel`) at both width rules, next to `ptpQubits` (the formula the optimisation board reports as
@@ -249,6 +251,10 @@ def policyNeg : PTPPolicy where
   bands := [⟨2048, tblNeg⟩, ⟨398, tbl1⟩, ⟨122, tbl2⟩, ⟨66, tbl2⟩]
 
 theorem checkNeg : policyNeg.check = true := by decide +kernel
+
+/-- The policy above is the shipped one: `Submission/Policies/RefPtp2048.lean` (the sister repository's
+`ref_ptp_2048.json`), value for value. -/
+theorem policy_eq_submission : policy = PolicySubmission.Policies.RefPtp2048.policy := rfl
 
 end Ref2048
 

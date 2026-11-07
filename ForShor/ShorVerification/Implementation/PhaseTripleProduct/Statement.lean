@@ -521,8 +521,9 @@ termination_by n
 largest number of clean qubits the resource model `P.resourceModel` holds at once in one node of the recursion
 (`nodeCleanAncFor`). A node with no addition and no negation holds none; one with only additions holds one (the
 Cuccaro carry); one with a negation holds `negateCleanAncFor P.negation C`, where `C` is the node's working width.
-So for `oneQubit` (complement plus a single-ancilla increment) the peak is `1`, and for `scratch` (a clean
-constant-one register plus the Cuccaro carry) it is `C + 1` at the widest node that negates. The sandwich leaves
+So when some node adds or negates, the peak for `oneQubit` (complement plus a single-ancilla increment) is `1`, and
+for `scratch` (a clean constant-one register plus the Cuccaro carry) it is `C + 1` at the widest node that negates;
+when no node does either it is `0`. The sandwich leaves
 hold none: their two ancillas are explicit qubits, not model scratch. -/
 def ptpCleanAnc (P : PTPPolicy) (n : ℕ) : ℕ :=
   match P.choose n with
@@ -1015,7 +1016,11 @@ def PTPQubitsTightExact (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base :
         ptpWsTD P exactRule n ≤ ptpWorkspaceX P n
 
 /-- **Claim (`ptpQubits` is an upper bound, scan board).** There is a circuit following `P` at the
-scan widths touching at most `ptpQubits P n` qubits. (`Main.lean`: `ptp_qubits_le_ptpQubits`.) -/
+scan widths touching at most `ptpQubits P n` qubits. (`Main.lean`: `ptp_qubits_le_ptpQubits`.)
+Note: `ptpQubits` charges the policy's own clean scratch (`ptpCleanAnc`). Under the default `oneQubit` method that is
+the one-qubit increment's `1`, not the `C + 1` the pre-swap model charged, so `ptpQubits` figures for a policy
+with a node are smaller than those computed before the negation swap. It bounds the qubits the circuit names, not
+the framework's `qubitCount`: see `PTPPeakQubits` for that. -/
 def PTPQubitsLePtpQubits (P : PTPPolicy) (n : ℕ) (X : Fin 3 → ExtReg) (base : ℕ) : Prop :=
   P.check = true → Good X n base →
     ∃ (W : List ℕ) (G : Angle → LowGate), PolicyImpl P X n W G ∧

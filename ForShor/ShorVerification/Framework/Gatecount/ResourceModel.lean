@@ -228,7 +228,8 @@ for each `w` from 7 to 1600 and at 2048, 2049, 4096 and 4398):
 
 and valid upper bounds below `w = 7`. (The post's "32 n" is the total of
 Toffoli, CNOT and NOT gates, not of Toffolis: a negation here has `34 w`.)
-That circuit is not built in Lean. Like every primitive here, the counts are a
+That circuit is not built in Lean (it and its simulation are the Qualtran-side bloq `GidneyIncrement`, outside
+this repository), so the exactness claims above are not checked by this repository. Like every primitive here, the counts are a
 stated convention, not a proved decomposition: they say that a circuit of this
 shape exists, which a Python/Qualtran build (outside this repository) checks.
 Alternatives recorded in `ForShor_modular_swaps/swap-001_negation_incrementer`.

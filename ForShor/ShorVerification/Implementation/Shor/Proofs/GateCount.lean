@@ -2858,9 +2858,10 @@ theorem shorGateCountBoundFor_iff_pricedBy (qs : QSemantics) [RegEncoding qs.Bas
       ↔ ShorGateCountBoundPricedBy (shorGateResourceModelFor nm).toCostModel qs ε k hk ops pts hpts :=
   Iff.rfl
 
-/-- **The gate-count bound for a policy.** Whatever negation method the policy `P` carries, the order-finding
-circuit lowered from a table satisfying the program conditions has `O(n^(2+ε))` gates when priced by
-`P.resourceModel`. -/
+/-- **The gate-count bound, priced under a policy's negation method.** The circuit counted is the one lowered
+from the constant table `(k, ops, pts)` (as in `ShorGateCountBound`); `P` supplies only the cost model
+`P.resourceModel.toCostModel`, so its bands and width rule play no part. Whatever negation method `P` carries,
+that circuit has `O(n^(2+ε))` gates when priced so. -/
 theorem shorGateCountBound_resourceModel
     (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ) (k : ℕ) (hk : 1 < k)
     (hExponent : phaseProductExponent k ≤ 1 + ε)

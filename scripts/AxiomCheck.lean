@@ -47,6 +47,17 @@ open Shor.Audit
 #assert_axioms Shor.PTP.ptp_peak_qubits_exact
 #assert_axioms Shor.PTP.ptp_peak_qubits_scan
 #assert_axioms Shor.PTP.ptp_peak_le_ptpQubits_add
+
+-- The qubit peaks, for both negation methods, and the gate-count bound priced by a policy's model.
+#assert_axioms Shor.QubitCount.reference2048Peak
+#assert_axioms Shor.QubitCount.reference2048Peak_scratch
+#assert_axioms Shor.QubitCount.reference2048PeakBalanced
+#assert_axioms Shor.QubitCount.reference2048PeakBalanced_scratch
+#assert_axioms Shor.QubitCount.balancedOrderFindingPeak_2048
+#assert_axioms Shor.QubitCount.balancedOrderFindingPeak_2048_scratch
+#assert_axioms Shor.QubitCount.reference2048Peak_policy
+#assert_axioms Shor.QubitCount.reference2048PeakBalanced_policy
+#assert_axioms Shor.shorGateCountBound_resourceModel
 #assert_axioms Shor.PTP.ptp_chainContractsTight_iff_reach
 #assert_axioms Shor.PTP.Instances.ExactFault.gate_fault_wrong
 

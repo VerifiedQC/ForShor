@@ -31,7 +31,7 @@ plus, optionally, one option on the policy:
 
 | | what it chooses |
 |---|---|
-| `negation` | how a negation is built and priced: `.oneQubit` (the default, 1 clean qubit, about `12 w` Toffolis for a `w`-bit register) or `.scratch` (`w + 1` clean qubits, `2 w - 3` Toffolis) |
+| `negation` | how a negation is built and priced: `.oneQubit` (the default, 1 clean qubit, about `10 w` to `12 w` Toffolis (`10 w - 18` for odd `w`, `12 w - 28` for even) for a `w`-bit register) or `.scratch` (`w + 1` clean qubits, `2 w - 3` Toffolis) |
 
 Then run
 
@@ -65,7 +65,7 @@ that negation by one of two methods, chosen once for the whole policy with `nega
 bands, in the same way `widthRule := .exact` is:
 
 * `.oneQubit` (the default if the field is left out): Gidney's single-ancilla increment, one extra clean
-  qubit, about `12 w` Toffolis for a `w`-bit register;
+  qubit, about `10 w` to `12 w` Toffolis (`10 w - 18` for odd `w`, `12 w - 28` for even) for a `w`-bit register;
 * `.scratch`: a Cuccaro adder against a clean register of ones as wide as the operand, `w + 1` clean
   qubits and `2 w - 3` Toffolis.
 
@@ -203,7 +203,7 @@ def policy : ShorPolicySubmission where
   bands := [(40, band0), (14, band1)]
   sorted := by decide
   /- **Edit me, or delete the line.** `.oneQubit` is the default: 1 clean qubit per negation, about
-     `12 w` Toffolis. `.scratch`: `w + 1` clean qubits, `2 w - 3` Toffolis. -/
+     `10 w` to `12 w` Toffolis. `.scratch`: `w + 1` clean qubits, `2 w - 3` Toffolis. -/
   negation := .oneQubit
 
 end PolicySubmission
