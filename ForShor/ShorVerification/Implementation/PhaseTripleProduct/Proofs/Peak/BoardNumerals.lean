@@ -10,18 +10,20 @@ import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Peak.Bo
 
 One file per board row under `BoardNumerals/`; each states, for `oneQubit` and `scratch` and for the scan and exact width rules,
 `ptpWsTD`, `ptpCleanAncD` and `ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD` (all by `decide +kernel`), and the headline instances
-of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`. The board's width rule is `exact`. No table of these policies negates, so the
-two methods coincide. Peak (exact rule), the board's `qubits` (a live-qubit peak formula, one less everywhere: it lets the single
-clean scratch share a qubit with the leaf's two ancillas, the Lean count adds it):
+of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`. Those headlines are upper bounds on the framework's `qubitCount` of
+some circuit that follows the policy (the claims are existential, as `PTPQubitsTight` is), not equalities. The board's width rule is
+`exact`. No table of these policies negates, so the two methods coincide.
 
-| row | policy | ladder | Lean peak (exact) | board Q | Lean peak (scan) |
-|---|---|---|---|---|---|
-| 82eaf805f71c | forshor_sub1 | 2048:4 -> 522:4 -> 142:leaf | 6405 | 6404 | 6660 |
-| 6f7d25984ff8 | forshor_sub2 | 2048:8 -> 292:4 -> 80:leaf | 7095 | 7094 | 12351 |
-| 85fbe1296fbd | forshor_sub27 | 2048:3 -> 687:3 -> 233:3 -> 82:leaf | 6261 | 6260 | 6540 |
-| 265a0f53acbc | forshor_sub28 | 2048:4 -> 519:4 -> 139:leaf | 6342 | 6341 | 6852 |
-| 2ed7dc90d130 | forshor_sub29 | 2048:5 -> 425:5 -> 98:leaf | 6573 | 6572 | 8238 |
-| c733baf3cd08 | forshor_sub30 | 2048:6 -> 359:6 -> 80:leaf | 6828 | 6827 | 9750 |
+| row | policy | ladder | peak (exact) | peak (scan) |
+|---|---|---|---|---|
+| 82eaf805f71c | forshor_sub1 | 2048:4 -> 522:4 -> 142:leaf | 6405 | 6660 |
+| 6f7d25984ff8 | forshor_sub2 | 2048:8 -> 292:4 -> 80:leaf | 7095 | 12351 |
+| 85fbe1296fbd | forshor_sub27 | 2048:3 -> 687:3 -> 233:3 -> 82:leaf | 6261 | 6540 |
+| 265a0f53acbc | forshor_sub28 | 2048:4 -> 519:4 -> 139:leaf | 6342 | 6852 |
+| 2ed7dc90d130 | forshor_sub29 | 2048:5 -> 425:5 -> 98:leaf | 6573 | 8238 |
+| c733baf3cd08 | forshor_sub30 | 2048:6 -> 359:6 -> 80:leaf | 6828 | 9750 |
+
+The theorems below are about the Lean policies; each is tied to its board row by the `ladder_exact` theorem in its file.
 -/
 
 namespace Shor.PTP.Peak.Board

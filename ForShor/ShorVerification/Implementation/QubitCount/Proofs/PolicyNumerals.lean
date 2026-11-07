@@ -19,15 +19,15 @@ circuit lowered by the policy peaks at `xW + 8795 + N` qubits (`xW` the exponent
 `PolicyNumerals/Basic.lean`; the numerals `N` are closed by the kernel (`decide +kernel`) in the
 per-policy files, one `numerals_scan` declaration each.
 
-The `exact` width rule (the benchmark mode) needs 9 to 12 GB of memory per module, too much for a
-CI runner, so its modules are not imported here: they are the roots of
-`Proofs/PolicyNumeralsExact.lean`, built on demand. `threshold_degenerate_pp` has no `exact`
+The `exact` width rule (the benchmark mode) needs 9 to 12 GB of memory per module, too much for the parallel
+`ForShor` build, so its modules are not imported here: they are the roots of `Proofs/PolicyNumeralsExact.lean`, a
+library of its own that CI builds in a step of its own. `threshold_degenerate_pp` has no `exact`
 module at all (its kernel evaluation takes over five minutes).
 
 The balanced statement carries no hypothesis on the allocator's spare capacities: the reference
 layout holds every site's plan, so the balanced count is the width-only count
 (`reference2048PeakBalanced_policyU`).
 
-The two `faulty_*` policies are negative controls (no peak theorem) and the `*_ptp` policies have
+Several of these policies are rejection controls of the sister repositories' acceptance rule (`threshold_declared_pp`, `threshold_degenerate_pp` and `threshold_noshrink_pp` are rejected, `threshold_scanonly_pp` is accepted only under the `exact` rule: see `Submission/Policies/`); ForShor itself admits them, so they are costed here as circuits, not certified. The two `faulty_*` policies are negative controls (no peak theorem) and the `*_ptp` policies have
 no order-finding budget here (the phase-triple-product counts are the PTP files').
 -/

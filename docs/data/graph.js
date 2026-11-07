@@ -14492,16 +14492,16 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "theorem",
-     "line": 30,
+     "line": 32,
      "name": "Shor.PTP.Peak.Board.exact_peaks_oneQubit"
     },
     {
      "kind": "theorem",
-     "line": 40,
+     "line": 42,
      "name": "Shor.PTP.Peak.Board.exact_peaks_scratch"
     }
    ],
-   "docstring": "# The six PhaseTripleProduct board policies: kernel-checked single-product peaks (`n = 2048`)\n\nOne file per board row under `BoardNumerals/`; each states, for `oneQubit` and `scratch` and for the scan and exact width rules,\n`ptpWsTD`, `ptpCleanAncD` and `ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD` (all by `decide +kernel`), and the headline instances\nof `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`. The board's width rule is `exact`. No table of these policies negates, so the\ntwo methods coincide. Peak (exact rule), the board's `qubits` (a live-qubit peak formula, one less everywhere: it lets the single\nclean scratch share a qubit with the leaf's two ancillas, the Lean count adds it):\n\n| row | policy | ladder | Lean peak (exact) | board Q | Lean peak (scan) |\n|---|---|---|---|---|---|\n| 82eaf805f71c | forshor_sub1 | 2048:4 -> 522:4 -> 142:leaf | 6405 | 6404 | 6660 |\n| 6f7d25984ff8 | forshor_sub2 | 2048:8 -> 292:4 -> 80:leaf | 7095 | 7094 | 12351 |\n| 85fbe1296fbd | forshor_sub27 | 2048:3 -> 687:3 -> 233:3 -> 82:leaf | 6261 | 6260 | 6540 |\n| 265a0f53acbc | forshor_sub28 | 2048:4 -> 519:4 -> 139:leaf | 6342 | 6341 | 6852 |\n| 2ed7dc90d130 | forshor_sub29 | 2048:5 -> 425:5 -> 98:leaf | 6573 | 6572 | 8238 |\n| c733baf3cd08 | forshor_sub30 | 2048:6 -> 359:6 -> 80:leaf | 6828 | 6827 | 9750 |",
+   "docstring": "# The six PhaseTripleProduct board policies: kernel-checked single-product peaks (`n = 2048`)\n\nOne file per board row under `BoardNumerals/`; each states, for `oneQubit` and `scratch` and for the scan and exact width rules,\n`ptpWsTD`, `ptpCleanAncD` and `ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD` (all by `decide +kernel`), and the headline instances\nof `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`. Those headlines are upper bounds on the framework's `qubitCount` of\nsome circuit that follows the policy (the claims are existential, as `PTPQubitsTight` is), not equalities. The board's width rule is\n`exact`. No table of these policies negates, so the two methods coincide.\n\n| row | policy | ladder | peak (exact) | peak (scan) |\n|---|---|---|---|---|\n| 82eaf805f71c | forshor_sub1 | 2048:4 -> 522:4 -> 142:leaf | 6405 | 6660 |\n| 6f7d25984ff8 | forshor_sub2 | 2048:8 -> 292:4 -> 80:leaf | 7095 | 12351 |\n| 85fbe1296fbd | forshor_sub27 | 2048:3 -> 687:3 -> 233:3 -> 82:leaf | 6261 | 6540 |\n| 265a0f53acbc | forshor_sub28 | 2048:4 -> 519:4 -> 139:leaf | 6342 | 6852 |\n| 2ed7dc90d130 | forshor_sub29 | 2048:5 -> 425:5 -> 98:leaf | 6573 | 8238 |\n| c733baf3cd08 | forshor_sub30 | 2048:6 -> 359:6 -> 80:leaf | 6828 | 9750 |\n\nThe theorems below are about the Lean policies; each is tied to its board row by the `ladder_exact` theorem in its file.",
    "fsPath": "Implementation/PhaseTripleProduct/Proofs/Peak/BoardNumerals.lean",
    "importedBy": [],
    "imports": [
@@ -14513,7 +14513,7 @@ window.GRAPH = {
     "PhaseTripleProduct/Proofs/Peak/BoardNumerals/Rowc733baf3cd08.lean"
    ],
    "kind": "file",
-   "lines": 54,
+   "lines": 56,
    "name": "BoardNumerals.lean",
    "path": "PhaseTripleProduct/Proofs/Peak/BoardNumerals.lean"
   },
@@ -14521,71 +14521,71 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "theorem",
-     "line": 19,
+     "line": 18,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.no_negate"
     },
     {
      "kind": "theorem",
-     "line": 23,
+     "line": 22,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.board_ladder"
     },
     {
      "kind": "theorem",
-     "line": 27,
+     "line": 26,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.oneQubit_exact"
     },
     {
      "kind": "theorem",
-     "line": 33,
+     "line": 32,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.oneQubit_scan"
     },
     {
      "kind": "theorem",
-     "line": 39,
+     "line": 38,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.oneQubit_ptpQubits"
     },
     {
      "kind": "theorem",
-     "line": 42,
+     "line": 41,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.scratch_exact"
     },
     {
      "kind": "theorem",
-     "line": 48,
+     "line": 47,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.scratch_scan"
     },
     {
      "kind": "theorem",
-     "line": 54,
+     "line": 53,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.scratch_ptpQubits"
     },
     {
      "kind": "theorem",
-     "line": 57,
+     "line": 56,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.methods_agree"
     },
     {
      "kind": "theorem",
-     "line": 64,
+     "line": 63,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.peak_oneQubit_exact"
     },
     {
      "kind": "theorem",
-     "line": 75,
+     "line": 74,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.peak_oneQubit_scan"
     },
     {
      "kind": "theorem",
-     "line": 86,
+     "line": 85,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.peak_scratch_exact"
     },
     {
      "kind": "theorem",
-     "line": 97,
+     "line": 96,
      "name": "Shor.PTP.Peak.Board.Row265a0f53acbc.peak_scratch_scan"
     }
    ],
-   "docstring": "# Kernel-checked single-product peak of board row `265a0f53acbc` (`forshor_sub28`, ladder `2048:4 -> 519:4 -> 139:leaf`)\n\n`PolicySubmission.Policies.Board.Row265a0f53acbc.policy` at `n = 2048`, both negation methods and both width rules: `ptpWsTD`, `ptpCleanAncD` and\n`ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD`, each by `decide +kernel`, plus the `ptpQubits` formula; and the\nheadline instances of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`: some circuit following the policy has\nframework `qubitCount` at most the stated number. The board's own rule is the exact one. Generated by `gen_numerals.py`\n(swap-002 shard S5c).",
+   "docstring": "# Kernel-checked single-product peak of board row `265a0f53acbc` (`forshor_sub28`, ladder `2048:4 -> 519:4 -> 139:leaf`)\n\n`PolicySubmission.Policies.Board.Row265a0f53acbc.policy` at `n = 2048`, both negation methods and both width rules: `ptpWsTD`, `ptpCleanAncD` and\n`ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD`, each by `decide +kernel`, plus the `ptpQubits` formula; and the\nheadline instances of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`: some circuit following the policy has\nframework `qubitCount` at most the stated number. The board's own rule is the exact one. Generated by a script that is not part of this repository.",
    "fsPath": "Implementation/PhaseTripleProduct/Proofs/Peak/BoardNumerals/Row265a0f53acbc.lean",
    "importedBy": [
     "PhaseTripleProduct/Proofs/Peak/BoardNumerals.lean"
@@ -14594,7 +14594,7 @@ window.GRAPH = {
     "PhaseTripleProduct/Main.lean"
    ],
    "kind": "file",
-   "lines": 122,
+   "lines": 121,
    "name": "Row265a0f53acbc.lean",
    "path": "PhaseTripleProduct/Proofs/Peak/BoardNumerals/Row265a0f53acbc.lean"
   },
@@ -14602,71 +14602,71 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "theorem",
-     "line": 19,
+     "line": 18,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.no_negate"
     },
     {
      "kind": "theorem",
-     "line": 23,
+     "line": 22,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.board_ladder"
     },
     {
      "kind": "theorem",
-     "line": 27,
+     "line": 26,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.oneQubit_exact"
     },
     {
      "kind": "theorem",
-     "line": 33,
+     "line": 32,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.oneQubit_scan"
     },
     {
      "kind": "theorem",
-     "line": 39,
+     "line": 38,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.oneQubit_ptpQubits"
     },
     {
      "kind": "theorem",
-     "line": 42,
+     "line": 41,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.scratch_exact"
     },
     {
      "kind": "theorem",
-     "line": 48,
+     "line": 47,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.scratch_scan"
     },
     {
      "kind": "theorem",
-     "line": 54,
+     "line": 53,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.scratch_ptpQubits"
     },
     {
      "kind": "theorem",
-     "line": 57,
+     "line": 56,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.methods_agree"
     },
     {
      "kind": "theorem",
-     "line": 64,
+     "line": 63,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.peak_oneQubit_exact"
     },
     {
      "kind": "theorem",
-     "line": 75,
+     "line": 74,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.peak_oneQubit_scan"
     },
     {
      "kind": "theorem",
-     "line": 86,
+     "line": 85,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.peak_scratch_exact"
     },
     {
      "kind": "theorem",
-     "line": 97,
+     "line": 96,
      "name": "Shor.PTP.Peak.Board.Row2ed7dc90d130.peak_scratch_scan"
     }
    ],
-   "docstring": "# Kernel-checked single-product peak of board row `2ed7dc90d130` (`forshor_sub29`, ladder `2048:5 -> 425:5 -> 98:leaf`)\n\n`PolicySubmission.Policies.Board.Row2ed7dc90d130.policy` at `n = 2048`, both negation methods and both width rules: `ptpWsTD`, `ptpCleanAncD` and\n`ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD`, each by `decide +kernel`, plus the `ptpQubits` formula; and the\nheadline instances of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`: some circuit following the policy has\nframework `qubitCount` at most the stated number. The board's own rule is the exact one. Generated by `gen_numerals.py`\n(swap-002 shard S5c).",
+   "docstring": "# Kernel-checked single-product peak of board row `2ed7dc90d130` (`forshor_sub29`, ladder `2048:5 -> 425:5 -> 98:leaf`)\n\n`PolicySubmission.Policies.Board.Row2ed7dc90d130.policy` at `n = 2048`, both negation methods and both width rules: `ptpWsTD`, `ptpCleanAncD` and\n`ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD`, each by `decide +kernel`, plus the `ptpQubits` formula; and the\nheadline instances of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`: some circuit following the policy has\nframework `qubitCount` at most the stated number. The board's own rule is the exact one. Generated by a script that is not part of this repository.",
    "fsPath": "Implementation/PhaseTripleProduct/Proofs/Peak/BoardNumerals/Row2ed7dc90d130.lean",
    "importedBy": [
     "PhaseTripleProduct/Proofs/Peak/BoardNumerals.lean"
@@ -14675,7 +14675,7 @@ window.GRAPH = {
     "PhaseTripleProduct/Main.lean"
    ],
    "kind": "file",
-   "lines": 122,
+   "lines": 121,
    "name": "Row2ed7dc90d130.lean",
    "path": "PhaseTripleProduct/Proofs/Peak/BoardNumerals/Row2ed7dc90d130.lean"
   },
@@ -14683,71 +14683,71 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "theorem",
-     "line": 19,
+     "line": 18,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.no_negate"
     },
     {
      "kind": "theorem",
-     "line": 23,
+     "line": 22,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.board_ladder"
     },
     {
      "kind": "theorem",
-     "line": 27,
+     "line": 26,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.oneQubit_exact"
     },
     {
      "kind": "theorem",
-     "line": 33,
+     "line": 32,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.oneQubit_scan"
     },
     {
      "kind": "theorem",
-     "line": 39,
+     "line": 38,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.oneQubit_ptpQubits"
     },
     {
      "kind": "theorem",
-     "line": 42,
+     "line": 41,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.scratch_exact"
     },
     {
      "kind": "theorem",
-     "line": 48,
+     "line": 47,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.scratch_scan"
     },
     {
      "kind": "theorem",
-     "line": 54,
+     "line": 53,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.scratch_ptpQubits"
     },
     {
      "kind": "theorem",
-     "line": 57,
+     "line": 56,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.methods_agree"
     },
     {
      "kind": "theorem",
-     "line": 64,
+     "line": 63,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.peak_oneQubit_exact"
     },
     {
      "kind": "theorem",
-     "line": 75,
+     "line": 74,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.peak_oneQubit_scan"
     },
     {
      "kind": "theorem",
-     "line": 86,
+     "line": 85,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.peak_scratch_exact"
     },
     {
      "kind": "theorem",
-     "line": 97,
+     "line": 96,
      "name": "Shor.PTP.Peak.Board.Row6f7d25984ff8.peak_scratch_scan"
     }
    ],
-   "docstring": "# Kernel-checked single-product peak of board row `6f7d25984ff8` (`forshor_sub2`, ladder `2048:8 -> 292:4 -> 80:leaf`)\n\n`PolicySubmission.Policies.Board.Row6f7d25984ff8.policy` at `n = 2048`, both negation methods and both width rules: `ptpWsTD`, `ptpCleanAncD` and\n`ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD`, each by `decide +kernel`, plus the `ptpQubits` formula; and the\nheadline instances of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`: some circuit following the policy has\nframework `qubitCount` at most the stated number. The board's own rule is the exact one. Generated by `gen_numerals.py`\n(swap-002 shard S5c).",
+   "docstring": "# Kernel-checked single-product peak of board row `6f7d25984ff8` (`forshor_sub2`, ladder `2048:8 -> 292:4 -> 80:leaf`)\n\n`PolicySubmission.Policies.Board.Row6f7d25984ff8.policy` at `n = 2048`, both negation methods and both width rules: `ptpWsTD`, `ptpCleanAncD` and\n`ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD`, each by `decide +kernel`, plus the `ptpQubits` formula; and the\nheadline instances of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`: some circuit following the policy has\nframework `qubitCount` at most the stated number. The board's own rule is the exact one. Generated by a script that is not part of this repository.",
    "fsPath": "Implementation/PhaseTripleProduct/Proofs/Peak/BoardNumerals/Row6f7d25984ff8.lean",
    "importedBy": [
     "PhaseTripleProduct/Proofs/Peak/BoardNumerals.lean"
@@ -14756,7 +14756,7 @@ window.GRAPH = {
     "PhaseTripleProduct/Main.lean"
    ],
    "kind": "file",
-   "lines": 122,
+   "lines": 121,
    "name": "Row6f7d25984ff8.lean",
    "path": "PhaseTripleProduct/Proofs/Peak/BoardNumerals/Row6f7d25984ff8.lean"
   },
@@ -14764,71 +14764,71 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "theorem",
-     "line": 19,
+     "line": 18,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.no_negate"
     },
     {
      "kind": "theorem",
-     "line": 23,
+     "line": 22,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.board_ladder"
     },
     {
      "kind": "theorem",
-     "line": 27,
+     "line": 26,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.oneQubit_exact"
     },
     {
      "kind": "theorem",
-     "line": 33,
+     "line": 32,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.oneQubit_scan"
     },
     {
      "kind": "theorem",
-     "line": 39,
+     "line": 38,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.oneQubit_ptpQubits"
     },
     {
      "kind": "theorem",
-     "line": 42,
+     "line": 41,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.scratch_exact"
     },
     {
      "kind": "theorem",
-     "line": 48,
+     "line": 47,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.scratch_scan"
     },
     {
      "kind": "theorem",
-     "line": 54,
+     "line": 53,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.scratch_ptpQubits"
     },
     {
      "kind": "theorem",
-     "line": 57,
+     "line": 56,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.methods_agree"
     },
     {
      "kind": "theorem",
-     "line": 64,
+     "line": 63,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.peak_oneQubit_exact"
     },
     {
      "kind": "theorem",
-     "line": 75,
+     "line": 74,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.peak_oneQubit_scan"
     },
     {
      "kind": "theorem",
-     "line": 86,
+     "line": 85,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.peak_scratch_exact"
     },
     {
      "kind": "theorem",
-     "line": 97,
+     "line": 96,
      "name": "Shor.PTP.Peak.Board.Row82eaf805f71c.peak_scratch_scan"
     }
    ],
-   "docstring": "# Kernel-checked single-product peak of board row `82eaf805f71c` (`forshor_sub1`, ladder `2048:4 -> 522:4 -> 142:leaf`)\n\n`PolicySubmission.Policies.Board.Row82eaf805f71c.policy` at `n = 2048`, both negation methods and both width rules: `ptpWsTD`, `ptpCleanAncD` and\n`ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD`, each by `decide +kernel`, plus the `ptpQubits` formula; and the\nheadline instances of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`: some circuit following the policy has\nframework `qubitCount` at most the stated number. The board's own rule is the exact one. Generated by `gen_numerals.py`\n(swap-002 shard S5c).",
+   "docstring": "# Kernel-checked single-product peak of board row `82eaf805f71c` (`forshor_sub1`, ladder `2048:4 -> 522:4 -> 142:leaf`)\n\n`PolicySubmission.Policies.Board.Row82eaf805f71c.policy` at `n = 2048`, both negation methods and both width rules: `ptpWsTD`, `ptpCleanAncD` and\n`ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD`, each by `decide +kernel`, plus the `ptpQubits` formula; and the\nheadline instances of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`: some circuit following the policy has\nframework `qubitCount` at most the stated number. The board's own rule is the exact one. Generated by a script that is not part of this repository.",
    "fsPath": "Implementation/PhaseTripleProduct/Proofs/Peak/BoardNumerals/Row82eaf805f71c.lean",
    "importedBy": [
     "PhaseTripleProduct/Proofs/Peak/BoardNumerals.lean"
@@ -14837,7 +14837,7 @@ window.GRAPH = {
     "PhaseTripleProduct/Main.lean"
    ],
    "kind": "file",
-   "lines": 122,
+   "lines": 121,
    "name": "Row82eaf805f71c.lean",
    "path": "PhaseTripleProduct/Proofs/Peak/BoardNumerals/Row82eaf805f71c.lean"
   },
@@ -14845,71 +14845,71 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "theorem",
-     "line": 19,
+     "line": 18,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.no_negate"
     },
     {
      "kind": "theorem",
-     "line": 23,
+     "line": 22,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.board_ladder"
     },
     {
      "kind": "theorem",
-     "line": 27,
+     "line": 26,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.oneQubit_exact"
     },
     {
      "kind": "theorem",
-     "line": 33,
+     "line": 32,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.oneQubit_scan"
     },
     {
      "kind": "theorem",
-     "line": 39,
+     "line": 38,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.oneQubit_ptpQubits"
     },
     {
      "kind": "theorem",
-     "line": 42,
+     "line": 41,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.scratch_exact"
     },
     {
      "kind": "theorem",
-     "line": 48,
+     "line": 47,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.scratch_scan"
     },
     {
      "kind": "theorem",
-     "line": 54,
+     "line": 53,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.scratch_ptpQubits"
     },
     {
      "kind": "theorem",
-     "line": 57,
+     "line": 56,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.methods_agree"
     },
     {
      "kind": "theorem",
-     "line": 64,
+     "line": 63,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.peak_oneQubit_exact"
     },
     {
      "kind": "theorem",
-     "line": 75,
+     "line": 74,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.peak_oneQubit_scan"
     },
     {
      "kind": "theorem",
-     "line": 86,
+     "line": 85,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.peak_scratch_exact"
     },
     {
      "kind": "theorem",
-     "line": 97,
+     "line": 96,
      "name": "Shor.PTP.Peak.Board.Row85fbe1296fbd.peak_scratch_scan"
     }
    ],
-   "docstring": "# Kernel-checked single-product peak of board row `85fbe1296fbd` (`forshor_sub27`, ladder `2048:3 -> 687:3 -> 233:3 -> 82:leaf`)\n\n`PolicySubmission.Policies.Board.Row85fbe1296fbd.policy` at `n = 2048`, both negation methods and both width rules: `ptpWsTD`, `ptpCleanAncD` and\n`ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD`, each by `decide +kernel`, plus the `ptpQubits` formula; and the\nheadline instances of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`: some circuit following the policy has\nframework `qubitCount` at most the stated number. The board's own rule is the exact one. Generated by `gen_numerals.py`\n(swap-002 shard S5c).",
+   "docstring": "# Kernel-checked single-product peak of board row `85fbe1296fbd` (`forshor_sub27`, ladder `2048:3 -> 687:3 -> 233:3 -> 82:leaf`)\n\n`PolicySubmission.Policies.Board.Row85fbe1296fbd.policy` at `n = 2048`, both negation methods and both width rules: `ptpWsTD`, `ptpCleanAncD` and\n`ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD`, each by `decide +kernel`, plus the `ptpQubits` formula; and the\nheadline instances of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`: some circuit following the policy has\nframework `qubitCount` at most the stated number. The board's own rule is the exact one. Generated by a script that is not part of this repository.",
    "fsPath": "Implementation/PhaseTripleProduct/Proofs/Peak/BoardNumerals/Row85fbe1296fbd.lean",
    "importedBy": [
     "PhaseTripleProduct/Proofs/Peak/BoardNumerals.lean"
@@ -14918,7 +14918,7 @@ window.GRAPH = {
     "PhaseTripleProduct/Main.lean"
    ],
    "kind": "file",
-   "lines": 122,
+   "lines": 121,
    "name": "Row85fbe1296fbd.lean",
    "path": "PhaseTripleProduct/Proofs/Peak/BoardNumerals/Row85fbe1296fbd.lean"
   },
@@ -14926,71 +14926,71 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "theorem",
-     "line": 19,
+     "line": 18,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.no_negate"
     },
     {
      "kind": "theorem",
-     "line": 23,
+     "line": 22,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.board_ladder"
     },
     {
      "kind": "theorem",
-     "line": 27,
+     "line": 26,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.oneQubit_exact"
     },
     {
      "kind": "theorem",
-     "line": 33,
+     "line": 32,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.oneQubit_scan"
     },
     {
      "kind": "theorem",
-     "line": 39,
+     "line": 38,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.oneQubit_ptpQubits"
     },
     {
      "kind": "theorem",
-     "line": 42,
+     "line": 41,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.scratch_exact"
     },
     {
      "kind": "theorem",
-     "line": 48,
+     "line": 47,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.scratch_scan"
     },
     {
      "kind": "theorem",
-     "line": 54,
+     "line": 53,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.scratch_ptpQubits"
     },
     {
      "kind": "theorem",
-     "line": 57,
+     "line": 56,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.methods_agree"
     },
     {
      "kind": "theorem",
-     "line": 64,
+     "line": 63,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.peak_oneQubit_exact"
     },
     {
      "kind": "theorem",
-     "line": 75,
+     "line": 74,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.peak_oneQubit_scan"
     },
     {
      "kind": "theorem",
-     "line": 86,
+     "line": 85,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.peak_scratch_exact"
     },
     {
      "kind": "theorem",
-     "line": 97,
+     "line": 96,
      "name": "Shor.PTP.Peak.Board.Rowc733baf3cd08.peak_scratch_scan"
     }
    ],
-   "docstring": "# Kernel-checked single-product peak of board row `c733baf3cd08` (`forshor_sub30`, ladder `2048:6 -> 359:6 -> 80:leaf`)\n\n`PolicySubmission.Policies.Board.Rowc733baf3cd08.policy` at `n = 2048`, both negation methods and both width rules: `ptpWsTD`, `ptpCleanAncD` and\n`ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD`, each by `decide +kernel`, plus the `ptpQubits` formula; and the\nheadline instances of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`: some circuit following the policy has\nframework `qubitCount` at most the stated number. The board's own rule is the exact one. Generated by `gen_numerals.py`\n(swap-002 shard S5c).",
+   "docstring": "# Kernel-checked single-product peak of board row `c733baf3cd08` (`forshor_sub30`, ladder `2048:6 -> 359:6 -> 80:leaf`)\n\n`PolicySubmission.Policies.Board.Rowc733baf3cd08.policy` at `n = 2048`, both negation methods and both width rules: `ptpWsTD`, `ptpCleanAncD` and\n`ptpPeakQubits = 3 n + ptpWsTD + ptpCleanAncD`, each by `decide +kernel`, plus the `ptpQubits` formula; and the\nheadline instances of `ptp_peak_qubits_exact` / `ptp_peak_qubits_scan`: some circuit following the policy has\nframework `qubitCount` at most the stated number. The board's own rule is the exact one. Generated by a script that is not part of this repository.",
    "fsPath": "Implementation/PhaseTripleProduct/Proofs/Peak/BoardNumerals/Rowc733baf3cd08.lean",
    "importedBy": [
     "PhaseTripleProduct/Proofs/Peak/BoardNumerals.lean"
@@ -14999,7 +14999,7 @@ window.GRAPH = {
     "PhaseTripleProduct/Main.lean"
    ],
    "kind": "file",
-   "lines": 122,
+   "lines": 121,
    "name": "Rowc733baf3cd08.lean",
    "path": "PhaseTripleProduct/Proofs/Peak/BoardNumerals/Rowc733baf3cd08.lean"
   },
@@ -19554,7 +19554,7 @@ window.GRAPH = {
    "kind": "folder",
    "name": "QubitCount",
    "path": "QubitCount",
-   "readmeHtml": "<h1>QubitCount</h1>\n<p>This folder works out how many qubits the lowered order-finding circuit needs at once, and proves an exact formula for it. There is a version for the plain circuit and one for the circuit after the balanced split in <code>Reference/Balanced/</code>.</p>\n<h2>What gets counted</h2>\n<p>We walk the lowered circuit in order and keep track of which qubits are live. A gate makes the qubits it touches live. Extending a register brings reserve qubits in, and deallocating releases them. The peak is the largest the live set ever gets.</p>\n<p><code>AddScaled</code> and <code>Negate</code> also borrow clean scratch qubits while they run. <code>AddScaled</code> borrows one carry. What <code>Negate</code> borrows depends on the negation method the policy asks for (<code>P.negation</code>, a <code>NegationMethod</code>):</p>\n<ul><li><code>oneQubit</code> (the default): negation is the complement followed by a one-clean-ancilla increment gate, so it borrows one qubit.</li><li><code>scratch</code>: negation is the complement followed by an addition against a constant-one register as wide as the register it negates, plus the adder's carry, so it borrows the register's width plus one. This is the model that held before modular swap 001, and it reproduces the numbers of that time.</li></ul>\n<p>Those qubits are added in while the primitive runs and returned afterwards. Every budget and every theorem below is stated for both methods: <code>scratchFor m</code> is the scratch charge of the method <code>m</code>, the budgets take <code>m</code> (written <code>P.negation</code> at the level of a policy), and a policy submitted with <code>negation := .scratch</code> is counted with the register-wide charge while one that names no method is counted with the one-qubit charge.</p>\n<p>This is not the same as the number of qubits the circuit ever touches (<code>LowGate.qubitCount</code>). The allocator gives every child of a phase-product recursion its own reserve, but the children run one after another, so only one of them is live at a time.</p>\n<h2>Files</h2>\n<ul><li><code>Statement.lean</code> has the counting walk, the closed-form budgets and the claims. It doesn't import anything else from this folder.</li><li><code>Proofs/</code> has the lemmas: one file per piece of the circuit (a recursion level, a phase product, the QFT, a modular multiplication, the whole order-finding circuit), plus the 2048-bit numerals. <code>Proofs/PolicyPeak.lean</code> is the interface for costing an arbitrary policy at the 2048-bit reference widths: it reduces the peak of the reference circuit to <code>Policy.orderFindingPeak P</code> (or <code>Policy.orderFindingPeakBalanced P</code>), which the kernel can evaluate on a concrete policy.</li><li><code>Main.lean</code> proves the three formulas:</li><li><code>Policy.orderFinding_peak_formula</code>: the peak is the base registers plus the most expensive step, for any admissible policy, counted with that policy's negation method.</li><li><code>Policy.orderFinding_peak_formula_balanced</code>: the same for the balanced circuit, where each site costs its split if the spare qubits hold it and the plain product otherwise.</li><li><code>Policy.orderFinding_peak_formula_balanced_u</code>: the same for the unconditionally balanced circuit, where every site is split and the count depends on the register widths alone.</li></ul>\n<h2>The 2048-bit numbers</h2>\n<p>These are for the reference circuit with the standard <code>k = 2</code> table. The registers are data 2048, work 2347 and scratch 4398 qubits, and the exponent register is 4095 or 4096 qubits depending on <code>N</code>. With a 4096-qubit exponent register:</p>\n<table><thead><tr><th>circuit</th><th>method</th><th>base registers</th><th>most expensive step</th><th>peak</th></tr></thead><tbody><tr><td>plain</td><td><code>oneQubit</code> (default)</td><td>12,891</td><td>Step 4's phase product, 6,428</td><td><strong>19,319</strong></td></tr><tr><td>plain</td><td><code>scratch</code></td><td>12,891</td><td>Step 4's phase product, 6,428</td><td><strong>19,319</strong></td></tr><tr><td>balanced</td><td><code>oneQubit</code> (default)</td><td>12,891</td><td>Step 1's phase product, 558</td><td><strong>13,449</strong></td></tr><tr><td>balanced</td><td><code>scratch</code></td><td>12,891</td><td>negating the scratch register, 4,400</td><td><strong>17,291</strong></td></tr></tbody></table>\n<p>With 4095 exponent qubits, take one off each. The plain circuit peaks in Step 4 because that phase product multiplies a 2348-bit register by a 4399-bit one, and this is the same for both methods. Balancing splits it into two 2348 \u00d7 2348 products, which cost 553 qubits instead. What is then the largest step depends on the method. With <code>scratch</code>, Step 3's constant arithmetic on the 4398-qubit scratch register needs its unit qubit plus the register-wide constant and carry, 4,400 qubits, so that is the largest step. With <code>oneQubit</code> it needs 3, and Step 1's phase product, with its two qubits of scratch, is the largest (558).</p>\n<p>The numbers are proved in <code>Proofs/Numerals.lean</code> and <code>Proofs/BalancedNumerals.lean</code>, checked by the kernel (<code>decide +kernel</code>). Each theorem has a form for a general method <code>m</code> (<code>..._for</code>) and the two instances: the unsuffixed name is the default <code>oneQubit</code> method, and <code>_scratch</code> is the <code>scratch</code> method (<code>standardPolicy2S</code>). The formula without scratch was also compared against the real compiled circuit from <code>forshor_emit</code> for small instances, and it matched every time.</p>\n<h2>Peaks of the STO-table policies (kernel-evaluated)</h2>\n<p><code>Proofs/PolicyNumerals.lean</code> (the <code>scan</code> rule, in the <code>ForShor</code> build) and <code>Proofs/PolicyNumeralsExact.lean</code> (the <code>exact</code> rule, built on demand), with <code>Proofs/PolicyNumerals/</code>, cost the six phase-product policies of <code>Submission/Policies/</code> that the sister repositories' <code>policies/<em>.json</code> define (<code>ref_pp_2048</code>, <code>k5_sixband_2048</code>, <code>threshold_declared_pp</code>, <code>threshold_degenerate_pp</code>, <code>threshold_noshrink_pp</code>, <code>threshold_scanonly_pp</code>) at the 2048-bit reference widths. Every theorem is stated for both negation methods and, where available, both width rules: <code>scan</code> (the field every submission has unless it asks otherwise) and <code>exact</code> (the benchmark mode of the sister repositories' <code>JMC_VALIDATION.md</code>). The two <code>faulty_</em></code> policies are negative controls and have no peak, and the <code>*_ptp</code> policies have no order-finding budget in this repository.</p>\n<p>Each peak is a statement about the reference circuit, not just about the closed form: for every 2048-bit modulus and exponent width <code>xW</code> (4095 or 4096), the reference circuit lowered by the policy peaks at <code>xW + 8795 + N</code> qubits, where <code>8795</code> is the data register with its carry bit, the work register, the scratch register and the flag, and <code>N</code> is a numeral closed by <code>decide +kernel</code>. The claims are <code>ReferencePeakIs</code>, <code>ReferenceBalancedPeakIs</code> and <code>ReferenceBalancedUPeakIs</code> (<code>PolicyNumerals/Basic.lean</code>), and the theorems are named <code>plain_&lt;rule&gt;_&lt;method&gt;</code>, <code>balanced_&lt;rule&gt;_&lt;method&gt;</code> and <code>balancedU_&lt;rule&gt;_&lt;method&gt;</code> in <code>PolicyNumerals.&lt;Policy&gt;</code> (scan) and <code>PolicyNumerals.&lt;Policy&gt;Exact</code> (exact).</p>\n<p>The balanced theorems have no hypothesis about the allocator's spare capacities. The reference layout is sized so that the default rule's split fits at every site (<code>Balanced.reference_fits</code>), and where every split fits the balanced count equals the width-only count of the every-site-split circuit (<code>orderFindingQubitsBalanced_eq_U</code>); <code>reference2048PeakBalanced_policyU</code> combines the two, so <code>N</code> is <code>Policy.orderFindingPeakU</code> and no capacity is evaluated. (The balanced and the every-site-split reference circuits are the same circuit at the reference layout, <code>balancedUShorCircuit_eq</code>.)</p>\n<p>The qubit counts below do not depend on the exponent width except through the <code>xW</code> term; they are for <code>xW = 4096</code> (take one off for 4095). They contain no T count.</p>\n<p>The total is <code>4096 + 8795 + N = 12,891 + N</code>. The plain total is the same under both methods.</p>\n<table><thead><tr><th>policy</th><th>width rule</th><th>plain: N, total</th><th>balanced, <code>oneQubit</code>: N, total</th><th>balanced, <code>scratch</code>: N, total</th></tr></thead><tbody><tr><td><code>ref_pp_2048</code></td><td>exact</td><td>23,182, <strong>36,073</strong></td><td>606, <strong>13,497</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>ref_pp_2048</code></td><td>scan</td><td>23,724, <strong>36,615</strong></td><td>936, <strong>13,827</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>k5_sixband_2048</code></td><td>exact</td><td>18,854, <strong>31,745</strong></td><td>554, <strong>13,445</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>k5_sixband_2048</code></td><td>scan</td><td>19,250, <strong>32,141</strong></td><td>782, <strong>13,673</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_declared_pp</code></td><td>exact</td><td>23,176, <strong>36,067</strong></td><td>602, <strong>13,493</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_declared_pp</code></td><td>scan</td><td>23,678, <strong>36,569</strong></td><td>892, <strong>13,783</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_degenerate_pp</code></td><td>scan</td><td>23,788, <strong>36,679</strong></td><td>1,002, <strong>13,893</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_noshrink_pp</code></td><td>exact</td><td>23,218, <strong>36,109</strong></td><td>650, <strong>13,541</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_noshrink_pp</code></td><td>scan</td><td>23,788, <strong>36,679</strong></td><td>1,002, <strong>13,893</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_scanonly_pp</code></td><td>exact</td><td>23,218, <strong>36,109</strong></td><td>650, <strong>13,541</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_scanonly_pp</code></td><td>scan</td><td>23,788, <strong>36,679</strong></td><td>1,002, <strong>13,893</strong></td><td>4,400, <strong>17,291</strong></td></tr></tbody></table>\n<p>What the table shows:</p>\n<ul><li>The plain peak does not depend on the negation method (the largest step is a phase product that negates nothing wide), exactly as for the standard <code>k = 2</code> table.</li><li>Balancing brings the <code>oneQubit</code> peaks down to the phase products' own costs (a few hundred to about a thousand qubits above the base registers). Under <code>scratch</code> every policy's balanced peak is 17,291: Step 3's constant arithmetic on the 4398-qubit scratch register costs 4,400 and is larger than every phase product, the same number as for the standard <code>k = 2</code> table.</li><li>The <code>exact</code> width rule gives smaller peaks than <code>scan</code> for every policy that has an <code>exact</code> row. <code>threshold_degenerate_pp</code> has none: the kernel's evaluation of its exact width (the <code>k = 6</code> table applied at widths <code>1 ... 4</code>) takes over five minutes, so only its <code>scan</code> numerals are stated (the interpreter's <code>exact</code> values are not kernel-checked and are left out).</li></ul>\n<p>Every numeral in the table was also reproduced by the compiled interpreter (<code>#guard</code> in each file) before the kernel ran, and the <code>scratch</code> peaks are at least the <code>oneQubit</code> peaks everywhere.</p>\n<p>Cost, measured with <code>/usr/bin/time -l</code> on one module at a time (<code>lake env lean</code>): importing the library alone is 3.8 GB and 6 s. The six <code>scan</code> modules take 10 to 13 s and peak at 4.5 GB (<code>ref_pp_2048</code>, <code>k5_sixband_2048</code>), 4.9 GB (<code>threshold_declared_pp</code>, <code>threshold_noshrink_pp</code>, <code>threshold_scanonly_pp</code>) and 5.4 GB (<code>threshold_degenerate_pp</code>). The five <code>exact</code> modules take 33 to 40 s and peak at 9.4 to 11.9 GB, which is why they are outside the <code>ForShor</code> build.</p>"
+   "readmeHtml": "<h1>QubitCount</h1>\n<p>This folder works out how many qubits the lowered order-finding circuit needs at once, and proves an exact formula for it. There is a version for the plain circuit and one for the circuit after the balanced split in <code>Reference/Balanced/</code>.</p>\n<h2>What gets counted</h2>\n<p>We walk the lowered circuit in order and keep track of which qubits are live. A gate makes the qubits it touches live. Extending a register brings reserve qubits in, and deallocating releases them. The peak is the largest the live set ever gets.</p>\n<p><code>AddScaled</code> and <code>Negate</code> also borrow clean scratch qubits while they run. <code>AddScaled</code> borrows one carry. What <code>Negate</code> borrows depends on the negation method the policy asks for (<code>P.negation</code>, a <code>NegationMethod</code>):</p>\n<ul><li><code>oneQubit</code> (the default): negation is the complement followed by a one-clean-ancilla increment gate, so it borrows one qubit.</li><li><code>scratch</code>: negation is the complement followed by an addition against a constant-one register as wide as the register it negates, plus the adder's carry, so it borrows the register's width plus one. This is the model that held before modular swap 001, and it reproduces the numbers of that time.</li></ul>\n<p>Those qubits are added in while the primitive runs and returned afterwards. Every budget and every theorem below is stated for both methods: <code>scratchFor m</code> is the scratch charge of the method <code>m</code>, the budgets take <code>m</code> (written <code>P.negation</code> at the level of a policy), and a policy submitted with <code>negation := .scratch</code> is counted with the register-wide charge while one that names no method is counted with the one-qubit charge.</p>\n<p>This is not the same as the number of qubits the circuit ever touches (<code>LowGate.qubitCount</code>). The allocator gives every child of a phase-product recursion its own reserve, but the children run one after another, so only one of them is live at a time.</p>\n<h2>Files</h2>\n<ul><li><code>Statement.lean</code> has the counting walk, the closed-form budgets and the claims. It doesn't import anything else from this folder.</li><li><code>Proofs/</code> has the lemmas: one file per piece of the circuit (a recursion level, a phase product, the QFT, a modular multiplication, the whole order-finding circuit), plus the 2048-bit numerals. <code>Proofs/PolicyPeak.lean</code> is the interface for costing an arbitrary policy at the 2048-bit reference widths: it reduces the peak of the reference circuit to <code>Policy.orderFindingPeak P</code> (or <code>Policy.orderFindingPeakBalanced P</code>), which the kernel can evaluate on a concrete policy.</li><li><code>Main.lean</code> proves the three formulas:</li><li><code>Policy.orderFinding_peak_formula</code>: the peak is the base registers plus the most expensive step, for any admissible policy, counted with that policy's negation method.</li><li><code>Policy.orderFinding_peak_formula_balanced</code>: the same for the balanced circuit, where each site costs its split if the spare qubits hold it and the plain product otherwise.</li><li><code>Policy.orderFinding_peak_formula_balanced_u</code>: the same for the unconditionally balanced circuit, where every site is split and the count depends on the register widths alone.</li></ul>\n<h2>The 2048-bit numbers</h2>\n<p>These are for the reference circuit with the standard <code>k = 2</code> table. The registers are data 2048, work 2347 and scratch 4398 qubits, and the exponent register is 4095 or 4096 qubits depending on <code>N</code>. With a 4096-qubit exponent register:</p>\n<table><thead><tr><th>circuit</th><th>method</th><th>base registers</th><th>most expensive step</th><th>peak</th></tr></thead><tbody><tr><td>plain</td><td><code>oneQubit</code> (default)</td><td>12,891</td><td>Step 4's phase product, 6,428</td><td><strong>19,319</strong></td></tr><tr><td>plain</td><td><code>scratch</code></td><td>12,891</td><td>Step 4's phase product, 6,428</td><td><strong>19,319</strong></td></tr><tr><td>balanced</td><td><code>oneQubit</code> (default)</td><td>12,891</td><td>Step 1's phase product, 558</td><td><strong>13,449</strong></td></tr><tr><td>balanced</td><td><code>scratch</code></td><td>12,891</td><td>negating the scratch register, 4,400</td><td><strong>17,291</strong></td></tr></tbody></table>\n<p>With 4095 exponent qubits, take one off each. The plain circuit peaks in Step 4 because that phase product multiplies a 2348-bit register by a 4399-bit one, and this is the same for both methods. Balancing splits it into two 2348 \u00d7 2348 products, which cost 553 qubits instead. What is then the largest step depends on the method. With <code>scratch</code>, Step 3's constant arithmetic on the 4398-qubit scratch register needs its unit qubit plus the register-wide constant and carry, 4,400 qubits, so that is the largest step. With <code>oneQubit</code> it needs 3, and Step 1's phase product, with its two qubits of scratch, is the largest (558).</p>\n<p>The numbers are proved in <code>Proofs/Numerals.lean</code> and <code>Proofs/BalancedNumerals.lean</code>, checked by the kernel (<code>decide +kernel</code>). Each theorem has a form for a general method <code>m</code> (<code>..._for</code>) and the two instances: the unsuffixed name is the default <code>oneQubit</code> method, and <code>_scratch</code> is the <code>scratch</code> method (<code>standardPolicy2S</code>). The formula without scratch was also compared against the real compiled circuit from <code>forshor_emit</code> for small instances, and it matched every time.</p>\n<h2>Peaks of the STO-table policies (kernel-evaluated)</h2>\n<p><code>Proofs/PolicyNumerals.lean</code> (the <code>scan</code> rule, in the <code>ForShor</code> build) and <code>Proofs/PolicyNumeralsExact.lean</code> (the <code>exact</code> rule, a library of its own that CI builds in a separate step), with <code>Proofs/PolicyNumerals/</code>, cost the six phase-product policies of <code>Submission/Policies/</code> that the sister repositories' <code>policies/<em>.json</code> define (<code>ref_pp_2048</code>, <code>k5_sixband_2048</code>, <code>threshold_declared_pp</code>, <code>threshold_degenerate_pp</code>, <code>threshold_noshrink_pp</code>, <code>threshold_scanonly_pp</code>) at the 2048-bit reference widths. Every theorem is stated for both negation methods and, where available, both width rules: <code>scan</code> (the field every submission has unless it asks otherwise) and <code>exact</code> (the benchmark mode of the sister repositories' <code>JMC_VALIDATION.md</code>). Of the six, <code>ref_pp_2048</code> and <code>k5_sixband_2048</code> are accepted by the sister repositories' acceptance rule, <code>threshold_scanonly_pp</code> only under <code>exact</code>, and <code>threshold_declared_pp</code>, <code>threshold_degenerate_pp</code> and <code>threshold_noshrink_pp</code> are rejected (see <code>Submission/Policies/</code>): ForShor admits all of them (the recursion falls back to the leaf), so the table costs them as circuits and does not certify them. The two <code>faulty_</em></code> policies are negative controls and have no peak, and the <code>*_ptp</code> policies have no order-finding budget in this repository.</p>\n<p>Each peak is a statement about the reference circuit, not just about the closed form: for every 2048-bit modulus and exponent width <code>xW</code> (4095 or 4096), the reference circuit lowered by the policy peaks at <code>xW + 8795 + N</code> qubits, where <code>8795</code> is the data register with its carry bit, the work register, the scratch register and the flag, and <code>N</code> is a numeral closed by <code>decide +kernel</code>. The claims are <code>ReferencePeakIs</code>, <code>ReferenceBalancedPeakIs</code> and <code>ReferenceBalancedUPeakIs</code> (<code>PolicyNumerals/Basic.lean</code>), and the theorems are named <code>plain_&lt;rule&gt;_&lt;method&gt;</code>, <code>balanced_&lt;rule&gt;_&lt;method&gt;</code> and <code>balancedU_&lt;rule&gt;_&lt;method&gt;</code> in <code>PolicyNumerals.&lt;Policy&gt;</code> (scan) and <code>PolicyNumerals.&lt;Policy&gt;Exact</code> (exact).</p>\n<p>The balanced theorems have no hypothesis about the allocator's spare capacities. The reference layout is sized so that the default rule's split fits at every site (<code>Balanced.reference_fits</code>), and where every split fits the balanced count equals the width-only count of the every-site-split circuit (<code>orderFindingQubitsBalanced_eq_U</code>); <code>reference2048PeakBalanced_policyU</code> combines the two, so <code>N</code> is <code>Policy.orderFindingPeakU</code> and no capacity is evaluated. (The balanced and the every-site-split reference circuits are the same circuit at the reference layout, <code>balancedUShorCircuit_eq</code>.)</p>\n<p>The qubit counts below do not depend on the exponent width except through the <code>xW</code> term; they are for <code>xW = 4096</code> (take one off for 4095). They contain no T count.</p>\n<p>The total is <code>4096 + 8795 + N = 12,891 + N</code>. The plain total is the same under both methods.</p>\n<table><thead><tr><th>policy</th><th>width rule</th><th>plain: N, total</th><th>balanced, <code>oneQubit</code>: N, total</th><th>balanced, <code>scratch</code>: N, total</th></tr></thead><tbody><tr><td><code>ref_pp_2048</code></td><td>exact</td><td>23,182, <strong>36,073</strong></td><td>606, <strong>13,497</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>ref_pp_2048</code></td><td>scan</td><td>23,724, <strong>36,615</strong></td><td>936, <strong>13,827</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>k5_sixband_2048</code></td><td>exact</td><td>18,854, <strong>31,745</strong></td><td>554, <strong>13,445</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>k5_sixband_2048</code></td><td>scan</td><td>19,250, <strong>32,141</strong></td><td>782, <strong>13,673</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_declared_pp</code></td><td>exact</td><td>23,176, <strong>36,067</strong></td><td>602, <strong>13,493</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_declared_pp</code></td><td>scan</td><td>23,678, <strong>36,569</strong></td><td>892, <strong>13,783</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_degenerate_pp</code></td><td>scan</td><td>23,788, <strong>36,679</strong></td><td>1,002, <strong>13,893</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_noshrink_pp</code></td><td>exact</td><td>23,218, <strong>36,109</strong></td><td>650, <strong>13,541</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_noshrink_pp</code></td><td>scan</td><td>23,788, <strong>36,679</strong></td><td>1,002, <strong>13,893</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_scanonly_pp</code></td><td>exact</td><td>23,218, <strong>36,109</strong></td><td>650, <strong>13,541</strong></td><td>4,400, <strong>17,291</strong></td></tr><tr><td><code>threshold_scanonly_pp</code></td><td>scan</td><td>23,788, <strong>36,679</strong></td><td>1,002, <strong>13,893</strong></td><td>4,400, <strong>17,291</strong></td></tr></tbody></table>\n<p>What the table shows (a reading of the numbers above, not separate theorems):</p>\n<ul><li>The plain peak does not depend on the negation method (the largest step is a phase product that negates nothing wide), exactly as for the standard <code>k = 2</code> table.</li><li>Balancing brings the <code>oneQubit</code> peaks down to the phase products' own costs (a few hundred to about a thousand qubits above the base registers). Under <code>scratch</code> every policy's balanced peak is 17,291: Step 3's constant arithmetic on the 4398-qubit scratch register costs 4,400 and is larger than every phase product, the same number as for the standard <code>k = 2</code> table.</li><li>For the plain peak and the <code>oneQubit</code> balanced peak, the <code>exact</code> width rule gives smaller values than <code>scan</code> for every policy that has an <code>exact</code> row (the <code>scratch</code> balanced peak is 4,400 under both rules). <code>threshold_degenerate_pp</code> has none: the kernel's evaluation of its exact width (the <code>k = 6</code> table applied at widths <code>1 ... 4</code>) takes over five minutes, so only its <code>scan</code> numerals are stated (the interpreter's <code>exact</code> values are not kernel-checked and are left out).</li></ul>\n<p>Every numeral in the table is also checked by the compiled interpreter (<code>#guard</code> in each file), independently of the kernel; and, reading the table, the <code>scratch</code> peaks are at least the <code>oneQubit</code> peaks everywhere.</p>\n<p>Cost, measured with <code>/usr/bin/time -l</code> on one module at a time (<code>lake env lean</code>): importing the library alone is 3.8 GB and 6 s. The six <code>scan</code> modules take 10 to 13 s and peak at 4.5 GB (<code>ref_pp_2048</code>, <code>k5_sixband_2048</code>), 4.9 GB (<code>threshold_declared_pp</code>, <code>threshold_noshrink_pp</code>, <code>threshold_scanonly_pp</code>) and 5.4 GB (<code>threshold_degenerate_pp</code>). The five <code>exact</code> modules take 33 to 40 s and peak at 9.4 to 11.9 GB, which is why they are a separate library, chained by import so that only one builds at a time, and built by a CI step of their own after the main build.</p>"
   },
   "QubitCount/Main.lean": {
    "declarations": [
@@ -21468,7 +21468,7 @@ window.GRAPH = {
   },
   "QubitCount/Proofs/PolicyNumerals.lean": {
    "declarations": [],
-   "docstring": "# Qubit count: the 2048-bit peaks of the STO-table policies (width rule `scan`)\n\nRoot of the numerals for the six phase-product (PP) policies of `Submission/Policies/`\n(`ref_pp_2048`, `k5_sixband_2048`, `threshold_declared_pp`, `threshold_degenerate_pp`,\n`threshold_noshrink_pp`, `threshold_scanonly_pp`). For each policy, under the width rule `scan`\n(the policies' own field) and each negation method (`oneQubit`, `scratch`), the reference 2048-bit\ncircuit lowered by the policy peaks at `xW + 8795 + N` qubits (`xW` the exponent width, 4095 or\n4096) for the plain, the balanced and the every-site-split circuit. The statements are\n`ReferencePeakIs`, `ReferenceBalancedPeakIs` and `ReferenceBalancedUPeakIs` of\n`PolicyNumerals/Basic.lean`; the numerals `N` are closed by the kernel (`decide +kernel`) in the\nper-policy files, one `numerals_scan` declaration each.\n\nThe `exact` width rule (the benchmark mode) needs 9 to 12 GB of memory per module, too much for a\nCI runner, so its modules are not imported here: they are the roots of\n`Proofs/PolicyNumeralsExact.lean`, built on demand. `threshold_degenerate_pp` has no `exact`\nmodule at all (its kernel evaluation takes over five minutes).\n\nThe balanced statement carries no hypothesis on the allocator's spare capacities: the reference\nlayout holds every site's plan, so the balanced count is the width-only count\n(`reference2048PeakBalanced_policyU`).\n\nThe two `faulty_*` policies are negative controls (no peak theorem) and the `*_ptp` policies have\nno order-finding budget here (the phase-triple-product counts are the PTP files').",
+   "docstring": "# Qubit count: the 2048-bit peaks of the STO-table policies (width rule `scan`)\n\nRoot of the numerals for the six phase-product (PP) policies of `Submission/Policies/`\n(`ref_pp_2048`, `k5_sixband_2048`, `threshold_declared_pp`, `threshold_degenerate_pp`,\n`threshold_noshrink_pp`, `threshold_scanonly_pp`). For each policy, under the width rule `scan`\n(the policies' own field) and each negation method (`oneQubit`, `scratch`), the reference 2048-bit\ncircuit lowered by the policy peaks at `xW + 8795 + N` qubits (`xW` the exponent width, 4095 or\n4096) for the plain, the balanced and the every-site-split circuit. The statements are\n`ReferencePeakIs`, `ReferenceBalancedPeakIs` and `ReferenceBalancedUPeakIs` of\n`PolicyNumerals/Basic.lean`; the numerals `N` are closed by the kernel (`decide +kernel`) in the\nper-policy files, one `numerals_scan` declaration each.\n\nThe `exact` width rule (the benchmark mode) needs 9 to 12 GB of memory per module, too much for the parallel\n`ForShor` build, so its modules are not imported here: they are the roots of `Proofs/PolicyNumeralsExact.lean`, a\nlibrary of its own that CI builds in a step of its own. `threshold_degenerate_pp` has no `exact`\nmodule at all (its kernel evaluation takes over five minutes).\n\nThe balanced statement carries no hypothesis on the allocator's spare capacities: the reference\nlayout holds every site's plan, so the balanced count is the width-only count\n(`reference2048PeakBalanced_policyU`).\n\nSeveral of these policies are rejection controls of the sister repositories' acceptance rule (`threshold_declared_pp`, `threshold_degenerate_pp` and `threshold_noshrink_pp` are rejected, `threshold_scanonly_pp` is accepted only under the `exact` rule: see `Submission/Policies/`); ForShor itself admits them, so they are costed here as circuits, not certified. The two `faulty_*` policies are negative controls (no peak theorem) and the `*_ptp` policies have\nno order-finding budget here (the phase-triple-product counts are the PTP files').",
    "fsPath": "Implementation/QubitCount/Proofs/PolicyNumerals.lean",
    "importedBy": [],
    "imports": [
@@ -22258,7 +22258,7 @@ window.GRAPH = {
   },
   "QubitCount/Proofs/PolicyNumeralsExact.lean": {
    "declarations": [],
-   "docstring": "# Qubit count: the 2048-bit peaks of the STO-table policies (width rule `exact`)\n\nThe `exact` (benchmark) width rule counterpart of `PolicyNumerals.lean`, for five of the six\npolicies. It is **not** imported by `PolicyNumerals.lean` and not part of the `ForShor` umbrella:\neach module's kernel evaluation peaks at 9 to 12 GB of memory (the scan modules need 4.5 to 5.4 GB,\nof which 3.8 GB is just importing the library). The five modules form an import chain, so Lake builds them\none after another and never two heavy evaluations at once; CI builds them in their own step\n(`lake build PolicyNumeralsExact`, after the main build), alone on the runner. To build them locally:\n`lake build PolicyNumeralsExact`.\n`threshold_degenerate_pp` has no `exact` module: its kernel evaluation takes over five minutes.",
+   "docstring": "# Qubit count: the 2048-bit peaks of the STO-table policies (width rule `exact`)\n\nThe `exact` (benchmark) width rule counterpart of `PolicyNumerals.lean`, for five of the six\npolicies. It is **not** imported by `PolicyNumerals.lean` and not part of the `ForShor` umbrella:\neach module's kernel evaluation peaks at 9 to 12 GB of memory (the scan modules need 4.5 to 5.4 GB,\nof which 3.8 GB is just importing the library). The five modules form an import chain, so Lake builds them\none after another and never two heavy evaluations at once; CI builds them in their own step\n(`lake build PolicyNumeralsExact`, after the main build), alone on the runner. To build them locally, build `ForShor` first (so the policy modules, about 5 GB each, are not built alongside the first 9 GB module),\nthen `lake build PolicyNumeralsExact`.\n`threshold_degenerate_pp` has no `exact` module: its kernel evaluation takes over five minutes.",
    "fsPath": "Implementation/QubitCount/Proofs/PolicyNumeralsExact.lean",
    "importedBy": [],
    "imports": [
