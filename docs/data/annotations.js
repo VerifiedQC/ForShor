@@ -156,7 +156,7 @@ window.ANNOTATIONS = {
   "QubitCount": {
    "role": "resource",
    "subtitle": "the peak qubit count",
-   "summary": "Walks the lowered order-finding circuit keeping the set of live qubits and proves an exact formula for its peak, for any admissible policy and for the two balanced circuits of Reference/Balanced. The count is not LowGate.qubitCount (every qubit ever touched): a phase-product recursion's children each own a reserve but run one after another. At 2048 bits the peak is 19,319 for the plain circuit and 17,291 for the balanced one."
+   "summary": "Walks the lowered order-finding circuit keeping the set of live qubits and proves an exact formula for its peak, for any admissible policy and for the two balanced circuits of Reference/Balanced. The count is not LowGate.qubitCount (every qubit ever touched): a phase-product recursion's children each own a reserve but run one after another. At 2048 bits the peak is 19,319 for the plain circuit and 13,449 for the balanced one (17,291 under the policy option `negation := .scratch`)."
   }
  },
  "views": {
@@ -292,6 +292,9 @@ window.ANNOTATIONS = {
     ],
     [
      "Framework/ToomCookTable.lean"
+    ],
+    [
+     "Framework/NegationMethod.lean"
     ],
     [
      "Framework/Policy.lean"

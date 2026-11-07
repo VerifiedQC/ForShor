@@ -529,7 +529,7 @@ def probeSubmission (s : ShorPolicySubmission) : Option ShorPolicySubmission :=
       let bands := (tsRev.reverse).zip (s.bands.map Prod.snd)
       if bands.length ≠ s.bands.length then none
       else if h : (bands.map Prod.fst).IsChain (· > ·) then
-        some { bands := bands, sorted := h, widthRule := s.widthRule }
+        some { bands := bands, sorted := h, widthRule := s.widthRule, negation := s.negation }
       else none
 
 /-- `doc` with both dispatchers rebuilt for policy `P`. -/
@@ -664,7 +664,7 @@ def probeSubmissionOwnRule (s : ShorPolicySubmission) : Option ShorPolicySubmiss
       let bands := (tsRev.reverse).zip (s.bands.map Prod.snd)
       if bands.length ≠ s.bands.length then none
       else if h : (bands.map Prod.fst).IsChain (· > ·) then
-        some { bands := bands, sorted := h, widthRule := s.widthRule }
+        some { bands := bands, sorted := h, widthRule := s.widthRule, negation := s.negation }
       else none
 
 /-- `policySubmissionChecks` with probes where the submission's own width

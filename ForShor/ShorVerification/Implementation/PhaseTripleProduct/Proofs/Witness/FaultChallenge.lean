@@ -44,8 +44,8 @@ def ops : Prog 2 :=
 def faultyTable : PTPTable := ⟨2, [Point.int 0, Point.frac 0, Point.int (-1), Point.int 1], ops⟩
 def fixedTable : PTPTable := ⟨2, [Point.int 0, Point.frac 0, Point.int 1, Point.int (-1)], ops⟩
 
-def faulty : PTPPolicy := ⟨[⟨20, faultyTable⟩]⟩
-def fixed : PTPPolicy := ⟨[⟨20, fixedTable⟩]⟩
+def faulty : PTPPolicy := { bands := [⟨20, faultyTable⟩] }
+def fixed : PTPPolicy := { bands := [⟨20, fixedTable⟩] }
 
 theorem faulty_rejected : faulty.check = false := by decide +kernel
 theorem fixed_accepted : fixed.check = true := by decide +kernel

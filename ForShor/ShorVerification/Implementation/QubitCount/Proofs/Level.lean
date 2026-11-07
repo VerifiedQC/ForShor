@@ -22,11 +22,11 @@ open Gate Operations
 
 section Chunk
 
-variable {k : ℕ} (ex : ExtReg → ExtReg → ℕ) (n : ℕ)
+variable {k : ℕ} (m : NegationMethod) (ex : ExtReg → ExtReg → ℕ) (n : ℕ)
 
 lemma alloc_chunk (i : Fin k) (s t : ExtReg) (L : Finset ℕ) :
     gAfter (allocChunkGate i s t) L = L ∪ allocBits s (extraDelta s t) ∧
-    gPeak ex (allocChunkGate i s t) L = (L ∪ allocBits s (extraDelta s t)).card ∧
+    gPeak m ex (allocChunkGate i s t) L = (L ∪ allocBits s (extraDelta s t)).card ∧
     (_root_.Disjoint (allocBits s (extraDelta s t)) L → gGood n (allocChunkGate i s t) L) := by
   unfold allocChunkGate
   dsimp only
@@ -43,7 +43,7 @@ lemma alloc_chunk (i : Fin k) (s t : ExtReg) (L : Finset ℕ) :
 
 lemma dealloc_chunk (i : Fin k) (s t : ExtReg) (L : Finset ℕ) :
     gAfter (deallocChunkGate i s t) L = L \ allocBits s (extraDelta s t) ∧
-    gPeak ex (deallocChunkGate i s t) L = L.card ∧
+    gPeak m ex (deallocChunkGate i s t) L = L.card ∧
     (allocBits s (extraDelta s t) ⊆ L → gGood n (deallocChunkGate i s t) L) := by
   unfold deallocChunkGate
   dsimp only
@@ -136,11 +136,11 @@ lemma FreshBits.z_allocSet {L : Finset ℕ} (h : FreshBits src dst L) {j : ℕ} 
 
 /-- The first `j` allocations activate exactly their chunks' qubits, and the
 live set only grows while they run. -/
-theorem allocs_walk (ex : ExtReg → ExtReg → ℕ) (n : ℕ) {L : Finset ℕ}
+theorem allocs_walk (m : NegationMethod) (ex : ExtReg → ExtReg → ℕ) (n : ℕ) {L : Finset ℕ}
     (hfresh : FreshBits src dst L) :
     ∀ (j : ℕ) (hj : j ≤ k),
       gAfter (compileSignedAllocationsAux src dst j hj) L = L ∪ allocSet src dst j ∧
-      gPeak ex (compileSignedAllocationsAux src dst j hj) L = (L ∪ allocSet src dst j).card ∧
+      gPeak m ex (compileSignedAllocationsAux src dst j hj) L = (L ∪ allocSet src dst j).card ∧
       gGood n (compileSignedAllocationsAux src dst j hj) L := by
   intro j
   induction j with
@@ -151,9 +151,9 @@ theorem allocs_walk (ex : ExtReg → ExtReg → ℕ) (n : ℕ) {L : Finset ℕ}
       intro hj
       have hjk : j < k := hj
       obtain ⟨a1, p1, g1⟩ := ih (Nat.le_of_lt hjk)
-      obtain ⟨ax, px, gx⟩ := alloc_chunk ex n (⟨j, hjk⟩ : Fin k)
+      obtain ⟨ax, px, gx⟩ := alloc_chunk m ex n (⟨j, hjk⟩ : Fin k)
         (src.xslot ⟨j, hjk⟩) (dst.xslot ⟨j, hjk⟩) (L ∪ allocSet src dst j)
-      obtain ⟨az, pz, gz⟩ := alloc_chunk ex n (⟨j, hjk⟩ : Fin k)
+      obtain ⟨az, pz, gz⟩ := alloc_chunk m ex n (⟨j, hjk⟩ : Fin k)
         (src.zslot ⟨j, hjk⟩) (dst.zslot ⟨j, hjk⟩)
         (L ∪ allocSet src dst j ∪ bitsX src dst ⟨j, hjk⟩)
       have hset : L ∪ allocSet src dst (j + 1)
@@ -177,11 +177,11 @@ theorem allocs_walk (ex : ExtReg → ExtReg → ℕ) (n : ℕ) {L : Finset ℕ}
 
 /-- The deallocations of the first `j` chunks return what their allocations
 activated, and the live set only shrinks while they run. -/
-theorem deallocs_walk (ex : ExtReg → ExtReg → ℕ) (n : ℕ) {L : Finset ℕ}
+theorem deallocs_walk (m : NegationMethod) (ex : ExtReg → ExtReg → ℕ) (n : ℕ) {L : Finset ℕ}
     (hfresh : FreshBits src dst L) :
     ∀ (j : ℕ) (hj : j ≤ k),
       gAfter (compileSignedDeallocationsAux src dst j hj) (L ∪ allocSet src dst j) = L ∧
-      gPeak ex (compileSignedDeallocationsAux src dst j hj) (L ∪ allocSet src dst j)
+      gPeak m ex (compileSignedDeallocationsAux src dst j hj) (L ∪ allocSet src dst j)
         = (L ∪ allocSet src dst j).card ∧
       gGood n (compileSignedDeallocationsAux src dst j hj) (L ∪ allocSet src dst j) := by
   intro j
@@ -202,10 +202,10 @@ theorem deallocs_walk (ex : ExtReg → ExtReg → ℕ) (n : ℕ) {L : Finset ℕ
       have hxS : (L ∪ allocSet src dst j ∪ bitsX src dst ⟨j, hjk⟩) \ bitsX src dst ⟨j, hjk⟩
           = L ∪ allocSet src dst j :=
         Finset.union_sdiff_cancel_right (hfresh.x_allocSet hjk).symm
-      obtain ⟨az, pz, gz⟩ := dealloc_chunk ex n (⟨j, hjk⟩ : Fin k)
+      obtain ⟨az, pz, gz⟩ := dealloc_chunk m ex n (⟨j, hjk⟩ : Fin k)
         (src.zslot ⟨j, hjk⟩) (dst.zslot ⟨j, hjk⟩)
         (L ∪ allocSet src dst j ∪ bitsX src dst ⟨j, hjk⟩ ∪ bitsZ src dst ⟨j, hjk⟩)
-      obtain ⟨ax, px, gx⟩ := dealloc_chunk ex n (⟨j, hjk⟩ : Fin k)
+      obtain ⟨ax, px, gx⟩ := dealloc_chunk m ex n (⟨j, hjk⟩ : Fin k)
         (src.xslot ⟨j, hjk⟩) (dst.xslot ⟨j, hjk⟩) (L ∪ allocSet src dst j ∪ bitsX src dst ⟨j, hjk⟩)
       simp only [bitsX, bitsZ] at hset hzS hxS az pz gz ax px gx
       rw [hset]
@@ -286,24 +286,24 @@ def hasLeaf : List (AnnotatedOp k) → Bool
     hasLeaf (⟨.phaseProduct i, some l⟩ :: rest) = true := rfl
 
 /-- The largest scratch the arithmetic of an annotated program charges, on
-chunks of width `W`. -/
-def annScratch (W : ℕ) : List (AnnotatedOp k) → ℕ
+chunks of width `W`, when negations are built by `m`. -/
+def annScratch (m : NegationMethod) (W : ℕ) : List (AnnotatedOp k) → ℕ
   | [] => 0
-  | a :: rest => max (Policy.opScratch a.op W) (annScratch W rest)
+  | a :: rest => max (Policy.opScratch m a.op W) (annScratch m W rest)
 
-lemma annScratch_annotate (W : ℕ) :
-    ∀ (ops : List (valid_ops k)) (m : ℕ),
-      annScratch W (annotatePhaseTermsAux k m ops) = Policy.opsScratch ops W := by
+lemma annScratch_annotate (m : NegationMethod) (W : ℕ) :
+    ∀ (ops : List (valid_ops k)) (j : ℕ),
+      annScratch m W (annotatePhaseTermsAux k j ops) = Policy.opsScratch m ops W := by
   intro ops
   induction ops with
-  | nil => intro m; rfl
+  | nil => intro j; rfl
   | cons op rest ih =>
-      intro m
+      intro j
       cases op <;> simp [annotatePhaseTermsAux, annScratch, Policy.opsScratch, ih]
 
 /-- The body leaves the live set alone; its peak is the larger of one child's
 cost, if it has a child at all, and its arithmetic's scratch. -/
-theorem body_walk (hk : 1 < k) (phi : Angle) (coeff : Fin (q k) → ℚ) (st : LayoutState k)
+theorem body_walk (m : NegationMethod) (hk : 1 < k) (phi : Angle) (coeff : Fin (q k) → ℚ) (st : LayoutState k)
     (ex : ExtReg → ExtReg → ℕ) (e n : ℕ) (L : Finset ℕ)
     (hact : ∀ i, regQubitSet (st.xslot i).active ⊆ L ∧ regQubitSet (st.zslot i).active ⊆ L)
     (hpp : ∀ i, PPGood n (st.xslot i) (st.zslot i) L)
@@ -311,12 +311,13 @@ theorem body_walk (hk : 1 < k) (phi : Angle) (coeff : Fin (q k) → ℚ) (st : L
     (hW : ∀ i, (st.xslot i).width = W ∧ (st.zslot i).width = W) :
     ∀ ops : List (AnnotatedOp k),
       gAfter (compileAnnotatedOpsToSignedGateAux k hk phi coeff st ops) L = L ∧
-      gPeak ex (compileAnnotatedOpsToSignedGateAux k hk phi coeff st ops) L
-        = L.card + max (if hasLeaf ops then e else 0) (annScratch W ops) ∧
+      gPeak m ex (compileAnnotatedOpsToSignedGateAux k hk phi coeff st ops) L
+        = L.card + max (if hasLeaf ops then e else 0) (annScratch m W ops) ∧
       gGood n (compileAnnotatedOpsToSignedGateAux k hk phi coeff st ops) L := by
   have touch : ∀ u : LowGate, TouchIn L u →
-      after u true L = L ∧ peak scratch u true L = L.card + tmax scratch u ∧ WellFormed u true L :=
-    fun u hu => touch_walk_anc scratch L u hu true
+      after u true L = L ∧ peak (scratchFor m) u true L = L.card + tmax (scratchFor m) u ∧
+        WellFormed u true L :=
+    fun u hu => touch_walk_anc (scratchFor m) L u hu true
   intro ops
   induction ops with
   | nil => simp [compileAnnotatedOpsToSignedGateAux, gAfter, gPeak, gGood, hasLeaf, annScratch]
@@ -330,7 +331,7 @@ theorem body_walk (hk : 1 < k) (phi : Angle) (coeff : Fin (q k) → ℚ) (st : L
           simp only [compileAnnotatedOpsToSignedGateAux, gAfter, gPeak, gGood, gPrim, hasLeaf_shiftL]
           rw [a1, a2, ia, p1, p2, ip]
           refine ⟨rfl, ?_, w1, w2, ig⟩
-          simp only [annScratch, tmax_ShiftL, scratch_ShiftL, Policy.opScratch]
+          simp only [annScratch, tmax_ShiftL, scratchFor_ShiftL, Policy.opScratch]
           exact max_body _ _ _ _
       | shiftR i m =>
           obtain ⟨a1, p1, w1⟩ := touch (.ShiftR (st.xslot i) m) (hact i).1
@@ -338,7 +339,7 @@ theorem body_walk (hk : 1 < k) (phi : Angle) (coeff : Fin (q k) → ℚ) (st : L
           simp only [compileAnnotatedOpsToSignedGateAux, gAfter, gPeak, gGood, gPrim, hasLeaf_shiftR]
           rw [a1, a2, ia, p1, p2, ip]
           refine ⟨rfl, ?_, w1, w2, ig⟩
-          simp only [annScratch, tmax_ShiftR, scratch_ShiftR, Policy.opScratch]
+          simp only [annScratch, tmax_ShiftR, scratchFor_ShiftR, Policy.opScratch]
           exact max_body _ _ _ _
       | negate i =>
           obtain ⟨a1, p1, w1⟩ := touch (.Negate (st.xslot i)) (hact i).1
@@ -346,7 +347,7 @@ theorem body_walk (hk : 1 < k) (phi : Angle) (coeff : Fin (q k) → ℚ) (st : L
           simp only [compileAnnotatedOpsToSignedGateAux, gAfter, gPeak, gGood, gPrim, hasLeaf_negate]
           rw [a1, a2, ia, p1, p2, ip]
           refine ⟨rfl, ?_, w1, w2, ig⟩
-          simp only [annScratch, tmax_Negate, scratch_Negate, (hW i).1, (hW i).2, Policy.opScratch]
+          simp only [annScratch, tmax_Negate, scratchFor_Negate, (hW i).1, (hW i).2, Policy.opScratch]
           exact max_body _ _ _ _
       | addScaled d s b m =>
           obtain ⟨a1, p1, w1⟩ := touch (.AddScaled (st.xslot d) (st.xslot s) b m)
@@ -356,7 +357,7 @@ theorem body_walk (hk : 1 < k) (phi : Angle) (coeff : Fin (q k) → ℚ) (st : L
           simp only [compileAnnotatedOpsToSignedGateAux, gAfter, gPeak, gGood, gPrim, hasLeaf_addScaled]
           rw [a1, a2, ia, p1, p2, ip]
           refine ⟨rfl, ?_, w1, w2, ig⟩
-          simp only [annScratch, tmax_AddScaled, scratch_AddScaled, Policy.opScratch]
+          simp only [annScratch, tmax_AddScaled, scratchFor_AddScaled, Policy.opScratch]
           exact max_body _ _ _ _
       | phaseProduct i =>
           cases term? with
@@ -375,7 +376,7 @@ theorem body_walk (hk : 1 < k) (phi : Angle) (coeff : Fin (q k) → ℚ) (st : L
               exact max_leaf _ _ _ _ (by split <;> omega)
 
 /-- The controlled body: the same, with the control live. -/
-theorem cbody_walk (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (coeff : Fin (q k) → ℚ)
+theorem cbody_walk (m : NegationMethod) (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (coeff : Fin (q k) → ℚ)
     (st : LayoutState k) (ex : ExtReg → ExtReg → ℕ) (e n : ℕ) (L : Finset ℕ) (hc : ctrl ∈ L)
     (hact : ∀ i, regQubitSet (st.xslot i).active ⊆ L ∧ regQubitSet (st.zslot i).active ⊆ L)
     (hpp : ∀ i, PPGood n (st.xslot i) (st.zslot i) L)
@@ -384,14 +385,15 @@ theorem cbody_walk (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (coeff : Fin (q k) �
     ∀ ops : List (AnnotatedOp k),
       gAfter (controlPhaseLeaves ctrl (compileAnnotatedOpsToSignedGateAux k hk phi coeff st ops))
         L = L ∧
-      gPeak ex (controlPhaseLeaves ctrl
+      gPeak m ex (controlPhaseLeaves ctrl
           (compileAnnotatedOpsToSignedGateAux k hk phi coeff st ops)) L
-        = L.card + max (if hasLeaf ops then e else 0) (annScratch W ops) ∧
+        = L.card + max (if hasLeaf ops then e else 0) (annScratch m W ops) ∧
       gGood n (controlPhaseLeaves ctrl
           (compileAnnotatedOpsToSignedGateAux k hk phi coeff st ops)) L := by
   have touch : ∀ u : LowGate, TouchIn L u →
-      after u true L = L ∧ peak scratch u true L = L.card + tmax scratch u ∧ WellFormed u true L :=
-    fun u hu => touch_walk_anc scratch L u hu true
+      after u true L = L ∧ peak (scratchFor m) u true L = L.card + tmax (scratchFor m) u ∧
+        WellFormed u true L :=
+    fun u hu => touch_walk_anc (scratchFor m) L u hu true
   intro ops
   induction ops with
   | nil =>
@@ -408,7 +410,7 @@ theorem cbody_walk (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (coeff : Fin (q k) �
             gGood, gPrim, hasLeaf_shiftL]
           rw [a1, a2, ia, p1, p2, ip]
           refine ⟨rfl, ?_, w1, w2, ig⟩
-          simp only [annScratch, tmax_ShiftL, scratch_ShiftL, Policy.opScratch]
+          simp only [annScratch, tmax_ShiftL, scratchFor_ShiftL, Policy.opScratch]
           exact max_body _ _ _ _
       | shiftR i m =>
           obtain ⟨a1, p1, w1⟩ := touch (.ShiftR (st.xslot i) m) (hact i).1
@@ -417,7 +419,7 @@ theorem cbody_walk (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (coeff : Fin (q k) �
             gGood, gPrim, hasLeaf_shiftR]
           rw [a1, a2, ia, p1, p2, ip]
           refine ⟨rfl, ?_, w1, w2, ig⟩
-          simp only [annScratch, tmax_ShiftR, scratch_ShiftR, Policy.opScratch]
+          simp only [annScratch, tmax_ShiftR, scratchFor_ShiftR, Policy.opScratch]
           exact max_body _ _ _ _
       | negate i =>
           obtain ⟨a1, p1, w1⟩ := touch (.Negate (st.xslot i)) (hact i).1
@@ -426,7 +428,7 @@ theorem cbody_walk (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (coeff : Fin (q k) �
             gGood, gPrim, hasLeaf_negate]
           rw [a1, a2, ia, p1, p2, ip]
           refine ⟨rfl, ?_, w1, w2, ig⟩
-          simp only [annScratch, tmax_Negate, scratch_Negate, (hW i).1, (hW i).2, Policy.opScratch]
+          simp only [annScratch, tmax_Negate, scratchFor_Negate, (hW i).1, (hW i).2, Policy.opScratch]
           exact max_body _ _ _ _
       | addScaled d s b m =>
           obtain ⟨a1, p1, w1⟩ := touch (.AddScaled (st.xslot d) (st.xslot s) b m)
@@ -437,7 +439,7 @@ theorem cbody_walk (hk : 1 < k) (ctrl : ℕ) (phi : Angle) (coeff : Fin (q k) �
             gGood, gPrim, hasLeaf_addScaled]
           rw [a1, a2, ia, p1, p2, ip]
           refine ⟨rfl, ?_, w1, w2, ig⟩
-          simp only [annScratch, tmax_AddScaled, scratch_AddScaled, Policy.opScratch]
+          simp only [annScratch, tmax_AddScaled, scratchFor_AddScaled, Policy.opScratch]
           exact max_body _ _ _ _
       | phaseProduct i =>
           cases term? with

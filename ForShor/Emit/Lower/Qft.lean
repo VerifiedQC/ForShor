@@ -23,8 +23,10 @@ open Lean (Json)
 
 /-- Build the `qft` document at concrete `k, w`. `annotated` selects the
 `PlanJson` view (with instantiation checks embedded, refusing on failure)
-over the flat `LowGate` view. -/
-unsafe def buildQFT (k w : ℕ) (annotated : Bool) : IO (Except String Json) := do
+over the flat `LowGate` view; `m` is the negation method the flat document's
+resource figures are priced under. -/
+unsafe def buildQFT (k w : ℕ) (annotated : Bool)
+    (m : NegationMethod := .oneQubit) : IO (Except String Json) := do
   if hk : 1 < k then
     let setup := standardLoweringSetup k hk
     let ops := setup.ops
@@ -57,7 +59,7 @@ unsafe def buildQFT (k w : ℕ) (annotated : Bool) : IO (Except String Json) := 
                   return .error "instantiation check failed"
           else
             let metaJ := Json.mkObj [("k", (k : Json)), ("w", (w : Json))]
-            return .ok (emitLowGateDoc (lowerQFT k hk ops setup.pts setup.hpts r hws) metaJ)
+            return .ok (emitLowGateDoc (lowerQFT k hk ops setup.pts setup.hpts r hws) metaJ m)
         else
           return .error s!"insufficient workspace for w={w}"
   else

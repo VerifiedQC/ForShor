@@ -1,4 +1,5 @@
 import ForShor.ShorVerification.Framework.Gatecount.ResourceModel
+import ForShor.ShorVerification.Framework.Gatecount.PolicyModel
 import ForShor.ShorVerification.Implementation.Compiler.Statement
 import ForShor.ShorVerification.Implementation.Reference.Balanced.Main
 
@@ -17,8 +18,16 @@ extension releases and a deallocation activates.
 
 **Scratch.** `AddScaled` and `Negate` also use clean scratch qubits that have
 no index in the circuit. While such a primitive runs, the count adds the
-scratch `shorGateResourceModel` charges it (`cleanAnc`): one qubit for
-`AddScaled`, the register width plus one for `Negate`.
+scratch the policy's resource model charges it (`cleanAnc`; `scratchFor m`, with
+`m = P.negation`, is `(LowGate.resources (shorGateResourceModelFor m) ·).cleanAnc`).
+`AddScaled` charges one qubit under every method. `Negate` charges what the
+policy's `NegationMethod` says: one qubit for `oneQubit` (the default; the
+increment is the one-clean-ancilla incrementer), the register width plus one for
+`scratch` (the increment is an adder against a register-wide constant). The budgets
+below take the method from the policy (`P.negation`), or as an explicit argument
+`m` where they are stated on compiled tables. For the default method the budgets
+are the ones of `oneQubit`; `scratch` reproduces the numbers that held before
+modular swap 001.
 
 **What is claimed.** For the lowered order-finding circuit, started with its
 registers live, the peak, scratch included, is the width of those registers
@@ -94,16 +103,40 @@ def peak (anc : LowGate → ℕ) : LowGate → Bool → Finset ℕ → ℕ
   | .zeroDealloc r n, d, L => max L.card (move (!d) (allocBits r n) L).card
   | .signDealloc r n, d, L => max L.card (move (!d) (allocBits r n) L).card
 
-/-- The clean scratch qubits the resource model charges to `u` while it runs. -/
+/-- The clean scratch qubits the resource model of the negation method `m` charges
+to `u` while it runs. -/
+def scratchFor (m : NegationMethod) (u : LowGate) : ℕ :=
+  (LowGate.resources (shorGateResourceModelFor m) u).cleanAnc
+
+/-- The clean scratch qubits the (default, `oneQubit`) resource model charges to `u`
+while it runs. -/
 def scratch (u : LowGate) : ℕ :=
   (LowGate.resources shorGateResourceModel u).cleanAnc
 
+/-- The scratch of the `oneQubit` method is the default `scratch`. -/
+theorem scratchFor_oneQubit : scratchFor .oneQubit = scratch := rfl
+
 end QubitCount
+
+/-- The clean scratch qubits that negating a register of width `w` charges under
+`m`: one for `oneQubit`, `w + 1` for `scratch`. -/
+def negationScratch : NegationMethod → ℕ → ℕ
+  | .oneQubit, _ => 1
+  | .scratch, w => w + 1
+
+/-- A negation charges at least one clean qubit under every method. -/
+theorem one_le_negationScratch (m : NegationMethod) (w : ℕ) : 1 ≤ negationScratch m w := by
+  cases m <;> simp [negationScratch]
 
 namespace LowGate
 
+/-- The peak number of live qubits while `g` runs from the live set `L`, scratch
+included, with the negations built by the method `m`. -/
+def peakQubitsFor (m : NegationMethod) (g : LowGate) (L : Finset ℕ) : ℕ :=
+  QubitCount.peak (QubitCount.scratchFor m) g true L
+
 /-- The peak number of live qubits while `g` runs from the live set `L`,
-scratch included. -/
+scratch included, with the default (`oneQubit`) negation. -/
 def peakQubits (g : LowGate) (L : Finset ℕ) : ℕ :=
   QubitCount.peak QubitCount.scratch g true L
 
@@ -229,9 +262,10 @@ threshold is `≤ n`. -/
 def chooseData (D : List (ℕ × TableData)) (n : ℕ) : Option TableData :=
   (D.find? fun b => decide (b.1 ≤ n)).map Prod.snd
 
-/-- The largest scratch a table's arithmetic charges on chunks of width `W`. -/
-def TableData.scratch (d : TableData) (W : ℕ) : ℕ :=
-  if d.negates then W + 1 else if d.adds then 1 else 0
+/-- The largest scratch a table's arithmetic charges on chunks of width `W`, when
+its negations are built by the method `m`. -/
+def TableData.scratch (m : NegationMethod) (d : TableData) (W : ℕ) : ℕ :=
+  if d.negates then negationScratch m W else if d.adds then 1 else 0
 
 /-- The common width of the next recursion level: under the scan rule one
 above the largest slot width the table's map gives at `initWidths`, under the
@@ -254,7 +288,8 @@ next width `W`, activating `k·W - wx` and `k·W - wz` qubits, and then holds
 the larger of one child's peak and its arithmetic's scratch. The chain stops
 where the policy has no table or the width stops shrinking.
 -/
-def peakReserveF (R : WidthRule) (D : List (ℕ × TableData)) : ℕ → ℕ → ℕ → ℕ
+def peakReserveF (m : NegationMethod) (R : WidthRule) (D : List (ℕ × TableData)) :
+    ℕ → ℕ → ℕ → ℕ
   | 0, _, _ => 0
   | f + 1, wx, wz =>
     match chooseData D (max wx wz) with
@@ -262,12 +297,13 @@ def peakReserveF (R : WidthRule) (D : List (ℕ × TableData)) : ℕ → ℕ →
     | some d =>
       let W := d.levelWidth R wx wz
       if W < max wx wz then
-        (d.k * W - wx) + (d.k * W - wz) + max (peakReserveF R D f W W) (d.scratch W)
+        (d.k * W - wx) + (d.k * W - wz) + max (peakReserveF m R D f W W) (d.scratch m W)
       else 0
 
 /-- `peakReserveF` with fuel for the whole chain. -/
-def peakReserveD (R : WidthRule) (D : List (ℕ × TableData)) (wx wz : ℕ) : ℕ :=
-  peakReserveF R D (max wx wz + 1) wx wz
+def peakReserveD (m : NegationMethod) (R : WidthRule) (D : List (ℕ × TableData))
+    (wx wz : ℕ) : ℕ :=
+  peakReserveF m R D (max wx wz + 1) wx wz
 
 /-- The reserve `(x side, z side)` the allocator gives a phase product, by
 fuel: each level's growth plus `k` full children. -/
@@ -301,14 +337,21 @@ def qftPeakF (pp : ℕ → ℕ → ℕ) : ℕ → ℕ → ℕ → ℕ
         (if 2 ≤ hi then qftPeakF pp f (lo / 2) ((hi + 1) / 2) else 0)
 
 /-- Peak extra qubits of the lowered QFT on `n` qubits. -/
-def qftPeakD (R : WidthRule) (D : List (ℕ × TableData)) (n : ℕ) : ℕ :=
-  qftPeakF (peakReserveD R D) (n + 1) n n
+def qftPeakD (m : NegationMethod) (R : WidthRule) (D : List (ℕ × TableData)) (n : ℕ) : ℕ :=
+  qftPeakF (peakReserveD m R D) (n + 1) n n
+
+/-- Step 3's peak extra qubits when the negations are built by `m`: the unit qubit
+of its constant arithmetic, and the larger of the scratch of the comparison (at
+least two) and of the subtraction, which negate the scratch register of width `sW`. -/
+def step3Peak (m : NegationMethod) (sW : ℕ) : ℕ :=
+  1 + max 2 (negationScratch m sW)
 
 /--
 Peak extra qubits of each phase of one controlled modular multiplication, over
 the exponent, data with its carry bit, work, scratch and flag qubits, for data
 width `dW` and spare capacity `dC`, work width `wW` and spare capacity `wC`,
-and scratch width `sW` and spare capacity `sC`, when a phase product on
+and scratch width `sW` and spare capacity `sC`, with the negations built by the
+method `m`, when a phase product on
 widths `wx`, `wz` and spare capacities `cx`, `cz` peaks `pp wx cx wz cz` and
 a QFT on `n` qubits peaks `qp n`:
 
@@ -317,8 +360,11 @@ a QFT on `n` qubits peaks `qp n`:
 3. Step 2's QFTs on the data register with its carry bit.
 4. Step 2's phase product, between the work register and the data register
    with its carry bit.
-5. The negations of the scratch register: one more qubit and the negation's
-   scratch.
+5. Step 3's constant comparison and subtraction on the scratch register
+   (`step3Peak`): one unit qubit and the scratch of the negation. That is `3`
+   under `oneQubit` (the negation is the incrementer, one clean ancilla), and
+   `sW + 2` under `scratch` (a register-wide constant), for a register of at
+   least one qubit.
 6. Step 4's QFTs on the scratch register.
 7. Step 4's phase product, between the work and scratch registers.
 8. Step 5's phase product, between the data register with its carry bit and
@@ -326,31 +372,34 @@ a QFT on `n` qubits peaks `qp n`:
 
 Every phase product runs on its operands each grown by one qubit.
 -/
-def modMulPhasePeaksWith (pp : ℕ → ℕ → ℕ → ℕ → ℕ) (qp : ℕ → ℕ)
+def modMulPhasePeaksWith (m : NegationMethod) (pp : ℕ → ℕ → ℕ → ℕ → ℕ) (qp : ℕ → ℕ)
     (dW dC wW wC sW sC : ℕ) : List ℕ :=
   [ 2 + pp (dW + 1) (dC - 2) (wW + 1) (wC - 1)
   , qp wW
   , qp (dW + 1)
   , 2 + pp (wW + 1) (wC - 1) (dW + 2) (dC - 2)
-  , sW + 2
+  , step3Peak m sW
   , qp sW
   , 2 + pp (wW + 1) (wC - 1) (sW + 1) (sC - 1)
   , 2 + pp (dW + 2) (dC - 2) (wW + 1) (wC - 1) ]
 
 /-- Peak extra qubits of one controlled modular multiplication. -/
-def modMulPeakWith (pp : ℕ → ℕ → ℕ → ℕ → ℕ) (qp : ℕ → ℕ) (dW dC wW wC sW sC : ℕ) : ℕ :=
-  (modMulPhasePeaksWith pp qp dW dC wW wC sW sC).foldr max 0
+def modMulPeakWith (m : NegationMethod) (pp : ℕ → ℕ → ℕ → ℕ → ℕ) (qp : ℕ → ℕ)
+    (dW dC wW wC sW sC : ℕ) : ℕ :=
+  (modMulPhasePeaksWith m pp qp dW dC wW wC sW sC).foldr max 0
 
 /-- Peak extra qubits of the order-finding circuit: the multiplications, if
 there are any, and the final inverse QFT on the exponent register. -/
-def orderFindingPeakWith (pp : ℕ → ℕ → ℕ → ℕ → ℕ) (qp : ℕ → ℕ)
+def orderFindingPeakWith (m : NegationMethod) (pp : ℕ → ℕ → ℕ → ℕ → ℕ) (qp : ℕ → ℕ)
     (xW dW dC wW wC sW sC : ℕ) : ℕ :=
-  max (if 0 < xW then modMulPeakWith pp qp dW dC wW wC sW sC else 0) (qp xW)
+  max (if 0 < xW then modMulPeakWith m pp qp dW dC wW wC sW sC else 0) (qp xW)
 
 /-- Peak extra qubits of the order-finding circuit, phase products lowered
-directly. -/
-def orderFindingPeakD (R : WidthRule) (D : List (ℕ × TableData)) (xW dW wW sW : ℕ) : ℕ :=
-  orderFindingPeakWith (fun wx _ wz _ => peakReserveD R D wx wz) (qftPeakD R D) xW dW 0 wW 0 sW 0
+directly, with the negations built by `m`. -/
+def orderFindingPeakD (m : NegationMethod) (R : WidthRule) (D : List (ℕ × TableData))
+    (xW dW wW sW : ℕ) : ℕ :=
+  orderFindingPeakWith m (fun wx _ wz _ => peakReserveD m R D wx wz) (qftPeakD m R D)
+    xW dW 0 wW 0 sW 0
 
 /-! ---------------------------------------------------------
     Balanced phase products
@@ -400,15 +449,16 @@ def sitePeakOf (pp : ℕ → ℕ → ℕ) (rn : ℕ → ℕ → ℕ × ℕ) (R :
   else pp wx wz
 
 /-- `sitePeakOf` with the budgets of compiled tables. -/
-def sitePeakD (R : WidthRule) (D : List (ℕ × TableData)) (Rule : Balanced.Rule)
-    (wx cx wz cz : ℕ) : ℕ :=
-  sitePeakOf (peakReserveD R D) (reserveBudgetD R D) Rule wx cx wz cz
+def sitePeakD (m : NegationMethod) (R : WidthRule) (D : List (ℕ × TableData))
+    (Rule : Balanced.Rule) (wx cx wz cz : ℕ) : ℕ :=
+  sitePeakOf (peakReserveD m R D) (reserveBudgetD R D) Rule wx cx wz cz
 
 /-- Peak extra qubits of the order-finding circuit after `Balanced.balance`
-with the rule `Rule`, for registers of the given widths and spare capacities. -/
-def orderFindingPeakBalancedD (R : WidthRule) (D : List (ℕ × TableData)) (Rule : Balanced.Rule)
-    (xW dW dC wW wC sW sC : ℕ) : ℕ :=
-  orderFindingPeakWith (sitePeakD R D Rule) (qftPeakD R D) xW dW dC wW wC sW sC
+with the rule `Rule`, for registers of the given widths and spare capacities,
+with the negations built by `m`. -/
+def orderFindingPeakBalancedD (m : NegationMethod) (R : WidthRule) (D : List (ℕ × TableData))
+    (Rule : Balanced.Rule) (xW dW dC wW wC sW sC : ℕ) : ℕ :=
+  orderFindingPeakWith m (sitePeakD m R D Rule) (qftPeakD m R D) xW dW dC wW wC sW sC
 
 /-- Peak extra qubits of a balanced site from the widths alone: the split's peak
 wherever the rule has a plan, the product's otherwise. -/
@@ -424,26 +474,27 @@ def sitePeakU (pp : ℕ → ℕ → ℕ) (Rule : Balanced.Rule) (wx wz : ℕ) : 
   else pp wx wz
 
 /-- Peak extra qubits of the order-finding circuit after `Balanced.balanceU` with
-the rule `Rule`, which splits every site, from the register widths alone. -/
-def orderFindingPeakUD (R : WidthRule) (D : List (ℕ × TableData)) (Rule : Balanced.Rule)
-    (xW dW wW sW : ℕ) : ℕ :=
-  orderFindingPeakWith (fun wx _ wz _ => sitePeakU (peakReserveD R D) Rule wx wz) (qftPeakD R D)
-    xW dW 0 wW 0 sW 0
+the rule `Rule`, which splits every site, from the register widths alone, with
+the negations built by `m`. -/
+def orderFindingPeakUD (m : NegationMethod) (R : WidthRule) (D : List (ℕ × TableData))
+    (Rule : Balanced.Rule) (xW dW wW sW : ℕ) : ℕ :=
+  orderFindingPeakWith m (fun wx _ wz _ => sitePeakU (peakReserveD m R D) Rule wx wz)
+    (qftPeakD m R D) xW dW 0 wW 0 sW 0
 
 /-! ---------------------------------------------------------
     The budgets of a policy
 --------------------------------------------------------- -/
 
 /-- Peak extra qubits of the order-finding circuit under the policy `P`,
-phase products lowered directly. -/
+phase products lowered directly, with the negations built by `P.negation`. -/
 def Policy.orderFindingPeak (P : ShorLoweringPolicy) (xW dW wW sW : ℕ) : ℕ :=
-  orderFindingPeakD P.widthRule (Policy.compile P) xW dW wW sW
+  orderFindingPeakD P.negation P.widthRule (Policy.compile P) xW dW wW sW
 
 /-- Peak extra qubits of the balanced order-finding circuit under the policy
-`P` and the rule `Rule`. -/
+`P` and the rule `Rule`, with the negations built by `P.negation`. -/
 def Policy.orderFindingPeakBalanced (P : ShorLoweringPolicy) (Rule : Balanced.Rule)
     (xW dW dC wW wC sW sC : ℕ) : ℕ :=
-  orderFindingPeakBalancedD P.widthRule (Policy.compile P) Rule xW dW dC wW wC sW sC
+  orderFindingPeakBalancedD P.negation P.widthRule (Policy.compile P) Rule xW dW dC wW wC sW sC
 
 /-- **The qubit count of the lowered order-finding circuit**: its exponent
 register, data register with carry bit, work and scratch registers and flag,
@@ -458,10 +509,10 @@ def Policy.orderFindingQubitsBalanced (P : ShorLoweringPolicy) (Rule : Balanced.
   xW + (dW + 1) + wW + sW + 1 + Policy.orderFindingPeakBalanced P Rule xW dW dC wW wC sW sC
 
 /-- Peak extra qubits of the unconditionally balanced order-finding circuit under
-the policy `P` and the rule `Rule`. -/
+the policy `P` and the rule `Rule`, with the negations built by `P.negation`. -/
 def Policy.orderFindingPeakU (P : ShorLoweringPolicy) (Rule : Balanced.Rule) (xW dW wW sW : ℕ) :
     ℕ :=
-  orderFindingPeakUD P.widthRule (Policy.compile P) Rule xW dW wW sW
+  orderFindingPeakUD P.negation P.widthRule (Policy.compile P) Rule xW dW wW sW
 
 /-- **The qubit count of the unconditionally balanced order-finding circuit**, from
 the register widths alone. -/
@@ -505,7 +556,7 @@ def Policy.OrderFindingPeakFormula (P : ShorLoweringPolicy) : Prop :=
     (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
     (hws : Policy.GateWorkspaceOK P (orderFindingApprox a N x y work scratch flag hmod hstep4)),
     OrderFindingSpaceLayout x y work scratch flag →
-    (orderFindingApproxLow P a N x y work scratch flag hmod hstep4 hws).peakQubits
+    (orderFindingApproxLow P a N x y work scratch flag hmod hstep4 hws).peakQubitsFor P.negation
         (orderFindingBaseSet x y work scratch flag)
       = Policy.orderFindingQubits P x.width y.width work.width scratch.width
 
@@ -522,7 +573,8 @@ def Policy.OrderFindingPeakFormulaBalanced (P : ShorLoweringPolicy) (R : Balance
     (hstep4 : CmpLtNWWorkspace N (y.grow 1) work scratch flag)
     (hws : Policy.GateWorkspaceOK P (orderFindingApprox a N x y work scratch flag hmod hstep4)),
     OrderFindingSpaceLayout x y work scratch flag →
-    (Balanced.orderFindingApproxLowBalanced P R a N x y work scratch flag hmod hstep4 hws).peakQubits
+    (Balanced.orderFindingApproxLowBalanced P R a N x y work scratch flag hmod hstep4
+        hws).peakQubitsFor P.negation
         (orderFindingBaseSet x y work scratch flag)
       = Policy.orderFindingQubitsBalanced P R x.width
           y.width y.capacity work.width work.capacity scratch.width scratch.capacity
@@ -542,7 +594,8 @@ def Policy.OrderFindingPeakFormulaBalancedU (P : ShorLoweringPolicy) (R : Balanc
     (hws : Policy.GateWorkspaceOK P (orderFindingApprox a N x y work scratch flag hmod hstep4))
     (hf : Balanced.Fits P R (orderFindingApprox a N x y work scratch flag hmod hstep4)),
     OrderFindingSpaceLayout x y work scratch flag →
-    (Balanced.orderFindingApproxLowBalancedU P R a N x y work scratch flag hmod hstep4 hws hf).peakQubits
+    (Balanced.orderFindingApproxLowBalancedU P R a N x y work scratch flag hmod hstep4 hws
+        hf).peakQubitsFor P.negation
         (orderFindingBaseSet x y work scratch flag)
       = Policy.orderFindingQubitsU P R x.width y.width work.width scratch.width
 

@@ -11,4 +11,4 @@ There are two versions of the pass.
 
 `Statement.lean` has the split, the two passes, the default rule, and the claims: each pass keeps the workspace and the semantics, and Shor's circuit lowered after each pass keeps its success bound. `Proofs/` proves them (`Semantics.lean` for what a split computes, `Correctness.lean` for the workspace and the lowering, `Fits.lean` for when a plan fits and that the reference layout always does). `Main.lean` builds `balancedShorImplementation` and `balancedUShorImplementation`; both reuse `../Standard/`'s layout, precision, success bound and trial count, so their correctness comes straight from the standard one.
 
-At 2048 bits the peak qubit count goes from 19,319 to 17,291 (`QubitCount/`).
+At 2048 bits the peak qubit count goes from 19,319 to 13,449 with the default (`oneQubit`) negation, and to 17,291 with the `scratch` negation, whose Step 3 on the scratch register then dominates (`QubitCount/`).

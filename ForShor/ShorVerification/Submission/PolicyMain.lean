@@ -30,6 +30,11 @@ The IR is extracted at run time (compiled, heartbeat limit off) with the same
 extractor `PolicyCheck.lean` used to run at build time, which refused `k ≥ 5`
 tables and most multi-band policies.
 
+Every document (all flags) also names the policy's negation method (`negation`: `oneQubit`, or `scratch` if
+the template sets `negation := .scratch`), the charge of one `Negate` under it (`negate_charge`) and under
+each method (`negate_charge_by_method`). The method changes the resource estimate a consumer makes, not
+the IR.
+
 ## Flags
 
 * none: the policy as submitted, on its width rule (the scan unless the
@@ -121,8 +126,18 @@ def bandJson (s : ShorPolicySubmission) (i : ℕ) (b : ℕ × ShorLoweringSetup)
     ("shrinks", Json.bool (_root_.Shor.Policy.bandShrinks s.policy i))
   ]
 
+/-- The negation method the policy names, the charge of one `Negate` under it, and the charge under each
+method (so a consumer can compare, or re-price under the other). `negation` is the field a resource
+estimate must be made under; the IR is the same for both methods. -/
+def negationFields (s : ShorPolicySubmission) : List (String × Json) :=
+  [("negation", _root_.Shor.negationMethodJson s.negation),
+   ("negate_charge", _root_.Shor.negateChargeJson s.negation),
+   ("negate_charge_by_method", Json.mkObj
+      [(_root_.Shor.negationMethodStr .oneQubit, _root_.Shor.negateChargeJson .oneQubit),
+       (_root_.Shor.negationMethodStr .scratch, _root_.Shor.negateChargeJson .scratch)])]
+
 def policySubmissionJson (s : ShorPolicySubmission) (doc : _root_.Shor.IR.Doc) : Json :=
-  Json.mkObj [
+  Json.mkObj <| negationFields s ++ [
     ("schema", Json.str "forshor.policy-submission/v1"),
     ("bands", Json.arr (s.bands.zipIdx.map (fun p => bandJson s p.2 p.1)).toArray),
     ("leaf", Json.str

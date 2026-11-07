@@ -77,17 +77,24 @@ partial def lowGateJson : LowGate → Json
   | .RadixReverse r m =>
       Json.mkObj [("op", Json.str "RadixReverse"), ("r", regJson r), ("m", (m : Json))]
 
-/-- Document wrapper: a submitted program plus caller-supplied metadata. -/
-def emitProgram (P : ShorOrderFindingProgram) (metaJson : Json) : Json :=
+/-- Document wrapper: a submitted program plus caller-supplied metadata.
+
+`m` is the negation method the resource figures (`gate_count`, `qubit_count`, `resources`) are priced under
+(`shorGateResourceModelFor m`; for the default `oneQubit` that is `shorGateResourceModel`); it is printed as
+`"negation"`. The circuit itself does not depend on it; `gate_count` does, because it is the total of the
+resources priced under the same method (`(shorGateResourceModelFor m).toCostModel`). -/
+def emitProgram (P : ShorOrderFindingProgram) (metaJson : Json)
+    (m : NegationMethod := .oneQubit) : Json :=
   Json.mkObj [
     ("schema", Json.str "forshor.lowgate/v2"),
     ("bit_order", Json.str "lsb_first"),
     ("angle_unit", Json.str "pi"),
     ("output_register", regJson P.output),
-    ("gate_count", (LowGate.gateCount shorGateCostModel P.circuit : Json)),
-    ("qubit_count", (LowGate.qubitCount shorGateResourceModel P.circuit : Json)),
+    ("gate_count", (LowGate.gateCount (shorGateResourceModelFor m).toCostModel P.circuit : Json)),
+    ("negation", negationMethodJson m),
+    ("qubit_count", (LowGate.qubitCount (shorGateResourceModelFor m) P.circuit : Json)),
     ("max_qubit_index", (((LowGate.usedQubits P.circuit).sup id : ℕ) : Json)),
-    ("resources", gateResourcesJson (LowGate.resources shorGateResourceModel P.circuit)),
+    ("resources", gateResourcesJson (LowGate.resources (shorGateResourceModelFor m) P.circuit)),
     ("circuit", lowGateJson P.circuit),
     ("meta", metaJson)
   ]
@@ -95,16 +102,17 @@ def emitProgram (P : ShorOrderFindingProgram) (metaJson : Json) : Json :=
 /-- Document wrapper for a bare `LowGate` with no distinguished output
 register (`pp`/`cpp`/`qft`'s flat view — there is no single "the" instance
 program here, just the lowered circuit itself). Same schema/fields as
-`emitProgram` minus `output_register`. -/
-def emitLowGateDoc (g : LowGate) (metaJson : Json) : Json :=
+`emitProgram` minus `output_register`; `m` is as there. -/
+def emitLowGateDoc (g : LowGate) (metaJson : Json) (m : NegationMethod := .oneQubit) : Json :=
   Json.mkObj [
     ("schema", Json.str "forshor.lowgate/v2"),
     ("bit_order", Json.str "lsb_first"),
     ("angle_unit", Json.str "pi"),
-    ("gate_count", (LowGate.gateCount shorGateCostModel g : Json)),
-    ("qubit_count", (LowGate.qubitCount shorGateResourceModel g : Json)),
+    ("gate_count", (LowGate.gateCount (shorGateResourceModelFor m).toCostModel g : Json)),
+    ("negation", negationMethodJson m),
+    ("qubit_count", (LowGate.qubitCount (shorGateResourceModelFor m) g : Json)),
     ("max_qubit_index", (((LowGate.usedQubits g).sup id : ℕ) : Json)),
-    ("resources", gateResourcesJson (LowGate.resources shorGateResourceModel g)),
+    ("resources", gateResourcesJson (LowGate.resources (shorGateResourceModelFor m) g)),
     ("circuit", lowGateJson g),
     ("meta", metaJson)
   ]

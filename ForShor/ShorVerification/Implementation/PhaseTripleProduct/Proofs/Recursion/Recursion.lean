@@ -534,12 +534,13 @@ theorem evalL_policyImpl_ket {qs : QSemantics} [RegEncoding qs.Basis] [LowerGate
 
 /-! ## Census of the full recursion -/
 
-theorem alloc_field_zero {X : Fin 3 → ExtReg} {k C' : ℕ} (SL : SplitLayout X k C') (F : AddField)
+theorem alloc_field_zero (m : NegationMethod) {X : Fin 3 → ExtReg} {k C' : ℕ}
+    (SL : SplitLayout X k C') (F : AddField)
     (hn : ∀ n, F.f { cnot := n } = 0) :
-    F.f (LowGate.resources shorGateResourceModel SL.alloc) = 0 := by
+    F.f (LowGate.resources (shorGateResourceModelFor m) SL.alloc) = 0 := by
   unfold SplitLayout.alloc
   simp only [LowGate.resources, F.seq, field_sequence, List.map_flatMap, List.map_map]
-  simp only [shorGateResourceModel, hn, add_zero]
+  simp only [shorGateResourceModelFor, shorGateResourceModel, hn, add_zero]
   apply List.sum_eq_zero
   intro a ha
   simp only [List.mem_flatMap, List.mem_map] at ha
@@ -548,13 +549,15 @@ theorem alloc_field_zero {X : Fin 3 → ExtReg} {k C' : ℕ} (SL : SplitLayout X
 
 /-- **Census through the full recursion (Rz, Toffoli, X, H).** Every gate-level recursion
 following `P` at width `C` has exactly the Rz, Toffoli, X and H counts of the policy
-formula `ptpResources P C` (the extension gates are CNOT-only: `signExtend` is charged
+formula `ptpResources P C`, counted by the policy's resource model `P.resourceModel` (the negation
+method `P.negation`; the extension gates are CNOT-only: `signExtend` is charged
 `n` CNOTs by ForShor's model, so CNOT is not covered here). -/
 theorem PolicyImpl.resources {P : PTPPolicy} {X : Fin 3 → ExtReg} {C : ℕ} {W : List ℕ}
     {G : Angle → LowGate} (h : PolicyImpl P X C W G) (θ : Angle) :
-    let R := LowGate.resources shorGateResourceModel (G θ)
+    let R := LowGate.resources P.resourceModel (G θ)
     R.rz = (ptpResources P C).rz ∧ R.toffoli = (ptpResources P C).toffoli ∧
       R.x = (ptpResources P C).x ∧ R.h = (ptpResources P C).h := by
+  unfold PTPPolicy.resourceModel
   induction h generalizing θ with
   | leaf X C t u hX hstop hD hA =>
       have hl : ptpResources P C = leafCensus C := by
@@ -562,27 +565,28 @@ theorem PolicyImpl.resources {P : PTPPolicy} {X : Fin 3 → ExtReg} {C : ℕ} {W
         rcases hcC : P.choose C with _ | T
         · rfl
         · simp only [Nat.not_lt.mpr (hstop T hcC), ↓reduceDIte]
-      obtain ⟨h1, h2, _, h4, h5, _⟩ := ptpLeafSandwich_resources shorGateResourceModel θ
+      obtain ⟨h1, h2, _, h4, h5, _⟩ := ptpLeafSandwich_resources _ θ
         (X 0) (X 1) (X 2) t u
       simp only [hl, leafCensus, hX] at h1 h2 h4 h5 ⊢
       exact ⟨h1, h2, h4, h5⟩
   | node X C T hX hC hc hlt SL G W' Wc hWc hW' hsub ih =>
-      have hn : ptpResources P C = nodeCensus (childWidth C T.ops) (addCount T.ops)
+      have hn : ptpResources P C = nodeCensusFor P.negation (childWidth C T.ops) (addCount T.ops)
           (negCount T.ops) (cpCount T.ops) (ptpResources P (childWidth C T.ops)) := by
         rw [ptpResources, hc]
         simp only [hlt, ↓reduceDIte]
       have hch := fun j => ih j
       have key : ∀ (F : AddField), (∀ n, F.f { cnot := n } = 0) → ∀ (c : ℕ),
-          (∀ j θ', F.f (LowGate.resources shorGateResourceModel (G j θ')) = c) →
-          F.f (LowGate.resources shorGateResourceModel
+          (∀ j θ', F.f (LowGate.resources (shorGateResourceModelFor P.negation) (G j θ')) = c) →
+          F.f (LowGate.resources (shorGateResourceModelFor P.negation)
             (ptpSubNode T SL (fun t j => G j (θ * coeffN T C t)))) =
           3 * (addCount T.ops * F.f (cuccaroModAddResources (childWidth C T.ops)) +
-            negCount T.ops * F.f (opRes (childWidth C T.ops) (.negate (k := 1) 0))) + cpCount T.ops * c := by
+            negCount T.ops * F.f (opRes P.negation (childWidth C T.ops) (.negate (k := 1) 0))) +
+              cpCount T.ops * c := by
         intro F hF c hc'
         unfold ptpSubNode
-        simp only [LowGate.resources, F.seq, alloc_field_zero SL F hF, zero_add, add_zero]
-        exact (body_field F SL.lay _ c (fun t j => hc' j _) T.ops 0).trans
-          (bodyField_eq F SL.lay.width c T.ops)
+        simp only [LowGate.resources, F.seq, alloc_field_zero P.negation SL F hF, zero_add, add_zero]
+        exact (body_field F P.negation SL.lay _ c (fun t j => hc' j _) T.ops 0).trans
+          (bodyField_eq F P.negation SL.lay.width c T.ops)
       have hrz := key fRz (fun _ => rfl) _ fun j θ' => (hch j θ').1
       have hto := key fToff (fun _ => rfl) _ fun j θ' => (hch j θ').2.1
       have hx := key fX (fun _ => rfl) _ fun j θ' => (hch j θ').2.2.1
@@ -591,14 +595,14 @@ theorem PolicyImpl.resources {P : PTPPolicy} {X : Fin 3 → ExtReg} {C : ℕ} {W
       dsimp only
       rw [hn]
       refine ⟨?_, ?_, ?_, ?_⟩
-      · rw [show (LowGate.resources shorGateResourceModel _).rz = _ from hrz]
-        simp only [nodeCensus]; try ring
-      · rw [show (LowGate.resources shorGateResourceModel _).toffoli = _ from hto]
-        simp only [nodeCensus]; try ring
-      · rw [show (LowGate.resources shorGateResourceModel _).x = _ from hx]
-        simp only [nodeCensus]
-      · rw [show (LowGate.resources shorGateResourceModel _).h = _ from hh]
-        simp only [nodeCensus]; try ring
+      · rw [show (LowGate.resources (shorGateResourceModelFor P.negation) _).rz = _ from hrz]
+        simp only [nodeCensusFor]; try ring
+      · rw [show (LowGate.resources (shorGateResourceModelFor P.negation) _).toffoli = _ from hto]
+        simp only [nodeCensusFor]
+      · rw [show (LowGate.resources (shorGateResourceModelFor P.negation) _).x = _ from hx]
+        simp only [nodeCensusFor]
+      · rw [show (LowGate.resources (shorGateResourceModelFor P.negation) _).h = _ from hh]
+        simp only [nodeCensusFor]; try ring
 
 end PTP
 end Shor

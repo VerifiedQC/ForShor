@@ -146,9 +146,10 @@ theorem ptpWorkspaceD_scan (P : PTPPolicy) : ∀ n, ptpWorkspaceD P scanRule n =
 /-- **Rz / Toffoli / X / H through the full recursion** (`PolicyImpl.resources` for `wd`). -/
 theorem PolicyImplD.resources {P : PTPPolicy} {wd : WidthRule} {X : Fin 3 → ExtReg} {C : ℕ}
     {W : List ℕ} {G : Angle → LowGate} (h : PolicyImplD P wd X C W G) (θ : Angle) :
-    let R := LowGate.resources shorGateResourceModel (G θ)
+    let R := LowGate.resources P.resourceModel (G θ)
     R.rz = (ptpResourcesD P wd C).rz ∧ R.toffoli = (ptpResourcesD P wd C).toffoli ∧
       R.x = (ptpResourcesD P wd C).x ∧ R.h = (ptpResourcesD P wd C).h := by
+  unfold PTPPolicy.resourceModel
   induction h generalizing θ with
   | leaf X C t u hX hstop hD hA =>
       have hl : ptpResourcesD P wd C = leafCensus C := by
@@ -156,27 +157,28 @@ theorem PolicyImplD.resources {P : PTPPolicy} {wd : WidthRule} {X : Fin 3 → Ex
         rcases hcC : P.choose C with _ | T
         · rfl
         · simp only [Nat.not_lt.mpr (hstop T hcC), ↓reduceDIte]
-      obtain ⟨h1, h2, _, h4, h5, _⟩ := ptpLeafSandwich_resources shorGateResourceModel θ
+      obtain ⟨h1, h2, _, h4, h5, _⟩ := ptpLeafSandwich_resources _ θ
         (X 0) (X 1) (X 2) t u
       simp only [hl, leafCensus, hX] at h1 h2 h4 h5 ⊢
       exact ⟨h1, h2, h4, h5⟩
   | node X C T hX hC hc hlt SL G W' Wc hWc hW' hsub ih =>
-      have hn : ptpResourcesD P wd C = nodeCensus (wd T C) (addCount T.ops)
+      have hn : ptpResourcesD P wd C = nodeCensusFor P.negation (wd T C) (addCount T.ops)
           (negCount T.ops) (cpCount T.ops) (ptpResourcesD P wd (wd T C)) := by
         rw [ptpResourcesD, hc]
         simp only [hlt, ↓reduceDIte]
       have hch := fun j => ih j
       have key : ∀ (F : AddField), (∀ n, F.f { cnot := n } = 0) → ∀ (c : ℕ),
-          (∀ j θ', F.f (LowGate.resources shorGateResourceModel (G j θ')) = c) →
-          F.f (LowGate.resources shorGateResourceModel
+          (∀ j θ', F.f (LowGate.resources (shorGateResourceModelFor P.negation) (G j θ')) = c) →
+          F.f (LowGate.resources (shorGateResourceModelFor P.negation)
             (ptpSubNode T SL (fun t j => G j (θ * coeffN T C t)))) =
           3 * (addCount T.ops * F.f (cuccaroModAddResources (wd T C)) +
-            negCount T.ops * F.f (opRes (wd T C) (.negate (k := 1) 0))) + cpCount T.ops * c := by
+            negCount T.ops * F.f (opRes P.negation (wd T C) (.negate (k := 1) 0))) +
+              cpCount T.ops * c := by
         intro F hF c hc'
         unfold ptpSubNode
-        simp only [LowGate.resources, F.seq, alloc_field_zero SL F hF, zero_add, add_zero]
-        exact (body_field F SL.lay _ c (fun t j => hc' j _) T.ops 0).trans
-          (bodyField_eq F SL.lay.width c T.ops)
+        simp only [LowGate.resources, F.seq, alloc_field_zero P.negation SL F hF, zero_add, add_zero]
+        exact (body_field F P.negation SL.lay _ c (fun t j => hc' j _) T.ops 0).trans
+          (bodyField_eq F P.negation SL.lay.width c T.ops)
       have hrz := key fRz (fun _ => rfl) _ fun j θ' => (hch j θ').1
       have hto := key fToff (fun _ => rfl) _ fun j θ' => (hch j θ').2.1
       have hx := key fX (fun _ => rfl) _ fun j θ' => (hch j θ').2.2.1
@@ -185,14 +187,14 @@ theorem PolicyImplD.resources {P : PTPPolicy} {wd : WidthRule} {X : Fin 3 → Ex
       dsimp only
       rw [hn]
       refine ⟨?_, ?_, ?_, ?_⟩
-      · rw [show (LowGate.resources shorGateResourceModel _).rz = _ from hrz]
-        simp only [nodeCensus]; try ring
-      · rw [show (LowGate.resources shorGateResourceModel _).toffoli = _ from hto]
-        simp only [nodeCensus]; try ring
-      · rw [show (LowGate.resources shorGateResourceModel _).x = _ from hx]
-        simp only [nodeCensus]
-      · rw [show (LowGate.resources shorGateResourceModel _).h = _ from hh]
-        simp only [nodeCensus]; try ring
+      · rw [show (LowGate.resources (shorGateResourceModelFor P.negation) _).rz = _ from hrz]
+        simp only [nodeCensusFor]; try ring
+      · rw [show (LowGate.resources (shorGateResourceModelFor P.negation) _).toffoli = _ from hto]
+        simp only [nodeCensusFor]
+      · rw [show (LowGate.resources (shorGateResourceModelFor P.negation) _).x = _ from hx]
+        simp only [nodeCensusFor]
+      · rw [show (LowGate.resources (shorGateResourceModelFor P.negation) _).h = _ from hh]
+        simp only [nodeCensusFor]; try ring
 
 /-- **And† through the full recursion**, any width rule. -/
 theorem PolicyImplD.andDag_count {P : PTPPolicy} {wd : WidthRule} {X : Fin 3 → ExtReg} {C : ℕ}
@@ -222,7 +224,8 @@ theorem PolicyImplD.andDag_count {P : PTPPolicy} {wd : WidthRule} {X : Fin 3 →
 /-- **CNOT through the full recursion** (sign-extension fan-out included), any width rule. -/
 theorem PolicyImplD.cnot {P : PTPPolicy} {wd : WidthRule} {X : Fin 3 → ExtReg} {C : ℕ}
     {W : List ℕ} {G : Angle → LowGate} (h : PolicyImplD P wd X C W G) (θ : Angle) :
-    (LowGate.resources shorGateResourceModel (G θ)).cnot = ptpCnotFullD P wd C := by
+    (LowGate.resources P.resourceModel (G θ)).cnot = ptpCnotFullD P wd C := by
+  unfold PTPPolicy.resourceModel
   induction h generalizing θ with
   | leaf X C t u hX hstop hD hA =>
       have hl : ptpCnotFullD P wd C = 0 := by
@@ -231,24 +234,56 @@ theorem PolicyImplD.cnot {P : PTPPolicy} {wd : WidthRule} {X : Fin 3 → ExtReg}
         · rfl
         · simp only [Nat.not_lt.mpr (hstop T hcC), ↓reduceDIte]
       rw [hl]
-      exact (ptpLeafSandwich_resources shorGateResourceModel θ (X 0) (X 1) (X 2) t u).2.2.1
+      exact (ptpLeafSandwich_resources _ θ (X 0) (X 1) (X 2) t u).2.2.1
   | node X C T hX hC hc hlt SL G W' Wc hWc hW' hsub ih =>
       have hn : ptpCnotFullD P wd C =
-          3 * ((addCount T.ops + negCount T.ops) * (5 * wd T C - 7)) +
+          3 * (addCount T.ops * (5 * wd T C - 7) + negCount T.ops * negateCnotGatesFor P.negation (wd T C)) +
             6 * (wd T C - topLimbWidth C T.k) +
             cpCount T.ops * ptpCnotFullD P wd (wd T C) := by
         rw [ptpCnotFullD, hc]
         simp only [hlt, ↓reduceDIte]
-      show (LowGate.resources shorGateResourceModel (ptpSubNode T SL _)).cnot = _
+      show (LowGate.resources (shorGateResourceModelFor P.negation) (ptpSubNode T SL _)).cnot = _
       unfold ptpSubNode
-      have hb := (body_field fCnot SL.lay (fun t j => G j (θ * coeffN T C t))
+      have hb := (body_field fCnot P.negation SL.lay (fun t j => G j (θ * coeffN T C t))
         (ptpCnotFullD P wd (wd T C)) (fun t j => ih j _) T.ops 0).trans
-          (bodyField_eq fCnot SL.lay.width _ T.ops)
+          (bodyField_eq fCnot P.negation SL.lay.width _ T.ops)
       simp only [fCnot, opRes, cuccaroModAddResources] at hb
       simp only [LowGate.resources, GateResources.seq, cnot_alloc, SL.ext_top hX]
-      rw [show (LowGate.resources shorGateResourceModel (body SL.lay _ 0 T.ops)).cnot = _ from hb, hn]
-      show _ = 3 * ((addCount T.ops + negCount T.ops) * (5 * SL.lay.width - 7)) + _ + _
+      rw [show (LowGate.resources (shorGateResourceModelFor P.negation) (body SL.lay _ 0 T.ops)).cnot = _
+        from hb, hn]
+      show _ = 3 * (addCount T.ops * (5 * SL.lay.width - 7) +
+        negCount T.ops * negateCnotGatesFor P.negation (SL.lay.width)) + _ + _
       ring
+
+/-- **Clean scratch through the full recursion**, any width rule: every gate-level recursion following `P`
+holds at most `ptpCleanAncD P wd C` clean qubits at once in the policy's resource model `P.resourceModel`
+(`1` per node that adds or negates under `oneQubit`; `C' + 1` at a node of width `C'` that negates under
+`scratch`; the sandwich leaves hold none). -/
+theorem PolicyImplD.cleanAnc_le {P : PTPPolicy} {wd : WidthRule} {X : Fin 3 → ExtReg} {C : ℕ}
+    {W : List ℕ} {G : Angle → LowGate} (h : PolicyImplD P wd X C W G) (θ : Angle) :
+    (LowGate.resources P.resourceModel (G θ)).cleanAnc ≤ ptpCleanAncD P wd C := by
+  unfold PTPPolicy.resourceModel
+  induction h generalizing θ with
+  | leaf X C t u hX hstop hD hA =>
+      rw [(ptpLeafSandwich_resources _ θ (X 0) (X 1) (X 2) t u).2.2.2.2.2]
+      exact Nat.zero_le _
+  | node X C T hX hC hc hlt SL G W' Wc hWc hW' hsub ih =>
+      have hn : ptpCleanAncD P wd C =
+          max (nodeCleanAncFor P.negation (wd T C) (addCount T.ops) (negCount T.ops))
+            (ptpCleanAncD P wd (wd T C)) := by
+        rw [ptpCleanAncD, hc]
+        simp only [hlt, ↓reduceDIte]
+      show (LowGate.resources (shorGateResourceModelFor P.negation) (ptpSubNode T SL _)).cleanAnc ≤ _
+      unfold ptpSubNode
+      have hb := body_cleanAnc_leFor P.negation SL.lay (fun t j => G j (θ * coeffN T C t))
+        (ptpCleanAncD P wd (wd T C)) (fun t j => ih j _) T.ops 0
+      simp only [LowGate.resources, GateResources.seq, cleanAnc_alloc]
+      rw [hn]
+      have hb' : (LowGate.resources (shorGateResourceModelFor P.negation)
+          (body SL.lay (fun t j ↦ G j (θ * coeffN T C t)) 0 T.ops)).cleanAnc ≤
+          max (nodeCleanAncFor P.negation (wd T C) (addCount T.ops) (negCount T.ops))
+            (ptpCleanAncD P wd (wd T C)) := hb
+      omega
 
 /-- **Qubits of a gate-level recursion**, any width rule: only the registers and the workspace. -/
 theorem PolicyImplD.usedQubits {P : PTPPolicy} {wd : WidthRule} {X : Fin 3 → ExtReg} {C : ℕ}

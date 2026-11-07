@@ -22,6 +22,10 @@ with `&&`: if the table is inadmissible the build fails and this never runs.
 Re-deciding the same conditions here would cost the same again and prove
 nothing new.
 
+The document names the negation method the resource estimate is made under (`negation`, always
+`oneQubit` for a table submission: the other method is an option of a policy) and its per-negation
+charge (`negate_charge`).
+
 Nothing in this file is edited by a submitter; it reads `Submission.setup`
 from the template and `Submission.doc` from `Check.lean`.
 -/
@@ -55,6 +59,10 @@ def natStr (n : ℕ) : Json := Json.str (toString n)
 def submissionJson : Json :=
   Json.mkObj [
     ("schema", Json.str "forshor.submission/v1"),
+    -- a table submission is the one-band policy `standardPolicy`-style, priced under the default method;
+    -- the other method is an option of a policy submission (`PolicyTemplate.lean`)
+    ("negation", _root_.Shor.negationMethodJson .oneQubit),
+    ("negate_charge", _root_.Shor.negateChargeJson .oneQubit),
     ("table", Json.mkObj [
       ("k", (setup.k : Json)),
       ("points", Json.arr (setup.pts.map _root_.Shor.pointJson).toArray),

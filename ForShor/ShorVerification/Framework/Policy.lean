@@ -1,4 +1,5 @@
 import ForShor.ShorVerification.Framework.ToomCookTable
+import ForShor.ShorVerification.Framework.NegationMethod
 
 /-!
 # What a lowering policy is, and what makes one admissible
@@ -13,7 +14,7 @@ asymptotic exponent, and at a fixed size the optimum is a cascade rather
 than a single radix; that is the whole motivation.
 
 Like the file it imports, this one is implementation-free: it imports
-`Framework/ToomCookTable.lean` and nothing else (not even Mathlib directly),
+`Framework/ToomCookTable.lean` and the import-free `Framework/NegationMethod.lean` and nothing else (not even Mathlib directly),
 so each kind of submission can be read on its own. The import rule is
 one-directional — `Policy.lean` imports `ToomCookTable.lean`, never the
 reverse — because a reader of the single-table specification should not have
@@ -147,6 +148,8 @@ structure ShorLoweringPolicy where
   sorted : (bands.map PolicyBand.threshold).IsChain (· > ·)
   /-- How the compiler sizes working registers; the scan unless asked. -/
   widthRule : WidthRule := .scan
+  /-- How a negation is built and charged; one qubit unless asked. -/
+  negation : NegationMethod := .oneQubit
 
 namespace ShorLoweringPolicy
 
@@ -207,6 +210,9 @@ def constPolicy (T : ToomCookTable) : ShorLoweringPolicy where
 @[simp] theorem constPolicy_widthRule (T : ToomCookTable) :
     (constPolicy T).widthRule = .scan := rfl
 
+@[simp] theorem constPolicy_negation (T : ToomCookTable) :
+    (constPolicy T).negation = .oneQubit := rfl
+
 /-- The same bands under another width rule. -/
 def withRule (P : ShorLoweringPolicy) (R : WidthRule) : ShorLoweringPolicy :=
   { P with widthRule := R }
@@ -222,6 +228,28 @@ def withRule (P : ShorLoweringPolicy) (R : WidthRule) : ShorLoweringPolicy :=
 
 theorem withRule_admissible {P : ShorLoweringPolicy} (h : P.Admissible) (R : WidthRule) :
     (P.withRule R).Admissible := h
+
+/-- The same bands under another negation method. -/
+def withNegation (P : ShorLoweringPolicy) (m : NegationMethod) : ShorLoweringPolicy :=
+  { P with negation := m }
+
+@[simp] theorem withNegation_bands (P : ShorLoweringPolicy) (m : NegationMethod) :
+    (P.withNegation m).bands = P.bands := rfl
+
+@[simp] theorem withNegation_widthRule (P : ShorLoweringPolicy) (m : NegationMethod) :
+    (P.withNegation m).widthRule = P.widthRule := rfl
+
+@[simp] theorem withNegation_negation (P : ShorLoweringPolicy) (m : NegationMethod) :
+    (P.withNegation m).negation = m := rfl
+
+@[simp] theorem withNegation_choose (P : ShorLoweringPolicy) (m : NegationMethod) (n : ℕ) :
+    (P.withNegation m).choose n = P.choose n := rfl
+
+theorem withNegation_admissible {P : ShorLoweringPolicy} (h : P.Admissible) (m : NegationMethod) :
+    (P.withNegation m).Admissible := h
+
+@[simp] theorem withRule_negation (P : ShorLoweringPolicy) (R : WidthRule) :
+    (P.withRule R).negation = P.negation := rfl
 
 theorem constPolicy_admissible {T : ToomCookTable} (h : T.Admissible) :
     (constPolicy T).Admissible := by
@@ -245,6 +273,8 @@ structure ShorPolicySubmission where
   sorted : (bands.map Prod.fst).IsChain (· > ·)
   /-- How the compiler sizes working registers; the scan unless asked. -/
   widthRule : WidthRule := .scan
+  /-- How a negation is built and charged; one qubit unless asked. -/
+  negation : NegationMethod := .oneQubit
 
 namespace ShorPolicySubmission
 
@@ -253,9 +283,13 @@ def policy (s : ShorPolicySubmission) : ShorLoweringPolicy where
   bands := s.bands.map (fun b => ⟨b.1, b.2.table⟩)
   sorted := by simpa [List.map_map, Function.comp_def] using s.sorted
   widthRule := s.widthRule
+  negation := s.negation
 
 @[simp] theorem policy_widthRule (s : ShorPolicySubmission) :
     s.policy.widthRule = s.widthRule := rfl
+
+@[simp] theorem policy_negation (s : ShorPolicySubmission) :
+    s.policy.negation = s.negation := rfl
 
 @[simp] theorem policy_bands (s : ShorPolicySubmission) :
     s.policy.bands = s.bands.map (fun b => ⟨b.1, b.2.table⟩) := rfl

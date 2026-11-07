@@ -11,8 +11,9 @@ gate-level recursion equal `ptpResources P n`. Here:
   Toffolis (Qualtran `And`, 4 T) = `ptpResources.toffoli - ptpAndDag`.
 * `ptpCnotFull P n`: CNOT including the sign-extension fan-out of the split
   (ForShor charges `signExtend r m` as `m` CNOT, and the un-extension `† alloc` the same):
-  per node `6 (C' - topLimbWidth)` on top of `ptpResources`' `3 (A + N)(5C' - 7)`
-  (`PolicyImpl.cnot`).
+  per node `6 (C' - topLimbWidth)` on top of `ptpResources`' `3 (A (5C' - 7) + N · negCnot C')`
+  (`PolicyImpl.cnot`); `negCnot` is the negation's CNOT count under the policy's own method
+  (`negateCnotGatesFor P.negation`).
 -/
 
 namespace Shor
@@ -30,13 +31,14 @@ def ptpAndDag (P : PTPPolicy) (n : ℕ) : ℕ :=
 termination_by n
 
 
-/-- CNOT along the ladder, sign-extension fan-out included. -/
+/-- CNOT along the ladder, sign-extension fan-out included, under the policy's negation method
+`P.negation`. -/
 def ptpCnotFull (P : PTPPolicy) (n : ℕ) : ℕ :=
   match P.choose n with
   | none => 0
   | some T =>
       if _h : childWidth n T.ops < n then
-        3 * ((addCount T.ops + negCount T.ops) * (5 * childWidth n T.ops - 7)) +
+        3 * (addCount T.ops * (5 * childWidth n T.ops - 7) + negCount T.ops * negateCnotGatesFor P.negation (childWidth n T.ops)) +
           6 * (childWidth n T.ops - topLimbWidth n T.k) +
           cpCount T.ops * ptpCnotFull P (childWidth n T.ops)
       else 0
@@ -94,15 +96,15 @@ theorem PolicyImpl.andDag_count {P : PTPPolicy} {X : Fin 3 → ExtReg} {C : ℕ}
       refine body_count adjToffCount rfl (fun _ _ => rfl) SL.lay (fun s op => by cases op <;> rfl)
         _ _ (fun t j => ih j _) T.ops 0
 
-theorem cnot_alloc {X : Fin 3 → ExtReg} {k C' : ℕ} (SL : SplitLayout X k C') :
-    (LowGate.resources shorGateResourceModel SL.alloc).cnot =
+theorem cnot_alloc (m : NegationMethod) {X : Fin 3 → ExtReg} {k C' : ℕ} (SL : SplitLayout X k C') :
+    (LowGate.resources (shorGateResourceModelFor m) SL.alloc).cnot =
       SL.ext 0 SL.top + SL.ext 1 SL.top + SL.ext 2 SL.top := by
   unfold SplitLayout.alloc
   simp only [LowGate.resources, GateResources.seq]
-  have : (LowGate.resources shorGateResourceModel (LowGate.sequence
+  have : (LowGate.resources (shorGateResourceModelFor m) (LowGate.sequence
       ((List.finRange 3).flatMap fun s => (List.finRange k).map fun j =>
         LowGate.zeroExtend (SL.pre s j) (SL.ext s j)))).cnot = 0 := by
-    have h := field_sequence fCnot shorGateResourceModel
+    have h := field_sequence fCnot (shorGateResourceModelFor m)
       ((List.finRange 3).flatMap fun s => (List.finRange k).map fun j =>
         LowGate.zeroExtend (SL.pre s j) (SL.ext s j))
     simp only [fCnot] at h
@@ -113,8 +115,33 @@ theorem cnot_alloc {X : Fin 3 → ExtReg} {k C' : ℕ} (SL : SplitLayout X k C')
     obtain ⟨_, ⟨_, _, _, _, rfl⟩, rfl⟩ := ha
     rfl
   rw [this]
-  simp [shorGateResourceModel]
+  simp [shorGateResourceModelFor, shorGateResourceModel]
   ring
+
+/-- The allocation holds no clean scratch in any of the models `shorGateResourceModelFor m`. -/
+theorem cleanAnc_alloc (m : NegationMethod) {X : Fin 3 → ExtReg} {k C' : ℕ}
+    (SL : SplitLayout X k C') :
+    (LowGate.resources (shorGateResourceModelFor m) SL.alloc).cleanAnc = 0 := by
+  unfold SplitLayout.alloc
+  have gen : ∀ gs : List LowGate,
+      (∀ g ∈ gs, (LowGate.resources (shorGateResourceModelFor m) g).cleanAnc = 0) →
+      (LowGate.resources (shorGateResourceModelFor m) (LowGate.sequence gs)).cleanAnc = 0 := by
+    intro gs
+    induction gs with
+    | nil => intro _; rfl
+    | cons g gs ih =>
+        intro hg
+        simp only [LowGate.sequence, LowGate.resources, GateResources.seq,
+          hg g (by simp), ih fun g' h' => hg g' (by simp [h'])]
+        rfl
+  have hl := gen ((List.finRange 3).flatMap fun s => (List.finRange k).map fun j =>
+      LowGate.zeroExtend (SL.pre s j) (SL.ext s j)) (by
+    intro g hg
+    simp only [List.mem_flatMap, List.mem_map] at hg
+    obtain ⟨_, _, _, _, rfl⟩ := hg
+    rfl)
+  simp only [LowGate.resources, GateResources.seq, hl]
+  rfl
 
 /-- The top extension of a split layout is `C' - topLimbWidth`. -/
 theorem SplitLayout.ext_top {X : Fin 3 → ExtReg} {k C' C : ℕ} (SL : SplitLayout X k C')
@@ -133,7 +160,8 @@ theorem SplitLayout.ext_top {X : Fin 3 → ExtReg} {k C' C : ℕ} (SL : SplitLay
 /-- **CNOT through the full recursion** (sign-extension fan-out included). -/
 theorem PolicyImpl.cnot {P : PTPPolicy} {X : Fin 3 → ExtReg} {C : ℕ} {W : List ℕ}
     {G : Angle → LowGate} (h : PolicyImpl P X C W G) (θ : Angle) :
-    (LowGate.resources shorGateResourceModel (G θ)).cnot = ptpCnotFull P C := by
+    (LowGate.resources P.resourceModel (G θ)).cnot = ptpCnotFull P C := by
+  unfold PTPPolicy.resourceModel
   induction h generalizing θ with
   | leaf X C t u hX hstop hD hA =>
       have hl : ptpCnotFull P C = 0 := by
@@ -142,23 +170,55 @@ theorem PolicyImpl.cnot {P : PTPPolicy} {X : Fin 3 → ExtReg} {C : ℕ} {W : Li
         · rfl
         · simp only [Nat.not_lt.mpr (hstop T hcC), ↓reduceDIte]
       rw [hl]
-      exact (ptpLeafSandwich_resources shorGateResourceModel θ (X 0) (X 1) (X 2) t u).2.2.1
+      exact (ptpLeafSandwich_resources _ θ (X 0) (X 1) (X 2) t u).2.2.1
   | node X C T hX hC hc hlt SL G W' Wc hWc hW' hsub ih =>
       have hn : ptpCnotFull P C =
-          3 * ((addCount T.ops + negCount T.ops) * (5 * childWidth C T.ops - 7)) +
+          3 * (addCount T.ops * (5 * childWidth C T.ops - 7) + negCount T.ops * negateCnotGatesFor P.negation (childWidth C T.ops)) +
             6 * (childWidth C T.ops - topLimbWidth C T.k) +
             cpCount T.ops * ptpCnotFull P (childWidth C T.ops) := by
         rw [ptpCnotFull, hc]
         simp only [hlt, ↓reduceDIte]
-      show (LowGate.resources shorGateResourceModel (ptpSubNode T SL _)).cnot = _
+      show (LowGate.resources (shorGateResourceModelFor P.negation) (ptpSubNode T SL _)).cnot = _
       unfold ptpSubNode
-      have hb := (body_field fCnot SL.lay (fun t j => G j (θ * coeffN T C t))
-        (ptpCnotFull P (childWidth C T.ops)) (fun t j => ih j _) T.ops 0).trans (bodyField_eq fCnot SL.lay.width _ T.ops)
+      have hb := (body_field fCnot P.negation SL.lay (fun t j => G j (θ * coeffN T C t))
+        (ptpCnotFull P (childWidth C T.ops)) (fun t j => ih j _) T.ops 0).trans
+          (bodyField_eq fCnot P.negation SL.lay.width _ T.ops)
       simp only [fCnot, opRes, cuccaroModAddResources] at hb
       simp only [LowGate.resources, GateResources.seq, cnot_alloc, SL.ext_top hX]
-      rw [show (LowGate.resources shorGateResourceModel (body SL.lay _ 0 T.ops)).cnot = _ from hb, hn]
-      show _ = 3 * ((addCount T.ops + negCount T.ops) * (5 * SL.lay.width - 7)) + _ + _
+      rw [show (LowGate.resources (shorGateResourceModelFor P.negation) (body SL.lay _ 0 T.ops)).cnot = _
+        from hb, hn]
+      show _ = 3 * (addCount T.ops * (5 * SL.lay.width - 7) +
+        negCount T.ops * negateCnotGatesFor P.negation (SL.lay.width)) + _ + _
       ring
+
+/-- **Clean scratch through the full recursion** (scan widths): every gate-level recursion following `P`
+holds at most `ptpCleanAnc P C` clean qubits at once in the policy's resource model `P.resourceModel`
+(`PolicyImplD.cleanAnc_le` is the version for any width rule). -/
+theorem PolicyImpl.cleanAnc_le {P : PTPPolicy} {X : Fin 3 → ExtReg} {C : ℕ} {W : List ℕ}
+    {G : Angle → LowGate} (h : PolicyImpl P X C W G) (θ : Angle) :
+    (LowGate.resources P.resourceModel (G θ)).cleanAnc ≤ ptpCleanAnc P C := by
+  unfold PTPPolicy.resourceModel
+  induction h generalizing θ with
+  | leaf X C t u hX hstop hD hA =>
+      rw [(ptpLeafSandwich_resources _ θ (X 0) (X 1) (X 2) t u).2.2.2.2.2]
+      exact Nat.zero_le _
+  | node X C T hX hC hc hlt SL G W' Wc hWc hW' hsub ih =>
+      have hn : ptpCleanAnc P C =
+          max (nodeCleanAncFor P.negation (childWidth C T.ops) (addCount T.ops) (negCount T.ops))
+            (ptpCleanAnc P (childWidth C T.ops)) := by
+        rw [ptpCleanAnc, hc]
+        simp only [hlt, ↓reduceDIte]
+      show (LowGate.resources (shorGateResourceModelFor P.negation) (ptpSubNode T SL _)).cleanAnc ≤ _
+      unfold ptpSubNode
+      have hb := body_cleanAnc_leFor P.negation SL.lay (fun t j => G j (θ * coeffN T C t))
+        (ptpCleanAnc P (childWidth C T.ops)) (fun t j => ih j _) T.ops 0
+      simp only [LowGate.resources, GateResources.seq, cleanAnc_alloc]
+      rw [hn]
+      have hb' : (LowGate.resources (shorGateResourceModelFor P.negation)
+          (body SL.lay (fun t j ↦ G j (θ * coeffN T C t)) 0 T.ops)).cleanAnc ≤
+          max (nodeCleanAncFor P.negation (childWidth C T.ops) (addCount T.ops) (negCount T.ops))
+            (ptpCleanAnc P (childWidth C T.ops)) := hb
+      omega
 
 /-! ## Qubits -/
 
@@ -267,7 +327,8 @@ theorem qubits_le_of_policyImpl {P : PTPPolicy} {X : Fin 3 → ExtReg} {n base :
 /-- **O2, full form.** For a checked policy `P`, every width `n` and three pairwise
 disjoint `n`-qubit registers below `base`, there is a gate-level circuit family following
 `P`, with workspace above `base`, that is correct on every basis state with fitting
-operands and clean workspace, and whose complete census (ForShor `shorGateResourceModel`)
+operands and clean workspace, and whose complete census (ForShor's resource model for the policy's negation
+method, `P.resourceModel`; `shorGateResourceModel` for `oneQubit`)
 is the policy formulas: Rz, Toffoli, X, H = `ptpResources P n`, CNOT = `ptpCnotFull P n`,
 uncomputing Toffolis (And†) = `ptpAndDag P n`; qubits touched ≤ `3 n + ptpWorkspace P n`
 (model scratch `cleanAnc` of the arithmetic primitives aside). -/
@@ -282,7 +343,7 @@ theorem ptp_gate_full {qs : QSemantics} [RegEncoding qs.Basis] [LowerGateClass q
           Complex.exp (((Angle.toReal φ : ℝ) : ℂ) * Complex.I *
             (((extToInt (X 0) b : ℤ) : ℂ) * ((extToInt (X 1) b : ℤ) : ℂ) *
               ((extToInt (X 2) b : ℤ) : ℂ))) • qs.ket b) ∧
-      (∀ φ : Angle, let R := LowGate.resources shorGateResourceModel (G φ)
+      (∀ φ : Angle, let R := LowGate.resources P.resourceModel (G φ)
         R.rz = (ptpResources P n).rz ∧ R.toffoli = (ptpResources P n).toffoli ∧
           R.x = (ptpResources P n).x ∧ R.h = (ptpResources P n).h ∧
           R.cnot = ptpCnotFull P n ∧ adjToffCount (G φ) = ptpAndDag P n ∧
