@@ -109,7 +109,7 @@ The reference is not the only implementation the development admits. `ForShor/Sh
 | `ForShor/ShorVerification/Model/` | Consistency witnesses: the standard matrix model of the semantic classes, and the headline theorems restated over QuantumLib matrices. Not imported by anything else. |
 | `ForShor/ShorVerification/Vendor/Mertens/` | Mertens' third theorem with an explicit error term, vendored from an unmerged Mathlib pull request under its Apache-2.0 headers; used by the totient bound behind the success constant. See its README for provenance and removal. |
 | `docs/` | An interactive visualization of the proof architecture. |
-| `efficient_tables/` | **Separate from the verified circuit.** A classical, theoretical companion: exact optimization of the tables PhaseProduct consumes, sparsity barriers and NP-hardness results, with its own Lean projects and toolchains, a Fortran solver, and a paper. Nothing above depends on it. See [`efficient_tables/README.md`](efficient_tables/README.md). Its proof map is `docs/efficient-tables/`, served at <https://verifiedqc.github.io/ForShor/efficient-tables/>. |
+| `efficient_tables/` | **Separate from the verified circuit.** A classical, theoretical companion: exact optimization of the tables PhaseProduct consumes, sparsity barriers and NP-hardness results, with its own Lean projects and toolchains, a Fortran solver, and a paper. Nothing above depends on it. See [`efficient_tables/README.md`](efficient_tables/README.md). |
 
 For a detailed file-by-file guide, see [ARCHITECTURE.md](ARCHITECTURE.md). Each folder also has its own `README.md`.
 

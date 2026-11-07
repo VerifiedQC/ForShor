@@ -1,5 +1,5 @@
 # Lightweight checks for efficient_tables/ (the classical table-optimization
-# companion) and its site, docs/efficient-tables/. It deliberately does not
+# companion). It deliberately does not
 # build the Lean projects: those are separate Lake projects with their own
 # toolchains (efficient_tables/REPRODUCING.md), the library is ~8k jobs, and
 # lean_hardness compiles ~2.3k complexitylib modules. ForShor's main CI
@@ -9,9 +9,9 @@ name: efficient-tables
 on:
   push:
     branches: [main]
-    paths: ["efficient_tables/**", "docs/efficient-tables/**", ".github/workflows/efficient-tables.yml"]
+    paths: ["efficient_tables/**", ".github/workflows/efficient-tables.yml"]
   pull_request:
-    paths: ["efficient_tables/**", "docs/efficient-tables/**", ".github/workflows/efficient-tables.yml"]
+    paths: ["efficient_tables/**", ".github/workflows/efficient-tables.yml"]
 
 jobs:
   check:
@@ -20,13 +20,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Proof-map graph is current and annotations validate
-        # Regenerates docs/efficient-tables/data/graph.js, checks the layer
-        # order and every curated edge/theorem in annotations.js, then fails
-        # if the committed graph.js differs from the regenerated one.
-        run: |
-          python3 efficient_tables/scripts/gen_docs_graph.py --check
-          git diff --exit-code docs/efficient-tables/data/graph.js
+      - name: Layer order of the Lean projects
+        # A file may import only from its own layer or an earlier one of the same
+        # Lake project, and the two projects must not import each other.
+        run: python3 efficient_tables/scripts/check_layers.py
 
       - name: No sorry, axiom or native_decide in the Lean sources
         # The vendored contract is excluded only because one of its comments
