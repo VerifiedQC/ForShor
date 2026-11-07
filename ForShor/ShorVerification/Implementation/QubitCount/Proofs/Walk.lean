@@ -69,6 +69,28 @@ def reach : LowGate → Finset ℕ
 @[simp] lemma scratch_AddScaled (d s : ExtReg) (b : Bool) (n : ℕ) :
     scratch (.AddScaled d s b n) = 1 := rfl
 
+section ScratchFor
+variable (m : NegationMethod)
+@[simp] lemma scratchFor_H (q : ℕ) : scratchFor m (.H q) = 0 := rfl
+@[simp] lemma scratchFor_X (q : ℕ) : scratchFor m (.X q) = 0 := rfl
+@[simp] lemma scratchFor_Phase (q : ℕ) (a : Angle) : scratchFor m (.Phase q a) = 0 := rfl
+@[simp] lemma scratchFor_CNOT (c t : ℕ) : scratchFor m (.CNOT c t) = 0 := rfl
+@[simp] lemma scratchFor_Toffoli (a b t : ℕ) : scratchFor m (.Toffoli a b t) = 0 := rfl
+@[simp] lemma scratchFor_ShiftL (r : ExtReg) (n : ℕ) : scratchFor m (.ShiftL r n) = 0 := rfl
+@[simp] lemma scratchFor_ShiftR (r : ExtReg) (n : ℕ) : scratchFor m (.ShiftR r n) = 0 := rfl
+@[simp] lemma scratchFor_RadixReverse (r : Reg) (k : ℕ) : scratchFor m (.RadixReverse r k) = 0 := rfl
+@[simp] lemma scratchFor_AddScaled (d s : ExtReg) (b : Bool) (n : ℕ) :
+    scratchFor m (.AddScaled d s b n) = 1 := rfl
+
+/-- A negation charges `negationScratch m` of its register's width: one qubit under
+`oneQubit`, the width plus one under `scratch`. -/
+@[simp] lemma scratchFor_Negate (r : ExtReg) :
+    scratchFor m (.Negate r) = negationScratch m r.width := by
+  cases m
+  · rfl
+  · exact negateResourcesFor_cleanAnc_scratch r
+end ScratchFor
+
 /-! ## Activations and releases -/
 
 @[simp] lemma move_true (B L : Finset ℕ) : move true B L = L ∪ B := rfl

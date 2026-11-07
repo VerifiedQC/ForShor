@@ -62,13 +62,13 @@ lemma SFact.congr_peak {G : Gate} {d : Bool} {L M : Finset ℕ} {p p' : ℕ}
 lemma SFact.H {q : ℕ} {L : Finset ℕ} (hq : q ∈ L) (d : Bool) :
     SFact P pc (.H q) d L L (L.card + 0) := by
   have h : L ∪ LowGate.usedQubits (.H q) = L := by simp [LowGate.usedQubits, hq]
-  show WellFormed (.H q) d L ∧ after (.H q) d L = L ∧ peak scratch (.H q) d L = L.card + 0
+  show WellFormed (.H q) d L ∧ after (.H q) d L = L ∧ peak (scratchFor P.negation) (.H q) d L = L.card + 0
   simp [WellFormed, after, peak, LowGate.usedQubits, hq]
 
 lemma SFact.X {q : ℕ} {L : Finset ℕ} (hq : q ∈ L) (d : Bool) :
     SFact P pc (.X q) d L L (L.card + 0) := by
   have h : L ∪ LowGate.usedQubits (.X q) = L := by simp [LowGate.usedQubits, hq]
-  show WellFormed (.X q) d L ∧ after (.X q) d L = L ∧ peak scratch (.X q) d L = L.card + 0
+  show WellFormed (.X q) d L ∧ after (.X q) d L = L ∧ peak (scratchFor P.negation) (.X q) d L = L.card + 0
   simp [WellFormed, after, peak, LowGate.usedQubits, hq]
 
 lemma SFact.CNOT {c t : ℕ} {L : Finset ℕ} (hc : c ∈ L) (ht : t ∈ L) (d : Bool) :
@@ -77,19 +77,19 @@ lemma SFact.CNOT {c t : ℕ} {L : Finset ℕ} (hc : c ∈ L) (ht : t ∈ L) (d :
     simp [LowGate.usedQubits, Finset.insert_subset_iff, hc, ht]
   have h : L ∪ LowGate.usedQubits (.CNOT c t) = L := Finset.union_eq_left.mpr hs
   show WellFormed (.CNOT c t) d L ∧ after (.CNOT c t) d L = L ∧
-    peak scratch (.CNOT c t) d L = L.card + 0
+    peak (scratchFor P.negation) (.CNOT c t) d L = L.card + 0
   refine ⟨hs, h, ?_⟩
-  show (L ∪ _).card + scratch (.CNOT c t) = _
-  rw [h, scratch_CNOT]
+  show (L ∪ _).card + scratchFor P.negation (.CNOT c t) = _
+  rw [h, scratchFor_CNOT]
 
 lemma SFact.Negate {r : ExtReg} {L : Finset ℕ} (hr : regQubitSet r.active ⊆ L) (d : Bool) :
-    SFact P pc (.Negate r) d L L (L.card + 1) := by
+    SFact P pc (.Negate r) d L L (L.card + negationScratch P.negation r.width) := by
   have h : L ∪ LowGate.usedQubits (.Negate r) = L := Finset.union_eq_left.mpr hr
   show WellFormed (.Negate r) d L ∧ after (.Negate r) d L = L ∧
-    peak scratch (.Negate r) d L = L.card + 1
+    peak (scratchFor P.negation) (.Negate r) d L = L.card + negationScratch P.negation r.width
   refine ⟨hr, h, ?_⟩
-  show (L ∪ _).card + scratch (.Negate r) = _
-  rw [h, scratch_Negate]
+  show (L ∪ _).card + scratchFor P.negation (.Negate r) = _
+  rw [h, scratchFor_Negate]
 
 lemma SFact.AddScaled {dst src : ExtReg} {b : Bool} {n : ℕ} {L : Finset ℕ}
     (h1 : regQubitSet dst.active ⊆ L) (h2 : regQubitSet src.active ⊆ L) (d : Bool) :
@@ -97,10 +97,10 @@ lemma SFact.AddScaled {dst src : ExtReg} {b : Bool} {n : ℕ} {L : Finset ℕ}
   have hs : LowGate.usedQubits (.AddScaled dst src b n) ⊆ L := Finset.union_subset h1 h2
   have h : L ∪ LowGate.usedQubits (.AddScaled dst src b n) = L := Finset.union_eq_left.mpr hs
   show WellFormed (.AddScaled dst src b n) d L ∧ after (.AddScaled dst src b n) d L = L ∧
-    peak scratch (.AddScaled dst src b n) d L = L.card + 1
+    peak (scratchFor P.negation) (.AddScaled dst src b n) d L = L.card + 1
   refine ⟨hs, h, ?_⟩
-  show (L ∪ _).card + scratch (.AddScaled dst src b n) = _
-  rw [h, scratch_AddScaled]
+  show (L ∪ _).card + scratchFor P.negation (.AddScaled dst src b n) = _
+  rw [h, scratchFor_AddScaled]
 
 /-- Extending by one qubit forwards activates it; backwards releases it. -/
 lemma SFact.extend_fwd {r : ExtReg} {L : Finset ℕ} {c : ℕ} (hfresh : _root_.Disjoint (allocBits r 1) L)

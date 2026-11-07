@@ -70,7 +70,8 @@ theorem orderFindingQubitsBalancedU_formula (P : ShorLoweringPolicy) (R : Rule) 
     (hws : Policy.GateWorkspaceOK P (orderFindingApprox a N x y work scratch flag hmod hstep4))
     (hf : Fits P R (orderFindingApprox a N x y work scratch flag hmod hstep4))
     (hlay : OrderFindingSpaceLayout x y work scratch flag) :
-    (orderFindingApproxLowBalancedU P R a N x y work scratch flag hmod hstep4 hws hf).peakQubits
+    (orderFindingApproxLowBalancedU P R a N x y work scratch flag hmod hstep4 hws
+        hf).peakQubitsFor P.negation
         (orderFindingBaseSet x y work scratch flag)
       = Policy.orderFindingQubitsBalanced P R x.width
           y.width y.capacity work.width work.capacity scratch.width scratch.capacity := by
