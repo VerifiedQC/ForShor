@@ -7,7 +7,7 @@ import ForShor.ShorVerification.Implementation.Reference.Balanced.Proofs.Checks
 The default rule's plans at the four unequal sites of the 2048-bit reference
 layout fit the reserves those sites hold. The balanced budget is then the larger
 of the sites' phase products (558, Step 1's 2049 x 2348 site split into two, with its
-two qubits of scratch) and Step 3's constant arithmetic on the 4398-qubit scratch
+the 2 extra qubits every phase-product step adds, the `2 +` in `modMulPhasePeaksWith`) and Step 3's constant arithmetic on the 4398-qubit scratch
 register, which depends on the negation method:
 
 * `oneQubit` (the default): Step 3 costs 3, so the budget is 558, and the circuit peaks at
@@ -104,7 +104,7 @@ theorem balancedOrderFindingPeak_2048_for (m : NegationMethod) {xW dC wC sC : �
   rcases hx with rfl | rfl <;> cases m <;> decide +kernel
 
 /-- The balanced budget at the 2048-bit widths under the default (`oneQubit`) method: 558,
-Step 1's phase product with its two qubits of scratch. -/
+Step 1's phase product plus the 2 extra qubits every phase-product step adds (the `2 +` in `modMulPhasePeaksWith`). -/
 theorem balancedOrderFindingPeak_2048 {xW dC wC sC : ℕ} (hx : xW = 4095 ∨ xW = 4096)
     (hd : 43009 ≤ dC) (hw : 42709 ≤ wC) (hs : 43005 ≤ sC) :
     Policy.orderFindingPeakBalanced standardPolicy2 defaultRule xW 2048 dC 2347 wC 4398 sC

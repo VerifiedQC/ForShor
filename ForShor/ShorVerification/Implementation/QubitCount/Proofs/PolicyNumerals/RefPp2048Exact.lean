@@ -1,4 +1,5 @@
 import ForShor.ShorVerification.Implementation.QubitCount.Proofs.PolicyNumerals.Basic
+import ForShor.ShorVerification.Implementation.QubitCount.Proofs.PolicyNumerals
 import ForShor.ShorVerification.Submission.Policies.RefPp2048
 
 /-!

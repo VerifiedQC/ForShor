@@ -200,6 +200,9 @@ theorem ladder_exact : ladder .exact policy.policy target = [(2048, some 6), (36
 theorem ladder_scan : ladder .scan policy.policy target = [(2048, some 6), (385, some 3), (140, some 2), (73, some 2), (40, some 2), (23, none)] := by
   decide +kernel
 
+/-- The policy names no negation method, so it is priced with the default one: `oneQubit` (one clean qubit). -/
+theorem negation_default : policy.policy.negation = .oneQubit := rfl
+
 end PolicySubmission.Policies.RefPp2048
 
 open Shor.Audit
@@ -214,3 +217,4 @@ open Shor.Audit
 #assert_axioms _root_.PolicySubmission.Policies.RefPp2048.ladder_exact
 #assert_axioms _root_.PolicySubmission.Policies.RefPp2048.ladder_scan
 #assert_axioms _root_.PolicySubmission.Policies.RefPp2048.policy
+#assert_axioms _root_.PolicySubmission.Policies.RefPp2048.negation_default

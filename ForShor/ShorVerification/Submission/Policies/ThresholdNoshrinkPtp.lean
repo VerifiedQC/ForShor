@@ -236,6 +236,9 @@ theorem accepted : ptpAccepts policy target = false := by
 /-- The exact-width recursion ladder from the target. -/
 theorem ladder_exact : policy.ladderX target = [(2048, some 6), (375, some 2), (189, some 2), (96, some 2), (50, some 2), (27, some 2), (15, some 2), (9, some 2), (6, some 2), (5, some 2), (4, none)] := by decide +kernel
 
+/-- The policy names no negation method, so it is priced with the default one: `oneQubit` (one clean qubit). -/
+theorem negation_default : policy.negation = .oneQubit := rfl
+
 end PolicySubmission.Policies.ThresholdNoshrinkPtp
 
 open Shor.Audit
@@ -248,3 +251,4 @@ open Shor.Audit
 #assert_axioms _root_.PolicySubmission.Policies.ThresholdNoshrinkPtp.accepted
 #assert_axioms _root_.PolicySubmission.Policies.ThresholdNoshrinkPtp.ladder_exact
 #assert_axioms _root_.PolicySubmission.Policies.ThresholdNoshrinkPtp.policy
+#assert_axioms _root_.PolicySubmission.Policies.ThresholdNoshrinkPtp.negation_default

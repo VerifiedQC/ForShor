@@ -7,5 +7,5 @@ import ForShor.ShorVerification.Implementation.QubitCount.Proofs.PolicyNumeralsB
 /-!
 # Qubit count: 2048-bit peaks of the PhaseProduct board policies (width rule `exact`)
 
-The board's own width rule, for 5 of the 9 distinct PhaseProduct board policies: `6f036362302e`, `ea01254c45f8`, `7df40770c0b6`, `a3972b965049`, `6f7d25984ff8K6`. Each module's kernel evaluation peaks at 5 to 12.3 GB of memory, so the modules form an import chain (Lake builds them one at a time) and are not part of the `ForShor` umbrella.
+The board's own width rule, for 5 of the 9 distinct PhaseProduct board policies: `6f036362302e`, `ea01254c45f8`, `7df40770c0b6`, `a3972b965049`, `6f7d25984ff8K6`. Each module's kernel evaluation peaks at 5 to 12.3 GB of memory, so the modules form an import chain (Lake builds them one at a time). The first one imports the scan numerals and the last module of `PolicyNumeralsExact`, so all exact evaluations are ONE serial order whatever is built; they are not part of the `ForShor` umbrella.
 -/
