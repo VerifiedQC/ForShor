@@ -20,3 +20,5 @@ import ForShor.ShorVerification.Implementation.QubitCount.Proofs.PolicyNumerals 
 import ForShor.ShorVerification.Submission.Policies.All                  -- the twelve sister-repository policies as Lean
 import ForShor.ShorVerification.Submission.Policies.Board.All           -- the six PhaseTripleProduct board policies
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Proofs.Peak.BoardNumerals  -- and their single-product peaks, both methods
+import ForShor.ShorVerification.Submission.Policies.BoardPP.All     -- the nine PhaseProduct board policies
+import ForShor.ShorVerification.Implementation.QubitCount.Proofs.PolicyNumeralsBoard  -- and their order-finding peaks (scan rule)

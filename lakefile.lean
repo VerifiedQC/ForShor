@@ -79,6 +79,17 @@ lean_lib «PolicyTests» where
 lean_lib «PolicyNumeralsExact» where
   roots := #[`ForShor.ShorVerification.Implementation.QubitCount.Proofs.PolicyNumeralsExact]
 
+-- Same for the PhaseProduct board policies: the five rows whose exact-rule numerals fit a CI runner
+-- (at most about 12 GB, about 3 minutes). Another chain, built in its own CI step AFTER `PolicyNumeralsExact`
+-- (never in one `lake build` command with it: two chains would run side by side).
+lean_lib «PolicyNumeralsBoardExact» where
+  roots := #[`ForShor.ShorVerification.Implementation.QubitCount.Proofs.PolicyNumeralsBoardExact]
+
+-- The four rows that need 13-15 GB (the top 8-way policy among them): kernel-checked locally, NOT built in CI.
+-- `lake build PolicyNumeralsBoardExactHeavy` on a machine with 16 GB or more of free memory.
+lean_lib «PolicyNumeralsBoardExactHeavy» where
+  roots := #[`ForShor.ShorVerification.Implementation.QubitCount.Proofs.PolicyNumeralsBoardExactHeavy]
+
 -- Drop-in: exact-width worked instances and fault challenge (not part of PolicySubmission).
 lean_lib «ExactWidthTests» where
   roots := #[`ForShor.ShorVerification.Submission.ExactWidthTests]

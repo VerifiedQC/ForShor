@@ -85,6 +85,19 @@ jobs:
             exit 1
           fi
 
+      - name: Build exact-width numerals of the board policies
+        # The same, for the PhaseProduct board policies: five rows whose numerals fit a runner (at most
+        # about 12 GB each). A step of its own, after the previous one: two chains in one command would run
+        # side by side. The four heaviest rows (13-15 GB) are `PolicyNumeralsBoardExactHeavy`, local only.
+        run: |
+          set -o pipefail
+          lake build PolicyNumeralsBoardExact 2>&1 | tee exact_board.log
+          if grep -q "warning:" exact_board.log; then
+            echo "::error::board exact-width numerals produced warnings:"
+            grep "warning:" exact_board.log
+            exit 1
+          fi
+
       - name: Build executables
         # No executable is reachable from the library targets --
         # Emit/Tests.lean does not import Emit/Main.lean, Submission/Check.lean
