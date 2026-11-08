@@ -49,3 +49,14 @@ table.ptp-mods td:nth-child(2) { color: #555; white-space: nowrap; font-size: 0.
 /* Tufte floats figcaptions to the right of fixed-width paragraphs, which then overlap; set it in the flow. */
 figure.fullwidth figcaption { float: none; clear: both; max-width: 55%; margin: 0.8rem 0 1.5rem 0; }
 @media (max-width: 760px) { figure.fullwidth figcaption { max-width: none; } }
+
+/* "Inside PTP", panel ②: one gate per operand and operation (a dot on the limb read, a labelled box on the
+   limb written), and the typeset output box. */
+.ppsvg .pt-op { font-size: 12.5px; }
+.ppsvg .pconn { stroke: #4a8fd4; stroke-width: 1.6; }
+.ppsvg .pdot { fill: #4a8fd4; stroke: none; }
+.ppsvg .pn.on .pconn { stroke: #111; }
+.ppsvg .pn.on .pdot { fill: #111; }
+.ppsvg .pmath { text-align: center; color: #111; line-height: 1.25; pointer-events: none; }
+.ppsvg .pmath-main { font-size: 15px; }
+.ppsvg .pmath-sub { font-size: 13px; font-style: italic; color: #444; }

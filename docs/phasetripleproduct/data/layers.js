@@ -742,7 +742,7 @@ window.PTP_LAYERS = {
   },
   "Asymptotic": {
    "title": "Asymptotic",
-   "role": "O(n^log_k(3k−2)) gates",
+   "role": "\\(O(n^{\\log_k(3k-2)})\\) gates",
    "kind": "ext",
    "summary": "<p class=\"lmeta\">1 file · 23 declarations · 318 lines</p><p>The PTP analogue of ForShor's PhaseProduct gate-count theorem, under the same hypothesis: a <strong>constant policy</strong>, one table at every width. The exponent is \\(\\log_k(3k-2)\\): 2.000 at \\(k=2\\), 1.771 at \\(k=3\\), 1.661 at \\(k=4\\), tending to 1. The count is <code>rz + toffoli + x + h + cnot</code> under <code>shorGateResourceModel</code>, not a T count. Both claims of this layer are proved as <code>_core</code> theorems here and re-stated in <code>Main.lean</code>.</p><table class=\"ptp-mods\"><tr><td><a href=\"https://github.com/VerifiedQC/ForShor/blob/eb00c5adc728/ForShor/ShorVerification/Implementation/PhaseTripleProduct/Proofs/Asymptotic.lean\">Proofs/Asymptotic.lean</a></td><td>23 decls</td><td>PTP asymptotic gate count (analogue of ForShor `GateCount/PhaseProduct`)</td></tr></table>",
    "snippets": [

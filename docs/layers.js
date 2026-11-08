@@ -115,9 +115,10 @@
         var fx = left ? a.left - 1 : a.right + 1, tx = left ? b.left - 1 : b.right + 1;
         var fy = a.cy + (e.lane || 0) * 10, ty = b.cy - (e.lane || 0) * 10;
         var s = left ? -1 : 1;                           // direction towards the lane
+        var v = ty >= fy ? 1 : -1;                       // the lane runs down, or up (a loop back to an earlier row)
         d = "M" + fx + "," + fy +
-            " L" + (x0 - s * R) + "," + fy + " Q" + x0 + "," + fy + " " + x0 + "," + (fy + R) +
-            " L" + x0 + "," + (ty - R) + " Q" + x0 + "," + ty + " " + (x0 - s * R) + "," + ty +
+            " L" + (x0 - s * R) + "," + fy + " Q" + x0 + "," + fy + " " + x0 + "," + (fy + v * R) +
+            " L" + x0 + "," + (ty - v * R) + " Q" + x0 + "," + ty + " " + (x0 - s * R) + "," + ty +
             " L" + tx + "," + ty;
         lx = x0 + s * 9; ly = (fy + ty) / 2 + 4; anchor = left ? "end" : "start";
       }
