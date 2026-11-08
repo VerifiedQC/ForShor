@@ -47,7 +47,8 @@
       .replace(/[₀-₉]/g, function (d) { return "_" + SUB.indexOf(d); }).replace(/∞/g, "\\infty") + "\\)";
   }
 
-  var W = 1240, H = 584;
+  var DX = 244;                                  // extra width the labelled operation gates need in panel ②
+  var W = 1240 + DX + 14, H = 584;
   var svg = el("svg", { viewBox: "0 0 " + W + " " + H, "class": "ppsvg", role: "img",
     "aria-label": "The PhaseTripleProduct recursion at k = 2; click any element for details" });
   svg.innerHTML = '<defs><marker id="ptp-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>';
@@ -126,73 +127,108 @@
   function uName(id) { return "Π⁽" + "⁰¹²"[+id.slice(1)] + "⁾"; }
   var wy = function (w) { return 64 + w * 50; };           // wires x0 y0 z0 x1 y1 z1
   var names = ["x₀", "y₀", "z₀", "x₁", "y₁", "z₁"];
+  var WIRE0 = 362, WIRE1 = 904 + DX;
   for (var w = 0; w < 6; w++) {
-    svg.appendChild(el("line", { x1: 362, y1: wy(w), x2: 904, y2: wy(w), "class": "pw" }));
-    txt(svg, 356, wy(w) + 5, names[w], "pt pt-w", "end");
-    txt(svg, 910, wy(w) + 5, names[w], "pt pt-w");
+    svg.appendChild(el("line", { x1: WIRE0, y1: wy(w), x2: WIRE1, y2: wy(w), "class": "pw" }));
+    txt(svg, WIRE0 - 6, wy(w) + 5, names[w], "pt pt-w", "end");
+    txt(svg, WIRE1 + 6, wy(w) + 5, names[w], "pt pt-w");
   }
-  var cols = { U0: 372, PP1: 456, U1: 598, PP2: 680, U2: 822 };
-  var segU = {}, ppIdx = 0, ppGroup = 0;
-  D.segments.forEach(function (s) {
+  // Each table operation acts on the three operands alike, so it is drawn as three gates, one per operand,
+  // and each gate touches only its own two wires: a dot on the limb that is read, a labelled box on the limb
+  // that is written, joined by a stroke. Every other wire passes straight across. The three strokes of an
+  // operation are staggered by STEP so that no stroke crosses another operand's box: when the written limb
+  // is below the read one, the strokes of the later operands run through the earlier boxes' wires, so they
+  // sit to the right; when it is above, to the left.
+  var BW = 54, BH = 22, STEP = 32, GW = BW + 2 * STEP, OGAP = 6, PGAP = 10, PPW = 120;
+  function parseOp(s) {
+    var m = /dst=(\d+) src=(\d+) (pos|neg) sh=(\d+)/.exec(s);
+    return { dst: +m[1], src: +m[2], neg: m[3] === "neg", sh: +m[4] };
+  }
+  function opLabel(L, o) {                                  // e.g. "x₁ += x₀", "y₀ −= 2y₁"
+    return L + SUB[o.dst] + (o.neg ? " −= " : " += ") + (o.sh ? Math.pow(2, o.sh) : "") + L + SUB[o.src];
+  }
+  var segU = {}, uSpan = {}, ppIdx = 0, cx = 370, ppRunX = null;
+  D.segments.forEach(function (s, si) {
     if (s.kind === "U") {
       segU[s.name] = s;
-      var x = cols[s.name];
-      // one bar per operand, from its register 0 to its register 1: the same ops act on all three
-      for (var o = 0; o < 3; o++) {
-        var g = node(s.name, x + o * 25, wy(o) - 12, 22, wy(3 + o) - wy(o) + 24, [], "pu");
-        txt(g, x + o * 25 + 11, wy(o) + 2, "xyz"[o], "pt pt-pi", "middle");
-      }
-      txt(svg, x + 36, wy(0) - 22, uName(s.name), "pt pt-b", "middle");
+      var g = el("g", { "class": "pn pu pop", "data-id": s.name, tabindex: "0", role: "button" });
+      var x0 = cx;
+      s.ops.forEach(function (os, oi) {
+        var o = parseOp(os), down = o.dst > o.src;
+        for (var q = 0; q < 3; q++) {
+          var col = cx + BW / 2 + (down ? q : 2 - q) * STEP;
+          var ys = wy(3 * o.src + q), yd = wy(3 * o.dst + q);
+          g.appendChild(el("line", { x1: col, y1: ys, x2: col, y2: yd + (down ? -BH / 2 : BH / 2), "class": "pconn" }));
+          g.appendChild(el("circle", { cx: col, cy: ys, r: 4.5, "class": "pdot" }));
+          g.appendChild(el("rect", { x: col - BW / 2, y: yd - BH / 2, width: BW, height: BH, rx: 4 }));
+          txt(g, col, yd + 4.5, opLabel("xyz"[q], o), "pt pt-op", "middle");
+        }
+        cx += GW + (oi + 1 < s.ops.length ? OGAP : 0);
+      });
+      svg.appendChild(g);
+      uSpan[s.name] = { x0: x0, x1: cx };
+      txt(svg, (x0 + cx) / 2, wy(0) - 22, uName(s.name), "pt pt-b", "middle");
+      cx += PGAP;
     } else {
+      // consecutive checkpoints share one column, one on each limb register
       var p = D.pps[ppIdx++];
-      var grp = p.n <= 2 ? 1 : 2;
-      var x0 = grp === 1 ? cols.PP1 : cols.PP2;
+      if (ppRunX === null) ppRunX = cx;
       var top2 = wy(3 * p.reg) - 20, h = wy(3 * p.reg + 2) - wy(3 * p.reg) + 40;
-      var g2 = node("pp" + p.n, x0, top2, 134, h,
+      var g2 = node("pp" + p.n, ppRunX, top2, PPW, h,
         [{ s: "PTP at p = " + p.point, cls: "pt pt-b" }, { s: "x: " + p.x, cls: "pt pt-m" }, { s: "y: " + p.y, cls: "pt pt-m" }, { s: "z: " + p.z, cls: "pt pt-m" }], "ppp");
       var c = el("g", { "class": "pnum" });
-      c.appendChild(el("circle", { cx: x0 + 4, cy: top2 + 2, r: 11 }));
-      txt(c, x0 + 4, top2 + 7, String(p.n), "pt pt-n", "middle");
+      c.appendChild(el("circle", { cx: ppRunX + 4, cy: top2 + 2, r: 11 }));
+      txt(c, ppRunX + 4, top2 + 7, String(p.n), "pt pt-n", "middle");
       g2.appendChild(c);
+      var next = D.segments[si + 1];
+      if (!next || next.kind !== "PP") { cx = ppRunX + PPW + PGAP; ppRunX = null; }
     }
   });
-  var band = [{ id: "U0", x: 340, w: 150 }, { id: "U1", x: 496, w: 250 }, { id: "U2", x: 752, w: 150 }];
-  band.forEach(function (b) {
-    var s = segU[b.id];
-    var g = el("g", { "class": "pn pband", "data-id": b.id, tabindex: "0", role: "button" });
-    g.appendChild(el("rect", { x: b.x, y: 368, width: b.w, height: 84, rx: 6 }));
-    txt(g, b.x + 10, 390, uName(b.id) + ":", "pt pt-b");
-    s.math.forEach(function (m, i) { txt(g, b.x + 10, 410 + i * 18, m, "pt pt-m"); });
+  Object.keys(uSpan).forEach(function (id) {
+    var sp = uSpan[id], s = segU[id];
+    var g = el("g", { "class": "pn pband", "data-id": id, tabindex: "0", role: "button" });
+    g.appendChild(el("rect", { x: sp.x0 - 6, y: 368, width: sp.x1 - sp.x0 + 12, height: 84, rx: 6 }));
+    txt(g, sp.x0 + 4, 390, uName(id) + ":", "pt pt-b");
+    s.math.forEach(function (m, i) { txt(g, sp.x0 + 4, 410 + i * 18, m, "pt pt-m"); });
     svg.appendChild(g);
   });
-  txt(svg, 340, 474, "rⱼ = (xⱼ, yⱼ, zⱼ): each op acts on the x, y and z limbs alike", "pt pt-s");
+  txt(svg, 340, 474, "rⱼ = (xⱼ, yⱼ, zⱼ): each op acts on the x, y and z limbs alike; a dot marks the limb read, a box the limb written", "pt pt-s");
   var strip = el("g", { "class": "pn pstrip", "data-id": "prog", tabindex: "0", role: "button" });
-  strip.appendChild(el("rect", { x: 340, y: 486, width: 562, height: 30, rx: 6 }));
+  strip.appendChild(el("rect", { x: 340, y: 486, width: WIRE1 + 6 - 340 + 22, height: 30, rx: 6 }));
   txt(strip, 352, 506, "T⁽³⁾:  Π⁽⁰⁾ → p = " + D.points.slice(0, 2).join(", ") + " → Π⁽¹⁾ → p = " + D.points.slice(2).join(", ") + " → Π⁽²⁾", "pt");
   svg.appendChild(strip);
 
   // ------------------------------------------------------------ ③ recursion
-  txt(svg, 930, 24, "③ Recursive PTP blocks", "pt ph");
+  var X3 = WIRE1 + 40;                              // clear of the right-hand wire labels
+  txt(svg, X3, 24, "③ Recursive PTP blocks", "pt ph");
   D.pps.forEach(function (p, i) {
     var yy = 60 + i * 60;
-    node("child", 930, yy, 92, 40, ["PTP at " + p.point], "pchild");
+    node("child", X3, yy, 92, 40, ["PTP at " + p.point], "pchild");
     var c = el("g", { "class": "pnum" });
-    c.appendChild(el("circle", { cx: 930, cy: yy, r: 10 }));
-    txt(c, 930, yy + 5, String(p.n), "pt pt-n", "middle");
+    c.appendChild(el("circle", { cx: X3, cy: yy, r: 10 }));
+    txt(c, X3, yy + 5, String(p.n), "pt pt-n", "middle");
     svg.appendChild(c);
-    for (var t = -1; t <= 1; t++) arrow(1023, yy + 20, 1046, yy + 20 + t * 9, "pa pa-thin");
-    node("child", 1048, yy, 92, 40, [Q + " PTPs", { s: "via T⁽³⁾", cls: "pt pt-s" }], "pchild");
-    txt(svg, 1153, yy + 25, "…", "pt pt-b", "middle");
+    for (var t = -1; t <= 1; t++) arrow(X3 + 93, yy + 20, X3 + 116, yy + 20 + t * 9, "pa pa-thin");
+    node("child", X3 + 118, yy, 92, 40, [Q + " PTPs", { s: "via T⁽³⁾", cls: "pt pt-s" }], "pchild");
+    txt(svg, X3 + 223, yy + 25, "…", "pt pt-b", "middle");
   });
-  node("base", 1168, 60, 66, 220, ["base", "case", "", "sandwich", "leaves"], "pbase");
-  txt(svg, 1090, 312, "sum over nodes", "pt pt-s", "middle");
-  txt(svg, 1090, 328, "(arithmetic + leaves)", "pt pt-s", "middle");
-  arrow(1200, 284, 1200, 410);
-  node("bound", 930, 410, 304, 94,
-    [{ s: "Output: gate count of PTP(φxyz)", cls: "pt pt-b" },
-     { s: "Lean, constant policy:", cls: "pt pt-m" },
-     { s: "O(n^(log_k(3k−2))) gates", cls: "pt pt-m" },
-     { s: "k = 2: n², not n³", cls: "pt pt-s" }], "pout");
+  node("base", X3 + 238, 60, 66, 220, ["base", "case", "", "sandwich", "leaves"], "pbase");
+  txt(svg, X3 + 160, 312, "sum over nodes", "pt pt-s", "middle");
+  txt(svg, X3 + 160, 328, "(arithmetic + leaves)", "pt pt-s", "middle");
+  arrow(X3 + 270, 284, X3 + 270, 410);
+  // The output box: the text lines are SVG, the mathematics is TeX typeset by MathJax (as everywhere else on
+  // the page) in a foreignObject, so the complexity expression reads like the one in the panels below.
+  var bound = node("bound", X3, 410, 304, 94, [], "pout");
+  txt(bound, X3 + 152, 432, "Output: gate count of PTP(φxyz)", "pt pt-b", "middle");
+  txt(bound, X3 + 152, 450, "Lean, constant policy:", "pt pt-m", "middle");
+  var fo = el("foreignObject", { x: X3, y: 454, width: 304, height: 46 });
+  var mbox = document.createElement("div");
+  mbox.className = "pmath";
+  mbox.innerHTML = '<div class="pmath-main">\\(O\\bigl(n^{\\log_k(3k-2)}\\bigr)\\) gates</div>' +
+    '<div class="pmath-sub">\\(k = 2\\): \\(n^2\\), not \\(n^3\\)</div>';
+  fo.appendChild(mbox);
+  bound.appendChild(fo);
+  if (window.typesetMath) window.typesetMath(mbox);
 
   // ------------------------------------------------------------ detail panels
   var S = D.snippets;
@@ -209,10 +245,25 @@
       h += "<tr><td>\\(r_" + i + "\\)</td><td>" + tex(s.before[i]) + "</td><td>" + tex(s.after[i]) + "</td></tr>";
     return h + "</table>";
   }
+  // this segment's own operations: the table's arithmetic operations, in order, cut at the checkpoints
+  function uOps(id) {
+    var all = D.tableOps.filter(function (o) { return o[0] !== "phaseProduct"; }), at = 0;
+    for (var i = 0; i < D.segments.length; i++) {
+      var sg = D.segments[i];
+      if (sg.kind !== "U") continue;
+      if (sg.name === id) return all.slice(at, at + sg.ops.length);
+      at += sg.ops.length;
+    }
+    return [];
+  }
   function uPanel(id) {
     var s = segU[id], n = "\\(\\Pi^{(" + id.slice(1) + ")}\\)";
-    var t = "<p>" + n + " is the arithmetic between two rounds of phase products: " + s.math.length +
-      " in-place addition" + (s.math.length > 1 ? "s" : "") + " of one limb register into another. Each is applied to the \\(x\\), \\(y\\) and \\(z\\) limbs alike, " +
+    var nSub = s.math.filter(function (m) { return m.indexOf("−=") >= 0; }).length, nOps = s.math.length;
+    var kind = nSub === 0 ? "addition" : nSub === nOps ? "subtraction" : "addition or subtraction";
+    var plural = nOps > 1 ? "s" : "";
+    var what = kind === "addition or subtraction" ? "additions and subtractions" : kind + plural;
+    var t = "<p>" + n + " is the arithmetic between two rounds of phase products: " + nOps +
+      " in-place " + what + " of one limb register into another. Each is applied to the \\(x\\), \\(y\\) and \\(z\\) limbs alike, " +
       "so the node emits <em>three</em> gates per operation (<code>opGates</code>). In order: " + s.math.map(tex).join(", ") + ".</p>" +
       stateTable(s) +
       "<p>Written \\(x_0, x_1\\) for the two limbs of \\(x\\), and likewise for \\(y\\) and \\(z\\). " +
@@ -220,7 +271,7 @@
         "The columns are computed by running the table, not typed in.") + "</p>";
     return { title: n, role: "register arithmetic", text: t,
       code: '<p class="lsnip-head">the same operations, as in the policy file</p><pre class="lsnip lean"><code>' +
-        window.leanHL(D.tableOps.filter(function (o) { return o[0] !== "phaseProduct"; })
+        window.leanHL(uOps(id)
           .map(function (o) { return "addScaled dst=" + o[1] + " src=" + o[2] + " sign=" + o[3] + " shift=" + o[4]; }).join("\n")) +
         "</code></pre>" + code(S.ptpSubNode) };
   }

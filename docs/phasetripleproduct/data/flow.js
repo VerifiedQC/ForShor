@@ -108,7 +108,7 @@ window.PTP_FLOW = {
   },
   "choose": {
    "title": "Choose a table",
-   "role": "the policy",
+   "role": "",
    "kind": "classical",
    "summary": "<p>The policy is a list of bands, widest first. At the current width \\(w\\) it returns the table of the first band whose threshold is at most \\(w\\), or nothing. The node is a <em>leaf</em> if there is no table, and also if the table would not shrink the width, so the recursion cannot fail to terminate.</p><p>The policy is checked once, before any circuit exists: thresholds strictly decrease and every table passes the contract (\\(3k-2\\) distinct points, consumed in order, registers returned to start). A stronger rule, <code>chainContractsTight</code>, requires every band the recursion reaches to shrink the width.</p>",
    "snippets": [

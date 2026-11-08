@@ -8,7 +8,7 @@
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="../tufte.css?v=1">
     <link rel="stylesheet" href="../site.css?v=7">
-    <link rel="stylesheet" href="./ptp-page.css?v=1">
+    <link rel="stylesheet" href="./ptp-page.css?v=2">
     <script>
       // Math on this page, including the panels the figures open, is TeX between \( and \)
       // (inline) or \[ and \] (display), typeset by MathJax. Lean names stay in <code>.
@@ -30,7 +30,7 @@
       <nav class="site-nav" aria-label="ForShor site"><a href="../">Order finding</a><a href="./" aria-current="page">PhaseTripleProduct</a><span class="nav-out"><a href="https://github.com/VerifiedQC/ForShor">GitHub</a> · <a href="../#cite">Paper</a></span></nav>
 
       <h1>PhaseTripleProduct</h1>
-      <p class="subtitle">A recursive Toom–Cook construction for a three-register phase, and what is proved about it</p>
+      <p class="subtitle">A recursive Toom-Cook construction for a three-register phase, and what is proved about it</p>
 
       <div class="scope">
         <p class="scope-title">Scope: read this first</p>
@@ -115,7 +115,7 @@
         </p>
         <figure class="fullwidth">
           <div id="ptpfig" class="ppfig"></div>
-          <figcaption>Left: a policy chooses a table for each range of widths; the underlined \(\underline{w}_j\) are its thresholds, the plain \(w_i\) the widths the recursion reaches. Middle: one recursion level of a \(k=2\) table. Registers \(r_0, r_1\) hold the two limbs of each of \(x, y, z\); the operations \(\Pi^{(j)}\) act on all three alike; four phase triple products are taken at \(p = 1, 0, -1, \infty\). Right: each of the four is itself lowered the same way, until a policy gives no table. Click anything.</figcaption>
+          <figcaption>Left: a policy chooses a table for each range of widths; the underlined \(\underline{w}_j\) are its thresholds, the plain \(w_i\) the widths the recursion reaches. Middle: one recursion level of a \(k=2\) table. Registers \(r_0, r_1\) hold the two limbs of each of \(x, y, z\); each operation \(\Pi^{(j)}\) acts on all three alike, drawn as one gate per operand: a dot on the limb it reads, a box on the limb it writes, and the other wires pass across; four phase triple products are taken at \(p = 1, 0, -1, \infty\). Right: each of the four is itself lowered the same way, until a policy gives no table. Click anything.</figcaption>
         </figure>
         <p>
           <span class="newthought">One recursion level.</span> \(\Pi^{(0)}\) turns \((x_0, x_1)\) into \((x_0, x_0+x_1)\); two
@@ -136,10 +136,10 @@
         </p>
       </section>
     </article>
-    <script src="./data/layers.js?v=2"></script>
-    <script src="./data/flow.js?v=1"></script>
-    <script src="../layers.js?v=6"></script>
-    <script src="./data/ptpfig.js?v=1"></script>
+    <script src="./data/layers.js?v=3"></script>
+    <script src="./data/flow.js?v=2"></script>
+    <script src="../layers.js?v=7"></script>
+    <script src="./data/ptpfig.js?v=3"></script>
     <script src="./data/champions.js?v=1"></script>
     <script>
       (function () {
@@ -168,6 +168,6 @@
         });
       })();
     </script>
-    <script src="./ptpfig.js?v=1"></script>
+    <script src="./ptpfig.js?v=4"></script>
   </body>
 </html>
