@@ -62,7 +62,7 @@ jobs:
         # the build log is grepped instead.
         run: |
           set -o pipefail
-          lake build ForShor EmitTests Submission PolicySubmission PolicyTests Balanced \
+          lake build ForShor EmitTests Submission PolicySubmission PTPPolicySubmission PolicyTests Balanced \
             ForShor.ShorVerification.Model.Standard.Headline \
             ForShor.ShorVerification.Model.Standard.PhaseTripleProductHeadline \
             ForShor.ShorVerification.Model.QuantumLib.Headline 2>&1 | tee build.log
@@ -103,9 +103,9 @@ jobs:
         # No executable is reachable from the library targets --
         # Emit/Tests.lean does not import Emit/Main.lean, Submission/Check.lean
         # does not import Submission/Main.lean, and PolicyCheck.lean does not
-        # import PolicyMain.lean -- so without this they can stop compiling
-        # without CI noticing.
-        run: lake build forshor_emit forshor_submission forshor_policy_submission forshor_balanced_u
+        # import PolicyMain.lean (nor PTPPolicyCheck.lean PTPPolicyMain.lean) -- so
+        # without this they can stop compiling without CI noticing.
+        run: lake build forshor_emit forshor_submission forshor_policy_submission forshor_ptp_policy_submission forshor_balanced_u
 
       - name: Smoke-run executables
         run: |
@@ -122,6 +122,10 @@ jobs:
           # Toffolis; oneQubit: one qubit, about 12w Toffolis).
           lake exe forshor_policy_submission | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None, "policy submission printed no IR"; assert d["negation"] in ("oneQubit","scratch"), "policy submission names no negation method"; by=d["negate_charge_by_method"]; assert by[d["negation"]]==d["negate_charge"], "negate_charge is not that of the named method"; o=by["oneQubit"]["at_width"]["2048"]; s=by["scratch"]["at_width"]["2048"]; assert o!=s, "scratch and oneQubit charge a negation the same"; assert o["cleanAnc"]==1 and s["cleanAnc"]==2049, (o,s); assert s["x"]==3*2048-4 and s["toffoli"]==2*2048-3, s'
           lake exe forshor_policy_submission --balanced | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None and "balanced" in d, "balanced policy submission printed no IR"'
+          # The PhaseTripleProduct policy submission prints the shipped template's bands (one band, k = 4, 10 points)
+          # in the PhaseProduct document's spelling, with its negation method and the benchmark width; it prints
+          # no IR (there is no emitter for a triple product).
+          lake exe forshor_ptp_policy_submission | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"]=="forshor.ptp-policy-submission/v1", d["schema"]; assert d["negation"]=="oneQubit", d["negation"]; assert d["benchmark"]["bits"]==2048; b=d["bands"]; assert len(b)>=1 and all(2<=x["k"]<=8 and len(x["points"])==3*x["k"]-2 and x["ops"] for x in b), "malformed bands"; assert "ir" not in d'
           lake exe forshor_balanced_u | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None and "balanced_unconditional" in d, "unconditional balanced submission printed no IR"'
 
       - name: Axiom guard
@@ -136,11 +140,13 @@ jobs:
 
       - name: Lexical gate on the shipped templates
         # Proves the grep published in Submission/README.md still executes and
-        # still passes on the example table and the example policy. Both
-        # templates are submitter-owned files, so both are in scope for it.
+        # still passes on the example table, the example policy and the example
+        # PhaseTripleProduct policy. All three templates are submitter-owned files,
+        # so all three are in scope for it.
         run: |
           bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/Template.lean
           bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PolicyTemplate.lean
+          bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PTPPolicyTemplate.lean
 
       - name: Check docs graph
         run: |
