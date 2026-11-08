@@ -105,6 +105,7 @@ The reference is not the only implementation the development admits. `ForShor/Sh
 | `ForShor/ShorVerification/Implementation/GateCount/` | Resource estimation: counting bounds for the phase product, the QFT, and the complete Shor circuit. |
 | `ForShor/ShorVerification/Implementation/Reference/` | The construction that turns an admissible table into a circuit family: fully computable, and generic in the table rather than tied to one. |
 | `ForShor/ShorVerification/Submission/` | The public surface a submissions repo builds against: deciding the four side conditions, auditing the axioms behind them, the certificate, the score, and the template a submitter copies. |
+| `ForShor/ShorVerification/Submission/Policies/` | The sister repositories' policies written as Lean values and kernel-checked: the twelve acceptance policies and rejection controls (`RefPp2048`, `RefPtp2048`, the threshold and fault controls), the six PhaseTripleProduct results-board rows (`Board/`) and the nine PhaseProduct results-board rows (`BoardPP/`). Their order-finding peaks are kernel-evaluated in `Implementation/QubitCount/Proofs/PolicyNumerals*`. |
 | `ForShor/Emit/` | JSON printer for a lowered circuit, the symbolic IR extractor, and the `forshor_emit` executable. |
 | `ForShor/ShorVerification/Model/` | Consistency witnesses: the standard matrix model of the semantic classes, and the headline theorems restated over QuantumLib matrices. Not imported by anything else. |
 | `ForShor/ShorVerification/Vendor/Mertens/` | Mertens' third theorem with an explicit error term, vendored from an unmerged Mathlib pull request under its Apache-2.0 headers; used by the totient bound behind the success constant. See its README for provenance and removal. |
@@ -216,6 +217,18 @@ each table shrinks — one level deep per distinct table and at full depth at
 the widths reaching one, two and three levels of the probe's recursion, so
 the cost of the check depends on the tables and not on the thresholds.
 
+**The negation option.** A policy chooses, with one field next to its bands,
+how a negation is built and priced: `negation := .oneQubit` (the default if the
+field is left out: Gidney's one-clean-ancilla increment, about `12 w` Toffolis
+for a `w`-bit register) or `negation := .scratch` (the pre-swap Cuccaro
+negation against a register of ones: `w + 1` clean qubits, `2 w - 3`
+Toffolis). It is a qubits-against-gates choice and not an admissibility
+condition: the tables, C1–C4, the thresholds and the certificate are the same
+either way. `forshor_policy_submission` prints the method as `negation` in
+`policy.json`, and the gate counts and the qubit peaks are stated and proved for
+both methods (`NegationMethod`, `Framework/NegationMethod.lean`). See
+[`Submission/README.md`](ForShor/ShorVerification/Submission/README.md#the-negation-option).
+
 See
 [`Submission/README.md`](ForShor/ShorVerification/Submission/README.md)
 for what the tiers of checking do and do not establish, and for the CI
@@ -306,6 +319,22 @@ lake build PolicySubmission   # the kernel-checked side conditions for Submissio
 lake exe forshor_policy_submission   # extracts the IR, runs the evaluation tier; prints policy.json only if it passes
 lake build ExactWidthTests Balanced  # exact-width instances and fault challenge; the balanced split
 ```
+
+The kernel-evaluated order-finding peaks of the policies under `Submission/Policies/`
+(`decide +kernel`) are heavy, so the ones under the `exact` width rule are libraries of
+their own, chained by import so that Lake builds them one at a time:
+
+```sh
+lake build PolicyNumeralsExact           # the five PhaseProduct acceptance policies with an exact-rule numeral (9-12 GB peak each)
+lake build PolicyNumeralsBoardExact      # the five results-board PhaseProduct rows that fit a 16 GB CI runner (up to about 12 GB)
+lake build PolicyNumeralsBoardExactHeavy # the other four rows; needs 16 GB or more of free memory, not built in CI
+```
+
+CI builds the first two, each in a step of its own after the main build; the scan-rule
+numerals and the policies themselves are part of the `ForShor` umbrella. The peak
+resident memory of the kernel evaluation is what limits these, which is why the
+exact ones are not in the umbrella.
+
 
 ## License
 
