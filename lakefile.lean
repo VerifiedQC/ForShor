@@ -60,6 +60,18 @@ lean_exe forshor_policy_submission where
   -- drop-in: the IR is extracted at run time (MetaM over the imported environment)
   supportInterpreter := true
 
+-- The PhaseTripleProduct counterpart of the policy submission above. `Submission/PTPPolicyTemplate.lean` is the
+-- submitter's file (a `Shor.PTP.PTPPolicy`), `Submission/PTPPolicyCheck.lean` is the repo-owned root and is the
+-- check (the table contract, the strict decrease of the thresholds and the exact-width threshold rule by
+-- `decide +kernel`, then the axiom audit); the executable prints the policy's document only if both hold. A
+-- PhaseTripleProduct submissions repo's CI is
+--   lake build PTPPolicySubmission forshor_ptp_policy_submission && lake exe forshor_ptp_policy_submission > policy.json
+lean_lib «PTPPolicySubmission» where
+  roots := #[`ForShor.ShorVerification.Submission.PTPPolicyCheck]
+
+lean_exe forshor_ptp_policy_submission where
+  root := `ForShor.ShorVerification.Submission.PTPPolicyMain
+
 -- The unconditionally balanced IR (Emit/BalancedU/): the `--balanced` path of
 -- forshor_policy_submission for `Shor.Balanced.balanceU`, which splits every site.
 lean_exe forshor_balanced_u where
