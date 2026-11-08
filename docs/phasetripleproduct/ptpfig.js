@@ -245,10 +245,25 @@
       h += "<tr><td>\\(r_" + i + "\\)</td><td>" + tex(s.before[i]) + "</td><td>" + tex(s.after[i]) + "</td></tr>";
     return h + "</table>";
   }
+  // this segment's own operations: the table's arithmetic operations, in order, cut at the checkpoints
+  function uOps(id) {
+    var all = D.tableOps.filter(function (o) { return o[0] !== "phaseProduct"; }), at = 0;
+    for (var i = 0; i < D.segments.length; i++) {
+      var sg = D.segments[i];
+      if (sg.kind !== "U") continue;
+      if (sg.name === id) return all.slice(at, at + sg.ops.length);
+      at += sg.ops.length;
+    }
+    return [];
+  }
   function uPanel(id) {
     var s = segU[id], n = "\\(\\Pi^{(" + id.slice(1) + ")}\\)";
-    var t = "<p>" + n + " is the arithmetic between two rounds of phase products: " + s.math.length +
-      " in-place addition" + (s.math.length > 1 ? "s" : "") + " of one limb register into another. Each is applied to the \\(x\\), \\(y\\) and \\(z\\) limbs alike, " +
+    var nSub = s.math.filter(function (m) { return m.indexOf("−=") >= 0; }).length, nOps = s.math.length;
+    var kind = nSub === 0 ? "addition" : nSub === nOps ? "subtraction" : "addition or subtraction";
+    var plural = nOps > 1 ? "s" : "";
+    var what = kind === "addition or subtraction" ? "additions and subtractions" : kind + plural;
+    var t = "<p>" + n + " is the arithmetic between two rounds of phase products: " + nOps +
+      " in-place " + what + " of one limb register into another. Each is applied to the \\(x\\), \\(y\\) and \\(z\\) limbs alike, " +
       "so the node emits <em>three</em> gates per operation (<code>opGates</code>). In order: " + s.math.map(tex).join(", ") + ".</p>" +
       stateTable(s) +
       "<p>Written \\(x_0, x_1\\) for the two limbs of \\(x\\), and likewise for \\(y\\) and \\(z\\). " +
@@ -256,7 +271,7 @@
         "The columns are computed by running the table, not typed in.") + "</p>";
     return { title: n, role: "register arithmetic", text: t,
       code: '<p class="lsnip-head">the same operations, as in the policy file</p><pre class="lsnip lean"><code>' +
-        window.leanHL(D.tableOps.filter(function (o) { return o[0] !== "phaseProduct"; })
+        window.leanHL(uOps(id)
           .map(function (o) { return "addScaled dst=" + o[1] + " src=" + o[2] + " sign=" + o[3] + " shift=" + o[4]; }).join("\n")) +
         "</code></pre>" + code(S.ptpSubNode) };
   }
