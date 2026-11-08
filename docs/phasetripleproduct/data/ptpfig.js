@@ -372,6 +372,6 @@ window.PTPFIG = {
   }
  },
  "root": "ForShor/ShorVerification",
- "repo": "https://github.com/VerifiedQC/ForShor/blob/eb00c5adc728",
+ "repo": "https://github.com/VerifiedQC/ForShor/blob/21e129aeefc0",
  "policyFile": "policies/ref_ptp_2048.json"
 };

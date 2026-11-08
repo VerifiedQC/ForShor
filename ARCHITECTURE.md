@@ -66,6 +66,7 @@ files instantiate or reason against.
 | Gate-family semantic classes | `Framework/Semantics/GateSemantics.lean` | `GateSemanticsCore` plus one class per gate family — `QFTSemantics`, `HadamardSemantics`, `PauliXSemantics`, `RadixReverseSemantics`, `PhaseSemantics`, `ExtensionSemantics`, `ArithmeticSemantics`, `ClassicalReversibleSemantics`, `ModularArithmeticSemantics`, `IdealCtrlModMulExactSemantics` — and `GateSemanticsFacts`, the convenience bundle large theorems take instead of the eleven separate instances |
 | `LowGate` semantics | `Framework/Semantics/LowGateSemantics.lean` | `LowerGateClass`, which gives the lowered circuits their evaluation meaning |
 | Cost model | `Framework/Gatecount/CostModel.lean`, `ResourceModel.lean` | `LowGateCostModel` and `LowGate.gateCount`, the fold that prices a lowered circuit; `GateResources`, `LowGateResourceModel`, `shorGateCostModel` |
+| Negation method | `Framework/NegationMethod.lean`, `Framework/Gatecount/ResourceModel.lean`, `PolicyModel.lean` | `NegationMethod` (`oneQubit`, the default, or `scratch`); `negateResourcesFor m` prices a negation under a method (`negateResources` is the `oneQubit` charge: complement plus Gidney's one-clean-ancilla increment, Toffoli `12 w - 28` even / `10 w - 18` odd; `negateResourcesPreSwap` is `scratch`); `shorGateResourceModelFor m`, and `ShorLoweringPolicy.resourceModel` / `.withNegation` choose it per policy (`PTPPolicy` likewise) |
 | What a submission is | `Framework/ToomCookTable.lean` | `Register`, `State`, `Prog`, `run?`, `expectedRow`, `ProgConsumesPtsSafe`, `interpMatrix`, `GoodToomCookPoints`, and the records `ShorLoweringSetup` / `ShorSubmission`. Imports Mathlib and nothing else |
 | What a *policy* submission is | `Framework/Policy.lean` | `ToomCookTable` (a table's data, without its proofs) and `ToomCookTable.Admissible` (C2–C4); `PolicyBand`, `ShorLoweringPolicy`, `choose`, `Admissible`, `Stops`; `constPolicy`; and `ShorPolicySubmission` with `policy` / `policy_admissible` / `ofSetup`. A policy is a list of width-indexed bands; a table is the one-band policy at threshold `0`. Imports `ToomCookTable.lean` and nothing else |
 
@@ -274,6 +275,19 @@ Important parts:
   it became (`sitePeakD`: the split, or the product itself when the
   split does not fit). `Proofs/Formula.lean` combines the walk's formulas
   with `Arith.lean` into the claims of `Statement.lean`.
+- The scratch a negation needs depends on the method (`scratchFor m`), so
+  the budgets and `reference2048Peak_policy` (`Proofs/PolicyPeak.lean`) are
+  stated for a policy's `negation`; `oneQubit` adds one clean qubit where
+  `scratch` adds the operand width plus one.
+- `Proofs/PolicyNumerals/`, `PolicyNumeralsBoard/` and their `Exact` modules
+  evaluate the order-finding peak of the policies in
+  `Submission/Policies/` (the twelve acceptance policies and rejection
+  controls, and the nine PhaseProduct results-board rows) in the kernel, for
+  both negation methods and both width rules. The `exact`-rule modules peak at
+  9 to 15 GB, so they live in libraries of their own (`PolicyNumeralsExact`,
+  `PolicyNumeralsBoardExact`, `PolicyNumeralsBoardExactHeavy`, see
+  `lakefile.lean`), chained by import into one serial order; CI builds the first
+  two after the main build and the last is for a machine with 16 GB or more.
 - `Main.lean` proves `Policy.orderFinding_peak_formula`,
   `Policy.reference_peak_formula`, `reference_2048_peak`,
   `reference_2048_peak_example`, `Policy.orderFinding_peak_formula_balanced`
@@ -365,6 +379,7 @@ between *the rules* and *a construction satisfying them*.
 | `Implementation/` | The Toom-Cook construction: the lemmas about tables, the point generator and the compiler. It imports the rules from `Framework/ToomCookTable.lean` rather than defining them. |
 | `Implementation/Shor/Statement.lean`, `Interface.lean` | The semantic contract: `probability_of_success` (in `Statement.lean`), `ShorImplementation` (in `Interface.lean`). It is the construction's *internal* contract, not what a submitter writes. |
 | `Implementation/Reference/` | `setup ↦ referenceProgramAt`, and `referenceProgramAt_success` — generic in the setup, which is what makes the four side conditions a complete acceptance test. |
+| `Submission/Policies/` | The sister repositories' policies as Lean values: the twelve acceptance policies and rejection controls, `Board/` (six PhaseTripleProduct results-board rows) and `BoardPP/` (nine PhaseProduct rows). Each is a `ShorPolicySubmission` or `PTPPolicy` with its `negation` stated, admissibility proved by `decide`, and its qubit peak evaluated in the kernel; only the umbrella and the numerals import them. |
 | `Submission/` | The public surface: `Decide.lean` (the four conditions, decidable *in the kernel*; `Framework/` + Mathlib only), `Audit.lean` (`#assert_axioms`, `Lean` only), `Correct.lean` (the fixed precision and the certificate), `Score.lean` (the declared bound and a computable trial count), `Template.lean` (**the submitter's file**: the table and its C1–C4 proofs), `Check.lean` (the acceptance check: the axiom audit, the IR extraction, the evaluation tier, the certificate) and `Main.lean` (the printer). |
 | `Emit/` | `setup ↦ IR`: reflection over the verified construction, producing a `Doc` a resource estimator prices. |
 | `Model/` | Consistency witnesses for the semantic classes: `Standard/` builds the standard matrix model and checks the headline theorems specialise to it; `QuantumLib/` restates them over finite matrices in QuantumLib's types. Nothing outside the folder imports it. |

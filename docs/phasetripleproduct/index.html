@@ -68,7 +68,8 @@
           at the gate level in ForShor's <code>LowGate</code> language, for whole banded policies. 
           We state its claims as propositions, primarily that for every checked policy and every width there is a circuit following the policy that
           acts as the specification operator on every clean state, with an exact gate census. Extensions give a controlled
-          version, the \(O(n^{\log_k(3k-2)})\) gate count, operands of unequal width and a qubit count.
+          version, the \(O(n^{\log_k(3k-2)})\) gate count, operands of unequal width and a qubit count: the framework's count of the circuit's peak live qubits, scratch included, 
+          is at most \(3n\) plus the recursion's workspace and the negation's clean ancilla, and for the policies on the results board that bound is evaluated in the kernel.
         </p>
         <p>
           An interactive diagram is given below to visualize the flow of the argument. We provide the proof as a directed graph, alongside a figure for the recursion itself. 
