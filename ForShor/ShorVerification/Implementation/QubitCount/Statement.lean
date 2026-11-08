@@ -342,7 +342,9 @@ def qftPeakD (m : NegationMethod) (R : WidthRule) (D : List (ℕ × TableData)) 
 
 /-- Step 3's peak extra qubits when the negations are built by `m`: the unit qubit
 of its constant arithmetic, and the larger of the scratch of the comparison (at
-least two) and of the subtraction, which negate the scratch register of width `sW`. -/
+least two) and of the subtraction, which negate the scratch register of width `sW`. Under `scratch` this is
+`sW + 2` for `sW ≥ 1`, as before the negation swap; at `sW = 0` it is 3 (the pre-swap closed form gives 2), a width
+no register of this development has (the reference scratch register has 4398 qubits). -/
 def step3Peak (m : NegationMethod) (sW : ℕ) : ℕ :=
   1 + max 2 (negationScratch m sW)
 

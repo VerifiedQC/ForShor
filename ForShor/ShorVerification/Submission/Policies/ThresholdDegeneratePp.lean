@@ -196,6 +196,9 @@ theorem accepted_exact : accepts .exact policy.policy target none = false := by
 theorem ladder_exact : ladder .exact policy.policy target = [(2048, some 6), (364, some 2), (184, some 2), (94, some 2), (49, some 2), (26, some 2), (15, some 2), (9, some 2), (6, some 2), (5, some 2), (4, none)] := by
   decide +kernel
 
+/-- The policy names no negation method, so it is priced with the default one: `oneQubit` (one clean qubit). -/
+theorem negation_default : policy.policy.negation = .oneQubit := rfl
+
 end PolicySubmission.Policies.ThresholdDegeneratePp
 
 open Shor.Audit
@@ -209,3 +212,4 @@ open Shor.Audit
 #assert_axioms _root_.PolicySubmission.Policies.ThresholdDegeneratePp.accepted_exact
 #assert_axioms _root_.PolicySubmission.Policies.ThresholdDegeneratePp.ladder_exact
 #assert_axioms _root_.PolicySubmission.Policies.ThresholdDegeneratePp.policy
+#assert_axioms _root_.PolicySubmission.Policies.ThresholdDegeneratePp.negation_default

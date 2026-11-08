@@ -236,6 +236,9 @@ theorem accepted : ptpAccepts policy target = true := by
 /-- The exact-width recursion ladder from the target. -/
 theorem ladder_exact : policy.ladderX target = [(2048, some 6), (375, some 2), (189, some 2), (96, some 2), (50, none)] := by decide +kernel
 
+/-- The policy names no negation method, so it is priced with the default one: `oneQubit` (one clean qubit). -/
+theorem negation_default : policy.negation = .oneQubit := rfl
+
 end PolicySubmission.Policies.RefPtp2048
 
 open Shor.Audit
@@ -248,3 +251,4 @@ open Shor.Audit
 #assert_axioms _root_.PolicySubmission.Policies.RefPtp2048.accepted
 #assert_axioms _root_.PolicySubmission.Policies.RefPtp2048.ladder_exact
 #assert_axioms _root_.PolicySubmission.Policies.RefPtp2048.policy
+#assert_axioms _root_.PolicySubmission.Policies.RefPtp2048.negation_default
