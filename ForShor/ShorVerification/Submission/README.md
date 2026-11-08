@@ -39,3 +39,31 @@ lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
 ```
 
 The `&&` matters: if the table is inadmissible the build fails and nothing is printed.
+
+## PhaseTripleProduct policy submissions
+
+A PhaseTripleProduct policy (a width-indexed list of `Shor.PTP.PTPTable`s, `2 ≤ k ≤ 8` per band) is submitted the same way as
+a PhaseProduct policy, with its own three files:
+
+| File | Owner | What |
+|---|---|---|
+| `PTPPolicyTemplate.lean` | the submitter | the tables (`k`, `3 k - 2` points, the program), their point counts (`by decide`) and `PTPPolicySubmission.policy : PTP.PTPPolicy` |
+| `PTPPolicyCheck.lean` | this repository | `lean_lib PTPPolicySubmission` is rooted here: `PTPPolicy.check` (thresholds strictly decrease, every table passes the contract) and `chainContractsTight 2048` (the exact-width threshold rule) by `decide +kernel`, an axiom audit, and `correct_exact`, `thresholds_at_target`, `peak_exact` stated at the policy |
+| `PTPPolicyMain.lean` | this repository | `lean_exe forshor_ptp_policy_submission` prints the bands (`threshold`, `k`, `points`, `ops`, in the PhaseProduct document's spelling), the negation method and the benchmark width |
+
+```bash
+bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PTPPolicyTemplate.lean   # the lexical gate, step 1
+lake build PTPPolicySubmission forshor_ptp_policy_submission && lake exe forshor_ptp_policy_submission > policy.json
+```
+
+The lexical gate is the one the PhaseProduct template uses, unchanged: it refuses compiled-code attributes
+(`implemented_by`, `extern`, `csimp`) and the metaprogramming surface, which a PTP table could otherwise use to be
+kernel-checked as one thing and printed as another. Nothing in a `PTPTable` or a `PTPPolicy` is a proof, so
+the build's kernel checks and `#assert_axioms` are the whole of the acceptance.
+
+What differs from the PhaseProduct submission: there is no IR, no `--balanced` and no agreement tier, since a
+PhaseTripleProduct policy has no ForShor emitter; the boards count its T and qubits in the results engine
+(Python, Qualtran) at exact widths. The executable does not evaluate the exact-width ladder at run time: the
+compiled evaluation of that recursion takes many minutes at a `k = 8` band, and the kernel proves the same
+rule in seconds at build time. Measured: a policy with bands `k = 8` and `k = 4` builds and passes in about
+25 seconds; a one-band `k = 4` policy (the shipped template) in under 20.
