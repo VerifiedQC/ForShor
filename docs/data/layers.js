@@ -284,7 +284,7 @@ window.LAYERS = {
     {
      "name": "lowerQFT_correct",
      "file": "Implementation/QFT/Main.lean",
-     "line": 15,
+     "line": 18,
      "code": "theorem lowerQFT_correct\n    (qs : QSemantics) [RegEncoding qs.Basis] [GateSemanticsFacts qs] [LowerGateClass qs]\n    (k : ℕ) (hk : 1 < k) (ops : Prog k) (r : ExtReg) :\n    LowerQFTCorrect qs k hk ops r := by",
      "note": "Same shape as the phase-product theorem, and for the same reason: the QFT is built on the phase product, so it inherits its parameters \\(k\\) and <code>ops</code>."
     }
@@ -373,8 +373,8 @@ window.LAYERS = {
     {
      "name": "ShorGateCountBound",
      "file": "Implementation/Shor/Statement.lean",
-     "line": 345,
-     "code": "def ShorGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ) (k : ℕ) (hk : 1 < k)\n    (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) : Prop :=\n  ∀ cWork : ℕ, 1 ≤ cWork → ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧\n    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg)\n      (_hxWidth : regSize x.active = Nat.log2 (2 * inst.N^2))\n      (_hyWidth : regSize y.active = Nat.log2 (2 * inst.N))\n      (flag : ℕ) (b0 : qs.Basis) (η : ℝ)\n      (hsetup : ShorApproxSetup qs η inst.N x y work scratch flag b0),\n      let n := y.width\n      n₀ ≤ n → algorithm1ExtraBits η ≤ (cWork - 1) * regSize y.active →\n      ∀ hLowerWorkspace :\n        Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)\n          (orderFindingApprox inst.a inst.N x y work scratch flag hsetup.circuit_workspace\n            hsetup.step4_workspace),\n      (LowGate.gateCount shorGateCostModel\n          (orderFindingApproxLow (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)\n            inst.a inst.N x y work scratch flag hsetup.circuit_workspace hsetup.step4_workspace\n            hLowerWorkspace) : ℝ)\n        ≤ C * Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)",
+     "line": 319,
+     "code": "def ShorGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ) (k : ℕ) (hk : 1 < k)\n    (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) : Prop :=\n  ∀ cWork : ℕ, 1 ≤ cWork → ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧\n    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg) (flag : ℕ) (b0 : qs.Basis)\n      (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))\n      (_hn : regSize y.active = Nat.log2 (2 * inst.N)) (η : ℝ)\n      (hready : LoweredShorReady qs (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) η inst.a inst.N x y work scratch flag b0)\n      (hws : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) hready.circuit),\n      let n := y.width\n      n₀ ≤ n → algorithm1ExtraBits η ≤ (cWork - 1) * regSize y.active →\n      (LowGate.gateCount shorGateCostModel\n          (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) hready.circuit hws) : ℝ)\n        ≤ C * Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)",
      "note": "The claim, unfolded: for every work-register size there are \\(C\\) and \\(n_0\\) such that for every instance with \\(n \\ge n_0\\), <code>LowGate.gateCount shorGateCostModel</code> of the lowered circuit <code>orderFindingApproxLow</code> is at most \\(C \\cdot n^{2+\\varepsilon}\\) (written <code>Real.rpow (max 1 n) (2+ε)</code>), for the table <code>ops</code> used at every width."
     },
     {
@@ -423,14 +423,14 @@ window.LAYERS = {
     {
      "name": "Policy.orderFinding_peak_formula",
      "file": "Implementation/QubitCount/Main.lean",
-     "line": 21,
+     "line": 26,
      "code": "theorem Policy.orderFinding_peak_formula (P : ShorLoweringPolicy) :\n    Policy.OrderFindingPeakFormula P :=",
      "note": "The headline: for any admissible policy, the peak number of live qubits of the lowered order-finding circuit is the base registers plus the most expensive step. <code>Policy.OrderFindingPeakFormula</code>, in <code>Statement.lean</code>, says what that means; the two balanced circuits have the same shape of theorem."
     },
     {
      "name": "Policy.orderFinding_peak_formula_balanced_u",
      "file": "Implementation/QubitCount/Main.lean",
-     "line": 35,
+     "line": 40,
      "code": "theorem Policy.orderFinding_peak_formula_balanced_u (P : ShorLoweringPolicy) (R : Balanced.Rule) :\n    Policy.OrderFindingPeakFormulaBalancedU P R :=",
      "note": "The same for the unconditionally balanced circuit, where every site is split, so the count depends on the register widths alone."
     }

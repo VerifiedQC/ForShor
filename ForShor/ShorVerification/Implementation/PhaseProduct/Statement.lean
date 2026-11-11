@@ -8,6 +8,7 @@ import Mathlib.Tactic
 import ForShor.ShorVerification.Framework.Policy
 import ForShor.ShorVerification.Framework.Gatecount.CostModel
 import ForShor.ShorVerification.Framework.Gatecount.ResourceModel
+import ForShor.ShorVerification.Framework.Gatecount.PolicyModel
 
 /-!
 # Phase product: statement
@@ -2044,5 +2045,74 @@ def CSignedPhaseProductGateCountBound
       n₀ ≤ n →
       (cSignedPhaseProductGateCount (Basis := Basis) k hk ops pts hpts ctrl φ x z : ℝ)
         ≤ C * Real.rpow n (Real.log (q k : ℝ) / Real.log (k : ℝ))
+
+/-- **Assertion: the signed phase-product gate count of a table.** A table
+satisfying C1–C4 has the bound `SignedPhaseProductGateCountBound`.
+(`Main.lean`: `signedPhaseProductGateCountBound_of_programOK`.) -/
+def SignedPhaseProductGateCountBoundOfProgramOK
+    {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k) : Prop :=
+  PhaseProductProgramOK k hk pts hpts ops →
+    SignedPhaseProductGateCountBound (Basis := Basis) k hk ops pts hpts
+
+/-- **Assertion: the controlled signed phase-product gate count of a table.**
+A table satisfying C1–C4 has the bound `CSignedPhaseProductGateCountBound`.
+(`Main.lean`: `cSignedPhaseProductGateCountBound_of_programOK`.) -/
+def CSignedPhaseProductGateCountBoundOfProgramOK
+    {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k) : Prop :=
+  PhaseProductProgramOK k hk pts hpts ops →
+    CSignedPhaseProductGateCountBound (Basis := Basis) k hk ops pts hpts
+
+/-! =========================================================
+    Gate count under a policy
+
+    The same bound for a policy. Every width at or above the first band's
+    threshold uses the first band's table, so the exponent is that table's
+    `log_k (2k - 1)`; the narrower bands change the constant. A policy with
+    no bands is the schoolbook leaf at every width, with exponent `2`. The
+    count is priced by the policy's own resource model, so by its negation
+    method.
+========================================================= -/
+
+/-- The gate-count exponent of a policy: `log_k (2k - 1)` for the arity `k` of
+its first band, and `2` for the policy with no bands. -/
+noncomputable def ShorLoweringPolicy.gateExponent (P : ShorLoweringPolicy) : ℝ :=
+  match P.bands.head? with
+  | some b => Real.log ((2 * b.table.k - 1 : ℕ) : ℝ) / Real.log (b.table.k : ℝ)
+  | none => 2
+
+/-- Gate count of the lowered signed phase product under a policy. -/
+noncomputable def Policy.signedPhaseProductGateCount
+    (P : ShorLoweringPolicy) (φ : Angle) (x z : ExtReg) : ℕ :=
+  LowGate.gateCount P.resourceModel.toCostModel (Policy.lowerSignedPhaseProd P φ x z)
+
+/-- Gate count of the lowered controlled signed phase product under a policy. -/
+noncomputable def Policy.cSignedPhaseProductGateCount
+    (P : ShorLoweringPolicy) (ctrl : ℕ) (φ : Angle) (x z : ExtReg) : ℕ :=
+  LowGate.gateCount P.resourceModel.toCostModel (Policy.lowerCSignedPhaseProd P ctrl φ x z)
+
+/-- **The signed phase-product gate-count bound under a policy**: if the
+policy is admissible, there are a constant `C` and a width `n₀` such that every
+signed phase product whose operands have the workspace the policy's recursion
+needs, the wider at least `n₀` bits wide, lowers to at most
+`C · n^P.gateExponent` gates, `n` the wider operand's width. -/
+def Policy.SignedPhaseProductGateCountBound (P : ShorLoweringPolicy) : Prop :=
+  P.Admissible →
+  ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+    ∀ (φ : Angle) (x z : ExtReg), Policy.WorkspaceOK P x z →
+      let n := max (ExtReg.width x) (ExtReg.width z)
+      n₀ ≤ n →
+      (Policy.signedPhaseProductGateCount P φ x z : ℝ) ≤ C * Real.rpow n P.gateExponent
+
+/-- **The controlled signed phase-product gate-count bound under a policy**:
+the same, for the controlled product, with the control outside both operands. -/
+def Policy.CSignedPhaseProductGateCountBound (P : ShorLoweringPolicy) : Prop :=
+  P.Admissible →
+  ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+    ∀ (ctrl : ℕ) (φ : Angle) (x z : ExtReg), Policy.CWorkspaceOK P ctrl x z →
+      let n := max (ExtReg.width x) (ExtReg.width z)
+      n₀ ≤ n →
+      (Policy.cSignedPhaseProductGateCount P ctrl φ x z : ℝ) ≤ C * Real.rpow n P.gateExponent
 
 end Shor

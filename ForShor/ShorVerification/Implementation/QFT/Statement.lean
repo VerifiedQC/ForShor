@@ -736,4 +736,27 @@ def QFTGateCountBound
           (Policy.lowerQFT (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) r hworkspace) : ℝ)
         ≤ C * Real.rpow r.width (Real.log (q k : ℝ) / Real.log (k : ℝ))
 
+/-- **Assertion: the QFT gate count of a table.** A table satisfying C1–C4 has
+the bound `QFTGateCountBound`. (`Main.lean`: `qftGateCountBound_of_programOK`.) -/
+def QFTGateCountBoundOfProgramOK
+    {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k)
+    (pts : List Point) (hpts : pts.length = q k) : Prop :=
+  PhaseProductProgramOK k hk pts hpts ops →
+    QFTGateCountBound (Basis := Basis) k hk ops pts hpts
+
+/--
+**The QFT gate-count bound under a policy**: if the policy is admissible, there
+are a constant `C` and a width `n₀` such that the lowered QFT on any register
+of width `n ≥ n₀` with the reserve the policy's lowering needs costs at most
+`C · n^P.gateExponent` gates, the rate of the phase product at its splits,
+priced by the policy's own resource model.
+-/
+def Policy.QFTGateCountBound (P : ShorLoweringPolicy) : Prop :=
+  P.Admissible →
+  ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+    ∀ (r : ExtReg) (hworkspace : Policy.QFTReserveOK P r),
+      n₀ ≤ r.width →
+      (LowGate.gateCount P.resourceModel.toCostModel (Policy.lowerQFT P r hworkspace) : ℝ)
+        ≤ C * Real.rpow r.width P.gateExponent
+
 end Shor

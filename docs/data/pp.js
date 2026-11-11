@@ -286,14 +286,14 @@ window.PPFIG = {
   "balanced": {
    "name": "prog_balanced_nextSignedWidth",
    "file": "Implementation/PhaseProduct/Proofs/GateCount/Lemmas.lean",
-   "line": 3742,
+   "line": 3815,
    "code": "lemma prog_balanced_nextSignedWidth\n    (k : ℕ)\n    (hk : 1 < k)\n    (ops : Prog k) :\n    ∃ c : ℕ, ∀ x z : ExtReg,\n      ExtReg.width x = ExtReg.width z →\n      nextSignedWidth x z ops\n        ≤\n      (ExtReg.width x + k - 1) / k + c := by",
    "note": null
   },
   "overhead": {
    "name": "phaseProgramOverhead_linear",
    "file": "Implementation/PhaseProduct/Proofs/GateCount/Lemmas.lean",
-   "line": 41,
+   "line": 68,
    "code": "lemma phaseProgramOverhead_linear\n    {k : ℕ}\n    (ops : Prog k) :\n    ∃ A B : ℕ, ∀ W : ℕ,\n      phaseProgramOverhead W ops ≤ A * W + B := by",
    "note": null
   },
@@ -307,14 +307,14 @@ window.PPFIG = {
   "exponent": {
    "name": "phaseProductExponent",
    "file": "Implementation/PhaseProduct/Proofs/GateCount/Basic.lean",
-   "line": 20,
+   "line": 46,
    "code": "noncomputable def phaseProductExponent (k : ℕ) : ℝ := Real.log (q k : ℝ) / Real.log (k : ℝ)",
    "note": null
   },
   "bound": {
    "name": "PhaseProductGateCountBound",
    "file": "Implementation/Shor/Proofs/GateCount.lean",
-   "line": 76,
+   "line": 2714,
    "code": "def PhaseProductGateCountBound\n    {Basis : Type u} [RegEncoding Basis] (k : ℕ) (hk : 1 < k) (ops : Prog k)\n    (pts : List Point) (hpts : pts.length = q k) : Prop :=\n  ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧\n    ∀ (φ : Angle) (x z : Reg) (ws : Gate.PhaseProdWorkspace x z)\n      (hworkspace : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (Gate.PhaseProdUsing φ x z ws)),\n      let n := max (regSize x) (regSize z)\n      n₀ ≤ n →\n      (LowGate.gateCount shorGateCostModel\n          (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) (Gate.PhaseProdUsing φ x z ws) hworkspace) : ℝ)\n        ≤ C * Real.rpow n (phaseProductExponent k)",
    "note": null
   },
@@ -335,22 +335,22 @@ window.PPFIG = {
   "choose": {
    "name": "ShorLoweringPolicy.choose",
    "file": "Framework/Policy.lean",
-   "line": 155,
+   "line": 158,
    "code": "def choose (P : ShorLoweringPolicy) (n : ℕ) : Option ToomCookTable :=\n  (P.bands.find? (fun b => decide (b.threshold ≤ n))).map PolicyBand.table",
    "note": null
   },
   "constPolicy": {
    "name": "constPolicy",
    "file": "Framework/Policy.lean",
-   "line": 196,
+   "line": 199,
    "code": "def constPolicy (T : ToomCookTable) : ShorLoweringPolicy where\n  bands := [⟨0, T⟩]\n  sorted := by simp",
    "note": null
   },
   "shorBound": {
    "name": "ShorGateCountBound",
    "file": "Implementation/Shor/Statement.lean",
-   "line": 345,
-   "code": "def ShorGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ) (k : ℕ) (hk : 1 < k)\n    (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) : Prop :=\n  ∀ cWork : ℕ, 1 ≤ cWork → ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧\n    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg)\n      (_hxWidth : regSize x.active = Nat.log2 (2 * inst.N^2))\n      (_hyWidth : regSize y.active = Nat.log2 (2 * inst.N))\n      (flag : ℕ) (b0 : qs.Basis) (η : ℝ)\n      (hsetup : ShorApproxSetup qs η inst.N x y work scratch flag b0),\n      let n := y.width\n      n₀ ≤ n → algorithm1ExtraBits η ≤ (cWork - 1) * regSize y.active →\n      ∀ hLowerWorkspace :\n        Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)\n          (orderFindingApprox inst.a inst.N x y work scratch flag hsetup.circuit_workspace\n            hsetup.step4_workspace),\n      (LowGate.gateCount shorGateCostModel\n          (orderFindingApproxLow (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)\n            inst.a inst.N x y work scratch flag hsetup.circuit_workspace hsetup.step4_workspace\n            hLowerWorkspace) : ℝ)\n        ≤ C * Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)",
+   "line": 319,
+   "code": "def ShorGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ) (k : ℕ) (hk : 1 < k)\n    (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) : Prop :=\n  ∀ cWork : ℕ, 1 ≤ cWork → ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧\n    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg) (flag : ℕ) (b0 : qs.Basis)\n      (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))\n      (_hn : regSize y.active = Nat.log2 (2 * inst.N)) (η : ℝ)\n      (hready : LoweredShorReady qs (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) η inst.a inst.N x y work scratch flag b0)\n      (hws : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) hready.circuit),\n      let n := y.width\n      n₀ ≤ n → algorithm1ExtraBits η ≤ (cWork - 1) * regSize y.active →\n      (LowGate.gateCount shorGateCostModel\n          (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩) hready.circuit hws) : ℝ)\n        ≤ C * Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)",
    "note": null
   },
   "ppcorrectPolicy": {

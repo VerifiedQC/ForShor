@@ -632,22 +632,21 @@ induction.
 
 section BinaryRecurrenceSolution
 
-/-- The two half-size PhaseProduct rates sum to a strict contraction of the parent rate. -/
-lemma qft_half_rate_contraction
-    (k : ℕ)
-    (_hk : 1 < k)
-    (hα : 1 < phaseProductExponent k) :
+/-- For any exponent above one, the two half-width powers sum to a strict contraction of the
+full-width power. -/
+lemma rpow_half_contraction
+    (α : ℝ)
+    (hα : 1 < α) :
     ∃ ρ : ℝ,
       0 ≤ ρ ∧ ρ < 1 ∧
       ∀ n : ℕ,
         2 ≤ n →
-        phaseProductGateRate k (n / 2)
-          + phaseProductGateRate k (n - n / 2)
-          ≤ ρ * phaseProductGateRate k n := by
-  let α : ℝ := phaseProductExponent k
+        Real.rpow ((n / 2 : ℕ) : ℝ) α
+          + Real.rpow ((n - n / 2 : ℕ) : ℝ) α
+          ≤ ρ * Real.rpow (n : ℝ) α := by
   let ρ : ℝ :=
     Real.rpow (1 / 3 : ℝ) α + Real.rpow (2 / 3 : ℝ) α
-  have hα' : 1 < α := by simpa [α] using hα
+  have hα' : 1 < α := hα
   have hρnonneg : 0 ≤ ρ := by
     dsimp [ρ]
     positivity
@@ -805,6 +804,20 @@ lemma qft_half_rate_contraction
     _ ≤ ρ * Real.rpow (n : ℝ) α :=
       mul_le_mul_of_nonneg_right hnormalized
         (Real.rpow_nonneg (by positivity : 0 ≤ (n : ℝ)) _)
+
+/-- The two half-size PhaseProduct rates sum to a strict contraction of the parent rate. -/
+lemma qft_half_rate_contraction
+    (k : ℕ)
+    (_hk : 1 < k)
+    (hα : 1 < phaseProductExponent k) :
+    ∃ ρ : ℝ,
+      0 ≤ ρ ∧ ρ < 1 ∧
+      ∀ n : ℕ,
+        2 ≤ n →
+        phaseProductGateRate k (n / 2)
+          + phaseProductGateRate k (n - n / 2)
+          ≤ ρ * phaseProductGateRate k n :=
+  rpow_half_contraction (phaseProductExponent k) hα
 
 /-- Solves the explicit QFT divide-and-conquer recurrence using the contraction factor. -/
 lemma explicitQFT_binary_recurrence_solution

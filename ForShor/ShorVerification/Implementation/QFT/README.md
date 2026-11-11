@@ -73,3 +73,5 @@ for any admissible policy, `LowerQFTCorrect` for a single admissible table.
 ## `Main.lean`
 
 Proves `LowerQFTCorrect` and `Policy.LowerQFTCorrect`.
+
+`Policy.qftGateCountBound`: for any admissible policy the lowered QFT has at most `C · n^P.gateExponent` gates.

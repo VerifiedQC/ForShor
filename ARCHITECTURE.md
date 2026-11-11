@@ -217,6 +217,9 @@ Important parts:
   rate. Main endpoints are `shorGateCountBound_of_components`,
   `shorGateCountBound_of_programOK`, `exists_shorGateCountBound`, and
   `exists_k_shorGateCountBound_of_programOK`.
+- `Policy.signedPhaseProductGateCountBound`, `Policy.qftGateCountBound` and
+  `Policy.shorGateCountBound` state the same bounds for any admissible policy,
+  with exponent `P.gateExponent`, the `log_k (2k - 1)` of the policy's first band.
 
 The final gate-count result is that for every positive epsilon and delta, there
 exists a PhaseProduct program such that the lowered Shor order-finding circuit
@@ -309,10 +312,10 @@ The setup records it works over:
   see "The submission boundary" below.
 - `ShorFactoringInstance` (`Shor/Statement.lean`), the classical factoring
   setup.
-- `ShorCleanInput` (`Shor/Statement.lean`), the clean-register predicate
+- `ShorCleanInput` (`Shor/Proofs/ApproxSetup.lean`), the clean-register predicate
   for initial states.
-- `ShorApproxSetup` (`Shor/Statement.lean`), the complete approximate-circuit
-  setup used by the final statements.
+- `ShorApproxSetup` (`Shor/Proofs/ApproxSetup.lean`), the complete approximate-circuit
+  setup the proofs consume, built from `LoweredShorReady`.
 
 The circuits themselves are in `Shor/Statement.lean`
 (`orderFindingApprox` and its lowered form `orderFindingApproxLow`).

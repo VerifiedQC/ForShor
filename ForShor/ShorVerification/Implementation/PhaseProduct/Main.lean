@@ -3,6 +3,7 @@ import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Lowe
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Spec.Cleanliness
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.Lowering.Correctness
 import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.GateCount.Lemmas
+import ForShor.ShorVerification.Implementation.PhaseProduct.Proofs.GateCount.Policy
 
 /-!
 # Phase-Product Main Theorems
@@ -116,7 +117,8 @@ theorem Policy.lowerCSignedPhaseProduct_correct
 ========================================================= -/
 
 /-- **The signed phase-product gate count** for a table satisfying C1–C4:
-above some width, at most a constant times `n^(log_k (2k - 1))`. -/
+above some width, at most a constant times `n^(log_k (2k - 1))`.
+(`SignedPhaseProductGateCountBoundOfProgramOK`.) -/
 theorem signedPhaseProductGateCountBound_of_programOK
     {Basis : Type u}
     [RegEncoding Basis]
@@ -124,9 +126,9 @@ theorem signedPhaseProductGateCountBound_of_programOK
     (hk : 1 < k)
     (ops : Prog k)
     (pts : List Point)
-    (hpts : pts.length = q k)
-    (hops : PhaseProductProgramOK k hk pts hpts ops) :
-    SignedPhaseProductGateCountBound (Basis := Basis) k hk ops pts hpts := by
+    (hpts : pts.length = q k) :
+    SignedPhaseProductGateCountBoundOfProgramOK (Basis := Basis) k hk ops pts hpts := by
+  intro hops
   obtain ⟨C', hC', n₀, hn₀, hshift⟩ :=
     signedPhaseProductGateCount_shifted_bound_of_programOK (Basis := Basis) k hk ops pts hpts hops
   refine ⟨C', hC', n₀ + 1, by omega, ?_⟩
@@ -146,7 +148,8 @@ theorem signedPhaseProductGateCountBound_of_programOK
   exact hb.trans (mul_le_mul_of_nonneg_left hmono hC'.le)
 
 /-- **The controlled signed phase-product gate count**: at most five times the
-uncontrolled count, so the same rate. -/
+uncontrolled count, so the same rate.
+(`CSignedPhaseProductGateCountBoundOfProgramOK`.) -/
 theorem cSignedPhaseProductGateCountBound_of_programOK
     {Basis : Type u}
     [RegEncoding Basis]
@@ -154,9 +157,9 @@ theorem cSignedPhaseProductGateCountBound_of_programOK
     (hk : 1 < k)
     (ops : Prog k)
     (pts : List Point)
-    (hpts : pts.length = q k)
-    (hops : PhaseProductProgramOK k hk pts hpts ops) :
-    CSignedPhaseProductGateCountBound (Basis := Basis) k hk ops pts hpts := by
+    (hpts : pts.length = q k) :
+    CSignedPhaseProductGateCountBoundOfProgramOK (Basis := Basis) k hk ops pts hpts := by
+  intro hops
   obtain ⟨C, hC, n₀, hn₀, hbound⟩ :=
     signedPhaseProductGateCountBound_of_programOK (Basis := Basis) k hk ops pts hpts hops
   refine ⟨5 * C, by positivity, n₀, hn₀, ?_⟩
@@ -172,6 +175,40 @@ theorem cSignedPhaseProductGateCountBound_of_programOK
     _ ≤ 5 * (C * Real.rpow ((max (ExtReg.width x) (ExtReg.width z) : ℕ) : ℝ)
           (Real.log (q k : ℝ) / Real.log (k : ℝ))) :=
         mul_le_mul_of_nonneg_left hb (by norm_num)
+    _ = _ := by ring
+
+/-! =========================================================
+    Gate count under a policy
+========================================================= -/
+
+/-- **The signed phase-product gate count under a policy.**
+(`Policy.SignedPhaseProductGateCountBound`.) -/
+theorem Policy.signedPhaseProductGateCountBound (P : ShorLoweringPolicy) :
+    Policy.SignedPhaseProductGateCountBound P := by
+  intro hP
+  obtain ⟨C, hC, n₀, hn₀, hbound⟩ :=
+    Policy.signedPhaseProductGateCountFor_gateExponent_bound P.negation P hP
+  exact ⟨C, hC, n₀, hn₀, fun φ x z hws hn => hbound φ x z hws hn⟩
+
+/-- **The controlled signed phase-product gate count under a policy**: at most
+five times the uncontrolled count, so the same rate.
+(`Policy.CSignedPhaseProductGateCountBound`.) -/
+theorem Policy.cSignedPhaseProductGateCountBound (P : ShorLoweringPolicy) :
+    Policy.CSignedPhaseProductGateCountBound P := by
+  intro hP
+  obtain ⟨C, hC, n₀, hn₀, hbound⟩ :=
+    Policy.signedPhaseProductGateCountFor_gateExponent_bound P.negation P hP
+  refine ⟨5 * C, by positivity, n₀, hn₀, ?_⟩
+  intro ctrl φ x z hws
+  dsimp only
+  intro hn
+  have hb5 := hbound φ x z hws.toWorkspaceOK hn
+  have h5 : (Policy.cSignedPhaseProductGateCount P ctrl φ x z : ℝ)
+      ≤ 5 * (Policy.signedPhaseProductGateCountFor P.negation P φ x z : ℝ) := by
+    exact_mod_cast Policy.cSignedPhaseProductGateCountFor_le_five_signed P.negation P ctrl φ x z hws
+  calc _ ≤ 5 * (Policy.signedPhaseProductGateCountFor P.negation P φ x z : ℝ) := h5
+    _ ≤ 5 * (C * Real.rpow ((max (ExtReg.width x) (ExtReg.width z) : ℕ) : ℝ) P.gateExponent) :=
+        mul_le_mul_of_nonneg_left hb5 (by norm_num)
     _ = _ := by ring
 
 end Shor

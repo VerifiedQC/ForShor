@@ -93,3 +93,5 @@ the width of the exponent register.
 ## `Main.lean`
 
 Proves `ShorCorrectApproxLoweredUniform` and `ShorCorrectApproxLowered`.
+
+`Policy.shorGateCountBound`: for any admissible policy with `P.gateExponent ≤ 1 + ε` the lowered order-finding circuit has `O(n^(2+ε))` gates.

@@ -1,4 +1,5 @@
 import ForShor.ShorVerification.Implementation.Shor.Statement
+import ForShor.ShorVerification.Implementation.Shor.Proofs.ApproxSetup
 import ForShor.ShorVerification.Implementation.Shor.Proofs.Workspace
 import ForShor.ShorVerification.Implementation.Shor.Proofs.NaiveShor.Correctness
 import ForShor.ShorVerification.Implementation.Compiler.Main

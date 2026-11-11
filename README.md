@@ -39,22 +39,30 @@ The lowering itself is exact; the loss is the modular-exponentiation approximati
 **Resource estimation** (`ForShor/ShorVerification/Implementation/GateCount/Shor_GateCount.lean`): for every `ε > 0` there is a recursion parameter `k` such that the compiled Shor circuit uses `O(n^(2+ε))` elementary gates.
 
 ```lean
-theorem exists_shorGateCountBound (qs : QSemantics) ... (ε : ℝ) (hε : 0 < ε) :
+def ExistsShorGateCountBound (qs : QSemantics) (ε : ℝ) : Prop :=
+  0 < ε →
     ∃ k : ℕ, ∃ hk : 1 < k, ∃ ops : Prog k,
       PhaseProductProgramOK k hk ops ∧ ShorGateCountBound qs ε k hk ops
+
+theorem exists_shorGateCountBound (qs : QSemantics) ... (ε : ℝ) : ExistsShorGateCountBound qs ε
 ```
 
 The bound is not special to the table this repository generates. `PhaseProductProgramOK` is the four submission conditions C1–C4, so any `ShorLoweringSetup` — any submission — satisfies it by construction, and the companion theorem applies to it directly:
 
 ```lean
-theorem shorGateCountBound_of_setup (qs : QSemantics) ... (s : ShorLoweringSetup) (ε : ℝ)
-    (hExponent : phaseProductExponent s.k ≤ 1 + ε) :
+def ShorGateCountBoundOfSetup (qs : QSemantics) (s : ShorLoweringSetup) (ε : ℝ) : Prop :=
+  phaseProductExponent s.k ≤ 1 + ε →
     ShorGateCountBound qs ε s.k s.hk s.ops s.pts s.hpts
+
+theorem shorGateCountBound_of_setup (qs : QSemantics) ... (s : ShorLoweringSetup) (ε : ℝ) :
+    ShorGateCountBoundOfSetup qs s ε
 ```
 
 The two forms differ in who chooses `k`. A submitted table fixes its own arity, and with it its own exponent `phaseProductExponent k = log(2k−1)/log k` — a `k = 2` table runs at roughly `n^2.585` — so `shorGateCountBound_of_setup` takes the `ε` that table supports as a hypothesis. Reaching every positive `ε` means letting `k` grow, which is why `exists_shorGateCountBound` quantifies over `k` existentially.
 
-Both theorems are about the **constant policy**: one table used at every width. That is the right statement for an asymptotic exponent, since a finite cascade of tables is eventually the widest one and does not change the exponent — but it is the wrong statement for the score, which is a gate count at `n = 2048`, where the bands below the top are exactly what a cascade is for. A gate count for a general width-indexed policy is separate work, not a corollary of these; it is what the IR for a policy (above) would feed.
+Both theorems are about the **constant policy**: one table used at every width. That is the right statement for an asymptotic exponent, since a finite cascade of tables is eventually the widest one and does not change the exponent — but it is the wrong statement for the score, which is a gate count at `n = 2048`, where the bands below the top are exactly what a cascade is for. An exact gate count at a fixed size for a general width-indexed policy is separate work, not a corollary of these; it is what the IR for a policy (above) would feed.
+
+`Policy.shorGateCountBound` is the asymptotic statement for a policy: for any admissible policy whose first band's exponent `log(2k−1)/log k` is at most `1 + ε`, the lowered order-finding circuit has `O(n^(2+ε))` gates.
 
 Here `ShorGateCountBound` says the count of elementary gates in the fully lowered order-finding circuit is at most `C · n^(2+ε)`, where `n` is the size of the modulus register (typeclass arguments elided):
 
@@ -63,23 +71,23 @@ def ShorGateCountBound (qs : QSemantics) (ε : ℝ) (k : ℕ) (hk : 1 < k) (ops 
   ∀ cWork : ℕ, 1 ≤ cWork →
   ∃ C : ℝ, 0 < C ∧
   ∃ n₀ : ℕ, 1 ≤ n₀ ∧
-    ∀ (inst : ShorOrderFindingInstance) (work : Reg) (flag : ℕ) (b0 : qs.Basis) (η : ℝ),
-      let n := regSize inst.y
+    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg) (flag : ℕ) (b0 : qs.Basis) (η : ℝ)
+      (hready : LoweredShorReady qs P η inst.a inst.N x y work scratch flag b0)
+      (hws : Policy.GateWorkspaceOK P hready.circuit),
+      let n := y.width
       n₀ ≤ n →
-      ShorApproxSetup qs η inst.a inst.N inst.x inst.y work flag b0 →
-      algorithm1ExtraBits η ≤ (cWork - 1) * regSize inst.y →
-      (shorOrderFindingGateCount qs k hk ops inst.a inst.N inst.x inst.y work flag : ℝ)
+      algorithm1ExtraBits η ≤ (cWork - 1) * regSize y.active →
+      (LowGate.gateCount shorGateCostModel (Policy.lowerGate P hready.circuit hws) : ℝ)
         ≤ C * shorGateRate ε n
 ```
 
+Here `P` is the constant policy of the table. The hypothesis `LoweredShorReady` and the circuit `Policy.lowerGate P hready.circuit hws` are those of the correctness theorem, so the bound and the correctness statement are about the same circuit.
+
 The precision `η` is a parameter of the circuit, not of the bound: fix any work-width budget `cWork`, and the estimate holds for every `η` whose prescribed extra bits fit that budget. Shor's own schedule `η = δ/n²` is one such choice, and `shorGateCountBoundShorEta_of_setup` specialises to it — that corollary is the only public statement mentioning `δ`.
 
-The two quantities being compared are honest counts, not abstract measures: `shorOrderFindingGateCount` counts the `LowGate` operations of the compiled circuit under the cost model `shorGateCostModel`, and `shorGateRate ε n` is just `n^(2+ε)`.
+The two quantities being compared are honest counts, not abstract measures: `LowGate.gateCount shorGateCostModel` counts the `LowGate` operations of the compiled circuit, and `shorGateRate ε n` is just `n^(2+ε)`.
 
 ```lean
-noncomputable def shorOrderFindingGateCount ... : ℕ :=
-  LowGate.gateCount shorGateCostModel (orderFindingApproxLow qs k hk ops a N x y work flag)
-
 noncomputable def shorGateRate (ε : ℝ) (n : ℕ) : ℝ :=
   Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)
 ```

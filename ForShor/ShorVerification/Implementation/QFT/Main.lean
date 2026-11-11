@@ -1,6 +1,7 @@
 import ForShor.ShorVerification.Implementation.QFT.Statement
 import ForShor.ShorVerification.Implementation.QFT.Proofs.Lowering.Readiness
 import ForShor.ShorVerification.Implementation.QFT.Proofs.GateCount
+import ForShor.ShorVerification.Implementation.QFT.Proofs.PolicyGateCount
 
 /-!
 # QFT Main Theorems
@@ -31,17 +32,22 @@ theorem Policy.lowerQFT_correct
   exact Policy.evalL_lowerQFT qs P hP r ψ hworkspace
 
 /-- **The QFT gate count** for a table satisfying C1–C4: above some width, at
-most a constant times `n^(log_k (2k - 1))`. -/
+most a constant times `n^(log_k (2k - 1))`. (`QFTGateCountBoundOfProgramOK`.) -/
 theorem qftGateCountBound_of_programOK
     {Basis : Type u}
     [RegEncoding Basis]
     (k : ℕ)
     (hk : 1 < k)
     (ops : Prog k)
-    (pts : List Point) (hpts : pts.length = q k)
-    (hops : PhaseProductProgramOK k hk pts hpts ops) :
-    QFTGateCountBound (Basis := Basis) k hk ops pts hpts :=
-  qftGateCountBound_of_phaseProduct (Basis := Basis) k hk ops pts hpts
-    (unsignedPhaseProductBound_of_programOK (Basis := Basis) k hk ops pts hpts hops)
+    (pts : List Point) (hpts : pts.length = q k) :
+    QFTGateCountBoundOfProgramOK (Basis := Basis) k hk ops pts hpts :=
+  fun hops =>
+    qftGateCountBound_of_phaseProduct (Basis := Basis) k hk ops pts hpts
+      (unsignedPhaseProductBound_of_programOK (Basis := Basis) k hk ops pts hpts hops)
+
+/-- **The QFT gate count under a policy.** (`Policy.QFTGateCountBound`.) -/
+theorem Policy.qftGateCountBound (P : ShorLoweringPolicy) :
+    Policy.QFTGateCountBound P :=
+  fun hP => Policy.lowerQFT_gateCountFor_bound P.negation P hP
 
 end Shor

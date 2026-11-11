@@ -11,6 +11,7 @@ The circuit is a Toom-Cook recursion. Each operand is cut into `k` chunks, the p
 - `Main.lean` proves the final theorems:
   - `lowerSignedPhaseProduct_correct` and `lowerCSignedPhaseProduct_correct`, with their `Policy.` versions: on a state whose workspace is big enough and clean, the lowered circuit does exactly what `Gate.SignedPhaseProd` (or `CSignedPhaseProd`) does.
   - `signedPhaseProductGateCountBound_of_programOK` and `cSignedPhaseProductGateCountBound_of_programOK`: the gate count grows like `n^(log_k(2k-1))` for any table that satisfies C1–C4.
+  - `Policy.signedPhaseProductGateCountBound` and `Policy.cSignedPhaseProductGateCountBound`: for any admissible policy the gate count grows like `n^P.gateExponent`, which is `n^(log_k(2k-1))` for the arity `k` of the policy's first band.
 
 If you're new here, read `Main.lean` first to see what's proved, then `Statement.lean` for what the claims mean.
 

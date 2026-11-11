@@ -288,7 +288,7 @@ def ShorCorrectApproxLowered [GateSemanticsFacts qs] [LowerGateClass qs] (T : �
 end
 
 /-! =========================================================
-    The lowered circuit and the approximate setup
+    The lowered circuit
 ========================================================= -/
 
 section
@@ -303,32 +303,6 @@ def orderFindingApproxLow (P : ShorLoweringPolicy) (a N : ℕ) (x y work scratch
   Policy.lowerGate P (orderFindingApprox a N x y work scratch flag hmodWorkspace hstep4)
     hLowerWorkspace
 
-/-- The input basis state is clean on every register used by Shor. -/
-def ShorCleanInput (qs : QSemantics) [RegEncoding qs.Basis] (x y work scratch : ExtReg)
-    (flag : ℕ) (b0 : qs.Basis) : Prop :=
-  RegEncoding.toNat x.active b0 = 0 ∧ RegEncoding.toNat y.active b0 = 0 ∧ y.FreshFor 2 b0 ∧
-  RegEncoding.toNat work.active b0 = 0 ∧ work.FreshFor 1 b0 ∧
-  RegEncoding.toNat scratch.active b0 = 0 ∧ scratch.FreshFor 1 b0 ∧
-  RegEncoding.toNat (qubitReg flag) b0 = 0
-
-/-- Public assumptions for the approximate implementation of Shor. -/
-structure ShorApproxSetup (qs : QSemantics) [RegEncoding qs.Basis] (η : ℝ) (N : ℕ)
-    (x y work scratch : ExtReg) (flag : ℕ) (b0 : qs.Basis) : Type where
-  /-- The exponent, data, work, carry, and flag qubits do not overlap. -/
-  register_layout : ModExpLayout x.active y work flag
-  /-- The modular-exponentiation subcircuit has enough local workspace. -/
-  circuit_workspace : ModMulCircuitWorkspaceOK y work
-  /-- The concrete Step-4 comparator and its Step-3 scratch are well laid out. -/
-  step4_workspace : CmpLtNWWorkspace N (y.grow 1) work scratch flag
-  /-- The exponent register is owned separately from the modular data register. -/
-  exponent_data_disjoint : ExtReg.OwnedDisjoint x y
-  /-- The exponent register is owned separately from comparator scratch. -/
-  exponent_scratch_disjoint : ExtReg.OwnedDisjoint x scratch
-  /-- The work register has enough extra bits for precision `η`. -/
-  work_precision : Algorithm1Precision η y.active work.active
-  /-- Shor begins in `|0⋯0⟩` on all registers it uses. -/
-  clean_input : ShorCleanInput qs x y work scratch flag b0
-
 end
 
 /-! =========================================================
@@ -338,28 +312,25 @@ end
 section
 open Operations
 
-/-- The lowered order-finding circuit has `O(n^(2+ε))` gates, `n` the data
-width, for every precision `η` whose extra work bits fit a budget `cWork`: one
-constant `C` per budget. `_hxWidth` and `_hyWidth` fix the register widths the
-proof's layout facts need. -/
+/-- The lowered order-finding circuit of the correctness claims has
+`O(n^(2+ε))` gates, `n` the data width, for every precision `η` whose extra work
+bits fit a budget `cWork`: one constant `C` per budget. The hypotheses and the
+circuit are those of `ShorCorrectApproxLoweredUniform`. -/
 def ShorGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ) (k : ℕ) (hk : 1 < k)
     (ops : Prog k) (pts : List Point) (hpts : pts.length = q k) : Prop :=
   ∀ cWork : ℕ, 1 ≤ cWork → ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
-    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg)
-      (_hxWidth : regSize x.active = Nat.log2 (2 * inst.N^2))
-      (_hyWidth : regSize y.active = Nat.log2 (2 * inst.N))
-      (flag : ℕ) (b0 : qs.Basis) (η : ℝ)
-      (hsetup : ShorApproxSetup qs η inst.N x y work scratch flag b0),
+    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg) (flag : ℕ) (b0 : qs.Basis)
+      (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))
+      (_hn : regSize y.active = Nat.log2 (2 * inst.N)) (η : ℝ)
+      (hready : LoweredShorReady qs (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
+        η inst.a inst.N x y work scratch flag b0)
+      (hws : Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
+        hready.circuit),
       let n := y.width
       n₀ ≤ n → algorithm1ExtraBits η ≤ (cWork - 1) * regSize y.active →
-      ∀ hLowerWorkspace :
-        Policy.GateWorkspaceOK (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
-          (orderFindingApprox inst.a inst.N x y work scratch flag hsetup.circuit_workspace
-            hsetup.step4_workspace),
       (LowGate.gateCount shorGateCostModel
-          (orderFindingApproxLow (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
-            inst.a inst.N x y work scratch flag hsetup.circuit_workspace hsetup.step4_workspace
-            hLowerWorkspace) : ℝ)
+          (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
+            hready.circuit hws) : ℝ)
         ≤ C * Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)
 
 /-- **The gate count of the circuit `ShorCorrectApproxLowered` is about**: at the
@@ -380,6 +351,94 @@ def ShorGateCountBoundAtShorPrecision (qs : QSemantics) [RegEncoding qs.Basis] (
       (LowGate.gateCount shorGateCostModel
           (Policy.lowerGate (ShorLoweringPolicy.constPolicy ⟨k, hk, pts, hpts, ops⟩)
             hready.circuit hws) : ℝ)
+        ≤ C * Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)
+
+end
+
+/-! ### The gate-count assertions for a table -/
+
+section
+open Operations
+
+/-- **Assertion: the gate count for a submitted table.** A submission whose
+exponent `log_k (2k - 1)` is at most `1 + ε` has the bound `ShorGateCountBound`.
+(`Main.lean`: `shorGateCountBound_of_setup`.) -/
+def ShorGateCountBoundOfSetup (qs : QSemantics) [RegEncoding qs.Basis]
+    (s : ShorLoweringSetup) (ε : ℝ) : Prop :=
+  Real.log (q s.k : ℝ) / Real.log (s.k : ℝ) ≤ 1 + ε →
+    ShorGateCountBound qs ε s.k s.hk s.ops s.pts s.hpts
+
+/-- **Assertion: the gate count of the circuit whose correctness is proved, for
+a submitted table.** The same at the precision `shorPrecision N x`.
+(`Main.lean`: `shorGateCountBoundAtShorPrecision_of_setup`.) -/
+def ShorGateCountBoundAtShorPrecisionOfSetup (qs : QSemantics) [RegEncoding qs.Basis]
+    (s : ShorLoweringSetup) (ε : ℝ) : Prop :=
+  Real.log (q s.k : ℝ) / Real.log (s.k : ℝ) ≤ 1 + ε →
+    ShorGateCountBoundAtShorPrecision qs ε s.k s.hk s.ops s.pts s.hpts
+
+/-- **Assertion: for every `ε > 0` there is an arity `k`** such that every
+program satisfying C1–C4 at that arity has the `O(n^(2 + ε))` bound.
+(`Main.lean`: `exists_k_shorGateCountBound_of_programOK`.) -/
+def ExistsKShorGateCountBoundOfProgramOK (qs : QSemantics) [RegEncoding qs.Basis]
+    (ε : ℝ) : Prop :=
+  0 < ε →
+    ∃ (k : ℕ) (hk : 1 < k),
+      ∀ (ops : Prog k) (pts : List Point) (hpts : pts.length = q k),
+        PhaseProductProgramOK k hk pts hpts ops →
+        ShorGateCountBound qs ε k hk ops pts hpts
+
+/-- **Assertion: for every `ε > 0` some table satisfying C1–C4** has the
+`O(n^(2 + ε))` bound. (`Main.lean`: `exists_shorGateCountBound`.) -/
+def ExistsShorGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ) : Prop :=
+  0 < ε →
+    ∃ (k : ℕ) (hk : 1 < k) (ops : Prog k) (pts : List Point) (hpts : pts.length = q k),
+      PhaseProductProgramOK k hk pts hpts ops ∧ ShorGateCountBound qs ε k hk ops pts hpts
+
+end
+
+/-! ### The gate count under a policy -/
+
+section
+open Operations
+
+/-- If the policy is admissible and its exponent `P.gateExponent` is at most
+`1 + ε`, the lowered order-finding circuit under it has `O(n^(2+ε))` gates, `n`
+the data width, for every precision `η` whose extra work bits fit a budget
+`cWork`: one constant `C` per budget. The count is priced by the policy's own
+resource model. -/
+def Policy.ShorGateCountBound (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ)
+    (P : ShorLoweringPolicy) : Prop :=
+  P.Admissible → P.gateExponent ≤ 1 + ε →
+  ∀ cWork : ℕ, 1 ≤ cWork → ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg) (flag : ℕ) (b0 : qs.Basis)
+      (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))
+      (_hn : regSize y.active = Nat.log2 (2 * inst.N)) (η : ℝ)
+      (hready : LoweredShorReady qs P η inst.a inst.N x y work scratch flag b0)
+      (hws : Policy.GateWorkspaceOK P hready.circuit),
+      let n := y.width
+      n₀ ≤ n → algorithm1ExtraBits η ≤ (cWork - 1) * regSize y.active →
+      (LowGate.gateCount P.resourceModel.toCostModel
+          (Policy.lowerGate P hready.circuit hws) : ℝ)
+        ≤ C * Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)
+
+/-- **The gate count of the circuit `ShorCorrectApproxLowered` is about**, under
+a policy: if the policy is admissible and its exponent is at most `1 + ε`, then
+at the precision `shorPrecision N x`, with that theorem's hypotheses, the
+lowered order-finding circuit has `O(n^(2+ε))` gates. -/
+def Policy.ShorGateCountBoundAtShorPrecision (qs : QSemantics) [RegEncoding qs.Basis] (ε : ℝ)
+    (P : ShorLoweringPolicy) : Prop :=
+  P.Admissible → P.gateExponent ≤ 1 + ε →
+  ∃ C : ℝ, 0 < C ∧ ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+    ∀ (inst : ShorOrderFindingInstance) (x y work scratch : ExtReg) (flag : ℕ) (b0 : qs.Basis)
+      (_hm : regSize x.active = Nat.log2 (2 * inst.N^2))
+      (_hn : regSize y.active = Nat.log2 (2 * inst.N))
+      (hready : LoweredShorReady qs P
+        (shorPrecision inst.N x.active) inst.a inst.N x y work scratch flag b0)
+      (hws : Policy.GateWorkspaceOK P hready.circuit),
+      let n := y.width
+      n₀ ≤ n →
+      (LowGate.gateCount P.resourceModel.toCostModel
+          (Policy.lowerGate P hready.circuit hws) : ℝ)
         ≤ C * Real.rpow (((max 1 n : ℕ) : ℝ)) (2 + ε)
 
 end

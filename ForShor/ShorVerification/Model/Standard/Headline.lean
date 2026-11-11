@@ -41,7 +41,7 @@ theorem model_exists_shorGateCountBound (ε : ℝ) (hε : 0 < ε) :
           (genInterpolationPoints k) (generatedInterpolationPoints_length k) ops ∧
         ShorGateCountBound qs ε k hk ops
           (genInterpolationPoints k) (generatedInterpolationPoints_length k) :=
-  exists_shorGateCountBound qs ε hε
+  exists_shorGateCountBound_generated qs ε hε
 
 theorem model_shorGateCountBound_of_setup
     (s : ShorLoweringSetup) (ε : ℝ)

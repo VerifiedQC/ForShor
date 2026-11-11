@@ -54,56 +54,60 @@ variable (qs : QSemantics) [RegEncoding qs.Basis]
 /-- **The `O(n^(2 + ε))` gate count for an arbitrary submitted table.** The
 hypotheses are the submission conditions (a `ShorLoweringSetup` carries C1–C4)
 and that the table's exponent `log_k (2k - 1)` is at most `1 + ε`: a `k = 2`
-table admits `ε ≥ log 3 / log 2 - 1 ≈ 0.585`, larger `k` smaller `ε`. -/
+table admits `ε ≥ log 3 / log 2 - 1 ≈ 0.585`, larger `k` smaller `ε`.
+(`ShorGateCountBoundOfSetup`.) -/
 theorem shorGateCountBound_of_setup
     (s : ShorLoweringSetup)
-    (ε : ℝ)
-    (hExponent : Real.log (q s.k : ℝ) / Real.log (s.k : ℝ) ≤ 1 + ε) :
-    ShorGateCountBound qs ε s.k s.hk s.ops s.pts s.hpts :=
-  shorGateCountBound_of_programOK
-    qs ε s.k s.hk hExponent s.ops s.pts s.hpts s.programOK
+    (ε : ℝ) :
+    ShorGateCountBoundOfSetup qs s ε :=
+  fun hExponent =>
+    shorGateCountBound_of_programOK
+      qs ε s.k s.hk hExponent s.ops s.pts s.hpts s.programOK
 
 /-- **The gate count of the circuit whose correctness is proved**: at the
 precision `shorPrecision N x` of `ShorCorrectApproxLowered`, for any submitted
 table whose exponent `log_k (2k - 1)` is at most `1 + ε`, the lowered
-order-finding circuit has `O(n^(2 + ε))` gates. -/
+order-finding circuit has `O(n^(2 + ε))` gates.
+(`ShorGateCountBoundAtShorPrecisionOfSetup`.) -/
 theorem shorGateCountBoundAtShorPrecision_of_setup
     (s : ShorLoweringSetup)
-    (ε : ℝ)
-    (hExponent : Real.log (q s.k : ℝ) / Real.log (s.k : ℝ) ≤ 1 + ε) :
-    ShorGateCountBoundAtShorPrecision qs ε s.k s.hk s.ops s.pts s.hpts :=
-  shorGateCountBoundAtShorPrecision_of_bound qs ε s.k s.hk s.ops s.pts s.hpts
-    (shorGateCountBound_of_setup qs s ε hExponent)
+    (ε : ℝ) :
+    ShorGateCountBoundAtShorPrecisionOfSetup qs s ε :=
+  fun hExponent =>
+    shorGateCountBoundAtShorPrecision_of_bound qs ε s.k s.hk s.ops s.pts s.hpts
+      (shorGateCountBound_of_setup qs s ε hExponent)
 
 /-- **For every `ε > 0` there is an arity `k`** such that every program
-satisfying C1–C4 at that arity gives the `O(n^(2 + ε))` bound. -/
+satisfying C1–C4 at that arity gives the `O(n^(2 + ε))` bound.
+(`ExistsKShorGateCountBoundOfProgramOK`.) -/
 theorem exists_k_shorGateCountBound_of_programOK
-    (ε : ℝ)
-    (hε : 0 < ε) :
-    ∃ (k : ℕ) (hk : 1 < k),
-      ∀ (ops : Prog k) (pts : List Point) (hpts : pts.length = q k),
-        PhaseProductProgramOK k hk pts hpts ops →
-        ShorGateCountBound qs ε k hk ops pts hpts := by
+    (ε : ℝ) :
+    ExistsKShorGateCountBoundOfProgramOK qs ε := by
+  intro hε
   rcases exists_k_phaseProductExponent_le ε hε with ⟨k, hk, hExponent⟩
   exact ⟨k, hk, shorGateCountBound_of_programOK qs ε k hk hExponent⟩
 
-/-- **For every `ε > 0`, a generated table at some arity** gives the
-`O(n^(2 + ε))` bound. -/
+/-- **For every `ε > 0`, some table satisfying C1–C4** gives the
+`O(n^(2 + ε))` bound. (`ExistsShorGateCountBound`.) -/
 theorem exists_shorGateCountBound
-    (ε : ℝ)
-    (hε : 0 < ε) :
-    ∃ k : ℕ,
-    ∃ hk : 1 < k,
-    ∃ ops : Prog k,
-      PhaseProductProgramOK k hk
-          (genInterpolationPoints k) (generatedInterpolationPoints_length k) ops ∧
-      ShorGateCountBound qs ε k hk ops
-        (genInterpolationPoints k) (generatedInterpolationPoints_length k) := by
-  rcases exists_k_phaseProductExponent_le ε hε with ⟨k, hk, hExponent⟩
-  rcases exists_phaseProductProgramOK k hk with ⟨ops, hops⟩
-  exact ⟨k, hk, ops, hops,
-    shorGateCountBound_of_programOK qs ε k hk hExponent ops
-      (genInterpolationPoints k) (generatedInterpolationPoints_length k) hops⟩
+    (ε : ℝ) :
+    ExistsShorGateCountBound qs ε := by
+  intro hε
+  obtain ⟨k, hk, ops, hops, hbound⟩ := exists_shorGateCountBound_generated qs ε hε
+  exact ⟨k, hk, ops, _, _, hops, hbound⟩
+
+/-- **The `O(n^(2 + ε))` gate count under a policy.** (`Policy.ShorGateCountBound`.) -/
+theorem Policy.shorGateCountBound (ε : ℝ) (P : ShorLoweringPolicy) :
+    Policy.ShorGateCountBound qs ε P :=
+  fun hP hExponent => Policy.shorGateCountBoundFor_of_admissible P.negation qs ε P hP hExponent
+
+/-- **The gate count of the circuit whose correctness is proved, under a
+policy.** (`Policy.ShorGateCountBoundAtShorPrecision`.) -/
+theorem Policy.shorGateCountBoundAtShorPrecision (ε : ℝ) (P : ShorLoweringPolicy) :
+    Policy.ShorGateCountBoundAtShorPrecision qs ε P :=
+  fun hP hExponent =>
+    Policy.shorGateCountBoundAtShorPrecisionFor_of_bound P.negation qs ε P
+      (Policy.shorGateCountBoundFor_of_admissible P.negation qs ε P hP hExponent)
 
 end GateCount
 
