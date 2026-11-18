@@ -302,8 +302,51 @@ def widthTableJson (s : ShorPolicySubmission) : Json :=
       ("ops", _root_.Shor.progJson b.2.ops)]).toArray),
     ("rows", Json.arr ((diag ++ qftPairs ++ rect).map row).toArray)]
 
+/-- One attempt at the current `Shor.Reflect.lookupBudget`: extract the IR, check it
+(well-formedness, then the evaluation tier; with `--balanced` also the balanced
+tier). `.ok` is the document to print; `.error` is why it was refused. Progress
+goes to stderr. -/
+unsafe def attempt (s : ShorPolicySubmission) (exact balanced probeOwnRule : Bool) : IO (Except String Json) := do
+  let budget ← _root_.Shor.Reflect.lookupBudget.get
+  let t0 ← IO.monoMsNow
+  match ← extractPolicyDoc with
+  | .error e => return .error s!"IR extraction FAILED: {e}"
+  | .ok doc =>
+    let t1 ← IO.monoMsNow
+    let nto ← _root_.Shor.Reflect.lookupTimeouts.get
+    IO.eprintln s!"forshor_policy_submission: IR extracted at run time in {t1 - t0} ms; bounded registry lookups that timed out: {nto} (budget {budget})"
+    if !(_root_.Shor.IR.Doc.wellFormed doc) then
+      return .error "extracted IR is NOT well formed"
+    let tierOK := if probeOwnRule then _root_.Shor.Reflect.policySubmissionChecksOwnRuleProbe s doc
+      else _root_.Shor.Reflect.policySubmissionChecks s doc
+    if !tierOK then
+      let tier := if probeOwnRule then "policySubmissionChecksOwnRuleProbe" else "policySubmissionChecks"
+      return .error s!"evaluation tier FAILED (Shor.Reflect.{tier} policy doc = false)"
+    let t2 ← IO.monoMsNow
+    IO.eprintln s!"forshor_policy_submission: evaluation tier passed in {t2 - t1} ms"
+    let base := (_root_.PolicySubmission.policySubmissionJson s doc).mergeObj (Json.mkObj
+        [("extraction", Json.mkObj [("where", Json.str "run time, compiled"),
+          ("width_rule", Json.str (if exact then "exact (--exact-widths)" else "scan")),
+          ("lookup_timeouts", (nto : Json)),
+          ("lookup_budget", (budget : Json)),
+          ("probe_thresholds", Json.str (if probeOwnRule then "where the policy's own width rule shrinks each table (--probe-exact)"
+             else "where the scan shrinks each table (the default)")),
+          ("note", Json.str "a timed-out registry isDefEq counts as no match and falls back to structural translation; the evaluation tier above checked the result")])])
+    if balanced then
+      let (ok, sites) := _root_.Shor.Reflect.Balanced.balancedChecks s doc
+      let t3 ← IO.monoMsNow
+      if !ok then
+        return .error "balanced tier FAILED"
+      IO.eprintln s!"forshor_policy_submission: balanced tier passed in {t3 - t2} ms"
+      return .ok (base.mergeObj (Json.mkObj (balancedFields s doc sites)))
+    else
+      return .ok base
+
 /-- Extract the IR, check it (well-formedness, then the evaluation tier; with
 `--balanced` also the balanced tier), and print only a document that passed.
+The lookups run at `Shor.Reflect.lookupDefEqBudget`; if anything fails there, the
+whole attempt runs once more at `lookupDefEqBudgetFull` (the former budget), so a
+policy accepted at the former budget is never refused at the smaller one.
 A failing submission prints nothing on stdout and exits 1, so
 `lake build PolicySubmission && lake exe forshor_policy_submission > policy.json`
 produces a document only for a submission that passed every check. -/
@@ -319,42 +362,17 @@ unsafe def main (args : List String) : IO UInt32 := do
   if args.contains "--width-table" then
     IO.println (widthTableJson s).compress
     return 0
-  let t0 ← IO.monoMsNow
-  match ← extractPolicyDoc with
-  | .error e =>
-      IO.eprintln s!"forshor_policy_submission: IR extraction FAILED: {e}; no policy.json printed"
-      return 1
-  | .ok doc =>
-    let t1 ← IO.monoMsNow
-    let nto ← _root_.Shor.Reflect.lookupTimeouts.get
-    IO.eprintln s!"forshor_policy_submission: IR extracted at run time in {t1 - t0} ms; bounded registry lookups that timed out: {nto}"
-    if !(_root_.Shor.IR.Doc.wellFormed doc) then
-      IO.eprintln "forshor_policy_submission: extracted IR is NOT well formed; no policy.json printed"
-      return 1
-    let tierOK := if probeOwnRule then _root_.Shor.Reflect.policySubmissionChecksOwnRuleProbe s doc
-      else _root_.Shor.Reflect.policySubmissionChecks s doc
-    if !tierOK then
-      let tier := if probeOwnRule then "policySubmissionChecksOwnRuleProbe" else "policySubmissionChecks"
-      IO.eprintln s!"forshor_policy_submission: evaluation tier FAILED \
-        (Shor.Reflect.{tier} policy doc = false); no policy.json printed"
-      return 1
-    let t2 ← IO.monoMsNow
-    IO.eprintln s!"forshor_policy_submission: evaluation tier passed in {t2 - t1} ms"
-    let base := (_root_.PolicySubmission.policySubmissionJson s doc).mergeObj (Json.mkObj
-        [("extraction", Json.mkObj [("where", Json.str "run time, compiled"),
-          ("width_rule", Json.str (if exact then "exact (--exact-widths)" else "scan")),
-          ("lookup_timeouts", (nto : Json)),
-          ("probe_thresholds", Json.str (if probeOwnRule then "where the policy's own width rule shrinks each table (--probe-exact)"
-             else "where the scan shrinks each table (the default)")),
-          ("note", Json.str "a timed-out registry isDefEq counts as no match and falls back to structural translation; the evaluation tier above checked the result")])])
-    if balanced then
-      let (ok, sites) := _root_.Shor.Reflect.Balanced.balancedChecks s doc
-      let t3 ← IO.monoMsNow
-      if !ok then
-        IO.eprintln s!"forshor_policy_submission: balanced tier FAILED; no policy.json printed"
-        return 1
-      IO.eprintln s!"forshor_policy_submission: balanced tier passed in {t3 - t2} ms"
-      IO.println (base.mergeObj (Json.mkObj (balancedFields s doc sites))).compress
-    else
-      IO.println base.compress
+  match ← attempt s exact balanced probeOwnRule with
+  | .ok out =>
+    IO.println out.compress
     return 0
+  | .error e =>
+    IO.eprintln s!"forshor_policy_submission: {e} at lookup budget {_root_.Shor.Reflect.lookupDefEqBudget}; retrying once at {_root_.Shor.Reflect.lookupDefEqBudgetFull}"
+    _root_.Shor.Reflect.lookupBudget.set _root_.Shor.Reflect.lookupDefEqBudgetFull
+    match ← attempt s exact balanced probeOwnRule with
+    | .ok out =>
+      IO.println out.compress
+      return 0
+    | .error e =>
+      IO.eprintln s!"forshor_policy_submission: {e}; no policy.json printed"
+      return 1
