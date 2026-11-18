@@ -148,19 +148,37 @@ initialize lookupWidthCache : IO.Ref (Std.HashMap (UInt64 × Expr) (Option IR.WE
 initialize lookupAngleCache : IO.Ref (Std.HashMap (UInt64 × Expr) (Option IR.AExpr)) ← IO.mkRef {}
 
 /-- Heartbeat budget of one registry comparison (raw count; the option
-`maxHeartbeats 200000` is `2·10⁸` raw). -/
-def lookupDefEqBudget : Nat := 20000000
+`maxHeartbeats 200000` is `2·10⁸` raw).
+
+Almost every comparison that exhausts its budget is a non-match being proved
+the slow way (unfolding the compiler on concrete `k = 4..8` programs), and an
+exhausted budget is a non-match anyway, so the extraction's time is roughly
+(timed-out lookups) × (budget). At `2·10⁵` the board's policies extract
+3.5–12× faster than at the former `2·10⁷`, with byte-identical documents
+(every PhaseProduct policy on the boards, 2026-11-18). If a run at this budget
+fails (extraction error, ill-formed IR, or a failed tier),
+`forshor_policy_submission` retries once at `lookupDefEqBudgetFull`, so no
+policy accepted at the former budget is refused at this one. -/
+def lookupDefEqBudget : Nat := 200000
+
+/-- The former budget, used for the one retry. -/
+def lookupDefEqBudgetFull : Nat := 20000000
+
+/-- The budget the next bounded lookups use (`lookupDefEqBudget` unless a
+retry set `lookupDefEqBudgetFull`). -/
+initialize lookupBudget : IO.Ref Nat ← IO.mkRef lookupDefEqBudget
 
 /-- Registry comparisons that ran out of budget (bounded mode). -/
 initialize lookupTimeouts : IO.Ref Nat ← IO.mkRef 0
 
 /-- `isDefEq` for registry lookups in bounded mode: syntactic equality first,
-then `isDefEq` under `lookupDefEqBudget`, an exhausted budget counting as no
+then `isDefEq` under the current `lookupBudget`, an exhausted budget counting as no
 match. -/
 def boundedIsDefEq (a b : Expr) : MetaM Bool := do
   if a == b then return true
+  let budget ← lookupBudget.get
   tryCatchRuntimeEx
-    (withTheReader Core.Context (fun c => { c with maxHeartbeats := lookupDefEqBudget }) <|
+    (withTheReader Core.Context (fun c => { c with maxHeartbeats := budget }) <|
       withCurrHeartbeats <| isDefEq a b)
     (fun _ => do lookupTimeouts.modify (· + 1); pure false)
 
