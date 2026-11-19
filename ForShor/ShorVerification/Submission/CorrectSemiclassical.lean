@@ -65,8 +65,11 @@ Differences, stated exactly:
 
 * Nothing about gate counts or qubit counts (the board measures the gate count outside Lean;
   the semiclassical qubit formulas are in `Readout/Cost.lean`).
-* Nothing about the emitted IR: `Emit/` still reflects the coherent circuit; this file only
-  says what the Lean semiclassical program achieves.
+* Nothing about the emitted IR here. `Emit/` has a semiclassical emitter, the `readout`
+  subcommand (`Emit/Lower/Readout.lean`, schema `forshor.mlowgate/v1`, one-band standard
+  policy only); `Submission/CorrectSemiclassicalEmit.lean` proves that its Lean term at
+  `level = submissionPrecision`, `rounds = referenceXWidth inst` is the circuit certified here
+  (`emit_readout_is_certified`). The JSON serialisation itself is not proved.
 * The trial-count amplification (`submissionTrialCount_correct`) is about the number
   `submissionSuccessBound N` alone; that a run of the semiclassical program meets that number
   is what `policy_submissionSuccessBound_le_success_semiclassical` adds.
@@ -310,8 +313,9 @@ returns the order of `a` mod `N`.
 
 Hypotheses are those of `policy_submission_correct`, nothing more; the only differences
 are the universe (`QSemantics.{0}`) and the success functional (`probability_of_success_M`
-on the measured program). Not claimed: anything about gate or qubit counts, or about the IR
-`Emit/` produces. -/
+on the measured program). Not claimed: anything about gate or qubit counts, or about the
+serialised IR (the link from the `readout` emitter's Lean term to this circuit is
+`emit_readout_is_certified`, standard policy only). -/
 theorem policy_submission_correct_semiclassical (s : ShorPolicySubmission) :
     ∀ (T : ℕ → ℕ), ContinuedFractionSearchComplete T →
     ∀ inst : ShorOrderFindingInstance,
