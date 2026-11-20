@@ -1160,6 +1160,25 @@ def QFTWorkSource.ofOps (opsE : Expr) : QFTWorkSource :=
 def QFTWorkSource.ofPolicy (polE : Expr) : QFTWorkSource :=
   { xWorkFn := ``Shor.Policy.qftXWork, zWorkFn := ``Shor.Policy.qftZWork, owner := polE }
 
+/-- Reflect one symbolic controlled multiplication, without unfolding the loop or evaluating
+`(a ^ (2 ^ powerIndex)) % N`. The readout supplies the exponent index and control binding;
+the same `CmodMulInPlaceCore` supplies the arithmetic. -/
+def translateModMulRound (reg : Registry) (index : String) (powerIndex : IR.WExpr)
+    (control : MetaM IR.RegExpr) (a n data work scratch flag hw hs4 : Expr)
+    (translate : Registry → Expr → MetaM IR.Node) : MetaM IR.Node := do
+  withLocalDecl (Name.mkSimple index) .default (mkConst ``Nat) fun eVar => do
+  withLocalDecl `c .default (mkConst ``Nat) fun cVar => do
+  withLocalDecl `ctrl .default (mkConst ``Nat) fun ctrlVar => do
+    let aW ← translateW reg a
+    let nW ← translateW reg n
+    let cW := IR.WExpr.opaque "modpow" [aW, powerIndex, nW]
+    let ctrlReg ← control
+    let reg' := { reg with
+      widths := reg.widths ++ #[(eVar, IR.WExpr.var index), (cVar, cW)]
+      regs := reg.regs ++ #[(ctrlVar, ctrlReg)] }
+    let bodyE ← mkAppM ``Shor.CmodMulInPlaceCore #[cVar, n, ctrlVar, data, work, scratch, flag, hw, hs4]
+    translate reg' bodyE
+
 mutual
 
 /-- Translate one (already- or not-yet-reduced) `Gate`-valued `Expr` into a
@@ -1265,20 +1284,10 @@ partial def translateNode (reg : Registry) (e : Expr) : MetaM IR.Node := do
   | (``Shor.modExpApproxValid,
       #[aE, nE, xE, dataE, workE, scratchE, flagE, hworkspaceE, hstep4E]) => do
       let xw ← translateW reg (← mkAppM ``Shor.regSize #[xE])
-      withLocalDecl `e .default (mkConst ``Nat) fun eVar => do
-      withLocalDecl `c .default (mkConst ``Nat) fun cVar => do
-      withLocalDecl `ctrl .default (mkConst ``Nat) fun ctrlVar => do
-        let aW ← translateW reg aE
-        let nW ← translateW reg nE
-        let cW := IR.WExpr.opaque "modpow" [aW, .var "e", nW]
-        let ctrlReg := IR.RegExpr.qubit (← translateReg reg xE) (.var "e")
-        let reg' := { reg with
-          widths := reg.widths ++ #[(eVar, IR.WExpr.var "e"), (cVar, cW)]
-          regs := reg.regs ++ #[(ctrlVar, ctrlReg)] }
-        let bodyE ← mkAppM ``Shor.CmodMulInPlaceCore
-          #[cVar, nE, ctrlVar, dataE, workE, scratchE, flagE, hworkspaceE, hstep4E]
-        let bodyNode ← translateNode reg' bodyE
-        return .loop "e" (.lit 0) xw bodyNode
+      let body ← translateModMulRound reg "e" (.var "e")
+        (return .qubit (← translateReg reg xE) (.var "e"))
+        aE nE dataE workE scratchE flagE hworkspaceE hstep4E translateNode
+      return .loop "e" (.lit 0) xw body
   | (``Shor.Gate.ShiftL, #[r, n]) =>
       return .op "ShiftL" [← translateReg reg r] [← translateW reg n] none []
   | (``Shor.Gate.ShiftR, #[r, n]) =>
@@ -1821,20 +1830,10 @@ partial def translateLowerGate (reg : Registry) (src : QFTWorkSource) (gE : Expr
   | (``Shor.modExpApproxValid,
       #[aE, nE, xE, dataE, workE, scratchE, flagE, hworkspaceE, hstep4E]) => do
       let xw ← translateW reg (← mkAppM ``Shor.regSize #[xE])
-      withLocalDecl `e .default (mkConst ``Nat) fun eVar => do
-      withLocalDecl `c .default (mkConst ``Nat) fun cVar => do
-      withLocalDecl `ctrl .default (mkConst ``Nat) fun ctrlVar => do
-        let aW ← translateW reg aE
-        let nW ← translateW reg nE
-        let cW := IR.WExpr.opaque "modpow" [aW, .var "e", nW]
-        let ctrlReg := IR.RegExpr.qubit (← translateReg reg xE) (.var "e")
-        let reg' := { reg with
-          widths := reg.widths ++ #[(eVar, IR.WExpr.var "e"), (cVar, cW)]
-          regs := reg.regs ++ #[(ctrlVar, ctrlReg)] }
-        let bodyE ← mkAppM ``Shor.CmodMulInPlaceCore
-          #[cVar, nE, ctrlVar, dataE, workE, scratchE, flagE, hworkspaceE, hstep4E]
-        let bodyNode ← translateLowerGate reg' src bodyE
-        return .loop "e" (.lit 0) xw bodyNode
+      let body ← translateModMulRound reg "e" (.var "e")
+        (return .qubit (← translateReg reg xE) (.var "e"))
+        aE nE dataE workE scratchE flagE hworkspaceE hstep4E (fun r g => translateLowerGate r src g)
+      return .loop "e" (.lit 0) xw body
   | _ =>
       match ← unfoldDefinition? gE with
       | some gE' => translateLowerGate reg src gE'
