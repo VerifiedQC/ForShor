@@ -2,6 +2,7 @@ import ForShor.ShorVerification.Submission.PolicyCheck
 import ForShor.Emit.Json.Common
 import ForShor.Emit.Symbolic.ExactWidthJson
 import ForShor.Emit.Balanced.Verify
+import ForShor.Emit.Reflect.PolicyReadout
 
 /-!
 # `forshor_policy_submission`: what a policy submission hands over
@@ -49,8 +50,11 @@ the IR.
   each table (`policySubmissionChecksOwnRuleProbe`) rather than where the scan
   does. Deeper and much slower; the same checks on the same IR.
 * `--probe-scan`: accepted, does nothing (it is the default).
-* `--balanced`: implies `--exact-widths`; also runs the balanced tier, and
-  prints the balanced document as `ir` and the policy's own as `ir_unbalanced`.
+ * `--balanced`: implies `--exact-widths`; also runs the balanced tier, and
+   prints the balanced document as `ir` and the policy's own as `ir_unbalanced`.
+ * `--readout coherent|semiclassical`: coherent is the unchanged default.
+   Semiclassical requires `--balanced` and emits a versioned measured loop
+   and balanced arithmetic IR, without materializing its rounds.
 * `--width-table`: print the compiler's widths per band on the chosen rule
   (not a submission document; no extraction, no checks).
 
@@ -244,7 +248,7 @@ limit off and bounded registry lookups, against the environment of the oleans
 `lake build PolicySubmission` produced. It reads the template's policy as
 submitted; the templates do not depend on the width rule (only the width
 oracles' values do). -/
-unsafe def extractPolicyDoc : IO (Except String _root_.Shor.IR.Doc) := do
+private unsafe def runPolicyExtraction (extract : Expr → MetaM α) : IO (Except String α) := do
   try
     enableInitializersExecution
     _root_.Shor.Reflect.enableBoundedLookups
@@ -256,11 +260,24 @@ unsafe def extractPolicyDoc : IO (Except String _root_.Shor.IR.Doc) := do
     let polE := mkApp (mkConst ``_root_.Shor.ShorPolicySubmission.policy)
       (mkConst ``_root_.PolicySubmission.policy)
     let metaCtx : Meta.Context := { customCanUnfoldPredicate? := some extractCanUnfold }
-    let (doc, _) ← ((_root_.Shor.Reflect.buildPolicyDoc _root_.PolicySubmission.policy polE).run' metaCtx).toIO
+    let (doc, _) ← ((extract polE).run' metaCtx).toIO
       coreCtx { env := env }
     return .ok doc
   catch e =>
     return .error (toString e)
+
+unsafe def extractPolicyDoc : IO (Except String _root_.Shor.IR.Doc) :=
+  runPolicyExtraction (_root_.Shor.Reflect.buildPolicyDoc _root_.PolicySubmission.policy)
+
+private unsafe def extractWithReadout (measured : Bool) :
+    IO (Except String (_root_.Shor.IR.Doc × Option _root_.Shor.IR.Template)) := do
+  if measured then
+    runPolicyExtraction fun polE => do
+      let doc ← _root_.Shor.Reflect.buildPolicyDoc _root_.PolicySubmission.policy polE
+      let round ← _root_.Shor.Reflect.extractPolicyReadoutRound polE
+      pure (doc, some round)
+  else
+    return (← extractPolicyDoc).map (fun doc => (doc, none))
 
 /-- The balanced splice (`Emit/Balanced/`): `ir` := the balanced document
 (`shor` retargeted to `balanced_(c)phase_product`), `ir_unbalanced` := the
@@ -279,7 +296,22 @@ def balancedFields (s : ShorPolicySubmission) (doc : _root_.Shor.IR.Doc)
       ("correctness", Json.str "Shor.Balanced.Policy.lowerGate_balance_correctness, Shor.Balanced.balancedShorImplementation (kernel-checked, generic in the policy)"),
       ("ir_agreement", Json.str "Shor.Reflect.Balanced.balancedChecks (evaluation, not a theorem)"),
       ("widths", Json.str "the equal-width core runs at the post-balance operand widths, so nextWidth (exact) is evaluated there"),
-      ("sites_2048", Json.arr (sites.map siteJson).toArray)])]
+       ("sites_2048", Json.arr (sites.map siteJson).toArray)])]
+
+private def semiclassicalJson (s : ShorPolicySubmission) (doc : _root_.Shor.IR.Doc)
+    (base : Json) : Json :=
+  let width := Json.mkObj [("width_rule", _root_.Shor.policyWidthRuleJson s _root_.PolicySubmission.widthTableMax)]
+  let checks := (base.getObjVal? "checks").toOption.getD (Json.mkObj [])
+  base.mergeObj (Json.mkObj [
+    ("schema", Json.str "forshor.policy-submission-semiclassical/v1"),
+    ("readout", _root_.Shor.Reflect.Readout.scheduleJson),
+    ("ir", (_root_.Shor.IR.docJson doc).mergeObj width),
+    ("score", Json.str "trial_count × single-run gate count of the measured schedule and its arithmetic IR; not computed in Lean."),
+    ("checks", checks.mergeObj (Json.mkObj [
+      ("correctness", Json.str "Shor.policy_submission_correct_semiclassical_balanced; same declared success bound and trial count"),
+      ("ir_agreement", Json.str "Shor.Reflect.Readout.check: measured circuit agreement at the reference probes; Shor.Reflect.Balanced.balancedChecks: balanced arithmetic, including shallow 2048-bit probes"),
+      ("ir_not_proved", Json.str "Agreement with the emitted measured IR is checked at sampled instances, not proved for all widths.")])),
+    ("provenance", Json.str "Arithmetic reflected from the submitted policy; the compact measured schedule is expanded only in the reference probes.")])
 
 /-- `--width-table`: no extraction, no checks; the compiler's own widths on the
 submission's width rule, for a consumer's cross-check (NOT a submission
@@ -306,12 +338,13 @@ def widthTableJson (s : ShorPolicySubmission) : Json :=
 (well-formedness, then the evaluation tier; with `--balanced` also the balanced
 tier). `.ok` is the document to print; `.error` is why it was refused. Progress
 goes to stderr. -/
-unsafe def attempt (s : ShorPolicySubmission) (exact balanced probeOwnRule : Bool) : IO (Except String Json) := do
+unsafe def attempt (s : ShorPolicySubmission) (exact balanced probeOwnRule : Bool)
+    (measured : Bool := false) : IO (Except String Json) := do
   let budget ← _root_.Shor.Reflect.lookupBudget.get
   let t0 ← IO.monoMsNow
-  match ← extractPolicyDoc with
+  match ← extractWithReadout measured with
   | .error e => return .error s!"IR extraction FAILED: {e}"
-  | .ok doc =>
+  | .ok (doc, round) =>
     let t1 ← IO.monoMsNow
     let nto ← _root_.Shor.Reflect.lookupTimeouts.get
     IO.eprintln s!"forshor_policy_submission: IR extracted at run time in {t1 - t0} ms; bounded registry lookups that timed out: {nto} (budget {budget})"
@@ -338,9 +371,36 @@ unsafe def attempt (s : ShorPolicySubmission) (exact balanced probeOwnRule : Boo
       if !ok then
         return .error "balanced tier FAILED"
       IO.eprintln s!"forshor_policy_submission: balanced tier passed in {t3 - t2} ms"
-      return .ok (base.mergeObj (Json.mkObj (balancedFields s doc sites)))
+      if let some round := round then
+        let measuredDoc := _root_.Shor.Reflect.Readout.arithmeticDoc doc round
+        match _root_.Shor.Reflect.Readout.check s measuredDoc with
+        | .error e => return .error e
+        | .ok () =>
+          IO.eprintln "forshor_policy_submission: semiclassical IR agreement passed"
+          return .ok (semiclassicalJson s measuredDoc base)
+      else
+        return .ok (base.mergeObj (Json.mkObj (balancedFields s doc sites)))
     else
       return .ok base
+
+private def parseReadout : List String → Except String Bool
+  | [] => .ok false
+  | "--readout" :: mode :: rest =>
+      if rest.any (fun arg => arg == "--readout" || arg.startsWith "--readout=") then
+        .error "pass --readout only once"
+      else if mode == "coherent" then .ok false
+      else if mode == "semiclassical" then .ok true
+      else .error "expected --readout coherent|semiclassical"
+  | "--readout" :: [] => .error "expected --readout coherent|semiclassical"
+  | arg :: rest =>
+      if arg.startsWith "--readout=" then .error "use --readout MODE (two arguments)"
+      else parseReadout rest
+
+#guard (parseReadout ["--balanced", "--readout", "coherent"]).toOption == some false
+#guard (parseReadout ["--readout", "semiclassical", "--balanced"]).toOption == some true
+#guard (parseReadout ["--readout"]).toOption.isNone
+#guard (parseReadout ["--readout", "other"]).toOption.isNone
+#guard (parseReadout ["--readout", "coherent", "--readout", "semiclassical"]).toOption.isNone
 
 /-- Extract the IR, check it (well-formedness, then the evaluation tier; with
 `--balanced` also the balanced tier), and print only a document that passed.
@@ -351,7 +411,15 @@ A failing submission prints nothing on stdout and exits 1, so
 `lake build PolicySubmission && lake exe forshor_policy_submission > policy.json`
 produces a document only for a submission that passed every check. -/
 unsafe def main (args : List String) : IO UInt32 := do
+  let measured ← match parseReadout args with
+    | .ok mode => pure mode
+    | .error e =>
+      IO.eprintln e
+      return 2
   let balanced := args.contains "--balanced"
+  if measured && (!balanced || args.contains "--width-table") then
+    IO.eprintln "--readout semiclassical requires --balanced and cannot be used with --width-table"
+    return 2
   let exact := balanced || args.contains "--exact-widths"
   -- `--probe-scan` is accepted and does nothing: scan-threshold probes are the default
   let probeOwnRule := args.contains "--probe-exact"
@@ -362,14 +430,14 @@ unsafe def main (args : List String) : IO UInt32 := do
   if args.contains "--width-table" then
     IO.println (widthTableJson s).compress
     return 0
-  match ← attempt s exact balanced probeOwnRule with
+  match ← attempt s exact balanced probeOwnRule measured with
   | .ok out =>
     IO.println out.compress
     return 0
   | .error e =>
     IO.eprintln s!"forshor_policy_submission: {e} at lookup budget {_root_.Shor.Reflect.lookupDefEqBudget}; retrying once at {_root_.Shor.Reflect.lookupDefEqBudgetFull}"
     _root_.Shor.Reflect.lookupBudget.set _root_.Shor.Reflect.lookupDefEqBudgetFull
-    match ← attempt s exact balanced probeOwnRule with
+    match ← attempt s exact balanced probeOwnRule measured with
     | .ok out =>
       IO.println out.compress
       return 0

@@ -123,6 +123,11 @@ jobs:
           # Protect every field of the existing submission outputs, not just the schema and negation anchors.
           lake exe forshor_policy_submission | python3 scripts/check_coherent_policy_output.py policy
           lake exe forshor_policy_submission --balanced | python3 scripts/check_coherent_policy_output.py balanced
+          lake exe forshor_policy_submission --balanced --readout coherent | python3 scripts/check_coherent_policy_output.py balanced
+          lake exe forshor_policy_submission --balanced --readout semiclassical | python3 scripts/check_compact_readout_output.py
+          readout_rc=0
+          invalid=$(lake exe forshor_policy_submission --readout semiclassical) || readout_rc=$?
+          test "$readout_rc" -eq 2 && test -z "$invalid"
           lake exe forshor_ptp_policy_submission | python3 scripts/check_coherent_policy_output.py ptp
           lake exe forshor_balanced_u | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None and "balanced_unconditional" in d, "unconditional balanced submission printed no IR"'
 
