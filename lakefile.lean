@@ -25,7 +25,7 @@ lean_exe forshor_emit where
   root := `ForShor.Emit.Main
 
 lean_lib «EmitTests» where
-  roots := #[`ForShor.Emit.Tests]
+  roots := #[`ForShor.Emit.Tests, `ForShor.Emit.MTests]
 
 -- Building this library *is* the acceptance check for a submitted table.
 -- `Submission/Template.lean` is the submitter's file: the table plus the
@@ -101,6 +101,13 @@ lean_lib «PolicyNumeralsBoardExact» where
 -- `lake build PolicyNumeralsBoardExactHeavy` on a machine with 16 GB or more of free memory (it builds the light chain first).
 lean_lib «PolicyNumeralsBoardExactHeavy» where
   roots := #[`ForShor.ShorVerification.Implementation.QubitCount.Proofs.PolicyNumeralsBoardExactHeavy]
+
+-- Kernel-evaluated semiclassical peaks (Readout/Proofs/PolicyNumeralsSC): the nine PhaseProduct board policies
+-- and `ref_pp_2048` under the exact width rule, one recycled control qubit in place of the exponent register.
+-- Each row is a heavy kernel evaluation (the ten take about 40-75 minutes in all, chained), so they are NOT in the
+-- `ForShor` umbrella: a chain of their own, built on a separate CI runner.
+lean_lib «PolicyNumeralsSC» where
+  roots := #[`ForShor.ShorVerification.Implementation.Readout.PolicyNumeralsSCTests]
 
 -- Drop-in: exact-width worked instances and fault challenge (not part of PolicySubmission).
 lean_lib «ExactWidthTests» where

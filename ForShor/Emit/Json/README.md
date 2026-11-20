@@ -4,7 +4,9 @@ JSON printers. Every other folder in `Emit/` builds a value and hands it to
 one printer here to turn it into `Lean.Json` — no file outside `Json/`
 declares its own spelling for a shared type.
 
-Import order within the folder: `Common.lean → LowGateJson.lean → PlanJson.lean`.
+Import order within the folder: `Common.lean → LowGateJson.lean → PlanJson.lean`;
+`MLowGateJson.lean` imports `LowGateJson.lean` and is imported by nothing that prints
+an older schema.
 
 ## `Common.lean`
 
@@ -106,3 +108,43 @@ file's own two views of the same real term, so it belongs next to
   singleton, one `seq` node otherwise).
 - `check1_annotatedEqFlat (planJ : Json) (flat : LowGate) : Bool` —
   `wrapFlattened (deepFlattenPlanJsonList planJ) == lowGateJson flat`.
+
+## `MLowGateJson.lean`
+
+The `forshor.mlowgate/v1` printer for the lowered measurement language `MLowGate`
+(`Framework/AbstractMachine/MLowGate.lean`: `unitary` `LowGate` blocks, `seq`,
+`measureReset`, `ffPhase`). A leaf: it changes no existing printer, and only
+`forshor_emit readout` (`Lower/Readout.lean`) prints it, so every `forshor.lowgate/v2`
+and `forshor.plan/v1` document is byte-identical to before.
+
+- `mlowGateNodes : MLowGate → List Json` — the nodes in execution order: a `unitary g`
+  contributes `(LowGate.flattenSeq g).map lowGateJson` (the old vocabulary, unchanged,
+  `id` contributing nothing), `seq a b` the nodes of `a` then of `b`, and the two new
+  nodes
+  - `{"op":"measureReset","q":q}`: measure qubit `q` in Z, append the outcome to the
+    record, reset `q` to `|0⟩`;
+  - `{"op":"ffPhase","q":q,"j":j}`: `Phase(q, θ)`, `θ = ffAngle j rec` in units of `π`,
+    where `rec` is the record when the node runs.
+- `mlowGateJson g` — the circuit as one flat `{"op":"seq","body":[…]}`.
+- `emitMLowGateDoc (g) (metaJson)` — the envelope: `schema` (`mlowgateSchema` =
+  `"forshor.mlowgate/v1"`), `bit_order`, `angle_unit` (`"pi"`), `record`, `ff_angle_rule`,
+  `num_measurements` (the number of `measureReset` nodes = final record length),
+  `circuit`, `meta`. No `gate_count`/`qubit_count`/`resources`: pricing the new nodes is
+  the consumer's.
+
+**Record and angle.** `rec[i]` is the outcome (0/1) of the `i`-th `measureReset` executed
+(absolute slot, 0-based, oldest first). `ffAngle j rec = -(Σ_{i<j} rec[i] / 2^(j-i))`
+(units of `π`; a missing slot counts as 0), so every angle is an exact dyadic rational:
+slot `j-1` weighs `1/2`, slot `j-1-k` weighs `1/2^(k+1)`. The node carries `j` only, not an
+angle (the angle depends on outcomes unknown when the document is printed) and not a
+symbolic rule (the rule is the same for every node, so it is stated once, in the
+`record`/`ff_angle_rule` fields). A consumer prices an `ffPhase` as one single-qubit
+rotation whose angle is a dyadic of denominator up to `2^j`; it must not treat it as a
+fixed-angle `Phase`.
+
+**Old consumers.** The schema string differs from `forshor.lowgate/v2`
+(`MTests.mlowgate_schema_ne_lowgate`), so a consumer that checks the schema refuses the
+document. A consumer that ignores the schema and walks the circuit meets op names it
+does not know (`measureReset`, `ffPhase`) and must refuse them. A consumer that silently
+flattens or counts unknown nodes would misprice the document, so check that it raises on them before
+feeding it an `mlowgate/v1` file.

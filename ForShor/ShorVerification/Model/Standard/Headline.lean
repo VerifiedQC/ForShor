@@ -19,8 +19,9 @@ The declarations below are the acceptance test. They fail to elaborate unless
 every instance resolves at `Model.qs`, so the development is known to be about
 something.
 
-This is the one file in `Model/` that reaches into `Implementation/` and
-`Submission/`. Nothing outside `Model/` may import anything in it.
+In `Model/Standard/`, this is the one file that reaches into `Submission/`. It,
+`PhaseTripleProductHeadline.lean`, `MSemanticsModel.lean` and the `Semiclassical*Model.lean`
+files reach into `Implementation/`. Nothing outside `Model/` may import anything in it.
 -/
 
 namespace Shor

@@ -65,6 +65,7 @@ jobs:
           lake build ForShor EmitTests Submission PolicySubmission PTPPolicySubmission PolicyTests Balanced \
             ForShor.ShorVerification.Model.Standard.Headline \
             ForShor.ShorVerification.Model.Standard.PhaseTripleProductHeadline \
+            ForShor.ShorVerification.Model.Standard.MSemanticsModel \
             ForShor.ShorVerification.Model.QuantumLib.Headline 2>&1 | tee build.log
           if grep -q "warning:" build.log; then
             echo "::error::build produced warnings:"
@@ -109,7 +110,9 @@ jobs:
 
       - name: Smoke-run executables
         run: |
+          set -o pipefail
           lake exe forshor_emit 2 2 15 0 > /dev/null
+          lake exe forshor_emit readout 2 2 15 0 8 | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"]=="forshor.mlowgate/v1"; assert d["num_measurements"]==d["meta"]["full_rounds"]==8'
           # The negation method is priced and printed: the default is the one-qubit method, and the
           # scratch method charges the same circuit differently (more clean qubits, fewer Toffolis).
           lake exe forshor_emit 2 2 15 0 | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["negation"]=="oneQubit", d["negation"]'
@@ -154,3 +157,31 @@ jobs:
           # A stale committed graph.js fails the job: the step above rewrites
           # it, so any diff means it was not regenerated with the change.
           git diff --exit-code docs/data/graph.js
+
+  semiclassical-numerals:
+    runs-on: ubuntu-latest
+    # Ten serial kernel evaluations took about 75 minutes locally, before building their dependencies.
+    # Keep them off the main build's 90-minute budget and on their own runner.
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.0.0/elan-x86_64-unknown-linux-gnu.tar.gz \
+            | tar xz
+          ./elan-init -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Fetch Mathlib build cache
+        run: lake exe cache get
+
+      - name: Build semiclassical board numerals
+        run: |
+          set -o pipefail
+          lake build PolicyNumeralsSC 2>&1 | tee semiclassical.log
+          if grep -q "warning:" semiclassical.log; then
+            echo "::error::semiclassical board numerals produced warnings:"
+            grep "warning:" semiclassical.log
+            exit 1
+          fi

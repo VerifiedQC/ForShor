@@ -21,10 +21,12 @@ So the trust boundary is: the class laws, and the cost model. Everything stated 
 - `Angle.lean`: `Angle`, a rational multiple of π.
 - `Gates.lean`: `Gate`, the high-level language the construction is written in: QFT, phase products, shifts, negation, scaled addition, comparison and subtraction by a constant.
 - `LowGate.lean`: `LowGate`, the lowered language the circuit is counted in: H, X, phase, CNOT, Toffoli, the reversible arithmetic primitives, register extension and deallocation.
+- `MGate.lean`: `MGate`, a measurement language on top of `Gate`: unitary steps, mid-circuit measure-and-reset, and phases whose angle (`ffAngle`) is a function of the measurement record.
 
 **`Semantics/`** — what the gates do.
 - `GateSemantics.lean`: the laws of each `Gate` on a basis ket, bundled as `GateSemanticsFacts`.
 - `LowGateSemantics.lean`: the same for `LowGate`, as `LowerGateClass`.
+- `MSemantics.lean`: `MGate.eval` on record-indexed families of unnormalised states (`MState`), record probabilities, and the reset and Born laws; worked checks in `MSemanticsTests.lean`.
 
 `⟦U⟧ ψ` is a `Gate` applied to a state and `⟦L⟧ₗ ψ` a `LowGate` applied to a state; goals print in this form.
 
