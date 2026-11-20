@@ -22,11 +22,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Cold runs (empty cache) build the whole library from scratch; a warm run
-    # is ~25 minutes, most of it EmitTests, which rebuilds whenever anything
-    # under ShorVerification/ changes because Emit/Tests.lean imports Reference
-    # and Submission.
-    timeout-minutes: 90
+    # The cold local mirror took ~120 minutes for this job's steps, even with
+    # the semiclassical numerals on a separate runner. Leave headroom for CI.
+    timeout-minutes: 180
 
     steps:
       - uses: actions/checkout@v4
@@ -161,7 +159,7 @@ jobs:
   semiclassical-numerals:
     runs-on: ubuntu-latest
     # Ten serial kernel evaluations took about 75 minutes locally, before building their dependencies.
-    # Keep them off the main build's 90-minute budget and on their own runner.
+    # Keep them off the main build's budget and on their own runner.
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
