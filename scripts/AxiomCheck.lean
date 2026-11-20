@@ -86,5 +86,6 @@ open Shor.Audit
 #assert_axioms Shor.policy_submission_correct_semiclassical_balanced
 #assert_axioms Shor.policy_submission_correct_semiclassical_balancedU
 #assert_axioms Shor.Model.model_semiclassical_submission_nonvacuous
+#assert_axioms Shor.Readout.balancedUSemiclassicalProgramAt_circuit_eq
 #assert_axioms Shor.Readout.balancedUSemiclassicalProgramAt_measureCount
 #assert_axioms Shor.emit_readout_is_certified

@@ -94,6 +94,15 @@ theorem balancedSemiclassicalProgramAt_measureCount (P : ShorLoweringPolicy)
     Policy.lowerMBalanced]
   rw [measureCount_lowerMWith, numMeas_orderFindingSemiclassical]
 
+/-- At the reference layout the guarded-balanced circuit is the every-site-split
+circuit for any fitting rule, in particular the board's default rule. -/
+theorem balancedUSemiclassicalProgramAt_circuit_eq (P : ShorLoweringPolicy)
+    (R : Balanced.Rule) (hfits : Balanced.ReferenceFits P R) (m : ℕ)
+    (inst : ShorOrderFindingInstance) :
+    (balancedUSemiclassicalProgramAt P R hfits m inst).circuit =
+      (balancedSemiclassicalProgramAt P R m inst).circuit :=
+  lowerMBalancedU_eq P R _ _ _
+
 /-- The every-site-split program performs exactly `rounds` measurements. -/
 theorem balancedUSemiclassicalProgramAt_measureCount (P : ShorLoweringPolicy)
     (R : Balanced.Rule) (hfits : Balanced.ReferenceFits P R) (m : ℕ)
