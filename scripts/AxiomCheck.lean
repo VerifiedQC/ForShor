@@ -1,5 +1,7 @@
 import ForShor
 import ForShor.ShorVerification.Submission.Audit
+import ForShor.ShorVerification.Submission.CorrectSemiclassicalEmit
+import ForShor.ShorVerification.Model.Standard.SemiclassicalSubmissionModel
 
 /-!
 # The repository's own axiom guard
@@ -80,3 +82,9 @@ open Shor.Audit
 #assert_axioms Shor.Model.model_Shor_correct_semiclassical_ghostfree_at_shorPrecision
 #assert_axioms Shor.Model.model_semiclassical_lowered_ghostfree_success_and_peak
 #assert_axioms Shor.Model.model_semiclassical_lowered_balancedU_default_ghostfree_success_and_peak
+#assert_axioms Shor.policy_submission_correct_semiclassical
+#assert_axioms Shor.policy_submission_correct_semiclassical_balanced
+#assert_axioms Shor.policy_submission_correct_semiclassical_balancedU
+#assert_axioms Shor.Model.model_semiclassical_submission_nonvacuous
+#assert_axioms Shor.Readout.balancedUSemiclassicalProgramAt_measureCount
+#assert_axioms Shor.emit_readout_is_certified

@@ -64,6 +64,8 @@ jobs:
             ForShor.ShorVerification.Model.Standard.Headline \
             ForShor.ShorVerification.Model.Standard.PhaseTripleProductHeadline \
             ForShor.ShorVerification.Model.Standard.MSemanticsModel \
+            ForShor.ShorVerification.Model.Standard.SemiclassicalSubmissionModel \
+            ForShor.ShorVerification.Submission.CorrectSemiclassicalEmit \
             ForShor.ShorVerification.Model.QuantumLib.Headline 2>&1 | tee build.log
           if grep -q "warning:" build.log; then
             echo "::error::build produced warnings:"
@@ -118,15 +120,10 @@ jobs:
           lake exe forshor_emit 2 2 15 0 --negation scratch > /tmp/emit_scratch.json
           python3 -c 'import json; a=json.load(open("/tmp/emit_one.json")); b=json.load(open("/tmp/emit_scratch.json")); assert a["negation"]=="oneQubit" and b["negation"]=="scratch"; assert a["circuit"]==b["circuit"], "negation method changed the circuit"; assert all(d["gate_count"]==sum(d["resources"][k] for k in ("h","x","cnot","toffoli","rz")) for d in (a,b)), "gate_count is not the total of the resources under the document'"'"'s own method"; assert a["resources"]!=b["resources"] and a["qubit_count"]!=b["qubit_count"], "scratch and oneQubit charge the same"; assert a["resources"]["cleanAnc"] < b["resources"]["cleanAnc"] and a["resources"]["toffoli"] > b["resources"]["toffoli"], "unexpected tradeoff"'
           lake exe forshor_submission | python3 -c 'import json,sys; json.load(sys.stdin)'
-          # The policy names its negation method and the document carries the charge of each method:
-          # the policy's own is the one it names, and the two differ (scratch: w+1 clean qubits, 2w-3
-          # Toffolis; oneQubit: one qubit, about 12w Toffolis).
-          lake exe forshor_policy_submission | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None, "policy submission printed no IR"; assert d["negation"] in ("oneQubit","scratch"), "policy submission names no negation method"; by=d["negate_charge_by_method"]; assert by[d["negation"]]==d["negate_charge"], "negate_charge is not that of the named method"; o=by["oneQubit"]["at_width"]["2048"]; s=by["scratch"]["at_width"]["2048"]; assert o!=s, "scratch and oneQubit charge a negation the same"; assert o["cleanAnc"]==1 and s["cleanAnc"]==2049, (o,s); assert s["x"]==3*2048-4 and s["toffoli"]==2*2048-3, s'
-          lake exe forshor_policy_submission --balanced | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None and "balanced" in d, "balanced policy submission printed no IR"'
-          # The PhaseTripleProduct policy submission prints the shipped template's bands (one band, k = 4, 10 points)
-          # in the PhaseProduct document's spelling, with its negation method and the benchmark width; it prints
-          # no IR (there is no emitter for a triple product).
-          lake exe forshor_ptp_policy_submission | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"]=="forshor.ptp-policy-submission/v1", d["schema"]; assert d["negation"]=="oneQubit", d["negation"]; assert d["benchmark"]["bits"]==2048; b=d["bands"]; assert len(b)>=1 and all(2<=x["k"]<=8 and len(x["points"])==3*x["k"]-2 and x["ops"] for x in b), "malformed bands"; assert "ir" not in d'
+          # Protect every field of the existing submission outputs, not just the schema and negation anchors.
+          lake exe forshor_policy_submission | python3 scripts/check_coherent_policy_output.py policy
+          lake exe forshor_policy_submission --balanced | python3 scripts/check_coherent_policy_output.py balanced
+          lake exe forshor_ptp_policy_submission | python3 scripts/check_coherent_policy_output.py ptp
           lake exe forshor_balanced_u | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None and "balanced_unconditional" in d, "unconditional balanced submission printed no IR"'
 
       - name: Axiom guard
