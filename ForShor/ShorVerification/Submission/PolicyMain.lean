@@ -52,9 +52,10 @@ the IR.
 * `--probe-scan`: accepted, does nothing (it is the default).
  * `--balanced`: implies `--exact-widths`; also runs the balanced tier, and
    prints the balanced document as `ir` and the policy's own as `ir_unbalanced`.
- * `--readout coherent|semiclassical`: coherent is the unchanged default.
-   Semiclassical requires `--balanced` and emits a versioned measured loop
-   and balanced arithmetic IR, without materializing its rounds.
+ * `--readout coherent|semiclassical`: override the saved choice for a local preview.
+   With no flag, use the policy's `readout` field (coherent by default).
+ * `--readout submitted`: use the saved choice and report it as `submitted_readout`
+   for the verifier. This mode and semiclassical readout require `--balanced`.
 * `--width-table`: print the compiler's widths per band on the chosen rule
   (not a submission document; no extraction, no checks).
 
@@ -383,21 +384,30 @@ unsafe def attempt (s : ShorPolicySubmission) (exact balanced probeOwnRule : Boo
     else
       return .ok base
 
-private def parseReadout : List String → Except String Bool
-  | [] => .ok false
+private inductive ReadoutRequest where
+  | saved
+  | preview (mode : SubmissionReadout)
+  | submitted
+  deriving BEq
+
+private def parseReadout : List String → Except String ReadoutRequest
+  | [] => .ok .saved
   | "--readout" :: mode :: rest =>
       if rest.any (fun arg => arg == "--readout" || arg.startsWith "--readout=") then
         .error "pass --readout only once"
-      else if mode == "coherent" then .ok false
-      else if mode == "semiclassical" then .ok true
-      else .error "expected --readout coherent|semiclassical"
-  | "--readout" :: [] => .error "expected --readout coherent|semiclassical"
+      else if mode == "coherent" then .ok (.preview .coherent)
+      else if mode == "semiclassical" then .ok (.preview .semiclassical)
+      else if mode == "submitted" then .ok .submitted
+      else .error "expected --readout coherent|semiclassical|submitted"
+  | "--readout" :: [] => .error "expected --readout coherent|semiclassical|submitted"
   | arg :: rest =>
       if arg.startsWith "--readout=" then .error "use --readout MODE (two arguments)"
       else parseReadout rest
 
-#guard (parseReadout ["--balanced", "--readout", "coherent"]).toOption == some false
-#guard (parseReadout ["--readout", "semiclassical", "--balanced"]).toOption == some true
+#guard (parseReadout ["--balanced", "--readout", "coherent"]).toOption == some (.preview .coherent)
+#guard (parseReadout ["--readout", "semiclassical", "--balanced"]).toOption == some (.preview .semiclassical)
+#guard (parseReadout ["--balanced", "--readout", "submitted"]).toOption == some .submitted
+#guard (parseReadout ["--readout", "submitted", "--readout", "coherent"]).toOption.isNone
 #guard (parseReadout ["--readout"]).toOption.isNone
 #guard (parseReadout ["--readout", "other"]).toOption.isNone
 #guard (parseReadout ["--readout", "coherent", "--readout", "semiclassical"]).toOption.isNone
@@ -411,15 +421,12 @@ A failing submission prints nothing on stdout and exits 1, so
 `lake build PolicySubmission && lake exe forshor_policy_submission > policy.json`
 produces a document only for a submission that passed every check. -/
 unsafe def main (args : List String) : IO UInt32 := do
-  let measured ← match parseReadout args with
-    | .ok mode => pure mode
+  let request ← match parseReadout args with
+    | .ok req => pure req
     | .error e =>
       IO.eprintln e
       return 2
   let balanced := args.contains "--balanced"
-  if measured && (!balanced || args.contains "--width-table") then
-    IO.eprintln "--readout semiclassical requires --balanced and cannot be used with --width-table"
-    return 2
   let exact := balanced || args.contains "--exact-widths"
   -- `--probe-scan` is accepted and does nothing: scan-threshold probes are the default
   let probeOwnRule := args.contains "--probe-exact"
@@ -427,19 +434,30 @@ unsafe def main (args : List String) : IO UInt32 := do
   -- policy and the evaluation-only memos (keyed on its address) hit
   let s : ShorPolicySubmission :=
     if exact then _root_.PolicySubmission.policyExact else _root_.PolicySubmission.policy
+  let selected := match request with
+    | .preview mode => mode
+    | _ => s.readout
+  let measured := selected == .semiclassical
+  if (measured || request == .submitted) && (!balanced || args.contains "--width-table") then
+    IO.eprintln "semiclassical or submitted readout requires --balanced and cannot be used with --width-table"
+    return 2
   if args.contains "--width-table" then
     IO.println (widthTableJson s).compress
     return 0
+  let printOutput (out : Json) :=
+    let doc := if request == .submitted then
+      out.mergeObj (Json.mkObj [("submitted_readout", Json.str s.readout.label)]) else out
+    IO.println doc.compress
   match ← attempt s exact balanced probeOwnRule measured with
   | .ok out =>
-    IO.println out.compress
+    printOutput out
     return 0
   | .error e =>
     IO.eprintln s!"forshor_policy_submission: {e} at lookup budget {_root_.Shor.Reflect.lookupDefEqBudget}; retrying once at {_root_.Shor.Reflect.lookupDefEqBudgetFull}"
     _root_.Shor.Reflect.lookupBudget.set _root_.Shor.Reflect.lookupDefEqBudgetFull
     match ← attempt s exact balanced probeOwnRule measured with
     | .ok out =>
-      IO.println out.compress
+      printOutput out
       return 0
     | .error e =>
       IO.eprintln s!"forshor_policy_submission: {e}; no policy.json printed"

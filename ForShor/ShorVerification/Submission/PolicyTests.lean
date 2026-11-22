@@ -67,6 +67,10 @@ reports its charge. The charges are `Framework/Gatecount/ResourceModel.lean`'s, 
 /-- The shipped bands, with the field left out, so that it takes its default. -/
 def policyNoField : ShorPolicySubmission := { bands := policy.bands, sorted := policy.sorted }
 
+example : policyNoField.readout = .coherent := rfl
+
+example : ({ policy with readout := .semiclassical } : ShorPolicySubmission).policy = policy.policy := rfl
+
 /-- The shipped bands on the scratch method. -/
 def policyScratch : ShorPolicySubmission := { policy with negation := .scratch }
 

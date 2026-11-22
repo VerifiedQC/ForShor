@@ -261,6 +261,17 @@ end ShorLoweringPolicy
     The submission
 ========================================================= -/
 
+/-- How a PhaseProduct policy submission reads the exponent at order finding.
+This choice does not change the policy's arithmetic or its admissibility. -/
+inductive SubmissionReadout where
+  | coherent
+  | semiclassical
+  deriving BEq, Repr
+
+def SubmissionReadout.label : SubmissionReadout → String
+  | .coherent => "coherent"
+  | .semiclassical => "semiclassical"
+
 /-- A policy submission: each band is a `ShorLoweringSetup`, i.e. a table
 *with* its C1–C4, exactly as a table submission is.
 
@@ -275,6 +286,8 @@ structure ShorPolicySubmission where
   widthRule : WidthRule := .scan
   /-- How a negation is built and charged; one qubit unless asked. -/
   negation : NegationMethod := .oneQubit
+  /-- Full order-finding readout; old submissions remain coherent. -/
+  readout : SubmissionReadout := .coherent
 
 namespace ShorPolicySubmission
 

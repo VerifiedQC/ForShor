@@ -518,7 +518,7 @@ window.GRAPH = {
     "Framework/Semantics",
     "Framework/ToomCookTable.lean"
    ],
-   "declCount": 291,
+   "declCount": 293,
    "fileCount": 18,
    "fsPath": "Framework",
    "kind": "folder",
@@ -1295,43 +1295,53 @@ window.GRAPH = {
      "name": "Shor.ShorLoweringPolicy.constPolicy_admissible"
     },
     {
+     "kind": "inductive",
+     "line": 266,
+     "name": "Shor.SubmissionReadout"
+    },
+    {
+     "kind": "def",
+     "line": 271,
+     "name": "Shor.SubmissionReadout.label"
+    },
+    {
      "kind": "structure",
-     "line": 269,
+     "line": 280,
      "name": "Shor.ShorPolicySubmission"
     },
     {
      "kind": "def",
-     "line": 282,
+     "line": 295,
      "name": "Shor.ShorPolicySubmission.policy"
     },
     {
      "kind": "theorem",
-     "line": 288,
+     "line": 301,
      "name": "Shor.ShorPolicySubmission.policy_widthRule"
     },
     {
      "kind": "theorem",
-     "line": 291,
+     "line": 304,
      "name": "Shor.ShorPolicySubmission.policy_negation"
     },
     {
      "kind": "theorem",
-     "line": 294,
+     "line": 307,
      "name": "Shor.ShorPolicySubmission.policy_bands"
     },
     {
      "kind": "theorem",
-     "line": 300,
+     "line": 313,
      "name": "Shor.ShorPolicySubmission.policy_admissible"
     },
     {
      "kind": "def",
-     "line": 307,
+     "line": 320,
      "name": "Shor.ShorPolicySubmission.ofSetup"
     },
     {
      "kind": "theorem",
-     "line": 311,
+     "line": 324,
      "name": "Shor.ShorPolicySubmission.ofSetup_policy"
     }
    ],
@@ -1350,7 +1360,7 @@ window.GRAPH = {
     "Framework/ToomCookTable.lean"
    ],
    "kind": "file",
-   "lines": 316,
+   "lines": 329,
    "name": "Policy.lean",
    "path": "Framework/Policy.lean"
   },

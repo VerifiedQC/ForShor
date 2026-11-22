@@ -47,8 +47,12 @@ lake exe forshor_policy_submission --balanced --readout coherent
 lake exe forshor_policy_submission --balanced --readout semiclassical
 ```
 
-Coherent is the default. Neither mode changes the policy, declared single-run success bound,
-or trial count. The semiclassical document (`forshor.policy-submission-semiclassical/v1`)
+Coherent is the default. Set `readout := .semiclassical` in a PhaseProduct policy record
+to save the one-bit readout choice. `--readout coherent` and `--readout semiclassical`
+are local preview overrides. A trusted verifier uses `--balanced --readout submitted`:
+there is no override in that mode, and its output records the compiled `submitted_readout`.
+Neither choice changes the arithmetic policy, declared single-run success bound or trial
+count. The semiclassical document (`forshor.policy-submission-semiclassical/v1`)
 contains a fixed measurement schedule (`forshor.readout-loop/v1`) and one balanced controlled
 multiplication template, `ir.entry = readout_round`. Run `initY1` and then the listed steps for
 `j = 0, …, referenceXWidth inst - 1` with `rounds = referenceXWidth inst`, the same
