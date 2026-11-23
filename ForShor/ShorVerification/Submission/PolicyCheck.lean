@@ -79,6 +79,30 @@ at every width, so which body a width routes to is not something the
 sampling has to establish.
 -/
 
+namespace Shor.SubmissionDesign
+
+open Lean Elab Term in
+/-- Read a declaration by its exact environment name, not by namespace resolution.
+Only an absent declaration chooses the legacy design. -/
+def resolveDeclaration (name : Name) (sourceModule : Option Name := none) : TermElabM Expr := do
+  let env ← getEnv
+  let privateName := mkPrivateNameCore (sourceModule.getD env.mainModule) name
+  if (env.setExporting false).contains privateName then
+    throwError "optional declaration '{name}' must be public; remove 'private' to opt in"
+  let some info := env.find? name | return mkConst ``Shor.SubmissionDesign.legacy
+  unless info.levelParams.isEmpty && (← Meta.isDefEq info.type (mkConst ``Shor.SubmissionDesign)) do
+    throwError "optional declaration '{name}' must have type Shor.SubmissionDesign"
+  return mkConst name
+
+/-- Selected once at build time from the same template as `PolicySubmission.policy`. -/
+def resolved : SubmissionDesign := by_elab
+  resolveDeclaration `PolicySubmission.submittedDesign
+    (some `ForShor.ShorVerification.Submission.PolicyTemplate)
+
+#assert_axioms _root_.Shor.SubmissionDesign.resolved
+
+end Shor.SubmissionDesign
+
 namespace PolicySubmission
 
 open Shor Operations Shor.Audit

@@ -47,8 +47,17 @@ lake exe forshor_policy_submission --balanced --readout coherent
 lake exe forshor_policy_submission --balanced --readout semiclassical
 ```
 
-Coherent is the default. Set `readout := .semiclassical` in a PhaseProduct policy record
-to save the one-bit readout choice. `--readout coherent` and `--readout semiclassical`
+Coherent is the default. In the local opt-in verifier, leave the `policy` record unchanged
+and add this public definition inside `namespace PolicySubmission` in the same file:
+
+```lean
+def submittedDesign : Shor.SubmissionDesign where
+  readout := .semiclassical
+```
+
+Omit `submittedDesign` or use `readout := .coherent` to keep coherent readout. The
+verifier checks the declaration's type and axiom dependencies before extracting IR.
+This does not enable the option in hosted intake. `--readout coherent` and `--readout semiclassical`
 are local preview overrides. A trusted verifier uses `--balanced --readout submitted`:
 there is no override in that mode, and its output records the compiled `submitted_readout`.
 Neither choice changes the arithmetic policy, declared single-run success bound or trial

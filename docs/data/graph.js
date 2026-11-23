@@ -518,7 +518,7 @@ window.GRAPH = {
     "Framework/Semantics",
     "Framework/ToomCookTable.lean"
    ],
-   "declCount": 293,
+   "declCount": 295,
    "fileCount": 18,
    "fsPath": "Framework",
    "kind": "folder",
@@ -1306,42 +1306,52 @@ window.GRAPH = {
     },
     {
      "kind": "structure",
-     "line": 280,
+     "line": 277,
+     "name": "Shor.SubmissionDesign"
+    },
+    {
+     "kind": "def",
+     "line": 281,
+     "name": "Shor.SubmissionDesign.legacy"
+    },
+    {
+     "kind": "structure",
+     "line": 288,
      "name": "Shor.ShorPolicySubmission"
     },
     {
      "kind": "def",
-     "line": 295,
+     "line": 301,
      "name": "Shor.ShorPolicySubmission.policy"
     },
     {
      "kind": "theorem",
-     "line": 301,
+     "line": 307,
      "name": "Shor.ShorPolicySubmission.policy_widthRule"
     },
     {
      "kind": "theorem",
-     "line": 304,
+     "line": 310,
      "name": "Shor.ShorPolicySubmission.policy_negation"
     },
     {
      "kind": "theorem",
-     "line": 307,
+     "line": 313,
      "name": "Shor.ShorPolicySubmission.policy_bands"
     },
     {
      "kind": "theorem",
-     "line": 313,
+     "line": 319,
      "name": "Shor.ShorPolicySubmission.policy_admissible"
     },
     {
      "kind": "def",
-     "line": 320,
+     "line": 326,
      "name": "Shor.ShorPolicySubmission.ofSetup"
     },
     {
      "kind": "theorem",
-     "line": 324,
+     "line": 330,
      "name": "Shor.ShorPolicySubmission.ofSetup_policy"
     }
    ],
@@ -1360,7 +1370,7 @@ window.GRAPH = {
     "Framework/ToomCookTable.lean"
    ],
    "kind": "file",
-   "lines": 329,
+   "lines": 335,
    "name": "Policy.lean",
    "path": "Framework/Policy.lean"
   },

@@ -272,6 +272,14 @@ def SubmissionReadout.label : SubmissionReadout → String
   | .coherent => "coherent"
   | .semiclassical => "semiclassical"
 
+/-- Optional full order-finding choices, separate from the arithmetic policy so
+existing `ShorPolicySubmission` constructors and patterns keep their shape. -/
+structure SubmissionDesign where
+  readout : SubmissionReadout := .coherent
+
+/-- The design used when a policy does not opt in. -/
+def SubmissionDesign.legacy : SubmissionDesign := {}
+
 /-- A policy submission: each band is a `ShorLoweringSetup`, i.e. a table
 *with* its C1–C4, exactly as a table submission is.
 
@@ -286,8 +294,6 @@ structure ShorPolicySubmission where
   widthRule : WidthRule := .scan
   /-- How a negation is built and charged; one qubit unless asked. -/
   negation : NegationMethod := .oneQubit
-  /-- Full order-finding readout; old submissions remain coherent. -/
-  readout : SubmissionReadout := .coherent
 
 namespace ShorPolicySubmission
 

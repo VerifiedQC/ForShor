@@ -53,7 +53,7 @@ the IR.
  * `--balanced`: implies `--exact-widths`; also runs the balanced tier, and
    prints the balanced document as `ir` and the policy's own as `ir_unbalanced`.
  * `--readout coherent|semiclassical`: override the saved choice for a local preview.
-   With no flag, use the policy's `readout` field (coherent by default).
+    With no flag, use `PolicySubmission.submittedDesign` (coherent when omitted).
  * `--readout submitted`: use the saved choice and report it as `submitted_readout`
    for the verifier. This mode and semiclassical readout require `--balanced`.
 * `--width-table`: print the compiler's widths per band on the chosen rule
@@ -434,9 +434,10 @@ unsafe def main (args : List String) : IO UInt32 := do
   -- policy and the evaluation-only memos (keyed on its address) hit
   let s : ShorPolicySubmission :=
     if exact then _root_.PolicySubmission.policyExact else _root_.PolicySubmission.policy
+  let saved := _root_.Shor.SubmissionDesign.resolved.readout
   let selected := match request with
     | .preview mode => mode
-    | _ => s.readout
+    | _ => saved
   let measured := selected == .semiclassical
   if (measured || request == .submitted) && (!balanced || args.contains "--width-table") then
     IO.eprintln "semiclassical or submitted readout requires --balanced and cannot be used with --width-table"
@@ -446,7 +447,7 @@ unsafe def main (args : List String) : IO UInt32 := do
     return 0
   let printOutput (out : Json) :=
     let doc := if request == .submitted then
-      out.mergeObj (Json.mkObj [("submitted_readout", Json.str s.readout.label)]) else out
+      out.mergeObj (Json.mkObj [("submitted_readout", Json.str saved.label)]) else out
     IO.println doc.compress
   match ← attempt s exact balanced probeOwnRule measured with
   | .ok out =>
