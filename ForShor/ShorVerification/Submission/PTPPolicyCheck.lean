@@ -1,5 +1,6 @@
 import ForShor.ShorVerification.Submission.PTPPolicyTemplate
 import ForShor.ShorVerification.Submission.Audit
+import ForShor.ShorVerification.Framework.PrimitiveSynthesis
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Main
 
 /-!
@@ -50,6 +51,11 @@ theorem chain_exact :
   decide +kernel
 
 #assert_axioms _root_.PTPPolicySubmission.policy
+def resolvedPrimitive : _root_.Shor.PrimitiveSynthesis := by_elab
+  _root_.Shor.PrimitiveSynthesis.resolve `PTPPolicySubmission.submittedPrimitive
+    `ForShor.ShorVerification.Submission.PTPPolicyTemplate
+
+#assert_axioms _root_.PTPPolicySubmission.resolvedPrimitive
 #assert_axioms _root_.PTPPolicySubmission.check
 #assert_axioms _root_.PTPPolicySubmission.chain_exact
 

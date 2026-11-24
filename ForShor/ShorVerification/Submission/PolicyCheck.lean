@@ -1,6 +1,7 @@
 import ForShor.ShorVerification.Submission.PolicyTemplate
 import ForShor.ShorVerification.Submission.PolicyDecide
 import ForShor.ShorVerification.Submission.Audit
+import ForShor.ShorVerification.Framework.PrimitiveSynthesis
 import ForShor.ShorVerification.Submission.Correct
 import ForShor.ShorVerification.Submission.Score
 import ForShor.Emit.Reflect.Driver
@@ -119,6 +120,12 @@ resolves one namespace deeper first, where a submitter could place a decoy.
 -/
 
 #assert_axioms _root_.PolicySubmission.policy
+
+def resolvedPrimitive : _root_.Shor.PrimitiveSynthesis := by_elab
+  _root_.Shor.PrimitiveSynthesis.resolve `PolicySubmission.submittedPrimitive
+    `ForShor.ShorVerification.Submission.PolicyTemplate
+
+#assert_axioms _root_.PolicySubmission.resolvedPrimitive
 
 /-- The policy is admissible, which is exactly its bands being submissions. -/
 example : policy.policy.Admissible := policy.policy_admissible

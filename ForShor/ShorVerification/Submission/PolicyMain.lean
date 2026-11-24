@@ -439,6 +439,10 @@ unsafe def main (args : List String) : IO UInt32 := do
     | .preview mode => mode
     | _ => saved
   let measured := selected == .semiclassical
+  let primitive := _root_.PolicySubmission.resolvedPrimitive
+  if primitive != .rossSelinger && (!exact || args.contains "--width-table") then
+    IO.eprintln "primitive synthesis requires exact widths and a checked policy export"
+    return 2
   if (measured || request == .submitted) && (!balanced || args.contains "--width-table") then
     IO.eprintln "semiclassical or submitted readout requires --balanced and cannot be used with --width-table"
     return 2
@@ -448,7 +452,7 @@ unsafe def main (args : List String) : IO UInt32 := do
   let printOutput (out : Json) :=
     let doc := if request == .submitted then
       out.mergeObj (Json.mkObj [("submitted_readout", Json.str saved.label)]) else out
-    IO.println doc.compress
+    IO.println (_root_.Shor.PrimitiveSynthesis.attest primitive "pp" doc).compress
   match ← attempt s exact balanced probeOwnRule measured with
   | .ok out =>
     printOutput out
