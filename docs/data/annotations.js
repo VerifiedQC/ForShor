@@ -299,7 +299,8 @@ window.ANNOTATIONS = {
      "Framework/FullRunDesign.lean"
     ],
     [
-     "Framework/Policy.lean"
+     "Framework/Policy.lean",
+     "Framework/FullRunDesignTests.lean"
     ]
    ],
    "edges": [
