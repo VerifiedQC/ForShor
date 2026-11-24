@@ -87,6 +87,18 @@ this file's own `Decide.lean`) — its own research-and-implementation arc
 beyond what `PhaseProduct.lean`/`Qft.lean` already cover for the phase-product
 and QFT leaves individually.
 
+## `Readout.lean`
+
+`Emit.Lower.Readout.runReadout (k a N level rounds) : IO UInt32` — the `readout`
+subcommand: `orderFindingSemiclassicalLow` under `Shor.standardPolicy k hk` at
+`allocateReferenceLayout pol inst level`, with `rounds` rounds and control
+`referenceControl` (the first reference exponent qubit), printed via
+`emitMLowGateDoc` (`forshor.mlowgate/v1`). The lowering hypothesis is the theorem
+`reference_sc_workspaceOK` (from the coherent circuit's,
+`Readout.semiclassical_hyps_of_coherent`, `Readout/Proofs/SemiclassicalHyps.lean`), so nothing is decided at run
+time. Imports `Shor.lean` (for `layoutJson`); nothing imports it but `Main.lean` and
+`MTests.lean`.
+
 ## `PhaseProduct.lean`
 
 The `pp`/`cpp` subcommands: concrete-width signed (and controlled) phase

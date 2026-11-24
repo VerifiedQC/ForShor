@@ -67,6 +67,26 @@ reports its charge. The charges are `Framework/Gatecount/ResourceModel.lean`'s, 
 /-- The shipped bands, with the field left out, so that it takes its default. -/
 def policyNoField : ShorPolicySubmission := { bands := policy.bands, sorted := policy.sorted }
 
+example : Shor.SubmissionDesign.resolved.readout = .coherent := rfl
+
+/-! The pre-opt-in source API accepts positional construction, the original
+constructor type, and destructuring as well as named records. -/
+
+private def policyPositional : ShorPolicySubmission :=
+  ⟨policy.bands, policy.sorted, policy.widthRule, policy.negation⟩
+
+private def legacyConstructor :
+    (bands : List (ℕ × ShorLoweringSetup)) → (bands.map Prod.fst).IsChain (· > ·) →
+    WidthRule → NegationMethod → ShorPolicySubmission := @ShorPolicySubmission.mk
+
+private def legacyWidthRule : ShorPolicySubmission → WidthRule
+  | ⟨_, _, rule, _⟩ => rule
+
+example : policyPositional.policy = policy.policy := rfl
+example : (legacyConstructor policy.bands policy.sorted policy.widthRule policy.negation).policy =
+    policy.policy := rfl
+example : legacyWidthRule policyPositional = policy.widthRule := rfl
+
 /-- The shipped bands on the scratch method. -/
 def policyScratch : ShorPolicySubmission := { policy with negation := .scratch }
 
@@ -122,3 +142,48 @@ example : negateChargeAt policyScratch.negation 2048 ≠ negateChargeAt policyNo
   IO.println s!"policy negation fields: default {get one "negation"}, scratch {get scr "negation"}"
 
 end PolicySubmission
+
+namespace Shor.SubmissionDesignTests
+
+def explicitCoherent : SubmissionDesign := { readout := .coherent }
+def explicitMeasured : SubmissionDesign := { readout := .semiclassical }
+
+private def omitted : SubmissionDesign := by_elab
+  SubmissionDesign.resolveDeclaration `Shor.SubmissionDesignTests.absent
+
+private def coherent : SubmissionDesign := by_elab
+  SubmissionDesign.resolveDeclaration `Shor.SubmissionDesignTests.explicitCoherent
+
+private def measured : SubmissionDesign := by_elab
+  SubmissionDesign.resolveDeclaration `Shor.SubmissionDesignTests.explicitMeasured
+
+example : omitted = coherent := rfl
+example : measured.readout = .semiclassical := rfl
+
+def wrongType : Nat := 1
+
+/-- error: optional declaration 'Shor.SubmissionDesignTests.wrongType' must have type Shor.SubmissionDesign -/
+#guard_msgs in
+example : SubmissionDesign := by_elab
+  SubmissionDesign.resolveDeclaration `Shor.SubmissionDesignTests.wrongType
+
+private def hidden : SubmissionDesign := explicitMeasured
+
+/-- error: optional declaration 'Shor.SubmissionDesignTests.hidden' must be public; remove 'private' to opt in -/
+#guard_msgs in
+example : SubmissionDesign := by_elab
+  SubmissionDesign.resolveDeclaration `Shor.SubmissionDesignTests.hidden
+
+axiom unchecked : SubmissionDesign
+
+noncomputable def uncheckedDesign : SubmissionDesign := by_elab
+  SubmissionDesign.resolveDeclaration `Shor.SubmissionDesignTests.unchecked
+
+/--
+error: 'Shor.SubmissionDesignTests.uncheckedDesign' is not kernel-checked. Axioms outside the allowlist (propext, Classical.choice, Quot.sound):
+  Shor.SubmissionDesignTests.unchecked  -- declared by the submission
+-/
+#guard_msgs in
+#assert_axioms _root_.Shor.SubmissionDesignTests.uncheckedDesign
+
+end Shor.SubmissionDesignTests

@@ -261,6 +261,25 @@ end ShorLoweringPolicy
     The submission
 ========================================================= -/
 
+/-- How a PhaseProduct policy submission reads the exponent at order finding.
+This choice does not change the policy's arithmetic or its admissibility. -/
+inductive SubmissionReadout where
+  | coherent
+  | semiclassical
+  deriving BEq, Repr
+
+def SubmissionReadout.label : SubmissionReadout → String
+  | .coherent => "coherent"
+  | .semiclassical => "semiclassical"
+
+/-- Optional full order-finding choices, separate from the arithmetic policy so
+existing `ShorPolicySubmission` constructors and patterns keep their shape. -/
+structure SubmissionDesign where
+  readout : SubmissionReadout := .coherent
+
+/-- The design used when a policy does not opt in. -/
+def SubmissionDesign.legacy : SubmissionDesign := {}
+
 /-- A policy submission: each band is a `ShorLoweringSetup`, i.e. a table
 *with* its C1–C4, exactly as a table submission is.
 

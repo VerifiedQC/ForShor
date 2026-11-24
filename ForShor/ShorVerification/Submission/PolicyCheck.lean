@@ -1,6 +1,8 @@
 import ForShor.ShorVerification.Submission.PolicyTemplate
 import ForShor.ShorVerification.Submission.PolicyDecide
 import ForShor.ShorVerification.Submission.Audit
+import ForShor.ShorVerification.Framework.PrimitiveSynthesis
+import ForShor.ShorVerification.Framework.FullRunDesign
 import ForShor.ShorVerification.Submission.Correct
 import ForShor.ShorVerification.Submission.Score
 import ForShor.Emit.Reflect.Driver
@@ -79,6 +81,30 @@ at every width, so which body a width routes to is not something the
 sampling has to establish.
 -/
 
+namespace Shor.SubmissionDesign
+
+open Lean Elab Term in
+/-- Read a declaration by its exact environment name, not by namespace resolution.
+Only an absent declaration chooses the legacy design. -/
+def resolveDeclaration (name : Name) (sourceModule : Option Name := none) : TermElabM Expr := do
+  let env ← getEnv
+  let privateName := mkPrivateNameCore (sourceModule.getD env.mainModule) name
+  if (env.setExporting false).contains privateName then
+    throwError "optional declaration '{name}' must be public; remove 'private' to opt in"
+  let some info := env.find? name | return mkConst ``Shor.SubmissionDesign.legacy
+  unless info.levelParams.isEmpty && (← Meta.isDefEq info.type (mkConst ``Shor.SubmissionDesign)) do
+    throwError "optional declaration '{name}' must have type Shor.SubmissionDesign"
+  return mkConst name
+
+/-- Selected once at build time from the same template as `PolicySubmission.policy`. -/
+def resolved : SubmissionDesign := by_elab
+  resolveDeclaration `PolicySubmission.submittedDesign
+    (some `ForShor.ShorVerification.Submission.PolicyTemplate)
+
+#assert_axioms _root_.Shor.SubmissionDesign.resolved
+
+end Shor.SubmissionDesign
+
 namespace PolicySubmission
 
 open Shor Operations Shor.Audit
@@ -95,6 +121,27 @@ resolves one namespace deeper first, where a submitter could place a decoy.
 -/
 
 #assert_axioms _root_.PolicySubmission.policy
+
+def resolvedPrimitive : _root_.Shor.PrimitiveSynthesis := by_elab
+  _root_.Shor.PrimitiveSynthesis.resolve `PolicySubmission.submittedPrimitive
+    `ForShor.ShorVerification.Submission.PolicyTemplate
+
+#assert_axioms _root_.PolicySubmission.resolvedPrimitive
+
+open Lean Elab Term in
+/-- Resolve only the public full-run declaration in the submitted PP policy. -/
+def resolvedFullRun : _root_.Shor.FullRunDesign := by_elab
+  let env ← getEnv
+  let name := `PolicySubmission.submittedFullRunDesign
+  let sourceModule := `ForShor.ShorVerification.Submission.PolicyTemplate
+  if (env.setExporting false).contains (mkPrivateNameCore sourceModule name) then
+    throwError "optional declaration '{name}' must be public"
+  let some info := env.find? name | return mkConst ``_root_.Shor.FullRunDesign.reference
+  unless info.levelParams.isEmpty && (← Meta.isDefEq info.type (mkConst ``_root_.Shor.FullRunDesign)) do
+    throwError "optional declaration '{name}' must have type Shor.FullRunDesign"
+  return mkConst name
+
+#assert_axioms _root_.PolicySubmission.resolvedFullRun
 
 /-- The policy is admissible, which is exactly its bands being submissions. -/
 example : policy.policy.Admissible := policy.policy_admissible

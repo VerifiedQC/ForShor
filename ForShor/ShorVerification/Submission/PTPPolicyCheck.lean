@@ -1,5 +1,6 @@
 import ForShor.ShorVerification.Submission.PTPPolicyTemplate
 import ForShor.ShorVerification.Submission.Audit
+import ForShor.ShorVerification.Framework.PrimitiveSynthesis
 import ForShor.ShorVerification.Implementation.PhaseTripleProduct.Main
 
 /-!
@@ -38,6 +39,14 @@ namespace PTPPolicySubmission
 
 open Shor.Audit
 
+open Lean Elab Command in
+run_cmd do
+  let env ← getEnv
+  let name := `PTPPolicySubmission.submittedFullRunDesign
+  let sourceModule := `ForShor.ShorVerification.Submission.PTPPolicyTemplate
+  if env.contains name || (env.setExporting false).contains (mkPrivateNameCore sourceModule name) then
+    throwError "full-run synthesis is not a PhaseTripleProduct option"
+
 /-- The benchmark width the threshold rule is checked from. -/
 def target : ℕ := 2048
 
@@ -50,6 +59,11 @@ theorem chain_exact :
   decide +kernel
 
 #assert_axioms _root_.PTPPolicySubmission.policy
+def resolvedPrimitive : _root_.Shor.PrimitiveSynthesis := by_elab
+  _root_.Shor.PrimitiveSynthesis.resolve `PTPPolicySubmission.submittedPrimitive
+    `ForShor.ShorVerification.Submission.PTPPolicyTemplate
+
+#assert_axioms _root_.PTPPolicySubmission.resolvedPrimitive
 #assert_axioms _root_.PTPPolicySubmission.check
 #assert_axioms _root_.PTPPolicySubmission.chain_exact
 

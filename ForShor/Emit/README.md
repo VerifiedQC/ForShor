@@ -60,6 +60,14 @@ Three kinds of document, all JSON except `phases`:
   instantiate_eq_real`).
 - **`shor`**: the concrete reference order-finding circuit for one Shor
   instance `(k, a, N, m)` — what `Shor.Shor_correct` is a theorem about.
+- **`readout`**: the lowered *semiclassical* order-finding circuit
+  (`orderFindingSemiclassicalLow`: one recycled control qubit, mid-circuit
+  measurement, record-controlled phases) at the reference layout, as a
+  `forshor.mlowgate/v1` document (see [`Json/README.md`](Json/README.md#mlowgatejsonlean)).
+  Feed-forward phases carry absolute slots (0-based, oldest record bit first), with no offset
+  field; the convention is stated in `Json/README.md`.
+  The only command that prints that schema; every other command's output is
+  unchanged by it.
 
 ## Three artifacts
 
@@ -250,6 +258,7 @@ a table that recurses later is checked later. See `Reflect/Verify.lean`.
 | `Symbolic/` | The opaque value tables (`CoeffPoly.lean`, `Width.lean`, `QftPlan.lean`, `ShorPlan.lean`), the built (not extracted) policy width dispatcher and its agreement theorem (`Dispatcher.lean`), plus the assembly file `Bundle.lean`. | [`Symbolic/README.md`](Symbolic/README.md) |
 | `Lower/` | Concrete-width instances (`pp`/`cpp`/`qft`/`shor`), the `Decidable` instances that let the emitter discharge workspace preconditions on the fly, and shared register construction. | [`Lower/README.md`](Lower/README.md) |
 | `Main.lean` | The `forshor_emit` executable: argument parsing and subcommand dispatch only — no logic of its own lives here, everything is a call into one of the folders above. | — |
+| `MTests.lean` (`lean_lib EmitTests`) | `#guard` checks of `forshor.mlowgate/v1`: an old `forshor.lowgate/v2` document byte-equal to its pre-`MLowGateJson` capture, new nodes round-tripped through `Json.parse` (hand-built and the lowered semiclassical circuit at `a = 2, N = 3`, one and two rounds), the new schema string differs from the old. | — |
 | `Tests.lean` (`lean_lib EmitTests`) | Acceptance anchors: `native_decide` on the pure functions the folders above export, the extraction checks listed below, the `TopChunkReserve` regression tables and the `TableOracle` consumer check. | [below](#what-testslean-checks) |
 
 Internal import order is mostly `Json → Table → IR → Reflect → Symbolic →
@@ -302,6 +311,7 @@ from the real opaque functions, agrees with the real term after flattening.
 | `forshor_emit qft <k> <w> [--flat]` | same, for the QFT at width `w` |
 | `forshor_emit shor <k> <a> <N> <m>` | the reference order-finding circuit, plus a `layout` block (`allocateReferenceLayout`'s registers) |
 | `forshor_emit <k> <a> <N> <m>` | alias of `shor` |
+| `forshor_emit readout <k> <a> <N> <level> <rounds>` | `forshor.mlowgate/v1`: the lowered semiclassical order-finding circuit with `<rounds>` rounds, at the reference layout of `(a, N)` at approximation level `<level>`, control = first reference exponent qubit; `meta` carries `full_rounds` (`referenceXWidth`), `control`, `layout`. Has its own usage text; refuses `--negation` (prints no resource figures) |
 
 Exit codes: `0` complete; `2` refused (bad input — nothing on stdout); `3`
 internal check failed (a blocking check — the extracted `Doc`'s

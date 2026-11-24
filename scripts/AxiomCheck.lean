@@ -1,5 +1,7 @@
 import ForShor
 import ForShor.ShorVerification.Submission.Audit
+import ForShor.ShorVerification.Submission.CorrectSemiclassicalEmit
+import ForShor.ShorVerification.Model.Standard.SemiclassicalSubmissionModel
 
 /-!
 # The repository's own axiom guard
@@ -71,3 +73,19 @@ open Shor.Audit
 -- The modular-exponentiation bound the precision schedule is stated against.
 #assert_axioms Shor.modExpApprox_correct
 #assert_axioms Shor.modExpApprox_correct_1600
+
+-- The semiclassical readout (one recycled control qubit in place of the exponent register): the equivalence to the
+-- inverse-QFT readout, the approximate-gate bound, the ghost-free success theorem and the success-and-peak conjunctions.
+#assert_axioms Shor.semiclassical_eq_iqft
+#assert_axioms Shor.Readout.semiclassical_dist_le_sum_errors
+#assert_axioms Shor.Readout.qubits_saving_eq_U
+#assert_axioms Shor.Model.model_Shor_correct_semiclassical_ghostfree_at_shorPrecision
+#assert_axioms Shor.Model.model_semiclassical_lowered_ghostfree_success_and_peak
+#assert_axioms Shor.Model.model_semiclassical_lowered_balancedU_default_ghostfree_success_and_peak
+#assert_axioms Shor.policy_submission_correct_semiclassical
+#assert_axioms Shor.policy_submission_correct_semiclassical_balanced
+#assert_axioms Shor.policy_submission_correct_semiclassical_balancedU
+#assert_axioms Shor.Model.model_semiclassical_submission_nonvacuous
+#assert_axioms Shor.Readout.balancedUSemiclassicalProgramAt_circuit_eq
+#assert_axioms Shor.Readout.balancedUSemiclassicalProgramAt_measureCount
+#assert_axioms Shor.emit_readout_is_certified

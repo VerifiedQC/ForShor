@@ -6,6 +6,7 @@ import ForShor.Emit.Lower.PhaseProduct
 import ForShor.Emit.Lower.Qft
 import ForShor.Emit.Reflect.Driver
 import ForShor.Emit.IR.Json
+import ForShor.Emit.Lower.Readout
 
 /-!
 # `forshor_emit` executable
@@ -14,7 +15,10 @@ Dispatch only: `shor` prints the reference
 lowered Shor circuit (`Lower/Shor.lean`); `bundle` prints the n-free
 `forshor.emit/v1` symbolic document (`Symbolic/Bundle.lean`). The bare
 `<k> <a> <N> <m>` form (no subcommand) is kept as an alias of `shor`, for
-compatibility with earlier use of this executable.
+compatibility with earlier use of this executable. `readout` prints the lowered
+semiclassical order-finding circuit as a `forshor.mlowgate/v1` document
+(`Lower/Readout.lean`); it is the only subcommand that prints that schema, and it has
+its own usage text, so `usageText` and every other subcommand's output are unchanged.
 -/
 
 def usageText : String :=
@@ -287,6 +291,7 @@ unsafe def dispatch (nm : Shor.NegationMethod) (args : List String) : IO UInt32 
           IO.eprint usageText
           return 2
   | "phases" :: kStr :: mStr :: phiStr :: [] => runPhases kStr mStr phiStr
+  | "readout" :: rest => Emit.Lower.Readout.runReadoutArgs rest
   | sectionName :: rest =>
       if Shor.sectionNames.contains sectionName then
         runSection sectionName rest

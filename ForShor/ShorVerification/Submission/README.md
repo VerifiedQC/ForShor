@@ -40,6 +40,38 @@ lake build PolicySubmission && lake exe forshor_policy_submission > policy.json
 
 The `&&` matters: if the table is inadmissible the build fails and nothing is printed.
 
+### Order-finding readout
+
+```bash
+lake exe forshor_policy_submission --balanced --readout coherent
+lake exe forshor_policy_submission --balanced --readout semiclassical
+```
+
+Coherent is the default. In the local opt-in verifier, leave the `policy` record unchanged
+and add this public definition inside `namespace PolicySubmission` in the same file:
+
+```lean
+def submittedDesign : Shor.SubmissionDesign where
+  readout := .semiclassical
+```
+
+Omit `submittedDesign` or use `readout := .coherent` to keep coherent readout. The
+verifier checks the declaration's type and axiom dependencies before extracting IR.
+This does not enable the option in hosted intake. `--readout coherent` and `--readout semiclassical`
+are local preview overrides. A trusted verifier uses `--balanced --readout submitted`:
+there is no override in that mode, and its output records the compiled `submitted_readout`.
+Neither choice changes the arithmetic policy, declared single-run success bound or trial
+count. The semiclassical document (`forshor.policy-submission-semiclassical/v1`)
+contains a fixed measurement schedule (`forshor.readout-loop/v1`) and one balanced controlled
+multiplication template, `ir.entry = readout_round`. Run `initY1` and then the listed steps for
+`j = 0, …, referenceXWidth inst - 1` with `rounds = referenceXWidth inst`, the same
+`referenceControl` in every round, and the reference arithmetic registers. Only the sample
+agreement checks unroll the rounds. Use a consumer that explicitly supports this schema;
+the legacy coherent IR pricer is not a measured-readout pricer.
+The guarded balanced arithmetic uses the existing templates. On the reference layout its
+circuit equals the every-site-split version (`balancedUSemiclassicalProgramAt_circuit_eq`,
+`Balanced.referenceFits_default`), which is the version used by the width-only peak formula.
+
 ## PhaseTripleProduct policy submissions
 
 A PhaseTripleProduct policy (a width-indexed list of `Shor.PTP.PTPTable`s, `2 ≤ k ≤ 8` per band) is submitted the same way as

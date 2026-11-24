@@ -14,7 +14,7 @@ on:
   pull_request:
 
 # One run per ref: a new push cancels the superseded build instead of letting
-# two ~25-minute jobs stack up.
+# two multi-hour builds stack up.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -22,14 +22,24 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Cold runs (empty cache) build the whole library from scratch; a warm run
-    # is ~25 minutes, most of it EmitTests, which rebuilds whenever anything
-    # under ShorVerification/ changes because Emit/Tests.lean imports Reference
-    # and Submission.
-    timeout-minutes: 90
+    # The cold local mirror took ~120 minutes for this job's steps, plus about
+    # 40-75 minutes for the semiclassical numeral chain now built as a step
+    # here. Both figures are macOS; a hosted Linux runner is unmeasured, so the
+    # budget is the measured worst case (195) with headroom, not a tight fit.
+    timeout-minutes: 240
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check docs graph
+        # First, deliberately: this needs only Python and the checkout, no Lean
+        # and no toolchain. Run last it would cost a full multi-hour build
+        # before reporting a stale graph, which is how it was missed.
+        run: |
+          python3 scripts/gen_docs_graph.py --check
+          # A stale committed graph.js fails the job: the step above rewrites
+          # it, so any diff means it was not regenerated with the change.
+          git diff --exit-code docs/data/graph.js
 
       - name: Install elan
         # Pinned: `releases/latest` would let a new elan change the toolchain
@@ -65,6 +75,9 @@ jobs:
           lake build ForShor EmitTests Submission PolicySubmission PTPPolicySubmission PolicyTests Balanced \
             ForShor.ShorVerification.Model.Standard.Headline \
             ForShor.ShorVerification.Model.Standard.PhaseTripleProductHeadline \
+            ForShor.ShorVerification.Model.Standard.MSemanticsModel \
+            ForShor.ShorVerification.Model.Standard.SemiclassicalSubmissionModel \
+            ForShor.ShorVerification.Submission.CorrectSemiclassicalEmit \
             ForShor.ShorVerification.Model.QuantumLib.Headline 2>&1 | tee build.log
           if grep -q "warning:" build.log; then
             echo "::error::build produced warnings:"
@@ -99,6 +112,21 @@ jobs:
             exit 1
           fi
 
+      - name: Build semiclassical board numerals
+        # The semiclassical peaks of the nine board policies and ref_pp_2048 (Readout/Proofs/PolicyNumeralsSC).
+        # A step, not a job: every module of this chain's closure is already built by the main build above, and
+        # these rows peak at only 3.1-6.4 GB -- lighter than either exact chain -- so they are safe here and
+        # a separate runner would re-elaborate about half the library to gain nothing. Board.lean says the same.
+        # The chain's imports keep Lake to one evaluation at a time.
+        run: |
+          set -o pipefail
+          lake build PolicyNumeralsSC 2>&1 | tee semiclassical.log
+          if grep -q "warning:" semiclassical.log; then
+            echo "::error::semiclassical board numerals produced warnings:"
+            grep "warning:" semiclassical.log
+            exit 1
+          fi
+
       - name: Build executables
         # No executable is reachable from the library targets --
         # Emit/Tests.lean does not import Emit/Main.lean, Submission/Check.lean
@@ -109,7 +137,9 @@ jobs:
 
       - name: Smoke-run executables
         run: |
+          set -o pipefail
           lake exe forshor_emit 2 2 15 0 > /dev/null
+          lake exe forshor_emit readout 2 2 15 0 8 | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"]=="forshor.mlowgate/v1"; assert d["num_measurements"]==d["meta"]["full_rounds"]==8'
           # The negation method is priced and printed: the default is the one-qubit method, and the
           # scratch method charges the same circuit differently (more clean qubits, fewer Toffolis).
           lake exe forshor_emit 2 2 15 0 | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["negation"]=="oneQubit", d["negation"]'
@@ -117,15 +147,16 @@ jobs:
           lake exe forshor_emit 2 2 15 0 --negation scratch > /tmp/emit_scratch.json
           python3 -c 'import json; a=json.load(open("/tmp/emit_one.json")); b=json.load(open("/tmp/emit_scratch.json")); assert a["negation"]=="oneQubit" and b["negation"]=="scratch"; assert a["circuit"]==b["circuit"], "negation method changed the circuit"; assert all(d["gate_count"]==sum(d["resources"][k] for k in ("h","x","cnot","toffoli","rz")) for d in (a,b)), "gate_count is not the total of the resources under the document'"'"'s own method"; assert a["resources"]!=b["resources"] and a["qubit_count"]!=b["qubit_count"], "scratch and oneQubit charge the same"; assert a["resources"]["cleanAnc"] < b["resources"]["cleanAnc"] and a["resources"]["toffoli"] > b["resources"]["toffoli"], "unexpected tradeoff"'
           lake exe forshor_submission | python3 -c 'import json,sys; json.load(sys.stdin)'
-          # The policy names its negation method and the document carries the charge of each method:
-          # the policy's own is the one it names, and the two differ (scratch: w+1 clean qubits, 2w-3
-          # Toffolis; oneQubit: one qubit, about 12w Toffolis).
-          lake exe forshor_policy_submission | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None, "policy submission printed no IR"; assert d["negation"] in ("oneQubit","scratch"), "policy submission names no negation method"; by=d["negate_charge_by_method"]; assert by[d["negation"]]==d["negate_charge"], "negate_charge is not that of the named method"; o=by["oneQubit"]["at_width"]["2048"]; s=by["scratch"]["at_width"]["2048"]; assert o!=s, "scratch and oneQubit charge a negation the same"; assert o["cleanAnc"]==1 and s["cleanAnc"]==2049, (o,s); assert s["x"]==3*2048-4 and s["toffoli"]==2*2048-3, s'
-          lake exe forshor_policy_submission --balanced | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None and "balanced" in d, "balanced policy submission printed no IR"'
-          # The PhaseTripleProduct policy submission prints the shipped template's bands (one band, k = 4, 10 points)
-          # in the PhaseProduct document's spelling, with its negation method and the benchmark width; it prints
-          # no IR (there is no emitter for a triple product).
-          lake exe forshor_ptp_policy_submission | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"]=="forshor.ptp-policy-submission/v1", d["schema"]; assert d["negation"]=="oneQubit", d["negation"]; assert d["benchmark"]["bits"]==2048; b=d["bands"]; assert len(b)>=1 and all(2<=x["k"]<=8 and len(x["points"])==3*x["k"]-2 and x["ops"] for x in b), "malformed bands"; assert "ir" not in d'
+          # Protect every field of the existing submission outputs, not just the schema and negation anchors.
+          lake exe forshor_policy_submission | python3 scripts/check_coherent_policy_output.py policy
+          lake exe forshor_policy_submission --balanced | python3 scripts/check_coherent_policy_output.py balanced
+          lake exe forshor_policy_submission --balanced --readout coherent | python3 scripts/check_coherent_policy_output.py balanced
+          lake exe forshor_policy_submission --balanced --readout semiclassical | python3 scripts/check_compact_readout_output.py
+          lake exe forshor_policy_submission --balanced --readout submitted | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["submitted_readout"]=="coherent" and d["schema"]=="forshor.policy-submission/v1"'
+          readout_rc=0
+          invalid=$(lake exe forshor_policy_submission --readout semiclassical) || readout_rc=$?
+          test "$readout_rc" -eq 2 && test -z "$invalid"
+          lake exe forshor_ptp_policy_submission | python3 scripts/check_coherent_policy_output.py ptp
           lake exe forshor_balanced_u | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["ir"] is not None and "balanced_unconditional" in d, "unconditional balanced submission printed no IR"'
 
       - name: Axiom guard
@@ -147,10 +178,3 @@ jobs:
           bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/Template.lean
           bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PolicyTemplate.lean
           bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PTPPolicyTemplate.lean
-
-      - name: Check docs graph
-        run: |
-          python3 scripts/gen_docs_graph.py --check
-          # A stale committed graph.js fails the job: the step above rewrites
-          # it, so any diff means it was not regenerated with the change.
-          git diff --exit-code docs/data/graph.js

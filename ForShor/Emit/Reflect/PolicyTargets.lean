@@ -264,14 +264,8 @@ def extractPolicyQFTBody (polE : Expr) : MetaM IR.Template := do
           | _ => throwError "extractPolicyQFTBody: expected inner branch to be a dite, got {innerApp}"
       | _ => throwError "extractPolicyQFTBody: expected eq_1's RHS to be a dite, got {rhsOuter}"
 
-/-- `shor` for a policy.
-
-`extractShorBody` uses its `ops` for exactly one thing — carving the QFT
-workspace at a `Gate.QFT` node — so the policy version is the same walk with
-`QFTWorkSource.ofPolicy`. Every other node, `phase_product` and
-`cphase_product` among them, is emitted by name and so reaches the dispatcher
-unchanged. -/
-def extractPolicyShorBody (polE : Expr) : MetaM IR.Template := do
+private def withOrderFindingLayout (k : Registry → Expr → Expr → Expr → Expr → Expr → Expr →
+    Expr → Expr → Expr → MetaM IR.Template) : MetaM IR.Template := do
   let natTy : Expr := mkConst ``Nat
   let regTy : Expr := mkConst ``Shor.ExtReg
   withLocalDecl `a .default natTy fun a =>
@@ -304,16 +298,38 @@ def extractPolicyShorBody (polE : Expr) : MetaM IR.Template := do
       let reg : Registry :=
         { regs := regs, widths := widths, angles := #[]
           phaseCoeffFVar := none, coeffMExpr := .lit 0, nextWidthArgs := [] }
-      let gE ← mkAppM ``Shor.orderFindingApprox
-        #[a, N, x, y, work, scratch, flag, hworkspace, hstep4]
-      let node ← translateLowerGate reg (QFTWorkSource.ofPolicy polE) gE
-      return {
-        name := "shor"
-        wParams := ["a", "N", "xW", "xCap", "yW", "yCap", "workW", "workCap", "scratchW", "scratchCap"]
-        aParams := []
-        rParams := ["x", "y", "work", "scratch", "flag"]
-        body := node
-        provenance := "Shor.Policy.lowerGate ∘ Shor.orderFindingApprox"
-      }
+      k reg a N x y work scratch flag hworkspace hstep4
+
+/-- `shor` for a policy: the same walk as `extractShorBody`, with
+`QFTWorkSource.ofPolicy` for arithmetic QFT workspaces. -/
+def extractPolicyShorBody (polE : Expr) : MetaM IR.Template :=
+  withOrderFindingLayout fun reg a N x y work scratch flag hworkspace hstep4 => do
+    let gE ← mkAppM ``Shor.orderFindingApprox
+      #[a, N, x, y, work, scratch, flag, hworkspace, hstep4]
+    let node ← translateLowerGate reg (QFTWorkSource.ofPolicy polE) gE
+    return {
+      name := "shor"
+      wParams := ["a", "N", "xW", "xCap", "yW", "yCap", "workW", "workCap", "scratchW", "scratchCap"]
+      aParams := []
+      rParams := ["x", "y", "work", "scratch", "flag"]
+      body := node
+      provenance := "Shor.Policy.lowerGate ∘ Shor.orderFindingApprox"
+    }
+
+/-- One symbolic arithmetic round for semiclassical readout. It has no `x`
+register and costs one template regardless of the number of rounds. -/
+def extractPolicyReadoutRound (polE : Expr) : MetaM IR.Template :=
+  withOrderFindingLayout fun reg a N _x y work scratch flag hworkspace hstep4 => do
+    let powerIndex : IR.WExpr := .sub (.sub (.var "rounds") (.lit 1)) (.var "j")
+    let body ← translateModMulRound reg "j" powerIndex (pure (.var "ctrl"))
+      a N y work scratch flag hworkspace hstep4 (fun r g => translateLowerGate r (.ofPolicy polE) g)
+    return {
+      name := "readout_round"
+      wParams := ["a", "N", "rounds", "j", "yW", "yCap", "workW", "workCap", "scratchW", "scratchCap"]
+      aParams := []
+      rParams := ["ctrl", "y", "work", "scratch", "flag"]
+      body := body
+      provenance := "Shor.Policy.lowerGate ∘ Shor.Readout.semiclassicalMultipliers"
+    }
 
 end Shor.Reflect

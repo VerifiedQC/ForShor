@@ -55,5 +55,6 @@ def policyDoc (P : _root_.Shor.PTP.PTPPolicy) : Json :=
 end PTPPolicySubmission
 
 def main : IO UInt32 := do
-  IO.println (_root_.PTPPolicySubmission.policyDoc _root_.PTPPolicySubmission.policy).pretty
+  let doc := _root_.PTPPolicySubmission.policyDoc _root_.PTPPolicySubmission.policy
+  IO.println (_root_.Shor.PrimitiveSynthesis.attest _root_.PTPPolicySubmission.resolvedPrimitive "ptp" doc).pretty
   return 0
