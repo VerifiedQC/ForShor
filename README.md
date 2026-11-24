@@ -336,9 +336,10 @@ their own, chained by import so that Lake builds them one at a time:
 lake build PolicyNumeralsExact           # the five PhaseProduct acceptance policies with an exact-rule numeral (9-12 GB peak each)
 lake build PolicyNumeralsBoardExact      # the five results-board PhaseProduct rows that fit a 16 GB CI runner (up to about 12 GB)
 lake build PolicyNumeralsBoardExactHeavy # the other four rows; needs 16 GB or more of free memory, not built in CI
+lake build PolicyNumeralsSC              # the semiclassical peaks of the nine board rows and ref_pp_2048 (3.1-6.4 GB peak each)
 ```
 
-CI builds the first two, each in a step of its own after the main build; the scan-rule
+CI builds all three of the non-heavy chains, each in a step of its own after the main build; the scan-rule
 numerals and the policies themselves are part of the `ForShor` umbrella. The peak
 resident memory of the kernel evaluation is what limits these, which is why the
 exact ones are not in the umbrella.

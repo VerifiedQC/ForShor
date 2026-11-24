@@ -105,7 +105,8 @@ lean_lib «PolicyNumeralsBoardExactHeavy» where
 -- Kernel-evaluated semiclassical peaks (Readout/Proofs/PolicyNumeralsSC): the nine PhaseProduct board policies
 -- and `ref_pp_2048` under the exact width rule, one recycled control qubit in place of the exponent register.
 -- Each row is a heavy kernel evaluation (the ten take about 40-75 minutes in all, chained), so they are NOT in the
--- `ForShor` umbrella: a chain of their own, built on a separate CI runner.
+-- `ForShor` umbrella: a chain of their own, built in a CI step after the main build, where the closure
+-- they share with it is already elaborated. At 3.1-6.4 GB a row they are the lightest of the three chains.
 lean_lib «PolicyNumeralsSC» where
   roots := #[`ForShor.ShorVerification.Implementation.Readout.PolicyNumeralsSCTests]
 

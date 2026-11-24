@@ -511,15 +511,17 @@ window.GRAPH = {
   "Framework": {
    "children": [
     "Framework/AbstractMachine",
+    "Framework/FullRunDesign.lean",
     "Framework/Gatecount",
     "Framework/NegationMethod.lean",
     "Framework/Policy.lean",
+    "Framework/PrimitiveSynthesis.lean",
     "Framework/Quantum",
     "Framework/Semantics",
     "Framework/ToomCookTable.lean"
    ],
-   "declCount": 295,
-   "fileCount": 18,
+   "declCount": 300,
+   "fileCount": 20,
    "fsPath": "Framework",
    "kind": "folder",
    "name": "Framework",
@@ -751,6 +753,28 @@ window.GRAPH = {
    "lines": 35,
    "name": "MLowGate.lean",
    "path": "Framework/AbstractMachine/MLowGate.lean"
+  },
+  "Framework/FullRunDesign.lean": {
+   "declarations": [
+    {
+     "kind": "inductive",
+     "line": 5,
+     "name": "Shor.FullRunDesign"
+    },
+    {
+     "kind": "def",
+     "line": 16,
+     "name": "Shor.FullRunDesign.label"
+    }
+   ],
+   "docstring": null,
+   "fsPath": "Framework/FullRunDesign.lean",
+   "importedBy": [],
+   "imports": [],
+   "kind": "file",
+   "lines": 26,
+   "name": "FullRunDesign.lean",
+   "path": "Framework/FullRunDesign.lean"
   },
   "Framework/Gatecount": {
    "children": [
@@ -1373,6 +1397,33 @@ window.GRAPH = {
    "lines": 335,
    "name": "Policy.lean",
    "path": "Framework/Policy.lean"
+  },
+  "Framework/PrimitiveSynthesis.lean": {
+   "declarations": [
+    {
+     "kind": "inductive",
+     "line": 6,
+     "name": "Shor.PrimitiveSynthesis"
+    },
+    {
+     "kind": "def",
+     "line": 15,
+     "name": "Shor.PrimitiveSynthesis.resolve"
+    },
+    {
+     "kind": "def",
+     "line": 24,
+     "name": "Shor.PrimitiveSynthesis.attest"
+    }
+   ],
+   "docstring": null,
+   "fsPath": "Framework/PrimitiveSynthesis.lean",
+   "importedBy": [],
+   "imports": [],
+   "kind": "file",
+   "lines": 36,
+   "name": "PrimitiveSynthesis.lean",
+   "path": "Framework/PrimitiveSynthesis.lean"
   },
   "Framework/Quantum": {
    "children": [
@@ -39609,9 +39660,11 @@ window.GRAPH = {
   "Framework": {
    "children": [
     "Framework/AbstractMachine",
+    "Framework/FullRunDesign.lean",
     "Framework/Gatecount",
     "Framework/NegationMethod.lean",
     "Framework/Policy.lean",
+    "Framework/PrimitiveSynthesis.lean",
     "Framework/Quantum",
     "Framework/Semantics",
     "Framework/ToomCookTable.lean"

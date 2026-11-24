@@ -294,7 +294,9 @@ window.ANNOTATIONS = {
      "Framework/ToomCookTable.lean"
     ],
     [
-     "Framework/NegationMethod.lean"
+     "Framework/NegationMethod.lean",
+     "Framework/PrimitiveSynthesis.lean",
+     "Framework/FullRunDesign.lean"
     ],
     [
      "Framework/Policy.lean"
