@@ -39,6 +39,14 @@ namespace PTPPolicySubmission
 
 open Shor.Audit
 
+open Lean Elab Command in
+run_cmd do
+  let env ← getEnv
+  let name := `PTPPolicySubmission.submittedFullRunDesign
+  let sourceModule := `ForShor.ShorVerification.Submission.PTPPolicyTemplate
+  if env.contains name || (env.setExporting false).contains (mkPrivateNameCore sourceModule name) then
+    throwError "full-run synthesis is not a PhaseTripleProduct option"
+
 /-- The benchmark width the threshold rule is checked from. -/
 def target : ℕ := 2048
 

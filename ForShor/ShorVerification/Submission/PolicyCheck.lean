@@ -2,6 +2,7 @@ import ForShor.ShorVerification.Submission.PolicyTemplate
 import ForShor.ShorVerification.Submission.PolicyDecide
 import ForShor.ShorVerification.Submission.Audit
 import ForShor.ShorVerification.Framework.PrimitiveSynthesis
+import ForShor.ShorVerification.Framework.FullRunDesign
 import ForShor.ShorVerification.Submission.Correct
 import ForShor.ShorVerification.Submission.Score
 import ForShor.Emit.Reflect.Driver
@@ -126,6 +127,21 @@ def resolvedPrimitive : _root_.Shor.PrimitiveSynthesis := by_elab
     `ForShor.ShorVerification.Submission.PolicyTemplate
 
 #assert_axioms _root_.PolicySubmission.resolvedPrimitive
+
+open Lean Elab Term in
+/-- Resolve only the public full-run declaration in the submitted PP policy. -/
+def resolvedFullRun : _root_.Shor.FullRunDesign := by_elab
+  let env ← getEnv
+  let name := `PolicySubmission.submittedFullRunDesign
+  let sourceModule := `ForShor.ShorVerification.Submission.PolicyTemplate
+  if (env.setExporting false).contains (mkPrivateNameCore sourceModule name) then
+    throwError "optional declaration '{name}' must be public"
+  let some info := env.find? name | return mkConst ``_root_.Shor.FullRunDesign.reference
+  unless info.levelParams.isEmpty && (← Meta.isDefEq info.type (mkConst ``_root_.Shor.FullRunDesign)) do
+    throwError "optional declaration '{name}' must have type Shor.FullRunDesign"
+  return mkConst name
+
+#assert_axioms _root_.PolicySubmission.resolvedFullRun
 
 /-- The policy is admissible, which is exactly its bands being submissions. -/
 example : policy.policy.Admissible := policy.policy_admissible

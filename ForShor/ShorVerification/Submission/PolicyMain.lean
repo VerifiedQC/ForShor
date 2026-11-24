@@ -440,6 +440,14 @@ unsafe def main (args : List String) : IO UInt32 := do
     | _ => saved
   let measured := selected == .semiclassical
   let primitive := _root_.PolicySubmission.resolvedPrimitive
+  let fullRun := _root_.PolicySubmission.resolvedFullRun
+  if fullRun != .reference then
+    if request != .submitted || saved != .semiclassical || !balanced || args.contains "--width-table" then
+      IO.eprintln "full-run synthesis requires saved semiclassical readout and --balanced --readout submitted"
+      return 2
+    if primitive != .rossSelinger then
+      IO.eprintln "full-run and standalone synthesis opt-ins are not jointly qualified"
+      return 2
   if primitive != .rossSelinger && (!exact || args.contains "--width-table") then
     IO.eprintln "primitive synthesis requires exact widths and a checked policy export"
     return 2
@@ -452,6 +460,9 @@ unsafe def main (args : List String) : IO UInt32 := do
   let printOutput (out : Json) :=
     let doc := if request == .submitted then
       out.mergeObj (Json.mkObj [("submitted_readout", Json.str saved.label)]) else out
+    let doc := if fullRun == .reference then doc else
+      doc.mergeObj (Json.mkObj [("submitted_full_run", Json.mkObj [
+        ("schema", Json.str "forshor.full-run-selection/v1"), ("profile", Json.str fullRun.label)])])
     IO.println (_root_.Shor.PrimitiveSynthesis.attest primitive "pp" doc).compress
   match ← attempt s exact balanced probeOwnRule measured with
   | .ok out =>
