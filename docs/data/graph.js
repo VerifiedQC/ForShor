@@ -1589,32 +1589,32 @@ window.GRAPH = {
     },
     {
      "kind": "def",
-     "line": 17,
+     "line": 24,
      "name": "Shor.resolveOptional"
     },
     {
      "kind": "def",
-     "line": 28,
+     "line": 35,
      "name": "Shor.refuseOptional"
     },
     {
      "kind": "def",
-     "line": 35,
+     "line": 42,
      "name": "Shor.kernelOrRefuse"
     },
     {
      "kind": "inductive",
-     "line": 39,
+     "line": 46,
      "name": "Shor.AttestScope"
     },
     {
      "kind": "def",
-     "line": 42,
+     "line": 49,
      "name": "Shor.AttestScope.label"
     },
     {
      "kind": "def",
-     "line": 50,
+     "line": 57,
      "name": "Shor.PrimitiveSynthesis.attest"
     }
    ],
@@ -1623,7 +1623,7 @@ window.GRAPH = {
    "importedBy": [],
    "imports": [],
    "kind": "file",
-   "lines": 62,
+   "lines": 69,
    "name": "PrimitiveSynthesis.lean",
    "path": "Framework/PrimitiveSynthesis.lean"
   },

@@ -13,7 +13,14 @@ open Lean Elab Term in
 /-- Read an optional submitted declaration by its exact environment name, not by namespace
 resolution. Only an absent declaration chooses `default`; a private one, or one of another type,
 is an error. The one resolver behind every optional opt-in (`submittedDesign`,
-`submittedPrimitive`, `submittedFullRunDesign`). -/
+`submittedPrimitive`, `submittedFullRunDesign`).
+
+The result is the declaration's *kernel value*, reduced to a closed term, not its name. A term that
+names the constant compiles to that constant's compiled code, which `@[implemented_by]` can make
+differ from the value the kernel checked, so the build-time rules would pass on one value while
+`lake exe` printed another. Reducing at `.all` transparency (also through `@[irreducible]`) makes
+the compiled value the kernel's value. The lexical gate stays the first line of defence; this closes
+the same hole for the opt-in declarations if it is ever bypassed. -/
 def resolveOptional (ty default name : Name) (sourceModule : Option Name := none) : TermElabM Expr := do
   let env ← getEnv
   if (env.setExporting false).contains (mkPrivateNameCore (sourceModule.getD env.mainModule) name) then
@@ -21,7 +28,7 @@ def resolveOptional (ty default name : Name) (sourceModule : Option Name := none
   let some info := env.find? name | return mkConst default
   unless info.levelParams.isEmpty && (← Meta.isDefEq info.type (mkConst ty)) do
     throwError "optional declaration '{name}' must have type {ty}"
-  return mkConst name
+  Meta.withTransparency .all (Meta.reduce (mkConst name) (skipProofs := true) (skipTypes := true))
 
 open Lean Elab Command in
 /-- Fail with `why` if the submission declares `name`, public or private. -/

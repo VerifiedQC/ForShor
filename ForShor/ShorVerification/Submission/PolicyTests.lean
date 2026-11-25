@@ -307,6 +307,39 @@ private def base : Lean.Json := Lean.Json.mkObj [("schema", Lean.Json.str "base"
 -- an unattestable selection adds nothing; `PolicyCheck.fullRun_attestable` refuses it at build time
 #guard (attestFullRun { step1 := some .fallback } base).compress == base.compress
 
+/-! ### The resolved value is the kernel value
+
+`@[implemented_by]` makes compiled code differ from the value the kernel checked. A resolver that
+returned the declaration's *name* would hand `lake exe` the compiled value, so the build-time rules
+below would judge one design while the output named another. The first guard is the control: it
+shows the name does follow the compiled code (so the second is not vacuous). -/
+
+def evilDesign : FullRunDesign := { exponent := some ⟨.rossSelinger, .exact⟩ }
+@[implemented_by evilDesign] def mismatched : FullRunDesign := FullRunDesign.quotientExact
+@[irreducible, implemented_by evilDesign] def mismatchedIrreducible : FullRunDesign :=
+  FullRunDesign.quotientExact
+
+private def byName : FullRunDesign := by_elab pure (Lean.mkConst `Shor.OptInTests.mismatched)
+
+private def resolvedMismatch : FullRunDesign := by_elab
+  resolveOptional ``Shor.FullRunDesign ``Shor.FullRunDesign.reference `Shor.OptInTests.mismatched
+
+private def resolvedMismatchIrreducible : FullRunDesign := by_elab
+  resolveOptional ``Shor.FullRunDesign ``Shor.FullRunDesign.reference
+    `Shor.OptInTests.mismatchedIrreducible
+
+/-- info: none -/
+#guard_msgs in
+#eval byName.label?
+
+/-- info: some "quotient-exact" -/
+#guard_msgs in
+#eval resolvedMismatch.label?
+
+/-- info: some "quotient-exact" -/
+#guard_msgs in
+#eval resolvedMismatchIrreducible.label?
+
 /-! ### The build-time rules: each accepts what it should, and refuses with its own message
 
 `PolicyCheck`'s theorems apply these rules to the submitted declarations. The shipped policy

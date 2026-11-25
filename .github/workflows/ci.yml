@@ -143,6 +143,11 @@ jobs:
           bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PolicyTemplate.lean
           bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PTPPolicyTemplate.lean
 
+      - name: Lexical gate self-test
+        # The gate is the only cover for compiled-code attributes, so what it refuses (every spelling that
+        # slipped past the old line-anchored grep) and what it lets through is pinned here.
+        run: bash scripts/test_check_template_lexical.sh
+
       - name: Build semiclassical board numerals
         # The semiclassical peaks of the nine board policies and ref_pp_2048 (Readout/Proofs/PolicyNumeralsSC).
         # Runs before the exact chains, which it does not import: it is the lightest, so a failure here is

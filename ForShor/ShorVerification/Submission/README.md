@@ -92,6 +92,9 @@ as a number and printed in lowest terms: `250e-6` is `25e-5`. What the executabl
 design needs `--balanced --readout submitted`; a non-default primitive needs `--balanced` or `--exact-widths`;
 neither works with `--width-table`.
 
+Each optional declaration is read as its kernel value, not by name, so a compiled-code attribute cannot make
+the printed selection differ from the one the build-time rules judged.
+
 The output then carries `submitted_full_run` (`profile`, or `design` for a body, never both) and
 `submitted_primitive`. These are **declarations**, not Lean-certified claims: this repository attests
 the typed choice, and the circuit and its price are checked by the consumer (the results engine), which
@@ -114,7 +117,10 @@ bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PTPPo
 lake build PTPPolicySubmission forshor_ptp_policy_submission && lake exe forshor_ptp_policy_submission > policy.json
 ```
 
-The lexical gate is the one the PhaseProduct template uses, unchanged: it refuses compiled-code attributes
+The lexical gate is the one the PhaseProduct template uses, unchanged. It reads the file as tokens, with comments
+blanked, and refuses a forbidden attribute or command wherever it sits (stacked after another attribute, after
+`open … in`, in a multi-line attribute list, on a line with `namespace`), not only at the start of a line;
+`scripts/test_check_template_lexical.sh` pins both what it refuses and what it lets through. It refuses compiled-code attributes
 (`implemented_by`, `extern`, `csimp`) and the metaprogramming surface, which a PTP table could otherwise use to be
 kernel-checked as one thing and printed as another. Nothing in a `PTPTable` or a `PTPPolicy` is a proof, so
 the build's kernel checks and `#assert_axioms` are the whole of the acceptance.
