@@ -12,8 +12,9 @@ and per-step phase backend is expressible.
 
 The *accepted set* is deliberately narrower than the type. `FullRunDesign.qualified` lists the
 eight selections that have been qualified, and `FullRunDesign.label?` is `none` for everything
-else, which the submission executable refuses. Widening the accepted set is a separate change
-that needs a price path and a per-point witness; it is not done here.
+else. The policy check (`PolicyCheck.fullRun_attestable`) refuses at build time anything that is
+neither labelled nor serializable by `body?`. Widening the accepted set is a separate change that
+needs a price path and a per-point witness; it is not done here.
 -/
 
 inductive FullRunMultiplier where
@@ -39,9 +40,11 @@ structure ErrorCeiling where
   belowOne : units < 10 ^ scale
   scaleBound : scale ≤ 60
 
-/-- Equality on the two data fields only. The remaining fields are proofs, so by proof
-    irrelevance two ceilings agreeing on `units` and `scale` are equal; comparing the proofs
-    would be both impossible to derive and meaningless. -/
+/-- Equality on the two data fields only, *as written*: `25e-5` and `250e-6` are the same
+    number but different ceilings here, and serialize to different strings, so a ceiling not
+    spelled exactly as a qualified bundle spells it is never that bundle. The remaining fields
+    are proofs, so by proof irrelevance two ceilings agreeing on `units` and `scale` are equal;
+    comparing the proofs would be both impossible to derive and meaningless. -/
 instance : BEq ErrorCeiling where
   beq a b := a.units == b.units && a.scale == b.scale
 
@@ -166,16 +169,18 @@ the `rotation_backend` refusal). Emitting them would turn a priceable design int
 
 /-- Everything outside the QFT backend axis that this design could set, and that `json` does not
     serialize: the multiplier topology, the four per-family rotation backends and the four
-    per-step phase-product routes.
+    per-step phase-product routes. The `exponent` family is excluded as well: a full-run design
+    is priced on the semiclassical readout, which has no exponent register, so an exponent QFT
+    choice would attest a choice that cannot take effect.
 
     A design setting any of them must NOT be serialized, and `body?` below is the only way to
     reach `json` for that reason. The consumer reads an absent `modmul` as the reference topology
     (`full_run_design.py` `_design_of_body`: `body.get(MULTIPLIER_KEY) or MULTIPLIER_REFERENCE`),
     so emitting a body for a `quotientStream` design would price a quotient-stream run on
-    REFERENCE-topology numbers -- the silent default the release forbids. It is refused in
-    `PolicyMain` instead. -/
+    REFERENCE-topology numbers -- the silent default the release forbids. It is refused at build time
+    (`PolicyCheck.fullRun_attestable`) instead. -/
 def FullRunDesign.qftOnly (d : FullRunDesign) : Bool :=
-  d.multiplier == .reference
+  d.multiplier == .reference && d.exponent.isNone
     && d.dataRotations.isNone && d.workRotations.isNone
     && d.scratchRotations.isNone && d.exponentRotations.isNone
     && d.step1.isNone && d.step2.isNone && d.step4.isNone && d.step5.isNone

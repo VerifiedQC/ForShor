@@ -83,18 +83,10 @@ sampling has to establish.
 
 namespace Shor.SubmissionDesign
 
-open Lean Elab Term in
 /-- Read a declaration by its exact environment name, not by namespace resolution.
 Only an absent declaration chooses the legacy design. -/
-def resolveDeclaration (name : Name) (sourceModule : Option Name := none) : TermElabM Expr := do
-  let env ← getEnv
-  let privateName := mkPrivateNameCore (sourceModule.getD env.mainModule) name
-  if (env.setExporting false).contains privateName then
-    throwError "optional declaration '{name}' must be public; remove 'private' to opt in"
-  let some info := env.find? name | return mkConst ``Shor.SubmissionDesign.legacy
-  unless info.levelParams.isEmpty && (← Meta.isDefEq info.type (mkConst ``Shor.SubmissionDesign)) do
-    throwError "optional declaration '{name}' must have type Shor.SubmissionDesign"
-  return mkConst name
+def resolveDeclaration (name : Lean.Name) (sourceModule : Option Lean.Name := none) : Lean.Elab.Term.TermElabM Lean.Expr :=
+  _root_.Shor.resolveOptional ``Shor.SubmissionDesign ``Shor.SubmissionDesign.legacy name sourceModule
 
 /-- Selected once at build time from the same template as `PolicySubmission.policy`. -/
 def resolved : SubmissionDesign := by_elab
@@ -123,25 +115,47 @@ resolves one namespace deeper first, where a submitter could place a decoy.
 #assert_axioms _root_.PolicySubmission.policy
 
 def resolvedPrimitive : _root_.Shor.PrimitiveSynthesis := by_elab
-  _root_.Shor.PrimitiveSynthesis.resolve `PolicySubmission.submittedPrimitive
-    `ForShor.ShorVerification.Submission.PolicyTemplate
+  _root_.Shor.resolveOptional ``_root_.Shor.PrimitiveSynthesis ``_root_.Shor.PrimitiveSynthesis.rossSelinger
+    `PolicySubmission.submittedPrimitive (some `ForShor.ShorVerification.Submission.PolicyTemplate)
 
 #assert_axioms _root_.PolicySubmission.resolvedPrimitive
 
-open Lean Elab Term in
-/-- Resolve only the public full-run declaration in the submitted PP policy. -/
+/-- The submitted full-run design, or `reference` when the policy declares none. -/
 def resolvedFullRun : _root_.Shor.FullRunDesign := by_elab
-  let env ← getEnv
-  let name := `PolicySubmission.submittedFullRunDesign
-  let sourceModule := `ForShor.ShorVerification.Submission.PolicyTemplate
-  if (env.setExporting false).contains (mkPrivateNameCore sourceModule name) then
-    throwError "optional declaration '{name}' must be public"
-  let some info := env.find? name | return mkConst ``_root_.Shor.FullRunDesign.reference
-  unless info.levelParams.isEmpty && (← Meta.isDefEq info.type (mkConst ``_root_.Shor.FullRunDesign)) do
-    throwError "optional declaration '{name}' must have type Shor.FullRunDesign"
-  return mkConst name
+  _root_.Shor.resolveOptional ``_root_.Shor.FullRunDesign ``_root_.Shor.FullRunDesign.reference
+    `PolicySubmission.submittedFullRunDesign (some `ForShor.ShorVerification.Submission.PolicyTemplate)
 
 #assert_axioms _root_.PolicySubmission.resolvedFullRun
+
+/-! ### Opt-in combinations, refused at build time
+
+These are properties of the declarations alone, so the kernel decides them here, as PTP's
+`check` is decided, and `lake build PolicySubmission` fails for a policy that breaks one. Only the
+checks that depend on command-line flags stay in `PolicyMain.lean`. Each theorem fails as
+`decide` failure; the statement names what was violated. -/
+
+/-- A selected full-run design is attestable: a qualified profile, or a design body the consumer
+can read (QFT backend axis on the reference topology). Anything else is refused, never priced. -/
+theorem fullRun_attestable :
+    (_root_.PolicySubmission.resolvedFullRun.label?.isSome
+      || _root_.PolicySubmission.resolvedFullRun.body?.isSome) = true := by
+  decide +kernel
+
+/-- Full-run synthesis and a standalone primitive are not jointly qualified. -/
+theorem fullRun_primitive_exclusive :
+    (_root_.PolicySubmission.resolvedFullRun == _root_.Shor.FullRunDesign.reference
+      || _root_.PolicySubmission.resolvedPrimitive == _root_.Shor.PrimitiveSynthesis.rossSelinger) = true := by
+  decide +kernel
+
+/-- A full-run design is priced on the semiclassical readout only. -/
+theorem fullRun_semiclassical :
+    (_root_.PolicySubmission.resolvedFullRun == _root_.Shor.FullRunDesign.reference
+      || _root_.Shor.SubmissionDesign.resolved.readout == _root_.Shor.SubmissionReadout.semiclassical) = true := by
+  decide +kernel
+
+#assert_axioms _root_.PolicySubmission.fullRun_attestable
+#assert_axioms _root_.PolicySubmission.fullRun_primitive_exclusive
+#assert_axioms _root_.PolicySubmission.fullRun_semiclassical
 
 /-- The policy is admissible, which is exactly its bands being submissions. -/
 example : policy.policy.Admissible := policy.policy_admissible

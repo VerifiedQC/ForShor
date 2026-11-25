@@ -521,7 +521,7 @@ window.GRAPH = {
     "Framework/Semantics",
     "Framework/ToomCookTable.lean"
    ],
-   "declCount": 332,
+   "declCount": 335,
    "fileCount": 21,
    "fsPath": "Framework",
    "kind": "folder",
@@ -759,153 +759,153 @@ window.GRAPH = {
    "declarations": [
     {
      "kind": "inductive",
-     "line": 19,
+     "line": 20,
      "name": "Shor.FullRunMultiplier"
     },
     {
      "kind": "inductive",
-     "line": 23,
+     "line": 24,
      "name": "Shor.QftBackend"
     },
     {
      "kind": "def",
-     "line": 29,
+     "line": 30,
      "name": "Shor.QftBackend.label"
     },
     {
      "kind": "structure",
-     "line": 35,
+     "line": 36,
      "name": "Shor.ErrorCeiling"
     },
     {
      "kind": "inductive",
-     "line": 48,
+     "line": 51,
      "name": "Shor.QftTarget"
     },
     {
      "kind": "structure",
-     "line": 52,
+     "line": 55,
      "name": "Shor.QftChoice"
     },
     {
      "kind": "def",
-     "line": 63,
+     "line": 66,
      "name": "Shor.QftChoice.json"
     },
     {
      "kind": "inductive",
-     "line": 71,
+     "line": 74,
      "name": "Shor.PhaseBackend"
     },
     {
      "kind": "inductive",
-     "line": 75,
+     "line": 78,
      "name": "Shor.RotationBackend"
     },
     {
      "kind": "structure",
-     "line": 81,
+     "line": 84,
      "name": "Shor.FullRunDesign"
     },
     {
      "kind": "def",
-     "line": 100,
+     "line": 103,
      "name": "Shor.FullRunDesign.reference"
     },
     {
      "kind": "def",
-     "line": 102,
+     "line": 105,
      "name": "Shor.ceil25e5"
     },
     {
      "kind": "def",
-     "line": 103,
+     "line": 106,
      "name": "Shor.exactDirect"
     },
     {
      "kind": "def",
-     "line": 104,
+     "line": 107,
      "name": "Shor.bandedDirect"
     },
     {
      "kind": "def",
-     "line": 105,
+     "line": 108,
      "name": "Shor.apxCatalytic"
     },
     {
      "kind": "def",
-     "line": 107,
+     "line": 110,
      "name": "Shor.FullRunDesign.quotientExact"
     },
     {
      "kind": "def",
-     "line": 110,
+     "line": 113,
      "name": "Shor.FullRunDesign.quotientCatalytic"
     },
     {
      "kind": "def",
-     "line": 113,
+     "line": 116,
      "name": "Shor.FullRunDesign.quotientBandedDataCatalyticWork"
     },
     {
      "kind": "def",
-     "line": 116,
+     "line": 119,
      "name": "Shor.FullRunDesign.quotientFallbackDataCatalyticWork"
     },
     {
      "kind": "def",
-     "line": 119,
+     "line": 122,
      "name": "Shor.FullRunDesign.quotientStep2Fallback"
     },
     {
      "kind": "def",
-     "line": 122,
+     "line": 125,
      "name": "Shor.FullRunDesign.splitStep4Kicks"
     },
     {
      "kind": "def",
-     "line": 126,
+     "line": 129,
      "name": "Shor.FullRunDesign.splitStep2FallbackStep4Kicks"
     },
     {
      "kind": "def",
-     "line": 132,
+     "line": 135,
      "name": "Shor.FullRunDesign.qualified"
     },
     {
      "kind": "def",
-     "line": 144,
+     "line": 147,
      "name": "Shor.FullRunDesign.label?"
     },
     {
      "kind": "def",
-     "line": 151,
+     "line": 154,
      "name": "Shor.FullRunDesign.compiledSelection?"
     },
     {
      "kind": "def",
-     "line": 177,
+     "line": 182,
      "name": "Shor.FullRunDesign.qftOnly"
     },
     {
      "kind": "def",
-     "line": 190,
+     "line": 195,
      "name": "Shor.FullRunDesign.json"
     },
     {
      "kind": "def",
-     "line": 199,
+     "line": 204,
      "name": "Shor.FullRunDesign.body?"
     }
    ],
-   "docstring": "# The full-run design surface\n\nThis mirrors the consumer's design surface field for field, so the *type* is\northogonal: any combination of multiplier, per-family QFT choice, per-family rotation backend\nand per-step phase backend is expressible.\n\nThe *accepted set* is deliberately narrower than the type. `FullRunDesign.qualified` lists the\neight selections that have been qualified, and `FullRunDesign.label?` is `none` for everything\nelse, which the submission executable refuses. Widening the accepted set is a separate change\nthat needs a price path and a per-point witness; it is not done here.",
+   "docstring": "# The full-run design surface\n\nThis mirrors the consumer's design surface field for field, so the *type* is\northogonal: any combination of multiplier, per-family QFT choice, per-family rotation backend\nand per-step phase backend is expressible.\n\nThe *accepted set* is deliberately narrower than the type. `FullRunDesign.qualified` lists the\neight selections that have been qualified, and `FullRunDesign.label?` is `none` for everything\nelse. The policy check (`PolicyCheck.fullRun_attestable`) refuses at build time anything that is\nneither labelled nor serializable by `body?`. Widening the accepted set is a separate change that\nneeds a price path and a per-point witness; it is not done here.",
    "fsPath": "Framework/FullRunDesign.lean",
    "importedBy": [
     "Framework/FullRunDesignTests.lean"
    ],
    "imports": [],
    "kind": "file",
-   "lines": 202,
+   "lines": 207,
    "name": "FullRunDesign.lean",
    "path": "Framework/FullRunDesign.lean"
   },
@@ -933,12 +933,12 @@ window.GRAPH = {
     },
     {
      "kind": "def",
-     "line": 221,
+     "line": 232,
      "name": "Shor.apx1e6"
     },
     {
      "kind": "def",
-     "line": 223,
+     "line": 234,
      "name": "Shor.allFour"
     }
    ],
@@ -949,7 +949,7 @@ window.GRAPH = {
     "Framework/FullRunDesign.lean"
    ],
    "kind": "file",
-   "lines": 281,
+   "lines": 296,
    "name": "FullRunDesignTests.lean",
    "path": "Framework/FullRunDesignTests.lean"
   },
@@ -1584,12 +1584,27 @@ window.GRAPH = {
     },
     {
      "kind": "def",
-     "line": 15,
-     "name": "Shor.PrimitiveSynthesis.resolve"
+     "line": 17,
+     "name": "Shor.resolveOptional"
     },
     {
      "kind": "def",
-     "line": 24,
+     "line": 28,
+     "name": "Shor.refuseOptional"
+    },
+    {
+     "kind": "inductive",
+     "line": 34,
+     "name": "Shor.AttestScope"
+    },
+    {
+     "kind": "def",
+     "line": 37,
+     "name": "Shor.AttestScope.label"
+    },
+    {
+     "kind": "def",
+     "line": 44,
      "name": "Shor.PrimitiveSynthesis.attest"
     }
    ],
@@ -1598,7 +1613,7 @@ window.GRAPH = {
    "importedBy": [],
    "imports": [],
    "kind": "file",
-   "lines": 36,
+   "lines": 56,
    "name": "PrimitiveSynthesis.lean",
    "path": "Framework/PrimitiveSynthesis.lean"
   },

@@ -78,7 +78,7 @@ private def apxCatalytic : QftChoice := ⟨.catalytic, .approximate ceil⟩
 #guard FullRunDesign.splitStep2FallbackStep4Kicks.step4 == some .selectiveKick
 
 /-! §1.1 "fields never set by any bundle". Catches a bundle that silently acquires an
-exponent family (all seven are semiclassical readout, so exponent is inactive by construction)
+exponent family (a full run is priced on the semiclassical readout, which has no exponent register, so `body?` refuses an exponent choice too)
 or a step1/step5 route, neither of which has any construction at all. -/
 #guard FullRunDesign.qualified.all fun p =>
   p.1.exponent == none && p.1.exponentRotations == none && p.1.scratchRotations == none
@@ -168,6 +168,16 @@ Catches an `ErrorCeiling` equality that compares `units` only, which would make 
 #guard !((⟨25, 5, by decide, by decide, by decide⟩ : ErrorCeiling)
   == ⟨2, 5, by decide, by decide, by decide⟩)
 
+/-! A ceiling is compared *as written*: `250e-6` is the number `25e-5` but is not the ceiling a
+qualified bundle spells, so it is never that bundle and serializes to its own string. -/
+#guard !((⟨25, 5, by decide, by decide, by decide⟩ : ErrorCeiling)
+  == ⟨250, 6, by decide, by decide, by decide⟩)
+#guard (({ multiplier := .quotientStream,
+           data := some ⟨.catalytic, .approximate ⟨250, 6, by decide, by decide, by decide⟩⟩,
+           work := some apxCatalytic } : FullRunDesign)).label? == none
+#guard (QftChoice.json ⟨.rossSelinger, .approximate ⟨250, 6, by decide, by decide, by decide⟩⟩).compress
+  == "{\"backend\":\"ross_selinger\",\"max_error\":\"250e-6\",\"target\":\"approximate\"}"
+
 /-! ## 7. `QftChoice.json` is the consumer's per-family contract, character for character
 
 The per-family value is not this repo's invention: it is the consumer's per-family QFT choice
@@ -212,6 +222,7 @@ refused as `body-schema`. An absent family is OMITTED, never written as an expli
 #guard (FullRunDesign.json { scratch := some bandedDirect }).compress
   == "{\"qft\":{\"scratch\":{\"backend\":\"ross_selinger\",\"max_error\":\"25e-5\","
      ++ "\"target\":\"approximate\"}},\"schema\":\"forshor.design-local/v1\"}"
+-- `json` itself still serializes the exponent family; `body?` is what refuses it (§9).
 #guard (FullRunDesign.json { exponent := some exactDirect }).compress
   == "{\"qft\":{\"exponent\":{\"backend\":\"ross_selinger\",\"target\":\"exact\"}},"
      ++ "\"schema\":\"forshor.design-local/v1\"}"
@@ -249,6 +260,10 @@ a quotient-stream run on reference-topology numbers. Each guard names the axis i
 #guard (({ step2 := some .fallback } : FullRunDesign)).body? == none
 #guard (({ step4 := some .selectiveKick } : FullRunDesign)).body? == none
 #guard (({ step5 := some .rossSelinger } : FullRunDesign)).body? == none
+-- The semiclassical readout the full run is priced on has no exponent register, so an exponent
+-- choice would attest something that cannot take effect.
+#guard (({ exponent := some exactDirect } : FullRunDesign)).body? == none
+#guard (({ data := some apxCatalytic, exponent := some exactDirect } : FullRunDesign)).body? == none
 
 /-! Every one of the seven non-reference qualified bundles selects a topology, so NONE of them is
 body-serializable: all seven stay on the profile path. Catches a `qftOnly` that ignores the
