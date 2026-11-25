@@ -307,4 +307,44 @@ private def base : Lean.Json := Lean.Json.mkObj [("schema", Lean.Json.str "base"
 -- an unattestable selection adds nothing; `PolicyCheck.fullRun_attestable` refuses it at build time
 #guard (attestFullRun { step1 := some .fallback } base).compress == base.compress
 
+/-! ### The build-time rules: each accepts what it should, and refuses with its own message
+
+`PolicyCheck`'s theorems apply these rules to the submitted declarations. The shipped policy
+declares nothing, so the refusals are pinned here on explicit values. -/
+
+open Shor.OptIn
+
+#guard attestable .reference
+#guard attestable FullRunDesign.quotientExact
+#guard attestable { data := some ⟨.catalytic, .exact⟩ }
+#guard !attestable { exponent := some ⟨.rossSelinger, .exact⟩ }
+#guard !attestable { step1 := some .fallback }
+#guard !attestable { multiplier := .quotientStream, data := some ⟨.catalytic, .exact⟩ }
+#guard exclusive FullRunDesign.quotientExact .rossSelinger
+#guard exclusive .reference .catalyticB2
+#guard !exclusive FullRunDesign.quotientExact .catalyticB2
+#guard semiclassicalOnly FullRunDesign.quotientExact .semiclassical
+#guard semiclassicalOnly .reference .coherent
+#guard !semiclassicalOnly FullRunDesign.quotientExact .coherent
+
+example : attestable FullRunDesign.quotientExact = true := by full_run_attestable_check
+example : exclusive .reference .catalyticB2 = true := by full_run_exclusive_check
+example : semiclassicalOnly FullRunDesign.quotientExact .semiclassical = true := by
+  full_run_semiclassical_check
+
+/-- error: submittedFullRunDesign is refused: it is not one of the qualified profiles (Shor.FullRunDesign.qualified), and it cannot be declared as a design body either. A body carries only the data, work and scratch QFT choices on the reference multiplier topology: remove the multiplier topology, rotation backends, phase-product steps and the exponent family (a full run has no exponent register), or use a qualified profile. -/
+#guard_msgs in
+example : attestable { exponent := some ⟨.rossSelinger, .exact⟩ } = true := by
+  full_run_attestable_check
+
+/-- error: submittedFullRunDesign and submittedPrimitive are both set, and that pair is not qualified: remove one of them. -/
+#guard_msgs in
+example : exclusive FullRunDesign.quotientExact .catalyticB2 = true := by
+  full_run_exclusive_check
+
+/-- error: submittedFullRunDesign is refused: a full run is priced on the semiclassical readout. Set `readout := .semiclassical` in submittedDesign, or remove submittedFullRunDesign. -/
+#guard_msgs in
+example : semiclassicalOnly FullRunDesign.quotientExact .coherent = true := by
+  full_run_semiclassical_check
+
 end Shor.OptInTests

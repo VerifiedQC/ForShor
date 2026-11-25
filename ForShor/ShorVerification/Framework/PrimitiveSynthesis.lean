@@ -30,7 +30,12 @@ def refuseOptional (name sourceModule : Name) (why : String) : CommandElabM Unit
   if env.contains name || (env.setExporting false).contains (mkPrivateNameCore sourceModule name) then
     throwError "{why}"
 
-/-- Which board a primitive selection is attested on. -/
+open Lean Elab Tactic in
+/-- `decide +kernel`, but a failure is reported as `why` instead of as a failed `decide`. -/
+def kernelOrRefuse (why : String) : TacticM Unit := do
+  try evalTactic (← `(tactic| decide +kernel)) catch _ => throwError "{why}"
+
+/-- Which board a primitive selection is declared on. -/
 inductive AttestScope where
   | pp | ptp
 
@@ -40,7 +45,8 @@ def AttestScope.label : AttestScope → String
 
 namespace PrimitiveSynthesis
 
-/-- The document, with the selection attested unless it is the default. -/
+/-- The document, with the selection declared unless it is the default. The label is the
+submitter's declaration: nothing here proves the price. -/
 def attest (choice : PrimitiveSynthesis) (scope : AttestScope) (out : Lean.Json) : Lean.Json :=
   let label := match choice with
     | .rossSelinger => none

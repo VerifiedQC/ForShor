@@ -521,7 +521,7 @@ window.GRAPH = {
     "Framework/Semantics",
     "Framework/ToomCookTable.lean"
    ],
-   "declCount": 335,
+   "declCount": 337,
    "fileCount": 21,
    "fsPath": "Framework",
    "kind": "folder",
@@ -778,123 +778,128 @@ window.GRAPH = {
      "name": "Shor.ErrorCeiling"
     },
     {
+     "kind": "def",
+     "line": 46,
+     "name": "Shor.ErrorCeiling.canon"
+    },
+    {
      "kind": "inductive",
-     "line": 51,
+     "line": 56,
      "name": "Shor.QftTarget"
     },
     {
      "kind": "structure",
-     "line": 55,
+     "line": 60,
      "name": "Shor.QftChoice"
     },
     {
      "kind": "def",
-     "line": 66,
+     "line": 71,
      "name": "Shor.QftChoice.json"
     },
     {
      "kind": "inductive",
-     "line": 74,
+     "line": 79,
      "name": "Shor.PhaseBackend"
     },
     {
      "kind": "inductive",
-     "line": 78,
+     "line": 83,
      "name": "Shor.RotationBackend"
     },
     {
      "kind": "structure",
-     "line": 84,
+     "line": 92,
      "name": "Shor.FullRunDesign"
     },
     {
      "kind": "def",
-     "line": 103,
+     "line": 111,
      "name": "Shor.FullRunDesign.reference"
     },
     {
      "kind": "def",
-     "line": 105,
+     "line": 113,
      "name": "Shor.ceil25e5"
     },
     {
      "kind": "def",
-     "line": 106,
+     "line": 114,
      "name": "Shor.exactDirect"
     },
     {
      "kind": "def",
-     "line": 107,
+     "line": 115,
      "name": "Shor.bandedDirect"
     },
     {
      "kind": "def",
-     "line": 108,
+     "line": 116,
      "name": "Shor.apxCatalytic"
     },
     {
      "kind": "def",
-     "line": 110,
+     "line": 118,
      "name": "Shor.FullRunDesign.quotientExact"
     },
     {
      "kind": "def",
-     "line": 113,
+     "line": 121,
      "name": "Shor.FullRunDesign.quotientCatalytic"
     },
     {
      "kind": "def",
-     "line": 116,
+     "line": 124,
      "name": "Shor.FullRunDesign.quotientBandedDataCatalyticWork"
     },
     {
      "kind": "def",
-     "line": 119,
+     "line": 127,
      "name": "Shor.FullRunDesign.quotientFallbackDataCatalyticWork"
     },
     {
      "kind": "def",
-     "line": 122,
+     "line": 130,
      "name": "Shor.FullRunDesign.quotientStep2Fallback"
     },
     {
      "kind": "def",
-     "line": 125,
+     "line": 133,
      "name": "Shor.FullRunDesign.splitStep4Kicks"
     },
     {
      "kind": "def",
-     "line": 129,
+     "line": 137,
      "name": "Shor.FullRunDesign.splitStep2FallbackStep4Kicks"
     },
     {
      "kind": "def",
-     "line": 135,
+     "line": 143,
      "name": "Shor.FullRunDesign.qualified"
     },
     {
      "kind": "def",
-     "line": 147,
+     "line": 155,
      "name": "Shor.FullRunDesign.label?"
     },
     {
      "kind": "def",
-     "line": 154,
+     "line": 162,
      "name": "Shor.FullRunDesign.compiledSelection?"
     },
     {
      "kind": "def",
-     "line": 182,
+     "line": 190,
      "name": "Shor.FullRunDesign.qftOnly"
     },
     {
      "kind": "def",
-     "line": 195,
+     "line": 203,
      "name": "Shor.FullRunDesign.json"
     },
     {
      "kind": "def",
-     "line": 204,
+     "line": 212,
      "name": "Shor.FullRunDesign.body?"
     }
    ],
@@ -905,7 +910,7 @@ window.GRAPH = {
    ],
    "imports": [],
    "kind": "file",
-   "lines": 207,
+   "lines": 215,
    "name": "FullRunDesign.lean",
    "path": "Framework/FullRunDesign.lean"
   },
@@ -933,12 +938,12 @@ window.GRAPH = {
     },
     {
      "kind": "def",
-     "line": 232,
+     "line": 241,
      "name": "Shor.apx1e6"
     },
     {
      "kind": "def",
-     "line": 234,
+     "line": 243,
      "name": "Shor.allFour"
     }
    ],
@@ -949,7 +954,7 @@ window.GRAPH = {
     "Framework/FullRunDesign.lean"
    ],
    "kind": "file",
-   "lines": 296,
+   "lines": 305,
    "name": "FullRunDesignTests.lean",
    "path": "Framework/FullRunDesignTests.lean"
   },
@@ -1593,18 +1598,23 @@ window.GRAPH = {
      "name": "Shor.refuseOptional"
     },
     {
+     "kind": "def",
+     "line": 35,
+     "name": "Shor.kernelOrRefuse"
+    },
+    {
      "kind": "inductive",
-     "line": 34,
+     "line": 39,
      "name": "Shor.AttestScope"
     },
     {
      "kind": "def",
-     "line": 37,
+     "line": 42,
      "name": "Shor.AttestScope.label"
     },
     {
      "kind": "def",
-     "line": 44,
+     "line": 50,
      "name": "Shor.PrimitiveSynthesis.attest"
     }
    ],
@@ -1613,7 +1623,7 @@ window.GRAPH = {
    "importedBy": [],
    "imports": [],
    "kind": "file",
-   "lines": 56,
+   "lines": 62,
    "name": "PrimitiveSynthesis.lean",
    "path": "Framework/PrimitiveSynthesis.lean"
   },

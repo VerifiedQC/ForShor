@@ -97,6 +97,37 @@ def resolved : SubmissionDesign := by_elab
 
 end Shor.SubmissionDesign
 
+/-! The opt-in rules are defined before the policy namespace, so the names below cannot be shadowed by a
+submission. -/
+
+namespace Shor.OptIn
+
+/-- A full-run design is attestable: a qualified profile, or a design body the consumer can read
+(QFT backend axis on the reference topology). Anything else is refused, never priced. -/
+def attestable (d : _root_.Shor.FullRunDesign) : Bool := d.label?.isSome || d.body?.isSome
+
+/-- Full-run synthesis and a standalone primitive are not jointly qualified. -/
+def exclusive (d : _root_.Shor.FullRunDesign) (p : _root_.Shor.PrimitiveSynthesis) : Bool :=
+  d == .reference || p == .rossSelinger
+
+/-- A full-run design is priced on the semiclassical readout only. -/
+def semiclassicalOnly (d : _root_.Shor.FullRunDesign) (r : _root_.Shor.SubmissionReadout) : Bool :=
+  d == .reference || r == .semiclassical
+
+open Lean Elab Tactic in
+elab "full_run_attestable_check" : tactic => _root_.Shor.kernelOrRefuse
+  "submittedFullRunDesign is refused: it is not one of the qualified profiles (Shor.FullRunDesign.qualified), and it cannot be declared as a design body either. A body carries only the data, work and scratch QFT choices on the reference multiplier topology: remove the multiplier topology, rotation backends, phase-product steps and the exponent family (a full run has no exponent register), or use a qualified profile."
+
+open Lean Elab Tactic in
+elab "full_run_exclusive_check" : tactic => _root_.Shor.kernelOrRefuse
+  "submittedFullRunDesign and submittedPrimitive are both set, and that pair is not qualified: remove one of them."
+
+open Lean Elab Tactic in
+elab "full_run_semiclassical_check" : tactic => _root_.Shor.kernelOrRefuse
+  "submittedFullRunDesign is refused: a full run is priced on the semiclassical readout. Set `readout := .semiclassical` in submittedDesign, or remove submittedFullRunDesign."
+
+end Shor.OptIn
+
 namespace PolicySubmission
 
 open Shor Operations Shor.Audit
@@ -130,28 +161,23 @@ def resolvedFullRun : _root_.Shor.FullRunDesign := by_elab
 /-! ### Opt-in combinations, refused at build time
 
 These are properties of the declarations alone, so the kernel decides them here, as PTP's
-`check` is decided, and `lake build PolicySubmission` fails for a policy that breaks one. Only the
-checks that depend on command-line flags stay in `PolicyMain.lean`. Each theorem fails as
-`decide` failure; the statement names what was violated. -/
+`check` is decided, and `lake build PolicySubmission` fails for a policy that breaks one, with a
+message that says which rule. Only the checks that depend on command-line flags stay in
+`PolicyMain.lean`. The rules are plain `Bool`s so that `PolicyTests` can pin each refusal. -/
 
-/-- A selected full-run design is attestable: a qualified profile, or a design body the consumer
-can read (QFT backend axis on the reference topology). Anything else is refused, never priced. -/
 theorem fullRun_attestable :
-    (_root_.PolicySubmission.resolvedFullRun.label?.isSome
-      || _root_.PolicySubmission.resolvedFullRun.body?.isSome) = true := by
-  decide +kernel
+    _root_.Shor.OptIn.attestable _root_.PolicySubmission.resolvedFullRun = true := by
+  full_run_attestable_check
 
-/-- Full-run synthesis and a standalone primitive are not jointly qualified. -/
 theorem fullRun_primitive_exclusive :
-    (_root_.PolicySubmission.resolvedFullRun == _root_.Shor.FullRunDesign.reference
-      || _root_.PolicySubmission.resolvedPrimitive == _root_.Shor.PrimitiveSynthesis.rossSelinger) = true := by
-  decide +kernel
+    _root_.Shor.OptIn.exclusive _root_.PolicySubmission.resolvedFullRun
+      _root_.PolicySubmission.resolvedPrimitive = true := by
+  full_run_exclusive_check
 
-/-- A full-run design is priced on the semiclassical readout only. -/
 theorem fullRun_semiclassical :
-    (_root_.PolicySubmission.resolvedFullRun == _root_.Shor.FullRunDesign.reference
-      || _root_.Shor.SubmissionDesign.resolved.readout == _root_.Shor.SubmissionReadout.semiclassical) = true := by
-  decide +kernel
+    _root_.Shor.OptIn.semiclassicalOnly _root_.PolicySubmission.resolvedFullRun
+      _root_.Shor.SubmissionDesign.resolved.readout = true := by
+  full_run_semiclassical_check
 
 #assert_axioms _root_.PolicySubmission.fullRun_attestable
 #assert_axioms _root_.PolicySubmission.fullRun_primitive_exclusive

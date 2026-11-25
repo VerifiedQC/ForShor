@@ -86,9 +86,9 @@ def submittedFullRunDesign : Shor.FullRunDesign := Shor.FullRunDesign.quotientCa
 What `lake build PolicySubmission` refuses, as kernel-checked theorems in `PolicyCheck.lean`:
 a full-run design that is neither one of the eight qualified profiles (`FullRunDesign.qualified`) nor a
 QFT-backend-only design on the reference topology; a full-run design together with a non-default
-primitive; a full-run design with a coherent saved readout. The `exponent` family is not accepted, since
+primitive; a full-run design with a coherent saved readout, each with a message naming the rule. The `exponent` family is not accepted, since
 a full run is priced on the semiclassical readout, which has no exponent register. A ceiling is compared
-as written: `250e-6` is not `25e-5`. What the executable refuses, because it depends on flags: a full-run
+as a number and printed in lowest terms: `250e-6` is `25e-5`. What the executable refuses, because it depends on flags: a full-run
 design needs `--balanced --readout submitted`; a non-default primitive needs `--balanced` or `--exact-widths`;
 neither works with `--width-table`.
 

@@ -396,7 +396,7 @@ def optInRefusal (fullRun : _root_.Shor.FullRunDesign) (primitive : _root_.Shor.
     some "primitive synthesis requires exact widths and a checked policy export"
   else none
 
-/-- Attest the full-run selection in `doc`. `reference` is "no design at all": no key, not an
+/-- Declare the full-run selection in `doc` (a submitter declaration, not a Lean-certified claim). `reference` is "no design at all": no key, not an
 empty design object. A qualified selection names its `profile`; an unqualified one carries its
 `design` body. They are alternatives, exactly one, as the consumer requires
 (`evaluation/export_v2/full_run_design.py` `design_of`: both at once is `profile-and-design`). -/

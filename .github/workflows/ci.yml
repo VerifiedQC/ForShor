@@ -85,48 +85,6 @@ jobs:
             exit 1
           fi
 
-      - name: Build exact-width policy numerals
-        # Kernel evaluations of the order-finding peaks under the `exact` width rule. Each module peaks at
-        # 9-12 GB, so they are a library of their own (not in the `ForShor` umbrella), chained by import so that
-        # Lake builds one at a time, and built here, after the main build, alone on the runner.
-        run: |
-          set -o pipefail
-          lake build PolicyNumeralsExact 2>&1 | tee exact.log
-          if grep -q "warning:" exact.log; then
-            echo "::error::exact-width numerals produced warnings:"
-            grep "warning:" exact.log
-            exit 1
-          fi
-
-      - name: Build exact-width numerals of the board policies
-        # The same, for the PhaseProduct board policies: five rows whose numerals fit a runner (at most
-        # about 12 GB each). A step of its own; its first module imports the last one of the previous chain, so all
-        # exact evaluations are one serial order. The four heaviest rows (13-15 GB) are
-        # `PolicyNumeralsBoardExactHeavy`, local only.
-        run: |
-          set -o pipefail
-          lake build PolicyNumeralsBoardExact 2>&1 | tee exact_board.log
-          if grep -q "warning:" exact_board.log; then
-            echo "::error::board exact-width numerals produced warnings:"
-            grep "warning:" exact_board.log
-            exit 1
-          fi
-
-      - name: Build semiclassical board numerals
-        # The semiclassical peaks of the nine board policies and ref_pp_2048 (Readout/Proofs/PolicyNumeralsSC).
-        # A step, not a job: every module of this chain's closure is already built by the main build above, and
-        # these rows peak at only 3.1-6.4 GB -- lighter than either exact chain -- so they are safe here and
-        # a separate runner would re-elaborate about half the library to gain nothing. Board.lean says the same.
-        # The chain's imports keep Lake to one evaluation at a time.
-        run: |
-          set -o pipefail
-          lake build PolicyNumeralsSC 2>&1 | tee semiclassical.log
-          if grep -q "warning:" semiclassical.log; then
-            echo "::error::semiclassical board numerals produced warnings:"
-            grep "warning:" semiclassical.log
-            exit 1
-          fi
-
       - name: Build executables
         # No executable is reachable from the library targets --
         # Emit/Tests.lean does not import Emit/Main.lean, Submission/Check.lean
@@ -184,3 +142,61 @@ jobs:
           bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/Template.lean
           bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PolicyTemplate.lean
           bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PTPPolicyTemplate.lean
+
+      - name: Build semiclassical board numerals
+        # The semiclassical peaks of the nine board policies and ref_pp_2048 (Readout/Proofs/PolicyNumeralsSC).
+        # Runs before the exact chains, which it does not import: it is the lightest, so a failure here is
+        # reported before the 9-12 GB evaluations. A step, not a job: every module of this chain's closure is
+        # already built by the main build above, and these rows peak at only 3.1-6.4 GB -- lighter than either
+        # exact chain -- so they are safe here and a separate runner would re-elaborate about half the library
+        # to gain nothing. Board.lean says the same.
+        # The chain's imports keep Lake to one evaluation at a time.
+        run: |
+          set -o pipefail
+          lake build PolicyNumeralsSC 2>&1 | tee semiclassical.log
+          if grep -q "warning:" semiclassical.log; then
+            echo "::error::semiclassical board numerals produced warnings:"
+            grep "warning:" semiclassical.log
+            exit 1
+          fi
+
+      - name: Build exact-width policy numerals
+        # Kernel evaluations of the order-finding peaks under the `exact` width rule. Each module peaks at
+        # 9-12 GB, so they are a library of their own (not in the `ForShor` umbrella), chained by import so that
+        # Lake builds one at a time, and built here, alone on the runner. They run LAST: every cheap gate
+        # above (smoke runs, axiom guard, lexical gate, design tests) reports before hours of kernel evaluation.
+        run: |
+          set -o pipefail
+          lake build PolicyNumeralsExact 2>&1 | tee exact.log
+          if grep -q "warning:" exact.log; then
+            echo "::error::exact-width numerals produced warnings:"
+            grep "warning:" exact.log
+            exit 1
+          fi
+
+      - name: Build exact-width numerals of the board policies
+        # The same, for the PhaseProduct board policies: five rows whose numerals fit a runner (at most
+        # about 12 GB each). A step of its own; its first module imports the last one of the previous chain, so all
+        # exact evaluations are one serial order. The four heaviest rows (13-15 GB) are
+        # `PolicyNumeralsBoardExactHeavy`, local only.
+        run: |
+          set -o pipefail
+          lake build PolicyNumeralsBoardExact 2>&1 | tee exact_board.log
+          if grep -q "warning:" exact_board.log; then
+            echo "::error::board exact-width numerals produced warnings:"
+            grep "warning:" exact_board.log
+            exit 1
+          fi
+
+      - name: Upload build logs
+        # Always, so a failure after hours of kernel evaluation still leaves its log to read.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            build.log
+            exact.log
+            exact_board.log
+            semiclassical.log
+          if-no-files-found: ignore

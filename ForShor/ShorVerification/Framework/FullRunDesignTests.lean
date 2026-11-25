@@ -168,15 +168,24 @@ Catches an `ErrorCeiling` equality that compares `units` only, which would make 
 #guard !((⟨25, 5, by decide, by decide, by decide⟩ : ErrorCeiling)
   == ⟨2, 5, by decide, by decide, by decide⟩)
 
-/-! A ceiling is compared *as written*: `250e-6` is the number `25e-5` but is not the ceiling a
-qualified bundle spells, so it is never that bundle and serializes to its own string. -/
+/-! A ceiling is compared as a number, in lowest terms: `250e-6` is `25e-5`, so it is the ceiling a
+qualified bundle spells, and it serializes the same way. Catches an equality or a serializer that
+sees the spelling and not the value, which would refuse a qualified design for its zeros. -/
+#guard (⟨25, 5, by decide, by decide, by decide⟩ : ErrorCeiling)
+  == ⟨250, 6, by decide, by decide, by decide⟩
+#guard (⟨5, 5, by decide, by decide, by decide⟩ : ErrorCeiling)
+  == ⟨50, 6, by decide, by decide, by decide⟩
 #guard !((⟨25, 5, by decide, by decide, by decide⟩ : ErrorCeiling)
-  == ⟨250, 6, by decide, by decide, by decide⟩)
+  == ⟨250, 7, by decide, by decide, by decide⟩)
+#guard ErrorCeiling.canon 6 250 == (25, 5)
+#guard ErrorCeiling.canon 5 25 == (25, 5)
+#guard ErrorCeiling.canon 2 10 == (1, 1)
+#guard ErrorCeiling.canon 60 (10 ^ 59) == (1, 1)
 #guard (({ multiplier := .quotientStream,
            data := some ⟨.catalytic, .approximate ⟨250, 6, by decide, by decide, by decide⟩⟩,
-           work := some apxCatalytic } : FullRunDesign)).label? == none
+           work := some apxCatalytic } : FullRunDesign)).label? == some "quotient-catalytic"
 #guard (QftChoice.json ⟨.rossSelinger, .approximate ⟨250, 6, by decide, by decide, by decide⟩⟩).compress
-  == "{\"backend\":\"ross_selinger\",\"max_error\":\"250e-6\",\"target\":\"approximate\"}"
+  == "{\"backend\":\"ross_selinger\",\"max_error\":\"25e-5\",\"target\":\"approximate\"}"
 
 /-! ## 7. `QftChoice.json` is the consumer's per-family contract, character for character
 
