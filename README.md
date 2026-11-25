@@ -339,7 +339,7 @@ lake build PolicyNumeralsBoardExactHeavy # the other four rows; needs 16 GB or m
 lake build PolicyNumeralsSC              # the semiclassical peaks of the nine board rows and ref_pp_2048 (3.1-6.4 GB peak each)
 ```
 
-CI builds all three of the non-heavy chains, each in a step of its own after the main build; the scan-rule
+CI builds every chain except `PolicyNumeralsBoardExactHeavy`, each in a step of its own after the main build; the scan-rule
 numerals and the policies themselves are part of the `ForShor` umbrella. The peak
 resident memory of the kernel evaluation is what limits these, which is why the
 exact ones are not in the umbrella.

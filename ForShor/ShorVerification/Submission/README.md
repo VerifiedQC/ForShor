@@ -72,6 +72,32 @@ The guarded balanced arithmetic uses the existing templates. On the reference la
 circuit equals the every-site-split version (`balancedUSemiclassicalProgramAt_circuit_eq`,
 `Balanced.referenceFits_default`), which is the version used by the width-only peak formula.
 
+### Synthesis opt-ins
+
+Two more optional, public declarations go inside `namespace PolicySubmission` in the same file, read
+by exact name like `submittedDesign` (absent chooses the default; a `private` one, one of another
+type, or one that depends on an axiom outside the allowlist is an error):
+
+```lean
+def submittedPrimitive : Shor.PrimitiveSynthesis := .catalyticB2   -- or .adaptiveB3; default .rossSelinger
+def submittedFullRunDesign : Shor.FullRunDesign := Shor.FullRunDesign.quotientCatalytic   -- default .reference
+```
+
+What `lake build PolicySubmission` refuses, as kernel-checked theorems in `PolicyCheck.lean`:
+a full-run design that is neither one of the eight qualified profiles (`FullRunDesign.qualified`) nor a
+QFT-backend-only design on the reference topology; a full-run design together with a non-default
+primitive; a full-run design with a coherent saved readout. The `exponent` family is not accepted, since
+a full run is priced on the semiclassical readout, which has no exponent register. A ceiling is compared
+as written: `250e-6` is not `25e-5`. What the executable refuses, because it depends on flags: a full-run
+design needs `--balanced --readout submitted`; a non-default primitive needs `--balanced` or `--exact-widths`;
+neither works with `--width-table`.
+
+The output then carries `submitted_full_run` (`profile`, or `design` for a body, never both) and
+`submitted_primitive`. These are **declarations**, not Lean-certified claims: this repository attests
+the typed choice, and the circuit and its price are checked by the consumer (the results engine), which
+refuses any combination it cannot price. PhaseTripleProduct policies take `submittedPrimitive` only;
+`PTPPolicyCheck.lean` refuses `submittedFullRunDesign` at build time.
+
 ## PhaseTripleProduct policy submissions
 
 A PhaseTripleProduct policy (a width-indexed list of `Shor.PTP.PTPTable`s, `2 ≤ k ≤ 8` per band) is submitted the same way as

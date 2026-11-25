@@ -164,6 +164,12 @@ jobs:
         # Classical.choice and Quot.sound, checked rather than asserted.
         run: lake env lean scripts/AxiomCheck.lean
 
+      - name: Full-run design tests
+        # Not in any lean_lib (a lib in the PolicySubmission closure would widen every submission's
+        # build), so without this step the file's #guards would never run. It imports only
+        # Framework/FullRunDesign.lean, which the Build step has already compiled.
+        run: lake env lean ForShor/ShorVerification/Framework/FullRunDesignTests.lean
+
       - name: Statement closure (PhaseTripleProduct)
         # Every constant the PTP claims reach must live in Mathlib/core, Framework/ or a
         # Statement.lean, so reading Statement.lean and Main.lean is enough to know what is claimed.
