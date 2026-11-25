@@ -12,8 +12,9 @@ and per-step phase backend is expressible.
 
 The *accepted set* is deliberately narrower than the type. `FullRunDesign.qualified` lists the
 eight selections that have been qualified, and `FullRunDesign.label?` is `none` for everything
-else, which the submission executable refuses. Widening the accepted set is a separate change
-that needs a price path and a per-point witness; it is not done here.
+else. The policy check (`PolicyCheck.fullRun_attestable`) refuses at build time anything that is
+neither labelled nor serializable by `body?`. Widening the accepted set is a separate change that
+needs a price path and a per-point witness; it is not done here.
 -/
 
 inductive FullRunMultiplier where
@@ -39,11 +40,18 @@ structure ErrorCeiling where
   belowOne : units < 10 ^ scale
   scaleBound : scale ≤ 60
 
-/-- Equality on the two data fields only. The remaining fields are proofs, so by proof
-    irrelevance two ceilings agreeing on `units` and `scale` are equal; comparing the proofs
-    would be both impossible to derive and meaningless. -/
+/-- The ceiling in lowest terms: trailing zeros of `units` are moved into `scale`, so `250e-6` and
+    `25e-5` (the same number) become the same pair. Structural on `scale`, and `units < 10 ^ scale`
+    keeps `scale ≥ 1` throughout. -/
+def ErrorCeiling.canon : Nat → Nat → Nat × Nat
+  | 0, u => (u, 0)
+  | s + 1, u => if u != 0 && u % 10 == 0 then ErrorCeiling.canon s (u / 10) else (u, s + 1)
+
+/-- Equality of the numbers: ceilings are compared in lowest terms, so `250e-6` is `25e-5`. The
+    remaining fields are proofs, so by proof irrelevance two ceilings with the same value are
+    equal; comparing the proofs would be both impossible to derive and meaningless. -/
 instance : BEq ErrorCeiling where
-  beq a b := a.units == b.units && a.scale == b.scale
+  beq a b := ErrorCeiling.canon a.scale a.units == ErrorCeiling.canon b.scale b.units
 
 inductive QftTarget where
   | exact | approximate (ceiling : ErrorCeiling)
@@ -57,7 +65,7 @@ structure QftChoice where
 /-- Byte for byte the consumer's per-family QFT choice. This shape *is* the
     contract the consumer parses: `evaluation/export_v2/qft_overlay.py` `parse_design` accepts
     exactly `{"backend", "target"}` plus `"max_error"` iff the target is `"approximate"`, and the
-    ceiling is spelled `<units>e-<scale>` because `parse_max_error` accepts that form and
+    ceiling is spelled `<units>e-<scale>` in lowest terms (`250e-6` is written `25e-5`) because `parse_max_error` accepts that form and
     nothing else -- not a float, not `1.5e-6`, not `1E-6`. Serializing the ceiling through a
     floating conversion would be refused there, so it is written out of `Nat`s. -/
 def QftChoice.json (q : QftChoice) : Json :=
@@ -65,7 +73,7 @@ def QftChoice.json (q : QftChoice) : Json :=
   match q.target with
   | .exact => Json.mkObj (common ++ [("target", Json.str "exact")])
   | .approximate e => Json.mkObj (common ++ [("target", Json.str "approximate"),
-      ("max_error", Json.str s!"{e.units}e-{e.scale}")])
+      ("max_error", Json.str s!"{(ErrorCeiling.canon e.scale e.units).1}e-{(ErrorCeiling.canon e.scale e.units).2}")])
 
 /-- The phase-product route for one step. Named as in the consumer's per-step backend field. -/
 inductive PhaseBackend where
@@ -77,7 +85,10 @@ inductive RotationBackend where
   deriving BEq
 
 /-- A typed full-run selection, separate from the table policy and standalone synthesis.
-    The verifier attests the choice; a separate circuit checker must qualify its implementation. -/
+    The submitter *declares* the choice: this repository checks its type and which combinations it
+    admits, not that a circuit realises it. The consumer prices and checks the circuit, and a
+    separate circuit checker must qualify the implementation. Nothing here is a Lean proof about
+    the circuit. -/
 structure FullRunDesign where
   multiplier : FullRunMultiplier := .reference
   data : Option QftChoice := none
@@ -127,7 +138,7 @@ def FullRunDesign.splitStep2FallbackStep4Kicks : FullRunDesign :=
   { FullRunDesign.splitStep4Kicks with step2 := some .fallback }
 
 /-- The qualified selections, in the order they were qualified, each with the profile name the
-    document attests. A well-typed design that is not on this list is refused, never priced and
+    document declares. A well-typed design that is not on this list is refused, never priced and
     never labelled. -/
 def FullRunDesign.qualified : List (FullRunDesign × String) :=
   [(.reference, "reference"),
@@ -153,8 +164,8 @@ def FullRunDesign.compiledSelection? (d : FullRunDesign) : Option FullRunDesign 
 
 /-! ## The design body
 
-A qualified selection is attested by its profile label. A well-typed selection that is *not*
-qualified has no label, and rather than naming nothing it attests its own design BODY: the
+A qualified selection is declared by its profile label. A well-typed selection that is *not*
+qualified has no label, and rather than naming nothing it declares its own design BODY: the
 serialization below, inside the envelope the compiled exports already use.
 
 Only the QFT BACKEND AXIS is serialized -- the four families' `backend`/`target` choices, on the
@@ -166,16 +177,18 @@ the `rotation_backend` refusal). Emitting them would turn a priceable design int
 
 /-- Everything outside the QFT backend axis that this design could set, and that `json` does not
     serialize: the multiplier topology, the four per-family rotation backends and the four
-    per-step phase-product routes.
+    per-step phase-product routes. The `exponent` family is excluded as well: a full-run design
+    is priced on the semiclassical readout, which has no exponent register, so an exponent QFT
+    choice would declare a choice that cannot take effect.
 
     A design setting any of them must NOT be serialized, and `body?` below is the only way to
     reach `json` for that reason. The consumer reads an absent `modmul` as the reference topology
     (`full_run_design.py` `_design_of_body`: `body.get(MULTIPLIER_KEY) or MULTIPLIER_REFERENCE`),
     so emitting a body for a `quotientStream` design would price a quotient-stream run on
-    REFERENCE-topology numbers -- the silent default the release forbids. It is refused in
-    `PolicyMain` instead. -/
+    REFERENCE-topology numbers -- the silent default the release forbids. It is refused at build time
+    (`PolicyCheck.fullRun_attestable`) instead. -/
 def FullRunDesign.qftOnly (d : FullRunDesign) : Bool :=
-  d.multiplier == .reference
+  d.multiplier == .reference && d.exponent.isNone
     && d.dataRotations.isNone && d.workRotations.isNone
     && d.scratchRotations.isNone && d.exponentRotations.isNone
     && d.step1.isNone && d.step2.isNone && d.step4.isNone && d.step5.isNone
@@ -193,7 +206,7 @@ def FullRunDesign.json (d : FullRunDesign) : Json :=
   Json.mkObj [("schema", Json.str "forshor.design-local/v1"),
     ("qft", Json.mkObj (families.filterMap fun (name, q) => q.map fun v => (name, v.json)))]
 
-/-- The body to attest for an unlabelled selection, or `none` when the design sets an axis
+/-- The body to declare for an unlabelled selection, or `none` when the design sets an axis
     `json` does not serialize. The caller refuses on `none`; it must never serialize the design
     anyway, and must never fall back to the reference price. -/
 def FullRunDesign.body? (d : FullRunDesign) : Option Json :=

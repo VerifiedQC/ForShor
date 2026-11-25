@@ -56,5 +56,5 @@ end PTPPolicySubmission
 
 def main : IO UInt32 := do
   let doc := _root_.PTPPolicySubmission.policyDoc _root_.PTPPolicySubmission.policy
-  IO.println (_root_.Shor.PrimitiveSynthesis.attest _root_.PTPPolicySubmission.resolvedPrimitive "ptp" doc).pretty
+  IO.println (_root_.Shor.PrimitiveSynthesis.attest _root_.PTPPolicySubmission.resolvedPrimitive .ptp doc).pretty
   return 0

@@ -187,3 +187,197 @@ error: 'Shor.SubmissionDesignTests.uncheckedDesign' is not kernel-checked. Axiom
 #assert_axioms _root_.Shor.SubmissionDesignTests.uncheckedDesign
 
 end Shor.SubmissionDesignTests
+
+/-! ## The other optional declarations, and the opt-in combinations
+
+The same resolver (`Shor.resolveOptional`) reads `submittedPrimitive` and
+`submittedFullRunDesign`, so each is pinned here the way `submittedDesign` is above: absent
+chooses the default, a declared value is read, and a private, wrongly typed or unchecked one is an
+error. `optInRefusal` and `attestFullRun` are pure, so every refusal and every printed shape is
+pinned without building a second policy. -/
+
+namespace Shor.OptInTests
+
+def explicitB2 : PrimitiveSynthesis := .catalyticB2
+def explicitFullRun : FullRunDesign := FullRunDesign.quotientExact
+
+private def noPrimitive : PrimitiveSynthesis := by_elab
+  resolveOptional ``Shor.PrimitiveSynthesis ``Shor.PrimitiveSynthesis.rossSelinger
+    `Shor.OptInTests.absent
+
+private def b2 : PrimitiveSynthesis := by_elab
+  resolveOptional ``Shor.PrimitiveSynthesis ``Shor.PrimitiveSynthesis.rossSelinger
+    `Shor.OptInTests.explicitB2
+
+example : noPrimitive = .rossSelinger := rfl
+example : b2 = .catalyticB2 := rfl
+
+private def noFullRun : FullRunDesign := by_elab
+  resolveOptional ``Shor.FullRunDesign ``Shor.FullRunDesign.reference `Shor.OptInTests.absent
+
+private def someFullRun : FullRunDesign := by_elab
+  resolveOptional ``Shor.FullRunDesign ``Shor.FullRunDesign.reference `Shor.OptInTests.explicitFullRun
+
+#guard noFullRun == FullRunDesign.reference
+#guard someFullRun == FullRunDesign.quotientExact
+
+def wrongType : Nat := 1
+
+/-- error: optional declaration 'Shor.OptInTests.wrongType' must have type Shor.PrimitiveSynthesis -/
+#guard_msgs in
+example : PrimitiveSynthesis := by_elab
+  resolveOptional ``Shor.PrimitiveSynthesis ``Shor.PrimitiveSynthesis.rossSelinger `Shor.OptInTests.wrongType
+
+/-- error: optional declaration 'Shor.OptInTests.wrongType' must have type Shor.FullRunDesign -/
+#guard_msgs in
+example : FullRunDesign := by_elab
+  resolveOptional ``Shor.FullRunDesign ``Shor.FullRunDesign.reference `Shor.OptInTests.wrongType
+
+private def hiddenB2 : PrimitiveSynthesis := .catalyticB2
+private def hiddenFullRun : FullRunDesign := FullRunDesign.quotientExact
+
+/-- error: optional declaration 'Shor.OptInTests.hiddenB2' must be public; remove 'private' to opt in -/
+#guard_msgs in
+example : PrimitiveSynthesis := by_elab
+  resolveOptional ``Shor.PrimitiveSynthesis ``Shor.PrimitiveSynthesis.rossSelinger `Shor.OptInTests.hiddenB2
+
+/-- error: optional declaration 'Shor.OptInTests.hiddenFullRun' must be public; remove 'private' to opt in -/
+#guard_msgs in
+example : FullRunDesign := by_elab
+  resolveOptional ``Shor.FullRunDesign ``Shor.FullRunDesign.reference `Shor.OptInTests.hiddenFullRun
+
+axiom uncheckedFullRun : FullRunDesign
+
+noncomputable def uncheckedFullRunDesign : FullRunDesign := by_elab
+  resolveOptional ``Shor.FullRunDesign ``Shor.FullRunDesign.reference `Shor.OptInTests.uncheckedFullRun
+
+/--
+error: 'Shor.OptInTests.uncheckedFullRunDesign' is not kernel-checked. Axioms outside the allowlist (propext, Classical.choice, Quot.sound):
+  Shor.OptInTests.uncheckedFullRun  -- declared by the submission
+-/
+#guard_msgs in
+#assert_axioms _root_.Shor.OptInTests.uncheckedFullRunDesign
+
+/-! `refuseOptional` is what keeps full-run synthesis off the PhaseTripleProduct board: it fails for
+a public or a private declaration and is silent for an absent one. -/
+
+def declared : Nat := 1
+private def declaredPrivately : Nat := 1
+
+run_cmd (refuseOptional `Shor.OptInTests.neverDeclared
+  `ForShor.ShorVerification.Submission.PolicyTests "refused")
+
+/-- error: refused -/
+#guard_msgs in
+run_cmd (refuseOptional `Shor.OptInTests.declared
+  `ForShor.ShorVerification.Submission.PolicyTests "refused")
+
+/-- error: refused -/
+#guard_msgs in
+run_cmd (refuseOptional `Shor.OptInTests.declaredPrivately
+  `ForShor.ShorVerification.Submission.PolicyTests "refused")
+
+/-! ### `optInRefusal`: every refusal, and the combinations that pass -/
+
+-- args: fullRun primitive submitted balanced exact widthTable
+#guard (optInRefusal .reference .rossSelinger false false false false).isNone
+#guard (optInRefusal FullRunDesign.quotientExact .rossSelinger true true true false).isNone
+#guard (optInRefusal FullRunDesign.quotientExact .rossSelinger false true true false).isSome
+#guard (optInRefusal FullRunDesign.quotientExact .rossSelinger true false true false).isSome
+#guard (optInRefusal FullRunDesign.quotientExact .rossSelinger true true true true).isSome
+#guard (optInRefusal .reference .catalyticB2 false true true false).isNone
+#guard (optInRefusal .reference .catalyticB2 false false false false).isSome
+#guard (optInRefusal .reference .adaptiveB3 false true true true).isSome
+
+/-! ### `attestFullRun`: the three printed shapes -/
+
+private def base : Lean.Json := Lean.Json.mkObj [("schema", Lean.Json.str "base")]
+
+-- `reference` is no design at all: the document is unchanged, no key.
+#guard (attestFullRun .reference base).compress == base.compress
+-- a qualified selection names its profile, and carries no design body
+#guard (attestFullRun FullRunDesign.quotientExact base).compress
+  == "{\"schema\":\"base\",\"submitted_full_run\":{\"profile\":\"quotient-exact\","
+     ++ "\"schema\":\"forshor.full-run-selection/v1\"}}"
+-- an unqualified, body-serializable selection carries its design, and no profile
+#guard (attestFullRun { data := some ⟨.catalytic, .exact⟩ } base).compress
+  == "{\"schema\":\"base\",\"submitted_full_run\":{\"design\":{\"qft\":{\"data\":"
+     ++ "{\"backend\":\"catalytic\",\"target\":\"exact\"}},\"schema\":\"forshor.design-local/v1\"},"
+     ++ "\"schema\":\"forshor.full-run-selection/v1\"}}"
+-- an unattestable selection adds nothing; `PolicyCheck.fullRun_attestable` refuses it at build time
+#guard (attestFullRun { step1 := some .fallback } base).compress == base.compress
+
+/-! ### The resolved value is the kernel value
+
+`@[implemented_by]` makes compiled code differ from the value the kernel checked. A resolver that
+returned the declaration's *name* would hand `lake exe` the compiled value, so the build-time rules
+below would judge one design while the output named another. The first guard is the control: it
+shows the name does follow the compiled code (so the second is not vacuous). -/
+
+def evilDesign : FullRunDesign := { exponent := some ⟨.rossSelinger, .exact⟩ }
+@[implemented_by evilDesign] def mismatched : FullRunDesign := FullRunDesign.quotientExact
+@[irreducible, implemented_by evilDesign] def mismatchedIrreducible : FullRunDesign :=
+  FullRunDesign.quotientExact
+
+private def byName : FullRunDesign := by_elab pure (Lean.mkConst `Shor.OptInTests.mismatched)
+
+private def resolvedMismatch : FullRunDesign := by_elab
+  resolveOptional ``Shor.FullRunDesign ``Shor.FullRunDesign.reference `Shor.OptInTests.mismatched
+
+private def resolvedMismatchIrreducible : FullRunDesign := by_elab
+  resolveOptional ``Shor.FullRunDesign ``Shor.FullRunDesign.reference
+    `Shor.OptInTests.mismatchedIrreducible
+
+/-- info: none -/
+#guard_msgs in
+#eval byName.label?
+
+/-- info: some "quotient-exact" -/
+#guard_msgs in
+#eval resolvedMismatch.label?
+
+/-- info: some "quotient-exact" -/
+#guard_msgs in
+#eval resolvedMismatchIrreducible.label?
+
+/-! ### The build-time rules: each accepts what it should, and refuses with its own message
+
+`PolicyCheck`'s theorems apply these rules to the submitted declarations. The shipped policy
+declares nothing, so the refusals are pinned here on explicit values. -/
+
+open Shor.OptIn
+
+#guard attestable .reference
+#guard attestable FullRunDesign.quotientExact
+#guard attestable { data := some ⟨.catalytic, .exact⟩ }
+#guard !attestable { exponent := some ⟨.rossSelinger, .exact⟩ }
+#guard !attestable { step1 := some .fallback }
+#guard !attestable { multiplier := .quotientStream, data := some ⟨.catalytic, .exact⟩ }
+#guard exclusive FullRunDesign.quotientExact .rossSelinger
+#guard exclusive .reference .catalyticB2
+#guard !exclusive FullRunDesign.quotientExact .catalyticB2
+#guard semiclassicalOnly FullRunDesign.quotientExact .semiclassical
+#guard semiclassicalOnly .reference .coherent
+#guard !semiclassicalOnly FullRunDesign.quotientExact .coherent
+
+example : attestable FullRunDesign.quotientExact = true := by full_run_attestable_check
+example : exclusive .reference .catalyticB2 = true := by full_run_exclusive_check
+example : semiclassicalOnly FullRunDesign.quotientExact .semiclassical = true := by
+  full_run_semiclassical_check
+
+/-- error: submittedFullRunDesign is refused: it is not one of the qualified profiles (Shor.FullRunDesign.qualified), and it cannot be declared as a design body either. A body carries only the data, work and scratch QFT choices on the reference multiplier topology: remove the multiplier topology, rotation backends, phase-product steps and the exponent family (a full run has no exponent register), or use a qualified profile. -/
+#guard_msgs in
+example : attestable { exponent := some ⟨.rossSelinger, .exact⟩ } = true := by
+  full_run_attestable_check
+
+/-- error: submittedFullRunDesign and submittedPrimitive are both set, and that pair is not qualified: remove one of them. -/
+#guard_msgs in
+example : exclusive FullRunDesign.quotientExact .catalyticB2 = true := by
+  full_run_exclusive_check
+
+/-- error: submittedFullRunDesign is refused: a full run is priced on the semiclassical readout. Set `readout := .semiclassical` in submittedDesign, or remove submittedFullRunDesign. -/
+#guard_msgs in
+example : semiclassicalOnly FullRunDesign.quotientExact .coherent = true := by
+  full_run_semiclassical_check
+
+end Shor.OptInTests

@@ -72,6 +72,35 @@ The guarded balanced arithmetic uses the existing templates. On the reference la
 circuit equals the every-site-split version (`balancedUSemiclassicalProgramAt_circuit_eq`,
 `Balanced.referenceFits_default`), which is the version used by the width-only peak formula.
 
+### Synthesis opt-ins
+
+Two more optional, public declarations go inside `namespace PolicySubmission` in the same file, read
+by exact name like `submittedDesign` (absent chooses the default; a `private` one, one of another
+type, or one that depends on an axiom outside the allowlist is an error):
+
+```lean
+def submittedPrimitive : Shor.PrimitiveSynthesis := .catalyticB2   -- or .adaptiveB3; default .rossSelinger
+def submittedFullRunDesign : Shor.FullRunDesign := Shor.FullRunDesign.quotientCatalytic   -- default .reference
+```
+
+What `lake build PolicySubmission` refuses, as kernel-checked theorems in `PolicyCheck.lean`:
+a full-run design that is neither one of the eight qualified profiles (`FullRunDesign.qualified`) nor a
+QFT-backend-only design on the reference topology; a full-run design together with a non-default
+primitive; a full-run design with a coherent saved readout, each with a message naming the rule. The `exponent` family is not accepted, since
+a full run is priced on the semiclassical readout, which has no exponent register. A ceiling is compared
+as a number and printed in lowest terms: `250e-6` is `25e-5`. What the executable refuses, because it depends on flags: a full-run
+design needs `--balanced --readout submitted`; a non-default primitive needs `--balanced` or `--exact-widths`;
+neither works with `--width-table`.
+
+Each optional declaration is read as its kernel value, not by name, so a compiled-code attribute cannot make
+the printed selection differ from the one the build-time rules judged.
+
+The output then carries `submitted_full_run` (`profile`, or `design` for a body, never both) and
+`submitted_primitive`. These are **declarations**, not Lean-certified claims: this repository attests
+the typed choice, and the circuit and its price are checked by the consumer (the results engine), which
+refuses any combination it cannot price. PhaseTripleProduct policies take `submittedPrimitive` only;
+`PTPPolicyCheck.lean` refuses `submittedFullRunDesign` at build time.
+
 ## PhaseTripleProduct policy submissions
 
 A PhaseTripleProduct policy (a width-indexed list of `Shor.PTP.PTPTable`s, `2 ≤ k ≤ 8` per band) is submitted the same way as
@@ -88,7 +117,10 @@ bash scripts/check_template_lexical.sh ForShor/ShorVerification/Submission/PTPPo
 lake build PTPPolicySubmission forshor_ptp_policy_submission && lake exe forshor_ptp_policy_submission > policy.json
 ```
 
-The lexical gate is the one the PhaseProduct template uses, unchanged: it refuses compiled-code attributes
+The lexical gate is the one the PhaseProduct template uses, unchanged. It reads the file as tokens, with comments
+blanked, and refuses a forbidden attribute or command wherever it sits (stacked after another attribute, after
+`open … in`, in a multi-line attribute list, on a line with `namespace`), not only at the start of a line;
+`scripts/test_check_template_lexical.sh` pins both what it refuses and what it lets through. It refuses compiled-code attributes
 (`implemented_by`, `extern`, `csimp`) and the metaprogramming surface, which a PTP table could otherwise use to be
 kernel-checked as one thing and printed as another. Nothing in a `PTPTable` or a `PTPPolicy` is a proof, so
 the build's kernel checks and `#assert_axioms` are the whole of the acceptance.

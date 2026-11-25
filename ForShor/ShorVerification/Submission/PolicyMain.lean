@@ -384,6 +384,30 @@ unsafe def attempt (s : ShorPolicySubmission) (exact balanced probeOwnRule : Boo
     else
       return .ok base
 
+/-- The command-line preconditions of the opt-in designs, as `some message` for a refusal (exit 2).
+The declaration-only preconditions (`fullRun_attestable`, `fullRun_primitive_exclusive`,
+`fullRun_semiclassical`) are already kernel-checked by `PolicyCheck`, so only flags are tested
+here. Pure, so `PolicyTests` can pin every refusal. -/
+def optInRefusal (fullRun : _root_.Shor.FullRunDesign) (primitive : _root_.Shor.PrimitiveSynthesis)
+    (submitted balanced exact widthTable : Bool) : Option String :=
+  if fullRun != .reference && (!submitted || !balanced || widthTable) then
+    some "full-run synthesis requires saved semiclassical readout and --balanced --readout submitted"
+  else if primitive != .rossSelinger && (!exact || widthTable) then
+    some "primitive synthesis requires exact widths and a checked policy export"
+  else none
+
+/-- Declare the full-run selection in `doc` (a submitter declaration, not a Lean-certified claim). `reference` is "no design at all": no key, not an
+empty design object. A qualified selection names its `profile`; an unqualified one carries its
+`design` body. They are alternatives, exactly one, as the consumer requires
+(`evaluation/export_v2/full_run_design.py` `design_of`: both at once is `profile-and-design`). -/
+def attestFullRun (fullRun : _root_.Shor.FullRunDesign) (doc : Json) : Json :=
+  let sel (k : String) (v : Json) := doc.mergeObj (Json.mkObj [("submitted_full_run", Json.mkObj [
+    ("schema", Json.str "forshor.full-run-selection/v1"), (k, v)])])
+  match fullRun.compiledSelection?, fullRun.label?, fullRun.body? with
+  | some _, some profile, _ => sel "profile" (Json.str profile)
+  | some _, none, some body => sel "design" body
+  | _, _, _ => doc
+
 private inductive ReadoutRequest where
   | saved
   | preview (mode : SubmissionReadout)
@@ -441,22 +465,9 @@ unsafe def main (args : List String) : IO UInt32 := do
   let measured := selected == .semiclassical
   let primitive := _root_.PolicySubmission.resolvedPrimitive
   let fullRun := _root_.PolicySubmission.resolvedFullRun
-  if fullRun != .reference then
-    if request != .submitted || saved != .semiclassical || !balanced || args.contains "--width-table" then
-      IO.eprintln "full-run synthesis requires saved semiclassical readout and --balanced --readout submitted"
-      return 2
-    if primitive != .rossSelinger then
-      IO.eprintln "full-run and standalone synthesis opt-ins are not jointly qualified"
-      return 2
-    -- The type is orthogonal. A qualified selection is attested by its profile label; an
-    -- unqualified one attests its own design body, which exists only for the QFT backend axis on
-    -- the reference topology. A design outside both is refused here, and never falls back to a
-    -- neighbouring profile or to the reference price.
-    if fullRun.label?.isNone && fullRun.body?.isNone then
-      IO.eprintln "full-run selection is not a qualified profile, and its design sets an axis that cannot be attested as a body (multiplier topology, rotation backend or phase-product step)"
-      return 2
-  if primitive != .rossSelinger && (!exact || args.contains "--width-table") then
-    IO.eprintln "primitive synthesis requires exact widths and a checked policy export"
+  if let some msg := optInRefusal fullRun primitive (request == .submitted) balanced exact
+      (args.contains "--width-table") then
+    IO.eprintln msg
     return 2
   if (measured || request == .submitted) && (!balanced || args.contains "--width-table") then
     IO.eprintln "semiclassical or submitted readout requires --balanced and cannot be used with --width-table"
@@ -467,20 +478,7 @@ unsafe def main (args : List String) : IO UInt32 := do
   let printOutput (out : Json) :=
     let doc := if request == .submitted then
       out.mergeObj (Json.mkObj [("submitted_readout", Json.str saved.label)]) else out
-    -- `compiledSelection?` is `none` exactly for `reference`, which means "no design at all":
-    -- the default emits no `submitted_full_run` key rather than an empty design object.
-    -- A qualified selection names its `profile`; an unqualified one carries its `design` body.
-    -- They are alternatives, exactly one, which is what the consumer requires
-    -- (`evaluation/export_v2/full_run_design.py` `design_of`: both at once is `profile-and-design`).
-    let doc := match fullRun.compiledSelection?, fullRun.label?, fullRun.body? with
-      | some _, some profile, _ =>
-        doc.mergeObj (Json.mkObj [("submitted_full_run", Json.mkObj [
-          ("schema", Json.str "forshor.full-run-selection/v1"), ("profile", Json.str profile)])])
-      | some _, none, some body =>
-        doc.mergeObj (Json.mkObj [("submitted_full_run", Json.mkObj [
-          ("schema", Json.str "forshor.full-run-selection/v1"), ("design", body)])])
-      | _, _, _ => doc
-    IO.println (_root_.Shor.PrimitiveSynthesis.attest primitive "pp" doc).compress
+    IO.println (_root_.Shor.PrimitiveSynthesis.attest primitive .pp (attestFullRun fullRun doc)).compress
   match ← attempt s exact balanced probeOwnRule measured with
   | .ok out =>
     printOutput out

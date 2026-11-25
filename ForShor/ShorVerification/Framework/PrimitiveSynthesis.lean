@@ -9,19 +9,52 @@ inductive PrimitiveSynthesis where
   | adaptiveB3
   deriving BEq, DecidableEq
 
+open Lean Elab Term in
+/-- Read an optional submitted declaration by its exact environment name, not by namespace
+resolution. Only an absent declaration chooses `default`; a private one, or one of another type,
+is an error. The one resolver behind every optional opt-in (`submittedDesign`,
+`submittedPrimitive`, `submittedFullRunDesign`).
+
+The result is the declaration's *kernel value*, reduced to a closed term, not its name. A term that
+names the constant compiles to that constant's compiled code, which `@[implemented_by]` can make
+differ from the value the kernel checked, so the build-time rules would pass on one value while
+`lake exe` printed another. Reducing at `.all` transparency (also through `@[irreducible]`) makes
+the compiled value the kernel's value. The lexical gate stays the first line of defence; this closes
+the same hole for the opt-in declarations if it is ever bypassed. -/
+def resolveOptional (ty default name : Name) (sourceModule : Option Name := none) : TermElabM Expr := do
+  let env ← getEnv
+  if (env.setExporting false).contains (mkPrivateNameCore (sourceModule.getD env.mainModule) name) then
+    throwError "optional declaration '{name}' must be public; remove 'private' to opt in"
+  let some info := env.find? name | return mkConst default
+  unless info.levelParams.isEmpty && (← Meta.isDefEq info.type (mkConst ty)) do
+    throwError "optional declaration '{name}' must have type {ty}"
+  Meta.withTransparency .all (Meta.reduce (mkConst name) (skipProofs := true) (skipTypes := true))
+
+open Lean Elab Command in
+/-- Fail with `why` if the submission declares `name`, public or private. -/
+def refuseOptional (name sourceModule : Name) (why : String) : CommandElabM Unit := do
+  let env ← getEnv
+  if env.contains name || (env.setExporting false).contains (mkPrivateNameCore sourceModule name) then
+    throwError "{why}"
+
+open Lean Elab Tactic in
+/-- `decide +kernel`, but a failure is reported as `why` instead of as a failed `decide`. -/
+def kernelOrRefuse (why : String) : TacticM Unit := do
+  try evalTactic (← `(tactic| decide +kernel)) catch _ => throwError "{why}"
+
+/-- Which board a primitive selection is declared on. -/
+inductive AttestScope where
+  | pp | ptp
+
+def AttestScope.label : AttestScope → String
+  | .pp => "pp"
+  | .ptp => "ptp"
+
 namespace PrimitiveSynthesis
 
-open Lean Elab Term in
-def resolve (name sourceModule : Name) : TermElabM Expr := do
-  let env ← getEnv
-  if (env.setExporting false).contains (mkPrivateNameCore sourceModule name) then
-    throwError "optional declaration '{name}' must be public"
-  let some info := env.find? name | return mkConst ``PrimitiveSynthesis.rossSelinger
-  unless info.levelParams.isEmpty && (← Meta.isDefEq info.type (mkConst ``PrimitiveSynthesis)) do
-    throwError "optional declaration '{name}' must have type Shor.PrimitiveSynthesis"
-  return mkConst name
-
-def attest (choice : PrimitiveSynthesis) (scope : String) (out : Lean.Json) : Lean.Json :=
+/-- The document, with the selection declared unless it is the default. The label is the
+submitter's declaration: nothing here proves the price. -/
+def attest (choice : PrimitiveSynthesis) (scope : AttestScope) (out : Lean.Json) : Lean.Json :=
   let label := match choice with
     | .rossSelinger => none
     | .catalyticB2 => some "catalytic-b2"
@@ -30,7 +63,7 @@ def attest (choice : PrimitiveSynthesis) (scope : String) (out : Lean.Json) : Le
   | none => out
   | some backend => out.mergeObj (Lean.Json.mkObj [("submitted_primitive", Lean.Json.mkObj [
       ("schema", Lean.Json.str "forshor.primitive-selection/v1"),
-      ("scope", Lean.Json.str scope), ("backend", Lean.Json.str backend)])])
+      ("scope", Lean.Json.str scope.label), ("backend", Lean.Json.str backend)])])
 
 end PrimitiveSynthesis
 end Shor
